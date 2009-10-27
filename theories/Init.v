@@ -1,4 +1,4 @@
-Require Export Coq.Program.Program Coq.Program.Equality.
+Require Export Coq.Program.Program.
 
 Add ML Path "../src".
 Add ML Path "src".

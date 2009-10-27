@@ -13,8 +13,8 @@
 
 Require Import Bvector.
 
-Require Import Coq.Program.Program Coq.Program.Equality.
-Require Export Equations.Init.
+Require Import Coq.Program.Program.
+Require Export Equations.DepElim.
 
 (** The [BelowPackage] class provides the definition of a [Below] predicate for some datatype,
    allowing to talk about course-of-value recursion on it. *)

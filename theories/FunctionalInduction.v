@@ -8,7 +8,7 @@
 
 (*i $Id$ i*)
 
-Require Export Equations.Init.
+Require Import Equations.DepElim.
 
 (** The [FunctionalInduction f] typeclass is meant to register functional induction
    principles associated to a function [f]. Such principles are automatically 

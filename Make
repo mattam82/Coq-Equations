@@ -6,6 +6,7 @@ EQNSPLUGIN = "src/equations_plugin.cma"
 EQNSPLUGINOPT = "src/equations_plugin.cmxs"
 CAMLP4OPTIONS = "-loc loc"
 theories/Init.v
+theories/DepElim.v
 theories/NoConfusion.v
 theories/Below.v
 theories/Subterm.v

@@ -1,4 +1,4 @@
-(* -*- compile-command: "make -k -C ../.. plugins/subtac/subtac_plugin.cma plugins/subtac/subtac_plugin.cmxs" -*- *)
+(* -*- compile-command: "COQBIN=~/research/coq/git-trunk/bin/ make -k -C .. src/equations_plugin.cma src/equations_plugin.cmxs" -*- *)
 (************************************************************************)
 (*  v      *   The Coq Proof Assistant  /  The Coq Development Team     *)
 (* <O___,, * CNRS-Ecole Polytechnique-INRIA Futurs-Universite Paris Sud *)
@@ -37,11 +37,14 @@ open List
 open Libnames
 open Topconstr
 
-let contrib_name = "Equations"
-let init_constant dir s = Coqlib.gen_constant contrib_name dir s
-let init_reference dir s = Coqlib.gen_reference contrib_name dir s
+let find_constant contrib dir s =
+  constr_of_global (Coqlib.find_reference contrib dir s)
 
-let equations_path = ["Program";"Equations"]
+let contrib_name = "Equations"
+let init_constant dir s = find_constant contrib_name dir s
+let init_reference dir s = Coqlib.find_reference contrib_name dir s
+
+let equations_path = ["Equations";"Equations"]
 let coq_dynamic_ind = lazy (init_constant equations_path "dynamic")
 let coq_dynamic_constr = lazy (init_constant equations_path "Build_dynamic")
 let coq_dynamic_type = lazy (init_constant equations_path "dynamic_type")
@@ -50,15 +53,15 @@ let coq_dynamic_obj = lazy (init_constant equations_path "dynamic_obj")
 let functional_induction_class () =
   Option.get 
     (Typeclasses.class_of_constr
-	(init_constant ["Program";"FunctionalInduction"] "FunctionalInduction"))
+	(init_constant ["Equations";"FunctionalInduction"] "FunctionalInduction"))
 
-let below_path = ["Program";"Below"]
+let below_path = ["Equations";"Below"]
 let coq_have_class = lazy (init_constant below_path "Have")
 let coq_have_meth = lazy (init_constant below_path "have")
 
-let coq_subterm_class = lazy (init_constant ["Program";"Subterm"] "SubtermRelation")
-let coq_subterm_fam_class = lazy (init_constant ["Program";"Subterm"] "SubtermFamRelation")
-let coq_wffam_class = lazy (init_constant ["Program";"Subterm"] "WfFam")
+let coq_subterm_class = lazy (init_constant ["Equations";"Subterm"] "SubtermRelation")
+let coq_subterm_fam_class = lazy (init_constant ["Equations";"Subterm"] "SubtermFamRelation")
+let coq_wffam_class = lazy (init_constant ["Equations";"Subterm"] "WfFam")
 let coq_wellfounded = lazy (init_constant ["Init";"Wf"] "well_founded")
 let coq_relation = lazy (init_constant ["Relations";"Relation_Definitions"] "relation")
 
@@ -67,11 +70,11 @@ let coq_list_ind = lazy (init_constant list_path "list")
 let coq_list_nil = lazy (init_constant list_path "nil")
 let coq_list_cons = lazy (init_constant list_path "cons")
 
-let coq_noconfusion_class = lazy (init_constant ["Program";"Equality"] "NoConfusionPackage")
+let coq_noconfusion_class = lazy (init_constant ["Equations";"DepElim"] "NoConfusionPackage")
   
-let coq_inacc = lazy (Coqlib.gen_constant "equations" ["Program";"Equality"] "inaccessible_pattern")
-let coq_hide = lazy (Coqlib.gen_constant "equations" ["Program";"Equality"] "hide_pattern")
-let coq_add_pattern = lazy (Coqlib.gen_constant "equations" ["Program";"Equality"] "add_pattern")
+let coq_inacc = lazy (Coqlib.gen_constant "equations" ["Equations";"DepElim"] "inaccessible_pattern")
+let coq_hide = lazy (Coqlib.gen_constant "equations" ["Equations";"DepElim"] "hide_pattern")
+let coq_add_pattern = lazy (Coqlib.gen_constant "equations" ["Equations";"DepElim"] "add_pattern")
 
 let unfold_add_pattern = lazy
   (Tactics.unfold_in_concl [((false, []), EvalConstRef (destConst (Lazy.force coq_add_pattern)))])
@@ -92,8 +95,8 @@ let rec constrs_of_coq_dynamic_list c =
   | _ -> raise (Invalid_argument "constrs_of_coq_dynamic_list")
 
 let coq_sigma = Lazy.lazy_from_fun Coqlib.build_sigma_type
-let coq_unit = lazy (init_constant ["Init";"Datatypes"] "unit")
-let coq_tt = lazy (init_constant ["Init";"Datatypes"] "tt")
+let coq_unit = lazy (init_constant ["Coq";"Init";"Datatypes"] "unit")
+let coq_tt = lazy (init_constant ["Coq";"Init";"Datatypes"] "tt")
 
 let constrs_of_coq_sigma env sigma t alias = 
   let s = Lazy.force coq_sigma in
@@ -120,7 +123,7 @@ open Tactics
 open Tacticals
 
 let below_tactics_path =
-  make_dirpath (List.map id_of_string ["Below";"Program";"Coq"])
+  make_dirpath (List.map id_of_string ["Below";"Equations"])
 
 let below_tac s =
   make_kn (MPfile below_tactics_path) (make_dirpath []) (mk_label s)
@@ -135,30 +138,30 @@ let tac_of_string str args =
   Tacinterp.interp (TacArg(TacCall(dummy_loc, Qualid (dummy_loc, qualid_of_string str), args)))
 
 let equations_tac_expr () = 
-  (TacArg(TacCall(dummy_loc, Qualid (dummy_loc, qualid_of_string "Coq.Program.Equality.equations"), [])))
+  (TacArg(TacCall(dummy_loc, Qualid (dummy_loc, qualid_of_string "Equations.DepElim.equations"), [])))
 
-let equations_tac () = tac_of_string "Coq.Program.Equality.equations" []
+let equations_tac () = tac_of_string "Equations.DepElim.equations" []
     
-let solve_rec_tac () = tac_of_string "Coq.Program.Below.solve_rec" []
+let solve_rec_tac () = tac_of_string "Equations.Below.solve_rec" []
 
-let solve_subterm_tac () = tac_of_string "Coq.Program.Subterm.solve_subterm" []
+let solve_subterm_tac () = tac_of_string "Equations.Subterm.solve_subterm" []
 
-let noconf_tac () = tac_of_string "Coq.Program.NoConfusion.solve_noconf" []
+let noconf_tac () = tac_of_string "Equations.NoConfusion.solve_noconf" []
 
-let simpl_equations_tac () = tac_of_string "Coq.Program.Equality.simpl_equations" []
+let simpl_equations_tac () = tac_of_string "Equations.DepElim.simpl_equations" []
 
-let solve_equation_tac c = tac_of_string "Coq.Program.Equality.solve_equation"
+let solve_equation_tac c = tac_of_string "Equations.DepElim.solve_equation"
   [ConstrMayEval (ConstrTerm (CDynamic (dummy_loc, Pretyping.constr_in (constr_of_global c))))]
 
-let depelim_tac h = tac_of_string "Coq.Program.Equality.depelim"
+let depelim_tac h = tac_of_string "Equations.DepElim.depelim"
   [IntroPattern (dummy_loc, Genarg.IntroIdentifier h)]
 
-let depelim_nosimpl_tac h = tac_of_string "Coq.Program.Equality.depelim_nosimpl"
+let depelim_nosimpl_tac h = tac_of_string "Equations.DepElim.depelim_nosimpl"
   [IntroPattern (dummy_loc, Genarg.IntroIdentifier h)]
 
-let simpl_dep_elim_tac () = tac_of_string "Coq.Program.Equality.simpl_dep_elim" []
+let simpl_dep_elim_tac () = tac_of_string "Equations.DepElim.simpl_dep_elim" []
 
-let depind_tac h = tac_of_string "Coq.Program.Equality.depind"
+let depind_tac h = tac_of_string "Equations.DepElim.depind"
   [IntroPattern (dummy_loc, Genarg.IntroIdentifier h)]
   
 let mkEq t x y = 

@@ -12,8 +12,7 @@
 (** The set of libraries required to run Equations with all features. *)
 
 Require Import Coq.Program.Program.
-Require Export Coq.Program.Equality.
 
-Require Export Equations.Init.
+Require Export Equations.Init Equations.DepElim.
 Require Import Equations.NoConfusion Equations.FunctionalInduction.
 Require Export Equations.Below Equations.Subterm.

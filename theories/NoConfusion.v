@@ -14,8 +14,8 @@
    [equations] when it needs applications of injectivity or discrimination
    on some equation. *)
 
-Require Import Coq.Program.Program Coq.Program.Equality Bvector List.
-Require Export Equations.Init.
+Require Import Coq.Program.Program Bvector List.
+Require Export Equations.DepElim.
 
 Ltac noconf H ::=
   blocked ltac:(noconf_ref H; simplify_dep_elim ; simplify_IH_hyps) ; auto 3.
