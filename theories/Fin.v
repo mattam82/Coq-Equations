@@ -10,7 +10,7 @@
 
 (** An example development of the [fin] datatype using [equations]. *)
 
-Require Import Coq.Program.Program Equations.
+Require Import Coq.Program.Program Equations.Equations.
 
 (** [fin n] is the type of naturals smaller than [n]. *)
 

@@ -1,4 +1,6 @@
-Require Import Program Equations.Below Relations Wellfounded.
+Require Import Equations.Init Equations.Below Relations Wellfounded.
+
+Generalizable Variables A R S B.
 
 (** A class for well foundedness proofs. *)
 
@@ -12,7 +14,7 @@ Definition FixWf `{WF:WellFounded A R} (P : A -> Type)
   (step : Π x : A, (Π y : A, R y x -> P y) -> P x) : Π x : A, P x :=
   Fix wellfounded P step.
 
-(** A class for subterm relations accompanied by there well foundedness 
+(** A class for subterm relations accompanied by their well foundedness 
    proofs. Instances can be derived automatically using 
    [Derive Subterm for ind] *)
 

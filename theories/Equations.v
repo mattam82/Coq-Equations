@@ -14,5 +14,5 @@
 Require Import Coq.Program.Program.
 
 Require Export Equations.Init Equations.DepElim.
-Require Import Equations.NoConfusion Equations.FunctionalInduction.
+Require Export Equations.NoConfusion Equations.FunctionalInduction.
 Require Export Equations.Below Equations.Subterm.

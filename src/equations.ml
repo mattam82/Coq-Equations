@@ -2217,75 +2217,9 @@ TACTIC EXTEND solve_equations
   [ "solve_equations" tactic(destruct) tactic(tac) ] -> [ solve_equations_goal (snd destruct) (snd tac) ]
     END
 
-let coq_eq = Lazy.lazy_from_fun Coqlib.build_coq_eq
-let coq_eq_refl = lazy ((Coqlib.build_coq_eq_data ()).Coqlib.refl)
-
-let coq_heq = lazy (Coqlib.coq_constant "mkHEq" ["Logic";"JMeq"] "JMeq")
-let coq_heq_refl = lazy (Coqlib.coq_constant "mkHEq" ["Logic";"JMeq"] "JMeq_refl")
 
 let coq_prod = lazy (Coqlib.coq_constant "mkHEq" ["Init";"Datatypes"] "prod")
 let coq_pair = lazy (Coqlib.coq_constant "mkHEq" ["Init";"Datatypes"] "pair")
-
-let specialize_hyp id gl =
-  let env = pf_env gl in
-  let ty = pf_get_hyp_typ gl id in
-  let evars = ref (create_evar_defs (project gl)) in
-  let unif env evars c1 c2 = e_conv env evars c2 c1 in
-  (*   try evars := Unification.w_unify ~flags: true env Reduction.CONV c1 c2 !evars; true *)
-  (*   with e -> false *)
-  (* in *)
-  let rec aux in_eqs ctx acc ty =
-    match kind_of_term ty with
-    | Prod (na, t, b) -> 
-	(match kind_of_term t with
-	| App (eq, [| eqty; x; y |]) when eq_constr eq (Lazy.force coq_eq) ->
-	    let c = if noccur_between 1 (List.length ctx) x then y else x in
-	    let pt = mkApp (Lazy.force coq_eq, [| eqty; c; c |]) in
-	    let p = mkApp (Lazy.force coq_eq_refl, [| eqty; c |]) in
-	      if unif (push_rel_context ctx env) evars pt t then
-		aux true ctx (mkApp (acc, [| p |])) (subst1 p b)
-	      else acc, in_eqs, ctx, ty
-(* 	      else error "Unconvertible members of an homogeneous equality" *)
-	| App (heq, [| eqty; x; eqty'; y |]) when eq_constr heq (Lazy.force coq_heq) ->
-	    let eqt, c = if noccur_between 1 (List.length ctx) x then eqty', y else eqty, x in
-	    let pt = mkApp (Lazy.force coq_heq, [| eqt; c; eqt; c |]) in
-	    let p = mkApp (Lazy.force coq_heq_refl, [| eqt; c |]) in
-	      if unif (push_rel_context ctx env) evars pt t then
-		aux true ctx (mkApp (acc, [| p |])) (subst1 p b)
-	      else acc, in_eqs, ctx, ty
-(* 		error "Unconvertible members of an heterogeneous equality" *)
-	| _ -> 
-	    if in_eqs then acc, in_eqs, ctx, ty
-	    else 
-	      let e = e_new_evar evars (push_rel_context ctx env) t in
-		aux false ((na, Some e, t) :: ctx) (mkApp (lift 1 acc, [| mkRel 1 |])) b)
-    | t -> acc, in_eqs, ctx, ty
-  in 
-  try 
-    let acc, worked, ctx, ty = aux false [] (mkVar id) ty in
-    let ctx' = nf_rel_context_evar !evars ctx in
-    let ctx'' = map (fun (n,b,t as decl) ->
-      match b with
-      | Some k when isEvar k -> (n,None,t)
-      | b -> decl) ctx'
-    in
-    let ty' = it_mkProd_or_LetIn ty ctx'' in
-    let acc' = it_mkLambda_or_LetIn acc ctx'' in
-    let ty' = Tacred.whd_simpl env !evars ty' 
-    and acc' = Tacred.whd_simpl env !evars acc' in
-    let ty' = Evarutil.nf_isevar !evars ty' in
-      if worked then
-	tclTHENFIRST (Tacmach.internal_cut true id ty')
-	  (exact_no_check (refresh_universes acc')) gl
-      else tclFAIL 0 (str "Nothing to do in hypothesis " ++ pr_id id) gl
-  with e -> tclFAIL 0 (Cerrors.explain_exn e) gl
-
-TACTIC EXTEND specialize_hyp
-[ "specialize_hypothesis" constr(c) ] -> [
-  match kind_of_term c with
-  | Var id -> specialize_hyp id
-  | _ -> tclFAIL 0 (str "Not an hypothesis") ]
-END
 
 
 let db_of_constr c = match kind_of_term c with
