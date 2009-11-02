@@ -459,8 +459,13 @@ Ltac try_intros m :=
 
 (** To solve a goal by inversion on a particular target. *)
 
+Ltac do_empty id :=
+  elimtype False ; simpl in id ;
+  solve [ generalize_eqs id ; destruct id ; simplify_dep_elim
+    | apply id ; eauto with Below ].
+
 Ltac solve_empty target :=
-  do_nat target intro ; elimtype False ; destruct_last ; simplify_dep_elim.
+  do_nat target intro ; on_last_hyp ltac:do_empty.
 
 Ltac simplify_method tac := repeat (tac || simplify_one_dep_elim) ; reverse_local.
 
@@ -482,7 +487,7 @@ Ltac solve_method rec :=
   match goal with
     | [ H := ?body : nat |- _ ] => subst H ; clear ; clear_fix_protos body
       ltac:(fun n => abstract (simplify_method idtac ; solve_empty n))
-    | [ H := [ ?body ] : ?T |- _ ] => clear H ; simplify_method ltac:(exact body) ; rec ; 
+    | [ H := ?body : ?T |- _ ] => clear H ; simplify_method ltac:(exact body) ; rec ; 
       try (exact (body : T)) ; try_intros (body:T)
   end.
 
@@ -576,6 +581,10 @@ Ltac do_depind tac H :=
 
 Ltac depelim id := do_depelim ltac:(fun hyp => do_case hyp) id.
 
+Ltac depelim_term c :=
+  let H := fresh "term" in
+    set (H:=c) in * ; depelim H.
+
 (** Used internally. *)
 
 Ltac depelim_nosimpl id := do_depelim_nosimpl ltac:(fun hyp => do_case hyp) id.
@@ -625,11 +634,27 @@ Tactic Notation "dependent" "induction" ident(H) "generalizing" ne_hyp_list(l) :
 Tactic Notation "dependent" "induction" ident(H) "generalizing" ne_hyp_list(l) "using" constr(c) := 
   do_depelim' ltac:(fun hyp => generalize l ; clear l ; induction hyp using c) H.
 
+(** For treating impossible cases. Equations corresponding to impossible
+   calls form instances of [ImpossibleCall (f args)]. *)
+
+Class ImpossibleCall {A : Type} (a : A) : Type :=
+  is_impossible_call : False.
+
+(** We have a trivial elimination operator for impossible calls. *)
+
+Definition elim_impossible_call {A} (a : A) {imp : ImpossibleCall a} (P : A -> Type) : P a :=
+  match is_impossible_call with end.
+
+(** The tactic tries to find a call of [f] and eliminate it. *)
+
+Ltac impossible_call f := on_call f ltac:(fun t => apply (elim_impossible_call t)).
+
 (** [solve_equation] is used to prove the equation lemmas for an existing definition.  *)
 
-Ltac find_empty :=
+Ltac find_empty := simpl in * ;
   match goal with
-    [ H : _ |- _ ] => solve [ clear_except H ; depelim H ]
+    | [ H : _ |- _ ] => solve [ clear_except H ; depelim H | specialize_hypothesis H ; assumption ]
+    | [ H : _ <> _ |- _ ] => solve [ red in H ; specialize_hypothesis H ; assumption ]
   end.
 
 Ltac make_simplify_goal :=
@@ -653,6 +678,6 @@ Ltac simplify_equation :=
 Ltac solve_equation f := 
   intros ; try simplify_equation ; try
     (match goal with 
-       | [ |- False ] => find_empty 
+       | [ |- ImpossibleCall _ ] => elimtype False ; find_empty 
        | _ => reflexivity || discriminates
      end).

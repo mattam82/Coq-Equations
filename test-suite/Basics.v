@@ -260,7 +260,7 @@ Proof. reflexivity. Qed.
 About nth_equation_2.
 
 Set Printing All.
-Equations vlast {A} {n} (v : vector A (S n)) : A :=
+Equations(nocomp) vlast {A} {n} (v : vector A (S n)) : A :=
 vlast A O (Vcons a ?(O) Vnil) := a ;
 vlast A (S n) (Vcons a ?(S n) v) := vlast v.
 
@@ -285,7 +285,7 @@ Ltac fix_block tac :=
 Print vlast'_ind.
 Print vlast_ind.
 
-Print Assumptions vlast'.
+Print Assumptions vlast.
 Print Assumptions nth. 
 
 Extraction vlast.

@@ -1,3 +1,4 @@
+Require Import Bvector.
 Require Import Equations.Init Equations.Below Relations Wellfounded.
 
 Generalizable Variables A R S B.

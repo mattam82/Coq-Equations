@@ -1,4 +1,4 @@
-(* -*- compile-command: "COQBIN=~/research/coq/git-trunk/bin/ make -k -C .. src/equations_plugin.cma src/equations_plugin.cmxs" -*- *)
+(* -*- compile-command: "COQBIN=~/research/coq/trunk/bin/ make -k -C .. src/equations_plugin.cma src/equations_plugin.cmxs" -*- *)
 (************************************************************************)
 (*  v      *   The Coq Proof Assistant  /  The Coq Development Team     *)
 (* <O___,, * CNRS-Ecole Polytechnique-INRIA Futurs-Universite Paris Sud *)
@@ -72,9 +72,12 @@ let coq_list_cons = lazy (init_constant list_path "cons")
 
 let coq_noconfusion_class = lazy (init_constant ["Equations";"DepElim"] "NoConfusionPackage")
   
-let coq_inacc = lazy (Coqlib.gen_constant "equations" ["Equations";"DepElim"] "inaccessible_pattern")
-let coq_hide = lazy (Coqlib.gen_constant "equations" ["Equations";"DepElim"] "hide_pattern")
-let coq_add_pattern = lazy (Coqlib.gen_constant "equations" ["Equations";"DepElim"] "add_pattern")
+let coq_inacc = lazy (init_constant ["Equations";"DepElim"] "inaccessible_pattern")
+let coq_hide = lazy (init_constant ["Equations";"DepElim"] "hide_pattern")
+let coq_add_pattern = lazy (init_constant ["Equations";"DepElim"] "add_pattern")
+
+let coq_notT = lazy (init_constant ["Coq";"Init";"Logic_Type"] "notT")
+let coq_ImpossibleCall = lazy (init_constant ["Equations";"DepElim"] "ImpossibleCall")
 
 let unfold_add_pattern = lazy
   (Tactics.unfold_in_concl [((false, []), EvalConstRef (destConst (Lazy.force coq_add_pattern)))])
@@ -153,7 +156,16 @@ let simpl_equations_tac () = tac_of_string "Equations.DepElim.simpl_equations" [
 let solve_equation_tac c = tac_of_string "Equations.DepElim.solve_equation"
   [ConstrMayEval (ConstrTerm (CDynamic (dummy_loc, Pretyping.constr_in (constr_of_global c))))]
 
+let impossible_call_tac c = Tacinterp.glob_tactic
+  (TacArg(TacCall(dummy_loc, 
+		 Qualid (dummy_loc, qualid_of_string "Equations.DepElim.impossible_call"),
+		 [ConstrMayEval (ConstrTerm (CDynamic (dummy_loc, 
+						      Pretyping.constr_in (constr_of_global c))))])))
+
 let depelim_tac h = tac_of_string "Equations.DepElim.depelim"
+  [IntroPattern (dummy_loc, Genarg.IntroIdentifier h)]
+
+let do_empty_tac h = tac_of_string "Equations.DepElim.do_empty"
   [IntroPattern (dummy_loc, Genarg.IntroIdentifier h)]
 
 let depelim_nosimpl_tac h = tac_of_string "Equations.DepElim.depelim_nosimpl"
@@ -166,6 +178,9 @@ let depind_tac h = tac_of_string "Equations.DepElim.depind"
   
 let mkEq t x y = 
   mkApp (Coqlib.build_coq_eq (), [| t; x; y |])
+
+let mkNot t =
+  mkApp (Coqlib.build_coq_not (), [| t |])
 
 let mkNot t =
   mkApp (Coqlib.build_coq_not (), [| t |])
@@ -1261,62 +1276,6 @@ type rec_type =
   | Structural
   | Logical of (constant * constr * constant) (* comp, comp applied to rels, comp projection *)
 
-let interp_eqn i is_rec isevar env impls sign arity recu eqn =
-  let avoid = ref [] in
-  let rec interp_pat (loc, p) =
-    match p with
-    | PEApp ((loc,f), l) -> 
-	(try match Nametab.extended_locate (make_short_qualid f) with
-	| TrueGlobal (ConstructRef c) -> 
-	    let (ind,_) = c in
-	    let nparams, _ = inductive_nargs env ind in
-	    let nargs = constructor_nrealargs env c in
-	    let len = List.length l in
-	    let l' =
-	      if len < nargs then 
-		list_make (nargs - len) (loc,PEWildcard) @ l
-	      else l
-	    in PUCstr (c, nparams, map interp_pat l')
-	| _ -> 
-	    if l <> [] then 
-	      user_err_loc (loc, "interp_pats",
-			   str "Pattern variable cannot be applied " ++ pr_id f)
-	    else PUVar f
-	  with Not_found -> PUVar f)
-    | PEInac c -> PUInac c
-    | PEWildcard -> let n = next_ident_away (id_of_string "wildcard") avoid in
-		      PUVar n
-  in
-  let rec aux ((loc,id), pats, rhs) =
-    avoid := !avoid @ ids_of_pats pats;
-    if id <> i then
-      user_err_loc (loc, "interp_pats",
-		   str "Expecting a pattern for " ++ pr_id i);
-    (*   if List.length pats <> List.length sign then *)
-    (*     user_err_loc (loc, "interp_pats", *)
-    (* 		 str "Patterns do not match the signature " ++  *)
-    (* 		   pr_rel_context env sign); *)
-    let pats = map interp_pat pats in
-      match is_rec with
-      | Some Structural -> (PUVar i :: pats, interp_rhs None rhs)
-      | Some (Logical (_, _, compproj)) -> (pats, interp_rhs (Some (ConstRef compproj)) rhs)
-      | None -> (pats, interp_rhs None rhs)
-  and interp_rhs compproj = function
-    | Refine (c, eqs) -> Refine (interp_constr_expr compproj !avoid c, map aux eqs)
-    | Program c -> Program (interp_constr_expr compproj !avoid c)
-    | Empty i -> Empty i
-    | Rec i -> Rec i
-    | By x -> By x
-  and interp_constr_expr compproj ids c = 
-    match c, compproj with
-    (* |   | CAppExpl of loc * (proj_flag * reference) * constr_expr list *)
-    | CApp (loc, (None, CRef (Ident (loc',id'))), args), Some compproj when i = id' ->
-	let qidproj = Nametab.shortest_qualid_of_global Idset.empty compproj in
-	  CApp (loc, (None, CRef (Qualid (loc', qidproj))), args)
-    | _ -> map_constr_expr_with_binders (fun id l -> id :: l) 
-	(interp_constr_expr compproj) ids c
-  in aux eqn
-
 let lift_constrs n cs = map (lift n) cs
 
 let list_try_find_i f i l =
@@ -1462,7 +1421,7 @@ let rec aux_ind_fun base_id = function
   | Compute ((ctx,_,_), _, REmpty id) ->
       let (na,_,_) = nth ctx (pred id) in
       let id = out_name na in
-	depelim_tac id
+	do_empty_tac id
 
 let ind_fun_tac is_rec f baseid fid split ind =
   if is_rec = Some Structural then
@@ -1479,38 +1438,6 @@ let ind_fun_tac is_rec f baseid fid split ind =
 	   intros; aux_ind_fun baseid split])
   else tclCOMPLETE (aux_ind_fun baseid split)
     
-let rec clean_statement c =
-  match kind_of_term c with
-  | Prod (_, b, t) when not (dependent (mkRel 1) t) ->
-      clean_statement (subst1 mkProp t)
-  | Prod (na, b, t) -> mkProd (na, b, clean_statement t)
-  | _ -> c
-
-(* let specialize_rhs s = function *)
-(*   | RProgram c -> specialize_constr s c  *)
-(*   | REmpty i -> match nth s i with *)
-(*     | PRel i -> REmpty i *)
-(*     | _ -> user_err_loc (loc, "equations", str"Unbound variable " ++ pr_id i) *)
-
-(* let reduce_ctx c = *)
-(*   let rec aux (acc, c, subst) = function *)
-(*     (n,b,t) :: rest -> *)
-(*       if not (dependent_context (mkRel 1) rest) && *)
-(* 	not (dependent (mkRel 1) c) *)
-(*       if b = None then if *)
-
-(* let clean_clause (ctx, pats, ext, ty, c) = *)
-(*   let ctx', c', subst = reduce_ctx ctx in *)
-(*     (ctx', specialize_pats subst pats, ext, specialize_constr subst ty, *)
-(*     match c with RProgram (specialize_constr subst c) *)
-
-(* let clean_clause (ctx, pats, ext, ty, c) = *)
-(*   let term = it_mkProd_or_subst (mkApp (mkProp, [| c |])) ctx in *)
-(*   let cleanterm = clean_statement (nf_beta term) in *)
-(*   let ctx', c' = decompose_prod_assum cleanterm in *)
-(*   let _, [| c' |] = decompose_app c' in *)
-(*     (ctx', pats, ext, ty, c') *)
-
 let mapping_rhs s = function
   | RProgram c -> RProgram (mapping_constr s c)
   | REmpty i -> 
@@ -1672,8 +1599,9 @@ let build_equations with_ind env id baseid data sign is_rec arity cst
 	| RProgram c ->
 	    mkEq ty comp (nf_beta Evd.empty c)
 	| REmpty i ->
-	    mkLetIn (Anonymous, comp, ty, Coqlib.build_coq_False ())
-      in it_mkProd_or_clear b ctx
+	    (* mkLetIn (Anonymous, comp, ty,  *)
+	    mkApp (Lazy.force coq_ImpossibleCall, [| ty; comp |])
+      in it_mkProd_or_LetIn b ctx
     in
     let cstr = 
       match c with
@@ -1766,8 +1694,9 @@ let build_equations with_ind env id baseid data sign is_rec arity cst
 	if n <> None then
 	  Autorewrite.add_rew_rules baseid 
 	    [dummy_loc, constr_of_global gr, true, Tacexpr.TacId []]
-	else 
-	  Auto.add_hints false [baseid] (Auto.HintsImmediateEntry [constr_of_global gr]);
+	else (Classes.declare_instance true (dummy_loc, Nametab.basename_of_global gr);
+	      Auto.add_hints false [baseid] 
+		(Auto.HintsExternEntry (0, None, impossible_call_tac (ConstRef cst))));
 	eqns.(pred i) <- true;
 	if array_for_all (fun x -> x) eqns then (
 	  (* From now on, we don't need the reduction behavior of the constant anymore *)
@@ -1901,6 +1830,65 @@ let update_split is_rec cmap f prob id split =
     | Some (Logical (comp, compapp, proj)) ->
 	subst_comp_proj_split f (mkConst proj) split'
     | _ -> split'
+
+let interp_eqn i is_rec isevar env impls sign arity recu eqn =
+  let avoid = ref [] in
+  let rec interp_pat (loc, p) =
+    match p with
+    | PEApp ((loc,f), l) -> 
+	(try match Nametab.extended_locate (make_short_qualid f) with
+	| TrueGlobal (ConstructRef c) -> 
+	    let (ind,_) = c in
+	    let nparams, _ = inductive_nargs env ind in
+	    let nargs = constructor_nrealargs env c in
+	    let len = List.length l in
+	    let l' =
+	      if len < nargs then 
+		list_make (nargs - len) (loc,PEWildcard) @ l
+	      else l
+	    in 
+	      Dumpglob.add_glob loc (ConstructRef c);
+	      PUCstr (c, nparams, map interp_pat l')
+	| _ -> 
+	    if l <> [] then 
+	      user_err_loc (loc, "interp_pats",
+			   str "Pattern variable " ++ pr_id f ++ str" cannot be applied ")
+	    else PUVar f
+	  with Not_found -> PUVar f)
+    | PEInac c -> PUInac c
+    | PEWildcard -> let n = next_ident_away (id_of_string "wildcard") avoid in
+		      avoid := n :: !avoid; PUVar n
+  in
+  let rec aux ((loc,id), pats, rhs) =
+    avoid := !avoid @ ids_of_pats pats;
+    if id <> i then
+      user_err_loc (loc, "interp_pats",
+		   str "Expecting a pattern for " ++ pr_id i);
+    Dumpglob.dump_reference loc "<>" (string_of_id id) "def";
+    (*   if List.length pats <> List.length sign then *)
+    (*     user_err_loc (loc, "interp_pats", *)
+    (* 		 str "Patterns do not match the signature " ++  *)
+    (* 		   pr_rel_context env sign); *)
+    let pats = map interp_pat pats in
+      match is_rec with
+      | Some Structural -> (PUVar i :: pats, interp_rhs None rhs)
+      | Some (Logical (_, _, compproj)) -> (pats, interp_rhs (Some (ConstRef compproj)) rhs)
+      | None -> (pats, interp_rhs None rhs)
+  and interp_rhs compproj = function
+    | Refine (c, eqs) -> Refine (interp_constr_expr compproj !avoid c, map aux eqs)
+    | Program c -> Program (interp_constr_expr compproj !avoid c)
+    | Empty i -> Empty i
+    | Rec i -> Rec i
+    | By x -> By x
+  and interp_constr_expr compproj ids c = 
+    match c, compproj with
+    (* |   | CAppExpl of loc * (proj_flag * reference) * constr_expr list *)
+    | CApp (loc, (None, CRef (Ident (loc',id'))), args), Some compproj when i = id' ->
+	let qidproj = Nametab.shortest_qualid_of_global Idset.empty compproj in
+	  CApp (loc, (None, CRef (Qualid (loc', qidproj))), args)
+    | _ -> map_constr_expr_with_binders (fun id l -> id :: l) 
+	(interp_constr_expr compproj) ids c
+  in aux eqn
 	
 let define_by_eqs opts i (l,ann) t nt eqs =
   let with_comp, with_rec, with_eqns, with_ind =
@@ -2161,15 +2149,24 @@ let (wit_decl_notation : Genarg.tlevel decl_notation_argtype),
   (rawwit_decl_notation : Genarg.rlevel decl_notation_argtype) =
   Genarg.create_arg "decl_notation"
 
+type 'a identref_argtype = (identifier located, 'a) Genarg.abstract_argument_type
+
+let (wit_identref : Genarg.tlevel identref_argtype),
+  (globwit_identref : Genarg.glevel identref_argtype),
+  (rawwit_identref : Genarg.rlevel identref_argtype) =
+  Genarg.create_arg "identref"
+
 let with_rollback f x =
   let st = States.freeze () in
     try f x with e -> msg (Cerrors.explain_exn e); States.unfreeze st
 
-let equations opts i l t nt eqs =
+let equations opts (loc, i) l t nt eqs =
+  Dumpglob.dump_definition (loc, i) false "def";
   with_rollback (define_by_eqs opts i l t nt) eqs
 
 VERNAC COMMAND EXTEND Define_equations
-| [ "Equations" equation_options(opt) ident(i) binders_let2(l) ":" lconstr(t) ":=" deppat_equations(eqs)
+| [ "Equations" equation_options(opt) identref(i) binders_let2(l) 
+      ":" lconstr(t) ":=" deppat_equations(eqs)
       decl_notation(nt) ] ->
     [ equations opt i l t nt eqs ]
       END
