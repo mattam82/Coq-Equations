@@ -80,8 +80,6 @@ unzip_n A B (S n) (Vcons (pair x y) n v) :=
   let '(xs, ys) := vs in
     (Vcons x xs, Vcons y ys).
 
-Recursive Extraction unzip.
-
 Equations neg (b : bool) : bool :=
 neg true := false ;
 neg false := true.
@@ -95,14 +93,12 @@ Equations head A (default : A) (l : list A) : A :=
 head A default nil := default ;
 head A default (cons a v) := a.
 
-Eval compute in head.
-
 Equations tail {A} (l : list A) : list A :=
 tail A nil := nil ;
 tail A (cons a v) := v.
 
-Eval compute in @tail.
-Eval compute in (tail (cons 1 nil)).
+(* Eval compute in @tail. *)
+(* Eval compute in (tail (cons 1 nil)). *)
 
 Equations app' {A} (l l' : list A) : (list A) :=
 app' A nil l := l ;
@@ -116,8 +112,8 @@ Equations rev {A} (l : list A) : list A :=
 rev A nil := nil;
 rev A (cons a v) := rev v +++ [a].
 
-Print rev_ind_fun. 
-Print left.
+
+
 
 Lemma app'_nil : forall {A} (l : list A), l +++ [] = l.
 Proof. intros. funind (app' l []) applnil.
@@ -136,8 +132,8 @@ Proof. intros. funind (l +++ l') l'l.
   simp rev. rewrite IHapp'_ind. rewrite <- app'_assoc. reflexivity. 
 Qed.
 
-Eval compute in @app'.
-Print split.
+(* Eval compute in @app'. *)
+
 Lemma split_vapp' : Π (X : Type) m n (v : vector X m) (w : vector X n), 
   let 'append v' w' := split (vapp' v w) in
     v = v' /\ w = w'.
@@ -159,7 +155,7 @@ zip'' A f (cons a v) (cons b w) def := cons (f a b) (zip'' f v w def) ;
 zip'' A f nil (cons b w) def := def ;
 zip'' A f (cons a v) nil def := def.
 
-Eval compute in @zip''.
+(* Eval compute in @zip''. *)
 
 Require Import Bvector.
 
@@ -185,24 +181,19 @@ Equations (nocomp) vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
 vmap A B f O Vnil := Vnil ;
 vmap A B f (S n) (Vcons a ?(n) v) := Vcons (f a) (vmap f v).
 
-Print vmap_ind_fun.
-Eval compute in vmap_ind_fun.
 Transparent vmap.
-Eval compute in (vmap id (@Vnil nat)).
-Eval compute in (vmap id (@Vcons nat 2 _ Vnil)).
-Print vmap_obligation_2. 
-Set Printing All. 
-Eval compute in @vmap.
+(* Set Printing All.  *)
+(* Eval compute in @vmap. *)
 
 Equations vmap' {A B} (f : A -> B) {n} (v : vector A n) : (vector B n) :=
 vmap' A B f ?(O) Vnil := Vnil ;
 vmap' A B f ?(S n) (Vcons a ?(n) v) := Vcons (f a) (vmap' f v).
 
 Transparent vmap'.
-Eval compute in (vmap' id (@Vnil nat)).
-Eval compute in (vmap' id (@Vcons nat 2 _ Vnil)).
-Print vmap'_obligation_1.
-Eval compute in @vmap'.
+(* Eval compute in (vmap' id (@Vnil nat)). *)
+(* Eval compute in (vmap' id (@Vcons nat 2 _ Vnil)). *)
+
+(* Eval compute in @vmap'. *)
 
 Section Image.
   Context {S T : Type}.
@@ -224,7 +215,7 @@ Section Univ.
   interp ubool := bool; interp unat := nat;
   interp (uarrow from to) := interp from -> interp to.
 
-  Eval compute in interp.
+  (* Eval compute in interp. *)
 
   Transparent interp.
 
@@ -237,13 +228,13 @@ Section Univ.
   foo (uarrow from to) f := id ∘ f.
 
   Transparent foo.
-  Eval lazy beta delta [ foo foo_obligation_1 foo_obligation_2 ] iota zeta in foo.
+  (* Eval lazy beta delta [ foo foo_obligation_1 foo_obligation_2 ] iota zeta in foo. *)
 
 End Univ.
 
-Eval compute in (foo ubool false).
-Eval compute in (foo (uarrow ubool ubool) negb).
-Eval compute in (foo (uarrow ubool ubool) id).
+(* Eval compute in (foo ubool false). *)
+(* Eval compute in (foo (uarrow ubool ubool) negb). *)
+(* Eval compute in (foo (uarrow ubool ubool) id). *)
 
 Inductive foobar : Set := bar | baz.
 
@@ -251,27 +242,14 @@ Equations bla (f : foobar) : bool :=
 bla bar := true ;
 bla baz := false.
 
-Eval simpl in bla.
-Print refl_equal.
+(* Eval simpl in bla. *)
 
 Lemma eq_trans_eq A x : @eq_trans A x x x eq_refl eq_refl = eq_refl.
 Proof. reflexivity. Qed.
 
-About nth_equation_2.
-
-Set Printing All.
 Equations(nocomp) vlast {A} {n} (v : vector A (S n)) : A :=
 vlast A O (Vcons a ?(O) Vnil) := a ;
 vlast A (S n) (Vcons a ?(S n) v) := vlast v.
-
-Eval compute in @vlast.
-Unset Printing All.
-
-About vlast_equation_1.
-About vlast_equation_2.
-
-Print Assumptions vlast.
-Set Printing All.
 
 Equations vlast' {A} {n} (v : vector A (S n)) : A :=
 vlast' A ?(0) (Vcons a O Vnil) := a ;
@@ -281,15 +259,6 @@ Ltac fix_block tac :=
   match goal with
     [ |- ?T ] => tac ; on_last_hyp ltac:(fun id => change (fix_proto T) in id)
   end.
-
-Print vlast'_ind.
-Print vlast_ind.
-
-Print Assumptions vlast.
-Print Assumptions nth. 
-
-Extraction vlast.
-Extraction vlast'.
 
 (* Equations (nocomp) vliat {A} {n} (v : vector A (S n)) : vector A n := *)
 (* vliat A ?(O) (Vcons a O Vnil) := Vnil ; *)
@@ -305,15 +274,13 @@ Fixpoint vapp {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
 
 Lemma JMeq_Vcons_inj A n m a (x : vector A n) (y : vector A m) : n = m -> JMeq x y -> JMeq (Vcons a x) (Vcons a y).
 Proof. intros until y. simplify_dep_elim. reflexivity. Qed.
-
-Unset Printing All.
   
-Eval compute in (split (vapp Vnil (Vcons 2 Vnil))).
-Eval compute in (split (vapp (Vcons 3 Vnil) (Vcons 2 Vnil))).
+(* Eval compute in (split (vapp Vnil (Vcons 2 Vnil))). *)
+(* Eval compute in (split (vapp (Vcons 3 Vnil) (Vcons 2 Vnil))). *)
 
-Recursive Extraction split.
-Transparent split.
-Eval cbv beta iota zeta delta [ split split_obligation_1 split_obligation_2  ] in @split.
+(* Recursive Extraction split. *)
+(* Transparent split. *)
+(* Eval cbv beta iota zeta delta [ split split_obligation_1 split_obligation_2  ] in @split. *)
 
 Equations(nocomp) mult (n m : nat) : nat :=
 mult O m := 0 ; mult (S n) m := mult n m + m.
@@ -325,14 +292,11 @@ Inductive Parity : nat -> Set :=
 | even : forall n, Parity (mult 2 n)
 | odd : forall n, Parity (S (mult 2 n)).
 
-Print mult.
-
-Eval compute in (fun n => mult 2 (S n)).
+(* Eval compute in (fun n => mult 2 (S n)). *)
 Definition cast {A B : Type} (a : A) (p : A = B) : B.
   intros. subst. exact a.
 Defined.
   
-
 Equations(nocomp) parity (n : nat) : Parity n :=
 parity O := even 0 ;
 parity (S n) <= parity n => {
@@ -341,11 +305,6 @@ parity (S n) <= parity n => {
 
 Next Obligation of parity. simpl ; intros. simp mult. simpl. apply f_equal. auto. Defined.
 
-Print parity_ind.
-
-Print parity_obligation_1.
-Print parity_ind.
-
 Equations half (n : nat) : nat :=
 half n <= parity n => {
   half ?(2 * k) (odd k) := k ;
@@ -353,7 +312,6 @@ half n <= parity n => {
 
 Equations(nocomp) vtail {A n} (v : vector A (S n)) : vector A n :=
 vtail A n (Vcons a n v') := v'.
-Print vmap.
 
 Equations diag {A n} (v : vector (vector A n) n) : vector A n :=
 diag A O Vnil := Vnil ;
@@ -364,7 +322,6 @@ Definition mat A n m := vector (vector A m) n.
 Equations vmake {A} (n : nat) (a : A) : vector A n :=
 vmake A O a := Vnil ;
 vmake A (S n) a := Vcons a (vmake n a).
-About vfold_right.
 
 Equations(nocomp) vfold_right {A : nat -> Type} {B} (f : Π n, B -> A n -> A (S n)) (e : A 0) {n} (v : vector B n) : A n :=
 vfold_right A B f e ?(0) Vnil := e ;

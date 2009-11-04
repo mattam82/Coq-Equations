@@ -1,0 +1,63 @@
+\documentclass{article}
+
+\usepackage{me}
+\usepackage{abbrevs}
+\usepackage[color]{coqdoc}
+\usepackage{coq}
+
+\def\name#1{\textsc{#1}~}
+\def\Coq{\name{Coq}}
+\def\Haskell{\name{Haskell}}
+\def\text#1{#1}
+\def\Ltac{$\mathcal{\text{L}}_{\text{tac}}$}
+\def\Equations{\name{Equations}}
+\def\coqlibrary#1#2#3{}
+
+\author{Matthieu Sozeau}
+\title{\Equations\\
+  A dependent pattern-matching compiler}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+  Equations is a compiler for definitions made by pattern matching on
+  inductive families. It allows to write complex, recursive
+  dependently-typed functions, automatically find a realization in \Coq 
+  and generate proofs to ease reasoning on them.
+
+  The basic functionality is the ability to define a function by a set
+  of \textit{equations} with patterns on the left-hand side and programs
+  in the right-hand side, in a similar fashion to \Haskell and \Agda
+  function definitions. The system also supports with-clauses that can
+  be used to add a pattern on the left-hand side for further refinement
+  and also permits using arbitrary tactics to refine a programming
+  problem. Both "syntactic" structural recursion and "semantic" well-founded 
+  recursion schemes are usable in definitions, the later being
+  generalized enough to cope with general inductive families.
+  
+  The system provides proofs of the equations that can be used as
+  rewrite rules to simplify calls to the function in proofs. It also
+  automatically generates the inductive graph of the function and a
+  proof that the function respects it, giving a functional induction
+  principle for it. 
+  
+  The whole system makes heavy use of type classes and \Ltac tactics to
+  allow genericity and extensibility in a lightweight way.
+\end{abstract}
+
+\section{A gentle introduction to \Equations}
+
+\input{intro}
+
+  
+
+
+\end{document}
+
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-PDF-mode: t
+%%% TeX-master: t
+%%% End: 
