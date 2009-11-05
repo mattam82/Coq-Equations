@@ -1396,7 +1396,10 @@ let rec aux_ind_fun base_id = function
       let before, (na, b, t), after = split_context (pred var) ctx in
       let id = out_name na in
       (* let splits = list_map_filter (fun x -> x) (Array.to_list splits) in *)
-	tclTHEN_i (depelim_nosimpl_tac id) 
+	tclTHEN_i (fun gl ->
+	  try depelim_nosimpl_tac id gl
+	  with _ -> 
+	    depelim_nosimpl_tac (pi1 (List.nth (pf_hyps gl) (pred var))) gl) 
 	  (fun i -> 
 	    match splits.(pred i) with
 	    | None -> simpl_dep_elim_tac ()
@@ -1425,13 +1428,13 @@ let rec aux_ind_fun base_id = function
 	tclTHENLIST [autorewrites base_id; any_constructor false None; autorewrites base_id]
       in tclTHENLIST [ intros; tclTHENLAST cstrtac (tclSOLVE [elimtac]); solve_rec_tac ()]
 	
-  | Compute (_, _, RProgram c) ->
+  | Compute (_, _, _) ->
       tclTHENLIST [intros; simp_eqns [base_id]]
 	
-  | Compute ((ctx,_,_), _, REmpty id) ->
-      let (na,_,_) = nth ctx (pred id) in
-      let id = out_name na in
-	do_empty_tac id
+  (* | Compute ((ctx,_,_), _, REmpty id) -> *)
+  (*     let (na,_,_) = nth ctx (pred id) in *)
+  (*     let id = out_name na in *)
+  (* 	do_empty_tac id *)
 
 let ind_fun_tac is_rec f baseid fid split ind =
   if is_rec = Some Structural then

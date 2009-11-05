@@ -556,14 +556,23 @@ Ltac is_introduced H :=
   end.
 
 Tactic Notation "intro_block" hyp(H) :=
-  (is_introduced H ; block_goal ; revert_until H) ||
+  (is_introduced H ; block_goal ; revert_until H ; block_goal) ||
     (let H' := fresh H in intros until H' ; block_goal) || (intros ; block_goal).
 
 Tactic Notation "intro_block_id" ident(H) :=
-  (is_introduced H ; block_goal ; revert_until H) ||
+  (is_introduced H ; block_goal ; revert_until H ; block_goal) ||
     (let H' := fresh H in intros until H' ; block_goal) || (intros ; block_goal).
 
-Ltac simpl_dep_elim := simplify_dep_elim ; simplify_IH_hyps ; unblock_goal.
+Ltac unblock_dep_elim :=
+  match goal with
+    | |- block ?T => 
+      match T with context [ block _ ] => 
+        unfold block at 1 ; intros ; unblock_goal
+      end
+    | _ => unblock_goal
+  end.
+
+Ltac simpl_dep_elim := simplify_dep_elim ; simplify_IH_hyps ; unblock_dep_elim.
 
 Ltac do_intros H :=
   (try intros until H) ; (intro_block_id H || intro_block H) ;
@@ -575,7 +584,8 @@ Ltac do_depelim tac H := do_depelim_nosimpl tac H ; simpl_dep_elim.
 
 Ltac do_depind tac H := 
   (try intros until H) ; intro_block H ; (try simpl in H ; simplify_equations_in H) ;
-  generalize_eqs_vars H ; tac H ; simplify_dep_elim ; simplify_IH_hyps ; unblock_goal.
+  generalize_eqs_vars H ; tac H ; simplify_dep_elim ; simplify_IH_hyps ; 
+  unblock_dep_elim.
 
 (** To dependent elimination on some hyp. *)
 
