@@ -1,11 +1,31 @@
-\documentclass{article}
+\documentclass[9pt]{sigplanconf}
 
 \usepackage{me}
+\def\anon#1{#1}
+\def\theauthor{\anon{\myname}}
+
+%% JFP
+
+%% LLNCS
+% \author{\theauthor}
+% \date{\today}
+% \institute{\myaffiliation
+%   \\\email{sozeau@lri.fr}}
+% \usepackage{natbib}
+% \bibpunct();A{},
+% \let\cite=\citep
+% \def\shortcite#1{\cite{#1}}
+
+%% ACM
+\authorinfo{\myname}{\myaffiliation}{\mymail}
+
+%\documentclass{article}
+
 \usepackage{abbrevs}
 \usepackage[color]{coqdoc}
 \usepackage{coq}
 
-\setlength{\coqdocbaseindent}{1.3em}
+\setlength{\coqdocbaseindent}{0.7em}
 
 \def\name#1{\textsc{#1}~}
 \def\Coq{\name{Coq}}
@@ -15,7 +35,7 @@
 \def\Equations{\name{Equations}}
 \def\coqlibrary#1#2#3{}
 
-\author{Matthieu Sozeau}
+%\author{Matthieu Sozeau}
 \title{\Equations\\
   A dependent pattern-matching compiler}
 
@@ -48,9 +68,7 @@
   allow genericity and extensibility in a lightweight way.
 \end{abstract}
 
-\section{A gentle introduction to \Equations}
-
-\input{intro}
+\input{intro.coq}
 
   
 \bibliographystyle{plainnat}

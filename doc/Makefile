@@ -1,21 +1,26 @@
-COQDOCOPTS=--utf8 --body-only --latex -g --interpolate
+COQDOCOPTS=--utf8 -g --interpolate -coqlib http://coq.inria.fr/stdlib/
 COQOPTS=
-TARGETS=intro.vo intro.tex equations.pdf
+TARGETS=intro.vo intro.coq.tex equations.pdf intro.html
 COQBIN=~/research/coq/trunk/bin/
+
 
 all: ${TARGETS}
 
 %.vo: %.v
 	${COQBIN}coqc ${COQOPTS} $<
 
-%.tex: %.vo
-	${COQBIN}coqdoc ${COQOPTS} ${COQDOCOPTS} --glob-from ${<:.vo=.glob} -o ${<:.vo=.tex} ${<:.vo=.v}
+%.coq.tex: %.vo
+	${COQBIN}coqdoc ${COQOPTS} ${COQDOCOPTS} --body-only --latex --glob-from ${<:.vo=.glob} -o $@ ${<:.vo=.v}
 	rm coqdoc.sty
 
-equations.tex: intro.tex
+%.html: %.vo
+	${COQBIN}coqdoc ${COQOPTS} ${COQDOCOPTS} --html --glob-from ${<:.vo=.glob} -o $@ ${<:.vo=.v}
+	cp ~/research/publication/styles/coqdoc.css .
 
 %.pdf: %.tex
 	pdflatex $<
 
 clean:
 	rm -f ${TARGETS}
+
+equations.pdf: intro.coq.tex
