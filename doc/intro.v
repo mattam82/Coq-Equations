@@ -27,6 +27,7 @@ Ltac funelim c :=
           dependent_pattern c ; apply prf)
   end.
 
+Derive DependentElimination for nat bool option sum prod list.
 (* end hide *)
 (** ** Inductive types
 
@@ -117,8 +118,8 @@ Implicit Arguments list []. Notation " x :: l " := (cons x l).
 (** No special support for polymorphism is needed, as type arguments are treated 
    like regular arguments in dependent type theories. Note however that one cannot
    match on type arguments, there is no intensional type analysis. We will present 
-   later how to programm with universes to achive the same kind of genericity. 
-   We can write the standard [tail] function as follows:
+   later how to program with universes to achive the same kind of genericity. 
+   We can write the polymorphic [tail] function as follows:
 *)
 
 Equations tail {A} (l : list A) : list A :=
@@ -134,28 +135,51 @@ tail A (cons a v) := v.
    A classical example is list concatenation: *)
 
 Equations app {A} (l l' : list A) : list A :=
-app A nil l := l ;
-app A (cons a v) l := cons a (app v l).
-Print app_ind_ind.
+app A nil l' := l' ;
+app A (cons a l) l' := cons a (app l l').
+
 (** Recursive definitions like [app] can be unfolded easily so proving the 
    equations as rewrite rules is direct. The induction principle associated 
-   to this definition is more interesting however, as we will get an 
-   induction hypothesis for the recursive call:
+   to this definition is more interesting however. We can derive from it the 
+   following _elimination_ principle for calls to [app]:
    [[
-Inductive app_ind : forall (A : Type) (l l' : list A), app_comp l l' -> Prop :=
-  | app_ind_equation_1 : forall (A : Type) (l' : list A), app_ind A nil l' l'
-  | app_ind_equation_2 : forall (A : Type) (a : A) (l l' : list A),
-     app_ind A l l' (app l l') -> app_ind A (cons a l) l' (cons a (app l l'))
+app_elim :
+forall P : forall (A : Type) (l l' : list A), app_comp l l' -> Prop,
+(forall (A : Type) (l' : list A), P A nil l' l') ->
+(forall (A : Type) (a : A) (l l' : list A),
+ P A l l' (app l l') -> P A (a :: l) l' (a :: app l l')) ->
+forall (A : Type) (l l' : list A), P A l l' (app l l')
 ]]
 
-  Here 
-
- *) 
-
+  Using this eliminator, we can write proofs exactly following the 
+  structure of the function definition, instead of redoing the splitting 
+  by hand. This idea is already present in the [Function] package 
+  %\cite{Barthe:2006gp}% that derives induction principles from
+  function definitions, we will discuss the main differences with [Equations]
+  in section %\ref{sec:related}%.
+ *)
 
 (* begin hide *)
 Check app_ind. Check @app_comp. Check @app_ind_equation_1. Check @app_ind_equation_2.
 (* end hide *)
+
+(** *** Moving to the left
+
+   The structure of real programs is richer than a simple case tree on the 
+   original arguments in general. In the course of a computation, we might 
+   want to scrutinize intermediate results (e.g. comming from function calls)
+   to produce an answer. This literally means adding a new pattern to the left of
+   our equations made available for further refinement. This concept is know as with
+   clauses in the Agda %\cite{norell:thesis}% community and was first presented 
+   and implemented in the Epigram language %\cite{DBLP:journals/jfp/McBrideM04}%. 
+
+   The compilation of with clauses and its treatment for generating equations and the
+   induction principle are quite involved and will be discussed in section %\ref{sec:with}%.
+   Suffice is to say that each with node generates an auxiliary definition from the clauses
+   in the curly brackets, taking the additional object as argument. The equation for the
+   with node will simply be an indirection to the auxiliary definition and simplification 
+   will continue as usual with the auxiliary definition's rewrite rules.
+   *)
 
 Equations filter {A} (l : list A) (p : A -> bool) : list A :=
 filter A nil p := nil ;
@@ -163,16 +187,50 @@ filter A (cons a l) p <= p a => {
   filter A (cons a l) p true := a :: filter l p ;
   filter A (cons a l) p false := filter l p }.
 
+(** A common use of with clauses is to scrutinize recursive results like the following: *)
 
-(** ** Dependent types *)
+Equations unzip {A B} (l : list (A * B)) : list A * list B :=
+unzip A B nil := (nil, nil) ;
+unzip A B (cons p l) <= unzip l => {
+  unzip A B (cons (pair a b) l) (pair la lb) := (a :: la, b :: lb) }.
 
-Equations(nocomp) equal (n m : nat) : { n = m } + { n <> m } :=
-equal O O := in_left ;
+(** The real power of with however comes when it is used with dependent types. *)
+
+(** ** Dependent types
+   
+   Coq supports writing dependent functions, in other words, it gives the ability to
+   make the results _type_ depend on actual _values_, like the arguments of the function.
+   A simple example is given below of a function which decides the equality of two 
+   natural numbers, returning a sum type carrying proofs of the equality or disequality 
+   of the arguments. The sum type [{ A } + { B }] is a constructive variant of disjunction 
+   that can be used in programs to give at the same time a boolean algorithmic information 
+   (are we in branch [A] or [B]) and a _logical_ information (a proof witness of [A] or [B]).
+   Hence its constructors [left] and [right] take proofs as arguments. The [eq_refl] proof 
+   term is the single proof of [x = x] (the [x] is generaly infered automatically).
+*)
+
+Equations equal (n m : nat) : { n = m } + { n <> m } :=
+equal O O := left eq_refl ;
 equal (S n) (S m) <= equal n m => {
-  equal (S n) (S n) (left eq_refl) := left eq_refl ;
-  equal (S n) (S m) (right p) := in_right } ;
-equal x y := in_right.
+  equal (S n) (S ?(n)) (left eq_refl) := left eq_refl ;
+  equal (S n) (S m) (right p) := right _ } ;
+equal x y := right _.
 
+(** Of particular interest here is the inner program refining the recursive result.
+   As [equal n m] is of type [{ n = m } + { n <> m }] we have two cases to consider:
+
+   - Either we are in the [left p] case, and we know that [p] is a proof that [n = m],
+     in which case we can do a nested match on [p]. The result of matching this equality
+     proof is to unify [n] and [m], hence the left hand side patterns become [S n] and
+     [S ?(n)] and the return type of this branch is refined to [{ n = n } + { n <> n }].
+     We can easily provide a proof for the left case. 
+     
+   - In the right case, we mark the proof unfilled with an underscore. This will
+     generate an obligation for this hole, that can be filled automatically by a 
+     predefined tactic or interactively by the user in proof mode (this uses the
+     same obligation mechanism as the Program extension
+     %\cite{sozeau.Coq/FingerTrees/article}%).
+*)
 
 (** The [tail] function is made total by returning the dummy element [nil] in the 
    first equation, but we might like to express that such partial functions are
