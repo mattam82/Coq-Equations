@@ -18,6 +18,15 @@ Ltac funind c Hcall ::=
            (* try on_last_hyp ltac:(fun id => simpc f in id ; noconf id)) *)
         || fail 1 "Internal error in funind"
   end || fail "Maybe you didn't declare the functional induction principle for" c.
+
+Ltac funelim c :=
+  match c with
+    appcontext C [ ?f ] => 
+      let x := constr:(fun_elim (f:=f)) in
+        (let prf := eval simpl in x in
+          dependent_pattern c ; apply prf)
+  end.
+
 (* end hide *)
 (** ** Inductive types
 
@@ -38,8 +47,8 @@ Check neg_ind. Check neg_comp.
 Check neg_ind_equation_1.
 Check neg_ind_equation_2.
 
-(* Lemma neg_inv : forall b, neg (neg b) = b. *)
-(* Proof. intros b. funind (neg b) nb.  Qed. *)
+Lemma neg_inv : forall b, neg (neg b) = b.
+Proof. intros b. funelim (neg b); simp neg. Defined.
 
 (* end hide *)
 

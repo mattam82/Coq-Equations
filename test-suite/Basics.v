@@ -1,5 +1,3 @@
-Axiom cheat : Π {A}, A.
-
 Require Import Program Equations Bvector List.
 
 Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
@@ -25,6 +23,7 @@ filter A nil p := nil ;
 filter A (cons a l) p <= p a => {
   filter A (cons a l) p true := a :: filter l p ;
   filter A (cons a l) p false := filter l p }.
+
 
 Equations (nostruct) testn (n : nat) : nat :=
 testn n ! n ;
@@ -69,6 +68,19 @@ app_with A nil l := l ;
 app_with A (cons a v) l <= app_with v l => {
   app_with A (cons a v) l vl := cons a vl }.
 
+(* About app_with_elim. *)
+
+(* Print app_with_ind. *)
+(* Print app_with_ind_ind. *)
+
+(* Scheme app_with_elim := Minimality for app_with_ind Sort Prop *)
+(*   with app_with_help_elim := Minimality for app_with_ind_1 Sort Prop. *)
+
+(* About app_with_elim. *)
+
+
+
+
 Equations plus' (n m : nat) : nat :=
 plus' O n := n ; 
 plus' (S n) m := S (plus' n m).
@@ -112,15 +124,28 @@ Equations rev {A} (l : list A) : list A :=
 rev A nil := nil;
 rev A (cons a v) := rev v +++ [a].
 
-
-
+Ltac funelim c :=
+  match c with
+    appcontext C [ ?f ] => 
+      let x := constr:(fun_elim (f:=f)) in
+        (let prf := eval simpl in x in
+          dependent_pattern c ; apply prf ; clear ; intros)
+  end.
 
 Lemma app'_nil : forall {A} (l : list A), l +++ [] = l.
-Proof. intros. funind (app' l []) applnil.
+Proof. intros.
+  funind (app' l []) applnil.
   rewrite IHapp'_ind. reflexivity.
 Qed.
 
 Lemma app'_assoc : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l (app' l' l'').
+Proof. intros. Opaque app'. revert l''. 
+  dependent_pattern (l +++ l').
+  pose (fun_elim (f:=@app')). simpl in f. apply f; clear ; intros.
+  simp app'. simp app'. rewrite H. reflexivity.
+Qed.
+
+Lemma app'_funind : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l (app' l' l'').
 Proof. intros. Opaque app'. funind (l +++ l') ll'. 
   rewrite IHapp'_ind. reflexivity. 
 Qed.
@@ -282,8 +307,10 @@ Proof. intros until y. simplify_dep_elim. reflexivity. Qed.
 (* Transparent split. *)
 (* Eval cbv beta iota zeta delta [ split split_obligation_1 split_obligation_2  ] in @split. *)
 
-Equations(nocomp) mult (n m : nat) : nat :=
+Equations mult (n m : nat) : nat :=
 mult O m := 0 ; mult (S n) m := mult n m + m.
+
+Print mult. Transparent mult. Eval compute in mult.
 
 (* Equations mult' (n m acc : nat) : nat := *)
 (* mult' O m acc := acc ; mult' (S n) m acc := mult' n m (n + acc). *)
@@ -302,8 +329,6 @@ parity O := even 0 ;
 parity (S n) <= parity n => {
   parity (S ?(2 * k))     (even k) := odd k ;
   parity (S ?(2 * k + 1)) (odd k)  := cast (even (S k)) _ }.
-
-Next Obligation of parity. simpl ; intros. simp mult. simpl. apply f_equal. auto. Defined.
 
 Equations half (n : nat) : nat :=
 half n <= parity n => {
@@ -328,8 +353,8 @@ vfold_right A B f e ?(0) Vnil := e ;
 vfold_right A B f e ?(S n) (Vcons a n v) := f n a (vfold_right f e v).
 
 Equations(nocomp) vzip {A B C n} (f : A -> B -> C) (v : vector A n) (w : vector B n) : vector C n :=
-vzip A B C O f Vnil _ := Vnil ;
-vzip A B C (S n) f (Vcons a n v) (Vcons a' n v') := Vcons (f a a') (vzip f v v').
+vzip A B C ?(O) f Vnil _ := Vnil ;
+vzip A B C ?(S n) f (Vcons a n v) (Vcons a' n v') := Vcons (f a a') (vzip f v v').
 
 Definition transpose {A m n} : mat A m n -> mat A n m :=
   vfold_right (A:=λ m, mat A n m)

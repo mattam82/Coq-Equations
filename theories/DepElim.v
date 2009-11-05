@@ -513,8 +513,8 @@ Ltac introduce p := first [
   end
   | intros until p | intros until 1 | intros ].
 
-Ltac do_case p := introduce p ; (destruct p || elim_case p || (case p ; clear p)).
-Ltac do_ind p := introduce p ; (induction p || elim_ind p).
+Ltac do_case p := introduce p ; (elim_case p || destruct p || (case p ; clear p)).
+Ltac do_ind p := introduce p ; (elim_ind p || induction p).
 
 Ltac case_last := block_goal ;
   on_last_hyp ltac:(fun p => 

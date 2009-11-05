@@ -55,6 +55,16 @@ let functional_induction_class () =
     (Typeclasses.class_of_constr
 	(init_constant ["Equations";"FunctionalInduction"] "FunctionalInduction"))
 
+let functional_elimination_class () =
+  Option.get 
+    (Typeclasses.class_of_constr
+	(init_constant ["Equations";"FunctionalInduction"] "FunctionalElimination"))
+
+let dependent_elimination_class () =
+  Option.get 
+    (Typeclasses.class_of_constr
+	(init_constant ["Equations";"DepElim"] "DependentEliminationPackage"))
+
 let below_path = ["Equations";"Below"]
 let coq_have_class = lazy (init_constant below_path "Have")
 let coq_have_meth = lazy (init_constant below_path "have")
@@ -1538,6 +1548,38 @@ let subst_comp_proj f proj c =
 let subst_comp_proj_split f proj s =
   map_split (subst_comp_proj f proj) s
 
+let reference_of_id s = 
+  Ident (dummy_loc, s)
+
+let clear_ind_assums ind ctx = 
+  let rec clear_assums c =
+    match kind_of_term c with
+    | Prod (na, b, c) ->
+	let t, _ = decompose_app b in
+	  if eq_constr t ind then (
+	    assert(not (dependent (mkRel 1) c));
+	    clear_assums (subst1 mkProp c))
+	  else mkProd (na, b, clear_assums c)
+    | _ -> c
+  in map_rel_context clear_assums ctx
+
+let ind_elim_tac indid funindprf = 
+  tclTHENLIST [intros; apply indid; tclTRY (Class_tactics.typeclasses_eauto []);
+	       apply funindprf]
+    
+let declare_instance id ctx cl args =
+  let c, t = Typeclasses.instance_constructor cl args in
+  let ce =
+    { const_entry_body = it_mkLambda_or_LetIn c ctx;
+      const_entry_type = Some (it_mkProd_or_LetIn t ctx);
+      const_entry_opaque = false;
+      const_entry_boxed = false}
+  in
+  let cst =
+    Declare.declare_constant id (DefinitionEntry ce, IsDefinition Instance)
+  in 
+    Typeclasses.add_instance (Typeclasses.new_instance cl None true (ConstRef cst))
+
 let build_equations with_ind env id baseid data sign is_rec arity cst 
     f ?(alias:(constr * constr * splitting) option) prob split =
   let rec computations prob f = function
@@ -1657,26 +1699,40 @@ let build_equations with_ind env id baseid data sign is_rec arity cst
     let indid = add_suffix id "_ind_fun" in
     let args = rel_list 0 (List.length sign) in
     let f, split = match alias with Some (f, _, split) -> f, split | None -> f, split in
-    let statement = it_mkProd_or_subst (applist (ind, args @ [applist (f, args)])) sign in
+    let app = applist (f, args) in
+    let statement = it_mkProd_or_subst (applist (ind, args @ [app])) sign in
     let hookind _ gr = 
       let env = Global.env () in (* refresh *)
       let cgr = constr_of_global gr in
-      let cl = functional_induction_class () in
-      let c, t = Typeclasses.instance_constructor cl
-	[Typing.type_of env Evd.empty f; f; 
-	 Typing.type_of env Evd.empty cgr; cgr]
+      let _funind_stmt =
+	let elimid = add_suffix id "_ind_ind" in
+	let elim = Smartlocate.global_with_alias (reference_of_id elimid) in
+	let elimty = Global.type_of_global elim in
+	let ctx, arity = decompose_prod_assum elimty in
+	let newctx = list_skipn 2 ctx in
+	let newarity = substl [mkProp; app] arity in
+	let newctx' = clear_ind_assums ind newctx in
+	let hookelim _ elimgr =
+	  let env = Global.env () in
+	  let elimcgr = constr_of_global elimgr in
+	  let cl = functional_elimination_class () in
+	  let args = [Typing.type_of env Evd.empty f; f; 
+		      Typing.type_of env Evd.empty elimcgr; elimcgr]
+	  in
+	  let instid = add_prefix "FunctionalElimination_" id in
+	    declare_instance instid [] cl args 
+	in
+	  Subtac_obligations.add_definition (add_suffix id "_elim")
+	    ~tactic:(ind_elim_tac (constr_of_global elim) cgr)
+	    ~hook:hookelim
+	    (it_mkProd_or_LetIn newarity newctx') [||]
       in
-      let ce =
-	{ const_entry_body = c;
-	  const_entry_type = Some t;
-	  const_entry_opaque = false;
-	  const_entry_boxed = false}
+      let cl = functional_induction_class () in
+      let args = [Typing.type_of env Evd.empty f; f; 
+		  Typing.type_of env Evd.empty cgr; cgr]
       in
       let instid = add_prefix "FunctionalInduction_" id in
-      let funindcst =
-	Declare.declare_constant instid (DefinitionEntry ce, IsDefinition Instance)
-      in 
-	Typeclasses.add_instance (Typeclasses.new_instance cl None true (ConstRef funindcst))
+	declare_instance instid [] cl args 
     in
       try ignore(Subtac_obligations.add_definition ~hook:hookind
 		    indid statement ~tactic:(ind_fun_tac is_rec f baseid id split ind) [||])
@@ -2230,6 +2286,96 @@ TACTIC EXTEND simp
 | [ "simp" ne_preident_list(l) ] -> [ simp_eqns l ]
 | [ "simpc" constr_list(l) "in" hyp(id) ] -> [ simp_eqns_in id (dbs_of_constrs l) ]
 | [ "simpc" constr_list(l) ] -> [ simp_eqns (dbs_of_constrs l) ]
+END
+
+let depcase (mind, i as ind) =
+  let indid = Nametab.basename_of_global (IndRef ind) in
+  let mindb, oneind = Global.lookup_inductive ind in
+  let inds = List.rev (Array.to_list (Array.mapi (fun i oib -> mkInd (mind, i)) mindb.mind_packets)) in
+  let ctx = oneind.mind_arity_ctxt in
+  let nparams = mindb.mind_nparams in
+  let args, params = list_chop (List.length ctx - nparams) ctx in
+  let nargs = List.length args in
+  let liftconstr = nargs + 1 in
+  let indapp = mkApp (mkInd ind, extended_rel_vect 0 ctx) in
+  let pred = it_mkProd_or_LetIn (new_Type ()) 
+    ((Anonymous, None, indapp) :: args)
+  in
+  let nconstrs = Array.length oneind.mind_nf_lc in
+  let branches = 
+    array_map2_i (fun i id cty ->
+      let substcty = substl inds cty in
+      let (args, arity) = decompose_prod_assum substcty in
+      let _, indices = decompose_app arity in
+      let _, indices = list_chop nparams indices in
+      let ncargs = List.length args - nparams in
+      let realargs, pars = list_chop ncargs args in
+      let realargs = lift_rel_context (i + 1) realargs in
+      let arity = applistc (mkRel (ncargs + i + 1)) 
+	(indices @ [mkApp (mkConstruct (ind, succ i), 
+			  Array.append (extended_rel_vect (ncargs + i + 1) params)
+			    (extended_rel_vect 0 realargs))])
+      in
+      let body = mkRel (liftconstr + nconstrs - i) in
+      let br = it_mkProd_or_LetIn arity realargs in
+	(Name (id_of_string ("P" ^ string_of_int i)), None, br), body)
+      oneind.mind_consnames oneind.mind_nf_lc
+  in
+  let ci = {
+    ci_ind = ind;
+    ci_npar = nparams;
+    ci_cstr_nargs = oneind.mind_consnrealdecls;
+    ci_pp_info = { ind_nargs = oneind.mind_nrealargs; style = RegularStyle; } }
+  in
+  let obj i =
+    mkApp (mkInd ind,
+	  (Array.append (extended_rel_vect (nargs + nconstrs + i) params)
+	      (extended_rel_vect 0 args)))
+  in
+  let ctxpred = (Anonymous, None, obj (2 + nargs)) :: args in
+  let app = mkApp (mkRel (nargs * 2 + nconstrs + 3),
+		  (extended_rel_vect 0 ctxpred))
+  in
+  let ty = it_mkLambda_or_LetIn app ctxpred in
+  let case = mkCase (ci, ty, mkRel 1, Array.map snd branches) in
+  let xty = obj 1 in
+  let xid = named_hd (Global.env ()) xty Anonymous in
+  let body = 
+    it_mkLambda_or_LetIn case 
+      ((xid, None, obj 1) 
+	:: ((lift_rel_context 1 args) 
+	     @ (List.rev (Array.to_list (Array.map fst branches))) 
+	     @ ((Name (id_of_string "P"), None, pred) :: params)))
+  in
+  let ce =
+    { const_entry_body = body;
+      const_entry_type = None;
+      const_entry_opaque = false;
+      const_entry_boxed = false}
+  in
+  let kn = 
+    Declare.declare_constant (add_suffix indid "_case") 
+      (DefinitionEntry ce, IsDefinition Scheme)
+  in ctx, indapp, kn
+
+let derive_dep_elimination i loc =
+  let ctx, ty, kn = depcase i in
+  let indid = Nametab.basename_of_global (IndRef i) in
+  let id = add_prefix "DependentElimination_" indid in
+  let cl = dependent_elimination_class () in
+  let env = Global.env () in
+  let casety = type_of_constant env kn in
+    declare_instance id ctx cl [ty; casety; mkConst kn]
+
+VERNAC COMMAND EXTEND Derive_DependentElimination
+| [ "Derive" "DependentElimination" "for" constr_list(c) ] -> [ 
+    List.iter (fun c ->
+      let c' = interp_constr Evd.empty (Global.env ()) c in
+	match kind_of_term c' with
+	| Ind i -> derive_dep_elimination i (constr_loc c)
+	| _ -> error "Expected an inductive type")
+      c
+  ]
 END
 
 let mkcase env c ty constrs =

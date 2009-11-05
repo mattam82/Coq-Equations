@@ -17,6 +17,13 @@ Require Import Equations.DepElim.
 Class FunctionalInduction {A : Type} (f : A) :=
   { fun_ind_prf_ty : Prop; fun_ind_prf : fun_ind_prf_ty }.
 
+(** The [FunctionalElimination f] class declares elimination principles produced
+   from the functional induction principle for [f] to be used directly to eliminate
+   a call to [f]. *)
+
+Class FunctionalElimination {A : Type} (f : A) :=
+  { fun_elim_ty : Prop; fun_elim : fun_elim_ty }.
+
 (** The tactic [funind c Hc] applies functional induction on the application 
    [c] which must be of the form [f args] where [f] has a [FunctionalInduction]
    instance. [Hc] is the name given to the call, used to generate hypothesis names. *)
