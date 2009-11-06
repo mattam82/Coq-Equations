@@ -45,8 +45,9 @@ Derive DependentElimination for nat bool option sum prod list vector.
 
    In its simplest form, [Equations] allows to define functions on inductive datatypes.
    Take for example the booleans defined as an inductive type with two constructors [true] and [false]:
-
-   [Inductive bool : Set := true : bool | false : bool]
+   [[
+   Inductive bool : Set := true : bool | false : bool 
+   ]]
    
    We can define the boolean negation as follows: *)
 
@@ -87,15 +88,14 @@ Proof. intros b. funelim (neg b); simp neg. Defined.
    principle on the function. 
 
    I.e., for [neg] the inductive graph is defined as: [[
+Inductive neg_ind : forall b : bool, neg_comp b -> Prop :=
+| neg_ind_equation_1 : neg_ind true false
+| neg_ind_equation_2 : neg_ind false true ]]
 
-   Inductive neg_ind : forall b : bool, neg_comp b -> Prop :=
-   | neg_ind_equation_1 : neg_ind true false
-   | neg_ind_equation_2 : neg_ind false true ]]
    Along with a proof of [Π b, neg_ind b (neg b)], we can eliminate any call
    to [neg] specializing its argument and result in a single command. 
    Suppose we want to show that [neg] is involutive for example, our goal will 
    look like: [[
-
   b : bool
   ============================
    neg (neg b) = b ]]
@@ -266,8 +266,8 @@ head A (cons a v) _ := a.
    **** Equality 
    The alma mater of inductive families is the propositional equality 
    [eq] defined as: [[
-   Inductive eq (A : Type) (x : A) : A -> Prop := 
-     eq_refl : eq A x x. ]]
+Inductive eq (A : Type) (x : A) : A -> Prop := 
+ eq_refl : eq A x x. ]]
    
    It is a central tool in the compilation process so we present it in detail here.
    It is also a contentious subject in the type theory community, we'll discuss 
@@ -275,15 +275,14 @@ head A (cons a v) _ := a.
 
    Equality is a polymorphic relation on [A]. (The [Prop] sort (or kind) categorizes
    propositions, while the [Set] sort, equivalent to [*] in Haskell categorizes 
-   computational objects.) Equality is _parameterized_ by a value [x] of type [A] and 
+   computational types.) Equality is _parameterized_ by a value [x] of type [A] and 
    _indexed_ by another value of type [A]. Its single constructor states that 
    equality is reflexive, so the only way to build an object of [eq x y] is if 
    [x ~= y], that is if [x] is definitionaly equal to [y]. 
    
    Now what is the elimination principle associated to this inductive family?
-   It is the good old Leibniz substitution principle:
-
-   [forall (A : Type) (x : A) (P : A -> Type), P x -> forall y : A, x = y -> P y]
+   It is the good old Leibniz substitution principle: [[
+forall (A : Type) (x : A) (P : A -> Type), P x -> forall y : A, x = y -> P y ]]
 
    Provided a proof that [x = y], we can create on object of type [P y] from an 
    existing object of type [P x]. This substitution principle is enough to show
@@ -329,13 +328,13 @@ vmap A B f ?(S n) (Vcons a n v) := Vcons (f a) (vmap f v).
 
    The [vmap] function works on every member of the [vector] family,
    but some functions may work only for some subfamilies, for example
-   [vhead]:
+   [vtail]:
  *)
 
-Equations vhead {A n} (v : vector A (S n)) : A :=
-vhead A ?(S n) (Vcons a n v) := a.
+Equations(nocomp) vtail {A n} (v : vector A (S n)) : vector A n :=
+vtail A n (Vcons a n v') := v'.
 
-(** The type of [v] ensures that [vhead] can only be applied to 
+(** The type of [v] ensures that [vtail] can only be applied to 
    non-empty vectors, moreover the patterns only need to consider 
    constructors that can produce objects in the subfamily [vector A (S n)],
    excluding [Vnil]. The pattern-matching compiler uses unification 
@@ -346,12 +345,39 @@ vhead A ?(S n) (Vcons a n v) := a.
    concise code where all uninteresting cases are handled automatically.
    
    Of course the equations and the induction principle are simplified in a 
-   similar way. If we encounter a call to [vhead] in a proof, we can 
+   similar way. If we encounter a call to [vtail] in a proof, we can 
    use the following elimination principle to simplify both the call and the
-   argument which must have the form [Vcons _ _ _]:[[
-forall P : forall (A : Type) (n : nat) (v : vector A (S n)), A -> Prop,
+   argument which will be automatically substituted by an object of the form
+   [Vcons _ _ _]:[[
+forall P : forall (A : Type) (n : nat), vector A (S n) -> vector A n -> Prop,
 (forall (A : Type) (n : nat) (a : A) (v : vector A n), 
-  P A n (Vcons a v) a) ->
-forall (A : Type) (n : nat) (v : vector A (S n)), P A n v (vhead v) ]]
+  P A n (Vcons a v) v) ->
+forall (A : Type) (n : nat) (v : vector A (S n)), P A n v (vtail v) ]] 
 
+   As a witness of the power of the unification, consider the following function 
+   which computes the diagonal of a square matrix of size [n * n].
 *) 
+
+Equations(nocomp noind) diag {A n} 
+  (v : vector (vector A n) n) : vector A n :=
+diag A O Vnil := Vnil ;
+diag A (S n) (Vcons (Vcons a n v) n v') := 
+  Vcons a (diag (vmap vtail v')).
+
+(** Here in the second equation, we know that the elements of the vector 
+   are necessarily of size [S n] too, hence we can do a nested refinement
+   on the first one to find the first element of the diagonal. 
+   The [nocomp] and [noind] flags of [Equations] used here allow the 
+   guardness checker of Coq to validate the definition and the equations
+   proofs in reasonable time, but it takes too long to check that the 
+   induction principle proof is well-formed%\footnote{Or guarded in Coq jargon}%.
+
+   This closes our presentation of the basic features of [Equations]. 
+   Our contribution is an implementation of dependent pattern-matching 
+   which can be used to write programs on inductive families, also 
+   providing tools to reason on them. We will now delve into the details of 
+   the implementation and come back to the user side later, introducing 
+   the more novel features of our system, starting with a more robust
+   handling of recursion.
+   
+   *)
