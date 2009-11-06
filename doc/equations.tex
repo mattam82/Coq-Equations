@@ -24,16 +24,12 @@
 \usepackage{abbrevs}
 \usepackage[color]{coqdoc}
 \usepackage{coq}
-
+\usepackage{natbib}
 \setlength{\coqdocbaseindent}{0.7em}
 
-\def\name#1{\textsc{#1}~}
-\def\Coq{\name{Coq}}
-\def\Haskell{\name{Haskell}}
-\def\text#1{#1}
-\def\Ltac{$\mathcal{\text{L}}_{\text{tac}}$}
 \def\Equations{\name{Equations}}
 \def\coqlibrary#1#2#3{}
+\def\Below{\coqdocind{Below}\xspace}
 
 %\author{Matthieu Sozeau}
 \title{\Equations\\
@@ -64,11 +60,14 @@
   proof that the function respects it, giving a functional induction
   principle for it. 
   
-  The whole system makes heavy use of type classes and \Ltac tactics to
+  The whole system makes heavy use of type classes and \Ltac{} tactics to
   allow genericity and extensibility in a lightweight way.
 \end{abstract}
 
 \input{intro.coq}
+\input{implem}
+\input{experiments}
+\input{conclusion}
 
   
 \bibliographystyle{plainnat}

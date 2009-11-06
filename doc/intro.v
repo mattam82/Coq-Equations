@@ -378,6 +378,4 @@ diag A (S n) (Vcons (Vcons a n v) n v') :=
    providing tools to reason on them. We will now delve into the details of 
    the implementation and come back to the user side later, introducing 
    the more novel features of our system, starting with a more robust
-   handling of recursion.
-   
-   *)
+   handling of recursion. *)
