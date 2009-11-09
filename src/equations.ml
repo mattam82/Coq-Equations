@@ -1691,7 +1691,7 @@ let build_equations with_ind env id baseid data sign is_rec arity cst
 	mind_entry_params = []; (* (identifier * local_entry) list; *)
 	mind_entry_inds = inds }
     in
-    let k = Command.declare_mutual_with_eliminations false inductive [] in
+    let k = Command.declare_mutual_inductive_with_eliminations false inductive [] in
     let ind = mkInd (k,0) in
     let _ =
       list_iter_i (fun i ind ->
@@ -1807,7 +1807,7 @@ let define_tree is_recursive impls status isevar env (i, sign, arity) ann split 
   let hook = hook cmap in
     if is_recursive = Some Structural then
       ignore(Subtac_obligations.add_mutual_definitions [(i, t', ty', impls, obls)] [] 
-		~hook (Command.IsFixpoint [None, CStructRec]))
+		~hook (Subtac_obligations.IsFixpoint [None, CStructRec]))
     else
       ignore(Subtac_obligations.add_definition ~hook
 		~implicits:impls i ~term:t' ty' obls)
@@ -1998,7 +1998,9 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   in
   let env = Global.env () in (* To find the comp constant *)
   let ty = it_mkProd_or_LetIn arity sign in
-  let data = Command.compute_interning_datas env Constrintern.Recursive [] [i] [ty] [impls] in
+  let data = Constrintern.compute_full_internalization_env
+    env Constrintern.Recursive [] [i] [ty] [impls] 
+  in
   let sort = Retyping.get_type_of env !isevar ty in
   let fixprot = mkApp (Lazy.force Subtac_utils.fix_proto, [|sort; ty|]) in
   let fixdecls = [(Name i, None, fixprot)] in
@@ -2015,7 +2017,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   in
   let equations = 
     States.with_heavy_rollback (fun () -> 
-      Option.iter (Command.declare_interning_data data) nt;
+      Option.iter (Metasyntax.set_notation_for_interpretation data) nt;
       map (interp_eqn i is_recursive isevar env data sign arity None) eqs) ()
   in
   let sign = nf_rel_context_evar ( !isevar) sign in
@@ -2201,7 +2203,7 @@ let (wit_binders_let2 : Genarg.tlevel binders_let2_argtype),
   (rawwit_binders_let2 : Genarg.rlevel binders_let2_argtype) =
   Genarg.create_arg "binders_let2"
 
-type 'a decl_notation_argtype = (Vernacexpr.decl_notation, 'a) Genarg.abstract_argument_type
+type 'a decl_notation_argtype = (Vernacexpr.decl_notation option, 'a) Genarg.abstract_argument_type
 
 let (wit_decl_notation : Genarg.tlevel decl_notation_argtype),
   (globwit_decl_notation : Genarg.glevel decl_notation_argtype),
@@ -2609,7 +2611,7 @@ let derive_subterm ind =
 	  parambinders;
 	mind_entry_inds = inds }
     in
-    let k = Command.declare_mutual_with_eliminations false inductive [] in
+    let k = Command.declare_mutual_inductive_with_eliminations false inductive [] in
     let subind = mkInd (k,0) in
     let constrhints = 
       list_map_i (fun i entry -> 

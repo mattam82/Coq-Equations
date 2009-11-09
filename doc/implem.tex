@@ -1,16 +1,85 @@
 \section{Implementing dependent pattern-matching}
 
+The idea of writting pattern-matching equations over inductive families
+goes back to \cite{coquand92baastad}. He introduced the idea of checking
+that a set of equations formed an exhaustive \emph{covering} of a
+signature. From this covering one can build an efficient case-tree in
+the standard way \cite{DBLP:conf/fpca/Augustsson85}.
+
+The interesting addition of dependent pattern-matching over simply-typed
+pattern-matching is the fact that some constructors need not be
+considered because the filtered object's type guarantees that they
+couldn't have been built with it. Moreover, as each constructor refines
+the indices of a filtered object and as we are considering equations
+that can have multiple patterns, refinement may have effect on the
+values or types of other matched objects. This means that each
+constructor adds static information to the problem, and this process 
+can be used ad libitum. 
+
 \subsection{Internal vs. external approaches}
 
+There exist two main approaches to adding dependent pattern matching to
+a dependent type theory. One is to bake in the high-level pattern
+matching construct and make the associated coverage checking and 
+unification procedure part of the core system. This is essentially a
+shallow approach: one works directly in the metalanguage of the 
+systems implementation and avoids building witnesses for the covering
+and unification. The disadvantages of the internal approach are that
+it makes the trusted code base larger and limits the extensibility of 
+the system: adding a new pattern matching construct like with clauses 
+requires to modify the kernel's code. \Agda implements pattern-matching
+like this, and there is a proposal to extend \Coq in a similar way
+\cite{CoqTYPES09}. 
+The external approach takes a different path. In this case we use the 
+type theory itself to explain why a definition is correct,
+essentially building a witness of the covering in terms of the much
+simpler existing constructs on inductive families. This is the path 
+chosen by \cite{DBLP:conf/birthday/GoguenMM06}, and the way \Epigram
+implements pattern-matching. One advantage is that the compiler needs
+not to be trusted: it elaborates a program that can be checked
+independently in the core type theory. By taking an elaboration
+viewpoint, it is also much easier to extend the system with new features
+that can also be compiled away to the core type theory. Our 
+mantra (after McBride) is that type theory is enough to explain
+high-level programming constructs. 
+
+Our implementation closely follows the scheme from
+\cite*{DBLP:conf/birthday/GoguenMM06}, its originality comes mainly from
+a number of design choices that we will explain in detail. Some are
+dictated by our type theory of choice, the (predicative) Calculus of
+Inductive Constructions (\S \ref{sec:dealing-with-k}), some are driven
+by an aspiration to extensibility (\S \ref{sec:few-constructions}), 
+heavily using type classes \cite{sozeau.Coq/classes/fctc} and the tactic
+language and finaly others are driven by performance considerations (\S
+\ref{sec:recursion}).
+
 \subsection{A few constructions}
+\label{sec:few-constructions}
+
+The dependent pattern-matching notation acts as a high-level interface 
+to a unification procedure on the theory of constructors and
+uninterpreted functions. Our first building block in the compilation
+process is hence a mechanism to produce witnesses for the resolution of
+constraints in this theory. The proof terms will be formed by
+applications of simplification combinators dealing with substitution and
+proofs of injectivity and discrimination of constructors, their two main
+properties.
+
 
 \subsubsection{Dealing with K}
+\label{sec:dealing-with-k}
 
 \subsection{Recursion}
-
+\label{sec:recursion}
 \subsubsection{The \Below way}
 
 \subsubsection{Generalized subterm relations}
 
 \subsubsection{With some good measure}
 
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-PDF-mode: t
+%%% TeX-master: "equations"
+%%% End: 
