@@ -26,6 +26,7 @@
 \usepackage{coq}
 \usepackage{natbib}
 \setlength{\coqdocbaseindent}{0.7em}
+\usepackage{utf}
 
 \def\Equations{\name{Equations}}
 \def\coqlibrary#1#2#3{}
@@ -39,33 +40,43 @@
 \maketitle
 
 \begin{abstract}
-  Equations is a compiler for definitions made by pattern matching on
-  inductive families. It allows to write complex, recursive
-  dependently-typed functions, automatically find a realization in \Coq 
-  and generate proofs to ease reasoning on them.
-
+  We present a compiler for definitions made by pattern matching on
+  inductive families in the \Coq system. It allows to write structured,
+  recursive dependently-typed functions, automatically find their
+  realization in the core type theory and generate proofs to ease
+  reasoning on them.
+  
   The basic functionality is the ability to define a function by a set
   of \textit{equations} with patterns on the left-hand side and programs
-  in the right-hand side, in a similar fashion to \Haskell and \Agda
-  function definitions. The system also supports with-clauses that can
-  be used to add a pattern on the left-hand side for further refinement
-  and also permits using arbitrary tactics to refine a programming
-  problem. Both "syntactic" structural recursion and "semantic" well-founded 
-  recursion schemes are usable in definitions, the later being
-  generalized enough to cope with general inductive families.
+  on the right-hand side, in a similar fashion to \Haskell
+  function definitions. The system also supports with-clauses (as in
+  \Epigram or \Agda) that can be used to add a pattern on the left-hand
+  side for further refinement. Both "syntactic" structural recursion and
+  "semantic" well-founded recursion schemes are usable in definitions,
+  the later being generalized enough to cope with general inductive
+  families efficiently.
   
   The system provides proofs of the equations that can be used as
-  rewrite rules to simplify calls to the function in proofs. It also
+  rewrite rules to reason on calls to the function. It also
   automatically generates the inductive graph of the function and a
-  proof that the function respects it, giving a functional induction
-  principle for it. 
+  proof that the function respects it, giving a useful induction
+  principle for it.
+
+  It provides a complete package to define 
+  and reason on functions in the proof assistant, substantially
+  reducing the boilerplate code and proofs one usually has to write, 
+  also hiding the intricacies related to the use of dependent types.
   
-  The whole system makes heavy use of type classes and \Ltac{} tactics to
-  allow genericity and extensibility in a lightweight way.
+  The system is implemented as an elaboration into the core \Coq type
+  theory, allowing the smallest trusted code base possible and ensuring 
+  the correctness of the compilation at each use.
+  The whole system makes heavy use of type classes and the high-level
+  tactic language of \Coq for greater genericity and extensibility.
 \end{abstract}
 
 \input{intro.coq}
 \input{implem}
+\input{support}
 \input{experiments}
 \input{conclusion}
 

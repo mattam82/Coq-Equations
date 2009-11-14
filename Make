@@ -14,4 +14,5 @@ theories/NoConfusion.v
 theories/Below.v
 theories/Subterm.v
 theories/Equations.v
+theories/Fin.v
 test-suite/Basics.v

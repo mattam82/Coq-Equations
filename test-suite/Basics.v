@@ -1,4 +1,8 @@
 Require Import Program Equations Bvector List.
+Require Import Relations.
+Equations vlast' {A} {n} (v : vector A (S n)) : A :=
+vlast' A ?(0) (Vcons a O Vnil) := a ;
+vlast' A ?(S n) (Vcons a (S n) v) := vlast' v.
 
 Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
 K A x P p eq_refl := p.
@@ -18,20 +22,31 @@ Inductive Split {X : Type}{m n : nat} : vector X (m + n) -> Type :=
 
 Implicit Arguments Split [[X]].
 
-Equations filter {A} (l : list A) (p : A -> bool) : list A :=
+Equations(nocomp) filter {A} (l : list A) (p : A -> bool) : list A :=
 filter A nil p := nil ;
 filter A (cons a l) p <= p a => {
   filter A (cons a l) p true := a :: filter l p ;
   filter A (cons a l) p false := filter l p }.
 
+Inductive incl {A} : relation (list A) :=
+  stop : incl nil nil 
+| keep {x : A} {xs ys : list A} : incl xs ys -> incl (x :: xs) (x :: ys)
+| skip {x : A} {xs ys : list A} : incl xs ys -> incl (xs) (x :: ys).
+
+Global Transparent filter.
+
+Equations(nocomp) sublist {A} (p : A -> bool) (xs : list A) : incl (filter xs p) xs :=
+sublist A p nil := stop ;
+sublist A p (cons x xs) <= p x => {
+  sublist A p (cons x xs) true := keep (sublist p xs) ;
+  sublist A p (cons x xs) false := skip (sublist p xs) }.
 
 Equations (nostruct) testn (n : nat) : nat :=
 testn n ! n ;
 testn O := 0 ;
 testn (S n) <= testn n => {
   testn (S n) O := S O ;
-  testn (S n) (S n') := S n'  
-  }.
+  testn (S n) (S n') := S n' }.
 
 Equations (nostruct) unzip {A B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
 unzip A B n v ! v ;

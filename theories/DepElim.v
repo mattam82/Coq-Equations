@@ -275,7 +275,7 @@ Ltac simpl_depind_r := subst_right_no_fail ; autoinjections_right ; try discrimi
    *)
 
 Class NoConfusionPackage (A : Type) := {
-  NoConfusion : Prop -> A -> A -> Prop;
+  NoConfusion : Type -> A -> A -> Type;
   noConfusion : forall P a b, a = b -> NoConfusion P a b
 }.
 
@@ -440,6 +440,16 @@ Ltac reverse_local :=
       match T with
         | end_of_section => idtac
         | _ => revert H ; reverse_local 
+      end
+    | _ => idtac
+  end.
+
+Ltac clear_local :=
+  match goal with
+    | [ H : ?T |- _ ] =>
+      match T with
+        | end_of_section => idtac
+        | _ => clear H ; clear_local 
       end
     | _ => idtac
   end.

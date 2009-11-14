@@ -89,25 +89,27 @@ tabulate A (S n) f := Vcons (f fz) (tabulate (f ∘ fs)).
 
 (** NoConfusion For [fin]. *)
 
-Equations (nocomp noeqns noind) NoConfusion_fin {n : nat} (P : Prop) (x y : fin n) : Prop :=
-NoConfusion_fin (S n) P (fz n) (fz n) := P -> P ;
-NoConfusion_fin (S n) P (fz n) (fs n y) := P ;
-NoConfusion_fin (S n) P (fs n x) (fz n) := P ;
-NoConfusion_fin (S n) P (fs n x) (fs n y) := (x = y -> P) -> P.
+Derive NoConfusion for fin.
 
-Transparent NoConfusion_fin.
+(* Equations (nocomp noeqns noind) NoConfusion_fin {n : nat} (P : Type) (x y : fin n) : Type := *)
+(* NoConfusion_fin (S n) P (fz n) (fz n) := P -> P ; *)
+(* NoConfusion_fin (S n) P (fz n) (fs n y) := P ; *)
+(* NoConfusion_fin (S n) P (fs n x) (fz n) := P ; *)
+(* NoConfusion_fin (S n) P (fs n x) (fs n y) := (x = y -> P) -> P. *)
 
-Equations (nocomp noind) noConfusion_fin {n} P (x y : fin n) (H : x = y) : NoConfusion_fin P x y :=
-noConfusion_fin (S n) P (fz n) (fz n) eq_refl := λ p, p ;
-noConfusion_fin (S n) P (fs ?(n) x) (fs ?(n) x) eq_refl := λ p : x = x -> P, p eq_refl.
+(* Transparent NoConfusion_fin. *)
 
-Global Opaque noConfusion_fin.
-Hint Rewrite @noConfusion_fin_equation_2 @noConfusion_fin_equation_5 : equations.
-Hint Immediate @noConfusion_fin_equation_1 @noConfusion_fin_equation_3 @noConfusion_fin_equation_4 : equations.
+(* Equations (nocomp noind) noConfusion_fin {n} P (x y : fin n) (H : x = y) : NoConfusion_fin P x y := *)
+(* noConfusion_fin (S n) P (fz n) (fz n) eq_refl := λ p, p ; *)
+(* noConfusion_fin (S n) P (fs ?(n) x) (fs ?(n) x) eq_refl := λ p : x = x -> P, p eq_refl. *)
 
-Instance fin_noconf n : NoConfusionPackage (fin n) :=
-  { NoConfusion := NoConfusion_fin ;
-    noConfusion := noConfusion_fin }.
+(* Global Opaque noConfusion_fin. *)
+(* Hint Rewrite @noConfusion_fin_equation_2 @noConfusion_fin_equation_5 : equations. *)
+(* Hint Immediate @noConfusion_fin_equation_1 @noConfusion_fin_equation_3 @noConfusion_fin_equation_4 : equations. *)
+
+(* Instance fin_noconf n : NoConfusionPackage (fin n) := *)
+(*   { NoConfusion := NoConfusion_fin ; *)
+(*     noConfusion := noConfusion_fin }. *)
 
 (** [Below] recursor for [fin]. *)
 

@@ -60,7 +60,7 @@ Ltac solve_subterm := red; intros; simp_exists;
 (** A tactic to launch a well-founded recursion. *)
 
 Ltac rec_wf x recname fixterm :=
-  dependent_pattern x ; apply fixterm ; clear ; 
+  dependent_pattern x ; apply fixterm ; clear_local ; 
   intros until 1 ; on_last_hyp ltac:(fun x => rename x into recname) ;
   simpl in * ; simplify_dep_elim ; intros ; unblock_goal ; intros ;
   move recname at bottom.
