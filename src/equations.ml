@@ -1033,7 +1033,7 @@ let push_rel_context_eos ctx env =
   else push_rel_context ctx env
     
 let split_at_eos ctx =
-  fst (list_split_when (fun (id, b, t) -> 
+  fst (list_split_when (fun (id, b, t) ->
     eq_constr t (Lazy.force coq_end_of_section)) ctx)
 
 let rec covering_aux env evars data prev (clauses : clause list) (ctx,pats,ctx' as prob) ty =

@@ -335,70 +335,7 @@ pattern-matching more powerful w.r.t. indices \cite{TYPES09} and
 the addition of proof-irrelevance. Having them would make \Equations
 only more useful.
 
-\subsection{Recursion}
-\label{sec:recursion}
-
-We will now explain how we treat recursive definitions by
-pattern-matching. A notorious problem with the \Coq system is that it
-uses a syntactic check to verify that recursive calls are well-formed. 
-Only structurally recursive functions making recursive calls on a
-designated argument of a recursive function are allowed.
-The syntactic criterion is very restrictive and is a major source of
-bugs in the core type checker. A typical problem arises when one 
-wants to reabstract recursive subterms to change their type.
-Consider the following slighly contrived definition for example:
-
-\coqdockw{Fixpoint} \coqdef{recfail.filter}{filter}{\coqdocdefinition{filter}} \{\coqdocvar{A} : \coqdockw{Type}\} (\coqdocvar{p} : \coqdocvariable{A} \ensuremath{\rightarrow} \coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Init.Datatypes}{bool}{\coqdocinductive{bool}}) (\coqdocvar{l} : \coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A}) \{\coqdockw{struct} \coqdocvar{l}\} :=\coqdoceol
-\coqdocindent{1.00em}
-\coqdockw{match} \coqdocvariable{l} \coqdockw{with}\coqdoceol
-\coqdocindent{2.00em}
-\ensuremath{|} \coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Init.Datatypes}{nil}{\coqdocconstructor{nil}} \ensuremath{\Rightarrow} \coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Init.Datatypes}{nil}{\coqdocconstructor{nil}}\coqdoceol
-\coqdocindent{2.00em}
-\ensuremath{|} \coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Init.Datatypes}{cons}{\coqdocconstructor{cons}} \coqdocvar{a} \coqdocvar{l} \ensuremath{\Rightarrow} \coqdoceol
-\coqdocindent{3.00em}
-\coqdockw{match} \coqdocvariable{p} \coqdocvariable{a} \coqdockw{return} \coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A} \ensuremath{\rightarrow} \coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A} \coqdockw{with}\coqdoceol
-\coqdocindent{4.00em}
-\ensuremath{|} \coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Init.Datatypes}{true}{\coqdocconstructor{true}} \ensuremath{\Rightarrow} \coqdockw{fun} \coqdocvar{l} \ensuremath{\Rightarrow} \coqdocvariable{a} :: \coqref{recfail.filter}{\coqdocdefinition{filter}} \coqdocvariable{p} \coqdocvariable{l}\coqdoceol
-\coqdocindent{4.00em}
-\ensuremath{|} \coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Init.Datatypes}{false}{\coqdocconstructor{false}} \ensuremath{\Rightarrow} \coqdockw{fun} \coqdocvar{l} \ensuremath{\Rightarrow} \coqref{recfail.filter}{\coqdocdefinition{filter}} \coqdocvariable{p} \coqdocvariable{l}\coqdoceol
-\coqdocindent{3.00em}
-\coqdockw{end} \coqdocvariable{l}\coqdoceol
-\coqdocindent{1.00em}
-\coqdockw{end}.\coqdoceol
-
-Here we reabstract on the \var{l} variable in the inner match, as would
-be done by the compilation of a with node for example. This seemingly 
-innocuous change is too much for the guardness criterion, it cannot
-check that the \var{l} variable on which we make the recursive call
-is actually always substituted by the subterm \var{l} applied to
-the \kw{match} expression. Hence our program manipulations preclude
-the use of syntactically guarded recursion. However we 
-can use the same principle as for pattern-matching and 
-\emph{explain} the recursive structure of our programs using type theory
-itself. 
-
-To do so, we will use an elimination principle on the datatype we want
-to recurse on, that will give us a way to make recursive calls on any
-subterm. Instead of a syntactic notion of structural recursion, we will now use a
-logical one, which is compatible with the rest of the logical
-transformations happening during compilation, like the above use of
-strenghtening.
-
-\subsubsection{The \Below way}
-
-\cite{DBLP:conf/birthday/GoguenMM06} describes a clever way to
-elaborate recursive definitions by building a memoizing structure. 
-For each datatype, we define a new type \ind{Below} that describes all
-the recursive subterm of a given term. Take natural numbers for example,
-we define \cst{Below\_nat} as follows:
-
-\input{Below.coq}
-
-\subsubsection{Generalized subterm relations}
-
-\subsubsection{With some good measure}
-
-
+\input{recursion}
 %%% Local Variables: 
 %%% mode: latex
 %%% TeX-PDF-mode: t

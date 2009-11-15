@@ -119,7 +119,7 @@ Ltac rec_fast v recname := intro_block v ;
     clear_except recname ;
     intros until 1 ; on_last_hyp ltac:(fun x => rename x into recname) ;
       simpl in * ; simplify_dep_elim ; intros ; unblock_goal ; intros ;
-        move recname at bottom ;
+        (try move recname at bottom) ;
         add_pattern (hide_pattern recname).
 
 Ltac rec_debug v recname := intro_block v ;

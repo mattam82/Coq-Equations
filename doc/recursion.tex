@@ -1,0 +1,150 @@
+\subsection{Recursion}
+\label{sec:recursion}
+
+We will now explain how we treat recursive definitions by
+pattern-matching. A notorious problem with the \Coq system is that it
+uses a syntactic check to verify that recursive calls are well-formed. 
+Only structurally recursive functions making recursive calls on a
+designated argument of a recursive function are allowed.
+The syntactic criterion is very restrictive and is a major source of
+bugs in the core type checker. A typical problem arises when one 
+wants to reabstract recursive subterms to change their type.
+Consider the following slighly contrived definition for example:
+
+\coqdockw{Fixpoint} \coqdef{recfail.filter}{filter}{\coqdocdefinition{filter}} \{\coqdocvar{A} : \coqdockw{Type}\} (\coqdocvar{p} : \coqdocvariable{A} \ensuremath{\rightarrow} \coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Init.Datatypes}{bool}{\coqdocinductive{bool}}) (\coqdocvar{l} : \coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A}) \{\coqdockw{struct} \coqdocvar{l}\} :=\coqdoceol
+\coqdocindent{1.00em}
+\coqdockw{match} \coqdocvariable{l} \coqdockw{with}\coqdoceol
+\coqdocindent{2.00em}
+\ensuremath{|} \coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Init.Datatypes}{nil}{\coqdocconstructor{nil}} \ensuremath{\Rightarrow} \coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Init.Datatypes}{nil}{\coqdocconstructor{nil}}\coqdoceol
+\coqdocindent{2.00em}
+\ensuremath{|} \coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Init.Datatypes}{cons}{\coqdocconstructor{cons}} \coqdocvar{a} \coqdocvar{l} \ensuremath{\Rightarrow} \coqdoceol
+\coqdocindent{3.00em}
+\coqdockw{match} \coqdocvariable{p} \coqdocvariable{a} \coqdockw{return} \coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A} \ensuremath{\rightarrow} \coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A} \coqdockw{with}\coqdoceol
+\coqdocindent{4.00em}
+\ensuremath{|} \coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Init.Datatypes}{true}{\coqdocconstructor{true}} \ensuremath{\Rightarrow} \coqdockw{fun} \coqdocvar{l} \ensuremath{\Rightarrow} \coqdocvariable{a} :: \coqref{recfail.filter}{\coqdocdefinition{filter}} \coqdocvariable{p} \coqdocvariable{l}\coqdoceol
+\coqdocindent{4.00em}
+\ensuremath{|} \coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Init.Datatypes}{false}{\coqdocconstructor{false}} \ensuremath{\Rightarrow} \coqdockw{fun} \coqdocvar{l} \ensuremath{\Rightarrow} \coqref{recfail.filter}{\coqdocdefinition{filter}} \coqdocvariable{p} \coqdocvariable{l}\coqdoceol
+\coqdocindent{3.00em}
+\coqdockw{end} \coqdocvariable{l}\coqdoceol
+\coqdocindent{1.00em}
+\coqdockw{end}.\coqdoceol
+
+Here we reabstract on the \var{l} variable in the inner match, as would
+be done by the compilation of a with node for example. This seemingly 
+innocuous change is too much for the guardness criterion, it cannot
+check that the \var{l} variable on which we make the recursive call
+is actually always substituted by the subterm \var{l} applied to
+the \kw{match} expression. Hence our program manipulations preclude
+the use of syntactically guarded recursion. However we 
+can use the same principle as for pattern-matching and 
+\emph{explain} the recursive structure of our programs using type theory
+itself. 
+
+To do so, we will use an elimination principle on the datatype we want
+to recurse on, that will give us a way to make recursive calls on any
+subterm. Instead of a syntactic notion of structural recursion, we will now use a
+logical one, which is compatible with the rest of the logical
+transformations happening during compilation, like the above use of
+strenghtening.
+
+\subsubsection{The \Below way}
+
+\cite{DBLP:conf/birthday/GoguenMM06} describes a clever way to
+elaborate recursive definitions by building a memoizing structure. 
+For each datatype, we define a new type \ind{Below} that describes all
+the recursive subterm of a given term. Take natural numbers for example,
+we define \cst{Below\_nat} as follows:
+
+\input{Below.coq}
+
+This method handles the definition structurally recursive definitions
+satisfactorily, but it is very inneficient. Indeed, if we try to reduce 
+a program using this recursor, there will be an exponential blowup as 
+the object we are recursing on, that is the tuple of all possible
+recursive calls \cst{below\_nat}, will have to be computed for each call. This is not 
+a problem if we are using a lazy reduction strategy but it is
+prohibitive if we want to compute with a call-by-value strategy, 
+or compute with the extracted program in \ML. Extraction removes the 
+logical parts of a term (in \Prop), like the manipulations on equality
+used during specialization by unification, but in this case the
+\cst{Below} object is computational and must be kept.
+
+To avoid this problem, we will use another way of witnessing the subterm
+relation that is entirely logical.
+
+\subsubsection{Generalized subterm relations}
+
+Our solution is basically to define the subterm relation on an inductive
+family and write functions by well-founded recursion on this relation.
+
+\begin{definition}[Subterm relation]
+  Given an inductive type $\ind{I} : Π~Δ, τ$ with constructors 
+  $\vec{\cstr{I}_i : Π~Γ_i, \ind{I}~Γ_i}$, we define the generalized 
+  subterm relation as an inductive type $\ind{I}^{sub} : Π~Δ_l~Δ_r,
+  \ind{I}~\bar{Δ_l} "->" \ind{I}~\bar{Δ_r} "->" \Prop$.
+  For each constructor $\cstr{I}_i : Π~Γ_i, \ind{I}~Δ_i$ and for 
+  each binding of $Γ_i$ of the form $(\var{x} : Π~Γ_x, \ind{I}~\vec{t})$
+  we add a constructor to the relation: 
+  $\cstr{\ind{I}}^{sub}_n : Π~Γ_i~Γ_x, 
+  \ind{I}^{sub}\vec{t}~Δ_i~(\var{x}~\bar{Γ_x})~(\cstr{I}_i~\bar{Γ_i})$.
+\end{definition}
+
+Before going further, we will simplify our development by considering only
+inductive families with a single index. Indeed we can define for any
+inductive type $Π~Δ,~\ind{I}~Δ$ (any arity in general) a corresponding 
+type with a single parameter using a dependent sum to encode the
+context.
+
+\def\teles#1{\ensuremath{Σ(#1)}}
+\def\bars#1#2{\ensuremath{\bar{Σ}(#1, #2)}}
+\begin{definition}[Telescope transformation]
+  For any arbitrary context Δ, we define \teles{Δ} by recursion on the
+  context:
+  \begin{itemize}
+    \item $\teles{ε} = \ind{unit}$
+    \item $\teles{x : τ, Δ} = Σ x : τ, \teles{Δ}$
+  \end{itemize}
+
+  We omit type annotations for the construction of sums and the
+  projections, they can be easily infered.
+  We can define the $\bars{Δ}{s}$ operator on telescopes to produce
+  appropriate projections from a tuple $s$:
+  \begin{itemize}
+  \item $\bars{ε}{s} = ε$
+  \item $\bars{x : τ, Δ}{s} = \pi_1~s, \bars{Δ}{\pi_2~s}$
+  \end{itemize}
+\end{definition}
+
+The heterogeneous subterm relation can hence be wrapped to form an
+object of type:
+\[Π i~i' : \teles{Δ}, \ind{I}~\bars{Δ}{i} "->" \ind{I}~\bars{Δ}{i'} "->" \Prop\]
+%λ(i : \teles{Δ})~(i' :
+%\teles{Δ}),\constr{I}^{sub}~\bars{Δ}{i}~\bars{Δ}{i'} :
+
+\input{wf.coq}
+
+We are almost ready to define structurally recursive
+functions by well-founded recursion on the transitive closure of the
+immediate subterm relation. The only remaining bit is to provide a
+proof search procedure to automatically build proofs of the relation,
+for automatically filling the witnesses that appear at recursive calls.
+We can easily do so by building a hint database with the constructors of 
+the $\ind{I}^{sub}$ relation and the constructors for the transitive closure
+relation. 
+
+\paragraph{Measures}
+
+Using this method of recursion allows us to produce more efficient
+programs but also opens up more flexibility. Indeed, we need not
+restrict ourselves to using the subterm relation for building
+well-founded definitions, we can also use any other available well-founded
+relation at our hands. A common one is provided by the inverse image 
+relation produced by a function on a given relation, often refered to
+as a measure when the relation is the less-than order on natural
+numbers.
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-PDF-mode: t
+%%% TeX-master: "equations"
+%%% End: 

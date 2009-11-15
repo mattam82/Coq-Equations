@@ -28,6 +28,17 @@
 \setlength{\coqdocbaseindent}{0.7em}
 \usepackage{utf}
 
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{conjecture}{Conjecture}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{fact}[theorem]{Fact}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{corrolary}[theorem]{Corollary}
+\newtheorem{notation}[theorem]{Notation}
+
 \def\Equations{\name{Equations}}
 \def\coqlibrary#1#2#3{}
 \def\Below{\coqdocind{Below}\xspace}
