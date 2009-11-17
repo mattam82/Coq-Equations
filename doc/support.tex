@@ -6,29 +6,123 @@ of support definitions to help reason on the generated implementations.
 \subsection{Building equations}
 
 The easiest step is constructing the proofs of the equations as
-propositional equalities. We recurse on the splitting tree, 
-bookkeeping the name of the current function \cst{f}
-and for each $\Compute{Δ \vdash \vec{p} : Γ}{rhs}$
-node we inspect the right-hand side and generate a statement:
-\begin{itemize}
-\item $\Program{t}$: the equation is simply $Π~Δ, \cst{f}~\vec{p}~=t$.
-\item $\Empty{t}$: we make an instance of the following typeclass:
-  \input{imposs.coq}
-  In this case we generate an instance of
-  $Π~Δ, \class{ImpossibleCall} (\cst{f}~\vec{p})$.
-\item $\Refine{t}{c'}{\cst{f'}}{s}$: we generate an indirection equation for the
-  helper function:
-  $Π~Δ, \cst{f}~\vec{p} = \cst{f'}  $
+propositional equalities.
 
-\end{itemize}
+\begin{definition}[Equations statements]
+  We recurse on the splitting tree, 
+  bookkeeping the name of the current function \cst{f}
+  and for each $\Compute{Δ \vdash \vec{p} : Γ}{rhs}$
+  node we inspect the right-hand side and generate a statement:
+  \begin{itemize}
+  \item $\Prog{t}$: the equation is simply $Π~Δ, \cst{f}~\vec{p}~=t$.
+  \item $\Empty{t}$: we make an instance of the following typeclass:
+    \input{imposs.coq}
+    In this case we generate an instance of 
+    $Π~Δ, \ind{ImpossibleCall} (\cst{f}~\vec{p})$.
+    
+  \item $\Refine{t}{Δ' \vdash \vec{\var{v}}^x, \var{x}, \vec{\var{v}}_x :
+      Δ^x, \var{x} : τ, Δ_x}{\cst{f'}}{s}$: 
+    We know that the new programming problem is just a reordering of the
+    variables in $Δ$ after having inserted a declaration for the refined 
+    object and abstracted the remaining $Δ_x$ context. 
+    The auxilliary definition \cst{f'} produces an object refining 
+    this context, we can hence generate an indirection equation for the
+    helper function: 
+    $Π~Δ, \cst{f}~\vec{p} = \cst{f'}~\vec{\var{v}}^x~t~\vec{\var{v}}_x$.
+    We continue the generation of equations, considering the new
+    programming problem and setting the current function to \cst{f'}.
+  \end{itemize}
+\end{definition}
 
+All of these goals are solvable by simply unfolding the definition 
+of the function and simplifying the goal: the constructor forms in the
+leaf patterns direct the reduction. If we didn't use any axioms during
+the definition, then these follows definitionally. When we encounter
+axioms in these proofs we simply rewrite using their expected
+computational behavior.
 
-
-
-
- that is solvable by unfolding 
+We create a database of rewrite rules with the proofs of these equations,
+to allow simplification by rewriting, abstracting many steps of
+reasoning in a single rewrite.
 
 \subsection{Induction principle}
+
+The next step is to build the inductive graph of the function.
+We first define a function that finds the occurences of recursive calls
+in a right-hand side term and abstracts them by variables. This is easy
+to do given that all the recursive calls are labelled by the trivial 
+\fcompproj{f} projection. 
+\begin{definition}[Abstracting recursive calls]
+  The \absrec{f}{t} operator is defined by recursion on the term $t$, 
+  under a potential local context $Δ$, empty at the start of the
+  recursion. The operator builds a context representing the abstracted 
+  recursive calls and a new term using these abstracted calls.
+
+  By case on $t$:
+  \begin{itemize}
+  \item $\fcompproj{f}~\vec{t}~p$ :
+    We recursively compute the abstractions in \vec{t} giving us 
+    a new context $Δ'$ and terms $\vec{t}'$.
+    Our context is extended with a fresh declaration 
+    $\var{res} : \fcomp{f}~\vec{t}'$ and the term becomes
+    $\var{res}$.
+
+  \item $f~e$ :
+    We simply combine the results of abstracting $f$ and $e$ separately.
+    
+  \item $\kw{let}~\var{x}~\coloneqq~t~\kw{in}~b$ :
+    We do the abstractions in $t$ resulting in $Δ', t'$ 
+    and recursively call the abstraction on $b$ in a context 
+    extended with $(\var{x}~\coloneqq~t')$. We combine the 
+    resulting contexts and terms as expected.
+
+  \item $λ \var{x} : τ, b$ :
+    We do the abstractions in $b$ in an extended context 
+    $(\var{x}~:~τ)$ resulting in $Δ', b'$.
+    We build a new generalized context 
+    $(\var{res} : Π~\var{x} : τ, Δ')$
+    and recursively call the abstraction on $b$ in a context 
+    extended with.
+
+  \end{itemize}
+\end{definition}
+
+\begin{definition}[Inductive graph]
+  Considering $\cst{f} : Π~Γ, \fcomp{f}~\bar{Γ}$, we want 
+  to build an inductive relation 
+  $\find{f} : Π~Γ, \fcomp{f}~\bar{Γ} "->" \Prop$ that relates 
+  arguments $Γ$ to results $\fcomp{f}~\bar{Γ}$.
+  We compute the constructors of this relation by recursion on the
+  splitting tree:
+  
+  \begin{itemize}
+  \item $\Split{c}{x}{s}$.
+    Again splitting nodes are basically ignored, we just collect the 
+    statements for the splitting $s$.
+
+  \item $\Compute{c}{rhs}$.
+    By case on $rhs$:
+    \begin{itemize}
+    \item $\Prog{t}$:
+      We abstract the recursive calls of the term using the function
+      \absrec{f}{t} which returns a context $ψ$ and a new term
+      $t'$. We add a constructor $Π~Δ~Ψ, \find{f}~\vec{p}~t'$ to
+      the \find{f} graph.
+    \item $\Empty{t}$: this case is impossible hence no constructor is
+      needed.
+    \item $\Refine{t}{Δ' \vdash \vec{\var{v}}^x, \var{x}, \vec{\var{v}}_x :
+        Δ^x, \var{x} : τ, Δ_x}{\cst{f'}}{s}$:
+      Similarly to the equation, we just have to do an indirection to the 
+      inductive graph of the auxiliary function:
+      $Π~Δ, Π~\var{res} : \fcomp{f'}~\bar{Δ},
+      \find{f'}~\vec{\var{v}}^x~t~\vec{\var{v}}_x~\var{res} "->"
+      \find{f}~\vec{p}~\var{res}$.
+      We continue with the generation of the \find{f'} inductive graph.
+    \end{itemize}  
+  \end{itemize}
+\end{definition}
+
+
 
 
 %%% Local Variables: 
