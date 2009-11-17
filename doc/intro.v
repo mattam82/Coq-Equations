@@ -38,7 +38,7 @@ Ltac funelim c :=
   end.
 Require Import Bvector.
 
-Derive DependentElimination for nat bool option sum prod list vector.
+(* Derive DependentElimination for nat bool option sum prod list vector. *)
 (* end hide *)
 
 (** ** Inductive types
@@ -369,13 +369,13 @@ diag A (S n) (Vcons (Vcons a n v) n v') :=
    on the first one to find the first element of the diagonal. 
    The [nocomp] and [noind] flags of [Equations] used here allow the 
    guardness checker of Coq to validate the definition and the equations
-   proofs in reasonable time, but it takes too long to check that the 
+   proofs in reasonable time, but it takes too long to check that the
    induction principle proof is well-formed%\footnote{Or guarded in Coq jargon}%.
 
    This closes our presentation of the basic features of [Equations]. 
-   Our contribution is an implementation of dependent pattern-matching 
+   Our contribution is a realistic implementation of dependent pattern-matching
    which can be used to write programs on inductive families, also 
    providing tools to reason on them. We will now delve into the details of 
    the implementation and come back to the user side later, introducing 
-   the more novel features of our system, starting with a more robust
+   the more novel features of our system, including a more robust
    handling of recursion. *)

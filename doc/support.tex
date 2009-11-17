@@ -1,5 +1,38 @@
 \section{Reasoning support}
 
+We now turn to the second part of the \Equations package: the derivation
+of support definitions to help reason on the generated implementations.
+
 \subsection{Building equations}
 
+The easiest step is constructing the proofs of the equations as
+propositional equalities. We recurse on the splitting tree, 
+bookkeeping the name of the current function \cst{f}
+and for each $\Compute{Δ \vdash \vec{p} : Γ}{rhs}$
+node we inspect the right-hand side and generate a statement:
+\begin{itemize}
+\item $\Program{t}$: the equation is simply $Π~Δ, \cst{f}~\vec{p}~=t$.
+\item $\Empty{t}$: we make an instance of the following typeclass:
+  \input{imposs.coq}
+  In this case we generate an instance of
+  $Π~Δ, \class{ImpossibleCall} (\cst{f}~\vec{p})$.
+\item $\Refine{t}{c'}{\cst{f'}}{s}$: we generate an indirection equation for the
+  helper function:
+  $Π~Δ, \cst{f}~\vec{p} = \cst{f'}  $
+
+\end{itemize}
+
+
+
+
+
+ that is solvable by unfolding 
+
 \subsection{Induction principle}
+
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-PDF-mode: t
+%%% TeX-master: "equations"
+%%% End: 

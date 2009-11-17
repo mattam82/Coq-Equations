@@ -43,6 +43,21 @@
 \def\coqlibrary#1#2#3{}
 \def\Below{\coqdocind{Below}\xspace}
 
+\def\teles#1{\ensuremath{Σ(#1)}}
+\def\bars#1#2{\ensuremath{\bar{Σ}(#1, #2)}}
+
+\def\var{\coqdocvar}
+\def\cstr{\coqdocconstr}
+\def\cst{\coqdoccst}
+\def\ind{\coqdocind}
+\def\Split#1#2#3{\texttt{Split}(#1, #2, #3)}
+\def\Compute#1#2{\texttt{Compute}(#1, #2)}
+\def\Prog#1{\texttt{Program}(#1)}
+\def\Empty#1{\texttt{Empty}(#1)}
+\def\Refine#1#2#3#4{\texttt{Refine}(#1, #2, #3, #4)}
+
+\def\eqrefl{\coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Init.Logic}{eqrefl}{\coqdocconstructor{eq\_refl}}}
+
 %\author{Matthieu Sozeau}
 \title{\Equations\\
   A dependent pattern-matching compiler}

@@ -1,6 +1,7 @@
 (* begin hide *)
 Require Import Equations.
 (* end hide *)
+
 Class NoConfusionPackage (A : Type) := {
   NoConfusion : Type -> A -> A -> Type;
   noConfusion : forall P a b, a = b -> NoConfusion P a b }.
@@ -26,9 +27,10 @@ NoConfusion_nat P _ _ := P.
    If [x] and [y] are both [O], then we are left to prove the same goal unchanged,
    the equality is trivial ([P -> P]).
    If [x] and [y] are both of the form [S _] then we are left with a proof of 
-   goal under the additional hypothesis that the arguments are equal 
+   the goal under the additional hypothesis that the arguments are equal 
    [((n = m -> P) -> P)]. Finally, in all other cases, the goal is directly
-   discharged, as we have a witness of [P].
+   discharged, as we have a witness of [P] by contradiction of the equality
+   of [n] and [m].
 
    We can build a tactic to simplify any hypothesis using this construction,
    which subsumes the [discriminate] and [injection] tactics.

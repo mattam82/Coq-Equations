@@ -85,6 +85,19 @@ $\begin{array}{llcl}
 \caption{Definitions and user clauses} 
 \end{figure}
 
+\paragraph{Notations and terminology}
+We will use the notation $\bar{Δ}$ to denote the set of variables bound by
+an environment Δ, in the order of declarations.
+An \emph{arity} is a term of the form $Π~Γ, s$ where $s$ is a sort.
+A sort (or kind) can be either $\Prop$ (categorizing propositions) or
+$\Type$ (categorizing computational types, like \ind{bool}). An
+arity is hence always a type.
+We consider inductive families to be defined in a (elided) global context
+by an arity $\ind{I} : Π~Δ, τ$ and constructors 
+$\vec{\cstr{I}_i : Π~Γ_i, \ind{I}~\vec{t}}$. Although \Coq distinguishes
+between parameters and indices and our implementation does too, we will
+not distinguish them in the presentation for the sake of simplicity.
+
 A program is given as a tuple of a (globally fresh) identifier, 
 a signature and a set of user clauses. The signature is simply a list of
 bindings and a result type. The purposed type of the function 
@@ -109,10 +122,6 @@ be phrased as a search procedure. As usual, we recover a deterministic
 semantics using a first-match rule when two clauses overlap.
 
 \newcommand{\prob}[3]{\ensuremath{#1 \vdash #2 : #3}}
-\def\var{\coqdocvar}
-\def\cstr{\coqdocconstr}
-\def\cst{\coqdoccst}
-\def\ind{\coqdocind}
 
 The search for a covering works by gradually refining a
 \emph{programming problem} \prob{Δ}{\vec{p}}{Γ} and building a
@@ -123,12 +132,6 @@ pattern $p$ typable in Δ. We start the search with the problem
 type $τ_\cst{f}$ and the list of user clauses. The splitting tree is 
 defined by the grammar:
 
-\def\Split#1#2#3{\texttt{Split}(#1, #2, #3)}
-\def\Compute#1#2{\texttt{Compute}(#1, #2)}
-\def\Prog#1{\texttt{Program}(#1)}
-\def\Empty#1{\texttt{Empty}(#1)}
-\def\Refine#1#2#3{\texttt{Refine}(#1, #2, #3)}
-
 \begin{figure}[h]
 $\begin{array}{llcl}
   \texttt{context map} & c & \Coloneqq & Δ \vdash \vec{p} : Γ \\
@@ -138,7 +141,7 @@ $\begin{array}{llcl}
   
   \texttt{node} & rhs & \Coloneqq & \Prog{t}
   `| \Empty{\var{x}}
-  `| \Refine{t}{c}{spl} \\
+  `| \Refine{t}{c}{\cst{f}}{spl} \\
 \end{array}$
 \caption{Context mappings and splitting trees}
 \label{fig:split}
@@ -152,13 +155,14 @@ A splitting tree is either:
 \item A $\Compute{c}{rhs}$ node, where the right hand side can be either:
   \begin{itemize}
   \item A $\Prog{t}$ node denoting a leaf of the tree with program $t$.
-  \item A $\Refine{t}{c'}{s}$ node corresponding to a with rule introducing a
-    pattern for $t$ with $s$ covering the new problem $c'$.
+  \item A $\Refine{t}{c'}{label}{s}$ node corresponding to a with rule introducing a
+    pattern for $t$ with $s$ covering the new problem $c'$. The $label$
+    is a fresh identifier that will be used to define auxilliary definitions.
   \end{itemize}
 \end{itemize}
 
 Recursively, we will try to match the user clauses with
-the current problem. Matching is defined as:
+the current problem. Matching is defined in figure \ref{fig:matches}.
 
 \newcommand{\Matches}[2]{\textsc{Matches}(#1,#2)}
 \begin{figure}[h]
@@ -182,13 +186,16 @@ the current problem. Matching is defined as:
     \Downarrow \cup~\_ `| \_~\cup \Downarrow & \coloneqq & \Downarrow \\
     (\Rightarrow s~\cup \_) `| (\_~\cup \Rightarrow s) & \coloneqq & \Rightarrow s
   \end{array}$
+  \caption{Matching patterns}
+  \label{fig:matches}
 \end{figure}
 
-Matching patterns \vec{p} and \vec{q} can either fail ($\Downarrow$),
-succeed ($\Uparrow s$) returning a variable substitution $s$ from
-\vec{p} to \vec{q} or get stuck ($\Rightarrow s$) returning a set of
-variables from \vec{q} that needs further splitting to match the
-patterns in \vec{p}. 
+Matching patterns \vec{p} from the a user clause and 
+patterns \vec{q} from the current programming problem can either
+fail ($\Downarrow$), succeed ($\Uparrow s$) returning a variable
+substitution $s$ from \vec{p} to \vec{q} or get stuck ($\Rightarrow s$)
+returning a set of variables from \vec{q} that needs further splitting
+to match the user patterns in \vec{p}. 
 
 \begin{itemize}
 \item If none of the clauses match a particular problem
@@ -291,11 +298,11 @@ combinators for simplifying equations in the theory of contructors, most
 of which are just rephrasings of the substitution principles for
 \people{Leibniz} and heterogeneous equality. The last bit is a
 simplifier for equalities between constructors. We need a tactic that
-can simplify any equality $\constr{C} \vec{t} = \constr{D} \vec{u}$, 
+can simplify any equality $\cstr{C} \vec{t} = \cstr{D} \vec{u}$, 
 either giving us equalities between $\vec{t}$ and $\vec{u}$ that can be
-further simplified or deriving a contradiction if $\constr{C}$ is
-different from $\constr{D}$. \cite{mcbride:concon} describes a generic method to
-derive such a eliminator that we adapted to $\Coq$. We describe this
+further simplified or deriving a contradiction if $\cstr{C}$ is
+different from $\cstr{D}$. \cite{mcbride:concon} describes a generic method to
+derive such an eliminator that we adapted to $\Coq$. We describe this
 construction through a type class \class{NoConfusion}:
 
 \input{noconf.coq}
@@ -308,19 +315,17 @@ not support the principle of ``Uniqueness of Identity Proof'', also
 refered to as \people{Streicher}'s K axiom \cite{Streicher}. This
 principle can be phrased as:
 
-\def\eqrefl{\coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Init.Logic}{eqrefl}{\coqdocconstructor{eq\_refl}}}
-
 \coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Logic.ProofIrrelevance}{ProofIrrelevanceTheory.EqdepTheory.UIPrefl}{\coqdoclemma{UIP\_refl}}
 : \ensuremath{\forall} (\coqdocvar{U} : \coqdockw{Type}) (\coqdocvar{x}
 : \coqdocvariable{U}) (\coqdocvar{p} : \coqdocvariable{x} =
 \coqdocvariable{x}), \coqdocvariable{p} = \eqrefl
 
 This principle allows us to simplify a goal depending on a proof $p$ of
-$\var{x} = \var{x}$ by substituting the sole constructor \eqrefl for
+$\var{x} = \var{x}$ by substituting the sole constructor \eqrefl{} for
 $p$. As we are in an external system, we can easily make use of this
 axiom to do the simplifications, but this means that some of our
 definitions will not be able to reduce to their expected normal forms: 
-they're not closed in the empty context anymore. We will tame this
+they are not closed in the empty context anymore. We will tame this
 problem by providing the defining equations as rewrite rules
 once a function is accepted, making use of the axiom again to prove
 these. 
@@ -334,6 +339,9 @@ principle without any axioms: extensions to make dependent
 pattern-matching more powerful w.r.t. indices \cite{TYPES09} and 
 the addition of proof-irrelevance. Having them would make \Equations
 only more useful.
+If we use the extraction mechanism of \Coq \cite{Let2008} that produces
+terms in a standard functional language like \ML or \Haskell by removing
+all the logical parts of terms, this problem simply disappears.
 
 \input{recursion}
 %%% Local Variables: 

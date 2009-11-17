@@ -79,34 +79,30 @@ family and write functions by well-founded recursion on this relation.
 
 \begin{definition}[Subterm relation]
   Given an inductive type $\ind{I} : Π~Δ, τ$ with constructors 
-  $\vec{\cstr{I}_i : Π~Γ_i, \ind{I}~Γ_i}$, we define the generalized 
+  $\vec{\cstr{I}_i : Π~Γ_i, \ind{I}~\vec{t}}$, we define the generalized 
   subterm relation as an inductive type $\ind{I}^{sub} : Π~Δ_l~Δ_r,
   \ind{I}~\bar{Δ_l} "->" \ind{I}~\bar{Δ_r} "->" \Prop$.
-  For each constructor $\cstr{I}_i : Π~Γ_i, \ind{I}~Δ_i$ and for 
-  each binding of $Γ_i$ of the form $(\var{x} : Π~Γ_x, \ind{I}~\vec{t})$
+  For each constructor $\cstr{I}_i : Π~Γ_i, \ind{I}~\vec{t}$ and for 
+  each binding of $Γ_i$ of the form $(\var{x} : Π~Γ_x, \ind{I}~\vec{u})$
   we add a constructor to the relation: 
   $\cstr{\ind{I}}^{sub}_n : Π~Γ_i~Γ_x, 
-  \ind{I}^{sub}\vec{t}~Δ_i~(\var{x}~\bar{Γ_x})~(\cstr{I}_i~\bar{Γ_i})$.
+  \ind{I}^{sub}\vec{u}~\vec{t}~(\var{x}~\bar{Γ_x})~(\cstr{I}_i~\bar{Γ_i})$.
 \end{definition}
 
 Before going further, we will simplify our development by considering only
-inductive families with a single index. Indeed we can define for any
-inductive type $Π~Δ,~\ind{I}~Δ$ (any arity in general) a corresponding 
-type with a single parameter using a dependent sum to encode the
-context.
+homogeneous relations. Indeed we can define for any inductive type
+$Π~Δ,~\ind{I}~Δ$ (any arity in general) a corresponding closed type
+by wrapping everything in a dependent sum.
 
-\def\teles#1{\ensuremath{Σ(#1)}}
-\def\bars#1#2{\ensuremath{\bar{Σ}(#1, #2)}}
 \begin{definition}[Telescope transformation]
   For any arbitrary context Δ, we define \teles{Δ} by recursion on the
-  context:
+  context\footnote{We omit type annotations for the construction of sums and the
+  projections, they can be easily infered.}:
   \begin{itemize}
     \item $\teles{ε} = \ind{unit}$
     \item $\teles{x : τ, Δ} = Σ x : τ, \teles{Δ}$
   \end{itemize}
 
-  We omit type annotations for the construction of sums and the
-  projections, they can be easily infered.
   We can define the $\bars{Δ}{s}$ operator on telescopes to produce
   appropriate projections from a tuple $s$:
   \begin{itemize}
@@ -115,25 +111,16 @@ context.
   \end{itemize}
 \end{definition}
 
-The heterogeneous subterm relation can hence be wrapped to form an
-object of type:
-\[Π i~i' : \teles{Δ}, \ind{I}~\bars{Δ}{i} "->" \ind{I}~\bars{Δ}{i'} "->" \Prop\]
-%λ(i : \teles{Δ})~(i' :
-%\teles{Δ}),\constr{I}^{sub}~\bars{Δ}{i}~\bars{Δ}{i'} :
+The heterogeneous subterm relation can hence be uncurried to form
+an homogeneous relation:
 
+$ λ(x~y : Σ i : \teles{Δ}, \ind{I}~\bars{Δ}{i}), \\
+~\quad\quad\ind{I}^{sub}~\bars{Δ}{\pi_1~x}~\bars{Δ}{\pi_1~y}~(\pi_2~x)~(\pi_2~y) \\
+~\quad\quad: \cst{relation}~(Σ i :\teles{Δ}, \ind{I}~\bars{Δ}{i}) $
+  
 \input{wf.coq}
 
-We are almost ready to define structurally recursive
-functions by well-founded recursion on the transitive closure of the
-immediate subterm relation. The only remaining bit is to provide a
-proof search procedure to automatically build proofs of the relation,
-for automatically filling the witnesses that appear at recursive calls.
-We can easily do so by building a hint database with the constructors of 
-the $\ind{I}^{sub}$ relation and the constructors for the transitive closure
-relation. 
-
 \paragraph{Measures}
-
 Using this method of recursion allows us to produce more efficient
 programs but also opens up more flexibility. Indeed, we need not
 restrict ourselves to using the subterm relation for building
@@ -141,7 +128,7 @@ well-founded definitions, we can also use any other available well-founded
 relation at our hands. A common one is provided by the inverse image 
 relation produced by a function on a given relation, often refered to
 as a measure when the relation is the less-than order on natural
-numbers.
+numbers. We leave this generalization for future work.
 
 %%% Local Variables: 
 %%% mode: latex

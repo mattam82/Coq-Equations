@@ -53,9 +53,10 @@ Hint Resolve clos_trans_stepr : subterm_relation.
 
 Ltac simp_exists := destruct_exists ; simpl in *.
 
-Ltac solve_subterm := red; intros; simp_exists;
+Ltac solve_subterm := intros ; apply wf_clos_trans ;
+  red ; intros; simp_exists;
   on_last_hyp ltac:(fun i => induction i); constructor ; 
-  intros; simp_exists; on_last_hyp ltac:(fun H => now depelim H).
+  simpl; intros; simp_exists; on_last_hyp ltac:(fun H => now depelim H).
 
 (** A tactic to launch a well-founded recursion. *)
 
@@ -70,7 +71,7 @@ Ltac rec_wf x recname fixterm :=
 
 Ltac rec_wf_eqns x recname :=
   let ty := type of x in
-  let wfprf := constr:(wellfounded (R:=(@clos_trans ty _))) in
+  let wfprf := constr:(wellfounded (A:=ty)) in
   let fixterm := constr:(FixWf (WF:=wfprf)) in
     rec_wf x recname fixterm ; add_pattern (hide_pattern recname) ; instantiate.
 
