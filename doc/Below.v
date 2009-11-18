@@ -53,7 +53,7 @@ vlast A n v ! v ;
 vlast A ?(S n) (Vcons a ?(O) Vnil) := a ;
 vlast A ?(S n) (Vcons a ?(S n) v) := vlast v.
 
-(** Here we use recursion using [Below_nat] (hence the no structural recursion flag).
+(** Here we use recursion using [Below_vector] (hence the no structural recursion flag).
    When we encounter a recursion user node [! v] (witnessed as $\Rec{v}{s}$ in 
    the splitting tree), we apply the recursor for the 
    type of [v], after having properly generalized it. The recursion hypothesis 

@@ -75,6 +75,7 @@ let coq_wffam_class = lazy (init_constant ["Equations";"Subterm"] "WfFam")
 let coq_wellfounded = lazy (init_constant ["Coq";"Init";"Wf"] "well_founded")
 let coq_relation = lazy (init_constant ["Coq";"Relations";"Relation_Definitions"] "relation")
 let coq_clos_trans = lazy (init_constant ["Coq";"Relations";"Relation_Operators"] "clos_trans")
+let coq_id = lazy (init_constant ["Coq";"Init";"Datatypes"] "id")
 
 let list_path = ["Lists";"List"]
 let coq_list_ind = lazy (init_constant list_path "list")
@@ -455,9 +456,9 @@ and lhs = user_pats
 and 'a rhs = 
   | Program of constr_expr
   | Empty of identifier located
-  | Rec of identifier located
+  | Rec of identifier located * 'a list
   | Refine of constr_expr * 'a list
-  | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) union
+  | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) union * 'a list
 
 type splitting = 
   | Compute of context_map * types * splitting_rhs
@@ -888,13 +889,16 @@ let pplhs lhs = pp (pr_lhs (Global.env ()) lhs)
 
 let rec pr_rhs env = function
   | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ pr_id var
-  | Rec (loc, var) -> spc () ++ str "!" ++ spc () ++ pr_id var
+  | Rec ((loc, var), s) -> spc () ++ str "!" ++ spc () ++ pr_id var ++ spc () ++
+      hov 1 (str "{" ++ pr_clauses env s ++ str "}")
   | Program rhs -> spc () ++ str ":=" ++ spc () ++ pr_constr_expr rhs
   | Refine (rhs, s) -> spc () ++ str "<=" ++ spc () ++ pr_constr_expr rhs ++ 
       spc () ++ str "=>" ++ spc () ++
       hov 1 (str "{" ++ pr_clauses env s ++ str "}")
-  | By (Inl tac) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_raw_tactic env tac
-  | By (Inr tac) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_glob_tactic env tac
+  | By (Inl tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_raw_tactic env tac
+      ++ spc () ++ hov 1 (str "{" ++ pr_clauses env s ++ str "}")
+  | By (Inr tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_glob_tactic env tac
+      ++ spc () ++ hov 1 (str "{" ++ pr_clauses env s ++ str "}")
       
 and pr_clause env (lhs, rhs) =
   pr_lhs env lhs ++ pr_rhs env rhs
@@ -1061,14 +1065,14 @@ let rec covering_aux env evars data prev (clauses : clause list) (ctx,pats,ctx' 
 		    | PRel i -> Some (Compute (prob, ty, REmpty i))
 		    | _ -> user_err_loc (loc, "equations", str"Unbound variable " ++ pr_id i))
 
-		| Rec v ->
+		| Rec (v, s) ->
 		    (* let fixty = it_mkProd_or_LetIn (mkProd (Anonymous, ty, lift 1 ty)) ctx' in *)
-		    let tac = By (Inr (rec_tac (snd v) (fst data))) in
-		      (match covering_aux env evars data prev ((lhs,tac) :: clauses') prob ty with
+		    let tac = By (Inr (rec_tac (snd v) (fst data)), s) in
+		      (match covering_aux env evars data prev [(lhs,tac)] prob ty with
 		      | None -> None
 		      | Some split -> Some (RecValid (fst data, split)))
 					    
-		| By tac ->
+		| By (tac, s) ->
 (* 		    let t' = it_mkProd_or_LetIn ctx ty in *)
 		    let sign, t', rels = push_rel_context_to_named_context env' ty in
 		    let sign' = split_at_eos (named_context_of_val sign) in
@@ -1114,7 +1118,7 @@ let rec covering_aux env evars data prev (clauses : clause list) (ctx,pats,ctx' 
 				    ty', newprob, id_subst ctx'
 			    | _ -> raise (Invalid_argument "covering_aux: unexpected output of tactic call")
 			  in 
-			    match covering_aux env evars data [] (rev prev @ clauses') prob ty' with
+			    match covering_aux env evars data [] s prob ty' with
 			      | None ->
 				  anomalylabstrm "covering"
 				    (str "Unable to find a covering for the result of a by clause:" 
@@ -1132,12 +1136,14 @@ let rec covering_aux env evars data prev (clauses : clause list) (ctx,pats,ctx' 
 		    let newctx, pats', pats'' = instance_of_pats env evars ctx vars in
 		    let _s' = (ctx, vars, newctx) in
 		    let revctx = (newctx, pats', ctx) in
-		    let cconstr,cty = interp_constr_in_rhs env' evars data None s c in
+		    let cconstr, cty = interp_constr_in_rhs env' evars data None s c in
 		    let idref = Namegen.next_ident_away (id_of_string "refine") (ids_of_rel_context newctx) in
 		    let decl = (Name idref, None, mapping_constr revctx cty) in
 		    let extnewctx = decl :: newctx in
 		      (* cmap : Δ -> ctx, cty *)
-		    let cmap, strinv = strengthen ~full:true extnewctx 1 (lift 1 (mapping_constr revctx cconstr)) in
+		    let cmap, strinv = strengthen ~full:true extnewctx 1
+		      (lift 1 (mapping_constr revctx cconstr)) 
+		    in
  		    let cconstr' = mapping_constr cmap cconstr in
 		    let cty' = mapping_constr cmap cty in
 		    let newprob = (extnewctx, PRel 1 :: lift_pats 1 pats'', extnewctx) in
@@ -1170,11 +1176,13 @@ let rec covering_aux env evars data prev (clauses : clause list) (ctx,pats,ctx' 
 		      let args = 
 			map (fun (i, j) (* i variable in strengthened context, 
 					   j variable in the original one *) -> 
-			  if j = 1 then (argref := (List.length strinv - i); cconstr)
-			  else mkRel (pred j)) sortinv
+			  if j = 1 then (argref := (List.length strinv - i); 
+					 mkApp (Lazy.force coq_id, [| cty; cconstr |]))
+			  else let (var, _) = List.nth vars (pred (pred j)) in
+				 mkRel var) sortinv
 		      in args, !argref
 		    in
-		    let call f = (f, strength_app (* (rev_map (fun (i, h) -> mkRel i) vars) @ [cconstr] *)) in
+		    let call f = (f, strength_app) in
 		      match covering_aux env evars data [] cls' newprob newty with
 		      | None -> None
 		      | Some s -> Some (Refined (prob,
@@ -1453,6 +1461,12 @@ let simp_eqns_in clause l =
 
 let autorewrites b = tclREPEAT (Autorewrite.autorewrite tclIDTAC [b])
 
+let find_id_arg args =
+  array_find_i (fun i arg ->
+    match kind_of_term arg with
+    | App (f, [| a; t |]) -> eq_constr f (Lazy.force coq_id)
+    | _ -> false) args
+
 let rec aux_ind_fun base_id = function
   | Split ((ctx,pats,_), var, _, splits) ->
       let before, (na, b, t), after = split_context (pred var) ctx in
@@ -1480,10 +1494,13 @@ let rec aux_ind_fun base_id = function
       let elimtac gl =
 	match kind_of_term (pf_concl gl) with
 	| App (ind, args) ->
-	    let elim = args.(arg) in
-	      tclTHENLIST
-		[letin_tac None (Name id) elim None allHypsAndConcl; 
-		 clear_body [id]; aux_ind_fun base_id s] gl
+	    (match find_id_arg args with
+	    | Some arg -> 
+		let elim = args.(arg) in
+		  tclTHENLIST
+		    [letin_tac None (Name id) elim None allHypsAndConcl; 
+		     clear_body [id]; aux_ind_fun base_id s] gl
+	    | _ -> tclFAIL 0 (str"Unexpected refinement goal in functional induction proof") gl)
 	| _ -> tclFAIL 0 (str"Unexpected refinement goal in functional induction proof") gl
       in
       let cstrtac =
@@ -1891,8 +1908,11 @@ let convert_projection proj f_cst = fun gl ->
   let concl' = conv_proj_call proj f_cst concl in
     if eq_constr concl concl' then tclIDTAC gl
     else convert_concl_no_check concl' DEFAULTcast gl
-      
-let prove_unfolding_lemma sign proj f_cst funf_cst split =
+
+let unfold_constr c = 
+  unfold_in_concl [(all_occurrences, EvalConstRef (destConst c))]
+
+let prove_unfolding_lemma sign proj f_cst funf_cst split gl =
   let depelim h = depelim_tac h in
   let simpltac = tclTHEN (tclREPEAT (Eauto.autounfold ["Below_recursors"] None)) 
     (simpl_equations_tac ())
@@ -1919,13 +1939,15 @@ let prove_unfolding_lemma sign proj f_cst funf_cst split =
 	  match kind_of_term (pf_concl gl) with
 	  | App (f, [| ty; term1; term2 |]) ->
 	      let f1, arg1 = destApp term1 and f2, arg2 = destApp term2 in
-	      let arg1 = Array.copy arg1 in
-	      let elimb = arg2.(arg) in
-		arg1.(arg) <- elimb;
-		tclTHENLIST
-		  [convert_concl_no_check (mkApp (f, [| ty; mkApp (f1, arg1); term2 |]))
-		      DEFAULTcast;
-		   letin_tac None (Name id) elimb None allHypsAndConcl; aux s] gl
+		(match find_id_arg arg1, find_id_arg arg2 with
+		| Some i, Some j ->
+		    tclTHENLIST
+		      [Equality.replace_by (arg1.(i)) (arg2.(j)) 
+			  (tclTHENLIST [unfold_constr (Lazy.force coq_id);
+					simpltac; reflexivity]);
+		       letin_tac None (Name id) arg2.(j) None allHypsAndConcl; aux s] gl
+		| _, _ -> 
+		    tclFAIL 0 (str"Couldn't find the refined arguments") gl)
 	  | _ -> tclFAIL 0 (str"Unexpected unfolding lemma goal") gl
 	in
 	  abstract (tclTHENLIST [intros; simpltac; (* convert_projection proj f_cst;  *)reftac])
@@ -1942,12 +1964,17 @@ let prove_unfolding_lemma sign proj f_cst funf_cst split =
   let unfolds = unfold_in_concl 
     [((true, [1]), EvalConstRef f_cst); ((true, [1]), EvalConstRef funf_cst)]
   in
-    tclTHENLIST [set_eos_tac (); intros; unfolds;
-		 (fun gl -> 
-		   Conv_oracle.set_strategy (ConstKey f_cst) Conv_oracle.Opaque;
-		   Conv_oracle.set_strategy (ConstKey funf_cst) Conv_oracle.Opaque;
-		   aux split gl)]
-
+    tclORELSE
+      (tclTHENLIST [set_eos_tac (); intros; unfolds;
+		    (fun gl -> 
+		      Conv_oracle.set_strategy (ConstKey f_cst) Conv_oracle.Opaque;
+		      Conv_oracle.set_strategy (ConstKey funf_cst) Conv_oracle.Opaque;
+		      aux split gl)])
+      (fun gl -> 
+	Conv_oracle.set_strategy (ConstKey f_cst) Conv_oracle.Expand;
+	Conv_oracle.set_strategy (ConstKey funf_cst) Conv_oracle.Expand;
+	tclIDTAC gl) gl
+      
 let update_split is_rec cmap f prob id split =
   let split' = map_evars_in_split cmap split in
     match is_rec with
@@ -2003,8 +2030,8 @@ let interp_eqn i is_rec isevar env impls sign arity recu eqn =
     | Refine (c, eqs) -> Refine (interp_constr_expr compproj !avoid c, map aux eqs)
     | Program c -> Program (interp_constr_expr compproj !avoid c)
     | Empty i -> Empty i
-    | Rec i -> Rec i
-    | By x -> By x
+    | Rec (i, s) -> Rec (i, map aux s)
+    | By (x, s) -> By (x, map aux s)
   and interp_constr_expr compproj ids c = 
     match c, compproj with
     (* |   | CAppExpl of loc * (proj_flag * reference) * constr_expr list *)
@@ -2130,13 +2157,13 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	    (* let unfold_baseid = string_of_id unfoldi in *)
 	    (* Auto.create_hint_db false unfold_baseid (ids, Cpred.remove (Subtac_utils.fix_proto_ref ()) csts) true; *)
 	    let rec unfold_eqs eqs =
-	      list_map_filter 
-		(fun ((loc,id), pats, rhs) ->
-		  match rhs with
-		  | Rec _ -> None
-		  | Refine (ce, eqs) -> Some ((loc, unfoldi), pats, Refine (ce, unfold_eqs eqs))
-		  | _ -> Some ((loc, unfoldi), pats, rhs))
-		eqs
+	      concat (map
+			 (fun ((loc,id), pats, rhs) ->
+			   match rhs with
+			   | Rec (v, eqs) -> unfold_eqs eqs
+			   | Refine (ce, eqs) -> [((loc, unfoldi), pats, Refine (ce, unfold_eqs eqs))]
+			   | _ -> [((loc, unfoldi), pats, rhs)])
+			 eqs)
 	    in
 	    let unfold_equations = 
 	      map (interp_eqn unfoldi None isevar env data sign arity None)
@@ -2225,9 +2252,14 @@ GEXTEND Gram
   rhs:
     [ [ ":=!"; id = identref -> Empty id
       |":="; c = Constr.lconstr -> Program c
-      | "<="; c = Constr.lconstr; "=>"; "{"; l = deppat_equations; "}" -> Refine (c, l)
-      | "<-"; "(" ; t = Tactic.tactic; ")" -> By (Inl t)
-      | "!"; id = identref -> Rec id
+      | "<="; c = Constr.lconstr; "=>"; e = equations -> Refine (c, e)
+      | "<-"; "(" ; t = Tactic.tactic; ")"; e = equations -> By (Inl t, e)
+      | "!"; id = identref ; "=>"; e = deppat_equations -> Rec (id, e)
+    ] ]
+  ;
+
+  equations:
+    [ [ "{"; l = deppat_equations; "}" -> l 
     ] ]
   ;
 

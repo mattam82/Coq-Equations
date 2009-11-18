@@ -41,21 +41,21 @@ sublist A p (cons x xs) <= p x => {
   sublist A p (cons x xs) true := keep (sublist p xs) ;
   sublist A p (cons x xs) false := skip (sublist p xs) }.
 
-Equations (nostruct) testn (n : nat) : nat :=
-testn n ! n ;
+Equations(nostruct) testn (n : nat) : nat :=
+testn n ! n =>
 testn O := 0 ;
 testn (S n) <= testn n => {
   testn (S n) O := S O ;
   testn (S n) (S n') := S n' }.
 
 Equations (nostruct) unzip {A B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
-unzip A B n v ! v ;
+unzip A B n v ! v =>
 unzip A B ?(O) Vnil := (Vnil, Vnil) ;
 unzip A B ?(S n) (Vcons (pair x y) n v) <= unzip v => {
   unzip A B ?(S n) (Vcons (pair x y) n v) (pair xs ys) := (Vcons x xs, Vcons y ys) }.
 
 Equations (nostruct) nos_with (n : nat) : nat :=
-nos_with n ! n ;
+nos_with n ! n =>
 nos_with O := O ;
 nos_with (S m) <= nos_with m => {
   nos_with (S m) O := S O ;
@@ -63,9 +63,10 @@ nos_with (S m) <= nos_with m => {
 
 Scheme nos_with_unfold_mut := Minimality for nos_with_ind Sort Prop
   with nos_with_unfold_h_mut := Minimality for nos_with_ind_1 Sort Prop.
+Hint Unfold noConfusion_nat : equations.
 
 Equations (nostruct) split {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
-split X m n xs ! m ;
+split X m n xs ! m =>
 split X O    n xs := append Vnil xs ;
 split X (S m) n (Vcons x ?(S m + n) xs) <= split xs => {
   split X (S m) n (Vcons x ?(S m + n) xs) (append xs' ys') :=
@@ -84,7 +85,6 @@ app_with A (cons a v) l <= app_with v l => {
   app_with A (cons a v) l vl := cons a vl }.
 
 (* About app_with_elim. *)
-
 (* Print app_with_ind. *)
 (* Print app_with_ind_ind. *)
 
@@ -92,9 +92,6 @@ app_with A (cons a v) l <= app_with v l => {
 (*   with app_with_help_elim := Minimality for app_with_ind_1 Sort Prop. *)
 
 (* About app_with_elim. *)
-
-
-
 
 Equations plus' (n m : nat) : nat :=
 plus' O n := n ; 
@@ -147,7 +144,7 @@ Qed.
 
 Lemma app'_assoc : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l (app' l' l'').
 Proof. intros. Opaque app'. revert l''. 
-  dependent_pattern (l +++ l').
+  dependent pattern (l +++ l').
   pose (fun_elim (f:=@app')). simpl in f. apply f; clear ; intros.
   simp app'. simp app'. rewrite H. reflexivity.
 Qed.
