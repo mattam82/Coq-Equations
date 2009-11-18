@@ -139,14 +139,6 @@ Equations rev {A} (l : list A) : list A :=
 rev A nil := nil;
 rev A (cons a v) := rev v +++ [a].
 
-Ltac funelim c :=
-  match c with
-    appcontext C [ ?f ] => 
-      let x := constr:(fun_elim (f:=f)) in
-        (let prf := eval simpl in x in
-          dependent_pattern c ; apply prf ; clear ; intros)
-  end.
-
 Lemma app'_nil : forall {A} (l : list A), l +++ [] = l.
 Proof. intros.
   funind (app' l []) applnil.

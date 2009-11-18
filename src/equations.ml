@@ -1446,9 +1446,10 @@ let simp_eqns l =
 			  (* simpl_star; Autorewrite.autorewrite tclIDTAC l; *)
 			  tclTRY (eauto_with_below l)])
 
-let simp_eqns_in id l =
-  tclREPEAT (tclTHENLIST [simpl_star; Autorewrite.autorewrite_in id tclIDTAC l;
-			  tclTRY (eauto_with_below l)])
+let simp_eqns_in clause l =
+  tclREPEAT (tclTHENLIST 
+		[simpl_star; Autorewrite.auto_multi_rewrite l clause;
+		 tclTRY (eauto_with_below l)])
 
 let autorewrites b = tclREPEAT (Autorewrite.autorewrite tclIDTAC [b])
 
@@ -2352,11 +2353,13 @@ let db_of_constr c = match kind_of_term c with
 
 let dbs_of_constrs = map db_of_constr
 
+open Extraargs
+
 TACTIC EXTEND simp
-| [ "simp" ne_preident_list(l) "in" hyp(id) ] -> [ simp_eqns_in id l ]
-| [ "simp" ne_preident_list(l) ] -> [ simp_eqns l ]
-| [ "simpc" constr_list(l) "in" hyp(id) ] -> [ simp_eqns_in id (dbs_of_constrs l) ]
-| [ "simpc" constr_list(l) ] -> [ simp_eqns (dbs_of_constrs l) ]
+| [ "simp" ne_preident_list(l) in_arg_hyp(c) ] -> 
+    [ simp_eqns_in (glob_in_arg_hyp_to_clause c) l ]
+| [ "simpc" constr_list(l) in_arg_hyp(c) ] -> 
+    [ simp_eqns_in (glob_in_arg_hyp_to_clause c) (dbs_of_constrs l) ]
 END
 
 let depcase (mind, i as ind) =
@@ -2638,7 +2641,7 @@ let sigmaize env sigma f =
   in
   let valsig args v = 
     mkApp ((Lazy.force coq_sigma).intro, 
-	  Array.append tyargs [| substl args make; v |])
+	  Array.append tyargs [| substl (rev args) make; v |])
   in indices, indexproj, valproj, valsig, tysig
     
 let mk_pack env sigma ty =

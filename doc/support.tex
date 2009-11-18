@@ -48,6 +48,10 @@ reasoning in a single rewrite.
 \subsection{Induction principle}
 
 The next step is to build the inductive graph of the function.
+Considering $\cst{f} : Π~Γ, \fcomp{f}~\bar{Γ}$, we want 
+to build an inductive relation $\find{f} : Π~Γ, \fcomp{f}~\bar{Γ} "->" \Prop$ that relates 
+arguments $\bar{Γ}$ to results $\fcomp{f}~\bar{Γ}$.
+
 We first define a function that finds the occurences of recursive calls
 in a right-hand side term and abstracts them by variables. This is easy
 to do given that all the recursive calls are labelled by the trivial 
@@ -64,8 +68,12 @@ to do given that all the recursive calls are labelled by the trivial
     We recursively compute the abstractions in \vec{t} giving us 
     a new context $Δ'$ and terms $\vec{t}'$.
     Our context is extended with a fresh declaration 
-    $\var{res} : \fcomp{f}~\vec{t}'$ and the term becomes
-    $\var{res}$.
+    $\var{res} := \cst{f}~\vec{t} : Π Δ, \fcomp{f}~\vec{t}'$ and 
+    the term becomes $\var{res}~\bar{Δ}$.
+
+  \item $λ \var{x} : τ, b$ :
+    Let the result of abstracting $b$ in an extended context 
+    $Δ, \var{x}~:~τ$ be $(Δ', b')$, we return $(Δ', λ \var{x} : τ, b')$.
 
   \item $f~e$ :
     We simply combine the results of abstracting $f$ and $e$ separately.
@@ -76,54 +84,146 @@ to do given that all the recursive calls are labelled by the trivial
     extended with $(\var{x}~\coloneqq~t')$. We combine the 
     resulting contexts and terms as expected.
 
-  \item $λ \var{x} : τ, b$ :
-    We do the abstractions in $b$ in an extended context 
-    $(\var{x}~:~τ)$ resulting in $Δ', b'$.
-    We build a new generalized context 
-    $(\var{res} : Π~\var{x} : τ, Δ')$
-    and recursively call the abstraction on $b$ in a context 
-    extended with.
-
+  \item Otherwise we return the empty context and the term unchanged.
   \end{itemize}
 \end{definition}
 
+Once we get the recursive calls abstracted, we will need to add
+induction hypotheses to the context.
+
+\def\IndHyps#1{\textsc{Hyps}(#1)}
+
+\begin{definition}[Induction hypotheses generation]
+  Given a context $Δ$ of results produced by the \absrec{f}{t} operator,
+  we define the induction hypotheses context by a simple map on $Δ$,
+  denoted $\IndHyps{Δ}$.
+  For each binding $\var{res} : Π~Δ, \fcomp{f}~\vec{t}$ we build a
+  new binding $\var{resind} : Π Δ, \find{f}~\vec{t}~(\var{res}~\bar{Δ})$.
+\end{definition}
+
+We are now ready to build the inductive graph.
+
 \begin{definition}[Inductive graph]
-  Considering $\cst{f} : Π~Γ, \fcomp{f}~\bar{Γ}$, we want 
-  to build an inductive relation 
-  $\find{f} : Π~Γ, \fcomp{f}~\bar{Γ} "->" \Prop$ that relates 
-  arguments $Γ$ to results $\fcomp{f}~\bar{Γ}$.
-  We compute the constructors of this relation by recursion on the
+  We compute the constructors of the $\find{f}$ relation by recursion on the
   splitting tree:
   
   \begin{itemize}
-  \item $\Split{c}{x}{s}$.
-    Again splitting nodes are basically ignored, we just collect the 
-    statements for the splitting $s$.
+  \item $\Split{c}{x}{s}$ :
+    Again splitting nodes are basically ignored, we just
+    collect the constructor statements for the splitting $s$.
 
-  \item $\Compute{c}{rhs}$.
+  \item $\Rec{v}{s}$ :
+    Recursion nodes are also ignored when we compute the inductive
+    graph, after all they just produce different ways to build
+    $\fcomp{f}$ objects. We just recurse on the splitting $s$.
+
+  \item $\Compute{c}{rhs}$ :
     By case on $rhs$:
     \begin{itemize}
-    \item $\Prog{t}$:
+    \item $\Prog{t}$ :
       We abstract the recursive calls of the term using the function
       \absrec{f}{t} which returns a context $ψ$ and a new term
-      $t'$. We add a constructor $Π~Δ~Ψ, \find{f}~\vec{p}~t'$ to
-      the \find{f} graph.
-    \item $\Empty{t}$: this case is impossible hence no constructor is
+      $t'$. We return the statement
+      \[Π~Δ~Ψ~\IndHyps{Ψ},~\find{f}~\vec{p}~t'\]
+      
+    \item $\Empty{t}$ : this case is impossible hence no constructor is
       needed.
     \item $\Refine{t}{Δ' \vdash \vec{\var{v}}^x, \var{x}, \vec{\var{v}}_x :
-        Δ^x, \var{x} : τ, Δ_x}{\cst{f'}}{s}$:
-      Similarly to the equation, we just have to do an indirection to the 
-      inductive graph of the auxiliary function:
-      $Π~Δ, Π~\var{res} : \fcomp{f'}~\bar{Δ},
-      \find{f'}~\vec{\var{v}}^x~t~\vec{\var{v}}_x~\var{res} "->"
-      \find{f}~\vec{p}~\var{res}$.
-      We continue with the generation of the \find{f'} inductive graph.
+        Δ^x, \var{x} : τ, Δ_x}{\cst{f'}}{s}$ :
+      As for the equation, we just have to do an indirection to the 
+      inductive graph of the auxiliary function, but we have to take
+      into account the recursive calls of the refined term too.
+      We compute $\absrec{f}{t} = (ψ, t')$ and return:
+
+      \begin{center}
+        $Π~Δ^x~Δ_x~Ψ~\IndHyps{Ψ}~(\var{res} :
+        \fcomp{f'}~\bar{Δ^x}~t'~\bar{Δ_x}) \newline
+        \quad~\quad\find{f'}~\vec{\var{v}}^x~t'~\vec{\var{v}}_x~\var{res} "->"
+        \find{f}~\vec{p}~\var{res}$
+      \end{center}
+      We continue with the generation of the \find{f'} graph.
     \end{itemize}  
   \end{itemize}
 \end{definition}
 
+The result of the inductive graph construction is hence a mutual
+inductive type $\vec{\find{f} : Π~Δ, \fcomp{f}~\bar{Δ}}$
+with one inductive definition per refinement node and one
+for the toplevel definition.
 
+We can now prove that the function (and its helpers) corresponds to this 
+graph by proving the following lemma:
 
+\begin{theorem}[Graph lemma]
+  We prove $Π~Δ,~\find{f}~\bar{Δ}~(\cst{f}~\bar{Δ})$ by following the 
+  splitting tree.
+  \begin{itemize}
+  \item $\Rec{c}{s}$ :
+    We replay recursion nodes, giving us new ways to prove $\find{f}$
+    that we will use to prove the goals corresponding to induction
+    hypotheses.
+
+  \item $\Split{c}{x}{s}$ :
+    Each split is simply replayed.
+
+  \item $\Compute{Δ \vdash \vec{p} : Γ}{rhs}$ :
+    At computation nodes our goal will necessarily be simplifiable 
+    by an equation because we replayed the whole splitting, i.e. it 
+    will have the form $Π~Δ,~\find{f}~\vec{p}~(\cst{f}~\vec{p})$.
+    By case on $rhs$:
+    \begin{itemize}
+    \item $\Prog{t}$ :
+      We rewrite with the equation for this node and apply one 
+      of the constructors for the graph. We will optionaly get 
+      subgoals for induction hypotheses here if $t$ had recursive
+      calls in it. They are solved by a proof search, in exactly the
+      same way as the proofs for the recursive calls were found.
+      
+    \item $\Empty{t}$ : this case has no constructor, we can call
+      \text{\cst{impossible\_call}} with the application
+      $\cst{f}~\vec{p}$ to discharge this goal.
+
+    \item $\Refine{t}{Δ' \vdash \vec{p'} : Γ'}{\cst{f'}}{s}$ :
+      Here we can rewrite with the indirection equation and 
+      apply the indirection constructor for the inductive
+      graph, then solve potential induction subgoals. 
+      We will be left with a subgoal for the \find{f'} graph mentioning
+      the refined term $t$. We must simply abstract this term by 
+      a fresh variable to obtain a goal of the form 
+      $Π~Δ', \find{f'}~\vec{p'}~(\cst{f'}~\vec{p'})$.
+      We can then recursively solve the proof for \cst{f'}.
+    \end{itemize}
+  \end{itemize}
+  \qed
+\end{theorem}
+
+\subsubsection{Deriving an eliminator}
+
+Once we have the proof of the graph lemma
+$Π~Δ,~\find{f}~\bar{Δ}~(\cst{f}~\bar{Δ})$,
+we can specialize the eliminator of $\find{f}$ which is of the form:
+$\begin{array}{l}
+  Π~(P : Π~Δ, \fcomp{f}~\bar{Δ} "->" \Prop), \\
+  (f : Π~Γ, \find{f}~\vec{t}~(\cst{f}~\vec{u}) "->"
+  P~\vec{t}~(\cst{f}~\vec{u}) "->" \cdots) \\
+  \vdots \\
+  Π~Δ~(r : \fcomp{f}~\bar{Δ}), \find{f}~\bar{Δ}~r "->" 
+  P~\bar{Δ}~r
+\end{array}$
+
+We want to eliminate not any $\fcomp{f}~\bar{Δ}$ object but specifically $\cst{f}$ calls.
+Using the graph lemma proof we can trivially specialize the conclusion to:
+\[Π~Δ, P~\bar{Δ}~(\cst{f}~\bar{Δ})\]
+
+We can also remove the unnecessary hypotheses of the form
+$\find{f}~\vec{t}~(\cst{f}~\vec{u})$ appearing in the methods, as
+they are all derivable from the graph lemma proof. The cleaned up
+eliminator applies directly to any goal depending on $\cst{f}$.
+
+This closes our presentation of the \Equations implementation. Having
+a concrete splitting tree representation gives us the ability to easily
+derive support code for the function definitions, and is one of the
+unexpected benefits of the external approach.
 
 %%% Local Variables: 
 %%% mode: latex

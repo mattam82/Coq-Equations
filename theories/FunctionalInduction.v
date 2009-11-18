@@ -42,7 +42,7 @@ Ltac funind c Hcall :=
            (* Now do dependent elimination and simplifications *)
            dependent induction prf ; simplify_IH_hyps ; 
            (* Use the simplifiers for the constant to get a nicer goal. *)
-           try simpc f ; try on_last_hyp ltac:(fun id => simpc f in id ; noconf id))
+           try simpc f in * ; try on_last_hyp ltac:(fun id => simpc f in id ; noconf id))
         || fail 1 "Internal error in funind"
   end || fail "Maybe you didn't declare the functional induction principle for" c.
 

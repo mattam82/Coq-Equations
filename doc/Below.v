@@ -54,7 +54,8 @@ vlast A ?(S n) (Vcons a ?(O) Vnil) := a ;
 vlast A ?(S n) (Vcons a ?(S n) v) := vlast v.
 
 (** Here we use recursion using [Below_nat] (hence the no structural recursion flag).
-   When we encounter a recursion user node [! v], we apply the recursor for the 
+   When we encounter a recursion user node [! v] (witnessed as $\Rec{v}{s}$ in 
+   the splitting tree), we apply the recursor for the 
    type of [v], after having properly generalized it. The recursion hypothesis 
    is hence of the form: [[
    Below_vector A (λ (n' : nat) (v' : vector A n') =>
@@ -64,9 +65,8 @@ vlast A ?(S n) (Vcons a ?(S n) v) := vlast v.
    When we use non-structural recursion, recursive calls are rewritten 
    as applications of a trivial generic projection operator for the
    function: [[
-
-   vlast_comp_proj : forall (A : Type) (n : nat) (v : vector A (S n)),
-   vlast_comp v -> vlast_comp v ]]
+   vlast_comp_proj : forall (A : Type) (n : nat) (v : vector A (S n))
+     {vcomp : vlast_comp v} -> vlast_comp v ]]
 
    The last argument of the projection is set to be a hole, to be filled by 
    a proof search procedure. Now when we typecheck a recursive call, 
@@ -75,20 +75,6 @@ vlast A ?(S n) (Vcons a ?(S n) v) := vlast v.
    specialization to find it.
 
    *)
-
 (* begin hide *)
-Check @vlast_comp.
-Check @vlast_comp_proj.
-  Next Obligation. 
-    Transparent vlast vlast_unfold.
-    unfold vlast, vlast_unfold.
-    Opaque vlast vlast_unfold.
-    autounfold with Below_recursors.
-    admit.
-    (* simpl_equations. depelim v; depelim v; simpl_equations. *)
-    (* reflexivity. *)
-    (* admit. *)
-  Defined.
-(* end hide *)
-
 Recursive Extraction vlast.
+(* end hide *)

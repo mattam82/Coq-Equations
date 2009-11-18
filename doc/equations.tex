@@ -45,20 +45,27 @@
 
 \def\teles#1{\ensuremath{Σ(#1)}}
 \def\bars#1#2{\ensuremath{\bar{Σ}(#1, #2)}}
-\def\fcompproj#1{\ensuremath{\cst{#1}_{comp\_proj}}} 
-\def\find#1{\ensuremath{\cst{#1}_{ind}}}
-\def\fcomp#1{\ensuremath{\cst{#1}_{comp}}}
-\def\absrec#1#2{\textsc{AbsRec}(#1,#2)}
+
+\def\fidx#1{\ensuremath{\mathsf{#1}}}
+\def\fcompproj#1{\ensuremath{\cst{#1}_{\cst{\fidx{comp\_proj}}}}}
+\def\find#1{\ensuremath{\cst{#1}_{\ind{\fidx{ind}}}}}
+\def\fcomp#1{\ensuremath{\cst{#1}_{\cst{\fidx{comp}}}}}
 
 \def\var{\coqdocvar}
 \def\cstr{\coqdocconstr}
 \def\cst{\coqdoccst}
 \def\ind{\coqdocind}
-\def\Split#1#2#3{\texttt{Split}(#1, #2, #3)}
-\def\Compute#1#2{\texttt{Compute}(#1, #2)}
-\def\Prog#1{\texttt{Program}(#1)}
-\def\Empty#1{\texttt{Empty}(#1)}
-\def\Refine#1#2#3#4{\texttt{Refine}(#1, #2, #3, #4)}
+
+\def\operator#1{\ensuremath{\mathsf{#1}}}
+\def\Split#1#2#3{\operator{Split}(#1, #2, #3)}
+\def\Compute#1#2{\operator{Compute}(#1, #2)}
+\def\Prog#1{\operator{Program}(#1)}
+\def\Empty#1{\operator{Empty}(#1)}
+\def\Refine#1#2#3#4{\operator{Refine}(#1, #2, #3, #4)}
+\def\Rec#1#2{\operator{Rec}(#1, #2)}
+\def\absrec#1#2{\ensuremath{\textsc{\textsf{AbsRec}}}(#1, #2)}
+
+\newcommand{\qed}{\hfill \ensuremath{\Box}}
 
 \def\eqrefl{\coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Init.Logic}{eqrefl}{\coqdocconstructor{eq\_refl}}}
 
