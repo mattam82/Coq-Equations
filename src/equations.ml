@@ -467,7 +467,7 @@ type splitting =
       Proof_type.validation * (goal * constr list * context_map * splitting) list
   | RecValid of identifier * splitting
   | Refined of context_map * (identifier * constr * types) * types * int *
-      existential_key * (constr * constr list) * context_map * types *
+      existential_key * (constr * constr list) * context_map * context_map * types *
       splitting
 
 and splitting_rhs = 
@@ -1209,7 +1209,7 @@ let rec covering_aux env evars data prev (clauses : clause list) (ctx,pats,ctx' 
 			  Some (Refined (prob, (idref, cconstr', cty'),
 					ty, refarg, evar,
 					(mkEvar (evar, [||]), strength_app),
-					newprob, newty, s))
+					revctx, newprob, newty, s))
 	    else 
 	      anomalylabstrm "covering"
 		(str "Found overlapping clauses:" ++ fnl () ++ pr_clauses env prevmatch ++
@@ -1283,7 +1283,7 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 	   
     | RecValid (id, rest) -> aux rest
 
-    | Refined ((ctx, _, _), (id, c, _), ty, rarg, ev, (f, args), newprob, newty, rest) ->
+    | Refined ((ctx, _, _), (id, c, _), ty, rarg, ev, (f, args), revctx, newprob, newty, rest) ->
 	let sterm, sty = aux rest in
 	let term, ty = 
 	  let term = mkLetIn (Name (id_of_string "prog"), sterm, sty, lift 1 sty) in
@@ -1394,7 +1394,7 @@ let array_remove_last a =
 let array_chop_last a =
   array_chop (Array.length a - 1) a
 
-let abstract_rec_calls is_rec len protos c =
+let abstract_rec_calls ?(do_subst=true) is_rec len protos c =
   let lenprotos = length protos in
   let proto_fs = map (fun (f, _, _, _) -> f) protos in
   let find_rec_call f =
@@ -1460,7 +1460,7 @@ let abstract_rec_calls is_rec len protos c =
 	let case' = mkCase (ci, lift lenctx' p, c', Array.map (lift lenctx') br) in
 	  ctx', lenctx', substnl proto_fs (succ len + lenctx') case'
 
-    | _ -> [], 0, substnl proto_fs (len + n) c
+    | _ -> [], 0, if do_subst then (substnl proto_fs (len + n) c) else c
   in aux 0 c
 
 let below_transparent_state () =
@@ -1525,7 +1525,7 @@ let rec aux_ind_fun info = function
       
   | RecValid (id, cs) -> aux_ind_fun info cs
       
-  | Refined ((ctx, _, _), (id, c, ty), _, _, _, _, newprob, newty, s) -> 
+  | Refined ((ctx, _, _), (id, c, ty), _, _, _, _, _, newprob, newty, s) -> 
       let elimtac gl =
 	match kind_of_term (pf_concl gl) with
 	| App (ind, args) ->
@@ -1591,9 +1591,9 @@ let map_split f split =
     | RecValid (id, c) -> RecValid (id, aux c)
     | Valid (lhs, y, z, w, u, cs) ->
 	Valid (lhs, y, z, w, u, List.map (fun (gl, cl, subst, s) -> (gl, cl, subst, aux s)) cs)
-    | Refined (lhs, (id, c, cty), ty, arg, ev, (scf, scargs), newprob, newty, s) -> 
+    | Refined (lhs, (id, c, cty), ty, arg, ev, (scf, scargs), revctx, newprob, newty, s) -> 
 	Refined (lhs, (id, f c, f cty), ty, arg, ev,
-		(f scf, List.map f scargs), newprob, newty, aux s)
+		(f scf, List.map f scargs), revctx, newprob, newty, aux s)
     | Compute (_, _, REmpty _) as c -> c
   in aux split
 
@@ -1621,8 +1621,9 @@ let subst_rec_split f prob s split =
     | RecValid (id, c) ->
 	RecValid (id, aux cutprob s c)
 	  
-    | Refined (lhs, (id, constr, cty), ty, arg, ev, (fev, args), newprob, newty, sp) -> 
+    | Refined (lhs, (id, constr, cty), ty, arg, ev, (fev, args), revctx, newprob, newty, sp) -> 
 	let subst, lhs' = subst_rec cutprob s lhs in
+        let _, revctx' = subst_rec (id_subst (pi3 revctx)) s revctx in
 	let cutnewprob = 
 	  let (ctx, pats, ctx') = newprob in
 	    (ctx, list_drop_last pats, list_drop_last ctx')
@@ -1634,7 +1635,9 @@ let subst_rec_split f prob s split =
 	    map (mapping_constr subst) args)
 	in
 	  Refined (lhs', (id, mapping_constr subst constr, mapping_constr subst cty),
-		  mapping_constr subst ty, arg - List.length s, ev, sc', newprob', mapping_constr subst' newty, 
+		  mapping_constr subst ty, arg - List.length s, ev, sc', 
+		  revctx',
+		  newprob', mapping_constr subst' newty, 
 		  aux cutnewprob s sp)
 
     | Valid (lhs, x, y, w, u, cs) -> 
@@ -1676,10 +1679,15 @@ let clear_ind_assums ind ctx =
     | _ -> c
   in map_rel_context clear_assums ctx
 
-let ind_elim_tac indid funindprf = 
-  tclTHENLIST [intros; apply indid; 
-	       tclTRY (Class_tactics.typeclasses_eauto []);
-	       apply funindprf]
+let ind_elim_tac indid inds info = 
+  let applyind gl =
+    let hyps = pf_hyps gl in
+    let last_hyps = list_lastn inds hyps in
+    let app = applistc indid (rev_map (fun decl -> mkVar (pi1 decl)) last_hyps) in
+      apply app gl
+  in
+    tclTHENLIST [intros; applyind;
+		 Class_tactics.typeclasses_eauto [info.base_id]]
 
 let declare_constant id body ty kind =
   let ce =
@@ -1712,11 +1720,12 @@ let build_equations with_ind env id info data sign is_rec arity cst
 
     | RecValid (id, cs) -> computations prob f cs
 	
-    | Refined (lhs, (id, c, t), ty, arg, ev, (f', args), newprob, newty, cs) ->
+    | Refined (lhs, (id, c, t), ty, arg, ev, (f', args), revctx, newprob, newty, cs) ->
 	let (ctx', pats', _) = compose_subst lhs prob in
 	let patsconstrs = rev_map pat_constr pats' in
 	  [ctx', patsconstrs, ty, f, RProgram (applist (f', args)),
 	  Some (f', pi1 newprob, newty,
+	       map (mapping_constr revctx) patsconstrs, [mapping_constr revctx c],
 	       computations newprob f' cs)]
 	    
     | Valid ((ctx,pats,del), _, _, _, _, cs) -> 
@@ -1727,9 +1736,9 @@ let build_equations with_ind env id info data sign is_rec arity cst
   let rec flatten_comp (ctx, pats, ty, f, c, rest) =
     let rest = match rest with
       | None -> []
-      | Some (f, ctx, ty, rest) ->
+      | Some (f, ctx, ty, pats, newargs, rest) ->
 	  let nextlevel, rest = flatten_comps rest in
-	    ((f, ctx, ty), nextlevel) :: rest
+	    ((f, ctx, ty, pats, newargs), nextlevel) :: rest
     in (ctx, pats, ty, f, c), rest
   and flatten_comps r =
     fold_right (fun cmp (acc, rest) -> 
@@ -1738,12 +1747,12 @@ let build_equations with_ind env id info data sign is_rec arity cst
   in
   let comps =
     let (top, rest) = flatten_comps comps in
-      ((f, sign, arity), top) :: rest
+      ((f, sign, arity, rev_map pat_constr (pi2 prob), []), top) :: rest
   in
   let protos = map fst comps in
   let lenprotos = length protos in
   let protos = 
-    list_map_i (fun i (f', sign, arity) -> 
+    list_map_i (fun i (f', sign, arity, pats, args) -> 
       (f', (if f' = f then Option.map pi1 alias else None), lenprotos - i, arity))
       1 protos
   in
@@ -1771,18 +1780,18 @@ let build_equations with_ind env id info data sign is_rec arity cst
       | REmpty i -> None
     in (body, cstr)
   in
-  let statements i ((f', sign, arity as fs), c) = 
+  let statements i ((f', sign, arity, pats, args as fs), c) = 
     let fs, unftac = 
       if f' = f then 
 	match alias with
 	| Some (f', unf, split) -> 
-	    (f', sign, arity), Equality.rewriteLR unf
+	    (f', sign, arity, pats, args), Equality.rewriteLR unf
 	| None -> fs, tclIDTAC
       else fs, tclIDTAC
-    in fs, unftac, map (statement i (pi1 fs)) c in
+    in fs, unftac, map (statement i f') c in
   let stmts = list_map_i statements 0 comps in
   let all_stmts = list_map_i (fun i (f, unf, c) -> i, f, unf, list_map_i (fun j x -> j, x) 1 c) 0 stmts in
-  let declare_one_ind (i, (f, sign, arity), unf, stmts) = 
+  let declare_one_ind (i, (f, sign, arity, pats, refs), unf, stmts) = 
     let indid = add_suffix id (if i = 0 then "_ind" else ("_ind_" ^ string_of_int i)) in
     let constructors = list_map_filter (fun (_, (_, n)) -> n) stmts in
     let consnames = list_map_filter (fun (i, (_, n)) -> 
@@ -1817,14 +1826,68 @@ let build_equations with_ind env id info data sign is_rec arity cst
     let hookind _ gr = 
       let env = Global.env () in (* refresh *)
       let cgr = constr_of_global gr in
+      Auto.add_hints false [info.base_id] (Auto.HintsImmediateEntry [cgr]);
       let _funind_stmt =
-	let elimid = add_suffix id "_ind_ind" in
-	let elim = Smartlocate.global_with_alias (reference_of_id elimid) in
+	let leninds = List.length inds in
+	let elim =
+	  if leninds > 1 then
+	    (Indschemes.do_mutual_induction_scheme
+		(list_map_i (fun i ind ->
+		  let id = (dummy_loc, add_suffix ind.mind_entry_typename "_mut") in
+		    (id, false, (k, i), RProp Null)) 0 inds);
+	     let elimid = 
+	       add_suffix (List.hd inds).mind_entry_typename "_mut"
+	     in Smartlocate.global_with_alias (reference_of_id elimid))
+	  else 
+	    let elimid = add_suffix id "_ind_ind" in
+	      Smartlocate.global_with_alias (reference_of_id elimid) 
+	in
 	let elimty = Global.type_of_global elim in
 	let ctx, arity = decompose_prod_assum elimty in
 	let newctx = list_skipn 2 ctx in
 	let newarity = substl [mkProp; app] arity in
 	let newctx' = clear_ind_assums ind newctx in
+	let newctx' =
+	  if leninds = 1 then newctx'
+	  else
+	    let methods, preds = list_chop (List.length newctx - leninds) newctx' in
+	    let ppred, preds = list_sep_last preds in
+	    let newpreds =
+	      list_map2_i (fun i (n, b, t) (_, (f', sign, arity, pats, args), _, _) ->
+		let signlen = List.length sign in
+		let ctx = (Anonymous, None, arity) :: sign in
+		let app = 
+		  let papp =
+		    applistc (lift (succ signlen) (mkRel 1) (* The preceding P *)) 
+		      ((map (lift (List.length args + 1)) pats) @ [mkRel 1])
+		  in
+		  let refeqs =
+		    list_map_i (fun i c -> 
+		      let ty = lift (i + 2) (pi3 (List.nth sign i)) in
+			mkEq ty (lift 2 c) (mkRel (i + 2)))
+		      0 args
+		  in
+		  let app = fold_right
+		    (fun c acc ->
+		      mkProd (Anonymous, c, lift 1 acc))
+		    refeqs papp
+		  in
+		  let indhyps =
+		    concat 
+		      (map (fun c ->
+			let hyps, hypslen, c' = 
+			  abstract_rec_calls ~do_subst:false
+			    is_rec signlen protos (nf_beta Evd.empty (lift 2 c)) 
+			in hyps) args)
+		  in
+		    it_mkLambda_or_LetIn
+		      (it_mkProd_or_LetIn (lift (length indhyps) app) indhyps)
+		      ctx
+		in
+		let ty = it_mkProd_or_LetIn mkProp ctx in
+		  (n, Some app, ty)) 1 preds (rev (List.tl all_stmts))
+	    in methods @ newpreds @ [ppred]
+	in
 	let hookelim _ elimgr =
 	  let env = Global.env () in
 	  let elimcgr = constr_of_global elimgr in
@@ -1836,7 +1899,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	    declare_instance instid [] cl args 
 	in
 	  Subtac_obligations.add_definition (add_suffix id "_elim")
-	    ~tactic:(ind_elim_tac (constr_of_global elim) cgr)
+	    ~tactic:(ind_elim_tac (constr_of_global elim) leninds info)
 	    ~hook:hookelim
 	    (it_mkProd_or_LetIn newarity newctx') [||]
       in
@@ -1845,7 +1908,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 		  Typing.type_of env Evd.empty cgr; cgr]
       in
       let instid = add_prefix "FunctionalInduction_" id in
-	declare_instance instid [] cl args 
+	declare_instance instid [] cl args;
     in
       try ignore(Subtac_obligations.add_definition ~hook:hookind
 		    indid statement ~tactic:(ind_fun_tac is_rec f info id split ind) [||])
@@ -1964,7 +2027,7 @@ let prove_unfolding_lemma info sign proj f_cst funf_cst split gl =
     | RecValid (id, cs) -> 
 	tclTHEN simpltac (aux cs)
 	
-    | Refined ((ctx, _, _), (id, c, ty), _, arg, ev, _, newprob, newty, s) -> 
+    | Refined ((ctx, _, _), (id, c, ty), _, arg, ev, _, _, newprob, newty, s) -> 
 	let reftac gl = 
 	  match kind_of_term (pf_concl gl) with
 	  | App (f, [| ty; term1; term2 |]) ->
