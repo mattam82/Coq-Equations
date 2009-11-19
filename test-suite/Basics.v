@@ -1,8 +1,5 @@
 Require Import Program Equations Bvector List.
 Require Import Relations.
-Equations vlast' {A} {n} (v : vector A (S n)) : A :=
-vlast' A ?(0) (Vcons a O Vnil) := a ;
-vlast' A ?(S n) (Vcons a (S n) v) := vlast' v.
 
 Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
 K A x P p eq_refl := p.
