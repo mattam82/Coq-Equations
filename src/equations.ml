@@ -992,10 +992,10 @@ let variables_of_pats pats =
       match p with
       | PRel i -> (i, false) :: acc
       | PCstr (c, ps) -> aux [] (rev ps) @ acc
-      | PInac _ -> acc
+      | PInac c -> acc
       | PHide i -> (i, true) :: acc)
       pats acc
-  in aux [] pats
+  in List.sort (fun (i, _) (i', _) -> i - i') (aux [] pats)
 
 let pats_of_variables = map (fun (i, hide) ->
   if hide then PHide i else PRel i)
