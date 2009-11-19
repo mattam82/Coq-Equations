@@ -58,8 +58,6 @@ nos_with (S m) <= nos_with m => {
   nos_with (S m) O := S O ;
   nos_with (S m) (S n') := O }.
 
-Scheme nos_with_unfold_mut := Minimality for nos_with_ind Sort Prop
-  with nos_with_unfold_h_mut := Minimality for nos_with_ind_1 Sort Prop.
 Hint Unfold noConfusion_nat : equations.
 
 Equations (nostruct) split {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
@@ -106,9 +104,7 @@ neg true := false ;
 neg false := true.
 
 Lemma neg_inv : forall b, neg (neg b) = b.
-Proof. intros b.
-  elim (neg_ind_fun b) ; auto.
-Qed.
+Proof. intros b. funelim (neg b); auto. Qed.
 
 Equations head A (default : A) (l : list A) : A :=
 head A default nil := default ;
@@ -140,10 +136,9 @@ Proof. intros.
 Qed.
 
 Lemma app'_assoc : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l (app' l' l'').
-Proof. intros. Opaque app'. revert l''. 
-  dependent pattern (l +++ l').
-  pose (fun_elim (f:=@app')). simpl in f. apply f; clear ; intros.
-  simp app'. simp app'. rewrite H. reflexivity.
+Proof. intros. Opaque app'. revert l''.
+  funelim (l +++ l'); simp app'.
+  rewrite x. reflexivity.
 Qed.
 
 Lemma app'_funind : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l (app' l' l'').
@@ -154,8 +149,8 @@ Qed.
 Hint Rewrite @app'_nil @app'_assoc : app'.
 
 Lemma rev_app' : forall {A} (l l' : list A), rev (l +++ l') = rev l' +++ rev l.
-Proof. intros. funind (l +++ l') l'l.
-  simp rev. rewrite IHapp'_ind. rewrite <- app'_assoc. reflexivity. 
+Proof. intros. funelim (l +++ l').
+  simp rev app'. simp rev app'. rewrite x, <- app'_assoc. reflexivity. 
 Qed.
 
 (* Eval compute in @app'. *)
@@ -164,9 +159,9 @@ Lemma split_vapp' : Π (X : Type) m n (v : vector X m) (w : vector X n),
   let 'append v' w' := split (vapp' v w) in
     v = v' /\ w = w'.
 Proof.
-  intros. funind (vapp' v w) vw; simp split. intuition.
-  destruct (split (vapp' v w)).
-  simp split.
+  intros.
+  funelim (vapp' v w); simp split. intuition.
+  destruct (split (vapp' v w)); simp split.
   intuition congruence.
 Qed.
 
@@ -190,11 +185,11 @@ split_struct X O    n xs := append Vnil xs ;
 split_struct X (S m) n (Vcons x ?(S m + n) xs) <= split_struct xs => {
   split_struct X (S m) n (Vcons x ?(S m + n) xs) (append xs' ys') := append (Vcons x xs') ys' }.
 
-Lemma split_struct_vapp : Π (X : Set) m n (v : vector X m) (w : vector X n),
+Lemma split_struct_vapp : Π (X : Type) m n (v : vector X m) (w : vector X n),
   let 'append v' w' := split_struct (vapp' v w) in
     v = v' /\ w = w'.
 Proof.
-  intros. funind (vapp' v w) vw; simp split_struct. intuition.
+  intros. funelim (vapp' v w); simp split_struct. intuition.
   destruct (split_struct (vapp' v w)).
   simp split_struct.
   intuition congruence.
@@ -311,7 +306,7 @@ Proof. intros until y. simplify_dep_elim. reflexivity. Qed.
 Equations mult (n m : nat) : nat :=
 mult O m := 0 ; mult (S n) m := mult n m + m.
 
-Print mult. Transparent mult. Eval compute in mult.
+Transparent mult.
 
 (* Equations mult' (n m acc : nat) : nat := *)
 (* mult' O m acc := acc ; mult' (S n) m acc := mult' n m (n + acc). *)
@@ -366,5 +361,24 @@ Definition transpose {A m n} : mat A m n -> mat A n m :=
 (*   (e : vector (vector A 0) n) v : vfold_right f (vmake n Vnil) v =  *)
 (* Typeclasses eauto :=. *)
 
-Ltac funind_call f H :=
-  on_call f ltac:(fun call => funind call H).
+Require Import Fin.
+
+Generalizable All Variables.
+
+Opaque vmap. Opaque vtail. Opaque nth.
+
+Lemma nth_vmap `(v : vector A n) `(fn : A -> B) (f : fin n) : nth (vmap fn v) f = fn (nth v f).
+Proof. intros. revert B fn. funelim (nth v f); simp nth vmap. Qed.
+
+Lemma nth_vtail `(v : vector A (S n)) (f : fin n) : nth (vtail v) f = nth v (fs f).
+Proof. intros until v. funelim (vtail v); simp nth. Qed.
+
+Hint Rewrite @nth_vmap @nth_vtail : nth.
+  
+Lemma diag_nth `(v : vector (vector A n) n) (f : fin n) : nth (diag v) f = nth (nth v f) f.
+Proof. 
+  intros. revert f. funelim (diag v). 
+    depelim f.
+
+    depelim f; simp nth. rewrite x. simp nth.
+Qed.

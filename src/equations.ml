@@ -1781,13 +1781,13 @@ let build_equations with_ind env id info data sign is_rec arity cst
     in (body, cstr)
   in
   let statements i ((f', sign, arity, pats, args as fs), c) = 
-    let fs, unftac = 
+    let fs, f', unftac = 
       if f' = f then 
 	match alias with
 	| Some (f', unf, split) -> 
-	    (f', sign, arity, pats, args), Equality.rewriteLR unf
-	| None -> fs, tclIDTAC
-      else fs, tclIDTAC
+	    (f', sign, arity, pats, args), f', Equality.rewriteLR unf
+	| None -> fs, f', tclIDTAC
+      else fs, f', tclIDTAC
     in fs, unftac, map (statement i f') c in
   let stmts = list_map_i statements 0 comps in
   let all_stmts = list_map_i (fun i (f, unf, c) -> i, f, unf, list_map_i (fun j x -> j, x) 1 c) 0 stmts in
@@ -1856,20 +1856,33 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	      list_map2_i (fun i (n, b, t) (_, (f', sign, arity, pats, args), _, _) ->
 		let signlen = List.length sign in
 		let ctx = (Anonymous, None, arity) :: sign in
-		let app = 
-		  let papp =
-		    applistc (lift (succ signlen) (mkRel 1) (* The preceding P *)) 
-		      ((map (lift (List.length args + 1)) pats) @ [mkRel 1])
-		  in
-		  let refeqs =
+		let app =
+		  let argsinfo =
 		    list_map_i (fun i c -> 
 		      let ty = lift (i + 2) (pi3 (List.nth sign i)) in
-			mkEq ty (lift 2 c) (mkRel (i + 2)))
+			(succ i, ty, lift 2 c, mkRel (i + 2)))
 		      0 args
 		  in
+		  let lenargs = length argsinfo in
+		  let cast_obj, _ = 
+		    fold_left (fun (acc, pred) (i, ty, c, rel) -> 
+		      let app = 
+			mkApp (global_reference (id_of_string "eq_rect_r"),
+			      [| lift lenargs ty; lift lenargs rel;
+				 mkLambda (Name (id_of_string "refine"), lift lenargs ty, pred); 
+				 acc; (lift lenargs c); mkRel i |])
+		      in (app, subst1 c pred)) (mkRel (succ lenargs), 
+					       (liftn (succ (lenargs * 2)) (succ lenargs) arity))
+		      argsinfo
+		  in
+		  let papp =
+		    applistc (lift (succ signlen + lenargs) (mkRel 1) (* The preceding P *)) 
+		      ((map (lift (lenargs * 2 + 1)) pats) @ [cast_obj])
+		  in
+		  let refeqs = map (fun (i, ty, c, rel) -> lift (lenargs - i) (mkEq ty c rel)) argsinfo in
 		  let app = fold_right
 		    (fun c acc ->
-		      mkProd (Anonymous, c, lift 1 acc))
+		      mkProd (Name (id_of_string "Heq"), c, acc))
 		    refeqs papp
 		  in
 		  let indhyps =
@@ -1898,6 +1911,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	  let instid = add_prefix "FunctionalElimination_" id in
 	    declare_instance instid [] cl args 
 	in
+	  (* Conv_oracle.set_strategy (ConstKey cst) Conv_oracle.Expand; *)
 	  Subtac_obligations.add_definition (add_suffix id "_elim")
 	    ~tactic:(ind_elim_tac (constr_of_global elim) leninds info)
 	    ~hook:hookelim
@@ -3173,6 +3187,7 @@ END
 
 let pattern_call ?(pattern_term=true) c gl =
   let cty = pf_type_of gl c in
+  let ids = ids_of_named_context (pf_hyps gl) in
   let deps =
     match kind_of_term c with
     | App (f, args) -> Array.to_list args
@@ -3180,7 +3195,8 @@ let pattern_call ?(pattern_term=true) c gl =
   in
   let varname c = match kind_of_term c with
     | Var id -> id
-    | _ -> id_of_string (Namegen.hdchar (pf_env gl) c)
+    | _ -> Namegen.next_ident_away (id_of_string (Namegen.hdchar (pf_env gl) c))
+	ids
   in
   let mklambda ty (c, id, cty) =
     let conclvar = subst_term_occ all_occurrences c ty in

@@ -17,13 +17,6 @@ Require Import Equations.DepElim.
 Class FunctionalInduction {A : Type} (f : A) :=
   { fun_ind_prf_ty : Prop; fun_ind_prf : fun_ind_prf_ty }.
 
-(** The [FunctionalElimination f] class declares elimination principles produced
-   from the functional induction principle for [f] to be used directly to eliminate
-   a call to [f]. *)
-
-Class FunctionalElimination {A : Type} (f : A) :=
-  { fun_elim_ty : Prop; fun_elim : fun_elim_ty }.
-
 (** The tactic [funind c Hc] applies functional induction on the application 
    [c] which must be of the form [f args] where [f] has a [FunctionalInduction]
    instance. [Hc] is the name given to the call, used to generate hypothesis names. *)
@@ -46,13 +39,23 @@ Ltac funind c Hcall :=
         || fail 1 "Internal error in funind"
   end || fail "Maybe you didn't declare the functional induction principle for" c.
 
-(* Ltac funind c :=  *)
-(*   match c with *)
-(*     appcontext C [ ?f ] =>  *)
-(*       let x := constr:(fun_ind_prf (f:=f)) in *)
-(*       let prf := eval simpl in x in *)
-(*       let p := context C [ prf ] in *)
-(*       let prf := fresh in *)
-(*         assert(prf:=p); dependent induction prf  ; simpl ;  *)
-(*           simplify_equations f ; simplify_IH_hyps *)
-(*   end || fail "Maybe you didn't declare the functional induction principle for" c. *)
+Ltac funind_call f H :=
+  on_call f ltac:(fun call => funind call H).
+
+(** The [FunctionalElimination f] class declares elimination principles produced
+   from the functional induction principle for [f] to be used directly to eliminate
+   a call to [f]. This is the preferred method of proving results about a function. 
+   NOTE: the arguments of the call should all be variables to ensure the goal is 
+   not weakened (no dependent elimination yet).
+   *)
+
+Class FunctionalElimination {A : Type} (f : A) :=
+  { fun_elim_ty : Prop; fun_elim : fun_elim_ty }.
+
+Ltac funelim c :=
+  match c with
+    | appcontext C [ ?f ] =>
+      let elim := constr:(fun_elim (f:=f)) in
+        pattern_call c ; apply elim ; clear ; simplify_dep_elim;
+          simplify_IH_hyps
+  end.
