@@ -1672,10 +1672,15 @@ let clear_ind_assums ind ctx =
     match kind_of_term c with
     | Prod (na, b, c) ->
 	let t, _ = decompose_app b in
-	  if eq_constr t ind then (
-	    assert(not (dependent (mkRel 1) c));
-	    clear_assums (subst1 mkProp c))
+	  if isInd t then
+	    let ind', _ = destInd t in
+	      if ind' = ind then (
+		assert(not (dependent (mkRel 1) c));
+		clear_assums (subst1 mkProp c))
+	      else mkProd (na, b, clear_assums c)
 	  else mkProd (na, b, clear_assums c)
+    | LetIn (na, b, t, c) ->
+	mkLetIn (na, b, t, clear_assums c)
     | _ -> c
   in map_rel_context clear_assums ctx
 
@@ -1683,11 +1688,14 @@ let ind_elim_tac indid inds info =
   let applyind gl =
     let hyps = pf_hyps gl in
     let last_hyps = list_lastn inds hyps in
+    let substhyps = Equality.subst 
+      (list_map_filter (fun (id, b, t) -> Option.map (fun _ -> id) b) last_hyps)
+    in
     let app = applistc indid (rev_map (fun decl -> mkVar (pi1 decl)) last_hyps) in
-      apply app gl
+      tclTHEN (apply app) substhyps gl
   in
-    tclTHENLIST [intros; applyind;
-		 Class_tactics.typeclasses_eauto [info.base_id]]
+    tclTHENLIST [intros; applyind; simpl_star;
+		 Class_tactics.typeclasses_eauto [info.base_id; "funelim"]]
 
 let declare_constant id body ty kind =
   let ce =
@@ -1712,7 +1720,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	let (ctx', pats', _) = compose_subst lhs prob in
 	let c' = map_rhs (nf_beta Evd.empty) (fun x -> x) c in
 	let patsconstrs = rev_map pat_constr pats' in
-	  [ctx', patsconstrs, ty, f, c', None]
+	  [ctx', patsconstrs, ty, f, false, c', None]
 	    
     | Split (_, _, _, cs) -> Array.fold_left (fun acc c ->
 	match c with None -> acc | Some c -> 
@@ -1723,7 +1731,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
     | Refined (lhs, (id, c, t), ty, arg, ev, (f', args), revctx, newprob, newty, cs) ->
 	let (ctx', pats', _) = compose_subst lhs prob in
 	let patsconstrs = rev_map pat_constr pats' in
-	  [ctx', patsconstrs, ty, f, RProgram (applist (f', args)),
+	  [ctx', patsconstrs, ty, f, true, RProgram (applist (f', args)),
 	  Some (f', pi1 newprob, newty,
 	       map (mapping_constr revctx) patsconstrs, [mapping_constr revctx c],
 	       computations newprob f' cs)]
@@ -1733,13 +1741,13 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	  acc @ computations (compose_subst subst prob) f c) [] cs
   in
   let comps = computations prob f split in
-  let rec flatten_comp (ctx, pats, ty, f, c, rest) =
+  let rec flatten_comp (ctx, pats, ty, f, refine, c, rest) =
     let rest = match rest with
       | None -> []
       | Some (f, ctx, ty, pats, newargs, rest) ->
 	  let nextlevel, rest = flatten_comps rest in
 	    ((f, ctx, ty, pats, newargs), nextlevel) :: rest
-    in (ctx, pats, ty, f, c), rest
+    in (ctx, pats, ty, f, refine, c), rest
   and flatten_comps r =
     fold_right (fun cmp (acc, rest) -> 
       let stmt, rest' = flatten_comp cmp in
@@ -1756,7 +1764,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
       (f', (if f' = f then Option.map pi1 alias else None), lenprotos - i, arity))
       1 protos
   in
-  let rec statement i f (ctx, pats, ty, f', c) =
+  let rec statement i f (ctx, pats, ty, f', refine, c) =
     let comp = applistc f pats in
     let body =
       let b = match c with
@@ -1778,7 +1786,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 			     (lift_constrs hypslen pats @ [c']))
 			 hyps) ctx)
       | REmpty i -> None
-    in (body, cstr)
+    in (refine, body, cstr)
   in
   let statements i ((f', sign, arity, pats, args as fs), c) = 
     let fs, f', unftac = 
@@ -1790,12 +1798,15 @@ let build_equations with_ind env id info data sign is_rec arity cst
       else fs, f', tclIDTAC
     in fs, unftac, map (statement i f') c in
   let stmts = list_map_i statements 0 comps in
-  let all_stmts = list_map_i (fun i (f, unf, c) -> i, f, unf, list_map_i (fun j x -> j, x) 1 c) 0 stmts in
+  let ind_stmts = list_map_i (fun i (f, unf, c) -> i, f, unf, list_map_i (fun j x -> j, x) 1 c) 0 stmts in
+  let all_stmts = concat (map (fun (f, unf, c) -> c) stmts) in 
   let declare_one_ind (i, (f, sign, arity, pats, refs), unf, stmts) = 
     let indid = add_suffix id (if i = 0 then "_ind" else ("_ind_" ^ string_of_int i)) in
-    let constructors = list_map_filter (fun (_, (_, n)) -> n) stmts in
-    let consnames = list_map_filter (fun (i, (_, n)) -> 
-      Option.map (fun _ -> add_suffix indid ("_equation_" ^ string_of_int i)) n) stmts
+    let constructors = list_map_filter (fun (_, (_, _, n)) -> n) stmts in
+    let consnames = list_map_filter (fun (i, (r, _, n)) -> 
+      Option.map (fun _ -> 
+	let suff = (if r then "_equation_" else "_refinement_") ^ string_of_int i in
+	  add_suffix indid suff) n) stmts
     in
       { mind_entry_typename = indid;
 	mind_entry_arity = it_mkProd_or_LetIn (mkProd (Anonymous, arity, mkProp)) sign;
@@ -1803,7 +1814,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	mind_entry_lc = constructors }
   in
   let declare_ind () =
-    let inds = map declare_one_ind all_stmts in
+    let inds = map declare_one_ind ind_stmts in
     let inductive =
       { mind_entry_record = false;
 	mind_entry_finite = true;
@@ -1844,11 +1855,11 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	in
 	let elimty = Global.type_of_global elim in
 	let ctx, arity = decompose_prod_assum elimty in
-	let newctx = list_skipn 2 ctx in
-	let newarity = substl [mkProp; app] arity in
-	let newctx' = clear_ind_assums ind newctx in
-	let newctx' =
-	  if leninds = 1 then newctx'
+	let newctx = list_skipn (length sign + 2) ctx in
+	let newarity = it_mkProd_or_LetIn (substl [mkProp; app] arity) sign in
+	let newctx' = clear_ind_assums k newctx in
+	let newty =
+	  if leninds = 1 then it_mkProd_or_LetIn newarity newctx'
 	  else
 	    let methods, preds = list_chop (List.length newctx - leninds) newctx' in
 	    let ppred, preds = list_sep_last preds in
@@ -1866,13 +1877,16 @@ let build_equations with_ind env id info data sign is_rec arity cst
 		  let lenargs = length argsinfo in
 		  let cast_obj, _ = 
 		    fold_left (fun (acc, pred) (i, ty, c, rel) -> 
-		      let app = 
-			mkApp (global_reference (id_of_string "eq_rect_r"),
-			      [| lift lenargs ty; lift lenargs rel;
-				 mkLambda (Name (id_of_string "refine"), lift lenargs ty, pred); 
-				 acc; (lift lenargs c); mkRel i |])
-		      in (app, subst1 c pred)) (mkRel (succ lenargs), 
-					       (liftn (succ (lenargs * 2)) (succ lenargs) arity))
+		      if dependent (mkRel 1) pred then
+			let app = 
+			  mkApp (global_reference (id_of_string "eq_rect_r"),
+				[| lift lenargs ty; lift lenargs rel;
+				   mkLambda (Name (id_of_string "refine"), lift lenargs ty, pred); 
+				   acc; (lift lenargs c); mkRel i |])
+			in (app, subst1 c pred)
+		      else (acc, subst1 c pred))
+		      (mkRel (succ lenargs), 
+		      (liftn (succ (lenargs * 2)) (succ lenargs) arity))
 		      argsinfo
 		  in
 		  let papp =
@@ -1894,12 +1908,26 @@ let build_equations with_ind env id info data sign is_rec arity cst
 			in hyps) args)
 		  in
 		    it_mkLambda_or_LetIn
-		      (it_mkProd_or_LetIn (lift (length indhyps) app) indhyps)
+		      (it_mkProd_or_subst (lift (length indhyps) app) indhyps)
 		      ctx
 		in
 		let ty = it_mkProd_or_LetIn mkProp ctx in
-		  (n, Some app, ty)) 1 preds (rev (List.tl all_stmts))
-	    in methods @ newpreds @ [ppred]
+		  (n, Some app, ty)) 1 preds (rev (List.tl ind_stmts))
+	    in
+	    let skipped, methods' = (* Skip the indirection methods due to refinements, 
+			      as they are trivially provable *)
+	      let rec aux stmts meths n meths' = 
+		match stmts, meths with
+		| (true, _, _) :: stmts, decl :: decls ->
+		    aux stmts (subst_telescope mkProp decls) (succ n) meths'
+		| (false, _, _) :: stmts, decl :: decls ->
+		    aux stmts decls n (decl :: meths')
+		| [], [] -> n, meths'
+		| _, _ -> assert false
+	      in aux all_stmts (rev methods) 0 []
+	    in
+	      it_mkProd_or_LetIn (lift (-skipped) newarity)
+		(methods' @ newpreds @ [ppred])
 	in
 	let hookelim _ elimgr =
 	  let env = Global.env () in
@@ -1914,8 +1942,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	  (* Conv_oracle.set_strategy (ConstKey cst) Conv_oracle.Expand; *)
 	  Subtac_obligations.add_definition (add_suffix id "_elim")
 	    ~tactic:(ind_elim_tac (constr_of_global elim) leninds info)
-	    ~hook:hookelim
-	    (it_mkProd_or_LetIn newarity newctx') [||]
+	    ~hook:hookelim newty [||]
       in
       let cl = functional_induction_class () in
       let args = [Typing.type_of env Evd.empty f; f; 
@@ -1934,7 +1961,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
   let proof (j, f, unf, stmts) =
     let eqns = Array.make (List.length stmts) false in
     let id = if j <> 0 then add_suffix id ("_helper_" ^ string_of_int j) else id in
-    let proof (i, (c, n)) = 
+    let proof (i, (r, c, n)) = 
       let ideq = add_suffix id ("_equation_" ^ string_of_int i) in
       let hook _ gr = 
 	if n <> None then
@@ -1948,12 +1975,12 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	  (* From now on, we don't need the reduction behavior of the constant anymore *)
 	  Typeclasses.set_typeclass_transparency (EvalConstRef cst) false;
 	  Conv_oracle.set_strategy (ConstKey cst) Conv_oracle.Opaque;
-	  if with_ind && succ j = List.length all_stmts then declare_ind ())
+	  if with_ind && succ j = List.length ind_stmts then declare_ind ())
       in
 	ignore(Subtac_obligations.add_definition
 		  ideq c ~tactic:(tclTHENLIST [intros; unf; solve_equation_tac (ConstRef cst)]) ~hook [||])
     in iter proof stmts
-  in iter proof all_stmts
+  in iter proof ind_stmts
 
 open Typeclasses
 

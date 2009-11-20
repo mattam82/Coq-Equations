@@ -59,3 +59,17 @@ Ltac funelim c :=
         pattern_call c ; apply elim ; clear ; simplify_dep_elim;
           simplify_IH_hyps
   end.
+
+(** A special purpose database used to prove the elimination principle. *)
+
+Create HintDb funelim.
+
+Hint Extern 3 (_ = _) => reflexivity : funelim.
+
+Ltac specialize_hyps :=
+  match goal with
+    [ H : forall _ : _ = _, _ |- _ ] => 
+    try specialize_hypothesis H ; unfold eq_rect_r, eq_rect in H ; simpl in H
+  end.
+
+Hint Extern 0 => progress specialize_hyps : funelim.
