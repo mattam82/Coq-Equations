@@ -735,32 +735,41 @@ let matches_user ((phi,p',g') : context_map) (p : user_pats) =
   try UnifSuccess (match_user_patterns (filter (fun x -> not (hidden x)) (rev p')) p)
   with Conflict -> UnifFailure | Stuck -> UnifStuck
     
-let interp_constr_in_rhs env evars (i,impls) ty s c =
-  let ctxs,ctx,len = fold_left (fun (ctx',cs,k) (id, pat) -> 
+let interp_constr_in_rhs env ctx evars (i,impls) ty s c =
+  let envctx = push_rel_context ctx env in
+  let ctxs, pats, varsubst, len = fold_left (fun (ctx', cs, varsubst, k) (id, pat) -> 
     let c = pat_constr pat in
-    let ty = Typing.type_of env !evars c in
-      ((Name id, Some (lift k c), lift k ty) :: ctx', (c :: cs), succ k))
-    ([],[],0) s 
+      match pat with
+      | PRel i -> (ctx', cs, (i, id) :: varsubst, k)
+      | _ -> 
+	  let ty = Typing.type_of envctx !evars c in
+	    ((Name id, Some (lift k c), lift k ty) :: ctx', (c :: cs), varsubst, succ k))
+    ([],[],[],0) s
   in
+  let ctx' = list_map_i (fun i (n, b, t as decl) ->
+    try (Name (List.assoc i varsubst), b, t)
+    with Not_found -> decl) 1 ctx
+  in
+  let ctx = ctxs @ ctx' in
     match ty with
-    | None -> 
+    | None ->
 	let c, _ = interp_constr_evars_impls ~evdref:evars ~fail_evar:false
-	  (push_rel_context ctxs env) ~impls c 
+	  (push_rel_context ctx env) ~impls c 
 	in
-	let c' = substnl ctx 0 c in
+	let c' = substnl pats 0 c in
 	  evars := Typeclasses.resolve_typeclasses ~onlyargs:false env !evars;
 	  let c' = nf_evar !evars c' in
-	    c', Typing.type_of env !evars c'
+	    c', Typing.type_of envctx !evars c'
 	    
     | Some ty -> 
 	let ty' = lift len ty in
 	let ty' = nf_evar !evars ty' in
 	let c, _ = interp_casted_constr_evars_impls ~evdref:evars ~fail_evar:false
-	  (push_rel_context ctxs env) ~impls c ty'
+	  (push_rel_context ctx env) ~impls c ty'
 	in
 	  evars := Typeclasses.resolve_typeclasses ~onlyargs:false env !evars;
-	  let c' = nf_evar !evars (substnl ctx 0 c) in
-	    c', nf_evar !evars (substnl ctx 0 ty')
+	  let c' = nf_evar !evars (substnl pats 0 c) in
+	    c', nf_evar !evars (substnl pats 0 ty')
 	  
 let unify_type evars before id ty after =
   try
@@ -1069,7 +1078,7 @@ let rec covering_aux env evars data prev (clauses : clause list) (ctx,pats,ctx' 
 	      let env' = push_rel_context_eos ctx env in
 		match rhs with
 		| Program c -> 
-		    let c', _ = interp_constr_in_rhs env' evars data (Some ty) s c in
+		    let c', _ = interp_constr_in_rhs env ctx evars data (Some ty) s c in
 		      Some (Compute (prob, ty, RProgram c'))
 
 		| Empty (loc,i) ->
@@ -1146,7 +1155,7 @@ let rec covering_aux env evars data prev (clauses : clause list) (ctx,pats,ctx' 
 		    let newctx, pats', pats'' = instance_of_pats env evars ctx vars in
 		    let _s' = (ctx, vars, newctx) in
 		    let revctx = (newctx, pats', ctx) in
-		    let cconstr, cty = interp_constr_in_rhs env' evars data None s c in
+		    let cconstr, cty = interp_constr_in_rhs env ctx evars data None s c in
 		    let idref = Namegen.next_ident_away (id_of_string "refine") (ids_of_rel_context newctx) in
 		    let decl = (Name idref, None, mapping_constr revctx cty) in
 		    let extnewctx = decl :: newctx in
@@ -1359,8 +1368,16 @@ type pat_expr =
   | PEWildcard
   | PEInac of constr_expr
 
-type pre_equation = (identifier located * pat_expr located list *
-			pre_equation rhs)
+type user_pat_expr = pat_expr located
+
+type user_pat_exprs = user_pat_expr located
+
+type input_pats =
+  | SignPats of user_pat_expr list
+  | RefinePats of user_pat_expr list
+
+type pre_equation = 
+  identifier located option * input_pats * pre_equation rhs
 
 let next_ident_away s ids =
   let n' = Namegen.next_ident_away s !ids in
@@ -2142,27 +2159,34 @@ let interp_eqn i is_rec isevar env impls sign arity recu eqn =
     | PEWildcard -> let n = next_ident_away (id_of_string "wildcard") avoid in
 		      avoid := n :: !avoid; PUVar n
   in
-  let rec aux ((loc,id), pats, rhs) =
-    avoid := !avoid @ ids_of_pats pats;
-    if id <> i then
-      user_err_loc (loc, "interp_pats",
-		   str "Expecting a pattern for " ++ pr_id i);
-    Dumpglob.dump_reference loc "<>" (string_of_id id) "def";
+  let rec aux curpats (idopt, pats, rhs) =
+    let curpats' = 
+      match pats with
+      | SignPats l -> l
+      | RefinePats l -> curpats @ l
+    in
+    avoid := !avoid @ ids_of_pats curpats';
+    Option.iter (fun (loc,id) ->
+      if id <> i then
+	user_err_loc (loc, "interp_pats",
+		     str "Expecting a pattern for " ++ pr_id i);
+      Dumpglob.dump_reference loc "<>" (string_of_id id) "def")
+      idopt;
     (*   if List.length pats <> List.length sign then *)
     (*     user_err_loc (loc, "interp_pats", *)
     (* 		 str "Patterns do not match the signature " ++  *)
     (* 		   pr_rel_context env sign); *)
-    let pats = map interp_pat pats in
+    let pats = map interp_pat curpats' in
       match is_rec with
-      | Some Structural -> (PUVar i :: pats, interp_rhs None rhs)
-      | Some (Logical (_, _, compproj)) -> (pats, interp_rhs (Some (ConstRef compproj)) rhs)
-      | None -> (pats, interp_rhs None rhs)
-  and interp_rhs compproj = function
-    | Refine (c, eqs) -> Refine (interp_constr_expr compproj !avoid c, map aux eqs)
+      | Some Structural -> (PUVar i :: pats, interp_rhs curpats' None rhs)
+      | Some (Logical (_, _, compproj)) -> (pats, interp_rhs curpats' (Some (ConstRef compproj)) rhs)
+      | None -> (pats, interp_rhs curpats' None rhs)
+  and interp_rhs curpats compproj = function
+    | Refine (c, eqs) -> Refine (interp_constr_expr compproj !avoid c, map (aux curpats) eqs)
     | Program c -> Program (interp_constr_expr compproj !avoid c)
     | Empty i -> Empty i
-    | Rec (i, s) -> Rec (i, map aux s)
-    | By (x, s) -> By (x, map aux s)
+    | Rec (i, s) -> Rec (i, map (aux curpats) s)
+    | By (x, s) -> By (x, map (aux curpats) s)
   and interp_constr_expr compproj ids c = 
     match c, compproj with
     (* |   | CAppExpl of loc * (proj_flag * reference) * constr_expr list *)
@@ -2171,7 +2195,7 @@ let interp_eqn i is_rec isevar env impls sign arity recu eqn =
 	  CApp (loc, (None, CRef (Qualid (loc', qidproj))), args)
     | _ -> map_constr_expr_with_binders (fun id l -> id :: l) 
 	(interp_constr_expr compproj) ids c
-  in aux eqn
+  in aux [] eqn
 	
 let define_by_eqs opts i (l,ann) t nt eqs =
   let with_comp, with_rec, with_eqns, with_ind =
@@ -2290,11 +2314,12 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	    (* Auto.create_hint_db false unfold_baseid (ids, Cpred.remove (Subtac_utils.fix_proto_ref ()) csts) true; *)
 	    let rec unfold_eqs eqs =
 	      concat (map
-			 (fun ((loc,id), pats, rhs) ->
+			 (fun (optid, pats, rhs) ->
+			   let optid = Option.map (fun (loc,id) -> (loc, unfoldi)) optid in
 			   match rhs with
 			   | Rec (v, eqs) -> unfold_eqs eqs
-			   | Refine (ce, eqs) -> [((loc, unfoldi), pats, Refine (ce, unfold_eqs eqs))]
-			   | _ -> [((loc, unfoldi), pats, rhs)])
+			   | Refine (ce, eqs) -> [(optid, pats, Refine (ce, unfold_eqs eqs))]
+			   | _ -> [(optid, pats, rhs)])
 			 eqs)
 	    in
 	    let unfold_equations = 
@@ -2364,8 +2389,9 @@ GEXTEND Gram
   ;
 
   equation:
-    [ [ id = identref; pats = LIST1 patt; r=rhs -> 
-      (id, pats, r) ] ]
+    [ [ id = identref; 	pats = LIST1 patt; r = rhs -> (Some id, SignPats pats, r)
+      | "|"; pats = LIST1 lpatt SEP "|"; r = rhs -> (None, RefinePats pats, r) 
+    ] ]
   ;
 
   patt:
@@ -2451,7 +2477,7 @@ let (wit_identref : Genarg.tlevel identref_argtype),
 
 let with_rollback f x =
   let st = States.freeze () in
-    try f x with e -> msg (Cerrors.explain_exn e); States.unfreeze st
+    try f x with e -> msg (Toplevel.print_toplevel_error e); States.unfreeze st
 
 let equations opts (loc, i) l t nt eqs =
   Dumpglob.dump_definition (loc, i) false "def";

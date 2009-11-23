@@ -10,6 +10,8 @@ eq_sym A x x eq_refl := eq_refl.
 Equations eq_trans {A} (x y z : A) (p : x = y) (q : y = z) : x = z :=
 eq_trans A x x x eq_refl eq_refl := eq_refl.
 
+(* Definition foo (n : nat) : nat := true.  *)
+
 Equations (nocomp) vapp' {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
 vapp' A ?(0) m Vnil w := w ;
 vapp' A ?(S n) m (Vcons a n v) w := Vcons a (vapp' v w).
@@ -22,8 +24,8 @@ Implicit Arguments Split [[X]].
 Equations(nocomp) filter {A} (l : list A) (p : A -> bool) : list A :=
 filter A nil p := nil ;
 filter A (cons a l) p <= p a => {
-  filter A (cons a l) p true := a :: filter l p ;
-  filter A (cons a l) p false := filter l p }.
+  | true := a :: filter l p ;
+  | false := filter l p }.
 
 Inductive incl {A} : relation (list A) :=
   stop : incl nil nil 
@@ -35,28 +37,28 @@ Global Transparent filter.
 Equations(nocomp) sublist {A} (p : A -> bool) (xs : list A) : incl (filter xs p) xs :=
 sublist A p nil := stop ;
 sublist A p (cons x xs) <= p x => {
-  sublist A p (cons x xs) true := keep (sublist p xs) ;
-  sublist A p (cons x xs) false := skip (sublist p xs) }.
+  | true := keep (sublist p xs) ;
+  | false := skip (sublist p xs) }.
 
 Equations(nostruct) testn (n : nat) : nat :=
 testn n ! n =>
 testn O := 0 ;
 testn (S n) <= testn n => {
-  testn (S n) O := S O ;
-  testn (S n) (S n') := S n' }.
+  | O := S O ;
+  | (S n') := S n' }.
 
 Equations (nostruct) unzip {A B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
 unzip A B n v ! v =>
 unzip A B ?(O) Vnil := (Vnil, Vnil) ;
 unzip A B ?(S n) (Vcons (pair x y) n v) <= unzip v => {
-  unzip A B ?(S n) (Vcons (pair x y) n v) (pair xs ys) := (Vcons x xs, Vcons y ys) }.
+  | (pair xs ys) := (Vcons x xs, Vcons y ys) }.
 
 Equations (nostruct) nos_with (n : nat) : nat :=
 nos_with n ! n =>
 nos_with O := O ;
 nos_with (S m) <= nos_with m => {
-  nos_with (S m) O := S O ;
-  nos_with (S m) (S n') := O }.
+  | O := S O ;
+  | S n' := O }.
 
 Hint Unfold noConfusion_nat : equations.
 
@@ -64,8 +66,7 @@ Equations (nostruct) split {X : Type} {m n} (xs : vector X (m + n)) : Split m n 
 split X m n xs ! m =>
 split X O    n xs := append Vnil xs ;
 split X (S m) n (Vcons x ?(S m + n) xs) <= split xs => {
-  split X (S m) n (Vcons x ?(S m + n) xs) (append xs' ys') :=
-    append (Vcons x xs') ys' }.
+  | append xs' ys' := append (Vcons x xs') ys' }.
 
 Equations(nocomp) equal (n m : nat) : { n = m } + { n <> m } :=
 equal O O := in_left ;
@@ -77,7 +78,7 @@ equal x y := in_right.
 Equations app_with {A} (l l' : list A) : list A :=
 app_with A nil l := l ;
 app_with A (cons a v) l <= app_with v l => {
-  app_with A (cons a v) l vl := cons a vl }.
+  | vl := cons a vl }.
 
 (* About app_with_elim. *)
 (* Print app_with_ind. *)
@@ -94,10 +95,8 @@ plus' (S n) m := S (plus' n m).
 
 Equations unzip_n {A B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
 unzip_n A B O Vnil := (Vnil, Vnil) ;
-unzip_n A B (S n) (Vcons (pair x y) n v) :=
-  let vs := unzip_n v in
-  let '(xs, ys) := vs in
-    (Vcons x xs, Vcons y ys).
+unzip_n A B (S n) (Vcons (pair x y) n v) <= unzip_n v => {
+  | pair xs ys := (Vcons x xs, Vcons y ys) }.
 
 Equations neg (b : bool) : bool :=
 neg true := false ;
