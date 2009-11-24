@@ -102,8 +102,7 @@ Instance vect_Recursor A n : Recursor (vector A n) :=
   { rec_type := λ v, Π (P : Π n, vector A n -> Type) step, P n v;
     rec := λ v P step, rec_vector A P n v step }.
 
-Hint Unfold rec_nat : Below_recursors.
-Hint Unfold rec_vector : Below_recursors.
+Hint Unfold rec_nat rec_vector : Recursors.
 
 Hint Extern 4 => progress (unfold hide_pattern in *) : Below.
 

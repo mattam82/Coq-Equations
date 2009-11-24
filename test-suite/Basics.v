@@ -10,19 +10,24 @@ eq_sym A x x eq_refl := eq_refl.
 Equations eq_trans {A} (x y z : A) (p : x = y) (q : y = z) : x = z :=
 eq_trans A x x x eq_refl eq_refl := eq_refl.
 
-(* Definition foo (n : nat) : nat := true.  *)
+Notation " x |:| y " := (@Vcons _ x _ y) (at level 20, right associativity) : vect_scope.
+Notation " x |: n :| y " := (@Vcons _ x n y) (at level 20, right associativity) : vect_scope.
+Notation " [[ x .. y ]] " := (Vcons x .. (Vcons y Vnil) ..) : vect_scope.
+Notation " [[]] " := Vnil : vect_scope.
+
+Open Local Scope vect_scope.
 
 Equations (nocomp) vapp' {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
-vapp' A ?(0) m Vnil w := w ;
+vapp' A ?(0) m [[]] w := w ;
 vapp' A ?(S n) m (Vcons a n v) w := Vcons a (vapp' v w).
 
 Inductive Split {X : Type}{m n : nat} : vector X (m + n) -> Type :=
   append : Π (xs : vector X m)(ys : vector X n), Split (vapp' xs ys).
 
-Implicit Arguments Split [[X]].
+Implicit Arguments Split [ [ X ] ].
 
 Equations(nocomp) filter {A} (l : list A) (p : A -> bool) : list A :=
-filter A nil p := nil ;
+filter A [] p := [] ;
 filter A (cons a l) p <= p a => {
   | true := a :: filter l p ;
   | false := filter l p }.
@@ -40,21 +45,28 @@ sublist A p (cons x xs) <= p x => {
   | true := keep (sublist p xs) ;
   | false := skip (sublist p xs) }.
 
+Ltac rec ::= rec_wf_eqns.
+
+Derive Subterm for nat. 
+Derive Subterm for vector.
+
 Equations(nostruct) testn (n : nat) : nat :=
-testn n ! n =>
-testn O := 0 ;
+testn n by rec n =>
+testn 0 := 0 ;
 testn (S n) <= testn n => {
   | O := S O ;
   | (S n') := S n' }.
 
+Recursive Extraction testn.
+
 Equations (nostruct) unzip {A B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
-unzip A B n v ! v =>
+unzip A B n v by rec v =>
 unzip A B ?(O) Vnil := (Vnil, Vnil) ;
 unzip A B ?(S n) (Vcons (pair x y) n v) <= unzip v => {
   | (pair xs ys) := (Vcons x xs, Vcons y ys) }.
 
 Equations (nostruct) nos_with (n : nat) : nat :=
-nos_with n ! n =>
+nos_with n by rec n =>
 nos_with O := O ;
 nos_with (S m) <= nos_with m => {
   | O := S O ;
@@ -62,10 +74,10 @@ nos_with (S m) <= nos_with m => {
 
 Hint Unfold noConfusion_nat : equations.
 
-Equations (nostruct) split {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
-split X m n xs ! m =>
+Equations(nostruct) split {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
+split X m n xs by rec m =>
 split X O    n xs := append Vnil xs ;
-split X (S m) n (Vcons x ?(S m + n) xs) <= split xs => {
+split X (S m) n (Vcons x ?(m + n) xs) <= split xs => {
   | append xs' ys' := append (Vcons x xs') ys' }.
 
 Equations(nocomp) equal (n m : nat) : { n = m } + { n <> m } :=
@@ -181,8 +193,8 @@ Require Import Bvector.
 
 Equations (nocomp) split_struct {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
 split_struct X O    n xs := append Vnil xs ;
-split_struct X (S m) n (Vcons x ?(S m + n) xs) <= split_struct xs => {
-  split_struct X (S m) n (Vcons x ?(S m + n) xs) (append xs' ys') := append (Vcons x xs') ys' }.
+split_struct X (S m) n (Vcons x _ xs) <= split_struct xs => {
+  split_struct X (S m) n (Vcons x _ xs) (append xs' ys') := append (Vcons x xs') ys' }.
 
 Lemma split_struct_vapp : Π (X : Type) m n (v : vector X m) (w : vector X n),
   let 'append v' w' := split_struct (vapp' v w) in
@@ -199,7 +211,7 @@ vhead A ?(n) (Vcons a n v) := a.
 
 Equations (nocomp) vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
 vmap A B f O Vnil := Vnil ;
-vmap A B f (S n) (Vcons a ?(n) v) := Vcons (f a) (vmap f v).
+vmap A B f (S n) (Vcons a n v) := Vcons (f a) (vmap f v).
 
 Transparent vmap.
 (* Set Printing All.  *)
@@ -207,7 +219,7 @@ Transparent vmap.
 
 Equations vmap' {A B} (f : A -> B) {n} (v : vector A n) : (vector B n) :=
 vmap' A B f ?(O) Vnil := Vnil ;
-vmap' A B f ?(S n) (Vcons a ?(n) v) := Vcons (f a) (vmap' f v).
+vmap' A B f ?(S n) (Vcons a n v) := Vcons (f a) (vmap' f v).
 
 Transparent vmap'.
 (* Eval compute in (vmap' id (@Vnil nat)). *)
@@ -267,9 +279,9 @@ bla baz := false.
 Lemma eq_trans_eq A x : @eq_trans A x x x eq_refl eq_refl = eq_refl.
 Proof. reflexivity. Qed.
 
-Equations(nocomp) vlast {A} {n} (v : vector A (S n)) : A :=
-vlast A O (Vcons a ?(O) Vnil) := a ;
-vlast A (S n) (Vcons a ?(S n) v) := vlast v.
+(* Equations(nocomp) vlast {A} {n} (v : vector A (S n)) : A := *)
+(* vlast A O (Vcons a ?(O) Vnil) := a ; *)
+(* vlast A (S n) (Vcons a ?(S n) v) := vlast v. *)
 
 Equations vlast' {A} {n} (v : vector A (S n)) : A :=
 vlast' A ?(0) (Vcons a O Vnil) := a ;

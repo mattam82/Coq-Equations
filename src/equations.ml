@@ -171,6 +171,8 @@ let solve_rec_tac () = tac_of_string "Equations.Below.solve_rec" []
 
 let solve_subterm_tac () = tac_of_string "Equations.Subterm.solve_subterm" []
 
+let pi_tac () = tac_of_string "Equations.Subterm.pi" []
+
 let noconf_tac () = tac_of_string "Equations.NoConfusion.solve_noconf" []
 
 let simpl_equations_tac () = tac_of_string "Equations.DepElim.simpl_equations" []
@@ -1367,6 +1369,7 @@ type pat_expr =
   | PEApp of identifier located * pat_expr located list
   | PEWildcard
   | PEInac of constr_expr
+  | PEPat of cases_pattern_expr
 
 type user_pat_expr = pat_expr located
 
@@ -1388,7 +1391,8 @@ let rec ids_of_pats pats =
     match p with
     | PEApp ((loc,f), l) -> (f :: ids_of_pats l) @ ids
     | PEWildcard -> ids
-    | PEInac _ -> ids)
+    | PEInac _ -> ids
+    | PEPat _ -> ids)
     [] pats
     
 type rec_type = 
@@ -2063,10 +2067,31 @@ let convert_projection proj f_cst = fun gl ->
 let unfold_constr c = 
   unfold_in_concl [(all_occurrences, EvalConstRef (destConst c))]
 
+let simpl_recursors gl =
+  tclREPEAT (tclORELSE (Eauto.autounfold ["Recursors"] None)
+		(fun gl -> 
+		  try Autorewrite.autorewrite tclIDTAC ["Recursors"] gl
+		  with _ -> tclIDTAC gl)) gl
+
 let prove_unfolding_lemma info sign proj f_cst funf_cst split gl =
   let depelim h = depelim_tac h in
-  let simpltac = tclTHEN (tclREPEAT (Eauto.autounfold ["Below_recursors"] None)) 
-    (simpl_equations_tac ())
+  let simpltac = tclTHEN simpl_recursors (simpl_equations_tac ()) in
+  let solve_rec_eq gl =
+    match kind_of_term (pf_concl gl) with
+    | App (eq, [| ty; x; y |]) ->
+	let xf, _ = decompose_app x and yf, _ = decompose_app y in
+	  if eq_constr (mkConst f_cst) xf && eq_constr proj yf then
+	    let unfolds = unfold_in_concl 
+	      [((true, [1]), EvalConstRef f_cst); 
+	       ((true, [1]), EvalConstRef (destConst proj))]
+	    in 
+	      tclTHENLIST [unfolds ; simpl_recursors; pi_tac ()] gl
+	  else reflexivity gl
+    | _ -> reflexivity gl
+  in
+  let solve_eq =
+    tclORELSE reflexivity
+      (tclTHEN (tclTRY Cctac.f_equal) solve_rec_eq)
   in
   let abstract tac = tclABSTRACT None tac in
   let rec aux = function
@@ -2094,15 +2119,14 @@ let prove_unfolding_lemma info sign proj f_cst funf_cst split gl =
 	      and a2 = find_helper_arg info f2 arg2 in
 		tclTHENLIST
 		  [Equality.replace_by a1 a2
-		      (tclTHENLIST [simpltac; reflexivity]);
+		      (tclTHENLIST [simpltac; solve_eq]);
 		   letin_tac None (Name id) a2 None allHypsAndConcl; aux s] gl
 	  | _ -> tclFAIL 0 (str"Unexpected unfolding lemma goal") gl
 	in
 	  abstract (tclTHENLIST [intros; simpltac; reftac])
 	    
     | Compute (_, _, RProgram c) ->
-	abstract (tclTHENLIST [intros; simpltac; 
-			       reflexivity])
+	abstract (tclTHENLIST [intros; simpltac; solve_eq])
 
     | Compute ((ctx,_,_), _, REmpty id) ->
 	let (na,_,_) = nth ctx (pred id) in
@@ -2131,6 +2155,16 @@ let update_split is_rec cmap f prob id split =
 	subst_comp_proj_split f (mkConst proj) split'
     | _ -> split'
 
+let rec translate_cases_pattern env avoid = function
+  | PatVar (loc, Name id) -> PUVar id
+  | PatVar (loc, Anonymous) -> 
+      let n = next_ident_away (id_of_string "wildcard") avoid in
+	avoid := n :: !avoid; PUVar n
+  | PatCstr (loc, (ind, _ as cstr), pats, Anonymous) ->
+      PUCstr (cstr, (fst (inductive_nargs env ind)), map (translate_cases_pattern env avoid) pats)
+  | PatCstr (loc, cstr, pats, Name id) ->
+      user_err_loc (loc, "interp_pats", str "Aliases not supported by Equations")
+
 let interp_eqn i is_rec isevar env impls sign arity recu eqn =
   let avoid = ref [] in
   let rec interp_pat (loc, p) =
@@ -2156,8 +2190,19 @@ let interp_eqn i is_rec isevar env impls sign arity recu eqn =
 	    else PUVar f
 	  with Not_found -> PUVar f)
     | PEInac c -> PUInac c
-    | PEWildcard -> let n = next_ident_away (id_of_string "wildcard") avoid in
-		      avoid := n :: !avoid; PUVar n
+    | PEWildcard -> 
+	let n = next_ident_away (id_of_string "wildcard") avoid in
+	  avoid := n :: !avoid; PUVar n
+
+    | PEPat p ->
+	let ids, pats = intern_pattern env p in
+	  (* Names.identifier list * *)
+	  (*   ((Names.identifier * Names.identifier) list * Rawterm.cases_pattern) list *)
+	let upat = 
+	  match pats with
+	  | [(l, pat)] -> translate_cases_pattern env avoid pat
+	  | _ -> user_err_loc (loc, "interp_pats", str "Or patterns not supported by equations")
+	in upat
   in
   let rec aux curpats (idopt, pats, rhs) =
     let curpats' = 
@@ -2378,7 +2423,7 @@ open Constr
 open G_vernac
 
 GEXTEND Gram
-  GLOBAL: (* deppat_gallina_loc *) deppat_equations binders_let2 equation_options;
+  GLOBAL: (* deppat_gallina_loc *) pattern deppat_equations binders_let2 equation_options;
  
   deppat_equations:
     [ [ l = LIST1 equation SEP ";" -> l ] ]
@@ -2399,6 +2444,7 @@ GEXTEND Gram
       | "_" -> loc, PEWildcard
       | "("; p = lpatt; ")" -> p
       | "?("; c = Constr.lconstr; ")" -> loc, PEInac c
+      | p = pattern LEVEL "0" -> loc, PEPat p
     ] ]
   ;
 
@@ -2413,7 +2459,7 @@ GEXTEND Gram
       |":="; c = Constr.lconstr -> Program c
       | "<="; c = Constr.lconstr; "=>"; e = equations -> Refine (c, e)
       | "<-"; "(" ; t = Tactic.tactic; ")"; e = equations -> By (Inl t, e)
-      | "!"; id = identref ; "=>"; e = deppat_equations -> Rec (id, e)
+      | "by"; IDENT "rec"; id = identref ; "=>"; e = deppat_equations -> Rec (id, e)
     ] ]
   ;
 
@@ -2938,10 +2984,9 @@ let derive_subterm ind =
 	if argbinders = [] then
 	  (* Standard homogeneous well-founded relation *)
 	  let kl = Option.get (class_of_constr (Lazy.force coq_subterm_class)) in
-	  let evar = e_new_evar evm env'
-	    (mkApp (Lazy.force coq_wellfounded, [| indapp; subindapp |]))
-	  in
-	  let constr, ty = instance_constructor kl [ indapp; subindapp; evar ] in
+	  let subrel = mkApp (Lazy.force coq_clos_trans, [| indapp; subindapp |]) in
+	  let evar = e_new_evar evm env' (mkApp (Lazy.force coq_wellfounded, [| indapp; subrel |])) in
+	  let constr, ty = instance_constructor kl [ indapp; subrel; evar ] in
 	    kl, constr, ty
 	else
 	  (* Construct a family relation by packaging all indexes into 

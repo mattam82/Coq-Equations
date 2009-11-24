@@ -77,7 +77,7 @@ Require Import Bvector.
 
 Equations nth {A} {n} (v : vector A n) (f : fin n) : A :=
 nth A ?(S n) (Vcons a n v) fz := a ;
-nth A ?(S n) (Vcons a n v) (fs f) := nth v f.
+nth A ?(S n) (Vcons a n v) (fs n f) := nth v f.
 
 Goal Π (A : Type) (n : nat) (a : A) (H : vector A n), nth (Vcons a H) fz = a.
   intros. funind (nth (Vcons a H) fz) nt.

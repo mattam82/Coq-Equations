@@ -15,6 +15,19 @@ Definition FixWf `{WF:WellFounded A R} (P : A -> Type)
   (step : Π x : A, (Π y : A, R y x -> P y) -> P x) : Π x : A, P x :=
   Fix wellfounded P step.
 
+Lemma FixWf_unfold `{WF : WellFounded A R} (P : A -> Type)
+  (step : Π x : A, (Π y : A, R y x -> P y) -> P x) (x : A) : 
+  FixWf P step x = step x (fun y _ => FixWf P step y).
+Proof. intros. unfold FixWf, Fix. destruct (wellfounded x).
+  simpl. f_equal. extensionality y. extensionality h. pi.
+Qed.
+  
+Hint Rewrite @FixWf_unfold : Recursors.
+
+(** Inline so that we get back a term using general recursion. *)
+
+Extraction Inline FixWf Fix Fix_F.
+
 (** A class for subterm relations accompanied by their well foundedness 
    proofs. Instances can be derived automatically using 
    [Derive Subterm for ind] *)
@@ -36,8 +49,11 @@ Create HintDb subterm_relation discriminated.
    to allow computations with functions defined by well-founded recursion.
    *)
 
-Instance WellFounded_trans_clos `(WF : WellFounded A R) : WellFounded (clos_trans A R).
+Lemma WellFounded_trans_clos `(WF : WellFounded A R) : WellFounded (clos_trans A R).
 Proof. exact wf_clos_trans. Defined.
+
+Hint Extern 4 (WellFounded (clos_trans _ _)) => 
+  apply @WellFounded_trans_clos : typeclass_instances.
 
 (** We also add hints for transitive closure, not using [t_trans] but forcing to 
    build the proof by successive applications of the inner relation. *)
@@ -61,23 +77,38 @@ Ltac solve_subterm := intros ; apply wf_clos_trans ;
 (** A tactic to launch a well-founded recursion. *)
 
 Ltac rec_wf x recname fixterm :=
-  dependent pattern x ; apply fixterm ; clear_local ; 
-  intros until 1 ; on_last_hyp ltac:(fun x => rename x into recname) ;
+  apply fixterm ; clear_local ; 
+  intros until 1 ; simp_exists ; 
+    on_last_hyp ltac:(fun x => rename x into recname) ;
   simpl in * ; simplify_dep_elim ; intros ; unblock_goal ; intros ;
-  move recname at bottom.
+  move recname at bottom ; repeat curry recname ; simpl in recname.
 
-(** We specialize the tactic for [x] of type [A] with 
-   the relation being the transitive closure of the subterm relation for [A]. *)
+(** Generalize an object [x], packing it in a sigma type if necessary. *)
 
-Ltac rec_wf_eqns x recname :=
+Ltac generalize_pack x :=
+  let xpack := fresh x "pack" in
+    (progress (generalize_eqs_vars x ; pack x as xpack ; 
+      move xpack before x; clearbody xpack; clear; rename xpack into x))
+    || revert_until x.
+
+(** We specialize the tactic for [x] of type [A], first packing 
+   [x] with its indices into a sigma type and find the declared 
+   relation on this type. *)
+
+Ltac rec_wf_eqns x recname := generalize_pack x; pattern x;
   let ty := type of x in
+  let ty := eval simpl in ty in
   let wfprf := constr:(wellfounded (A:=ty)) in
   let fixterm := constr:(FixWf (WF:=wfprf)) in
-    rec_wf x recname fixterm ; add_pattern (hide_pattern recname) ; instantiate.
+    rec_wf x recname fixterm ; simpl in * ; add_pattern (hide_pattern recname) ; instantiate.
 
 Ltac solve_rec ::= simpl in * ; cbv zeta ; intros ; 
   try typeclasses eauto with subterm_relation Below.
 
+(** The [pi] tactic solves an equality between applications of the same function,
+   possibly using proof irrelevance to discharge equality of proofs. *)
+
+Ltac pi := repeat progress (f_equal || reflexivity) ; apply proof_irrelevance.
 
 (** We need a theory of well-founded relations on inductive families to use 
    this with dependent inductive types. *)
