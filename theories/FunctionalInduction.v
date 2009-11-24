@@ -52,19 +52,46 @@ Ltac funind_call f H :=
 Class FunctionalElimination {A : Type} (f : A) :=
   { fun_elim_ty : Prop; fun_elim : fun_elim_ty }.
 
+
 Ltac funelim c :=
   match c with
-    | appcontext C [ ?f ] =>
-      let elim := constr:(fun_elim (f:=f)) in
-        pattern_call c ; apply elim ; clear ; simplify_dep_elim;
-          simplify_IH_hyps
+    | appcontext C [ ?f ] => 
+  let call := fresh "call" in set(call := c) in *; move call at top;
+  let elim := constr:(fun_elim (f:=f)) in
+    block_goal; revert_until call; block_goal;
+    first [ 
+      progress (generalize_eqs_vars call);
+        match goal with
+          call := ?c' |- _ => 
+            subst call; simpl; pattern_call c';
+              apply elim; clear; simplify_dep_elim;
+                simplify_IH_hyps; unfold block at 1;
+                  first [ on_last_hyp ltac:(fun id => intros; rewrite <- id; clear id)
+                    | intros ];
+                  unblock_goal
+        end
+      | subst call; pattern_call c; apply elim; clear; 
+        simplify_dep_elim; simplify_IH_hyps; unfold block at 1; 
+          intros; unblock_goal ]
   end.
+
+(* Ltac funelim c := *)
+(*   match c with *)
+(*     | appcontext C [ ?f ] => *)
+(*       let elim := constr:(fun_elim (f:=f)) in *)
+(*         pattern_call c ; apply elim ; clear ; simplify_dep_elim; *)
+(*           simplify_IH_hyps *)
+(*   end. *)
 
 (** A special purpose database used to prove the elimination principle. *)
 
 Create HintDb funelim.
 
-Hint Extern 3 (_ = _) => reflexivity : funelim.
+(** Solve reflexivity goals. *)
+
+Hint Extern 0 (_ = _) => reflexivity : funelim.
+
+(** Specialize hypotheses begining with equalities. *)
 
 Ltac specialize_hyps :=
   match goal with
@@ -72,4 +99,8 @@ Ltac specialize_hyps :=
     try specialize_hypothesis H ; unfold eq_rect_r, eq_rect in H ; simpl in H
   end.
 
-Hint Extern 0 => progress specialize_hyps : funelim.
+Hint Extern 1 => progress specialize_hyps : funelim.
+
+(** Destruct existentials, including [existsT]'s. *)
+
+Hint Extern 0 => progress (destruct_exists; try (is_ground_goal; simplify_eqs)) : funelim.

@@ -51,7 +51,7 @@ Derive Subterm for nat.
 Derive Subterm for vector.
 
 Equations(nostruct) testn (n : nat) : nat :=
-testn n by rec n =>
+testn n => rec n =>
 testn 0 := 0 ;
 testn (S n) <= testn n => {
   | O := S O ;
@@ -60,13 +60,13 @@ testn (S n) <= testn n => {
 Recursive Extraction testn.
 
 Equations (nostruct) unzip {A B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
-unzip A B n v by rec v =>
+unzip A B n v => rec v =>
 unzip A B ?(O) Vnil := (Vnil, Vnil) ;
 unzip A B ?(S n) (Vcons (pair x y) n v) <= unzip v => {
   | (pair xs ys) := (Vcons x xs, Vcons y ys) }.
 
 Equations (nostruct) nos_with (n : nat) : nat :=
-nos_with n by rec n =>
+nos_with n => rec n =>
 nos_with O := O ;
 nos_with (S m) <= nos_with m => {
   | O := S O ;
@@ -75,7 +75,7 @@ nos_with (S m) <= nos_with m => {
 Hint Unfold noConfusion_nat : equations.
 
 Equations(nostruct) split {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
-split X m n xs by rec m =>
+split X m n xs => rec m =>
 split X O    n xs := append Vnil xs ;
 split X (S m) n (Vcons x ?(m + n) xs) <= split xs => {
   | append xs' ys' := append (Vcons x xs') ys' }.
@@ -148,20 +148,20 @@ Qed.
 
 Lemma app'_assoc : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l (app' l' l'').
 Proof. intros. Opaque app'. revert l''.
-  funelim (l +++ l'); simp app'.
-  rewrite x. reflexivity.
+  funelim (l +++ l'); intros; simp app'. 
+  rewrite H. reflexivity.
 Qed.
 
 Lemma app'_funind : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l (app' l' l'').
-Proof. intros. Opaque app'. funind (l +++ l') ll'. 
-  rewrite IHapp'_ind. reflexivity. 
+Proof. intros. funelim (l +++ l'); simp app'.
+  rewrite H. reflexivity. 
 Qed.
 
 Hint Rewrite @app'_nil @app'_assoc : app'.
 
 Lemma rev_app' : forall {A} (l l' : list A), rev (l +++ l') = rev l' +++ rev l.
-Proof. intros. funelim (l +++ l').
-  simp rev app'. simp rev app'. rewrite x, <- app'_assoc. reflexivity. 
+Proof. intros. funelim (l +++ l'); simp rev app'.
+  now (rewrite H, <- app'_assoc).
 Qed.
 
 (* Eval compute in @app'. *)
@@ -170,8 +170,7 @@ Lemma split_vapp' : Π (X : Type) m n (v : vector X m) (w : vector X n),
   let 'append v' w' := split (vapp' v w) in
     v = v' /\ w = w'.
 Proof.
-  intros.
-  funelim (vapp' v w); simp split. intuition.
+  intros. funelim (vapp' v w); simp split. intuition.
   destruct (split (vapp' v w)); simp split.
   intuition congruence.
 Qed.
@@ -379,17 +378,17 @@ Generalizable All Variables.
 Opaque vmap. Opaque vtail. Opaque nth.
 
 Lemma nth_vmap `(v : vector A n) `(fn : A -> B) (f : fin n) : nth (vmap fn v) f = fn (nth v f).
-Proof. intros. revert B fn. funelim (nth v f); simp nth vmap. Qed.
+Proof. intros. revert B fn. funelim (nth v f); intros; simp nth vmap. Qed.
 
 Lemma nth_vtail `(v : vector A (S n)) (f : fin n) : nth (vtail v) f = nth v (fs f).
-Proof. intros until v. funelim (vtail v); simp nth. Qed.
+Proof. intros until v. funelim (vtail v); intros; simp nth. Qed.
 
 Hint Rewrite @nth_vmap @nth_vtail : nth.
   
 Lemma diag_nth `(v : vector (vector A n) n) (f : fin n) : nth (diag v) f = nth (nth v f) f.
 Proof. 
-  intros. revert f. funelim (diag v). 
+  intros. revert f. funelim (diag v); intros f.
     depelim f.
 
-    depelim f; simp nth. rewrite x. simp nth.
+    depelim f; simp nth. rewrite H. simp nth.
 Qed.

@@ -390,6 +390,8 @@ Ltac simplify_one_dep_elim_term c :=
       intros hyp ; (try (clear hyp ; (* If non dependent, don't clear it! *) fail 1)) ;
         case hyp ; clear hyp
     | block ?T => fail 1 (* Do not put any part of the rhs in the hyps *)
+    | _ -> ?T => intro; try (let x := type of T in idtac) 
+       (* Only really anonymous, non dependent hyps get automatically generated names. *)
     | forall x, _ => intro x || (let H := fresh x in rename x into H ; intro x) (* Try to keep original names *)
     | _ => intro
   end.

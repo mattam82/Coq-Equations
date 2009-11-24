@@ -1455,7 +1455,7 @@ let abstract_rec_calls ?(do_subst=true) is_rec len protos c =
 	      let hypty = mkApp (mkApp (mkRel (i + len + lenctx + 2 + n), 
 				       Array.map (lift 1) args'), [| mkRel 1 |]) 
 	      in
-	      let hyp = (Name (id_of_string "reccall"), None, hypty) in
+	      let hyp = (Name (id_of_string "Hind"), None, hypty) in
 		[hyp;result]@ctx, lenctx + 2, mkRel 2
 	  | None -> (ctx, lenctx, mkApp (f', args)))
 
@@ -1734,6 +1734,9 @@ let declare_instance id ctx cl args =
   let inst = Typeclasses.new_instance cl None true (ConstRef cst) in
     Typeclasses.add_instance inst
 
+let mkSig (n, c, t) =
+  mkApp ((Lazy.force coq_sigma).Coqlib.typ, [| c; mkLambda (n, c, t) |])
+
 let build_equations with_ind env id info data sign is_rec arity cst 
     f ?(alias:(constr * constr * splitting) option) prob split =
   let rec computations prob f = function
@@ -1915,13 +1918,13 @@ let build_equations with_ind env id info data sign is_rec arity cst
 		      ((map (lift (lenargs * 2 + 1)) pats) @ [cast_obj])
 		  in
 		  let refeqs = map (fun (i, ty, c, rel) -> lift (lenargs - i) (mkEq ty c rel)) argsinfo in
-		  let app = fold_right
+		  let app c = fold_right
 		    (fun c acc ->
 		      mkProd (Name (id_of_string "Heq"), c, acc))
-		    refeqs papp
+		    refeqs c
 		  in
 		  let indhyps =
-		    concat 
+		    concat
 		      (map (fun c ->
 			let hyps, hypslen, c' = 
 			  abstract_rec_calls ~do_subst:false
@@ -1929,7 +1932,8 @@ let build_equations with_ind env id info data sign is_rec arity cst
 			in hyps) args)
 		  in
 		    it_mkLambda_or_LetIn
-		      (it_mkProd_or_subst (lift (length indhyps) app) indhyps)
+		      (app (it_mkProd_or_subst (lift (length indhyps) papp) 
+			       (lift_rel_context lenargs indhyps)))
 		      ctx
 		in
 		let ty = it_mkProd_or_LetIn mkProp ctx in
@@ -2459,7 +2463,7 @@ GEXTEND Gram
       |":="; c = Constr.lconstr -> Program c
       | "<="; c = Constr.lconstr; "=>"; e = equations -> Refine (c, e)
       | "<-"; "(" ; t = Tactic.tactic; ")"; e = equations -> By (Inl t, e)
-      | "by"; IDENT "rec"; id = identref ; "=>"; e = deppat_equations -> Rec (id, e)
+      | "=>"; IDENT "rec"; id = identref ; "=>"; e = deppat_equations -> Rec (id, e)
     ] ]
   ;
 
