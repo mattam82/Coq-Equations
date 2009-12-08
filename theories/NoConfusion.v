@@ -18,7 +18,7 @@ Require Import Coq.Program.Program Bvector List.
 Require Export Equations.DepElim.
 
 Ltac noconf H ::=
-  blocked ltac:(noconf_ref H; simplify_dep_elim ; simplify_IH_hyps) ; auto 3.
+  blocked ltac:(noconf_ref H; simplify_dep_elim) ; auto 3.
 
 (** Used by the [Derive NoConfusion] command. *)
 

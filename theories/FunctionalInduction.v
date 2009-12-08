@@ -53,7 +53,7 @@ Class FunctionalElimination {A : Type} (f : A) :=
   { fun_elim_ty : Prop; fun_elim : fun_elim_ty }.
 
 
-Ltac funelim c :=
+Ltac funelim_tac c tac :=
   match c with
     | appcontext C [ ?f ] => 
   let call := fresh "call" in set(call := c) in *; move call at top;
@@ -66,14 +66,16 @@ Ltac funelim c :=
             subst call; simpl; pattern_call c';
               apply elim; clear; simplify_dep_elim;
                 simplify_IH_hyps; unfold block at 1;
-                  first [ on_last_hyp ltac:(fun id => intros; rewrite <- id; clear id)
+                  first [ on_last_hyp ltac:(fun id => rewrite <- id; clear id; intros)
                     | intros ];
-                  unblock_goal
+                  unblock_goal; tac f
         end
       | subst call; pattern_call c; apply elim; clear; 
         simplify_dep_elim; simplify_IH_hyps; unfold block at 1; 
-          intros; unblock_goal ]
+          intros; unblock_goal; tac f ]
   end.
+
+Ltac funelim c := funelim_tac c ltac:(fun _ => idtac).
 
 (* Ltac funelim c := *)
 (*   match c with *)

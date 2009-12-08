@@ -1,12 +1,14 @@
 \section{Reasoning support}
 
 We now turn to the second part of the \Equations package: the derivation
-of support definitions to help reason on the generated implementations.
+of support definitions to help reasonning on the generated implementations.
 
 \subsection{Building equations}
 
 The easiest step is constructing the proofs of the equations as
 propositional equalities.
+
+\def\helper#1#2{\cst{#1.#2}}
 
 \begin{definition}[Equations statements]
   We recurse on the splitting tree, 
@@ -16,21 +18,23 @@ propositional equalities.
   \begin{itemize}
   \item $\Prog{t}$: the equation is simply $Π~Δ, \cst{f}~\vec{p}~=t$.
   \item $\Empty{t}$: we make an instance of the following typeclass:
+    \vspace{0.1em}
     \input{imposs.coq}
+
     In this case we generate an instance of 
-    $Π~Δ, \ind{ImpossibleCall} (\cst{f}~\vec{p})$.
+    \[Π~Δ, \ind{ImpossibleCall} (\cst{f}~\vec{p})\].
     
   \item $\Refine{t}{Δ' \vdash \vec{\var{v}}^x, \var{x}, \vec{\var{v}}_x :
-      Δ^x, \var{x} : τ, Δ_x}{\cst{f'}}{s}$: 
+      Δ^x, \var{x} : τ, Δ_x}{\helper{f}{\ell}}{s}$: 
     We know that the new programming problem is just a reordering of the
     variables in $Δ$ after having inserted a declaration for the refined 
     object and abstracted the remaining $Δ_x$ context. 
-    The auxilliary definition \cst{f'} produces an object refining 
+    The auxilliary definition $\helper{f}{\ell}$ produces an object refining 
     this context, we can hence generate an indirection equation for the
     helper function: 
-    $Π~Δ, \cst{f}~\vec{p} = \cst{f'}~\vec{\var{v}}^x~t~\vec{\var{v}}_x$.
+    $Π~Δ, \cst{f}~\vec{p} = \helper{f}{\ell}~\vec{\var{v}}^x~t~\vec{\var{v}}_x$.
     We continue the generation of equations, considering the new
-    programming problem and setting the current function to \cst{f'}.
+    programming problem and setting the current function to \helper{f}{\ell}.
   \end{itemize}
 \end{definition}
 
@@ -48,8 +52,8 @@ reasoning in a single rewrite.
 \subsection{Induction principle}
 
 The next step is to build the inductive graph of the function.
-Considering $\cst{f} : Π~Γ, \fcomp{f}~\bar{Γ}$, we want 
-to build an inductive relation $\find{f} : Π~Γ, \fcomp{f}~\bar{Γ} "->" \Prop$ that relates 
+Considering $\cst{f} : Π~Γ,~\fcomp{f}~\bar{Γ}$, we want 
+to build an inductive relation $\find{f} : Π~Γ,~\fcomp{f}~\bar{Γ} "->" \Prop$ that relates 
 arguments $\bar{Γ}$ to results $\fcomp{f}~\bar{Γ}$.
 
 We first define a function that finds the occurences of recursive calls
@@ -68,7 +72,7 @@ to do given that all the recursive calls are labelled by the trivial
     We recursively compute the abstractions in \vec{t} giving us 
     a new context $Δ'$ and terms $\vec{t}'$.
     Our context is extended with a fresh declaration 
-    $\var{res} := \cst{f}~\vec{t} : Π Δ, \fcomp{f}~\vec{t}'$ and 
+    $\var{res} := λ~Δ,~\cst{f}~\vec{t} : Π~Δ,~\fcomp{f}~\vec{t}'$ and 
     the term becomes $\var{res}~\bar{Δ}$.
 
   \item $λ \var{x} : τ, b$ :
@@ -97,8 +101,8 @@ induction hypotheses to the context.
   Given a context $Δ$ of results produced by the \absrec{f}{t} operator,
   we define the induction hypotheses context by a simple map on $Δ$,
   denoted $\IndHyps{Δ}$.
-  For each binding $\var{res} : Π~Δ, \fcomp{f}~\vec{t}$ we build a
-  new binding $\var{resind} : Π Δ, \find{f}~\vec{t}~(\var{res}~\bar{Δ})$.
+  For each binding $\var{res} : Π~Δ,~\fcomp{f}~\vec{t}$ we build a
+  new binding $\var{resind} : Π~Δ,~\find{f}~\vec{t}~(\var{res}~\bar{Δ})$.
 \end{definition}
 
 We are now ready to build the inductive graph.
@@ -129,7 +133,7 @@ We are now ready to build the inductive graph.
     \item $\Empty{t}$ : this case is impossible hence no constructor is
       needed.
     \item $\Refine{t}{Δ' \vdash \vec{\var{v}}^x, \var{x}, \vec{\var{v}}_x :
-        Δ^x, \var{x} : τ, Δ_x}{\cst{f'}}{s}$ :
+        Δ^x, \var{x} : τ, Δ_x}{\helper{f}{\ell}}{s}$ :
       As for the equation, we just have to do an indirection to the 
       inductive graph of the auxiliary function, but we have to take
       into account the recursive calls of the refined term too.
@@ -137,17 +141,17 @@ We are now ready to build the inductive graph.
 
       \begin{center}
         $Π~Δ^x~Δ_x~Ψ~\IndHyps{Ψ}~(\var{res} :
-        \fcomp{f'}~\bar{Δ^x}~t'~\bar{Δ_x}) \newline
-        \quad~\quad\find{f'}~\vec{\var{v}}^x~t'~\vec{\var{v}}_x~\var{res} "->"
+        {\fcomp{\helper{f}{\ell}}}~\bar{Δ^x}~\bar{Δ_x}) \newline
+        \quad~\quad\find{\helper{f}{\ell}}~\vec{\var{v}}^x~t'~\vec{\var{v}}_x~\var{res} "->"
         \find{f}~\vec{p}~\var{res}$
       \end{center}
-      We continue with the generation of the \find{f'} graph.
+      We continue with the generation of the \find{\helper{f}{\ell}} graph.
     \end{itemize}  
   \end{itemize}
 \end{definition}
 
 The result of the inductive graph construction is hence a mutual
-inductive type $\vec{\find{f} : Π~Δ, \fcomp{f}~\bar{Δ}}$
+inductive type $\vec{\find{f} : Π~Δ,~\fcomp{f}~\bar{Δ}}$
 with one inductive definition per refinement node and one
 for the toplevel definition.
 
@@ -183,47 +187,102 @@ graph by proving the following lemma:
       \text{\cst{impossible\_call}} with the application
       $\cst{f}~\vec{p}$ to discharge this goal.
 
-    \item $\Refine{t}{Δ' \vdash \vec{p'} : Γ'}{\cst{f'}}{s}$ :
+    \item $\Refine{t}{Δ' \vdash \vec{p}' : Γ'}{\helper{f}{\ell}}{s}$ :
       Here we can rewrite with the indirection equation and 
       apply the indirection constructor for the inductive
       graph, then solve potential induction subgoals. 
-      We will be left with a subgoal for the \find{f'} graph mentioning
+      We will be left with a subgoal for the \find{\helper{f}{\ell}} graph mentioning
       the refined term $t$. We must simply abstract this term by 
       a fresh variable to obtain a goal of the form 
-      $Π~Δ', \find{f'}~\vec{p'}~(\cst{f'}~\vec{p'})$.
-      We can then recursively solve the proof for \cst{f'}.
+      $Π~Δ',~\find{\helper{f}{\ell}}~\vec{p}'~(\helper{f}{\ell}~\vec{p}')$.
+      We can then recursively solve the proof for $\helper{f}{\ell}$.
     \end{itemize}
   \end{itemize}
   \qed
 \end{theorem}
 
-\subsubsection{Deriving an eliminator}
+\subsection{Deriving an eliminator}
 
 Once we have the proof of the graph lemma
 $Π~Δ,~\find{f}~\bar{Δ}~(\cst{f}~\bar{Δ})$,
 we can specialize the eliminator of $\find{f}$ which is of the form:
-$\begin{array}{l}
-  Π~(P : Π~Δ, \fcomp{f}~\bar{Δ} "->" \Prop), \\
+
+\[\begin{array}{l}
+  Π~(P : Π~Δ,~\fcomp{f}~\bar{Δ} "->" \Prop) \\
+  \vec{(P_{\helper{f}{\ell}} : Π~Δ_{\helper{f}{\ell}},~\fcomp{\helper{f}{\ell}}~\bar{Δ_{\helper{f}{\ell}}} "->" \Prop)} \vspace{0.1em}\\
   (f : Π~Γ, \find{f}~\vec{t}~(\cst{f}~\vec{u}) "->"
   P~\vec{t}~(\cst{f}~\vec{u}) "->" \cdots) \\
   \vdots \\
   Π~Δ~(r : \fcomp{f}~\bar{Δ}), \find{f}~\bar{Δ}~r "->" 
-  P~\bar{Δ}~r
-\end{array}$
+  P~\bar{Δ}~r \vspace{0.1em}
+\end{array}\]
 
-We want to eliminate not any $\fcomp{f}~\bar{Δ}$ object but specifically $\cst{f}$ calls.
+This eliminator expects not only one proposition depending on the
+arguments of the initial call to $\cst{f}$ but also a proposition for
+each one of the helpers corresponding to refinement nodes. We can easily 
+define the proposition for \helper{f}{(n . \ell)} in terms of the proposition
+for $\helper{f}{\ell}$. Each $P_\helper{f}{n . \ell}$ is hence defined as
+
+\def\cast#1#2{\mathsf{cast}~#1~#2}
+
+\[\begin{array}{l}
+  λ~Δ^x~(x : τ)~Δ_x~(r : \fcomp{\helper{f}{(n.\ell)}}~\bar{Δ_{\helper{f}{(n.\ell)}}}), \vspace{0.1em}\\
+  Π~Ψ~\IndHyps{Ψ}\{\find{f}:=P\},\vspace{0.3em}\\ 
+  Π~H : x = t', P_{\helper{f}{l}}~\bar{Δ^x}~\bar{Δ_x}~(\cast{r}{x}~H)
+\end{array}\]
+
+where $\absrec{f}{t} = Ψ, t'$
+
+We abstract on the context of the refinement node with its distinguished
+variable $x$ and on a result $r$ for the subprogram. As we know that 
+this subprogram is called with a particular refined value $t$, we can
+assert the equality $x = t$ and cast the result with this equality to
+get back a term of type $\fcomp{\helper{f}{\ell}}~\bar{Δ^x}~\bar{Δ_x}$: we are simply 
+doing the inverse of the abstraction of $t$ that happened during the
+typechecking of the refinement node. Of course, if $t$ itself contains
+recursive calls, we must also abstract by the corresponding $P$
+hypotheses.
+
+We want to eliminate not any $\fcomp{f}~\bar{Δ}$ object but specifically
+$\cst{f}$ calls.
 Using the graph lemma proof we can trivially specialize the conclusion to:
 \[Π~Δ, P~\bar{Δ}~(\cst{f}~\bar{Δ})\]
 
 We can also remove the unnecessary hypotheses of the form
 $\find{f}~\vec{t}~(\cst{f}~\vec{u})$ appearing in the methods, as
-they are all derivable from the graph lemma proof. The cleaned up
-eliminator applies directly to any goal depending on $\cst{f}$.
+they are all derivable from the graph lemma proof. Finally, we can get
+rid of all the indirection methods as they are of the form:
+
+\[\begin{array}{l}
+  Π~Δ_{\helper{f}{n . \ell}}~(r : \fcomp{f}~\vec{t}),
+  Π~Ψ~\IndHyps{Ψ}{\{\find{f} := P\}}, \\
+  P_{\helper{f}{n . \ell}}~\bar{Δ^x}~t~\bar{Δ_x}~r "->"
+  P_{\helper{f}{\ell}}~\vec{p}~r
+\end{array}\]
+
+These are readily derivable given the definitions of the
+$\helper{P}{\ell}$ above: the equality hypothesis for the refinement is 
+instanciated by a reflexivity proof, making the cast reduce directly.
+We are left with a tautology.
+
+The cleaned up eliminator can be applied directly to any goal depending on
+$\cst{f}$, possibly after another generalization by equalities if the
+call has concrete, non-variable arguments. The elimination will give as
+many goals as there are \Prog{} nodes in the splitting tree (possibly
+more than the number of actual user nodes due to overlapping
+patterns). The context will automatically be enriched by equalities
+witnessing all refinement information available and of course induction
+hypotheses will be available for every recursive call appearing in
+these and the right hand side. This gives rise to a very powerful tool
+to write proofs on our programs, and a lightweight one at the same time:
+all the details of the splitting and refinement are encapsulated in the
+eliminator.
 
 This closes our presentation of the \Equations implementation. Having
 a concrete splitting tree representation gives us the ability to easily
 derive support code for the function definitions, and is one of the
-unexpected benefits of the external approach.
+unexpected benefits of the external approach. We will now demonstrate
+how this support code can be put to use.
 
 %%% Local Variables: 
 %%% mode: latex

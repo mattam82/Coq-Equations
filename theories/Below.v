@@ -111,8 +111,8 @@ Ltac add_pattern t :=
     |- ?T => change (add_pattern T t)
   end.
 
-Ltac rec_fast v recname := intro_block v ;
-  generalize_eqs_vars v ; try intros until v ;
+Ltac rec_fast v recname := intro_block v ; move v at top ;
+  generalize_eqs_vars v ; (intros until v || revert_until v) ;
     let recv := eval simpl in (rec v) in
     (eapply recv || (dependent pattern v ; refine (recv _ _))) ;
     clear_except recname ;
@@ -121,8 +121,8 @@ Ltac rec_fast v recname := intro_block v ;
         (try move recname at bottom) ;
         add_pattern (hide_pattern recname).
 
-Ltac rec_debug v recname := intro_block v ;
-  generalize_eqs_vars v ; try intros until v ;
+Ltac rec_debug v recname := intro_block v ; move v at top ;
+  generalize_eqs_vars v ; (intros until v || revert_until v) ;
     let recv := eval simpl in (rec v) in show_goal ; 
     (eapply recv || (dependent pattern v ; refine (recv _ _))) ; show_hyps ; idtac "before clear";
     clear_except recname ; 

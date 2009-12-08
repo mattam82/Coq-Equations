@@ -16,7 +16,7 @@ Inductive Acc {A} (R : A -> A -> Prop) (x : A) : Prop :=
   there has to a finite proof for the accessibility of [x], hence all possible
   chains $\cdots R~x_{i-1} x_i, R~x_i~x$ have to be finite. This corresponds 
   (classicaly) to the descending chain condition. 
-  A relation is said to be well-founded if all elements are accesible for it. 
+  A relation is said to be well-founded if all elements are accessible for it. 
    We make a class to register well founded relations: *)
 
 Class WellFounded {A : Type} (R : relation A) :=
@@ -30,7 +30,7 @@ Definition FixWf `{WF : WellFounded A R} (P : A -> Type)
 Proof. Admitted.
 
 (** Obviously, we can prove that the subterm relation defined
-   earlier is well-founded. It follows by a simple induction on the object
+   above is well-founded. It follows by a simple induction on the object
    and inversion on the subterm proof relating the subterms and the original
    term. However, we need to take the transitive closure of this relation 
    to get the complete subterm relation. It is easy to show that the 
@@ -63,7 +63,7 @@ Proof.
      or the term by the corresponding projections of the tuple. *)
   generalize_eqs_vars v. pack v as v'.
   (** [[
-A : Type  gen_x : nat  v : vector A gen_x
+(A : Type) (gen_x : nat) (v : vector A gen_x)
 v' := existT gen_x v : {index : nat & vector A index}
 ============================
  forall (n : nat) (v0 : vector A (S n)),
@@ -72,7 +72,7 @@ v' := existT gen_x v : {index : nat & vector A index}
    packed object and all the variables we packed. *)
   clearbody v'. clear.
   (** [[
-A : Type  v' : {index : nat & vector A index}
+(A : Type) (v' : {index : nat & vector A index})
 ============================
  forall (n : nat) (v0 : vector A (S n)),
  projT1 v' = S n -> projT2 v' ~= v0 -> vlast_comp A n v0 ]]
@@ -84,7 +84,7 @@ A : Type  v' : {index : nat & vector A index}
    recursor associated to the type of [x]. *)  
   fix_wf v' rv.
   (** [[
-A : Type  n : nat  v0 : vector A (S n)
+(A : Type) (n : nat) (v0 : vector A (S n))
 rv : forall (index : nat) (y : vector A index),
   vector_subterm A (existT index y) (existT (S n) v0) ->
   forall (n : nat) (v0 : vector A (S n)),

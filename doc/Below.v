@@ -49,7 +49,7 @@ Hint Unfold noConfusion_nat : equations.
 (* end hide *)
 
 Equations(nostruct) vlast {A : Type} {n : nat} (v : vector A (S n)) : A :=
-vlast A n v ! v ;
+vlast A n v => rec v =>
 vlast A ?(S n) (Vcons a ?(O) Vnil) := a ;
 vlast A ?(S n) (Vcons a ?(S n) v) := vlast v.
 

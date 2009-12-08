@@ -225,27 +225,27 @@ to match the user patterns in \vec{p}.
     the context $Δ$ for $t$, giving us the minimal context $Δ^t$ to
     typecheck $t$ and the remaining context $Δ_t$. This strengthening 
     is in fact a context mapping 
-    \prob{Δ^t, \var{$x_t$} : τ_Δ, Δ_t}{str}{Δ, \var{$x_t$} : τ_Δ}.
+    \prob{Δ^t, \var{x_t} : τ_Δ, Δ_t}{str}{Δ, \var{x_t} : τ_Δ}.
     We can now abstract $t$ from the remaining context to get 
-    a new context: $Δ^t, \var{$x_t$} : τ_Δ, Δ_t[t/\var{$x_t$}]$. 
+    a new context: $Δ^t, \var{x_t} : τ_Δ, Δ_t[t/\var{x_t}]$. 
     We check that this context is well-typed after the abstraction, 
     which might not be the case. We also abstract $t$ in the goal 
     type and recheck it before searching for a covering of the identity 
-    substitution of $Δ^t, \var{$x_t$} : τ_Δ, Δ_t[t/\var{$x_t$}$ using 
+    substitution of $Δ^t, \var{x_t} : τ_Δ, Δ_t[t/\var{x_t}$ using 
     updated user clauses \vec{c}. 
     The clauses are actually reordered to match the strengthening:
     each $c_i$ must be of the form $\vec{p}_i~p_i^x$ where $\vec{p}_i$
     matches $\vec{p}$. The matching gives us a substitution from the
     variables of $\vec{p}$, the patterns at the with node, to new 
     user patterns. We can easily make new user clauses matching the 
-    strengthened context $Δ^t, \var{$x_t$} : τ_Δ, Δ_t[t/\var{$x_t$}]$ 
+    strengthened context $Δ^t, \var{x_t} : τ_Δ, Δ_t[t/\var{x_t}]$ 
     by associating to each variable of $Δ$ its associated user pattern 
     and using $p_i^x$ for the new pattern. 
     The result of the covering will then be an exhaustive case-split for
-    the problem \prob{Δ^t, \var{$x_t$} : τ_Δ, Δ_t[t/\var{$x_t$}]}
-    {\bar{Δ^t}, \var{$x_t$}, \bar{Δ_t}}{Δ^t, \var{$x_t$} : τ_Δ,
-      Δ_t[t/\var{$x_t$}]}, hence a term of type
-    $Π~Δ^t~(\var{$x_t$} : τ_Δ)~Δ_t[t/\var{$x_t$}], τ_f[t/\var{$x_t$}]$.
+    the problem \prob{Δ^t, \var{x_t} : τ_Δ, Δ_t[t/\var{x_t}]}
+    {\bar{Δ^t}, \var{x_t}, \bar{Δ_t}}{Δ^t, \var{x_t} : τ_Δ,
+      Δ_t[t/\var{x_t}]}, hence a term of type
+    $Π~Δ^t~(\var{x_t} : τ_Δ)~Δ_t[t/\var{x_t}], τ_f[t/\var{x_t}]$.
     We can apply this term to $\bar{Δ^t}, t, \bar{Δ_t}$ to recover a 
     term of type $τ_f$ in the original $Δ$ context, providing a covering
     for the initial \prob{Δ}{\vec{p}}{Γ}.

@@ -34,7 +34,7 @@ Ltac funelim c :=
     appcontext C [ ?f ] => 
       let x := constr:(fun_elim (f:=f)) in
         (let prf := eval simpl in x in
-          dependent_pattern c ; apply prf)
+          dependent pattern c ; apply prf)
   end.
 Require Import Bvector.
 
@@ -66,7 +66,7 @@ Proof. intros b. funelim (neg b); simp neg. Defined.
 (** [Equations] declarations are formed by a signature definition and a set of _clauses_ 
    that must form a _covering_ of this signature. The compiler is then expected to
    automatically find a corresponding case-splitting tree that implements the function.
-   In simple cases like this, it simply needs to split on the single variable [b] to
+   In this case, it simply needs to split on the single variable [b] to
    produce two new _programming problems_ [neg true] and [neg false] that are directly 
    handled by the user clauses. We will see in more complex examples that this search
    for a splitting tree may be non-trivial. *)
@@ -76,7 +76,7 @@ Proof. intros b. funelim (neg b); simp neg. Defined.
    In the setting of a proof assistant like Coq, we need not only the ability 
    to define complex functions but also get good reasoning support for them.
    Practically, this translates to the ability to simplify applications of functions 
-   appearing in the goal and to give strong enough proof principles for recursive 
+   appearing in the goal and to give strong enough proof principles for (recursive)
    definitions.
 
    [Equations] provides this through an automatic generation of proofs related to
@@ -84,11 +84,11 @@ Proof. intros b. funelim (neg b); simp neg. Defined.
    equality between the left and right hand sides. These equations can be used as 
    rewrite rules for simplification during proofs, without having to rely on the
    fragile simplifications implemented by raw reduction. We can also generate the
-   inductive graph of any [Equations] definition, giving the strongest induction 
+   inductive graph of any [Equations] definition, giving the strongest elimination
    principle on the function. 
 
    I.e., for [neg] the inductive graph is defined as: [[
-Inductive neg_ind : forall b : bool, neg_comp b -> Prop :=
+Inductive neg_ind : forall b : bool, bool -> Prop :=
 | neg_ind_equation_1 : neg_ind true false
 | neg_ind_equation_2 : neg_ind false true ]]
 
@@ -99,7 +99,7 @@ Inductive neg_ind : forall b : bool, neg_comp b -> Prop :=
   b : bool
   ============================
    neg (neg b) = b ]]
-   An application of the [funind] tactic will produce two goals corresponding to 
+   An application of the tactic [funelim (neg b)] will produce two goals corresponding to 
    the splitting done in [neg]: [neg false = true] and [neg true = false].
    These correspond exactly to the rewriting lemmas generated for [neg].
 
@@ -115,7 +115,7 @@ Inductive neg_ind : forall b : bool, neg_comp b -> Prop :=
    *)
 
 Inductive list {A} : Type := nil : list | cons : A -> list -> list.
-Implicit Arguments list []. Notation " x :: l " := (cons x l).
+Implicit Arguments list []. Notation "x :: l" := (cons x l).
 
 (** No special support for polymorphism is needed, as type arguments are treated 
    like regular arguments in dependent type theories. Note however that one cannot
@@ -248,7 +248,7 @@ head A (cons a v) _ := a.
      to inform the compiler that a contradiction is derivable in this case.
      In general we cannot expect the compiler to find by himself that 
      the context contains a contradiction, as it is undecidable 
-     %\cite{DBLP:conf/plpv/Oury07,DBLP:conf/birthday/GoguenMM06}%.
+     %(\cite{DBLP:conf/plpv/Oury07,DBLP:conf/birthday/GoguenMM06})%.
    - In the second case, we simply return the head of the list, disregarding
      the proof.
  *)
@@ -257,9 +257,9 @@ head A (cons a v) _ := a.
 
    The next step is to make constraints such as non-emptiness part of the 
    datatype itself. This capability is provided through inductive families in
-   Coq %\cite{paulin93tlca}%, which are a similar concept to the recent generalization 
+   Coq %\cite{paulin93tlca}%, which are a similar concept to the generalization 
    of algebraic datatypes to GADTs in functional languages like Haskell 
-   %\cite{ghani-popl07}%. Families provide a way to associate to each constructor 
+   %\cite{HaskellGADTS,ghani-popl07}%. Families provide a way to associate to each constructor 
    a different type, making it possible to give specific information about a value 
    in its type. 
 
@@ -274,7 +274,7 @@ Inductive eq (A : Type) (x : A) : A -> Prop :=
    it in section %\ref{sec:equality}%.
 
    Equality is a polymorphic relation on [A]. (The [Prop] sort (or kind) categorizes
-   propositions, while the [Set] sort, equivalent to [*] in Haskell categorizes 
+   propositions, while the [Set] sort, equivalent to $\star$ in Haskell categorizes 
    computational types.) Equality is _parameterized_ by a value [x] of type [A] and 
    _indexed_ by another value of type [A]. Its single constructor states that 
    equality is reflexive, so the only way to build an object of [eq x y] is if 
@@ -290,8 +290,8 @@ forall (A : Type) (x : A) (P : A -> Type), P x -> forall y : A, x = y -> P y ]]
    pattern-matching on equality proofs to show:
  *)
 
-Equations eq_trans {A} (x y z : A) (p : x = y) (q : y = z) : x = z :=
-eq_trans A ?(x) ?(x) ?(x) eq_refl eq_refl := eq_refl.
+Equations eqt {A} (x y z : A) (p : x = y) (q : y = z) : x = z :=
+eqt A ?(x) ?(x) ?(x) eq_refl eq_refl := eq_refl.
 
 (** Let us explain the meaning of the non-linear patterns here that we 
    slipped through in the [equal] example. By pattern-matching on the 

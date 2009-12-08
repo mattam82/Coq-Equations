@@ -393,7 +393,7 @@ Ltac simplify_one_dep_elim_term c :=
     | _ -> ?T => intro; try (let x := type of T in idtac) 
        (* Only really anonymous, non dependent hyps get automatically generated names. *)
     | forall x, _ => intro x || (let H := fresh x in rename x into H ; intro x) (* Try to keep original names *)
-    | _ => intro
+    | _ -> _ => intro
   end.
 
 Ltac simplify_one_dep_elim :=
@@ -605,7 +605,7 @@ Ltac depelim id := do_depelim ltac:(fun hyp => do_case hyp) id.
 
 Ltac depelim_term c :=
   let H := fresh "term" in
-    set (H:=c) in * ; depelim H.
+    set (H:=c) in *; clearbody H ; depelim H.
 
 (** Used internally. *)
 

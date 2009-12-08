@@ -57,9 +57,10 @@ we define \cst{Below\_nat} as follows:
 
 \input{Below.coq}
 
-This method handles the definition structurally recursive definitions
+This method handles the structurally recursive definitions
 satisfactorily, but it is very inneficient. Indeed, if we try to reduce 
-a program using this recursor, there will be an exponential blowup as 
+a program using this recursor using a call-by-value reduction,
+there might be an exponential blowup as 
 the object we are recursing on, that is the tuple of all possible
 recursive calls \cst{below\_nat}, will have to be computed for each call. This is not 
 a problem if we are using a lazy reduction strategy but it is

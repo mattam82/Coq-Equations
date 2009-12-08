@@ -80,7 +80,7 @@ Ltac rec_wf x recname fixterm :=
   apply fixterm ; clear_local ; 
   intros until 1 ; simp_exists ; 
     on_last_hyp ltac:(fun x => rename x into recname) ;
-  simpl in * ; simplify_dep_elim ; intros ; unblock_goal ; intros ;
+  simplify_dep_elim ; intros ; unblock_goal ; intros ;
   move recname at bottom ; repeat curry recname ; simpl in recname.
 
 (** Generalize an object [x], packing it in a sigma type if necessary. *)
@@ -95,12 +95,14 @@ Ltac generalize_pack x :=
    [x] with its indices into a sigma type and find the declared 
    relation on this type. *)
 
-Ltac rec_wf_eqns x recname := generalize_pack x; pattern x;
+Ltac rec_wf_eqns x recname := 
+  move x at top; revert_until x; generalize_pack x; pattern x;
   let ty := type of x in
   let ty := eval simpl in ty in
   let wfprf := constr:(wellfounded (A:=ty)) in
   let fixterm := constr:(FixWf (WF:=wfprf)) in
-    rec_wf x recname fixterm ; simpl in * ; add_pattern (hide_pattern recname) ; instantiate.
+    rec_wf x recname fixterm ; intros ;
+      add_pattern (hide_pattern recname) ; instantiate.
 
 Ltac solve_rec ::= simpl in * ; cbv zeta ; intros ; 
   try typeclasses eauto with subterm_relation Below.
