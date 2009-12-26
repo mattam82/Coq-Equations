@@ -259,7 +259,7 @@ head A (cons a v) _ := a.
    datatype itself. This capability is provided through inductive families in
    Coq %\cite{paulin93tlca}%, which are a similar concept to the generalization 
    of algebraic datatypes to GADTs in functional languages like Haskell 
-   %\cite{HaskellGADTS,ghani-popl07}%. Families provide a way to associate to each constructor 
+   %\cite{ghani-popl07,GADTcomplete}%. Families provide a way to associate to each constructor 
    a different type, making it possible to give specific information about a value 
    in its type. 
 

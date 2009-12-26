@@ -20,7 +20,7 @@ Inductive fin : nat -> Set :=
 
 (** We can inject it into [nat]. *)
 
-Equations fog {n} (f : fin n) : nat :=
+Equations(nocomp) fog {n} (f : fin n) : nat :=
 fog ?(S n) (fz n) := 0 ; 
 fog ?(S n) (fs n f) := S (fog f).
 
@@ -33,7 +33,7 @@ Qed.
 
 (** Of course it has an inverse. *)
 
-Equations gof n : fin (S n) :=
+Equations(nocomp) gof n : fin (S n) :=
 gof O := fz ;
 gof (S n) := fs (gof n).
 
@@ -75,7 +75,7 @@ Implicit Arguments finle [[n]].
 
 Require Import Bvector.
 
-Equations nth {A} {n} (v : vector A n) (f : fin n) : A :=
+Equations(nocomp) nth {A} {n} (v : vector A n) (f : fin n) : A :=
 nth A ?(S n) (Vcons a n v) fz := a ;
 nth A ?(S n) (Vcons a n v) (fs n f) := nth v f.
 
@@ -83,7 +83,7 @@ Goal Π (A : Type) (n : nat) (a : A) (H : vector A n), nth (Vcons a H) fz = a.
   intros. funind (nth (Vcons a H) fz) nfz.
 Qed.
 
-Equations tabulate {A} {n} (f : fin n -> A) : vector A n :=
+Equations(nocomp) tabulate {A} {n} (f : fin n -> A) : vector A n :=
 tabulate A O f := Vnil ;
 tabulate A (S n) f := Vcons (f fz) (tabulate (f ∘ fs)).
 

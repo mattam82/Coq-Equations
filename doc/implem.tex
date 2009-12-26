@@ -30,7 +30,7 @@ it makes the trusted code base larger and limits the extensibility of
 the system: adding a new pattern matching construct like with clauses 
 requires to modify the kernel's code. \Agda implements pattern-matching
 like this, and there is a proposal to extend \Coq in a similar way
-\cite{CoqTYPES09}. 
+\cite{conf/types/BarrasCGHS08}. 
 The external approach takes a different path. In this case we use the 
 type theory itself to explain why a definition is correct,
 essentially building a witness of the covering in terms of the much
@@ -312,7 +312,7 @@ construction through a type class \class{NoConfusion}:
 
 There is one little twist in our simplifier, due to the fact that \Coq does
 not support the principle of ``Uniqueness of Identity Proof'', also
-refered to as \people{Streicher}'s K axiom \cite{Streicher}. This
+refered to as \people{Streicher}'s K axiom \cite{Streicher91}. This
 principle can be phrased as:
 
 \coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Logic.ProofIrrelevance}{ProofIrrelevanceTheory.EqdepTheory.UIPrefl}{\coqdoclemma{UIP\_refl}}
@@ -336,7 +336,7 @@ automation. Hence we only lose the ability to compute with these
 definitions inside \Coq itself, for example as part of reflexive
 tactics. At least two proposed extensions to \Coq allow to derive this
 principle without any axioms: extensions to make dependent
-pattern-matching more powerful w.r.t. indices \cite{TYPES09} and 
+pattern-matching more powerful w.r.t. indices \cite{conf/types/BarrasCGHS08} and 
 the addition of proof-irrelevance. Having them would make \Equations
 only more useful.
 If we use the extraction mechanism of \Coq \cite{Let2008} that produces
