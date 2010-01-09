@@ -1,0 +1,476 @@
+%; whizzy-master slides.tex
+%; whizzy frame -pdf ./skimopen 
+\mode<all>
+{\usetheme{Orsay}}
+
+\usepackage{xspace} % To get the right spacings in front of : and so on
+\usepackage[english]{babel}
+\usepackage{subfigure}
+\usepackage{bussproofs}
+\usepackage{ottlayout}
+\usepackage{pgf}
+\usepackage{colortbl}
+
+%\usepackage{xcolor}
+\usepackage{abbrevs}
+\usepackage[color]{coqdoc}
+\def\coqlibrary#1#2{}
+
+\usepackage{hyperref}
+\usepackage{coq}
+\usepackage{code}
+\usepackage{codecolor}
+\usepackage{cond}
+\usepackage{me}
+\usepackage{tikz}
+\usetikzlibrary{shapes}
+\usepackage{pifont}
+\usepackage{proof}
+\usepackage{utf}
+\usepackage{utfmacros}
+\usepackage{natbib}
+
+\def\thetitle{\Equations: a dependent pattern-matching compiler}
+\def\thetextitleabbr{\thetitle}
+\def\thetextitle{\thetextitleabbr}
+\def\thesubject{Theoretical Computer Science}
+\def\thekeywords{pattern-matching, Dependent Types, recursion}
+\def\theevent{
+GT Types \& Réalisabilité\\
+January 14th 2010\\
+Paris, France}
+\def\theeventabbr{}
+
+\input{../figures}
+\usepackage{prelude-beamer}
+
+\author[\myabbrname{}]{\sc \myname{}}
+
+\pgfdeclareimage[height=1cm]{harvard-logo}{harvard-logo}
+\pgfdeclareimage[height=1cm]{coq-logo}{barron-logo}
+\pgfdeclareimage[height=4cm]{coq-biglogo}{barron-logo}
+\pgfdeclareimage[height=0.4cm]{coq-smalllogo}{barron-logo}
+
+\def\coqdocid#1{\coqdocvar{#1}}
+
+\newqsymbol{"="}{\mathrel{\eqdef}}
+\newqsymbol{":="}{\coloneq}
+
+\renewcommand{\bar}[1]{{\overline{#1}}}
+
+\setlength{\coqdocbaseindent}{0em}
+
+\begin{document}
+
+\begin{frame}[plain]
+  \titlepage
+  \vfill
+  \hfill
+  \pgfputat{\pgfxy(0,0)}{\pgfbox[right,center]{
+      \pgfuseimage{harvard-logo}}}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Overview}
+
+  \TODO{labels, explain hidden patterns}
+  
+  \begin{itemize}
+  \item \Epigram-style pattern-matching definitions with \kw{with} and
+    \kw{rec} nodes
+  \item Propositional equations for definitional equalities
+  \item Elimination principle and support for applying it
+  \end{itemize}
+
+  \begin{center}
+    \alert{\Huge{DEMO}}
+  \end{center}
+\end{frame}
+
+\frame<beamer>{\tableofcontents}
+
+\section{Dependent pattern-matching compilation}
+\def\hl#1{\textbf{#1}}
+
+\begin{frame}
+  \frametitle{Compilation setup}
+  
+  \begin{center}\hl{Elaboration} into \CIC + K
+  \end{center}
+  
+  Three phases:
+  \begin{enumerate}
+  \item Generation of a splitting tree from the clauses
+  \item Translation from the splitting tree to \Coq terms with holes
+  \item Proofs of the obligations using a mix of \ML and \Ltac code
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Input language}
+
+  \begin{figure}
+    \[\figdefs\]
+  \end{figure}
+  
+\end{frame}
+
+\subsection{Case analysis}
+
+\begin{frame}
+  \frametitle{Splitting tree}
+
+  $\prob{Δ}{\vec{p}}{Γ}$: Under context Δ, \vec{p} is an instance of
+  context Γ.
+  
+  For $\cst{f}~Δ : τ$ we define $\fcomp{f}~Δ := τ$. 
+
+  \vspace{1em}
+
+  Search for an implementation of $Π~Δ, \fcomp{f}~Δ$, gradually refining
+  the context map \prob{Δ}{\bar{Δ}}{Δ}.
+
+  \begin{figure}
+    \[\figsplit\]
+  \end{figure}
+  
+\end{frame}
+
+\begin{frame}
+  \frametitle{Proof search}
+\begin{center}
+\begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Equations} \coqdef{intro.equal}{equal}{\coqdocdefinition{equal}} (\coqdocvar{n} \coqdocvar{m} : \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{nat}{\coqdocinductive{nat}}) : \{ \coqdocvariable{n} = \coqdocvariable{m} \} + \{ \coqdocvariable{n} \ensuremath{\not=} \coqdocvariable{m} \} :=\coqdoceol
+\coqdocnoindent
+\coqref{intro.equal}{\coqdocdefinition{equal}} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{O}{\coqdocconstructor{O}} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{O}{\coqdocconstructor{O}} := \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Specif}{left}{\coqdocconstructor{left}} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Logic}{eqrefl}{\coqdocconstructor{eq\_refl}} ;\coqdoceol
+\coqdocnoindent
+\coqref{intro.equal}{\coqdocdefinition{equal}} (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{S}{\coqdocconstructor{S}} \coqdocvar{n}) (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{S}{\coqdocconstructor{S}} \coqdocvar{m}) \coqdockw{with} \coqref{intro.equal}{\coqdocdefinition{equal}} \coqdocvariable{n} \coqdocvariable{m} := \{\coqdoceol
+\coqdocindent{1.00em}
+\coqref{intro.equal}{\coqdocdefinition{equal}} (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{S}{\coqdocconstructor{S}} \coqdocvar{n}) (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{S}{\coqdocconstructor{S}} ?(n)) (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Specif}{left}{\coqdocconstructor{left}} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Logic}{eqrefl}{\coqdocconstructor{eq\_refl}}) := \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Specif}{left}{\coqdocconstructor{left}} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Logic}{eqrefl}{\coqdocconstructor{eq\_refl}} ;\coqdoceol
+\coqdocindent{1.00em}
+\coqref{intro.equal}{\coqdocdefinition{equal}} (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{S}{\coqdocconstructor{S}} \coqdocvar{n}) (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{S}{\coqdocconstructor{S}} \coqdocvar{m}) (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Specif}{right}{\coqdocconstructor{right}} \coqdocvar{p}) := \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Specif}{right}{\coqdocconstructor{right}} \coqdocvar{\_} \} ;\coqdoceol
+\coqdocnoindent
+\coqref{intro.equal}{\coqdocdefinition{equal}} \coqdocvar{x} \coqdocvar{y} := \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Specif}{right}{\coqdocconstructor{right}} \coqdocvar{\_}.\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+\end{center}  
+\end{frame}
+
+\subsection{\texttt{with} in detail}
+\begin{frame}
+  \frametitle{With nodes in detail}
+  
+  Consider a current problem $\prob{Δ}{\vec{p}}{Γ}$ and a user clause 
+  $\cst{f}~\vec{p}~\userref{t_{pre}}{e}$ matching it. 
+  We typecheck $t_{pre}$ into $t : τ$ and use strenghtening and
+  abstraction to find a new context map \[\prob{Δ^t, \var{x_t} : τ,
+    Δ_t[t/\var{x_t}]}{\bar{Δ^t}, \bar{Δ_t}}{Δ}\]
+  
+  We generate a \Refine{t}{c}{f}{s} where $s$ covers the new context map:
+
+  \[c = \prob{Δ^t, \var{x_t} : τ_Δ, Δ_t[t/\var{x_t}]}
+    {\bar{Δ^t}, \var{x_t}, \bar{Δ_t}}{Δ^t, \var{x_t} : τ_Δ,
+      Δ_t[t/\var{x_t}]}\]
+
+  As context maps compose this gives us a covering of the original
+  problem. However the clauses $e$ have patterns which are instances of
+  $p$, we can rewrite them to match the variables 
+  $\bar{Δ^t}, \var{x_t}, \bar{Δ_t}$ instead.
+
+\end{frame}
+  
+%\begin{frame}
+%   \frametitle{Dependent Pattern-Matching}
+  
+%   \begin{itemize}
+%   \item Patterns = \hl{well-typed} refinements of the signature
+%   \item We refine the \hl{entire} context at each node (correct dependency tracking)
+%   \item Internalizes ``Uniqueness of Identity Proofs'' (axiom K)
+%   \item \hl{Inaccessible} patterns ensure operationality
+%   \end{itemize}
+% \end{frame}
+
+\begin{frame}
+  \frametitle{Translation from splitting to \Coq}
+
+  \begin{enumerate}
+  \item \Split{c}{x}{s}: witnessed by applying a dependent elimination 
+    (\tactic{dependent~destruction}). Empty nodes are translated to
+    empty splittings.
+  \item \Prog{c}: witnessed by the term.
+  \item \Refine{t}{c}{f}{s}: witnessed by inserting a let-definition in
+    the context, strengthening, abstracting and clearing its body.
+  \end{enumerate}
+
+  Once all obligations are solved we have an implementation
+  corresponding to the equations.
+\end{frame}
+
+\section{Recursion}
+
+\begin{frame}
+  \frametitle{Recursion}
+  
+  \begin{itemize}
+  \item Syntactic recursion is too fragile
+  \item Does not work well with abstraction/modularity
+  \item Restricted to subterm on one argument
+  \end{itemize}
+
+\end{frame}
+
+\subsection{The Below way}
+
+\begin{frame}
+  \frametitle{The Below way}
+  
+  Introduced by McBride and McKinna.
+
+  \TODO{Below nat}
+
+  \begin{itemize}
+  \item Introduce hidden patterns in the problem to carry recursion
+    hypotheses.
+  \item Each recursive call is transformed to a projection
+    $\fcompproj{f} : Π~Δ~\{p : \fcomp{f}~\bar{Δ}\}, \fcomp{f}~\bar{Δ}$.
+  \item Proof search for $\fcomp{f}$ terms
+  \end{itemize}
+\end{frame}
+
+\subsection{Subterm relations}
+
+\begin{frame}
+  \frametitle{Subterm relations and well-founded recursion}
+
+  \Below can be very inefficient! Need another way to get structural
+  recursion. Just define the subterm relation on inductive families and
+  do well-founded recursion on it.
+  
+  \begin{itemize}
+  \item Same setup, keep the recursor as a hidden
+    variable, generate obligations for recursive calls.
+  \item General definition of subterm (restricted to one inductive type
+    currently).
+  \item Sigmaize/currify inductive types and define heterogeneous
+    relations as homogeneous relations on the sigma. 
+  \item Extract efficiently, but proof search a bit more complicated
+    than \Below.
+  \end{itemize}
+\end{frame}  
+\begin{frame}
+\TODO{subterm vector example}
+\end{frame}
+
+\section{Reasoning support}
+\frame<beamer>{\tableofcontents[currentsection]}
+
+\subsection{Equations}
+\begin{frame}
+  \frametitle{Equations}
+  
+  \begin{itemize}
+  \item Equations hold definitionally in \CCI + K
+  \item Equations for with nodes are just proxies to the helper function.
+  \item All put together in a rewrite database, \cst{f} can now
+    be opacified.
+  \item For recursive definitions, we first prove an unfolding lemma and use
+    the equations of the unfolded version. 
+  \end{itemize}
+\end{frame}
+
+\subsection{Elimination principle}
+
+\begin{frame}
+  \frametitle{Elimination principle: inductive graph}
+
+  Direct translation from the splitting tree, ignoring \kw{rec} nodes.
+  \absrec{f}{t} abstracts all the recursive calls of \cst{f} from the
+  term $t$, returning a new derivation $Γ' \vdash t'$ where $Γ'$
+  contains all recursive calls of the form $x : Π Δ, \fcomp~\vec{t}$.
+  
+  \begin{itemize}
+  \item $\Split{c}{x}{s}$, $\Rec{v}{s}$ : collect the constructors for
+    the subsplitting(s) $s$, if any.
+
+  \item $\Compute{\prob{Δ}{\vec{p}}{Γ}}{rhs}$ :
+    By case on $rhs$:
+    \begin{itemize}
+    \item $\Prog{t}$ : Compute $Ψ \vdash t' = \absrec{f}{t}$ and return 
+      the statement \[Π~Δ~Ψ~\IndHyps{Ψ},~\find{f}~\vec{p}~t'\].
+
+    \item $\Refine{t}{Δ' \vdash \vec{\var{v}}^x, \var{x}, \vec{\var{v}}_x :
+        Δ^x, \var{x} : τ, Δ_x}{\helper{f}{\ell}}{s}$ :
+
+      Compute $Ψ \vdash t' = \absrec{f}{t}$ and return:
+
+      \begin{center}
+        $Π~Δ^x~Δ_x~Ψ~\IndHyps{Ψ}~(\var{res} :
+        {\fcomp{\helper{f}{\ell}}}~\bar{Δ^x}~\bar{Δ_x}) \newline
+        \quad~\quad\find{\helper{f}{\ell}}~\vec{\var{v}}^x~t'~\vec{\var{v}}_x~\var{res} "->"
+        \find{f}~\vec{p}~\var{res}$
+      \end{center}
+      
+      We continue with the generation of the \find{\helper{f}{\ell}} graph.
+    \end{itemize}  
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Elimination principle}
+
+  Built from the proof that the function respect its graph 
+  and the mutual induction principle for $\find{f}$. E.g:
+\vspace{2em}
+
+\begin{coqdoccode}
+\coqdocnoindent
+\coqdockw{Equations} \coqdef{filterind.filter}{filter}{\coqdocdefinition{filter}} \{\coqdocvar{A}\} (\coqdocvar{l} : \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A}) (\coqdocvar{p} : \coqdocvariable{A} \ensuremath{\rightarrow} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{bool}{\coqdocinductive{bool}}) : \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A} :=\coqdoceol
+\coqdocnoindent
+\coqref{filterind.filter}{\coqdocdefinition{filter}} \coqdocvar{A} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{nil}{\coqdocconstructor{nil}} \coqdocvar{p} := \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{nil}{\coqdocconstructor{nil}} ;\coqdoceol
+\coqdocnoindent
+\coqref{filterind.filter}{\coqdocdefinition{filter}} \coqdocvar{A} (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{cons}{\coqdocconstructor{cons}} \coqdocvar{a} \coqdocvar{l}) \coqdocvar{p} \coqdockw{with} \coqdocvariable{p} \coqdocvariable{a} := \{\coqdoceol
+\coqdocindent{1.00em}
+\ensuremath{|} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{true}{\coqdocconstructor{true}} := \coqdocvariable{a} :: \coqref{filterind.filter}{\coqdocdefinition{filter}} \coqdocvariable{l} \coqdocvariable{p} ;\coqdoceol
+\coqdocindent{1.00em}
+\ensuremath{|} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{false}{\coqdocconstructor{false}} := \coqref{filterind.filter}{\coqdocdefinition{filter}} \coqdocvariable{l} \coqdocvariable{p} \}.\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Generated mutual induction principle}
+
+\footnotesize{
+\begin{coqdoccode}
+\coqdockw{Check}(\coqref{filterind.filterindmut}{\coqdocdefinition{filter\_ind\_mut}} :\coqdoceol
+\coqdocindent{1.00em}
+\ensuremath{\forall} (\coqdocvar{P} : \ensuremath{\forall} (\coqdocvar{A} : \coqdockw{Type}) (\coqdocvar{l} : \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A}) (\coqdocvar{p} : \coqdocvariable{A} \ensuremath{\rightarrow} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{bool}{\coqdocinductive{bool}}),\coqdoceol
+\coqdocindent{2.00em}
+\coqref{filterind.filtercomp}{\coqdocdefinition{filter\_comp}} \coqdocvariable{l} \coqdocvariable{p} \ensuremath{\rightarrow} \coqdockw{Prop})\coqdoceol
+\coqdocindent{1.00em}
+(\coqdocvar{P0} : \ensuremath{\forall} (\coqdocvar{A} : \coqdockw{Type}) (\coqdocvar{a} : \coqdocvariable{A}) (\coqdocvar{l} : \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A}) (\coqdocvar{p} : \coqdocvariable{A} \ensuremath{\rightarrow} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{bool}{\coqdocinductive{bool}}),\coqdoceol
+\coqdocindent{2.00em}
+\coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{bool}{\coqdocinductive{bool}} \ensuremath{\rightarrow} \coqref{filterind.filtercomp}{\coqdocdefinition{filter\_comp}} (\coqdocvariable{a} :: \coqdocvariable{l}) \coqdocvariable{p} \ensuremath{\rightarrow} \coqdockw{Prop}),\coqdoceol
+\coqdocindent{1.00em}
+(\ensuremath{\forall} (\coqdocvar{A} : \coqdockw{Type}) (\coqdocvar{p} : \coqdocvariable{A} \ensuremath{\rightarrow} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{bool}{\coqdocinductive{bool}}), \coqdocvariable{P} \coqdocvariable{A} [] \coqdocvariable{p} []) \ensuremath{\rightarrow}\coqdoceol
+\coqdocindent{1.00em}
+(\ensuremath{\forall} (\coqdocvar{A} : \coqdockw{Type}) (\coqdocvar{a} : \coqdocvariable{A}) (\coqdocvar{l} : \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A}) (\coqdocvar{p} : \coqdocvariable{A} \ensuremath{\rightarrow} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{bool}{\coqdocinductive{bool}}),\coqdoceol
+\coqdocindent{2.00em}
+\coqref{filterind.filterind1}{\coqdocinductive{filter\_ind\_1}} \coqdocvariable{A} \coqdocvariable{a} \coqdocvariable{l} \coqdocvariable{p} (\coqdocvariable{p} \coqdocvariable{a}) (\coqref{filterind.filterobligation2}{\coqdoclemma{filter\_obligation\_2}} (@\coqref{filterind.filter}{\coqdocdefinition{filter}}) \coqdocvariable{A} \coqdocvariable{a} \coqdocvariable{l} \coqdocvariable{p} (\coqdocvariable{p} \coqdocvariable{a})) \ensuremath{\rightarrow}\coqdoceol
+\coqdocindent{2.00em}
+\coqdocvariable{P0} \coqdocvariable{A} \coqdocvariable{a} \coqdocvariable{l} \coqdocvariable{p} (\coqdocvariable{p} \coqdocvariable{a}) (\coqref{filterind.filterobligation2}{\coqdoclemma{filter\_obligation\_2}} (@\coqref{filterind.filter}{\coqdocdefinition{filter}}) \coqdocvariable{A} \coqdocvariable{a} \coqdocvariable{l} \coqdocvariable{p} (\coqdocvariable{p} \coqdocvariable{a})) \ensuremath{\rightarrow}\coqdoceol
+\coqdocindent{2.00em}
+\coqdocvariable{P} \coqdocvariable{A} (\coqdocvariable{a} :: \coqdocvariable{l}) \coqdocvariable{p} (\coqref{filterind.filterobligation2}{\coqdoclemma{filter\_obligation\_2}} (@\coqref{filterind.filter}{\coqdocdefinition{filter}}) \coqdocvariable{A} \coqdocvariable{a} \coqdocvariable{l} \coqdocvariable{p} (\coqdocvariable{p} \coqdocvariable{a}))) \ensuremath{\rightarrow}\coqdoceol
+\coqdocindent{1.00em}
+(\ensuremath{\forall} (\coqdocvar{A} : \coqdockw{Type}) (\coqdocvar{a} : \coqdocvariable{A}) (\coqdocvar{l} : \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A}) (\coqdocvar{p} : \coqdocvariable{A} \ensuremath{\rightarrow} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{bool}{\coqdocinductive{bool}}),\coqdoceol
+\coqdocindent{2.00em}
+\coqref{filterind.filterind}{\coqdocinductive{filter\_ind}} \coqdocvariable{A} \coqdocvariable{l} \coqdocvariable{p} (\coqref{filterind.filter}{\coqdocdefinition{filter}} \coqdocvariable{l} \coqdocvariable{p}) \ensuremath{\rightarrow}\coqdoceol
+\coqdocindent{2.00em}
+\coqdocvariable{P} \coqdocvariable{A} \coqdocvariable{l} \coqdocvariable{p} (\coqref{filterind.filter}{\coqdocdefinition{filter}} \coqdocvariable{l} \coqdocvariable{p}) \ensuremath{\rightarrow} \coqdocvariable{P0} \coqdocvariable{A} \coqdocvariable{a} \coqdocvariable{l} \coqdocvariable{p} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{true}{\coqdocconstructor{true}} (\coqdocvariable{a} :: \coqref{filterind.filter}{\coqdocdefinition{filter}} \coqdocvariable{l} \coqdocvariable{p})) \ensuremath{\rightarrow}\coqdoceol
+\coqdocindent{1.00em}
+(\ensuremath{\forall} (\coqdocvar{A} : \coqdockw{Type}) (\coqdocvar{a} : \coqdocvariable{A}) (\coqdocvar{l} : \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A}) (\coqdocvar{p} : \coqdocvariable{A} \ensuremath{\rightarrow} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{bool}{\coqdocinductive{bool}}),\coqdoceol
+\coqdocindent{2.00em}
+\coqref{filterind.filterind}{\coqdocinductive{filter\_ind}} \coqdocvariable{A} \coqdocvariable{l} \coqdocvariable{p} (\coqref{filterind.filter}{\coqdocdefinition{filter}} \coqdocvariable{l} \coqdocvariable{p}) \ensuremath{\rightarrow}\coqdoceol
+\coqdocindent{2.00em}
+\coqdocvariable{P} \coqdocvariable{A} \coqdocvariable{l} \coqdocvariable{p} (\coqref{filterind.filter}{\coqdocdefinition{filter}} \coqdocvariable{l} \coqdocvariable{p}) \ensuremath{\rightarrow} \coqdocvariable{P0} \coqdocvariable{A} \coqdocvariable{a} \coqdocvariable{l} \coqdocvariable{p} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{false}{\coqdocconstructor{false}} (\coqref{filterind.filter}{\coqdocdefinition{filter}} \coqdocvariable{l} \coqdocvariable{p})) \ensuremath{\rightarrow}\coqdoceol
+\coqdocindent{1.00em}
+\ensuremath{\forall} (\coqdocvar{A} : \coqdockw{Type}) (\coqdocvar{l} : \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A}) (\coqdocvar{p} : \coqdocvariable{A} \ensuremath{\rightarrow} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{bool}{\coqdocinductive{bool}}) (\coqdocvar{f3} : \coqref{filterind.filtercomp}{\coqdocdefinition{filter\_comp}} \coqdocvariable{l} \coqdocvariable{p}),\coqdoceol
+\coqdocindent{2.00em}
+\coqref{filterind.filterind}{\coqdocinductive{filter\_ind}} \coqdocvariable{A} \coqdocvariable{l} \coqdocvariable{p} \coqdocvariable{f3} \ensuremath{\rightarrow} \coqdocvariable{P} \coqdocvariable{A} \coqdocvariable{l} \coqdocvariable{p} \coqdocvariable{f3}).\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}}
+
+\end{frame}
+\begin{frame}
+  \frametitle{Cleaned-up version}
+\footnotesize{
+\begin{coqdoccode}
+\coqdocnoindent
+\coqdockw{Check} (\coqref{filterind.filterelim}{\coqdocdefinition{filter\_elim}} :\coqdoceol
+\coqdocindent{1.00em}
+\ensuremath{\forall} \coqdocvar{P} : \ensuremath{\forall} (\coqdocvar{A} : \coqdockw{Type}) (\coqdocvar{l} : \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A}) (\coqdocvar{p} : \coqdocvariable{A} \ensuremath{\rightarrow} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{bool}{\coqdocinductive{bool}}), \coqref{filterind.filtercomp}{\coqdocdefinition{filter\_comp}} \coqdocvariable{l} \coqdocvariable{p} \ensuremath{\rightarrow} \coqdockw{Prop},\coqdoceol
+\coqdocindent{1.00em}
+\coqdockw{let} \coqdocvar{P0} :=\coqdoceol
+\coqdocindent{2.00em}
+\coqdockw{fun} (\coqdocvar{A} : \coqdockw{Type}) (\coqdocvar{a} : \coqdocvariable{A}) (\coqdocvar{l} : \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A}) (\coqdocvar{p} : \coqdocvariable{A} \ensuremath{\rightarrow} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{bool}{\coqdocinductive{bool}}) \coqdoceol
+\coqdocindent{3.00em}
+(\coqdoctac{refine} : \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{bool}{\coqdocinductive{bool}}) (\coqdocvar{H} : \coqref{filterind.filtercomp}{\coqdocdefinition{filter\_comp}} (\coqdocvariable{a} :: \coqdocvariable{l}) \coqdocvariable{p}) \ensuremath{\Rightarrow}\coqdoceol
+\coqdocindent{3.00em}
+\coqdocvariable{p} \coqdocvariable{a} = \coqdocvariable{refine} \ensuremath{\rightarrow} \coqdocvariable{P} \coqdocvariable{A} (\coqdocvariable{a} :: \coqdocvariable{l}) \coqdocvariable{p} \coqdocvariable{H} \coqdoceol
+\coqdocindent{1.00em}
+\coqdoctac{in}\coqdoceol
+\coqdocindent{1.00em}
+(\ensuremath{\forall} (\coqdocvar{A} : \coqdockw{Type}) (\coqdocvar{p} : \coqdocvariable{A} \ensuremath{\rightarrow} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{bool}{\coqdocinductive{bool}}), \coqdocvariable{P} \coqdocvariable{A} [] \coqdocvariable{p} []) \ensuremath{\rightarrow}\coqdoceol
+\coqdocindent{1.00em}
+(\ensuremath{\forall} (\coqdocvar{A} : \coqdockw{Type}) (\coqdocvar{a} : \coqdocvariable{A}) (\coqdocvar{l} : \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A}) (\coqdocvar{p} : \coqdocvariable{A} \ensuremath{\rightarrow} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{bool}{\coqdocinductive{bool}}),\coqdoceol
+\coqdocindent{2.00em}
+\coqdocvariable{P} \coqdocvariable{A} \coqdocvariable{l} \coqdocvariable{p} (\coqref{filterind.filter}{\coqdocdefinition{filter}} \coqdocvariable{l} \coqdocvariable{p}) \ensuremath{\rightarrow} \coqdocvariable{P0} \coqdocvariable{A} \coqdocvariable{a} \coqdocvariable{l} \coqdocvariable{p} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{true}{\coqdocconstructor{true}} (\coqdocvariable{a} :: \coqref{filterind.filter}{\coqdocdefinition{filter}} \coqdocvariable{l} \coqdocvariable{p})) \ensuremath{\rightarrow}\coqdoceol
+\coqdocindent{1.00em}
+(\ensuremath{\forall} (\coqdocvar{A} : \coqdockw{Type}) (\coqdocvar{a} : \coqdocvariable{A}) (\coqdocvar{l} : \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A}) (\coqdocvar{p} : \coqdocvariable{A} \ensuremath{\rightarrow} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{bool}{\coqdocinductive{bool}}),\coqdoceol
+\coqdocindent{2.00em}
+\coqdocvariable{P} \coqdocvariable{A} \coqdocvariable{l} \coqdocvariable{p} (\coqref{filterind.filter}{\coqdocdefinition{filter}} \coqdocvariable{l} \coqdocvariable{p}) \ensuremath{\rightarrow} \coqdocvariable{P0} \coqdocvariable{A} \coqdocvariable{a} \coqdocvariable{l} \coqdocvariable{p} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{false}{\coqdocconstructor{false}} (\coqref{filterind.filter}{\coqdocdefinition{filter}} \coqdocvariable{l} \coqdocvariable{p})) \ensuremath{\rightarrow}\coqdoceol
+\coqdocindent{1.00em}
+\ensuremath{\forall} (\coqdocvar{A} : \coqdockw{Type}) (\coqdocvar{l} : \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A}) (\coqdocvar{p} : \coqdocvariable{A} \ensuremath{\rightarrow} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{bool}{\coqdocinductive{bool}}), \coqdocvariable{P} \coqdocvariable{A} \coqdocvariable{l} \coqdocvariable{p} (\coqref{filterind.filter}{\coqdocdefinition{filter}} \coqdocvariable{l} \coqdocvariable{p})).\coqdoceol
+\end{coqdoccode}}
+
+\end{frame}
+
+\subsection{Eliminating calls}
+
+\begin{frame}
+  \frametitle{Eliminating calls}
+
+  The elimination principle can only be applied usefully to calls with
+  solely variable arguments. Use the same ``abstraction by equalities''
+  technique to solve this.
+
+  If $τ = C[\cst{f}~\vec{t}]$ we generate 
+  \[(λ~Δ~(r : \fcomp{f}~\bar{Δ}), \vec{Δ_i = t_i} "->" r \simeq \cst{f}~\vec{t}
+  "->" τ)~\vec{t}~(\cst{f}~\vec{t})\]
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Conclusion}
+  
+  A function definition package handling:
+  \begin{itemize}
+  \item Full, nested dependent pattern-matching
+  \item Structural and well-founded recursion on dependent types
+  \item Generation of useful support lemmas for reasoning a posteriori
+  \end{itemize}
+  
+\end{frame}
+
+\begin{frame}
+  \frametitle{Perspectives}
+  
+  \begin{itemize}
+  \item Treatment of non-constructor indices and constraints
+  \item Mutual recursion, support for measures
+  \item Efficiency, a primitive handling of dependent elimination
+    internalizing K would help (hint !)
+
+  \item Move to \ind{eq\_dep} instead of \ind{JMeq}?
+  \end{itemize}
+  
+\end{frame}
+
+\begin{frame}
+  \frametitle{The End}
+
+  \begin{center}
+    \pgfuseimage{coq-biglogo}
+  \end{center}
+\end{frame}
+\end{document}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-PDF-mode: t
+%%% LaTeX-command: "x=pdf; TEXINPUTS=\"~/research/publication/figures:~/research/publication/styles:~/research/coq/Russell/papers:$TEXINPUTS:\" ${pdfx}pdflatex"
+%%% TeX-master: "slides"
+%%% End: 
