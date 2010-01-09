@@ -210,8 +210,8 @@ unzip A B (cons p l) <= unzip l => {
 
 Equations equal (n m : nat) : { n = m } + { n <> m } :=
 equal O O := left eq_refl ;
-equal (S n) (S m) <= equal n m => {
-  equal (S n) (S n) (left eq_refl) := left eq_refl ;
+equal (S n) (S m) with equal n m := {
+  equal (S n) (S ?(n)) (left eq_refl) := left eq_refl ;
   equal (S n) (S m) (right p) := right _ } ;
 equal x y := right _.
 

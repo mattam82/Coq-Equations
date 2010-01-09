@@ -47,20 +47,30 @@ sublist A p (cons x xs) <= p x => {
 
 Ltac rec ::= rec_wf_eqns.
 
-Derive Subterm for nat. 
+(* Derive Subterm for nat.  *)
 Derive Subterm for vector.
 
-Equations(nostruct) testn (n : nat) : nat :=
-testn n => rec n =>
+Inspect 6.
+Print well_founded_vector_direct_subterm.
+
+Require Import Arith Wf_nat.
+Instance wf_nat : WellFounded lt := lt_wf.
+Hint Resolve lt_n_Sn : lt.
+Ltac solve_rec ::= simpl in * ; cbv zeta ; intros ; 
+  try typeclasses eauto with subterm_relation Below lt.
+Create HintDb Recursors.
+
+Equations testn (n : nat) : nat :=
+testn n => rec n lt =>
 testn 0 := 0 ;
 testn (S n) <= testn n => {
   | O := S O ;
   | (S n') := S n' }.
 
 Recursive Extraction testn.
-
+  
 Equations (nostruct) unzip {A B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
-unzip A B n v => rec v =>
+unzip A B n v => rec v (@vector_subterm (A * B)) =>
 unzip A B ?(O) Vnil := (Vnil, Vnil) ;
 unzip A B ?(S n) (Vcons (pair x y) n v) <= unzip v => {
   | (pair xs ys) := (Vcons x xs, Vcons y ys) }.

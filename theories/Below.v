@@ -84,25 +84,25 @@ Below_vector A P ?(S n) (Vcons a n v) :=
 
 Hint Rewrite Below_vector_equation_2 : Below.
 
-Equations(nocomp noeqns noind) below_vector A (P : Π n, vector A n -> Type)
-  (step : Π n (v : vector A n), Below_vector A P n v -> P n v)
-  n (v : vector A n) : Below_vector A P n v :=
-below_vector A P _ _ Vnil := tt ;
-below_vector A P step _ (Vcons a n v) := 
-  let rest := below_vector A P step n v in
-    (step n v rest, rest).
+(* Equations(nocomp noeqns noind) below_vector A (P : Π n, vector A n -> Type) *)
+(*   (step : Π n (v : vector A n), Below_vector A P n v -> P n v) *)
+(*   n (v : vector A n) : Below_vector A P n v := *)
+(* below_vector A P _ ?(0) Vnil := tt ; *)
+(* below_vector A P step ?(S n) (Vcons a n v) :=  *)
+(*   let rest := below_vector A P step n v in *)
+(*     (step n v rest, rest). *)
 
-Global Opaque Below_vector.
+(* Global Opaque Below_vector. *)
 
-Definition rec_vector A (P : Π n, vector A n -> Type) n v
-  (step : Π n (v : vector A n), Below_vector A P n v -> P n v) : P n v :=
-  step n v (below_vector A P step n v).
+(* Definition rec_vector A (P : Π n, vector A n -> Type) n v *)
+(*   (step : Π n (v : vector A n), Below_vector A P n v -> P n v) : P n v := *)
+(*   step n v (below_vector A P step n v). *)
 
-Instance vect_Recursor A n : Recursor (vector A n) :=
-  { rec_type := λ v, Π (P : Π n, vector A n -> Type) step, P n v;
-    rec := λ v P step, rec_vector A P n v step }.
+(* Instance vect_Recursor A n : Recursor (vector A n) := *)
+(*   { rec_type := λ v, Π (P : Π n, vector A n -> Type) step, P n v; *)
+(*     rec := λ v P step, rec_vector A P n v step }. *)
 
-Hint Unfold rec_nat rec_vector : Recursors.
+(* Hint Unfold rec_nat rec_vector : Recursors. *)
 
 Hint Extern 4 => progress (unfold hide_pattern in *) : Below.
 

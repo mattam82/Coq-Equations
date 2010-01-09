@@ -62,26 +62,8 @@ structures necessary to describe our contributions.
 The compilation process starts from a signature and a set of clauses
 given by the user, constructed from the following grammar:
 
-\def\vec#1{\protect\overrightarrow{#1}}
-\newcommand{\innac}[1]{\texttt{?(} #1 \texttt{)}}
-
 \begin{figure}[h]
-$\begin{array}{llcl}
-  \texttt{term}, \texttt{type} & t, ~τ & \Coloneqq &
-  \coqdocvar{x} `| λ \coqdocvar{x} : τ, t `| Π \coqdocvar{x} : τ, τ' `|
-  \ldots \\
-  \texttt{binding} & d & \Coloneqq & (\coqdocvar{x}~:~τ) `|
-  (\coqdocvar{x}~\coloneqq~t~:~τ) \\
-  \texttt{context} & Γ, Δ & \Coloneqq & \vec{d} \\
-  \texttt{program} & prog & \Coloneqq & \coqdoccst{f}~Γ~:~τ~\coloneqq~\vec{c} \\
-  \texttt{user clause} & c & \Coloneqq & \coqdoccst{f}~\vec{p}~n \\
-  \texttt{pattern} & p,~q & \Coloneqq & x 
-  `| \coqdocconstr{C}~\vec{p} 
-  `| \innac{t} \\
-  \texttt{user node} & n & \Coloneqq &
-  \coloneqq~t~|\coloneqq\!\!\verb|!|~\coqdocvar{x}~
-  |\Leftarrow t \Rightarrow \{~\vec{c}~\}
-\end{array}$
+$\figdefs$
 \caption{Definitions and user clauses} 
 \end{figure}
 
@@ -121,8 +103,6 @@ other. On the other hand, overlapping clauses force the compilation to
 be phrased as a search procedure. As usual, we recover a deterministic
 semantics using a first-match rule when two clauses overlap.
 
-\newcommand{\prob}[3]{\ensuremath{#1 \vdash #2 : #3}}
-
 The search for a covering works by gradually refining a
 \emph{programming problem} \prob{Δ}{\vec{p}}{Γ} and building a
 splitting tree. A programming problem, or context mapping (fig. \ref{fig:split}),
@@ -133,16 +113,7 @@ type $τ_\cst{f}$ and the list of user clauses. The splitting tree is
 defined by the grammar:
 
 \begin{figure}[h]
-$\begin{array}{llcl}
-  \texttt{context map} & c & \Coloneqq & Δ \vdash \vec{p} : Γ \\
-  \texttt{splitting} & spl & \Coloneqq &
-  \Split{c}{\var{x}}{(spl?)^n}
-  `| \Compute{c}{rhs} \\
-  
-  \texttt{node} & rhs & \Coloneqq & \Prog{t}
-  `| \Empty{\var{x}}
-  `| \Refine{t}{c}{\cst{f}}{spl} \\
-\end{array}$
+$\figsplit$
 \caption{Context mappings and splitting trees}
 \label{fig:split}
 \end{figure}
@@ -274,16 +245,15 @@ combinators dealing with substitution and proofs of injectivity and
 discrimination of constructors, their two main properties. 
 
 The design of this simplifier is based on the ``specialization by
-unification'' method developped by McBride
-(\cite{DBLP:conf/types/McBride00,mcbride:concon}). Due to lack of space,
-we won't enter in the details of the procedure. The problem we are faced
-with is to eliminate an object \var{x} of type $\ind{I} \vec{t}$ in a
+unification'' method developped in \citet{DBLP:conf/types/McBride00,mcbride:concon}. Due to lack of space,
+we won't enter in the details of the procedure. The problem we face
+is to eliminate an object \var{x} of type $\ind{I} \vec{t}$ in a
 goal $τ$ potentialy dependending on $x$. We want the elimination to
 produce subgoals for the allowed constructors of this family instance.
 To do that, we generalize the goal by fresh variables 
-$Δ~(\var{x'} :\ind{I}~Δ)$ and a set of equations asserting that
+$Δ~(\var{x'} :\ind{I}~\bar{Δ})$ and a set of equations asserting that
 $\var{x'}$ is equal to $\var{x}$, giving us a new goal: \[ Π~Δ~(\var{x'}
-: \ind{I}~Δ), \vec{\bar{Δ_i} \simeq \bar{t_i}} "->" \var{x} \simeq \var{x'}
+: \ind{I}~\bar{Δ}), \vec{\bar{Δ_i} \simeq \bar{t_i}} "->" \var{x} \simeq \var{x'}
 "->" τ \]
 
 Note that the equations relate terms that may be in different types due
@@ -292,8 +262,10 @@ relate them. We can apply the standard eliminator for \ind{I} on this
 goal to get subgoals corresponding to all its constructors, all starting
 with a set of equations relating the indices $t$ of the original
 instance to the indices of the constructor. We use a recursive tactic to
-simplify these goals, whose completeness have been proven in
-\cite{DBLP:conf/birthday/GoguenMM06}. The tactic relies on a set of
+simplify these goals, solving the impossible cases automatically. Its
+completeness is asserted by \citet{DBLP:conf/birthday/GoguenMM06}. 
+
+Our tactic relies on a set of
 combinators for simplifying equations in the theory of contructors, most
 of which are just rephrasings of the substitution principles for
 \people{Leibniz} and heterogeneous equality. The last bit is a
@@ -301,9 +273,9 @@ simplifier for equalities between constructors. We need a tactic that
 can simplify any equality $\cstr{C} \vec{t} = \cstr{D} \vec{u}$, 
 either giving us equalities between $\vec{t}$ and $\vec{u}$ that can be
 further simplified or deriving a contradiction if $\cstr{C}$ is
-different from $\cstr{D}$. \cite{mcbride:concon} describes a generic method to
-derive such an eliminator that we adapted to $\Coq$. We describe this
-construction through a type class \class{NoConfusion}:
+different from $\cstr{D}$. \citet{mcbride:concon} describe a generic method to
+derive such an eliminator that we adapted to $\Coq$. We witness this
+construction using a type class \coqdocclass{NoConfusionPackage}:
 
 \input{noconf.coq}
 

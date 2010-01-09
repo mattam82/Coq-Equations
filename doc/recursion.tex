@@ -49,11 +49,11 @@ strenghtening.
 
 \subsubsection{The \Below way}
 
-\cite{DBLP:conf/birthday/GoguenMM06} describes a clever way to
+\citet{DBLP:conf/birthday/GoguenMM06} give a way to
 elaborate recursive definitions by building a memoizing structure. 
-For each datatype, we define a new type \ind{Below} that describes all
-the recursive subterm of a given term. Take natural numbers for example,
-we define \cst{Below\_nat} as follows:
+For each datatype, we define a new type \ind{Below} that captures all
+the recursive subterms of a given term, applied to an arity. 
+Take natural numbers for example, we define \cst{Below\_nat} as follows:
 
 \input{Below.coq}
 
@@ -63,8 +63,8 @@ a program using this recursor using a call-by-value reduction,
 there might be an exponential blowup as 
 the object we are recursing on, that is the tuple of all possible
 recursive calls \cst{below\_nat}, will have to be computed for each call. This is not 
-a problem if we are using a lazy reduction strategy but it is
-prohibitive if we want to compute with a call-by-value strategy, 
+so important if we are using a lazy reduction strategy but it is
+prohibitive if we want to compute with a call-by-value strategy,
 or compute with the extracted program in \ML. Extraction removes the 
 logical parts of a term (in \Prop), like the manipulations on equality
 used during specialization by unification, but in this case the
@@ -75,7 +75,7 @@ relation that is entirely logical.
 
 \subsubsection{Generalized subterm relations}
 
-Our solution is basically to define the subterm relation on an inductive
+Our solution is to define the subterm relation on an inductive
 family and write functions by well-founded recursion on this relation.
 
 \begin{definition}[Subterm relation]

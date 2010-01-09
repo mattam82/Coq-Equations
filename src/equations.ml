@@ -69,9 +69,7 @@ let below_path = ["Equations";"Below"]
 let coq_have_class = lazy (init_constant below_path "Have")
 let coq_have_meth = lazy (init_constant below_path "have")
 
-let coq_subterm_class = lazy (init_constant ["Equations";"Subterm"] "SubtermRelation")
-let coq_subterm_fam_class = lazy (init_constant ["Equations";"Subterm"] "SubtermFamRelation")
-let coq_wffam_class = lazy (init_constant ["Equations";"Subterm"] "WfFam")
+let coq_wellfounded_class = lazy (init_constant ["Equations";"Subterm"] "WellFounded")
 let coq_wellfounded = lazy (init_constant ["Coq";"Init";"Wf"] "well_founded")
 let coq_relation = lazy (init_constant ["Coq";"Relations";"Relation_Definitions"] "relation")
 let coq_clos_trans = lazy (init_constant ["Coq";"Relations";"Relation_Operators"] "clos_trans")
@@ -153,9 +151,16 @@ let below_tac s =
 
 let rec_tac h h' = 
   TacArg(TacCall(dummy_loc, 
-		ArgArg(dummy_loc, below_tac "rec"),
+		Qualid (dummy_loc, qualid_of_string "Equations.Below.rec"),
 		[IntroPattern (dummy_loc, Genarg.IntroIdentifier h);
 		 IntroPattern (dummy_loc, Genarg.IntroIdentifier h')]))
+
+let rec_wf_tac h h' rel = 
+  TacArg(TacCall(dummy_loc, 
+		Qualid (dummy_loc, qualid_of_string "Equations.Subterm.rec_wf_eqns_rel"),
+		[IntroPattern (dummy_loc, Genarg.IntroIdentifier h);
+		 IntroPattern (dummy_loc, Genarg.IntroIdentifier h');
+		 ConstrMayEval (ConstrTerm rel)]))
 
 let tac_of_string str args =
   Tacinterp.interp (TacArg(TacCall(dummy_loc, Qualid (dummy_loc, qualid_of_string str), args)))
@@ -466,7 +471,7 @@ and lhs = user_pats
 and 'a rhs = 
   | Program of constr_expr
   | Empty of identifier located
-  | Rec of identifier located * 'a list
+  | Rec of identifier located * constr_expr option * 'a list
   | Refine of constr_expr * 'a list
   | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) union * 'a list
 
@@ -928,7 +933,7 @@ let pplhs lhs = pp (pr_lhs (Global.env ()) lhs)
 
 let rec pr_rhs env = function
   | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ pr_id var
-  | Rec ((loc, var), s) -> spc () ++ str "!" ++ spc () ++ pr_id var ++ spc () ++
+  | Rec ((loc, var), rel, s) -> spc () ++ str "=>" ++ spc () ++ str"rec " ++ pr_id var ++ spc () ++
       hov 1 (str "{" ++ pr_clauses env s ++ str "}")
   | Program rhs -> spc () ++ str ":=" ++ spc () ++ pr_constr_expr rhs
   | Refine (rhs, s) -> spc () ++ str "<=" ++ spc () ++ pr_constr_expr rhs ++ 
@@ -1121,9 +1126,14 @@ let rec covering_aux env evars data prev (clauses : clause list) path (ctx,pats,
 		    | PRel i -> Some (Compute (prob, ty, REmpty i))
 		    | _ -> user_err_loc (loc, "equations", str"Unbound variable " ++ pr_id i))
 
-		| Rec (v, s) ->
-		    let tac = By (Inr (rec_tac (snd v) (pi1 data)), s) in
-		      (match covering_aux env evars data [] [(lhs,tac)] path prob lets ty with
+		| Rec (v, rel, spl) ->
+		    let tac = 
+		      match rel with 
+		      | None -> rec_tac (snd v) (pi1 data)
+		      | Some r -> rec_wf_tac (snd v) (pi1 data) r
+		    in
+		    let rhs = By (Inl tac, spl) in
+		      (match covering_aux env evars data [] [(lhs,rhs)] path prob lets ty with
 		      | None -> None
 		      | Some split -> Some (RecValid (pi1 data, split)))
 					    
@@ -1230,7 +1240,7 @@ let rec covering_aux env evars data prev (clauses : clause list) path (ctx,pats,
 			      in
 			      let newrhs = match rhs with
 				| Refine (c, cls) -> Refine (c, cls' (succ n) cls)
-				| Rec (v, s) -> Rec (v, cls' n s)
+				| Rec (v, rel, s) -> Rec (v, rel, cls' n s)
 				| By (v, s) -> By (v, cls' n s)
 				| _ -> rhs
 			      in
@@ -2069,7 +2079,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	if n <> None then
 	  Autorewrite.add_rew_rules info.base_id 
 	    [dummy_loc, constr_of_global gr, true, Tacexpr.TacId []]
-	else (Classes.declare_instance true (dummy_loc, Nametab.basename_of_global gr);
+	else (Classes.declare_instance true (Ident (dummy_loc, Nametab.basename_of_global gr));
 	      Auto.add_hints false [info.base_id] 
 		(Auto.HintsExternEntry (0, None, impossible_call_tac (ConstRef cst))));
 	eqns.(pred i) <- true;
@@ -2096,15 +2106,18 @@ type equation_option =
   | OInd | ORec | OComp | OEquations
 
 let is_comp_obl comp t =
-  let _, rest = decompose_prod_assum t in
-  let f, _ = decompose_app rest in
-    eq_constr f comp
+  match comp with
+  | None -> false
+  | Some (comp, _, _) ->
+      let _, rest = decompose_prod_assum t in
+      let f, _ = decompose_app rest in
+	eq_constr f (mkConst comp)
 
 let hintdb_set_transparency cst b db =
   Auto.add_hints false [db] 
     (Auto.HintsTransparencyEntry ([EvalConstRef cst], b))
 
-let define_tree is_recursive impls status isevar env (i, sign, arity) ann split hook =
+let define_tree is_recursive impls status isevar env (i, sign, arity) comp ann split hook =
   let helpers, oblevs, t, ty = term_of_tree status isevar env (i, sign, arity) ann split in
   let _ = isevar := nf_evars !isevar in
   let undef = undefined_evars !isevar in
@@ -2116,8 +2129,9 @@ let define_tree is_recursive impls status isevar env (i, sign, arity) ann split 
       let tac = 
 	if Intset.mem (rev_assoc id emap) oblevs 
 	then Some (equations_tac ()) 
-	else Some (tclTHEN (tclTRY (solve_rec_tac ()))
-		      (Subtac_obligations.default_tactic ()))
+	else if is_comp_obl comp ty then
+	  Some (tclTRY (solve_rec_tac ()))
+	else Some (Subtac_obligations.default_tactic ())
       in (id, ty, loc, s, d, tac)) obls
   in
   let term_info = map (fun (ev, arg) ->
@@ -2316,7 +2330,7 @@ let interp_eqn i is_rec isevar env impls sign arity recu eqn =
     | Refine (c, eqs) -> Refine (interp_constr_expr compproj !avoid c, map (aux curpats) eqs)
     | Program c -> Program (interp_constr_expr compproj !avoid c)
     | Empty i -> Empty i
-    | Rec (i, s) -> Rec (i, map (aux curpats) s)
+    | Rec (i, r, s) -> Rec (i, r, map (aux curpats) s)
     | By (x, s) -> By (x, map (aux curpats) s)
   and interp_constr_expr compproj ids c = 
     match c, compproj with
@@ -2457,7 +2471,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 			 (fun (optid, pats, rhs) ->
 			   let optid = Option.map (fun (loc,id) -> (loc, unfoldi)) optid in
 			   match rhs with
-			   | Rec (v, eqs) -> unfold_eqs eqs
+			   | Rec (v, r, eqs) -> unfold_eqs eqs
 			   | Refine (ce, eqs) -> [(optid, pats, Refine (ce, unfold_eqs eqs))]
 			   | _ -> [(optid, pats, rhs)])
 			 eqs)
@@ -2487,9 +2501,9 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 		ignore(Subtac_obligations.add_definition ~hook:hook_eqs
 			  ~implicits:impls unfold_eq_id stmt ~tactic:tac [||])
 	    in
-	      define_tree None impls status isevar env (unfoldi, sign, arity) ann unfold_split hook_unfold
+	      define_tree None impls status isevar env (unfoldi, sign, arity) None ann unfold_split hook_unfold
       else ()
-  in define_tree is_recursive impls status isevar env (i, sign, arity) ann split hook
+  in define_tree is_recursive impls status isevar env (i, sign, arity) comp ann split hook
 
 module Gram = Pcoq.Gram
 module Vernac = Pcoq.Vernac_
@@ -2503,7 +2517,8 @@ struct
 
   let equation_options : (equation_option * bool) list Gram.Entry.e = gec "equation_options"
 
-  let binders_let2 : (local_binder list * (identifier located option * recursion_order_expr)) Gram.Entry.e = gec "binders_let2"
+  let binders_let2 : (local_binder list * (identifier located option * recursion_order_expr)) 
+      Gram.Entry.e = gec "binders_let2"
 
 (*   let where_decl : decl_notation Gram.Entry.e = gec "where_decl" *)
 
@@ -2552,9 +2567,10 @@ GEXTEND Gram
   rhs:
     [ [ ":=!"; id = identref -> Empty id
       |":="; c = Constr.lconstr -> Program c
+      | "with"; c = Constr.lconstr; ":="; e = equations -> Refine (c, e)
       | "<="; c = Constr.lconstr; "=>"; e = equations -> Refine (c, e)
       | "<-"; "(" ; t = Tactic.tactic; ")"; e = equations -> By (Inl t, e)
-      | "=>"; IDENT "rec"; id = identref ; "=>"; e = deppat_equations -> Rec (id, e)
+      | "=>"; IDENT "rec"; id = identref; rel = OPT constr; "=>"; e = deppat_equations -> Rec (id, rel, e)
     ] ]
   ;
 
@@ -3078,7 +3094,7 @@ let derive_subterm ind =
       let kl, body, ty =
 	if argbinders = [] then
 	  (* Standard homogeneous well-founded relation *)
-	  let kl = Option.get (class_of_constr (Lazy.force coq_subterm_class)) in
+	  let kl = Option.get (class_of_constr (Lazy.force coq_wellfounded_class)) in
 	  let subrel = mkApp (Lazy.force coq_clos_trans, [| indapp; subindapp |]) in
 	  let evar = e_new_evar evm env' (mkApp (Lazy.force coq_wellfounded, [| indapp; subrel |])) in
 	  let constr, ty = instance_constructor kl [ indapp; subrel; evar ] in
@@ -3086,7 +3102,7 @@ let derive_subterm ind =
 	else
 	  (* Construct a family relation by packaging all indexes into 
 	     a sigma type *)
-	  let kl = Option.get (class_of_constr (Lazy.force coq_subterm_class)) in
+	  let kl = Option.get (class_of_constr (Lazy.force coq_wellfounded_class)) in
 	  let indices, indexproj, valproj, valsig, typesig = sigmaize env' sigma indapp in
 	  let subrel = 
 	    let valproj = lift 2 valproj in
@@ -3115,6 +3131,8 @@ let derive_subterm ind =
 			      parambinders) 
 	    in
 	    let cst = declare_constant id def ty (IsDefinition Definition) in
+	      (* Impargs.declare_manual_implicits false (ConstRef cst) ~enriching:false *)
+	      (* 	(list_map_i (fun i _ -> ExplByPos (i, None), (true, true, true)) 1 parambinders); *)
 	      Auto.add_hints false ["subterm_relation"] 
 		(Auto.HintsUnfoldEntry [EvalConstRef cst]);
 	      mkApp (mkConst cst, extended_rel_vect 0 parambinders)
@@ -3320,8 +3338,9 @@ END
 
 let pattern_sigma c hyp gl =
   let terms = constrs_of_coq_sigma (pf_env gl) (project gl) c (mkVar hyp) in
-  let projs = map (fun (x, t, p, rest) -> (t, p)) terms in
-  let projabs = tclTHENLIST (map (fun (t, p) -> change (Some (all_occurrences, t)) p onConcl) projs) in
+  let pat = Pattern.pattern_of_constr (project gl) in
+  let projs = map (fun (x, t, p, rest) -> (snd (pat t), p)) terms in
+  let projabs = tclTHENLIST (map (fun (t, p) -> change (Some t) p onConcl) projs) in
     projabs gl
       
 TACTIC EXTEND pack

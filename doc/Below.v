@@ -12,8 +12,8 @@ Fixpoint Below_nat (P : nat -> Type) (n : nat) : Type :=
    to build a tuple of all the recursive subterms of a number, applied
    to an arbitrary arity [P].
    We can build this tuple for any [n : nat] given a functional
-   [step] that builds a [P n] if we have [P] for all subterms 
-   of [n]. *)
+   [step] that builds a [P n] if we have [P] for all the strict 
+   subterms of [n]. *)
 
 Fixpoint below_nat (P : nat -> Type) 
   (step : Π n : nat, Below_nat P n -> P n)
@@ -36,7 +36,7 @@ Definition rec_nat (P : nat -> Type)
    [Below_nat P n] hypothesis in our context. If we then refine [n], 
    this [Below_nat P n] hypothesis will unfold at the same time to 
    a tuple of [P n'] for every recursive subterm [n'] of [n].
-   These hypothesis form the allowed recursive calls of the function. 
+   These hypotheses form the allowed recursive calls of the function. 
 
    This construction generalizes to inductive families and the predicate
    can also be generalized by equalities in a similar fashion as the

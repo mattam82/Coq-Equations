@@ -8,8 +8,6 @@ of support definitions to help reasonning on the generated implementations.
 The easiest step is constructing the proofs of the equations as
 propositional equalities.
 
-\def\helper#1#2{\cst{#1.#2}}
-
 \begin{definition}[Equations statements]
   We recurse on the splitting tree, 
   bookkeeping the name of the current function \cst{f}
@@ -94,8 +92,6 @@ to do given that all the recursive calls are labelled by the trivial
 
 Once we get the recursive calls abstracted, we will need to add
 induction hypotheses to the context.
-
-\def\IndHyps#1{\textsc{Hyps}(#1)}
 
 \begin{definition}[Induction hypotheses generation]
   Given a context $Δ$ of results produced by the \absrec{f}{t} operator,

@@ -38,44 +38,8 @@
 % \newtheorem{corrolary}[theorem]{Corollary}
 % \newtheorem{notation}[theorem]{Notation}
 
-\def\coqdockw#1{{\color{\coqdockwcolor}{\texttt{#1}}}}
-\def\coqdocvar#1{{\color{\coqdocvarcolor}{\ensuremath{\mathit{#1}}}}}
-\def\coqdoccst#1{{\color{\coqdoccstcolor}{\ensuremath{\mathrm{#1}}}}}
-\def\coqdocind#1{{\color{\coqdocindcolor}{\ensuremath{\mathsf{#1}}}}}
-\def\coqdocconstr#1{{\color{\coqdocconstrcolor}{\ensuremath{\mathsf{#1}}}}}
-\def\coqdocmod#1{{{\color{\coqdocmodcolor}{\ensuremath{\mathsc{\mathsf{#1}}}}}}}
-\def\coqdocax#1{{{\color{\coqdocaxcolor}{\ensuremath{\mathsl{\mathrm{#1}}}}}}}
-\def\coqdoctac#1{{\color{\coqdoctaccolor}{\ensuremath{\mathtt{#1}}}}}
-
-\def\Equations{\name{Equations}}
-\def\coqlibrary#1#2#3{}
-\def\Below{\coqdocind{Below}\xspace}
-
-\def\teles#1{\ensuremath{Σ(#1)}}
-\def\bars#1#2{\ensuremath{\bar{Σ}(#1, #2)}}
-
-\def\fidx#1{\ensuremath{\mathsf{#1}}}
-\def\fcompproj#1{\ensuremath{\cst{#1}_{\cst{\fidx{comp\_proj}}}}}
-\def\find#1{\ensuremath{\cst{#1}_{\ind{\fidx{ind}}}}}
-\def\fcomp#1{\ensuremath{\cst{#1}_{\cst{\fidx{comp}}}}}
-
-\def\var{\coqdocvar}
-\def\cstr{\coqdocconstr}
-\def\cst{\coqdoccst}
-\def\ind{\coqdocind}
-
-\def\operator#1{\ensuremath{\mathsf{#1}}}
-\def\Split#1#2#3{\operator{Split}(#1, #2, #3)}
-\def\Compute#1#2{\operator{Compute}(#1, #2)}
-\def\Prog#1{\operator{Program}(#1)}
-\def\Empty#1{\operator{Empty}(#1)}
-\def\Refine#1#2#3#4{\operator{Refine}(#1, #2, #3, #4)}
-\def\Rec#1#2{\operator{Rec}(#1, #2)}
-\def\absrec#1#2{\ensuremath{\textsc{\textsf{AbsRec}}}(#1, #2)}
-
 %\newcommand{\qed}{\hfill \ensuremath{\Box}}
-
-\def\eqrefl{\coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Init.Logic}{eqrefl}{\coqdocconstructor{eq\_refl}}}
+\input{figures}
 
 %\author{Matthieu Sozeau}
 \title{\Equations\\
