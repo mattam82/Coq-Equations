@@ -2570,12 +2570,13 @@ GEXTEND Gram
       | "with"; c = Constr.lconstr; ":="; e = equations -> Refine (c, e)
       | "<="; c = Constr.lconstr; "=>"; e = equations -> Refine (c, e)
       | "<-"; "(" ; t = Tactic.tactic; ")"; e = equations -> By (Inl t, e)
-      | "=>"; IDENT "rec"; id = identref; rel = OPT constr; "=>"; e = deppat_equations -> Rec (id, rel, e)
+      | "by"; IDENT "rec"; id = identref; rel = OPT constr; ":="; e = deppat_equations -> Rec (id, rel, e)
     ] ]
   ;
 
   equations:
     [ [ "{"; l = deppat_equations; "}" -> l 
+      | l = deppat_equations -> l
     ] ]
   ;
 

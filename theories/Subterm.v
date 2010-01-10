@@ -35,6 +35,7 @@ Extraction Inline FixWf Fix Fix_F.
    *)
 
 Create HintDb subterm_relation discriminated.
+Create HintDb Recursors discriminated.
 
 (** We can automatically use the well-foundedness of a relation to get
    the well-foundedness of its transitive closure.

@@ -61,7 +61,7 @@ Ltac solve_rec ::= simpl in * ; cbv zeta ; intros ;
 Create HintDb Recursors.
 
 Equations testn (n : nat) : nat :=
-testn n => rec n lt =>
+testn n by rec n lt :=
 testn 0 := 0 ;
 testn (S n) <= testn n => {
   | O := S O ;
@@ -70,22 +70,22 @@ testn (S n) <= testn n => {
 Recursive Extraction testn.
   
 Equations (nostruct) unzip {A B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
-unzip A B n v => rec v (@vector_subterm (A * B)) =>
+unzip A B n v by rec v (@vector_subterm (A * B)) :=
 unzip A B ?(O) Vnil := (Vnil, Vnil) ;
 unzip A B ?(S n) (Vcons (pair x y) n v) <= unzip v => {
   | (pair xs ys) := (Vcons x xs, Vcons y ys) }.
 
 Equations (nostruct) nos_with (n : nat) : nat :=
-nos_with n => rec n =>
+nos_with n by rec n :=
 nos_with O := O ;
-nos_with (S m) <= nos_with m => {
+nos_with (S m) with nos_with m := {
   | O := S O ;
   | S n' := O }.
 
 Hint Unfold noConfusion_nat : equations.
 
 Equations(nostruct) split {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
-split X m n xs => rec m =>
+split X m n xs by rec m :=
 split X O    n xs := append Vnil xs ;
 split X (S m) n (Vcons x ?(m + n) xs) <= split xs => {
   | append xs' ys' := append (Vcons x xs') ys' }.
