@@ -37,7 +37,7 @@
 \def\thekeywords{pattern-matching, Dependent Types, recursion}
 \def\theevent{
 GT Types \& Réalisabilité\\
-January 14th 2010\\
+January 13th 2010\\
 Paris, France}
 \def\theeventabbr{}
 
@@ -159,6 +159,34 @@ Paris, France}
 \end{coqdoccode}
 \end{center}  
 \end{frame}
+  
+%\begin{frame}
+%   \frametitle{Dependent Pattern-Matching}
+  
+%   \begin{itemize}
+%   \item Patterns = \hl{well-typed} refinements of the signature
+%   \item We refine the \hl{entire} context at each node (correct dependency tracking)
+%   \item Internalizes ``Uniqueness of Identity Proofs'' (axiom K)
+%   \item \hl{Inaccessible} patterns ensure operationality
+%   \end{itemize}
+% \end{frame}
+
+\begin{frame}
+  \frametitle{Translation from the splitting to \Coq}
+
+  For each node with context map $\prob{Δ}{ps}{Γ}$ we generate an
+  obligation of type $Π~Δ, \fcomp{f}~ps$.
+  
+  \begin{enumerate}
+  \item $\Split{c}{x}{s}$: witnessed by applying a dependent elimination 
+    (\tactic{dependent~destruction}) and using the compiled terms for
+    $s$. Empty nodes are translated to empty splittings.
+  \item $\Prog{t}$: witnessed by the term.
+  \item $\Refine{t}{c}{\ell}{s}$: witnessed by inserting a let-definition in
+    the context, strengthening, abstracting and clearing its body, then
+    applying the compiled term for label $\ell$.
+  \end{enumerate}
+\end{frame}
 
 \subsection{\texttt{with} in detail}
 \begin{frame}
@@ -186,7 +214,7 @@ Paris, France}
 
   Compilation of the covering we will hence give a term of type 
   $Π~Δ^t~(\var{x_t} : τ_Δ)~Δ_t[t/\var{x_t}],
-  \fcomp{f}~\vec{p}[t/\var{x_t}]$, 
+  (\fcomp{f}~\vec{p})[t/\var{x_t}]$, 
   we can apply it to $\bar{Δ^t}~t~\bar{Δ_t}$ in context $Δ$ to get a
   term of type $Π~Δ, \fcomp{f}~\vec{p}$, giving a witness to the initial problem.
 
@@ -198,34 +226,6 @@ Paris, France}
   % $p$, we can rewrite them to match the variables 
   % $\bar{Δ^t}, \var{x_t}, \bar{Δ_t}$ instead.
 
-\end{frame}
-  
-%\begin{frame}
-%   \frametitle{Dependent Pattern-Matching}
-  
-%   \begin{itemize}
-%   \item Patterns = \hl{well-typed} refinements of the signature
-%   \item We refine the \hl{entire} context at each node (correct dependency tracking)
-%   \item Internalizes ``Uniqueness of Identity Proofs'' (axiom K)
-%   \item \hl{Inaccessible} patterns ensure operationality
-%   \end{itemize}
-% \end{frame}
-
-\begin{frame}
-  \frametitle{Translation from splitting to \Coq}
-
-  For each node with context map $\prob{Δ}{ps}{Γ}$ we generate an
-  obligation of type $Π~Δ, \fcomp{f}~ps$.
-  
-  \begin{enumerate}
-  \item $\Split{c}{x}{s}$: witnessed by applying a dependent elimination 
-    (\tactic{dependent~destruction}) and using the compiled terms for
-    $s$. Empty nodes are translated to empty splittings.
-  \item $\Prog{t}$: witnessed by the term.
-  \item $\Refine{t}{c}{\ell}{s}$: witnessed by inserting a let-definition in
-    the context, strengthening, abstracting and clearing its body, then
-    applying the compiled term for label $\ell$.
-  \end{enumerate}
 \end{frame}
 
 % \begin{frame}
@@ -381,12 +381,13 @@ version where \kw{rec} nodes are ignored (uses proof irrelevance).
   \frametitle{Elimination principle: inductive graph}
 
   For $\cst{f.\ell} : Π~Δ, \fcomp{f}~\vec{t}$ we generate
-  $\find{f.\ell} : Π~Δ, \fcomp{f}~\vec{t} "->" \Prop$.
+  $\find{f.\ell} : Π~Δ, \fcomp{f}~\vec{t} "->" \Prop$ and prove 
+  $Π~Δ, \find{f.\ell}~\bar{Δ}~(\cst{f.\ell}~\bar{Δ})$.
   \vspace{1em}
 
   \vspace{1em}
 
-  $\absrec{f}{t}$ abstracts all the recursive calls of $\cst{f}$ from the
+  $\absrec{\cst{f}}{t}$ abstracts all the recursive calls of $\cst{f}$ from the
   term $t$, returning a new derivation $Γ' \vdash t'$ where $Γ'$
   contains all recursive calls of the form $x : Π Δ, \fcomp{f}~\vec{t}$.
 
@@ -399,7 +400,7 @@ version where \kw{rec} nodes are ignored (uses proof irrelevance).
 \begin{frame}
   \frametitle{Inductive graph constructors}
 
-  Direct translation from the splitting tree, ignoring \kw{rec} nodes.
+  Direct translation from the splitting tree:
 
   \begin{itemize}
   \item $\Split{c}{x}{s}$, $\Rec{v}{s}$ : collect the constructors for
@@ -417,13 +418,13 @@ version where \kw{rec} nodes are ignored (uses proof irrelevance).
       Compute $Ψ \vdash t' = \absrec{f}{t}$ and return:
 
       \begin{center}
-        $Π~Δ^x~Δ_x~Ψ~\IndHyps{Ψ}~(\var{res} :
-        {\fcomp{\helper{f}{\ell.n}}}~\bar{Δ^x}~\bar{Δ_x}) \newline
-        \quad~\quad\find{\helper{f}{\ell.n}}~\vec{\var{v}}^x~t'~\vec{\var{v}}_x~\var{res} "->"
+        $Π~Δ~Ψ~\IndHyps{Ψ}~(\var{res} :
+        {\fcomp{f}~\vec{p}}) \newline
+        \quad~\quad\find{\helper{f}{\ell.n}}~\bar{Δ^x}~t'~\bar{Δ_x}~\var{res} "->"
         \find{f.\ell}~\vec{p}~\var{res}$
       \end{center}
       
-      We continue with the generation of the \find{\helper{f}{\ell}} graph.
+      We continue with the generation of the \find{\helper{f}{\ell.n}} graph.
     \end{itemize}  
   \end{itemize}
 \end{frame}
@@ -548,6 +549,7 @@ version where \kw{rec} nodes are ignored (uses proof irrelevance).
   \item Generation of useful support lemmas for reasoning a posteriori
   \end{itemize}
   
+  Tested on a bit-fiddling library: less boilerplate, shorter proofs.
 \end{frame}
 
 \begin{frame}

@@ -28,5 +28,4 @@ Ltac solve_noconf :=
 
 Derive NoConfusion for unit bool nat option sum prod list vector sigT sig.
 
-
 Solve All Obligations using solve_noconf.
