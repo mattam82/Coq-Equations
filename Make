@@ -1,11 +1,12 @@
 -I src -R theories Equations
--custom "$(CAMLOPTLINK) $(ZDEBUG) $(ZFLAGS) -shared -o src/equations_plugin.cmxs src/equations.cmx src/equations_plugin_mod.cmx" "src/equations.cmx src/equations_plugin_mod.cmx" src/equations_plugin.cmxs
--custom "$(CAMLLINK) -g -a -o src/equations_plugin.cma src/equations.cmo src/equations_plugin_mod.cmo" "src/equations.cmo src/equations_plugin_mod.cmo" src/equations_plugin.cma
+-custom "$(CAMLOPTLINK) $(ZDEBUG) $(ZFLAGS) -shared -o src/equations_plugin.cmxs src/depelim.cmx src/equations.cmx src/equations_plugin_mod.cmx" "src/equations.cmx src/equations_plugin_mod.cmx" src/equations_plugin.cmxs
+-custom "$(CAMLLINK) -g -a -o src/equations_plugin.cma src/depelim.cmo src/equations.cmo src/equations_plugin_mod.cmo" "src/equations.cmo src/equations_plugin_mod.cmo" src/equations_plugin.cma
 -custom "$(COQBIN)coqc $(COQDEBUG) $(COQFLAGS) $*" "%.v $(EQNSPLUGINOPT) $(EQNSPLUGIN)" "%.vo %.glob"
 EQNSPLUGIN = "src/equations_plugin.cma"
 EQNSPLUGINOPT = "src/equations_plugin.cmxs"
 COQDOC = "$(COQBIN)coqdoc -interpolate -utf8"
 CAMLP4OPTIONS = "-loc loc"
+src/depelim.ml
 src/equations.ml
 src/equations_plugin_mod.ml
 theories/Init.v

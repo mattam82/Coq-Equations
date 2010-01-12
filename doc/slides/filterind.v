@@ -6,25 +6,32 @@ filter A (cons a l) p with p a := {
   | true := a :: filter l p ;
   | false := filter l p }.
 Print filter_ind.
+Check app.
+Equations app' {A} (l l' : list A) : (list A) :=
+app' A nil l := l ;
+app' A (cons a v) l := cons a (app' v l).
+Goal Π A (l : list A), app' l [] = l.
+Proof. intros. funelim (app' l []); auto. now rewrite H. Defined.
 
 About filter_ind_mut.
 Check(filter_ind_mut :
-  forall (P : forall (A : Type) (l : list A) (p : A -> bool),
-    filter_comp l p -> Prop)
+  forall (P : forall (A : Type) (l : list A) (p : A -> bool), filter_comp l p -> Prop)
   (P0 : forall (A : Type) (a : A) (l : list A) (p : A -> bool),
     bool -> filter_comp (a :: l) p -> Prop),
-  (forall (A : Type) (p : A -> bool), P A [] p []) ->
-  (forall (A : Type) (a : A) (l : list A) (p : A -> bool),
+
+  (forall A p, P A [] p []) ->
+
+  (forall A a l p,
     filter_ind_1 A a l p (p a) (filter_obligation_2 (@filter) A a l p (p a)) ->
     P0 A a l p (p a) (filter_obligation_2 (@filter) A a l p (p a)) ->
     P A (a :: l) p (filter_obligation_2 (@filter) A a l p (p a))) ->
-  (forall (A : Type) (a : A) (l : list A) (p : A -> bool),
-    filter_ind A l p (filter l p) ->
+
+  (forall A a l p, filter_ind A l p (filter l p) ->
     P A l p (filter l p) -> P0 A a l p true (a :: filter l p)) ->
-  (forall (A : Type) (a : A) (l : list A) (p : A -> bool),
-    filter_ind A l p (filter l p) ->
+  (forall A a l p, filter_ind A l p (filter l p) ->
     P A l p (filter l p) -> P0 A a l p false (filter l p)) ->
-  forall (A : Type) (l : list A) (p : A -> bool) (f3 : filter_comp l p),
+
+  forall A l p (f3 : filter_comp l p),
     filter_ind A l p f3 -> P A l p f3).
 
 Check (filter_elim :

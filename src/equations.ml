@@ -36,6 +36,7 @@ open Evarconv
 open List
 open Libnames
 open Topconstr
+open Depelim
 
 let find_constant contrib dir s =
   constr_of_global (Coqlib.find_reference contrib dir s)
@@ -2969,30 +2970,6 @@ let decompose_indapp f args =
   | _ -> f, args
 
 open Coqlib
-
-let sigmaize env sigma f =
-  let ty = Retyping.get_type_of env sigma f in
-  let ctx, concl = decompose_prod_assum ty in
-  let argtyp, letbinders, make = Subtac_command.telescope ctx in
-  let tyargs =
-    [| argtyp; mkLambda (Name (id_of_string "index"), argtyp, 
-			it_mkProd_or_LetIn 
-			  (mkApp (lift (succ (List.length letbinders)) f, 
-				 rel_vect 0 (List.length letbinders)))
-			  letbinders) |]
-  in
-  let tysig = mkApp ((Lazy.force coq_sigma).typ, tyargs) in
-  let indexproj = mkApp ((Lazy.force coq_sigma).proj1, tyargs) in
-  let valproj = mkApp ((Lazy.force coq_sigma).proj2, tyargs) in
-  let indices = 
-    (* let subst = subst_rel_context 0 (mkApp (indexproj, [| mkRel 1 |])) in *)
-      List.map (fun (_, b, _) -> Option.get b) letbinders 
-  in
-  let valsig args v = 
-    mkApp ((Lazy.force coq_sigma).intro, 
-	  Array.append tyargs [| substl (rev args) make; v |])
-  in indices, indexproj, valproj, valsig, tysig
-    
 let mk_pack env sigma ty =
   match kind_of_term ty with
   | App (f, args) ->
