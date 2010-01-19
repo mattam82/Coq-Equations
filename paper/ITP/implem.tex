@@ -1,23 +1,40 @@
-\section{Implementing dependent pattern-matching}
+\section{Dependent pattern-matching compilation redux}
+\label{sec:sketch-patt-match}
 
 The idea of writting pattern-matching equations over inductive families
-goes back to \cite{coquand92baastad}. He introduced the idea of checking
+goes back to Coquand \cite{coquand92baastad}. He introduced the idea of checking
 that a set of equations formed an exhaustive \emph{covering} of a
-signature. From this covering one can build an efficient case-tree in
+signature. From this covering one can build an efficient case tree in
 the standard way \cite{DBLP:conf/fpca/Augustsson85}.
 
 The interesting addition of dependent pattern-matching over simply-typed
 pattern-matching is the fact that some constructors need not be
 considered because the filtered object's type guarantees that they
-couldn't have been built with it. Moreover, as each constructor refines
+could not have been built with it. Moreover, as each constructor refines
 the indices of a filtered object and as we are considering equations
-that can have multiple patterns, refinement may have effect on the
+that can have multiple patterns, refinement may have effects on the
 values or types of other matched objects. This means that each
 constructor adds static information to the problem, and this process 
 can be used ad libitum, as examplified by the definition of
-\coqdoccst{diag} above. 
+\coqdoccst{diag} below:
 
-\subsection{Internal vs. external approaches}
+\begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Equations} \coqdef{intro.diag}{diag}{\coqdocdefinition{diag}} \{\coqdocvar{A} \coqdocvar{n}\} 
+(\coqdocvar{v} : \coqexternalref{http://coq.inria.fr/stdlib/Coq.Bool.Bvector}{vector}{\coqdocinductive{vector}} (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Bool.Bvector}{vector}{\coqdocinductive{vector}} \coqdocvariable{A} \coqdocvariable{n}) \coqdocvariable{n}) : \coqexternalref{http://coq.inria.fr/stdlib/Coq.Bool.Bvector}{vector}{\coqdocinductive{vector}} \coqdocvariable{A} \coqdocvariable{n} :=\coqdoceol
+\coqdocnoindent
+\coqref{intro.diag}{\coqdocdefinition{diag}} \coqdocvar{A} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{O}{\coqdocconstructor{O}} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Bool.Bvector}{Vnil}{\coqdocconstructor{Vnil}} := \coqexternalref{http://coq.inria.fr/stdlib/Coq.Bool.Bvector}{Vnil}{\coqdocconstructor{Vnil}} ;\coqdoceol
+\coqdocnoindent
+\coqref{intro.diag}{\coqdocdefinition{diag}} \coqdocvar{A} (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{S}{\coqdocconstructor{S}} \coqdocvar{n}) (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Bool.Bvector}{Vcons}{\coqdocconstructor{Vcons}} (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Bool.Bvector}{Vcons}{\coqdocconstructor{Vcons}} \coqdocvar{a} \coqdocvar{n} \coqdocvar{v}) \coqdocvar{n} \coqdocvar{v'}) := \coqdoceol
+\coqdocindent{1.00em}
+\coqexternalref{http://coq.inria.fr/stdlib/Coq.Bool.Bvector}{Vcons}{\coqdocconstructor{Vcons}} \coqdocvariable{a} (\coqref{intro.diag}{\coqdocdefinition{diag}} (\coqref{intro.vmap}{\coqdocdefinition{vmap}} \coqref{intro.vtail}{\coqdocdefinition{vtail}} \coqdocvariable{v'})).
+\end{coqdoccode}
+
+\vspace{-1em}
+
+\subsubsection{Internal vs. external approaches}
+\label{sec:intern-vs.-extern}
 
 There exist two main approaches to adding dependent pattern matching to
 a dependent type theory. One is to bake in the high-level pattern
@@ -25,16 +42,16 @@ matching construct and make the associated coverage checking and
 unification procedure part of the core system. This is essentially a
 shallow approach: one works directly in the metalanguage of the 
 system's implementation and avoids building witnesses for the covering
-and unification. The disadvantages of the internal approach are that
+and unification. The disadvantages of the external approach are that
 it makes the trusted code base larger and limits the extensibility of 
 the system: adding a new pattern matching construct like with clauses 
 requires to modify the kernel's code. \Agda implements pattern-matching
 this way, and there is a proposal to extend \Coq in a similar way
 \cite{conf/types/BarrasCGHS08}. 
 
-The external approach takes a different path. In this case we use the 
+The internal approach takes a different path. In this case we use the 
 type theory itself to explain why a definition is correct,
-essentially building a witness of the covering in terms of the much
+essentially building a witness of the covering in terms of the 
 simpler existing constructs on inductive families. This is the path 
 chosen by \cite{DBLP:conf/birthday/GoguenMM06}, and the way \Epigram
 implements pattern-matching. One advantage is that the compiler needs
@@ -53,12 +70,12 @@ Inductive Constructions (\S \ref{sec:dealing-with-k}), some are driven
 by an aspiration to extensibility (\S \ref{sec:few-constructions}), 
 heavily using type classes \cite{sozeau.Coq/classes/fctc} and the tactic
 language and finaly others are driven by performance considerations (\S
-\ref{sec:recursion}). We will not detail here the whole formal
+\ref{sec:recursion}). 
+
+We will not detail here the whole formal
 development of pattern-matching compilation as is done in 
 \cite*{DBLP:conf/birthday/GoguenMM06} but we will introduce the main
 structures necessary to describe our contributions.
-
-\subsection{A sketch of pattern-matching compilation}
 
 The compilation process starts from a signature and a set of clauses
 given by the user, constructed from the grammar given in
@@ -95,6 +112,7 @@ that the type of variable \coqdoccst{x} is uninhabited or a refinement
 node adding a pattern to the problem, structinizing the value of $t$.
 
 \subsubsection{Searching for a covering}
+\label{sec:searching-covering}
 
 The goal of the compiler is to produce a proof that the user clauses form
 an exhaustive covering of the signature, compiling away nested
@@ -329,7 +347,8 @@ principle without any axioms: extensions to make dependent
 pattern-matching more powerful w.r.t. indices \cite{conf/types/BarrasCGHS08} and 
 the addition of proof-irrelevance. Having them would make \Equations
 only more useful.
-If we use the extraction mechanism of \Coq \cite{Let2008} that produces
+If we use the extraction mechanism of \Coq %\cite{Let2008} 
+that produces
 terms in a standard functional language like \ML or \Haskell by removing
 all the logical parts of terms, this problem simply disappears.
 

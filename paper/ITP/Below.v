@@ -47,13 +47,13 @@ Require Import Bvector.
 Hint Unfold noConfusion_nat : equations.
 (* end hide *)
 
-Equations(nostruct) vlast {A : Type} {n : nat} (v : vector A (S n)) : A :=
+Equations vlast {A : Type} {n : nat} (v : vector A (S n)) : A :=
 vlast A n v by rec v :=
 vlast A ?(S n) (Vcons a ?(O) Vnil) := a ;
 vlast A ?(S n) (Vcons a ?(S n) v) := vlast v.
 
-(** Here we use recursion using [Below_vector] (hence the no structural recursion flag).
-   When we encounter a recursion user node [! v] (witnessed as $\Rec{v}{s}$ in 
+(** Here we use recursion using [Below_vector].
+   When we encounter a recursion user node [by rec v] (witnessed as $\Rec{v}{s}$ in 
    the splitting tree), we apply the recursor for the 
    type of [v], after having properly generalized it. The recursion hypothesis 
    is hence of the form: [[
@@ -67,13 +67,11 @@ vlast A ?(S n) (Vcons a ?(S n) v) := vlast v.
    vlast_comp_proj : forall (A : Type) (n : nat) (v : vector A (S n))
      {vcomp : vlast_comp v} -> vlast_comp v ]]
 
-   The last argument of the projection is set to be a hole, to be filled by 
-   a proof search procedure. Now when we typecheck a recursive call, 
-   the procedure will try to find a satisfying [vlast_comp] object in
-   the context, potentially simplifying [Below] hypotheses and using 
-   specialization to find it.
-
-   *)
+   The last argument of the projection is implicit and will be filled 
+   either automatically by a proof search procedure or interactively by
+   the user. When we typecheck a recursive call, the procedure will try
+   to find a satisfying [vlast_comp] object in the context, potentially 
+   simplifying [Below] hypotheses and using specialization to find it. *)
 (* begin hide *)
 (*Recursive Extraction vlast.*)
 (* end hide *)

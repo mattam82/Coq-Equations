@@ -1,0 +1,38 @@
+\section{Introduction}
+
+In this paper, we present a new tool to define and reason on functions
+manipulating inductive families in the \Coq system.
+At the core of the system is a compiler for dependent pattern-matching
+definitions given as a set of \textit{equations} into vanila \Coq
+terms, inspired by the work of Goguen {\it et al.}
+\cite{DBLP:conf/birthday/GoguenMM06} . Our system also incorporates 
+with-clauses (as in \Epigram or \Agda) that can be used to add a pattern
+on the left-hand side for further refinement and supports structural and
+well-founded recursion on inductive families using a purely logical and
+efficient scheme.
+
+The system provides proofs of the equations that can be used as
+rewrite rules to reason on calls to the function. It also
+automatically generates the inductive graph of the function and a
+proof that the function respects it, giving a useful elimination
+principle for it.
+
+\Equations is implemented as an elaboration into the core \Coq type
+theory, allowing the smallest trusted code base possible and ensuring 
+the correctness of the compilation at each use.
+The whole system makes heavy use of type classes and the high-level
+tactic language of \Coq for greater genericity and extensibility.
+
+The paper is organized as follows: first, we present an implementation of a
+dependent pattern-matching compiler (\S \ref{sec:sketch-patt-match})
+supporting with clauses and efficient recursion on inductive families
+(\S \ref{sec:recursion}). Then, we show how we can derive support proofs
+and in particular a powerful elimination principle directly from the
+structure of our programs (\S \ref{sec:reasoning-support}). We finaly
+discuss related work in section \ref{sec:related-work} and conclude (\S \ref{sec:conclusion}).
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-PDF-mode: t
+%%% TeX-master: "equations"
+%%% End: 

@@ -1,5 +1,5 @@
 \section{Reasoning support}
-
+\label{sec:reasoning-support}
 We now turn to the second part of the \Equations package: the derivation
 of support definitions to help reasonning on the generated implementations.
 
@@ -10,7 +10,7 @@ propositional equalities.
 
 \begin{definition}[Equations statements]
   We recurse on the splitting tree, 
-  bookkeeping the current label \ell = ε
+  bookkeeping the current label $\ell$, initialy $ε$,
   and for each $\Compute{Δ \vdash \vec{p} : Γ}{rhs}$
   node we inspect the right-hand side and generate a statement:
   \begin{itemize}
@@ -31,14 +31,14 @@ propositional equalities.
     helper function: 
     $Π~Δ, \cst{f.\ell}~\vec{p} = \helper{f}{\ell'}~\vec{\var{v}}^x~t~\vec{\var{v}}_x$.
     We continue the generation of equations, considering the new
-    programming problem and setting the current label to \ell'.
+    programming problem and setting the current label to $\ell'$.
   \end{itemize}
 \end{definition}
 
 All of these goals are solvable by simply unfolding the definition 
 of the function and simplifying the goal: the constructor forms in the
 leaf patterns direct the reduction. If we didn't use any axioms during
-the definition, then these follows definitionally. When we encounter
+the definition, then these follow definitionally. When we encounter
 axioms in these proofs we simply rewrite using their expected
 computational behavior.
 

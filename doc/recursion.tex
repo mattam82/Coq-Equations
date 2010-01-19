@@ -1,4 +1,4 @@
-\subsection{Recursion}
+\section{Recursion}
 \label{sec:recursion}
 
 We will now explain how we treat recursive definitions by
@@ -47,9 +47,9 @@ logical one, which is compatible with the rest of the logical
 transformations happening during compilation, like the above use of
 strenghtening.
 
-\subsubsection{The \Below way}
+\subsection{The \Below way}
 
-\citet{DBLP:conf/birthday/GoguenMM06} give a way to
+Goguen {\it et al.} \citet{DBLP:conf/birthday/GoguenMM06} give a way to
 elaborate recursive definitions by building a memoizing structure. 
 For each datatype, we define a new type \ind{Below} that captures all
 the recursive subterms of a given term, applied to an arity. 
@@ -73,7 +73,7 @@ used during specialization by unification, but in this case the
 To avoid this problem, we will use another way of witnessing the subterm
 relation that is entirely logical.
 
-\subsubsection{Generalized subterm relations}
+\subsection{Generalized subterm relations}
 
 Our solution is to define the subterm relation on an inductive
 family and write functions by well-founded recursion on this relation.
@@ -115,10 +115,10 @@ by wrapping everything in a dependent sum.
 The heterogeneous subterm relation can hence be uncurried to form
 an homogeneous relation:
 
-$ λ(x~y : Σ i : \teles{Δ}, \ind{I}~\bars{Δ}{i}), \\
-~\quad\quad\ind{I}^{sub}~\bars{Δ}{\pi_1~x}~\bars{Δ}{\pi_1~y}~(\pi_2~x)~(\pi_2~y) \\
-~\quad\quad: \cst{relation}~(Σ i :\teles{Δ}, \ind{I}~\bars{Δ}{i}) $
-  
+\begin{center}$λ(x~y : Σ i : \teles{Δ}, \ind{I}~\bars{Δ}{i}),
+\ind{I}^{sub}~\bars{Δ}{\pi_1~x}~\bars{Δ}{\pi_1~y}~(\pi_2~x)~(\pi_2~y) \\
+~\quad\quad: \cst{relation}~(Σ~\ensuremath{i}~:~\teles{Δ}, \ind{I}~\bars{Δ}{i}) $
+\end{center}
 \input{wf.coq}
 
 \paragraph{Measures}
