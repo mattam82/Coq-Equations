@@ -10,7 +10,7 @@ propositional equalities.
 
 \begin{definition}[Equations statements]
   We recurse on the splitting tree, 
-  bookkeeping the current label \ell = ε
+  bookkeeping the current label $\ell = ε$
   and for each $\Compute{Δ \vdash \vec{p} : Γ}{rhs}$
   node we inspect the right-hand side and generate a statement:
   \begin{itemize}
@@ -31,7 +31,7 @@ propositional equalities.
     helper function: 
     $Π~Δ, \cst{f.\ell}~\vec{p} = \helper{f}{\ell'}~\vec{\var{v}}^x~t~\vec{\var{v}}_x$.
     We continue the generation of equations, considering the new
-    programming problem and setting the current label to \ell'.
+    programming problem and setting the current label to $\ell'$.
   \end{itemize}
 \end{definition}
 
@@ -276,8 +276,7 @@ eliminator.
 This closes our presentation of the \Equations implementation. Having
 a concrete splitting tree representation gives us the ability to easily
 derive support code for the function definitions, and is one of the
-unexpected benefits of the external approach. We will now demonstrate
-how this support code can be put to use.
+unexpected benefits of the external approach.
 
 %%% Local Variables: 
 %%% mode: latex

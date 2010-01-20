@@ -280,7 +280,7 @@ combinators dealing with substitution and proofs of injectivity and
 discrimination of constructors, their two main properties. 
 
 The design of this simplifier is based on the ``specialization by
-unification'' method developed in \citet{DBLP:conf/types/McBride00,mcbride:concon}. Due to lack of space,
+unification'' method developed in \cite{DBLP:conf/types/McBride00,mcbride:concon}. Due to lack of space,
 we won't enter in the details of the procedure. The problem we face
 is to eliminate an object \var{x} of type $\ind{I} \vec{t}$ in a
 goal $Γ \vdash τ$ potentially depending on $x$. We want the elimination to
@@ -311,11 +311,10 @@ simplifier for equalities between constructors. We need a tactic that
 can simplify any equality $\cstr{C} \vec{t} = \cstr{D} \vec{u}$, 
 either giving us equalities between arguments $\vec{t}$ and $\vec{u}$ that can be
 further simplified or deriving a contradiction if $\cstr{C}$ is
-different from $\cstr{D}$. McBride {\it et al.} \citet{mcbride:concon} describe a generic method to
+different from $\cstr{D}$. McBride {\it et al.} \cite{mcbride:concon} describe a generic method to
 derive such an eliminator that we adapted to $\Coq$.
-For any (computational) inductive type $\ind{I} : Π~Γ, \Type$, we can derive a 
-predicate transformer $
-\cst{NoConfusion}_\ind{I} : Π~Γ~(P : \Type), \ind{I}~\bar{Γ} "->"
+For any (computational) inductive type $\ind{I} : Π~Γ, \Type$, we can derive a
+predicate transformer $\cst{NoConfusion}_\ind{I} : Π~Γ~(P : \Type), \ind{I}~\bar{Γ} "->"
 \ind{I}~\bar{Γ} "->" \Type$ that 
 describes how to simplify the goal $P$ under the assumption that the two 
 instances of $\ind{I}~\bar{Γ}$ are equal. E.g., for natural numbers we define:
