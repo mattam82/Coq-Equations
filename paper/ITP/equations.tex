@@ -1,5 +1,4 @@
-%\documentclass[9pt]{sigplanconf}
-\documentclass{llncs}
+\documentclass[a4paper]{llncs}
 
 \usepackage{me}
 \def\anon#1{#1}
@@ -10,38 +9,15 @@
 \date{\today}
 \institute{\myaffiliation
   \\\email{\mymail}}
-\usepackage{natbib}
-\bibpunct();A{},
-\let\cite=\citep
-\def\shortcite#1{\cite{#1}}
-
-%% ACM
-%\authorinfo{\myname}{\myaffiliation}{\mymail}
-
-%\documentclass{article}
 
 \usepackage{abbrevs}
 \usepackage[color]{coqdoc}
 \usepackage{coq}
-\usepackage{natbib}
 \setlength{\coqdocbaseindent}{0.7em}
 \usepackage{utf}
 
-% \newtheorem{theorem}{Theorem}[section]
-% \newtheorem{conjecture}{Conjecture}[section]
-% \newtheorem{lemma}[theorem]{Lemma}
-% \newtheorem{fact}[theorem]{Fact}
-% \newtheorem{proposition}[theorem]{Proposition}
-% \newtheorem{definition}[theorem]{Definition}
-% \newtheorem{example}[theorem]{Example}
-% \newtheorem{remark}[theorem]{Remark}
-% \newtheorem{corrolary}[theorem]{Corollary}
-% \newtheorem{notation}[theorem]{Notation}
-
-%\newcommand{\qed}{\hfill \ensuremath{\Box}}
 \input{figures}
 
-%\author{Matthieu Sozeau}
 \title{\Equations\\
   A dependent pattern-matching compiler}
 
@@ -62,13 +38,9 @@
 \end{abstract}
 
 \input{introduction}
-
-%\input{intro.coq}
 \input{implem}
 \input{support}
-%\input{experiments}
 \input{conclusion}
-  
 \bibliographystyle{splncs}
 \bibliography{biblio}
 

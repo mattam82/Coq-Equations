@@ -247,14 +247,10 @@ they are all derivable from the graph lemma proof.
 Finally, we can get rid of all the indirection methods as they are of
 the form:
 
-\vspace{0.2em}
-
-$Π~Δ_{\helper{f}{\ell.n}}~(r : \fcomp{f}~\vec{t}),
+\[Π~Δ_{\helper{f}{\ell.n}}~(r : \fcomp{f}~\vec{t}),
   Π~Ψ~\IndHyps{Ψ}{\{\find{f} := P\}},
   P_{\helper{f}{\ell.n}}~\bar{Δ^x}~t~\bar{Δ_x}~r "->"
-  P_{\helper{f}{\ell}}~\vec{p}~r$
-
-\vspace{0.2em}
+  P_{\helper{f}{\ell}}~\vec{p}~r\]
 
 These are readily derivable given the definitions of the
 $\helper{P}{\ell}$ above: the equality hypothesis for the refinement is 
@@ -271,8 +267,8 @@ witnessing all refinement information available and of course induction
 hypotheses will be available for every recursive call appearing in
 these and the right hand side. This gives rise to a very powerful tool
 to write proofs on our programs, and a lightweight one at the same time:
-all the details of the splitting and refinement are encapsulated in the
-eliminator.
+all the details of the splitting, refinement and recursion are
+encapsulated in the eliminator.
 
 % This closes our presentation of the \Equations implementation. Having
 % a concrete splitting tree representation gives us the ability to easily

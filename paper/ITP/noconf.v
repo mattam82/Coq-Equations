@@ -29,7 +29,8 @@ NoConfusion_nat P _ _ := P.
    discharged, as we have a witness of [P] by contradiction of the equality
    of [n] and [m].
 
-   We define a new type class to register [NoConfusion] proofs for each type.
+   We define a new type class %\cite{sozeau.Coq/classes/fctc}% to register
+   [NoConfusion] proofs for each type.
    Instances can be automatically derived for any computational inductive family.
    We can then build a generic tactic to simplify any equality hypothesis 
    on a registed type using this construction, 
