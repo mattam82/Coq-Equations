@@ -27,16 +27,10 @@ NoConfusion_nat P _ _ := P.
    the goal under the additional hypothesis that the arguments are equal 
    [((n = m -> P) -> P)]. Finally, in all other cases, the goal is directly
    discharged, as we have a witness of [P] by contradiction of the equality
-   of [n] and [m]. *)
+   of [n] and [m].
 
-Class NoConfusionPackage (A : Type) := {
-  NoConfusion : Type -> A -> A -> Type;
-  noConfusion : forall P a b, a = b -> NoConfusion P a b }.
-
-(** We define a new type class [NoConfusionPackage] to register these 
-   [NoConfusion] proofs for each type. Instances of the class can be
-   automatically derived for any inductive family.
-   We can then build a generic tactic to simplify any equlity hypothesis 
+   We define a new type class to register [NoConfusion] proofs for each type.
+   Instances can be automatically derived for any computational inductive family.
+   We can then build a generic tactic to simplify any equality hypothesis 
    on a registed type using this construction, 
-   which subsumes the [discriminate] and [injection] tactics.
-   *)
+   which subsumes the [discriminate] and [injection] tactics. *)

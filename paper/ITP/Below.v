@@ -2,29 +2,26 @@
 Require Import Equations.
 (* end hide *)
 
-Fixpoint Below_nat (P : nat -> Type) (n : nat) : Type :=
-  match n with
-    | 0 => ()
-    | S n' => (P n' * Below_nat P n')
-  end%type.
+Equations Below_nat (P : nat -> Type) (n : nat) : Type :=
+Below_nat P O := unit ;
+Below_nat P (S n) := (P n * Below_nat P n)%type.
 
 (** The [Below_nat] definition uses the built-in structural recursion
    to build a tuple of all the recursive subterms of a number, applied
    to an arbitrary arity [P].
    We can build this tuple for any [n : nat] given a functional
    [step] that builds a [P n] if we have [P] for all the strict 
-   subterms of [n]. *)
-
+   subterms of [n], and hence derive an eliminator: *)
+(* begin hide *)
 Definition below_nat (P : nat -> Type)
   (step : Π n : nat, Below_nat P n -> P n) (n : nat) : Below_nat P n.
-Proof. Admitted.
+Proof. admit. Qed.
+(* end hide *)
 (* match n with *)
 (*   | 0 => () *)
 (*   | S n' => let below := below_nat P step n' in *)
 (*     (step n' below, below) *)
 (* end. *)
-
-(** Finaly we can build a recursor on [nat] from from this proof. *)
 
 Definition rec_nat (P : nat -> Type) 
   (step : Π n : nat, Below_nat P n -> P n) (n : nat) : P n := 

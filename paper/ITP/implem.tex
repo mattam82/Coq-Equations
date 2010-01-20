@@ -1,7 +1,7 @@
 \section{Dependent pattern-matching compilation redux}
 \label{sec:sketch-patt-match}
 
-The idea of writting pattern-matching equations over inductive families
+The idea of writing pattern-matching equations over inductive families
 goes back to Coquand \cite{coquand92baastad}. He introduced the idea of checking
 that a set of equations formed an exhaustive \emph{covering} of a
 signature. From this covering one can build an efficient case tree in
@@ -15,7 +15,7 @@ the indices of a filtered object and as we are considering equations
 that can have multiple patterns, refinement may have effects on the
 values or types of other matched objects. This means that each
 constructor adds static information to the problem, and this process 
-can be used ad libitum, as examplified by the definition of
+can be used ad libitum, as exemplified by the definition of
 \coqdoccst{diag} below:
 
 \begin{coqdoccode}
@@ -26,10 +26,16 @@ can be used ad libitum, as examplified by the definition of
 \coqdocnoindent
 \coqref{intro.diag}{\coqdocdefinition{diag}} \coqdocvar{A} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{O}{\coqdocconstructor{O}} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Bool.Bvector}{Vnil}{\coqdocconstructor{Vnil}} := \coqexternalref{http://coq.inria.fr/stdlib/Coq.Bool.Bvector}{Vnil}{\coqdocconstructor{Vnil}} ;\coqdoceol
 \coqdocnoindent
-\coqref{intro.diag}{\coqdocdefinition{diag}} \coqdocvar{A} (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{S}{\coqdocconstructor{S}} \coqdocvar{n}) (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Bool.Bvector}{Vcons}{\coqdocconstructor{Vcons}} (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Bool.Bvector}{Vcons}{\coqdocconstructor{Vcons}} \coqdocvar{a} \coqdocvar{n} \coqdocvar{v}) \coqdocvar{n} \coqdocvar{v'}) := \coqdoceol
-\coqdocindent{1.00em}
-\coqexternalref{http://coq.inria.fr/stdlib/Coq.Bool.Bvector}{Vcons}{\coqdocconstructor{Vcons}} \coqdocvariable{a} (\coqref{intro.diag}{\coqdocdefinition{diag}} (\coqref{intro.vmap}{\coqdocdefinition{vmap}} \coqref{intro.vtail}{\coqdocdefinition{vtail}} \coqdocvariable{v'})).
+\coqref{intro.diag}{\coqdocdefinition{diag}} \coqdocvar{A} (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{S}{\coqdocconstructor{S}} \coqdocvar{n}) (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Bool.Bvector}{Vcons}{\coqdocconstructor{Vcons}} (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Bool.Bvector}{Vcons}{\coqdocconstructor{Vcons}} \coqdocvar{a} \coqdocvar{n} \coqdocvar{v}) \coqdocvar{n} \coqdocvar{v'}) := 
+\coqexternalref{http://coq.inria.fr/stdlib/Coq.Bool.Bvector}{Vcons}{\coqdocconstructor{Vcons}} \coqdocvariable{a} (\coqref{intro.diag}{\coqdocdefinition{diag}} (\coqref{intro.vmap}{\coqdocdefinition{vmap}} \coqref{intro.vtail}{\coqdocdefinition{vtail}} \coqdocvariable{v'})).\coqdoceol
+\coqdocnoindent
 \end{coqdoccode}
+
+We pattern match on a square matrix of size n by n and compute its
+diagonal. Only two cases need to be considered: either the matrix is
+empty and so is its diagonal, or the matrix has n + 1 rows made of
+vectors of size n + 1 and we can extract the element at the top left of
+the matrix and build the rest of the diagonal recursively.
 
 \vspace{-1em}
 
@@ -44,7 +50,7 @@ shallow approach: one works directly in the metalanguage of the
 system's implementation and avoids building witnesses for the covering
 and unification. The disadvantages of the external approach are that
 it makes the trusted code base larger and limits the extensibility of 
-the system: adding a new pattern matching construct like with clauses 
+the system: adding a new pattern matching construct like with-clauses 
 requires to modify the kernel's code. \Agda implements pattern-matching
 this way, and there is a proposal to extend \Coq in a similar way
 \cite{conf/types/BarrasCGHS08}. 
@@ -63,31 +69,41 @@ mantra (after McBride) is that type theory is enough to explain
 high-level programming constructs. 
 
 Our implementation closely follows the scheme from
-\cite*{DBLP:conf/birthday/GoguenMM06}, its originality comes mainly from
-a number of design choices that we will explain in detail. Some are
-dictated by our type theory of choice, the (predicative) Calculus of
-Inductive Constructions (\S \ref{sec:dealing-with-k}), some are driven
-by an aspiration to extensibility (\S \ref{sec:few-constructions}), 
-heavily using type classes \cite{sozeau.Coq/classes/fctc} and the tactic
-language and finaly others are driven by performance considerations (\S
-\ref{sec:recursion}). 
+\cite{DBLP:conf/birthday/GoguenMM06}, its originality comes mainly from
+a number of design choices that we will explain in detail.
+We will not present here the whole formal development of pattern-matching
+compilation as is done in \cite{DBLP:conf/birthday/GoguenMM06} but we
+will introduce the main structures necessary to describe our
+contributions.
 
-We will not detail here the whole formal
-development of pattern-matching compilation as is done in 
-\cite*{DBLP:conf/birthday/GoguenMM06} but we will introduce the main
-structures necessary to describe our contributions.
+% Some are
+% dictated by our type theory of choice, the (predicative) Calculus of
+% Inductive Constructions (\S \ref{sec:dealing-with-k}), some are driven
+% by an aspiration to extensibility (\S \ref{sec:few-constructions}), 
+% heavily using type classes \cite{sozeau.Coq/classes/fctc} and the tactic
+% language and finally others are driven by performance considerations (\S
+% \ref{sec:recursion}). 
 
 The compilation process starts from a signature and a set of clauses
 given by the user, constructed from the grammar given in
 figure \ref{fig:usergram}.
+\vspace{-1em}
 
 \begin{figure}[h]
-\begin{center}
-$\figdefs$
-\end{center}
+\center$\figdefs$
 \caption{Definitions and user clauses} 
 \label{fig:usergram}
 \end{figure}
+\vspace{-1em}
+
+A program is given as a tuple of a (globally fresh) identifier, 
+a signature and a set of user clauses. The signature is simply a list of
+bindings and a result type. The purposed type of the function 
+\coqdoccst{f} is then $Π~Γ, τ$. Each user clause comprises a set of
+patterns that will match the bindings $Γ$ and a right hand side which
+can either be a simple term (program node), an empty node indicating
+that the type of variable \coqdoccst{x} is uninhabited or a refinement
+node adding a pattern to the problem, strutinizing the value of $t$.
 
 \paragraph{Notations and terminology}
 We will use the notation $\bar{Δ}$ to denote the set of variables bound by
@@ -101,15 +117,6 @@ by an arity $\ind{I} : Π~Δ, s$ and constructors
 $\vec{\cstr{I}_i : Π~Γ_i, \ind{I}~\vec{t}}$. Although \CIC distinguishes
 between parameters and indices and our implementation does too, we will
 not distinguish them in the presentation for the sake of simplicity.
-
-A program is given as a tuple of a (globally fresh) identifier, 
-a signature and a set of user clauses. The signature is simply a list of
-bindings and a result type. The purposed type of the function 
-\coqdoccst{f} is then $Π~Γ, τ$. Each user clause comprises a set of
-patterns that will match the bindings $Γ$ and a right hand side which
-can either be a simple term (program node), an empty node indicating
-that the type of variable \coqdoccst{x} is uninhabited or a refinement
-node adding a pattern to the problem, structinizing the value of $t$.
 
 \subsubsection{Searching for a covering}
 \label{sec:searching-covering}
@@ -134,59 +141,61 @@ pattern $p$ typable in Δ. We start the search with the problem
 \prob{Γ}{\bar{Γ}}{Γ}, i.e. the identity substitution on Γ, the return
 type $τ_\cst{f}$ and the list of user clauses. Splitting trees are
 defined by the grammar given figure \ref{fig:split}.
-
-\begin{figure}[h]
-\begin{center}$\figsplit$
-\end{center}
-\caption{Context mappings and splitting trees}
-\label{fig:split}
-\end{figure}
-
 They can be either:
 \begin{itemize}
 \item A $\Split{\prob{Δ}{\vec{p}}{Γ}}{\var{x}}{s^n}$ node denoting that
   splitting the variable \var{x} in context Δ will generate $n$ subgoals
-  which are covered by the subcoverings $s$. 
+  which are covered by the sub-coverings $s$. 
 \item A $\Compute{c}{rhs}$ node, where the right hand side can be either:
   \begin{itemize}
   \item A $\Prog{t}$ node denoting a leaf of the tree with program $t$.
   \item A $\Refine{t}{c'}{label}{s}$ node corresponding to a with rule introducing a
     pattern for $t$ with $s$ covering the new problem $c'$. The $label$
-    is a fresh identifier that will be used to define auxilliary definitions.
+    is a fresh identifier that will be used to define auxiliary definitions.
   \end{itemize}
 \end{itemize}
+\newcommand{\Matches}[2]{\textsc{Match}(#1,#2)}
 
-Recursively, we will try to match the user clauses with
-the current problem. Matching is defined in figure \ref{fig:matches}.
-
-\newcommand{\Matches}[2]{\textsc{Matches}(#1,#2)}
+\vspace{-2em}
 \begin{figure}[h]
-  \begin{center}
-    $\begin{array}{lcl}
-      \Matches{ε}{ε} & \coloneqq & \Uparrow ε \\
-      \Matches{p₀; \vec{p}}{q₀; \vec{q}} & \coloneqq & \Matches{p₀}{q₀} \cup
-      \Matches{\vec{p}}{\vec{q}} \\
-      
-      \Matches{\var{x}}{p} & \coloneqq & \Uparrow \{x := p\} \\
-      \Matches{\constr{C}~\vec{p}}{\constr{C}~\vec{q}} & \coloneqq & \Matches{\vec{p}}{\vec{q}} \\
-      \Matches{\constr{C}~\_}{\constr{D}~\_} & \coloneqq & \Downarrow \\
-      
-      \Matches{\constr{C}~\vec{p}}{\var{y}} & \coloneqq & \Rightarrow~\{\var{y}\} \\
-      
-      \Matches{\innac{t}}{\_} & \coloneqq & \Uparrow \emptyset \\
-      
-      & &  \\
-      \Uparrow s~\cup \Uparrow s' & \coloneqq & \Uparrow (s \cup s') \\
-      \Rightarrow s~\cup \Rightarrow s' & \coloneqq & \Rightarrow (s \cup
-      s') \\
-      \Downarrow \cup~\_ `| \_~\cup \Downarrow & \coloneqq & \Downarrow \\
-      (\Rightarrow s~\cup \_) `| (\_~\cup \Rightarrow s) & \coloneqq & \Rightarrow s
-    \end{array}$
-  \end{center}
-  \caption{Matching patterns}
+\center$\figsplit$
+\caption{Context mappings and splitting trees}
+\label{fig:split}
+\end{figure}
+
+\vspace{-3em}
+
+\begin{figure}[h]
+\center$\begin{array}{lcl}
+  \Matches{\var{x}}{p} & \coloneqq & \Uparrow \{x := p\} \\
+  \Matches{\constr{C}~\vec{p}}{\constr{C}~\vec{q}} & \coloneqq & \Matches{\vec{p}}{\vec{q}} \\
+  \Matches{\constr{C}~\_}{\constr{D}~\_} & \coloneqq & \Downarrow \\
+  
+  \Matches{\constr{C}~\vec{p}}{\var{y}} & \coloneqq & \Rightarrow~\{\var{y}\} \\
+  
+  \Matches{\innac{t}}{\_} & \coloneqq & \Uparrow \emptyset \\
+  & & \\
+  \Matches{ε}{ε} & \coloneqq & \Uparrow ε \\
+  \Matches{p₀; \vec{p}}{q₀; \vec{q}} & \coloneqq & \Matches{p₀}{q₀}
+  \cup \Matches{\vec{p}}{\vec{q}}
+\end{array}\hfill
+\begin{array}{lcl}
+  \Uparrow s~\cup \Uparrow s' & \coloneqq & \Uparrow (s \cup s') \\
+  \Rightarrow s~\cup \Rightarrow s' & \coloneqq & \Rightarrow (s \cup
+  s') \\
+  \Downarrow \cup~\_ `| \_~\cup \Downarrow & \coloneqq & \Downarrow \\
+  \Rightarrow s~\cup \_ & \coloneqq &
+  \Rightarrow s \\
+  \_~\cup \Rightarrow s & \coloneqq & \Rightarrow s
+\end{array}$
+\caption{Matching patterns}
   \label{fig:matches}
 \end{figure}
 
+\vspace{-1em}
+
+Recursively, we will try to match the user 
+patterns of each clause with the current problem patterns.
 Matching patterns \vec{p} from the a user clause and 
 patterns \vec{q} from the current programming problem can either
 fail ($\Downarrow$), succeed ($\Uparrow s$) returning a variable
@@ -271,7 +280,7 @@ combinators dealing with substitution and proofs of injectivity and
 discrimination of constructors, their two main properties. 
 
 The design of this simplifier is based on the ``specialization by
-unification'' method developped in \citet{DBLP:conf/types/McBride00,mcbride:concon}. Due to lack of space,
+unification'' method developed in \citet{DBLP:conf/types/McBride00,mcbride:concon}. Due to lack of space,
 we won't enter in the details of the procedure. The problem we face
 is to eliminate an object \var{x} of type $\ind{I} \vec{t}$ in a
 goal $Γ \vdash τ$ potentially depending on $x$. We want the elimination to
@@ -295,7 +304,7 @@ get refined goals where the initial $x$ has been substituted by the
 allowed constructors only.
 
 Our tactic relies on a set of
-combinators for simplifying equations in the theory of contructors, most
+combinators for simplifying equations in the theory of constructors, most
 of which are just rephrasings of the substitution principles for
 \people{Leibniz} and heterogeneous equality. The last bit is a
 simplifier for equalities between constructors. We need a tactic that
@@ -318,7 +327,7 @@ instances of $\ind{I}~\bar{Γ}$ are equal. E.g., for natural numbers we define:
 
 There is one little twist in our simplifier, due to the fact that \Coq does
 not support the principle of ``Uniqueness of Identity Proof'', also
-refered to as \people{Streicher}'s K axiom \cite{Streicher91}. This
+referred to as \people{Streicher}'s K axiom \cite{Streicher91}. This
 principle can be phrased as:
 
 \coqdocemptyline

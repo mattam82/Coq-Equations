@@ -1,7 +1,7 @@
 \section{Reasoning support}
 \label{sec:reasoning-support}
 We now turn to the second part of the \Equations package: the derivation
-of support definitions to help reasonning on the generated implementations.
+of support definitions to help reasoning on the generated implementations.
 
 \subsection{Building equations}
 
@@ -10,23 +10,23 @@ propositional equalities.
 
 \begin{definition}[Equations statements]
   We recurse on the splitting tree, 
-  bookkeeping the current label $\ell$, initialy $ε$,
+  bookkeeping the current label $\ell$, initially $ε$,
   and for each $\Compute{Δ \vdash \vec{p} : Γ}{rhs}$
   node we inspect the right-hand side and generate a statement:
   \begin{itemize}
   \item $\Prog{t}$: the equation is simply $Π~Δ, \cst{f.\ell}~\vec{p}~=t$.
-  \item $\Empty{t}$: we make an instance of the following typeclass:
-    \vspace{0.1em}
-    \input{imposs.coq}
+  % \item $\Empty{t}$: we make an instance of the following typeclass:
+  %   \vspace{0.1em}
+  %   \input{imposs.coq}
 
-    In this case we generate an instance of $Π~Δ, \ind{ImpossibleCall} (\cst{f.\ell}~\vec{p})$.
+  %   In this case we generate an instance of $Π~Δ, \ind{ImpossibleCall} (\cst{f.\ell}~\vec{p})$.
     
   \item $\Refine{t}{Δ' \vdash \vec{\var{v}}^x, \var{x}, \vec{\var{v}}_x :
       Δ^x, \var{x} : τ, Δ_x}{\ell'}{s}$: 
     We know that the new programming problem is just a reordering of the
     variables in $Δ$ after having inserted a declaration for the refined 
     object and abstracted the remaining $Δ_x$ context. 
-    The auxilliary definition $\helper{f}{\ell'}$ produces an object refining 
+    The auxiliary definition $\helper{f}{\ell'}$ produces an object refining 
     this context, we can hence generate an indirection equation for the
     helper function: 
     $Π~Δ, \cst{f.\ell}~\vec{p} = \helper{f}{\ell'}~\vec{\var{v}}^x~t~\vec{\var{v}}_x$.
@@ -53,16 +53,15 @@ Considering $\cst{f} : Π~Γ,~\fcomp{f}~\bar{Γ}$, we want
 to build an inductive relation $\find{f} : Π~Γ,~\fcomp{f}~\bar{Γ} "->" \Prop$ that relates 
 arguments $\bar{Γ}$ to results $\fcomp{f}~\bar{Γ}$.
 
-We first define a function that finds the occurences of recursive calls
+We first define a function that finds the occurrences of recursive calls
 in a right-hand side term and abstracts them by variables. This is easy
-to do given that all the recursive calls are labelled by the trivial 
+to do given that all the recursive calls are labeled by the trivial 
 \fcompproj{f} projection. 
 \begin{definition}[Abstracting recursive calls]
   The \absrec{f}{t} operator is defined by recursion on the term $t$, 
-  under a potential local context $Δ$, empty at the start of the
-  recursion. The operator builds a context representing the abstracted 
+  under a local context $Δ$, empty at the start of the recursion. 
+  The operator builds a context representing the abstracted
   recursive calls and a new term using these abstracted calls.
-
   By case on $t$:
   \begin{itemize}
   \item $\fcompproj{f}~\vec{t}~p$ :
@@ -109,7 +108,7 @@ We are now ready to build the inductive graph.
   \begin{itemize}
   \item $\Split{c}{x}{s}$ :
     Again splitting nodes are basically ignored, we just
-    collect the constructor statements for the splitting $s$.
+    collect the constructor statements for the splitting $s$, if any.
 
   \item $\Rec{v}{s}$ :
     Recursion nodes are also ignored when we compute the inductive
@@ -125,8 +124,8 @@ We are now ready to build the inductive graph.
       $t'$. We return the statement
       \[Π~Δ~Ψ~\IndHyps{Ψ},~\find{f}~\vec{p}~t'\]
       
-    \item $\Empty{t}$ : this case is impossible hence no constructor is
-      needed.
+    % \item $\Empty{t}$ : this case is impossible hence no constructor is
+    %   needed.
     \item $\Refine{t}{Δ' \vdash \vec{\var{v}}^x, \var{x}, \vec{\var{v}}_x :
         Δ^x, \var{x} : τ, Δ_x}{\helper{f}{\ell}}{s}$ :
       As for the equation, we just have to do an indirection to the 
@@ -146,10 +145,9 @@ We are now ready to build the inductive graph.
 \end{definition}
 
 The result of the inductive graph construction is hence a mutual
-inductive type $\vec{\find{f} : Π~Δ,~\fcomp{f}~\bar{Δ}}$
+inductive type $\vec{\find{f.\ell} : Π~Δ,~\fcomp{f}~\vec{t}}$
 with one inductive definition per refinement node and one
 for the toplevel definition.
-
 We can now prove that the function (and its helpers) corresponds to this 
 graph by proving the following lemma:
 
@@ -163,7 +161,7 @@ graph by proving the following lemma:
     hypotheses.
 
   \item $\Split{c}{x}{s}$ :
-    Each split is simply replayed.
+    Each split is simply replayed, empty ones solve the goal directly.
 
   \item $\Compute{Δ \vdash \vec{p} : Γ}{rhs}$ :
     At computation nodes our goal will necessarily be simplifiable 
@@ -173,14 +171,14 @@ graph by proving the following lemma:
     \begin{itemize}
     \item $\Prog{t}$ :
       We rewrite with the equation for this node and apply one 
-      of the constructors for the graph. We will optionaly get 
+      of the constructors for the graph. We will optionally get 
       subgoals for induction hypotheses here if $t$ had recursive
       calls in it. They are solved by a proof search, in exactly the
       same way as the proofs for the recursive calls were found.
       
-    \item $\Empty{t}$ : this case has no constructor, we can call
-      \text{\cst{impossible\_call}} with the application
-      $\cst{f}~\vec{p}$ to discharge this goal.
+    % \item $\Empty{t}$ : this case has no constructor, we can call
+    %   \text{\cst{impossible\_call}} with the application
+    %   $\cst{f}~\vec{p}$ to discharge this goal.
 
     \item $\Refine{t}{Δ' \vdash \vec{p}' : Γ'}{\helper{f}{\ell}}{s}$ :
       Here we can rewrite with the indirection equation and 
@@ -203,8 +201,8 @@ $Π~Δ,~\find{f}~\bar{Δ}~(\cst{f}~\bar{Δ})$,
 we can specialize the eliminator of $\find{f}$ which is of the form:
 
 \[\begin{array}{l}
-  Π~(P : Π~Δ,~\fcomp{f}~\bar{Δ} "->" \Prop) \\
-  \vec{(P_{\helper{f}{\ell}} : Π~Δ_{\helper{f}{\ell}},~\fcomp{\helper{f}{\ell}}~\bar{Δ_{\helper{f}{\ell}}} "->" \Prop)} \vspace{0.1em}\\
+  Π~(P : Π~Δ,~\fcomp{f}~\bar{Δ} "->" \Prop)
+  \vec{(P_{\helper{f}{\ell}} : Π~Δ_{\helper{f}{\ell}},~\fcomp{\helper{f}{\ell}}~\vec{t} "->" \Prop)} \vspace{0.1em}\\
   (f : Π~Γ, \find{f}~\vec{t}~(\cst{f}~\vec{u}) "->"
   P~\vec{t}~(\cst{f}~\vec{u}) "->" \cdots) \\
   \vdots \\
@@ -221,12 +219,11 @@ for $\helper{f}{\ell}$. Each $P_\helper{f}{n . \ell}$ is hence defined as
 \def\cast#1#2{\mathsf{cast}~#1~#2}
 
 \[\begin{array}{l}
-  λ~Δ^x~(x : τ)~Δ_x~(r : \fcomp{\helper{f}{(n.\ell)}}~\bar{Δ_{\helper{f}{(n.\ell)}}}), \vspace{0.1em}\\
-  Π~Ψ~\IndHyps{Ψ}\{\find{f}:=P\},\vspace{0.3em}\\ 
+  λ~Δ^x~(x : τ)~Δ_x~(r : \fcomp{\helper{f}{(n.\ell)}}~\bar{Δ_{\helper{f}{(n.\ell)}}}),
+  Π~Ψ~\IndHyps{Ψ}\{\find{f}:=P\},\vspace{0.1em}\\ 
   Π~H : x = t', P_{\helper{f}{l}}~\bar{Δ^x}~\bar{Δ_x}~(\cast{r}{x}~H)
+  \quad \text{where } \absrec{f}{t} = Ψ, t'
 \end{array}\]
-
-where $\absrec{f}{t} = Ψ, t'$
 
 We abstract on the context of the refinement node with its distinguished
 variable $x$ and on a result $r$ for the subprogram. As we know that 
@@ -240,24 +237,28 @@ hypotheses.
 
 We want to eliminate not any $\fcomp{f}~\bar{Δ}$ object but specifically
 $\cst{f}$ calls.
-Using the graph lemma proof we can trivially specialize the conclusion to:
-\[Π~Δ, P~\bar{Δ}~(\cst{f}~\bar{Δ})\]
+Using the graph lemma proof we can trivially specialize the conclusion to
+$Π~Δ, P~\bar{Δ}~(\cst{f}~\bar{Δ})$
 
 We can also remove the unnecessary hypotheses of the form
 $\find{f}~\vec{t}~(\cst{f}~\vec{u})$ appearing in the methods, as
-they are all derivable from the graph lemma proof. Finally, we can get
-rid of all the indirection methods as they are of the form:
+they are all derivable from the graph lemma proof. 
 
-\[\begin{array}{l}
-  Π~Δ_{\helper{f}{n . \ell}}~(r : \fcomp{f}~\vec{t}),
-  Π~Ψ~\IndHyps{Ψ}{\{\find{f} := P\}}, \\
-  P_{\helper{f}{n . \ell}}~\bar{Δ^x}~t~\bar{Δ_x}~r "->"
-  P_{\helper{f}{\ell}}~\vec{p}~r
-\end{array}\]
+Finally, we can get rid of all the indirection methods as they are of
+the form:
+
+\vspace{0.2em}
+
+$Π~Δ_{\helper{f}{\ell.n}}~(r : \fcomp{f}~\vec{t}),
+  Π~Ψ~\IndHyps{Ψ}{\{\find{f} := P\}},
+  P_{\helper{f}{\ell.n}}~\bar{Δ^x}~t~\bar{Δ_x}~r "->"
+  P_{\helper{f}{\ell}}~\vec{p}~r$
+
+\vspace{0.2em}
 
 These are readily derivable given the definitions of the
 $\helper{P}{\ell}$ above: the equality hypothesis for the refinement is 
-instanciated by a reflexivity proof, making the cast reduce directly.
+instantiated by a reflexivity proof, making the cast reduce directly.
 We are left with a tautology.
 
 The cleaned up eliminator can be applied directly to any goal depending on
@@ -273,11 +274,11 @@ to write proofs on our programs, and a lightweight one at the same time:
 all the details of the splitting and refinement are encapsulated in the
 eliminator.
 
-This closes our presentation of the \Equations implementation. Having
-a concrete splitting tree representation gives us the ability to easily
-derive support code for the function definitions, and is one of the
-unexpected benefits of the external approach. We will now demonstrate
-how this support code can be put to use.
+% This closes our presentation of the \Equations implementation. Having
+% a concrete splitting tree representation gives us the ability to easily
+% derive support code for the function definitions, and is one of the
+% unexpected benefits of the external approach. We will now demonstrate
+% how this support code can be put to use.
 
 %%% Local Variables: 
 %%% mode: latex

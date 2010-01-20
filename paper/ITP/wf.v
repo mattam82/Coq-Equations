@@ -1,3 +1,4 @@
+(** printing ~= $\simeq$ *)
 (* begin hide *)
 Require Import Equations Relations Transitive_Closure Bvector.
 Generalizable All Variables. Set Automatic Introduction. Print clos_trans.
@@ -9,7 +10,7 @@ Check Acc. Check @Acc_intro.
    standard library is restricted to homogeneous relations and based on 
    the following notion of accessibility: [[
 Inductive Acc {A} (R : A -> A -> Prop) (x : A) : Prop :=
-| Acc_intro : (forall y : A, R y x -> Acc R y) -> Acc R x. ]]
+  Acc_intro : (forall y : A, R y x -> Acc R y) -> Acc R x. ]]
 
   An element of [Acc A R x] contains a proof that any preceding element of 
   [x] by [R] (if any) is also accessible. As objects of [Acc] are inductive,
@@ -42,7 +43,6 @@ Proof. Admitted.
    programming problem: *)
 
 Definition vlast_comp A n (v : vector A (S n)) := A.
-
 (* begin hide *)
 Ltac fix_wf x recname := rec_wf_eqns x recname ; unfold add_pattern ;
   destruct_exists ; simpl in *; reverse ; simplify_dep_elim ; 
@@ -50,59 +50,52 @@ Ltac fix_wf x recname := rec_wf_eqns x recname ; unfold add_pattern ;
 Check projT1. Check projT2. Check nat. Check vector_subterm.
 Implicit Arguments existT [ [A] [P] ].
 (* end hide *)
+Definition vlast A n (v : vector A (S n)) : vlast_comp A n v.
 
-Definition vlast A n v : vlast_comp A n v.
 Proof.
-  (** If we want to apply our recursion operator over vectors here, 
-     we must first pack [v] with it's index [n]. 
-     We have a tactic [pack v as vpack] that will take [v] and 
-     produce a dependent tuple packaging it with its indices.
-     As all the indices are variables (at least after dependent
-     generalization), we can replace any occurrence of the indices 
-     or the term by the corresponding projections of the tuple. *)
-  generalize_eqs_vars v. pack v as v'.
-  (** [[
-(A : Type) (gen_x : nat) (v : vector A gen_x)
-v' := existT gen_x v : {index : nat & vector A index}
-============================
- forall (n : nat) (v0 : vector A (S n)),
- projT1 v' = S n -> projT2 v' ~= v0 -> vlast_comp A n v0 ]]
-   Without loss of generality we can then clear the body of the 
-   packed object and all the variables we packed. *)
-  clearbody v'. clear.
+  (** To apply our recursion operator over vectors, we must first prepare 
+     for a dependent elimination on [v] packed with its index [n].
+     To do so, we simply generalize by an equality between the packed object 
+     and a fresh variable of the packed type, giving us an equivalent goal: *)
+  dependent generalize v as v'. simpl in *. revert_until v'.
+  (* generalize_eqs_vars v. pack v as v'. clearbody v'. clear. intros n v0. *)
   (** [[
 (A : Type) (v' : {index : nat & vector A index})
 ============================
- forall (n : nat) (v0 : vector A (S n)),
- projT1 v' = S n -> projT2 v' ~= v0 -> vlast_comp A n v0 ]]
+forall n (v : vector A (S n)), v' = existT (S n) v -> vlast_comp A n v ]]
    We can now directly use the fixpoint combinator on the 
-   (uncurried) subterm relation for vectors, which expects
-   a predicate on the packed type. This is done by the tactic
-   [fix_wf x n] that takes the variable we want to recurse on
-   and the name of the recursive functional and applies the 
-   recursor associated to the type of [x]. *)  
+   subterm relation for packed vectors. This results in a new goal with 
+   an additional induction hypothesis expecting a packed vector and 
+   a proof that it is smaller than the initial packed [v]. Using currying and 
+   unpacking of existentials, we get back a goal refining the initial 
+   problem. *)  
   fix_wf v' rv.
+  assert(forall (n' : nat) (v' : vector A (S n')),
+    forall (index : nat) (y : vector A index),
+       vector_subterm A (existT index y) (existT (S n) v) ->
+       @existT _ (fun n => vector A n) index y = existT (S n') v' -> vlast_comp A n' v').
+  intros. apply rv with index y. auto. apply H0.
+  simplify_IH_hyps. simpl in X.
+  
+
   (** [[
-(A : Type) (n : nat) (v0 : vector A (S n))
-rv : forall (index : nat) (y : vector A index),
-  vector_subterm A (existT index y) (existT (S n) v0) ->
-  forall (n : nat) (v0 : vector A (S n)),
-  index = S n -> y ~= v0 -> vlast_comp A n v0
+(A : Type) (n : nat) (v : vector A (S n))
+recv : forall index y, vector_subterm A (existT index y) (existT (S n) v) ->
+  forall n v, existT index y = existT (S n) v -> vlast_comp A n v
 ============================
- vlast_comp A n v0 ]]
- The tactic also simplifies the goal by unpacking the existentials 
- for the initial argument and currying the functional back.
- Now we can decompose the vector and do our recursive call.
- The last step is to provide a proof search procedure to 
+ vlast_comp A n v ]]
+ We can then continue our refinement and do recursive calls.
+
+ The last step is to provide a proof search procedure to
  automatically build proofs of the subterm relation,
  filling the witnesses that appear at recursive calls (i.e. the 
  [vector_subterm] hypothesis here). We can easily do so using
  a hint database with the constructors of the $\ind{I}^{sub}$ 
- relation and the constructors for the transitive closure relation.
- 
- We can turn this whole process into a single tactic called at
- recursion nodes. *)
-  depelim v0. depelim v0. exact a.
-  change (vlast_comp A n (Vcons a0 v0)).
-  apply (rv (S n) (Vcons a0 v0)) ; typeclasses eauto with subterm_relation Below.
+ relation and lemmas on the transitive closure relation 
+ that only allow to use the direct subterm relation on the right
+ to guide the proof search by the refined [v], emulating the 
+ unfolding strategy of [Below]. *)
+  depelim v. depelim v. exact a.
+  change (vlast_comp A n (Vcons a0 v)).
+  apply (rv (S n) (Vcons a0 v)) ; typeclasses eauto with subterm_relation Below.
 Defined.

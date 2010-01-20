@@ -6,7 +6,7 @@ The notions of dependent pattern-matching and coverage building were
 first introduced by Coquand in its seminal article
 \cite{coquand92baastad} and the initial \name{Alf} implementation.
 It was studied in the context of an extension of the Calculus of
-Constructions by Cornes \cite{CornesPhD,DBLP:conf/types/CornesT95} who
+Constructions by Cornes \cite{CornesPhD} who
 started the work on
 inversion of dependent inductive types that was later refined and
 expanded by McBride resulting in the design of \name{Oleg}
@@ -15,9 +15,9 @@ around \Epigram
 \cite{mcbride:concon,DBLP:journals/jfp/McBrideM04,DBLP:conf/birthday/GoguenMM06}
 led to the compilation scheme for dependent pattern-matching definitions
 which is also at the basis of \Equations. Using the alternative external approach,
-Norell developped the \Agda 2 language \cite{norell:thesis}, an
+Norell developed the \Agda 2 language \cite{norell:thesis}, an
 implementation of Martin-Löf Type Theory that internalizes not only
-Streicher's K axiom but also the injectivity of inductive types.
+Streicher's axiom K but also the injectivity of inductive types.
 In a similar spirit, Barras {\it et al} \cite{conf/types/BarrasCGHS08}
 propose to extend \Coq's primitive elimination rule to handle the
 unification process.
@@ -33,7 +33,7 @@ generate the graph, and more powerful in its handling of dependent
 pattern-matching. 
 
 Another powerful way to handle non-structural recursion in type theory
-was developped by Bove et Capretta \cite{journals/mscs/BoveC05}. The
+was developed by Bove et Capretta \cite{journals/mscs/BoveC05}. The
 technique, based on the ability to first define the graph of a function
 and delay the termination argument might now be adaptable in our
 setting.
@@ -56,7 +56,7 @@ considered here but do not require any radical change to our system.
 We have presented a new tool for defining programs using
 dependent-pattern matching in the \Coq system, automatically 
 generating a supporting theory to ease post-hoc reasoning on them.
-The system has a safe architecture, being completely external to the
+The system has a safe architecture, living entirely outside the
 kernel and allowing easy extension thanks to its reliance on the
 high-level tactic language and type classes constructs. It is an
 important step towards a more robust, accessible and powerful user
