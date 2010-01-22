@@ -15,7 +15,7 @@ all: ${TARGETS}
 	rm coqdoc.sty
 
 %.html: %.vo
-	${COQBIN}coqdoc ${COQOPTS} ${COQDOCOPTS} --html --glob-from ${<:.vo=.glob} -o $@ ${<:.vo=.v}
+	${COQBIN}coqdoc ${COQOPTS} ${COQDOCOPTS} --html -t Equations --glob-from ${<:.vo=.glob} -o $@ ${<:.vo=.v}
 	cp ~/research/publication/styles/coqdoc.css .
 
 %.pdf: %.tex
