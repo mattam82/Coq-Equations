@@ -34,4 +34,4 @@ NoConfusion_nat P _ _ := P.
    Instances can be automatically derived for any computational inductive family.
    We can then build a generic tactic to simplify any equality hypothesis 
    on a registed type using this construction, 
-   which subsumes the [discriminate] and [injection] tactics. *)
+   which subsumes the standard [discriminate] and [injection] tactics. *)

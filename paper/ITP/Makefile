@@ -1,6 +1,6 @@
 COQDOCOPTS=--utf8 -g --interpolate -coqlib http://coq.inria.fr/stdlib/
 COQOPTS=
-TARGETS=intro.vo intro.coq.tex noconf.vo noconf.coq.tex Below.vo Below.coq.tex wf.vo wf.coq.tex \
+TARGETS=intro.vo intro.coq.tex filter.vo filter.coq.tex noconf.vo noconf.coq.tex Below.vo Below.coq.tex wf.vo wf.coq.tex \
 	imposs.vo imposs.coq.tex equations.pdf intro.html
 COQBIN=~/research/coq/trunk/bin/
 

@@ -125,28 +125,38 @@ The goal of the compiler is to produce a proof that the user clauses form
 an exhaustive covering of the signature, compiling away nested
 pattern-matchings to simple case splits. As we have multiple patterns to
 consider and allow overlapping clauses, there may be more than one way
-to order the case splits to achieve the same results. As we have seen
-before, inaccessible patterns help recover a sense of what needs to be
-destructed and what is statically known to have a particular value, and
-the order is irrelevant if the patterns are not depending on each
-other. On the other hand, overlapping clauses force the compilation to
-be phrased as a search procedure. As usual, we recover a deterministic
+to order the case splits to achieve the same results. We use
+inaccessible patterns as in \Agda to help recover a sense of what needs to be
+destructed and what is statically known to have a particular value,
+but overlapping clauses force the compilation to be phrased as a search
+procedure. As usual, we recover a deterministic
 semantics using a first-match rule when two clauses overlap.
+
+\begin{figure}[h]
+\center$\figsplit$
+\caption{Context mappings and splitting trees}
+\label{fig:split}
+\end{figure}
 
 The search for a covering works by gradually refining a
 \emph{programming problem} \prob{Δ}{\vec{p}}{Γ} and building a
 splitting tree. A programming problem, or context mapping (fig. \ref{fig:split}),
 is a substitution from Δ to Γ, associating to each variable in Γ a
 pattern $p$ typable in Δ. We start the search with the problem
-\prob{Γ}{\bar{Γ}}{Γ}, i.e. the identity substitution on Γ, the return
-type $τ_\cst{f}$ and the list of user clauses. Splitting trees are
-defined by the grammar given figure \ref{fig:split}.
-They can be either:
+\prob{Γ}{\bar{Γ}}{Γ}, i.e. the identity substitution on Γ and
+the list of user clauses. We define for $\cst{f}$ with signature $Π~Δ, τ$
+the \cst{f}-computation type $\fcomp{f}~Δ := τ$ and consider the type of
+the function to be $Π~Δ, \fcomp{f}~Δ$ from now on. We will use this
+computation type during compilation to precisely keep track of recursive
+calls and to interface with tactics. A splitting can either be:
 \begin{itemize}
-\item A $\Split{\prob{Δ}{\vec{p}}{Γ}}{\var{x}}{s^n}$ node denoting that
-  splitting the variable \var{x} in context Δ will generate $n$ subgoals
-  which are covered by the sub-coverings $s$. 
-\item A $\Compute{c}{rhs}$ node, where the right hand side can be either:
+\item A $\Split{\prob{Δ}{\vec{p}}{Γ}}{\var{x}}{(s?)^n}$ node denoting that
+  the variable \var{x} is an object of an inductive type with $n$
+  constructors and that splitting it in context Δ will generate $n$ subgoals
+  which are covered by the optional subcoverings $s$. When the type of
+  \var{x} does not unify with a particular constructor's type the
+  corresponding splitting is empty.
+\item A $\Compute{\prob{Δ}{\vec{p}}{Γ}}{rhs}$ node, where the right hand side can be either:
   \begin{itemize}
   \item A $\Prog{t}$ node denoting a leaf of the tree with program $t$.
   \item A $\Refine{t}{c'}{label}{s}$ node corresponding to a with rule introducing a
@@ -156,14 +166,7 @@ They can be either:
 \end{itemize}
 \newcommand{\Matches}[2]{\textsc{Match}(#1,#2)}
 
-\vspace{-2em}
-\begin{figure}[h]
-\center$\figsplit$
-\caption{Context mappings and splitting trees}
-\label{fig:split}
-\end{figure}
-
-\vspace{-3em}
+\vspace{-1em}
 
 \begin{figure}[h]
 \center$\begin{array}{lcl}
@@ -195,30 +198,29 @@ They can be either:
 \vspace{-1em}
 
 Recursively, we will try to match the user 
-patterns of each clause with the current problem patterns.
-Matching patterns \vec{p} from the a user clause and 
-patterns \vec{q} from the current programming problem can either
+patterns of each clause with the current problem \prob{Δ}{\vec{p}}{Γ}.
+Matching patterns \vec{q} from the a user clause and 
+patterns \vec{p} from the current programming problem can either
 fail ($\Downarrow$), succeed ($\Uparrow s$) returning a variable
-substitution $s$ from \vec{p} to \vec{q} or get stuck ($\Rightarrow s$)
-returning a set of variables from \vec{q} that needs further splitting
-to match the user patterns in \vec{p}. 
+substitution $s$ from \vec{q} to \vec{p} or get stuck ($\Rightarrow s$)
+returning a set of variables from \vec{p} that needs further splitting
+to match the user patterns in \vec{q}.
 
 \begin{itemize}
-\item If none of the clauses match a particular problem
-  we have a non-exhaustive pattern-matching. 
+\item If the clause does not match a particular problem
+  we try the next one, if there are no clauses left
+  we have a non-exhaustive pattern-matching.
 
-\item If the problem is stuck, we
-  try to recursively find a splitting after refining a stuck variable,
-  doing a dependent elimination on the object to produce subproblems
-  corresponding to an instantiation of the variable with each allowed
-  constructor.
+\item If the problem is stuck on the clause, we
+  try to recursively find a splitting after refining a stuck variable $x$,
+  creating subproblems that correspond to an instantiation of the
+  variable with each possible constructor.
+  We build a $\Split{c}{x}{s}$ node from the resulting set of
+  splittings if all succeed, or try the next stuck variable.
 
-\item If some clauses match we choose the first one. Once a clause has
-  been chosen, supposing the
-  current programming problem is \prob{Δ}{\vec{p}}{Γ}, matching gives us a
-  substitution from the user clause variables to Δ, so we can typecheck
-  right hand side terms in environment Δ. We look at the right-hand side
-  and decide:
+\item If the clause matches we get back a substitution from the user
+  clause variables to Δ, so we can typecheck right-hand side terms in
+  environment Δ. We look at the right-hand side and decide:
 
   \begin{itemize}
   \item If it is a program user node, we simply typecheck the program
@@ -246,33 +248,74 @@ to match the user patterns in \vec{p}.
     user patterns. We can easily make new user clauses matching the 
     strengthened context $Δ^t, \var{x_t} : τ_Δ, Δ_t[t/\var{x_t}]$ 
     by associating to each variable of $Δ$ its associated user pattern 
-    and using $p_i^x$ for the new pattern. 
-    The result of the covering will then be an exhaustive case-split for
-    the problem \prob{Δ^t, \var{x_t} : τ_Δ, Δ_t[t/\var{x_t}]}
+    and using $p_i^x$ for the new pattern.
+    The result of the covering will then be a splitting $s$ for
+    the problem $c' = \prob{Δ^t, \var{x_t} : τ_Δ, Δ_t[t/\var{x_t}]}
     {\bar{Δ^t}, \var{x_t}, \bar{Δ_t}}{Δ^t, \var{x_t} : τ_Δ,
-      Δ_t[t/\var{x_t}]}, hence a term of type
+      Δ_t[t/\var{x_t}]}$ from which we can build a
+    $\Refine{t}{c'}{\ell.n}{s}$ node.
+    Compiling this term will give us a term of type
     $Π~Δ^t~(\var{x_t} : τ_Δ)~Δ_t[t/\var{x_t}], τ_f[t/\var{x_t}]$.
-    We can apply this term to $\bar{Δ^t}, t, \bar{Δ_t}$ to recover a 
-    term of type $τ_f$ in the original $Δ$ context, providing a covering
-    for the initial \prob{Δ}{\vec{p}}{Γ}.
+    We can apply this term to $\bar{Δ^t}, t, \bar{Δ_t}$ to recover a
+    term of type $τ_f$ in the original $Δ$ context, providing a witness
+    for the initial \prob{Δ}{\vec{p}}{Γ} problem.
+    Consider for example the following definition:
+
+\begin{coqdoccode}
+\coqdoceol
+\coqdocnoindent
+\coqdockw{Equations} \coqdef{filter.filter}{filter}{\coqdocdefinition{filter}} \{\coqdocvar{A}\} (\coqdocvar{l} : \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A}) (\coqdocvar{p} : \coqdocvariable{A} \ensuremath{\rightarrow} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{bool}{\coqdocinductive{bool}}) : \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A} :=\coqdoceol
+\coqdocnoindent
+\coqref{filter.filter}{\coqdocdefinition{filter}} \coqdocvar{A} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{nil}{\coqdocconstructor{nil}} \coqdocvar{p} := \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{nil}{\coqdocconstructor{nil}} ;\coqdoceol
+\coqdocnoindent
+\coqref{filter.filter}{\coqdocdefinition{filter}} \coqdocvar{A} (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{cons}{\coqdocconstructor{cons}} \coqdocvar{a} \coqdocvar{l}) \coqdocvar{p} \coqdockw{with} \coqdocvariable{p} \coqdocvariable{a} := \{\coqdoceol
+\coqdocnoindent
+\coqref{filter.filter}{\coqdocdefinition{filter}} \coqdocvar{A} (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{cons}{\coqdocconstructor{cons}} \coqdocvar{a} \coqdocvar{l}) \coqdocvar{p} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{true}{\coqdocconstructor{true}} := \coqdocvariable{a} :: \coqref{filter.filter}{\coqdocdefinition{filter}} \coqdocvariable{l} \coqdocvariable{p} ;\coqdoceol
+\coqdocnoindent
+\coqref{filter.filter}{\coqdocdefinition{filter}} \coqdocvar{A}
+(\coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{cons}{\coqdocconstructor{cons}}
+\coqdocvar{a} \coqdocvar{l}) \coqdocvar{p}
+\coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{false}{\coqdocconstructor{false}}
+:= \coqref{filter.filter}{\coqdocdefinition{filter}} \coqdocvariable{l}
+\coqdocvariable{p} \}.\coqdoceol
+\coqdocnoindent
+\end{coqdoccode}
+
+    When interpreting the \coqdockw{with} node, the patterns of the inner clauses
+    are transformed to match the variables
+    \coqdocvar{A} \coqdocvar{a} \coqdocvar{l} \coqdocvar{p} bound at the
+    \coqdockw{with}
+    node and their additional pattern for \coqdocvar{p} \coqdocvar{a}.
+
+    The compiled term built from this covering will have type
+    \[Π \coqdocvar{A}~\coqdocvar{a}~\coqdocvar{l}~\coqdocvar{p}~(\var{b} :
+    \ind{bool}), \fcomp{filter}~\coqdocvar{A}~
+    (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{cons}{\coqdocconstructor{cons}}~
+    \coqdocvar{a}~\coqdocvar{l})~\coqdocvar{p}\] We can then
+    instantiate \var{b} with $\var{p}~\var{a}$ to build a term in the initial
+    \coqdocvar{A}, \coqdocvar{a}, \coqdocvar{l}, \coqdocvar{p} context.
   \end{itemize}
 \end{itemize}
 
-This is the basic sketch of the algorithm for type-checking
-pattern-matching definitions described by \cite{norell:thesis}.
-However in our case we not only check that pattern-matchings are
+This is a basic overview of the algorithm for type-checking
+pattern-matching definitions as described in \cite{norell:thesis},
+except for the treatment of innaccessible patterns we omitted for
+brevity.
+In our case however we not only check that pattern-matchings are
 well-formed, we also produce witnesses for this compilation in the core
 language, following \cite{DBLP:conf/birthday/GoguenMM06}. 
-Now that we have compiled the dependent pattern-matching definition to
-a simplified splitting tree, we just need to write a translation
-function from trees to \Coq terms.
+Now that we have compiled the program to a simplified splitting tree, 
+we just need to construct a mapping from splittings to \Coq terms. 
+We already explained how $\Refine{c}{x}{\ell}{s}$ nodes are compiled, and
+\Prog{t} nodes are trivially compiled, so we just need to map
+\texttt{Split} nodes.
 
 \subsection{A few constructions}
 \label{sec:few-constructions}
 
 The dependent pattern-matching notation acts as a high-level interface 
 to a unification procedure on the theory of constructors and
-uninterpreted functions. Our first building block in the compilation
+uninterpreted functions. Our main building block in the compilation
 process is hence a mechanism to produce witnesses for the resolution of
 constraints in this theory, and use these to compile \texttt{Split}
 nodes. The proof terms will be formed by applications of simplification 
@@ -280,10 +323,11 @@ combinators dealing with substitution and proofs of injectivity and
 discrimination of constructors, their two main properties. 
 
 The design of this simplifier is based on the ``specialization by
-unification'' method developed in \cite{DBLP:conf/types/McBride00,mcbride:concon}. Due to lack of space,
-we won't enter in the details of the procedure. The problem we face
-is to eliminate an object \var{x} of type $\ind{I} \vec{t}$ in a
-goal $Γ \vdash τ$ potentially depending on $x$. We want the elimination to
+unification'' method developed in
+\cite{DBLP:conf/types/McBride00,mcbride:concon}. 
+The problem we face is to eliminate an object \var{x} of type $\ind{I}
+\vec{t}$ in a goal $Γ \vdash τ$ potentially depending on $x$. We want
+the elimination to
 produce subgoals for the allowed constructors of this family instance.
 To do that, we generalize the goal by fresh variables 
 $Δ~(\var{x'} : \ind{I}~\bar{Δ})$ and a set of equations asserting that
@@ -306,15 +350,15 @@ allowed constructors only.
 Our tactic relies on a set of
 combinators for simplifying equations in the theory of constructors, most
 of which are just rephrasings of the substitution principles for
-\people{Leibniz} and heterogeneous equality. The last bit is a
+\people{Leibniz} and heterogeneous equality. The only interesting bit is a
 simplifier for equalities between constructors. We need a tactic that
-can simplify any equality $\cstr{C} \vec{t} = \cstr{D} \vec{u}$, 
+can simplify any equality $\cstr{C} \vec{t} = \cstr{D} \vec{u}$,
 either giving us equalities between arguments $\vec{t}$ and $\vec{u}$ that can be
 further simplified or deriving a contradiction if $\cstr{C}$ is
 different from $\cstr{D}$. McBride {\it et al.} \cite{mcbride:concon} describe a generic method to
 derive such an eliminator that we adapted to $\Coq$.
 For any (computational) inductive type $\ind{I} : Π~Γ, \Type$, we can derive a
-predicate transformer $\cst{NoConfusion}_\ind{I} : Π~Γ~(P : \Type), \ind{I}~\bar{Γ} "->"
+transformer $\cst{NoConfusion}_\ind{I} : Π~Γ~(P : \Type), \ind{I}~\bar{Γ} "->"
 \ind{I}~\bar{Γ} "->" \Type$ that 
 describes how to simplify the goal $P$ under the assumption that the two 
 instances of $\ind{I}~\bar{Γ}$ are equal. E.g., for natural numbers we define:
@@ -325,12 +369,12 @@ instances of $\ind{I}~\bar{Γ}$ are equal. E.g., for natural numbers we define:
 \label{sec:dealing-with-k}
 
 There is one little twist in our simplifier, due to the fact that \Coq does
-not support the principle of ``Uniqueness of Identity Proof'', also
-referred to as \people{Streicher}'s K axiom \cite{Streicher91}. This
-principle can be phrased as:
+not support the principle of ``Uniqueness of Identity Proofs'', also
+referred to as \people{Streicher}'s K axiom \cite{Streicher91}, which is
+necessary to compile dependent pattern-matchings:
 
 \coqdocemptyline
-\coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Logic.ProofIrrelevance}{ProofIrrelevanceTheory.EqdepTheory.UIPrefl}{\coqdoclemma{UIP\_refl}}
+\coqdockw{Axiom} \coqexternalref{http://coq.inria.fr/distrib/trunk/stdlib/Coq.Logic.ProofIrrelevance}{ProofIrrelevanceTheory.EqdepTheory.UIPrefl}{\coqdoclemma{UIP\_refl}}
 : \ensuremath{\forall} (\coqdocvar{U} : \coqdockw{Type}) (\coqdocvar{x}
 : \coqdocvariable{U}) (\coqdocvar{p} : \coqdocvariable{x} =
 \coqdocvariable{x}), \coqdocvariable{p} = \eqrefl
@@ -338,7 +382,7 @@ principle can be phrased as:
 
 This principle allows us to simplify a goal depending on a proof $p$ of
 $\var{x} = \var{x}$ by substituting the sole constructor \eqrefl{} for
-$p$. As we are in an external system, we can easily make use of this
+$p$. As we are outside the kernel, we can easily make use of this
 axiom to do the simplifications, but this means that some of our
 definitions will not be able to reduce to their expected normal forms: 
 they are not closed in the empty context anymore. We will tame this
@@ -351,14 +395,16 @@ during proofs is much more robust and lends itself very well to
 automation. Hence we only lose the ability to compute with these
 definitions inside \Coq itself, for example as part of reflexive
 tactics. At least two proposed extensions to \Coq allow to derive this
-principle without any axioms: extensions to make dependent
-pattern-matching more powerful w.r.t. indices \cite{conf/types/BarrasCGHS08} and 
+principle without any axioms: an extension to make dependent
+pattern-matching more powerful with respect to indices \cite{conf/types/BarrasCGHS08} and 
 the addition of proof-irrelevance. Having them would make \Equations
-only more useful.
-If we use the extraction mechanism of \Coq %\cite{Let2008} 
-that produces
-terms in a standard functional language like \ML or \Haskell by removing
-all the logical parts of terms, this problem simply disappears.
+only more useful. Note that extracted terms do not suffer from this fact
+as propositions like equality are erased.
+
+%  If we use the extraction mechanism of \Coq %\cite{Let2008} 
+% that produces
+% terms in a standard functional language like \ML or \Haskell by removing
+% all the logical parts of terms, this problem simply disappears.
 
 \input{recursion}
 %%% Local Variables: 

@@ -46,9 +46,9 @@ We hope to combine the subset coercions system of \Program inside
 \Equations to get the best of both tools.
 
 The \Epigram language also incorporates ``views'' and the application of
-arbitrary eliminators in programs alongside with the \coqdockw{with} construct
-\cite{DBLP:journals/jfp/McBrideM04}. These extensions were not
-considered here but do not require any radical change to our system.
+arbitrary eliminators with \coqdockw{by} in addition to the \coqdockw{with}
+construct \cite{DBLP:journals/jfp/McBrideM04} which were not considered
+here.
 
 \section{Conclusion}
 \label{sec:conclusion}
@@ -58,9 +58,9 @@ dependent-pattern matching in the \Coq system, automatically
 generating a supporting theory to ease post-hoc reasoning on them.
 The system has a safe architecture, living entirely outside the
 kernel and allowing easy extension thanks to its reliance on the
-high-level tactic language and type classes constructs. It is an
-important step towards a more robust, accessible and powerful user
-interface to the calculus.
+high-level tactic language and type classes constructs. We hope it
+provides a more robust, accessible and powerful user interface to the
+calculus.
 
 %%% Local Variables: 
 %%% mode: latex

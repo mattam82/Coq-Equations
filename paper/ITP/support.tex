@@ -59,30 +59,30 @@ to do given that all the recursive calls are labeled by the trivial
 \fcompproj{f} projection. 
 \begin{definition}[Abstracting recursive calls]
   The \absrec{f}{t} operator is defined by recursion on the term $t$, 
-  under a local context $Δ$, empty at the start of the recursion. 
+  under a local context $Δ$, initially empty.
   The operator builds a context representing the abstracted
   recursive calls and a new term using these abstracted calls.
   By case on $t$:
   \begin{itemize}
   \item $\fcompproj{f}~\vec{t}~p$ :
     We recursively compute the abstractions in \vec{t} giving us 
-    a new context $Δ'$ and terms $\vec{t}'$.
-    Our context is extended with a fresh declaration 
-    $\var{res} := λ~Δ,~\cst{f}~\vec{t} : Π~Δ,~\fcomp{f}~\vec{t}'$ and 
+    a new context $Δ'$ and terms $\vec{t'}$.
+    We extend $Δ'$ with a fresh declaration 
+    $\var{res} := λ~Δ,~\cst{f}~\vec{t'} : Π~Δ,~\fcomp{f}~\vec{t'}$ and 
     the term becomes $\var{res}~\bar{Δ}$.
 
   \item $λ \var{x} : τ, b$ :
     Let the result of abstracting $b$ in an extended context 
-    $Δ, \var{x}~:~τ$ be $(Δ', b')$, we return $(Δ', λ \var{x} : τ, b')$.
+    $Δ, \var{x} : τ$ be $(Δ', b')$, we return $(Δ', λ \var{x} : τ, b')$.
 
   \item $f~e$ :
     We simply combine the results of abstracting $f$ and $e$ separately.
     
-  \item $\kw{let}~\var{x}~\coloneqq~t~\kw{in}~b$ :
+  \item $\coqdockw{let}~\var{x} \coloneqq t~\coqdockw{in}~b$ :
     We do the abstractions in $t$ resulting in $Δ', t'$ 
     and recursively call the abstraction on $b$ in a context 
-    extended with $(\var{x}~\coloneqq~t')$. We combine the 
-    resulting contexts and terms as expected.
+    extended with $(\var{x}~\coloneqq~t')$. We simply combine the 
+    resulting contexts and terms.
 
   \item Otherwise we return the empty context and the term unchanged.
   \end{itemize}
@@ -108,7 +108,7 @@ We are now ready to build the inductive graph.
   \begin{itemize}
   \item $\Split{c}{x}{s}$ :
     Again splitting nodes are basically ignored, we just
-    collect the constructor statements for the splitting $s$, if any.
+    collect the constructor statements for the splittings $s$, if any.
 
   \item $\Rec{v}{s}$ :
     Recursion nodes are also ignored when we compute the inductive
@@ -117,6 +117,7 @@ We are now ready to build the inductive graph.
 
   \item $\Compute{c}{rhs}$ :
     By case on $rhs$:
+
     \begin{itemize}
     \item $\Prog{t}$ :
       We abstract the recursive calls of the term using the function
@@ -132,13 +133,14 @@ We are now ready to build the inductive graph.
       inductive graph of the auxiliary function, but we have to take
       into account the recursive calls of the refined term too.
       We compute $\absrec{f}{t} = (ψ, t')$ and return:
-
-      \begin{center}
-        $Π~Δ^x~Δ_x~Ψ~\IndHyps{Ψ}~(\var{res} :
-        {\fcomp{\helper{f}{\ell}}}~\bar{Δ^x}~\bar{Δ_x}) \newline
-        \quad~\quad\find{\helper{f}{\ell}}~\vec{\var{v}}^x~t'~\vec{\var{v}}_x~\var{res} "->"
-        \find{f}~\vec{p}~\var{res}$
-      \end{center}
+      \[\begin{array}{l}
+        Π~Δ^x~Δ_x~Ψ~\IndHyps{Ψ}~(\var{res} :
+        {\fcomp{\helper{f}{\ell}}}~\bar{Δ^x}~\bar{Δ_x}) \\
+        \find{\helper{f}{\ell}}~\vec{\var{v}}^x~t'~\vec{\var{v}}_x~\var{res} "->"
+        \find{f}~\vec{p}~\var{res}
+      \end{array}\]
+      \vspace{-0.7em}
+      
       We continue with the generation of the \find{\helper{f}{\ell}} graph.
     \end{itemize}  
   \end{itemize}
@@ -168,6 +170,7 @@ graph by proving the following lemma:
     by an equation because we replayed the whole splitting, i.e. it 
     will have the form $Π~Δ,~\find{f}~\vec{p}~(\cst{f}~\vec{p})$.
     By case on $rhs$:
+
     \begin{itemize}
     \item $\Prog{t}$ :
       We rewrite with the equation for this node and apply one 
@@ -180,14 +183,15 @@ graph by proving the following lemma:
     %   \text{\cst{impossible\_call}} with the application
     %   $\cst{f}~\vec{p}$ to discharge this goal.
 
-    \item $\Refine{t}{Δ' \vdash \vec{p}' : Γ'}{\helper{f}{\ell}}{s}$ :
+    \item $\Refine{t}{\prob{Δ'}{\vec{\var{v}}}{Γ'}}{\ell}{s}$ :
       Here we can rewrite with the indirection equation and 
       apply the indirection constructor for the inductive
       graph, then solve potential induction subgoals. 
       We will be left with a subgoal for the \find{\helper{f}{\ell}} graph mentioning
       the refined term $t$. We must simply abstract this term by 
       a fresh variable to obtain a goal of the form 
-      $Π~Δ',~\find{\helper{f}{\ell}}~\vec{p}'~(\helper{f}{\ell}~\vec{p}')$.
+      
+      $Π~Δ',~\find{\helper{f}{\ell}}~\vec{\var{v}}~(\helper{f}{\ell}~\vec{\var{v}})$.
       We can then recursively solve the proof for $\helper{f}{\ell}$.
     \end{itemize}
   \end{itemize}
@@ -213,15 +217,15 @@ we can specialize the eliminator of $\find{f}$ which is of the form:
 This eliminator expects not only one proposition depending on the
 arguments of the initial call to $\cst{f}$ but also a proposition for
 each one of the helpers corresponding to refinement nodes. We can easily 
-define the proposition for \helper{f}{(n . \ell)} in terms of the proposition
-for $\helper{f}{\ell}$. Each $P_\helper{f}{n . \ell}$ is hence defined as
+define the proposition for \helper{f}{(\ell . n)} in terms of the proposition
+for $\helper{f}{\ell}$. Each $P_\helper{f}{\ell . n}$ is defined as:
 
 \def\cast#1#2{\mathsf{cast}~#1~#2}
 
 \[\begin{array}{l}
-  λ~Δ^x~(x : τ)~Δ_x~(r : \fcomp{\helper{f}{(n.\ell)}}~\bar{Δ_{\helper{f}{(n.\ell)}}}),
+  λ~Δ^x~(x : τ)~Δ_x~(r : \fcomp{f}{(\ell.n)}~\bar{Δ_{\helper{f}{(\ell.n)}}}),
   Π~Ψ~\IndHyps{Ψ}\{\find{f}:=P\},\vspace{0.1em}\\ 
-  Π~H : x = t', P_{\helper{f}{l}}~\bar{Δ^x}~\bar{Δ_x}~(\cast{r}{x}~H)
+  \quad\quadΠ~H : x = t', P_{\helper{f}{l}}~\bar{Δ^x}~\bar{Δ_x}~(\cast{r}{x}~H)
   \quad \text{where } \absrec{f}{t} = Ψ, t'
 \end{array}\]
 
@@ -263,12 +267,31 @@ call has concrete, non-variable arguments. The elimination will give as
 many goals as there are \Prog{} nodes in the splitting tree (possibly
 more than the number of actual user nodes due to overlapping
 patterns). The context will automatically be enriched by equalities
-witnessing all refinement information available and of course induction
+witnessing all the refinement information available and of course induction
 hypotheses will be available for every recursive call appearing in
-these and the right hand side. This gives rise to a very powerful tool
+these and the right hand sides. This gives rise to a very powerful tool
 to write proofs on our programs, and a lightweight one at the same time:
 all the details of the splitting, refinement and recursion are
 encapsulated in the eliminator.
+
+% Consider for example the following definition of
+% \coqdocdefinition{filter} on a polymorphic list:
+
+% \begin{coqdoccode}
+% \coqdoceol
+% \coqdocnoindent
+% \coqdockw{Equations} \coqdef{filterind.filter}{filter}{\coqdocdefinition{filter}} \{\coqdocvar{A}\} (\coqdocvar{l} : \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A}) (\coqdocvar{p} : \coqdocvariable{A} \ensuremath{\rightarrow} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{bool}{\coqdocinductive{bool}}) : \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{list}{\coqdocinductive{list}} \coqdocvariable{A} :=\coqdoceol
+% \coqdocnoindent
+% \coqref{filterind.filter}{\coqdocdefinition{filter}} \coqdocvar{A} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{nil}{\coqdocconstructor{nil}} \coqdocvar{p} := \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{nil}{\coqdocconstructor{nil}} ;\coqdoceol
+% \coqdocnoindent
+% \coqref{filterind.filter}{\coqdocdefinition{filter}} \coqdocvar{A} (\coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{cons}{\coqdocconstructor{cons}} \coqdocvar{a} \coqdocvar{l}) \coqdocvar{p} \coqdockw{with} \coqdocvariable{p} \coqdocvariable{a} := \{\coqdoceol
+% \coqdocindent{1.00em}
+% \ensuremath{|} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{true}{\coqdocconstructor{true}} := \coqdocvariable{a} :: \coqref{filterind.filter}{\coqdocdefinition{filter}} \coqdocvariable{l} \coqdocvariable{p} ;\coqdoceol
+% \coqdocindent{1.00em}
+% \ensuremath{|} \coqexternalref{http://coq.inria.fr/stdlib/Coq.Init.Datatypes}{false}{\coqdocconstructor{false}} := \coqref{filterind.filter}{\coqdocdefinition{filter}} \coqdocvariable{l} \coqdocvariable{p} \}.\coqdoceol
+% \coqdocnoindent
+% \end{coqdoccode}
+
 
 % This closes our presentation of the \Equations implementation. Having
 % a concrete splitting tree representation gives us the ability to easily
