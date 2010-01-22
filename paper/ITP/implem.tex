@@ -235,30 +235,28 @@ to match the user patterns in \vec{q}.
     is in fact a context mapping 
     \prob{Δ^t, \var{x_t} : τ_Δ, Δ_t}{str}{Δ, \var{x_t} : τ_Δ}.
     We can now abstract $t$ from the remaining context to get 
-    a new context: $Δ^t, \var{x_t} : τ_Δ, Δ_t[t/\var{x_t}]$. 
+    a new context: $Δ_{\ell.n} \eqdef Δ^t, \var{x_t} : τ_Δ, Δ_t[t/\var{x_t}]$. 
     We check that this context is well-typed after the abstraction, 
-    which might not be the case. We also abstract $t$ in the goal 
-    type and recheck it before searching for a covering of the identity 
-    substitution of $Δ^t, \var{x_t} : τ_Δ, Δ_t[t/\var{x_t}$ using 
-    updated user clauses \vec{c}. 
-    The clauses are actually reordered to match the strengthening:
+    which might not be the case. We also define an abstracted type 
+    for the subprogram $\fcomp{\helper{f}{\ell.n}}~Δ_{\ell.n} \coloneqq 
+    \fcomp{\helper{f}{\ell}}~\vec{p}[t/\var{x_t}]$ and
+    search for a covering of the identity 
+    substitution of $Δ_{\ell.n}$ using updated user clauses \vec{c}.
+    The user clauses are actually transformed to match the strengthening:
     each $c_i$ must be of the form $\vec{p}_i~p_i^x$ where $\vec{p}_i$
     matches $\vec{p}$. The matching gives us a substitution from the
     variables of $\vec{p}$, the patterns at the with node, to new 
     user patterns. We can easily make new user clauses matching the 
-    strengthened context $Δ^t, \var{x_t} : τ_Δ, Δ_t[t/\var{x_t}]$ 
-    by associating to each variable of $Δ$ its associated user pattern 
-    and using $p_i^x$ for the new pattern.
+    strengthened context $Δ_{\ell.n}$ by associating to each variable of
+    $Δ_{\ell.n}$ its associated user pattern and using $p_i^x$ for the new pattern.
     The result of the covering will then be a splitting $s$ for
-    the problem $c' = \prob{Δ^t, \var{x_t} : τ_Δ, Δ_t[t/\var{x_t}]}
-    {\bar{Δ^t}, \var{x_t}, \bar{Δ_t}}{Δ^t, \var{x_t} : τ_Δ,
-      Δ_t[t/\var{x_t}]}$ from which we can build a
+    the problem $c' = \texttt{idsubst}({Δ_{\ell.n}})$ from which we can build a
     $\Refine{t}{c'}{\ell.n}{s}$ node.
     Compiling this term will give us a term of type
-    $Π~Δ^t~(\var{x_t} : τ_Δ)~Δ_t[t/\var{x_t}], τ_f[t/\var{x_t}]$.
+    $Π~Δ^t~(\var{x_t} : τ_Δ)~Δ_t[t/\var{x_t}], \fcomp{\helper{f}{\ell}}~\vec{p}[t/\var{x_t}]$.
     We can apply this term to $\bar{Δ^t}, t, \bar{Δ_t}$ to recover a
-    term of type $τ_f$ in the original $Δ$ context, providing a witness
-    for the initial \prob{Δ}{\vec{p}}{Γ} problem.
+    term of type $\fcomp{\helper{f}{\ell}}~\vec{p}$ in the original $Δ$
+    context, providing a witness for the initial \prob{Δ}{\vec{p}}{Γ} problem.
     Consider for example the following definition:
 
 \begin{coqdoccode}
