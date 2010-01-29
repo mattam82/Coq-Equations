@@ -2,8 +2,9 @@ Equations - A plugin for dependent pattern-matching
 ===================================================
 Copyright 2009-2010 Matthieu Sozeau <mattam@mattam.org>
 
-To install equations, simply run make at the toplevel
-directory, with coqc and ocamlc in your path.
+To compile equations, simply run [coq_makefile -f Make -o Makefile; make]
+at the toplevel directory, with coqc and ocamlc in your path. Then add the
+path to your .coqrc
 
 A preliminary documentation is available in doc/ and 
 some examples in test-suite/. 

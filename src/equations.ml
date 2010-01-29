@@ -2987,7 +2987,7 @@ let subterm_relation_base = "subterm_relation"
 let derive_subterm ind =
   let global = true in
   let sigma = Evd.empty in
-  let mind, oneind = Global.lookup_inductive ind in
+  let (mind, oneind as ms) = Global.lookup_inductive ind in
   let ctx = oneind.mind_arity_ctxt in
   let len = List.length ctx in
   let params = mind.mind_nparams in
@@ -2998,25 +2998,34 @@ let derive_subterm ind =
   let getargs t = snd (list_chop params (snd (decompose_app t))) in
   let inds = 
     let branches = Array.mapi (fun i ty ->
-      let args, concl = decompose_prod_assum (substl [mkInd ind] ty) in
+      let args, concl = decompose_prod_assum ty in
       let lenargs = List.length args in
-      let args', params' = list_chop (lenargs - params) args in
+      let lenargs' = lenargs - params in
+      let args', params' = list_chop lenargs' args in
       let recargs = list_map_filter_i (fun i (n, _, t) ->
-	match kind_of_term (fst (decompose_app t)) with
-	| Ind ind' when ind' = ind -> 
-	    Some (mkRel (succ i), getargs (lift (succ i) t))
-	| _ -> None) args'
+	let ctx, ar = decompose_prod_assum t in
+	  match kind_of_term (fst (decompose_app ar)) with
+	  | Ind ind' when ind' = ind -> 
+	      Some (ctx, i, mkRel (succ i), getargs (lift (succ i) t))
+	  | _ -> None) args'
       in
       let constr = mkApp (mkConstruct (ind, succ i), extended_rel_vect 0 args) in
       let constrargs = getargs concl in
       let branches = list_map_i
-	(fun j (r, rargs) ->
+	(fun j (ctx, i, r, rargs) ->
+	  let ctxlen = List.length ctx in
 	  let subargs = 
-	    Array.of_list ((extended_rel_list (List.length args') parambinders) 
-			    @ rargs @ constrargs @ [r ; constr])
-	  in (i, j, it_mkProd_or_LetIn (mkApp (mkRel (succ lenargs), subargs)) args'))
+	    Array.of_list ((extended_rel_list (lenargs' + ctxlen) 
+			       parambinders) 
+			    @ rargs @ (map (lift ctxlen) constrargs) @ 
+			    [mkApp (lift ctxlen r, extended_rel_vect 0 ctx) ;
+			     lift ctxlen constr])
+	  in
+	  let relapp = mkApp (mkRel (succ lenargs + ctxlen), subargs) in
+	    (i, j, it_mkProd_or_LetIn (it_mkProd_or_LetIn relapp 
+					  (lift_rel_context (succ i) ctx)) args'))
 	1 recargs
-      in branches) oneind.mind_nf_lc
+      in branches) (Inductive.type_of_constructors ind ms)
     in branches
   in
   let branches = Array.fold_right (fun x acc -> x @ acc) inds [] in
