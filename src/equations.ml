@@ -36,113 +36,15 @@ open Evarconv
 open List
 open Libnames
 open Topconstr
-open Depelim
-
-let find_constant contrib dir s =
-  constr_of_global (Coqlib.find_reference contrib dir s)
-
-let contrib_name = "Equations"
-let init_constant dir s = find_constant contrib_name dir s
-let init_reference dir s = Coqlib.find_reference contrib_name dir s
-
-let equations_path = ["Equations";"Equations"]
-let coq_dynamic_ind = lazy (init_constant equations_path "dynamic")
-let coq_dynamic_constr = lazy (init_constant equations_path "Build_dynamic")
-let coq_dynamic_type = lazy (init_constant equations_path "dynamic_type")
-let coq_dynamic_obj = lazy (init_constant equations_path "dynamic_obj")
-
-let functional_induction_class () =
-  Option.get 
-    (Typeclasses.class_of_constr
-	(init_constant ["Equations";"FunctionalInduction"] "FunctionalInduction"))
-
-let functional_elimination_class () =
-  Option.get 
-    (Typeclasses.class_of_constr
-	(init_constant ["Equations";"FunctionalInduction"] "FunctionalElimination"))
-
-let dependent_elimination_class () =
-  Option.get 
-    (Typeclasses.class_of_constr
-	(init_constant ["Equations";"DepElim"] "DependentEliminationPackage"))
-
-let below_path = ["Equations";"Below"]
-let coq_have_class = lazy (init_constant below_path "Have")
-let coq_have_meth = lazy (init_constant below_path "have")
-
-let coq_wellfounded_class = lazy (init_constant ["Equations";"Subterm"] "WellFounded")
-let coq_wellfounded = lazy (init_constant ["Coq";"Init";"Wf"] "well_founded")
-let coq_relation = lazy (init_constant ["Coq";"Relations";"Relation_Definitions"] "relation")
-let coq_clos_trans = lazy (init_constant ["Coq";"Relations";"Relation_Operators"] "clos_trans")
-let coq_id = lazy (init_constant ["Coq";"Init";"Datatypes"] "id")
-
-let list_path = ["Lists";"List"]
-let coq_list_ind = lazy (init_constant list_path "list")
-let coq_list_nil = lazy (init_constant list_path "nil")
-let coq_list_cons = lazy (init_constant list_path "cons")
-
-let coq_noconfusion_class = lazy (init_constant ["Equations";"DepElim"] "NoConfusionPackage")
-  
-let coq_inacc = lazy (init_constant ["Equations";"DepElim"] "inaccessible_pattern")
-let coq_hide = lazy (init_constant ["Equations";"DepElim"] "hide_pattern")
-let coq_add_pattern = lazy (init_constant ["Equations";"DepElim"] "add_pattern")
-let coq_end_of_section_constr = lazy (init_constant ["Equations";"DepElim"] "the_end_of_the_section")
-let coq_end_of_section = lazy (init_constant ["Equations";"DepElim"] "end_of_section")
-
-let coq_notT = lazy (init_constant ["Coq";"Init";"Logic_Type"] "notT")
-let coq_ImpossibleCall = lazy (init_constant ["Equations";"DepElim"] "ImpossibleCall")
-
-let unfold_add_pattern = lazy
-  (Tactics.unfold_in_concl [((false, []), EvalConstRef (destConst (Lazy.force coq_add_pattern)))])
-
-let coq_dynamic_list = lazy (mkApp (Lazy.force coq_list_ind, [| Lazy.force coq_dynamic_ind |]))
-
-let rec constrs_of_coq_dynamic_list c = 
-  match kind_of_term c with
-  | App (f, args) when f = Lazy.force coq_list_nil -> []
-  | App (f, args) when f = Lazy.force coq_list_cons && 
-      eq_constr args.(0) (Lazy.force coq_dynamic_ind) && 
-      Array.length args = 3 -> 
-      (match kind_of_term args.(1) with
-      | App (f, args') when f = Lazy.force coq_dynamic_constr &&
-	  Array.length args' = 2 ->
-	  (args'.(0), args'.(1)) :: constrs_of_coq_dynamic_list args.(2)
-      | _ -> raise (Invalid_argument "constrs_of_coq_dynamic_list"))
-  | _ -> raise (Invalid_argument "constrs_of_coq_dynamic_list")
-
-let coq_sigma = Lazy.lazy_from_fun Coqlib.build_sigma_type
-let coq_unit = lazy (init_constant ["Coq";"Init";"Datatypes"] "unit")
-let coq_tt = lazy (init_constant ["Coq";"Init";"Datatypes"] "tt")
-
-let constrs_of_coq_sigma env sigma t alias = 
-  let s = Lazy.force coq_sigma in
-  let rec aux proj c ty =
-    match kind_of_term c with
-    | App (f, args) when eq_constr f s.Coqlib.intro && 
-	Array.length args = 4 -> 
-	(match kind_of_term args.(1) with
-	| Lambda (n, b, t) ->
-	    let projargs = [| args.(0); args.(1); proj |] in
-	    let p1 = mkApp (s.Coqlib.proj1, projargs) in
-	    let p2 = mkApp (s.Coqlib.proj2, projargs) in
-	      (n, args.(2), p1, args.(0)) :: aux p2 args.(3) t
-	| _ -> raise (Invalid_argument "constrs_of_coq_sigma"))
-    | _ -> [(Anonymous, c, proj, ty)]
-  in aux alias t (Typing.type_of env sigma t)
-
-let decompose_coq_sigma t = 
-  let s = Lazy.force coq_sigma in
-    match kind_of_term t with
-    | App (f, args) when eq_constr f s.Coqlib.typ && 
-	Array.length args = 2 -> Some (args.(0), args.(1))
-    | _ -> None
-
 open Entries
 
-open Tacmach
 open Tacexpr
 open Tactics
 open Tacticals
+open Tacmach
+
+open Depelim
+open Common
 
 let below_tactics_path =
   make_dirpath (List.map id_of_string ["Below";"Equations"])
@@ -163,9 +65,6 @@ let rec_wf_tac h h' rel =
 		 IntroPattern (dummy_loc, Genarg.IntroIdentifier h');
 		 ConstrMayEval (ConstrTerm rel)]))
 
-let tac_of_string str args =
-  Tacinterp.interp (TacArg(TacCall(dummy_loc, Qualid (dummy_loc, qualid_of_string str), args)))
-
 let equations_tac_expr () = 
   (TacArg(TacCall(dummy_loc, Qualid (dummy_loc, qualid_of_string "Equations.DepElim.equations"), [])))
 
@@ -175,7 +74,6 @@ let set_eos_tac () = tac_of_string "Equations.DepElim.set_eos" []
     
 let solve_rec_tac () = tac_of_string "Equations.Below.solve_rec" []
 
-let solve_subterm_tac () = tac_of_string "Equations.Subterm.solve_subterm" []
 
 let pi_tac () = tac_of_string "Equations.Subterm.pi" []
 
@@ -1334,6 +1232,16 @@ let helper_evar isevar evar env typ src =
   let evm' = evar_declare sign evar typ' ~src !isevar in
     isevar := evm'; mkEvar (evar, Array.of_list instance)
 
+let gen_constant dir s = Coqlib.gen_constant "equations" dir s
+
+let coq_zero = lazy (gen_constant ["Init"; "Datatypes"] "O")
+let coq_succ = lazy (gen_constant ["Init"; "Datatypes"] "S")
+let coq_nat = lazy (gen_constant ["Init"; "Datatypes"] "nat")
+
+let rec coq_nat_of_int = function
+  | 0 -> Lazy.force coq_zero
+  | n -> mkApp (Lazy.force coq_succ, [| coq_nat_of_int (pred n) |])
+
 let term_of_tree status isevar env (i, delta, ty) ann tree =
   let oblevars = ref Intset.empty in
   let helpers = ref [] in
@@ -1344,8 +1252,8 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 
     | Compute ((ctx, _, _), ty, REmpty split) ->
 	let split = (Name (id_of_string "split"), 
-		    Some (Class_tactics.coq_nat_of_int (succ (length ctx - split))),
-		    Lazy.force Class_tactics.coq_nat)
+		    Some (coq_nat_of_int (succ (length ctx - split))),
+		    Lazy.force coq_nat)
 	in
 	let ty' = it_mkProd_or_LetIn ty ctx in
 	let let_ty' = mkLambda_or_LetIn split (lift 1 ty') in
@@ -1388,7 +1296,7 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 	    | Some s -> aux s
 	    | None ->
 		(* dead code, inversion will find a proof of False by splitting on the rel'th hyp *)
-		Class_tactics.coq_nat_of_int rel, Lazy.force Class_tactics.coq_nat)
+		coq_nat_of_int rel, Lazy.force coq_nat)
 	    sp 
 	in
 	let branches_ctx =
@@ -1405,12 +1313,12 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 	  let ty = it_mkProd_or_LetIn ty liftctx in
 	  let ty = it_mkLambda_or_LetIn ty branches_lets in
 	  let nbbranches = (Name (id_of_string "branches"),
-			   Some (Class_tactics.coq_nat_of_int (length branches_lets)),
-			   Lazy.force Class_tactics.coq_nat)
+			   Some (coq_nat_of_int (length branches_lets)),
+			   Lazy.force coq_nat)
 	  in
 	  let nbdiscr = (Name (id_of_string "target"),
-			Some (Class_tactics.coq_nat_of_int (length before)),
-			Lazy.force Class_tactics.coq_nat)
+			Some (coq_nat_of_int (length before)),
+			Lazy.force coq_nat)
 	  in
 	  let ty = it_mkLambda_or_LetIn (lift 2 ty) [nbbranches;nbdiscr] in
 	  let term = e_new_evar isevar env ~src:(dummy_loc, QuestionMark status) ty in
@@ -1794,24 +1702,6 @@ let ind_elim_tac indid inds info =
     tclTHENLIST [intros; applyind; simpl_star;
 		 Class_tactics.typeclasses_eauto [info.base_id; "funelim"]]
 
-let declare_constant id body ty kind =
-  let ce =
-    { const_entry_body = body;
-      const_entry_type = ty;
-      const_entry_opaque = false;
-      const_entry_boxed = false}
-  in Declare.declare_constant id (DefinitionEntry ce, kind)
-    
-let declare_instance id ctx cl args =
-  let c, t = Typeclasses.instance_constructor cl args in
-  let cst = declare_constant id (it_mkLambda_or_LetIn c ctx)
-    (Some (it_mkProd_or_LetIn t ctx)) (IsDefinition Instance)
-  in 
-  let inst = Typeclasses.new_instance cl None true (ConstRef cst) in
-    Typeclasses.add_instance inst
-
-let mkSig (n, c, t) =
-  mkApp ((Lazy.force coq_sigma).Coqlib.typ, [| c; mkLambda (n, c, t) |])
 
 let build_equations with_ind env id info data sign is_rec arity cst 
     f ?(alias:(constr * constr * splitting) option) prob split =
@@ -2692,11 +2582,6 @@ TACTIC EXTEND solve_equations
   [ "solve_equations" tactic(destruct) tactic(tac) ] -> [ solve_equations_goal (snd destruct) (snd tac) ]
     END
 
-
-let coq_prod = lazy (Coqlib.coq_constant "mkHEq" ["Init";"Datatypes"] "prod")
-let coq_pair = lazy (Coqlib.coq_constant "mkHEq" ["Init";"Datatypes"] "pair")
-
-
 let db_of_constr c = match kind_of_term c with
   | Const c -> string_of_label (con_label c)
   | _ -> assert false
@@ -2947,425 +2832,6 @@ VERNAC COMMAND EXTEND Derive_NoConfusion
 	| _ -> error "Expected an inductive type")
       c
   ]
-END
-
-let list_map_filter_i f l = 
-  let rec aux i = function
-    | hd :: tl -> 
-	(match f i hd with
-	| Some x -> x :: aux (succ i) tl
-	| None -> aux (succ i) tl)
-    | [] -> []
-  in aux 0 l
-
-
-let decompose_indapp f args =
-  match kind_of_term f with
-  | Construct (ind,_) 
-  | Ind ind ->
-      let (mib,mip) = Global.lookup_inductive ind in
-      let first = mib.Declarations.mind_nparams_rec in
-      let pars, args = array_chop first args in
-	mkApp (f, pars), args
-  | _ -> f, args
-
-open Coqlib
-let mk_pack env sigma ty =
-  match kind_of_term ty with
-  | App (f, args) ->
-      let f, args = decompose_indapp f args in
-      let args = Array.to_list args in
-	(match args with
-	| [] -> ((fun v -> v), f)
-	| _ -> 
-	    let _, _, _, valsig, tysig = sigmaize env sigma f in
-	      valsig args, tysig)
-  | _ -> ((fun v -> v), ty)
-      
-let subterm_relation_base = "subterm_relation"
-
-let derive_subterm ind =
-  let global = true in
-  let sigma = Evd.empty in
-  let (mind, oneind as ms) = Global.lookup_inductive ind in
-  let ctx = oneind.mind_arity_ctxt in
-  let len = List.length ctx in
-  let params = mind.mind_nparams in
-  let ctx = map_rel_context refresh_universes ctx in
-  let lenargs = len - params in
-  let argbinders, parambinders = list_chop lenargs ctx in
-  let indapp = mkApp (mkInd ind, extended_rel_vect 0 parambinders) in
-  let getargs t = snd (list_chop params (snd (decompose_app t))) in
-  let inds = 
-    let branches = Array.mapi (fun i ty ->
-      let args, concl = decompose_prod_assum ty in
-      let lenargs = List.length args in
-      let lenargs' = lenargs - params in
-      let args', params' = list_chop lenargs' args in
-      let recargs = list_map_filter_i (fun i (n, _, t) ->
-	let ctx, ar = decompose_prod_assum t in
-	  match kind_of_term (fst (decompose_app ar)) with
-	  | Ind ind' when ind' = ind -> 
-	      Some (ctx, i, mkRel (succ i), getargs (lift (succ i) t))
-	  | _ -> None) args'
-      in
-      let constr = mkApp (mkConstruct (ind, succ i), extended_rel_vect 0 args) in
-      let constrargs = getargs concl in
-      let branches = list_map_i
-	(fun j (ctx, i, r, rargs) ->
-	  let ctxlen = List.length ctx in
-	  let subargs = 
-	    Array.of_list ((extended_rel_list (lenargs' + ctxlen) 
-			       parambinders) 
-			    @ rargs @ (map (lift ctxlen) constrargs) @ 
-			    [mkApp (lift ctxlen r, extended_rel_vect 0 ctx) ;
-			     lift ctxlen constr])
-	  in
-	  let relapp = mkApp (mkRel (succ lenargs + ctxlen), subargs) in
-	    (i, j, it_mkProd_or_LetIn (it_mkProd_or_LetIn relapp 
-					  (lift_rel_context (succ i) ctx)) args'))
-	1 recargs
-      in branches) (Inductive.type_of_constructors ind ms)
-    in branches
-  in
-  let branches = Array.fold_right (fun x acc -> x @ acc) inds [] in
-  let declare_one_ind i ind branches =
-    let indid = Nametab.basename_of_global (IndRef ind) in
-    let subtermid = add_suffix indid "_direct_subterm" in
-    let constructors = map (fun (i, j, constr) -> constr) branches in
-    let consnames = map (fun (i, j, _) ->
-      add_suffix subtermid ("_" ^ string_of_int i ^ "_" ^ string_of_int j))
-      branches 
-    in
-    let lenargs = List.length argbinders in
-    let liftedbinders = lift_rel_context lenargs argbinders in
-    let binders = liftedbinders @ argbinders in
-    let appparams = mkApp (mkInd ind, extended_rel_vect (2 * lenargs) parambinders) in
-    let arity = it_mkProd_or_LetIn
-      (mkProd (Anonymous, mkApp (appparams, extended_rel_vect lenargs argbinders),
-	      mkProd (Anonymous, lift 1 (mkApp (appparams, extended_rel_vect 0 argbinders)),
-		     mkProp)))
-      binders
-    in
-      { mind_entry_typename = subtermid;
-	mind_entry_arity = arity;
-	mind_entry_consnames = consnames;	      
-	mind_entry_lc = constructors }
-  in
-  let declare_ind () =
-    let inds = [declare_one_ind 0 ind branches] in
-    let inductive =
-      { mind_entry_record = false;
-	mind_entry_finite = true;
-	mind_entry_params = map (fun (n, b, t) -> 
-	  match b with
-	  | Some b -> (out_name n, LocalDef (refresh_universes b)) 
-	  | None -> (out_name n, LocalAssum (refresh_universes t)))
-	  parambinders;
-	mind_entry_inds = inds }
-    in
-    let k = Command.declare_mutual_inductive_with_eliminations false inductive [] in
-    let subind = mkInd (k,0) in
-    let constrhints = 
-      list_map_i (fun i entry -> 
-	list_map_i (fun j _ -> None, true, mkConstruct ((k,i),j)) 1 entry.mind_entry_lc)
-	0 inds 
-    in Auto.add_hints false ["subterm_relation"] 
-      (Auto.HintsResolveEntry (List.concat constrhints));
-      (* Proof of Well-foundedness *)
-      let id = add_prefix "well_founded_" (List.hd inds).mind_entry_typename in
-      let evm = ref Evd.empty in
-      let env = Global.env () in
-      let env' = push_rel_context parambinders env in
-      let subindapp = mkApp (subind, extended_rel_vect lenargs parambinders) in
-      let kl, body, ty =
-	if argbinders = [] then
-	  (* Standard homogeneous well-founded relation *)
-	  let kl = Option.get (class_of_constr (Lazy.force coq_wellfounded_class)) in
-	  let subrel = mkApp (Lazy.force coq_clos_trans, [| indapp; subindapp |]) in
-	  let evar = e_new_evar evm env' (mkApp (Lazy.force coq_wellfounded, [| indapp; subrel |])) in
-	  let constr, ty = instance_constructor kl [ indapp; subrel; evar ] in
-	    kl, constr, ty
-	else
-	  (* Construct a family relation by packaging all indexes into 
-	     a sigma type *)
-	  let kl = Option.get (class_of_constr (Lazy.force coq_wellfounded_class)) in
-	  let indices, indexproj, valproj, valsig, typesig = sigmaize env' sigma indapp in
-	  let subrel = 
-	    let valproj = lift 2 valproj in
-	    let liftindices = map (liftn 2 2) indices in
-	    let yindices = map (subst1 (mkApp (lift 2 indexproj, [| mkRel 1 |]))) liftindices in
-	    let xindices = map (subst1 (mkApp (lift 2 indexproj, [| mkRel 2 |]))) liftindices in
-	    let apprel = 
-	      applistc subind (extended_rel_list 2 parambinders @
-				  (xindices @ yindices @
-				      [mkApp (valproj, [| mkRel 2 |]); mkApp (valproj, [| mkRel 1 |])]))
-	    in 
-	      mkLambda (Name (id_of_string "x"), typesig,
-		       mkLambda (Name (id_of_string "y"), lift 1 typesig,
-				apprel))
-	  in
-	  let typesig = Tacred.simpl env' !evm typesig in
-	  let subrel = Tacred.simpl env' !evm subrel in
-	  let relation = 
-	    let id = add_suffix (Nametab.basename_of_global (IndRef ind)) "_subterm" in
-	    let def = it_mkLambda_or_LetIn 
-	      (mkApp (Lazy.force coq_clos_trans, [| typesig; subrel |]))
-	      parambinders 
-	    in
-	    let ty = Some (it_mkProd_or_LetIn
-			      (mkApp (Lazy.force coq_relation, [| typesig |]))
-			      parambinders) 
-	    in
-	    let cst = declare_constant id def ty (IsDefinition Definition) in
-	      (* Impargs.declare_manual_implicits false (ConstRef cst) ~enriching:false *)
-	      (* 	(list_map_i (fun i _ -> ExplByPos (i, None), (true, true, true)) 1 parambinders); *)
-	      Auto.add_hints false ["subterm_relation"] 
-		(Auto.HintsUnfoldEntry [EvalConstRef cst]);
-	      mkApp (mkConst cst, extended_rel_vect 0 parambinders)
-	  in
-	  let evar = e_new_evar evm env'
-	    (mkApp (Lazy.force coq_wellfounded, [| typesig; relation |]))
-	  in
-	  let constr, ty = instance_constructor kl [ typesig; relation; evar ] in
-	    kl, constr, ty
-      in
-      let ty = it_mkProd_or_LetIn ty parambinders in
-      let body = it_mkLambda_or_LetIn body parambinders in
-      let hook vis gr =
-	let cst = match gr with ConstRef kn -> kn | _ -> assert false in
-	let inst = Typeclasses.new_instance kl None global (ConstRef cst) in
-	  Typeclasses.add_instance inst
-      in
-      let obls, _, constr, typ = Eterm.eterm_obligations env id !evm !evm 0 body ty in
-	Subtac_obligations.add_definition id ~term:constr typ
-	  ~kind:(Global,false,Instance) ~hook ~tactic:(solve_subterm_tac ()) obls
-  in ignore(declare_ind ())
-    
-VERNAC COMMAND EXTEND Derive_Subterm
-| [ "Derive" "Subterm" "for" constr(c) ] -> [ 
-    let c' = interp_constr Evd.empty (Global.env ()) c in
-      match kind_of_term c' with
-      | Ind i -> derive_subterm i
-      | _ -> error "Expected an inductive type"
-  ]
-END
-
-let derive_below ind =
-  let mind, oneind = Global.lookup_inductive ind in
-  let ctx = oneind.mind_arity_ctxt in
-  let len = List.length ctx in
-  let params = mind.mind_nparams in
-  let argsvect = rel_vect 0 len in
-  let indty = mkApp (mkInd ind, argsvect) in
-  let binders = (Name (id_of_string "c"), None, indty) :: ctx in
-  let argbinders, parambinders = list_chop (succ len - params) binders in
-  let arity = it_mkProd_or_LetIn (new_Type ()) argbinders in
-  let aritylam = it_mkLambda_or_LetIn (new_Type ()) argbinders in
-  let paramsvect = Array.map (lift 1) (rel_vect (succ len - params) params) in
-  let argsvect = rel_vect 0 (succ len - params) in
-  let pid = id_of_string "P" in
-  let pdecl = Name pid, None, arity in
-  let stepid = id_of_string "step" in
-  let recid = id_of_string "rec" in
-  let belowid = id_of_string "below" in
-  let paramspargs = Array.append (Array.append paramsvect [| mkVar pid |]) argsvect in
-  let tyb = mkApp (mkVar belowid, paramspargs) in
-  let arityb = it_mkProd_or_LetIn tyb argbinders in
-  let aritylamb = it_mkLambda_or_LetIn tyb argbinders in
-  let termB, termb = 
-    let branches = Array.mapi (fun i ty ->
-      let nargs = constructor_nrealargs (Global.env ()) (ind, succ i) in
-      let recarg = mkVar recid in
-      let args, _ = decompose_prod_assum (substl [mkInd ind] ty) in
-      let args, _ = list_chop (List.length args - params) args in
-      let ty' = substl [recarg] ty in
-      let args', _ = decompose_prod_assum ty' in
-      let arg_tys = fst (List.fold_left (fun (acc, n) (_,_,t) ->
-	((mkRel n, lift n t) :: acc, succ n)) ([], 1) args')
-      in
-      let fold_unit f args =
-	let res = 
-	  List.fold_left (fun acc x ->
-	    match acc with
-	    | Some (c, ty) -> f (fun (c', ty') -> 
-		mkApp (Lazy.force coq_pair, [| ty' ; ty ; c' ; c |]),
-		mkApp (Lazy.force coq_prod, [| ty' ; ty |])) x
-	    | None -> f (fun x -> x) x)
-	    None args
-	in Option.cata (fun x -> x) (Lazy.force coq_tt, Lazy.force coq_unit) res
-      in
-      let bodyB =
-	let _, res =
-	  fold_unit (fun g (c, t) -> 
-	    let t, args = decompose_app t in
-	    let args = Array.of_list (args @ [ c ]) in
-	      if t = recarg then 
-		Some (g (mkRel 0, 
-			mkApp (Lazy.force coq_prod, 
-			      [| mkApp (mkVar pid, args) ; 
-				 mkApp (mkVar recid, args) |])))
-	      else None) arg_tys
-	in res
-      and bodyb =
-	fold_unit (fun g (c, t) -> 
-	  let t, args = decompose_app t in
-	  let args = Array.of_list (args @ [ c ]) in
-	    if t = recarg then 
-	      let reccall = mkApp (mkVar recid, args) in
-	      let ty = mkApp (Lazy.force coq_prod, 
-			     [| mkApp (mkVar pid, args) ; 
-				mkApp (mkVar belowid, Array.append [| mkVar pid |] args) |])
-	      in
-		Some (g (mkApp (Lazy.force coq_pair, 
-			       [| mkApp (mkVar pid, args) ; 
-				  mkApp (mkVar belowid, Array.append [| mkVar pid |] args) ;
-				  mkApp (mkApp (mkVar stepid, args), [| reccall |]);
-				  reccall |]), ty))
-	    else None) arg_tys
-      in (nargs, it_mkLambda_or_LetIn bodyB args, it_mkLambda_or_LetIn (fst bodyb) args)) oneind.mind_nf_lc
-    in
-    let caseB =
-      mkCase ({
-	ci_ind = ind;
-	ci_npar = params;
-	ci_cstr_nargs = Array.map pi1 branches;
-	ci_pp_info = { ind_nargs = oneind.mind_nrealargs; style = RegularStyle }
-      }, aritylam, mkRel 1, Array.map pi2 branches)
-    and caseb =
-      mkCase ({
-	ci_ind = ind;
-	ci_npar = params;
-	ci_cstr_nargs = Array.map pi1 branches;
-	ci_pp_info = { ind_nargs = oneind.mind_nrealargs; style = RegularStyle }
-      }, aritylamb, mkRel 1, Array.map pi3 branches)
-    in 
-      it_mkLambda_or_LetIn caseB binders, it_mkLambda_or_LetIn caseb binders
-  in
-  let fixB = mkFix (([| len |], 0), ([| Name recid |], [| arity |], [| subst_vars [recid; pid] termB |])) in
-  let bodyB = it_mkLambda_or_LetIn fixB (pdecl :: parambinders) in
-  let ce =
-    { const_entry_body = bodyB;
-      const_entry_type = None;
-      const_entry_opaque = false;
-      const_entry_boxed = false} 
-  in
-  let id = add_prefix "Below_" (Nametab.basename_of_global (IndRef ind)) in
-  let below = Declare.declare_constant id (DefinitionEntry ce, IsDefinition Definition) in
-  let fixb = mkFix (([| len |], 0), ([| Name recid |], [| arityb |], 
-				    [| subst_vars [recid; stepid] termb |])) in
-  let stepdecl = 
-    let stepty = mkProd (Anonymous, mkApp (mkConst below, paramspargs),
-			mkApp (mkVar pid, Array.map (lift 1) argsvect))
-    in Name stepid, None, it_mkProd_or_LetIn stepty argbinders
-  in
-  let bodyb = 
-    it_mkLambda_or_LetIn (subst_vars [pid] (mkLambda_or_LetIn stepdecl fixb)) (pdecl :: parambinders)
-  in
-  let bodyb = replace_vars [belowid, mkConst below] bodyb in
-  let id = add_prefix "below_" (Nametab.basename_of_global (IndRef ind)) in
-  let ce =
-    { const_entry_body = bodyb;
-      const_entry_type = None;
-      const_entry_opaque = false;
-      const_entry_boxed = false} 
-  in ignore(Declare.declare_constant id (DefinitionEntry ce, IsDefinition Definition))
-    
-    VERNAC COMMAND EXTEND Derive_Below
-| [ "Derive" "Below" "for" constr(c) ] -> [ 
-    let c' = interp_constr Evd.empty (Global.env ()) c in
-      match kind_of_term c' with
-      | Ind i -> derive_below i
-      | _ -> error "Expected an inductive type"
-  ]
-    END
-
-let rec head_of_constr t =
-  let t = strip_outer_cast(collapse_appl t) in
-    match kind_of_term t with
-    | Prod (_,_,c2)  -> head_of_constr c2 
-    | LetIn (_,_,_,c2) -> head_of_constr c2
-    | App (f,args)  -> head_of_constr f
-    | _      -> t
-      
-TACTIC EXTEND decompose_app
-[ "decompose_app" ident(h) ident(h') constr(c) ] -> [ fun gl ->
-    let f, args = decompose_app c in
-    let fty = pf_type_of gl f in
-    let flam = mkLambda (Name (id_of_string "f"), fty, mkApp (mkRel 1, Array.of_list args)) in
-      tclTHEN (letin_tac None (Name h) f None allHyps)
-	(letin_tac None (Name h') flam None allHyps) gl
-  ]
-END
-
-open Pfedit
-open Proof_trees
-
-let check_guard gl =
-  let pts = get_pftreestate () in
-  let pf = proof_of_pftreestate pts in
-  let (pfterm,_) = extract_open_pftreestate pts in
-    try
-      Inductiveops.control_only_guard (Evd.evar_env (goal_of_proof pf))
-	pfterm; tclIDTAC gl
-    with UserError(_,s) ->
-      tclFAIL 0 (str ("Condition violated: ") ++s) gl
-	
-TACTIC EXTEND guarded
-[ "guarded"  ] -> [ check_guard ]
-END
-
-TACTIC EXTEND abstract_match
-[ "abstract_match" ident(hyp) constr(c) ] -> [
-  match kind_of_term c with
-  | Case (_, _, c, _) -> letin_tac None (Name hyp) c None allHypsAndConcl
-  | _ -> tclFAIL 0 (str"Not a case expression")
-]
-END
-
-let pattern_sigma c hyp gl =
-  let terms = constrs_of_coq_sigma (pf_env gl) (project gl) c (mkVar hyp) in
-  let pat = Pattern.pattern_of_constr (project gl) in
-  let projs = map (fun (x, t, p, rest) -> (snd (pat t), p)) terms in
-  let projabs = tclTHENLIST (map (fun (t, p) -> change (Some t) p onConcl) projs) in
-    projabs gl
-      
-TACTIC EXTEND pack
-[ "pack" hyp(id) "as" ident(packid) ] -> [ fun gl ->
-  let (valsig, typesig) = mk_pack (pf_env gl) (project gl) (pf_get_hyp_typ gl id) in
-  let simpl = Tacred.simpl (pf_env gl) (project gl) in
-  let typesig = simpl typesig in
-  let term = simpl (valsig (mkVar id)) in
-    tclTHENLIST [letin_tac None (Name packid) term (Some typesig) allHypsAndConcl;
-		 pattern_sigma term packid] gl ]
-END
-
-let curry_hyp c t =
-  let na, dom, concl = destProd t in
-    match decompose_coq_sigma dom with
-    | None -> None
-    | Some (ty, pred) ->
-	let (n, idx, dom) = destLambda pred in
-	let newctx = [(na, None, dom); (n, None, idx)] in
-	let tuple = mkApp ((Lazy.force coq_sigma).intro,
-			  [| lift 2 ty; lift 2 pred; mkRel 2; mkRel 1 |])
-	in
-	let term = it_mkLambda_or_LetIn (mkApp (c, [| tuple |])) newctx in
-	let typ = it_mkProd_or_LetIn (subst1 tuple concl) newctx in
-	  Some (term, typ)
-	    
-TACTIC EXTEND curry
-[ "curry" hyp(id) ] -> [ fun gl ->
-  match curry_hyp (mkVar id) (pf_get_hyp_typ gl id) with
-  | Some (prf, typ) -> 
-      cut_replacing id typ (Tacmach.refine_no_check prf) gl
-  | None -> tclFAIL 0 (str"No currying to do in" ++ pr_id id) gl ]
-END
-
-TACTIC EXTEND pattern_tele
-[ "pattern_tele" constr(c) ident(hyp) ] -> [ fun gl ->
-  let settac = letin_tac None (Name hyp) c None onConcl in
-    tclTHENLIST [settac; pattern_sigma c hyp] gl ]
 END
   
 (* TACTIC EXTEND pattern_call *)
