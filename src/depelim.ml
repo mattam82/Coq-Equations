@@ -42,7 +42,7 @@ open Tacticals
 open Tactics
 open Evd
 
-open Common
+open Equations_common
 open Sigma
 
 let lift_togethern n l =
@@ -165,6 +165,33 @@ let linear vars args =
       true
     with Seen -> false
 
+let needs_generalization gl id =
+  let f, args, def, id, oldid = 
+    let oldid = pf_get_new_id id gl in
+    let (_, b, t) = pf_get_hyp gl id in
+      match b with
+      | None -> let f, args = decompose_app t in
+		  f, args, false, id, oldid
+      | Some t -> 
+	  let f, args = decompose_app t in
+	    f, args, true, id, oldid
+  in
+    if args = [] then false
+    else
+      let args = Array.of_list args in
+      let f', args' = decompose_indapp f args in
+      let parvars = ids_of_constr ~all:true Idset.empty f' in
+	if not (linear parvars args') then true
+	else array_exists (fun x -> not (isVar x)) args'
+	  
+TACTIC EXTEND needs_generalization
+| [ "needs_generalization" hyp(id) ] -> 
+    [ fun gl -> 
+      if needs_generalization gl id 
+      then tclIDTAC gl
+      else tclFAIL 0 (str"No generalization needed") gl ]
+END
+	
 let abstract_args gl generalize_vars dep id defined f args =
   let sigma = project gl in
   let env = pf_env gl in
@@ -273,10 +300,10 @@ let abstract_generalize ?(generalize_vars=true) ?(force_dep=false) id gl =
 				   tclMAP (fun id -> 
 				     tclTRY (generalize_dep ~with_let:true (mkVar id))) vars] gl) gl
 
-TACTIC EXTEND dependent_generalize
-| ["dependent" "generalize" hyp(id) "as" ident(id') ] -> 
-    [ fun gl -> generalize_sigma (pf_env gl) (project gl) (mkVar id) id' gl ]
-END
+(* TACTIC EXTEND dependent_generalize *)
+(* | ["dependent" "generalize" hyp(id) "as" ident(id') ] ->  *)
+(*     [ fun gl -> generalize_sigma (pf_env gl) (project gl) (mkVar id) id' gl ] *)
+(* END *)
 (* TACTIC EXTEND dep_generalize_force *)
 (* | ["dependent" "generalize" "force" hyp(id) ] ->  *)
 (*     [ abstract_generalize ~generalize_vars:false ~force_dep:true id ] *)

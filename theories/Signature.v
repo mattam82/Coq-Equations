@@ -1,4 +1,3 @@
-(* -*- coq-prog-name: "~/research/coq/trunk/bin/coqtop.byte"; coq-prog-args: ("-emacs-U"); compile-command: "make -C ../.. TIME='time'" -*- *)
 (************************************************************************)
 (*  v      *   The Coq Proof Assistant  /  The Coq Development Team     *)
 (* <O___,, * CNRS-Ecole Polytechnique-INRIA Futurs-Universite Paris Sud *)
@@ -7,12 +6,17 @@
 (*         *       GNU Lesser General Public License Version 2.1        *)
 (************************************************************************)
 
+(** Signatures for dependent types. 
+   
+   A signature for [A] is a sigma-type in which any [A] 
+   can be packed. *)
+
 (*i $Id$ i*)
 
-(** The set of libraries required to run Equations with all features. *)
+Class Signature (fam : Type) (signature_index : Type) := {
+  signature : signature_index -> Type ;
+  signature_pack : fam -> { i : signature_index & signature i }
+}.
 
-Require Import Coq.Program.Program.
+Notation " x ~=~ y " := (signature_pack x = signature_pack y) (at level 90).
 
-Require Export Equations.Init Equations.Signature Equations.DepElim.
-Require Export Equations.NoConfusion Equations.FunctionalInduction.
-Require Export Equations.Below Equations.Subterm.

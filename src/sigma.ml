@@ -43,7 +43,7 @@ open Refiner
 open Tacticals
 open Tacmach
 
-open Common
+open Equations_common
 
 let coq_sigma = Lazy.lazy_from_fun Coqlib.build_sigma_type
 
@@ -83,17 +83,51 @@ let decompose_indapp f args =
 	mkApp (f, pars), args
   | _ -> f, args
 
-let sigmaize env sigma f =
+
+let sigT = Lazy.lazy_from_fun build_sigma_type
+let sigT_info = lazy
+  { ci_ind       = destInd (Lazy.force sigT).typ;
+    ci_npar      = 2;
+    ci_cstr_nargs = [|2|];
+    ci_pp_info   =  { ind_nargs = 0; style = LetStyle }
+  }
+
+let telescope = function
+  | [] -> assert false
+  | [(n, None, t)] -> t, [n, Some (mkRel 1), t], mkRel 1
+  | (n, None, t) :: tl ->
+      let ty, tys, (k, constr) =
+	List.fold_left
+	  (fun (ty, tys, (k, constr)) (n, b, t) ->
+	    let pred = mkLambda (n, t, ty) in
+	    let sigty = mkApp ((Lazy.force sigT).typ, [|t; pred|]) in
+	    let intro = mkApp ((Lazy.force sigT).intro, [|lift k t; lift k pred; mkRel k; constr|]) in
+	      (sigty, pred :: tys, (succ k, intro)))
+	  (t, [], (2, mkRel 1)) tl
+      in
+      let (last, subst) = List.fold_right2
+	(fun pred (n, b, t) (prev, subst) ->
+	  let proj1 = applistc (Lazy.force sigT).proj1 [t; pred; prev] in
+	  let proj2 = applistc (Lazy.force sigT).proj2 [t; pred; prev] in
+	    (lift 1 proj2, (n, Some proj1, t) :: subst))
+	(List.rev tys) tl (mkRel 1, [])
+      in ty, ((n, Some last, t) :: subst), constr
+
+  | _ -> raise (Invalid_argument "telescope")
+
+let sigmaize ?(liftty=0) env sigma f =
   let ty = Retyping.get_type_of env sigma f in
   let ctx, concl = decompose_prod_assum ty in
-  let argtyp, letbinders, make = Subtac_command.telescope ctx in
-  let tyargs =
-    [| argtyp; mkLambda (Name (id_of_string "index"), argtyp, 
-			it_mkProd_or_LetIn 
-			  (mkApp (lift (succ (List.length letbinders)) f, 
-				 rel_vect 0 (List.length letbinders)))
-			  letbinders) |]
+  let argtyp, letbinders, make = telescope (lift_rel_context 1 ctx) in
+  let argtyp = lift (-1) argtyp in
+  let pred =
+    mkLambda (Name (id_of_string "index"), argtyp,
+	     it_mkProd_or_LetIn
+	       (mkApp (lift (succ (List.length letbinders)) f, 
+		      rel_vect 0 (List.length letbinders)))
+	       letbinders)
   in
+  let tyargs = [| argtyp; pred |] in
   let tysig = mkApp ((Lazy.force coq_sigma).typ, tyargs) in
   let indexproj = mkApp ((Lazy.force coq_sigma).proj1, tyargs) in
   let valproj = mkApp ((Lazy.force coq_sigma).proj2, tyargs) in
@@ -101,32 +135,99 @@ let sigmaize env sigma f =
     list_map_i (fun i (_, b, _) -> lift (-i) (Option.get b)) 0 (List.rev letbinders)
   in
   let valsig args v = 
-    mkApp ((Lazy.force coq_sigma).intro, 
-	  Array.append tyargs [| substl (rev args) make; v |])
-  in indices, indexproj, valproj, valsig, tysig
+    (mkApp ((Lazy.force coq_sigma).intro, 
+	   Array.append (Array.map (lift liftty) tyargs) 
+	     [| substl (rev args) make; v |]))
+  in argtyp, pred, indices, indexproj, valproj, valsig, tysig
 
-let mk_pack env sigma ty =
-  match kind_of_term ty with
-  | App (f, args) ->
-      let f, args = decompose_indapp f args in
-      let args = Array.to_list args in
-	(match args with
-	| [] -> ((fun v -> v), f)
-	| _ -> 
-	    let _, _, _, valsig, tysig = sigmaize env sigma f in
-	      valsig args, tysig)
-  | _ -> ((fun v -> v), ty)
+let ind_name ind = Nametab.basename_of_global (IndRef ind)
 
-let generalize_sigma env sigma c packid =
-  let ty = Retyping.get_type_of env sigma c in
-  let value, typ = mk_pack env sigma ty in
-  let valsig = value c in
-  let setvar = letin_tac None (Name packid) valsig (Some typ) nowhere in
-  let geneq = generalize [mkCast (mkRefl typ (mkVar packid), 
-					 DEFAULTcast, mkEq typ (mkVar packid) valsig)] in
-  let clear = clear_body [packid] in
-  let movetop = move_hyp true packid (Tacexpr.MoveToEnd false) in
-    tclTHENLIST [setvar; geneq; clear; movetop]
+open Decl_kinds
+
+let signature_ref = lazy (init_constant ["Equations";"Signature"] "Signature")
+let signature_sig = lazy (init_constant ["Equations";"Signature"] "signature")
+let signature_pack = lazy (init_constant ["Equations";"Signature"] "signature_pack")
+
+let signature_class () =
+  Option.get (Typeclasses.class_of_constr (Lazy.force signature_ref))
+
+let declare_sig_of_ind env ind =
+  let sigma = Evd.empty in
+  let (mib, oib as _mind) = Global.lookup_inductive ind in
+  let ctx = oib.Declarations.mind_arity_ctxt in
+  let lenpars = mib.mind_nparams_rec in
+  let lenargs = List.length ctx - lenpars in
+  if lenargs = 0 then
+    user_err_loc (dummy_loc, "Derive Signature", 
+		 str"No signature to derive for non-dependent inductive types");
+  let args, pars = list_chop lenargs ctx in
+  let parapp = mkApp (mkInd ind, extended_rel_vect 0 pars) in
+  let fullapp = mkApp (mkInd ind, extended_rel_vect 0 ctx) in
+  let idx, pred, _, _, _, valsig, _ = 
+    sigmaize ~liftty:(succ lenargs) (push_rel_context pars env) sigma parapp 
+  in
+  let indid = ind_name ind in
+  let simpl = Tacred.simpl env sigma in
+  let indsig = 
+    let indsigid = add_suffix indid "_sig" in
+      declare_constant indsigid (it_mkLambda_or_LetIn pred pars)
+	None (IsDefinition Definition)
+  in
+  let pack_fn = 
+    let vbinder = (Name (add_suffix indid "_var"), None, fullapp) in
+    let term = it_mkLambda_or_LetIn (valsig (extended_rel_list 1 args) (mkRel 1))
+      (vbinder :: ctx) 
+    in
+    let packid = add_suffix indid "_sig_pack" in
+    (* let rettype = mkApp (mkConst indsig, extended_rel_vect (succ lenargs) pars) in *)
+      declare_constant packid (simpl term)
+	None (* (Some (it_mkProd_or_LetIn rettype (vbinder :: ctx))) *)
+	(IsDefinition Definition)
+  in
+  let inst = 
+    declare_instance (add_suffix indid "_Signature")
+      ctx (signature_class ()) 
+      [fullapp; idx; mkApp (mkConst indsig, extended_rel_vect lenargs pars);
+       mkApp (mkConst pack_fn, extended_rel_vect 0 ctx)]
+  in inst
+
+VERNAC COMMAND EXTEND Derive_Signature
+| [ "Derive" "Signature" "for" constr(c) ] -> [ 
+  let c' = Constrintern.interp_constr Evd.empty (Global.env ()) c in
+    match kind_of_term c' with
+    | Ind i -> ignore(declare_sig_of_ind (Global.env ()) i)
+    | _ -> error "Expected an inductive type"
+  ]
+END
+
+let get_signature env sigma ty =
+  let sigma', idx = new_evar sigma env ~src:(dummy_loc, Evd.InternalHole) (new_Type ()) in
+  let idxev = fst (destEvar idx) in
+  let inst = mkApp (Lazy.force signature_ref, [| ty; idx |]) in
+  let sigma', tc =
+    try Typeclasses.resolve_one_typeclass env sigma' inst 
+    with Not_found ->
+      sigma, declare_sig_of_ind env (fst (Inductive.find_rectype env ty))
+  in
+    (nf_evar sigma' (mkApp (Lazy.force signature_sig, [| ty; idx; tc |])),
+    nf_evar sigma' (mkApp (Lazy.force signature_pack, [| ty; idx; tc |])))
+      
+TACTIC EXTEND get_signature_pack
+[ "get_signature_pack" hyp(id) ident(id') ] -> [ fun gl ->
+  let sigsig, sigpack = get_signature (pf_env gl) (project gl) (pf_get_hyp_typ gl id) in
+    letin_tac None (Name id') (mkApp (sigpack, [| mkVar id |])) None nowhere gl ]
+END
+
+(* let generalize_sigma env sigma c packid = *)
+(*   let ty = Retyping.get_type_of env sigma c in *)
+(*   let value, typ = mk_pack env sigma ty in *)
+(*   let valsig = value c in *)
+(*   let setvar = letin_tac None (Name packid) valsig (Some typ) nowhere in *)
+(*   let geneq = generalize [mkCast (mkRefl typ (mkVar packid),  *)
+(* 					 DEFAULTcast, mkEq typ (mkVar packid) valsig)] in *)
+(*   let clear = clear_body [packid] in *)
+(*   let movetop = move_hyp true packid (Tacexpr.MoveToEnd false) in *)
+(*     tclTHENLIST [setvar; geneq; clear; movetop] *)
 
 let pattern_sigma c hyp gl =
   let terms = constrs_of_coq_sigma (pf_env gl) (project gl) c (mkVar hyp) in
@@ -135,14 +236,10 @@ let pattern_sigma c hyp gl =
   let projabs = tclTHENLIST (map (fun (t, p) -> change (Some t) p onConcl) projs) in
     projabs gl
       
-TACTIC EXTEND pack
-[ "pack" hyp(id) "as" ident(packid) ] -> [ fun gl ->
-  let (valsig, typesig) = mk_pack (pf_env gl) (project gl) (pf_get_hyp_typ gl id) in
-  let simpl = Tacred.simpl (pf_env gl) (project gl) in
-  let typesig = simpl typesig in
-  let term = simpl (valsig (mkVar id)) in
-    tclTHENLIST [letin_tac None (Name packid) term (Some typesig) allHypsAndConcl;
-		 pattern_sigma term packid] gl ]
+TACTIC EXTEND pattern_sigma
+[ "pattern" "sigma" hyp(id) ] -> [ fun gl ->
+  let term = Option.get (pi2 (pf_get_hyp gl id)) in
+    pattern_sigma term id gl ]
 END
 
 let curry_hyp c t =
@@ -167,8 +264,8 @@ TACTIC EXTEND curry
   | None -> tclFAIL 0 (str"No currying to do in" ++ pr_id id) gl ]
 END
 
-TACTIC EXTEND pattern_tele
-[ "pattern_tele" constr(c) ident(hyp) ] -> [ fun gl ->
-  let settac = letin_tac None (Name hyp) c None onConcl in
-    tclTHENLIST [settac; pattern_sigma c hyp] gl ]
-END
+(* TACTIC EXTEND pattern_tele *)
+(* [ "pattern_tele" constr(c) ident(hyp) ] -> [ fun gl -> *)
+(*   let settac = letin_tac None (Name hyp) c None onConcl in *)
+(*     tclTHENLIST [settac; pattern_sigma c hyp] gl ] *)
+(* END *)

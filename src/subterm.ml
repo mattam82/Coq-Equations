@@ -39,7 +39,7 @@ open Topconstr
 open Util
 open Entries
 
-open Common
+open Equations_common
 open Sigma
 
 let solve_subterm_tac () = tac_of_string "Equations.Subterm.solve_subterm" []
@@ -134,61 +134,57 @@ let derive_subterm ind =
       (Auto.HintsResolveEntry (List.concat constrhints));
       (* Proof of Well-foundedness *)
       let id = add_prefix "well_founded_" (List.hd inds).mind_entry_typename in
+      let relid = add_suffix (Nametab.basename_of_global (IndRef ind)) "_subterm" in
       let evm = ref Evd.empty in
       let env = Global.env () in
       let env' = push_rel_context parambinders env in
-      let subindapp = mkApp (subind, extended_rel_vect lenargs parambinders) in
-      let kl, body, ty =
-	if argbinders = [] then
-	  (* Standard homogeneous well-founded relation *)
-	  let kl = Option.get (Typeclasses.class_of_constr (Lazy.force coq_wellfounded_class)) in
-	  let subrel = mkApp (Lazy.force coq_clos_trans, [| indapp; subindapp |]) in
-	  let evar = e_new_evar evm env' (mkApp (Lazy.force coq_wellfounded, [| indapp; subrel |])) in
-	  let constr, ty = Typeclasses.instance_constructor kl [ indapp; subrel; evar ] in
-	    kl, constr, ty
-	else
-	  (* Construct a family relation by packaging all indexes into 
-	     a sigma type *)
-	  let kl = Option.get (Typeclasses.class_of_constr (Lazy.force coq_wellfounded_class)) in
-	  let indices, indexproj, valproj, valsig, typesig = sigmaize env' sigma indapp in
-	  let subrel = 
-	    let valproj = lift 2 valproj in
-	    let liftindices = map (liftn 2 2) indices in
-	    let yindices = map (subst1 (mkApp (lift 2 indexproj, [| mkRel 1 |]))) liftindices in
-	    let xindices = map (subst1 (mkApp (lift 2 indexproj, [| mkRel 2 |]))) liftindices in
-	    let apprel = 
-	      applistc subind (extended_rel_list 2 parambinders @
-				  (xindices @ yindices @
-				      [mkApp (valproj, [| mkRel 2 |]); mkApp (valproj, [| mkRel 1 |])]))
-	    in 
-	      mkLambda (Name (id_of_string "x"), typesig,
-		       mkLambda (Name (id_of_string "y"), lift 1 typesig,
-				apprel))
-	  in
-	  let typesig = Tacred.simpl env' !evm typesig in
-	  let subrel = Tacred.simpl env' !evm subrel in
-	  let relation = 
-	    let id = add_suffix (Nametab.basename_of_global (IndRef ind)) "_subterm" in
-	    let def = it_mkLambda_or_LetIn 
-	      (mkApp (Lazy.force coq_clos_trans, [| typesig; subrel |]))
-	      parambinders 
+      let kl = Option.get (Typeclasses.class_of_constr (Lazy.force coq_wellfounded_class)) in
+      let body, ty =
+	let ty, rel = 
+	  if argbinders = [] then
+	    (* Standard homogeneous well-founded relation *)
+	    indapp, mkApp (subind, extended_rel_vect 0 parambinders)
+	  else
+	    (* Construct a family relation by packaging all indexes into 
+	       a sigma type *)
+	    let _, _, indices, indexproj, valproj, valsig, typesig = sigmaize env' sigma indapp in
+	    let subrel = 
+	      let valproj = lift 2 valproj in
+	      let liftindices = map (liftn 2 2) indices in
+	      let yindices = map (subst1 (mkApp (lift 2 indexproj, [| mkRel 1 |]))) liftindices in
+	      let xindices = map (subst1 (mkApp (lift 2 indexproj, [| mkRel 2 |]))) liftindices in
+	      let apprel = 
+		applistc subind (extended_rel_list 2 parambinders @
+				    (xindices @ yindices @
+					[mkApp (valproj, [| mkRel 2 |]); mkApp (valproj, [| mkRel 1 |])]))
+	      in 
+		mkLambda (Name (id_of_string "x"), typesig,
+			 mkLambda (Name (id_of_string "y"), lift 1 typesig,
+				  apprel))
 	    in
-	    let ty = Some (it_mkProd_or_LetIn
-			      (mkApp (Lazy.force coq_relation, [| typesig |]))
-			      parambinders) 
-	    in
-	    let cst = declare_constant id def ty (Decl_kinds.IsDefinition Decl_kinds.Definition) in
-	      (* Impargs.declare_manual_implicits false (ConstRef cst) ~enriching:false *)
-	      (* 	(list_map_i (fun i _ -> ExplByPos (i, None), (true, true, true)) 1 parambinders); *)
-	      Auto.add_hints false [subterm_relation_base] 
-		(Auto.HintsUnfoldEntry [EvalConstRef cst]);
-	      mkApp (mkConst cst, extended_rel_vect 0 parambinders)
+	    let typesig = Tacred.simpl env' !evm typesig in
+	    let subrel = Tacred.simpl env' !evm subrel in
+	      typesig, subrel
+	in
+	let relation =
+	  let def = it_mkLambda_or_LetIn 
+	    (mkApp (Lazy.force coq_clos_trans, [| ty; rel |]))
+	    parambinders 
 	  in
-	  let evar = e_new_evar evm env'
-	    (mkApp (Lazy.force coq_wellfounded, [| typesig; relation |]))
+	  let ty = Some (it_mkProd_or_LetIn
+			    (mkApp (Lazy.force coq_relation, [| ty |]))
+			    parambinders) 
 	  in
-	  let constr, ty = Typeclasses.instance_constructor kl [ typesig; relation; evar ] in
-	    kl, constr, ty
+	  let cst = declare_constant relid def ty (Decl_kinds.IsDefinition Decl_kinds.Definition) in
+	    (* Impargs.declare_manual_implicits false (ConstRef cst) ~enriching:false *)
+	    (* 	(list_map_i (fun i _ -> ExplByPos (i, None), (true, true, true)) 1 parambinders); *)
+	    Auto.add_hints false [subterm_relation_base] 
+	      (Auto.HintsUnfoldEntry [EvalConstRef cst]);
+	    mkApp (mkConst cst, extended_rel_vect 0 parambinders)
+	in
+	let evar = e_new_evar evm env'
+	  (mkApp (Lazy.force coq_wellfounded, [| ty; relation |]))
+	in Typeclasses.instance_constructor kl [ ty; relation; evar ]
       in
       let ty = it_mkProd_or_LetIn ty parambinders in
       let body = it_mkLambda_or_LetIn body parambinders in

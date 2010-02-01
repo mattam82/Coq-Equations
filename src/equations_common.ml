@@ -68,7 +68,10 @@ let declare_constant id body ty kind =
       const_entry_type = ty;
       const_entry_opaque = false;
       const_entry_boxed = false}
-  in Declare.declare_constant id (DefinitionEntry ce, kind)
+  in 
+  let cst = Declare.declare_constant id (DefinitionEntry ce, kind) in
+    Flags.if_verbose message ((string_of_id id) ^ " is defined");
+    cst
     
 let declare_instance id ctx cl args =
   let c, t = Typeclasses.instance_constructor cl args in
@@ -76,7 +79,7 @@ let declare_instance id ctx cl args =
     (Some (it_mkProd_or_LetIn t ctx)) (IsDefinition Instance)
   in 
   let inst = Typeclasses.new_instance cl None true (ConstRef cst) in
-    Typeclasses.add_instance inst
+    Typeclasses.add_instance inst; mkConst cst
 
 let coq_unit = lazy (init_constant ["Coq";"Init";"Datatypes"] "unit")
 let coq_tt = lazy (init_constant ["Coq";"Init";"Datatypes"] "tt")

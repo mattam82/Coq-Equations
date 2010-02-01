@@ -15,6 +15,8 @@ Require Export JMeq.
 
 Require Import Coq.Program.Tactics.
 Require Export Equations.Init.
+Require Import Equations.Signature.
+Require Import Equations.EqDec.
 
 Ltac is_ground_goal := 
   match goal with
@@ -334,12 +336,23 @@ Lemma simplification_existT2 : Π A (P : A -> Type) B (p : A) (x y : P p),
   (x = y -> B) -> (existT P p x = existT P p y -> B).
 Proof. intros. apply X. apply inj_pair2. exact H. Defined.
 
+(** If we have decidable equality on [A] we use this version which is 
+   axiom-free! *)
+
+Lemma simplification_existT2_dec : Π {A} `{EqDec A} (P : A -> Type) B (p : A) (x y : P p),
+  (x = y -> B) -> (existT P p x = existT P p y -> B).
+Proof. intros. apply X. apply inj_right_pair in H0. assumption. Defined.
+
 Lemma simplification_existT1 : Π A (P : A -> Type) B (p q : A) (x : P p) (y : P q),
   (p = q -> existT P p x = existT P q y -> B) -> (existT P p x = existT P q y -> B).
 Proof. intros. injection H. intros ; auto. Defined.
   
 Lemma simplification_K : Π A (x : A) (B : x = x -> Type), B eq_refl -> (Π p : x = x, B p).
 Proof. intros. rewrite (UIP_refl A). assumption. Defined.
+
+Lemma simplification_K_dec : Π {A} `{EqDec A} (x : A) (B : x = x -> Type), 
+  B eq_refl -> (Π p : x = x, B p).
+Proof. intros. apply K_dec. assumption. Defined.
 
 (** This hint database and the following tactic can be used with [autounfold] to 
    unfold everything to [eq_rect]s. *)
@@ -371,8 +384,9 @@ Ltac simplify_equations_in e :=
 Ltac simplify_one_dep_elim_term c :=
   match c with
     | @JMeq _ _ _ _ -> _ => refine (simplification_heq _ _ _ _ _)
-    | ?t = ?t -> _ => intros _ || refine (simplification_K _ t _ _)
+    | ?t = ?t -> _ => intros _ || apply simplification_K_dec || refine (simplification_K _ t _ _)
     | eq (existT _ _ _) (existT _ _ _) -> _ =>
+      apply simplification_existT2_dec ||
       refine (simplification_existT2 _ _ _ _ _ _ _) ||
         refine (simplification_existT1 _ _ _ _ _ _ _ _)
     | ?x = ?y -> _ => (* variables case *)
@@ -406,11 +420,16 @@ Ltac simplify_one_dep_elim :=
 
 Ltac simplify_dep_elim := repeat simplify_one_dep_elim.
 
+(** The default implementation of generalization using JMeq. *)
+
+Ltac generalize_by_eqs id := generalize_eqs id.
+Ltac generalize_by_eqs_vars id := generalize_eqs_vars id.
+
 (** Do dependent elimination of the last hypothesis, but not simplifying yet
    (used internally). *)
 
 Ltac destruct_last :=
-  on_last_hyp ltac:(fun id => simpl in id ; generalize_eqs id ; destruct id).
+  on_last_hyp ltac:(fun id => simpl in id ; generalize_by_eqs id ; destruct id).
 
 (** The rest is support tactics for the [Equations] command. *)
 
@@ -473,7 +492,7 @@ Ltac try_intros m :=
 
 Ltac do_empty id :=
   elimtype False ; simpl in id ;
-  solve [ generalize_eqs id ; destruct id ; simplify_dep_elim
+  solve [ generalize_by_eqs id ; destruct id ; simplify_dep_elim
     | apply id ; eauto with Below ].
 
 Ltac solve_empty target :=
@@ -534,7 +553,7 @@ Ltac case_last := block_goal ;
       match ty with
         | ?x = ?x => revert p ; refine (simplification_K _ x _ _)
         | ?x = ?y => revert p
-        | _ => simpl in p ; try simplify_equations_in p ; generalize_eqs p ; do_case p
+        | _ => simpl in p ; try simplify_equations_in p ; generalize_by_eqs p ; do_case p
       end).
 
 Ltac nonrec_equations :=
@@ -590,13 +609,13 @@ Ltac do_intros H :=
   (try intros until H) ; (intro_block_id H || intro_block H) ;
   (try simpl in H ; simplify_equations_in H).
 
-Ltac do_depelim_nosimpl tac H := do_intros H ; generalize_eqs H ; tac H.
+Ltac do_depelim_nosimpl tac H := do_intros H ; generalize_by_eqs H ; tac H.
 
 Ltac do_depelim tac H := do_depelim_nosimpl tac H ; simpl_dep_elim.
 
 Ltac do_depind tac H := 
   (try intros until H) ; intro_block H ; (try simpl in H ; simplify_equations_in H) ;
-  generalize_eqs_vars H ; tac H ; simplify_dep_elim ; simplify_IH_hyps ; 
+  generalize_by_eqs_vars H ; tac H ; simplify_dep_elim ; simplify_IH_hyps ; 
   unblock_dep_elim.
 
 (** To dependent elimination on some hyp. *)
@@ -618,7 +637,7 @@ Ltac depind id := do_depind ltac:(fun hyp => do_ind hyp) id.
 (** A variant where generalized variables should be given by the user. *)
 
 Ltac do_depelim' tac H :=
-  (try intros until H) ; block_goal ; generalize_eqs H ; tac H ; simplify_dep_elim ; 
+  (try intros until H) ; block_goal ; generalize_by_eqs H ; tac H ; simplify_dep_elim ; 
     simplify_IH_hyps ; unblock_goal.
 
 (** Calls [destruct] on the generalized hypothesis, results should be similar to inversion.

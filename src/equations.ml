@@ -43,8 +43,8 @@ open Tactics
 open Tacticals
 open Tacmach
 
+open Equations_common
 open Depelim
-open Common
 
 let below_tactics_path =
   make_dirpath (List.map id_of_string ["Below";"Equations"])
@@ -1940,7 +1940,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 		      Typing.type_of env Evd.empty elimcgr; elimcgr]
 	  in
 	  let instid = add_prefix "FunctionalElimination_" id in
-	    declare_instance instid [] cl args 
+	    ignore(declare_instance instid [] cl args)
 	in
 	  (* Conv_oracle.set_strategy (ConstKey cst) Conv_oracle.Expand; *)
 	  Subtac_obligations.add_definition (add_suffix id "_elim")
@@ -1952,7 +1952,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 		  Typing.type_of env Evd.empty cgr; cgr]
       in
       let instid = add_prefix "FunctionalInduction_" id in
-	declare_instance instid [] cl args;
+	ignore(declare_instance instid [] cl args)
     in
       try ignore(Subtac_obligations.add_definition ~hook:hookind
 		    indid statement ~tactic:(ind_fun_tac is_rec f info id split ind) [||])
@@ -2681,7 +2681,7 @@ VERNAC COMMAND EXTEND Derive_DependentElimination
     List.iter (fun c ->
       let c' = interp_constr Evd.empty (Global.env ()) c in
 	match kind_of_term c' with
-	| Ind i -> derive_dep_elimination i (constr_loc c)
+	| Ind i -> ignore(derive_dep_elimination i (constr_loc c))
 	| _ -> error "Expected an inductive type")
       c
   ]

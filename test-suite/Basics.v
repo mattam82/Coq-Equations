@@ -21,6 +21,8 @@ Equations (nocomp) vapp' {A} {n m} (v : vector A n) (w : vector A m) : vector A 
 vapp' A ?(0) m [[]] w := w ;
 vapp' A ?(S n) m (Vcons a n v) w := Vcons a (vapp' v w).
 
+Print Assumptions vapp'.
+
 Inductive Split {X : Type}{m n : nat} : vector X (m + n) -> Type :=
   append : Π (xs : vector X m)(ys : vector X n), Split (vapp' xs ys).
 
@@ -45,13 +47,12 @@ sublist A p (cons x xs) <= p x => {
   | true := keep (sublist p xs) ;
   | false := skip (sublist p xs) }.
 
+Print Assumptions sublist.
+
 Ltac rec ::= rec_wf_eqns.
 
 (* Derive Subterm for nat.  *)
 Derive Subterm for vector.
-
-Inspect 6.
-Print well_founded_vector_direct_subterm.
 
 Require Import Arith Wf_nat.
 Instance wf_nat : WellFounded lt := lt_wf.
@@ -68,14 +69,16 @@ testn (S n) <= testn n => {
   | (S n') := S n' }.
 
 Recursive Extraction testn.
-  
-Equations (nostruct) unzip {A B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
+
+Derive Signature for vector.
+
+Equations unzip {A B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
 unzip A B n v by rec v (@vector_subterm (A * B)) :=
 unzip A B ?(O) Vnil := (Vnil, Vnil) ;
 unzip A B ?(S n) (Vcons (pair x y) n v) <= unzip v => {
   | (pair xs ys) := (Vcons x xs, Vcons y ys) }.
 
-Equations (nostruct) nos_with (n : nat) : nat :=
+Equations nos_with (n : nat) : nat :=
 nos_with n by rec n :=
 nos_with O := O ;
 nos_with (S m) with nos_with m := {
@@ -84,7 +87,7 @@ nos_with (S m) with nos_with m := {
 
 Hint Unfold noConfusion_nat : equations.
 
-Equations(nostruct) split {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
+Equations split {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
 split X m n xs by rec m :=
 split X O    n xs := append Vnil xs ;
 split X (S m) n (Vcons x ?(m + n) xs) <= split xs => {

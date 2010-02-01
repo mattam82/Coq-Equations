@@ -1,5 +1,16 @@
+(************************************************************************)
+(*  v      *   The Coq Proof Assistant  /  The Coq Development Team     *)
+(* <O___,, * CNRS-Ecole Polytechnique-INRIA Futurs-Universite Paris Sud *)
+(*   \VV/  **************************************************************)
+(*    //   *      This file is distributed under the terms of the       *)
+(*         *       GNU Lesser General Public License Version 2.1        *)
+(************************************************************************)
+
+(*i $Id$ i*)
+
 Require Import Bvector.
 Require Import Equations.Init Equations.Below Relations Wellfounded.
+Require Import Equations.Signature.
 
 Generalizable Variables A R S B.
 
@@ -70,7 +81,7 @@ Ltac solve_subterm := intros ; apply wf_clos_trans ;
 
 (** A tactic to launch a well-founded recursion. *)
 
-Ltac rec_wf x recname fixterm :=
+Ltac rec_wf_fix x recname fixterm :=
   apply fixterm ; clear_local ; 
   intros until 1 ; simp_exists ; 
     on_last_hyp ltac:(fun x => rename x into recname) ;
@@ -81,31 +92,36 @@ Ltac rec_wf x recname fixterm :=
 
 Ltac generalize_pack x :=
   let xpack := fresh x "pack" in
-    (progress (generalize_eqs_vars x ; pack x as xpack ; 
-      move xpack before x; clearbody xpack; clear; rename xpack into x))
+    (progress (generalize_eqs_vars x ; set(xpack := signature_pack x) ;
+      cbv in xpack; move xpack before x; 
+      pattern sigma xpack; clearbody xpack; clear; rename xpack into x))
     || revert_until x.
 
 (** We specialize the tactic for [x] of type [A], first packing 
    [x] with its indices into a sigma type and finding the declared 
    relation on this type. *)
 
-Ltac rec_wf_eqns x recname := 
+Ltac rec_wf x recname := 
   move x at top; revert_until x; generalize_pack x; pattern x;
   let ty := type of x in
   let ty := eval simpl in ty in
   let wfprf := constr:(wellfounded (A:=ty)) in
   let fixterm := constr:(FixWf (WF:=wfprf)) in
-    rec_wf x recname fixterm ; intros ;
-      add_pattern (hide_pattern recname) ; instantiate.
+    rec_wf_fix x recname fixterm ; intros ; instantiate.
 
-Ltac rec_wf_eqns_rel x recname rel := 
+Ltac rec_wf_eqns x recname := rec_wf x recname ;
+  add_pattern (hide_pattern recname).
+
+Ltac rec_wf_rel x recname rel := 
   move x at top; revert_until x; generalize_pack x; pattern x;
   let ty := type of x in
   let ty := eval simpl in ty in
   let wfprf := constr:(wellfounded (A:=ty) (R:=rel)) in
   let fixterm := constr:(FixWf (WF:=wfprf)) in
-    rec_wf x recname fixterm ; intros ;
-      add_pattern (hide_pattern recname) ; instantiate.
+    rec_wf_fix x recname fixterm ; intros ; instantiate.
+
+Ltac rec_wf_eqns_rel x recname rel :=
+  rec_wf_rel x recname rel ; add_pattern (hide_pattern recname).
 
 Ltac solve_rec ::= simpl in * ; cbv zeta ; intros ; 
   try typeclasses eauto with subterm_relation Below.
