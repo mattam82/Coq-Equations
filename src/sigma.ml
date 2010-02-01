@@ -96,35 +96,44 @@ let telescope = function
   | [] -> assert false
   | [(n, None, t)] -> t, [n, Some (mkRel 1), t], mkRel 1
   | (n, None, t) :: tl ->
-      let ty, tys, (k, constr) =
+      let len = succ (List.length tl) in
+      let ty, tys =
 	List.fold_left
-	  (fun (ty, tys, (k, constr)) (n, b, t) ->
+	  (fun (ty, tys) (n, b, t) ->
 	    let pred = mkLambda (n, t, ty) in
 	    let sigty = mkApp ((Lazy.force sigT).typ, [|t; pred|]) in
-	    let intro = mkApp ((Lazy.force sigT).intro, [|lift k t; lift k pred; mkRel k; constr|]) in
-	      (sigty, pred :: tys, (succ k, intro)))
-	  (t, [], (2, mkRel 1)) tl
+	      (sigty, pred :: tys))
+	  (t, []) tl
       in
-      let (last, subst) = List.fold_right2
-	(fun pred (n, b, t) (prev, subst) ->
-	  let proj1 = applistc (Lazy.force sigT).proj1 [t; pred; prev] in
-	  let proj2 = applistc (Lazy.force sigT).proj2 [t; pred; prev] in
-	    (lift 1 proj2, (n, Some proj1, t) :: subst))
-	(List.rev tys) tl (mkRel 1, [])
-      in ty, ((n, Some last, t) :: subst), constr
+      let constr, _ = 
+	List.fold_right (fun pred (intro, k) ->
+	  let pred = lift k pred in
+	  let (n, dom, codom) = destLambda pred in
+	  let intro = mkApp ((Lazy.force sigT).intro, [| dom; pred; mkRel k; intro|]) in
+	    (intro, succ k))
+	  tys (mkRel 1, 2)
+      in
+      let (last, _, subst) = List.fold_right2
+	(fun pred (n, b, t) (prev, k, subst) ->
+	  let proj1 = applistc (Lazy.force sigT).proj1 [liftn 1 k t; liftn 1 k pred; prev] in
+	  let proj2 = applistc (Lazy.force sigT).proj2 [liftn 1 k t; liftn 1 k pred; prev] in
+	    (lift 1 proj2, succ k, (n, Some proj1, liftn 1 k t) :: subst))
+	(List.rev tys) tl (mkRel 1, 1, [])
+      in ty, ((n, Some last, liftn 1 len t) :: subst), constr
 
   | _ -> raise (Invalid_argument "telescope")
 
 let sigmaize ?(liftty=0) env sigma f =
   let ty = Retyping.get_type_of env sigma f in
   let ctx, concl = decompose_prod_assum ty in
-  let argtyp, letbinders, make = telescope (lift_rel_context 1 ctx) in
-  let argtyp = lift (-1) argtyp in
+  let argtyp, letbinders, make = telescope ctx in
+    (* Everyting is in env, move to index :: letbinders :: env *) 
+  let lenb = List.length letbinders in
   let pred =
     mkLambda (Name (id_of_string "index"), argtyp,
 	     it_mkProd_or_LetIn
-	       (mkApp (lift (succ (List.length letbinders)) f, 
-		      rel_vect 0 (List.length letbinders)))
+	       (mkApp (lift (succ lenb) f, 
+		      rel_vect 0 lenb))
 	       letbinders)
   in
   let tyargs = [| argtyp; pred |] in
@@ -134,10 +143,18 @@ let sigmaize ?(liftty=0) env sigma f =
   let indices = 
     list_map_i (fun i (_, b, _) -> lift (-i) (Option.get b)) 0 (List.rev letbinders)
   in
-  let valsig args v = 
-    (mkApp ((Lazy.force coq_sigma).intro, 
-	   Array.append (Array.map (lift liftty) tyargs) 
-	     [| substl (rev args) make; v |]))
+  let valsig =
+    let argtyp = lift (succ lenb) argtyp in
+    let pred = 
+      mkLambda (Name (id_of_string "index"), argtyp,
+	       it_mkProd_or_LetIn
+		 (mkApp (lift (2 * succ lenb) f,
+			rel_vect 0 lenb))
+		 (Equations_common.lift_rel_contextn 1 (succ lenb) letbinders))
+    in
+    let tylift = lift lenb argtyp in
+      mkApp ((Lazy.force coq_sigma).intro,
+	    [|argtyp; pred; lift 1 make; mkRel 1|])
   in argtyp, pred, indices, indexproj, valproj, valsig, tysig
 
 let ind_name ind = Nametab.basename_of_global (IndRef ind)
@@ -164,7 +181,7 @@ let declare_sig_of_ind env ind =
   let parapp = mkApp (mkInd ind, extended_rel_vect 0 pars) in
   let fullapp = mkApp (mkInd ind, extended_rel_vect 0 ctx) in
   let idx, pred, _, _, _, valsig, _ = 
-    sigmaize ~liftty:(succ lenargs) (push_rel_context pars env) sigma parapp 
+    sigmaize (push_rel_context pars env) sigma parapp 
   in
   let indid = ind_name ind in
   let simpl = Tacred.simpl env sigma in
@@ -175,8 +192,7 @@ let declare_sig_of_ind env ind =
   in
   let pack_fn = 
     let vbinder = (Name (add_suffix indid "_var"), None, fullapp) in
-    let term = it_mkLambda_or_LetIn (valsig (extended_rel_list 1 args) (mkRel 1))
-      (vbinder :: ctx) 
+    let term = it_mkLambda_or_LetIn valsig (vbinder :: ctx) 
     in
     let packid = add_suffix indid "_sig_pack" in
     (* let rettype = mkApp (mkConst indsig, extended_rel_vect (succ lenargs) pars) in *)
@@ -187,7 +203,7 @@ let declare_sig_of_ind env ind =
   let inst = 
     declare_instance (add_suffix indid "_Signature")
       ctx (signature_class ()) 
-      [fullapp; idx; mkApp (mkConst indsig, extended_rel_vect lenargs pars);
+      [fullapp; lift lenargs idx; mkApp (mkConst indsig, extended_rel_vect lenargs pars);
        mkApp (mkConst pack_fn, extended_rel_vect 0 ctx)]
   in inst
 
@@ -202,12 +218,13 @@ END
 
 let get_signature env sigma ty =
   let sigma', idx = new_evar sigma env ~src:(dummy_loc, Evd.InternalHole) (new_Type ()) in
-  let idxev = fst (destEvar idx) in
+  let _idxev = fst (destEvar idx) in
   let inst = mkApp (Lazy.force signature_ref, [| ty; idx |]) in
   let sigma', tc =
     try Typeclasses.resolve_one_typeclass env sigma' inst 
     with Not_found ->
-      sigma, declare_sig_of_ind env (fst (Inductive.find_rectype env ty))
+      let _ = declare_sig_of_ind env (fst (Inductive.find_rectype env ty)) in
+	Typeclasses.resolve_one_typeclass env sigma' inst
   in
     (nf_evar sigma' (mkApp (Lazy.force signature_sig, [| ty; idx; tc |])),
     nf_evar sigma' (mkApp (Lazy.force signature_pack, [| ty; idx; tc |])))

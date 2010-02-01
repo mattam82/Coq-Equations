@@ -26,6 +26,6 @@ Ltac solve_noconf :=
   simplify_dep_elim ; on_last_hyp ltac:(fun id => depelim id) ;
   red ; let H := fresh in intro H ; apply H ; reflexivity.
 
-Derive NoConfusion for unit bool nat option sum prod list vector sigT sig.
+Derive NoConfusion for unit bool nat option sum prod list sigT sig.
 
 Solve All Obligations using solve_noconf.

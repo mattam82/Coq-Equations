@@ -8,19 +8,21 @@
 
 (*i $Id$ i*)
 
-Require Import Equations.Signature Equations.DepElim.
+Require Import Equations.Signature Equations.DepElim Equations.EqDec.
 
 (** Alternative implementation of generalization using sigma types only,
    allowing to use K on decidable domains. *)
 
 (** Decompose existential packages. *)
 
-Ltac decompose_exists id :=
+
+Ltac decompose_exists id := hnf in id ;
   match type of id with
     | { x : _ & _ } => let xn := fresh x in 
       destruct id as [xn id]; decompose_exists xn; 
-        decompose_exists id
-    | _ => idtac
+        cbv beta delta [ projT1 projT2 ] iota in id;
+          decompose_exists id
+    | _ => cbv beta delta [ projT1 projT2 ] iota in id
   end.
 
 (** Dependent generalization using existentials only. *)
@@ -28,11 +30,12 @@ Ltac decompose_exists id :=
 Ltac generalize_sig id :=
   let id' := fresh id in
   get_signature_pack id id';
-  let idp := eval cbv in id' in
-  generalize (@eq_refl _ idp : idp = id') ;
+  hnf in (value of id'); simpl in (type of id');
+  generalize (@eq_refl _ id' : id' = id') ;
+  unfold id' at 1;
   clearbody id'; move id' at top ;
-  revert_until id'; rename id' into id ;
-    decompose_exists id.
+  revert_until id'; rename id' into id;
+  decompose_exists id.
 
 Ltac generalize_eqs_sig id :=
   (needs_generalization id ; generalize_sig id) || idtac.
@@ -42,3 +45,13 @@ Ltac generalize_eqs_vars_sig id :=
 
 Ltac generalize_by_eqs id ::= generalize_eqs_sig id.
 Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars_sig id.
+
+(** Any signature made up entirely of decidable types is decidable. *)
+
+Instance eqdec_sig {A} {B : A -> Type} `(EqDec A) `(forall a, EqDec (B a)) : EqDec { x : A & B x }.
+Proof.
+  intros. intros x y. decompose_exists x. decompose_exists y.
+  case (eq_dec x0 x1). simpdep. case (eq_dec x y). simpdep. left. reflexivity.
+  intros. right. red. simpdep. apply n. auto.
+  intros. right. red. simpdep. apply n. auto.
+Defined.

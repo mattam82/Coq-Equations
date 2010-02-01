@@ -346,18 +346,6 @@ and lift_patns n k = map (lift_patn n k)
 let lift_pat n p = lift_patn n 0 p
 let lift_pats n p = lift_patns n 0 p
 
-(* Lifting a [rel_context] by [n]. *)
-
-let lift_rel_contextn k n sign =
-  let rec liftrec k = function
-    | (na,c,t)::sign ->
-	(na,Option.map (liftn n k) c,liftn n k t)::(liftrec (k-1) sign)
-    | [] -> []
-  in
-  liftrec (rel_context_length sign + k) sign
-
-let lift_context n sign = lift_rel_contextn 0 n sign
-
 type program = 
   signature * clause list
 

@@ -234,3 +234,15 @@ END
 open Tacexpr
 
 let nowhere = { onhyps = Some []; concl_occs = no_occurrences_expr }
+
+(* Lifting a [rel_context] by [n]. *)
+
+let lift_rel_contextn k n sign =
+  let rec liftrec k = function
+    | (na,c,t)::sign ->
+	(na,Option.map (liftn n k) c,liftn n k t)::(liftrec (k-1) sign)
+    | [] -> []
+  in
+  liftrec (rel_context_length sign + k) sign
+
+let lift_context n sign = lift_rel_contextn 0 n sign
