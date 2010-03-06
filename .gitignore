@@ -1,0 +1,7 @@
+*.d
+*.vo
+Makefile
+*.bak
+*.cm*
+*.o
+*.glob
