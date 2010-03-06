@@ -3,8 +3,18 @@ Equations - A plugin for dependent pattern-matching
 Copyright 2009-2010 Matthieu Sozeau <mattam@mattam.org>
 
 To compile equations, simply run [coq_makefile -f Make -o Makefile; make]
-at the toplevel directory, with coqc and ocamlc in your path. Then add the
-path to your .coqrc
+in the toplevel directory, with coqc and ocamlc in your path.
+
+Then add the path to your .coqrc. Alternatively, to install it, type
+
+   make install CMXSFILES0=src/equations_plugin.cmxs
+
+in the toplevel directory.
+
+As usual, you will need to run this command with the appropriate privileges
+if the version of Coq you are using is installed system-wide, rather than
+in your own directory. E.g. on Ubuntu, you would prefix the command with
+"sudo" and then enter your user account password when prompted.
 
 A preliminary documentation is available in doc/ and 
 some examples in test-suite/. 
