@@ -16,6 +16,9 @@
 
 Set Implicit Arguments.
 
+Definition dec_eq {A} (x y : A) := 
+  { x = y } + { x <> y }.
+
 Class EqDec (A : Type) :=
   eq_dec : forall x y : A, { x = y } + { x <> y }.
 
@@ -114,6 +117,22 @@ Section EqdepDec.
 
     case H0.
     reflexivity.
+  Defined.
+
+  Lemma eq_dec_refl : eq_dec x x = left _ (eq_refl x).
+  Proof. clear. case eq_dec. intros. f_equal. apply eq_proofs_unicity. 
+    intro. congruence.
+  Defined.
+
+  Lemma inj_right_pair_refl (P : A -> Type) (y : P x) :
+    inj_right_pair (y:=y) (y':=y) (eq_refl _) = (eq_refl _).
+  Proof. unfold inj_right_pair. intros. 
+    unfold eq_rect. unfold proj. rewrite eq_dec_refl. 
+    unfold K_dec. simpl.
+    unfold eq_proofs_unicity. subst proj. 
+    simpl. unfold nu_inv, comp, nu. simpl. 
+    unfold eq_ind, nu_left_inv, trans_sym_eq, eq_rect, nu_constant.
+    rewrite eq_dec_refl. reflexivity.
   Defined.
 
 End EqdepDec.

@@ -326,6 +326,14 @@ Proof. intros; subst. apply X. Defined.
 Lemma solution_right : Π A (B : A -> Type) (t : A), B t -> (Π x, t = x -> B x).
 Proof. intros; subst; apply X. Defined.
 
+Lemma solution_left_let : Π A (B : A -> Type) (b : A) (t : A), 
+  (b = t -> B t) -> (let x := b in x = t -> B x).
+Proof. intros; subst. subst b. apply X. reflexivity. Defined.
+
+Lemma solution_right_let : Π A (B : A -> Type) (b t : A), 
+  (t = b -> B t) -> (let x := b in t = x -> B x).
+Proof. intros; subst; apply X. reflexivity. Defined.
+
 Lemma deletion : Π A B (t : A), B -> (t = t -> B).
 Proof. intros; assumption. Defined.
 
@@ -359,6 +367,7 @@ Proof. intros. apply K_dec. assumption. Defined.
 
 Hint Unfold solution_left solution_right deletion simplification_heq
   simplification_existT1 simplification_existT2 simplification_K
+  simplification_K_dec simplification_existT2_dec
   eq_rect_r eq_rec eq_ind : equations.
 
 (** Simply unfold as much as possible. *)
@@ -381,6 +390,42 @@ Ltac simplify_equations_in e :=
    constructor forms). Compare with the lemma 16 of the paper.
    We don't have a [noCycle] procedure yet. *)
 
+(* Ltac simplify_one_dep_elim_term c := *)
+(*   match c with *)
+(*     | @JMeq _ _ _ _ -> _ => refine (simplification_heq _ _ _ _ _) *)
+(*     | ?t = ?t -> _ => intros _ || refine (simplification_K _ t _ _) *)
+(*     | eq (existT _ _ _) (existT _ _ _) -> _ => *)
+(*       refine (simplification_existT2 _ _ _ _ _ _ _) || *)
+(*         refine (simplification_existT1 _ _ _ _ _ _ _ _) *)
+(*     | forall H : ?x = ?y, _ => (* variables case *) *)
+(*       (let hyp := fresh H in intros hyp ; *)
+(*         move hyp before x ; move x before hyp; revert_until x; revert x; *)
+(*           (match goal with *)
+(*              | |- let x := _ in _ = _ -> @?B x => *)
+(*                refine (solution_left_let _ B _ _ _) *)
+(*              | _ => refine (solution_left _ _ _ _) *)
+(*            end)) || *)
+(*       (let hyp := fresh "Heq" in intros hyp ; *)
+(*         move hyp before y ; move y before hyp; revert_until y; revert y; *)
+(*           (match goal with *)
+(*              | |- let x := _ in _ = _ -> @?B x => *)
+(*                refine (solution_right_let _ B _ _ _) *)
+(*              | _ => refine (solution_right _ _ _ _) *)
+(*            end)) *)
+(*     | forall H : ?f ?x = ?g ?y, _ => let H := fresh H in progress (intros H ; injection H ; clear H) *)
+(*     | forall H : ?t = ?u, _ => let H := fresh H in *)
+(*       intros hyp ; exfalso ; discriminate *)
+(*     | forall H : ?x = ?y, _ => let hyp := fresh H in *)
+(*       intros hyp ; (try (clear hyp ; (* If non dependent, don't clear it! *) fail 1)) ; *)
+(*         case hyp ; clear hyp *)
+(*     | block ?T => fail 1 (* Do not put any part of the rhs in the hyps *) *)
+(*     | forall x, ?B => let ty := type of B in *)
+(*       intro || (let H := fresh in intro H) *)
+(*     | forall x, _ => *)
+(*       let H := fresh x in rename x into H ; intro x (* Try to keep original names *) *)
+(*     | _ => intro *)
+(*   end. *)
+
 Ltac simplify_one_dep_elim_term c :=
   match c with
     | @JMeq _ _ _ _ -> _ => refine (simplification_heq _ _ _ _ _)
@@ -390,13 +435,21 @@ Ltac simplify_one_dep_elim_term c :=
         refine (simplification_existT2 _ _ _ _ _ _ _)
     | eq (existT _ _ _) (existT _ _ _) -> _ =>
       refine (simplification_existT1 _ _ _ _ _ _ _ _)
-    | ?x = ?y -> _ => (* variables case *)
-      (let hyp := fresh in intros hyp ;
-        move hyp before x ; revert_until hyp ; generalize dependent x ;
-          refine (solution_left _ _ _ _)(*  ; intros until 0 *)) ||
-      (let hyp := fresh in intros hyp ;
-        move hyp before y ; revert_until hyp ; generalize dependent y ;
-          refine (solution_right _ _ _ _)(*  ; intros until 0 *))
+    | forall H : ?x = ?y, _ => (* variables case *)
+      (let hyp := fresh H in intros hyp ;
+        move hyp before x ; move x before hyp; revert_until x; revert x;
+          (match goal with
+             | |- let x := _ in _ = _ -> @?B x =>
+               refine (solution_left_let _ B _ _ _)
+             | _ => refine (solution_left _ _ _ _)
+           end)) ||
+      (let hyp := fresh "Heq" in intros hyp ;
+        move hyp before y ; move y before hyp; revert_until y; revert y;
+          (match goal with
+             | |- let x := _ in _ = _ -> @?B x =>
+               refine (solution_right_let _ B _ _ _)
+             | _ => refine (solution_right _ _ _ _)
+           end))
     | @eq ?A ?t ?u -> ?P => let hyp := fresh in intros hyp ; noconf_ref hyp
     | ?f ?x = ?g ?y -> _ => let H := fresh in progress (intros H ; injection H ; clear H)
     | ?t = ?u -> _ => let hyp := fresh in
@@ -405,10 +458,16 @@ Ltac simplify_one_dep_elim_term c :=
       intros hyp ; (try (clear hyp ; (* If non dependent, don't clear it! *) fail 1)) ;
         case hyp ; clear hyp
     | block ?T => fail 1 (* Do not put any part of the rhs in the hyps *)
-    | _ -> ?T => intro; try (let x := type of T in idtac) 
-       (* Only really anonymous, non dependent hyps get automatically generated names. *)
-    | forall x, _ => intro x || (let H := fresh x in rename x into H ; intro x) (* Try to keep original names *)
-    | _ -> _ => intro
+    | forall x, ?B => let ty := type of B in (* Works only with non-dependent products *)
+      intro || (let H := fresh in intro H)
+    | forall x, _ =>
+      let H := fresh x in rename x into H ; intro x (* Try to keep original names *)
+    | _ => intro
+
+    (* | _ -> ?T => intro; try (let x := type of T in idtac) *)
+    (*    (* Only really anonymous, non dependent hyps get automatically generated names. *) *)
+    (* | forall x, _ => intro x || (let H := fresh x in rename x into H ; intro x) (* Try to keep original names *) *)
+    (* | _ -> _ => intro *)
   end.
 
 Ltac simplify_one_dep_elim :=
@@ -715,11 +774,22 @@ Ltac hnf_gl :=
       convert_concl_no_check (P T')
   end.
 
+Ltac hnf_eq :=
+  match goal with
+    |- ?x = ?y =>
+      let x' := eval hnf in x in
+      let y' := eval hnf in y in
+        convert_concl_no_check (x' = y')
+  end.
+
 Ltac simpl_equations :=
-  repeat (simpl ; unfold_equations; rewrite_refl_id).
+  repeat (hnf_eq ; unfold_equations; rewrite_refl_id).
+
+Ltac simpl_equation_impl :=
+  repeat (unfold_equations; rewrite_refl_id).
 
 Ltac simplify_equation := 
-  make_simplify_goal ; repeat (hnf_gl ; simpl_equations).
+  make_simplify_goal ; repeat (hnf_gl ; simpl; unfold_equations; rewrite_refl_id).
 
 Ltac solve_equation f := 
   intros ; try simplify_equation ; try

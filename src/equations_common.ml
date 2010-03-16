@@ -246,3 +246,113 @@ let lift_rel_contextn k n sign =
   liftrec (rel_context_length sign + k) sign
 
 let lift_context n sign = lift_rel_contextn 0 n sign
+
+(* let compute_params cst =  *)
+(*   let body = constant_value (Global.env ()) cst in *)
+(*   let init, n, c =  *)
+(*     let ctx, body =  *)
+(*       match kind_of_term body with *)
+(*       | Lambda _ -> decompose_lam_assum c  *)
+(*       | _ -> [], c *)
+(*     in *)
+(*       (interval 0 (List.length ctx),  *)
+(*       List.length ctx, body) *)
+(*   in *)
+(*   let params_of_args pars n args = *)
+(*     Array.fold_left *)
+(*       (fun (pars, acc) x -> *)
+(* 	match pars with *)
+(* 	| [] -> (pars, acc) *)
+(* 	| par :: pars -> *)
+(* 	    if isRel x then *)
+(* 	      if n + par = destRel x then *)
+(* 		(pars, par :: acc) *)
+(* 	      else (pars, acc) *)
+(* 	    else (pars, acc)) *)
+(*       (pars, []) args *)
+(*   in *)
+(*   let rec aux pars n c = *)
+(*     match kind_of_term c with *)
+(*     | App (f, args) -> *)
+(* 	if f = mkConst cst then *)
+(* 	  let _, pars' = params_of_args pars n args in *)
+(* 	    pars' *)
+(* 	else pars *)
+(*     | _ -> pars *)
+(*   in aux init n c *)
+
+
+
+let unfold_head env (ids, csts) c = 
+  let rec aux c = 
+    match kind_of_term c with
+    | Var id when Idset.mem id ids ->
+	(match Environ.named_body id env with
+	| Some b -> true, b
+	| None -> false, c)
+    | Const cst when Cset.mem cst csts ->
+	true, Environ.constant_value env cst
+    | App (f, args) ->
+	(match aux f with
+	| true, f' -> true, Reductionops.whd_betaiota Evd.empty (mkApp (f', args))
+	| false, _ -> 
+	    let done_, args' = 
+	      array_fold_left_i (fun i (done_, acc) arg -> 
+		if done_ then done_, arg :: acc 
+		else match aux arg with
+		| true, arg' -> true, arg' :: acc
+		| false, arg' -> false, arg :: acc)
+		(false, []) args
+	    in 
+	      if done_ then true, mkApp (f, Array.of_list (List.rev args'))
+	      else false, c)
+    | _ -> 
+	let done_ = ref false in
+	let c' = map_constr (fun c -> 
+	  if !done_ then c else 
+	    let x, c' = aux c in
+	      done_ := x; c') c
+	in !done_, c'
+  in aux c
+
+open Auto
+
+let autounfold_first db cl gl =
+  let st =
+    List.fold_left (fun (i,c) dbname -> 
+      let db = try searchtable_map dbname 
+	with Not_found -> errorlabstrm "autounfold" (str "Unknown database " ++ str dbname)
+      in
+      let (ids, csts) = Hint_db.unfolds db in
+	(Idset.union ids i, Cset.union csts c)) (Idset.empty, Cset.empty) db
+  in
+  let did, c' = unfold_head (pf_env gl) st
+    (match cl with Some (id, _) -> pf_get_hyp_typ gl id | None -> pf_concl gl) 
+  in
+    if did then
+      match cl with
+      | Some hyp -> change_in_hyp None c' hyp gl
+      | None -> convert_concl_no_check c' DEFAULTcast gl
+    else tclFAIL 0 (str "Nothing to unfold") gl
+
+(* 	  Cset.fold (fun cst -> cons (all_occurrences, EvalConstRef cst)) csts *)
+(* 	    (Idset.fold (fun id -> cons (all_occurrences, EvalVarRef id)) ids [])) db) *)
+(*       in unfold_option unfolds cl *)
+
+(*       let db = try searchtable_map dbname  *)
+(* 	with Not_found -> errorlabstrm "autounfold" (str "Unknown database " ++ str dbname) *)
+(*       in *)
+(*       let (ids, csts) = Hint_db.unfolds db in *)
+(* 	Cset.fold (fun cst -> tclORELSE (unfold_option [(occ, EvalVarRef id)] cst)) csts *)
+(* 	  (Idset.fold (fun id -> tclORELSE (unfold_option [(occ, EvalVarRef id)] cl) ids acc))) *)
+(*       (tclFAIL 0 (mt())) db *)
+      
+open Extraargs
+open Eauto
+
+TACTIC EXTEND autounfold_first
+| [ "autounfold_first" hintbases(db) "in" hyp(id) ] ->
+    [ autounfold_first (match db with None -> ["core"] | Some x -> x) (Some (id, InHyp)) ]
+| [ "autounfold_first" hintbases(db) ] ->
+    [ autounfold_first (match db with None -> ["core"] | Some x -> x) None ]
+END

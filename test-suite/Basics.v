@@ -1,5 +1,11 @@
 Require Import Program Equations Bvector List.
 Require Import Relations.
+Require Import DepElimDec.
+
+
+Instance eqsig {A} (x : A) : Signature (x = x) A :=
+  { signature a := x = a ;
+    signature_pack e := existT _ x e }.
 
 Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
 K A x P p eq_refl := p.
@@ -43,7 +49,7 @@ Global Transparent filter.
 
 Equations(nocomp) sublist {A} (p : A -> bool) (xs : list A) : incl (filter xs p) xs :=
 sublist A p nil := stop ;
-sublist A p (cons x xs) <= p x => {
+sublist A p (cons x xs) with p x := {
   | true := keep (sublist p xs) ;
   | false := skip (sublist p xs) }.
 
@@ -59,7 +65,6 @@ Instance wf_nat : WellFounded lt := lt_wf.
 Hint Resolve lt_n_Sn : lt.
 Ltac solve_rec ::= simpl in * ; cbv zeta ; intros ; 
   try typeclasses eauto with subterm_relation Below lt.
-Create HintDb Recursors.
 
 Equations testn (n : nat) : nat :=
 testn n by rec n lt :=
@@ -72,11 +77,67 @@ Recursive Extraction testn.
 
 Derive Signature for vector.
 
+Require Import EqDec.
+
+Instance vector_eqdec {A n} `(EqDec A) : EqDec (vector A n). 
+Proof. intros. intros x. induction x. left. now depelim y.
+  intro y; depelim y.
+  destruct (eq_dec a a0); subst. 
+  destruct (IHx y0). subst.
+  left; reflexivity.
+  right. intro. apply n. injection H0. simpdep. reflexivity.
+  right. intro. apply n. injection H0. simpdep. reflexivity.
+Defined.
+
+Print Assumptions well_founded_vector_direct_subterm.
+
+(** A closed proof of well-foundedness relying on the decidability
+   of [A]. *)
+
+Definition vector_subterm' A := vector_subterm A.
+
+Instance well_founded_vector_direct_subterm' :
+  forall A : Type, EqDec A -> WellFounded (vector_subterm' A) | 0.
+Proof. intros.
+apply Transitive_Closure.wf_clos_trans.
+  intro. simp_exists. induction X0. constructor; intros.
+  simp_exists. depelim H.
+  constructor; intros.
+  simp_exists. depelim H.
+  assumption.
+Defined.
+
+Instance eqdep_prod A B `(EqDec A) `(EqDec B) : EqDec (prod A B).
+Proof. intros. intros x y. decide equality. Defined.
+
+Hint Unfold vector_subterm' : subterm_relation.
+Typeclasses Opaque vector_subterm'.
+
+(* Ltac generalize_by_eqs id ::= generalize_eqs id. *)
+(* Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars id. *)
+
+Equations unzip_dec {A B} `{EqDec A} `{EqDec B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
+unzip_dec A B _ _ n v by rec v (@vector_subterm' (A * B)) :=
+unzip_dec A B _ _ ?(O) Vnil := (Vnil, Vnil) ;
+unzip_dec A B _ _ ?(S n) (Vcons (pair x y) n v) with unzip_dec v := {
+  | (pair xs ys) := (Vcons x xs, Vcons y ys) }.
+
 Equations unzip {A B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
 unzip A B n v by rec v (@vector_subterm (A * B)) :=
 unzip A B ?(O) Vnil := (Vnil, Vnil) ;
 unzip A B ?(S n) (Vcons (pair x y) n v) <= unzip v => {
   | (pair xs ys) := (Vcons x xs, Vcons y ys) }.
+
+Print Assumptions unzip.
+Print Assumptions unzip_dec.
+
+(*
+Ltac generalize_by_eqs v ::= generalize_eqs v.
+
+Equations(nocomp) unzip_n {A B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
+unzip_n A B O Vnil := (Vnil, Vnil) ;
+unzip_n A B (S n) (Vcons (pair x y) n v) with unzip_n v := {
+  | pair xs ys := (Vcons x xs, Vcons y ys) }. *)
 
 Equations nos_with (n : nat) : nat :=
 nos_with n by rec n :=
@@ -86,6 +147,7 @@ nos_with (S m) with nos_with m := {
   | S n' := O }.
 
 Hint Unfold noConfusion_nat : equations.
+
 
 Equations split {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
 split X m n xs by rec m :=
@@ -99,12 +161,13 @@ equal (S n) (S m) <= equal n m => {
   equal (S n) (S n) (left eq_refl) := left eq_refl ;
   equal (S n) (S m) (right p) := in_right } ;
 equal x y := in_right.
-
+Print Assumptions equal.
 Equations app_with {A} (l l' : list A) : list A :=
 app_with A nil l := l ;
 app_with A (cons a v) l <= app_with v l => {
   | vl := cons a vl }.
 
+Print Assumptions app_with.
 (* About app_with_elim. *)
 (* Print app_with_ind. *)
 (* Print app_with_ind_ind. *)
@@ -118,10 +181,8 @@ Equations plus' (n m : nat) : nat :=
 plus' O n := n ; 
 plus' (S n) m := S (plus' n m).
 
-Equations unzip_n {A B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
-unzip_n A B O Vnil := (Vnil, Vnil) ;
-unzip_n A B (S n) (Vcons (pair x y) n v) <= unzip_n v => {
-  | pair xs ys := (Vcons x xs, Vcons y ys) }.
+(* Ltac generalize_by_eqs id ::= generalize_eqs id. *)
+(* Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars id. *)
 
 Equations neg (b : bool) : bool :=
 neg true := false ;
@@ -154,9 +215,9 @@ rev A nil := nil;
 rev A (cons a v) := rev v +++ [a].
 
 Lemma app'_nil : forall {A} (l : list A), l +++ [] = l.
-Proof. intros.
-  funind (app' l []) applnil.
-  rewrite IHapp'_ind. reflexivity.
+Proof. intros. Opaque app'.
+  funelim (app' l []). reflexivity.
+  rewrite H. reflexivity.
 Qed.
 
 Lemma app'_assoc : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l (app' l' l'').
@@ -221,17 +282,18 @@ Qed.
 Equations vhead {A n} (v : vector A (S n)) : A := 
 vhead A ?(n) (Vcons a n v) := a.
 
-Equations (nocomp) vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
+Equations vmap' {A B} (f : A -> B) {n} (v : vector A n) : (vector B n) :=
+vmap' A B f ?(O) Vnil := Vnil ;
+vmap' A B f ?(S n) (Vcons a n v) := Vcons (f a) (vmap' f v).
+
+Hint Resolve lt_n_Sn : subterm_relation.
+
+Equations vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
+vmap A B f n v by rec n :=
 vmap A B f O Vnil := Vnil ;
 vmap A B f (S n) (Vcons a n v) := Vcons (f a) (vmap f v).
 
 Transparent vmap.
-(* Set Printing All.  *)
-(* Eval compute in @vmap. *)
-
-Equations vmap' {A B} (f : A -> B) {n} (v : vector A n) : (vector B n) :=
-vmap' A B f ?(O) Vnil := Vnil ;
-vmap' A B f ?(S n) (Vcons a n v) := Vcons (f a) (vmap' f v).
 
 Transparent vmap'.
 (* Eval compute in (vmap' id (@Vnil nat)). *)
@@ -295,9 +357,15 @@ Proof. reflexivity. Qed.
 (* vlast A O (Vcons a ?(O) Vnil) := a ; *)
 (* vlast A (S n) (Vcons a ?(S n) v) := vlast v. *)
 
-Equations vlast' {A} {n} (v : vector A (S n)) : A :=
+Ltac generalize_by_eqs id ::= generalize_eqs id.
+Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars id.
+
+Equations(nocomp) vlast' {A} {n} (v : vector A (S n)) : A :=
 vlast' A ?(0) (Vcons a O Vnil) := a ;
 vlast' A ?(S n) (Vcons a (S n) v) := vlast' v.
+
+Ltac generalize_by_eqs id ::= generalize_eqs_sig id.
+Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars_sig id.
 
 Ltac fix_block tac :=
   match goal with
@@ -357,7 +425,10 @@ half n <= parity n => {
 Equations(nocomp) vtail {A n} (v : vector A (S n)) : vector A n :=
 vtail A n (Vcons a n v') := v'.
 
-Equations diag {A n} (v : vector (vector A n) n) : vector A n :=
+Ltac generalize_by_eqs id ::= generalize_eqs id.
+Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars id.
+
+Equations(nocomp) diag {A n} (v : vector (vector A n) n) : vector A n :=
 diag A O Vnil := Vnil ;
 diag A (S n) (Vcons (Vcons a n v) n v') := Vcons a (diag (vmap vtail v')).
 

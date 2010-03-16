@@ -1,6 +1,6 @@
 -I src -R theories Equations
--custom "$(CAMLOPTLINK) $(ZDEBUG) $(ZFLAGS) -shared -o src/equations_plugin.cmxs src/equations_common.cmx src/sigma.cmx src/subterm.cmx src/depelim.cmx src/equations.cmx src/equations_plugin_mod.cmx" "src/equations_common.cmx src/sigma.cmx src/subterm.cmx src/equations.cmx src/equations_plugin_mod.cmx" src/equations_plugin.cmxs
--custom "$(CAMLLINK) -g -a -o src/equations_plugin.cma src/equations_common.cmo src/sigma.cmo src/subterm.cmo src/depelim.cmo src/equations.cmo src/equations_plugin_mod.cmo" "src/equations_common.cmo src/sigma.cmo src/subterm.cmo src/equations.cmo src/equations_plugin_mod.cmo" src/equations_plugin.cma
+-custom "$(CAMLOPTLINK) $(ZDEBUG) $(ZFLAGS) -shared -o src/equations_plugin.cmxs src/equations_common.cmx src/sigma.cmx src/subterm.cmx src/eqdec.cmx src/depelim.cmx src/equations.cmx src/equations_plugin_mod.cmx" "src/equations_common.cmx src/sigma.cmx src/subterm.cmx src/eqdec.cmx src/equations.cmx src/equations_plugin_mod.cmx" src/equations_plugin.cmxs
+-custom "$(CAMLLINK) -g -a -o src/equations_plugin.cma src/equations_common.cmo src/sigma.cmo src/subterm.cmo src/eqdec.cmo src/depelim.cmo src/equations.cmo src/equations_plugin_mod.cmo" "src/equations_common.cmo src/sigma.cmo src/subterm.cmo src/eqdec.cmo src/equations.cmo src/equations_plugin_mod.cmo" src/equations_plugin.cma
 -custom "$(COQBIN)coqc $(COQDEBUG) $(COQFLAGS) $*" "%.v $(EQNSPLUGINOPT) $(EQNSPLUGIN)" "%.vo %.glob"
 EQNSPLUGIN = "src/equations_plugin.cma"
 EQNSPLUGINOPT = "src/equations_plugin.cmxs"
@@ -9,6 +9,7 @@ CAMLP4OPTIONS = "-loc loc"
 src/equations_common.ml
 src/sigma.ml
 src/subterm.ml
+src/eqdec.ml
 src/depelim.ml
 src/equations.ml
 src/equations_plugin_mod.ml
@@ -18,6 +19,7 @@ theories/EqDec.v
 theories/DepElim.v
 theories/DepElimDec.v
 theories/NoConfusion.v
+theories/FunctionalInduction.v
 theories/Below.v
 theories/Subterm.v
 theories/Equations.v

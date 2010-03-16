@@ -86,10 +86,10 @@ let decompose_indapp f args =
 
 let sigT = Lazy.lazy_from_fun build_sigma_type
 let sigT_info = lazy
-  { ci_ind       = destInd (Lazy.force sigT).typ;
-    ci_npar      = 2;
-    ci_cstr_nargs = [|2|];
-    ci_pp_info   =  { ind_nargs = 0; style = LetStyle }
+  { ci_ind         = destInd (Lazy.force sigT).typ;
+    ci_npar        = 2;
+    ci_cstr_ndecls = [|2|];
+    ci_pp_info     =  { ind_nargs = 0; style = LetStyle }
   }
 
 let telescope = function
@@ -152,7 +152,7 @@ let sigmaize ?(liftty=0) env sigma f =
 			rel_vect 0 lenb))
 		 (Equations_common.lift_rel_contextn 1 (succ lenb) letbinders))
     in
-    let tylift = lift lenb argtyp in
+    let _tylift = lift lenb argtyp in
       mkApp ((Lazy.force coq_sigma).intro,
 	    [|argtyp; pred; lift 1 make; mkRel 1|])
   in argtyp, pred, indices, indexproj, valproj, valsig, tysig

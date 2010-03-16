@@ -13,8 +13,9 @@ Require Import Equations.Signature Equations.DepElim Equations.EqDec.
 (** Alternative implementation of generalization using sigma types only,
    allowing to use K on decidable domains. *)
 
-(** Decompose existential packages. *)
+Hint Rewrite @inj_right_pair_refl : refl_id.
 
+(** Decompose existential packages. *)
 
 Ltac decompose_exists id := hnf in id ;
   match type of id with
@@ -27,18 +28,21 @@ Ltac decompose_exists id := hnf in id ;
 
 (** Dependent generalization using existentials only. *)
 
-Ltac generalize_sig id :=
+Ltac generalize_sig id cont :=
   let id' := fresh id in
   get_signature_pack id id';
-  hnf in (value of id'); simpl in (type of id');
+  hnf in (value of id'); hnf in (type of id');
   generalize (@eq_refl _ id' : id' = id') ;
   unfold id' at 1;
-  clearbody id'; move id' at top ;
+  clearbody id'; move id' after id ;
   revert_until id'; rename id' into id;
-  decompose_exists id.
+    cont id.
+
+Ltac generalize_sig_dest id :=
+  generalize_sig id ltac:(fun id => decompose_exists id).
 
 Ltac generalize_eqs_sig id :=
-  (needs_generalization id ; generalize_sig id) || idtac.
+  (needs_generalization id ; generalize_sig_dest id) || idtac.
 
 Ltac generalize_eqs_vars_sig id :=
   generalize_eqs_sig id.

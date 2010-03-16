@@ -36,6 +36,15 @@ Qed.
   
 Hint Rewrite @FixWf_unfold : Recursors.
 
+Ltac unfold_FixWf :=
+  match goal with
+    |- appcontext [ @FixWf ?A ?R ?WF ?P ?f ?x ] =>
+      rewrite (@FixWf_unfold A R WF P f);
+        let step := fresh in set(step := fun y (_ : R y x) => @FixWf A R WF P f y) in *
+  end.
+
+Ltac unfold_recursor := unfold_FixWf.
+
 (** Inline so that we get back a term using general recursion. *)
 
 Extraction Inline FixWf Fix Fix_F.
@@ -102,7 +111,7 @@ Ltac generalize_pack x :=
    relation on this type. *)
 
 Ltac rec_wf x recname := 
-  move x at top; revert_until x; generalize_pack x; pattern x;
+  revert_until x; generalize_pack x; pattern x;
   let ty := type of x in
   let ty := eval simpl in ty in
   let wfprf := constr:(wellfounded (A:=ty)) in
@@ -113,7 +122,7 @@ Ltac rec_wf_eqns x recname := rec_wf x recname ;
   add_pattern (hide_pattern recname).
 
 Ltac rec_wf_rel x recname rel := 
-  move x at top; revert_until x; generalize_pack x; pattern x;
+  revert_until x; generalize_pack x; pattern x;
   let ty := type of x in
   let ty := eval simpl in ty in
   let wfprf := constr:(wellfounded (A:=ty) (R:=rel)) in

@@ -65,6 +65,8 @@ let rec_wf_tac h h' rel =
 		 IntroPattern (dummy_loc, Genarg.IntroIdentifier h');
 		 ConstrMayEval (ConstrTerm rel)]))
 
+let unfold_recursor_tac () = tac_of_string "Equations.Subterm.unfold_recursor" []
+
 let equations_tac_expr () = 
   (TacArg(TacCall(dummy_loc, Qualid (dummy_loc, qualid_of_string "Equations.DepElim.equations"), [])))
 
@@ -893,7 +895,7 @@ let split_var (env,evars) var delta =
 	if array_exists (fun x -> x = UnifStuck) unify then
 	  user_err_loc (dummy_loc, "split_var", 
 		       str"Unable to split variable " ++ pr_name id ++ str" of (reduced) type " ++
-			 print_constr_env (push_rel_context after env) newty 
+			 print_constr_env (push_rel_context before env) newty 
 		       ++ str" to match a user pattern")
 	else 
 	  let newdelta = after @ ((id, b, newty) :: before) in
@@ -1479,7 +1481,7 @@ let find_helper_info info f =
 
 let find_helper_arg info f args =
   let (ev, arg, id) = find_helper_info info f in
-    args.(arg)
+    ev, args.(arg)
       
 let find_splitting_var pats var constrs =
   let rec find_pat_var p c =
@@ -1492,8 +1494,7 @@ let find_splitting_var pats var constrs =
       match acc with None -> find_pat_var p c | _ -> acc)
       None pats constrs
   in
-  let pats = filter (fun x -> not (hidden x)) (rev pats) in
-    Option.get (aux pats constrs)
+    Option.get (aux (rev pats) constrs)
 
 let rec aux_ind_fun info = function
   | Split ((ctx,pats,_), var, _, splits) ->
@@ -1501,6 +1502,7 @@ let rec aux_ind_fun info = function
 	match kind_of_term (pf_concl gl) with
 	| App (ind, args) -> 
 	    let pats' = list_drop_last (Array.to_list args) in
+	    let pats = filter (fun x -> not (hidden x)) pats in
 	    let id = find_splitting_var pats var pats' in
 	      depelim_nosimpl_tac id gl
 	| _ -> tclFAIL 0 (str"Unexpected goal in functional induction proof") gl)
@@ -1524,7 +1526,7 @@ let rec aux_ind_fun info = function
 	| App (ind, args) ->
 	    let last_arg = args.(Array.length args - 1) in
 	    let f, args = destApp last_arg in
-	    let elim = find_helper_arg info f args in
+	    let _, elim = find_helper_arg info f args in
 	      tclTHENLIST
 		[letin_tac None (Name id) elim None allHypsAndConcl; 
 		 clear_body [id]; aux_ind_fun info s] gl
@@ -1677,18 +1679,22 @@ let clear_ind_assums ind ctx =
     | _ -> c
   in map_rel_context clear_assums ctx
 
-let ind_elim_tac indid inds info = 
-  let applyind gl =
-    let hyps = pf_hyps gl in
-    let last_hyps = list_lastn inds hyps in
-    let substhyps = Equality.subst 
-      (list_map_filter (fun (id, b, t) -> Option.map (fun _ -> id) b) last_hyps)
-    in
-    let app = applistc indid (rev_map (fun decl -> mkVar (pi1 decl)) last_hyps) in
-      tclTHEN (apply app) substhyps gl
+let unfold s = Tactics.unfold_in_concl [all_occurrences, s]
+
+let ind_elim_tac indid inds info gl = 
+  let eauto = Class_tactics.typeclasses_eauto [info.base_id; "funelim"] in
+  let _nhyps = List.length (pf_hyps gl) in
+  let prove_methods tac gl = 
+    tclTHEN tac eauto gl
   in
-    tclTHENLIST [intros; applyind; simpl_star;
-		 Class_tactics.typeclasses_eauto [info.base_id; "funelim"]]
+  let rec applyind args gl =
+    match kind_of_term (pf_concl gl) with
+    | LetIn (Name id, b, t, t') ->
+	tclTHENLIST [convert_concl_no_check (subst1 b t') DEFAULTcast; applyind (b :: args)] gl
+    | _ -> tclTHENLIST [simpl_in_concl; intros; 
+			prove_methods (apply (nf_beta (project gl) (applistc indid (rev args))))] gl
+  in
+    tclTHENLIST [intro; onLastHypId (fun id -> applyind [mkVar id])] gl
 
 
 let build_equations with_ind env id info data sign is_rec arity cst 
@@ -2010,7 +2016,7 @@ let define_tree is_recursive impls status isevar env (i, sign, arity) comp ann s
 	then Some (equations_tac ()) 
 	else if is_comp_obl comp ty then
 	  Some (tclTRY (solve_rec_tac ()))
-	else Some (Subtac_obligations.default_tactic ())
+	else Some (snd (Subtac_obligations.get_default_tactic ()))
       in (id, ty, loc, s, d, tac)) obls
   in
   let term_info = map (fun (ev, arg) ->
@@ -2041,15 +2047,36 @@ let convert_projection proj f_cst = fun gl ->
 let unfold_constr c = 
   unfold_in_concl [(all_occurrences, EvalConstRef (destConst c))]
 
-let simpl_recursors gl =
-  tclREPEAT (tclORELSE (Eauto.autounfold ["Recursors"] None)
-		(fun gl -> 
-		  try Autorewrite.autorewrite tclIDTAC ["Recursors"] gl
-		  with _ -> tclIDTAC gl)) gl
+let simpl_except (ids, csts) =
+  let csts = Cset.fold Cpred.remove csts Cpred.full in
+  let ids = Idset.fold Idpred.remove ids Idpred.full in
+    Closure.RedFlags.red_add_transparent Closure.betadeltaiota
+      (ids, csts)
+      
+let simpl_of csts =
+  (* let (ids, csts) = Auto.Hint_db.unfolds (Auto.searchtable_map db) in *)
+  (* let (ids', csts') = Auto.Hint_db.unfolds (Auto.searchtable_map (db ^ "_unfold")) in *)
+  (* let ids, csts = (Idset.union ids ids', Cset.union csts csts') in *)
+  let opacify () = List.iter (fun cst -> 
+    Conv_oracle.set_strategy (ConstKey cst) Conv_oracle.Opaque) csts
+  and transp () = List.iter (fun cst -> 
+    Conv_oracle.set_strategy (ConstKey cst) Conv_oracle.Expand) csts
+  in opacify, transp
 
-let prove_unfolding_lemma info sign proj f_cst funf_cst split gl =
+  (* let flags = simpl_except  in *)
+  (*   reduct_in_concl (Tacred.cbv_norm_flags flags, DEFAULTcast) *)
+
+let prove_unfolding_lemma info proj f_cst funf_cst split gl =
   let depelim h = depelim_tac h in
-  let simpltac = tclTHEN simpl_recursors (simpl_equations_tac ()) in
+  let helpercsts = List.map (fun (_, _, i) -> destConst (global_reference i)) info.helpers_info in
+  let opacify, transp = simpl_of helpercsts in
+  let simpltac gl = opacify ();
+    let res = simpl_equations_tac () gl in
+      transp (); res
+  in
+  let unfolds = tclTHEN (autounfold_first [info.base_id] None)
+    (autounfold_first [info.base_id ^ "_unfold"] None)
+  in
   let solve_rec_eq gl =
     match kind_of_term (pf_concl gl) with
     | App (eq, [| ty; x; y |]) ->
@@ -2059,7 +2086,7 @@ let prove_unfolding_lemma info sign proj f_cst funf_cst split gl =
 	      [((true, [1]), EvalConstRef f_cst); 
 	       ((true, [1]), EvalConstRef (destConst proj))]
 	    in 
-	      tclTHENLIST [unfolds ; simpl_recursors; pi_tac ()] gl
+	      tclTHENLIST [unfolds; simpltac; pi_tac ()] gl
 	  else reflexivity gl
     | _ -> reflexivity gl
   in
@@ -2078,53 +2105,60 @@ let prove_unfolding_lemma info sign proj f_cst funf_cst split gl =
 	      let splits = list_map_filter (fun x -> x) (Array.to_list splits) in
 		abstract (tclTHEN_i (depelim id)
 			     (fun i -> let split = nth splits (pred i) in
-					 aux split)) gl
+					 tclTHENLIST [aux split])) gl
 	  | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl)
 	    
-    | Valid ((ctx, _, _), ty, substc, tac, valid, rest) -> 
+    | Valid ((ctx, _, _), ty, substc, tac, valid, rest) ->
 	tclTHEN_i tac (fun i -> let _, _, subst, split = nth rest (pred i) in
 				  tclTHEN (Lazy.force unfold_add_pattern) (aux split))
 
     | RecValid (id, cs) -> 
-	tclTHEN simpltac (aux cs)
-	
+	tclTHEN (unfold_recursor_tac ()) (aux cs)
+	  
     | Refined ((ctx, _, _), (id, c, ty), _, arg, path, ev, _, _, newprob, newty, s) -> 
-	let reftac gl = 
+	let rec reftac gl = 
 	  match kind_of_term (pf_concl gl) with
 	  | App (f, [| ty; term1; term2 |]) ->
 	      let f1, arg1 = destApp term1 and f2, arg2 = destApp term2 in
-	      let a1 = find_helper_arg info f1 arg1 
-	      and a2 = find_helper_arg info f2 arg2 in
-		tclTHENLIST
-		  [Equality.replace_by a1 a2
-		      (tclTHENLIST [simpltac; solve_eq]);
-		   letin_tac None (Name id) a2 None allHypsAndConcl;
-		   clear_body [id]; aux s] gl
+	      let _, a1 = find_helper_arg info f1 arg1 
+	      and ev2, a2 = find_helper_arg info f2 arg2 in
+		if ev2 = ev then 
+	  	  tclTHENLIST
+	  	    [Equality.replace_by a1 a2
+	  		(tclTHENLIST [solve_eq]);
+	  	     letin_tac None (Name id) a2 None allHypsAndConcl;
+	  	     clear_body [id]; aux s] gl
+		else tclTHENLIST [unfolds; simpltac; reftac] gl
 	  | _ -> tclFAIL 0 (str"Unexpected unfolding lemma goal") gl
 	in
 	  abstract (tclTHENLIST [intros; simpltac; reftac])
 	    
     | Compute (_, _, RProgram c) ->
-	abstract (tclTHENLIST [intros; simpltac; solve_eq])
-
+	abstract (tclTHENLIST [intros; tclTRY unfolds; simpltac; solve_eq])
+	  
     | Compute ((ctx,_,_), _, REmpty id) ->
 	let (na,_,_) = nth ctx (pred id) in
 	let id = out_name na in
 	  abstract (depelim id)
   in
-  let unfolds = unfold_in_concl 
-    [((true, [1]), EvalConstRef f_cst); ((true, [1]), EvalConstRef funf_cst)]
-  in
-    tclORELSE
-      (tclTHENLIST [set_eos_tac (); intros; unfolds;
-		    (fun gl -> 
-		      Conv_oracle.set_strategy (ConstKey f_cst) Conv_oracle.Opaque;
-		      Conv_oracle.set_strategy (ConstKey funf_cst) Conv_oracle.Opaque;
-		      aux split gl)])
-      (fun gl -> 
-	Conv_oracle.set_strategy (ConstKey f_cst) Conv_oracle.Expand;
+    try
+      let unfolds = unfold_in_concl
+	[((true, [1]), EvalConstRef f_cst); ((true, [1]), EvalConstRef funf_cst)]
+      in
+      let res =
+	tclTHENLIST 
+	  [set_eos_tac (); intros; unfolds; simpl_in_concl; unfold_recursor_tac ();
+	   (fun gl -> 
+	     Conv_oracle.set_strategy (ConstKey f_cst) Conv_oracle.Opaque;
+	     Conv_oracle.set_strategy (ConstKey funf_cst) Conv_oracle.Opaque;
+	     aux split gl)] gl
+      in Conv_oracle.set_strategy (ConstKey f_cst) Conv_oracle.Expand;
 	Conv_oracle.set_strategy (ConstKey funf_cst) Conv_oracle.Expand;
-	tclIDTAC gl) gl
+	res
+    with e ->
+      Conv_oracle.set_strategy (ConstKey f_cst) Conv_oracle.Expand;
+      Conv_oracle.set_strategy (ConstKey funf_cst) Conv_oracle.Expand;
+      raise e
       
 let update_split is_rec cmap f prob id split =
   let split' = map_evars_in_split cmap split in
@@ -2236,38 +2270,39 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   let sign = nf_rel_context_evar ( !isevar) sign in
   let arity = nf_evar ( !isevar) arity in
   let arity, comp = 
-    if with_comp then
-      let compid = add_suffix i "_comp" in
-      let body = it_mkLambda_or_LetIn arity sign in
-      let ce =
-	{ const_entry_body = body;
-	  const_entry_type = None;
-	  const_entry_opaque = false;
-	  const_entry_boxed = false}
-      in
-      let comp =
-	Declare.declare_constant compid (DefinitionEntry ce, IsDefinition Definition)
-      in (*Typeclasses.add_constant_class c;*)
-      let compapp = mkApp (mkConst comp, rel_vect 0 (length sign)) in
-      let projid = add_suffix i "_comp_proj" in
-      let compproj = 
-	let body = it_mkLambda_or_LetIn (mkRel 1)
-	  ((Name (id_of_string "comp"), None, compapp) :: sign)
-	in
+    let body = it_mkLambda_or_LetIn arity sign in
+    let _ = check_evars env Evd.empty !isevar body in
+      if with_comp then
+	let compid = add_suffix i "_comp" in
 	let ce =
 	  { const_entry_body = body;
 	    const_entry_type = None;
 	    const_entry_opaque = false;
 	    const_entry_boxed = false}
-	in Declare.declare_constant projid (DefinitionEntry ce, IsDefinition Definition)
-      in
-	Impargs.declare_manual_implicits true (ConstRef comp) impls;
-	Impargs.declare_manual_implicits true (ConstRef compproj) 
-	  (impls @ [ExplByPos (succ (List.length sign), None), (true, false, true)]);
-	hintdb_set_transparency comp false "Below";
-	hintdb_set_transparency comp false "subterm_relation";
-	compapp, Some (comp, compapp, compproj)
-    else arity, None
+	in
+	let comp =
+	  Declare.declare_constant compid (DefinitionEntry ce, IsDefinition Definition)
+	in (*Typeclasses.add_constant_class c;*)
+	let compapp = mkApp (mkConst comp, rel_vect 0 (length sign)) in
+	let projid = add_suffix i "_comp_proj" in
+	let compproj = 
+	  let body = it_mkLambda_or_LetIn (mkRel 1)
+	    ((Name (id_of_string "comp"), None, compapp) :: sign)
+	  in
+	  let ce =
+	    { const_entry_body = body;
+	      const_entry_type = None;
+	      const_entry_opaque = false;
+	      const_entry_boxed = false}
+	  in Declare.declare_constant projid (DefinitionEntry ce, IsDefinition Definition)
+	in
+	  Impargs.declare_manual_implicits true (ConstRef comp) impls;
+	  Impargs.declare_manual_implicits true (ConstRef compproj) 
+	    (impls @ [ExplByPos (succ (List.length sign), None), (true, false, true)]);
+	  hintdb_set_transparency comp false "Below";
+	  hintdb_set_transparency comp false "subterm_relation";
+	  compapp, Some (comp, compapp, compproj)
+      else arity, None
   in
   let env = Global.env () in (* To find the comp constant *)
   let ty = it_mkProd_or_LetIn arity sign in
@@ -2375,9 +2410,9 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 		(mkEq arity (mkApp (f, extended_rel_vect 0 sign))
 		    (mkApp (mkConst funf_cst, extended_rel_vect 0 sign))) sign 
 	      in
-	      let tac = prove_unfolding_lemma info sign (mkConst compproj) f_cst funf_cst unfold_split in
+	      let tac = prove_unfolding_lemma info (mkConst compproj) f_cst funf_cst unfold_split in
 	      let unfold_eq_id = add_suffix unfoldi "_eq" in
-		ignore(Subtac_obligations.add_definition ~hook:hook_eqs
+		ignore(Subtac_obligations.add_definition ~hook:hook_eqs ~reduce:(fun x -> x)
 			  ~implicits:impls unfold_eq_id stmt ~tactic:tac [||])
 	    in
 	      define_tree None impls status isevar env (unfoldi, sign, arity) None ann unfold_split hook_unfold
@@ -2621,7 +2656,7 @@ let depcase (mind, i as ind) =
   let ci = {
     ci_ind = ind;
     ci_npar = nparams;
-    ci_cstr_nargs = oneind.mind_consnrealdecls;
+    ci_cstr_ndecls = oneind.mind_consnrealdecls;
     ci_pp_info = { ind_nargs = oneind.mind_nrealargs; style = RegularStyle; } }
   in
   let obj i =
@@ -2691,7 +2726,7 @@ let mkcase env c ty constrs =
   let ci = {
     ci_ind = ind;
     ci_npar = params;
-    ci_cstr_nargs = oneind.mind_consnrealdecls;
+    ci_cstr_ndecls = oneind.mind_consnrealdecls;
     ci_pp_info = { ind_nargs = oneind.mind_nrealargs; style = RegularStyle; } }
   in
   let brs = 
@@ -2740,7 +2775,7 @@ let mk_eqs env args args' pv =
 	
 let derive_no_confusion ind =
   let mindb, oneind = Global.lookup_inductive ind in
-  let ctx = oneind.mind_arity_ctxt in
+  let ctx = map_rel_context refresh_universes oneind.mind_arity_ctxt in
   let len = List.length ctx in
   let params = mindb.mind_nparams in
   let args = oneind.mind_nrealargs in
@@ -2808,7 +2843,8 @@ let derive_no_confusion ind =
     let inst = Declare.declare_constant packid (DefinitionEntry ce, IsDefinition Instance) in
       Typeclasses.add_instance (Typeclasses.new_instance tc None true (ConstRef inst))
   in
-    ignore(Subtac_obligations.add_definition ~hook noid stmt ~tactic:(noconf_tac ()) [||])
+    ignore(Subtac_obligations.add_definition ~hook noid 
+	      stmt ~tactic:(noconf_tac ()) [||])
      
 
 VERNAC COMMAND EXTEND Derive_NoConfusion

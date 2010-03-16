@@ -97,12 +97,12 @@ Hint Extern 0 (_ = _) => reflexivity : funelim.
 
 Ltac specialize_hyps :=
   match goal with
-    [ H : forall _ : _ = _, _ |- _ ] => 
-    try specialize_eqs H ; unfold eq_rect_r, eq_rect in H ; simpl in H
+    [ H : forall _ : ?x = ?x, _ |- _ ] => 
+    specialize (H (@eq_refl _ x)); unfold eq_rect_r, eq_rect in H ; simpl in H
   end.
 
-Hint Extern 1 => progress specialize_hyps : funelim.
+Hint Extern 100 => specialize_hyps : funelim.
 
 (** Destruct existentials, including [existsT]'s. *)
 
-Hint Extern 0 => progress (destruct_exists; try (is_ground_goal; simplify_eqs)) : funelim.
+(* Hint Extern 101 => progress (destruct_exists; try (is_ground_goal; simplify_eqs)) : funelim. *)
