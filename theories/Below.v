@@ -46,12 +46,12 @@ Ltac unfold_equations_in H ::= repeat progress autounfold with equations Below i
 
 Ltac destruct_conj := 
   match goal with
-    [ H : _ * _ |- _ ] => destruct H
+    [ H : (_ * _)%type |- _ ] => destruct H
   end.
 
 (** Simplify [Below] hyps for proof search. *)
 
-Hint Extern 2 => progress (simpl in * ; autorewrite with Below in * ; 
+Hint Extern 2 => progress (autorewrite with Below in * ; 
   destruct_conj ; simplify_IH_hyps) : Below.
 
 (** When solving goals with recursive prototypes in them, we allow an application
@@ -59,7 +59,7 @@ Hint Extern 2 => progress (simpl in * ; autorewrite with Below in * ;
 
 Ltac apply_fix_proto := 
   match goal with
-    [ f : fix_proto _ |- _ ] => unfold fix_proto in f ; apply f ; guarded 
+    [ f : fix_proto _ |- _ ] => unfold fix_proto in f ; apply f (*  ; guarded  *)
   end.
 
 Hint Opaque fix_proto : Below.

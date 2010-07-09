@@ -370,7 +370,7 @@ type splitting =
   | Compute of context_map * types * splitting_rhs
   | Split of context_map * int * types * splitting option array
   | Valid of context_map * types * identifier list * tactic *
-      Proof_type.validation * (goal * constr list * context_map * splitting) list
+      (constr list * context_map * splitting) list
   | RecValid of identifier * splitting
   | Refined of context_map * (identifier * constr * types) * types * int *
       path * existential_key * (constr * constr list) * context_map * context_map * types *
@@ -419,7 +419,7 @@ let rels_above ctx x =
 
 let is_fix_proto t =
   match kind_of_term t with
-  | App (f, args) when eq_constr f (Lazy.force Subtac_utils.fix_proto) ->
+  | App (f, args) when eq_constr f (delayed_force Subtac_utils.fix_proto) ->
       true
   | _ -> false
 
@@ -1034,18 +1034,24 @@ let rec covering_aux env evars data prev (clauses : clause list) path (ctx,pats,
 		      | Inl tac -> Tacinterp.interp_tac_gen [] ids Tactic_debug.DebugOff tac 
 		      | Inr tac -> Tacinterp.eval_tactic tac
 		    in
-		    let goal = {it = make_evar sign t'; sigma = !evars} in
-		    let gls, valid = tac goal in
+		      (* New trunk *)
+(* 		    let goal = {it = make_evar sign t'; sigma = !evars } in *)
+		    let goal, ev, evars' = Goal.V82.mk_goal !evars sign t' Store.empty in
+		    let goals = {it = goal; sigma = evars'} in
+		    let gls = tac goals in
 		      if gls.it = [] then 
-			let pftree = valid [] in
-			let c, _ = extract_open_proof !evars pftree in
+(* 			let pftree = valid [] in *)
+(* 			let c, _ = extract_open_proof !evars pftree in *)
+			let c = Evd.existential_value gls.sigma (destEvar ev) in
 			  Some (Compute (prob, ty, RProgram c))
 		      else
 			let solve_goal evi =
-			  let nctx = named_context_of_val evi.evar_hyps in
-			  let nctx = split_at_eos nctx in
+(* 			  let nctx = named_context_of_val evi.evar_hyps in *)
+(* 			  let concl = evi.evar_concl in *)
+			  Goal.bind Goal.hyps (fun nctx -> Goal.bind Goal.concl (fun concl ->
+			  let nctx = split_at_eos (named_context_of_val nctx) in
 			  let rctx, subst = rel_of_named_context nctx in
-			  let ty' = subst_vars subst evi.evar_concl in
+			  let ty' = subst_vars subst concl in
 			  let ty', prob, subst = match kind_of_term ty' with
 			    | App (f, args) -> 
 				if eq_constr f (Lazy.force coq_add_pattern) then
@@ -1083,8 +1089,10 @@ let rec covering_aux env evars data prev (clauses : clause list) path (ctx,pats,
 			      | Some s ->
 				  let args = rev (list_map_filter (fun (id,b,t) ->
 				    if b = None then Some (mkVar id) else None) nctx) 
-				  in evi, args, subst, s
-			in Some (Valid (prob, ty, ids, tac, valid, map solve_goal gls.it))
+				  in Goal.return (args, subst, s)))
+			in Some (Valid (prob, ty, ids, tac, 
+					map (fun evi -> 
+					       fst (Goal.eval (solve_goal evi) env evars' goal)) gls.it))
 
 
 		| Refine (c, cls) -> 
@@ -1268,14 +1276,19 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 	let ty = it_mkProd_or_subst ty ctx in
 	  term, ty
 
-    | Valid ((ctx, _, _), ty, substc, tac, valid, rest) ->
-	let goal_of_rest goal args (term, ty) = 
-	  { open_subgoals = 0;
-	    goal = goal;
-	    ref = Some (Prim (Proof_type.Refine (applistc term args)), []) }
-	in
-	let pftree = valid (map (fun (goal, args, subst, x) -> goal_of_rest goal args (aux x)) rest) in
-	let c, _ = extract_open_proof !isevar pftree in
+    | Valid ((ctx, _, _), ty, substc, tac, rest) ->
+(* 	let goal_of_rest goal args (term, ty) =  *)
+(* 	  { open_subgoals = 0; *)
+(* 	    goal = goal; *)
+(* 	    ref = Some (Prim (Proof_type.Refine (applistc term args)), []) } *)
+(* 	in *)
+	let c, _ = assert false (* Goal.eval gl (Global.env ()) !isevar gl.it  *)in
+(* 	  valid (map (fun (goal, gls) -> *)
+(* 				   let (args, subst, x), isevar = Goal.eval gls (Global.env ()) !isevar goal in *)
+(* 				     goal_of_rest goal args (aux x))  *)
+(* 			      rest)  *)
+(* 	in *)
+(* 	let c, _ = extract_open_proof !isevar pftree in *)
 	  it_mkLambda_or_LetIn (subst_vars substc c) ctx, it_mkProd_or_LetIn ty ctx
 
     | Split ((ctx, _, _), rel, ty, sp) -> 
@@ -1513,8 +1526,8 @@ let rec aux_ind_fun info = function
 	      tclTHEN (simpl_dep_elim_tac ())
 		(aux_ind_fun info s))
 	  
-  | Valid ((ctx, _, _), ty, substc, tac, valid, rest) -> tclTHEN intros
-      (tclTHEN_i tac (fun i -> let _, _, subst, split = nth rest (pred i) in
+  | Valid ((ctx, _, _), ty, substc, tac, rest) -> tclTHEN intros
+      (tclTHEN_i tac (fun i -> let _, subst, split = nth rest (pred i) in
 				 tclTHEN (Lazy.force unfold_add_pattern) 
 				   (aux_ind_fun info split)))
       
@@ -1554,7 +1567,7 @@ let ind_fun_tac is_rec f info fid split ind =
 	  [fix (Some recid) (succ i);
 	   onLastDecl (fun (n,b,t) gl ->
 	     let sort = pf_type_of gl t in
-	     let fixprot = mkApp (Lazy.force Subtac_utils.fix_proto, [|sort; t|]) in
+	     let fixprot = mkApp (delayed_force Subtac_utils.fix_proto, [|sort; t|]) in
 	       change_in_hyp None fixprot (n, InHyp) gl);
 	   intros; aux_ind_fun info split])
   else tclCOMPLETE (tclTHEN intros (aux_ind_fun info split))
@@ -1584,8 +1597,8 @@ let map_split f split =
     | Compute (lhs, ty, RProgram c) -> Compute (lhs, ty, RProgram (f c))
     | Split (lhs, y, z, cs) -> Split (lhs, y, z, Array.map (Option.map aux) cs)
     | RecValid (id, c) -> RecValid (id, aux c)
-    | Valid (lhs, y, z, w, u, cs) ->
-	Valid (lhs, y, z, w, u, List.map (fun (gl, cl, subst, s) -> (gl, cl, subst, aux s)) cs)
+    | Valid (lhs, y, z, w, cs) ->
+	Valid (lhs, y, z, w, List.map (fun (cl, subst, s) -> (cl, subst, aux s)) cs)
     | Refined (lhs, (id, c, cty), ty, arg, path, ev, (scf, scargs), revctx, newprob, newty, s) -> 
 	Refined (lhs, (id, f c, f cty), ty, arg, path, ev,
 		(f scf, List.map f scargs), revctx, newprob, newty, aux s)
@@ -1635,10 +1648,10 @@ let subst_rec_split f prob s split =
 		  newprob', mapping_constr subst' newty, 
 		  aux cutnewprob s sp)
 
-    | Valid (lhs, x, y, w, u, cs) -> 
+    | Valid (lhs, x, y, w, cs) -> 
 	let subst, lhs' = subst_rec cutprob s lhs in
-	  Valid (lhs', x, y, w, u, 
-		List.map (fun (g, l, subst, sp) -> (g, l, subst, aux cutprob s sp)) cs)
+	  Valid (lhs', x, y, w,
+		List.map (fun (l, subst, sp) -> (l, subst, aux cutprob s sp)) cs)
   in aux prob s split
 
 type statement = constr * types option
@@ -1720,8 +1733,8 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	       map (mapping_constr revctx) patsconstrs, [mapping_constr revctx c],
 	       computations newprob f' cs)]
 	    
-    | Valid ((ctx,pats,del), _, _, _, _, cs) -> 
-	List.fold_left (fun acc (_, _, subst, c) ->
+    | Valid ((ctx,pats,del), _, _, _, cs) -> 
+	List.fold_left (fun acc (_, subst, c) ->
 	  acc @ computations (compose_subst subst prob) f c) [] cs
   in
   let comps = computations prob f split in
@@ -1805,7 +1818,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	mind_entry_params = []; (* (identifier * local_entry) list; *)
 	mind_entry_inds = inds }
     in
-    let k = Command.declare_mutual_inductive_with_eliminations false inductive [] in
+    let k = Command.declare_mutual_inductive_with_eliminations Declare.KernelSilent inductive [] in
     let ind = mkInd (k,0) in
     let _ =
       list_iter_i (fun i ind ->
@@ -2108,8 +2121,8 @@ let prove_unfolding_lemma info proj f_cst funf_cst split gl =
 					 tclTHENLIST [aux split])) gl
 	  | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl)
 	    
-    | Valid ((ctx, _, _), ty, substc, tac, valid, rest) ->
-	tclTHEN_i tac (fun i -> let _, _, subst, split = nth rest (pred i) in
+    | Valid ((ctx, _, _), ty, substc, tac, rest) ->
+	tclTHEN_i tac (fun i -> let _, subst, split = nth rest (pred i) in
 				  tclTHEN (Lazy.force unfold_add_pattern) (aux split))
 
     | RecValid (id, cs) -> 
@@ -2310,7 +2323,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
     env Constrintern.Recursive [] [i] [ty] [impls] 
   in
   let sort = Retyping.get_type_of env !isevar ty in
-  let fixprot = mkApp (Lazy.force Subtac_utils.fix_proto, [|sort; ty|]) in
+  let fixprot = mkApp (delayed_force Subtac_utils.fix_proto, [|sort; ty|]) in
   let fixdecls = [(Name i, None, fixprot)] in
   let is_recursive =
     let rec occur_eqn (_, _, rhs) =

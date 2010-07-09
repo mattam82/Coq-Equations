@@ -32,7 +32,7 @@ Instance unit_eqdec : EqDec unit.
 Proof. intros x y. decide equality. Defined.
 
 Instance list_eqdec {A} `(EqDec A) : EqDec (list A). 
-Proof. intros A H x y. decide equality. Defined.
+Proof. intros x y. decide equality. Defined.
 
 Section EqdepDec.
 

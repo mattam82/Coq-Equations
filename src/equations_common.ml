@@ -205,22 +205,22 @@ TACTIC EXTEND decompose_app
   ]
 END
 
-open Pfedit
-open Proof_trees
+(* open Pfedit *)
+(* open Proof_trees *)
 
-let check_guard gl =
-  let pts = get_pftreestate () in
-  let pf = proof_of_pftreestate pts in
-  let (pfterm,_) = extract_open_pftreestate pts in
-    try
-      Inductiveops.control_only_guard (Evd.evar_env (goal_of_proof pf))
-	pfterm; tclIDTAC gl
-    with UserError(_,s) ->
-      tclFAIL 0 (str ("Condition violated: ") ++s) gl
+(* let check_guard gl = *)
+(*   let pts = get_pftreestate () in *)
+(*   let pf = proof_of_pftreestate pts in *)
+(*   let (pfterm,_) = extract_open_pftreestate pts in *)
+(*     try *)
+(*       Inductiveops.control_only_guard (Evd.evar_env (goal_of_proof pf)) *)
+(* 	pfterm; tclIDTAC gl *)
+(*     with UserError(_,s) -> *)
+(*       tclFAIL 0 (str ("Condition violated: ") ++s) gl *)
 	
-TACTIC EXTEND guarded
-[ "guarded"  ] -> [ check_guard ]
-END
+(* TACTIC EXTEND guarded *)
+(* [ "guarded"  ] -> [ check_guard ] *)
+(* END *)
 
 TACTIC EXTEND abstract_match
 [ "abstract_match" ident(hyp) constr(c) ] -> [

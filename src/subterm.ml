@@ -124,7 +124,7 @@ let derive_subterm ind =
 	  parambinders;
 	mind_entry_inds = inds }
     in
-    let k = Command.declare_mutual_inductive_with_eliminations false inductive [] in
+    let k = Command.declare_mutual_inductive_with_eliminations Declare.KernelSilent inductive [] in
     let subind = mkInd (k,0) in
     let constrhints = 
       list_map_i (fun i entry -> 

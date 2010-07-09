@@ -164,7 +164,8 @@ let derive_eq_dec ind =
     Lemmas.start_proof_with_initialization
       (Global, Proof Lemma) 
       (Some (false, possible_guards, None))
-      (List.map (fun ind -> add_suffix ind.ind_name "_eqdec", (stmt_of ind, (0, []))) indsl)
+      (List.map (fun ind -> add_suffix ind.ind_name "_eqdec", (stmt_of ind, ([], []))) indsl)
+      None
       (fun l gr -> ())
 
   (*   let impl =  *)

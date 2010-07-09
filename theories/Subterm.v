@@ -64,7 +64,7 @@ Create HintDb Recursors discriminated.
    *)
 
 Lemma WellFounded_trans_clos `(WF : WellFounded A R) : WellFounded (clos_trans A R).
-Proof. exact wf_clos_trans. Defined.
+Proof. apply wf_clos_trans. apply WF. Defined.
 
 Hint Extern 4 (WellFounded (clos_trans _ _)) => 
   apply @WellFounded_trans_clos : typeclass_instances.
@@ -75,7 +75,7 @@ Hint Extern 4 (WellFounded (clos_trans _ _)) =>
 Hint Resolve t_step : subterm_relation.
 
 Lemma clos_trans_stepr A (R : relation A) (x y z : A) : R y z -> clos_trans A R x y -> clos_trans A R x z.
-Proof. intros A R x y z Hyz Hxy. exact (t_trans _ _ x y z Hxy (t_step _ _ _ _ Hyz)). Defined.
+Proof. intros Hyz Hxy. exact (t_trans _ _ x y z Hxy (t_step _ _ _ _ Hyz)). Defined.
 
 Hint Resolve clos_trans_stepr : subterm_relation.
 

@@ -210,9 +210,14 @@ Global Transparent app'.
 
 Notation  " x +++ y " := (@app' _ x y)  (at level 60, right associativity).
 
+Equations rev_acc {A} (l : list A) (acc : list A) : list A :=
+rev_acc A nil acc := acc;
+rev_acc A (cons a v) acc := rev_acc v (a :: acc).
+
 Equations rev {A} (l : list A) : list A :=
 rev A nil := nil;
 rev A (cons a v) := rev v +++ [a].
+
 
 Lemma app'_nil : forall {A} (l : list A), l +++ [] = l.
 Proof. intros. Opaque app'.
@@ -225,6 +230,58 @@ Proof. intros. Opaque app'. revert l''.
   funelim (l +++ l'); intros; simp app'. 
   rewrite H. reflexivity.
 Qed.
+
+Lemma rev_rev_acc : forall {A} (l : list A), rev_acc l [] = rev l.
+Proof. intros. replace (rev l) with (rev l +++ []) by apply app'_nil.
+  generalize (@nil A). 
+  funelim (rev l). reflexivity.
+  intros l'. simp rev_acc. rewrite H, app'_assoc. reflexivity.
+Qed.
+Hint Rewrite @rev_rev_acc : rev_acc.
+
+Equations vector_append_one {A n} (v : vector A n) (a : A) : vector A (S n) :=
+vector_append_one A ?(0) Vnil a := Vcons a Vnil;
+vector_append_one A ?(S n) (Vcons a' n v) a := Vcons a' (vector_append_one v a).
+
+Equations vrev {A n} (v : vector A n) : vector A n :=
+vrev A ?(0) Vnil := Vnil;
+vrev A ?(S n) (Vcons a n v) := vector_append_one (vrev v) a.
+
+Definition cast {A n m} (v : vector A n) (H : n = m) : vector A m.
+intros; subst; assumption. Defined.
+
+Equations(nocomp) vrev_acc {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
+vrev_acc A ?(0) m Vnil w := w;
+vrev_acc A ?(S n) m (Vcons a n v) w := cast (vrev_acc v (Vcons a w)) _.
+About vapp'.
+
+Record vect {A} := mkVect { vect_len : nat; vect_vector : vector A vect_len }.
+Coercion mkVect : vector >-> vect.
+Derive NoConfusion for @vect. 
+Program Lemma vapp_vector_append_one {A n m} (v : vector A n) (w : vector A m) (a : A) :
+  @eq vect (vapp' (vector_append_one v a) w) (vapp' v (Vcons a w)).
+Proof. intros. funelim (vector_append_one v a). simp vapp'.
+  
+  simp vapp'.
+  specialize (H _ w). noconf H.
+
+Scheme JMeq_first := Elimination for JMeq Sort Prop.
+  About JMeq_first.
+
+  elim H0.
+  rewrite (plus_n_Sm n m).
+  Print vrev_acc_obligation_1.
+  rewrite H.
+  repeat
+  f_equal.
+
+Lemma vrec_acc_vrec {A n m} v w : @vrev_acc A n m v w = vapp' (vrev v) w.
+Proof.
+  intros. funelim (vrev v). simp vapp' vrev.
+  simp vapp' vrev vrev_acc. rewrite H. 
+  
+  
+
 
 Lemma app'_funind : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l (app' l' l'').
 Proof. intros. funelim (l +++ l'); simp app'.
@@ -282,7 +339,7 @@ Qed.
 Equations vhead {A n} (v : vector A (S n)) : A := 
 vhead A ?(n) (Vcons a n v) := a.
 
-Equations vmap' {A B} (f : A -> B) {n} (v : vector A n) : (vector B n) :=
+Equations vmap' {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
 vmap' A B f ?(O) Vnil := Vnil ;
 vmap' A B f ?(S n) (Vcons a n v) := Vcons (f a) (vmap' f v).
 
@@ -462,7 +519,7 @@ Generalizable All Variables.
 Opaque vmap. Opaque vtail. Opaque nth.
 
 Lemma nth_vmap `(v : vector A n) `(fn : A -> B) (f : fin n) : nth (vmap fn v) f = fn (nth v f).
-Proof. intros. revert B fn. funelim (nth v f); intros; simp nth vmap. Qed.
+Proof. intros. revert B fn. funelim (nth v f). intros; simp nth vmap. Qed.
 
 Lemma nth_vtail `(v : vector A (S n)) (f : fin n) : nth (vtail v) f = nth v (fs f).
 Proof. intros until v. funelim (vtail v); intros; simp nth. Qed.
