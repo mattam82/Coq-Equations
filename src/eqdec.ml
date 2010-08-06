@@ -1,4 +1,4 @@
-(* -*- compile-command: "COQBIN=~/research/coq/trunk/bin/ make -k -C .. src/equations_plugin.cma src/equations_plugin.cmxs" -*- *)
+(* -*- compile-command: "make -k -C .. src/equations_plugin.cma src/equations_plugin.cmxs" -*- *)
 (************************************************************************)
 (*  v      *   The Coq Proof Assistant  /  The Coq Development Team     *)
 (* <O___,, * CNRS-Ecole Polytechnique-INRIA Futurs-Universite Paris Sud *)
@@ -110,7 +110,7 @@ let inductive_info (mind, _ as ind) =
       let ci = {
 	ci_ind = induct;
 	ci_npar = List.length paramargs;
-	ci_cstr_ndecls = ind.mind_consnrealdecls;
+	ci_cstr_nargs = ind.mind_consnrealdecls;
 	ci_pp_info = { ind_nargs = ind.mind_nrealargs; style = RegularStyle; } }
       in
 	mkCase (ci, pred, c, brs)

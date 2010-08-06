@@ -1,4 +1,4 @@
-(* -*- compile-command: "COQBIN=~/research/coq/trunk/bin/ make -k -C .. src/equations_plugin.cma src/equations_plugin.cmxs" -*- *)
+(* -*- compile-command: "make -k -C .. src/equations_plugin.cma src/equations_plugin.cmxs" -*- *)
 (************************************************************************)
 (*  v      *   The Coq Proof Assistant  /  The Coq Development Team     *)
 (* <O___,, * CNRS-Ecole Polytechnique-INRIA Futurs-Universite Paris Sud *)
@@ -286,14 +286,14 @@ let derive_below ind =
       mkCase ({
 	ci_ind = ind;
 	ci_npar = params;
-	ci_cstr_ndecls = Array.map pi1 branches;
+	ci_cstr_nargs = Array.map pi1 branches;
 	ci_pp_info = { ind_nargs = oneind.mind_nrealargs; style = RegularStyle }
       }, aritylam, mkRel 1, Array.map pi2 branches)
     and caseb =
       mkCase ({
 	ci_ind = ind;
 	ci_npar = params;
-	ci_cstr_ndecls = Array.map pi1 branches;
+	ci_cstr_nargs = Array.map pi1 branches;
 	ci_pp_info = { ind_nargs = oneind.mind_nrealargs; style = RegularStyle }
       }, aritylamb, mkRel 1, Array.map pi3 branches)
     in 

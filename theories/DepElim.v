@@ -178,11 +178,11 @@ Hint Rewrite <- eq_rect_eq : refl_id.
 Lemma JMeq_eq_refl {A} (x : A) : JMeq_eq (@JMeq_refl _ x) = eq_refl.
 Proof. intros. apply proof_irrelevance. Qed.
 
-Lemma UIP_refl_refl : Π A (x : A),
+Lemma UIP_refl_refl : forall A (x : A),
   Eqdep.EqdepTheory.UIP_refl A x eq_refl = eq_refl.
 Proof. intros. apply UIP_refl. Qed.
 
-Lemma inj_pairT2_refl : Π A (x : A) (P : A -> Type) (p : P x),
+Lemma inj_pairT2_refl : forall A (x : A) (P : A -> Type) (p : P x),
   Eqdep.EqdepTheory.inj_pairT2 A P x p p eq_refl = eq_refl.
 Proof. intros. apply UIP_refl. Qed.
 
@@ -320,46 +320,46 @@ Ltac elim_ind p := elim_tac ltac:(fun p el => induction p using el) p.
 
 (** Lemmas used by the simplifier, mainly rephrasings of [eq_rect], [eq_ind]. *)
 
-Lemma solution_left : Π A (B : A -> Type) (t : A), B t -> (Π x, x = t -> B x).
+Lemma solution_left : ∀ A (B : A -> Type) (t : A), B t -> (∀ x, x = t -> B x).
 Proof. intros; subst. apply X. Defined.
 
-Lemma solution_right : Π A (B : A -> Type) (t : A), B t -> (Π x, t = x -> B x).
+Lemma solution_right : ∀ A (B : A -> Type) (t : A), B t -> (∀ x, t = x -> B x).
 Proof. intros; subst; apply X. Defined.
 
-Lemma solution_left_let : Π A (B : A -> Type) (b : A) (t : A), 
+Lemma solution_left_let : ∀ A (B : A -> Type) (b : A) (t : A), 
   (b = t -> B t) -> (let x := b in x = t -> B x).
 Proof. intros; subst. subst b. apply X. reflexivity. Defined.
 
-Lemma solution_right_let : Π A (B : A -> Type) (b t : A), 
+Lemma solution_right_let : ∀ A (B : A -> Type) (b t : A), 
   (t = b -> B t) -> (let x := b in t = x -> B x).
 Proof. intros; subst; apply X. reflexivity. Defined.
 
-Lemma deletion : Π A B (t : A), B -> (t = t -> B).
+Lemma deletion : ∀ A B (t : A), B -> (t = t -> B).
 Proof. intros; assumption. Defined.
 
-Lemma simplification_heq : Π A B (x y : A), (x = y -> B) -> (JMeq x y -> B).
+Lemma simplification_heq : ∀ A B (x y : A), (x = y -> B) -> (JMeq x y -> B).
 Proof. intros; apply X; apply (JMeq_eq H). Defined.
 
-Lemma simplification_existT2 : Π A (P : A -> Type) B (p : A) (x y : P p),
+Lemma simplification_existT2 : ∀ A (P : A -> Type) B (p : A) (x y : P p),
   (x = y -> B) -> (existT P p x = existT P p y -> B).
 Proof. intros. apply X. apply inj_pair2. exact H. Defined.
 
 (** If we have decidable equality on [A] we use this version which is 
    axiom-free! *)
 
-Lemma simplification_existT2_dec : Π {A} `{EqDec A} (P : A -> Type) B (p : A) (x y : P p),
+Lemma simplification_existT2_dec : ∀ {A} `{EqDec A} (P : A -> Type) B (p : A) (x y : P p),
   (x = y -> B) -> (existT P p x = existT P p y -> B).
 Proof. intros. apply X. apply inj_right_pair in H0. assumption. Defined.
 
-Lemma simplification_existT1 : Π A (P : A -> Type) B (p q : A) (x : P p) (y : P q),
+Lemma simplification_existT1 : ∀ A (P : A -> Type) B (p q : A) (x : P p) (y : P q),
   (p = q -> existT P p x = existT P q y -> B) -> (existT P p x = existT P q y -> B).
 Proof. intros. injection H. intros ; auto. Defined.
   
-Lemma simplification_K : Π A (x : A) (B : x = x -> Type), B eq_refl -> (Π p : x = x, B p).
+Lemma simplification_K : ∀ A (x : A) (B : x = x -> Type), B eq_refl -> (∀ p : x = x, B p).
 Proof. intros. rewrite (UIP_refl A). assumption. Defined.
 
-Lemma simplification_K_dec : Π {A} `{EqDec A} (x : A) (B : x = x -> Type), 
-  B eq_refl -> (Π p : x = x, B p).
+Lemma simplification_K_dec : ∀ {A} `{EqDec A} (x : A) (B : x = x -> Type), 
+  B eq_refl -> (∀ p : x = x, B p).
 Proof. intros. apply K_dec. assumption. Defined.
 
 (** This hint database and the following tactic can be used with [autounfold] to 
@@ -598,7 +598,7 @@ Ltac solve_split :=
 
 Ltac intro_prototypes :=
   match goal with
-    | [ |- Π x : _, _ ] => intro ; intro_prototypes
+    | [ |- ∀ x : _, _ ] => intro ; intro_prototypes
     | _ => idtac
   end.
 
@@ -633,7 +633,7 @@ Ltac recursive_equations :=
 
 Ltac equations := set_eos ;
   match goal with
-    | [ |- Π x : _, _ ] => intro ; recursive_equations
+    | [ |- ∀ x : _, _ ] => intro ; recursive_equations
     | [ |- let x := _ in ?T ] => intro x ; exact x
     | _ => nonrec_equations
   end.

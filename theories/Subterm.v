@@ -24,11 +24,11 @@ Class WellFounded {A : Type} (R : relation A) :=
    just reusing the [Wf.Fix] combinator. *)
 
 Definition FixWf `{WF:WellFounded A R} (P : A -> Type)
-  (step : Π x : A, (Π y : A, R y x -> P y) -> P x) : Π x : A, P x :=
+  (step : ∀ x : A, (∀ y : A, R y x -> P y) -> P x) : ∀ x : A, P x :=
   Fix wellfounded P step.
 
 Lemma FixWf_unfold `{WF : WellFounded A R} (P : A -> Type)
-  (step : Π x : A, (Π y : A, R y x -> P y) -> P x) (x : A) : 
+  (step : ∀ x : A, (∀ y : A, R y x -> P y) -> P x) (x : A) : 
   FixWf P step x = step x (fun y _ => FixWf P step y).
 Proof. intros. unfold FixWf, Fix. destruct wellfounded.
   simpl. f_equal. extensionality y. extensionality h. pi.

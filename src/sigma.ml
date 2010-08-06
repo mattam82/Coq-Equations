@@ -1,4 +1,4 @@
-(* -*- compile-command: "COQBIN=~/research/coq/trunk/bin/ make -k -C .. src/equations_plugin.cma src/equations_plugin.cmxs" -*- *)
+(* -*- compile-command: "make -k -C .. src/equations_plugin.cma src/equations_plugin.cmxs" -*- *)
 (************************************************************************)
 (*  v      *   The Coq Proof Assistant  /  The Coq Development Team     *)
 (* <O___,, * CNRS-Ecole Polytechnique-INRIA Futurs-Universite Paris Sud *)
@@ -88,7 +88,7 @@ let sigT = Lazy.lazy_from_fun build_sigma_type
 let sigT_info = lazy
   { ci_ind         = destInd (Lazy.force sigT).typ;
     ci_npar        = 2;
-    ci_cstr_ndecls = [|2|];
+    ci_cstr_nargs = [|2|];
     ci_pp_info     =  { ind_nargs = 0; style = LetStyle }
   }
 

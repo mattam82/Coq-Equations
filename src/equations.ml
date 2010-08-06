@@ -1,4 +1,4 @@
-(* -*- compile-command: "COQBIN=~/research/coq/trunk/bin/ make -k -C .. src/equations_plugin.cma src/equations_plugin.cmxs" -*- *)
+(* -*- compile-command: "make -k -C .. src/equations_plugin.cma src/equations_plugin.cmxs" -*- *)
 (************************************************************************)
 (*  v      *   The Coq Proof Assistant  /  The Coq Development Team     *)
 (* <O___,, * CNRS-Ecole Polytechnique-INRIA Futurs-Universite Paris Sud *)
@@ -370,7 +370,7 @@ type splitting =
   | Compute of context_map * types * splitting_rhs
   | Split of context_map * int * types * splitting option array
   | Valid of context_map * types * identifier list * tactic *
-      (constr list * context_map * splitting) list
+      Proof_type.validation * (goal * constr list * context_map * splitting) list
   | RecValid of identifier * splitting
   | Refined of context_map * (identifier * constr * types) * types * int *
       path * existential_key * (constr * constr list) * context_map * context_map * types *
@@ -1034,22 +1034,19 @@ let rec covering_aux env evars data prev (clauses : clause list) path (ctx,pats,
 		      | Inl tac -> Tacinterp.interp_tac_gen [] ids Tactic_debug.DebugOff tac 
 		      | Inr tac -> Tacinterp.eval_tactic tac
 		    in
-		      (* New trunk *)
-(* 		    let goal = {it = make_evar sign t'; sigma = !evars } in *)
-		    let goal, ev, evars' = Goal.V82.mk_goal !evars sign t' Store.empty in
-		    let goals = {it = goal; sigma = evars'} in
-		    let gls = tac goals in
+		    let goal = {it = make_evar sign t'; sigma = !evars } in
+(* 		    let goal, ev, evars' = Goal.V82.mk_goal !evars sign t' Store.empty in *)
+(* 		    let goals = {it = goal; sigma = evars'} in *)
+		    let gls, valid = tac goal in
 		      if gls.it = [] then 
-(* 			let pftree = valid [] in *)
-(* 			let c, _ = extract_open_proof !evars pftree in *)
-			let c = Evd.existential_value gls.sigma (destEvar ev) in
+			let pftree = valid [] in
+			let c, _ = extract_open_proof !evars pftree in
 			  Some (Compute (prob, ty, RProgram c))
 		      else
 			let solve_goal evi =
-(* 			  let nctx = named_context_of_val evi.evar_hyps in *)
-(* 			  let concl = evi.evar_concl in *)
-			  Goal.bind Goal.hyps (fun nctx -> Goal.bind Goal.concl (fun concl ->
-			  let nctx = split_at_eos (named_context_of_val nctx) in
+			  let nctx = named_context_of_val evi.evar_hyps in
+			  let concl = evi.evar_concl in
+			  let nctx = split_at_eos nctx in
 			  let rctx, subst = rel_of_named_context nctx in
 			  let ty' = subst_vars subst concl in
 			  let ty', prob, subst = match kind_of_term ty' with
@@ -1088,12 +1085,9 @@ let rec covering_aux env evars data prev (clauses : clause list) path (ctx,pats,
 				      spc () ++ str"refining" ++ spc () ++ pr_context_map env prob)
 			      | Some s ->
 				  let args = rev (list_map_filter (fun (id,b,t) ->
-				    if b = None then Some (mkVar id) else None) nctx) 
-				  in Goal.return (args, subst, s)))
-			in Some (Valid (prob, ty, ids, tac, 
-					map (fun evi -> 
-					       fst (Goal.eval (solve_goal evi) env evars' goal)) gls.it))
-
+								     if b = None then Some (mkVar id) else None) nctx)
+				  in evi, args, subst, s
+			in Some (Valid (prob, ty, ids, tac, valid, map solve_goal gls.it))
 
 		| Refine (c, cls) -> 
 		    let _, ctxs, _ = lets_of_ctx env ctx evars s in
@@ -1276,19 +1270,14 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 	let ty = it_mkProd_or_subst ty ctx in
 	  term, ty
 
-    | Valid ((ctx, _, _), ty, substc, tac, rest) ->
-(* 	let goal_of_rest goal args (term, ty) =  *)
-(* 	  { open_subgoals = 0; *)
-(* 	    goal = goal; *)
-(* 	    ref = Some (Prim (Proof_type.Refine (applistc term args)), []) } *)
-(* 	in *)
-	let c, _ = assert false (* Goal.eval gl (Global.env ()) !isevar gl.it  *)in
-(* 	  valid (map (fun (goal, gls) -> *)
-(* 				   let (args, subst, x), isevar = Goal.eval gls (Global.env ()) !isevar goal in *)
-(* 				     goal_of_rest goal args (aux x))  *)
-(* 			      rest)  *)
-(* 	in *)
-(* 	let c, _ = extract_open_proof !isevar pftree in *)
+    | Valid ((ctx, _, _), ty, substc, tac, valid, rest) ->
+	let goal_of_rest goal args (term, ty) = 
+	  { open_subgoals = 0;
+	    goal = goal;
+	    ref = Some (Prim (Proof_type.Refine (applistc term args)), []) }
+	in
+	let pftree = valid (map (fun (goal, args, subst, x) -> goal_of_rest goal args (aux x)) rest) in
+	let c, _ = extract_open_proof !isevar pftree in
 	  it_mkLambda_or_LetIn (subst_vars substc c) ctx, it_mkProd_or_LetIn ty ctx
 
     | Split ((ctx, _, _), rel, ty, sp) -> 
@@ -1526,8 +1515,8 @@ let rec aux_ind_fun info = function
 	      tclTHEN (simpl_dep_elim_tac ())
 		(aux_ind_fun info s))
 	  
-  | Valid ((ctx, _, _), ty, substc, tac, rest) -> tclTHEN intros
-      (tclTHEN_i tac (fun i -> let _, subst, split = nth rest (pred i) in
+  | Valid ((ctx, _, _), ty, substc, tac, valid, rest) -> tclTHEN intros
+      (tclTHEN_i tac (fun i -> let _, _, subst, split = nth rest (pred i) in
 				 tclTHEN (Lazy.force unfold_add_pattern) 
 				   (aux_ind_fun info split)))
       
@@ -1597,8 +1586,8 @@ let map_split f split =
     | Compute (lhs, ty, RProgram c) -> Compute (lhs, ty, RProgram (f c))
     | Split (lhs, y, z, cs) -> Split (lhs, y, z, Array.map (Option.map aux) cs)
     | RecValid (id, c) -> RecValid (id, aux c)
-    | Valid (lhs, y, z, w, cs) ->
-	Valid (lhs, y, z, w, List.map (fun (cl, subst, s) -> (cl, subst, aux s)) cs)
+    | Valid (lhs, y, z, w, u, cs) ->
+	Valid (lhs, y, z, w, u, List.map (fun (gl, cl, subst, s) -> (gl, cl, subst, aux s)) cs)
     | Refined (lhs, (id, c, cty), ty, arg, path, ev, (scf, scargs), revctx, newprob, newty, s) -> 
 	Refined (lhs, (id, f c, f cty), ty, arg, path, ev,
 		(f scf, List.map f scargs), revctx, newprob, newty, aux s)
@@ -1648,10 +1637,10 @@ let subst_rec_split f prob s split =
 		  newprob', mapping_constr subst' newty, 
 		  aux cutnewprob s sp)
 
-    | Valid (lhs, x, y, w, cs) -> 
+    | Valid (lhs, x, y, w, u, cs) -> 
 	let subst, lhs' = subst_rec cutprob s lhs in
-	  Valid (lhs', x, y, w,
-		List.map (fun (l, subst, sp) -> (l, subst, aux cutprob s sp)) cs)
+	  Valid (lhs', x, y, w, u, 
+		List.map (fun (g, l, subst, sp) -> (g, l, subst, aux cutprob s sp)) cs)
   in aux prob s split
 
 type statement = constr * types option
@@ -1732,9 +1721,9 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	  Some (f', path, pi1 newprob, newty,
 	       map (mapping_constr revctx) patsconstrs, [mapping_constr revctx c],
 	       computations newprob f' cs)]
-	    
-    | Valid ((ctx,pats,del), _, _, _, cs) -> 
-	List.fold_left (fun acc (_, subst, c) ->
+	   
+    | Valid ((ctx,pats,del), _, _, _, _, cs) -> 
+	List.fold_left (fun acc (_, _, subst, c) ->
 	  acc @ computations (compose_subst subst prob) f c) [] cs
   in
   let comps = computations prob f split in
@@ -2121,8 +2110,8 @@ let prove_unfolding_lemma info proj f_cst funf_cst split gl =
 					 tclTHENLIST [aux split])) gl
 	  | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl)
 	    
-    | Valid ((ctx, _, _), ty, substc, tac, rest) ->
-	tclTHEN_i tac (fun i -> let _, subst, split = nth rest (pred i) in
+    | Valid ((ctx, _, _), ty, substc, tac, valid, rest) ->
+	tclTHEN_i tac (fun i -> let _, _, subst, split = nth rest (pred i) in
 				  tclTHEN (Lazy.force unfold_add_pattern) (aux split))
 
     | RecValid (id, cs) -> 
@@ -2319,8 +2308,8 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   in
   let env = Global.env () in (* To find the comp constant *)
   let ty = it_mkProd_or_LetIn arity sign in
-  let data = Constrintern.compute_full_internalization_env
-    env Constrintern.Recursive [] [i] [ty] [impls] 
+  let data = Constrintern.compute_internalization_env
+    env Constrintern.Recursive [i] [ty] [impls] 
   in
   let sort = Retyping.get_type_of env !isevar ty in
   let fixprot = mkApp (delayed_force Subtac_utils.fix_proto, [|sort; ty|]) in
@@ -2407,7 +2396,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	      map (interp_eqn unfoldi None isevar env data sign arity None)
 		(unfold_eqs eqs)
 	    in
-	    let data = ([], []) in
+	    let data = [] in
 	    let unfold_split = covering env isevar (unfoldi, with_comp, data) unfold_equations prob arity in
 	    let hook_unfold cmap helpers' _ gr' = 
 	      let info = { base_id = baseid; helpers_info = helpers @ helpers' } in
@@ -2467,7 +2456,7 @@ GEXTEND Gram
   ;
 
   binders_let2:
-    [ [ l = binders_let_fixannot -> l ] ]
+    [ [ l = binders -> l, (None, CStructRec)  ] ]
   ;
 
   equation:
@@ -2669,7 +2658,7 @@ let depcase (mind, i as ind) =
   let ci = {
     ci_ind = ind;
     ci_npar = nparams;
-    ci_cstr_ndecls = oneind.mind_consnrealdecls;
+    ci_cstr_nargs = oneind.mind_consnrealdecls;
     ci_pp_info = { ind_nargs = oneind.mind_nrealargs; style = RegularStyle; } }
   in
   let obj i =
@@ -2739,7 +2728,7 @@ let mkcase env c ty constrs =
   let ci = {
     ci_ind = ind;
     ci_npar = params;
-    ci_cstr_ndecls = oneind.mind_consnrealdecls;
+    ci_cstr_nargs = oneind.mind_consnrealdecls;
     ci_pp_info = { ind_nargs = oneind.mind_nrealargs; style = RegularStyle; } }
   in
   let brs = 

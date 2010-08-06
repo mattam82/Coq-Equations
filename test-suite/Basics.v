@@ -30,7 +30,7 @@ vapp' A ?(S n) m (Vcons a n v) w := Vcons a (vapp' v w).
 Print Assumptions vapp'.
 
 Inductive Split {X : Type}{m n : nat} : vector X (m + n) -> Type :=
-  append : Π (xs : vector X m)(ys : vector X n), Split (vapp' xs ys).
+  append : ∀ (xs : vector X m)(ys : vector X n), Split (vapp' xs ys).
 
 Implicit Arguments Split [ [ X ] ].
 
@@ -247,41 +247,17 @@ Equations vrev {A n} (v : vector A n) : vector A n :=
 vrev A ?(0) Vnil := Vnil;
 vrev A ?(S n) (Vcons a n v) := vector_append_one (vrev v) a.
 
-Definition cast {A n m} (v : vector A n) (H : n = m) : vector A m.
+Definition cast_vector {A n m} (v : vector A n) (H : n = m) : vector A m.
 intros; subst; assumption. Defined.
 
 Equations(nocomp) vrev_acc {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
 vrev_acc A ?(0) m Vnil w := w;
-vrev_acc A ?(S n) m (Vcons a n v) w := cast (vrev_acc v (Vcons a w)) _.
+vrev_acc A ?(S n) m (Vcons a n v) w := cast_vector (vrev_acc v (Vcons a w)) _.
 About vapp'.
 
 Record vect {A} := mkVect { vect_len : nat; vect_vector : vector A vect_len }.
 Coercion mkVect : vector >-> vect.
 Derive NoConfusion for @vect. 
-Program Lemma vapp_vector_append_one {A n m} (v : vector A n) (w : vector A m) (a : A) :
-  @eq vect (vapp' (vector_append_one v a) w) (vapp' v (Vcons a w)).
-Proof. intros. funelim (vector_append_one v a). simp vapp'.
-  
-  simp vapp'.
-  specialize (H _ w). noconf H.
-
-Scheme JMeq_first := Elimination for JMeq Sort Prop.
-  About JMeq_first.
-
-  elim H0.
-  rewrite (plus_n_Sm n m).
-  Print vrev_acc_obligation_1.
-  rewrite H.
-  repeat
-  f_equal.
-
-Lemma vrec_acc_vrec {A n m} v w : @vrev_acc A n m v w = vapp' (vrev v) w.
-Proof.
-  intros. funelim (vrev v). simp vapp' vrev.
-  simp vapp' vrev vrev_acc. rewrite H. 
-  
-  
-
 
 Lemma app'_funind : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l (app' l' l'').
 Proof. intros. funelim (l +++ l'); simp app'.
@@ -297,7 +273,7 @@ Qed.
 
 (* Eval compute in @app'. *)
 
-Lemma split_vapp' : Π (X : Type) m n (v : vector X m) (w : vector X n), 
+Lemma split_vapp' : ∀ (X : Type) m n (v : vector X m) (w : vector X n), 
   let 'append v' w' := split (vapp' v w) in
     v = v' /\ w = w'.
 Proof.
@@ -326,7 +302,7 @@ split_struct X O    n xs := append Vnil xs ;
 split_struct X (S m) n (Vcons x _ xs) <= split_struct xs => {
   split_struct X (S m) n (Vcons x _ xs) (append xs' ys') := append (Vcons x xs') ys' }.
 
-Lemma split_struct_vapp : Π (X : Type) m n (v : vector X m) (w : vector X n),
+Lemma split_struct_vapp : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
   let 'append v' w' := split_struct (vapp' v w) in
     v = v' /\ w = w'.
 Proof.
@@ -442,7 +418,7 @@ Fixpoint vapp {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
   end.
 
 Lemma JMeq_Vcons_inj A n m a (x : vector A n) (y : vector A m) : n = m -> JMeq x y -> JMeq (Vcons a x) (Vcons a y).
-Proof. intros until y. simplify_dep_elim. reflexivity. Qed.
+Proof. simplify_dep_elim. reflexivity. Qed.
   
 (* Eval compute in (split (vapp Vnil (Vcons 2 Vnil))). *)
 (* Eval compute in (split (vapp (Vcons 3 Vnil) (Vcons 2 Vnil))). *)
@@ -495,7 +471,7 @@ Equations vmake {A} (n : nat) (a : A) : vector A n :=
 vmake A O a := Vnil ;
 vmake A (S n) a := Vcons a (vmake n a).
 
-Equations(nocomp) vfold_right {A : nat -> Type} {B} (f : Π n, B -> A n -> A (S n)) (e : A 0) {n} (v : vector B n) : A n :=
+Equations(nocomp) vfold_right {A : nat -> Type} {B} (f : ∀ n, B -> A n -> A (S n)) (e : A 0) {n} (v : vector B n) : A n :=
 vfold_right A B f e ?(0) Vnil := e ;
 vfold_right A B f e ?(S n) (Vcons a n v) := f n a (vfold_right f e v).
 
@@ -508,7 +484,7 @@ Definition transpose {A m n} : mat A m n -> mat A n m :=
   (λ m', vzip (λ a, Vcons a))
   (vmake n Vnil).
 
-(* Lemma vfold_right_e {A : Type} {B} {n} (f : Π n', B' -> vector (vector A 0) n' -> vector (vector A 0) (S n')) *)
+(* Lemma vfold_right_e {A : Type} {B} {n} (f : ∀ n', B' -> vector (vector A 0) n' -> vector (vector A 0) (S n')) *)
 (*   (e : vector (vector A 0) n) v : vfold_right f (vmake n Vnil) v =  *)
 (* Typeclasses eauto :=. *)
 
@@ -519,16 +495,15 @@ Generalizable All Variables.
 Opaque vmap. Opaque vtail. Opaque nth.
 
 Lemma nth_vmap `(v : vector A n) `(fn : A -> B) (f : fin n) : nth (vmap fn v) f = fn (nth v f).
-Proof. intros. revert B fn. funelim (nth v f). intros; simp nth vmap. Qed.
+Proof. revert B fn. funelim (nth v f); intros; simp nth vmap. Qed.
 
 Lemma nth_vtail `(v : vector A (S n)) (f : fin n) : nth (vtail v) f = nth v (fs f).
-Proof. intros until v. funelim (vtail v); intros; simp nth. Qed.
+Proof. funelim (vtail v); intros; simp nth. Qed.
 
 Hint Rewrite @nth_vmap @nth_vtail : nth.
   
 Lemma diag_nth `(v : vector (vector A n) n) (f : fin n) : nth (diag v) f = nth (nth v f) f.
-Proof. 
-  intros. revert f. funelim (diag v); intros f.
+Proof. revert f. funelim (diag v); intros f.
     depelim f.
 
     depelim f; simp nth. rewrite H. simp nth.

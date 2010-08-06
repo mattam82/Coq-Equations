@@ -21,12 +21,12 @@ Require Export Equations.DepElim.
 
 Class BelowPackage (A : Type) := {
   Below : A -> Type ;
-  below : Π (a : A), Below a }.
+  below : ∀ (a : A), Below a }.
 
 (** The [Recursor] class defines a recursor on a type *)
 
 Class Recursor (A : Type) :=
-  { rec_type : Π x : A, Type ; rec : Π x : A, rec_type x }.
+  { rec_type : ∀ x : A, Type ; rec : ∀ x : A, rec_type x }.
 
 (** A hintdb for transparency information of definitions related to [Below] and
    for solving goals related to [Below] instances. *)
@@ -70,22 +70,22 @@ Hint Extern 100 => apply_fix_proto : Below.
 
 Derive Below for nat.
 
-Definition rec_nat (P : nat -> Type) n (step : Π n, Below_nat P n -> P n) : P n :=
+Definition rec_nat (P : nat -> Type) n (step : ∀ n, Below_nat P n -> P n) : P n :=
   step n (below_nat P step n).
 
 Instance nat_Recursor : Recursor nat :=
-  { rec_type := λ n, Π P step, P n ;
+  { rec_type := λ n, ∀ P step, P n ;
     rec := λ n P step, rec_nat P n step }.
 
-Equations(nocomp noind) Below_vector A (P : Π n, vector A n -> Type) n (v : vector A n) : Type :=
+Equations(nocomp noind) Below_vector A (P : ∀ n, vector A n -> Type) n (v : vector A n) : Type :=
 Below_vector A P ?(0) Vnil := unit ;
 Below_vector A P ?(S n) (Vcons a n v) := 
   ((P n v) * Below_vector A P n v)%type.
 
 Hint Rewrite Below_vector_equation_2 : Below.
 
-(* Equations(nocomp noeqns noind) below_vector A (P : Π n, vector A n -> Type) *)
-(*   (step : Π n (v : vector A n), Below_vector A P n v -> P n v) *)
+(* Equations(nocomp noeqns noind) below_vector A (P : ∀ n, vector A n -> Type) *)
+(*   (step : ∀ n (v : vector A n), Below_vector A P n v -> P n v) *)
 (*   n (v : vector A n) : Below_vector A P n v := *)
 (* below_vector A P _ ?(0) Vnil := tt ; *)
 (* below_vector A P step ?(S n) (Vcons a n v) :=  *)
@@ -94,12 +94,12 @@ Hint Rewrite Below_vector_equation_2 : Below.
 
 (* Global Opaque Below_vector. *)
 
-(* Definition rec_vector A (P : Π n, vector A n -> Type) n v *)
-(*   (step : Π n (v : vector A n), Below_vector A P n v -> P n v) : P n v := *)
+(* Definition rec_vector A (P : ∀ n, vector A n -> Type) n v *)
+(*   (step : ∀ n (v : vector A n), Below_vector A P n v -> P n v) : P n v := *)
 (*   step n v (below_vector A P step n v). *)
 
 (* Instance vect_Recursor A n : Recursor (vector A n) := *)
-(*   { rec_type := λ v, Π (P : Π n, vector A n -> Type) step, P n v; *)
+(*   { rec_type := λ v, ∀ (P : ∀ n, vector A n -> Type) step, P n v; *)
 (*     rec := λ v P step, rec_vector A P n v step }. *)
 
 (* Hint Unfold rec_nat rec_vector : Recursors. *)
