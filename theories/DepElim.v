@@ -458,7 +458,7 @@ Ltac simplify_one_dep_elim_term c :=
       intros hyp ; (try (clear hyp ; (* If non dependent, don't clear it! *) fail 1)) ;
         case hyp ; clear hyp
     | block ?T => fail 1 (* Do not put any part of the rhs in the hyps *)
-    | forall x, ?B => let ty := type of B in (* Works only with non-dependent products *)
+    | _ -> ?B => let ty := type of B in (* Works only with non-dependent products *)
       intro || (let H := fresh in intro H)
     | forall x, _ =>
       let H := fresh x in rename x into H ; intro x (* Try to keep original names *)
