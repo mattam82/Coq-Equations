@@ -146,8 +146,7 @@ let mkProd_or_subst_or_clear (na,body,t) c =
   | Some b -> subst1 b c
 
 let it_mkProd_or_subst ty ctx = 
-  nf_beta Evd.empty (whd_betalet Evd.empty
-    (List.fold_left (fun c d -> mkProd_or_LetIn d c) ty ctx))
+  nf_beta Evd.empty (List.fold_left (fun c d -> whd_betalet Evd.empty (mkProd_or_LetIn d c)) ty ctx)
 
 let it_mkLambda_or_subst ty ctx = 
   whd_betalet Evd.empty
@@ -1396,12 +1395,12 @@ let abstract_rec_calls ?(do_subst=true) is_rec len protos c =
 	    Some (lenprotos - 1, capp, array_remove_last args)
 	| _ -> None
   in
-  let rec aux n c =
+  let rec aux n env c =
     match kind_of_term c with
     | App (f', args) ->
 	let (ctx, lenctx, args) = 
 	  Array.fold_left (fun (ctx,len,c) arg -> 
-	    let ctx', lenctx', arg' = aux n arg in
+	    let ctx', lenctx', arg' = aux n env arg in
 	    let len' = lenctx' + len in
 	    let ctx'' = lift_context len ctx' in
 	    let c' = (liftn len (succ lenctx') arg') :: map (lift lenctx') c in
@@ -1420,31 +1419,39 @@ let abstract_rec_calls ?(do_subst=true) is_rec len protos c =
 	      let hyp = (Name (id_of_string "Hind"), None, hypty) in
 		[hyp;result]@ctx, lenctx + 2, mkRel 2
 	  | None -> (ctx, lenctx, mkApp (f', args)))
+	    
+    | Lambda (na,t,b) ->
+	let ctx',lenctx',b' = aux (succ n) ((na,None,t) :: env) b in
+	  (match ctx' with
+	   | [] -> [], 0, c
+	   | hyp :: rest -> 
+	       let ty = mkProd (na, t, it_mkProd_or_LetIn (pi3 hyp) rest) in
+		 [Anonymous, None, ty], 1, lift 1 c)
 
     (* | Cast (_, _, f) when is_comp f -> aux n f *)
 	  
     | LetIn (na,b,t,c) ->
-	let ctx',lenctx',b' = aux n b in
-	let ctx'',lenctx'',c' = aux (succ n) c in
+	let ctx',lenctx',b' = aux n env b in
+	let ctx'',lenctx'',c' = aux (succ n) ((na,Some b,t) :: env) c in
 	let ctx'' = lift_rel_contextn 1 lenctx' ctx'' in
 	let fullctx = ctx'' @ [na,Some b',lift lenctx' t] @ ctx' in
 	  fullctx, lenctx'+lenctx''+1, liftn lenctx' (lenctx'' + 2) c'
 
     | Prod (na, d, c) when not (dependent (mkRel 1) c)  -> 
-	let ctx',lenctx',d' = aux n d in
-	let ctx'',lenctx'',c' = aux n (subst1 mkProp c) in
+	let ctx',lenctx',d' = aux n env d in
+	let ctx'',lenctx'',c' = aux n env (subst1 mkProp c) in
 	  lift_context lenctx' ctx'' @ ctx', lenctx' + lenctx'', 
 	mkProd (na, lift lenctx'' d', 
 	       liftn lenctx' (lenctx'' + 2) 
 		 (lift 1 c'))
 
     | Case (ci, p, c, br) ->
-	let ctx', lenctx', c' = aux n c in
+	let ctx', lenctx', c' = aux n env c in
 	let case' = mkCase (ci, lift lenctx' p, c', Array.map (lift lenctx') br) in
 	  ctx', lenctx', substnl proto_fs (succ len + lenctx') case'
 
     | _ -> [], 0, if do_subst then (substnl proto_fs (len + n) c) else c
-  in aux 0 c
+  in aux 0 [] c
 
 let below_transparent_state () =
   Auto.Hint_db.transparent_state (Auto.searchtable_map "Below")
@@ -2298,9 +2305,9 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	      const_entry_boxed = false}
 	  in Declare.declare_constant projid (DefinitionEntry ce, IsDefinition Definition)
 	in
-	  Impargs.declare_manual_implicits true (ConstRef comp) impls;
+	  Impargs.declare_manual_implicits true (ConstRef comp) [impls];
 	  Impargs.declare_manual_implicits true (ConstRef compproj) 
-	    (impls @ [ExplByPos (succ (List.length sign), None), (true, false, true)]);
+	    [(impls @ [ExplByPos (succ (List.length sign), None), (true, false, true)])];
 	  hintdb_set_transparency comp false "Below";
 	  hintdb_set_transparency comp false "subterm_relation";
 	  compapp, Some (comp, compapp, compproj)
@@ -2337,7 +2344,8 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   let equations = 
     States.with_heavy_rollback (fun () -> 
       Option.iter (Metasyntax.set_notation_for_interpretation data) nt;
-      map (interp_eqn i is_recursive isevar env data sign arity None) eqs) ()
+      map (interp_eqn i is_recursive isevar env data sign arity None) eqs)
+      (fun e -> e) ()
   in
   let sign = nf_rel_context_evar ( !isevar) sign in
   let arity = nf_evar ( !isevar) arity in
@@ -2550,8 +2558,11 @@ let (wit_identref : Genarg.tlevel identref_argtype),
   Genarg.create_arg "identref"
 
 let with_rollback f x =
-  let st = States.freeze () in
-    try f x with e -> msg (Toplevel.print_toplevel_error e); States.unfreeze st
+  States.with_heavy_rollback f
+    Cerrors.process_vernac_interp_error x
+
+(*   let st = States.freeze () in *)
+(*     try f x with e -> msg (Toplevel.print_toplevel_error e); States.unfreeze st *)
 
 let equations opts (loc, i) l t nt eqs =
   Dumpglob.dump_definition (loc, i) false "def";

@@ -222,7 +222,7 @@ rev A (cons a v) := rev v +++ [a].
 Lemma app'_nil : forall {A} (l : list A), l +++ [] = l.
 Proof. intros. Opaque app'.
   funelim (app' l []). reflexivity.
-  rewrite H. reflexivity.
+  now rewrite H.
 Qed.
 
 Lemma app'_assoc : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l (app' l' l'').
