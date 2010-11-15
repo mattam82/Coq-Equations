@@ -892,20 +892,14 @@ let split_var (env,evars) var delta =
     | Some (newty, unify) ->
 	(* Some constructor's type is not refined enough to match ty *)
 	if array_exists (fun x -> x = UnifStuck) unify then
-	  user_err_loc (dummy_loc, "split_var", 
-		       str"Unable to split variable " ++ pr_name id ++ str" of (reduced) type " ++
-			 print_constr_env (push_rel_context before env) newty 
-		       ++ str" to match a user pattern")
+	  None
+(* 	  user_err_loc (dummy_loc, "split_var",  *)
+(* 		       str"Unable to split variable " ++ pr_name id ++ str" of (reduced) type " ++ *)
+(* 			 print_constr_env (push_rel_context before env) newty  *)
+(* 		       ++ str" to match a user pattern") *)
 	else 
 	  let newdelta = after @ ((id, b, newty) :: before) in
 	    Some (var, newdelta, Array.map branch unify)
-
-let split env vars delta =
-  let split = fold_left (fun acc var ->
-    match acc with 
-    | None -> split_var env var delta 
-    | _ -> acc) None vars
-  in split
 
 let find_empty env delta =
   let r = List.filter (fun v -> 
@@ -996,6 +990,13 @@ let split_at_eos ctx =
   fst (list_split_when (fun (id, b, t) ->
     eq_constr t (Lazy.force coq_end_of_section)) ctx)
 
+let pr_problem (id, _, _) env (delta, patcs, _) =
+  let env' = push_rel_context delta env in
+  let ctx = pr_context env delta in
+  pr_id id ++ spc () ++ 
+    prlist_with_sep spc (pr_pat env') (List.rev patcs) ++
+    (if delta = [] then ctx else fnl () ++ str "In context: " ++ fnl () ++ ctx)
+      
 let rec covering_aux env evars data prev (clauses : clause list) path (ctx,pats,ctx' as prob) lets ty =
   match clauses with
   | (lhs, rhs as clause) :: clauses' -> 
@@ -1205,7 +1206,7 @@ let rec covering_aux env evars data prev (clauses : clause list) path (ctx,pats,
       | None ->
 	  errorlabstrm "deppat"
 	    (str "Non-exhaustive pattern-matching, no clause found for:" ++ fnl () ++
-		pr_context_map env prob)
+	       pr_problem data env prob)
 
 let covering env evars data (clauses : clause list) prob ty =
   match covering_aux env evars data [] clauses [] prob [] ty with
@@ -1213,7 +1214,7 @@ let covering env evars data (clauses : clause list) prob ty =
   | None ->
       errorlabstrm "deppat"
 	(str "Unable to build a covering for:" ++ fnl () ++
-	    pr_context_map env prob)
+	   pr_problem data env prob)
     
 open Evd
 open Evarutil
@@ -1929,6 +1930,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 		| (false, _, _) :: stmts, decl :: decls ->
 		    aux stmts decls n (decl :: meths')
 		| [], [] -> n, meths'
+		| [], decls -> n, List.rev decls @ meths'
 		| _, _ -> assert false
 	      in aux all_stmts (rev methods) 0 []
 	    in
