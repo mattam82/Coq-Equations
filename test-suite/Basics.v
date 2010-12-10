@@ -2,6 +2,17 @@ Require Import Program Equations Bvector List.
 Require Import Relations.
 Require Import DepElimDec.
 
+Module TestF.
+
+  Equations f (n : nat) : nat :=
+  f 0 := 42 ;
+  f (S m)  with f m :=
+  {
+    f (S m) IH := _
+  }.
+  
+  Next Obligation. exact IH. Defined.
+End TestF.
 
 Instance eqsig {A} (x : A) : Signature (x = x) A :=
   { signature a := x = a ;
@@ -155,13 +166,18 @@ split X O    n xs := append Vnil xs ;
 split X (S m) n (Vcons x ?(m + n) xs) <= split xs => {
   | append xs' ys' := append (Vcons x xs') ys' }.
 
+
+Obligation Tactic := program_simpl ; auto with arith.
+
 Equations(nocomp) equal (n m : nat) : { n = m } + { n <> m } :=
 equal O O := in_left ;
 equal (S n) (S m) <= equal n m => {
   equal (S n) (S n) (left eq_refl) := left eq_refl ;
   equal (S n) (S m) (right p) := in_right } ;
 equal x y := in_right.
+
 Print Assumptions equal.
+
 Equations app_with {A} (l l' : list A) : list A :=
 app_with A nil l := l ;
 app_with A (cons a v) l <= app_with v l => {
@@ -504,7 +520,7 @@ Hint Rewrite @nth_vmap @nth_vtail : nth.
   
 Lemma diag_nth `(v : vector (vector A n) n) (f : fin n) : nth (diag v) f = nth (nth v f) f.
 Proof. revert f. funelim (diag v); intros f.
-    depelim f.
+  depelim f.
 
-    depelim f; simp nth. rewrite H. simp nth.
+  depelim f; simp nth. rewrite H. simp nth.
 Qed.

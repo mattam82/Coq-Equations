@@ -433,8 +433,11 @@ Ltac simplify_one_dep_elim_term c :=
     | (@existT ?A ?P ?n ?x) = (@existT ?A ?P ?n ?y) -> ?B =>
       apply (simplification_existT2_dec (A:=A) P B n x y) ||
         refine (simplification_existT2 _ _ _ _ _ _ _)
-    | eq (existT _ _ _) (existT _ _ _) -> _ =>
-      refine (simplification_existT1 _ _ _ _ _ _ _ _)
+    | eq (existT _ ?p _) (existT _ ?q _) -> _ =>
+      match goal with
+        | _ : p = q |- _ => intro
+        | _ => refine (simplification_existT1 _ _ _ _ _ _ _ _)
+      end
     | forall H : ?x = ?y, _ => (* variables case *)
       (let hyp := fresh H in intros hyp ;
         move hyp before x ; move x before hyp; revert_until x; revert x;
