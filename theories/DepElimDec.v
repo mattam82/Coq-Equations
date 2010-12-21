@@ -17,6 +17,9 @@ Hint Rewrite @inj_right_pair_refl : refl_id.
 
 (** Decompose existential packages. *)
 
+Definition sigT_elim {A} {P : A -> Type} {P0 : sigT P -> Type} :
+  (forall (x : A) (p : P x), P0 (existT P x p)) -> forall s, P0 s := sigT_rect P0.
+
 Ltac decompose_exists id := hnf in id ;
   match type of id with
     | { x : _ & _ } => let xn := fresh x in 
@@ -34,7 +37,7 @@ Ltac generalize_sig id cont :=
   hnf in (value of id'); hnf in (type of id');
   generalize (@eq_refl _ id' : id' = id') ;
   unfold id' at 1;
-  clearbody id'; move id' after id ;
+  clearbody id'; simpl in id'; move id' after id;
   revert_until id'; rename id' into id;
     cont id.
 

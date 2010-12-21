@@ -320,45 +320,45 @@ Ltac elim_ind p := elim_tac ltac:(fun p el => induction p using el) p.
 
 (** Lemmas used by the simplifier, mainly rephrasings of [eq_rect], [eq_ind]. *)
 
-Lemma solution_left : ∀ A (B : A -> Type) (t : A), B t -> (∀ x, x = t -> B x).
+Lemma solution_left : ∀ {A} {B : A -> Type} (t : A), B t -> (∀ x, x = t -> B x).
 Proof. intros; subst. apply X. Defined.
 
-Lemma solution_right : ∀ A (B : A -> Type) (t : A), B t -> (∀ x, t = x -> B x).
+Lemma solution_right : ∀ {A} {B : A -> Type} (t : A), B t -> (∀ x, t = x -> B x).
 Proof. intros; subst; apply X. Defined.
 
-Lemma solution_left_let : ∀ A (B : A -> Type) (b : A) (t : A), 
+Lemma solution_left_let : ∀ {A} {B : A -> Type} (b : A) (t : A), 
   (b = t -> B t) -> (let x := b in x = t -> B x).
 Proof. intros; subst. subst b. apply X. reflexivity. Defined.
 
-Lemma solution_right_let : ∀ A (B : A -> Type) (b t : A), 
+Lemma solution_right_let : ∀ {A} {B : A -> Type} (b t : A), 
   (t = b -> B t) -> (let x := b in t = x -> B x).
 Proof. intros; subst; apply X. reflexivity. Defined.
 
-Lemma deletion : ∀ A B (t : A), B -> (t = t -> B).
+Lemma deletion : ∀ {A B} (t : A), B -> (t = t -> B).
 Proof. intros; assumption. Defined.
 
-Lemma simplification_heq : ∀ A B (x y : A), (x = y -> B) -> (JMeq x y -> B).
+Lemma simplification_heq : ∀ {A B} (x y : A), (x = y -> B) -> (JMeq x y -> B).
 Proof. intros; apply X; apply (JMeq_eq H). Defined.
 
-Lemma simplification_existT2 : ∀ A (P : A -> Type) B (p : A) (x y : P p),
+Lemma simplification_existT2 : ∀ {A} {P : A -> Type} {B} (p : A) (x y : P p),
   (x = y -> B) -> (existT P p x = existT P p y -> B).
 Proof. intros. apply X. apply inj_pair2. exact H. Defined.
 
 (** If we have decidable equality on [A] we use this version which is 
    axiom-free! *)
 
-Lemma simplification_existT2_dec : ∀ {A} `{EqDec A} (P : A -> Type) B (p : A) (x y : P p),
+Lemma simplification_existT2_dec : ∀ {A} `{EqDec A} {P : A -> Type} {B} (p : A) (x y : P p),
   (x = y -> B) -> (existT P p x = existT P p y -> B).
 Proof. intros. apply X. apply inj_right_pair in H0. assumption. Defined.
 
-Lemma simplification_existT1 : ∀ A (P : A -> Type) B (p q : A) (x : P p) (y : P q),
+Lemma simplification_existT1 : ∀ {A} {P : A -> Type} {B} (p q : A) (x : P p) (y : P q),
   (p = q -> existT P p x = existT P q y -> B) -> (existT P p x = existT P q y -> B).
 Proof. intros. injection H. intros ; auto. Defined.
   
-Lemma simplification_K : ∀ A (x : A) (B : x = x -> Type), B eq_refl -> (∀ p : x = x, B p).
+Lemma simplification_K : ∀ {A} (x : A) {B : x = x -> Type}, B eq_refl -> (∀ p : x = x, B p).
 Proof. intros. rewrite (UIP_refl A). assumption. Defined.
 
-Lemma simplification_K_dec : ∀ {A} `{EqDec A} (x : A) (B : x = x -> Type), 
+Lemma simplification_K_dec : ∀ {A} `{EqDec A} (x : A) {B : x = x -> Type}, 
   B eq_refl -> (∀ p : x = x, B p).
 Proof. intros. apply K_dec. assumption. Defined.
 
@@ -428,27 +428,27 @@ Ltac simplify_equations_in e :=
 
 Ltac simplify_one_dep_elim_term c :=
   match c with
-    | @JMeq _ _ _ _ -> _ => refine (simplification_heq _ _ _ _ _)
-    | ?t = ?t -> _ => intros _ || apply simplification_K_dec || refine (simplification_K _ t _ _)
+    | @JMeq _ _ _ _ -> _ => refine (@simplification_heq _ _ _ _ _)
+    | ?t = ?t -> _ => intros _ || apply simplification_K_dec || refine (@simplification_K _ t _ _)
     | (@existT ?A ?P ?n ?x) = (@existT ?A ?P ?n ?y) -> ?B =>
-      apply (simplification_existT2_dec (A:=A) P B n x y) ||
-        refine (simplification_existT2 _ _ _ _ _ _ _)
+      apply (simplification_existT2_dec (A:=A) (P:=P) (B:=B) n x y) ||
+        refine (@simplification_existT2 _ _ _ _ _ _ _)
     | eq (existT _ _ _) (existT _ _ _) -> _ =>
-      refine (simplification_existT1 _ _ _ _ _ _ _ _)
+      refine (@simplification_existT1 _ _ _ _ _ _ _ _)
     | forall H : ?x = ?y, _ => (* variables case *)
       (let hyp := fresh H in intros hyp ;
         move hyp before x ; move x before hyp; revert_until x; revert x;
           (match goal with
              | |- let x := _ in _ = _ -> @?B x =>
-               refine (solution_left_let _ B _ _ _)
-             | _ => refine (solution_left _ _ _ _)
+               refine (@solution_left_let _ B _ _ _)
+             | _ => refine (@solution_left _ _ _ _)
            end)) ||
       (let hyp := fresh "Heq" in intros hyp ;
         move hyp before y ; move y before hyp; revert_until y; revert y;
           (match goal with
              | |- let x := _ in _ = _ -> @?B x =>
-               refine (solution_right_let _ B _ _ _)
-             | _ => refine (solution_right _ _ _ _)
+               refine (@solution_right_let _ B _ _ _)
+             | _ => refine (@solution_right _ _ _ _)
            end))
     | @eq ?A ?t ?u -> ?P => let hyp := fresh in intros hyp ; noconf_ref hyp
     | ?f ?x = ?g ?y -> _ => let H := fresh in progress (intros H ; injection H ; clear H)

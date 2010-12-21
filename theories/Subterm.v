@@ -99,9 +99,9 @@ Ltac rec_wf_fix x recname fixterm :=
 
 (** Generalize an object [x], packing it in a sigma type if necessary. *)
 
-Ltac generalize_pack x :=
+Ltac sigma_pack x :=
   let xpack := fresh x "pack" in
-    (progress (generalize_eqs_vars x ; set(xpack := signature_pack x) ;
+    (progress (set(xpack := signature_pack x) ;
       cbv in xpack; move xpack before x; 
       pattern sigma xpack; clearbody xpack; clear; rename xpack into x))
     || revert_until x.
@@ -111,7 +111,7 @@ Ltac generalize_pack x :=
    relation on this type. *)
 
 Ltac rec_wf x recname := 
-  revert_until x; generalize_pack x; pattern x;
+  revert_until x; generalize_by_eqs_vars x ; sigma_pack x; pattern x;
   let ty := type of x in
   let ty := eval simpl in ty in
   let wfprf := constr:(wellfounded (A:=ty)) in
@@ -122,7 +122,7 @@ Ltac rec_wf_eqns x recname := rec_wf x recname ;
   add_pattern (hide_pattern recname).
 
 Ltac rec_wf_rel x recname rel := 
-  revert_until x; generalize_pack x; pattern x;
+  revert_until x; generalize_by_eqs_vars x ; sigma_pack x; pattern x;
   let ty := type of x in
   let ty := eval simpl in ty in
   let wfprf := constr:(wellfounded (A:=ty) (R:=rel)) in
