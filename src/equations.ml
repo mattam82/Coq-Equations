@@ -892,20 +892,14 @@ let split_var (env,evars) var delta =
     | Some (newty, unify) ->
 	(* Some constructor's type is not refined enough to match ty *)
 	if array_exists (fun x -> x = UnifStuck) unify then
-	  user_err_loc (dummy_loc, "split_var", 
-		       str"Unable to split variable " ++ pr_name id ++ str" of (reduced) type " ++
-			 print_constr_env (push_rel_context before env) newty 
-		       ++ str" to match a user pattern")
+	  None
+(* 	  user_err_loc (dummy_loc, "split_var",  *)
+(* 		       str"Unable to split variable " ++ pr_name id ++ str" of (reduced) type " ++ *)
+(* 			 print_constr_env (push_rel_context before env) newty  *)
+(* 		       ++ str" to match a user pattern") *)
 	else 
 	  let newdelta = after @ ((id, b, newty) :: before) in
 	    Some (var, newdelta, Array.map branch unify)
-
-let split env vars delta =
-  let split = fold_left (fun acc var ->
-    match acc with 
-    | None -> split_var env var delta 
-    | _ -> acc) None vars
-  in split
 
 let find_empty env delta =
   let r = List.filter (fun v -> 
@@ -996,6 +990,16 @@ let split_at_eos ctx =
   fst (list_split_when (fun (id, b, t) ->
     eq_constr t (Lazy.force coq_end_of_section)) ctx)
 
+let pr_problem (id, _, _) env (delta, patcs, _) =
+  let env' = push_rel_context delta env in
+  let ctx = pr_context env delta in
+  pr_id id ++ spc () ++ 
+    prlist_with_sep spc (pr_pat env') (List.rev patcs) ++
+    (if delta = [] then ctx else fnl () ++ str "In context: " ++ fnl () ++ ctx)
+
+let rel_id ctx n = 
+  out_name (pi1 (List.nth ctx (pred n)))
+      
 let rec covering_aux env evars data prev (clauses : clause list) path (ctx,pats,ctx' as prob) lets ty =
   match clauses with
   | (lhs, rhs as clause) :: clauses' -> 
@@ -1004,21 +1008,25 @@ let rec covering_aux env evars data prev (clauses : clause list) path (ctx,pats,
 	  let prevmatch = List.filter (fun (lhs',rhs') -> matches lhs' prob <> UnifFailure) prev in
 	    if prevmatch = [] then
 	      let env' = push_rel_context_eos ctx env in
+	      let get_var loc i s =
+		match assoc i s with
+		| PRel i -> i
+		| _ -> user_err_loc (loc, "equations", str"Unbound variable " ++ pr_id i)
+	      in
 		match rhs with
 		| Program c -> 
 		    let c', _ = interp_constr_in_rhs env ctx evars data (Some ty) s lets c in
 		      Some (Compute (prob, ty, RProgram c'))
 
 		| Empty (loc,i) ->
-		    (match assoc i s with
-		    | PRel i -> Some (Compute (prob, ty, REmpty i))
-		    | _ -> user_err_loc (loc, "equations", str"Unbound variable " ++ pr_id i))
+		    Some (Compute (prob, ty, REmpty (get_var loc i s)))
 
-		| Rec (v, rel, spl) ->
+		| Rec ((loc, i), rel, spl) ->
+		    let var = rel_id ctx (get_var loc i s) in
 		    let tac = 
-		      match rel with 
-		      | None -> rec_tac (snd v) (pi1 data)
-		      | Some r -> rec_wf_tac (snd v) (pi1 data) r
+		      match rel with
+		      | None -> rec_tac var (pi1 data)
+		      | Some r -> rec_wf_tac var (pi1 data) r
 		    in
 		    let rhs = By (Inl tac, spl) in
 		      (match covering_aux env evars data [] [(lhs,rhs)] path prob lets ty with
@@ -1205,7 +1213,7 @@ let rec covering_aux env evars data prev (clauses : clause list) path (ctx,pats,
       | None ->
 	  errorlabstrm "deppat"
 	    (str "Non-exhaustive pattern-matching, no clause found for:" ++ fnl () ++
-		pr_context_map env prob)
+	       pr_problem data env prob)
 
 let covering env evars data (clauses : clause list) prob ty =
   match covering_aux env evars data [] clauses [] prob [] ty with
@@ -1213,7 +1221,7 @@ let covering env evars data (clauses : clause list) prob ty =
   | None ->
       errorlabstrm "deppat"
 	(str "Unable to build a covering for:" ++ fnl () ++
-	    pr_context_map env prob)
+	   pr_problem data env prob)
     
 open Evd
 open Evarutil
@@ -1358,7 +1366,13 @@ let rec ids_of_pats pats =
     
 type rec_type = 
   | Structural
-  | Logical of (constant * constr * constant) (* comp, comp applied to rels, comp projection *)
+  | Logical of rec_info
+
+(* comp, comp applied to rels, comp projection *)
+and rec_info = { comp : constant;
+		 comp_app : constr;
+		 comp_proj : constant;
+		 comp_recarg : int }
 
 let lift_constrs n cs = map (lift n) cs
 
@@ -1391,8 +1405,8 @@ let abstract_rec_calls ?(do_subst=true) is_rec len protos c =
 	Some (i, arity, args')
     | None -> 
 	match is_rec with
-	| Some (Logical (c, capp, proj)) when eq_constr (mkConst proj) f -> 
-	    Some (lenprotos - 1, capp, array_remove_last args)
+	| Some (Logical r) when eq_constr (mkConst r.comp_proj) f -> 
+	    Some (lenprotos - 1, r.comp_app, array_remove_last args)
 	| _ -> None
   in
   let rec aux n env c =
@@ -1929,6 +1943,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 		| (false, _, _) :: stmts, decl :: decls ->
 		    aux stmts decls n (decl :: meths')
 		| [], [] -> n, meths'
+		| [], decls -> n, List.rev decls @ meths'
 		| _, _ -> assert false
 	      in aux all_stmts (rev methods) 0 []
 	    in
@@ -1999,13 +2014,14 @@ let rev_assoc k =
 type equation_option = 
   | OInd | ORec | OComp | OEquations
 
-let is_comp_obl comp t =
+let is_comp_obl comp hole_kind =
   match comp with
   | None -> false
-  | Some (comp, _, _) ->
-      let _, rest = decompose_prod_assum t in
-      let f, _ = decompose_app rest in
-	eq_constr f (mkConst comp)
+  | Some r -> 
+      match hole_kind with 
+      | ImplicitArg (gr, (n, _), _) ->
+	  gr = ConstRef r.comp_proj && n = r.comp_recarg 
+      | _ -> false
 
 let hintdb_set_transparency cst b db =
   Auto.add_hints false [db] 
@@ -2023,7 +2039,7 @@ let define_tree is_recursive impls status isevar env (i, sign, arity) comp ann s
       let tac = 
 	if Intset.mem (rev_assoc id emap) oblevs 
 	then Some (equations_tac ()) 
-	else if is_comp_obl comp ty then
+	else if is_comp_obl comp (snd loc) then
 	  Some (tclTRY (solve_rec_tac ()))
 	else Some (snd (Subtac_obligations.get_default_tactic ()))
       in (id, ty, loc, s, d, tac)) obls
@@ -2173,8 +2189,7 @@ let update_split is_rec cmap f prob id split =
   let split' = map_evars_in_split cmap split in
     match is_rec with
     | Some Structural -> subst_rec_split f prob [(id, f)] split'
-    | Some (Logical (comp, compapp, proj)) ->
-	subst_comp_proj_split f (mkConst proj) split'
+    | Some (Logical r) -> subst_comp_proj_split f (mkConst r.comp_proj) split'
     | _ -> split'
 
 let rec translate_cases_pattern env avoid = function
@@ -2246,7 +2261,7 @@ let interp_eqn i is_rec isevar env impls sign arity recu eqn =
     let pats = map interp_pat curpats' in
       match is_rec with
       | Some Structural -> (PUVar i :: pats, interp_rhs curpats' None rhs)
-      | Some (Logical (_, _, compproj)) -> (pats, interp_rhs curpats' (Some (ConstRef compproj)) rhs)
+      | Some (Logical r) -> (pats, interp_rhs curpats' (Some (ConstRef r.comp_proj)) rhs)
       | None -> (pats, interp_rhs curpats' None rhs)
   and interp_rhs curpats compproj = function
     | Refine (c, eqs) -> Refine (interp_constr_expr compproj !avoid c, map (aux curpats) eqs)
@@ -2257,9 +2272,10 @@ let interp_eqn i is_rec isevar env impls sign arity recu eqn =
   and interp_constr_expr compproj ids c = 
     match c, compproj with
     (* |   | CAppExpl of loc * (proj_flag * reference) * constr_expr list *)
-    | CApp (loc, (None, CRef (Ident (loc',id'))), args), Some compproj when i = id' ->
-	let qidproj = Nametab.shortest_qualid_of_global Idset.empty compproj in
-	  CApp (loc, (None, CRef (Qualid (loc', qidproj))), args)
+    | CApp (loc, (None, CRef (Ident (loc',id'))), args), Some cproj when i = id' ->
+	let qidproj = Nametab.shortest_qualid_of_global Idset.empty cproj in
+	  CApp (loc, (None, CRef (Qualid (loc', qidproj))),
+		List.map (fun (c, expl) -> interp_constr_expr compproj ids c, expl) args)
     | _ -> map_constr_expr_with_binders (fun id l -> id :: l) 
 	(interp_constr_expr compproj) ids c
   in aux [] eqn
@@ -2309,8 +2325,10 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	  Impargs.declare_manual_implicits true (ConstRef compproj) 
 	    [(impls @ [ExplByPos (succ (List.length sign), None), (true, false, true)])];
 	  hintdb_set_transparency comp false "Below";
+	  hintdb_set_transparency comp false "program";
 	  hintdb_set_transparency comp false "subterm_relation";
-	  compapp, Some (comp, compapp, compproj)
+	  compapp, Some { comp = comp; comp_app = compapp; 
+			  comp_proj = compproj; comp_recarg = succ (length sign) }
       else arity, None
   in
   let env = Global.env () in (* To find the comp constant *)
@@ -2383,7 +2401,9 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	    let split = update_split is_recursive cmap f prob i split in
 	    build_equations with_ind env i info data sign is_recursive arity 
 	      f_cst (constr_of_global gr) prob split
-	| Some (Logical (comp, capp, compproj)) ->
+	| Some (Logical r) ->
+	    (* WRONG! Massage the right-hand sides instead to move from
+	       [f_comp_proj x y z prf] to [f x y z] *)
 	    let split = update_split is_recursive cmap f prob i split in
 	    (* We first define the unfolding and show the fixpoint equation. *)
 	    isevar := Evd.empty;
@@ -2420,7 +2440,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 		(mkEq arity (mkApp (f, extended_rel_vect 0 sign))
 		    (mkApp (mkConst funf_cst, extended_rel_vect 0 sign))) sign 
 	      in
-	      let tac = prove_unfolding_lemma info (mkConst compproj) f_cst funf_cst unfold_split in
+	      let tac = prove_unfolding_lemma info (mkConst r.comp_proj) f_cst funf_cst unfold_split in
 	      let unfold_eq_id = add_suffix unfoldi "_eq" in
 		ignore(Subtac_obligations.add_definition ~hook:hook_eqs ~reduce:(fun x -> x)
 			  ~implicits:impls unfold_eq_id stmt ~tactic:tac [||])

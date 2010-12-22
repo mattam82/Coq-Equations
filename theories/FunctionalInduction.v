@@ -49,9 +49,8 @@ Ltac funind_call f H :=
    not weakened (no dependent elimination yet).
    *)
 
-Class FunctionalElimination {A : Type} (f : A) :=
-  { fun_elim_ty : Prop; fun_elim : fun_elim_ty }.
-
+Class FunctionalElimination {A : Type} (f : A) (fun_elim_ty : Prop) := 
+  fun_elim : fun_elim_ty.
 
 Ltac funelim_tac c tac :=
   match c with

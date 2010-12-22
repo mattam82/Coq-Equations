@@ -248,6 +248,12 @@ END
 
 let pattern_sigma c hyp gl =
   let terms = constrs_of_coq_sigma (pf_env gl) (project gl) c (mkVar hyp) in
+  let terms = 
+    match terms with
+    | (x, t, p, rest) :: term :: _ -> 
+	constrs_of_coq_sigma (pf_env gl) (project gl) t p @ terms
+    | _ -> terms
+  in
   let pat = Pattern.pattern_of_constr (project gl) in
   let terms = 
     match terms with
