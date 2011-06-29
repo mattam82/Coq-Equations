@@ -72,7 +72,7 @@ let derive_subterm ind =
       let constr = mkApp (mkConstruct (ind, succ i), extended_rel_vect 0 args) in
       let constrargs = getargs concl in
       let branches = list_map_i
-	(fun j (ctx, i, r, rargs) ->
+	(fun j (ctx, i', r, rargs) ->
 	  let ctxlen = List.length ctx in
 	  let subargs = 
 	    Array.of_list ((extended_rel_list (lenargs' + ctxlen) 
@@ -89,6 +89,42 @@ let derive_subterm ind =
     in branches
   in
   let branches = Array.fold_right (fun x acc -> x @ acc) inds [] in
+  let trans_branch = 
+    let liftargbinders = lift_rel_context lenargs argbinders in
+    let liftargbinders' = lift_rel_context lenargs liftargbinders in
+    let indapp n = (mkApp (lift (3 * lenargs + n) indapp, extended_rel_vect (n + (2 - n) * lenargs) argbinders)) in
+    let terms = [(Name (id_of_string "z"), None, indapp 2);
+		 (Name (id_of_string "y"), None, indapp 1);
+		 (Name (id_of_string "x"), None, indapp 0)]
+    in
+    let binders = terms @ liftargbinders' @ liftargbinders @ argbinders in
+    let lenbinders = 3 * succ lenargs in
+    let xy =
+      (mkApp (mkRel (succ lenbinders + params),
+	      Array.of_list
+		(extended_rel_list lenbinders parambinders @
+		   extended_rel_list (2 * lenargs + 3) argbinders @
+		   extended_rel_list (lenargs + 3) argbinders @
+		   [mkRel 3; mkRel 2])))
+    and yz = 
+      (mkApp (mkRel (succ lenbinders + params), 
+	      Array.of_list
+		(extended_rel_list lenbinders parambinders @
+		   extended_rel_list (lenargs + 3) argbinders @
+		   extended_rel_list 3 argbinders @
+		   [mkRel 2; mkRel 1])))
+    and xz =
+      (mkApp (mkRel (succ lenbinders + params),
+	      Array.of_list
+		(extended_rel_list lenbinders parambinders @
+		   extended_rel_list (2 * lenargs + 3) argbinders @
+		   extended_rel_list 3 argbinders @
+		   [mkRel 3; mkRel 1])))
+    in
+      (0, 0, 
+       it_mkProd_or_LetIn (mkProd (Anonymous, xy, mkProd (Anonymous, lift 1 yz, lift 2 xz))) binders)
+  in
+  let branches = trans_branch :: branches in
   let declare_one_ind i ind branches =
     let indid = Nametab.basename_of_global (IndRef ind) in
     let subtermid = add_suffix indid "_direct_subterm" in
@@ -167,8 +203,8 @@ let derive_subterm ind =
 	      typesig, subrel
 	in
 	let relation =
-	  let def = it_mkLambda_or_LetIn 
-	    (mkApp (Lazy.force coq_clos_trans, [| ty; rel |]))
+	  let def = it_mkLambda_or_LetIn rel
+(* 	    (mkApp (Lazy.force coq_clos_trans, [| ty; rel |])) *)
 	    parambinders 
 	  in
 	  let ty = Some (it_mkProd_or_LetIn

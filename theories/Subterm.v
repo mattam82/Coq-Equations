@@ -69,6 +69,9 @@ Proof. apply wf_clos_trans. apply WF. Defined.
 Hint Extern 4 (WellFounded (clos_trans _ _)) => 
   apply @WellFounded_trans_clos : typeclass_instances.
 
+Instance wf_MR {A R} `(WellFounded A R) {B} (f : B -> A) : WellFounded (MR R f).
+Proof. red. apply measure_wf. apply H. Defined.
+
 (** We also add hints for transitive closure, not using [t_trans] but forcing to 
    build the proof by successive applications of the inner relation. *)
 
@@ -83,10 +86,21 @@ Hint Resolve clos_trans_stepr : subterm_relation.
 
 Ltac simp_exists := destruct_exists ; simpl in *.
 
-Ltac solve_subterm := intros ; apply wf_clos_trans ;
-  red ; intros; simp_exists;
-  on_last_hyp ltac:(fun i => induction i); constructor ; 
-  simpl; intros; simp_exists; on_last_hyp ltac:(fun H => now depelim H).
+Ltac eapply_hyp :=
+  match goal with 
+    [ H : _ |- _ ] => eapply H
+  end.
+Hint Extern 4 (_ = _) => reflexivity : solve_subterm.
+Hint Extern 10 => eapply_hyp : solve_subterm.
+
+Ltac solve_subterm := red; intros; on_last_hyp ltac:(fun H => induction H); constructor;
+  intros; on_last_hyp ltac:(fun HR => generalize_eqs HR; induction HR); simplify_dep_elim;
+    try typeclasses eauto with solve_subterm.
+
+(* Ltac solve_subterm := intros ; apply wf_clos_trans ; *)
+(*   red ; intros; simp_exists; *)
+(*   on_last_hyp ltac:(fun i => induction i); constructor ;  *)
+(*   simpl; intros; simp_exists; on_last_hyp ltac:(fun H => now depelim H). *)
 
 (** A tactic to launch a well-founded recursion. *)
 

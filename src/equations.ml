@@ -46,6 +46,28 @@ open Tacmach
 open Equations_common
 open Depelim
 
+(* Debugging infrastructure. *)
+
+let debug = true
+
+let check_term env c t =
+  Typing.check env Evd.empty c t
+
+let check_type env t =
+  ignore(Typing.sort_of env Evd.empty t)
+    
+let typecheck_rel_context ctx =
+  let _ =
+    List.fold_right
+      (fun (na, b, t as rel) env ->
+	 check_type env t;
+	 Option.iter (fun c -> check_term env c t) b;
+	 push_rel rel env)
+      ctx (Global.env ())
+  in ()
+
+(** Bindings to Coq *)
+
 let below_tactics_path =
   make_dirpath (List.map id_of_string ["Below";"Equations"])
 
@@ -159,6 +181,8 @@ let it_mkProd_or_subst_or_clear ty ctx =
   (List.fold_left (fun c d -> mkProd_or_subst_or_clear d c) ty ctx)
 
 
+(** Abstract syntax for dependent pattern-matching. *)
+
 type pat =
   | PRel of int
   | PCstr of constructor * pat list
@@ -173,6 +197,8 @@ type user_pat =
 type user_pats = user_pat list
 
 type context_map = rel_context * pat list * rel_context
+
+open Termops
 
 let mkInac env c =
   mkApp (Lazy.force coq_inacc, [| Typing.type_of env Evd.empty c ; c |])
@@ -232,6 +258,73 @@ and pat_of_constr c =
       PCstr (cstr, inaccs_of_constrs (Array.to_list params) @ pats_of_constrs (Array.to_list args))
   | Construct f -> PCstr (f, [])
   | _ -> PInac c
+
+
+(** Pretty-printing *)
+
+let pr_constr_pat env c =
+  let pr = print_constr_env env c in
+    match kind_of_term c with
+    | App _ -> str "(" ++ pr ++ str ")"
+    | _ -> pr
+
+let pr_pat env c =
+  let patc = constr_of_pat env c in
+    pr_constr_pat env patc
+
+let pr_context env c =
+  let pr_decl env (id,b,t) = 
+    let bstr = match b with Some b -> str ":=" ++ spc () ++ print_constr_env env b | None -> mt() in
+    let idstr = match id with Name id -> pr_id id | Anonymous -> str"_" in
+      idstr ++ bstr ++ str " : " ++ print_constr_env env t
+  in
+  let (_, pp) =
+    match List.rev c with
+    | decl :: decls -> 
+	List.fold_left (fun (env, pp) decl ->
+	  (push_rel decl env, pp ++ str ";" ++ spc () ++ pr_decl env decl))
+	  (push_rel decl env, pr_decl env decl) decls
+    | [] -> env, mt ()
+  in pp
+
+let ppcontext c = pp (pr_context (Global.env ()) c)
+
+let pr_context_map env (delta, patcs, gamma) =
+  let env' = push_rel_context delta env in
+  let ctx = pr_context env delta in
+  let ctx' = pr_context env gamma in
+    (if delta = [] then ctx else ctx ++ spc ()) ++ str "|-" ++ spc ()
+    ++ prlist_with_sep spc (pr_pat env') (List.rev patcs) ++
+      str " : "  ++ ctx'
+
+let ppcontext_map context_map = pp (pr_context_map (Global.env ()) context_map)
+
+(** Debugging functions *)
+
+let typecheck_map (ctx, subst, ctx') =
+  typecheck_rel_context ctx;
+  typecheck_rel_context ctx';
+  let env = push_rel_context ctx (Global.env ()) in
+  let _ = 
+    List.fold_right2 
+      (fun (na, b, t) p subst ->
+	 let c = constr_of_pat env p in
+	   check_term env c (substl subst t);
+	   (c :: subst))
+      ctx' subst []
+  in ()
+
+let check_ctx_map map =
+  if debug then
+    try typecheck_map map; map
+    with Type_errors.TypeError (env, e) ->
+      errorlabstrm "equations"
+	(str"Type error while building context map: " ++ pr_context_map (Global.env ()) map ++
+	   spc () ++ Himsg.explain_type_error env e)
+  else map
+    
+let mk_ctx_map ctx subst ctx' =
+  let map = (ctx, subst, ctx') in check_ctx_map map
 
 (** Specialize by a substitution. *)
 
@@ -371,9 +464,19 @@ type splitting =
   | Valid of context_map * types * identifier list * tactic *
       Proof_type.validation * (goal * constr list * context_map * splitting) list
   | RecValid of identifier * splitting
-  | Refined of context_map * (identifier * constr * types) * types * int *
-      path * existential_key * (constr * constr list) * context_map * context_map * types *
-      splitting
+  | Refined of context_map * refined_node * splitting
+
+and refined_node = 
+  { refined_obj : identifier * constr * types;
+    refined_rettyp : types; 
+    refined_arg : int;
+    refined_path : path;
+    refined_ex : existential_key;
+    refined_app : constr * constr list;
+    refined_revctx : context_map;
+    refined_newprob : context_map;
+    refined_newprob_to_lhs : context_map;
+    refined_newty : types }
 
 and splitting_rhs = 
   | RProgram of constr
@@ -441,8 +544,17 @@ let non_dependent ctx c =
   list_fold_left_i (fun i acc (_, _, t) -> 
     if not (dependent (lift (-i) c) t) then Intset.add i acc else acc)
     1 Intset.empty ctx
-        
-let strengthen ?(full=true) (ctx : rel_context) x (t : constr) =
+
+let subst_term_in_context t ctx =
+  let (term, rel, newctx) = 
+    List.fold_right 
+      (fun (n, b, t) (term, rel, newctx) -> 
+	 let decl' = (n, b, replace_term term (mkRel rel) t) in
+	   (lift 1 term, succ rel, decl' :: newctx))
+      ctx (t, 1, [])
+  in newctx
+
+let strengthen ?(full=true) ?(abstract=false) (ctx : rel_context) x (t : constr) =
   let rels = Intset.union (if full then rels_above ctx x else Intset.singleton x)
     (* (Intset.union *) (Intset.union (dependencies_of_term ctx t) (fix_rels ctx))
     (* (non_dependent ctx t)) *)
@@ -459,35 +571,47 @@ let strengthen ?(full=true) (ctx : rel_context) x (t : constr) =
     | [] -> rev acc, rev rest, s
   in
   let (min, rest, subst) = aux 1 1 [] 1 [] [] ctx in
-  let ctx' = rest @ min in
   let lenrest = length rest in
   let subst = rev subst in
   let reorder = list_map_i (fun i -> function Inl x -> (x + lenrest, i) | Inr x -> (x, i)) 1 subst in
   let subst = map (function Inl x -> PRel (x + lenrest) | Inr x -> PRel x) subst in
+  let ctx' = 
+    if abstract then 
+      subst_term_in_context (lift (-lenrest) (specialize_constr subst t)) rest @ min
+    else rest @ min 
+  in
     (ctx', subst, ctx), reorder
 
 let id_subst g = (g, rev (patvars_of_tele g), g)
 	
-let eq_context_nolet env (g : rel_context) (d : rel_context) =
+let eq_context_nolet env sigma (g : rel_context) (d : rel_context) =
   try 
     snd 
       (List.fold_right2 (fun (na,_,t as decl) (na',_,t') (env, acc) ->
 	if acc then 
 	  (push_rel decl env,
-	  (na = na' && (t = t' || is_conv env Evd.empty t t')))
+	  (na = na' && (t = t' || is_conv env sigma t t')))
 	else env, acc) g d (env, true))
-  with Invalid_argument "List.fold_left2" -> false
+  with Invalid_argument "List.fold_right2" -> false
 
-let compose_subst ((g',p',d') : context_map) ((g,p,d) : context_map) =
-  assert (eq_context_nolet (Global.env ()) g d');
-  g', specialize_pats p' p, d
+let check_eq_context_nolet env sigma (_, _, g as snd) (d, _, _ as fst) =
+  if eq_context_nolet env sigma g d then ()
+  else errorlabstrm "check_eq_context_nolet"
+    (str "Contexts do not agree for composition: "
+       ++ pr_context_map env snd ++ str " and " ++ pr_context_map env fst)
+
+let compose_subst ?(sigma=Evd.empty) ((g',p',d') as snd) ((g,p,d) as fst) =
+  if debug then check_eq_context_nolet (Global.env ()) sigma snd fst;
+  (* mk_ctx_map  *)
+  (g', (specialize_pats p' p), d)
 
 let push_mapping_context (n, b, t as decl) (g,p,d) =
   ((n, Option.map (specialize_constr p) b, specialize_constr p t) :: g,
-  (PRel 1 :: map (lift_pat 1) p), decl :: d)
+   (PRel 1 :: map (lift_pat 1) p), decl :: d)
     
 let lift_subst (ctx : context_map) (g : rel_context) = 
-  List.fold_right (fun decl acc -> push_mapping_context decl acc) g ctx
+  let map = List.fold_right (fun decl acc -> push_mapping_context decl acc) g ctx in
+    check_ctx_map map
     
 let single_subst x p g =
   let t = pat_constr p in
@@ -504,7 +628,7 @@ let single_subst x p g =
       (* let pats = list_tabulate  *)
       (* 	(fun i -> let k = succ i in if k = x then p else PRel k) *)
       (* 	(List.length g) *)
-      in substctx, pats, g
+      in mk_ctx_map substctx pats g
     else
       let (ctx, s, g), _ = strengthen g x t in
       let x' = match nth s (pred x) with PRel i -> i | _ -> error "Occurs check singleton subst"
@@ -513,7 +637,7 @@ let single_subst x p g =
 	   in the context and the patterns. *)
       let substctx = subst_in_ctx x' t' ctx in
       let pats = list_map_i (fun i p -> subst_constr_pat x' (lift (-1) t') p) 1 s in
-	substctx, pats, g
+	mk_ctx_map substctx pats g
     
 exception Conflict
 exception Stuck
@@ -646,20 +770,22 @@ let matches_user ((phi,p',g') : context_map) (p : user_pats) =
 
 let lets_of_ctx env ctx evars s =
   let envctx = push_rel_context ctx env in
-  let ctxs, pats, varsubst, len = fold_left (fun (ctx', cs, varsubst, k) (id, pat) -> 
+  let ctxs, pats, varsubst, len, ids = fold_left (fun (ctx', cs, varsubst, k, ids) (id, pat) -> 
     let c = pat_constr pat in
       match pat with
-      | PRel i -> (ctx', cs, (i, id) :: varsubst, k)
+      | PRel i -> (ctx', cs, (i, id) :: varsubst, k, id :: ids)
       | _ -> 
 	  let ty = Typing.type_of envctx !evars c in
-	    ((Name id, Some (lift k c), lift k ty) :: ctx', (c :: cs), varsubst, succ k))
-    ([],[],[],0) s
+	    ((Name id, Some (lift k c), lift k ty) :: ctx', (c :: cs), varsubst, succ k, id :: ids))
+    ([],[],[],0,[]) s
   in
-  let ctx' = list_map_i (fun i (n, b, t as decl) ->
-    try (Name (List.assoc i varsubst), b, t)
-    with Not_found -> decl) 1 ctx
+  let _, _, ctx' = List.fold_right (fun (n, b, t) (ids, i, ctx') ->
+    try ids, pred i, ((Name (List.assoc i varsubst), b, t) :: ctx')
+    with Not_found -> 
+      let id' = Namegen.next_name_away n ids in
+	id' :: ids, pred i, ((Name id', b, t) :: ctx')) ctx (ids, List.length ctx, [])
   in pats, ctxs, ctx'
-    
+      
 let interp_constr_in_rhs env ctx evars (i,comp,impls) ty s lets c =
   let envctx = push_rel_context ctx env in
   let patslets, letslen = 
@@ -709,7 +835,8 @@ let unify_type evars before id ty after =
 	let ctx, ids = 
 	  fold_right (fun (n, b, t) (acc, ids) ->
 	    match n with
-	    | Name id -> ((n, b, t) :: acc), (id :: ids)
+	    | Name id -> let id' = Namegen.next_ident_away id ids in
+		((Name id', b, t) :: acc), (id' :: ids)
 	    | Anonymous ->
 		let x = Namegen.id_of_name_using_hdchar
 		  (push_rel_context acc envb) t Anonymous in
@@ -762,45 +889,6 @@ let blockers curpats ((_, patcs, _) : context_map) =
 	
   in patterns_blockers curpats (rev patcs)
     
-open Termops
-
-let pr_constr_pat env c =
-  let pr = print_constr_env env c in
-    match kind_of_term c with
-    | App _ -> str "(" ++ pr ++ str ")"
-    | _ -> pr
-
-let pr_pat env c =
-  let patc = constr_of_pat env c in
-    pr_constr_pat env patc
-
-let pr_context env c =
-  let pr_decl env (id,b,t) = 
-    let bstr = match b with Some b -> str ":=" ++ spc () ++ print_constr_env env b | None -> mt() in
-    let idstr = match id with Name id -> pr_id id | Anonymous -> str"_" in
-      idstr ++ bstr ++ str " : " ++ print_constr_env env t
-  in
-  let (_, pp) =
-    match List.rev c with
-    | decl :: decls -> 
-	List.fold_left (fun (env, pp) decl ->
-	  (push_rel decl env, pp ++ str ";" ++ spc () ++ pr_decl env decl))
-	  (push_rel decl env, pr_decl env decl) decls
-    | [] -> env, mt ()
-  in pp
-
-let ppcontext c = pp (pr_context (Global.env ()) c)
-
-let pr_context_map env (delta, patcs, gamma) =
-  let env' = push_rel_context delta env in
-  let ctx = pr_context env delta in
-  let ctx' = pr_context env gamma in
-    (if delta = [] then ctx else str "[" ++ ctx ++ str "]" ++ spc ())
-    ++ prlist_with_sep spc (pr_pat env') (List.rev patcs) ++
-      str ": ["  ++ ctx' ++ str "]"
-
-let ppcontext_map context_map = pp (pr_context_map (Global.env ()) context_map)
-
 open Printer
 open Ppconstr
 
@@ -839,6 +927,64 @@ and pr_clauses env =
   prlist_with_sep fnl (pr_clause env)
 
 let ppclause clause = pp(pr_clause (Global.env ()) clause)
+
+let pr_rel_name env i =
+  pr_name (pi1 (lookup_rel i env))
+
+let pr_splitting env split =
+  let rec aux = function
+    | Compute (lhs, ty, c) -> 
+	let env' = push_rel_context (pi1 lhs) env in
+	  hov 2 
+	    ((match c with
+	     | RProgram c -> str":=" ++ spc () ++
+		 print_constr_env env' c ++ str " : " ++
+		 print_constr_env env' ty
+	     | REmpty i -> str":=!" ++ spc () ++ pr_rel_name env' i)
+	     ++ spc () ++ str " in context " ++  pr_context_map env lhs)
+    | Split (lhs, var, ty, cs) ->
+	let env' = push_rel_context (pi1 lhs) env in
+	  hov 2
+	  (str "Split: " ++ spc () ++ 
+	    pr_rel_name env' var ++ str" : " ++
+	    print_constr_env env' ty ++ spc () ++ 
+	    str " in context " ++ pr_context_map env lhs ++ spc () ++ spc () ++
+	    Array.fold_left 
+	      (fun acc so -> acc ++ 
+		 match so with
+		 | None -> str "*impossible case*"
+		 | Some s -> aux s)
+	      (mt ()) cs) ++ spc ()
+    | RecValid (id, c) -> 
+	hov 2 (str "RecValid " ++ pr_id id ++ aux c)
+    | Valid (lhs, ty, ids, tac, validation, cs) ->
+	let _env' = push_rel_context (pi1 lhs) env in
+	  hov 2 (str "Valid " ++ str " in context " ++ pr_context_map env lhs ++ spc () ++
+		   List.fold_left 
+		   (fun acc (gl, cl, subst, s) -> acc ++ aux s) (mt ()) cs)
+    | Refined (lhs, info, s) -> 
+	let (id, c, cty), ty, arg, path, ev, (scf, scargs), revctx, newprob, newty =
+	  info.refined_obj, info.refined_rettyp,
+	  info.refined_arg, info.refined_path,
+	  info.refined_ex, info.refined_app,
+	  info.refined_revctx, info.refined_newprob, info.refined_newty
+	in
+	let env' = push_rel_context (pi1 lhs) env in
+	  hov 2 (str "Refined " ++ pr_id id ++ spc () ++ 
+	      print_constr_env env' (mapping_constr revctx c) ++ str " : " ++ print_constr_env env' cty ++ spc () ++
+	      print_constr_env env' ty ++ spc () ++
+	      str " in " ++ pr_context_map env lhs ++ spc () ++
+	      str "New problem: " ++ pr_context_map env newprob ++ str " for type " ++
+	      print_constr_env (push_rel_context (pi1 newprob) env) newty ++ spc () ++
+	      spc () ++ str" eliminating " ++ pr_rel_name (push_rel_context (pi1 newprob) env) arg ++ spc () ++
+	      str "Revctx is: " ++ pr_context_map env revctx ++ spc () ++
+	      str "New problem to problem substitution is: " ++ 
+	      pr_context_map env info.refined_newprob_to_lhs ++ spc () ++
+	      aux s)
+  in aux split
+
+let ppsplit s =
+  pp (pr_splitting (Global.env ()) s)
     
 let subst_matches_constr k s c = 
   let rec aux depth c =
@@ -882,7 +1028,7 @@ let split_var (env,evars) var delta =
 	(* ctx' |- spat : before ; id *)
 	let spat =
 	  let ctxcsubst, beforesubst = list_chop ctxlen s in
-	    (ctx', cpat :: beforesubst, decl :: before)
+	    check_ctx_map (ctx', cpat :: beforesubst, decl :: before)
 	in
 	  (* ctx' ; after |- safter : before ; id ; after = delta *)
 	  Some (lift_subst spat after)
@@ -899,7 +1045,7 @@ let split_var (env,evars) var delta =
 (* 		       ++ str" to match a user pattern") *)
 	else 
 	  let newdelta = after @ ((id, b, newty) :: before) in
-	    Some (var, newdelta, Array.map branch unify)
+	    Some (var, do_renamings newdelta, Array.map branch unify)
 
 let find_empty env delta =
   let r = List.filter (fun v -> 
@@ -917,6 +1063,8 @@ let rel_of_named_context ctx =
     let decl = (Name n, Option.map (subst_vars subst) b, subst_vars subst t) in 
       (decl :: ctx', n :: subst)) ctx ([],[])
     
+(* The list of variables appearing in a list of patterns, 
+   ordered increasingly. *)
 let variables_of_pats pats = 
   let rec aux acc pats = 
     List.fold_right (fun p acc ->
@@ -935,12 +1083,17 @@ let lift_rel_declaration k (n, b, t) =
   (n, Option.map (lift k) b, lift k t)
 
 let named_of_rel_context l =
-  List.fold_right
-    (fun (na, b, t) (subst, ctx) ->
-      let id = match na with Anonymous -> raise (Invalid_argument "named_of_rel_context") | Name id -> id in
-      let d = (id, Option.map (substl subst) b, substl subst t) in
-	(mkVar id :: subst, d :: ctx))
-    l ([], [])
+  let (subst, _, ctx) = 
+    List.fold_right
+      (fun (na, b, t) (subst, ids, ctx) ->
+	 let id = match na with
+	   | Anonymous -> raise (Invalid_argument "named_of_rel_context") 
+	   | Name id -> Namegen.next_ident_away id ids
+	 in
+	 let d = (id, Option.map (substl subst) b, substl subst t) in
+	   (mkVar id :: subst, id :: ids, d :: ctx))
+      l ([], [], [])
+  in subst, ctx
     
 let lookup_named_i id =
   let rec aux i = function
@@ -1097,44 +1250,74 @@ let rec covering_aux env evars data prev (clauses : clause list) path (ctx,pats,
 			in Some (Valid (prob, ty, ids, tac, valid, map solve_goal gls.it))
 
 		| Refine (c, cls) -> 
-		    let _, ctxs, _ = lets_of_ctx env ctx evars s in
+		    (* The refined term and its type *)
+		    let cconstr, cty = interp_constr_in_rhs env ctx evars data None s lets c in
+
 		    let vars = variables_of_pats pats in
 		    let newctx, pats', pats'' = instance_of_pats env evars ctx vars in
-		    let _s' = (ctx, vars, newctx) in
-		    let revctx = (newctx, pats', ctx) in
-		    let cconstr, cty = interp_constr_in_rhs env ctx evars data None s lets c in
+(* 		    let _s' = (ctx, vars, newctx) in *)
+		      (* revctx is a variable substitution from a reordered context to the
+			 current context. Needed for ?? *)
+		    let revctx = check_ctx_map (newctx, pats', ctx) in
 		    let idref = Namegen.next_ident_away (id_of_string "refine") (ids_of_rel_context newctx) in
 		    let decl = (Name idref, None, mapping_constr revctx cty) in
 		    let extnewctx = decl :: newctx in
-		      (* cmap : Δ -> ctx, cty *)
-		    let cmap, strinv = strengthen ~full:true extnewctx 1
-		      (lift 1 (mapping_constr revctx cconstr)) 
-		    in
- 		    let cconstr' = mapping_constr cmap cconstr in
-		    let cty' = mapping_constr cmap cty in
-		    let newprob = (extnewctx, PRel 1 :: lift_pats 1 pats'', extnewctx) in
-		    let newprob = compose_subst cmap newprob in
+		      (* cmap : Δ -> ctx, cty,
+			 strinv associates to indexes in the strenghtened context to
+			 variables in the original context.
+		      *)
 		    let refterm = lift 1 (mapping_constr revctx cconstr) in
+		    let cmap, strinv = strengthen ~full:false ~abstract:true extnewctx 1 refterm in
+		    let (idx_of_refined, _) = List.find (fun (i, j) -> j = 1) strinv in
+		    let newprob_to_lhs =
+		      let inst_refctx = set_in_ctx idx_of_refined (mapping_constr cmap refterm) (pi1 cmap) in
+		      let str_to_new =
+			inst_refctx, (specialize_pats (pi2 cmap) (lift_pats 1 pats')), newctx
+		      in
+(* 		      let extprob = check_ctx_map (extnewctx, PRel 1 :: lift_pats 1 pats'', extnewctx) in *)
+(* 		      let ext_to_new = check_ctx_map (extnewctx, lift_pats 1 pats'', newctx) in *)
+			(* (compose_subst cmap extprob) (compose_subst ext_to_new *)
+			compose_subst ~sigma:!evars str_to_new revctx
+		    in	
+		    let newprob = 
+		      let ctx = pi1 cmap in
+		      let pats = 
+			rev_map (fun c -> 
+				   let idx = destRel c in
+				     (* find out if idx in ctx should be hidden depending
+					on its use in newprob_to_lhs *)
+				     if List.exists (fun p -> p = PHide idx) (pi2 newprob_to_lhs) then
+				       PHide idx
+				     else PRel idx) (rels_of_tele ctx) in
+			(ctx, pats, ctx)
+		    in
 		    let newty = subst_term_occ all_occurrences refterm
 		      (Tacred.simpl (push_rel_context extnewctx env) !evars (lift 1 (mapping_constr revctx ty)))
 		    in
 		    let newty = mapping_constr cmap newty in
+		      (* The new problem forces a reordering of patterns under the refinement
+			 to make them match up to the context map. *)
+		    let sortinv = List.sort (fun (i, _) (i', _) -> i' - i) strinv in
+		    let vars' = List.rev_map snd sortinv in
 		    let rec cls' n cls =
 		      list_map_filter (fun (lhs, rhs) -> 
 			let oldpats, newpats = list_chop (List.length lhs - n) lhs in
+			let newref, prevrefs = match newpats with hd :: tl -> hd, tl | [] -> assert false in
 			  match matches_user prob oldpats with
 			  | UnifSuccess (s, alias) -> 
 			      (* A substitution from the problem variables to user patterns and 
-				 from user pattern variables to patterns *)
+				 from user pattern variables to patterns instantiating problem variables. *)
 			      let newlhs = 
 				list_map_filter 
-				  (fun (i, hide) ->
-				    if hide then None
-				    else
-				      try Some (List.assoc i s)
-				      with Not_found -> (* The problem is more refined than the user vars*)
-					Some (PUVar (id_of_string "unknown")))
-				  vars
+				  (fun i ->
+				     if i = 1 then Some newref
+				     else
+				       if List.exists (fun (i', b) -> i' = pred i && b) vars then None
+				       else
+					 try Some (List.assoc (pred i) s)
+					 with Not_found -> (* The problem is more refined than the user vars*)
+					   Some (PUVar (id_of_string "unknown")))
+				  vars'
 			      in
 			      let newrhs = match rhs with
 				| Refine (c, cls) -> Refine (c, cls' (succ n) cls)
@@ -1142,7 +1325,7 @@ let rec covering_aux env evars data prev (clauses : clause list) path (ctx,pats,
 				| By (v, s) -> By (v, cls' n s)
 				| _ -> rhs
 			      in
-				Some (rev (rev newpats @ newlhs), newrhs)
+				Some (rev (prevrefs @ newlhs), newrhs)
 			  | _ -> 
 			      errorlabstrm "covering"
 				(str "Non-matching clause in with subprogram:" ++ fnl () ++
@@ -1167,6 +1350,7 @@ let rec covering_aux env evars data prev (clauses : clause list) path (ctx,pats,
 		    let path' = evar :: path in
 		    let lets' =
 		      let letslen = length lets in
+		      let _, ctxs, _ = lets_of_ctx env ctx evars s in
 		      let newlets = (lift_rel_context (succ letslen) ctxs) 
 			@ (lift_rel_context 1 lets) 
 		      in specialize_rel_context (pi2 cmap) newlets
@@ -1174,10 +1358,18 @@ let rec covering_aux env evars data prev (clauses : clause list) path (ctx,pats,
 		      match covering_aux env evars data [] cls' path' newprob lets' newty with
 		      | None -> None
 		      | Some s -> 
-			  Some (Refined (prob, (idref, cconstr', cty'),
-					ty, refarg, path', evar,
-					(mkEvar (evar, [||]), strength_app),
-					revctx, newprob, newty, s))
+			  let info =
+			    { refined_obj = (idref, cconstr, cty);
+			      refined_rettyp = ty;
+			      refined_arg = refarg;
+			      refined_path = path';
+			      refined_ex = evar;
+			      refined_app = (mkEvar (evar, [||]), strength_app);
+			      refined_revctx = revctx;
+			      refined_newprob = newprob;
+			      refined_newprob_to_lhs = newprob_to_lhs;
+			      refined_newty = newty }
+			  in  Some (Refined (prob, info, s))
 	    else 
 	      anomalylabstrm "covering"
 		(str "Found overlapping clauses:" ++ fnl () ++ pr_clauses env prevmatch ++
@@ -1263,7 +1455,12 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 	   
     | RecValid (id, rest) -> aux rest
 
-    | Refined ((ctx, _, _), (id, c, _), ty, rarg, path, ev, (f, args), revctx, newprob, newty, rest) ->
+    | Refined ((ctx, _, _), info, rest) ->
+	let (id, _, _), ty, rarg, path, ev, (f, args), newprob, newty =
+	  info.refined_obj, info.refined_rettyp,
+	  info.refined_arg, info.refined_path,
+	  info.refined_ex, info.refined_app, info.refined_newprob, info.refined_newty
+	in
 	let sterm, sty = aux rest in
 	let term, ty = 
 	  let term = mkLetIn (Name (id_of_string "prog"), sterm, sty, lift 1 sty) in
@@ -1519,6 +1716,13 @@ let find_splitting_var pats var constrs =
   in
     Option.get (aux (rev pats) constrs)
 
+let rec intros_reducing gl =
+  let concl = pf_concl gl in
+    match kind_of_term concl with
+    | LetIn (_, _, _, _) -> tclTHEN hnf_in_concl intros_reducing gl
+    | Prod (_, _, _) -> tclTHEN intro intros_reducing gl
+    | _ -> tclIDTAC gl
+
 let rec aux_ind_fun info = function
   | Split ((ctx,pats,_), var, _, splits) ->
       tclTHEN_i (fun gl ->
@@ -1543,7 +1747,8 @@ let rec aux_ind_fun info = function
       
   | RecValid (id, cs) -> aux_ind_fun info cs
       
-  | Refined ((ctx, _, _), (id, c, ty), _, _, _, _, _, _, newprob, newty, s) -> 
+  | Refined ((ctx, _, _), refinfo, s) -> 
+      let id = pi1 refinfo.refined_obj in
       let elimtac gl =
 	match kind_of_term (pf_concl gl) with
 	| App (ind, args) ->
@@ -1560,7 +1765,7 @@ let rec aux_ind_fun info = function
       in tclTHENLIST [ intros; tclTHENLAST cstrtac (tclSOLVE [elimtac]); solve_rec_tac ()]
 	
   | Compute (_, _, _) ->
-      tclTHENLIST [intros; simp_eqns [info.base_id]]
+      tclTHENLIST [intros_reducing; simp_eqns [info.base_id]]
 	
   (* | Compute ((ctx,_,_), _, REmpty id) -> *)
   (*     let (na,_,_) = nth ctx (pred id) in *)
@@ -1609,9 +1814,11 @@ let map_split f split =
     | RecValid (id, c) -> RecValid (id, aux c)
     | Valid (lhs, y, z, w, u, cs) ->
 	Valid (lhs, y, z, w, u, List.map (fun (gl, cl, subst, s) -> (gl, cl, subst, aux s)) cs)
-    | Refined (lhs, (id, c, cty), ty, arg, path, ev, (scf, scargs), revctx, newprob, newty, s) -> 
-	Refined (lhs, (id, f c, f cty), ty, arg, path, ev,
-		(f scf, List.map f scargs), revctx, newprob, newty, aux s)
+    | Refined (lhs, info, s) ->
+	let (id, c, cty) = info.refined_obj in
+	let (scf, scargs) = info.refined_app in
+	  Refined (lhs, { info with refined_obj = (id, f c, f cty);
+			    refined_app = (f scf, List.map f scargs) }, aux s)
     | Compute (_, _, REmpty _) as c -> c
   in aux split
 
@@ -1622,7 +1829,7 @@ let subst_rec_split f prob s split =
     let subst = 
       fold_left (fun (ctx, _, _ as lhs) (id, b) ->
 	let n, _, _ = lookup_rel_id id ctx in
-	let substf = single_subst n (PInac b) ctx in
+	let substf = single_subst n (PInac b) ctx (* ctx[n := f] |- _ : ctx *) in
 	  compose_subst substf lhs) (id_subst ctx) s
     in
       subst, compose_subst subst (compose_subst lhs cutprob)
@@ -1639,24 +1846,40 @@ let subst_rec_split f prob s split =
     | RecValid (id, c) ->
 	RecValid (id, aux cutprob s c)
 	  
-    | Refined (lhs, (id, constr, cty), ty, arg, path, ev, (fev, args), revctx, newprob, newty, sp) -> 
+    | Refined (lhs, info, sp) -> 
+	let (id, c, cty), ty, arg, path, ev, (fev, args), revctx, newprob, newty =
+	  info.refined_obj, info.refined_rettyp,
+	  info.refined_arg, info.refined_path,
+	  info.refined_ex, info.refined_app,
+	  info.refined_revctx, info.refined_newprob, info.refined_newty
+	in
 	let subst, lhs' = subst_rec cutprob s lhs in
         let _, revctx' = subst_rec (id_subst (pi3 revctx)) s revctx in
-	let cutnewprob = 
-	  let (ctx, pats, ctx') = newprob in
-	    (ctx, list_drop_last pats, list_drop_last ctx')
+	let cutprob pb = 
+	  let (ctx, pats, ctx') = pb in
+	  let cutctx' = list_drop_last ctx' in
+	    (ctx', List.rev (patvars_of_tele cutctx'), cutctx')
 	in
+	let cutnewprob = cutprob newprob in
 	let subst', newprob' = subst_rec cutnewprob s newprob in
+	let _, newprob_to_prob' = subst_rec (cutprob info.refined_newprob_to_lhs) s info.refined_newprob_to_lhs in
 	let sc' = 
 	  let recprots, args = list_chop (List.length s) args in
 	    (mapping_constr subst (applist (fev, recprots)),
 	    map (mapping_constr subst) args)
 	in
-	  Refined (lhs', (id, mapping_constr subst constr, mapping_constr subst cty),
-		  mapping_constr subst ty, arg - List.length s, path, ev, sc', 
-		  revctx',
-		  newprob', mapping_constr subst' newty, 
-		  aux cutnewprob s sp)
+	let info =
+	  { refined_obj = (id, mapping_constr subst c, mapping_constr subst cty);
+	    refined_rettyp = mapping_constr subst ty;
+	    refined_arg =arg - List.length s;
+	    refined_path =path;
+	    refined_ex = ev;
+	    refined_app = sc';
+	    refined_revctx = revctx';
+	    refined_newprob = newprob';
+	    refined_newprob_to_lhs = newprob_to_prob';
+	    refined_newty = mapping_constr subst' newty }
+	in Refined (lhs', info, aux cutnewprob s sp)
 
     | Valid (lhs, x, y, w, u, cs) -> 
 	let subst, lhs' = subst_rec cutprob s lhs in
@@ -1735,13 +1958,15 @@ let build_equations with_ind env id info data sign is_rec arity cst
 
     | RecValid (id, cs) -> computations prob f cs
 	
-    | Refined (lhs, (id, c, t), ty, arg, path, ev, (f', args), revctx, newprob, newty, cs) ->
-	let (ctx', pats', _) = compose_subst lhs prob in
+    | Refined (lhs, info, cs) ->
+	let (id, c, t) = info.refined_obj in
+	let (ctx', pats', _ as s) = compose_subst lhs prob in
 	let patsconstrs = rev_map pat_constr pats' in
-	  [ctx', patsconstrs, ty, f, true, RProgram (applist (f', args)),
-	  Some (f', path, pi1 newprob, newty,
-	       map (mapping_constr revctx) patsconstrs, [mapping_constr revctx c],
-	       computations newprob f' cs)]
+	  [pi1 lhs, patsconstrs, info.refined_rettyp, f, true, RProgram (applist info.refined_app),
+	   Some (fst (info.refined_app), info.refined_path, pi1 info.refined_newprob,  info.refined_newty,
+	         rev_map pat_constr (pi2 (compose_subst info.refined_newprob_to_lhs s)), 
+		 [mapping_constr info.refined_newprob_to_lhs c, info.refined_arg],
+		 computations info.refined_newprob (fst info.refined_app) cs)]
 	   
     | Valid ((ctx,pats,del), _, _, _, _, cs) -> 
 	List.fold_left (fun acc (_, _, subst, c) ->
@@ -1876,24 +2101,29 @@ let build_equations with_ind env id info data sign is_rec arity cst
 		let ctx = (Anonymous, None, arity) :: sign in
 		let app =
 		  let argsinfo =
-		    list_map_i (fun i c -> 
-		      let ty = lift (i + 2) (pi3 (List.nth sign i)) in
-			(succ i, ty, lift 2 c, mkRel (i + 2)))
+		    list_map_i (fun i (c, arg) -> 
+				  let idx = signlen - arg + 1 in (* lift 1, over return value *)
+				  let ty = lift (idx + 1 (* 1 for return value *)) 
+				    (pi3 (List.nth sign (pred (pred idx)))) 
+				  in
+				    (idx, ty, lift 1 c, mkRel idx)) 
 		      0 args
 		  in
 		  let lenargs = length argsinfo in
 		  let cast_obj, _ = 
-		    fold_left (fun (acc, pred) (i, ty, c, rel) -> 
-		      if dependent (mkRel 1) pred then
-			let app = 
-			  mkApp (global_reference (id_of_string "eq_rect_r"),
-				[| lift lenargs ty; lift lenargs rel;
-				   mkLambda (Name (id_of_string "refine"), lift lenargs ty, pred); 
-				   acc; (lift lenargs c); mkRel i |])
-			in (app, subst1 c pred)
-		      else (acc, subst1 c pred))
-		      (mkRel (succ lenargs), 
-		      (liftn (succ (lenargs * 2)) (succ lenargs) arity))
+		    fold_left
+		      (fun (acc, pred) (i, ty, c, rel) -> 
+			 let idx = i + 2 * lenargs in
+			   if dependent (mkRel idx) pred then
+			     let app = 
+			       mkApp (global_reference (id_of_string "eq_rect_r"),
+				      [| lift lenargs ty; lift lenargs rel;
+					 mkLambda (Name (id_of_string "refine"), lift lenargs ty, 
+						   (replace_term (mkRel idx) (mkRel 1) pred)); 
+					 acc; (lift lenargs c); mkRel 1 (* equality *) |])
+			     in (app, subst1 c pred)
+			   else (acc, subst1 c pred))
+		      (mkRel (succ lenargs), lift (succ (lenargs * 2)) arity)
 		      argsinfo
 		  in
 		  let ppath = (* The preceding P *) 
@@ -1908,9 +2138,9 @@ let build_equations with_ind env id info data sign is_rec arity cst
 		  in
 		  let papp =
 		    applistc (lift (succ signlen + lenargs) (mkRel ppath)) 
-		      ((map (lift (lenargs * 2 + 1)) pats) @ [cast_obj])
+		      (map (lift (lenargs + 1)) pats (* for equalities + return value *) @ [cast_obj])
 		  in
-		  let refeqs = map (fun (i, ty, c, rel) -> lift (lenargs - i) (mkEq ty c rel)) argsinfo in
+		  let refeqs = map (fun (i, ty, c, rel) -> mkEq ty c rel) argsinfo in
 		  let app c = fold_right
 		    (fun c acc ->
 		      mkProd (Name (id_of_string "Heq"), c, acc))
@@ -1918,7 +2148,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 		  in
 		  let indhyps =
 		    concat
-		      (map (fun c ->
+		      (map (fun (c, _) ->
 			let hyps, hypslen, c' = 
 			  abstract_rec_calls ~do_subst:false
 			    is_rec signlen protos (nf_beta Evd.empty (lift 2 c)) 
@@ -2140,7 +2370,9 @@ let prove_unfolding_lemma info proj f_cst funf_cst split gl =
     | RecValid (id, cs) -> 
 	tclTHEN (unfold_recursor_tac ()) (aux cs)
 	  
-    | Refined ((ctx, _, _), (id, c, ty), _, arg, path, ev, _, _, newprob, newty, s) -> 
+    | Refined ((ctx, _, _), refinfo, s) ->
+	let id = pi1 refinfo.refined_obj in
+	let ev = refinfo.refined_ex in
 	let rec reftac gl = 
 	  match kind_of_term (pf_concl gl) with
 	  | App (f, [| ty; term1; term2 |]) ->
@@ -2511,10 +2743,11 @@ GEXTEND Gram
   rhs:
     [ [ ":=!"; id = identref -> Empty id
       |":="; c = Constr.lconstr -> Program c
+      |"=>"; c = Constr.lconstr -> Program c
       | "with"; c = Constr.lconstr; ":="; e = equations -> Refine (c, e)
       | "<="; c = Constr.lconstr; "=>"; e = equations -> Refine (c, e)
       | "<-"; "(" ; t = Tactic.tactic; ")"; e = equations -> By (Inl t, e)
-      | "by"; IDENT "rec"; id = identref; rel = OPT constr; ":="; e = deppat_equations -> Rec (id, rel, e)
+      | "by"; IDENT "rec"; id = identref; rel = OPT constr; [":="|"=>"]; e = deppat_equations -> Rec (id, rel, e)
     ] ]
   ;
 

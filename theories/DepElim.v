@@ -426,6 +426,19 @@ Ltac simplify_equations_in e :=
 (*     | _ => intro *)
 (*   end. *)
 
+Ltac block_equality id :=
+  match type of id with
+    | @eq ?A ?t ?u => change (block (@eq A t u)) in id
+    | _ => idtac
+  end.
+
+Ltac revert_blocking_until id := 
+  Tactics.on_last_hyp ltac:(fun id' =>
+    match id' with
+      | id => idtac
+      | _ => block_equality id' ; revert id' ; revert_blocking_until id
+    end).
+
 Ltac simplify_one_dep_elim_term c :=
   match c with
     | @JMeq _ _ _ _ -> _ => refine (@simplification_heq _ _ _ _ _)
@@ -440,14 +453,14 @@ Ltac simplify_one_dep_elim_term c :=
       end
     | forall H : ?x = ?y, _ => (* variables case *)
       (let hyp := fresh H in intros hyp ;
-        move hyp before x ; move x before hyp; revert_until x; revert x;
+        move hyp before x ; move x before hyp; revert_blocking_until x; revert x;
           (match goal with
              | |- let x := _ in _ = _ -> @?B x =>
                refine (@solution_left_let _ B _ _ _)
              | _ => refine (@solution_left _ _ _ _)
            end)) ||
       (let hyp := fresh "Heq" in intros hyp ;
-        move hyp before y ; move y before hyp; revert_until y; revert y;
+        move hyp before y ; move y before hyp; revert_blocking_until y; revert y;
           (match goal with
              | |- let x := _ in _ = _ -> @?B x =>
                refine (@solution_right_let _ B _ _ _)
@@ -459,7 +472,7 @@ Ltac simplify_one_dep_elim_term c :=
       intros hyp ; elimtype False ; discriminate
     | ?x = ?y -> _ => let hyp := fresh in
       intros hyp ; (try (clear hyp ; (* If non dependent, don't clear it! *) fail 1)) ;
-        case hyp ; clear hyp
+        case hyp (* ; clear hyp *)
     | block ?T => fail 1 (* Do not put any part of the rhs in the hyps *)
     | _ -> ?B => let ty := type of B in (* Works only with non-dependent products *)
       intro || (let H := fresh in intro H)
