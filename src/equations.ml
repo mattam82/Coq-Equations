@@ -1153,12 +1153,14 @@ let pr_problem (id, _, _) env (delta, patcs, _) =
 let rel_id ctx n = 
   out_name (pi1 (List.nth ctx (pred n)))
       
-let rec covering_aux env evars data prev (clauses : clause list) path (ctx,pats,ctx' as prob) lets ty =
+let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) lets ty =
   match clauses with
-  | (lhs, rhs as clause) :: clauses' -> 
+  | ((lhs, rhs), used as clause) :: clauses' -> 
       (match matches lhs prob with
       | UnifSuccess s -> 
-	  let prevmatch = List.filter (fun (lhs',rhs') -> matches lhs' prob <> UnifFailure) prev in
+	  let prevmatch = List.filter (fun ((lhs',rhs'),used) -> matches lhs' prob <> UnifFailure) prev in
+(* 	    if List.exists (fun (_, used) -> not used) prev then *)
+(* 	      user_err_loc (dummy_loc, "equations", str "Unused clause: " ++ pr_clause env (lhs, rhs)); *)
 	    if prevmatch = [] then
 	      let env' = push_rel_context_eos ctx env in
 	      let get_var loc i s =
@@ -1182,7 +1184,7 @@ let rec covering_aux env evars data prev (clauses : clause list) path (ctx,pats,
 		      | Some r -> rec_wf_tac var (pi1 data) r
 		    in
 		    let rhs = By (Inl tac, spl) in
-		      (match covering_aux env evars data [] [(lhs,rhs)] path prob lets ty with
+		      (match covering_aux env evars data [] [(lhs,rhs),false] path prob lets ty with
 		      | None -> None
 		      | Some split -> Some (RecValid (pi1 data, split)))
 					    
@@ -1237,11 +1239,11 @@ let rec covering_aux env evars data prev (clauses : clause list) path (ctx,pats,
 				    ty', newprob, id_subst ctx'
 			    | _ -> raise (Invalid_argument "covering_aux: unexpected output of tactic call")
 			  in 
-			    match covering_aux env evars data [] s path prob lets ty' with
+			    match covering_aux env evars data [] (map (fun x -> x, false) s) path prob lets ty' with
 			      | None ->
 				  anomalylabstrm "covering"
 				    (str "Unable to find a covering for the result of a by clause:" 
-				      ++ fnl () ++ pr_clause env clause ++
+				      ++ fnl () ++ pr_clause env (lhs, rhs) ++
 				      spc () ++ str"refining" ++ spc () ++ pr_context_map env prob)
 			      | Some s ->
 				  let args = rev (list_map_filter (fun (id,b,t) ->
@@ -1355,7 +1357,7 @@ let rec covering_aux env evars data prev (clauses : clause list) path (ctx,pats,
 			@ (lift_rel_context 1 lets) 
 		      in specialize_rel_context (pi2 cmap) newlets
 		    in
-		      match covering_aux env evars data [] cls' path' newprob lets' newty with
+		      match covering_aux env evars data [] (map (fun x -> x, false) cls') path' newprob lets' newty with
 		      | None -> None
 		      | Some s -> 
 			  let info =
@@ -1372,7 +1374,7 @@ let rec covering_aux env evars data prev (clauses : clause list) path (ctx,pats,
 			  in  Some (Refined (prob, info, s))
 	    else 
 	      anomalylabstrm "covering"
-		(str "Found overlapping clauses:" ++ fnl () ++ pr_clauses env prevmatch ++
+		(str "Found overlapping clauses:" ++ fnl () ++ pr_clauses env (map fst prevmatch) ++
 		    spc () ++ str"refining" ++ spc () ++ pr_context_map env prob)
 
       | UnifFailure -> covering_aux env evars data (clause :: prev) clauses' path prob lets ty
@@ -1408,7 +1410,7 @@ let rec covering_aux env evars data prev (clauses : clause list) path (ctx,pats,
 	       pr_problem data env prob)
 
 let covering env evars data (clauses : clause list) prob ty =
-  match covering_aux env evars data [] clauses [] prob [] ty with
+  match covering_aux env evars data [] (map (fun x -> (x,false)) clauses) [] prob [] ty with
   | Some cov -> cov
   | None ->
       errorlabstrm "deppat"
@@ -2103,29 +2105,13 @@ let build_equations with_ind env id info data sign is_rec arity cst
 		  let argsinfo =
 		    list_map_i (fun i (c, arg) -> 
 				  let idx = signlen - arg + 1 in (* lift 1, over return value *)
-				  let ty = lift (idx + 1 (* 1 for return value *)) 
+				  let ty = lift (idx (* 1 for return value *)) 
 				    (pi3 (List.nth sign (pred (pred idx)))) 
 				  in
 				    (idx, ty, lift 1 c, mkRel idx)) 
 		      0 args
 		  in
 		  let lenargs = length argsinfo in
-		  let cast_obj, _ = 
-		    fold_left
-		      (fun (acc, pred) (i, ty, c, rel) -> 
-			 let idx = i + 2 * lenargs in
-			   if dependent (mkRel idx) pred then
-			     let app = 
-			       mkApp (global_reference (id_of_string "eq_rect_r"),
-				      [| lift lenargs ty; lift lenargs rel;
-					 mkLambda (Name (id_of_string "refine"), lift lenargs ty, 
-						   (replace_term (mkRel idx) (mkRel 1) pred)); 
-					 acc; (lift lenargs c); mkRel 1 (* equality *) |])
-			     in (app, subst1 c pred)
-			   else (acc, subst1 c pred))
-		      (mkRel (succ lenargs), lift (succ (lenargs * 2)) arity)
-		      argsinfo
-		  in
 		  let ppath = (* The preceding P *) 
 		    match path with
 		    | [] -> assert false
@@ -2138,8 +2124,10 @@ let build_equations with_ind env id info data sign is_rec arity cst
 		  in
 		  let papp =
 		    applistc (lift (succ signlen + lenargs) (mkRel ppath)) 
-		      (map (lift (lenargs + 1)) pats (* for equalities + return value *) @ [cast_obj])
+		      (map (lift (lenargs + 1)) pats (* for equalities + return value *) 
+		       @ [mkRel (succ lenargs)])
 		  in
+		  let papp = fold_right (fun (i, ty, c, rel) app -> replace_term (lift (lenargs) c) (lift (lenargs) rel) app) argsinfo papp in
 		  let refeqs = map (fun (i, ty, c, rel) -> mkEq ty c rel) argsinfo in
 		  let app c = fold_right
 		    (fun c acc ->
@@ -2151,7 +2139,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 		      (map (fun (c, _) ->
 			let hyps, hypslen, c' = 
 			  abstract_rec_calls ~do_subst:false
-			    is_rec signlen protos (nf_beta Evd.empty (lift 2 c)) 
+			    is_rec signlen protos (nf_beta Evd.empty (lift 1 c)) 
 			in 
 			let lifthyps = lift_rel_contextn (signlen + 2) (- (pred i)) hyps in
 			  lifthyps) args)
