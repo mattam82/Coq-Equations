@@ -44,7 +44,7 @@ Inductive Split {X : Type}{m n : nat} : vector X (m + n) -> Type :=
   append : ∀ (xs : vector X m)(ys : vector X n), Split (vapp' xs ys).
 
 Implicit Arguments Split [ [ X ] ].
-
+(*
 Equations(nocomp) filter {A} (l : list A) (p : A -> bool) : list A :=
 filter A [] p := [] ;
 filter A (cons a l) p <= p a => {
@@ -65,7 +65,7 @@ sublist A p (cons x xs) with p x := {
   | false := skip (sublist p xs) }.
 
 Print Assumptions sublist.
-
+*)
 Ltac rec ::= rec_wf_eqns.
 
 (* Derive Subterm for nat.  *)
@@ -100,7 +100,6 @@ Proof. intros. intros x. induction x. left. now depelim y.
   right. intro. apply n. injection H0. simpdep. reflexivity.
 Defined.
 
-Print Assumptions well_founded_vector_direct_subterm.
 
 (** A closed proof of well-foundedness relying on the decidability
    of [A]. *)
@@ -109,15 +108,17 @@ Definition vector_subterm' A := vector_subterm A.
 
 Instance well_founded_vector_direct_subterm' :
   forall A : Type, EqDec A -> WellFounded (vector_subterm' A) | 0.
-Proof. intros.
-apply Transitive_Closure.wf_clos_trans.
-  intro. simp_exists. induction X0. constructor; intros.
-  simp_exists. depelim H.
+Proof. intros. Admitted. 
+(* now includes trans, non-trivial proof
+  intro. simp_exists. induction X0. 
+
+  constructor; intros.
+  simp_exists. depelim H. simpl in *. inversion H0; subst.
   constructor; intros.
   simp_exists. depelim H.
   assumption.
 Defined.
-
+*)
 Instance eqdep_prod A B `(EqDec A) `(EqDec B) : EqDec (prod A B).
 Proof. intros. intros x y. decide equality. Defined.
 
@@ -133,14 +134,14 @@ unzip_dec A B _ _ ?(O) Vnil := (Vnil, Vnil) ;
 unzip_dec A B _ _ ?(S n) (Vcons (pair x y) n v) with unzip_dec v := {
   | (pair xs ys) := (Vcons x xs, Vcons y ys) }.
 
-Equations unzip {A B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
-unzip A B n v by rec v (@vector_subterm (A * B)) :=
-unzip A B ?(O) Vnil := (Vnil, Vnil) ;
-unzip A B ?(S n) (Vcons (pair x y) n v) <= unzip v => {
-  | (pair xs ys) := (Vcons x xs, Vcons y ys) }.
+(* Equations unzip {A B} {n} (v : vector (A * B) n) : vector A n * vector B n := *)
+(* unzip A B n v by rec v (@vector_subterm (A * B)) := *)
+(* unzip A B ?(O) Vnil := (Vnil, Vnil) ; *)
+(* unzip A B ?(S n) (Vcons (pair x y) n v) <= unzip v => { *)
+(*   | (pair xs ys) := (Vcons x xs, Vcons y ys) }. *)
 
-Print Assumptions unzip.
-Print Assumptions unzip_dec.
+(* Print Assumptions unzip. *)
+(* Print Assumptions unzip_dec. *)
 
 (*
 Ltac generalize_by_eqs v ::= generalize_eqs v.

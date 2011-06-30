@@ -27,18 +27,20 @@ Proof. red. red. intros.
   Admitted.
 
 
-Equations f91 n : { m : nat | n < m - 11 } :=
-f91 n by rec n (gt_bound 100) :=
-f91 n with le_lt_dec n 100 := {
-  | left H := exist _ (proj1_sig (f91 (proj1_sig (f91 (n + 11))))) _ ;
-  | right H := exist _ (n - 10) _ }.
+(* Equations f91 n : { m : nat | n < m - 11 } := *)
+(* f91 n by rec n (gt_bound 100) := *)
+(* f91 n with le_lt_dec n 100 := { *)
+(*   | left H := exist _ (proj1_sig (f91 (proj1_sig (f91 (n + 11))))) _ ; *)
+(*   | right H := exist _ (n - 10) _ }. *)
 
-Admit Obligations.
+(* Admit Obligations. *)
+(* Require Import Omega. *)
+(* Next Obligation. destruct f91. simpl. destruct f91. simpl. omega. Defined. *)
+(* Next Obligation. intros. omega. Defined. *)
 
-Next Obligation. apply f91. red.
-  unfold minus_12. destruct (le_lt_dec n 100).
-  destruct le_lt_dec.
-  simpl. admit.
+(*   unfold minus_12. destruct (le_lt_dec n 100). *)
+(*   destruct le_lt_dec. *)
+(*   simpl. admit. *)
 
 
 Section Nested.
@@ -305,27 +307,27 @@ Module RecMeasure.
 
 End RecMeasure.
 
-Section Nested.
+Section Nested'.
 
-  Equations f (n : nat) : { x : nat | x <= n } :=
-  f n by rec n lt :=
-  f 0 := exist _ 0 _ ;
-  f (S n) := exist _ (proj1_sig (f (proj1_sig (f n)))) _.
+  Equations f' (n : nat) : { x : nat | x <= n } :=
+  f' n by rec n lt :=
+  f' 0 := exist _ 0 _ ;
+  f' (S n) := exist _ (proj1_sig (f' (proj1_sig (f' n)))) _.
 
-  Next Obligation. destruct_call f_comp_proj. simpl. exists x. auto. Defined.
-  Next Obligation. do 2 destruct_call f_comp_proj. simpl in *. eauto with arith. Defined.
+  Next Obligation. destruct_call f'_comp_proj. simpl. exists x. auto. Defined.
+  Next Obligation. do 2 destruct_call f'_comp_proj. simpl in *. eauto with arith. Defined.
     Set Printing All.
   Print f_obligation_2.
 
-  Next Obligation. do 2 destruct_call f. simpl in *. eauto with arith. Defined.
+  Next Obligation. do 2 destruct_call f'. simpl in *. eauto with arith. Defined.
 
   Next Obligation. admit. Defined. 
 
   Next Obligation. 
     rec_wf_rel n IH lt.
-    destruct x. constructor. simp f.
+    destruct x. constructor. simp f'.
     constructor. intros. subst recres. auto.
-    auto. apply IH. destruct f. auto with arith.
+    auto. apply IH. destruct f'. auto with arith.
   Defined.
 
-End Nested.
+End Nested'.
