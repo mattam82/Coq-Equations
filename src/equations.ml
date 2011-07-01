@@ -28,7 +28,7 @@ open Type_errors
 open Pp
 open Proof_type
 
-open Rawterm
+open Glob_term
 open Retyping
 open Pretype_errors
 open Evarutil
@@ -320,7 +320,7 @@ let check_ctx_map map =
     with Type_errors.TypeError (env, e) ->
       errorlabstrm "equations"
 	(str"Type error while building context map: " ++ pr_context_map (Global.env ()) map ++
-	   spc () ++ Himsg.explain_type_error env e)
+	   spc () ++ Himsg.explain_type_error env Evd.empty e)
   else map
     
 let mk_ctx_map ctx subst ctx' =
@@ -462,7 +462,7 @@ type splitting =
   | Compute of context_map * types * splitting_rhs
   | Split of context_map * int * types * splitting option array
   | Valid of context_map * types * identifier list * tactic *
-      Proof_type.validation * (goal * constr list * context_map * splitting) list
+      existential * (goal * constr list * context_map * splitting) list
   | RecValid of identifier * splitting
   | Refined of context_map * refined_node * splitting
 
@@ -957,7 +957,7 @@ let pr_splitting env split =
 	      (mt ()) cs) ++ spc ()
     | RecValid (id, c) -> 
 	hov 2 (str "RecValid " ++ pr_id id ++ aux c)
-    | Valid (lhs, ty, ids, tac, validation, cs) ->
+    | Valid (lhs, ty, ids, ev, tac, cs) ->
 	let _env' = push_rel_context (pi1 lhs) env in
 	  hov 2 (str "Valid " ++ str " in context " ++ pr_context_map env lhs ++ spc () ++
 		   List.fold_left 
@@ -1196,16 +1196,17 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		      | Inl tac -> Tacinterp.interp_tac_gen [] ids Tactic_debug.DebugOff tac 
 		      | Inr tac -> Tacinterp.eval_tactic tac
 		    in
-		    let goal = {it = make_evar sign t'; sigma = !evars } in
-(* 		    let goal, ev, evars' = Goal.V82.mk_goal !evars sign t' Store.empty in *)
-(* 		    let goals = {it = goal; sigma = evars'} in *)
-		    let gls, valid = tac goal in
+		    let goal, ev, evars' = Goal.V82.mk_goal !evars sign t' Store.empty in
+		    let ex = destEvar ev in
+		    let goalev = {it = goal; sigma = evars'} in
+		    let gls = tac goalev in
+		      evars := gls.sigma;
 		      if gls.it = [] then 
-			let pftree = valid [] in
-			let c, _ = extract_open_proof !evars pftree in
+			let c = existential_value !evars ex in
 			  Some (Compute (prob, ty, RProgram c))
 		      else
-			let solve_goal evi =
+			let solve_goal ev =
+			  let evi = Evd.find_undefined !evars (Obj.magic ev) in
 			  let nctx = named_context_of_val evi.evar_hyps in
 			  let concl = evi.evar_concl in
 			  let nctx = split_at_eos nctx in
@@ -1248,8 +1249,8 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 			      | Some s ->
 				  let args = rev (list_map_filter (fun (id,b,t) ->
 								     if b = None then Some (mkVar id) else None) nctx)
-				  in evi, args, subst, s
-			in Some (Valid (prob, ty, ids, tac, valid, map solve_goal gls.it))
+				  in ev, args, subst, s
+			in Some (Valid (prob, ty, ids, tac, ex, map solve_goal gls.it))
 
 		| Refine (c, cls) -> 
 		    (* The refined term and its type *)
@@ -1476,16 +1477,14 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 	let ty = it_mkProd_or_subst ty ctx in
 	  term, ty
 
-    | Valid ((ctx, _, _), ty, substc, tac, valid, rest) ->
+    | Valid ((ctx, _, _), ty, substc, tac, ev, rest) ->
 	let goal_of_rest goal args (term, ty) = 
-	  { open_subgoals = 0;
-	    goal = goal;
-	    ref = Some (Prim (Proof_type.Refine (applistc term args)), []) }
+	  isevar := Evd.define (Obj.magic goal) (applistc term args) !isevar
 	in
-	let pftree = valid (map (fun (goal, args, subst, x) -> goal_of_rest goal args (aux x)) rest) in
-	let c, _ = extract_open_proof !isevar pftree in
-	  it_mkLambda_or_LetIn (subst_vars substc c) ctx, it_mkProd_or_LetIn ty ctx
-
+	  iter (fun (goal, args, subst, x) -> goal_of_rest goal args (aux x)) rest;
+	  let c = nf_evar !isevar (existential_value !isevar ev) in
+	    it_mkLambda_or_LetIn (subst_vars substc c) ctx, it_mkProd_or_LetIn ty ctx
+	      
     | Split ((ctx, _, _), rel, ty, sp) -> 
 	let before, decl, after = split_tele (pred rel) ctx in
 	let branches = 
@@ -2059,7 +2058,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
     let ind = mkInd (k,0) in
     let _ =
       list_iter_i (fun i ind ->
-	let constrs = list_map_i (fun j _ -> None, true, mkConstruct ((k,i),j)) 1 ind.mind_entry_lc in
+	let constrs = list_map_i (fun j _ -> None, true, None, mkConstruct ((k,i),j)) 1 ind.mind_entry_lc in
 	  Auto.add_hints false [info.base_id] (Auto.HintsResolveEntry constrs))
 	inds
     in
@@ -2071,7 +2070,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
     let hookind _ gr = 
       let env = Global.env () in (* refresh *)
       let cgr = constr_of_global gr in
-      Auto.add_hints false [info.base_id] (Auto.HintsImmediateEntry [cgr]);
+      Auto.add_hints false [info.base_id] (Auto.HintsImmediateEntry [None, cgr]);
       let _funind_stmt =
 	let leninds = List.length inds in
 	let elim =
@@ -2079,7 +2078,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	    (Indschemes.do_mutual_induction_scheme
 		(list_map_i (fun i ind ->
 		  let id = (dummy_loc, add_suffix ind.mind_entry_typename "_mut") in
-		    (id, false, (k, i), RProp Null)) 0 inds);
+		    (id, false, (k, i), GProp Null)) 0 inds);
 	     let elimid = 
 	       add_suffix (List.hd inds).mind_entry_typename "_mut"
 	     in Smartlocate.global_with_alias (reference_of_id elimid))
@@ -2194,7 +2193,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 		    indid statement ~tactic:(ind_fun_tac is_rec f info id split ind) [||])
       with e ->
 	warn (str "Induction principle could not be proved automatically: " ++ fnl () ++
-		 Cerrors.explain_exn e)
+		Errors.print e)
 	  (* ignore(Subtac_obligations.add_definition ~hook:hookind indid statement [||]) *)
   in
   let proof (j, f, unf, stmts) =
@@ -2212,7 +2211,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	eqns.(pred i) <- true;
 	if array_for_all (fun x -> x) eqns then (
 	  (* From now on, we don't need the reduction behavior of the constant anymore *)
-	  Typeclasses.set_typeclass_transparency (EvalConstRef cst) false;
+	  Typeclasses.set_typeclass_transparency (EvalConstRef cst) false false;
 	  Conv_oracle.set_strategy (ConstKey cst) Conv_oracle.Opaque;
 	  if with_ind && succ j = List.length ind_stmts then declare_ind ())
       in
@@ -2247,7 +2246,7 @@ let hintdb_set_transparency cst b db =
 
 let define_tree is_recursive impls status isevar env (i, sign, arity) comp ann split hook =
   let helpers, oblevs, t, ty = term_of_tree status isevar env (i, sign, arity) ann split in
-  let _ = isevar := nf_evars !isevar in
+  let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
   let undef = undefined_evars !isevar in
   let obls, (emap, cmap), t', ty' = 
     Eterm.eterm_obligations env i !isevar undef 0 ~status t (whd_betalet !isevar ty)
@@ -2510,7 +2509,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   in
   let env = Global.env () in
   let isevar = ref (create_evar_defs Evd.empty) in
-  let (env', sign), impls = interp_context_evars isevar env l in
+  let ienv, ((env', sign), impls) = interp_context_evars isevar env l in
   let arity = interp_type_evars isevar env' t in
   let sign = nf_rel_context_evar ( !isevar) sign in
   let arity = nf_evar ( !isevar) arity in
@@ -2522,8 +2521,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	let ce =
 	  { const_entry_body = body;
 	    const_entry_type = None;
-	    const_entry_opaque = false;
-	    const_entry_boxed = false}
+	    const_entry_opaque = false }
 	in
 	let comp =
 	  Declare.declare_constant compid (DefinitionEntry ce, IsDefinition Definition)
@@ -2537,8 +2535,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	  let ce =
 	    { const_entry_body = body;
 	      const_entry_type = None;
-	      const_entry_opaque = false;
-	      const_entry_boxed = false}
+	      const_entry_opaque = false }
 	  in Declare.declare_constant projid (DefinitionEntry ce, IsDefinition Definition)
 	in
 	  Impargs.declare_manual_implicits true (ConstRef comp) [impls];
@@ -2644,7 +2641,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	      map (interp_eqn unfoldi None isevar env data sign arity None)
 		(unfold_eqs eqs)
 	    in
-	    let data = [] in
+	    let data = ienv in
 	    let unfold_split = covering env isevar (unfoldi, with_comp, data) unfold_equations prob arity in
 	    let hook_unfold cmap helpers' _ gr' = 
 	      let info = { base_id = baseid; helpers_info = helpers @ helpers' } in
@@ -2688,7 +2685,7 @@ struct
 
 end
 
-open Rawterm
+open Glob_term
 open DeppatGram
 open Util
 open Pcoq
@@ -2856,7 +2853,8 @@ let solve_equations_goal destruct_tac tac gl =
   in tclTHENLIST [cleantac ; dotac ; subtacs] gl
 
 TACTIC EXTEND solve_equations
-  [ "solve_equations" tactic(destruct) tactic(tac) ] -> [ solve_equations_goal (snd destruct) (snd tac) ]
+  [ "solve_equations" tactic(destruct) tactic(tac) ] -> 
+    [ solve_equations_goal (Tacinterp.eval_tactic destruct) (Tacinterp.eval_tactic tac) ]
     END
 
 let db_of_constr c = match kind_of_term c with
@@ -2910,7 +2908,7 @@ let depcase (mind, i as ind) =
   let ci = {
     ci_ind = ind;
     ci_npar = nparams;
-    ci_cstr_nargs = oneind.mind_consnrealdecls;
+    ci_cstr_ndecls = oneind.mind_consnrealdecls;
     ci_pp_info = { ind_nargs = oneind.mind_nrealargs; style = RegularStyle; } }
   in
   let obj i =
@@ -2936,8 +2934,7 @@ let depcase (mind, i as ind) =
   let ce =
     { const_entry_body = body;
       const_entry_type = None;
-      const_entry_opaque = false;
-      const_entry_boxed = false}
+      const_entry_opaque = false }
   in
   let kn = 
     Declare.declare_constant (add_suffix indid "_case") 
@@ -2980,7 +2977,7 @@ let mkcase env c ty constrs =
   let ci = {
     ci_ind = ind;
     ci_npar = params;
-    ci_cstr_nargs = oneind.mind_consnrealdecls;
+    ci_cstr_ndecls = oneind.mind_consnrealdecls;
     ci_pp_info = { ind_nargs = oneind.mind_nrealargs; style = RegularStyle; } }
   in
   let brs = 
@@ -3074,8 +3071,7 @@ let derive_no_confusion ind =
   let ce =
     { const_entry_body = app;
       const_entry_type = Some arity;
-      const_entry_opaque = false;
-      const_entry_boxed = false} 
+      const_entry_opaque = false }
   in
   let indid = Nametab.basename_of_global (IndRef ind) in
   let id = add_prefix "NoConfusion_" indid
@@ -3092,7 +3088,7 @@ let derive_no_confusion ind =
 					 mkApp (constr_of_global gr, argsvect) ] in
     let ce = { const_entry_body = it_mkLambda_or_LetIn b ctx;
 	       const_entry_type = Some (it_mkProd_or_LetIn ty ctx); 
-	       const_entry_opaque = false; const_entry_boxed = false }
+	       const_entry_opaque = false }
     in
     let inst = Declare.declare_constant packid (DefinitionEntry ce, IsDefinition Instance) in
       Typeclasses.add_instance (Typeclasses.new_instance tc None true (ConstRef inst))

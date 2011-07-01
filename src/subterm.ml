@@ -28,7 +28,7 @@ open Type_errors
 open Pp
 open Proof_type
 
-open Rawterm
+open Glob_term
 open Retyping
 open Pretype_errors
 open Evarutil
@@ -164,7 +164,7 @@ let derive_subterm ind =
     let subind = mkInd (k,0) in
     let constrhints = 
       list_map_i (fun i entry -> 
-	list_map_i (fun j _ -> None, true, mkConstruct ((k,i),j)) 1 entry.mind_entry_lc)
+	list_map_i (fun j _ -> None, true, None, mkConstruct ((k,i),j)) 1 entry.mind_entry_lc)
 	0 inds 
     in Auto.add_hints false [subterm_relation_base]
       (Auto.HintsResolveEntry (List.concat constrhints));
@@ -174,7 +174,7 @@ let derive_subterm ind =
       let evm = ref Evd.empty in
       let env = Global.env () in
       let env' = push_rel_context parambinders env in
-      let kl = Option.get (Typeclasses.class_of_constr (Lazy.force coq_wellfounded_class)) in
+      let kl = (fst $ snd $ Option.get) (Typeclasses.class_of_constr (Lazy.force coq_wellfounded_class)) in
       let body, ty =
 	let ty, rel = 
 	  if argbinders = [] then
@@ -231,7 +231,7 @@ let derive_subterm ind =
       in
       let obls, _, constr, typ = Eterm.eterm_obligations env id !evm !evm 0 body ty in
 	Subtac_obligations.add_definition id ~term:constr typ
-	  ~kind:(Decl_kinds.Global,false,Decl_kinds.Instance) 
+	  ~kind:(Decl_kinds.Global,Decl_kinds.Instance) 
 	  ~hook ~tactic:(solve_subterm_tac ()) obls
   in ignore(declare_ind ())
     
@@ -322,14 +322,14 @@ let derive_below ind =
       mkCase ({
 	ci_ind = ind;
 	ci_npar = params;
-	ci_cstr_nargs = Array.map pi1 branches;
+	ci_cstr_ndecls = Array.map pi1 branches;
 	ci_pp_info = { ind_nargs = oneind.mind_nrealargs; style = RegularStyle }
       }, aritylam, mkRel 1, Array.map pi2 branches)
     and caseb =
       mkCase ({
 	ci_ind = ind;
 	ci_npar = params;
-	ci_cstr_nargs = Array.map pi1 branches;
+	ci_cstr_ndecls = Array.map pi1 branches;
 	ci_pp_info = { ind_nargs = oneind.mind_nrealargs; style = RegularStyle }
       }, aritylamb, mkRel 1, Array.map pi3 branches)
     in 

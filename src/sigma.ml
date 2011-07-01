@@ -28,7 +28,7 @@ open Type_errors
 open Pp
 open Proof_type
 
-open Rawterm
+open Glob_term
 open Retyping
 open Pretype_errors
 open Evarutil
@@ -88,7 +88,7 @@ let sigT = Lazy.lazy_from_fun build_sigma_type
 let sigT_info = lazy
   { ci_ind         = destInd (Lazy.force sigT).typ;
     ci_npar        = 2;
-    ci_cstr_nargs = [|2|];
+    ci_cstr_ndecls = [|2|];
     ci_pp_info     =  { ind_nargs = 0; style = LetStyle }
   }
 
@@ -166,7 +166,7 @@ let signature_sig = lazy (init_constant ["Equations";"Signature"] "signature")
 let signature_pack = lazy (init_constant ["Equations";"Signature"] "signature_pack")
 
 let signature_class () =
-  Option.get (Typeclasses.class_of_constr (Lazy.force signature_ref))
+  fst (snd (Option.get (Typeclasses.class_of_constr (Lazy.force signature_ref))))
 
 let declare_sig_of_ind env ind =
   let sigma = Evd.empty in

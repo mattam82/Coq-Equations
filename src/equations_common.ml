@@ -28,7 +28,7 @@ open Type_errors
 open Pp
 open Proof_type
 
-open Rawterm
+open Glob_term
 open Retyping
 open Pretype_errors
 open Evarutil
@@ -44,6 +44,8 @@ open Tacticals
 open Decl_kinds
 
 open Coqlib
+
+let ($) f g = fun x -> f (g x)
 
 let list_map_filter_i f l = 
   let rec aux i = function
@@ -66,8 +68,7 @@ let declare_constant id body ty kind =
   let ce =
     { const_entry_body = body;
       const_entry_type = ty;
-      const_entry_opaque = false;
-      const_entry_boxed = false}
+      const_entry_opaque = false }
   in 
   let cst = Declare.declare_constant id (DefinitionEntry ce, kind) in
     Flags.if_verbose message ((string_of_id id) ^ " is defined");
@@ -122,18 +123,21 @@ let coq_dynamic_constr = lazy (init_constant equations_path "Build_dynamic")
 let coq_dynamic_type = lazy (init_constant equations_path "dynamic_type")
 let coq_dynamic_obj = lazy (init_constant equations_path "dynamic_obj")
 
+
+let get_class = fst $ snd $ Option.get
+
 let functional_induction_class () =
-  Option.get 
+  get_class
     (Typeclasses.class_of_constr
 	(init_constant ["Equations";"FunctionalInduction"] "FunctionalInduction"))
 
 let functional_elimination_class () =
-  Option.get 
+  get_class
     (Typeclasses.class_of_constr
 	(init_constant ["Equations";"FunctionalInduction"] "FunctionalElimination"))
 
 let dependent_elimination_class () =
-  Option.get 
+  get_class 
     (Typeclasses.class_of_constr
 	(init_constant ["Equations";"DepElim"] "DependentEliminationPackage"))
 
