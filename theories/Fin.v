@@ -73,19 +73,21 @@ Implicit Arguments finle [[n]].
 (* Lemma trans_eq2 n i j k p q : @trans (S n) (fs i) (fs j) (fs k) (leqs p) (leqs q) = leqs (trans p q). *)
 (* Proof. intros. simplify_equations ; reflexivity. Qed. *)
 
-Require Import Bvector.
+Require Import Vectors.Vector.
+Implicit Arguments nil [[A]].
+Implicit Arguments cons [[A] [n]].
 
-Equations(nocomp) nth {A} {n} (v : vector A n) (f : fin n) : A :=
-nth A ?(S n) (Vcons a n v) fz := a ;
-nth A ?(S n) (Vcons a n v) (fs n f) := nth v f.
+Equations(nocomp) nth {A} {n} (v : Vector.t A n) (f : fin n) : A :=
+nth A ?(S n) (cons a n v) fz := a ;
+nth A ?(S n) (cons a n v) (fs n f) := nth v f.
 
-Goal ∀ (A : Type) (n : nat) (a : A) (H : vector A n), nth (Vcons a H) fz = a.
-  intros. funind (nth (Vcons a H) fz) nfz.
+Goal ∀ (A : Type) (n : nat) (a : A) (H : vector A n), nth (cons a H) fz = a.
+  intros. funind (nth (cons a H) fz) nfz.
 Qed.
 
 Equations(nocomp) tabulate {A} {n} (f : fin n -> A) : vector A n :=
-tabulate A O f := Vnil ;
-tabulate A (S n) f := Vcons (f fz) (tabulate (f ∘ fs)).
+tabulate A O f := nil ;
+tabulate A (S n) f := cons (f fz) (tabulate (f ∘ fs)).
 
 (** NoConfusion For [fin]. *)
 

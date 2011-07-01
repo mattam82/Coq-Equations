@@ -12,7 +12,7 @@
    [equations] when it needs to do recursion on a type. *)
 
 Require Import Bvector.
-
+Require Import Vectors.Vector.
 Require Import Coq.Program.Program.
 Require Export Equations.DepElim.
 
@@ -77,9 +77,14 @@ Instance nat_Recursor : Recursor nat :=
   { rec_type := λ n, ∀ P step, P n ;
     rec := λ n P step, rec_nat P n step }.
 
+Notation vector := Vector.t.
+Import Vector.
+Implicit Arguments nil [[A]].
+Implicit Arguments cons [[A] [n]].
+
 Equations(nocomp noind) Below_vector A (P : ∀ n, vector A n -> Type) n (v : vector A n) : Type :=
-Below_vector A P ?(0) Vnil := unit ;
-Below_vector A P ?(S n) (Vcons a n v) := 
+Below_vector A P ?(0) nil := unit ;
+Below_vector A P ?(S n) (cons a n v) := 
   ((P n v) * Below_vector A P n v)%type.
 
 Hint Rewrite Below_vector_equation_2 : Below.

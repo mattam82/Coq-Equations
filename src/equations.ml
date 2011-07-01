@@ -462,7 +462,7 @@ type splitting =
   | Compute of context_map * types * splitting_rhs
   | Split of context_map * int * types * splitting option array
   | Valid of context_map * types * identifier list * tactic *
-      existential * (goal * constr list * context_map * splitting) list
+      Proofview.proofview * (goal * constr list * context_map * splitting) list
   | RecValid of identifier * splitting
   | Refined of context_map * refined_node * splitting
 
@@ -1152,6 +1152,8 @@ let pr_problem (id, _, _) env (delta, patcs, _) =
 
 let rel_id ctx n = 
   out_name (pi1 (List.nth ctx (pred n)))
+
+let push_named_context = List.fold_right push_named
       
 let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) lets ty =
   match clauses with
@@ -1196,19 +1198,18 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		      | Inl tac -> Tacinterp.interp_tac_gen [] ids Tactic_debug.DebugOff tac 
 		      | Inr tac -> Tacinterp.eval_tactic tac
 		    in
-		    let goal, ev, evars' = Goal.V82.mk_goal !evars sign t' Store.empty in
-		    let ex = destEvar ev in
-		    let goalev = {it = goal; sigma = evars'} in
-		    let gls = tac goalev in
+		    let env' = reset_with_named_context (val_of_named_context sign') env in
+		    let proof = Proofview.init [(env', t')] in
+		    let res = Proofview.apply env' (Proofview.V82.tactic tac) proof in
+		    let gls = Proofview.V82.goals res in
 		      evars := gls.sigma;
-		      if gls.it = [] then 
-			let c = existential_value !evars ex in
+		      if Proofview.finished res then
+			let (c, ty') = List.hd (Proofview.return res) in
 			  Some (Compute (prob, ty, RProgram c))
 		      else
-			let solve_goal ev =
-			  let evi = Evd.find_undefined !evars (Obj.magic ev) in
-			  let nctx = named_context_of_val evi.evar_hyps in
-			  let concl = evi.evar_concl in
+			let solve_goal gl =
+			  let nctx = named_context_of_val (Goal.V82.hyps !evars gl) in
+			  let concl = Goal.V82.concl !evars gl in
 			  let nctx = split_at_eos nctx in
 			  let rctx, subst = rel_of_named_context nctx in
 			  let ty' = subst_vars subst concl in
@@ -1249,8 +1250,8 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 			      | Some s ->
 				  let args = rev (list_map_filter (fun (id,b,t) ->
 								     if b = None then Some (mkVar id) else None) nctx)
-				  in ev, args, subst, s
-			in Some (Valid (prob, ty, ids, tac, ex, map solve_goal gls.it))
+				  in gl, args, subst, s
+			in Some (Valid (prob, ty, ids, tac, res, map solve_goal gls.it))
 
 		| Refine (c, cls) -> 
 		    (* The refined term and its type *)
@@ -1436,6 +1437,12 @@ let rec coq_nat_of_int = function
   | 0 -> Lazy.force coq_zero
   | n -> mkApp (Lazy.force coq_succ, [| coq_nat_of_int (pred n) |])
 
+let make_sensitive_from_oc oc =
+  Goal.bind
+    (Goal.Refinable.make
+       (fun h -> Goal.Refinable.constr_of_open_constr h false oc))
+    Goal.refine
+
 let term_of_tree status isevar env (i, delta, ty) ann tree =
   let oblevars = ref Intset.empty in
   let helpers = ref [] in
@@ -1477,12 +1484,16 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 	let ty = it_mkProd_or_subst ty ctx in
 	  term, ty
 
-    | Valid ((ctx, _, _), ty, substc, tac, ev, rest) ->
+    | Valid ((ctx, _, _), ty, substc, tac, pv, rest) ->
 	let goal_of_rest goal args (term, ty) = 
-	  isevar := Evd.define (Obj.magic goal) (applistc term args) !isevar
+	  Proofview.tclSENSITIVE (make_sensitive_from_oc (!isevar, (applistc term args)))
 	in
-	  iter (fun (goal, args, subst, x) -> goal_of_rest goal args (aux x)) rest;
-	  let c = nf_evar !isevar (existential_value !isevar ev) in
+	let tac = Proofview.tclDISPATCH 
+	  (map (fun (goal, args, subst, x) -> goal_of_rest goal args (aux x)) rest)
+	in
+	let pv' = Proofview.apply env tac pv in
+	  isevar := (Proofview.V82.top_goals pv').sigma;
+	  let c, _ = List.hd (Proofview.return pv') in
 	    it_mkLambda_or_LetIn (subst_vars substc c) ctx, it_mkProd_or_LetIn ty ctx
 	      
     | Split ((ctx, _, _), rel, ty, sp) -> 
@@ -1533,7 +1544,7 @@ open Constrintern
 open Decl_kinds
 
 type pat_expr = 
-  | PEApp of identifier located * pat_expr located list
+  | PEApp of reference Genarg.or_by_notation located * pat_expr located list
   | PEWildcard
   | PEInac of constr_expr
   | PEPat of cases_pattern_expr
@@ -1552,15 +1563,6 @@ type pre_equation =
 let next_ident_away s ids =
   let n' = Namegen.next_ident_away s !ids in
     ids := n' :: !ids; n'
-
-let rec ids_of_pats pats =
-  fold_left (fun ids (_,p) ->
-    match p with
-    | PEApp ((loc,f), l) -> (f :: ids_of_pats l) @ ids
-    | PEWildcard -> ids
-    | PEInac _ -> ids
-    | PEPat _ -> ids)
-    [] pats
     
 type rec_type = 
   | Structural
@@ -2421,30 +2423,53 @@ let rec translate_cases_pattern env avoid = function
   | PatCstr (loc, cstr, pats, Name id) ->
       user_err_loc (loc, "interp_pats", str "Aliases not supported by Equations")
 
+let pr_smart_global = Pptactic.pr_or_by_notation pr_reference
+let string_of_smart_global = function
+  | Genarg.AN ref -> string_of_reference ref
+  | Genarg.ByNotation (loc, s, _) -> s
+
+let ident_of_smart_global = 
+  id_of_string $ string_of_smart_global
+
+let rec ids_of_pats pats =
+  fold_left (fun ids (_,p) ->
+    match p with
+    | PEApp ((loc,f), l) -> 
+	let lids = ids_of_pats l in
+	  (try ident_of_smart_global f :: lids with _ -> lids) @ ids
+    | PEWildcard -> ids
+    | PEInac _ -> ids
+    | PEPat _ -> ids)
+    [] pats
+
 let interp_eqn i is_rec isevar env impls sign arity recu eqn =
   let avoid = ref [] in
   let rec interp_pat (loc, p) =
     match p with
     | PEApp ((loc,f), l) -> 
-	(try match Nametab.extended_locate (make_short_qualid f) with
-	| TrueGlobal (ConstructRef c) -> 
-	    let (ind,_) = c in
-	    let nparams, _ = inductive_nargs env ind in
-	    let nargs = constructor_nrealargs env c in
-	    let len = List.length l in
-	    let l' =
-	      if len < nargs then 
-		list_make (nargs - len) (loc,PEWildcard) @ l
-	      else l
-	    in 
-	      Dumpglob.add_glob loc (ConstructRef c);
-	      PUCstr (c, nparams, map interp_pat l')
-	| _ -> 
-	    if l <> [] then 
-	      user_err_loc (loc, "interp_pats",
-			   str "Pattern variable " ++ pr_id f ++ str" cannot be applied ")
-	    else PUVar f
-	  with Not_found -> PUVar f)
+	let r =
+	  try Inl (Smartlocate.smart_global f)
+	  with e -> Inr (PUVar (ident_of_smart_global f))
+	in
+	  (match r with
+	   | Inl (ConstructRef c) ->
+	       let (ind,_) = c in
+	       let nparams, _ = inductive_nargs env ind in
+	       let nargs = constructor_nrealargs env c in
+	       let len = List.length l in
+	       let l' =
+		 if len < nargs then 
+		   list_make (nargs - len) (loc,PEWildcard) @ l
+		 else l
+	       in 
+		 Dumpglob.add_glob loc (ConstructRef c);
+		 PUCstr (c, nparams, map interp_pat l')
+	   | Inl _ ->
+	       if l <> [] then 
+		 user_err_loc (loc, "interp_pats",
+			       str "Pattern variable " ++ pr_smart_global f ++ str" cannot be applied ")
+	       else PUVar (ident_of_smart_global f)
+	   | Inr p -> p)
     | PEInac c -> PUInac c
     | PEWildcard -> 
 	let n = next_ident_away (id_of_string "wildcard") avoid in
@@ -2711,7 +2736,7 @@ GEXTEND Gram
   ;
 
   patt:
-    [ [ id = identref -> loc, PEApp (id, [])
+    [ [ id = smart_global -> loc, PEApp ((loc,id), [])
       | "_" -> loc, PEWildcard
       | "("; p = lpatt; ")" -> p
       | "?("; c = Constr.lconstr; ")" -> loc, PEInac c
@@ -2720,7 +2745,7 @@ GEXTEND Gram
   ;
 
   lpatt:
-    [ [ id = identref; pats = LIST0 patt -> loc, PEApp (id, pats)
+    [ [ id = smart_global; pats = LIST0 patt -> loc, PEApp ((loc,id), pats)
       | p = patt -> p
     ] ]
   ;
