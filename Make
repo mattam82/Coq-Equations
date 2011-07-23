@@ -7,12 +7,12 @@ EQNSPLUGIN = "src/equations_plugin.cma"
 EQNSPLUGINOPT = "src/equations_plugin.cmxs"
 COQDOC = "$(COQBIN)coqdoc -interpolate -utf8"
 CAMLP4OPTIONS = "-loc loc"
-src/equations_common.ml
-src/sigma.ml
-src/subterm.ml
-src/eqdec.ml
-src/depelim.ml
-src/equations.ml
+src/equations_common.ml4
+src/sigma.ml4
+src/subterm.ml4
+src/eqdec.ml4
+src/depelim.ml4
+src/equations.ml4
 src/equations_plugin_mod.ml
 theories/Init.v
 theories/Signature.v
