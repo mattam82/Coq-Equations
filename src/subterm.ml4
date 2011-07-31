@@ -66,7 +66,7 @@ let derive_subterm ind =
 	let ctx, ar = decompose_prod_assum t in
 	  match kind_of_term (fst (decompose_app ar)) with
 	  | Ind ind' when ind' = ind -> 
-	      Some (ctx, i, mkRel (succ i), getargs (lift (succ i) t))
+	      Some (ctx, i, mkRel (succ i), getargs (lift (succ i) ar))
 	  | _ -> None) args'
       in
       let constr = mkApp (mkConstruct (ind, succ i), extended_rel_vect 0 args) in
@@ -83,7 +83,7 @@ let derive_subterm ind =
 	  in
 	  let relapp = mkApp (mkRel (succ lenargs + ctxlen), subargs) in
 	    (i, j, it_mkProd_or_LetIn (it_mkProd_or_LetIn relapp 
-					  (lift_rel_context (succ i) ctx)) args'))
+					  (lift_rel_context (succ i') ctx)) args'))
 	1 recargs
       in branches) (Inductive.type_of_constructors ind ms)
     in branches
