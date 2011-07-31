@@ -47,6 +47,8 @@ open Coqlib
 
 let ($) f g = fun x -> f (g x)
 
+let proper_tails l = snd (List.fold_right (fun _ (t,ts) -> List.tl t, ts @ [t]) l (l, []))
+
 let list_map_filter_i f l = 
   let rec aux i = function
     | hd :: tl -> 

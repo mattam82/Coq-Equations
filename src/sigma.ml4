@@ -141,7 +141,8 @@ let sigmaize ?(liftty=0) env sigma f =
   let indexproj = mkApp ((Lazy.force coq_sigma).proj1, tyargs) in
   let valproj = mkApp ((Lazy.force coq_sigma).proj2, tyargs) in
   let indices = 
-    list_map_i (fun i (_, b, _) -> lift (-i) (Option.get b)) 0 (List.rev letbinders)
+    (List.rev_map (fun l -> substl (tl l) (hd l)) $ proper_tails
+       $ map (fun (_, b, _) -> Option.get b)) letbinders
   in
   let valsig =
     let argtyp = lift (succ lenb) argtyp in
