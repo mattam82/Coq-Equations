@@ -2113,6 +2113,22 @@ let build_equations with_ind env id info data sign is_rec arity cst
 		      0 args
 		  in
 		  let lenargs = length argsinfo in
+		  let result, _ = 
+		    fold_left
+  		      (fun (acc, pred) (i, ty, c, rel) -> 
+		       let idx = i + 2 * lenargs in
+			 if dependent (mkRel idx) pred then
+			   let app = 
+			     mkApp (global_reference (id_of_string "eq_rect_r"),
+				    [| lift lenargs ty; lift lenargs rel;
+				       mkLambda (Name (id_of_string "refine"), lift lenargs ty, 
+						 (replace_term (mkRel idx) (mkRel 1) pred)); 
+				       acc; (lift lenargs c); mkRel 1 (* equality *) |])
+			   in (app, subst1 c pred)
+			 else (acc, subst1 c pred))
+		    (mkRel (succ lenargs), lift (succ (lenargs * 2)) arity)
+		    argsinfo
+		  in
 		  let ppath = (* The preceding P *) 
 		    match path with
 		    | [] -> assert false
@@ -2125,10 +2141,10 @@ let build_equations with_ind env id info data sign is_rec arity cst
 		  in
 		  let papp =
 		    applistc (lift (succ signlen + lenargs) (mkRel ppath)) 
-		      (map (lift (lenargs + 1)) pats (* for equalities + return value *) 
-		       @ [mkRel (succ lenargs)])
+		      (map (lift (lenargs + 1)) pats (* for equalities + return value *))
 		  in
 		  let papp = fold_right (fun (i, ty, c, rel) app -> replace_term (lift (lenargs) c) (lift (lenargs) rel) app) argsinfo papp in
+		  let papp = applistc papp [result] in
 		  let refeqs = map (fun (i, ty, c, rel) -> mkEq ty c rel) argsinfo in
 		  let app c = fold_right
 		    (fun c acc ->
@@ -2247,8 +2263,8 @@ let hintdb_set_transparency cst b db =
     (Auto.HintsTransparencyEntry ([EvalConstRef cst], b))
 
 let define_tree is_recursive impls status isevar env (i, sign, arity) comp ann split hook =
-  let helpers, oblevs, t, ty = term_of_tree status isevar env (i, sign, arity) ann split in
   let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
+  let helpers, oblevs, t, ty = term_of_tree status isevar env (i, sign, arity) ann split in
   let undef = undefined_evars !isevar in
   let obls, (emap, cmap), t', ty' = 
     Eterm.eterm_obligations env i !isevar undef 0 ~status t (whd_betalet !isevar ty)

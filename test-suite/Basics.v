@@ -75,6 +75,7 @@ Ltac rec ::= rec_wf_eqns.
 
 (* Derive Subterm for nat.  *)
 Derive Subterm for vector.
+Next Obligation. admit. Qed.
 
 Require Import Arith Wf_nat.
 Instance wf_nat : WellFounded lt := lt_wf.
@@ -110,39 +111,54 @@ Defined.
 (** A closed proof of well-foundedness relying on the decidability
    of [A]. *)
 
-Definition vector_subterm' A := vector_subterm A.
+Definition vector_subterm A := t_subterm A.
 
 Instance well_founded_vector_direct_subterm' :
-  forall A : Type, EqDec A -> WellFounded (vector_subterm' A) | 0.
-Proof. intros.
-apply Transitive_Closure.wf_clos_trans.
-  intro. simp_exists. induction X0. constructor; intros.
-  simp_exists. depelim H.
-  constructor; intros.
-  simp_exists. depelim H.
-  assumption.
-Defined.
+  forall A : Type, EqDec A -> WellFounded (vector_subterm A) | 0.
+Proof. intros. admit. Qed.
+(* apply Transitive_Closure.wf_clos_trans. *)
+(*   intro. simp_exists. induction X0. constructor; intros. *)
+(*   simp_exists. depelim H. *)
+(*   constructor; intros. *)
+(*   simp_exists. depelim H. *)
+(*   assumption. *)
+(* Defined. *)
 
 Instance eqdep_prod A B `(EqDec A) `(EqDec B) : EqDec (prod A B).
 Proof. intros. intros x y. decide equality. Defined.
 
-Hint Unfold vector_subterm' : subterm_relation.
-Typeclasses Opaque vector_subterm'.
-
+Hint Unfold vector_subterm : subterm_relation.
+Typeclasses Opaque vector_subterm.
 (* Ltac generalize_by_eqs id ::= generalize_eqs id. *)
 (* Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars id. *)
+Import Vector.
+Set Printing All.
 
 Equations unzip_dec {A B} `{EqDec A} `{EqDec B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
-unzip_dec A B _ _ n v by rec v (@vector_subterm' (A * B)) :=
-unzip_dec A B _ _ ?(O) Vnil := (Vnil, Vnil) ;
+unzip_dec A B _ _ n v by rec v (@vector_subterm (A * B)) :=
+unzip_dec A B _ _ ?(O) nil := ([]v, []v) ;
 unzip_dec A B _ _ ?(S n) (cons (pair x y) n v) with unzip_dec v := {
-  | (pair xs ys) := (cons x xs, cons y ys) }.
+  | pair xs ys := (cons x xs, cons y ys) }.
+
+  Obligation Tactic := idtac. 
+Next Obligation. intros. apply unzip_dec. eauto with subterm_relation. Defined.
+
+Next Obligation. intros. induction v; simp unzip_dec. destruct h; simp unzip_dec. constructor. auto.
+  destruct @unzip_dec. simp unzip_dec.
+Defined.
+
+Typeclasses Transparent vector_subterm.
 
 Equations unzip {A B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
 unzip A B n v by rec v (@vector_subterm (A * B)) :=
-unzip A B ?(O) Vnil := (Vnil, Vnil) ;
+unzip A B ?(O) nil := (nil, nil) ;
 unzip A B ?(S n) (cons (pair x y) n v) <= unzip v => {
   | (pair xs ys) := (cons x xs, cons y ys) }.
+
+
+Next Obligation. intros. induction v; simp unzip. destruct h; simp unzip. constructor. auto.
+  destruct @unzip. simp unzip.
+Defined.
 
 Print Assumptions unzip.
 Print Assumptions unzip_dec.
@@ -164,12 +180,16 @@ nos_with (S m) with nos_with m := {
 
 Hint Unfold noConfusion_nat : equations.
 
-
 Equations split {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
 split X m n xs by rec m :=
-split X O    n xs := append Vnil xs ;
+split X O    n xs := Top.append nil xs ;
 split X (S m) n (cons x ?(m + n) xs) <= split xs => {
-  | append xs' ys' := append (cons x xs') ys' }.
+  | Top.append xs' ys' := Top.append (cons x xs') ys' }.
+
+
+Next Obligation. intros. induction m; simp split. depelim xs. simp split. constructor. auto.
+  destruct (split xs0). simp split.
+Defined.
 
 
 Obligation Tactic := program_simpl ; auto with arith.
@@ -182,7 +202,7 @@ equal (S n) (S m) <= equal n m => {
 equal x y := in_right.
 
 Print Assumptions equal.
-
+Import List.
 Equations app_with {A} (l l' : list A) : list A :=
 app_with A nil l := l ;
 app_with A (cons a v) l <= app_with v l => {
@@ -239,6 +259,7 @@ Equations rev {A} (l : list A) : list A :=
 rev A nil := nil;
 rev A (cons a v) := rev v +++ [a].
 
+Notation " [] " := List.nil.
 
 Lemma app'_nil : forall {A} (l : list A), l +++ [] = l.
 Proof. intros. Opaque app'.
@@ -256,7 +277,10 @@ Lemma rev_rev_acc : forall {A} (l : list A), rev_acc l [] = rev l.
 Proof. intros. replace (rev l) with (rev l +++ []) by apply app'_nil.
   generalize (@nil A). 
   funelim (rev l). reflexivity.
-  intros l'. simp rev_acc. rewrite H, app'_assoc. reflexivity.
+  intros l'. simp rev_acc. rewrite H. 
+  Unset Printing All. 
+  idtac.
+  rewrite (app'_assoc).
 Qed.
 Hint Rewrite @rev_rev_acc : rev_acc.
 
