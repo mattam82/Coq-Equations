@@ -590,7 +590,7 @@ let eq_context_nolet env sigma (g : rel_context) (d : rel_context) =
       (List.fold_right2 (fun (na,_,t as decl) (na',_,t') (env, acc) ->
 	if acc then 
 	  (push_rel decl env,
-	  (na = na' && (t = t' || is_conv env sigma t t')))
+	  (t = t' || is_conv env sigma t t'))
 	else env, acc) g d (env, true))
   with Invalid_argument "List.fold_right2" -> false
 
@@ -2921,7 +2921,6 @@ let depcase (mind, i as ind) =
   let nparams = mindb.mind_nparams in
   let args, params = list_chop (List.length ctx - nparams) ctx in
   let nargs = List.length args in
-  let liftconstr = nargs + 1 in
   let indapp = mkApp (mkInd ind, extended_rel_vect 0 ctx) in
   let pred = it_mkProd_or_LetIn (new_Type ()) 
     ((Anonymous, None, indapp) :: args)
@@ -2941,7 +2940,7 @@ let depcase (mind, i as ind) =
 			  Array.append (extended_rel_vect (ncargs + i + 1) params)
 			    (extended_rel_vect 0 realargs))])
       in
-      let body = mkRel (liftconstr + nconstrs - i) in
+      let body = mkRel (1 + nconstrs - i) in
       let br = it_mkProd_or_LetIn arity realargs in
 	(Name (id_of_string ("P" ^ string_of_int i)), None, br), body)
       oneind.mind_consnames oneind.mind_nf_lc
@@ -2958,7 +2957,7 @@ let depcase (mind, i as ind) =
 	      (extended_rel_vect 0 args)))
   in
   let ctxpred = (Anonymous, None, obj (2 + nargs)) :: args in
-  let app = mkApp (mkRel (nargs * 2 + nconstrs + 3),
+  let app = mkApp (mkRel (nargs + nconstrs + 3),
 		  (extended_rel_vect 0 ctxpred))
   in
   let ty = it_mkLambda_or_LetIn app ctxpred in
@@ -2966,11 +2965,11 @@ let depcase (mind, i as ind) =
   let xty = obj 1 in
   let xid = Namegen.named_hd (Global.env ()) xty Anonymous in
   let body = 
+    let len = 1 (* P *) + Array.length branches in
     it_mkLambda_or_LetIn case 
-      ((xid, None, obj 1) 
-	:: ((lift_rel_context 1 args) 
-	     @ (List.rev (Array.to_list (Array.map fst branches))) 
-	     @ ((Name (id_of_string "P"), None, pred) :: params)))
+      ((xid, None, lift len indapp) 
+	:: ((List.rev (Array.to_list (Array.map fst branches))) 
+	    @ ((Name (id_of_string "P"), None, pred) :: ctx)))
   in
   let ce =
     { const_entry_body = body;
@@ -2978,18 +2977,20 @@ let depcase (mind, i as ind) =
       const_entry_opaque = false }
   in
   let kn = 
-    Declare.declare_constant (add_suffix indid "_case") 
-      (DefinitionEntry ce, IsDefinition Scheme)
+    let id = add_suffix indid "_dep_elim" in
+      ConstRef (Declare.declare_constant id
+		  (DefinitionEntry ce, IsDefinition Scheme))
   in ctx, indapp, kn
 
 let derive_dep_elimination i loc =
-  let ctx, ty, kn = depcase i in
+  let ctx, ty, gref = depcase i in
   let indid = Nametab.basename_of_global (IndRef i) in
   let id = add_prefix "DependentElimination_" indid in
   let cl = dependent_elimination_class () in
-  let env = Global.env () in
-  let casety = type_of_constant env kn in
-    declare_instance id ctx cl [ty; casety; mkConst kn]
+  let casety = Global.type_of_global gref in
+  let args = extended_rel_vect 0 ctx in
+    declare_instance id ctx cl [ty; prod_appvect casety args; 
+				mkApp (constr_of_global gref, args)]
 
 VERNAC COMMAND EXTEND Derive_DependentElimination
 | [ "Derive" "DependentElimination" "for" constr_list(c) ] -> [ 
