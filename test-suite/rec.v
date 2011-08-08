@@ -26,12 +26,21 @@ Instance gt_bound_wf n : WellFounded (gt_bound n).
 Proof. red. red. intros.
   Admitted.
 
+Equations foo (n : nat) : Prop :=
+foo n by rec n (gt_bound 100) :=
+foo n := _.
+
+Admit Obligations.
+
+
 
 Equations f91 n : { m : nat | n < m - 11 } :=
 f91 n by rec n (gt_bound 100) :=
 f91 n with le_lt_dec n 100 := {
   | left H := exist _ (proj1_sig (f91 (proj1_sig (f91 (n + 11))))) _ ;
   | right H := exist _ (n - 10) _ }.
+
+Set Printing Depth 1000.
 
 Admit Obligations.
 

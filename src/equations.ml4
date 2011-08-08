@@ -356,6 +356,7 @@ let rec specialize s p =
       (match nth s (pred i) (* FIXME *) with
       | PRel i -> PHide i
       | PHide i -> PHide i
+      | PInac r -> PInac r
       | _ -> assert(false))
 
 and specialize_constr s c = subst_pats_constr 0 s c
@@ -1189,7 +1190,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		      (match covering_aux env evars data [] [(lhs,rhs),false] path prob lets ty with
 		      | None -> None
 		      | Some split -> Some (RecValid (pi1 data, split)))
-					    
+		      
 		| By (tac, s) ->
 		    let sign, t', rels = push_rel_context_to_named_context env' ty in
 		    let sign' = split_at_eos (named_context_of_val sign) in
@@ -1217,11 +1218,11 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 			    | App (f, args) -> 
 				if eq_constr f (Lazy.force coq_add_pattern) then
 				  let comp = args.(1) and newpattern = pat_of_constr args.(2) in
-				    if pi2 data then
+				    if pi2 data (* with_comp *) then
 				      let pats = rev_map pat_of_constr (snd (decompose_app comp)) in
 				      let newprob = 
 					rctx, (newpattern :: pats), rctx
-					  (* ((newpatname, None, newpatty) :: ctx') *)
+					(* ((newpatname, None, newpatty) :: ctx') *)
 				      in 
 				      let ty' = 
 					match newpattern with
@@ -1828,12 +1829,12 @@ let map_split f split =
 let map_evars_in_split m = map_split (map_evars_in_constr m)
 
 let subst_rec_split f prob s split = 
-  let subst_rec cutprob s (ctx, _, _ as lhs) =
+  let subst_rec cutprob s (ctx, p, _ as lhs) =
     let subst = 
-      fold_left (fun (ctx, _, _ as lhs) (id, b) ->
+      fold_left (fun (ctx, _, _ as lhs') (id, b) ->
 	let n, _, _ = lookup_rel_id id ctx in
-	let substf = single_subst n (PInac b) ctx (* ctx[n := f] |- _ : ctx *) in
-	  compose_subst substf lhs) (id_subst ctx) s
+	let substf = single_subst n (PInac (specialize_constr p b)) ctx (* ctx[n := f] |- _ : ctx *) in
+	  compose_subst substf lhs') (id_subst ctx) s
     in
       subst, compose_subst subst (compose_subst lhs cutprob)
   in
@@ -1842,9 +1843,9 @@ let subst_rec_split f prob s split =
 	let subst, lhs' = subst_rec cutprob s lhs in	  
 	  Compute (lhs', mapping_constr subst ty, mapping_rhs subst c)
 	  
-    | Split (lhs, x, y, cs) -> 
+    | Split (lhs, n, ty, cs) -> 
 	let subst, lhs' = subst_rec cutprob s lhs in
-	  Split (lhs', x, y, Array.map (Option.map (aux cutprob s)) cs)
+	  Split (lhs', pred n, mapping_constr subst ty, Array.map (Option.map (aux cutprob s)) cs)
 	  
     | RecValid (id, c) ->
 	RecValid (id, aux cutprob s c)
@@ -2426,7 +2427,25 @@ let update_split is_rec cmap f prob id split =
   let split' = map_evars_in_split cmap split in
     match is_rec with
     | Some Structural -> subst_rec_split f prob [(id, f)] split'
-    | Some (Logical r) -> subst_comp_proj_split f (mkConst r.comp_proj) split'
+    | Some (Logical r) -> 
+      let split' = subst_comp_proj_split f (mkConst r.comp_proj) split' in
+      let rec aux = function
+	| RecValid (_, Valid (ctx, ty, args, tac, view, 
+			       [ctx', _, newprob, rest])) ->
+	  let rel, _, ty = lookup_rel_id id (pi1 newprob) in
+	  let fK = 
+	    let ctx, ty = decompose_prod_assum (lift rel ty) in
+	      it_mkLambda_or_LetIn (mkApp (f, rel_vect 1 (List.length ctx - 1))) ctx
+	  in
+	    aux (subst_rec_split f newprob [(id, fK)] rest)
+	| Split (lhs, y, z, cs) -> Split (lhs, y, z, Array.map (Option.map aux) cs)
+	| RecValid (id, c) -> RecValid (id, aux c)
+	| Valid (lhs, y, z, w, u, cs) ->
+	  Valid (lhs, y, z, w, u, 
+		 List.map (fun (gl, cl, subst, s) -> (gl, cl, subst, aux s)) cs)
+	| Refined (lhs, info, s) -> Refined (lhs, info, aux s)
+	| (Compute _) as x -> x
+      in aux split'
     | _ -> split'
 
 let rec translate_cases_pattern env avoid = function
@@ -2662,28 +2681,28 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	| Some (Logical r) ->
 	    (* WRONG! Massage the right-hand sides instead to move from
 	       [f_comp_proj x y z prf] to [f x y z] *)
-	    let split = update_split is_recursive cmap f prob i split in
+	    let unfold_split = update_split is_recursive cmap f prob i split in
 	    (* We first define the unfolding and show the fixpoint equation. *)
 	    isevar := Evd.empty;
 	    let unfoldi = add_suffix i "_unfold" in
 	    (* let unfold_baseid = string_of_id unfoldi in *)
 	    (* Auto.create_hint_db false unfold_baseid (ids, Cpred.remove (Subtac_utils.fix_proto_ref ()) csts) true; *)
-	    let rec unfold_eqs eqs =
-	      concat (map
-			 (fun (optid, pats, rhs) ->
-			   let optid = Option.map (fun (loc,id) -> (loc, unfoldi)) optid in
-			   match rhs with
-			   | Rec (v, r, eqs) -> unfold_eqs eqs
-			   | Refine (ce, eqs) -> [(optid, pats, Refine (ce, unfold_eqs eqs))]
-			   | _ -> [(optid, pats, rhs)])
-			 eqs)
-	    in
-	    let unfold_equations = 
-	      map (interp_eqn unfoldi None isevar env data sign arity None)
-		(unfold_eqs eqs)
-	    in
-	    let data = ienv in
-	    let unfold_split = covering env isevar (unfoldi, with_comp, data) unfold_equations prob arity in
+(* 	    let rec unfold_eqs eqs = *)
+(* 	      concat (map *)
+(* 			 (fun (optid, pats, rhs) -> *)
+(* 			   let optid = Option.map (fun (loc,id) -> (loc, unfoldi)) optid in *)
+(* 			   match rhs with *)
+(* 			   | Rec (v, r, eqs) -> unfold_eqs eqs *)
+(* 			   | Refine (ce, eqs) -> [(optid, pats, Refine (ce, unfold_eqs eqs))] *)
+(* 			   | _ -> [(optid, pats, rhs)]) *)
+(* 			 eqs) *)
+(* 	    in *)
+(* 	    let unfold_equations =  *)
+(* 	      map (interp_eqn unfoldi None isevar env data sign arity None) *)
+(* 		(unfold_eqs eqs) *)
+(* 	    in *)
+(* 	    let data = ienv in *)
+(* 	    let unfold_split = covering env isevar (unfoldi, with_comp, data) unfold_equations prob arity in *)
 	    let hook_unfold cmap helpers' _ gr' = 
 	      let info = { base_id = baseid; helpers_info = helpers @ helpers' } in
 	      let funf_cst = match gr' with ConstRef c -> c | _ -> assert false in
