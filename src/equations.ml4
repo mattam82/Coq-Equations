@@ -603,8 +603,8 @@ let check_eq_context_nolet env sigma (_, _, g as snd) (d, _, _ as fst) =
 
 let compose_subst ?(sigma=Evd.empty) ((g',p',d') as snd) ((g,p,d) as fst) =
   if debug then check_eq_context_nolet (Global.env ()) sigma snd fst;
-  (* mk_ctx_map  *)
-  (g', (specialize_pats p' p), d)
+  mk_ctx_map g' (specialize_pats p' p) d
+(*     (g', (specialize_pats p' p), d) *)
 
 let push_mapping_context (n, b, t as decl) (g,p,d) =
   ((n, Option.map (specialize_constr p) b, specialize_constr p t) :: g,
@@ -1828,13 +1828,117 @@ let map_split f split =
 
 let map_evars_in_split m = map_split (map_evars_in_constr m)
 
-let subst_rec_split f prob s split = 
+let (&&&) f g (x, y) = (f x, g y)
+
+let array_filter_map f a =
+  let l' =
+    Array.fold_right (fun c acc -> 
+		      Option.cata (fun r -> r :: acc) acc (f c))
+    a []
+  in Array.of_list l'
+
+let subst_rec_split cutlast f prob s split = 
   let subst_rec cutprob s (ctx, p, _ as lhs) =
     let subst = 
       fold_left (fun (ctx, _, _ as lhs') (id, b) ->
-	let n, _, _ = lookup_rel_id id ctx in
-	let substf = single_subst n (PInac (specialize_constr p b)) ctx (* ctx[n := f] |- _ : ctx *) in
-	  compose_subst substf lhs') (id_subst ctx) s
+	  let rel, _, ty = lookup_rel_id id ctx in
+	  let fK = 
+	    if cutlast then
+	      let ctx, ty = decompose_prod_assum (lift rel ty) in
+		it_mkLambda_or_LetIn (mkApp (f, rel_vect 1 (List.length ctx - 1))) ctx
+	    else f
+	  in
+	  let substf = single_subst rel (PInac fK) ctx (* ctx[n := f] |- _ : ctx *) in
+	    compose_subst substf lhs') (id_subst ctx) s
+    in
+      subst, compose_subst subst (compose_subst lhs cutprob)
+  in
+  let rec aux cutprob s = function
+    | Compute ((ctx,pats,del as lhs), ty, c) ->
+	let subst, lhs' = subst_rec cutprob s lhs in	  
+	  Compute (lhs', mapping_constr subst ty, mapping_rhs subst c)
+	  
+    | Split (lhs, n, ty, cs) -> 
+	let subst, lhs' = subst_rec cutprob s lhs in
+	  Split (lhs', pred n, mapping_constr subst ty, Array.map (Option.map (aux cutprob s)) cs)
+	  
+    | RecValid (id, c) ->
+	RecValid (id, aux cutprob s c)
+	  
+    | Refined (lhs, info, sp) -> 
+	let (id, c, cty), ty, arg, path, ev, (fev, args), revctx, newprob, newty =
+	  info.refined_obj, info.refined_rettyp,
+	  info.refined_arg, info.refined_path,
+	  info.refined_ex, info.refined_app,
+	  info.refined_revctx, info.refined_newprob, info.refined_newty
+	in
+	let subst, lhs' = subst_rec cutprob s lhs in
+	let cutprob pb = 
+	  let (ctx, pats, ctx') = pb in
+	  let pats, cutctx', _, _ =
+	    (* From Γ |- ps, prec, ps' : Δ, rec, Δ', build
+	       Γ |- ps, ps' : Δ, Δ' *)
+	    fold_right (fun (n, b, t) (pats, ctx', i, subs) ->
+			match n with
+			| Name n when mem_assoc n s ->
+			  let term = assoc n s in
+			    (pats, ctx', pred i, term :: map (lift (-1)) subs)
+			| _ -> (i :: pats, (n, Option.map (substl subs) b, substl subs t) :: ctx', 
+				pred i, mkRel 1 :: map (lift 1) subs))
+	    ctx' ([], [], length ctx', [])
+ 	  in (ctx', map (fun i -> PRel i) pats, cutctx')
+	in
+        let _, revctx' = subst_rec (cutprob (id_subst (pi3 revctx))) s revctx in
+	let cutnewprob = cutprob newprob in
+	let subst', newprob' = subst_rec cutnewprob s newprob in
+	let _, newprob_to_prob' = subst_rec (cutprob info.refined_newprob_to_lhs) s info.refined_newprob_to_lhs in
+	let ev' = new_untyped_evar () in
+	let path' = ev' :: tl path in
+	let app', arg' =
+	  let refarg = ref 0 in
+  	  let args' = list_fold_left_i
+	    (fun i acc c -> 
+	     if i = arg then (refarg := List.length acc);
+	     if isRel c then
+	       let (n, _, ty) = List.nth (pi1 lhs) (pred (destRel c)) in
+		 if mem_assoc (out_name n) s then acc
+		 else (mapping_constr subst c) :: acc
+	     else (mapping_constr subst c) :: acc) 0 [] args 
+	  in (mkEvar (ev', [||]), rev args'), !refarg
+	in
+	let info =
+	  { refined_obj = (id, mapping_constr subst c, mapping_constr subst cty);
+	    refined_rettyp = mapping_constr subst ty;
+	    refined_arg = arg';
+	    refined_path = path';
+	    refined_ex = ev';
+	    refined_app = app';
+	    refined_revctx = revctx';
+	    refined_newprob = newprob';
+	    refined_newprob_to_lhs = newprob_to_prob';
+	    refined_newty = mapping_constr subst' newty }
+	in Refined (lhs', info, aux cutnewprob s sp)
+
+    | Valid (lhs, x, y, w, u, cs) -> 
+	let subst, lhs' = subst_rec cutprob s lhs in
+	  Valid (lhs', x, y, w, u, 
+		List.map (fun (g, l, subst, sp) -> (g, l, subst, aux cutprob s sp)) cs)
+  in aux prob s split
+
+
+let clear_rec_split cutlast f prob s split = 
+  let subst_rec cutprob s (ctx, p, _ as lhs) =
+    let subst = 
+      fold_left (fun (ctx, _, _ as lhs') (id, b) ->
+	  let rel, _, ty = lookup_rel_id id ctx in
+	  let fK = 
+	    if cutlast then
+	      let ctx, ty = decompose_prod_assum (lift rel ty) in
+		it_mkLambda_or_LetIn (mkApp (f, rel_vect 1 (List.length ctx - 1))) ctx
+	    else f
+	  in
+	  let substf = single_subst rel (PInac fK) ctx (* ctx[n := f] |- _ : ctx *) in
+	    compose_subst substf lhs') (id_subst ctx) s
     in
       subst, compose_subst subst (compose_subst lhs cutprob)
   in
@@ -1861,9 +1965,13 @@ let subst_rec_split f prob s split =
         let _, revctx' = subst_rec (id_subst (pi3 revctx)) s revctx in
 	let cutprob pb = 
 	  let (ctx, pats, ctx') = pb in
-	  let cutctx' = list_drop_last ctx' in
+	  let cutctx' = filter (fun (n, _, _) -> not (n = Name (id_of_string "refine"))) ctx' in
 	    (ctx', List.rev (patvars_of_tele cutctx'), cutctx')
 	in
+(* 	    filter (fun (n, b, t) ->  *)
+(* 		    match n with Name n -> not (mem_assoc n s) | Anonymous -> true) *)
+(* 	    ctx'  *)
+(* 	  in *)
 	let cutnewprob = cutprob newprob in
 	let subst', newprob' = subst_rec cutnewprob s newprob in
 	let _, newprob_to_prob' = subst_rec (cutprob info.refined_newprob_to_lhs) s info.refined_newprob_to_lhs in
@@ -1875,8 +1983,8 @@ let subst_rec_split f prob s split =
 	let info =
 	  { refined_obj = (id, mapping_constr subst c, mapping_constr subst cty);
 	    refined_rettyp = mapping_constr subst ty;
-	    refined_arg =arg - List.length s;
-	    refined_path =path;
+	    refined_arg = arg - List.length s;
+	    refined_path = path;
 	    refined_ex = ev;
 	    refined_app = sc';
 	    refined_revctx = revctx';
@@ -1897,7 +2005,9 @@ type statements = statement list
 let subst_app f fn c = 
   let rec aux n c =
     match kind_of_term c with
-    | App (f', args) when eq_constr f f' -> fn n f' args
+    | App (f', args) when eq_constr f f' -> 
+      let args' = Array.map (map_constr_with_binders succ aux n) args in
+	fn n f' args'
     | _ -> map_constr_with_binders succ aux n c
   in aux 0 c
   
@@ -2426,18 +2536,13 @@ let prove_unfolding_lemma info proj f_cst funf_cst split gl =
 let update_split is_rec cmap f prob id split =
   let split' = map_evars_in_split cmap split in
     match is_rec with
-    | Some Structural -> subst_rec_split f prob [(id, f)] split'
+    | Some Structural -> subst_rec_split false f prob [(id, f)] split'
     | Some (Logical r) -> 
       let split' = subst_comp_proj_split f (mkConst r.comp_proj) split' in
       let rec aux = function
 	| RecValid (_, Valid (ctx, ty, args, tac, view, 
-			       [ctx', _, newprob, rest])) ->
-	  let rel, _, ty = lookup_rel_id id (pi1 newprob) in
-	  let fK = 
-	    let ctx, ty = decompose_prod_assum (lift rel ty) in
-	      it_mkLambda_or_LetIn (mkApp (f, rel_vect 1 (List.length ctx - 1))) ctx
-	  in
-	    aux (subst_rec_split f newprob [(id, fK)] rest)
+			       [ctx', _, newprob, rest])) ->	  
+	    aux (subst_rec_split true f newprob [(id, f)] rest)
 	| Split (lhs, y, z, cs) -> Split (lhs, y, z, Array.map (Option.map aux) cs)
 	| RecValid (id, c) -> RecValid (id, aux c)
 	| Valid (lhs, y, z, w, u, cs) ->
@@ -2679,35 +2784,15 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	    build_equations with_ind env i info data sign is_recursive arity 
 	      f_cst (constr_of_global gr) prob split
 	| Some (Logical r) ->
-	    (* WRONG! Massage the right-hand sides instead to move from
-	       [f_comp_proj x y z prf] to [f x y z] *)
 	    let unfold_split = update_split is_recursive cmap f prob i split in
 	    (* We first define the unfolding and show the fixpoint equation. *)
 	    isevar := Evd.empty;
 	    let unfoldi = add_suffix i "_unfold" in
-	    (* let unfold_baseid = string_of_id unfoldi in *)
-	    (* Auto.create_hint_db false unfold_baseid (ids, Cpred.remove (Subtac_utils.fix_proto_ref ()) csts) true; *)
-(* 	    let rec unfold_eqs eqs = *)
-(* 	      concat (map *)
-(* 			 (fun (optid, pats, rhs) -> *)
-(* 			   let optid = Option.map (fun (loc,id) -> (loc, unfoldi)) optid in *)
-(* 			   match rhs with *)
-(* 			   | Rec (v, r, eqs) -> unfold_eqs eqs *)
-(* 			   | Refine (ce, eqs) -> [(optid, pats, Refine (ce, unfold_eqs eqs))] *)
-(* 			   | _ -> [(optid, pats, rhs)]) *)
-(* 			 eqs) *)
-(* 	    in *)
-(* 	    let unfold_equations =  *)
-(* 	      map (interp_eqn unfoldi None isevar env data sign arity None) *)
-(* 		(unfold_eqs eqs) *)
-(* 	    in *)
-(* 	    let data = ienv in *)
-(* 	    let unfold_split = covering env isevar (unfoldi, with_comp, data) unfold_equations prob arity in *)
 	    let hook_unfold cmap helpers' _ gr' = 
 	      let info = { base_id = baseid; helpers_info = helpers @ helpers' } in
 	      let funf_cst = match gr' with ConstRef c -> c | _ -> assert false in
 	      let funfc =  mkConst funf_cst in
-	      let unfold_split = update_split None cmap funfc prob unfoldi unfold_split in
+	      let unfold_split = map_evars_in_split cmap unfold_split in
 	      let hook_eqs _ grunfold =
 		Conv_oracle.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
 		build_equations with_ind env i info data sign None arity

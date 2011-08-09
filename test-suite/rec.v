@@ -33,22 +33,28 @@ foo n := _.
 Admit Obligations.
 
 
+Set Printing Existential Instances.
 
 Equations f91 n : { m : nat | n < m - 11 } :=
 f91 n by rec n (gt_bound 100) :=
 f91 n with le_lt_dec n 100 := {
   | left H := exist _ (proj1_sig (f91 (proj1_sig (f91 (n + 11))))) _ ;
   | right H := exist _ (n - 10) _ }.
-
-Set Printing Depth 1000.
-
+(* TODO: Bug
 Admit Obligations.
+Admit Obligations.
+*)
 
-Next Obligation. apply f91. red.
-  unfold minus_12. destruct (le_lt_dec n 100).
-  destruct le_lt_dec.
-  simpl. admit.
+Next Obligation. intros. apply f91. red.  admit. Defined.
+Next Obligation. intros. apply f91. destruct f91_comp_proj. simpl. red. simpl. admit. Defined.
+Next Obligation. intros. admit. Defined.
+Next Obligation. intros. admit. Defined.
 
+Next Obligation. intros. rec_wf_rel n IH (gt_bound 100). 
+  simp f91. constructor. destruct le_lt_dec. simpl. constructor. intros. apply IH. admit. 
+  apply IH. admit. apply IH. admit. intros. apply IH; auto.
+  simpl. constructor. intros. apply IH; auto.
+Defined.
 
 Section Nested.
 
@@ -59,8 +65,23 @@ Section Nested.
 
   Next Obligation. destruct_call f_comp_proj. simpl. exists x. auto. Defined.
   Next Obligation. do 2 destruct_call f_comp_proj. simpl in *. eauto with arith. Defined.
+    Obligation Tactic := idtac. Transparent f_comp_proj.
+      Transparent f_obligation_2. Transparent f_obligation_3.
+     
+  Next Obligation. 
+    intros.
+    set (foo:= f_obligation_4 x (λ (y : nat) (_ : y < S x), f y)). About f_obligation_4. About f_comp_proj.
+    Set Printing All. idtac.
+    unfold f_comp_proj in foo. unfold f_obligation_3 in foo. unfold f_comp_proj in foo.
+    unfold f_obligation_2 in foo. 
+    set (bar:=exist (λ y : nat, y <= S x) (` (f (` (f x))))).
+    simpl in bar. About f_obligation_4.
 
-  Next Obligation. do 2 destruct_call f. simpl in *. eauto with arith. Defined.
+intros. depelim x. apply m_0. apply m_1. Defined.
+ Set Printing All. About f_obligation_4.
+Print f_obligation_3.
+
+Defined.
 
   Next Obligation. admit. Defined. 
 
