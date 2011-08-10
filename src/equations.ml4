@@ -1141,8 +1141,8 @@ let push_rel_context_eos ctx env =
   else push_rel_context ctx env
     
 let split_at_eos ctx =
-  fst (list_split_when (fun (id, b, t) ->
-    eq_constr t (Lazy.force coq_end_of_section)) ctx)
+  list_split_when (fun (id, b, t) ->
+		   eq_constr t (Lazy.force coq_end_of_section)) ctx
 
 let pr_problem (id, _, _) env (delta, patcs, _) =
   let env' = push_rel_context delta env in
@@ -1193,13 +1193,14 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		      
 		| By (tac, s) ->
 		    let sign, t', rels = push_rel_context_to_named_context env' ty in
-		    let sign' = split_at_eos (named_context_of_val sign) in
-		    let ids = List.map pi1 sign' in
+		    let sign = named_context_of_val sign in
+		    let sign', secsign = split_at_eos sign in
+		    let ids = List.map pi1 sign in
 		    let tac = match tac with
 		      | Inl tac -> Tacinterp.interp_tac_gen [] ids Tactic_debug.DebugOff tac 
 		      | Inr tac -> Tacinterp.eval_tactic tac
 		    in
-		    let env' = reset_with_named_context (val_of_named_context sign') env in
+		    let env' = reset_with_named_context (val_of_named_context sign) env in
 		    let proof = Proofview.init [(env', t')] in
 		    let res = Proofview.apply env' (Proofview.V82.tactic tac) proof in
 		    let gls = Proofview.V82.goals res in
@@ -1211,7 +1212,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 			let solve_goal gl =
 			  let nctx = named_context_of_val (Goal.V82.hyps !evars gl) in
 			  let concl = Goal.V82.concl !evars gl in
-			  let nctx = split_at_eos nctx in
+			  let nctx, secctx = split_at_eos nctx in
 			  let rctx, subst = rel_of_named_context nctx in
 			  let ty' = subst_vars subst concl in
 			  let ty', prob, subst = match kind_of_term ty' with
@@ -1252,7 +1253,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 				  let args = rev (list_map_filter (fun (id,b,t) ->
 								     if b = None then Some (mkVar id) else None) nctx)
 				  in gl, args, subst, s
-			in Some (Valid (prob, ty, ids, tac, res, map solve_goal gls.it))
+			in Some (Valid (prob, ty, map pi1 sign', tac, res, map solve_goal gls.it))
 
 		| Refine (c, cls) -> 
 		    (* The refined term and its type *)
@@ -1845,7 +1846,9 @@ let subst_rec_split cutlast f prob s split =
 	  let fK = 
 	    if cutlast then
 	      let ctx, ty = decompose_prod_assum (lift rel ty) in
-		it_mkLambda_or_LetIn (mkApp (f, rel_vect 1 (List.length ctx - 1))) ctx
+	      let len = length ctx in
+	      let args = mkRel len :: rel_list 0 (len - 2) in
+		it_mkLambda_or_LetIn (applistc f args) ctx
 	    else f
 	  in
 	  let substf = single_subst rel (PInac fK) ctx (* ctx[n := f] |- _ : ctx *) in
@@ -1913,80 +1916,6 @@ let subst_rec_split cutlast f prob s split =
 	    refined_path = path';
 	    refined_ex = ev';
 	    refined_app = app';
-	    refined_revctx = revctx';
-	    refined_newprob = newprob';
-	    refined_newprob_to_lhs = newprob_to_prob';
-	    refined_newty = mapping_constr subst' newty }
-	in Refined (lhs', info, aux cutnewprob s sp)
-
-    | Valid (lhs, x, y, w, u, cs) -> 
-	let subst, lhs' = subst_rec cutprob s lhs in
-	  Valid (lhs', x, y, w, u, 
-		List.map (fun (g, l, subst, sp) -> (g, l, subst, aux cutprob s sp)) cs)
-  in aux prob s split
-
-
-let clear_rec_split cutlast f prob s split = 
-  let subst_rec cutprob s (ctx, p, _ as lhs) =
-    let subst = 
-      fold_left (fun (ctx, _, _ as lhs') (id, b) ->
-	  let rel, _, ty = lookup_rel_id id ctx in
-	  let fK = 
-	    if cutlast then
-	      let ctx, ty = decompose_prod_assum (lift rel ty) in
-		it_mkLambda_or_LetIn (mkApp (f, rel_vect 1 (List.length ctx - 1))) ctx
-	    else f
-	  in
-	  let substf = single_subst rel (PInac fK) ctx (* ctx[n := f] |- _ : ctx *) in
-	    compose_subst substf lhs') (id_subst ctx) s
-    in
-      subst, compose_subst subst (compose_subst lhs cutprob)
-  in
-  let rec aux cutprob s = function
-    | Compute ((ctx,pats,del as lhs), ty, c) ->
-	let subst, lhs' = subst_rec cutprob s lhs in	  
-	  Compute (lhs', mapping_constr subst ty, mapping_rhs subst c)
-	  
-    | Split (lhs, n, ty, cs) -> 
-	let subst, lhs' = subst_rec cutprob s lhs in
-	  Split (lhs', pred n, mapping_constr subst ty, Array.map (Option.map (aux cutprob s)) cs)
-	  
-    | RecValid (id, c) ->
-	RecValid (id, aux cutprob s c)
-	  
-    | Refined (lhs, info, sp) -> 
-	let (id, c, cty), ty, arg, path, ev, (fev, args), revctx, newprob, newty =
-	  info.refined_obj, info.refined_rettyp,
-	  info.refined_arg, info.refined_path,
-	  info.refined_ex, info.refined_app,
-	  info.refined_revctx, info.refined_newprob, info.refined_newty
-	in
-	let subst, lhs' = subst_rec cutprob s lhs in
-        let _, revctx' = subst_rec (id_subst (pi3 revctx)) s revctx in
-	let cutprob pb = 
-	  let (ctx, pats, ctx') = pb in
-	  let cutctx' = filter (fun (n, _, _) -> not (n = Name (id_of_string "refine"))) ctx' in
-	    (ctx', List.rev (patvars_of_tele cutctx'), cutctx')
-	in
-(* 	    filter (fun (n, b, t) ->  *)
-(* 		    match n with Name n -> not (mem_assoc n s) | Anonymous -> true) *)
-(* 	    ctx'  *)
-(* 	  in *)
-	let cutnewprob = cutprob newprob in
-	let subst', newprob' = subst_rec cutnewprob s newprob in
-	let _, newprob_to_prob' = subst_rec (cutprob info.refined_newprob_to_lhs) s info.refined_newprob_to_lhs in
-	let sc' = 
-	  let recprots, args = list_chop (List.length s) args in
-	    (mapping_constr subst (applist (fev, recprots)),
-	    map (mapping_constr subst) args)
-	in
-	let info =
-	  { refined_obj = (id, mapping_constr subst c, mapping_constr subst cty);
-	    refined_rettyp = mapping_constr subst ty;
-	    refined_arg = arg - List.length s;
-	    refined_path = path;
-	    refined_ex = ev;
-	    refined_app = sc';
 	    refined_revctx = revctx';
 	    refined_newprob = newprob';
 	    refined_newprob_to_lhs = newprob_to_prob';
