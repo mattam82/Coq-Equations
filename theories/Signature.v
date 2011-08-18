@@ -20,3 +20,4 @@ Class Signature (fam : Type) (signature_index : Type) := {
 
 Notation " x ~=~ y " := (signature_pack x = signature_pack y) (at level 90).
 
+Notation " '(' x '&' y ')' " := (existT _ x y) : equations. 
