@@ -26,42 +26,61 @@ Instance gt_bound_wf n : WellFounded (gt_bound n).
 Proof. red. red. intros.
   Admitted.
 
+Equations foo (n : nat) : Prop :=
+foo n by rec n (gt_bound 100) :=
+foo n := _.
+
+Admit Obligations.
+
+
+Set Printing Existential Instances.
 
 Equations f91 n : { m : nat | n < m - 11 } :=
 f91 n by rec n (gt_bound 100) :=
 f91 n with le_lt_dec n 100 := {
   | left H := exist _ (proj1_sig (f91 (proj1_sig (f91 (n + 11))))) _ ;
   | right H := exist _ (n - 10) _ }.
-
+(* TODO: Bug
 Admit Obligations.
+Admit Obligations.
+*)
 
-Next Obligation. apply f91. red.
-  unfold minus_12. destruct (le_lt_dec n 100).
-  destruct le_lt_dec.
-  simpl. admit.
+Next Obligation. intros. apply f91. red.  admit. Defined.
+Next Obligation. intros. apply f91. destruct f91_comp_proj. simpl. red. simpl. admit. Defined.
+Next Obligation. intros. admit. Defined.
+Next Obligation. intros. admit. Defined.
 
+Next Obligation. intros. rec_wf_rel n IH (gt_bound 100). 
+  simp f91. constructor. destruct le_lt_dec. simpl. constructor. intros. apply IH. admit. 
+  apply IH. admit. apply IH. admit. intros. apply IH; auto.
+  simpl. constructor. intros. apply IH; auto.
+Defined.
 
 Section Nested.
+  Hint Extern 3 => match goal with 
+                     [ |- context [ ` (?x) ] ] => destruct x; simpl proj1_sig
+                   end : Below.
 
   Equations f (n : nat) : { x : nat | x <= n } :=
   f n by rec n lt :=
   f 0 := exist _ 0 _ ;
   f (S n) := exist _ (proj1_sig (f (proj1_sig (f n)))) _.
+  
 
-  Next Obligation. destruct_call f_comp_proj. simpl. exists x. auto. Defined.
+
+  Next Obligation. apply f. Set Typeclasses Debug. Print HintDb arith.
+    repeat match goal with 
+             [ |- context [ ` (?x) ] ] => destruct x; simpl proj1_sig
+           end.
+    typeclasses eauto with Below arith. destruct f_comp_proj. simpl. auto with arith. Defined.
   Next Obligation. do 2 destruct_call f_comp_proj. simpl in *. eauto with arith. Defined.
-
-  Next Obligation. do 2 destruct_call f. simpl in *. eauto with arith. Defined.
-
-  Next Obligation. admit. Defined. 
-
-  Next Obligation. 
+     
+  Next Obligation.  
     rec_wf_rel n IH lt.
-    destruct x. constructor. simp f.
-    constructor. intros. subst recres. auto.
-    auto. apply IH. destruct f. auto with arith.
+    depelim x. simp f. simp f. constructor ; auto with arith. intros. eauto with arith.
+    apply IH. destruct f. simpl. auto with arith.
   Defined.
-
+    
 About f_elim.
 
 End Nested.
@@ -118,6 +137,12 @@ Qed.
 
 Module RecMeasure.
   
+
+  Instance wf_MR {A R} `(WellFounded A R) {B} (f : B -> A) : WellFounded (MR R f).
+  Proof. red. apply measure_wf. apply H. Defined.
+
+  Hint Extern 0 (MR _ _ _ _) => red : Below.
+
   Equations id (n : nat) : nat :=
   id n by rec n (MR lt (fun n => n)) :=
   id O := 0 ;
@@ -131,9 +156,6 @@ Module RecMeasure.
   Implicit Arguments length [[A]].
 
 
-  Instance wf_MR {A R} `(WellFounded A R) {B} (f : B -> A) : WellFounded (MR R f).
-  Proof. red. apply measure_wf. apply H. Defined.
-
   Equations g (l : list nat) : nat :=
   g n by rec n (MR lt (@length nat)) :=
   g nil := 0 ;
@@ -146,8 +168,7 @@ Module RecMeasure.
   
   Section QuickSort.
     
-    Hint Extern 3 (MR _ _ _ _) => unfold MR : Below.
-    Hint Resolve gt_le_S : Below.
+    Hint Immediate gt_le_S : Below.
     Hint Resolve @filter_length : Below.
     Hint Unfold lt gt : Below.
     Hint Resolve le_lt_n_Sm : Below.
@@ -177,12 +198,15 @@ Module RecMeasure.
     Context (ltb_leb' : forall x y, leb x y = false <-> ltb y x).
     Context (ltb_leb'' : forall x y, ltb x y <-> ~ leb y x).
 
+    Set Firstorder Solver auto.
+
     About filter_In.
     Lemma filter_In' :
       ∀ (A : Type) (f : A → bool) (x : A) (l : list A),
       In x (filter f l) ↔ In x l ∧ f x.
     Proof.
-      intros. rewrite filter_In. intuition. apply Is_true_eq_true; auto.
+      intros. rewrite filter_In. intuition auto. apply Is_true_eq_true2. auto.
+      apply Is_true_eq_true. auto.
     Qed.
 
     Lemma qs_same (l : list A) : forall a, In a l <-> In a (qs l).
@@ -214,7 +238,7 @@ Module RecMeasure.
         (forall x y, In x l1 -> In y l2 -> le x y) ->
         sort le (l1 ++ l2).
     Proof.
-      induction l1; simpl in *; intuition.
+      induction l1; simpl in *; intuition auto.
       inversion_clear H.
       constructor; auto.
       apply InfA_app; auto.
@@ -304,28 +328,3 @@ Module RecMeasure.
   End QuickSort.
 
 End RecMeasure.
-
-Section Nested.
-
-  Equations f (n : nat) : { x : nat | x <= n } :=
-  f n by rec n lt :=
-  f 0 := exist _ 0 _ ;
-  f (S n) := exist _ (proj1_sig (f (proj1_sig (f n)))) _.
-
-  Next Obligation. destruct_call f_comp_proj. simpl. exists x. auto. Defined.
-  Next Obligation. do 2 destruct_call f_comp_proj. simpl in *. eauto with arith. Defined.
-    Set Printing All.
-  Print f_obligation_2.
-
-  Next Obligation. do 2 destruct_call f. simpl in *. eauto with arith. Defined.
-
-  Next Obligation. admit. Defined. 
-
-  Next Obligation. 
-    rec_wf_rel n IH lt.
-    destruct x. constructor. simp f.
-    constructor. intros. subst recres. auto.
-    auto. apply IH. destruct f. auto with arith.
-  Defined.
-
-End Nested.

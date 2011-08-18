@@ -356,6 +356,7 @@ let rec specialize s p =
       (match nth s (pred i) (* FIXME *) with
       | PRel i -> PHide i
       | PHide i -> PHide i
+      | PInac r -> PInac r
       | _ -> assert(false))
 
 and specialize_constr s c = subst_pats_constr 0 s c
@@ -602,8 +603,8 @@ let check_eq_context_nolet env sigma (_, _, g as snd) (d, _, _ as fst) =
 
 let compose_subst ?(sigma=Evd.empty) ((g',p',d') as snd) ((g,p,d) as fst) =
   if debug then check_eq_context_nolet (Global.env ()) sigma snd fst;
-  (* mk_ctx_map  *)
-  (g', (specialize_pats p' p), d)
+  mk_ctx_map g' (specialize_pats p' p) d
+(*     (g', (specialize_pats p' p), d) *)
 
 let push_mapping_context (n, b, t as decl) (g,p,d) =
   ((n, Option.map (specialize_constr p) b, specialize_constr p t) :: g,
@@ -1140,8 +1141,8 @@ let push_rel_context_eos ctx env =
   else push_rel_context ctx env
     
 let split_at_eos ctx =
-  fst (list_split_when (fun (id, b, t) ->
-    eq_constr t (Lazy.force coq_end_of_section)) ctx)
+  list_split_when (fun (id, b, t) ->
+		   eq_constr t (Lazy.force coq_end_of_section)) ctx
 
 let pr_problem (id, _, _) env (delta, patcs, _) =
   let env' = push_rel_context delta env in
@@ -1189,16 +1190,17 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		      (match covering_aux env evars data [] [(lhs,rhs),false] path prob lets ty with
 		      | None -> None
 		      | Some split -> Some (RecValid (pi1 data, split)))
-					    
+		      
 		| By (tac, s) ->
 		    let sign, t', rels = push_rel_context_to_named_context env' ty in
-		    let sign' = split_at_eos (named_context_of_val sign) in
-		    let ids = List.map pi1 sign' in
+		    let sign = named_context_of_val sign in
+		    let sign', secsign = split_at_eos sign in
+		    let ids = List.map pi1 sign in
 		    let tac = match tac with
 		      | Inl tac -> Tacinterp.interp_tac_gen [] ids Tactic_debug.DebugOff tac 
 		      | Inr tac -> Tacinterp.eval_tactic tac
 		    in
-		    let env' = reset_with_named_context (val_of_named_context sign') env in
+		    let env' = reset_with_named_context (val_of_named_context sign) env in
 		    let proof = Proofview.init [(env', t')] in
 		    let res = Proofview.apply env' (Proofview.V82.tactic tac) proof in
 		    let gls = Proofview.V82.goals res in
@@ -1210,18 +1212,18 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 			let solve_goal gl =
 			  let nctx = named_context_of_val (Goal.V82.hyps !evars gl) in
 			  let concl = Goal.V82.concl !evars gl in
-			  let nctx = split_at_eos nctx in
+			  let nctx, secctx = split_at_eos nctx in
 			  let rctx, subst = rel_of_named_context nctx in
 			  let ty' = subst_vars subst concl in
 			  let ty', prob, subst = match kind_of_term ty' with
 			    | App (f, args) -> 
 				if eq_constr f (Lazy.force coq_add_pattern) then
 				  let comp = args.(1) and newpattern = pat_of_constr args.(2) in
-				    if pi2 data then
+				    if pi2 data (* with_comp *) then
 				      let pats = rev_map pat_of_constr (snd (decompose_app comp)) in
 				      let newprob = 
 					rctx, (newpattern :: pats), rctx
-					  (* ((newpatname, None, newpatty) :: ctx') *)
+					(* ((newpatname, None, newpatty) :: ctx') *)
 				      in 
 				      let ty' = 
 					match newpattern with
@@ -1251,7 +1253,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 				  let args = rev (list_map_filter (fun (id,b,t) ->
 								     if b = None then Some (mkVar id) else None) nctx)
 				  in gl, args, subst, s
-			in Some (Valid (prob, ty, ids, tac, res, map solve_goal gls.it))
+			in Some (Valid (prob, ty, map pi1 sign', tac, res, map solve_goal gls.it))
 
 		| Refine (c, cls) -> 
 		    (* The refined term and its type *)
@@ -1827,13 +1829,30 @@ let map_split f split =
 
 let map_evars_in_split m = map_split (map_evars_in_constr m)
 
-let subst_rec_split f prob s split = 
-  let subst_rec cutprob s (ctx, _, _ as lhs) =
+let (&&&) f g (x, y) = (f x, g y)
+
+let array_filter_map f a =
+  let l' =
+    Array.fold_right (fun c acc -> 
+		      Option.cata (fun r -> r :: acc) acc (f c))
+    a []
+  in Array.of_list l'
+
+let subst_rec_split cutlast f prob s split = 
+  let subst_rec cutprob s (ctx, p, _ as lhs) =
     let subst = 
-      fold_left (fun (ctx, _, _ as lhs) (id, b) ->
-	let n, _, _ = lookup_rel_id id ctx in
-	let substf = single_subst n (PInac b) ctx (* ctx[n := f] |- _ : ctx *) in
-	  compose_subst substf lhs) (id_subst ctx) s
+      fold_left (fun (ctx, _, _ as lhs') (id, b) ->
+	  let rel, _, ty = lookup_rel_id id ctx in
+	  let fK = 
+	    if cutlast then
+	      let ctx, ty = decompose_prod_assum (lift rel ty) in
+	      let len = length ctx in
+	      let args = mkRel len :: rel_list 0 (len - 2) in
+		it_mkLambda_or_LetIn (applistc f args) ctx
+	    else f
+	  in
+	  let substf = single_subst rel (PInac fK) ctx (* ctx[n := f] |- _ : ctx *) in
+	    compose_subst substf lhs') (id_subst ctx) s
     in
       subst, compose_subst subst (compose_subst lhs cutprob)
   in
@@ -1842,9 +1861,9 @@ let subst_rec_split f prob s split =
 	let subst, lhs' = subst_rec cutprob s lhs in	  
 	  Compute (lhs', mapping_constr subst ty, mapping_rhs subst c)
 	  
-    | Split (lhs, x, y, cs) -> 
+    | Split (lhs, n, ty, cs) -> 
 	let subst, lhs' = subst_rec cutprob s lhs in
-	  Split (lhs', x, y, Array.map (Option.map (aux cutprob s)) cs)
+	  Split (lhs', pred n, mapping_constr subst ty, Array.map (Option.map (aux cutprob s)) cs)
 	  
     | RecValid (id, c) ->
 	RecValid (id, aux cutprob s c)
@@ -1857,27 +1876,46 @@ let subst_rec_split f prob s split =
 	  info.refined_revctx, info.refined_newprob, info.refined_newty
 	in
 	let subst, lhs' = subst_rec cutprob s lhs in
-        let _, revctx' = subst_rec (id_subst (pi3 revctx)) s revctx in
 	let cutprob pb = 
 	  let (ctx, pats, ctx') = pb in
-	  let cutctx' = list_drop_last ctx' in
-	    (ctx', List.rev (patvars_of_tele cutctx'), cutctx')
+	  let pats, cutctx', _, _ =
+	    (* From Γ |- ps, prec, ps' : Δ, rec, Δ', build
+	       Γ |- ps, ps' : Δ, Δ' *)
+	    fold_right (fun (n, b, t) (pats, ctx', i, subs) ->
+			match n with
+			| Name n when mem_assoc n s ->
+			  let term = assoc n s in
+			    (pats, ctx', pred i, term :: map (lift (-1)) subs)
+			| _ -> (i :: pats, (n, Option.map (substl subs) b, substl subs t) :: ctx', 
+				pred i, mkRel 1 :: map (lift 1) subs))
+	    ctx' ([], [], length ctx', [])
+ 	  in (ctx', map (fun i -> PRel i) pats, cutctx')
 	in
+        let _, revctx' = subst_rec (cutprob (id_subst (pi3 revctx))) s revctx in
 	let cutnewprob = cutprob newprob in
 	let subst', newprob' = subst_rec cutnewprob s newprob in
 	let _, newprob_to_prob' = subst_rec (cutprob info.refined_newprob_to_lhs) s info.refined_newprob_to_lhs in
-	let sc' = 
-	  let recprots, args = list_chop (List.length s) args in
-	    (mapping_constr subst (applist (fev, recprots)),
-	    map (mapping_constr subst) args)
+	let ev' = new_untyped_evar () in
+	let path' = ev' :: tl path in
+	let app', arg' =
+	  let refarg = ref 0 in
+  	  let args' = list_fold_left_i
+	    (fun i acc c -> 
+	     if i = arg then (refarg := List.length acc);
+	     if isRel c then
+	       let (n, _, ty) = List.nth (pi1 lhs) (pred (destRel c)) in
+		 if mem_assoc (out_name n) s then acc
+		 else (mapping_constr subst c) :: acc
+	     else (mapping_constr subst c) :: acc) 0 [] args 
+	  in (mkEvar (ev', [||]), rev args'), !refarg
 	in
 	let info =
 	  { refined_obj = (id, mapping_constr subst c, mapping_constr subst cty);
 	    refined_rettyp = mapping_constr subst ty;
-	    refined_arg =arg - List.length s;
-	    refined_path =path;
-	    refined_ex = ev;
-	    refined_app = sc';
+	    refined_arg = arg';
+	    refined_path = path';
+	    refined_ex = ev';
+	    refined_app = app';
 	    refined_revctx = revctx';
 	    refined_newprob = newprob';
 	    refined_newprob_to_lhs = newprob_to_prob';
@@ -1896,7 +1934,9 @@ type statements = statement list
 let subst_app f fn c = 
   let rec aux n c =
     match kind_of_term c with
-    | App (f', args) when eq_constr f f' -> fn n f' args
+    | App (f', args) when eq_constr f f' -> 
+      let args' = Array.map (map_constr_with_binders succ aux n) args in
+	fn n f' args'
     | _ -> map_constr_with_binders succ aux n c
   in aux 0 c
   
@@ -2425,8 +2465,21 @@ let prove_unfolding_lemma info proj f_cst funf_cst split gl =
 let update_split is_rec cmap f prob id split =
   let split' = map_evars_in_split cmap split in
     match is_rec with
-    | Some Structural -> subst_rec_split f prob [(id, f)] split'
-    | Some (Logical r) -> subst_comp_proj_split f (mkConst r.comp_proj) split'
+    | Some Structural -> subst_rec_split false f prob [(id, f)] split'
+    | Some (Logical r) -> 
+      let split' = subst_comp_proj_split f (mkConst r.comp_proj) split' in
+      let rec aux = function
+	| RecValid (_, Valid (ctx, ty, args, tac, view, 
+			       [ctx', _, newprob, rest])) ->	  
+	    aux (subst_rec_split true f newprob [(id, f)] rest)
+	| Split (lhs, y, z, cs) -> Split (lhs, y, z, Array.map (Option.map aux) cs)
+	| RecValid (id, c) -> RecValid (id, aux c)
+	| Valid (lhs, y, z, w, u, cs) ->
+	  Valid (lhs, y, z, w, u, 
+		 List.map (fun (gl, cl, subst, s) -> (gl, cl, subst, aux s)) cs)
+	| Refined (lhs, info, s) -> Refined (lhs, info, aux s)
+	| (Compute _) as x -> x
+      in aux split'
     | _ -> split'
 
 let rec translate_cases_pattern env avoid = function
@@ -2660,35 +2713,15 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	    build_equations with_ind env i info data sign is_recursive arity 
 	      f_cst (constr_of_global gr) prob split
 	| Some (Logical r) ->
-	    (* WRONG! Massage the right-hand sides instead to move from
-	       [f_comp_proj x y z prf] to [f x y z] *)
-	    let split = update_split is_recursive cmap f prob i split in
+	    let unfold_split = update_split is_recursive cmap f prob i split in
 	    (* We first define the unfolding and show the fixpoint equation. *)
 	    isevar := Evd.empty;
 	    let unfoldi = add_suffix i "_unfold" in
-	    (* let unfold_baseid = string_of_id unfoldi in *)
-	    (* Auto.create_hint_db false unfold_baseid (ids, Cpred.remove (Subtac_utils.fix_proto_ref ()) csts) true; *)
-	    let rec unfold_eqs eqs =
-	      concat (map
-			 (fun (optid, pats, rhs) ->
-			   let optid = Option.map (fun (loc,id) -> (loc, unfoldi)) optid in
-			   match rhs with
-			   | Rec (v, r, eqs) -> unfold_eqs eqs
-			   | Refine (ce, eqs) -> [(optid, pats, Refine (ce, unfold_eqs eqs))]
-			   | _ -> [(optid, pats, rhs)])
-			 eqs)
-	    in
-	    let unfold_equations = 
-	      map (interp_eqn unfoldi None isevar env data sign arity None)
-		(unfold_eqs eqs)
-	    in
-	    let data = ienv in
-	    let unfold_split = covering env isevar (unfoldi, with_comp, data) unfold_equations prob arity in
 	    let hook_unfold cmap helpers' _ gr' = 
 	      let info = { base_id = baseid; helpers_info = helpers @ helpers' } in
 	      let funf_cst = match gr' with ConstRef c -> c | _ -> assert false in
 	      let funfc =  mkConst funf_cst in
-	      let unfold_split = update_split None cmap funfc prob unfoldi unfold_split in
+	      let unfold_split = map_evars_in_split cmap unfold_split in
 	      let hook_eqs _ grunfold =
 		Conv_oracle.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
 		build_equations with_ind env i info data sign None arity
