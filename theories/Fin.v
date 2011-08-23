@@ -23,6 +23,15 @@ Inductive fin : nat -> Set :=
 Equations(nocomp) fog {n} (f : fin n) : nat :=
 fog ?(S n) (fz n) := 0 ; 
 fog ?(S n) (fs n f) := S (fog f).
+Next Obligation.
+  Hint Constructors fog_ind.
+  induction f.
+  - rewrite fog_equation_1.
+    auto.
+
+  - rewrite fog_equation_2.
+    auto.
+Defined.
 
 (** The injection preserves the number: *)
 
@@ -36,6 +45,15 @@ Qed.
 Equations(nocomp) gof n : fin (S n) :=
 gof O := fz ;
 gof (S n) := fs (gof n).
+Next Obligation.
+  Hint Constructors gof_ind.
+  induction n.
+  - rewrite gof_equation_1.
+    auto.
+
+  - rewrite gof_equation_2.
+    auto.
+Defined.
 
 Lemma fog_gof n : fog (gof n) = n.
 Proof with auto with arith. intros.
@@ -80,6 +98,15 @@ Implicit Arguments cons [[A] [n]].
 Equations(nocomp) nth {A} {n} (v : Vector.t A n) (f : fin n) : A :=
 nth A ?(S n) (cons a n v) fz := a ;
 nth A ?(S n) (cons a n v) (fs n f) := nth v f.
+Next Obligation.
+  Hint Constructors nth_ind.
+  induction f; depelim v.
+  - rewrite nth_equation_2.
+    auto.
+
+  - rewrite nth_equation_3.
+    auto.
+Defined.
 
 Goal ∀ (A : Type) (n : nat) (a : A) (H : vector A n), nth (cons a H) fz = a.
   intros. funind (nth (cons a H) fz) nfz.
@@ -88,6 +115,15 @@ Qed.
 Equations(nocomp) tabulate {A} {n} (f : fin n -> A) : vector A n :=
 tabulate A O f := nil ;
 tabulate A (S n) f := cons (f fz) (tabulate (f ∘ fs)).
+Next Obligation.
+  Hint Constructors tabulate_ind.
+  induction n.
+  - rewrite tabulate_equation_1.
+    auto.
+
+  - rewrite tabulate_equation_2.
+    auto.
+Defined.
 
 (** NoConfusion For [fin]. *)
 
