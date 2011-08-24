@@ -40,7 +40,8 @@ f91 n by rec n (gt_bound 100) :=
 f91 n with le_lt_dec n 100 := {
   | left H := exist _ (proj1_sig (f91 (proj1_sig (f91 (n + 11))))) _ ;
   | right H := exist _ (n - 10) _ }.
-(* TODO: Bug
+
+(* BUG !!
 Admit Obligations.
 Admit Obligations.
 *)
@@ -55,6 +56,8 @@ Next Obligation. intros. rec_wf_rel n IH (gt_bound 100).
   apply IH. admit. apply IH. admit. intros. apply IH; auto.
   simpl. constructor. intros. apply IH; auto.
 Defined.
+
+About f91_elim.
 
 Section Nested.
   Hint Extern 3 => match goal with 
@@ -71,11 +74,10 @@ Section Nested.
   Next Obligation. apply f. Set Typeclasses Debug. Print HintDb arith.
     repeat match goal with 
              [ |- context [ ` (?x) ] ] => destruct x; simpl proj1_sig
-           end.
-    typeclasses eauto with Below arith. destruct f_comp_proj. simpl. auto with arith. Defined.
+           end. Set Typeclasses Debug. auto with arith. Defined.
   Next Obligation. do 2 destruct_call f_comp_proj. simpl in *. eauto with arith. Defined.
-     
-  Next Obligation.  
+    Unset Typeclasses Debug.
+  Next Obligation.
     rec_wf_rel n IH lt.
     depelim x. simp f. simp f. constructor ; auto with arith. intros. eauto with arith.
     apply IH. destruct f. simpl. auto with arith.
@@ -280,28 +282,6 @@ Module RecMeasure.
     Require Import Permutation.
     Existing Instance Permutation_app'_Proper.
 
-(*     Lemma leb_negb a : (fun x => leb a x) === compose negb (fun x => leb x a). *)
-(*     Proof. *)
-(*       unfold negb, compose. intros x.  *)
-(*       case_eq (leb a x); intros H. *)
-(*       apply leb_complete in H. destruct H. subst. admit. *)
-(*       now rewrite H. *)
-(*       apply leb_complete2 in H. *)
-(*       now rewrite H. *)
-(*     Qed. *)
-(*     Typeclasses eauto :=. *)
-
-(*     Lemma leb_negb' a : (fun x => leb x a) === compose negb (fun x => leb a x). *)
-(*     Proof. *)
-(*       unfold negb, compose. intros x.  *)
-(*       case_eq (leb x a); intros H. *)
-(*       apply leb_complete in H. destruct H. subst. admit. *)
-(*       now rewrite H. *)
-(*       apply leb_complete2 in H. *)
-(*       now rewrite H. *)
-(*     Qed. *)
-(*     Typeclasses eauto :=. *)
-
     Lemma qs_perm l : Permutation l (qs l).
     Proof.
       pattern_call (qs l).
@@ -326,5 +306,7 @@ Module RecMeasure.
     Qed.
   
   End QuickSort.
+  Extraction Inline qs_comp qs_comp_proj qs_obligation_1 qs_obligation_2 qs_obligation_3.
+  Recursive Extraction qs.
 
 End RecMeasure.
