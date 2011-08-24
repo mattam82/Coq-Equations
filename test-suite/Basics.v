@@ -128,19 +128,13 @@ Typeclasses Opaque vector_subterm.
 (* Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars id. *)
 Import Vector.
 
-
 Equations unzip_dec {A B} `{EqDec A} `{EqDec B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
 unzip_dec A B _ _ n v by rec v (@vector_subterm (A * B)) :=
 unzip_dec A B _ _ ?(O) nil := ([]v, []v) ;
 unzip_dec A B _ _ ?(S n) (cons (pair x y) n v) with unzip_dec v := {
   | pair xs ys := (cons x xs, cons y ys) }.
 
-  Obligation Tactic := idtac. 
 Next Obligation. intros. apply unzip_dec. eauto with subterm_relation. Defined.
-
-Next Obligation. intros. induction v; simp unzip_dec. destruct h; simp unzip_dec. constructor. auto.
-  destruct @unzip_dec. simp unzip_dec.
-Defined.
 
 Typeclasses Transparent vector_subterm.
 
@@ -149,11 +143,6 @@ unzip A B n v by rec v (@vector_subterm (A * B)) :=
 unzip A B ?(O) nil := (nil, nil) ;
 unzip A B ?(S n) (cons (pair x y) n v) <= unzip v => {
   | (pair xs ys) := (cons x xs, cons y ys) }.
-
-
-Next Obligation. intros. induction v; simp unzip. destruct h; simp unzip. constructor. auto.
-  destruct @unzip. simp unzip.
-Defined.
 
 Print Assumptions unzip.
 Print Assumptions unzip_dec.
@@ -321,11 +310,6 @@ split X m n xs by rec m :=
 split X O    n xs := append nil xs ;
 split X (S m) n (cons x ?(m + n) xs) <= split xs => {
   | append xs' ys' := append (cons x xs') ys' }.
-
-Next Obligation. intros. induction m; simp split. depelim xs. simp split. constructor. auto.
-  destruct (split xs0). simp split.
-Defined.
-
 
 Lemma split_vapp' : ∀ (X : Type) m n (v : vector X m) (w : vector X n), 
   let 'append v' w' := split (vapp' v w) in

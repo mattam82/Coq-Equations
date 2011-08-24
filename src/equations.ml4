@@ -50,18 +50,18 @@ open Depelim
 
 let debug = true
 
-let check_term env c t =
-  Typing.check env Evd.empty c t
+let check_term env evd c t =
+  Typing.check env evd c t
 
-let check_type env t =
-  ignore(Typing.sort_of env Evd.empty t)
+let check_type env evd t =
+  ignore(Typing.sort_of env evd t)
     
-let typecheck_rel_context ctx =
+let typecheck_rel_context evd ctx =
   let _ =
     List.fold_right
       (fun (na, b, t as rel) env ->
-	 check_type env t;
-	 Option.iter (fun c -> check_term env c t) b;
+	 check_type env evd t;
+	 Option.iter (fun c -> check_term env evd c t) b;
 	 push_rel rel env)
       ctx (Global.env ())
   in ()
@@ -301,30 +301,30 @@ let ppcontext_map context_map = pp (pr_context_map (Global.env ()) context_map)
 
 (** Debugging functions *)
 
-let typecheck_map (ctx, subst, ctx') =
-  typecheck_rel_context ctx;
-  typecheck_rel_context ctx';
+let typecheck_map evars (ctx, subst, ctx') =
+  typecheck_rel_context evars ctx;
+  typecheck_rel_context evars ctx';
   let env = push_rel_context ctx (Global.env ()) in
   let _ = 
     List.fold_right2 
       (fun (na, b, t) p subst ->
 	 let c = constr_of_pat env p in
-	   check_term env c (substl subst t);
+	   check_term env evars c (substl subst t);
 	   (c :: subst))
       ctx' subst []
   in ()
 
-let check_ctx_map map =
+let check_ctx_map evars map =
   if debug then
-    try typecheck_map map; map
+    try typecheck_map evars map; map
     with Type_errors.TypeError (env, e) ->
       errorlabstrm "equations"
 	(str"Type error while building context map: " ++ pr_context_map (Global.env ()) map ++
-	   spc () ++ Himsg.explain_type_error env Evd.empty e)
+	   spc () ++ Himsg.explain_type_error env evars e)
   else map
     
-let mk_ctx_map ctx subst ctx' =
-  let map = (ctx, subst, ctx') in check_ctx_map map
+let mk_ctx_map evars ctx subst ctx' =
+  let map = (ctx, subst, ctx') in check_ctx_map evars map
 
 (** Specialize by a substitution. *)
 
@@ -603,18 +603,18 @@ let check_eq_context_nolet env sigma (_, _, g as snd) (d, _, _ as fst) =
 
 let compose_subst ?(sigma=Evd.empty) ((g',p',d') as snd) ((g,p,d) as fst) =
   if debug then check_eq_context_nolet (Global.env ()) sigma snd fst;
-  mk_ctx_map g' (specialize_pats p' p) d
+  mk_ctx_map sigma g' (specialize_pats p' p) d
 (*     (g', (specialize_pats p' p), d) *)
 
 let push_mapping_context (n, b, t as decl) (g,p,d) =
   ((n, Option.map (specialize_constr p) b, specialize_constr p t) :: g,
    (PRel 1 :: map (lift_pat 1) p), decl :: d)
     
-let lift_subst (ctx : context_map) (g : rel_context) = 
+let lift_subst evd (ctx : context_map) (g : rel_context) = 
   let map = List.fold_right (fun decl acc -> push_mapping_context decl acc) g ctx in
-    check_ctx_map map
+    check_ctx_map evd map
     
-let single_subst x p g =
+let single_subst evd x p g =
   let t = pat_constr p in
     if eq_constr t (mkRel x) then
       id_subst g
@@ -629,7 +629,7 @@ let single_subst x p g =
       (* let pats = list_tabulate  *)
       (* 	(fun i -> let k = succ i in if k = x then p else PRel k) *)
       (* 	(List.length g) *)
-      in mk_ctx_map substctx pats g
+      in mk_ctx_map evd substctx pats g
     else
       let (ctx, s, g), _ = strengthen g x t in
       let x' = match nth s (pred x) with PRel i -> i | _ -> error "Occurs check singleton subst"
@@ -638,45 +638,45 @@ let single_subst x p g =
 	   in the context and the patterns. *)
       let substctx = subst_in_ctx x' t' ctx in
       let pats = list_map_i (fun i p -> subst_constr_pat x' (lift (-1) t') p) 1 s in
-	mk_ctx_map substctx pats g
+	mk_ctx_map evd substctx pats g
     
 exception Conflict
 exception Stuck
 
 type 'a unif_result = UnifSuccess of 'a | UnifFailure | UnifStuck
       
-let rec unify flex g x y =
+let rec unify evd flex g x y =
   if eq_constr x y then id_subst g
   else
     match kind_of_term x with
     | Rel i -> 
 	if Intset.mem i flex then
-	  single_subst i (PInac y) g
+	  single_subst evd i (PInac y) g
 	else raise Stuck
     | _ ->
 	match kind_of_term y with
 	| Rel i ->
 	    if Intset.mem i flex then
-	      single_subst i (PInac x) g
+	      single_subst evd i (PInac x) g
 	    else raise Stuck
 	| _ ->
 	    let (c, l) = decompose_app x 
 	    and (c', l') = decompose_app y in
 	      if isConstruct c && isConstruct c' then
 		if eq_constr c c' then
-		  unify_constrs flex g l l'
+		  unify_constrs evd flex g l l'
 		else raise Conflict
 	      else raise Stuck
 
-and unify_constrs flex g l l' = 
+and unify_constrs evd flex g l l' = 
   match l, l' with
   | [], [] -> id_subst g
   | hd :: tl, hd' :: tl' ->
-      let (d,s,_ as hdunif) = unify flex g hd hd' in
+      let (d,s,_ as hdunif) = unify evd flex g hd hd' in
       let specrest = map (specialize_constr s) in
       let tl = specrest tl and tl' = specrest tl' in
-      let tlunif = unify_constrs flex d tl tl' in
-	compose_subst tlunif hdunif
+      let tlunif = unify_constrs evd flex d tl tl' in
+	compose_subst ~sigma:evd tlunif hdunif
   | _, _ -> raise Conflict
 
 let flexible pats gamma =
@@ -862,7 +862,7 @@ let unify_type evars before id ty after =
 	    let vs' = map (lift ctxclen) vs in
 	    let p1 = lift_pats ctxclen (inaccs_of_constrs (rels_of_tele before)) in
 	    let flex = flexible (p1 @ q) fullctx in
-	    let s = unify_constrs flex fullctx vs' us in
+	    let s = unify_constrs !evars flex fullctx vs' us in
 	      UnifSuccess (s, ctxclen, c, cpat)
 	  with Conflict -> UnifFailure | Stuck -> UnifStuck) cstrs
     in Some (newty, res)
@@ -1029,10 +1029,10 @@ let split_var (env,evars) var delta =
 	(* ctx' |- spat : before ; id *)
 	let spat =
 	  let ctxcsubst, beforesubst = list_chop ctxlen s in
-	    check_ctx_map (ctx', cpat :: beforesubst, decl :: before)
+	    check_ctx_map !evars (ctx', cpat :: beforesubst, decl :: before)
 	in
 	  (* ctx' ; after |- safter : before ; id ; after = delta *)
-	  Some (lift_subst spat after)
+	  Some (lift_subst !evars spat after)
   in
     match unify with
     | None -> None
@@ -1264,7 +1264,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 (* 		    let _s' = (ctx, vars, newctx) in *)
 		      (* revctx is a variable substitution from a reordered context to the
 			 current context. Needed for ?? *)
-		    let revctx = check_ctx_map (newctx, pats', ctx) in
+		    let revctx = check_ctx_map !evars (newctx, pats', ctx) in
 		    let idref = Namegen.next_ident_away (id_of_string "refine") (ids_of_rel_context newctx) in
 		    let decl = (Name idref, None, mapping_constr revctx cty) in
 		    let extnewctx = decl :: newctx in
@@ -1812,6 +1812,9 @@ let map_evars_in_constr evar_map c =
   evar_map (fun id -> 
     constr_of_global (Nametab.locate (Libnames.make_short_qualid id))) c
 
+let map_ctx_map f (g, p, d) =
+  map_rel_context f g, p, map_rel_context f d
+
 let map_split f split =
   let rec aux = function
     | Compute (lhs, ty, RProgram c) -> Compute (lhs, ty, RProgram (f c))
@@ -1823,9 +1826,12 @@ let map_split f split =
 	let (id, c, cty) = info.refined_obj in
 	let (scf, scargs) = info.refined_app in
 	  Refined (lhs, { info with refined_obj = (id, f c, f cty);
-			    refined_app = (f scf, List.map f scargs) }, aux s)
+			    refined_app = (f scf, List.map f scargs);
+			    refined_newprob_to_lhs = map_ctx_map f info.refined_newprob_to_lhs }, 
+		   aux s)
     | Compute (_, _, REmpty _) as c -> c
   in aux split
+
 
 let map_evars_in_split m = map_split (map_evars_in_constr m)
 
@@ -1838,20 +1844,20 @@ let array_filter_map f a =
     a []
   in Array.of_list l'
 
-let subst_rec_split cutlast f prob s split = 
+let subst_rec_split redefine f prob s split = 
   let subst_rec cutprob s (ctx, p, _ as lhs) =
     let subst = 
       fold_left (fun (ctx, _, _ as lhs') (id, b) ->
 	  let rel, _, ty = lookup_rel_id id ctx in
 	  let fK = 
-	    if cutlast then
-	      let ctx, ty = decompose_prod_assum (lift rel ty) in
-	      let len = length ctx in
-	      let args = mkRel len :: rel_list 0 (len - 2) in
-		it_mkLambda_or_LetIn (applistc f args) ctx
+	    if redefine then
+	      let lctx, ty = decompose_prod_assum (lift rel ty) in
+	      let len = length lctx in
+	      let fcomp, args = decompose_app ty in
+		it_mkLambda_or_LetIn (applistc f args) lctx
 	    else f
 	  in
-	  let substf = single_subst rel (PInac fK) ctx (* ctx[n := f] |- _ : ctx *) in
+	  let substf = single_subst Evd.empty rel (PInac fK) ctx (* ctx[n := f] |- _ : ctx *) in
 	    compose_subst substf lhs') (id_subst ctx) s
     in
       subst, compose_subst subst (compose_subst lhs cutprob)
@@ -1863,7 +1869,8 @@ let subst_rec_split cutlast f prob s split =
 	  
     | Split (lhs, n, ty, cs) -> 
 	let subst, lhs' = subst_rec cutprob s lhs in
-	  Split (lhs', pred n, mapping_constr subst ty, Array.map (Option.map (aux cutprob s)) cs)
+	let n' = destRel (mapping_constr subst (mkRel n)) in
+	  Split (lhs', n', mapping_constr subst ty, Array.map (Option.map (aux cutprob s)) cs)
 	  
     | RecValid (id, c) ->
 	RecValid (id, aux cutprob s c)
@@ -1885,7 +1892,7 @@ let subst_rec_split cutlast f prob s split =
 			match n with
 			| Name n when mem_assoc n s ->
 			  let term = assoc n s in
-			    (pats, ctx', pred i, term :: map (lift (-1)) subs)
+			    (pats, ctx', pred i, term :: subs)
 			| _ -> (i :: pats, (n, Option.map (substl subs) b, substl subs t) :: ctx', 
 				pred i, mkRel 1 :: map (lift 1) subs))
 	    ctx' ([], [], length ctx', [])
@@ -1895,19 +1902,23 @@ let subst_rec_split cutlast f prob s split =
 	let cutnewprob = cutprob newprob in
 	let subst', newprob' = subst_rec cutnewprob s newprob in
 	let _, newprob_to_prob' = subst_rec (cutprob info.refined_newprob_to_lhs) s info.refined_newprob_to_lhs in
-	let ev' = new_untyped_evar () in
+	let ev' = if redefine then new_untyped_evar () else ev in
 	let path' = ev' :: tl path in
 	let app', arg' =
-	  let refarg = ref 0 in
-  	  let args' = list_fold_left_i
-	    (fun i acc c -> 
-	     if i = arg then (refarg := List.length acc);
-	     if isRel c then
-	       let (n, _, ty) = List.nth (pi1 lhs) (pred (destRel c)) in
-		 if mem_assoc (out_name n) s then acc
-		 else (mapping_constr subst c) :: acc
-	     else (mapping_constr subst c) :: acc) 0 [] args 
-	  in (mkEvar (ev', [||]), rev args'), !refarg
+	  if redefine then
+	    let refarg = ref 0 in
+  	    let args' = list_fold_left_i
+	      (fun i acc c -> 
+		 if i = arg then (refarg := List.length acc);
+		 if isRel c then
+		   let (n, _, ty) = List.nth (pi1 lhs) (pred (destRel c)) in
+		     if mem_assoc (out_name n) s then acc
+		     else (mapping_constr subst c) :: acc
+		 else (mapping_constr subst c) :: acc) 0 [] args 
+	    in (mkEvar (ev', [||]), rev args'), !refarg
+	  else 
+	    let first, last = list_chop (length s) (map (mapping_constr subst) args) in
+	      (applistc (mapping_constr subst fev) first, last), arg - length s (* FIXME , needs substituted position too *)
 	in
 	let info =
 	  { refined_obj = (id, mapping_constr subst c, mapping_constr subst cty);
@@ -2207,7 +2218,8 @@ let build_equations with_ind env id info data sign is_rec arity cst
 		      ctx
 		in
 		let ty = it_mkProd_or_LetIn mkProp ctx in
-		  (n, Some app, ty)) 1 preds (rev (List.tl ind_stmts))
+		  (n, Some app, ty)) 
+		1 preds (rev (List.tl ind_stmts))
 	    in
 	    let skipped, methods' = (* Skip the indirection methods due to refinements, 
 			      as they are trivially provable *)
@@ -2235,10 +2247,14 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	  let instid = add_prefix "FunctionalElimination_" id in
 	    ignore(declare_instance instid [] cl args)
 	in
-	  (* Conv_oracle.set_strategy (ConstKey cst) Conv_oracle.Expand; *)
-	  Subtac_obligations.add_definition (add_suffix id "_elim")
-	    ~tactic:(ind_elim_tac (constr_of_global elim) leninds info)
-	    ~hook:hookelim newty [||]
+	  try 
+	    (* Conv_oracle.set_strategy (ConstKey cst) Conv_oracle.Expand; *)
+	    ignore(Subtac_obligations.add_definition (add_suffix id "_elim")
+		     ~tactic:(ind_elim_tac (constr_of_global elim) leninds info)
+		     ~hook:hookelim newty [||])
+	  with e ->
+	    warn (str "Elimination principle could not be proved automatically: " ++ fnl () ++
+		    Errors.print e)
       in
       let cl = functional_induction_class () in
       let args = [Typing.type_of env Evd.empty f; f; 
