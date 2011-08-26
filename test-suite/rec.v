@@ -52,12 +52,12 @@ Next Obligation. intros. admit. Defined.
 Next Obligation. intros. admit. Defined.
 
 Next Obligation. intros. rec_wf_rel n IH (gt_bound 100). 
-  simp f91. constructor. destruct le_lt_dec. simpl. constructor. intros. apply IH. admit. 
+  simp f91. Print f91_ind. constructor. destruct le_lt_dec. simpl. constructor. intros. apply IH. admit. 
   apply IH. admit. apply IH. admit. intros. apply IH; auto.
   simpl. constructor. intros. apply IH; auto.
 Defined.
 
-About f91_elim.
+About f91_elim. Print f91_ind.
 
 Section Nested.
   Hint Extern 3 => match goal with 

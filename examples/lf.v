@@ -538,51 +538,183 @@ Next Obligation. simpl; intros.
   right. apply type_direct_subterm_0_0 with (A' × B'); eauto using type_direct_subterm.
 Defined.
 
-Next Obligation. simpl; intros. auto. Defined. 
-Next Obligation. simpl; intros. right. 
-  destruct prf. subst. constructor. 
-  apply type_direct_subterm_0_0 with (A' ---> B'); eauto using type_direct_subterm.
-Defined.
+Next Obligation. simpl; intros. admit. Defined. 
+Next Obligation. intros. admit. Defined.
 
-Next Obligation. simpl; intros. right. 
-  destruct prf. subst. constructor. 
-  apply type_direct_subterm_0_0 with (A' × B'); eauto using type_direct_subterm.
-Defined.
+Lemma solution_left_dep : ∀ {A} (t : A) {B : forall (x : A), (x = t -> Type)}, B t eq_refl -> (∀ x (Heq : x = t), B x Heq).
+Proof. intros; subst. apply X. Defined.
 
-Next Obligation. simpl; intros. right. 
-  destruct prf. subst. constructor. 
-  apply type_direct_subterm_0_0 with (A' × B'); eauto using type_direct_subterm.
-Defined.
-
-  Next Obligation. intros. admit. Defined.
-
-  Next Obligation. intros. admit. Defined.
-
-About eq_rect_r.
 Ltac simplify_one_dep_elim ::=
   match goal with
     | [ |- context [eq_rect_r _ _ eq_refl]] => unfold eq_rect_r at 1; simpl
+
+    | [ |- forall H : ?x = ?y, _ ] => (* variables case *)
+      (let hyp := fresh H in intros hyp ;
+        move hyp before x ; move x before hyp; revert_blocking_until x; revert x;
+          (match goal with
+             | |- let x := _ in _ = _ -> @?B x =>
+               refine (@solution_left_let _ B _ _ _)
+             | |- _ => refine (@solution_left_dep _ _ _ _)
+           end))
+
     | [ |- ?gl ] => simplify_one_dep_elim_term gl
   end.
 
 
 Lemma hereditary_subst_type Γ Γ' t T u U : Γ |- u <= U -> Γ' @ (U :: Γ) |- t : T ->
   forall t' T' prf, hereditary_subst (U, u, t) (length Γ') = (t', Some (exist _ T' prf)) -> T' = T.
-Proof. intros. revert H1. funelim (hereditary_subst (U, u, t) (length Γ')); simpl_dep_elim; subst; try (intro; discriminate).
-
+Proof. intros. revert H1. funelim (hereditary_subst (U, u, t) (length Γ')); 
+    simpl_dep_elim; subst; try (intro; discriminate).
+  
   apply nat_compare_eq in Heq. subst.
-  depelim H1. now rewrite nth_length.
+  depelim H2. now rewrite nth_length.
 
   destruct hereditary_subst. destruct (hereditary_subst (a, t, t3) 0).
-  noconf H4. depelim H3.
-  specialize (Hind Γ (A ---> B) H2 H3_ _ _ _ H0). noconf Hind.
+  noconf H3. depelim H2.
+  specialize (Hind Γ (A ---> B) H1 H2_ _ _ _ H0). noconf Hind.
 
-  destruct hereditary_subst. simpl in *. noconf H. 
-  depelim H2. specialize (Hind Γ (A × B) H1 H2). noconf Hind. 
+  destruct hereditary_subst. simpl in *. noconf H1.
+  depelim H3. specialize (Hind Γ (A × B) H2 H3). noconf Hind. 
 
-  destruct hereditary_subst. simpl in *. noconf H. depelim H2.
-  specialize (Hind Γ (A × B) H1 H2). noconf Hind.
+  destruct hereditary_subst. simpl in *. noconf H1. depelim H3.
+  specialize (Hind Γ (A × B) H2 H3). noconf Hind.
 Qed.
+
+Scheme check_mut_ind := Elimination for check Sort Prop
+  with synthetize_mut_ind := Elimination for synthetize Sort Prop.
+
+Combined Scheme check_synthetize from check_mut_ind, synthetize_mut_ind.
+
+About check_synthetize.
+
+Instance: subrelation eq (flip impl).
+Proof. reduce. subst; auto. Qed.
+
+Lemma hereditary_subst_subst : (forall Δ t T, Δ |- t <= T -> 
+  forall Γ Γ' u U, Δ = Γ' @ (U :: Γ) -> Γ |- u <= U -> 
+    Γ' @ Γ |- fst (hereditary_subst (U, u, t) (length Γ')) <= T) ∧
+  (forall Δ t T, Δ |- t => T -> 
+    forall Γ Γ' u U, Γ |- u <= U -> Δ = Γ' @ (U :: Γ) ->
+      match hereditary_subst (U, u, t) (length Γ') with
+        | (t', Some a) => Γ' @ Γ |- t' <= T
+        | (t', None) => Γ' @ Γ |- t' => T
+      end).
+Proof. apply check_synthetize; simplify_dep_elim; simplify_IH_hyps;
+  (rewrite_strat (bottomup (hints hereditary_subst))); 
+  simpl; rewrite <- ?hereditary_subst_equation_1; 
+    try constructor; simpl in *; term.
+
+  (* Var *)
+  change (A::Γ'@Γ) with ((A :: Γ') @ Γ). 
+  apply (H Γ (A :: Γ')); auto.
+
+  specialize (H _ H0). destruct hereditary_subst. destruct o; simpl; term.
+  depelim H; now try solve [ depelim a ].
+
+
+
+(*   (* subst_subst' *) *)
+(*   intros. *)
+(*   depelim H0; simp hereditary_subst; try solve [ constructor; term ]; try rewrite <- !hereditary_subst_equation_1. *)
+
+  (* Var *)
+  assert (spec:=nat_compare_spec i (length Γ')). depelim spec; try rewrite <- H0; try rewrite <- H1; simp hereditary_subst; simpl.
+
+  (* Eq *)
+  generalize (check_lift Γ u U [] H Γ'); simpl; intros. 
+  rewrite app_cons_snoc_app, app_nth1, app_nth2; try (simpl; omega).
+  now rewrite <- minus_n_n. autorewrite with list; simpl. omega.
+
+  (* Lt *)
+  rewrite app_nth1; try omega. rewrite <- (app_nth1 _ Γ); term.
+
+  (* Gt *)
+  rewrite app_nth2; term. 
+  change (U :: Γ) with ((cons U nil) @ Γ). rewrite app_nth2; term.
+  simpl. rewrite (nth_extend_left unit _ Γ Γ').
+  replace (length Γ' + (i - length Γ' - 1)) with (pred i); term.
+  intros.
+  apply axiom_synth. autorewrite with list in l |- *. simpl in l. omega.
+
+  (* Lambda *)
+  assert (Hu0:=H _ H1).
+  assert (Ht:=H0 _ H1).
+  case_eq (hereditary_subst (U, u, t) (length Γ')). 
+  intros t'' o Heq; rewrite Heq in *.
+ 
+  destruct o.
+  (* Some redex was found *)
+  apply checks_arrow in Hu0.
+  destruct Hu0 as [t' [eqt' Ht']].
+  subst. simpl.
+  destruct s0. simpl in *.
+  eapply hereditary_subst_type with (T:=A ---> B) in Heq; term.
+  subst. simpl. 
+
+  case_eq (hereditary_subst (U, u, u0) (length Γ')). intros. 
+  case_eq (hereditary_subst (A, t0, t') 0). intros.
+
+  simpl in *.
+  assert (Ht0:=H _ _ _ _ _ _ H H1).
+  rewrite H2 in Ht0. simpl in Ht0.
+  change (A :: Γ' @ Γ) with ((A :: Γ') @ Γ) in Ht'.
+  assert (Ht1:=H (Γ' @ Γ) [] _ _ _ _ Ht0 Ht'). 
+  simpl in Ht1. rewrite H3 in Ht1. apply Ht1.
+
+  (* No redex found *)
+  simpl. destruct t0; simpl; econstructor; eauto.
+
+  (* Fst *)
+  generalize (H' _ _ _ _ _ _ H H0).
+  case_eq (hereditary_subst (U, u, t) (length Γ')).
+  intros t0 o Heq.
+
+  destruct t0; destruct o; simpl; intros; term. 
+
+  depelim H1. depelim H1. 
+
+  depelim H1. depelim H1.
+
+  depelim H1. depelim H1.
+
+  depelim H1. 
+  destruct s. simpl in *.
+  eapply hereditary_subst_type with (T:=A × B) in Heq; term. 
+  destruct x; simpl; try discriminate.
+  assumption.
+
+  repeat depelim H1. 
+  repeat depelim H1. 
+  repeat depelim H1.
+  repeat depelim H1.
+
+  (* Snd *)
+  generalize (H' _ _ _ _ _ _ H H0).
+  case_eq (hereditary_subst (U, u, t) (length Γ')).
+  intros t0 o Heq.
+
+  destruct t0; destruct o; simpl; intros; term. 
+
+  repeat depelim H1. 
+  repeat depelim H1. 
+  repeat depelim H1. 
+
+  depelim H1. 
+  destruct s. simpl in *.
+  eapply hereditary_subst_type with (T:=A × B) in Heq; term. 
+  destruct x; simpl; try discriminate.
+  assumption.
+
+  repeat depelim H1. 
+  repeat depelim H1. 
+  repeat depelim H1.
+  repeat depelim H1.
+
+
+
+
+eapply H.
+constructor. rewrite <- !hereditary_subst_equation_1.
 
 Lemma hereditary_subst_subst Γ Γ' t T u U : Γ |- u <= U -> Γ' @ (U :: Γ) |- t <= T ->
   Γ' @ Γ |- fst (hereditary_subst (U, u, t) (length Γ')) <= T 

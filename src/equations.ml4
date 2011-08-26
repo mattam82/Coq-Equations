@@ -1852,7 +1852,6 @@ let subst_rec_split redefine f prob s split =
 	  let fK = 
 	    if redefine then
 	      let lctx, ty = decompose_prod_assum (lift rel ty) in
-	      let len = length lctx in
 	      let fcomp, args = decompose_app ty in
 		it_mkLambda_or_LetIn (applistc f args) lctx
 	    else f
@@ -1862,7 +1861,7 @@ let subst_rec_split redefine f prob s split =
     in
       subst, compose_subst subst (compose_subst lhs cutprob)
   in
-  let rec aux cutprob s = function
+  let rec aux cutprob s path = function
     | Compute ((ctx,pats,del as lhs), ty, c) ->
 	let subst, lhs' = subst_rec cutprob s lhs in	  
 	  Compute (lhs', mapping_constr subst ty, mapping_rhs subst c)
@@ -1870,16 +1869,15 @@ let subst_rec_split redefine f prob s split =
     | Split (lhs, n, ty, cs) -> 
 	let subst, lhs' = subst_rec cutprob s lhs in
 	let n' = destRel (mapping_constr subst (mkRel n)) in
-	  Split (lhs', n', mapping_constr subst ty, Array.map (Option.map (aux cutprob s)) cs)
+	  Split (lhs', n', mapping_constr subst ty, Array.map (Option.map (aux cutprob s path)) cs)
 	  
     | RecValid (id, c) ->
-	RecValid (id, aux cutprob s c)
+	RecValid (id, aux cutprob s path c)
 	  
     | Refined (lhs, info, sp) -> 
-	let (id, c, cty), ty, arg, path, ev, (fev, args), revctx, newprob, newty =
+	let (id, c, cty), ty, arg, ev, (fev, args), revctx, newprob, newty =
 	  info.refined_obj, info.refined_rettyp,
-	  info.refined_arg, info.refined_path,
-	  info.refined_ex, info.refined_app,
+	  info.refined_arg, info.refined_ex, info.refined_app,
 	  info.refined_revctx, info.refined_newprob, info.refined_newty
 	in
 	let subst, lhs' = subst_rec cutprob s lhs in
@@ -1903,7 +1901,7 @@ let subst_rec_split redefine f prob s split =
 	let subst', newprob' = subst_rec cutnewprob s newprob in
 	let _, newprob_to_prob' = subst_rec (cutprob info.refined_newprob_to_lhs) s info.refined_newprob_to_lhs in
 	let ev' = if redefine then new_untyped_evar () else ev in
-	let path' = ev' :: tl path in
+	let path' = ev' :: path in
 	let app', arg' =
 	  if redefine then
 	    let refarg = ref 0 in
@@ -1931,13 +1929,13 @@ let subst_rec_split redefine f prob s split =
 	    refined_newprob = newprob';
 	    refined_newprob_to_lhs = newprob_to_prob';
 	    refined_newty = mapping_constr subst' newty }
-	in Refined (lhs', info, aux cutnewprob s sp)
+	in Refined (lhs', info, aux cutnewprob s path' sp)
 
     | Valid (lhs, x, y, w, u, cs) -> 
 	let subst, lhs' = subst_rec cutprob s lhs in
 	  Valid (lhs', x, y, w, u, 
-		List.map (fun (g, l, subst, sp) -> (g, l, subst, aux cutprob s sp)) cs)
-  in aux prob s split
+		List.map (fun (g, l, subst, sp) -> (g, l, subst, aux cutprob s path sp)) cs)
+  in aux prob s [] split
 
 type statement = constr * types option
 type statements = statement list
