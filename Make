@@ -2,7 +2,7 @@
 -custom "$(CAMLOPTLINK) $(ZDEBUG) $(ZFLAGS) -shared -o $@ $^" "src/equations_common.cmx src/sigma.cmx src/subterm.cmx src/eqdec.cmx src/depelim.cmx src/equations.cmx src/equations_plugin_mod.cmx" src/equations_plugin.cmxs
 -custom "$(CAMLLINK) -g -a -o $@ $^" "src/equations_common.cmo src/sigma.cmo src/subterm.cmo src/eqdec.cmo src/depelim.cmo src/equations.cmo src/equations_plugin_mod.cmo" src/equations_plugin.cma
 -custom "$(COQBIN)coqc $(COQDEBUG) $(COQFLAGS) $(OTHERFLAGS) $*" "%.v $(EQNSPLUGINOPT) $(EQNSPLUGIN)" "%.vo %.glob"
--custom "$(COQMKTOP) $(ZDEBUG) -o $@ $(COQLIB)/plugins/subtac/subtac_plugin.cma $(COQLIB)/plugins/cc/cc_plugin.cma $^" "src/equations_plugin.cma" coqtop
+-custom "coqmktop -o $@ $(COQLIB)/plugins/subtac/subtac_plugin.cma $(COQLIB)/plugins/cc/cc_plugin.cma $^" "src/equations_plugin.cma" coqtop
 EQNSPLUGIN = "src/equations_plugin.cma"
 EQNSPLUGINOPT = "src/equations_plugin.cmxs"
 COQDOC = "$(COQBIN)coqdoc -interpolate -utf8"
