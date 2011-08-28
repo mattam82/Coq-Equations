@@ -103,29 +103,31 @@ Qed.
 Hint Rewrite substnn : subst.
 Notation ctx := (list type).
 
-Reserved Notation " Γ |- t : A " (at level 70, t, A at next level).
+Delimit Scope lf with lf.
+
+Reserved Notation " Γ |-- t : A " (at level 70, t, A at next level).
 Require Import List.
 
 Inductive types : ctx -> term -> type -> Prop :=
-| axiom Γ i : i < length Γ -> (Γ |- i : nth i Γ unit) 
+| axiom Γ i : i < length Γ -> (Γ |-- i : nth i Γ unit) 
 
 | abstraction Γ A B t :
-  A :: Γ |- t : B -> Γ |- λ t : A ---> B
+  A :: Γ |-- t : B -> Γ |-- λ t : A ---> B
 
 | application Γ A B t u : 
-  Γ |- t : A ---> B -> Γ |- u : A -> Γ |- @(t, u) : B
+  Γ |-- t : A ---> B -> Γ |-- u : A -> Γ |-- @(t, u) : B
 
-| unit_intro Γ : Γ |- Tt : unit
+| unit_intro Γ : Γ |-- Tt : unit
 
 | pair_intro Γ A B t u :
-  Γ |- t : A -> Γ |- u : B -> 
-    Γ |- << t , u >> : (A × B)
+  Γ |-- t : A -> Γ |-- u : B -> 
+    Γ |-- << t , u >> : (A × B)
 
-| pair_elim_fst Γ A B t : Γ |- t : (A × B) -> Γ |- Fst t : A
+| pair_elim_fst Γ A B t : Γ |-- t : (A × B) -> Γ |-- Fst t : A
 
-| pair_elim_snd Γ A B t : Γ |- t : (A × B) -> Γ |- Snd t : B
+| pair_elim_snd Γ A B t : Γ |-- t : (A × B) -> Γ |-- Snd t : B
 
-where "Γ |- i : A " := (types Γ i A).
+where "Γ |-- i : A " := (types Γ i A).
 
 Notation " [ t ] u " := (subst 0 u t) (at level 10).
 
@@ -170,7 +172,7 @@ Print Rewrite HintDb list.
 Hint Rewrite <- app_assoc in_app_iff in_inv : list.
 
 
-Lemma type_lift Γ t T Γ' : Γ' @ Γ |- t : T -> forall Γ'', Γ' @ Γ'' @ Γ |- lift (length Γ') (length Γ'') t : T.
+Lemma type_lift Γ t T Γ' : Γ' @ Γ |-- t : T -> forall Γ'', Γ' @ Γ'' @ Γ |-- lift (length Γ') (length Γ'') t : T.
 Proof. intros H. depind H; intros; simp lift; eauto with term.
 
   generalize (nth_extend_middle unit i Γ Γ' Γ'').
@@ -180,7 +182,7 @@ Proof. intros H. depind H; intros; simp lift; eauto with term.
   rewrite app_comm_cons. apply IHtypes. reflexivity.
 Qed.
 
-Lemma type_lift1 Γ t T A : Γ |- t : T -> A :: Γ |- lift 0 1 t : T.
+Lemma type_lift1 Γ t T A : Γ |-- t : T -> A :: Γ |-- lift 0 1 t : T.
 Proof. intros. apply (type_lift Γ t T [] H [A]). Qed.
 
 Lemma app_cons_snoc_app {A} l (a : A) l' : l ++ (a :: l') = (l ++ a :: nil) ++ l'.
@@ -189,7 +191,7 @@ Proof. induction l; simpl; auto. now rewrite IHl. Qed.
 Hint Extern 5 => progress (simpl ; autorewrite with list) : term.
 Ltac term ::= simp lift subst; eauto with term.
 
-Lemma substitutive Γ t T Γ' u U : (Γ' @ (U :: Γ)) |- t : T -> Γ |- u : U -> Γ' @ Γ |- subst (length Γ') t u : T.
+Lemma substitutive Γ t T Γ' u U : (Γ' @ (U :: Γ)) |-- t : T -> Γ |-- u : U -> Γ' @ Γ |-- subst (length Γ') t u : T.
 Proof with term.
   intros H. depind H; term. intros.
   
@@ -215,7 +217,7 @@ Proof with term.
   intros. apply abstraction. now apply (IHtypes Γ (A :: Γ') U).
 Qed.
 
-Lemma subst1 Γ t T u U : U :: Γ |- t : T -> Γ |- u : U -> Γ |- subst 0 t u : T.
+Lemma subst1 Γ t T u U : U :: Γ |-- t : T -> Γ |-- u : U -> Γ |-- subst 0 t u : T.
 Proof. intros; now apply (substitutive Γ t T [] u U). Qed.
   
 Reserved Notation " t --> u " (at level 55, right associativity).
@@ -253,7 +255,7 @@ Proof. intros x H. depind H.
   admit. admit.
 Qed.
 
-Lemma preserves_red1 Γ t τ : Γ |- t : τ → forall u, t --> u → Γ |- u : τ.
+Lemma preserves_red1 Γ t τ : Γ |-- t : τ → forall u, t --> u → Γ |-- u : τ.
 Proof. induction 1; intros; term. inversion H0. inversion H0. inversion H1. subst.
   apply subst1 with A. now inversion H. apply H0.
 
@@ -264,7 +266,7 @@ Proof. induction 1; intros; term. inversion H0. inversion H0. inversion H1. subs
   inversion H0. subst.  inversion H. subst. assumption.
 Qed.
 
-Lemma subject_reduction Γ t τ : Γ |- t : τ → forall u, t -->* u → Γ |- u : τ.
+Lemma subject_reduction Γ t τ : Γ |-- t : τ → forall u, t -->* u → Γ |-- u : τ.
 Proof. induction 2; eauto using preserves_red1. Qed.
 
 Inductive value : term -> Prop :=
@@ -274,7 +276,7 @@ Inductive value : term -> Prop :=
 
 Hint Constructors value : term.
 
-(* Lemma inv_abs A B t : nil |- t : A ---> B -> ∃ u, (t = λ u /\ (A :: nil) |- u : B). *)
+(* Lemma inv_abs A B t : nil |-- t : A ---> B -> ∃ u, (t = λ u /\ (A :: nil) |-- u : B). *)
 (* Proof. intros H; depind H. inversion H. exists t; auto. *)
 
 (*   destruct IHtypes1 as [t' [tt' Htt']]. *)
@@ -282,7 +284,7 @@ Hint Constructors value : term.
   
 (*   induction  *)
 
-(* Lemma red_progress  t τ : nil |- t : τ → *)
+(* Lemma red_progress  t τ : nil |-- t : τ → *)
 (*   exists u, t -->* u ∧ value u. *)
 (* Proof. intros H. depind H; term.  *)
 
@@ -293,8 +295,8 @@ Hint Constructors value : term.
 (*   destruct IHtypes2 as [u' [uu' vu']]. *)
 (*   inversion H. *)
 
-Reserved Notation " Γ |- t => A " (at level 70, t, A at next level).
-Reserved Notation " Γ |- t <= A " (at level 70, t, A at next level).
+Reserved Notation " Γ |-- t => A " (at level 70, t, A at next level).
+Reserved Notation " Γ |-- t <= A " (at level 70, t, A at next level).
 
 Inductive atomic : type -> Prop :=
 | atomic_atom a : atomic (atom a).
@@ -309,36 +311,55 @@ atomic_dec _ := right _.
 
 Inductive check : ctx -> term -> type -> Prop :=
 | abstraction_check Γ A B t :
-  A :: Γ |- t <= B -> 
-  Γ |- λ t <= A ---> B
+  A :: Γ |-- t <= B -> 
+  Γ |-- λ t <= A ---> B
 
 | pair_intro_check Γ A B t u :
-  Γ |- t <= A -> Γ |- u <= B -> 
-    Γ |- << t , u >> <= (A × B)
+  Γ |-- t <= A -> Γ |-- u <= B -> 
+    Γ |-- << t , u >> <= (A × B)
 
-| unit_intro_check Γ : Γ |- Tt <= unit
+| unit_intro_check Γ : Γ |-- Tt <= unit
 
-| check_synth Γ t T : atomic T -> Γ |- t => T -> Γ |- t <= T
+| check_synth Γ t T : atomic T -> Γ |-- t => T -> Γ |-- t <= T
 
 with synthetize : ctx -> term -> type -> Prop :=
 
 | axiom_synth Γ i : i < length Γ -> 
-  Γ |- i => nth i Γ unit
+  Γ |-- i => nth i Γ unit
  
 | application_synth {Γ A B t u} : 
-  Γ |- t => A ---> B -> Γ |- u <= A -> Γ |- @(t, u) => B
+  Γ |-- t => A ---> B -> Γ |-- u <= A -> Γ |-- @(t, u) => B
 
-| pair_elim_fst_synth {Γ A B t} : Γ |- t => (A × B) -> Γ |- Fst t => A
+| pair_elim_fst_synth {Γ A B t} : Γ |-- t => (A × B) -> Γ |-- Fst t => A
 
-| pair_elim_snd_synth {Γ A B t} : Γ |- t => (A × B) -> Γ |- Snd t => B
+| pair_elim_snd_synth {Γ A B t} : Γ |-- t => (A × B) -> Γ |-- Snd t => B
 
-where "Γ |- i => A " := (synthetize Γ i A)
-and  "Γ |- i <= A " := (check Γ i A).
+where "Γ |-- i => A " := (synthetize Γ i A)
+and  "Γ |-- i <= A " := (check Γ i A).
 
 Hint Constructors synthetize check : term.
 
-Lemma check_types : (forall Γ t T, Γ |- t <= T -> Γ |- t : T)
-with synthetizes_types : (forall Γ t T, Γ |- t => T -> Γ |- t : T).
+Scheme check_mut_ind := Elimination for check Sort Prop
+  with synthetize_mut_ind := Elimination for synthetize Sort Prop.
+
+Combined Scheme check_synthetize from check_mut_ind, synthetize_mut_ind.
+
+Lemma synth_arrow {Γ t T} : forall A : Prop, Γ |-- λ (t) => T -> A.
+Proof. intros A H. depelim H. Qed.
+
+Lemma synth_pair {Γ t u T} : forall A : Prop, Γ |-- << t, u >> => T -> A.
+Proof. intros A H. depelim H. Qed.
+
+Lemma synth_unit {Γ T} : forall A : Prop, Γ |-- Tt => T -> A.
+Proof. intros A H. depelim H. Qed.
+
+Hint Extern 3 => 
+  match goal with
+    | H : ?Γ |-- ?t => ?T |- _ => apply (synth_arrow _ H) || apply (synth_pair _ H) || apply (synth_unit _ H)
+  end : term.
+
+Lemma check_types : (forall Γ t T, Γ |-- t <= T -> Γ |-- t : T)
+with synthetizes_types : (forall Γ t T, Γ |-- t => T -> Γ |-- t : T).
 Proof. intros. destruct H. apply abstraction. auto.
   apply pair_intro. auto. auto.
   apply unit_intro.
@@ -366,10 +387,10 @@ with neutral : term -> Prop :=
 
 Hint Constructors normal neutral : term.
 
-Lemma check_lift Γ t T Γ' : Γ' @ Γ |- t <= T -> 
-  forall Γ'', Γ' @ Γ'' @ Γ |- lift (length Γ') (length Γ'') t <= T
-with synthetize_lift Γ t T Γ' : Γ' @ Γ |- t => T -> 
-  forall Γ'', Γ' @ Γ'' @ Γ |- lift (length Γ') (length Γ'') t => T.
+Lemma check_lift Γ t T Γ' : Γ' @ Γ |-- t <= T -> 
+  forall Γ'', Γ' @ Γ'' @ Γ |-- lift (length Γ') (length Γ'') t <= T
+with synthetize_lift Γ t T Γ' : Γ' @ Γ |-- t => T -> 
+  forall Γ'', Γ' @ Γ'' @ Γ |-- lift (length Γ') (length Γ'') t => T.
 Proof. intros H. depelim H; intros; simp lift.
 
   constructor.
@@ -387,12 +408,20 @@ Proof. intros H. depelim H; intros; simp lift.
   econstructor. apply synthetize_lift. apply H.
 Admitted.
 
-Lemma check_lift1 {Γ t T A} : Γ |- t <= T -> A :: Γ |- lift 0 1 t <= T.
+Lemma check_lift1 {Γ t T A} : Γ |-- t <= T -> A :: Γ |-- lift 0 1 t <= T.
 Proof. intros. apply (check_lift Γ t T [] H [A]). Qed.
 
-Lemma synth_lift1 {Γ t T A} : Γ |- t => T -> A :: Γ |- lift 0 1 t => T.
+Lemma synth_lift1 {Γ t T A} : Γ |-- t => T -> A :: Γ |-- lift 0 1 t => T.
 Proof. intros. apply (synthetize_lift Γ t T [] H [A]). Qed.
 Hint Resolve @check_lift1 @synth_lift1 : term.
+
+Lemma check_lift_ctx {Γ t T Γ'} : Γ |-- t <= T -> Γ' @ Γ |-- lift 0 (length Γ') t <= T.
+Proof. intros. apply (check_lift Γ t T [] H Γ'). Qed.
+
+Lemma synth_lift_ctx {Γ t T Γ'} : Γ |-- t => T -> Γ' @ Γ |-- lift 0 (length Γ') t => T.
+Proof. intros. apply (synthetize_lift Γ t T [] H Γ'). Qed.
+Hint Resolve @check_lift_ctx @synth_lift_ctx : term.
+
 
 Equations(nocomp) η (a : type) (t : term) : term :=
 η (atom _) t := t ;
@@ -400,10 +429,10 @@ Equations(nocomp) η (a : type) (t : term) : term :=
 η (arrow a b) t := (Lambda (η b @(lift 0 1 t, η a 0)))%term ;
 η unit t := Tt.
 
-(* Lemma η_normal : forall Γ A t, neutral t -> Γ |- t => A -> normal (η A t). *)
+(* Lemma η_normal : forall Γ A t, neutral t -> Γ |-- t => A -> normal (η A t). *)
 (* Proof. induction 2; term. induction i; term. Qed. *)
 
-Lemma checks_arrow Γ t A B : Γ |- t <= A ---> B → ∃ t', t = λ t' ∧ A :: Γ |- t' <= B.
+Lemma checks_arrow Γ t A B : Γ |-- t <= A ---> B → ∃ t', t = λ t' ∧ A :: Γ |-- t' <= B.
 Proof. intros H; inversion H; subst.
   exists t0; term.
   inversion H0.
@@ -418,12 +447,12 @@ Qed.
 Hint Resolve @normal_lift @neutral_lift : term.
 
 
-Lemma check_normal {Γ t T} : Γ |- t <= T -> normal t
- with synth_neutral {Γ t T} : Γ |- t => T -> neutral t.
+Lemma check_normal {Γ t T} : Γ |-- t <= T -> normal t
+ with synth_neutral {Γ t T} : Γ |-- t => T -> neutral t.
 Proof. destruct 1; constructor; term. destruct 1; constructor; term. Qed.
 Hint Resolve @check_normal @synth_neutral : term.
 
-Lemma eta_expand Γ t A : neutral t → Γ |- t => A -> Γ |- η A t <= A.
+Lemma eta_expand Γ t A : neutral t → Γ |-- t => A -> Γ |-- η A t <= A.
 Proof. revert Γ t; induction A; intros; simp η; constructor; term.
 
   assert(0 < length (A1 :: Γ)) by (simpl; omega).
@@ -561,7 +590,7 @@ Ltac simplify_one_dep_elim ::=
   end.
 
 
-Lemma hereditary_subst_type Γ Γ' t T u U : Γ |- u <= U -> Γ' @ (U :: Γ) |- t : T ->
+Lemma hereditary_subst_type Γ Γ' t T u U : Γ |-- u <= U -> Γ' @ (U :: Γ) |-- t : T ->
   forall t' T' prf, hereditary_subst (U, u, t) (length Γ') = (t', Some (exist _ T' prf)) -> T' = T.
 Proof. intros. revert H1. funelim (hereditary_subst (U, u, t) (length Γ')); 
     simpl_dep_elim; subst; try (intro; discriminate).
@@ -580,24 +609,74 @@ Proof. intros. revert H1. funelim (hereditary_subst (U, u, t) (length Γ'));
   specialize (Hind Γ (A × B) H2 H3). noconf Hind.
 Qed.
 
-Scheme check_mut_ind := Elimination for check Sort Prop
-  with synthetize_mut_ind := Elimination for synthetize Sort Prop.
-
-Combined Scheme check_synthetize from check_mut_ind, synthetize_mut_ind.
-
 About check_synthetize.
 
 Instance: subrelation eq (flip impl).
 Proof. reduce. subst; auto. Qed.
+Ltac simp_hsubst := try (rewrite_strat (bottomup (hints hereditary_subst))); rewrite <- ?hereditary_subst_equation_1.
 
-Lemma hereditary_subst_subst : (forall Δ t T, Δ |- t <= T -> 
-  forall Γ Γ' u U, Δ = Γ' @ (U :: Γ) -> Γ |- u <= U -> 
-    Γ' @ Γ |- fst (hereditary_subst (U, u, t) (length Γ')) <= T) ∧
-  (forall Δ t T, Δ |- t => T -> 
-    forall Γ Γ' u U, Γ |- u <= U -> Δ = Γ' @ (U :: Γ) ->
+
+
+Lemma hereditary_subst_subst U u t Γ' :
+  (forall Γ T, Γ' @ (U :: Γ) |-- t <= T -> Γ |-- u <= U -> 
+    Γ' @ Γ |-- fst (hereditary_subst (U, u, t) (length Γ')) <= T) ∧
+  (forall Γ T, Γ' @ (U :: Γ) |-- t => T -> Γ |-- u <= U ->
       match hereditary_subst (U, u, t) (length Γ') with
-        | (t', Some a) => Γ' @ Γ |- t' <= T
-        | (t', None) => Γ' @ Γ |- t' => T
+        | (t', Some a) => Γ' @ Γ |-- t' <= T
+        | (t', None) => Γ' @ Γ |-- t' => T
+      end).
+Proof. 
+  funelim (hereditary_subst (U, u, t) (length Γ')); simp_hsubst; simpl; term.
+
+  depelim H0. 
+    constructor. specialize (H (A :: Γ')). simplify_IH_hyps. destruct H. eauto.
+    term.
+
+  destruct H, H0.
+  depelim H1; term. 
+
+  (* Unit *)
+  simpl. depelim H; term.
+  
+  (* Var *)
+  (* Eq *)
+  clear H0. 
+  apply nat_compare_eq in Heq. subst.
+  apply check_lift_ctx. depelim H1. depelim H1. now rewrite nth_length. 
+
+  clear H0. 
+  apply nat_compare_eq in Heq. subst.
+  apply check_lift_ctx. depelim H1. now rewrite nth_length. 
+
+
+
+  (* L
+  clear H0. 
+  apply nat_compare_eq in Heq. subst.
+  apply check_lift_ctx. depelim H1. depelim H1. now rewrite nth_length. 
+
+  term.
+
+
+  
+  specialize (H _ _ H1_ H2). 
+  depelim H1. simp hereditary_subst. rewrite <- hereditary_subst_equation_1.
+
+apply check_synthetize; simplify_dep_elim; simplify_IH_hyps;
+  (rewrite_strat (bottomup (hints hereditary_subst))); 
+  simpl; rewrite <- ?hereditary_subst_equation_1; 
+    try constructor; simpl in *; term.
+
+
+
+Lemma hereditary_subst_subst : (forall Δ t T, Δ |-- t <= T -> 
+  forall Γ Γ' u U, Δ = Γ' @ (U :: Γ) -> Γ |-- u <= U -> 
+    Γ' @ Γ |-- fst (hereditary_subst (U, u, t) (length Γ')) <= T) ∧
+  (forall Δ t T, Δ |-- t => T -> 
+    forall Γ Γ' u U, Γ |-- u <= U -> Δ = Γ' @ (U :: Γ) ->
+      match hereditary_subst (U, u, t) (length Γ') with
+        | (t', Some a) => Γ' @ Γ |-- t' <= T
+        | (t', None) => Γ' @ Γ |-- t' => T
       end).
 Proof. apply check_synthetize; simplify_dep_elim; simplify_IH_hyps;
   (rewrite_strat (bottomup (hints hereditary_subst))); 
@@ -655,7 +734,7 @@ Proof. apply check_synthetize; simplify_dep_elim; simplify_IH_hyps;
   case_eq (hereditary_subst (A, t0, t') 0). intros.
 
   simpl in *.
-  assert (Ht0:=H _ _ _ _ _ _ H H1).
+  assert (Ht0:=H0 _ H1).
   rewrite H2 in Ht0. simpl in Ht0.
   change (A :: Γ' @ Γ) with ((A :: Γ') @ Γ) in Ht'.
   assert (Ht1:=H (Γ' @ Γ) [] _ _ _ _ Ht0 Ht'). 
@@ -716,13 +795,13 @@ Proof. apply check_synthetize; simplify_dep_elim; simplify_IH_hyps;
 eapply H.
 constructor. rewrite <- !hereditary_subst_equation_1.
 
-Lemma hereditary_subst_subst Γ Γ' t T u U : Γ |- u <= U -> Γ' @ (U :: Γ) |- t <= T ->
-  Γ' @ Γ |- fst (hereditary_subst (U, u, t) (length Γ')) <= T 
+Lemma hereditary_subst_subst Γ Γ' t T u U : Γ |-- u <= U -> Γ' @ (U :: Γ) |-- t <= T ->
+  Γ' @ Γ |-- fst (hereditary_subst (U, u, t) (length Γ')) <= T 
 
-with hereditary_subst_subst' Γ Γ' t T u U : Γ |- u <= U -> Γ' @ (U :: Γ) |- t => T ->
+with hereditary_subst_subst' Γ Γ' t T u U : Γ |-- u <= U -> Γ' @ (U :: Γ) |-- t => T ->
   match hereditary_subst (U, u, t) (length Γ') with
-    | (t', Some a) => Γ' @ Γ |- t' <= T
-    | (t', None) => Γ' @ Γ |- t' => T
+    | (t', Some a) => Γ' @ Γ |-- t' <= T
+    | (t', None) => Γ' @ Γ |-- t' => T
   end.
 Proof. intros. 
   depelim H0; simp hereditary_subst; constructor; term; rewrite <- !hereditary_subst_equation_1.
@@ -838,8 +917,8 @@ Qed.
 
 
   (* Lambda *)
-  Lemma check_lambda Γ t T : Γ |- λ(t) <= T -> 
-    exists A, exists B, A :: Γ |- t <= B /\ T = A ---> B.
+  Lemma check_lambda Γ t T : Γ |-- λ(t) <= T -> 
+    exists A, exists B, A :: Γ |-- t <= B /\ T = A ---> B.
   Proof. intros H; depelim H. exists A B; intuition. depelim H0. Qed.
   apply check_lambda in H1.
   destruct H1 as [A [B [Ht2 Ht]]]. subst.
@@ -854,10 +933,10 @@ Qed.
   (* Var *)
 
 
-Lemma check_liftn {Γ Γ' t T} : Γ |- t <= T -> Γ' @ Γ |- lift 0 (length Γ') t <= T.
+Lemma check_liftn {Γ Γ' t T} : Γ |-- t <= T -> Γ' @ Γ |-- lift 0 (length Γ') t <= T.
 Proof. intros. apply (check_lift Γ t T [] H Γ'). Qed.
 
-Lemma synth_liftn {Γ Γ' t T} : Γ |- t => T -> Γ' @ Γ |- lift 0 (length Γ') t => T.
+Lemma synth_liftn {Γ Γ' t T} : Γ |-- t => T -> Γ' @ Γ |-- lift 0 (length Γ') t => T.
 Proof. intros. apply (synthetize_lift Γ t T [] H Γ'). Qed.
 Hint Resolve @check_liftn @synth_liftn : term.
 
@@ -991,7 +1070,7 @@ Admitted.
 
 (* hereditary_subst k Tt _ _ := (Tt, None). *)
 
-Lemma types_normalizes Γ t T : Γ |- t : T → ∃ u, Γ |- u <= T.
+Lemma types_normalizes Γ t T : Γ |-- t : T → ∃ u, Γ |-- u <= T.
 Proof. induction 1. (* eta-exp *)
 
   exists (η (nth i Γ unit) i).
