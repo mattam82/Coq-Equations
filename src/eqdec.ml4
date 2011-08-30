@@ -287,3 +287,4 @@ VERNAC COMMAND EXTEND Derive_EqDec
       c
   ]
 END
+ 

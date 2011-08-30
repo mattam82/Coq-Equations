@@ -328,7 +328,7 @@ let dependent_pattern ?(pattern_term=true) c gl =
   in
   let varname c = match kind_of_term c with
     | Var id -> id
-    | _ -> id_of_string (hdchar (pf_env gl) c)
+    | _ -> pf_get_new_id (id_of_string (hdchar (pf_env gl) c)) gl
   in
   let mklambda ty (c, id, cty) =
     let conclvar = subst_term_occ all_occurrences c ty in
