@@ -2945,8 +2945,9 @@ TACTIC EXTEND solve_equations
     [ solve_equations_goal (Tacinterp.eval_tactic destruct) (Tacinterp.eval_tactic tac) ]
     END
 
-let db_of_constr c = match kind_of_term c with
+let rec db_of_constr c = match kind_of_term c with
   | Const c -> string_of_label (con_label c)
+  | App (c,al) -> db_of_constr c
   | _ -> assert false
 
 let dbs_of_constrs = map db_of_constr
