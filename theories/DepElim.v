@@ -477,7 +477,7 @@ Ltac simplify_one_dep_elim_term c :=
     | _ -> ?B => let ty := type of B in (* Works only with non-dependent products *)
       intro || (let H := fresh in intro H)
     | forall x, _ =>
-      let H := fresh x in rename x into H ; intro x (* Try to keep original names *)
+      let H := fresh x in intro H
     | _ => intro
 
     (* | _ -> ?T => intro; try (let x := type of T in idtac) *)
