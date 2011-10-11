@@ -323,8 +323,14 @@ Ltac elim_ind p := elim_tac ltac:(fun p el => induction p using el) p.
 Lemma solution_left : ∀ {A} {B : A -> Type} (t : A), B t -> (∀ x, x = t -> B x).
 Proof. intros; subst. apply X. Defined.
 
+Lemma solution_left_dep : ∀ {A} (t : A) {B : forall (x : A), (x = t -> Type)}, B t eq_refl -> (∀ x (Heq : x = t), B x Heq).
+Proof. intros; subst. apply X. Defined.
+
 Lemma solution_right : ∀ {A} {B : A -> Type} (t : A), B t -> (∀ x, t = x -> B x).
 Proof. intros; subst; apply X. Defined.
+
+Lemma solution_left_dep : ∀ {A} (t : A) {B : forall (x : A), (t = x -> Type)}, B t eq_refl -> (∀ x (Heq : t = x), B x Heq).
+Proof. intros; subst. apply X. Defined.
 
 Lemma solution_left_let : ∀ {A} {B : A -> Type} (b : A) (t : A), 
   (b = t -> B t) -> (let x := b in x = t -> B x).
@@ -457,14 +463,14 @@ Ltac simplify_one_dep_elim_term c :=
           (match goal with
              | |- let x := _ in _ = _ -> @?B x =>
                refine (@solution_left_let _ B _ _ _)
-             | _ => refine (@solution_left _ _ _ _)
+             | _ => refine (@solution_left _ _ _ _) || refine (@solution_left_dep _ _ _ _)
            end)) ||
       (let hyp := fresh "Heq" in intros hyp ;
         move hyp before y ; move y before hyp; revert_blocking_until y; revert y;
           (match goal with
              | |- let x := _ in _ = _ -> @?B x =>
                refine (@solution_right_let _ B _ _ _)
-             | _ => refine (@solution_right _ _ _ _)
+             | _ => refine (@solution_right _ _ _ _) || refine (@solution_right_dep _ _ _ _)
            end))
     | @eq ?A ?t ?u -> ?P => let hyp := fresh in intros hyp ; noconf_ref hyp
     | ?f ?x = ?g ?y -> _ => let H := fresh in progress (intros H ; injection H ; clear H)
@@ -488,6 +494,7 @@ Ltac simplify_one_dep_elim_term c :=
 
 Ltac simplify_one_dep_elim :=
   match goal with
+    | [ |- context [eq_rect_r _ _ eq_refl]] => unfold eq_rect_r at 1; simpl
     | [ |- ?gl ] => simplify_one_dep_elim_term gl
   end.
 
