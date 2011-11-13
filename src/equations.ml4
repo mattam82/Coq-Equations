@@ -106,13 +106,12 @@ let noconf_tac () = tac_of_string "Equations.NoConfusion.solve_noconf" []
 let simpl_equations_tac () = tac_of_string "Equations.DepElim.simpl_equations" []
 
 let solve_equation_tac c = tac_of_string "Equations.DepElim.solve_equation"
-  [ConstrMayEval (ConstrTerm (CDynamic (dummy_loc, Pretyping.constr_in (constr_of_global c))))]
+  [ConstrMayEval (ConstrTerm (CAppExpl (dummy_loc, (None, Qualid (dummy_loc, qualid_of_path (Nametab.path_of_global c))), [])))]
 
 let impossible_call_tac c = Tacinterp.glob_tactic
   (TacArg(TacCall(dummy_loc, 
 		 Qualid (dummy_loc, qualid_of_string "Equations.DepElim.impossible_call"),
-		 [ConstrMayEval (ConstrTerm (CDynamic (dummy_loc, 
-						      Pretyping.constr_in (constr_of_global c))))])))
+		 [ConstrMayEval (ConstrTerm (CAppExpl (dummy_loc, (None, Qualid (dummy_loc, qualid_of_path (Nametab.path_of_global c))), [])))])))
 
 let depelim_tac h = tac_of_string "Equations.DepElim.depelim"
   [IntroPattern (dummy_loc, Genarg.IntroIdentifier h)]
@@ -519,6 +518,8 @@ let split_tele n (ctx : rel_context) =
 let rels_above ctx x =
   let len = List.length ctx in
     intset_of_list (list_tabulate (fun i -> x + succ i) (len - x))
+
+
 
 let is_fix_proto t =
   match kind_of_term t with
@@ -1297,7 +1298,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 				     else PRel idx) (rels_of_tele ctx) in
 			(ctx, pats, ctx)
 		    in
-		    let newty = subst_term_occ all_occurrences refterm
+		    let newty = subst_closed_term_occ all_occurrences refterm
 		      (Tacred.simpl (push_rel_context extnewctx env) !evars (lift 1 (mapping_constr revctx ty)))
 		    in
 		    let newty = mapping_constr cmap newty in
@@ -2607,6 +2608,13 @@ let interp_eqn i is_rec isevar env impls sign arity recu eqn =
 	(interp_constr_expr compproj) ids c
   in aux [] eqn
 	
+let make_ref dir s = Coqlib.gen_reference "Program" dir s
+
+let fix_proto_ref () = 
+  match make_ref ["Program";"Tactics"] "fix_proto" with
+  | ConstRef c -> c
+  | _ -> assert false
+
 let define_by_eqs opts i (l,ann) t nt eqs =
   let with_comp, with_rec, with_eqns, with_ind =
     let try_opt default opt =
@@ -2705,7 +2713,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   let status = (* if is_recursive then Expand else *) Define false in
   let baseid = string_of_id i in
   let (ids, csts) = full_transparent_state in
-  Auto.create_hint_db false baseid (ids, Cpred.remove (Subtac_utils.fix_proto_ref ()) csts) true;
+  Auto.create_hint_db false baseid (ids, Cpred.remove (fix_proto_ref ()) csts) true;
   let hook cmap helpers _ gr = 
     let info = { base_id = baseid; helpers_info = helpers } in
     let f_cst = match gr with ConstRef c -> c | _ -> assert false in
@@ -2945,8 +2953,9 @@ TACTIC EXTEND solve_equations
     [ solve_equations_goal (Tacinterp.eval_tactic destruct) (Tacinterp.eval_tactic tac) ]
     END
 
-let db_of_constr c = match kind_of_term c with
+let rec db_of_constr c = match kind_of_term c with
   | Const c -> string_of_label (con_label c)
+  | App (c,al) -> db_of_constr c
   | _ -> assert false
 
 let dbs_of_constrs = map db_of_constr
@@ -3175,12 +3184,15 @@ let derive_no_confusion ind =
     let tc = class_info (global_of_constr (Lazy.force coq_noconfusion_class)) in
     let b, ty = instance_constructor tc [indty; mkApp (mkConst cstNoConf, argsvect) ; 
 					 mkApp (constr_of_global gr, argsvect) ] in
-    let ce = { const_entry_body = it_mkLambda_or_LetIn b ctx;
-	       const_entry_type = Some (it_mkProd_or_LetIn ty ctx); 
-	       const_entry_opaque = false }
-    in
-    let inst = Declare.declare_constant packid (DefinitionEntry ce, IsDefinition Instance) in
-      Typeclasses.add_instance (Typeclasses.new_instance tc None true (ConstRef inst))
+    match b with
+      | Some b ->
+        let ce = { const_entry_body = it_mkLambda_or_LetIn b ctx;
+	           const_entry_type = Some (it_mkProd_or_LetIn ty ctx); 
+	           const_entry_opaque = false }
+        in
+        let inst = Declare.declare_constant packid (DefinitionEntry ce, IsDefinition Instance) in
+        Typeclasses.add_instance (Typeclasses.new_instance tc None true (ConstRef inst))
+      | None -> error "Could not find constructor"
   in
     ignore(Subtac_obligations.add_definition ~hook noid 
 	      stmt ~tactic:(noconf_tac ()) [||])
@@ -3226,7 +3238,7 @@ let pattern_call ?(pattern_term=true) c gl =
 	ids
   in
   let mklambda ty (c, id, cty) =
-    let conclvar = subst_term_occ all_occurrences c ty in
+    let conclvar = subst_closed_term_occ all_occurrences c ty in
       mkNamedLambda id cty conclvar
   in
   let subst = 

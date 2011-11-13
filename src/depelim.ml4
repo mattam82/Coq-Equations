@@ -331,7 +331,7 @@ let dependent_pattern ?(pattern_term=true) c gl =
     | _ -> pf_get_new_id (id_of_string (hdchar (pf_env gl) c)) gl
   in
   let mklambda ty (c, id, cty) =
-    let conclvar = subst_term_occ all_occurrences c ty in
+    let conclvar = subst_closed_term_occ all_occurrences c ty in
       mkNamedLambda id cty conclvar
   in
   let subst = 

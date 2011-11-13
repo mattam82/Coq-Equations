@@ -223,16 +223,19 @@ let derive_subterm ind =
 	in Typeclasses.instance_constructor kl [ ty; relation; evar ]
       in
       let ty = it_mkProd_or_LetIn ty parambinders in
-      let body = it_mkLambda_or_LetIn body parambinders in
-      let hook vis gr =
-	let cst = match gr with ConstRef kn -> kn | _ -> assert false in
-	let inst = Typeclasses.new_instance kl None global (ConstRef cst) in
-	  Typeclasses.add_instance inst
-      in
-      let obls, _, constr, typ = Eterm.eterm_obligations env id !evm !evm 0 body ty in
-	Subtac_obligations.add_definition id ~term:constr typ
-	  ~kind:(Decl_kinds.Global,Decl_kinds.Instance) 
-	  ~hook ~tactic:(solve_subterm_tac ()) obls
+      match body with
+        | Some body -> 
+            let body = it_mkLambda_or_LetIn body parambinders in
+            let hook vis gr =
+	      let cst = match gr with ConstRef kn -> kn | _ -> assert false in
+	      let inst = Typeclasses.new_instance kl None global (ConstRef cst) in
+	      Typeclasses.add_instance inst
+            in
+            let obls, _, constr, typ = Eterm.eterm_obligations env id !evm !evm 0 body ty in
+	    Subtac_obligations.add_definition id ~term:constr typ
+	      ~kind:(Decl_kinds.Global,Decl_kinds.Instance) 
+	      ~hook ~tactic:(solve_subterm_tac ()) obls
+        | None -> error "Could not find constructor"
   in ignore(declare_ind ())
     
 VERNAC COMMAND EXTEND Derive_Subterm
