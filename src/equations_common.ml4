@@ -78,11 +78,15 @@ let declare_constant id body ty kind =
     
 let declare_instance id ctx cl args =
   let c, t = Typeclasses.instance_constructor cl args in
-  let cst = declare_constant id (it_mkLambda_or_LetIn c ctx)
-    (Some (it_mkProd_or_LetIn t ctx)) (IsDefinition Instance)
-  in 
-  let inst = Typeclasses.new_instance cl None true (ConstRef cst) in
-    Typeclasses.add_instance inst; mkConst cst
+  match c with
+    | Some c -> 
+      let cst = declare_constant id (it_mkLambda_or_LetIn c ctx)
+        (Some (it_mkProd_or_LetIn t ctx)) (IsDefinition Instance)
+      in 
+      let inst = Typeclasses.new_instance cl None true (ConstRef cst) in
+      Typeclasses.add_instance inst; mkConst cst
+    | None ->
+      error "Constructor not found"
 
 let coq_unit = lazy (init_constant ["Coq";"Init";"Datatypes"] "unit")
 let coq_tt = lazy (init_constant ["Coq";"Init";"Datatypes"] "tt")

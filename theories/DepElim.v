@@ -329,7 +329,7 @@ Proof. intros; subst. apply X. Defined.
 Lemma solution_right : ∀ {A} {B : A -> Type} (t : A), B t -> (∀ x, t = x -> B x).
 Proof. intros; subst; apply X. Defined.
 
-Lemma solution_left_dep : ∀ {A} (t : A) {B : forall (x : A), (t = x -> Type)}, B t eq_refl -> (∀ x (Heq : t = x), B x Heq).
+Lemma solution_right_dep : ∀ {A} (t : A) {B : forall (x : A), (t = x -> Type)}, B t eq_refl -> (∀ x (Heq : t = x), B x Heq).
 Proof. intros; subst. apply X. Defined.
 
 Lemma solution_left_let : ∀ {A} {B : A -> Type} (b : A) (t : A), 

@@ -106,13 +106,12 @@ let noconf_tac () = tac_of_string "Equations.NoConfusion.solve_noconf" []
 let simpl_equations_tac () = tac_of_string "Equations.DepElim.simpl_equations" []
 
 let solve_equation_tac c = tac_of_string "Equations.DepElim.solve_equation"
-  [ConstrMayEval (ConstrTerm (CDynamic (dummy_loc, Pretyping.constr_in (constr_of_global c))))]
+  [ConstrMayEval (ConstrTerm (CAppExpl (dummy_loc, (None, Qualid (dummy_loc, qualid_of_path (Nametab.path_of_global c))), [])))]
 
 let impossible_call_tac c = Tacinterp.glob_tactic
   (TacArg(TacCall(dummy_loc, 
 		 Qualid (dummy_loc, qualid_of_string "Equations.DepElim.impossible_call"),
-		 [ConstrMayEval (ConstrTerm (CDynamic (dummy_loc, 
-						      Pretyping.constr_in (constr_of_global c))))])))
+		 [ConstrMayEval (ConstrTerm (CAppExpl (dummy_loc, (None, Qualid (dummy_loc, qualid_of_path (Nametab.path_of_global c))), [])))])))
 
 let depelim_tac h = tac_of_string "Equations.DepElim.depelim"
   [IntroPattern (dummy_loc, Genarg.IntroIdentifier h)]
@@ -3185,12 +3184,15 @@ let derive_no_confusion ind =
     let tc = class_info (global_of_constr (Lazy.force coq_noconfusion_class)) in
     let b, ty = instance_constructor tc [indty; mkApp (mkConst cstNoConf, argsvect) ; 
 					 mkApp (constr_of_global gr, argsvect) ] in
-    let ce = { const_entry_body = it_mkLambda_or_LetIn b ctx;
-	       const_entry_type = Some (it_mkProd_or_LetIn ty ctx); 
-	       const_entry_opaque = false }
-    in
-    let inst = Declare.declare_constant packid (DefinitionEntry ce, IsDefinition Instance) in
-      Typeclasses.add_instance (Typeclasses.new_instance tc None true (ConstRef inst))
+    match b with
+      | Some b ->
+        let ce = { const_entry_body = it_mkLambda_or_LetIn b ctx;
+	           const_entry_type = Some (it_mkProd_or_LetIn ty ctx); 
+	           const_entry_opaque = false }
+        in
+        let inst = Declare.declare_constant packid (DefinitionEntry ce, IsDefinition Instance) in
+        Typeclasses.add_instance (Typeclasses.new_instance tc None true (ConstRef inst))
+      | None -> error "Could not find constructor"
   in
     ignore(Subtac_obligations.add_definition ~hook noid 
 	      stmt ~tactic:(noconf_tac ()) [||])
