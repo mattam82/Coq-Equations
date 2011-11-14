@@ -329,7 +329,7 @@ Proof. intros; subst. apply X. Defined.
 Lemma solution_right : ∀ {A} {B : A -> Type} (t : A), B t -> (∀ x, t = x -> B x).
 Proof. intros; subst; apply X. Defined.
 
-Lemma solution_left_dep : ∀ {A} (t : A) {B : forall (x : A), (t = x -> Type)}, B t eq_refl -> (∀ x (Heq : t = x), B x Heq).
+Lemma solution_right_dep : ∀ {A} (t : A) {B : forall (x : A), (t = x -> Type)}, B t eq_refl -> (∀ x (Heq : t = x), B x Heq).
 Proof. intros; subst. apply X. Defined.
 
 Lemma solution_left_let : ∀ {A} {B : A -> Type} (b : A) (t : A), 
@@ -483,7 +483,7 @@ Ltac simplify_one_dep_elim_term c :=
     | _ -> ?B => let ty := type of B in (* Works only with non-dependent products *)
       intro || (let H := fresh in intro H)
     | forall x, _ =>
-      let H := fresh x in rename x into H ; intro x (* Try to keep original names *)
+      let H := fresh x in intro H
     | _ => intro
 
     (* | _ -> ?T => intro; try (let x := type of T in idtac) *)

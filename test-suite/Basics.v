@@ -29,7 +29,7 @@ eq_trans A x x x eq_refl eq_refl := eq_refl.
 
 Notation " x |:| y " := (@Vector.cons _ x _ y) (at level 20, right associativity) : vect_scope.
 Notation " x |: n :| y " := (@Vector.cons _ x n y) (at level 20, right associativity) : vect_scope.
-Notation " [[ x .. y ]] " := (Vector.cons x .. (Vector.cons y Vector.nil) ..) : vect_scope.
+(* Notation " [[ x .. y ]] " := (Vector.cons x .. (Vector.cons y Vector.nil) ..) : vect_scope. *)
 Notation "[]v" := Vector.nil (at level 0) : vect_scope.
 
 Require Vectors.Vector.
@@ -95,7 +95,7 @@ Instance vector_eqdec {A n} `(EqDec A) : EqDec (vector A n).
 Proof. intros. intros x. induction x. left. now depelim y.
   intro y; depelim y.
   destruct (eq_dec h h0); subst. 
-  destruct (IHx y0). subst.
+  destruct (IHx y). subst.
   left; reflexivity.
   right. intro. apply n. injection H0. simpdep. reflexivity.
   right. intro. apply n. injection H0. simpdep. reflexivity.
