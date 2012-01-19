@@ -75,13 +75,13 @@ let below_tac s =
   make_kn (MPfile below_tactics_path) (make_dirpath []) (mk_label s)
 
 let rec_tac h h' = 
-  TacArg(TacCall(dummy_loc, 
+  TacArg(dummy_loc, TacCall(dummy_loc, 
 		Qualid (dummy_loc, qualid_of_string "Equations.Below.rec"),
 		[IntroPattern (dummy_loc, Genarg.IntroIdentifier h);
 		 IntroPattern (dummy_loc, Genarg.IntroIdentifier h')]))
 
 let rec_wf_tac h h' rel = 
-  TacArg(TacCall(dummy_loc, 
+  TacArg(dummy_loc, TacCall(dummy_loc, 
 		Qualid (dummy_loc, qualid_of_string "Equations.Subterm.rec_wf_eqns_rel"),
 		[IntroPattern (dummy_loc, Genarg.IntroIdentifier h);
 		 IntroPattern (dummy_loc, Genarg.IntroIdentifier h');
@@ -90,7 +90,7 @@ let rec_wf_tac h h' rel =
 let unfold_recursor_tac () = tac_of_string "Equations.Subterm.unfold_recursor" []
 
 let equations_tac_expr () = 
-  (TacArg(TacCall(dummy_loc, Qualid (dummy_loc, qualid_of_string "Equations.DepElim.equations"), [])))
+  (TacArg(dummy_loc, TacCall(dummy_loc, Qualid (dummy_loc, qualid_of_string "Equations.DepElim.equations"), [])))
 
 let equations_tac () = tac_of_string "Equations.DepElim.equations" []
 
@@ -105,13 +105,15 @@ let noconf_tac () = tac_of_string "Equations.NoConfusion.solve_noconf" []
 
 let simpl_equations_tac () = tac_of_string "Equations.DepElim.simpl_equations" []
 
+let reference_of_global c =
+  Qualid (dummy_loc, Nametab.shortest_qualid_of_global Idset.empty c)
+
 let solve_equation_tac c = tac_of_string "Equations.DepElim.solve_equation"
-  [ConstrMayEval (ConstrTerm (CAppExpl (dummy_loc, (None, Qualid (dummy_loc, qualid_of_path (Nametab.path_of_global c))), [])))]
 
 let impossible_call_tac c = Tacinterp.glob_tactic
-  (TacArg(TacCall(dummy_loc, 
-		 Qualid (dummy_loc, qualid_of_string "Equations.DepElim.impossible_call"),
-		 [ConstrMayEval (ConstrTerm (CAppExpl (dummy_loc, (None, Qualid (dummy_loc, qualid_of_path (Nametab.path_of_global c))), [])))])))
+  (TacArg(dummy_loc,TacCall(dummy_loc, 
+			    Qualid (dummy_loc, qualid_of_string "Equations.DepElim.impossible_call"),
+			    [ConstrMayEval (ConstrTerm (CRef (reference_of_global c)))])))
 
 let depelim_tac h = tac_of_string "Equations.DepElim.depelim"
   [IntroPattern (dummy_loc, Genarg.IntroIdentifier h)]
@@ -1193,7 +1195,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		      | Some split -> Some (RecValid (pi1 data, split)))
 		      
 		| By (tac, s) ->
-		    let sign, t', rels = push_rel_context_to_named_context env' ty in
+		    let sign, t', rels, _ = push_rel_context_to_named_context env' ty in
 		    let sign = named_context_of_val sign in
 		    let sign', secsign = split_at_eos sign in
 		    let ids = List.map pi1 sign in
@@ -1426,7 +1428,7 @@ open Evd
 open Evarutil
 
 let helper_evar isevar evar env typ src =
-  let sign, typ', instance = push_rel_context_to_named_context env typ in
+  let sign, typ', instance, _ = push_rel_context_to_named_context env typ in
   let evm' = evar_declare sign evar typ' ~src !isevar in
     isevar := evm'; mkEvar (evar, Array.of_list instance)
 
@@ -1810,8 +1812,10 @@ let clean_clause (ctx, pats, ty, c) =
   map_rhs (nf_beta Evd.empty) (fun x -> x) c)
 
 let map_evars_in_constr evar_map c = 
-  evar_map (fun id -> 
-    constr_of_global (Nametab.locate (Libnames.make_short_qualid id))) c
+  evar_map (fun id -> constr_of_global (Nametab.global (Qualid (dummy_loc, qualid_of_ident id)))) c
+(*  list_try_find  *)
+(* 	      (fun (id', c, filter) ->  *)
+(* 		 if id = id' then (c, filter) else failwith "") subst) c *)
 
 let map_ctx_map f (g, p, d) =
   map_rel_context f g, p, map_rel_context f d
@@ -2110,7 +2114,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
     let ind = mkInd (k,0) in
     let _ =
       list_iter_i (fun i ind ->
-	let constrs = list_map_i (fun j _ -> None, true, None, mkConstruct ((k,i),j)) 1 ind.mind_entry_lc in
+	let constrs = list_map_i (fun j _ -> None, true, Auto.PathAny, mkConstruct ((k,i),j)) 1 ind.mind_entry_lc in
 	  Auto.add_hints false [info.base_id] (Auto.HintsResolveEntry constrs))
 	inds
     in
@@ -2119,10 +2123,10 @@ let build_equations with_ind env id info data sign is_rec arity cst
     let f, split = match alias with Some (f, _, split) -> f, split | None -> f, split in
     let app = applist (f, args) in
     let statement = it_mkProd_or_subst (applist (ind, args @ [app])) sign in
-    let hookind _ gr = 
+    let hookind subst gr = 
       let env = Global.env () in (* refresh *)
       let cgr = constr_of_global gr in
-      Auto.add_hints false [info.base_id] (Auto.HintsImmediateEntry [None, cgr]);
+      Auto.add_hints false [info.base_id] (Auto.HintsImmediateEntry [Auto.PathAny, cgr]);
       let _funind_stmt =
 	let leninds = List.length inds in
 	let elim =
@@ -2274,11 +2278,11 @@ let build_equations with_ind env id info data sign is_rec arity cst
     let id = if j <> 0 then add_suffix id ("_helper_" ^ string_of_int j) else id in
     let proof (i, (r, c, n)) = 
       let ideq = add_suffix id ("_equation_" ^ string_of_int i) in
-      let hook _ gr = 
+      let hook subst gr = 
 	if n <> None then
 	  Autorewrite.add_rew_rules info.base_id 
 	    [dummy_loc, constr_of_global gr, true, Tacexpr.TacId []]
-	else (Classes.declare_instance true (Ident (dummy_loc, Nametab.basename_of_global gr));
+	else (Typeclasses.declare_instance None true gr;
 	      Auto.add_hints false [info.base_id] 
 		(Auto.HintsExternEntry (0, None, impossible_call_tac (ConstRef cst))));
 	eqns.(pred i) <- true;
@@ -2289,7 +2293,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	  if with_ind && succ j = List.length ind_stmts then declare_ind ())
       in
 	ignore(Subtac_obligations.add_definition
-		  ideq c ~tactic:(tclTHENLIST [intros; unf; solve_equation_tac (ConstRef cst)]) ~hook [||])
+		  ideq c ~tactic:(tclTHENLIST [intros; unf; solve_equation_tac (ConstRef cst) []]) ~hook [||])
     in iter proof stmts
   in iter proof ind_stmts
 
@@ -2637,6 +2641,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	let ce =
 	  { const_entry_body = body;
 	    const_entry_type = None;
+	    const_entry_secctx = None;
 	    const_entry_opaque = false }
 	in
 	let comp =
@@ -2651,6 +2656,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	  let ce =
 	    { const_entry_body = body;
 	      const_entry_type = None;
+	      const_entry_secctx = None;
 	      const_entry_opaque = false }
 	  in Declare.declare_constant projid (DefinitionEntry ce, IsDefinition Definition)
 	in
@@ -2713,8 +2719,9 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   let status = (* if is_recursive then Expand else *) Define false in
   let baseid = string_of_id i in
   let (ids, csts) = full_transparent_state in
-  Auto.create_hint_db false baseid (ids, Cpred.remove (fix_proto_ref ()) csts) true;
-  let hook cmap helpers _ gr = 
+  let fix_proto_ref = destConstRef (global_of_constr (Subtac_utils.fix_proto ())) in
+  Auto.create_hint_db false baseid (ids, Cpred.remove fix_proto_ref csts) true;
+  let hook cmap helpers subst gr = 
     let info = { base_id = baseid; helpers_info = helpers } in
     let f_cst = match gr with ConstRef c -> c | _ -> assert false in
     let env = Global.env () in
@@ -2739,12 +2746,12 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	    (* We first define the unfolding and show the fixpoint equation. *)
 	    isevar := Evd.empty;
 	    let unfoldi = add_suffix i "_unfold" in
-	    let hook_unfold cmap helpers' _ gr' = 
+	    let hook_unfold cmap helpers' vis gr' = 
 	      let info = { base_id = baseid; helpers_info = helpers @ helpers' } in
 	      let funf_cst = match gr' with ConstRef c -> c | _ -> assert false in
 	      let funfc =  mkConst funf_cst in
 	      let unfold_split = map_evars_in_split cmap unfold_split in
-	      let hook_eqs _ grunfold =
+	      let hook_eqs subst grunfold =
 		Conv_oracle.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
 		build_equations with_ind env i info data sign None arity
 		  funf_cst funfc ~alias:(f, constr_of_global grunfold, split) prob unfold_split
@@ -3030,6 +3037,7 @@ let depcase (mind, i as ind) =
   let ce =
     { const_entry_body = body;
       const_entry_type = None;
+      const_entry_secctx = None;
       const_entry_opaque = false }
   in
   let kn = 
@@ -3045,7 +3053,7 @@ let derive_dep_elimination i loc =
   let cl = dependent_elimination_class () in
   let casety = Global.type_of_global gref in
   let args = extended_rel_vect 0 ctx in
-    declare_instance id ctx cl [ty; prod_appvect casety args; 
+    Equations_common.declare_instance id ctx cl [ty; prod_appvect casety args; 
 				mkApp (constr_of_global gref, args)]
 
 VERNAC COMMAND EXTEND Derive_DependentElimination
@@ -3169,6 +3177,7 @@ let derive_no_confusion ind =
   let ce =
     { const_entry_body = app;
       const_entry_type = Some arity;
+      const_entry_secctx = None;
       const_entry_opaque = false }
   in
   let indid = Nametab.basename_of_global (IndRef ind) in
@@ -3180,7 +3189,7 @@ let derive_no_confusion ind =
     (mkApp (mkConst cstNoConf, rel_vect 1 (List.length fullbinders)))
     ((Anonymous, None, mkEq (lift 3 indty) (mkRel 2) (mkRel 1)) :: fullbinders)
   in
-  let hook _ gr = 
+  let hook vis gr = 
     let tc = class_info (global_of_constr (Lazy.force coq_noconfusion_class)) in
     let b, ty = instance_constructor tc [indty; mkApp (mkConst cstNoConf, argsvect) ; 
 					 mkApp (constr_of_global gr, argsvect) ] in
@@ -3188,6 +3197,7 @@ let derive_no_confusion ind =
       | Some b ->
         let ce = { const_entry_body = it_mkLambda_or_LetIn b ctx;
 	           const_entry_type = Some (it_mkProd_or_LetIn ty ctx); 
+		   const_entry_secctx = None;
 	           const_entry_opaque = false }
         in
         let inst = Declare.declare_constant packid (DefinitionEntry ce, IsDefinition Instance) in

@@ -70,6 +70,7 @@ let declare_constant id body ty kind =
   let ce =
     { const_entry_body = body;
       const_entry_type = ty;
+      const_entry_secctx = None;
       const_entry_opaque = false }
   in 
   let cst = Declare.declare_constant id (DefinitionEntry ce, kind) in
@@ -78,15 +79,11 @@ let declare_constant id body ty kind =
     
 let declare_instance id ctx cl args =
   let c, t = Typeclasses.instance_constructor cl args in
-  match c with
-    | Some c -> 
-      let cst = declare_constant id (it_mkLambda_or_LetIn c ctx)
-        (Some (it_mkProd_or_LetIn t ctx)) (IsDefinition Instance)
-      in 
-      let inst = Typeclasses.new_instance cl None true (ConstRef cst) in
-      Typeclasses.add_instance inst; mkConst cst
-    | None ->
-      error "Constructor not found"
+  let cst = declare_constant id (it_mkLambda_or_LetIn (Option.get c) ctx)
+    (Some (it_mkProd_or_LetIn t ctx)) (IsDefinition Instance)
+  in 
+  let inst = Typeclasses.new_instance cl None true (ConstRef cst) in
+    Typeclasses.add_instance inst; mkConst cst
 
 let coq_unit = lazy (init_constant ["Coq";"Init";"Datatypes"] "unit")
 let coq_tt = lazy (init_constant ["Coq";"Init";"Datatypes"] "tt")
@@ -121,7 +118,7 @@ let mkHRefl t x =
 	[| refresh_universes_strict t; x |])
 
 let tac_of_string str args =
-  Tacinterp.interp (TacArg(TacCall(dummy_loc, Qualid (dummy_loc, qualid_of_string str), args)))
+  Tacinterp.interp (TacArg(dummy_loc, TacCall(dummy_loc, Qualid (dummy_loc, qualid_of_string str), args)))
 
 let equations_path = ["Equations";"Equations"]
 let coq_dynamic_ind = lazy (init_constant equations_path "dynamic")

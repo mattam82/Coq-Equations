@@ -55,6 +55,10 @@ Equations neg (b : bool) : bool :=
 neg true := false ;
 neg false := true.
 
+Obligation Tactic := idtac.
+
+Next Obligation. intros. destruct b; assumption. Defined.
+
 (* begin hide *)
 Check neg_ind. Check neg_comp.
 Check neg_ind_equation_1.

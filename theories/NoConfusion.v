@@ -1,5 +1,4 @@
-(* -*- compile-command: "make -C ../.. TIME='time'"; coq-prog-name: "~/research/coq/trunk/bin/coqtop.byte"; 
-   coq-prog-name: ("-emacs-U" "-top" "Coq.Program.NoConfusion") -*- *)
+(* -*- compile-command: "make -C ../.. TIME='time'"; coq-prog-name: "~/research/coq/trunk/bin/coqtop.byte -emacs-U -top Equations.NoConfusion" -*- *)
 (************************************************************************)
 (*  v      *   The Coq Proof Assistant  /  The Coq Development Team     *)
 (* <O___,, * CNRS-Ecole Polytechnique-INRIA Futurs-Universite Paris Sud *)
@@ -27,5 +26,3 @@ Ltac solve_noconf :=
   red ; let H := fresh in intro H ; apply H ; reflexivity.
 
 Derive NoConfusion for unit bool nat option sum prod list sigT sig.
-
-Solve All Obligations using solve_noconf.

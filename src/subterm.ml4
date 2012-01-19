@@ -164,7 +164,7 @@ let derive_subterm ind =
     let subind = mkInd (k,0) in
     let constrhints = 
       list_map_i (fun i entry -> 
-	list_map_i (fun j _ -> None, true, None, mkConstruct ((k,i),j)) 1 entry.mind_entry_lc)
+	list_map_i (fun j _ -> None, true, Auto.PathAny, mkConstruct ((k,i),j)) 1 entry.mind_entry_lc)
 	0 inds 
     in Auto.add_hints false [subterm_relation_base]
       (Auto.HintsResolveEntry (List.concat constrhints));
@@ -223,19 +223,16 @@ let derive_subterm ind =
 	in Typeclasses.instance_constructor kl [ ty; relation; evar ]
       in
       let ty = it_mkProd_or_LetIn ty parambinders in
-      match body with
-        | Some body -> 
-            let body = it_mkLambda_or_LetIn body parambinders in
-            let hook vis gr =
-	      let cst = match gr with ConstRef kn -> kn | _ -> assert false in
-	      let inst = Typeclasses.new_instance kl None global (ConstRef cst) in
-	      Typeclasses.add_instance inst
-            in
-            let obls, _, constr, typ = Eterm.eterm_obligations env id !evm !evm 0 body ty in
-	    Subtac_obligations.add_definition id ~term:constr typ
-	      ~kind:(Decl_kinds.Global,Decl_kinds.Instance) 
-	      ~hook ~tactic:(solve_subterm_tac ()) obls
-        | None -> error "Could not find constructor"
+      let body = it_mkLambda_or_LetIn (Option.get body) parambinders in
+      let hook vis gr =
+	let cst = match gr with ConstRef kn -> kn | _ -> assert false in
+	let inst = Typeclasses.new_instance kl None global (ConstRef cst) in
+	  Typeclasses.add_instance inst
+      in
+      let obls, _, constr, typ = Eterm.eterm_obligations env id !evm !evm 0 body ty in
+	Subtac_obligations.add_definition id ~term:constr typ
+	  ~kind:(Decl_kinds.Global,Decl_kinds.Instance) 
+	  ~hook ~tactic:(solve_subterm_tac ()) obls
   in ignore(declare_ind ())
     
 VERNAC COMMAND EXTEND Derive_Subterm

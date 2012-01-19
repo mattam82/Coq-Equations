@@ -11,7 +11,8 @@ Module TestF.
     f (S m) IH := _
   }.
   
-  Next Obligation. exact IH. Defined.
+  Next Obligation. exact IH. Defined. Obligations.
+Obligation Tactic := idtac. Next Obligation. Set Printing All.  intros. simpl in m_1. About f_obligation_2. admit.
 End TestF.
 
 Instance eqsig {A} (x : A) : Signature (x = x) A :=
@@ -31,19 +32,6 @@ Notation " x |:| y " := (@Vector.cons _ x _ y) (at level 20, right associativity
 Notation " x |: n :| y " := (@Vector.cons _ x n y) (at level 20, right associativity) : vect_scope.
 (* Notation " [[ x .. y ]] " := (Vector.cons x .. (Vector.cons y Vector.nil) ..) : vect_scope. *)
 Notation "[]v" := Vector.nil (at level 0) : vect_scope.
-
-Require Vectors.Vector.
-
-Implicit Arguments Vector.nil [ [A] ].
-Implicit Arguments Vector.cons [ [A] [n] ].
-
-Open Local Scope vect_scope.
-
-Equations (nocomp) vapp' {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
-vapp' A ?(0) m []v w := w ;
-vapp' A ?(S n) m (Vector.cons a n v) w := Vector.cons a (vapp' v w).
-
-Print Assumptions vapp'.
 
 Equations(nocomp) filter {A} (l : list A) (p : A -> bool) : list A :=
 filter A List.nil p := List.nil ;
@@ -82,10 +70,24 @@ Equations testn (n : nat) : nat :=
 testn n by rec n lt :=
 testn 0 := 0 ;
 testn (S n) <= testn n => {
-  | O := S O ;
+  | 0 := S 0 ;
   | (S n') := S n' }.
 
+
 Recursive Extraction testn.
+
+Require Import Vectors.Vector.
+
+Implicit Arguments Vector.nil [ [A] ].
+Implicit Arguments Vector.cons [ [A] [n] ].
+
+Open Local Scope vect_scope.
+
+Equations (nocomp) vapp' {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
+vapp' A ?(0) m []v w := w ;
+vapp' A ?(S n) m (Vector.cons a n v) w := Vector.cons a (vapp' v w).
+
+Print Assumptions vapp'.
 
 Derive Signature for vector.
 
@@ -127,13 +129,15 @@ Typeclasses Opaque vector_subterm.
 (* Ltac generalize_by_eqs id ::= generalize_eqs id. *)
 (* Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars id. *)
 Import Vector.
+Print nil.
+
+Set Printing All.
 
 Equations unzip_dec {A B} `{EqDec A} `{EqDec B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
 unzip_dec A B _ _ n v by rec v (@vector_subterm (A * B)) :=
 unzip_dec A B _ _ ?(O) nil := ([]v, []v) ;
 unzip_dec A B _ _ ?(S n) (cons (pair x y) n v) with unzip_dec v := {
   | pair xs ys := (cons x xs, cons y ys) }.
-
 Next Obligation. intros. apply unzip_dec. eauto with subterm_relation. Defined.
 
 Typeclasses Transparent vector_subterm.
@@ -164,7 +168,6 @@ nos_with (S m) with nos_with m := {
 
 Hint Unfold noConfusion_nat : equations.
 
-
 Obligation Tactic := program_simpl ; auto with arith.
 
 Equations(nocomp) equal (n m : nat) : { n = m } + { n <> m } :=
@@ -173,6 +176,9 @@ equal (S n) (S m) <= equal n m => {
   equal (S n) (S n) (left eq_refl) := left eq_refl ;
   equal (S n) (S m) (right p) := in_right } ;
 equal x y := in_right.
+Obligation Tactic := idtac.
+Next Obligation. Defined.
+Next Obligation. Defined.
 
 Print Assumptions equal.
 Import List.
@@ -305,21 +311,24 @@ Inductive Split {X : Type}{m n : nat} : vector X (m + n) -> Type :=
 Implicit Arguments Split [ [ X ] ].
 
 (* Eval compute in @app'. *)
+About nil. About vector.
+
 Equations split {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
 split X m n xs by rec m :=
 split X O    n xs := append nil xs ;
 split X (S m) n (cons x ?(m + n) xs) <= split xs => {
   | append xs' ys' := append (cons x xs') ys' }.
+Obligation Tactic := idtac.
+Next Obligation. equations. Defined.
 
-Lemma split_vapp' : ∀ (X : Type) m n (v : vector X m) (w : vector X n), 
+Lemma split_vapp' : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
   let 'append v' w' := split (vapp' v w) in
     v = v' /\ w = w'.
 Proof.
   intros. funelim (vapp' v w). destruct (split (m:=0) w). depelim xs; intuition.
-  simp split in *. destruct (split (vapp' t w)). simpl. 
+  simp split in *. destruct (split (vapp' t w)). simpl.
   intuition congruence.
 Qed.
-
 
 (* Eval compute in @zip''. *)
 
@@ -348,11 +357,13 @@ vmap' A B f ?(O) nil := nil ;
 vmap' A B f ?(S n) (cons a n v) := cons (f a) (vmap' f v).
 
 Hint Resolve lt_n_Sn : subterm_relation.
-
+Print cons.
 Equations vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
 vmap A B f n v by rec n :=
 vmap A B f O nil := nil ;
 vmap A B f (S n) (cons a n v) := cons (f a) (vmap f v).
+Next Obligation. equations. Defined.
+Next Obligation. equations. Defined.
 
 Transparent vmap.
 
@@ -477,6 +488,9 @@ parity O := even 0 ;
 parity (S n) <= parity n => {
   parity (S ?(2 * k))     (even k) := odd k ;
   parity (S ?(2 * k + 1)) (odd k)  := cast (even (S k)) _ }.
+Unset Printing All.
+Next Obligation. intros. apply f_equal. simpl. auto with arith. Defined.
+
 
 Equations half (n : nat) : nat :=
 half n <= parity n => {
