@@ -98,6 +98,7 @@ let set_eos_tac () = tac_of_string "Equations.DepElim.set_eos" []
     
 let solve_rec_tac () = tac_of_string "Equations.Below.solve_rec" []
 
+let find_empty_tac () = tac_of_string "Equations.DepElim.find_empty" []
 
 let pi_tac () = tac_of_string "Equations.Subterm.pi" []
 
@@ -254,7 +255,7 @@ and pat_of_constr c =
       PHide (destRel c)
   | App (f, args) when isConstruct f ->
       let (ind,_ as cstr) = destConstruct f in
-      let nparams, _ = inductive_nargs (Global.env ()) ind in
+      let nparams, _ = inductive_nargs ind in
       let params, args = array_chop nparams args in
       PCstr (cstr, inaccs_of_constrs (Array.to_list params) @ pats_of_constrs (Array.to_list args))
   | Construct f -> PCstr (f, [])
@@ -1771,6 +1772,9 @@ let rec aux_ind_fun info = function
       let cstrtac =
 	tclTHENLIST [tclTRY (autorewrite_one info.base_id); any_constructor false None]
       in tclTHENLIST [ intros; tclTHENLAST cstrtac (tclSOLVE [elimtac]); solve_rec_tac ()]
+
+  | Compute (_, _, REmpty _) ->
+      tclTHENLIST [intros_reducing; find_empty_tac ()]
 	
   | Compute (_, _, _) ->
       tclTHENLIST [intros_reducing; simp_eqns [info.base_id]]
@@ -2507,7 +2511,7 @@ let rec translate_cases_pattern env avoid = function
       let n = next_ident_away (id_of_string "wildcard") avoid in
 	avoid := n :: !avoid; PUVar n
   | PatCstr (loc, (ind, _ as cstr), pats, Anonymous) ->
-      PUCstr (cstr, (fst (inductive_nargs env ind)), map (translate_cases_pattern env avoid) pats)
+      PUCstr (cstr, (fst (inductive_nargs ind)), map (translate_cases_pattern env avoid) pats)
   | PatCstr (loc, cstr, pats, Name id) ->
       user_err_loc (loc, "interp_pats", str "Aliases not supported by Equations")
 
@@ -2542,7 +2546,7 @@ let interp_eqn i is_rec isevar env impls sign arity recu eqn =
 	  (match r with
 	   | Inl (ConstructRef c) ->
 	       let (ind,_) = c in
-	       let nparams, _ = inductive_nargs env ind in
+	       let nparams, _ = inductive_nargs ind in
 	       let nargs = constructor_nrealargs env c in
 	       let len = List.length l in
 	       let l' =

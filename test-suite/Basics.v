@@ -11,8 +11,7 @@ Module TestF.
     f (S m) IH := _
   }.
   
-  Next Obligation. exact IH. Defined. Obligations.
-Obligation Tactic := idtac. Next Obligation. Set Printing All.  intros. simpl in m_1. About f_obligation_2. admit.
+  Next Obligation. exact IH. Defined.
 End TestF.
 
 Instance eqsig {A} (x : A) : Signature (x = x) A :=
@@ -176,9 +175,6 @@ equal (S n) (S m) <= equal n m => {
   equal (S n) (S n) (left eq_refl) := left eq_refl ;
   equal (S n) (S m) (right p) := in_right } ;
 equal x y := in_right.
-Obligation Tactic := idtac.
-Next Obligation. Defined.
-Next Obligation. Defined.
 
 Print Assumptions equal.
 Import List.
@@ -318,8 +314,6 @@ split X m n xs by rec m :=
 split X O    n xs := append nil xs ;
 split X (S m) n (cons x ?(m + n) xs) <= split xs => {
   | append xs' ys' := append (cons x xs') ys' }.
-Obligation Tactic := idtac.
-Next Obligation. equations. Defined.
 
 Lemma split_vapp' : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
   let 'append v' w' := split (vapp' v w) in
@@ -362,8 +356,6 @@ Equations vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
 vmap A B f n v by rec n :=
 vmap A B f O nil := nil ;
 vmap A B f (S n) (cons a n v) := cons (f a) (vmap f v).
-Next Obligation. equations. Defined.
-Next Obligation. equations. Defined.
 
 Transparent vmap.
 
@@ -488,9 +480,6 @@ parity O := even 0 ;
 parity (S n) <= parity n => {
   parity (S ?(2 * k))     (even k) := odd k ;
   parity (S ?(2 * k + 1)) (odd k)  := cast (even (S k)) _ }.
-Unset Printing All.
-Next Obligation. intros. apply f_equal. simpl. auto with arith. Defined.
-
 
 Equations half (n : nat) : nat :=
 half n <= parity n => {

@@ -685,7 +685,7 @@ Ltac unblock_dep_elim :=
   match goal with
     | |- block ?T => 
       match T with context [ block _ ] => 
-        unfold block at 1 ; intros ; unblock_goal
+        change T ; intros ; unblock_goal
       end
     | _ => unblock_goal
   end.
@@ -702,8 +702,7 @@ Ltac do_depelim tac H := do_depelim_nosimpl tac H ; simpl_dep_elim.
 
 Ltac do_depind tac H := 
   (try intros until H) ; intro_block H ; (try simpl in H ; simplify_equations_in H) ;
-  generalize_by_eqs_vars H ; tac H ; simplify_dep_elim ; simplify_IH_hyps ; 
-  unblock_dep_elim.
+  generalize_by_eqs_vars H ; tac H ; simpl_dep_elim.
 
 (** To dependent elimination on some hyp. *)
 
@@ -814,7 +813,7 @@ Ltac simpl_equation_impl :=
 Ltac simplify_equation := 
   make_simplify_goal ; repeat (hnf_gl ; simpl; unfold_equations; rewrite_refl_id).
 
-Ltac solve_equation f := 
+Ltac solve_equation := 
   intros ; try simplify_equation ; try
     (match goal with 
        | [ |- ImpossibleCall _ ] => elimtype False ; find_empty 

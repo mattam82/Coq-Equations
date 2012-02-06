@@ -81,8 +81,8 @@ Notation vnil := Vector.nil.
 Notation vcons := Vector.cons.
 
 Equations(nocomp) nth {A} {n} (v : Vector.t A n) (f : fin n) : A :=
-nth A ?(S n) (Vector.cons a n v) fz := a ;
-nth A ?(S n) (Vector.cons a n v) (fs n f) := nth v f.
+nth A ?(S n) (vcons a n v) fz := a ;
+nth A ?(S n) (vcons a n v) (fs n f) := nth v f.
 
 Goal ∀ (A : Type) (n : nat) (a : A) (H : vector A n), nth (vcons a H) (fz) = a.
   intros. funind (nth (vcons a H) fz) nfz.
