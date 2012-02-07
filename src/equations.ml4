@@ -1395,7 +1395,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		  | Some (var, newctx, s) ->
 		      let prob' = (newctx, pats, ctx') in
 		      let coverrec s = covering_aux env evars data []
-			(List.rev prev @ clauses) path (compose_subst s prob')
+			(List.rev prev @ clauses) path (compose_subst ~sigma:!evars s prob')
 			(specialize_rel_context (pi2 s) lets)
 			(specialize_constr (pi2 s) ty)
 		      in
