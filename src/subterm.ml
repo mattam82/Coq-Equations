@@ -175,7 +175,7 @@ let derive_subterm ind =
       let env = Global.env () in
       let env' = push_rel_context parambinders env in
       let kl = Option.get (Typeclasses.class_of_constr (Lazy.force coq_wellfounded_class)) in
-      let body, ty =
+      let Some body, ty =
 	let ty, rel = 
 	  if argbinders = [] then
 	    (* Standard homogeneous well-founded relation *)
