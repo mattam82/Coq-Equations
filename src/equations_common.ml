@@ -74,7 +74,7 @@ let declare_constant id body ty kind =
     cst
     
 let declare_instance id ctx cl args =
-  let c, t = Typeclasses.instance_constructor cl args in
+  let Some c, t = Typeclasses.instance_constructor cl args in
   let cst = declare_constant id (it_mkLambda_or_LetIn c ctx)
     (Some (it_mkProd_or_LetIn t ctx)) (IsDefinition Instance)
   in 

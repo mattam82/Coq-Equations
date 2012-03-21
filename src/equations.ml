@@ -3088,7 +3088,7 @@ let derive_no_confusion ind =
   in
   let hook _ gr = 
     let tc = class_info (global_of_constr (Lazy.force coq_noconfusion_class)) in
-    let b, ty = instance_constructor tc [indty; mkApp (mkConst cstNoConf, argsvect) ; 
+    let Some b, ty = instance_constructor tc [indty; mkApp (mkConst cstNoConf, argsvect) ;
 					 mkApp (constr_of_global gr, argsvect) ] in
     let ce = { const_entry_body = it_mkLambda_or_LetIn b ctx;
 	       const_entry_type = Some (it_mkProd_or_LetIn ty ctx); 
