@@ -450,8 +450,12 @@ Ltac simplify_one_dep_elim_term c :=
     | @JMeq _ _ _ _ -> _ => refine (@simplification_heq _ _ _ _ _)
     | ?t = ?t -> _ => intros _ || apply simplification_K_dec || refine (@simplification_K _ t _ _)
     | (@existT ?A ?P ?n ?x) = (@existT ?A ?P ?n ?y) -> ?B =>
-      apply (simplification_existT2_dec (A:=A) (P:=P) (B:=B) n x y) ||
-        refine (@simplification_existT2 _ _ _ _ _ _ _)
+      match goal with
+        | _ : x = y |- _ => intro
+        | _ => 
+          apply (simplification_existT2_dec (A:=A) (P:=P) (B:=B) n x y) ||
+            refine (@simplification_existT2 _ _ _ _ _ _ _)
+      end
     | eq (existT _ ?p _) (existT _ ?q _) -> _ =>
       match goal with
         | _ : p = q |- _ => intro
@@ -461,7 +465,7 @@ Ltac simplify_one_dep_elim_term c :=
       (let hyp := fresh H in intros hyp ;
         move hyp before x ; move x before hyp; revert_blocking_until x; revert x;
           (match goal with
-             | |- let x := _ in _ = _ -> @?B x =>
+            | |- let x := _ in _ = _ -> @?B x =>
                refine (@solution_left_let _ B _ _ _)
              | _ => refine (@solution_left _ _ _ _) || refine (@solution_left_dep _ _ _ _)
            end)) ||

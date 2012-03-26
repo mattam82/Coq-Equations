@@ -91,6 +91,8 @@ let coq_tt = lazy (init_constant ["Coq";"Init";"Datatypes"] "tt")
 let coq_prod = lazy (init_constant ["Coq";"Init";"Datatypes"] "prod")
 let coq_pair = lazy (init_constant ["Coq";"Init";"Datatypes"] "pair")
 
+let coq_fix_proto = lazy (init_constant ["Coq";"Program";"Tactics"] "fix_proto")
+
 let fresh_id_in_env avoid id env =
   Namegen.next_ident_away_in_goal id (avoid@ids_of_named_context (named_context env))
 
@@ -328,7 +330,7 @@ let autounfold_first db cl gl =
   let st =
     List.fold_left (fun (i,c) dbname -> 
       let db = try searchtable_map dbname 
-	with Not_found -> errorlabstrm "autounfold" (str "Unknown database " ++ str dbname)
+	with Not_found -> Errors.errorlabstrm "autounfold" (str "Unknown database " ++ str dbname)
       in
       let (ids, csts) = Hint_db.unfolds db in
 	(Idset.union ids i, Cset.union csts c)) (Idset.empty, Cset.empty) db
