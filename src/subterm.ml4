@@ -27,7 +27,7 @@ open Typeops
 open Type_errors
 open Pp
 open Proof_type
-
+open Errors
 open Glob_term
 open Retyping
 open Pretype_errors
@@ -229,8 +229,8 @@ let derive_subterm ind =
 	let inst = Typeclasses.new_instance kl None global (ConstRef cst) in
 	  Typeclasses.add_instance inst
       in
-      let obls, _, constr, typ = Eterm.eterm_obligations env id !evm !evm 0 body ty in
-	Subtac_obligations.add_definition id ~term:constr typ
+      let obls, _, constr, typ = Obligations.eterm_obligations env id !evm !evm 0 body ty in
+	Obligations.add_definition id ~term:constr typ
 	  ~kind:(Decl_kinds.Global,Decl_kinds.Instance) 
 	  ~hook ~tactic:(solve_subterm_tac ()) obls
   in ignore(declare_ind ())

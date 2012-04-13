@@ -103,6 +103,8 @@ let coq_eq_refl = lazy ((Coqlib.build_coq_eq_data ()).Coqlib.refl)
 let coq_heq = lazy (Coqlib.coq_constant "mkHEq" ["Logic";"JMeq"] "JMeq")
 let coq_heq_refl = lazy (Coqlib.coq_constant "mkHEq" ["Logic";"JMeq"] "JMeq_refl")
 
+let coq_fix_proto = lazy (Coqlib.coq_constant "coq_fix_proto" ["Program";"Tactics"] "fix_proto")
+
 let mkEq t x y = 
   mkApp (Lazy.force coq_eq, [| refresh_universes_strict t; x; y |])
     
@@ -323,6 +325,7 @@ let unfold_head env (ids, csts) c =
   in aux c
 
 open Auto
+open Errors
 
 let autounfold_first db cl gl =
   let st =

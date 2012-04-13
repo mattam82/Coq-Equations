@@ -244,6 +244,61 @@ Proof. red; intros. econstructor 3; eauto. Qed.
 Instance: Reflexive reduces.
 Proof. red; intros. econstructor 2; eauto. Qed.
 
+Inductive value : term -> Prop :=
+| val_var (i : nat) : value i
+| val_unit : value Tt
+| val_pair a b : value a -> value b -> value << a, b >>
+| val_lambda t : value λ t.
+
+Hint Constructors value : term.
+
+Inductive eval_context : Set :=
+| eval_hole
+| eval_app_left : term -> eval_context -> eval_context
+| eval_app_right (c : eval_context) (u : term) : value u -> eval_context
+| eval_fst (t : eval_context) : eval_context
+| eval_snd (t : eval_context) : eval_context.
+
+Equations apply_context (e : eval_context) (t : term) : term :=
+apply_context eval_hole t := t ;
+apply_context (eval_app_left t c) u := @(t, apply_context c u) ;
+apply_context (eval_app_right c t _) u := @(apply_context c t, u) ;
+apply_context (eval_fst c) t := Fst (apply_context c t) ;
+apply_context (eval_snd c) t := Snd (apply_context c t).
+
+Inductive reduce_congr : relation term :=
+| reduce1 t u : reduce t u -> reduce_congr t u
+| reduce_app t t' u u' : reduce_congr t t' -> reduce_congr u u' ->
+  reduce_congr (@(t, u)) (@(t', u'))
+| reduce_pair t t' u u' : reduce_congr t t' -> reduce_congr u u' ->
+  reduce_congr (<< t, u >>) (<< t', u' >>)
+| reduce_fst t t' : reduce_congr t t' -> reduce_congr (Fst t) (Fst t')
+| reduce_snd t t' : reduce_congr t t' -> reduce_congr (Snd t) (Snd t')
+.
+
+(*
+Obligation Tactic := auto with term.
+
+Equations find_redex (t : term) : (eval_context * term) + { value t } :=
+find_redex (Var i) := inright _ ;
+find_redex (App t u) with find_redex u := {
+  | inright vu with find_redex t := {
+    | inright (val_lambda t') := inleft (eval_hole, @(Lambda t', u)) ;
+    | inright vt := inright _ ;
+    | inleft (pair c t') := inleft (eval_app_right c u vu, t') } ;
+  | inleft (pair c u') := inleft (eval_app_left t c, u') } ;
+find_redex (Lambda t) := inright _ ;
+find_redex (Pair t u) := inright _ ;
+find_redex (Fst t) with find_redex t := {
+  | inleft (pair c t') := inleft (eval_fst c, t') ;
+  | inright vt := inleft (eval_hole, Fst t) } ;
+find_redex (Snd t) with find_redex t := {
+  | inleft (pair c t') := inleft (eval_snd c, t') ;
+  | inright vt := inleft (eval_hole, Snd t) } ;
+find_redex Tt := inright _.
+
+*)
+
 Derive NoConfusion for term type.
 
 (* Remark *)
@@ -268,15 +323,29 @@ Proof. induction 1; intros; term. inversion H0. inversion H0. inversion H1. subs
   inversion H0. subst.  inversion H. subst. assumption.
 Qed.
 
+Lemma preserves_redpar Γ t τ : Γ |-- t : τ → forall u, reduce_congr t u → Γ |-- u : τ.
+Proof. induction 1; intros; term. depelim H0. depelim H0. 
+
+  depelim H0. depelim H0.
+
+  depelim H1. depelim H1. depelim H. eapply subst1; eauto.
+
+  econstructor; eauto.
+
+  depelim H. depelim H.
+
+  depelim H1. depelim H1.
+  eauto with term.
+
+  depelim H0. depelim H0. now depelim H.
+  eauto with term.
+
+  depelim H0. depelim H0. now depelim H.
+  eauto with term.
+Qed.
+
 Lemma subject_reduction Γ t τ : Γ |-- t : τ → forall u, t -->* u → Γ |-- u : τ.
 Proof. induction 2; eauto using preserves_red1. Qed.
-
-Inductive value : term -> Prop :=
-| val_unit : value Tt
-| val_pair a b : value a -> value b -> value << a, b >>
-| val_lambda t : value λ t.
-
-Hint Constructors value : term.
 
 (* Lemma inv_abs A B t : nil |-- t : A ---> B -> ∃ u, (t = λ u /\ (A :: nil) |-- u : B). *)
 (* Proof. intros H; depind H. inversion H. exists t; auto. *)
@@ -286,15 +355,33 @@ Hint Constructors value : term.
   
 (*   induction  *)
 
+(* Lemma red_progress Γ t τ : Γ |-- t : τ → *)
+(*   (exists u, reduce t u) \/ value t. *)
+(* Proof. *)
+(*   induction 1. right; term. *)
+(*   right; term. *)
+  
+(*   destruct IHtypes1 as [[t' tt']|vt]. *)
+(*   left; exists (@(t', u)).   *)
+  
+
+
 (* Lemma red_progress  t τ : nil |-- t : τ → *)
 (*   exists u, t -->* u ∧ value u. *)
-(* Proof. intros H. depind H; term.  *)
+(* Proof. intros H. depind H; term. *)
 
 (*   inversion H. *)
 
 (*   exists λ t; term. split; now term. *)
 (*   destruct IHtypes1 as [t' [tt' vt']]. *)
 (*   destruct IHtypes2 as [u' [uu' vu']]. *)
+(*   pose (subject_reduction _ _ _ H _ tt'). *)
+(*   depelim vt'. depelim t0. depelim t0. *)
+(*   depelim t1.  *)
+
+(*   exists (@(t', u')). *)
+
+(*   depelim H. *)
 (*   inversion H. *)
 
 Reserved Notation " Γ |-- t => A " (at level 70, t, A at next level).

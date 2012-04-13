@@ -27,6 +27,7 @@ open Typeops
 open Type_errors
 open Pp
 open Proof_type
+open Errors
 
 open Glob_term
 open Retyping

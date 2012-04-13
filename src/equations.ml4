@@ -27,7 +27,7 @@ open Typeops
 open Type_errors
 open Pp
 open Proof_type
-
+open Errors
 open Glob_term
 open Retyping
 open Pretype_errors
@@ -526,7 +526,7 @@ let rels_above ctx x =
 
 let is_fix_proto t =
   match kind_of_term t with
-  | App (f, args) when eq_constr f (delayed_force Subtac_utils.fix_proto) ->
+  | App (f, args) when eq_constr f (Lazy.force coq_fix_proto) ->
       true
   | _ -> false
 
@@ -1794,7 +1794,7 @@ let ind_fun_tac is_rec f info fid split ind =
 	  [fix (Some recid) (succ i);
 	   onLastDecl (fun (n,b,t) gl ->
 	     let sort = pf_type_of gl t in
-	     let fixprot = mkApp (delayed_force Subtac_utils.fix_proto, [|sort; t|]) in
+	     let fixprot = mkApp (Lazy.force coq_fix_proto, [|sort; t|]) in
 	       change_in_hyp None fixprot (n, InHyp) gl);
 	   intros; aux_ind_fun info split])
   else tclCOMPLETE (tclTHEN intros (aux_ind_fun info split))
@@ -2256,7 +2256,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	in
 	  try 
 	    (* Conv_oracle.set_strategy (ConstKey cst) Conv_oracle.Expand; *)
-	    ignore(Subtac_obligations.add_definition (add_suffix id "_elim")
+	    ignore(Obligations.add_definition (add_suffix id "_elim")
 		     ~tactic:(ind_elim_tac (constr_of_global elim) leninds info)
 		     ~hook:hookelim newty [||])
 	  with e ->
@@ -2270,7 +2270,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
       let instid = add_prefix "FunctionalInduction_" id in
 	ignore(declare_instance instid [] cl args)
     in
-      try ignore(Subtac_obligations.add_definition ~hook:hookind
+      try ignore(Obligations.add_definition ~hook:hookind
 		    indid statement ~tactic:(ind_fun_tac is_rec f info id split ind) [||])
       with e ->
 	warn (str "Induction principle could not be proved automatically: " ++ fnl () ++
@@ -2296,7 +2296,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	  Conv_oracle.set_strategy (ConstKey cst) Conv_oracle.Opaque;
 	  if with_ind && succ j = List.length ind_stmts then declare_ind ())
       in
-	ignore(Subtac_obligations.add_definition
+	ignore(Obligations.add_definition
 		  ideq c ~tactic:(tclTHENLIST [intros; unf; solve_equation_tac (ConstRef cst) []]) ~hook [||])
     in iter proof stmts
   in iter proof ind_stmts
@@ -2330,7 +2330,7 @@ let define_tree is_recursive impls status isevar env (i, sign, arity) comp ann s
   let helpers, oblevs, t, ty = term_of_tree status isevar env (i, sign, arity) ann split in
   let undef = undefined_evars !isevar in
   let obls, (emap, cmap), t', ty' = 
-    Eterm.eterm_obligations env i !isevar undef 0 ~status t (whd_betalet !isevar ty)
+    Obligations.eterm_obligations env i !isevar undef 0 ~status t (whd_betalet !isevar ty)
   in
   let obls = 
     Array.map (fun (id, ty, loc, s, d, t) ->
@@ -2339,7 +2339,7 @@ let define_tree is_recursive impls status isevar env (i, sign, arity) comp ann s
 	then Some (equations_tac ()) 
 	else if is_comp_obl comp (snd loc) then
 	  Some (tclTRY (solve_rec_tac ()))
-	else Some (snd (Subtac_obligations.get_default_tactic ()))
+	else Some (snd (Obligations.get_default_tactic ()))
       in (id, ty, loc, s, d, tac)) obls
   in
   let term_info = map (fun (ev, arg) ->
@@ -2347,10 +2347,10 @@ let define_tree is_recursive impls status isevar env (i, sign, arity) comp ann s
   in
   let hook = hook cmap term_info in
     if is_recursive = Some Structural then
-      ignore(Subtac_obligations.add_mutual_definitions [(i, t', ty', impls, obls)] [] 
-		~hook (Subtac_obligations.IsFixpoint [None, CStructRec]))
+      ignore(Obligations.add_mutual_definitions [(i, t', ty', impls, obls)] [] 
+		~hook (Obligations.IsFixpoint [None, CStructRec]))
     else
-      ignore(Subtac_obligations.add_definition ~hook
+      ignore(Obligations.add_definition ~hook
 		~implicits:impls i ~term:t' ty' obls)
 
 let conv_proj_call proj f_cst c =
@@ -2680,7 +2680,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
     env Constrintern.Recursive [i] [ty] [impls] 
   in
   let sort = Retyping.get_type_of env !isevar ty in
-  let fixprot = mkApp (delayed_force Subtac_utils.fix_proto, [|sort; ty|]) in
+  let fixprot = mkApp (Lazy.force coq_fix_proto, [|sort; ty|]) in
   let fixdecls = [(Name i, None, fixprot)] in
   let is_recursive =
     let rec occur_eqn (_, _, rhs) =
@@ -2723,7 +2723,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   let status = (* if is_recursive then Expand else *) Define false in
   let baseid = string_of_id i in
   let (ids, csts) = full_transparent_state in
-  let fix_proto_ref = destConstRef (global_of_constr (Subtac_utils.fix_proto ())) in
+  let fix_proto_ref = destConstRef (global_of_constr (Lazy.force coq_fix_proto)) in
   Auto.create_hint_db false baseid (ids, Cpred.remove fix_proto_ref csts) true;
   let hook cmap helpers subst gr = 
     let info = { base_id = baseid; helpers_info = helpers } in
@@ -2766,7 +2766,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	      in
 	      let tac = prove_unfolding_lemma info (mkConst r.comp_proj) f_cst funf_cst unfold_split in
 	      let unfold_eq_id = add_suffix unfoldi "_eq" in
-		ignore(Subtac_obligations.add_definition ~hook:hook_eqs ~reduce:(fun x -> x)
+		ignore(Obligations.add_definition ~hook:hook_eqs ~reduce:(fun x -> x)
 			  ~implicits:impls unfold_eq_id stmt ~tactic:tac [||])
 	    in
 	      define_tree None impls status isevar env (unfoldi, sign, arity) None ann unfold_split hook_unfold
@@ -3208,7 +3208,7 @@ let derive_no_confusion ind =
         Typeclasses.add_instance (Typeclasses.new_instance tc None true (ConstRef inst))
       | None -> error "Could not find constructor"
   in
-    ignore(Subtac_obligations.add_definition ~hook noid 
+    ignore(Obligations.add_definition ~hook noid 
 	      stmt ~tactic:(noconf_tac ()) [||])
      
 
