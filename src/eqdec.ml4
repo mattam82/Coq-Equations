@@ -133,13 +133,16 @@ let dec_eq () =
   init_constant ["Equations";"EqDec"] "dec_eq"
 
 open Decl_kinds
+let vars_of_pars pars = 
+  Array.of_list (List.map (fun x -> mkVar (pi1 x)) pars)
 
 let derive_eq_dec ind =
   let info = inductive_info ind in
   let ctx = info.mutind_params in
-  let _cl = eq_dec_class () in
-  let stmt_of ind =
-    let indapp = mkApp (ind.ind_c, extended_rel_vect 0 ind.ind_args) in
+  let cl = fst (snd (eq_dec_class ())) in
+  let info_of ind =
+    let argsvect = extended_rel_vect 0 ind.ind_args in
+    let indapp = mkApp (ind.ind_c, argsvect) in
     let app = 
       mkApp (dec_eq (), [| indapp |])
     in
@@ -152,21 +155,34 @@ let derive_eq_dec ind =
     in
     let typ = it_mkProd_or_LetIn app ind.ind_args in
     let full = it_mkNamedProd_or_LetIn typ ctx in
-      full
+    let tc gr = 
+      let b, ty = Typeclasses.instance_constructor cl [indapp; mkApp (constr_of_global gr, Array.append (vars_of_pars ctx) argsvect) ] in
+      let ce = { const_entry_body = it_mkNamedLambda_or_LetIn (it_mkLambda_or_LetIn (Option.get b) ind.ind_args) ctx;
+  		 const_entry_type = Some (it_mkNamedProd_or_LetIn (it_mkProd_or_LetIn ty ind.ind_args) ctx);
+  		 const_entry_opaque = false; const_entry_secctx = None }
+      in ce
+    in full, tc
   in
   let indsl = Array.to_list info.mutind_inds in
+  let indsl = List.map (fun ind -> ind, info_of ind) indsl in
   let possible_guards =
     List.map 
-      (fun ind -> 
+      (fun (ind, _) -> 
 	list_tabulate (fun i -> i) (List.length ind.ind_args + 2)) 
       indsl
+  in
+  let hook _ gr =
+    List.iter (fun (ind, (stmt, tc)) -> 
+	       let ce = tc gr in
+	       let inst = Declare.declare_constant (add_suffix ind.ind_name "_EqDec") (DefinitionEntry ce, IsDefinition Instance) in
+		 Typeclasses.add_instance (Typeclasses.new_instance cl None true (ConstRef inst)))
+    indsl
   in
     Lemmas.start_proof_with_initialization
       (Global, Proof Lemma) 
       (Some (false, possible_guards, None))
-      (List.map (fun ind -> add_suffix ind.ind_name "_eqdec", (stmt_of ind, ([], []))) indsl)
-      None
-      (fun l gr -> ())
+      (List.map (fun (ind, (stmt, tc)) -> add_suffix ind.ind_name "_eqdec", (stmt, ([], []))) indsl)
+      None hook
 
   (*   let impl =  *)
   (*     let xname = Name (id_of_string "x") in *)
@@ -283,7 +299,7 @@ VERNAC COMMAND EXTEND Derive_EqDec
       let c' = Constrintern.interp_constr Evd.empty (Global.env ()) c in
 	match kind_of_term c' with
 	| Ind i -> derive_eq_dec i
-	| _ -> error "Expected an inductive type")
+	| _ -> Errors.error "Expected an inductive type")
       c
   ]
 END

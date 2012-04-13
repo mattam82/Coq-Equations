@@ -177,7 +177,7 @@ let declare_sig_of_ind env ind =
   let lenpars = mib.mind_nparams_rec in
   let lenargs = List.length ctx - lenpars in
   if lenargs = 0 then
-    user_err_loc (dummy_loc, "Derive Signature", 
+    Errors.user_err_loc (dummy_loc, "Derive Signature", 
 		 str"No signature to derive for non-dependent inductive types");
   let args, pars = list_chop lenargs ctx in
   let parapp = mkApp (mkInd ind, extended_rel_vect 0 pars) in
@@ -214,7 +214,7 @@ VERNAC COMMAND EXTEND Derive_Signature
   let c' = Constrintern.interp_constr Evd.empty (Global.env ()) c in
     match kind_of_term c' with
     | Ind i -> ignore(declare_sig_of_ind (Global.env ()) i)
-    | _ -> error "Expected an inductive type"
+    | _ -> Errors.error "Expected an inductive type"
   ]
 END
 

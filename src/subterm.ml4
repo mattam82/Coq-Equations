@@ -229,7 +229,7 @@ let derive_subterm ind =
 	let inst = Typeclasses.new_instance kl None global (ConstRef cst) in
 	  Typeclasses.add_instance inst
       in
-      let obls, _, constr, typ = Obligations.eterm_obligations env id !evm !evm 0 body ty in
+      let obls, _, constr, typ = Obligations.eterm_obligations env id !evm 0 body ty in
 	Obligations.add_definition id ~term:constr typ
 	  ~kind:(Decl_kinds.Global,Decl_kinds.Instance) 
 	  ~hook ~tactic:(solve_subterm_tac ()) obls
@@ -240,7 +240,7 @@ VERNAC COMMAND EXTEND Derive_Subterm
     let c' = Constrintern.interp_constr Evd.empty (Global.env ()) c in
       match kind_of_term c' with
       | Ind i -> derive_subterm i
-      | _ -> error "Expected an inductive type"
+      | _ -> Errors.error "Expected an inductive type"
   ]
 END
 
@@ -359,6 +359,6 @@ VERNAC COMMAND EXTEND Derive_Below
   let c' = Constrintern.interp_constr Evd.empty (Global.env ()) c in
     match kind_of_term c' with
     | Ind i -> derive_below i
-    | _ -> error "Expected an inductive type"
+    | _ -> Errors.error "Expected an inductive type"
   ]
 END

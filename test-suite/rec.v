@@ -16,27 +16,18 @@ Module RecRel.
 
 End RecRel.
 
-Definition gt_bound n : relation nat :=
-  fun x y => x > y /\ x < n.
+Definition measure {A B} (f : A -> B) (R : relation B) : relation A :=
+  fun x y => R (f x) (f y).
 
-Definition minus_12 n := 
-  if le_lt_dec n 100 then n - 12 else n.
+Definition f91_rel : relation nat :=
+  measure (fun x => 101 - x) lt.
 
-Instance gt_bound_wf n : WellFounded (gt_bound n).
+Instance gt_bound_wf : WellFounded f91_rel.
 Proof. red. red. intros.
   Admitted.
 
-Equations foo (n : nat) : Prop :=
-foo n by rec n (gt_bound 100) :=
-foo n := _.
-
-Admit Obligations.
-
-
-Set Printing Existential Instances.
-
-Equations f91 n : { m : nat | n < m - 11 } :=
-f91 n by rec n (gt_bound 100) :=
+Equations f91 n : { m : nat | if le_lt_dec n 100 then m = 91 else m = n - 10 } :=
+f91 n by rec n f91_rel :=
 f91 n with le_lt_dec n 100 := {
   | left H := exist _ (proj1_sig (f91 (proj1_sig (f91 (n + 11))))) _ ;
   | right H := exist _ (n - 10) _ }.
@@ -46,18 +37,33 @@ Admit Obligations.
 Admit Obligations.
 *)
 
-Next Obligation. intros. apply f91. red.  admit. Defined.
-Next Obligation. intros. apply f91. destruct f91_comp_proj. simpl. red. simpl. admit. Defined.
-Next Obligation. intros. admit. Defined.
-Next Obligation. intros. admit. Defined.
+Require Import Omega.
 
-Next Obligation. intros. rec_wf_rel n IH (gt_bound 100). 
-  simp f91. Print f91_ind. constructor. destruct le_lt_dec. simpl. constructor. intros. apply IH. admit. 
-  apply IH. admit. apply IH. admit. intros. apply IH; auto.
-  simpl. constructor. intros. apply IH; auto.
+Next Obligation. intros. apply f91. do 2 red. try omega. Defined.
+Next Obligation. intros. apply f91. destruct f91_comp_proj. simpl. do 2 red.
+  destruct_call le_lt_dec. subst. omega. subst. omega.
 Defined.
+  
+Next Obligation. destruct le_lt_dec. intros. destruct_call f91_comp_proj. simpl. 
+  destruct_call f91_comp_proj. simpl in *. destruct le_lt_dec. subst. simpl in y. auto.
+  subst x0. destruct le_lt_dec. auto.
+  subst x. simpl. omega.
 
-About f91_elim. Print f91_ind.
+  elimtype False. omega.
+Qed.
+
+Next Obligation. destruct le_lt_dec. intros. omega. omega. Defined.
+Obligation Tactic := idtac.
+Next Obligation. equations. Defined.
+
+Next Obligation. intros. rec_wf_rel n IH f91_rel.
+  simp f91. Print f91_ind. constructor. destruct le_lt_dec. simpl. constructor. intros. apply IH.
+  admit.
+  apply IH. admit.
+  apply IH. admit.
+  intros. subst recres. apply IH. assumption.
+  simp f91. 
+Defined.
 
 Section Nested.
   Hint Extern 3 => match goal with 
