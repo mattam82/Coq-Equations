@@ -47,6 +47,8 @@ open Tacmach
 open Equations_common
 open Depelim
 
+module Obligations = Subtac_obligations
+
 (* Debugging infrastructure. *)
 
 let debug = true
@@ -256,7 +258,7 @@ and pat_of_constr c =
       PHide (destRel c)
   | App (f, args) when isConstruct f ->
       let (ind,_ as cstr) = destConstruct f in
-      let nparams, _ = inductive_nargs ind in
+      let nparams, _ = inductive_nargs (Global.env()) ind in
       let params, args = array_chop nparams args in
       PCstr (cstr, inaccs_of_constrs (Array.to_list params) @ pats_of_constrs (Array.to_list args))
   | Construct f -> PCstr (f, [])
@@ -810,7 +812,7 @@ let interp_constr_in_rhs env ctx evars (i,comp,impls) ty s lets c =
 	  (push_rel_context ctx env) ~impls c 
 	in
 	let c' = substnl pats 0 c in
-	  evars := Typeclasses.resolve_typeclasses ~with_goals:true env !evars;
+	  evars := Typeclasses.resolve_typeclasses ~onlyargs:false env !evars;
 	  let c' = nf_evar !evars c' in
 	    c', Typing.type_of envctx !evars c'
 	    
@@ -820,7 +822,7 @@ let interp_constr_in_rhs env ctx evars (i,comp,impls) ty s lets c =
 	let c, _ = interp_casted_constr_evars_impls ~evdref:evars ~fail_evar:false
 	  (push_rel_context ctx env) ~impls c ty'
 	in
-	  evars := Typeclasses.resolve_typeclasses ~with_goals:true env !evars;
+	  evars := Typeclasses.resolve_typeclasses ~onlyargs:false env !evars;
 	  let c' = nf_evar !evars (substnl pats 0 c) in
 	    c', nf_evar !evars (substnl pats 0 ty')
 	  
@@ -2330,7 +2332,8 @@ let define_tree is_recursive impls status isevar env (i, sign, arity) comp ann s
   let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
   let helpers, oblevs, t, ty = term_of_tree status isevar env (i, sign, arity) ann split in
   let obls, (emap, cmap), t', ty' = 
-    Obligations.eterm_obligations env i !isevar 0 ~status t (whd_betalet !isevar ty)
+    Eterm.eterm_obligations env i !isevar (Evd.undefined_evars !isevar)
+      0 ~status t (whd_betalet !isevar ty)
   in
   let obls = 
     Array.map (fun (id, ty, loc, s, d, t) ->
@@ -2511,7 +2514,7 @@ let rec translate_cases_pattern env avoid = function
       let n = next_ident_away (id_of_string "wildcard") avoid in
 	avoid := n :: !avoid; PUVar n
   | PatCstr (loc, (ind, _ as cstr), pats, Anonymous) ->
-      PUCstr (cstr, (fst (inductive_nargs ind)), map (translate_cases_pattern env avoid) pats)
+      PUCstr (cstr, (fst (inductive_nargs env ind)), map (translate_cases_pattern env avoid) pats)
   | PatCstr (loc, cstr, pats, Name id) ->
       user_err_loc (loc, "interp_pats", str "Aliases not supported by Equations")
 
@@ -2546,7 +2549,7 @@ let interp_eqn i is_rec isevar env impls sign arity recu eqn =
 	  (match r with
 	   | Inl (ConstructRef c) ->
 	       let (ind,_) = c in
-	       let nparams, _ = inductive_nargs ind in
+	       let nparams, _ = inductive_nargs env ind in
 	       let nargs = constructor_nrealargs env c in
 	       let len = List.length l in
 	       let l' =
@@ -2872,35 +2875,35 @@ type 'a deppat_equations_argtype = (pre_equation list, 'a) Genarg.abstract_argum
 let (wit_deppat_equations : Genarg.tlevel deppat_equations_argtype),
   (globwit_deppat_equations : Genarg.glevel deppat_equations_argtype),
   (rawwit_deppat_equations : Genarg.rlevel deppat_equations_argtype) =
-  Genarg.create_arg None "deppat_equations"
+  Genarg.create_arg "deppat_equations"
 
 type 'a equation_options_argtype = ((equation_option * bool) list, 'a) Genarg.abstract_argument_type
 
 let (wit_equation_options : Genarg.tlevel equation_options_argtype),
   (globwit_equation_options : Genarg.glevel equation_options_argtype),
   (rawwit_equation_options : Genarg.rlevel equation_options_argtype) =
-  Genarg.create_arg None "equation_options"
+  Genarg.create_arg "equation_options"
 
 type 'a binders_let2_argtype = (local_binder list * (identifier located option * recursion_order_expr), 'a) Genarg.abstract_argument_type
 
 let (wit_binders_let2 : Genarg.tlevel binders_let2_argtype),
   (globwit_binders_let2 : Genarg.glevel binders_let2_argtype),
   (rawwit_binders_let2 : Genarg.rlevel binders_let2_argtype) =
-  Genarg.create_arg None "binders_let2"
+  Genarg.create_arg "binders_let2"
 
 type 'a decl_notation_argtype = (Vernacexpr.decl_notation option, 'a) Genarg.abstract_argument_type
 
 let (wit_decl_notation : Genarg.tlevel decl_notation_argtype),
   (globwit_decl_notation : Genarg.glevel decl_notation_argtype),
   (rawwit_decl_notation : Genarg.rlevel decl_notation_argtype) =
-  Genarg.create_arg None "decl_notation"
+  Genarg.create_arg "decl_notation"
 
 type 'a identref_argtype = (identifier located, 'a) Genarg.abstract_argument_type
 
 let (wit_identref : Genarg.tlevel identref_argtype),
   (globwit_identref : Genarg.glevel identref_argtype),
   (rawwit_identref : Genarg.rlevel identref_argtype) =
-  Genarg.create_arg None "identref"
+  Genarg.create_arg "identref"
 
 let with_rollback f x =
   States.with_heavy_rollback f

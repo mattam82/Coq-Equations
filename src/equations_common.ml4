@@ -333,7 +333,7 @@ let autounfold_first db cl gl =
   let st =
     List.fold_left (fun (i,c) dbname -> 
       let db = try searchtable_map dbname 
-	with Not_found -> Errors.errorlabstrm "autounfold" (str "Unknown database " ++ str dbname)
+	with Not_found -> errorlabstrm "autounfold" (str "Unknown database " ++ str dbname)
       in
       let (ids, csts) = Hint_db.unfolds db in
 	(Idset.union ids i, Cset.union csts c)) (Idset.empty, Cset.empty) db

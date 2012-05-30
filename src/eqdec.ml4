@@ -299,7 +299,7 @@ VERNAC COMMAND EXTEND Derive_EqDec
       let c' = Constrintern.interp_constr Evd.empty (Global.env ()) c in
 	match kind_of_term c' with
 	| Ind i -> derive_eq_dec i
-	| _ -> Errors.error "Expected an inductive type")
+	| _ -> error "Expected an inductive type")
       c
   ]
 END
