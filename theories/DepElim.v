@@ -782,7 +782,7 @@ Ltac impossible_call f := on_call f ltac:(fun t => apply (elim_impossible_call t
 
 (** [solve_equation] is used to prove the equation lemmas for an existing definition.  *)
 
-Ltac find_empty := simpl in * ;
+Ltac find_empty := simpl in * ; elimtype False ;
   match goal with
     | [ H : _ |- _ ] => solve [ clear_except H ; depelim H | specialize_eqs H ; assumption ]
     | [ H : _ <> _ |- _ ] => solve [ red in H ; specialize_eqs H ; assumption ]

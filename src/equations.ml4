@@ -2094,7 +2094,9 @@ let build_equations with_ind env id info data sign is_rec arity cst
       else fs, f', tclIDTAC
     in fs, unftac, map (statement i f') c in
   let stmts = list_map_i statements 0 comps in
-  let ind_stmts = list_map_i (fun i (f, unf, c) -> i, f, unf, list_map_i (fun j x -> j, x) 1 c) 0 stmts in
+  let ind_stmts = list_map_i 
+    (fun i (f, unf, c) -> i, f, unf, list_map_i (fun j x -> j, x) 1 c) 0 stmts 
+  in
   let all_stmts = concat (map (fun (f, unf, c) -> c) stmts) in 
   let declare_one_ind (i, (f, path, sign, arity, pats, refs), unf, stmts) = 
     let indid = add_suffix id (if i = 0 then "_ind" else ("_ind_" ^ string_of_int i)) in
