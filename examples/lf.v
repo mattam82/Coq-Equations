@@ -1,4 +1,5 @@
 Require Import Equations Omega.
+Require Import List.
 
 Inductive term := 
 | Var (n : nat)
@@ -26,10 +27,6 @@ Inductive type :=
 | arrow (a b : type).
 
 Derive Subterm for type.
-(* Equations foo(t : type) (u : nat) (foo : t = t) : { u : type | t = t } := *)
-(* foo t u foo with t := { *)
-(*   | atom a := exist _ (atom a) _ ; *)
-(*   | _ := exist _ unit _ }. *)
 
 Coercion atom : atomic_type >-> type.
 Notation " x × y " := (product x y) (at level 90).
@@ -62,7 +59,7 @@ Ltac term_eq :=
 
 Hint Extern 4 => term_eq : term.
 
-Ltac term := eauto with term.
+Ltac term := typeclasses eauto with term core arith.
 
 Lemma lift0 k t : lift k 0 t = t.
 Proof. funelim (lift k 0 t) ; try rewrite H ; try rewrite H0; auto. Qed.
@@ -71,7 +68,7 @@ Require Import Omega.
 Lemma lift_k_lift_k k n m t : lift k n (lift k m t) = lift k (n + m) t.
 Proof. funelim (lift k m t) ; simp lift; try rewrite H ; try rewrite H0; auto.
   destruct (nat_compare_spec n0 k); try discriminate. subst.
-  case_eq (nat_compare (k + n) k); intro H; simp lift; term. 
+  case_eq (nat_compare (k + n) k); intro H; simp lift; try term.
   rewrite <- nat_compare_lt in H; term.
   rewrite Heq; simp lift; term.
 
@@ -103,7 +100,6 @@ Notation ctx := (list type).
 Delimit Scope lf with lf.
 
 Reserved Notation " Γ |-- t : A " (at level 70, t, A at next level).
-Require Import List.
 
 Inductive types : ctx -> term -> type -> Prop :=
 | axiom Γ i : i < length Γ -> (Γ |-- i : nth i Γ unit) 
@@ -190,15 +186,15 @@ Lemma app_cons_snoc_app {A} l (a : A) l' : l ++ (a :: l') = (l ++ a :: nil) ++ l
 Proof. induction l; simpl; auto. now rewrite IHl. Qed.
 
 Hint Extern 5 => progress (simpl ; autorewrite with list) : term.
-Ltac term ::= simp lift subst; eauto with term.
-
+Ltac term ::= simp lift subst; try typeclasses eauto with core term.
 
 Lemma substitutive Γ t T Γ' u U : (Γ' @ (U :: Γ)) |-- t : T -> Γ |-- u : U -> Γ' @ Γ |-- subst (length Γ') t u : T.
 Proof with term.
   intros H. depind H; term. intros.
   
   (* Var *)
-  assert (spec:=nat_compare_spec i (length Γ')). depelim spec; try rewrite <- H1; try rewrite <- H2 ; simp subst.
+  assert (spec:=nat_compare_spec i (length Γ')). 
+  depelim spec; try rewrite <- H1; try rewrite <- H2 ; simp subst.
 
   (* Eq *)
   generalize (type_lift Γ0 u U [] H0 Γ'); simpl; intros. 
@@ -206,7 +202,7 @@ Proof with term.
   now rewrite <- minus_n_n. autorewrite with list; simpl. omega.
 
   (* Lt *)
-  rewrite app_nth1; try omega. rewrite <- (app_nth1 _ Γ0); term. 
+  rewrite app_nth1; try omega. rewrite <- (app_nth1 _ Γ0); term.
 
   (* Gt *)
   rewrite app_nth2; term. 
@@ -306,83 +302,39 @@ Instance: Irreflexive reduce.
 Proof. intros x H. depind H.
   induction t; simp subst in H; try discriminate.
   destruct (nat_compare_spec n 0). subst.
-  simp subst lift in H.  admit.
+  simp subst lift in H. admit.
   absurd omega. simp subst in H. destruct n; discriminate.
   noconf H. admit.
   admit. admit.
 Qed.
 
+Ltac find_empty := 
+  match goal with 
+      [ H : _ |- _ ] => solve [ depelim H ]
+  end.
+
 Lemma preserves_red1 Γ t τ : Γ |-- t : τ → forall u, t --> u → Γ |-- u : τ.
-Proof. induction 1; intros; term. inversion H0. inversion H0. inversion H1. subst.
-  apply subst1 with A. now inversion H. apply H0.
+Proof. induction 1; intros; term; try find_empty. 
 
-  inversion H.
-  inversion H1.
+  depelim H1.
+  apply subst1 with A. now depelim H. 
+  apply H0.
 
-  inversion H0. subst.  inversion H. subst. assumption.
-  inversion H0. subst.  inversion H. subst. assumption.
+  depelim H0. now depelim H. 
+  depelim H0. now depelim H. 
 Qed.
 
 Lemma preserves_redpar Γ t τ : Γ |-- t : τ → forall u, reduce_congr t u → Γ |-- u : τ.
-Proof. induction 1; intros; term. depelim H0. depelim H0. 
+Proof. induction 1; intros ? rc; depelim rc; term; try find_empty. 
 
-  depelim H0. depelim H0.
+  depelim H1. depelim H. eapply subst1; eauto.
 
-  depelim H1. depelim H1. depelim H. eapply subst1; eauto.
-
-  econstructor; eauto.
-
-  depelim H. depelim H.
-
-  depelim H1. depelim H1.
-  eauto with term.
-
-  depelim H0. depelim H0. now depelim H.
-  eauto with term.
-
-  depelim H0. depelim H0. now depelim H.
-  eauto with term.
+  depelim H0; depelim H; term.
+  depelim H0; depelim H; term.
 Qed.
 
 Lemma subject_reduction Γ t τ : Γ |-- t : τ → forall u, t -->* u → Γ |-- u : τ.
 Proof. induction 2; eauto using preserves_red1. Qed.
-
-(* Lemma inv_abs A B t : nil |-- t : A ---> B -> ∃ u, (t = λ u /\ (A :: nil) |-- u : B). *)
-(* Proof. intros H; depind H. inversion H. exists t; auto. *)
-
-(*   destruct IHtypes1 as [t' [tt' Htt']]. *)
-(*   subst t.  *)
-  
-(*   induction  *)
-
-(* Lemma red_progress Γ t τ : Γ |-- t : τ → *)
-(*   (exists u, reduce t u) \/ value t. *)
-(* Proof. *)
-(*   induction 1. right; term. *)
-(*   right; term. *)
-  
-(*   destruct IHtypes1 as [[t' tt']|vt]. *)
-(*   left; exists (@(t', u)).   *)
-  
-
-
-(* Lemma red_progress  t τ : nil |-- t : τ → *)
-(*   exists u, t -->* u ∧ value u. *)
-(* Proof. intros H. depind H; term. *)
-
-(*   inversion H. *)
-
-(*   exists λ t; term. split; now term. *)
-(*   destruct IHtypes1 as [t' [tt' vt']]. *)
-(*   destruct IHtypes2 as [u' [uu' vu']]. *)
-(*   pose (subject_reduction _ _ _ H _ tt'). *)
-(*   depelim vt'. depelim t0. depelim t0. *)
-(*   depelim t1.  *)
-
-(*   exists (@(t', u')). *)
-
-(*   depelim H. *)
-(*   inversion H. *)
 
 Reserved Notation " Γ |-- t => A " (at level 70, t, A at next level).
 Reserved Notation " Γ |-- t <= A " (at level 70, t, A at next level).
@@ -449,15 +401,8 @@ Hint Extern 3 =>
 
 Lemma check_types : (forall Γ t T, Γ |-- t <= T -> Γ |-- t : T)
 with synthetizes_types : (forall Γ t T, Γ |-- t => T -> Γ |-- t : T).
-Proof. intros. destruct H. apply abstraction. auto.
-  apply pair_intro. auto. auto.
-  apply unit_intro.
-  apply synthetizes_types. apply H0.
-
-  intros. destruct H. now apply axiom.
-  apply application with A; auto.
-  apply pair_elim_fst with B; auto.
-  apply pair_elim_snd with A; auto.
+Proof. intros. destruct H; try econstructor; term.
+  intros. destruct H; try solve [ econstructor; term ].
 Qed.
 
 Hint Resolve check_types synthetizes_types : term.
@@ -480,21 +425,14 @@ Lemma check_lift Γ t T Γ' : Γ' @ Γ |-- t <= T ->
   forall Γ'', Γ' @ Γ'' @ Γ |-- lift (length Γ') (length Γ'') t <= T
 with synthetize_lift Γ t T Γ' : Γ' @ Γ |-- t => T -> 
   forall Γ'', Γ' @ Γ'' @ Γ |-- lift (length Γ') (length Γ'') t => T.
-Proof. intros H. depelim H; intros; simp lift.
+Proof. intros H. depelim H; intros; simp lift; try solve [econstructor; term].
 
   constructor.
   change (S (length Γ')) with (length (A :: Γ')). rewrite app_comm_cons. now apply check_lift. 
 
-  constructor; apply check_lift; assumption.
-  constructor. constructor. auto. now apply synthetize_lift.
-
-  intros H. depelim H; intros; simp lift; try (constructor; eauto with term).
+  intros H. depelim H; intros; simp lift; try solve [econstructor; term].
   generalize (nth_extend_middle unit i Γ Γ' Γ'').
   destruct nat_compare; intros H'; rewrite H'; simp lift; apply axiom_synth; autorewrite with list in H |- *; omega.
-
-  econstructor. apply synthetize_lift. apply H. apply check_lift. apply H0.
-  econstructor. apply synthetize_lift. apply H.
-  econstructor. apply synthetize_lift. apply H.
 Qed.
 
 Lemma check_lift1 {Γ t T A} : Γ |-- t <= T -> A :: Γ |-- lift 0 1 t <= T.
@@ -511,15 +449,11 @@ Lemma synth_lift_ctx {Γ t T Γ'} : Γ |-- t => T -> Γ' @ Γ |-- lift 0 (length
 Proof. intros. apply (synthetize_lift Γ t T [] H Γ'). Qed.
 Hint Resolve @check_lift_ctx @synth_lift_ctx : term.
 
-
 Equations(nocomp) η (a : type) (t : term) : term :=
 η (atom _) t := t ;
 η (product a b) t := << η a (Fst t), η b (Snd t) >> ;
 η (arrow a b) t := (Lambda (η b @(lift 0 1 t, η a 0)))%term ;
 η unit t := Tt.
-
-(* Lemma η_normal : forall Γ A t, neutral t -> Γ |-- t => A -> normal (η A t). *)
-(* Proof. induction 2; term. induction i; term. Qed. *)
 
 Lemma checks_arrow Γ t A B : Γ |-- t <= A ---> B → ∃ t', t = λ t' ∧ A :: Γ |-- t' <= B.
 Proof. intros H; inversion H; subst.
@@ -549,13 +483,14 @@ Proof. revert Γ t; induction A; intros; simp η; constructor; term.
   apply (IHA2 (A1 :: Γ) @(lift 0 1 t, η A1 0)); term.
 Qed.
 
+Lemma η_normal : forall Γ A t, neutral t -> Γ |-- t => A -> normal (η A t).
+Proof. intros. now apply eta_expand in H0; term. Qed.
+
 Ltac rec ::= rec_wf_eqns.
 Require Import Arith Wf_nat.
 Instance wf_nat : WellFounded lt := lt_wf.
 
 Derive Subterm for term.
-
-Ltac solve_rec ::= idtac.
 
 Require Import Lexicographic_Product.
 
@@ -577,22 +512,15 @@ Proof. red in H, H0. red. unfold lexicographic.
   destruct y; destruct a; simpl in *. apply H0 with (existT (const B) a0 b).
   assumption.
   simpl. reflexivity.
-Qed.
+Defined.
 
 Definition her_order : relation (type * term * term) :=
-  lexicographic (lexicographic type_subterm term_subterm) term_subterm.
-
-(* Instance: WellFounded her_order. *)
-(* Proof. unfold her_order. intro.  *)
-(*   induction (lexicographic_wellfounded (A:=type*term) (R:=lexicographic type_subterm term_subterm) (B:=term) a). *)
-(*   constructor. intros. *)
-(*   apply H0. destruct y. destruct p; auto. destruct x. destruct p. auto. *)
-  
+  lexicographic (lexicographic type_subterm term_subterm) term_subterm.  
 
 Obligation Tactic := program_simpl.
-Set Printing All.
 
-Obligation Tactic := idtac.
+(* Ltac solve_rec ::= idtac. *)
+(* Obligation Tactic := idtac. *)
 Implicit Arguments exist [[A] [P]].
 
 Definition hereditary_type (t : type * term * term) :=
@@ -604,8 +532,11 @@ Inductive IsLambda {t} : hereditary_type t -> Set :=
 Equations(nocomp) is_lambda {t} (h : hereditary_type t) : IsLambda h + term :=
 is_lambda t (pair (Lambda abs) (Some (exist (arrow a b) prf))) := inl (isLambda abs a b prf) ;
 is_lambda t (pair t' _) := inr t'.
-Unset Printing All.
 
+Lemma is_lambda_inr {t} (h : hereditary_type t) : forall t', is_lambda h = inr t' -> fst h = t'.
+Proof.
+  destruct h. funelim (is_lambda (t0, o)); intros; try congruence.
+Qed.
 
 Inductive IsPair {t} : hereditary_type t -> Set :=
 | isPair u v a b prf : IsPair (Pair u v, Some (exist (product a b) prf)).
@@ -613,57 +544,17 @@ Inductive IsPair {t} : hereditary_type t -> Set :=
 Equations(nocomp) is_pair {t} (h : hereditary_type t) : IsPair h + term :=
 is_pair t (pair (Pair u v) (Some (exist (product a b) prf))) := inl (isPair u v a b prf) ;
 is_pair t (pair t' _) := inr t'.
-
-Unset Printing All.
-(*
-Equations hereditary_subst (t : type * term * term) (k : nat) :
-  term * option { u : type | u = (fst (fst t)) \/ type_subterm u (fst (fst t)) }  :=
-hereditary_subst t k by rec t her_order :=
-
-hereditary_subst (pair (pair A a) t) k with t := {
-  | App f arg with hereditary_subst (A, a, f) k := {
-    | p with is_lambda p := {
-      hereditary_subst (pair (pair A a) ?(App f arg)) k (App f arg) (inl (is_beta_lambda f' A' B' prf)) ?(p) :=
-        let (f'', y) := hereditary_subst (A', fst (hereditary_subst (A, a, arg) k), f') 0 in
-          (f'', Some (exist B' _)) ;
-      hereditary_subst (pair (pair A a) ?(App f arg)) k (App f arg) (inr f') ?(p) := 
-        (@(f', fst (hereditary_subst (A, a, arg) k)), None) } } ;
-  | _ := (Tt, None) } ;
-
-hereditary_subst _ _ := (Tt, None).
-
-Solve Obligations using intros; apply hereditary_subst; constructor 2; constructor.
-
-Next Obligation. intros. apply hereditary_subst.
-  destruct prf. simpl in *. subst.  repeat constructor.
-  simpl in t. do 2 constructor 1. apply type_direct_subterm_0_0 with (A' ---> B'); auto.
-  eauto using type_direct_subterm.
-Defined.
-
-
-Next Obligation. intros. simpl. simpl in prf.
-  destruct prf. subst A. right; constructor. right.
-  apply type_direct_subterm_0_0 with (A' ---> B'); eauto using type_direct_subterm.
-Defined.
-    
-Next Obligation.
-Proof. intros.
-  admit.
-Defined.
-*)
+  
+Lemma is_pair_inr {t} (h : hereditary_type t) : forall t', is_pair h = inr t' -> fst h = t'.
+Proof.
+  destruct h. funelim (is_pair (t0, o)); intros; try congruence.
+Qed.
 
 Lemma nth_extend_right {A} (a : A) n (l l' : list A) : n < length l -> 
   nth n l a = nth n (l @ l') a.
 Proof. revert n l'. induction l; simpl; intros; auto. depelim H. destruct n; auto.  
   apply IHl. auto with arith.
 Qed.
-  
-Lemma is_lambda_inr {t} (h : hereditary_type t) : forall t', is_lambda h = inr t' -> fst h = t'.
-Proof.
-  destruct h. funelim (is_lambda (t0, o)); intros; try congruence.
-Qed.
-
-About hereditary_subst_elim.
 
 Equations hereditary_subst (t : type * term * term) (k : nat) :
   term * option { u : type | u = (fst (fst t)) \/ type_subterm u (fst (fst t)) }  :=
@@ -685,7 +576,7 @@ hereditary_subst (pair (pair A a) t) k with t := {
           (f'', Some (exist B' _)) ;
       hereditary_subst (pair (pair A a) ?(App f arg)) k (App f arg) (inr f') ?(p) :=
 (*       | inr f' :=  *)
-        (@(f', fst (hereditary_subst (A, a, arg) k)), None) } } ;
+      (@(f', fst (hereditary_subst (A, a, arg) k)), None) } } ;
 
   | Pair i j :=
     (<< fst (hereditary_subst (A, a, i) k), fst (hereditary_subst (A, a, j) k) >>, None) ;
@@ -712,16 +603,16 @@ hereditary_subst (pair (pair A a) t) k with t := {
 
   | Tt := (Tt, None) }.
 
-Next Obligation. intros. simpl. auto. Defined. 
+(* Next Obligation. intros. simpl. auto. Defined.  *)
 Solve Obligations using intros; apply hereditary_subst; constructor 2; constructor.
 
-Next Obligation. intros. apply hereditary_subst.  
+Next Obligation. intros. apply hereditary_subst.
   destruct prf. simpl in *. subst. repeat constructor.
   simpl in t0. do 2 constructor 1. apply type_direct_subterm_0_0 with (A' ---> B'); eauto using type_direct_subterm.
 Defined.
 
-Next Obligation. simpl; intros. 
-  destruct prf. subst. right. constructor. 
+Next Obligation. simpl; intros.
+  destruct prf. subst. right. constructor.
   right. apply type_direct_subterm_0_0 with (A' ---> B'); eauto using type_direct_subterm.
 Defined.
 
@@ -739,6 +630,7 @@ Next Obligation. simpl; intros.
   destruct prf. subst. right. constructor. 
   right. apply type_direct_subterm_0_0 with (a0 × b); eauto using type_direct_subterm.
 Defined.
+Solve All Obligations.
 
 Next Obligation. simpl; intros. admit. Defined. 
 Next Obligation. intros. admit. Defined.
@@ -793,7 +685,6 @@ Proof. intros. revert H1. funelim (hereditary_subst (U, u, t) (length Γ'));
   apply nat_compare_lt in Heq. depelim H0.
   replace (nth n (Γ' @ (U :: Γ)) unit) with (nth n (Γ' @ Γ) unit).
   constructor. rewrite app_length. auto with arith. 
-
   now do 2 rewrite <- nth_extend_right by auto. 
   
   (* Gt *)
@@ -804,15 +695,17 @@ Proof. intros. revert H1. funelim (hereditary_subst (U, u, t) (length Γ'));
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   depelim H2.
   noconf H3.
-  specialize (H0 [] eq_refl). simpl in H0; rewrite <- Heqhsubst in H0.
+  specialize (H0 [] _ _ _ eq_refl). simpl in H0; rewrite <- Heqhsubst in H0.
   simplify_IH_hyps. simpl in H0. specialize (H _ _ H1 H2_0).
   specialize (Hind _ _ H1 H2_). rewrite Heq0 in Hind.
-  simplify_IH_hyps. depelim Hind. 
+  specialize (Hind _ _ eq_refl).
+  depelim Hind. 
+  specialize (H2 _ _ eq_refl).
   noconf H2.
   split; [|intros ty prf0 Heq'; noconf Heq'; auto].
   depelim H1; eauto. apply H0.
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
-simplify_IH_hyps. apply H. trivial. 
+  simplify_IH_hyps. apply H. trivial. 
 
   (* App no redex *)
   apply is_lambda_inr in Heq. revert Heq. 
@@ -827,16 +720,11 @@ simplify_IH_hyps. apply H. trivial.
   simpl in *.
   (* Fst redex *) clear Heq.
   clear H H0. depelim H2. specialize (Hind _ _ H1 H2).
-  rewrite Heq0 in Hind. simplify_IH_hyps.
-  destruct Hind. depelim H. intuition auto. noconf H4. simplify_IH_hyps. noconf H1.
+  rewrite Heq0 in Hind. specialize (Hind _ _ eq_refl).
+  destruct Hind. depelim H. intuition auto. noconf H4.
+  specialize (H1 _ _ eq_refl). noconf H1.
 
   (* Fst no redex *)
-
-Lemma is_pair_inr {t} (h : hereditary_type t) : forall t', is_pair h = inr t' -> fst h = t'.
-Proof.
-  destruct h. funelim (is_pair (t0, o)); intros; try congruence.
-Qed.
-
   apply is_pair_inr in Heq. 
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). 
   subst t3. simplify_IH_hyps. simpl in *. depelim H0.
@@ -844,8 +732,9 @@ Qed.
 
   (* Snd redex *) clear Heq.
   clear H H0. depelim H2. specialize (Hind _ _ H1 H2).
-  rewrite Heq0 in Hind. simplify_IH_hyps.
-  destruct Hind. depelim H. intuition auto. noconf H4. simplify_IH_hyps. noconf H1.
+  rewrite Heq0 in Hind. specialize (Hind _ _ eq_refl).
+  destruct Hind. depelim H. intuition auto. noconf H4.
+  specialize (H1 _ _ eq_refl). noconf H1.
 
   (* Snd no redex *)
   apply is_pair_inr in Heq. 
@@ -941,7 +830,7 @@ Proof.
 
   (* App *)
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
-  specialize (H0 [] eq_refl). simpl in H0; rewrite <- Heqhsubst in H0.
+  specialize (H0 _ _ _ [] eq_refl). simpl in H0; rewrite <- Heqhsubst in H0.
   simplify_IH_hyps. simpl in H0. 
   rewrite Heq0 in Hind. 
   revert H.
@@ -1057,7 +946,7 @@ Proof.
 
   apply is_pair_inr in Heq. simpl in Heq ; subst t3.
   eapply pair_elim_snd_synth. now apply Hind.
-  split; auto. intros. depelim H1. intuition.
+  split; auto. intros. depelim H1. term. 
 Qed.
 
 Lemma check_liftn {Γ Γ' t T} : Γ |-- t <= T -> Γ' @ Γ |-- lift 0 (length Γ') t <= T.
@@ -1107,3 +996,4 @@ Proof. induction 1. (* eta-exp *)
 
   depelim H0.
 Qed.
+
