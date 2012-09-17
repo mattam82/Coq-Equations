@@ -1,8 +1,6 @@
 Require Import Equations Omega.
 Require Import List.
 
-Parameter atomic_type : Set.
-
 Inductive term := 
 | Var (n : nat)
 | Lambda (t : term)
@@ -11,6 +9,8 @@ Inductive term :=
 | Fst (t : term) | Snd (t : term)
 | Tt.
 
+
+Parameter atomic_type : Set.
 Inductive type :=
 | atom (a : atomic_type)
 | product (a b : type)
@@ -19,6 +19,8 @@ Inductive type :=
 | tyapp (t : type) (m : term).
 
 Inductive kind := ktype | karr (t : type) (k : kind).
+
+Parameter atomic_kind : atomic_type -> kind.
 
 Coercion Var : nat >-> term.
 
@@ -99,6 +101,42 @@ Proof. funelim (lift_type k m t) ; simp lift_type; try rewrite H ; try rewrite H
 Qed.
 Hint Rewrite lift_type_k_k : lift.
 
+Lemma nat_compare_refl n : nat_compare n n = Eq.
+Proof. rewrite nat_compare_eq_iff. reflexivity. Qed.
+
+Lemma lift_lift t : forall k n m, lift (m + k) n (lift m k t) = lift m (k + n) t.
+Proof. intros.
+  funelim (lift m k t); intros ; simp lift; try rewrite H ; try rewrite H0; auto.
+  rewrite Heq. simpl. apply nat_compare_eq in Heq. subst. simp lift.
+  rewrite nat_compare_refl. simp lift. now rewrite plus_assoc.
+
+  rewrite Heq. simpl. apply nat_compare_lt in Heq. subst. simp lift.
+  destruct (nat_compare_lt n0 (k + n)). rewrite H. simp lift.
+  omega.
+
+  rewrite Heq. apply nat_compare_gt in Heq. subst. simp lift.
+  destruct (nat_compare_gt (n0 + n) (k + n)). rewrite H. simp lift.
+  now rewrite plus_assoc. omega.
+Qed.
+
+Lemma lift_type_lift k n m t : lift_type (m + k) n (lift_type m k t) = lift_type m (k + n) t.
+Proof. revert k n m; induction t; intros; 
+       simp lift_type; try rewrite IHt1 ; try rewrite IHt2; auto.
+  f_equal. apply (IHt2 k n (S m)). 
+  f_equal; eauto. apply lift_lift. 
+Qed.
+Hint Rewrite lift_type_k_k : lift.
+
+(* Lemma lift_lift_comm k n k' m t : lift_type k n (lift_type 0 m t) =  *)
+(*                                             lift_type (k' *)
+
+Lemma nat_compare_elim (P : nat -> nat -> comparison -> Prop)
+  (PEq : forall i, P i i Eq)
+  (PLt : forall i j, i < j -> P i j Lt)
+  (PGt : forall i j, i > j -> P i j Gt) :
+  forall i j, P i j (nat_compare i j).
+Proof. intros. case (nat_compare_spec i j); intros; subst; auto. Qed.
+
 Equations(nocomp) subst (k : nat) (t : term) (u : term) : term :=
 subst k (Var i) u with nat_compare i k := {
   | Eq := lift 0 k u ;
@@ -125,11 +163,17 @@ subst_type k unit t := unit;
 subst_type k (arrow a b) t := arrow (subst_type k a t) (subst_type (S k) a t) ;
 subst_type k (tyapp f m) t := tyapp (subst_type k f t) (subst k m t).
 
+Equations(nocomp) subst_kind (k : nat) (t : kind) (u : term) : kind :=
+subst_kind k ktype _ := ktype ;
+subst_kind k (karr a k') u := karr (subst_type k a u) (subst_kind (S k) k' u).
+
 Notation ctx := (list type).
 
 Delimit Scope lf with lf.
 
 Reserved Notation " Γ |-- t : A " (at level 70, t, A at next level).
+Reserved Notation " Γ '|-t' A : k " (at level 70, A, k at next level).
+Reserved Notation " Γ '|-k' k" (at level 70, k at next level).
 
 Inductive types : ctx -> term -> type -> Prop :=
 | axiom Γ i : i < length Γ -> (Γ |-- i : lift_type 0 (S i) (nth i Γ unit))
@@ -138,7 +182,7 @@ Inductive types : ctx -> term -> type -> Prop :=
   A :: Γ |-- t : B -> Γ |-- λ t : A ---> B
 
 | application Γ A B t u : 
-  Γ |-- t : A ---> B -> Γ |-- u : A -> Γ |-- @(t, u) : B
+  Γ |-- t : A ---> B -> Γ |-- u : A -> Γ |-- @(t, u) : subst_type 0 B u
 
 | unit_intro Γ : Γ |-- Tt : unit
 
@@ -150,7 +194,27 @@ Inductive types : ctx -> term -> type -> Prop :=
 
 | pair_elim_snd Γ A B t : Γ |-- t : (A × B) -> Γ |-- Snd t : B
 
-where "Γ |-- i : A " := (types Γ i A).
+with wf_type : ctx -> type -> kind -> Prop :=
+| wf_atom Γ (a : atomic_type) : Γ |-t a : (atomic_kind a)
+| wf_product Γ (a b : type) : Γ |-t a : ktype -> Γ |-t b : ktype -> 
+                              Γ |-t product a b : ktype
+| wf_unit Γ : Γ |-t unit : ktype
+| wf_arrow Γ (a b : type) k : Γ |-t a : ktype -> (a :: Γ) |-t b : k -> 
+                              Γ |-t arrow a b : karr a k
+| wf_tyapp Γ (t : type) a k (m : term) : Γ |-t a : karr a k -> Γ |-- m : a -> 
+                                         Γ |-t tyapp t m : k
+
+with wf_kind : ctx -> kind -> Prop :=
+| wf_ktype Γ : Γ |-k ktype
+| wf_karr Γ a k : Γ |-t a : ktype -> (a :: Γ) |-k k -> Γ |-k karr a k
+
+with wf : ctx -> Prop :=
+| wf_nil : wf []
+| wf_cons ty Γ : wf Γ -> Γ |-t ty : ktype -> wf (ty :: Γ)
+                                                  
+where "Γ |-- i : A " := (types Γ i A) and
+  "Γ |-t t : k " := (wf_type Γ t k) and
+  "Γ |-k k " := (wf_kind Γ k).
 
 Notation " [ t ] u " := (subst 0 u t) (at level 10).
 
@@ -160,13 +224,6 @@ Lemma nth_length {A} x t (l l' : list A) : nth (length l) (l @ (t :: l')) x = t.
 Proof. induction l; simpl; auto. Qed.
 
 Hint Constructors types : term.
-
-Lemma nat_compare_elim (P : nat -> nat -> comparison -> Prop)
-  (PEq : forall i, P i i Eq)
-  (PLt : forall i j, i < j -> P i j Lt)
-  (PGt : forall i j, i > j -> P i j Gt) :
-  forall i j, P i j (nat_compare i j).
-Proof. intros. case (nat_compare_spec i j); intros; subst; auto. Qed.
 
 Lemma nth_extend_left {A} (a : A) n (l l' : list A) : nth n l a = nth (length l' + n) (l' @ l) a.
 Proof. induction l'; auto. Qed.
@@ -195,14 +252,63 @@ Print Rewrite HintDb list.
 Hint Rewrite <- app_assoc in_app_iff in_inv : list.
 
 
-Lemma type_lift Γ t T Γ' : Γ' @ Γ |-- t : T -> forall Γ'', Γ' @ Γ'' @ Γ |-- lift (length Γ') (length Γ'') t : lift_type (length Γ') (length Γ'') T.
+Lemma lift_type_S n t : lift_type 0 (S n) t = lift_type 0 n (lift_type 0 1 t).
+Proof.
+  replace (S n) with (n + 1) by omega.
+  now rewrite <- (lift_type_k_k 0 _ 1).
+Qed.  
+
+Equations(nocomp) lift_rev_ctx (k : nat) (n : nat) (c : ctx) (acc : ctx) : ctx :=
+lift_rev_ctx k n nil acc := acc ;
+lift_rev_ctx k n (cons a Γ) acc := lift_rev_ctx (S k) n Γ (lift_type k n a :: acc).
+
+Definition lift_ctx k n Γ := lift_rev_ctx k n (List.rev Γ) [].
+
+Lemma lift_ctx_nil k n : lift_ctx k n nil = nil.
+Proof. compute. simp lift_rev_ctx. Qed.
+
+Lemma lift_rev_ctx_cons k n a Γ acc : 
+  lift_rev_ctx k n Γ acc = lift_type (length Γ + k) n a :: lift_rev_ctx k n Γ acc.
+Proof. funelim (lift_rev_ctx k n Γ acc); simp lift_rev_ctx.
+  
+  simpl.
+ 
+Lemma lift_ctx_cons k n a Γ : lift_ctx k n (a :: Γ) = lift_type (length Γ + k) n a :: lift_ctx k n Γ.
+Proof. unfold lift_ctx.
+
+Lemma type_lift Γ t T Γ' : Γ' @ Γ |-- t : T -> 
+  forall Γ'', Γ' @ Γ'' @ Γ |-- lift (length Γ') (length Γ'') t : 
+              lift_type (length Γ') (length Γ'') T.
 Proof. intros H. depind H; intros; simp lift lift_type; eauto with term.
-
+  
   generalize (nth_extend_middle unit i Γ0 Γ' Γ'').
-  destruct nat_compare; intros H'; rewrite H'; simp lift lift_type. 
-  autorewrite with list in H |- *. 
 
-  apply axiom; omega.
+  revert H; autorewrite with list. revert Γ0 Γ''.
+  remember (length Γ') as lenΓ'. revert Γ' HeqlenΓ'.
+  apply nat_compare_elim; intros; simp lift.
+  subst i0.
+  rewrite lift_type_S.
+  pose (lift_type_lift (length Γ') (length Γ'') 0).
+  simpl in e. rewrite e.
+  rewrite lift_type_k_k.
+  replace (length Γ' + length Γ'' + 1) with (S (length Γ' + length Γ'')) by omega.
+  rewrite H0; apply axiom. autorewrite with list; omega.
+  rewrite H1. subst j. 
+  
+
+  Lemma lift_lift_lt k n m t : m <= k -> lift_type k n (lift_type 0 m t) = lift_type (0 m t.
+
+  pose (lift_type_lift 0 (length Γ'') 0).
+  simpl in e. rewrite e.
+  rewrite lift_type_k_k.
+  
+
+ intros.
+  case_eq (nat_compare i (length Γ')); intros H'; rewrite <- H'; intro; simp lift lift_type. 
+  autorewrite with list in H |- *. 
+  apply nat_compare_eq in H'. subst i.
+  rewrite H0. rewrite nat_compare_refl; simp lift.
+  apply axiom. autorewrite with list. omega.
   
   apply abstraction. change (S (length Γ')) with (length (A :: Γ')). 
   rewrite app_comm_cons. apply IHtypes. reflexivity.
