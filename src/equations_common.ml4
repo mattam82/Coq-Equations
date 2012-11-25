@@ -131,7 +131,7 @@ let coq_dynamic_type = lazy (init_constant equations_path "dynamic_type")
 let coq_dynamic_obj = lazy (init_constant equations_path "dynamic_obj")
 
 
-let get_class = fst $ snd $ Option.get
+let get_class x = fst (snd (Option.get x))
 
 let functional_induction_class () =
   get_class

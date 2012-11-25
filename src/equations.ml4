@@ -1,4 +1,3 @@
-(* -*- compile-command: "make -k -C .. src/equations_plugin.cma src/equations_plugin.cmxs" -*- *)
 (************************************************************************)
 (*  v      *   The Coq Proof Assistant  /  The Coq Development Team     *)
 (* <O___,, * CNRS-Ecole Polytechnique-INRIA Futurs-Universite Paris Sud *)
@@ -8,7 +7,6 @@
 (************************************************************************)
 
 (*i camlp4deps: "parsing/grammar.cma" i*)
-(*i camlp4use: "pa_extend.cmo" i*)
 
 (* $Id: equations.ml4 11996 2009-03-20 01:22:58Z letouzey $ *)
 
@@ -798,7 +796,7 @@ let interp_constr_in_rhs env ctx evars (i,comp,impls) ty s lets c =
   let envctx = push_rel_context ctx env in
   let patslets, letslen = 
     fold_right (fun (n, b, t) (acc, len) -> 
-      (lift len (Option.get b) :: acc, succ len)) lets ([], 0)
+      ((* lift len *)(Option.get b) :: acc, succ len)) lets ([], 0)
   in
   let pats, ctx, len = 
     let (pats, x, y) = lets_of_ctx env (lets @ ctx) evars 
@@ -1313,6 +1311,11 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		    let sortinv = List.sort (fun (i, _) (i', _) -> i' - i) strinv in
 		    let vars' = List.rev_map snd sortinv in
 		    let rec cls' n cls =
+		      let next_unknown =
+			let str = id_of_string "unknown" in
+			let i = ref (-1) in fun () ->
+		          incr i; add_suffix str (string_of_int !i)
+		      in
 		      list_map_filter (fun (lhs, rhs) -> 
 			let oldpats, newpats = list_chop (List.length lhs - n) lhs in
 			let newref, prevrefs = match newpats with hd :: tl -> hd, tl | [] -> assert false in
@@ -1329,7 +1332,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 				       else
 					 try Some (List.assoc (pred i) s)
 					 with Not_found -> (* The problem is more refined than the user vars*)
-					   Some (PUVar (id_of_string "unknown")))
+					   Some (PUVar (next_unknown ())))
 				  vars'
 			      in
 			      let newrhs = match rhs with
@@ -2525,8 +2528,8 @@ let string_of_smart_global = function
   | Genarg.AN ref -> string_of_reference ref
   | Genarg.ByNotation (loc, s, _) -> s
 
-let ident_of_smart_global = 
-  id_of_string $ string_of_smart_global
+let ident_of_smart_global x = 
+  id_of_string (string_of_smart_global x)
 
 let rec ids_of_pats pats =
   fold_left (fun ids (_,p) ->
@@ -2784,14 +2787,14 @@ module Tactic = Pcoq.Tactic
 
 module DeppatGram =
 struct
-  let gec s = Gram.Entry.create ("Deppat."^s)
+  let gec s = Gram.entry_create ("Deppat."^s)
 
-  let deppat_equations : pre_equation list Gram.Entry.e = gec "deppat_equations"
+  let deppat_equations : pre_equation list Gram.entry = gec "deppat_equations"
 
-  let equation_options : (equation_option * bool) list Gram.Entry.e = gec "equation_options"
+  let equation_options : (equation_option * bool) list Gram.entry = gec "equation_options"
 
   let binders_let2 : (local_binder list * (identifier located option * recursion_order_expr)) 
-      Gram.Entry.e = gec "binders_let2"
+      Gram.entry = gec "binders_let2"
 
 (*   let where_decl : decl_notation Gram.Entry.e = gec "where_decl" *)
 
@@ -2804,8 +2807,10 @@ open Pcoq
 open Prim
 open Constr
 open G_vernac
+open Compat
+open Tok
 
-GEXTEND Gram
+EXTEND Gram
   GLOBAL: (* deppat_gallina_loc *) pattern deppat_equations binders_let2 equation_options;
  
   deppat_equations:
