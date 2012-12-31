@@ -12,6 +12,7 @@ Module TestF.
   }.
   
   Next Obligation. exact IH. Defined.
+  Solve Obligations. (* BUG *)
 End TestF.
 
 Instance eqsig {A} (x : A) : Signature (x = x) A :=
@@ -125,19 +126,17 @@ Proof. intros. intros x y. decide equality. Defined.
 
 Hint Unfold vector_subterm : subterm_relation.
 Typeclasses Opaque vector_subterm.
-(* Ltac generalize_by_eqs id ::= generalize_eqs id. *)
-(* Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars id. *)
 Import Vector.
 Print nil.
 
-Set Printing All.
-
+Set Printing All. Print Ltac solve_rec.
+Print HintDb Below.
 Equations unzip_dec {A B} `{EqDec A} `{EqDec B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
 unzip_dec A B _ _ n v by rec v (@vector_subterm (A * B)) :=
 unzip_dec A B _ _ ?(O) nil := ([]v, []v) ;
 unzip_dec A B _ _ ?(S n) (cons (pair x y) n v) with unzip_dec v := {
   | pair xs ys := (cons x xs, cons y ys) }.
-Next Obligation. intros. apply unzip_dec. eauto with subterm_relation. Defined.
+Solve Obligations.
 
 Typeclasses Transparent vector_subterm.
 

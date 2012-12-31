@@ -1,7 +1,8 @@
-Require Import Program Equations Bvector List.
+Require Import Program. 
+Require Import Equations Bvector List.
 Require Import Relations.
 Require Import DepElimDec.
-
+Require Import Omega.
 Require Import Arith Wf_nat.
 Instance wf_nat : WellFounded lt := lt_wf.
 Hint Resolve lt_n_Sn : Below.
@@ -16,77 +17,32 @@ Module RecRel.
 
 End RecRel.
 
-Definition measure {A B} (f : A -> B) (R : relation B) : relation A :=
-  fun x y => R (f x) (f y).
-
-Definition f91_rel : relation nat :=
-  measure (fun x => 101 - x) lt.
-
-Instance gt_bound_wf : WellFounded f91_rel.
-Proof. red. red. intros.
-  Admitted.
-
-Equations f91 n : { m : nat | if le_lt_dec n 100 then m = 91 else m = n - 10 } :=
-f91 n by rec n f91_rel :=
-f91 n with le_lt_dec n 100 := {
-  | left H := exist _ (proj1_sig (f91 (proj1_sig (f91 (n + 11))))) _ ;
-  | right H := exist _ (n - 10) _ }.
-
-(* BUG !!
-Admit Obligations.
-Admit Obligations.
-*)
-
-Require Import Omega.
-
-Next Obligation. intros. apply f91. do 2 red. try omega. Defined.
-Next Obligation. intros. apply f91. destruct f91_comp_proj. simpl. do 2 red.
-  destruct_call le_lt_dec. subst. omega. subst. omega.
-Defined.
-  
-Next Obligation. destruct le_lt_dec. intros. destruct_call f91_comp_proj. simpl. 
-  destruct_call f91_comp_proj. simpl in *. destruct le_lt_dec. subst. simpl in y. auto.
-  subst x0. destruct le_lt_dec. auto.
-  subst x. simpl. omega.
-
-  elimtype False. omega.
-Qed.
-
-Next Obligation. destruct le_lt_dec. intros. omega. omega. Defined.
-Obligation Tactic := idtac.
-Next Obligation. equations. Defined.
-
-Next Obligation. intros. rec_wf_rel n IH f91_rel.
-  simp f91. Print f91_ind. constructor. destruct le_lt_dec. simpl. constructor. intros. apply IH.
-  admit.
-  apply IH. admit.
-  apply IH. admit.
-  intros. subst recres. apply IH. assumption.
-  simp f91. 
-Defined.
-
 Section Nested.
-  Hint Extern 3 => match goal with 
-                     [ |- context [ ` (?x) ] ] => destruct x; simpl proj1_sig
-                   end : Below.
+
+  Ltac destruct_proj1_sig :=
+    match goal with 
+      | [ |- context [ ` (?x) ] ] => destruct_proj1_sigs x
+    end
+  with destruct_proj1_sigs x :=
+    lazymatch x with
+      | context [ ` (?x') ] => destruct_proj1_sigs x'
+      | _ =>
+        let x' := fresh in
+        let H' := fresh in
+          destruct x as [x' H'] ; simpl proj1_sig
+    end.
+
+  Hint Extern 3 => progress destruct_proj1_sig : Below.
+  
+  Hint Extern 3 => progress auto with arith : Below.
 
   Equations f (n : nat) : { x : nat | x <= n } :=
   f n by rec n lt :=
   f 0 := exist _ 0 _ ;
   f (S n) := exist _ (proj1_sig (f (proj1_sig (f n)))) _.
-  
 
-
-  Next Obligation. apply f. Set Typeclasses Debug. Print HintDb arith.
-    repeat match goal with 
-             [ |- context [ ` (?x) ] ] => destruct x; simpl proj1_sig
-           end. Set Typeclasses Debug. auto with arith. Defined.
-  Next Obligation. do 2 destruct_call f_comp_proj. simpl in *. eauto with arith. Defined.
-    Unset Typeclasses Debug.
-  Next Obligation.
-    rec_wf_rel n IH lt.
-    depelim x. simp f. simp f. constructor ; auto with arith. intros. eauto with arith.
-    apply IH. destruct f. simpl. auto with arith.
+  Next Obligation. 
+    unfold f_obligation_3. repeat destruct_proj1_sig. omega.
   Defined.
     
 About f_elim.
@@ -197,6 +153,10 @@ Module RecMeasure.
     Context (lt : relation A).
     Context (refl_lt : forall x y, reflect (lt x y) (ltb x y)).
 
+    Context (compare : A -> A -> comparison).
+    Context (compspec : forall x y, CompSpec eq lt x y (compare x y)).
+
+
     Context (leb_complete : forall x y, leb x y <-> (x = y \/ leb y x = false)).
     Context (leb_complete2 : forall x y, leb x y = false -> leb y x).
 
@@ -217,28 +177,45 @@ Module RecMeasure.
       apply Is_true_eq_true. auto.
     Qed.
 
-    Lemma qs_same (l : list A) : forall a, In a l <-> In a (qs l).
-    Proof. intros.
-      pattern_call (qs l).
-      let p := constr:(fun_elim (f:=@qs)) in apply p.
-      reflexivity.
+Ltac funelim_tac c tac ::=
+  match c with
+    | appcontext C [ ?f ] => 
+  let call := fresh "call" in set(call := c) in *; 
+  let elim := constr:(fun_elim (f:=f)) in
+    block_goal; revert_until call; block_goal;
+    first [ 
+      progress (generalize_eqs_vars call);
+        match goal with
+          call := ?c' |- _ => 
+            subst call; simpl; pattern_call c';
+              apply elim; simplify_dep_elim;
+                simplify_IH_hyps; unfold block at 1;
+                  first [ on_last_hyp ltac:(fun id => rewrite <- id; clear id; intros)
+                    | intros ];
+                  unblock_goal; tac f
+        end
+      | subst call; pattern_call c; apply elim; 
+        simplify_dep_elim; simplify_IH_hyps; unfold block at 1; 
+          intros; unblock_goal; tac f ]
+  end.
 
+    Lemma qs_same (l : list A) : forall a, In a l <-> In a (qs l).
+    Proof.
+      funelim (qs l). reflexivity.
+      
       intros.
       simpl. split; intros.
       destruct H1. subst. auto with datatypes.
-      case_eq (leb a a0); intros eq. 
-      apply Is_true_eq_left in eq.
-      rewrite leb_complete in eq.
-      destruct eq. subst. rewrite in_app_iff. right; left; auto.
-      
-      rewrite filter_In' in H.
-      rewrite in_app_iff. left. apply H. rewrite ltb_leb' in H2. auto.
-      
-      rewrite filter_In' in H0. 
-      rewrite in_app_iff. right. right. apply H0. auto.
-      
-      rewrite in_app_iff in H1. destruct H1. rewrite <- H, filter_In' in H1. tauto.
-      apply in_inv in H1. destruct H1; auto. right. rewrite <- H0 in H1. rewrite filter_In' in H1. tauto.
+      rewrite in_app_iff. 
+      simpl. rewrite <- H, <- H0.
+      rewrite !filter_In'.
+      cut (ltb a0 a ∨ a = a0 ∨ leb a a0). intuition auto.
+      destruct (compspec a a0); intuition auto.
+      right; right. apply ltb_leb. revert H2. case (refl_lt a a0). split. intros.
+      contradiction.
+      left. case (refl_lt a0 a). split. contradiction.
+      rewrite in_app_iff, <- H in H1. simpl in H1; rewrite <- H0 in H1.
+      rewrite !filter_In in H1. intuition auto.
     Qed.
 
     Lemma sort_le_app :
@@ -290,8 +267,7 @@ Module RecMeasure.
 
     Lemma qs_perm l : Permutation l (qs l).
     Proof.
-      pattern_call (qs l).
-      let p := constr:(fun_elim (f:=@qs)) in apply p.
+      funelim (qs l).
       constructor.
       intros. 
       rewrite <- H0, <- H.
