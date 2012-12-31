@@ -1,0 +1,75 @@
+\documentclass{report}
+\usepackage[T1]{fontenc}
+%\usepackage{fullpage}
+\usepackage{amsmath,amssymb}
+\usepackage{me}
+\usepackage[color]{coqdoc}
+\usepackage{hyperref}
+\usepackage{abbrevs}
+\usepackage{natbib}
+\usepackage{minitoc}
+\usepackage{utf}
+\usepackage{utf}
+
+\makeatletter
+\renewcommand{\tableofcontents}{\noindent\@starttoc{toc}}
+\makeatother
+
+\author{\myname}
+\date{\today}
+\title{\Equations: A Dependent Pattern-Matching Suite}
+\begin{document}
+
+\maketitle
+
+\def\coqlibrary#1#2#3{}
+
+\def\Equations{\texorpdfstring{\name{Equations}}{Equations}}
+
+\chapter*{Introduction}
+\label{cha:introduction}
+
+\Equations is a toolbox built as a plugin on top of the \Coq proof assistant
+to program and reason on programs defined by full \emph{dependent}
+pattern-matching and \emph{well-founded} recursion. While the primitive
+core calculus of \Coq allows definitions by \emph{simple} pattern-matching on
+inductive families and \emph{structural} recursion, \Equations extends
+the set of easily definable constants by allowing a richer form of
+pattern-matching and arbitrarily complex recursion schemes. It can be
+thought of as a twin of the \name{Function} package for Isabelle that
+implements a \emph{definitional} translation from partial, well-founded
+recursive functions to the HOL core logic. See
+\cite{BoveKraussSozeau2011} for an overview of tools for defining
+recursive definitions in interactive proof assistants like (\Coq, \Agda
+or \Isabelle).
+
+A technical description of the tool appeared in
+\cite{sozeau.Coq/Equations/ITP10}, this article's purpose is to
+introduce the system by way of introductory examples
+(\autoref{cha:gentle-intro}), a completely worked-out formalization
+(\autoref{cha:strong-norm-simply}) and a comprehensive documentation of
+its features (\autoref{cha:manual}).
+
+\doparttoc
+\parttoc
+\tableofcontents
+
+\chapter{A gentle introduction to Equations}
+\label{cha:gentle-intro}
+\input{intro}
+
+\chapter{Strong Normalization for Simply-Typed \texorpdfstring{$\lambda$}{Lambda}-calculus}
+\label{cha:strong-norm-simply}
+\input{stlc}
+
+\chapter{Manual}
+\label{cha:manual}
+\input{manual}
+
+
+\bibliography{biblio}
+\addcontentsline{toc}{chapter}{Bibliography}
+\label{cha:bibliography}
+\bibliographystyle{myplainnat}
+\end{document}
+

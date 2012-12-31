@@ -1,5 +1,4 @@
-(** * A gentle introduction to [Equations] 
-
+(** 
    [Equations] is a plugin for Coq%\footnote{Currently available for the trunk version only}
    \cite{Coq}% that comes with a few support modules defining classes and tactics for 
    running it. We will introduce its main features through a handful of examples, requiring 
@@ -41,7 +40,7 @@ Require Import Bvector.
 (* Derive DependentElimination for nat bool option sum prod list vector. *)
 (* end hide *)
 
-(** ** Inductive types
+(** * Inductive types
 
    In its simplest form, [Equations] allows to define functions on inductive datatypes.
    Take for example the booleans defined as an inductive type with two constructors [true] and [false]:
@@ -54,10 +53,6 @@ Require Import Bvector.
 Equations neg (b : bool) : bool :=
 neg true := false ;
 neg false := true.
-
-Obligation Tactic := idtac.
-
-Next Obligation. intros. destruct b; assumption. Defined.
 
 (* begin hide *)
 Check neg_ind. Check neg_comp.
@@ -75,7 +70,7 @@ Proof. intros b. funelim (neg b); simp neg. Defined.
    handled by the user clauses. We will see in more complex examples that this search
    for a splitting tree may be non-trivial. *)
 
-(** ** Reasoning principles
+(** * Reasoning principles
 
    In the setting of a proof assistant like Coq, we need not only the ability 
    to define complex functions but also get good reasoning support for them.
@@ -110,16 +105,18 @@ Inductive neg_ind : forall b : bool, bool -> Prop :=
    In the following sections we will show how these ideas generalize to more complex 
    types and definitions involving dependencies, overlapping clauses and recursion.
    
-   ** Building up
+   * Building up
 
-   *** Polymorphism
+   ** Polymorphism
    
    Coq's inductive types can be parameterized by types, giving polymorphic datatypes.
    For example the list datatype is defined as:
    *)
 
 Inductive list {A} : Type := nil : list | cons : A -> list -> list.
-Implicit Arguments list []. Notation "x :: l" := (cons x l).
+
+Implicit Arguments list.
+Notation "x :: l" := (cons x l). 
 
 (** No special support for polymorphism is needed, as type arguments are treated 
    like regular arguments in dependent type theories. Note however that one cannot
@@ -132,7 +129,7 @@ Equations tail {A} (l : list A) : list A :=
 tail A nil := nil ;
 tail A (cons a v) := v.
 
-(** *** Recursive inductive types 
+(** ** Recursive inductive types 
    
    Of course with inductive types comes recursion. Coq accepts a subset of the 
    structurally recursive definitions by default (it is incomplete due to its 
@@ -166,7 +163,7 @@ app A (cons a l) l' := cons a (app l l').
 Check app_ind. Check @app_comp. Check @app_ind_equation_1. Check @app_ind_equation_2.
 (* end hide *)
 
-(** *** Moving to the left
+(** ** Moving to the left
 
    The structure of real programs is richer than a simple case tree on the 
    original arguments in general. In the course of a computation, we might 
@@ -199,7 +196,7 @@ unzip A B (cons p l) <= unzip l => {
 
 (** The real power of with however comes when it is used with dependent types. *)
 
-(** ** Dependent types
+(** * Dependent types
    
    Coq supports writing dependent functions, in other words, it gives the ability to
    make the results _type_ depend on actual _values_, like the arguments of the function.
@@ -257,7 +254,7 @@ head A (cons a v) _ := a.
      the proof.
  *)
 
-(** *** Inductive families
+(** ** Inductive families
 
    The next step is to make constraints such as non-emptiness part of the 
    datatype itself. This capability is provided through inductive families in
@@ -267,7 +264,7 @@ head A (cons a v) _ := a.
    a different type, making it possible to give specific information about a value 
    in its type. 
 
-   **** Equality 
+   *** Equality 
    The alma mater of inductive families is the propositional equality 
    [eq] defined as: [[
 Inductive eq (A : Type) (x : A) : A -> Prop := 
@@ -304,7 +301,7 @@ eqt A ?(x) ?(x) ?(x) eq_refl eq_refl := eq_refl.
    notation is essentially denoting that the pattern is not a candidate 
    for refinement, as it is determined by another pattern. 
 
-   **** Indexed datatypes
+   *** Indexed datatypes
    
    Functions on [vector]s provide more stricking examples of this situation.
    The [vector] family is indexed by a natural number representing the size of 
@@ -316,6 +313,8 @@ Inductive vector (A : Type) : nat -> Type :=
    The empty vector [Vnil] has size [O] while the cons operation increments 
    the size by one. Now let us define the usual map on vectors:
  *)
+Notation Vnil := Vector.nil.
+Notation Vcons := Vector.cons.
 
 Equations vmap {A B} (f : A -> B) {n} (v : vector A n) :
   vector B n :=
@@ -377,7 +376,7 @@ diag A (S n) (Vcons (Vcons a n v) n v') :=
    induction principle proof is well-formed%\footnote{Or guarded in Coq jargon}%.
 
    This closes our presentation of the basic features of [Equations]. 
-   Our contribution is a realistic implementation of dependent pattern-matching
+   We demonstrated a realistic implementation of dependent pattern-matching
    which can be used to write programs on inductive families, also 
    providing tools to reason on them. We will now delve into the details of 
    the implementation and come back to the user side later, introducing 
