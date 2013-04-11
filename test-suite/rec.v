@@ -45,15 +45,11 @@ Section Nested.
     unfold f_obligation_3. repeat destruct_proj1_sig. omega.
   Defined.
     
-About f_elim.
-
 End Nested.
 Require Import Coq.Lists.SetoidList.
 Require Import Coq.Sorting.Sorting.
 Require Import Coq.Sorting.Permutation.
 Require Import Coq.Sorting.PermutSetoid.
-
-Print Instances Morphisms.Proper.
 
 Instance filter_ext {A} : Morphisms.Proper (pointwise_relation A eq ==> eq ==> eq) (@filter A).
 Proof.
@@ -168,7 +164,6 @@ Module RecMeasure.
 
     Set Firstorder Solver auto.
 
-    About filter_In.
     Lemma filter_In' :
       ∀ (A : Type) (f : A → bool) (x : A) (l : list A),
       In x (filter f l) ↔ In x l ∧ f x.
@@ -288,7 +283,7 @@ Ltac funelim_tac c tac ::=
     Qed.
   
   End QuickSort.
-  Extraction Inline qs_comp qs_comp_proj qs_obligation_1 qs_obligation_2 qs_obligation_3.
-  Recursive Extraction qs.
+  (* Extraction Inline qs_comp qs_comp_proj qs_obligation_1 qs_obligation_2 qs_obligation_3. *)
+  (* Recursive Extraction qs. *)
 
 End RecMeasure.

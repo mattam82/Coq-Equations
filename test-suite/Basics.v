@@ -12,7 +12,6 @@ Module TestF.
   }.
   
   Next Obligation. exact IH. Defined.
-  Solve Obligations. (* BUG *)
 End TestF.
 
 Instance eqsig {A} (x : A) : Signature (x = x) A :=
@@ -52,13 +51,20 @@ sublist A p (cons x xs) with p x := {
   | true := keep (sublist p xs) ;
   | false := skip (sublist p xs) }.
 
-Print Assumptions sublist.
+(* Print Assumptions sublist. *)
 
 Ltac rec ::= rec_wf_eqns.
 
 (* Derive Subterm for nat.  *)
 Derive Subterm for vector.
-Next Obligation. admit. Qed.
+Next Obligation.
+  red; intros. apply Transitive_Closure.Acc_clos_trans.
+  destruct a. simpl in *. 
+  induction t. 
+  constructor; intros. simpl in *. inversion H.
+  constructor; intros. simpl in *. inversion H.
+  subst. noconf H7. noconf H3. destruct y; apply IHt.
+Defined.
 
 Require Import Arith Wf_nat.
 Instance wf_nat : WellFounded lt := lt_wf.
@@ -74,7 +80,7 @@ testn (S n) <= testn n => {
   | (S n') := S n' }.
 
 
-Recursive Extraction testn.
+(* Recursive Extraction testn. *)
 
 Require Import Vectors.Vector.
 
@@ -87,7 +93,7 @@ Equations (nocomp) vapp' {A} {n m} (v : vector A n) (w : vector A m) : vector A 
 vapp' A ?(0) m []v w := w ;
 vapp' A ?(S n) m (Vector.cons a n v) w := Vector.cons a (vapp' v w).
 
-Print Assumptions vapp'.
+(* Print Assumptions vapp'. *)
 
 Derive Signature for vector.
 
@@ -127,16 +133,12 @@ Proof. intros. intros x y. decide equality. Defined.
 Hint Unfold vector_subterm : subterm_relation.
 Typeclasses Opaque vector_subterm.
 Import Vector.
-Print nil.
 
-Set Printing All. Print Ltac solve_rec.
-Print HintDb Below.
 Equations unzip_dec {A B} `{EqDec A} `{EqDec B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
 unzip_dec A B _ _ n v by rec v (@vector_subterm (A * B)) :=
 unzip_dec A B _ _ ?(O) nil := ([]v, []v) ;
 unzip_dec A B _ _ ?(S n) (cons (pair x y) n v) with unzip_dec v := {
   | pair xs ys := (cons x xs, cons y ys) }.
-Solve Obligations.
 
 Typeclasses Transparent vector_subterm.
 
@@ -146,8 +148,8 @@ unzip A B ?(O) nil := (nil, nil) ;
 unzip A B ?(S n) (cons (pair x y) n v) <= unzip v => {
   | (pair xs ys) := (cons x xs, cons y ys) }.
 
-Print Assumptions unzip.
-Print Assumptions unzip_dec.
+(* Print Assumptions unzip. *)
+(* Print Assumptions unzip_dec. *)
 
 (*
 Ltac generalize_by_eqs v ::= generalize_eqs v.
@@ -175,14 +177,14 @@ equal (S n) (S m) <= equal n m => {
   equal (S n) (S m) (right p) := in_right } ;
 equal x y := in_right.
 
-Print Assumptions equal.
+(* Print Assumptions equal. *)
 Import List.
 Equations app_with {A} (l l' : list A) : list A :=
 app_with A nil l := l ;
 app_with A (cons a v) l <= app_with v l => {
   | vl := cons a vl }.
 
-Print Assumptions app_with.
+(* Print Assumptions app_with. *)
 (* About app_with_elim. *)
 (* Print app_with_ind. *)
 (* Print app_with_ind_ind. *)
@@ -294,7 +296,7 @@ intros; subst; assumption. Defined.
 Equations(nocomp) vrev_acc {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
 vrev_acc A ?(0) m nil w := w;
 vrev_acc A ?(S n) m (cons a n v) w := cast_vector (vrev_acc v (cons a w)) _.
-About vapp'.
+(* About vapp'. *)
 
 Record vect {A} := mkVect { vect_len : nat; vect_vector : vector A vect_len }.
 Coercion mkVect : vector >-> vect.
@@ -306,7 +308,7 @@ Inductive Split {X : Type}{m n : nat} : vector X (m + n) -> Type :=
 Implicit Arguments Split [ [ X ] ].
 
 (* Eval compute in @app'. *)
-About nil. About vector.
+(* About nil. About vector. *)
 
 Equations split {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
 split X m n xs by rec m :=
@@ -350,7 +352,6 @@ vmap' A B f ?(O) nil := nil ;
 vmap' A B f ?(S n) (cons a n v) := cons (f a) (vmap' f v).
 
 Hint Resolve lt_n_Sn : subterm_relation.
-Print cons.
 Equations vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
 vmap A B f n v by rec n :=
 vmap A B f O nil := nil ;

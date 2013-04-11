@@ -2810,8 +2810,8 @@ open G_vernac
 open Compat
 open Tok
 
-EXTEND Gram
-  GLOBAL: (* deppat_gallina_loc *) pattern deppat_equations binders_let2 equation_options;
+GEXTEND Gram
+  GLOBAL: pattern deppat_equations binders_let2 equation_options;
  
   deppat_equations:
     [ [ l = LIST1 equation SEP ";" -> l ] ]
