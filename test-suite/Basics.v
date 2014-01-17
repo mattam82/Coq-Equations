@@ -12,6 +12,9 @@ Module TestF.
   }.
   
   Next Obligation. exact IH. Defined.
+  (* bug forgot to backport from trunk in obligations.ml *)
+  Solve Obligations.
+
 End TestF.
 
 Instance eqsig {A} (x : A) : Signature (x = x) A :=
@@ -139,6 +142,9 @@ unzip_dec A B _ _ n v by rec v (@vector_subterm (A * B)) :=
 unzip_dec A B _ _ ?(O) nil := ([]v, []v) ;
 unzip_dec A B _ _ ?(S n) (cons (pair x y) n v) with unzip_dec v := {
   | pair xs ys := (cons x xs, cons y ys) }.
+
+(* Bug *)
+Solve Obligations.
 
 Typeclasses Transparent vector_subterm.
 

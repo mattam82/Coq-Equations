@@ -33,13 +33,17 @@ Defined.
   
 Next Obligation. destruct le_lt_dec. intros. destruct_call f91_comp_proj. simpl. 
   destruct_call f91_comp_proj. simpl in *. destruct le_lt_dec. subst. simpl in y. auto.
-  subst x0. destruct le_lt_dec. auto.
+  subst x0. destruct le_lt_dec; auto.
   subst x. simpl. omega.
 
   elimtype False. omega.
 Qed.
 
 Next Obligation. destruct le_lt_dec. intros. omega. omega. Defined.
+
+Obligation Tactic := idtac.
+
+Next Obligation. intro. apply prog. Defined.
 
 (* Next Obligation.  *)
 (* Proof. intros. *)
