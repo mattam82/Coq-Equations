@@ -1,0 +1,40 @@
+\section{Vernacular Commands}
+
+\subsection{Derive}
+
+\Equations comes with a suite of deriving commands that take inductive
+families and generate definitions based on them. The common syntax for
+these is:
+
+\begin{verbatim}
+Derive C for Ind.
+\end{verbatim}
+
+Which will (try to) generate an instance of type class \ind{C} on
+inductive type \ind{Ind}. We assume $\ind{C} : Π Δ. s$.
+The derivations provided by \Equations are:
+
+\begin{itemize}
+\item \ind{DependentEliminationPackage}
+\item \ind{Signature}
+\item \ind{NoConfusion}
+\item \ind{Equality}. 
+  This derives a decidable equality on $C$, assuming decidable equality 
+  instances for the parameters and supposing any primitive inductive
+  type used in the definition also has decidable equality. If
+  successful it generates an instance of the class:
+\begin{verbatim}
+Class EqDec (A : Type) :=
+  eq_dec : forall x y : A, { x = y } + { x <> y }.
+\end{verbatim}
+  
+\item \ind{Subterm}
+\end{itemize}
+
+
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "equations"
+%%% TeX-PDF-mode: t
+%%% End: 

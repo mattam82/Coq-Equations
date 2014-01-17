@@ -171,8 +171,8 @@ let derive_subterm ind =
     in Auto.add_hints false [subterm_relation_base]
       (Auto.HintsResolveEntry (List.concat constrhints));
       (* Proof of Well-foundedness *)
-      let id = add_prefix "well_founded_" (List.hd inds).mind_entry_typename in
       let relid = add_suffix (Nametab.basename_of_global (IndRef ind)) "_subterm" in
+      let id = add_prefix "well_founded_" relid in
       let evm = ref Evd.empty in
       let env = Global.env () in
       let env' = push_rel_context parambinders env in

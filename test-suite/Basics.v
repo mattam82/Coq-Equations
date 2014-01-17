@@ -177,7 +177,6 @@ equal (S n) (S m) <= equal n m => {
   equal (S n) (S m) (right p) := in_right } ;
 equal x y := in_right.
 
-(* Print Assumptions equal. *)
 Import List.
 Equations app_with {A} (l l' : list A) : list A :=
 app_with A nil l := l ;
@@ -381,7 +380,7 @@ Section Univ.
   Inductive univ : Set :=
   | ubool | unat | uarrow (from:univ) (to:univ).
 
-  Equations (nocomp) interp (u : univ) : Type :=
+  Equations (nocomp) interp (u : univ) : Set :=
   interp ubool := bool; interp unat := nat;
   interp (uarrow from to) := interp from -> interp to.
 

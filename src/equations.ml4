@@ -171,7 +171,14 @@ let mkProd_or_subst_or_clear (na,body,t) c =
   | Some b -> subst1 b c
 
 let it_mkProd_or_subst ty ctx = 
-  nf_beta Evd.empty (List.fold_left (fun c d -> whd_betalet Evd.empty (mkProd_or_LetIn d c)) ty ctx)
+  nf_beta Evd.empty (List.fold_left 
+		       (fun c d -> whd_betalet Evd.empty (mkProd_or_LetIn d c)) ty ctx)
+
+let it_mkProd_or_clean ty ctx = 
+  nf_beta Evd.empty (List.fold_left 
+		       (fun c (na,_,_ as d) -> whd_betalet Evd.empty 
+			 (if na = Anonymous then subst1 mkProp c
+			  else (mkProd_or_LetIn d c))) ty ctx)
 
 let it_mkLambda_or_subst ty ctx = 
   whd_betalet Evd.empty
@@ -830,8 +837,8 @@ let unify_type evars before id ty after =
     let envb = push_rel_context before (Global.env()) in
     let IndType (indf, args) = find_rectype envb !evars ty in
     let ind, params = dest_ind_family indf in
-    let vs = map (Tacred.hnf_constr envb !evars) args in
-    let params = map (Tacred.hnf_constr envb !evars) params in
+    let vs = map (Tacred.whd_simpl envb !evars) args in
+    let params = map (Tacred.whd_simpl envb !evars) params in
     let newty = applistc (mkInd ind) (params @ vs) in
     let cstrs = Inductiveops.type_of_constructors envb ind in
     let cstrs = 
@@ -1702,7 +1709,7 @@ let simp_eqns_in clause l =
 let autorewrites b = tclREPEAT (Autorewrite.autorewrite tclIDTAC [b])
 
 let autorewrite_one b = Rewrite.cl_rewrite_clause_strat 
-  (Rewrite.one_subterm (Rewrite.Strategies.hints b))
+  (Rewrite.Strategies.innermost (Rewrite.Strategies.hints b))
   None
 
 type term_info = {
@@ -1770,6 +1777,7 @@ let rec aux_ind_fun info = function
 	    let last_arg = args.(Array.length args - 1) in
 	    let f, args = destApp last_arg in
 	    let _, elim = find_helper_arg info f args in
+	    let id = pf_get_new_id id gl in
 	      tclTHENLIST
 		[letin_tac None (Name id) elim None allHypsAndConcl; 
 		 clear_body [id]; aux_ind_fun info s] gl
@@ -1783,7 +1791,7 @@ let rec aux_ind_fun info = function
       tclTHENLIST [intros_reducing; find_empty_tac ()]
 	
   | Compute (_, _, _) ->
-      tclTHENLIST [intros_reducing; simp_eqns [info.base_id]]
+      tclTHENLIST [intros_reducing; autorewrite_one info.base_id; eauto_with_below [info.base_id]]
 	
   (* | Compute ((ctx,_,_), _, REmpty id) -> *)
   (*     let (na,_,_) = nth ctx (pred id) in *)
@@ -2080,7 +2088,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	  let len = List.length ctx in
 	  let hyps, hypslen, c' = abstract_rec_calls is_rec len protos (nf_beta Evd.empty c) in
 	    Some (it_mkProd_or_clear
-		     (it_mkProd_or_subst
+		     (it_mkProd_or_clean
 			 (applistc (mkRel (len + (lenprotos - i) + hypslen))
 			     (lift_constrs hypslen pats @ [c']))
 			 hyps) ctx)
@@ -2228,7 +2236,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 			  lifthyps) args)
 		  in
 		    it_mkLambda_or_LetIn
-		      (app (it_mkProd_or_subst (lift (length indhyps) papp) 
+		      (app (it_mkProd_or_clean (lift (length indhyps) papp) 
 			       (lift_rel_context lenargs indhyps)))
 		      ctx
 		in
@@ -2455,6 +2463,7 @@ let prove_unfolding_lemma info proj f_cst funf_cst split gl =
 	      let f1, arg1 = destApp term1 and f2, arg2 = destApp term2 in
 	      let _, a1 = find_helper_arg info f1 arg1 
 	      and ev2, a2 = find_helper_arg info f2 arg2 in
+	      let id = pf_get_new_id id gl in
 		if ev2 = ev then 
 	  	  tclTHENLIST
 	  	    [Equality.replace_by a1 a2

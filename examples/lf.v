@@ -248,65 +248,20 @@ Inductive value : term -> Prop :=
 
 Hint Constructors value : term.
 
-Inductive eval_context : Set :=
-| eval_hole
-| eval_app_left : term -> eval_context -> eval_context
-| eval_app_right (c : eval_context) (u : term) : value u -> eval_context
-| eval_fst (t : eval_context) : eval_context
-| eval_snd (t : eval_context) : eval_context.
-
-Equations apply_context (e : eval_context) (t : term) : term :=
-apply_context eval_hole t := t ;
-apply_context (eval_app_left t c) u := @(t, apply_context c u) ;
-apply_context (eval_app_right c t _) u := @(apply_context c t, u) ;
-apply_context (eval_fst c) t := Fst (apply_context c t) ;
-apply_context (eval_snd c) t := Snd (apply_context c t).
-
 Inductive reduce_congr : relation term :=
 | reduce1 t u : reduce t u -> reduce_congr t u
-| reduce_app t t' u u' : reduce_congr t t' -> reduce_congr u u' ->
-  reduce_congr (@(t, u)) (@(t', u'))
-| reduce_pair t t' u u' : reduce_congr t t' -> reduce_congr u u' ->
-  reduce_congr (<< t, u >>) (<< t', u' >>)
+| reduce_app_l t t' u : reduce_congr t t' -> 
+  reduce_congr (@(t, u)) (@(t', u))
+| reduce_app_r t u u' : reduce_congr u u' -> 
+  reduce_congr (@(t, u)) (@(t, u'))
+| reduce_pair_l t t' u : reduce_congr t t' -> 
+  reduce_congr (<< t, u >>) (<< t', u >>)
+| reduce_pair_r t u u' : reduce_congr u u' ->
+  reduce_congr (<< t, u >>) (<< t, u' >>)
 | reduce_fst t t' : reduce_congr t t' -> reduce_congr (Fst t) (Fst t')
-| reduce_snd t t' : reduce_congr t t' -> reduce_congr (Snd t) (Snd t')
-.
-
-(*
-Obligation Tactic := auto with term.
-
-Equations find_redex (t : term) : (eval_context * term) + { value t } :=
-find_redex (Var i) := inright _ ;
-find_redex (App t u) with find_redex u := {
-  | inright vu with find_redex t := {
-    | inright (val_lambda t') := inleft (eval_hole, @(Lambda t', u)) ;
-    | inright vt := inright _ ;
-    | inleft (pair c t') := inleft (eval_app_right c u vu, t') } ;
-  | inleft (pair c u') := inleft (eval_app_left t c, u') } ;
-find_redex (Lambda t) := inright _ ;
-find_redex (Pair t u) := inright _ ;
-find_redex (Fst t) with find_redex t := {
-  | inleft (pair c t') := inleft (eval_fst c, t') ;
-  | inright vt := inleft (eval_hole, Fst t) } ;
-find_redex (Snd t) with find_redex t := {
-  | inleft (pair c t') := inleft (eval_snd c, t') ;
-  | inright vt := inleft (eval_hole, Snd t) } ;
-find_redex Tt := inright _.
-
-*)
+| reduce_snd t t' : reduce_congr t t' -> reduce_congr (Snd t) (Snd t').
 
 Derive NoConfusion for term type.
-
-(* Remark *)
-Instance: Irreflexive reduce.
-Proof. intros x H. depind H.
-  induction t; simp subst in H; try discriminate.
-  destruct (nat_compare_spec n 0). subst.
-  simp subst lift in H. admit.
-  absurd omega. simp subst in H. destruct n; discriminate.
-  noconf H. admit.
-  admit. admit.
-Qed.
 
 Ltac find_empty := 
   match goal with 
@@ -335,6 +290,30 @@ Qed.
 
 Lemma subject_reduction Γ t τ : Γ |-- t : τ → forall u, t -->* u → Γ |-- u : τ.
 Proof. induction 2; eauto using preserves_red1. Qed.
+Hint Constructors reduce reduce_congr : term.
+Lemma progress_ t τ : nil |-- t : τ → (exists t', reduce_congr t t') \/ value t.
+Proof.
+  intros H; depind H; auto with term.
+
+  destruct IHtypes1 as [[t' tt']|vt].
+  left; eauto with term.
+  destruct IHtypes2 as [[u' uu']|vu].
+  left; eauto with term.
+  depelim vt; depelim H. depelim H.
+  left. exists ([u]t). eauto with term. 
+
+
+  destruct IHtypes1 as [[t' tt']|vt]; eauto with term.
+  destruct IHtypes2 as [[u' uu']|vu]; eauto with term.
+
+  destruct IHtypes as [[t' tt']|vt]; eauto with term.
+  depelim vt; depelim H;
+  eauto with term. depelim H.
+
+  destruct IHtypes as [[t' tt']|vt]; eauto with term.
+  depelim vt; depelim H;
+  eauto with term. depelim H.
+Qed.
 
 Reserved Notation " Γ |-- t => A " (at level 70, t, A at next level).
 Reserved Notation " Γ |-- t <= A " (at level 70, t, A at next level).
@@ -491,6 +470,7 @@ Require Import Arith Wf_nat.
 Instance wf_nat : WellFounded lt := lt_wf.
 
 Derive Subterm for term.
+Hint Constructors lexprod : subterm_relation.
 
 Require Import Lexicographic_Product.
 
@@ -516,6 +496,8 @@ Defined.
 
 Definition her_order : relation (type * term * term) :=
   lexicographic (lexicographic type_subterm term_subterm) term_subterm.  
+
+Hint Unfold her_order lexicographic : subterm_relation.
 
 Obligation Tactic := program_simpl.
 
@@ -556,8 +538,13 @@ Proof. revert n l'. induction l; simpl; intros; auto. depelim H. destruct n; aut
   apply IHl. auto with arith.
 Qed.
 
+Definition her_type (t : type * term * term) :=
+  let u' := fst (fst t) in
+   { u : type | u = u' \/ type_subterm u u' }.
+(* { u : type | u = (fst (fst t)) \/ type_subterm u (fst (fst t)) }  := *)
+
 Equations hereditary_subst (t : type * term * term) (k : nat) :
-  term * option { u : type | u = (fst (fst t)) \/ type_subterm u (fst (fst t)) }  :=
+  term * option (her_type t) :=
 hereditary_subst t k by rec t her_order :=
 
 hereditary_subst (pair (pair A a) t) k with t := {
@@ -604,36 +591,96 @@ hereditary_subst (pair (pair A a) t) k with t := {
   | Tt := (Tt, None) }.
 
 (* Next Obligation. intros. simpl. auto. Defined.  *)
-Solve Obligations using intros; apply hereditary_subst; constructor 2; constructor.
+Solve Obligations using 
+   unfold her_type;
+   intros; apply hereditary_subst; constructor 2; do 2 constructor.
 
-Next Obligation. intros. apply hereditary_subst.
-  destruct prf. simpl in *. subst. repeat constructor.
-  simpl in t0. do 2 constructor 1. apply type_direct_subterm_0_0 with (A' ---> B'); eauto using type_direct_subterm.
+Remove Hints t_step : subterm_relation.
+Remove Hints clos_trans_stepr : subterm_relation.
+
+Ltac apply_step :=
+  match goal with 
+    |- clos_trans ?A ?R ?x ?y => not_evar y; eapply t_step
+  end.
+Hint Extern 30 (clos_trans _ _ _ _) => apply_step : subterm_relation.
+
+Lemma clos_trans_inv {A} R (x y z : A) :
+  clos_trans A R y z → clos_trans A R x y → clos_trans A R x z.
+Proof. eauto using t_trans. Qed.
+
+Ltac apply_transitivity :=
+  match goal with 
+    |- clos_trans ?A ?R ?x ?y => 
+    not_evar x; not_evar y; eapply clos_trans_inv
+  end.
+Hint Extern 30 (clos_trans _ _ _ _) => apply_transitivity : subterm_relation.
+
+Next Obligation. 
+  apply hereditary_subst. destruct prf; subst; eauto 10 with subterm_relation.
 Defined.
 
-Next Obligation. simpl; intros.
-  destruct prf. subst. right. constructor.
-  right. apply type_direct_subterm_0_0 with (A' ---> B'); eauto using type_direct_subterm.
-Defined.
+Hint Unfold her_type : subterm_relation.
 
-(* Next Obligation. intros. apply hereditary_subst.   *)
-(*   destruct prf. simpl in H. subst. repeat constructor. *)
-(*   simpl in H. do 2 constructor 1. apply type_direct_subterm_0_0 with (A' ---> B'); eauto using type_direct_subterm. *)
-(* Defined. *)
+Solve Obligations using unfold her_type;
+      simpl; intros; 
+      match goal with 
+        |- _ \/ _ => intuition (subst; eauto 7 with subterm_relation)
+      end.
 
-Next Obligation. simpl; intros. 
-  destruct prf. subst. right. constructor. 
-  right. apply type_direct_subterm_0_0 with (a0 × b); eauto using type_direct_subterm.
-Defined.
+Hint Unfold const : subterm_relation.
 
-Next Obligation. simpl; intros. 
-  destruct prf. subst. right. constructor. 
-  right. apply type_direct_subterm_0_0 with (a0 × b); eauto using type_direct_subterm.
-Defined.
 Solve All Obligations.
+Ltac autoh :=
+  unfold type_subterm in * ; try typeclasses eauto with hereditary_subst subterm_relation.
+Ltac simph := 
+  try (rewrite_strat (innermost (hints hereditary_subst))); 
+  autoh.
 
-Next Obligation. simpl; intros. admit. Defined. 
-Next Obligation. intros. admit. Defined.
+Hint Transparent type_subterm : subterm_relation.
+
+Obligation Tactic := idtac.
+Next Obligation.
+Proof.
+  intros.
+  rec_wf_rel t hsubst her_order.
+  depelim x. depelim p. simph. 
+  constructor. depelim t1.
+  constructor. 
+  destruct (nat_compare n k); try constructor.
+
+  simph. 
+
+  constructor; autoh.
+
+  set(foo:=(hereditary_subst (t, t0, t1_1) k)). clearbody foo.
+  constructor.
+  set(fr:=is_lambda foo). clearbody fr. 
+  depelim fr. depelim i.
+  rewrite_strat (innermost (hints hereditary_subst)).
+  constructor. autoh.
+
+  simpl in prf. apply hsubst. 
+  intuition subst. autoh.
+  autoh.
+
+  simph. 
+
+  simph.
+
+  constructor. autoh. 
+  constructor. 
+  destruct (is_pair (hereditary_subst (t, t0, t1) k)).
+  destruct i; simph. 
+  simph.
+
+  constructor. autoh. 
+  constructor. 
+  destruct (is_pair (hereditary_subst (t, t0, t1) k)).
+  destruct i; simph. 
+  simph.
+
+  simph.
+Defined.
 
 Ltac invert_term := 
   match goal with
@@ -646,16 +693,11 @@ Ltac invert_term :=
         | Lambda _ => depelim H
         | App _ _ => depelim H
         | Pair _ _ => depelim H
-        | (Fst _ | Snd _) => depelim H
+        | Fst _ => depelim H
+        | Snd _ => depelim H
         | Tt => depelim H
       end
   end.
-
-
-Ltac simp_hsubst := try (rewrite_strat (bottomup (hints hereditary_subst))); 
-  rewrite <- ?hereditary_subst_equation_1.
-
-
 
 Lemma hereditary_subst_type Γ Γ' t T u U : Γ |-- u : U -> Γ' @ (U :: Γ) |-- t : T ->
   forall t' o, hereditary_subst (U, u, t) (length Γ') = (t', o) ->
@@ -675,11 +717,11 @@ Proof. intros. revert H1. funelim (hereditary_subst (U, u, t) (length Γ'));
 
   depelim H0; term.
 
-  depelim H2.
+  depelim H0.
   (* Var *)
   apply nat_compare_eq in Heq; subst n.
   rewrite !nth_length. split. term. intros. 
-  noconf H3.
+  noconf H1.
  
   (* Lt *)
   apply nat_compare_lt in Heq. depelim H0.
@@ -709,20 +751,21 @@ Proof. intros. revert H1. funelim (hereditary_subst (U, u, t) (length Γ'));
 
   (* App no redex *)
   apply is_lambda_inr in Heq. revert Heq. 
-  on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). intros.
+  on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). 
+  intros.
   subst t3. 
   depelim H1.
   apply application with A; eauto. 
   eapply Hind; eauto.
-  on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). 
+  destruct_call hereditary_subst.
   eapply H; eauto.
 
   simpl in *.
   (* Fst redex *) clear Heq.
-  clear H H0. depelim H2. specialize (Hind _ _ H1 H2).
+  depelim H0. specialize (Hind _ _ H H0).
   rewrite Heq0 in Hind. specialize (Hind _ _ eq_refl).
-  destruct Hind. depelim H. intuition auto. noconf H4.
-  specialize (H1 _ _ eq_refl). noconf H1.
+  destruct Hind. depelim H1. intuition auto. noconf H1.
+  specialize (H2 _ _ eq_refl). noconf H2.
 
   (* Fst no redex *)
   apply is_pair_inr in Heq. 
@@ -731,10 +774,10 @@ Proof. intros. revert H1. funelim (hereditary_subst (U, u, t) (length Γ'));
   specialize (Hind _ _ H H0); eauto. now apply pair_elim_fst with B.
 
   (* Snd redex *) clear Heq.
-  clear H H0. depelim H2. specialize (Hind _ _ H1 H2).
+  depelim H0. specialize (Hind _ _ H H0).
   rewrite Heq0 in Hind. specialize (Hind _ _ eq_refl).
-  destruct Hind. depelim H. intuition auto. noconf H4.
-  specialize (H1 _ _ eq_refl). noconf H1.
+  destruct Hind. depelim H1. intuition auto. noconf H1.
+  specialize (H2 _ _ eq_refl). noconf H2.
 
   (* Snd no redex *)
   apply is_pair_inr in Heq. 
@@ -745,7 +788,6 @@ Qed.
 
 Instance: subrelation eq (flip impl).
 Proof. reduce. subst; auto. Qed.
-Ltac simp_hsubst ::= try (rewrite_strat (bottomup (hints hereditary_subst))); rewrite <- ?hereditary_subst_equation_1.
 
 Lemma hereditary_subst_subst U u t Γ' :
   (forall Γ T, Γ |-- u <= U ->
@@ -955,7 +997,7 @@ Proof. intros. apply (check_lift Γ t T [] H Γ'). Qed.
 Lemma synth_liftn {Γ Γ' t T} : Γ |-- t => T -> Γ' @ Γ |-- lift 0 (length Γ') t => T.
 Proof. intros. apply (synthetize_lift Γ t T [] H Γ'). Qed.
 Hint Resolve @check_liftn @synth_liftn : term.
-
+(* Write normalization function *)
 Lemma types_normalizes Γ t T : Γ |-- t : T → ∃ u, Γ |-- u <= T.
 Proof. induction 1. (* eta-exp *)
 

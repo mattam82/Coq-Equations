@@ -93,7 +93,9 @@ Ltac eapply_hyp :=
 Hint Extern 4 (_ = _) => reflexivity : solve_subterm.
 Hint Extern 10 => eapply_hyp : solve_subterm.
 
-Ltac solve_subterm := red; intros; on_last_hyp ltac:(fun H => induction H); constructor;
+Ltac solve_subterm := 
+  apply Transitive_Closure.wf_clos_trans;
+  red; intros; on_last_hyp ltac:(fun H => induction H); constructor;
   intros; on_last_hyp ltac:(fun HR => generalize_eqs HR; induction HR); simplify_dep_elim;
     try typeclasses eauto with solve_subterm.
 
