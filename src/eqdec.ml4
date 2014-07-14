@@ -32,7 +32,8 @@ open Termops
 open Declarations
 open Inductiveops
 open Environ
-open Sign
+open Context
+open Vars
 open Reductionops
 open Typeops
 open Type_errors
@@ -86,18 +87,18 @@ let subst_rel_context k cstrs ctx =
     ctx (k, [])
   in ctx'
     
-let inductive_info (mind, _ as ind) =
+let inductive_info ((mind, _ as ind),u) =
   let mindb, oneind = Global.lookup_inductive ind in
   let subst, paramargs, params = named_of_rel_context mindb.mind_params_ctxt in
   let nparams = List.length params in
   let env = List.fold_right push_named params (Global.env ()) in
   let info_of_ind i ind =
     let ctx = ind.mind_arity_ctxt in
-    let args, _ = list_chop ind.mind_nrealargs_ctxt ctx in
+    let args, _ = List.chop ind.mind_nrealargs_ctxt ctx in
     let args' = subst_rel_context 0 subst args in
-    let induct = (mind, i) in
-    let indname = Nametab.basename_of_global (IndRef induct) in
-    let indapp = applist (mkInd induct, paramargs) in    
+    let induct = ((mind, i),u) in
+    let indname = Nametab.basename_of_global (Globnames.IndRef (mind,i)) in
+    let indapp = applist (mkIndU induct, paramargs) in    
     let arities = arities_of_constructors env induct in
      let constrs =
       Array.map (fun ty -> 
@@ -108,8 +109,9 @@ let inductive_info (mind, _ as ind) =
     in
     let case c pred brs =
       let ci = {
-	ci_ind = induct;
+	ci_ind = mind,i;
 	ci_npar = List.length paramargs;
+	ci_cstr_nargs = ind.mind_consnrealargs;
 	ci_cstr_ndecls = ind.mind_consnrealdecls;
 	ci_pp_info = { ind_nargs = ind.mind_nrealargs; style = RegularStyle; } }
       in
@@ -139,7 +141,9 @@ let vars_of_pars pars =
 let derive_eq_dec ind =
   let info = inductive_info ind in
   let ctx = info.mutind_params in
+  let poly = Flags.is_universe_polymorphism () in
   let cl = fst (snd (eq_dec_class ())) in
+  let evdref = ref Evd.empty in
   let info_of ind =
     let argsvect = extended_rel_vect 0 ind.ind_args in
     let indapp = mkApp (ind.ind_c, argsvect) in
@@ -156,10 +160,24 @@ let derive_eq_dec ind =
     let typ = it_mkProd_or_LetIn app ind.ind_args in
     let full = it_mkNamedProd_or_LetIn typ ctx in
     let tc gr = 
-      let b, ty = Typeclasses.instance_constructor cl [indapp; mkApp (constr_of_global gr, Array.append (vars_of_pars ctx) argsvect) ] in
-      let ce = { const_entry_body = it_mkNamedLambda_or_LetIn (it_mkLambda_or_LetIn (Option.get b) ind.ind_args) ctx;
-  		 const_entry_type = Some (it_mkNamedProd_or_LetIn (it_mkProd_or_LetIn ty ind.ind_args) ctx);
-  		 const_entry_opaque = false; const_entry_secctx = None }
+      let b, ty = 
+	Typeclasses.instance_constructor cl 
+	  [indapp; mkapp evdref gr (Array.append (vars_of_pars ctx) argsvect) ] in
+      let body = 
+	it_mkNamedLambda_or_LetIn 
+	  (it_mkLambda_or_LetIn (Option.get b) ind.ind_args) ctx
+      in
+      let ce = 
+	{ const_entry_body = Future.from_val ((body,Univ.ContextSet.empty), Declareops.no_seff);
+  	  const_entry_type = Some (it_mkNamedProd_or_LetIn
+				     (it_mkProd_or_LetIn ty ind.ind_args) ctx);
+  	  const_entry_opaque = false; const_entry_secctx = None;
+	  const_entry_feedback = None;
+	  const_entry_polymorphic = false; (* FIXME *)
+	  const_entry_universes = Evd.universe_context !evdref;
+	  const_entry_inline_code = false;
+	  const_entry_proj = false;
+	}
       in ce
     in full, tc
   in
@@ -173,16 +191,19 @@ let derive_eq_dec ind =
   in
   let hook _ gr =
     List.iter (fun (ind, (stmt, tc)) -> 
-	       let ce = tc gr in
+	       let ce = tc (lazy gr) in
 	       let inst = Declare.declare_constant (add_suffix ind.ind_name "_EqDec") (DefinitionEntry ce, IsDefinition Instance) in
-		 Typeclasses.add_instance (Typeclasses.new_instance cl None true (ConstRef inst)))
+		 Typeclasses.add_instance (Typeclasses.new_instance (fst cl) None true 
+					     poly
+					     (Globnames.ConstRef inst)))
     indsl
   in
     Lemmas.start_proof_with_initialization
-      (Global, Proof Lemma) 
+      (Global, poly, Proof Lemma) 
+      (Evd.evar_universe_context !evdref)
       (Some (false, possible_guards, None))
       (List.map (fun (ind, (stmt, tc)) -> add_suffix ind.ind_name "_eqdec", (stmt, ([], []))) indsl)
-      None hook
+      None (Lemmas.mk_hook hook)
 
   (*   let impl =  *)
   (*     let xname = Name (id_of_string "x") in *)
@@ -293,10 +314,10 @@ let derive_eq_dec ind =
   (*   ignore(Subtac_obligations.add_definition ~hook noid stmt ~tactic:(noconf_tac ()) [||]) *)
      
 
-VERNAC COMMAND EXTEND Derive_EqDec
+VERNAC COMMAND EXTEND Derive_EqDec CLASSIFIED AS QUERY
 | [ "Derive" "Equality" "for" constr_list(c) ] -> [ 
     List.iter (fun c ->
-      let c' = Constrintern.interp_constr Evd.empty (Global.env ()) c in
+      let c', _ = Constrintern.interp_constr Evd.empty (Global.env ()) c in
 	match kind_of_term c' with
 	| Ind i -> derive_eq_dec i
 	| _ -> error "Expected an inductive type")

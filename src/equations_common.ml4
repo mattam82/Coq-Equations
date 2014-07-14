@@ -1,4 +1,3 @@
-(* -*- compile-command: "COQBIN=~/research/coq/trunk/bin/ make -k -C .. src/equations_plugin.cma src/equations_plugin.cmxs" -*- *)
 (************************************************************************)
 (*  v      *   The Coq Proof Assistant  /  The Coq Development Team     *)
 (* <O___,, * CNRS-Ecole Polytechnique-INRIA Futurs-Universite Paris Sud *)
@@ -6,9 +5,6 @@
 (*    //   *      This file is distributed under the terms of the       *)
 (*         *       GNU Lesser General Public License Version 2.1        *)
 (************************************************************************)
-
-(*i camlp4deps: "parsing/grammar.cma" i*)
-(*i camlp4use: "pa_extend.cmo" i*)
 
 (* $Id: equations.ml4 11996 2009-03-20 01:22:58Z letouzey $ *)
 
@@ -21,7 +17,7 @@ open Termops
 open Declarations
 open Inductiveops
 open Environ
-open Sign
+open Vars
 open Reductionops
 open Typeops
 open Type_errors
@@ -45,9 +41,18 @@ open Decl_kinds
 
 open Coqlib
 
+DECLARE PLUGIN "equations_plugin"
+
 let ($) f g = fun x -> f (g x)
 
 let proper_tails l = snd (List.fold_right (fun _ (t,ts) -> List.tl t, ts @ [t]) l (l, []))
+
+let list_tabulate f n =
+  let rec aux i =
+    match i with
+    | 0 -> []
+    | n -> (f n) :: aux (pred n)
+  in aux n
 
 let list_map_filter_i f l = 
   let rec aux i = function
@@ -58,31 +63,44 @@ let list_map_filter_i f l =
     | [] -> []
   in aux 0 l
 
+let list_try_find f l =
+  Option.get
+    (fold_left (fun acc x ->
+      match acc with
+      | None -> (try Some (f x) with Failure _ -> None)
+      | Some _ -> acc)
+       None l)
+
+let list_try_find_i f i l =
+  snd 
+    (fold_left (fun (i, acc) x ->
+      match acc with
+      | None -> (succ i, f i x)
+      | Some _ -> (i, acc))
+	(i, None) l)
+
 let find_constant contrib dir s =
-  constr_of_global (Coqlib.find_reference contrib dir s)
+  Universes.constr_of_global (Coqlib.find_reference contrib dir s)
 
 let contrib_name = "Equations"
 let init_constant dir s = find_constant contrib_name dir s
 let init_reference dir s = Coqlib.find_reference contrib_name dir s
 
 
-let declare_constant id body ty kind =
+let declare_constant id body ty poly univs kind =
   let ce =
-    { const_entry_body = body;
-      const_entry_type = ty;
-      const_entry_secctx = None;
-      const_entry_opaque = false }
+    Declare.definition_entry ~opaque:false ?types:ty ~poly ~univs body
   in 
   let cst = Declare.declare_constant id (DefinitionEntry ce, kind) in
     Flags.if_verbose message ((string_of_id id) ^ " is defined");
     cst
     
-let declare_instance id ctx cl args =
+let declare_instance id poly univs ctx cl args =
   let c, t = Typeclasses.instance_constructor cl args in
   let cst = declare_constant id (it_mkLambda_or_LetIn (Option.get c) ctx)
-    (Some (it_mkProd_or_LetIn t ctx)) (IsDefinition Instance)
+    (Some (it_mkProd_or_LetIn t ctx)) poly univs (IsDefinition Instance)
   in 
-  let inst = Typeclasses.new_instance cl None true (ConstRef cst) in
+  let inst = Typeclasses.new_instance (fst cl) None true poly (Globnames.ConstRef cst) in
     Typeclasses.add_instance inst; mkConst cst
 
 let coq_unit = lazy (init_constant ["Coq";"Init";"Datatypes"] "unit")
@@ -102,27 +120,38 @@ let fresh_id avoid id gl =
 let coq_eq = Lazy.lazy_from_fun Coqlib.build_coq_eq
 let coq_eq_refl = lazy ((Coqlib.build_coq_eq_data ()).Coqlib.refl)
 
-let coq_heq = lazy (Coqlib.coq_constant "mkHEq" ["Logic";"JMeq"] "JMeq")
-let coq_heq_refl = lazy (Coqlib.coq_constant "mkHEq" ["Logic";"JMeq"] "JMeq_refl")
+let coq_heq = lazy (Coqlib.coq_reference "mkHEq" ["Logic";"JMeq"] "JMeq")
+let coq_heq_refl = lazy (Coqlib.coq_reference "mkHEq" ["Logic";"JMeq"] "JMeq_refl")
 
-let coq_fix_proto = lazy (Coqlib.coq_constant "coq_fix_proto" ["Program";"Tactics"] "fix_proto")
+let coq_fix_proto = lazy (Coqlib.coq_reference "coq_fix_proto" ["Program";"Tactics"] "fix_proto")
 
-let mkEq t x y = 
-  mkApp (Lazy.force coq_eq, [| refresh_universes_strict t; x; y |])
+
+let mkapp evdref t args =
+  let evd, c = Evd.fresh_global (Global.env ()) !evdref (Lazy.force t) in
+  let _ = evdref := evd in
+    mkApp (c, args)
+
+let refresh_universes_strict evd t = 
+  let evd', t' = Evarsolve.refresh_universes (Some true) (Global.env()) !evd t in
+    evd := evd'; t'
+
+let mkEq evd t x y = 
+  mkapp evd coq_eq [| refresh_universes_strict evd t; x; y |]
     
-let mkRefl t x = 
-  mkApp (Lazy.force coq_eq_refl, [| refresh_universes_strict t; x |])
+let mkRefl evd t x = 
+  mkapp evd coq_eq_refl [| refresh_universes_strict evd t; x |]
 
-let mkHEq t x u y =
-  mkApp (Lazy.force coq_heq,
-	[| refresh_universes_strict t; x; refresh_universes_strict u; y |])
+let mkHEq evd t x u y =
+  mkapp evd coq_heq [| refresh_universes_strict evd t; x; refresh_universes_strict evd u; y |]
     
-let mkHRefl t x =
-  mkApp (Lazy.force coq_heq_refl,
-	[| refresh_universes_strict t; x |])
+let mkHRefl evd t x =
+  mkapp evd coq_heq_refl
+    [| refresh_universes_strict evd t; x |]
 
+let dummy_loc = Loc.dummy_loc 
 let tac_of_string str args =
-  Tacinterp.interp (TacArg(dummy_loc, TacCall(dummy_loc, Qualid (dummy_loc, qualid_of_string str), args)))
+  Tacinterp.interp (TacArg(dummy_loc, 
+			   TacCall(dummy_loc, Qualid (dummy_loc, qualid_of_string str), args)))
 
 let equations_path = ["Equations";"Equations"]
 let coq_dynamic_ind = lazy (init_constant equations_path "dynamic")
@@ -175,7 +204,8 @@ let coq_notT = lazy (init_constant ["Coq";"Init";"Logic_Type"] "notT")
 let coq_ImpossibleCall = lazy (init_constant ["Equations";"DepElim"] "ImpossibleCall")
 
 let unfold_add_pattern = lazy
-  (Tactics.unfold_in_concl [((false, []), EvalConstRef (destConst (Lazy.force coq_add_pattern)))])
+  (Tactics.unfold_in_concl [(Locus.AllOccurrences, 
+			     EvalConstRef (fst (destConst (Lazy.force coq_add_pattern))))])
 
 let coq_dynamic_list = lazy (mkApp (Lazy.force coq_list_ind, [| Lazy.force coq_dynamic_ind |]))
 
@@ -205,46 +235,12 @@ let rec head_of_constr t =
     | LetIn (_,_,_,c2) -> head_of_constr c2
     | App (f,args)  -> head_of_constr f
     | _      -> t
-      
-TACTIC EXTEND decompose_app
-[ "decompose_app" ident(h) ident(h') constr(c) ] -> [ fun gl ->
-    let f, args = decompose_app c in
-    let fty = pf_type_of gl f in
-    let flam = mkLambda (Name (id_of_string "f"), fty, mkApp (mkRel 1, Array.of_list args)) in
-      tclTHEN (letin_tac None (Name h) f None allHyps)
-	(letin_tac None (Name h') flam None allHyps) gl
-  ]
-END
-
-(* open Pfedit *)
-(* open Proof_trees *)
-
-(* let check_guard gl = *)
-(*   let pts = get_pftreestate () in *)
-(*   let pf = proof_of_pftreestate pts in *)
-(*   let (pfterm,_) = extract_open_pftreestate pts in *)
-(*     try *)
-(*       Inductiveops.control_only_guard (Evd.evar_env (goal_of_proof pf)) *)
-(* 	pfterm; tclIDTAC gl *)
-(*     with UserError(_,s) -> *)
-(*       tclFAIL 0 (str ("Condition violated: ") ++s) gl *)
-	
-(* TACTIC EXTEND guarded *)
-(* [ "guarded"  ] -> [ check_guard ] *)
-(* END *)
-
-TACTIC EXTEND abstract_match
-[ "abstract_match" ident(hyp) constr(c) ] -> [
-  match kind_of_term c with
-  | Case (_, _, c, _) -> letin_tac None (Name hyp) c None allHypsAndConcl
-  | _ -> tclFAIL 0 (str"Not a case expression")
-]
-END
-
 
 open Tacexpr
-
-let nowhere = { onhyps = Some []; concl_occs = no_occurrences_expr }
+open Locus
+open Context
+      
+let nowhere = { onhyps = Some []; concl_occs = NoOccurrences }
 
 (* Lifting a [rel_context] by [n]. *)
 
@@ -301,14 +297,14 @@ let unfold_head env (ids, csts) c =
 	(match Environ.named_body id env with
 	| Some b -> true, b
 	| None -> false, c)
-    | Const cst when Cset.mem cst csts ->
-	true, Environ.constant_value env cst
+    | Const (cst,_ as c) when Cset.mem cst csts ->
+	true, Environ.constant_value_in env c
     | App (f, args) ->
 	(match aux f with
 	| true, f' -> true, Reductionops.whd_betaiota Evd.empty (mkApp (f', args))
 	| false, _ -> 
 	    let done_, args' = 
-	      array_fold_left_i (fun i (done_, acc) arg -> 
+	      Array.fold_left_i (fun i (done_, acc) arg -> 
 		if done_ then done_, arg :: acc 
 		else match aux arg with
 		| true, arg' -> true, arg' :: acc
@@ -343,7 +339,7 @@ let autounfold_first db cl gl =
   in
     if did then
       match cl with
-      | Some hyp -> change_in_hyp None c' hyp gl
+      | Some hyp -> change_in_hyp None (fun env evd -> evd, c') hyp gl
       | None -> convert_concl_no_check c' DEFAULTcast gl
     else tclFAIL 0 (str "Nothing to unfold") gl
 
@@ -361,10 +357,30 @@ let autounfold_first db cl gl =
       
 open Extraargs
 open Eauto
+open Locusops
 
-TACTIC EXTEND autounfold_first
-| [ "autounfold_first" hintbases(db) "in" hyp(id) ] ->
-    [ autounfold_first (match db with None -> ["core"] | Some x -> x) (Some (id, InHyp)) ]
-| [ "autounfold_first" hintbases(db) ] ->
-    [ autounfold_first (match db with None -> ["core"] | Some x -> x) None ]
+TACTIC EXTEND decompose_app
+[ "decompose_app" ident(h) ident(h') constr(c) ] -> [ 
+  Proofview.Goal.enter (fun gl ->
+    let f, args = decompose_app c in
+    let fty = Tacmach.New.pf_type_of gl f in
+    let flam = mkLambda (Name (id_of_string "f"), fty, mkApp (mkRel 1, Array.of_list args)) in
+      (Proofview.tclTHEN (letin_tac None (Name h) f None allHyps)
+  	 (letin_tac None (Name h') flam None allHyps)))
+  ]
 END
+
+(* TACTIC EXTEND abstract_match *)
+(* [ "abstract_match" ident(hyp) constr(c) ] -> [ *)
+(*   match kind_of_term c with *)
+(*   | Case (_, _, c, _) -> letin_tac None (Name hyp) c None allHypsAndConcl *)
+(*   | _ -> tclFAIL 0 (str"Not a case expression") *)
+(* ] *)
+(* END *)
+
+(* TACTIC EXTEND autounfold_first *)
+(* | [ "autounfold_first" hintbases(db) "in" hyp(id) ] -> *)
+(*     [ autounfold_first (match db with None -> ["core"] | Some x -> x) (Some (id, InHyp)) ] *)
+(* | [ "autounfold_first" hintbases(db) ] -> *)
+(*     [ autounfold_first (match db with None -> ["core"] | Some x -> x) None ] *)
+(* END *)

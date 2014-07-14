@@ -20,7 +20,6 @@ theories/Below.v
 theories/Subterm.v
 theories/Equations.v
 theories/Fin.v
-theories/FunctionalInduction.v
 test-suite/Basics.v
 test-suite/rec.v
 test-suite/f91.v

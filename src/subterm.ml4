@@ -21,7 +21,6 @@ open Termops
 open Declarations
 open Inductiveops
 open Environ
-open Sign
 open Reductionops
 open Typeops
 open Type_errors
@@ -38,42 +37,46 @@ open Libnames
 open Topconstr
 open Util
 open Entries
+open Context
+open Vars
+open Globnames
 
 open Equations_common
 open Sigma
 
-module Obligations = Subtac_obligations
-
 let solve_subterm_tac () = tac_of_string "Equations.Subterm.solve_subterm" []
+
+let refresh_universes t = t (* MS: FIXME *)
 
 let derive_subterm ind =
   let global = true in
+  let poly = Flags.is_universe_polymorphism () in
   let sigma = Evd.empty in
-  let (mind, oneind as ms) = Global.lookup_inductive ind in
+  let (mind, oneind as ms) = Global.lookup_pinductive ind in
   let ctx = oneind.mind_arity_ctxt in
   let len = List.length ctx in
   let params = mind.mind_nparams in
-  let ctx = map_rel_context refresh_universes ctx in
+  (* let ctx = map_rel_context refresh_universes ctx in FIXME *)
   let lenargs = len - params in
-  let argbinders, parambinders = list_chop lenargs ctx in
-  let indapp = mkApp (mkInd ind, extended_rel_vect 0 parambinders) in
-  let getargs t = snd (list_chop params (snd (decompose_app t))) in
+  let argbinders, parambinders = List.chop lenargs ctx in
+  let indapp = mkApp (mkIndU ind, extended_rel_vect 0 parambinders) in
+  let getargs t = snd (List.chop params (snd (decompose_app t))) in
   let inds = 
     let branches = Array.mapi (fun i ty ->
       let args, concl = decompose_prod_assum ty in
       let lenargs = List.length args in
       let lenargs' = lenargs - params in
-      let args', params' = list_chop lenargs' args in
+      let args', params' = List.chop lenargs' args in
       let recargs = list_map_filter_i (fun i (n, _, t) ->
 	let ctx, ar = decompose_prod_assum t in
 	  match kind_of_term (fst (decompose_app ar)) with
-	  | Ind ind' when ind' = ind -> 
+	  | Ind (ind',_) when ind' = fst ind -> 
 	      Some (ctx, i, mkRel (succ i), getargs (lift (succ i) ar))
 	  | _ -> None) args'
       in
-      let constr = mkApp (mkConstruct (ind, succ i), extended_rel_vect 0 args) in
+      let constr = mkApp (mkConstructUi (ind, succ i), extended_rel_vect 0 args) in
       let constrargs = getargs concl in
-      let branches = list_map_i
+      let branches = List.map_i
 	(fun j (ctx, i', r, rargs) ->
 	  let ctxlen = List.length ctx in
 	  let subargs = 
@@ -128,7 +131,7 @@ let derive_subterm ind =
   in
   let branches = (* trans_branch ::  *)branches in
   let declare_one_ind i ind branches =
-    let indid = Nametab.basename_of_global (IndRef ind) in
+    let indid = Nametab.basename_of_global (Globnames.IndRef (fst ind)) in
     let subtermid = add_suffix indid "_direct_subterm" in
     let constructors = map (fun (i, j, constr) -> constr) branches in
     let consnames = map (fun (i, j, _) ->
@@ -138,7 +141,7 @@ let derive_subterm ind =
     let lenargs = List.length argbinders in
     let liftedbinders = lift_rel_context lenargs argbinders in
     let binders = liftedbinders @ argbinders in
-    let appparams = mkApp (mkInd ind, extended_rel_vect (2 * lenargs) parambinders) in
+    let appparams = mkApp (mkIndU ind, extended_rel_vect (2 * lenargs) parambinders) in
     let arity = it_mkProd_or_LetIn
       (mkProd (Anonymous, mkApp (appparams, extended_rel_vect lenargs argbinders),
 	      mkProd (Anonymous, lift 1 (mkApp (appparams, extended_rel_vect 0 argbinders)),
@@ -150,6 +153,7 @@ let derive_subterm ind =
 	mind_entry_consnames = consnames;	      
 	mind_entry_lc = constructors }
   in
+  let uctx = Evd.universe_context sigma in
   let declare_ind () =
     let inds = [declare_one_ind 0 ind branches] in
     let inductive =
@@ -160,20 +164,24 @@ let derive_subterm ind =
 	  | Some b -> (out_name n, LocalDef (refresh_universes b)) 
 	  | None -> (out_name n, LocalAssum (refresh_universes t)))
 	  parambinders;
-	mind_entry_inds = inds }
+	mind_entry_inds = inds;
+	mind_entry_polymorphic = poly;
+	mind_entry_private = None;
+	mind_entry_universes = uctx }
     in
     let k = Command.declare_mutual_inductive_with_eliminations Declare.KernelSilent inductive [] in
     let subind = mkInd (k,0) in
     let constrhints = 
-      list_map_i (fun i entry -> 
-	list_map_i (fun j _ -> None, true, Auto.PathAny, mkConstruct ((k,i),j)) 1 entry.mind_entry_lc)
+      List.map_i (fun i entry -> 
+	List.map_i (fun j _ -> None, poly, true, Auto.PathAny, 
+	  Auto.IsGlobRef (ConstructRef ((k,i),j))) 1 entry.mind_entry_lc)
 	0 inds 
     in Auto.add_hints false [subterm_relation_base]
       (Auto.HintsResolveEntry (List.concat constrhints));
       (* Proof of Well-foundedness *)
-      let relid = add_suffix (Nametab.basename_of_global (IndRef ind)) "_subterm" in
+      let relid = add_suffix (Nametab.basename_of_global (IndRef (fst ind))) "_subterm" in
       let id = add_prefix "well_founded_" relid in
-      let evm = ref Evd.empty in
+      let evm = ref sigma in
       let env = Global.env () in
       let env' = push_rel_context parambinders env in
       let kl = get_class (Typeclasses.class_of_constr (Lazy.force coq_wellfounded_class)) in
@@ -185,7 +193,7 @@ let derive_subterm ind =
 	  else
 	    (* Construct a family relation by packaging all indexes into 
 	       a sigma type *)
-	    let _, _, indices, indexproj, valproj, valsig, typesig = sigmaize env' sigma indapp in
+	    let _, _, indices, indexproj, valproj, valsig, typesig = sigmaize env' evm indapp in
 	    let subrel = 
 	      let valproj = lift 2 valproj in
 	      let liftindices = map (liftn 2 2) indices in
@@ -213,7 +221,8 @@ let derive_subterm ind =
 			    (mkApp (Lazy.force coq_relation, [| ty |]))
 			    parambinders) 
 	  in
-	  let cst = declare_constant relid def ty (Decl_kinds.IsDefinition Decl_kinds.Definition) in
+	  let cst = declare_constant relid def ty poly (Evd.universe_context !evm)
+	    (Decl_kinds.IsDefinition Decl_kinds.Definition) in
 	    (* Impargs.declare_manual_implicits false (ConstRef cst) ~enriching:false *)
 	    (* 	(list_map_i (fun i _ -> ExplByPos (i, None), (true, true, true)) 1 parambinders); *)
 	    Auto.add_hints false [subterm_relation_base] 
@@ -228,25 +237,28 @@ let derive_subterm ind =
       let body = it_mkLambda_or_LetIn (Option.get body) parambinders in
       let hook vis gr =
 	let cst = match gr with ConstRef kn -> kn | _ -> assert false in
-	let inst = Typeclasses.new_instance kl None global (ConstRef cst) in
+	let inst = Typeclasses.new_instance (fst kl) None global poly (ConstRef cst) in
 	  Typeclasses.add_instance inst
       in
       let obls, _, constr, typ = 
-	Eterm.eterm_obligations env id !evm (Evd.undefined_evars !evm) 0 body ty 
+	Obligations.eterm_obligations env id !evm 0 body ty 
       in
-	Obligations.add_definition id ~term:constr typ
-	  ~kind:(Decl_kinds.Global,Decl_kinds.Instance) 
-	  ~hook ~tactic:(solve_subterm_tac ()) obls
+      let ctx = Evd.evar_universe_context !evm in
+	Obligations.add_definition id ~term:constr typ ctx
+	  ~kind:(Decl_kinds.Global,poly,Decl_kinds.Instance) 
+	  ~hook:(Lemmas.mk_hook hook) ~tactic:(solve_subterm_tac ()) obls
   in ignore(declare_ind ())
     
-VERNAC COMMAND EXTEND Derive_Subterm
+VERNAC COMMAND EXTEND Derive_Subterm CLASSIFIED AS QUERY
 | [ "Derive" "Subterm" "for" constr(c) ] -> [ 
-    let c' = Constrintern.interp_constr Evd.empty (Global.env ()) c in
+    let c',_ = Constrintern.interp_constr Evd.empty (Global.env ()) c in
       match kind_of_term c' with
       | Ind i -> derive_subterm i
       | _ -> error "Expected an inductive type"
   ]
 END
+
+let list_chop = List.chop
 
 let derive_below ind =
   let mind, oneind = Global.lookup_inductive ind in
@@ -257,8 +269,10 @@ let derive_below ind =
   let indty = mkApp (mkInd ind, argsvect) in
   let binders = (Name (id_of_string "c"), None, indty) :: ctx in
   let argbinders, parambinders = list_chop (succ len - params) binders in
-  let arity = it_mkProd_or_LetIn (new_Type ()) argbinders in
-  let aritylam = it_mkLambda_or_LetIn (new_Type ()) argbinders in
+  let env = Global.env () in
+  let evd = ref Evd.empty in    
+  let arity = it_mkProd_or_LetIn (Evarutil.e_new_Type env evd) argbinders in
+  let aritylam = it_mkLambda_or_LetIn (Evarutil.e_new_Type env evd) argbinders in
   let paramsvect = Array.map (lift 1) (rel_vect (succ len - params) params) in
   let argsvect = rel_vect 0 (succ len - params) in
   let pid = id_of_string "P" in
@@ -326,6 +340,7 @@ let derive_below ind =
       mkCase ({
 	ci_ind = ind;
 	ci_npar = params;
+	ci_cstr_nargs = oneind.mind_consnrealargs;
 	ci_cstr_ndecls = Array.map pi1 branches;
 	ci_pp_info = { ind_nargs = oneind.mind_nrealargs; style = RegularStyle }
       }, aritylam, mkRel 1, Array.map pi2 branches)
@@ -333,6 +348,7 @@ let derive_below ind =
       mkCase ({
 	ci_ind = ind;
 	ci_npar = params;
+	ci_cstr_nargs = oneind.mind_consnrealargs;
 	ci_cstr_ndecls = Array.map pi1 branches;
 	ci_pp_info = { ind_nargs = oneind.mind_nrealargs; style = RegularStyle }
       }, aritylamb, mkRel 1, Array.map pi3 branches)
@@ -342,7 +358,10 @@ let derive_below ind =
   let fixB = mkFix (([| len |], 0), ([| Name recid |], [| arity |], [| subst_vars [recid; pid] termB |])) in
   let bodyB = it_mkLambda_or_LetIn fixB (pdecl :: parambinders) in
   let id = add_prefix "Below_" (Nametab.basename_of_global (IndRef ind)) in
-  let below = declare_constant id bodyB None (Decl_kinds.IsDefinition Decl_kinds.Definition) in
+  let poly = Flags.is_universe_polymorphism () in
+  let ctx = Evd.universe_context !evd in
+  let below = declare_constant id bodyB None poly ctx 
+    (Decl_kinds.IsDefinition Decl_kinds.Definition) in
   let fixb = mkFix (([| len |], 0), ([| Name recid |], [| arityb |], 
 				    [| subst_vars [recid; stepid] termb |])) in
   let stepdecl = 
@@ -355,14 +374,15 @@ let derive_below ind =
   in
   let bodyb = replace_vars [belowid, mkConst below] bodyb in
   let id = add_prefix "below_" (Nametab.basename_of_global (IndRef ind)) in
-    ignore(declare_constant id bodyb None (Decl_kinds.IsDefinition Decl_kinds.Definition))
+    ignore(declare_constant id bodyb None poly ctx 
+	     (Decl_kinds.IsDefinition Decl_kinds.Definition))
     
 
-VERNAC COMMAND EXTEND Derive_Below
+VERNAC COMMAND EXTEND Derive_Below CLASSIFIED AS QUERY
 | [ "Derive" "Below" "for" constr(c) ] -> [ 
-  let c' = Constrintern.interp_constr Evd.empty (Global.env ()) c in
+  let c', _ = Constrintern.interp_constr Evd.empty (Global.env ()) c in
     match kind_of_term c' with
-    | Ind i -> derive_below i
+    | Ind (i,_) -> derive_below i
     | _ -> error "Expected an inductive type"
   ]
 END

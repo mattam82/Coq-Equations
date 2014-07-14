@@ -20,7 +20,8 @@ open Termops
 open Declarations
 open Inductiveops
 open Environ
-open Sign
+open Context
+open Vars
 open Reductionops
 open Typeops
 open Type_errors
@@ -62,10 +63,10 @@ let ids_of_constr ?(all=false) vars c =
     | Var id -> Idset.add id vars
     | App (f, args) -> 
 	(match kind_of_term f with
-	| Construct (ind,_)
-	| Ind ind ->
+	| Construct ((ind,_),_)
+	| Ind (ind, _) ->
             let (mib,mip) = Global.lookup_inductive ind in
-	      array_fold_left_from
+	      Array.fold_left_from
 		(if all then 0 else mib.Declarations.mind_nparams)
 		aux vars args
 	| _ -> fold_constr aux vars c)
@@ -74,30 +75,34 @@ let ids_of_constr ?(all=false) vars c =
     
 let decompose_indapp f args =
   match kind_of_term f with
-  | Construct (ind,_) 
-  | Ind ind ->
+  | Construct ((ind,_),_) 
+  | Ind (ind,_) ->
       let (mib,mip) = Global.lookup_inductive ind in
       let first = mib.Declarations.mind_nparams_rec in
-      let pars, args = array_chop first args in
+      let pars, args = Array.chop first args in
 	mkApp (f, pars), args
   | _ -> f, args
 
 open Coqlib
 
-let mk_term_eq env sigma ty t ty' t' =
-  if Reductionops.is_conv env sigma ty ty' then
-    mkEq ty t t', mkRefl ty' t'
-  else
-    mkHEq ty t ty' t', mkHRefl ty' t'
+let e_conv env evdref t t' =
+  try evdref := Evd.conversion env !evdref Reduction.CONV t t'; true
+  with Reduction.NotConvertible -> false
 
-let make_abstract_generalize gl id concl dep ctx body c eqs args refls =
+let mk_term_eq env sigma ty t ty' t' =
+  if e_conv env sigma ty ty' then
+    mkEq sigma ty t t', mkRefl sigma ty' t'
+  else
+    mkHEq sigma ty t ty' t', mkHRefl sigma ty' t'
+
+let make_abstract_generalize gl evd id concl dep ctx body c eqs args refls =
   let meta = Evarutil.new_meta() in
   let eqslen = List.length eqs in
   let term, typ = mkVar id, pf_get_hyp_typ gl id in
     (* Abstract by the "generalized" hypothesis equality proof if necessary. *)
   let abshypeq, abshypt =
     if dep then
-      let eq, refl = mk_term_eq (push_rel_context ctx (pf_env gl)) (project gl) (lift 1 c) (mkRel 1) typ term in
+      let eq, refl = mk_term_eq (push_rel_context ctx (pf_env gl)) evd (lift 1 c) (mkRel 1) typ term in
 	mkProd (Anonymous, eq, lift 1 concl), [| refl |]
     else concl, [||]
   in
@@ -134,7 +139,7 @@ let hyps_of_vars env sign nogen hyps =
   if Idset.is_empty hyps then [] 
   else
     let (_,lh) =
-      Sign.fold_named_context_reverse
+      Context.fold_named_context_reverse
         (fun (hs,hl) (x,_,_ as d) ->
 	  if Idset.mem x nogen then (hs,hl)
 	  else if Idset.mem x hs then (hs,x::hl)
@@ -164,6 +169,7 @@ let linear vars args =
       true
     with Seen -> false
 
+
 let needs_generalization gl id =
   let f, args, def, id, oldid = 
     let oldid = pf_get_new_id id gl in
@@ -181,18 +187,19 @@ let needs_generalization gl id =
       let f', args' = decompose_indapp f args in
       let parvars = ids_of_constr ~all:true Idset.empty f' in
 	if not (linear parvars args') then true
-	else array_exists (fun x -> not (isVar x)) args'
+	else Array.exists (fun x -> not (isVar x)) args'
 	  
 TACTIC EXTEND needs_generalization
 | [ "needs_generalization" hyp(id) ] -> 
-    [ fun gl -> 
+    [ Proofview.V82.tactic (fun gl -> 
       if needs_generalization gl id 
       then tclIDTAC gl
-      else tclFAIL 0 (str"No generalization needed") gl ]
+      else tclFAIL 0 (str"No generalization needed") gl) ]
 END
 	
 let abstract_args gl generalize_vars dep id defined f args =
   let sigma = project gl in
+  let evd = ref sigma in
   let env = pf_env gl in
   let concl = pf_concl gl in
   let dep = dep || dependent (mkVar id) concl in
@@ -213,7 +220,7 @@ let abstract_args gl generalize_vars dep id defined f args =
 	List.hd rel, c
     in
     let argty = pf_type_of gl arg in
-    let argty = refresh_universes_strict argty in 
+    (* let argty = refresh_universes_strict argty in  *)
     let lenctx = List.length ctx in
     let liftargty = lift lenctx argty in
     let leq = constr_cmp Reduction.CUMUL liftargty ty in
@@ -230,9 +237,9 @@ let abstract_args gl generalize_vars dep id defined f args =
 	  let liftarg = lift (List.length ctx) arg in
 	  let eq, refl =
 	    if leq then
-	      mkEq (lift 1 ty) (mkRel 1) liftarg, mkRefl (lift (-lenctx) ty) arg
+	      mkEq evd (lift 1 ty) (mkRel 1) liftarg, mkRefl evd (lift (-lenctx) ty) arg
 	    else
-	      mkHEq (lift 1 ty) (mkRel 1) liftargty liftarg, mkHRefl argty arg
+	      mkHEq evd (lift 1 ty) (mkRel 1) liftargty liftarg, mkHRefl evd argty arg
 	  in
 	  let eqs = eq :: lift_list eqs in
 	  let refls = refl :: refls in
@@ -245,10 +252,10 @@ let abstract_args gl generalize_vars dep id defined f args =
     let parvars = ids_of_constr ~all:true Idset.empty f' in
       if not (linear parvars args') then true, f, args
       else
-	match array_find_i (fun i x -> not (isVar x)) args' with
+	match Array.findi (fun i x -> not (isVar x)) args' with
 	| None -> false, f', args'
 	| Some nonvar ->
-	    let before, after = array_chop nonvar args' in
+	    let before, after = Array.chop nonvar args' in
 	      true, mkApp (f', before), after
   in
     if dogen then
@@ -263,9 +270,12 @@ let abstract_args gl generalize_vars dep id defined f args =
 	else []
       in
       let body, c' = if defined then Some c', Retyping.get_type_of ctxenv Evd.empty c' else None, c' in
-	Some (make_abstract_generalize gl id concl dep ctx body c' eqs args refls,
+	Some (make_abstract_generalize gl evd id concl dep ctx body c' eqs args refls,
 	     dep, succ (List.length ctx), vars)
     else None
+
+let intro = 
+  Proofview.V82.of_tactic intro
       
 let abstract_generalize ?(generalize_vars=true) ?(force_dep=false) id gl =
   Coqlib.check_required_library ["Coq";"Logic";"JMeq"];
@@ -288,14 +298,15 @@ let abstract_generalize ?(generalize_vars=true) ?(force_dep=false) id gl =
       | Some (newc, dep, n, vars) -> 
 	  let tac =
 	    if dep then
-	      tclTHENLIST [refine newc; rename_hyp [(id, oldid)]; tclDO n intro; 
+	      tclTHENLIST [refine newc; rename_hyp [(id, oldid)]; 
+			   tclDO n intro; 
 			   generalize_dep ~with_let:true (mkVar oldid)]	      
 	    else
 	      tclTHENLIST [refine newc; clear [id]; tclDO n intro]
 	  in 
 	    if vars = [] then tac gl
 	    else tclTHEN tac 
-	      (fun gl -> tclFIRST [revert vars ;
+	      (fun gl -> tclFIRST [Proofview.V82.of_tactic (revert vars) ;
 				   tclMAP (fun id -> 
 				     tclTRY (generalize_dep ~with_let:true (mkVar id))) vars] gl) gl
 
@@ -329,24 +340,27 @@ let dependent_pattern ?(pattern_term=true) c gl =
     | Var id -> id
     | _ -> pf_get_new_id (id_of_string (hdchar (pf_env gl) c)) gl
   in
-  let mklambda ty (c, id, cty) =
-    let conclvar = subst_closed_term_occ all_occurrences c ty in
-      mkNamedLambda id cty conclvar
+  let mklambda (ty, evd) (c, id, cty) =
+    let conclvar, evd' = 
+      Find_subterm.subst_closed_term_occ (project gl) Locus.AllOccurrences c ty 
+    in
+      mkNamedLambda id cty conclvar, evd'
   in
   let subst = 
     let deps = List.rev_map (fun c -> (c, varname c, pf_type_of gl c)) deps in
       if pattern_term then (c, varname c, cty) :: deps
       else deps
   in
-  let concllda = List.fold_left mklambda (pf_concl gl) subst in
+  let concllda, evd = List.fold_left mklambda (pf_concl gl, project gl) subst in
   let conclapp = applistc concllda (List.rev_map pi1 subst) in
     convert_concl_no_check conclapp DEFAULTcast gl
 
 TACTIC EXTEND dependent_pattern
-| ["dependent" "pattern" constr(c) ] -> [ dependent_pattern c ]
+| ["dependent" "pattern" constr(c) ] -> [ 
+  Proofview.V82.tactic (dependent_pattern c) ]
 END
 
 TACTIC EXTEND dependent_pattern_from
 | ["dependent" "pattern" "from" constr(c) ] ->
-    [ dependent_pattern ~pattern_term:false c ]
+    [ Proofview.V82.tactic (dependent_pattern ~pattern_term:false c) ]
 END
