@@ -49,10 +49,9 @@ let proper_tails l = snd (List.fold_right (fun _ (t,ts) -> List.tl t, ts @ [t]) 
 
 let list_tabulate f n =
   let rec aux i =
-    match i with
-    | 0 -> []
-    | n -> (f n) :: aux (pred n)
-  in aux n
+    if i == n then []
+    else f i :: aux (succ i)
+  in aux 0
 
 let list_map_filter_i f l = 
   let rec aux i = function
@@ -63,21 +62,19 @@ let list_map_filter_i f l =
     | [] -> []
   in aux 0 l
 
-let list_try_find f l =
-  Option.get
-    (fold_left (fun acc x ->
-      match acc with
-      | None -> (try Some (f x) with Failure _ -> None)
-      | Some _ -> acc)
-       None l)
+let list_try_find f =
+  let rec try_find_f = function
+    | [] -> failwith "try_find"
+    | h::t -> try f h with Failure _ -> try_find_f t
+  in
+  try_find_f
 
-let list_try_find_i f i l =
-  snd 
-    (fold_left (fun (i, acc) x ->
-      match acc with
-      | None -> (succ i, f i x)
-      | Some _ -> (i, acc))
-	(i, None) l)
+let list_try_find_i f =
+  let rec try_find_f n = function
+    | [] -> failwith "try_find_i"
+    | h::t -> try f n h with Failure _ -> try_find_f (n+1) t
+  in
+  try_find_f
 
 let find_constant contrib dir s =
   Universes.constr_of_global (Coqlib.find_reference contrib dir s)
@@ -86,11 +83,20 @@ let contrib_name = "Equations"
 let init_constant dir s = find_constant contrib_name dir s
 let init_reference dir s = Coqlib.find_reference contrib_name dir s
 
+let make_definition ?opaque ?(poly=false) evd ?types b =
+  let env = Global.env () in
+  let evd, t = Typing.e_type_of env !evd b in
+  let evd = match types with
+    | None -> evd 
+    | Some t -> fst (Typing.e_type_of env evd t)
+  in
+  let evd, nf = Evarutil.nf_evars_and_universes evd in
+  let body = nf b and typ = Option.map nf types in
+    Declare.definition_entry ~poly ~univs:(Evd.universe_context evd)
+      ?types:typ body
 
-let declare_constant id body ty poly univs kind =
-  let ce =
-    Declare.definition_entry ~opaque:false ?types:ty ~poly ~univs body
-  in 
+let declare_constant id body ty poly evd kind =
+  let ce = make_definition ~opaque:false ~poly (ref evd) ?types:ty body in
   let cst = Declare.declare_constant id (DefinitionEntry ce, kind) in
     Flags.if_verbose message ((string_of_id id) ^ " is defined");
     cst
@@ -195,6 +201,7 @@ let coq_list_cons = lazy (init_constant list_path "cons")
 let coq_noconfusion_class = lazy (init_constant ["Equations";"DepElim"] "NoConfusionPackage")
   
 let coq_inacc = lazy (init_constant ["Equations";"DepElim"] "inaccessible_pattern")
+let coq_block = lazy (init_constant ["Equations";"DepElim"] "block")
 let coq_hide = lazy (init_constant ["Equations";"DepElim"] "hide_pattern")
 let coq_add_pattern = lazy (init_constant ["Equations";"DepElim"] "add_pattern")
 let coq_end_of_section_constr = lazy (init_constant ["Equations";"DepElim"] "the_end_of_the_section")

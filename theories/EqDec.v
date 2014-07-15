@@ -94,7 +94,7 @@ Section EqdepDec.
 
   Let proj (P:A -> Type) (exP:sigT P) (def:P x) : P x :=
     match exP with
-      | existT x' prf =>
+      | existT _ x' prf =>
         match eq_dec x' x with
           | left eqprf => eq_rect x' P prf x eqprf
           | _ => def
@@ -120,7 +120,7 @@ Section EqdepDec.
   Defined.
 
   Lemma eq_dec_refl : eq_dec x x = left _ (eq_refl x).
-  Proof. clear. case eq_dec. intros. f_equal. apply eq_proofs_unicity. 
+  Proof. case eq_dec. intros. f_equal. apply eq_proofs_unicity. 
     intro. congruence.
   Defined.
 

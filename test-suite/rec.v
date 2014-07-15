@@ -46,6 +46,7 @@ Section Nested.
   Defined.
     
 End Nested.
+
 Require Import Coq.Lists.SetoidList.
 Require Import Coq.Sorting.Sorting.
 Require Import Coq.Sorting.Permutation.
@@ -86,8 +87,8 @@ Proof with simpl; intros. intros.
   induction l; unfold compose; simpl; auto.
   generalize (H a).
   case_eq (p a); simpl; intros.
-  apply Permutation_cons. revert H1. 
-  case_eq (q a); intros qa; intros; try discriminate. elim H1.
+  apply Permutation_cons; auto. revert H1. 
+  case_eq (q a); intros qa; intros; try discriminate. elim H1. 
   apply IHl.
 
   revert H1. 
@@ -241,12 +242,7 @@ Ltac funelim_tac c tac ::=
     Context `(le_trans : Transitive A le).
 
     Lemma qs_sort (l : list A) : sort le (qs l).
-    Proof. intros.
-      pattern_call (qs l).
-      let p := constr:(fun_elim (f:=@qs)) in apply p.
-      constructor.
-
-      intros.
+    Proof. intros. funelim (qs l). constructor.
       apply sort_le_app; auto.
       constructor. auto. apply hdrel_filter.
       intros. simpl in H2.
@@ -258,7 +254,6 @@ Ltac funelim_tac c tac ::=
     Qed.
     Require Import EquivDec.
     Require Import Permutation.
-    Existing Instance Permutation_app'_Proper.
 
     Lemma qs_perm l : Permutation l (qs l).
     Proof.
@@ -283,7 +278,7 @@ Ltac funelim_tac c tac ::=
     Qed.
   
   End QuickSort.
-  (* Extraction Inline qs_comp qs_comp_proj qs_obligation_1 qs_obligation_2 qs_obligation_3. *)
-  (* Recursive Extraction qs. *)
+  Extraction Inline qs_comp qs_comp_proj qs_obligation_1 qs_obligation_2 qs_obligation_3.
+  Recursive Extraction qs.
 
 End RecMeasure.

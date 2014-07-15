@@ -220,7 +220,9 @@ let abstract_args gl generalize_vars dep id defined f args =
 	List.hd rel, c
     in
     let argty = pf_type_of gl arg in
-    (* let argty = refresh_universes_strict argty in  *)
+    let argty = 
+      Evarutil.evd_comb1
+	(Evarsolve.refresh_universes (Some true) (Global.env())) evd argty in
     let lenctx = List.length ctx in
     let liftargty = lift lenctx argty in
     let leq = constr_cmp Reduction.CUMUL liftargty ty in

@@ -1,4 +1,3 @@
-(* -*- compile-command: "make -k -C .. src/equations_plugin.cma src/equations_plugin.cmxs" -*- *)
 (************************************************************************)
 (*  v      *   The Coq Proof Assistant  /  The Coq Development Team     *)
 (* <O___,, * CNRS-Ecole Polytechnique-INRIA Futurs-Universite Paris Sud *)
@@ -44,6 +43,8 @@ open Globnames
 open Equations_common
 open Sigma
 
+let (=) (x : int) (y : int) = x == y
+
 let solve_subterm_tac () = tac_of_string "Equations.Subterm.solve_subterm" []
 
 let refresh_universes t = t (* MS: FIXME *)
@@ -70,7 +71,7 @@ let derive_subterm ind =
       let recargs = list_map_filter_i (fun i (n, _, t) ->
 	let ctx, ar = decompose_prod_assum t in
 	  match kind_of_term (fst (decompose_app ar)) with
-	  | Ind (ind',_) when ind' = fst ind -> 
+	  | Ind (ind',_) when eq_ind ind' (fst ind) -> 
 	      Some (ctx, i, mkRel (succ i), getargs (lift (succ i) ar))
 	  | _ -> None) args'
       in
@@ -187,7 +188,7 @@ let derive_subterm ind =
       let kl = get_class (Typeclasses.class_of_constr (Lazy.force coq_wellfounded_class)) in
       let body, ty =
 	let ty, rel = 
-	  if argbinders = [] then
+	  if List.is_empty argbinders then
 	    (* Standard homogeneous well-founded relation *)
 	    indapp, mkApp (subind, extended_rel_vect 0 parambinders)
 	  else
@@ -221,7 +222,7 @@ let derive_subterm ind =
 			    (mkApp (Lazy.force coq_relation, [| ty |]))
 			    parambinders) 
 	  in
-	  let cst = declare_constant relid def ty poly (Evd.universe_context !evm)
+	  let cst = declare_constant relid def ty poly !evm
 	    (Decl_kinds.IsDefinition Decl_kinds.Definition) in
 	    (* Impargs.declare_manual_implicits false (ConstRef cst) ~enriching:false *)
 	    (* 	(list_map_i (fun i _ -> ExplByPos (i, None), (true, true, true)) 1 parambinders); *)
@@ -229,8 +230,9 @@ let derive_subterm ind =
 	      (Auto.HintsUnfoldEntry [EvalConstRef cst]);
 	    mkApp (mkConst cst, extended_rel_vect 0 parambinders)
 	in
-	let evar = e_new_evar evm env'
-	  (mkApp (Lazy.force coq_wellfounded, [| ty; relation |]))
+	let evar = 
+	  let evt = (mkApp (Lazy.force coq_wellfounded, [| ty; relation |])) in
+	    e_new_evar evm env' evt
 	in Typeclasses.instance_constructor kl [ ty; relation; evar ]
       in
       let ty = it_mkProd_or_LetIn ty parambinders in
@@ -240,6 +242,8 @@ let derive_subterm ind =
 	let inst = Typeclasses.new_instance (fst kl) None global poly (ConstRef cst) in
 	  Typeclasses.add_instance inst
       in
+      let _bodyty = Evarutil.evd_comb1 (Typing.e_type_of (Global.env ())) evm body in
+      let _ty' = Evarutil.evd_comb1 (Typing.e_type_of (Global.env ())) evm ty in
       let obls, _, constr, typ = 
 	Obligations.eterm_obligations env id !evm 0 body ty 
       in
@@ -260,7 +264,8 @@ END
 
 let list_chop = List.chop
 
-let derive_below ind =
+let derive_below ctx (ind,u) =
+  let evd = ref (Evd.from_env ~ctx (Global.env ())) in
   let mind, oneind = Global.lookup_inductive ind in
   let ctx = oneind.mind_arity_ctxt in
   let len = List.length ctx in
@@ -270,9 +275,9 @@ let derive_below ind =
   let binders = (Name (id_of_string "c"), None, indty) :: ctx in
   let argbinders, parambinders = list_chop (succ len - params) binders in
   let env = Global.env () in
-  let evd = ref Evd.empty in    
-  let arity = it_mkProd_or_LetIn (Evarutil.e_new_Type env evd) argbinders in
-  let aritylam = it_mkLambda_or_LetIn (Evarutil.e_new_Type env evd) argbinders in
+  let u = Evarutil.e_new_Type ~rigid:Evd.univ_rigid env evd in
+  let arity = it_mkProd_or_LetIn u argbinders in
+  let aritylam = it_mkLambda_or_LetIn u argbinders in
   let paramsvect = Array.map (lift 1) (rel_vect (succ len - params) params) in
   let argsvect = rel_vect 0 (succ len - params) in
   let pid = id_of_string "P" in
@@ -311,7 +316,7 @@ let derive_below ind =
 	  fold_unit (fun g (c, t) -> 
 	    let t, args = decompose_app t in
 	    let args = Array.of_list (args @ [ c ]) in
-	      if t = recarg then 
+	      if eq_constr t recarg then 
 		Some (g (mkRel 0, 
 			mkApp (Lazy.force coq_prod, 
 			      [| mkApp (mkVar pid, args) ; 
@@ -322,7 +327,7 @@ let derive_below ind =
 	fold_unit (fun g (c, t) -> 
 	  let t, args = decompose_app t in
 	  let args = Array.of_list (args @ [ c ]) in
-	    if t = recarg then 
+	    if eq_constr t recarg then 
 	      let reccall = mkApp (mkVar recid, args) in
 	      let ty = mkApp (Lazy.force coq_prod, 
 			     [| mkApp (mkVar pid, args) ; 
@@ -355,12 +360,12 @@ let derive_below ind =
     in 
       it_mkLambda_or_LetIn caseB binders, it_mkLambda_or_LetIn caseb binders
   in
-  let fixB = mkFix (([| len |], 0), ([| Name recid |], [| arity |], [| subst_vars [recid; pid] termB |])) in
+  let fixB = mkFix (([| len |], 0), ([| Name recid |], [| arity |], 
+				     [| subst_vars [recid; pid] termB |])) in
   let bodyB = it_mkLambda_or_LetIn fixB (pdecl :: parambinders) in
   let id = add_prefix "Below_" (Nametab.basename_of_global (IndRef ind)) in
   let poly = Flags.is_universe_polymorphism () in
-  let ctx = Evd.universe_context !evd in
-  let below = declare_constant id bodyB None poly ctx 
+  let below = declare_constant id bodyB None poly !evd
     (Decl_kinds.IsDefinition Decl_kinds.Definition) in
   let fixb = mkFix (([| len |], 0), ([| Name recid |], [| arityb |], 
 				    [| subst_vars [recid; stepid] termb |])) in
@@ -374,15 +379,15 @@ let derive_below ind =
   in
   let bodyb = replace_vars [belowid, mkConst below] bodyb in
   let id = add_prefix "below_" (Nametab.basename_of_global (IndRef ind)) in
-    ignore(declare_constant id bodyb None poly ctx 
+    ignore(declare_constant id bodyb None poly (if poly then !evd else Evd.empty)
 	     (Decl_kinds.IsDefinition Decl_kinds.Definition))
     
 
 VERNAC COMMAND EXTEND Derive_Below CLASSIFIED AS QUERY
 | [ "Derive" "Below" "for" constr(c) ] -> [ 
-  let c', _ = Constrintern.interp_constr Evd.empty (Global.env ()) c in
+  let c', ctx = Constrintern.interp_constr Evd.empty (Global.env ()) c in
     match kind_of_term c' with
-    | Ind (i,_) -> derive_below i
+    | Ind i -> derive_below ctx i
     | _ -> error "Expected an inductive type"
   ]
 END

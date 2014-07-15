@@ -7,7 +7,7 @@
 (*         *       GNU Lesser General Public License Version 2.1        *)
 (************************************************************************)
 
-(*i camlp4deps: "parsing/grammar.cma" i*)
+(*i camlp4deps: "grammar/grammar.cma" i*)
 (*i camlp4use: "pa_extend.cmo" i*)
 
 (* $Id: equations.ml4 11996 2009-03-20 01:22:58Z letouzey $ *)

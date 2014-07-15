@@ -1,6 +1,5 @@
 -I src
 -R theories Equations
--custom "$(COQBIN)coqmktop -o $@ $(COQLIB)/plugins/subtac/subtac_plugin.cma $(COQLIB)/plugins/cc/cc_plugin.cma $^" "src/equations_plugin.cma" coqtop
 src/equations_common.ml4
 src/sigma.ml4
 src/subterm.ml4

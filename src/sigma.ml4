@@ -202,11 +202,10 @@ let declare_sig_of_ind env ind =
   let indid = ind_name ind in
   let simpl = Tacred.simpl env sigma in
   let poly = Flags.is_universe_polymorphism () in
-  let uctx = Evd.universe_context sigma in
   let indsig = 
     let indsigid = add_suffix indid "_sig" in
       declare_constant indsigid (it_mkLambda_or_LetIn pred pars)
-	None poly uctx (IsDefinition Definition)
+	None poly sigma (IsDefinition Definition)
   in
   let pack_fn = 
     let vbinder = (Name (add_suffix indid "_var"), None, fullapp) in
@@ -216,12 +215,12 @@ let declare_sig_of_ind env ind =
     (* let rettype = mkApp (mkConst indsig, extended_rel_vect (succ lenargs) pars) in *)
       declare_constant packid (simpl term)
 	None (* (Some (it_mkProd_or_LetIn rettype (vbinder :: ctx))) *)
-	poly uctx
+	poly Evd.empty
 	(IsDefinition Definition)
   in
   let inst = 
     declare_instance (add_suffix indid "_Signature")
-      poly uctx ctx (signature_class ()) 
+      poly Evd.empty ctx (signature_class ()) 
       [fullapp; lift lenargs idx; mkApp (mkConst indsig, extended_rel_vect lenargs pars);
        mkApp (mkConst pack_fn, extended_rel_vect 0 ctx)]
   in inst

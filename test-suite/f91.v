@@ -40,7 +40,6 @@ Next Obligation. destruct le_lt_dec. intros. destruct_call f91_comp_proj. simpl.
 Qed.
 
 Next Obligation. destruct le_lt_dec. intros. omega. omega. Defined.
-Solve Obligations.
 
 (** MS: Bug, this should be derivable, but needs the user's proofs as hints (omega calls) *)
 Next Obligation.

@@ -32,7 +32,10 @@ Ltac is_ground_goal :=
 
 Definition block {A : Type} (a : A) := a.
 
-Ltac block_goal := match goal with [ |- ?T ] => change (block T) end.
+Ltac block_goal :=
+  match goal with
+    | [ |- ?T ] => change (block T)
+  end.
 Ltac unblock_goal := unfold block in *.
 
 (** Notation for heterogenous equality. *)

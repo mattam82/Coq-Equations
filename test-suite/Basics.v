@@ -13,7 +13,7 @@ Module TestF.
   
   Next Obligation. exact IH. Defined.
   (* bug forgot to backport from trunk in obligations.ml *)
-  Solve Obligations.
+  (* Solve Obligations. *)
 
 End TestF.
 
@@ -82,7 +82,6 @@ testn (S n) <= testn n => {
   | 0 := S 0 ;
   | (S n') := S n' }.
 
-
 (* Recursive Extraction testn. *)
 
 Require Import Vectors.Vector.
@@ -144,7 +143,7 @@ unzip_dec A B _ _ ?(S n) (cons (pair x y) n v) with unzip_dec v := {
   | pair xs ys := (cons x xs, cons y ys) }.
 
 (* Bug *)
-Solve Obligations.
+(* Solve Obligations. *)
 
 Typeclasses Transparent vector_subterm.
 
@@ -400,7 +399,7 @@ Section Univ.
   foo ubool true := false ;
   foo ubool false := true ;
   foo unat t := t ;
-  foo (uarrow from to) f := id ∘ f.
+  foo (uarrow from to) f := id@{Set} ∘ f.
 
   Transparent foo.
   (* Eval lazy beta delta [ foo foo_obligation_1 foo_obligation_2 ] iota zeta in foo. *)
@@ -450,7 +449,7 @@ Ltac fix_block tac :=
 Fixpoint vapp {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
   match v with
     | nil => w
-    | cons a n' v' => cons a (vapp v' w)
+    | cons a v' => cons a (vapp v' w)
   end.
 
 Lemma JMeq_cons_inj A n m a (x : vector A n) (y : vector A m) : n = m -> JMeq x y -> JMeq (cons a x) (cons a y).
