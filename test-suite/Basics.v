@@ -12,8 +12,6 @@ Module TestF.
   }.
   
   Next Obligation. exact IH. Defined.
-  (* bug forgot to backport from trunk in obligations.ml *)
-  (* Solve Obligations. *)
 
 End TestF.
 
@@ -35,11 +33,21 @@ Notation " x |: n :| y " := (@Vector.cons _ x n y) (at level 20, right associati
 (* Notation " [[ x .. y ]] " := (Vector.cons x .. (Vector.cons y Vector.nil) ..) : vect_scope. *)
 Notation "[]v" := Vector.nil (at level 0) : vect_scope.
 
-Equations(nocomp) filter {A} (l : list A) (p : A -> bool) : list A :=
-filter A List.nil p := List.nil ;
-filter A (List.cons a l) p <= p a => {
-  | true := a :: filter l p ;
-  | false := filter l p }.
+Section FilterDef.
+  Context {A} (p : A -> bool).
+
+  Equations(nocomp) filter (l : list A) : list A :=
+  filter List.nil := List.nil ;
+  filter (List.cons a l) <= p a => {
+                         | true := a :: filter l ;
+                         | false := filter l }.
+End FilterDef.
+
+(* Equations(nocomp) filter {A} (l : list A) (p : A -> bool) : list A := *)
+(* filter A List.nil p := List.nil ; *)
+(* filter A (List.cons a l) p <= p a => { *)
+(*   | true := a :: filter l p ; *)
+(*   | false := filter l p }. *)
 
 Inductive incl {A} : relation (list A) :=
   stop : incl nil nil 
@@ -48,7 +56,7 @@ Inductive incl {A} : relation (list A) :=
 
 Global Transparent filter.
 
-Equations(nocomp) sublist {A} (p : A -> bool) (xs : list A) : incl (filter xs p) xs :=
+Equations(nocomp) sublist {A} (p : A -> bool) (xs : list A) : incl (filter p xs) xs :=
 sublist A p nil := stop ;
 sublist A p (cons x xs) with p x := {
   | true := keep (sublist p xs) ;
@@ -91,9 +99,12 @@ Implicit Arguments Vector.cons [ [A] [n] ].
 
 Open Local Scope vect_scope.
 
-Equations (nocomp) vapp' {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
-vapp' A ?(0) m []v w := w ;
-vapp' A ?(S n) m (Vector.cons a n v) w := Vector.cons a (vapp' v w).
+Section vapp_def.
+  Context {A : Type}.
+  Equations (nocomp) vapp' {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
+  vapp' ?(0) m []v w := w ;
+  vapp' ?(S n) m (Vector.cons a n v) w := Vector.cons a (vapp' v w).
+End vapp_def.
 
 (* Print Assumptions vapp'. *)
 
@@ -101,7 +112,7 @@ Derive Signature for vector.
 
 Require Import EqDec.
 
-Instance vector_eqdec {A n} `(EqDec A) : EqDec (vector A n). 
+Instance vector_eqdec {A n} `(EqDec A) : EqDec (vector A n).
 Proof. intros. intros x. induction x. left. now depelim y.
   intro y; depelim y.
   destruct (eq_dec h h0); subst. 
@@ -118,32 +129,43 @@ Defined.
 
 Definition vector_subterm A := t_subterm A.
 
+Derive Signature for t_direct_subterm.
+
 Instance well_founded_vector_direct_subterm' :
   forall A : Type, EqDec A -> WellFounded (vector_subterm A) | 0.
-Proof. intros. admit. Qed.
-(* apply Transitive_Closure.wf_clos_trans. *)
-(*   intro. simp_exists. induction X0. constructor; intros. *)
-(*   simp_exists. depelim H. *)
-(*   constructor; intros. *)
-(*   simp_exists. depelim H. *)
-(*   assumption. *)
-(* Defined. *)
+Proof. 
+  intros. 
+  apply Transitive_Closure.wf_clos_trans.
+  intro. simp_exists. induction X0. constructor; intros.
+  simp_exists. depelim H.
+  constructor; intros.
+  simp_exists. depelim H. 
+  assumption.
+Defined.
 
 Instance eqdep_prod A B `(EqDec A) `(EqDec B) : EqDec (prod A B).
 Proof. intros. intros x y. decide equality. Defined.
 
 Hint Unfold vector_subterm : subterm_relation.
-Typeclasses Opaque vector_subterm.
+(* Typeclasses Opaque vector_subterm. *)
 Import Vector.
 
-Equations unzip_dec {A B} `{EqDec A} `{EqDec B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
+(* Section unzip_dec_def. *)
+(*   Context {A B} `{EqDec A} `{EqDec B}. *)
+
+(*   Equations unzip_dec {n} (v : vector (A * B) n) : vector A n * vector B n := *)
+(*   unzip_dec n v by rec v (@vector_subterm (A * B)) := *)
+(*   unzip_dec ?(O) nil := ([]v, []v) ; *)
+(*   unzip_dec ?(S n) (cons (pair x y) n v) with unzip_dec v := { *)
+(*      | pair xs ys := (cons x xs, cons y ys) }. *)
+(* End unzip_dec_def. *)
+
+Equations unzip_dec {A B} `{EqDec A} `{EqDec B} 
+          {n} (v : vector (A * B) n) : vector A n * vector B n :=
 unzip_dec A B _ _ n v by rec v (@vector_subterm (A * B)) :=
 unzip_dec A B _ _ ?(O) nil := ([]v, []v) ;
 unzip_dec A B _ _ ?(S n) (cons (pair x y) n v) with unzip_dec v := {
   | pair xs ys := (cons x xs, cons y ys) }.
-
-(* Bug *)
-(* Solve Obligations. *)
 
 Typeclasses Transparent vector_subterm.
 
@@ -153,8 +175,8 @@ unzip A B ?(O) nil := (nil, nil) ;
 unzip A B ?(S n) (cons (pair x y) n v) <= unzip v => {
   | (pair xs ys) := (cons x xs, cons y ys) }.
 
-(* Print Assumptions unzip. *)
-(* Print Assumptions unzip_dec. *)
+Print Assumptions unzip.
+Print Assumptions unzip_dec.
 
 (*
 Ltac generalize_by_eqs v ::= generalize_eqs v.
@@ -171,7 +193,7 @@ nos_with (S m) with nos_with m := {
   | O := S O ;
   | S n' := O }.
 
-Hint Unfold noConfusion_nat : equations.
+(* Hint Unfold noConfusion_nat : equations. *)
 
 Obligation Tactic := program_simpl ; auto with arith.
 

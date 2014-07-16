@@ -2054,6 +2054,16 @@ let ind_elim_tac indid inds info gl =
   in
     tclTHENLIST [intro; onLastHypId (fun id -> applyind [mkVar id])] gl
 
+let pr_path = prlist_with_sep (fun () -> str":") pr_existential_key
+
+let eq_path path path' =
+  let rec aux path path' =
+    match path, path' with
+    | [], [] -> true
+    | hd :: tl, hd' :: tl' -> Evar.equal hd hd' && aux tl tl'
+    | _, _ -> false
+  in 
+    aux path path'
 
 let build_equations with_ind env id info data sign is_rec arity cst 
     f ?(alias:(constr * constr * splitting) option) prob split =
@@ -2255,7 +2265,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 		    | ev :: path -> 
 			let res = 
 			  list_try_find_i (fun i' (_, (_, path', _, _, _, _), _, _) ->
-			    if List.for_all2 Evar.equal path' path then Some (idx + 1 - i')
+			    if eq_path path' path then Some (idx + 1 - i')
 			    else None) 1 ind_stmts
 			in match res with None -> assert false | Some i -> i
 		  in

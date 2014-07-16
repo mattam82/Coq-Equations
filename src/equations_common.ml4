@@ -71,8 +71,11 @@ let list_try_find f =
 
 let list_try_find_i f =
   let rec try_find_f n = function
-    | [] -> failwith "try_find_i"
-    | h::t -> try f n h with Failure _ -> try_find_f (n+1) t
+    | [] -> None
+    | h::t -> 
+      match f n h with
+      | Some _ as res -> res 
+      | None -> try_find_f (n+1) t
   in
   try_find_f
 
