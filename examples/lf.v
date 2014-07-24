@@ -1,4 +1,4 @@
-Require Import Equations Omega.
+Require Import Equations.Equations Omega.
 Require Import List.
 
 Inductive term := 
@@ -422,19 +422,35 @@ with neutral : term -> Prop :=
 
 Hint Constructors normal neutral : term.
 
-Lemma check_lift Γ t T Γ' : Γ' @ Γ |-- t <= T -> 
+Lemma check_lift_gen Δ t T (H : Δ |-- t <= T) : forall Γ Γ', Δ = Γ' @ Γ ->
   forall Γ'', Γ' @ Γ'' @ Γ |-- lift (length Γ') (length Γ'') t <= T
-with synthetize_lift Γ t T Γ' : Γ' @ Γ |-- t => T -> 
+with synthetize_lift_gen Δ t T (H : Δ |-- t => T) : forall Γ Γ', Δ = Γ' @ Γ ->
   forall Γ'', Γ' @ Γ'' @ Γ |-- lift (length Γ') (length Γ'') t => T.
-Proof. intros H. depelim H; intros; simp lift; try solve [econstructor; term].
+Proof. 
+  destruct H; intros; simp lift. 
 
-  constructor.
-  change (S (length Γ')) with (length (A :: Γ')). rewrite app_comm_cons. now apply check_lift. 
-
-  intros H. depelim H; intros; simp lift; try solve [econstructor; term].
-  generalize (nth_extend_middle unit i Γ Γ' Γ'').
+  econstructor. 
+  change (S (length Γ')) with (length (A :: Γ')). change (A :: Γ' @ Γ'' @ Γ0) with ((A :: Γ') @ Γ'' @ Γ0).
+  eapply check_lift_gen; try eassumption. subst. rewrite app_comm_cons; subst; try eassumption; trivial.
+  
+  econstructor; eapply check_lift_gen; eassumption.
+  econstructor. 
+  
+  econstructor. eassumption.
+  eapply synthetize_lift_gen; eassumption.
+       
+  destruct H; intros; simp lift; try solve [econstructor; term].
+  clear check_lift_gen synthetize_lift_gen. subst.
+  generalize (nth_extend_middle unit i Γ0 Γ' Γ'').
   destruct nat_compare; intros H'; rewrite H'; simp lift; apply axiom_synth; autorewrite with list in H |- *; omega.
 Qed.
+
+Definition check_lift Γ t T Γ' (H : Γ' @ Γ |-- t <= T) : 
+  forall Γ'', Γ' @ Γ'' @ Γ |-- lift (length Γ') (length Γ'') t <= T := 
+  check_lift_gen (Γ' @ Γ) _ _ H _ _ eq_refl.
+Definition synthetize_lift Γ t T Γ' (H : Γ' @ Γ |-- t => T) : 
+  forall Γ'', Γ' @ Γ'' @ Γ |-- lift (length Γ') (length Γ'') t => T :=
+  synthetize_lift_gen (Γ' @ Γ) _ _ H _ _ eq_refl.
 
 Lemma check_lift1 {Γ t T A} : Γ |-- t <= T -> A :: Γ |-- lift 0 1 t <= T.
 Proof. intros. apply (check_lift Γ t T [] H [A]). Qed.
@@ -954,47 +970,43 @@ Proof.
 
   (* Pair *)
   simp is_pair in Heq. simpl in prf.
-  specialize (Hind Γ (product a b) H).
+  (* specialize (Hind Γ (product a b) H). *)
   assert( (Γ' @ (U :: Γ) |-- Fst t2 => T → Γ' @ Γ |-- u <= T ∧ a = T)).
-  clear H.
-
-  intros Ht; depelim Ht. specialize (Hind _ (A × B) H1). 
+  intros Ht; depelim Ht. specialize (Hind _ (A × B) H).
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). 
   noconf Heq0.
-  destruct Hind. specialize (H0 Ht). destruct H0. noconf H2. depelim H0. split; auto. depelim H0.
-  split; auto.
-  intros. depelim H0. intuition.
+  destruct Hind. specialize (H1 Ht). destruct H1. noconf H2. depelim H1. split; auto.
+  depelim H1. split; auto.
+  intros. depelim H1. intuition.
 
   assert (Γ' @ (U :: Γ) |-- Fst t2 => T → Γ' @ Γ |-- Fst t3 => T).
   intros Ht; depelim Ht.
   specialize (Hind _ (A × B) H). 
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). 
-  destruct o. destruct s. destruct Hind. 
+  destruct o. destruct h. destruct Hind. 
   specialize (H1 Ht). destruct H1.
   subst x. depelim H1. simp is_pair in Heq. discriminate.
   depelim H.
 
   apply is_pair_inr in Heq. simpl in Heq ; subst t3.
   eapply pair_elim_fst_synth. now apply Hind.
-  split; auto. intros. depelim H1. intuition.
+  split; auto. intros. depelim H1. intuition auto with term.
 
   (* Snd *)
-  clear H H0.
-  
   assert((Γ' @ (U :: Γ) |-- Snd t2 => T → Γ' @ Γ |-- v <= T ∧ b = T)).
 
-  intros Ht; depelim Ht. specialize (Hind _ (A × B) H1). 
+  intros Ht; depelim Ht. specialize (Hind _ (A × B) H). 
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). 
   noconf Heq0.
-  destruct Hind. specialize (H0 Ht). destruct H0. noconf H2. depelim H0. split; auto. depelim H0.
+  destruct Hind. specialize (H1 Ht). destruct H1. noconf H2. depelim H1. split; auto. depelim H1.
   split; auto.
-  intros. depelim H0. intuition.
+  intros. depelim H1. intuition auto with term.
 
   assert (Γ' @ (U :: Γ) |-- Snd t2 => T → Γ' @ Γ |-- Snd t3 => T).
   intros Ht; depelim Ht.
   specialize (Hind _ (A × B) H). 
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). 
-  destruct o. destruct s. destruct Hind. 
+  destruct o. destruct h. destruct Hind. 
   specialize (H1 Ht). destruct H1.
   subst x. depelim H1. simp is_pair in Heq. discriminate.
   depelim H.
@@ -1010,6 +1022,7 @@ Proof. intros. apply (check_lift Γ t T [] H Γ'). Qed.
 Lemma synth_liftn {Γ Γ' t T} : Γ |-- t => T -> Γ' @ Γ |-- lift 0 (length Γ') t => T.
 Proof. intros. apply (synthetize_lift Γ t T [] H Γ'). Qed.
 Hint Resolve @check_liftn @synth_liftn : term.
+
 (* Write normalization function *)
 Lemma types_normalizes Γ t T : Γ |-- t : T → ∃ u, Γ |-- u <= T.
 Proof. induction 1. (* eta-exp *)
@@ -1027,7 +1040,7 @@ Proof. induction 1. (* eta-exp *)
   apply checks_arrow in tt'. destruct tt' as [t'' [t't'' t'B]]. subst.
 
   generalize (hereditary_subst_subst _ _ t'' [] Γ B uu').
-  destruct_call hereditary_subst. destruct o. destruct s.
+  destruct_call hereditary_subst. destruct o. destruct h.
   simpl in *. intros. destruct H1. exists t0; intuition.
   simpl in *. intros. destruct H1. exists t0; intuition.
 
