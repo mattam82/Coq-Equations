@@ -49,7 +49,7 @@ open Equations_common
 
 let is_global = Globnames.is_global
 
-let coq_sigma = Lazy.lazy_from_fun Coqlib.build_sigma_type
+let coq_sigma = Lazy.from_fun Coqlib.build_sigma_type
 
 let mkAppG evd gr args = 
   let c = e_new_global evd gr in
@@ -96,13 +96,13 @@ let decompose_indapp f args =
   | _ -> f, args
 
 
-let sigT = Lazy.lazy_from_fun build_sigma_type
+let sigT = Lazy.from_fun build_sigma_type
 let sigT_info = lazy
   { ci_ind         = Globnames.destIndRef (Lazy.force sigT).typ;
     ci_cstr_nargs  = [|2|];
     ci_npar        = 2;
     ci_cstr_ndecls = [|2|];
-    ci_pp_info     =  { ind_nargs = 0; style = LetStyle }
+    ci_pp_info     =  { cstr_tags = [||]; ind_tags = []; style = LetStyle }
   }
 
 let telescope evd = function
@@ -227,7 +227,7 @@ let declare_sig_of_ind env ind =
 
 VERNAC COMMAND EXTEND Derive_Signature CLASSIFIED AS QUERY
 | [ "Derive" "Signature" "for" constr(c) ] -> [ 
-  let c', _ = Constrintern.interp_constr Evd.empty (Global.env ()) c in
+  let c', _ = Constrintern.interp_constr (Global.env ()) (Evd.from_env (Global.env())) c in
     match kind_of_term c' with
     | Ind (i,_) -> ignore(declare_sig_of_ind (Global.env ()) i)
     | _ -> error "Expected an inductive type"
@@ -236,7 +236,7 @@ END
 
 let get_signature env sigma ty =
   let sigma', (idx, _) = 
-    new_type_evar Evd.univ_flexible sigma env ~src:(dummy_loc, Evar_kinds.InternalHole) in
+    new_type_evar env sigma Evd.univ_flexible ~src:(dummy_loc, Evar_kinds.InternalHole) in
   let _idxev = fst (destEvar idx) in
   let inst = mkApp (Lazy.force signature_ref, [| ty; idx |]) in
   let sigma', tc =
@@ -251,6 +251,7 @@ let get_signature env sigma ty =
 TACTIC EXTEND get_signature_pack
 [ "get_signature_pack" hyp(id) ident(id') ] -> [ 
   Proofview.Goal.enter (fun gl ->
+    let gl = Proofview.Goal.assume gl in
     let env = Proofview.Goal.env gl in
     let sigma = Proofview.Goal.sigma gl in
     let sigsig, sigpack = get_signature env sigma (Tacmach.New.pf_get_hyp_typ id gl) in
@@ -277,19 +278,20 @@ let pattern_sigma c hyp env sigma =
 	constrs_of_coq_sigma env evd t p @ terms
     | _ -> terms
   in
-  let pat = Patternops.pattern_of_constr !evd in
+  let pat = Patternops.pattern_of_constr env !evd in
   let terms = 
     match terms with
     | (x, t, p, rest) :: _ :: _ -> terms @ constrs_of_coq_sigma env evd t p 
     | _ -> terms
   in
-  let projs = map (fun (x, t, p, rest) -> (snd (pat t), (fun env evd -> evd, p))) terms in
+  let projs = map (fun (x, t, p, rest) -> (snd (pat t), (fun evd -> evd, p))) terms in
   let projabs = tclTHENLIST (map (fun (t, p) -> change (Some t) p Locusops.onConcl) projs) in
     Proofview.V82.tactic (tclTHEN (Refiner.tclEVARS !evd) projabs)
       
 TACTIC EXTEND pattern_sigma
 [ "pattern" "sigma" hyp(id) ] -> [
   Proofview.Goal.enter (fun gl ->
+    let gl = Proofview.Goal.assume gl in
     let env = Proofview.Goal.env gl in
     let sigma = Proofview.Goal.sigma gl in
     let decl = Tacmach.New.pf_get_hyp id gl in
@@ -318,7 +320,8 @@ TACTIC EXTEND curry
     (fun gl ->
       match curry_hyp (project gl) (mkVar id) (pf_get_hyp_typ gl id) with
       | Some (prf, typ) -> 
-	cut_replacing id typ (Tacmach.refine_no_check prf) gl
+	tclTHENFIRST (Proofview.V82.of_tactic (assert_before_replacing id typ))
+	  (Tacmach.refine_no_check prf) gl
       | None -> tclFAIL 0 (str"No currying to do in" ++ pr_id id) gl) ]
 END
 

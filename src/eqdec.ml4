@@ -94,7 +94,7 @@ let inductive_info ((mind, _ as ind),u) =
   let env = List.fold_right push_named params (Global.env ()) in
   let info_of_ind i ind =
     let ctx = ind.mind_arity_ctxt in
-    let args, _ = List.chop ind.mind_nrealargs_ctxt ctx in
+    let args, _ = List.chop ind.mind_nrealargs ctx in
     let args' = subst_rel_context 0 subst args in
     let induct = ((mind, i),u) in
     let indname = Nametab.basename_of_global (Globnames.IndRef (mind,i)) in
@@ -113,7 +113,7 @@ let inductive_info ((mind, _ as ind),u) =
 	ci_npar = List.length paramargs;
 	ci_cstr_nargs = ind.mind_consnrealargs;
 	ci_cstr_ndecls = ind.mind_consnrealdecls;
-	ci_pp_info = { ind_nargs = ind.mind_nrealargs; style = RegularStyle; } }
+	ci_pp_info = { ind_tags = []; cstr_tags = [||]; style = RegularStyle; } }
       in
 	mkCase (ci, pred, c, brs)
     in
@@ -176,7 +176,6 @@ let derive_eq_dec ind =
 	  const_entry_polymorphic = false; (* FIXME *)
 	  const_entry_universes = Evd.universe_context !evdref;
 	  const_entry_inline_code = false;
-	  const_entry_proj = false;
 	}
       in ce
     in full, tc
@@ -200,7 +199,7 @@ let derive_eq_dec ind =
   in
     Lemmas.start_proof_with_initialization
       (Global, poly, Proof Lemma) 
-      (Evd.evar_universe_context !evdref)
+      !evdref
       (Some (false, possible_guards, None))
       (List.map (fun (ind, (stmt, tc)) -> add_suffix ind.ind_name "_eqdec", (stmt, ([], []))) indsl)
       None (Lemmas.mk_hook hook)
@@ -317,7 +316,7 @@ let derive_eq_dec ind =
 VERNAC COMMAND EXTEND Derive_EqDec CLASSIFIED AS QUERY
 | [ "Derive" "Equality" "for" constr_list(c) ] -> [ 
     List.iter (fun c ->
-      let c', _ = Constrintern.interp_constr Evd.empty (Global.env ()) c in
+      let c', _ = Constrintern.interp_constr (Global.env ()) Evd.empty c in
 	match kind_of_term c' with
 	| Ind i -> derive_eq_dec i
 	| _ -> error "Expected an inductive type")

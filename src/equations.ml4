@@ -53,14 +53,14 @@ open Depelim
 let debug = true
 
 let new_untyped_evar () =
-  let _, ev = new_pure_evar Evd.empty empty_named_context_val mkProp in
+  let _, ev = new_pure_evar empty_named_context_val Evd.empty mkProp in
     ev
 
 let check_term env evd c t =
-  Typing.check env evd c t
+  Typing.check env (ref evd) c t
 
 let check_type env evd t =
-  ignore(Typing.sort_of env evd t)
+  ignore(Typing.sort_of env (ref evd) t)
 
 let abstract_undefined evd =
   Evd.from_env ~ctx:(Evd.abstract_undefined_variables 
@@ -90,7 +90,7 @@ let tacident_arg h =
 
 let tacvar_arg h =
   let ipat = Genarg.in_gen (Genarg.rawwit Constrarg.wit_intro_pattern) 
-    (dummy_loc, Misctypes.IntroIdentifier h) in
+    (dummy_loc, Misctypes.IntroNaming (Misctypes.IntroIdentifier h)) in
     TacGeneric ipat
 
 let rec_tac h h' = 
@@ -281,7 +281,7 @@ and pat_of_constr c =
       PHide (destRel c)
   | App (f, args) when isConstruct f ->
       let ((ind,_),_ as cstr) = destConstruct f in
-      let nparams, _ = inductive_nargs ind in
+      let nparams = Inductiveops.inductive_nparams ind in
       let params, args = Array.chop nparams args in
       PCstr (cstr, inaccs_of_constrs (Array.to_list params) @ pats_of_constrs (Array.to_list args))
   | Construct f -> PCstr (f, [])
@@ -809,8 +809,9 @@ let lets_of_ctx env ctx evars s =
       match pat with
       | PRel i -> (ctx', cs, (i, id) :: varsubst, k, id :: ids)
       | _ -> 
-	  let ty = Typing.type_of envctx !evars c in
-	    ((Name id, Some (lift k c), lift k ty) :: ctx', (c :: cs), varsubst, succ k, id :: ids))
+	  let evars', ty = Typing.e_type_of envctx !evars c in
+	    (evars := evars';
+	     ((Name id, Some (lift k c), lift k ty) :: ctx', (c :: cs), varsubst, succ k, id :: ids)))
     ([],[],[],0,[]) s
   in
   let _, _, ctx' = List.fold_right (fun (n, b, t) (ids, i, ctx') ->
@@ -834,8 +835,7 @@ let interp_constr_in_rhs env ctx evars (i,comp,impls) ty s lets c =
   let pats = pats @ map (lift len) patslets in
     match ty with
     | None ->
-	let c, _ = interp_constr_evars_impls evars
-	  (push_rel_context ctx env) ~impls c 
+	let c, _ = interp_constr_evars_impls (push_rel_context ctx env) evars ~impls c 
 	in
 	let c' = substnl pats 0 c in
 	  evars := Typeclasses.resolve_typeclasses ~filter:Typeclasses.all_evars env !evars;
@@ -845,8 +845,8 @@ let interp_constr_in_rhs env ctx evars (i,comp,impls) ty s lets c =
     | Some ty -> 
 	let ty' = lift (len + letslen) ty in
 	let ty' = nf_evar !evars ty' in
-	let c, _ = interp_casted_constr_evars_impls evars
-	  (push_rel_context ctx env) ~impls c ty'
+	let c, _ = interp_casted_constr_evars_impls 
+	  (push_rel_context ctx env) evars ~impls c ty'
 	in
 	  evars := Typeclasses.resolve_typeclasses ~filter:Typeclasses.all_evars env !evars;
 	  let c' = nf_evar !evars (substnl pats 0 c) in
@@ -1237,7 +1237,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 	      in
 	      let env' = reset_with_named_context (val_of_named_context sign) env in
 	      let entry, proof = Proofview.init !evars [(env', t')] in
-	      let _, res, _ = Proofview.apply env' tac proof in
+	      let _, res, _, _ = Proofview.apply env' tac proof in
 	      let gls = Proofview.V82.goals res in
 		evars := gls.sigma;
 		if Proofview.finished res then
@@ -1334,10 +1334,12 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		      else PRel idx) (rels_of_tele ctx) in
 		  (ctx, pats, ctx)
 	      in
-	      let newty, evars' = Find_subterm.subst_closed_term_occ !evars 
-		Locus.AllOccurrences refterm
-		(Tacred.simpl (push_rel_context extnewctx env) 
-		   !evars (lift 1 (mapping_constr revctx ty)))
+	      let newty, evars' =
+		let env' = push_rel_context extnewctx env in
+		  Find_subterm.subst_closed_term_occ env' !evars 
+		    (Locus.AtOccs Locus.AllOccurrences) refterm
+		    (Tacred.simpl env'
+		       !evars (lift 1 (mapping_constr revctx ty)))
 	      in
 	      let () = evars := evars' in
 	      let newty = mapping_constr cmap newty in
@@ -1484,11 +1486,11 @@ let rec coq_nat_of_int = function
   | 0 -> Lazy.force coq_zero
   | n -> mkApp (Lazy.force coq_succ, [| coq_nat_of_int (pred n) |])
 
-let make_sensitive_from_oc oc =
-  Goal.bind
-    (Goal.Refinable.make
-       (fun h -> Goal.Refinable.constr_of_open_constr h false oc))
-    Goal.refine
+(* let make_sensitive_from_oc oc = *)
+(*   Refinable.bind *)
+(*     (Goal.Refinable.make *)
+(*        (fun h -> Goal.Refinable.constr_of_open_constr h false oc)) *)
+(*     Goal.refine *)
 
 open Evar_kinds
 
@@ -1507,7 +1509,7 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 	in
 	let ty' = it_mkProd_or_LetIn ty ctx in
 	let let_ty' = mkLambda_or_LetIn split (lift 1 ty') in
-	let term = e_new_evar isevar env ~src:(dummy_loc, QuestionMark (Define true)) let_ty' in
+	let term = e_new_evar env isevar ~src:(dummy_loc, QuestionMark (Define true)) let_ty' in
 	let ev = fst (destEvar term) in
 	  oblevars := Evar.Set.add ev !oblevars;
 	  term, ty'
@@ -1523,7 +1525,9 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 	let sterm, sty = aux rest in
 	let term, ty = 
 	  let term = mkLetIn (Name (id_of_string "prog"), sterm, sty, lift 1 sty) in
-	  let term = helper_evar isevar ev (Global.env ()) term (dummy_loc, QuestionMark (Define false)) in
+	  let term = helper_evar isevar ev (Global.env ()) term
+	    (dummy_loc, QuestionMark (Define false)) 
+	  in
 	    oblevars := Evar.Set.add ev !oblevars;
 	    helpers := (ev, rarg) :: !helpers;
 	    term, ty
@@ -1535,14 +1539,14 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 
     | Valid ((ctx, _, _), ty, substc, tac, (entry, pv), rest) ->
 	let goal_of_rest goal args (term, ty) = 
-	  Proofview.tclSENSITIVE (make_sensitive_from_oc (!isevar, (applistc term args)))
+	  Proofview.Refine.refine (fun evd -> evd, applistc term args)
 	in
 	let tac = Proofview.tclDISPATCH 
 	  (map (fun (goal, args, subst, x) -> goal_of_rest goal args (aux x)) rest)
 	in
-	let pv' = Proofview.apply env tac pv in
-	  isevar := (Proofview.V82.goals (pi2 pv')).sigma;
-	  let c = List.hd (Proofview.partial_proof entry (pi2 pv')) in
+	let _, pv', _, _ = Proofview.apply env tac pv in
+	  isevar := (Proofview.V82.goals pv').sigma;
+	  let c = List.hd (Proofview.partial_proof entry pv') in
 	    it_mkLambda_or_LetIn (subst_vars substc c) ctx, it_mkProd_or_LetIn ty ctx
 	      
     | Split ((ctx, _, _), rel, ty, sp) -> 
@@ -1578,7 +1582,7 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 			Lazy.force coq_nat)
 	  in
 	  let ty = it_mkLambda_or_LetIn (lift 2 ty) [nbbranches;nbdiscr] in
-	  let term = e_new_evar isevar env ~src:(dummy_loc, QuestionMark status) ty in
+	  let term = e_new_evar env isevar ~src:(dummy_loc, QuestionMark status) ty in
 	  let ev = fst (destEvar term) in
 	    oblevars := Evar.Set.add ev !oblevars;
 	    term
@@ -1712,7 +1716,7 @@ let abstract_rec_calls ?(do_subst=true) is_rec len protos c =
   in aux 0 [] c
 
 let below_transparent_state () =
-  Auto.Hint_db.transparent_state (Auto.searchtable_map "Below")
+  Hints.Hint_db.transparent_state (Hints.searchtable_map "Below")
 
 let simpl_star = 
   tclTHEN simpl_in_concl (onAllHyps (fun id -> simpl_in_hyp (id, Locus.InHyp)))
@@ -1815,7 +1819,7 @@ let rec aux_ind_fun info = function
 	    let id = pf_get_new_id id gl in
 	      tclTHENLIST
 		[to82 (letin_tac None (Name id) elim None Locusops.allHypsAndConcl); 
-		 clear_body [id]; aux_ind_fun info s] gl
+		 Proofview.V82.of_tactic (clear_body [id]); aux_ind_fun info s] gl
 	| _ -> tclFAIL 0 (str"Unexpected refinement goal in functional induction proof") gl
       in
       let cstrtac =
@@ -1846,7 +1850,7 @@ let ind_fun_tac is_rec f info fid split ind =
 	   onLastDecl (fun (n,b,t) gl ->
 	     let sort = pf_type_of gl t in
 	     let fixprot = mkApp ((*FIXME*)Universes.constr_of_global (Lazy.force coq_fix_proto), [|sort; t|]) in
-	       change_in_hyp None (fun env evd -> evd, fixprot) (n, Locus.InHyp) gl);
+	       Proofview.V82.of_tactic (change_in_hyp None (fun evd -> evd, fixprot) (n, Locus.InHyp)) gl);
 	   to82 intros; aux_ind_fun info split])
   else tclCOMPLETE (tclTHEN (to82 intros) (aux_ind_fun info split))
     
@@ -2048,13 +2052,14 @@ let ind_elim_tac indid inds info gl =
   let rec applyind args gl =
     match kind_of_term (pf_concl gl) with
     | LetIn (Name id, b, t, t') ->
-	tclTHENLIST [convert_concl_no_check (subst1 b t') DEFAULTcast; applyind (b :: args)] gl
+	tclTHENLIST [Proofview.V82.of_tactic (convert_concl_no_check (subst1 b t') DEFAULTcast);
+		     applyind (b :: args)] gl
     | _ -> tclTHENLIST [simpl_in_concl; to82 intros; 
-			prove_methods (apply (nf_beta (project gl) (applistc indid (rev args))))] gl
+			prove_methods (Proofview.V82.of_tactic (apply (nf_beta (project gl) (applistc indid (rev args)))))] gl
   in
     tclTHENLIST [intro; onLastHypId (fun id -> applyind [mkVar id])] gl
 
-let pr_path = prlist_with_sep (fun () -> str":") pr_existential_key
+let pr_path evd = prlist_with_sep (fun () -> str":") (pr_existential_key evd)
 
 let eq_path path path' =
   let rec aux path path' =
@@ -2169,27 +2174,28 @@ let build_equations with_ind env id info data sign is_rec arity cst
       { mind_entry_typename = indid;
 	mind_entry_arity = it_mkProd_or_LetIn (mkProd (Anonymous, arity, mkProp)) sign;
 	mind_entry_consnames = consnames;	      
-	mind_entry_lc = constructors }
+	mind_entry_lc = constructors;
+	mind_entry_template = false }
   in
   let declare_ind () =
     let inds = map declare_one_ind ind_stmts in
     let inductive =
-      { mind_entry_record = false;
+      { mind_entry_record = None;
 	mind_entry_polymorphic = false;
 	mind_entry_universes = Evd.universe_context !evd;
 	mind_entry_private = None;
-	mind_entry_finite = true;
+	mind_entry_finite = Finite;
 	mind_entry_params = []; (* (identifier * local_entry) list; *)
 	mind_entry_inds = inds }
     in
-    let k = Command.declare_mutual_inductive_with_eliminations Declare.KernelSilent inductive [] in
+    let k = Command.declare_mutual_inductive_with_eliminations inductive [] in
     let ind = mkInd (k,0) in
     let _ =
       List.iteri (fun i ind ->
 	let constrs = 
-	  List.map_i (fun j _ -> None, info.polymorphic, true, Auto.PathAny, 
-	    Auto.IsGlobRef (ConstructRef ((k,i),j))) 1 ind.mind_entry_lc in
-	  Auto.add_hints false [info.base_id] (Auto.HintsResolveEntry constrs))
+	  List.map_i (fun j _ -> None, info.polymorphic, true, Hints.PathAny, 
+	    Hints.IsGlobRef (ConstructRef ((k,i),j))) 1 ind.mind_entry_lc in
+	  Hints.add_hints false [info.base_id] (Hints.HintsResolveEntry constrs))
 	inds
     in
     let indid = add_suffix id "_ind_fun" in
@@ -2200,8 +2206,8 @@ let build_equations with_ind env id info data sign is_rec arity cst
     let evd = Evd.empty in
     let hookind subst gr = 
       let env = Global.env () in (* refresh *)
-      Auto.add_hints false [info.base_id] 
-	(Auto.HintsImmediateEntry [Auto.PathAny, info.polymorphic, Auto.IsGlobRef gr]);
+      Hints.add_hints false [info.base_id] 
+	(Hints.HintsImmediateEntry [Hints.PathAny, info.polymorphic, Hints.IsGlobRef gr]);
       let _funind_stmt =
 	let evd = ref Evd.empty in
 	let leninds = List.length inds in
@@ -2370,8 +2376,8 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	  Autorewrite.add_rew_rules info.base_id 
 	    [dummy_loc, Universes.fresh_global_instance (Global.env()) gr, true, None]
 	else (Typeclasses.declare_instance None true gr;
-	      Auto.add_hints false [info.base_id] 
-		(Auto.HintsExternEntry (0, None, impossible_call_tac (ConstRef cst))));
+	      Hints.add_hints false [info.base_id] 
+		(Hints.HintsExternEntry (0, None, impossible_call_tac (ConstRef cst))));
 	eqns.(pred i) <- true;
 	if Array.for_all (fun x -> x) eqns then (
 	  (* From now on, we don't need the reduction behavior of the constant anymore *)
@@ -2411,8 +2417,8 @@ let is_comp_obl comp hole_kind =
       | _ -> false
 
 let hintdb_set_transparency cst b db =
-  Auto.add_hints false [db] 
-    (Auto.HintsTransparencyEntry ([EvalConstRef cst], b))
+  Hints.add_hints false [db] 
+    (Hints.HintsTransparencyEntry ([EvalConstRef cst], b))
 
 let define_tree is_recursive impls status isevar env (i, sign, arity) comp ann split hook =
   let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
@@ -2456,7 +2462,7 @@ let convert_projection proj f_cst = fun gl ->
   let concl = pf_concl gl in
   let concl' = conv_proj_call proj f_cst concl in
     if eq_constr concl concl' then tclIDTAC gl
-    else convert_concl_no_check concl' DEFAULTcast gl
+    else Proofview.V82.of_tactic (convert_concl_no_check concl' DEFAULTcast) gl
 
 let unfold_constr c = 
   unfold_in_concl [(Locus.AllOccurrences, EvalConstRef (fst (destConst c)))]
@@ -2468,8 +2474,8 @@ let simpl_except (ids, csts) =
       (ids, csts)
       
 let simpl_of csts =
-  (* let (ids, csts) = Auto.Hint_db.unfolds (Auto.searchtable_map db) in *)
-  (* let (ids', csts') = Auto.Hint_db.unfolds (Auto.searchtable_map (db ^ "_unfold")) in *)
+  (* let (ids, csts) = Hints.Hint_db.unfolds (Hints.searchtable_map db) in *)
+  (* let (ids', csts') = Hints.Hint_db.unfolds (Hints.searchtable_map (db ^ "_unfold")) in *)
   (* let ids, csts = (Idset.union ids ids', Cset.union csts csts') in *)
   let opacify () = List.iter (fun cst -> 
     Global.set_strategy (ConstKey cst) Conv_oracle.Opaque) csts
@@ -2544,7 +2550,7 @@ let prove_unfolding_lemma info proj f_cst funf_cst split gl =
 	  	    [to82 (Equality.replace_by a1 a2
 	  		     (of82 (tclTHENLIST [solve_eq])));
 	  	     to82 (letin_tac None (Name id) a2 None Locusops.allHypsAndConcl);
-	  	     clear_body [id]; aux s] gl
+	  	     Proofview.V82.of_tactic (clear_body [id]); aux s] gl
 		else tclTHENLIST [unfolds; simpltac; reftac] gl
 	  | _ -> tclFAIL 0 (str"Unexpected unfolding lemma goal") gl
 	in
@@ -2605,7 +2611,7 @@ let rec translate_cases_pattern env avoid = function
       let n = next_ident_away (id_of_string "wildcard") avoid in
 	avoid := n :: !avoid; PUVar n
   | PatCstr (loc, (ind, _ as cstr), pats, Anonymous) ->
-      PUCstr (cstr, (fst (inductive_nargs ind)), map (translate_cases_pattern env avoid) pats)
+      PUCstr (cstr, (Inductiveops.inductive_nparams ind), map (translate_cases_pattern env avoid) pats)
   | PatCstr (loc, cstr, pats, Name id) ->
       user_err_loc (loc, "interp_pats", str "Aliases not supported by Equations")
 
@@ -2640,8 +2646,8 @@ let interp_eqn i is_rec isevar env impls sign arity recu eqn =
 	  (match r with
 	   | Inl (ConstructRef c) ->
 	       let (ind,_) = c in
-	       let nparams, _ = inductive_nargs ind in
-	       let nargs = constructor_nrealargs env c in
+	       let nparams = Inductiveops.inductive_nparams ind in
+	       let nargs = constructor_nrealargs c in
 	       let len = List.length l in
 	       let l' =
 		 if len < nargs then 
@@ -2730,8 +2736,8 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   let env = Global.env () in
   let poly = Flags.is_universe_polymorphism () in
   let isevar = ref (create_evar_defs Evd.empty) in
-  let ienv, ((env', sign), impls) = interp_context_evars isevar env l in
-  let arity = interp_type_evars isevar env' t in
+  let ienv, ((env', sign), impls) = interp_context_evars env isevar l in
+  let arity = interp_type_evars env' isevar t in
   let sign = nf_rel_context_evar ( !isevar) sign in
   let arity = nf_evar ( !isevar) arity in
   let arity, comp = 
@@ -2814,7 +2820,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   let baseid = string_of_id i in
   let (ids, csts) = full_transparent_state in
   let fix_proto_ref = destConstRef (Lazy.force coq_fix_proto) in
-  Auto.create_hint_db false baseid (ids, Cpred.remove fix_proto_ref csts) true;
+  Hints.create_hint_db false baseid (ids, Cpred.remove fix_proto_ref csts) true;
   let hook cmap helpers subst gr = 
     let info = { base_id = baseid; helpers_info = helpers; polymorphic = poly } in
     let f_cst = match gr with ConstRef c -> c | _ -> assert false in
@@ -3179,7 +3185,7 @@ let depcase (mind, i as ind) =
     ci_npar = nparams;
     ci_cstr_nargs = oneind.mind_consnrealargs;
     ci_cstr_ndecls = oneind.mind_consnrealdecls;
-    ci_pp_info = { ind_nargs = oneind.mind_nrealargs; style = RegularStyle; } }
+    ci_pp_info = { ind_tags = []; cstr_tags = [||]; style = RegularStyle; } }
   in
   let obj i =
     mkApp (mkInd ind,
@@ -3223,7 +3229,7 @@ let derive_dep_elimination ctx (i,u) loc =
 VERNAC COMMAND EXTEND Derive_DependentElimination CLASSIFIED AS QUERY
 | [ "Derive" "DependentElimination" "for" constr_list(c) ] -> [ 
     List.iter (fun c ->
-      let c',ctx = interp_constr Evd.empty (Global.env ()) c in
+      let c',ctx = interp_constr (Global.env ()) Evd.empty c in
 	match kind_of_term c' with
 	| Ind i -> ignore(derive_dep_elimination ctx i dummy_loc) (* (Glob_ops.loc_of_glob_constr c)) *)
 	| _ -> error "Expected an inductive type")
@@ -3249,7 +3255,7 @@ let mkcase env c ty constrs =
     ci_npar = params;
     ci_cstr_nargs = oneind.mind_consnrealargs;
     ci_cstr_ndecls = oneind.mind_consnrealdecls;
-    ci_pp_info = { ind_nargs = oneind.mind_nrealargs; style = RegularStyle; } }
+    ci_pp_info = { ind_tags = []; cstr_tags = [||]; style = RegularStyle; } }
   in
   let brs = 
     Array.map2_i (fun i id cty ->
@@ -3376,7 +3382,7 @@ VERNAC COMMAND EXTEND Derive_NoConfusion CLASSIFIED AS QUERY
 | [ "Derive" "NoConfusion" "for" constr_list(c) ] -> [ 
     List.iter (fun c ->
       let env = (Global.env ()) in
-      let c',ctx = interp_constr Evd.empty env c in
+      let c',ctx = interp_constr env Evd.empty c in
 	match kind_of_term c' with
 	| Ind i -> derive_no_confusion env (Evd.from_env ~ctx env) i
 	| _ -> error "Expected an inductive type")
@@ -3414,6 +3420,7 @@ END
 (* END *)
 
 let pattern_call ?(pattern_term=true) c gl =
+  let env = pf_env gl in
   let cty = pf_type_of gl c in
   let ids = ids_of_named_context (pf_hyps gl) in
   let deps =
@@ -3427,7 +3434,8 @@ let pattern_call ?(pattern_term=true) c gl =
 	ids
   in
   let mklambda ty (c, id, cty) =
-    let conclvar, _ = Find_subterm.subst_closed_term_occ (project gl) Locus.AllOccurrences c ty in
+    let conclvar, _ = Find_subterm.subst_closed_term_occ env (project gl) 
+      (Locus.AtOccs Locus.AllOccurrences) c ty in
       mkNamedLambda id cty conclvar
   in
   let subst = 
@@ -3437,7 +3445,7 @@ let pattern_call ?(pattern_term=true) c gl =
   in
   let concllda = List.fold_left mklambda (pf_concl gl) subst in
   let conclapp = applistc concllda (List.rev_map pi1 subst) in
-    convert_concl_no_check conclapp DEFAULTcast gl
+    Proofview.V82.of_tactic (convert_concl_no_check conclapp DEFAULTcast) gl
 
 TACTIC EXTEND pattern_call
 [ "pattern_call" constr(c) ] -> [ of82 (pattern_call c) ]

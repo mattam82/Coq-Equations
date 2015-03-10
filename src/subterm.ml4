@@ -52,7 +52,7 @@ let refresh_universes t = t (* MS: FIXME *)
 let derive_subterm ind =
   let global = true in
   let poly = Flags.is_universe_polymorphism () in
-  let sigma = Evd.empty in
+  let sigma = Evd.from_env (Global.env ()) in
   let (mind, oneind as ms) = Global.lookup_pinductive ind in
   let ctx = oneind.mind_arity_ctxt in
   let len = List.length ctx in
@@ -149,7 +149,8 @@ let derive_subterm ind =
 		     mkProp)))
       binders
     in
-      { mind_entry_typename = subtermid;
+      { mind_entry_template = false;
+	mind_entry_typename = subtermid;
 	mind_entry_arity = arity;
 	mind_entry_consnames = consnames;	      
 	mind_entry_lc = constructors }
@@ -158,8 +159,8 @@ let derive_subterm ind =
   let declare_ind () =
     let inds = [declare_one_ind 0 ind branches] in
     let inductive =
-      { mind_entry_record = false;
-	mind_entry_finite = true;
+      { mind_entry_record = None;
+	mind_entry_finite = Decl_kinds.Finite;
 	mind_entry_params = map (fun (n, b, t) -> 
 	  match b with
 	  | Some b -> (out_name n, LocalDef (refresh_universes b)) 
@@ -170,15 +171,15 @@ let derive_subterm ind =
 	mind_entry_private = None;
 	mind_entry_universes = uctx }
     in
-    let k = Command.declare_mutual_inductive_with_eliminations Declare.KernelSilent inductive [] in
+    let k = Command.declare_mutual_inductive_with_eliminations inductive [] in
     let subind = mkInd (k,0) in
     let constrhints = 
       List.map_i (fun i entry -> 
-	List.map_i (fun j _ -> None, poly, true, Auto.PathAny, 
-	  Auto.IsGlobRef (ConstructRef ((k,i),j))) 1 entry.mind_entry_lc)
+	List.map_i (fun j _ -> None, poly, true, Hints.PathAny, 
+	  Hints.IsGlobRef (ConstructRef ((k,i),j))) 1 entry.mind_entry_lc)
 	0 inds 
-    in Auto.add_hints false [subterm_relation_base]
-      (Auto.HintsResolveEntry (List.concat constrhints));
+    in Hints.add_hints false [subterm_relation_base]
+      (Hints.HintsResolveEntry (List.concat constrhints));
       (* Proof of Well-foundedness *)
       let relid = add_suffix (Nametab.basename_of_global (IndRef (fst ind))) "_subterm" in
       let id = add_prefix "well_founded_" relid in
@@ -226,13 +227,13 @@ let derive_subterm ind =
 	    (Decl_kinds.IsDefinition Decl_kinds.Definition) in
 	    (* Impargs.declare_manual_implicits false (ConstRef cst) ~enriching:false *)
 	    (* 	(list_map_i (fun i _ -> ExplByPos (i, None), (true, true, true)) 1 parambinders); *)
-	    Auto.add_hints false [subterm_relation_base] 
-	      (Auto.HintsUnfoldEntry [EvalConstRef cst]);
+	    Hints.add_hints false [subterm_relation_base] 
+	      (Hints.HintsUnfoldEntry [EvalConstRef cst]);
 	    mkApp (mkConst cst, extended_rel_vect 0 parambinders)
 	in
 	let evar = 
 	  let evt = (mkApp (Lazy.force coq_wellfounded, [| ty; relation |])) in
-	    e_new_evar evm env' evt
+	    e_new_evar env' evm evt
 	in Typeclasses.instance_constructor kl [ ty; relation; evar ]
       in
       let ty = it_mkProd_or_LetIn ty parambinders in
@@ -255,7 +256,7 @@ let derive_subterm ind =
     
 VERNAC COMMAND EXTEND Derive_Subterm CLASSIFIED AS QUERY
 | [ "Derive" "Subterm" "for" constr(c) ] -> [ 
-    let c',_ = Constrintern.interp_constr Evd.empty (Global.env ()) c in
+    let c',_ = Constrintern.interp_constr (Global.env ()) Evd.empty c in
       match kind_of_term c' with
       | Ind i -> derive_subterm i
       | _ -> error "Expected an inductive type"
@@ -291,7 +292,7 @@ let derive_below ctx (ind,u) =
   let aritylamb = it_mkLambda_or_LetIn tyb argbinders in
   let termB, termb = 
     let branches = Array.mapi (fun i ty ->
-      let nargs = constructor_nrealargs (Global.env ()) (ind, succ i) in
+      let nargs = constructor_nrealargs (ind, succ i) in
       let recarg = mkVar recid in
       let args, _ = decompose_prod_assum (substl [mkInd ind] ty) in
       let args, _ = list_chop (List.length args - params) args in
@@ -347,7 +348,7 @@ let derive_below ctx (ind,u) =
 	ci_npar = params;
 	ci_cstr_nargs = oneind.mind_consnrealargs;
 	ci_cstr_ndecls = Array.map pi1 branches;
-	ci_pp_info = { ind_nargs = oneind.mind_nrealargs; style = RegularStyle }
+	ci_pp_info = { ind_tags = []; cstr_tags = [||]; style = RegularStyle }
       }, aritylam, mkRel 1, Array.map pi2 branches)
     and caseb =
       mkCase ({
@@ -355,7 +356,7 @@ let derive_below ctx (ind,u) =
 	ci_npar = params;
 	ci_cstr_nargs = oneind.mind_consnrealargs;
 	ci_cstr_ndecls = Array.map pi1 branches;
-	ci_pp_info = { ind_nargs = oneind.mind_nrealargs; style = RegularStyle }
+	ci_pp_info = { ind_tags = []; cstr_tags = [||]; style = RegularStyle }
       }, aritylamb, mkRel 1, Array.map pi3 branches)
     in 
       it_mkLambda_or_LetIn caseB binders, it_mkLambda_or_LetIn caseb binders
@@ -385,7 +386,7 @@ let derive_below ctx (ind,u) =
 
 VERNAC COMMAND EXTEND Derive_Below CLASSIFIED AS QUERY
 | [ "Derive" "Below" "for" constr(c) ] -> [ 
-  let c', ctx = Constrintern.interp_constr Evd.empty (Global.env ()) c in
+  let c', ctx = Constrintern.interp_constr (Global.env ()) Evd.empty c in
     match kind_of_term c' with
     | Ind i -> derive_below ctx i
     | _ -> error "Expected an inductive type"

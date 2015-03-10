@@ -126,7 +126,7 @@ let fresh_id_in_env avoid id env =
 let fresh_id avoid id gl =
   fresh_id_in_env avoid id (pf_env gl)
 
-let coq_eq = Lazy.lazy_from_fun Coqlib.build_coq_eq
+let coq_eq = Lazy.from_fun Coqlib.build_coq_eq
 let coq_eq_refl = lazy ((Coqlib.build_coq_eq_data ()).Coqlib.refl)
 
 let coq_heq = lazy (Coqlib.coq_reference "mkHEq" ["Logic";"JMeq"] "JMeq")
@@ -338,10 +338,10 @@ open Errors
 let autounfold_first db cl gl =
   let st =
     List.fold_left (fun (i,c) dbname -> 
-      let db = try searchtable_map dbname 
+      let db = try Hints.searchtable_map dbname 
 	with Not_found -> errorlabstrm "autounfold" (str "Unknown database " ++ str dbname)
       in
-      let (ids, csts) = Hint_db.unfolds db in
+      let (ids, csts) = Hints.Hint_db.unfolds db in
 	(Idset.union ids i, Cset.union csts c)) (Idset.empty, Cset.empty) db
   in
   let did, c' = unfold_head (pf_env gl) st
@@ -349,8 +349,8 @@ let autounfold_first db cl gl =
   in
     if did then
       match cl with
-      | Some hyp -> change_in_hyp None (fun env evd -> evd, c') hyp gl
-      | None -> convert_concl_no_check c' DEFAULTcast gl
+      | Some hyp -> Proofview.V82.of_tactic (change_in_hyp None (fun evd -> evd, c') hyp) gl
+      | None -> Proofview.V82.of_tactic (convert_concl_no_check c' DEFAULTcast) gl
     else tclFAIL 0 (str "Nothing to unfold") gl
 
 (* 	  Cset.fold (fun cst -> cons (all_occurrences, EvalConstRef cst)) csts *)

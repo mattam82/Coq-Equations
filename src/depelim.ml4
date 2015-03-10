@@ -300,7 +300,7 @@ let abstract_generalize ?(generalize_vars=true) ?(force_dep=false) id gl =
       | Some (newc, dep, n, vars) -> 
 	  let tac =
 	    if dep then
-	      tclTHENLIST [refine newc; rename_hyp [(id, oldid)]; 
+	      tclTHENLIST [refine newc; Proofview.V82.of_tactic (rename_hyp [(id, oldid)]); 
 			   tclDO n intro; 
 			   generalize_dep ~with_let:true (mkVar oldid)]	      
 	    else
@@ -342,9 +342,11 @@ let dependent_pattern ?(pattern_term=true) c gl =
     | Var id -> id
     | _ -> pf_get_new_id (id_of_string (hdchar (pf_env gl) c)) gl
   in
+  let env = pf_env gl in
   let mklambda (ty, evd) (c, id, cty) =
     let conclvar, evd' = 
-      Find_subterm.subst_closed_term_occ (project gl) Locus.AllOccurrences c ty 
+      Find_subterm.subst_closed_term_occ env (project gl)
+	(Locus.AtOccs Locus.AllOccurrences) c ty 
     in
       mkNamedLambda id cty conclvar, evd'
   in
@@ -355,7 +357,7 @@ let dependent_pattern ?(pattern_term=true) c gl =
   in
   let concllda, evd = List.fold_left mklambda (pf_concl gl, project gl) subst in
   let conclapp = applistc concllda (List.rev_map pi1 subst) in
-    convert_concl_no_check conclapp DEFAULTcast gl
+    Proofview.V82.of_tactic (convert_concl_no_check conclapp DEFAULTcast) gl
 
 TACTIC EXTEND dependent_pattern
 | ["dependent" "pattern" constr(c) ] -> [ 
