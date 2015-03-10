@@ -1471,10 +1471,10 @@ let covering env evars data (clauses : clause list) prob ty =
 open Evd
 open Evarutil
 
-let helper_evar isevar evar env typ src =
+let helper_evar evm evar env typ src =
   let sign, typ', instance, _, _ = push_rel_context_to_named_context env typ in
-  let evm' = evar_declare sign evar typ' ~src !isevar in
-    isevar := evm'; mkEvar (evar, Array.of_list instance)
+  let evm' = evar_declare sign evar typ' ~src evm in
+    evm', mkEvar (evar, Array.of_list instance)
 
 let gen_constant dir s = Coqlib.gen_constant "equations" dir s
 
@@ -1497,10 +1497,10 @@ open Evar_kinds
 let term_of_tree status isevar env (i, delta, ty) ann tree =
   let oblevars = ref Evar.Set.empty in
   let helpers = ref [] in
-  let rec aux = function
+  let rec aux evm = function
     | Compute ((ctx, _, _), ty, RProgram rhs) -> 
 	let body = it_mkLambda_or_LetIn rhs ctx and typ = it_mkProd_or_subst ty ctx in
-	  body, typ
+	  evm, body, typ
 
     | Compute ((ctx, _, _), ty, REmpty split) ->
 	let split = (Name (id_of_string "split"), 
@@ -1509,12 +1509,12 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 	in
 	let ty' = it_mkProd_or_LetIn ty ctx in
 	let let_ty' = mkLambda_or_LetIn split (lift 1 ty') in
-	let term = e_new_evar env isevar ~src:(dummy_loc, QuestionMark (Define true)) let_ty' in
+	let evm, term = new_evar env evm ~src:(dummy_loc, QuestionMark (Define true)) let_ty' in
 	let ev = fst (destEvar term) in
 	  oblevars := Evar.Set.add ev !oblevars;
-	  term, ty'
+	  evm, term, ty'
 	   
-    | RecValid (id, rest) -> aux rest
+    | RecValid (id, rest) -> aux evm rest
 
     | Refined ((ctx, _, _), info, rest) ->
 	let (id, _, _), ty, rarg, path, ev, (f, args), newprob, newty =
@@ -1522,44 +1522,48 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 	  info.refined_arg, info.refined_path,
 	  info.refined_ex, info.refined_app, info.refined_newprob, info.refined_newty
 	in
-	let sterm, sty = aux rest in
-	let term, ty = 
+	let evm, sterm, sty = aux evm rest in
+	let evm, term, ty = 
 	  let term = mkLetIn (Name (id_of_string "prog"), sterm, sty, lift 1 sty) in
-	  let term = helper_evar isevar ev (Global.env ()) term
+	  let evm, term = helper_evar evm ev (Global.env ()) term
 	    (dummy_loc, QuestionMark (Define false)) 
 	  in
 	    oblevars := Evar.Set.add ev !oblevars;
 	    helpers := (ev, rarg) :: !helpers;
-	    term, ty
+	    evm, term, ty
 	in
 	let term = applist (f, args) in
 	let term = it_mkLambda_or_LetIn term ctx in
 	let ty = it_mkProd_or_subst ty ctx in
-	  term, ty
+	  evm, term, ty
 
     | Valid ((ctx, _, _), ty, substc, tac, (entry, pv), rest) ->
-	let goal_of_rest goal args (term, ty) = 
-	  Proofview.Refine.refine (fun evd -> evd, applistc term args)
-	in
 	let tac = Proofview.tclDISPATCH 
-	  (map (fun (goal, args, subst, x) -> goal_of_rest goal args (aux x)) rest)
+	  (map (fun (goal, args, subst, x) -> 
+	    Proofview.Refine.refine (fun evm -> 
+	      let evm, term, ty = aux evm x in
+		evm, applistc term args)) rest)
 	in
-	let _, pv', _, _ = Proofview.apply env tac pv in
-	  isevar := (Proofview.V82.goals pv').sigma;
-	  let c = List.hd (Proofview.partial_proof entry pv') in
-	    it_mkLambda_or_LetIn (subst_vars substc c) ctx, it_mkProd_or_LetIn ty ctx
+	let pv : Proofview_monad.proofview = Obj.magic pv in
+	let pv = { pv with Proofview_monad.solution = evm } in
+	let _, pv', _, _ = Proofview.apply env tac (Obj.magic pv) in
+	let c = List.hd (Proofview.partial_proof entry pv') in
+	  Proofview.return pv', 
+	  it_mkLambda_or_LetIn (subst_vars substc c) ctx, it_mkProd_or_LetIn ty ctx
 	      
     | Split ((ctx, _, _), rel, ty, sp) -> 
 	let before, decl, after = split_tele (pred rel) ctx in
+	let evd = ref evm in
 	let branches = 
 	  Array.map (fun split -> 
 	    match split with
-	    | Some s -> aux s
+	    | Some s -> let evm', c, t = aux !evd s in evd := evm'; c,t
 	    | None ->
 		(* dead code, inversion will find a proof of False by splitting on the rel'th hyp *)
-		coq_nat_of_int rel, Lazy.force coq_nat)
+	      coq_nat_of_int rel, Lazy.force coq_nat)
 	    sp 
 	in
+	let evm = !evd in
 	let branches_ctx =
 	  Array.mapi (fun i (br, brt) -> (id_of_string ("m_" ^ string_of_int i), Some br, brt))
 	    branches
@@ -1570,7 +1574,7 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 	    (0, []) branches_ctx
 	in
 	let liftctx = lift_context (Array.length branches) ctx in
-	let case =
+	let evm, case =
 	  let ty = it_mkProd_or_LetIn ty liftctx in
 	  let ty = it_mkLambda_or_LetIn ty branches_lets in
 	  let nbbranches = (Name (id_of_string "branches"),
@@ -1582,15 +1586,16 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 			Lazy.force coq_nat)
 	  in
 	  let ty = it_mkLambda_or_LetIn (lift 2 ty) [nbbranches;nbdiscr] in
-	  let term = e_new_evar env isevar ~src:(dummy_loc, QuestionMark status) ty in
+	  let evm, term = new_evar env evm ~src:(dummy_loc, QuestionMark status) ty in
 	  let ev = fst (destEvar term) in
 	    oblevars := Evar.Set.add ev !oblevars;
-	    term
+	    evm, term
 	in       
 	let casetyp = it_mkProd_or_subst ty ctx in
-	  mkCast(case, DEFAULTcast, casetyp), casetyp
+	  evm, mkCast(case, DEFAULTcast, casetyp), casetyp
   in 
-  let term, typ = aux tree in
+  let evm, term, typ = aux !isevar tree in
+    isevar := evm;
     !helpers, !oblevars, term, typ
 
 open Constrintern

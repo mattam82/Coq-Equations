@@ -62,7 +62,7 @@ sublist A p (cons x xs) with p x := {
   | true := keep (sublist p xs) ;
   | false := skip (sublist p xs) }.
 
-(* Print Assumptions sublist. *)
+Print Assumptions sublist.
 
 Ltac rec ::= rec_wf_eqns.
 

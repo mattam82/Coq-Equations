@@ -37,7 +37,7 @@ Next Obligation. destruct le_lt_dec. intros. destruct_call f91_comp_proj. simpl.
   subst x. simpl. omega.
 
   elimtype False. omega.
-Qed.
+Defined.
 
 Next Obligation. destruct le_lt_dec. intros. omega. omega. Defined.
 
