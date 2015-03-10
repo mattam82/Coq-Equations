@@ -1,8 +1,8 @@
 Equations - A plugin for dependent pattern-matching
 ===================================================
-Copyright 2009-2013 Matthieu Sozeau <matthieu.sozeau@inria.fr>
+Copyright 2009-2015 Matthieu Sozeau <matthieu.sozeau@inria.fr>
 
-To compile equations, simply run [coq_makefile -f Make -o Makefile; make]
+To compile equations, simply run [coq_makefile -f _CoqProject -o Makefile; make]
 in the toplevel directory, with coqc and ocamlc in your path.
 
 Then add the paths to your .coqrc:
