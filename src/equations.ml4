@@ -1334,14 +1334,12 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		      else PRel idx) (rels_of_tele ctx) in
 		  (ctx, pats, ctx)
 	      in
-	      let newty, evars' =
+	      let newty =
 		let env' = push_rel_context extnewctx env in
-		  Find_subterm.subst_closed_term_occ env' !evars 
-		    (Locus.AtOccs Locus.AllOccurrences) refterm
+		  subst_term refterm
 		    (Tacred.simpl env'
 		       !evars (lift 1 (mapping_constr revctx ty)))
 	      in
-	      let () = evars := evars' in
 	      let newty = mapping_constr cmap newty in
 		    (* The new problem forces a reordering of patterns under the refinement
 		       to make them match up to the context map. *)

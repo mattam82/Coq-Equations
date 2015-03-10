@@ -74,7 +74,8 @@ Next Obligation.
   induction t. 
   constructor; intros. simpl in *. inversion H.
   constructor; intros. simpl in *. inversion H.
-  subst. noconf H7. noconf H3. destruct y; apply IHt.
+  subst. destruct y; simpl in *. noconf H7. apply JMeq_eq in H1. subst. noconf H3. 
+  apply JMeq_eq in H2. subst. apply IHt.
 Defined.
 
 Require Import Arith Wf_nat.
@@ -421,7 +422,7 @@ Section Univ.
   foo ubool true := false ;
   foo ubool false := true ;
   foo unat t := t ;
-  foo (uarrow from to) f := id@{Set} ∘ f.
+  foo (uarrow from to) f := id ∘ f.
 
   Transparent foo.
   (* Eval lazy beta delta [ foo foo_obligation_1 foo_obligation_2 ] iota zeta in foo. *)
