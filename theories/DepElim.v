@@ -324,24 +324,24 @@ Ltac elim_ind p := elim_tac ltac:(fun p el => induction p using el) p.
 (** Lemmas used by the simplifier, mainly rephrasings of [eq_rect], [eq_ind]. *)
 
 Lemma solution_left : ∀ {A} {B : A -> Type} (t : A), B t -> (∀ x, x = t -> B x).
-Proof. intros; subst. apply X. Defined.
+Proof. intros A B t H x eq. destruct eq. apply H. Defined.
 
 Lemma solution_left_dep : ∀ {A} (t : A) {B : forall (x : A), (x = t -> Type)}, B t eq_refl -> (∀ x (Heq : x = t), B x Heq).
-Proof. intros; subst. apply X. Defined.
+Proof. intros A t B H x eq. destruct eq. apply H. Defined.
 
 Lemma solution_right : ∀ {A} {B : A -> Type} (t : A), B t -> (∀ x, t = x -> B x).
-Proof. intros; subst; apply X. Defined.
+Proof. intros A B t H x eq. destruct eq. apply H. Defined.
 
 Lemma solution_right_dep : ∀ {A} (t : A) {B : forall (x : A), (t = x -> Type)}, B t eq_refl -> (∀ x (Heq : t = x), B x Heq).
-Proof. intros; subst. apply X. Defined.
+Proof. intros A t B H x eq. destruct eq. apply H. Defined.
 
 Lemma solution_left_let : ∀ {A} {B : A -> Type} (b : A) (t : A), 
   (b = t -> B t) -> (let x := b in x = t -> B x).
-Proof. intros; subst. subst b. apply X. reflexivity. Defined.
+Proof. intros A B b t H x eq. subst x. destruct eq. apply H. reflexivity. Defined.
 
 Lemma solution_right_let : ∀ {A} {B : A -> Type} (b t : A), 
   (t = b -> B t) -> (let x := b in t = x -> B x).
-Proof. intros; subst; apply X. reflexivity. Defined.
+Proof. intros A B b t H x eq. subst x. destruct eq. apply H. reflexivity. Defined.
 
 Lemma deletion : ∀ {A B} (t : A), B -> (t = t -> B).
 Proof. intros; assumption. Defined.
@@ -378,6 +378,13 @@ Hint Unfold solution_left solution_right deletion simplification_heq
   simplification_existT1 simplification_existT2 simplification_K
   simplification_K_dec simplification_existT2_dec
   eq_rect_r eq_rec eq_ind : equations.
+
+(** Makes these definitions disappear at extraction time *)
+Extraction Inline solution_right_dep solution_right solution_left solution_left_dep.
+Extraction Inline solution_right_let solution_left_let deletion.
+Extraction Inline simplification_heq simplification_existT2.
+Extraction Inline simplification_existT1 simplification_existT2_dec.
+Extraction Inline simplification_K simplification_K_dec.
 
 (** Simply unfold as much as possible. *)
 

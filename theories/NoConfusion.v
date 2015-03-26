@@ -26,4 +26,7 @@ Ltac solve_noconf :=
 
 Derive NoConfusion for unit bool nat option sum prod list sigT sig.
 
+(* FIXME should be done by the derive command *)
+Extraction Inline noConfusion noConfusion_nat NoConfusionPackage_nat.
+
 
