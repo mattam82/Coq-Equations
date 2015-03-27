@@ -22,6 +22,10 @@ open Type_errors
 open Pp
 open Proof_type
 
+open Tacexpr
+open Locus
+open Context
+
 open Glob_term
 open Retyping
 open Pretype_errors
@@ -39,9 +43,10 @@ open Decl_kinds
 
 open Coqlib
 
-DECLARE PLUGIN "equations_plugin"
-
 let ($) f g = fun x -> f (g x)
+
+let to82 t = Proofview.V82.of_tactic t
+let of82 t = Proofview.V82.tactic t
 
 let proper_tails l = snd (List.fold_right (fun _ (t,ts) -> List.tl t, ts @ [t]) l (l, []))
 
@@ -244,10 +249,6 @@ let rec head_of_constr t =
     | App (f,args)  -> head_of_constr f
     | _      -> t
 
-open Tacexpr
-open Locus
-open Context
-      
 let nowhere = { onhyps = Some []; concl_occs = NoOccurrences }
 
 (* Lifting a [rel_context] by [n]. *)
@@ -350,45 +351,3 @@ let autounfold_first db cl gl =
       | Some hyp -> Proofview.V82.of_tactic (change_in_hyp None (fun evd -> evd, c') hyp) gl
       | None -> Proofview.V82.of_tactic (convert_concl_no_check c' DEFAULTcast) gl
     else tclFAIL 0 (str "Nothing to unfold") gl
-
-(* 	  Cset.fold (fun cst -> cons (all_occurrences, EvalConstRef cst)) csts *)
-(* 	    (Idset.fold (fun id -> cons (all_occurrences, EvalVarRef id)) ids [])) db) *)
-(*       in unfold_option unfolds cl *)
-
-(*       let db = try searchtable_map dbname  *)
-(* 	with Not_found -> errorlabstrm "autounfold" (str "Unknown database " ++ str dbname) *)
-(*       in *)
-(*       let (ids, csts) = Hint_db.unfolds db in *)
-(* 	Cset.fold (fun cst -> tclORELSE (unfold_option [(occ, EvalVarRef id)] cst)) csts *)
-(* 	  (Idset.fold (fun id -> tclORELSE (unfold_option [(occ, EvalVarRef id)] cl) ids acc))) *)
-(*       (tclFAIL 0 (mt())) db *)
-      
-open Extraargs
-open Eauto
-open Locusops
-
-TACTIC EXTEND decompose_app
-[ "decompose_app" ident(h) ident(h') constr(c) ] -> [ 
-  Proofview.Goal.enter (fun gl ->
-    let f, args = decompose_app c in
-    let fty = Tacmach.New.pf_type_of gl f in
-    let flam = mkLambda (Name (id_of_string "f"), fty, mkApp (mkRel 1, Array.of_list args)) in
-      (Proofview.tclTHEN (letin_tac None (Name h) f None allHyps)
-  	 (letin_tac None (Name h') flam None allHyps)))
-  ]
-END
-
-(* TACTIC EXTEND abstract_match *)
-(* [ "abstract_match" ident(hyp) constr(c) ] -> [ *)
-(*   match kind_of_term c with *)
-(*   | Case (_, _, c, _) -> letin_tac None (Name hyp) c None allHypsAndConcl *)
-(*   | _ -> tclFAIL 0 (str"Not a case expression") *)
-(* ] *)
-(* END *)
-
-(* TACTIC EXTEND autounfold_first *)
-(* | [ "autounfold_first" hintbases(db) "in" hyp(id) ] -> *)
-(*     [ autounfold_first (match db with None -> ["core"] | Some x -> x) (Some (id, InHyp)) ] *)
-(* | [ "autounfold_first" hintbases(db) ] -> *)
-(*     [ autounfold_first (match db with None -> ["core"] | Some x -> x) None ] *)
-(* END *)

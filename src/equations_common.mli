@@ -6,8 +6,8 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-val __coq_plugin_name : string
-
+val to82 : 'a Proofview.tactic -> Proofview.V82.tac
+val of82 : Proofview.V82.tac -> unit Proofview.tactic
 
 val ( $ ) : ('a -> 'b) -> ('c -> 'a) -> 'c -> 'b
 val proper_tails : 'a list -> 'a list list

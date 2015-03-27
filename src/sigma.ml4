@@ -222,15 +222,6 @@ let declare_sig_of_ind env ind =
        mkApp (mkConst pack_fn, extended_rel_vect 0 ctx)]
   in inst
 
-VERNAC COMMAND EXTEND Derive_Signature CLASSIFIED AS QUERY
-| [ "Derive" "Signature" "for" constr(c) ] -> [ 
-  let c', _ = Constrintern.interp_constr (Global.env ()) (Evd.from_env (Global.env())) c in
-    match kind_of_term c' with
-    | Ind (i,_) -> ignore(declare_sig_of_ind (Global.env ()) i)
-    | _ -> error "Expected an inductive type"
-  ]
-END
-
 let get_signature env sigma ty =
   let sigma', (idx, _) = 
     new_type_evar env sigma Evd.univ_flexible ~src:(dummy_loc, Evar_kinds.InternalHole) in
@@ -245,15 +236,6 @@ let get_signature env sigma ty =
     (nf_evar sigma' (mkApp (Lazy.force signature_sig, [| ty; idx; tc |])),
     nf_evar sigma' (mkApp (Lazy.force signature_pack, [| ty; idx; tc |])))
       
-TACTIC EXTEND get_signature_pack
-[ "get_signature_pack" hyp(id) ident(id') ] -> [ 
-  Proofview.Goal.enter (fun gl ->
-    let gl = Proofview.Goal.assume gl in
-    let env = Proofview.Goal.env gl in
-    let sigma = Proofview.Goal.sigma gl in
-    let sigsig, sigpack = get_signature env sigma (Tacmach.New.pf_get_hyp_typ id gl) in
-      letin_tac None (Name id') (mkApp (sigpack, [| mkVar id |])) None nowhere) ]
-END
 
 (* let generalize_sigma env sigma c packid = *)
 (*   let ty = Retyping.get_type_of env sigma c in *)
@@ -284,17 +266,6 @@ let pattern_sigma c hyp env sigma =
   let projs = map (fun (x, t, p, rest) -> (pi3 (pat t), (fun evd -> evd, p))) terms in
   let projabs = tclTHENLIST (map (fun (t, p) -> change (Some t) p Locusops.onConcl) projs) in
     Proofview.V82.tactic (tclTHEN (Refiner.tclEVARS !evd) projabs)
-      
-TACTIC EXTEND pattern_sigma
-[ "pattern" "sigma" hyp(id) ] -> [
-  Proofview.Goal.enter (fun gl ->
-    let gl = Proofview.Goal.assume gl in
-    let env = Proofview.Goal.env gl in
-    let sigma = Proofview.Goal.sigma gl in
-    let decl = Tacmach.New.pf_get_hyp id gl in
-    let term = Option.get (pi2 decl) in
-      pattern_sigma term id env sigma) ]
-END
 
 let curry_hyp sigma c t =
   let na, dom, concl = destProd t in
@@ -311,19 +282,3 @@ let curry_hyp sigma c t =
 	let typ = it_mkProd_or_LetIn (subst1 tuple concl) newctx in
 	  Some (term, typ)
 	    
-TACTIC EXTEND curry
-[ "curry" hyp(id) ] -> [ 
-  Proofview.V82.tactic 
-    (fun gl ->
-      match curry_hyp (project gl) (mkVar id) (pf_get_hyp_typ gl id) with
-      | Some (prf, typ) -> 
-	tclTHENFIRST (Proofview.V82.of_tactic (assert_before_replacing id typ))
-	  (Tacmach.refine_no_check prf) gl
-      | None -> tclFAIL 0 (str"No currying to do in" ++ pr_id id) gl) ]
-END
-
-(* TACTIC EXTEND pattern_tele *)
-(* [ "pattern_tele" constr(c) ident(hyp) ] -> [ fun gl -> *)
-(*   let settac = letin_tac None (Name hyp) c None onConcl in *)
-(*     tclTHENLIST [settac; pattern_sigma c hyp] gl ] *)
-(* END *)

@@ -1,3 +1,7 @@
-PKG coq
+FLG -rectypes
+PKG coq.kernel
+PKG coq.all 
 S src
+CMT src
+B src
 S theories

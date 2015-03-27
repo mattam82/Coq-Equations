@@ -187,13 +187,6 @@ let needs_generalization gl id =
 	if not (linear parvars args') then true
 	else Array.exists (fun x -> not (isVar x)) args'
 	  
-TACTIC EXTEND needs_generalization
-| [ "needs_generalization" hyp(id) ] -> 
-    [ Proofview.V82.tactic (fun gl -> 
-      if needs_generalization gl id 
-      then tclIDTAC gl
-      else tclFAIL 0 (str"No generalization needed") gl) ]
-END
 	
 let abstract_args gl generalize_vars dep id defined f args =
   let sigma = project gl in
@@ -310,23 +303,6 @@ let abstract_generalize ?(generalize_vars=true) ?(force_dep=false) id gl =
 				   tclMAP (fun id -> 
 				     tclTRY (generalize_dep ~with_let:true (mkVar id))) vars] gl) gl
 
-(* TACTIC EXTEND dependent_generalize *)
-(* | ["dependent" "generalize" hyp(id) "as" ident(id') ] ->  *)
-(*     [ fun gl -> generalize_sigma (pf_env gl) (project gl) (mkVar id) id' gl ] *)
-(* END *)
-(* TACTIC EXTEND dep_generalize_force *)
-(* | ["dependent" "generalize" "force" hyp(id) ] ->  *)
-(*     [ abstract_generalize ~generalize_vars:false ~force_dep:true id ] *)
-(* END *)
-(* TACTIC EXTEND dependent_generalize_eqs_vars *)
-(* | ["dependent" "generalize" "vars" hyp(id) ] ->  *)
-(*     [ abstract_generalize ~generalize_vars:true id ] *)
-(* END *)
-(* TACTIC EXTEND dependent_generalize_eqs_vars_force *)
-(* | ["dependent" "generalize" "force" "vars" hyp(id) ] ->  *)
-(*     [ abstract_generalize ~force_dep:true ~generalize_vars:true id ] *)
-(* END *)
-
 let dependent_pattern ?(pattern_term=true) c gl =
   let cty = pf_type_of gl c in
   let deps =
@@ -356,13 +332,3 @@ let dependent_pattern ?(pattern_term=true) c gl =
   let concllda, evd = List.fold_left mklambda (pf_concl gl, project gl) subst in
   let conclapp = applistc concllda (List.rev_map pi1 subst) in
     Proofview.V82.of_tactic (convert_concl_no_check conclapp DEFAULTcast) gl
-
-TACTIC EXTEND dependent_pattern
-| ["dependent" "pattern" constr(c) ] -> [ 
-  Proofview.V82.tactic (dependent_pattern c) ]
-END
-
-TACTIC EXTEND dependent_pattern_from
-| ["dependent" "pattern" "from" constr(c) ] ->
-    [ Proofview.V82.tactic (dependent_pattern ~pattern_term:false c) ]
-END

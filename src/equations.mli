@@ -469,8 +469,6 @@ val find_helper_arg :
   term_info -> Term.constr -> 'a array -> Term.existential_key * 'a
 val find_splitting_var : pat list -> int -> Term.constr list -> Names.Id.t
 val intros_reducing : Proof_type.tactic
-val to82 : 'a Proofview.tactic -> Proofview.V82.tac
-val of82 : Proofview.V82.tac -> unit Proofview.tactic
 val aux_ind_fun : term_info -> splitting -> Proof_type.tactic
 val is_structural : rec_type option -> bool
 val ind_fun_tac :
@@ -629,17 +627,8 @@ val pr_deppat_equations : 'a -> 'b -> 'c -> 'd -> Pp.std_ppcmds
 val deppat_equations : pre_equation list Gram.entry
 type equation_user_option = equation_option * bool
 val pr_r_equation_user_option : 'a -> 'b -> 'c -> 'd -> Pp.std_ppcmds
-val wit_equation_user_option :
-  (equation_option * bool, equation_option * bool, equation_option * bool)
-  Genarg.genarg_type
-val equation_user_option : (equation_option * bool) Pcoq.Gram.entry
 type equation_options = (equation_option * bool) list
 val pr_equation_options : 'a -> 'b -> 'c -> 'd -> Pp.std_ppcmds
-val wit_equation_options :
-  ((equation_option * bool) list, (equation_option * bool) list,
-   (equation_option * bool) list)
-  Genarg.genarg_type
-val equation_options : (equation_option * bool) list Pcoq.Gram.entry
 val with_rollback : ('a -> 'b) -> 'a -> 'b
 val equations :
   (equation_option * bool) list ->

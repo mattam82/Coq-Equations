@@ -1782,9 +1782,6 @@ let rec intros_reducing gl =
     | Prod (_, _, _) -> tclTHEN intro intros_reducing gl
     | _ -> tclIDTAC gl
 
-let to82 t = Proofview.V82.of_tactic t
-let of82 t = Proofview.V82.tactic t
-
 let rec aux_ind_fun info = function
   | Split ((ctx,pats,_), var, _, splits) ->
       tclTHEN_i (fun gl ->
@@ -3002,39 +2999,16 @@ GEXTEND Gram
     
 type equation_user_option = (equation_option * bool)
 
-let pr_r_equation_user_option _prc _prlc _prt l =
-  mt ()
-
-(* let wit_r_equation_user_option : equation_user_option Genarg.uniform_genarg_type = *)
-(*   Genarg.create_arg None "r_equation_user_option" *)
-
-ARGUMENT EXTEND equation_user_option
-TYPED AS equation_user_option
-PRINTED BY pr_r_equation_user_option
-| [ "noind" ] -> [ OInd, false ]
-| [ "ind" ] -> [ OInd, true ]
-| [ "struct" ] -> [ ORec, true ]
-| [ "nostruct" ] -> [ ORec, false ]
-| [ "comp" ] -> [ OComp, true ]
-| [ "nocomp" ] -> [ OComp, false ]
-| [ "eqns" ] -> [ OEquations, true ]
-| [ "noeqns" ] -> [ OEquations, false ]
-END
-
 type equation_options = ((equation_option * bool) list)
 
 (* let wit_equation_options : equation_options Genarg.uniform_genarg_type = *)
 (*   Genarg.create_arg None "equation_options" *)
 
-let pr_equation_options  _prc _prlc _prt l =
+let pr_r_equation_user_option _prc _prlc _prt l =
   mt ()
 
-ARGUMENT EXTEND equation_options
-TYPED AS equation_options
-PRINTED BY pr_equation_options
-| [ "(" ne_equation_user_option_list(l) ")" ] -> [ l ]
-| [ ] -> [ [] ]
-END
+let pr_equation_options  _prc _prlc _prt l =
+  mt ()
 
 (* type decl_notation_argtype = (Vernacexpr.decl_notation list) Genarg.uniform_genarg_type *)
 
@@ -3081,12 +3055,6 @@ let equations opts (loc, i) l t nt eqs =
   Dumpglob.dump_definition (loc, i) false "def";
   with_rollback (define_by_eqs opts i l t nt) eqs
 
-VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS QUERY
-| [ "Equations" equation_options(opt) ident(i) binders_let2(l) 
-      ":" lconstr(t) ":=" deppat_equations(eqs)
-      (* decl_notation(nt) *) ] ->
-    [ equations opt (dummy_loc, i) l t [] eqs ]
-      END
 
 let rec int_of_coq_nat c = 
   match kind_of_term c with
@@ -3127,26 +3095,12 @@ let solve_equations_goal destruct_tac tac gl =
     tclTHENS destruct_tac (map letintac branches)
   in tclTHENLIST [cleantac ; dotac ; subtacs] gl
 
-TACTIC EXTEND solve_equations
-  [ "solve_equations" tactic(destruct) tactic(tac) ] -> 
-    [ of82 (solve_equations_goal (to82 (Tacinterp.eval_tactic destruct)) (to82 (Tacinterp.eval_tactic tac))) ]
-    END
-
 let rec db_of_constr c = match kind_of_term c with
   | Const (c,_) -> string_of_label (con_label c)
   | App (c,al) -> db_of_constr c
   | _ -> assert false
 
 let dbs_of_constrs = map db_of_constr
-
-open Extraargs
-
-TACTIC EXTEND simp
-| [ "simp" ne_preident_list(l) clause(c) ] -> 
-    [ of82 (simp_eqns_in c l) ]
-| [ "simpc" constr_list(l) clause(c) ] -> 
-    [ of82 (simp_eqns_in c (dbs_of_constrs l)) ]
-END
 
 let depcase (mind, i as ind) =
   let indid = Nametab.basename_of_global (IndRef ind) in
@@ -3227,16 +3181,6 @@ let derive_dep_elimination ctx (i,u) loc =
     Equations_common.declare_instance id poly evd ctx cl [ty; prod_appvect casety args; 
 				mkApp (constr_of_global gref, args)]
 
-VERNAC COMMAND EXTEND Derive_DependentElimination CLASSIFIED AS QUERY
-| [ "Derive" "DependentElimination" "for" constr_list(c) ] -> [ 
-    List.iter (fun c ->
-      let c',ctx = interp_constr (Global.env ()) Evd.empty c in
-	match kind_of_term c' with
-	| Ind i -> ignore(derive_dep_elimination ctx i dummy_loc) (* (Glob_ops.loc_of_glob_constr c)) *)
-	| _ -> error "Expected an inductive type")
-      c
-  ]
-END
 
 let mkcase env c ty constrs =
   let cty = Typing.type_of env Evd.empty c in
@@ -3379,47 +3323,6 @@ let derive_no_confusion env evd (ind,u) =
 	      (Evd.empty_evar_universe_context) [||])
      
 
-VERNAC COMMAND EXTEND Derive_NoConfusion CLASSIFIED AS QUERY
-| [ "Derive" "NoConfusion" "for" constr_list(c) ] -> [ 
-    List.iter (fun c ->
-      let env = (Global.env ()) in
-      let c',ctx = interp_constr env Evd.empty c in
-	match kind_of_term c' with
-	| Ind i -> derive_no_confusion env (Evd.from_env ~ctx env) i
-	| _ -> error "Expected an inductive type")
-      c
-  ]
-END
-
-(* TACTIC EXTEND block_goal *)
-(* [ "block_goal" ] -> [ of82 ( *)
-(*   (fun gl -> *)
-(*     let block = Lazy.force coq_block in *)
-(*     let concl = pf_concl gl in *)
-(*     let ty = pf_type_of gl concl in *)
-(*     let evd = project gl in *)
-(*     let newconcl = mkApp (block, [|ty; concl|]) in *)
-(*     let evd, _ty = Typing.e_type_of (pf_env gl) evd newconcl in *)
-(*       (\* msg_info (str "After e_type_of: " ++ pr_evar_map None evd); *\) *)
-(*       tclTHEN (tclEVARS evd) *)
-(* 	(convert_concl newconcl DEFAULTcast) gl)) ] *)
-(* END *)
-  
-(* TACTIC EXTEND pattern_call *)
-(* [ "pattern_call" constr(c) ] -> [ fun gl -> *)
-(*   match kind_of_term c with *)
-(*   | App (f, [| arg |]) -> *)
-(*       let concl = pf_concl gl in *)
-(*       let replcall = replace_term c (mkRel 1) concl in *)
-(*       let replarg = replace_term arg (mkRel 2) replcall in *)
-(*       let argty = pf_type_of gl arg and cty = pf_type_of gl c in *)
-(*       let rels = [(Name (id_of_string "call"), None, replace_term arg (mkRel 1) cty); *)
-(* 		  (Name (id_of_string "arg"), None, argty)] in *)
-(*       let newconcl = mkApp (it_mkLambda_or_LetIn replarg rels, [| arg ; c |]) in *)
-(* 	convert_concl newconcl DEFAULTcast gl  *)
-(*   | _ -> tclFAIL 0 (str "Not a recognizable call") gl ] *)
-(* END *)
-
 let pattern_call ?(pattern_term=true) c gl =
   let env = pf_env gl in
   let cty = pf_type_of gl c in
@@ -3447,10 +3350,6 @@ let pattern_call ?(pattern_term=true) c gl =
   let concllda = List.fold_left mklambda (pf_concl gl) subst in
   let conclapp = applistc concllda (List.rev_map pi1 subst) in
     Proofview.V82.of_tactic (convert_concl_no_check conclapp DEFAULTcast) gl
-
-TACTIC EXTEND pattern_call
-[ "pattern_call" constr(c) ] -> [ of82 (pattern_call c) ]
-END
 
 let dependencies env c ctx =
   let init = global_vars_set env c in
