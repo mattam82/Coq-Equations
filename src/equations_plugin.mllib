@@ -4,5 +4,6 @@ Subterm
 Eqdec
 Depelim
 Equations
+Noconf
 G_equations
 Equations_plugin_mod

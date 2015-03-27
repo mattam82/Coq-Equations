@@ -6,65 +6,83 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-type pat =
-    PRel of int
-  | PCstr of Term.pconstructor * pat list
-  | PInac of Term.constr
-  | PHide of int
+open Term
+open Context
+open Environ
+open Names
+
+(** User-level patterns *)
 type user_pat =
-    PUVar of Names.identifier
-  | PUCstr of Names.constructor * int * user_pat list
+    PUVar of identifier
+  | PUCstr of constructor * int * user_pat list
   | PUInac of Constrexpr.constr_expr
 type user_pats = user_pat list
-type context_map = Context.rel_context * pat list * Context.rel_context
-val mkInac : Environ.env -> Term.constr -> Term.constr
-val mkHide : Environ.env -> Term.constr -> Term.constr
-val pat_constr : pat -> Term.constr
-val constr_of_pat : ?inacc:bool -> Environ.env -> pat -> Term.constr
-val constrs_of_pats :
-  ?inacc:bool -> Environ.env -> pat list -> Term.constr list
+
+(** Internal patterns *)
+type pat =
+    PRel of int
+  | PCstr of pconstructor * pat list
+  | PInac of constr
+  | PHide of int
+
+(** Substitutions *)
+type context_map = rel_context * pat list * rel_context
+
+(** Tag with a constant application (needs env to infer type) *)
+val mkInac : env -> constr -> constr
+val mkHide : env -> constr -> constr
+
+(* Constr of a pattern *)
+val pat_constr : pat -> constr
+
+(* Constr of a pattern marking innaccessibles *)
+val constr_of_pat : ?inacc:bool -> env -> pat -> constr
+val constrs_of_pats : ?inacc:bool -> env -> pat list -> constr list
+
+(** Free pattern variables (excluding inaccessibles and hiddens) *)
 val pat_vars : pat -> Int.Set.t
 val pats_vars : pat list -> Int.Set.t
-val inaccs_of_constrs : Term.constr list -> pat list
-val pats_of_constrs : Term.constr list -> pat list
-val pat_of_constr : Term.constr -> pat
-val pr_constr_pat : Environ.env -> Term.constr -> Pp.std_ppcmds
-val pr_pat : Environ.env -> pat -> Pp.std_ppcmds
-val pr_context : Environ.env -> Context.rel_declaration list -> Pp.std_ppcmds
-val ppcontext : Context.rel_declaration list -> unit
-val pr_context_map :
-  Environ.env ->
-  Context.rel_context * pat list * Context.rel_declaration list ->
-  Pp.std_ppcmds
-val ppcontext_map :
-  Context.rel_context * pat list * Context.rel_declaration list -> unit
+
+(** Make the terms inaccessible *)
+val inaccs_of_constrs : constr list -> pat list
+
+(** Reverse of constr_of_pat turning applications of innac/hide into 
+    the proper patterns *)
+val pats_of_constrs : constr list -> pat list
+val pat_of_constr : constr -> pat
+
+(** Pretty-printing *)
+val pr_constr_pat : env -> constr -> Pp.std_ppcmds
+val pr_pat : env -> pat -> Pp.std_ppcmds
+val pr_context : env -> rel_context -> Pp.std_ppcmds
+val ppcontext : rel_context -> unit
+val pr_context_map : env -> context_map -> Pp.std_ppcmds
+val ppcontext_map : context_map -> unit
 val typecheck_map :
-  Evd.evar_map ->
-  Context.rel_context * pat list *
-  (Names.Name.t * Term.constr option * Constr.constr) list -> unit
+  Evd.evar_map -> context_map -> unit
 val check_ctx_map :
-  Evd.evar_map ->
-  Context.rel_context * pat list * Context.rel_declaration list ->
-  Context.rel_context * pat list * Context.rel_declaration list
+  Evd.evar_map -> context_map -> context_map
+
+(** Smart constructor (doing runtime checks) *)
 val mk_ctx_map :
   Evd.evar_map ->
-  Context.rel_context ->
+  rel_context ->
   pat list ->
-  Context.rel_declaration list ->
-  Context.rel_context * pat list * Context.rel_declaration list
-val subst_pats_constr : int -> pat list -> Term.constr -> Term.constr
+  rel_context -> context_map
+
+(** Substitution and specialization *)
+val subst_pats_constr : int -> pat list -> constr -> constr
 val subst_context :
-  pat list ->
-  ('a * Term.constr option * Term.constr) list ->
-  ('a * Term.constr option * Term.constr) list
+  pat list ->  ('a * constr option * constr) list ->
+  ('a * constr option * constr) list
 val specialize : pat list -> pat -> pat
-val specialize_constr : pat list -> Term.constr -> Term.constr
+val specialize_constr : pat list -> constr -> constr
 val specialize_pats : pat list -> pat list -> pat list
 val specialize_rel_context :
-  pat list -> Context.rel_declaration list -> Context.rel_declaration list
-val mapping_constr : context_map -> Term.constr -> Term.constr
-val subst_constr_pat : int -> Term.constr -> pat -> pat
-val subst_constr_pats : int -> Term.constr -> pat list -> pat list
+  pat list -> rel_context -> rel_context
+val mapping_constr : context_map -> constr -> constr
+val subst_constr_pat : int -> constr -> pat -> pat
+val subst_constr_pats : int -> constr -> pat list -> pat list
 val subst_rel_context :
   int ->
   Constr.constr ->
@@ -75,63 +93,76 @@ val subst_telescope :
   ('a * Constr.constr option * Constr.constr) list ->
   ('a * Constr.constr option * Constr.constr) list
 val subst_in_ctx :
-  int -> Term.constr -> Context.rel_context -> Context.rel_context
+  int -> constr -> rel_context -> rel_context
 val set_in_ctx :
-  int -> Term.constr -> Context.rel_context -> Context.rel_context
+  int -> constr -> rel_context -> rel_context
 val lift_patn : int -> int -> pat -> pat
 val lift_patns : int -> int -> pat list -> pat list
 val lift_pat : int -> pat -> pat
 val lift_pats : int -> pat list -> pat list
+
+(** Programs and splitting trees *)
+
+(** AST *)
+
 type program = signature * clause list
-and signature = Names.identifier * Context.rel_context * Term.constr
-and clause = lhs * clause rhs
-and lhs = user_pats
+
+and signature = identifier * rel_context * constr (* f : Π Δ. τ *)
+
+and clause = lhs * clause rhs (* lhs rhs *)
+and lhs = user_pats (* p1 ... pn *)
 and 'a rhs =
     Program of Constrexpr.constr_expr
-  | Empty of Names.identifier Loc.located
-  | Rec of Names.identifier Loc.located * Constrexpr.constr_expr option *
+  | Empty of identifier Loc.located
+  | Rec of identifier Loc.located * Constrexpr.constr_expr option *
       'a list
   | Refine of Constrexpr.constr_expr * 'a list
   | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) Util.union *
       'a list
+
+(** Splitting trees *)
+
 type path = Evd.evar list
+
 type splitting =
-    Compute of context_map * Term.types * splitting_rhs
-  | Split of context_map * int * Term.types * splitting option array
-  | Valid of context_map * Term.types * Names.identifier list *
+    Compute of context_map * types * splitting_rhs
+  | Split of context_map * int * types * splitting option array
+  | Valid of context_map * types * identifier list *
       Tacmach.tactic * (Proofview.entry * Proofview.proofview) *
-      (Proof_type.goal * Term.constr list * context_map * splitting) list
-  | RecValid of Names.identifier * splitting
+      (Proof_type.goal * constr list * context_map * splitting) list
+  | RecValid of identifier * splitting
   | Refined of context_map * refined_node * splitting
+
 and refined_node = {
-  refined_obj : Names.identifier * Term.constr * Term.types;
-  refined_rettyp : Term.types;
+  refined_obj : identifier * constr * types;
+  refined_rettyp : types;
   refined_arg : int;
   refined_path : path;
-  refined_ex : Term.existential_key;
-  refined_app : Term.constr * Term.constr list;
+  refined_ex : existential_key;
+  refined_app : constr * constr list;
   refined_revctx : context_map;
   refined_newprob : context_map;
   refined_newprob_to_lhs : context_map;
-  refined_newty : Term.types;
+  refined_newty : types;
 }
-and splitting_rhs = RProgram of Term.constr | REmpty of int
-and unification_result = (context_map * int * Term.constr * pat) option
-type problem = Names.identifier * lhs
-val specialize_mapping_constr : context_map -> Term.constr -> Term.constr
-val rels_of_tele : 'a list -> Term.constr list
+
+and splitting_rhs = RProgram of constr | REmpty of int
+
+
+val specialize_mapping_constr : context_map -> constr -> constr
+val rels_of_tele : 'a list -> constr list
 val patvars_of_tele : 'a list -> pat list
 val pat_vars_list : int -> pat list
 val intset_of_list : Int.Set.elt list -> Int.Set.t
 val split_context : int -> 'a list -> 'a list * 'a * 'a list
 val split_tele :
   int ->
-  Context.rel_context ->
-  Context.rel_declaration list * Context.rel_declaration *
-  Context.rel_declaration list
+  rel_context ->
+  rel_context * rel_declaration *
+    rel_context
 val rels_above : 'a list -> int -> Int.Set.t
-val is_fix_proto : Term.constr -> bool
-val fix_rels : ('a * 'b * Term.constr) list -> Int.Set.t
+val is_fix_proto : constr -> bool
+val fix_rels : ('a * 'b * constr) list -> Int.Set.t
 val dependencies_of_rel :
   ('a * Constr.constr option * Constr.constr) list ->
   Int.Set.elt -> Int.Set.t
@@ -139,134 +170,133 @@ val dependencies_of_term :
   ('a * Constr.constr option * Constr.constr) list ->
   Constr.constr -> Int.Set.t
 val non_dependent :
-  ('a * 'b * Term.constr) list -> Constr.constr -> Int.Set.t
+  ('a * 'b * constr) list -> Constr.constr -> Int.Set.t
 val subst_term_in_context :
-  Term.constr -> ('a * 'b * Term.constr) list -> ('a * 'b * Term.constr) list
+  constr -> ('a * 'b * constr) list -> ('a * 'b * constr) list
 val strengthen :
   ?full:bool ->
   ?abstract:bool ->
-  Context.rel_context ->
+  rel_context ->
   Int.Set.elt ->
-  Term.constr ->
-  (Context.rel_declaration list * pat list * Context.rel_context) *
-  (int * int) list
+  constr ->
+  context_map * (int * int) list
 val id_subst : 'a list -> 'a list * pat list * 'a list
 val eq_context_nolet :
-  Environ.env ->
-  Evd.evar_map -> Context.rel_context -> Context.rel_context -> bool
+  env ->
+  Evd.evar_map -> rel_context -> rel_context -> bool
 val check_eq_context_nolet :
-  Environ.env ->
+  env ->
   Evd.evar_map ->
-  Context.rel_context * pat list * Context.rel_context ->
-  Context.rel_context * pat list * Context.rel_declaration list -> unit
+  context_map ->
+  context_map -> unit
 val compose_subst :
   ?sigma:Evd.evar_map ->
-  Context.rel_context * pat list * Context.rel_context ->
-  Context.rel_context * pat list * Context.rel_declaration list ->
-  Context.rel_context * pat list * Context.rel_declaration list
+  context_map ->
+  context_map ->
+  context_map
 val push_mapping_context :
-  'a * Term.constr option * Term.constr ->
-  ('a * Term.constr option * Term.constr) list * pat list *
-  ('a * Term.constr option * Term.constr) list ->
-  ('a * Term.constr option * Term.constr) list * pat list *
-  ('a * Term.constr option * Term.constr) list
+  rel_declaration ->
+  context_map ->
+  context_map
 val lift_subst :
-  Evd.evar_map -> context_map -> Context.rel_context -> context_map
+  Evd.evar_map -> context_map -> rel_context -> context_map
 val single_subst :
   Evd.evar_map ->
   Int.Set.elt ->
   pat ->
-  Context.rel_context -> Context.rel_context * pat list * Context.rel_context
+  rel_context -> context_map
 exception Conflict
 exception Stuck
 type 'a unif_result = UnifSuccess of 'a | UnifFailure | UnifStuck
+type unification_result = (context_map * int * constr * pat) option
+
 val unify :
   Evd.evar_map ->
   Int.Set.t ->
-  Context.rel_context ->
-  Term.constr ->
-  Term.constr -> Context.rel_context * pat list * Context.rel_context
+  rel_context ->
+  constr ->
+  constr -> context_map
 val unify_constrs :
   Evd.evar_map ->
   Int.Set.t ->
-  Context.rel_context ->
-  Term.constr list ->
-  Term.constr list -> Context.rel_context * pat list * Context.rel_context
+  rel_context ->
+  constr list ->
+  constr list -> context_map
 val flexible : pat list -> 'a list -> Int.Set.t
 val accessible : pat -> Int.Set.t
 val accessibles : pat list -> Int.Set.t
 val hidden : pat -> bool
-val match_pattern : user_pat -> pat -> (Names.identifier * pat) list
+val match_pattern : user_pat -> pat -> (identifier * pat) list
 val match_patterns :
-  user_pat list -> pat list -> (Names.identifier * pat) list
+  user_pat list -> pat list -> (identifier * pat) list
 val matches :
-  user_pats -> context_map -> (Names.identifier * pat) list unif_result
+  user_pats -> context_map -> (identifier * pat) list unif_result
 val match_user_pattern :
-  pat -> user_pat -> (int * user_pat) list * (Names.identifier * pat) list
+  pat -> user_pat -> (int * user_pat) list * (identifier * pat) list
 val match_user_patterns :
   pat list ->
-  user_pat list -> (int * user_pat) list * (Names.identifier * pat) list
+  user_pat list -> (int * user_pat) list * (identifier * pat) list
 val matches_user :
   context_map ->
   user_pats ->
-  ((int * user_pat) list * (Names.identifier * pat) list) unif_result
+  ((int * user_pat) list * (identifier * pat) list) unif_result
 val lets_of_ctx :
-  Environ.env ->
-  Context.rel_context ->
+  env ->
+  rel_context ->
   Evd.evar_map ref ->
-  (Names.Id.t * pat) list ->
-  Term.constr list *
-  (Names.name * Constr.constr option * Constr.constr) list *
-  (Names.name * Constr.t option * Constr.t) list
+  (Id.t * pat) list ->
+  constr list *
+  (name * Constr.constr option * Constr.constr) list *
+  (name * Constr.t option * Constr.t) list
 val interp_constr_in_rhs :
-  Environ.env ->
-  Context.rel_context ->
+  env ->
+  rel_context ->
   Evd.evar_map ref ->
   'a * 'b * Constrintern.internalization_env ->
   Constr.constr option ->
-  (Names.Id.t * pat) list ->
-  Context.rel_declaration list ->
-  Constrexpr.constr_expr -> Term.constr * Term.types
+  (Id.t * pat) list ->
+  rel_context ->
+  Constrexpr.constr_expr -> constr * types
 val unify_type :
   Evd.evar_map ref ->
-  Context.rel_context ->
+  rel_context ->
   'a ->
-  Term.types ->
-  Context.rel_context ->
-  (Term.constr *
-   ((Context.rel_context * pat list * Context.rel_context) * int *
-    Term.constr * pat)
+  types ->
+  rel_context ->
+  (constr *
+   ((context_map) * int *
+    constr * pat)
    unif_result array)
   option
 val blockers : user_pat list -> context_map -> int list
-val pr_user_pat : Environ.env -> user_pat -> Pp.std_ppcmds
-val pr_user_pats : Environ.env -> user_pat list -> Pp.std_ppcmds
-val pr_lhs : Environ.env -> user_pat list -> Pp.std_ppcmds
+val pr_user_pat : env -> user_pat -> Pp.std_ppcmds
+val pr_user_pats : env -> user_pat list -> Pp.std_ppcmds
+val pr_lhs : env -> user_pat list -> Pp.std_ppcmds
 val pplhs : user_pat list -> unit
-val pr_rhs : Environ.env -> ((user_pat list * 'a) rhs as 'a) -> Pp.std_ppcmds
+val pr_rhs : env -> ((user_pat list * 'a) rhs as 'a) -> Pp.std_ppcmds
 val pr_clause :
-  Environ.env -> (user_pat list * 'a rhs as 'a) -> Pp.std_ppcmds
+  env -> (user_pat list * 'a rhs as 'a) -> Pp.std_ppcmds
 val pr_clauses :
-  Environ.env -> (user_pat list * 'a rhs as 'a) list -> Pp.std_ppcmds
+  env -> (user_pat list * 'a rhs as 'a) list -> Pp.std_ppcmds
 val ppclause : (user_pat list * 'a rhs as 'a) -> unit
-val pr_rel_name : Context.rel_context -> int -> Pp.std_ppcmds
-val pr_splitting : Environ.env -> splitting -> Pp.std_ppcmds
+val pr_rel_name : rel_context -> int -> Pp.std_ppcmds
+val pr_splitting : env -> splitting -> Pp.std_ppcmds
 val ppsplit : splitting -> unit
 val subst_matches_constr :
-  int -> (int * Constr.constr) list -> Term.constr -> Term.constr
+  int -> (int * Constr.constr) list -> constr -> constr
 val is_all_variables : 'a * pat list * 'b -> bool
-val do_renamings : (Names.name * 'a * 'b) list -> (Names.name * 'a * 'b) list
+val do_renamings : (name * 'a * 'b) list -> (name * 'a * 'b) list
 val split_var :
   'a * Evd.evar_map ref ->
   int ->
-  Context.rel_context ->
-  (int * (Names.name * Constr.t option * Constr.t) list *
+  rel_context ->
+  (int * (name * Constr.t option * Constr.t) list *
    context_map option array)
   option
-val find_empty : 'a * Evd.evar_map ref -> Context.rel_context -> int option
+val find_empty : 'a * Evd.evar_map ref -> rel_context -> int option
 val rel_of_named_context :
-  (Names.Id.t * Constr.constr option * Constr.constr) list ->
-  (Names.name * Constr.constr option * Constr.constr) list * Names.Id.t list
+  (Id.t * Constr.constr option * Constr.constr) list ->
+  (name * Constr.constr option * Constr.constr) list * Id.t list
 val variables_of_pats : pat list -> (int * bool) list
 val pats_of_variables : (int * bool) list -> pat list
 val lift_rel_declaration :
@@ -274,62 +304,62 @@ val lift_rel_declaration :
   'a * Constr.constr option * Constr.constr ->
   'a * Constr.constr option * Constr.constr
 val named_of_rel_context :
-  (Names.name * Constr.constr option * Constr.constr) list ->
+  (name * Constr.constr option * Constr.constr) list ->
   Constr.constr list *
-  (Names.Id.t * Constr.constr option * Constr.constr) list
+  (Id.t * Constr.constr option * Constr.constr) list
 val lookup_named_i :
-  Names.Id.t -> (Names.Id.t * 'a * 'b) list -> int * (Names.Id.t * 'a * 'b)
+  Id.t -> (Id.t * 'a * 'b) list -> int * (Id.t * 'a * 'b)
 val instance_of_pats :
   'a ->
   'b ->
-  Context.rel_context ->
+  rel_context ->
   (int * bool) list ->
-  (Names.name * Constr.constr option * Constr.constr) list * pat list *
+  (name * Constr.constr option * Constr.constr) list * pat list *
   pat list
-val push_rel_context_eos : Context.rel_context -> Environ.env -> Environ.env
+val push_rel_context_eos : rel_context -> env -> env
 val split_at_eos :
-  ('a * 'b * Term.constr) list ->
-  ('a * 'b * Term.constr) list * ('a * 'b * Term.constr) list
+  ('a * 'b * constr) list ->
+  ('a * 'b * constr) list * ('a * 'b * constr) list
 val pr_problem :
-  Names.Id.t * 'a * 'b ->
-  Environ.env -> Context.rel_context * pat list * 'c -> Pp.std_ppcmds
-val rel_id : (Names.Name.t * 'a * 'b) list -> int -> Names.Id.t
+  Id.t * 'a * 'b ->
+  env -> rel_context * pat list * 'c -> Pp.std_ppcmds
+val rel_id : (Name.t * 'a * 'b) list -> int -> Id.t
 val push_named_context :
-  Context.named_declaration list -> Environ.env -> Environ.env
+  named_declaration list -> env -> env
 val covering_aux :
-  Environ.env ->
+  env ->
   Evd.evar_map ref ->
-  Names.identifier * bool * Constrintern.internalization_env ->
+  identifier * bool * Constrintern.internalization_env ->
   ((user_pats * 'a rhs as 'a) * bool) list ->
   ('a * bool) list ->
   Evd.evar list ->
-  Context.rel_context * pat list * Context.rel_context ->
-  Context.rel_context -> Constr.constr -> splitting option
+  context_map ->
+  rel_context -> Constr.constr -> splitting option
 val covering :
-  Environ.env ->
+  env ->
   Evd.evar_map ref ->
-  Names.identifier * bool * Constrintern.internalization_env ->
+  identifier * bool * Constrintern.internalization_env ->
   clause list ->
-  Context.rel_context * pat list * Context.rel_context ->
+  context_map ->
   Constr.constr -> splitting
 val helper_evar :
   Evd.evar_map ->
   Evd.evar ->
-  Environ.env ->
-  Term.types -> Loc.t * Evar_kinds.t -> Evd.evar_map * Term.constr
-val gen_constant : string list -> string -> Term.constr
-val coq_zero : Term.constr lazy_t
-val coq_succ : Term.constr lazy_t
-val coq_nat : Term.constr lazy_t
-val coq_nat_of_int : int -> Term.constr
+  env ->
+  types -> Loc.t * Evar_kinds.t -> Evd.evar_map * constr
+val gen_constant : string list -> string -> constr
+val coq_zero : constr lazy_t
+val coq_succ : constr lazy_t
+val coq_nat : constr lazy_t
+val coq_nat_of_int : int -> constr
 val term_of_tree :
   Evar_kinds.obligation_definition_status ->
   Evd.evar_map ref ->
-  Environ.env ->
+  env ->
   'a * 'b * 'c ->
   'd ->
   splitting ->
-  (Term.existential_key * int) list * Evar.Set.t * Term.constr * Term.constr
+  (existential_key * int) list * Evar.Set.t * constr * constr
 type 'a located = 'a Loc.located
 type pat_expr =
     PEApp of Libnames.reference Misctypes.or_by_notation located *
@@ -343,13 +373,13 @@ type input_pats =
     SignPats of user_pat_expr list
   | RefinePats of user_pat_expr list
 type pre_equation =
-    Names.identifier located option * input_pats * pre_equation rhs
-val next_ident_away : Names.Id.t -> Names.Id.t list ref -> Names.Id.t
+    identifier located option * input_pats * pre_equation rhs
+val next_ident_away : Id.t -> Id.t list ref -> Id.t
 type rec_type = Structural | Logical of rec_info
 and rec_info = {
-  comp : Names.constant;
-  comp_app : Term.constr;
-  comp_proj : Names.constant;
+  comp : constant;
+  comp_app : constr;
+  comp_proj : constant;
   comp_recarg : int;
 }
 val lift_constrs : int -> Constr.constr list -> Constr.constr list
@@ -359,9 +389,9 @@ val abstract_rec_calls :
   ?do_subst:bool ->
   rec_type option ->
   int ->
-  (Term.constr * Term.constr option * int * Term.constr) list ->
-  Term.constr -> Context.rel_context * int * Constr.constr
-val below_transparent_state : unit -> Names.transparent_state
+  (constr * constr option * int * constr) list ->
+  constr -> rel_context * int * Constr.constr
+val below_transparent_state : unit -> transparent_state
 val simpl_star : Proof_type.tactic
 val eauto_with_below : Hints.hint_db_name list -> Tacmach.tactic
 val simp_eqns : Hints.hint_db_name list -> Proof_type.tactic
@@ -372,148 +402,148 @@ val autorewrite_one : string -> Proofview.V82.tac
 type term_info = {
   base_id : string;
   polymorphic : bool;
-  helpers_info : (Term.existential_key * int * Names.identifier) list;
+  helpers_info : (existential_key * int * identifier) list;
 }
 val find_helper_info :
-  term_info -> Term.constr -> Term.existential_key * int * Names.identifier
+  term_info -> constr -> existential_key * int * identifier
 val find_helper_arg :
-  term_info -> Term.constr -> 'a array -> Term.existential_key * 'a
-val find_splitting_var : pat list -> int -> Term.constr list -> Names.Id.t
+  term_info -> constr -> 'a array -> existential_key * 'a
+val find_splitting_var : pat list -> int -> constr list -> Id.t
 val intros_reducing : Proof_type.tactic
 val aux_ind_fun : term_info -> splitting -> Proof_type.tactic
 val is_structural : rec_type option -> bool
 val ind_fun_tac :
   rec_type option ->
-  Term.constr ->
-  term_info -> Names.Id.t -> splitting -> 'a -> Proof_type.tactic
+  constr ->
+  term_info -> Id.t -> splitting -> 'a -> Proof_type.tactic
 val mapping_rhs : context_map -> splitting_rhs -> splitting_rhs
 val map_rhs :
-  (Term.constr -> Term.constr) ->
+  (constr -> constr) ->
   (int -> int) -> splitting_rhs -> splitting_rhs
 val clean_clause :
   'a * 'b * 'c * splitting_rhs -> 'a * 'b * 'c * splitting_rhs
 val map_evars_in_constr :
-  ((Names.Id.t -> Term.constr) -> 'a -> 'b) -> 'a -> 'b
+  ((Id.t -> constr) -> 'a -> 'b) -> 'a -> 'b
 val map_ctx_map :
   (Constr.t -> Constr.t) ->
-  Context.rel_context * 'a * Context.rel_context ->
-  Context.rel_context * 'a * Context.rel_context
-val map_split : (Term.constr -> Term.constr) -> splitting -> splitting
+  rel_context * 'a * rel_context ->
+  rel_context * 'a * rel_context
+val map_split : (constr -> constr) -> splitting -> splitting
 val map_evars_in_split :
-  ((Names.Id.t -> Term.constr) -> Term.constr -> Term.constr) ->
+  ((Id.t -> constr) -> constr -> constr) ->
   splitting -> splitting
 val ( &&& ) : ('a -> 'b) -> ('c -> 'd) -> 'a * 'c -> 'b * 'd
 val array_filter_map : ('a -> 'b option) -> 'a array -> 'b array
 val subst_rec_split :
   bool ->
-  Term.constr ->
-  Context.rel_context * pat list * Context.rel_context ->
-  (Names.Id.t * Constr.constr) list -> splitting -> splitting
-type statement = Term.constr * Term.types option
+  constr ->
+  context_map ->
+  (Id.t * Constr.constr) list -> splitting -> splitting
+type statement = constr * types option
 type statements = statement list
 val subst_app :
-  Term.constr ->
-  (int -> Term.constr -> Term.constr array -> Term.constr) ->
-  Term.constr -> Term.constr
+  constr ->
+  (int -> constr -> constr array -> constr) ->
+  constr -> constr
 val subst_comp_proj :
-  Term.constr -> Term.constr -> Term.constr -> Term.constr
+  constr -> constr -> constr -> constr
 val subst_comp_proj_split :
-  Term.constr -> Term.constr -> splitting -> splitting
-val reference_of_id : Names.Id.t -> Libnames.reference
+  constr -> constr -> splitting -> splitting
+val reference_of_id : Id.t -> Libnames.reference
 val clear_ind_assums :
-  Names.mutual_inductive -> Context.rel_context -> Context.rel_context
-val unfold : Names.evaluable_global_reference -> Proof_type.tactic
+  mutual_inductive -> rel_context -> rel_context
+val unfold : evaluable_global_reference -> Proof_type.tactic
 val ind_elim_tac :
-  Term.constr ->
+  constr ->
   'a ->
   term_info -> Proof_type.goal Evd.sigma -> Proof_type.goal list Evd.sigma
 val pr_path : Evd.evar_map -> Evd.evar list -> Pp.std_ppcmds
 val eq_path : Evar.t list -> Evar.t list -> bool
 val build_equations :
   bool ->
-  Environ.env ->
-  Names.Id.t ->
+  env ->
+  Id.t ->
   term_info ->
   'a ->
-  Context.rel_context ->
+  rel_context ->
   rec_type option ->
-  Term.types ->
-  Names.constant ->
-  Term.constr ->
-  ?alias:Term.constr * Term.constr * splitting ->
+  types ->
+  constant ->
+  constr ->
+  ?alias:constr * constr * splitting ->
   context_map -> splitting -> unit
 val rev_assoc : ('a -> 'b -> bool) -> 'a -> ('c * 'b) list -> 'c
 type equation_option = OInd | ORec | OComp | OEquations
 val is_comp_obl : rec_info option -> Evar_kinds.t -> bool
 val hintdb_set_transparency :
-  Names.Constant.t -> bool -> Hints.hint_db_name -> unit
+  Constant.t -> bool -> Hints.hint_db_name -> unit
 val define_tree :
   rec_type option ->
   (Constrexpr.explicitation * (bool * bool * bool)) list ->
   Evar_kinds.obligation_definition_status ->
   Evd.evar_map ref ->
-  Environ.env ->
-  Names.Id.t * 'a * 'b ->
+  env ->
+  Id.t * 'a * 'b ->
   rec_info option ->
   'c ->
   splitting ->
-  (((Names.Id.t -> Term.constr) -> Term.constr -> Term.constr) ->
-   (Term.existential_key * int * Names.Id.t) list ->
+  (((Id.t -> constr) -> constr -> constr) ->
+   (existential_key * int * Id.t) list ->
    Decl_kinds.locality -> Globnames.global_reference -> unit) ->
   unit
 val conv_proj_call :
-  Term.constr -> Names.constant -> Term.constr -> Term.constr
+  constr -> constant -> constr -> constr
 val convert_projection :
-  Term.constr ->
-  Names.constant ->
+  constr ->
+  constant ->
   Proof_type.goal Tacmach.sigma -> Proof_type.goal list Evd.sigma
-val unfold_constr : Term.constr -> Proof_type.tactic
-val simpl_except : Names.Idset.t * Names.Cset.t -> Closure.RedFlags.reds
-val simpl_of : Names.constant list -> (unit -> unit) * (unit -> unit)
+val unfold_constr : constr -> Proof_type.tactic
+val simpl_except : Idset.t * Cset.t -> Closure.RedFlags.reds
+val simpl_of : constant list -> (unit -> unit) * (unit -> unit)
 val prove_unfolding_lemma :
   term_info ->
-  Term.constr ->
-  Names.constant ->
-  Names.constant ->
+  constr ->
+  constant ->
+  constant ->
   splitting -> Proof_type.goal Evd.sigma -> Proof_type.goal list Evd.sigma
 val update_split :
   rec_type option ->
-  ((Names.Id.t -> Term.constr) -> Term.constr -> Term.constr) ->
-  Term.constr ->
-  Context.rel_context * pat list * Context.rel_context ->
-  Names.Id.t -> splitting -> splitting
+  ((Id.t -> constr) -> constr -> constr) ->
+  constr ->
+  context_map ->
+  Id.t -> splitting -> splitting
 val translate_cases_pattern :
-  'a -> Names.Id.t list ref -> Glob_term.cases_pattern -> user_pat
+  'a -> Id.t list ref -> Glob_term.cases_pattern -> user_pat
 val pr_smart_global :
   Libnames.reference Misctypes.or_by_notation -> Pp.std_ppcmds
 val string_of_smart_global :
   Libnames.reference Misctypes.or_by_notation -> string
 val ident_of_smart_global :
-  Libnames.reference Misctypes.or_by_notation -> Names.identifier
-val ids_of_pats : pat_expr located list -> Names.identifier list
+  Libnames.reference Misctypes.or_by_notation -> identifier
+val ids_of_pats : pat_expr located list -> identifier list
 val interp_eqn :
-  Names.identifier ->
+  identifier ->
   rec_type option ->
   'a ->
-  Environ.env ->
+  env ->
   'b ->
   'c ->
   'd ->
   'e ->
-  ((Loc.t * Names.identifier) option * input_pats * 'f rhs as 'f) ->
+  ((Loc.t * identifier) option * input_pats * 'f rhs as 'f) ->
   (user_pat list * 'g rhs as 'g)
 val make_ref : string list -> string -> Globnames.global_reference
-val fix_proto_ref : unit -> Names.constant
-val constr_of_global : Globnames.global_reference -> Term.constr
+val fix_proto_ref : unit -> constant
+val constr_of_global : Globnames.global_reference -> constr
 val define_by_eqs :
   (equation_option * bool) list ->
-  Names.identifier ->
+  identifier ->
   Constrexpr.local_binder list * 'a ->
   Constrexpr.constr_expr ->
   (Vernacexpr.lstring * Constrexpr.constr_expr *
    Notation_term.scope_name option)
   list ->
-  ((Loc.t * Names.identifier) option * input_pats * 'b rhs as 'b) list ->
+  ((Loc.t * identifier) option * input_pats * 'b rhs as 'b) list ->
   unit
 type equation_user_option = equation_option * bool
 val pr_r_equation_user_option : 'a -> 'b -> 'c -> 'd -> Pp.std_ppcmds
@@ -522,44 +552,30 @@ val pr_equation_options : 'a -> 'b -> 'c -> 'd -> Pp.std_ppcmds
 val with_rollback : ('a -> 'b) -> 'a -> 'b
 val equations :
   (equation_option * bool) list ->
-  Loc.t * Names.identifier ->
+  Loc.t * identifier ->
   Constrexpr.local_binder list * 'a ->
   Constrexpr.constr_expr ->
   (Vernacexpr.lstring * Constrexpr.constr_expr *
    Notation_term.scope_name option)
   list ->
-  ((Loc.t * Names.identifier) option * input_pats * 'b rhs as 'b) list ->
+  ((Loc.t * identifier) option * input_pats * 'b rhs as 'b) list ->
   unit
-val int_of_coq_nat : Term.constr -> int
+val int_of_coq_nat : constr -> int
 val gclause_none : 'a Locus.clause_expr
 val solve_equations_goal :
   Proof_type.tactic ->
   Proof_type.tactic ->
   Proof_type.goal Tacmach.sigma -> Proof_type.goal list Evd.sigma
-val db_of_constr : Term.constr -> string
-val dbs_of_constrs : Term.constr list -> string list
+val db_of_constr : constr -> string
+val dbs_of_constrs : constr list -> string list
 val depcase :
-  Names.MutInd.t * int ->
-  Context.rel_context * Term.constr * Globnames.global_reference
+  MutInd.t * int ->
+  rel_context * constr * Globnames.global_reference
 val derive_dep_elimination :
-  Evd.evar_universe_context -> Names.inductive * 'a -> 'b -> Term.constr
-val mkcase :
-  Environ.env ->
-  Term.constr ->
-  Term.constr ->
-  ((Names.MutInd.t * int) * Univ.universe_instance ->
-   int ->
-   Names.Id.t -> int -> Context.rel_context -> Term.types -> Term.constr) ->
-  Term.constr
-val mk_eqs :
-  Environ.env ->
-  Evd.evar_map ref ->
-  Term.constr list -> Term.constr list -> Constr.constr -> Term.types
-val derive_no_confusion :
-  Environ.env -> Evd.evar_map -> Names.inductive * 'a -> unit
+  Evd.evar_universe_context -> inductive * 'a -> 'b -> constr
 val pattern_call :
   ?pattern_term:bool ->
-  Term.constr -> Proof_type.goal Tacmach.sigma -> Evar.t list Evd.sigma
+  constr -> Proof_type.goal Tacmach.sigma -> Evar.t list Evd.sigma
 val dependencies :
-  Environ.env ->
-  Term.constr -> Context.named_context -> Names.Id.Set.t * Names.Idset.t
+  env ->
+  constr -> named_context -> Id.Set.t * Idset.t

@@ -13,6 +13,8 @@ src/depelim.mli
 src/depelim.ml
 src/equations.mli
 src/equations.ml
+src/noconf.ml
+src/noconf.mli
 src/g_equations.ml4
 src/equations_plugin_mod.ml
 src/equations_plugin.mllib
