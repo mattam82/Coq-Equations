@@ -44,35 +44,39 @@ open Decl_kinds
 open Coqlib
 
 let ($) f g = fun x -> f (g x)
+let id x = x
+
+(* Debugging infrastructure. *)
+
+let debug = true
+
+let check_term env evd c t =
+  Typing.check env (ref evd) c t
+
+let check_type env evd t =
+  ignore(Typing.sort_of env (ref evd) t)
+      
+let typecheck_rel_context evd ctx =
+  let _ =
+    List.fold_right
+      (fun (na, b, t as rel) env ->
+	 check_type env evd t;
+	 Option.iter (fun c -> check_term env evd c t) b;
+	 push_rel rel env)
+      ctx (Global.env ())
+  in ()
+
+
+let new_untyped_evar () =
+  let _, ev = new_pure_evar empty_named_context_val Evd.empty mkProp in
+    ev
 
 let to82 t = Proofview.V82.of_tactic t
 let of82 t = Proofview.V82.tactic t
 
 let proper_tails l = snd (List.fold_right (fun _ (t,ts) -> List.tl t, ts @ [t]) l (l, []))
 
-let list_tabulate f n =
-  let rec aux i =
-    if i == n then []
-    else f i :: aux (succ i)
-  in aux 0
-
-let list_map_filter_i f l = 
-  let rec aux i = function
-    | hd :: tl -> 
-	(match f i hd with
-	| Some x -> x :: aux (succ i) tl
-	| None -> aux (succ i) tl)
-    | [] -> []
-  in aux 0 l
-
-let list_try_find f =
-  let rec try_find_f = function
-    | [] -> failwith "try_find"
-    | h::t -> try f h with Failure _ -> try_find_f t
-  in
-  try_find_f
-
-let list_try_find_i f =
+let list_find_map_i f =
   let rec try_find_f n = function
     | [] -> None
     | h::t -> 
@@ -166,32 +170,24 @@ let tac_of_string str args =
 			   TacCall(dummy_loc, Qualid (dummy_loc, qualid_of_string str), args)))
 
 let equations_path = ["Equations";"Equations"]
-let coq_dynamic_ind = lazy (init_constant equations_path "dynamic")
-let coq_dynamic_constr = lazy (init_constant equations_path "Build_dynamic")
-let coq_dynamic_type = lazy (init_constant equations_path "dynamic_type")
-let coq_dynamic_obj = lazy (init_constant equations_path "dynamic_obj")
 
-
-let get_class x = fst (snd (Option.get x))
+let get_class c = 
+  let x = Typeclasses.class_of_constr c in
+    fst (snd (Option.get x))
 
 let functional_induction_class () =
   get_class
-    (Typeclasses.class_of_constr
-	(init_constant ["Equations";"FunctionalInduction"] "FunctionalInduction"))
+    (init_constant ["Equations";"FunctionalInduction"] "FunctionalInduction")
 
 let functional_elimination_class () =
   get_class
-    (Typeclasses.class_of_constr
-	(init_constant ["Equations";"FunctionalInduction"] "FunctionalElimination"))
+    (init_constant ["Equations";"FunctionalInduction"] "FunctionalElimination")
 
 let dependent_elimination_class () =
   get_class 
-    (Typeclasses.class_of_constr
-	(init_constant ["Equations";"DepElim"] "DependentEliminationPackage"))
+    (init_constant ["Equations";"DepElim"] "DependentEliminationPackage")
 
 let below_path = ["Equations";"Below"]
-let coq_have_class = lazy (init_constant below_path "Have")
-let coq_have_meth = lazy (init_constant below_path "have")
 
 let coq_wellfounded_class = lazy (init_constant ["Equations";"Subterm"] "WellFounded")
 let coq_wellfounded = lazy (init_constant ["Coq";"Init";"Wf"] "well_founded")
@@ -219,22 +215,6 @@ let coq_ImpossibleCall = lazy (init_constant ["Equations";"DepElim"] "Impossible
 let unfold_add_pattern = lazy
   (Tactics.unfold_in_concl [(Locus.AllOccurrences, 
 			     EvalConstRef (fst (destConst (Lazy.force coq_add_pattern))))])
-
-let coq_dynamic_list = lazy (mkApp (Lazy.force coq_list_ind, [| Lazy.force coq_dynamic_ind |]))
-
-let rec constrs_of_coq_dynamic_list c = 
-  match kind_of_term c with
-  | App (f, args) when f = Lazy.force coq_list_nil -> []
-  | App (f, args) when f = Lazy.force coq_list_cons && 
-      eq_constr args.(0) (Lazy.force coq_dynamic_ind) && 
-      Array.length args = 3 -> 
-      (match kind_of_term args.(1) with
-      | App (f, args') when f = Lazy.force coq_dynamic_constr &&
-	  Array.length args' = 2 ->
-	  (args'.(0), args'.(1)) :: constrs_of_coq_dynamic_list args.(2)
-      | _ -> raise (Invalid_argument "constrs_of_coq_dynamic_list"))
-  | _ -> raise (Invalid_argument "constrs_of_coq_dynamic_list")
-
 
 let subterm_relation_base = "subterm_relation"
 
@@ -351,3 +331,136 @@ let autounfold_first db cl gl =
       | Some hyp -> Proofview.V82.of_tactic (change_in_hyp None (fun evd -> evd, c') hyp) gl
       | None -> Proofview.V82.of_tactic (convert_concl_no_check c' DEFAULTcast) gl
     else tclFAIL 0 (str "Nothing to unfold") gl
+
+
+(** Bindings to Coq *)
+
+let below_tactics_path =
+  make_dirpath (List.map id_of_string ["Below";"Equations"])
+
+let below_tac s =
+  make_kn (MPfile below_tactics_path) (make_dirpath []) (mk_label s)
+
+let tacident_arg h =
+  Reference (Ident (dummy_loc,h))
+
+let tacvar_arg h =
+  let ipat = Genarg.in_gen (Genarg.rawwit Constrarg.wit_intro_pattern) 
+    (dummy_loc, Misctypes.IntroNaming (Misctypes.IntroIdentifier h)) in
+    TacGeneric ipat
+
+let rec_tac h h' = 
+  TacArg(dummy_loc, TacCall(dummy_loc, 
+			    Qualid (dummy_loc, qualid_of_string "Equations.Below.rec"),
+		[tacident_arg h;
+		 tacvar_arg h']))
+
+let rec_wf_tac h h' rel = 
+  TacArg(dummy_loc, TacCall(dummy_loc, 
+    Qualid (dummy_loc, qualid_of_string "Equations.Subterm.rec_wf_eqns_rel"),
+			    [tacident_arg h;tacvar_arg h';			     
+			     ConstrMayEval (Genredexpr.ConstrTerm rel)]))
+
+let unfold_recursor_tac () = tac_of_string "Equations.Subterm.unfold_recursor" []
+
+let equations_tac_expr () = 
+  (TacArg(dummy_loc, TacCall(dummy_loc, 
+   Qualid (dummy_loc, qualid_of_string "Equations.DepElim.equations"), [])))
+
+let equations_tac () = tac_of_string "Equations.DepElim.equations" []
+
+let set_eos_tac () = tac_of_string "Equations.DepElim.set_eos" []
+    
+let solve_rec_tac () = tac_of_string "Equations.Below.solve_rec" []
+
+let find_empty_tac () = tac_of_string "Equations.DepElim.find_empty" []
+
+let pi_tac () = tac_of_string "Equations.Subterm.pi" []
+
+let noconf_tac () = tac_of_string "Equations.NoConfusion.solve_noconf" []
+
+let simpl_equations_tac () = tac_of_string "Equations.DepElim.simpl_equations" []
+
+let reference_of_global c =
+  Qualid (dummy_loc, Nametab.shortest_qualid_of_global Idset.empty c)
+
+let solve_equation_tac c = tac_of_string "Equations.DepElim.solve_equation"
+
+let impossible_call_tac c = Tacintern.glob_tactic
+  (TacArg(dummy_loc,TacCall(dummy_loc,
+  Qualid (dummy_loc, qualid_of_string "Equations.DepElim.impossible_call"),
+  [ConstrMayEval (Genredexpr.ConstrTerm (Constrexpr.CRef (reference_of_global c, None)))])))
+
+let depelim_tac h = tac_of_string "Equations.DepElim.depelim"
+  [tacident_arg h]
+
+let do_empty_tac h = tac_of_string "Equations.DepElim.do_empty"
+  [tacident_arg h]
+
+let depelim_nosimpl_tac h = tac_of_string "Equations.DepElim.depelim_nosimpl"
+  [tacident_arg h]
+
+let simpl_dep_elim_tac () = tac_of_string "Equations.DepElim.simpl_dep_elim" []
+
+let depind_tac h = tac_of_string "Equations.DepElim.depind"
+  [tacident_arg h]
+
+(* let mkEq t x y =  *)
+(*   mkApp (Coqlib.build_coq_eq (), [| t; x; y |]) *)
+
+let mkNot t =
+  mkApp (Coqlib.build_coq_not (), [| t |])
+
+let mkNot t =
+  mkApp (Coqlib.build_coq_not (), [| t |])
+      
+let mkProd_or_subst (na,body,t) c =
+  match body with
+    | None -> mkProd (na, t, c)
+    | Some b -> subst1 b c
+
+let mkProd_or_clear decl c =
+  if not (dependent (mkRel 1) c) then
+    subst1 mkProp c
+  else mkProd_or_LetIn decl c
+
+let it_mkProd_or_clear ty ctx = 
+  fold_left (fun c d -> mkProd_or_clear d c) ty ctx
+      
+let mkLambda_or_subst (na,body,t) c =
+  match body with
+    | None -> mkLambda (na, t, c)
+    | Some b -> subst1 b c
+
+let mkLambda_or_subst_or_clear (na,body,t) c =
+  match body with
+  | None when dependent (mkRel 1) c -> mkLambda (na, t, c)
+  | None -> subst1 mkProp c
+  | Some b -> subst1 b c
+
+let mkProd_or_subst_or_clear (na,body,t) c =
+  match body with
+  | None when dependent (mkRel 1) c -> mkProd (na, t, c)
+  | None -> subst1 mkProp c
+  | Some b -> subst1 b c
+
+let it_mkProd_or_subst ty ctx = 
+  nf_beta Evd.empty (List.fold_left 
+		       (fun c d -> whd_betalet Evd.empty (mkProd_or_LetIn d c)) ty ctx)
+
+let it_mkProd_or_clean ty ctx = 
+  nf_beta Evd.empty (List.fold_left 
+		       (fun c (na,_,_ as d) -> whd_betalet Evd.empty 
+			 (if na == Anonymous then subst1 mkProp c
+			  else (mkProd_or_LetIn d c))) ty ctx)
+
+let it_mkLambda_or_subst ty ctx = 
+  whd_betalet Evd.empty
+    (List.fold_left (fun c d -> mkLambda_or_LetIn d c) ty ctx)
+
+let it_mkLambda_or_subst_or_clear ty ctx = 
+  (List.fold_left (fun c d -> mkLambda_or_subst_or_clear d c) ty ctx)
+
+let it_mkProd_or_subst_or_clear ty ctx = 
+  (List.fold_left (fun c d -> mkProd_or_subst_or_clear d c) ty ctx)
+

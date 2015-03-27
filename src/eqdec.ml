@@ -179,7 +179,7 @@ let derive_eq_dec ind =
   let possible_guards =
     List.map 
       (fun (ind, _) -> 
-	list_tabulate (fun i -> i) (List.length ind.ind_args + 2)) 
+	CList.init (List.length ind.ind_args + 2) id) 
       indsl
   in
   let hook _ gr =

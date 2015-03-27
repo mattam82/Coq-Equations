@@ -44,167 +44,6 @@ open Context
 open Equations_common
 open Depelim
 
-(* Debugging infrastructure. *)
-
-let debug = true
-
-let new_untyped_evar () =
-  let _, ev = new_pure_evar empty_named_context_val Evd.empty mkProp in
-    ev
-
-let check_term env evd c t =
-  Typing.check env (ref evd) c t
-
-let check_type env evd t =
-  ignore(Typing.sort_of env (ref evd) t)
-
-let abstract_undefined evd =
-  Evd.from_env ~ctx:(Evd.abstract_undefined_variables 
-		       (Evd.evar_universe_context evd))
-    (Global.env ())
-      
-let typecheck_rel_context evd ctx =
-  let _ =
-    List.fold_right
-      (fun (na, b, t as rel) env ->
-	 check_type env evd t;
-	 Option.iter (fun c -> check_term env evd c t) b;
-	 push_rel rel env)
-      ctx (Global.env ())
-  in ()
-
-(** Bindings to Coq *)
-
-let below_tactics_path =
-  make_dirpath (List.map id_of_string ["Below";"Equations"])
-
-let below_tac s =
-  make_kn (MPfile below_tactics_path) (make_dirpath []) (mk_label s)
-
-let tacident_arg h =
-  Reference (Ident (dummy_loc,h))
-
-let tacvar_arg h =
-  let ipat = Genarg.in_gen (Genarg.rawwit Constrarg.wit_intro_pattern) 
-    (dummy_loc, Misctypes.IntroNaming (Misctypes.IntroIdentifier h)) in
-    TacGeneric ipat
-
-let rec_tac h h' = 
-  TacArg(dummy_loc, TacCall(dummy_loc, 
-			    Qualid (dummy_loc, qualid_of_string "Equations.Below.rec"),
-		[tacident_arg h;
-		 tacvar_arg h']))
-
-let rec_wf_tac h h' rel = 
-  TacArg(dummy_loc, TacCall(dummy_loc, 
-    Qualid (dummy_loc, qualid_of_string "Equations.Subterm.rec_wf_eqns_rel"),
-			    [tacident_arg h;tacvar_arg h';			     
-			     ConstrMayEval (Genredexpr.ConstrTerm rel)]))
-
-let unfold_recursor_tac () = tac_of_string "Equations.Subterm.unfold_recursor" []
-
-let equations_tac_expr () = 
-  (TacArg(dummy_loc, TacCall(dummy_loc, 
-   Qualid (dummy_loc, qualid_of_string "Equations.DepElim.equations"), [])))
-
-let equations_tac () = tac_of_string "Equations.DepElim.equations" []
-
-let set_eos_tac () = tac_of_string "Equations.DepElim.set_eos" []
-    
-let solve_rec_tac () = tac_of_string "Equations.Below.solve_rec" []
-
-let find_empty_tac () = tac_of_string "Equations.DepElim.find_empty" []
-
-let pi_tac () = tac_of_string "Equations.Subterm.pi" []
-
-let noconf_tac () = tac_of_string "Equations.NoConfusion.solve_noconf" []
-
-let simpl_equations_tac () = tac_of_string "Equations.DepElim.simpl_equations" []
-
-let reference_of_global c =
-  Qualid (dummy_loc, Nametab.shortest_qualid_of_global Idset.empty c)
-
-let solve_equation_tac c = tac_of_string "Equations.DepElim.solve_equation"
-
-let impossible_call_tac c = Tacintern.glob_tactic
-  (TacArg(dummy_loc,TacCall(dummy_loc,
-  Qualid (dummy_loc, qualid_of_string "Equations.DepElim.impossible_call"),
-  [ConstrMayEval (Genredexpr.ConstrTerm (Constrexpr.CRef (reference_of_global c, None)))])))
-
-let depelim_tac h = tac_of_string "Equations.DepElim.depelim"
-  [tacident_arg h]
-
-let do_empty_tac h = tac_of_string "Equations.DepElim.do_empty"
-  [tacident_arg h]
-
-let depelim_nosimpl_tac h = tac_of_string "Equations.DepElim.depelim_nosimpl"
-  [tacident_arg h]
-
-let simpl_dep_elim_tac () = tac_of_string "Equations.DepElim.simpl_dep_elim" []
-
-let depind_tac h = tac_of_string "Equations.DepElim.depind"
-  [tacident_arg h]
-
-(* let mkEq t x y =  *)
-(*   mkApp (Coqlib.build_coq_eq (), [| t; x; y |]) *)
-
-let mkNot t =
-  mkApp (Coqlib.build_coq_not (), [| t |])
-
-let mkNot t =
-  mkApp (Coqlib.build_coq_not (), [| t |])
-      
-let mkProd_or_subst (na,body,t) c =
-  match body with
-    | None -> mkProd (na, t, c)
-    | Some b -> subst1 b c
-
-let mkProd_or_clear decl c =
-  if not (dependent (mkRel 1) c) then
-    subst1 mkProp c
-  else mkProd_or_LetIn decl c
-
-let it_mkProd_or_clear ty ctx = 
-  fold_left (fun c d -> mkProd_or_clear d c) ty ctx
-      
-let mkLambda_or_subst (na,body,t) c =
-  match body with
-    | None -> mkLambda (na, t, c)
-    | Some b -> subst1 b c
-
-let mkLambda_or_subst_or_clear (na,body,t) c =
-  match body with
-  | None when dependent (mkRel 1) c -> mkLambda (na, t, c)
-  | None -> subst1 mkProp c
-  | Some b -> subst1 b c
-
-let mkProd_or_subst_or_clear (na,body,t) c =
-  match body with
-  | None when dependent (mkRel 1) c -> mkProd (na, t, c)
-  | None -> subst1 mkProp c
-  | Some b -> subst1 b c
-
-let it_mkProd_or_subst ty ctx = 
-  nf_beta Evd.empty (List.fold_left 
-		       (fun c d -> whd_betalet Evd.empty (mkProd_or_LetIn d c)) ty ctx)
-
-let it_mkProd_or_clean ty ctx = 
-  nf_beta Evd.empty (List.fold_left 
-		       (fun c (na,_,_ as d) -> whd_betalet Evd.empty 
-			 (if na == Anonymous then subst1 mkProp c
-			  else (mkProd_or_LetIn d c))) ty ctx)
-
-let it_mkLambda_or_subst ty ctx = 
-  whd_betalet Evd.empty
-    (List.fold_left (fun c d -> mkLambda_or_LetIn d c) ty ctx)
-
-let it_mkLambda_or_subst_or_clear ty ctx = 
-  (List.fold_left (fun c d -> mkLambda_or_subst_or_clear d c) ty ctx)
-
-let it_mkProd_or_subst_or_clear ty ctx = 
-  (List.fold_left (fun c d -> mkProd_or_subst_or_clear d c) ty ctx)
-
-
 (** Abstract syntax for dependent pattern-matching. *)
 
 type pat =
@@ -520,7 +359,7 @@ let rels_of_tele tele = rel_list 0 (List.length tele)
 
 let patvars_of_tele tele = map (fun c -> PRel (destRel c)) (rels_of_tele tele)
 
-let pat_vars_list n = list_tabulate (fun i -> PRel (succ i)) n
+let pat_vars_list n = CList.init n (fun i -> PRel (succ i))
 
 let intset_of_list =
   fold_left (fun s x -> Int.Set.add x s) Int.Set.empty
@@ -543,7 +382,7 @@ let split_tele n (ctx : rel_context) =
 
 let rels_above ctx x =
   let len = List.length ctx in
-    intset_of_list (list_tabulate (fun i -> x + succ i) (len - x))
+    intset_of_list (CList.init (len - x) (fun i -> x + succ i))
 
 
 
@@ -648,12 +487,11 @@ let single_subst evd x p g =
     else if noccur_between 1 x t then
       (* The term to substitute refers only to previous variables. *)
       let substctx = subst_in_ctx x t g in
-      let pats = list_tabulate
+      let pats = CList.init (List.length g)
       	(fun i -> let k = succ i in
       		    if k == x then (lift_pat (-1) p) 
 		    else if k > x then PRel (pred k) 
-		    else PRel k)
-      	(List.length g)
+		    else PRel k)      	
       (* let substctx = set_in_ctx x t g in *)
       (* let pats = list_tabulate  *)
       (* 	(fun i -> let k = succ i in if k = x then p else PRel k) *)
@@ -1083,7 +921,7 @@ let find_empty env delta =
     match split_var env v delta with
     | None -> false
     | Some (v, _, r) -> Array.for_all (fun x -> x == None) r)
-    (list_tabulate (fun i -> succ i) (List.length delta))
+    (CList.init (List.length delta) succ)
   in match r with x :: _ -> Some x | _ -> None
     
 open Evd
@@ -1148,17 +986,17 @@ let instance_of_pats env evars (ctx : rel_context) (pats : (int * bool) list) =
   let pats' =
     List.map_i (fun i id ->
       let i', _ = lookup_named_i id ctx' in
-	list_try_find (fun (i'', hide) ->
-	  if i'' == i then if hide then PHide i' else PRel i'
-	  else failwith "") pats)
+	CList.find_map (fun (i'', hide) ->
+	  if i'' == i then Some (if hide then PHide i' else PRel i')
+	  else None) pats)
       1 subst
   in
   let pats'' =
     List.map_i (fun i (id, b, t) ->
       let i', _ = lookup_named_i id nctx in
-	list_try_find (fun (i'', hide) ->
-	  if i'' == i' then if hide then PHide i else PRel i
-	  else failwith "") pats)
+	CList.find_map (fun (i'', hide) ->
+	  if i'' == i' then Some (if hide then PHide i else PRel i)
+	  else None) pats)
       1 ctx'
   in fst (rel_of_named_context ctx'), pats', pats''
 
@@ -2266,7 +2104,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 		    | [] -> assert false
 		    | ev :: path -> 
 			let res = 
-			  list_try_find_i (fun i' (_, (_, path', _, _, _, _), _, _) ->
+			  list_find_map_i (fun i' (_, (_, path', _, _, _, _), _, _) ->
 			    if eq_path path' path then Some (idx + 1 - i')
 			    else None) 1 ind_stmts
 			in match res with None -> assert false | Some i -> i

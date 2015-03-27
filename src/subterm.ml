@@ -63,7 +63,7 @@ let derive_subterm ind =
       let lenargs = List.length args in
       let lenargs' = lenargs - params in
       let args', params' = List.chop lenargs' args in
-      let recargs = list_map_filter_i (fun i (n, _, t) ->
+      let recargs = CList.map_filter_i (fun i (n, _, t) ->
 	let ctx, ar = decompose_prod_assum t in
 	  match kind_of_term (fst (decompose_app ar)) with
 	  | Ind (ind',_) when eq_ind ind' (fst ind) -> 
@@ -181,7 +181,7 @@ let derive_subterm ind =
       let evm = ref sigma in
       let env = Global.env () in
       let env' = push_rel_context parambinders env in
-      let kl = get_class (Typeclasses.class_of_constr (Lazy.force coq_wellfounded_class)) in
+      let kl = get_class (Lazy.force coq_wellfounded_class) in
       let body, ty =
 	let ty, rel = 
 	  if List.is_empty argbinders then
