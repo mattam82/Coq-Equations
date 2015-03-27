@@ -2876,48 +2876,11 @@ type equation_user_option = (equation_option * bool)
 
 type equation_options = ((equation_option * bool) list)
 
-(* let wit_equation_options : equation_options Genarg.uniform_genarg_type = *)
-(*   Genarg.create_arg None "equation_options" *)
-
 let pr_r_equation_user_option _prc _prlc _prt l =
   mt ()
 
 let pr_equation_options  _prc _prlc _prt l =
   mt ()
-
-(* type decl_notation_argtype = (Vernacexpr.decl_notation list) Genarg.uniform_genarg_type *)
-
-(* let wit_decl_notation : decl_notation_argtype = *)
-(*   Genarg.create_arg None "decl_notation" *)
-
-(* let decl_notation = Pcoq.Vernac_.decl_notation *)
-
-(* let pr_raw_decl_notation _ _ _ x = mt () *)
-(* let pr_glob_decl_notation _ _ _ x = mt () *)
-(* let pr_decl_notation _ _ _ x = mt () *)
-
-(* let _ = Pptactic.declare_extra_genarg_pprule wit_decl_notation *)
-(*   pr_raw_decl_notation pr_glob_decl_notation pr_decl_notation *)
-
-(* type identref_argtype = identifier located (\* Genarg.uniform_genarg_type *\) *)
-
-(* let wit_ident_reference : identref_argtype Genarg.uniform_genarg_type = *)
-(*   Genarg.create_arg None "ident_reference" *)
-
-(* let pr_r_identref  _prc _prlc _prt l = *)
-(*   mt () *)
-
-(* ARGUMENT EXTEND ident_reference *)
-(* TYPED AS identref_argtype *)
-(* PRINTED BY pr_r_identref *)
-(* | [ ident(i) ] -> [ loc, i ] *)
-(* END *)
-
-(* let proof_instr : raw_proof_instr Gram.entry = *)
-(*   Pcoq.create_generic_entry "proof_instr" (Genarg.rawwit wit_proof_instr) *)
-
-(* let _ = Pptactic.declare_extra_genarg_pprule wit_proof_instr *)
-(*   pr_raw_proof_instr pr_glob_proof_instr pr_proof_instr *)
 
 let with_rollback f x =
   (* States.with_heavy_rollback f *)

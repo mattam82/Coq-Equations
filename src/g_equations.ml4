@@ -288,22 +288,6 @@ GEXTEND Gram
     ] ]
   ;
 
-  (* equation_option: *)
-  (*   [ [ IDENT "noind" -> OInd, false *)
-  (*     | IDENT "ind" -> OInd, true *)
-  (*     | IDENT "struct" -> ORec, true *)
-  (*     | IDENT "nostruct" -> ORec, false *)
-  (*     | IDENT "comp" -> OComp, true *)
-  (*     | IDENT "nocomp" -> OComp, false *)
-  (*     | IDENT "eqns" -> OEquations, true *)
-  (*     | IDENT "noeqns" -> OEquations, false *)
-  (*   ] ] *)
-  (* ; *)
-  
-  (* equation_options: *)
-  (*   [ [ "(" ; l = LIST1 equation_option; ")" -> l *)
-  (*     | -> [] ] ] *)
-  (* ; *)
   END
 
 VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS QUERY
