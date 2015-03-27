@@ -40,6 +40,9 @@ open Tactics
 open Tacticals
 open Tacmach
 open Context
+open Evd
+open Evarutil
+open Evar_kinds
 
 open Equations_common
 open Depelim
@@ -304,6 +307,7 @@ and lift_patns n k = map (lift_patn n k)
 let lift_pat n p = lift_patn n 0 p
 let lift_pats n p = lift_patns n 0 p
 
+(** AST *)
 type program = 
   signature * clause list
 
@@ -320,6 +324,48 @@ and 'a rhs =
   | Refine of constr_expr * 'a list
   | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) union * 'a list
 
+
+    
+open Printer
+open Ppconstr
+
+let rec pr_user_pat env = function
+  | PUVar i -> pr_id i
+  | PUCstr (c, i, f) -> 
+      let pc = pr_constructor env c in
+	if not (List.is_empty f) then str "(" ++ pc ++ spc () ++ pr_user_pats env f ++ str ")"
+	else pc
+  | PUInac c -> str "?(" ++ pr_constr_expr c ++ str ")"
+
+and pr_user_pats env pats =
+  prlist_with_sep spc (pr_user_pat env) pats
+
+let pr_lhs = pr_user_pats
+
+let pplhs lhs = pp (pr_lhs (Global.env ()) lhs)
+
+let rec pr_rhs env = function
+  | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ pr_id var
+  | Rec ((loc, var), rel, s) -> spc () ++ str "=>" ++ spc () ++ str"rec " ++ pr_id var ++ spc () ++
+      hov 1 (str "{" ++ pr_clauses env s ++ str "}")
+  | Program rhs -> spc () ++ str ":=" ++ spc () ++ pr_constr_expr rhs
+  | Refine (rhs, s) -> spc () ++ str "<=" ++ spc () ++ pr_constr_expr rhs ++ 
+      spc () ++ str "=>" ++ spc () ++
+      hov 1 (str "{" ++ pr_clauses env s ++ str "}")
+  | By (Inl tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_raw_tactic tac
+      ++ spc () ++ hov 1 (str "{" ++ pr_clauses env s ++ str "}")
+  | By (Inr tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_glob_tactic env tac
+      ++ spc () ++ hov 1 (str "{" ++ pr_clauses env s ++ str "}")
+      
+and pr_clause env (lhs, rhs) =
+  pr_lhs env lhs ++ pr_rhs env rhs
+
+and pr_clauses env =
+  prlist_with_sep fnl (pr_clause env)
+
+let ppclause clause = pp(pr_clause (Global.env ()) clause)
+
+(** Splitting trees *)
 type path = Evd.evar list
 
 type splitting = 
@@ -755,45 +801,6 @@ let blockers curpats ((_, patcs, _) : context_map) =
     | _ -> []
 	
   in patterns_blockers curpats (rev patcs)
-    
-open Printer
-open Ppconstr
-
-let rec pr_user_pat env = function
-  | PUVar i -> pr_id i
-  | PUCstr (c, i, f) -> 
-      let pc = pr_constructor env c in
-	if not (List.is_empty f) then str "(" ++ pc ++ spc () ++ pr_user_pats env f ++ str ")"
-	else pc
-  | PUInac c -> str "?(" ++ pr_constr_expr c ++ str ")"
-
-and pr_user_pats env pats =
-  prlist_with_sep spc (pr_user_pat env) pats
-
-let pr_lhs = pr_user_pats
-
-let pplhs lhs = pp (pr_lhs (Global.env ()) lhs)
-
-let rec pr_rhs env = function
-  | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ pr_id var
-  | Rec ((loc, var), rel, s) -> spc () ++ str "=>" ++ spc () ++ str"rec " ++ pr_id var ++ spc () ++
-      hov 1 (str "{" ++ pr_clauses env s ++ str "}")
-  | Program rhs -> spc () ++ str ":=" ++ spc () ++ pr_constr_expr rhs
-  | Refine (rhs, s) -> spc () ++ str "<=" ++ spc () ++ pr_constr_expr rhs ++ 
-      spc () ++ str "=>" ++ spc () ++
-      hov 1 (str "{" ++ pr_clauses env s ++ str "}")
-  | By (Inl tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_raw_tactic tac
-      ++ spc () ++ hov 1 (str "{" ++ pr_clauses env s ++ str "}")
-  | By (Inr tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_glob_tactic env tac
-      ++ spc () ++ hov 1 (str "{" ++ pr_clauses env s ++ str "}")
-      
-and pr_clause env (lhs, rhs) =
-  pr_lhs env lhs ++ pr_rhs env rhs
-
-and pr_clauses env =
-  prlist_with_sep fnl (pr_clause env)
-
-let ppclause clause = pp(pr_clause (Global.env ()) clause)
 
 let pr_rel_name env i =
   pr_name (pi1 (lookup_rel i env))
@@ -1297,32 +1304,12 @@ let covering env evars data (clauses : clause list) prob ty =
       errorlabstrm "deppat"
 	(str "Unable to build a covering for:" ++ fnl () ++
 	   pr_problem data env prob)
-    
-open Evd
-open Evarutil
 
 let helper_evar evm evar env typ src =
   let sign, typ', instance, _, _ = push_rel_context_to_named_context env typ in
   let evm' = evar_declare sign evar typ' ~src evm in
     evm', mkEvar (evar, Array.of_list instance)
 
-let gen_constant dir s = Coqlib.gen_constant "equations" dir s
-
-let coq_zero = lazy (gen_constant ["Init"; "Datatypes"] "O")
-let coq_succ = lazy (gen_constant ["Init"; "Datatypes"] "S")
-let coq_nat = lazy (gen_constant ["Init"; "Datatypes"] "nat")
-
-let rec coq_nat_of_int = function
-  | 0 -> Lazy.force coq_zero
-  | n -> mkApp (Lazy.force coq_succ, [| coq_nat_of_int (pred n) |])
-
-(* let make_sensitive_from_oc oc = *)
-(*   Refinable.bind *)
-(*     (Goal.Refinable.make *)
-(*        (fun h -> Goal.Refinable.constr_of_open_constr h false oc)) *)
-(*     Goal.refine *)
-
-open Evar_kinds
 
 let term_of_tree status isevar env (i, delta, ty) ann tree =
   let oblevars = ref Evar.Set.empty in
@@ -2729,15 +2716,6 @@ let equations opts (loc, i) l t nt eqs =
   Dumpglob.dump_definition (loc, i) false "def";
   with_rollback (define_by_eqs opts i l t nt) eqs
 
-
-let rec int_of_coq_nat c = 
-  match kind_of_term c with
-  | App (f, [| arg |]) -> succ (int_of_coq_nat arg)
-  | _ -> 0
-
-let gclause_none =
-  { Locus.onhyps=Some []; concl_occs=Locus.NoOccurrences}
-
 let solve_equations_goal destruct_tac tac gl =
   let concl = pf_concl gl in
   let targetn, branchesn, targ, brs, b =
@@ -2763,125 +2741,11 @@ let solve_equations_goal destruct_tac tac gl =
   let cleantac = tclTHEN (to82 (intros_using ids)) (thin ids) in
   let dotac = tclDO (succ targ) intro in
   let letintac (id, br, brt) = 
-    tclTHEN (to82 (letin_tac None (Name id) br (Some brt) gclause_none)) tac 
+    tclTHEN (to82 (letin_tac None (Name id) br (Some brt) nowhere)) tac 
   in
   let subtacs =
     tclTHENS destruct_tac (map letintac branches)
   in tclTHENLIST [cleantac ; dotac ; subtacs] gl
-
-let rec db_of_constr c = match kind_of_term c with
-  | Const (c,_) -> string_of_label (con_label c)
-  | App (c,al) -> db_of_constr c
-  | _ -> assert false
-
-let dbs_of_constrs = map db_of_constr
-
-let depcase (mind, i as ind) =
-  let indid = Nametab.basename_of_global (IndRef ind) in
-  let mindb, oneind = Global.lookup_inductive ind in
-  let inds = List.rev (Array.to_list (Array.mapi (fun i oib -> mkInd (mind, i)) mindb.mind_packets)) in
-  let ctx = oneind.mind_arity_ctxt in
-  let nparams = mindb.mind_nparams in
-  let args, params = List.chop (List.length ctx - nparams) ctx in
-  let nargs = List.length args in
-  let indapp = mkApp (mkInd ind, extended_rel_vect 0 ctx) in
-  let evd = ref Evd.empty in
-  let pred = it_mkProd_or_LetIn (e_new_Type (Global.env ()) evd) 
-    ((Anonymous, None, indapp) :: args)
-  in
-  let nconstrs = Array.length oneind.mind_nf_lc in
-  let branches = 
-    Array.map2_i (fun i id cty ->
-      let substcty = substl inds cty in
-      let (args, arity) = decompose_prod_assum substcty in
-      let _, indices = decompose_app arity in
-      let _, indices = List.chop nparams indices in
-      let ncargs = List.length args - nparams in
-      let realargs, pars = List.chop ncargs args in
-      let realargs = lift_rel_context (i + 1) realargs in
-      let arity = applistc (mkRel (ncargs + i + 1)) 
-	(indices @ [mkApp (mkConstruct (ind, succ i), 
-			  Array.append (extended_rel_vect (ncargs + i + 1) params)
-			    (extended_rel_vect 0 realargs))])
-      in
-      let body = mkRel (1 + nconstrs - i) in
-      let br = it_mkProd_or_LetIn arity realargs in
-	(Name (id_of_string ("P" ^ string_of_int i)), None, br), body)
-      oneind.mind_consnames oneind.mind_nf_lc
-  in
-  let ci = {
-    ci_ind = ind;
-    ci_npar = nparams;
-    ci_cstr_nargs = oneind.mind_consnrealargs;
-    ci_cstr_ndecls = oneind.mind_consnrealdecls;
-    ci_pp_info = { ind_tags = []; cstr_tags = [||]; style = RegularStyle; } }
-  in
-  let obj i =
-    mkApp (mkInd ind,
-	  (Array.append (extended_rel_vect (nargs + nconstrs + i) params)
-	      (extended_rel_vect 0 args)))
-  in
-  let ctxpred = (Anonymous, None, obj (2 + nargs)) :: args in
-  let app = mkApp (mkRel (nargs + nconstrs + 3),
-		  (extended_rel_vect 0 ctxpred))
-  in
-  let ty = it_mkLambda_or_LetIn app ctxpred in
-  let case = mkCase (ci, ty, mkRel 1, Array.map snd branches) in
-  let xty = obj 1 in
-  let xid = Namegen.named_hd (Global.env ()) xty Anonymous in
-  let body = 
-    let len = 1 (* P *) + Array.length branches in
-    it_mkLambda_or_LetIn case 
-      ((xid, None, lift len indapp) 
-	:: ((List.rev (Array.to_list (Array.map fst branches))) 
-	    @ ((Name (id_of_string "P"), None, pred) :: ctx)))
-  in
-  let ce = Declare.definition_entry body in
-  let kn = 
-    let id = add_suffix indid "_dep_elim" in
-      ConstRef (Declare.declare_constant id
-		  (DefinitionEntry ce, IsDefinition Scheme))
-  in ctx, indapp, kn
-
-let derive_dep_elimination ctx (i,u) loc =
-  let evd = Evd.from_env ~ctx (Global.env ()) in
-  let ctx, ty, gref = depcase i in
-  let indid = Nametab.basename_of_global (IndRef i) in
-  let id = add_prefix "DependentElimination_" indid in
-  let cl = dependent_elimination_class () in
-  let casety = Global.type_of_global_unsafe gref in
-  let poly = false in (*FIXME*)
-  let args = extended_rel_vect 0 ctx in
-    Equations_common.declare_instance id poly evd ctx cl [ty; prod_appvect casety args; 
-				mkApp (constr_of_global gref, args)]     
-
-let pattern_call ?(pattern_term=true) c gl =
-  let env = pf_env gl in
-  let cty = pf_type_of gl c in
-  let ids = ids_of_named_context (pf_hyps gl) in
-  let deps =
-    match kind_of_term c with
-    | App (f, args) -> Array.to_list args
-    | _ -> []
-  in
-  let varname c = match kind_of_term c with
-    | Var id -> id
-    | _ -> Namegen.next_ident_away (id_of_string (Namegen.hdchar (pf_env gl) c))
-	ids
-  in
-  let mklambda ty (c, id, cty) =
-    let conclvar, _ = Find_subterm.subst_closed_term_occ env (project gl) 
-      (Locus.AtOccs Locus.AllOccurrences) c ty in
-      mkNamedLambda id cty conclvar
-  in
-  let subst = 
-    let deps = List.rev_map (fun c -> (c, varname c, pf_type_of gl c)) deps in
-      if pattern_term then (c, varname c, cty) :: deps
-      else deps
-  in
-  let concllda = List.fold_left mklambda (pf_concl gl) subst in
-  let conclapp = applistc concllda (List.rev_map pi1 subst) in
-    Proofview.V82.of_tactic (convert_concl_no_check conclapp DEFAULTcast) gl
 
 let dependencies env c ctx =
   let init = global_vars_set env c in

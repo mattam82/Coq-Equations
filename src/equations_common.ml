@@ -92,6 +92,7 @@ let find_constant contrib dir s =
 let contrib_name = "Equations"
 let init_constant dir s = find_constant contrib_name dir s
 let init_reference dir s = Coqlib.find_reference contrib_name dir s
+let gen_constant dir s = Coqlib.gen_constant "equations" dir s
 
 let make_definition ?opaque ?(poly=false) evd ?types b =
   let env = Global.env () in
@@ -124,6 +125,19 @@ let coq_tt = lazy (init_constant ["Coq";"Init";"Datatypes"] "tt")
 
 let coq_prod = lazy (init_constant ["Coq";"Init";"Datatypes"] "prod")
 let coq_pair = lazy (init_constant ["Coq";"Init";"Datatypes"] "pair")
+
+let coq_zero = lazy (gen_constant ["Init"; "Datatypes"] "O")
+let coq_succ = lazy (gen_constant ["Init"; "Datatypes"] "S")
+let coq_nat = lazy (gen_constant ["Init"; "Datatypes"] "nat")
+
+let rec coq_nat_of_int = function
+  | 0 -> Lazy.force coq_zero
+  | n -> mkApp (Lazy.force coq_succ, [| coq_nat_of_int (pred n) |])
+
+let rec int_of_coq_nat c = 
+  match kind_of_term c with
+  | App (f, [| arg |]) -> succ (int_of_coq_nat arg)
+  | _ -> 0
 
 let coq_fix_proto = lazy (init_constant ["Coq";"Program";"Tactics"] "fix_proto")
 
@@ -332,6 +346,14 @@ let autounfold_first db cl gl =
       | None -> Proofview.V82.of_tactic (convert_concl_no_check c' DEFAULTcast) gl
     else tclFAIL 0 (str "Nothing to unfold") gl
 
+type hintdb_name = string
+
+let rec db_of_constr c = match kind_of_term c with
+  | Const (c,_) -> string_of_label (con_label c)
+  | App (c,al) -> db_of_constr c
+  | _ -> assert false
+
+let dbs_of_constrs = map db_of_constr
 
 (** Bindings to Coq *)
 

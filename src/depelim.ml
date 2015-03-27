@@ -25,7 +25,10 @@ open Typeops
 open Type_errors
 open Pp
 open Proof_type
+open Decl_kinds
+open Entries
 
+open Globnames
 open Glob_term
 open Retyping
 open Pretype_errors
@@ -330,5 +333,113 @@ let dependent_pattern ?(pattern_term=true) c gl =
       else deps
   in
   let concllda, evd = List.fold_left mklambda (pf_concl gl, project gl) subst in
+  let conclapp = applistc concllda (List.rev_map pi1 subst) in
+    Proofview.V82.of_tactic (convert_concl_no_check conclapp DEFAULTcast) gl
+
+
+let depcase (mind, i as ind) =
+  let indid = Nametab.basename_of_global (IndRef ind) in
+  let mindb, oneind = Global.lookup_inductive ind in
+  let inds = List.rev (Array.to_list (Array.mapi (fun i oib -> mkInd (mind, i)) mindb.mind_packets)) in
+  let ctx = oneind.mind_arity_ctxt in
+  let nparams = mindb.mind_nparams in
+  let args, params = List.chop (List.length ctx - nparams) ctx in
+  let nargs = List.length args in
+  let indapp = mkApp (mkInd ind, extended_rel_vect 0 ctx) in
+  let evd = ref Evd.empty in
+  let pred = it_mkProd_or_LetIn (e_new_Type (Global.env ()) evd) 
+    ((Anonymous, None, indapp) :: args)
+  in
+  let nconstrs = Array.length oneind.mind_nf_lc in
+  let branches = 
+    Array.map2_i (fun i id cty ->
+      let substcty = substl inds cty in
+      let (args, arity) = decompose_prod_assum substcty in
+      let _, indices = decompose_app arity in
+      let _, indices = List.chop nparams indices in
+      let ncargs = List.length args - nparams in
+      let realargs, pars = List.chop ncargs args in
+      let realargs = lift_rel_context (i + 1) realargs in
+      let arity = applistc (mkRel (ncargs + i + 1)) 
+	(indices @ [mkApp (mkConstruct (ind, succ i), 
+			  Array.append (extended_rel_vect (ncargs + i + 1) params)
+			    (extended_rel_vect 0 realargs))])
+      in
+      let body = mkRel (1 + nconstrs - i) in
+      let br = it_mkProd_or_LetIn arity realargs in
+	(Name (id_of_string ("P" ^ string_of_int i)), None, br), body)
+      oneind.mind_consnames oneind.mind_nf_lc
+  in
+  let ci = {
+    ci_ind = ind;
+    ci_npar = nparams;
+    ci_cstr_nargs = oneind.mind_consnrealargs;
+    ci_cstr_ndecls = oneind.mind_consnrealdecls;
+    ci_pp_info = { ind_tags = []; cstr_tags = [||]; style = RegularStyle; } }
+  in
+  let obj i =
+    mkApp (mkInd ind,
+	  (Array.append (extended_rel_vect (nargs + nconstrs + i) params)
+	      (extended_rel_vect 0 args)))
+  in
+  let ctxpred = (Anonymous, None, obj (2 + nargs)) :: args in
+  let app = mkApp (mkRel (nargs + nconstrs + 3),
+		  (extended_rel_vect 0 ctxpred))
+  in
+  let ty = it_mkLambda_or_LetIn app ctxpred in
+  let case = mkCase (ci, ty, mkRel 1, Array.map snd branches) in
+  let xty = obj 1 in
+  let xid = Namegen.named_hd (Global.env ()) xty Anonymous in
+  let body = 
+    let len = 1 (* P *) + Array.length branches in
+    it_mkLambda_or_LetIn case 
+      ((xid, None, lift len indapp) 
+	:: ((List.rev (Array.to_list (Array.map fst branches))) 
+	    @ ((Name (id_of_string "P"), None, pred) :: ctx)))
+  in
+  let ce = Declare.definition_entry body in
+  let kn = 
+    let id = add_suffix indid "_dep_elim" in
+      ConstRef (Declare.declare_constant id
+		  (DefinitionEntry ce, IsDefinition Scheme))
+  in ctx, indapp, kn
+
+let derive_dep_elimination ctx (i,u) loc =
+  let evd = Evd.from_env ~ctx (Global.env ()) in
+  let ctx, ty, gref = depcase i in
+  let indid = Nametab.basename_of_global (IndRef i) in
+  let id = add_prefix "DependentElimination_" indid in
+  let cl = dependent_elimination_class () in
+  let casety = Global.type_of_global_unsafe gref in
+  let poly = false in (*FIXME*)
+  let args = extended_rel_vect 0 ctx in
+    Equations_common.declare_instance id poly evd ctx cl [ty; prod_appvect casety args; 
+				mkApp (Universes.constr_of_global gref, args)]     
+
+let pattern_call ?(pattern_term=true) c gl =
+  let env = pf_env gl in
+  let cty = pf_type_of gl c in
+  let ids = ids_of_named_context (pf_hyps gl) in
+  let deps =
+    match kind_of_term c with
+    | App (f, args) -> Array.to_list args
+    | _ -> []
+  in
+  let varname c = match kind_of_term c with
+    | Var id -> id
+    | _ -> Namegen.next_ident_away (id_of_string (Namegen.hdchar (pf_env gl) c))
+	ids
+  in
+  let mklambda ty (c, id, cty) =
+    let conclvar, _ = Find_subterm.subst_closed_term_occ env (project gl) 
+      (Locus.AtOccs Locus.AllOccurrences) c ty in
+      mkNamedLambda id cty conclvar
+  in
+  let subst = 
+    let deps = List.rev_map (fun c -> (c, varname c, pf_type_of gl c)) deps in
+      if pattern_term then (c, varname c, cty) :: deps
+      else deps
+  in
+  let concllda = List.fold_left mklambda (pf_concl gl) subst in
   let conclapp = applistc concllda (List.rev_map pi1 subst) in
     Proofview.V82.of_tactic (convert_concl_no_check conclapp DEFAULTcast) gl

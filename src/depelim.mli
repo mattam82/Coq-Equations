@@ -6,6 +6,11 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
+open Term
+open Context
+open Environ
+open Names
+
 val lift_togethern : int -> Constr.constr list -> Constr.constr list
 val lift_together : Constr.constr list -> Constr.constr list
 val lift_list : Constr.constr list -> Constr.constr list
@@ -58,3 +63,15 @@ val abstract_generalize :
 val dependent_pattern :
   ?pattern_term:bool ->
   Term.constr -> Proof_type.goal Tacmach.sigma -> Evar.t list Evd.sigma
+
+
+val depcase :
+  MutInd.t * int ->
+  rel_context * constr * Globnames.global_reference
+val derive_dep_elimination :
+  Evd.evar_universe_context -> inductive * 'a -> 'b -> constr
+
+
+val pattern_call :
+  ?pattern_term:bool ->
+  constr -> Proof_type.goal Tacmach.sigma -> Evar.t list Evd.sigma

@@ -113,6 +113,34 @@ TACTIC EXTEND dependent_pattern_from
     [ Proofview.V82.tactic (Depelim.dependent_pattern ~pattern_term:false c) ]
 END
 
+VERNAC COMMAND EXTEND Derive_DependentElimination CLASSIFIED AS QUERY
+| [ "Derive" "DependentElimination" "for" constr_list(c) ] -> [ 
+    List.iter (fun c ->
+      let c',ctx = Constrintern.interp_constr (Global.env ()) Evd.empty c in
+	match kind_of_term c' with
+	| Ind i -> ignore(Depelim.derive_dep_elimination ctx i dummy_loc) (* (Glob_ops.loc_of_glob_constr c)) *)
+	| _ -> error "Expected an inductive type")
+      c
+  ]
+END
+
+TACTIC EXTEND pattern_call
+[ "pattern_call" constr(c) ] -> [ of82 (Depelim.pattern_call c) ]
+END
+
+(* Noconf *)
+
+VERNAC COMMAND EXTEND Derive_NoConfusion CLASSIFIED AS QUERY
+| [ "Derive" "NoConfusion" "for" constr_list(c) ] -> [ 
+    List.iter (fun c ->
+      let env = (Global.env ()) in
+      let c',ctx = Constrintern.interp_constr env Evd.empty c in
+	match kind_of_term c' with
+	| Ind i -> Noconf.derive_no_confusion env (Evd.from_env ~ctx env) i
+	| _ -> error "Expected an inductive type")
+      c
+  ]
+END
 
 (* TACTIC EXTEND dependent_generalize *)
 (* | ["dependent" "generalize" hyp(id) "as" ident(id') ] ->  *)
@@ -151,23 +179,9 @@ TACTIC EXTEND simp
 | [ "simp" ne_preident_list(l) clause(c) ] -> 
     [ of82 (Equations.simp_eqns_in c l) ]
 | [ "simpc" constr_list(l) clause(c) ] -> 
-    [ of82 (Equations.simp_eqns_in c (Equations.dbs_of_constrs l)) ]
+    [ of82 (Equations.simp_eqns_in c (dbs_of_constrs l)) ]
 END
 
-
-(* Noconf *)
-
-VERNAC COMMAND EXTEND Derive_NoConfusion CLASSIFIED AS QUERY
-| [ "Derive" "NoConfusion" "for" constr_list(c) ] -> [ 
-    List.iter (fun c ->
-      let env = (Global.env ()) in
-      let c',ctx = Constrintern.interp_constr env Evd.empty c in
-	match kind_of_term c' with
-	| Ind i -> Noconf.derive_no_confusion env (Evd.from_env ~ctx env) i
-	| _ -> error "Expected an inductive type")
-      c
-  ]
-END
 
 (* let wit_r_equation_user_option : equation_user_option Genarg.uniform_genarg_type = *)
 (*   Genarg.create_arg None "r_equation_user_option" *)
@@ -299,17 +313,6 @@ VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS QUERY
     [ Equations.equations opt (dummy_loc, i) l t [] eqs ]
       END
 
-VERNAC COMMAND EXTEND Derive_DependentElimination CLASSIFIED AS QUERY
-| [ "Derive" "DependentElimination" "for" constr_list(c) ] -> [ 
-    List.iter (fun c ->
-      let c',ctx = Constrintern.interp_constr (Global.env ()) Evd.empty c in
-	match kind_of_term c' with
-	| Ind i -> ignore(Equations.derive_dep_elimination ctx i dummy_loc) (* (Glob_ops.loc_of_glob_constr c)) *)
-	| _ -> error "Expected an inductive type")
-      c
-  ]
-END
-
 (* TACTIC EXTEND block_goal *)
 (* [ "block_goal" ] -> [ of82 ( *)
 (*   (fun gl -> *)
@@ -338,10 +341,6 @@ END
 (* 	convert_concl newconcl DEFAULTcast gl  *)
 (*   | _ -> tclFAIL 0 (str "Not a recognizable call") gl ] *)
 (* END *)
-
-TACTIC EXTEND pattern_call
-[ "pattern_call" constr(c) ] -> [ of82 (pattern_call c) ]
-END
 
 (* Subterm *)
 

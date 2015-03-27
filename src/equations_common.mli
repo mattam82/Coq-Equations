@@ -6,6 +6,11 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
+open Term
+open Context
+open Environ
+open Names
+
 val debug : bool
 
 (* Tactics *)
@@ -97,6 +102,7 @@ val find_constant : Coqlib.message -> string list -> string -> Term.constr
 val contrib_name : string
 val init_constant : string list -> string -> Term.constr
 val init_reference : string list -> string -> Globnames.global_reference
+val gen_constant : string list -> string -> constr
 
 val get_class : Term.constr -> Typeclasses.typeclass Term.puniverses
 
@@ -125,6 +131,13 @@ val coq_unit : Term.constr lazy_t
 val coq_tt : Term.constr lazy_t
 val coq_prod : Term.constr lazy_t
 val coq_pair : Term.constr lazy_t
+
+val coq_zero : constr lazy_t
+val coq_succ : constr lazy_t
+val coq_nat : constr lazy_t
+val coq_nat_of_int : int -> constr
+val int_of_coq_nat : constr -> int
+
 val coq_eq : Globnames.global_reference Lazy.t
 val coq_eq_refl : Globnames.global_reference lazy_t
 val coq_heq : Globnames.global_reference lazy_t
@@ -231,3 +244,7 @@ val autounfold_first :
   Hints.hint_db_name list ->
   Locus.hyp_location option ->
   Proof_type.goal Tacmach.sigma -> Proof_type.goal list Evd.sigma
+
+type hintdb_name = string
+val db_of_constr : constr -> hintdb_name
+val dbs_of_constrs : constr list -> hintdb_name list
