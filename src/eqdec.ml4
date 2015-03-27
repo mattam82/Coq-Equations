@@ -1,16 +1,14 @@
 (* -*- compile-command: "make -k -C .. src/equations_plugin.cma src/equations_plugin.cmxs" -*- *)
-(************************************************************************)
-(*  v      *   The Coq Proof Assistant  /  The Coq Development Team     *)
-(* <O___,, * CNRS-Ecole Polytechnique-INRIA Futurs-Universite Paris Sud *)
-(*   \VV/  **************************************************************)
-(*    //   *      This file is distributed under the terms of the       *)
-(*         *       GNU Lesser General Public License Version 2.1        *)
-(************************************************************************)
+(**********************************************************************)
+(* Equations                                                          *)
+(* Copyright (c) 2009-2015 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(**********************************************************************)
+(* This file is distributed under the terms of the                    *)
+(* GNU Lesser General Public License Version 2.1                      *)
+(**********************************************************************)
 
 (*i camlp4deps: "grammar/grammar.cma" i*)
 (*i camlp4use: "pa_extend.cmo" i*)
-
-(* $Id: equations.ml4 11996 2009-03-20 01:22:58Z letouzey $ *)
 
 (* 
    Statements: forall Δ, EqDec Δ -> EqDec (I Δ)

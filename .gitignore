@@ -20,3 +20,4 @@ Makefile
 /doc/equations.pdf
 /doc/intro.pdf
 /doc/intro.tex
+/theories/.coq-native/

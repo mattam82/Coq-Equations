@@ -1,18 +1,16 @@
-(************************************************************************)
-(*  v      *   The Coq Proof Assistant  /  The Coq Development Team     *)
-(* <O___,, * CNRS-Ecole Polytechnique-INRIA Futurs-Universite Paris Sud *)
-(*   \VV/  **************************************************************)
-(*    //   *      This file is distributed under the terms of the       *)
-(*         *       GNU Lesser General Public License Version 2.1        *)
-(************************************************************************)
+(**********************************************************************)
+(* Equations                                                          *)
+(* Copyright (c) 2009-2015 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(**********************************************************************)
+(* This file is distributed under the terms of the                    *)
+(* GNU Lesser General Public License Version 2.1                      *)
+(**********************************************************************)
 
 (** Decidable equality.
 
    We redevelop the derivation of [K] from decidable equality on [A] making
    everything transparent and moving to [Type] so that programs using this 
    will actually be computable inside Coq. *)
-   
-(*i $Id$ i*)
 
 Set Implicit Arguments.
 

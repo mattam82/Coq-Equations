@@ -1,4 +1,14 @@
+(**********************************************************************)
+(* Equations                                                          *)
+(* Copyright (c) 2009-2015 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(**********************************************************************)
+(* This file is distributed under the terms of the                    *)
+(* GNU Lesser General Public License Version 2.1                      *)
+(**********************************************************************)
+
 val __coq_plugin_name : string
+
+
 val ( $ ) : ('a -> 'b) -> ('c -> 'a) -> 'c -> 'b
 val proper_tails : 'a list -> 'a list list
 val list_tabulate : (int -> 'a) -> int -> 'a list
