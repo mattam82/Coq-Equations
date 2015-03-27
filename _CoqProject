@@ -1,10 +1,16 @@
 -I src
 -R theories Equations
+src/equations_common.mli
 src/equations_common.ml4
+src/sigma.mli
 src/sigma.ml4
+src/subterm.mli
 src/subterm.ml4
+src/eqdec.mli
 src/eqdec.ml4
+src/depelim.mli
 src/depelim.ml4
+src/equations.mli
 src/equations.ml4
 src/equations_plugin_mod.ml
 src/equations_plugin.mllib
