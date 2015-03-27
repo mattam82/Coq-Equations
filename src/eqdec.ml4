@@ -1,4 +1,3 @@
-(* -*- compile-command: "make -k -C .. src/equations_plugin.cma src/equations_plugin.cmxs" -*- *)
 (**********************************************************************)
 (* Equations                                                          *)
 (* Copyright (c) 2009-2015 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
