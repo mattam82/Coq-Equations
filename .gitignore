@@ -21,3 +21,4 @@ Makefile
 /doc/intro.pdf
 /doc/intro.tex
 /theories/.coq-native/
+/test-suite/.coq-native/

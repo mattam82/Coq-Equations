@@ -6,8 +6,6 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-(*i camlp4deps: "grammar/grammar.cma" i*)
-
 open Cases
 open Util
 open Errors
@@ -2871,131 +2869,8 @@ let define_by_eqs opts i (l,ann) t nt eqs =
       else ()
   in define_tree is_recursive impls status isevar env (i, sign, arity) comp ann split hook
 
-module Gram = Pcoq.Gram
-module Vernac = Pcoq.Vernac_
-module Tactic = Pcoq.Tactic
-
-
 type binders_let2_argtype = (local_binder list * (identifier located option * recursion_order_expr)) Genarg.uniform_genarg_type
 
-let wit_binders_let2 : binders_let2_argtype =
-  Genarg.create_arg None "binders_let2"
-
-let pr_raw_binders_let2 _ _ _ l = mt ()
-let pr_glob_binders_let2 _ _ _ l = mt ()
-let pr_binders_let2 _ _ _ l = mt ()
-
-let binders_let2 : (local_binder list * (identifier located option * recursion_order_expr)) Gram.entry =
-  Pcoq.create_generic_entry "binders_let2" (Genarg.rawwit wit_binders_let2)
-
-let _ = Pptactic.declare_extra_genarg_pprule wit_binders_let2
-  pr_raw_binders_let2 pr_glob_binders_let2 pr_binders_let2
-
-
-type deppat_equations_argtype = pre_equation list Genarg.uniform_genarg_type
-let wit_deppat_equations : deppat_equations_argtype =
-  Genarg.create_arg None "deppat_equations"
-
-let pr_raw_deppat_equations _ _ _ l = mt ()
-let pr_glob_deppat_equations _ _ _ l = mt ()
-let pr_deppat_equations _ _ _ l = mt ()
-
-let deppat_equations : pre_equation list Gram.entry =
-  Pcoq.create_generic_entry "deppat_equations" (Genarg.rawwit wit_deppat_equations)
-
-let _ = Pptactic.declare_extra_genarg_pprule wit_deppat_equations
-  pr_raw_deppat_equations pr_glob_deppat_equations pr_deppat_equations
-
-(* module DeppatGram = *)
-(* struct *)
-(*   let gec s = Gram.entry_create ((\* "Deppat."^ *\)s) *)
-
-(*   let deppat_equations : pre_equation list Gram.entry = gec "deppat_equations" *)
-
-(*   (\* let equation_options : (equation_option * bool) list Gram.entry = gec "equation_options" *\) *)
-
-(*   (\* let binders_let2 : (local_binder list * (identifier located option * recursion_order_expr))  *\) *)
-(*   (\*     Gram.entry = gec "binders_let2" *\) *)
-
-(* (\*   let where_decl : decl_notation Gram.Entry.e = gec "where_decl" *\) *)
-
-(* end *)
-
-open Glob_term
-open Util
-open Pcoq
-open Prim
-open Constr
-open G_vernac
-open Compat
-open Tok
-
-GEXTEND Gram
-  GLOBAL: pattern deppat_equations binders_let2;
- 
-  deppat_equations:
-    [ [ l = LIST1 equation SEP ";" -> l ] ]
-  ;
-
-  binders_let2:
-    [ [ l = binders -> l, (None, CStructRec)  ] ]
-  ;
-
-  equation:
-    [ [ id = identref; 	pats = LIST1 patt; r = rhs -> (Some id, SignPats pats, r)
-      | "|"; pats = LIST1 lpatt SEP "|"; r = rhs -> (None, RefinePats pats, r) 
-    ] ]
-  ;
-
-  patt:
-    [ [ id = smart_global -> !@loc, PEApp ((!@loc,id), [])
-      | "_" -> !@loc, PEWildcard
-      | "("; p = lpatt; ")" -> p
-      | "?("; c = Constr.lconstr; ")" -> !@loc, PEInac c
-      | p = pattern LEVEL "0" -> !@loc, PEPat p
-    ] ]
-  ;
-
-  lpatt:
-    [ [ id = smart_global; pats = LIST0 patt -> !@loc, PEApp ((!@loc,id), pats)
-      | p = patt -> p
-    ] ]
-  ;
-
-  rhs:
-    [ [ ":=!"; id = identref -> Empty id
-      |":="; c = Constr.lconstr -> Program c
-      |"=>"; c = Constr.lconstr -> Program c
-      | "with"; c = Constr.lconstr; ":="; e = equations -> Refine (c, e)
-      | "<="; c = Constr.lconstr; "=>"; e = equations -> Refine (c, e)
-      | "<-"; "(" ; t = Tactic.tactic; ")"; e = equations -> By (Inl t, e)
-      | "by"; IDENT "rec"; id = identref; rel = OPT constr; [":="|"=>"]; e = deppat_equations -> Rec (id, rel, e)
-    ] ]
-  ;
-
-  equations:
-    [ [ "{"; l = deppat_equations; "}" -> l 
-      | l = deppat_equations -> l
-    ] ]
-  ;
-
-  (* equation_option: *)
-  (*   [ [ IDENT "noind" -> OInd, false *)
-  (*     | IDENT "ind" -> OInd, true *)
-  (*     | IDENT "struct" -> ORec, true *)
-  (*     | IDENT "nostruct" -> ORec, false *)
-  (*     | IDENT "comp" -> OComp, true *)
-  (*     | IDENT "nocomp" -> OComp, false *)
-  (*     | IDENT "eqns" -> OEquations, true *)
-  (*     | IDENT "noeqns" -> OEquations, false *)
-  (*   ] ] *)
-  (* ; *)
-  
-  (* equation_options: *)
-  (*   [ [ "(" ; l = LIST1 equation_option; ")" -> l *)
-  (*     | -> [] ] ] *)
-  (* ; *)
-  END
     
 type equation_user_option = (equation_option * bool)
 

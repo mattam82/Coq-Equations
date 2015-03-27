@@ -6,9 +6,6 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-(*i camlp4deps: "grammar/grammar.cma" i*)
-(*i camlp4use: "pa_extend.cmo" i*)
-
 (* 
    Statements: forall Δ, EqDec Δ -> EqDec (I Δ)
    Proofs:
@@ -310,14 +307,4 @@ let derive_eq_dec ind =
   (*   ignore(Subtac_obligations.add_definition ~hook noid stmt ~tactic:(noconf_tac ()) [||]) *)
      
 
-VERNAC COMMAND EXTEND Derive_EqDec CLASSIFIED AS QUERY
-| [ "Derive" "Equality" "for" constr_list(c) ] -> [ 
-    List.iter (fun c ->
-      let c', _ = Constrintern.interp_constr (Global.env ()) Evd.empty c in
-	match kind_of_term c' with
-	| Ind i -> derive_eq_dec i
-	| _ -> error "Expected an inductive type")
-      c
-  ]
-END
  

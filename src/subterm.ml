@@ -6,9 +6,6 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-(*i camlp4deps: "parsing/grammar.cma" i*)
-(*i camlp4use: "pa_extend.cmo" i*)
-
 open Cases
 open Util
 open Names
@@ -252,15 +249,6 @@ let derive_subterm ind =
 	  ~hook:(Lemmas.mk_hook hook) ~tactic:(solve_subterm_tac ()) obls
   in ignore(declare_ind ())
     
-VERNAC COMMAND EXTEND Derive_Subterm CLASSIFIED AS QUERY
-| [ "Derive" "Subterm" "for" constr(c) ] -> [ 
-    let c',_ = Constrintern.interp_constr (Global.env ()) Evd.empty c in
-      match kind_of_term c' with
-      | Ind i -> derive_subterm i
-      | _ -> error "Expected an inductive type"
-  ]
-END
-
 let list_chop = List.chop
 
 let derive_below ctx (ind,u) =
@@ -381,12 +369,3 @@ let derive_below ctx (ind,u) =
     ignore(declare_constant id bodyb None poly (if poly then !evd else Evd.empty)
 	     (Decl_kinds.IsDefinition Decl_kinds.Definition))
     
-
-VERNAC COMMAND EXTEND Derive_Below CLASSIFIED AS QUERY
-| [ "Derive" "Below" "for" constr(c) ] -> [ 
-  let c', ctx = Constrintern.interp_constr (Global.env ()) Evd.empty c in
-    match kind_of_term c' with
-    | Ind i -> derive_below ctx i
-    | _ -> error "Expected an inductive type"
-  ]
-END

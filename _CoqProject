@@ -2,17 +2,17 @@
 -R theories Equations
 ZDEBUG = -bin-annot
 src/equations_common.mli
-src/equations_common.ml4
+src/equations_common.ml
 src/sigma.mli
-src/sigma.ml4
+src/sigma.ml
 src/subterm.mli
-src/subterm.ml4
+src/subterm.ml
 src/eqdec.mli
-src/eqdec.ml4
+src/eqdec.ml
 src/depelim.mli
-src/depelim.ml4
+src/depelim.ml
 src/equations.mli
-src/equations.ml4
+src/equations.ml
 src/g_equations.ml4
 src/equations_plugin_mod.ml
 src/equations_plugin.mllib

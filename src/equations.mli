@@ -604,27 +604,6 @@ val define_by_eqs :
   list ->
   ((Loc.t * Names.identifier) option * input_pats * 'b rhs as 'b) list ->
   unit
-module Gram = Pcoq.Gram
-module Vernac = Pcoq.Vernac_
-module Tactic = Pcoq.Tactic
-type binders_let2_argtype =
-    (Constrexpr.local_binder list *
-     (Names.identifier located option * Constrexpr.recursion_order_expr))
-    Genarg.uniform_genarg_type
-val wit_binders_let2 : binders_let2_argtype
-val pr_raw_binders_let2 : 'a -> 'b -> 'c -> 'd -> Pp.std_ppcmds
-val pr_glob_binders_let2 : 'a -> 'b -> 'c -> 'd -> Pp.std_ppcmds
-val pr_binders_let2 : 'a -> 'b -> 'c -> 'd -> Pp.std_ppcmds
-val binders_let2 :
-  (Constrexpr.local_binder list *
-   (Names.identifier located option * Constrexpr.recursion_order_expr))
-  Gram.entry
-type deppat_equations_argtype = pre_equation list Genarg.uniform_genarg_type
-val wit_deppat_equations : deppat_equations_argtype
-val pr_raw_deppat_equations : 'a -> 'b -> 'c -> 'd -> Pp.std_ppcmds
-val pr_glob_deppat_equations : 'a -> 'b -> 'c -> 'd -> Pp.std_ppcmds
-val pr_deppat_equations : 'a -> 'b -> 'c -> 'd -> Pp.std_ppcmds
-val deppat_equations : pre_equation list Gram.entry
 type equation_user_option = equation_option * bool
 val pr_r_equation_user_option : 'a -> 'b -> 'c -> 'd -> Pp.std_ppcmds
 type equation_options = (equation_option * bool) list
