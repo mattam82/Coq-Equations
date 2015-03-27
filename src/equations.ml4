@@ -3452,7 +3452,7 @@ TACTIC EXTEND pattern_call
 [ "pattern_call" constr(c) ] -> [ of82 (pattern_call c) ]
 END
 
-let dependencies env c ctx = 
+let dependencies env c ctx =
   let init = global_vars_set env c in
   let deps =
     Context.fold_named_context_reverse 
@@ -3463,5 +3463,3 @@ let dependencies env c ctx =
       ~init:init ctx
   in
     (init, Idset.diff deps init)
-
-

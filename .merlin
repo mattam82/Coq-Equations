@@ -1,0 +1,3 @@
+PKG coq
+S src
+S theories

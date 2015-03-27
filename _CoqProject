@@ -1,5 +1,6 @@
 -I src
 -R theories Equations
+ZDEBUG = -bin-annot
 src/equations_common.mli
 src/equations_common.ml4
 src/sigma.mli
