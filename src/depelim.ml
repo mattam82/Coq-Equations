@@ -370,13 +370,13 @@ let depcase (mind, i as ind) =
 	(Name (id_of_string ("P" ^ string_of_int i)), None, br), body)
       oneind.mind_consnames oneind.mind_nf_lc
   in
-  let ci = {
-    ci_ind = ind;
-    ci_npar = nparams;
-    ci_cstr_nargs = oneind.mind_consnrealargs;
-    ci_cstr_ndecls = oneind.mind_consnrealdecls;
-    ci_pp_info = { ind_tags = []; cstr_tags = [||]; style = RegularStyle; } }
-  in
+  let ci = make_case_info (Global.env ()) ind RegularStyle in
+  (*   ci_ind = ind; *)
+  (*   ci_npar = nparams; *)
+  (*   ci_cstr_nargs = oneind.mind_consnrealargs; *)
+  (*   ci_cstr_ndecls = oneind.mind_consnrealdecls; *)
+  (*   ci_pp_info = { ind_tags = []; cstr_tags = [||]; style = RegularStyle; } } *)
+  (* in *)
   let obj i =
     mkApp (mkInd ind,
 	  (Array.append (extended_rel_vect (nargs + nconstrs + i) params)

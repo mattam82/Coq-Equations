@@ -102,13 +102,7 @@ let inductive_info ((mind, _ as ind),u) =
 	arities
     in
     let case c pred brs =
-      let ci = {
-	ci_ind = mind,i;
-	ci_npar = List.length paramargs;
-	ci_cstr_nargs = ind.mind_consnrealargs;
-	ci_cstr_ndecls = ind.mind_consnrealdecls;
-	ci_pp_info = { ind_tags = []; cstr_tags = [||]; style = RegularStyle; } }
-      in
+      let ci = make_case_info (Global.env ()) (mind,i) RegularStyle in
 	mkCase (ci, pred, c, brs)
     in
       { ind_name = indname;

@@ -329,21 +329,9 @@ let derive_below ctx (ind,u) =
       in (nargs, it_mkLambda_or_LetIn bodyB args, it_mkLambda_or_LetIn (fst bodyb) args)) oneind.mind_nf_lc
     in
     let caseB =
-      mkCase ({
-	ci_ind = ind;
-	ci_npar = params;
-	ci_cstr_nargs = oneind.mind_consnrealargs;
-	ci_cstr_ndecls = Array.map pi1 branches;
-	ci_pp_info = { ind_tags = []; cstr_tags = [||]; style = RegularStyle }
-      }, aritylam, mkRel 1, Array.map pi2 branches)
+      mkCase (make_case_info env ind RegularStyle, aritylam, mkRel 1, Array.map pi2 branches)
     and caseb =
-      mkCase ({
-	ci_ind = ind;
-	ci_npar = params;
-	ci_cstr_nargs = oneind.mind_consnrealargs;
-	ci_cstr_ndecls = Array.map pi1 branches;
-	ci_pp_info = { ind_tags = []; cstr_tags = [||]; style = RegularStyle }
-      }, aritylamb, mkRel 1, Array.map pi3 branches)
+      mkCase (make_case_info env ind RegularStyle, aritylamb, mkRel 1, Array.map pi3 branches)
     in 
       it_mkLambda_or_LetIn caseB binders, it_mkLambda_or_LetIn caseb binders
   in

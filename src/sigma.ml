@@ -94,13 +94,14 @@ let decompose_indapp f args =
 
 
 let sigT = Lazy.from_fun build_sigma_type
-let sigT_info = lazy
-  { ci_ind         = Globnames.destIndRef (Lazy.force sigT).typ;
-    ci_cstr_nargs  = [|2|];
-    ci_npar        = 2;
-    ci_cstr_ndecls = [|2|];
-    ci_pp_info     =  { cstr_tags = [||]; ind_tags = []; style = LetStyle }
-  }
+let sigT_info = lazy (make_case_info (Global.env ()) (Globnames.destIndRef (Lazy.force sigT).typ) LetStyle)
+
+  (* { ci_ind         =  *)
+  (*     ci_cstr_nargs  = [|2|]; *)
+  (*   ci_npar        = 2; *)
+  (*   ci_cstr_ndecls = [|2|]; *)
+  (*   ci_pp_info     =  { cstr_tags = [||]; ind_tags = []; style = LetStyle } *)
+  (* } *)
 
 let telescope evd = function
   | [] -> assert false

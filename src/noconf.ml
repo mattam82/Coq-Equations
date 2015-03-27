@@ -59,13 +59,7 @@ let mkcase env c ty constrs =
   let _len = List.length ctx in
   let params = mindb.mind_nparams in
   let origparams, _ = List.chop params origargs in
-  let ci = {
-    ci_ind = fst ind;
-    ci_npar = params;
-    ci_cstr_nargs = oneind.mind_consnrealargs;
-    ci_cstr_ndecls = oneind.mind_consnrealdecls;
-    ci_pp_info = { ind_tags = []; cstr_tags = [||]; style = RegularStyle; } }
-  in
+  let ci = make_case_info env (fst ind) RegularStyle in
   let brs = 
     Array.map2_i (fun i id cty ->
       let (args, arity) = decompose_prod_assum (substl inds cty) in
