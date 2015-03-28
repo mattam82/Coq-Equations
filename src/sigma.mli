@@ -6,7 +6,6 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-val is_global : Globnames.global_reference -> Term.constr -> bool
 val coq_sigma : Coqlib.coq_sigma_data Lazy.t
 val mkAppG :
   Evd.evar_map ref ->

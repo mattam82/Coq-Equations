@@ -50,6 +50,8 @@ val lift_rel_contextn :
 
 val lift_context : int -> Context.rel_context -> Context.rel_context
 
+val lift_list : constr list -> constr list
+
 (** Evars *)
 val new_untyped_evar : unit -> Evd.evar
 
@@ -59,6 +61,9 @@ val check_term :
 val check_type : Environ.env -> Evd.evar_map -> Term.types -> unit
 val typecheck_rel_context :
   Evd.evar_map -> Context.rel_context -> unit
+
+val e_conv :
+  env -> Evd.evar_map ref -> constr -> constr -> bool
 
 val reference_of_global : Globnames.global_reference -> Libnames.reference
 
@@ -93,6 +98,14 @@ val it_mkLambda_or_subst_or_clear :
 val it_mkProd_or_subst_or_clear :
   Term.constr ->
   (Names.Name.t * Constr.constr option * Term.types) list -> Term.constr
+
+val ids_of_constr :
+  ?all:bool -> Idset.t -> constr -> Idset.t
+val deps_of_var : Id.t -> env -> Idset.t
+val idset_of_list : Id.t list -> Idset.t
+
+val decompose_indapp :
+  constr -> constr array -> constr * constr array
 
 val refresh_universes_strict : Evd.evar_map ref -> Term.types -> Term.types
 

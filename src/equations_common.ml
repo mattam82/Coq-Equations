@@ -22,7 +22,6 @@ open Type_errors
 open Pp
 open Proof_type
 
-open Tacexpr
 open Locus
 open Context
 
@@ -257,6 +256,8 @@ let lift_rel_contextn k n sign =
 
 let lift_context n sign = lift_rel_contextn 0 n sign
 
+let lift_list l = List.map (lift 1) l
+
 (* let compute_params cst =  *)
 (*   let body = constant_value (Global.env ()) cst in *)
 (*   let init, n, c =  *)
@@ -486,3 +487,46 @@ let it_mkLambda_or_subst_or_clear ty ctx =
 let it_mkProd_or_subst_or_clear ty ctx = 
   (List.fold_left (fun c d -> mkProd_or_subst_or_clear d c) ty ctx)
 
+
+
+let ids_of_constr ?(all=false) vars c =
+  let rec aux vars c =
+    match kind_of_term c with
+    | Var id -> Idset.add id vars
+    | App (f, args) -> 
+	(match kind_of_term f with
+	| Construct ((ind,_),_)
+	| Ind (ind, _) ->
+            let (mib,mip) = Global.lookup_inductive ind in
+	      Array.fold_left_from
+		(if all then 0 else mib.Declarations.mind_nparams)
+		aux vars args
+	| _ -> fold_constr aux vars c)
+    | _ -> fold_constr aux vars c
+  in aux vars c
+    
+let decompose_indapp f args =
+  match kind_of_term f with
+  | Construct ((ind,_),_) 
+  | Ind (ind,_) ->
+      let (mib,mip) = Global.lookup_inductive ind in
+      let first = mib.Declarations.mind_nparams_rec in
+      let pars, args = Array.chop first args in
+	mkApp (f, pars), args
+  | _ -> f, args
+
+let e_conv env evdref t t' =
+  try evdref := Evd.conversion env !evdref Reduction.CONV t t'; true
+  with Reduction.NotConvertible -> false
+
+      
+let deps_of_var id env =
+  Environ.fold_named_context
+    (fun _ (n,b,t) (acc : Idset.t) -> 
+      if Option.cata (occur_var env id) false b || occur_var env id t then
+	Idset.add n acc
+      else acc)
+    env ~init:Idset.empty
+    
+let idset_of_list =
+  List.fold_left (fun s x -> Idset.add x s) Idset.empty

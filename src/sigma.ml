@@ -6,9 +6,6 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-(*i camlp4deps: "parsing/grammar.cma" i*)
-(*i camlp4use: "pa_extend.cmo" i*)
-
 open Cases
 open Util
 open Names
@@ -26,7 +23,6 @@ open Type_errors
 open Pp
 open Proof_type
 open Errors
-
 open Glob_term
 open Retyping
 open Pretype_errors
@@ -36,15 +32,13 @@ open List
 open Libnames
 open Topconstr
 open Coqlib
-
+open Globnames
 open Tactics
 open Refiner
 open Tacticals
 open Tacmach
-
+open Decl_kinds
 open Equations_common
-
-let is_global = Globnames.is_global
 
 let coq_sigma = Lazy.from_fun Coqlib.build_sigma_type
 
@@ -153,7 +147,7 @@ let sigmaize ?(liftty=0) env evd f =
   let valproj = mkAppG evd (Lazy.force coq_sigma).proj2 tyargs in
   let indices = 
     (List.rev_map (fun l -> substl (tl l) (hd l)) 
-     (proper_tails (map (fun (_, b, _) -> Option.get b) letbinders)))
+     (Equations_common.proper_tails (map (fun (_, b, _) -> Option.get b) letbinders)))
   in
   let valsig =
     let argtyp = lift (succ lenb) argtyp in
@@ -170,8 +164,6 @@ let sigmaize ?(liftty=0) env evd f =
   in argtyp, pred, indices, indexproj, valproj, valsig, tysig
 
 let ind_name ind = Nametab.basename_of_global (Globnames.IndRef ind)
-
-open Decl_kinds
 
 let signature_ref = lazy (init_constant ["Equations";"Signature"] "Signature")
 let signature_sig = lazy (init_constant ["Equations";"Signature"] "signature")

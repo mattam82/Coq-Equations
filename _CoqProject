@@ -1,5 +1,7 @@
 -I src
 -R theories Equations
+-extra-phony apidoc theories/Init.vo "ocamldoc -html -d html/api `ocamlfind query -r coqdev85.all -i-format` -rectypes -I src src/*.ml"
+-extra-phony all html ""
 ZDEBUG = -bin-annot
 src/equations_common.mli
 src/equations_common.ml

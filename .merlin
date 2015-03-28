@@ -1,7 +1,5 @@
 FLG -rectypes
-PKG coq.kernel
-PKG coq.all 
+PKG coqdev85.all 
 S src
-CMT src
 B src
 S theories

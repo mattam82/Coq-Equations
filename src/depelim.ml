@@ -56,39 +56,7 @@ let lift_togethern n l =
 
 let lift_together l = lift_togethern 0 l
 
-let lift_list l = List.map (lift 1) l
-
-let ids_of_constr ?(all=false) vars c =
-  let rec aux vars c =
-    match kind_of_term c with
-    | Var id -> Idset.add id vars
-    | App (f, args) -> 
-	(match kind_of_term f with
-	| Construct ((ind,_),_)
-	| Ind (ind, _) ->
-            let (mib,mip) = Global.lookup_inductive ind in
-	      Array.fold_left_from
-		(if all then 0 else mib.Declarations.mind_nparams)
-		aux vars args
-	| _ -> fold_constr aux vars c)
-    | _ -> fold_constr aux vars c
-  in aux vars c
-    
-let decompose_indapp f args =
-  match kind_of_term f with
-  | Construct ((ind,_),_) 
-  | Ind (ind,_) ->
-      let (mib,mip) = Global.lookup_inductive ind in
-      let first = mib.Declarations.mind_nparams_rec in
-      let pars, args = Array.chop first args in
-	mkApp (f, pars), args
-  | _ -> f, args
-
 open Coqlib
-
-let e_conv env evdref t t' =
-  try evdref := Evd.conversion env !evdref Reduction.CONV t t'; true
-  with Reduction.NotConvertible -> false
 
 let mk_term_eq env sigma ty t ty' t' =
   if e_conv env sigma ty ty' then
@@ -124,17 +92,6 @@ let make_abstract_generalize gl evd id concl dep ctx body c eqs args refls =
   let appeqs = mkApp (instc, Array.of_list refls) in
     (* Finaly, apply the reflexivity proof for the original hyp, to get a term of type gl again. *)
     mkApp (appeqs, abshypt)
-      
-let deps_of_var id env =
-  Environ.fold_named_context
-    (fun _ (n,b,t) (acc : Idset.t) -> 
-      if Option.cata (occur_var env id) false b || occur_var env id t then
-	Idset.add n acc
-      else acc)
-    env ~init:Idset.empty
-    
-let idset_of_list =
-  List.fold_left (fun s x -> Idset.add x s) Idset.empty
 
 let hyps_of_vars env sign nogen hyps =
   if Idset.is_empty hyps then [] 
