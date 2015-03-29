@@ -187,7 +187,12 @@ let define_tree is_recursive impls status isevar env (i, sign, arity) comp ann s
   let term_info = map (fun (ev, arg) ->
     (ev, arg, List.assoc ev emap)) helpers
   in
-  let hook = Lemmas.mk_hook (hook cmap term_info) in
+  let hook x y = 
+    let l = Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Ident (dummy_loc, id)) obls in
+      Table.extraction_inline true l;
+      hook cmap term_info x y
+  in
+  let hook = Lemmas.mk_hook hook in
     if is_structural is_recursive then
       ignore(Obligations.add_mutual_definitions [(i, t', ty', impls, obls)] 
 	       (Evd.evar_universe_context !isevar) [] 

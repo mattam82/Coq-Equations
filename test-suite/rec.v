@@ -151,7 +151,7 @@ Module RecMeasure.
       let lower := filter (fun x => ltb x a) l in
       let upper := filter (fun x => leb a x) l in
         qs lower ++ a :: qs upper.
-
+    
     Context (le : relation A).
     Context (refl_le : forall x y, reflect (le x y) (leb x y)).
 
@@ -284,9 +284,10 @@ Ltac funelim_tac c tac ::=
       rewrite ltb_leb' in H1. case_eq (ltb x a). constructor.
       intros. rewrite H2 in H1. elim H1.
     Qed.
+  Print Extraction Inline.
   
   End QuickSort.
-  Extraction Inline qs_comp qs_comp_proj qs_obligation_1 qs_obligation_2 qs_obligation_3.
+  Extraction Inline qs_comp qs_comp_proj. 
   Recursive Extraction qs.
 
 End RecMeasure.

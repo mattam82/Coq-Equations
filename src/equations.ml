@@ -173,6 +173,10 @@ let find_helper_info info f =
     eq_constr (Constrintern.global_reference id') f) info.helpers_info
   with Not_found -> anomaly (str"Helper not found while proving induction lemma.")
 
+let inline_helpers i = 
+  let l = List.map (fun (_, _, id) -> Ident (dummy_loc, id)) i.helpers_info in
+    Table.extraction_inline true l
+
 let find_helper_arg info f args =
   let (ev, arg, id) = find_helper_info info f in
     ev, args.(arg)
@@ -1012,6 +1016,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   Hints.create_hint_db false baseid (ids, Cpred.remove fix_proto_ref csts) true;
   let hook cmap helpers subst gr = 
     let info = { base_id = baseid; helpers_info = helpers; polymorphic = poly } in
+    let () = inline_helpers info in
     let f_cst = match gr with ConstRef c -> c | _ -> assert false in
     let env = Global.env () in
     let f = constr_of_global gr in
@@ -1038,6 +1043,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	    let hook_unfold cmap helpers' vis gr' = 
 	      let info = { base_id = baseid; helpers_info = helpers @ helpers'; 
 			   polymorphic = poly } in
+	      let () = inline_helpers info in
 	      let funf_cst = match gr' with ConstRef c -> c | _ -> assert false in
 	      let funfc =  mkConst funf_cst in
 	      let unfold_split = map_evars_in_split cmap unfold_split in
