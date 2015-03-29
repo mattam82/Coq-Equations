@@ -43,6 +43,7 @@ open Decl_kinds
 open Coqlib
 
 let ($) f g = fun x -> f (g x)
+let (&&&) f g (x, y) = (f x, g y)
 let id x = x
 
 (* Debugging infrastructure. *)
@@ -84,6 +85,26 @@ let list_find_map_i f =
       | None -> try_find_f (n+1) t
   in
   try_find_f
+
+let array_remove_last a =
+  Array.sub a 0 (Array.length a - 1)
+
+let array_chop_last a =
+  Array.chop (Array.length a - 1) a
+
+let rev_assoc eq k =
+  let rec loop = function
+    | [] -> raise Not_found | (v,k')::_ when eq k k' -> v | _ :: l -> loop l 
+  in
+  loop
+
+let array_filter_map f a =
+  let l' =
+    Array.fold_right (fun c acc -> 
+		      Option.cata (fun r -> r :: acc) acc (f c))
+    a []
+  in Array.of_list l'
+
 
 let find_constant contrib dir s =
   Universes.constr_of_global (Coqlib.find_reference contrib dir s)
@@ -178,6 +199,8 @@ let mkHRefl evd t x =
     [| refresh_universes_strict evd t; x |]
 
 let dummy_loc = Loc.dummy_loc 
+type 'a located = 'a Loc.located
+
 let tac_of_string str args =
   Tacinterp.interp (TacArg(dummy_loc, 
 			   TacCall(dummy_loc, Qualid (dummy_loc, qualid_of_string str), args)))
@@ -488,6 +511,7 @@ let it_mkProd_or_subst_or_clear ty ctx =
   (List.fold_left (fun c d -> mkProd_or_subst_or_clear d c) ty ctx)
 
 
+let lift_constrs n cs = map (lift n) cs
 
 let ids_of_constr ?(all=false) vars c =
   let rec aux vars c =
@@ -531,11 +555,10 @@ let deps_of_var id env =
 let idset_of_list =
   List.fold_left (fun s x -> Idset.add x s) Idset.empty
 
+let pr_smart_global = Pptactic.pr_or_by_notation pr_reference
+let string_of_smart_global = function
+  | Misctypes.AN ref -> string_of_reference ref
+  | Misctypes.ByNotation (loc, s, _) -> s
 
-let lift_constrs n cs = map (lift n) cs
-    
-let array_remove_last a =
-  Array.sub a 0 (Array.length a - 1)
-
-let array_chop_last a =
-  Array.chop (Array.length a - 1) a
+let ident_of_smart_global x = 
+  id_of_string (string_of_smart_global x)

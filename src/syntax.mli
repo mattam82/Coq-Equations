@@ -10,6 +10,7 @@ open Term
 open Context
 open Environ
 open Names
+open Equations_common
 
 (** User-level patterns *)
 type user_pat =
@@ -51,7 +52,6 @@ val ppclause : (user_pat list * 'a rhs as 'a) -> unit
 
 
 (** Raw syntax *)
-type 'a located = 'a Loc.located
 type pat_expr =
     PEApp of Libnames.reference Misctypes.or_by_notation located *
       pat_expr located list
@@ -65,4 +65,44 @@ type input_pats =
   | RefinePats of user_pat_expr list
 type pre_equation =
     identifier located option * input_pats * pre_equation rhs
+
+
+type rec_type = 
+  | Structural
+  | Logical of rec_info
+and rec_info = {
+  comp : constant;
+  comp_app : constr;
+  comp_proj : constant;
+  comp_recarg : int;
+}
+val is_structural : rec_type option -> bool
+
 val next_ident_away : Id.t -> Id.t list ref -> Id.t
+
+type equation_option = OInd | ORec | OComp | OEquations
+
+type equation_user_option = equation_option * bool
+
+val pr_r_equation_user_option : 'a -> 'b -> 'c -> 'd -> Pp.std_ppcmds
+
+type equation_options = (equation_option * bool) list
+
+val pr_equation_options : 'a -> 'b -> 'c -> 'd -> Pp.std_ppcmds
+
+val translate_cases_pattern :
+  'a -> Id.t list ref -> Glob_term.cases_pattern -> user_pat
+
+val ids_of_pats : pat_expr located list -> identifier list
+
+val interp_eqn :
+  identifier ->
+  rec_type option ->
+  'a ->
+  env ->
+  'b ->
+  'c ->
+  'd ->
+  'e ->
+  ((Loc.t * identifier) option * input_pats * 'f rhs as 'f) ->
+  (user_pat list * 'g rhs as 'g)

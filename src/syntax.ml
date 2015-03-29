@@ -118,8 +118,6 @@ and pr_clauses env =
 
 let ppclause clause = pp(pr_clause (Global.env ()) clause)
 
-type 'a located = 'a Loc.located
-
 type pat_expr = 
   | PEApp of reference Misctypes.or_by_notation located * pat_expr located list
   | PEWildcard
@@ -141,4 +139,132 @@ let next_ident_away s ids =
   let n' = Namegen.next_ident_away s !ids in
     ids := n' :: !ids; n'
 
+type equation_option = OInd | ORec | OComp | OEquations
+    
+type equation_user_option = (equation_option * bool)
 
+type equation_options = ((equation_option * bool) list)
+
+let pr_r_equation_user_option _prc _prlc _prt l =
+  mt ()
+
+let pr_equation_options  _prc _prlc _prt l =
+  mt ()
+
+
+
+type rec_type = 
+  | Structural
+  | Logical of rec_info
+and rec_info = {
+  comp : constant;
+  comp_app : constr;
+  comp_proj : constant;
+  comp_recarg : int;
+}
+
+let is_structural = function Some Structural -> true | _ -> false
+
+
+let rec translate_cases_pattern env avoid = function
+  | PatVar (loc, Name id) -> PUVar id
+  | PatVar (loc, Anonymous) -> 
+      let n = next_ident_away (id_of_string "wildcard") avoid in
+	avoid := n :: !avoid; PUVar n
+  | PatCstr (loc, (ind, _ as cstr), pats, Anonymous) ->
+      PUCstr (cstr, (Inductiveops.inductive_nparams ind), map (translate_cases_pattern env avoid) pats)
+  | PatCstr (loc, cstr, pats, Name id) ->
+      user_err_loc (loc, "interp_pats", str "Aliases not supported by Equations")
+
+let rec ids_of_pats pats =
+  fold_left (fun ids (_,p) ->
+    match p with
+    | PEApp ((loc,f), l) -> 
+	let lids = ids_of_pats l in
+	  (try ident_of_smart_global f :: lids with _ -> lids) @ ids
+    | PEWildcard -> ids
+    | PEInac _ -> ids
+    | PEPat _ -> ids)
+    [] pats
+
+let interp_eqn i is_rec isevar env impls sign arity recu eqn =
+  let avoid = ref [] in
+  let rec interp_pat (loc, p) =
+    match p with
+    | PEApp ((loc,f), l) -> 
+	let r =
+	  try Inl (Smartlocate.smart_global f)
+	  with e -> Inr (PUVar (ident_of_smart_global f))
+	in
+	  (match r with
+	   | Inl (ConstructRef c) ->
+	       let (ind,_) = c in
+	       let nparams = Inductiveops.inductive_nparams ind in
+	       let nargs = constructor_nrealargs c in
+	       let len = List.length l in
+	       let l' =
+		 if len < nargs then 
+		   List.make (nargs - len) (loc,PEWildcard) @ l
+		 else l
+	       in 
+		 Dumpglob.add_glob loc (ConstructRef c);
+		 PUCstr (c, nparams, map interp_pat l')
+	   | Inl _ ->
+	       if l != [] then 
+		 user_err_loc (loc, "interp_pats",
+			       str "Pattern variable " ++ pr_smart_global f ++ str" cannot be applied ")
+	       else PUVar (ident_of_smart_global f)
+	   | Inr p -> p)
+    | PEInac c -> PUInac c
+    | PEWildcard -> 
+	let n = next_ident_away (id_of_string "wildcard") avoid in
+	  avoid := n :: !avoid; PUVar n
+
+    | PEPat p ->
+	let ids, pats = intern_pattern env p in
+	  (* Names.identifier list * *)
+	  (*   ((Names.identifier * Names.identifier) list * Rawterm.cases_pattern) list *)
+	let upat = 
+	  match pats with
+	  | [(l, pat)] -> translate_cases_pattern env avoid pat
+	  | _ -> user_err_loc (loc, "interp_pats", str "Or patterns not supported by equations")
+	in upat
+  in
+  let rec aux curpats (idopt, pats, rhs) =
+    let curpats' = 
+      match pats with
+      | SignPats l -> l
+      | RefinePats l -> curpats @ l
+    in
+    avoid := !avoid @ ids_of_pats curpats';
+    Option.iter (fun (loc,id) ->
+      if not (Id.equal id i) then
+	user_err_loc (loc, "interp_pats",
+		     str "Expecting a pattern for " ++ pr_id i);
+      Dumpglob.dump_reference loc "<>" (string_of_id id) "def")
+      idopt;
+    (*   if List.length pats <> List.length sign then *)
+    (*     user_err_loc (loc, "interp_pats", *)
+    (* 		 str "Patterns do not match the signature " ++  *)
+    (* 		   pr_rel_context env sign); *)
+    let pats = map interp_pat curpats' in
+      match is_rec with
+      | Some Structural -> (PUVar i :: pats, interp_rhs curpats' None rhs)
+      | Some (Logical r) -> (pats, interp_rhs curpats' (Some (ConstRef r.comp_proj)) rhs)
+      | None -> (pats, interp_rhs curpats' None rhs)
+  and interp_rhs curpats compproj = function
+    | Refine (c, eqs) -> Refine (interp_constr_expr compproj !avoid c, map (aux curpats) eqs)
+    | Program c -> Program (interp_constr_expr compproj !avoid c)
+    | Empty i -> Empty i
+    | Rec (i, r, s) -> Rec (i, r, map (aux curpats) s)
+    | By (x, s) -> By (x, map (aux curpats) s)
+  and interp_constr_expr compproj ids c = 
+    match c, compproj with
+    (* |   | CAppExpl of loc * (proj_flag * reference) * constr_expr list *)
+    | CApp (loc, (None, CRef (Ident (loc',id'), _)), args), Some cproj when Id.equal i id' ->
+	let qidproj = Nametab.shortest_qualid_of_global Idset.empty cproj in
+	  CApp (loc, (None, CRef (Qualid (loc', qidproj), None)),
+		List.map (fun (c, expl) -> interp_constr_expr compproj ids c, expl) args)
+    | _ -> map_constr_expr_with_binders (fun id l -> id :: l) 
+	(interp_constr_expr compproj) ids c
+  in aux [] eqn

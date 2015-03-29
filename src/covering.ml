@@ -212,6 +212,9 @@ let check_ctx_map evars map =
 let mk_ctx_map evars ctx subst ctx' =
   let map = (ctx, subst, ctx') in check_ctx_map evars map
 
+let map_ctx_map f (g, p, d) =
+  map_rel_context f g, p, map_rel_context f d
+
 (** Specialize by a substitution. *)
 
 let subst_pats_constr k s c = 
@@ -738,6 +741,18 @@ let blockers curpats ((_, patcs, _) : context_map) =
 
 let pr_rel_name env i =
   pr_name (pi1 (lookup_rel i env))
+
+
+let pr_path evd = prlist_with_sep (fun () -> str":") (pr_existential_key evd)
+
+let eq_path path path' =
+  let rec aux path path' =
+    match path, path' with
+    | [], [] -> true
+    | hd :: tl, hd' :: tl' -> Evar.equal hd hd' && aux tl tl'
+    | _, _ -> false
+  in 
+    aux path path'
 
 let pr_splitting env split =
   let rec aux = function

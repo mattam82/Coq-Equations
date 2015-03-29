@@ -19,8 +19,14 @@ val of82 : Proofview.V82.tac -> unit Proofview.tactic
 
 (* Point-free composition *)
 val ( $ ) : ('a -> 'b) -> ('c -> 'a) -> 'c -> 'b
+val ( &&& ) : ('a -> 'b) -> ('c -> 'd) -> 'a * 'c -> 'b * 'd
 
 val id : 'a -> 'a
+
+val array_remove_last : 'a array -> 'a array
+val array_chop_last : 'a array -> 'a array * 'a array
+val rev_assoc : ('a -> 'b -> bool) -> 'a -> ('c * 'b) list -> 'c
+val array_filter_map : ('a -> 'b option) -> 'a array -> 'b array
 
 (* All the tails of [x1 ... xn] : [[xn]; [xn-1; xn] ...[x2 .. xn]] *)
 val proper_tails : 'a list -> 'a list list
@@ -31,6 +37,7 @@ val list_find_map_i : (int -> 'a -> 'b option) -> int -> 'a list -> 'b option
 val head_of_constr : Term.constr -> Term.constr
 val nowhere : 'a Locus.clause_expr
 val dummy_loc : Loc.t
+type 'a located = 'a Loc.located
 
 (** Fresh names *)
 val fresh_id_in_env :
@@ -51,6 +58,7 @@ val lift_rel_contextn :
 val lift_context : int -> Context.rel_context -> Context.rel_context
 
 val lift_list : constr list -> constr list
+val lift_constrs : int -> constr list -> constr list
 
 (** Evars *)
 val new_untyped_evar : unit -> Evd.evar
@@ -262,8 +270,9 @@ type hintdb_name = string
 val db_of_constr : constr -> hintdb_name
 val dbs_of_constrs : constr list -> hintdb_name list
 
-
-
-val lift_constrs : int -> constr list -> constr list
-val array_remove_last : 'a array -> 'a array
-val array_chop_last : 'a array -> 'a array * 'a array
+val pr_smart_global :
+  Libnames.reference Misctypes.or_by_notation -> Pp.std_ppcmds
+val string_of_smart_global :
+  Libnames.reference Misctypes.or_by_notation -> string
+val ident_of_smart_global :
+  Libnames.reference Misctypes.or_by_notation -> identifier

@@ -187,6 +187,7 @@ END
 (*   Genarg.create_arg None "r_equation_user_option" *)
 
 open Equations
+open Syntax
 
 ARGUMENT EXTEND equation_user_option
 TYPED AS equation_user_option

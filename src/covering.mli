@@ -66,6 +66,11 @@ val mk_ctx_map :
   pat list ->
   rel_context -> context_map
 
+val map_ctx_map :
+  (Constr.t -> Constr.t) ->
+  rel_context * 'a * rel_context ->
+  rel_context * 'a * rel_context
+
 (** Substitution and specialization *)
 val subst_pats_constr : int -> pat list -> constr -> constr
 val subst_context :
@@ -126,6 +131,9 @@ and refined_node = {
 }
 
 and splitting_rhs = RProgram of constr | REmpty of int
+
+val pr_path : Evd.evar_map -> Evd.evar list -> Pp.std_ppcmds
+val eq_path : Evar.t list -> Evar.t list -> bool
 
 val pr_splitting : env -> splitting -> Pp.std_ppcmds
 val ppsplit : splitting -> unit

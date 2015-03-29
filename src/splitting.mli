@@ -13,7 +13,6 @@ open Names
 open Syntax
 open Covering
 
-
 val helper_evar :
   Evd.evar_map ->
   Evd.evar ->
@@ -29,3 +28,36 @@ val term_of_tree :
   'd ->
   splitting ->
   (existential_key * int) list * Evar.Set.t * constr * constr
+
+
+(** Compilation from splitting tree to terms. *)
+
+val is_comp_obl : rec_info option -> Evar_kinds.t -> bool
+
+val define_tree :
+  rec_type option ->
+  (Constrexpr.explicitation * (bool * bool * bool)) list ->
+  Evar_kinds.obligation_definition_status ->
+  Evd.evar_map ref ->
+  env ->
+  Id.t * 'a * 'b ->
+  rec_info option ->
+  'c ->
+  splitting ->
+  (((Id.t -> constr) -> constr -> constr) ->
+   (existential_key * int * Id.t) list ->
+   Decl_kinds.locality -> Globnames.global_reference -> unit) ->
+  unit
+
+val mapping_rhs : context_map -> splitting_rhs -> splitting_rhs
+val map_rhs :
+  (constr -> constr) ->
+  (int -> int) -> splitting_rhs -> splitting_rhs
+val clean_clause :
+  'a * 'b * 'c * splitting_rhs -> 'a * 'b * 'c * splitting_rhs
+val map_evars_in_constr :
+  ((Id.t -> constr) -> 'a -> 'b) -> 'a -> 'b
+val map_split : (constr -> constr) -> splitting -> splitting
+val map_evars_in_split :
+  ((Id.t -> constr) -> constr -> constr) ->
+  splitting -> splitting

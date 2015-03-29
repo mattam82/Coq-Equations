@@ -11,19 +11,10 @@ open Context
 open Environ
 open Names
 
+open Equations_common
 open Syntax
 open Covering
 open Splitting
-
-type rec_type = 
-  | Structural
-  | Logical of rec_info
-and rec_info = {
-  comp : constant;
-  comp_app : constr;
-  comp_proj : constant;
-  comp_recarg : int;
-}
 
 val abstract_rec_calls :
   ?do_subst:bool ->
@@ -60,29 +51,10 @@ val find_helper_arg :
 val find_splitting_var : pat list -> int -> constr list -> Id.t
 val intros_reducing : Proof_type.tactic
 val aux_ind_fun : term_info -> splitting -> Proof_type.tactic
-val is_structural : rec_type option -> bool
 val ind_fun_tac :
   rec_type option ->
   constr ->
   term_info -> Id.t -> splitting -> 'a -> Proof_type.tactic
-val mapping_rhs : context_map -> splitting_rhs -> splitting_rhs
-val map_rhs :
-  (constr -> constr) ->
-  (int -> int) -> splitting_rhs -> splitting_rhs
-val clean_clause :
-  'a * 'b * 'c * splitting_rhs -> 'a * 'b * 'c * splitting_rhs
-val map_evars_in_constr :
-  ((Id.t -> constr) -> 'a -> 'b) -> 'a -> 'b
-val map_ctx_map :
-  (Constr.t -> Constr.t) ->
-  rel_context * 'a * rel_context ->
-  rel_context * 'a * rel_context
-val map_split : (constr -> constr) -> splitting -> splitting
-val map_evars_in_split :
-  ((Id.t -> constr) -> constr -> constr) ->
-  splitting -> splitting
-val ( &&& ) : ('a -> 'b) -> ('c -> 'd) -> 'a * 'c -> 'b * 'd
-val array_filter_map : ('a -> 'b option) -> 'a array -> 'b array
 val subst_rec_split :
   bool ->
   constr ->
@@ -105,8 +77,6 @@ val ind_elim_tac :
   constr ->
   'a ->
   term_info -> Proof_type.goal Evd.sigma -> Proof_type.goal list Evd.sigma
-val pr_path : Evd.evar_map -> Evd.evar list -> Pp.std_ppcmds
-val eq_path : Evar.t list -> Evar.t list -> bool
 
 (** Defining equations *)
 val build_equations :
@@ -123,30 +93,9 @@ val build_equations :
   ?alias:constr * constr * splitting ->
   context_map -> splitting -> unit
 
-val rev_assoc : ('a -> 'b -> bool) -> 'a -> ('c * 'b) list -> 'c
 
-type equation_option = OInd | ORec | OComp | OEquations
-
-val is_comp_obl : rec_info option -> Evar_kinds.t -> bool
 val hintdb_set_transparency :
   Constant.t -> bool -> Hints.hint_db_name -> unit
-
-(** Compilation from splitting tree to terms. *)
-
-val define_tree :
-  rec_type option ->
-  (Constrexpr.explicitation * (bool * bool * bool)) list ->
-  Evar_kinds.obligation_definition_status ->
-  Evd.evar_map ref ->
-  env ->
-  Id.t * 'a * 'b ->
-  rec_info option ->
-  'c ->
-  splitting ->
-  (((Id.t -> constr) -> constr -> constr) ->
-   (existential_key * int * Id.t) list ->
-   Decl_kinds.locality -> Globnames.global_reference -> unit) ->
-  unit
 
 val conv_proj_call :
   constr -> constant -> constr -> constr
@@ -174,34 +123,13 @@ val update_split :
   constr ->
   context_map ->
   Id.t -> splitting -> splitting
-val translate_cases_pattern :
-  'a -> Id.t list ref -> Glob_term.cases_pattern -> user_pat
 
-val pr_smart_global :
-  Libnames.reference Misctypes.or_by_notation -> Pp.std_ppcmds
-val string_of_smart_global :
-  Libnames.reference Misctypes.or_by_notation -> string
-val ident_of_smart_global :
-  Libnames.reference Misctypes.or_by_notation -> identifier
-val ids_of_pats : pat_expr located list -> identifier list
-
-val interp_eqn :
-  identifier ->
-  rec_type option ->
-  'a ->
-  env ->
-  'b ->
-  'c ->
-  'd ->
-  'e ->
-  ((Loc.t * identifier) option * input_pats * 'f rhs as 'f) ->
-  (user_pat list * 'g rhs as 'g)
 val make_ref : string list -> string -> Globnames.global_reference
 val fix_proto_ref : unit -> constant
 val constr_of_global : Globnames.global_reference -> constr
 
 val define_by_eqs :
-  (equation_option * bool) list ->
+  (Syntax.equation_option * bool) list ->
   identifier ->
   Constrexpr.local_binder list * 'a ->
   Constrexpr.constr_expr ->
@@ -211,18 +139,10 @@ val define_by_eqs :
   ((Loc.t * identifier) option * input_pats * 'b rhs as 'b) list ->
   unit
 
-type equation_user_option = equation_option * bool
-
-val pr_r_equation_user_option : 'a -> 'b -> 'c -> 'd -> Pp.std_ppcmds
-
-type equation_options = (equation_option * bool) list
-
-val pr_equation_options : 'a -> 'b -> 'c -> 'd -> Pp.std_ppcmds
-
 val with_rollback : ('a -> 'b) -> 'a -> 'b
 
 val equations :
-  (equation_option * bool) list ->
+  (Syntax.equation_option * bool) list ->
   Loc.t * identifier ->
   Constrexpr.local_binder list * 'a ->
   Constrexpr.constr_expr ->

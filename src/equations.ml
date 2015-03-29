@@ -53,14 +53,6 @@ open Syntax
 open Covering
 open Splitting
 
-type rec_type = Structural | Logical of rec_info
-
-(* comp, comp applied to rels, comp projection *)
-and rec_info = { comp : constant;
-		 comp_app : constr;
-		 comp_proj : constant;
-		 comp_recarg : int }
-
 let abstract_rec_calls ?(do_subst=true) is_rec len protos c =
   let lenprotos = length protos in
   let proto_fs = map (fun (f, _, _, _) -> f) protos in
@@ -258,8 +250,6 @@ let rec aux_ind_fun info = function
   (*     let id = out_name na in *)
   (* 	do_empty_tac id *)
 
-let is_structural = function Some Structural -> true | _ -> false
-
 let ind_fun_tac is_rec f info fid split ind =
   if is_structural is_rec then
     let c = constant_value_in (Global.env ()) (destConst f) in
@@ -274,60 +264,6 @@ let ind_fun_tac is_rec f info fid split ind =
 	       Proofview.V82.of_tactic (change_in_hyp None (fun evd -> evd, fixprot) (n, Locus.InHyp)) gl);
 	   to82 intros; aux_ind_fun info split])
   else tclCOMPLETE (tclTHEN (to82 intros) (aux_ind_fun info split))
-    
-let mapping_rhs s = function
-  | RProgram c -> RProgram (mapping_constr s c)
-  | REmpty i -> 
-      try match nth (pi2 s) (pred i) with 
-      | PRel i' -> REmpty i'
-      | _ -> assert false
-      with Not_found -> assert false
-
-let map_rhs f g = function
-  | RProgram c -> RProgram (f c)
-  | REmpty i -> REmpty (g i)
-
-let clean_clause (ctx, pats, ty, c) =
-  (ctx, pats, ty, 
-  map_rhs (nf_beta Evd.empty) (fun x -> x) c)
-
-let map_evars_in_constr evar_map c = 
-  evar_map (fun id -> Universes.constr_of_global (Nametab.global (Qualid (dummy_loc, qualid_of_ident id)))) c
-(*  list_try_find  *)
-(* 	      (fun (id', c, filter) ->  *)
-(* 		 if id = id' then (c, filter) else failwith "") subst) c *)
-
-let map_ctx_map f (g, p, d) =
-  map_rel_context f g, p, map_rel_context f d
-
-let map_split f split =
-  let rec aux = function
-    | Compute (lhs, ty, RProgram c) -> Compute (lhs, ty, RProgram (f c))
-    | Split (lhs, y, z, cs) -> Split (lhs, y, z, Array.map (Option.map aux) cs)
-    | RecValid (id, c) -> RecValid (id, aux c)
-    | Valid (lhs, y, z, w, u, cs) ->
-	Valid (lhs, y, z, w, u, List.map (fun (gl, cl, subst, s) -> (gl, cl, subst, aux s)) cs)
-    | Refined (lhs, info, s) ->
-	let (id, c, cty) = info.refined_obj in
-	let (scf, scargs) = info.refined_app in
-	  Refined (lhs, { info with refined_obj = (id, f c, f cty);
-			    refined_app = (f scf, List.map f scargs);
-			    refined_newprob_to_lhs = map_ctx_map f info.refined_newprob_to_lhs }, 
-		   aux s)
-    | Compute (_, _, REmpty _) as c -> c
-  in aux split
-
-
-let map_evars_in_split m = map_split (map_evars_in_constr m)
-
-let (&&&) f g (x, y) = (f x, g y)
-
-let array_filter_map f a =
-  let l' =
-    Array.fold_right (fun c acc -> 
-		      Option.cata (fun r -> r :: acc) acc (f c))
-    a []
-  in Array.of_list l'
 
 let subst_rec_split redefine f prob s split = 
   let subst_rec cutprob s (ctx, p, _ as lhs) =
@@ -479,17 +415,6 @@ let ind_elim_tac indid inds info gl =
 			prove_methods (Proofview.V82.of_tactic (apply (nf_beta (project gl) (applistc indid (rev args)))))] gl
   in
     tclTHENLIST [intro; onLastHypId (fun id -> applyind [mkVar id])] gl
-
-let pr_path evd = prlist_with_sep (fun () -> str":") (pr_existential_key evd)
-
-let eq_path path path' =
-  let rec aux path path' =
-    match path, path' with
-    | [], [] -> true
-    | hd :: tl, hd' :: tl' -> Evar.equal hd hd' && aux tl tl'
-    | _, _ -> false
-  in 
-    aux path path'
 
 let build_equations with_ind env id info data sign is_rec arity cst 
     f ?(alias:(constr * constr * splitting) option) prob split =
@@ -819,57 +744,10 @@ let build_equations with_ind env id info data sign is_rec arity cst
 
 open Typeclasses
 
-let rev_assoc eq k =
-  let rec loop = function
-    | [] -> raise Not_found | (v,k')::_ when eq k k' -> v | _ :: l -> loop l 
-  in
-  loop
-
-type equation_option = 
-  | OInd | ORec | OComp | OEquations
-
-let is_comp_obl comp hole_kind =
-  match comp with
-  | None -> false
-  | Some r -> 
-      match hole_kind with 
-      | ImplicitArg (ConstRef c, (n, _), _) ->
-	Constant.equal c r.comp_proj && n == r.comp_recarg 
-      | _ -> false
-
 let hintdb_set_transparency cst b db =
   Hints.add_hints false [db] 
     (Hints.HintsTransparencyEntry ([EvalConstRef cst], b))
 
-let define_tree is_recursive impls status isevar env (i, sign, arity) comp ann split hook =
-  let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
-  let helpers, oblevs, t, ty = term_of_tree status isevar env (i, sign, arity) ann split in
-  let obls, (emap, cmap), t', ty' = 
-    Obligations.eterm_obligations env i !isevar
-      0 ~status t (whd_betalet !isevar ty)
-  in
-  let obls = 
-    Array.map (fun (id, ty, loc, s, d, t) ->
-      let tac = 
-	if Evar.Set.mem (rev_assoc Id.equal id emap) oblevs 
-	then Some (equations_tac ()) 
-	else if is_comp_obl comp (snd loc) then
-	  Some (of82 (tclTRY (to82 (solve_rec_tac ()))))
-	else Some (snd (Obligations.get_default_tactic ()))
-      in (id, ty, loc, s, d, tac)) obls
-  in
-  let term_info = map (fun (ev, arg) ->
-    (ev, arg, List.assoc ev emap)) helpers
-  in
-  let hook = Lemmas.mk_hook (hook cmap term_info) in
-    if is_structural is_recursive then
-      ignore(Obligations.add_mutual_definitions [(i, t', ty', impls, obls)] 
-	       (Evd.evar_universe_context !isevar) [] 
-	       ~hook (Obligations.IsFixpoint [None, CStructRec]))
-    else
-      ignore(Obligations.add_definition ~hook
-		~implicits:impls i ~term:t' ty' 
-		(Evd.evar_universe_context !isevar) obls)
 
 let conv_proj_call proj f_cst c =
   let rec aux n c =
@@ -1026,116 +904,6 @@ let update_split is_rec cmap f prob id split =
       in aux split'
     | _ -> split'
 
-let rec translate_cases_pattern env avoid = function
-  | PatVar (loc, Name id) -> PUVar id
-  | PatVar (loc, Anonymous) -> 
-      let n = next_ident_away (id_of_string "wildcard") avoid in
-	avoid := n :: !avoid; PUVar n
-  | PatCstr (loc, (ind, _ as cstr), pats, Anonymous) ->
-      PUCstr (cstr, (Inductiveops.inductive_nparams ind), map (translate_cases_pattern env avoid) pats)
-  | PatCstr (loc, cstr, pats, Name id) ->
-      user_err_loc (loc, "interp_pats", str "Aliases not supported by Equations")
-
-let pr_smart_global = Pptactic.pr_or_by_notation pr_reference
-let string_of_smart_global = function
-  | Misctypes.AN ref -> string_of_reference ref
-  | Misctypes.ByNotation (loc, s, _) -> s
-
-let ident_of_smart_global x = 
-  id_of_string (string_of_smart_global x)
-
-let rec ids_of_pats pats =
-  fold_left (fun ids (_,p) ->
-    match p with
-    | PEApp ((loc,f), l) -> 
-	let lids = ids_of_pats l in
-	  (try ident_of_smart_global f :: lids with _ -> lids) @ ids
-    | PEWildcard -> ids
-    | PEInac _ -> ids
-    | PEPat _ -> ids)
-    [] pats
-
-let interp_eqn i is_rec isevar env impls sign arity recu eqn =
-  let avoid = ref [] in
-  let rec interp_pat (loc, p) =
-    match p with
-    | PEApp ((loc,f), l) -> 
-	let r =
-	  try Inl (Smartlocate.smart_global f)
-	  with e -> Inr (PUVar (ident_of_smart_global f))
-	in
-	  (match r with
-	   | Inl (ConstructRef c) ->
-	       let (ind,_) = c in
-	       let nparams = Inductiveops.inductive_nparams ind in
-	       let nargs = constructor_nrealargs c in
-	       let len = List.length l in
-	       let l' =
-		 if len < nargs then 
-		   List.make (nargs - len) (loc,PEWildcard) @ l
-		 else l
-	       in 
-		 Dumpglob.add_glob loc (ConstructRef c);
-		 PUCstr (c, nparams, map interp_pat l')
-	   | Inl _ ->
-	       if l != [] then 
-		 user_err_loc (loc, "interp_pats",
-			       str "Pattern variable " ++ pr_smart_global f ++ str" cannot be applied ")
-	       else PUVar (ident_of_smart_global f)
-	   | Inr p -> p)
-    | PEInac c -> PUInac c
-    | PEWildcard -> 
-	let n = next_ident_away (id_of_string "wildcard") avoid in
-	  avoid := n :: !avoid; PUVar n
-
-    | PEPat p ->
-	let ids, pats = intern_pattern env p in
-	  (* Names.identifier list * *)
-	  (*   ((Names.identifier * Names.identifier) list * Rawterm.cases_pattern) list *)
-	let upat = 
-	  match pats with
-	  | [(l, pat)] -> translate_cases_pattern env avoid pat
-	  | _ -> user_err_loc (loc, "interp_pats", str "Or patterns not supported by equations")
-	in upat
-  in
-  let rec aux curpats (idopt, pats, rhs) =
-    let curpats' = 
-      match pats with
-      | SignPats l -> l
-      | RefinePats l -> curpats @ l
-    in
-    avoid := !avoid @ ids_of_pats curpats';
-    Option.iter (fun (loc,id) ->
-      if not (Id.equal id i) then
-	user_err_loc (loc, "interp_pats",
-		     str "Expecting a pattern for " ++ pr_id i);
-      Dumpglob.dump_reference loc "<>" (string_of_id id) "def")
-      idopt;
-    (*   if List.length pats <> List.length sign then *)
-    (*     user_err_loc (loc, "interp_pats", *)
-    (* 		 str "Patterns do not match the signature " ++  *)
-    (* 		   pr_rel_context env sign); *)
-    let pats = map interp_pat curpats' in
-      match is_rec with
-      | Some Structural -> (PUVar i :: pats, interp_rhs curpats' None rhs)
-      | Some (Logical r) -> (pats, interp_rhs curpats' (Some (ConstRef r.comp_proj)) rhs)
-      | None -> (pats, interp_rhs curpats' None rhs)
-  and interp_rhs curpats compproj = function
-    | Refine (c, eqs) -> Refine (interp_constr_expr compproj !avoid c, map (aux curpats) eqs)
-    | Program c -> Program (interp_constr_expr compproj !avoid c)
-    | Empty i -> Empty i
-    | Rec (i, r, s) -> Rec (i, r, map (aux curpats) s)
-    | By (x, s) -> By (x, map (aux curpats) s)
-  and interp_constr_expr compproj ids c = 
-    match c, compproj with
-    (* |   | CAppExpl of loc * (proj_flag * reference) * constr_expr list *)
-    | CApp (loc, (None, CRef (Ident (loc',id'), _)), args), Some cproj when Id.equal i id' ->
-	let qidproj = Nametab.shortest_qualid_of_global Idset.empty cproj in
-	  CApp (loc, (None, CRef (Qualid (loc', qidproj), None)),
-		List.map (fun (c, expl) -> interp_constr_expr compproj ids c, expl) args)
-    | _ -> map_constr_expr_with_binders (fun id l -> id :: l) 
-	(interp_constr_expr compproj) ids c
-  in aux [] eqn
 	
 let make_ref dir s = Coqlib.gen_reference "Program" dir s
 
@@ -1293,19 +1061,6 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	      define_tree None impls status isevar env (unfoldi, sign, arity) None ann unfold_split hook_unfold
       else ()
   in define_tree is_recursive impls status isevar env (i, sign, arity) comp ann split hook
-
-type binders_let2_argtype = (local_binder list * (identifier located option * recursion_order_expr)) Genarg.uniform_genarg_type
-
-    
-type equation_user_option = (equation_option * bool)
-
-type equation_options = ((equation_option * bool) list)
-
-let pr_r_equation_user_option _prc _prlc _prt l =
-  mt ()
-
-let pr_equation_options  _prc _prlc _prt l =
-  mt ()
 
 let with_rollback f x =
   (* States.with_heavy_rollback f *)
