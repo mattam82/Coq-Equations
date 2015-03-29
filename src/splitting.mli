@@ -6,7 +6,26 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-val ( = ) : int -> int -> bool
-val solve_subterm_tac : unit -> unit Proofview.tactic
-val derive_subterm : Constr.pinductive -> unit
-val derive_below : Evd.evar_universe_context -> Names.inductive * 'a -> unit
+open Term
+open Context
+open Environ
+open Names
+open Syntax
+open Covering
+
+
+val helper_evar :
+  Evd.evar_map ->
+  Evd.evar ->
+  env ->
+  types -> Loc.t * Evar_kinds.t -> Evd.evar_map * constr
+
+(** Compilation to Coq terms *)
+val term_of_tree :
+  Evar_kinds.obligation_definition_status ->
+  Evd.evar_map ref ->
+  env ->
+  'a * 'b * 'c ->
+  'd ->
+  splitting ->
+  (existential_key * int) list * Evar.Set.t * constr * constr

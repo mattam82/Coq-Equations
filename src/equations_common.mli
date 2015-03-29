@@ -261,3 +261,9 @@ val autounfold_first :
 type hintdb_name = string
 val db_of_constr : constr -> hintdb_name
 val dbs_of_constrs : constr list -> hintdb_name list
+
+
+
+val lift_constrs : int -> constr list -> constr list
+val array_remove_last : 'a array -> 'a array
+val array_chop_last : 'a array -> 'a array * 'a array

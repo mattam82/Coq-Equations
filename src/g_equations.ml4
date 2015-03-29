@@ -23,7 +23,7 @@ open Nameops
 open Refiner
 open Errors
 open Constrexpr
-
+ 
 TACTIC EXTEND decompose_app
 [ "decompose_app" ident(h) ident(h') constr(c) ] -> [ 
   Proofview.Goal.enter (fun gl ->
@@ -215,9 +215,9 @@ module Tactic = Pcoq.Tactic
 
 type binders_let2_argtype =
     (Constrexpr.local_binder list *
-     (Names.identifier located option * Constrexpr.recursion_order_expr))
+     (Names.identifier Loc.located option * Constrexpr.recursion_order_expr))
     Genarg.uniform_genarg_type
-type deppat_equations_argtype = pre_equation list Genarg.uniform_genarg_type
+type deppat_equations_argtype = Syntax.pre_equation list Genarg.uniform_genarg_type
 
 let wit_binders_let2 : binders_let2_argtype =
   Genarg.create_arg None "binders_let2"
@@ -226,7 +226,7 @@ let pr_raw_binders_let2 _ _ _ l = mt ()
 let pr_glob_binders_let2 _ _ _ l = mt ()
 let pr_binders_let2 _ _ _ l = mt ()
 
-let binders_let2 : (local_binder list * (identifier located option * recursion_order_expr)) Gram.entry =
+let binders_let2 : (local_binder list * (identifier Loc.located option * recursion_order_expr)) Gram.entry =
   Pcoq.create_generic_entry "binders_let2" (Genarg.rawwit wit_binders_let2)
 
 let _ = Pptactic.declare_extra_genarg_pprule wit_binders_let2
@@ -240,7 +240,7 @@ let pr_raw_deppat_equations _ _ _ l = mt ()
 let pr_glob_deppat_equations _ _ _ l = mt ()
 let pr_deppat_equations _ _ _ l = mt ()
 
-let deppat_equations : pre_equation list Gram.entry =
+let deppat_equations : Syntax.pre_equation list Gram.entry =
   Pcoq.create_generic_entry "deppat_equations" (Genarg.rawwit wit_deppat_equations)
 
 let _ = Pptactic.declare_extra_genarg_pprule wit_deppat_equations
@@ -254,6 +254,8 @@ open Constr
 open G_vernac
 open Compat
 open Tok
+
+open Syntax
 
 GEXTEND Gram
   GLOBAL: pattern deppat_equations binders_let2;

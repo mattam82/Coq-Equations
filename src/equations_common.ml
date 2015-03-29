@@ -530,3 +530,12 @@ let deps_of_var id env =
     
 let idset_of_list =
   List.fold_left (fun s x -> Idset.add x s) Idset.empty
+
+
+let lift_constrs n cs = map (lift n) cs
+    
+let array_remove_last a =
+  Array.sub a 0 (Array.length a - 1)
+
+let array_chop_last a =
+  Array.chop (Array.length a - 1) a

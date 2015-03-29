@@ -3,6 +3,9 @@ Sigma
 Subterm
 Eqdec
 Depelim
+Syntax
+Covering
+Splitting
 Equations
 Noconf
 G_equations

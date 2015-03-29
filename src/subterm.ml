@@ -249,8 +249,6 @@ let derive_subterm ind =
 	  ~hook:(Lemmas.mk_hook hook) ~tactic:(solve_subterm_tac ()) obls
   in ignore(declare_ind ())
     
-let list_chop = List.chop
-
 let derive_below ctx (ind,u) =
   let evd = ref (Evd.from_env ~ctx (Global.env ())) in
   let mind, oneind = Global.lookup_inductive ind in
@@ -260,7 +258,7 @@ let derive_below ctx (ind,u) =
   let argsvect = rel_vect 0 len in
   let indty = mkApp (mkInd ind, argsvect) in
   let binders = (Name (id_of_string "c"), None, indty) :: ctx in
-  let argbinders, parambinders = list_chop (succ len - params) binders in
+  let argbinders, parambinders = List.chop (succ len - params) binders in
   let env = Global.env () in
   let u = Evarutil.e_new_Type ~rigid:Evd.univ_rigid env evd in
   let arity = it_mkProd_or_LetIn u argbinders in
@@ -281,7 +279,7 @@ let derive_below ctx (ind,u) =
       let nargs = constructor_nrealargs (ind, succ i) in
       let recarg = mkVar recid in
       let args, _ = decompose_prod_assum (substl [mkInd ind] ty) in
-      let args, _ = list_chop (List.length args - params) args in
+      let args, _ = List.chop (List.length args - params) args in
       let ty' = substl [recarg] ty in
       let args', _ = decompose_prod_assum ty' in
       let arg_tys = fst (List.fold_left (fun (acc, n) (_,_,t) ->

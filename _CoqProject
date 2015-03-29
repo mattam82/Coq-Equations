@@ -1,7 +1,8 @@
 -I src
+-I test-suite
 -R theories Equations
--extra-phony apidoc theories/Init.vo "ocamldoc -html -d html/api `ocamlfind query -r coqdev85.all -i-format` -rectypes -I src src/*.ml"
--extra-phony all html ""
+-extra-phony apidoc "$(VOFILES)" "mkdir -p html/api && ocamldoc -html -d html/api `ocamlfind query -r coqdev85.all -i-format` -rectypes -I src src/*.ml"
+-extra-phony all "html apidoc" ""
 ZDEBUG = -bin-annot
 src/equations_common.mli
 src/equations_common.ml
@@ -13,6 +14,12 @@ src/eqdec.mli
 src/eqdec.ml
 src/depelim.mli
 src/depelim.ml
+src/syntax.mli
+src/syntax.ml
+src/covering.ml
+src/covering.mli
+src/splitting.ml
+src/splitting.mli
 src/equations.mli
 src/equations.ml
 src/noconf.ml
