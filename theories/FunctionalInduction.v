@@ -50,20 +50,28 @@ Ltac funind_call f H :=
 Class FunctionalElimination {A : Type} (f : A) (fun_elim_ty : Prop) := 
   fun_elim : fun_elim_ty.
 
+Ltac constr_head c :=
+  let rec aux c :=
+      match c with
+      | ?f _ => aux f
+      | ?f => f
+      end
+  in aux c.
+
 Ltac funelim_tac c tac :=
   match c with
-    | appcontext C [ ?f ] => 
+    | appcontext [?f] =>
   let call := fresh "call" in set(call := c) in *; move call at top;
   let elim := constr:(fun_elim (f:=f)) in
     block_goal; revert_until call; block_goal;
     first [ 
-      progress (generalize_eqs_vars call);
+        progress (generalize_eqs_vars call);
         match goal with
           call := ?c' |- _ => 
             subst call; simpl; pattern_call c';
               apply elim; clear; simplify_dep_elim;
                 simplify_IH_hyps; unfold block at 1;
-                  first [ on_last_hyp ltac:(fun id => rewrite <- id; clear id; intros)
+                  first [ on_last_hyp ltac:(fun id => rewrite <- id; intros)
                     | intros ];
                   unblock_goal; tac f
         end

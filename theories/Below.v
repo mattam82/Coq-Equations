@@ -36,6 +36,7 @@ Create HintDb Below discriminated.
 
 Hint Extern 0 (_ = _) => reflexivity : Below.
 Hint Extern 0 (_ ~= _) => reflexivity : Below.
+Hint Extern 3 => progress simpl : Below.
 
 (** Use it as well as the [equations] simplifications. *)
 

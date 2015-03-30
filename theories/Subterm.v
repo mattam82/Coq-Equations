@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Bvector.
+Require Import Wf_nat Arith.Lt (* For lt *) Bvector.
 Require Import Equations.Init Equations.Below Relations Wellfounded.
 Require Import Equations.Signature.
 
@@ -70,12 +70,18 @@ Hint Extern 4 (WellFounded (clos_trans _ _)) =>
 Instance wf_MR {A R} `(WellFounded A R) {B} (f : B -> A) : WellFounded (MR R f).
 Proof. red. apply measure_wf. apply H. Defined.
 
+Hint Extern 0 (MR _ _ _ _) => red : Below.
+
+Instance lt_wf : WellFounded lt := lt_wf.
+Hint Resolve lt_n_Sn : Below.
+
 (** We also add hints for transitive closure, not using [t_trans] but forcing to 
    build the proof by successive applications of the inner relation. *)
 
 Hint Resolve t_step : subterm_relation.
 
-Lemma clos_trans_stepr A (R : relation A) (x y z : A) : R y z -> clos_trans A R x y -> clos_trans A R x z.
+Lemma clos_trans_stepr A (R : relation A) (x y z : A) :
+  R y z -> clos_trans A R x y -> clos_trans A R x z.
 Proof. intros Hyz Hxy. exact (t_trans _ _ x y z Hxy (t_step _ _ _ _ Hyz)). Defined.
 
 Hint Resolve clos_trans_stepr : subterm_relation.

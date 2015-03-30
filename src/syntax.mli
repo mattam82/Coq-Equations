@@ -43,12 +43,12 @@ val pr_user_pats : env -> user_pat list -> Pp.std_ppcmds
 
 val pr_lhs : env -> user_pat list -> Pp.std_ppcmds
 val pplhs : user_pat list -> unit
-val pr_rhs : env -> ((user_pat list * 'a) rhs as 'a) -> Pp.std_ppcmds
+val pr_rhs : env -> clause rhs -> Pp.std_ppcmds
 val pr_clause :
-  env -> (user_pat list * 'a rhs as 'a) -> Pp.std_ppcmds
+  env -> clause -> Pp.std_ppcmds
 val pr_clauses :
-  env -> (user_pat list * 'a rhs as 'a) list -> Pp.std_ppcmds
-val ppclause : (user_pat list * 'a rhs as 'a) -> unit
+  env -> clause list -> Pp.std_ppcmds
+val ppclause : clause -> unit
 
 
 (** Raw syntax *)
@@ -105,4 +105,4 @@ val interp_eqn :
   'd ->
   'e ->
   ((Loc.t * identifier) option * input_pats * 'f rhs as 'f) ->
-  (user_pat list * 'g rhs as 'g)
+  clause

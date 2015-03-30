@@ -1104,9 +1104,9 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		let str_to_new =
 		  inst_refctx, (specialize_pats (pi2 cmap) (lift_pats 1 pats')), newctx
 		in
-			(* 		      let extprob = check_ctx_map (extnewctx, PRel 1 :: lift_pats 1 pats'', extnewctx) in *)
-			(* 		      let ext_to_new = check_ctx_map (extnewctx, lift_pats 1 pats'', newctx) in *)
-			(* (compose_subst cmap extprob) (compose_subst ext_to_new *)
+		  (* 		      let extprob = check_ctx_map (extnewctx, PRel 1 :: lift_pats 1 pats'', extnewctx) in *)
+		  (* 		      let ext_to_new = check_ctx_map (extnewctx, lift_pats 1 pats'', newctx) in *)
+		  (* (compose_subst cmap extprob) (compose_subst ext_to_new *)
 		  compose_subst ~sigma:!evars str_to_new revctx
 	      in	
 	      let newprob = 
@@ -1114,8 +1114,8 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		let pats = 
 		  rev_map (fun c -> 
 		    let idx = destRel c in
-				     (* find out if idx in ctx should be hidden depending
-					on its use in newprob_to_lhs *)
+		      (* find out if idx in ctx should be hidden depending
+			 on its use in newprob_to_lhs *)
 		      if List.exists (function PHide idx' -> idx == idx' | _ -> false)
 			(pi2 newprob_to_lhs) then
 			PHide idx
@@ -1129,8 +1129,8 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		       !evars (lift 1 (mapping_constr revctx ty)))
 	      in
 	      let newty = mapping_constr cmap newty in
-		    (* The new problem forces a reordering of patterns under the refinement
-		       to make them match up to the context map. *)
+	      (* The new problem forces a reordering of patterns under the refinement
+		 to make them match up to the context map. *)
 	      let sortinv = List.sort (fun (i, _) (i', _) -> i' - i) strinv in
 	      let vars' = List.rev_map snd sortinv in
 	      let rec cls' n cls =
@@ -1141,7 +1141,9 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		in
 		  List.map_filter (fun (lhs, rhs) -> 
 		    let oldpats, newpats = List.chop (List.length lhs - n) lhs in
-		    let newref, prevrefs = match newpats with hd :: tl -> hd, tl | [] -> assert false in
+		    let newref, nextrefs = 
+		      match newpats with hd :: tl -> hd, tl | [] -> assert false 
+		    in
 		      match matches_user prob oldpats with
 		      | UnifSuccess (s, alias) -> 
 			      (* A substitution from the problem variables to user patterns and 
@@ -1164,13 +1166,13 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 			  | By (v, s) -> By (v, cls' n s)
 			  | _ -> rhs
 			in
-			  Some (rev (prevrefs @ newlhs), newrhs)
+			  Some (rev newlhs @ nextrefs, newrhs)
 		      | _ -> 
 			errorlabstrm "covering"
 			  (str "Non-matching clause in with subprogram:" ++ fnl () ++
 			     str"Problem is " ++ spc () ++ pr_context_map env prob ++ 
 			     str"And the user patterns are: " ++ fnl () ++
-			     pr_user_pats env lhs)) cls
+			     pr_user_pats env oldpats)) cls
 	      in
 	      let cls' = cls' 1 cls in
 	      let strength_app, refarg =

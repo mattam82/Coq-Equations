@@ -1,0 +1,13 @@
+#cd".";;
+#directory "src";;
+
+#use "syntax.ml";;
+#use "covering.ml";;
+#use "splitting.ml";;
+open Syntax
+open Covering
+open Splitting
+
+#install_printer  (* lhs *) pplhs;;
+#install_printer  (* clause *) ppclause;;
+#install_printer  (* splitting *) ppsplit;;
