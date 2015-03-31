@@ -83,9 +83,11 @@ TACTIC EXTEND pattern_sigma
     let term = Option.get (Util.pi2 decl) in
       Sigma.pattern_sigma term id env sigma) ]
 END
+
+open Tacmach
+
 TACTIC EXTEND curry
 [ "curry" hyp(id) ] -> [ 
-  let open Tacmach in
   Proofview.V82.tactic 
     (fun gl ->
       match Sigma.curry_hyp (project gl) (mkVar id) (pf_get_hyp_typ gl id) with
