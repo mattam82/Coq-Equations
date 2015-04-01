@@ -24,7 +24,7 @@ Definition f91_rel : relation nat :=
 
 Instance gt_bound_wf : WellFounded f91_rel.
 Proof. red. red. intros.
-  Admitted.
+Admitted.
 
 Equations f91 n : { m : nat | if le_lt_dec n 100 then m = 91 else m = n - 10 } :=
 f91 n by rec n f91_rel :=

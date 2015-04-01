@@ -139,7 +139,7 @@ let simpl_star =
 
 let eauto_with_below l =
   Class_tactics.typeclasses_eauto
-    ~st:(below_transparent_state ()) (l@["subterm_relation"; "Below"])
+    ~st:(below_transparent_state ()) (l@["subterm_relation"; "Below"; "rec_decision"])
 
 let simp_eqns l =
   tclREPEAT (tclTHENLIST [Proofview.V82.of_tactic 

@@ -180,7 +180,12 @@ let define_tree is_recursive impls status isevar env (i, sign, arity) comp ann s
 	if Evar.Set.mem (rev_assoc Id.equal id emap) oblevs 
 	then Some (equations_tac ()) 
 	else if is_comp_obl comp (snd loc) then
-	  Some (of82 (tclTRY (to82 (solve_rec_tac ()))))
+	  let unfolds = unfold_in_concl 
+	    [((Locus.AllOccurrencesBut [1]), EvalConstRef (Option.get comp).comp)]
+	  in
+	    Some (of82 (tclTRY 
+			  (tclTHEN (tclTHEN (to82 Tactics.intros) unfolds)
+			     (to82 (solve_rec_tac ())))))
 	else Some (snd (Obligations.get_default_tactic ()))
       in (id, ty, loc, s, d, tac)) obls
   in

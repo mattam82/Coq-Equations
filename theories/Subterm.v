@@ -8,7 +8,7 @@
 
 Require Import Wf_nat Arith.Lt (* For lt *) Bvector.
 Require Import Equations.Init Equations.Below Relations Wellfounded.
-Require Import Equations.Signature.
+Require Import Equations.Signature Equations.NoConfusion.
 
 Generalizable Variables A R S B.
 
@@ -54,6 +54,7 @@ Extraction Inline FixWf Fix Fix_F.
 
 Create HintDb subterm_relation discriminated.
 Create HintDb Recursors discriminated.
+Create HintDb rec_decision discriminated.
 
 (** We can automatically use the well-foundedness of a relation to get
    the well-foundedness of its transitive closure.
@@ -153,9 +154,62 @@ Ltac rec_wf_eqns_rel x recname rel :=
   rec_wf_rel x recname rel ; add_pattern (hide_pattern recname).
 
 Ltac solve_rec ::= simpl in * ; cbv zeta ; intros ; 
-  try typeclasses eauto with subterm_relation Below.
+  try typeclasses eauto with subterm_relation Below rec_decision.
 
 (** The [pi] tactic solves an equality between applications of the same function,
    possibly using proof irrelevance to discharge equality of proofs. *)
 
 Ltac pi := repeat progress (f_equal || reflexivity) ; apply proof_irrelevance.
+
+
+(** Define non-dependent lexicographic products *)
+
+Require Import Wellfounded Relation_Definitions.
+Require Import Relation_Operators Lexicographic_Product Wf_nat.
+Implicit Arguments lexprod [A B].
+
+Section Lexicographic_Product.
+
+  Variable A : Type.
+  Variable B : Type.
+  Variable leA : A -> A -> Prop.
+  Variable leB : B -> B -> Prop.
+
+  Inductive lexprod : A * B -> A * B -> Prop :=
+    | left_lex :
+      forall (x x':A) (y:B) (y':B),
+        leA x x' -> lexprod (x, y) (x', y')
+    | right_lex :
+      forall (x:A) (y y':B),
+        leB y y' -> lexprod (x, y) (x, y').
+
+  Lemma acc_A_B_lexprod :
+    forall x:A, Acc leA x -> (well_founded leB) ->
+                forall y:B, Acc leB y -> Acc lexprod (x, y).
+  Proof.
+    induction 1 as [x _ IHAcc]; intros H2 y.
+    induction 1 as [x0 H IHAcc0]; intros.
+    apply Acc_intro.
+    destruct y as [x2 y1]; intro H6.
+    simple inversion H6; intro.
+    injection H1. injection H3. intros. subst. clear H1 H3.
+    apply IHAcc; auto with sets. 
+
+    noconf H3. noconf H1. 
+  Qed.
+
+  Theorem wf_lexprod :
+    well_founded leA ->
+    well_founded leB -> well_founded lexprod.
+  Proof.
+    intros wfA wfB; unfold well_founded.
+    destruct a. 
+    apply acc_A_B_lexprod; auto with sets; intros.
+  Defined.
+
+End Lexicographic_Product.
+
+Instance wellfounded_lexprod A B R S `(wfR : WellFounded A R, wfS : WellFounded B S) : 
+  WellFounded (lexprod A B R S) := wf_lexprod A B R S wfR wfS.
+
+Hint Constructors lexprod : Below.
