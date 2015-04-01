@@ -42,3 +42,4 @@ test-suite/Basics.v
 test-suite/rec.v
 test-suite/f91.v
 test-suite/Noconfinv.v
+test-suite/zoe.v
