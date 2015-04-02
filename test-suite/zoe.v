@@ -1,4 +1,4 @@
-Require Import Arith List Omega Program.
+Require Import Equations Arith List ListSet Omega Program.
  
 Definition fvar : Type := nat. 
 Definition bvar : Type := nat. 
@@ -7,6 +7,32 @@ Inductive sort : Type :=
 | N : sort
 | ArrowS : sort -> sort -> sort.
  
+Definition eq_sort_dec (s1 s2 : sort) : {s1 = s2} + {s1 <> s2}. 
+Proof. do 2 decide equality. Defined.
+ 
+(* A very simple language with locally nameless binder representation *) 
+Inductive index : Type :=
+| IBVar : bvar -> index 
+| IFVar : fvar -> index
+| Z : index
+| Plus1 : index -> index  
+| IAbs : sort -> index -> index
+| IApp : index -> index -> index.
+ 
+(* Set notations *)
+Notation "\{}" := (empty_set fvar).
+  
+Notation "\{ x }" := ([x]).
+ 
+Notation "E \u F" := (set_union eq_nat_dec E F)
+                       (at level 37, right associativity).
+ 
+Notation "x \in E" := (set_In x E) (at level 38).
+ 
+Notation "x \notin E" := (~ (x \in E)) (at level 38).
+ 
+ 
+(* Environments *)
 Definition env := list (fvar * sort).
  
 Definition get (x : fvar) (e : env) : option sort :=
@@ -17,36 +43,31 @@ Definition get (x : fvar) (e : env) : option sort :=
     | None => None
   end.
  
-(* A very simple language with locally nameless binder representation *)
-Inductive index : Type :=
-| IBVar : bvar -> index 
-| IFVar : fvar -> index
-| Z : index
-| Plus1 : index -> index  
-| IAbs : sort -> index -> index
-| IApp : index -> index -> index.
+Definition dom (e : env) : set fvar := fold_left (fun s x => \{fst x} \u s) e \{}. 
  
-(* Typing rules *)
-Inductive sorting (e : env) : index -> sort -> Prop :=
-| IFVarRule : 
-    forall (i : fvar) (s : sort),
-      get i e = Some s -> 
-      sorting e (IFVar i) s
-| ZRule : sorting e Z N
-| Plus1Rule : forall (I : index), 
-                sorting e I N -> sorting e (Plus1 I) N
-(* Commenting out the abstraction rule to make the example simpler *)
-(* | IAbsRule : forall (I : index) (s1 s2 : sort), *)
-(*                (forall (i : ifvar), *)
-(*                   i # e = true -> i \notin (ifv I) = true -> *)
-(*                   sorting (i :~ s1 & e) (I ii_open_var i) s2) -> *)
-(*                sorting e (IAbs s1 I) (ArrowS s1 s2) *)
-| IAppRule : forall (I1 I2 : index) (S1 S2 : sort),
-               sorting e I1 (ArrowS S1 S2) -> sorting e I2 S1 -> 
-               sorting e (IApp I1 I2) S2.
+(* Free variables *)
+Fixpoint ifv (i : index) : set fvar :=
+  match i with
+    | IFVar x => \{x}
+    | IBVar _ | Z => \{}
+    | Plus1 i => ifv i
+    | IAbs _ i => ifv i
+    | IApp i1 i2 => ifv i1 \u ifv i2 
+  end. 
  
-Definition sort_eq_dec (s1 s2 : sort) : {s1 = s2} + {s1 <> s2}. 
-Proof. do 2 decide equality. Defined.
+Definition var_gen (E : set fvar) :=
+  1 + fold_right max O E.
+ 
+Lemma var_gen_spec : forall E, (var_gen E) \notin E.
+Proof.
+  intros E.
+  assert (Hlt : forall n, n \in E -> n < var_gen E).
+  { intros n H. induction E as [|x xs IHxs];
+      unfold var_gen in *; simpl in *; try (now exfalso; auto).
+    destruct H; subst;
+    rewrite Max.succ_max_distr, Nat.max_lt_iff; auto. }
+  intros contra. apply Hlt in contra. omega.
+Qed.
  
 Fixpoint ii_open_rec (k : nat) (i : index) (x : fvar) : index :=
   match i with
@@ -59,6 +80,28 @@ Fixpoint ii_open_rec (k : nat) (i : index) (x : fvar) : index :=
  
 Definition ii_open_var (i : index) (x : fvar) := ii_open_rec 0 i x. 
  
+ 
+(* Typing rules *)
+Inductive sorting (e : env) : index -> sort -> Prop :=
+| IFVarRule : 
+    forall (x : fvar) (s : sort),
+      get x e = Some s -> 
+      sorting e (IFVar x) s
+| ZRule : sorting e Z N
+| Plus1Rule : forall (I : index), 
+                sorting e I N -> sorting e (Plus1 I) N
+| IAbsRule : forall (I : index) (s1 s2 : sort),
+               (* Cheating a bit to make the proof easier, but this
+                  rule should be equivalent with the previous one - 
+                  the proof must be cumbersome though *)
+               let x := var_gen (dom e \u ifv I) in
+               sorting ((x, s1) :: e) (ii_open_var I x) s2 ->
+               sorting e (IAbs s1 I) (ArrowS s1 s2)
+| IAppRule : forall (I1 I2 : index) (S1 S2 : sort),
+               sorting e I1 (ArrowS S1 S2) -> sorting e I2 S1 -> 
+               sorting e (IApp I1 I2) S2.
+ 
+ 
 Fixpoint index_size (i : index) : nat :=
   match i with
     | IBVar _ | IFVar _ | Z => 0
@@ -70,14 +113,15 @@ Lemma size_ii_open_rec :
   forall (i : index) (x : fvar) (rec :nat), 
     index_size (ii_open_rec rec i x) = index_size i.
 Proof.
-  intros i x. induction i; intros n; simpl; 
-              repeat
-                (match goal with
-                   | [ H : forall (_ : nat), _ = _ |- _ ] => 
-                     rewrite H
-                 end); try omega.
+  intros i x. 
+  induction i; intros n; simpl;
+  repeat
+    (match goal with
+       | [ H : forall (_ : nat), _ = _ |- _ ] => 
+         rewrite H
+     end); try omega.
   now destruct (eq_nat_dec _ _).
-Defined.
+Qed.
 
 Lemma size_ii_open_rec_lt :
   forall (i : index) (x : fvar),
@@ -86,7 +130,7 @@ Proof.
   intros; unfold ii_open_var; rewrite size_ii_open_rec. auto with arith.
 Defined.
 
-Require Import Equations. 
+(** Hints for automatically solving recursive call obligations *)
 
 Hint Extern 3 => progress cbn : Below.
 Hint Resolve size_ii_open_rec_lt : Below.
@@ -111,7 +155,9 @@ infer_sort ie (IApp i1 i2) <= infer_sort ie i1 => {
                | (right _) := None } };
   | _ := None }.
 *)
-(* BUG! not general enough *)
+(* BUG! not general enough, need to inverse the order of arguments so that ie can change 
+  at recursive calls.
+ *)
 Equations infer_sort (i : index)  (ie : env) : option sort :=
 infer_sort i ie by rec i (MR lt index_size) :=
 infer_sort (IBVar x) ie := None ;
@@ -120,13 +166,14 @@ infer_sort Z ie := Some N;
 infer_sort (Plus1 i) ie <= infer_sort i ie => {
                      | Some N := Some N;
                      | _ := None };
-infer_sort (IAbs s i) ie <= infer_sort (ii_open_var i 0)  ((0, s) :: ie)  => {
+infer_sort (IAbs s i) ie <= let x := (var_gen (dom ie \u ifv i)) in 
+                            infer_sort (ii_open_var i x)  ((x, s) :: ie)  => {
   infer_sort (IAbs s i) ie (Some s2) := Some (ArrowS s s2) ;
   infer_sort _ _ _ := None } ;
 infer_sort (IApp i1 i2) ie <= infer_sort i1 ie => {
 infer_sort (IApp i1 i2) ie (Some (ArrowS s1 s2)) <= infer_sort i2 ie =>
   { | None := None;
-    | Some s1' <= sort_eq_dec s1 s1' => {
+    | Some s1' <= eq_sort_dec s1 s1' => {
                  | (left _) := Some s2;
                  | (right _) := None } };
                            | _ := None }.
@@ -141,7 +188,7 @@ Proof.
   - now constructor. 
   - subst s'. now constructor.
   - subst s'. specialize (Hind _ Heq). now constructor.
-  - subst s'. specialize (Hind _ Heq). admit.
+  - subst s'. specialize (Hind _ Heq). now constructor.  
   - subst s0. pose proof (Hind _ Heq0). pose proof (Hind0 _ Heq1).
     econstructor; eauto.
-Admitted.
+Qed.
