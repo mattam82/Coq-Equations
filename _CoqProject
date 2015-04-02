@@ -43,3 +43,4 @@ test-suite/rec.v
 test-suite/f91.v
 test-suite/Noconfinv.v
 test-suite/zoe.v
+test-suite/fin.v
