@@ -408,7 +408,7 @@ let ind_elim_tac indid inds info gl =
   let eauto = Class_tactics.typeclasses_eauto [info.base_id; "funelim"] in
   let _nhyps = List.length (pf_hyps gl) in
   let prove_methods tac gl = 
-    tclTHEN tac eauto gl
+    tclTHEN tac (tclTHEN simpl_in_concl eauto) gl
   in
   let rec applyind args gl =
     match kind_of_term (pf_concl gl) with
@@ -954,6 +954,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	  Impargs.declare_manual_implicits true (ConstRef comp) [impls];
 	  Impargs.declare_manual_implicits true (ConstRef compproj) 
 	    [(impls @ [ExplByPos (succ (List.length sign), None), (true, false, true)])];
+	  Table.extraction_inline true [Ident (dummy_loc, compid); Ident (dummy_loc, projid)];
 	  hintdb_set_transparency comp false "Below";
 	  hintdb_set_transparency comp false "program";
 	  hintdb_set_transparency comp false "subterm_relation";

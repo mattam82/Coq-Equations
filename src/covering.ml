@@ -640,7 +640,7 @@ let interp_constr_in_rhs env ctx evars (i,comp,impls) ty s lets c =
   let envctx = push_rel_context ctx env in
   let patslets, letslen = 
     fold_right (fun (n, b, t) (acc, len) -> 
-      ((* lift len *)(Option.get b) :: acc, succ len)) lets ([], 0)
+      (lift (-len) (Option.get b) :: acc, succ len)) lets ([], 0) 
   in
   let pats, ctx, len = 
     let (pats, x, y) = lets_of_ctx env (lets @ ctx) evars 

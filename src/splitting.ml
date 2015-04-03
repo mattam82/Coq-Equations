@@ -167,6 +167,12 @@ let is_comp_obl comp hole_kind =
 	Constant.equal c r.comp_proj && n == r.comp_recarg 
       | _ -> false
 
+let zeta_red =
+  let red = Tacred.cbv_norm_flags
+    (Closure.RedFlags.red_add Closure.RedFlags.no_red Closure.RedFlags.fZETA)
+  in
+    reduct_in_concl (red, DEFAULTcast)
+
 let define_tree is_recursive impls status isevar env (i, sign, arity) comp ann split hook =
   let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
   let helpers, oblevs, t, ty = term_of_tree status isevar env (i, sign, arity) ann split in
@@ -184,8 +190,8 @@ let define_tree is_recursive impls status isevar env (i, sign, arity) comp ann s
 	    [((Locus.AllOccurrencesBut [1]), EvalConstRef (Option.get comp).comp)]
 	  in
 	    Some (of82 (tclTRY 
-			  (tclTHEN (tclTHEN (to82 Tactics.intros) unfolds)
-			     (to82 (solve_rec_tac ())))))
+			  (tclTHENLIST [zeta_red; to82 Tactics.intros; unfolds;
+					(to82 (solve_rec_tac ()))])))
 	else Some (snd (Obligations.get_default_tactic ()))
       in (id, ty, loc, s, d, tac)) obls
   in
