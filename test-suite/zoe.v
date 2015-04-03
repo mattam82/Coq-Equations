@@ -131,7 +131,6 @@ Proof.
 Defined.
 
 (** Hints for automatically solving recursive call obligations *)
-
 Hint Extern 3 => progress cbn : Below.
 Hint Resolve size_ii_open_rec_lt : Below.
 Hint Extern 3 => progress auto with arith : Below.
@@ -176,7 +175,7 @@ infer_sort (IApp i1 i2) ie (Some (ArrowS s1 s2)) <= infer_sort i2 ie =>
     | Some s1' <= eq_sort_dec s1 s1' => {
                  | (left _) := Some s2;
                  | (right _) := None } };
-                           | _ := None }.
+infer_sort (IApp i1 i2) ie _ := None }.
 
 Lemma infer_sort_sound: 
   forall (i : index) (ie: env)  (s : sort),
