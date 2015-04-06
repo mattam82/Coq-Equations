@@ -186,7 +186,6 @@ Proof.
   clear H0. rewrite !nth_app_r by omega. f_equal. omega.
 Qed.
   
-Print Rewrite HintDb list.
 Hint Rewrite <- app_assoc in_app_iff in_inv : list.
 
 
