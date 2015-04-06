@@ -45,3 +45,4 @@ test-suite/Noconfinv.v
 test-suite/zoe.v
 test-suite/fin.v
 test-suite/gcd.v
+examples/lf.v

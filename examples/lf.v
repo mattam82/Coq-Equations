@@ -77,7 +77,7 @@ Ltac do_rewrites :=
 
 Ltac crush := do_rewrites; auto; try term.
 Lemma lift0 k t : lift k 0 t = t.
-Proof. funelim (lift k 0 t); crush. Qed.
+Proof. funelim (lift k 0 t); rewrite H; crush. rewrite <- H; auto. rewrite <- H. term. Qed.
 Hint Rewrite lift0 : lift.
 Require Import Omega.
 
@@ -603,21 +603,18 @@ hereditary_subst (pair (pair A a) t) k with t := {
 
   | App f arg with hereditary_subst (A, a, f) k := {
     | p with is_lambda p := {
-      hereditary_subst (pair (pair A a) ?(App f arg)) k (App f arg) (inl (isLambda f' A' B' prf)) ?(p) :=
-(*       | inl (is_beta_lambda f' A' B' prf) := *)
+        | inl (isLambda f' A' B' prf) :=
         let (f'', y) := hereditary_subst (A', fst (hereditary_subst (A, a, arg) k), f') 0 in
           (f'', Some (exist B' _)) ;
-      hereditary_subst (pair (pair A a) ?(App f arg)) k (App f arg) (inr f') ?(p) :=
-(*       | inr f' :=  *)
-      (@(f', fst (hereditary_subst (A, a, arg) k)), None) } } ;
+        | inr f' := (@(f', fst (hereditary_subst (A, a, arg) k)), None) } } ;
 
   | Pair i j :=
     (<< fst (hereditary_subst (A, a, i) k), fst (hereditary_subst (A, a, j) k) >>, None) ;
 
   | Fst t with hereditary_subst (A, a, t) k := {
     | p with is_pair p := {
-      hereditary_subst (pair (pair A a) ?(Fst t)) k (Fst t) (inl (isPair u v a b prf)) ?(p) := (u, Some (exist a _)) ;
-      hereditary_subst (pair (pair A a) ?(Fst t)) k (Fst t) (inr p) ?(p) := (Fst p, None) }
+      | inl (isPair u v a b prf) := (u, Some (exist a _)) ;
+      | inr p := (Fst p, None) }
   } ;
 
 (* FIXME: Warn of unused clauses !     | pair (Pair i j) (Some (product A' B')) := (i, Some (exist _ A' _)) ; *)
@@ -626,8 +623,8 @@ hereditary_subst (pair (pair A a) t) k with t := {
 
   | Snd t with hereditary_subst (A, a, t) k := {
     | p with is_pair p := {
-      hereditary_subst (pair (pair A a) ?(Snd t)) k (Snd t) (inl (isPair u v a b prf)) ?(p) := (v, Some (exist b _)) ;
-      hereditary_subst (pair (pair A a) ?(Snd t)) k (Snd t) (inr p) ?(p) := (Snd p, None) }
+      | inl (isPair u v a b prf) := (v, Some (exist b _)) ;
+      | inr p := (Snd p, None) }
   } ;
 
 (*   | Snd t with hereditary_subst (A, a, t) k := { *)
@@ -758,46 +755,47 @@ Proof. intros. revert H1. funelim (hereditary_subst (U, u, t) (length Γ'));
 
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
-  depelim H2. constructor. now apply H. now apply H0.
+  depelim H3. constructor. now apply H. now apply H0.
 
-  depelim H0; term.
+  depelim H1; term.
 
-  depelim H0.
+  depelim H1.
   (* Var *)
   apply nat_compare_eq in Heq; subst n.
   rewrite !nth_length. split. term. intros. 
-  noconf H1.
+  noconf H2. noconf H2. auto.
  
   (* Lt *)
-  apply nat_compare_lt in Heq. depelim H0.
+  apply nat_compare_lt in Heq. depelim H1.
   replace (nth n (Γ' @ (U :: Γ)) unit) with (nth n (Γ' @ Γ) unit).
   constructor. rewrite app_length. auto with arith. 
   now do 2 rewrite <- nth_extend_right by auto. 
   
   (* Gt *)
-  pose (substitutive _ _ _ _ _ _ H0 H).
+  pose (substitutive _ _ _ _ _ _ H1 H0).
   simp subst in t. rewrite Heq in t. simp subst in t.
 
   (* App *)
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
-  depelim H2.
-  noconf H3.
+  depelim H3.
+  noconf H4.
   specialize (H0 [] _ _ _ eq_refl). simpl in H0; rewrite <- Heqhsubst in H0.
-  simplify_IH_hyps. simpl in H0. specialize (H _ _ H1 H2_0).
-  specialize (Hind _ _ H1 H2_). rewrite Heq0 in Hind.
+  simplify_IH_hyps. simpl in H0. specialize (H _ _ H2 H3_0).
+  specialize (Hind _ _ H2 H3_). rewrite Heq0 in Hind.
   specialize (Hind _ _ eq_refl).
   depelim Hind. 
   specialize (H2 _ _ eq_refl).
-  noconf H2.
+  noconf H2. subst t' A B o.
   split; [|intros ty prf0 Heq'; noconf Heq'; auto].
   depelim H1; eauto. apply H0.
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   simplify_IH_hyps. apply H. trivial. 
 
   (* App no redex *)
+  noconf H2. auto.
   apply is_lambda_inr in Heq. revert Heq.
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). 
-  intros. subst t3. depelim H1.
+  intros. subst t3. depelim H2.
   apply application with A; eauto. 
   eapply Hind; eauto.
   destruct_call hereditary_subst.
@@ -805,32 +803,63 @@ Proof. intros. revert H1. funelim (hereditary_subst (U, u, t) (length Γ'));
 
   simpl in *.
   (* Fst redex *) clear Heq.
-  depelim H0. specialize (Hind _ _ H H0).
+  depelim H1. specialize (Hind _ _ H0 H1).
   rewrite Heq0 in Hind. specialize (Hind _ _ eq_refl).
-  destruct Hind. depelim H1. intuition auto. noconf H1.
-  specialize (H2 _ _ eq_refl). noconf H2.
+  destruct Hind. depelim H2. intuition auto. noconf H2. noconf H2. subst.
+  specialize (H3 _ _ eq_refl). now noconf H3.
 
   (* Fst no redex *)
-  apply is_pair_inr in Heq. 
-  on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). 
-  subst t3. simplify_IH_hyps. simpl in *. depelim H0.
-  specialize (Hind _ _ H H0); eauto. now apply pair_elim_fst with B.
+  apply is_pair_inr in Heq. revert Heq. 
+  on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
+  simplify_IH_hyps. simpl in *. depelim H1. intros. subst t3.
+  specialize (Hind _ _ H0 H1); eauto. now apply pair_elim_fst with B.
 
   (* Snd redex *) clear Heq.
-  depelim H0. specialize (Hind _ _ H H0).
+  depelim H1. specialize (Hind _ _ H0 H1).
   rewrite Heq0 in Hind. specialize (Hind _ _ eq_refl).
-  destruct Hind. depelim H1. intuition auto. noconf H1.
-  specialize (H2 _ _ eq_refl). noconf H2.
+  destruct Hind. depelim H2. intuition auto. noconf H2. noconf H2.
+  specialize (H3 _ _ eq_refl). noconf H3. congruence.
 
   (* Snd no redex *)
-  apply is_pair_inr in Heq. 
+  apply is_pair_inr in Heq. revert Heq.
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). 
-  subst t3. simplify_IH_hyps. simpl in *. depelim H0.
-  specialize (Hind _ _ H H0); eauto. now apply pair_elim_snd with A.
+  intros Ht3; subst t3. simplify_IH_hyps. simpl in *. depelim H1.
+  specialize (Hind _ _ H0 H1); eauto. now apply pair_elim_snd with A.
 Qed.
 
 Instance: subrelation eq (flip impl).
 Proof. reduce. subst; auto. Qed.
+
+Ltac funelim_tac c tac ::=
+  match c with
+    | appcontext [?f] =>
+  let call := fresh "call" in set(call := c) in *; move call at top;
+  let elim := constr:(fun_elim (f:=f)) in
+    block_goal; revert_until call; block_goal;
+    first [
+        progress (generalize_eqs_vars call);
+        match goal with
+          call := ?c' |- _ =>
+            subst call; simpl; pattern_call c';
+            apply elim; clear; simplify_dep_elim;
+              simplify_IH_hyps; unfold block at 1;
+                try on_last_hyp ltac:(fun id => rewrite <- id);
+                  unblock_goal; tac f
+        end
+      | subst call; pattern_call c; apply elim; clear;
+        simplify_dep_elim; simplify_IH_hyps; unfold block at 1;
+        unblock_goal; tac f ]
+  end.
+
+Lemma nth_pred Γ' Γ U n : n > length Γ' -> nth (pred n) (Γ' @ Γ) unit = nth n (Γ' @ (U :: Γ)) unit.
+Proof. 
+  revert_until Γ'. induction Γ'; intros.
+  
+  destruct n; auto. depelim H.
+  destruct n; auto. simpl pred. simpl.
+  rewrite <- IHΓ'. destruct n; auto. simpl in H. depelim H. depelim H.
+  simpl in *; omega.
+Qed.
 
 Lemma hereditary_subst_subst U u t Γ' :
   (forall Γ T, Γ |-- u <= U ->
@@ -843,103 +872,94 @@ Lemma hereditary_subst_subst U u t Γ' :
         (Γ' @ (U :: Γ) |-- t => T -> Γ' @ Γ |-- t' => T)
     end).
 Proof. 
-  funelim (hereditary_subst (U, u, t) (length Γ')); 
-    simpl_dep_elim; subst; intros. 
+  funelim (hereditary_subst (U, u, t) (length Γ'));
+  let Hind := fresh "Hind" in rename H into Hind; intros ?? Hu.
+  rename H0 into Href.
 
   (** Lambda *)
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   split; intros Hsyn; [| elim (synth_arrow False Hsyn)].
 
   invert_term. constructor. 
-  specialize (H (A :: Γ')). simpl in H; simplify_IH_hyps. rewrite <- Heqhsubst in H.
-  simplify_IH_hyps. specialize (H _ B H0).
-  destruct o as [[ty prf]|], H. apply H; eauto. eauto.
-  elim (synth_arrow False H2).
+  specialize (Hind (A :: Γ')). simpl in Hind; simplify_IH_hyps. 
+  rewrite <- Heqhsubst in Hind. simplify_IH_hyps. specialize (Hind _ B Hu).
+  destruct o as [[ty prf]|], Hind as [Hind0 Hind1]. apply Hind0; eauto. eauto.
+  elim (synth_arrow False H0).
 
   (** Pairs *)
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   split; intros Hsyn; [|elim (synth_pair False Hsyn)].
   invert_term.
-  specialize (H _ A H1). specialize (H0 _ B H1). 
-  destruct o as [[ty prf]|], o0 as [[ty' prf']|], H, H0 ; destruct_conjs; constructor; eauto.
+  specialize (Hind _ A Hu). specialize (H0 _ B Hu). 
+  destruct o as [[ty prf]|], o0 as [[ty' prf']|], Hind, H0 ; destruct_conjs; constructor; eauto.
   now apply H. now apply H0. now apply H. now apply H0.
 
-  elim (synth_pair False H3).
+  elim (synth_pair False H2).
 
   (* Unit *)
   split; intros Hsyn; [|elim (synth_unit False Hsyn)].
   depelim Hsyn. term.
-  elim (synth_unit False H1).
+  elim (synth_unit False H0).
 
   (* Var *)
   apply nat_compare_eq in Heq; subst n.
   split; intros Hsyn; depelim Hsyn; rewrite ?nth_length. 
-  depelim H1; rewrite !nth_length. 
+  depelim H0; rewrite !nth_length. 
   now split; term. split; term.
  
   (* Lt *)
   apply nat_compare_lt in Heq.
   split; intros Hsyn; depelim Hsyn;
-   [depelim H1;constructor;auto|];
+   [depelim H0;constructor;auto|];
    (rewrite nth_app_l by omega; rewrite <- nth_app_l with (l':=Γ) by omega;
     constructor; rewrite app_length; auto with arith). 
   
   (* Gt *)
   apply nat_compare_gt in Heq.
   split; intros Hsyn; depelim Hsyn.
-  depelim H1. constructor. auto. 
+  depelim H0. constructor. auto. 
   replace (nth n (Γ' @ (U :: Γ)) unit) with (nth (pred n) (Γ' @ Γ) unit).
-  constructor. rewrite app_length in *. simpl in H1. omega.
-
-  Lemma nth_pred Γ' Γ U n : n > length Γ' -> nth (pred n) (Γ' @ Γ) unit = nth n (Γ' @ (U :: Γ)) unit.
-  Proof. revert_until Γ'. induction Γ'; intros.
-
-    destruct n; auto. depelim H.
-    destruct n; auto. simpl pred. simpl.
-    rewrite <- IHΓ'. destruct n; auto. simpl in H. depelim H. depelim H.
-    simpl in *; omega.
-  Qed.
+  constructor. rewrite app_length in *. simpl in H0. omega.
   now apply nth_pred.
 
   replace (nth n (Γ' @ (U :: Γ)) unit) with (nth (pred n) (Γ' @ Γ) unit).
-  constructor. rewrite app_length in *. simpl in H0. omega.
+  constructor. rewrite app_length in *. simpl in H. omega.
   now apply nth_pred.
 
   (* App *)
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   specialize (H0 _ _ _ [] eq_refl). simpl in H0; rewrite <- Heqhsubst in H0.
-  simplify_IH_hyps. simpl in H0. 
-  rewrite Heq0 in Hind. 
-  revert H.
+  simplify_IH_hyps. rewrite Heq0 in Hind. 
+  revert H0.
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   intros. 
 
   (* Redex *)
   assert((Γ' @ (U :: Γ) |-- @( t2, u) => T → Γ' @ Γ |-- t <= T ∧ b = T)).
   intros Ht; depelim Ht.
-  specialize (H _ A H1).
-  destruct (Hind Γ (A ---> B) H1). 
-  destruct (H4 Ht). noconf H6.
-  depelim H5. split; auto.
+  specialize (Hind0 _ A Hu).
+  destruct (Hind Γ (A ---> B) Hu). 
+  destruct (H3 Ht). noconf H5. subst A B.
+  depelim H4. split; auto. 
 
-  destruct o0. destruct h. destruct H.
-  specialize (H H2). destruct H. subst x. 
-  specialize (H0 _ B H). destruct o. destruct h. 
+  destruct o0. destruct h. destruct Hind0.
+  specialize (H5 H). destruct H5. subst x. 
+  specialize (H0 _ b H5). destruct o. destruct h. 
   destruct H0; now apply H0.
   destruct H0; now apply H0.
-  destruct H. 
-  specialize (H0 _ B (H H2)). destruct o. destruct h. 
+  destruct Hind0. 
+  specialize (H0 _ b (H5 H)). destruct o as [[ty prf']|]. 
   destruct H0; now apply H0.
   destruct H0; now apply H0.
-
-  split; auto.
-  depelim H5.
 
   split; auto.
-  intros.
-  apply H2.
-  depelim H3. auto.
+  depelim H4.
+
+  split; auto.
+  intros H2.
+  apply H.
+  depelim H2. auto.
 
   (* No redex *)
   assert(Γ' @ (U :: Γ) |-- @( t2, u) => T
@@ -947,81 +967,89 @@ Proof.
   intros Ht; depelim Ht.
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   revert Heq. 
-  on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). intros.
-  specialize (Hind _ (A ---> B) H0). destruct o0. destruct h. destruct_conjs.
-  specialize (H3 Ht). destruct H3; subst x.
-  specialize (H _ A H0).
+  on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). 
+  intros.
+  specialize (Hind _ (A ---> B) Hu). destruct o0 as [[ty prf']|].
+  destruct Hind as [Hind Hind'].
+  specialize (Hind' Ht). destruct Hind'; subst ty.
+  specialize (Hind0 _ A Hu). destruct o as [[ty' prf'']|].
+  destruct Hind0 as [Hind0 Hind0'].
+  specialize (Hind0 H). destruct Hind0. subst ty'.
+  eapply application_synth; eauto. simpl in *.
+  depelim H1. simp is_lambda in Heq. discriminate.
 
-  destruct o. destruct h. destruct_conjs. 
-  specialize (H H1). destruct H. subst x.
-  eapply application_synth; eauto.
-  depelim H3. simp is_lambda in Heq. discriminate.
-
-  depelim H0.
+  depelim H.
   
-  destruct H. specialize (H H1).
+  destruct Hind0 as [Hind0 Hind0']. specialize (Hind0 H).
   eapply application_synth; eauto.
-  depelim H3. simp is_lambda in Heq. noconf Heq.
-  depelim H0.
+  depelim H1. simp is_lambda in Heq. noconf Heq.
+  depelim H.
 
   apply is_lambda_inr in Heq. simpl in Heq. subst t3.
-  destruct Hind. specialize (H3 Ht).
+  destruct Hind as [Hind Hind']. specialize (Hind' Ht).
   eapply application_synth; eauto.
-  specialize (H _ A H0).
-  destruct o. destruct h. destruct H. now apply H.
-  destruct H. now apply H.
+  specialize (Hind0 _ A Hu). 
+  destruct o as [[ty prf]|]; destruct Hind0 as [Hind0 Hind0']. 
+  now apply Hind0. now apply Hind0.
 
-  split; auto. intros.
+  split; auto. intros H2.
   depelim H2.
-  specialize (H1 H3).
+  specialize (H H2).
   now constructor.
 
   (* Pair *)
   simp is_pair in Heq. simpl in prf.
   (* specialize (Hind Γ (product a b) H). *)
   assert( (Γ' @ (U :: Γ) |-- Fst t2 => T → Γ' @ Γ |-- u <= T ∧ a = T)).
-  intros Ht; depelim Ht. specialize (Hind _ (A × B) H).
+  intros Ht; depelim Ht. specialize (Hind _ (A × B) Hu). revert Hind.
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). 
-  noconf Heq0.
-  destruct Hind. specialize (H1 Ht). destruct H1. noconf H2. depelim H1. split; auto.
-  depelim H1. split; auto.
-  intros. depelim H1. intuition.
+  noconf Heq0. intros Hind. subst o t.
+  destruct Hind as [Hind Hind']. 
+  specialize (Hind' Ht). destruct Hind' as [H0 H1]. noconf H1. subst a b. 
+  depelim H0. split; auto.
+  depelim H. 
+  split; auto.
+  intros H1. depelim H1. intuition.
 
   assert (Γ' @ (U :: Γ) |-- Fst t2 => T → Γ' @ Γ |-- Fst t3 => T).
   intros Ht; depelim Ht.
-  specialize (Hind _ (A × B) H). 
+  specialize (Hind _ (A × B) Hu). revert Hind. 
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). 
-  destruct o. destruct h. destruct Hind. 
-  specialize (H1 Ht). destruct H1.
-  subst x. depelim H1. simp is_pair in Heq. discriminate.
+  destruct o as [[ty prf]|]. intros [Hind Hind'].
+  destruct (Hind' Ht). subst ty.
+  depelim H. simp is_pair in Heq. discriminate.
   depelim H.
 
   apply is_pair_inr in Heq. simpl in Heq ; subst t3.
-  eapply pair_elim_fst_synth. now apply Hind.
-  split; auto. intros. depelim H1. intuition auto with term.
+  intros [Hind Hind']. eapply pair_elim_fst_synth. now apply Hind'.
+  split; auto. intros H2. depelim H2. intuition auto with term.
 
   (* Snd *)
   assert((Γ' @ (U :: Γ) |-- Snd t2 => T → Γ' @ Γ |-- v <= T ∧ b = T)).
 
-  intros Ht; depelim Ht. specialize (Hind _ (A × B) H). 
+  intros Ht; depelim Ht. specialize (Hind _ (A × B) Hu). revert Hind.
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). 
-  noconf Heq0.
-  destruct Hind. specialize (H1 Ht). destruct H1. noconf H2. depelim H1. split; auto. depelim H1.
+  noconf Heq0. intros Hind; subst o t.
+  destruct Hind as [Hind Hind']. 
+  specialize (Hind' Ht). destruct Hind' as [H0 H1]. noconf H1. subst a b. 
+  depelim H0. split; auto. depelim H.
   split; auto.
-  intros. depelim H1. intuition auto with term.
+  intros H1. depelim H1. intuition auto with term.
 
   assert (Γ' @ (U :: Γ) |-- Snd t2 => T → Γ' @ Γ |-- Snd t3 => T).
   intros Ht; depelim Ht.
-  specialize (Hind _ (A × B) H). 
+  specialize (Hind _ (A × B) Hu). revert Hind.
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). 
-  destruct o. destruct h. destruct Hind. 
-  specialize (H1 Ht). destruct H1.
-  subst x. depelim H1. simp is_pair in Heq. discriminate.
+  destruct o as [[ty prf]|]. intros [Hind Hind'].
+  destruct (Hind' Ht). subst ty.
+  depelim H. simp is_pair in Heq. discriminate.
   depelim H.
 
-  apply is_pair_inr in Heq. simpl in Heq ; subst t3.
-  eapply pair_elim_snd_synth. now apply Hind.
-  split; auto. intros. depelim H1. term. 
+  intros [Hind Hind']. 
+  apply is_pair_inr in Heq. subst t3. simpl in *.
+  specialize (Hind' Ht). econstructor; eauto.
+
+  split; auto. intros H1. depelim H1. term. 
 Qed.
 
 Lemma check_liftn {Γ Γ' t T} : Γ |-- t <= T -> Γ' @ Γ |-- lift 0 (length Γ') t <= T.
