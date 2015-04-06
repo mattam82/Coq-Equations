@@ -284,10 +284,9 @@ Ltac funelim_tac c tac ::=
       rewrite ltb_leb' in H1. case_eq (ltb x a). constructor.
       intros. rewrite H2 in H1. elim H1.
     Qed.
-  Print Extraction Inline.
   
   End QuickSort.
-  Extraction Inline qs_comp qs_comp_proj. 
-  Recursive Extraction qs.
+
+  (* Recursive Extraction qs. *)
 
 End RecMeasure.

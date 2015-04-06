@@ -70,7 +70,7 @@ sublist A p (cons x xs) with p x := {
   | true := keep (sublist p xs) ;
   | false := skip (sublist p xs) }.
 
-Print Assumptions sublist.
+(* Print Assumptions sublist. *)
 
 Ltac rec ::= rec_wf_eqns.
 
@@ -184,8 +184,8 @@ unzip A B ?(O) nil := (nil, nil) ;
 unzip A B ?(S n) (cons (pair x y) n v) <= unzip v => {
   | (pair xs ys) := (cons x xs, cons y ys) }.
 
-Print Assumptions unzip.
-Print Assumptions unzip_dec.
+(* Print Assumptions unzip. *)
+(* Print Assumptions unzip_dec. *)
 
 (*
 Ltac generalize_by_eqs v ::= generalize_eqs v.
