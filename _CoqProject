@@ -46,4 +46,5 @@ test-suite/zoe.v
 test-suite/fin.v
 test-suite/gcd.v
 test-suite/DataStruct.v
+test-suite/MoreDep.v
 examples/lf.v
