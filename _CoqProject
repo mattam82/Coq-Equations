@@ -45,4 +45,5 @@ test-suite/Noconfinv.v
 test-suite/zoe.v
 test-suite/fin.v
 test-suite/gcd.v
+test-suite/DataStruct.v
 examples/lf.v
