@@ -121,7 +121,7 @@ cfold _ (And e1 e2) <= (cfold e1, cfold e2) => {
 cfold _ (If _ e e1 e2) <= cfold e => {
   | BConst true := cfold e1;
   | BConst false := cfold e2;
-  | e' := If e' (cfold e1) (cfold e2)
+  | e' := If e' e1 e2 (* FIXME wrong recursive call computed (cfold e1) (cfold e2) *)
 };
 cfold _ (Pair e1 e2) := Pair (cfold e1) (cfold e2);
 cfold _ (Fst e) <= cfold e => {
@@ -136,20 +136,6 @@ cfold _ (Snd e) <= cfold e => {
     | None := Snd e'
   }
 }.
-
-Obligation Tactic := idtac.
-
-Next Obligation. 
-  intros. case e. apply m_0; auto.
-  apply m_1; auto.
-  apply m_2; auto.
-  apply m_3; auto.
-  apply m_4; auto.
-  apply m_5. auto.
-  apply m_6; auto.
-  eapply m_7; eauto.
-  intros. apply (m_8 cfold t2 t1 e0).
-Defined.
 
 Inductive color : Set := Red | Black.
 
