@@ -53,14 +53,14 @@ Equations typeDenote (t : type) : Set :=
 typeDenote Nat := nat;
 typeDenote Bool := bool;
 typeDenote (Prod t1 t2) := (typeDenote t1 * typeDenote t2)%type.
-
+Set Printing Depth 10000.
 Equations expDenote t (e : exp t) : typeDenote t :=
 expDenote _ (NConst n) := n;
 expDenote _ (Plus e1 e2) := expDenote e1 + expDenote e2;
-expDenote _ (Eq e1 e2) (* FIXME <= eq_nat_dec (expDenote e1) (expDenote e2) => {
+expDenote _ (Eq e1 e2) <= eq_nat_dec (expDenote e1) (expDenote e2) => {
   | left _ := true;
   | right _ := false
-}; *) := beq_nat (expDenote e1) (expDenote e2);
+}; (* := beq_nat (expDenote e1) (expDenote e2); *) 
 expDenote _ (BConst b) := b;
 expDenote _ (And e1 e2) := expDenote e1 && expDenote e2;
 expDenote _ (If e e1 e2) <= expDenote e => {
@@ -72,36 +72,45 @@ expDenote _ (Fst _ _ e) := fst (expDenote e);
 expDenote _ (Snd _ _ e) := snd (expDenote e).
 Next Obligation.
   induction e; constructor; auto.
+  destruct Nat.eq_dec; constructor; auto.
   destruct (expDenote e1); constructor; auto.
 Defined.
 
-(* FIXME
-Equations pairOutType (t : type) : Set :=
-pairOutType (Prod t1 t2) := option (exp t1 * exp t2);
-pairOutType _ := option unit.
-*)
+Equations(nocomp) pairOutType2 (t : type) : Set :=
+pairOutType2 (Prod t1 t2) := option (exp t1 * exp t2);
+pairOutType2 _ := option unit.
 
-Definition pairOutType (t : type) := option (match t with
+Equations(nocomp) pairOutTypeDef (t : type) : Set :=
+pairOutTypeDef (Prod t1 t2) := exp t1 * exp t2;
+pairOutTypeDef _ := unit.
+
+Transparent pairOutTypeDef. 
+Definition pairOutType' (t : type) := option (match t with
                                                | Prod t1 t2 => exp t1 * exp t2
                                                | _ => unit
                                              end).
 
-Equations pairOut t (e : exp t) : pairOutType t :=
+Equations pairOut t (e : exp t) : option (pairOutTypeDef t) :=
 pairOut _ (Pair _ _ e1 e2) => Some (e1, e2);
 pairOut _ _ => None.
 
-(* FIXME
-Equations cfold t (e : exp t) : exp t :=
+(* Equations pairOut t (e : exp t) : pairOutType t := *)
+(* pairOut _ (Pair _ _ e1 e2) => Some (e1, e2); *)
+(* pairOut _ (If (Prod t1 t2) e e1 e2) =>  *)
+(* pairOut _ _ => None. *)
+ (* eq_nat_dec n1 n2 => { *)
+ (*    | left _ := BConst true; *)
+ (*    | right _ := BConst false *)
+ (*  }; *)
+
+Equations(struct e) cfold t (e : exp t) : exp t :=
 cfold _ (NConst n) := NConst n;
 cfold _ (Plus e1 e2) <= (cfold e1, cfold e2) => {
   | pair (NConst n1) (NConst n2) := NConst (n1 + n2);
   | pair e1' e2' := Plus e1' e2'
 };
 cfold _ (Eq e1 e2) <= (cfold e1, cfold e2) => {
-  | pair (NConst n1) (NConst n2) <= eq_nat_dec n1 n2 => {
-    | left _ := BConst true;
-    | right _ := BConst false
-  };
+  | pair (NConst n1) (NConst n2) := BConst (beq_nat n1 n2);
   | pair e1' e2' => Eq e1' e2'
 };
 cfold _ (BConst b) := BConst b;
@@ -127,7 +136,20 @@ cfold _ (Snd e) <= cfold e => {
     | None := Snd e'
   }
 }.
-*)
+
+Obligation Tactic := idtac.
+
+Next Obligation. 
+  intros. case e. apply m_0; auto.
+  apply m_1; auto.
+  apply m_2; auto.
+  apply m_3; auto.
+  apply m_4; auto.
+  apply m_5. auto.
+  apply m_6; auto.
+  eapply m_7; eauto.
+  intros. apply (m_8 cfold t2 t1 e0).
+Defined.
 
 Inductive color : Set := Red | Black.
 

@@ -68,7 +68,7 @@ type pre_equation =
 
 
 type rec_type = 
-  | Structural
+  | Structural of Id.t located option
   | Logical of rec_info
 and rec_info = {
   comp : constant;
@@ -80,13 +80,13 @@ val is_structural : rec_type option -> bool
 
 val next_ident_away : Id.t -> Id.t list ref -> Id.t
 
-type equation_option = OInd | ORec | OComp | OEquations
+type equation_option = OInd of bool | ORec of Id.t located option | OComp of bool | OEquations of bool
 
-type equation_user_option = equation_option * bool
+type equation_user_option = equation_option
 
 val pr_r_equation_user_option : 'a -> 'b -> 'c -> 'd -> Pp.std_ppcmds
 
-type equation_options = (equation_option * bool) list
+type equation_options = equation_option list
 
 val pr_equation_options : 'a -> 'b -> 'c -> 'd -> Pp.std_ppcmds
 

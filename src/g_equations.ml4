@@ -194,14 +194,14 @@ open Syntax
 ARGUMENT EXTEND equation_user_option
 TYPED AS equation_user_option
 PRINTED BY pr_r_equation_user_option
-| [ "noind" ] -> [ OInd, false ]
-| [ "ind" ] -> [ OInd, true ]
-| [ "struct" ] -> [ ORec, true ]
-| [ "nostruct" ] -> [ ORec, false ]
-| [ "comp" ] -> [ OComp, true ]
-| [ "nocomp" ] -> [ OComp, false ]
-| [ "eqns" ] -> [ OEquations, true ]
-| [ "noeqns" ] -> [ OEquations, false ]
+| [ "noind" ] -> [ OInd false ]
+| [ "ind" ] -> [ OInd true ]
+| [ "struct" ident(i) ] -> [ ORec (Some (loc, i)) ]
+| [ "nostruct" ] -> [ ORec None ]
+| [ "comp" ] -> [ OComp true ]
+| [ "nocomp" ] -> [ OComp false ]
+| [ "eqns" ] -> [ OEquations true ]
+| [ "noeqns" ] -> [ OEquations false ]
 END
 
 ARGUMENT EXTEND equation_options

@@ -129,7 +129,7 @@ val fix_proto_ref : unit -> constant
 val constr_of_global : Globnames.global_reference -> constr
 
 val define_by_eqs :
-  (Syntax.equation_option * bool) list ->
+  Syntax.equation_option list ->
   identifier ->
   Constrexpr.local_binder list * 'a ->
   Constrexpr.constr_expr ->
@@ -142,7 +142,7 @@ val define_by_eqs :
 val with_rollback : ('a -> 'b) -> 'a -> 'b
 
 val equations :
-  (Syntax.equation_option * bool) list ->
+  Syntax.equation_option list ->
   Loc.t * identifier ->
   Constrexpr.local_binder list * 'a ->
   Constrexpr.constr_expr ->

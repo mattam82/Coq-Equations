@@ -284,7 +284,7 @@ let subst_rec_split redefine f prob s split =
 	  let substf = single_subst Evd.empty rel (PInac fK) ctx (* ctx[n := f] |- _ : ctx *) in
 	    compose_subst substf lhs') (id_subst ctx) s
     in
-      subst, compose_subst subst (compose_subst lhs cutprob)
+      subst, compose_subst (compose_subst subst lhs) cutprob
   in
   let rec aux cutprob s path = function
     | Compute ((ctx,pats,del as lhs), ty, c) ->
@@ -306,8 +306,7 @@ let subst_rec_split redefine f prob s split =
 	  info.refined_revctx, info.refined_newprob, info.refined_newty
 	in
 	let subst, lhs' = subst_rec cutprob s lhs in
-	let cutprob pb = 
-	  let (ctx, pats, ctx') = pb in
+	let cutprob ctx' = 
 	  let pats, cutctx', _, _ =
 	    (* From Γ |- ps, prec, ps' : Δ, rec, Δ', build
 	       Γ |- ps, ps' : Δ, Δ' *)
@@ -321,10 +320,11 @@ let subst_rec_split redefine f prob s split =
 	    ctx' ([], [], length ctx', [])
  	  in (ctx', map (fun i -> PRel i) pats, cutctx')
 	in
-        let _, revctx' = subst_rec (cutprob (id_subst (pi3 revctx))) s revctx in
-	let cutnewprob = cutprob newprob in
+        let _, revctx' = subst_rec (cutprob (pi3 revctx)) s revctx in
+	let cutnewprob = cutprob (pi3 newprob) in
 	let subst', newprob' = subst_rec cutnewprob s newprob in
-	let _, newprob_to_prob' = subst_rec (cutprob info.refined_newprob_to_lhs) s info.refined_newprob_to_lhs in
+	let _, newprob_to_prob' = 
+	  subst_rec (cutprob (pi3 info.refined_newprob_to_lhs)) s info.refined_newprob_to_lhs in
 	let ev' = if redefine then new_untyped_evar () else ev in
 	let path' = ev' :: path in
 	let app', arg' =
@@ -891,7 +891,7 @@ let prove_unfolding_lemma info proj f_cst funf_cst split gl =
 let update_split is_rec cmap f prob id split =
   let split' = map_evars_in_split cmap split in
     match is_rec with
-    | Some Structural -> subst_rec_split false f prob [(id, f)] split'
+    | Some (Structural _) -> subst_rec_split false f prob [(id, f)] split'
     | Some (Logical r) -> 
       let split' = subst_comp_proj_split f (mkConst r.comp_proj) split' in
       let rec aux = function
@@ -920,11 +920,17 @@ let constr_of_global = Universes.constr_of_global
 
 let define_by_eqs opts i (l,ann) t nt eqs =
   let with_comp, with_rec, with_eqns, with_ind =
-    let try_opt default opt =
-      try List.assoc opt opts with Not_found -> default
+    let try_bool_opt opt =
+      if List.mem opt opts then false
+      else true 
     in
-      try_opt true OComp, try_opt true ORec, 
-    try_opt true OEquations, try_opt true OInd
+    let irec = 
+      try 
+	List.find_map (function ORec i -> Some i | _ -> None) opts 
+      with Not_found -> None
+    in
+      try_bool_opt (OComp false), irec,
+      try_bool_opt (OEquations false), try_bool_opt (OInd false)
   in
   let env = Global.env () in
   let poly = Flags.is_universe_polymorphism () in
@@ -990,7 +996,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
       match occur_eqns eqs with
       | None -> None 
       | Some true -> Option.map (fun c -> Logical c) comp
-      | Some false -> Some Structural
+      | Some false -> Some (Structural with_rec)
   in
   let equations = 
     Metasyntax.with_syntax_protection (fun () ->
@@ -1023,7 +1029,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
     let f = constr_of_global gr in
       if with_eqns || with_ind then
 	match is_recursive with
-	| Some Structural ->
+	| Some (Structural _) ->
 	    let cutprob, norecprob = 
 	      let (ctx, pats, ctx' as ids) = id_subst sign in
 	      let fixdecls' = [Name i, Some f, fixprot] in

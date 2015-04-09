@@ -139,11 +139,12 @@ let next_ident_away s ids =
   let n' = Namegen.next_ident_away s !ids in
     ids := n' :: !ids; n'
 
-type equation_option = OInd | ORec | OComp | OEquations
+type equation_option = | OInd of bool | ORec of Id.t located option 
+		       | OComp of bool | OEquations of bool
     
-type equation_user_option = (equation_option * bool)
+type equation_user_option = equation_option
 
-type equation_options = ((equation_option * bool) list)
+type equation_options = equation_option list
 
 let pr_r_equation_user_option _prc _prlc _prt l =
   mt ()
@@ -151,11 +152,10 @@ let pr_r_equation_user_option _prc _prlc _prt l =
 let pr_equation_options  _prc _prlc _prt l =
   mt ()
 
-
-
 type rec_type = 
-  | Structural
+  | Structural of Id.t located option
   | Logical of rec_info
+
 and rec_info = {
   comp : constant;
   comp_app : constr;
@@ -163,7 +163,7 @@ and rec_info = {
   comp_recarg : int;
 }
 
-let is_structural = function Some Structural -> true | _ -> false
+let is_structural = function Some (Structural _) -> true | _ -> false
 
 
 let rec translate_cases_pattern env avoid = function
@@ -249,7 +249,7 @@ let interp_eqn i is_rec isevar env impls sign arity recu eqn =
     (* 		   pr_rel_context env sign); *)
     let pats = map interp_pat curpats' in
       match is_rec with
-      | Some Structural -> (PUVar i :: pats, interp_rhs curpats' None rhs)
+      | Some (Structural _) -> (PUVar i :: pats, interp_rhs curpats' None rhs)
       | Some (Logical r) -> (pats, interp_rhs curpats' (Some (ConstRef r.comp_proj)) rhs)
       | None -> (pats, interp_rhs curpats' None rhs)
   and interp_rhs curpats compproj = function

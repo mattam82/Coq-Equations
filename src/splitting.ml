@@ -204,14 +204,15 @@ let define_tree is_recursive impls status isevar env (i, sign, arity) comp ann s
       hook cmap term_info x y
   in
   let hook = Lemmas.mk_hook hook in
-    if is_structural is_recursive then
-      ignore(Obligations.add_mutual_definitions [(i, t', ty', impls, obls)] 
-	       (Evd.evar_universe_context !isevar) [] 
-	       ~hook (Obligations.IsFixpoint [None, CStructRec]))
-    else
+    match is_recursive with
+    | Some (Structural id) ->
+	ignore(Obligations.add_mutual_definitions [(i, t', ty', impls, obls)] 
+		 (Evd.evar_universe_context !isevar) [] 
+		 ~hook (Obligations.IsFixpoint [id, CStructRec]))
+    | _ ->
       ignore(Obligations.add_definition ~hook
-		~implicits:impls i ~term:t' ty' 
-		(Evd.evar_universe_context !isevar) obls)
+	       ~implicits:impls i ~term:t' ty' 
+	       (Evd.evar_universe_context !isevar) obls)
 
 
 let mapping_rhs s = function
