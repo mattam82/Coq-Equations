@@ -644,10 +644,11 @@ let interp_constr_in_rhs env ctx evars (i,comp,impls) ty s lets c =
   in
   let pats, ctx, len = 
     let (pats, x, y) = lets_of_ctx env (lets @ ctx) evars 
-      (map (fun (id, pat) -> id, lift_pat letslen pat) s) in
+      (map (fun (id, pat) -> id, lift_pat letslen pat) s) 
+    in
       pats, x @ y, List.length x 
   in
-  let pats = pats @ map (lift len) patslets in
+  let pats = List.map (lift (-letslen)) pats @ map (lift len) patslets in
     match ty with
     | None ->
 	let c, _ = interp_constr_evars_impls (push_rel_context ctx env) evars ~impls c 
