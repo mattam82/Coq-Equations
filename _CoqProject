@@ -1,6 +1,7 @@
 -I src
 -I test-suite
 -R theories Equations
+-I theories
 -extra-phony apidoc "$(VOFILES)" "mkdir -p html/api && ocamldoc -html -d html/api `ocamlfind query -r coqdev85.all -i-format` -rectypes -I src src/*.ml"
 -extra-phony all "html" ""
 ZDEBUG = -bin-annot

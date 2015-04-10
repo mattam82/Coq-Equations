@@ -256,7 +256,7 @@ let pattern_sigma c hyp env sigma =
     | (x, t, p, rest) :: _ :: _ -> terms @ constrs_of_coq_sigma env evd t p 
     | _ -> terms
   in
-  let projs = map (fun (x, t, p, rest) -> (pi3 (pat t), (fun evd -> evd, p))) terms in
+  let projs = map (fun (x, t, p, rest) -> (pi3 (pat t), make_change_arg p)) terms in
   let projabs = tclTHENLIST (map (fun (t, p) -> change (Some t) p Locusops.onConcl) projs) in
     Proofview.V82.tactic (tclTHEN (Refiner.tclEVARS !evd) projabs)
 

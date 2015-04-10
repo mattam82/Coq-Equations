@@ -265,7 +265,7 @@ let ind_fun_tac is_rec f info fid split ind =
 	   onLastDecl (fun (n,b,t) gl ->
 	     let sort = pf_type_of gl t in
 	     let fixprot = mkApp ((*FIXME*)Universes.constr_of_global (Lazy.force coq_fix_proto), [|sort; t|]) in
-	       Proofview.V82.of_tactic (change_in_hyp None (fun evd -> evd, fixprot) (n, Locus.InHyp)) gl);
+	       Proofview.V82.of_tactic (change_in_hyp None (make_change_arg fixprot) (n, Locus.InHyp)) gl);
 	   to82 intros; aux_ind_fun info split])
   else tclCOMPLETE (tclTHEN (to82 intros) (aux_ind_fun info split))
 
