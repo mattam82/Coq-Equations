@@ -25,12 +25,12 @@ Definition f91_rel : relation nat :=
 Instance gt_bound_wf : WellFounded f91_rel.
 Proof. red. red. intros.
 Admitted.
-
+Set Program Mode.
 Equations f91 n : { m : nat | if le_lt_dec n 100 then m = 91 else m = n - 10 } :=
 f91 n by rec n f91_rel :=
 f91 n with le_lt_dec n 100 := {
-  | left H := exist _ (proj1_sig (f91 (proj1_sig (f91 (n + 11))))) _ ;
-  | right H := exist _ (n - 10) _ }.
+  | left H := f91 (f91 (n + 11)) ;
+  | right H := (n - 10) }.
 
 Require Import Omega.
 
@@ -60,3 +60,4 @@ Proof. intros.
   constructor. 
 Defined.
 
+Notation "( x &?) " := (exist _ x _).

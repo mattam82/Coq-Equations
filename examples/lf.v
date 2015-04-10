@@ -546,8 +546,6 @@ Hint Unfold her_order lexicographic : subterm_relation.
 
 Obligation Tactic := program_simpl.
 
-(* Ltac solve_rec ::= idtac. *)
-(* Obligation Tactic := idtac. *)
 Implicit Arguments exist [[A] [P]].
 
 Definition hereditary_type (t : type * term * term) :=
@@ -586,7 +584,6 @@ Qed.
 Definition her_type (t : type * term * term) :=
   let u' := fst (fst t) in
    { u : type | u = u' \/ type_subterm u u' }.
-(* { u : type | u = (fst (fst t)) \/ type_subterm u (fst (fst t)) }  := *)
 
 Equations hereditary_subst (t : type * term * term) (k : nat) :
   term * option (her_type t) :=
@@ -603,8 +600,8 @@ hereditary_subst (pair (pair A a) t) k with t := {
   | App f arg with hereditary_subst (A, a, f) k := {
     | p with is_lambda p := {
         | inl (isLambda f' A' B' prf) :=
-        let (f'', y) := hereditary_subst (A', fst (hereditary_subst (A, a, arg) k), f') 0 in
-          (f'', Some (exist B' _)) ;
+          let (f'', y) := hereditary_subst (A', fst (hereditary_subst (A, a, arg) k), f') 0 in
+            (f'', Some (exist B' _)) ;
         | inr f' := (@(f', fst (hereditary_subst (A, a, arg) k)), None) } } ;
 
   | Pair i j :=
@@ -613,26 +610,15 @@ hereditary_subst (pair (pair A a) t) k with t := {
   | Fst t with hereditary_subst (A, a, t) k := {
     | p with is_pair p := {
       | inl (isPair u v a b prf) := (u, Some (exist a _)) ;
-      | inr p := (Fst p, None) }
-  } ;
-
-(* FIXME: Warn of unused clauses !     | pair (Pair i j) (Some (product A' B')) := (i, Some (exist _ A' _)) ; *)
-(*     | pair (Pair i j) (Some (exist (product A' B') prf)) := (i, Some (exist A' _)) ; *)
-(*     | pair p _ := (Fst p, None) } ; *)
+      | inr p := (Fst p, None) } } ;
 
   | Snd t with hereditary_subst (A, a, t) k := {
     | p with is_pair p := {
       | inl (isPair u v a b prf) := (v, Some (exist b _)) ;
-      | inr p := (Snd p, None) }
-  } ;
-
-(*   | Snd t with hereditary_subst (A, a, t) k := { *)
-(*     | pair (Pair i j) (Some (exist (product A' B') prf)) := (j, Some (exist B' _)) ; *)
-(*     | pair p _ := (Snd p, None) } ; *)
+      | inr p := (Snd p, None) } } ;
 
   | Tt := (Tt, None) }.
 
-(* Next Obligation. intros. simpl. auto. Defined.  *)
 Solve Obligations with
    unfold her_type;
    intros; apply hereditary_subst; constructor 2; do 2 constructor.
@@ -998,7 +984,6 @@ Proof.
 
   (* Pair *)
   simp is_pair in Heq. simpl in prf.
-  (* specialize (Hind Γ (product a b) H). *)
   assert( (Γ' @ (U :: Γ) |-- Fst t2 => T → Γ' @ Γ |-- u <= T ∧ a = T)).
   intros Ht; depelim Ht. specialize (Hind _ (A × B) Hu). revert Hind.
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). 
