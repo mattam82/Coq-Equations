@@ -830,7 +830,7 @@ let do_renamings ctx =
     List.fold_right (fun (n, b, t) (ids, acc) ->
       match n with
       | Name id -> 
-	  let id' = Namegen.next_ident_away id ids in
+	  let id' = Namegen.next_global_ident_away id ids in
 	  let decl' = (Name id', b, t) in
 	    (id' :: ids, decl' :: acc)
       | Anonymous -> assert false)

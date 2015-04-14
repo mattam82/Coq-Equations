@@ -204,16 +204,24 @@ let define_tree is_recursive impls status isevar env (i, sign, arity) comp ann s
       hook cmap term_info x y
   in
   let hook = Lemmas.mk_hook hook in
+  let reduce = 
+    let open Closure.RedFlags in
+    let flags = [fBETA;fIOTA;fZETA] in
+    let flags = match comp with None -> flags
+      | Some f -> fCONST f.comp :: fCONST f.comp_proj :: flags
+    in
+    let flags = mkflags flags in
+      clos_norm_flags flags (Global.env ()) Evd.empty
+  in
     match is_recursive with
     | Some (Structural id) ->
 	ignore(Obligations.add_mutual_definitions [(i, t', ty', impls, obls)] 
 		 (Evd.evar_universe_context !isevar) [] 
-		 ~hook (Obligations.IsFixpoint [id, CStructRec]))
+		 ~reduce ~hook (Obligations.IsFixpoint [id, CStructRec]))
     | _ ->
       ignore(Obligations.add_definition ~hook
-	       ~implicits:impls i ~term:t' ty' 
-	       (Evd.evar_universe_context !isevar) obls)
-
+	       ~implicits:impls i ~term:t' ty'
+	       ~reduce (Evd.evar_universe_context !isevar) obls)
 
 let mapping_rhs s = function
   | RProgram c -> RProgram (mapping_constr s c)
