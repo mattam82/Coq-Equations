@@ -48,4 +48,5 @@ test-suite/fin.v
 test-suite/gcd.v
 test-suite/DataStruct.v
 test-suite/MoreDep.v
+test-suite/daaa.v
 examples/lf.v

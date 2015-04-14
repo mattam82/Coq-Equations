@@ -670,7 +670,15 @@ let interp_constr_in_rhs env ctx evars (i,comp,impls) ty s lets c =
 	  
 let unify_type evars before id ty after =
   try
-    let envids = ids_of_rel_context before @ ids_of_rel_context after in
+    let next_ident_away = 
+      let ctxids = ref (ids_of_rel_context before @ ids_of_rel_context after) in
+	let avoid = 
+	  fun id -> is_global id || List.mem id !ctxids
+	in 
+	  function id -> 
+		   let id' = Namegen.next_ident_away_from id avoid in 
+		     ctxids := id' :: !ctxids; id'
+    in
     let envb = push_rel_context before (Global.env()) in
     let IndType (indf, args) = find_rectype envb !evars ty in
     let ind, params = dest_ind_family indf in
@@ -682,17 +690,17 @@ let unify_type evars before id ty after =
       Array.mapi (fun i ty ->
 	let ty = prod_applist ty params in
 	let ctx, ty = decompose_prod_assum ty in
-	let ctx, ids = 
-	  fold_right (fun (n, b, t) (acc, ids) ->
+	let ctx = 
+	  fold_right (fun (n, b, t) acc ->
 	    match n with
-	    | Name id -> let id' = Namegen.next_ident_away id ids in
-		((Name id', b, t) :: acc), (id' :: ids)
+	    | Name id -> let id' = next_ident_away id in
+		((Name id', b, t) :: acc)
 	    | Anonymous ->
 		let x = Namegen.id_of_name_using_hdchar
 		  (push_rel_context acc envb) t Anonymous in
-		let id = Namegen.next_name_away (Name x) ids in
-		  ((Name id, b, t) :: acc), (id :: ids))
-	    ctx ([], envids)
+		let id = next_ident_away x in
+		  ((Name id, b, t) :: acc))
+	    ctx []
 	in
 	let env' = push_rel_context ctx (Global.env ()) in
 	let IndType (indf, args) = find_rectype env' !evars ty in
@@ -830,7 +838,7 @@ let do_renamings ctx =
     List.fold_right (fun (n, b, t) (ids, acc) ->
       match n with
       | Name id -> 
-	  let id' = Namegen.next_global_ident_away id ids in
+	  let id' = Namegen.next_ident_away id ids in
 	  let decl' = (Name id', b, t) in
 	    (id' :: ids, decl' :: acc)
       | Anonymous -> assert false)

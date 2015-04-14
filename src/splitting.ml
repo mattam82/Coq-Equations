@@ -207,9 +207,9 @@ let define_tree is_recursive impls status isevar env (i, sign, arity) comp ann s
   let reduce = 
     let open Closure.RedFlags in
     let flags = [fBETA;fIOTA;fZETA] in
-    let flags = match comp with None -> flags
-      | Some f -> fCONST f.comp :: fCONST f.comp_proj :: flags
-    in
+    (* let flags = match comp with None -> flags *)
+    (*   | Some f -> fCONST f.comp :: fCONST f.comp_proj :: flags *)
+    (* in *)
     let flags = mkflags flags in
       clos_norm_flags flags (Global.env ()) Evd.empty
   in

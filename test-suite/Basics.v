@@ -6,9 +6,8 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Program Equations Bvector List.
-Require Import Relations.
-Require Import DepElimDec.
+Require Import Program Bvector List Relations.
+From Equations Require Import Equations DepElimDec.
 
 Module TestF.
 
@@ -119,7 +118,7 @@ End vapp_def.
 
 Derive Signature for vector.
 
-Require Import EqDec.
+From Equations Require Import EqDec.
 
 Instance vector_eqdec {A n} `(EqDec A) : EqDec (vector A n).
 Proof. intros. intros x. induction x. left. now depelim y.
@@ -356,7 +355,7 @@ Lemma split_vapp' : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
     v = v' /\ w = w'.
 Proof.
   intros. funelim (vapp' v w). destruct (split (m:=0) w). depelim xs; intuition.
-  simp split in *. destruct (split (vapp' t w)). simpl.
+  simp split in *. destruct (split (vapp' t0 w)). simpl.
   intuition congruence.
 Qed.
 
@@ -375,7 +374,7 @@ Lemma split_struct_vapp : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
 Proof.
   intros. funelim (vapp' v w); simp split_struct in *. 
   destruct (split_struct (m:=0) w). depelim xs; intuition.
-  destruct (split_struct (vapp' t w)); simpl.
+  destruct (split_struct (vapp' t0 w)); simpl.
   intuition congruence.
 Qed.
 
@@ -554,7 +553,7 @@ Definition transpose {A m n} : mat A m n -> mat A n m :=
 (*   (e : vector (vector A 0) n) v : vfold_right f (vmake n Vnil) v =  *)
 (* Typeclasses eauto :=. *)
 
-Require Import Fin.
+From Equations Require Import Fin.
 
 Generalizable All Variables.
 

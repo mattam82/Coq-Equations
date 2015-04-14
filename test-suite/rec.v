@@ -7,11 +7,9 @@
 (**********************************************************************)
 
 Require Import Program. 
-Require Import Equations Bvector List.
-Require Import Relations.
-Require Import DepElimDec.
-Require Import Omega.
-Require Import Arith Wf_nat.
+From Equations Require Import Equations DepElimDec.
+Require Import Bvector List Relations.
+Require Import Omega Arith Wf_nat.
 Instance wf_nat : WellFounded lt := lt_wf.
 Hint Resolve lt_n_Sn : Below.
 Ltac rec ::= rec_wf_eqns.

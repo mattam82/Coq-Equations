@@ -64,20 +64,14 @@ Ltac with_eos_aux tac :=
    [ H : _ |- _ ] => is_secvar H ; tac H
   end.
 
-Ltac with_top tac :=
-  lazymatch reverse goal with
-      [ H : _ |- _ ] => tac H
-  end.
-
-Ltac with_eos tac := 
-  with_eos_aux tac || (* No section variables *) with_top tac.
+Ltac with_eos tac orelse := 
+  with_eos_aux tac + (* No section variables *) orelse.
 
 Ltac funelim_tac c tac :=
   match c with
     | appcontext [?f] =>
   let call := fresh "call" in set(call := c) in *; 
-   with_eos ltac:(fun eos =>                             
-     move call before eos ;
+   with_eos ltac:(fun eos => move call before eos) ltac:(move call at top) ;
   let elim := constr:(fun_elim (f:=f)) in
     block_goal; revert_until call; block_goal;
     first [
@@ -93,7 +87,7 @@ Ltac funelim_tac c tac :=
         end
       | subst call; pattern_call c; apply elim; clear;
         simplify_dep_elim; simplify_IH_hyps; unfold block at 1;
-          intros; unblock_goal; tac f ])
+          intros; unblock_goal; tac f ]
   end.
 
 Ltac funelim c := funelim_tac c ltac:(fun _ => idtac).
