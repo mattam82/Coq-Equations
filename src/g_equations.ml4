@@ -379,3 +379,10 @@ VERNAC COMMAND EXTEND Derive_EqDec CLASSIFIED AS QUERY
       c
   ]
 END
+
+TACTIC EXTEND is_secvar
+| [ "is_secvar" constr(x) ] ->
+  [ match kind_of_term x with
+    | Var id when Termops.is_section_variable id -> Proofview.tclUNIT ()
+    | _ -> Tacticals.New.tclFAIL 0 (str "Not a section variable or hypothesis") ]
+END

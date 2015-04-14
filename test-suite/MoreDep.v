@@ -1,7 +1,8 @@
 (* http://adam.chlipala.net/cpdt/html/MoreDep.html *)
 
-Require Import Bool Arith List.
-Require Import Program Equations.
+Require Import Bool Arith List Program. 
+From Equations Require Import Equations.
+
 Set Implicit Arguments.
 
 Section ilist.
@@ -213,7 +214,7 @@ balance1 _ (RedNode' _ c0 _ t1 y t2) data _ d <= t1 => {
   | RedNode _ a x b := {<RedNode (BlackNode a x b) y (BlackNode t2 data d)>};
   | _ <= t2 => {
     | RedNode _ b x c := {<RedNode (BlackNode t1 y b) x (BlackNode c data d)>};
-    | b := {<BlackNode (RedNode t1 y (* ? b *) t2) data d>}
+    | b := {<BlackNode (RedNode t1 y b) data d>}
   }
 }.
 
@@ -300,11 +301,11 @@ Section insert.
     Theorem present_insert_Red : forall n (t : rbtree Red n),
       present z (insert t)
       <-> (z = x \/ present z t).
-    Proof. present_insert t t0. (* FIXME Qed. *) Admitted.
+    Proof. present_insert t t0. Qed. 
 
     Theorem present_insert_Black : forall n (t : rbtree Black n),
       present z (projT2 (insert t))
       <-> (z = x \/ present z t).
-    Proof. present_insert t t0. (* FIXME Qed. *) Admitted.
+    Proof. present_insert t t0. Qed.
   End present.
 End insert.
