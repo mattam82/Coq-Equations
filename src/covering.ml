@@ -207,6 +207,15 @@ let check_ctx_map evars map =
       errorlabstrm "equations"
 	(str"Type error while building context map: " ++ pr_context_map (Global.env ()) map ++
 	   spc () ++ Himsg.explain_type_error env evars e)
+    | Invalid_argument s ->
+      errorlabstrm "equations"
+	(str"Type error while building context map: " ++ pr_context_map (Global.env ()) map ++
+	   spc () ++ str"Invalid_argument: " ++ str s)
+    | e when is_anomaly e ->
+      errorlabstrm "equations"
+	(str"Type error while building context map: " ++ pr_context_map (Global.env ()) map ++
+	   spc () ++ str"Anomaly: " ++ Errors.print e)
+
   else map
     
 let mk_ctx_map evars ctx subst ctx' =

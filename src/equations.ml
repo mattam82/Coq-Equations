@@ -272,7 +272,7 @@ let ind_fun_tac is_rec f info fid split ind =
 let subst_rec_split redefine f prob s split = 
   let subst_rec cutprob s (ctx, p, _ as lhs) =
     let subst = 
-      fold_left (fun (ctx, _, _ as lhs') (id, b) ->
+      fold_left (fun (ctx, _, ctx' as lhs') (id, b) ->
 	  let rel, _, ty = lookup_rel_id id ctx in
 	  let fK = 
 	    if redefine then
@@ -314,9 +314,17 @@ let subst_rec_split redefine f prob s split =
 			match n with
 			| Name n when mem_assoc n s ->
 			  let term = assoc n s in
+			  let term = 
+			    if redefine then
+			      let lctx, ty = decompose_prod_assum t in
+			      let fcomp, args = decompose_app ty in
+				it_mkLambda_or_LetIn (applistc term args) lctx
+			    else term
+			  in
 			    (pats, ctx', pred i, term :: subs)
-			| _ -> (i :: pats, (n, Option.map (substl subs) b, substl subs t) :: ctx', 
-				pred i, mkRel 1 :: map (lift 1) subs))
+			| _ ->
+			  (i :: pats, (n, Option.map (substl subs) b, substl subs t) :: ctx', 
+			   pred i, mkRel 1 :: map (lift 1) subs))
 	    ctx' ([], [], length ctx', [])
  	  in (ctx', map (fun i -> PRel i) pats, cutctx')
 	in
@@ -889,24 +897,23 @@ let prove_unfolding_lemma info proj f_cst funf_cst split gl =
       raise e
       
 let update_split is_rec cmap f prob id split =
-  let split' = map_evars_in_split cmap split in
-    match is_rec with
-    | Some (Structural _) -> subst_rec_split false f prob [(id, f)] split'
-    | Some (Logical r) -> 
-      let split' = subst_comp_proj_split f (mkConst r.comp_proj) split' in
-      let rec aux = function
-	| RecValid (_, Valid (ctx, ty, args, tac, view, 
-			       [ctx', _, newprob, rest])) ->	  
-	    aux (subst_rec_split true f newprob [(id, f)] rest)
-	| Split (lhs, y, z, cs) -> Split (lhs, y, z, Array.map (Option.map aux) cs)
-	| RecValid (id, c) -> RecValid (id, aux c)
-	| Valid (lhs, y, z, w, u, cs) ->
-	  Valid (lhs, y, z, w, u, 
-		 List.map (fun (gl, cl, subst, s) -> (gl, cl, subst, aux s)) cs)
-	| Refined (lhs, info, s) -> Refined (lhs, info, aux s)
-	| (Compute _) as x -> x
-      in aux split'
-    | _ -> split'
+  match is_rec with
+  | Some (Structural _) -> subst_rec_split false f prob [(id, f)] split
+  | Some (Logical r) -> 
+    let split' = subst_comp_proj_split f (mkConst r.comp_proj) split in
+    let rec aux = function
+      | RecValid (id, Valid (ctx, ty, args, tac, view, 
+			    [goal, args', newprob, rest])) ->	  
+	aux (subst_rec_split true f newprob [(id, f)] rest)
+      | Split (lhs, y, z, cs) -> Split (lhs, y, z, Array.map (Option.map aux) cs)
+      | RecValid (id, c) -> RecValid (id, aux c)
+      | Valid (lhs, y, z, w, u, cs) ->
+	Valid (lhs, y, z, w, u, 
+	       List.map (fun (gl, cl, subst, s) -> (gl, cl, subst, aux s)) cs)
+      | Refined (lhs, info, s) -> Refined (lhs, info, aux s)
+      | (Compute _) as x -> x
+    in aux split'
+  | _ -> split
 
 	
 let make_ref dir s = Coqlib.gen_reference "Program" dir s
@@ -1026,6 +1033,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
     let () = inline_helpers info in
     let f_cst = match gr with ConstRef c -> c | _ -> assert false in
     let env = Global.env () in
+    let split = map_evars_in_split cmap split in
     let f = constr_of_global gr in
       if with_eqns || with_ind then
 	match is_recursive with

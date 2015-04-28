@@ -247,19 +247,32 @@ let map_evars_in_constr evar_map c =
 
 let map_split f split =
   let rec aux = function
-    | Compute (lhs, ty, RProgram c) -> Compute (lhs, ty, RProgram (f c))
-    | Split (lhs, y, z, cs) -> Split (lhs, y, z, Array.map (Option.map aux) cs)
+    | Compute (lhs, ty, RProgram c) ->
+      let lhs' = map_ctx_map f lhs in
+	Compute (lhs', f ty, RProgram (f c))
+    | Split (lhs, y, z, cs) ->
+      let lhs' = map_ctx_map f lhs in
+	Split (lhs', y, f z, Array.map (Option.map aux) cs)
     | RecValid (id, c) -> RecValid (id, aux c)
     | Valid (lhs, y, z, w, u, cs) ->
-	Valid (lhs, y, z, w, u, List.map (fun (gl, cl, subst, s) -> (gl, cl, subst, aux s)) cs)
+      let lhs' = map_ctx_map f lhs in
+	Valid (lhs', f y, z, w, u, 
+	       List.map (fun (gl, cl, subst, s) -> 
+		 (gl, List.map f cl, map_ctx_map f subst, aux s)) cs)
     | Refined (lhs, info, s) ->
-	let (id, c, cty) = info.refined_obj in
-	let (scf, scargs) = info.refined_app in
-	  Refined (lhs, { info with refined_obj = (id, f c, f cty);
-			    refined_app = (f scf, List.map f scargs);
-			    refined_newprob_to_lhs = map_ctx_map f info.refined_newprob_to_lhs }, 
-		   aux s)
-    | Compute (_, _, REmpty _) as c -> c
+      let lhs' = map_ctx_map f lhs in
+      let (id, c, cty) = info.refined_obj in
+      let (scf, scargs) = info.refined_app in
+	Refined (lhs', { info with refined_obj = (id, f c, f cty);
+	  refined_app = (f scf, List.map f scargs);
+	  refined_rettyp = f info.refined_rettyp;
+	  refined_revctx = map_ctx_map f info.refined_revctx;
+	  refined_newprob = map_ctx_map f info.refined_newprob;
+	  refined_newprob_to_lhs = map_ctx_map f info.refined_newprob_to_lhs;
+	  refined_newty = f info.refined_newty}, aux s)
+    | Compute (lhs, ty, (REmpty _ as em)) ->
+      (* let lhs' = map_ctx_map f lhs in *)
+	Compute (lhs, f ty, em)
   in aux split
 
 
