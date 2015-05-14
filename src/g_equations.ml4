@@ -211,6 +211,14 @@ PRINTED BY pr_equation_options
 | [ ] -> [ [] ]
 END
 
+let pr_lident _ _ _ (loc, id) = pr_id id
+
+ARGUMENT EXTEND lident
+TYPED AS lident
+PRINTED BY pr_lident
+| [ ident(i) ] -> [ (loc, i) ]
+END
+
 
 module Gram = Pcoq.Gram
 module Vernac = Pcoq.Vernac_
@@ -261,7 +269,7 @@ open Tok
 open Syntax
 
 GEXTEND Gram
-  GLOBAL: pattern deppat_equations binders_let2;
+  GLOBAL: pattern deppat_equations binders_let2 lident;
  
   deppat_equations:
     [ [ l = LIST1 equation SEP ";" -> l ] ]
@@ -270,7 +278,7 @@ GEXTEND Gram
   binders_let2:
     [ [ l = binders -> l, (None, CStructRec)  ] ]
   ;
-
+  
   equation:
     [ [ id = identref; 	pats = LIST1 patt; r = rhs -> (Some id, SignPats pats, r)
       | "|"; pats = LIST1 lpatt SEP "|"; r = rhs -> (None, RefinePats pats, r) 
@@ -312,10 +320,10 @@ GEXTEND Gram
   END
 
 VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS QUERY
-| [ "Equations" equation_options(opt) ident(i) binders_let2(l) 
+| [ "Equations" equation_options(opt) lident(i) binders_let2(l) 
       ":" lconstr(t) ":=" deppat_equations(eqs)
       (* decl_notation(nt) *) ] ->
-    [ Equations.equations opt (dummy_loc, i) l t [] eqs ]
+    [ Equations.equations opt i l t [] eqs ]
       END
 
 (* TACTIC EXTEND block_goal *)
