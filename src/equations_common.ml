@@ -116,10 +116,10 @@ let gen_constant dir s = Coqlib.gen_constant "equations" dir s
 
 let make_definition ?opaque ?(poly=false) evd ?types b =
   let env = Global.env () in
-  let evd, t = Typing.e_type_of env !evd b in
+  let _t = Typing.e_type_of env evd b in
   let evd = match types with
-    | None -> evd 
-    | Some t -> fst (Typing.e_type_of env evd t)
+    | None -> !evd
+    | Some t -> let _s = Typing.e_type_of env evd t in !evd
   in
   let evd, nf = Evarutil.nf_evars_and_universes evd in
   let body = nf b and typ = Option.map nf types in
@@ -562,3 +562,6 @@ let string_of_smart_global = function
 
 let ident_of_smart_global x = 
   id_of_string (string_of_smart_global x)
+
+let pf_get_type_of               = pf_reduce Retyping.get_type_of
+  

@@ -733,6 +733,8 @@ Ltac invert_term :=
 Lemma eq_JMeq {A} {x y : A} (p : x = y) : JMeq x y.
 Proof. destruct p; apply JMeq_refl. Qed.
 
+Set Regular Subst Tactic.
+
 Lemma hereditary_subst_type Γ Γ' t T u U : Γ |-- u : U -> Γ' @ (U :: Γ) |-- t : T ->
   forall t' o, hereditary_subst (U, u, t) (length Γ') = (t', o) ->
     (Γ' @ Γ |-- t' : T /\ (forall ty prf, o = Some (exist ty prf) -> ty = T)). 
@@ -767,20 +769,22 @@ Proof. intros. revert H1. funelim (hereditary_subst (U, u, t) (length Γ'));
   simp subst in t. rewrite Heq in t. simp subst in t.
 
   (* App *)
+  on_call (hereditary_subst (U, u0, u)) ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
-  on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
-  depelim H3. 
-  noconf H4. subst t0 o.
-  specialize (H0 [] eq_refl (eq_JMeq Heqhsubst0)). simpl in H0.
+  noconf H4. subst t' o.
+  specialize (H0 [] _ _ _ eq_refl eq_refl (eq_JMeq Heqhsubst0)). simpl in H0.
+  depelim H3.
   specialize (H _ _ H2 H3_0).
   specialize (Hind _ _ H2 H3_). rewrite Heq0 in Hind.
   specialize (Hind _ _ eq_refl).
   depelim Hind. 
-  specialize (H1 _ _ eq_refl).
-  noconf H1. subst A B.
-  split; [|intros ty prf0 Heq'].
-  { eapply H3. intuition. depelim H0; auto. symmetry; eassumption. }
-  noconf Heq'. noconf H1. auto.
+  specialize (H2 _ _ eq_refl).
+  noconf H2. subst A B.
+  depelim H.
+  specialize (H0 (Γ' @ Γ) b H). depelim H2.
+  specialize (H0 H2 _ _ (eq_sym Heqhsubst0)). destruct H0.
+  split; [auto|intros ty prf0 Heq'].
+  noconf Heq'. noconf H6. auto.
   
   (* depelim H1; eauto. apply H0. *)
   (* on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *)
@@ -923,7 +927,8 @@ Proof.
   now apply nth_pred.
 
   (* App *)
-  on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
+  on_call (hereditary_subst (U,u0,u))
+          ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   specialize (H0 _ _ _ [] eq_refl eq_refl JMeq_refl). 
   simplify_IH_hyps. rewrite Heq0 in Hind. 
   revert H0.
@@ -1094,4 +1099,3 @@ Proof. induction 1. (* eta-exp *)
 
   depelim H0.
 Qed.
-

@@ -276,3 +276,5 @@ val string_of_smart_global :
   Libnames.reference Misctypes.or_by_notation -> string
 val ident_of_smart_global :
   Libnames.reference Misctypes.or_by_notation -> identifier
+
+val pf_get_type_of : Goal.goal Evd.sigma -> constr -> types

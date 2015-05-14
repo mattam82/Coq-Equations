@@ -238,8 +238,8 @@ let derive_subterm ind =
 	let inst = Typeclasses.new_instance (fst kl) None global poly (ConstRef cst) in
 	  Typeclasses.add_instance inst
       in
-      let _bodyty = Evarutil.evd_comb1 (Typing.e_type_of (Global.env ())) evm body in
-      let _ty' = Evarutil.evd_comb1 (Typing.e_type_of (Global.env ())) evm ty in
+      let _bodyty = Typing.e_type_of (Global.env ()) evm body in
+      let _ty' = Typing.e_type_of (Global.env ()) evm ty in
       let obls, _, constr, typ = 
 	Obligations.eterm_obligations env id !evm 0 body ty 
       in

@@ -170,7 +170,7 @@ let abstract_args gl generalize_vars dep id defined f args =
       let rel, c = Reductionops.splay_prod_n env sigma 1 prod in
 	List.hd rel, c
     in
-    let argty = pf_type_of gl arg in
+    let argty = pf_get_type_of gl arg in
     let argty = 
       Evarutil.evd_comb1
 	(Evarsolve.refresh_universes (Some true) (Global.env())) evd argty in
@@ -213,7 +213,7 @@ let abstract_args gl generalize_vars dep id defined f args =
   in
     if dogen then
       let arity, ctx, ctxenv, c', args, eqs, refls, nogen, vars, env = 
-	Array.fold_left aux (pf_type_of gl f',[],env,f',[],[],[],Idset.empty,Idset.empty,env) args'
+	Array.fold_left aux (pf_get_type_of gl f',[],env,f',[],[],[],Idset.empty,Idset.empty,env) args'
       in
       let args, refls = List.rev args, List.rev refls in
       let vars = 
@@ -264,7 +264,7 @@ let abstract_generalize ?(generalize_vars=true) ?(force_dep=false) id gl =
 				     tclTRY (generalize_dep ~with_let:true (mkVar id))) vars] gl) gl
 
 let dependent_pattern ?(pattern_term=true) c gl =
-  let cty = pf_type_of gl c in
+  let cty = pf_hnf_type_of gl c in
   let deps =
     match kind_of_term cty with
     | App (f, args) -> 
@@ -285,7 +285,7 @@ let dependent_pattern ?(pattern_term=true) c gl =
       mkNamedLambda id cty conclvar, evd'
   in
   let subst = 
-    let deps = List.rev_map (fun c -> (c, varname c, pf_type_of gl c)) deps in
+    let deps = List.rev_map (fun c -> (c, varname c, pf_get_type_of gl c)) deps in
       if pattern_term then (c, varname c, cty) :: deps
       else deps
   in
@@ -375,7 +375,7 @@ let derive_dep_elimination ctx (i,u) loc =
 
 let pattern_call ?(pattern_term=true) c gl =
   let env = pf_env gl in
-  let cty = pf_type_of gl c in
+  let cty = pf_get_type_of gl c in
   let ids = ids_of_named_context (pf_hyps gl) in
   let deps =
     match kind_of_term c with
@@ -393,7 +393,7 @@ let pattern_call ?(pattern_term=true) c gl =
       mkNamedLambda id cty conclvar
   in
   let subst = 
-    let deps = List.rev_map (fun c -> (c, varname c, pf_type_of gl c)) deps in
+    let deps = List.rev_map (fun c -> (c, varname c, pf_get_type_of gl c)) deps in
       if pattern_term then (c, varname c, cty) :: deps
       else deps
   in

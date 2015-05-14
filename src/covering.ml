@@ -87,10 +87,10 @@ and splitting_rhs =
   | REmpty of int
 
 let mkInac env c =
-  mkApp (Lazy.force coq_inacc, [| Typing.type_of env Evd.empty c ; c |])
+  mkApp (Lazy.force coq_inacc, [| Retyping.get_type_of env Evd.empty c ; c |])
 
 let mkHide env c =
-  mkApp (Lazy.force coq_hide, [| Typing.type_of env Evd.empty c ; c |])
+  mkApp (Lazy.force coq_hide, [| Retyping.get_type_of env Evd.empty c ; c |])
 
 let rec pat_constr = function
   | PRel i -> mkRel i
@@ -633,9 +633,9 @@ let lets_of_ctx env ctx evars s =
       match pat with
       | PRel i -> (ctx', cs, (i, id) :: varsubst, k, id :: ids)
       | _ -> 
-	  let evars', ty = Typing.e_type_of envctx !evars c in
-	    (evars := evars';
-	     ((Name id, Some (lift k c), lift k ty) :: ctx', (c :: cs), varsubst, succ k, id :: ids)))
+	  let ty = Typing.e_type_of envctx evars c in
+	    ((Name id, Some (lift k c), lift k ty) :: ctx', (c :: cs),
+	     varsubst, succ k, id :: ids))
     ([],[],[],0,[]) s
   in
   let _, _, ctx' = List.fold_right (fun (n, b, t) (ids, i, ctx') ->
@@ -665,7 +665,7 @@ let interp_constr_in_rhs env ctx evars (i,comp,impls) ty s lets c =
 	let c' = substnl pats 0 c in
 	  evars := Typeclasses.resolve_typeclasses ~filter:Typeclasses.all_evars env !evars;
 	  let c' = nf_evar !evars c' in
-	    c', Typing.type_of envctx !evars c'
+	    c', Retyping.get_type_of envctx !evars c'
 	    
     | Some ty -> 
 	let ty' = lift (len + letslen) ty in

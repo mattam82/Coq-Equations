@@ -47,7 +47,7 @@ open Depelim
 
 
 let mkcase env c ty constrs =
-  let cty = Typing.type_of env Evd.empty c in
+  let cty = Retyping.get_type_of env Evd.empty c in
   let ind, origargs = decompose_app cty in
   let mind, ind = match kind_of_term ind with
     | Ind ((mu, n),_ as i) -> mu, i
@@ -75,8 +75,8 @@ let mkcase env c ty constrs =
 let mk_eqs env evd args args' pv = 
   let prf =
     List.fold_right2 (fun x y c -> 
-      let tyx = Typing.type_of env Evd.empty x 
-      and tyy = Typing.type_of env Evd.empty y in
+      let tyx = Retyping.get_type_of env Evd.empty x 
+      and tyy = Retyping.get_type_of env Evd.empty y in
       let hyp, prf = mk_term_eq env evd tyx x tyy y in
 	mkProd (Anonymous, hyp, lift 1 c))
       args args' pv

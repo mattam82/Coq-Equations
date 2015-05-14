@@ -67,7 +67,7 @@ let constrs_of_coq_sigma env evd t alias =
 	      (n, args.(2), p1, args.(0)) :: aux p2 args.(3) t
 	| _ -> raise (Invalid_argument "constrs_of_coq_sigma"))
     | _ -> [(Anonymous, c, proj, ty)]
-  in aux alias t (Typing.type_of env !evd t)
+  in aux alias t (Retyping.get_type_of env !evd t)
 
 let decompose_coq_sigma t = 
   let s = Lazy.force coq_sigma in

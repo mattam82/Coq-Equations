@@ -263,8 +263,9 @@ let ind_fun_tac is_rec f info fid split ind =
       (tclTHENLIST
 	  [fix (Some recid) (succ i);
 	   onLastDecl (fun (n,b,t) gl ->
-	     let sort = pf_type_of gl t in
-	     let fixprot = mkApp ((*FIXME*)Universes.constr_of_global (Lazy.force coq_fix_proto), [|sort; t|]) in
+	     let sort = pf_get_type_of gl t in
+	     let fixprot = mkApp ((*FIXME*)Universes.constr_of_global (Lazy.force coq_fix_proto),
+				  [|sort; t|]) in
 	       Proofview.V82.of_tactic (change_in_hyp None (make_change_arg fixprot) (n, Locus.InHyp)) gl);
 	   to82 intros; aux_ind_fun info split])
   else tclCOMPLETE (tclTHEN (to82 intros) (aux_ind_fun info split))
@@ -688,8 +689,8 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	  let env = Global.env () in
 	  let elimcgr = Universes.constr_of_global elimgr in
 	  let cl = functional_elimination_class () in
-	  let args = [Typing.type_of env Evd.empty f; f; 
-		      Typing.type_of env Evd.empty elimcgr; elimcgr]
+	  let args = [Retyping.get_type_of env Evd.empty f; f; 
+		      Retyping.get_type_of env Evd.empty elimcgr; elimcgr]
 	  in
 	  let instid = add_prefix "FunctionalElimination_" id in
 	    ignore(declare_instance instid info.polymorphic 
@@ -708,7 +709,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
       in
       let cl = functional_induction_class () in
       let evd = Evd.empty in
-      let args = [Typing.type_of env evd f; f; 
+      let args = [Retyping.get_type_of env evd f; f; 
 		  Global.type_of_global_unsafe gr; Universes.constr_of_global gr]
       in
       let instid = add_prefix "FunctionalInduction_" id in
@@ -747,7 +748,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	tclTHENLIST [to82 intros; to82 unf; to82 (solve_equation_tac (ConstRef cst) [])]
       in
       let evd = ref Evd.empty in
-      let _ = Evarutil.evd_comb1 (Typing.e_type_of (Global.env ())) evd c in
+      let _ = Typing.e_type_of (Global.env ()) evd c in
 	ignore(Obligations.add_definition
 		  ideq c ~tactic:(of82 tac) ~hook:(Lemmas.mk_hook hook)
 		  (Evd.evar_universe_context !evd) [||])
@@ -983,7 +984,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   let sort = Retyping.get_type_of env !isevar ty in
   let sort = Evarutil.evd_comb1 (Evarsolve.refresh_universes (Some false) env) isevar sort in
   let fixprot = mkApp (Universes.constr_of_global (Lazy.force coq_fix_proto), [|sort; ty|]) in
-  let _fixprot_ty = Evarutil.evd_comb1 (Typing.e_type_of env) isevar fixprot in
+  let _fixprot_ty = Typing.e_type_of env isevar fixprot in
   let fixdecls = [(Name i, None, fixprot)] in
   let is_recursive =
     let rec occur_eqn (_, _, rhs) =

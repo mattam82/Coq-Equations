@@ -28,7 +28,7 @@ TACTIC EXTEND decompose_app
 [ "decompose_app" ident(h) ident(h') constr(c) ] -> [ 
   Proofview.Goal.enter (fun gl ->
     let f, args = decompose_app c in
-    let fty = Tacmach.New.pf_type_of gl f in
+    let fty = Tacmach.New.pf_hnf_type_of gl f in
     let flam = mkLambda (Name (id_of_string "f"), fty, mkApp (mkRel 1, Array.of_list args)) in
       (Proofview.tclTHEN (letin_tac None (Name h) f None allHyps)
   	 (letin_tac None (Name h') flam None allHyps)))
