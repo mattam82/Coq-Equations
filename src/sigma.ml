@@ -99,7 +99,7 @@ let sigT_info = lazy (make_case_info (Global.env ()) (Globnames.destIndRef (Lazy
 
 let telescope evd = function
   | [] -> assert false
-  | [(n, None, t)] -> t, [n, Some (mkRel 1), t], mkRel 1
+  | [(n, None, t)] -> t, [n, Some (mkRel 1), lift 1 t], mkRel 1
   | (n, None, t) :: tl ->
       let len = succ (List.length tl) in
       let ty, tys =
@@ -192,9 +192,12 @@ let declare_sig_of_ind env ind =
   let indid = ind_name ind in
   let simpl = Tacred.simpl env sigma in
   let poly = Flags.is_universe_polymorphism () in
+  let body = it_mkLambda_or_LetIn pred pars in
+  (*ignore (Typing.unsafe_type_of (Global.env ()) sigma body);
+  mkInd ind *)
   let indsig = 
     let indsigid = add_suffix indid "_sig" in
-      declare_constant indsigid (it_mkLambda_or_LetIn pred pars)
+      declare_constant indsigid body
 	None poly sigma (IsDefinition Definition)
   in
   let pack_fn = 
