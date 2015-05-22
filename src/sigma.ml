@@ -172,7 +172,7 @@ let signature_pack = lazy (init_constant ["Equations";"Signature"] "signature_pa
 let signature_class () =
   fst (snd (Option.get (Typeclasses.class_of_constr (Lazy.force signature_ref))))
 
-let declare_sig_of_ind env ind =
+let build_sig_of_ind env ind =
   let sigma = Evd.empty in
   let (mib, oib as _mind) = Global.lookup_inductive ind in
   let ctx = oib.Declarations.mind_arity_ctxt in
@@ -189,15 +189,17 @@ let declare_sig_of_ind env ind =
     sigmaize (push_rel_context pars env) evd parapp 
   in
   let sigma = !evd in
+    sigma, pred, pars, fullapp, valsig, ctx, lenargs, idx
+
+let declare_sig_of_ind env ind =
+  let sigma, pred, pars, fullapp, valsig, ctx, lenargs, idx =
+    build_sig_of_ind env ind in
   let indid = ind_name ind in
   let simpl = Tacred.simpl env sigma in
   let poly = Flags.is_universe_polymorphism () in
-  let body = it_mkLambda_or_LetIn pred pars in
-  (*ignore (Typing.unsafe_type_of (Global.env ()) sigma body);
-  mkInd ind *)
   let indsig = 
     let indsigid = add_suffix indid "_sig" in
-      declare_constant indsigid body
+      declare_constant indsigid (it_mkLambda_or_LetIn pred pars)
 	None poly sigma (IsDefinition Definition)
   in
   let pack_fn = 
@@ -219,19 +221,26 @@ let declare_sig_of_ind env ind =
   in inst
 
 let get_signature env sigma ty =
-  let sigma', (idx, _) = 
-    new_type_evar env sigma Evd.univ_flexible ~src:(dummy_loc, Evar_kinds.InternalHole) in
-  let _idxev = fst (destEvar idx) in
-  let inst = mkApp (Lazy.force signature_ref, [| ty; idx |]) in
-  let sigma', tc =
-    try Typeclasses.resolve_one_typeclass env sigma' inst 
-    with Not_found ->
-      let _ = declare_sig_of_ind env (fst (fst (Inductive.find_rectype env ty))) in
-	Typeclasses.resolve_one_typeclass env sigma' inst
-  in
-    (nf_evar sigma' (mkApp (Lazy.force signature_sig, [| ty; idx; tc |])),
-    nf_evar sigma' (mkApp (Lazy.force signature_pack, [| ty; idx; tc |])))
-      
+  try
+    let sigma', (idx, _) = 
+      new_type_evar env sigma Evd.univ_flexible ~src:(dummy_loc, Evar_kinds.InternalHole) in
+    let _idxev = fst (destEvar idx) in
+    let inst = mkApp (Lazy.force signature_ref, [| ty; idx |]) in
+    let sigma', tc = Typeclasses.resolve_one_typeclass env sigma' inst in
+      (nf_evar sigma' (mkApp (Lazy.force signature_sig, [| ty; idx; tc |])),
+      nf_evar sigma' (mkApp (Lazy.force signature_pack, [| ty; idx; tc |])))
+  with Not_found ->
+    (* TODO emit warning *)
+    let pind, args = Inductive.find_rectype env ty in
+    let ind = fst pind in
+    let _, pred, pars, _, valsig, ctx, _, _ =
+      build_sig_of_ind env ind in
+    let indsig = it_mkLambda_or_LetIn pred pars in
+    let vbinder = (Anonymous, None, ty) in
+    let pack_fn = it_mkLambda_or_LetIn valsig (vbinder :: ctx) in
+    let pack_fn = beta_applist (pack_fn, args) in
+      nf_evar sigma (mkApp (indsig, Array.of_list args)),
+      nf_evar sigma pack_fn
 
 (* let generalize_sigma env sigma c packid = *)
 (*   let ty = Retyping.get_type_of env sigma c in *)
