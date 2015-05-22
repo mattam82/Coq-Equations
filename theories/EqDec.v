@@ -32,6 +32,9 @@ Proof. intros x y. decide equality. Defined.
 Instance list_eqdec {A} `(EqDec A) : EqDec (list A). 
 Proof. intros x y. decide equality. Defined.
 
+Instance prod_eqdec {A B} `(EqDec A) `(EqDec B) : EqDec (prod A B).
+Proof. intros x y. decide equality. Defined.
+
 Section EqdepDec.
 
   Context {A : Type} `{EqDec A}.
