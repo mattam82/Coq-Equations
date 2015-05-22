@@ -457,17 +457,22 @@ Ltac simplify_one_dep_elim_term c :=
   match c with
     | @JMeq _ _ _ _ -> _ => refine (@simplification_heq _ _ _ _ _)
     | ?t = ?t -> _ => intros _ || apply simplification_K_dec || refine (@simplification_K _ t _ _)
-    | (@existT ?A ?P ?n ?x) = (@existT ?A ?P ?n ?y) -> ?B =>
+    | (@existT ?A ?P ?n ?x) = (@existT ?A ?P ?m ?y) -> ?B =>
+      (* Check if [n] and [m] are judgmentally equal. *)
       match goal with
+      | |- _ =>
+        try (try (refine (@simplification_existT2 _ _ _ _ _ _ _); []; gfail 1); fail 1);
+        match goal with
         | _ : x = y |- _ => intro
-        | _ => 
+        | _ =>
           apply (simplification_existT2_dec (A:=A) (P:=P) (B:=B) n x y) ||
             refine (@simplification_existT2 _ _ _ _ _ _ _)
-      end
-    | eq (existT _ ?p _) (existT _ ?q _) -> _ =>
-      match goal with
-        | _ : p = q |- _ => intro
+        end
+      | |- _ =>
+        match goal with
+        | _ : n = m |- _ => intro
         | _ => refine (@simplification_existT1 _ _ _ _ _ _ _ _)
+        end
       end
     | forall H : ?x = ?y, _ => (* variables case *)
       (let hyp := fresh H in intros hyp ;
