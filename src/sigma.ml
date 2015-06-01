@@ -230,11 +230,13 @@ let get_signature env sigma ty =
       (nf_evar sigma' (mkApp (Lazy.force signature_sig, [| ty; idx; tc |])),
       nf_evar sigma' (mkApp (Lazy.force signature_pack, [| ty; idx; tc |])))
   with Not_found ->
-    (* TODO emit warning *)
     let pind, args = Inductive.find_rectype env ty in
     let ind = fst pind in
     let _, pred, pars, _, valsig, ctx, _, _ =
       build_sig_of_ind env ind in
+    msg_warning (str "Automatically inlined signature for type " ++
+    Printer.pr_pinductive env pind ++ str ". Use [Derive Signature for " ++
+    Printer.pr_pinductive env pind ++ str ".] to avoid this.");
     let indsig = it_mkLambda_or_LetIn pred pars in
     let vbinder = (Anonymous, None, ty) in
     let pack_fn = it_mkLambda_or_LetIn valsig (vbinder :: ctx) in
