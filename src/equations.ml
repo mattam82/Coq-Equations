@@ -748,7 +748,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	tclTHENLIST [to82 intros; to82 unf; to82 (solve_equation_tac (ConstRef cst) [])]
       in
       let evd = ref Evd.empty in
-      let _ = Typing.e_type_of (Global.env ()) evd c in
+      let _ = e_type_of (Global.env ()) evd c in
 	ignore(Obligations.add_definition
 		  ideq c ~tactic:(of82 tac) ~hook:(Lemmas.mk_hook hook)
 		  (Evd.evar_universe_context !evd) [||])
@@ -984,7 +984,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   let sort = Retyping.get_type_of env !isevar ty in
   let sort = Evarutil.evd_comb1 (Evarsolve.refresh_universes (Some false) env) isevar sort in
   let fixprot = mkApp (Universes.constr_of_global (Lazy.force coq_fix_proto), [|sort; ty|]) in
-  let _fixprot_ty = Typing.e_type_of env isevar fixprot in
+  let _fixprot_ty = e_type_of env isevar fixprot in
   let fixdecls = [(Name i, None, fixprot)] in
   let is_recursive =
     let rec occur_eqn (_, _, rhs) =

@@ -73,6 +73,8 @@ val typecheck_rel_context :
 val e_conv :
   env -> Evd.evar_map ref -> constr -> constr -> bool
 
+val e_type_of : env -> Evd.evar_map ref -> constr -> types
+						 
 val reference_of_global : Globnames.global_reference -> Libnames.reference
 
 (** Term manipulation *)

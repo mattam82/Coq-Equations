@@ -114,12 +114,16 @@ let init_constant dir s = find_constant contrib_name dir s
 let init_reference dir s = Coqlib.find_reference contrib_name dir s
 let gen_constant dir s = Coqlib.gen_constant "equations" dir s
 
+let e_type_of env evdref b =
+  let evd, t = Typing.e_type_of env !evdref b in
+    evdref := evd; t
+					     
 let make_definition ?opaque ?(poly=false) evd ?types b =
   let env = Global.env () in
-  let _t = Typing.e_type_of env evd b in
+  let _t = e_type_of env evd b in
   let evd = match types with
     | None -> !evd
-    | Some t -> let _s = Typing.e_type_of env evd t in !evd
+    | Some t -> let _s = e_type_of env evd t in !evd
   in
   let evd, nf = Evarutil.nf_evars_and_universes evd in
   let body = nf b and typ = Option.map nf types in

@@ -633,7 +633,7 @@ let lets_of_ctx env ctx evars s =
       match pat with
       | PRel i -> (ctx', cs, (i, id) :: varsubst, k, id :: ids)
       | _ -> 
-	  let ty = Typing.e_type_of envctx evars c in
+	  let ty = e_type_of envctx evars c in
 	    ((Name id, Some (lift k c), lift k ty) :: ctx', (c :: cs),
 	     varsubst, succ k, id :: ids))
     ([],[],[],0,[]) s
