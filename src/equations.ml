@@ -165,7 +165,7 @@ let autorewrite_one b =  (*FIXME*)
 
 type term_info = {
   base_id : string;
-  polymorphic : bool;
+  decl_kind: Decl_kinds.definition_kind;
   helpers_info : (existential_key * int * identifier) list }
 
 let find_helper_info info f =
@@ -177,6 +177,8 @@ let inline_helpers i =
   let l = List.map (fun (_, _, id) -> Ident (dummy_loc, id)) i.helpers_info in
     Table.extraction_inline true l
 
+let is_polymorphic info = pi2 info.decl_kind
+  			    
 let find_helper_arg info f args =
   let (ev, arg, id) = find_helper_info info f in
     ev, args.(arg)
@@ -429,7 +431,7 @@ let ind_elim_tac indid inds info gl =
   in
     tclTHENLIST [intro; onLastHypId (fun id -> applyind [mkVar id])] gl
 
-let build_equations with_ind env id info data sign is_rec arity cst 
+let build_equations with_ind env evd id info sign is_rec arity cst 
     f ?(alias:(constr * constr * splitting) option) prob split =
   let rec computations prob f = function
     | Compute (lhs, ty, c) ->
@@ -482,7 +484,8 @@ let build_equations with_ind env id info data sign is_rec arity cst
       (f', (if eq_constr f' f then Option.map pi1 alias else None), lenprotos - i, arity))
       1 protos
   in
-  let evd = ref (Evd.from_env env) in
+  let evd = ref evd in    
+  let poly = is_polymorphic info in
   let rec statement i f (ctx, pats, ty, f', refine, c) =
     let comp = applistc f pats in
     let body =
@@ -532,7 +535,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
     in
       { mind_entry_typename = indid;
 	mind_entry_arity = it_mkProd_or_LetIn (mkProd (Anonymous, arity, mkProp)) sign;
-	mind_entry_consnames = consnames;	      
+	mind_entry_consnames = consnames;    
 	mind_entry_lc = constructors;
 	mind_entry_template = false }
   in
@@ -540,7 +543,7 @@ let build_equations with_ind env id info data sign is_rec arity cst
     let inds = map declare_one_ind ind_stmts in
     let inductive =
       { mind_entry_record = None;
-	mind_entry_polymorphic = false;
+	mind_entry_polymorphic = is_polymorphic info;
 	mind_entry_universes = Evd.universe_context !evd;
 	mind_entry_private = None;
 	mind_entry_finite = Finite;
@@ -548,11 +551,15 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	mind_entry_inds = inds }
     in
     let k = Command.declare_mutual_inductive_with_eliminations inductive [] in
-    let ind = mkInd (k,0) in
+    let ind =
+      if poly then
+	mkIndU ((k,0),Univ.UContext.instance (Evd.universe_context !evd))
+      else mkInd (k,0)
+    in
     let _ =
       List.iteri (fun i ind ->
 	let constrs = 
-	  List.map_i (fun j _ -> None, info.polymorphic, true, Hints.PathAny, 
+	  List.map_i (fun j _ -> None, poly, true, Hints.PathAny, 
 	    Hints.IsGlobRef (ConstructRef ((k,i),j))) 1 ind.mind_entry_lc in
 	  Hints.add_hints false [info.base_id] (Hints.HintsResolveEntry constrs))
 	inds
@@ -562,13 +569,11 @@ let build_equations with_ind env id info data sign is_rec arity cst
     let f, split = match alias with Some (f, _, split) -> f, split | None -> f, split in
     let app = applist (f, args) in
     let statement = it_mkProd_or_subst (applist (ind, args @ [app])) sign in
-    let evd = Evd.empty in
     let hookind subst gr = 
       let env = Global.env () in (* refresh *)
-      Hints.add_hints false [info.base_id] 
-	(Hints.HintsImmediateEntry [Hints.PathAny, info.polymorphic, Hints.IsGlobRef gr]);
+      Hints.add_hints false [info.base_id]
+	(Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef gr]);
       let _funind_stmt =
-	let evd = ref Evd.empty in
 	let leninds = List.length inds in
 	let elim =
 	  if leninds > 1 then
@@ -687,20 +692,25 @@ let build_equations with_ind env id info data sign is_rec arity cst
 	in
 	let hookelim _ elimgr =
 	  let env = Global.env () in
-	  let elimcgr = Universes.constr_of_global elimgr in
+	  let evd = ref (Evd.from_env env) in
+	  let elimcgr, uc = Universes.unsafe_constr_of_global elimgr in
+	  let ctx = Univ.ContextSet.of_context (Univ.instantiate_univ_context uc) in
+	  let () = evd := Evd.merge_context_set Evd.UnivRigid !evd ctx in
 	  let cl = functional_elimination_class () in
-	  let args = [Retyping.get_type_of env Evd.empty f; f; 
-		      Retyping.get_type_of env Evd.empty elimcgr; elimcgr]
+	  let args = [Retyping.get_type_of env !evd f; f; 
+		      Retyping.get_type_of env !evd elimcgr; elimcgr]
 	  in
 	  let instid = add_prefix "FunctionalElimination_" id in
-	    ignore(declare_instance instid info.polymorphic 
-		     (if info.polymorphic then !evd else Evd.empty) [] cl args)
+	    ignore(declare_instance instid poly
+		     (if poly then !evd else Evd.empty) [] cl args)
 	in
-	  try 
+	  try
+	    let tactic =
+	      of82 (ind_elim_tac (fst (Universes.unsafe_constr_of_global elim)) leninds info)
+	    in
 	    (* Conv_oracle.set_strategy (ConstKey cst) Conv_oracle.Expand; *)
 	    ignore(Obligations.add_definition (add_suffix id "_elim")
-		     ~tactic:(of82 (ind_elim_tac (Universes.constr_of_global elim) leninds info))
-		     ~hook:(Lemmas.mk_hook hookelim)
+		     ~tactic ~hook:(Lemmas.mk_hook hookelim) ~kind:info.decl_kind
 		     newty (Evd.evar_universe_context !evd) [||])
 	  with e ->
 	    msg_warning 
@@ -708,17 +718,20 @@ let build_equations with_ind env id info data sign is_rec arity cst
 		 Errors.print e)
       in
       let cl = functional_induction_class () in
-      let evd = Evd.empty in
-      let args = [Retyping.get_type_of env evd f; f; 
-		  Global.type_of_global_unsafe gr; Universes.constr_of_global gr]
+      let evd = ref (Evd.from_env env) in
+      let grc, uc = Universes.unsafe_constr_of_global gr in
+      let ctx = Univ.ContextSet.of_context (Univ.instantiate_univ_context uc) in
+      let () = evd := Evd.merge_context_set Evd.UnivRigid !evd ctx in
+      let args = [Retyping.get_type_of env !evd f; f; 
+		  Retyping.get_type_of env !evd grc; grc]
       in
       let instid = add_prefix "FunctionalInduction_" id in
-	ignore(declare_instance instid info.polymorphic 
-		 (if info.polymorphic then evd else Evd.empty) [] cl args)
+	ignore(declare_instance instid poly
+		 (if poly then !evd else Evd.empty) [] cl args)
     in
-      try ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hookind)
+      try ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hookind) ~kind:info.decl_kind
 		   indid statement ~tactic:(of82 (ind_fun_tac is_rec f info id split ind))
-		   (Evd.evar_universe_context (if info.polymorphic then evd else Evd.empty))
+		   (Evd.evar_universe_context (if poly then !evd else Evd.empty))
 		    [||])
       with e ->
 	msg_warning (str "Induction principle could not be proved automatically: " ++ fnl () ++
@@ -747,9 +760,8 @@ let build_equations with_ind env id info data sign is_rec arity cst
       let tac = 
 	tclTHENLIST [to82 intros; to82 unf; to82 (solve_equation_tac (ConstRef cst) [])]
       in
-      let evd = ref Evd.empty in
-      let _ = Typing.e_type_of (Global.env ()) evd c in
-	ignore(Obligations.add_definition
+      let _ = e_type_of (Global.env ()) evd c in
+	ignore(Obligations.add_definition ~kind:info.decl_kind
 		  ideq c ~tactic:(of82 tac) ~hook:(Lemmas.mk_hook hook)
 		  (Evd.evar_universe_context !evd) [||])
     in iter proof stmts
@@ -942,28 +954,34 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   in
   let env = Global.env () in
   let poly = Flags.is_universe_polymorphism () in
-  let isevar = ref (create_evar_defs Evd.empty) in
-  let ienv, ((env', sign), impls) = interp_context_evars env isevar l in
-  let arity = interp_type_evars env' isevar t in
-  let sign = nf_rel_context_evar ( !isevar) sign in
-  let arity = nf_evar ( !isevar) arity in
+  let evd = ref (Evd.from_env env) in
+  let ienv, ((env', sign), impls) = interp_context_evars env evd l in
+  let arity = interp_type_evars env' evd t in
+  let sign = nf_rel_context_evar ( !evd) sign in
+  let arity = nf_evar ( !evd) arity in
   let arity, comp = 
     let body = it_mkLambda_or_LetIn arity sign in
-    let _ = check_evars env Evd.empty !isevar body in
+    let _ = check_evars env Evd.empty !evd body in
       if with_comp then
 	let compid = add_suffix i "_comp" in
-	let ce = make_definition isevar body in
+	let ce = make_definition ~poly evd body in
 	let comp =
 	  Declare.declare_constant compid (DefinitionEntry ce, IsDefinition Definition)
 	in (*Typeclasses.add_constant_class c;*)
-	let compapp = mkApp (mkConst comp, rel_vect 0 (length sign)) in
+	let compc = e_new_global evd (ConstRef comp) in
+	let compapp = mkApp (compc, rel_vect 0 (length sign)) in
 	let projid = add_suffix i "_comp_proj" in
 	let compproj = 
 	  let body = it_mkLambda_or_LetIn (mkRel 1)
 	    ((Name (id_of_string "comp"), None, compapp) :: sign)
 	  in
-	  let ce = Declare.definition_entry body in
-	    Declare.declare_constant projid (DefinitionEntry ce, IsDefinition Definition)
+	  let _ty = e_type_of (Global.env ()) evd body in
+	  let nf, _ = Evarutil.e_nf_evars_and_universes evd in
+	  let ce = Declare.definition_entry ~poly ~univs:(Evd.universe_context !evd)
+					    (nf body)
+	  in
+	    Declare.declare_constant projid
+				     (DefinitionEntry ce, IsDefinition Definition)
 	in
 	  Impargs.declare_manual_implicits true (ConstRef comp) [impls];
 	  Impargs.declare_manual_implicits true (ConstRef compproj) 
@@ -981,10 +999,10 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   let data = Constrintern.compute_internalization_env
     env Constrintern.Recursive [i] [ty] [impls] 
   in
-  let sort = Retyping.get_type_of env !isevar ty in
-  let sort = Evarutil.evd_comb1 (Evarsolve.refresh_universes (Some false) env) isevar sort in
+  let sort = Retyping.get_type_of env !evd ty in
+  let sort = Evarutil.evd_comb1 (Evarsolve.refresh_universes (Some false) env) evd sort in
   let fixprot = mkApp (Universes.constr_of_global (Lazy.force coq_fix_proto), [|sort; ty|]) in
-  let _fixprot_ty = Typing.e_type_of env isevar fixprot in
+  let _fixprot_ty = e_type_of env evd fixprot in
   let fixdecls = [(Name i, None, fixprot)] in
   let is_recursive =
     let rec occur_eqn (_, _, rhs) =
@@ -1009,33 +1027,39 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   let equations = 
     Metasyntax.with_syntax_protection (fun () ->
       List.iter (Metasyntax.set_notation_for_interpretation data) nt;
-      map (interp_eqn i is_recursive isevar env data sign arity None) eqs)
+      map (interp_eqn i is_recursive evd env data sign arity None) eqs)
       ()
   in
-  let sign = nf_rel_context_evar ( !isevar) sign in
-  let arity = nf_evar ( !isevar) arity in
-  let fixdecls = nf_rel_context_evar ( !isevar) fixdecls in
-    (*   let ce = check_evars fixenv Evd.empty !isevar in *)
+  let sign = nf_rel_context_evar ( !evd) sign in
+  let arity = nf_evar ( !evd) arity in
+  let fixdecls = nf_rel_context_evar ( !evd) fixdecls in
+    (*   let ce = check_evars fixenv Evd.empty !evd in *)
     (*   List.iter (function (_, _, Program rhs) -> ce rhs | _ -> ()) equations; *)
   let prob = 
     if is_structural is_recursive then
       id_subst (sign @ fixdecls)
     else id_subst sign
   in
-  let split = covering env isevar (i,with_comp,data) equations prob arity in
+  let split = covering env evd (i,with_comp,data) equations prob arity in
     (* if valid_tree prob split then *)
   let status = (* if is_recursive then Expand else *) Define false in
   let baseid = string_of_id i in
   let (ids, csts) = full_transparent_state in
   let fix_proto_ref = destConstRef (Lazy.force coq_fix_proto) in
-  Hints.create_hint_db false baseid (ids, Cpred.remove fix_proto_ref csts) true;
+  let kind = (Decl_kinds.Global, poly, Decl_kinds.Definition) in
+  let () = Hints.create_hint_db false baseid (ids, Cpred.remove fix_proto_ref csts) true in
   let hook cmap helpers subst gr = 
-    let info = { base_id = baseid; helpers_info = helpers; polymorphic = poly } in
+    let info = { base_id = baseid; helpers_info = helpers; decl_kind = kind } in
     let () = inline_helpers info in
     let f_cst = match gr with ConstRef c -> c | _ -> assert false in
     let env = Global.env () in
     let split = map_evars_in_split cmap split in
-    let f = constr_of_global gr in
+    let () =
+      let ctx = Evd.evar_universe_context !evd in
+	evd := Evd.merge_universe_context (Evd.from_env env) ctx
+    in
+    (* let f = e_new_global evd gr in *)
+    let (f, _) = Universes.unsafe_constr_of_global gr in
       if with_eqns || with_ind then
 	match is_recursive with
 	| Some (Structural _) ->
@@ -1045,44 +1069,47 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 		(ctx @ fixdecls', pats, ctx'), ids
 	    in
 	    let split = update_split is_recursive cmap f cutprob i split in
-	      build_equations with_ind env i info data sign is_recursive arity 
-		f_cst (constr_of_global gr) norecprob split
+	      build_equations with_ind env !evd i info sign is_recursive arity 
+		f_cst f norecprob split
 	| None ->
 	    let split = update_split is_recursive cmap f prob i split in
-	    build_equations with_ind env i info data sign is_recursive arity 
-	      f_cst (constr_of_global gr) prob split
+	      build_equations with_ind env !evd i info sign is_recursive arity 
+			      f_cst f prob split
 	| Some (Logical r) ->
 	    let unfold_split = update_split is_recursive cmap f prob i split in
 	    (* We first define the unfolding and show the fixpoint equation. *)
-	    isevar := Evd.empty;
 	    let unfoldi = add_suffix i "_unfold" in
 	    let hook_unfold cmap helpers' vis gr' = 
 	      let info = { base_id = baseid; helpers_info = helpers @ helpers'; 
-			   polymorphic = poly } in
+			   decl_kind = kind } in
 	      let () = inline_helpers info in
 	      let funf_cst = match gr' with ConstRef c -> c | _ -> assert false in
-	      let funfc =  mkConst funf_cst in
+	      let funfc = e_new_global evd gr' in
 	      let unfold_split = map_evars_in_split cmap unfold_split in
 	      let hook_eqs subst grunfold =
 		Global.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
-		build_equations with_ind env i info data sign None arity
-		  funf_cst funfc ~alias:(f, constr_of_global grunfold, split) prob unfold_split
+		let env = Global.env () in
+		(* let () = evd := (Evd.from_env env) in *)
+		let grc = e_new_global evd grunfold in
+		  build_equations with_ind env !evd i info sign None arity
+				  funf_cst funfc ~alias:(f, grc, split) prob unfold_split
 	      in
-	      let evd = ref Evd.empty in
+	      let evd = ref (Evd.from_env (Global.env ())) in
 	      let stmt = it_mkProd_or_LetIn 
 		(mkEq evd arity (mkApp (f, extended_rel_vect 0 sign))
-		    (mkApp (mkConst funf_cst, extended_rel_vect 0 sign))) sign 
+		    (mkApp (funfc, extended_rel_vect 0 sign))) sign 
 	      in
 	      let tac = prove_unfolding_lemma info (mkConst r.comp_proj) f_cst funf_cst unfold_split in
 	      let unfold_eq_id = add_suffix unfoldi "_eq" in
-		ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hook_eqs)
-			 ~reduce:(fun x -> x)
+		ignore(Obligations.add_definition ~kind:info.decl_kind
+			 ~hook:(Lemmas.mk_hook hook_eqs) ~reduce:(fun x -> x)
 			 ~implicits:impls unfold_eq_id stmt ~tactic:(of82 tac)
 			  (Evd.evar_universe_context !evd) [||])
 	    in
-	      define_tree None impls status isevar env (unfoldi, sign, arity) None ann unfold_split hook_unfold
+	      define_tree None poly impls status evd env
+			  (unfoldi, sign, arity) None ann unfold_split hook_unfold
       else ()
-  in define_tree is_recursive impls status isevar env (i, sign, arity) comp ann split hook
+  in define_tree is_recursive poly impls status evd env (i, sign, arity) comp ann split hook
 
 let with_rollback f x =
   (* States.with_heavy_rollback f *)

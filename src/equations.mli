@@ -35,7 +35,7 @@ val autorewrite_one : string -> Proofview.V82.tac
 
 type term_info = {
   base_id : string;
-  polymorphic : bool;
+  decl_kind : Decl_kinds.definition_kind;
   helpers_info : (existential_key * int * identifier) list;
 }
 
@@ -80,17 +80,9 @@ val ind_elim_tac :
 
 (** Defining equations *)
 val build_equations :
-  bool ->
-  env ->
-  Id.t ->
-  term_info ->
-  'a ->
-  rel_context ->
-  rec_type option ->
-  types ->
-  constant ->
-  constr ->
-  ?alias:constr * constr * splitting ->
+  bool (* with_ind *) -> env -> Evd.evar_map -> Id.t ->
+  term_info -> rel_context -> rec_type option -> types ->
+  constant -> constr -> ?alias:constr * constr * splitting ->
   context_map -> splitting -> unit
 
 

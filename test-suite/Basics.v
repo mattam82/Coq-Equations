@@ -18,7 +18,7 @@ Module TestF.
     f (S m) IH := _
   }.
   
-  Next Obligation. exact IH. Defined.
+  Next Obligation. unfold f_comp in *. exact IH. Defined.
 
 End TestF.
 
@@ -85,9 +85,13 @@ Next Obligation.
   apply IHt.
 Defined.
 
+
 Require Import Arith Wf_nat.
+
 Instance wf_nat : WellFounded lt := lt_wf.
+
 Hint Resolve lt_n_Sn : lt.
+
 Ltac solve_rec ::= simpl in * ; cbv zeta ; intros ; 
   try typeclasses eauto with subterm_relation Below lt.
 
@@ -97,8 +101,6 @@ testn 0 := 0 ;
 testn (S n) <= testn n => {
   | 0 := S 0 ;
   | (S n') := S n' }.
-
-(* Recursive Extraction testn. *)
 
 Require Import Vectors.Vector.
 
@@ -553,7 +555,7 @@ Definition transpose {A m n} : mat A m n -> mat A n m :=
 (*   (e : vector (vector A 0) n) v : vfold_right f (vmake n Vnil) v =  *)
 (* Typeclasses eauto :=. *)
 
-From Equations Require Import Fin.
+Require Import Equations.fin.
 
 Generalizable All Variables.
 

@@ -35,7 +35,7 @@ val term_of_tree :
 val is_comp_obl : rec_info option -> Evar_kinds.t -> bool
 
 val define_tree :
-  rec_type option ->
+  rec_type option -> Decl_kinds.polymorphic ->
   (Constrexpr.explicitation * (bool * bool * bool)) list ->
   Evar_kinds.obligation_definition_status ->
   Evd.evar_map ref ->

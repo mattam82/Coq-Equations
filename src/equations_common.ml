@@ -114,6 +114,8 @@ let init_constant dir s = find_constant contrib_name dir s
 let init_reference dir s = Coqlib.find_reference contrib_name dir s
 let gen_constant dir s = Coqlib.gen_constant "equations" dir s
 
+let e_type_of = Typing.e_type_of ~refresh:false				 
+					     
 let make_definition ?opaque ?(poly=false) evd ?types b =
   let env = Global.env () in
   let _t = Typing.e_type_of env evd b in
