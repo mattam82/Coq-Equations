@@ -72,16 +72,13 @@ let mkcase env c ty constrs =
   in
     mkCase (ci, ty, c, brs)
 
-let mk_eqs env evd args args' pv = 
-  let prf =
-    List.fold_right2 (fun x y c -> 
-      let tyx = Retyping.get_type_of env Evd.empty x 
-      and tyy = Retyping.get_type_of env Evd.empty y in
-      let hyp, prf = mk_term_eq env evd tyx x tyy y in
-	mkProd (Anonymous, hyp, lift 1 c))
-      args args' pv
-  in mkProd (Anonymous, prf, pv)
-	
+let mk_eq env evd args args' indty = 
+  let _, _, make = Sigma.telescope evd args in
+  let _, _, make' = Sigma.telescope evd args' in
+  let make = lift (List.length args + 1) make in
+  let ty = Retyping.get_type_of env !evd make in
+  mkEq evd ty make make'
+
 let derive_no_confusion env evd (ind,u) =
   let evd = ref evd in
   let poly = Flags.is_universe_polymorphism () in
@@ -93,15 +90,14 @@ let derive_no_confusion env evd (ind,u) =
   let argsvect = rel_vect 0 len in
   let paramsvect, rest = Array.chop params argsvect in
   let indty = mkApp (mkInd ind, argsvect) in
-  let pid = (id_of_string "P") in
-  let pvar = mkVar pid in
+  let tru = Lazy.force (Lazy.from_fun Coqlib.build_coq_True) in
+  let fls = Lazy.force (Lazy.from_fun Coqlib.build_coq_False) in
   let xid = id_of_string "x" and yid = id_of_string "y" in
-  let xdecl = (Name xid, None, lift 1 indty) in
-  let pty = e_new_Type env evd in
-  let binders = xdecl :: (Name pid, None, pty) :: ctx in
-  let ydecl = (Name yid, None, lift 2 indty) in
+  let xdecl = (Name xid, None, indty) in
+  let binders = xdecl :: ctx in
+  let ydecl = (Name yid, None, lift 1 indty) in
   let fullbinders = ydecl :: binders in
-  let arity = it_mkProd_or_LetIn pty fullbinders in
+  let arity = it_mkProd_or_LetIn mkProp fullbinders in
   let env = push_rel_context binders env in
   let ind_with_parlift n =
     mkApp (mkInd ind, Array.append (Array.map (lift n) paramsvect) rest) 
@@ -109,26 +105,25 @@ let derive_no_confusion env evd (ind,u) =
   let lenargs = List.length ctx - params in
   let pred =
     let elim =
-      let app = ind_with_parlift (args + 2) in
+      let app = ind_with_parlift (args + 1) in
 	it_mkLambda_or_LetIn 
-	  (mkProd_or_LetIn (Anonymous, None, lift 1 app) pty)
-	  ((Name xid, None, ind_with_parlift (2 + lenargs)) :: List.firstn lenargs ctx)
+	  (mkProd_or_LetIn (Anonymous, None, lift 1 app) mkProp)
+	  ((Name xid, None, ind_with_parlift (1 + lenargs)) :: List.firstn lenargs ctx)
     in
       mkcase env (mkRel 1) elim (fun ind i id nparams args arity ->
 	let ydecl = (Name yid, None, arity) in
 	let env' = push_rel_context (ydecl :: args) env in
-	let decl = (Name yid, None, ind_with_parlift (lenargs + List.length args + 3)) in
+	let decl = (Name yid, None, ind_with_parlift (lenargs + List.length args + 2)) in
 	  mkLambda_or_LetIn ydecl
 	    (mkcase env' (mkRel 1) 
-		(it_mkLambda_or_LetIn pty (decl :: List.firstn lenargs ctx))
+		(it_mkLambda_or_LetIn mkProp (decl :: List.firstn lenargs ctx))
 		(fun _ i' id' nparams args' arity' ->
 		  if i = i' then 
-		    mk_eqs (push_rel_context args' env') evd
-		      (rel_list (List.length args' + 1) (List.length args))
-		      (rel_list 0 (List.length args')) pvar
-		  else pvar)))
+        if List.length args = 0 then tru
+        else mk_eq (push_rel_context args' env') evd args args' indty
+		  else fls)))
   in
-  let app = it_mkLambda_or_LetIn (replace_vars [(pid, mkRel 2)] pred) binders in
+  let app = it_mkLambda_or_LetIn pred binders in
   let ce = make_definition ~poly evd ~types:arity app in
   let indid = Nametab.basename_of_global (IndRef ind) in
   let id = add_prefix "NoConfusion_" indid
@@ -137,7 +132,7 @@ let derive_no_confusion env evd (ind,u) =
   let cstNoConf = Declare.declare_constant id (DefinitionEntry ce, IsDefinition Definition) in
   let stmt = it_mkProd_or_LetIn
     (mkApp (mkConst cstNoConf, rel_vect 1 (List.length fullbinders)))
-    ((Anonymous, None, mkEq evd (lift 3 indty) (mkRel 2) (mkRel 1)) :: fullbinders)
+    ((Anonymous, None, mkEq evd (lift 2 indty) (mkRel 2) (mkRel 1)) :: fullbinders)
   in
   let hook vis gr = 
     let evd = ref (Evd.from_env (Global.env ())) in

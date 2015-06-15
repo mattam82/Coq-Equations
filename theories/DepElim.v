@@ -278,25 +278,29 @@ Ltac simpl_depind_r := subst_right_no_fail ; autoinjections_right ; try discrimi
    *)
 
 Class NoConfusionPackage (A : Type) := {
-  NoConfusion : Type -> A -> A -> Type;
-  noConfusion : forall P a b, a = b -> NoConfusion P a b
+  NoConfusion : A -> A -> Prop;
+  noConfusion : forall a b, a = b -> NoConfusion a b
 }.
 
 (** Apply [noConfusion] on a given hypothsis. *)
 
 Ltac noconf_ref H :=
   match type of H with
-    ?R ?A ?X ?Y =>
-    match goal with
-      [ |- ?P ] =>
-      let H' := fresh in assert (H':=noConfusion (A:=A) P X Y H) ;
-        apply H' ; clear H' H 
-    end
+    @eq ?A ?X ?Y =>
+      let H' := fresh in assert (H':=noConfusion (A:=A) X Y H) ;
+      clear H; hnf in H'; 
+      match type of H' with
+      | True => clear H'
+      | False => elim H'
+      | @eq _ _ _ => revert dependent H'
+      | _ => fail
+      end
   end.
 
-Ltac blocked t := block_goal ; t ; unblock_goal.
+(** The inj_right_pair_refl lemma is now useful also when using noConfusion. *)
+Hint Rewrite @inj_right_pair_refl : refl_id.
 
-Ltac noconf H := blocked ltac:(noconf_ref H ; intros).
+Ltac blocked t := block_goal ; t ; unblock_goal.
 
 (** The [DependentEliminationPackage] provides the default dependent elimination principle to
    be used by the [equations] resolver. It is especially useful to register the dependent elimination
@@ -508,6 +512,8 @@ Ltac simplify_one_dep_elim_term c :=
     (* | forall x, _ => intro x || (let H := fresh x in rename x into H ; intro x) (* Try to keep original names *) *)
     (* | _ -> _ => intro *)
   end.
+
+Ltac noconf H := blocked ltac:(noconf_ref H ; simplify_dep_elim).
 
 Ltac simplify_one_dep_elim :=
   match goal with

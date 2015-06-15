@@ -20,7 +20,7 @@ Ltac noconf H ::=
 
 Ltac solve_noconf := 
   simplify_dep_elim ; on_last_hyp ltac:(fun id => depelim id) ;
-  red ; let H := fresh in intro H ; apply H ; reflexivity.
+  red ; solve [exact I | reflexivity].
 
 Derive NoConfusion for unit bool nat option sum prod list sigT sig.
 

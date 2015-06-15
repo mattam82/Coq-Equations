@@ -755,8 +755,8 @@ Proof. intros. revert H1. funelim (hereditary_subst (U, u, t) (length Γ'));
   depelim H1.
   (* Var *)
   apply nat_compare_eq in Heq; subst n.
-  rewrite !nth_length. split. term. intros. 
-  noconf H2. noconf H2. auto.
+  rewrite !nth_length. split. term. intros.
+  noconf H2. auto.
  
   (* Lt *)
   apply nat_compare_lt in Heq. depelim H1.
@@ -771,7 +771,7 @@ Proof. intros. revert H1. funelim (hereditary_subst (U, u, t) (length Γ'));
   (* App *)
   on_call (hereditary_subst (U, u0, u)) ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
-  noconf H4. subst t' o.
+  noconf H4.
   specialize (H0 [] _ _ _ eq_refl eq_refl (eq_JMeq Heqhsubst0)). simpl in H0.
   depelim H3.
   specialize (H _ _ H2 H3_0).
@@ -779,12 +779,12 @@ Proof. intros. revert H1. funelim (hereditary_subst (U, u, t) (length Γ'));
   specialize (Hind _ _ eq_refl).
   depelim Hind. 
   specialize (H2 _ _ eq_refl).
-  noconf H2. subst A B.
+  noconf H2.
   depelim H.
-  specialize (H0 (Γ' @ Γ) b H). depelim H2.
-  specialize (H0 H2 _ _ (eq_sym Heqhsubst0)). destruct H0.
+  specialize (H1 (Γ' @ Γ) B H). depelim H2.
+  specialize (H1 H2 _ _ (eq_sym Heqhsubst0)). destruct H1.
   split; [auto|intros ty prf0 Heq'].
-  noconf Heq'. noconf H6. auto.
+  noconf Heq'. auto.
   
   (* depelim H1; eauto. apply H0. *)
   (* on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *)
@@ -804,7 +804,7 @@ Proof. intros. revert H1. funelim (hereditary_subst (U, u, t) (length Γ'));
   (* Fst redex *) clear Heq.
   depelim H1. specialize (Hind _ _ H0 H1).
   rewrite Heq0 in Hind. specialize (Hind _ _ eq_refl).
-  destruct Hind. depelim H2. intuition auto. noconf H2. noconf H2. subst.
+  destruct Hind. depelim H2. intuition auto. noconf H2.
   specialize (H3 _ _ eq_refl). now noconf H3.
 
   (* Fst no redex *)
@@ -816,7 +816,7 @@ Proof. intros. revert H1. funelim (hereditary_subst (U, u, t) (length Γ'));
   (* Snd redex *) clear Heq.
   depelim H1. specialize (Hind _ _ H0 H1).
   rewrite Heq0 in Hind. specialize (Hind _ _ eq_refl).
-  destruct Hind. depelim H2. intuition auto. noconf H2. noconf H2.
+  destruct Hind. depelim H2. intuition auto. noconf H2.
   specialize (H3 _ _ eq_refl). noconf H3. congruence.
 
   (* Snd no redex *)
@@ -940,16 +940,16 @@ Proof.
   intros Ht; depelim Ht.
   specialize (Hind0 _ A Hu).
   destruct (Hind Γ (A ---> B) Hu). 
-  destruct (H3 Ht). noconf H5. subst A B.
+  destruct (H3 Ht). noconf H5.
   depelim H4. split; auto. 
 
   destruct o. destruct h. destruct Hind0.
   specialize (H5 H). destruct H5. subst x. 
-  specialize (H0 _ b H5). destruct o0. destruct h. 
+  specialize (H0 _ B H5). destruct o0. destruct h. 
   destruct H0; now apply H0.
   destruct H0; now apply H0.
   destruct Hind0. 
-  specialize (H0 _ b (H5 H)). destruct o0 as [[ty prf']|]. 
+  specialize (H0 _ B (H5 H)). destruct o0 as [[ty prf']|]. 
   destruct H0; now apply H0.
   destruct H0; now apply H0.
 
@@ -1002,9 +1002,9 @@ Proof.
   assert( (Γ' @ (U :: Γ) |-- Fst t5 => T → Γ' @ Γ |-- u <= T ∧ a = T)).
   intros Ht; depelim Ht. specialize (Hind _ (A × B) Hu). revert Hind.
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). 
-  noconf Heq0. intros Hind. subst o t.
+  noconf Heq0.
   destruct Hind as [Hind Hind']. 
-  specialize (Hind' Ht). destruct Hind' as [H0 H1]. noconf H1. subst a b. 
+  specialize (Hind' Ht). destruct Hind' as [H0 H1]. noconf H1.
   depelim H0. split; auto.
   depelim H. 
   split; auto.
@@ -1028,9 +1028,9 @@ Proof.
 
   intros Ht; depelim Ht. specialize (Hind _ (A × B) Hu). revert Hind.
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). 
-  noconf Heq0. intros Hind; subst o t.
+  noconf Heq0.
   destruct Hind as [Hind Hind']. 
-  specialize (Hind' Ht). destruct Hind' as [H0 H1]. noconf H1. subst a b. 
+  specialize (Hind' Ht). destruct Hind' as [H0 H1]. noconf H1.
   depelim H0. split; auto. depelim H.
   split; auto.
   intros H1. depelim H1. intuition auto with term.

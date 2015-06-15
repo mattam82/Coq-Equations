@@ -81,8 +81,8 @@ Next Obligation.
   induction t. 
   constructor; intros. simpl in *. inversion H.
   constructor; intros. simpl in *. inversion H.
-  subst. destruct y; simpl in *. noconf H7. apply JMeq_eq in H1. subst. noconf H3. 
-  apply JMeq_eq in H2. subst. apply IHt.
+  subst. destruct y; simpl in *. noconf H7.
+  apply IHt.
 Defined.
 
 Require Import Arith Wf_nat.

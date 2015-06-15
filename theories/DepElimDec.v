@@ -11,8 +11,6 @@ Require Import Equations.Signature Equations.DepElim Equations.EqDec.
 (** Alternative implementation of generalization using sigma types only,
    allowing to use K on decidable domains. *)
 
-Hint Rewrite @inj_right_pair_refl : refl_id.
-
 (** Decompose existential packages. *)
 
 Definition sigT_elim {A} {P : A -> Type} {P0 : sigT P -> Type} :

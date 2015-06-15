@@ -185,9 +185,9 @@ Proof.
   intros i ie. funelim (infer_sort i ie); intros s' Heqs; 
                try (noconf Heqs || (rewrite Heq in Heqs; noconf Heqs)).
   - now constructor. 
-  - subst s'. now constructor.
-  - subst s'. specialize (Hind _ Heq). now constructor.
-  - subst s'. specialize (Hind _ Heq). now constructor.  
-  - subst s0. pose proof (Hind _ Heq0). pose proof (Hind0 _ Heq1).
+  - now constructor.
+  - specialize (Hind _ Heq). now constructor.
+  - specialize (Hind _ Heq). now constructor.  
+  - pose proof (Hind _ Heq0). pose proof (Hind0 _ Heq1).
     econstructor; eauto.
 Qed.
