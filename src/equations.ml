@@ -1058,8 +1058,8 @@ let define_by_eqs opts i (l,ann) t nt eqs =
       let ctx = Evd.evar_universe_context !evd in
 	evd := Evd.merge_universe_context (Evd.from_env env) ctx
     in
-    (* let f = e_new_global evd gr in *)
-    let (f, _) = Universes.unsafe_constr_of_global gr in
+    let f = e_new_global evd gr in
+    (* let (f, _) = Universes.unsafe_constr_of_global gr in *)
       if with_eqns || with_ind then
 	match is_recursive with
 	| Some (Structural _) ->
