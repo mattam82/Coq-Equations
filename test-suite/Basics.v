@@ -555,7 +555,7 @@ Definition transpose {A m n} : mat A m n -> mat A n m :=
 (*   (e : vector (vector A 0) n) v : vfold_right f (vmake n Vnil) v =  *)
 (* Typeclasses eauto :=. *)
 
-Require Import Equations.fin.
+Require Import Equations.Fin.
 
 Generalizable All Variables.
 
