@@ -43,4 +43,4 @@ in your own directory. E.g. on Ubuntu, you would prefix the command with
 
 ## Documentation
 A preliminary documentation is available in `doc/` and
-some examples in `test-suite/` and `examples/`. 
+some examples in `test-suite/` and `examples/`.
