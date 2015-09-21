@@ -240,8 +240,9 @@ let clean_clause (ctx, pats, ty, c) =
   (ctx, pats, ty, 
   map_rhs (nf_beta Evd.empty) (fun x -> x) c)
 
-let map_evars_in_constr evar_map c = 
-  evar_map (fun id -> Universes.constr_of_global (Nametab.global (Qualid (dummy_loc, qualid_of_ident id)))) c
+let map_evars_in_constr evd evar_map c = 
+  evar_map (fun id -> Evarutil.evd_comb1 (Evd.fresh_global (Global.env ()))
+    evd (Nametab.global (Qualid (dummy_loc, qualid_of_ident id)))) c
 (*  list_try_find  *)
 (* 	      (fun (id', c, filter) ->  *)
 (* 		 if id = id' then (c, filter) else failwith "") subst) c *)
@@ -277,4 +278,4 @@ let map_split f split =
   in aux split
 
 
-let map_evars_in_split m = map_split (map_evars_in_constr m)
+let map_evars_in_split evd m= map_split (map_evars_in_constr evd m)

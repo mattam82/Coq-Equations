@@ -1053,7 +1053,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
     let () = inline_helpers info in
     let f_cst = match gr with ConstRef c -> c | _ -> assert false in
     let env = Global.env () in
-    let split = map_evars_in_split cmap split in
+    let split = map_evars_in_split evd cmap split in
     let () =
       let ctx = Evd.evar_universe_context !evd in
 	evd := Evd.merge_universe_context (Evd.from_env env) ctx
@@ -1085,7 +1085,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	      let () = inline_helpers info in
 	      let funf_cst = match gr' with ConstRef c -> c | _ -> assert false in
 	      let funfc = e_new_global evd gr' in
-	      let unfold_split = map_evars_in_split cmap unfold_split in
+	      let unfold_split = map_evars_in_split evd cmap unfold_split in
 	      let hook_eqs subst grunfold =
 		Global.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
 		let env = Global.env () in
