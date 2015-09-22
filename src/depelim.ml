@@ -362,7 +362,7 @@ let depcase (mind, i as ind) =
   in ctx, indapp, kn
 
 let derive_dep_elimination ctx (i,u) loc =
-  let evd = Evd.from_env ~ctx (Global.env ()) in
+  let evd = Evd.from_env (Global.env ()) in
   let ctx, ty, gref = depcase i in
   let indid = Nametab.basename_of_global (IndRef i) in
   let id = add_prefix "DependentElimination_" indid in

@@ -138,7 +138,7 @@ VERNAC COMMAND EXTEND Derive_NoConfusion CLASSIFIED AS QUERY
       let env = (Global.env ()) in
       let c',ctx = Constrintern.interp_constr env Evd.empty c in
 	match kind_of_term c' with
-	| Ind i -> Noconf.derive_no_confusion env (Evd.from_env ~ctx env) i
+	| Ind i -> Noconf.derive_no_confusion env (Evd.from_env env) i
 	| _ -> error "Expected an inductive type")
       c
   ]

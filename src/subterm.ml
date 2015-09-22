@@ -250,7 +250,7 @@ let derive_subterm ind =
   in ignore(declare_ind ())
     
 let derive_below ctx (ind,u) =
-  let evd = ref (Evd.from_env ~ctx (Global.env ())) in
+  let evd = ref (Evd.from_env (Global.env ())) in
   let mind, oneind = Global.lookup_inductive ind in
   let ctx = oneind.mind_arity_ctxt in
   let len = List.length ctx in
