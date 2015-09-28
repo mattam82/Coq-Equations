@@ -387,15 +387,22 @@ let fix_rels ctx =
     if is_fix_proto t then Int.Set.add i acc else acc)
     1 Int.Set.empty ctx
 
-let rec dependencies_of_rel ctx k =
+let rec dependencies_of_rel env evd ctx k x =
   let (n,b,t) = nth ctx (pred k) in
   let b = Option.map (lift k) b and t = lift k t in
-  let bdeps = match b with Some b -> dependencies_of_term ctx b | None -> Int.Set.empty in
-    Int.Set.union (Int.Set.singleton k) (Int.Set.union bdeps (dependencies_of_term ctx t))
+  let bdeps = match b with Some b -> dependencies_of_term env evd ctx b x | None -> Int.Set.empty in
+    Int.Set.union (Int.Set.singleton k) (Int.Set.union bdeps (dependencies_of_term env evd ctx t x))
 
-and dependencies_of_term ctx t =
+and dependencies_of_term env evd ctx t x =
+  (* First we get the syntactic dependencies of t. *)
   let rels = free_rels t in
-    Int.Set.fold (fun i -> Int.Set.union (dependencies_of_rel ctx i)) rels Int.Set.empty
+  let rels =
+    (* We check if it mentions x. If it does, we reduce t because
+       we know it should not. *)
+    if Int.Set.mem x rels then
+      free_rels (nf_betadeltaiota env evd t)
+    else rels
+  in Int.Set.fold (fun i -> Int.Set.union (dependencies_of_rel env evd ctx i x)) rels Int.Set.empty
 
 let non_dependent ctx c =
   List.fold_left_i (fun i acc (_, _, t) -> 
@@ -411,16 +418,29 @@ let subst_term_in_context t ctx =
       ctx (t, 1, [])
   in newctx
 
-let strengthen ?(full=true) ?(abstract=false) (ctx : rel_context) x (t : constr) =
+let strengthen ?(full=true) ?(abstract=false) env evd (ctx : rel_context) x (t : constr) =
+  let rels = dependencies_of_term env evd ctx t x in
   let rels = Int.Set.union (if full then rels_above ctx x else Int.Set.singleton x)
-    (* (Int.Set.union *) (Int.Set.union (dependencies_of_term ctx t) (fix_rels ctx))
+    (* (Int.Set.union *) (Int.Set.union (dependencies_of_term env evd ctx t x) (fix_rels ctx))
     (* (non_dependent ctx t)) *)
   in
+  (* For each variable that we need to push under x, we check
+     if its type or body mentions x syntactically. If it does, we normalize
+     it. *)
+  let maybe_reduce k t =
+    if Int.Set.mem k (free_rels t) then
+      nf_betadeltaiota env evd t
+    else t
+  in
+  let ctx = List.map_i (fun k ((name, body, ty) as decl) ->
+    if Int.Set.mem k rels && k < x then
+      (name, Option.map (maybe_reduce (x - k)) body, maybe_reduce (x - k) ty)
+    else decl) 1 ctx in
   let len = length ctx in
   let nbdeps = Int.Set.cardinal rels in
   let lifting = len - nbdeps in (* Number of variables not linked to t *)
   let rec aux k n acc m rest s = function
-    | decl :: ctx' ->
+    | ((name, body, ty) as decl) :: ctx' ->
 	if Int.Set.mem k rels then
 	  let rest' = subst_telescope (mkRel (nbdeps + lifting - pred m)) rest in
 	    aux (succ k) (succ n) (decl :: acc) m rest' (Inl n :: s) ctx'
@@ -470,7 +490,7 @@ let lift_subst evd (ctx : context_map) (g : rel_context) =
   let map = List.fold_right (fun decl acc -> push_mapping_context decl acc) g ctx in
     check_ctx_map evd map
     
-let single_subst evd x p g =
+let single_subst env evd x p g =
   let t = pat_constr p in
     if eq_constr t (mkRel x) then
       id_subst g
@@ -488,7 +508,7 @@ let single_subst evd x p g =
       (* 	(List.length g) *)
       in mk_ctx_map evd substctx pats g
     else
-      let (ctx, s, g), _ = strengthen g x t in
+      let (ctx, s, g), _ = strengthen env evd g x t in
       let x' = match nth s (pred x) with PRel i -> i | _ -> error "Occurs check singleton subst"
       and t' = specialize_constr s t in
 	(* t' is in ctx. Do the substitution of [x'] by [t] now 
@@ -502,37 +522,37 @@ exception Stuck
 
 type 'a unif_result = UnifSuccess of 'a | UnifFailure | UnifStuck
       
-let rec unify evd flex g x y =
+let rec unify env evd flex g x y =
   if eq_constr x y then id_subst g
   else
     match kind_of_term x with
     | Rel i -> 
       if Int.Set.mem i flex then
-	single_subst evd i (PInac y) g
+	single_subst env evd i (PInac y) g
       else raise Stuck
     | _ ->
       match kind_of_term y with
       | Rel i ->
 	if Int.Set.mem i flex then
-	  single_subst evd i (PInac x) g
+	  single_subst env evd i (PInac x) g
 	else raise Stuck
       | _ ->
 	let (c, l) = decompose_app x 
 	and (c', l') = decompose_app y in
 	  if isConstruct c && isConstruct c' then
 	    if eq_constr c c' then
-	      unify_constrs evd flex g l l'
+	      unify_constrs env evd flex g l l'
 	    else raise Conflict
 	  else raise Stuck
 
-and unify_constrs evd flex g l l' = 
+and unify_constrs env evd flex g l l' = 
   match l, l' with
   | [], [] -> id_subst g
   | hd :: tl, hd' :: tl' ->
-    let (d,s,_ as hdunif) = unify evd flex g hd hd' in
+    let (d,s,_ as hdunif) = unify env evd flex g hd hd' in
     let specrest = map (specialize_constr s) in
     let tl = specrest tl and tl' = specrest tl' in
-    let tlunif = unify_constrs evd flex d tl tl' in
+    let tlunif = unify_constrs env evd flex d tl tl' in
       compose_subst ~sigma:evd tlunif hdunif
   | _, _ -> raise Conflict
 
@@ -677,7 +697,7 @@ let interp_constr_in_rhs env ctx evars (i,comp,impls) ty s lets c =
 	  let c' = nf_evar !evars (substnl pats 0 c) in
 	    c', nf_evar !evars (substnl pats 0 ty')
 	  
-let unify_type evars before id ty after =
+let unify_type env evars before id ty after =
   try
     let next_ident_away = 
       let ctxids = ref (ids_of_rel_context before @ ids_of_rel_context after) in
@@ -729,7 +749,7 @@ let unify_type evars before id ty after =
 	    let vs' = map (lift ctxclen) vs in
 	    let p1 = lift_pats ctxclen (inaccs_of_constrs (rels_of_tele before)) in
 	    let flex = flexible (p1 @ q) fullctx in
-	    let s = unify_constrs !evars flex fullctx vs' us in
+	    let s = unify_constrs env !evars flex fullctx vs' us in
 	      UnifSuccess (s, ctxclen, c, cpat)
 	  with Conflict -> UnifFailure | Stuck -> UnifStuck) cstrs
     in Some (newty, res)
@@ -857,7 +877,7 @@ let do_renamings ctx =
 let split_var (env,evars) var delta =
   (* delta = before; id; after |- curpats : gamma *)	    
   let before, (id, b, ty as decl), after = split_tele (pred var) delta in
-  let unify = unify_type evars before id ty after in
+  let unify = unify_type env evars before id ty after in
   let branch = function
     | UnifFailure -> None
     | UnifStuck -> assert false
@@ -1115,7 +1135,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		       variables in the original context.
 		    *)
 	      let refterm = lift 1 (mapping_constr revctx cconstr) in
-	      let cmap, strinv = strengthen ~full:false ~abstract:true extnewctx 1 refterm in
+	      let cmap, strinv = strengthen ~full:false ~abstract:true env !evars extnewctx 1 refterm in
 	      let (idx_of_refined, _) = List.find (fun (i, j) -> j = 1) strinv in
 	      let newprob_to_lhs =
 		let inst_refctx = set_in_ctx idx_of_refined (mapping_constr cmap refterm) (pi1 cmap) in

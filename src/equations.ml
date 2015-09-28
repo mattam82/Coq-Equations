@@ -284,7 +284,7 @@ let subst_rec_split redefine f prob s split =
 		it_mkLambda_or_LetIn (applistc f args) lctx
 	    else f
 	  in
-	  let substf = single_subst Evd.empty rel (PInac fK) ctx (* ctx[n := f] |- _ : ctx *) in
+	  let substf = single_subst (Global.env ()) Evd.empty rel (PInac fK) ctx (* ctx[n := f] |- _ : ctx *) in
 	    compose_subst substf lhs') (id_subst ctx) s
     in
       subst, compose_subst (compose_subst subst lhs) cutprob

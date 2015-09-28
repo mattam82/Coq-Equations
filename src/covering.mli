@@ -155,11 +155,17 @@ val rels_above : 'a list -> int -> Int.Set.t
 val is_fix_proto : constr -> bool
 val fix_rels : ('a * 'b * constr) list -> Int.Set.t
 val dependencies_of_rel :
+  env ->
+  Evd.evar_map ->
   rel_context ->
+  Int.Set.elt ->
   Int.Set.elt -> Int.Set.t
 val dependencies_of_term :
+  env ->
+  Evd.evar_map ->
   rel_context ->
-  constr -> Int.Set.t
+  constr ->
+  Int.Set.elt -> Int.Set.t
 val non_dependent :
   ('a * 'b * constr) list -> constr -> Int.Set.t
 val subst_term_in_context :
@@ -167,6 +173,8 @@ val subst_term_in_context :
 val strengthen :
   ?full:bool ->
   ?abstract:bool ->
+  env ->
+  Evd.evar_map ->
   rel_context ->
   Int.Set.elt ->
   constr ->
@@ -192,6 +200,7 @@ val push_mapping_context :
 val lift_subst :
   Evd.evar_map -> context_map -> rel_context -> context_map
 val single_subst :
+  env ->
   Evd.evar_map ->
   Int.Set.elt ->
   pat ->
@@ -205,12 +214,14 @@ type 'a unif_result = UnifSuccess of 'a | UnifFailure | UnifStuck
 type unification_result = (context_map * int * constr * pat) option
 
 val unify :
+  env ->
   Evd.evar_map ->
   Int.Set.t ->
   rel_context ->
   constr ->
   constr -> context_map
 val unify_constrs :
+  env ->
   Evd.evar_map ->
   Int.Set.t ->
   rel_context ->
@@ -252,6 +263,7 @@ val interp_constr_in_rhs :
   rel_context ->
   Constrexpr.constr_expr -> constr * types
 val unify_type :
+  env ->
   Evd.evar_map ref ->
   rel_context ->
   'a ->
@@ -271,13 +283,13 @@ val subst_matches_constr :
 val is_all_variables : 'a * pat list * 'b -> bool
 val do_renamings : (name * 'a * 'b) list -> (name * 'a * 'b) list
 val split_var :
-  'a * Evd.evar_map ref ->
+  env * Evd.evar_map ref ->
   int ->
   rel_context ->
   (int * (name * Constr.t option * Constr.t) list *
    context_map option array)
   option
-val find_empty : 'a * Evd.evar_map ref -> rel_context -> int option
+val find_empty : env * Evd.evar_map ref -> rel_context -> int option
 val rel_of_named_context :
   named_context ->
   rel_context * Id.t list
