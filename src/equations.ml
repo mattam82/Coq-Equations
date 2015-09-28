@@ -569,10 +569,10 @@ let build_equations with_ind env evd id info sign is_rec arity cst
     let f, split = match alias with Some (f, _, split) -> f, split | None -> f, split in
     let app = applist (f, args) in
     let statement = it_mkProd_or_subst (applist (ind, args @ [app])) sign in
-    let hookind subst gr = 
+    let hookind subst indgr = 
       let env = Global.env () in (* refresh *)
       Hints.add_hints false [info.base_id]
-	(Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef gr]);
+	(Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef indgr]);
       let _funind_stmt =
 	let leninds = List.length inds in
 	let elim =
@@ -692,17 +692,17 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 	in
 	let hookelim _ elimgr =
 	  let env = Global.env () in
-	  let evd = ref (Evd.from_env env) in
-	  let elimcgr, uc = Universes.unsafe_constr_of_global elimgr in
-	  let ctx = Univ.ContextSet.of_context (Univ.instantiate_univ_context uc) in
-	  let () = evd := Evd.merge_context_set Evd.UnivRigid !evd ctx in
+	  let evd = Evd.from_env env in
+    let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in
+    let evd, f = Evd.fresh_global env evd f_gr in
+    let evd, elimcgr = Evd.fresh_global env evd elimgr in
 	  let cl = functional_elimination_class () in
-	  let args = [Retyping.get_type_of env !evd f; f; 
-		      Retyping.get_type_of env !evd elimcgr; elimcgr]
+	  let args = [Retyping.get_type_of env evd f; f; 
+		      Retyping.get_type_of env evd elimcgr; elimcgr]
 	  in
 	  let instid = add_prefix "FunctionalElimination_" id in
 	    ignore(declare_instance instid poly
-		     (if poly then !evd else Evd.empty) [] cl args)
+		     (if poly then evd else Evd.empty) [] cl args)
 	in
 	  try
 	    let tactic =
@@ -717,17 +717,17 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 	      (str "Elimination principle could not be proved automatically: " ++ fnl () ++
 		 Errors.print e)
       in
+      let evd = Evd.from_env env in
+      let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in
+      let evd, f = Evd.fresh_global env evd f_gr in
+      let evd, indcgr = Evd.fresh_global env evd indgr in
       let cl = functional_induction_class () in
-      let evd = ref (Evd.from_env env) in
-      let grc, uc = Universes.unsafe_constr_of_global gr in
-      let ctx = Univ.ContextSet.of_context (Univ.instantiate_univ_context uc) in
-      let () = evd := Evd.merge_context_set Evd.UnivRigid !evd ctx in
-      let args = [Retyping.get_type_of env !evd f; f; 
-		  Retyping.get_type_of env !evd grc; grc]
+      let args = [Retyping.get_type_of env evd f; f; 
+		  Retyping.get_type_of env evd indcgr; indcgr]
       in
       let instid = add_prefix "FunctionalInduction_" id in
 	ignore(declare_instance instid poly
-		 (if poly then !evd else Evd.empty) [] cl args)
+		 (if poly then evd else Evd.empty) [] cl args)
     in
       try ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hookind) ~kind:info.decl_kind
 		   indid statement ~tactic:(of82 (ind_fun_tac is_rec f info id split ind))
