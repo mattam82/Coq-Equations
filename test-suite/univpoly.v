@@ -8,4 +8,6 @@ id A x := x.
 Set Printing Universes.
 (* Move fix_proto to poly version *)
 Equations foo (A : _) (a : A) : A :=
-foo A x := x.
+
+Equations(nocomp) foo' (A : _) (x : A) : A :=
+foo' A x := x.
