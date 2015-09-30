@@ -1054,15 +1054,14 @@ let define_by_eqs opts i (l,ann) t nt eqs =
     let f_cst = match gr with ConstRef c -> c | _ -> assert false in
     let env = Global.env () in
     let split = map_evars_in_split evd cmap split in
-    let () =
-      if poly then
-        let ctx = Evd.evar_universe_context !evd in
-  	(evd := Evd.merge_universe_context (Evd.from_env env) ctx;
-	 evd := Evd.fix_undefined_variables !evd)
-      else evd := Evd.from_env env
+    let f =
+      let (f, uc) = Universes.unsafe_constr_of_global gr in
+        evd := Evd.from_env env;
+	if poly then
+  	  evd := Evd.merge_context_set Evd.univ_rigid !evd
+	       (Univ.ContextSet.of_context (Univ.instantiate_univ_context uc));
+	f
     in
-    (* let f = e_new_global evd gr in *)
-    let (f, _) = Universes.unsafe_constr_of_global gr in
       if with_eqns || with_ind then
 	match is_recursive with
 	| Some (Structural _) ->
