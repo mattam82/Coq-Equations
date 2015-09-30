@@ -693,9 +693,9 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 	let hookelim _ elimgr =
 	  let env = Global.env () in
 	  let evd = Evd.from_env env in
-    let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in
-    let evd, f = Evd.fresh_global env evd f_gr in
-    let evd, elimcgr = Evd.fresh_global env evd elimgr in
+	  let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in
+	  let evd, f = Evd.fresh_global env evd f_gr in
+	  let evd, elimcgr = Evd.fresh_global env evd elimgr in
 	  let cl = functional_elimination_class () in
 	  let args = [Retyping.get_type_of env evd f; f; 
 		      Retyping.get_type_of env evd elimcgr; elimcgr]
@@ -1055,11 +1055,14 @@ let define_by_eqs opts i (l,ann) t nt eqs =
     let env = Global.env () in
     let split = map_evars_in_split evd cmap split in
     let () =
-      let ctx = Evd.evar_universe_context !evd in
-	evd := Evd.merge_universe_context (Evd.from_env env) ctx
+      if poly then
+        let ctx = Evd.evar_universe_context !evd in
+  	(evd := Evd.merge_universe_context (Evd.from_env env) ctx;
+	 evd := Evd.fix_undefined_variables !evd)
+      else evd := Evd.from_env env
     in
-    let f = e_new_global evd gr in
-    (* let (f, _) = Universes.unsafe_constr_of_global gr in *)
+    (* let f = e_new_global evd gr in *)
+    let (f, _) = Universes.unsafe_constr_of_global gr in
       if with_eqns || with_ind then
 	match is_recursive with
 	| Some (Structural _) ->

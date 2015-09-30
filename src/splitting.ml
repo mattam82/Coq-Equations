@@ -176,9 +176,10 @@ let zeta_red =
 let define_tree is_recursive poly impls status isevar env (i, sign, arity) comp ann split hook =
   let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
   let helpers, oblevs, t, ty = term_of_tree status isevar env (i, sign, arity) ann split in
+  let nf, subst = Evarutil.e_nf_evars_and_universes isevar in
   let obls, (emap, cmap), t', ty' = 
     Obligations.eterm_obligations env i !isevar
-      0 ~status t (whd_betalet !isevar ty)
+      0 ~status (nf t) (whd_betalet !isevar (nf ty))
   in
   let obls = 
     Array.map (fun (id, ty, loc, s, d, t) ->
