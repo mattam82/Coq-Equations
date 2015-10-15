@@ -266,13 +266,19 @@ let ind_fun_tac is_rec f info fid split ind =
 	  [fix (Some recid) (succ i);
 	   onLastDecl (fun (n,b,t) gl ->
 	     let sort = pf_get_type_of gl t in
-	     let fixprot = mkApp ((*FIXME*)Universes.constr_of_global (Lazy.force coq_fix_proto),
-				  [|sort; t|]) in
-	       Proofview.V82.of_tactic (change_in_hyp None (make_change_arg fixprot) (n, Locus.InHyp)) gl);
+	     let fixprot pats sigma =
+	       let c = 
+		 mkApp ((*FIXME*)Universes.constr_of_global (Lazy.force coq_fix_proto),
+				 [|sort; t|]) in
+	       let c' = replace_vars (Id.Map.bindings pats) c in
+	         fst (Typing.type_of (pf_env gl) sigma c'), c'
+	     in
+	     Proofview.V82.of_tactic
+	       (change_in_hyp None fixprot (n, Locus.InHyp)) gl);
 	   to82 intros; aux_ind_fun info split])
   else tclCOMPLETE (tclTHEN (to82 intros) (aux_ind_fun info split))
 
-let subst_rec_split redefine f prob s split = 
+let subst_rec_split evd redefine f prob s split = 
   let subst_rec cutprob s (ctx, p, _ as lhs) =
     let subst = 
       fold_left (fun (ctx, _, ctx' as lhs') (id, b) ->
@@ -284,10 +290,10 @@ let subst_rec_split redefine f prob s split =
 		it_mkLambda_or_LetIn (applistc f args) lctx
 	    else f
 	  in
-	  let substf = single_subst (Global.env ()) Evd.empty rel (PInac fK) ctx (* ctx[n := f] |- _ : ctx *) in
-	    compose_subst substf lhs') (id_subst ctx) s
+	  let substf = single_subst (Global.env ()) evd rel (PInac fK) ctx (* ctx[n := f] |- _ : ctx *) in
+	    compose_subst ~sigma:evd substf lhs') (id_subst ctx) s
     in
-      subst, compose_subst (compose_subst subst lhs) cutprob
+      subst, compose_subst ~sigma:evd (compose_subst ~sigma:evd subst lhs) cutprob
   in
   let rec aux cutprob s path = function
     | Compute ((ctx,pats,del as lhs), ty, c) ->
@@ -435,7 +441,7 @@ let build_equations with_ind env evd id info sign is_rec arity cst
     f ?(alias:(constr * constr * splitting) option) prob split =
   let rec computations prob f = function
     | Compute (lhs, ty, c) ->
-	let (ctx', pats', _) = compose_subst lhs prob in
+	let (ctx', pats', _) = compose_subst ~sigma:evd lhs prob in
 	let c' = map_rhs (nf_beta Evd.empty) (fun x -> x) c in
 	let patsconstrs = rev_map pat_constr pats' in
 	  [ctx', patsconstrs, ty, f, false, c', None]
@@ -448,17 +454,17 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 	
     | Refined (lhs, info, cs) ->
 	let (id, c, t) = info.refined_obj in
-	let (ctx', pats', _ as s) = compose_subst lhs prob in
+	let (ctx', pats', _ as s) = compose_subst ~sigma:evd lhs prob in
 	let patsconstrs = rev_map pat_constr pats' in
 	  [pi1 lhs, patsconstrs, info.refined_rettyp, f, true, RProgram (applist info.refined_app),
 	   Some (fst (info.refined_app), info.refined_path, pi1 info.refined_newprob,  info.refined_newty,
-	         rev_map pat_constr (pi2 (compose_subst info.refined_newprob_to_lhs s)), 
+	         rev_map pat_constr (pi2 (compose_subst ~sigma:evd info.refined_newprob_to_lhs s)), 
 		 [mapping_constr info.refined_newprob_to_lhs c, info.refined_arg],
 		 computations info.refined_newprob (fst info.refined_app) cs)]
 	   
     | Valid ((ctx,pats,del), _, _, _, _, cs) -> 
 	List.fold_left (fun acc (_, _, subst, c) ->
-	  acc @ computations (compose_subst subst prob) f c) [] cs
+	  acc @ computations (compose_subst ~sigma:evd subst prob) f c) [] cs
   in
   let comps = computations prob f split in
   let rec flatten_comp (ctx, pats, ty, f, refine, c, rest) =
@@ -701,8 +707,7 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 		      Retyping.get_type_of env evd elimcgr; elimcgr]
 	  in
 	  let instid = add_prefix "FunctionalElimination_" id in
-	    ignore(declare_instance instid poly
-		     (if poly then evd else Evd.empty) [] cl args)
+	    ignore(declare_instance instid poly evd [] cl args)
 	in
 	  try
 	    let tactic =
@@ -726,12 +731,11 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 		  Retyping.get_type_of env evd indcgr; indcgr]
       in
       let instid = add_prefix "FunctionalInduction_" id in
-	ignore(declare_instance instid poly
-		 (if poly then evd else Evd.empty) [] cl args)
+	ignore(declare_instance instid poly evd [] cl args)
     in
       try ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hookind) ~kind:info.decl_kind
 		   indid statement ~tactic:(of82 (ind_fun_tac is_rec f info id split ind))
-		   (Evd.evar_universe_context (if poly then !evd else Evd.empty))
+		   (Evd.evar_universe_context (if poly then !evd else Evd.from_env (Global.env ())))
 		    [||])
       with e ->
 	msg_warning (str "Induction principle could not be proved automatically: " ++ fnl () ++
@@ -909,15 +913,15 @@ let prove_unfolding_lemma info proj f_cst funf_cst split gl =
       Global.set_strategy (ConstKey funf_cst) Conv_oracle.Expand;
       raise e
       
-let update_split is_rec cmap f prob id split =
+let update_split evd is_rec cmap f prob id split =
   match is_rec with
-  | Some (Structural _) -> subst_rec_split false f prob [(id, f)] split
+  | Some (Structural _) -> subst_rec_split evd false f prob [(id, f)] split
   | Some (Logical r) -> 
     let split' = subst_comp_proj_split f (mkConst r.comp_proj) split in
     let rec aux = function
       | RecValid (id, Valid (ctx, ty, args, tac, view, 
 			    [goal, args', newprob, rest])) ->	  
-	aux (subst_rec_split true f newprob [(id, f)] rest)
+	aux (subst_rec_split evd true f newprob [(id, f)] rest)
       | Split (lhs, y, z, cs) -> Split (lhs, y, z, Array.map (Option.map aux) cs)
       | RecValid (id, c) -> RecValid (id, aux c)
       | Valid (lhs, y, z, w, u, cs) ->
@@ -1061,6 +1065,11 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   	  evd := Evd.merge_context_set Evd.univ_rigid !evd
 	       (Univ.ContextSet.of_context (Univ.instantiate_univ_context uc));
 	f
+    (* let () = *)
+    (*   if poly then *)
+    (* 	let ctx = Evd.evar_universe_context !evd in *)
+    (* 	evd := Evd.merge_universe_context (Evd.from_env env) ctx *)
+    (*   else evd := Evd.from_env env *)
     in
       if with_eqns || with_ind then
 	match is_recursive with
@@ -1070,15 +1079,15 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	      let fixdecls' = [Name i, Some f, fixprot] in
 		(ctx @ fixdecls', pats, ctx'), ids
 	    in
-	    let split = update_split is_recursive cmap f cutprob i split in
+	    let split = update_split !evd is_recursive cmap f cutprob i split in
 	      build_equations with_ind env !evd i info sign is_recursive arity 
 		f_cst f norecprob split
 	| None ->
-	    let split = update_split is_recursive cmap f prob i split in
+	    let split = update_split !evd is_recursive cmap f prob i split in
 	      build_equations with_ind env !evd i info sign is_recursive arity 
 			      f_cst f prob split
 	| Some (Logical r) ->
-	    let unfold_split = update_split is_recursive cmap f prob i split in
+	    let unfold_split = update_split !evd is_recursive cmap f prob i split in
 	    (* We first define the unfolding and show the fixpoint equation. *)
 	    let unfoldi = add_suffix i "_unfold" in
 	    let hook_unfold cmap helpers' vis gr' = 
@@ -1091,7 +1100,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	      let hook_eqs subst grunfold =
 		Global.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
 		let env = Global.env () in
-		(* let () = evd := (Evd.from_env env) in *)
+		let () = if not poly then evd := (Evd.from_env env) in
 		let grc = e_new_global evd grunfold in
 		  build_equations with_ind env !evd i info sign None arity
 				  funf_cst funfc ~alias:(f, grc, split) prob unfold_split

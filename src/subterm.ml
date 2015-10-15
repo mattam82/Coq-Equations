@@ -250,7 +250,8 @@ let derive_subterm ind =
   in ignore(declare_ind ())
     
 let derive_below ctx (ind,u) =
-  let evd = ref (Evd.from_env (Global.env ())) in
+  let env = Global.env () in
+  let evd = ref (Evd.from_ctx ctx) in
   let mind, oneind = Global.lookup_inductive ind in
   let ctx = oneind.mind_arity_ctxt in
   let len = List.length ctx in
@@ -259,7 +260,6 @@ let derive_below ctx (ind,u) =
   let indty = mkApp (mkInd ind, argsvect) in
   let binders = (Name (id_of_string "c"), None, indty) :: ctx in
   let argbinders, parambinders = List.chop (succ len - params) binders in
-  let env = Global.env () in
   let u = Evarutil.e_new_Type ~rigid:Evd.univ_rigid env evd in
   let arity = it_mkProd_or_LetIn u argbinders in
   let aritylam = it_mkLambda_or_LetIn u argbinders in
@@ -348,10 +348,13 @@ let derive_below ctx (ind,u) =
     in Name stepid, None, it_mkProd_or_LetIn stepty argbinders
   in
   let bodyb = 
-    it_mkLambda_or_LetIn (subst_vars [pid] (mkLambda_or_LetIn stepdecl fixb)) (pdecl :: parambinders)
+    it_mkLambda_or_LetIn
+      (subst_vars [pid] (mkLambda_or_LetIn stepdecl fixb))
+      (pdecl :: parambinders)
   in
   let bodyb = replace_vars [belowid, mkConst below] bodyb in
   let id = add_prefix "below_" (Nametab.basename_of_global (IndRef ind)) in
-    ignore(declare_constant id bodyb None poly (if poly then !evd else Evd.empty)
+  let evd = if poly then !evd else Evd.from_env (Global.env ()) in
+    ignore(declare_constant id bodyb None poly evd
 	     (Decl_kinds.IsDefinition Decl_kinds.Definition))
     

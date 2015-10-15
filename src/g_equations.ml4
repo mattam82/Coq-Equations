@@ -358,8 +358,10 @@ VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS QUERY
 (* Subterm *)
 
 VERNAC COMMAND EXTEND Derive_Subterm CLASSIFIED AS QUERY
-| [ "Derive" "Subterm" "for" constr(c) ] -> [ 
-    let c',_ = Constrintern.interp_constr (Global.env ()) Evd.empty c in
+| [ "Derive" "Subterm" "for" constr(c) ] -> [
+    let env = Global.env () in
+    let evd = Evd.from_env env in
+    let c',_ = Constrintern.interp_constr env evd c in
       match kind_of_term c' with
       | Ind i -> Subterm.derive_subterm i
       | _ -> error "Expected an inductive type"
@@ -368,7 +370,9 @@ END
 
 VERNAC COMMAND EXTEND Derive_Below CLASSIFIED AS QUERY
 | [ "Derive" "Below" "for" constr(c) ] -> [ 
-  let c', ctx = Constrintern.interp_constr (Global.env ()) Evd.empty c in
+    let env = Global.env () in
+    let evd = Evd.from_env env in
+    let c', ctx = Constrintern.interp_constr env evd c in
     match kind_of_term c' with
     | Ind i -> Subterm.derive_below ctx i
     | _ -> error "Expected an inductive type"
@@ -378,9 +382,11 @@ END
 (* Eqdec *)
 
 VERNAC COMMAND EXTEND Derive_EqDec CLASSIFIED AS QUERY
-| [ "Derive" "Equality" "for" constr_list(c) ] -> [ 
-    List.iter (fun c ->
-      let c', _ = Constrintern.interp_constr (Global.env ()) Evd.empty c in
+| [ "Derive" "Equality" "for" constr_list(c) ] -> [
+    let env = Global.env () in
+    let evd = Evd.from_env env in
+    List.iter (fun c ->	       
+      let c', _ = Constrintern.interp_constr env evd c in
 	match kind_of_term c' with
 	| Ind i -> Eqdec.derive_eq_dec i
 	| _ -> error "Expected an inductive type")

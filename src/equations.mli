@@ -55,7 +55,7 @@ val ind_fun_tac :
   rec_type option ->
   constr ->
   term_info -> Id.t -> splitting -> 'a -> Proof_type.tactic
-val subst_rec_split :
+val subst_rec_split : Evd.evar_map ->
   bool ->
   constr ->
   context_map ->
@@ -110,6 +110,7 @@ val prove_unfolding_lemma :
   splitting -> Proof_type.goal Evd.sigma -> Proof_type.goal list Evd.sigma
 
 val update_split :
+  Evd.evar_map ->
   rec_type option ->
   ((Id.t -> constr) -> constr -> constr) ->
   constr ->

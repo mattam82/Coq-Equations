@@ -151,4 +151,4 @@ let derive_no_confusion env evd (ind,u) =
   in
     ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hook) noid 
 	      stmt ~tactic:(noconf_tac ()) 
-	      (Evd.empty_evar_universe_context) [||])
+	      (Evd.evar_universe_context !evd) [||])
