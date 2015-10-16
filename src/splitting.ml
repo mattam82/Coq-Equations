@@ -242,11 +242,10 @@ let clean_clause (ctx, pats, ty, c) =
   map_rhs (nf_beta Evd.empty) (fun x -> x) c)
 
 let map_evars_in_constr evd evar_map c = 
-  evar_map (fun id -> Evarutil.evd_comb1 (Evd.fresh_global (Global.env ()))
-    evd (Nametab.global (Qualid (dummy_loc, qualid_of_ident id)))) c
-(*  list_try_find  *)
-(* 	      (fun (id', c, filter) ->  *)
-(* 		 if id = id' then (c, filter) else failwith "") subst) c *)
+  evar_map (fun id ->
+	    let gr = Nametab.global (Qualid (dummy_loc, qualid_of_ident id)) in
+	    let (f, uc) = Universes.unsafe_constr_of_global gr in f)
+	   (nf_evars_universes !evd c)
 
 let map_split f split =
   let rec aux = function
