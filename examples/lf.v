@@ -585,6 +585,26 @@ Definition her_type (t : type * term * term) :=
   let u' := fst (fst t) in
    { u : type | u = u' \/ type_subterm u u' }.
 
+Remove Hints t_step : subterm_relation.
+Remove Hints clos_trans_stepr : subterm_relation.
+
+Ltac apply_step :=
+  match goal with 
+    |- clos_trans ?A ?R ?x ?y => not_evar y; eapply t_step
+  end.
+Hint Extern 30 (clos_trans _ _ _ _) => apply_step : subterm_relation.
+
+Lemma clos_trans_inv {A} R (x y z : A) :
+  clos_trans A R y z → clos_trans A R x y → clos_trans A R x z.
+Proof. eauto using t_trans. Qed.
+
+Ltac apply_transitivity :=
+  match goal with 
+    |- clos_trans ?A ?R ?x ?y => 
+    not_evar x; not_evar y; eapply clos_trans_inv
+  end.
+Hint Extern 31 (clos_trans _ _ _ _) => apply_transitivity : subterm_relation.
+
 Equations hereditary_subst (t : type * term * term) (k : nat) :
   term * option (her_type t) :=
 hereditary_subst t k by rec t her_order :=
@@ -623,28 +643,8 @@ Solve Obligations with
    unfold her_type;
    intros; apply hereditary_subst; constructor 2; do 2 constructor.
 
-Remove Hints t_step : subterm_relation.
-Remove Hints clos_trans_stepr : subterm_relation.
-
-Ltac apply_step :=
-  match goal with 
-    |- clos_trans ?A ?R ?x ?y => not_evar y; eapply t_step
-  end.
-Hint Extern 30 (clos_trans _ _ _ _) => apply_step : subterm_relation.
-
-Lemma clos_trans_inv {A} R (x y z : A) :
-  clos_trans A R y z → clos_trans A R x y → clos_trans A R x z.
-Proof. eauto using t_trans. Qed.
-
-Ltac apply_transitivity :=
-  match goal with 
-    |- clos_trans ?A ?R ?x ?y => 
-    not_evar x; not_evar y; eapply clos_trans_inv
-  end.
-Hint Extern 30 (clos_trans _ _ _ _) => apply_transitivity : subterm_relation.
-
 Next Obligation. 
-  apply hereditary_subst. destruct prf; subst; eauto 10 with subterm_relation.
+  apply hereditary_subst. destruct prf; subst; eauto 10 with subterm_relation. 
 Defined.
 
 Hint Unfold her_type : subterm_relation.
