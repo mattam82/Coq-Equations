@@ -1085,10 +1085,12 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	      build_equations with_ind env !evd i info sign is_recursive arity 
 		f_cst f norecprob split
 	| None ->
+	    let prob = id_subst sign in
 	    let split = update_split !evd is_recursive cmap f prob i split in
 	      build_equations with_ind env !evd i info sign is_recursive arity 
 			      f_cst f prob split
 	| Some (Logical r) ->
+	    let prob = id_subst sign in
 	    let unfold_split = update_split !evd is_recursive cmap f prob i split in
 	    (* We first define the unfolding and show the fixpoint equation. *)
 	    let unfoldi = add_suffix i "_unfold" in

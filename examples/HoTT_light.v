@@ -1,7 +1,7 @@
 Require Export Unicode.Utf8_core.
 Require Import Coq.Program.Tactics Setoid.
 
-Require Import Equations.
+Require Import Equations.Equations.
 
 Set Standard Proposition Elimination Names.
 Set Universe Polymorphism.
@@ -15,10 +15,10 @@ Section TypeEq.
   Inductive equality (A : T) (a : A) : A -> T :=
   | eq_refl : equality a a.
 
-  Equations eq_sym (A : T) (x y : A) (eq : equality x y) : equality y x :=
+  Equations(nocomp) eq_sym (A : T) (x y : A) (eq : equality x y) : equality y x :=
   eq_sym _ _ _ eq_refl := eq_refl _.
 
-  Equations eq_trans (A : T) (x y z : A) (eq1 : equality x y) (eq2 : equality y z) : equality x z :=
+  Equations(nocomp) eq_trans (A : T) (x y z : A) (eq1 : equality x y) (eq2 : equality y z) : equality x z :=
   eq_trans _ _ _ _ eq_refl eq_refl := eq_refl _.
 End TypeEq.
 
@@ -171,9 +171,9 @@ Proof.
   intro f.  apply path_forall.  intro a.  apply contr.
 Defined.
 
-Equations concat A (x y z : A) (e : x = y) (e' : y = z) : x = z :=
-concat _ _ _ _ eq_refl eq_refl := eq_refl.
-
+Equations(nocomp) concat A (x y z : A) (e : x = y) (e' : y = z) : x = z :=
+concat _ _ _ _ eq_refl q := q.
+Transparent concat.
 Infix "@@" := concat (at level 50).
 
 Definition moveR_E A B (f:A -> B) {H : IsEquiv f} (x : A) (y : B) (p : x = f^^-1 y)
@@ -193,7 +193,7 @@ Equations concat_1p {A : Type} {x y : A} (p : x = y) :
   eq_refl @@ p = p :=
 concat_1p _ _ _ eq_refl := eq_refl.
 
-Equations concat_p1 {A : Type} {x y : A} (p : x = y) :
+Equations(nocomp) concat_p1 {A : Type} {x y : A} (p : x = y) :
   p @@ eq_refl  = p :=
 concat_p1 _ _ _ eq_refl := eq_refl.
 
@@ -201,10 +201,8 @@ Equations concat_Vp {A : Type} {x y : A} (p : x = y) :
   eq_sym p @@ p = eq_refl :=
 concat_Vp _ _ _ eq_refl := eq_refl.
 
-Equations concat_pV {A : Type} {x y : A} (p : x = y) :
-  p @@ eq_sym p = eq_refl :=
-  destruct p; apply eq_refl.
-Defined.
+Equations concat_pV {A : Type} {x y : A} (p : x = y) : p @@ eq_sym p = eq_refl :=
+concat_pV _ _ _ eq_refl := eq_refl.
 
 Definition concat_p_pp {A : Type} {x y z t : A} (p : x = y) (q : y = z) (r : z = t) :
   p @@ (q @@ r) = (p @@ q) @@ r.
@@ -219,9 +217,9 @@ Instance concat_morphism (A : Type) x y z :
 Proof. reduce. destruct x0. destruct X. destruct x1. destruct X0. reflexivity. Defined.
 
 Instance trans_co_eq_inv_arrow_morphism :
-  ∀ (A : Type@{i}) (R : crelation@{i i} A),
-    Transitive R → Proper (R ==> respectful@{i i j i j i}
-                             equality (flip@{j j j} arrow)) R.
+  ∀ (A : Type) (R : crelation A),
+    Transitive R → Proper (R ==> respectful
+                             equality (flip arrow)) R.
 Proof. reduce. transitivity y. assumption. now destruct X1. Defined.
 
 Definition concat_pp_A1 {A : Type} {g : A -> A} (p : forall x, x = g x)
@@ -230,13 +228,13 @@ Definition concat_pp_A1 {A : Type} {g : A -> A} (p : forall x, x = g x)
   :
     (r @@ p x) @@ ap g q = (r @@ q) @@ p y.
   destruct q. simpl.
-  destruct (concat_p1 r).
+  destruct (concat_p1 r). destruct r.
   apply concat_p1.
 Defined.
 
 Definition whiskerL {A : Type} {x y z : A} (p : x = y)
            {q r : y = z} (h : q = r) : p @@ q = p @@ r.
-  destruct p. exact h.
+  destruct p, q. apply h.
 Defined.
 
 Definition whiskerR {A : Type} {x y z : A} {p q : x = y}
@@ -270,7 +268,7 @@ Defined.
 
 Definition concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) :
   (ap f q) @@ (p y) = (p x) @@ q.
-  destruct q; simpl; destruct (p a). reflexivity.
+  destruct q; simpl; destruct (p x). reflexivity.
 Defined.
 
 Definition ap_pp {A B : Type} (f : A -> B) {x y z : A} (p : x = y) (q : y = z) :
@@ -308,7 +306,7 @@ Definition concat_pA1_p {A : Type} {f : A -> A} (p : forall x, f x = x)
   {w : A} (r : w = f x)
   :
     (r @@ ap f q) @@ p y = (r @@ p x) @@ q.
-  destruct q; simpl. destruct (concat_p1 r). apply eq_sym, concat_p1. 
+  destruct q; simpl. rewrite (concat_p1 r). apply eq_sym, concat_p1. 
 Defined.
 
 Definition ap_p {A B : Type} (f : A -> B) {x y : A} (p q: x = y) (e : p = q) :
@@ -374,12 +372,11 @@ Proof.
   apply (H0 center).
 Defined.
 
-Definition path_sigma_uncurried (A : Type) (P : A -> Type) (u v : sigma P)
+Equations(nocomp) path_sigma_uncurried (A : Type) (P : A -> Type) (u v : sigma P)
   (pq : sigma (fun p => p # u.2 = v.2))
-  : u = v.
-  destruct pq as [p q]. destruct u, v. simpl in *. destruct p. simpl in *. destruct q.
-  apply eq_refl.
-Defined.
+  : u = v :=
+  path_sigma_uncurried _ _ (Build_sigma u1 u2) (Build_sigma v1 v2) (Build_sigma eq_refl eq_refl) := eq_refl.
+Transparent path_sigma_uncurried.
 
 Definition pr1_path A `{P : A -> Type} {u v : sigma P} (p : u = v)
 : u.1 = v.1
@@ -407,7 +404,7 @@ Definition path_sigma_equiv {A : Type} (P : A -> Type) (u v : sigma P):
   IsEquiv (path_sigma_uncurried u v).
   refine (BuildIsEquiv _ _ _).
   - exact (fun r => (r..1; r..2)).
-  - intro. apply eta_path_sigma.
+  - intro. apply eta_path_sigma_uncurried.
   - destruct u, v; intros [p q]; simpl in *.
     destruct p. simpl in *. destruct q.
     reflexivity.

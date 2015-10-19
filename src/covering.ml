@@ -221,8 +221,17 @@ let check_ctx_map evars map =
 let mk_ctx_map evars ctx subst ctx' =
   let map = (ctx, subst, ctx') in check_ctx_map evars map
 
+let rec map_patterns f ps =
+  List.map (function
+	   | PCstr (c, pl) ->
+	      let c' = destConstruct (f (mkConstructU c)) in
+	      PCstr (c', map_patterns f pl)
+	   | PInac c -> PInac (f c)
+	   | x -> x)
+	   ps
+						
 let map_ctx_map f (g, p, d) =
-  map_rel_context f g, p, map_rel_context f d
+  map_rel_context f g, map_patterns f p, map_rel_context f d
 
 (** Specialize by a substitution. *)
 

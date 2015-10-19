@@ -67,9 +67,7 @@ val mk_ctx_map :
   rel_context -> context_map
 
 val map_ctx_map :
-  (Constr.t -> Constr.t) ->
-  rel_context * 'a * rel_context ->
-  rel_context * 'a * rel_context
+  (Constr.t -> Constr.t) -> context_map -> context_map
 
 (** Substitution and specialization *)
 val subst_pats_constr : int -> pat list -> constr -> constr
