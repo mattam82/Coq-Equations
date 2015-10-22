@@ -106,9 +106,9 @@ Definition path_forall `{Funext} {A : Type} {P : A -> Type} (f g : forall x : A,
 
 Equations transport {A : Type} (P : A -> Type) {x y : A} (p : x = y) (u : P x) : P y :=
 transport A P x y eq_refl u := u.
+Transparent transport.
 
 Notation "p # x" := (transport _ p x) (right associativity, at level 65, only parsing).
-Transparent transport.
 
 Equations path_sigma {A : Type} (P : A -> Type) (u v : sigma P)
   (p : u.1 = v.1) (q : p # u.2 = v.2)
@@ -118,14 +118,12 @@ path_sigma _ _ (Build_sigma _ _) (Build_sigma _ _) eq_refl eq_refl := eq_refl.
 Equations(nocomp) path_prod_uncurried {A B : Type} (z z' : A * B)
            (pq : (fst z = fst z') * (snd z = snd z')): z = z' :=
 path_prod_uncurried _ _ (pair _ _) (pair _ _) (pair eq_refl eq_refl) := eq_refl.
-Transparent path_prod_uncurried.
 
 Definition path_prod {A B : Type} (z z' : A * B) (e : fst z = fst z') (f : snd z = snd z') : z = z' :=
   path_prod_uncurried _ _ (e, f).
 
 Equations path_prod_eq {A B : Type} (z z' : A * B) (e : fst z = fst z') (f : snd z = snd z') : z = z' :=
 path_prod_eq _ _ (pair _ _) (pair _ _) eq_refl eq_refl := eq_refl.
-Transparent path_prod_eq.
 
 Equations eta_path_prod {A B : Type} {z z' : A * B} (p : z = z') :
   path_prod _ _ (ap fst p) (ap snd p) = p :=
@@ -173,7 +171,6 @@ Defined.
 
 Equations(nocomp) concat A (x y z : A) (e : x = y) (e' : y = z) : x = z :=
 concat _ _ _ _ eq_refl q := q.
-Transparent concat.
 Infix "@@" := concat (at level 50).
 
 Definition moveR_E A B (f:A -> B) {H : IsEquiv f} (x : A) (y : B) (p : x = f^^-1 y)
@@ -204,17 +201,16 @@ concat_Vp _ _ _ eq_refl := eq_refl.
 Equations concat_pV {A : Type} {x y : A} (p : x = y) : p @@ eq_sym p = eq_refl :=
 concat_pV _ _ _ eq_refl := eq_refl.
 
-Definition concat_p_pp {A : Type} {x y z t : A} (p : x = y) (q : y = z) (r : z = t) :
-  p @@ (q @@ r) = (p @@ q) @@ r.
-  destruct p, q; apply eq_refl.
-Defined.
+Equations concat_p_pp {A : Type} {x y z t : A} (p : x = y) (q : y = z) (r : z = t) :
+  p @@ (q @@ r) = (p @@ q) @@ r :=
+concat_p_pp _ _ _ _ _ eq_refl _ _ := eq_refl.
 
 Instance equality_equiv A :
   Equivalence (@equality A) := {}.
 
 Instance concat_morphism (A : Type) x y z :
   Proper (equality ==> equality ==> equality) (@concat A x y z).
-Proof. reduce. destruct x0. destruct X. destruct x1. destruct X0. reflexivity. Defined.
+Proof. reduce. destruct X. destruct X0. destruct x0. reflexivity. Defined.
 
 Instance trans_co_eq_inv_arrow_morphism :
   ∀ (A : Type) (R : crelation A),
@@ -222,54 +218,58 @@ Instance trans_co_eq_inv_arrow_morphism :
                              equality (flip arrow)) R.
 Proof. reduce. transitivity y. assumption. now destruct X1. Defined.
 
-Definition concat_pp_A1 {A : Type} {g : A -> A} (p : forall x, x = g x)
+Equations concat_pp_A1 {A : Type} {g : A -> A} (p : forall x, x = g x)
   {x y : A} (q : x = y)
   {w : A} (r : w = x)
   :
-    (r @@ p x) @@ ap g q = (r @@ q) @@ p y.
-  destruct q. simpl.
-  destruct (concat_p1 r). destruct r.
-  apply concat_p1.
-Defined.
+    (r @@ p x) @@ ap g q = (r @@ q) @@ p y :=
+concat_pp_A1 _ _ _ _ _ eq_refl _ eq_refl := concat_p1 _.
 
-Definition whiskerL {A : Type} {x y z : A} (p : x = y)
-           {q r : y = z} (h : q = r) : p @@ q = p @@ r.
-  destruct p, q. apply h.
-Defined.
+Equations whiskerL {A : Type} {x y z : A} (p : x = y)
+           {q r : y = z} (h : q = r) : p @@ q = p @@ r :=
+whiskerL _ _ _ _ _ _ _ eq_refl := eq_refl.
 
-Definition whiskerR {A : Type} {x y z : A} {p q : x = y}
-           (h : p = q) (r : y = z) : p @@ r = q @@ r.
-  destruct p, h. apply eq_refl.
-Defined. 
+Equations whiskerR {A : Type} {x y z : A} {p q : x = y}
+           (h : p = q) (r : y = z) : p @@ r = q @@ r :=
+whiskerR _ _ _ _ _ _ eq_refl _ := eq_refl.
 
-Definition moveL_M1 {A : Type} {x y : A} (p q : x = y) :
-  eq_sym q @@ p = eq_refl -> p = q. 
-  destruct q. trivial.
-Defined.
+(* FIXME
+Equations moveL_M1 {A : Type} {x y : A} (p q : x = y) :
+  eq_sym q @@ p = eq_refl -> p = q :=
+moveL_M1 _ _ _ _ eq_refl := fun e => _.
+*)
+
+Equations moveL_M1 {A : Type} {x y : A} (p q : x = y) :
+  eq_sym q @@ p = eq_refl -> p = q :=
+moveL_M1 _ _ _ _ eq_refl := fun e => e.
 
 Definition inverse2 {A : Type} {x y : A} {p q : x = y} (h : p = q)
 : eq_sym p = eq_sym q := ap (@eq_sym _ _ _) h.
 
-Definition ap02 {A B : Type} (f:A->B) {x y:A} {p q:x=y} (r:p=q) : ap f p = ap f q.
-  destruct r; apply eq_refl.
-Defined. 
+Equations ap02 {A B : Type} (f:A->B) {x y:A} {p q:x=y} (r:p=q) : ap f p = ap f q :=
+ap02 _ _ _ _ _ _ _ eq_refl := eq_refl.
 
-Definition ap_p_pp {A B : Type} (f : A -> B) {w : B} {x y z : A}
+Equations ap_p_pp {A B : Type} (f : A -> B) {w : B} {x y z : A}
   (r : w = f x) (p : x = y) (q : y = z) :
-  r @@ (ap f (p @@ q)) = (r @@ ap f p) @@ (ap f q).
-Proof.
-  destruct p, q. simpl. exact (concat_p_pp r (eq_refl) (eq_refl)).
-Defined.
+  r @@ (ap f (p @@ q)) = (r @@ ap f p) @@ (ap f q) :=
+ap_p_pp _ _ _ _ _ _ _ _ eq_refl _ := concat_p_pp _ eq_refl _.
 
-Definition ap_compose {A B C : Type} (f : A -> B) (g : B -> C) {x y : A} (p : x = y) :
-  ap (fun x => g (f x)) p = ap g (ap f p).
-  destruct p. apply eq_refl.
-Defined.
+Equations ap_compose {A B C : Type} (f : A -> B) (g : B -> C) {x y : A} (p : x = y) :
+  ap (fun x => g (f x)) p = ap g (ap f p) :=
+ap_compose _ _ _ _ _ _ _ eq_refl := eq_refl.
 
 Definition concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) :
   (ap f q) @@ (p y) = (p x) @@ q.
-  destruct q; simpl; destruct (p x). reflexivity.
+  destruct q, (p x). apply eq_refl.
 Defined.
+
+(* FIXME
+Equations concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) :
+  (ap f q) @@ (p y) = (p x) @@ q :=
+concat_A1p A f p x y eq_refl <= p x => {
+  | eq_refl := eq_refl
+}.
+*)
 
 Definition ap_pp {A B : Type} (f : A -> B) {x y z : A} (p : x = y) (q : y = z) :
   ap f (p @@ q) = (ap f p) @@ (ap f q).
