@@ -205,6 +205,8 @@ Equations concat_p_pp {A : Type} {x y z t : A} (p : x = y) (q : y = z) (r : z = 
   p @@ (q @@ r) = (p @@ q) @@ r :=
 concat_p_pp _ _ _ _ _ eq_refl _ _ := eq_refl.
 
+Hint Rewrite @concat_p1 @concat_Vp @concat_pV : concat.
+
 Instance equality_equiv A :
   Equivalence (@equality A) := {}.
 
@@ -258,65 +260,60 @@ Equations ap_compose {A B C : Type} (f : A -> B) (g : B -> C) {x y : A} (p : x =
   ap (fun x => g (f x)) p = ap g (ap f p) :=
 ap_compose _ _ _ _ _ _ _ eq_refl := eq_refl.
 
-Definition concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) :
-  (ap f q) @@ (p y) = (p x) @@ q.
-  destruct q, (p x). apply eq_refl.
-Defined.
+(* Definition concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) : *)
+(*   (ap f q) @@ (p y) = (p x) @@ q. *)
+(*   destruct q, (p x). apply eq_refl. *)
+(* Defined. *)
 
-(* FIXME
 Equations concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) :
   (ap f q) @@ (p y) = (p x) @@ q :=
-concat_A1p A f p x y eq_refl <= p x => {
-  | eq_refl := eq_refl
-}.
-*)
+  concat_A1p A f p x y eq_refl := _.
 
-Definition ap_pp {A B : Type} (f : A -> B) {x y z : A} (p : x = y) (q : y = z) :
-  ap f (p @@ q) = (ap f p) @@ (ap f q).
-  destruct p, q. apply eq_refl.
-Defined.
+Next Obligation. red. simpl. now simp concat. Defined.
 
-Definition concat_pp_V {A : Type} {x y z : A} (p : x = y) (q : y = z) :
-  (p @@ q) @@ eq_sym q = p.
-  destruct p, q; apply eq_refl.
-Defined.
+Equations ap_pp {A B : Type} (f : A -> B) {x y z : A} (p : x = y) (q : y = z) :
+  ap f (p @@ q) = (ap f p) @@ (ap f q) :=
+ap_pp _ _ _ _ _ _ eq_refl eq_refl => eq_refl.
 
-Definition ap_V {A B : Type} (f : A -> B) {x y : A} (p : x = y) :
-  ap f (eq_sym p) = eq_sym (ap f p).
-  destruct p. apply eq_refl.
-Defined.
+Equations concat_pp_V {A : Type} {x y z : A} (p : x = y) (q : y = z) :
+  (p @@ q) @@ eq_sym q = p :=
+concat_pp_V _ _ _ _ eq_refl eq_refl => eq_refl.
 
-Definition concat_pA1 {A : Type} {f : A -> A} (p : forall x, x = f x) {x y : A} (q : x = y) :
-  (p x) @@ (ap f q) =  q @@ (p y).
-  destruct q. apply concat_p1.
-Defined.
+Equations ap_V {A B : Type} (f : A -> B) {x y : A} (p : x = y) :
+  ap f (eq_sym p) = eq_sym (ap f p) :=
+ap_V _ _ _ _ _ eq_refl => eq_refl.  
 
-Definition concat_p_Vp {A : Type} {x y z : A} (p : x = y) (q : x = z) :
-  p @@ (eq_sym p @@ q) = q.
-  destruct p. apply eq_refl.
-Defined.
+Hint Rewrite @ap_pp @ap_V : ap.
+Hint Rewrite  @concat_pp_V : concat.
 
-Definition concat_pV_p {A : Type} {x y z : A} (p : x = z) (q : y = z) :
-  (p @@ eq_sym q) @@ q = p.
-  destruct p, q. apply eq_refl.
-Defined.
+Equations concat_pA1 {A : Type} {f : A -> A} (p : forall x, x = f x) {x y : A} (q : x = y) :
+  (p x) @@ (ap f q) = q @@ (p y) :=
+concat_pA1 _ _ p _ _ eq_refl := concat_p1 (p _).
+
+Equations concat_p_Vp {A : Type} {x y z : A} (p : x = y) (q : x = z) :
+  p @@ (eq_sym p @@ q) = q :=
+concat_p_Vp _ _ _ _ eq_refl eq_refl := eq_refl.
+
+Equations concat_pV_p {A : Type} {x y z : A} (p : x = z) (q : y = z) :
+  (p @@ eq_sym q) @@ q = p :=
+concat_pV_p _ _ _ _ eq_refl eq_refl := eq_refl.
+Hint Rewrite @concat_pA1 @concat_p_Vp @concat_pV_p : concat.
 
 Definition concat_pA1_p {A : Type} {f : A -> A} (p : forall x, f x = x)
   {x y : A} (q : x = y)
   {w : A} (r : w = f x)
   :
     (r @@ ap f q) @@ p y = (r @@ p x) @@ q.
-  destruct q; simpl. rewrite (concat_p1 r). apply eq_sym, concat_p1. 
+  destruct q; simpl. now simp concat. 
 Defined.
 
-Definition ap_p {A B : Type} (f : A -> B) {x y : A} (p q: x = y) (e : p = q) :
-  ap f p = ap f q.
-  destruct e. apply eq_refl.
-Defined.
+Equations ap_p {A B : Type} (f : A -> B) {x y : A} (p q: x = y) (e : p = q) :
+  ap f p = ap f q :=
+ap_p _ _ _ _ _ p q eq_refl := eq_refl.
 
 Instance ap_morphism (A : Type) (B : Type) x y f :
   Proper (@equality (@equality A x y) ==> @equality (@equality B (f x) (f y))) (@ap A B f x y).
-Proof. reduce. destruct x0. destruct X. reflexivity. Defined.
+Proof. reduce. now apply ap_p. Defined.
 
 Instance reflexive_proper_proxy :
   ∀ (A : Type) (R : crelation A), Reflexive R → ∀ x : A, ProperProxy R x.

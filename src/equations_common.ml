@@ -125,7 +125,7 @@ let make_definition ?opaque ?(poly=false) evd ?types b =
   in
   let evd, nf = Evarutil.nf_evars_and_universes evd in
   let body = nf b and typ = Option.map nf types in
-    Declare.definition_entry ~poly ~univs:(Evd.universe_context evd)
+    Declare.definition_entry ~poly ~univs:(snd (Evd.universe_context evd))
       ?types:typ body
 
 let declare_constant id body ty poly evd kind =

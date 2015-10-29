@@ -150,7 +150,7 @@ let derive_subterm ind =
 	mind_entry_consnames = consnames;	      
 	mind_entry_lc = constructors }
   in
-  let uctx = Evd.universe_context sigma in
+  let pl, uctx = Evd.universe_context sigma in
   let declare_ind () =
     let inds = [declare_one_ind 0 ind branches] in
     let inductive =
@@ -166,7 +166,7 @@ let derive_subterm ind =
 	mind_entry_private = None;
 	mind_entry_universes = uctx }
     in
-    let k = Command.declare_mutual_inductive_with_eliminations inductive [] in
+    let k = Command.declare_mutual_inductive_with_eliminations inductive pl [] in
     let subind = mkInd (k,0) in
     let constrhints = 
       List.map_i (fun i entry -> 

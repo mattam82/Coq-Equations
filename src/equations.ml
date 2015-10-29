@@ -550,16 +550,16 @@ let build_equations with_ind env evd id info sign is_rec arity cst
     let inductive =
       { mind_entry_record = None;
 	mind_entry_polymorphic = is_polymorphic info;
-	mind_entry_universes = Evd.universe_context !evd;
+	mind_entry_universes = snd (Evd.universe_context !evd);
 	mind_entry_private = None;
 	mind_entry_finite = Finite;
 	mind_entry_params = []; (* (identifier * local_entry) list; *)
 	mind_entry_inds = inds }
     in
-    let k = Command.declare_mutual_inductive_with_eliminations inductive [] in
+    let k = Command.declare_mutual_inductive_with_eliminations inductive [] [] in
     let ind =
       if poly then
-	mkIndU ((k,0),Univ.UContext.instance (Evd.universe_context !evd))
+	mkIndU ((k,0),Univ.UContext.instance (snd (Evd.universe_context !evd)))
       else mkInd (k,0)
     in
     let _ =
@@ -981,7 +981,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	  in
 	  let _ty = e_type_of (Global.env ()) evd body in
 	  let nf, _ = Evarutil.e_nf_evars_and_universes evd in
-	  let ce = Declare.definition_entry ~poly ~univs:(Evd.universe_context !evd)
+	  let ce = Declare.definition_entry ~poly ~univs:(snd (Evd.universe_context !evd))
 					    (nf body)
 	  in
 	    Declare.declare_constant projid

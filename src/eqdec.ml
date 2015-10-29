@@ -156,13 +156,13 @@ let derive_eq_dec ind =
 	  (it_mkLambda_or_LetIn (Option.get b) ind.ind_args) ctx
       in
       let ce = 
-	{ const_entry_body = Future.from_val ((body,Univ.ContextSet.empty), Declareops.no_seff);
+	{ const_entry_body = Future.from_val ((body,Univ.ContextSet.empty), Safe_typing.empty_private_constants);
   	  const_entry_type = Some (it_mkNamedProd_or_LetIn
 				     (it_mkProd_or_LetIn ty ind.ind_args) ctx);
   	  const_entry_opaque = false; const_entry_secctx = None;
 	  const_entry_feedback = None;
 	  const_entry_polymorphic = false; (* FIXME *)
-	  const_entry_universes = Evd.universe_context !evdref;
+	  const_entry_universes = snd (Evd.universe_context !evdref);
 	  const_entry_inline_code = false;
 	}
       in ce

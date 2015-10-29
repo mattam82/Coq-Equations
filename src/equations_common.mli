@@ -133,7 +133,7 @@ val make_definition :
   ?opaque:'a ->
   ?poly:Decl_kinds.polymorphic ->
   Evd.evar_map ref ->
-  ?types:Term.constr -> Term.constr -> Entries.definition_entry
+  ?types:Term.constr -> Term.constr -> Safe_typing.private_constants Entries.definition_entry
 
 val declare_constant :
   Names.identifier ->
