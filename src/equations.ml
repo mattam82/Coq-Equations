@@ -981,7 +981,8 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	  in
 	  let _ty = e_type_of (Global.env ()) evd body in
 	  let nf, _ = Evarutil.e_nf_evars_and_universes evd in
-	  let ce = Declare.definition_entry ~poly ~univs:(snd (Evd.universe_context !evd))
+	  let ce = Declare.definition_entry ~fix_exn:(Stm.get_fix_exn ())
+					    ~poly ~univs:(snd (Evd.universe_context !evd))
 					    (nf body)
 	  in
 	    Declare.declare_constant projid
@@ -1052,7 +1053,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   let fix_proto_ref = destConstRef (Lazy.force coq_fix_proto) in
   let kind = (Decl_kinds.Global, poly, Decl_kinds.Definition) in
   let () = Hints.create_hint_db false baseid (ids, Cpred.remove fix_proto_ref csts) true in
-  let hook cmap helpers subst gr = 
+  let hook cmap helpers subst gr =
     let info = { base_id = baseid; helpers_info = helpers; decl_kind = kind } in
     let () = inline_helpers info in
     let f_cst = match gr with ConstRef c -> c | _ -> assert false in
@@ -1083,12 +1084,12 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	    in
 	    let split = update_split !evd is_recursive cmap f cutprob i split in
 	      build_equations with_ind env !evd i info sign is_recursive arity 
-		f_cst f norecprob split
+			      f_cst f norecprob split
 	| None ->
-	    let prob = id_subst sign in
-	    let split = update_split !evd is_recursive cmap f prob i split in
-	      build_equations with_ind env !evd i info sign is_recursive arity 
-			      f_cst f prob split
+	   let prob = id_subst sign in
+	   let split = update_split !evd is_recursive cmap f prob i split in
+	   build_equations with_ind env !evd i info sign is_recursive arity 
+			   f_cst f prob split
 	| Some (Logical r) ->
 	    let prob = id_subst sign in
 	    let unfold_split = update_split !evd is_recursive cmap f prob i split in
@@ -1127,11 +1128,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   in define_tree is_recursive poly impls status evd env (i, sign, arity) comp ann split hook
 
 let with_rollback f x =
-  (* States.with_heavy_rollback f *)
-  (*   Cerrors.process_vernac_interp_error x *)
-  f x
-(*   let st = States.freeze () in *)
-(*     try f x with e -> msg (Toplevel.print_toplevel_error e); States.unfreeze st *)
+  States.with_state_protection_on_exception f x
 
 let equations opts (loc, i) l t nt eqs =
   Dumpglob.dump_definition (loc, i) false "def";

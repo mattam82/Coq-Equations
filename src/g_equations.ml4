@@ -319,7 +319,7 @@ GEXTEND Gram
 
   END
 
-VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS QUERY
+VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS SIDEFF
 | [ "Equations" equation_options(opt) lident(i) binders_let2(l) 
       ":" lconstr(t) ":=" deppat_equations(eqs)
       (* decl_notation(nt) *) ] ->
