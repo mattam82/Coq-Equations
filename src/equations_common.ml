@@ -542,7 +542,8 @@ let decompose_indapp f args =
   | _ -> f, args
 
 let e_conv env evdref t t' =
-  try evdref := Evd.conversion env !evdref Reduction.CONV t t'; true
+  try let sigma, b = Reductionops.infer_conv env !evdref ~pb:Reduction.CONV t t' in
+      if b then (evdref := sigma; true) else b
   with Reduction.NotConvertible -> false
 
       
