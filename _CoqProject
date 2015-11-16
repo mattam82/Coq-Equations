@@ -3,7 +3,7 @@
 -R theories Equations
 -I theories
 -extra-phony doc "html" "mkdir -p html/api && ocamldoc -html -d html/api `ocamlfind query -r coqdev85.all -i-format` -rectypes -I src src/*.ml"
-ZDEBUG = -bin-annot
+ZDEBUG = "-bin-annot -g"
 COQDOCFLAGS = "-parse-comments -utf8 -interpolate"
 src/equations_common.mli
 src/equations_common.ml
@@ -52,3 +52,4 @@ test-suite/MoreDep.v
 test-suite/daaa.v
 test-suite/nestedobls.v
 examples/lf.v
+examples/HoTT_light.v

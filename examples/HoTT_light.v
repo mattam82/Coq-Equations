@@ -172,6 +172,12 @@ Defined.
 Equations(nocomp) concat A (x y z : A) (e : x = y) (e' : y = z) : x = z :=
 concat _ _ _ _ eq_refl q := q.
 Infix "@@" := concat (at level 50).
+Set Printing Universes.
+Set Printing All.
+(* FIXME Program and univs *)
+(* Equations moveL_M1 {A : Type} {x y : A} (p q : x = y) : *)
+(*   eq_sym q @@ p = eq_refl -> p = q := *)
+(* moveL_M1 _ _ _ _ eq_refl := fun e => _. *)
 
 Definition moveR_E A B (f:A -> B) {H : IsEquiv f} (x : A) (y : B) (p : x = f^^-1 y)
   : (f x = y)
@@ -235,11 +241,9 @@ Equations whiskerR {A : Type} {x y z : A} {p q : x = y}
            (h : p = q) (r : y = z) : p @@ r = q @@ r :=
 whiskerR _ _ _ _ _ _ eq_refl _ := eq_refl.
 
-(* FIXME
-Equations moveL_M1 {A : Type} {x y : A} (p q : x = y) :
-  eq_sym q @@ p = eq_refl -> p = q :=
-moveL_M1 _ _ _ _ eq_refl := fun e => _.
-*)
+(* Equations moveL_M1 {A : Type} {x y : A} (p q : x = y) : *)
+(*   eq_sym q @@ p = eq_refl -> p = q := *)
+(* moveL_M1 _ _ _ _ eq_refl := fun e => _. *)
 
 Equations moveL_M1 {A : Type} {x y : A} (p q : x = y) :
   eq_sym q @@ p = eq_refl -> p = q :=
@@ -260,16 +264,32 @@ Equations ap_compose {A B C : Type} (f : A -> B) (g : B -> C) {x y : A} (p : x =
   ap (fun x => g (f x)) p = ap g (ap f p) :=
 ap_compose _ _ _ _ _ _ _ eq_refl := eq_refl.
 
-(* Definition concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) : *)
-(*   (ap f q) @@ (p y) = (p x) @@ q. *)
-(*   destruct q, (p x). apply eq_refl. *)
+Definition concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) :
+  (ap f q) @@ (p y) = (p x) @@ q.
+  destruct q, (p x). apply eq_refl.
+Defined.
+(* Unset Printing All. *)
+
+(* Unset Printing Universes. *)
+
+(* Lemma test  {A : Type} {f g : A -> A} (p : forall x, f x = g x) {x y : A} (q : x = y) : *)
+(*   p x @@ eq_refl = p x. *)
+(* Proof.   *)
+(*   set (z := p x). *)
+(*   now destruct z. *)
+(* Qed.   *)
+
+(* Equations(nocomp) concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) : *)
+(*   (ap f q) @@ (p y) = (p x) @@ q := *)
+(*   concat_A1p A f p x y eq_refl with p x := | q with f x := *)
+(*   concat_A1p A f p x y eq_refl eq_refl q' := eq_refl.  *)
+
+(* Next Obligation. destruct q. Transparent concat_A1p. simpl. *)
+(*                  constructor.  *)
+(*                  constructor. *)
+(*                  destruct (p x). *)
+(*                  simpl. constructor. *)
 (* Defined. *)
-
-Equations concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) :
-  (ap f q) @@ (p y) = (p x) @@ q :=
-  concat_A1p A f p x y eq_refl := _.
-
-Next Obligation. red. simpl. now simp concat. Defined.
 
 Equations ap_pp {A B : Type} (f : A -> B) {x y z : A} (p : x = y) (q : y = z) :
   ap f (p @@ q) = (ap f p) @@ (ap f q) :=
