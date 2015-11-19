@@ -264,32 +264,21 @@ Equations ap_compose {A B C : Type} (f : A -> B) (g : B -> C) {x y : A} (p : x =
   ap (fun x => g (f x)) p = ap g (ap f p) :=
 ap_compose _ _ _ _ _ _ _ eq_refl := eq_refl.
 
-Definition concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) :
-  (ap f q) @@ (p y) = (p x) @@ q.
-  destruct q, (p x). apply eq_refl.
-Defined.
-(* Unset Printing All. *)
+(* FIXME
+Equations(nocomp) concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) :
+  (ap f q) @@ (p y) = (p x) @@ q :=
+concat_A1p _ f p x y eq_refl with p x, f x :=
+concat_A1p _ _ _ _ _ eq_refl eq_refl _ := eq_refl.
+Next Obligation.
+  destruct q.
+  constructor. constructor.
+  destruct (p x). constructor.
+Defined. *)
 
-(* Unset Printing Universes. *)
-
-(* Lemma test  {A : Type} {f g : A -> A} (p : forall x, f x = g x) {x y : A} (q : x = y) : *)
-(*   p x @@ eq_refl = p x. *)
-(* Proof.   *)
-(*   set (z := p x). *)
-(*   now destruct z. *)
-(* Qed.   *)
-
-(* Equations(nocomp) concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) : *)
-(*   (ap f q) @@ (p y) = (p x) @@ q := *)
-(*   concat_A1p A f p x y eq_refl with p x := | q with f x := *)
-(*   concat_A1p A f p x y eq_refl eq_refl q' := eq_refl.  *)
-
-(* Next Obligation. destruct q. Transparent concat_A1p. simpl. *)
-(*                  constructor.  *)
-(*                  constructor. *)
-(*                  destruct (p x). *)
-(*                  simpl. constructor. *)
-(* Defined. *)
+Equations(nocomp noind) concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) :
+  (ap f q) @@ (p y) = (p x) @@ q :=
+concat_A1p _ f p x y eq_refl with p x, f x :=
+concat_A1p _ _ _ _ _ eq_refl eq_refl _ := eq_refl.
 
 Equations ap_pp {A B : Type} (f : A -> B) {x y z : A} (p : x = y) (q : y = z) :
   ap f (p @@ q) = (ap f p) @@ (ap f q) :=

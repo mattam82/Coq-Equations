@@ -300,12 +300,24 @@ GEXTEND Gram
     ] ]
   ;
 
+  refine:
+    [ [ cs = LIST1 Constr.lconstr SEP "," ->
+          let rec build_refine acc = function
+            | [] -> assert false
+            | [c] -> fun e -> acc (Refine (c, e))
+            | c :: cs ->
+                let acc = fun e ->
+                  acc (Refine (c, [(None, RefinePats [!@loc, PEWildcard], e)])) in
+                build_refine acc cs
+          in build_refine (fun e -> e) cs
+    ] ]
+  ;
+
   rhs:
     [ [ ":=!"; id = identref -> Empty id
       |":="; c = Constr.lconstr -> Program c
       |"=>"; c = Constr.lconstr -> Program c
-      | "with"; c = Constr.lconstr; ":="; e = equations -> Refine (c, e)
-      | "<="; c = Constr.lconstr; "=>"; e = equations -> Refine (c, e)
+      | ["with"|"<="]; ref = refine; [":="|"=>"]; e = equations -> ref e
       | "<-"; "(" ; t = Tactic.tactic; ")"; e = equations -> By (Inl t, e)
       | "by"; IDENT "rec"; id = identref; rel = OPT constr; [":="|"=>"]; e = deppat_equations -> Rec (id, rel, e)
     ] ]
