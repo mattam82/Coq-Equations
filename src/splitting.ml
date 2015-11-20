@@ -245,7 +245,7 @@ let map_evars_in_constr evd evar_map c =
   evar_map (fun id ->
 	    let gr = Nametab.global (Qualid (dummy_loc, qualid_of_ident id)) in
 	    let (f, uc) = Universes.unsafe_constr_of_global gr in f)
-	   (nf_evars_universes !evd c)
+	   (nf_evars_universes evd c)
 
 let map_split f split =
   let rec aux = function

@@ -46,7 +46,8 @@ val define_tree :
   splitting ->
   (((Id.t -> constr) -> constr -> constr) ->
    (existential_key * int * Id.t) list ->
-   Decl_kinds.locality -> Globnames.global_reference -> unit) ->
+   Decl_kinds.locality -> Globnames.global_reference ->
+   Evd.evar_universe_context -> unit) ->
   unit
 
 val mapping_rhs : context_map -> splitting_rhs -> splitting_rhs
@@ -56,9 +57,9 @@ val map_rhs :
 val clean_clause :
   'a * 'b * 'c * splitting_rhs -> 'a * 'b * 'c * splitting_rhs
 val map_evars_in_constr :
-  Evd.evar_map ref -> ((Id.t -> constr) -> constr -> 'b) -> constr -> 'b
+  Evd.evar_map -> ((Id.t -> constr) -> constr -> 'b) -> constr -> 'b
 val map_split : (constr -> constr) -> splitting -> splitting
 val map_evars_in_split :
-  Evd.evar_map ref ->
+  Evd.evar_map ->
   ((Id.t -> constr) -> constr -> constr) ->
   splitting -> splitting

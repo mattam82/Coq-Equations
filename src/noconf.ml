@@ -134,7 +134,7 @@ let derive_no_confusion env evd (ind,u) =
     (mkApp (mkConst cstNoConf, rel_vect 1 (List.length fullbinders)))
     ((Anonymous, None, mkEq evd (lift 2 indty) (mkRel 2) (mkRel 1)) :: fullbinders)
   in
-  let hook vis gr = 
+  let hook vis gr _ectx = 
     let evd = ref (Evd.from_env (Global.env ())) in
     let tc = Typeclasses.class_info (global_of_constr (Lazy.force coq_noconfusion_class)) in
     let b, ty = Typeclasses.instance_constructor (tc,Univ.Instance.empty)

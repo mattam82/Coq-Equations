@@ -172,12 +172,6 @@ Defined.
 Equations(nocomp) concat A (x y z : A) (e : x = y) (e' : y = z) : x = z :=
 concat _ _ _ _ eq_refl q := q.
 Infix "@@" := concat (at level 50).
-Set Printing Universes.
-Set Printing All.
-(* FIXME Program and univs *)
-(* Equations moveL_M1 {A : Type} {x y : A} (p q : x = y) : *)
-(*   eq_sym q @@ p = eq_refl -> p = q := *)
-(* moveL_M1 _ _ _ _ eq_refl := fun e => _. *)
 
 Definition moveR_E A B (f:A -> B) {H : IsEquiv f} (x : A) (y : B) (p : x = f^^-1 y)
   : (f x = y)
@@ -241,10 +235,6 @@ Equations whiskerR {A : Type} {x y z : A} {p q : x = y}
            (h : p = q) (r : y = z) : p @@ r = q @@ r :=
 whiskerR _ _ _ _ _ _ eq_refl _ := eq_refl.
 
-(* Equations moveL_M1 {A : Type} {x y : A} (p q : x = y) : *)
-(*   eq_sym q @@ p = eq_refl -> p = q := *)
-(* moveL_M1 _ _ _ _ eq_refl := fun e => _. *)
-
 Equations moveL_M1 {A : Type} {x y : A} (p q : x = y) :
   eq_sym q @@ p = eq_refl -> p = q :=
 moveL_M1 _ _ _ _ eq_refl := fun e => e.
@@ -264,16 +254,16 @@ Equations ap_compose {A B C : Type} (f : A -> B) (g : B -> C) {x y : A} (p : x =
   ap (fun x => g (f x)) p = ap g (ap f p) :=
 ap_compose _ _ _ _ _ _ _ eq_refl := eq_refl.
 
-(* FIXME
-Equations(nocomp) concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) :
-  (ap f q) @@ (p y) = (p x) @@ q :=
-concat_A1p _ f p x y eq_refl with p x, f x :=
-concat_A1p _ _ _ _ _ eq_refl eq_refl _ := eq_refl.
-Next Obligation.
-  destruct q.
-  constructor. constructor.
-  destruct (p x). constructor.
-Defined. *)
+(* Equations(nocomp) concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) : *)
+(*   (ap f q) @@ (p y) = (p x) @@ q := *)
+(* concat_A1p _ f p x y eq_refl with p x, f x := *)
+(* concat_A1p _ _ _ _ _ eq_refl eq_refl _ := eq_refl. *)
+
+(* Next Obligation. *)
+(*   destruct q. *)
+(*   constructor. constructor. *)
+(*   destruct (p x). constructor. *)
+(* Defined. *)
 
 Equations(nocomp noind) concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) :
   (ap f q) @@ (p y) = (p x) @@ q :=
@@ -441,4 +431,3 @@ Instance contr_paths_contr A {H:Contr A} (x y : A) : Contr (x = y) | 10000 := le
 Program Instance contr_prod A B {CA : Contr A} {CB : Contr B} : Contr (prod A B).
 Next Obligation. exact (@center _ CA, @center _ CB). Defined.
 Next Obligation. apply path_prod; apply contr. Defined.
-

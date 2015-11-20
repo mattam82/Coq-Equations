@@ -233,7 +233,7 @@ let derive_subterm ind =
       in
       let ty = it_mkProd_or_LetIn ty parambinders in
       let body = it_mkLambda_or_LetIn (Option.get body) parambinders in
-      let hook vis gr =
+      let hook vis gr _ =
 	let cst = match gr with ConstRef kn -> kn | _ -> assert false in
 	let inst = Typeclasses.new_instance (fst kl) None global poly (ConstRef cst) in
 	  Typeclasses.add_instance inst
