@@ -166,7 +166,7 @@ type term_info = {
 
 let find_helper_info info f =
   try List.find (fun (ev', arg', id') ->
-    eq_constr (Constrintern.global_reference id') f) info.helpers_info
+    Globnames.eq_gr (Nametab.locate (qualid_of_ident id')) (global_of_constr f)) info.helpers_info
   with Not_found -> anomaly (str"Helper not found while proving induction lemma.")
 
 let inline_helpers i = 

@@ -259,12 +259,6 @@ Equations(nocomp) concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x 
 concat_A1p _ f p x y eq_refl with p x, f x :=
 concat_A1p _ _ _ _ _ eq_refl eq_refl _ := eq_refl.
 
-Next Obligation.
-  destruct q.
-  constructor. constructor.
-  destruct (p x). constructor.
-Defined.
-
 Notation " 'rew' H 'in' c " := (eq_rect_r _ c H) (at level 20).
 Notation " 'rewd' H 'in' c " := (@eq_rect_dep_r _ _ _ c _ H) (at level 20).
 Lemma concat_A1p_lemma {A} (f : A -> A) (p : forall x, f x = x) {x y : A} (q : x = y) :
