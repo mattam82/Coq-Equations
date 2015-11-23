@@ -299,9 +299,11 @@ Transparent concat.
 Definition concat_pA1_p {A : Type} {f : A -> A} (p : forall x, f x = x)
   {x y : A} (q : x = y)
   {w : A} (r : w = f x)
-  :
-    (r @@ ap f q) @@ p y = (r @@ p x) @@ q.
-  destruct q; simpl. now simp concat. (* FIXME rewrite @concat. *)
+  : (r @@ ap f q) @@ p y = (r @@ p x) @@ q.
+Proof.
+  destruct q; simpl.
+  (* now rewrite !concat_p1. *)
+  now simp concat.
 Defined.
 
 Equations ap_p {A B : Type} (f : A -> B) {x y : A} (p q: x = y) (e : p = q) :
