@@ -105,35 +105,35 @@ Unset Implicit Arguments.
 
 (* Equations(struct e) cfold t (e : exp t) : exp t := *)
 Equations cfold {t} (e : exp t) : exp t :=
-cfold t e by rec e exp_subterm :=
-cfold _ (NConst n) := NConst n;
-cfold _ (Plus e1 e2) <= (cfold e1, cfold e2) => {
+cfold e by rec e exp_subterm :=
+cfold (NConst n) := NConst n;
+cfold (Plus e1 e2) <= (cfold e1, cfold e2) => {
   | pair (NConst n1) (NConst n2) := NConst (n1 + n2);
   | pair e1' e2' := Plus e1' e2'
 };
-cfold _ (Eq e1 e2) <= (cfold e1, cfold e2) => {
+cfold (Eq e1 e2) <= (cfold e1, cfold e2) => {
   | pair (NConst n1) (NConst n2) := BConst (beq_nat n1 n2);
   | pair e1' e2' => Eq e1' e2'
 };
-cfold _ (BConst b) := BConst b;
-cfold _ (And e1 e2) <= (cfold e1, cfold e2) => {
+cfold (BConst b) := BConst b;
+cfold (And e1 e2) <= (cfold e1, cfold e2) => {
   | pair (BConst b1) (BConst b2) := BConst (b1 && b2);
   | pair e1' e2' := And e1' e2'
 };
-cfold _ (If _ e e1 e2) <= cfold e => { 
+cfold (If _ e e1 e2) <= cfold e => { 
   | BConst true => cfold e1;
   | BConst false => cfold e2;
   | _ => If e (cfold e1) (cfold e2) }
    (* Weakness of the syntactic check, recursive call under a solution_left. *)
 ;
-cfold _ (Pair e1 e2) := Pair (cfold e1) (cfold e2);
-cfold _ (Fst e) <= cfold e => {
+cfold (Pair e1 e2) := Pair (cfold e1) (cfold e2);
+cfold (Fst e) <= cfold e => {
   | e' <= pairOut e' => {
     | Some p := fst p;
     | None := Fst e'
   }
 };
-cfold _ (Snd e) <= cfold e => {
+cfold (Snd e) <= cfold e => {
   | e' <= pairOut e' => {
     | Some p := snd p;
     | None := Snd e'
@@ -153,10 +153,10 @@ Require Import Max Min Omega.
 Section depth.
   Variable f : nat -> nat -> nat.
 
-  Equations depth c n (t : rbtree c n) : nat :=
-  depth _ _  Leaf := 0;
-  depth _ _ (RedNode _ t1 _ t2) := S (f (depth t1) (depth t2));
-  depth _ _ (BlackNode _ _ _ t1 _ t2) := S (f (depth t1) (depth t2)).
+  Equations depth {c n} (t : rbtree c n) : nat :=
+  depth Leaf := 0;
+  depth (RedNode _ t1 _ t2) := S (f (depth t1) (depth t2));
+  depth (BlackNode _ _ _ t1 _ t2) := S (f (depth t1) (depth t2)).
 End depth.
 
 Theorem depth_min : forall c n (t : rbtree c n), depth min t >= n.
@@ -200,13 +200,13 @@ Inductive rtree : nat -> Set :=
 Section present.
   Variable x : nat.
 
-  Equations present c n (t : rbtree c n) : Prop :=
-  present _ _ Leaf := False;
-  present _ _ (RedNode _ a y b) := present a \/ x = y \/ present b;
-  present _ _ (BlackNode _ _ _ a y b) := present a \/ x = y \/ present b.
+  Equations present {c n} (t : rbtree c n) : Prop :=
+  present Leaf := False;
+  present (RedNode _ a y b) := present a \/ x = y \/ present b;
+  present (BlackNode _ _ _ a y b) := present a \/ x = y \/ present b.
 
-  Equations rpresent n (t : rtree n) : Prop :=
-  rpresent _ (RedNode' _ _ _ a y b) => present a \/ x = y \/ present b.
+  Equations rpresent {n} (t : rtree n) : Prop :=
+  rpresent (RedNode' _ _ _ a y b) => present a \/ x = y \/ present b.
 End present.
 
 Notation "{< x >}" := (existT _ _ x).

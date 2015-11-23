@@ -126,10 +126,8 @@ type pat_expr =
 
 type user_pat_expr = pat_expr located
 
-type user_pat_exprs = user_pat_expr located
-
 type input_pats =
-  | SignPats of user_pat_expr list
+  | SignPats of (Id.t located option * user_pat_expr) list
   | RefinePats of user_pat_expr list
 
 type pre_equation = 
@@ -187,7 +185,31 @@ let rec ids_of_pats pats =
     | PEPat _ -> ids)
     [] pats
 
-let interp_eqn i is_rec isevar env impls sign arity recu eqn =
+let add_implicits impls avoid pats =
+  let rec aux l pats =
+    match l with
+    | imp :: imps ->
+       if Impargs.is_status_implicit imp then
+         let id = Impargs.name_of_implicit imp in
+	 let eqf = function ((Some (_, id')), p) -> Id.equal id' id | _ -> false in
+	 try let pat = List.find_map (fun x -> if eqf x then Some (snd x) else None) pats in
+	     let pats = List.remove_first eqf pats in
+	     pat :: aux imps pats
+	 with Not_found ->
+	   let n = next_ident_away id avoid in
+	   let loc = dummy_loc in
+	   let pat = PEPat (CPatAtom (loc, Some (Ident (loc, n)))) in
+  	   avoid := n :: !avoid;
+	   (loc, pat) :: aux imps pats
+       else begin
+         match pats with
+	 | hd :: tl -> (snd hd) :: aux imps tl
+	 | [] -> List.map snd pats
+       end
+    | [] -> List.map snd pats
+  in aux impls pats
+    
+let interp_eqn i is_rec env impls eqn =
   let avoid = ref [] in
   let rec interp_pat (loc, p) =
     match p with
@@ -234,9 +256,9 @@ let interp_eqn i is_rec isevar env impls sign arity recu eqn =
     let curpats' = 
       match pats with
       | SignPats l -> l
-      | RefinePats l -> curpats @ l
+      | RefinePats l -> curpats @ List.map (fun x -> None, x) l
     in
-    avoid := !avoid @ ids_of_pats curpats';
+    avoid := !avoid @ ids_of_pats (List.map snd curpats');
     Option.iter (fun (loc,id) ->
       if not (Id.equal id i) then
 	user_err_loc (loc, "interp_pats",
@@ -247,7 +269,8 @@ let interp_eqn i is_rec isevar env impls sign arity recu eqn =
     (*     user_err_loc (loc, "interp_pats", *)
     (* 		 str "Patterns do not match the signature " ++  *)
     (* 		   pr_rel_context env sign); *)
-    let pats = map interp_pat curpats' in
+    let curpats'' = add_implicits impls avoid curpats' in
+    let pats = map interp_pat curpats'' in
       match is_rec with
       | Some (Structural _) -> (PUVar i :: pats, interp_rhs curpats' None rhs)
       | Some (Logical r) -> (pats, interp_rhs curpats' (Some (ConstRef r.comp_proj)) rhs)

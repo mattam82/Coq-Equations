@@ -19,8 +19,8 @@ Inductive fin : nat -> Set :=
 (** We can inject it into [nat]. *)
 
 Equations(nocomp) fog {n} (f : fin n) : nat :=
-fog ?(S n) (fz n) := 0 ; 
-fog ?(S n) (fs n f) := S (fog f).
+fog {n:=?(S n)} (fz n) := 0 ; 
+fog (fs n f) := S (fog f).
 
 (** The injection preserves the number: *)
 
@@ -79,16 +79,16 @@ Notation vnil := Vector.nil.
 Notation vcons := Vector.cons.
 
 Equations(nocomp) nth {A} {n} (v : Vector.t A n) (f : fin n) : A :=
-nth A ?(S n) (vcons a n v) fz := a ;
-nth A ?(S n) (vcons a n v) (fs n f) := nth v f.
+nth (vcons a n v) fz := a ;
+nth (vcons a n v) (fs n f) := nth v f.
 
 Goal ∀ (A : Type) (n : nat) (a : A) (H : vector A n), nth (vcons a H) (fz) = a.
   intros. funind (nth (vcons a H) fz) nfz.
 Qed.
 
 Equations(nocomp) tabulate {A} {n} (f : fin n -> A) : vector A n :=
-tabulate A O f := vnil ;
-tabulate A (S n) f := vcons (f fz) (tabulate (f ∘ fs)).
+tabulate {n:=O} f := vnil ;
+tabulate {n:=(S n)} f := vcons (f fz) (tabulate (f ∘ fs)).
 
 (** NoConfusion For [fin]. *)
 
@@ -117,16 +117,16 @@ Derive NoConfusion for fin.
 (** [Below] recursor for [fin]. *)
 
 Equations(nocomp noind) Below_fin (P : ∀ n, fin n -> Type) {n} (v : fin n) : Type :=
-Below_fin P (S n) fz := unit ;
-Below_fin P (S n) (fs n f) := (P n f * Below_fin P f)%type.
+Below_fin P fz := unit ;
+Below_fin P (fs n f) := (P n f * Below_fin P f)%type.
 
-Hint Rewrite Below_fin_equation_2 Below_fin_equation_3 : Below.
+Hint Rewrite Below_fin_equation_2 (* Below_fin_equation_3 *) : Below.
 
 Equations(nocomp noeqns noind) below_fin (P : ∀ n, fin n -> Type)
   (step : ∀ n (v : fin n), Below_fin P v -> P n v)
   {n} (v : fin n) : Below_fin P v :=
-below_fin P step (S n) fz := tt ;
-below_fin P step (S n) (fs n f) := 
+below_fin P step fz := tt ;
+below_fin P step (fs n f) := 
   let bf := below_fin P step f in
     (step n f bf, bf).
 

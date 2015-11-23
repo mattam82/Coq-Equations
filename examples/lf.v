@@ -555,8 +555,8 @@ Inductive IsLambda {t} : hereditary_type t -> Set :=
 | isLambda abs a b prf : IsLambda (Lambda abs, Some (exist (arrow a b) prf)).
 
 Equations(nocomp) is_lambda {t} (h : hereditary_type t) : IsLambda h + term :=
-is_lambda t (pair (Lambda abs) (Some (exist (arrow a b) prf))) := inl (isLambda abs a b prf) ;
-is_lambda t (pair t' _) := inr t'.
+is_lambda (pair (Lambda abs) (Some (exist (arrow a b) prf))) := inl (isLambda abs a b prf) ;
+is_lambda (pair t' _) := inr t'.
 
 Lemma is_lambda_inr {t} (h : hereditary_type t) : forall t', is_lambda h = inr t' -> fst h = t'.
 Proof.
@@ -567,8 +567,8 @@ Inductive IsPair {t} : hereditary_type t -> Set :=
 | isPair u v a b prf : IsPair (Pair u v, Some (exist (product a b) prf)).
 
 Equations(nocomp) is_pair {t} (h : hereditary_type t) : IsPair h + term :=
-is_pair t (pair (Pair u v) (Some (exist (product a b) prf))) := inl (isPair u v a b prf) ;
-is_pair t (pair t' _) := inr t'.
+is_pair (pair (Pair u v) (Some (exist (product a b) prf))) := inl (isPair u v a b prf) ;
+is_pair (pair t' _) := inr t'.
   
 Lemma is_pair_inr {t} (h : hereditary_type t) : forall t', is_pair h = inr t' -> fst h = t'.
 Proof.

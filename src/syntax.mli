@@ -59,9 +59,8 @@ type pat_expr =
   | PEInac of Constrexpr.constr_expr
   | PEPat of Constrexpr.cases_pattern_expr
 type user_pat_expr = pat_expr located
-type user_pat_exprs = user_pat_expr located
 type input_pats =
-    SignPats of user_pat_expr list
+    SignPats of (Id.t located option * user_pat_expr) list
   | RefinePats of user_pat_expr list
 type pre_equation =
     identifier located option * input_pats * pre_equation rhs
@@ -98,11 +97,7 @@ val ids_of_pats : pat_expr located list -> identifier list
 val interp_eqn :
   identifier ->
   rec_type option ->
-  'a ->
   env ->
-  'b ->
-  'c ->
-  'd ->
-  'e ->
+  Impargs.implicit_status list ->
   ((Loc.t * identifier) option * input_pats * 'f rhs as 'f) ->
   clause

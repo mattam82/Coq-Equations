@@ -1,4 +1,4 @@
-Require Import Program Equations.
+Require Import Program Equations.Equations.
 
 Inductive ilist (A : Set) : nat -> Set :=
 | Nil : ilist A 0
@@ -11,8 +11,8 @@ Inductive fin : nat -> Set :=
 | fs : forall {n}, fin n -> fin (S n).
 
 Equations fin_to_nat {n : nat} (i : fin n) : nat :=
-fin_to_nat _ fz := 0;
-fin_to_nat _ (fs j) := S (fin_to_nat j).
+fin_to_nat fz := 0;
+fin_to_nat (fs j) := S (fin_to_nat j).
 
 Lemma fin_lt_n : forall (n : nat) (i : fin n), fin_to_nat i < n.
 Proof.
@@ -22,8 +22,8 @@ Proof.
 Defined.
 
 Equations nat_to_fin {n : nat} (m : nat) (p : m < n) : fin n :=
-nat_to_fin (S n) 0 _ := fz;
-nat_to_fin (S n) (S m) _ := fs (nat_to_fin m _).
+nat_to_fin {n:=(S n)} 0 _ := fz;
+nat_to_fin {n:=(S n)} (S m) _ := fs (nat_to_fin m _).
 Next Obligation. apply Lt.lt_S_n; assumption. Defined.
 
 (*
@@ -89,12 +89,12 @@ Proof.
 Qed.
 
 Equations iget {A : Set} {n : nat} (l : ilist A n) (i : fin n) : A :=
-iget _ _ (Cons x _) fz := x;
-iget _ _ (Cons _ t) (fs j) := iget t j.
+iget (Cons x _) fz := x;
+iget (Cons _ t) (fs j) := iget t j.
 
 Equations isnoc {A : Set} {n : nat} (l : ilist A n) (x : A) : ilist A (S n) :=
-isnoc _ _ Nil x := Cons x Nil;
-isnoc _ _ (Cons y t) x := Cons y (isnoc t x).
+isnoc Nil x := Cons x Nil;
+isnoc (Cons y t) x := Cons y (isnoc t x).
 
 Lemma append_get : forall (A : Set) (n : nat) (l : ilist A n) (x : A),
   iget (isnoc l x) (nat_to_fin n (Lt.lt_n_Sn n)) = x.
@@ -115,8 +115,8 @@ Lemma convert_ilist_trans : forall {A : Set} {n m o : nat} (p : n = m) (r : m = 
 Proof. intros. simplify_eqs. reflexivity. Qed.
 
 Equations irev_aux {A : Set} {i j : nat} (l : ilist A i) (acc : ilist A j) : ilist A (i + j) :=
-irev_aux _ _ _ Nil acc := acc;
-irev_aux _ _ _ (Cons x t) acc := convert_ilist _ (irev_aux t (Cons x acc)).
+irev_aux Nil acc := acc;
+irev_aux (Cons x t) acc := convert_ilist _ (irev_aux t (Cons x acc)).
 
 Program Definition irev {A : Set} {n : nat} (l : ilist A n) : ilist A n := irev_aux l Nil.
 
@@ -133,8 +133,8 @@ Proof.
 Qed.
 
 Equations iapp {A : Set} {n m : nat} (l1 : ilist A n) (l2 : ilist A m) : ilist A (n + m) :=
-iapp _ _ _ Nil l := l;
-iapp _ _ _ (Cons x t) l := Cons x (iapp t l).
+iapp Nil l := l;
+iapp (Cons x t) l := Cons x (iapp t l).
 
 
 Lemma iapp_cons : forall (A : Set) (i j : nat) (l1 : ilist A i) (l2 : ilist A j) (x : A),
@@ -157,8 +157,8 @@ Proof.
 Admitted.
 
 Equations irev' {A : Set} {n : nat} (l : ilist A n) : ilist A n :=
-irev' _ _ Nil := Nil;
-irev' _ _ (Cons x t) := isnoc (irev' t) x.
+irev' Nil := Nil;
+irev' (Cons x t) := isnoc (irev' t) x.
 
 Lemma rev__rev' : forall (A : Set) (i : nat) (l : ilist A i), irev l = irev' l.
 Proof.
@@ -192,5 +192,5 @@ Qed.
 Derive NoConfusion for fin.
 
 Equations(nocomp noind) fle_trans {n : nat} {i j k : fin n} (p : fle i j) (q : fle j k) : fle i k :=
-fle_trans ?(S n) _ _ _ flez _ := flez;
-fle_trans ?(S n) _ _ _ (fles p') (fles q') := fles (fle_trans p' q').
+fle_trans flez _ := flez;
+fle_trans (fles p') (fles q') := fles (fle_trans p' q').

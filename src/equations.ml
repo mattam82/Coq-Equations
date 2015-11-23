@@ -978,7 +978,7 @@ let fix_proto_ref () =
   | _ -> assert false
 
 let constr_of_global = Universes.constr_of_global
-
+		       
 let define_by_eqs opts i (l,ann) t nt eqs =
   let with_comp, with_rec, with_eqns, with_ind =
     let try_bool_opt opt =
@@ -1066,10 +1066,11 @@ let define_by_eqs opts i (l,ann) t nt eqs =
       | Some true -> Option.map (fun c -> Logical c) comp
       | Some false -> Some (Structural with_rec)
   in
+  let implsinfo = Impargs.compute_implicits_with_manual env ty false impls in
   let equations = 
     Metasyntax.with_syntax_protection (fun () ->
       List.iter (Metasyntax.set_notation_for_interpretation data) nt;
-      map (interp_eqn i is_recursive evd env data sign arity None) eqs)
+      map (interp_eqn i is_recursive env implsinfo) eqs)
       ()
   in
   let sign = nf_rel_context_evar ( !evd) sign in

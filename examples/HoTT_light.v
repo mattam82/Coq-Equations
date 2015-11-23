@@ -45,11 +45,11 @@ Notation " X * Y " := (prod X Y) : type_scope.
 Notation " ( x , p ) " := (@pair _ _ x p).
 
 Equations(nocomp) fst {A B} (p : A * B) : A :=
-fst _ _ (pair a b) := a.
+fst (pair a b) := a.
 Transparent fst.
 
 Equations(nocomp) snd {A B} (p : A * B) : B :=
-snd _ _ (pair a b) := b.
+snd (pair a b) := b.
 Transparent snd.
 
 Record sigma {A : Type} (P : A -> Type) := Build_sigma
@@ -67,7 +67,7 @@ Definition Sect {A B : Type} (s : A -> B) (r : B -> A) :=
   forall x : A, r (s x) = x.
 
 Equations ap {A B : T} (f : A -> B) {x y : A} (p : x = y) : f x = f y :=
-ap _ _ _ _ _ eq_refl := eq_refl.
+ap f eq_refl := eq_refl.
 Transparent ap.
 
 (** A typeclass that includes the data making [f] into an adjoin equivalence*)
@@ -92,7 +92,7 @@ Notation "f == g" := (pointwise_paths f g) (at level 70, no associativity) : typ
 (* This definition has slightly changed: the match on the equality is external
    to the function. *)
 Equations(nocomp) apD10 {A} {B : A -> Type} {f g : forall x, B x} (h : f = g) : f == g :=
-apD10 A B f g eq_refl := fun h => eq_refl.
+apD10 eq_refl := fun h => eq_refl.
 
 Class Funext :=
   { isequiv_apD10 :> forall (A : Type) (P : A -> Type) f g, IsEquiv (@apD10 A P f g) }.
@@ -105,7 +105,7 @@ Definition path_forall `{Funext} {A : Type} {P : A -> Type} (f g : forall x : A,
   (@apD10 A P f g)^^-1.
 
 Equations transport {A : Type} (P : A -> Type) {x y : A} (p : x = y) (u : P x) : P y :=
-transport A P x y eq_refl u := u.
+transport P eq_refl u := u.
 Transparent transport.
 
 Notation "p # x" := (transport _ p x) (right associativity, at level 65, only parsing).
@@ -113,21 +113,21 @@ Notation "p # x" := (transport _ p x) (right associativity, at level 65, only pa
 Equations path_sigma {A : Type} (P : A -> Type) (u v : sigma P)
   (p : u.1 = v.1) (q : p # u.2 = v.2)
 : u = v :=
-path_sigma _ _ (Build_sigma _ _) (Build_sigma _ _) eq_refl eq_refl := eq_refl.
+path_sigma _ (Build_sigma _ _) (Build_sigma _ _) eq_refl eq_refl := eq_refl.
 
 Equations(nocomp) path_prod_uncurried {A B : Type} (z z' : A * B)
            (pq : (fst z = fst z') * (snd z = snd z')): z = z' :=
-path_prod_uncurried _ _ (pair _ _) (pair _ _) (pair eq_refl eq_refl) := eq_refl.
+path_prod_uncurried (pair _ _) (pair _ _) (pair eq_refl eq_refl) := eq_refl.
 
 Definition path_prod {A B : Type} (z z' : A * B) (e : fst z = fst z') (f : snd z = snd z') : z = z' :=
   path_prod_uncurried _ _ (e, f).
 
 Equations path_prod_eq {A B : Type} (z z' : A * B) (e : fst z = fst z') (f : snd z = snd z') : z = z' :=
-path_prod_eq _ _ (pair _ _) (pair _ _) eq_refl eq_refl := eq_refl.
+path_prod_eq (pair _ _) (pair _ _) eq_refl eq_refl := eq_refl.
 
 Equations eta_path_prod {A B : Type} {z z' : A * B} (p : z = z') :
   path_prod _ _ (ap fst p) (ap snd p) = p :=
-eta_path_prod _ _ (pair _ _) _ eq_refl := eq_refl.
+eta_path_prod {z:=(pair _ _)} eq_refl := eq_refl.
 
 Definition path_prod' {A B : Type} {x x' : A} {y y' : B}
   : (x = x') -> (y = y') -> ((x,y) = (x',y'))
@@ -136,12 +136,12 @@ Definition path_prod' {A B : Type} {x x' : A} {y y' : B}
 Equations ap_fst_path_prod {A B : Type} {z z' : A * B}
   (p : fst z = fst z') (q : snd z = snd z') :
   ap fst (path_prod _ _ p q) = p :=
-ap_fst_path_prod _ _ (pair _ _) (pair _ _) eq_refl eq_refl := eq_refl.
+ap_fst_path_prod {z:=(pair _ _)} {z':=(pair _ _)} eq_refl eq_refl := eq_refl.
 
 Equations ap_snd_path_prod {A B : Type} {z z' : A * B}
   (p : fst z = fst z') (q : snd z = snd z') :
   ap snd (path_prod _ _ p q) = q :=
-ap_snd_path_prod _ _ (pair _ _) (pair _ _) eq_refl eq_refl := eq_refl.
+ap_snd_path_prod {z:=(pair _ _)} {z':=(pair _ _)} eq_refl eq_refl := eq_refl.
 
 Instance isequiv_path_prod {A B : Type} {z z' : A * B}
 : IsEquiv (path_prod_uncurried z z').
@@ -169,8 +169,8 @@ Proof.
   intro f.  apply path_forall.  intro a.  apply contr.
 Defined.
 
-Equations(nocomp) concat A (x y z : A) (e : x = y) (e' : y = z) : x = z :=
-concat _ _ _ _ eq_refl q := q.
+Equations(nocomp) concat {A} {x y z : A} (e : x = y) (e' : y = z) : x = z :=
+concat eq_refl q := q.
 Infix "@@" := concat (at level 50).
 
 Definition moveR_E A B (f:A -> B) {H : IsEquiv f} (x : A) (y : B) (p : x = f^^-1 y)
@@ -188,22 +188,22 @@ Qed.
 
 Equations concat_1p {A : Type} {x y : A} (p : x = y) :
   eq_refl @@ p = p :=
-concat_1p _ _ _ eq_refl := eq_refl.
+concat_1p eq_refl := eq_refl.
 
 Equations(nocomp) concat_p1 {A : Type} {x y : A} (p : x = y) :
   p @@ eq_refl  = p :=
-concat_p1 _ _ _ eq_refl := eq_refl.
+concat_p1 eq_refl := eq_refl.
 
 Equations concat_Vp {A : Type} {x y : A} (p : x = y) :
   eq_sym p @@ p = eq_refl :=
-concat_Vp _ _ _ eq_refl := eq_refl.
+concat_Vp eq_refl := eq_refl.
 
 Equations concat_pV {A : Type} {x y : A} (p : x = y) : p @@ eq_sym p = eq_refl :=
-concat_pV _ _ _ eq_refl := eq_refl.
+concat_pV eq_refl := eq_refl.
 
 Equations concat_p_pp {A : Type} {x y z t : A} (p : x = y) (q : y = z) (r : z = t) :
   p @@ (q @@ r) = (p @@ q) @@ r :=
-concat_p_pp _ _ _ _ _ eq_refl _ _ := eq_refl.
+concat_p_pp eq_refl _ _ := eq_refl.
 
 Hint Rewrite @concat_p1 @concat_Vp @concat_pV : concat.
 
@@ -225,39 +225,39 @@ Equations concat_pp_A1 {A : Type} {g : A -> A} (p : forall x, x = g x)
   {w : A} (r : w = x)
   :
     (r @@ p x) @@ ap g q = (r @@ q) @@ p y :=
-concat_pp_A1 _ _ _ _ _ eq_refl _ eq_refl := concat_p1 _.
+concat_pp_A1 _ eq_refl eq_refl := concat_p1 _.
 
 Equations whiskerL {A : Type} {x y z : A} (p : x = y)
            {q r : y = z} (h : q = r) : p @@ q = p @@ r :=
-whiskerL _ _ _ _ _ _ _ eq_refl := eq_refl.
+whiskerL _ eq_refl := eq_refl.
 
 Equations whiskerR {A : Type} {x y z : A} {p q : x = y}
            (h : p = q) (r : y = z) : p @@ r = q @@ r :=
-whiskerR _ _ _ _ _ _ eq_refl _ := eq_refl.
+whiskerR eq_refl _ := eq_refl.
 
 Equations moveL_M1 {A : Type} {x y : A} (p q : x = y) :
   eq_sym q @@ p = eq_refl -> p = q :=
-moveL_M1 _ _ _ _ eq_refl := fun e => e.
+moveL_M1 _ eq_refl := fun e => e.
 
 Definition inverse2 {A : Type} {x y : A} {p q : x = y} (h : p = q)
 : eq_sym p = eq_sym q := ap (@eq_sym _ _ _) h.
 
 Equations ap02 {A B : Type} (f:A->B) {x y:A} {p q:x=y} (r:p=q) : ap f p = ap f q :=
-ap02 _ _ _ _ _ _ _ eq_refl := eq_refl.
+ap02 f eq_refl := eq_refl.
 
 Equations ap_p_pp {A B : Type} (f : A -> B) {w : B} {x y z : A}
   (r : w = f x) (p : x = y) (q : y = z) :
   r @@ (ap f (p @@ q)) = (r @@ ap f p) @@ (ap f q) :=
-ap_p_pp _ _ _ _ _ _ _ _ eq_refl _ := concat_p_pp _ eq_refl _.
+ap_p_pp f _ eq_refl _ := concat_p_pp _ eq_refl _.
 
 Equations ap_compose {A B C : Type} (f : A -> B) (g : B -> C) {x y : A} (p : x = y) :
   ap (fun x => g (f x)) p = ap g (ap f p) :=
-ap_compose _ _ _ _ _ _ _ eq_refl := eq_refl.
+ap_compose f g eq_refl := eq_refl.
 
 Equations(nocomp) concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) :
   (ap f q) @@ (p y) = (p x) @@ q :=
-concat_A1p _ f p x y eq_refl with p x, f x :=
-concat_A1p _ _ _ _ _ eq_refl eq_refl _ := eq_refl.
+concat_A1p {f:=f} p {x:=x} eq_refl with p x, f x :=
+concat_A1p p eq_refl eq_refl _ := eq_refl.
 
 Notation " 'rew' H 'in' c " := (eq_rect_r _ c H) (at level 20).
 Notation " 'rewd' H 'in' c " := (@eq_rect_dep_r _ _ _ c _ H) (at level 20).
@@ -270,30 +270,30 @@ Qed.
 
 Equations ap_pp {A B : Type} (f : A -> B) {x y z : A} (p : x = y) (q : y = z) :
   ap f (p @@ q) = (ap f p) @@ (ap f q) :=
-ap_pp _ _ _ _ _ _ eq_refl eq_refl => eq_refl.
+ap_pp _ eq_refl eq_refl => eq_refl.
 
 Equations concat_pp_V {A : Type} {x y z : A} (p : x = y) (q : y = z) :
   (p @@ q) @@ eq_sym q = p :=
-concat_pp_V _ _ _ _ eq_refl eq_refl => eq_refl.
+concat_pp_V eq_refl eq_refl => eq_refl.
 
 Equations ap_V {A B : Type} (f : A -> B) {x y : A} (p : x = y) :
   ap f (eq_sym p) = eq_sym (ap f p) :=
-ap_V _ _ _ _ _ eq_refl => eq_refl.  
+ap_V f eq_refl => eq_refl.  
 
 Hint Rewrite @ap_pp @ap_V : ap.
 Hint Rewrite  @concat_pp_V : concat.
 
 Equations concat_pA1 {A : Type} {f : A -> A} (p : forall x, x = f x) {x y : A} (q : x = y) :
   (p x) @@ (ap f q) = q @@ (p y) :=
-concat_pA1 _ _ p _ _ eq_refl := concat_p1 (p _).
+concat_pA1 p eq_refl := concat_p1 (p _).
 
 Equations concat_p_Vp {A : Type} {x y z : A} (p : x = y) (q : x = z) :
   p @@ (eq_sym p @@ q) = q :=
-concat_p_Vp _ _ _ _ eq_refl eq_refl := eq_refl.
+concat_p_Vp eq_refl eq_refl := eq_refl.
 
 Equations concat_pV_p {A : Type} {x y z : A} (p : x = z) (q : y = z) :
   (p @@ eq_sym q) @@ q = p :=
-concat_pV_p _ _ _ _ eq_refl eq_refl := eq_refl.
+concat_pV_p eq_refl eq_refl := eq_refl.
 Hint Rewrite @concat_pA1 @concat_p_Vp @concat_pV_p : concat.
 Transparent concat.
 Definition concat_pA1_p {A : Type} {f : A -> A} (p : forall x, f x = x)
@@ -308,7 +308,7 @@ Defined.
 
 Equations ap_p {A B : Type} (f : A -> B) {x y : A} (p q: x = y) (e : p = q) :
   ap f p = ap f q :=
-ap_p _ _ _ _ _ p q eq_refl := eq_refl.
+ap_p f p q eq_refl := eq_refl.
 
 Instance ap_morphism (A : Type) (B : Type) x y f :
   Proper (@equality (@equality A x y) ==> @equality (@equality B (f x) (f y))) (@ap A B f x y).

@@ -1,7 +1,7 @@
 (* http://adam.chlipala.net/cpdt/html/DataStruct.html *)
 
 Require Import Arith List.
-Require Import Program Equations.
+Require Import Program Equations.Equations.
 Set Implicit Arguments.
 
 Section ilist.
@@ -15,9 +15,9 @@ Section ilist.
   | First : forall n, fin (S n)
   | Next : forall n, fin n -> fin (S n).
 
-  Equations get n (ls : ilist n) (i : fin n) : A :=
-  get _ (Cons x _) First := x;
-  get _ (Cons _ t) (Next j) := get t j.
+  Equations get {n} (ls : ilist n) (i : fin n) : A :=
+  get (Cons x _) First := x;
+  get (Cons _ t) (Next j) := get t j.
 
 End ilist.
 
@@ -28,9 +28,9 @@ Section ilist_map.
   Variables A B : Set.
   Variable f : A -> B.
 
-  Equations imap n (ls : ilist A n) : ilist B n :=
-  imap _ Nil := Nil;
-  imap _ (Cons x t) := Cons (f x) (imap t).
+  Equations imap {n} (ls : ilist A n) : ilist B n :=
+  imap Nil := Nil;
+  imap (Cons x t) := Cons (f x) (imap t).
 
   Theorem get_imap : forall n (i : fin n) (ls : ilist A n),
     get (imap ls) i = f (get ls i).
@@ -120,8 +120,8 @@ Section filist.
 
   Equations fget {n} (ls : filist n) (i : ffin n) : A :=
 (*  fget 0 _ i :=! i;*)
-  fget (S n) (pair x _) None := x;
-  fget (S n) (pair _ ls) (Some i) := fget ls i.
+  fget {n:=(S n)} (pair x _) None := x;
+  fget {n:=(S n)} (pair _ ls) (Some i) := fget ls i.
   Next Obligation. destruct i. Defined.
   Next Obligation. destruct i. Defined.
   Next Obligation. induction n; destruct i; destruct ls; simp fget. Defined.
@@ -134,8 +134,8 @@ Section filist_map.
   Variable f : A -> B.
 
   Equations fimap {n} (ls : filist A n) : filist B n :=
-  fimap 0 tt := tt;
-  fimap (S n) (pair x ls) := pair (f x) (fimap ls).
+  fimap {n:=0} tt := tt;
+  fimap {n:=(S n)} (pair x ls) := pair (f x) (fimap ls).
 
   Theorem fget_fimap : forall n (i : ffin n) (ls : filist A n),
     fget (fimap ls) i = f (fget ls i).

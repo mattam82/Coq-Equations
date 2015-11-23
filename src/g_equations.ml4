@@ -280,11 +280,17 @@ GEXTEND Gram
   ;
   
   equation:
-    [ [ id = identref; 	pats = LIST1 patt; r = rhs -> (Some id, SignPats pats, r)
+    [ [ id = identref; 	pats = LIST1 ipatt; r = rhs -> (Some id, SignPats pats, r)
       | "|"; pats = LIST1 lpatt SEP "|"; r = rhs -> (None, RefinePats pats, r) 
     ] ]
   ;
 
+  ipatt:
+    [ [ "{"; id = identref; ":="; p = patt; "}" -> (Some id, p)
+      | p = patt -> (None, p)
+      ] ]
+  ;
+    
   patt:
     [ [ id = smart_global -> !@loc, PEApp ((!@loc,id), [])
       | "_" -> !@loc, PEWildcard
