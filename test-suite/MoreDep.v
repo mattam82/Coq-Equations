@@ -95,16 +95,17 @@ Equations pairOut t (e : exp t) : option (pairOutTypeDef t) :=
 pairOut _ (Pair _ _ e1 e2) => Some (e1, e2);
 pairOut _ _ => None.
 
-(* Equations pairOut t (e : exp t) : pairOutType t := *)
-(* pairOut _ (Pair _ _ e1 e2) => Some (e1, e2); *)
-(* pairOut _ (If (Prod t1 t2) e e1 e2) =>  *)
-(* pairOut _ _ => None. *)
- (* eq_nat_dec n1 n2 => { *)
- (*    | left _ := BConst true; *)
- (*    | right _ := BConst false *)
- (*  }; *)
+Set Printing Depth 1000000.
 
-Equations(struct e) cfold t (e : exp t) : exp t :=
+Require Import Wellfounded.
+Derive Signature for exp.
+Derive Subterm for exp.
+Ltac rec ::= rec_wf_eqns.
+Unset Implicit Arguments.
+
+(* Equations(struct e) cfold t (e : exp t) : exp t := *)
+Equations cfold {t} (e : exp t) : exp t :=
+cfold t e by rec e exp_subterm :=
 cfold _ (NConst n) := NConst n;
 cfold _ (Plus e1 e2) <= (cfold e1, cfold e2) => {
   | pair (NConst n1) (NConst n2) := NConst (n1 + n2);
@@ -119,11 +120,12 @@ cfold _ (And e1 e2) <= (cfold e1, cfold e2) => {
   | pair (BConst b1) (BConst b2) := BConst (b1 && b2);
   | pair e1' e2' := And e1' e2'
 };
-cfold _ (If _ e e1 e2) <= cfold e => {
-  | BConst true := cfold e1;
-  | BConst false := cfold e2;
-  | e' := If e' e1 e2 (* FIXME wrong recursive call computed (cfold e1) (cfold e2) *)
-};
+cfold _ (If _ e e1 e2) <= cfold e => { 
+  | BConst true => cfold e1;
+  | BConst false => cfold e2;
+  | _ => If e (cfold e1) (cfold e2) }
+   (* Weakness of the syntactic check, recursive call under a solution_left. *)
+;
 cfold _ (Pair e1 e2) := Pair (cfold e1) (cfold e2);
 cfold _ (Fst e) <= cfold e => {
   | e' <= pairOut e' => {
@@ -137,6 +139,7 @@ cfold _ (Snd e) <= cfold e => {
     | None := Snd e'
   }
 }.
+Set Implicit Arguments.
 
 Inductive color : Set := Red | Black.
 
