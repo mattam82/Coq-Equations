@@ -328,6 +328,11 @@ Ltac elim_ind p := elim_tac ltac:(fun p el => induction p using el) p.
 Lemma solution_left : ∀ {A} {B : A -> Type} (t : A), B t -> (∀ x, x = t -> B x).
 Proof. intros A B t H x eq. destruct eq. apply H. Defined.
 
+Scheme eq_rect_dep := Induction for eq Sort Type.
+
+Lemma eq_rect_dep_r {A} (x : A) (P : forall a, a = x -> Type) (p : P x eq_refl) (y : A) (e : y = x) : P y e.
+Proof. destruct e. apply p. Defined.
+
 Lemma solution_left_dep : ∀ {A} (t : A) {B : forall (x : A), (x = t -> Type)}, B t eq_refl -> (∀ x (Heq : x = t), B x Heq).
 Proof. intros A t B H x eq. destruct eq. apply H. Defined.
 

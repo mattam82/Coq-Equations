@@ -435,8 +435,15 @@ let ind_elim_tac indid inds info gl =
     | _ -> tclTHENLIST [simpl_in_concl; to82 intros; 
 			prove_methods (Proofview.V82.of_tactic (apply (nf_beta (project gl) (applistc indid (rev args)))))] gl
   in
-    tclTHENLIST [intro; onLastHypId (fun id -> applyind [mkVar id])] gl
+  try tclTHENLIST [intro; onLastHypId (fun id -> applyind [mkVar id])] gl
+  with e -> tclFAIL 0 (str"exception") gl
+	     
 
+let type_of_rel t ctx =
+  match kind_of_term t with
+  | Rel k -> lift k (pi3 (List.nth ctx (pred k)))
+  | c -> mkProp
+	       
 let build_equations with_ind env evd id info sign is_rec arity cst 
     f ?(alias:(constr * constr * splitting) option) prob split =
   let rec computations prob f = function
@@ -575,7 +582,7 @@ let build_equations with_ind env evd id info sign is_rec arity cst
     let f, split = match alias with Some (f, _, split) -> f, split | None -> f, split in
     let app = applist (f, args) in
     let statement = it_mkProd_or_subst (applist (ind, args @ [app])) sign in
-    let hookind subst indgr _ = 
+    let hookind subst indgr ectx = 
       let env = Global.env () in (* refresh *)
       Hints.add_hints false [info.base_id]
 	(Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef indgr]);
@@ -619,16 +626,56 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 		      0 args
 		  in
 		  let lenargs = length argsinfo in
+		  let transport ty x y eq c cty =
+		    mkApp (global_reference (id_of_string "eq_rect_r"),
+			   [| ty; x;
+			      mkLambda (Name (id_of_string "abs"), ty,
+			       replace_term (lift 1 x) (mkRel 1) (lift 1 cty)); 
+			       c; y; eq (* equality *) |])
+		  in
+		  let pargs, subst =
+		    match argsinfo with
+		    | [] -> map (lift (lenargs+1)) pats, []
+		    | (i, ty, c, rel) :: [] ->
+		       List.fold_right
+			 (fun t (pargs, subst) ->
+			  let _idx = i + 2 * lenargs in
+			  let rel = lift lenargs rel in
+			  let tty = lift (lenargs+1) (type_of_rel t sign) in
+			  if dependent rel tty then
+			    let tr = transport (lift lenargs ty) rel (lift lenargs c)
+					      (mkRel 1) (lift (lenargs+1) t) tty in
+			    let t' = transport (lift (lenargs+2) ty)
+					       (lift 2 rel)
+					       (mkRel 2)
+					       (mkRel 1) (lift (lenargs+3) t) (lift 2 tty)
+			    in (tr :: pargs, (rel, t') :: subst)
+			  else (* for equalities + return value *)
+			    let t' = lift (lenargs+1) t in
+			    (* let t' = replace_term (lift (lenargs) c) rel t' in *)
+			    (t' :: pargs, subst)) pats ([], [])
+		    | _ -> assert false
+		  in
 		  let result, _ = 
 		    fold_left
   		      (fun (acc, pred) (i, ty, c, rel) -> 
 		       let idx = i + 2 * lenargs in
-			 if dependent (mkRel idx) pred then
-			   let app = 
-			     mkApp (global_reference (id_of_string "eq_rect_r"),
-				    [| lift lenargs ty; lift lenargs rel;
-				       mkLambda (Name (id_of_string "refine"), lift lenargs ty, 
-						 (replace_term (mkRel idx) (mkRel 1) pred)); 
+		       if dependent (mkRel idx) pred then
+			 let eqty =
+			   mkEq evd (lift (lenargs+1) ty) (mkRel 1)
+				(lift (lenargs+1) rel)
+			 in
+			 let pred' = 
+			   List.fold_left
+			     (fun acc (t, tr) -> replace_term t tr acc)
+	       		     (lift 1 (replace_term (mkRel idx) (mkRel 1) pred))
+			     subst
+			 in
+			 let app = 
+			   mkApp (global_reference (id_of_string "eq_rect_dep_r"),
+			  [| lift lenargs ty; lift lenargs rel;
+  			     mkLambda (Name (id_of_string "refine"), lift lenargs ty,
+			       mkLambda (Name (id_of_string "refine_eq"), eqty, pred'));
 				       acc; (lift lenargs c); mkRel 1 (* equality *) |])
 			   in (app, subst1 c pred)
 			 else (acc, subst1 c pred))
@@ -647,12 +694,7 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 		  in
 		  let papp =
 		    applistc (lift (succ signlen + lenargs) (mkRel ppath)) 
-		      (map (lift (lenargs + 1)) pats (* for equalities + return value *))
-		  in
-		  let papp = fold_right 
-		    (fun (i, ty, c, rel) app -> 
-		      replace_term (lift (lenargs) c) (lift (lenargs) rel) app) 
-		    argsinfo papp 
+			     pargs
 		  in
 		  let papp = applistc papp [result] in
 		  let refeqs = map (fun (i, ty, c, rel) -> mkEq evd ty c rel) argsinfo in
@@ -709,18 +751,19 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 	  let instid = add_prefix "FunctionalElimination_" id in
 	    ignore(declare_instance instid poly evd [] cl args)
 	in
-	  try
 	    let tactic =
 	      of82 (ind_elim_tac (fst (Universes.unsafe_constr_of_global elim)) leninds info)
 	    in
+	    let _ = e_type_of (Global.env ()) evd newty in
 	    (* Conv_oracle.set_strategy (ConstKey cst) Conv_oracle.Expand; *)
 	    ignore(Obligations.add_definition (add_suffix id "_elim")
 		     ~tactic ~hook:(Lemmas.mk_hook hookelim) ~kind:info.decl_kind
 		     newty (Evd.evar_universe_context !evd) [||])
-	  with e ->
-	    msg_warning 
-	      (str "Elimination principle could not be proved automatically: " ++ fnl () ++
-		 Errors.print e)
+	  (* with e -> *)
+	  (*   msg_warning  *)
+	  (*     (str "Elimination principle could not be proved automatically: " ++ fnl () ++ *)
+	  (* 	 Errors.print e); *)
+	  (*   raise e *)
       in
       let evd = Evd.from_env env in
       let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in

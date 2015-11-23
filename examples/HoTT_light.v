@@ -254,21 +254,25 @@ Equations ap_compose {A B C : Type} (f : A -> B) (g : B -> C) {x y : A} (p : x =
   ap (fun x => g (f x)) p = ap g (ap f p) :=
 ap_compose _ _ _ _ _ _ _ eq_refl := eq_refl.
 
-(* Equations(nocomp) concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) : *)
-(*   (ap f q) @@ (p y) = (p x) @@ q := *)
-(* concat_A1p _ f p x y eq_refl with p x, f x := *)
-(* concat_A1p _ _ _ _ _ eq_refl eq_refl _ := eq_refl. *)
-
-(* Next Obligation. *)
-(*   destruct q. *)
-(*   constructor. constructor. *)
-(*   destruct (p x). constructor. *)
-(* Defined. *)
-
-Equations(nocomp noind) concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) :
+Equations(nocomp) concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) :
   (ap f q) @@ (p y) = (p x) @@ q :=
 concat_A1p _ f p x y eq_refl with p x, f x :=
 concat_A1p _ _ _ _ _ eq_refl eq_refl _ := eq_refl.
+
+Next Obligation.
+  destruct q.
+  constructor. constructor.
+  destruct (p x). constructor.
+Defined.
+
+Notation " 'rew' H 'in' c " := (eq_rect_r _ c H) (at level 20).
+Notation " 'rewd' H 'in' c " := (@eq_rect_dep_r _ _ _ c _ H) (at level 20).
+Lemma concat_A1p_lemma {A} (f : A -> A) (p : forall x, f x = x) {x y : A} (q : x = y) :
+  eq (concat_A1p p q) (concat_A1p p q).
+Proof.
+  funelim (concat_A1p p q).
+  rewrite Heq0. simpl. rewrite <- Heq. simpl. reflexivity.
+Qed.
 
 Equations ap_pp {A B : Type} (f : A -> B) {x y z : A} (p : x = y) (q : y = z) :
   ap f (p @@ q) = (ap f p) @@ (ap f q) :=
@@ -297,13 +301,13 @@ Equations concat_pV_p {A : Type} {x y z : A} (p : x = z) (q : y = z) :
   (p @@ eq_sym q) @@ q = p :=
 concat_pV_p _ _ _ _ eq_refl eq_refl := eq_refl.
 Hint Rewrite @concat_pA1 @concat_p_Vp @concat_pV_p : concat.
-
+Transparent concat.
 Definition concat_pA1_p {A : Type} {f : A -> A} (p : forall x, f x = x)
   {x y : A} (q : x = y)
   {w : A} (r : w = f x)
   :
     (r @@ ap f q) @@ p y = (r @@ p x) @@ q.
-  destruct q; simpl. now simp concat. 
+  destruct q; simpl. now simp concat. (* FIXME rewrite @concat. *)
 Defined.
 
 Equations ap_p {A B : Type} (f : A -> B) {x y : A} (p q: x = y) (e : p = q) :
