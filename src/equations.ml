@@ -643,16 +643,22 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 			  let rel = lift lenargs rel in
 			  let tty = lift (lenargs+1) (type_of_rel t sign) in
 			  if dependent rel tty then
-			    let tr = transport (lift lenargs ty) rel (lift lenargs c)
-					      (mkRel 1) (lift (lenargs+1) t) tty in
-			    let t' = transport (lift (lenargs+2) ty)
+			    let tr =
+			      if isRel c then lift (lenargs+1) t
+			      else
+			        transport (lift lenargs ty) rel (lift lenargs c)
+					  (mkRel 1) (lift (lenargs+1) t) tty
+			    in
+			    let t' =
+			      if isRel c then lift (lenargs+3) t
+			      else transport (lift (lenargs+2) ty)
 					       (lift 2 rel)
 					       (mkRel 2)
 					       (mkRel 1) (lift (lenargs+3) t) (lift 2 tty)
 			    in (tr :: pargs, (rel, t') :: subst)
 			  else (* for equalities + return value *)
 			    let t' = lift (lenargs+1) t in
-			    (* let t' = replace_term (lift (lenargs) c) rel t' in *)
+			    let t' = replace_term (lift (lenargs) c) rel t' in
 			    (t' :: pargs, subst)) pats ([], [])
 		    | _ -> assert false
 		  in
