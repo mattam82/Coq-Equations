@@ -75,16 +75,6 @@ Ltac rec ::= rec_wf_eqns.
 
 (* Derive Subterm for nat.  *)
 Derive Subterm for vector.
-Next Obligation.
-  red; intros. apply Transitive_Closure.Acc_clos_trans.
-  destruct a. simpl in *. 
-  induction t. 
-  constructor; intros. simpl in *. inversion H.
-  constructor; intros. simpl in *. inversion H.
-  subst. destruct y; simpl in *. noconf H7.
-  apply IHt.
-Defined.
-
 
 Require Import Arith Wf_nat.
 
@@ -143,8 +133,7 @@ Derive Signature for t_direct_subterm.
 
 Instance well_founded_vector_direct_subterm' :
   forall A : Type, EqDec A -> WellFounded (vector_subterm A) | 0.
-Proof. 
-  intros. 
+Proof.   intros. 
   apply Transitive_Closure.wf_clos_trans.
   intro. simp_exists. induction X0. constructor; intros.
   simp_exists. depelim H.
@@ -152,6 +141,7 @@ Proof.
   simp_exists. depelim H. 
   assumption.
 Defined.
+Print Assumptions well_founded_vector_direct_subterm'.
 
 Instance eqdep_prod A B `(EqDec A) `(EqDec B) : EqDec (prod A B).
 Proof. intros. intros x y. decide equality. Defined.

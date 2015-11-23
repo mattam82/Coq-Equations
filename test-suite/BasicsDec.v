@@ -1,4 +1,4 @@
-Require Import Equations DepElimDec Bvector.
+Require Import Equations.Equations Equations.DepElimDec Bvector.
 
 Ltac generalize_sig id cont ::=
   let id' := fresh id in
@@ -46,10 +46,10 @@ Inductive foo (A : Type)
 
 Derive Signature for foo.
 
-Require Import EqDec.
+Require Import Equations.EqDec.
 
 (* FIXME Should not have to do that here. *)
-Derive Signature for vector.
+Derive Signature for Vector.t.
 
 Instance vector_eqdec {A n} `(EqDec A) : EqDec (vector A n). 
 Proof. intros. intros x. induction x. left. now depelim y.
@@ -64,21 +64,11 @@ Defined.
 
 (* FIXME Cannot prove well-foundedness automatically. *)
 Derive Subterm for vector.
+Print Assumptions well_founded_t_subterm.
 
 (* FIXME Should not have to do that here.
          Also, the name should be [vector], not [t]. *)
 Derive Signature for t_direct_subterm.
-
-Next Obligation.
-  apply Transitive_Closure.wf_clos_trans.
-  intro. simp_exists. induction X. constructor; intros.
-  simp_exists. depelim H.
-  constructor; intros.
-  simp_exists. depelim H.
-  assumption.
-Defined.
-
-(* Print Assumptions well_founded_t_subterm. *)
 
 (** A closed proof of well-foundedness relying on the decidability
    of [A]. *)
@@ -87,9 +77,8 @@ Lemma well_founded_vector_direct_subterm' :
   forall A : Type, EqDec A -> WellFounded (t_subterm A).
 Proof. intros.
   apply Transitive_Closure.wf_clos_trans.
-  intro. simp_exists. induction X0. constructor; intros.
-  simp_exists. depelim H.
-  constructor; intros.
-  simp_exists. depelim H.
-  assumption.
+  intro. simp_exists.
+  induction X0; constructor; intros;
+  simp_exists; simpl in *; depelim H; assumption.
 Defined.
+Print Assumptions well_founded_vector_direct_subterm'.
