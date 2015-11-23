@@ -100,9 +100,9 @@ Hint Extern 10 => eapply_hyp : solve_subterm.
 
 Ltac solve_subterm := 
   apply Transitive_Closure.wf_clos_trans;
-  red; intros; on_last_hyp ltac:(fun H => induction H); constructor;
-  intros; on_last_hyp ltac:(fun HR => generalize_eqs HR; induction HR); simplify_dep_elim;
-    try typeclasses eauto with solve_subterm.
+  red; intros; simp_exists; on_last_hyp ltac:(fun H => induction H); constructor;
+  intros; simp_exists; on_last_hyp ltac:(fun HR => generalize_eqs HR; induction HR);
+  simplify_dep_elim; try typeclasses eauto with solve_subterm.
 
 (* Ltac solve_subterm := intros ; apply wf_clos_trans ; *)
 (*   red ; intros; simp_exists; *)
