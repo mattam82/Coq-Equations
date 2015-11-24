@@ -89,7 +89,7 @@ Hint Resolve clos_trans_stepr : subterm_relation.
 
 (** The default tactic to build proofs of well foundedness of subterm relations. *)
 
-Ltac simp_exists := destruct_exists ; simpl in *.
+Ltac simp_sigmas := repeat destruct_one_sigma ; simpl in *.
 
 Ltac eapply_hyp :=
   match goal with 
@@ -100,8 +100,8 @@ Hint Extern 10 => eapply_hyp : solve_subterm.
 
 Ltac solve_subterm := intros;
   apply Transitive_Closure.wf_clos_trans;
-  red; intros; simp_exists; on_last_hyp ltac:(fun H => induction H); constructor;
-  intros; simp_exists; on_last_hyp ltac:(fun HR => generalize_eqs HR; induction HR);
+  red; intros; simp_sigmas; on_last_hyp ltac:(fun H => induction H); constructor;
+  intros; simp_sigmas; on_last_hyp ltac:(fun HR => generalize_eqs HR; induction HR);
   simplify_dep_elim; try typeclasses eauto with solve_subterm.
 
 (* Ltac solve_subterm := intros ; apply wf_clos_trans ; *)
@@ -113,7 +113,7 @@ Ltac solve_subterm := intros;
 
 Ltac rec_wf_fix x recname fixterm :=
   apply fixterm ; clear_local ; 
-  intros until 1 ; simp_exists ; 
+  intros until 1 ; simp_sigmas ; 
     on_last_hyp ltac:(fun x => rename x into recname) ;
   simplify_dep_elim ; intros ; unblock_goal ; intros ;
   move recname at bottom ; repeat curry recname ; simpl in recname.
@@ -194,8 +194,7 @@ Section Lexicographic_Product.
     simple inversion H6; intro.
     injection H1. injection H3. intros. subst. clear H1 H3.
     apply IHAcc; auto with sets. 
-
-    noconf H3. noconf H1. 
+    noconf H3; noconf H1. 
   Qed.
 
   Theorem wf_lexprod :

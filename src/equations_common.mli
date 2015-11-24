@@ -74,7 +74,7 @@ val e_conv :
   env -> Evd.evar_map ref -> constr -> constr -> bool
 
 val e_type_of : env -> Evd.evar_map ref -> constr -> types
-						
+						     
 val reference_of_global : Globnames.global_reference -> Libnames.reference
 
 (** Term manipulation *)
@@ -155,6 +155,11 @@ val coq_tt : Term.constr lazy_t
 val coq_prod : Term.constr lazy_t
 val coq_pair : Term.constr lazy_t
 
+val coq_sigma : Globnames.global_reference lazy_t
+val coq_sigmaI : Globnames.global_reference lazy_t
+val coq_pr1 : Names.projection lazy_t
+val coq_pr2 : Names.projection lazy_t
+			    
 val coq_zero : constr lazy_t
 val coq_succ : constr lazy_t
 val coq_nat : constr lazy_t
@@ -215,20 +220,18 @@ val below_tac : string -> Names.kernel_name
 val tacident_arg :
   Names.Id.t ->
   < constant : 'a; dterm : 'b; level : 'c; name : 'd; pattern : 'e;
-    reference : Libnames.reference; tacexpr : 'f; term : 'g; utrm : 'h >
-  Tacexpr.gen_tactic_arg
+    reference : Libnames.reference; tacexpr : 'f; term : 'g; utrm : 'h > Tacexpr.gen_tactic_arg
 val tacvar_arg :
   Names.Id.t ->
   < constant : 'a; dterm : 'b; level : Genarg.rlevel; name : 'c;
-    pattern : 'd; reference : 'e; tacexpr : 'f; term : 'g; utrm : 'h >
-  Tacexpr.gen_tactic_arg
+    pattern : 'd; reference : 'e; tacexpr : 'f; term : 'g; utrm : 'h > Tacexpr.gen_tactic_arg
 val rec_tac :
   Names.Id.t ->
   Names.Id.t ->
   < constant : 'a; dterm : 'b; level : Genarg.rlevel; name : 'c;
     pattern : 'd; reference : Libnames.reference; tacexpr : 'e; term : 'f;
     utrm : 'g >
-  Tacexpr.gen_tactic_expr
+	   Tacexpr.gen_tactic_expr
 val rec_wf_tac :
   Names.Id.t ->
   Names.Id.t ->
@@ -236,13 +239,13 @@ val rec_wf_tac :
   < constant : 'b; dterm : 'c; level : Genarg.rlevel; name : 'd;
     pattern : 'e; reference : Libnames.reference; tacexpr : 'f; term : 'a;
     utrm : 'g >
-  Tacexpr.gen_tactic_expr
+	   Tacexpr.gen_tactic_expr
 val unfold_recursor_tac : unit -> unit Proofview.tactic
 val equations_tac_expr :
   unit ->
   < constant : 'a; dterm : 'b; level : 'c; name : 'd; pattern : 'e;
     reference : Libnames.reference; tacexpr : 'f; term : 'g; utrm : 'h >
-  Tacexpr.gen_tactic_expr
+								    Tacexpr.gen_tactic_expr
 val equations_tac : unit -> unit Proofview.tactic
 val set_eos_tac : unit -> unit Proofview.tactic
 val solve_rec_tac : unit -> unit Proofview.tactic

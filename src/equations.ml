@@ -1152,10 +1152,12 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	      let tac = prove_unfolding_lemma info (mkConst r.comp_proj)
 					      f_cst funf_cst unfold_split in
 	      let unfold_eq_id = add_suffix unfoldi "_eq" in
-		ignore(Obligations.add_definition ~kind:info.decl_kind
+	        try ignore(Obligations.add_definition ~kind:info.decl_kind
 			 ~hook:(Lemmas.mk_hook hook_eqs) ~reduce:(fun x -> x)
 			 ~implicits:impls unfold_eq_id stmt ~tactic:(of82 tac)
-			  (Evd.evar_universe_context !evd) [||])
+			 (Evd.evar_universe_context !evd) [||])
+		with e ->
+		  msg_error (str"Couldn't prove unfolding lemma")
 	    in
 	      define_tree None poly impls status evd env
 			  (unfoldi, sign, arity) None ann unfold_split hook_unfold

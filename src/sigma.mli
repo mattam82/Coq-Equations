@@ -6,7 +6,6 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-val coq_sigma : Coqlib.coq_sigma_data Lazy.t
 val mkAppG :
   Evd.evar_map ref ->
   Globnames.global_reference -> Term.constr array -> Term.constr
@@ -23,8 +22,6 @@ val constrs_of_coq_sigma :
 val decompose_coq_sigma : Term.constr -> (Term.constr * Term.constr) option
 val decompose_indapp :
   Term.constr -> Term.constr array -> Term.constr * Term.constr array
-val sigT : Coqlib.coq_sigma_data Lazy.t
-val sigT_info : Term.case_info lazy_t
 val telescope :
   Evd.evar_map ref ->
   (Names.Name.t * 'a option * Constr.constr) list ->
@@ -35,8 +32,8 @@ val sigmaize :
   Environ.env ->
   Evd.evar_map ref ->
   Term.constr ->
-  Term.constr * Term.constr * Constr.constr list * Term.constr *
-  Term.constr * Term.constr * Term.constr
+  Term.constr * Term.constr * Constr.constr list * Names.projection *
+  Names.projection * Term.constr * Term.constr
 val ind_name : Names.inductive -> Names.Id.t
 val signature_ref : Term.constr lazy_t
 val signature_sig : Term.constr lazy_t

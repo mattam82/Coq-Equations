@@ -779,7 +779,7 @@ Proof. intros. revert H1. funelim (hereditary_subst (U, u, t) (length Γ'));
   specialize (Hind _ _ eq_refl).
   depelim Hind. 
   specialize (H2 _ _ eq_refl).
-  noconf H2.
+  noconf H2. 
   depelim H.
   specialize (H1 (Γ' @ Γ) B H). depelim H2.
   specialize (H1 H2 _ _ (eq_sym Heqhsubst0)). destruct H1.
@@ -1003,7 +1003,7 @@ Proof.
   intros Ht; depelim Ht. specialize (Hind _ (A × B) Hu). revert Hind.
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). 
   noconf Heq0.
-  destruct Hind as [Hind Hind']. 
+  intros [Hind Hind']. 
   specialize (Hind' Ht). destruct Hind' as [H0 H1]. noconf H1.
   depelim H0. split; auto.
   depelim H. 
@@ -1029,7 +1029,7 @@ Proof.
   intros Ht; depelim Ht. specialize (Hind _ (A × B) Hu). revert Hind.
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). 
   noconf Heq0.
-  destruct Hind as [Hind Hind']. 
+  intros [Hind Hind']. 
   specialize (Hind' Ht). destruct Hind' as [H0 H1]. noconf H1.
   depelim H0. split; auto. depelim H.
   split; auto.

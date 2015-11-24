@@ -11,6 +11,7 @@
    on some equation. *)
 
 Require Import Coq.Program.Program Bvector List.
+Require Import Equations.Signature.
 Require Export Equations.DepElim.
 
 Ltac noconf H ::=
@@ -22,7 +23,7 @@ Ltac solve_noconf :=
   simplify_dep_elim ; on_last_hyp ltac:(fun id => depelim id) ;
   red ; solve [exact I | reflexivity].
 
-Derive NoConfusion for unit bool nat option sum prod list sigT sig.
+Derive NoConfusion for unit bool nat option sum prod list sigT sig. 
 
 (* FIXME should be done by the derive command *)
 Extraction Inline noConfusion noConfusion_nat NoConfusionPackage_nat.

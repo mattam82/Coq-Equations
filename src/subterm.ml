@@ -192,14 +192,13 @@ let derive_subterm ind =
 	       a sigma type *)
 	    let _, _, indices, indexproj, valproj, valsig, typesig = sigmaize env' evm indapp in
 	    let subrel = 
-	      let valproj = lift 2 valproj in
 	      let liftindices = map (liftn 2 2) indices in
-	      let yindices = map (subst1 (mkApp (lift 2 indexproj, [| mkRel 1 |]))) liftindices in
-	      let xindices = map (subst1 (mkApp (lift 2 indexproj, [| mkRel 2 |]))) liftindices in
+	      let yindices = map (subst1 (mkProj (indexproj, mkRel 1))) liftindices in
+	      let xindices = map (subst1 (mkProj (indexproj, mkRel 2))) liftindices in
 	      let apprel = 
 		applistc subind (extended_rel_list 2 parambinders @
 				    (xindices @ yindices @
-					[mkApp (valproj, [| mkRel 2 |]); mkApp (valproj, [| mkRel 1 |])]))
+					[mkProj (valproj, mkRel 2); mkProj (valproj, mkRel 1)]))
 	      in 
 		mkLambda (Name (id_of_string "x"), typesig,
 			 mkLambda (Name (id_of_string "y"), lift 1 typesig,

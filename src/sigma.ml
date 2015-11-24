@@ -40,8 +40,6 @@ open Tacmach
 open Decl_kinds
 open Equations_common
 
-let coq_sigma = Lazy.from_fun Coqlib.build_sigma_type
-
 let mkAppG evd gr args = 
   let c = e_new_global evd gr in
     mkApp (c, args)
@@ -51,19 +49,17 @@ let applistG evd gr args =
 
 let mkSig evd (n, c, t) = 
   let args = [| c; mkLambda (n, c, t) |] in
-    mkAppG evd (Lazy.force coq_sigma).Coqlib.typ args
+    mkAppG evd (Lazy.force coq_sigma) args
 
 let constrs_of_coq_sigma env evd t alias = 
-  let s = Lazy.force coq_sigma in
   let rec aux proj c ty =
     match kind_of_term c with
-    | App (f, args) when is_global s.Coqlib.intro f && 
+    | App (f, args) when is_global (Lazy.force coq_sigmaI) f && 
 	Array.length args = 4 -> 
 	(match kind_of_term args.(1) with
 	| Lambda (n, b, t) ->
-	    let projargs = [| args.(0); args.(1); proj |] in
-	    let p1 = mkAppG evd s.Coqlib.proj1 projargs in
-	    let p2 = mkAppG evd s.Coqlib.proj2 projargs in
+	    let p1 = mkProj (Lazy.force coq_pr1, proj) in
+	    let p2 = mkProj (Lazy.force coq_pr2, proj) in
 	      (n, args.(2), p1, args.(0)) :: aux p2 args.(3) t
 	| _ -> raise (Invalid_argument "constrs_of_coq_sigma"))
     | _ -> [(Anonymous, c, proj, ty)]
@@ -72,7 +68,7 @@ let constrs_of_coq_sigma env evd t alias =
 let decompose_coq_sigma t = 
   let s = Lazy.force coq_sigma in
     match kind_of_term t with
-    | App (f, args) when is_global s.Coqlib.typ f && 
+    | App (f, args) when is_global s f && 
 	Array.length args = 2 -> Some (args.(0), args.(1))
     | _ -> None
 
@@ -87,15 +83,7 @@ let decompose_indapp f args =
   | _ -> f, args
 
 
-let sigT = Lazy.from_fun build_sigma_type
-let sigT_info = lazy (make_case_info (Global.env ()) (Globnames.destIndRef (Lazy.force sigT).typ) LetStyle)
-
-  (* { ci_ind         =  *)
-  (*     ci_cstr_nargs  = [|2|]; *)
-  (*   ci_npar        = 2; *)
-  (*   ci_cstr_ndecls = [|2|]; *)
-  (*   ci_pp_info     =  { cstr_tags = [||]; ind_tags = []; style = LetStyle } *)
-  (* } *)
+(* let sigT_info = lazy (make_case_info (Global.env ()) (Globnames.destIndRef (Lazy.force sigT).typ) LetStyle) *)
 
 let telescope evd = function
   | [] -> assert false
@@ -106,7 +94,7 @@ let telescope evd = function
 	List.fold_left
 	  (fun (ty, tys) (n, b, t) ->
 	    let pred = mkLambda (n, t, ty) in
-	    let sigty = mkAppG evd (Lazy.force sigT).typ [|t; pred|] in
+	    let sigty = mkAppG evd (Lazy.force coq_sigma) [|t; pred|] in
 	      (sigty, pred :: tys))
 	  (t, []) tl
       in
@@ -114,14 +102,14 @@ let telescope evd = function
 	List.fold_right (fun pred (intro, k) ->
 	  let pred = Vars.lift k pred in
 	  let (n, dom, codom) = destLambda pred in
-	  let intro = mkAppG evd (Lazy.force sigT).intro [| dom; pred; mkRel k; intro|] in
+	  let intro = mkAppG evd (Lazy.force coq_sigmaI) [| dom; pred; mkRel k; intro|] in
 	    (intro, succ k))
 	  tys (mkRel 1, 2)
       in
       let (last, _, subst) = List.fold_right2
 	(fun pred (n, b, t) (prev, k, subst) ->
-	  let proj1 = applistG evd (Lazy.force sigT).proj1 [liftn 1 k t; liftn 1 k pred; prev] in
-	  let proj2 = applistG evd (Lazy.force sigT).proj2 [liftn 1 k t; liftn 1 k pred; prev] in
+	  let proj1 = mkProj (Lazy.force coq_pr1, prev) in
+	  let proj2 = mkProj (Lazy.force coq_pr2, prev) in
 	    (lift 1 proj2, succ k, (n, Some proj1, liftn 1 k t) :: subst))
 	(List.rev tys) tl (mkRel 1, 1, [])
       in ty, ((n, Some last, liftn 1 len t) :: subst), constr
@@ -142,9 +130,9 @@ let sigmaize ?(liftty=0) env evd f =
 	       letbinders)
   in
   let tyargs = [| argtyp; pred |] in
-  let tysig = mkAppG evd (Lazy.force coq_sigma).typ tyargs in
-  let indexproj = mkAppG evd (Lazy.force coq_sigma).proj1 tyargs in
-  let valproj = mkAppG evd (Lazy.force coq_sigma).proj2 tyargs in
+  let tysig = mkAppG evd (Lazy.force coq_sigma) tyargs in
+  let indexproj = Lazy.force coq_pr1 in
+  let valproj = Lazy.force coq_pr2 in
   let indices = 
     (List.rev_map (fun l -> substl (tl l) (hd l)) 
      (Equations_common.proper_tails (map (fun (_, b, _) -> Option.get b) letbinders)))
@@ -159,7 +147,7 @@ let sigmaize ?(liftty=0) env evd f =
 		 (Equations_common.lift_rel_contextn 1 (succ lenb) letbinders))
     in
     let _tylift = lift lenb argtyp in
-      mkAppG evd (Lazy.force coq_sigma).intro
+      mkAppG evd (Lazy.force coq_sigmaI)
 	[|argtyp; pred; lift 1 make; mkRel 1|]
   in argtyp, pred, indices, indexproj, valproj, valsig, tysig
 
@@ -282,7 +270,7 @@ let curry_hyp sigma c t =
 	let (n, idx, dom) = destLambda pred in
 	let newctx = [(na, None, dom); (n, None, idx)] in
 	let evd = ref sigma in
-	let tuple = mkAppG evd (Lazy.force coq_sigma).intro
+	let tuple = mkAppG evd (Lazy.force coq_sigmaI)
 			  [| lift 2 ty; lift 2 pred; mkRel 2; mkRel 1 |]
 	in
 	let term = it_mkLambda_or_LetIn (mkApp (c, [| tuple |])) newctx in
