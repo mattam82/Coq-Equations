@@ -565,3 +565,8 @@ Proof. revert f. funelim (diag v); intros f.
 
   depelim f; simp nth. rewrite H. simp nth.
 Qed.
+
+Equations(nocomp) assoc (x y z : nat) : x + y + z = x + (y + z) :=
+assoc 0 y z := eq_refl;
+assoc (S x) y z <= assoc x y z, x + (y + z) => {
+assoc (S x) y z eq_refl p' := eq_refl }.
