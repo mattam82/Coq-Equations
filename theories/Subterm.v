@@ -100,7 +100,7 @@ Hint Extern 10 => eapply_hyp : solve_subterm.
 
 Ltac solve_subterm := intros;
   apply Transitive_Closure.wf_clos_trans;
-  red; intros; simp_sigmas; on_last_hyp ltac:(fun H => induction H); constructor;
+  red; intros; simp_sigmas; on_last_hyp ltac:(fun H => depind H); constructor;
   intros; simp_sigmas; on_last_hyp ltac:(fun HR => generalize_eqs HR; induction HR);
   simplify_dep_elim; try typeclasses eauto with solve_subterm.
 
@@ -116,7 +116,7 @@ Ltac rec_wf_fix x recname fixterm :=
   intros until 1 ; simp_sigmas ; 
     on_last_hyp ltac:(fun x => rename x into recname) ;
   simplify_dep_elim ; intros ; unblock_goal ; intros ;
-  move recname at bottom ; repeat curry recname ; simpl in recname.
+  move recname at bottom ; try curry recname ; simpl in recname.
 
 (** Generalize an object [x], packing it in a sigma type if necessary. *)
 

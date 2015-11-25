@@ -263,17 +263,40 @@ let pattern_sigma c hyp env sigma =
     Proofview.V82.tactic (tclTHEN (Refiner.tclEVARS !evd) projabs)
 
 let curry_hyp sigma c t =
-  let na, dom, concl = destProd t in
-    match decompose_coq_sigma dom with
-    | None -> None
-    | Some (ty, pred) ->
-	let (n, idx, dom) = destLambda pred in
-	let newctx = [(na, None, dom); (n, None, idx)] in
-	let evd = ref sigma in
-	let tuple = mkAppG evd (Lazy.force coq_sigmaI)
-			  [| lift 2 ty; lift 2 pred; mkRel 2; mkRel 1 |]
-	in
-	let term = it_mkLambda_or_LetIn (mkApp (c, [| tuple |])) newctx in
-	let typ = it_mkProd_or_LetIn (subst1 tuple concl) newctx in
-	  Some (term, typ)
-	    
+  let aux c t na ty pred concl =
+    let (n, idx, dom) = destLambda pred in
+    let newctx = [(na, None, dom); (n, None, idx)] in
+    let evd = ref sigma in
+    let tuple = mkAppG evd (Lazy.force coq_sigmaI)
+		       [| lift 2 ty; lift 2 pred; mkRel 2; mkRel 1 |]
+    in
+    let term = it_mkLambda_or_LetIn (mkApp (lift 2 c, [| tuple |])) newctx in
+    let typ = it_mkProd_or_LetIn (subst1 tuple (liftn 2 2 concl)) newctx in
+      (term, typ)
+  in
+  let rec curry_index c t =
+    match kind_of_term t with
+    | Prod (na, dom, concl) ->
+       (match decompose_coq_sigma dom with
+	| None -> (c, t)
+	| Some (ty, pred) ->
+	   let term, typ = aux c t na ty pred concl in
+	   match kind_of_term typ with
+	   | Prod (na', dom', concl') ->
+	      let body' = pi3 (destLambda term) in
+	      let c, t = curry_index body' concl' in
+	      mkLambda (na', dom', c), mkProd (na', dom', t)
+	   | _ -> (term, typ))
+    | _ -> (c, t)
+  in
+  let curry c t =
+    match kind_of_term t with
+    | Prod (na, dom, concl) ->
+       (match decompose_coq_sigma dom with
+	| None -> None
+	| Some (ty, pred) ->
+	   let term, typ = aux c t na ty pred concl in
+	   let c, t = curry_index term typ in
+	     Some (nf_beta Evd.empty c, t))
+    | _ -> None
+  in curry c t
