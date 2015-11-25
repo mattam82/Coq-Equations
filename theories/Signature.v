@@ -11,18 +11,7 @@
    A signature for [A] is a sigma-type in which any [A] 
    can be packed. *)
 
-Require Import Equations.EqDec.
-
-Set Primitive Projections.
-Record sigma {A : Type} {B : A -> Type} := sigmaI { pr1 : A; pr2 : B pr1 }.
-Unset Primitive Projections.
-
-Arguments sigma A B : clear implicits.
-Notation " { x : A & y } " := (@sigma _ (fun x : A => y)).
-Notation " { x : A & y } " := (@sigma _ (fun x : A => y)) : type_scope.
-Notation " ( x ; y ) " := (@sigmaI _ _ x y).
-Notation " x .1 " := (pr1 x) (at level 3).
-Notation " x .2 " := (pr2 x) (at level 3).
+From Equations Require Import Init EqDec.
 
 (* Lemma sigma_eq_sigT_eq {A B} (x x' : A) (y : B x) (y' : B x') :  *)
 (*   existT B x y = existT B x' y' -> *)
@@ -36,13 +25,8 @@ Notation " x .2 " := (pr2 x) (at level 3).
 (*   set (foo := (x'; y')) in *.  *)
 (*   simpl. destruct H. *)
   
-Arguments sigmaI {A} B pr1 pr2.
-Lemma inj_sigma2 (U : Type) (P : U -> Type) (p : U) (x y : P p) : sigmaI P p x = sigmaI P p y -> x = y.
-Proof.
-Admitted.
-
-Lemma inj_right_sigma {A : Type} `{EqDec A} (x : A) (P : A -> Type) (y y' : P x) :
-  (x; y) = (x; y') -> y = y'.
+Lemma inj_sigma2 (U : Type) (P : U -> Type) (p : U) (x y : P p) :
+  sigmaI P p x = sigmaI P p y -> x = y.
 Proof.
 Admitted.
 

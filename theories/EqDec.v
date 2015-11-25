@@ -6,6 +6,8 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
+Require Import Equations.Init.
+
 (** Decidable equality.
 
    We redevelop the derivation of [K] from decidable equality on [A] making
@@ -91,6 +93,11 @@ Section EqdepDec.
     trivial.
   Defined.
 
+  Lemma eq_dec_refl : eq_dec x x = left _ (eq_refl x).
+  Proof. case eq_dec. intros. f_equal. apply eq_proofs_unicity. 
+    intro. congruence.
+  Defined.
+
   (** The corollary *)
 
   Let proj (P:A -> Type) (exP:sigT P) (def:P x) : P x :=
@@ -120,11 +127,6 @@ Section EqdepDec.
     reflexivity.
   Defined.
 
-  Lemma eq_dec_refl : eq_dec x x = left _ (eq_refl x).
-  Proof. case eq_dec. intros. f_equal. apply eq_proofs_unicity. 
-    intro. congruence.
-  Defined.
-
   Lemma inj_right_pair_refl (P : A -> Type) (y : P x) :
     inj_right_pair (y:=y) (y':=y) (eq_refl _) = (eq_refl _).
   Proof. unfold inj_right_pair. intros. 
@@ -132,6 +134,46 @@ Section EqdepDec.
     unfold K_dec. simpl.
     unfold eq_proofs_unicity. subst proj. 
     simpl. unfold nu_inv, comp, nu. simpl. 
+    unfold eq_ind, nu_left_inv, trans_sym_eq, eq_rect, nu_constant.
+    rewrite eq_dec_refl. reflexivity.
+  Defined.
+
+  (* On [sigma] *)
+  
+  Let projs (P:A -> Type) (exP:sigma A P) (def:P x) : P x :=
+    match exP with
+      | sigmaI _ x' prf =>
+        match eq_dec x' x with
+          | left eqprf => eq_rect x' P prf x eqprf
+          | _ => def
+        end
+    end.
+
+  Theorem inj_right_sigma :
+    forall (P:A -> Type) (y y':P x),
+      sigmaI P x y = sigmaI P x y' -> y = y'.
+  Proof.
+    intros.
+    cut (projs (sigmaI P x y) y = projs (sigmaI P x y') y).
+    unfold projs. 
+    case (eq_dec x x).
+    intro e.
+    elim e using K_dec. trivial.
+
+    intros.
+    case n; trivial.
+
+    case H0.
+    reflexivity.
+  Defined.
+
+  Lemma inj_right_sigma_refl (P : A -> Type) (y : P x) :
+    inj_right_sigma (y:=y) (y':=y) (eq_refl _) = (eq_refl _).
+  Proof. unfold inj_right_sigma. intros. 
+    unfold eq_rect. unfold projs. rewrite eq_dec_refl. 
+    unfold K_dec. simpl.
+    unfold eq_proofs_unicity. subst projs.
+    simpl. unfold nu_inv, comp, nu. simpl.
     unfold eq_ind, nu_left_inv, trans_sym_eq, eq_rect, nu_constant.
     rewrite eq_dec_refl. reflexivity.
   Defined.

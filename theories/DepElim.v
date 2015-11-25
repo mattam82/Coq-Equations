@@ -189,7 +189,12 @@ Lemma inj_pairT2_refl : forall A (x : A) (P : A -> Type) (p : P x),
   Eqdep.EqdepTheory.inj_pairT2 A P x p p eq_refl = eq_refl.
 Proof. intros. apply UIP_refl. Qed.
 
-Hint Rewrite @JMeq_eq_refl @UIP_refl_refl @inj_pairT2_refl : refl_id.
+Lemma inj_sigma2_refl : forall A (x : A) (P : A -> Type) (p : P x),
+  inj_sigma2 A P x p p eq_refl = eq_refl.
+Proof. intros. apply UIP_refl. Qed.
+
+Hint Rewrite @JMeq_eq_refl @UIP_refl_refl
+     @inj_pairT2_refl @inj_sigma2_refl : refl_id.
 
 Ltac rewrite_refl_id := autorewrite with refl_id.
 
@@ -300,7 +305,7 @@ Ltac noconf_ref H :=
   end.
 
 (** The inj_right_pair_refl lemma is now useful also when using noConfusion. *)
-Hint Rewrite @inj_right_pair_refl : refl_id.
+Hint Rewrite @inj_right_pair_refl @inj_right_sigma_refl : refl_id.
 
 Ltac blocked t := block_goal ; t ; unblock_goal.
 
@@ -504,7 +509,7 @@ Ltac simplify_one_dep_elim_term c :=
         | _ => refine (@simplification_existT1 _ _ _ _ _ _ _ _)
         end
       end
-    | (@sigmaI ?A ?P ?n ?x) = (@sigmaI ?A ?P ?m ?y) -> ?B =>
+    | (@sigmaI ?A ?P ?n ?x) = (@sigmaI _ _ ?m ?y) -> ?B =>
       (* Check if [n] and [m] are judgmentally equal. *)
       match goal with
       | |- _ =>

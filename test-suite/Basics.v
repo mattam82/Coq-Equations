@@ -24,7 +24,7 @@ End TestF.
 
 Instance eqsig {A} (x : A) : Signature (x = x) A :=
   { signature a := x = a ;
-    signature_pack e := existT _ x e }.
+    signature_pack e := sigmaI _ x e }.
 
 Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
 K x P p eq_refl := p.
@@ -135,10 +135,12 @@ Instance well_founded_vector_direct_subterm' :
   forall A : Type, EqDec A -> WellFounded (vector_subterm A) | 0.
 Proof.   intros. 
   apply Transitive_Closure.wf_clos_trans.
-  intro. simp_exists. induction X0. constructor; intros.
-  simp_exists. depelim H.
+  intro. simp_sigmas. induction H.
   constructor; intros.
-  simp_exists. depelim H. 
+  simp_sigmas. simpl in *. 
+  depelim H.
+  constructor; intros.
+  simp_sigmas. depelim H0. 
   assumption.
 Defined.
 Print Assumptions well_founded_vector_direct_subterm'.

@@ -256,15 +256,15 @@ let unfold_add_pattern = lazy
 
 let subterm_relation_base = "subterm_relation"
 
-let coq_sigma = lazy (init_reference ["Equations";"Signature"] "sigma")
-let coq_sigmaI = lazy (init_reference ["Equations";"Signature"] "sigmaI")
+let coq_sigma = lazy (init_reference ["Equations";"Init"] "sigma")
+let coq_sigmaI = lazy (init_reference ["Equations";"Init"] "sigmaI")
 
 let init_projection dp i =
   let r = init_reference dp i in
   Names.Projection.make (Globnames.destConstRef r) false
 			
-let coq_pr1 = lazy (init_projection ["Equations";"Signature"] "pr1")
-let coq_pr2 = lazy (init_projection ["Equations";"Signature"] "pr2")
+let coq_pr1 = lazy (init_projection ["Equations";"Init"] "pr1")
+let coq_pr2 = lazy (init_projection ["Equations";"Init"] "pr2")
 			    
 (* Misc tactics *)
 

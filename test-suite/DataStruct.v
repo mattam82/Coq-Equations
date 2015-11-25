@@ -74,7 +74,7 @@ Example someValues : hlist (fun T : Set => T) someTypes :=
   HCons 5 (HCons true HNil).
 
 Goal hget someValues HFirst = 5.
-Proof. (* simp hget. *)
+Proof. (* FIXME simp hget. *)
   unfold someValues, someTypes. rewrite hget_equation_2. reflexivity.
 Qed.
 

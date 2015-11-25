@@ -128,6 +128,10 @@ let abstract_rec_calls ?(do_subst=true) is_rec len protos c =
 	let case' = mkCase (ci, lift lenctx' p, c', Array.map (lift lenctx') br) in
 	  ctx', lenctx', substnl proto_fs (succ len + lenctx') case'
 
+    | Proj (p, c) ->
+       let ctx', lenctx', c' = aux n env c in
+         ctx', lenctx', mkProj (p, c')
+			     
     | _ -> [], 0, if do_subst then (substnl proto_fs (len + n) c) else c
   in aux 0 [] c
 
@@ -481,23 +485,23 @@ let compute_elim_type evd is_rec protos k leninds ind_stmts all_stmts sign app e
 	    let rel = lift lenargs rel in
 	    let tty = lift (lenargs+1) (type_of_rel t sign) in
 	    if dependent rel tty then
-	    let tr =
-	      if isRel c then lift (lenargs+1) t
-	      else
-	      transport (lift lenargs ty) rel (lift lenargs c)
-			(mkRel 1) (lift (lenargs+1) t) tty
-	    in
-	    let t' =
-	      if isRel c then lift (lenargs+3) t
-	      else transport (lift (lenargs+2) ty)
-			     (lift 2 rel)
-			     (mkRel 2)
-			     (mkRel 1) (lift (lenargs+3) t) (lift 2 tty)
-	    in (tr :: pargs, (rel, t') :: subst)
+	      let tr =
+		if isRel c then lift (lenargs+1) t
+		else
+		  transport (lift lenargs ty) rel (lift lenargs c)
+			    (mkRel 1) (lift (lenargs+1) t) tty
+	      in
+	      let t' =
+		if isRel c then lift (lenargs+3) t
+		else transport (lift (lenargs+2) ty)
+			       (lift 2 rel)
+			       (mkRel 2)
+			       (mkRel 1) (lift (lenargs+3) t) (lift 2 tty)
+	      in (tr :: pargs, (rel, t') :: subst)
 	    else (* for equalities + return value *)
-	    let t' = lift (lenargs+1) t in
-	    let t' = replace_term (lift (lenargs) c) rel t' in
-	    (t' :: pargs, subst)) pats ([], [])
+	      let t' = lift (lenargs+1) t in
+	      let t' = replace_term (lift (lenargs) c) rel t' in
+	      (t' :: pargs, subst)) pats ([], [])
 	| _ -> assert false
       in
       let result, _ = 
@@ -505,23 +509,23 @@ let compute_elim_type evd is_rec protos k leninds ind_stmts all_stmts sign app e
   	(fun (acc, pred) (i, ty, c, rel) -> 
 	 let idx = i + 2 * lenargs in
 	 if dependent (mkRel idx) pred then
-	 let eqty =
-	   mkEq evd (lift (lenargs+1) ty) (mkRel 1)
-		(lift (lenargs+1) rel)
-	 in
-	 let pred' = 
-	   List.fold_left
-	   (fun acc (t, tr) -> replace_term t tr acc)
-	   (lift 1 (replace_term (mkRel idx) (mkRel 1) pred))
-	   subst
-	 in
-	 let app = 
-	   mkApp (global_reference (id_of_string "eq_rect_dep_r"),
-		  [| lift lenargs ty; lift lenargs rel;
-  		     mkLambda (Name (id_of_string "refine"), lift lenargs ty,
-			       mkLambda (Name (id_of_string "refine_eq"), eqty, pred'));
-		     acc; (lift lenargs c); mkRel 1 (* equality *) |])
-	 in (app, subst1 c pred)
+	   let eqty =
+	     mkEq evd (lift (lenargs+1) ty) (mkRel 1)
+		  (lift (lenargs+1) rel)
+	   in
+	   let pred' = 
+	     List.fold_left
+	       (fun acc (t, tr) -> replace_term t tr acc)
+	       (lift 1 (replace_term (mkRel idx) (mkRel 1) pred))
+	       subst
+	   in
+	   let app = 
+	     mkApp (global_reference (id_of_string "eq_rect_dep_r"),
+		    [| lift lenargs ty; lift lenargs rel;
+  		       mkLambda (Name (id_of_string "refine"), lift lenargs ty,
+				 mkLambda (Name (id_of_string "refine_eq"), eqty, pred'));
+		       acc; (lift lenargs c); mkRel 1 (* equality *) |])
+	   in (app, subst1 c pred)
 	 else (acc, subst1 c pred))
 	(mkRel (succ lenargs), lift (succ (lenargs * 2)) arity)
 	argsinfo
@@ -555,12 +559,12 @@ let compute_elim_type evd is_rec protos k leninds ind_stmts all_stmts sign app e
 		   is_rec signlen protos (nf_beta Evd.empty (lift 1 c)) 
 	      in 
 	      let lifthyps = lift_rel_contextn (signlen + 2) (- (pred i)) hyps in
-	      lifthyps) args)
+	        lifthyps) args)
       in
-      it_mkLambda_or_LetIn
-      (app (it_mkProd_or_clean (lift (length indhyps) papp) 
-			       (lift_rel_context lenargs indhyps)))
-      ctx
+        it_mkLambda_or_LetIn
+	  (app (it_mkProd_or_clean (lift (length indhyps) papp) 
+				   (lift_rel_context lenargs indhyps)))
+	  ctx
     in
     let ty = it_mkProd_or_LetIn mkProp ctx in
     (n, Some app, ty)
@@ -1170,7 +1174,7 @@ let with_rollback f x =
 
 let equations opts (loc, i) l t nt eqs =
   Dumpglob.dump_definition (loc, i) false "def";
-  with_rollback (define_by_eqs opts i l t nt) eqs
+  define_by_eqs opts i l t nt eqs
 
 let solve_equations_goal destruct_tac tac gl =
   let concl = pf_concl gl in

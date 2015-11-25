@@ -142,6 +142,7 @@ cfold (Snd e) <= cfold e => {
     | None := Snd e'
   }
 }.
+
 Set Implicit Arguments.
 
 Inductive color : Set := Red | Black.
@@ -212,7 +213,7 @@ Section present.
   rpresent (RedNode' _ _ _ a y b) => present a \/ x = y \/ present b.
 End present.
 
-Notation "{< x >}" := (existT _ _ x).
+Notation "{< x >}" := (sigmaI _ _ x).
 
 (* No need for convoy pattern! *)
 Equations balance1 n (a : rtree n) (data : nat) c2 (b : rbtree c2 n) : {c : color & rbtree c (S n)} :=
@@ -243,17 +244,17 @@ Section insert.
   Equations ins c n (t : rbtree c n) : insResult c n :=
   ins _ _ Leaf := {< RedNode Leaf x Leaf >};
   ins _ _ (RedNode _ a y b) <= le_lt_dec x y => {
-    | left _ := RedNode' (projT2 (ins a)) y b;
-    | right _ := RedNode' a y (projT2 (ins b))
+    | left _ := RedNode' (pr2 (ins a)) y b;
+    | right _ := RedNode' a y (pr2 (ins b))
   };
   ins _ _ (BlackNode c1 c2 _ a y b) <= le_lt_dec x y => {
     | left _ <= c1 => {
       | Red := balance1 (ins a) y b;
-      | Black := {<BlackNode (projT2 (ins a)) y b>}
+      | Black := {<BlackNode (pr2 (ins a)) y b>}
     };
     | right _ <= c2 => {
       | Red := balance2 (ins b) y a;
-      | Black := {< BlackNode a y (projT2 (ins b))>}
+      | Black := {< BlackNode a y (pr2 (ins b))>}
     }
   }.
 
@@ -274,18 +275,18 @@ Section insert.
     Variable z : nat.
 
     Lemma present_balance1 : forall n (a : rtree n) (y : nat) c2 (b : rbtree c2 n),
-      present z (projT2 (balance1 a y b))
+      present z (pr2 (balance1 a y b))
       <-> rpresent z a \/ z = y \/ present z b.
     Proof. intros. funelim (balance1 a y b); simpl in *; tauto. Qed.
 
     Lemma present_balance2 : forall n (a : rtree n) (y : nat) c2 (b : rbtree c2 n),
-      present z (projT2 (balance2 a y b))
+      present z (pr2 (balance2 a y b))
       <-> rpresent z a \/ z = y \/ present z b.
     Proof. intros. funelim (balance2 a y b); simpl in *; tauto. Qed.
 
     Equations present_insResult (c : color) (n : nat) (t : rbtree c n) (r : insResult c n): Prop :=
     present_insResult Red n t r := rpresent z r <-> z = x \/ present z t;
-    present_insResult Black n t r := present z (projT2 r) <-> z = x \/ present z t.
+    present_insResult Black n t r := present z (pr2 r) <-> z = x \/ present z t.
 
     Theorem present_ins : forall c n (t : rbtree c n),
       present_insResult t (ins t).
@@ -296,7 +297,7 @@ Section insert.
         end;
         try match goal with
           [ |- context [balance2 ?A ?B ?C] ] => generalize (present_balance2 A B C)
-        end; tauto.
+            end; try tauto.
     Qed.
 
     Ltac present_insert t t0 :=
@@ -310,7 +311,7 @@ Section insert.
     Proof. present_insert t t0. Qed. 
 
     Theorem present_insert_Black : forall n (t : rbtree Black n),
-      present z (projT2 (insert t))
+      present z (pr2 (insert t))
       <-> (z = x \/ present z t).
     Proof. present_insert t t0. Qed.
   End present.

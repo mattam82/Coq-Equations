@@ -13,7 +13,7 @@ Ltac generalize_sig id cont ::=
       cont id
   | |- _ =>
     let id'1 := fresh id' in let id'2 := fresh id' in
-    set (id'2 := projT2 id'); set (id'1 := projT1 id') in id'2;
+    set (id'2 := pr2 id'); set (id'1 := pr1 id') in id'2;
     hnf in (value of id'1), (value of id'2);
     generalize (@eq_refl _ id'1 : id'1 = id'1);
     unfold id'1 at 1; clearbody id'2 id'1;
@@ -77,8 +77,10 @@ Lemma well_founded_vector_direct_subterm' :
   forall A : Type, EqDec A -> WellFounded (t_subterm A).
 Proof. intros.
   apply Transitive_Closure.wf_clos_trans.
-  intro. simp_exists.
-  induction X0; constructor; intros;
-  simp_exists; simpl in *; depelim H; assumption.
+  intro. simp_sigmas.
+  induction H; constructor; intros;
+  simp_sigmas. simpl in *.
+  depelim H; assumption.
+  depelim H0. apply IHt.
 Defined.
 Print Assumptions well_founded_vector_direct_subterm'.
