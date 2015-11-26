@@ -12,18 +12,6 @@
    can be packed. *)
 
 From Equations Require Import Init EqDec.
-
-(* Lemma sigma_eq_sigT_eq {A B} (x x' : A) (y : B x) (y' : B x') :  *)
-(*   existT B x y = existT B x' y' -> *)
-(*   sigmaI B x y = sigmaI B x' y'. *)
-(* Proof. *)
-(*   intros. *)
-(*   change x with (pr1 (x; y)). *)
-(*   change y with (pr2 (x; y)). *)
-(*   change x' with (pr1 (x'; y')). *)
-(*   change y' with (pr2 (x'; y')). *)
-(*   set (foo := (x'; y')) in *.  *)
-(*   simpl. destruct H. *)
   
 Lemma inj_sigma2 (U : Type) (P : U -> Type) (p : U) (x y : P p) :
   sigmaI P p x = sigmaI P p y -> x = y.
