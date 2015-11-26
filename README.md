@@ -13,9 +13,13 @@ Activate the [Coq repository](https://github.com/coq/opam-coq-archive):
 
 and run:
 
-    opam install -j4 coq:equations
+    opam install coq-equations
 
-To get the development version, activate the development repository:
+To get the beta versions of Coq, activate the repository:
+
+    opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev
+
+To get the development version of Equations, activate the repository:
 
     opam repo add coq-extra-dev https://coq.inria.fr/opam/extra-dev
 
