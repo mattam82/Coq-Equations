@@ -56,7 +56,7 @@ val dependent_pattern :
 
 val depcase :
   MutInd.t * int ->
-  rel_context * constr * Globnames.global_reference
+  Evd.evar_map * rel_context * constr * Globnames.global_reference
 val derive_dep_elimination :
   Evd.evar_universe_context -> inductive * 'a -> 'b -> constr
 

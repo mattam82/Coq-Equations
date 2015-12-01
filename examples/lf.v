@@ -299,9 +299,7 @@ Ltac find_empty :=
 
 Lemma preserves_red1 Γ t τ : Γ |-- t : τ → forall u, t --> u → Γ |-- u : τ.
 Proof. 
-  intros H; induction H; intros t' redtt'; term; try find_empty;
-  depelim redtt'.
-
+  intros H; induction H; intros t' redtt'; term; try find_empty; depelim redtt'.
   apply subst1 with A. now depelim H. apply H0.
   now depelim H. 
   now depelim H. 

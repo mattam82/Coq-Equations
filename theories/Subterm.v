@@ -6,9 +6,8 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Wf_nat Arith.Lt (* For lt *) Bvector.
-Require Import Equations.Init Equations.Below Relations Wellfounded.
-Require Import Equations.Signature Equations.NoConfusion.
+Require Import Wf_nat Arith.Lt Bvector Relations Wellfounded.
+From Equations Require Import Init Below Signature EqDec NoConfusion.
 
 Generalizable Variables A R S B.
 
@@ -101,13 +100,8 @@ Hint Extern 10 => eapply_hyp : solve_subterm.
 Ltac solve_subterm := intros;
   apply Transitive_Closure.wf_clos_trans;
   red; intros; simp_sigmas; on_last_hyp ltac:(fun H => depind H); constructor;
-  intros; simp_sigmas; on_last_hyp ltac:(fun HR => generalize_eqs HR; induction HR);
+  intros; simp_sigmas; on_last_hyp ltac:(fun HR => depind HR);
   simplify_dep_elim; try typeclasses eauto with solve_subterm.
-
-(* Ltac solve_subterm := intros ; apply wf_clos_trans ; *)
-(*   red ; intros; simp_exists; *)
-(*   on_last_hyp ltac:(fun i => induction i); constructor ;  *)
-(*   simpl; intros; simp_exists; on_last_hyp ltac:(fun H => now depelim H). *)
 
 (** A tactic to launch a well-founded recursion. *)
 

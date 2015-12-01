@@ -63,14 +63,18 @@ VERNAC COMMAND EXTEND Derive_Signature CLASSIFIED AS QUERY
   ]
 END
 
+open Proofview.Notations
+
 TACTIC EXTEND get_signature_pack
 [ "get_signature_pack" hyp(id) ident(id') ] -> [ 
   Proofview.Goal.enter (fun gl ->
     let gl = Proofview.Goal.assume gl in
     let env = Proofview.Goal.env gl in
     let sigma = Proofview.Goal.sigma gl in
-    let sigsig, sigpack = Sigma.get_signature env sigma (Tacmach.New.pf_get_hyp_typ id gl) in
-      letin_tac None (Name id') (mkApp (sigpack, [| mkVar id |])) None nowhere) ]
+    let sigma', sigsig, sigpack =
+      Sigma.get_signature env sigma (Tacmach.New.pf_get_hyp_typ id gl) in
+    Proofview.Unsafe.tclEVARS sigma' <*>
+    letin_tac None (Name id') (mkApp (sigpack, [| mkVar id |])) None nowhere) ]
 END
       
 TACTIC EXTEND pattern_sigma
@@ -81,7 +85,7 @@ TACTIC EXTEND pattern_sigma
     let sigma = Proofview.Goal.sigma gl in
     let decl = Tacmach.New.pf_get_hyp id gl in
     let term = Option.get (Util.pi2 decl) in
-      Sigma.pattern_sigma term id env sigma) ]
+    Sigma.pattern_sigma term id env sigma) ]
 END
 
 open Tacmach
@@ -90,10 +94,10 @@ TACTIC EXTEND curry
 [ "curry" hyp(id) ] -> [ 
   Proofview.V82.tactic 
     (fun gl ->
-      match Sigma.curry_hyp (project gl) (mkVar id) (pf_get_hyp_typ gl id) with
+      match Sigma.curry_hyp (pf_env gl) (project gl) (mkVar id) (pf_get_hyp_typ gl id) with
       | Some (prf, typ) -> 
-	tclTHENFIRST (Proofview.V82.of_tactic (assert_before_replacing id typ))
-	  (Tacmach.refine_no_check prf) gl
+	 (tclTHENFIRST (Proofview.V82.of_tactic (assert_before_replacing id typ))
+		       (Tacmach.refine_no_check prf)) gl
       | None -> tclFAIL 0 (str"No currying to do in" ++ pr_id id) gl) ]
 END
 
@@ -375,7 +379,7 @@ VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS SIDEFF
 
 (* Subterm *)
 
-VERNAC COMMAND EXTEND Derive_Subterm CLASSIFIED AS QUERY
+VERNAC COMMAND EXTEND Derive_Subterm CLASSIFIED AS SIDEFF
 | [ "Derive" "Subterm" "for" constr(c) ] -> [
     let env = Global.env () in
     let evd = Evd.from_env env in
@@ -386,7 +390,7 @@ VERNAC COMMAND EXTEND Derive_Subterm CLASSIFIED AS QUERY
   ]
 END
 
-VERNAC COMMAND EXTEND Derive_Below CLASSIFIED AS QUERY
+VERNAC COMMAND EXTEND Derive_Below CLASSIFIED AS SIDEFF
 | [ "Derive" "Below" "for" constr(c) ] -> [ 
     let env = Global.env () in
     let evd = Evd.from_env env in
@@ -399,7 +403,7 @@ END
 
 (* Eqdec *)
 
-VERNAC COMMAND EXTEND Derive_EqDec CLASSIFIED AS QUERY
+VERNAC COMMAND EXTEND Derive_EqDec CLASSIFIED AS SIDEFF
 | [ "Derive" "Equality" "for" constr_list(c) ] -> [
     let env = Global.env () in
     let evd = Evd.from_env env in

@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Equations.DepElim.
+From Equations Require Import EqDec DepElim.
 
 (** The [FunctionalInduction f] typeclass is meant to register functional induction
    principles associated to a function [f]. Such principles are automatically 

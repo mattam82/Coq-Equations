@@ -176,29 +176,31 @@ let derive_subterm ind =
     in Hints.add_hints false [subterm_relation_base]
       (Hints.HintsResolveEntry (List.concat constrhints));
       (* Proof of Well-foundedness *)
-      let relid = add_suffix (Nametab.basename_of_global (IndRef (fst ind))) "_subterm" in
+      let relid = add_suffix (Nametab.basename_of_global (IndRef (fst ind)))
+			      "_subterm" in
       let id = add_prefix "well_founded_" relid in
       let evm = ref sigma in
       let env = Global.env () in
-      let env' = push_rel_context parambinders env in
       let kl = get_class (Lazy.force coq_wellfounded_class) in
-      let body, ty =
-	let ty, rel = 
+      let parambinders, body, ty =
+	let pars, ty, rel = 
 	  if List.is_empty argbinders then
 	    (* Standard homogeneous well-founded relation *)
-	    indapp, mkApp (subind, extended_rel_vect 0 parambinders)
+	    parambinders, indapp, mkApp (subind, extended_rel_vect 0 parambinders)
 	  else
 	    (* Construct a family relation by packaging all indexes into 
 	       a sigma type *)
-	    let _, _, indices, indexproj, valproj, valsig, typesig = sigmaize env' evm indapp in
+	    let _, _, pars, indices, indexproj, valproj, valsig, typesig =
+	      sigmaize env evm parambinders indapp in
+	    let env' = push_rel_context pars env in
 	    let subrel = 
 	      let liftindices = map (liftn 2 2) indices in
 	      let yindices = map (subst1 (mkProj (indexproj, mkRel 1))) liftindices in
 	      let xindices = map (subst1 (mkProj (indexproj, mkRel 2))) liftindices in
 	      let apprel = 
 		applistc subind (extended_rel_list 2 parambinders @
-				    (xindices @ yindices @
-					[mkProj (valproj, mkRel 2); mkProj (valproj, mkRel 1)]))
+		    (xindices @ yindices @
+		       [mkProj (valproj, mkRel 2); mkProj (valproj, mkRel 1)]))
 	      in 
 		mkLambda (Name (id_of_string "x"), typesig,
 			 mkLambda (Name (id_of_string "y"), lift 1 typesig,
@@ -206,12 +208,12 @@ let derive_subterm ind =
 	    in
 	    let typesig = Tacred.simpl env' !evm typesig in
 	    let subrel = Tacred.simpl env' !evm subrel in
-	      typesig, subrel
+	    pars, typesig, subrel
 	in
 	let relation =
 	  let def = it_mkLambda_or_LetIn 
 	    (mkApp (Lazy.force coq_clos_trans, [| ty; rel |]))
-	    parambinders 
+	    pars
 	  in
 	  let ty = Some (it_mkProd_or_LetIn
 			    (mkApp (Lazy.force coq_relation, [| ty |]))
@@ -225,10 +227,13 @@ let derive_subterm ind =
 	      (Hints.HintsUnfoldEntry [EvalConstRef cst]);
 	    mkApp (mkConst cst, extended_rel_vect 0 parambinders)
 	in
+	let env' = push_rel_context pars env in
 	let evar = 
 	  let evt = (mkApp (Lazy.force coq_wellfounded, [| ty; relation |])) in
 	    e_new_evar env' evm evt
-	in Typeclasses.instance_constructor kl [ ty; relation; evar ]
+	in
+	let b, t = Typeclasses.instance_constructor kl [ ty; relation; evar ] in
+	  (pars, b, t)
       in
       let ty = it_mkProd_or_LetIn ty parambinders in
       let body = it_mkLambda_or_LetIn (Option.get body) parambinders in
@@ -239,10 +244,11 @@ let derive_subterm ind =
       in
       let _bodyty = Typing.e_type_of (Global.env ()) evm body in
       let _ty' = Typing.e_type_of (Global.env ()) evm ty in
+      let evm, nf = Evarutil.nf_evars_and_universes !evm in
       let obls, _, constr, typ = 
-	Obligations.eterm_obligations env id !evm 0 body ty 
+	Obligations.eterm_obligations env id evm 0 (nf body) (nf ty)
       in
-      let ctx = Evd.evar_universe_context !evm in
+      let ctx = Evd.evar_universe_context evm in
 	Obligations.add_definition id ~term:constr typ ctx
 	  ~kind:(Decl_kinds.Global,poly,Decl_kinds.Instance) 
 	  ~hook:(Lemmas.mk_hook hook) ~tactic:(solve_subterm_tac ()) obls

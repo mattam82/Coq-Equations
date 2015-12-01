@@ -89,10 +89,15 @@ Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars_sig id.
 
 (** Any signature made up entirely of decidable types is decidable. *)
 
-Instance eqdec_sig {A} {B : A -> Type} `(EqDec A) `(forall a, EqDec (B a)) : EqDec { x : A & B x }.
+Polymorphic Definition eqdec_sig@{i j} {A : Type@{i}} {B : A -> Type@{j}}
+            `(EqDec A) `(forall a, EqDec (B a)) :
+  EqDec { x : A & B x }.
 Proof.
   intros. intros x y. decompose_exists x. decompose_exists y.
-  case (eq_dec x' y'). simpdep. case (eq_dec x y). simpdep. left. reflexivity.
-  intros. right. red. simpdep. apply n. auto.
-  intros. right. red. simpdep. apply n. auto.
+  case (eq_dec x' y'). intros ->. case (eq_dec x y). intros ->. left. reflexivity.
+  intros. right. red. apply simplification_sigma2_dec@{i j Set}. apply n.
+  intros. right. red. apply simplification_sigma1@{i j Set}.
+  intros e _; revert e. apply n.
 Defined.
+
+Existing Instance eqdec_sig.

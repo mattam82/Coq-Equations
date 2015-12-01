@@ -810,10 +810,10 @@ let build_equations with_ind env evd id info sign is_rec arity cst
       let tac = 
 	tclTHENLIST [to82 intros; to82 unf; to82 (solve_equation_tac (ConstRef cst) [])]
       in
-      let _ = e_type_of (Global.env ()) evd c in
+      let evd, _ = Typing.type_of (Global.env ()) !evd c in
 	ignore(Obligations.add_definition ~kind:info.decl_kind
 		  ideq c ~tactic:(of82 tac) ~hook:(Lemmas.mk_hook hook)
-		  (Evd.evar_universe_context !evd) [||])
+		  (Evd.evar_universe_context evd) [||])
     in iter proof stmts
   in iter proof ind_stmts
 

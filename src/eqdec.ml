@@ -131,7 +131,7 @@ let derive_eq_dec ind =
   let ctx = info.mutind_params in
   let poly = Flags.is_universe_polymorphism () in
   let cl = fst (snd (eq_dec_class ())) in
-  let evdref = ref Evd.empty in
+  let evdref = ref (Evd.from_env (Global.env ())) in
   let info_of ind =
     let argsvect = extended_rel_vect 0 ind.ind_args in
     let indapp = mkApp (ind.ind_c, argsvect) in
@@ -161,7 +161,7 @@ let derive_eq_dec ind =
 				     (it_mkProd_or_LetIn ty ind.ind_args) ctx);
   	  const_entry_opaque = false; const_entry_secctx = None;
 	  const_entry_feedback = None;
-	  const_entry_polymorphic = false; (* FIXME *)
+	  const_entry_polymorphic = poly;
 	  const_entry_universes = snd (Evd.universe_context !evdref);
 	  const_entry_inline_code = false;
 	}
@@ -170,13 +170,7 @@ let derive_eq_dec ind =
   in
   let indsl = Array.to_list info.mutind_inds in
   let indsl = List.map (fun ind -> ind, info_of ind) indsl in
-  let possible_guards =
-    List.map 
-      (fun (ind, _) -> 
-	CList.init (List.length ind.ind_args + 2) id) 
-      indsl
-  in
-  let hook _ gr =
+  let hook _ gr _ =
     List.iter (fun (ind, (stmt, tc)) -> 
 	       let ce = tc (lazy gr) in
 	       let inst = Declare.declare_constant (add_suffix ind.ind_name "_EqDec") (DefinitionEntry ce, IsDefinition Instance) in
@@ -185,120 +179,9 @@ let derive_eq_dec ind =
 					     (Globnames.ConstRef inst)))
     indsl
   in
-    Lemmas.start_proof_with_initialization
-      (Global, poly, Proof Lemma) 
-      !evdref
-      (Some (false, possible_guards, None))
-      (List.map (fun (ind, (stmt, tc)) -> add_suffix ind.ind_name "_eqdec", (stmt, ([], []))) indsl)
-      None (Lemmas.mk_hook hook)
-
-  (*   let impl =  *)
-  (*     let xname = Name (id_of_string "x") in *)
-  (*     let firstpred =  *)
-  (* 	mkLambda (xname, typ,  *)
-  (* 		 mkProd (yname, lift 1 typ, *)
-  (* 			mkEq (lift 2 typ) (mkRel 1) (mkRel 2))) *)
-  (*     in *)
-  (*     let inner i (ctx, ar) = *)
-  (* 	let ar, args = decompose_app ar in *)
-  (* 	let typ' = substl args typ in *)
-  (* 	let body = *)
-  (* 	  let brs = Array.mapi (fun j (ctx', ar') -> *)
-  (* 	  ) ind.ind_c *)
-  (* 	  in *)
-  (* 	  let innerpred =  *)
-  (* 	    mkLambda (yname, typ, mkEq (lift 1 typ *)
-
-  (* 	in *)
-  (* 	  it_mkLambda_or_LetIn  *)
-  (* 	    (mkLambda (yname, typ', body)) *)
-  (* 	    ctx *)
-  (*     in *)
-  (*     let eqdec =  *)
-  (* 	mkLambda (xname, typ,  *)
-  (* 		 mkLambda (yname, lift 1 typ, *)
-  (* 			  ind.ind_case (mkRel 2) firstpred *)
-  (* 			    (Array.mapi inner ind.ind_c))) *)
-  (*     in *)
-  (* 	it_mkLambda_or_LetIn eqdec ind.ind_args *)
-  (*   in typ, impl) *)
-  (*   info.mutind_inds  *)
-  (* in *)
-    
-
-  (* let mindb, oneind = Global.lookup_inductive ind in *)
-  (* let ctx = oneind.mind_arity_ctxt in *)
-  (* let len = List.length ctx in *)
-  (* let params = mindb.mind_nparams in *)
-  (* let args = oneind.mind_nrealargs in *)
-  (* let argsvect = rel_vect 0 len in *)
-  (* let paramsvect, rest = array_chop params argsvect in *)
-  (* let indty = mkApp (mkInd ind, argsvect) in *)
-    
-
-
-  (* let pid = (id_of_string "P") in *)
-  (* let pvar = mkVar pid in *)
-  (* let xid = id_of_string "x" and yid = id_of_string "y" in *)
-  (* let xdecl = (Name xid, None, lift 1 indty) in *)
-  (* let binders = xdecl :: (Name pid, None, new_Type ()) :: ctx in *)
-  (* let ydecl = (Name yid, None, lift 2 indty) in *)
-  (* let fullbinders = ydecl :: binders in *)
-  (* let arity = it_mkProd_or_LetIn (new_Type ()) fullbinders in *)
-  (* let env = push_rel_context binders (Global.env ()) in *)
-  (* let ind_with_parlift n = *)
-  (*   mkApp (mkInd ind, Array.append (Array.map (lift n) paramsvect) rest)  *)
-  (* in *)
-  (* let lenargs = List.length ctx - params in *)
-  (* let pred = *)
-  (*   let elim = *)
-  (*     let app = ind_with_parlift (args + 2) in *)
-  (* 	it_mkLambda_or_LetIn  *)
-  (* 	  (mkProd_or_LetIn (Anonymous, None, lift 1 app) (new_Type ())) *)
-  (* 	  ((Name xid, None, ind_with_parlift (2 + lenargs)) :: list_firstn lenargs ctx) *)
-  (*   in *)
-  (*     mkcase env (mkRel 1) elim (fun ind i id nparams args arity -> *)
-  (* 	let ydecl = (Name yid, None, arity) in *)
-  (* 	let env' = push_rel_context (ydecl :: args) env in *)
-  (* 	let decl = (Name yid, None, ind_with_parlift (lenargs + List.length args + 3)) in *)
-  (* 	  mkLambda_or_LetIn ydecl *)
-  (* 	    (mkcase env' (mkRel 1)  *)
-  (* 		(it_mkLambda_or_LetIn (new_Type ()) (decl :: list_firstn lenargs ctx)) *)
-  (* 		(fun _ i' id' nparams args' arity' -> *)
-  (* 		  if i = i' then  *)
-  (* 		    mk_eqs (push_rel_context args' env') *)
-  (* 		      (rel_list (List.length args' + 1) (List.length args)) *)
-  (* 		      (rel_list 0 (List.length args')) pvar *)
-  (* 		  else pvar))) *)
-  (* in *)
-  (* let app = it_mkLambda_or_LetIn (replace_vars [(pid, mkRel 2)] pred) binders in *)
-  (* let ce = *)
-  (*   { const_entry_body = app; *)
-  (*     const_entry_type = Some arity; *)
-  (*     const_entry_opaque = false; *)
-  (*     const_entry_boxed = false}  *)
-  (* in *)
-  (* let indid = Nametab.basename_of_global (IndRef ind) in *)
-  (* let id = add_prefix "NoConfusion_" indid *)
-  (* and noid = add_prefix "noConfusion_" indid *)
-  (* and packid = add_prefix "NoConfusionPackage_" indid in *)
-  (* let cstNoConf = Declare.declare_constant id (DefinitionEntry ce, IsDefinition Definition) in *)
-  (* let stmt = it_mkProd_or_LetIn *)
-  (*   (mkApp (mkConst cstNoConf, rel_vect 1 (List.length fullbinders))) *)
-  (*   ((Anonymous, None, mkEq (lift 3 indty) (mkRel 2) (mkRel 1)) :: fullbinders) *)
-  (* in *)
-  (* let hook _ gr =  *)
-  (*   let tc = class_info (global_of_constr (Lazy.force coq_noconfusion_class)) in *)
-  (*   let b, ty = instance_constructor tc [indty; mkApp (mkConst cstNoConf, argsvect) ;  *)
-  (* 					 mkApp (constr_of_global gr, argsvect) ] in *)
-  (*   let ce = { const_entry_body = it_mkLambda_or_LetIn b ctx; *)
-  (* 	       const_entry_type = Some (it_mkProd_or_LetIn ty ctx);  *)
-  (* 	       const_entry_opaque = false; const_entry_boxed = false } *)
-  (*   in *)
-  (*   let inst = Declare.declare_constant packid (DefinitionEntry ce, IsDefinition Instance) in *)
-  (*     Typeclasses.add_instance (Typeclasses.new_instance tc None true (ConstRef inst)) *)
-  (* in *)
-  (*   ignore(Subtac_obligations.add_definition ~hook noid stmt ~tactic:(noconf_tac ()) [||]) *)
-     
-
- 
+  List.iter 
+    (fun (ind, (stmt, tc)) ->
+     let id = add_suffix ind.ind_name "_eqdec" in
+     ignore(Obligations.add_definition id stmt (Evd.evar_universe_context !evdref) [||]
+				       ~hook:(Lemmas.mk_hook hook)))
+    indsl

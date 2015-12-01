@@ -189,14 +189,27 @@ Lemma inj_pairT2_refl : forall A (x : A) (P : A -> Type) (p : P x),
   Eqdep.EqdepTheory.inj_pairT2 A P x p p eq_refl = eq_refl.
 Proof. intros. apply UIP_refl. Qed.
 
-Lemma inj_sigma2_refl : forall A (x : A) (P : A -> Type) (p : P x),
+Polymorphic Lemma inj_sigma2_refl : forall A (x : A) (P : A -> Type) (p : P x),
   inj_sigma2 A P x p p eq_refl = eq_refl.
 Proof. intros. apply UIP_refl. Qed.
 
 Hint Rewrite @JMeq_eq_refl @UIP_refl_refl
-     @inj_pairT2_refl @inj_sigma2_refl : refl_id.
+     @inj_pairT2_refl : refl_id.
+(** The inj_right_pair_refl lemma is now useful also when using noConfusion. *)
+Hint Rewrite @inj_right_pair_refl : refl_id.
 
-Ltac rewrite_refl_id := autorewrite with refl_id.
+Global Set Keyed Unification.
+
+Ltac rewrite_sigma2_refl :=
+  match goal with
+    |- context [inj_sigma2 ?A ?P ?x ?p _ eq_refl] =>
+    rewrite (inj_sigma2_refl A x P p)
+   | |- context [@inj_right_sigma ?A ?H ?x ?P ?y ?y' _] =>
+    rewrite (@inj_right_sigma_refl A H x P y)
+  end.
+
+Ltac rewrite_refl_id :=
+  repeat (autorewrite with refl_id; try rewrite_sigma2_refl).
 
 (** Clear the context and goal of equality proofs. *)
 
@@ -304,9 +317,6 @@ Ltac noconf_ref H :=
       end
   end.
 
-(** The inj_right_pair_refl lemma is now useful also when using noConfusion. *)
-Hint Rewrite @inj_right_pair_refl @inj_right_sigma_refl : refl_id.
-
 Ltac blocked t := block_goal ; t ; unblock_goal.
 
 (** The [DependentEliminationPackage] provides the default dependent elimination principle to
@@ -367,7 +377,7 @@ Lemma simplification_existT2 : ∀ {A} {P : A -> Type} {B} (p : A) (x y : P p),
   (x = y -> B) -> (existT P p x = existT P p y -> B).
 Proof. intros. apply X. apply inj_pair2. exact H. Defined.
 
-Lemma simplification_sigma2 : ∀ {A} {P : A -> Type} {B} (p : A) (x y : P p),
+Polymorphic Lemma simplification_sigma2 : ∀ {A} {P : A -> Type} {B} (p : A) (x y : P p),
   (x = y -> B) -> (sigmaI P p x = sigmaI P p y -> B).
 Proof. intros. apply X. apply inj_sigma2. exact H. Defined.
 
@@ -378,7 +388,7 @@ Lemma simplification_existT2_dec : ∀ {A} `{EqDec A} {P : A -> Type} {B} (p : A
   (x = y -> B) -> (existT P p x = existT P p y -> B).
 Proof. intros. apply X. apply inj_right_pair in H0. assumption. Defined.
 
-Lemma simplification_sigma2_dec : ∀ {A} `{EqDec A} {P : A -> Type} {B} (p : A) (x y : P p),
+Polymorphic Lemma simplification_sigma2_dec : ∀ {A} `{EqDec A} {P : A -> Type} {B} (p : A) (x y : P p),
   (x = y -> B) -> (sigmaI P p x = sigmaI P p y -> B).
 Proof. intros. apply X. apply inj_right_sigma in H0. assumption. Defined.
 
@@ -386,7 +396,7 @@ Lemma simplification_existT1 : ∀ {A} {P : A -> Type} {B} (p q : A) (x : P p) (
   (p = q -> existT P p x = existT P q y -> B) -> (existT P p x = existT P q y -> B).
 Proof. intros. injection H. intros ; auto. Defined.
 
-Lemma simplification_sigma1 : ∀ {A} {P : A -> Type} {B} (p q : A) (x : P p) (y : P q),
+Polymorphic Lemma simplification_sigma1 : ∀ {A} {P : A -> Type} {B} (p q : A) (x : P p) (y : P q),
   (p = q -> sigmaI P p x = sigmaI P q y -> B) -> (sigmaI P p x = sigmaI P q y -> B).
 Proof.
   intros. refine (X _ H).
@@ -572,7 +582,7 @@ Ltac simplify_one_dep_elim :=
 
 Ltac simplify_dep_elim := repeat simplify_one_dep_elim.
 
-Ltac noconf H := blocked ltac:(noconf_ref H ; simplify_dep_elim).
+Ltac noconf H ::= blocked ltac:(noconf_ref H ; simplify_dep_elim).
 
 (** Reverse and simplify. *)
 

@@ -23,7 +23,8 @@ Defined.
 
 Equations nat_to_fin {n : nat} (m : nat) (p : m < n) : fin n :=
 nat_to_fin {n:=(S n)} 0 _ := fz;
-nat_to_fin {n:=(S n)} (S m) _ := fs (nat_to_fin m _).
+nat_to_fin {n:=(S n)} (S m) p := fs (nat_to_fin m _).
+
 Next Obligation. apply Lt.lt_S_n; assumption. Defined.
 
 (*
@@ -89,8 +90,8 @@ Proof.
 Qed.
 
 Equations iget {A : Set} {n : nat} (l : ilist A n) (i : fin n) : A :=
-iget (Cons x _) fz := x;
-iget (Cons _ t) (fs j) := iget t j.
+iget {n:=(S n)} (Cons x _) fz := x;
+iget {n:=(S n)} (Cons _ t) (fs j) := iget t j.
 
 Equations isnoc {A : Set} {n : nat} (l : ilist A n) (x : A) : ilist A (S n) :=
 isnoc Nil x := Cons x Nil;
@@ -175,22 +176,52 @@ Equations(noind) negb (b : bool) : bool :=
 negb true := false;
 negb false := true.
 
-Inductive fle : forall {n}, fin n -> fin n -> Prop :=
+Inductive fle : forall {n}, fin n -> fin n -> Set :=
 | flez : forall {n j}, @fle (S n) fz j
 | fles : forall {n i j}, fle i j -> @fle (S n) (fs i) (fs j).
 
 Equations fin0_empty (i : fin 0) : False :=
 fin0_empty i :=! i.
 
-Lemma fle_trans' : forall n (j i k : fin n), fle i j -> fle j k -> fle i k.
-Proof.
-  induction j; intros.
-    - depelim H. constructor.
-    - depelim H0; depelim H; constructor. apply IHj; assumption.
-Qed.
-
-Derive NoConfusion for fin.
-
-Equations(nocomp noind) fle_trans {n : nat} {i j k : fin n} (p : fle i j) (q : fle j k) : fle i k :=
+Equations(nocomp) fle_trans {n : nat} {i j k : fin n} (p : fle i j) (q : fle j k) : fle i k :=
 fle_trans flez _ := flez;
 fle_trans (fles p') (fles q') := fles (fle_trans p' q').
+
+Derive Signature for fin.
+Derive NoConfusion for fin.
+Derive DependentElimination for fin.
+
+Require Import Equations.EqDec DepElimDec.
+
+Derive Signature for @fle.
+Derive NoConfusion for @fle.
+
+
+Ltac eqdec_proof ::= try red; intros;
+  match goal with
+    |- dec_eq ?x ?y =>
+    revert y; induction x; intros until y; depelim y;
+    match goal with
+      |- dec_eq ?x ?y => eqdec_loop x y
+    end
+   | |- { ?x = ?y } + { _ } =>
+    revert y; induction x; intros until y; depelim y;
+    match goal with
+      |- { ?x = ?y } + { _ } => eqdec_loop x y
+    end
+  end.
+(* FIXME references are wrong if we don't redefine here ... *)
+Derive Equality for @fin.
+Solve Obligations with eqdec_proof.
+
+Derive Equality for @fle.
+Solve Obligations with eqdec_proof.
+
+Derive Subterm for @fle.
+
+Equations fle_trans' {n : nat} {i j : fin n} (p : fle i j) {k} (q : fle j k) : fle i k :=
+fle_trans' p q by rec p (@fle_subterm) :=
+fle_trans' flez _ := flez;
+fle_trans' (fles p') (fles q') := fles (fle_trans' p' q').
+
+Print Assumptions fle_trans'.

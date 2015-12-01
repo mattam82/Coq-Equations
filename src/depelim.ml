@@ -303,7 +303,7 @@ let depcase (mind, i as ind) =
   let args, params = List.chop (List.length ctx - nparams) ctx in
   let nargs = List.length args in
   let indapp = mkApp (mkInd ind, extended_rel_vect 0 ctx) in
-  let evd = ref Evd.empty in
+  let evd = ref (Evd.from_env (Global.env())) in
   let pred = it_mkProd_or_LetIn (e_new_Type (Global.env ()) evd) 
     ((Anonymous, None, indapp) :: args)
   in
@@ -354,16 +354,15 @@ let depcase (mind, i as ind) =
 	:: ((List.rev (Array.to_list (Array.map fst branches))) 
 	    @ ((Name (id_of_string "P"), None, pred) :: ctx)))
   in
-  let ce = Declare.definition_entry body in
+  let ce = Declare.definition_entry ~univs:(snd (Evd.universe_context !evd)) body in
   let kn = 
     let id = add_suffix indid "_dep_elim" in
       ConstRef (Declare.declare_constant id
 		  (DefinitionEntry ce, IsDefinition Scheme))
-  in ctx, indapp, kn
+  in Evd.from_env (Global.env ()), ctx, indapp, kn
 
 let derive_dep_elimination ctx (i,u) loc =
-  let evd = Evd.from_env (Global.env ()) in
-  let ctx, ty, gref = depcase i in
+  let evd, ctx, ty, gref = depcase i in
   let indid = Nametab.basename_of_global (IndRef i) in
   let id = add_prefix "DependentElimination_" indid in
   let cl = dependent_elimination_class () in

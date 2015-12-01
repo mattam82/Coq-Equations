@@ -1,26 +1,4 @@
 Require Import Equations.Equations Equations.DepElimDec Bvector.
-
-Ltac generalize_sig id cont ::=
-  let id' := fresh id in
-  get_signature_pack id id';
-  hnf in (value of id'); hnf in (type of id');
-  match goal with
-  | |- context[ id ] =>
-    generalize (@eq_refl _ id' : id' = id') ;
-    unfold id' at 1;
-    clearbody id'; simpl in id'; move id' after id;
-    revert_until id'; rename id' into id;
-      cont id
-  | |- _ =>
-    let id'1 := fresh id' in let id'2 := fresh id' in
-    set (id'2 := pr2 id'); set (id'1 := pr1 id') in id'2;
-    hnf in (value of id'1), (value of id'2);
-    generalize (@eq_refl _ id'1 : id'1 = id'1);
-    unfold id'1 at 1; clearbody id'2 id'1;
-    clear id' id; compute in id'2;
-    rename id'2 into id;
-      cont id'1
-  end.
   
 Inductive bar1 (A : Type) : A -> Prop := .
 Inductive bar2 (A : Type) : (A -> A) -> Prop := .
@@ -62,7 +40,6 @@ Proof. intros. intros x. induction x. left. now depelim y.
 Defined.
 
 
-(* FIXME Cannot prove well-foundedness automatically. *)
 Derive Subterm for vector.
 Print Assumptions well_founded_t_subterm.
 

@@ -40,6 +40,12 @@ open Tacmach
 open Decl_kinds
 open Equations_common
 
+let mkConstructG c u =
+  mkConstructU (destConstructRef (Lazy.force c), u)
+
+let mkConstG c u =
+  mkConstU (destConstRef (Lazy.force c), u)
+
 let mkAppG evd gr args = 
   let c = e_new_global evd gr in
     mkApp (c, args)
@@ -68,8 +74,9 @@ let constrs_of_coq_sigma env evd t alias =
 let decompose_coq_sigma t = 
   let s = Lazy.force coq_sigma in
     match kind_of_term t with
-    | App (f, args) when is_global s f && 
-	Array.length args = 2 -> Some (args.(0), args.(1))
+    | App (f, args) when is_global s f && Array.length args = 2 ->
+       let ind, u = destInd f in
+         Some (u, args.(0), args.(1))
     | _ -> None
 
 let decompose_indapp f args =
@@ -116,7 +123,8 @@ let telescope evd = function
 
   | _ -> raise (Invalid_argument "telescope")
 
-let sigmaize ?(liftty=0) env evd f =
+let sigmaize ?(liftty=0) env0 evd pars f =
+  let env = push_rel_context pars env0 in
   let ty = Retyping.get_type_of env !evd f in
   let ctx, concl = decompose_prod_assum ty in
   let argtyp, letbinders, make = telescope evd ctx in
@@ -149,16 +157,22 @@ let sigmaize ?(liftty=0) env evd f =
     let _tylift = lift lenb argtyp in
       mkAppG evd (Lazy.force coq_sigmaI)
 	[|argtyp; pred; lift 1 make; mkRel 1|]
-  in argtyp, pred, indices, indexproj, valproj, valsig, tysig
+  in
+  let pred = it_mkLambda_or_LetIn pred pars in
+  let _ = Typing.e_type_of env0 evd pred in
+  let nf, _ = Evarutil.e_nf_evars_and_universes evd in
+    (nf argtyp, nf pred, map_rel_context nf pars, List.map nf indices,
+     indexproj, valproj, nf valsig, nf tysig)
 
 let ind_name ind = Nametab.basename_of_global (Globnames.IndRef ind)
 
-let signature_ref = lazy (init_constant ["Equations";"Signature"] "Signature")
-let signature_sig = lazy (init_constant ["Equations";"Signature"] "signature")
-let signature_pack = lazy (init_constant ["Equations";"Signature"] "signature_pack")
+let signature_ref = lazy (init_reference ["Equations";"Signature"] "Signature")
+let signature_sig = lazy (init_reference ["Equations";"Signature"] "signature")
+let signature_pack = lazy (init_reference ["Equations";"Signature"] "signature_pack")
 
-let signature_class () =
-  fst (snd (Option.get (Typeclasses.class_of_constr (Lazy.force signature_ref))))
+let signature_class evd =
+  let evd, c = Evarutil.new_global evd (Lazy.force signature_ref) in
+    evd, fst (snd (Option.get (Typeclasses.class_of_constr c)))
 
 let build_sig_of_ind env sigma ind =
   let (mib, oib as _mind) = Global.lookup_inductive ind in
@@ -172,8 +186,8 @@ let build_sig_of_ind env sigma ind =
   let parapp = mkApp (mkInd ind, extended_rel_vect 0 pars) in
   let fullapp = mkApp (mkInd ind, extended_rel_vect 0 ctx) in
   let evd = ref sigma in
-  let idx, pred, _, _, _, valsig, _ = 
-    sigmaize (push_rel_context pars env) evd parapp 
+  let idx, pred, pars, _, _, _, valsig, _ = 
+    sigmaize env evd pars parapp 
   in
   let sigma = !evd in
     sigma, pred, pars, fullapp, valsig, ctx, lenargs, idx
@@ -187,9 +201,10 @@ let declare_sig_of_ind env ind =
   let poly = Flags.is_universe_polymorphism () in
   let indsig = 
     let indsigid = add_suffix indid "_sig" in
-      declare_constant indsigid (it_mkLambda_or_LetIn pred pars)
+      declare_constant indsigid pred
 	None poly sigma (IsDefinition Definition)
   in
+  (* let sigma = if not poly then Evd.from_env (Global.env ()) else sigma in *)
   let pack_fn = 
     let vbinder = (Name (add_suffix indid "_var"), None, fullapp) in
     let term = it_mkLambda_or_LetIn valsig (vbinder :: ctx) 
@@ -201,10 +216,13 @@ let declare_sig_of_ind env ind =
 	poly sigma
 	(IsDefinition Definition)
   in
+  let sigma = if not poly then Evd.from_env (Global.env ()) else sigma in
+  let sigma, c = signature_class sigma in
   let inst = 
     declare_instance (add_suffix indid "_Signature")
-      poly sigma ctx (signature_class ()) 
-      [fullapp; lift lenargs idx; mkApp (mkConst indsig, extended_rel_vect lenargs pars);
+      poly sigma ctx c
+      [fullapp; lift lenargs idx;
+       mkApp (mkConst indsig, extended_rel_vect lenargs pars);
        mkApp (mkConst pack_fn, extended_rel_vect 0 ctx)]
   in inst
 
@@ -213,24 +231,27 @@ let get_signature env sigma ty =
     let sigma', (idx, _) = 
       new_type_evar env sigma Evd.univ_flexible ~src:(dummy_loc, Evar_kinds.InternalHole) in
     let _idxev = fst (destEvar idx) in
-    let inst = mkApp (Lazy.force signature_ref, [| ty; idx |]) in
+    let sigma', cl = Evarutil.new_global sigma' (Lazy.force signature_ref) in
+    let inst = mkApp (cl, [| ty; idx |]) in
     let sigma', tc = Typeclasses.resolve_one_typeclass env sigma' inst in
-      (nf_evar sigma' (mkApp (Lazy.force signature_sig, [| ty; idx; tc |])),
-      nf_evar sigma' (mkApp (Lazy.force signature_pack, [| ty; idx; tc |])))
+    let _, u = destInd (fst (destApp inst)) in
+    let ssig = mkApp (mkConstG signature_sig u, [| ty; idx; tc |]) in
+    let spack = mkApp (mkConstG signature_pack u, [| ty; idx; tc |]) in
+      (sigma', nf_evar sigma' ssig, nf_evar sigma' spack)
   with Not_found ->
     let pind, args = Inductive.find_rectype env ty in
     let ind = fst pind in
-    let _, pred, pars, _, valsig, ctx, _, _ =
+    let sigma, pred, pars, _, valsig, ctx, _, _ =
       build_sig_of_ind env sigma ind in
     msg_warning (str "Automatically inlined signature for type " ++
     Printer.pr_pinductive env pind ++ str ". Use [Derive Signature for " ++
     Printer.pr_pinductive env pind ++ str ".] to avoid this.");
-    let indsig = it_mkLambda_or_LetIn pred pars in
+    let indsig = pred in
     let vbinder = (Anonymous, None, ty) in
     let pack_fn = it_mkLambda_or_LetIn valsig (vbinder :: ctx) in
     let pack_fn = beta_applist (pack_fn, args) in
-      nf_evar sigma (mkApp (indsig, Array.of_list args)),
-      nf_evar sigma pack_fn
+      (sigma, nf_evar sigma (mkApp (indsig, Array.of_list args)),
+       nf_evar sigma pack_fn)
 
 (* let generalize_sigma env sigma c packid = *)
 (*   let ty = Retyping.get_type_of env sigma c in *)
@@ -261,14 +282,13 @@ let pattern_sigma c hyp env sigma =
   let projs = map (fun (x, t, p, rest) -> (pat t, make_change_arg p)) terms in
   let projabs = tclTHENLIST (map (fun (t, p) -> change (Some t) p Locusops.onConcl) projs) in
     Proofview.V82.tactic (tclTHEN (Refiner.tclEVARS !evd) projabs)
-
-let curry_hyp sigma c t =
-  let aux c t na ty pred concl =
+			 
+let curry_hyp env sigma c t =
+  let aux c t na u ty pred concl =
     let (n, idx, dom) = destLambda pred in
     let newctx = [(na, None, dom); (n, None, idx)] in
-    let evd = ref sigma in
-    let tuple = mkAppG evd (Lazy.force coq_sigmaI)
-		       [| lift 2 ty; lift 2 pred; mkRel 2; mkRel 1 |]
+    let tuple = mkApp (mkConstructG coq_sigmaI u,
+		       [| lift 2 ty; lift 2 pred; mkRel 2; mkRel 1 |])
     in
     let term = it_mkLambda_or_LetIn (mkApp (lift 2 c, [| tuple |])) newctx in
     let typ = it_mkProd_or_LetIn (subst1 tuple (liftn 2 2 concl)) newctx in
@@ -279,8 +299,8 @@ let curry_hyp sigma c t =
     | Prod (na, dom, concl) ->
        (match decompose_coq_sigma dom with
 	| None -> (c, t)
-	| Some (ty, pred) ->
-	   let term, typ = aux c t na ty pred concl in
+	| Some (u, ty, pred) ->
+	   let term, typ = aux c t na u ty pred concl in
 	   match kind_of_term typ with
 	   | Prod (na', dom', concl') ->
 	      let body' = pi3 (destLambda term) in
@@ -294,9 +314,10 @@ let curry_hyp sigma c t =
     | Prod (na, dom, concl) ->
        (match decompose_coq_sigma dom with
 	| None -> None
-	| Some (ty, pred) ->
-	   let term, typ = aux c t na ty pred concl in
+	| Some (inst, ty, pred) ->
+	   let term, typ = aux c t na inst ty pred concl in
 	   let c, t = curry_index term typ in
-	     Some (nf_beta Evd.empty c, t))
+	   let term = nf_beta sigma c in
+	     Some (term, t))
     | _ -> None
   in curry c t

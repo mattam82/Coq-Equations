@@ -98,8 +98,10 @@ pairOut _ _ => None.
 Set Printing Depth 1000000.
 
 Require Import Wellfounded.
+
 Derive Signature for exp.
 Derive Subterm for exp.
+
 Ltac rec ::= rec_wf_eqns.
 Unset Implicit Arguments.
 Next Obligation.
@@ -109,7 +111,7 @@ Defined.
 
 Equations cfold {t} (e : exp t) : exp t :=
 cfold e by rec e exp_subterm :=
-cfold (NConst n) := NConst n;
+cfold (NConst n) => NConst n;
 cfold (Plus e1 e2) <= (cfold e1, cfold e2) => {
   | pair (NConst n1) (NConst n2) := NConst (n1 + n2);
   | pair e1' e2' := Plus e1' e2'
@@ -241,13 +243,13 @@ Section insert.
   insResult Red n := rtree n;
   insResult Black n := {c' : color & rbtree c' n}.
 
-  Equations ins c n (t : rbtree c n) : insResult c n :=
-  ins _ _ Leaf := {< RedNode Leaf x Leaf >};
-  ins _ _ (RedNode _ a y b) <= le_lt_dec x y => {
+  Equations ins {c n} (t : rbtree c n) : insResult c n :=
+  ins Leaf := {< RedNode Leaf x Leaf >};
+  ins (RedNode _ a y b) <= le_lt_dec x y => {
     | left _ := RedNode' (pr2 (ins a)) y b;
     | right _ := RedNode' a y (pr2 (ins b))
   };
-  ins _ _ (BlackNode c1 c2 _ a y b) <= le_lt_dec x y => {
+  ins (BlackNode c1 c2 _ a y b) <= le_lt_dec x y => {
     | left _ <= c1 => {
       | Red := balance1 (ins a) y b;
       | Black := {<BlackNode (pr2 (ins a)) y b>}
@@ -265,11 +267,12 @@ Section insert.
   Equations makeRbtree c n (r : insResult c n) : insertResult c n :=
   makeRbtree Red _ (RedNode' _ _ _ a x b) := BlackNode a x b;
   makeRbtree Black _ r := r.
+  (* FIXME *)
   Next Obligation. destruct c; destruct r; simp makeRbtree. Defined.
   Arguments makeRbtree [c n] _.
 
-  Equations insert c n (t : rbtree c n) : insertResult c n :=
-  insert _ _ t := makeRbtree (ins t).
+  Equations insert {c n} (t : rbtree c n) : insertResult c n :=
+  insert t := makeRbtree (ins t).
 
   Section present.
     Variable z : nat.

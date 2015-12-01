@@ -125,7 +125,11 @@ let make_definition ?opaque ?(poly=false) evd ?types b =
   in
   let evd, nf = Evarutil.nf_evars_and_universes evd in
   let body = nf b and typ = Option.map nf types in
-    Declare.definition_entry ~poly ~univs:(snd (Evd.universe_context evd))
+  let used = Universes.universes_of_constr body in
+  let used' = Option.cata Universes.universes_of_constr Univ.LSet.empty typ in
+  let used = Univ.LSet.union used used' in
+  let evd = Evd.restrict_universe_context evd used in
+  Declare.definition_entry ~poly ~univs:(snd (Evd.universe_context evd))
       ?types:typ body
 
 let declare_constant id body ty poly evd kind =
@@ -134,13 +138,14 @@ let declare_constant id body ty poly evd kind =
     Flags.if_verbose message ((string_of_id id) ^ " is defined");
     cst
     
-let declare_instance id poly univs ctx cl args =
-  let c, t = Typeclasses.instance_constructor cl args in
-  let cst = declare_constant id (it_mkLambda_or_LetIn (Option.get c) ctx)
-    (Some (it_mkProd_or_LetIn t ctx)) poly univs (IsDefinition Instance)
-  in 
-  let inst = Typeclasses.new_instance (fst cl) None true poly (Globnames.ConstRef cst) in
-    Typeclasses.add_instance inst; mkConst cst
+let declare_instance id poly evd ctx cl args =
+  let open Typeclasses in
+  let c, t = instance_constructor cl args in
+  let term = it_mkLambda_or_LetIn (Option.get c) ctx in
+  let typ = it_mkProd_or_LetIn t ctx in
+  let cst = declare_constant id term (Some typ) poly evd (IsDefinition Instance) in
+  let inst = new_instance (fst cl) None true poly (Globnames.ConstRef cst) in
+    add_instance inst; mkConst cst
 
 let coq_unit = lazy (init_constant ["Coq";"Init";"Datatypes"] "unit")
 let coq_tt = lazy (init_constant ["Coq";"Init";"Datatypes"] "tt")

@@ -14,7 +14,7 @@ Declare ML Module "equations_plugin".
 (** The sigma type used by Equations. *)
 
 Set Primitive Projections.
-Record sigma {A : Type} {B : A -> Type} : Type := sigmaI { pr1 : A; pr2 : B pr1 }.
+Polymorphic Record sigma {A : Type} {B : A -> Type} : Type := sigmaI { pr1 : A; pr2 : B pr1 }.
 Unset Primitive Projections.
 
 Arguments sigma A B : clear implicits.
@@ -60,3 +60,6 @@ Section IdTheory.
   Proof. destruct 1. apply id. Defined.
 
 End IdTheory.
+
+(** Forward reference for the NoConfusion tactic. *)
+Ltac noconf H := congruence || injection H; intros; subst.
