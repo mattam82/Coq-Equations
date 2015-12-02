@@ -142,10 +142,9 @@ Lemma iapp_cons : forall (A : Set) (i j : nat) (l1 : ilist A i) (l2 : ilist A j)
   iapp (Cons x l1) l2 = Cons x (iapp l1 l2).
 Proof. simp iapp. Qed.
 
-Program Definition rev_aux_app_stmt := forall (A : Set) (i j1 j2 : nat) (l : ilist A i)
-  (acc1 : ilist A j1) (acc2 : ilist A j2),
-  convert_ilist _ (irev_aux l (iapp acc1 acc2)) = iapp (irev_aux l acc1) acc2.
-Next Obligation. auto with arith. Defined.
+Definition rev_aux_app_stmt := forall (A : Set) (i j1 j2 : nat) (l : ilist A i)
+  (acc1 : ilist A j1) (acc2 : ilist A j2) H,
+  convert_ilist H (irev_aux l (iapp acc1 acc2)) = iapp (irev_aux l acc1) acc2.
 
 Lemma rev_aux_app : rev_aux_app_stmt.
 Proof.
@@ -155,19 +154,26 @@ Proof.
     - simp irev_aux iapp. compute; match_refl; reflexivity.
     - simp irev_aux iapp. rewrite convert_ilist_trans.
       rewrite <- iapp_cons.
+      set (He := eq_trans _ _). clearbody He.
+      set (He' := irev_aux_obligation_1 _ _ _ _ _ _ _). clearbody He'.
 Admitted.
 
 Equations irev' {A : Set} {n : nat} (l : ilist A n) : ilist A n :=
 irev' Nil := Nil;
 irev' (Cons x t) := isnoc (irev' t) x.
 
+Lemma isnoc_irev A n a (l : ilist A n) : isnoc (irev l) a = irev (Cons a l).
+Proof.
+  unfold irev. symmetry. 
+Admitted.
+
 Lemma rev__rev' : forall (A : Set) (i : nat) (l : ilist A i), irev l = irev' l.
 Proof.
   intros.
-  funelim (irev' l); unfold irev; simplify_eqs; simp irev_aux.
-  unfold eq_rect. unfold irev_aux_obligation_1. unfold eq_sym.
+  funelim (irev' l). unfold irev. simplify_eqs. simp irev_aux.
+  unfold irev.
 Admitted.
-
+  
 Equations rev_range (n : nat) : ilist nat n :=
 rev_range 0 := Nil;
 rev_range (S n) := Cons n (rev_range n).
@@ -191,7 +197,7 @@ Derive Signature for fin.
 Derive NoConfusion for fin.
 Derive DependentElimination for fin.
 
-Require Import Equations.EqDec DepElimDec.
+From Equations Require Import EqDec DepElimDec.
 
 Derive Signature for @fle.
 Derive NoConfusion for @fle.
@@ -225,3 +231,36 @@ fle_trans' flez _ := flez;
 fle_trans' (fles p') (fles q') := fles (fle_trans' p' q').
 
 Print Assumptions fle_trans'.
+
+(*
+x.
+
+From Equations Require Import DepElimDec.
+Derive Signature for @eq.
+
+Inductive eqP {A : Type} {B : A -> Type} (a b : A) (t : B a) : B b -> Prop :=
+  idpath_over (p : a = b) : eqP a b t (eq_rect a B t b p).
+
+Lemma eq_rect_eqP {A : Type} {B : A -> Type} (a b : A) (p : a = b) (t : B a) (u : B b) :
+  eq_rect a B t b p = u -> eqP a b t u.
+Proof.
+  intros. rewrite <- H. constructor.
+Defined.  
+
+Lemma eqP_eq_rect {A : Type} {B : A -> Type} (a b : A) (p : a = b) (t : B a) (u : B b) :
+  eqP a b t u -> eq_rect a B t b p = u.
+Proof.
+  intros. destruct H. destruct p. simpl. revert p0. simplify_dep_elim. reflexivity.
+Defined.  
+
+Notation "x =~ y" := (eqP _ _ x y) (at level 90, format " x  =~  y ").
+
+Lemma eqP_eq_rect_l {A : Type} {B : A -> Type} (a b c : A)
+      (p : a = b) (q : b = c) (t : B a) (v : B c) :
+  t =~ v -> eq_rect _ B t _ p =~ v.
+Proof.
+  intros. destruct p, q. now simpl in *.
+Defined. 
+
+(* Notation " x =_  y " := (eqP _ _ _ x y) (at level 90). *)
+*)

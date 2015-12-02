@@ -10,18 +10,17 @@ Set Primitive Projections.
 Set Implicit Arguments.
 
 Section TypeEq.
-  Local Definition T := Type.
 
-  Inductive equality (A : T) (a : A) : A -> T :=
+  Inductive equality@{i} (A : Type@{i}) (a : A) : A -> Type@{i} :=
   | eq_refl : equality a a.
 
-  Equations(nocomp) eq_sym (A : T) (x y : A) (eq : equality x y) : equality y x :=
+  Equations(nocomp) eq_sym (A : Type) (x y : A) (eq : equality x y) : equality y x :=
   eq_sym _ _ _ eq_refl := eq_refl _.
 
-  Equations(nocomp) eq_trans (A : T) (x y z : A) (eq1 : equality x y) (eq2 : equality y z) : equality x z :=
+  Equations(nocomp) eq_trans (A : Type) (x y z : A) (eq1 : equality x y) (eq2 : equality y z) : equality x z :=
   eq_trans _ _ _ _ eq_refl eq_refl := eq_refl _.
 End TypeEq.
-
+Set Printing Universes.
 Arguments equality {A} _ _.
 Arguments eq_refl {A} [a].
 

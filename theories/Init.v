@@ -14,6 +14,8 @@ Declare ML Module "equations_plugin".
 (** The sigma type used by Equations. *)
 
 Set Primitive Projections.
+Global Unset Printing Primitive Projection Parameters.
+Global Unset Printing Primitive Projection Compatibility.
 Polymorphic Record sigma {A : Type} {B : A -> Type} : Type := sigmaI { pr1 : A; pr2 : B pr1 }.
 Unset Primitive Projections.
 
