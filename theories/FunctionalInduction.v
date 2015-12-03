@@ -78,27 +78,21 @@ Ltac funelim_tac c tac :=
         progress (generalize_eqs_vars call);
         match goal with
           call := ?c' |- _ =>
-            subst call; simpl; pattern_call c';
+            subst call; pattern_call c';
               apply elim; clear; simplify_dep_elim;
-                simplify_IH_hyps; unfold block at 1;
-                  first [ on_last_hyp ltac:(fun id => rewrite <- id; intros)
-                    | intros ];
-                  unblock_goal; tac f
+                simplify_IH_hyps; intros _ (* block *);
+                try on_last_hyp ltac:(fun id => 
+                                    try rewrite <- id;
+                                    intros_until_block);
+                  unblock_goal; simplify_IH_hyps; tac f
         end
       | subst call; pattern_call c; apply elim; clear;
-        simplify_dep_elim; simplify_IH_hyps; unfold block at 1;
-          intros; unblock_goal; tac f ]
+        simplify_dep_elim; simplify_IH_hyps;
+        intros_until_block; intros_until_block;
+        unblock_goal; tac f ]
   end.
 
 Ltac funelim c := funelim_tac c ltac:(fun _ => idtac).
-
-(* Ltac funelim c := *)
-(*   match c with *)
-(*     | appcontext C [ ?f ] => *)
-(*       let elim := constr:(fun_elim (f:=f)) in *)
-(*         pattern_call c ; apply elim ; clear ; simplify_dep_elim; *)
-(*           simplify_IH_hyps *)
-(*   end. *)
 
 (** A special purpose database used to prove the elimination principle. *)
 

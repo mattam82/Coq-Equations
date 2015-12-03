@@ -71,7 +71,8 @@ Proof.
     - reflexivity.
     - inversion H1.
     - inversion H1.
-    - clear H. f_equal. inversion H2. apply inj_pair2 in H4. subst. apply H1; reflexivity.
+    - clear H. f_equal. simp fin_to_nat in H2. noconf H2. rewrite H. 
+      apply H1; auto. inversion H3. apply inj_pair2 in H4. subst; reflexivity.
 Qed.
 
 Lemma nat__fin : forall (n : nat) (i : fin n),
@@ -83,9 +84,9 @@ Proof.
     - reflexivity.
     - inversion H1.
     - inversion H1.
-    - clear H. unfold nat_to_fin_obligation_1 in *. f_equal.
-        simp fin_to_nat in H2. depelim H2.
-        replace (Lt.lt_S_n (fin_to_nat f) n p) with (fin_lt_n n f) in * by (apply proof_irrelevance).
+    - clear H. subst call0. unfold nat_to_fin_obligation_1 in *. f_equal.
+        simp fin_to_nat in H3. noconf H3.
+        replace (Lt.lt_S_n (fin_to_nat f) n (fin_lt_n (S n) (fs f))) with (fin_lt_n n f) in * by (apply proof_irrelevance).
         apply H1; reflexivity.
 Qed.
 

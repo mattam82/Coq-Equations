@@ -1,4 +1,4 @@
-Require Import Equations.
+From Equations Require Import Equations.
 Require Import Relations.
 
 Definition gcd_order (p : nat * nat) : nat := let (x,y) := p in x+y.

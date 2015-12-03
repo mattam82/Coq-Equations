@@ -76,14 +76,17 @@ Ltac do_rewrites :=
     end.
 
 Ltac crush := do_rewrites; auto; try term.
+
 Lemma lift0 k t : lift k 0 t = t.
-Proof. funelim (lift k 0 t); rewrite H; crush. rewrite <- H; auto. rewrite <- H. term. Qed.
+Proof.
+  funelim (lift k 0 t); term || rewrite H; crush.
+Qed.
 Hint Rewrite lift0 : lift.
 Require Import Omega.
 
 Lemma lift_k_lift_k k n m t : lift k n (lift k m t) = lift k (n + m) t.
-Proof. funelim (lift k m t) ; simp lift; try rewrite H ; try rewrite H0; auto.
-
+Proof. funelim (lift k m t) ; intros; simp lift; try rewrite H ; try rewrite H0; auto.
+       
   destruct (nat_compare_spec n0 k); try discriminate. subst.
   case_eq (nat_compare (k + n) k); intro H; simp lift; try term.
   rewrite <- nat_compare_lt in H; term.
@@ -558,7 +561,7 @@ is_lambda (pair t' _) := inr t'.
 
 Lemma is_lambda_inr {t} (h : hereditary_type t) : forall t', is_lambda h = inr t' -> fst h = t'.
 Proof.
-  destruct h. funelim (is_lambda (t0, o)); intros; try congruence.
+  destruct h. funelim (is_lambda (t0, o)); simpl; intros; try congruence.
 Qed.
 
 Inductive IsPair {t} : hereditary_type t -> Set :=
@@ -570,7 +573,7 @@ is_pair (pair t' _) := inr t'.
   
 Lemma is_pair_inr {t} (h : hereditary_type t) : forall t', is_pair h = inr t' -> fst h = t'.
 Proof.
-  destruct h. funelim (is_pair (t0, o)); intros; try congruence.
+  destruct h. funelim (is_pair (t0, o)); simpl; intros; try congruence.
 Qed.
 
 Lemma nth_extend_right {A} (a : A) n (l l' : list A) : n < length l -> 
@@ -736,10 +739,13 @@ Set Regular Subst Tactic.
 Lemma hereditary_subst_type Γ Γ' t T u U : Γ |-- u : U -> Γ' @ (U :: Γ) |-- t : T ->
   forall t' o, hereditary_subst (U, u, t) (length Γ') = (t', o) ->
     (Γ' @ Γ |-- t' : T /\ (forall ty prf, o = Some (exist ty prf) -> ty = T)). 
-Proof. intros. revert H1. funelim (hereditary_subst (U, u, t) (length Γ')); 
-    simpl_dep_elim; subst; try (split; [ (intros; try discriminate) | solve [ intros; discriminate ] ]).
-  
-  invert_term. apply abstraction. 
+Proof.
+  intros. revert H1.
+  funelim (hereditary_subst (U, u, t) (length Γ'));
+  simpl_dep_elim; subst;
+    try (split; [ (intros; try discriminate) | solve [ intros; discriminate ] ]).
+
+  invert_term. apply abstraction.
   specialize (H (A :: Γ')). simpl in H. simplify_IH_hyps. 
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   apply H with o; auto. 
@@ -826,27 +832,6 @@ Qed.
 
 Instance: subrelation eq (flip impl).
 Proof. reduce. subst; auto. Qed.
-
-Ltac funelim_tac c tac ::=
-  match c with
-    | appcontext [?f] =>
-  let call := fresh "call" in set(call := c) in *; move call at top;
-  let elim := constr:(fun_elim (f:=f)) in
-    block_goal; revert_until call; block_goal;
-    first [
-        progress (generalize_eqs_vars call);
-        match goal with
-          call := ?c' |- _ =>
-            subst call; simpl; pattern_call c';
-            apply elim; clear; simplify_dep_elim;
-              simplify_IH_hyps; unfold block at 1;
-                try on_last_hyp ltac:(fun id => rewrite <- id);
-                  unblock_goal; tac f
-        end
-      | subst call; pattern_call c; apply elim; clear;
-        simplify_dep_elim; simplify_IH_hyps; unfold block at 1;
-        unblock_goal; tac f ]
-  end.
 
 Lemma nth_pred Γ' Γ U n : n > length Γ' -> nth (pred n) (Γ' @ Γ) unit = nth n (Γ' @ (U :: Γ)) unit.
 Proof. 

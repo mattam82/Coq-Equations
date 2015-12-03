@@ -1,4 +1,5 @@
-Require Import Equations Arith List ListSet Omega Program.
+From Equations Require Import Equations.
+Require Import Arith List ListSet Omega Program.
  
 Definition fvar : Type := nat. 
 Definition bvar : Type := nat. 
@@ -182,8 +183,9 @@ Lemma infer_sort_sound:
     infer_sort i ie = Some s -> 
     sorting ie i s.
 Proof.
-  intros i ie. funelim (infer_sort i ie); intros s' Heqs; 
-               try (noconf Heqs || (rewrite Heq in Heqs; noconf Heqs)).
+  intros i ie.
+  funelim (infer_sort i ie); intros s' Heqs; 
+  try (noconf Heqs || (rewrite Heq in Heqs; noconf Heqs)).
   - now constructor. 
   - now constructor.
   - specialize (Hind _ Heq). now constructor.

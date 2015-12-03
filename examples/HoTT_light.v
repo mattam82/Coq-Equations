@@ -65,7 +65,7 @@ Notation "x .2" := (proj2 x) (at level 3).
 Definition Sect {A B : Type} (s : A -> B) (r : B -> A) :=
   forall x : A, r (s x) = x.
 
-Equations ap {A B : T} (f : A -> B) {x y : A} (p : x = y) : f x = f y :=
+Equations ap {A B : Type} (f : A -> B) {x y : A} (p : x = y) : f x = f y :=
 ap f eq_refl := eq_refl.
 Transparent ap.
 
