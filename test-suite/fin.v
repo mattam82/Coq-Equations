@@ -193,6 +193,7 @@ fin0_empty i :=! i.
 Equations(nocomp) fle_trans {n : nat} {i j k : fin n} (p : fle i j) (q : fle j k) : fle i k :=
 fle_trans flez _ := flez;
 fle_trans (fles p') (fles q') := fles (fle_trans p' q').
+Print Assumptions fle_trans.
 
 Derive Signature for fin.
 Derive NoConfusion for fin.

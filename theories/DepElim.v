@@ -643,7 +643,7 @@ Ltac simplify_method tac := repeat (tac || simplify_one_dep_elim) ; reverse_loca
 
 Ltac clear_fix_protos n tac :=
   match goal with
-    | [ |- fix_proto _ -> _ ] => intros _ ; 
+    | [ |- (let _ := fixproto in _) -> _ ] => intros _ ; 
       match n with
         | O => fail 2 "clear_fix_proto: tactic would apply on prototype"
         | S ?n => clear_fix_protos n tac

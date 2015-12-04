@@ -263,13 +263,11 @@ let ind_fun_tac is_rec f info fid split ind =
       (tclTHENLIST
 	  [fix (Some recid) (succ i);
 	   onLastDecl (fun (n,b,t) gl ->
-	     let sort = pf_get_type_of gl t in
 	     let fixprot pats sigma =
 	       let c = 
-		 mkApp ((*FIXME*)Universes.constr_of_global (Lazy.force coq_fix_proto),
-				 [|sort; t|]) in
-	       let c' = replace_vars (Id.Map.bindings pats) c in
-	         fst (Typing.type_of (pf_env gl) sigma c'), c'
+		 mkLetIn (Anonymous, Universes.constr_of_global (Lazy.force coq_fix_proto),
+			Lazy.force coq_unit, t) in
+	       sigma, c
 	     in
 	     Proofview.V82.of_tactic
 	       (change_in_hyp None fixprot (n, Locus.InHyp)) gl);
@@ -1045,10 +1043,8 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   let data = Constrintern.compute_internalization_env
     env Constrintern.Recursive [i] [ty] [impls] 
   in
-  let sort = Retyping.get_type_of env !evd ty in
-  let sort = Evarutil.evd_comb1 (Evarsolve.refresh_universes (Some false) env) evd sort in
-  let fixprot = mkApp (Universes.constr_of_global (Lazy.force coq_fix_proto), [|sort; ty|]) in
-  let _fixprot_ty = e_type_of env evd fixprot in
+  let fixprot = mkLetIn (Anonymous, Universes.constr_of_global (Lazy.force coq_fix_proto),
+			 Lazy.force coq_unit, ty) in
   let fixdecls = [(Name i, None, fixprot)] in
   let is_recursive =
     let rec occur_eqn (_, _, rhs) =

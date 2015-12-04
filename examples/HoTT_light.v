@@ -9,6 +9,8 @@ Set Primitive Projections.
 
 Set Implicit Arguments.
 
+Definition id {A : Type} (a : A) : A := a.
+
 Section TypeEq.
 
   Inductive equality@{i} (A : Type@{i}) (a : A) : A -> Type@{i} :=
@@ -80,7 +82,7 @@ Class IsEquiv {A B : Type} (f : A -> B) := BuildIsEquiv {
 
 Notation "f ^^-1" := (@equiv_inv _ _ f _) (at level 3).
 
-Definition pointwise_paths {A} {P:A->Type} (f g:forall x:A, P x) : Type
+Definition pointwise_paths {A} {P:A->Type} (f g:forall x:A, P x) 
   := forall x:A, f x = g x.
 
 Hint Unfold pointwise_paths : typeclass_instances.
@@ -160,6 +162,7 @@ Class Contr (A : Type) := BuildContr {
   center : A ;
   contr : (forall y : A, center = y)
 }.
+Arguments center A {Contr}.
 
 Global Instance contr_forall A {P : A -> Type} {H : forall a, Contr (P a)}
   : Contr (forall a, P a) | 100.
@@ -213,11 +216,12 @@ Instance concat_morphism (A : Type) x y z :
   Proper (equality ==> equality ==> equality) (@concat A x y z).
 Proof. reduce. destruct X. destruct X0. destruct x0. reflexivity. Defined.
 
-Instance trans_co_eq_inv_arrow_morphism :
-  ∀ (A : Type) (R : crelation A),
-    Transitive R → Proper (R ==> respectful
-                             equality (flip arrow)) R.
+Definition trans_co_eq_inv_arrow_morphism@{i j k} :
+  ∀ (A : Type@{i}) (R : crelation@{i j} A),
+    Transitive R → Proper@{k j} (respectful@{i j k j k j} R
+    (respectful@{i j k j k j} equality (@flip@{k k k} _ _ Type@{j} arrow))) R.
 Proof. reduce. transitivity y. assumption. now destruct X1. Defined.
+Polymorphic Existing Instance trans_co_eq_inv_arrow_morphism.
 
 Equations concat_pp_A1 {A : Type} {g : A -> A} (p : forall x, x = g x)
   {x y : A} (q : x = y)
@@ -301,8 +305,8 @@ Definition concat_pA1_p {A : Type} {f : A -> A} (p : forall x, f x = x)
   : (r @@ ap f q) @@ p y = (r @@ p x) @@ q.
 Proof.
   destruct q; simpl.
-  (* now rewrite !concat_p1. *)
-  now simp concat.
+  now rewrite !concat_p1.
+  (* now simp concat. *)
 Defined.
 
 Equations ap_p {A B : Type} (f : A -> B) {x y : A} (p q: x = y) (e : p = q) :
@@ -320,7 +324,7 @@ Proof. intros. reduce. apply X. Defined.
 Instance isequiv_inverse A B (f:A -> B) (H:IsEquiv f) : IsEquiv (f^^-1) | 1000.
 Proof.
   refine (BuildIsEquiv (@eissect _ _ f _) (@eisretr _ _ f _) _).
-  intros b.
+  intros b. 
   rewrite <- (concat_1p (eissect _)).
   rewrite <- (concat_Vp  (ap f^^-1 (eisretr (f (f^^-1 b))))).
   rewrite (whiskerR (inverse2 (ap02 f^^-1 (eisadj (f^^-1 b)))) _).
@@ -361,10 +365,10 @@ Definition contr_sigma A {P : A -> Type}
   {H : Contr A} `{H0 : forall a, Contr (P a)}
   : Contr (sigma P).
 Proof.
-  exists (center A; center (P (center A))).
+  exists (center A; center (P (center A))). 
   intros [a Ha]. refine (path_sigma _ _ _ _).
   simpl. apply H. simpl. apply transport_inv.
-  apply (H0 center).
+  apply (H0 (center A)).
 Defined.
 
 Equations(nocomp) path_sigma_uncurried (A : Type) (P : A -> Type) (u v : sigma P)
@@ -430,3 +434,5 @@ Instance contr_paths_contr A {H:Contr A} (x y : A) : Contr (x = y) | 10000 := le
 Program Instance contr_prod A B {CA : Contr A} {CB : Contr B} : Contr (prod A B).
 Next Obligation. exact (@center _ CA, @center _ CB). Defined.
 Next Obligation. apply path_prod; apply contr. Defined.
+
+Unset Printing All.

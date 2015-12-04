@@ -166,8 +166,6 @@ let rec int_of_coq_nat c =
   | App (f, [| arg |]) -> succ (int_of_coq_nat arg)
   | _ -> 0
 
-let coq_fix_proto = lazy (init_constant ["Coq";"Program";"Tactics"] "fix_proto")
-
 let fresh_id_in_env avoid id env =
   Namegen.next_ident_away_in_goal id (avoid@ids_of_named_context (named_context env))
 
@@ -180,7 +178,7 @@ let coq_eq_refl = lazy ((Coqlib.build_coq_eq_data ()).Coqlib.refl)
 let coq_heq = lazy (Coqlib.coq_reference "mkHEq" ["Logic";"JMeq"] "JMeq")
 let coq_heq_refl = lazy (Coqlib.coq_reference "mkHEq" ["Logic";"JMeq"] "JMeq_refl")
 
-let coq_fix_proto = lazy (Coqlib.coq_reference "coq_fix_proto" ["Program";"Tactics"] "fix_proto")
+let coq_fix_proto = lazy (init_reference ["Equations";"Init"] "fixproto")
 
 
 let mkapp evdref t args =

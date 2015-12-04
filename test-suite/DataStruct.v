@@ -20,7 +20,7 @@ Section ilist.
   get (Cons _ t) (Next j) := get t j.
 
 End ilist.
-
+Set Printing Universes.
 Arguments Nil [A].
 Arguments First [n].
 
@@ -118,12 +118,13 @@ Section filist.
   ffin 0 := Empty_set;
   ffin (S n) := option (ffin n).
 
+  Transparent ffin.
+  
   Equations fget {n} (ls : filist n) (i : ffin n) : A :=
-(*  fget 0 _ i :=! i;*)
   fget {n:=(S n)} (pair x _) None := x;
   fget {n:=(S n)} (pair _ ls) (Some i) := fget ls i.
-  Next Obligation. destruct i. Defined.
-  Next Obligation. destruct i. Defined.
+
+  (* FIXME *)
   Next Obligation. induction n; destruct i; destruct ls; simp fget. Defined.
 End filist.
 
@@ -159,13 +160,12 @@ Section fhlist.
   Equations fmember (ls : list A) : Type :=
   fmember nil := Empty_set;
   fmember (cons x ls) := ((x = elm) + fmember ls)%type.
+  Transparent fmember.
 
   Equations fhget (ls : list A) (mls : fhlist ls) (i : fmember ls) : B elm :=
   fhget nil _ i :=! i;
   fhget _ (pair x _) (inl eq_refl) := x;
   fhget (cons _ ls) (pair _ l) (inr i) := fhget ls l i.
-  Next Obligation. destruct i. Defined.
-  Next Obligation. destruct i. Defined.
   Next Obligation. induction ls; destruct i; subst; destruct mls; simp fhget. Defined.
 End fhlist.
 Arguments fhget [A B elm ls] _ _.

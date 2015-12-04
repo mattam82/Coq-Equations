@@ -387,8 +387,7 @@ let rels_above ctx x =
 
 let is_fix_proto t =
   match kind_of_term t with
-  | App (f, args) when is_global (Lazy.force coq_fix_proto) f ->
-      true
+  | LetIn (_, f, _, _) -> is_global (Lazy.force coq_fix_proto) f
   | _ -> false
 
 let fix_rels ctx =

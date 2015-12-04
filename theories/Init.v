@@ -11,6 +11,20 @@ Require Export Coq.Program.Program.
 
 Declare ML Module "equations_plugin".
 
+(** A marker for fixpoint prototypes in the context *)
+Definition fixproto := tt.
+
+Ltac destruct_rec_calls ::=
+  match goal with
+    | [ H : let _ := fixproto in _ |- _ ] => red in H; destruct_calls H ; clear H
+  end.
+
+(* Redefine to avoid the [simpl] tactic before clearing fixpoint prototypes *)
+Ltac program_simplify ::=
+  intros; destruct_all_rec_calls; simpl in *; repeat (destruct_conjs; simpl proj1_sig in * );
+  subst*; autoinjections ; try discriminates ;
+    try (solve [ red ; intros ; destruct_conjs ; autoinjections ; discriminates ]).
+
 (** The sigma type used by Equations. *)
 
 Set Primitive Projections.
