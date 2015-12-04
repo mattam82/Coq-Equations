@@ -1011,6 +1011,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	let comp =
 	  Declare.declare_constant compid (DefinitionEntry ce, IsDefinition Definition)
 	in (*Typeclasses.add_constant_class c;*)
+	evd := if poly then !evd else Evd.from_env (Global.env ());
 	let compc = e_new_global evd (ConstRef comp) in
 	let compapp = mkApp (compc, rel_vect 0 (length sign)) in
 	let projid = add_suffix i "_comp_proj" in
