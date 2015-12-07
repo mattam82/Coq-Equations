@@ -186,3 +186,80 @@ Proof.
 Focus 2.  now apply step_l.
 now apply step_r.
 Qed.
+
+Module MutBelow.
+Inductive T :=
+| L | N (x : R)
+with R := rnil | rcons : T -> R -> R.
+
+Section below.
+  Variables (P : T -> Type) (Q : R -> Type).
+Fixpoint Below_T (t : T) : Type :=
+  match t with
+  | L => True
+  | N x => Q x * Below_R x
+  end
+with Below_R (r : R) : Type :=
+  match r with
+  | rnil => True
+  | rcons t r => P t * Below_T t * Q r * Below_R r
+  end.
+Variables (Ht : forall t', Below_T t' -> P t') (Hr : forall r', Below_R r' -> Q r').
+
+Lemma below_t : forall t, Below_T t
+with below_r : forall r, Below_R r.
+Proof.
+  intros [|x].
+  exact I.
+  exact (Hr x (below_r x), below_r x).
+  intros [|t rs].
+  exact I.
+  exact (Ht t (below_t t), below_t t, Hr rs (below_r rs), below_r rs).
+Defined.
+
+End below.
+
+Definition noSubterm_T x y :=
+  Below_T (fun y => x <> y) (fun _ => True) y.
+
+Definition noLargeSubterm_T x y :=
+  ((x <> y) * noSubterm_T x y)%type.
+
+Definition noSubterm_R x y :=
+  Below_R (fun _ => True) (fun y => x <> y) y.
+
+Definition noLargeSubterm_R x y :=
+  ((x <> y) * noSubterm_R x y)%type.
+
+Definition no_cycle_T x y : x = y -> noSubterm_T x y.
+Proof.
+  intros ->. induction y.
+  
+  exact I.
+  
+  simpl.
+  red.
+  now apply step_succ.
+    
+    red. simpl. intros x.
+    apply (step o (o x) x (X x)). 
+  Qed.
+End NoCycle_ord.
+
+Lemma step_l x y b : noSubterm_T x b -> noLargeSubterm_R (rcons x y) b.
+Proof.
+  induction b; red. intros.
+
+  split; cbn. 
+  intro H'; noconf H'.
+  exact I.
+
+  intros [H H'].
+  split.
+
+  intro He; noconf He. apply (fst H'); reflexivity.
+
+  split.
+  apply IHb2; intuition.
+  apply IHb1; intuition.
+Qed.  
