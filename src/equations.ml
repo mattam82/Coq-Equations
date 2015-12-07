@@ -266,7 +266,7 @@ let ind_fun_tac is_rec f info fid split ind =
 	     let fixprot pats sigma =
 	       let c = 
 		 mkLetIn (Anonymous, Universes.constr_of_global (Lazy.force coq_fix_proto),
-			Lazy.force coq_unit, t) in
+			  Universes.constr_of_global (Lazy.force coq_unit), t) in
 	       sigma, c
 	     in
 	     Proofview.V82.of_tactic
@@ -980,7 +980,7 @@ let fix_proto_ref () =
   | _ -> assert false
 
 let constr_of_global = Universes.constr_of_global
-		       
+
 let define_by_eqs opts i (l,ann) t nt eqs =
   let with_comp, with_rec, with_eqns, with_ind =
     let try_bool_opt opt =
@@ -1045,7 +1045,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
     env Constrintern.Recursive [i] [ty] [impls] 
   in
   let fixprot = mkLetIn (Anonymous, Universes.constr_of_global (Lazy.force coq_fix_proto),
-			 Lazy.force coq_unit, ty) in
+			 Universes.constr_of_global (Lazy.force coq_unit), ty) in
   let fixdecls = [(Name i, None, fixprot)] in
   let is_recursive =
     let rec occur_eqn (_, _, rhs) =

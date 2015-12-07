@@ -150,8 +150,37 @@ val declare_instance :
   Typeclasses.typeclass Term.puniverses -> Term.constr list -> Term.constr
 
 (** Standard datatypes *)
-val coq_unit : Term.constr lazy_t
-val coq_tt : Term.constr lazy_t
+
+type logic_ref = Globnames.global_reference lazy_t
+							       
+type logic = {
+  logic_eqty : logic_ref;
+  logic_eqrefl: logic_ref;
+  logic_sort : sorts_family;
+  logic_zero : logic_ref;
+  logic_one : logic_ref;
+  logic_one_val : logic_ref;
+  (* logic_sigma : logic_ref; *)
+  (* logic_pair : logic_ref; *)
+  (* logic_fst : logic_ref; *)
+  (* logic_snd : logic_ref; *)
+}
+
+val set_logic : logic -> unit
+val prop_logic : logic
+val type_logic : logic
+
+val get_sort : unit -> sorts_family
+val get_eq : unit -> Globnames.global_reference lazy_t
+val get_eq_refl : unit -> Globnames.global_reference lazy_t
+
+val get_one : unit -> Globnames.global_reference lazy_t
+val get_one_prf : unit -> Globnames.global_reference lazy_t
+val get_zero : unit -> Globnames.global_reference lazy_t
+
+val coq_unit : Globnames.global_reference lazy_t
+val coq_tt : Globnames.global_reference lazy_t
+						  
 val coq_prod : Term.constr lazy_t
 val coq_pair : Term.constr lazy_t
 

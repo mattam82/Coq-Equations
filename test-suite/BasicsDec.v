@@ -39,7 +39,6 @@ Proof. intros. intros x. induction x. left. now depelim y.
   right. intro. apply n. injection H0. simpdep. reflexivity.
 Defined.
 
-
 Derive Subterm for vector.
 Print Assumptions well_founded_t_subterm.
 

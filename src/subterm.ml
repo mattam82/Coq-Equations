@@ -299,7 +299,9 @@ let derive_below ctx (ind,u) =
 		mkApp (Lazy.force coq_prod, [| ty' ; ty |])) x
 	    | None -> f (fun x -> x) x)
 	    None args
-	in Option.cata (fun x -> x) (Lazy.force coq_tt, Lazy.force coq_unit) res
+	in Option.cata (fun x -> x)
+		       (Universes.constr_of_global (Lazy.force (get_one_prf ())),
+			Universes.constr_of_global (Lazy.force (get_one ()))) res
       in
       let bodyB =
 	let _, res =

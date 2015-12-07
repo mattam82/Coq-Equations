@@ -48,8 +48,9 @@ Set Universe Polymorphism.
 
 Inductive Empty@{i} : Type@{i} :=.
 
-Inductive Id@{i} (A : Type@{i}) (a : A) : A -> Type@{i} :=
-  id_refl : Id A a a.
+Inductive Id@{i} {A : Type@{i}} (a : A) : A -> Type@{i} :=
+  id_refl : Id a a.
+Arguments id_refl {A a}, [A] a.
 
 Module IdNotations.
 

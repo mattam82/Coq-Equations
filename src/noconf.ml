@@ -90,14 +90,16 @@ let derive_no_confusion env evd (ind,u) =
   let argsvect = rel_vect 0 len in
   let paramsvect, rest = Array.chop params argsvect in
   let indty = mkApp (mkInd ind, argsvect) in
-  let tru = Lazy.force (Lazy.from_fun Coqlib.build_coq_True) in
-  let fls = Lazy.force (Lazy.from_fun Coqlib.build_coq_False) in
+  let tru = Universes.constr_of_global (Lazy.force (get_one ())) in
+  let fls = Universes.constr_of_global (Lazy.force (get_zero ())) in
   let xid = id_of_string "x" and yid = id_of_string "y" in
   let xdecl = (Name xid, None, indty) in
   let binders = xdecl :: ctx in
   let ydecl = (Name yid, None, lift 1 indty) in
   let fullbinders = ydecl :: binders in
-  let arity = it_mkProd_or_LetIn mkProp fullbinders in
+  let s = Evarutil.evd_comb1 (Evd.fresh_sort_in_family env) evd (get_sort ()) in
+  let s = mkSort s in
+  let arity = it_mkProd_or_LetIn s fullbinders in
   let env = push_rel_context binders env in
   let ind_with_parlift n =
     mkApp (mkInd ind, Array.append (Array.map (lift n) paramsvect) rest) 
@@ -107,7 +109,7 @@ let derive_no_confusion env evd (ind,u) =
     let elim =
       let app = ind_with_parlift (args + 1) in
 	it_mkLambda_or_LetIn 
-	  (mkProd_or_LetIn (Anonymous, None, lift 1 app) mkProp)
+	  (mkProd_or_LetIn (Anonymous, None, lift 1 app) s)
 	  ((Name xid, None, ind_with_parlift (1 + lenargs)) :: List.firstn lenargs ctx)
     in
       mkcase env (mkRel 1) elim (fun ind i id nparams args arity ->
@@ -116,11 +118,11 @@ let derive_no_confusion env evd (ind,u) =
 	let decl = (Name yid, None, ind_with_parlift (lenargs + List.length args + 2)) in
 	  mkLambda_or_LetIn ydecl
 	    (mkcase env' (mkRel 1) 
-		(it_mkLambda_or_LetIn mkProp (decl :: List.firstn lenargs ctx))
+		(it_mkLambda_or_LetIn s (decl :: List.firstn lenargs ctx))
 		(fun _ i' id' nparams args' arity' ->
 		  if i = i' then 
-        if List.length args = 0 then tru
-        else mk_eq (push_rel_context args' env') evd args args' indty
+		    if List.length args = 0 then tru
+		    else mk_eq (push_rel_context args' env') evd args args' indty
 		  else fls)))
   in
   let app = it_mkLambda_or_LetIn pred binders in

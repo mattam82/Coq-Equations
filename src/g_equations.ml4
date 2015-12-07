@@ -136,7 +136,7 @@ END
 
 (* Noconf *)
 
-VERNAC COMMAND EXTEND Derive_NoConfusion CLASSIFIED AS QUERY
+VERNAC COMMAND EXTEND Derive_NoConfusion CLASSIFIED AS SIDEFF
 | [ "Derive" "NoConfusion" "for" constr_list(c) ] -> [ 
     List.iter (fun c ->
       let env = (Global.env ()) in
@@ -145,6 +145,20 @@ VERNAC COMMAND EXTEND Derive_NoConfusion CLASSIFIED AS QUERY
 	| Ind i -> Noconf.derive_no_confusion env (Evd.from_env env) i
 	| _ -> error "Expected an inductive type")
       c
+  ]
+END
+
+VERNAC COMMAND EXTEND Equations_Logic CLASSIFIED AS QUERY
+| [ "Equations" "Logic" sort(s) global(eq) global(eqr) global(z) global(o) global(ov) ] -> [
+  let gr x = Lazy.from_val (Nametab.global x) in
+  let open Misctypes in
+  let s = match s with GProp -> InProp | GSet -> InSet | GType _ -> InType in
+  Equations_common.(set_logic { logic_eqty = gr eq;
+				logic_eqrefl = gr eqr;
+				logic_sort = s;
+				logic_zero = gr z;
+				logic_one = gr o;
+				logic_one_val = gr ov})
   ]
 END
 

@@ -49,6 +49,28 @@ Ltac generalize_sig id cont :=
       cont id'1
   end.
 
+Ltac Id_generalize_sig id cont :=
+  let id' := fresh id in
+  get_signature_pack id id';
+  hnf in (value of id'); hnf in (type of id');
+  match goal with
+  | |- context[ id ] =>
+    generalize (@id_refl _ id' : Id id' id') ;
+    unfold id' at 1;
+    clearbody id'; simpl in id'; move id' after id;
+    revert_until id'; rename id' into id;
+      cont id
+  | |- _ =>
+    let id'1 := fresh id' in let id'2 := fresh id' in
+    set (id'2 := pr2 id'); set (id'1 := pr1 id') in id'2;
+    hnf in (value of id'1), (value of id'2);
+    generalize (@id_refl _ id'1 : Id id'1 id'1);
+    unfold id'1 at 1; clearbody id'2 id'1;
+    clear id' id; compute in id'2;
+    rename id'2 into id;
+      cont id'1
+  end.
+
 (* Ltac generalize_sig id cont := *)
 (*   (* Check if goal is dependent or not. *) *)
 (*   match goal with *)
@@ -101,3 +123,18 @@ Proof.
 Defined.
 
 Existing Instance eqdec_sig.
+
+Polymorphic Definition eqdec_sig_Id@{i j k} {A : Type@{i}} {B : A -> Type@{j}}
+            `(HSets.EqDec A) `(forall a, HSets.EqDec (B a)) :
+  HSets.EqDec@{k} { x : A & B x }.
+Proof.
+  Set Printing Universes.
+  intros. intros x y. decompose_exists x. decompose_exists y.
+  case (HSets.eq_dec x' y'). intros Hx'y'. destruct Hx'y'. case (HSets.eq_dec x y).
+  + intros He; destruct He. left. reflexivity.
+  + intros. right. apply Id_simplification_sigma2. apply e.
+  + intros. right. apply Id_simplification_sigma1.
+    intros He _; revert He. apply e.
+Defined.
+
+Existing Instance eqdec_sig_Id.

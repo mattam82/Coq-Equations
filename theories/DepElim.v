@@ -15,6 +15,7 @@ Require Import Coq.Program.Tactics.
 Require Export Equations.Init.
 Require Import Equations.Signature.
 Require Import Equations.EqDec.
+Require Equations.HSets.
 
 Ltac is_ground_goal := 
   match goal with
@@ -204,6 +205,7 @@ Hint Rewrite @JMeq_eq_refl @UIP_refl_refl
      @inj_pairT2_refl : refl_id.
 (** The inj_right_pair_refl lemma is now useful also when using noConfusion. *)
 Hint Rewrite @inj_right_pair_refl : refl_id.
+Hint Rewrite @HSets.inj_sigma_r_refl : refl_id.
 
 Global Set Keyed Unification.
 
@@ -213,6 +215,8 @@ Ltac rewrite_sigma2_refl :=
     rewrite (inj_sigma2_refl A x P p)
    | |- context [@inj_right_sigma ?A ?H ?x ?P ?y ?y' _] =>
     rewrite (@inj_right_sigma_refl A H x P y)
+   | |- context [@HSets.inj_sigma_r ?A ?H ?P ?x ?y ?y' _] =>
+    rewrite (@HSets.inj_sigma_r_refl A H P x y)
   end.
 
 Ltac rewrite_refl_id :=
@@ -352,18 +356,44 @@ Ltac elim_ind p := elim_tac ltac:(fun p el => induction p using el) p.
 Lemma solution_left : ∀ {A} {B : A -> Type} (t : A), B t -> (∀ x, x = t -> B x).
 Proof. intros A B t H x eq. destruct eq. apply H. Defined.
 
+Polymorphic
+Lemma Id_solution_left : ∀ {A} {B : A -> Type} (t : A), B t -> (∀ x, Id x t -> B x).
+Proof. intros A B t H x eq. destruct eq. apply H. Defined.
+
 Scheme eq_rect_dep := Induction for eq Sort Type.
 
-Lemma eq_rect_dep_r {A} (x : A) (P : forall a, a = x -> Type) (p : P x eq_refl) (y : A) (e : y = x) : P y e.
+Lemma eq_rect_dep_r {A} (x : A) (P : forall a, a = x -> Type) (p : P x eq_refl)
+      (y : A) (e : y = x) : P y e.
 Proof. destruct e. apply p. Defined.
 
-Lemma solution_left_dep : ∀ {A} (t : A) {B : forall (x : A), (x = t -> Type)}, B t eq_refl -> (∀ x (Heq : x = t), B x Heq).
+Polymorphic
+Lemma Id_rect_dep_r {A} (x : A) (P : forall a, Id a x -> Type) (p : P x id_refl)
+      (y : A) (e : Id y x) : P y e.
+Proof. destruct e. apply p. Defined.
+
+Lemma solution_left_dep : ∀ {A} (t : A) {B : forall (x : A), (x = t -> Type)},
+    B t eq_refl -> (∀ x (Heq : x = t), B x Heq).
+Proof. intros A t B H x eq. destruct eq. apply H. Defined.
+
+Polymorphic
+Lemma Id_solution_left_dep : ∀ {A} (t : A) {B : forall (x : A), (Id x t -> Type)},
+    B t id_refl -> (∀ x (Heq : Id x t), B x Heq).
 Proof. intros A t B H x eq. destruct eq. apply H. Defined.
 
 Lemma solution_right : ∀ {A} {B : A -> Type} (t : A), B t -> (∀ x, t = x -> B x).
 Proof. intros A B t H x eq. destruct eq. apply H. Defined.
 
-Lemma solution_right_dep : ∀ {A} (t : A) {B : forall (x : A), (t = x -> Type)}, B t eq_refl -> (∀ x (Heq : t = x), B x Heq).
+Polymorphic
+Lemma Id_solution_right : ∀ {A} {B : A -> Type} (t : A), B t -> (∀ x, Id t x -> B x).
+Proof. intros A B t H x eq. destruct eq. apply H. Defined.
+
+Lemma solution_right_dep : ∀ {A} (t : A) {B : forall (x : A), (t = x -> Type)},
+    B t eq_refl -> (∀ x (Heq : t = x), B x Heq).
+Proof. intros A t B H x eq. destruct eq. apply H. Defined.
+
+Polymorphic
+Lemma Id_solution_right_dep : ∀ {A} (t : A) {B : forall (x : A), (Id t x -> Type)},
+    B t id_refl -> (∀ x (Heq : Id t x), B x Heq).
 Proof. intros A t B H x eq. destruct eq. apply H. Defined.
 
 Lemma solution_left_let : ∀ {A} {B : A -> Type} (b : A) (t : A), 
@@ -374,7 +404,21 @@ Lemma solution_right_let : ∀ {A} {B : A -> Type} (b t : A),
   (t = b -> B t) -> (let x := b in t = x -> B x).
 Proof. intros A B b t H x eq. subst x. destruct eq. apply H. reflexivity. Defined.
 
+Polymorphic
+Lemma Id_solution_left_let : ∀ {A} {B : A -> Type} (b : A) (t : A), 
+  (Id b t -> B t) -> (let x := b in Id x t -> B x).
+Proof. intros A B b t H x eq. subst x. destruct eq. apply H. reflexivity. Defined.
+
+Polymorphic
+Lemma Id_solution_right_let : ∀ {A} {B : A -> Type} (b t : A), 
+  (Id t b -> B t) -> (let x := b in Id t x -> B x).
+Proof. intros A B b t H x eq. subst x. destruct eq. apply H. reflexivity. Defined.
+
 Lemma deletion : ∀ {A B} (t : A), B -> (t = t -> B).
+Proof. intros; assumption. Defined.
+
+Polymorphic
+Lemma Id_deletion : ∀ {A B} (t : A), B -> (Id t t -> B).
 Proof. intros; assumption. Defined.
 
 Lemma simplification_heq : ∀ {A B} (x y : A), (x = y -> B) -> (JMeq x y -> B).
@@ -395,9 +439,15 @@ Lemma simplification_existT2_dec : ∀ {A} `{EqDec A} {P : A -> Type} {B} (p : A
   (x = y -> B) -> (existT P p x = existT P p y -> B).
 Proof. intros. apply X. apply inj_right_pair in H0. assumption. Defined.
 
-Polymorphic Lemma simplification_sigma2_dec : ∀ {A} `{EqDec A} {P : A -> Type} {B} (p : A) (x y : P p),
-  (x = y -> B) -> (sigmaI P p x = sigmaI P p y -> B).
+Polymorphic Lemma simplification_sigma2_dec : ∀ {A} `{EqDec A} {P : A -> Type} {B}
+    (p : A) (x y : P p),
+    (x = y -> B) -> (sigmaI P p x = sigmaI P p y -> B).
 Proof. intros. apply X. apply inj_right_sigma in H0. assumption. Defined.
+
+Polymorphic Lemma Id_simplification_sigma2 : ∀ {A} `{HSets.HSet A} {P : A -> Type} {B}
+                                               (p : A) (x y : P p),
+  (Id x y -> B) -> (Id (sigmaI P p x) (sigmaI P p y) -> B).
+Proof. intros. apply X. apply HSets.inj_sigma_r. exact X0. Defined.
 
 Lemma simplification_existT1 : ∀ {A} {P : A -> Type} {B} (p q : A) (x : P p) (y : P q),
   (p = q -> existT P p x = existT P q y -> B) -> (existT P p x = existT P q y -> B).
@@ -411,12 +461,25 @@ Proof.
   now destruct H.
 Defined.
 
+Polymorphic Lemma Id_simplification_sigma1 {A} {P : A -> Type} {B} (p q : A) (x : P p) (y : P q) :
+  (Id p q -> Id (sigmaI P p x) (sigmaI P q y) -> B) -> (Id (sigmaI P p x) (sigmaI P q y) -> B).
+Proof.
+  intros. refine (X _ X0).
+  change (Id (pr1 (p; x)) (pr1 (q; y))).
+  now destruct X0.
+Defined.
+
 Lemma simplification_K : ∀ {A} (x : A) {B : x = x -> Type}, B eq_refl -> (∀ p : x = x, B p).
 Proof. intros. rewrite (UIP_refl A). assumption. Defined.
 
 Lemma simplification_K_dec : ∀ {A} `{EqDec A} (x : A) {B : x = x -> Type}, 
   B eq_refl -> (∀ p : x = x, B p).
 Proof. intros. apply K_dec. assumption. Defined.
+
+Polymorphic
+Lemma Id_simplification_K : ∀ {A} `{HSets.HSet A} (x : A) {B : Id x x -> Type}, 
+  B id_refl -> (∀ p : Id x x, B p).
+Proof. intros. apply HSets.K. assumption. Defined.
 
 (** This hint database and the following tactic can be used with [autounfold] to 
    unfold everything to [eq_rect]s. *)
@@ -425,6 +488,9 @@ Hint Unfold solution_left solution_right deletion simplification_heq
   simplification_existT1 simplification_existT2 simplification_K
   simplification_sigma1 simplification_sigma2 simplification_sigma2_dec
   simplification_K_dec simplification_existT2_dec
+  Id_solution_left Id_solution_right Id_deletion
+  Id_solution_left_dep Id_solution_right_dep Id_solution_right_let Id_solution_left_let
+  Id_simplification_sigma1 Id_simplification_sigma2 Id_simplification_K  
   eq_rect_r eq_rec eq_ind : equations.
 
 (** Makes these definitions disappear at extraction time *)
@@ -435,6 +501,9 @@ Extraction Inline simplification_existT1 simplification_existT2_dec.
 Extraction Inline simplification_sigma1 simplification_sigma2_dec.
 Extraction Inline simplification_sigma2.
 Extraction Inline simplification_K simplification_K_dec.
+Extraction Inline Id_solution_right_dep Id_solution_right Id_solution_left Id_solution_left_dep.
+Extraction Inline Id_solution_right_let Id_solution_left_let Id_deletion.
+Extraction Inline Id_simplification_sigma1 Id_simplification_sigma2 Id_simplification_K.
 
 (** Simply unfold as much as possible. *)
 
@@ -473,6 +542,7 @@ Ltac simplify_one_dep_elim_term c :=
   match c with
     | @JMeq _ _ _ _ -> _ => refine (@simplification_heq _ _ _ _ _)
     | ?t = ?t -> _ => intros _ || apply simplification_K_dec || refine (@simplification_K _ t _ _)
+    | Id ?t ?t -> _ => intros _ || apply Id_simplification_K
     | (@existT ?A ?P ?n ?x) = (@existT ?A ?P ?m ?y) -> ?B =>
       (* Check if [n] and [m] are judgmentally equal. *)
       match goal with
@@ -507,6 +577,24 @@ Ltac simplify_one_dep_elim_term c :=
         | _ => refine (@simplification_sigma1 _ _ _ _ _ _ _ _)
         end
       end
+
+    | Id (@sigmaI ?A ?P ?n ?x) (@sigmaI _ _ ?m ?y) -> ?B =>
+      (* Check if [n] and [m] are judgmentally equal. *)
+      match goal with
+      | |- _ =>
+        try (try (refine (@simplification_sigma2 _ _ _ _ _ _ _); []; gfail 1); fail 1);
+        match goal with
+        | _ : Id x y |- _ => intro
+        | _ =>
+          apply (Id_simplification_sigma2 (A:=A) (P:=P) (B:=B) n x y)
+        end
+      | |- _ =>
+        match goal with
+        | _ : Id n m |- _ => intro
+        | _ => refine (@Id_simplification_sigma1 _ _ _ _ _ _ _ _)
+        end
+      end
+
     | forall H : ?x = ?y, _ => (* variables case *)
       (let hyp := fresh H in intros hyp ;
         move hyp before x ; move x before hyp; revert_blocking_until x; revert x;
@@ -523,13 +611,46 @@ Ltac simplify_one_dep_elim_term c :=
                                                             change (t = b -> B'))
              | _ => refine (@solution_right _ _ _ _) || refine (@solution_right_dep _ _ _ _)
            end))
+
+    | forall H : Id ?x ?y, _ => (* variables case *)
+      (let hyp := fresh H in intros hyp ;
+        move hyp before x ; move x before hyp; revert_blocking_until x; revert x;
+          (match goal with
+            | |- let x := _ in Id _ _ -> @?B x =>
+               refine (@Id_solution_left_let _ B _ _ _)
+             | _ => refine (@Id_solution_left _ _ _ _) || refine (@Id_solution_left_dep _ _ _ _)
+           end)) ||
+      (let hyp := fresh "Heq" in intros hyp ;
+        move hyp before y ; move y before hyp; revert_blocking_until y; revert y;
+          (match goal with
+             | |- let x := ?b in (let _ := block in Id ?t _) -> @?B x =>
+               (refine (@Id_solution_right_let _ B _ _ _); let B' := eval cbv beta in (B t) in
+                                                            change (t = b -> B'))
+             | _ => refine (@Id_solution_right _ _ _ _) || refine (@Id_solution_right_dep _ _ _ _)
+           end))
+
     | @eq ?A ?t ?u -> ?P => let hyp := fresh in intros hyp ; noconf_ref hyp
+
+    | @Id ?A ?t ?u -> ?P => let hyp := fresh in intros hyp ; noconf_ref hyp
+
     | ?f ?x = ?g ?y -> _ => let H := fresh in progress (intros H ; injection H ; clear H)
+
+    | Id (?f ?x) (?g ?y) -> _ => let H := fresh in progress (intros H ; inversion H ; clear H)
+
     | ?t = ?u -> _ => let hyp := fresh in
       intros hyp ; elimtype False ; discriminate
+
+    | Id ?t ?u -> _ => let hyp := fresh in
+      intros hyp ; elimtype False ; solve [inversion hyp]
+
     | ?x = ?y -> _ => let hyp := fresh in
       intros hyp ; (try (clear hyp ; (* If non dependent, don't clear it! *) fail 1)) ;
         case hyp (* ; clear hyp *)
+
+    | Id _ ?x ?y -> _ => let hyp := fresh in
+      intros hyp ; (try (clear hyp ; (* If non dependent, don't clear it! *) fail 1)) ;
+        case hyp (* ; clear hyp *)
+
     | let _ := block in _ => fail 1 (* Do not put any part of the rhs in the hyps *)
     | _ -> ?B => let ty := type of B in (* Works only with non-dependent products *)
       intro || (let H := fresh in intro H)
@@ -547,6 +668,7 @@ Ltac simplify_one_dep_elim :=
   match goal with
     | [ |- context [eq_rect_r _ _ eq_refl]] => unfold eq_rect_r at 1; simpl eq_rect
     | [ |- context [@eq_rect_dep_r _ _ _ _ _ eq_refl]] => simpl eq_rect_dep_r
+    | [ |- context [@Id_rect_dep_r _ _ _ _ _ id_refl]] => simpl Id_rect_dep_r
     | [ |- ?gl ] => simplify_one_dep_elim_term gl
   end.
 
@@ -842,6 +964,8 @@ Ltac make_simplify_goal :=
   match goal with 
     [ |- @eq ?A ?T ?U ] => let eqP := fresh "eqP" in 
       set (eqP := fun x : A => x = U) ; change (eqP T)
+  | [ |- @Id ?A ?T ?U ] => let eqP := fresh "eqP" in 
+      set (eqP := fun x : A => @Id A x U) ; change (eqP T)
   end.
 
 Ltac hnf_gl :=
@@ -856,6 +980,10 @@ Ltac hnf_eq :=
       let x' := eval hnf in x in
       let y' := eval hnf in y in
         convert_concl_no_check (x' = y')
+  | |- Id ?x ?y =>
+    let x' := eval hnf in x in
+    let y' := eval hnf in y in
+        convert_concl_no_check (Id x' y')
   end.
 
 Ltac simpl_equations :=

@@ -147,8 +147,13 @@ let declare_instance id poly evd ctx cl args =
   let inst = new_instance (fst cl) None true poly (Globnames.ConstRef cst) in
     add_instance inst; mkConst cst
 
-let coq_unit = lazy (init_constant ["Coq";"Init";"Datatypes"] "unit")
-let coq_tt = lazy (init_constant ["Coq";"Init";"Datatypes"] "tt")
+let coq_unit = lazy (init_reference ["Coq";"Init";"Datatypes"] "unit")
+let coq_tt = lazy (init_reference ["Coq";"Init";"Datatypes"] "tt")
+let coq_Empty = lazy (init_reference ["Coq";"Init";"Datatypes"] "Empty_set")
+
+let coq_True = lazy (init_reference ["Coq";"Init";"Logic"] "True")
+let coq_I = lazy (init_reference ["Coq";"Init";"Logic"] "I")
+let coq_False = lazy (init_reference ["Coq";"Init";"Logic"] "False")
 
 let coq_prod = lazy (init_constant ["Coq";"Init";"Datatypes"] "prod")
 let coq_pair = lazy (init_constant ["Coq";"Init";"Datatypes"] "pair")
@@ -180,6 +185,47 @@ let coq_heq_refl = lazy (Coqlib.coq_reference "mkHEq" ["Logic";"JMeq"] "JMeq_ref
 
 let coq_fix_proto = lazy (init_reference ["Equations";"Init"] "fixproto")
 
+let coq_Id = lazy (init_reference ["Equations";"Init"] "Id")
+let coq_Id_refl = lazy (init_reference ["Equations";"Init"] "id_refl")
+			 
+
+type logic_ref = Globnames.global_reference lazy_t
+							       
+type logic = {
+  logic_eqty : logic_ref;
+  logic_eqrefl: logic_ref;
+  logic_sort : sorts_family;
+  logic_zero : logic_ref;
+  logic_one : logic_ref;
+  logic_one_val : logic_ref;
+  (* logic_prod : logic_ref; *)
+  (* logic_pair : logic_ref; *)
+  (* logic_fst : logic_ref; *)
+  (* logic_snd : logic_ref; *)
+}
+
+let prop_logic =
+  { logic_eqty = coq_eq; logic_eqrefl = coq_eq_refl; logic_sort = InProp;
+    logic_zero = coq_False;
+    logic_one = coq_True; logic_one_val = coq_I;
+    
+
+  }
+  
+let type_logic =
+  { logic_eqty = coq_Id; logic_eqrefl = coq_Id_refl; logic_sort = InType;
+    logic_zero = coq_Empty; logic_one = coq_unit; logic_one_val = coq_tt }
+  
+let logic = ref prop_logic
+	     
+let set_logic l = logic := l
+	     
+let get_sort () = !logic.logic_sort
+let get_eq () = (!logic).logic_eqty
+let get_eq_refl () = (!logic).logic_eqrefl
+let get_one () = (!logic).logic_one
+let get_one_prf () = (!logic).logic_one_val
+let get_zero () = (!logic).logic_zero
 
 let mkapp evdref t args =
   let evd, c = Evd.fresh_global (Global.env ()) !evdref (Lazy.force t) in
@@ -191,10 +237,10 @@ let refresh_universes_strict evd t =
     evd := evd'; t'
 
 let mkEq evd t x y = 
-  mkapp evd coq_eq [| refresh_universes_strict evd t; x; y |]
+  mkapp evd (get_eq ()) [| refresh_universes_strict evd t; x; y |]
     
 let mkRefl evd t x = 
-  mkapp evd coq_eq_refl [| refresh_universes_strict evd t; x |]
+  mkapp evd (get_eq_refl ()) [| refresh_universes_strict evd t; x |]
 
 let mkHEq evd t x u y =
   mkapp evd coq_heq [| refresh_universes_strict evd t; x; refresh_universes_strict evd u; y |]
@@ -465,9 +511,6 @@ let simpl_dep_elim_tac () = tac_of_string "Equations.DepElim.simpl_dep_elim" []
 
 let depind_tac h = tac_of_string "Equations.DepElim.depind"
   [tacident_arg h]
-
-(* let mkEq t x y =  *)
-(*   mkApp (Coqlib.build_coq_eq (), [| t; x; y |]) *)
 
 let mkNot t =
   mkApp (Coqlib.build_coq_not (), [| t |])

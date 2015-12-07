@@ -31,6 +31,7 @@ src/equations_plugin.mllib
 theories/Init.v
 theories/Signature.v
 theories/EqDec.v
+theories/HSets.v
 theories/DepElim.v
 theories/DepElimDec.v
 theories/NoConfusion.v
