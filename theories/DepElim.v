@@ -581,8 +581,7 @@ Ltac simplify_one_dep_elim_term c :=
     | Id (@sigmaI ?A ?P ?n ?x) (@sigmaI _ _ ?m ?y) -> ?B =>
       (* Check if [n] and [m] are judgmentally equal. *)
       match goal with
-      | |- _ =>
-        try (try (refine (@simplification_sigma2 _ _ _ _ _ _ _); []; gfail 1); fail 1);
+      | |- _ => unify n m;
         match goal with
         | _ : Id x y |- _ => intro
         | _ =>
