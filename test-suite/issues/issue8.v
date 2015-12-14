@@ -4,14 +4,6 @@ nilT : TupleT 0
 
 Require Import Equations.Equations.
 
-Ltac wf_subterm := intro;
-  simp_exists;
-  on_last_hyp depind; split; intros; simp_exists;
-    on_last_hyp ltac:(fun H => red in H);
-    [ exfalso | ];
-    on_last_hyp depind;
-    intuition.
-
 Inductive Tuple : forall n, TupleT n -> Type :=
   nil : Tuple _ nilT
 | cons {n A} (x : A) (F : A -> TupleT n) : Tuple _ (F x) -> Tuple _ (consT A F).
@@ -61,13 +53,22 @@ Inductive TupleMap_direct_subterm
   (H : forall x, sigT (TupleMap _ (F x) ∘ G)) (x : A),
   TupleMap_direct_subterm _ _ (G (projT1 (H _))) _ _ _ (projT2 (H x)) (tmCons _ _ H).
 
+
+Ltac wf_subterm := intro;
+  simp_sigmas;
+  on_last_hyp depind; split; intros; simp_sigmas;
+    on_last_hyp ltac:(fun H => red in H);
+    [ exfalso | ];
+    on_last_hyp depind;
+    intuition.
+
 Definition TupleMap_subterm := 
-λ x y : {index : {n : nat & sigT (λ _ : TupleT n, TupleT n)} &
-     TupleMap (projT1 index) (projT1 (projT2 index)) (projT2 (projT2 index))},
-TupleMap_direct_subterm (projT1 (projT1 x)) (projT1 (projT2 (projT1 x)))
-  (projT2 (projT2 (projT1 x))) (projT1 (projT1 y))
-  (projT1 (projT2 (projT1 y))) (projT2 (projT2 (projT1 y))) 
-  (projT2 x) (projT2 y).
+λ x y : {index : {n : nat & sigma _ (λ _ : TupleT n, TupleT n)} &
+     TupleMap (pr1 index) (pr1 (pr2 index)) (pr2 (pr2 index))},
+TupleMap_direct_subterm (pr1 (pr1 x)) (pr1 (pr2 (pr1 x)))
+  (pr2 (pr2 (pr1 x))) (pr1 (pr1 y))
+  (pr1 (pr2 (pr1 y))) (pr2 (pr2 (pr1 y))) 
+  (pr2 x) (pr2 y).
 
 Program Instance WellFounded_TupleMap_subterm : WellFounded TupleMap_subterm.
 Solve All Obligations with wf_subterm.

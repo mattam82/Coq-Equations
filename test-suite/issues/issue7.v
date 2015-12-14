@@ -1,5 +1,4 @@
 Require Import Equations.Equations.
-Test Universe Polymorphism.
 
 Inductive TupleT : nat -> Type :=
 | nilT : TupleT 0

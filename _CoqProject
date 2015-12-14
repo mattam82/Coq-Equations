@@ -53,5 +53,8 @@ test-suite/MoreDep.v
 test-suite/daaa.v
 test-suite/nestedobls.v
 test-suite/scope.v
+test-suite/issues/issue7.v
+test-suite/issues/issue8.v
+test-suite/issues/issue13.v
 examples/lf.v
 examples/HoTT_light.v
