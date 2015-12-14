@@ -1115,7 +1115,6 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 			     let newprob =
 			       mk_ctx_map !evars rctx (newpattern :: pats) ctxr
 			     in
-			     (* msg (pr_context_map (Global.env()) newprob); *)
 			     let ty' = 
 			       match newpattern with
 			       | PHide _ -> comp
@@ -1123,9 +1122,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 			     in
 			     let substpats = map (lift_pat 1) (id_pats ctx) in
 			     let subst = mk_ctx_map !evars ctxr substpats ctx in
-			     let invsubst =
-			       Some (mk_ctx_map !evars ctx p (List.tl rctx)) in
-				(* (newpattern :: (List.map (lift_pat 1) p)) rctx) in *)
+			     let invsubst = Some (mk_ctx_map !evars ctx p (List.tl rctx)) in
 			       ty', newprob, subst, invsubst
 			   else 
 			     let pats =
@@ -1155,22 +1152,21 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 				  (entry, res), map solve_goal gls.it))
 
 	    | Refine (c, cls) -> 
-		    (* The refined term and its type *)
+	       (* The refined term and its type *)
 	      let cconstr, cty = interp_constr_in_rhs env ctx evars data None s lets c in
 
 	      let vars = variables_of_pats pats in
 	      let newctx, pats', pats'' = instance_of_pats env evars ctx vars in
-		    (* 		    let _s' = (ctx, vars, newctx) in *)
-		    (* revctx is a variable substitution from a reordered context to the
-		       current context. Needed for ?? *)
+	      (* revctx is a variable substitution from a reordered context to the
+	         current context. Needed for ?? *)
 	      let revctx = check_ctx_map !evars (newctx, pats', ctx) in
 	      let idref = Namegen.next_ident_away (id_of_string "refine") (ids_of_rel_context newctx) in
 	      let decl = (Name idref, None, mapping_constr revctx cty) in
 	      let extnewctx = decl :: newctx in
-		    (* cmap : Δ -> ctx, cty,
-		       strinv associates to indexes in the strenghtened context to
-		       variables in the original context.
-		    *)
+	      (* cmap : Δ -> ctx, cty,
+	         strinv associates to indexes in the strenghtened context to
+		 variables in the original context.
+	       *)
 	      let refterm = lift 1 (mapping_constr revctx cconstr) in
 	      let cmap, strinv = strengthen ~full:false ~abstract:true env !evars extnewctx 1 refterm in
 	      let (idx_of_refined, _) = List.find (fun (i, j) -> j = 1) strinv in
@@ -1179,9 +1175,6 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		let str_to_new =
 		  inst_refctx, (specialize_pats (pi2 cmap) (lift_pats 1 pats')), newctx
 		in
-		  (* 		      let extprob = check_ctx_map (extnewctx, PRel 1 :: lift_pats 1 pats'', extnewctx) in *)
-		  (* 		      let ext_to_new = check_ctx_map (extnewctx, lift_pats 1 pats'', newctx) in *)
-		  (* (compose_subst cmap extprob) (compose_subst ext_to_new *)
 		  compose_subst ~sigma:!evars str_to_new revctx
 	      in	
 	      let newprob = 
