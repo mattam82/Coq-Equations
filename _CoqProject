@@ -52,5 +52,6 @@ test-suite/DataStruct.v
 test-suite/MoreDep.v
 test-suite/daaa.v
 test-suite/nestedobls.v
+test-suite/scope.v
 examples/lf.v
 examples/HoTT_light.v

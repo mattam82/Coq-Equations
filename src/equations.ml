@@ -209,9 +209,9 @@ let rec aux_ind_fun info = function
       tclTHEN_i (fun gl ->
 	match kind_of_term (pf_concl gl) with
 	| App (ind, args) -> 
-	    let pats' = List.drop_last (Array.to_list args) in
-	    let pats = filter (fun x -> not (hidden x)) pats in
-	    let id = find_splitting_var pats var pats' in
+	   let pats' = List.drop_last (Array.to_list args) in
+	   let pats = filter (fun x -> not (hidden x)) pats in
+	   let id = find_splitting_var pats var pats' in
 	      to82 (depelim_nosimpl_tac id) gl
 	| _ -> tclFAIL 0 (str"Unexpected goal in functional induction proof") gl)
 	(fun i -> 
@@ -222,7 +222,7 @@ let rec aux_ind_fun info = function
 		(aux_ind_fun info s))
 	  
   | Valid ((ctx, _, _), ty, substc, tac, valid, rest) -> tclTHEN (to82 intros)
-      (tclTHEN_i tac (fun i -> let _, _, subst, split = nth rest (pred i) in
+      (tclTHEN_i tac (fun i -> let _, _, subst, invsubst, split = nth rest (pred i) in
 				 tclTHEN (Lazy.force unfold_add_pattern) 
 				   (aux_ind_fun info split)))
       
@@ -254,6 +254,9 @@ let rec aux_ind_fun info = function
      tclTHENLIST [intros_reducing; autorewrite_one info.base_id;
 		  eauto_with_below [info.base_id]]
 
+  | Mapping (_, s) -> aux_ind_fun info s
+
+		 
 let ind_fun_tac is_rec f info fid split ind =
   if is_structural is_rec then
     let c = constant_value_in (Global.env ()) (destConst f) in
@@ -261,7 +264,7 @@ let ind_fun_tac is_rec f info fid split ind =
     let recid = add_suffix fid "_rec" in
       (* tclCOMPLETE  *)
       (tclTHENLIST
-	  [fix (Some recid) (succ i);
+	  [to82 (set_eos_tac ()); fix (Some recid) (succ i);
 	   onLastDecl (fun (n,b,t) gl ->
 	     let fixprot pats sigma =
 	       let c = 
@@ -272,7 +275,8 @@ let ind_fun_tac is_rec f info fid split ind =
 	     Proofview.V82.of_tactic
 	       (change_in_hyp None fixprot (n, Locus.InHyp)) gl);
 	   to82 intros; aux_ind_fun info split])
-  else tclCOMPLETE (tclTHEN (to82 intros) (aux_ind_fun info split))
+  else tclCOMPLETE (tclTHENLIST
+      [to82 (set_eos_tac ()); to82 intros; aux_ind_fun info split])
 
 let subst_rec_split evd redefine f prob s split = 
   let subst_rec cutprob s (ctx, p, _ as lhs) =
@@ -301,7 +305,11 @@ let subst_rec_split evd redefine f prob s split =
        let n' = destRel (mapping_constr subst (mkRel n)) in
        Split (lhs', n', mapping_constr subst ty,
 	      Array.map (Option.map (aux cutprob s path)) cs)
-	     
+
+    | Mapping (lhs, c) ->
+       let subst, lhs' = subst_rec cutprob s lhs in
+       Mapping (lhs', aux cutprob s path c)
+	       
     | RecValid (id, c) ->
        RecValid (id, aux cutprob s path c)
 		
@@ -374,7 +382,7 @@ let subst_rec_split evd redefine f prob s split =
     | Valid (lhs, x, y, w, u, cs) -> 
        let subst, lhs' = subst_rec cutprob s lhs in
        Valid (lhs', x, y, w, u, 
-	      List.map (fun (g, l, subst, sp) -> (g, l, subst, aux cutprob s path sp)) cs)
+	      List.map (fun (g, l, subst, invsubst, sp) -> (g, l, subst, invsubst, aux cutprob s path sp)) cs)
   in aux prob s [] split
 
 type statement = constr * types option
@@ -596,6 +604,10 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 	match c with None -> acc | Some c -> 
 	  acc @ computations prob f c) [] cs
 
+    | Mapping (lhs, c) ->
+       let _newprob = compose_subst ~sigma:evd prob lhs in
+       computations prob f c
+					     
     | RecValid (id, cs) -> computations prob f cs
 	
     | Refined (lhs, info, cs) ->
@@ -613,7 +625,7 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 	       computations info.refined_newprob (fst info.refined_app) cs)]
 	   
     | Valid ((ctx,pats,del), _, _, _, _, cs) -> 
-	List.fold_left (fun acc (_, _, subst, c) ->
+	List.fold_left (fun acc (_, _, subst, invsubst, c) ->
 	  acc @ computations (compose_subst ~sigma:evd subst prob) f c) [] cs
   in
   let comps = computations prob f split in
@@ -887,21 +899,24 @@ let prove_unfolding_lemma info proj f_cst funf_cst split gl =
 	(fun gl ->
 	  match kind_of_term (pf_concl gl) with
 	  | App (eq, [| ty; x; y |]) -> 
-	      let f, pats' = decompose_app y in
-	      let id = find_splitting_var pats var pats' in
-	      let splits = List.map_filter (fun x -> x) (Array.to_list splits) in
-		to82 (abstract (of82 (tclTHEN_i (to82 (depelim id))
+	     let f, pats' = decompose_app y in
+	     let c = List.nth (List.rev pats') (pred var) in
+	     let id = destVar (fst (decompose_app c)) in
+	     let splits = List.map_filter (fun x -> x) (Array.to_list splits) in
+	       to82 (abstract (of82 (tclTHEN_i (to82 (depelim id))
 				  (fun i -> let split = nth splits (pred i) in
-					      tclTHENLIST [aux split])))) gl
+					      tclTHENLIST [unfolds; aux split])))) gl
 	  | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl)
 	    
     | Valid ((ctx, _, _), ty, substc, tac, valid, rest) ->
-	tclTHEN_i tac (fun i -> let _, _, subst, split = nth rest (pred i) in
+	tclTHEN_i tac (fun i -> let _, _, subst, invsubst, split = nth rest (pred i) in
 				  tclTHEN (Lazy.force unfold_add_pattern) (aux split))
 
     | RecValid (id, cs) -> 
 	tclTHEN (to82 (unfold_recursor_tac ())) (aux cs)
-	  
+
+    | Mapping (lhs, s) -> aux s
+       
     | Refined ((ctx, _, _), refinfo, s) ->
 	let id = pi1 refinfo.refined_obj in
 	let ev = refinfo.refined_ex in
@@ -917,7 +932,7 @@ let prove_unfolding_lemma info proj f_cst funf_cst split gl =
 	  	    [to82 (Equality.replace_by a1 a2
 	  		     (of82 (tclTHENLIST [solve_eq])));
 	  	     to82 (letin_tac None (Name id) a2 None Locusops.allHypsAndConcl);
-	  	     Proofview.V82.of_tactic (clear_body [id]); aux s] gl
+	  	     Proofview.V82.of_tactic (clear_body [id]); unfolds; aux s] gl
 		else tclTHENLIST [unfolds; simpltac; reftac] gl
 	  | _ -> tclFAIL 0 (str"Unexpected unfolding lemma goal") gl
 	in
@@ -959,13 +974,17 @@ let update_split evd is_rec cmap f prob id split =
     let split' = subst_comp_proj_split f (mkConst r.comp_proj) split in
     let rec aux = function
       | RecValid (id, Valid (ctx, ty, args, tac, view, 
-			    [goal, args', newprob, rest])) ->	  
-	aux (subst_rec_split evd true f newprob [(id, f)] rest)
+			    [goal, args', newprob, invsubst, rest])) ->	  
+	 let rest = aux (subst_rec_split evd true f newprob [(id, f)] rest) in
+	 (match invsubst with
+	  | Some s -> Mapping (s, rest)
+	  | None -> rest)
+      | Mapping (lhs, s) -> Mapping (lhs, aux s)
       | Split (lhs, y, z, cs) -> Split (lhs, y, z, Array.map (Option.map aux) cs)
       | RecValid (id, c) -> RecValid (id, aux c)
       | Valid (lhs, y, z, w, u, cs) ->
 	Valid (lhs, y, z, w, u, 
-	       List.map (fun (gl, cl, subst, s) -> (gl, cl, subst, aux s)) cs)
+	       List.map (fun (gl, cl, subst, invs, s) -> (gl, cl, subst, invs, aux s)) cs)
       | Refined (lhs, info, s) -> Refined (lhs, info, aux s)
       | (Compute _) as x -> x
     in aux split'
@@ -1153,12 +1172,10 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	      let tac = prove_unfolding_lemma info (mkConst r.comp_proj)
 					      f_cst funf_cst unfold_split in
 	      let unfold_eq_id = add_suffix unfoldi "_eq" in
-	        try ignore(Obligations.add_definition ~kind:info.decl_kind
+	        ignore(Obligations.add_definition ~kind:info.decl_kind
 			 ~hook:(Lemmas.mk_hook hook_eqs) ~reduce:(fun x -> x)
 			 ~implicits:impls unfold_eq_id stmt ~tactic:(of82 tac)
 			 (Evd.evar_universe_context !evd) [||])
-		with e ->
-		  msg_error (str"Couldn't prove unfolding lemma")
 	    in
 	      define_tree None poly impls status evd env
 			  (unfoldi, sign, arity) None ann unfold_split hook_unfold

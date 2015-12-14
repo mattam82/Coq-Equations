@@ -73,7 +73,14 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 	let ev = fst (destEvar term) in
 	  oblevars := Evar.Set.add ev !oblevars;
 	  evm, term, ty'
-	   
+
+    | Mapping ((ctx, p, ctx'), s) ->
+       let evm, term, ty = aux evm s in
+       let args = Array.rev_of_list (constrs_of_pats ~inacc:false env p) in
+       let term = it_mkLambda_or_LetIn (whd_beta evm (mkApp (term, args))) ctx in
+       let ty = it_mkProd_or_subst (prod_appvect ty args) ctx in
+         evm, term, ty
+		    
     | RecValid (id, rest) -> aux evm rest
 
     | Refined ((ctx, _, _), info, rest) ->
@@ -99,7 +106,7 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 
     | Valid ((ctx, _, _), ty, substc, tac, (entry, pv), rest) ->
 	let tac = Proofview.tclDISPATCH 
-	  (map (fun (goal, args, subst, x) -> 
+	  (map (fun (goal, args, subst, invsubst, x) -> 
 	    Proofview.Refine.refine (fun evm -> 
 	      let evm, term, ty = aux evm x in
 		evm, applistc term args)) rest)
@@ -254,13 +261,16 @@ let map_split f split =
 	Compute (lhs', f ty, RProgram (f c))
     | Split (lhs, y, z, cs) ->
       let lhs' = map_ctx_map f lhs in
-	Split (lhs', y, f z, Array.map (Option.map aux) cs)
+      Split (lhs', y, f z, Array.map (Option.map aux) cs)
+    | Mapping (lhs, s) ->
+       let lhs' = map_ctx_map f lhs in
+       Mapping (lhs', aux s)
     | RecValid (id, c) -> RecValid (id, aux c)
     | Valid (lhs, y, z, w, u, cs) ->
       let lhs' = map_ctx_map f lhs in
 	Valid (lhs', f y, z, w, u, 
-	       List.map (fun (gl, cl, subst, s) -> 
-		 (gl, List.map f cl, map_ctx_map f subst, aux s)) cs)
+	       List.map (fun (gl, cl, subst, invsubst, s) -> 
+		 (gl, List.map f cl, map_ctx_map f subst, invsubst, aux s)) cs)
     | Refined (lhs, info, s) ->
       let lhs' = map_ctx_map f lhs in
       let (id, c, cty) = info.refined_obj in

@@ -149,7 +149,7 @@ Module RecMeasure.
       let lower := filter (fun x => ltb x a) l in
       let upper := filter (fun x => leb a x) l in
         qs lower ++ a :: qs upper.
-    
+
     Context (le : relation A).
     Context (refl_le : forall x y, reflect (le x y) (leb x y)).
 

@@ -714,6 +714,23 @@ CoInductive end_of_section := the_end_of_the_section.
 Ltac set_eos := let eos := fresh "eos" in
   assert (eos:=the_end_of_the_section).
 
+Ltac with_eos_aux tac :=
+  match goal with
+   [ H : end_of_section |- _ ] => tac H
+  end.
+
+Ltac with_eos tac orelse :=
+  with_eos_aux tac + (* No section variables *) orelse.
+
+Ltac clear_nonsection :=
+  repeat match goal with
+    [ H : ?T |- _ ] =>
+    match T with
+      end_of_section => idtac
+    | _ => clear H
+    end
+  end.
+
 (** We have a specialized [reverse_local] tactic to reverse the goal until the begining of the
    section variables *)
 
@@ -873,11 +890,11 @@ Ltac do_intros H :=
 
 Ltac do_depelim_nosimpl tac H := do_intros H ; generalize_by_eqs H ; tac H.
 
-Ltac do_depelim tac H := do_depelim_nosimpl tac H ; simpl_dep_elim.
+Ltac do_depelim tac H := do_depelim_nosimpl tac H ; simpl_dep_elim; unblock_goal.
 
 Ltac do_depind tac H := 
   (try intros until H) ; intro_block H ; (try simpl in H ; simplify_equations_in H) ;
-  generalize_by_eqs_vars H ; tac H ; simpl_dep_elim.
+  generalize_by_eqs_vars H ; tac H ; simpl_dep_elim; unblock_goal.
 
 (** To dependent elimination on some hyp. *)
 

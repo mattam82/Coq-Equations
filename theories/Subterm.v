@@ -118,7 +118,8 @@ Ltac sigma_pack x :=
   let xpack := fresh x "pack" in
     (progress (set(xpack := signature_pack x) ;
       cbv in xpack; move xpack before x; 
-      pattern sigma xpack; clearbody xpack; clear; rename xpack into x))
+      pattern sigma xpack; clearbody xpack; clear x; 
+      rename xpack into x; clear_nonsection))
     || revert_until x.
 
 (** We specialize the tactic for [x] of type [A], first packing 
@@ -126,6 +127,7 @@ Ltac sigma_pack x :=
    relation on this type. *)
 
 Ltac rec_wf x recname := 
+  with_eos ltac:(fun eos => move x before eos) ltac:(move x at top);
   revert_until x; generalize_by_eqs_vars x ; sigma_pack x; pattern x;
   let ty := type of x in
   let ty := eval simpl in ty in
@@ -137,6 +139,7 @@ Ltac rec_wf_eqns x recname := rec_wf x recname ;
   add_pattern (hide_pattern recname).
 
 Ltac rec_wf_rel x recname rel := 
+  with_eos ltac:(fun eos => move x before eos) ltac:(move x at top);
   revert_until x; generalize_by_eqs_vars x ; sigma_pack x; pattern x;
   let ty := type of x in
   let ty := eval simpl in ty in

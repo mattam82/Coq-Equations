@@ -66,7 +66,8 @@ type splitting =
   | Split of context_map * int * types * splitting option array
   | Valid of context_map * types * identifier list * tactic *
       (Proofview.entry * Proofview.proofview) *
-      (goal * constr list * context_map * splitting) list
+      (goal * constr list * context_map * context_map option * splitting) list
+  | Mapping of context_map * splitting (* Mapping Γ |- p : Γ' and splitting Γ' |- p : Δ *)
   | RecValid of identifier * splitting
   | Refined of context_map * refined_node * splitting
 
@@ -467,7 +468,8 @@ let strengthen ?(full=true) ?(abstract=false) env evd (ctx : rel_context) x (t :
   in
     (ctx', subst, ctx), reorder
 
-let id_subst g = (g, rev (patvars_of_tele g), g)
+let id_pats g = rev (patvars_of_tele g)
+let id_subst g = (g, id_pats g, g)
 	
 let eq_context_nolet env sigma (g : rel_context) (d : rel_context) =
   try 
@@ -493,6 +495,19 @@ let compose_subst ?(sigma=Evd.empty) ((g',p',d') as snd) ((g,p,d) as fst) =
 let push_mapping_context (n, b, t as decl) (g,p,d) =
   ((n, Option.map (specialize_constr p) b, specialize_constr p t) :: g,
    (PRel 1 :: map (lift_pat 1) p), decl :: d)
+
+let invert_subst env sigma (g,p,d) =
+  let ar = Array.make (List.length g) (PRel 0) in
+  let subst i = function
+    | PRel j ->
+       ar.(j-1) <- PRel (i+1)
+    | PHide j ->
+       ar.(j-1) <- PHide (i+1)
+    | _ -> assert false
+  in
+  let () = List.iteri subst p in
+  mk_ctx_map sigma d (Array.to_list ar) g
+  (* d, Array.to_list ar, g *)
     
 let lift_subst evd (ctx : context_map) (g : rel_context) = 
   let map = List.fold_right (fun decl acc -> push_mapping_context decl acc) g ctx in
@@ -824,13 +839,15 @@ let pr_splitting env split =
 		 | None -> str "*impossible case*"
 		 | Some s -> aux s)
 	      (mt ()) cs) ++ spc ()
+    | Mapping (ctx, s) ->
+       hov 2 (str"Mapping " ++ pr_context_map env ctx ++ spc () ++ aux s)
     | RecValid (id, c) -> 
 	hov 2 (str "RecValid " ++ pr_id id ++ aux c)
     | Valid (lhs, ty, ids, ev, tac, cs) ->
 	let _env' = push_rel_context (pi1 lhs) env in
 	  hov 2 (str "Valid " ++ str " in context " ++ pr_context_map env lhs ++ spc () ++
 		   List.fold_left 
-		   (fun acc (gl, cl, subst, s) -> acc ++ aux s) (mt ()) cs)
+		   (fun acc (gl, cl, subst, invsubst, s) -> acc ++ aux s) (mt ()) cs)
     | Refined (lhs, info, s) -> 
 	let (id, c, cty), ty, arg, path, ev, (scf, scargs), revctx, newprob, newty =
 	  info.refined_obj, info.refined_rettyp,
@@ -1084,32 +1101,44 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		    let nctx, secctx = split_at_eos nctx in
 		    let rctx, subst = rel_of_named_context nctx in
 		    let ty' = subst_vars subst concl in
-		    let ty', prob, subst = match kind_of_term ty' with
+		    let ty', prob, subst, invsubst = match kind_of_term ty' with
 		      | App (f, args) -> 
-			if eq_constr f (Lazy.force coq_add_pattern) then
-			  let comp = args.(1) and newpattern = pat_of_constr args.(2) in
-			    if pi2 data (* with_comp *) then
-			      let pats = rev_map pat_of_constr (snd (decompose_app comp)) in
-			      let newprob = 
-				rctx, (newpattern :: pats), rctx
-				      (* ((newpatname, None, newpatty) :: ctx') *)
-			      in 
-			      let ty' = 
-				match newpattern with
-				| PHide _ -> comp
-				| _ -> ty'
-			      in ty', newprob, (rctx, pats, ctx)
-			    else 
-			      let pats =
-				let l = pat_vars_list (List.length rctx) in
-				  newpattern :: List.tl l
-			      in
-			      let newprob = rctx, pats, rctx in
-				comp, newprob, (rctx, List.tl pats, List.tl rctx)
+			 if eq_constr f (Lazy.force coq_add_pattern) then
+			   let comp = args.(1) and newpattern = pat_of_constr args.(2) in
+			   if pi2 data (* with_comp *) then
+			     let pats = rev_map pat_of_constr (snd (decompose_app comp)) in
+			     let newprob =
+			       (List.tl rctx, List.map (lift_pat (-1)) pats, ctx)
+			     in
+			     let (d,p,g as invsubst) = invert_subst env !evars newprob in
+			     let ctxr = specialize_rel_context p [List.hd rctx] @ ctx in
+			     let newprob =
+			       mk_ctx_map !evars rctx (newpattern :: pats) ctxr
+			     in
+			     (* msg (pr_context_map (Global.env()) newprob); *)
+			     let ty' = 
+			       match newpattern with
+			       | PHide _ -> comp
+			       | _ -> ty'
+			     in
+			     let substpats = map (lift_pat 1) (id_pats ctx) in
+			     let subst = mk_ctx_map !evars ctxr substpats ctx in
+			     let invsubst =
+			       Some (mk_ctx_map !evars ctx p (List.tl rctx)) in
+				(* (newpattern :: (List.map (lift_pat 1) p)) rctx) in *)
+			       ty', newprob, subst, invsubst
+			   else 
+			     let pats =
+			       let l = pat_vars_list (List.length rctx) in
+			       newpattern :: List.tl l
+			     in
+			     let newprob = rctx, pats, rctx in
+			     let subst = (rctx, List.tl pats, List.tl rctx) in
+			       comp, newprob, subst, None
 			else
 			  let pats = rev_map pat_of_constr (Array.to_list args) in
 			  let newprob = rctx, pats, ctx' in
-			    ty', newprob, id_subst ctx'
+			    ty', newprob, id_subst ctx', None
 		      | _ -> raise (Invalid_argument "covering_aux: unexpected output of tactic call")
 		    in 
 		      match covering_aux env evars data [] (map (fun x -> x, false) s) path prob lets ty' with
@@ -1121,7 +1150,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		      | Some s ->
 			let args = rev (List.map_filter (fun (id,b,t) ->
 			  if b == None then Some (mkVar id) else None) nctx)
-			in gl, args, subst, s
+			in gl, args, subst, invsubst, s
 		  in Some (Valid (prob, ty, map pi1 sign', Proofview.V82.of_tactic tac, 
 				  (entry, res), map solve_goal gls.it))
 
