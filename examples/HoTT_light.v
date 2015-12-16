@@ -144,7 +144,7 @@ ap_snd_path_prod {z:=(pair _ _)} {z':=(pair _ _)} id_refl id_refl := id_refl.
 Instance isequiv_path_prod {A B : Type} {z z' : A * B}
 : IsEquiv (path_prod_uncurried z z').
 Proof.
-  refine (BuildIsEquiv _ _ _).
+  unshelve refine (BuildIsEquiv _ _ _).
   - exact (fun r => (ap fst r, ap snd r)).
   - intro ; apply eta_path_prod.
   - intros [p q]. exact (path_prod'
@@ -363,7 +363,7 @@ Definition contr_sigma A {P : A -> Type}
   : Contr (sigma P).
 Proof.
   exists (center A; center (P (center A))). 
-  intros [a Ha]. refine (path_sigma _ _ _ _).
+  intros [a Ha]. unshelve refine (path_sigma _ _ _ _).
   simpl. apply H. simpl. apply transport_inv.
   apply (H0 (center A)).
 Defined.
@@ -398,7 +398,7 @@ Definition eta_path_sigma A `{P : A -> Type} {u v : sigma P} (p : u = v)
 
 Definition path_sigma_equiv {A : Type} (P : A -> Type) (u v : sigma P):
   IsEquiv (path_sigma_uncurried u v).
-  refine (BuildIsEquiv _ _ _).
+  unshelve refine (BuildIsEquiv _ _ _).
   - exact (fun r => (r..1; r..2)).
   - intro. apply eta_path_sigma_uncurried.
   - destruct u, v; intros [p q]; simpl in *.

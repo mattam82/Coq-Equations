@@ -267,7 +267,7 @@ Theorem inj_sigma_r {A : Type} `{H : HSet A} :
   forall (P:A -> Type) {x} {y y':P x},
     sigmaI P x y = sigmaI P x y' -> y = y'.
 Proof.
-  intros P x y y' [H' H'']/sigma_eq. cbn in *.
+  intros P x y y' [H' H'']%sigma_eq. cbn in *.
   pose (is_hset H' id_refl).
   apply (transport (P:=fun h => transport h y = y') i H'').
 Defined.
