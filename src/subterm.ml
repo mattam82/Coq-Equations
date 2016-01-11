@@ -267,26 +267,28 @@ let derive_below ctx (ind,u) =
   let argbinders, parambinders = List.chop (succ len - params) binders in
   let u = Evarutil.e_new_Type ~rigid:Evd.univ_rigid env evd in
   let arity = it_mkProd_or_LetIn u argbinders in
-  let aritylam = it_mkLambda_or_LetIn u argbinders in
-  let paramsvect = Array.map (lift 1) (rel_vect (succ len - params) params) in
+  let aritylam = lift (succ len - params) (it_mkLambda_or_LetIn u argbinders) in
+  let paramsvect = rel_vect (succ len - params) params in
   let argsvect = rel_vect 0 (succ len - params) in
   let pid = id_of_string "P" in
   let pdecl = Name pid, None, arity in
+  let arity = lift 1 arity in
   let stepid = id_of_string "step" in
   let recid = id_of_string "rec" in
   let belowid = id_of_string "below" in
   let paramspargs = Array.append (Array.append paramsvect [| mkVar pid |]) argsvect in
   let tyb = mkApp (mkVar belowid, paramspargs) in
-  let arityb = it_mkProd_or_LetIn tyb argbinders in
-  let aritylamb = it_mkLambda_or_LetIn tyb argbinders in
+  let arityb = lift 2 (it_mkProd_or_LetIn tyb argbinders) in
+  let aritylamb = lift (succ len - params) (it_mkLambda_or_LetIn tyb argbinders) in
   let termB, termb = 
     let branches = Array.mapi (fun i ty ->
       let nargs = constructor_nrealargs (ind, succ i) in
       let recarg = mkVar recid in
       let args, _ = decompose_prod_assum (substl [mkInd ind] ty) in
       let args, _ = List.chop (List.length args - params) args in
-      let ty' = substl [recarg] ty in
+      let ty' = replace_term (mkApp (mkRel 1, rel_vect (-params) params)) recarg ty in
       let args', _ = decompose_prod_assum ty' in
+      let args', _ = List.chop (List.length args' - params) args' in
       let arg_tys = fst (List.fold_left (fun (acc, n) (_,_,t) ->
 	((mkRel n, lift n t) :: acc, succ n)) ([], 1) args')
       in
@@ -321,38 +323,39 @@ let derive_below ctx (ind,u) =
 	  let args = Array.of_list (args @ [ c ]) in
 	    if eq_constr t recarg then 
 	      let reccall = mkApp (mkVar recid, args) in
+              let belowargs = Array.append (rel_vect nargs params) (Array.append [| mkVar pid |] args) in
 	      let ty = mkApp (Lazy.force coq_prod, 
 			     [| mkApp (mkVar pid, args) ; 
-				mkApp (mkVar belowid, Array.append [| mkVar pid |] args) |])
+				mkApp (mkVar belowid, belowargs) |])
 	      in
 		Some (g (mkApp (Lazy.force coq_pair, 
 			       [| mkApp (mkVar pid, args) ; 
-				  mkApp (mkVar belowid, Array.append [| mkVar pid |] args) ;
+				  mkApp (mkVar belowid, belowargs) ;
 				  mkApp (mkApp (mkVar stepid, args), [| reccall |]);
 				  reccall |]), ty))
 	    else None) arg_tys
-      in (nargs, it_mkLambda_or_LetIn bodyB args, it_mkLambda_or_LetIn (fst bodyb) args)) oneind.mind_nf_lc
+      in (nargs, lift (succ len - params) (it_mkLambda_or_LetIn bodyB args), lift (succ len - params) (it_mkLambda_or_LetIn (fst bodyb) args))) oneind.mind_nf_lc
     in
     let caseB =
       mkCase (make_case_info env ind RegularStyle, aritylam, mkRel 1, Array.map pi2 branches)
     and caseb =
       mkCase (make_case_info env ind RegularStyle, aritylamb, mkRel 1, Array.map pi3 branches)
     in 
-      it_mkLambda_or_LetIn caseB binders, it_mkLambda_or_LetIn caseb binders
+      lift 2 (it_mkLambda_or_LetIn caseB argbinders), lift 3 (it_mkLambda_or_LetIn caseb argbinders)
   in
-  let fixB = mkFix (([| len |], 0), ([| Name recid |], [| arity |], 
+  let fixB = mkFix (([| len - params |], 0), ([| Name recid |], [| arity |],
 				     [| subst_vars [recid; pid] termB |])) in
   let bodyB = it_mkLambda_or_LetIn fixB (pdecl :: parambinders) in
   let id = add_prefix "Below_" (Nametab.basename_of_global (IndRef ind)) in
   let poly = Flags.is_universe_polymorphism () in
   let below = declare_constant id bodyB None poly !evd
     (Decl_kinds.IsDefinition Decl_kinds.Definition) in
-  let fixb = mkFix (([| len |], 0), ([| Name recid |], [| arityb |], 
+  let fixb = mkFix (([| len - params |], 0), ([| Name recid |], [| arityb |],
 				    [| subst_vars [recid; stepid] termb |])) in
   let stepdecl = 
     let stepty = mkProd (Anonymous, mkApp (mkConst below, paramspargs),
 			mkApp (mkVar pid, Array.map (lift 1) argsvect))
-    in Name stepid, None, it_mkProd_or_LetIn stepty argbinders
+    in Name stepid, None, lift 1 (it_mkProd_or_LetIn stepty argbinders)
   in
   let bodyb = 
     it_mkLambda_or_LetIn
