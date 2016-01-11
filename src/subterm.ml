@@ -296,9 +296,9 @@ let derive_below ctx (ind,u) =
 	let res = 
 	  List.fold_left (fun acc x ->
 	    match acc with
-	    | Some (c, ty) -> f (fun (c', ty') -> 
+	    | Some (c, ty) -> Option.cata (fun x -> Some x) acc (f (fun (c', ty') ->
 		mkApp (Lazy.force coq_pair, [| ty' ; ty ; c' ; c |]),
-		mkApp (Lazy.force coq_prod, [| ty' ; ty |])) x
+		mkApp (Lazy.force coq_prod, [| ty' ; ty |])) x)
 	    | None -> f (fun x -> x) x)
 	    None args
 	in Option.cata (fun x -> x)
