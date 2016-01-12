@@ -259,17 +259,22 @@ let derive_below ctx (ind,univ) =
   let evd = ref (Evd.from_ctx ctx) in
   let mind, oneind = Global.lookup_inductive ind in
   let ctx = oneind.mind_arity_ctxt in
-  let len = List.length ctx in
   let params = mind.mind_nparams in
-  let argsvect = rel_vect 0 len in
-  let indty = mkApp (mkInd ind, argsvect) in
-  let binders = (Name (id_of_string "c"), None, indty) :: ctx in
-  let argbinders, parambinders = List.chop (succ len - params) binders in
+  let realargs = oneind.mind_nrealargs in
+  let realdecls = oneind.mind_nrealdecls in
+  let allargslist = CList.map_filter_i (fun i (_, b, _) ->
+    if Option.is_empty b then Some (succ i)
+    else None) ctx in
+  let allargsvect = Array.of_list (List.rev_map mkRel allargslist) in
+  let indty = mkApp (mkInd ind, allargsvect) in
+  let ctx = (Name (id_of_string "c"), None, indty) :: ctx in
+  let argbinders, parambinders = List.chop (succ oneind.mind_nrealdecls) ctx in
   let u = Evarutil.e_new_Type ~rigid:Evd.univ_rigid env evd in
   let arity = it_mkProd_or_LetIn u argbinders in
-  let aritylam = lift (succ len - params) (it_mkLambda_or_LetIn u argbinders) in
-  let paramsvect = rel_vect (succ len - params) params in
-  let argsvect = rel_vect 0 (succ len - params) in
+  let aritylam = lift (succ realdecls) (it_mkLambda_or_LetIn u argbinders) in
+  let paramsvect = rel_vect (succ realdecls) params in
+  let argslist, _ = List.chop oneind.mind_nrealargs allargslist in
+  let argsvect = Array.of_list (List.rev_map (fun i -> mkRel (succ i)) (0 :: argslist)) in
   let pid = id_of_string "P" in
   let pdecl = Name pid, None, arity in
   let arity = lift 1 arity in
@@ -279,7 +284,7 @@ let derive_below ctx (ind,univ) =
   let paramspargs = Array.append (Array.append paramsvect [| mkVar pid |]) argsvect in
   let tyb = mkApp (mkVar belowid, paramspargs) in
   let arityb = lift 2 (it_mkProd_or_LetIn tyb argbinders) in
-  let aritylamb = lift (succ len - params) (it_mkLambda_or_LetIn tyb argbinders) in
+  let aritylamb = lift (succ realdecls) (it_mkLambda_or_LetIn tyb argbinders) in
   let termB, termb = 
     let branches = Array.mapi (fun i ty ->
       let nargs = constructor_nrealargs (ind, succ i) in
@@ -340,8 +345,8 @@ let derive_below ctx (ind,univ) =
                           mkApp (mkVar belowid, belowargs) |]) in
         res, ty)) arg_tys in
       (* The free variables correspond to the inductive parameters. *)
-      let bodyB = lift (succ len - params) (it_mkLambda_or_LetIn bodyB args) in
-      let bodyb = lift (succ len - params) (it_mkLambda_or_LetIn bodyb args) in
+      let bodyB = lift (succ realdecls) (it_mkLambda_or_LetIn bodyB args) in
+      let bodyb = lift (succ realdecls) (it_mkLambda_or_LetIn bodyb args) in
         (nargs, bodyB, bodyb)) oneind.mind_nf_lc
     in
     let caseB =
@@ -351,14 +356,14 @@ let derive_below ctx (ind,univ) =
     in 
       lift 2 (it_mkLambda_or_LetIn caseB argbinders), lift 3 (it_mkLambda_or_LetIn caseb argbinders)
   in
-  let fixB = mkFix (([| len - params |], 0), ([| Name recid |], [| arity |],
+  let fixB = mkFix (([| realargs |], 0), ([| Name recid |], [| arity |],
 				     [| subst_vars [recid; pid] termB |])) in
   let bodyB = it_mkLambda_or_LetIn fixB (pdecl :: parambinders) in
   let id = add_prefix "Below_" (Nametab.basename_of_global (IndRef ind)) in
   let poly = Flags.is_universe_polymorphism () in
   let below = declare_constant id bodyB None poly !evd
     (Decl_kinds.IsDefinition Decl_kinds.Definition) in
-  let fixb = mkFix (([| len - params |], 0), ([| Name recid |], [| arityb |],
+  let fixb = mkFix (([| realargs |], 0), ([| Name recid |], [| arityb |],
 				    [| subst_vars [recid; stepid] termb |])) in
   let stepdecl = 
     let stepty = mkProd (Anonymous, mkApp (mkConst below, paramspargs),
