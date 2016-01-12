@@ -6,7 +6,6 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-val ( = ) : int -> int -> bool
 val solve_subterm_tac : unit -> unit Proofview.tactic
 val derive_subterm : Constr.pinductive -> unit
-val derive_below : Evd.evar_universe_context -> Names.inductive * 'a -> unit
+val derive_below : Evd.evar_universe_context -> Constr.pinductive -> unit

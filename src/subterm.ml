@@ -254,7 +254,7 @@ let derive_subterm ind =
 	  ~hook:(Lemmas.mk_hook hook) ~tactic:(solve_subterm_tac ()) obls
   in ignore(declare_ind ())
     
-let derive_below ctx (ind,u) =
+let derive_below ctx (ind,univ) =
   let env = Global.env () in
   let evd = ref (Evd.from_ctx ctx) in
   let mind, oneind = Global.lookup_inductive ind in
@@ -284,8 +284,7 @@ let derive_below ctx (ind,u) =
     let branches = Array.mapi (fun i ty ->
       let nargs = constructor_nrealargs (ind, succ i) in
       let recarg = mkVar recid in
-      let sbst = List.init mind.mind_ntypes (fun k ->
-        mkInd (fst ind, mind.mind_ntypes - k - 1)) in
+      let sbst = Inductive.ind_subst (fst ind) mind univ in
       let args, _ = decompose_prod_assum (substl sbst ty) in
       let args, _ = List.chop (List.length args - params) args in
       let idx = mind.mind_ntypes - snd ind in
