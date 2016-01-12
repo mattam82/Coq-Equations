@@ -305,36 +305,42 @@ let derive_below ctx (ind,u) =
 		       (Universes.constr_of_global (Lazy.force (get_one_prf ())),
 			Universes.constr_of_global (Lazy.force (get_one ()))) res
       in
-      let bodyB =
-	let _, res =
-	  fold_unit (fun g (c, t) -> 
-	    let t, args = decompose_app t in
-	    let args = Array.of_list (args @ [ c ]) in
-	      if eq_constr t recarg then 
-		Some (g (mkRel 0, 
-			mkApp (Lazy.force coq_prod, 
-			      [| mkApp (mkVar pid, args) ; 
-				 mkApp (mkVar recid, args) |])))
-	      else None) arg_tys
-	in res
-      and bodyb =
-	fold_unit (fun g (c, t) -> 
-	  let t, args = decompose_app t in
-	  let args = Array.of_list (args @ [ c ]) in
-	    if eq_constr t recarg then 
-	      let reccall = mkApp (mkVar recid, args) in
-              let belowargs = Array.append (rel_vect nargs params) (Array.append [| mkVar pid |] args) in
-	      let ty = mkApp (Lazy.force coq_prod, 
-			     [| mkApp (mkVar pid, args) ; 
-				mkApp (mkVar belowid, belowargs) |])
-	      in
-		Some (g (mkApp (Lazy.force coq_pair, 
-			       [| mkApp (mkVar pid, args) ; 
-				  mkApp (mkVar belowid, belowargs) ;
-				  mkApp (mkApp (mkVar stepid, args), [| reccall |]);
-				  reccall |]), ty))
-	    else None) arg_tys
-      in (nargs, lift (succ len - params) (it_mkLambda_or_LetIn bodyB args), lift (succ len - params) (it_mkLambda_or_LetIn (fst bodyb) args))) oneind.mind_nf_lc
+      (* This wrapper checks if the argument is a recursive one,
+       * and do the appropriate transformations if it is a product. *)
+      let wrapper f = fun g (c, t) ->
+        let prem, res = decompose_prod_assum t in
+        let t, args = decompose_app res in
+          if eq_constr t recarg then
+            let nprem = List.length prem in
+            let elt = mkApp (lift nprem c, rel_vect 0 nprem) in
+            let args = Array.of_list (args @ [ elt ]) in
+            let res, ty = f args nprem in
+            let res = it_mkLambda_or_LetIn res prem in
+            let ty = it_mkProd_or_LetIn ty prem in
+              Some (g (res, ty))
+          else None in
+      let _, bodyB = fold_unit (wrapper (fun args _ ->
+        let ty = mkApp (Lazy.force coq_prod,
+          [| mkApp (mkVar pid, args) ;
+             mkApp (mkVar recid, args) |]) in
+          mkRel 0, ty)) arg_tys in
+      let bodyb, _ = fold_unit (wrapper (fun args nprem ->
+        let reccall = mkApp (mkVar recid, args) in
+        let belowargs = Array.append (rel_vect (nargs + nprem) params)
+          (Array.append [| mkVar pid |] args) in
+        let res = mkApp (Lazy.force coq_pair,
+                         [| mkApp (mkVar pid, args) ;
+                            mkApp (mkVar belowid, belowargs) ;
+                            mkApp (mkApp (mkVar stepid, args), [| reccall |]);
+                            reccall |]) in
+        let ty = mkApp (Lazy.force coq_prod,
+                       [| mkApp (mkVar pid, args) ;
+                          mkApp (mkVar belowid, belowargs) |]) in
+        res, ty)) arg_tys in
+      (* The free variables correspond to the inductive parameters. *)
+      let bodyB = lift (succ len - params) (it_mkLambda_or_LetIn bodyB args) in
+      let bodyb = lift (succ len - params) (it_mkLambda_or_LetIn bodyb args) in
+        (nargs, bodyB, bodyb)) oneind.mind_nf_lc
     in
     let caseB =
       mkCase (make_case_info env ind RegularStyle, aritylam, mkRel 1, Array.map pi2 branches)

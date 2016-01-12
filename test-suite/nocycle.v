@@ -42,28 +42,8 @@ Module NoCycle_ord.
 
   Inductive O : Set :=
     | zero | succ : O -> O | lim : (nat -> O) -> O.
+  Derive Below for O.
   Derive NoConfusion for O.
-
-  Fixpoint Below_O (P : O -> Type) (c : O) : Type :=
-    match c with
-    | zero => True
-    | succ o => P o * Below_O P o
-    | lim f => forall x : nat, (P (f x) * Below_O P (f x))
-    end.
-
-  Lemma below_O (P : O -> Type) (c : O)
-        (f : forall x : O, Below_O P x -> P x) : Below_O P c.
-  Proof.
-    induction c; simpl.
-
-    exact I.
-
-    exact (f c IHc, IHc).
-
-    intros.
-    split;[|apply X].
-    apply f. apply X.
-  Qed.
 
   Definition noSubterm x y :=
     Below_O (fun y => x <> y) y.
