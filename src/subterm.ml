@@ -284,9 +284,12 @@ let derive_below ctx (ind,u) =
     let branches = Array.mapi (fun i ty ->
       let nargs = constructor_nrealargs (ind, succ i) in
       let recarg = mkVar recid in
-      let args, _ = decompose_prod_assum (substl [mkInd ind] ty) in
+      let sbst = List.init mind.mind_ntypes (fun k ->
+        mkInd (fst ind, mind.mind_ntypes - k - 1)) in
+      let args, _ = decompose_prod_assum (substl sbst ty) in
       let args, _ = List.chop (List.length args - params) args in
-      let ty' = replace_term (mkApp (mkRel 1, rel_vect (-params) params)) recarg ty in
+      let idx = mind.mind_ntypes - snd ind in
+      let ty' = replace_term (mkApp (mkRel idx, rel_vect (-params) params)) recarg ty in
       let args', _ = decompose_prod_assum ty' in
       let args', _ = List.chop (List.length args' - params) args' in
       let arg_tys = fst (List.fold_left (fun (acc, n) (_,_,t) ->
