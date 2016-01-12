@@ -261,7 +261,7 @@ Module NoCycle_mut.
         + exact I.
       - split.
         + intros H'; noconf H'.
-          apply (fst (snd H)); reflexivity.
+          apply H; reflexivity.
         + split.
           -- refine (I, _).
              change (noSubterm_RT (rcons t0 r) t).
@@ -273,7 +273,7 @@ Module NoCycle_mut.
         + exact I.
       - split.
         + intros H'; noconf H'.
-          apply (fst H); reflexivity.
+          apply H; reflexivity.
         + refine (I, _).
           change (noSubterm_TR (N r) x).
           apply step_N. apply H.
@@ -283,7 +283,7 @@ Module NoCycle_mut.
         + exact I.
       - split.
         + intros H'; noconf H'.
-          apply (fst (fst H)); reflexivity.
+          apply H; reflexivity.
         + split.
           -- refine (I, _).
              change (noSubterm_RT (rcons t0 r) t).
@@ -311,3 +311,80 @@ Module NoCycle_mut.
         + apply step_rcons2. apply noCycle_R. reflexivity.
   Qed.
 End NoCycle_mut.
+
+Require Import Eqdep_dec.
+
+Theorem nat_dec (n m : nat) : {n = m} + {n <> m}.
+Proof. decide equality. Defined.
+
+Module DecidableType_nat <: DecidableType.
+  Definition U := nat.
+  Definition eq_dec := nat_dec.
+End DecidableType_nat.
+
+Module DecidableEqDep_nat := DecidableEqDep DecidableType_nat.
+
+Module NoCycle_dep.
+  Inductive vect (A : Type) : nat -> Type :=
+  | nil : vect A O
+  | cons : forall n, A -> vect A n -> vect A (S n).
+  Arguments nil [A].
+  Arguments cons [A n] _ _.
+
+  Derive Below for vect.
+  Derive NoConfusion for vect.
+
+  Section noCycle_vect.
+    Variable (A : Type).
+
+    Definition cond_neq (n : nat) (x : vect A n) (m : nat) (y : vect A m) :=
+      match nat_dec n m with
+      | left e => eq_rect _ _ x _ e <> y
+      | right _ => True
+      end.
+
+    Definition noSubterm n x m y :=
+      Below_vect A (cond_neq n x) m y.
+
+    Definition noLargeSubterm n x m y :=
+      (cond_neq n x m y * noSubterm n x m y)%type.
+
+    Lemma step_cons n x m b a : noSubterm n x m b -> noLargeSubterm (S n) (cons a x) m b.
+    Proof.
+      induction b; intros H.
+      - split.
+        + exact I.
+        + exact I.
+      - split.
+        + pose proof (fst H). unfold cond_neq in H0.
+          destruct (nat_dec n n0).
+          * subst n. unfold cond_neq. destruct (nat_dec (S n0) (S n0)).
+            -- rewrite <- DecidableEqDep_nat.eq_rect_eq in H0 |- *.
+               intros H'; inversion H'.
+               apply DecidableEqDep_nat.inj_pairT2 in H3.
+               apply H0. apply H3.
+            -- exact I.
+          * unfold cond_neq. destruct (nat_dec (S n) (S n0)).
+            -- inversion e. elim n1. apply H2.
+            -- exact I.
+        + apply (IHb (snd H)).
+    Qed.
+
+    Definition no_cycle n x y : x = y -> noSubterm n x n y.
+    Proof.
+      intros ->.
+      induction y.
+
+      - exact I.
+      - apply step_cons; apply IHy.
+    Qed.
+
+    Definition no_cycle_dep n x m y : forall (e : n = m),
+      eq_rect _ _ x _ e = y -> noSubterm n x m y.
+    Proof.
+      intros ->.
+      rewrite <- DecidableEqDep_nat.eq_rect_eq.
+      apply no_cycle.
+    Qed.
+  End noCycle_vect.
+End NoCycle_dep.
