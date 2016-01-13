@@ -262,19 +262,15 @@ let derive_below ctx (ind,univ) =
   let params = mind.mind_nparams in
   let realargs = oneind.mind_nrealargs in
   let realdecls = oneind.mind_nrealdecls in
-  let allargslist = CList.map_filter_i (fun i (_, b, _) ->
-    if Option.is_empty b then Some (succ i)
-    else None) ctx in
-  let allargsvect = Array.of_list (List.rev_map mkRel allargslist) in
+  let allargsvect = extended_rel_vect 0 ctx in
   let indty = mkApp (mkInd ind, allargsvect) in
   let ctx = (Name (id_of_string "c"), None, indty) :: ctx in
-  let argbinders, parambinders = List.chop (succ oneind.mind_nrealdecls) ctx in
+  let argbinders, parambinders = List.chop (succ realdecls) ctx in
   let u = Evarutil.e_new_Type ~rigid:Evd.univ_rigid env evd in
   let arity = it_mkProd_or_LetIn u argbinders in
   let aritylam = lift (succ realdecls) (it_mkLambda_or_LetIn u argbinders) in
   let paramsvect = rel_vect (succ realdecls) params in
-  let argslist, _ = List.chop oneind.mind_nrealargs allargslist in
-  let argsvect = Array.of_list (List.rev_map (fun i -> mkRel (succ i)) (0 :: argslist)) in
+  let argsvect = extended_rel_vect 0 (CList.firstn (succ realdecls) ctx) in
   let pid = id_of_string "P" in
   let pdecl = Name pid, None, arity in
   let arity = lift 1 arity in
