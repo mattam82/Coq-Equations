@@ -18,7 +18,9 @@ Set Implicit Arguments.
 
 Set Universe Polymorphism.
 
-Class HSet A := is_hset : forall {x y : A} (p q : Id x y), Id p q.
+Class HProp A := is_hprop : forall x y : A, Id x y.
+
+Class HSet A := is_hset : forall {x y : A}, HProp (Id x y).
 
 Inductive sum (A : Type) (B : Type) := inl : A -> sum A B | inr : B -> sum A B.
 
@@ -249,7 +251,7 @@ End EqdepDec.
 
 Instance eqdec_hset (A : Type) `(EqDec A) : HSet A.
 Proof.  
-  red. apply eq_proofs_unicity.
+  red. red. apply eq_proofs_unicity.
 Defined.
 
 Definition transport {A : Type} {P : A -> Type} {x y : A} (p : x = y) : P x -> P y :=
@@ -272,13 +274,35 @@ Proof.
   apply (transport (P:=fun h => transport h y = y') i H'').
 Defined.
 
+Definition apd {A} {B : A -> Type} (f : forall x : A, B x) {x y : A} (p : x = y) :
+  transport p (f x) = f y.
+Proof. now destruct p. Defined.
+
+Definition apd_eq {A} {x y : A} (p : x = y) {z} (q : z = x) :
+  transport (P:=@Id A z) p q = id_trans q p.
+Proof. now destruct p, q. Defined.
+
+Lemma id_trans_sym {A} (x y z : A) (p : x = y) (q : y = z) (r : x = z) :
+  id_trans p q = r -> q = id_trans (id_sym p) r.
+Proof. now destruct p, q. Defined.
+
+Lemma hprop_hset {A} (h : HProp A) : HSet A.
+Proof.
+  intro x.
+  set (g y := h x y).
+  intros y z w.
+  assert (forall y z (p : y = z), p = id_trans (id_sym (g y)) (g z)).
+  intros. apply id_trans_sym. destruct (apd_eq p (g y0)). apply apd.
+  rewrite X. now rewrite (X _ _ z).
+Qed.
+
 (** Proof that equality proofs in 0-truncated types are connected *)
 Lemma hset_pi {A} `{HSet A} (x y : A) (p q : x = y) (r : p = q) : is_hset p q = r.
 Proof.
-  red in H. unfold is_hset. 
-  destruct r. destruct p.
-  admit.
-Admitted.
+  red in H.
+  pose (hprop_hset (H x y)).
+  apply h.
+Defined.
 
 Lemma is_hset_refl {A} `{HSet A} (x : A) : is_hset (id_refl x) id_refl = id_refl.
 Proof.
@@ -297,4 +321,3 @@ Theorem K {A} `{HSet A} (x : A) :
 Proof.
   intros. exact (transport (is_hset id_refl p) X).
 Defined.
-  

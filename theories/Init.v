@@ -66,14 +66,14 @@ End IdNotations.
 
 Section IdTheory.
   Universe i.
-  Variable A : Type@{i}.
+  Context {A : Type@{i}}.
 
   Import IdNotations.
   
-  Lemma id_sym (x y : A) : x = y -> y = x.
+  Lemma id_sym {x y : A} : x = y -> y = x.
   Proof. destruct 1. apply 1. Defined.
 
-  Lemma id_trans (x y z : A) : x = y -> y = z -> x = z.
+  Lemma id_trans {x y z : A} : x = y -> y = z -> x = z.
   Proof. destruct 1. apply id. Defined.
 
 End IdTheory.
