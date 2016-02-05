@@ -174,17 +174,17 @@ let signature_class evd =
   let evd, c = Evarutil.new_global evd (Lazy.force signature_ref) in
     evd, fst (snd (Option.get (Typeclasses.class_of_constr c)))
 
-let build_sig_of_ind env sigma ind =
+let build_sig_of_ind env sigma (ind,u as indu) =
   let (mib, oib as _mind) = Global.lookup_inductive ind in
-  let ctx = oib.Declarations.mind_arity_ctxt in
+  let ctx = inductive_alldecls indu in
   let lenpars = mib.mind_nparams_rec in
   let lenargs = List.length ctx - lenpars in
   if lenargs = 0 then
     user_err_loc (dummy_loc, "Derive Signature", 
 		 str"No signature to derive for non-dependent inductive types");
   let args, pars = List.chop lenargs ctx in
-  let parapp = mkApp (mkInd ind, extended_rel_vect 0 pars) in
-  let fullapp = mkApp (mkInd ind, extended_rel_vect 0 ctx) in
+  let parapp = mkApp (mkIndU indu, extended_rel_vect 0 pars) in
+  let fullapp = mkApp (mkIndU indu, extended_rel_vect 0 ctx) in
   let evd = ref sigma in
   let idx, pred, pars, _, _, _, valsig, _ = 
     sigmaize env evd pars parapp 
@@ -194,8 +194,9 @@ let build_sig_of_ind env sigma ind =
 
 let declare_sig_of_ind env ind =
   let sigma = Evd.from_env env in
+  let sigma, (ind, u) = Evd.fresh_inductive_instance env sigma ind in
   let sigma, pred, pars, fullapp, valsig, ctx, lenargs, idx =
-    build_sig_of_ind env sigma ind in
+    build_sig_of_ind env sigma (ind, u) in
   let indid = ind_name ind in
   let simpl = Tacred.simpl env sigma in
   let poly = Flags.is_universe_polymorphism () in
@@ -218,12 +219,15 @@ let declare_sig_of_ind env ind =
   in
   let sigma = if not poly then Evd.from_env (Global.env ()) else sigma in
   let sigma, c = signature_class sigma in
+  let env = Global.env () in
+  let sigma, indsig = Evd.fresh_global env sigma (ConstRef indsig) in
+  let sigma, pack_fn = Evd.fresh_global env sigma (ConstRef pack_fn) in
   let inst = 
     declare_instance (add_suffix indid "_Signature")
       poly sigma ctx c
       [fullapp; lift lenargs idx;
-       mkApp (mkConst indsig, extended_rel_vect lenargs pars);
-       mkApp (mkConst pack_fn, extended_rel_vect 0 ctx)]
+       mkApp (indsig, extended_rel_vect lenargs pars);
+       mkApp (pack_fn, extended_rel_vect 0 ctx)]
   in inst
 
 let get_signature env sigma ty =
@@ -240,9 +244,8 @@ let get_signature env sigma ty =
       (sigma', nf_evar sigma' ssig, nf_evar sigma' spack)
   with Not_found ->
     let pind, args = Inductive.find_rectype env ty in
-    let ind = fst pind in
     let sigma, pred, pars, _, valsig, ctx, _, _ =
-      build_sig_of_ind env sigma ind in
+      build_sig_of_ind env sigma pind in
     msg_warning (str "Automatically inlined signature for type " ++
     Printer.pr_pinductive env pind ++ str ". Use [Derive Signature for " ++
     Printer.pr_pinductive env pind ++ str ".] to avoid this.");

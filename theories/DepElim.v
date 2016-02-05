@@ -34,7 +34,7 @@ Definition block := tt.
 Ltac intros_until_block :=
   match goal with
     |- let _ := block in _ => intros _
-  | |- _ => try intro; intros_until_block
+  | |- _ => try (intro; intros_until_block)
   end.
 
 Ltac block_goal :=
@@ -585,7 +585,8 @@ Ltac simplify_one_dep_elim_term c :=
         match goal with
         | _ : Id x y |- _ => intro
         | _ =>
-          apply (Id_simplification_sigma2 (A:=A) (P:=P) (B:=B) n x y)
+          apply (Id_simplification_sigma2 (A:=A) (P:=P) (B:=B) n x y) ||
+                fail 100000 "Type " A " is not a declared HSet: cannot simplify"
         end
       | |- _ =>
         match goal with

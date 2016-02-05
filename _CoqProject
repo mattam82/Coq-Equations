@@ -56,5 +56,6 @@ test-suite/scope.v
 test-suite/issues/issue7.v
 test-suite/issues/issue8.v
 test-suite/issues/issue13.v
+test-suite/LogicType.v
 examples/lf.v
 examples/HoTT_light.v

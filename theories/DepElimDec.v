@@ -128,7 +128,6 @@ Polymorphic Definition eqdec_sig_Id@{i j k} {A : Type@{i}} {B : A -> Type@{j}}
             `(HSets.EqDec A) `(forall a, HSets.EqDec (B a)) :
   HSets.EqDec@{k} { x : A & B x }.
 Proof.
-  Set Printing Universes.
   intros. intros x y. decompose_exists x. decompose_exists y.
   case (HSets.eq_dec x' y'). intros Hx'y'. destruct Hx'y'. case (HSets.eq_dec x y).
   + intros He; destruct He. left. reflexivity.

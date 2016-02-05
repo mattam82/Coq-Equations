@@ -19,7 +19,7 @@ Section TypeEq.
   Equations(nocomp) eq_trans (A : Type) (x y z : A) (eq1 : Id x y) (eq2 : Id y z) : Id x z :=
   eq_trans _ _ _ _ id_refl id_refl := id_refl _.
 End TypeEq.
-Set Printing Universes.
+
 Arguments Id {A} _ _.
 Arguments id_refl {A} [a].
 
