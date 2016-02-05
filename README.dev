@@ -1,0 +1,6 @@
+Developers:
+===============
+
+To use merlin and make the documentation, you need a Coq with a findlib META
+file. Then you can use [make apidoc] to build the html version of the ocaml API.
+
