@@ -233,7 +233,7 @@ val coq_id : Term.constr lazy_t
 val coq_list_ind : Term.constr lazy_t
 val coq_list_nil : Term.constr lazy_t
 val coq_list_cons : Term.constr lazy_t
-val coq_noconfusion_class : Term.constr lazy_t
+val coq_noconfusion_class : Globnames.global_reference lazy_t
 val coq_inacc : Term.constr lazy_t
 val coq_block : Term.constr lazy_t
 val coq_hide : Term.constr lazy_t

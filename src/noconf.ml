@@ -83,7 +83,7 @@ let derive_no_confusion env evd (ind,u) =
   let evd = ref evd in
   let poly = Flags.is_universe_polymorphism () in
   let mindb, oneind = Global.lookup_inductive ind in
-  let ctx = (* map_rel_context refresh_universes *) oneind.mind_arity_ctxt in
+  let ctx = subst_instance_context u oneind.mind_arity_ctxt in
   let len = List.length ctx in
   let params = mindb.mind_nparams in
   let args = oneind.mind_nrealargs in
@@ -132,25 +132,33 @@ let derive_no_confusion env evd (ind,u) =
   and noid = add_prefix "noConfusion_" indid
   and packid = add_prefix "NoConfusionPackage_" indid in
   let cstNoConf = Declare.declare_constant id (DefinitionEntry ce, IsDefinition Definition) in
-  let stmt = it_mkProd_or_LetIn
-    (mkApp (mkConst cstNoConf, rel_vect 1 (List.length fullbinders)))
-    ((Anonymous, None, mkEq evd (lift 2 indty) (mkRel 2) (mkRel 1)) :: fullbinders)
+  let evd = ref (Evd.from_env (Global.env ())) in
+  let tc = Typeclasses.class_info (Lazy.force coq_noconfusion_class) in
+  let noconf = Evarutil.e_new_global evd (ConstRef cstNoConf) in
+  let noconfcl = Evarutil.e_new_global evd tc.Typeclasses.cl_impl in
+  let inst, u = destInd noconfcl in
+  let noconfterm = mkApp (noconf, argsvect) in
+  let b, ty = 
+    Typeclasses.instance_constructor (tc,u) [indty; noconfterm]
   in
+  let env = push_rel_context ctx (Global.env ()) in
+  let rec term c ty =
+    match kind_of_term ty with
+    | Prod (na, t, ty) ->
+       let arg = Evarutil.e_new_evar env evd t in
+       term (mkApp (c, [|arg|])) (subst1 arg ty)
+    | _ -> c, ty
+  in
+  let cty = Retyping.get_type_of env !evd (Option.get b) in
+  let term, ty = term (Option.get b) cty in
+  let term = it_mkLambda_or_LetIn term ctx in
+  let ty = it_mkProd_or_LetIn ty ctx in
+  let _ = Typing.e_type_of env evd term in
   let hook vis gr _ectx = 
-    let evd = ref (Evd.from_env (Global.env ())) in
-    let tc = Typeclasses.class_info (global_of_constr (Lazy.force coq_noconfusion_class)) in
-    let b, ty = Typeclasses.instance_constructor (tc,Univ.Instance.empty)
-      [indty; mkApp (mkConst cstNoConf, argsvect) ; 
-       mkApp (Universes.constr_of_global gr, argsvect) ] in
-    match b with
-      | Some b ->
-        let ce = make_definition ~poly evd ~types:(it_mkProd_or_LetIn ty ctx)
-	  (it_mkLambda_or_LetIn b ctx)
-        in
-        let inst = Declare.declare_constant packid (DefinitionEntry ce, IsDefinition Instance) in
-        Typeclasses.add_instance (Typeclasses.new_instance tc None true poly (ConstRef inst))
-      | None -> error "Could not find constructor"
+    Typeclasses.add_instance
+      (Typeclasses.new_instance tc None true poly gr)
   in
-    ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hook) noid 
-	      stmt ~tactic:(noconf_tac ()) 
-	      (Evd.evar_universe_context !evd) [||])
+  let oblinfo, _, term, ty = Obligations.eterm_obligations env noid !evd 0 term ty in
+    ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hook) packid 
+	      ~term ty ~tactic:(noconf_tac ()) 
+	      (Evd.evar_universe_context !evd) oblinfo)

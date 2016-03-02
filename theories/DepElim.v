@@ -310,15 +310,41 @@ Ltac simpl_depind_r := subst_right_no_fail ; autoinjections_right ; try discrimi
 
 Class NoConfusionPackage (A : Type) := {
   NoConfusion : A -> A -> Prop;
-  noConfusion : forall a b, a = b -> NoConfusion a b
+  noConfusion : forall {a b}, a = b -> NoConfusion a b;
+  noConfusion_inv : forall {a b}, NoConfusion a b -> a = b;
+  noConfusion_is_equiv : forall {a b} (e : a = b), noConfusion_inv (noConfusion e) = e;
 }.
+
+Class NoConfusionIdPackage (A : Type) := {
+  NoConfusionId : A -> A -> Type;
+  noConfusionId : forall {a b}, Id a b -> NoConfusionId a b;
+  noConfusionId_inv : forall {a b}, NoConfusionId a b -> Id a b;
+  noConfusionId_is_equiv : forall {a b} (e : Id a b), Id (noConfusionId_inv (noConfusionId e)) e;
+}.
+
+Lemma apply_noConfusion {A} {noconf : NoConfusionPackage A}
+      (p q : A) {B : p = q -> Type} :
+  (forall e : NoConfusion p q, B (noConfusion_inv e)) -> (forall e : p = q, B e).
+Proof.
+  intros. generalize (noConfusion_is_equiv e). destruct e.
+  intros <-. apply X.
+Defined.
+
+Polymorphic
+Lemma apply_noConfusionId {A} {noconf : NoConfusionIdPackage A}
+      (p q : A) {B : Id p q -> Type} :
+  (forall e : NoConfusionId p q, B (noConfusionId_inv e)) -> (forall e : Id p q, B e).
+Proof.
+  intros. generalize (noConfusionId_is_equiv e). destruct e.
+  intros <-. apply X.
+Defined.
 
 (** Apply [noConfusion] on a given hypothsis. *)
 
 Ltac noconf_ref H :=
   match type of H with
     @eq ?A ?X ?Y =>
-      let H' := fresh in assert (H':=noConfusion (A:=A) X Y H) ;
+      let H' := fresh in assert (H':=noConfusion (A:=A) (a:=X) (b:=Y) H) ;
       clear H; hnf in H'; 
       match type of H' with
       | True => clear H'
@@ -327,6 +353,12 @@ Ltac noconf_ref H :=
       | _ => fail
       end
   end.
+
+Lemma False_rect_dep (P : False -> Type) : forall e : False, P e.
+Proof. intros e. destruct e. Defined.
+
+Lemma True_rect_dep (P : True -> Type) (m : P I) : forall e : True, P e.
+Proof. intros e. destruct e. exact m. Defined.
 
 Ltac blocked t := block_goal ; t ; unblock_goal.
 
@@ -469,6 +501,35 @@ Proof.
   now destruct X0.
 Defined.
 
+Scheme Id_rew := Minimality for Id Sort Type.
+
+Polymorphic Lemma eq_simplification_sigma1' {A} {P : A -> Type} {B}
+  (p q : A) (x : P p) (y : P q) :
+  (forall e : p = q, (@eq_rect A p P x q e) = y -> B) ->
+  (sigmaI P p x = sigmaI P q y -> B).
+Proof.
+  intros. revert X.
+  change p with (pr1 (p; x)).
+  change q with (pr1 (q; y)).
+  change x with (pr2 (p; x)) at 3.
+  change y with (pr2 (q; y)) at 4.
+  destruct H.
+  intros X. eapply (X eq_refl). apply eq_refl.
+Defined.
+
+Polymorphic Lemma Id_simplification_sigma1' {A} {P : A -> Type} {B} (p q : A) (x : P p) (y : P q) :
+  (forall e : Id p q, Id (Id_rew A p P x q e) y -> B) ->
+  (Id (sigmaI P p x) (sigmaI P q y) -> B).
+Proof.
+  intros. revert X.
+  change p with (pr1 (p; x)).
+  change q with (pr1 (q; y)).
+  change x with (pr2 (p; x)) at 3.
+  change y with (pr2 (q; y)) at 4.
+  destruct X0.
+  intros X. eapply (X id_refl). apply id_refl.
+Defined.
+
 Lemma simplification_K : ∀ {A} (x : A) {B : x = x -> Type}, B eq_refl -> (∀ p : x = x, B p).
 Proof. intros. rewrite (UIP_refl A). assumption. Defined.
 
@@ -538,11 +599,19 @@ Ltac revert_blocking_until id :=
       | _ => block_equality id' ; revert id' ; revert_blocking_until id
     end).
 
+Ltac not_var x := try (is_var x; fail 1).
+
 Ltac simplify_one_dep_elim_term c :=
   match c with
     | @JMeq _ _ _ _ -> _ => refine (@simplification_heq _ _ _ _ _)
-    | ?t = ?t -> _ => intros _ || apply simplification_K_dec || refine (@simplification_K _ t _ _)
+    | ?t = ?t -> _ => intros _ || refine (simplification_K_dec _ _)
+                           || refine (@simplification_K _ t _ _)
     | Id ?t ?t -> _ => intros _ || apply Id_simplification_K
+                            
+    | False -> _ => refine (@False_rect_dep _)
+
+    | True -> _ => refine (@True_rect_dep _ _)
+                     
     | (@existT ?A ?P ?n ?x) = (@existT ?A ?P ?m ?y) -> ?B =>
       (* Check if [n] and [m] are judgmentally equal. *)
       match goal with
@@ -574,7 +643,8 @@ Ltac simplify_one_dep_elim_term c :=
       | |- _ =>
         match goal with
         | _ : n = m |- _ => intro
-        | _ => refine (@simplification_sigma1 _ _ _ _ _ _ _ _)
+        | _ => refine (@eq_simplification_sigma1' _ _ _ _ _ _ _ _) ||
+                refine (@simplification_sigma1 _ _ _ _ _ _ _ _)
         end
       end
 
@@ -591,7 +661,8 @@ Ltac simplify_one_dep_elim_term c :=
       | |- _ =>
         match goal with
         | _ : Id n m |- _ => intro
-        | _ => refine (@Id_simplification_sigma1 _ _ _ _ _ _ _ _)
+        | _ => refine (@Id_simplification_sigma1'  _ _ _ _ _ _ _ _) ||
+                     refine (@Id_simplification_sigma1 _ _ _ _ _ _ _ _)
         end
       end
 
@@ -601,7 +672,7 @@ Ltac simplify_one_dep_elim_term c :=
           (match goal with
             | |- let x := _ in _ = _ -> @?B x =>
                refine (@solution_left_let _ B _ _ _)
-             | _ => refine (@solution_left _ _ _ _) || refine (@solution_left_dep _ _ _ _)
+             | _ => refine (@solution_left _ _ _ _) || refine (@solution_left_dep _ _ _ _); simpl eq_rect
            end)) ||
       (let hyp := fresh "Heq" in intros hyp ;
         move hyp before y ; move y before hyp; revert_blocking_until y; revert y;
@@ -609,7 +680,7 @@ Ltac simplify_one_dep_elim_term c :=
              | |- let x := ?b in (let _ := block in ?t = _) -> @?B x =>
                (refine (@solution_right_let _ B _ _ _); let B' := eval cbv beta in (B t) in
                                                             change (t = b -> B'))
-             | _ => refine (@solution_right _ _ _ _) || refine (@solution_right_dep _ _ _ _)
+             | _ => refine (@solution_right _ _ _ _) || refine (@solution_right_dep _ _ _ _); simpl eq_rect
            end))
 
     | forall H : Id ?x ?y, _ => (* variables case *)
@@ -629,9 +700,19 @@ Ltac simplify_one_dep_elim_term c :=
              | _ => refine (@Id_solution_right _ _ _ _) || refine (@Id_solution_right_dep _ _ _ _)
            end))
 
-    | @eq ?A ?t ?u -> ?P => let hyp := fresh in intros hyp ; noconf_ref hyp
+    | @eq ?A ?t ?u -> ?P =>
+      (let hyp := fresh in intros hyp ; noconf_ref hyp)
+                                                        
+    | @Id ?A ?t ?u -> ?P =>
+      (let hyp := fresh in intros hyp ; noconf_ref hyp) 
 
-    | @Id ?A ?t ?u -> ?P => let hyp := fresh in intros hyp ; noconf_ref hyp
+    | @eq ?A ?t ?u -> _ =>
+      not_var t; not_var u;
+        (refine (@apply_noConfusion A _ _ _ _ _); progress simpl @NoConfusion)
+
+    | @Id ?A ?t ?u -> _ =>
+      not_var t; not_var u;
+       (refine (@apply_noConfusionId A _ _ _ _ _); progress simpl @NoConfusionId)
 
     | ?f ?x = ?g ?y -> _ => let H := fresh in progress (intros H ; injection H ; clear H)
 

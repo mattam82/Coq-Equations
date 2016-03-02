@@ -58,18 +58,20 @@ let mkSig evd (n, c, t) =
     mkAppG evd (Lazy.force coq_sigma) args
 
 let constrs_of_coq_sigma env evd t alias = 
-  let rec aux proj c ty =
+  let rec aux env proj c ty =
     match kind_of_term c with
     | App (f, args) when is_global (Lazy.force coq_sigmaI) f && 
-	Array.length args = 4 -> 
-	(match kind_of_term args.(1) with
-	| Lambda (n, b, t) ->
+	                   Array.length args = 4 ->
+       let ty = Retyping.get_type_of env !evd args.(1) in
+	(match kind_of_term ty with
+	| Prod (n, b, t) ->
 	    let p1 = mkProj (Lazy.force coq_pr1, proj) in
 	    let p2 = mkProj (Lazy.force coq_pr2, proj) in
-	      (n, args.(2), p1, args.(0)) :: aux p2 args.(3) t
+	    (n, args.(2), p1, args.(0)) ::
+              aux (push_rel (n, None, b) env) p2 args.(3) t
 	| _ -> raise (Invalid_argument "constrs_of_coq_sigma"))
     | _ -> [(Anonymous, c, proj, ty)]
-  in aux alias t (Retyping.get_type_of env !evd t)
+  in aux env alias t (Retyping.get_type_of env !evd t)
 
 let decompose_coq_sigma t = 
   let s = Lazy.force coq_sigma in

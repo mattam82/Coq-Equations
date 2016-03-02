@@ -287,7 +287,7 @@ let coq_list_ind = lazy (init_constant list_path "list")
 let coq_list_nil = lazy (init_constant list_path "nil")
 let coq_list_cons = lazy (init_constant list_path "cons")
 
-let coq_noconfusion_class = lazy (init_constant ["Equations";"DepElim"] "NoConfusionPackage")
+let coq_noconfusion_class = lazy (init_reference ["Equations";"DepElim"] "NoConfusionPackage")
   
 let coq_inacc = lazy (init_constant ["Equations";"DepElim"] "inaccessible_pattern")
 let coq_block = lazy (init_constant ["Equations";"DepElim"] "block")
