@@ -299,3 +299,11 @@ Section PEqdepDec.
   Defined.
 
 End PEqdepDec.
+
+Arguments inj_right_sigma {A} {H} {x} P y y' e.
+
+Instance eq_eqdec {A} `{EqDec A} : forall x y : A, EqDec (x = y).
+Proof.
+  intros. red. intros.
+  exact (left (eq_proofs_unicity x0 y0)).
+Defined.

@@ -209,48 +209,6 @@ Hint Rewrite @HSets.inj_sigma_r_refl : refl_id.
 
 Global Set Keyed Unification.
 
-Ltac rewrite_sigma2_refl :=
-  match goal with
-    |- context [inj_sigma2 ?A ?P ?x ?p _ eq_refl] =>
-    rewrite (inj_sigma2_refl A x P p)
-   | |- context [@inj_right_sigma ?A ?H ?x ?P ?y ?y' _] =>
-    rewrite (@inj_right_sigma_refl A H x P y)
-   | |- context [@HSets.inj_sigma_r ?A ?H ?P ?x ?y ?y' _] =>
-    rewrite (@HSets.inj_sigma_r_refl A H P x y)
-  end.
-
-Ltac rewrite_refl_id :=
-  repeat (autorewrite with refl_id; try rewrite_sigma2_refl).
-
-(** Clear the context and goal of equality proofs. *)
-
-Ltac clear_eq_ctx :=
-  rewrite_refl_id ; clear_eq_proofs.
-
-(** Reapeated elimination of [eq_rect] applications.
-   Abstracting equalities makes it run much faster than an naive implementation. *)
-
-Ltac simpl_eqs :=
-  repeat (elim_eq_rect ; simpl ; clear_eq_ctx).
-
-(** Clear unused reflexivity proofs. *)
-
-Ltac clear_refl_eq :=
-  match goal with [ H : ?X = ?X |- _ ] => clear H end.
-Ltac clear_refl_eqs := repeat clear_refl_eq.
-
-(** Clear unused equality proofs. *)
-
-Ltac clear_eq :=
-  match goal with [ H : _ = _ |- _ ] => clear H end.
-Ltac clear_eqs := repeat clear_eq.
-
-(** Combine all the tactics to simplify goals containing coercions. *)
-
-Ltac simplify_eqs :=
-  simpl ; simpl_eqs ; clear_eq_ctx ; clear_refl_eqs ;
-    try subst ; simpl ; repeat simpl_uip ; rewrite_refl_id.
-
 (** A tactic that tries to remove trivial equality guards in induction hypotheses coming
    from [dependent induction]/[generalize_eqs] invocations. *)
 
@@ -324,9 +282,9 @@ Class NoConfusionIdPackage (A : Type) := {
 
 Lemma apply_noConfusion {A} {noconf : NoConfusionPackage A}
       (p q : A) {B : p = q -> Type} :
-  (forall e : NoConfusion p q, B (noConfusion_inv e)) -> (forall e : p = q, B e).
+  (forall H : NoConfusion p q, B (noConfusion_inv H)) -> (forall H : p = q, B H).
 Proof.
-  intros. generalize (noConfusion_is_equiv e). destruct e.
+  intros. generalize (noConfusion_is_equiv H). destruct H.
   intros <-. apply X.
 Defined.
 
@@ -503,7 +461,21 @@ Defined.
 
 Scheme Id_rew := Minimality for Id Sort Type.
 
-Polymorphic Lemma eq_simplification_sigma1' {A} {P : A -> Type} {B}
+Polymorphic Lemma eq_simplification_sigma1 {A} {P : Type} {B}
+  (p q : A) (x : P) (y : P) :
+  (p = q -> x = y -> B) ->
+  (sigmaI (fun _ => P) p x = sigmaI (fun _ => P) q y -> B).
+Proof.
+  intros. revert X.
+  change p with (pr1 (p; x)).
+  change q with (pr1 (q; y)).
+  change x with (pr2 (p; x)) at 2.
+  change y with (pr2 (q; y)) at 2.
+  destruct H.
+  intros X. eapply (X eq_refl). apply eq_refl.
+Defined.
+
+Polymorphic Lemma eq_simplification_sigma1_dep {A} {P : A -> Type} {B}
   (p q : A) (x : P p) (y : P q) :
   (forall e : p = q, (@eq_rect A p P x q e) = y -> B) ->
   (sigmaI P p x = sigmaI P q y -> B).
@@ -515,6 +487,25 @@ Proof.
   change y with (pr2 (q; y)) at 4.
   destruct H.
   intros X. eapply (X eq_refl). apply eq_refl.
+Defined.
+
+Polymorphic Definition pack_sigma_eq {A} {P : A -> Type} {p q : A} {x : P p} {y : P q}
+  (e' : p = q) (e : @eq_rect A p P x q e' = y) : (p; x) = (q; y).
+Proof. destruct e'. simpl in e. destruct e. apply eq_refl. Defined.
+
+Polymorphic Lemma eq_simplification_sigma1_dep_dep {A} {P : A -> Type}
+  (p q : A) (x : P p) (y : P q) {B : (p; x) = (q; y) -> Type} :
+  (forall e' : p = q, forall e : @eq_rect A p P x q e' = y, B (pack_sigma_eq e' e)) ->
+  (forall e : sigmaI P p x = sigmaI P q y, B e).
+Proof.
+  intros. revert X.
+  change p with (pr1 (p; x)).
+  change q with (pr1 (q; y)).
+  change x with (pr2 (p; x)) at 3 5.
+  change y with (pr2 (q; y)) at 4 6.
+  destruct e.
+  intros X. simpl in *.
+  apply (X eq_refl eq_refl). 
 Defined.
 
 Polymorphic Lemma Id_simplification_sigma1' {A} {P : A -> Type} {B} (p q : A) (x : P p) (y : P q) :
@@ -537,22 +528,45 @@ Lemma simplification_K_dec : ∀ {A} `{EqDec A} (x : A) {B : x = x -> Type},
   B eq_refl -> (∀ p : x = x, B p).
 Proof. intros. apply K_dec. assumption. Defined.
 
+Lemma simplification_K_dec_refl : ∀ {A} `{EqDec A} (x : A) {B : x = x -> Type}
+                                    (p : B eq_refl),
+  simplification_K_dec x p eq_refl = p.
+Proof.
+  intros.
+  unfold simplification_K_dec, K_dec.
+  set (pf := eq_proofs_unicity eq_refl eq_refl).
+  destruct (eq_proofs_unicity eq_refl pf).
+  reflexivity.
+Defined.
+
 Polymorphic
 Lemma Id_simplification_K : ∀ {A} `{HSets.HSet A} (x : A) {B : Id x x -> Type}, 
   B id_refl -> (∀ p : Id x x, B p).
 Proof. intros. apply HSets.K. assumption. Defined.
 
+Polymorphic
+Lemma Id_simplification_K_refl : ∀ {A} `{HSets.HSet A} (x : A) {B : Id x x -> Type}
+  (b : B id_refl), Id_simplification_K x b id_refl = b.
+Proof.
+  intros. pose HSets.K.
+  unfold Id_simplification_K.
+  unfold HSets.K. rewrite HSets.is_hset_refl. constructor.
+Defined.
+
 (** This hint database and the following tactic can be used with [autounfold] to 
    unfold everything to [eq_rect]s. *)
 
-Hint Unfold solution_left solution_right deletion simplification_heq
+Hint Unfold solution_left solution_right
+  solution_left_dep solution_right_dep deletion simplification_heq
   simplification_existT1 simplification_existT2 simplification_K
-  simplification_sigma1 simplification_sigma2 simplification_sigma2_dec
-  simplification_K_dec simplification_existT2_dec
+  simplification_K_dec
+  simplification_sigma1 eq_simplification_sigma1 eq_simplification_sigma1_dep
+  simplification_sigma2 simplification_sigma2_dec
+  simplification_existT2_dec
   Id_solution_left Id_solution_right Id_deletion
   Id_solution_left_dep Id_solution_right_dep Id_solution_right_let Id_solution_left_let
   Id_simplification_sigma1 Id_simplification_sigma2 Id_simplification_K  
-  eq_rect_r eq_rec eq_ind : equations.
+  eq_rect_r eq_rec eq_ind eq_ind_r : equations.
 
 (** Makes these definitions disappear at extraction time *)
 Extraction Inline solution_right_dep solution_right solution_left solution_left_dep.
@@ -570,6 +584,54 @@ Extraction Inline Id_simplification_sigma1 Id_simplification_sigma2 Id_simplific
 
 Ltac unfold_equations := repeat progress autounfold with equations.
 Ltac unfold_equations_in H := repeat progress autounfold with equations in H.
+
+
+Ltac rewrite_sigma2_refl :=
+  match goal with
+    |- context [inj_sigma2 ?A ?P ?x ?p _ eq_refl] =>
+    rewrite (inj_sigma2_refl A x P p)
+   | |- context [@inj_right_sigma ?A ?H ?x ?P ?y ?y' _] =>
+    rewrite (@inj_right_sigma_refl A H x P y)
+   | |- context [@simplification_sigma2_dec ?A ?H ?P ?B ?p ?x ?y ?X eq_refl] =>
+     unfold simplification_sigma2_dec;
+       rewrite (@inj_right_sigma_refl A H p P x); simpl
+   | |- context [simplification_K_dec ?x ?p eq_refl] =>
+     rewrite simplification_K_dec_refl; simpl eq_rect
+   | |- context [@HSets.inj_sigma_r ?A ?H ?P ?x ?y ?y' _] =>
+    rewrite (@HSets.inj_sigma_r_refl A H P x y)
+  end.
+
+Ltac rewrite_refl_id :=
+  repeat (autorewrite with refl_id; try rewrite_sigma2_refl).
+
+(** Clear the context and goal of equality proofs. *)
+
+Ltac clear_eq_ctx :=
+  rewrite_refl_id ; clear_eq_proofs.
+
+(** Reapeated elimination of [eq_rect] applications.
+   Abstracting equalities makes it run much faster than an naive implementation. *)
+
+Ltac simpl_eqs :=
+  repeat (elim_eq_rect ; simpl ; clear_eq_ctx).
+
+(** Clear unused reflexivity proofs. *)
+
+Ltac clear_refl_eq :=
+  match goal with [ H : ?X = ?X |- _ ] => clear H end.
+Ltac clear_refl_eqs := repeat clear_refl_eq.
+
+(** Clear unused equality proofs. *)
+
+Ltac clear_eq :=
+  match goal with [ H : _ = _ |- _ ] => clear H end.
+Ltac clear_eqs := repeat clear_eq.
+
+(** Combine all the tactics to simplify goals containing coercions. *)
+
+Ltac simplify_eqs :=
+  simpl ; simpl_eqs ; clear_eq_ctx ; clear_refl_eqs ;
+    try subst ; simpl ; repeat simpl_uip ; rewrite_refl_id.
 
 (** The tactic [simplify_equations] is to be used when a program generated using [Equations] 
    is in the goal. It simplifies it as much as possible, possibly using [K] if needed.
@@ -604,7 +666,7 @@ Ltac not_var x := try (is_var x; fail 1).
 Ltac simplify_one_dep_elim_term c :=
   match c with
     | @JMeq _ _ _ _ -> _ => refine (@simplification_heq _ _ _ _ _)
-    | ?t = ?t -> _ => intros _ || refine (simplification_K_dec _ _)
+    | ?t = ?t -> _ => intros _ || apply simplification_K_dec
                            || refine (@simplification_K _ t _ _)
     | Id ?t ?t -> _ => intros _ || apply Id_simplification_K
                             
@@ -643,10 +705,15 @@ Ltac simplify_one_dep_elim_term c :=
       | |- _ =>
         match goal with
         | _ : n = m |- _ => intro
-        | _ => refine (@eq_simplification_sigma1' _ _ _ _ _ _ _ _) ||
-                refine (@simplification_sigma1 _ _ _ _ _ _ _ _)
+        | _ => (* refine (@eq_simplification_sigma1 _ _ _ _ _ _ _ _) || *)
+              (*        refine (@eq_simplification_sigma1_dep _ _ _ _ _ _ _ _) || *)
+              (*        refine (@eq_simplification_sigma1_dep_dep _ _ _ _ _ _ _ _) || *)
+          refine (@simplification_sigma1 _ _ _ _ _ _ _ _)
         end
       end
+
+    | (@sigmaI ?A ?P ?n ?x) = (@sigmaI _ _ ?m ?y) -> _ =>
+      refine (@eq_simplification_sigma1_dep_dep _ _ _ _ _ _ _ _)
 
     | Id (@sigmaI ?A ?P ?n ?x) (@sigmaI _ _ ?m ?y) -> ?B =>
       (* Check if [n] and [m] are judgmentally equal. *)
@@ -708,11 +775,24 @@ Ltac simplify_one_dep_elim_term c :=
 
     | @eq ?A ?t ?u -> _ =>
       not_var t; not_var u;
-        (refine (@apply_noConfusion A _ _ _ _ _); progress simpl @NoConfusion)
+      (refine (@apply_noConfusion A _ _ _ _ _); progress simpl @NoConfusion;
+       match goal with
+         |- True -> _ => idtac
+       | |- False -> _ => idtac
+       | |- _ = _ -> _ => idtac
+       | _ => fail
+      end)
 
     | @Id ?A ?t ?u -> _ =>
       not_var t; not_var u;
-       (refine (@apply_noConfusionId A _ _ _ _ _); progress simpl @NoConfusionId)
+      (refine (@apply_noConfusionId A _ _ _ _ _);
+       progress simpl @NoConfusionId;
+       match goal with
+         |- True -> _ => idtac
+       | |- False -> _ => idtac
+       | |- @Id _ _ _ -> _ => idtac
+       | _ => fail
+       end)
 
     | ?f ?x = ?g ?y -> _ => let H := fresh in progress (intros H ; injection H ; clear H)
 

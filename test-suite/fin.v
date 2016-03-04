@@ -195,15 +195,13 @@ fle_trans flez _ := flez;
 fle_trans (fles p') (fles q') := fles (fle_trans p' q').
 Print Assumptions fle_trans.
 
-Derive Signature for fin.
-Derive NoConfusion for fin.
-Derive DependentElimination for fin.
+Hint Unfold NoConfusion.noConfusion_nat_obligation_1 : equations.
 
 From Equations Require Import EqDec DepElimDec.
 
-Derive Signature for @fle.
-Derive NoConfusion for @fle.
-
+Derive Signature for fin.
+Derive NoConfusion for fin.
+Derive DependentElimination for fin.
 
 Ltac eqdec_proof ::= try red; intros;
   match goal with
@@ -219,9 +217,11 @@ Ltac eqdec_proof ::= try red; intros;
     end
   end.
 (* FIXME references are wrong if we don't redefine here ... *)
-Derive Equality for @fin.
+Derive Equality for fin.
 Solve Obligations with eqdec_proof.
 
+Derive Signature for @fle.
+Derive NoConfusion for @fle.
 Derive Equality for @fle.
 Solve Obligations with eqdec_proof.
 
@@ -233,36 +233,3 @@ fle_trans' flez _ := flez;
 fle_trans' (fles p') (fles q') := fles (fle_trans' p' q').
 
 Print Assumptions fle_trans'.
-
-(*
-x.
-
-From Equations Require Import DepElimDec.
-Derive Signature for @eq.
-
-Inductive eqP {A : Type} {B : A -> Type} (a b : A) (t : B a) : B b -> Prop :=
-  idpath_over (p : a = b) : eqP a b t (eq_rect a B t b p).
-
-Lemma eq_rect_eqP {A : Type} {B : A -> Type} (a b : A) (p : a = b) (t : B a) (u : B b) :
-  eq_rect a B t b p = u -> eqP a b t u.
-Proof.
-  intros. rewrite <- H. constructor.
-Defined.  
-
-Lemma eqP_eq_rect {A : Type} {B : A -> Type} (a b : A) (p : a = b) (t : B a) (u : B b) :
-  eqP a b t u -> eq_rect a B t b p = u.
-Proof.
-  intros. destruct H. destruct p. simpl. revert p0. simplify_dep_elim. reflexivity.
-Defined.  
-
-Notation "x =~ y" := (eqP _ _ x y) (at level 90, format " x  =~  y ").
-
-Lemma eqP_eq_rect_l {A : Type} {B : A -> Type} (a b c : A)
-      (p : a = b) (q : b = c) (t : B a) (v : B c) :
-  t =~ v -> eq_rect _ B t _ p =~ v.
-Proof.
-  intros. destruct p, q. now simpl in *.
-Defined. 
-
-(* Notation " x =_  y " := (eqP _ _ _ x y) (at level 90). *)
-*)

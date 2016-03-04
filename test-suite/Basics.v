@@ -253,7 +253,7 @@ app' (cons a v) l := cons a (app' v l).
 
 Global Transparent app'.
 
-Notation  " x +++ y " := (@app' _ x y)  (at level 60, right associativity).
+Notation  " x +++ y " := (@app' _ x y%list)  (at level 60, right associativity).
 
 Equations rev_acc {A} (l : list A) (acc : list A) : list A :=
 rev_acc nil acc := acc;
@@ -261,7 +261,7 @@ rev_acc (cons a v) acc := rev_acc v (a :: acc).
 
 Equations rev {A} (l : list A) : list A :=
 rev nil := nil;
-rev (cons a v) := rev v +++ [a].
+rev (cons a v) := rev v +++ (cons a nil).
 
 Notation " [] " := List.nil.
 

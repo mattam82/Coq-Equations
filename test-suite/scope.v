@@ -52,6 +52,8 @@ scope_le_app p (scope_le_map q) with p :=
   | scope_le_S p := scope_le_S (scope_le_app p q);
   | (scope_le_map p) := scope_le_map (scope_le_app p q) }.
 
+
+Hint Unfold NoConfusion.noConfusion_nat_obligation_1 : equations.
 Derive NoConfusion for scope_le.
 
 Lemma scope_le_app_len n m (q : scope_le n m) : scope_le_app scope_le_n q = q.
