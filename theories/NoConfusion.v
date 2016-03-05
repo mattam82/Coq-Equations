@@ -19,27 +19,48 @@ Ltac noconf H ::=
 
 (** Used by the [Derive NoConfusion] command. *)
 
+
+Ltac destruct_sigma id :=
+  match type of id with
+    @sigma ?A ?P => let idx := fresh "idx" in
+                   destruct id as [idx id];
+                     repeat destruct_sigma idx; simpl in id
+                                                         
+  | _ => idtac
+  end.
+
 Ltac solve_noconf_prf := intros;
   on_last_hyp ltac:(fun id => destruct id) ; (* Subtitute a = b *)
-  on_last_hyp ltac:(fun id => destruct id) ; (* Destruct the inductive object a *)
+  on_last_hyp ltac:(fun id =>
+                      destruct_sigma id;
+                      destruct id) ; (* Destruct the inductive object a *)
   constructor.
+
+Ltac destruct_tele_eq H :=
+  match type of H with
+    ?x = ?y =>
+    let rhs := fresh in
+    set (rhs := y) in *; pattern sigma rhs; clearbody rhs;
+    destruct H; simpl
+  end.
 
 Ltac solve_noconf_inv := intros;
   match goal with
-    |- ?R ?a ?b => destruct a; depelim b; simpl in *;
-                 on_last_hyp ltac:(fun id =>
-                                     revert id; simplify_dep_elim);
-                 try constructor
+    |- ?R ?a ?b => destruct_sigma a; destruct_sigma b;
+                 destruct a; destruct b; simpl in * |-;
+                 on_last_hyp ltac:(fun id => destruct_tele_eq id || destruct id);
+                 solve [constructor]
   end.
 
 Ltac solve_noconf_inv_equiv :=
   intros;
-  on_last_hyp ltac:(fun id => destruct id) ; (* Subtitute a = b *)
-  on_last_hyp ltac:(fun id => destruct id) ; (* Destruct the inductive object a *)
-  simpl; autounfold with equations; rewrite_refl_id;
-  try constructor.
+  (* Subtitute a = b *)
+  on_last_hyp ltac:(fun id => destruct id) ;
+  (* Destruct the inductive object a *)
+  on_last_hyp ltac:(fun id => destruct_sigma id; destruct id) ;
+  simpl; constructor.
 
-Ltac solve_noconf := intros;
+Ltac solve_noconf := simpl; intros;
     match goal with
       [ H : @eq _ _ _ |- @eq _ _ _ ] => solve_noconf_inv_equiv
     | [ H : @eq _ _ _ |- _ ] => solve_noconf_prf

@@ -44,3 +44,10 @@ val pattern_sigma :
   Names.Id.t -> Environ.env -> Evd.evar_map -> unit Proofview.tactic
 val curry_hyp : Environ.env -> Evd.evar_map ->
   Term.constr -> Term.types -> (Term.constr * Term.types) option
+
+val build_sig_of_ind : Environ.env ->
+                       Evd.evar_map ->
+                       Term.pinductive ->
+                       Evd.evar_map * Term.constr * Context.rel_context * Term.constr *
+                         Term.constr * Context.rel_context * int * Term.constr
+

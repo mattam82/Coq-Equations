@@ -196,10 +196,13 @@ Derive DependentElimination for fin.
 Derive Equality for fin.
 Solve Obligations with eqdec_proof.
 
+(* Derive Equality for fin. *)
+(* Solve Obligations with eqdec_proof. *)
+  
 Derive Signature for @fle.
 Derive NoConfusion for @fle.
-Derive Equality for @fle.
-Solve Obligations with eqdec_proof.
+(* Derive Equality for @fle. *)
+(* Solve Obligations with eqdec_proof. *)
 
 Derive Subterm for @fle.
 
