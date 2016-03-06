@@ -180,9 +180,11 @@ let zeta_red =
   in
     reduct_in_concl (red, DEFAULTcast)
 
-let define_tree is_recursive poly impls status isevar env (i, sign, arity) comp ann split hook =
+let define_tree is_recursive poly impls status isevar env (i, sign, arity)
+                comp ann split hook =
   let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
-  let helpers, oblevs, t, ty = term_of_tree status isevar env (i, sign, arity) ann split in
+  let helpers, oblevs, t, ty =
+    term_of_tree status isevar env (i, sign, arity) ann split in
   let nf, subst = Evarutil.e_nf_evars_and_universes isevar in
   let obls, (emap, cmap), t', ty' = 
     Obligations.eterm_obligations env i !isevar
@@ -222,8 +224,10 @@ let define_tree is_recursive poly impls status isevar env (i, sign, arity) comp 
       clos_norm_flags flags (Global.env ()) Evd.empty
   in
   let kind = (Decl_kinds.Global, poly, Decl_kinds.Definition) in
+  let ty' = it_mkProd_or_LetIn arity sign in
     match is_recursive with
     | Some (Structural id) ->
+        let ty' = it_mkProd_or_LetIn ty' [(Anonymous, None, ty')] in
 	ignore(Obligations.add_mutual_definitions [(i, t', ty', impls, obls)] 
 		 (Evd.evar_universe_context !isevar) [] ~kind
 		 ~reduce ~hook (Obligations.IsFixpoint [id, CStructRec]))

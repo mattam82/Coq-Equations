@@ -1024,9 +1024,9 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   let ienv, ((env', sign), impls) = interp_context_evars env evd l in
   let arity = interp_type_evars env' evd t in
   let sign = nf_rel_context_evar ( !evd) sign in
-  let arity = nf_evar ( !evd) arity in
-  let arity, comp = 
-    let body = it_mkLambda_or_LetIn arity sign in
+  let oarity = nf_evar ( !evd) arity in
+  let (sign, oarity, arity, comp) = 
+    let body = it_mkLambda_or_LetIn oarity sign in
     let _ = check_evars env Evd.empty !evd body in
       if with_comp then
 	let compid = add_suffix i "_comp" in
@@ -1034,6 +1034,8 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	let comp =
 	  Declare.declare_constant compid (DefinitionEntry ce, IsDefinition Definition)
 	in (*Typeclasses.add_constant_class c;*)
+        let oarity = nf_evar !evd oarity in
+        let sign = nf_rel_context_evar !evd sign in
 	evd := if poly then !evd else Evd.from_env (Global.env ());
 	let compc = e_new_global evd (ConstRef comp) in
 	let compapp = mkApp (compc, rel_vect 0 (length sign)) in
@@ -1058,14 +1060,16 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	  hintdb_set_transparency comp false "Below";
 	  hintdb_set_transparency comp false "program";
 	  hintdb_set_transparency comp false "subterm_relation";
-	  compapp, Some { comp = comp; comp_app = compapp; 
-			  comp_proj = compproj; comp_recarg = succ (length sign) }
-      else arity, None
+          let compinfo = Some { comp = comp; comp_app = compapp; 
+			  comp_proj = compproj; comp_recarg = succ (length sign) } in
+	  (sign, oarity, compapp, compinfo)
+      else (sign, oarity, oarity, None)
   in
   let env = Global.env () in (* To find the comp constant *)
+  let oty = it_mkProd_or_LetIn oarity sign in
   let ty = it_mkProd_or_LetIn arity sign in
   let data = Constrintern.compute_internalization_env
-    env Constrintern.Recursive [i] [ty] [impls] 
+    env Constrintern.Recursive [i] [oty] [impls] 
   in
   let fixprot = mkLetIn (Anonymous, Universes.constr_of_global (Lazy.force coq_fix_proto),
 			 Universes.constr_of_global (Lazy.force coq_unit), ty) in
@@ -1090,25 +1094,25 @@ let define_by_eqs opts i (l,ann) t nt eqs =
       | Some true -> Option.map (fun c -> Logical c) comp
       | Some false -> Some (Structural with_rec)
   in
-  let implsinfo = Impargs.compute_implicits_with_manual env ty false impls in
+  let implsinfo = Impargs.compute_implicits_with_manual env oty false impls in
   let equations = 
     Metasyntax.with_syntax_protection (fun () ->
       List.iter (Metasyntax.set_notation_for_interpretation data) nt;
       map (interp_eqn i is_recursive env implsinfo) eqs)
       ()
   in
-  let sign = nf_rel_context_evar ( !evd) sign in
-  let arity = nf_evar ( !evd) arity in
-  let fixdecls = nf_rel_context_evar ( !evd) fixdecls in
-    (*   let ce = check_evars fixenv Evd.empty !evd in *)
-    (*   List.iter (function (_, _, Program rhs) -> ce rhs | _ -> ()) equations; *)
+  let sign = nf_rel_context_evar !evd sign in
+  let oarity = nf_evar !evd oarity in
+  let arity = nf_evar !evd arity in
+  let fixdecls = nf_rel_context_evar !evd fixdecls in
+  (*   let ce = check_evars fixenv Evd.empty !evd in *)
+  (*   List.iter (function (_, _, Program rhs) -> ce rhs | _ -> ()) equations; *)
   let prob = 
     if is_structural is_recursive then
       id_subst (sign @ fixdecls)
     else id_subst sign
   in
   let split = covering env evd (i,with_comp,data) equations prob arity in
-    (* if valid_tree prob split then *)
   let status = (* if is_recursive then Expand else *) Define false in
   let baseid = string_of_id i in
   let (ids, csts) = full_transparent_state in
@@ -1123,6 +1127,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
     let grevd = Evd.from_ctx ectx in
     let split = map_evars_in_split grevd cmap split in
     let sign = nf_rel_context_evar grevd sign in
+    let oarity = nf_evar grevd oarity in
     let arity = nf_evar grevd arity in
     let f =
       let (f, uc) = Universes.unsafe_constr_of_global gr in
@@ -1182,9 +1187,9 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 			 (Evd.evar_universe_context !evd) [||])
 	    in
 	      define_tree None poly impls status evd env
-			  (unfoldi, sign, arity) None ann unfold_split hook_unfold
+			  (unfoldi, sign, oarity) None ann unfold_split hook_unfold
       else ()
-  in define_tree is_recursive poly impls status evd env (i, sign, arity)
+  in define_tree is_recursive poly impls status evd env (i, sign, oarity)
 		 comp ann split hook
 
 let with_rollback f x =

@@ -119,17 +119,18 @@ let e_type_of = Typing.e_type_of ~refresh:false
 let make_definition ?opaque ?(poly=false) evd ?types b =
   let env = Global.env () in
   let _t = Typing.e_type_of env evd b in
-  let evd = match types with
+  let evm = match types with
     | None -> !evd
     | Some t -> let _s = Typing.e_type_of env evd t in !evd
   in
-  let evd, nf = Evarutil.nf_evars_and_universes evd in
+  let evm, nf = Evarutil.nf_evars_and_universes evm in
   let body = nf b and typ = Option.map nf types in
   let used = Universes.universes_of_constr body in
   let used' = Option.cata Universes.universes_of_constr Univ.LSet.empty typ in
   let used = Univ.LSet.union used used' in
-  let evd = Evd.restrict_universe_context evd used in
-  Declare.definition_entry ~poly ~univs:(snd (Evd.universe_context evd))
+  let evm = Evd.restrict_universe_context evm used in
+  evd := evm;
+  Declare.definition_entry ~poly ~univs:(snd (Evd.universe_context evm))
       ?types:typ body
 
 let declare_constant id body ty poly evd kind =
