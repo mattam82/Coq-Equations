@@ -553,6 +553,48 @@ Proof.
   unfold HSets.K. rewrite HSets.is_hset_refl. constructor.
 Defined.
 
+
+Ltac rewrite_sigma2_refl :=
+  match goal with
+    |- context [inj_sigma2 ?A ?P ?x ?p _ eq_refl] =>
+    rewrite (inj_sigma2_refl A x P p)
+   | |- context [@inj_right_sigma ?A ?H ?x ?P ?y ?y' _] =>
+    rewrite (@inj_right_sigma_refl A H x P y)
+   | |- context [@simplification_sigma2_dec ?A ?H ?P ?B ?p ?x ?y ?X eq_refl] =>
+     unfold simplification_sigma2_dec;
+       rewrite (@inj_right_sigma_refl A H p P x); simpl
+   | |- context [simplification_K_dec ?x ?p eq_refl] =>
+     rewrite simplification_K_dec_refl; simpl eq_rect
+   | |- context [@HSets.inj_sigma_r ?A ?H ?P ?x ?y ?y' _] =>
+    rewrite (@HSets.inj_sigma_r_refl A H P x y)
+  end.
+
+Polymorphic
+Definition ind_pack_eq {A : Type} {B : A -> Type} {x : A} {p q : B x} (e : p = q) :
+  @eq (sigma A (fun x => B x)) (x; p) (x; q).
+Proof. destruct e. reflexivity. Defined.
+
+Polymorphic
+Definition ind_pack_eq_inv {A : Type} {eqdec : EqDec A}
+           {B : A -> Type} (x : A) (p q : B x) (e : @eq (sigma A (fun x => B x)) (x; p) (x; q)) : p = q.
+Proof. revert e. apply simplification_sigma2_dec. apply id. Defined.
+
+Polymorphic
+Definition ind_pack_eq_inv_refl  {A : Type} {eqdec : EqDec A}
+           {B : A -> Type} {x : A} (p : B x) :
+  ind_pack_eq_inv _ _ _ (@eq_refl _ (x; p)) = eq_refl.
+Proof.
+  unfold ind_pack_eq_inv. simpl. rewrite_sigma2_refl. reflexivity.
+Defined.
+
+Polymorphic
+Definition ind_pack_eq_inv_equiv {A : Type} {eqdec : EqDec A}
+           {B : A -> Type} {x : A} (p q : B x) (e : p = q) :
+  ind_pack_eq_inv _ _ _ (ind_pack_eq e) = e.
+Proof.
+  destruct e. rewrite ind_pack_eq_inv_refl. reflexivity.
+Defined.
+
 (** This hint database and the following tactic can be used with [autounfold] to 
    unfold everything to [eq_rect]s. *)
 
@@ -584,22 +626,6 @@ Extraction Inline Id_simplification_sigma1 Id_simplification_sigma2 Id_simplific
 
 Ltac unfold_equations := repeat progress autounfold with equations.
 Ltac unfold_equations_in H := repeat progress autounfold with equations in H.
-
-
-Ltac rewrite_sigma2_refl :=
-  match goal with
-    |- context [inj_sigma2 ?A ?P ?x ?p _ eq_refl] =>
-    rewrite (inj_sigma2_refl A x P p)
-   | |- context [@inj_right_sigma ?A ?H ?x ?P ?y ?y' _] =>
-    rewrite (@inj_right_sigma_refl A H x P y)
-   | |- context [@simplification_sigma2_dec ?A ?H ?P ?B ?p ?x ?y ?X eq_refl] =>
-     unfold simplification_sigma2_dec;
-       rewrite (@inj_right_sigma_refl A H p P x); simpl
-   | |- context [simplification_K_dec ?x ?p eq_refl] =>
-     rewrite simplification_K_dec_refl; simpl eq_rect
-   | |- context [@HSets.inj_sigma_r ?A ?H ?P ?x ?y ?y' _] =>
-    rewrite (@HSets.inj_sigma_r_refl A H P x y)
-  end.
 
 Ltac rewrite_refl_id :=
   repeat (autorewrite with refl_id; try rewrite_sigma2_refl).
@@ -705,9 +731,10 @@ Ltac simplify_one_dep_elim_term c :=
       | |- _ =>
         match goal with
         | _ : n = m |- _ => intro
-        | _ => (* refine (@eq_simplification_sigma1 _ _ _ _ _ _ _ _) || *)
-              (*        refine (@eq_simplification_sigma1_dep _ _ _ _ _ _ _ _) || *)
-              (*        refine (@eq_simplification_sigma1_dep_dep _ _ _ _ _ _ _ _) || *)
+        | _ =>
+          (* refine (@eq_simplification_sigma1 _ _ _ _ _ _ _ _) || *)
+          (* refine (@eq_simplification_sigma1_dep _ _ _ _ _ _ _ _) || *)
+          (* refine (@eq_simplification_sigma1_dep_dep _ _ _ _ _ _ _ _) || *)
           refine (@simplification_sigma1 _ _ _ _ _ _ _ _)
         end
       end
@@ -773,9 +800,18 @@ Ltac simplify_one_dep_elim_term c :=
     | @Id ?A ?t ?u -> ?P =>
       (let hyp := fresh in intros hyp ; noconf_ref hyp) 
 
-    | @eq ?A ?t ?u -> _ =>
-      not_var t; not_var u;
-      (refine (@apply_noConfusion A _ _ _ _ _); progress simpl @NoConfusion;
+    | @eq ?A ?x ?y -> _ =>
+      not_var x; not_var y;
+      try (let packx := constr:(signature_pack x) in
+           let tyx := type of packx in
+           match tyx with
+           | @sigma ?A ?B =>
+             let e := fresh "e" in
+             intros e;
+           try rewrite <- (ind_pack_eq_inv_equiv (A:=A) (B:=B) (x:=pr1 packx) x y e);
+           generalize (@ind_pack_eq A B (pr1 packx) x y e); clear e; simpl
+           end);
+      (refine (@apply_noConfusion _ _ _ _ _ _); progress simpl @NoConfusion;
        match goal with
          |- True -> _ => idtac
        | |- False -> _ => idtac
@@ -830,6 +866,8 @@ Ltac simplify_one_dep_elim :=
     | [ |- context [eq_rect_r _ _ eq_refl]] => unfold eq_rect_r at 1; simpl eq_rect
     | [ |- context [@eq_rect_dep_r _ _ _ _ _ eq_refl]] => simpl eq_rect_dep_r
     | [ |- context [@Id_rect_dep_r _ _ _ _ _ id_refl]] => simpl Id_rect_dep_r
+    | [ |- context [ind_pack_eq_inv _ _ _ eq_refl]] =>
+      rewrite ind_pack_eq_inv_refl; simpl eq_rect
     | [ |- ?gl ] => simplify_one_dep_elim_term gl
   end.
 

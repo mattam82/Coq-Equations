@@ -196,15 +196,48 @@ Derive DependentElimination for fin.
 Derive Equality for fin.
 Solve Obligations with eqdec_proof.
 
-(* Derive Equality for fin. *)
-(* Solve Obligations with eqdec_proof. *)
   
+
+Derive Equality for fin.
+Solve Obligations with eqdec_proof.
+Next Obligation.
+  induction x; depelim y.
+  left; reflexivity.
+  right. intro. discriminate.
+  right. intro. discriminate.
+  case (IHx y).
+  intros ->. left; reflexivity.
+  intros. right; intros.
+  intro. depelim H.
+  apply n. reflexivity.
+Defined.
+
 Derive Signature for @fle.
 Derive NoConfusion for @fle.
-(* Derive Equality for @fle. *)
-(* Solve Obligations with eqdec_proof. *)
-
 Derive Subterm for @fle.
+
+Derive Equality for @fle.
+Solve Obligations with eqdec_proof.
+
+Next Obligation.
+  induction x; depelim y. 
+  left; reflexivity.
+  case (IHx y).
+  intros ->. left; reflexivity.
+  intros.
+  right; intro.
+  depelim H. apply n. reflexivity.
+Defined.
+
+Lemma simplification_K_refl : ∀ {A} (x : A) {B : x = x -> Type}
+                                    (p : B eq_refl),
+  simplification_K x p eq_refl = p.
+Proof.
+  intros.
+  unfold simplification_K.
+  rewrite UIP_refl_refl. unfold eq_rect_r. simpl.
+  reflexivity.
+Defined.
 
 Equations fle_trans' {n : nat} {i j : fin n} (p : fle i j) {k} (q : fle j k) : fle i k :=
 fle_trans' p q by rec p (@fle_subterm) :=
@@ -212,3 +245,55 @@ fle_trans' flez _ := flez;
 fle_trans' (fles p') (fles q') := fles (fle_trans' p' q').
 
 Print Assumptions fle_trans'.
+(*
+Next Obligation.
+  rec_wf_rel p IH @fle_subterm.
+  depelim H0.
+  simpl. reflexivity.
+
+  simpl.
+  depelim q.
+  unfold fle_trans'_unfold_obligation_1.
+  simpl.
+  unfold eq_ind_r, eq_ind, eq_rec.
+  simpl.
+  rewrite simplification_K_refl.
+  simpl. unfold eq_rec_r, eq_rec.
+  
+  replace ((eq_rect eq_refl (λ y : fs j = fs j, y = eq_refl) eq_refl
+                    (ind_pack_eq_inv _ _ _ eq_refl) (eq_sym (ind_pack_eq_inv_refl (fs j)))))
+  with (ind_pack_eq_inv_refl (fs j)).
+  match goal with
+    |- context [eq_rect ?x ?P ?px ?y ?e] =>
+    set (p := px); set (eq := e) in *
+  end.
+    set (foo:=               (@ind_pack_eq_inv nat nat_eqdec fin_sig 
+                 (S n0) (@fs n0 j) (@fs n0 j)
+                 (@eq_refl (sigma nat (fun x : nat => fin_sig x))
+                    (@sigmaI nat (fun x : nat => fin_sig x) (S n0) (@fs n0 j))))
+        ) in *.
+    change (ind_pack_eq_inv_refl (fs j)) with eq in p.
+    simpl in foo.
+    clearbody eq. change (foo = eq_refl) in eq.
+    depelim eq. clearbody foo.
+    destruct e. simpl in *.
+    rewrite H. simpl.
+    unfold fle_trans'. simpl.
+    admit.
+    unfold ind_pack_eq_inv_refl.
+    unfold eq_ind_r, eq_ind. simpl.
+    admit.
+    Defined.
+    
+    destruct H.
+    dep
+    depelim foo. simpl in p.
+  clear eq.
+  
+  unfold ind_pack_eq_inv_refl.
+  unfold eq_ind_r, eq_ind.
+  set (foo':=inj_right_sigma (λ x : nat, fin x) (fs j) (fs j) eq_refl).
+  assert (foo' = eq_refl).
+  unfold foo'. apply inj_right_sigma_refl.
+  clearbody foo'.
+  *)

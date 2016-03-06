@@ -9,6 +9,17 @@
 Require Import Program Bvector List Relations.
 From Equations Require Import Equations DepElimDec.
 
+Inductive le : nat -> nat -> Set :=
+| le_0 n : le 0 (S n)
+| le_S n m : le n m -> le (S n) (S m).
+Derive Signature for le.
+
+Equations(nocomp) congS {x y : nat} (p : x = y) : S x = S y :=
+congS eq_refl := eq_refl.
+  
+(* Equations antisym {x y : nat} (p : le x y) (q : le y x) : x = y := *)
+(* antisym (le_S n m p) (le_S ?(m) ?(n) q) := congS (antisym p q). *)
+
 Module TestF.
 
   Equations f (n : nat) : nat :=
