@@ -30,7 +30,7 @@ Lemma FixWf_unfold `{WF : WellFounded A R} (P : A -> Type)
 Proof. intros. unfold FixWf, Fix. destruct wellfounded.
   simpl. f_equal. extensionality y. extensionality h. pi.
 Qed.
-  
+
 Hint Rewrite @FixWf_unfold : Recursors.
 
 Ltac unfold_FixWf :=

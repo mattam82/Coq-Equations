@@ -214,13 +214,13 @@ Defined.
 
 Derive Signature for @fle.
 Derive NoConfusion for @fle.
-Derive Subterm for @fle.
 
 Derive Equality for @fle.
 Solve Obligations with eqdec_proof.
+Ltac t :=   simplify_one_dep_elim.
 
 Next Obligation.
-  induction x; depelim y. 
+  induction x; depelim y.
   left; reflexivity.
   case (IHx y).
   intros ->. left; reflexivity.
@@ -228,6 +228,8 @@ Next Obligation.
   right; intro.
   depelim H. apply n. reflexivity.
 Defined.
+
+Derive Subterm for @fle.
 
 Lemma simplification_K_refl : ∀ {A} (x : A) {B : x = x -> Type}
                                     (p : B eq_refl),
@@ -239,61 +241,48 @@ Proof.
   reflexivity.
 Defined.
 
+Arguments noConfusion_inv : simpl never.
+Arguments pack_sigma_eq : simpl never.
+(*
 Equations fle_trans' {n : nat} {i j : fin n} (p : fle i j) {k} (q : fle j k) : fle i k :=
 fle_trans' p q by rec p (@fle_subterm) :=
 fle_trans' flez _ := flez;
-fle_trans' (fles p') (fles q') := fles (fle_trans' p' q').
+    fle_trans' (fles p') (fles q') := fles (fle_trans' p' q').
+
+Ltac unfold_FixWf :=
+  match goal with
+    |- appcontext C [ @FixWf ?A ?R ?WF ?P ?f ?x ] =>
+      rewrite (@FixWf_unfold A R WF P f);
+      let step := fresh in set(step := f) in *;
+        try let c' := context C [step x step] in change c'
+  end.
+Arguments simplification_K_dec : simpl never.
 
 Print Assumptions fle_trans'.
-(*
 Next Obligation.
+  intros.
   rec_wf_rel p IH @fle_subterm.
+  unfold fle_trans', fle_trans'_unfold.
+  unfold_FixWf. simpl.
+  
   depelim H0.
   simpl. reflexivity.
 
-  simpl.
+  simpl. 
   depelim q.
-  unfold fle_trans'_unfold_obligation_1.
   simpl.
-  unfold eq_ind_r, eq_ind, eq_rec.
-  simpl.
-  rewrite simplification_K_refl.
-  simpl. unfold eq_rec_r, eq_rec.
-  
-  replace ((eq_rect eq_refl (λ y : fs j = fs j, y = eq_refl) eq_refl
-                    (ind_pack_eq_inv _ _ _ eq_refl) (eq_sym (ind_pack_eq_inv_refl (fs j)))))
-  with (ind_pack_eq_inv_refl (fs j)).
-  match goal with
-    |- context [eq_rect ?x ?P ?px ?y ?e] =>
-    set (p := px); set (eq := e) in *
-  end.
-    set (foo:=               (@ind_pack_eq_inv nat nat_eqdec fin_sig 
-                 (S n0) (@fs n0 j) (@fs n0 j)
-                 (@eq_refl (sigma nat (fun x : nat => fin_sig x))
-                    (@sigmaI nat (fun x : nat => fin_sig x) (S n0) (@fs n0 j))))
-        ) in *.
-    change (ind_pack_eq_inv_refl (fs j)) with eq in p.
-    simpl in foo.
-    clearbody eq. change (foo = eq_refl) in eq.
-    depelim eq. clearbody foo.
-    destruct e. simpl in *.
-    rewrite H. simpl.
-    unfold fle_trans'. simpl.
-    admit.
-    unfold ind_pack_eq_inv_refl.
-    unfold eq_ind_r, eq_ind. simpl.
-    admit.
-    Defined.
-    
-    destruct H.
-    dep
-    depelim foo. simpl in p.
-  clear eq.
-  
-  unfold ind_pack_eq_inv_refl.
-  unfold eq_ind_r, eq_ind.
-  set (foo':=inj_right_sigma (λ x : nat, fin x) (fs j) (fs j) eq_refl).
-  assert (foo' = eq_refl).
-  unfold foo'. apply inj_right_sigma_refl.
-  clearbody foo'.
+  unfold fle_trans'_obligation_2, fle_trans'_unfold_obligation_1. simpl.
+  autounfold with equations; simpl. 
+  rewrite_sigma2_refl. simpl.
+  rewrite_sigma2_refl. simpl.
+  rewrite_sigma2_refl. simpl.
+  rewrite_sigma2_refl. simpl.
+  rewrite_sigma2_refl. simpl.
+  rewrite_sigma2_refl. simpl.
+  rewrite_sigma2_refl. simpl.
+  rewrite_sigma2_refl. simpl.
+  rewrite_sigma2_refl. simpl.
+  rewrite_sigma2_refl. simpl.
+  reflexivity.
+Defined.
   *)

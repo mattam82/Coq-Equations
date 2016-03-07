@@ -421,6 +421,12 @@ Proof. intros. apply X. apply inj_pair2. exact H. Defined.
 Polymorphic Lemma simplification_sigma2 : ∀ {A} {P : A -> Type} {B} (p : A) (x y : P p),
   (x = y -> B) -> (sigmaI P p x = sigmaI P p y -> B).
 Proof. intros. apply X. apply inj_sigma2. exact H. Defined.
+Arguments simplification_sigma2 : simpl never.
+
+Polymorphic
+Lemma simplification_sigma2_refl {A} {P : A -> Type} {B} (p : A) (x : P p)
+  (G : x = x -> B) : simplification_sigma2 p x x G eq_refl = G eq_refl.
+Proof. unfold simplification_sigma2. rewrite inj_sigma2_refl. constructor. Defined.
 
 (** If we have decidable equality on [A] we use this version which is 
    axiom-free! *)
@@ -433,6 +439,16 @@ Polymorphic Lemma simplification_sigma2_dec : ∀ {A} `{EqDec A} {P : A -> Type}
     (p : A) (x y : P p),
     (x = y -> B) -> (sigmaI P p x = sigmaI P p y -> B).
 Proof. intros. apply X. apply inj_right_sigma in H0. assumption. Defined.
+
+Polymorphic Lemma simplification_sigma2_dec_refl :
+  ∀ {A} {eqdec:EqDec A} {P : A -> Type} {B}
+    (p : A) (x : P p) (G : x = x -> B),
+      @simplification_sigma2_dec A eqdec P B p x x G eq_refl = G eq_refl.
+Proof.
+  intros. unfold simplification_sigma2_dec.
+  rewrite inj_right_sigma_refl. reflexivity.
+Defined.
+Arguments simplification_sigma2_dec : simpl never.
 
 Polymorphic Lemma Id_simplification_sigma2 : ∀ {A} `{HSets.HSet A} {P : A -> Type} {B}
                                                (p : A) (x y : P p),
@@ -523,10 +539,22 @@ Defined.
 
 Lemma simplification_K : ∀ {A} (x : A) {B : x = x -> Type}, B eq_refl -> (∀ p : x = x, B p).
 Proof. intros. rewrite (UIP_refl A). assumption. Defined.
+Arguments simplification_K : simpl never.
+
+Lemma simplification_K_refl : ∀ {A} (x : A) {B : x = x -> Type}
+                                    (p : B eq_refl),
+  simplification_K x p eq_refl = p.
+Proof.
+  intros.
+  unfold simplification_K.
+  rewrite UIP_refl_refl. unfold eq_rect_r. simpl.
+  reflexivity.
+Defined.
 
 Lemma simplification_K_dec : ∀ {A} `{EqDec A} (x : A) {B : x = x -> Type}, 
   B eq_refl -> (∀ p : x = x, B p).
 Proof. intros. apply K_dec. assumption. Defined.
+Arguments simplification_K_dec : simpl never.
 
 Lemma simplification_K_dec_refl : ∀ {A} `{EqDec A} (x : A) {B : x = x -> Type}
                                     (p : B eq_refl),
@@ -553,22 +581,6 @@ Proof.
   unfold HSets.K. rewrite HSets.is_hset_refl. constructor.
 Defined.
 
-
-Ltac rewrite_sigma2_refl :=
-  match goal with
-    |- context [inj_sigma2 ?A ?P ?x ?p _ eq_refl] =>
-    rewrite (inj_sigma2_refl A x P p)
-   | |- context [@inj_right_sigma ?A ?H ?x ?P ?y ?y' _] =>
-    rewrite (@inj_right_sigma_refl A H x P y)
-   | |- context [@simplification_sigma2_dec ?A ?H ?P ?B ?p ?x ?y ?X eq_refl] =>
-     unfold simplification_sigma2_dec;
-       rewrite (@inj_right_sigma_refl A H p P x); simpl
-   | |- context [simplification_K_dec ?x ?p eq_refl] =>
-     rewrite simplification_K_dec_refl; simpl eq_rect
-   | |- context [@HSets.inj_sigma_r ?A ?H ?P ?x ?y ?y' _] =>
-    rewrite (@HSets.inj_sigma_r_refl A H P x y)
-  end.
-
 Polymorphic
 Definition ind_pack_eq {A : Type} {B : A -> Type} {x : A} {p q : B x} (e : p = q) :
   @eq (sigma A (fun x => B x)) (x; p) (x; q).
@@ -584,7 +596,8 @@ Definition ind_pack_eq_inv_refl  {A : Type} {eqdec : EqDec A}
            {B : A -> Type} {x : A} (p : B x) :
   ind_pack_eq_inv _ _ _ (@eq_refl _ (x; p)) = eq_refl.
 Proof.
-  unfold ind_pack_eq_inv. simpl. rewrite_sigma2_refl. reflexivity.
+  unfold ind_pack_eq_inv. simpl. unfold simplification_sigma2_dec.
+  unfold id. apply inj_right_sigma_refl.
 Defined.
 
 Polymorphic
@@ -592,18 +605,83 @@ Definition ind_pack_eq_inv_equiv {A : Type} {eqdec : EqDec A}
            {B : A -> Type} {x : A} (p q : B x) (e : p = q) :
   ind_pack_eq_inv _ _ _ (ind_pack_eq e) = e.
 Proof.
-  destruct e. rewrite ind_pack_eq_inv_refl. reflexivity.
+  destruct e. apply ind_pack_eq_inv_refl. 
 Defined.
+
+Polymorphic
+Lemma simplify_ind_pack {A : Type} {eqdec : EqDec A}
+      (B : A → Type) (x : A) (p q : B x) (G : p = q -> Type)  :
+      (forall e : (x; p) = (x; q),
+          let e' := @ind_pack_eq_inv A eqdec B x p q e in
+          G e') ->
+  (forall e : p = q, G e).
+Proof.
+  intros H. intros e. 
+  specialize (H (ind_pack_eq e)). simpl in H. 
+  rewrite ind_pack_eq_inv_equiv in H. apply H.
+Defined.
+Arguments simplify_ind_pack : simpl never.
+
+Polymorphic
+Lemma forK {A : Type} {eqdec : EqDec A}
+(B : A → Type) (x : A) (p q : B x) (G : p = q -> Type)  :
+   ((x; p) = (x; q) -> forall e' : p = q, G e')  ->
+   (forall e : (x; p) = (x; q),
+       let e' := @ind_pack_eq_inv A eqdec B x p q e in
+       G e').
+Proof.
+  intros H e.
+  apply (H e (ind_pack_eq_inv x p q e)). 
+Defined.
+Arguments forK : simpl never.
+
+Polymorphic
+Lemma simplify_ind_pack_refl {A : Type} {eqdec : EqDec A}
+(B : A → Type) (x : A) (p : B x) (G : p = p -> Type)
+(t : (x; p) = (x; p) -> forall e : p = p, G e) :
+  simplify_ind_pack B x p p G (forK B x p p G t) eq_refl =
+  t eq_refl eq_refl.
+Proof.
+  unfold simplify_ind_pack; simpl; unfold eq_ind_r, eq_ind; simpl.
+  set(pinv := ind_pack_eq_inv_refl p) in *.
+  set (forKp:=(forK B x p p G t eq_refl)).
+  unfold forK in *.
+  set (packi := ind_pack_eq_inv x p p) in *.
+  clearbody pinv.
+  set (e := packi eq_refl) in *.
+  clearbody e.
+  clearbody packi.
+  destruct pinv.
+  simpl. reflexivity.
+Defined.
+
+Ltac rewrite_sigma2_refl :=
+  match goal with
+  | |- context [inj_sigma2 ?A ?P ?x ?p _ eq_refl] =>
+    rewrite (inj_sigma2_refl A x P p)
+  | |- context [@inj_right_sigma ?A ?H ?x ?P ?y ?y' _] =>
+    rewrite (@inj_right_sigma_refl A H x P y)
+  | |- context [@simplify_ind_pack ?A ?eqdec ?B ?x ?p _ ?G _ eq_refl] =>
+    rewrite (@simplify_ind_pack_refl A eqdec B x p G _)
+  | |- context [@simplification_sigma2 ?A ?P ?B ?p ?x ?y ?X eq_refl] =>
+    rewrite (@simplification_sigma2_refl A P B p x X); simpl
+  | |- context [@simplification_sigma2_dec ?A ?H ?P ?B ?p ?x ?y ?X eq_refl] =>
+    rewrite (@simplification_sigma2_dec_refl A H P B p x X); simpl
+  | |- context [@simplification_K ?A ?x ?B ?p eq_refl] =>
+    rewrite (@simplification_K_refl A x B p); simpl eq_rect
+  | |- context [@simplification_K_dec ?A ?dec ?x ?B ?p eq_refl] =>
+    rewrite (@simplification_K_dec_refl A dec x B p); simpl eq_rect
+  | |- context [@HSets.inj_sigma_r ?A ?H ?P ?x ?y ?y' _] =>
+    rewrite (@HSets.inj_sigma_r_refl A H P x y)
+  end.
 
 (** This hint database and the following tactic can be used with [autounfold] to 
    unfold everything to [eq_rect]s. *)
 
 Hint Unfold solution_left solution_right
   solution_left_dep solution_right_dep deletion simplification_heq
-  simplification_existT1 simplification_existT2 simplification_K
-  simplification_K_dec
+  simplification_existT1 simplification_existT2
   simplification_sigma1 eq_simplification_sigma1 eq_simplification_sigma1_dep
-  simplification_sigma2 simplification_sigma2_dec
   simplification_existT2_dec
   Id_solution_left Id_solution_right Id_deletion
   Id_solution_left_dep Id_solution_right_dep Id_solution_right_let Id_solution_left_let
@@ -692,8 +770,11 @@ Ltac not_var x := try (is_var x; fail 1).
 Ltac simplify_one_dep_elim_term c :=
   match c with
     | @JMeq _ _ _ _ -> _ => refine (@simplification_heq _ _ _ _ _)
-    | ?t = ?t -> _ => intros _ || apply simplification_K_dec
-                           || refine (@simplification_K _ t _ _)
+    | @eq ?A ?t ?t -> _ =>
+      intros _ ||
+             (let eqdec := constr:(_ : EqDec A) in
+              refine (simplification_K_dec (A:=A) (H:=eqdec) _ _))
+             || refine (@simplification_K _ t _ _)
     | Id ?t ?t -> _ => intros _ || apply Id_simplification_K
                             
     | False -> _ => refine (@False_rect_dep _)
@@ -802,15 +883,19 @@ Ltac simplify_one_dep_elim_term c :=
 
     | @eq ?A ?x ?y -> _ =>
       not_var x; not_var y;
-      try (let packx := constr:(signature_pack x) in
-           let tyx := type of packx in
-           match tyx with
-           | @sigma ?A ?B =>
-             let e := fresh "e" in
-             intros e;
-           try rewrite <- (ind_pack_eq_inv_equiv (A:=A) (B:=B) (x:=pr1 packx) x y e);
-           generalize (@ind_pack_eq A B (pr1 packx) x y e); clear e; simpl
-           end);
+     try (let packx := constr:(signature_pack x) in
+        let packy := constr:(signature_pack y) in
+        let tyx := type of packx in
+        match tyx with
+        | @sigma _ _ =>
+          change x with (pr2 packx) at 1; change y with (pr2 packy) at 1;
+          refine (simplify_ind_pack _ _ _ _ _ _);
+          match goal with
+            |- forall e : @eq _ ?t ?u,
+              let x := @ind_pack_eq_inv ?A' ?eqdec ?B' ?idx ?p ?q e in @?G x => 
+            refine (@forK A' eqdec B' idx p q G _) 
+          end
+        end);
       (refine (@apply_noConfusion _ _ _ _ _ _); progress simpl @NoConfusion;
        match goal with
          |- True -> _ => idtac
