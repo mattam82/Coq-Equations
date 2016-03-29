@@ -242,7 +242,8 @@ Section insert.
   Equations insResult (c : color) (n : nat) : Set :=
   insResult Red n := rtree n;
   insResult Black n := {c' : color & rbtree c' n}.
-
+  Transparent insResult.
+  
   Equations ins {c n} (t : rbtree c n) : insResult c n :=
   ins Leaf := {< RedNode Leaf x Leaf >};
   ins (RedNode _ a y b) <= le_lt_dec x y => {
@@ -263,12 +264,11 @@ Section insert.
   Equations insertResult (c : color) (n : nat) : Set :=
   insertResult Red n := rbtree Black (S n);
   insertResult Black n := {c' : color & rbtree c' n}.
-
+  Transparent insertResult.
+  
   Equations makeRbtree c n (r : insResult c n) : insertResult c n :=
   makeRbtree Red _ (RedNode' _ _ _ a x b) := BlackNode a x b;
   makeRbtree Black _ r := r.
-  (* FIXME *)
-  Next Obligation. destruct c; destruct r; simp makeRbtree. Defined.
   Arguments makeRbtree [c n] _.
 
   Equations insert {c n} (t : rbtree c n) : insertResult c n :=

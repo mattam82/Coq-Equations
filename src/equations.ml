@@ -814,6 +814,10 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 	if Array.for_all (fun x -> x) eqns then (
 	  (* From now on, we don't need the reduction behavior of the constant anymore *)
 	  Typeclasses.set_typeclass_transparency (EvalConstRef cst) false false;
+          (match alias with
+           | Some (f, _, _) ->
+              Global.set_strategy (ConstKey (fst (destConst f))) Conv_oracle.Opaque
+           | None -> ());
 	  Global.set_strategy (ConstKey cst) Conv_oracle.Opaque;
 	  if with_ind && succ j == List.length ind_stmts then declare_ind ())
       in
