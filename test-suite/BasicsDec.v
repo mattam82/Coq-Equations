@@ -26,7 +26,6 @@ Derive Signature for foo.
 
 Require Import Equations.EqDec.
 
-(* FIXME Should not have to do that here. *)
 Derive Signature for Vector.t.
 
 Instance vector_eqdec {A n} `(EqDec A) : EqDec (vector A n). 

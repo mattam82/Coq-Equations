@@ -27,40 +27,20 @@ nat_to_fin {n:=(S n)} (S m) p := fs (nat_to_fin m _).
 
 Next Obligation. apply Lt.lt_S_n; assumption. Defined.
 
-(*
-Equations fin_to_nat {n : nat} (i : fin n) : {m : nat | m < n} :=
-fin_to_nat _ fz := exist _ 0 _;
-fin_to_nat _ (fs j) := let (m, p) := fin_to_nat j in exist _ (S m) _.
+Set Program Mode.
+
+Equations fin_to_nat_bound {n : nat} (i : fin n) : {m : nat | m < n} :=
+fin_to_nat_bound fz := 0;
+fin_to_nat_bound (fs j) := let (m, p) := fin_to_nat_bound j in (S m).
 Next Obligation. apply Le.le_n_S; apply Le.le_0_n. Defined.
 Next Obligation. apply Lt.lt_n_S; assumption. Defined.
 
-(*
-Equations nat_to_fin {n : nat} (m : nat) (p : m < n) : fin n :=
-nat_to_fin (S n) 0 _ := fz;
-nat_to_fin (S n) (S m) _ := fs (nat_to_fin m _).
-Next Obligation. apply Lt.lt_S_n; assumption. Defined.
-*)
+Equations nat_bound_to_fin (n : nat) (m : {m : nat | m < n}) : fin n :=
+nat_bound_to_fin 0 (exist _ p) :=! p;
+nat_bound_to_fin (S n') (exist 0 _) := fz;
+nat_bound_to_fin (S n') (exist (S m) p) := fs (nat_bound_to_fin _ m).
 
-
-Equations nat_to_fin {n : nat} (m : {m : nat | m < n}) : fin n :=
-nat_to_fin 0 m :=! m;
-nat_to_fin (S n) (exist ?(fun m => m < S n) 0 _) := fz;
-nat_to_fin (S n) (exist ?(fun m => m < S n) (S m) _) := fs (nat_to_fin (exist _ m _)).
-*)
-(*
-nat_to_fin (S n) m <= proj1_sig m => {
-  nat_to_fin (S n) m 0 := fz;
-  nat_to_fin (S n) m (S m') := fs (nat_to_fin (exist _ m' _))
-}.
-Obligation Tactic := idtac.
-Next Obligation. intros.
-*)
-(*
-nat_to_fin (S n) m <= m => {
-  nat_to_fin (S n) m (exist _ 0 _) := fz;
-  nat_to_fin (S n) m (exist _ (S m') _) := fs (nat_to_fin (exist _ m' _ ))
-}.
-*)
+Next Obligation. auto with arith. Defined.
 
 Lemma fin__nat : forall (n : nat) (m : nat) (p : m < n),
   fin_to_nat (nat_to_fin m p) = m.
@@ -109,18 +89,29 @@ Proof.
       apply IHn.
 Qed.
 
-Definition convert_ilist {A : Set} {n m : nat} (p : n = m) (l : ilist A n) : ilist A m.
-Proof. rewrite <- p. assumption. Defined.
+Equations convert_ilist {A : Set} {n m : nat} (p : n = m) (l : ilist A n) : ilist A m :=
+convert_ilist p Nil with p => {
+  | eq_refl := Nil };
+convert_ilist p (Cons a l) with p => | eq_refl := Cons a (convert_ilist eq_refl l).
+
+Lemma convert_ilist_refl {A} (n : nat) (l : ilist A n) : convert_ilist eq_refl l = l.
+Proof.
+  funelim (convert_ilist eq_refl l). reflexivity.
+  now rewrite H.
+Defined.
 
 Lemma convert_ilist_trans : forall {A : Set} {n m o : nat} (p : n = m) (r : m = o) (l : ilist A n),
   convert_ilist r (convert_ilist p l) = convert_ilist (eq_trans p r) l.
-Proof. intros. simplify_eqs. reflexivity. Qed.
+Proof. intros. simplify_eqs. now rewrite !convert_ilist_refl. Qed.
+
+Hint Rewrite @convert_ilist_refl @convert_ilist_trans : convert_ilist.
 
 Equations irev_aux {A : Set} {i j : nat} (l : ilist A i) (acc : ilist A j) : ilist A (i + j) :=
 irev_aux Nil acc := acc;
 irev_aux (Cons x t) acc := convert_ilist _ (irev_aux t (Cons x acc)).
 
-Program Definition irev {A : Set} {n : nat} (l : ilist A n) : ilist A n := irev_aux l Nil.
+Definition irev {A : Set} {n : nat} (l : ilist A n) : ilist A n :=
+  convert_ilist _ (irev_aux l Nil).
 
 Ltac match_refl :=
 match goal with
@@ -138,7 +129,6 @@ Equations iapp {A : Set} {n m : nat} (l1 : ilist A n) (l2 : ilist A m) : ilist A
 iapp Nil l := l;
 iapp (Cons x t) l := Cons x (iapp t l).
 
-
 Lemma iapp_cons : forall (A : Set) (i j : nat) (l1 : ilist A i) (l2 : ilist A j) (x : A),
   iapp (Cons x l1) l2 = Cons x (iapp l1 l2).
 Proof. simp iapp. Qed.
@@ -152,11 +142,12 @@ Proof.
   unfold rev_aux_app_stmt.
   intros.
   funelim (irev_aux l acc1).
-    - simp irev_aux iapp. compute; match_refl; reflexivity.
+    - simp irev_aux iapp. simpl in H. depelim H; simp convert_ilist. 
     - simp irev_aux iapp. rewrite convert_ilist_trans.
       rewrite <- iapp_cons.
       set (He := eq_trans _ _). clearbody He.
       set (He' := irev_aux_obligation_1 _ _ _ _ _ _ _). clearbody He'.
+      simpl in H0. simpl in H. 
 Admitted.
 
 Equations irev' {A : Set} {n : nat} (l : ilist A n) : ilist A n :=
@@ -202,21 +193,6 @@ From Equations Require Import EqDec DepElimDec.
 Derive Signature for fin.
 Derive NoConfusion for fin.
 Derive DependentElimination for fin.
-
-Ltac eqdec_proof ::= try red; intros;
-  match goal with
-    |- dec_eq ?x ?y =>
-    revert y; induction x; intros until y; depelim y;
-    match goal with
-      |- dec_eq ?x ?y => eqdec_loop x y
-    end
-   | |- { ?x = ?y } + { _ } =>
-    revert y; induction x; intros until y; depelim y;
-    match goal with
-      |- { ?x = ?y } + { _ } => eqdec_loop x y
-    end
-  end.
-(* FIXME references are wrong if we don't redefine here ... *)
 Derive Equality for fin.
 Solve Obligations with eqdec_proof.
 
