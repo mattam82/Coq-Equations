@@ -414,9 +414,18 @@ Proof. intros; assumption. Defined.
 Lemma simplification_heq : ∀ {A B} (x y : A), (x = y -> B) -> (JMeq x y -> B).
 Proof. intros; apply X; apply (JMeq_eq H). Defined.
 
+Lemma simplification_heq_refl {A B} (x : A) (p : x = x -> B) :
+    simplification_heq x x p JMeq_refl = p eq_refl.
+Proof. unfold simplification_heq. now rewrite JMeq_eq_refl. Defined.
+
 Lemma simplification_existT2 : ∀ {A} {P : A -> Type} {B} (p : A) (x y : P p),
   (x = y -> B) -> (existT P p x = existT P p y -> B).
 Proof. intros. apply X. apply inj_pair2. exact H. Defined.
+
+Lemma simplification_existT2_refl {A} {P : A -> Type} {B} (p : A) (x : P p)
+      (e : x = x -> B) :
+  simplification_existT2 p x x e eq_refl = e eq_refl.
+Proof. unfold simplification_existT2. rewrite inj_pairT2_refl. constructor. Defined.
 
 Polymorphic Lemma simplification_sigma2 : ∀ {A} {P : A -> Type} {B} (p : A) (x y : P p),
   (x = y -> B) -> (sigmaI P p x = sigmaI P p y -> B).
@@ -431,9 +440,18 @@ Proof. unfold simplification_sigma2. rewrite inj_sigma2_refl. constructor. Defin
 (** If we have decidable equality on [A] we use this version which is 
    axiom-free! *)
 
-Lemma simplification_existT2_dec : ∀ {A} `{EqDec A} {P : A -> Type} {B} (p : A) (x y : P p),
+Lemma simplification_existT2_dec {A} `{EqDec A} {P : A -> Type} {B}
+      (p : A) (x y : P p) :
   (x = y -> B) -> (existT P p x = existT P p y -> B).
 Proof. intros. apply X. apply inj_right_pair in H0. assumption. Defined.
+
+Lemma simplification_existT2_dec_refl {A} `{EqDec A} {P : A -> Type} {B}
+      (p : A) (x : P p) (e : x = x -> B) :
+  simplification_existT2_dec p x x e eq_refl = e eq_refl.
+Proof.
+  intros. unfold simplification_existT2_dec.
+  now rewrite inj_right_pair_refl.
+Defined.
 
 Polymorphic Lemma simplification_sigma2_dec : ∀ {A} `{EqDec A} {P : A -> Type} {B}
     (p : A) (x y : P p),
@@ -457,7 +475,11 @@ Proof. intros. apply X. apply HSets.inj_sigma_r. exact X0. Defined.
 
 Lemma simplification_existT1 : ∀ {A} {P : A -> Type} {B} (p q : A) (x : P p) (y : P q),
   (p = q -> existT P p x = existT P q y -> B) -> (existT P p x = existT P q y -> B).
-Proof. intros. injection H. intros ; auto. Defined.
+Proof.
+  intros. refine (X _ H).
+  change (projT1 (existT P p x) = projT1 (existT P q y)).
+  now destruct H.
+ Defined.
 
 Polymorphic Lemma simplification_sigma1 : ∀ {A} {P : A -> Type} {B} (p q : A) (x : P p) (y : P q),
   (p = q -> sigmaI P p x = sigmaI P q y -> B) -> (sigmaI P p x = sigmaI P q y -> B).
@@ -673,19 +695,26 @@ Ltac rewrite_sigma2_refl :=
     rewrite (@simplification_K_dec_refl A dec x B p); simpl eq_rect
   | |- context [@HSets.inj_sigma_r ?A ?H ?P ?x ?y ?y' _] =>
     rewrite (@HSets.inj_sigma_r_refl A H P x y)
+
+  | |- context [@simplification_heq ?A ?B ?x _ ?p JMeq_refl] =>
+    rewrite (@simplification_heq_refl A B x p)
+  | |- context [@simplification_existT2_dec ?A ?eq ?P ?B ?p ?x ?y ?X eq_refl] =>
+    rewrite (@simplification_existT2_dec_refl A eq P B p x X); simpl
+  | |- context [@simplification_existT2 ?A ?P ?B ?p ?x ?y ?X eq_refl] =>
+    rewrite (@simplification_existT2_refl A P B p x X); simpl
   end.
 
 (** This hint database and the following tactic can be used with [autounfold] to 
    unfold everything to [eq_rect]s. *)
 
 Hint Unfold solution_left solution_right
-  solution_left_dep solution_right_dep deletion simplification_heq
-  simplification_existT1 simplification_existT2
-  simplification_sigma1 eq_simplification_sigma1 eq_simplification_sigma1_dep
-  simplification_existT2_dec
+  solution_left_dep solution_right_dep deletion
+  simplification_existT1 simplification_sigma1
+  eq_simplification_sigma1 eq_simplification_sigma1_dep
   Id_solution_left Id_solution_right Id_deletion
-  Id_solution_left_dep Id_solution_right_dep Id_solution_right_let Id_solution_left_let
-  Id_simplification_sigma1 Id_simplification_sigma2 Id_simplification_K  
+  Id_solution_left_dep Id_solution_right_dep
+  Id_solution_right_let Id_solution_left_let
+  Id_simplification_sigma1 Id_simplification_sigma2 
   eq_rect_r eq_rec eq_ind eq_ind_r : equations.
 
 (** Makes these definitions disappear at extraction time *)
@@ -813,9 +842,9 @@ Ltac simplify_one_dep_elim_term c :=
         match goal with
         | _ : n = m |- _ => intro
         | _ =>
-          (* refine (@eq_simplification_sigma1 _ _ _ _ _ _ _ _) || *)
-          (* refine (@eq_simplification_sigma1_dep _ _ _ _ _ _ _ _) || *)
-          (* refine (@eq_simplification_sigma1_dep_dep _ _ _ _ _ _ _ _) || *)
+          refine (@eq_simplification_sigma1 _ _ _ _ _ _ _ _) ||
+          refine (@eq_simplification_sigma1_dep _ _ _ _ _ _ _ _) ||
+          refine (@eq_simplification_sigma1_dep_dep _ _ _ _ _ _ _ _) ||
           refine (@simplification_sigma1 _ _ _ _ _ _ _ _)
         end
       end
@@ -949,6 +978,7 @@ Ltac simplify_one_dep_elim_term c :=
 Ltac simplify_one_dep_elim :=
   match goal with
     | [ |- context [eq_rect_r _ _ eq_refl]] => unfold eq_rect_r at 1; simpl eq_rect
+    | [ |- context [eq_rect _ _ _ _ eq_refl]] => simpl eq_rect
     | [ |- context [@eq_rect_dep_r _ _ _ _ _ eq_refl]] => simpl eq_rect_dep_r
     | [ |- context [@Id_rect_dep_r _ _ _ _ _ id_refl]] => simpl Id_rect_dep_r
     | [ |- context [ind_pack_eq_inv _ _ _ eq_refl]] =>
@@ -1288,16 +1318,19 @@ Ltac hnf_eq :=
   end.
 
 Ltac simpl_equations :=
-  repeat (hnf_eq ; unfold_equations; rewrite_refl_id).
+  repeat (repeat (simpl; rewrite_refl_id); try progress autounfold with equations).
 
 Ltac simpl_equation_impl :=
   repeat (unfold_equations; rewrite_refl_id).
 
-Ltac simplify_equation := 
-  make_simplify_goal ; repeat (hnf_gl ; simpl; unfold_equations; rewrite_refl_id).
 
-Ltac solve_equation := 
-  intros ; try simplify_equation ; try
+Ltac simplify_equation c :=
+  make_simplify_goal; simpl; 
+  repeat (try autounfoldify c; simpl;
+          unfold_equations; rewrite_refl_id).
+
+Ltac solve_equation c :=
+  intros ; try simplify_equation c ; try
     (match goal with 
        | [ |- ImpossibleCall _ ] => elimtype False ; find_empty 
        | _ => reflexivity || discriminates

@@ -282,9 +282,7 @@ val find_empty_tac : unit -> unit Proofview.tactic
 val pi_tac : unit -> unit Proofview.tactic
 val noconf_tac : unit -> unit Proofview.tactic
 val simpl_equations_tac : unit -> unit Proofview.tactic
-val solve_equation_tac :
-  'a ->
-  Tacexpr.r_dispatch Tacexpr.gen_tactic_arg list -> unit Proofview.tactic
+val solve_equation_tac : Globnames.global_reference -> unit Proofview.tactic
 val impossible_call_tac :
   Globnames.global_reference -> Tacexpr.glob_tactic_expr
 val depelim_tac : Names.Id.t -> unit Proofview.tactic

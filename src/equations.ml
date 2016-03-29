@@ -138,6 +138,9 @@ let abstract_rec_calls ?(do_subst=true) is_rec len protos c =
 let below_transparent_state () =
   Hints.Hint_db.transparent_state (Hints.searchtable_map "Below")
 
+let unfold_constr c = 
+  unfold_in_concl [(Locus.AllOccurrences, EvalConstRef (fst (destConst c)))]
+
 let simpl_star = 
   tclTHEN simpl_in_concl (onAllHyps (fun id -> simpl_in_hyp (id, Locus.InHyp)))
 
@@ -683,7 +686,7 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 	match alias with
 	| Some (f', unf, split) -> 
 	    (f', path, sign, arity, pats, args), f', Equality.rewriteLR unf
-	| None -> fs, f', Tacticals.New.tclIDTAC
+	| None -> fs, f', Proofview.V82.tactic (unfold_constr f)
       else fs, f', Tacticals.New.tclIDTAC
     in fs, unftac, map (statement i f') c in
   let stmts = List.map_i statements 0 comps in
@@ -822,7 +825,7 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 	  if with_ind && succ j == List.length ind_stmts then declare_ind ())
       in
       let tac = 
-	tclTHENLIST [to82 intros; to82 unf; to82 (solve_equation_tac (ConstRef cst) [])]
+	tclTHENLIST [to82 intros; to82 unf; to82 (solve_equation_tac (ConstRef cst))]
       in
       let evd, _ = Typing.type_of (Global.env ()) !evd c in
 	ignore(Obligations.add_definition ~kind:info.decl_kind
@@ -851,9 +854,6 @@ let convert_projection proj f_cst = fun gl ->
   let concl' = conv_proj_call proj f_cst concl in
     if eq_constr concl concl' then tclIDTAC gl
     else Proofview.V82.of_tactic (convert_concl_no_check concl' DEFAULTcast) gl
-
-let unfold_constr c = 
-  unfold_in_concl [(Locus.AllOccurrences, EvalConstRef (fst (destConst c)))]
 
 let simpl_except (ids, csts) =
   let csts = Cset.fold Cpred.remove csts Cpred.full in

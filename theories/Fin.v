@@ -47,7 +47,6 @@ Qed.
 (* fin_plus ?(S n) ?(S m) (fs n x) y := fs (fin_plus x y) ; *)
 (* fin_plus ?(S n) ?(S m) (fz n) (fs m y) := fs (fin_plus fz y).  *)
 
-
 (** Won't pass the guardness check which diverges anyway. *)
 
 Inductive finle : ∀ (n : nat) (x : fin n) (y : fin n), Prop :=
@@ -60,16 +59,6 @@ Instance finle_ind_pack n x y : DependentEliminationPackage (finle n x y) :=
   { elim_type := _ ; elim := finle_ind_dep }.
 
 Implicit Arguments finle [[n]].
-
-(* Equations trans {n} {i j k : fin n} (p : finle i j) (q : finle j k) : finle i k := *)
-(* trans ?(S _) ?(fz) ?(j) ?(k) leqz q := leqz ; *)
-(* trans ?(S n) ?(fs i) ?(fs j) ?(fs k) (leqs p) (leqs q) := leqs (trans p q). *)
-
-(* Lemma trans_eq1 n (j k : fin (S n)) (q : finle j k) : trans leqz q = leqz. *)
-(* Proof. intros. simplify_equations ; reflexivity. Qed. *)
-
-(* Lemma trans_eq2 n i j k p q : @trans (S n) (fs i) (fs j) (fs k) (leqs p) (leqs q) = leqs (trans p q). *)
-(* Proof. intros. simplify_equations ; reflexivity. Qed. *)
 
 Require Vectors.Vector.
 Implicit Arguments Vector.nil [[A]].
@@ -93,26 +82,6 @@ tabulate {n:=(S n)} f := vcons (f fz) (tabulate (f ∘ fs)).
 (** NoConfusion For [fin]. *)
 
 Derive NoConfusion for fin.
-
-(* Equations (nocomp noeqns noind) NoConfusion_fin {n : nat} (P : Type) (x y : fin n) : Type := *)
-(* NoConfusion_fin (S n) P (fz n) (fz n) := P -> P ; *)
-(* NoConfusion_fin (S n) P (fz n) (fs n y) := P ; *)
-(* NoConfusion_fin (S n) P (fs n x) (fz n) := P ; *)
-(* NoConfusion_fin (S n) P (fs n x) (fs n y) := (x = y -> P) -> P. *)
-
-(* Transparent NoConfusion_fin. *)
-
-(* Equations (nocomp noind) noConfusion_fin {n} P (x y : fin n) (H : x = y) : NoConfusion_fin P x y := *)
-(* noConfusion_fin (S n) P (fz n) (fz n) eq_refl := λ p, p ; *)
-(* noConfusion_fin (S n) P (fs ?(n) x) (fs ?(n) x) eq_refl := λ p : x = x -> P, p eq_refl. *)
-
-(* Global Opaque noConfusion_fin. *)
-(* Hint Rewrite @noConfusion_fin_equation_2 @noConfusion_fin_equation_5 : equations. *)
-(* Hint Immediate @noConfusion_fin_equation_1 @noConfusion_fin_equation_3 @noConfusion_fin_equation_4 : equations. *)
-
-(* Instance fin_noconf n : NoConfusionPackage (fin n) := *)
-(*   { NoConfusion := NoConfusion_fin ; *)
-(*     noConfusion := noConfusion_fin }. *)
 
 (** [Below] recursor for [fin]. *)
 

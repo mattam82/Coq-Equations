@@ -492,12 +492,21 @@ let simpl_equations_tac () = tac_of_string "Equations.DepElim.simpl_equations" [
 let reference_of_global c =
   Qualid (dummy_loc, Nametab.shortest_qualid_of_global Idset.empty c)
 
-let solve_equation_tac c = tac_of_string "Equations.DepElim.solve_equation"
+let solve_equation_tac c =
+  Tacinterp.interp
+    (TacArg(dummy_loc,TacCall(dummy_loc,
+  Qualid (dummy_loc, qualid_of_string "Equations.DepElim.solve_equation"),
+  [ConstrMayEval (Genredexpr.ConstrTerm
+                    (Constrexpr.CAppExpl (dummy_loc,
+                                          (None, reference_of_global c, None),
+                                          [])))])))
+
+  (* tac_of_string "Equations.DepElim.solve_equation" *)
 
 let impossible_call_tac c = Tacintern.glob_tactic
   (TacArg(dummy_loc,TacCall(dummy_loc,
   Qualid (dummy_loc, qualid_of_string "Equations.DepElim.impossible_call"),
-  [ConstrMayEval (Genredexpr.ConstrTerm (Constrexpr.CRef (reference_of_global c, None)))])))
+  [Reference (reference_of_global c)])))
 
 let depelim_tac h = tac_of_string "Equations.DepElim.depelim"
   [tacident_arg h]

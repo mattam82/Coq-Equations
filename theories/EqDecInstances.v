@@ -5,7 +5,7 @@ From Equations Require Import EqDec DepElim NoConfusion.
 
 Ltac eqdec_loop t u :=
   (left; reflexivity) || 
-  (solve [right; intro He; noconf He]) ||
+  (solve [right; red; simplify_dep_elim]) ||
   (let x := match t with
              | appcontext C [ _ ?x ] => constr:x
              end
@@ -14,7 +14,7 @@ Ltac eqdec_loop t u :=
              | appcontext C [ _ ?y ] => constr:y
              end
     in
-    let contrad := intro Hn; right; intro He; noconf He; apply Hn; reflexivity in
+    let contrad := intro Hn; right; red; simplify_dep_elim; apply Hn; reflexivity in
     let good := intros ->;
       let t' := match t with
                 | appcontext C [ ?x _ ] => constr:x
@@ -24,9 +24,8 @@ Ltac eqdec_loop t u :=
                 | appcontext C [ ?y _ ] => constr:y
                 end
       in
-      (* idtac "there" t' u'; *)  try (eqdec_loop t' u')
+      try (eqdec_loop t' u')
     in
-    (* idtac "here" x y; *)
     match goal with
       [ H : forall z, dec_eq x z |- _ ] =>
       case (H y); [good|contrad]

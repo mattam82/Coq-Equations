@@ -188,7 +188,9 @@ Print Assumptions fle_trans.
 
 Hint Unfold NoConfusion.noConfusion_nat_obligation_1 : equations.
 
-From Equations Require Import EqDec DepElimDec.
+From Equations Require Import EqDec DepElimDec EqDecInstances.
+
+Derive Signature for @eq.
 
 Derive Signature for fin.
 Derive NoConfusion for fin.
@@ -196,93 +198,40 @@ Derive DependentElimination for fin.
 Derive Equality for fin.
 Solve Obligations with eqdec_proof.
 
-  
-
-Derive Equality for fin.
-Solve Obligations with eqdec_proof.
-Next Obligation.
-  induction x; depelim y.
-  left; reflexivity.
-  right. intro. discriminate.
-  right. intro. discriminate.
-  case (IHx y).
-  intros ->. left; reflexivity.
-  intros. right; intros.
-  intro. depelim H.
-  apply n. reflexivity.
-Defined.
-
 Derive Signature for @fle.
 Derive NoConfusion for @fle.
-
 Derive Equality for @fle.
 Solve Obligations with eqdec_proof.
-Ltac t :=   simplify_one_dep_elim.
-
-Next Obligation.
-  induction x; depelim y.
-  left; reflexivity.
-  case (IHx y).
-  intros ->. left; reflexivity.
-  intros.
-  right; intro.
-  depelim H. apply n. reflexivity.
-Defined.
-
 Derive Subterm for @fle.
+Print Assumptions fle_eqdec.
 
-Lemma simplification_K_refl : ∀ {A} (x : A) {B : x = x -> Type}
-                                    (p : B eq_refl),
-  simplification_K x p eq_refl = p.
-Proof.
-  intros.
-  unfold simplification_K.
-  rewrite UIP_refl_refl. unfold eq_rect_r. simpl.
-  reflexivity.
-Defined.
-
-Arguments noConfusion_inv : simpl never.
-Arguments pack_sigma_eq : simpl never.
-(*
 Equations fle_trans' {n : nat} {i j : fin n} (p : fle i j) {k} (q : fle j k) : fle i k :=
 fle_trans' p q by rec p (@fle_subterm) :=
 fle_trans' flez _ := flez;
     fle_trans' (fles p') (fles q') := fles (fle_trans' p' q').
-
-Ltac unfold_FixWf :=
-  match goal with
-    |- appcontext C [ @FixWf ?A ?R ?WF ?P ?f ?x ] =>
-      rewrite (@FixWf_unfold A R WF P f);
-      let step := fresh in set(step := f) in *;
-        try let c' := context C [step x step] in change c'
-  end.
-Arguments simplification_K_dec : simpl never.
-
 Print Assumptions fle_trans'.
-Next Obligation.
-  intros.
-  rec_wf_rel p IH @fle_subterm.
-  unfold fle_trans', fle_trans'_unfold.
-  unfold_FixWf. simpl.
-  
-  depelim H0.
-  simpl. reflexivity.
 
-  simpl. 
-  depelim q.
-  simpl.
-  unfold fle_trans'_obligation_2, fle_trans'_unfold_obligation_1. simpl.
-  autounfold with equations; simpl. 
-  rewrite_sigma2_refl. simpl.
-  rewrite_sigma2_refl. simpl.
-  rewrite_sigma2_refl. simpl.
-  rewrite_sigma2_refl. simpl.
-  rewrite_sigma2_refl. simpl.
-  rewrite_sigma2_refl. simpl.
-  rewrite_sigma2_refl. simpl.
-  rewrite_sigma2_refl. simpl.
-  rewrite_sigma2_refl. simpl.
-  rewrite_sigma2_refl. simpl.
-  reflexivity.
-Defined.
-  *)
+(* Ltac unfold_FixWf := *)
+(*   match goal with *)
+(*     |- appcontext C [ @FixWf ?A ?R ?WF ?P ?f ?x ] => *)
+(*       rewrite (@FixWf_unfold A R WF P f); *)
+(*       let step := fresh in set(step := f) in *; *)
+(*         try let c' := context C [step x step] in change c' *)
+(*   end. *)
+
+(* Next Obligation. *)
+(*   intros. *)
+(*   rec_wf_rel p IH @fle_subterm. *)
+(*   unfold fle_trans', fle_trans'_unfold. *)
+(*   unfold_FixWf. simpl. *)
+  
+(*   depelim H0. *)
+(*   simpl. reflexivity. *)
+
+(*   simpl. *)
+(*   depelim q. *)
+(*   simpl. *)
+(*   unfold fle_trans'_obligation_2, fle_trans'_unfold_obligation_1. simpl. *)
+(*   repeat (rewrite_refl_id; simpl). *)
+(*   reflexivity. *)
+(* Defined. *)
