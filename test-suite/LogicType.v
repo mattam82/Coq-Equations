@@ -16,5 +16,6 @@ Ltac generalize_sig_dest id ::=
 Equations test_k (x : nat) (r : x = x) : r = r :=
 test_k x id_refl := id_refl.
 
-(* Equations fail_k (A : Type) (x : A) (r : x = x) : r = r := *)
-(*   fail_k A x id_refl := id_refl. *)
+(* Fail *)
+(* Equations fail_k (A : Type) (x : A) (r : x = x) : r = r :=  *)
+(* fail_k A x id_refl := id_refl. *)

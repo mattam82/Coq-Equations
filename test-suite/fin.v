@@ -210,28 +210,3 @@ fle_trans' p q by rec p (@fle_subterm) :=
 fle_trans' flez _ := flez;
     fle_trans' (fles p') (fles q') := fles (fle_trans' p' q').
 Print Assumptions fle_trans'.
-
-(* Ltac unfold_FixWf := *)
-(*   match goal with *)
-(*     |- appcontext C [ @FixWf ?A ?R ?WF ?P ?f ?x ] => *)
-(*       rewrite (@FixWf_unfold A R WF P f); *)
-(*       let step := fresh in set(step := f) in *; *)
-(*         try let c' := context C [step x step] in change c' *)
-(*   end. *)
-
-(* Next Obligation. *)
-(*   intros. *)
-(*   rec_wf_rel p IH @fle_subterm. *)
-(*   unfold fle_trans', fle_trans'_unfold. *)
-(*   unfold_FixWf. simpl. *)
-  
-(*   depelim H0. *)
-(*   simpl. reflexivity. *)
-
-(*   simpl. *)
-(*   depelim q. *)
-(*   simpl. *)
-(*   unfold fle_trans'_obligation_2, fle_trans'_unfold_obligation_1. simpl. *)
-(*   repeat (rewrite_refl_id; simpl). *)
-(*   reflexivity. *)
-(* Defined. *)

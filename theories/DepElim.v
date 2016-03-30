@@ -473,6 +473,15 @@ Polymorphic Lemma Id_simplification_sigma2 : ∀ {A} `{HSets.HSet A} {P : A -> T
   (Id x y -> B) -> (Id (sigmaI P p x) (sigmaI P p y) -> B).
 Proof. intros. apply X. apply HSets.inj_sigma_r. exact X0. Defined.
 
+Polymorphic
+Lemma Id_simplification_sigma2_refl {A} `{HSets.HSet A} {P : A -> Type} {B}
+(p : A) (x : P p) (e : Id x x -> B) :
+  Id_simplification_sigma2 p x x e id_refl = e id_refl.
+Proof.
+  intros. unfold Id_simplification_sigma2.
+  now rewrite HSets.inj_sigma_r_refl.
+Defined.
+
 Lemma simplification_existT1 : ∀ {A} {P : A -> Type} {B} (p q : A) (x : P p) (y : P q),
   (p = q -> existT P p x = existT P q y -> B) -> (existT P p x = existT P q y -> B).
 Proof.
@@ -677,6 +686,15 @@ Proof.
   simpl. reflexivity.
 Defined.
 
+(** All the simplification rules involving axioms are treated as opaque 
+  when proving lemmas about definitions. To actually compute with these
+  inside Coq, one has to make them transparent again. *)
+
+Global Opaque simplification_existT2 simplification_existT2_dec
+       simplification_sigma2 simplification_sigma2_dec
+       simplification_heq simplification_K simplification_K_dec
+       simplify_ind_pack forK Id_simplification_sigma2.
+
 Ltac rewrite_sigma2_refl :=
   match goal with
   | |- context [inj_sigma2 ?A ?P ?x ?p _ eq_refl] =>
@@ -687,6 +705,8 @@ Ltac rewrite_sigma2_refl :=
     rewrite (@simplify_ind_pack_refl A eqdec B x p G _)
   | |- context [@simplification_sigma2 ?A ?P ?B ?p ?x ?y ?X eq_refl] =>
     rewrite (@simplification_sigma2_refl A P B p x X); simpl
+  | |- context [@Id_simplification_sigma2 ?A ?H ?P ?B ?p ?x ?y ?X id_refl] =>
+    rewrite (@Id_simplification_sigma2_refl A H P B p x X); simpl
   | |- context [@simplification_sigma2_dec ?A ?H ?P ?B ?p ?x ?y ?X eq_refl] =>
     rewrite (@simplification_sigma2_dec_refl A H P B p x X); simpl
   | |- context [@simplification_K ?A ?x ?B ?p eq_refl] =>
@@ -714,7 +734,7 @@ Hint Unfold solution_left solution_right
   Id_solution_left Id_solution_right Id_deletion
   Id_solution_left_dep Id_solution_right_dep
   Id_solution_right_let Id_solution_left_let
-  Id_simplification_sigma1 Id_simplification_sigma2 
+  Id_simplification_sigma1
   eq_rect_r eq_rec eq_ind eq_ind_r : equations.
 
 (** Makes these definitions disappear at extraction time *)
@@ -1318,7 +1338,8 @@ Ltac hnf_eq :=
   end.
 
 Ltac simpl_equations :=
-  repeat (repeat (simpl; rewrite_refl_id); try progress autounfold with equations).
+  repeat (repeat (simpl; hnf_eq; rewrite_refl_id);
+          try progress autounfold with equations).
 
 Ltac simpl_equation_impl :=
   repeat (unfold_equations; rewrite_refl_id).

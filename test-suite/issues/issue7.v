@@ -57,6 +57,10 @@ Hint Extern 3 (TupleMap_subterm _ _) =>
   unfold TupleMap_subterm; simpl : subterm_relation.
 Hint Extern 5 => progress simpl : subterm_relation.
 
+Ltac simpl_equations ::= 
+  repeat (repeat (hnf_eq; try rewrite_sigma2_refl; simpl);
+          try progress autounfold with equations).
+
 Equations myComp {n} {B C : TupleT n} (tm1 : TupleMap _ B C) {A : TupleT n} (tm2 : TupleMap _ A B)
 : TupleMap _ A C :=
 myComp tm1 tm2 by rec tm1 TupleMap_subterm :=

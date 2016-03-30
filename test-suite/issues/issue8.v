@@ -73,6 +73,10 @@ TupleMap_direct_subterm (pr1 (pr1 x)) (pr1 (pr2 (pr1 x)))
 Program Instance WellFounded_TupleMap_subterm : WellFounded TupleMap_subterm.
 Solve All Obligations with wf_subterm.
 
+Ltac simpl_equations ::= 
+  repeat (repeat (hnf_eq; try rewrite_sigma2_refl; simpl);
+          try progress autounfold with equations).
+
 Equations myComp {n} {B C : TupleT n} (tm1 : TupleMap _ B C) {A : TupleT n} (tm2 : TupleMap _ A B)
 : TupleMap _ A C :=
 myComp tmNil tmNil := tmNil;
