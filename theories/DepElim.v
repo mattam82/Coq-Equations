@@ -641,7 +641,7 @@ Defined.
 
 Polymorphic
 Lemma simplify_ind_pack {A : Type} {eqdec : EqDec A}
-      (B : A → Type) (x : A) (p q : B x) (G : p = q -> Type)  :
+      (B : A → Type) (x : A) (p q : B x) (G : p = q -> Type) :
       (forall e : (x; p) = (x; q),
           let e' := @ind_pack_eq_inv A eqdec B x p q e in
           G e') ->
@@ -654,37 +654,41 @@ Defined.
 Arguments simplify_ind_pack : simpl never.
 
 Polymorphic
-Lemma forK {A : Type} {eqdec : EqDec A}
-(B : A → Type) (x : A) (p q : B x) (G : p = q -> Type)  :
-   ((x; p) = (x; q) -> forall e' : p = q, G e')  ->
-   (forall e : (x; p) = (x; q),
-       let e' := @ind_pack_eq_inv A eqdec B x p q e in
-       G e').
+Lemma simplify_ind_pack_inv {A : Type} {eqdec : EqDec A}
+      (B : A -> Type) (x : A) (p : B x) (G : p = p -> Type) :
+  G eq_refl ->
+  let e := @ind_pack_eq_inv A eqdec B x p p eq_refl in G e.
 Proof.
-  intros H e.
-  apply (H e (ind_pack_eq_inv x p q e)). 
+  intros H.
+  rewrite ind_pack_eq_inv_refl. apply H.
 Defined.
-Arguments forK : simpl never.
+Arguments simplify_ind_pack_inv : simpl never.
+
+Polymorphic
+Definition simplified_ind_pack {A : Type} {eqdec : EqDec A}
+  (B : A -> Type) (x : A) (p : B x) (G : p = p -> Type)
+  (t : let e := @ind_pack_eq_inv A eqdec B x p p eq_refl in G e) :=
+  eq_rect _ G t _ (@ind_pack_eq_inv_refl A eqdec B x p).
+Arguments simplified_ind_pack : simpl never.
 
 Polymorphic
 Lemma simplify_ind_pack_refl {A : Type} {eqdec : EqDec A}
 (B : A → Type) (x : A) (p : B x) (G : p = p -> Type)
-(t : (x; p) = (x; p) -> forall e : p = p, G e) :
-  simplify_ind_pack B x p p G (forK B x p p G t) eq_refl =
-  t eq_refl eq_refl.
+(t : forall (e : (x; p) = (x; p)),
+  let e' := @ind_pack_eq_inv A eqdec B x p p e in G e') :
+  simplify_ind_pack B x p p G t eq_refl =
+  simplified_ind_pack B x p G (t eq_refl).
+Proof. reflexivity. Qed.
+
+Polymorphic
+Lemma simplify_ind_pack_elim {A : Type} {eqdec : EqDec A}
+  (B : A -> Type) (x : A) (p : B x) (G : p = p -> Type)
+  (t : G eq_refl) :
+  simplified_ind_pack B x p G (simplify_ind_pack_inv B x p G t) = t.
 Proof.
-  unfold simplify_ind_pack; simpl; unfold eq_ind_r, eq_ind; simpl.
-  set(pinv := ind_pack_eq_inv_refl p) in *.
-  set (forKp:=(forK B x p p G t eq_refl)).
-  unfold forK in *.
-  set (packi := ind_pack_eq_inv x p p) in *.
-  clearbody pinv.
-  set (e := packi eq_refl) in *.
-  clearbody e.
-  clearbody packi.
-  destruct pinv.
-  simpl. reflexivity.
-Defined.
+  unfold simplified_ind_pack, simplify_ind_pack_inv.
+  destruct (ind_pack_eq_inv_refl p). reflexivity.
+Qed.
 
 (** All the simplification rules involving axioms are treated as opaque 
   when proving lemmas about definitions. To actually compute with these
@@ -693,7 +697,7 @@ Defined.
 Global Opaque simplification_existT2 simplification_existT2_dec
        simplification_sigma2 simplification_sigma2_dec
        simplification_heq simplification_K simplification_K_dec
-       simplify_ind_pack forK Id_simplification_sigma2.
+       simplify_ind_pack simplified_ind_pack Id_simplification_sigma2.
 
 Ltac rewrite_sigma2_refl :=
   match goal with
@@ -701,8 +705,6 @@ Ltac rewrite_sigma2_refl :=
     rewrite (inj_sigma2_refl A x P p)
   | |- context [@inj_right_sigma ?A ?H ?x ?P ?y ?y' _] =>
     rewrite (@inj_right_sigma_refl A H x P y)
-  | |- context [@simplify_ind_pack ?A ?eqdec ?B ?x ?p _ ?G _ eq_refl] =>
-    rewrite (@simplify_ind_pack_refl A eqdec B x p G _)
   | |- context [@simplification_sigma2 ?A ?P ?B ?p ?x ?y ?X eq_refl] =>
     rewrite (@simplification_sigma2_refl A P B p x X); simpl
   | |- context [@Id_simplification_sigma2 ?A ?H ?P ?B ?p ?x ?y ?X id_refl] =>
@@ -722,6 +724,13 @@ Ltac rewrite_sigma2_refl :=
     rewrite (@simplification_existT2_dec_refl A eq P B p x X); simpl
   | |- context [@simplification_existT2 ?A ?P ?B ?p ?x ?y ?X eq_refl] =>
     rewrite (@simplification_existT2_refl A P B p x X); simpl
+
+  | |- context [@simplify_ind_pack ?A ?eqdec ?B ?x ?p _ ?G _ eq_refl] =>
+    rewrite (@simplify_ind_pack_refl A eqdec B x p G _)
+  | |- context [@simplified_ind_pack ?A ?eqdec ?B ?x ?p ?G
+        (simplify_ind_pack_inv _ _ _ _ ?t)] =>
+    rewrite (@simplify_ind_pack_elim A eqdec B x p G t)
+
   end.
 
 (** This hint database and the following tactic can be used with [autounfold] to 
@@ -926,7 +935,7 @@ Ltac simplify_one_dep_elim_term c :=
 
     | @eq ?A ?t ?u -> ?P =>
       (let hyp := fresh in intros hyp ; noconf_ref hyp)
-                                                        
+
     | @Id ?A ?t ?u -> ?P =>
       (let hyp := fresh in intros hyp ; noconf_ref hyp) 
 
@@ -938,12 +947,7 @@ Ltac simplify_one_dep_elim_term c :=
         match tyx with
         | @sigma _ _ =>
           change x with (pr2 packx) at 1; change y with (pr2 packy) at 1;
-          refine (simplify_ind_pack _ _ _ _ _ _);
-          match goal with
-            |- forall e : @eq _ ?t ?u,
-              let x := @ind_pack_eq_inv ?A' ?eqdec ?B' ?idx ?p ?q e in @?G x => 
-            refine (@forK A' eqdec B' idx p q G _) 
-          end
+          refine (simplify_ind_pack _ _ _ _ _ _)
         end);
       (refine (@apply_noConfusion _ _ _ _ _ _); progress simpl @NoConfusion;
        match goal with
@@ -1001,8 +1005,9 @@ Ltac simplify_one_dep_elim :=
     | [ |- context [eq_rect _ _ _ _ eq_refl]] => simpl eq_rect
     | [ |- context [@eq_rect_dep_r _ _ _ _ _ eq_refl]] => simpl eq_rect_dep_r
     | [ |- context [@Id_rect_dep_r _ _ _ _ _ id_refl]] => simpl Id_rect_dep_r
-    | [ |- context [ind_pack_eq_inv _ _ _ eq_refl]] =>
-      rewrite ind_pack_eq_inv_refl; simpl eq_rect
+    | [ |- context [noConfusion_inv (pack_sigma_eq eq_refl eq_refl)]] => simpl noConfusion_inv
+    | [ |- let e := @ind_pack_eq_inv ?A ?eqdec ?B ?x ?p _ eq_refl in @?G e] =>
+            apply (@simplify_ind_pack_inv A eqdec B x p G)
     | [ |- ?gl ] => simplify_one_dep_elim_term gl
   end.
 
