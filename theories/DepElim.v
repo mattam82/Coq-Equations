@@ -883,8 +883,8 @@ Ltac simplify_one_dep_elim_term c :=
         match goal with
         | _ : x = y |- _ => intro
         | _ =>
-          (refine (simplification_sigma2_dec_point (A:=A) (P:=P) (B:=B) n x y _); try typeclasses eauto) ||
-          refine (simplification_sigma2_dec (A:=A) (P:=P) (B:=B) n x y _) ||
+          (* (refine (simplification_sigma2_dec_point (A:=A) (P:=P) (B:=B) n x y _); try typeclasses eauto) || *)
+          apply (simplification_sigma2_dec (A:=A) (P:=P) (B:=B) n x y) ||
             refine (@simplification_sigma2 _ _ _ _ _ _ _)
         end
       | |- _ =>
@@ -1442,18 +1442,18 @@ Ltac rewrite_sigma2_refl_goal :=
   | |- ?P ?x => rewrite_sigma2_term x
   end.
 
-Ltac simpl_equations := 
-  repeat (repeat (simpl; (red_eq || rewrite_sigma2_refl_eq || autorewrite with refl_id); simpl);
-          try progress autounfold with equations).
+(* Ltac simpl_equations :=  *)
+(*   repeat (repeat (simpl; (hnf_eq || rewrite_sigma2_refl_eq || autorewrite with refl_id); simpl); *)
+(*           try progress autounfold with equations). *)
 
 (* Ltac simplify_equation c := *)
 (*   make_simplify_goal ; simpl ; *)
 (*   repeat (try autounfoldify c; *)
 (*           try (red_gl || rewrite_sigma2_refl_goal || autorewrite with refl_id) ; simpl). *)
 
-(* Ltac simpl_equations := *)
-(*   repeat (repeat (simpl; hnf_eq; rewrite_refl_id); *)
-(*           try progress autounfold with equations). *)
+Ltac simpl_equations :=
+  repeat (repeat (simpl; hnf_eq; rewrite_refl_id);
+          try progress autounfold with equations).
 
 Ltac simpl_equation_impl :=
   repeat (unfold_equations; rewrite_refl_id).
