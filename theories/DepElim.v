@@ -883,7 +883,7 @@ Ltac simplify_one_dep_elim_term c :=
         match goal with
         | _ : x = y |- _ => intro
         | _ =>
-          (* (refine (simplification_sigma2_dec_point (A:=A) (P:=P) (B:=B) n x y _); try typeclasses eauto) || *)
+          (refine (simplification_sigma2_dec_point (A:=A) (P:=P) (B:=B) n x y _); try typeclasses eauto) ||
           apply (simplification_sigma2_dec (A:=A) (P:=P) (B:=B) n x y) ||
             refine (@simplification_sigma2 _ _ _ _ _ _ _)
         end
