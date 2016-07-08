@@ -1,14 +1,24 @@
 Require Import Program Equations.Equations.
 
+Inductive fin : nat -> Set :=
+| fz : forall {n}, fin (S n)
+| fs : forall {n}, fin n -> fin (S n).
+
 Inductive ilist (A : Set) : nat -> Set :=
 | Nil : ilist A 0
 | Cons : forall {n}, A -> ilist A n -> ilist A (S n).
 Arguments Nil [A].
 Arguments Cons [A n _ _].
 
-Inductive fin : nat -> Set :=
-| fz : forall {n}, fin (S n)
-| fs : forall {n}, fin n -> fin (S n).
+Set Universe Polymorphism.
+Equations(nocomp) path_sigma {A : Type} (P : A -> Type) (u v : sigma A P)
+ (p : u = v) : u.1 = v.1 :=
+path_sigma _ _ _ eq_refl := eq_refl.
+
+Unset Universe Polymorphism.
+
+
+Notation " ( x , p ) " := (@sigmaI _ _ x p).
 
 Equations fin_to_nat {n : nat} (i : fin n) : nat :=
 fin_to_nat fz := 0;
@@ -188,7 +198,7 @@ Print Assumptions fle_trans.
 
 Hint Unfold NoConfusion.noConfusion_nat_obligation_1 : equations.
 
-From Equations Require Import EqDec DepElimDec EqDecInstances.
+Require Import EqDec EqDecInstances DepElimDec.
 
 Derive Signature for @eq.
 
@@ -197,6 +207,7 @@ Derive NoConfusion for fin.
 Derive DependentElimination for fin.
 Derive Equality for fin.
 Solve Obligations with eqdec_proof.
+Print Assumptions fin_eqdec.
 
 Derive Signature for @fle.
 Derive NoConfusion for @fle.

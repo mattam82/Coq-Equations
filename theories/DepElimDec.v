@@ -122,7 +122,7 @@ Proof.
   intros e _; revert e. apply n.
 Defined.
 
-Existing Instance eqdec_sig.
+Polymorphic Existing Instance eqdec_sig.
 
 Polymorphic Definition eqdec_sig_Id@{i j k} {A : Type@{i}} {B : A -> Type@{j}}
             `(HSets.EqDec A) `(forall a, HSets.EqDec (B a)) :

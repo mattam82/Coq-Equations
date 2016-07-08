@@ -2,16 +2,22 @@ From Equations Require Import EqDec DepElim NoConfusion.
 
 (** Tactic to solve EqDec goals, destructing recursive calls for the recursive 
   structure of the type and calling instances of eq_dec on other types. *)
+Hint Extern 2 (@EqDecPoint ?A ?x) =>
+  match goal with
+    [ H : forall y, { x = _ } + { _ <> _ } |- _ ] => exact H
+  end : typeclass_instances.
 
 Ltac eqdec_one x y :=
   let good := intros -> in
   let contrad := intro Hn; right; red; simplify_dep_elim; apply Hn; reflexivity in
   try match goal with
-    [ H : forall z, dec_eq x z |- _ ] =>
-    case (H y); [good|contrad]
-  | [ H : forall z, { x = z } + { _ } |- _ ] =>
-    case (H y); [good|contrad]
-  | _ => case (eq_dec x y); [good|contrad]
+       | [ H : forall z, dec_eq x z |- _ ] =>
+         case (H y); [good|contrad]
+        | [ H : forall z, { x = z } + { _ } |- _ ] =>
+          case (H y); [good|contrad]
+         | _ =>
+           tryif unify x y then idtac (* " finished " x y *)
+           else (case (eq_dec x y); [good|contrad])
   end.
 
 Ltac eqdec_loop t u :=
@@ -20,7 +26,7 @@ Ltac eqdec_loop t u :=
     match u with
     | appcontext C [ ?u ?y] => eqdec_loop t u; eqdec_one x y
     end
-  | _ => eqdec_one t u
+   | _ => eqdec_one t u
   end.
 
 Ltac eqdec_proof := try red; intros;
