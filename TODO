@@ -1,0 +1,18 @@
+{ struct n } should introduce an eta-expansion if necessary:
+
+
+  Fixpoint plus {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) { struct p2 } : { b : bool & poly b n } :=
+    (match p1 in poly b1 n return forall {b2} (p2 : poly b2 n), { b : bool & poly b n } with
+    | (poly_l p1) => fun b2 p2 =>
+                       match p2 in poly b2 n' with
+                         poly_l p2 => apoly _ (poly_l (pr2 (plus p1 p2)))
+                       | _ => cheat
+                       end
+    | _ => cheat
+    end) b2 p2
+
+
+solution_left -> use eq_sym for better guard condition behavior (DONE)
+
+- FIXMES in bocquet-poly
+

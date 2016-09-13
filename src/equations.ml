@@ -1129,6 +1129,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
     let sign = nf_rel_context_evar grevd sign in
     let oarity = nf_evar grevd oarity in
     let arity = nf_evar grevd arity in
+    let fixprot = nf_evar grevd fixprot in
     let f =
       let (f, uc) = Universes.unsafe_constr_of_global gr in
         evd := Evd.from_env env;

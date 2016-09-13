@@ -1,9 +1,16 @@
+(** Polynoms and a reflexive tactic for solving boolean goals (using heyting algebra).
+   Original version by Rafael Bocquet, 2016. Updated to use Equations for all definitions by M. Sozeau, 2016
+
+ *)
 Require Import Equations.Equations.
 Require Import ZArith.
 Require Import Program.
 Require Import Psatz.
 Require Import NPeano.
 Require Import Nat.
+
+Derive Signature for vector. 
+Derive Signature for @eq.
 
 Module M1.
   Require Import Coq.Vectors.VectorDef.
@@ -13,6 +20,7 @@ Module M1.
   Inductive IsNZ : Z -> Prop :=
   | IsPos : forall z, IsNZ (Zpos z)
   | IsNeg : forall z, IsNZ (Zneg z).
+  Derive Signature for IsNZ.
 
   (**
    * Le type des polynômes.
@@ -26,7 +34,8 @@ Module M1.
   | poly_c : forall z, IsNZ z -> poly false O
   | poly_l : forall {n b}, poly b n -> poly b (S n)
   | poly_s : forall {n b}, poly b n -> poly false (S n) -> poly false (S n).
-
+  Derive Signature for poly.
+  Derive NoConfusion for poly.
   (**
    * Le type des monômes.
    ** 1.2.a
@@ -36,6 +45,8 @@ Module M1.
   | mono_z : mono O
   | mono_l : forall {n}, mono n -> mono (S n)
   | mono_s : forall {n}, mono (S n) -> mono (S n).
+  Derive Signature for mono.
+  Derive NoConfusion for mono.
 
   Equations(nocomp) get_coef {n} (m : mono n) {b} (p : poly b n) : Z :=
   get_coef mono_z     poly_z       := 0%Z;
@@ -43,14 +54,19 @@ Module M1.
   get_coef (mono_l m) (poly_l p)   := get_coef m p;
   get_coef (mono_l m) (poly_s p _) := get_coef m p;
   get_coef (mono_s m) (poly_l _)   := 0%Z;
-  get_coef (mono_s m) (poly_s _ p) := get_coef m p.
+  get_coef (mono_s m) (poly_s p1 p2) := get_coef m p2.
+
+  From Equations Require Import DepElimDec.
 
   (** Un polynôme non nul a un coefficient non nul *)
   Lemma poly_nz : forall {n} (p : poly false n), exists m, IsNZ (get_coef m p).
   Proof with (autorewrite with get_coef; auto).
-    depind p.
+    intros. generalize_eqs_sig p. revert n.
+    induction p; simplify_dep_elim.
     exists mono_z...
+    specialize (IHp _ _ eq_refl).
     destruct IHp. exists (mono_l x)...
+    specialize (IHp2 _ _ eq_refl).
     destruct IHp2. exists (mono_s x)...
   Qed.
 
@@ -62,7 +78,7 @@ Module M1.
                            (forall (m : mono n), get_coef m p1 = get_coef m p2) ->
                            existT (fun b => poly b n) b1 p1 = existT _ b2 p2.
   Proof with (autorewrite with get_coef in *; auto).
-    depind p1; depelim p2; intros; auto;
+    depind p1; depelim p2; intros; try rename n0 into n; auto;
     try (specialize (H mono_z); autorewrite with get_coef in H; destruct i; discriminate; fail).
     specialize (H mono_z); autorewrite with get_coef in H; depelim i; depelim i0; inversion H; auto.
 
@@ -92,7 +108,7 @@ Module M1.
    Une valuation des variables est donnée par le type Vector.t Z n
    ** 1.2.c
    *)
-  Equations(nocomp) eval {n} {b} (p : poly b n) (v : Vector.t Z n) : Z :=
+  Equations(nocomp noind) eval {n} {b} (p : poly b n) (v : Vector.t Z n) : Z :=
   eval poly_z         Vector.nil           := 0%Z;
   eval (poly_c z _)   Vector.nil           := z;
   eval (poly_l p)     (Vector.cons x xs)   := eval p xs;
@@ -114,7 +130,7 @@ Module M1.
     depind p.
     - destruct (H p) as [v Hv].
       exists v; intros; exists (1 + Z.abs m)%Z... nia.
-    - destruct (IHp2 H) as [v Hv]; exists v; intros.
+    - destruct (IHp2 p2 eq_refl) as [v Hv]; exists v; intros.
       destruct (Hv (Z.abs (eval p1 v) + Z.abs m)%Z) as [x [Hx0 Hx1]]; exists x...
       split; auto.
       nia.
@@ -143,89 +159,35 @@ Module M1.
    Un polynôme nul ne peut s'évaluer que vers 0.
    *)
   Lemma poly_z_eval : forall {n} (p : poly true n) {v}, eval p v = 0%Z.
-  Proof. depind p; intros; depelim v; autorewrite with eval; auto.
+  Proof. intros n p. generalize_eqs_sig p. revert n. induction p; simplify_dep_elim; depelim v. 
+         autorewrite with eval; auto.
+         specialize (IHp _ _ eq_refl).
+         depelim v; autorewrite with eval; auto.
   Qed.
 
   Definition apoly {n} := sigmaI (fun b => poly b n).
 
   (** Définition de [plus] (extraite d'une définition via Equations) *)
   (** ** 1.3.a *)
-  (* begin show *)
-  Definition plus {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) : { b : bool & poly b n }.
-  Proof.
-    depind p1.
-    - depelim p2.
-      + exact (apoly _ poly_z).
-      + exact (apoly _ (poly_c z i)).
-    - depelim p2.
-      + exact (apoly _ (poly_c z i)).
-      + exact (match (z+z0)%Z with
-                 | Z0 => apoly _ poly_z
-                 | Zpos z' => apoly _ (poly_c (Zpos z') (IsPos z'))
-                 | Zneg z' => apoly _ (poly_c (Zneg z') (IsNeg z'))
-               end).
-    - depelim p2.
-      + exact (apoly _ (poly_l (pr2 (IHp1 _ p2)))).
-      + exact (apoly _ (poly_s (pr2 (IHp1 _ p2_1)) p2_2)).
-    - depelim p2.
-      + exact (apoly _ (poly_s (pr2 (IHp1_1 _ p2)) p1_2)).
-      + exact (match IHp1_2 _ p2_2 with
-                 | (false; q3) => apoly _ (poly_s (pr2 (IHp1_1 _ p2_1)) q3)
-                 | (true; _)   => apoly _ (poly_l (pr2 (IHp1_1 _ p2_1)))
-               end).
-  Defined.
-  (* end show *)
 
-  (* begin hide *)
-  Lemma plus_00 : plus poly_z poly_z = apoly _ poly_z. auto. Qed.
-  Lemma plus_01 : forall {z} {i}, plus poly_z (poly_c z i) = apoly _ (poly_c z i). auto. Qed.
-  Lemma plus_1 : forall {z} {i}, plus (poly_c z i) poly_z = apoly _ (poly_c z i). auto. Qed.
-  Lemma plus_2 : forall {z z0} {i i0}, plus (poly_c z i) (poly_c z0 i0) =
-                                  match (z+z0)%Z with
-                                    | Z0 => apoly _ poly_z
-                                    | Zpos z' => apoly _ (poly_c (Zpos z') (IsPos z'))
-                                    | Zneg z' => apoly _ (poly_c (Zneg z') (IsNeg z'))
-                                  end. auto. Qed.
-  Lemma plus_3 : forall {n} {b1} {b2} {p1 : poly b1 n} {p2 : poly b2 n},
-                   plus (poly_l p1) (poly_l p2) = apoly _ (poly_l (pr2 (plus p1 p2))). auto. Qed.
-  Lemma plus_4 : forall {n} {b1} {b2} {p1 : poly b1 n} {p2 : poly b2 n} q2,
-                   plus (poly_l p1) (poly_s p2 q2) = apoly _ (poly_s (pr2 (plus p1 p2)) q2). auto. Qed.
-  Lemma plus_5 : forall {n} {b1} {b2} {p1 : poly b1 n} q1 {p2 : poly b2 n},
-                   plus (poly_s p1 q1) (poly_l p2) = apoly _ (poly_s (pr2 (plus p1 p2)) q1). auto. Qed.
-  Lemma plus_6 : forall {n} {b1} {b2} {p1 : poly b1 n} q1 {p2 : poly b2 n} q2,
-                   plus (poly_s p1 q1) (poly_s p2 q2) =
-                   match plus q1 q2 with
-                     | (false; q3) => apoly _ (poly_s (pr2 (plus p1 p2)) q3)
-                     | (true; _)   => apoly _ (poly_l (pr2 (plus p1 p2)))
-                   end. auto. Qed.
-  Opaque plus.
-  Hint Rewrite @plus_00 : plus.
-  Hint Rewrite @plus_01 : plus.
-  Hint Rewrite @plus_1 : plus.
-  Hint Rewrite @plus_2 : plus.
-  Hint Rewrite @plus_3 : plus.
-  Hint Rewrite @plus_4 : plus.
-  Hint Rewrite @plus_5 : plus.
-  Hint Rewrite @plus_6 : plus.
-  (* end hide *)
+  Equations(noind nocomp) plus {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) : { b : bool & poly b n } :=
+    plus poly_z        poly_z          := apoly _ poly_z;
+    plus poly_z        (poly_c y ny)   := apoly _ (poly_c y ny);
+    plus (poly_c x nx) poly_z          := apoly _ (poly_c x nx);
+    plus (poly_c x nx) (poly_c y ny)   := let z := (x + y)%Z in
+                                          match z with
+                                            | Z0 => apoly _ poly_z
+                                            | Zpos z' => apoly _ (poly_c (Zpos z') (IsPos z'))
+                                            | Zneg z' => apoly _ (poly_c (Zneg z') (IsNeg z'))
+                                          end;                                            
+    plus (poly_l p1)    (poly_l p2)    := apoly _ (poly_l (pr2 (plus p1 p2)));
+    plus (poly_l p1)    (poly_s p2 q2) := apoly _ (poly_s (pr2 (plus p1 p2)) q2);
+    plus (poly_s p1 q1) (poly_l p2)    := apoly _ (poly_s (pr2 (plus p1 p2)) q1);
 
-  (* Equations(noind) plus {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) : { b : bool & poly b n } := *)
-  (*   plus poly_z        poly_z          := apoly _ poly_z; *)
-  (*   plus poly_z        (poly_c y ny)   := apoly _ (poly_c y ny); *)
-  (*   plus (poly_c x nx) poly_z          := apoly _ (poly_c x nx); *)
-  (*   plus (poly_c x nx) (poly_c y ny)   := let z := (x + y)%Z in *)
-  (*                                         match z with *)
-  (*                                           | Z0 => apoly _ poly_z *)
-  (*                                           | Zpos z' => apoly _ (poly_c (Zpos z') (IsPos z')) *)
-  (*                                           | Zneg z' => apoly _ (poly_c (Zneg z') (IsNeg z')) *)
-  (*                                         end; *)
-  (*   plus (poly_l p1)    (poly_l p2)    := apoly _ (poly_l (pr2 (plus p1 p2))); *)
-  (*   plus (poly_l p1)    (poly_s p2 q2) := apoly _ (poly_s (pr2 (plus p1 p2)) q2); *)
-  (*   plus (poly_s p1 q1) (poly_l p2)    := apoly _ (poly_s (pr2 (plus p1 p2)) q1); *)
-  (*   plus (poly_s p1 q1) (poly_s p2 q2) := match plus q1 q2 with *)
-  (*                                           | (false; q3) => apoly _ (poly_s (pr2 (plus p1 p2)) q3) *)
-  (*                                           | (true; _)   => apoly _ (poly_l (pr2 (plus p1 p2))) *)
-  (*                                         end. *)
+    plus (poly_s p1 q1) (poly_s p2 q2) := match plus q1 q2 with
+                                            | (false; q3) => apoly _ (poly_s (pr2 (plus p1 p2)) q3)
+                                            | (true; _)   => apoly _ (poly_l (pr2 (plus p1 p2)))
+                                          end.
 
   (** [plus] se comporte comme il faut par rapport à [eval] *)
   Lemma plus_eval : forall {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) v,
@@ -296,7 +258,7 @@ Module M1.
       destruct P as [bP P]; destruct Q as [bQ Q].
       destruct bP; destruct bQ; simpl in H; try discriminate.
       specialize (IHp1_1 eq_refl); specialize (IHp1_2 eq_refl).
-      depelim IHp1_1; depelim IHp1_2; auto.
+      depelim IHp1_1; (*MS: fixme, depends on depelimdec *) try depelim IHp1_2; auto.
   Qed.
 
   (**
@@ -345,112 +307,36 @@ Module M1.
   Hint Rewrite @poly_l_or_s_eval : eval.
 
   (* [mult (poly_l p) q = mult_l q (mult p)] *)
-  Definition mult_l {n} {b2} (p2 : poly b2 (S n)) : (forall {b2} (p2 : poly b2 n), { b : bool & poly b n }) -> { b : bool & poly b (S n) }.
-  Proof.
-    depind p2; intro m.
-    exact (apoly _ (poly_l (pr2 (m _ p2)))).
-    exact (poly_l_or_s (pr2 (m _ p2_1)) (pr2 (IHp2_2 m))).
-  Defined.
+  (* MS: FIXME: noind necessary *)
+  Equations(nocomp noind) mult_l {n} {b2} (p2 : poly b2 (S n)) (m : forall {b2} (p2 : poly b2 n), { b : bool & poly b n }) :
+    { b : bool & poly b (S n) } :=
+  mult_l (poly_l p2) m := apoly _ (poly_l (pr2 (m _ p2)));
+  mult_l (poly_s p1 p2) m := poly_l_or_s (pr2 (m _ p1)) (pr2 (mult_l p2 m)).
 
-  (* begin hide *)  
-  Lemma mult_l_1 : forall {n} {b2} (p2 : poly b2 n)
-                     (m : forall b2 (p2 : poly b2 n), { b : bool & poly b n }),
-                     mult_l (poly_l p2) m = apoly _ (poly_l (pr2 (m _ p2))).
-  Proof. reflexivity. Qed.
-  
-  Lemma mult_l_2 : forall {n} {b1} (p1 : poly b1 n) p2
-                     (m : forall b2 (p2 : poly b2 n), { b : bool & poly b n }),
-                     mult_l (poly_s p1 p2) m =
-                     poly_l_or_s (pr2 (m _ p1)) (pr2 (mult_l p2 m)).
-  Proof. reflexivity. Qed.
-
-  Opaque mult_l.
-  Hint Rewrite @mult_l_1 : mult_l.
-  Hint Rewrite @mult_l_2 : mult_l.
-  (* end hide *)
-  
   (* [mult (poly_s p1 p2) q = mult_s q (mult p1) (mult p2)] *)
-  Definition mult_s {n} {b2} (p2 : poly b2 (S n)) :
-    (forall {b2} (p2 : poly b2 n), { b : bool & poly b n }) ->
-    (forall {b2} (p2 : poly b2 (S n)), { b : bool & poly b (S n) }) ->
-    { b : bool & poly b (S n) }.
-  Proof.
-    depind p2; intros m1 m2.
-    - exact (poly_l_or_s (pr2 (m1 _ p2)) (pr2 (m2 _ (poly_l p2)))).
-    - exact (poly_l_or_s (pr2 (m1 _ p2_1)) (pr2 (plus (pr2 (m2 _ (poly_l p2_1))) (pr2 (IHp2_2 m1 m2))))).
-  Defined.
-
-  (* begin hide *)
-  Lemma mult_s_1 : forall {n} {b1} (p1 : poly b1 n) {m1} {m2},
-                     mult_s (poly_l p1) m1 m2 =
-                     poly_l_or_s (pr2 (m1 _ p1))
-                                 (pr2 (m2 _ (poly_l p1))).
-  Proof. reflexivity. Qed.
-
-
-  Lemma mult_s_2 : forall {n} {b2} (p2 : poly b2 n) (q2 : poly false (S n)) {m1} {m2},
-                     mult_s (poly_s p2 q2) m1 m2 =
-                     poly_l_or_s (pr2 (m1 _ p2))
-                                 (pr2 (plus (pr2 (m2 _ (poly_l p2))) (pr2 (mult_s q2 m1 m2)))).
-  Proof. reflexivity. Qed.
-
-  Opaque mult_s.
-  Hint Rewrite @mult_s_1 : mult_s.
-  Hint Rewrite @mult_s_2 : mult_s.
-  (* end hide *)
+  Equations(nocomp noind) mult_s {n} {b2} (p2 : poly b2 (S n))
+     (m1 : forall {b2} (p2 : poly b2 n), { b : bool & poly b n })
+     (m2 : forall {b2} (p2 : poly b2 (S n)), { b : bool & poly b (S n) }) :
+    { b : bool & poly b (S n) } :=
+  mult_s (poly_l p1) m1 m2 := poly_l_or_s (pr2 (m1 _ p1)) (pr2 (m2 _ (poly_l p1)));
+  mult_s (poly_s p2 q2) m1 m2 :=
+  poly_l_or_s (pr2 (m1 _ p2))
+              (pr2 (plus (pr2 (m2 _ (poly_l p2))) (pr2 (mult_s q2 m1 m2)))).
   
   (* Définition de la multiplication *)
-  (* begin show *)
-  Definition mult {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) : { b : bool & poly b n }.
-  Proof.
-    depind p1.
-    - exact (apoly _ poly_z).
-    - depelim p2.
-      + exact (apoly _ poly_z).
-      + exact (match (z * z0)%Z with
-                 | Z0 => apoly _ poly_z
-                 | Zpos z' => apoly _ (poly_c (Zpos z') (IsPos z'))
-                 | Zneg z' => apoly _ (poly_c (Zneg z') (IsNeg z'))
-               end).
-    - exact (mult_l p2 IHp1).
-    - exact (mult_s p2 IHp1_1 IHp1_2).
-  Defined.
-  (* end show *)
-  
-  (* begin hide *)
-  Lemma mult_0 : forall {b} (q : poly b _), mult poly_z q = apoly _ poly_z. auto. Qed.
-  Lemma mult_1 : forall {z} {i}, mult (poly_c z i) poly_z = apoly _ poly_z. auto. Qed.
-  Lemma mult_2 : forall {z z0} {i i0}, mult (poly_c z i) (poly_c z0 i0) =
-                                  match (z * z0)%Z with
-                                    | Z0 => apoly _ poly_z
-                                    | Zpos z' => apoly _ (poly_c (Zpos z') (IsPos z'))
-                                    | Zneg z' => apoly _ (poly_c (Zneg z') (IsNeg z'))
-                                  end. auto. Qed.
-  Lemma mult_3 : forall {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 (S n)),
-                   mult (poly_l p1) p2 = mult_l p2 (@mult _ _ p1). auto. Qed.
-  Lemma mult_4 : forall {n} {b1} (p1 : poly b1 n) q1 {b2} (p2 : poly b2 (S n)),
-                   mult (poly_s p1 q1) p2 = mult_s p2 (@mult _ _ p1) (@mult _ _ q1). auto. Qed.
-   
-  Opaque mult.
-  Hint Rewrite @mult_0 : mult.
-  Hint Rewrite @mult_1 : mult.
-  Hint Rewrite @mult_2 : mult.
-  Hint Rewrite @mult_3 : mult.
-  Hint Rewrite @mult_4 : mult.
-  (* end hide *)
-  
-  (* Equations(noind) mult n b1 (p1 : poly b1 n) b2 (p2 : poly b2 n) : { b : bool & poly b n } := *)
-  (*   mult n b1 poly_z        b2 _ := apoly _ poly_z; *)
-  (*   mult n b1 (poly_c x nx) b2 poly_z := apoly _ poly_z; *)
-  (*   mult n b1 (poly_c x nx) b2 (poly_c y ny) := *)
-  (*   match (x * y)%Z with *)
-  (*     | Z0 => apoly _ poly_z *)
-  (*     | Zpos z' => apoly _ (poly_c (Zpos z') (IsPos z')) *)
-  (*     | Zneg z' => apoly _ (poly_c (Zneg z') (IsNeg z')) *)
-  (*   end; *)
-  (*   mult n b1 (poly_l p1)    b2 q := mult_l q (mult _ _ p1); *)
-  (*   mult n b1 (poly_s p1 q1) b2 q := mult_s q (mult _ _ p1) (mult _ _ q1). *)
-  (* Arguments mult {n} {b1} p1 {b2} p2. *)
+
+  Equations(noind nocomp) mult n b1 (p1 : poly b1 n) b2 (p2 : poly b2 n) : { b : bool & poly b n } :=
+    mult n b1 poly_z        b2 _ := apoly _ poly_z;
+    mult n b1 (poly_c x nx) b2 poly_z := apoly _ poly_z;
+    mult n b1 (poly_c x nx) b2 (poly_c y ny) :=
+    match (x * y)%Z with
+      | Z0 => apoly _ poly_z
+      | Zpos z' => apoly _ (poly_c (Zpos z') (IsPos z'))
+      | Zneg z' => apoly _ (poly_c (Zneg z') (IsNeg z'))
+    end;
+    mult n b1 (poly_l p1)    b2 q := mult_l q (mult _ _ p1);
+    mult n b1 (poly_s p1 q1) b2 q := mult_s q (mult _ _ p1) (mult _ _ q1).
+  Arguments mult {n} {b1} p1 {b2} p2.
 
   (**
    La preuve que la multiplication commute à l'évaluation se fait par récurrence.
@@ -606,14 +492,12 @@ Module M1.
 
   (** * Preuve de complétude *)
   
-  Definition reduce_aux {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 (S n)) : { b : bool & poly b (S n) }.
-  Proof.
-    depelim p2.
-    exact (poly_l_or_s p1 (poly_l p2)).
-    exact (poly_l_or_s p1 (pr2 (plus (poly_l p2_1) p2_2))).
-  Defined.
+
+  Equations(nocomp) reduce_aux {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 (S n)) : { b : bool & poly b (S n) } :=
+  reduce_aux p1 (poly_l p2) := poly_l_or_s p1 (poly_l p2);
+  reduce_aux p1 (poly_s p2_1 p2_2) := poly_l_or_s p1 (pr2 (plus (poly_l p2_1) p2_2)).
   
-  Equations(noind) reduce {n} {b} (p : poly b n) : { b : bool & poly b n } :=
+  Equations(noind nocomp) reduce {n} {b} (p : poly b n) : { b : bool & poly b n } :=
   reduce poly_z       := apoly _ poly_z;
   reduce (poly_c x y) := apoly _ (poly_c x y);
   reduce (poly_l p)   := apoly _ (poly_l (pr2 (reduce p)));
@@ -624,10 +508,11 @@ Module M1.
       eval p (Vector.map (fun x : bool => if x then 1%Z else 0%Z) v) =
       eval (pr2 (reduce p)) (Vector.map (fun x : bool => if x then 1%Z else 0%Z) v).
   Proof.
-    Ltac YY := autorewrite with reduce eval; auto.
+    Ltac YY := autorewrite with reduce reduce_aux eval; auto.
     depind p; intros; depelim v; YY.
     - rewrite IHp1, (IHp2 (Vector.cons h v)).
-      unfold reduce_aux; remember (reduce p2) as P; destruct P as [bP P]; depelim P; simpl; YY.
+      remember (reduce p2) as P. 
+      destruct P as [bP P]. simpl. depelim P; simpl; YY.
       destruct h; nia.
   Qed.
    
@@ -660,13 +545,12 @@ Module M1.
   Lemma is_reduced_ok : forall {b} {n} (p : poly b n), is_reduced (pr2 (reduce p)).
   Proof.
     depind p; try constructor; auto.
-    autorewrite with reduce.
-    unfold reduce_aux.
+    autorewrite with reduce reduce_aux.
     remember (reduce p2) as P2; destruct P2 as [bP2 P2]; depelim P2; simpl.
     destruct b0; simpl. constructor. auto. constructor; auto. depelim IHp2. auto.
-    depelim IHp2. autorewrite with plus. unfold apoly. simpl.
+    depelim IHp2. unfold solution_left. simpl. autorewrite with reduce_aux plus. unfold apoly. simpl.
     assert (R := is_reduced_compat_plus _ IHp2_1 _ IHp2_2).
-    remember (plus P2_1 q) as P3; destruct P3 as [bP3 P3].
+    remember (plus p q) as P3; destruct P3 as [bP3 P3].
     destruct bP3; simpl; constructor; auto.
   Qed.
   
@@ -858,7 +742,7 @@ Module M2.
     depelim H; simpl.
     rewrite (IHp1 H2), (IHp2 H3).
     rewrite !Forall_forallb; auto.
-    destruct p2; auto; destruct z; auto; discriminate.
+    destruct q; auto; destruct z; auto; discriminate.
   Qed.
 
   Lemma valid_ok2 : forall p, valid_bool p = true -> valid p.
@@ -890,3 +774,5 @@ End M2.
 
 (* *)
 
+Print Assumptions M1.red_ok.
+Print Assumptions M1.proof_2.

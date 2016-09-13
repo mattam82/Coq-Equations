@@ -344,7 +344,7 @@ Ltac elim_ind p := elim_tac ltac:(fun p el => induction p using el) p.
 (** Lemmas used by the simplifier, mainly rephrasings of [eq_rect], [eq_ind]. *)
 
 Lemma solution_left : ∀ {A} {B : A -> Type} (t : A), B t -> (∀ x, x = t -> B x).
-Proof. intros A B t H x eq. destruct eq. apply H. Defined.
+Proof. intros A B t H x eq. symmetry in eq. destruct eq. apply H. Defined.
 
 Polymorphic
 Lemma Id_solution_left : ∀ {A} {B : A -> Type} (t : A), B t -> (∀ x, Id x t -> B x).
@@ -775,6 +775,7 @@ Extraction Inline simplification_sigma2.
 Extraction Inline simplification_K simplification_K_dec.
 Extraction Inline Id_solution_right_dep Id_solution_right Id_solution_left Id_solution_left_dep.
 Extraction Inline Id_solution_right_let Id_solution_left_let Id_deletion.
+Extraction Inline eq_simplification_sigma1 eq_simplification_sigma1_dep.
 Extraction Inline Id_simplification_sigma1 Id_simplification_sigma2 Id_simplification_K.
 
 (** Simply unfold as much as possible. *)

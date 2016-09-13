@@ -225,6 +225,7 @@ let define_tree is_recursive poly impls status isevar env (i, sign, arity)
   in
   let kind = (Decl_kinds.Global, poly, Decl_kinds.Definition) in
   let ty' = it_mkProd_or_LetIn arity sign in
+  let ty' = nf ty' in
     match is_recursive with
     | Some (Structural id) ->
         let ty' = it_mkProd_or_LetIn ty' [(Anonymous, None, ty')] in
