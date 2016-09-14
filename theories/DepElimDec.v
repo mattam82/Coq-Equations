@@ -27,18 +27,25 @@ Ltac decompose_exists id := hnf in id ;
 
 (** Dependent generalization using existentials only. *)
 
+Ltac move_after_vars H v :=
+  match v with
+  | (?x; ?y) => move_after_vars H y; move_after_vars H x 
+  | ?t =>  try move H after t
+  end.
+  
 Ltac generalize_sig id cont :=
   let id' := fresh id in
   get_signature_pack id id';
   hnf in (value of id'); hnf in (type of id');
   match goal with
-  | |- context[ id ] =>
+  | id' := ?v |- context[ id ] =>
     generalize (@eq_refl _ id' : id' = id') ;
     unfold id' at 1;
-    clearbody id'; simpl in id'; move id' after id;
+    clearbody id'; simpl in id';
+    move_after_vars id' v;
     revert_until id'; rename id' into id;
       cont id
-  | |- _ =>
+  | id' := ?v |- _ => (* TODO *)
     let id'1 := fresh id' in let id'2 := fresh id' in
     set (id'2 := pr2 id'); set (id'1 := pr1 id') in id'2;
     hnf in (value of id'1), (value of id'2);
@@ -54,10 +61,11 @@ Ltac Id_generalize_sig id cont :=
   get_signature_pack id id';
   hnf in (value of id'); hnf in (type of id');
   match goal with
-  | |- context[ id ] =>
+  | id' := ?v |- context[ id ] =>
     generalize (@id_refl _ id' : Id id' id') ;
     unfold id' at 1;
-    clearbody id'; simpl in id'; move id' after id;
+    clearbody id'; simpl in id';
+    move_after_vars id' v;
     revert_until id'; rename id' into id;
       cont id
   | |- _ =>

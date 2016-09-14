@@ -8,6 +8,7 @@ Require Import Program.
 Require Import Psatz.
 Require Import NPeano.
 Require Import Nat.
+From Equations Require Import DepElimDec.
 
 Derive Signature for vector. 
 Derive Signature for @eq.
@@ -48,7 +49,7 @@ Module M1.
   Derive Signature for mono.
   Derive NoConfusion for mono.
 
-  Equations(nocomp) get_coef {n} (m : mono n) {b} (p : poly b n) : Z :=
+  Equations(nocomp noind) get_coef {n} (m : mono n) {b} (p : poly b n) : Z :=
   get_coef mono_z     poly_z       := 0%Z;
   get_coef mono_z     (poly_c z _) := z;
   get_coef (mono_l m) (poly_l p)   := get_coef m p;
@@ -56,15 +57,11 @@ Module M1.
   get_coef (mono_s m) (poly_l _)   := 0%Z;
   get_coef (mono_s m) (poly_s p1 p2) := get_coef m p2.
 
-  From Equations Require Import DepElimDec.
-
   (** Un polynôme non nul a un coefficient non nul *)
   Lemma poly_nz : forall {n} (p : poly false n), exists m, IsNZ (get_coef m p).
   Proof with (autorewrite with get_coef; auto).
-    intros. generalize_eqs_sig p. revert n.
-    induction p; simplify_dep_elim.
+    intros. depind p; unfold poly_sig in *; simplify_IH_hyps.
     exists mono_z...
-    specialize (IHp _ _ eq_refl).
     destruct IHp. exists (mono_l x)...
     specialize (IHp2 _ _ eq_refl).
     destruct IHp2. exists (mono_s x)...
@@ -108,13 +105,15 @@ Module M1.
    Une valuation des variables est donnée par le type Vector.t Z n
    ** 1.2.c
    *)
-  Equations(nocomp noind) eval {n} {b} (p : poly b n) (v : Vector.t Z n) : Z :=
+  Equations(nocomp) eval {n} {b} (p : poly b n) (v : Vector.t Z n) : Z :=
   eval poly_z         Vector.nil           := 0%Z;
   eval (poly_c z _)   Vector.nil           := z;
   eval (poly_l p)     (Vector.cons x xs)   := eval p xs;
   eval (poly_s p1 p2) (Vector.cons y _ ys) := (eval p1 ys + y * eval p2 (Vector.cons y ys))%Z.
-
-  (**
+  Next Obligation.
+    depind p; depelim v; simp eval. (* FIXME *)
+  Defined.
+    (**
    On veut montrer qu'un polynôme non nul peut s'évaluer vers un entier non nul.
    Le lemme principal est [poly_nz_eval].
    Il procède par induction sur le [n] le nombre de variables et montre d'abord le résultat cherché puis un résultat plus fort via [poly_nz_eval'] pour que l'induction fonctionne.
@@ -159,10 +158,13 @@ Module M1.
    Un polynôme nul ne peut s'évaluer que vers 0.
    *)
   Lemma poly_z_eval : forall {n} (p : poly true n) {v}, eval p v = 0%Z.
-  Proof. intros n p. generalize_eqs_sig p. revert n. induction p; simplify_dep_elim; depelim v. 
-         autorewrite with eval; auto.
-         specialize (IHp _ _ eq_refl).
-         depelim v; autorewrite with eval; auto.
+  Proof.
+    intros n p v. funelim (eval p v); auto.
+    (* Was: 
+    depind p; depelim v.
+    autorewrite with eval; auto.
+    specialize (IHp _ _ eq_refl).
+    depelim v; autorewrite with eval; auto. *)
   Qed.
 
   Definition apoly {n} := sigmaI (fun b => poly b n).
