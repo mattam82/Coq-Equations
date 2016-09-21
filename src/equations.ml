@@ -1131,7 +1131,6 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	 else compapp, Some (Structural with_rec)
        in
        (sign, oarity, compapp, Some compinfo, is_recursive)
-
   in
   let env = Global.env () in (* To find the comp constant *)
   let oty = it_mkProd_or_LetIn oarity sign in

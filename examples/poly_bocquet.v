@@ -107,6 +107,11 @@ Module M1.
     intro. specialize (H (mono_l m))...
     now depelim IHp1_1. (* FIXME simplifies unrelated hyp *)
   Qed.
+
+    forward (IHp1_1 _ p2_1).
+    intro. specialize (H (mono_l m))...
+    now depelim IHp1_1. (* FIXME simplifies unrelated hyp *)
+  Qed.
 *)
   (**
    Une valuation des variables est donnée par le type Vector.t Z n
