@@ -140,8 +140,6 @@ Defined.
 
 Definition vector_subterm A := t_subterm A.
 
-Derive Signature for t_direct_subterm.
-
 Instance well_founded_vector_direct_subterm' :
   forall A : Type, EqDec A -> WellFounded (vector_subterm A) | 0.
 Proof.   intros. 

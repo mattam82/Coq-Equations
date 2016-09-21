@@ -104,9 +104,6 @@ Derive Subterm for exp.
 
 Ltac rec ::= rec_wf_eqns.
 Unset Implicit Arguments.
-Next Obligation.
-  solve_subterm; eauto.
-Defined.
   (* Equations(struct e) cfold t (e : exp t) : exp t := *)
 
 Equations cfold {t} (e : exp t) : exp t :=

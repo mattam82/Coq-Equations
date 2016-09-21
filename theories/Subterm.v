@@ -94,6 +94,9 @@ Ltac eapply_hyp :=
   match goal with 
     [ H : _ |- _ ] => eapply H
   end.
+
+Create HintDb solve_subterm discriminated.
+
 Hint Extern 4 (_ = _) => reflexivity : solve_subterm.
 Hint Extern 10 => eapply_hyp : solve_subterm.
 

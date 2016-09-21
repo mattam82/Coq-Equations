@@ -41,10 +41,6 @@ Defined.
 Derive Subterm for vector.
 Print Assumptions well_founded_t_subterm.
 
-(* FIXME Should not have to do that here.
-         Also, the name should be [vector], not [t]. *)
-Derive Signature for t_direct_subterm.
-
 (** A closed proof of well-foundedness relying on the decidability
    of [A]. *)
 
