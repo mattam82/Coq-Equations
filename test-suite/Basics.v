@@ -22,14 +22,12 @@ congS eq_refl := eq_refl.
 
 Module TestF.
 
-  Equations f (n : nat) : nat :=
+  Equations(nocomp) f (n : nat) : nat :=
   f 0 := 42 ;
   f (S m)  with f m :=
   {
     f (S m) IH := _
   }.
-  
-  Next Obligation. unfold f_comp in *. exact IH. Defined.
 
 End TestF.
 

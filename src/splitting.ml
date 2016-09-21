@@ -196,8 +196,11 @@ let define_tree is_recursive poly impls status isevar env (i, sign, arity)
 	if Evar.Set.mem (rev_assoc Id.equal id emap) oblevs 
 	then Some (equations_tac ()) 
 	else if is_comp_obl comp (snd loc) then
-	  let unfolds = unfold_in_concl 
-	    [((Locus.AllOccurrencesBut [1]), EvalConstRef (Option.get comp).comp)]
+	  let unfolds =
+            Option.cata
+              (fun comp -> unfold_in_concl 
+	                  [((Locus.AllOccurrencesBut [1]), EvalConstRef comp)])
+              tclIDTAC (Option.get comp).comp
 	  in
 	    Some (of82 (tclTRY 
 			  (tclTHENLIST [zeta_red; to82 Tactics.intros; unfolds;

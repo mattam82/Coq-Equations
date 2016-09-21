@@ -167,6 +167,7 @@ let derive_subterm ind =
 	mind_entry_universes = uctx }
     in
     let k = Command.declare_mutual_inductive_with_eliminations inductive pl [] in
+    let () = ignore (Sigma.declare_sig_of_ind (Global.env ()) (k,0)) in
     let subind = mkInd (k,0) in
     let constrhints = 
       List.map_i (fun i entry -> 

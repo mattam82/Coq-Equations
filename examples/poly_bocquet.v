@@ -37,6 +37,8 @@ Module M1.
   | poly_s : forall {n b}, poly b n -> poly false (S n) -> poly false (S n).
   Derive Signature for poly.
   Derive NoConfusion for poly.
+  Derive Subterm for poly.
+  
   (**
    * Le type des monômes.
    ** 1.2.a
@@ -48,15 +50,19 @@ Module M1.
   | mono_s : forall {n}, mono (S n) -> mono (S n).
   Derive Signature for mono.
   Derive NoConfusion for mono.
+  Derive Subterm for mono.
+  (* FIXME get_coef (nocomp) by rec fails *)
 
-  Equations(nocomp noind) get_coef {n} (m : mono n) {b} (p : poly b n) : Z :=
+  (* TEMPORARY 
+  Equations get_coef {n} (m : mono n) {b} (p : poly b n) : Z :=
+  get_coef m p by rec m mono_subterm :=
   get_coef mono_z     poly_z       := 0%Z;
   get_coef mono_z     (poly_c z _) := z;
   get_coef (mono_l m) (poly_l p)   := get_coef m p;
   get_coef (mono_l m) (poly_s p _) := get_coef m p;
   get_coef (mono_s m) (poly_l _)   := 0%Z;
   get_coef (mono_s m) (poly_s p1 p2) := get_coef m p2.
-
+  
   (** Un polynôme non nul a un coefficient non nul *)
   Lemma poly_nz : forall {n} (p : poly false n), exists m, IsNZ (get_coef m p).
   Proof with (autorewrite with get_coef; auto).
@@ -66,7 +72,10 @@ Module M1.
     specialize (IHp2 _ _ eq_refl).
     destruct IHp2. exists (mono_s x)...
   Qed.
-
+  Ltac forward H :=
+    match type of H with
+    | ?X -> _ => let H' := fresh in assert (H':X) ; [|specialize (H H'); clear H']
+    end.
   (**
    ** 1.2.b
    Deux polynômes avec les mêmes coefficients sont égaux
@@ -75,15 +84,15 @@ Module M1.
                            (forall (m : mono n), get_coef m p1 = get_coef m p2) ->
                            existT (fun b => poly b n) b1 p1 = existT _ b2 p2.
   Proof with (autorewrite with get_coef in *; auto).
+    intros. 
     depind p1; depelim p2; intros; try rename n0 into n; auto;
     try (specialize (H mono_z); autorewrite with get_coef in H; destruct i; discriminate; fail).
     specialize (H mono_z); autorewrite with get_coef in H; depelim i; depelim i0; inversion H; auto.
 
     specialize (IHp1 _ p2).
-    assert (existT (λ b : bool, poly b n) b p1 =
-            existT (λ b : bool, poly b n) b0 p2).
-    apply IHp1. intro. specialize (H (mono_l m)). autorewrite with get_coef in H. auto.
-    inversion H0. auto.
+    forward IHp1.
+    intro. specialize (H (mono_l m)). now simp get_coef in H. 
+    now depelim IHp1. 
 
     destruct (poly_nz p2_2).
     specialize (H (mono_s x))... destruct H0; discriminate.
@@ -91,28 +100,29 @@ Module M1.
     destruct (poly_nz p1_2).
     specialize (H (mono_s x))... destruct H0; discriminate.
 
-    assert(existT (λ b : bool, poly b (S n)) false p1_2 =
-           existT (λ b : bool, poly b (S n)) false p2_2).
-    apply IHp1_2; auto. intro. specialize (H (mono_s m))...
-    depelim H0.
-    assert(existT (λ b : bool, poly b n) b p1_1 =
-           existT (λ b : bool, poly b n) b0 p2_1).
-    apply IHp1_1; auto. intro. specialize (H (mono_l m))...
-    depelim H0. auto.
-  Qed.
+    forward (IHp1_2 _ p2_2).
+    intro. specialize (H (mono_s m))...
 
+    forward (IHp1_1 _ p2_1).
+    intro. specialize (H (mono_l m))...
+    now depelim IHp1_1. (* FIXME simplifies unrelated hyp *)
+  Qed.
+*)
   (**
    Une valuation des variables est donnée par le type Vector.t Z n
    ** 1.2.c
    *)
   Equations(nocomp) eval {n} {b} (p : poly b n) (v : Vector.t Z n) : Z :=
+  eval p v by rec p poly_subterm :=
   eval poly_z         Vector.nil           := 0%Z;
   eval (poly_c z _)   Vector.nil           := z;
   eval (poly_l p)     (Vector.cons x xs)   := eval p xs;
-  eval (poly_s p1 p2) (Vector.cons y _ ys) := (eval p1 ys + y * eval p2 (Vector.cons y ys))%Z.
-  Next Obligation.
-    depind p; depelim v; simp eval. (* FIXME *)
-  Defined.
+  eval (poly_s p1 p2) (Vector.cons y _ ys) :=
+                                                (eval p1 ys + y * eval p2 (Vector.cons y ys))%Z.
+
+  (* Next Obligation. *)
+  (*   depind p; depelim v; simp eval. (* FIXME *) *)
+  (* Defined. *)
     (**
    On veut montrer qu'un polynôme non nul peut s'évaluer vers un entier non nul.
    Le lemme principal est [poly_nz_eval].
@@ -159,7 +169,53 @@ Module M1.
    *)
   Lemma poly_z_eval : forall {n} (p : poly true n) {v}, eval p v = 0%Z.
   Proof.
-    intros n p v. funelim (eval p v); auto.
+    intros n p v.
+    Ltac funelim_tac c tac ::=
+  match c with
+  | context [?f] =>
+      let call := fresh "call" in
+      set (call := c) in *;
+       with_last_secvar ltac:(fun eos => move call before eos)
+        ltac:(move call at top);
+       (let elim := constr:(fun_elim (f:=f)) in
+        block_goal; revert_until call; block_goal; (first
+         [ progress generalize_eqs_vars call;
+            match goal with
+            | call:=?c':_
+              |- _ => idtac
+                     (* subst call ; pattern_call c'; apply elim; clear *)
+                   (* simplify_dep_elim; simplify_IH_hyps;  *)
+                   (* intros _; *)
+                   (* try *)
+                   (*  on_last_hyp *)
+                   (*   ltac:(fun id => try rewrite <- id; intros_until_block); *)
+                   (* unblock_goal; simplify_IH_hyps;  *)
+                   (* tac f *)
+            end
+         | subst call; pattern_call c; apply elim; clear; simplify_dep_elim;
+            simplify_IH_hyps; intros_until_block; intros_until_block;
+            unblock_goal; tac f ]))
+  end.
+    funelim (eval p v).
+    simplify_one_dep_elim.
+    simplify_one_dep_elim.
+    simplify_one_dep_elim.
+    simplify_one_dep_elim.
+    simplify_one_dep_elim.
+    simplify_one_dep_elim.
+    simplify_one_dep_elim.
+    Opaque eval.
+    simplify_one_dep_elim.
+    simplify_one_dep_elim.
+    simplify_one_dep_elim.
+    simplify_one_dep_elim.
+
+    simplify_IH_hyps. intros _.
+    unblock_goal. simplify_IH_hyps.
+    subst call. pattern_call (eval p0 v).
+    
+
+    auto.
     (* Was: 
     depind p; depelim v.
     autorewrite with eval; auto.
@@ -190,7 +246,14 @@ Module M1.
                                             | (false; q3) => apoly _ (poly_s (pr2 (plus p1 p2)) q3)
                                             | (true; _)   => apoly _ (poly_l (pr2 (plus p1 p2)))
                                           end.
-
+  Next Obligation. Defined.
+  Next Obligation. Defined.
+  Next Obligation. Defined.
+  Next Obligation. Defined.
+  
+  
+  
+  Opaque plus.
   (** [plus] se comporte comme il faut par rapport à [eval] *)
   Lemma plus_eval : forall {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) v,
                       (eval p1 v + eval p2 v)%Z = eval (pr2 (plus p1 p2)) v.
@@ -203,7 +266,7 @@ Module M1.
     - specialize (IHp1_2 _ p2_2 (Vector.cons h v)).
       remember (plus p1_2 p2_2) as p.
       destruct p as [p1 p2]; depelim p1.
-      + simpl... rewrite <- IHp1_1...
+      + simpl... re plus. rewrite <- IHp1_1...
         rewrite poly_z_eval in IHp1_2; nia.
       + simpl... rewrite <- IHp1_1... rewrite <- IHp1_2...
         nia.

@@ -155,7 +155,7 @@ type rec_type =
   | Logical of rec_info
 
 and rec_info = {
-  comp : constant;
+  comp : constant option;
   comp_app : constr;
   comp_proj : constant;
   comp_recarg : int;
