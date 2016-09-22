@@ -210,14 +210,13 @@ let declare_sig_of_ind env ind =
       declare_constant indsigid pred
 	None poly sigma (IsDefinition Definition)
   in
-  (* let sigma = if not poly then Evd.from_env (Global.env ()) else sigma in *)
+  let pack_id = add_suffix indid "_sig_pack" in
   let pack_fn = 
     let vbinder = (Name (add_suffix indid "_var"), None, fullapp) in
     let term = it_mkLambda_or_LetIn valsig (vbinder :: ctx) 
     in
-    let packid = add_suffix indid "_sig_pack" in
     (* let rettype = mkApp (mkConst indsig, extended_rel_vect (succ lenargs) pars) in *)
-      declare_constant packid (simpl term)
+      declare_constant pack_id (simpl term)
 	None (* (Some (it_mkProd_or_LetIn rettype (vbinder :: ctx))) *)
 	poly sigma
 	(IsDefinition Definition)
@@ -227,13 +226,17 @@ let declare_sig_of_ind env ind =
   let env = Global.env () in
   let sigma, indsig = Evd.fresh_global env sigma (ConstRef indsig) in
   let sigma, pack_fn = Evd.fresh_global env sigma (ConstRef pack_fn) in
+  let signature_id = add_suffix indid "_Signature" in
   let inst = 
-    declare_instance (add_suffix indid "_Signature")
+    declare_instance signature_id
       poly sigma ctx c
       [fullapp; lift lenargs idx;
        mkApp (indsig, extended_rel_vect lenargs pars);
        mkApp (pack_fn, extended_rel_vect 0 ctx)]
-  in inst
+  in
+  Table.extraction_inline true [Ident (dummy_loc, pack_id)];
+  Table.extraction_inline true [Ident (dummy_loc, signature_id)];
+  inst
 
 let get_signature env sigma ty =
   try
