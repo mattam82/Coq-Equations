@@ -323,7 +323,7 @@ let subst_rec_split evd f comp comprecarg prob s split =
             (* When a comp *) applistc f args
          | _ ->
             let args = rel_list 0 (List.length lctx) in
-            let before, after = List.chop (pred (pred recarg)) args in
+            let before, after = List.chop (pred recarg) args in
             applistc f (before @ List.tl after)
        in
        it_mkLambda_or_LetIn app lctx
