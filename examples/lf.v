@@ -674,8 +674,8 @@ Obligation Tactic := idtac.
 Next Obligation.
 Proof.
   intros.
-  rec_wf_rel t hsubst her_order.
-  depelim x. depelim p. simph. 
+  rec_wf_rel hsubst t her_order.
+  depelim t. depelim p. simph. 
   constructor. depelim t1.
   constructor. 
   destruct (nat_compare n k); try constructor.
@@ -1082,3 +1082,5 @@ Proof. induction 1. (* eta-exp *)
 
   depelim H0.
 Qed.
+
+Print Assumptions types_normalizes.

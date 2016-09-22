@@ -217,7 +217,7 @@ Derive Subterm for @fle.
 Print Assumptions fle_eqdec.
 
 Equations fle_trans' {n : nat} {i j : fin n} (p : fle i j) {k} (q : fle j k) : fle i k :=
-fle_trans' p q by rec p (@fle_subterm) :=
+fle_trans' p q by rec (signature_pack p) (@fle_subterm) :=
 fle_trans' flez _ := flez;
-    fle_trans' (fles p') (fles q') := fles (fle_trans' p' q').
+fle_trans' (fles p') (fles q') := fles (fle_trans' p' q').
 Print Assumptions fle_trans'.

@@ -46,18 +46,16 @@ Defined.
 Next Obligation.
 Proof.
   rewrite test_unfold_eq.
-  rec_wf_rel n IH lt.
-  destruct x; simp test.
+  rec_wf_rel IH n lt.
+  destruct n; simp test.
   constructor.
   rewrite test_unfold_eq. apply IH. omega.
   rewrite test_unfold_eq.
-  destruct_call test_unfold. destruct x0. simp test. simp test. 
+  destruct_call test_unfold. destruct x; simp test.
   constructor. rewrite test_unfold_eq. apply IH. omega.
   simp test. rewrite test_unfold_eq. simp test.
   destruct_call test_unfold. simp test.
-Defined.  
-
-
+Defined.
   
 (* BUGGY *)
 (* Module Bug. *)

@@ -142,12 +142,12 @@ Instance well_founded_vector_direct_subterm' :
   forall A : Type, EqDec A -> WellFounded (vector_subterm A) | 0.
 Proof.   intros. 
   apply Transitive_Closure.wf_clos_trans.
-  intro. simp_sigmas. induction H.
+  intro. simp_sigmas. induction a.
   constructor; intros.
   simp_sigmas. simpl in *. 
   depelim H.
   constructor; intros.
-  simp_sigmas. depelim H0. 
+  simp_sigmas. depelim H. 
   assumption.
 Defined.
 Print Assumptions well_founded_vector_direct_subterm'.
@@ -168,21 +168,27 @@ Import Vector.
 (*   unzip_dec ?(S n) (cons (pair x y) n v) with unzip_dec v := { *)
 (*      | pair xs ys := (cons x xs, cons y ys) }. *)
 (* End unzip_dec_def. *)
+Axiom cheat : forall{A}, A.
+Section foo.
+  Context {A B} `{EqDec A} `{EqDec B}.
+  Let eos := the_end_of_the_section.
 
-Equations unzip_dec {A B} `{EqDec A} `{EqDec B} 
-          {n} (v : vector (A * B) n) : vector A n * vector B n :=
-unzip_dec v by rec v (@vector_subterm (A * B)) :=
-unzip_dec nil := ([]v, []v) ;
-unzip_dec (cons (pair x y) n v) with unzip_dec v := {
-  | pair xs ys := (cons x xs, cons y ys) }.
+  Equations unzip_dec {n} (v : vector (A * B) n) : vector A n * vector B n :=
+  unzip_dec v by rec (signature_pack v) (@vector_subterm (A * B)) :=
+  unzip_dec nil := ([]v, []v) ;
+  unzip_dec (cons (pair x y) n v) with unzip_dec v := {
+    | pair xs ys := (cons x xs, cons y ys) }.
+End foo.
 
 Typeclasses Transparent vector_subterm.
 
-Equations unzip {A B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
-unzip v by rec v (@vector_subterm (A * B)) :=
-unzip nil := (nil, nil) ;
-unzip (cons (pair x y) n v) <= unzip v => {
-  | (pair xs ys) := (cons x xs, cons y ys) }.
+(** Due to the packing of all arguments, can only be done in sections right now so
+ that A and B are treated as parameters (better computational behavior anyway) *)
+(* Equations unzip {A B} {n} (v : vector (A * B) n) : vector A n * vector B n := *)
+(* unzip v by rec (signature_pack v) (@vector_subterm (A * B)) := *)
+(* unzip nil := (nil, nil) ; *)
+(* unzip (cons (pair x y) n v) <= unzip v => { *)
+(*   | (pair xs ys) := (cons x xs, cons y ys) }. *)
 
 (* Print Assumptions unzip. *)
 (* Print Assumptions unzip_dec. *)
@@ -194,6 +200,9 @@ Equations(nocomp) unzip_n {A B} {n} (v : vector (A * B) n) : vector A n * vector
 unzip_n A B O Vnil := (Vnil, Vnil) ;
 unzip_n A B (S n) (cons (pair x y) n v) with unzip_n v := {
   | pair xs ys := (cons x xs, cons y ys) }. *)
+(* Definition nos_with_comp (n : nat) := nat. *)
+(* Lemma nos_with (n : nat) : nos_with_comp n. *)
+(*   rec_wf_eqns nos n. *)
 
 Equations nos_with (n : nat) : nat :=
 nos_with n by rec n :=

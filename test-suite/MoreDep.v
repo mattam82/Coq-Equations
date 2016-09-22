@@ -107,7 +107,7 @@ Unset Implicit Arguments.
   (* Equations(struct e) cfold t (e : exp t) : exp t := *)
 
 Equations cfold {t} (e : exp t) : exp t :=
-cfold e by rec e exp_subterm :=
+cfold e by rec (signature_pack e) exp_subterm :=
 cfold (NConst n) => NConst n;
 cfold (Plus e1 e2) <= (cfold e1, cfold e2) => {
   | pair (NConst n1) (NConst n2) := NConst (n1 + n2);

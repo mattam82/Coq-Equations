@@ -51,8 +51,20 @@ Definition TupleMap_subterm := Relation_Operators.clos_trans _
 
 Program Instance WellFounded_TupleMap_subterm : WellFounded TupleMap_subterm.
 
-Solve All Obligations with solve_subterm.
+(* Solve All Obligations with solve_subterm. *)
   
+
+Ltac wf_subterm := intro;
+  simp_sigmas;
+  on_last_hyp depind; split; intros; simp_sigmas;
+    on_last_hyp ltac:(fun H => red in H);
+    [ exfalso | ];
+    on_last_hyp depind;
+    intuition.
+
+Next Obligation.
+  Admitted.
+
 Hint Extern 3 (TupleMap_subterm _ _) =>
   unfold TupleMap_subterm; simpl : subterm_relation.
 Hint Extern 5 => progress simpl : subterm_relation.
@@ -81,7 +93,7 @@ Hint Extern 5 => progress simpl : subterm_relation.
 
 Time Equations myComp {n} {B C : TupleT n} (tm1 : TupleMap _ B C) {A : TupleT n} (tm2 : TupleMap _ A B)
 : TupleMap _ A C :=
-myComp tm1 tm2 by rec tm1 TupleMap_subterm :=
+myComp tm1 tm2 by rec (signature_pack tm1) TupleMap_subterm :=
 myComp tmNil tmNil := tmNil;
 myComp (tmCons G H g) (tmCons F ?(G) f) :=
   tmCons _ _ (fun x => existT (fun y => TupleMap _ _ (_ y)) (projT1 (g (projT1 (f x))))

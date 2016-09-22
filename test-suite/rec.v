@@ -15,7 +15,7 @@ Hint Resolve lt_n_Sn : Below.
 Ltac rec ::= rec_wf_eqns.
 
 Module RecRel.
-
+  
   Equations id (n : nat) : nat :=
   id n by rec n lt :=
   id O := 0 ;
@@ -126,7 +126,7 @@ Module RecMeasure.
 
 
   Equations g (l : list nat) : nat :=
-  g n by rec n (MR lt (@length nat)) :=
+  g l by rec l (MR lt (@length nat)) :=
   g nil := 0 ;
   g (cons n l) := S (g l).
   
