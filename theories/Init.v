@@ -36,8 +36,8 @@ Unset Primitive Projections.
 Arguments sigma A B : clear implicits.
 Arguments sigmaI {A} B pr1 pr2.
 
-Notation " { x : A & y } " := (@sigma _ (fun x : A => y)%type).
-Notation " { x : A & y } " := (@sigma _ (fun x : A => y)%type) : type_scope.
+Notation " { x : A & y } " := (@sigma A (fun x : A => y)%type).
+Notation " { x : A & y } " := (@sigma A (fun x : A => y)%type) : type_scope.
 Notation " ( x ; y ) " := (@sigmaI _ _ x y).
 Notation " x .1 " := (pr1 x) (at level 3, left associativity, format "x .1").
 Notation " x .2 " := (pr2 x) (at level 3, left associativity, format "x .2").
