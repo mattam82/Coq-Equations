@@ -135,6 +135,6 @@ Ltac rec_debug v recname := intro_block v ; move v at top ;
     show_hyps ; show_goal ; simpl in * ; simplify_dep_elim ; intros ; unblock_goal ; intros ;
       add_pattern (hide_pattern recname).
 
-Ltac rec v recname := rec_fast v recname.
+Ltac rec recname v := rec_fast v recname.
 
 Ltac solve_rec := simpl in * ; cbv zeta ; intros ; try typeclasses eauto with Below.

@@ -42,7 +42,9 @@ val get_signature :
 val pattern_sigma :
   Term.constr ->
   Names.Id.t -> Environ.env -> Evd.evar_map -> unit Proofview.tactic
-val curry_hyp : Environ.env -> Evd.evar_map ->
+
+(* Unused for now *)
+val curry_left_hyp : Environ.env -> Evd.evar_map ->
   Term.constr -> Term.types -> (Term.constr * Term.types) option
 
 val build_sig_of_ind : Environ.env ->
@@ -51,3 +53,10 @@ val build_sig_of_ind : Environ.env ->
                        Evd.evar_map * Term.constr * Context.rel_context * Term.constr *
                          Term.constr * Context.rel_context * int * Term.constr
 
+(** Pack all hypotheses into a new one using sigmas *)
+val uncurry_hyps : Names.Id.t -> unit Proofview.tactic
+
+(** Curry a term starting with a quantification on a sigma type,
+    associated to the right. *)
+val curry : Environ.env -> Evd.evar_map ->
+  Term.constr -> Term.types -> (Term.constr * Term.types) option

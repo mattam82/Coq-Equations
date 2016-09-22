@@ -43,6 +43,9 @@ open Equations_common
 let mkConstructG c u =
   mkConstructU (destConstructRef (Lazy.force c), u)
 
+let mkIndG c u =
+  mkIndU (destIndRef (Lazy.force c), u)
+
 let mkConstG c u =
   mkConstU (destConstRef (Lazy.force c), u)
 
@@ -288,7 +291,7 @@ let pattern_sigma c hyp env sigma =
   let projabs = tclTHENLIST (map (fun (t, p) -> change (Some t) p Locusops.onConcl) projs) in
     Proofview.V82.tactic (tclTHEN (Refiner.tclEVARS !evd) projabs)
 			 
-let curry_hyp env sigma c t =
+let curry_left_hyp env sigma c t =
   let aux c t na u ty pred concl =
     let (n, idx, dom) = destLambda pred in
     let newctx = [(na, None, dom); (n, None, idx)] in
@@ -326,3 +329,59 @@ let curry_hyp env sigma c t =
 	     Some (term, t))
     | _ -> None
   in curry c t
+
+let curry env sigma c t =
+  let rec make_arg na t =
+    match decompose_coq_sigma t with
+    | None -> 
+       if Globnames.is_global (Lazy.force coq_unit) t then
+         let _, u = destInd t in
+         [], Universes.constr_of_global_univ (Lazy.force coq_tt, u)
+       else [na,None,t], mkRel 1
+    | Some (u, ty, pred) ->
+       let na, _, codom =
+         if isLambda pred then destLambda pred 
+         else (Anonymous, ty, mkApp (pred, [|mkRel 1|])) in
+       let ctx, rest = make_arg na codom in
+       let len = List.length ctx in 
+       let tuple = 
+         mkApp (mkConstructG coq_sigmaI u,
+		[| lift (len + 1) ty; lift (len + 1) pred; mkRel (len + 1); rest |])
+       in
+       ctx @ [na, None, ty], tuple
+  in
+  let curry c t =
+    match kind_of_term t with
+    | Prod (na, dom, concl) ->
+       let ctx, arg = make_arg na dom in
+       let term = mkApp (c, [|arg|]) in
+       let ty = nf_betaiota sigma (subst1 arg concl) in
+       Some (it_mkLambda_or_LetIn term ctx, it_mkProd_or_LetIn ty ctx)
+    | _ -> None
+  in curry c t
+
+let uncurry_hyps name =
+  let open Proofview in
+  let open Proofview.Notations in
+  Proofview.Goal.enter (fun gl ->
+    let hyps = Goal.hyps (Goal.assume gl) in
+    let env = Goal.env gl in
+    let sigma = Goal.sigma gl in
+    let hyps, _ = List.split_when (fun (_, _, ty) -> 
+                      Constr.equal ty (Lazy.force coq_end_of_section)) hyps in
+    let rec ondecl (sigma, acc, ty) (dna, _, dty) =
+      let sigma, sigmaI = Evd.fresh_global env sigma (Lazy.force coq_sigmaI) in
+      let _, u = destConstruct sigmaI in
+      let types = [| dty; mkNamedLambda dna dty ty |] in
+      let app = mkApp (sigmaI, Array.append types [| mkVar dna; acc |]) in
+      (sigma, app, mkApp (mkIndG coq_sigma u, types))
+    in
+    let sigma, unit = Evd.fresh_global env sigma (Lazy.force coq_tt) in
+    let sigma, unittype = Evd.fresh_global env sigma (Lazy.force coq_unit) in
+    let sigma, term, ty = 
+      Context.fold_named_context_reverse 
+        ondecl ~init:(sigma, unit, unittype) hyps
+    in
+    let sigma, _ = Typing.type_of env sigma term in
+    Proofview.Unsafe.tclEVARS sigma <*>
+      Tactics.letin_tac None (Name name) term (Some ty) nowhere)

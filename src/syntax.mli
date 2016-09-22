@@ -31,7 +31,7 @@ and lhs = user_pats (* p1 ... pn *)
 and 'a rhs =
     Program of Constrexpr.constr_expr
   | Empty of identifier Loc.located
-  | Rec of identifier Loc.located * Constrexpr.constr_expr option *
+  | Rec of Constrexpr.constr_expr * Constrexpr.constr_expr option *
       'a list
   | Refine of Constrexpr.constr_expr * 'a list
   | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) Util.union *

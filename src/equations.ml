@@ -207,26 +207,26 @@ let rec intros_reducing gl =
     | Prod (_, _, _) -> tclTHEN intro intros_reducing gl
     | _ -> tclIDTAC gl
 
-let observe s tac =
-  let open Proofview in
-  let open Proofview.Notations in
-  if not debug then tac
-  else
-    fun gls ->
-    msg_debug (str"Applying " ++ str s ++ str " on " ++ pr_goal gls);
-    to82
-      (Proofview.tclORELSE
-         (Proofview.tclTHEN
-            (of82 tac)
-            (Proofview.numgoals >>= fun gls ->
-             if gls = 0 then (msg_debug (str "succeeded"); Proofview.tclUNIT ())
-             else 
-               (of82
-                  (fun gls -> msg_debug (str "Subgoal: " ++ pr_goal gls);
-                           { it = [gls.it]; sigma = gls.sigma }))))
-         (fun iexn -> msg_debug (str"Failed with: " ++
-                                Coqloop.print_toplevel_error iexn);
-                   Proofview.tclUNIT ())) gls
+let observe s tac = tac
+  (* let open Proofview in *)
+  (* let open Proofview.Notations in *)
+  (* if not debug then tac *)
+  (* else *)
+  (*   fun gls -> *)
+  (*   msg_debug (str"Applying " ++ str s ++ str " on " ++ pr_goal gls); *)
+  (*   to82 *)
+  (*     (Proofview.tclORELSE *)
+  (*        (Proofview.tclTHEN *)
+  (*           (of82 tac) *)
+  (*           (Proofview.numgoals >>= fun gls -> *)
+  (*            if gls = 0 then (msg_debug (str "succeeded"); Proofview.tclUNIT ()) *)
+  (*            else  *)
+  (*              (of82 *)
+  (*                 (fun gls -> msg_debug (str "Subgoal: " ++ pr_goal gls); *)
+  (*                          { it = [gls.it]; sigma = gls.sigma })))) *)
+  (*        (fun iexn -> msg_debug (str"Failed with: " ++ *)
+  (*                               Coqloop.print_toplevel_error iexn); *)
+  (*                  Proofview.tclUNIT ())) gls *)
   
                    
 let rec aux_ind_fun info = function

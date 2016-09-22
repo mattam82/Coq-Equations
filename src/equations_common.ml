@@ -459,15 +459,15 @@ let tacvar_arg h =
 
 let rec_tac h h' = 
   TacArg(dummy_loc, TacCall(dummy_loc, 
-			    Qualid (dummy_loc, qualid_of_string "Equations.Below.rec"),
-		[tacident_arg h;
-		 tacvar_arg h']))
+    Qualid (dummy_loc, qualid_of_string "Equations.Below.rec"),
+    [tacvar_arg h'; ConstrMayEval (Genredexpr.ConstrTerm h)]))
 
 let rec_wf_tac h h' rel = 
   TacArg(dummy_loc, TacCall(dummy_loc, 
     Qualid (dummy_loc, qualid_of_string "Equations.Subterm.rec_wf_eqns_rel"),
-			    [tacident_arg h;tacvar_arg h';			     
-			     ConstrMayEval (Genredexpr.ConstrTerm rel)]))
+    [tacvar_arg h';
+     ConstrMayEval (Genredexpr.ConstrTerm h);
+     ConstrMayEval (Genredexpr.ConstrTerm rel)]))
 
 let unfold_recursor_tac () = tac_of_string "Equations.Subterm.unfold_recursor" []
 

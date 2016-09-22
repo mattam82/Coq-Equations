@@ -94,12 +94,17 @@ TACTIC EXTEND curry
 [ "curry" hyp(id) ] -> [ 
   Proofview.V82.tactic 
     (fun gl ->
-      match Sigma.curry_hyp (pf_env gl) (project gl) (mkVar id) (pf_get_hyp_typ gl id) with
+      match Sigma.curry (pf_env gl) (project gl) (mkVar id) (pf_get_hyp_typ gl id) with
       | Some (prf, typ) -> 
 	 (tclTHENFIRST (Proofview.V82.of_tactic (assert_before_replacing id typ))
 		       (Tacmach.refine_no_check prf)) gl
-      | None -> tclFAIL 0 (str"No currying to do in" ++ pr_id id) gl) ]
+      | None -> tclFAIL 0 (str"No currying to do in " ++ pr_id id) gl) ]
 END
+
+TACTIC EXTEND curry_hyps
+[ "uncurry_hyps" ident(id) ] -> [ Sigma.uncurry_hyps id ]
+END
+
 
 (* TACTIC EXTEND pattern_tele *)
 (* [ "pattern_tele" constr(c) ident(hyp) ] -> [ fun gl -> *)
@@ -343,7 +348,8 @@ GEXTEND Gram
       |"=>"; c = Constr.lconstr -> Program c
       | ["with"|"<="]; ref = refine; [":="|"=>"]; e = equations -> ref e
       | "<-"; "(" ; t = Tactic.tactic; ")"; e = equations -> By (Inl t, e)
-      | "by"; IDENT "rec"; id = identref; rel = OPT constr; [":="|"=>"]; e = deppat_equations -> Rec (id, rel, e)
+      | "by"; IDENT "rec"; c = constr; rel = OPT constr; [":="|"=>"]; 
+        e = deppat_equations -> Rec (c, rel, e)
     ] ]
   ;
 

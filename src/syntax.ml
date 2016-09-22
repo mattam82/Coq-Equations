@@ -77,7 +77,7 @@ and lhs = user_pats
 and 'a rhs = 
   | Program of constr_expr
   | Empty of identifier Loc.located
-  | Rec of identifier Loc.located * constr_expr option * 'a list
+  | Rec of constr_expr * constr_expr option * 'a list
   | Refine of constr_expr * 'a list
   | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) union * 'a list
 
@@ -99,7 +99,8 @@ let pplhs lhs = pp (pr_lhs (Global.env ()) lhs)
 
 let rec pr_rhs env = function
   | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ pr_id var
-  | Rec ((loc, var), rel, s) -> spc () ++ str "=>" ++ spc () ++ str"rec " ++ pr_id var ++ spc () ++
+  | Rec (t, rel, s) -> 
+     spc () ++ str "=>" ++ spc () ++ str"rec " ++ pr_constr_expr t ++ spc () ++
       hov 1 (str "{" ++ pr_clauses env s ++ str "}")
   | Program rhs -> spc () ++ str ":=" ++ spc () ++ pr_constr_expr rhs
   | Refine (rhs, s) -> spc () ++ str "<=" ++ spc () ++ pr_constr_expr rhs ++ 

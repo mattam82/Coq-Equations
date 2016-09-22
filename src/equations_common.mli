@@ -255,14 +255,14 @@ val tacvar_arg :
   < constant : 'a; dterm : 'b; level : Genarg.rlevel; name : 'c;
     pattern : 'd; reference : 'e; tacexpr : 'f; term : 'g; utrm : 'h > Tacexpr.gen_tactic_arg
 val rec_tac :
-  Names.Id.t ->
+  'f ->
   Names.Id.t ->
   < constant : 'a; dterm : 'b; level : Genarg.rlevel; name : 'c;
     pattern : 'd; reference : Libnames.reference; tacexpr : 'e; term : 'f;
     utrm : 'g >
 	   Tacexpr.gen_tactic_expr
 val rec_wf_tac :
-  Names.Id.t ->
+  'a ->
   Names.Id.t ->
   'a ->
   < constant : 'b; dterm : 'c; level : Genarg.rlevel; name : 'd;

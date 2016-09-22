@@ -1064,12 +1064,12 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 	    | Empty (loc,i) ->
 	      Some (Compute (prob, ty, REmpty (get_var loc i s)))
 
-	    | Rec ((loc, i), rel, spl) ->
-	      let var = rel_id ctx (get_var loc i s) in
+	    | Rec (term, rel, spl) ->
+              (* let term, _ = interp_constr_in_rhs env ctx evars data None s lets term in *)
 	      let tac = 
 		match rel with
-		| None -> rec_tac var (pi1 data)
-		| Some r -> rec_wf_tac var (pi1 data) r
+		| None -> rec_tac term (pi1 data)
+		| Some r -> rec_wf_tac term (pi1 data) r
 	      in
 	      let rhs = By (Inl tac, spl) in
 		(match covering_aux env evars data [] [(lhs,rhs),false] path prob lets ty with
