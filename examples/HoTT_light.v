@@ -50,17 +50,6 @@ Equations(nocomp) snd {A B} (p : A * B) : B :=
 snd (pair a b) := b.
 Transparent snd.
 
-Record sigma {A : Type} (P : A -> Type) := Build_sigma
-  { proj1 : A ; proj2 : P proj1 }.
-
-Notation " { x : T & P } " := (sigma (fun x : T => P)).
-
-Notation " ( x ; p ) " := (@Build_sigma _ _ x p).
-
-Notation "x .1" := (proj1 x) (at level 3).
-Notation "x .2" := (proj2 x) (at level 3).
-
-
 Definition Sect {A B : Type} (s : A -> B) (r : B -> A) :=
   forall x : A, r (s x) = x.
 
@@ -108,10 +97,10 @@ Transparent transport.
 
 Notation "p # x" := (transport _ p x) (right associativity, at level 65, only parsing).
 
-Equations path_sigma {A : Type} (P : A -> Type) (u v : sigma P)
+Equations path_sigma {A : Type} (P : A -> Type) (u v : sigma A P)
   (p : u.1 = v.1) (q : p # u.2 = v.2)
 : u = v :=
-path_sigma _ (Build_sigma _ _) (Build_sigma _ _) id_refl id_refl := id_refl.
+path_sigma _ (sigmaI _ _) (sigmaI _ _) id_refl id_refl := id_refl.
 
 Equations(nocomp) path_prod_uncurried {A B : Type} (z z' : A * B)
            (pq : (fst z = fst z') * (snd z = snd z')): z = z' :=
@@ -360,7 +349,7 @@ Defined.
 
 Definition contr_sigma A {P : A -> Type}
   {H : Contr A} `{H0 : forall a, Contr (P a)}
-  : Contr (sigma P).
+  : Contr (sigma A P).
 Proof.
   exists (center A; center (P (center A))). 
   intros [a Ha]. unshelve refine (path_sigma _ _ _ _).
@@ -368,35 +357,36 @@ Proof.
   apply (H0 (center A)).
 Defined.
 
-Equations(nocomp) path_sigma_uncurried (A : Type) (P : A -> Type) (u v : sigma P)
-  (pq : sigma (fun p => p # u.2 = v.2))
+Equations(nocomp) path_sigma_uncurried (A : Type) (P : A -> Type) (u v : sigma A P)
+  (pq : sigma _ (fun p => p # u.2 = v.2))
   : u = v :=
-  path_sigma_uncurried _ _ (Build_sigma u1 u2) (Build_sigma v1 v2) (Build_sigma id_refl id_refl) := id_refl.
+path_sigma_uncurried _ _ (sigmaI u1 u2) (sigmaI v1 v2) (sigmaI id_refl id_refl) :=
+  id_refl.
 Transparent path_sigma_uncurried.
 
-Definition pr1_path A `{P : A -> Type} {u v : sigma P} (p : u = v)
+Definition pr1_path A `{P : A -> Type} {u v : sigma A P} (p : u = v)
 : u.1 = v.1
-  := ap (@proj1 _ _) p.
+  := ap (@pr1 _ _) p.
 
 Notation "p ..1" := (pr1_path p) (at level 3).
 
-Definition pr2_path A `{P : A -> Type} {u v : sigma P} (p : u = v)
+Definition pr2_path A `{P : A -> Type} {u v : sigma A P} (p : u = v)
 : p..1 # u.2 = v.2.
   destruct p. apply id_refl.
 Defined.
 
 Notation "p ..2" := (pr2_path p) (at level 3).
 
-Definition eta_path_sigma_uncurried A `{P : A -> Type} {u v : sigma P}
+Definition eta_path_sigma_uncurried A `{P : A -> Type} {u v : sigma A P}
            (p : u = v) : path_sigma_uncurried _ _ (p..1; p..2) = p.
   destruct p. apply id_refl.
 Defined.
 
-Definition eta_path_sigma A `{P : A -> Type} {u v : sigma P} (p : u = v)
+Definition eta_path_sigma A `{P : A -> Type} {u v : sigma A P} (p : u = v)
 : path_sigma _ _ (p..1) (p..2) = p
   := eta_path_sigma_uncurried p.
 
-Definition path_sigma_equiv {A : Type} (P : A -> Type) (u v : sigma P):
+Definition path_sigma_equiv {A : Type} (P : A -> Type) (u v : sigma A P):
   IsEquiv (path_sigma_uncurried u v).
   unshelve refine (BuildIsEquiv _ _ _).
   - exact (fun r => (r..1; r..2)).
