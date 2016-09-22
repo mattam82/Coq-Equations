@@ -475,6 +475,10 @@ let equations_tac_expr () =
   (TacArg(dummy_loc, TacCall(dummy_loc, 
    Qualid (dummy_loc, qualid_of_string "Equations.DepElim.equations"), [])))
 
+let solve_rec_tac_expr () =
+  (TacArg(dummy_loc, TacCall(dummy_loc, 
+   Qualid (dummy_loc, qualid_of_string "Equations.Below.solve_rec"), [])))
+
 let equations_tac () = tac_of_string "Equations.DepElim.equations" []
 
 let set_eos_tac () = tac_of_string "Equations.DepElim.set_eos" []

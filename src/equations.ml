@@ -207,26 +207,26 @@ let rec intros_reducing gl =
     | Prod (_, _, _) -> tclTHEN intro intros_reducing gl
     | _ -> tclIDTAC gl
 
-let observe s tac = tac
-  (* let open Proofview in *)
-  (* let open Proofview.Notations in *)
-  (* if not debug then tac *)
-  (* else *)
-  (*   fun gls -> *)
-  (*   msg_debug (str"Applying " ++ str s ++ str " on " ++ pr_goal gls); *)
-  (*   to82 *)
-  (*     (Proofview.tclORELSE *)
-  (*        (Proofview.tclTHEN *)
-  (*           (of82 tac) *)
-  (*           (Proofview.numgoals >>= fun gls -> *)
-  (*            if gls = 0 then (msg_debug (str "succeeded"); Proofview.tclUNIT ()) *)
-  (*            else  *)
-  (*              (of82 *)
-  (*                 (fun gls -> msg_debug (str "Subgoal: " ++ pr_goal gls); *)
-  (*                          { it = [gls.it]; sigma = gls.sigma })))) *)
-  (*        (fun iexn -> msg_debug (str"Failed with: " ++ *)
-  (*                               Coqloop.print_toplevel_error iexn); *)
-  (*                  Proofview.tclUNIT ())) gls *)
+let observe s tac = 
+  let open Proofview in
+  let open Proofview.Notations in
+  if not debug then tac
+  else
+    fun gls ->
+    msg_debug (str"Applying " ++ str s ++ str " on " ++ pr_goal gls);
+    to82
+      (Proofview.tclORELSE
+         (Proofview.tclTHEN
+            (of82 tac)
+            (Proofview.numgoals >>= fun gls ->
+             if gls = 0 then (msg_debug (str "succeeded"); Proofview.tclUNIT ())
+             else
+               (of82
+                  (fun gls -> msg_debug (str "Subgoal: " ++ pr_goal gls);
+                           { it = [gls.it]; sigma = gls.sigma }))))
+         (fun iexn -> msg_debug (str"Failed with: " ++
+                                Coqloop.print_toplevel_error iexn);
+                   Proofview.tclUNIT ())) gls
   
                    
 let rec aux_ind_fun info = function
@@ -307,7 +307,7 @@ let ind_fun_tac is_rec f info fid split ind =
 	     in
 	     Proofview.V82.of_tactic
 	       (change_in_hyp None fixprot (n, Locus.InHyp)) gl);
-	   to82 intros; observe "aux_ind_fun" (aux_ind_fun info split)])
+	   to82 intros; (* observe "aux_ind_fun" *) (aux_ind_fun info split)])
   else tclCOMPLETE (tclTHENLIST
       [to82 (set_eos_tac ()); to82 intros; aux_ind_fun info split])
 
@@ -859,8 +859,8 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 	  Global.set_strategy (ConstKey cst) Conv_oracle.Opaque;
 	  if with_ind && succ j == List.length ind_stmts then declare_ind ())
       in
-      let tac = 
-	tclTHENLIST [to82 intros; to82 unf; to82 (solve_equation_tac (ConstRef cst))]
+      let tac =
+	(tclTHENLIST [to82 intros; to82 unf; to82 (solve_equation_tac (ConstRef cst))])
       in
       let evd, _ = Typing.type_of (Global.env ()) !evd c in
 	ignore(Obligations.add_definition ~kind:info.decl_kind
@@ -1121,8 +1121,8 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	 Declare.declare_constant projid
 				  (DefinitionEntry ce, IsDefinition Definition)
        in
-       Impargs.declare_manual_implicits true (ConstRef compproj) 
-					[(impls @ [ExplByPos (succ (List.length sign), None), (true, false, true)])];
+       let impl = if with_comp then [ExplByPos (succ (List.length sign), None), (true, false, true)] else [] in
+       Impargs.declare_manual_implicits true (ConstRef compproj) [impls @ impl];
        Table.extraction_inline true [Ident (dummy_loc, projid)];
        let compinfo = { comp = Option.map snd comp; comp_app = compapp; 
 			comp_proj = compproj; comp_recarg = succ (length sign) } in

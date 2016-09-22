@@ -275,6 +275,11 @@ val equations_tac_expr :
   < constant : 'a; dterm : 'b; level : 'c; name : 'd; pattern : 'e;
     reference : Libnames.reference; tacexpr : 'f; term : 'g; utrm : 'h >
 								    Tacexpr.gen_tactic_expr
+val solve_rec_tac_expr :
+  unit ->
+  < constant : 'a; dterm : 'b; level : 'c; name : 'd; pattern : 'e;
+    reference : Libnames.reference; tacexpr : 'f; term : 'g; utrm : 'h >
+								    Tacexpr.gen_tactic_expr
 val equations_tac : unit -> unit Proofview.tactic
 val set_eos_tac : unit -> unit Proofview.tactic
 val solve_rec_tac : unit -> unit Proofview.tactic

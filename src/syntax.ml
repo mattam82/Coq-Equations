@@ -209,6 +209,10 @@ let add_implicits impls avoid pats =
        end
     | [] -> List.map snd pats
   in aux impls pats
+
+let chole loc =
+  let tac = Genarg.in_gen (Genarg.rawwit Constrarg.wit_tactic) (solve_rec_tac_expr ()) in
+  CHole (loc,None,Misctypes.IntroAnonymous,Some tac), None
     
 let interp_eqn i is_rec env impls eqn =
   let avoid = ref [] in
@@ -274,7 +278,7 @@ let interp_eqn i is_rec env impls eqn =
     let pats = map interp_pat curpats'' in
       match is_rec with
       | Some (Structural _) -> (PUVar i :: pats, interp_rhs curpats' None rhs)
-      | Some (Logical r) -> (pats, interp_rhs curpats' (Some (ConstRef r.comp_proj)) rhs)
+      | Some (Logical r) -> (pats, interp_rhs curpats' (Some (ConstRef r.comp_proj, Option.is_empty r.comp)) rhs)
       | None -> (pats, interp_rhs curpats' None rhs)
   and interp_rhs curpats compproj = function
     | Refine (c, eqs) -> Refine (interp_constr_expr compproj !avoid c, map (aux curpats) eqs)
@@ -285,10 +289,11 @@ let interp_eqn i is_rec env impls eqn =
   and interp_constr_expr compproj ids c = 
     match c, compproj with
     (* |   | CAppExpl of loc * (proj_flag * reference) * constr_expr list *)
-    | CApp (loc, (None, CRef (Ident (loc',id'), _)), args), Some cproj when Id.equal i id' ->
-	let qidproj = Nametab.shortest_qualid_of_global Idset.empty cproj in
-	  CApp (loc, (None, CRef (Qualid (loc', qidproj), None)),
-		List.map (fun (c, expl) -> interp_constr_expr compproj ids c, expl) args)
+    | CApp (loc, (None, CRef (Ident (loc',id'), _)), args), Some (cproj, nocomp) when Id.equal i id' ->
+       let qidproj = Nametab.shortest_qualid_of_global Idset.empty cproj in
+       let args = List.map (fun (c, expl) -> interp_constr_expr compproj ids c, expl) args in
+       let arg = if nocomp then [CApp (loc, (None, c), [chole loc]), None] else [] in
+       CApp (loc, (None, CRef (Qualid (loc', qidproj), None)), args @ arg)
     | _ -> map_constr_expr_with_binders (fun id l -> id :: l) 
 	(interp_constr_expr compproj) ids c
   in aux [] eqn
