@@ -17,6 +17,8 @@ Generalizable Variables A R S B.
 Class WellFounded {A : Type} (R : relation A) :=
   wellfounded : well_founded R.
 
+Scheme Acc_dep := Induction for Acc Sort Prop.
+
 (** The fixpoint combinator associated to a well-founded relation,
    just reusing the [Wf.Fix] combinator. *)
 
@@ -24,11 +26,22 @@ Definition FixWf `{WF:WellFounded A R} (P : A -> Type)
   (step : ∀ x : A, (∀ y : A, R y x -> P y) -> P x) : ∀ x : A, P x :=
   Fix wellfounded P step.
 
+Lemma Acc_pi (A : Type) (R : relation A) i (x y : Acc R i) : x = y.
+Proof.
+  revert y.
+  induction x using Acc_dep.
+  intros. destruct y.
+  f_equal.
+  extensionality y. extensionality H'. apply H.
+Qed.
+
 Lemma FixWf_unfold `{WF : WellFounded A R} (P : A -> Type)
   (step : ∀ x : A, (∀ y : A, R y x -> P y) -> P x) (x : A) : 
   FixWf P step x = step x (fun y _ => FixWf P step y).
-Proof. intros. unfold FixWf, Fix. destruct wellfounded.
-  simpl. f_equal. extensionality y. extensionality h. pi.
+Proof.
+  intros. unfold FixWf, Fix. destruct wellfounded.
+  simpl. f_equal. extensionality y. extensionality h.
+  f_equal. apply Acc_pi.
 Qed.
 
 Hint Rewrite @FixWf_unfold : Recursors.
