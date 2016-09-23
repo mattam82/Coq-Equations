@@ -14,7 +14,7 @@ val applistG :
   Globnames.global_reference -> Term.constr list -> Term.constr
 val mkSig :
   Evd.evar_map ref -> Names.Name.t * Term.types * Term.constr -> Term.constr
-val constrs_of_coq_sigma :
+val constrs_of_coq_sigma : 
   Environ.env ->
   Evd.evar_map ref ->
   Term.constr ->
@@ -39,7 +39,7 @@ val ind_name : Names.inductive -> Names.Id.t
 val declare_sig_of_ind : Environ.env -> Names.inductive -> Term.constr
 val get_signature :
   Environ.env -> Evd.evar_map -> Term.constr -> Evd.evar_map * Term.constr * Term.constr
-val pattern_sigma :
+val pattern_sigma : assoc_right:bool ->
   Term.constr ->
   Names.Id.t -> Environ.env -> Evd.evar_map -> unit Proofview.tactic
 
@@ -58,5 +58,8 @@ val uncurry_hyps : Names.Id.t -> unit Proofview.tactic
 
 (** Curry a term starting with a quantification on a sigma type,
     associated to the right. *)
-val curry : Environ.env -> Evd.evar_map ->
-  Term.constr -> Term.types -> (Term.constr * Term.types) option
+val curry : Names.Name.t -> Term.constr ->
+            Context.rel_context * Term.constr
+
+val uncurry_call : Environ.env -> Evd.evar_map -> Term.constr ->
+                   Evd.evar_map * Term.constr * Term.types

@@ -78,31 +78,97 @@ TACTIC EXTEND get_signature_pack
 END
       
 TACTIC EXTEND pattern_sigma
-[ "pattern" "sigma" hyp(id) ] -> [
+(* [ "pattern" "sigma" "left" hyp(id) ] -> [ *)
+(*   Proofview.Goal.enter (fun gl -> *)
+(*     let gl = Proofview.Goal.assume gl in *)
+(*     let env = Proofview.Goal.env gl in *)
+(*     let sigma = Proofview.Goal.sigma gl in *)
+(*     let decl = Tacmach.New.pf_get_hyp id gl in *)
+(*     let term = Option.get (Util.pi2 decl) in *)
+(*     Sigma.pattern_sigma ~assoc_right:false term id env sigma) ] *)
+| [ "pattern" "sigma" hyp(id) ] -> [
   Proofview.Goal.enter (fun gl ->
     let gl = Proofview.Goal.assume gl in
     let env = Proofview.Goal.env gl in
     let sigma = Proofview.Goal.sigma gl in
     let decl = Tacmach.New.pf_get_hyp id gl in
     let term = Option.get (Util.pi2 decl) in
-    Sigma.pattern_sigma term id env sigma) ]
+    Sigma.pattern_sigma ~assoc_right:true term id env sigma) ]
 END
 
 open Tacmach
+
+let curry_hyp env sigma hyp t =
+  let curry t =
+    match kind_of_term t with
+    | Prod (na, dom, concl) ->
+       let ctx, arg = Sigma.curry na dom in
+       let term = mkApp (mkVar hyp, [| arg |]) in
+       let ty = Reductionops.nf_betaiota sigma (Vars.subst1 arg concl) in
+       Some (it_mkLambda_or_LetIn term ctx, it_mkProd_or_LetIn ty ctx)
+    | _ -> None
+  in curry t
+
+let curry_concl env sigma na dom codom =
+  let ctx, arg = Sigma.curry na dom in
+  let newconcl = it_mkProd_or_LetIn (Vars.subst1 arg codom) ctx in
+  let proj last (na, b, ty) (terms, acc) =
+    if last then (acc :: terms, acc)
+    else
+      let term = mkProj (Lazy.force coq_pr1, acc) in
+      let acc = mkProj (Lazy.force coq_pr2, acc) in
+      (term :: terms, acc)
+  in
+  let terms, acc =
+    match ctx with
+    | hd :: (_ :: _ as tl) ->
+       proj true hd (List.fold_right (proj false) tl ([], mkRel 1))
+    | hd :: tl -> ([mkRel 1], mkRel 1)
+    | [] -> ([mkRel 1], mkRel 1)
+  in
+  let sigma, ev =
+    Evarutil.new_evar env sigma newconcl
+  in
+  let term = mkLambda (na, dom, mkApp (ev, CArray.rev_of_list terms)) in
+  sigma, term
 
 TACTIC EXTEND curry
 [ "curry" hyp(id) ] -> [ 
   Proofview.V82.tactic 
     (fun gl ->
-      match Sigma.curry (pf_env gl) (project gl) (mkVar id) (pf_get_hyp_typ gl id) with
+      match curry_hyp (pf_env gl) (project gl) id (pf_get_hyp_typ gl id) with
       | Some (prf, typ) -> 
 	 (tclTHENFIRST (Proofview.V82.of_tactic (assert_before_replacing id typ))
 		       (Tacmach.refine_no_check prf)) gl
       | None -> tclFAIL 0 (str"No currying to do in " ++ pr_id id) gl) ]
+| ["curry"] -> [ 
+    Proofview.Goal.nf_enter (fun gl ->
+      let env = Proofview.Goal.env gl in
+      let concl = Proofview.Goal.concl gl in
+      match kind_of_term concl with
+      | Prod (na, dom, codom) ->
+         Proofview.Refine.refine
+           (fun sigma ->
+             let sigma, prf = curry_concl env sigma na dom codom in
+             sigma, prf)
+      | _ -> Tacticals.New.tclFAIL 0 (str"Goal cannot be curried"))
+  ]
 END
 
 TACTIC EXTEND curry_hyps
 [ "uncurry_hyps" ident(id) ] -> [ Sigma.uncurry_hyps id ]
+END
+
+TACTIC EXTEND uncurry_call
+[ "uncurry_call" constr(c) ident(id) ] -> [
+    Proofview.Goal.enter (fun gl ->
+        let env = Proofview.Goal.env gl in
+        let sigma = Proofview.Goal.sigma gl in
+        let sigma, term, ty = Sigma.uncurry_call env sigma c in
+        let sigma, _ = Typing.type_of env sigma term in
+        Proofview.Unsafe.tclEVARS sigma <*>
+          Tactics.letin_tac None (Name id) term (Some ty) nowhere)
+      ]
 END
 
 

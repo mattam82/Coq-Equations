@@ -107,14 +107,17 @@ let telescope evd = function
 	  (fun (ty, tys) (n, b, t) ->
 	    let pred = mkLambda (n, t, ty) in
 	    let sigty = mkAppG evd (Lazy.force coq_sigma) [|t; pred|] in
-	      (sigty, pred :: tys))
+            let _, u = destInd (fst (destApp sigty)) in
+	      (sigty, (u, pred) :: tys))
 	  (t, []) tl
       in
       let constr, _ = 
-	List.fold_right (fun pred (intro, k) ->
+	List.fold_right (fun (u, pred) (intro, k) ->
 	  let pred = Vars.lift k pred in
 	  let (n, dom, codom) = destLambda pred in
-	  let intro = mkAppG evd (Lazy.force coq_sigmaI) [| dom; pred; mkRel k; intro|] in
+	  let intro =
+            mkApp (Universes.constr_of_global_univ
+                     (Lazy.force coq_sigmaI, u), [| dom; pred; mkRel k; intro|]) in
 	    (intro, succ k))
 	  tys (mkRel 1, 2)
       in
@@ -275,23 +278,27 @@ let get_signature env sigma ty =
 (*   let movetop = move_hyp true packid (Tacexpr.MoveToEnd false) in *)
 (*     tclTHENLIST [setvar; geneq; clear; movetop] *)
 
-let pattern_sigma c hyp env sigma =
+let pattern_sigma ~assoc_right c hyp env sigma =
   let evd = ref sigma in
   let terms = constrs_of_coq_sigma env evd c (mkVar hyp) in
-  let terms = 
-    match terms with
-    | (x, t, p, rest) :: term :: _ -> 
-	constrs_of_coq_sigma env evd t p @ terms
-    | _ -> terms
+  let terms =
+    if assoc_right then terms
+    else match terms with
+         | (x, t, p, rest) :: term :: _ -> 
+	    constrs_of_coq_sigma env evd t p @ terms
+         | _ -> terms
   in
   let pat = Patternops.pattern_of_constr env !evd in
   let terms = 
-    match terms with
-    | (x, t, p, rest) :: _ :: _ -> terms @ constrs_of_coq_sigma env evd t p 
-    | _ -> terms
+    if assoc_right then terms
+    else match terms with
+         | (x, t, p, rest) :: _ :: _ -> terms @ constrs_of_coq_sigma env evd t p 
+         | _ -> terms
   in
   let projs = map (fun (x, t, p, rest) -> (pat t, make_change_arg p)) terms in
-  let projabs = tclTHENLIST (map (fun (t, p) -> change (Some t) p Locusops.onConcl) projs) in
+  let projabs =
+    tclTHENLIST ((if assoc_right then rev_map
+                 else map) (fun (t, p) -> change (Some t) p Locusops.onConcl) projs) in
     Proofview.V82.tactic (tclTHEN (Refiner.tclEVARS !evd) projabs)
 			 
 let curry_left_hyp env sigma c t =
@@ -333,7 +340,7 @@ let curry_left_hyp env sigma c t =
     | _ -> None
   in curry c t
 
-let curry env sigma c t =
+let curry na c =
   let rec make_arg na t =
     match decompose_coq_sigma t with
     | None -> 
@@ -353,15 +360,7 @@ let curry env sigma c t =
        in
        ctx @ [na, None, ty], tuple
   in
-  let curry c t =
-    match kind_of_term t with
-    | Prod (na, dom, concl) ->
-       let ctx, arg = make_arg na dom in
-       let term = mkApp (c, [|arg|]) in
-       let ty = nf_betaiota sigma (subst1 arg concl) in
-       Some (it_mkLambda_or_LetIn term ctx, it_mkProd_or_LetIn ty ctx)
-    | _ -> None
-  in curry c t
+  make_arg na c
 
 let uncurry_hyps name =
   let open Proofview in
@@ -388,3 +387,13 @@ let uncurry_hyps name =
     let sigma, _ = Typing.type_of env sigma term in
     Proofview.Unsafe.tclEVARS sigma <*>
       Tactics.letin_tac None (Name name) term (Some ty) nowhere)
+
+let uncurry_call env sigma c =
+  let hd, args = decompose_app c in
+  let ty = Retyping.get_type_of env sigma hd in
+  let ctx, concl = decompose_prod_n_assum (List.length args) ty in
+  let evdref = ref sigma in
+  (* let ctx = (Anonymous, None, concl) :: ctx in *)
+  let sigty, sigctx, constr = telescope evdref ctx in
+  let app = substl (List.rev args) constr in
+  !evdref, app, sigty
