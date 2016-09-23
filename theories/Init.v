@@ -38,7 +38,11 @@ Arguments sigmaI {A} B pr1 pr2.
 
 Notation " { x : A & y } " := (@sigma A (fun x : A => y)%type).
 Notation " { x : A & y } " := (@sigma A (fun x : A => y)%type) : type_scope.
-Notation " ( x ; y ) " := (@sigmaI _ _ x y).
+Notation " ( x ; y ) " := (@sigmaI _ _ x y) (only parsing).
+Notation "'&(' x , .. , y & z ')'" :=
+  (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
+    (right associativity, at level 4,
+     format "'&(' x ,  .. ,  y  &  z ')'").
 Notation " x .1 " := (pr1 x) (at level 3, left associativity, format "x .1").
 Notation " x .2 " := (pr2 x) (at level 3, left associativity, format "x .2").
 
