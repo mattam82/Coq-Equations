@@ -111,7 +111,10 @@ let curry_hyp env sigma hyp t =
 
 let curry_concl env sigma na dom codom =
   let ctx, arg = Sigma.curry na dom in
-  let newconcl = it_mkProd_or_LetIn (Vars.subst1 arg codom) ctx in
+  let newconcl =
+    let body = it_mkLambda_or_LetIn (Vars.subst1 arg codom) ctx in
+    let inst = Termops.extended_rel_vect 0 ctx in
+    it_mkProd_or_LetIn (mkApp (body, inst)) ctx in
   let proj last (na, b, ty) (terms, acc) =
     if last then (acc :: terms, acc)
     else
