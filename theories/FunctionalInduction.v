@@ -43,12 +43,18 @@ Ltac funind_call f H :=
 (** The [FunctionalElimination f] class declares elimination principles produced
    from the functional induction principle for [f] to be used directly to eliminate
    a call to [f]. This is the preferred method of proving results about a function. 
-   NOTE: the arguments of the call should all be variables to ensure the goal is 
-   not weakened (no dependent elimination yet).
+   [n] is the number of binders for parameters, predicates and methods of the 
+   eliminator.
    *)
 
-Class FunctionalElimination {A : Type} (f : A) (fun_elim_ty : Prop) := 
+Class FunctionalElimination {A : Type} (f : A) (fun_elim_ty : Prop) (n : nat) := 
   fun_elim : fun_elim_ty.
+
+Ltac make_refine n c :=
+  match constr:(n) with
+  | 0 => uconstr:(c)
+  | S ?n => make_refine n uconstr:(c _)
+  end.
 
 Ltac constr_head c :=
   let rec aux c :=
@@ -66,32 +72,63 @@ Ltac with_last_secvar_aux tac :=
 Ltac with_last_secvar tac orelse := 
   with_last_secvar_aux tac + (* No section variables *) orelse.
 
-Ltac funelim_tac c tac :=
+
+
+Ltac get_elim c :=
   match c with
-    | appcontext [?f] =>
-  let call := fresh "call" in set(call := c) in *; 
-   with_last_secvar ltac:(fun eos => move call before eos) ltac:(move call at top) ;
-  let elim := constr:(fun_elim (f:=f)) in
-    block_goal; revert_until call; block_goal;
-    first [
-        progress (generalize_eqs_vars call);
-        match goal with
-          call := ?c' |- _ =>
-            subst call; pattern_call c';
-              apply elim; clear; simplify_dep_elim;
-                simplify_IH_hyps; intros _ (* block *);
-                try on_last_hyp ltac:(fun id => 
-                                    try rewrite <- id;
-                                    intros_until_block);
-                  unblock_goal; simplify_IH_hyps; tac f
-        end
-      | subst call; pattern_call c; apply elim; clear;
-        simplify_dep_elim; simplify_IH_hyps;
-        intros_until_block; intros_until_block;
-        unblock_goal; tac f ]
+  | appcontext [?f] => constr:(fun_elim (f:=f))
   end.
 
-Ltac funelim c := funelim_tac c ltac:(fun _ => idtac).
+Ltac remember_let H :=
+  lazymatch goal with
+  | [ H := ?body : ?type |- _ ] =>
+    generalize (eq_refl : body = H); clearbody H
+  end.
+
+Ltac clear_non_secvar := repeat
+  match goal with
+  | [ H : _ |- _ ] => tryif is_secvar H then fail else clear H
+  end.
+
+Ltac funelim_JMeq_tac c tac :=
+  let elim := get_elim c in
+  let call := fresh "call" in set(call := c) in *; 
+  with_last_secvar ltac:(fun eos => move call before eos) ltac:(move call at top) ;
+  block_goal; revert_until call; block_goal;
+  first [
+    progress (generalize_eqs_vars call);
+    match goal with
+    | call := ?c' |- _ =>
+      subst call; pattern_call c';
+      apply elim; clear_non_secvar; simplify_dep_elim;
+      simplify_IH_hyps; intros _ (* block *);
+      try on_last_hyp ltac:(fun id =>
+                              try rewrite <- id;
+                            intros_until_block);
+      unblock_goal; simplify_IH_hyps; tac elim
+    end
+    | subst call; pattern_call c; apply elim;
+      clear_non_secvar;
+      simplify_dep_elim; simplify_IH_hyps;
+      intros_until_block; intros_until_block;
+      unblock_goal; tac elim ].
+
+Ltac funelim_sig_tac c tac :=
+  let elimc := get_elim c in
+  let packcall := fresh "packcall" in
+  let elimn := match elimc with fun_elim (n:=?n) => constr:(n) end in
+  block_goal;
+  uncurry_call c packcall;
+  pattern sigma packcall;
+  remember_let packcall;
+  move packcall at top; revert_until packcall;
+  revert packcall; curry;
+  let elimt := make_refine elimn elimc in
+  unshelve refine_ho elimt; hnf;
+  simplify_dep_elim; simplify_IH_hyps; intros _ (* block *);
+  unblock_goal; simplify_IH_hyps; tac c.
+
+Ltac funelim c := funelim_JMeq_tac c ltac:(fun _ => idtac).
 
 (** A special purpose database used to prove the elimination principle. *)
 

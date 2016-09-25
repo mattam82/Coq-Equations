@@ -804,8 +804,11 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 	  let evd, f = Evd.fresh_global env evd f_gr in
 	  let evd, elimcgr = Evd.fresh_global env evd elimgr in
 	  let cl = functional_elimination_class () in
+          let nargs = lenprotos + List.length all_stmts in
+          let args_of_elim = coq_nat_of_int nargs in
 	  let args = [Retyping.get_type_of env evd f; f; 
-		      Retyping.get_type_of env evd elimcgr; elimcgr]
+		      Retyping.get_type_of env evd elimcgr;
+                      args_of_elim; elimcgr]
 	  in
 	  let instid = add_prefix "FunctionalElimination_" id in
 	    ignore(declare_instance instid poly evd [] cl args)

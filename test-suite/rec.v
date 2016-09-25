@@ -181,28 +181,6 @@ Module RecMeasure.
       apply Is_true_eq_true. auto.
     Qed.
 
-Ltac funelim_tac c tac ::=
-  match c with
-    | appcontext C [ ?f ] => 
-  let call := fresh "call" in set(call := c) in *; 
-  let elim := constr:(fun_elim (f:=f)) in
-    block_goal; revert_until call; block_goal;
-    first [ 
-      progress (generalize_eqs_vars call);
-        match goal with
-          call := ?c' |- _ => 
-            subst call; simpl; pattern_call c';
-              apply elim; simplify_dep_elim;
-                simplify_IH_hyps; unfold block at 1;
-                  first [ on_last_hyp ltac:(fun id => rewrite <- id; clear id; intros)
-                    | intros ];
-                  unblock_goal; tac f
-        end
-      | subst call; pattern_call c; apply elim; 
-        simplify_dep_elim; simplify_IH_hyps; unfold block at 1; 
-          intros; unblock_goal; tac f ]
-  end.
-
     Lemma qs_same (l : list A) : forall a, In a l <-> In a (qs l).
     Proof.
       funelim (qs l). reflexivity.
