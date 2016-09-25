@@ -109,12 +109,20 @@ let curry_hyp env sigma hyp t =
     | _ -> None
   in curry t
 
+open Closure.RedFlags
+
+let red_curry () =
+  let redpr pr = 
+    fCONST (Projection.constant (Lazy.force pr)) in
+  let reds = mkflags [redpr coq_pr1; redpr coq_pr2; fBETA; fIOTA] in
+  Reductionops.clos_norm_flags reds
+
 let curry_concl env sigma na dom codom =
   let ctx, arg = Sigma.curry na dom in
   let newconcl =
     let body = it_mkLambda_or_LetIn (Vars.subst1 arg codom) ctx in
     let inst = Termops.extended_rel_vect 0 ctx in
-    it_mkProd_or_LetIn (mkApp (body, inst)) ctx in
+    red_curry () env sigma (it_mkProd_or_LetIn (mkApp (body, inst)) ctx) in
   let proj last (na, b, ty) (terms, acc) =
     if last then (acc :: terms, acc)
     else
@@ -510,4 +518,47 @@ TACTIC EXTEND is_secvar
   [ match kind_of_term x with
     | Var id when Termops.is_section_variable id -> Proofview.tclUNIT ()
     | _ -> Tacticals.New.tclFAIL 0 (str "Not a section variable or hypothesis") ]
+END
+
+open Proofview.Goal
+
+(** [refine_ho c]
+
+  Matches a lemma [c] of type [∀ ctx, ty] with a conclusion of the form
+  [∀ ctx, ?P args] using second-order matching on the problem
+  [ctx |- ?P args = ty] and then refines the goal with [c]. *)
+
+let refine_ho c =
+  nf_enter (fun gl ->
+    let env = env gl in
+    let sigma = sigma gl in  
+    let concl = concl gl in
+    let ty = Tacmach.New.pf_apply Retyping.get_type_of gl c in
+    let ts = Names.full_transparent_state in
+    let evd = ref sigma in
+    let rec aux env concl ty =
+      match kind_of_term concl, kind_of_term ty with
+      | Prod (na, b, t), Prod (na', b', t') ->
+         let ok = Evarconv.e_conv ~ts env evd b b' in
+         if not ok then
+           error "Products do not match"
+         else aux (Environ.push_rel (na,None,b) env) t t'
+      | _, App (ev, args) when isEvar ev ->
+         let (evk, subst as ev) = destEvar ev in
+         let sigma = !evd in
+         let sigma,ev =
+           Evarutil.evar_absorb_arguments env sigma ev (Array.to_list args) in
+         let argoccs = Array.map_to_list (fun _ -> None) (snd ev) in
+         let sigma, b = Evarconv.second_order_matching ts env sigma ev argoccs concl in
+         if not b then
+           error "Second-order matching failed"
+         else Proofview.Unsafe.tclEVARS sigma <*>
+                Proofview.Refine.refine ~unsafe:true (fun sigma -> sigma, c)
+      | _, _ -> error "Couldn't find a second-order pattern to match"
+    in aux env concl ty)
+
+TACTIC EXTEND refine_ho
+| [ "refine_ho" open_constr(c) ] ->
+   [ Proofview.tclTHEN (Proofview.Unsafe.tclEVARS (fst c))
+                       (refine_ho (snd c)) ]
 END
