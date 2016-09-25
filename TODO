@@ -16,3 +16,4 @@ solution_left -> use eq_sym for better guard condition behavior (DONE)
 
 - FIXMES in bocquet-poly
 
+- Rename helpers from refine node into "helper_" constants, not obligations
