@@ -131,8 +131,8 @@ Proof. intros. intros x. induction x. left. now depelim y.
   destruct (eq_dec h h0); subst. 
   destruct (IHx y). subst.
   left; reflexivity.
-  right. intro. apply n. injection H0. simpdep. reflexivity.
-  right. intro. apply n. injection H0. simpdep. reflexivity.
+  right. intro. apply n0. injection H0. simpdep. reflexivity.
+  right. intro. apply n0. injection H0. simpdep. reflexivity.
 Defined.
 
 (* Print Assumptions well_founded_vector_direct_subterm. *)

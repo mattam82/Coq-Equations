@@ -27,9 +27,10 @@ Ltac decompose_exists id := hnf in id ;
 
 (** Dependent generalization using existentials only. *)
 
-Ltac move_after_vars H v :=
+Ltac move_after_vars H v := 
   match v with
   | (?x; ?y) => move_after_vars H y; move_after_vars H x 
+  | ?f ?x => move_after_vars H f; move_after_vars H x
   | ?t =>  try move H after t
   end.
   
@@ -45,13 +46,16 @@ Ltac generalize_sig id cont :=
     move_after_vars id' v;
     revert_until id'; rename id' into id;
       cont id
-  | id' := ?v |- _ => (* TODO *)
+  | id' := ?v |- _ =>
     let id'1 := fresh id' in let id'2 := fresh id' in
     set (id'2 := pr2 id'); set (id'1 := pr1 id') in id'2;
     hnf in (value of id'1), (value of id'2);
+    try red in (type of id'2);
     generalize (@eq_refl _ id'1 : id'1 = id'1);
     unfold id'1 at 1; clearbody id'2 id'1;
-    clear id' id; compute in id'2;
+    clear id' id;
+    move_after_vars id'1 v; move_after_vars id'2 v;
+    compute in id'2;
     rename id'2 into id;
       cont id'1
   end.

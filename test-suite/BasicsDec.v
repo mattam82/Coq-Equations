@@ -31,11 +31,11 @@ Derive Signature for Vector.t.
 Instance vector_eqdec {A n} `(EqDec A) : EqDec (vector A n). 
 Proof. intros. intros x. induction x. left. now depelim y.
   intro y; depelim y.
-  destruct (eq_dec h h0); subst. 
-  destruct (IHx y). subst.
+  destruct (eq_dec h h0) as [eq|neq]; subst. 
+  destruct (IHx y) as [eqy|neqy]. subst.
   left; reflexivity.
-  right. intro. apply n. injection H0. simpdep. reflexivity.
-  right. intro. apply n. injection H0. simpdep. reflexivity.
+  right. intro H0. apply neqy. injection H0. simpdep. reflexivity.
+  right. intro H0. apply neq. injection H0. simpdep. reflexivity.
 Defined.
 
 Derive Subterm for vector.

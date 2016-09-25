@@ -140,7 +140,7 @@ Module M1.
     depind p.
     - destruct (H p) as [v Hv].
       exists v; intros; exists (1 + Z.abs m)%Z... nia.
-    - destruct (IHp2 p2 eq_refl) as [v Hv]; exists v; intros.
+    - destruct (IHp2 _ H p2 eq_refl) as [v Hv]; exists v; intros.
       destruct (Hv (Z.abs (eval p1 v) + Z.abs m)%Z) as [x [Hx0 Hx1]]; exists x...
       split; auto.
       nia.
