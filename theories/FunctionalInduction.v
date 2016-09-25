@@ -119,10 +119,14 @@ Ltac funelim_sig_tac c tac :=
   let elimn := match elimc with fun_elim (n:=?n) => constr:(n) end in
   block_goal;
   uncurry_call c packcall;
+  with_last_secvar ltac:(fun eos => move packcall before eos)
+                          ltac:(move packcall at top) ;
+  revert_until packcall;
   pattern sigma packcall;
   remember_let packcall;
-  move packcall at top; revert_until packcall;
-  revert packcall; curry;
+  with_last_secvar ltac:(fun eos => move packcall before eos)
+                          ltac:(move packcall at top) ;
+  revert_until packcall; revert packcall; curry;
   let elimt := make_refine elimn elimc in
   unshelve refine_ho elimt; hnf;
   simplify_dep_elim; simplify_IH_hyps; intros _ (* block *);
