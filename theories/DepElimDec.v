@@ -117,6 +117,10 @@ Ltac generalize_eqs_vars_sig id :=
 Ltac generalize_by_eqs id ::= generalize_eqs_sig id.
 Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars_sig id.
 
+Require Import FunctionalInduction.
+
+Ltac funelim c ::= funelim_sig_tac c ltac:(fun _ => idtac).
+
 (** Any signature made up entirely of decidable types is decidable. *)
 
 Polymorphic Definition eqdec_sig@{i j} {A : Type@{i}} {B : A -> Type@{j}}

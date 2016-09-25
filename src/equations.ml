@@ -494,7 +494,7 @@ let compute_elim_type evd is_rec protos k leninds ind_stmts all_stmts sign app e
   let newctx = List.skipn (length sign + 2) ctx in
   let newarity = it_mkProd_or_LetIn (substl [mkProp; app] arity) sign in
   let newctx' = clear_ind_assums k newctx in
-  if leninds == 1 then it_mkProd_or_LetIn newarity newctx' else
+  if leninds == 1 then List.length newctx', it_mkProd_or_LetIn newarity newctx' else
   let methods, preds = List.chop (List.length newctx - leninds) newctx' in
   let ppred, preds = List.sep_last preds in
   let newpredfn i (n, b, t) (idx, (f', path, sign, arity, pats, args), _, _) =
@@ -626,8 +626,11 @@ let compute_elim_type evd is_rec protos k leninds ind_stmts all_stmts sign app e
       | [], decls -> n, List.rev decls @ meths'
       | _, _ -> assert false
     in aux all_stmts (rev methods) 0 []
-  in it_mkProd_or_LetIn (lift (-skipped) newarity)
-			(methods' @ newpreds @ [ppred])
+  in
+  let ctx = methods' @ newpreds @ [ppred] in
+  let elimty = it_mkProd_or_LetIn (lift (-skipped) newarity) ctx in
+  let nargs = List.length methods' + 1 in
+  nargs, elimty
 
 let build_equations with_ind env evd id info sign is_rec arity cst 
     f ?(alias:(constr * constr * splitting) option) prob split =
@@ -793,7 +796,7 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 	      Smartlocate.global_with_alias (reference_of_id elimid) 
 	in
 	let elimty = Global.type_of_global_unsafe elim in
-	let newty =
+	let nargs, newty =
 	  compute_elim_type evd is_rec protos k leninds ind_stmts all_stmts
 			    sign app elimty
 	in
@@ -804,7 +807,6 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 	  let evd, f = Evd.fresh_global env evd f_gr in
 	  let evd, elimcgr = Evd.fresh_global env evd elimgr in
 	  let cl = functional_elimination_class () in
-          let nargs = lenprotos + List.length all_stmts in
           let args_of_elim = coq_nat_of_int nargs in
 	  let args = [Retyping.get_type_of env evd f; f; 
 		      Retyping.get_type_of env evd elimcgr;

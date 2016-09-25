@@ -335,8 +335,7 @@ let curry_left_hyp env sigma c t =
 	| Some (inst, ty, pred) ->
 	   let term, typ = aux c t na inst ty pred concl in
 	   let c, t = curry_index term typ in
-	   let term = nf_beta sigma c in
-	     Some (term, t))
+	     Some (c, t))
     | _ -> None
   in curry c t
 
