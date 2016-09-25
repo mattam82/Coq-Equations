@@ -232,8 +232,8 @@ Proof.
   depelim x; simpl in *;
   autorewrite with env_app lookup lift_var_by in *; auto.
   - exfalso; auto.
-  - assert (x ≠ lift_var_by (env_scope_le Δ) FO); [intro; subst; auto|].
-    rewrite (IHΔ _ _ _ JMeq_refl JMeq_refl _ H p q); auto.
+  - specialize (IHΔ Γ x). forward IHΔ by intro; subst; auto.
+    now rewrite (IHΔ p q).
 Qed.
 
 Lemma sa_narrowing : forall {s} q,

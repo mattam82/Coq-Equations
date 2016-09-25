@@ -108,12 +108,16 @@ Implicit Arguments Vector.cons [ [A] [n] ].
 
 Open Local Scope vect_scope.
 
-Section vapp_def.
-  Context {A : Type}.
-  Equations (nocomp) vapp' {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
+Equations (nocomp) vapp' {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
   vapp' []v w := w ;
   vapp' (Vector.cons a n v) w := Vector.cons a (vapp' v w).
-End vapp_def.
+
+(* Section vapp_def. *)
+(*   Context {A : Type}. *)
+(*   Equations (nocomp) vapp' {n m} (v : vector A n) (w : vector A m) : vector A (n + m) := *)
+(*   vapp' []v w := w ; *)
+(*   vapp' (Vector.cons a n v) w := Vector.cons a (vapp' v w). *)
+(* End vapp_def. *)
 
 (* Print Assumptions vapp'. *)
 
@@ -282,7 +286,8 @@ rev (cons a v) := rev v +++ (cons a nil).
 Notation " [] " := List.nil.
 
 Lemma app'_nil : forall {A} (l : list A), l +++ [] = l.
-Proof. intros. Opaque app'.
+Proof.
+  intros. Opaque app'.
   funelim (app' l []). reflexivity.
   now rewrite H.
 Qed.
@@ -303,7 +308,9 @@ Qed.
 Hint Rewrite @rev_rev_acc : rev_acc.
 
 Lemma app'_funind : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l (app' l' l'').
-Proof. intros. funelim (l +++ l'); simp app'.
+Proof.
+  intros.
+  funelim (l +++ l'); simp app'.
   rewrite H. reflexivity. 
 Qed.
 
@@ -364,8 +371,10 @@ Lemma split_vapp' : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
   let 'append v' w' := split (vapp' v w) in
     v = v' /\ w = w'.
 Proof.
-  intros. funelim (vapp' v w). destruct (split (m:=0) w). depelim xs; intuition.
-  simp split in *. destruct (split (vapp' t0 w)). simpl.
+  intros.
+  funelim (vapp' v w).
+  destruct split. depelim xs; intuition.
+  simp split in *. destruct split. simpl.
   intuition congruence.
 Qed.
 
@@ -581,7 +590,8 @@ Lemma diag_nth `(v : vector (vector A n) n) (f : fin n) : nth (diag v) f = nth (
 Proof. revert f. funelim (diag v); intros f.
   depelim f.
 
-  depelim f; simp nth. rewrite H. simp nth.
+  depelim f; simp nth.
+  rewrite H. simp nth.
 Qed.
 
 Equations(nocomp) assoc (x y z : nat) : x + y + z = x + (y + z) :=

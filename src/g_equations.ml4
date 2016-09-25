@@ -543,6 +543,8 @@ let refine_ho c =
          if not ok then
            error "Products do not match"
          else aux (Environ.push_rel (na,None,b) env) t t'
+      (* | _, LetIn (na, b, _, t') -> *)
+      (*    aux env t (subst1 b t') *)
       | _, App (ev, args) when isEvar ev ->
          let (evk, subst as ev) = destEvar ev in
          let sigma = !evd in
@@ -561,4 +563,10 @@ TACTIC EXTEND refine_ho
 | [ "refine_ho" open_constr(c) ] ->
    [ Proofview.tclTHEN (Proofview.Unsafe.tclEVARS (fst c))
                        (refine_ho (snd c)) ]
+END
+
+TACTIC EXTEND eqns_specialize_eqs
+| [ "eqns_specialize_eqs" ident(i) ] -> [
+    Proofview.V82.tactic (Depelim.specialize_eqs i)
+  ]
 END

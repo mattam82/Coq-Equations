@@ -105,7 +105,6 @@ Proof with simpl; intros. intros.
 Qed.
 
 Module RecMeasure.
-  
 
   Instance wf_MR {A R} `(WellFounded A R) {B} (f : B -> A) : WellFounded (MR R f).
   Proof. red. apply measure_wf. apply H. Defined.
@@ -123,7 +122,6 @@ Module RecMeasure.
   f (S n) m := S (f n m) + m.
 
   Implicit Arguments length [[A]].
-
 
   Equations g (l : list nat) : nat :=
   g l by rec l (MR lt (@length nat)) :=
@@ -161,13 +159,11 @@ Module RecMeasure.
     Context (compare : A -> A -> comparison).
     Context (compspec : forall x y, CompSpec eq lt x y (compare x y)).
 
-
     Context (leb_complete : forall x y, leb x y <-> (x = y \/ leb y x = false)).
     Context (leb_complete2 : forall x y, leb x y = false -> leb y x).
 
     Context (ltb_leb : forall x y, ltb x y -> leb x y).
     Context (nltb_leb : forall x y, ltb x y = false -> leb y x).
-(*     Context (ltb_leb' : forall x y, ltb x y = false -> (x = y \/ leb y x = true)). *)
     Context (ltb_leb' : forall x y, leb x y = false <-> ltb y x).
     Context (ltb_leb'' : forall x y, ltb x y <-> ~ leb y x).
 
@@ -183,21 +179,22 @@ Module RecMeasure.
 
     Lemma qs_same (l : list A) : forall a, In a l <-> In a (qs l).
     Proof.
-      funelim (qs l). reflexivity.
-      
-      intros.
-      simpl. split; intros.
-      destruct H1. subst. auto with datatypes.
-      rewrite in_app_iff. 
-      simpl. rewrite <- H, <- H0.
-      rewrite !filter_In'.
-      cut (ltb a0 a ∨ a = a0 ∨ leb a a0). intuition auto.
-      destruct (compspec a a0); intuition auto.
-      right; right. apply ltb_leb. revert H2. case (refl_lt a a0). split. intros.
-      contradiction.
-      left. case (refl_lt a0 a). split. contradiction.
-      rewrite in_app_iff, <- H in H1. simpl in H1; rewrite <- H0 in H1.
-      rewrite !filter_In in H1. intuition auto.
+      funelim (qs l).
+      - reflexivity.
+      - intros a'.
+        simpl. split; intros.
+        destruct H1. subst. auto with datatypes.
+        rewrite in_app_iff. 
+        simpl.
+        rewrite <- H, <- H0.
+        rewrite !filter_In'.
+        cut (ltb a' a ∨ a = a' ∨ leb a a'). intuition auto.
+        destruct (compspec a a'); intuition auto.
+        right; right. apply ltb_leb. revert H2. case (refl_lt a a'). split. intros.
+        contradiction.
+        left. case (refl_lt a' a). split. contradiction.
+        rewrite in_app_iff, <- H in H1. simpl in H1; rewrite <- H0 in H1.
+        rewrite !filter_In in H1. intuition auto.
     Qed.
 
     Lemma sort_le_app :

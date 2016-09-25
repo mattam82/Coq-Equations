@@ -214,7 +214,7 @@ Global Set Keyed Unification.
 
 Ltac simplify_IH_hyps := repeat
   match goal with
-    | [ hyp : _ |- _ ] => specialize_eqs hyp
+    | [ hyp : _ |- _ ] => eqns_specialize_eqs hyp
   end.
 
 (** We split substitution tactics in the two directions depending on which 
@@ -1350,8 +1350,8 @@ Ltac impossible_call f := on_call f ltac:(fun t => apply (elim_impossible_call t
 
 Ltac find_empty := simpl in * ; elimtype False ;
   match goal with
-    | [ H : _ |- _ ] => solve [ clear_except H ; depelim H | specialize_eqs H ; assumption ]
-    | [ H : _ <> _ |- _ ] => solve [ red in H ; specialize_eqs H ; assumption ]
+    | [ H : _ |- _ ] => solve [ clear_except H ; depelim H | eqns_specialize_eqs H ; assumption ]
+    | [ H : _ <> _ |- _ ] => solve [ red in H ; eqns_specialize_eqs H ; assumption ]
   end.
 
 Ltac make_simplify_goal :=

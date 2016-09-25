@@ -85,7 +85,8 @@ Hint Rewrite lift0 : lift.
 Require Import Omega.
 
 Lemma lift_k_lift_k k n m t : lift k n (lift k m t) = lift k (n + m) t.
-Proof. funelim (lift k m t) ; intros; simp lift; try rewrite H ; try rewrite H0; auto.
+Proof.
+  funelim (lift k m t); intros; simp lift; try rewrite H ; try rewrite H0; auto.
        
   destruct (nat_compare_spec n0 k); try discriminate. subst.
   case_eq (nat_compare (k + n) k); intro H; simp lift; try term.
@@ -534,10 +535,12 @@ Proof. red in H, H0. red. unfold lexicographic.
   assert(wfprod:=wf_lexprod A (fun _ => B) R (const S) H wfS).
   red in wfprod.
   intro. specialize (wfprod (existT (const B) (fst a) (snd a))).
-  clear wfS H H0. depind wfprod. constructor; intros.
-  destruct y; destruct a; simpl in *. apply H0 with (existT (const B) a0 b).
-  assumption.
-  simpl. reflexivity.
+  clear wfS H H0.
+  depind wfprod.
+  constructor; intros.
+  destruct y; destruct a; simpl in *.
+  apply H0 with (existT (const B) a0 b).
+  assumption. reflexivity.
 Defined.
 
 Definition her_order : relation (type * term * term) :=
@@ -776,13 +779,12 @@ Proof.
   on_call (hereditary_subst (U, u0, u)) ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   noconf H4.
-  specialize (H0 [] _ _ _ eq_refl eq_refl (eq_JMeq Heqhsubst0)). simpl in H0.
+  specialize (H0 [] eq_refl (eq_JMeq Heqhsubst0)). simpl in H0.
   depelim H3.
   specialize (H _ _ H2 H3_0).
   specialize (Hind _ _ H2 H3_). rewrite Heq0 in Hind.
   specialize (Hind _ _ eq_refl).
   depelim Hind. 
-  specialize (H2 _ _ eq_refl).
   noconf H2. 
   depelim H.
   specialize (H1 (Γ' @ Γ) B H). depelim H2.
@@ -912,7 +914,7 @@ Proof.
   (* App *)
   on_call (hereditary_subst (U,u0,u))
           ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
-  specialize (H0 _ _ _ [] eq_refl eq_refl JMeq_refl). 
+  specialize (H0 [] eq_refl JMeq_refl). 
   simplify_IH_hyps. rewrite Heq0 in Hind. 
   revert H0.
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).

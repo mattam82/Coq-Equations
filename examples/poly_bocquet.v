@@ -71,13 +71,9 @@ Module M1.
     intros. depind p; unfold poly_sig in *; simplify_IH_hyps.
     exists mono_z...
     destruct IHp. exists (mono_l x)...
-    specialize (IHp2 _ _ eq_refl).
     destruct IHp2. exists (mono_s x)...
   Qed.
-  Ltac forward H :=
-    match type of H with
-    | ?X -> _ => let H' := fresh in assert (H':X) ; [|specialize (H H'); clear H']
-    end.
+
   (**
    ** 1.2.b
    Deux polynômes avec les mêmes coefficients sont égaux
@@ -109,7 +105,7 @@ Module M1.
     intro. specialize (H (mono_l m))...
     now depelim IHp1_1. (* FIXME simplifies unrelated hyp *)
   Qed.
-*)
+
 
   (**
    Une valuation des variables est donnée par le type Vector.t Z n
@@ -151,14 +147,14 @@ Module M1.
   Qed.
 
   Lemma poly_nz_eval : forall {n},
-                         (forall (p : poly false n), exists v, eval p v <> 0%Z)
-                         /\ (forall (p : poly false (S n)),
-                             exists v, forall m, exists x,
-                                         x <> 0%Z /\
-                                         (Z.abs (x * eval p (Vector.cons x v)) > Z.abs m)%Z).
+      (forall (p : poly false n), exists v, eval p v <> 0%Z)
+      /\ (forall (p : poly false (S n)),
+            exists v, forall m, exists x,
+                  x <> 0%Z /\
+                  (Z.abs (x * eval p (Vector.cons x v)) > Z.abs m)%Z).
   Proof with (autorewrite with eval; auto using poly_nz_eval').
     depind n; match goal with
-                | [ |- ?P /\ ?Q ] => assert (HP : P); [|split;[auto|]]
+              | [ |- ?P /\ ?Q ] => assert (HP : P); [|split;[auto|]]
               end...
     - depelim p; exists Vector.nil... depelim i; auto; discriminate.
     - destruct IHn as [IHn1 IHn2]; depelim p.
@@ -168,54 +164,18 @@ Module M1.
         exists (Vector.cons x v)...
         nia.
   Qed.
-
-  (* Notation " '&{' x : A & x' : A' & .. & y : B & C } " := (@sigma A (fun x => @sigma A' (fun x' => .. (@sigma B (fun y => C)) ..))). *)
   
   Ltac try_discriminate ::= fail.
   Ltac try_injection H ::= fail.
-  Axiom cheat : forall {A}, A.
-  Check (fun x y z : nat => &(x & z) : { x : nat & nat}).
-
-  (** *)
+  
+(** *)
   (*  Un polynôme nul ne peut s'évaluer que vers 0. *)
-  (*  *)
+(*  *)
+
   Lemma poly_z_eval : forall {n} (p : poly true n) {v}, eval p v = 0%Z.
   Proof.
     intros n p v.
-    uncurry_call (@eval n true p v) packcall.
-    generalize (eq_refl : packcall = packcall).
-    set (call := eval p v).
-    revert call.
-    pattern sigma packcall. intros call.
-    unfold packcall at 1.
-    clearbody packcall. move packcall at top. move call at top.
-    revert_until packcall.
-    match goal with
-      |- let x := ?t in @?P x => change (P t)
-    end.
-    revert packcall.
-    curry.
-    change (∀ (n : nat) (b : bool) (p : poly b n) (p0 : vector Z n),
-  (λ (n0 : nat) (b0 : bool) (p1 : poly b0 n0) (p2 : vector Z n0) call,
-   ∀ (n1 : nat) (p3 : poly true n1) (v : vector Z n1), &(n1, true, p3 & v) = &(n0, b0, p1 & p2) :> {n : nat & {b : bool & {_ : poly b n & vector Z n}}} → call = 0%Z) n b p p0
-   (eval ((&(n, b, p & p0)) : {n : nat & {b : bool & {_ : poly b n & vector Z n}}}).2.2.1
-   (&(n, b, p & p0) : {n : nat & {b : bool & {_ : poly b n & vector Z n}}}).2.2.2)).
-
-    let c := constr:(fun_elim (f:=@eval)) in
-    pose c.
-    (* clearbody p. change(    ∀ P : ∀ (n : nat) (b : bool), poly b n → vector Z n → Z → Prop, *)
-    (*   P 0 true poly_z Vector.nil 0%Z *)
-    (*   → (∀ (z : Z) (i : IsNZ z), P 0 false (poly_c z i) Vector.nil z) *)
-    (*     → (∀ (n : nat) (b0 : bool) (p : poly b0 n) (h : Z) (t0 : vector Z n), *)
-    (*        P n b0 p t0 (eval p t0) → P (S n) b0 (poly_l p) (Vector.cons h t0) (eval p t0)) *)
-    (*       → (∀ (n : nat) (b1 : bool) (p0 : poly b1 n) (p1 : poly false (S n)) (h : Z) (t0 : vector Z n), *)
-    (*          P n b1 p0 t0 (eval p0 t0) *)
-    (*          → P (S n) false p1 (Vector.cons h t0) (eval p1 (Vector.cons h t0)) *)
-    (*            → P (S n) false (poly_s p0 p1) (Vector.cons h t0) (eval p0 t0 + h * eval p1 (Vector.cons h t0))%Z) *)
-    (*         → ∀ (n : nat) (b : bool) (p : poly b n) (v : vector Z n) (call:=eval p v), P n b p v call) in p. *)
-    refine (p _ _ _ _ _);
-    simplify_dep_elim; simplify_IH_hyps; auto.
-
+    now funelim (eval p v).
     (* Was:  *)
   (*   depind p; depelim v. *)
   (*   autorewrite with eval; auto. *)

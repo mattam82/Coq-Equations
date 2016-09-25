@@ -64,3 +64,5 @@ val derive_dep_elimination :
 val pattern_call :
   ?pattern_term:bool ->
   constr -> Proof_type.goal Tacmach.sigma -> Evar.t list Evd.sigma
+
+val specialize_eqs : Names.Id.t -> Proof_type.tactic
