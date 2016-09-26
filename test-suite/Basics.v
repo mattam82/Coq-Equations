@@ -7,7 +7,7 @@
 (**********************************************************************)
 
 Require Import Program Bvector List Relations.
-From Equations Require Import Equations DepElimDec.
+From Equations Require Import Equations.
 
 Inductive le : nat -> nat -> Set :=
 | le_0 n : le 0 (S n)
@@ -172,7 +172,6 @@ Import Vector.
 (*   unzip_dec ?(S n) (cons (pair x y) n v) with unzip_dec v := { *)
 (*      | pair xs ys := (cons x xs, cons y ys) }. *)
 (* End unzip_dec_def. *)
-Axiom cheat : forall{A}, A.
 Section foo.
   Context {A B} `{EqDec A} `{EqDec B}.
   Let eos := the_end_of_the_section.
@@ -481,6 +480,7 @@ Equations(nocomp) vlast' {A} {n} (v : vector A (S n)) : A :=
 vlast' (cons a O Vnil) := a ;
 vlast' (cons a (S n) v) := vlast' v.
 
+Require Import DepElimDec.
 Ltac generalize_by_eqs id ::= generalize_eqs_sig id.
 Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars_sig id.
 
