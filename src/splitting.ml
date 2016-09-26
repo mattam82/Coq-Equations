@@ -8,7 +8,6 @@
 
 open Cases
 open Util
-open Errors
 open Names
 open Nameops
 open Term
@@ -23,7 +22,6 @@ open Typeops
 open Type_errors
 open Pp
 open Proof_type
-open Errors
 open Glob_term
 open Retyping
 open Pretype_errors
@@ -63,13 +61,14 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 	  evm, body, typ
 
     | Compute ((ctx, _, _), ty, REmpty split) ->
-	let split = (Name (id_of_string "split"), 
-		    Some (coq_nat_of_int (succ (length ctx - split))),
-		    Lazy.force coq_nat)
+	let split = make_def (Name (id_of_string "split"))
+          (Some (coq_nat_of_int (succ (length ctx - split))))
+          (Lazy.force coq_nat)
 	in
 	let ty' = it_mkProd_or_LetIn ty ctx in
 	let let_ty' = mkLambda_or_LetIn split (lift 1 ty') in
-	let evm, term = new_evar env evm ~src:(dummy_loc, QuestionMark (Define true)) let_ty' in
+        let evm, term = new_evar env evm
+            ~src:(dummy_loc, QuestionMark (Define true)) let_ty' in
 	let ev = fst (destEvar term) in
 	  oblevars := Evar.Set.add ev !oblevars;
 	  evm, term, ty'
@@ -107,9 +106,9 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
     | Valid ((ctx, _, _), ty, substc, tac, (entry, pv), rest) ->
 	let tac = Proofview.tclDISPATCH 
 	  (map (fun (goal, args, subst, invsubst, x) -> 
-	    Proofview.Refine.refine (fun evm -> 
-	      let evm, term, ty = aux evm x in
-		evm, applistc term args)) rest)
+	    Refine.refine { Sigma.run = fun evm ->
+	      let evm, term, ty = aux (Sigma.to_evar_map evm) x in
+       Sigma.here (applistc term args) (Sigma.Unsafe.of_evar_map evm)}) rest)
 	in
 	let pv : Proofview_monad.proofview = Obj.magic pv in
 	let pv = { pv with Proofview_monad.solution = evm } in
@@ -132,25 +131,25 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 	in
 	let evm = !evd in
 	let branches_ctx =
-	  Array.mapi (fun i (br, brt) -> (id_of_string ("m_" ^ string_of_int i), Some br, brt))
+	  Array.mapi (fun i (br, brt) -> make_def (Name (id_of_string ("m_" ^ string_of_int i))) (Some br) brt)
 	    branches
 	in
 	let n, branches_lets =
-	  Array.fold_left (fun (n, lets) (id, b, t) ->
-	    (succ n, (Name id, Option.map (lift n) b, lift n t) :: lets))
+	  Array.fold_left (fun (n, lets) decl ->
+	    (succ n, map_rel_declaration (lift n) decl :: lets))
 	    (0, []) branches_ctx
 	in
 	let liftctx = lift_context (Array.length branches) ctx in
 	let evm, case =
 	  let ty = it_mkProd_or_LetIn ty liftctx in
 	  let ty = it_mkLambda_or_LetIn ty branches_lets in
-	  let nbbranches = (Name (id_of_string "branches"),
-			   Some (coq_nat_of_int (length branches_lets)),
-			   Lazy.force coq_nat)
+          let nbbranches =
+            make_def (Name (id_of_string "branches"))
+	      (Some (coq_nat_of_int (length branches_lets))) (Lazy.force coq_nat)
 	  in
-	  let nbdiscr = (Name (id_of_string "target"),
-			Some (coq_nat_of_int (length before)),
-			Lazy.force coq_nat)
+	  let nbdiscr = make_def (Name (id_of_string "target"))
+			(Some (coq_nat_of_int (length before)))
+			(Lazy.force coq_nat)
 	  in
 	  let ty = it_mkLambda_or_LetIn (lift 2 ty) [nbbranches;nbdiscr] in
 	  let evm, term = new_evar env evm ~src:(dummy_loc, QuestionMark status) ty in
@@ -176,7 +175,7 @@ let is_comp_obl comp hole_kind =
 
 let zeta_red =
   let red = Tacred.cbv_norm_flags
-    (Closure.RedFlags.red_add Closure.RedFlags.no_red Closure.RedFlags.fZETA)
+      CClosure.(RedFlags.red_add RedFlags.no_red RedFlags.fZETA)
   in
     reduct_in_concl (red, DEFAULTcast)
 
@@ -198,14 +197,14 @@ let define_tree is_recursive poly impls status isevar env (i, sign, arity)
 	else if is_comp_obl comp (snd loc) then
 	  let unfolds =
             Option.cata
-              (fun comp -> unfold_in_concl 
-	                  [((Locus.AllOccurrencesBut [1]), EvalConstRef comp)])
+              (fun comp -> to82 (unfold_in_concl 
+	                  [((Locus.AllOccurrencesBut [1]), EvalConstRef comp)]))
               tclIDTAC (Option.get comp).comp
 	  in
 	    Some (of82 (tclTRY 
-			  (tclTHENLIST [zeta_red; to82 Tactics.intros; unfolds;
+			  (tclTHENLIST [to82 zeta_red; to82 Tactics.intros; unfolds;
 					(to82 (solve_rec_tac ()))])))
-	else Some (snd (Obligations.get_default_tactic ()))
+	else Some ((!Obligations.default_tactic))
       in (id, ty, loc, s, d, tac)) obls
   in
   let term_info = map (fun (ev, arg) ->
@@ -218,12 +217,11 @@ let define_tree is_recursive poly impls status isevar env (i, sign, arity)
   in
   let hook = Lemmas.mk_hook hook in
   let reduce = 
-    let open Closure.RedFlags in
-    let flags = [fBETA;fIOTA;fZETA] in
+    let open CClosure.RedFlags in
+    let flags = CClosure.betaiotazeta in
     (* let flags = match comp with None -> flags *)
     (*   | Some f -> fCONST f.comp :: fCONST f.comp_proj :: flags *)
     (* in *)
-    let flags = mkflags flags in
       clos_norm_flags flags (Global.env ()) Evd.empty
   in
   let kind = (Decl_kinds.Global, poly, Decl_kinds.Definition) in
@@ -231,7 +229,7 @@ let define_tree is_recursive poly impls status isevar env (i, sign, arity)
   let ty' = nf ty' in
     match is_recursive with
     | Some (Structural id) ->
-        let ty' = it_mkProd_or_LetIn ty' [(Anonymous, None, ty')] in
+        let ty' = it_mkProd_or_LetIn ty' [make_assum Anonymous ty'] in
 	ignore(Obligations.add_mutual_definitions [(i, t', ty', impls, obls)] 
 		 (Evd.evar_universe_context !isevar) [] ~kind
 		 ~reduce ~hook (Obligations.IsFixpoint [id, CStructRec]))

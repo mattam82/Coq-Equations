@@ -51,24 +51,26 @@ let id x = x
 let debug = true
 
 let check_term env evd c t =
-  Typing.check env (ref evd) c t
+  Typing.e_check env (ref evd) c t
 
 let check_type env evd t =
-  ignore(Typing.sort_of env (ref evd) t)
+  ignore(Typing.e_sort_of env (ref evd) t)
       
 let typecheck_rel_context evd ctx =
+  let open Context.Rel.Declaration in
   let _ =
     List.fold_right
-      (fun (na, b, t as rel) env ->
-	 check_type env evd t;
-	 Option.iter (fun c -> check_term env evd c t) b;
+      (fun rel env ->
+	 check_type env evd (get_type rel);
+	 Option.iter (fun c -> check_term env evd c (get_type rel)) (get_value rel);
 	 push_rel rel env)
       ctx (Global.env ())
   in ()
 
 
 let new_untyped_evar () =
-  let _, ev = new_pure_evar empty_named_context_val Evd.empty mkProp in
+  let open Sigma in
+  let Sigma (ev, _, _) = new_pure_evar empty_named_context_val (Sigma.Unsafe.of_evar_map Evd.empty) mkProp in
     ev
 
 let to82 t = Proofview.V82.of_tactic t
@@ -136,7 +138,7 @@ let make_definition ?opaque ?(poly=false) evd ?types b =
 let declare_constant id body ty poly evd kind =
   let ce = make_definition ~opaque:false ~poly (ref evd) ?types:ty body in
   let cst = Declare.declare_constant id (DefinitionEntry ce, kind) in
-    Flags.if_verbose message ((string_of_id id) ^ " is defined");
+    Flags.if_verbose Feedback.msg_info (str((string_of_id id) ^ " is defined"));
     cst
     
 let declare_instance id poly evd ctx cl args =
@@ -332,12 +334,14 @@ let nowhere = { onhyps = Some []; concl_occs = NoOccurrences }
 (* Lifting a [rel_context] by [n]. *)
 
 let lift_rel_contextn k n sign =
+  let open Context.Rel in
+  let open Declaration in
   let rec liftrec k = function
-    | (na,c,t)::sign ->
-	(na,Option.map (liftn n k) c,liftn n k t)::(liftrec (k-1) sign)
+    | rel::sign -> let (na,c,t) = to_tuple rel in
+      of_tuple (na,Option.map (liftn n k) c,liftn n k t)::(liftrec (k-1) sign)
     | [] -> []
   in
-  liftrec (rel_context_length sign + k) sign
+  liftrec (Context.Rel.length sign + k) sign
 
 let lift_context n sign = lift_rel_contextn 0 n sign
 
@@ -412,7 +416,7 @@ let unfold_head env (ids, csts) c =
   in aux c
 
 open Auto
-open Errors
+open CErrors
 
 let autounfold_first db cl gl =
   let st =
@@ -533,10 +537,12 @@ let mkNot t =
 
 let mkNot t =
   mkApp (Coqlib.build_coq_not (), [| t |])
-      
-let mkProd_or_subst (na,body,t) c =
-  match body with
-    | None -> mkProd (na, t, c)
+
+open Context.Rel.Declaration
+
+let mkProd_or_subst decl c =
+  match get_value decl with
+    | None -> mkProd (get_name decl, get_type decl, c)
     | Some b -> subst1 b c
 
 let mkProd_or_clear decl c =
@@ -547,18 +553,20 @@ let mkProd_or_clear decl c =
 let it_mkProd_or_clear ty ctx = 
   fold_left (fun c d -> mkProd_or_clear d c) ty ctx
       
-let mkLambda_or_subst (na,body,t) c =
-  match body with
-    | None -> mkLambda (na, t, c)
+let mkLambda_or_subst decl c =
+  match get_value decl with
+    | None -> mkLambda (get_name decl, get_type decl, c)
     | Some b -> subst1 b c
 
-let mkLambda_or_subst_or_clear (na,body,t) c =
+let mkLambda_or_subst_or_clear decl c =
+  let (na,body,t) = to_tuple decl in
   match body with
   | None when dependent (mkRel 1) c -> mkLambda (na, t, c)
   | None -> subst1 mkProp c
   | Some b -> subst1 b c
 
-let mkProd_or_subst_or_clear (na,body,t) c =
+let mkProd_or_subst_or_clear decl c =
+  let (na,body,t) = to_tuple decl in
   match body with
   | None when dependent (mkRel 1) c -> mkProd (na, t, c)
   | None -> subst1 mkProp c
@@ -568,10 +576,11 @@ let it_mkProd_or_subst ty ctx =
   nf_beta Evd.empty (List.fold_left 
 		       (fun c d -> whd_betalet Evd.empty (mkProd_or_LetIn d c)) ty ctx)
 
-let it_mkProd_or_clean ty ctx = 
+let it_mkProd_or_clean ty ctx =
+  let open Context.Rel.Declaration in
   nf_beta Evd.empty (List.fold_left 
-		       (fun c (na,_,_ as d) -> whd_betalet Evd.empty 
-			 (if na == Anonymous then subst1 mkProp c
+		       (fun c d -> whd_betalet Evd.empty 
+			 (if (get_name d) == Anonymous then subst1 mkProp c
 			  else (mkProd_or_LetIn d c))) ty ctx)
 
 let it_mkLambda_or_subst ty ctx = 
@@ -621,7 +630,8 @@ let e_conv env evdref t t' =
       
 let deps_of_var id env =
   Environ.fold_named_context
-    (fun _ (n,b,t) (acc : Idset.t) -> 
+    (fun _ decl (acc : Idset.t) ->
+       let n, b, t = Context.Named.Declaration.to_tuple decl in
       if Option.cata (occur_var env id) false b || occur_var env id t then
 	Idset.add n acc
       else acc)
@@ -641,18 +651,149 @@ let ident_of_smart_global x =
 let pf_get_type_of               = pf_reduce Retyping.get_type_of
   
 let move_after_deps id c =
-  Proofview.Goal.enter (fun gl ->
+  let open Context.Named.Declaration in
+  let enter gl =
     let gl = Proofview.Goal.assume gl in
     let hyps = Proofview.Goal.hyps gl in
     let deps = collect_vars c in
     let iddeps = 
       collect_vars (Tacmach.New.pf_get_hyp_typ id gl) in
     let deps = Id.Set.diff deps iddeps in
-    let find (id, _, _) = Id.Set.mem id deps in
+    let find decl = Id.Set.mem (get_id decl) deps in
     let first = 
       match snd (List.split_when find (List.rev hyps)) with
-      | a :: _ -> pi1 a
+      | a :: _ -> get_id a
       | [] -> errorlabstrm "move_before_deps"
         Pp.(str"Found no hypothesis on which " ++ pr_id id ++ str" depends")
     in
-    Proofview.V82.tactic (Tactics.move_hyp id (Misctypes.MoveAfter first)))
+    Tactics.move_hyp id (Misctypes.MoveAfter first)
+  in Proofview.Goal.enter { Proofview.Goal.enter = enter }
+
+(** Compat definitions *)
+
+type rel_context = Context.Rel.t
+type rel_declaration = Context.Rel.Declaration.t
+type named_declaration = Context.Named.Declaration.t
+type named_context = Context.Named.t
+
+let extended_rel_vect n ctx =
+  Context.Rel.to_extended_vect n ctx
+let extended_rel_list n ctx =
+  Context.Rel.to_extended_list n ctx
+let to_tuple = Context.Rel.Declaration.to_tuple
+let to_named_tuple = Context.Named.Declaration.to_tuple
+let of_tuple = Context.Rel.Declaration.of_tuple
+let of_named_tuple = Context.Named.Declaration.of_tuple
+let to_context c =
+  List.map of_tuple c
+
+let localdef c = LocalDefEntry c
+let localassum c = LocalAssumEntry c
+
+let get_type = Context.Rel.Declaration.get_type
+let get_value = Context.Rel.Declaration.get_value
+let get_name = Context.Rel.Declaration.get_name
+let get_named_type = Context.Named.Declaration.get_type
+let get_named_value = Context.Named.Declaration.get_value
+let make_assum n t = Context.Rel.Declaration.LocalAssum (n, t)
+let make_def n b t = 
+  match b with
+  | None -> Context.Rel.Declaration.LocalAssum (n, t)
+  | Some b -> Context.Rel.Declaration.LocalDef (n, b, t)
+
+let make_named_def n b t = 
+  match b with
+  | None -> Context.Named.Declaration.LocalAssum (n, t)
+  | Some b -> Context.Named.Declaration.LocalDef (n, b, t)
+
+open Context.Rel.Declaration
+
+let lookup_rel = Context.Rel.lookup
+
+let named_of_rel_context default l =
+  let acc, args, _, ctx =
+    List.fold_right
+      (fun decl (subst, args, ids, ctx) ->
+        let decl = Context.Rel.Declaration.map_constr (substl subst) decl in
+	let id = match get_name decl with Anonymous -> default () | Name id -> id in
+	let d = Named.Declaration.of_tuple (id, get_value decl, get_type decl) in
+	let args = if is_local_assum decl then mkVar id :: args else args in
+	  (mkVar id :: subst, args, id :: ids, d :: ctx))
+      l ([], [], [], [])
+  in acc, rev args, ctx
+
+let rel_of_named_context ctx = 
+  List.fold_right (fun decl (ctx',subst) ->
+      let (n, b, t) = to_named_tuple decl in
+      let decl = make_def (Name n) (Option.map (subst_vars subst) b) (subst_vars subst t) in 
+      (decl :: ctx', n :: subst)) ctx ([],[])
+
+(* Substitute a list of constrs [cstrs] in rel_context [ctx] for variable [k] and above. *)
+
+let subst_rel_context k cstrs ctx = 
+  let (_, ctx') = fold_right 
+    (fun decl (k, ctx') ->
+      (succ k, map_constr (substnl cstrs k) decl :: ctx'))
+    ctx (k, [])
+  in ctx'
+
+(* A telescope is a reversed rel_context *)
+
+let subst_telescope cstr ctx = 
+  let (_, ctx') = fold_left
+    (fun (k, ctx') decl ->
+      (succ k, (map_constr (substnl [cstr] k) decl) :: ctx'))
+    (0, []) ctx
+  in rev ctx'
+
+(* Substitute rel [n] by [c] in [ctx]
+   Precondition: [c] is typable in [ctx] using variables 
+   above [n] *)
+    
+let subst_in_ctx (n : int) (c : constr) (ctx : rel_context) : rel_context =
+  let rec aux k after = function
+    | [] -> []
+    | decl :: before ->
+	if k == n then (subst_rel_context 0 [lift (-k) c] (rev after)) @ before
+	else aux (succ k) (decl :: after) before
+  in aux 1 [] ctx
+
+let set_in_ctx (n : int) (c : constr) (ctx : rel_context) : rel_context =
+  let rec aux k after = function
+    | [] -> []
+    | decl :: before ->      
+      if k == n then
+        (rev after) @ LocalDef (get_name decl, lift (-k) c, get_type decl) :: before
+      else aux (succ k) (decl :: after) before
+  in aux 1 [] ctx
+
+
+
+let get_id decl = Context.Named.Declaration.get_id decl
+
+let fold_named_context_reverse = Context.Named.fold_inside
+let map_rel_context = Context.Rel.map
+let map_rel_declaration = Context.Rel.Declaration.map_constr
+let map_named_declaration = Context.Named.Declaration.map_constr
+
+let pp cmds = Feedback.msg_info cmds
+
+let user_err_loc (loc, s, pp) =
+  CErrors.user_err_loc (loc, s, pp)
+let error = CErrors.error
+let errorlabstrm = CErrors.errorlabstrm
+let is_anomaly = CErrors.is_anomaly
+let print_error e = CErrors.print e
+
+let nf_betadeltaiota = nf_all
+let anomaly ?label pp = CErrors.anomaly ?label pp
+
+let evar_declare sign ev ty ?src evm =
+  let evi = Evd.make_evar sign ty in
+  let evi = match src with Some src -> { evi with Evd.evar_source = src }
+                         | None -> evi in
+  Evd.add evm ev evi
+
+let new_evar env evm ?src ty =
+  let Sigma.Sigma (term, evm, _) = Evarutil.new_evar env (Sigma.Unsafe.of_evar_map evm) ?src ty in
+  Sigma.to_evar_map evm, term

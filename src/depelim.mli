@@ -10,6 +10,7 @@ open Term
 open Context
 open Environ
 open Names
+open Equations_common
 
 val mk_term_eq :
   env ->

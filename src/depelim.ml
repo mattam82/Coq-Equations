@@ -77,9 +77,9 @@ let make_abstract_generalize gl evd id concl dep ctx body c eqs args refls =
   in
     (* Abstract by equalitites *)
   let eqs = lift_togethern 1 eqs in (* lift together and past genarg *)
-  let abseqs = it_mkProd_or_LetIn (lift eqslen abshypeq) (List.map (fun x -> (Anonymous, None, x)) eqs) in
+  let abseqs = it_mkProd_or_LetIn (lift eqslen abshypeq) (List.map (fun x -> make_assum Anonymous x) eqs) in
     (* Abstract by the "generalized" hypothesis. *)
-  let genarg = mkProd_or_LetIn (Name id, body, c) abseqs in
+  let genarg = mkProd_or_LetIn (make_def (Name id) body c) abseqs in
     (* Abstract by the extension of the context *)
   let genctyp = it_mkProd_or_LetIn genarg ctx in
     (* The goal will become this product. *)
@@ -97,12 +97,13 @@ let hyps_of_vars env sign nogen hyps =
   if Idset.is_empty hyps then [] 
   else
     let (_,lh) =
-      Context.fold_named_context_reverse
-        (fun (hs,hl) (x,_,_ as d) ->
+      fold_named_context_reverse
+        (fun (hs,hl) decl ->
+           let x = get_id decl in
 	  if Idset.mem x nogen then (hs,hl)
 	  else if Idset.mem x hs then (hs,x::hl)
 	  else
-	    let xvars = global_vars_set_of_decl env d in
+	    let xvars = global_vars_set_of_decl env decl in
 	      if not (Idset.equal (Idset.diff xvars hs) Idset.empty) then
 		(Idset.add x hs, x :: hl)
 	      else (hs, hl))
@@ -131,7 +132,7 @@ let linear vars args =
 let needs_generalization gl id =
   let f, args, def, id, oldid = 
     let oldid = pf_get_new_id id gl in
-    let (_, b, t) = pf_get_hyp gl id in
+    let (_, b, t) = to_named_tuple (pf_get_hyp gl id) in
       match b with
       | None -> let f, args = decompose_app t in
 		  f, args, false, id, oldid
@@ -168,7 +169,7 @@ let abstract_args gl generalize_vars dep id defined f args =
   let aux (prod, ctx, ctxenv, c, args, eqs, refls, nongenvars, vars, env) arg =
     let (name, _, ty), arity =
       let rel, c = Reductionops.splay_prod_n env sigma 1 prod in
-	List.hd rel, c
+	to_tuple (List.hd rel), c
     in
     let argty = pf_get_type_of gl arg in
     let argty = 
@@ -183,7 +184,7 @@ let abstract_args gl generalize_vars dep id defined f args =
       	  Idset.add id nongenvars, Idset.remove id vars, env)
       | _ ->
 	  let name = get_id name in
-	  let decl = (Name name, None, ty) in
+	  let decl = make_assum (Name name) ty in
 	  let ctx = decl :: ctx in
 	  let c' = mkApp (lift 1 c, [|mkRel 1|]) in
 	  let args = arg :: args in
@@ -234,7 +235,7 @@ let abstract_generalize ?(generalize_vars=true) ?(force_dep=false) id gl =
   Coqlib.check_required_library ["Coq";"Logic";"JMeq"];
   let f, args, def, id, oldid = 
     let oldid = pf_get_new_id id gl in
-    let (_, b, t) = pf_get_hyp gl id in
+    let (_, b, t) = to_named_tuple (pf_get_hyp gl id) in
       match b with
       | None -> let f, args = decompose_app t in
 		  f, args, false, id, oldid
@@ -253,15 +254,15 @@ let abstract_generalize ?(generalize_vars=true) ?(force_dep=false) id gl =
 	    if dep then
 	      tclTHENLIST [refine newc; Proofview.V82.of_tactic (rename_hyp [(id, oldid)]); 
 			   tclDO n intro; 
-			   generalize_dep ~with_let:true (mkVar oldid)]	      
+			   to82 (generalize_dep ~with_let:true (mkVar oldid))]
 	    else
-	      tclTHENLIST [refine newc; clear [id]; tclDO n intro]
+	      tclTHENLIST [refine newc; to82 (clear [id]); tclDO n intro]
 	  in 
 	    if vars = [] then tac gl
 	    else tclTHEN tac 
 	      (fun gl -> tclFIRST [Proofview.V82.of_tactic (revert vars) ;
 				   tclMAP (fun id -> 
-				     tclTRY (generalize_dep ~with_let:true (mkVar id))) vars] gl) gl
+				     tclTRY (to82 (generalize_dep ~with_let:true (mkVar id)))) vars] gl) gl
 
 let dependent_pattern ?(pattern_term=true) c gl =
   let cty = pf_hnf_type_of gl c in
@@ -305,7 +306,7 @@ let depcase (mind, i as ind) =
   let indapp = mkApp (mkInd ind, extended_rel_vect 0 ctx) in
   let evd = ref (Evd.from_env (Global.env())) in
   let pred = it_mkProd_or_LetIn (e_new_Type (Global.env ()) evd) 
-    ((Anonymous, None, indapp) :: args)
+    (make_assum Anonymous indapp :: args)
   in
   let nconstrs = Array.length oneind.mind_nf_lc in
   let branches = 
@@ -324,7 +325,7 @@ let depcase (mind, i as ind) =
       in
       let body = mkRel (1 + nconstrs - i) in
       let br = it_mkProd_or_LetIn arity realargs in
-	(Name (id_of_string ("P" ^ string_of_int i)), None, br), body)
+	(make_assum (Name (id_of_string ("P" ^ string_of_int i))) br), body)
       oneind.mind_consnames oneind.mind_nf_lc
   in
   let ci = make_case_info (Global.env ()) ind RegularStyle in
@@ -339,7 +340,7 @@ let depcase (mind, i as ind) =
 	  (Array.append (extended_rel_vect (nargs + nconstrs + i) params)
 	      (extended_rel_vect 0 args)))
   in
-  let ctxpred = (Anonymous, None, obj (2 + nargs)) :: args in
+  let ctxpred = make_assum Anonymous (obj (2 + nargs)) :: args in
   let app = mkApp (mkRel (nargs + nconstrs + 3),
 		  (extended_rel_vect 0 ctxpred))
   in
@@ -350,9 +351,9 @@ let depcase (mind, i as ind) =
   let body = 
     let len = 1 (* P *) + Array.length branches in
     it_mkLambda_or_LetIn case 
-      ((xid, None, lift len indapp) 
+      (make_assum xid (lift len indapp) 
 	:: ((List.rev (Array.to_list (Array.map fst branches))) 
-	    @ ((Name (id_of_string "P"), None, pred) :: ctx)))
+	    @ (make_assum (Name (id_of_string "P")) pred :: ctx)))
   in
   let ce = Declare.definition_entry ~univs:(snd (Evd.universe_context !evd)) body in
   let kn = 
@@ -452,14 +453,15 @@ let specialize_eqs id gl =
 	    if in_eqs then acc, in_eqs, ctx, ty
 	    else
 	      let e = e_new_evar (push_rel_context ctx env) evars t in
-		aux false ((na, Some e, t) :: ctx) (mkApp (lift 1 acc, [| mkRel 1 |])) b)
+		aux false (make_def na (Some e) t :: ctx) (mkApp (lift 1 acc, [| mkRel 1 |])) b)
     | t -> acc, in_eqs, ctx, ty
   in
   let acc, worked, ctx, ty = aux false [] (mkVar id) ty in
   let ctx' = nf_rel_context_evar !evars ctx in
-  let ctx'' = List.map (fun (n,b,t as decl) ->
+  let ctx'' = List.map (fun decl ->
+    let (n,b,t) = to_tuple decl in
     match b with
-    | Some k when isEvar k -> (n,None,t)
+    | Some k when isEvar k -> make_assum n t
     | b -> decl) ctx'
   in
   let ty' = it_mkProd_or_LetIn ty ctx'' in
@@ -470,13 +472,13 @@ let specialize_eqs id gl =
   let ty' = Evarutil.nf_evar !evars ty' in
     if worked then
       tclTHENFIRST (Tacmach.internal_cut true id ty')
-	(exact_no_check acc') gl
+	(to82 (exact_no_check acc')) gl
     else tclFAIL 0 (str "Nothing to do in hypothesis " ++ pr_id id) gl
 
 let specialize_eqs id gl =
   if
-    (try ignore(clear [id] gl); false
-     with e when Errors.noncritical e -> true)
+    (try ignore(to82 (clear [id]) gl); false
+     with e when CErrors.noncritical e -> true)
   then
     tclFAIL 0 (str "Specialization not allowed on dependent hypotheses") gl
   else specialize_eqs id gl

@@ -16,7 +16,6 @@
 
 *)
 
-
 open Cases
 open Util
 open Names
@@ -33,7 +32,6 @@ open Typeops
 open Type_errors
 open Pp
 open Proof_type
-open Errors
 open Glob_term
 open Retyping
 open Pretype_errors
@@ -44,6 +42,7 @@ open Libnames
 open Topconstr
 open Util
 open Entries
+
 
 open Equations_common
 open Sigma
@@ -62,28 +61,11 @@ type mutual_inductive_info = {
   mutind_params : named_context; (* Mutual parameters as a named context *)
   mutind_inds : one_inductive_info array; (* Each inductive. *)
 }
-
-let named_of_rel_context l =
-  let acc, args, ctx =
-    List.fold_right
-      (fun (na, b, t) (subst, args, ctx) ->
-	let id = match na with Anonymous -> id_of_string "param" | Name id -> id in
-	let d = (id, Option.map (substl subst) b, substl subst t) in
-	let args = if b = None then mkVar id :: args else args in
-	  (mkVar id :: subst, args, d :: ctx))
-      l ([], [], [])
-  in acc, rev args, ctx
-
-let subst_rel_context k cstrs ctx = 
-  let (_, ctx') = fold_right 
-    (fun (id, b, t) (k, ctx') ->
-      (succ k, (id, Option.map (substnl cstrs k) b, substnl cstrs k t) :: ctx'))
-    ctx (k, [])
-  in ctx'
     
 let inductive_info ((mind, _ as ind),u) =
   let mindb, oneind = Global.lookup_inductive ind in
-  let subst, paramargs, params = named_of_rel_context mindb.mind_params_ctxt in
+  let subst, paramargs, params =
+    named_of_rel_context (fun () -> id_of_string "param") mindb.mind_params_ctxt in
   let nparams = List.length params in
   let env = List.fold_right push_named params (Global.env ()) in
   let info_of_ind i ind =
@@ -124,7 +106,7 @@ let dec_eq () =
 
 open Decl_kinds
 let vars_of_pars pars = 
-  Array.of_list (List.map (fun x -> mkVar (pi1 x)) pars)
+  Array.of_list (List.map (fun x -> mkVar (get_id x)) pars)
 
 let derive_eq_dec env sigma ind =
   let info = inductive_info ind in

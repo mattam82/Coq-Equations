@@ -98,7 +98,7 @@ val convert_projection :
   Proof_type.goal Tacmach.sigma -> Proof_type.goal list Evd.sigma
 
 val unfold_constr : constr -> Proof_type.tactic
-val simpl_except : Idset.t * Cset.t -> Closure.RedFlags.reds
+val simpl_except : Idset.t * Cset.t -> CClosure.RedFlags.reds
 val simpl_of : constant list -> (unit -> unit) * (unit -> unit)
 
 (** Unfolding lemma tactic *)

@@ -12,6 +12,7 @@ open Environ
 open Names
 open Syntax
 open Covering
+open Equations_common
 
 val helper_evar :
   Evd.evar_map ->

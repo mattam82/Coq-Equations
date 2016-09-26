@@ -8,7 +8,6 @@
 
 open Cases
 open Util
-open Errors
 open Names
 open Nameops
 open Term
@@ -23,7 +22,6 @@ open Typeops
 open Type_errors
 open Pp
 open Proof_type
-open Errors
 open Glob_term
 open Retyping
 open Pretype_errors
@@ -90,11 +88,11 @@ let abstract_rec_calls ?(do_subst=true) is_rec len protos c =
 	  (match find_rec_call f' args with
 	  | Some (i, arity, args') ->
 	      let resty = substl (rev (Array.to_list args')) arity in
-	      let result = (Name (id_of_string "recres"), Some (mkApp (f', args)), resty) in
+	      let result = make_def (Name (id_of_string "recres")) (Some (mkApp (f', args))) resty in
 	      let hypty = mkApp (mkApp (mkRel (i + len + lenctx + 2 + n), 
 				       Array.map (lift 1) args'), [| mkRel 1 |]) 
 	      in
-	      let hyp = (Name (id_of_string "Hind"), None, hypty) in
+	      let hyp = make_assum (Name (id_of_string "Hind")) hypty in
 		[hyp;result]@ctx, lenctx + 2, mkRel 2
 	  | None -> (ctx, lenctx, mkApp (f', args)))
 	    
@@ -103,8 +101,8 @@ let abstract_rec_calls ?(do_subst=true) is_rec len protos c =
 	  (match ctx' with
 	   | [] -> [], 0, c
 	   | hyp :: rest -> 
-	       let ty = mkProd (na, t, it_mkProd_or_LetIn (pi3 hyp) rest) in
-		 [Anonymous, None, ty], 1, lift 1 c)
+	       let ty = mkProd (na, t, it_mkProd_or_LetIn (get_type hyp) rest) in
+		 [make_assum Anonymous ty], 1, lift 1 c)
 
     (* | Cast (_, _, f) when is_comp f -> aux n f *)
 	  
@@ -112,7 +110,7 @@ let abstract_rec_calls ?(do_subst=true) is_rec len protos c =
 	let ctx',lenctx',b' = aux n env b in
 	let ctx'',lenctx'',c' = aux (succ n) ((na,Some b,t) :: env) c in
 	let ctx'' = lift_rel_contextn 1 lenctx' ctx'' in
-	let fullctx = ctx'' @ [na,Some b',lift lenctx' t] @ ctx' in
+	let fullctx = ctx'' @ [make_def na  (Some b') (lift lenctx' t)] @ ctx' in
 	  fullctx, lenctx'+lenctx''+1, liftn lenctx' (lenctx'' + 2) c'
 
     | Prod (na, d, c) when not (dependent (mkRel 1) c)  -> 
@@ -142,7 +140,7 @@ let unfold_constr c =
   unfold_in_concl [(Locus.AllOccurrences, EvalConstRef (fst (destConst c)))]
 
 let simpl_star = 
-  tclTHEN simpl_in_concl (onAllHyps (fun id -> simpl_in_hyp (id, Locus.InHyp)))
+  tclTHEN (to82 simpl_in_concl) (onAllHyps (fun id -> to82 (simpl_in_hyp (id, Locus.InHyp))))
 
 let eauto_with_below l =
   Class_tactics.typeclasses_eauto
@@ -152,13 +150,13 @@ let simp_eqns l =
   tclREPEAT (tclTHENLIST [Proofview.V82.of_tactic 
 			     (Autorewrite.autorewrite (Tacticals.New.tclIDTAC) l);
 			  (* simpl_star; Autorewrite.autorewrite tclIDTAC l; *)
-			  tclTRY (eauto_with_below l)])
+			  tclTRY (to82 (eauto_with_below ~depth:None l))])
 
 let simp_eqns_in clause l =
   tclREPEAT (tclTHENLIST 
 		[Proofview.V82.of_tactic
 		    (Autorewrite.auto_multi_rewrite l clause);
-		 tclTRY (eauto_with_below l)])
+		 tclTRY (to82 (eauto_with_below ~depth:None l))])
 
 let autorewrites b = 
   tclREPEAT (Proofview.V82.of_tactic (Autorewrite.autorewrite Tacticals.New.tclIDTAC [b]))
@@ -203,7 +201,7 @@ let find_splitting_var pats var constrs =
 let rec intros_reducing gl =
   let concl = pf_concl gl in
     match kind_of_term concl with
-    | LetIn (_, _, _, _) -> tclTHEN hnf_in_concl intros_reducing gl
+    | LetIn (_, _, _, _) -> tclTHEN (to82 hnf_in_concl) intros_reducing gl
     | Prod (_, _, _) -> tclTHEN intro intros_reducing gl
     | _ -> tclIDTAC gl
 
@@ -213,18 +211,18 @@ let observe s tac =
   if not debug then tac
   else
     fun gls ->
-    msg_debug (str"Applying " ++ str s ++ str " on " ++ pr_goal gls);
+    Feedback.msg_debug (str"Applying " ++ str s ++ str " on " ++ pr_goal gls);
     to82
       (Proofview.tclORELSE
          (Proofview.tclTHEN
             (of82 tac)
             (Proofview.numgoals >>= fun gls ->
-             if gls = 0 then (msg_debug (str "succeeded"); Proofview.tclUNIT ())
+             if gls = 0 then (Feedback.msg_debug (str "succeeded"); Proofview.tclUNIT ())
              else
                (of82
-                  (fun gls -> msg_debug (str "Subgoal: " ++ pr_goal gls);
+                  (fun gls -> Feedback.msg_debug (str "Subgoal: " ++ pr_goal gls);
                            { it = [gls.it]; sigma = gls.sigma }))))
-         (fun iexn -> msg_debug (str"Failed with: " ++
+         (fun iexn -> Feedback.msg_debug (str"Failed with: " ++
                                 Coqloop.print_toplevel_error iexn);
                    Proofview.tclUNIT ())) gls
   
@@ -252,7 +250,7 @@ let rec aux_ind_fun info = function
      (* observe "valid" *)
              (tclTHEN (to82 intros)
       (tclTHEN_i tac (fun i -> let _, _, subst, invsubst, split = nth rest (pred i) in
-				 tclTHEN (Lazy.force unfold_add_pattern) 
+				 tclTHEN (to82 (Lazy.force unfold_add_pattern) )
 				   (aux_ind_fun info split))))
       
   | RecValid (id, cs) -> aux_ind_fun info cs
@@ -285,7 +283,7 @@ let rec aux_ind_fun info = function
   | Compute (_, _, _) ->
      (* observe "compute" *)
              (tclTHENLIST [intros_reducing; autorewrite_one info.base_id;
-		  eauto_with_below [info.base_id]])
+		  (to82 (eauto_with_below ~depth:None [info.base_id]))])
 
   | Mapping (_, s) -> aux_ind_fun info s
 
@@ -297,8 +295,9 @@ let ind_fun_tac is_rec f info fid split ind =
     let recid = add_suffix fid "_rec" in
       (* tclCOMPLETE  *)
       (tclTHENLIST
-	  [to82 (set_eos_tac ()); fix (Some recid) (succ i);
-	   onLastDecl (fun (n,b,t) gl ->
+	  [to82 (set_eos_tac ()); to82 (fix (Some recid) (succ i));
+	   onLastDecl (fun decl gl ->
+             let (n,b,t) = to_named_tuple decl in
 	     let fixprot pats sigma =
 	       let c = 
 		 mkLetIn (Anonymous, Universes.constr_of_global (Lazy.force coq_fix_proto),

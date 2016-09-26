@@ -20,7 +20,7 @@ open Typeops
 open Type_errors
 open Pp
 open Proof_type
-open Errors
+open CErrors
 open Glob_term
 open Retyping
 open Pretype_errors
@@ -36,7 +36,7 @@ open Vars
 open Globnames
 
 open Equations_common
-open Sigma
+open Sigma_types
 
 let (=) (x : int) (y : int) = x == y
 
@@ -62,7 +62,8 @@ let derive_subterm env sigma ind =
       let lenargs = List.length args in
       let lenargs' = lenargs - params in
       let args', params' = List.chop lenargs' args in
-      let recargs = CList.map_filter_i (fun i (n, _, t) ->
+      let recargs = CList.map_filter_i (fun i decl ->
+        let (n, _, t) = to_tuple decl in
 	let ctx, ar = decompose_prod_assum t in
 	  match kind_of_term (fst (decompose_app ar)) with
 	  | Ind (ind',_) when eq_ind ind' (fst ind) -> 
@@ -97,7 +98,7 @@ let derive_subterm env sigma ind =
 		 (Name (id_of_string "y"), None, indapp 1);
 		 (Name (id_of_string "x"), None, indapp 0)]
     in
-    let binders = terms @ liftargbinders' @ liftargbinders @ argbinders in
+    let binders = to_context terms @ liftargbinders' @ liftargbinders @ argbinders in
     let lenbinders = 3 * succ lenargs in
     let xy =
       (mkApp (mkRel (succ lenbinders + params),
@@ -155,10 +156,11 @@ let derive_subterm env sigma ind =
     let inductive =
       { mind_entry_record = None;
 	mind_entry_finite = Decl_kinds.Finite;
-	mind_entry_params = map (fun (n, b, t) -> 
+	mind_entry_params = map (fun decl ->
+          let (n, b, t) = to_tuple decl in
 	  match b with
-	  | Some b -> (out_name n, LocalDef (refresh_universes b)) 
-	  | None -> (out_name n, LocalAssum (refresh_universes t)))
+	  | Some b -> (out_name n, localdef (refresh_universes b)) 
+	  | None -> (out_name n, localassum (refresh_universes t)))
 	  parambinders;
 	mind_entry_inds = inds;
 	mind_entry_polymorphic = poly;
@@ -170,7 +172,7 @@ let derive_subterm env sigma ind =
       let env = Global.env () in
       let sigma = Evd.from_env env in
       let sigma, ind = Evd.fresh_inductive_instance env sigma (k,0) in
-      ignore (Sigma.declare_sig_of_ind env sigma ind) in
+      ignore (Sigma_types.declare_sig_of_ind env sigma ind) in
     let subind = mkInd (k,0) in
     let constrhints = 
       List.map_i (fun i entry -> 
@@ -267,7 +269,7 @@ let derive_below env sigma (ind,univ) =
   let realdecls = oneind.mind_nrealdecls in
   let allargsvect = extended_rel_vect 0 ctx in
   let indty = mkApp (mkInd ind, allargsvect) in
-  let ctx = (Name (id_of_string "c"), None, indty) :: ctx in
+  let ctx = of_tuple (Name (id_of_string "c"), None, indty) :: ctx in
   let argbinders, parambinders = List.chop (succ realdecls) ctx in
   let u = Evarutil.e_new_Type ~rigid:Evd.univ_rigid env evd in
   let arity = it_mkProd_or_LetIn u argbinders in
@@ -275,7 +277,7 @@ let derive_below env sigma (ind,univ) =
   let paramsvect = rel_vect (succ realdecls) params in
   let argsvect = extended_rel_vect 0 (CList.firstn (succ realdecls) ctx) in
   let pid = id_of_string "P" in
-  let pdecl = Name pid, None, arity in
+  let pdecl = make_assum (Name pid) arity in
   let arity = lift 1 arity in
   let stepid = id_of_string "step" in
   let recid = id_of_string "rec" in
@@ -295,7 +297,8 @@ let derive_below env sigma (ind,univ) =
       let ty' = replace_term (mkApp (mkRel idx, rel_vect (-params) params)) recarg ty in
       let args', _ = decompose_prod_assum ty' in
       let args', _ = List.chop (List.length args' - params) args' in
-      let arg_tys = fst (List.fold_left (fun (acc, n) (_,_,t) ->
+      let arg_tys = fst (List.fold_left (fun (acc, n) decl ->
+        let t = get_type decl in
 	((mkRel n, lift n t) :: acc, succ n)) ([], 1) args')
       in
       let fold_unit f args =
@@ -367,7 +370,7 @@ let derive_below env sigma (ind,univ) =
   let stepdecl = 
     let stepty = mkProd (Anonymous, mkApp (mkConst below, paramspargs),
 			mkApp (mkVar pid, Array.map (lift 1) argsvect))
-    in Name stepid, None, lift 1 (it_mkProd_or_LetIn stepty argbinders)
+    in make_assum (Name stepid) (lift 1 (it_mkProd_or_LetIn stepty argbinders))
   in
   let bodyb = 
     it_mkLambda_or_LetIn

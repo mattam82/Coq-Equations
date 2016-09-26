@@ -11,6 +11,7 @@ open Context
 open Environ
 open Names
 
+open Equations_common
 open Syntax
 
 (** Internal patterns *)
@@ -71,9 +72,7 @@ val map_ctx_map :
 
 (** Substitution and specialization *)
 val subst_pats_constr : int -> pat list -> constr -> constr
-val subst_context :
-  pat list ->  rel_context ->
-  rel_context
+val subst_context : pat list -> rel_context -> rel_context
 val specialize : pat list -> pat -> pat
 val specialize_constr : pat list -> constr -> constr
 val specialize_pats : pat list -> pat list -> pat list
@@ -82,19 +81,6 @@ val specialize_rel_context :
 val mapping_constr : context_map -> constr -> constr
 val subst_constr_pat : int -> constr -> pat -> pat
 val subst_constr_pats : int -> constr -> pat list -> pat list
-val subst_rel_context :
-  int ->
-  constr ->
-  rel_context ->
-  rel_context
-val subst_telescope :
-  constr ->
-  rel_context ->
-  rel_context
-val subst_in_ctx :
-  int -> constr -> rel_context -> rel_context
-val set_in_ctx :
-  int -> constr -> rel_context -> rel_context
 val lift_patn : int -> int -> pat -> pat
 val lift_patns : int -> int -> pat list -> pat list
 val lift_pat : int -> pat -> pat
@@ -152,7 +138,7 @@ val split_tele :
     rel_context
 val rels_above : 'a list -> int -> Int.Set.t
 val is_fix_proto : constr -> bool
-val fix_rels : ('a * 'b * constr) list -> Int.Set.t
+val fix_rels : rel_context -> Int.Set.t
 val dependencies_of_rel :
   env ->
   Evd.evar_map ->
@@ -168,7 +154,7 @@ val dependencies_of_term :
 val non_dependent :
   ('a * 'b * constr) list -> constr -> Int.Set.t
 val subst_term_in_context :
-  constr -> ('a * 'b * constr) list -> ('a * 'b * constr) list
+  constr -> rel_context -> rel_context
 val strengthen :
   ?full:bool ->
   ?abstract:bool ->
@@ -251,7 +237,7 @@ val lets_of_ctx :
   (Id.t * pat) list ->
   constr list *
   rel_context *
-  (name * Constr.t option * Constr.t) list
+  rel_context
 val interp_constr_in_rhs :
   env ->
   rel_context ->
@@ -280,30 +266,20 @@ val pr_rel_name : rel_context -> int -> Pp.std_ppcmds
 val subst_matches_constr :
   int -> (int * constr) list -> constr -> constr
 val is_all_variables : 'a * pat list * 'b -> bool
-val do_renamings : (name * 'a * 'b) list -> (name * 'a * 'b) list
+val do_renamings : rel_context -> rel_context
 val split_var :
   env * Evd.evar_map ref ->
   int ->
   rel_context ->
-  (int * (name * Constr.t option * Constr.t) list *
-   context_map option array)
-  option
+  (int * rel_context * context_map option array) option
+    
 val find_empty : env * Evd.evar_map ref -> rel_context -> int option
-val rel_of_named_context :
-  named_context ->
-  rel_context * Id.t list
 val variables_of_pats : pat list -> (int * bool) list
 val pats_of_variables : (int * bool) list -> pat list
 val lift_rel_declaration :
-  int ->
-  rel_declaration ->
-  rel_declaration
-val named_of_rel_context :
-  rel_context ->
-  constr list *
-  named_context
+  int -> rel_declaration -> rel_declaration
 val lookup_named_i :
-  Id.t -> (Id.t * 'a * 'b) list -> int * (Id.t * 'a * 'b)
+  Id.t -> named_context -> int * named_declaration
 val instance_of_pats :
   'a ->
   'b ->
@@ -313,8 +289,7 @@ val instance_of_pats :
   pat list
 val push_rel_context_eos : rel_context -> env -> env
 val split_at_eos :
-  ('a * 'b * constr) list ->
-  ('a * 'b * constr) list * ('a * 'b * constr) list
+  named_context -> named_context * named_context
 val pr_problem :
   Id.t * 'a * 'b ->
   env -> rel_context * pat list * 'c -> Pp.std_ppcmds

@@ -16,7 +16,6 @@ open Ppconstr
 
 open Cases
 open Util
-open Errors
 open Names
 open Nameops
 open Term
@@ -31,7 +30,6 @@ open Typeops
 open Type_errors
 open Pp
 open Proof_type
-open Errors
 open Glob_term
 open Retyping
 open Pretype_errors
@@ -117,7 +115,8 @@ and pr_clause env (lhs, rhs) =
 and pr_clauses env =
   prlist_with_sep fnl (pr_clause env)
 
-let ppclause clause = pp(pr_clause (Global.env ()) clause)
+let ppclause clause =
+  pp(pr_clause (Global.env ()) clause)
 
 type pat_expr = 
   | PEApp of reference Misctypes.or_by_notation located * pat_expr located list

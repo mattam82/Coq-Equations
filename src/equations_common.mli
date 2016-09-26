@@ -51,11 +51,16 @@ val tac_of_string :
   string ->
   Tacexpr.r_dispatch Tacexpr.gen_tactic_arg list -> unit Proofview.tactic
 
+type rel_declaration = Context.Rel.Declaration.t
+type rel_context = Context.Rel.t
+type named_declaration = Context.Named.Declaration.t
+type named_context = Context.Named.t
+       
 (** Context lifting *)
 val lift_rel_contextn :
-  int -> int -> Context.rel_context -> Context.rel_context
+  int -> int -> rel_context -> rel_context
 
-val lift_context : int -> Context.rel_context -> Context.rel_context
+val lift_context : int -> rel_context -> rel_context
 
 val lift_list : constr list -> constr list
 val lift_constrs : int -> constr list -> constr list
@@ -68,7 +73,7 @@ val check_term :
   Environ.env -> Evd.evar_map -> Term.constr -> Term.types -> unit
 val check_type : Environ.env -> Evd.evar_map -> Term.types -> unit
 val typecheck_rel_context :
-  Evd.evar_map -> Context.rel_context -> unit
+  Evd.evar_map -> rel_context -> unit
 
 val e_conv :
   env -> Evd.evar_map ref -> constr -> constr -> bool
@@ -81,33 +86,33 @@ val reference_of_global : Globnames.global_reference -> Libnames.reference
 
 val mkNot : Term.constr -> Term.constr
 val mkProd_or_subst :
-  Names.Name.t * Constr.constr option * Term.types ->
+  rel_declaration ->
   Term.types -> Term.types
-val mkProd_or_clear : Context.rel_declaration -> Term.constr -> Constr.constr
+val mkProd_or_clear : rel_declaration -> Term.constr -> Constr.constr
 val it_mkProd_or_clear :
-  Term.constr -> Context.rel_declaration list -> Term.constr
+  Term.constr -> rel_declaration list -> Term.constr
 val mkLambda_or_subst :
-  Names.Name.t * Constr.constr option * Term.types ->
+  rel_declaration ->
   Term.constr -> Term.constr
 val mkLambda_or_subst_or_clear :
-  Names.Name.t * Constr.constr option * Term.types ->
+  rel_declaration ->
   Term.constr -> Term.constr
 val mkProd_or_subst_or_clear :
-  Names.Name.t * Constr.constr option * Term.types ->
+  rel_declaration ->
   Term.constr -> Term.types
 val it_mkProd_or_subst :
-  Term.types -> Context.rel_declaration list -> Term.constr
+  Term.types -> rel_declaration list -> Term.constr
 val it_mkProd_or_clean :
   Constr.constr ->
-  (Names.name * Constr.t option * Constr.t) list -> Term.constr
+  rel_context -> Term.constr
 val it_mkLambda_or_subst :
-  Term.constr -> Context.rel_declaration list -> Term.constr
+  Term.constr -> rel_declaration list -> Term.constr
 val it_mkLambda_or_subst_or_clear :
   Term.constr ->
-  (Names.Name.t * Constr.constr option * Term.types) list -> Term.constr
+  (rel_declaration) list -> Term.constr
 val it_mkProd_or_subst_or_clear :
   Term.constr ->
-  (Names.Name.t * Constr.constr option * Term.types) list -> Term.constr
+  (rel_declaration) list -> Term.constr
 
 val ids_of_constr :
   ?all:bool -> Idset.t -> constr -> Idset.t
@@ -146,7 +151,7 @@ val declare_instance :
   Names.identifier ->
   Decl_kinds.polymorphic ->
   Evd.evar_map ->
-  Context.rel_context ->
+  rel_context ->
   Typeclasses.typeclass Term.puniverses -> Term.constr list -> Term.constr
 
 (** Standard datatypes *)
@@ -242,43 +247,41 @@ val coq_end_of_section_constr : Term.constr lazy_t
 val coq_end_of_section : Term.constr lazy_t
 val coq_notT : Term.constr lazy_t
 val coq_ImpossibleCall : Term.constr lazy_t
-val unfold_add_pattern : Proof_type.tactic lazy_t
+val unfold_add_pattern : unit Proofview.tactic lazy_t
 
 val below_tactics_path : Names.dir_path
 val below_tac : string -> Names.kernel_name
 val tacident_arg :
   Names.Id.t ->
   < constant : 'a; dterm : 'b; level : 'c; name : 'd; pattern : 'e;
-    reference : Libnames.reference; tacexpr : 'f; term : 'g; utrm : 'h > Tacexpr.gen_tactic_arg
+    reference : Libnames.reference; tacexpr : 'f; term : 'g > Tacexpr.gen_tactic_arg
 val tacvar_arg :
   Names.Id.t ->
   < constant : 'a; dterm : 'b; level : Genarg.rlevel; name : 'c;
-    pattern : 'd; reference : 'e; tacexpr : 'f; term : 'g; utrm : 'h > Tacexpr.gen_tactic_arg
+    pattern : 'd; reference : 'e; tacexpr : 'f; term : 'g > Tacexpr.gen_tactic_arg
 val rec_tac :
   'f ->
   Names.Id.t ->
   < constant : 'a; dterm : 'b; level : Genarg.rlevel; name : 'c;
-    pattern : 'd; reference : Libnames.reference; tacexpr : 'e; term : 'f;
-    utrm : 'g >
+    pattern : 'd; reference : Libnames.reference; tacexpr : 'e; term : 'f; >
 	   Tacexpr.gen_tactic_expr
 val rec_wf_tac :
   'a ->
   Names.Id.t ->
   'a ->
   < constant : 'b; dterm : 'c; level : Genarg.rlevel; name : 'd;
-    pattern : 'e; reference : Libnames.reference; tacexpr : 'f; term : 'a;
-    utrm : 'g >
+    pattern : 'e; reference : Libnames.reference; tacexpr : 'f; term : 'a;>
 	   Tacexpr.gen_tactic_expr
 val unfold_recursor_tac : unit -> unit Proofview.tactic
 val equations_tac_expr :
   unit ->
   < constant : 'a; dterm : 'b; level : 'c; name : 'd; pattern : 'e;
-    reference : Libnames.reference; tacexpr : 'f; term : 'g; utrm : 'h >
+    reference : Libnames.reference; tacexpr : 'f; term : 'g >
 								    Tacexpr.gen_tactic_expr
 val solve_rec_tac_expr :
   unit ->
   < constant : 'a; dterm : 'b; level : 'c; name : 'd; pattern : 'e;
-    reference : Libnames.reference; tacexpr : 'f; term : 'g; utrm : 'h >
+    reference : Libnames.reference; tacexpr : 'f; term : 'g >
 								    Tacexpr.gen_tactic_expr
 val equations_tac : unit -> unit Proofview.tactic
 val set_eos_tac : unit -> unit Proofview.tactic
@@ -318,3 +321,56 @@ val ident_of_smart_global :
 val pf_get_type_of : Goal.goal Evd.sigma -> constr -> types
 
 val move_after_deps : Names.Id.t -> Constr.t -> unit Proofview.tactic
+
+val extended_rel_vect : int -> rel_context -> constr array
+val extended_rel_list : int -> rel_context -> constr list
+val to_tuple : rel_declaration -> Names.Name.t * Constr.t option * Constr.t
+val to_named_tuple : named_declaration -> Names.Id.t * Constr.t option * Constr.t
+val of_tuple : Names.Name.t * Constr.t option * Constr.t -> rel_declaration
+val of_named_tuple : Names.Id.t * Constr.t option * Constr.t -> named_declaration
+
+val get_type : rel_declaration -> Constr.t
+val get_name : rel_declaration -> Names.Name.t
+val make_assum : Names.Name.t -> Constr.t -> rel_declaration
+val make_def : Names.Name.t -> Constr.t option -> Constr.t -> rel_declaration
+val make_named_def : Names.Id.t -> Constr.t option -> Constr.t -> named_declaration
+val to_context : (Names.Name.t * Constr.t option * Constr.t) list -> rel_context
+
+val localdef : Constr.t -> Entries.local_entry
+val localassum : Constr.t -> Entries.local_entry
+val named_of_rel_context : (unit -> Names.Id.t) -> rel_context -> Vars.substl * Term.constr list * named_context
+val rel_of_named_context : named_context -> rel_context * Names.Id.t list
+val subst_rel_context : int -> Vars.substl -> rel_context -> rel_context
+val get_id : named_declaration -> Names.Id.t
+val get_named_type : named_declaration -> Constr.t
+val get_named_value : named_declaration -> Constr.t option
+
+val lookup_rel : int -> rel_context -> rel_declaration
+val fold_named_context_reverse : ('a -> named_declaration -> 'a) -> init:'a -> named_context -> 'a
+val map_rel_context : (Constr.t -> Constr.t) -> rel_context -> rel_context
+val map_rel_declaration : (Constr.t -> Constr.t) -> rel_declaration -> rel_declaration
+val map_named_declaration : (Constr.t -> Constr.t) -> named_declaration -> named_declaration
+
+val pp : Pp.std_ppcmds -> unit
+val user_err_loc : (Loc.t * string * Pp.std_ppcmds) -> 'a
+val error : string -> 'a
+val errorlabstrm : string -> Pp.std_ppcmds -> 'a
+val is_anomaly : exn -> bool
+val print_error : exn -> Pp.std_ppcmds
+val anomaly : ?label:string -> Pp.std_ppcmds -> 'a
+                                
+val nf_betadeltaiota : Reductionops.reduction_function
+
+val subst_telescope : Constr.constr -> rel_context -> rel_context
+val subst_in_ctx : int -> Term.constr -> rel_context -> rel_context
+val set_in_ctx : int -> Term.constr -> rel_context -> rel_context
+
+val evar_declare : named_context_val ->
+  Evd.evar -> 
+  types -> ?src:(Loc.t * Evar_kinds.t) -> Evd.evar_map -> Evd.evar_map
+
+val new_evar :            Environ.env ->
+           Evd.evar_map ->
+           ?src:Loc.t * Evar_kinds.t ->
+           Term.types -> Evd.evar_map * Term.constr
+

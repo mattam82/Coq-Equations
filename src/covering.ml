@@ -8,7 +8,6 @@
 
 open Cases
 open Util
-open Errors
 open Names
 open Nameops
 open Term
@@ -23,7 +22,6 @@ open Typeops
 open Type_errors
 open Pp
 open Proof_type
-open Errors
 open Glob_term
 open Retyping
 open Pretype_errors
@@ -160,7 +158,8 @@ let pr_pat env c =
     pr_constr_pat env patc
 
 let pr_context env c =
-  let pr_decl env (id,b,t) = 
+  let pr_decl env decl =
+    let (id,b,t) = to_tuple decl in
     let bstr = match b with Some b -> str ":=" ++ spc () ++ print_constr_env env b | None -> mt() in
     let idstr = match id with Name id -> pr_id id | Anonymous -> str"_" in
       idstr ++ bstr ++ str " : " ++ print_constr_env env t
@@ -194,8 +193,9 @@ let typecheck_map evars (ctx, subst, ctx') =
   let env = push_rel_context ctx (Global.env ()) in
   let _ = 
     List.fold_right2 
-      (fun (na, b, t) p subst ->
-	 let c = constr_of_pat env p in
+      (fun decl p subst ->
+         let (na, b, t) = to_tuple decl in
+         let c = constr_of_pat env p in
 	   check_term env evars c (substl subst t);
 	   (c :: subst))
       ctx' subst []
@@ -215,7 +215,7 @@ let check_ctx_map evars map =
     | e when is_anomaly e ->
       errorlabstrm "equations"
 	(str"Type error while building context map: " ++ pr_context_map (Global.env ()) map ++
-	   spc () ++ str"Anomaly: " ++ Errors.print e)
+	   spc () ++ str"Anomaly: " ++ print_error e)
 
   else map
     
@@ -250,8 +250,8 @@ let subst_pats_constr k s c =
 
 let subst_context s ctx =
   let (_, ctx') = fold_right
-    (fun (id, b, t) (k, ctx') ->
-      (succ k, (id, Option.map (subst_pats_constr k s) b, subst_pats_constr k s t) :: ctx'))
+    (fun decl (k, ctx') ->
+      (succ k, map_rel_declaration (subst_pats_constr k s) decl :: ctx'))
     ctx (0, [])
   in ctx'
 
@@ -294,44 +294,6 @@ let rec subst_constr_pat k t p =
   | PHide i -> PHide (destRel (substnl [t] (pred k) (mkRel i)))
 
 and subst_constr_pats k t = map (subst_constr_pat k t)
-
-(* Substitute a constr [cstr] in rel_context [ctx] for variable [k]. *)
-
-let subst_rel_context k cstr ctx = 
-  let (_, ctx') = fold_right 
-    (fun (id, b, t) (k, ctx') ->
-      (succ k, (id, Option.map (substnl [cstr] k) b, substnl [cstr] k t) :: ctx'))
-    ctx (k, [])
-  in ctx'
-
-(* A telescope is a reversed rel_context *)
-
-let subst_telescope cstr ctx = 
-  let (_, ctx') = fold_left
-    (fun (k, ctx') (id, b, t) ->
-      (succ k, (id, Option.map (substnl [cstr] k) b, substnl [cstr] k t) :: ctx'))
-    (0, []) ctx
-  in rev ctx'
-
-(* Substitute rel [n] by [c] in [ctx]
-   Precondition: [c] is typable in [ctx] using variables 
-   above [n] *)
-    
-let subst_in_ctx (n : int) (c : constr) (ctx : rel_context) : rel_context =
-  let rec aux k after = function
-    | [] -> []
-    | (name, b, t as decl) :: before ->
-	if k == n then (subst_rel_context 0 (lift (-k) c) (rev after)) @ before
-	else aux (succ k) (decl :: after) before
-  in aux 1 [] ctx
-
-let set_in_ctx (n : int) (c : constr) (ctx : rel_context) : rel_context =
-  let rec aux k after = function
-    | [] -> []
-    | (name, b, t as decl) :: before ->
-	if k == n then (rev after) @ (name, Some (lift (-k) c), t) :: before
-	else aux (succ k) (decl :: after) before
-  in aux 1 [] ctx
 
 (* Lifting patterns. *)
 
@@ -392,12 +354,12 @@ let is_fix_proto t =
   | _ -> false
 
 let fix_rels ctx =
-  List.fold_left_i (fun i acc (_, _, t) -> 
-    if is_fix_proto t then Int.Set.add i acc else acc)
+  List.fold_left_i (fun i acc decl -> 
+    if is_fix_proto (get_type decl) then Int.Set.add i acc else acc)
     1 Int.Set.empty ctx
 
 let rec dependencies_of_rel env evd ctx k x =
-  let (n,b,t) = nth ctx (pred k) in
+  let (n,b,t) = to_tuple (nth ctx (pred k)) in
   let b = Option.map (lift k) b and t = lift k t in
   let bdeps = match b with Some b -> dependencies_of_term env evd ctx b x | None -> Int.Set.empty in
     Int.Set.union (Int.Set.singleton k) (Int.Set.union bdeps (dependencies_of_term env evd ctx t x))
@@ -421,8 +383,9 @@ let non_dependent ctx c =
 let subst_term_in_context t ctx =
   let (term, rel, newctx) = 
     List.fold_right 
-      (fun (n, b, t) (term, rel, newctx) -> 
-	 let decl' = (n, b, replace_term term (mkRel rel) t) in
+      (fun decl (term, rel, newctx) ->
+         let (n, b, t) = to_tuple decl in
+	 let decl' = make_def n b (replace_term term (mkRel rel) t) in
 	   (lift 1 term, succ rel, decl' :: newctx))
       ctx (t, 1, [])
   in newctx
@@ -441,15 +404,15 @@ let strengthen ?(full=true) ?(abstract=false) env evd (ctx : rel_context) x (t :
       nf_betadeltaiota env evd t
     else t
   in
-  let ctx = List.map_i (fun k ((name, body, ty) as decl) ->
+  let ctx = List.map_i (fun k decl ->
     if Int.Set.mem k rels && k < x then
-      (name, Option.map (maybe_reduce (x - k)) body, maybe_reduce (x - k) ty)
+      map_rel_declaration (maybe_reduce (x - k)) decl
     else decl) 1 ctx in
   let len = length ctx in
   let nbdeps = Int.Set.cardinal rels in
   let lifting = len - nbdeps in (* Number of variables not linked to t *)
   let rec aux k n acc m rest s = function
-    | ((name, body, ty) as decl) :: ctx' ->
+    | decl :: ctx' ->
 	if Int.Set.mem k rels then
 	  let rest' = subst_telescope (mkRel (nbdeps + lifting - pred m)) rest in
 	    aux (succ k) (succ n) (decl :: acc) m rest' (Inl n :: s) ctx'
@@ -474,11 +437,12 @@ let id_subst g = (g, id_pats g, g)
 let eq_context_nolet env sigma (g : rel_context) (d : rel_context) =
   try 
     snd 
-      (List.fold_right2 (fun (na,_,t as decl) (na',_,t') (env, acc) ->
-	if acc then 
-	  (push_rel decl env,
-	  (eq_constr t t' || is_conv env sigma t t'))
-	else env, acc) g d (env, true))
+      (List.fold_right2 (fun decl decl' (env, acc) ->
+           if acc then
+             let t = get_type decl and t' = get_type decl' in
+	     (push_rel decl env,
+              (eq_constr t t' || is_conv env sigma t t'))
+	   else env, acc) g d (env, true))
   with Invalid_argument "List.fold_right2" -> false
 
 let check_eq_context_nolet env sigma (_, _, g as snd) (d, _, _ as fst) =
@@ -492,9 +456,9 @@ let compose_subst ?(sigma=Evd.empty) ((g',p',d') as snd) ((g,p,d) as fst) =
   mk_ctx_map sigma g' (specialize_pats p' p) d
 (*     (g', (specialize_pats p' p), d) *)
 
-let push_mapping_context (n, b, t as decl) (g,p,d) =
-  ((n, Option.map (specialize_constr p) b, specialize_constr p t) :: g,
-   (PRel 1 :: map (lift_pat 1) p), decl :: d)
+let push_mapping_context decl (g,p,d) =
+  let decl' = map_rel_declaration (specialize_constr p) decl in
+  (decl' :: g, (PRel 1 :: map (lift_pat 1) p), decl :: d)
 
 let invert_subst env sigma (g,p,d) =
   let ar = Array.make (List.length g) (PRel 0) in
@@ -677,22 +641,24 @@ let lets_of_ctx env ctx evars s =
       | PRel i -> (ctx', cs, (i, id) :: varsubst, k, id :: ids)
       | _ -> 
 	  let ty = Typing.e_type_of envctx evars c in
-	    ((Name id, Some (lift k c), lift k ty) :: ctx', (c :: cs),
+	    (make_def (Name id) (Some (lift k c)) (lift k ty) :: ctx', (c :: cs),
 	     varsubst, succ k, id :: ids))
     ([],[],[],0,[]) s
   in
-  let _, _, ctx' = List.fold_right (fun (n, b, t) (ids, i, ctx') ->
-    try ids, pred i, ((Name (List.assoc i varsubst), b, t) :: ctx')
+  let _, _, ctx' = List.fold_right (fun decl (ids, i, ctx') ->
+    let (n, b, t) = to_tuple decl in
+    try ids, pred i, (make_def (Name (List.assoc i varsubst)) b t :: ctx')
     with Not_found -> 
       let id' = Namegen.next_name_away n ids in
-	id' :: ids, pred i, ((Name id', b, t) :: ctx')) ctx (ids, List.length ctx, [])
+	id' :: ids, pred i, (make_def (Name id') b t :: ctx')) ctx (ids, List.length ctx, [])
   in pats, ctxs, ctx'
       
 let interp_constr_in_rhs env ctx evars (i,comp,impls) ty s lets c =
   let envctx = push_rel_context ctx env in
   let patslets, letslen = 
-    fold_right (fun (n, b, t) (acc, len) -> 
-      (lift (-len) (Option.get b) :: acc, succ len)) lets ([], 0) 
+    fold_right (fun decl (acc, len) -> 
+        let (_, b, _) = to_tuple decl in
+        (lift (-len) (Option.get b) :: acc, succ len)) lets ([], 0) 
   in
   let pats, ctx, len = 
     let (pats, x, y) = lets_of_ctx env (lets @ ctx) evars 
@@ -740,18 +706,19 @@ let unify_type env evars before id ty after =
     let cstrs = Inductiveops.type_of_constructors envb ind in
     let cstrs = 
       Array.mapi (fun i ty ->
-	let ty = prod_applist ty params in
-	let ctx, ty = decompose_prod_assum ty in
-	let ctx = 
-	  fold_right (fun (n, b, t) acc ->
-	    match n with
-	    | Name id -> let id' = next_ident_away id in
-		((Name id', b, t) :: acc)
-	    | Anonymous ->
-		let x = Namegen.id_of_name_using_hdchar
-		  (push_rel_context acc envb) t Anonymous in
-		let id = next_ident_away x in
-		  ((Name id, b, t) :: acc))
+	  let ty = prod_applist ty params in
+          let ctx, ty = decompose_prod_assum ty in
+          let ctx = 
+            fold_right (fun decl acc ->
+                let (n, b, t) = to_tuple decl in
+                match n with
+	        | Name id -> let id' = next_ident_away id in
+	          (make_def (Name id') b t :: acc)
+	        | Anonymous ->
+                   let x = Namegen.id_of_name_using_hdchar
+	               (push_rel_context acc envb) t Anonymous in
+		   let id = next_ident_away x in
+		   (make_def (Name id) b t :: acc))
 	    ctx []
 	in
 	let env' = push_rel_context ctx (Global.env ()) in
@@ -801,7 +768,7 @@ let blockers curpats ((_, patcs, _) : context_map) =
   in patterns_blockers curpats (rev patcs)
 
 let pr_rel_name env i =
-  pr_name (pi1 (lookup_rel i env))
+  pr_name (get_name (lookup_rel i env))
 
 
 let pr_path evd = prlist_with_sep (fun () -> str":") (pr_existential_key evd)
@@ -889,11 +856,12 @@ let is_all_variables (delta, pats, gamma) =
 
 let do_renamings ctx =
   let avoid, ctx' =
-    List.fold_right (fun (n, b, t) (ids, acc) ->
-      match n with
+    List.fold_right (fun decl (ids, acc) ->
+        let (n, b, t) = to_tuple decl in
+        match n with
       | Name id -> 
 	  let id' = Namegen.next_ident_away id ids in
-	  let decl' = (Name id', b, t) in
+	  let decl' = make_def (Name id') b t in
 	    (id' :: ids, decl' :: acc)
       | Anonymous -> assert false)
       ctx ([], [])
@@ -901,7 +869,8 @@ let do_renamings ctx =
 
 let split_var (env,evars) var delta =
   (* delta = before; id; after |- curpats : gamma *)	    
-  let before, (id, b, ty as decl), after = split_tele (pred var) delta in
+  let before, decl, after = split_tele (pred var) delta in
+  let (id, b, ty) = to_tuple decl in
   let unify = unify_type env evars before id ty after in
   let branch = function
     | UnifFailure -> None
@@ -930,7 +899,7 @@ let split_var (env,evars) var delta =
 (* 			 print_constr_env (push_rel_context before env) newty  *)
 (* 		       ++ str" to match a user pattern") *)
 	else 
-	  let newdelta = after @ ((id, b, newty) :: before) in
+	  let newdelta = after @ (make_def id b newty :: before) in
 	    Some (var, do_renamings newdelta, Array.map branch unify)
 
 let find_empty env delta =
@@ -943,11 +912,6 @@ let find_empty env delta =
     
 open Evd
 open Refiner
-
-let rel_of_named_context ctx = 
-  List.fold_right (fun (n,b,t) (ctx',subst) ->
-    let decl = (Name n, Option.map (subst_vars subst) b, subst_vars subst t) in 
-      (decl :: ctx', n :: subst)) ctx ([],[])
     
 (* The list of variables appearing in a list of patterns, 
    ordered increasingly. *)
@@ -965,31 +929,17 @@ let variables_of_pats pats =
 let pats_of_variables = map (fun (i, hide) ->
   if hide then PHide i else PRel i)
 
-let lift_rel_declaration k (n, b, t) =
-  (n, Option.map (lift k) b, lift k t)
-
-let named_of_rel_context l =
-  let (subst, _, ctx) = 
-    List.fold_right
-      (fun (na, b, t) (subst, ids, ctx) ->
-	 let id = match na with
-	   | Anonymous -> raise (Invalid_argument "named_of_rel_context") 
-	   | Name id -> Namegen.next_ident_away id ids
-	 in
-	 let d = (id, Option.map (substl subst) b, substl subst t) in
-	   (mkVar id :: subst, id :: ids, d :: ctx))
-      l ([], [], [])
-  in subst, ctx
+let lift_rel_declaration k decl = map_rel_declaration (lift k) decl
     
 let lookup_named_i id =
   let rec aux i = function
-    | (id',_,_ as decl) :: _ when Id.equal id id' -> i, decl
+    | decl :: _ when Id.equal id (get_id decl) -> i, decl
     | _ :: sign -> aux (succ i) sign
     | [] -> raise Not_found
   in aux 1
 	
 let instance_of_pats env evars (ctx : rel_context) (pats : (int * bool) list) =
-  let subst, nctx = named_of_rel_context ctx in
+  let subst, _, nctx = named_of_rel_context (fun () -> raise (Invalid_argument "named_of_rel_context")) ctx in
   let subst = map destVar subst in
   let ctx' =
     List.fold_right (fun (i, hide) ctx' ->
@@ -1009,7 +959,8 @@ let instance_of_pats env evars (ctx : rel_context) (pats : (int * bool) list) =
       1 subst
   in
   let pats'' =
-    List.map_i (fun i (id, b, t) ->
+    List.map_i (fun i decl ->
+      let (id, b, t) = to_named_tuple decl in
       let i', _ = lookup_named_i id nctx in
 	CList.find_map (fun (i'', hide) ->
 	  if i'' == i' then Some (if hide then PHide i else PRel i)
@@ -1020,14 +971,15 @@ let instance_of_pats env evars (ctx : rel_context) (pats : (int * bool) list) =
 let push_rel_context_eos ctx env =
   if named_context env <> [] then
     let env' =
-      push_named (id_of_string "eos", Some (Lazy.force coq_end_of_section_constr), 
-		 Lazy.force coq_end_of_section) env
+      push_named (make_named_def (id_of_string "eos")
+                    (Some (Lazy.force coq_end_of_section_constr))
+		    (Lazy.force coq_end_of_section)) env
     in push_rel_context ctx env'
   else push_rel_context ctx env
     
 let split_at_eos ctx =
-  List.split_when (fun (id, b, t) ->
-		   eq_constr t (Lazy.force coq_end_of_section)) ctx
+  List.split_when (fun decl ->
+		   eq_constr (get_named_type decl) (Lazy.force coq_end_of_section)) ctx
 
 let pr_problem (id, _, _) env (delta, patcs, _) =
   let env' = push_rel_context delta env in
@@ -1080,7 +1032,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 	      let sign, t', rels, _, _ = push_rel_context_to_named_context env' ty in
 	      let sign = named_context_of_val sign in
 	      let sign', secsign = split_at_eos sign in
-	      let ids = List.map pi1 sign in
+	      let ids = List.map get_id sign in
 	      let tac = match tac with
 		| Inl tac -> 
 		  Tacinterp.interp_tac_gen Id.Map.empty ids Tactic_debug.DebugOff tac 
@@ -1140,15 +1092,15 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		    in 
 		      match covering_aux env evars data [] (map (fun x -> x, false) s) path prob lets ty' with
 		      | None ->
-			Errors.anomaly ~label:"covering"
+			anomaly ~label:"covering"
 			  (str "Unable to find a covering for the result of a by clause:" 
 			   ++ fnl () ++ pr_clause env (lhs, rhs) ++
 			     spc () ++ str"refining" ++ spc () ++ pr_context_map env prob)
 		      | Some s ->
-			let args = rev (List.map_filter (fun (id,b,t) ->
-			  if b == None then Some (mkVar id) else None) nctx)
+			let args = rev (List.map_filter (fun decl ->
+			  if get_named_value decl == None then Some (mkVar (get_id decl)) else None) nctx)
 			in gl, args, subst, invsubst, s
-		  in Some (Valid (prob, ty, map pi1 sign', Proofview.V82.of_tactic tac, 
+		  in Some (Valid (prob, ty, map get_id sign', Proofview.V82.of_tactic tac, 
 				  (entry, res), map solve_goal gls.it))
 
 	    | Refine (c, cls) -> 
@@ -1161,7 +1113,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 	         current context. Needed for ?? *)
 	      let revctx = check_ctx_map !evars (newctx, pats', ctx) in
 	      let idref = Namegen.next_ident_away (id_of_string "refine") (ids_of_rel_context newctx) in
-	      let decl = (Name idref, None, mapping_constr revctx cty) in
+	      let decl = make_assum (Name idref) (mapping_constr revctx cty) in
 	      let extnewctx = decl :: newctx in
 	      (* cmap : Δ -> ctx, cty,
 	         strinv associates to indexes in the strenghtened context to

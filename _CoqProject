@@ -3,12 +3,12 @@
 -R theories Equations
 -I theories
 -extra-phony doc "html" "mkdir -p html/api && ocamldoc -html -d html/api `ocamlfind query -r coqdev85.all -i-format` -rectypes -I src src/*.ml"
-ZDEBUG = "-bin-annot -g"
+ZDEBUG = "-bin-annot -g -for-pack Equations"
 COQDOCFLAGS = "-parse-comments -utf8 -interpolate"
 src/equations_common.mli
 src/equations_common.ml
-src/sigma.mli
-src/sigma.ml
+src/sigma_types.mli
+src/sigma_types.ml
 src/subterm.mli
 src/subterm.ml
 src/eqdec.mli
