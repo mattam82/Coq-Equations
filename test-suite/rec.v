@@ -15,7 +15,7 @@ Hint Resolve lt_n_Sn : Below.
 Ltac rec ::= rec_wf_eqns.
 
 Module RecRel.
-
+  
   Equations id (n : nat) : nat :=
   id n by rec n lt :=
   id O := 0 ;
@@ -105,7 +105,6 @@ Proof with simpl; intros. intros.
 Qed.
 
 Module RecMeasure.
-  
 
   Instance wf_MR {A R} `(WellFounded A R) {B} (f : B -> A) : WellFounded (MR R f).
   Proof. red. apply measure_wf. apply H. Defined.
@@ -124,9 +123,8 @@ Module RecMeasure.
 
   Implicit Arguments length [[A]].
 
-
   Equations g (l : list nat) : nat :=
-  g n by rec n (MR lt (@length nat)) :=
+  g l by rec l (MR lt (@length nat)) :=
   g nil := 0 ;
   g (cons n l) := S (g l).
   
@@ -161,13 +159,11 @@ Module RecMeasure.
     Context (compare : A -> A -> comparison).
     Context (compspec : forall x y, CompSpec eq lt x y (compare x y)).
 
-
     Context (leb_complete : forall x y, leb x y <-> (x = y \/ leb y x = false)).
     Context (leb_complete2 : forall x y, leb x y = false -> leb y x).
 
     Context (ltb_leb : forall x y, ltb x y -> leb x y).
     Context (nltb_leb : forall x y, ltb x y = false -> leb y x).
-(*     Context (ltb_leb' : forall x y, ltb x y = false -> (x = y \/ leb y x = true)). *)
     Context (ltb_leb' : forall x y, leb x y = false <-> ltb y x).
     Context (ltb_leb'' : forall x y, ltb x y <-> ~ leb y x).
 
@@ -181,45 +177,24 @@ Module RecMeasure.
       apply Is_true_eq_true. auto.
     Qed.
 
-Ltac funelim_tac c tac ::=
-  match c with
-    | appcontext C [ ?f ] => 
-  let call := fresh "call" in set(call := c) in *; 
-  let elim := constr:(fun_elim (f:=f)) in
-    block_goal; revert_until call; block_goal;
-    first [ 
-      progress (generalize_eqs_vars call);
-        match goal with
-          call := ?c' |- _ => 
-            subst call; simpl; pattern_call c';
-              apply elim; simplify_dep_elim;
-                simplify_IH_hyps; unfold block at 1;
-                  first [ on_last_hyp ltac:(fun id => rewrite <- id; clear id; intros)
-                    | intros ];
-                  unblock_goal; tac f
-        end
-      | subst call; pattern_call c; apply elim; 
-        simplify_dep_elim; simplify_IH_hyps; unfold block at 1; 
-          intros; unblock_goal; tac f ]
-  end.
-
     Lemma qs_same (l : list A) : forall a, In a l <-> In a (qs l).
     Proof.
-      funelim (qs l). reflexivity.
-      
-      intros.
-      simpl. split; intros.
-      destruct H1. subst. auto with datatypes.
-      rewrite in_app_iff. 
-      simpl. rewrite <- H, <- H0.
-      rewrite !filter_In'.
-      cut (ltb a0 a ∨ a = a0 ∨ leb a a0). intuition auto.
-      destruct (compspec a a0); intuition auto.
-      right; right. apply ltb_leb. revert H2. case (refl_lt a a0). split. intros.
-      contradiction.
-      left. case (refl_lt a0 a). split. contradiction.
-      rewrite in_app_iff, <- H in H1. simpl in H1; rewrite <- H0 in H1.
-      rewrite !filter_In in H1. intuition auto.
+      funelim (qs l).
+      - reflexivity.
+      - intros a'.
+        simpl. split; intros.
+        destruct H1. subst. auto with datatypes.
+        rewrite in_app_iff. 
+        simpl.
+        rewrite <- H, <- H0.
+        rewrite !filter_In'.
+        cut (ltb a' a ∨ a = a' ∨ leb a a'). intuition auto.
+        destruct (compspec a a'); intuition auto.
+        right; right. apply ltb_leb. revert H2. case (refl_lt a a'). split. intros.
+        contradiction.
+        left. case (refl_lt a' a). split. contradiction.
+        rewrite in_app_iff, <- H in H1. simpl in H1; rewrite <- H0 in H1.
+        rewrite !filter_In in H1. intuition auto.
     Qed.
 
     Lemma sort_le_app :

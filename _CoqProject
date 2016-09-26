@@ -59,6 +59,6 @@ test-suite/issues/issue8.v
 test-suite/issues/issue13.v
 test-suite/LogicType.v
 examples/lf.v
+examples/lfdec.v
 examples/HoTT_light.v
 examples/poly_bocquet.v
-

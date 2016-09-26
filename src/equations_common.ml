@@ -459,21 +459,25 @@ let tacvar_arg h =
 
 let rec_tac h h' = 
   TacArg(dummy_loc, TacCall(dummy_loc, 
-			    Qualid (dummy_loc, qualid_of_string "Equations.Below.rec"),
-		[tacident_arg h;
-		 tacvar_arg h']))
+    Qualid (dummy_loc, qualid_of_string "Equations.Below.rec"),
+    [tacvar_arg h'; ConstrMayEval (Genredexpr.ConstrTerm h)]))
 
 let rec_wf_tac h h' rel = 
   TacArg(dummy_loc, TacCall(dummy_loc, 
     Qualid (dummy_loc, qualid_of_string "Equations.Subterm.rec_wf_eqns_rel"),
-			    [tacident_arg h;tacvar_arg h';			     
-			     ConstrMayEval (Genredexpr.ConstrTerm rel)]))
+    [tacvar_arg h';
+     ConstrMayEval (Genredexpr.ConstrTerm h);
+     ConstrMayEval (Genredexpr.ConstrTerm rel)]))
 
 let unfold_recursor_tac () = tac_of_string "Equations.Subterm.unfold_recursor" []
 
 let equations_tac_expr () = 
   (TacArg(dummy_loc, TacCall(dummy_loc, 
    Qualid (dummy_loc, qualid_of_string "Equations.DepElim.equations"), [])))
+
+let solve_rec_tac_expr () =
+  (TacArg(dummy_loc, TacCall(dummy_loc, 
+   Qualid (dummy_loc, qualid_of_string "Equations.Below.solve_rec"), [])))
 
 let equations_tac () = tac_of_string "Equations.DepElim.equations" []
 
@@ -486,6 +490,8 @@ let find_empty_tac () = tac_of_string "Equations.DepElim.find_empty" []
 let pi_tac () = tac_of_string "Equations.Subterm.pi" []
 
 let noconf_tac () = tac_of_string "Equations.NoConfusion.solve_noconf" []
+
+let eqdec_tac () = tac_of_string "Equations.EqDecInstances.eqdec_proof" []
 
 let simpl_equations_tac () = tac_of_string "Equations.DepElim.simpl_equations" []
 
@@ -634,3 +640,19 @@ let ident_of_smart_global x =
 
 let pf_get_type_of               = pf_reduce Retyping.get_type_of
   
+let move_after_deps id c =
+  Proofview.Goal.enter (fun gl ->
+    let gl = Proofview.Goal.assume gl in
+    let hyps = Proofview.Goal.hyps gl in
+    let deps = collect_vars c in
+    let iddeps = 
+      collect_vars (Tacmach.New.pf_get_hyp_typ id gl) in
+    let deps = Id.Set.diff deps iddeps in
+    let find (id, _, _) = Id.Set.mem id deps in
+    let first = 
+      match snd (List.split_when find (List.rev hyps)) with
+      | a :: _ -> pi1 a
+      | [] -> errorlabstrm "move_before_deps"
+        Pp.(str"Found no hypothesis on which " ++ pr_id id ++ str" depends")
+    in
+    Proofview.V82.tactic (Tactics.move_hyp id (Misctypes.MoveAfter first)))

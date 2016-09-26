@@ -17,6 +17,8 @@ Generalizable Variables A R S B.
 Class WellFounded {A : Type} (R : relation A) :=
   wellfounded : well_founded R.
 
+Scheme Acc_dep := Induction for Acc Sort Prop.
+
 (** The fixpoint combinator associated to a well-founded relation,
    just reusing the [Wf.Fix] combinator. *)
 
@@ -24,11 +26,22 @@ Definition FixWf `{WF:WellFounded A R} (P : A -> Type)
   (step : ∀ x : A, (∀ y : A, R y x -> P y) -> P x) : ∀ x : A, P x :=
   Fix wellfounded P step.
 
+Lemma Acc_pi (A : Type) (R : relation A) i (x y : Acc R i) : x = y.
+Proof.
+  revert y.
+  induction x using Acc_dep.
+  intros. destruct y.
+  f_equal.
+  extensionality y. extensionality H'. apply H.
+Qed.
+
 Lemma FixWf_unfold `{WF : WellFounded A R} (P : A -> Type)
   (step : ∀ x : A, (∀ y : A, R y x -> P y) -> P x) (x : A) : 
   FixWf P step x = step x (fun y _ => FixWf P step y).
-Proof. intros. unfold FixWf, Fix. destruct wellfounded.
-  simpl. f_equal. extensionality y. extensionality h. pi.
+Proof.
+  intros. unfold FixWf, Fix. destruct wellfounded.
+  simpl. f_equal. extensionality y. extensionality h.
+  f_equal. apply Acc_pi.
 Qed.
 
 Hint Rewrite @FixWf_unfold : Recursors.
@@ -108,50 +121,69 @@ Ltac solve_subterm := intros;
 
 (** A tactic to launch a well-founded recursion. *)
 
-Ltac rec_wf_fix x recname fixterm :=
-  apply fixterm ; clear_local ; 
-  intros until 1 ; simp_sigmas ; 
-    on_last_hyp ltac:(fun x => rename x into recname) ;
-  simplify_dep_elim ; intros ; unblock_goal ; intros ;
-  move recname at bottom ; try curry recname ; simpl in recname.
+Ltac rec_wf_fix recname kont :=
+  let hyps := fresh in intros hyps;
+  intro; on_last_hyp ltac:(fun x => rename x into recname;
+                           unfold MR at 1 in recname) ;
+  destruct_right_sigma hyps; try curry recname; simpl in recname;
+  kont recname.
+
+(* Ltac rec_wf_fix x recname fixterm := *)
+(*   apply fixterm ; clear_local ;  *)
+(*   intros until 1 ; simp_sigmas ;  *)
+(*     on_last_hyp ltac:(fun x => rename x into recname) ; *)
+(*   simplify_dep_elim ; intros ; unblock_goal ; intros ; *)
+(*   move recname at bottom ; try curry recname ; simpl in recname. *)
 
 (** Generalize an object [x], packing it in a sigma type if necessary. *)
 
-Ltac sigma_pack x :=
-  let xpack := fresh x "pack" in
-    (progress (set(xpack := signature_pack x) ;
-      cbv in xpack; move xpack before x; 
-      pattern sigma xpack; clearbody xpack; clear x; 
-      rename xpack into x; clear_nonsection))
-    || revert_until x.
+
+Ltac sigma_pack t :=
+  let packhyps := fresh "hypspack" in
+  let xpack := fresh "pack" in
+  uncurry_hyps packhyps; 
+    (progress (set(xpack := t) in |- ;
+               cbv in xpack; revert xpack;
+               pattern sigma packhyps; 
+               clearbody packhyps;
+               revert packhyps;
+               clear_nonsection)).
 
 (** We specialize the tactic for [x] of type [A], first packing 
    [x] with its indices into a sigma type and finding the declared 
    relation on this type. *)
 
-Ltac rec_wf x recname := 
-  with_eos ltac:(fun eos => move x before eos) ltac:(move x at top);
-  revert_until x; generalize_by_eqs_vars x ; sigma_pack x; pattern x;
-  let ty := type of x in
-  let ty := eval simpl in ty in
-  let wfprf := constr:(wellfounded (A:=ty)) in
-  let fixterm := constr:(FixWf (WF:=wfprf)) in
-    rec_wf_fix x recname fixterm ; intros ; instantiate.
+Ltac rec_wf recname t kont := 
+  sigma_pack t;
+    match goal with
+      [ |- forall (s : ?T) (s0 := @?b s), @?P s ] => 
+      let fn := constr:(fun s : T => b s) in
+      let c := constr:(wellfounded (R:=MR _ fn)) in
+      let wf := constr:(FixWf (WF:=c)) in
+      intros s _; revert s; refine (wf P _); simpl ;
+      rec_wf_fix recname kont
+    end. 
 
-Ltac rec_wf_eqns x recname := rec_wf x recname ;
-  add_pattern (hide_pattern recname).
+Ltac rec_wf_eqns recname x := 
+  rec_wf recname x 
+         ltac:(fun rechyp => add_pattern (hide_pattern rechyp)).
 
-Ltac rec_wf_rel x recname rel := 
-  with_eos ltac:(fun eos => move x before eos) ltac:(move x at top);
-  revert_until x; generalize_by_eqs_vars x ; sigma_pack x; pattern x;
-  let ty := type of x in
-  let ty := eval simpl in ty in
-  let wfprf := constr:(wellfounded (A:=ty) (R:=rel)) in
-  let fixterm := constr:(FixWf (WF:=wfprf)) in
-    rec_wf_fix x recname fixterm ; intros ; instantiate.
+Ltac rec_wf_rel_aux recname t rel kont := 
+  sigma_pack t;
+    match goal with
+      [ |- forall (s : ?T) (s0 := @?b s), @?P s ] => 
+      let fn := constr:(fun s : T => b s) in
+      let c := constr:(wellfounded (R:=MR rel fn)) in
+      let wf := constr:(FixWf (WF:=c)) in
+      intros s _; revert s; refine (wf P _); simpl ;
+      rec_wf_fix recname kont
+    end. 
 
-Ltac rec_wf_eqns_rel x recname rel :=
-  rec_wf_rel x recname rel ; add_pattern (hide_pattern recname).
+Ltac rec_wf_eqns_rel recname x rel :=
+  rec_wf_rel_aux recname x rel ltac:(fun rechyp => add_pattern (hide_pattern rechyp)).
+
+Ltac rec_wf_rel recname x rel :=
+  rec_wf_rel_aux recname x rel ltac:(fun rechyp => idtac).
 
 Ltac solve_rec ::= simpl in * ; cbv zeta ; intros ; 
   try typeclasses eauto with subterm_relation Below rec_decision.

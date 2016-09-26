@@ -56,8 +56,9 @@ val ind_fun_tac :
   constr ->
   term_info -> Id.t -> splitting -> 'a -> Proof_type.tactic
 val subst_rec_split : Evd.evar_map ->
-  bool ->
-  constr ->
+                      constr ->
+                      constant option ->
+                      int option ->
   context_map ->
   (Id.t * constr) list -> splitting -> splitting
 

@@ -53,13 +53,22 @@ END
 
 (* Sigma *)
 
+let get_inductive c =
+  let c = Smartlocate.global_with_alias c in
+  match c with
+  | Globnames.IndRef i ->
+     let env = Global.env () in
+     let sigma = Evd.from_env env in
+     let sigma, i = Evd.fresh_inductive_instance env sigma i in
+     env, sigma, i
+  | _ -> error "Expected an inductive type"
 
 VERNAC COMMAND EXTEND Derive_Signature CLASSIFIED AS QUERY
-| [ "Derive" "Signature" "for" constr(c) ] -> [ 
-  let c', _ = Constrintern.interp_constr (Global.env ()) (Evd.from_env (Global.env())) c in
-    match kind_of_term c' with
-    | Ind (i,_) -> ignore(Sigma.declare_sig_of_ind (Global.env ()) i)
-    | _ -> Errors.error "Expected an inductive type"
+| [ "Derive" "Signature" "for" global_list(c) ] -> [ 
+  List.iter (fun c ->
+	     let env, sigma, i = get_inductive c in
+	     ignore(Sigma.declare_sig_of_ind env sigma i))
+	    c
   ]
 END
 
@@ -78,28 +87,110 @@ TACTIC EXTEND get_signature_pack
 END
       
 TACTIC EXTEND pattern_sigma
-[ "pattern" "sigma" hyp(id) ] -> [
+(* [ "pattern" "sigma" "left" hyp(id) ] -> [ *)
+(*   Proofview.Goal.enter (fun gl -> *)
+(*     let gl = Proofview.Goal.assume gl in *)
+(*     let env = Proofview.Goal.env gl in *)
+(*     let sigma = Proofview.Goal.sigma gl in *)
+(*     let decl = Tacmach.New.pf_get_hyp id gl in *)
+(*     let term = Option.get (Util.pi2 decl) in *)
+(*     Sigma.pattern_sigma ~assoc_right:false term id env sigma) ] *)
+| [ "pattern" "sigma" hyp(id) ] -> [
   Proofview.Goal.enter (fun gl ->
     let gl = Proofview.Goal.assume gl in
     let env = Proofview.Goal.env gl in
     let sigma = Proofview.Goal.sigma gl in
     let decl = Tacmach.New.pf_get_hyp id gl in
     let term = Option.get (Util.pi2 decl) in
-    Sigma.pattern_sigma term id env sigma) ]
+    Sigma.pattern_sigma ~assoc_right:true term id env sigma) ]
 END
 
 open Tacmach
+
+let curry_hyp env sigma hyp t =
+  let curry t =
+    match kind_of_term t with
+    | Prod (na, dom, concl) ->
+       let ctx, arg = Sigma.curry na dom in
+       let term = mkApp (mkVar hyp, [| arg |]) in
+       let ty = Reductionops.nf_betaiota sigma (Vars.subst1 arg concl) in
+       Some (it_mkLambda_or_LetIn term ctx, it_mkProd_or_LetIn ty ctx)
+    | _ -> None
+  in curry t
+
+open Closure.RedFlags
+
+let red_curry () =
+  let redpr pr = 
+    fCONST (Projection.constant (Lazy.force pr)) in
+  let reds = mkflags [redpr coq_pr1; redpr coq_pr2; fBETA; fIOTA] in
+  Reductionops.clos_norm_flags reds
+
+let curry_concl env sigma na dom codom =
+  let ctx, arg = Sigma.curry na dom in
+  let newconcl =
+    let body = it_mkLambda_or_LetIn (Vars.subst1 arg codom) ctx in
+    let inst = Termops.extended_rel_vect 0 ctx in
+    red_curry () env sigma (it_mkProd_or_LetIn (mkApp (body, inst)) ctx) in
+  let proj last (na, b, ty) (terms, acc) =
+    if last then (acc :: terms, acc)
+    else
+      let term = mkProj (Lazy.force coq_pr1, acc) in
+      let acc = mkProj (Lazy.force coq_pr2, acc) in
+      (term :: terms, acc)
+  in
+  let terms, acc =
+    match ctx with
+    | hd :: (_ :: _ as tl) ->
+       proj true hd (List.fold_right (proj false) tl ([], mkRel 1))
+    | hd :: tl -> ([mkRel 1], mkRel 1)
+    | [] -> ([mkRel 1], mkRel 1)
+  in
+  let sigma, ev =
+    Evarutil.new_evar env sigma newconcl
+  in
+  let term = mkLambda (na, dom, mkApp (ev, CArray.rev_of_list terms)) in
+  sigma, term
 
 TACTIC EXTEND curry
 [ "curry" hyp(id) ] -> [ 
   Proofview.V82.tactic 
     (fun gl ->
-      match Sigma.curry_hyp (pf_env gl) (project gl) (mkVar id) (pf_get_hyp_typ gl id) with
+      match curry_hyp (pf_env gl) (project gl) id (pf_get_hyp_typ gl id) with
       | Some (prf, typ) -> 
 	 (tclTHENFIRST (Proofview.V82.of_tactic (assert_before_replacing id typ))
 		       (Tacmach.refine_no_check prf)) gl
-      | None -> tclFAIL 0 (str"No currying to do in" ++ pr_id id) gl) ]
+      | None -> tclFAIL 0 (str"No currying to do in " ++ pr_id id) gl) ]
+| ["curry"] -> [ 
+    Proofview.Goal.nf_enter (fun gl ->
+      let env = Proofview.Goal.env gl in
+      let concl = Proofview.Goal.concl gl in
+      match kind_of_term concl with
+      | Prod (na, dom, codom) ->
+         Proofview.Refine.refine
+           (fun sigma ->
+             let sigma, prf = curry_concl env sigma na dom codom in
+             sigma, prf)
+      | _ -> Tacticals.New.tclFAIL 0 (str"Goal cannot be curried"))
+  ]
 END
+
+TACTIC EXTEND curry_hyps
+[ "uncurry_hyps" ident(id) ] -> [ Sigma.uncurry_hyps id ]
+END
+
+TACTIC EXTEND uncurry_call
+[ "uncurry_call" constr(c) ident(id) ] -> [
+    Proofview.Goal.enter (fun gl ->
+        let env = Proofview.Goal.env gl in
+        let sigma = Proofview.Goal.sigma gl in
+        let sigma, term, ty = Sigma.uncurry_call env sigma c in
+        let sigma, _ = Typing.type_of env sigma term in
+        Proofview.Unsafe.tclEVARS sigma <*>
+          Tactics.letin_tac None (Name id) term (Some ty) nowhere)
+      ]
+END
+
 
 (* TACTIC EXTEND pattern_tele *)
 (* [ "pattern_tele" constr(c) ident(hyp) ] -> [ fun gl -> *)
@@ -120,13 +211,11 @@ TACTIC EXTEND dependent_pattern_from
 END
 
 VERNAC COMMAND EXTEND Derive_DependentElimination CLASSIFIED AS QUERY
-| [ "Derive" "DependentElimination" "for" constr_list(c) ] -> [ 
-    List.iter (fun c ->
-      let c',ctx = Constrintern.interp_constr (Global.env ()) Evd.empty c in
-	match kind_of_term c' with
-	| Ind i -> ignore(Depelim.derive_dep_elimination ctx i dummy_loc) (* (Glob_ops.loc_of_glob_constr c)) *)
-	| _ -> error "Expected an inductive type")
-      c
+| [ "Derive" "DependentElimination" "for" global_list(c) ] -> [ 
+  List.iter (fun c ->
+	     let env, sigma, i = get_inductive c in
+	     ignore(Depelim.derive_dep_elimination env sigma i))
+	    c
   ]
 END
 
@@ -137,13 +226,10 @@ END
 (* Noconf *)
 
 VERNAC COMMAND EXTEND Derive_NoConfusion CLASSIFIED AS SIDEFF
-| [ "Derive" "NoConfusion" "for" constr_list(c) ] -> [ 
-    List.iter (fun c ->
-      let env = (Global.env ()) in
-      let c',ctx = Constrintern.interp_constr env Evd.empty c in
-	match kind_of_term c' with
-	| Ind i -> Noconf.derive_no_confusion env (Evd.from_env env) i
-	| _ -> error "Expected an inductive type")
+| [ "Derive" "NoConfusion" "for" global_list(c) ] -> [ 
+  List.iter (fun c ->
+	     let env, evd, i = get_inductive c in
+	     Noconf.derive_no_confusion env evd i)
       c
   ]
 END
@@ -343,7 +429,8 @@ GEXTEND Gram
       |"=>"; c = Constr.lconstr -> Program c
       | ["with"|"<="]; ref = refine; [":="|"=>"]; e = equations -> ref e
       | "<-"; "(" ; t = Tactic.tactic; ")"; e = equations -> By (Inl t, e)
-      | "by"; IDENT "rec"; id = identref; rel = OPT constr; [":="|"=>"]; e = deppat_equations -> Rec (id, rel, e)
+      | "by"; IDENT "rec"; c = constr; rel = OPT constr; [":="|"=>"]; 
+        e = deppat_equations -> Rec (c, rel, e)
     ] ]
   ;
 
@@ -394,39 +481,28 @@ VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS SIDEFF
 (* Subterm *)
 
 VERNAC COMMAND EXTEND Derive_Subterm CLASSIFIED AS SIDEFF
-| [ "Derive" "Subterm" "for" constr(c) ] -> [
-    let env = Global.env () in
-    let evd = Evd.from_env env in
-    let c',_ = Constrintern.interp_constr env evd c in
-      match kind_of_term c' with
-      | Ind i -> Subterm.derive_subterm i
-      | _ -> error "Expected an inductive type"
+| [ "Derive" "Subterm" "for" global_list(c) ] -> [
+List.iter (fun c -> let env, sigma, i = get_inductive c in
+		    Subterm.derive_subterm env sigma i)
+	    c
   ]
 END
 
 VERNAC COMMAND EXTEND Derive_Below CLASSIFIED AS SIDEFF
-| [ "Derive" "Below" "for" constr(c) ] -> [ 
-    let env = Global.env () in
-    let evd = Evd.from_env env in
-    let c', ctx = Constrintern.interp_constr env evd c in
-    match kind_of_term c' with
-    | Ind i -> Subterm.derive_below ctx i
-    | _ -> error "Expected an inductive type"
-  ]
+| [ "Derive" "Below" "for" global_list(c) ] -> [
+  List.iter (fun c -> let env, sigma, i = get_inductive c in
+		      Subterm.derive_below env sigma i)
+	    c
+]
 END
 
 (* Eqdec *)
 
 VERNAC COMMAND EXTEND Derive_EqDec CLASSIFIED AS SIDEFF
-| [ "Derive" "Equality" "for" constr_list(c) ] -> [
-    let env = Global.env () in
-    let evd = Evd.from_env env in
-    List.iter (fun c ->	       
-      let c', _ = Constrintern.interp_constr env evd c in
-	match kind_of_term c' with
-	| Ind i -> Eqdec.derive_eq_dec i
-	| _ -> error "Expected an inductive type")
-      c
+| [ "Derive" "Equality" "for" global_list(c) ] -> [
+List.iter (fun c -> let env, sigma, i = get_inductive c in
+		    Eqdec.derive_eq_dec env sigma i)
+	    c
   ]
 END
 
@@ -435,4 +511,60 @@ TACTIC EXTEND is_secvar
   [ match kind_of_term x with
     | Var id when Termops.is_section_variable id -> Proofview.tclUNIT ()
     | _ -> Tacticals.New.tclFAIL 0 (str "Not a section variable or hypothesis") ]
+END
+
+open Proofview.Goal
+
+(** [refine_ho c]
+
+  Matches a lemma [c] of type [∀ ctx, ty] with a conclusion of the form
+  [∀ ctx, ?P args] using second-order matching on the problem
+  [ctx |- ?P args = ty] and then refines the goal with [c]. *)
+
+let refine_ho c =
+  nf_enter (fun gl ->
+    let env = env gl in
+    let sigma = sigma gl in  
+    let concl = concl gl in
+    let ty = Tacmach.New.pf_apply Retyping.get_type_of gl c in
+    let ts = Names.full_transparent_state in
+    let evd = ref sigma in
+    let rec aux env concl ty =
+      match kind_of_term concl, kind_of_term ty with
+      | Prod (na, b, t), Prod (na', b', t') ->
+         let ok = Evarconv.e_conv ~ts env evd b b' in
+         if not ok then
+           error "Products do not match"
+         else aux (Environ.push_rel (na,None,b) env) t t'
+      (* | _, LetIn (na, b, _, t') -> *)
+      (*    aux env t (subst1 b t') *)
+      | _, App (ev, args) when isEvar ev ->
+         let (evk, subst as ev) = destEvar ev in
+         let sigma = !evd in
+         let sigma,ev =
+           Evarutil.evar_absorb_arguments env sigma ev (Array.to_list args) in
+         let argoccs = Array.map_to_list (fun _ -> None) (snd ev) in
+         let sigma, b = Evarconv.second_order_matching ts env sigma ev argoccs concl in
+         if not b then
+           error "Second-order matching failed"
+         else Proofview.Unsafe.tclEVARS sigma <*>
+                Proofview.Refine.refine ~unsafe:true (fun sigma -> sigma, c)
+      | _, _ -> error "Couldn't find a second-order pattern to match"
+    in aux env concl ty)
+
+TACTIC EXTEND refine_ho
+| [ "refine_ho" open_constr(c) ] ->
+   [ Proofview.tclTHEN (Proofview.Unsafe.tclEVARS (fst c))
+                       (refine_ho (snd c)) ]
+END
+
+TACTIC EXTEND eqns_specialize_eqs
+| [ "eqns_specialize_eqs" ident(i) ] -> [
+    Proofview.V82.tactic (Depelim.specialize_eqs i)
+  ]
+END
+
+TACTIC EXTEND move_after_deps
+| [ "move_after_deps" ident(i) constr(c) ] ->
+ [ Equations_common.move_after_deps i c ]
 END

@@ -11,7 +11,7 @@ Require Import Nat.
 From Equations Require Import DepElimDec.
 
 Derive Signature for vector. 
-Derive Signature for @eq.
+Derive Signature for eq.
 
 Module M1.
   Require Import Coq.Vectors.VectorDef.
@@ -37,6 +37,8 @@ Module M1.
   | poly_s : forall {n b}, poly b n -> poly false (S n) -> poly false (S n).
   Derive Signature for poly.
   Derive NoConfusion for poly.
+  Derive Subterm for poly.
+  
   (**
    * Le type des monômes.
    ** 1.2.a
@@ -48,22 +50,27 @@ Module M1.
   | mono_s : forall {n}, mono (S n) -> mono (S n).
   Derive Signature for mono.
   Derive NoConfusion for mono.
+  Derive Subterm for mono.
 
-  Equations(nocomp noind) get_coef {n} (m : mono n) {b} (p : poly b n) : Z :=
+  Time Equations(nocomp) get_coef {n} (m : mono n) {b} (p : poly b n) : Z :=
+  get_coef m p by rec (signature_pack m) mono_subterm :=
   get_coef mono_z     poly_z       := 0%Z;
   get_coef mono_z     (poly_c z _) := z;
   get_coef (mono_l m) (poly_l p)   := get_coef m p;
   get_coef (mono_l m) (poly_s p _) := get_coef m p;
   get_coef (mono_s m) (poly_l _)   := 0%Z;
   get_coef (mono_s m) (poly_s p1 p2) := get_coef m p2.
-
+    
+  (* Next Obligation. *)
+  (*   Time depind m; depelim p; simp get_coef. *)
+  (* Defined. *)
+  
   (** Un polynôme non nul a un coefficient non nul *)
   Lemma poly_nz : forall {n} (p : poly false n), exists m, IsNZ (get_coef m p).
   Proof with (autorewrite with get_coef; auto).
     intros. depind p; unfold poly_sig in *; simplify_IH_hyps.
     exists mono_z...
     destruct IHp. exists (mono_l x)...
-    specialize (IHp2 _ _ eq_refl).
     destruct IHp2. exists (mono_s x)...
   Qed.
 
@@ -75,15 +82,15 @@ Module M1.
                            (forall (m : mono n), get_coef m p1 = get_coef m p2) ->
                            existT (fun b => poly b n) b1 p1 = existT _ b2 p2.
   Proof with (autorewrite with get_coef in *; auto).
+    intros. 
     depind p1; depelim p2; intros; try rename n0 into n; auto;
     try (specialize (H mono_z); autorewrite with get_coef in H; destruct i; discriminate; fail).
     specialize (H mono_z); autorewrite with get_coef in H; depelim i; depelim i0; inversion H; auto.
 
     specialize (IHp1 _ p2).
-    assert (existT (λ b : bool, poly b n) b p1 =
-            existT (λ b : bool, poly b n) b0 p2).
-    apply IHp1. intro. specialize (H (mono_l m)). autorewrite with get_coef in H. auto.
-    inversion H0. auto.
+    forward IHp1.
+    intro. specialize (H (mono_l m)). now simp get_coef in H. 
+    now depelim IHp1. 
 
     destruct (poly_nz p2_2).
     specialize (H (mono_s x))... destruct H0; discriminate.
@@ -91,34 +98,39 @@ Module M1.
     destruct (poly_nz p1_2).
     specialize (H (mono_s x))... destruct H0; discriminate.
 
-    assert(existT (λ b : bool, poly b (S n)) false p1_2 =
-           existT (λ b : bool, poly b (S n)) false p2_2).
-    apply IHp1_2; auto. intro. specialize (H (mono_s m))...
-    depelim H0.
-    assert(existT (λ b : bool, poly b n) b p1_1 =
-           existT (λ b : bool, poly b n) b0 p2_1).
-    apply IHp1_1; auto. intro. specialize (H (mono_l m))...
-    depelim H0. auto.
+    forward (IHp1_2 _ p2_2).
+    intro. specialize (H (mono_s m))...
+
+    forward (IHp1_1 _ p2_1).
+    intro. specialize (H (mono_l m))...
+    depelim IHp1_1.
+    now depelim IHp1_2.
   Qed.
+
 
   (**
    Une valuation des variables est donnée par le type Vector.t Z n
    ** 1.2.c
    *)
   Equations(nocomp) eval {n} {b} (p : poly b n) (v : Vector.t Z n) : Z :=
+  eval p v by rec (signature_pack p) poly_subterm :=
   eval poly_z         Vector.nil           := 0%Z;
   eval (poly_c z _)   Vector.nil           := z;
   eval (poly_l p)     (Vector.cons x xs)   := eval p xs;
-  eval (poly_s p1 p2) (Vector.cons y _ ys) := (eval p1 ys + y * eval p2 (Vector.cons y ys))%Z.
-  Next Obligation.
-    depind p; depelim v; simp eval. (* FIXME *)
-  Defined.
-    (**
-   On veut montrer qu'un polynôme non nul peut s'évaluer vers un entier non nul.
-   Le lemme principal est [poly_nz_eval].
-   Il procède par induction sur le [n] le nombre de variables et montre d'abord le résultat cherché puis un résultat plus fort via [poly_nz_eval'] pour que l'induction fonctionne.
-   Les inégalités entières sont vérifiées par [nia].
-   *)
+  eval (poly_s p1 p2) (Vector.cons y _ ys) :=
+    (eval p1 ys + y * eval p2 (Vector.cons y ys))%Z.
+  
+  (* In case nocomp + no by rec, unsolvable without a much stronger guard condition *)
+  (* Next Obligation. *)
+  (*   depind p; depelim v; simp eval. (* FIXME *) *)
+  (* Defined. *)
+  
+    (** *)
+  (*  On veut montrer qu'un polynôme non nul peut s'évaluer vers un entier non nul. *)
+  (*  Le lemme principal est [poly_nz_eval]. *)
+  (*  Il procède par induction sur le [n] le nombre de variables et montre d'abord le résultat cherché puis un résultat plus fort via [poly_nz_eval'] pour que l'induction fonctionne. *)
+  (*  Les inégalités entières sont vérifiées par [nia]. *)
+  (*  *)
   Lemma poly_nz_eval' : forall {n},
                           (forall (p : poly false n), exists v, eval p v <> 0%Z) ->
                           (forall (p : poly false (S n)),
@@ -129,21 +141,21 @@ Module M1.
     depind p.
     - destruct (H p) as [v Hv].
       exists v; intros; exists (1 + Z.abs m)%Z... nia.
-    - destruct (IHp2 p2 eq_refl) as [v Hv]; exists v; intros.
+    - destruct (IHp2 _ H p2 eq_refl) as [v Hv]; exists v; intros.
       destruct (Hv (Z.abs (eval p1 v) + Z.abs m)%Z) as [x [Hx0 Hx1]]; exists x...
       split; auto.
       nia.
   Qed.
 
   Lemma poly_nz_eval : forall {n},
-                         (forall (p : poly false n), exists v, eval p v <> 0%Z)
-                         /\ (forall (p : poly false (S n)),
-                             exists v, forall m, exists x,
-                                         x <> 0%Z /\
-                                         (Z.abs (x * eval p (Vector.cons x v)) > Z.abs m)%Z).
+      (forall (p : poly false n), exists v, eval p v <> 0%Z)
+      /\ (forall (p : poly false (S n)),
+            exists v, forall m, exists x,
+                  x <> 0%Z /\
+                  (Z.abs (x * eval p (Vector.cons x v)) > Z.abs m)%Z).
   Proof with (autorewrite with eval; auto using poly_nz_eval').
     depind n; match goal with
-                | [ |- ?P /\ ?Q ] => assert (HP : P); [|split;[auto|]]
+              | [ |- ?P /\ ?Q ] => assert (HP : P); [|split;[auto|]]
               end...
     - depelim p; exists Vector.nil... depelim i; auto; discriminate.
     - destruct IHn as [IHn1 IHn2]; depelim p.
@@ -153,25 +165,30 @@ Module M1.
         exists (Vector.cons x v)...
         nia.
   Qed.
+  
+  Ltac try_discriminate ::= fail.
+  Ltac try_injection H ::= fail.
+  
+(** *)
+  (*  Un polynôme nul ne peut s'évaluer que vers 0. *)
+(*  *)
 
-  (**
-   Un polynôme nul ne peut s'évaluer que vers 0.
-   *)
   Lemma poly_z_eval : forall {n} (p : poly true n) {v}, eval p v = 0%Z.
   Proof.
-    intros n p v. funelim (eval p v); auto.
-    (* Was: 
-    depind p; depelim v.
-    autorewrite with eval; auto.
-    specialize (IHp _ _ eq_refl).
-    depelim v; autorewrite with eval; auto. *)
+    intros n p v.
+    now funelim (eval p v).
+    (* Was:  *)
+  (*   depind p; depelim v. *)
+  (*   autorewrite with eval; auto. *)
+  (*   specialize (IHp _ _ eq_refl). *)
+  (*   depelim v; autorewrite with eval; auto. *)
   Qed.
 
   Definition apoly {n} := sigmaI (fun b => poly b n).
 
   (** Définition de [plus] (extraite d'une définition via Equations) *)
   (** ** 1.3.a *)
-
+  
   Equations(noind nocomp) plus {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) : { b : bool & poly b n } :=
     plus poly_z        poly_z          := apoly _ poly_z;
     plus poly_z        (poly_c y ny)   := apoly _ (poly_c y ny);
@@ -190,7 +207,7 @@ Module M1.
                                             | (false; q3) => apoly _ (poly_s (pr2 (plus p1 p2)) q3)
                                             | (true; _)   => apoly _ (poly_l (pr2 (plus p1 p2)))
                                           end.
-
+  
   (** [plus] se comporte comme il faut par rapport à [eval] *)
   Lemma plus_eval : forall {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) v,
                       (eval p1 v + eval p2 v)%Z = eval (pr2 (plus p1 p2)) v.
@@ -211,10 +228,13 @@ Module M1.
 
   Hint Rewrite <- @plus_eval : eval.
 
+  Ltac try_discriminate ::= discriminate.
+  Ltac try_injection H ::= fail.
+
   (**
    La négation d'un polynôme (utilisée pour définir la soustraction)
    *)
-  Equations(nocomp) poly_neg {n} {b} (p : poly b n) : poly b n :=
+  Equations poly_neg {n} {b} (p : poly b n) : poly b n :=
     poly_neg poly_z := poly_z;
     poly_neg (poly_c (Z.pos a) _) := poly_c (Z.neg a) (IsNeg a);
     poly_neg (poly_c (Z.neg a) _) := poly_c (Z.pos a) (IsPos a);
@@ -310,13 +330,16 @@ Module M1.
 
   (* [mult (poly_l p) q = mult_l q (mult p)] *)
   (* MS: FIXME: noind necessary *)
-  Equations(nocomp noind) mult_l {n} {b2} (p2 : poly b2 (S n)) (m : forall {b2} (p2 : poly b2 n), { b : bool & poly b n }) :
+  Equations(nocomp) mult_l {n} {b2} (p2 : poly b2 (S n)) (m : forall {b2} (p2 : poly b2 n), { b : bool & poly b n }) :
     { b : bool & poly b (S n) } :=
   mult_l (poly_l p2) m := apoly _ (poly_l (pr2 (m _ p2)));
   mult_l (poly_s p1 p2) m := poly_l_or_s (pr2 (m _ p1)) (pr2 (mult_l p2 m)).
-
+  Next Obligation.
+    depind p2; simp mult_l.
+  Defined.
+    
   (* [mult (poly_s p1 p2) q = mult_s q (mult p1) (mult p2)] *)
-  Equations(nocomp noind) mult_s {n} {b2} (p2 : poly b2 (S n))
+  Equations(nocomp) mult_s {n} {b2} (p2 : poly b2 (S n))
      (m1 : forall {b2} (p2 : poly b2 n), { b : bool & poly b n })
      (m2 : forall {b2} (p2 : poly b2 (S n)), { b : bool & poly b (S n) }) :
     { b : bool & poly b (S n) } :=
@@ -324,10 +347,13 @@ Module M1.
   mult_s (poly_s p2 q2) m1 m2 :=
   poly_l_or_s (pr2 (m1 _ p2))
               (pr2 (plus (pr2 (m2 _ (poly_l p2))) (pr2 (mult_s q2 m1 m2)))).
+  Next Obligation.
+    depind p2; simp mult_s.
+  Defined.
   
   (* Définition de la multiplication *)
-
-  Equations(noind nocomp) mult n b1 (p1 : poly b1 n) b2 (p2 : poly b2 n) : { b : bool & poly b n } :=
+  (* FIXME noind *)
+  Equations(noind) mult n b1 (p1 : poly b1 n) b2 (p2 : poly b2 n) : { b : bool & poly b n } :=
     mult n b1 poly_z        b2 _ := apoly _ poly_z;
     mult n b1 (poly_c x nx) b2 poly_z := apoly _ poly_z;
     mult n b1 (poly_c x nx) b2 (poly_c y ny) :=
@@ -450,7 +476,7 @@ Module M1.
   (** ** 2.2.a
    [poly_of_formula] transforme une formule avec [n] variables en polynôme à [n] variables.
    *)
-  Equations(noind) poly_of_formula {n} (f : @formula (Fin.t n)) : { b : bool & poly b n } :=
+  Equations(nocomp) poly_of_formula {n} (f : @formula (Fin.t n)) : { b : bool & poly b n } :=
   poly_of_formula (f_var v)       := apoly _ (poly_var v);
   poly_of_formula (f_const false) := apoly _ poly_zero;
   poly_of_formula (f_const true)  := apoly _ poly_one;
@@ -464,9 +490,10 @@ Module M1.
    Évaluer [poly_of_formula f] donne le même résultat qu'évaluer le formule [f].
       
    *)
-  Theorem poly_of_formula_eval : forall {n} (f : @formula (Fin.t n)) (v : Vector.t bool n),
-                                   (if eval_formula (Vector.nth v) f then 1%Z else 0%Z) =
-                                   eval (pr2 (poly_of_formula f)) (Vector.map (fun x : bool => if x then 1%Z else 0%Z) v).
+  Theorem poly_of_formula_eval :
+    forall {n} (f : @formula (Fin.t n)) (v : Vector.t bool n),
+      (if eval_formula (Vector.nth v) f then 1%Z else 0%Z) =
+      eval (pr2 (poly_of_formula f)) (Vector.map (fun x : bool => if x then 1%Z else 0%Z) v).
   Proof.
     depind f; intros;
     autorewrite with eval_formula poly_of_formula eval in *.
@@ -499,7 +526,7 @@ Module M1.
   reduce_aux p1 (poly_l p2) := poly_l_or_s p1 (poly_l p2);
   reduce_aux p1 (poly_s p2_1 p2_2) := poly_l_or_s p1 (pr2 (plus (poly_l p2_1) p2_2)).
   
-  Equations(noind nocomp) reduce {n} {b} (p : poly b n) : { b : bool & poly b n } :=
+  Equations(nocomp) reduce {n} {b} (p : poly b n) : { b : bool & poly b n } :=
   reduce poly_z       := apoly _ poly_z;
   reduce (poly_c x y) := apoly _ (poly_c x y);
   reduce (poly_l p)   := apoly _ (poly_l (pr2 (reduce p)));
@@ -525,7 +552,8 @@ Module M1.
   | is_reduced_s : forall {b1} {n} (p : poly b1 n) (q : poly false n),
                      is_reduced p -> is_reduced q -> is_reduced (poly_s p (poly_l q))
   .
-
+  Derive Signature for is_reduced.
+  
   Lemma is_reduced_compat_plus : forall {n} {b1} (p1 : poly b1 n) (Hp1 : is_reduced p1)
                                    {b2} (p2 : poly b2 n) (Hp2 : is_reduced p2),
                                    is_reduced (pr2 (plus p1 p2)).
@@ -698,6 +726,8 @@ Module M2.
   | Poly : poly -> nat -> poly -> poly
   .
 
+  Derive NoConfusion for poly.
+  
   Fixpoint poly_variables (p : poly) : list nat :=
     match p with
       | Cst _      => []

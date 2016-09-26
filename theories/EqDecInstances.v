@@ -3,8 +3,9 @@ From Equations Require Import EqDec DepElim NoConfusion.
 (** Tactic to solve EqDec goals, destructing recursive calls for the recursive 
   structure of the type and calling instances of eq_dec on other types. *)
 Hint Extern 2 (@EqDecPoint ?A ?x) =>
-  match goal with
-    [ H : forall y, { x = _ } + { _ <> _ } |- _ ] => exact H
+  lazymatch goal with
+  | [ H : forall y, { x = _ } + { _ <> _ } |- _ ] => exact H
+  | [ H : forall y, dec_eq x y |- _ ] => exact H
   end : typeclass_instances.
 
 Ltac eqdec_one x y :=
@@ -17,7 +18,7 @@ Ltac eqdec_one x y :=
           case (H y); [good|contrad]
          | _ =>
            tryif unify x y then idtac (* " finished " x y *)
-           else (case (eq_dec x y); [good|contrad])
+           else (case (eq_dec_point (x:=x) y); [good|contrad])
   end.
 
 Ltac eqdec_loop t u :=

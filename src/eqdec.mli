@@ -34,4 +34,4 @@ val eq_dec_class :
   (Typeclasses.typeclass Term.puniverses * Term.constr list)
 val dec_eq : unit -> Term.constr
 val vars_of_pars : (Names.Id.t * 'a * 'b) list -> Term.constr array
-val derive_eq_dec : (Names.MutInd.t * int) * Univ.universe_instance -> unit
+val derive_eq_dec : Environ.env -> Evd.evar_map -> Term.pinductive -> unit

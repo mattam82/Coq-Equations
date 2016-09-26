@@ -77,7 +77,7 @@ and lhs = user_pats
 and 'a rhs = 
   | Program of constr_expr
   | Empty of identifier Loc.located
-  | Rec of identifier Loc.located * constr_expr option * 'a list
+  | Rec of constr_expr * constr_expr option * 'a list
   | Refine of constr_expr * 'a list
   | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) union * 'a list
 
@@ -99,7 +99,8 @@ let pplhs lhs = pp (pr_lhs (Global.env ()) lhs)
 
 let rec pr_rhs env = function
   | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ pr_id var
-  | Rec ((loc, var), rel, s) -> spc () ++ str "=>" ++ spc () ++ str"rec " ++ pr_id var ++ spc () ++
+  | Rec (t, rel, s) -> 
+     spc () ++ str "=>" ++ spc () ++ str"rec " ++ pr_constr_expr t ++ spc () ++
       hov 1 (str "{" ++ pr_clauses env s ++ str "}")
   | Program rhs -> spc () ++ str ":=" ++ spc () ++ pr_constr_expr rhs
   | Refine (rhs, s) -> spc () ++ str "<=" ++ spc () ++ pr_constr_expr rhs ++ 
@@ -155,7 +156,7 @@ type rec_type =
   | Logical of rec_info
 
 and rec_info = {
-  comp : constant;
+  comp : constant option;
   comp_app : constr;
   comp_proj : constant;
   comp_recarg : int;
@@ -208,6 +209,10 @@ let add_implicits impls avoid pats =
        end
     | [] -> List.map snd pats
   in aux impls pats
+
+let chole loc =
+  let tac = Genarg.in_gen (Genarg.rawwit Constrarg.wit_tactic) (solve_rec_tac_expr ()) in
+  CHole (loc,None,Misctypes.IntroAnonymous,Some tac), None
     
 let interp_eqn i is_rec env impls eqn =
   let avoid = ref [] in
@@ -273,7 +278,7 @@ let interp_eqn i is_rec env impls eqn =
     let pats = map interp_pat curpats'' in
       match is_rec with
       | Some (Structural _) -> (PUVar i :: pats, interp_rhs curpats' None rhs)
-      | Some (Logical r) -> (pats, interp_rhs curpats' (Some (ConstRef r.comp_proj)) rhs)
+      | Some (Logical r) -> (pats, interp_rhs curpats' (Some (ConstRef r.comp_proj, Option.is_empty r.comp)) rhs)
       | None -> (pats, interp_rhs curpats' None rhs)
   and interp_rhs curpats compproj = function
     | Refine (c, eqs) -> Refine (interp_constr_expr compproj !avoid c, map (aux curpats) eqs)
@@ -284,10 +289,11 @@ let interp_eqn i is_rec env impls eqn =
   and interp_constr_expr compproj ids c = 
     match c, compproj with
     (* |   | CAppExpl of loc * (proj_flag * reference) * constr_expr list *)
-    | CApp (loc, (None, CRef (Ident (loc',id'), _)), args), Some cproj when Id.equal i id' ->
-	let qidproj = Nametab.shortest_qualid_of_global Idset.empty cproj in
-	  CApp (loc, (None, CRef (Qualid (loc', qidproj), None)),
-		List.map (fun (c, expl) -> interp_constr_expr compproj ids c, expl) args)
+    | CApp (loc, (None, CRef (Ident (loc',id'), _)), args), Some (cproj, nocomp) when Id.equal i id' ->
+       let qidproj = Nametab.shortest_qualid_of_global Idset.empty cproj in
+       let args = List.map (fun (c, expl) -> interp_constr_expr compproj ids c, expl) args in
+       let arg = if nocomp then [CApp (loc, (None, c), [chole loc]), None] else [] in
+       CApp (loc, (None, CRef (Qualid (loc', qidproj), None)), args @ arg)
     | _ -> map_constr_expr_with_binders (fun id l -> id :: l) 
 	(interp_constr_expr compproj) ids c
   in aux [] eqn

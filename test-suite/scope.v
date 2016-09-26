@@ -44,7 +44,7 @@ Derive Subterm for scope_le.
 Ltac rec ::= rec_wf_eqns.
 
 Equations scope_le_app {a b c} (p : scope_le a b) (q : scope_le b c) : scope_le a c :=
-scope_le_app p q by rec q scope_le_subterm :=
+scope_le_app p q by rec (signature_pack q) scope_le_subterm :=
 scope_le_app p scope_le_n := p;
 scope_le_app p (scope_le_S q) := scope_le_S (scope_le_app p q);
 scope_le_app p (scope_le_map q) with p :=
@@ -232,8 +232,8 @@ Proof.
   depelim x; simpl in *;
   autorewrite with env_app lookup lift_var_by in *; auto.
   - exfalso; auto.
-  - assert (x ≠ lift_var_by (env_scope_le Δ) FO); [intro; subst; auto|].
-    rewrite (IHΔ _ _ _ JMeq_refl JMeq_refl _ H p q); auto.
+  - specialize (IHΔ Γ x). forward IHΔ by intro; subst; auto.
+    now rewrite (IHΔ p q).
 Qed.
 
 Lemma sa_narrowing : forall {s} q,

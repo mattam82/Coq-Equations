@@ -214,7 +214,7 @@ Global Set Keyed Unification.
 
 Ltac simplify_IH_hyps := repeat
   match goal with
-    | [ hyp : _ |- _ ] => specialize_eqs hyp
+    | [ hyp : _ |- _ ] => eqns_specialize_eqs hyp
   end.
 
 (** We split substitution tactics in the two directions depending on which 
@@ -720,36 +720,46 @@ Ltac rewrite_sigma2_refl :=
   match goal with
   | |- context [inj_sigma2 ?A ?P ?x ?p _ eq_refl] =>
     rewrite (inj_sigma2_refl A x P p)
+
   | |- context [@inj_right_sigma ?A ?H ?x ?P ?y ?y' _] =>
     rewrite (@inj_right_sigma_refl A H x P y)
+
   | |- context [@simplification_sigma2 ?A ?P ?B ?p ?x ?y ?X eq_refl] =>
     rewrite (@simplification_sigma2_refl A P B p x X); simpl
+
   | |- context [@Id_simplification_sigma2 ?A ?H ?P ?B ?p ?x ?y ?X id_refl] =>
     rewrite (@Id_simplification_sigma2_refl A H P B p x X); simpl
+
   | |- context [@simplification_sigma2_dec ?A ?H ?P ?B ?p ?x ?y ?X eq_refl] =>
     rewrite (@simplification_sigma2_dec_refl A H P B p x X); simpl
+
   | |- context [@simplification_sigma2_dec_point ?A ?p ?H ?P ?B ?x ?y ?X eq_refl] =>
     rewrite (@simplification_sigma2_dec_point_refl A p H P B x X); simpl
+
   | |- context [@simplification_K ?A ?x ?B ?p eq_refl] =>
     rewrite (@simplification_K_refl A x B p); simpl eq_rect
+
   | |- context [@simplification_K_dec ?A ?dec ?x ?B ?p eq_refl] =>
     rewrite (@simplification_K_dec_refl A dec x B p); simpl eq_rect
+
   | |- context [@HSets.inj_sigma_r ?A ?H ?P ?x ?y ?y' _] =>
     rewrite (@HSets.inj_sigma_r_refl A H P x y)
 
   | |- context [@simplification_heq ?A ?B ?x _ ?p JMeq_refl] =>
     rewrite (@simplification_heq_refl A B x p)
+
   | |- context [@simplification_existT2_dec ?A ?eq ?P ?B ?p ?x ?y ?X eq_refl] =>
     rewrite (@simplification_existT2_dec_refl A eq P B p x X); simpl
+
   | |- context [@simplification_existT2 ?A ?P ?B ?p ?x ?y ?X eq_refl] =>
     rewrite (@simplification_existT2_refl A P B p x X); simpl
 
   | |- context [@simplify_ind_pack ?A ?eqdec ?B ?x ?p _ ?G _ eq_refl] =>
     rewrite (@simplify_ind_pack_refl A eqdec B x p G _)
+
   | |- context [@simplified_ind_pack ?A ?eqdec ?B ?x ?p ?G
         (simplify_ind_pack_inv _ _ _ _ ?t)] =>
     rewrite (@simplify_ind_pack_elim A eqdec B x p G t)
-
   end.
 
 (** This hint database and the following tactic can be used with [autounfold] to 
@@ -784,7 +794,7 @@ Ltac unfold_equations := repeat progress autounfold with equations.
 Ltac unfold_equations_in H := repeat progress autounfold with equations in H.
 
 Ltac rewrite_refl_id :=
-  repeat (autorewrite with refl_id; try rewrite_sigma2_refl).
+  repeat (progress (autorewrite with refl_id) || (try rewrite_sigma2_refl)).
 
 (** Clear the context and goal of equality proofs. *)
 
@@ -845,6 +855,11 @@ Ltac revert_blocking_until id :=
 
 Ltac not_var x := try (is_var x; fail 1).
 
+(** These two tactics are dangerous as they can try to reduce terms 
+    to head-normal-form and take ages to fail. *)
+Ltac try_discriminate := discriminate.
+Ltac try_injection H := injection H.
+
 Ltac simplify_one_dep_elim_term c :=
   match c with
     | @JMeq _ _ _ _ -> _ => refine (@simplification_heq _ _ _ _ _)
@@ -884,7 +899,12 @@ Ltac simplify_one_dep_elim_term c :=
         match goal with
         | _ : x = y |- _ => intro
         | _ =>
-          (refine (simplification_sigma2_dec_point (A:=A) (P:=P) (B:=B) n x y _); try typeclasses eauto) ||
+          (refine (simplification_sigma2_dec_point (A:=A) (P:=P) (B:=B) n x y _);
+           (match goal with (* Sometimes leaves an unsolved evar for the non-dependent
+                               [EqDecPoint] subgoal *)
+            | |- @EqDecPoint _ _ => solve [typeclasses eauto]
+            | |- _ => idtac
+            end)) ||
           apply (simplification_sigma2_dec (A:=A) (P:=P) (B:=B) n x y) ||
             refine (@simplification_sigma2 _ _ _ _ _ _ _)
         end
@@ -989,12 +1009,14 @@ Ltac simplify_one_dep_elim_term c :=
        | _ => fail
        end)
 
-    | ?f ?x = ?g ?y -> _ => let H := fresh in progress (intros H ; injection H ; clear H)
+    | ?f ?x = ?g ?y -> _ =>
+      let H := fresh in progress (intros H ; try_injection H ; clear H)
 
-    | Id (?f ?x) (?g ?y) -> _ => let H := fresh in progress (intros H ; inversion H ; clear H)
+    | Id (?f ?x) (?g ?y) -> _ =>
+      let H := fresh in progress (intros H ; inversion H ; clear H)
 
     | ?t = ?u -> _ => let hyp := fresh in
-      intros hyp ; elimtype False ; discriminate
+      intros hyp ; elimtype False ; try_discriminate
 
     | Id ?t ?u -> _ => let hyp := fresh in
       intros hyp ; elimtype False ; solve [inversion hyp]
@@ -1333,8 +1355,8 @@ Ltac impossible_call f := on_call f ltac:(fun t => apply (elim_impossible_call t
 
 Ltac find_empty := simpl in * ; elimtype False ;
   match goal with
-    | [ H : _ |- _ ] => solve [ clear_except H ; depelim H | specialize_eqs H ; assumption ]
-    | [ H : _ <> _ |- _ ] => solve [ red in H ; specialize_eqs H ; assumption ]
+    | [ H : _ |- _ ] => solve [ clear_except H ; depelim H | eqns_specialize_eqs H ; assumption ]
+    | [ H : _ <> _ |- _ ] => solve [ red in H ; eqns_specialize_eqs H ; assumption ]
   end.
 
 Ltac make_simplify_goal :=
@@ -1461,8 +1483,11 @@ Ltac simpl_equation_impl :=
 
 Ltac simplify_equation c :=
   make_simplify_goal; simpl;
-  repeat (try autounfoldify c; simpl;
-          unfold_equations; rewrite_refl_id).
+  repeat (try autounfoldify c;
+          progress (simpl; unfold_equations) ||
+          (progress (autorewrite with refl_id)) ||
+          reflexivity ||
+          (progress (rewrite_sigma2_refl))).
 
 Ltac solve_equation c :=
   intros ; try simplify_equation c ; try

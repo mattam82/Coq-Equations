@@ -255,14 +255,14 @@ val tacvar_arg :
   < constant : 'a; dterm : 'b; level : Genarg.rlevel; name : 'c;
     pattern : 'd; reference : 'e; tacexpr : 'f; term : 'g; utrm : 'h > Tacexpr.gen_tactic_arg
 val rec_tac :
-  Names.Id.t ->
+  'f ->
   Names.Id.t ->
   < constant : 'a; dterm : 'b; level : Genarg.rlevel; name : 'c;
     pattern : 'd; reference : Libnames.reference; tacexpr : 'e; term : 'f;
     utrm : 'g >
 	   Tacexpr.gen_tactic_expr
 val rec_wf_tac :
-  Names.Id.t ->
+  'a ->
   Names.Id.t ->
   'a ->
   < constant : 'b; dterm : 'c; level : Genarg.rlevel; name : 'd;
@@ -275,12 +275,18 @@ val equations_tac_expr :
   < constant : 'a; dterm : 'b; level : 'c; name : 'd; pattern : 'e;
     reference : Libnames.reference; tacexpr : 'f; term : 'g; utrm : 'h >
 								    Tacexpr.gen_tactic_expr
+val solve_rec_tac_expr :
+  unit ->
+  < constant : 'a; dterm : 'b; level : 'c; name : 'd; pattern : 'e;
+    reference : Libnames.reference; tacexpr : 'f; term : 'g; utrm : 'h >
+								    Tacexpr.gen_tactic_expr
 val equations_tac : unit -> unit Proofview.tactic
 val set_eos_tac : unit -> unit Proofview.tactic
 val solve_rec_tac : unit -> unit Proofview.tactic
 val find_empty_tac : unit -> unit Proofview.tactic
 val pi_tac : unit -> unit Proofview.tactic
 val noconf_tac : unit -> unit Proofview.tactic
+val eqdec_tac : unit -> unit Proofview.tactic
 val simpl_equations_tac : unit -> unit Proofview.tactic
 val solve_equation_tac : Globnames.global_reference -> unit Proofview.tactic
 val impossible_call_tac :
@@ -310,3 +316,5 @@ val ident_of_smart_global :
   Libnames.reference Misctypes.or_by_notation -> identifier
 
 val pf_get_type_of : Goal.goal Evd.sigma -> constr -> types
+
+val move_after_deps : Names.Id.t -> Constr.t -> unit Proofview.tactic

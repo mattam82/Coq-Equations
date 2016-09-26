@@ -7,7 +7,7 @@
 (**********************************************************************)
 
 Require Import Program Bvector List Relations.
-From Equations Require Import Equations DepElimDec.
+From Equations Require Import Equations.
 
 Inductive le : nat -> nat -> Set :=
 | le_0 n : le 0 (S n)
@@ -22,14 +22,12 @@ congS eq_refl := eq_refl.
 
 Module TestF.
 
-  Equations f (n : nat) : nat :=
+  Equations(nocomp) f (n : nat) : nat :=
   f 0 := 42 ;
   f (S m)  with f m :=
   {
     f (S m) IH := _
   }.
-  
-  Next Obligation. unfold f_comp in *. exact IH. Defined.
 
 End TestF.
 
@@ -110,12 +108,16 @@ Implicit Arguments Vector.cons [ [A] [n] ].
 
 Open Local Scope vect_scope.
 
-Section vapp_def.
-  Context {A : Type}.
-  Equations (nocomp) vapp' {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
+Equations (nocomp) vapp' {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
   vapp' []v w := w ;
   vapp' (Vector.cons a n v) w := Vector.cons a (vapp' v w).
-End vapp_def.
+
+(* Section vapp_def. *)
+(*   Context {A : Type}. *)
+(*   Equations (nocomp) vapp' {n m} (v : vector A n) (w : vector A m) : vector A (n + m) := *)
+(*   vapp' []v w := w ; *)
+(*   vapp' (Vector.cons a n v) w := Vector.cons a (vapp' v w). *)
+(* End vapp_def. *)
 
 (* Print Assumptions vapp'. *)
 
@@ -129,8 +131,8 @@ Proof. intros. intros x. induction x. left. now depelim y.
   destruct (eq_dec h h0); subst. 
   destruct (IHx y). subst.
   left; reflexivity.
-  right. intro. apply n. injection H0. simpdep. reflexivity.
-  right. intro. apply n. injection H0. simpdep. reflexivity.
+  right. intro. apply n0. injection H0. simpdep. reflexivity.
+  right. intro. apply n0. injection H0. simpdep. reflexivity.
 Defined.
 
 (* Print Assumptions well_founded_vector_direct_subterm. *)
@@ -144,12 +146,12 @@ Instance well_founded_vector_direct_subterm' :
   forall A : Type, EqDec A -> WellFounded (vector_subterm A) | 0.
 Proof.   intros. 
   apply Transitive_Closure.wf_clos_trans.
-  intro. simp_sigmas. induction H.
+  intro. simp_sigmas. induction a.
   constructor; intros.
   simp_sigmas. simpl in *. 
   depelim H.
   constructor; intros.
-  simp_sigmas. depelim H0. 
+  simp_sigmas. depelim H. 
   assumption.
 Defined.
 Print Assumptions well_founded_vector_direct_subterm'.
@@ -170,21 +172,26 @@ Import Vector.
 (*   unzip_dec ?(S n) (cons (pair x y) n v) with unzip_dec v := { *)
 (*      | pair xs ys := (cons x xs, cons y ys) }. *)
 (* End unzip_dec_def. *)
+Section foo.
+  Context {A B} `{EqDec A} `{EqDec B}.
+  Let eos := the_end_of_the_section.
 
-Equations unzip_dec {A B} `{EqDec A} `{EqDec B} 
-          {n} (v : vector (A * B) n) : vector A n * vector B n :=
-unzip_dec v by rec v (@vector_subterm (A * B)) :=
-unzip_dec nil := ([]v, []v) ;
-unzip_dec (cons (pair x y) n v) with unzip_dec v := {
-  | pair xs ys := (cons x xs, cons y ys) }.
+  Equations unzip_dec {n} (v : vector (A * B) n) : vector A n * vector B n :=
+  unzip_dec v by rec (signature_pack v) (@vector_subterm (A * B)) :=
+  unzip_dec nil := ([]v, []v) ;
+  unzip_dec (cons (pair x y) n v) with unzip_dec v := {
+    | pair xs ys := (cons x xs, cons y ys) }.
+End foo.
 
 Typeclasses Transparent vector_subterm.
 
-Equations unzip {A B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
-unzip v by rec v (@vector_subterm (A * B)) :=
-unzip nil := (nil, nil) ;
-unzip (cons (pair x y) n v) <= unzip v => {
-  | (pair xs ys) := (cons x xs, cons y ys) }.
+(** Due to the packing of all arguments, can only be done in sections right now so
+ that A and B are treated as parameters (better computational behavior anyway) *)
+(* Equations unzip {A B} {n} (v : vector (A * B) n) : vector A n * vector B n := *)
+(* unzip v by rec (signature_pack v) (@vector_subterm (A * B)) := *)
+(* unzip nil := (nil, nil) ; *)
+(* unzip (cons (pair x y) n v) <= unzip v => { *)
+(*   | (pair xs ys) := (cons x xs, cons y ys) }. *)
 
 (* Print Assumptions unzip. *)
 (* Print Assumptions unzip_dec. *)
@@ -196,6 +203,9 @@ Equations(nocomp) unzip_n {A B} {n} (v : vector (A * B) n) : vector A n * vector
 unzip_n A B O Vnil := (Vnil, Vnil) ;
 unzip_n A B (S n) (cons (pair x y) n v) with unzip_n v := {
   | pair xs ys := (cons x xs, cons y ys) }. *)
+(* Definition nos_with_comp (n : nat) := nat. *)
+(* Lemma nos_with (n : nat) : nos_with_comp n. *)
+(*   rec_wf_eqns nos n. *)
 
 Equations nos_with (n : nat) : nat :=
 nos_with n by rec n :=
@@ -275,7 +285,8 @@ rev (cons a v) := rev v +++ (cons a nil).
 Notation " [] " := List.nil.
 
 Lemma app'_nil : forall {A} (l : list A), l +++ [] = l.
-Proof. intros. Opaque app'.
+Proof.
+  intros. Opaque app'.
   funelim (app' l []). reflexivity.
   now rewrite H.
 Qed.
@@ -296,7 +307,9 @@ Qed.
 Hint Rewrite @rev_rev_acc : rev_acc.
 
 Lemma app'_funind : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l (app' l' l'').
-Proof. intros. funelim (l +++ l'); simp app'.
+Proof.
+  intros.
+  funelim (l +++ l'); simp app'.
   rewrite H. reflexivity. 
 Qed.
 
@@ -337,7 +350,7 @@ vrev_acc (cons a n v) w := cast_vector (vrev_acc v (cons a w)) _.
 
 Record vect {A} := mkVect { vect_len : nat; vect_vector : vector A vect_len }.
 Coercion mkVect : vector >-> vect.
-Derive NoConfusion for @vect. 
+Derive NoConfusion for vect. 
 
 Inductive Split {X : Type}{m n : nat} : vector X (m + n) -> Type :=
   append : ∀ (xs : vector X m)(ys : vector X n), Split (vapp' xs ys).
@@ -357,8 +370,10 @@ Lemma split_vapp' : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
   let 'append v' w' := split (vapp' v w) in
     v = v' /\ w = w'.
 Proof.
-  intros. funelim (vapp' v w). destruct (split (m:=0) w). depelim xs; intuition.
-  simp split in *. destruct (split (vapp' t0 w)). simpl.
+  intros.
+  funelim (vapp' v w).
+  destruct split. depelim xs; intuition.
+  simp split in *. destruct split. simpl.
   intuition congruence.
 Qed.
 
@@ -465,6 +480,7 @@ Equations(nocomp) vlast' {A} {n} (v : vector A (S n)) : A :=
 vlast' (cons a O Vnil) := a ;
 vlast' (cons a (S n) v) := vlast' v.
 
+Require Import DepElimDec.
 Ltac generalize_by_eqs id ::= generalize_eqs_sig id.
 Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars_sig id.
 
@@ -574,7 +590,8 @@ Lemma diag_nth `(v : vector (vector A n) n) (f : fin n) : nth (diag v) f = nth (
 Proof. revert f. funelim (diag v); intros f.
   depelim f.
 
-  depelim f; simp nth. rewrite H. simp nth.
+  depelim f; simp nth.
+  rewrite H. simp nth.
 Qed.
 
 Equations(nocomp) assoc (x y z : nat) : x + y + z = x + (y + z) :=

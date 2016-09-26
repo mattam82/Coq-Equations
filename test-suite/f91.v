@@ -25,7 +25,9 @@ Definition f91_rel : relation nat :=
 Instance gt_bound_wf : WellFounded f91_rel.
 Proof. red. red. intros.
 Admitted.
+
 Set Program Mode.
+
 Equations f91 n : { m : nat | if le_lt_dec n 100 then m = 91 else m = n - 10 } :=
 f91 n by rec n f91_rel :=
 f91 n with le_lt_dec n 100 := {
@@ -43,7 +45,6 @@ Next Obligation. destruct le_lt_dec. intros. destruct_call f91_comp_proj. simpl.
   destruct_call f91_comp_proj. simpl in *. destruct le_lt_dec. subst. simpl in y. auto.
   subst x0. destruct le_lt_dec; auto.
   subst x. simpl. omega.
-
   elimtype False. omega.
 Defined.
 
@@ -52,7 +53,7 @@ Next Obligation. destruct le_lt_dec. intros. omega. omega. Defined.
 (** MS: Bug, this should be derivable, but needs the user's proofs as hints (omega calls) *)
 Next Obligation.
 Proof. intros.
-  rec_wf_rel n IH f91_rel.
+  rec_wf_rel IH n f91_rel.
   simp f91. constructor. destruct le_lt_dec. constructor. intros. apply IH.
   do 2 red; omega.
   apply IH. do 2 red. destruct_call f91. simpl proj1_sig.

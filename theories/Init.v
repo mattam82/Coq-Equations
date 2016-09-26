@@ -36,11 +36,15 @@ Unset Primitive Projections.
 Arguments sigma A B : clear implicits.
 Arguments sigmaI {A} B pr1 pr2.
 
-Notation " { x : A & y } " := (@sigma _ (fun x : A => y)).
-Notation " { x : A & y } " := (@sigma _ (fun x : A => y)) : type_scope.
-Notation " ( x ; y ) " := (@sigmaI _ _ x y).
-Notation " x .1 " := (pr1 x) (at level 3).
-Notation " x .2 " := (pr2 x) (at level 3).
+Notation " { x : A & y } " := (@sigma A (fun x : A => y)%type).
+Notation " { x : A & y } " := (@sigma A (fun x : A => y)%type) : type_scope.
+Notation " ( x ; y ) " := (@sigmaI _ _ x y) (only parsing).
+Notation "'&(' x , .. , y & z ')'" :=
+  (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
+    (right associativity, at level 4,
+     format "'&(' x ,  .. ,  y  &  z ')'").
+Notation " x .1 " := (pr1 x) (at level 3, left associativity, format "x .1").
+Notation " x .2 " := (pr2 x) (at level 3, left associativity, format "x .2").
 
 (** The polymorphic equality type used by Equations. *)
 
@@ -80,3 +84,12 @@ End IdTheory.
 
 (** Forward reference for the NoConfusion tactic. *)
 Ltac noconf H := congruence || injection H; intros; subst.
+
+(** Such a useful tactic it should be part of the stdlib. *)
+Ltac forward_gen H tac :=
+  match type of H with
+  | ?X -> _ => let H' := fresh in assert (H':X) ; [tac|specialize (H H'); clear H']
+  end.
+
+Tactic Notation "forward" constr(H) := forward_gen H ltac:(idtac).
+Tactic Notation "forward" constr(H) "by" tactic(tac) := forward_gen H tac.

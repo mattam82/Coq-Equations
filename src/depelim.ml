@@ -361,7 +361,7 @@ let depcase (mind, i as ind) =
 		  (DefinitionEntry ce, IsDefinition Scheme))
   in Evd.from_env (Global.env ()), ctx, indapp, kn
 
-let derive_dep_elimination ctx (i,u) loc =
+let derive_dep_elimination env sigma (i,u) =
   let evd, ctx, ty, gref = depcase i in
   let indid = Nametab.basename_of_global (IndRef i) in
   let id = add_prefix "DependentElimination_" indid in
@@ -399,3 +399,85 @@ let pattern_call ?(pattern_term=true) c gl =
   let concllda = List.fold_left mklambda (pf_concl gl) subst in
   let conclapp = applistc concllda (List.rev_map pi1 subst) in
     Proofview.V82.of_tactic (convert_concl_no_check conclapp DEFAULTcast) gl
+
+let destPolyRef c =
+  match kind_of_term c with
+  | Ind (ind, u) -> IndRef ind, u
+  | Const (c, u) -> ConstRef c, u
+  | Construct (cstr, u) -> ConstructRef cstr, u
+  | _ -> raise (Invalid_argument "destPolyRef")
+              
+let rec compare_upto_variables t v =
+  if (isVar v || isRel v) then true
+  else compare_constr compare_upto_variables t v
+
+let specialize_eqs id gl =
+  let env = pf_env gl in
+  let ty = pf_get_hyp_typ gl id in
+  let evars = ref (project gl) in
+  let unif env evars c1 c2 = Evarconv.e_conv env evars c1 c2 in
+  let rec aux in_eqs ctx acc ty =
+    match kind_of_term ty with
+    | Prod (na, t, b) ->
+	(match kind_of_term t with
+	 | App (eq, [| eqty; x; y |]) when
+                (Globnames.is_global (Lazy.force coq_eq) eq &&
+                   (noccur_between 1 (List.length ctx) x ||
+                      noccur_between 1 (List.length ctx) y)) ->
+            let _, u = destPolyRef eq in
+	    let c, o = if noccur_between 1 (List.length ctx) x then x, y
+                       else y, x in
+            let eqr = Universes.constr_of_global_univ (Lazy.force coq_eq_refl, u) in
+	    let p = mkApp (eqr, [| eqty; c |]) in
+	    if compare_upto_variables c o &&
+                 unif (push_rel_context ctx env) evars o c then
+		aux true ctx (mkApp (acc, [| p |])) (subst1 p b)
+	      else acc, in_eqs, ctx, ty
+	 | App (heq, [| eqty; x; eqty'; y |]) when
+                Globnames.is_global (Lazy.force coq_heq) heq &&
+                 (noccur_between 1 (List.length ctx) x ||
+                    noccur_between 1 (List.length ctx) y) ->
+            let _, u = destPolyRef heq in
+	    let eqt, c, o =
+              if noccur_between 1 (List.length ctx) x then eqty, x, y
+              else eqty', y, x in
+            let eqr = Universes.constr_of_global_univ (Lazy.force coq_heq_refl, u) in
+	    let p = mkApp (eqr, [| eqt; c |]) in
+            let env' = push_rel_context ctx env in
+	    if compare_upto_variables c o && unif env' evars eqty eqty' &&
+                 unif env' evars o c then
+		aux true ctx (mkApp (acc, [| p |])) (subst1 p b)
+	      else acc, in_eqs, ctx, ty
+	| _ ->
+	    if in_eqs then acc, in_eqs, ctx, ty
+	    else
+	      let e = e_new_evar (push_rel_context ctx env) evars t in
+		aux false ((na, Some e, t) :: ctx) (mkApp (lift 1 acc, [| mkRel 1 |])) b)
+    | t -> acc, in_eqs, ctx, ty
+  in
+  let acc, worked, ctx, ty = aux false [] (mkVar id) ty in
+  let ctx' = nf_rel_context_evar !evars ctx in
+  let ctx'' = List.map (fun (n,b,t as decl) ->
+    match b with
+    | Some k when isEvar k -> (n,None,t)
+    | b -> decl) ctx'
+  in
+  let ty' = it_mkProd_or_LetIn ty ctx'' in
+  let acc' = it_mkLambda_or_LetIn acc ctx'' in
+  let ty' = Tacred.whd_simpl env !evars ty'
+  and acc' = Tacred.whd_simpl env !evars acc' in
+  let acc' = Evarutil.nf_evar !evars acc' in
+  let ty' = Evarutil.nf_evar !evars ty' in
+    if worked then
+      tclTHENFIRST (Tacmach.internal_cut true id ty')
+	(exact_no_check acc') gl
+    else tclFAIL 0 (str "Nothing to do in hypothesis " ++ pr_id id) gl
+
+let specialize_eqs id gl =
+  if
+    (try ignore(clear [id] gl); false
+     with e when Errors.noncritical e -> true)
+  then
+    tclFAIL 0 (str "Specialization not allowed on dependent hypotheses") gl
+  else specialize_eqs id gl
+                            
