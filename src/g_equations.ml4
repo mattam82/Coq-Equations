@@ -53,13 +53,22 @@ END
 
 (* Sigma *)
 
+let get_inductive c =
+  let c = Smartlocate.global_with_alias c in
+  match c with
+  | Globnames.IndRef i ->
+     let env = Global.env () in
+     let sigma = Evd.from_env env in
+     let sigma, i = Evd.fresh_inductive_instance env sigma i in
+     env, sigma, i
+  | _ -> error "Expected an inductive type"
 
 VERNAC COMMAND EXTEND Derive_Signature CLASSIFIED AS QUERY
-| [ "Derive" "Signature" "for" constr(c) ] -> [ 
-  let c', _ = Constrintern.interp_constr (Global.env ()) (Evd.from_env (Global.env())) c in
-    match kind_of_term c' with
-    | Ind (i,_) -> ignore(Sigma.declare_sig_of_ind (Global.env ()) i)
-    | _ -> Errors.error "Expected an inductive type"
+| [ "Derive" "Signature" "for" global_list(c) ] -> [ 
+  List.iter (fun c ->
+	     let env, sigma, i = get_inductive c in
+	     ignore(Sigma.declare_sig_of_ind env sigma i))
+	    c
   ]
 END
 
@@ -202,13 +211,11 @@ TACTIC EXTEND dependent_pattern_from
 END
 
 VERNAC COMMAND EXTEND Derive_DependentElimination CLASSIFIED AS QUERY
-| [ "Derive" "DependentElimination" "for" constr_list(c) ] -> [ 
-    List.iter (fun c ->
-      let c',ctx = Constrintern.interp_constr (Global.env ()) Evd.empty c in
-	match kind_of_term c' with
-	| Ind i -> ignore(Depelim.derive_dep_elimination ctx i dummy_loc) (* (Glob_ops.loc_of_glob_constr c)) *)
-	| _ -> error "Expected an inductive type")
-      c
+| [ "Derive" "DependentElimination" "for" global_list(c) ] -> [ 
+  List.iter (fun c ->
+	     let env, sigma, i = get_inductive c in
+	     ignore(Depelim.derive_dep_elimination env sigma i))
+	    c
   ]
 END
 
@@ -219,13 +226,10 @@ END
 (* Noconf *)
 
 VERNAC COMMAND EXTEND Derive_NoConfusion CLASSIFIED AS SIDEFF
-| [ "Derive" "NoConfusion" "for" constr_list(c) ] -> [ 
-    List.iter (fun c ->
-      let env = (Global.env ()) in
-      let c',ctx = Constrintern.interp_constr env Evd.empty c in
-	match kind_of_term c' with
-	| Ind i -> Noconf.derive_no_confusion env (Evd.from_env env) i
-	| _ -> error "Expected an inductive type")
+| [ "Derive" "NoConfusion" "for" global_list(c) ] -> [ 
+  List.iter (fun c ->
+	     let env, evd, i = get_inductive c in
+	     Noconf.derive_no_confusion env evd i)
       c
   ]
 END
@@ -477,39 +481,28 @@ VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS SIDEFF
 (* Subterm *)
 
 VERNAC COMMAND EXTEND Derive_Subterm CLASSIFIED AS SIDEFF
-| [ "Derive" "Subterm" "for" constr(c) ] -> [
-    let env = Global.env () in
-    let evd = Evd.from_env env in
-    let c',_ = Constrintern.interp_constr env evd c in
-      match kind_of_term c' with
-      | Ind i -> Subterm.derive_subterm i
-      | _ -> error "Expected an inductive type"
+| [ "Derive" "Subterm" "for" global_list(c) ] -> [
+List.iter (fun c -> let env, sigma, i = get_inductive c in
+		    Subterm.derive_subterm env sigma i)
+	    c
   ]
 END
 
 VERNAC COMMAND EXTEND Derive_Below CLASSIFIED AS SIDEFF
-| [ "Derive" "Below" "for" constr(c) ] -> [ 
-    let env = Global.env () in
-    let evd = Evd.from_env env in
-    let c', ctx = Constrintern.interp_constr env evd c in
-    match kind_of_term c' with
-    | Ind i -> Subterm.derive_below ctx i
-    | _ -> error "Expected an inductive type"
-  ]
+| [ "Derive" "Below" "for" global_list(c) ] -> [
+  List.iter (fun c -> let env, sigma, i = get_inductive c in
+		      Subterm.derive_below env sigma i)
+	    c
+]
 END
 
 (* Eqdec *)
 
 VERNAC COMMAND EXTEND Derive_EqDec CLASSIFIED AS SIDEFF
-| [ "Derive" "Equality" "for" constr_list(c) ] -> [
-    let env = Global.env () in
-    let evd = Evd.from_env env in
-    List.iter (fun c ->	       
-      let c', _ = Constrintern.interp_constr env evd c in
-	match kind_of_term c' with
-	| Ind i -> Eqdec.derive_eq_dec i
-	| _ -> error "Expected an inductive type")
-      c
+| [ "Derive" "Equality" "for" global_list(c) ] -> [
+List.iter (fun c -> let env, sigma, i = get_inductive c in
+		    Eqdec.derive_eq_dec env sigma i)
+	    c
   ]
 END
 

@@ -58,7 +58,7 @@ val depcase :
   MutInd.t * int ->
   Evd.evar_map * rel_context * constr * Globnames.global_reference
 val derive_dep_elimination :
-  Evd.evar_universe_context -> inductive * 'a -> 'b -> constr
+  Environ.env -> Evd.evar_map -> pinductive -> constr
 
 
 val pattern_call :

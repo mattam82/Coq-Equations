@@ -200,7 +200,7 @@ Hint Unfold NoConfusion.noConfusion_nat_obligation_1 : equations.
 
 Require Import EqDec EqDecInstances DepElimDec.
 
-Derive Signature for @eq.
+Derive Signature for eq.
 
 Derive Signature for fin.
 Derive NoConfusion for fin.
@@ -208,10 +208,10 @@ Derive DependentElimination for fin.
 Derive Equality for fin.
 Print Assumptions fin_eqdec.
 
-Derive Signature for @fle.
-Derive NoConfusion for @fle.
-Derive Equality for @fle.
-Derive Subterm for @fle.
+Derive Signature for fle.
+Derive NoConfusion for fle.
+Derive Equality for fle.
+Derive Subterm for fle.
 Print Assumptions fle_eqdec.
 
 Equations fle_trans' {n : nat} {i j : fin n} (p : fle i j) {k} (q : fle j k) : fle i k :=

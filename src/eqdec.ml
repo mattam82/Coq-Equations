@@ -126,12 +126,12 @@ open Decl_kinds
 let vars_of_pars pars = 
   Array.of_list (List.map (fun x -> mkVar (pi1 x)) pars)
 
-let derive_eq_dec ind =
+let derive_eq_dec env sigma ind =
   let info = inductive_info ind in
   let ctx = info.mutind_params in
   let poly = Flags.is_universe_polymorphism () in
   let cl = fst (snd (eq_dec_class ())) in
-  let evdref = ref (Evd.from_env (Global.env ())) in
+  let evdref = ref sigma in
   let info_of ind =
     let argsvect = extended_rel_vect 0 ind.ind_args in
     let indapp = mkApp (ind.ind_c, argsvect) in

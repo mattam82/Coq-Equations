@@ -44,10 +44,9 @@ let solve_subterm_tac () = tac_of_string "Equations.Subterm.solve_subterm" []
 
 let refresh_universes t = t (* MS: FIXME *)
 
-let derive_subterm ind =
+let derive_subterm env sigma ind =
   let global = true in
   let poly = Flags.is_universe_polymorphism () in
-  let sigma = Evd.from_env (Global.env ()) in
   let (mind, oneind as ms) = Global.lookup_pinductive ind in
   let ctx = oneind.mind_arity_ctxt in
   let len = List.length ctx in
@@ -167,7 +166,11 @@ let derive_subterm ind =
 	mind_entry_universes = uctx }
     in
     let k = Command.declare_mutual_inductive_with_eliminations inductive pl [] in
-    let () = ignore (Sigma.declare_sig_of_ind (Global.env ()) (k,0)) in
+    let () =
+      let env = Global.env () in
+      let sigma = Evd.from_env env in
+      let sigma, ind = Evd.fresh_inductive_instance env sigma (k,0) in
+      ignore (Sigma.declare_sig_of_ind env sigma ind) in
     let subind = mkInd (k,0) in
     let constrhints = 
       List.map_i (fun i entry -> 
@@ -255,9 +258,8 @@ let derive_subterm ind =
 	  ~hook:(Lemmas.mk_hook hook) ~tactic:(solve_subterm_tac ()) obls
   in ignore(declare_ind ())
     
-let derive_below ctx (ind,univ) =
-  let env = Global.env () in
-  let evd = ref (Evd.from_ctx ctx) in
+let derive_below env sigma (ind,univ) =
+  let evd = ref sigma in
   let mind, oneind = Global.lookup_inductive ind in
   let ctx = oneind.mind_arity_ctxt in
   let params = mind.mind_nparams in

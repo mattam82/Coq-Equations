@@ -200,9 +200,7 @@ let build_sig_of_ind env sigma (ind,u as indu) =
   let sigma = !evd in
     sigma, pred, pars, fullapp, valsig, ctx, lenargs, idx
 
-let declare_sig_of_ind env ind =
-  let sigma = Evd.from_env env in
-  let sigma, (ind, u) = Evd.fresh_inductive_instance env sigma ind in
+let declare_sig_of_ind env sigma (ind,u) =
   let sigma, pred, pars, fullapp, valsig, ctx, lenargs, idx =
     build_sig_of_ind env sigma (ind, u) in
   let indid = ind_name ind in

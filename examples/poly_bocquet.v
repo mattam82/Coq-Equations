@@ -11,7 +11,7 @@ Require Import Nat.
 From Equations Require Import DepElimDec.
 
 Derive Signature for vector. 
-Derive Signature for @eq.
+Derive Signature for eq.
 
 Module M1.
   Require Import Coq.Vectors.VectorDef.
@@ -552,7 +552,8 @@ Module M1.
   | is_reduced_s : forall {b1} {n} (p : poly b1 n) (q : poly false n),
                      is_reduced p -> is_reduced q -> is_reduced (poly_s p (poly_l q))
   .
-
+  Derive Signature for is_reduced.
+  
   Lemma is_reduced_compat_plus : forall {n} {b1} (p1 : poly b1 n) (Hp1 : is_reduced p1)
                                    {b2} (p2 : poly b2 n) (Hp2 : is_reduced p2),
                                    is_reduced (pr2 (plus p1 p2)).

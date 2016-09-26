@@ -6,7 +6,7 @@ Equations Logic Type Id Id_rect Empty unit tt.
 
 Import IdNotations.
 
-Derive Signature for @Id.
+Derive Signature for Id.
 
 Check (_ : HSet nat).
 

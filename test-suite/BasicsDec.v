@@ -10,7 +10,7 @@ Derive Signature for bar2.
 Derive Signature for bar3.
 Derive Signature for bar4.
 
-Derive Signature for @eq.
+Derive Signature for eq.
 
 Goal forall (U V : Type), Some U = Some V -> U = V.
 Proof. intros. depelim H. reflexivity. Qed.

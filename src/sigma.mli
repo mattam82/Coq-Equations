@@ -36,7 +36,7 @@ val sigmaize :
   Term.constr * Term.constr * Context.rel_context * Constr.constr list * Names.projection *
   Names.projection * Term.constr * Term.constr
 val ind_name : Names.inductive -> Names.Id.t
-val declare_sig_of_ind : Environ.env -> Names.inductive -> Term.constr
+val declare_sig_of_ind : Environ.env -> Evd.evar_map -> Term.pinductive -> Term.constr
 val get_signature :
   Environ.env -> Evd.evar_map -> Term.constr -> Evd.evar_map * Term.constr * Term.constr
 val pattern_sigma : assoc_right:bool ->

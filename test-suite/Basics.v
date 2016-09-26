@@ -350,7 +350,7 @@ vrev_acc (cons a n v) w := cast_vector (vrev_acc v (cons a w)) _.
 
 Record vect {A} := mkVect { vect_len : nat; vect_vector : vector A vect_len }.
 Coercion mkVect : vector >-> vect.
-Derive NoConfusion for @vect. 
+Derive NoConfusion for vect. 
 
 Inductive Split {X : Type}{m n : nat} : vector X (m + n) -> Type :=
   append : ∀ (xs : vector X m)(ys : vector X n), Split (vapp' xs ys).
