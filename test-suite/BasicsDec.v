@@ -51,7 +51,7 @@ Proof. intros.
   intro. simp_sigmas.
   induction a; constructor; intros;
   simp_sigmas. simpl in *.
-  depelim H; assumption.
+  depelim H. 
   depelim H. apply IHa.
 Defined.
 Print Assumptions well_founded_vector_direct_subterm'.

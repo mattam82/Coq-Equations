@@ -570,3 +570,8 @@ TACTIC EXTEND eqns_specialize_eqs
     Proofview.V82.tactic (Depelim.specialize_eqs i)
   ]
 END
+
+TACTIC EXTEND move_after_deps
+| [ "move_after_deps" ident(i) constr(c) ] ->
+ [ Equations_common.move_after_deps i c ]
+END

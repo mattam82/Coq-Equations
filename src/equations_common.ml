@@ -640,3 +640,19 @@ let ident_of_smart_global x =
 
 let pf_get_type_of               = pf_reduce Retyping.get_type_of
   
+let move_after_deps id c =
+  Proofview.Goal.enter (fun gl ->
+    let gl = Proofview.Goal.assume gl in
+    let hyps = Proofview.Goal.hyps gl in
+    let deps = collect_vars c in
+    let iddeps = 
+      collect_vars (Tacmach.New.pf_get_hyp_typ id gl) in
+    let deps = Id.Set.diff deps iddeps in
+    let find (id, _, _) = Id.Set.mem id deps in
+    let first = 
+      match snd (List.split_when find (List.rev hyps)) with
+      | a :: _ -> pi1 a
+      | [] -> errorlabstrm "move_before_deps"
+        Pp.(str"Found no hypothesis on which " ++ pr_id id ++ str" depends")
+    in
+    Proofview.V82.tactic (Tactics.move_hyp id (Misctypes.MoveAfter first)))

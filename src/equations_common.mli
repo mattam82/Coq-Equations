@@ -316,3 +316,5 @@ val ident_of_smart_global :
   Libnames.reference Misctypes.or_by_notation -> identifier
 
 val pf_get_type_of : Goal.goal Evd.sigma -> constr -> types
+
+val move_after_deps : Names.Id.t -> Constr.t -> unit Proofview.tactic

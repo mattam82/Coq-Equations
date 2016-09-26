@@ -27,96 +27,87 @@ Ltac decompose_exists id := hnf in id ;
 
 (** Dependent generalization using existentials only. *)
 
-Ltac move_after_vars H v := 
-  match v with
-  | (?x; ?y) => move_after_vars H y; move_after_vars H x 
-  | ?f ?x => move_after_vars H f; move_after_vars H x
-  | ?t =>  try move H after t
-  end.
-  
-Ltac generalize_sig id cont :=
+Ltac generalize_sig_gen id cont :=
   let id' := fresh id in
   get_signature_pack id id';
   hnf in (value of id'); hnf in (type of id');
-  match goal with
+  lazymatch goal with
   | id' := ?v |- context[ id ] =>
-    generalize (@eq_refl _ id' : id' = id') ;
-    unfold id' at 1;
+    generalize (@eq_refl _ id' : v = id') ;
     clearbody id'; simpl in id';
-    move_after_vars id' v;
-    revert_until id'; rename id' into id;
-      cont id
-  | id' := ?v |- _ =>
+    cont id id' id v
+  | id' := ?v |- _ => 
     let id'1 := fresh id' in let id'2 := fresh id' in
     set (id'2 := pr2 id'); set (id'1 := pr1 id') in id'2;
     hnf in (value of id'1), (value of id'2);
     try red in (type of id'2);
-    generalize (@eq_refl _ id'1 : id'1 = id'1);
-    unfold id'1 at 1; clearbody id'2 id'1;
-    clear id' id;
-    move_after_vars id'1 v; move_after_vars id'2 v;
-    compute in id'2;
-    rename id'2 into id;
-      cont id'1
+    match goal with
+      [ id'1 := ?t |- _ ] =>
+      generalize (@eq_refl _ id'1 : t = id'1);
+        clearbody id'2 id'1; clear id' id;
+        compute in id'2; rename id'2 into id;
+        cont id id id'1 t
+    end
   end.
 
-Ltac Id_generalize_sig id cont :=
+Ltac generalize_sig id cont :=
+  generalize_sig_gen id
+    ltac:(fun id id' id'1 t => (* Fails if id = id' *)
+            try rename id into id', id' into id;
+          cont id'1).
+
+Ltac generalize_sig_vars id cont :=
+  generalize_sig_gen id 
+    ltac:(fun id id' id'1 t => move_after_deps id' t; revert_until id';
+          rename id' into id; cont id'1).
+
+Ltac Id_generalize_sig_gen id cont :=
   let id' := fresh id in
   get_signature_pack id id';
   hnf in (value of id'); hnf in (type of id');
-  match goal with
+  lazymatch goal with
   | id' := ?v |- context[ id ] =>
     generalize (@id_refl _ id' : Id id' id') ;
     unfold id' at 1;
     clearbody id'; simpl in id';
-    move_after_vars id' v;
-    revert_until id'; rename id' into id;
-      cont id
-  | |- _ =>
+    cont id id' id' v
+  | id' := ?v |- _ =>
     let id'1 := fresh id' in let id'2 := fresh id' in
     set (id'2 := pr2 id'); set (id'1 := pr1 id') in id'2;
     hnf in (value of id'1), (value of id'2);
-    generalize (@id_refl _ id'1 : Id id'1 id'1);
-    unfold id'1 at 1; clearbody id'2 id'1;
-    clear id' id; compute in id'2;
-    rename id'2 into id;
-      cont id'1
+    match goal with
+    | [ id'1 := ?t |- _ ] =>
+      generalize (@id_refl _ id'1 : Id t id'1);
+        clearbody id'2 id'1;
+        clear id' id; compute in id'2;
+        rename id'2 into id; cont id id id'1 v
+    end
   end.
 
-(* Ltac generalize_sig id cont := *)
-(*   (* Check if goal is dependent or not. *) *)
-(*   match goal with *)
-(*   | |- _ => try (try (clear id; gfail 1); fail 1); *)
-(*     let id' := fresh id in *)
-(*     get_signature_pack id id'; *)
-(*     hnf in (value of id'), (type of id'); *)
-(*     let id'1 := fresh id' in let id'2 := fresh id' in *)
-(*     set (id'2 := pr2 id'); set (id'1 := pr1 id') in id'2; *)
-(*     hnf in (value of id'1), (value of id'2), (type of id'2); *)
-(*     generalize (@eq_refl _ id'1 : id'1 = id'1); *)
-(*     unfold id'1 at 1; clearbody id'2 id'1; *)
-(*     clear id' id; rename id'2 into id; *)
-(*     unfold projT2, projT1 in id; *)
-(*       cont id'1 *)
-(*   | |- _ => *)
-(*     let id' := fresh id in *)
-(*     get_signature_pack id id'; *)
-(*     hnf in (value of id'), (type of id'); *)
-(*     generalize (@eq_refl _ id' : id' = id') ; *)
-(*     unfold id' at 1; *)
-(*     clearbody id'; simpl in id'; move id' after id; *)
-(*     revert_until id'; rename id' into id; *)
-(*       cont id *)
-(*   end. *)
+Ltac Id_generalize_sig id cont :=
+  Id_generalize_sig_gen id
+    ltac:(fun id id' id'1 t => (* Fails if id = id' *)
+            try rename id into id', id' into id;
+          cont id'1).
+
+Ltac Id_generalize_sig_vars id cont :=
+  Id_generalize_sig_gen id 
+    ltac:(fun id id' id'1 t => move_after_deps id' t; revert_until id';
+          rename id' into id; cont id'1).
 
 Ltac generalize_sig_dest id :=
   generalize_sig id ltac:(fun id => decompose_exists id).
 
+Ltac generalize_sig_vars_dest id :=
+  generalize_sig_vars id ltac:(fun id => decompose_exists id).
+
 Ltac generalize_eqs_sig id :=
-  (needs_generalization id ; generalize_sig_dest id) || idtac.
+  (needs_generalization id ; generalize_sig_dest id) 
+    || idtac.
 
 Ltac generalize_eqs_vars_sig id :=
-  generalize_eqs_sig id.
+  (needs_generalization id ; generalize_sig_vars_dest id) 
+    || idtac.
 
 Ltac generalize_by_eqs id ::= generalize_eqs_sig id.
 Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars_sig id.
