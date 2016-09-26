@@ -103,7 +103,8 @@ Module M1.
 
     forward (IHp1_1 _ p2_1).
     intro. specialize (H (mono_l m))...
-    now depelim IHp1_1. (* FIXME simplifies unrelated hyp *)
+    depelim IHp1_1.
+    now depelim IHp1_2.
   Qed.
 
 
