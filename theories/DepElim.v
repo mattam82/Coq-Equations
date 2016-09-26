@@ -899,7 +899,12 @@ Ltac simplify_one_dep_elim_term c :=
         match goal with
         | _ : x = y |- _ => intro
         | _ =>
-          (refine (simplification_sigma2_dec_point (A:=A) (P:=P) (B:=B) n x y _); try typeclasses eauto) ||
+          (refine (simplification_sigma2_dec_point (A:=A) (P:=P) (B:=B) n x y _);
+           (match goal with (* Sometimes leaves an unsolved evar for the non-dependent
+                               [EqDecPoint] subgoal *)
+            | |- @EqDecPoint _ _ => solve [typeclasses eauto]
+            | |- _ => idtac
+            end)) ||
           apply (simplification_sigma2_dec (A:=A) (P:=P) (B:=B) n x y) ||
             refine (@simplification_sigma2 _ _ _ _ _ _ _)
         end
