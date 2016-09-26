@@ -206,13 +206,11 @@ Derive Signature for fin.
 Derive NoConfusion for fin.
 Derive DependentElimination for fin.
 Derive Equality for fin.
-Solve Obligations with eqdec_proof.
 Print Assumptions fin_eqdec.
 
 Derive Signature for @fle.
 Derive NoConfusion for @fle.
 Derive Equality for @fle.
-Solve Obligations with eqdec_proof.
 Derive Subterm for @fle.
 Print Assumptions fle_eqdec.
 

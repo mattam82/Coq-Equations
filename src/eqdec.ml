@@ -183,6 +183,7 @@ let derive_eq_dec ind =
   List.iter 
     (fun (ind, (stmt, tc)) ->
      let id = add_suffix ind.ind_name "_eqdec" in
-     ignore(Obligations.add_definition id stmt (Evd.evar_universe_context !evdref) [||]
+     ignore(Obligations.add_definition id stmt (Evd.evar_universe_context !evdref) 
+                                       [||] ~tactic:(eqdec_tac ())
 				       ~hook:(Lemmas.mk_hook hook)))
     indsl

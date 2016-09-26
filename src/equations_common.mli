@@ -286,6 +286,7 @@ val solve_rec_tac : unit -> unit Proofview.tactic
 val find_empty_tac : unit -> unit Proofview.tactic
 val pi_tac : unit -> unit Proofview.tactic
 val noconf_tac : unit -> unit Proofview.tactic
+val eqdec_tac : unit -> unit Proofview.tactic
 val simpl_equations_tac : unit -> unit Proofview.tactic
 val solve_equation_tac : Globnames.global_reference -> unit Proofview.tactic
 val impossible_call_tac :

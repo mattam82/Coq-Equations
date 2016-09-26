@@ -491,6 +491,8 @@ let pi_tac () = tac_of_string "Equations.Subterm.pi" []
 
 let noconf_tac () = tac_of_string "Equations.NoConfusion.solve_noconf" []
 
+let eqdec_tac () = tac_of_string "Equations.EqDecInstances.eqdec_proof" []
+
 let simpl_equations_tac () = tac_of_string "Equations.DepElim.simpl_equations" []
 
 let reference_of_global c =
