@@ -134,7 +134,7 @@ let telescope evd = function
 let sigmaize ?(liftty=0) env0 evd pars f =
   let env = push_rel_context pars env0 in
   let ty = Retyping.get_type_of env !evd f in
-  let ctx, concl = decompose_prod_assum ty in
+  let ctx, concl = splay_prod_assum env !evd ty in
   let argtyp, letbinders, make = telescope evd ctx in
     (* Everyting is in env, move to index :: letbinders :: env *) 
   let lenb = List.length letbinders in
