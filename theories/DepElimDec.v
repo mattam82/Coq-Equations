@@ -16,13 +16,13 @@ From Equations Require Import Init Signature DepElim EqDec.
 (* Definition sigT_elim {A} {P : A -> Type} {P0 : sigma _ P -> Type} : *)
 (*   (forall (x : A) (p : P x), P0 (sigmaI P x p)) -> forall s, P0 s := sigma_rect P0. *)
 
-Ltac decompose_exists id := hnf in id ;
+Ltac decompose_exists id id' := hnf in id ;
   match type of id with
     | sigma _ _ => let xn := fresh id "'" in 
-      destruct id as [xn id]; decompose_exists xn; 
-        cbv beta delta [ pr1 pr2 ] iota in id;
-          decompose_exists id
-    | _ => cbv beta delta [ pr1 pr2 ] iota in id
+      destruct id as [xn id]; decompose_exists xn id; 
+        cbv beta delta [ pr1 pr2 ] iota in id, id';
+          decompose_exists id id'
+    | _ => cbv beta delta [ pr1 pr2 ] iota in id, id'
   end.
 
 (** Dependent generalization using existentials only. *)
@@ -45,8 +45,8 @@ Ltac generalize_sig_gen id cont :=
       [ id'1 := ?t |- _ ] =>
       generalize (@eq_refl _ id'1 : t = id'1);
         clearbody id'2 id'1; clear id' id;
-        compute in id'2; rename id'2 into id;
-        cont id id id'1 t
+        try unfold signature in id'2; hnf in id'2; simpl in id'2;
+        rename id'2 into id; cont id id id'1 t
     end
   end.
 
@@ -54,12 +54,12 @@ Ltac generalize_sig id cont :=
   generalize_sig_gen id
     ltac:(fun id id' id'1 t => (* Fails if id = id' *)
             try rename id into id', id' into id;
-          cont id'1).
+          cont id'1 id).
 
 Ltac generalize_sig_vars id cont :=
   generalize_sig_gen id 
     ltac:(fun id id' id'1 t => move_after_deps id' t; revert_until id';
-          rename id' into id; cont id'1).
+          rename id' into id; cont id'1 id).
 
 Ltac Id_generalize_sig_gen id cont :=
   let id' := fresh id in
@@ -88,18 +88,18 @@ Ltac Id_generalize_sig id cont :=
   Id_generalize_sig_gen id
     ltac:(fun id id' id'1 t => (* Fails if id = id' *)
             try rename id into id', id' into id;
-          cont id'1).
+          cont id'1 id).
 
 Ltac Id_generalize_sig_vars id cont :=
   Id_generalize_sig_gen id 
     ltac:(fun id id' id'1 t => move_after_deps id' t; revert_until id';
-          rename id' into id; cont id'1).
+          rename id' into id; cont id'1 id).
 
 Ltac generalize_sig_dest id :=
-  generalize_sig id ltac:(fun id => decompose_exists id).
+  generalize_sig id ltac:(fun id id' => decompose_exists id id').
 
 Ltac generalize_sig_vars_dest id :=
-  generalize_sig_vars id ltac:(fun id => decompose_exists id).
+  generalize_sig_vars id ltac:(fun id id' => decompose_exists id id').
 
 Ltac generalize_eqs_sig id :=
   (needs_generalization id ; generalize_sig_dest id) 
@@ -122,7 +122,7 @@ Polymorphic Definition eqdec_sig@{i j} {A : Type@{i}} {B : A -> Type@{j}}
             `(EqDec A) `(forall a, EqDec (B a)) :
   EqDec { x : A & B x }.
 Proof.
-  intros. intros x y. decompose_exists x. decompose_exists y.
+  intros. intros x y. decompose_exists x x. decompose_exists y y.
   case (eq_dec x' y'). intros ->. case (eq_dec x y). intros ->. left. reflexivity.
   intros. right. red. apply simplification_sigma2_dec@{i j Set}. apply n.
   intros. right. red. apply simplification_sigma1@{i j Set}.
@@ -135,7 +135,7 @@ Polymorphic Definition eqdec_sig_Id@{i j k} {A : Type@{i}} {B : A -> Type@{j}}
             `(HSets.EqDec A) `(forall a, HSets.EqDec (B a)) :
   HSets.EqDec@{k} { x : A & B x }.
 Proof.
-  intros. intros x y. decompose_exists x. decompose_exists y.
+  intros. intros x y. decompose_exists x x. decompose_exists y y.
   case (HSets.eq_dec x' y'). intros Hx'y'. destruct Hx'y'. case (HSets.eq_dec x y).
   + intros He; destruct He. left. reflexivity.
   + intros. right. apply Id_simplification_sigma2. apply e.
