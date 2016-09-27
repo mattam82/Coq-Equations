@@ -10,8 +10,7 @@ Require Import NPeano.
 Require Import Nat.
 From Equations Require Import DepElimDec.
 
-Derive Signature for vector. 
-Derive Signature for eq.
+Derive Signature for vector eq.
 
 Module M1.
   Require Import Coq.Vectors.VectorDef.
@@ -35,9 +34,7 @@ Module M1.
   | poly_c : forall z, IsNZ z -> poly false O
   | poly_l : forall {n b}, poly b n -> poly b (S n)
   | poly_s : forall {n b}, poly b n -> poly false (S n) -> poly false (S n).
-  Derive Signature for poly.
-  Derive NoConfusion for poly.
-  Derive Subterm for poly.
+  Derive Signature NoConfusion Subterm for poly.
   
   (**
    * Le type des monômes.
@@ -48,9 +45,7 @@ Module M1.
   | mono_z : mono O
   | mono_l : forall {n}, mono n -> mono (S n)
   | mono_s : forall {n}, mono (S n) -> mono (S n).
-  Derive Signature for mono.
-  Derive NoConfusion for mono.
-  Derive Subterm for mono.
+  Derive Signature NoConfusion Subterm for mono.
 
   Time Equations(nocomp) get_coef {n} (m : mono n) {b} (p : poly b n) : Z :=
   get_coef m p by rec (signature_pack m) mono_subterm :=

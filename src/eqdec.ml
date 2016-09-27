@@ -187,3 +187,8 @@ let derive_eq_dec env sigma ind =
                                        [||] ~tactic:(eqdec_tac ())
 				       ~hook:(Lemmas.mk_hook hook)))
     indsl
+
+let () =
+  Derive.(register_derive
+            { derive_name = "EqDec";
+              derive_fn = make_derive_ind derive_eq_dec })

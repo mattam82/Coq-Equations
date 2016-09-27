@@ -372,6 +372,12 @@ let derive_dep_elimination env sigma (i,u) =
     Equations_common.declare_instance id poly evd ctx cl [ty; prod_appvect casety args; 
 				mkApp (Universes.constr_of_global gref, args)]     
 
+let () =
+  let fn env sigma c = ignore (derive_dep_elimination env sigma c) in
+  Derive.(register_derive
+            { derive_name = "DependentElimination";
+              derive_fn = make_derive_ind fn })
+
 let pattern_call ?(pattern_term=true) c gl =
   let env = pf_env gl in
   let cty = pf_get_type_of gl c in

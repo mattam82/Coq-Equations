@@ -181,3 +181,7 @@ let derive_no_confusion env evd (ind,u as indu) =
     ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hook) packid 
 	      ~term ty ~tactic:(noconf_tac ()) 
 	      (Evd.evar_universe_context !evd) oblinfo)
+let () =
+  Derive.(register_derive
+            { derive_name = "NoConfusion";
+              derive_fn = make_derive_ind derive_no_confusion })

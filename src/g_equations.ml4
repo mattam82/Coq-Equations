@@ -53,25 +53,6 @@ END
 
 (* Sigma *)
 
-let get_inductive c =
-  let c = Smartlocate.global_with_alias c in
-  match c with
-  | Globnames.IndRef i ->
-     let env = Global.env () in
-     let sigma = Evd.from_env env in
-     let sigma, i = Evd.fresh_inductive_instance env sigma i in
-     env, sigma, i
-  | _ -> error "Expected an inductive type"
-
-VERNAC COMMAND EXTEND Derive_Signature CLASSIFIED AS QUERY
-| [ "Derive" "Signature" "for" global_list(c) ] -> [ 
-  List.iter (fun c ->
-	     let env, sigma, i = get_inductive c in
-	     ignore(Sigma.declare_sig_of_ind env sigma i))
-	    c
-  ]
-END
-
 open Proofview.Notations
 
 TACTIC EXTEND get_signature_pack
@@ -210,29 +191,12 @@ TACTIC EXTEND dependent_pattern_from
     [ Proofview.V82.tactic (Depelim.dependent_pattern ~pattern_term:false c) ]
 END
 
-VERNAC COMMAND EXTEND Derive_DependentElimination CLASSIFIED AS QUERY
-| [ "Derive" "DependentElimination" "for" global_list(c) ] -> [ 
-  List.iter (fun c ->
-	     let env, sigma, i = get_inductive c in
-	     ignore(Depelim.derive_dep_elimination env sigma i))
-	    c
-  ]
-END
-
 TACTIC EXTEND pattern_call
 [ "pattern_call" constr(c) ] -> [ of82 (Depelim.pattern_call c) ]
 END
 
 (* Noconf *)
 
-VERNAC COMMAND EXTEND Derive_NoConfusion CLASSIFIED AS SIDEFF
-| [ "Derive" "NoConfusion" "for" global_list(c) ] -> [ 
-  List.iter (fun c ->
-	     let env, evd, i = get_inductive c in
-	     Noconf.derive_no_confusion env evd i)
-      c
-  ]
-END
 
 VERNAC COMMAND EXTEND Equations_Logic CLASSIFIED AS QUERY
 | [ "Equations" "Logic" sort(s) global(eq) global(eqr) global(z) global(o) global(ov) ] -> [
@@ -480,31 +444,6 @@ VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS SIDEFF
 
 (* Subterm *)
 
-VERNAC COMMAND EXTEND Derive_Subterm CLASSIFIED AS SIDEFF
-| [ "Derive" "Subterm" "for" global_list(c) ] -> [
-List.iter (fun c -> let env, sigma, i = get_inductive c in
-		    Subterm.derive_subterm env sigma i)
-	    c
-  ]
-END
-
-VERNAC COMMAND EXTEND Derive_Below CLASSIFIED AS SIDEFF
-| [ "Derive" "Below" "for" global_list(c) ] -> [
-  List.iter (fun c -> let env, sigma, i = get_inductive c in
-		      Subterm.derive_below env sigma i)
-	    c
-]
-END
-
-(* Eqdec *)
-
-VERNAC COMMAND EXTEND Derive_EqDec CLASSIFIED AS SIDEFF
-| [ "Derive" "Equality" "for" global_list(c) ] -> [
-List.iter (fun c -> let env, sigma, i = get_inductive c in
-		    Eqdec.derive_eq_dec env sigma i)
-	    c
-  ]
-END
 
 TACTIC EXTEND is_secvar
 | [ "is_secvar" constr(x) ] ->
@@ -567,4 +506,13 @@ END
 TACTIC EXTEND move_after_deps
 | [ "move_after_deps" ident(i) constr(c) ] ->
  [ Equations_common.move_after_deps i c ]
+END
+
+(** Deriving *)
+
+VERNAC COMMAND EXTEND Derive CLASSIFIED AS SIDEFF
+| [ "Derive" ne_ident_list(ds) "for" global_list(c) ] -> [
+    Derive.derive (List.map Id.to_string ds)
+                  (List.map Smartlocate.global_with_alias c)
+  ]
 END
