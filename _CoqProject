@@ -64,3 +64,5 @@ examples/lf.v
 examples/lfdec.v
 examples/HoTT_light.v
 examples/poly_bocquet.v
+examples/ordinals.v
+examples/ordinals_rec.v
