@@ -2,6 +2,7 @@
 -I test-suite
 -R theories Equations
 -I theories
+-R examples EquationExamples
 -extra-phony doc "html" "mkdir -p html/api && ocamldoc -html -d html/api `ocamlfind query -r coqdev85.all -i-format` -rectypes -I src src/*.ml"
 ZDEBUG = "-bin-annot -g"
 COQDOCFLAGS = "-parse-comments -utf8 -interpolate"
@@ -67,4 +68,5 @@ examples/lfdec.v
 examples/HoTT_light.v
 examples/poly_bocquet.v
 examples/ordinals.v
-examples/ordinals_rec.v
+examples/ordinal_rec.v
+examples/RoseTree.v

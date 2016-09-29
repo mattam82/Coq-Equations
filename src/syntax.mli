@@ -32,7 +32,7 @@ and 'a rhs =
     Program of Constrexpr.constr_expr
   | Empty of identifier Loc.located
   | Rec of Constrexpr.constr_expr * Constrexpr.constr_expr option *
-      'a list
+             identifier Loc.located option * 'a list
   | Refine of Constrexpr.constr_expr * 'a list
   | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) Util.union *
       'a list

@@ -16,7 +16,8 @@ Section list_size.
   list_size (cons x xs) := S (f x + list_size xs).
 
   Context {B : Type}.
-  Equations(nocomp) list_map_size (l : list A) (g : forall (x : A), f x < list_size l -> B) : list B :=
+  Equations(nocomp) list_map_size (l : list A)
+           (g : forall (x : A), f x < list_size l -> B) : list B :=
   list_map_size nil _ := nil;
   list_map_size (cons x xs) g := cons (g x _) (list_map_size xs (fun x H => g x _)).
   Next Obligation.
@@ -26,7 +27,8 @@ Section list_size.
     simp list_size. omega.
   Defined.    
 
-  Lemma list_map_size_spec (g : A -> B) (l : list A) : list_map_size l (fun x _ => g x) = List.map g l.
+  Lemma list_map_size_spec (g : A -> B) (l : list A) :
+    list_map_size l (fun x _ => g x) = List.map g l.
   Proof.
     funelim (list_map_size l (λ (x : A) (_ : f x < list_size l), g x)); simpl; trivial.
     now rewrite H.
@@ -51,7 +53,6 @@ Module RoseTree.
       | node l => list_size size l
       end.
 
-
     Section elimtree.
       Context (P : t -> Type) (Pleaf : forall a, P (leaf a))
               (Pnil : P (node nil))
@@ -71,10 +72,29 @@ Module RoseTree.
       Defined.
     End elimtree.
 
+    (* TODO where clauses *)
     Equations(nocomp) elements (r : t) : list A :=
     elements l by rec r (MR lt size) :=
     elements (leaf a) := [a];
     elements (node l) := concat (list_map_size size l (fun x H => elements x)).
+
+    (* TODO where clauses *)
+    Equations(nocomp noind noeqns) elements' (r : t) : list A :=
+    elements' l by rec r (MR lt size) :=
+    elements' (leaf a) := [a];
+    elements' (node l) by rec l (MR lt (list_size size)) recl :=
+      elements' nil rect H := nil;
+      elements' (cons a x) rect H := rect a _ ++ recl x (fun y H => rect y _) _.
+
+    Next Obligation.
+      red; simpl. omega.
+    Defined.
+    Next Obligation.
+      red; simpl. omega.
+    Defined.
+    Next Obligation.
+      red; simpl. red; simpl. omega.
+    Defined.
 
     Equations(nocomp) elements_def (r : t) : list A :=
     elements_def (leaf a) := [a];

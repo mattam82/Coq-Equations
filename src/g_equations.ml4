@@ -393,8 +393,8 @@ GEXTEND Gram
       |"=>"; c = Constr.lconstr -> Program c
       | ["with"|"<="]; ref = refine; [":="|"=>"]; e = equations -> ref e
       | "<-"; "(" ; t = Tactic.tactic; ")"; e = equations -> By (Inl t, e)
-      | "by"; IDENT "rec"; c = constr; rel = OPT constr; [":="|"=>"]; 
-        e = deppat_equations -> Rec (c, rel, e)
+      | "by"; IDENT "rec"; c = constr; rel = OPT constr; id = OPT identref;
+        [":="|"=>"]; e = deppat_equations -> Rec (c, rel, id, e)
     ] ]
   ;
 

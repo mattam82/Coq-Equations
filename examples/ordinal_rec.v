@@ -1,5 +1,5 @@
 From Equations Require Import Equations Fin DepElimDec.
-Require Import ordinals.
+From EquationExamples Require Import ordinals.
 Add Search Blacklist "_obligation_".
 From Equations Require Import TransparentEquations.
 
