@@ -1,7 +1,7 @@
 # Equations
 A plugin for dependent pattern-matching.
 
-Copyright 2009-2015 Matthieu Sozeau `matthieu.sozeau@inria.fr`.
+Copyright 2009-2016 Matthieu Sozeau `matthieu.sozeau@inria.fr`.
 Distributed under the terms of the GNU Lesser General Public
 License Version 2.1 (see `LICENSE` for details).
 
