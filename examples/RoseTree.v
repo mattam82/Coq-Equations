@@ -50,7 +50,7 @@ Module RoseTree.
     Fixpoint size (r : t) :=
       match r with
       | leaf a => 0
-      | node l => list_size size l
+      | node l => S (list_size size l)
       end.
 
     Section elimtree.
@@ -77,25 +77,26 @@ Module RoseTree.
     elements l by rec r (MR lt size) :=
     elements (leaf a) := [a];
     elements (node l) := concat (list_map_size size l (fun x H => elements x)).
+    
+    Next Obligation.
+      intros. simpl in *. red. simpl. omega.
+    Defined.
+
+Set Printing Depth 10000.
 
     (* TODO where clauses *)
-    Equations(nocomp noind noeqns) elements' (r : t) : list A :=
+    Equations(noind) elements' (r : t) : list A :=
     elements' l by rec r (MR lt size) :=
     elements' (leaf a) := [a];
-    elements' (node l) by rec l (MR lt (list_size size)) recl :=
-      elements' nil rect H := nil;
-      elements' (cons a x) rect H := rect a _ ++ recl x (fun y H => rect y _) _.
-
+    elements' (node l) := fn l _
+      where fn (x : list t) (H : list_size size x < size (node l)) : list A :=
+      fn nil _ := nil;
+      fn (cons x xs) _ := elements' x _.
+    
     Next Obligation.
-      red; simpl. omega.
+      red. simpl. omega.
     Defined.
-    Next Obligation.
-      red; simpl. omega.
-    Defined.
-    Next Obligation.
-      red; simpl. red; simpl. omega.
-    Defined.
-
+    
     Equations(nocomp) elements_def (r : t) : list A :=
     elements_def (leaf a) := [a];
     elements_def (node l) := concat (List.map elements l).

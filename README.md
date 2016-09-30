@@ -48,3 +48,8 @@ in your own directory. E.g. on Ubuntu, you would prefix the command with
 ## Documentation
 A preliminary documentation is available in `doc/` and
 some examples in `test-suite/` and `examples/`.
+
+## Know Limitations
+- by rec is only supported at the toplevel right now, extension
+  to nested by rec is possible.
+- mutual recursion is not supported at the moment

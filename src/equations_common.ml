@@ -56,14 +56,14 @@ let check_term env evd c t =
 let check_type env evd t =
   ignore(Typing.sort_of env (ref evd) t)
       
-let typecheck_rel_context evd ctx =
+let typecheck_rel_context env evd ctx =
   let _ =
     List.fold_right
       (fun (na, b, t as rel) env ->
 	 check_type env evd t;
 	 Option.iter (fun c -> check_term env evd c t) b;
 	 push_rel rel env)
-      ctx (Global.env ())
+      ctx env
   in ()
 
 

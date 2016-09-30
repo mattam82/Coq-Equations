@@ -62,7 +62,7 @@ type context_map = rel_context * pat list * rel_context
 type path = Evd.evar list
 
 type splitting = 
-  | Compute of context_map * types * splitting_rhs
+  | Compute of context_map * where_clause list * types * splitting_rhs
   | Split of context_map * int * types * splitting option array
   | Valid of context_map * types * identifier list * tactic *
       (Proofview.entry * Proofview.proofview) *
@@ -70,6 +70,9 @@ type splitting =
   | Mapping of context_map * splitting (* Mapping Γ |- p : Γ' and splitting Γ' |- p : Δ *)
   | RecValid of identifier * splitting
   | Refined of context_map * refined_node * splitting
+
+and where_clause =  
+  identifier * named_context * context_map * constr * types * splitting
 
 and refined_node = 
   { refined_obj : identifier * constr * types;
@@ -174,7 +177,7 @@ let pr_context env c =
     | [] -> env, mt ()
   in pp
 
-let ppcontext c = pp (pr_context (Global.env ()) c)
+let ppcontext env c = pp (pr_context env c)
 
 let pr_context_map env (delta, patcs, gamma) =
   let env' = push_rel_context delta env in
@@ -184,14 +187,14 @@ let pr_context_map env (delta, patcs, gamma) =
     ++ prlist_with_sep spc (pr_pat env') (List.rev patcs) ++
       str " : "  ++ ctx'
 
-let ppcontext_map context_map = pp (pr_context_map (Global.env ()) context_map)
+let ppcontext_map env context_map = pp (pr_context_map env context_map)
 
 (** Debugging functions *)
 
-let typecheck_map evars (ctx, subst, ctx') =
-  typecheck_rel_context evars ctx;
-  typecheck_rel_context evars ctx';
-  let env = push_rel_context ctx (Global.env ()) in
+let typecheck_map env evars (ctx, subst, ctx') =
+  typecheck_rel_context env evars ctx;
+  typecheck_rel_context env evars ctx';
+  let env = push_rel_context ctx env in
   let _ = 
     List.fold_right2 
       (fun (na, b, t) p subst ->
@@ -201,26 +204,26 @@ let typecheck_map evars (ctx, subst, ctx') =
       ctx' subst []
   in ()
 
-let check_ctx_map evars map =
+let check_ctx_map env evars map =
   if debug then
-    try typecheck_map evars map; map
+    try typecheck_map env evars map; map
     with Type_errors.TypeError (env, e) ->
       errorlabstrm "equations"
-	(str"Type error while building context map: " ++ pr_context_map (Global.env ()) map ++
+	(str"Type error while building context map: " ++ pr_context_map env map ++
 	   spc () ++ Himsg.explain_type_error env evars e)
     | Invalid_argument s ->
       errorlabstrm "equations"
-	(str"Type error while building context map: " ++ pr_context_map (Global.env ()) map ++
+	(str"Type error while building context map: " ++ pr_context_map env map ++
 	   spc () ++ str"Invalid_argument: " ++ str s)
     | e when is_anomaly e ->
       errorlabstrm "equations"
-	(str"Type error while building context map: " ++ pr_context_map (Global.env ()) map ++
+	(str"Type error while building context map: " ++ pr_context_map env map ++
 	   spc () ++ str"Anomaly: " ++ Errors.print e)
 
   else map
     
-let mk_ctx_map evars ctx subst ctx' =
-  let map = (ctx, subst, ctx') in check_ctx_map evars map
+let mk_ctx_map env evars ctx subst ctx' =
+  let map = (ctx, subst, ctx') in check_ctx_map env evars map
 
 let rec map_patterns f ps =
   List.map (function
@@ -297,10 +300,10 @@ and subst_constr_pats k t = map (subst_constr_pat k t)
 
 (* Substitute a constr [cstr] in rel_context [ctx] for variable [k]. *)
 
-let subst_rel_context k cstr ctx = 
+let subst_rel_context k cstrs ctx = 
   let (_, ctx') = fold_right 
     (fun (id, b, t) (k, ctx') ->
-      (succ k, (id, Option.map (substnl [cstr] k) b, substnl [cstr] k t) :: ctx'))
+      (succ k, (id, Option.map (substnl cstrs k) b, substnl cstrs k t) :: ctx'))
     ctx (k, [])
   in ctx'
 
@@ -321,7 +324,7 @@ let subst_in_ctx (n : int) (c : constr) (ctx : rel_context) : rel_context =
   let rec aux k after = function
     | [] -> []
     | (name, b, t as decl) :: before ->
-	if k == n then (subst_rel_context 0 (lift (-k) c) (rev after)) @ before
+	if k == n then (subst_rel_context 0 [lift (-k) c] (rev after)) @ before
 	else aux (succ k) (decl :: after) before
   in aux 1 [] ctx
 
@@ -487,9 +490,9 @@ let check_eq_context_nolet env sigma (_, _, g as snd) (d, _, _ as fst) =
     (str "Contexts do not agree for composition: "
        ++ pr_context_map env snd ++ str " and " ++ pr_context_map env fst)
 
-let compose_subst ?(sigma=Evd.empty) ((g',p',d') as snd) ((g,p,d) as fst) =
-  if debug then check_eq_context_nolet (Global.env ()) sigma snd fst;
-  mk_ctx_map sigma g' (specialize_pats p' p) d
+let compose_subst env ?(sigma=Evd.empty) ((g',p',d') as snd) ((g,p,d) as fst) =
+  if debug then check_eq_context_nolet env sigma snd fst;
+  mk_ctx_map env sigma g' (specialize_pats p' p) d
 (*     (g', (specialize_pats p' p), d) *)
 
 let push_mapping_context (n, b, t as decl) (g,p,d) =
@@ -506,12 +509,12 @@ let invert_subst env sigma (g,p,d) =
     | _ -> assert false
   in
   let () = List.iteri subst p in
-  mk_ctx_map sigma d (Array.to_list ar) g
+  mk_ctx_map env sigma d (Array.to_list ar) g
   (* d, Array.to_list ar, g *)
     
-let lift_subst evd (ctx : context_map) (g : rel_context) = 
+let lift_subst env evd (ctx : context_map) (g : rel_context) = 
   let map = List.fold_right (fun decl acc -> push_mapping_context decl acc) g ctx in
-    check_ctx_map evd map
+    check_ctx_map env evd map
     
 let single_subst env evd x p g =
   let t = pat_constr p in
@@ -529,7 +532,7 @@ let single_subst env evd x p g =
       (* let pats = list_tabulate  *)
       (* 	(fun i -> let k = succ i in if k = x then p else PRel k) *)
       (* 	(List.length g) *)
-      in mk_ctx_map evd substctx pats g
+      in mk_ctx_map env evd substctx pats g
     else
       let (ctx, s, g), _ = strengthen env evd g x t in
       let x' = match nth s (pred x) with PRel i -> i | _ -> error "Occurs check singleton subst"
@@ -538,7 +541,7 @@ let single_subst env evd x p g =
 	   in the context and the patterns. *)
       let substctx = subst_in_ctx x' t' ctx in
       let pats = List.map_i (fun i p -> subst_constr_pat x' (lift (-1) t') p) 1 s in
-	mk_ctx_map evd substctx pats g
+	mk_ctx_map env evd substctx pats g
     
 exception Conflict
 exception Stuck
@@ -576,7 +579,7 @@ and unify_constrs env evd flex g l l' =
     let specrest = map (specialize_constr s) in
     let tl = specrest tl and tl' = specrest tl' in
     let tlunif = unify_constrs env evd flex d tl tl' in
-      compose_subst ~sigma:evd tlunif hdunif
+      compose_subst env ~sigma:evd tlunif hdunif
   | _, _ -> raise Conflict
 
 let flexible pats gamma =
@@ -671,7 +674,8 @@ let matches_user ((phi,p',g') : context_map) (p : user_pats) =
 
 let lets_of_ctx env ctx evars s =
   let envctx = push_rel_context ctx env in
-  let ctxs, pats, varsubst, len, ids = fold_left (fun (ctx', cs, varsubst, k, ids) (id, pat) -> 
+  let ctxs, pats, varsubst, len, ids = 
+    fold_left (fun (ctx', cs, varsubst, k, ids) (id, pat) -> 
     let c = pat_constr pat in
       match pat with
       | PRel i -> (ctx', cs, (i, id) :: varsubst, k, id :: ids)
@@ -688,7 +692,7 @@ let lets_of_ctx env ctx evars s =
 	id' :: ids, pred i, ((Name id', b, t) :: ctx')) ctx (ids, List.length ctx, [])
   in pats, ctxs, ctx'
       
-let interp_constr_in_rhs env ctx evars (i,comp,impls) ty s lets c =
+let env_of_rhs evars ctx env s lets = 
   let envctx = push_rel_context ctx env in
   let patslets, letslen = 
     fold_right (fun (n, b, t) (acc, len) -> 
@@ -701,25 +705,34 @@ let interp_constr_in_rhs env ctx evars (i,comp,impls) ty s lets c =
       pats, x @ y, List.length x 
   in
   let pats = List.map (lift (-letslen)) pats @ map (lift len) patslets in
-    match ty with
-    | None ->
-	let c, _ = interp_constr_evars_impls (push_rel_context ctx env) evars ~impls c 
-	in
-	let c' = substnl pats 0 c in
-	  evars := Typeclasses.resolve_typeclasses ~filter:Typeclasses.all_evars env !evars;
-	  let c' = nf_evar !evars c' in
-	    c', Retyping.get_type_of envctx !evars c'
-	    
-    | Some ty -> 
-	let ty' = lift (len + letslen) ty in
-	let ty' = nf_evar !evars ty' in
-	let c, _ = interp_casted_constr_evars_impls 
-	  (push_rel_context ctx env) evars ~impls c ty'
-	in
-	  evars := Typeclasses.resolve_typeclasses ~filter:Typeclasses.all_evars env !evars;
-	  let c' = nf_evar !evars (substnl pats 0 c) in
-	    c', nf_evar !evars (substnl pats 0 ty')
-	  
+  ctx, envctx, len + letslen, pats
+
+let interp_constr_in_rhs_env env evars impls (ctx, envctx, liftn, subst) c ty =
+  match ty with
+  | None ->
+     let c, _ = interp_constr_evars_impls (push_rel_context ctx env) evars ~impls c 
+     in
+     let c' = substnl subst 0 c in
+     evars := Typeclasses.resolve_typeclasses
+               ~filter:Typeclasses.all_evars env !evars;
+     let c' = nf_evar !evars c' in
+     c', Retyping.get_type_of envctx !evars c'
+	                      
+  | Some ty -> 
+     let ty' = lift liftn ty in
+     let ty' = nf_evar !evars ty' in
+     let c, _ = interp_casted_constr_evars_impls 
+	          (push_rel_context ctx env) evars ~impls c ty'
+     in
+     evars := Typeclasses.resolve_typeclasses 
+               ~filter:Typeclasses.all_evars env !evars;
+     let c' = nf_evar !evars (substnl subst 0 c) in
+     c', nf_evar !evars (substnl subst 0 ty')
+
+let interp_constr_in_rhs env ctx evars (i,comp,impls) ty s lets c =
+  let data = env_of_rhs evars ctx env s lets in
+  interp_constr_in_rhs_env env evars impls data c ty
+
 let unify_type env evars before id ty after =
   try
     let next_ident_away = 
@@ -731,7 +744,7 @@ let unify_type env evars before id ty after =
 		   let id' = Namegen.next_ident_away_from id avoid in 
 		     ctxids := id' :: !ctxids; id'
     in
-    let envb = push_rel_context before (Global.env()) in
+    let envb = push_rel_context before env in
     let IndType (indf, args) = find_rectype envb !evars ty in
     let ind, params = dest_ind_family indf in
     let vs = map (Tacred.whd_simpl envb !evars) args in
@@ -754,7 +767,7 @@ let unify_type env evars before id ty after =
 		  ((Name id, b, t) :: acc))
 	    ctx []
 	in
-	let env' = push_rel_context ctx (Global.env ()) in
+	let env' = push_rel_context ctx env in
 	let IndType (indf, args) = find_rectype env' !evars ty in
 	let ind, params = dest_ind_family indf in
 	let constr = applist (mkConstructUi (ind, succ i), params @ rels_of_tele ctx) in
@@ -817,7 +830,7 @@ let eq_path path path' =
 
 let pr_splitting env split =
   let rec aux = function
-    | Compute (lhs, ty, c) -> 
+    | Compute (lhs, wheres, ty, c) -> 
 	let env' = push_rel_context (pi1 lhs) env in
 	  hov 2 
 	    ((match c with
@@ -869,8 +882,8 @@ let pr_splitting env split =
 	      aux s)
   in aux split
 
-let ppsplit s =
-  pp (pr_splitting (Global.env ()) s)
+let ppsplit env s =
+  pp (pr_splitting env s)
     
 let subst_matches_constr k s c = 
   let rec aux depth c =
@@ -914,10 +927,10 @@ let split_var (env,evars) var delta =
 	(* ctx' |- spat : before ; id *)
 	let spat =
 	  let ctxcsubst, beforesubst = List.chop ctxlen s in
-	    check_ctx_map !evars (ctx', cpat :: beforesubst, decl :: before)
+	    check_ctx_map env !evars (ctx', cpat :: beforesubst, decl :: before)
 	in
 	  (* ctx' ; after |- safter : before ; id ; after = delta *)
-	  Some (lift_subst !evars spat after)
+	  Some (lift_subst env !evars spat after)
   in
     match unify with
     | None -> None
@@ -1057,12 +1070,17 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 	    | _ -> user_err_loc (loc, "equations", str"Unbound variable " ++ pr_id i)
 	  in
 	    match rhs with
-	    | Program c -> 
-	      let c', _ = interp_constr_in_rhs env ctx evars data (Some ty) s lets c in
-		Some (Compute (prob, ty, RProgram c'))
+	    | Program (c,w) -> 
+              let envctx,lets,env',coverings,lift,subst = 
+                interp_wheres env ctx evars data s lets w in
+	      let c', _ = 
+                interp_constr_in_rhs_env env evars (pi3 data)
+                  (lets, envctx, lift, subst) c (Some ty) in
+              let res = Compute (prob, coverings, ty, RProgram c') in
+	      Some res
 
 	    | Empty (loc,i) ->
-	      Some (Compute (prob, ty, REmpty (get_var loc i s)))
+	      Some (Compute (prob, [], ty, REmpty (get_var loc i s)))
 
 	    | Rec (term, rel, name, spl) ->
               (* let term, _ = interp_constr_in_rhs env ctx evars data None s lets term in *)
@@ -1097,7 +1115,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		evars := gls.sigma;
 		if Proofview.finished res then
 		  let c = List.hd (Proofview.partial_proof entry res) in
-		    Some (Compute (prob, ty, RProgram c))
+		    Some (Compute (prob, [], ty, RProgram c))
 		else
 		  let solve_goal gl =
 		    let nctx = named_context_of_val (Goal.V82.hyps !evars gl) in
@@ -1117,7 +1135,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 			     let (d,p,g as invsubst) = invert_subst env !evars newprob in
 			     let ctxr = specialize_rel_context p [List.hd rctx] @ ctx in
 			     let newprob =
-			       mk_ctx_map !evars rctx (newpattern :: pats) ctxr
+			       mk_ctx_map env !evars rctx (newpattern :: pats) ctxr
 			     in
 			     let ty' = 
 			       match newpattern with
@@ -1125,8 +1143,8 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 			       | _ -> ty'
 			     in
 			     let substpats = map (lift_pat 1) (id_pats ctx) in
-			     let subst = mk_ctx_map !evars ctxr substpats ctx in
-			     let invsubst = Some (mk_ctx_map !evars ctx p (List.tl rctx)) in
+			     let subst = mk_ctx_map env !evars ctxr substpats ctx in
+			     let invsubst = Some (mk_ctx_map env !evars ctx p (List.tl rctx)) in
 			       ty', newprob, subst, invsubst
 			   else 
 			     let pats =
@@ -1163,7 +1181,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 	      let newctx, pats', pats'' = instance_of_pats env evars ctx vars in
 	      (* revctx is a variable substitution from a reordered context to the
 	         current context. Needed for ?? *)
-	      let revctx = check_ctx_map !evars (newctx, pats', ctx) in
+	      let revctx = check_ctx_map env !evars (newctx, pats', ctx) in
 	      let idref = Namegen.next_ident_away (id_of_string "refine") (ids_of_rel_context newctx) in
 	      let decl = (Name idref, None, mapping_constr revctx cty) in
 	      let extnewctx = decl :: newctx in
@@ -1179,7 +1197,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		let str_to_new =
 		  inst_refctx, (specialize_pats (pi2 cmap) (lift_pats 1 pats')), newctx
 		in
-		  compose_subst ~sigma:!evars str_to_new revctx
+		  compose_subst env ~sigma:!evars str_to_new revctx
 	      in	
 	      let newprob = 
 		let ctx = pi1 cmap in
@@ -1298,7 +1316,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 	    | Some (var, newctx, s) ->
 	      let prob' = (newctx, pats, ctx') in
 	      let coverrec s = covering_aux env evars data []
-		(List.rev prev @ clauses) path (compose_subst ~sigma:!evars s prob')
+		(List.rev prev @ clauses) path (compose_subst env ~sigma:!evars s prob')
 		(specialize_rel_context (pi2 s) lets)
 		(specialize_constr (pi2 s) ty)
 	      in
@@ -1314,14 +1332,49 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 	    | [] -> (* Every clause failed for the problem, it's either uninhabited or
 		       the clauses are not exhaustive *)
 	      match find_empty (env,evars) (pi1 prob) with
-	      | Some i -> Some (Compute (prob, ty, REmpty i))
+	      | Some i -> Some (Compute (prob, [], ty, REmpty i))
 	      | None ->
 		errorlabstrm "deppat"
 		  (str "Non-exhaustive pattern-matching, no clause found for:" ++ fnl () ++
 		     pr_problem data env prob)
 
-let covering env evars data (clauses : clause list) prob ty =
-  match covering_aux env evars data [] (map (fun x -> (x,false)) clauses) [] prob [] ty with
+and interp_wheres env ctx evars data s lets w =
+  let (ctx, envctx, liftn, subst) = env_of_rhs evars ctx env s lets in
+  let inst, nactx = named_of_rel_context ctx in
+  let envna = push_named_context nactx env in
+  let rec aux (lets,nlets,coverings,env (* named *),envctx,liftn) (((loc,id),b,t),clauses) =
+    let ienv, ((env', sign), impls) = interp_context_evars env evars b in
+    let arity = interp_type_evars env' evars t in
+    let sign = subst_rel_context nlets subst sign in
+    let arity = substnl subst (List.length sign + nlets) arity in
+    let sign = nf_rel_context_evar !evars sign in
+    let arity = nf_evar !evars arity in
+    let ty = it_mkProd_or_LetIn arity sign in
+    let data = Constrintern.compute_internalization_env
+                 env Constrintern.Recursive [id] [ty] [impls] 
+    in
+    let data = (id,false(* with_comp *),data) in
+    let problem = id_subst sign in
+    let relty = subst_vars (List.map destVar inst) ty in
+    let sigma, term = new_evar envctx !evars ~src:(loc, Evar_kinds.InternalHole) relty in
+    let () = evars := sigma in
+    let ev = destEvar term in
+    let path = [fst ev] in
+    let covering = covering env evars data clauses path problem arity in
+    let decl = (Name id, Some term, relty) in
+    let nadecl = (id, Some (substl inst term), ty) in
+    (decl :: lets, succ nlets, 
+     (id, nactx, problem, term, ty, covering) :: coverings, 
+     push_named nadecl env, envctx, succ liftn)
+  in
+  let (lets, nlets, coverings, envna, envctx', liftn) =
+    List.fold_left aux (ctx, 0, [], envna, envctx, liftn) w
+  in (envctx, lets, push_rel_context ctx env, coverings, liftn + nlets, subst)
+  
+
+and covering env evars data (clauses : clause list) path prob ty =
+  let clauses = (map (fun x -> (x,false)) clauses) in
+  match covering_aux env evars data [] clauses path prob [] ty with
   | Some cov -> cov
   | None ->
       errorlabstrm "deppat"

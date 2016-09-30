@@ -22,21 +22,21 @@ type user_pats = user_pat list
 
 (** Globalized syntax *)
 
-type program = signature * clause list
-
-and signature = identifier * rel_context * constr (* f : Π Δ. τ *)
-
-and clause = lhs * clause rhs (* lhs rhs *)
-and lhs = user_pats (* p1 ... pn *)
+type lhs = user_pats (* p1 ... pn *)
 and 'a rhs =
-    Program of Constrexpr.constr_expr
+    Program of Constrexpr.constr_expr * 'a where_clause list
   | Empty of identifier Loc.located
   | Rec of Constrexpr.constr_expr * Constrexpr.constr_expr option *
              identifier Loc.located option * 'a list
   | Refine of Constrexpr.constr_expr * 'a list
   | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) Util.union *
       'a list
-
+and prototype =
+  identifier located * Constrexpr.local_binder list * Constrexpr.constr_expr
+and 'a where_clause = prototype * 'a list
+and program = signature * clause list
+and signature = identifier * rel_context * constr (* f : Π Δ. τ *)
+and clause = lhs * clause rhs (* lhs rhs *)
 
 val pr_user_pat : env -> user_pat -> Pp.std_ppcmds
 val pr_user_pats : env -> user_pat list -> Pp.std_ppcmds
@@ -79,7 +79,10 @@ val is_structural : rec_type option -> bool
 
 val next_ident_away : Id.t -> Id.t list ref -> Id.t
 
-type equation_option = OInd of bool | ORec of Id.t located option | OComp of bool | OEquations of bool
+type equation_option = 
+  | OInd of bool | ORec of Id.t located option 
+  | OComp of bool 
+  | OEquations of bool
 
 type equation_user_option = equation_option
 

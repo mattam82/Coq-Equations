@@ -292,25 +292,23 @@ module Gram = Pcoq.Gram
 module Vernac = Pcoq.Vernac_
 module Tactic = Pcoq.Tactic
 
-type binders_let2_argtype =
-    (Constrexpr.local_binder list *
-     (Names.identifier Loc.located option * Constrexpr.recursion_order_expr))
-    Genarg.uniform_genarg_type
+type binders_argtype = Constrexpr.local_binder list Genarg.uniform_genarg_type
+
+let pr_raw_binders2 _ _ _ l = mt ()
+let pr_glob_binders2 _ _ _ l = mt ()
+let pr_binders2 _ _ _ l = mt ()
+
+let wit_binders2 : binders_argtype =
+  Genarg.create_arg None "binders2"
+
+let binders2 : local_binder list Gram.entry =
+  Pcoq.create_generic_entry "binders2" (Genarg.rawwit wit_binders2)
+
+
+let _ = Pptactic.declare_extra_genarg_pprule wit_binders2
+  pr_raw_binders2 pr_glob_binders2 pr_binders2
+
 type deppat_equations_argtype = Syntax.pre_equation list Genarg.uniform_genarg_type
-
-let wit_binders_let2 : binders_let2_argtype =
-  Genarg.create_arg None "binders_let2"
-
-let pr_raw_binders_let2 _ _ _ l = mt ()
-let pr_glob_binders_let2 _ _ _ l = mt ()
-let pr_binders_let2 _ _ _ l = mt ()
-
-let binders_let2 : (local_binder list * (identifier Loc.located option * recursion_order_expr)) Gram.entry =
-  Pcoq.create_generic_entry "binders_let2" (Genarg.rawwit wit_binders_let2)
-
-let _ = Pptactic.declare_extra_genarg_pprule wit_binders_let2
-  pr_raw_binders_let2 pr_glob_binders_let2 pr_binders_let2
-
 
 let wit_deppat_equations : deppat_equations_argtype =
   Genarg.create_arg None "deppat_equations"
@@ -337,14 +335,13 @@ open Tok
 open Syntax
 
 GEXTEND Gram
-  GLOBAL: pattern deppat_equations binders_let2 lident;
+  GLOBAL: pattern deppat_equations binders2 lident;
  
+  binders2 : 
+     [ [ b = binders -> b ] ]
+  ;
   deppat_equations:
     [ [ l = LIST1 equation SEP ";" -> l ] ]
-  ;
-
-  binders_let2:
-    [ [ l = binders -> l, (None, CStructRec)  ] ]
   ;
   
   equation:
@@ -386,11 +383,18 @@ GEXTEND Gram
           in build_refine (fun e -> e) cs
     ] ]
   ;
-
+  where_clause:
+    [ [ id = lident; l = binders2; ":"; t = Constr.lconstr;
+        ":="; eqs = deppat_equations -> ((id, l, t), eqs) ] ]
+  ;
+  where:
+    [ [ "where"; l = LIST1 where_clause -> l
+      | -> []
+    ] ]
+  ;
   rhs:
     [ [ ":=!"; id = identref -> Empty id
-      |":="; c = Constr.lconstr -> Program c
-      |"=>"; c = Constr.lconstr -> Program c
+      | [":="|"=>"]; c = Constr.lconstr; w = where -> Program (c, w)
       | ["with"|"<="]; ref = refine; [":="|"=>"]; e = equations -> ref e
       | "<-"; "(" ; t = Tactic.tactic; ")"; e = equations -> By (Inl t, e)
       | "by"; IDENT "rec"; c = constr; rel = OPT constr; id = OPT identref;
@@ -407,7 +411,7 @@ GEXTEND Gram
   END
 
 VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS SIDEFF
-| [ "Equations" equation_options(opt) lident(i) binders_let2(l) 
+| [ "Equations" equation_options(opt) lident(i) binders2(l) 
       ":" lconstr(t) ":=" deppat_equations(eqs)
       (* decl_notation(nt) *) ] ->
     [ Equations.equations opt i l t [] eqs ]

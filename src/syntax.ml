@@ -75,13 +75,17 @@ and clause = lhs * clause rhs
 and lhs = user_pats
 
 and 'a rhs = 
-  | Program of constr_expr
+  | Program of constr_expr * 'a where_clause list
   | Empty of identifier Loc.located
   | Rec of constr_expr * constr_expr option *
              identifier Loc.located option * 'a list
   | Refine of constr_expr * 'a list
   | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) union * 'a list
 
+and prototype =
+  identifier located * Constrexpr.local_binder list * Constrexpr.constr_expr
+
+and 'a where_clause = prototype * 'a list
 
 let rec pr_user_pat env = function
   | PUVar i -> pr_id i
@@ -104,7 +108,8 @@ let rec pr_rhs env = function
      spc () ++ str "=>" ++ spc () ++ str"rec " ++ pr_constr_expr t ++ spc () ++
        pr_opt (fun (_, id) -> pr_id id) id ++ spc () ++
       hov 1 (str "{" ++ pr_clauses env s ++ str "}")
-  | Program rhs -> spc () ++ str ":=" ++ spc () ++ pr_constr_expr rhs
+  | Program (rhs, where) -> spc () ++ str ":=" ++ spc () ++ pr_constr_expr rhs ++
+                             pr_wheres env where
   | Refine (rhs, s) -> spc () ++ str "<=" ++ spc () ++ pr_constr_expr rhs ++ 
       spc () ++ str "=>" ++ spc () ++
       hov 1 (str "{" ++ pr_clauses env s ++ str "}")
@@ -112,7 +117,13 @@ let rec pr_rhs env = function
       ++ spc () ++ hov 1 (str "{" ++ pr_clauses env s ++ str "}")
   | By (Inr tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_glob_tactic env tac
       ++ spc () ++ hov 1 (str "{" ++ pr_clauses env s ++ str "}")
-      
+
+and pr_wheres env l =
+  prlist_with_sep fnl (pr_where env) l
+and pr_where env (sign, eqns) =
+  pr_proto sign ++ pr_clauses env eqns
+and pr_proto ((_,id), l, t) =
+  pr_id id ++ pr_binders l ++ str" : " ++ pr_constr_expr t
 and pr_clause env (lhs, rhs) =
   pr_lhs env lhs ++ pr_rhs env rhs
 
@@ -259,7 +270,7 @@ let interp_eqn i is_rec env impls eqn =
 	  | _ -> user_err_loc (loc, "interp_pats", str "Or patterns not supported by equations")
 	in upat
   in
-  let rec aux curpats (idopt, pats, rhs) =
+  let rec aux (i, is_rec as fn) curpats (idopt, pats, rhs) =
     let curpats' = 
       match pats with
       | SignPats l -> l
@@ -279,15 +290,24 @@ let interp_eqn i is_rec env impls eqn =
     let curpats'' = add_implicits impls avoid curpats' in
     let pats = map interp_pat curpats'' in
       match is_rec with
-      | Some (Structural _) -> (PUVar i :: pats, interp_rhs curpats' None rhs)
-      | Some (Logical r) -> (pats, interp_rhs curpats' (Some (ConstRef r.comp_proj, Option.is_empty r.comp)) rhs)
-      | None -> (pats, interp_rhs curpats' None rhs)
-  and interp_rhs curpats compproj = function
-    | Refine (c, eqs) -> Refine (interp_constr_expr compproj !avoid c, map (aux curpats) eqs)
-    | Program c -> Program (interp_constr_expr compproj !avoid c)
+      | Some (Structural _) -> (PUVar i :: pats, interp_rhs fn curpats' None rhs)
+      | Some (Logical r) -> 
+         let proj = (Some (ConstRef r.comp_proj, Option.is_empty r.comp)) in
+         (pats, interp_rhs fn curpats' proj rhs)
+      | None -> (pats, interp_rhs fn curpats' None rhs)
+  and interp_rhs fn curpats compproj = function
+    | Refine (c, eqs) -> Refine (interp_constr_expr compproj !avoid c, 
+                                map (aux fn curpats) eqs)
+    | Program (c, w) -> 
+       let w = interp_wheres compproj avoid w in
+       Program (interp_constr_expr compproj !avoid c, w)
     | Empty i -> Empty i
-    | Rec (i, r, id, s) -> Rec (i, r, id, map (aux curpats) s)
-    | By (x, s) -> By (x, map (aux curpats) s)
+    | Rec (i, r, id, s) -> Rec (i, r, id, map (aux fn curpats) s)
+    | By (x, s) -> By (x, map (aux fn curpats) s)
+  and interp_wheres compproj avoid w =
+    let interp_where (((loc,id),b,t) as p,eqns) =
+      p, map (aux (id,None) []) eqns
+    in List.map interp_where w
   and interp_constr_expr compproj ids c = 
     match c, compproj with
     (* |   | CAppExpl of loc * (proj_flag * reference) * constr_expr list *)
@@ -298,4 +318,4 @@ let interp_eqn i is_rec env impls eqn =
        CApp (loc, (None, CRef (Qualid (loc', qidproj), None)), args @ arg)
     | _ -> map_constr_expr_with_binders (fun id l -> id :: l) 
 	(interp_constr_expr compproj) ids c
-  in aux [] eqn
+  in aux (i, is_rec) [] eqn

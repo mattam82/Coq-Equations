@@ -68,7 +68,7 @@ val check_term :
   Environ.env -> Evd.evar_map -> Term.constr -> Term.types -> unit
 val check_type : Environ.env -> Evd.evar_map -> Term.types -> unit
 val typecheck_rel_context :
-  Evd.evar_map -> Context.rel_context -> unit
+  Environ.env -> Evd.evar_map -> Context.rel_context -> unit
 
 val e_conv :
   env -> Evd.evar_map ref -> constr -> constr -> bool

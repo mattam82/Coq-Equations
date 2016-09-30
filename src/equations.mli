@@ -55,7 +55,7 @@ val ind_fun_tac :
   rec_type option ->
   constr ->
   term_info -> Id.t -> splitting -> 'a -> Proof_type.tactic
-val subst_rec_split : Evd.evar_map ->
+val subst_rec_split : Environ.env -> Evd.evar_map ->
                       constr ->
                       constant option ->
                       int option ->
@@ -110,7 +110,7 @@ val prove_unfolding_lemma :
   constant ->
   splitting -> Proof_type.goal Evd.sigma -> Proof_type.goal list Evd.sigma
 
-val update_split :
+val update_split : Environ.env ->
   Evd.evar_map ->
   rec_type option ->
   ((Id.t -> constr) -> constr -> constr) ->
@@ -125,7 +125,7 @@ val constr_of_global : Globnames.global_reference -> constr
 val define_by_eqs :
   Syntax.equation_option list ->
   identifier ->
-  Constrexpr.local_binder list * 'a ->
+  Constrexpr.local_binder list ->
   Constrexpr.constr_expr ->
   (Vernacexpr.lstring * Constrexpr.constr_expr *
    Notation_term.scope_name option)
@@ -138,7 +138,7 @@ val with_rollback : ('a -> 'b) -> 'a -> 'b
 val equations :
   Syntax.equation_option list ->
   Loc.t * identifier ->
-  Constrexpr.local_binder list * 'a ->
+  Constrexpr.local_binder list ->
   Constrexpr.constr_expr ->
   (Vernacexpr.lstring * Constrexpr.constr_expr *
    Notation_term.scope_name option)

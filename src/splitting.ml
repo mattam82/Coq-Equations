@@ -54,34 +54,47 @@ let helper_evar evm evar env typ src =
   let evm' = evar_declare sign evar typ' ~src evm in
     evm', mkEvar (evar, Array.of_list instance)
 
-let term_of_tree status isevar env (i, delta, ty) ann tree =
+let term_of_tree status isevar env tree =
   let oblevars = ref Evar.Set.empty in
   let helpers = ref [] in
-  let rec aux evm = function
-    | Compute ((ctx, _, _), ty, RProgram rhs) -> 
-	let body = it_mkLambda_or_LetIn rhs ctx and typ = it_mkProd_or_subst ty ctx in
-	  evm, body, typ
+  let rec aux env evm = function
+    | Compute ((ctx, _, _), where, ty, RProgram rhs) -> 
+       let evm, ctx = 
+         List.fold_right 
+           (fun (id, nactx, problem, c, ty, split) (evm, ctx) ->
+             let env = push_named_context nactx env in
+             let evm, c', ty' = aux env evm split in
+             let ev, _ = destEvar c in
+             let evm = Evd.define ev c' evm in
+             oblevars := Evar.Set.add ev !oblevars;
+             (evm, (Name id, Some (subst_vars (List.map pi1 nactx) c'), ty') :: ctx))
+           where (evm,ctx)
+       in
+       let body = it_mkLambda_or_LetIn rhs ctx and typ = it_mkProd_or_subst ty ctx in
+       evm, body, typ
 
-    | Compute ((ctx, _, _), ty, REmpty split) ->
-	let split = (Name (id_of_string "split"), 
+    | Compute ((ctx, _, _), where, ty, REmpty split) ->
+       assert (List.is_empty where);
+       let split = (Name (id_of_string "split"), 
 		    Some (coq_nat_of_int (succ (length ctx - split))),
 		    Lazy.force coq_nat)
-	in
-	let ty' = it_mkProd_or_LetIn ty ctx in
-	let let_ty' = mkLambda_or_LetIn split (lift 1 ty') in
-	let evm, term = new_evar env evm ~src:(dummy_loc, QuestionMark (Define true)) let_ty' in
-	let ev = fst (destEvar term) in
-	  oblevars := Evar.Set.add ev !oblevars;
-	  evm, term, ty'
+       in
+       let ty' = it_mkProd_or_LetIn ty ctx in
+       let let_ty' = mkLambda_or_LetIn split (lift 1 ty') in
+       let evm, term = 
+         new_evar env evm ~src:(dummy_loc, QuestionMark (Define true)) let_ty' in
+       let ev = fst (destEvar term) in
+       oblevars := Evar.Set.add ev !oblevars;
+       evm, term, ty'
 
     | Mapping ((ctx, p, ctx'), s) ->
-       let evm, term, ty = aux evm s in
+       let evm, term, ty = aux env evm s in
        let args = Array.rev_of_list (constrs_of_pats ~inacc:false env p) in
        let term = it_mkLambda_or_LetIn (whd_beta evm (mkApp (term, args))) ctx in
        let ty = it_mkProd_or_subst (prod_appvect ty args) ctx in
          evm, term, ty
 		    
-    | RecValid (id, rest) -> aux evm rest
+    | RecValid (id, rest) -> aux env evm rest
 
     | Refined ((ctx, _, _), info, rest) ->
 	let (id, _, _), ty, rarg, path, ev, (f, args), newprob, newty =
@@ -89,7 +102,7 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 	  info.refined_arg, info.refined_path,
 	  info.refined_ex, info.refined_app, info.refined_newprob, info.refined_newty
 	in
-	let evm, sterm, sty = aux evm rest in
+	let evm, sterm, sty = aux env evm rest in
 	let evm, term, ty = 
 	  let term = mkLetIn (Name (id_of_string "prog"), sterm, sty, lift 1 sty) in
 	  let evm, term = helper_evar evm ev (Global.env ()) term
@@ -108,7 +121,7 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 	let tac = Proofview.tclDISPATCH 
 	  (map (fun (goal, args, subst, invsubst, x) -> 
 	    Proofview.Refine.refine (fun evm -> 
-	      let evm, term, ty = aux evm x in
+	      let evm, term, ty = aux env evm x in
 		evm, applistc term args)) rest)
 	in
 	let pv : Proofview_monad.proofview = Obj.magic pv in
@@ -124,7 +137,7 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 	let branches = 
 	  Array.map (fun split -> 
 	    match split with
-	    | Some s -> let evm', c, t = aux !evd s in evd := evm'; c,t
+	    | Some s -> let evm', c, t = aux env !evd s in evd := evm'; c,t
 	    | None ->
 		(* dead code, inversion will find a proof of False by splitting on the rel'th hyp *)
 	      coq_nat_of_int rel, Lazy.force coq_nat)
@@ -161,7 +174,7 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 	let casetyp = it_mkProd_or_subst ty ctx in
 	  evm, mkCast(case, DEFAULTcast, casetyp), casetyp
   in 
-  let evm, term, typ = aux !isevar tree in
+  let evm, term, typ = aux env !isevar tree in
     isevar := evm;
     !helpers, !oblevars, term, typ
 
@@ -181,10 +194,9 @@ let zeta_red =
     reduct_in_concl (red, DEFAULTcast)
 
 let define_tree is_recursive poly impls status isevar env (i, sign, arity)
-                comp ann split hook =
+                comp split hook =
   let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
-  let helpers, oblevs, t, ty =
-    term_of_tree status isevar env (i, sign, arity) ann split in
+  let helpers, oblevs, t, ty = term_of_tree status isevar env split in
   let nf, subst = Evarutil.e_nf_evars_and_universes isevar in
   let obls, (emap, cmap), t', ty' = 
     Obligations.eterm_obligations env i !isevar
@@ -212,7 +224,8 @@ let define_tree is_recursive poly impls status isevar env (i, sign, arity)
     (ev, arg, List.assoc ev emap)) helpers
   in
   let hook x y = 
-    let l = Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Ident (dummy_loc, id)) obls in
+    let l = 
+      Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Ident (dummy_loc, id)) obls in
       Table.extraction_inline true l;
       hook cmap term_info x y
   in
@@ -264,9 +277,15 @@ let map_evars_in_constr evd evar_map c =
 
 let map_split f split =
   let rec aux = function
-    | Compute (lhs, ty, RProgram c) ->
+    | Compute (lhs, where, ty, RProgram c) ->
+      let where' = 
+        List.map (fun (id, nactx, prob, c, t, split) ->
+            (id, map_named_context f nactx,
+             map_ctx_map f prob, f c, f t, aux split))
+                 where
+      in
       let lhs' = map_ctx_map f lhs in
-	Compute (lhs', f ty, RProgram (f c))
+	Compute (lhs', where', f ty, RProgram (f c))
     | Split (lhs, y, z, cs) ->
       let lhs' = map_ctx_map f lhs in
       Split (lhs', y, f z, Array.map (Option.map aux) cs)
@@ -290,9 +309,9 @@ let map_split f split =
 	  refined_newprob = map_ctx_map f info.refined_newprob;
 	  refined_newprob_to_lhs = map_ctx_map f info.refined_newprob_to_lhs;
 	  refined_newty = f info.refined_newty}, aux s)
-    | Compute (lhs, ty, (REmpty _ as em)) ->
+    | Compute (lhs, where, ty, (REmpty _ as em)) ->
       (* let lhs' = map_ctx_map f lhs in *)
-	Compute (lhs, f ty, em)
+	Compute (lhs, where, f ty, em)
   in aux split
 
 

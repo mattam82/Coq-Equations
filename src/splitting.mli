@@ -24,8 +24,6 @@ val term_of_tree :
   Evar_kinds.obligation_definition_status ->
   Evd.evar_map ref ->
   env ->
-  Id.t * rel_context * types ->
-  'd ->
   splitting ->
   (existential_key * int) list * Evar.Set.t * constr * constr
 
@@ -42,7 +40,6 @@ val define_tree :
   env ->
   Id.t * rel_context * types ->
   rec_info option ->
-  'c ->
   splitting ->
   (((Id.t -> constr) -> constr -> constr) ->
    (existential_key * int * Id.t) list ->
