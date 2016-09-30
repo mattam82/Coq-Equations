@@ -41,7 +41,7 @@ val define_tree :
   Id.t * rel_context * types ->
   rec_info option ->
   splitting ->
-  (((Id.t -> constr) -> constr -> constr) ->
+  (splitting -> ((Id.t -> constr) -> constr -> constr) ->
    (existential_key * int * Id.t) list ->
    Decl_kinds.locality -> Globnames.global_reference ->
    Evd.evar_universe_context -> unit) ->

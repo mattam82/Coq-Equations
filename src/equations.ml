@@ -311,6 +311,12 @@ let ind_fun_tac is_rec f info fid split ind =
   else tclCOMPLETE (tclTHENLIST
       [to82 (set_eos_tac ()); to82 intros; aux_ind_fun info split])
 
+let extend_prob decl (ctx, pats, ctx') =
+  (decl :: ctx, lift_pats 1 pats, ctx')
+
+let extend_prob_ctx delta (ctx, pats, ctx') =
+  (delta @ ctx, lift_pats (List.length delta) pats, ctx')
+
 let subst_rec_split env evd f comp comprecarg prob s split =
   let map_proto f ty =
     match comprecarg with
@@ -342,11 +348,27 @@ let subst_rec_split env evd f comp comprecarg prob s split =
         (compose_subst env ~sigma:evd subst lhs) cutprob
     in subst, csubst
   in
+  let subst_rec_named s acc = 
+    fold_left (fun ctx (id, b) ->
+        let (_, _, ty) = lookup_named id ctx in
+        let fK = map_proto f ty in
+        subst_in_named_ctx id fK ctx)
+       acc s
+  in
   let rec aux cutprob s path = function
     | Compute ((ctx,pats,del as lhs), where, ty, c) ->
-       let _where' = assert (List.is_empty where) in
-       let subst, lhs' = subst_rec cutprob s lhs in	  
-       Compute (lhs', where, mapping_constr subst ty, mapping_rhs subst c)
+       let subst, lhs' = subst_rec cutprob s lhs in
+       let progctx = (extend_prob_ctx (where_context where) lhs) in
+       let substprog, _ = subst_rec cutprob s progctx in
+       let subst_where (id, nctx, prob, c, t, split) = 
+         let nctx' = subst_rec_named s nctx in
+         (* let subst', prob' = subst_rec cutprob s prob in *)
+         (id, nctx', map_ctx_map (mapping_constr subst) prob,
+          mapping_constr subst c, mapping_constr subst t, split)
+       in
+       let where' = List.map subst_where where in
+       Compute (lhs', where', mapping_constr substprog ty, 
+                mapping_rhs substprog c)
 	       
     | Split (lhs, n, ty, cs) -> 
        let subst, lhs' = subst_rec cutprob s lhs in
@@ -640,10 +662,11 @@ let build_equations with_ind env evd id info sign is_rec arity cst
     f ?(alias:(constr * constr * splitting) option) prob split =
   let rec computations prob f = function
     | Compute (lhs, where, ty, c) ->
-	let (ctx', pats', _) = compose_subst env ~sigma:evd lhs prob in
+	let ctx = compose_subst env ~sigma:evd lhs prob in
+        let ctxext = where_context where in
+        let (ctx', pats', _) = extend_prob_ctx ctxext ctx in
 	let c' = map_rhs (nf_beta Evd.empty) (fun x -> x) c in
 	let patsconstrs = rev_map pat_constr pats' in
-        let _ = assert (List.is_empty where) in
 	  [ctx', patsconstrs, ty, f, false, c', None]
 	    
     | Split (_, _, _, cs) -> Array.fold_left (fun acc c ->
@@ -1036,7 +1059,11 @@ let update_split env evd is_rec cmap f prob id split =
 	Valid (lhs, y, z, w, u, 
 	       List.map (fun (gl, cl, subst, invs, s) -> (gl, cl, subst, invs, aux s)) cs)
       | Refined (lhs, info, s) -> Refined (lhs, info, aux s)
-      | (Compute _) as x -> x
+      | Compute (lhs, wheres, p, q) -> 
+         let subst_where (id, nactx, prob, c, t, s) =
+           (id, nactx, prob, c, t, aux s)
+         in
+         Compute (lhs, List.map subst_where wheres, p, q)
     in aux split'
   | _ -> split
 
@@ -1176,13 +1203,12 @@ let define_by_eqs opts i l t nt eqs =
   let fix_proto_ref = destConstRef (Lazy.force coq_fix_proto) in
   let kind = (Decl_kinds.Global, poly, Decl_kinds.Definition) in
   let () = Hints.create_hint_db false baseid (ids, Cpred.remove fix_proto_ref csts) true in
-  let hook cmap helpers subst gr ectx =
+  let hook split cmap helpers subst gr ectx =
     let info = { base_id = baseid; helpers_info = helpers; decl_kind = kind } in
     let () = inline_helpers info in
     let f_cst = match gr with ConstRef c -> c | _ -> assert false in
     let env = Global.env () in
     let grevd = Evd.from_ctx ectx in
-    let split = map_split (nf_evar !evd) split in
     let split = map_evars_in_split grevd cmap split in
     let sign = nf_rel_context_evar grevd sign in
     let oarity = nf_evar grevd oarity in
@@ -1214,16 +1240,23 @@ let define_by_eqs opts i l t nt eqs =
 			   f_cst f prob split
 	| Some (Logical r) ->
 	    let prob = id_subst sign in
-	    let unfold_split = update_split env grevd is_recursive cmap f prob i split in
+	    let unfold_split = 
+              update_split env grevd is_recursive cmap f prob i split in
+            (* msg_debug (str"unfold_split " ++ fnl () ++ *)
+            (*              pr_splitting env unfold_split); *)
 	    (* We first define the unfolding and show the fixpoint equation. *)
 	    let unfoldi = add_suffix i "_unfold" in
-	    let hook_unfold cmap helpers' vis gr' ectx = 
+	    let hook_unfold _ cmap helpers' vis gr' ectx = 
 	      let info = { base_id = baseid; helpers_info = helpers @ helpers'; 
 			   decl_kind = kind } in
 	      let () = inline_helpers info in
 	      let funf_cst = match gr' with ConstRef c -> c | _ -> assert false in
 	      let funfc = e_new_global evd gr' in
 	      let unfold_split = map_evars_in_split !evd cmap unfold_split in
+              (* let () =  *)
+              (*   msg_debug (str"unfold_split for equations " ++ fnl () ++ *)
+              (*                pr_splitting env unfold_split) *)
+              (* in *)
 	      let hook_eqs subst grunfold _ =
 		Global.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
 		let env = Global.env () in

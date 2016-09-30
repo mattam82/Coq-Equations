@@ -95,6 +95,8 @@ val subst_in_ctx :
   int -> constr -> rel_context -> rel_context
 val set_in_ctx :
   int -> constr -> rel_context -> rel_context
+val subst_in_named_ctx :
+  Names.Id.t -> constr -> named_context -> named_context
 val lift_patn : int -> int -> pat -> pat
 val lift_patns : int -> int -> pat list -> pat list
 val lift_pat : int -> pat -> pat

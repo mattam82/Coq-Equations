@@ -338,6 +338,15 @@ let set_in_ctx (n : int) (c : constr) (ctx : rel_context) : rel_context =
 	else aux (succ k) (decl :: after) before
   in aux 1 [] ctx
 
+let subst_in_named_ctx (n : Id.t) (c : constr) (ctx : named_context) : named_context =
+  let rec aux after = function
+    | [] -> []
+    | (name, b, t as decl) :: before ->
+	if Id.equal name n then (rev after) @ before
+	else aux (map_named_declaration (replace_vars [n,c]) decl :: after)
+                 before
+  in aux [] ctx
+
 (* Lifting patterns. *)
 
 let rec lift_patn n k p = 
@@ -1092,10 +1101,10 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 	    | Program (c,w) -> 
               let envctx,lets,env',coverings,lift,subst = 
                 interp_wheres env ctx evars data s lets w in
-	      let c', _ = 
+	      let c', ty' = 
                 interp_constr_in_rhs_env env evars (pi3 data)
-                  (lets, envctx, lift, subst) c (Some ty) in
-              let res = Compute (prob, coverings, ty, RProgram c') in
+                  (lets, envctx, lift, subst) c (Some (Vars.lift (List.length w) ty)) in
+              let res = Compute (prob, coverings, ty', RProgram c') in
 	      Some res
 
 	    | Empty (loc,i) ->
@@ -1361,7 +1370,8 @@ and interp_wheres env ctx evars data s lets w =
   let (ctx, envctx, liftn, subst) = env_of_rhs evars ctx env s lets in
   let inst, nactx = named_of_rel_context ctx in
   let envna = push_named_context nactx env in
-  let rec aux (lets,nlets,coverings,env (* named *),envctx,liftn) (((loc,id),b,t),clauses) =
+  let rec aux (lets,nlets,coverings,env (* named *),envctx)
+              (((loc,id),b,t),clauses) =
     let ienv, ((env', sign), impls) = interp_context_evars env evars b in
     let arity = interp_type_evars env' evars t in
     let sign = subst_rel_context nlets subst sign in
@@ -1384,11 +1394,11 @@ and interp_wheres env ctx evars data s lets w =
     let nadecl = (id, Some (substl inst term), ty) in
     (decl :: lets, succ nlets, 
      (id, nactx, problem, term, ty, covering) :: coverings, 
-     push_named nadecl env, envctx, succ liftn)
+     push_named nadecl env, envctx)
   in
-  let (lets, nlets, coverings, envna, envctx', liftn) =
-    List.fold_left aux (ctx, 0, [], envna, envctx, liftn) w
-  in (envctx, lets, push_rel_context ctx env, coverings, liftn + nlets, subst)
+  let (lets, nlets, coverings, envna, envctx') =
+    List.fold_left aux (ctx, 0, [], envna, envctx) w
+  in (envctx, lets, push_rel_context ctx env, coverings, liftn, subst)
   
 
 and covering env evars data (clauses : clause list) path prob ty =
