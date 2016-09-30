@@ -1181,7 +1181,7 @@ Ltac solve_method rec :=
     | [ H := ?body : nat |- _ ] => subst H ; clear ; clear_fix_protos body
       ltac:(fun n => abstract (simplify_method idtac ; solve_empty n))
     | [ H := ?body : ?T |- _ ] => 
-      move H at top; revert_until H; clear H;
+      (revert_until H; clear H);
       simplify_method ltac:(exact body) ; rec ; 
       try (exact (body : T)) ; try_intros (body:T)
   end.

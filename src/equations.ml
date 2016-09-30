@@ -1260,19 +1260,28 @@ let equations opts (loc, i) l t nt eqs =
 
 let solve_equations_goal destruct_tac tac gl =
   let concl = pf_concl gl in
-  let intros, concl =
-    let rec intros goal = 
+  let intros, move, concl =
+    let rec intros goal move = 
       match kind_of_term goal with
       | Prod (Name id, _, t) -> 
-         let tac, goal = intros (subst1 (mkVar id) t) in
-         tclTHEN intro tac, goal
-      | LetIn (Name id, _, _, t) -> 
-         if String.equal (Id.to_string id) "target" then tclIDTAC, goal
+         let id = fresh_id_in_env [] id (pf_env gl) in
+         let tac, move, goal = intros (subst1 (mkVar id) t) (Some id) in
+         tclTHEN intro tac, move, goal
+      | LetIn (Name id, c, _, t) -> 
+         if String.equal (Id.to_string id) "target" then 
+           tclIDTAC, move, goal
          else 
-           let tac, goal = intros (subst1 (mkVar id) t) in
-           tclTHEN intro tac, goal
-      | _ -> tclIDTAC, goal
-    in intros concl
+           let id = fresh_id_in_env [] id (pf_env gl) in
+           let tac, move, goal = intros (subst1 c t) (Some id) in
+           tclTHEN intro tac, move, goal
+      | _ -> tclIDTAC, move, goal
+    in 
+    intros concl None
+  in
+  let move_tac = 
+    match move with
+    | None -> fun _ -> tclIDTAC
+    | Some id' -> fun id -> move_hyp id (Misctypes.MoveBefore id')
   in
   let targetn, branchesn, targ, brs, b =
     match kind_of_term concl with
@@ -1297,7 +1306,8 @@ let solve_equations_goal destruct_tac tac gl =
   let cleantac = tclTHEN (to82 (intros_using ids)) (thin ids) in
   let dotac = tclDO (succ targ) intro in
   let letintac (id, br, brt) = 
-    tclTHEN (to82 (letin_tac None (Name id) br (Some brt) nowhere)) tac 
+    tclTHEN (to82 (letin_tac None (Name id) br (Some brt) nowhere))
+            (tclTHEN (move_tac id) tac)
   in
   let subtacs =
     tclTHENS destruct_tac (map letintac branches)
