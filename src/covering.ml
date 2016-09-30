@@ -164,7 +164,8 @@ let pr_pat env c =
 
 let pr_context env c =
   let pr_decl env (id,b,t) = 
-    let bstr = match b with Some b -> str ":=" ++ spc () ++ print_constr_env env b | None -> mt() in
+    let bstr = match b with Some b -> str " := " ++ print_constr_env env b 
+                          | None -> mt() in
     let idstr = match id with Name id -> pr_id id | Anonymous -> str"_" in
       idstr ++ bstr ++ str " : " ++ print_constr_env env t
   in
@@ -172,20 +173,21 @@ let pr_context env c =
     match List.rev c with
     | decl :: decls -> 
 	List.fold_left (fun (env, pp) decl ->
-	  (push_rel decl env, pp ++ str ";" ++ spc () ++ pr_decl env decl))
+	  (push_rel decl env, pp ++ str "; " ++ pr_decl env decl))
 	  (push_rel decl env, pr_decl env decl) decls
     | [] -> env, mt ()
   in pp
 
 let ppcontext env c = pp (pr_context env c)
 
+let pr_pats env patcs = prlist_with_sep (fun _ -> str " ") (pr_pat env) (List.rev patcs)
+
 let pr_context_map env (delta, patcs, gamma) =
   let env' = push_rel_context delta env in
   let ctx = pr_context env delta in
   let ctx' = pr_context env gamma in
-    (if List.is_empty delta then ctx else ctx ++ spc ()) ++ str "|-" ++ spc ()
-    ++ prlist_with_sep spc (pr_pat env') (List.rev patcs) ++
-      str " : "  ++ ctx'
+    (if List.is_empty delta then ctx else ctx ++ str" ") ++ str "|-" ++ str" "
+    ++ pr_pats env' patcs ++ str " : "  ++ ctx'
 
 let ppcontext_map env context_map = pp (pr_context_map env context_map)
 
@@ -828,37 +830,53 @@ let eq_path path path' =
   in 
     aux path path'
 
-let pr_splitting env split =
+let where_context wheres =
+  List.map (fun (id, nctx, _, c, ty, _) -> 
+      let inst = List.map pi1 nctx in
+      (Name id, Some (subst_vars inst c), subst_vars inst ty)) wheres
+
+let pr_splitting env ?(verbose=false) split =
+  let verbose pp = if verbose then pp else mt () in
+  let pplhs env lhs = pr_pats env (pi2 lhs) in
   let rec aux = function
     | Compute (lhs, wheres, ty, c) -> 
 	let env' = push_rel_context (pi1 lhs) env in
-	  hov 2 
-	    ((match c with
-	     | RProgram c -> str":=" ++ spc () ++
-		 print_constr_env env' c ++ str " : " ++
-		 print_constr_env env' ty
-	     | REmpty i -> str":=!" ++ spc () ++ pr_rel_name (rel_context env') i)
-	     ++ spc () ++ str " in context " ++  pr_context_map env lhs)
+        let ppwhere (id, ctx, prob, c, ty, s) = 
+          hov 2 (str"where " ++ pr_id id ++ str " : " ++
+                   print_constr_env env' ty ++
+                   str " := " ++ Pp.fnl () ++ aux s)
+        in
+        let ppwheres = prlist_with_sep Pp.fnl ppwhere wheres in
+        let env'' = push_rel_context (where_context wheres) env' in
+	((match c with
+	  | RProgram c -> pplhs env' lhs ++ str" := " ++
+		           print_constr_env env'' c ++ 
+                           (verbose (str " : " ++ print_constr_env env'' ty))
+	  | REmpty i -> pplhs env' lhs ++ str" :=! " ++
+                         pr_rel_name (rel_context env'') i)
+	 ++ Pp.fnl () ++ ppwheres ++
+           verbose (str " in context " ++  pr_context_map env lhs))
     | Split (lhs, var, ty, cs) ->
 	let env' = push_rel_context (pi1 lhs) env in
-	  hov 2
-	  (str "Split: " ++ spc () ++ 
-	    pr_rel_name (rel_context env') var ++ str" : " ++
-	    print_constr_env env' ty ++ spc () ++ 
-	    str " in context " ++ pr_context_map env lhs ++ spc () ++ spc () ++
-	    Array.fold_left 
+	(pplhs env' lhs ++ str " split: " ++ pr_rel_name (rel_context env') var ++
+           Pp.fnl () ++
+           verbose (str" : " ++
+	              print_constr_env env' ty ++ 
+	              str " in context " ++ 
+                      pr_context_map env lhs ++ spc ()) ++
+           (Array.fold_left 
 	      (fun acc so -> acc ++ 
-		 match so with
-		 | None -> str "*impossible case*"
-		 | Some s -> aux s)
-	      (mt ()) cs) ++ spc ()
+		            h 2 (match so with
+		                 | None -> str "*impossible case*" ++ Pp.fnl ()
+		                 | Some s -> aux s))
+	      (mt ()) cs))
     | Mapping (ctx, s) ->
-       hov 2 (str"Mapping " ++ pr_context_map env ctx ++ spc () ++ aux s)
+       hov 2 (str"Mapping " ++ pr_context_map env ctx ++ Pp.fnl () ++ aux s)
     | RecValid (id, c) -> 
-	hov 2 (str "RecValid " ++ pr_id id ++ aux c)
+	hov 2 (str "RecValid " ++ pr_id id ++ Pp.fnl () ++ aux c)
     | Valid (lhs, ty, ids, ev, tac, cs) ->
 	let _env' = push_rel_context (pi1 lhs) env in
-	  hov 2 (str "Valid " ++ str " in context " ++ pr_context_map env lhs ++ spc () ++
+	  hov 2 (str "Valid " ++ str " in context " ++ pr_context_map env lhs ++ 
 		   List.fold_left 
 		   (fun acc (gl, cl, subst, invsubst, s) -> acc ++ aux s) (mt ()) cs)
     | Refined (lhs, info, s) -> 
@@ -869,16 +887,17 @@ let pr_splitting env split =
 	  info.refined_revctx, info.refined_newprob, info.refined_newty
 	in
 	let env' = push_rel_context (pi1 lhs) env in
-	  hov 2 (str "Refined " ++ pr_id id ++ spc () ++ 
-	      print_constr_env env' (mapping_constr revctx c) ++ str " : " ++ print_constr_env env' cty ++ spc () ++
-	      print_constr_env env' ty ++ spc () ++
+	  hov 2 (pplhs env' lhs ++ str " refine " ++ pr_id id ++ str" " ++ 
+	           print_constr_env env' (mapping_constr revctx c) ++
+                   verbose (str " : " ++ print_constr_env env' cty ++ str" " ++
+	      print_constr_env env' ty ++ str" " ++
 	      str " in " ++ pr_context_map env lhs ++ spc () ++
 	      str "New problem: " ++ pr_context_map env newprob ++ str " for type " ++
 	      print_constr_env (push_rel_context (pi1 newprob) env) newty ++ spc () ++
 	      spc () ++ str" eliminating " ++ pr_rel_name (pi1 newprob) arg ++ spc () ++
 	      str "Revctx is: " ++ pr_context_map env revctx ++ spc () ++
 	      str "New problem to problem substitution is: " ++ 
-	      pr_context_map env info.refined_newprob_to_lhs ++ spc () ++
+	      pr_context_map env info.refined_newprob_to_lhs ++ Pp.cut ()) ++
 	      aux s)
   in aux split
 
@@ -1045,9 +1064,9 @@ let split_at_eos ctx =
 let pr_problem (id, _, _) env (delta, patcs, _) =
   let env' = push_rel_context delta env in
   let ctx = pr_context env delta in
-  pr_id id ++ spc () ++ 
-    prlist_with_sep spc (pr_pat env') (List.rev patcs) ++
-    (if List.is_empty delta then ctx else fnl () ++ str "In context: " ++ fnl () ++ ctx)
+  pr_id id ++ str" " ++ pr_pats env' patcs ++
+    (if List.is_empty delta then ctx else 
+       fnl () ++ str "In context: " ++ fnl () ++ ctx)
 
 let rel_id ctx n = 
   out_name (pi1 (List.nth ctx (pred n)))
@@ -1165,7 +1184,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 			Errors.anomaly ~label:"covering"
 			  (str "Unable to find a covering for the result of a by clause:" 
 			   ++ fnl () ++ pr_clause env (lhs, rhs) ++
-			     spc () ++ str"refining" ++ spc () ++ pr_context_map env prob)
+			     str" refining " ++ pr_context_map env prob)
 		      | Some s ->
 			let args = rev (List.map_filter (fun (id,b,t) ->
 			  if b == None then Some (mkVar id) else None) nctx)

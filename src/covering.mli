@@ -137,7 +137,7 @@ and splitting_rhs = RProgram of constr | REmpty of int
 val pr_path : Evd.evar_map -> Evd.evar list -> Pp.std_ppcmds
 val eq_path : Evar.t list -> Evar.t list -> bool
 
-val pr_splitting : env -> splitting -> Pp.std_ppcmds
+val pr_splitting : env -> ?verbose:bool -> splitting -> Pp.std_ppcmds
 val ppsplit : env -> splitting -> unit
 
 (** Covering computation *)
@@ -324,6 +324,8 @@ val pr_problem :
 val rel_id : (Name.t * 'a * 'b) list -> int -> Id.t
 val push_named_context :
   named_context -> env -> env
+
+val where_context : where_clause list -> rel_context
 
 val env_of_rhs : 
            Evd.evar_map ref ->
