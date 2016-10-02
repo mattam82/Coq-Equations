@@ -1,5 +1,6 @@
 From Equations Require Import Equations Fin DepElimDec.
-Require Import EquationExamples.ordinals.
+Add LoadPath "examples".
+Require Import ordinals.
 Add Search Blacklist "_obligation_".
 From Equations Require Import TransparentEquations.
 

@@ -71,8 +71,14 @@ type splitting =
   | RecValid of identifier * splitting
   | Refined of context_map * refined_node * splitting
 
-and where_clause =  
-  identifier * named_context * context_map * constr * types * splitting
+and where_clause =
+  { where_id : identifier;
+    where_path : path;
+    where_nctx : named_context;
+    where_prob : context_map;
+    where_term : constr;
+    where_type : types;
+    where_splitting : splitting }
 
 and refined_node = 
   { refined_obj : identifier * constr * types;
@@ -494,6 +500,13 @@ let eq_context_nolet env sigma (g : rel_context) (d : rel_context) =
 	  (eq_constr t t' || is_conv env sigma t t'))
 	else env, acc) g d (env, true))
   with Invalid_argument "List.fold_right2" -> false
+     | e ->
+        Printf.eprintf
+          "Exception while comparing contexts %s and %s : %s\n"
+          (Pp.string_of_ppcmds (print_rel_context (push_rel_context g env)))
+          (Pp.string_of_ppcmds (print_rel_context (push_rel_context d env)))
+          (Printexc.to_string e);
+        raise e
 
 let check_eq_context_nolet env sigma (_, _, g as snd) (d, _, _ as fst) =
   if eq_context_nolet env sigma g d then ()
@@ -840,9 +853,11 @@ let eq_path path path' =
     aux path path'
 
 let where_context wheres =
-  List.map (fun (id, nctx, _, c, ty, _) -> 
-      let inst = List.map pi1 nctx in
-      (Name id, Some (subst_vars inst c), subst_vars inst ty)) wheres
+  List.map (fun {where_id; where_nctx; where_prob; where_term;
+               where_type; where_splitting } ->
+      let inst = List.map pi1 where_nctx in
+      (Name where_id, Some (subst_vars inst where_term),
+       subst_vars inst where_type)) wheres
 
 let pr_splitting env ?(verbose=false) split =
   let verbose pp = if verbose then pp else mt () in
@@ -850,10 +865,10 @@ let pr_splitting env ?(verbose=false) split =
   let rec aux = function
     | Compute (lhs, wheres, ty, c) -> 
 	let env' = push_rel_context (pi1 lhs) env in
-        let ppwhere (id, ctx, prob, c, ty, s) = 
-          hov 2 (str"where " ++ pr_id id ++ str " : " ++
-                   print_constr_env env' ty ++
-                   str " := " ++ Pp.fnl () ++ aux s)
+        let ppwhere w =
+          hov 2 (str"where " ++ pr_id w.where_id ++ str " : " ++
+                   print_constr_env env' w.where_type ++
+                   str " := " ++ Pp.fnl () ++ aux w.where_splitting)
         in
         let ppwheres = prlist_with_sep Pp.fnl ppwhere wheres in
         let env'' = push_rel_context (where_context wheres) env' in
@@ -1100,7 +1115,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 	    match rhs with
 	    | Program (c,w) -> 
               let envctx,lets,env',coverings,lift,subst = 
-                interp_wheres env ctx evars data s lets w in
+                interp_wheres env ctx evars path data s lets w in
 	      let c', ty' = 
                 interp_constr_in_rhs_env env evars (pi3 data)
                   (lets, envctx, lift, subst) c (Some (Vars.lift (List.length w) ty)) in
@@ -1366,7 +1381,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		  (str "Non-exhaustive pattern-matching, no clause found for:" ++ fnl () ++
 		     pr_problem data env prob)
 
-and interp_wheres env ctx evars data s lets w =
+and interp_wheres env ctx evars path data s lets w =
   let (ctx, envctx, liftn, subst) = env_of_rhs evars ctx env s lets in
   let inst, nactx = named_of_rel_context ctx in
   let envna = push_named_context nactx env in
@@ -1388,12 +1403,17 @@ and interp_wheres env ctx evars data s lets w =
     let sigma, term = new_evar envctx !evars ~src:(loc, Evar_kinds.InternalHole) relty in
     let () = evars := sigma in
     let ev = destEvar term in
-    let path = [fst ev] in
-    let covering = covering env evars data clauses path problem arity in
+    let path = (fst ev) :: path in
+    let splitting = covering env evars data clauses path problem arity in
     let decl = (Name id, Some term, relty) in
     let nadecl = (id, Some (substl inst term), ty) in
-    (decl :: lets, succ nlets, 
-     (id, nactx, problem, term, ty, covering) :: coverings, 
+    let covering =
+      {where_id = id; where_path = path;
+       where_nctx = nactx; where_prob = problem;
+       where_term = term; where_type = ty;
+       where_splitting = splitting }
+    in
+    (decl :: lets, succ nlets, covering :: coverings, 
      push_named nadecl env, envctx)
   in
   let (lets, nlets, coverings, envna, envctx') =

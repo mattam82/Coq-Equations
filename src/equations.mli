@@ -111,7 +111,7 @@ val prove_unfolding_lemma :
   splitting -> Proof_type.goal Evd.sigma -> Proof_type.goal list Evd.sigma
 
 val update_split : Environ.env ->
-  Evd.evar_map ->
+  Evd.evar_map ref ->
   rec_type option ->
   ((Id.t -> constr) -> constr -> constr) ->
   constr ->

@@ -118,8 +118,14 @@ type splitting =
   | RecValid of identifier * splitting
   | Refined of context_map * refined_node * splitting
 
-and where_clause =  
-  identifier * named_context * context_map * constr * types * splitting
+and where_clause =
+  { where_id : identifier;
+    where_path : path;
+    where_nctx : named_context;
+    where_prob : context_map;
+    where_term : constr;
+    where_type : types;
+    where_splitting : splitting }
 
 and refined_node = {
   refined_obj : identifier * constr * types;

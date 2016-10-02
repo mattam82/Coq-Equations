@@ -270,7 +270,7 @@ let interp_eqn i is_rec env impls eqn =
 	  | _ -> user_err_loc (loc, "interp_pats", str "Or patterns not supported by equations")
 	in upat
   in
-  let rec aux (i, is_rec as fn) curpats (idopt, pats, rhs) =
+  let rec aux recinfo (i, is_rec as fn) curpats (idopt, pats, rhs) =
     let curpats' = 
       match pats with
       | SignPats l -> l
@@ -290,32 +290,36 @@ let interp_eqn i is_rec env impls eqn =
     let curpats'' = add_implicits impls avoid curpats' in
     let pats = map interp_pat curpats'' in
       match is_rec with
-      | Some (Structural _) -> (PUVar i :: pats, interp_rhs fn curpats' None rhs)
+      | Some (Structural _) -> (PUVar i :: pats, interp_rhs recinfo fn curpats' rhs)
       | Some (Logical r) -> 
-         let proj = (Some (ConstRef r.comp_proj, Option.is_empty r.comp)) in
-         (pats, interp_rhs fn curpats' proj rhs)
-      | None -> (pats, interp_rhs fn curpats' None rhs)
-  and interp_rhs fn curpats compproj = function
-    | Refine (c, eqs) -> Refine (interp_constr_expr compproj !avoid c, 
-                                map (aux fn curpats) eqs)
+         (pats, interp_rhs ((i, r) :: recinfo) fn curpats' rhs)
+      | None -> (pats, interp_rhs recinfo fn curpats' rhs)
+  and interp_rhs recinfo fn curpats = function
+    | Refine (c, eqs) -> Refine (interp_constr_expr recinfo !avoid c, 
+                                map (aux recinfo fn curpats) eqs)
     | Program (c, w) -> 
-       let w = interp_wheres compproj avoid w in
-       Program (interp_constr_expr compproj !avoid c, w)
+       let w = interp_wheres recinfo avoid w in
+       Program (interp_constr_expr recinfo !avoid c, w)
     | Empty i -> Empty i
-    | Rec (i, r, id, s) -> Rec (i, r, id, map (aux fn curpats) s)
-    | By (x, s) -> By (x, map (aux fn curpats) s)
-  and interp_wheres compproj avoid w =
+    | Rec (i, r, id, s) -> Rec (i, r, id, map (aux recinfo fn curpats) s)
+    | By (x, s) -> By (x, map (aux recinfo fn curpats) s)
+  and interp_wheres recinfo avoid w =
     let interp_where (((loc,id),b,t) as p,eqns) =
-      p, map (aux (id,None) []) eqns
+      p, map (aux recinfo (id,None) []) eqns
     in List.map interp_where w
-  and interp_constr_expr compproj ids c = 
-    match c, compproj with
+  and interp_constr_expr recinfo ids c = 
+    match c with
     (* |   | CAppExpl of loc * (proj_flag * reference) * constr_expr list *)
-    | CApp (loc, (None, CRef (Ident (loc',id'), _)), args), Some (cproj, nocomp) when Id.equal i id' ->
-       let qidproj = Nametab.shortest_qualid_of_global Idset.empty cproj in
-       let args = List.map (fun (c, expl) -> interp_constr_expr compproj ids c, expl) args in
-       let arg = if nocomp then [CApp (loc, (None, c), [chole loc]), None] else [] in
+    | CApp (loc, (None, CRef (Ident (loc',id'), _)), args)
+      when List.mem_assoc_f Id.equal id' recinfo ->
+       let r = List.assoc_f Id.equal id' recinfo in
+       let qidproj =
+         Nametab.shortest_qualid_of_global Idset.empty (ConstRef r.comp_proj) in
+       let args =
+         List.map (fun (c, expl) -> interp_constr_expr recinfo ids c, expl) args in
+       let arg = if Option.is_empty r.comp then
+                   [CApp (loc, (None, c), [chole loc]), None] else [] in
        CApp (loc, (None, CRef (Qualid (loc', qidproj), None)), args @ arg)
     | _ -> map_constr_expr_with_binders (fun id l -> id :: l) 
-	(interp_constr_expr compproj) ids c
-  in aux (i, is_rec) [] eqn
+	(interp_constr_expr recinfo) ids c
+  in aux [] (i, is_rec) [] eqn

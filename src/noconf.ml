@@ -76,7 +76,7 @@ let mk_eq env evd args args' indty =
   let _, _, make' = Sigma.telescope evd args' in
   let make = lift (List.length args + 1) make in
   let ty = Retyping.get_type_of env !evd make in
-  mkEq evd ty make make'
+  mkEq env evd ty make make'
 
 let derive_no_confusion env evd (ind,u as indu) =
   let evd = ref evd in

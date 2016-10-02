@@ -60,9 +60,9 @@ open Coqlib
 
 let mk_term_eq env sigma ty t ty' t' =
   if e_conv env sigma ty ty' then
-    mkEq sigma ty t t', mkRefl sigma ty' t'
+    mkEq env sigma ty t t', mkRefl env sigma ty' t'
   else
-    mkHEq sigma ty t ty' t', mkHRefl sigma ty' t'
+    mkHEq env sigma ty t ty' t', mkHRefl env sigma ty' t'
 
 let make_abstract_generalize gl evd id concl dep ctx body c eqs args refls =
   let meta = Evarutil.new_meta() in
@@ -173,7 +173,7 @@ let abstract_args gl generalize_vars dep id defined f args =
     let argty = pf_get_type_of gl arg in
     let argty = 
       Evarutil.evd_comb1
-	(Evarsolve.refresh_universes (Some true) (Global.env())) evd argty in
+	(Evarsolve.refresh_universes (Some true) env) evd argty in
     let lenctx = List.length ctx in
     let liftargty = lift lenctx argty in
     let leq = constr_cmp Reduction.CUMUL liftargty ty in
@@ -190,9 +190,11 @@ let abstract_args gl generalize_vars dep id defined f args =
 	  let liftarg = lift (List.length ctx) arg in
 	  let eq, refl =
 	    if leq then
-	      mkEq evd (lift 1 ty) (mkRel 1) liftarg, mkRefl evd (lift (-lenctx) ty) arg
+	      mkEq env evd (lift 1 ty) (mkRel 1) liftarg,
+              mkRefl env evd (lift (-lenctx) ty) arg
 	    else
-	      mkHEq evd (lift 1 ty) (mkRel 1) liftargty liftarg, mkHRefl evd argty arg
+	      mkHEq env evd (lift 1 ty) (mkRel 1) liftargty liftarg,
+              mkHRefl env evd argty arg
 	  in
 	  let eqs = eq :: lift_list eqs in
 	  let refls = refl :: refls in

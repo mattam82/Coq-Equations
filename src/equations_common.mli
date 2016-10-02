@@ -117,7 +117,7 @@ val idset_of_list : Id.t list -> Idset.t
 val decompose_indapp :
   constr -> constr array -> constr * constr array
 
-val refresh_universes_strict : Evd.evar_map ref -> Term.types -> Term.types
+val refresh_universes_strict : Environ.env -> Evd.evar_map ref -> Term.types -> Term.types
 
 (** {6 Linking to Coq} *)
 
@@ -200,16 +200,16 @@ val coq_eq_refl : Globnames.global_reference lazy_t
 val coq_heq : Globnames.global_reference lazy_t
 val coq_heq_refl : Globnames.global_reference lazy_t
 val coq_fix_proto : Globnames.global_reference lazy_t
-val mkapp :
+val mkapp : Environ.env ->
   Evd.evar_map ref ->
   Globnames.global_reference Lazy.t -> Term.constr array -> Term.constr
-val mkEq :
+val mkEq : Environ.env ->
   Evd.evar_map ref -> Term.types -> Term.constr -> Term.constr -> Term.constr
-val mkRefl : Evd.evar_map ref -> Term.types -> Term.constr -> Term.constr
-val mkHEq :
+val mkRefl : Environ.env -> Evd.evar_map ref -> Term.types -> Term.constr -> Term.constr
+val mkHEq : Environ.env ->
   Evd.evar_map ref ->
   Term.types -> Term.constr -> Term.types -> Term.constr -> Term.constr
-val mkHRefl : Evd.evar_map ref -> Term.types -> Term.constr -> Term.constr
+val mkHRefl : Environ.env -> Evd.evar_map ref -> Term.types -> Term.constr -> Term.constr
 
 (** Bindings to theories/ files *)
 

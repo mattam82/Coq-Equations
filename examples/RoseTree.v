@@ -82,21 +82,20 @@ Module RoseTree.
       intros. simpl in *. red. simpl. omega.
     Defined.
 
-Set Printing Depth 10000.
+    (** To solve measure subgoals *)
 
-    (* TODO where clauses *)
-    Equations(noind) elements' (r : t) : list A :=
+    Equations elements' (r : t) : list A :=
     elements' l by rec r (MR lt size) :=
     elements' (leaf a) := [a];
     elements' (node l) := fn l _
-      where fn (x : list t) (H : list_size size x < size (node l)) : list A :=
-      fn nil _ := nil;
-      fn (cons x xs) _ := elements' x _.
-    
-    Next Obligation.
-      red. simpl. omega.
-    Defined.
-    
+
+    where fn (x : list t) (H : list_size size x < size (node l)) : list A :=
+    fn nil _ := nil;
+    fn (cons x xs) _ := elements' x.
+
+    Hint Extern 4 (_ < _) => simpl; omega : rec_decision.
+    Next Obligation. solve_rec. Defined.
+        
     Equations(nocomp) elements_def (r : t) : list A :=
     elements_def (leaf a) := [a];
     elements_def (node l) := concat (List.map elements l).

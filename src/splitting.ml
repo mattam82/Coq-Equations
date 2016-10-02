@@ -49,14 +49,21 @@ open Termops
 open Syntax
 open Covering
 
+let map_where f w =
+  { w with
+    where_nctx = map_named_context f w.where_nctx;
+    where_prob = map_ctx_map f w.where_prob;
+    where_term = f w.where_term;
+    where_type = f w.where_type }
+    
 let map_split f split =
   let rec aux = function
     | Compute (lhs, where, ty, RProgram c) ->
       let where' = 
-        List.map (fun (id, nactx, prob, c, t, split) ->
-            (id, map_named_context f nactx,
-             map_ctx_map f prob, f c, f t, aux split))
-                 where
+        List.map
+          (fun w -> let w' = map_where f w in
+                 { w' with where_splitting = aux w.where_splitting })
+          where
       in
       let lhs' = map_ctx_map f lhs in
 	Compute (lhs', where', f ty, RProgram (f c))
@@ -100,15 +107,17 @@ let term_of_tree status isevar env0 tree =
     | Compute ((ctx, _, _), where, ty, RProgram rhs) -> 
        let evm, ctx = 
          List.fold_right 
-           (fun (id, nactx, problem, c, ty, split) (evm, ctx) ->
-             let env = push_named_context nactx env0 in
+           (fun {where_id; where_nctx; where_prob; where_term;
+               where_type; where_splitting }
+              (evm, ctx) ->
+             let env = push_named_context where_nctx env0 in
              (* FIXME push ctx too if mutual wheres *)
-             let evm, c', ty' = aux env evm split in
-             let inst = List.map pi1 nactx in
+             let evm, c', ty' = aux env evm where_splitting in
+             let inst = List.map pi1 where_nctx in
              let c' = subst_vars inst c' in
              let ty' = subst_vars inst ty' in
              let evm, c', ty' =
-               match kind_of_term c with
+               match kind_of_term where_term with
                | Evar (ev, _) -> 
                   let evm = Evd.define ev c' evm in
                   oblevars := Evar.Set.add ev !oblevars; 
@@ -116,7 +125,7 @@ let term_of_tree status isevar env0 tree =
                | _ -> (* Already defined, we're looking at an unfold split, ignore *)
                   evm, c', ty'
              in
-             (evm, (Name id, Some c', ty') :: ctx))
+             (evm, (Name where_id, Some c', ty') :: ctx))
            where (evm,ctx)
        in
        let body = it_mkLambda_or_LetIn rhs ctx and typ = it_mkProd_or_subst ty ctx in

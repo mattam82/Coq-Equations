@@ -149,8 +149,9 @@ let derive_eq_dec env sigma ind =
     let full = it_mkNamedProd_or_LetIn typ ctx in
     let tc gr = 
       let b, ty = 
-	Typeclasses.instance_constructor cl 
-	  [indapp; mkapp evdref gr (Array.append (vars_of_pars ctx) argsvect) ] in
+	Typeclasses.instance_constructor
+          cl [indapp; mkapp (Global.env ()) evdref gr
+                            (Array.append (vars_of_pars ctx) argsvect) ] in
       let body = 
 	it_mkNamedLambda_or_LetIn 
 	  (it_mkLambda_or_LetIn (Option.get b) ind.ind_args) ctx
