@@ -50,7 +50,7 @@ val find_helper_arg :
   term_info -> constr -> 'a array -> existential_key * 'a
 val find_splitting_var : pat list -> int -> constr list -> Id.t
 val intros_reducing : Proof_type.tactic
-val aux_ind_fun : term_info -> splitting -> Proof_type.tactic
+val aux_ind_fun : term_info -> int -> splitting -> Proof_type.tactic
 val ind_fun_tac :
   rec_type option ->
   constr ->
@@ -75,9 +75,7 @@ val clear_ind_assums :
   mutual_inductive -> rel_context -> rel_context
 val unfold : evaluable_global_reference -> Proof_type.tactic
 val ind_elim_tac :
-  constr ->
-  'a ->
-  term_info -> Proof_type.goal Evd.sigma -> Proof_type.goal list Evd.sigma
+  constr -> int -> term_info -> Proof_type.goal Evd.sigma -> Proof_type.goal list Evd.sigma
 
 (** Defining equations *)
 val build_equations :
@@ -155,3 +153,21 @@ val solve_equations_goal :
 val dependencies :
   env ->
   constr -> named_context -> Id.Set.t * Idset.t
+
+val compute_elim_type :
+           Environ.env ->
+           Evd.evar_map ref ->
+           Syntax.rec_type option ->
+           (Term.constr * Term.constr option * int * Term.constr) list ->
+           Names.mutual_inductive ->
+           int ->
+           (int *
+            ('a * Evar.t list * Context.rel_declaration list *
+             Constr.constr * Term.constr list * (Constr.constr * int) list *
+             (bool * bool)) *
+            'b * 'c)
+           list ->
+           (bool * 'd * 'e) list ->
+           Context.rel_context ->
+           Constr.constr -> Term.types -> int * Term.types
+
