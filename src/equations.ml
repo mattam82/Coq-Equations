@@ -360,12 +360,15 @@ let subst_rec_split env evd f comp comprecarg prob s split =
        let subst, lhs' = subst_rec cutprob s lhs in
        let progctx = (extend_prob_ctx (where_context where) lhs) in
        let substprog, _ = subst_rec cutprob s progctx in
-       let subst_where {where_id; where_path; where_nctx; where_prob; where_term;
-               where_type; where_splitting } =
+       let subst_where {where_id; where_path; where_nctx;
+                        where_prob; where_arity; where_term;
+                        where_type; where_splitting } =
          let where_nctx = subst_rec_named s where_nctx in
+         let where_arity = mapping_constr subst where_arity in
          let where_term = mapping_constr subst where_term in
          let where_type = mapping_constr subst where_type in
-         {where_id; where_path; where_nctx; where_prob; where_term;
+         {where_id; where_path; where_nctx; where_prob;
+          where_arity; where_term;
           where_type; where_splitting }
        in
        let where' = List.map subst_where where in
@@ -714,8 +717,9 @@ let build_equations with_ind env evd id info sign is_rec arity cst
           let lift, ctx' = replace_vars_context inst (pi1 w.where_prob) in
           let ctx' = ctx' @ rctx in
           let hd = substn_vars lift inst nterm in
+          let arity = substn_vars lift inst w.where_arity in
           (* msg_debug (str "hd: " ++ print_constr_env (push_rel_context ctx' env) hd); *)
-          (hd, w.where_path, ctx', w.where_type,
+          (hd, w.where_path, ctx', arity,
            rev_map pat_constr pats' (*?*),
            [] (*?*), rest)
         in
@@ -799,12 +803,21 @@ let build_equations with_ind env evd id info sign is_rec arity cst
       | RProgram c ->
 	  let len = List.length ctx in
 	  let hyps, hypslen, c' =
-            abstract_rec_calls is_rec len protos (nf_beta Evd.empty c) in
-	    Some (it_mkProd_or_clear
-		     (it_mkProd_or_clean
-			 (applistc (mkRel (len + (lenprotos - i) + hypslen))
-			     (lift_constrs hypslen pats @ [c']))
-			 hyps) ctx)
+            abstract_rec_calls is_rec len protos (nf_beta Evd.empty c)
+          in
+          let head =
+            let fn, args = decompose_app fl in
+            applistc (mkRel (len + (lenprotos - i) + hypslen))
+                     (lift_constrs hypslen args)
+          in
+          let ty = 
+	    it_mkProd_or_clear
+	      (it_mkProd_or_clean
+		 (applistc head (lift_constrs hypslen pats @ [c']))
+		 hyps) ctx
+          in
+          msg_debug (print_constr_env env ty);
+          Some ty
       | REmpty i -> None
     in (refine, body, cstr)
   in

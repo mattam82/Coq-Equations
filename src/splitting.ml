@@ -54,6 +54,7 @@ let map_where f w =
     where_nctx = map_named_context f w.where_nctx;
     where_prob = map_ctx_map f w.where_prob;
     where_term = f w.where_term;
+    where_arity = f w.where_arity;
     where_type = f w.where_type }
     
 let map_split f split =

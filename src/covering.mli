@@ -123,7 +123,8 @@ and where_clause =
     where_path : path;
     where_nctx : named_context;
     where_prob : context_map;
-    where_term : constr;
+    where_arity : types; (* In nctx + pi1 prob *)
+    where_term : constr; (* In original context, de Bruijn only *)
     where_type : types;
     where_splitting : splitting }
 
