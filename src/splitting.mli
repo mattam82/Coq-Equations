@@ -25,12 +25,12 @@ val term_of_tree :
   Evd.evar_map ref ->
   env ->
   splitting ->
-  (existential_key * int) list * Evar.Set.t * constr * constr
+  (existential_key * int) list * int Evar.Map.t * constr * constr
 
 
 (** Compilation from splitting tree to terms. *)
 
-val is_comp_obl : rec_info option -> Evar_kinds.t -> bool
+val is_comp_obl : logical_rec option -> Evar_kinds.t -> bool
 
 val define_tree :
   rec_type option -> Decl_kinds.polymorphic ->
@@ -39,7 +39,7 @@ val define_tree :
   Evd.evar_map ref ->
   env ->
   Id.t * rel_context * types ->
-  rec_info option ->
+  logical_rec option ->
   splitting ->
   (splitting -> ((Id.t -> constr) -> constr -> constr) ->
    (existential_key * int * Id.t) list ->

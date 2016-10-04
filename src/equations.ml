@@ -69,8 +69,11 @@ let abstract_rec_calls ?(do_subst=true) is_rec len protos c =
 	Some (i, arity, args')
     | None -> 
 	match is_rec with
-	| Some (Logical r) when eq_constr (mkConst r.comp_proj) f -> 
-	    Some (lenprotos - 1, r.comp_app, array_remove_last args)
+	| Some (Logical r) when is_rec_call r f ->
+           (match r with
+           | LogicalDirect _ -> None
+           | LogicalProj r -> 
+	     Some (lenprotos - 1, r.comp_app, array_remove_last args))
 	| _ -> None
   in
   let rec aux n env c =
@@ -333,13 +336,16 @@ let subst_rec_split env evd f comp comprecarg prob s split =
        let lctx, ty = decompose_prod_assum ty in
        let fcomp, args = decompose_app ty in
        let app =
-         match comp with
-         | Some const (* when Globnames.is_global (ConstRef const) fcomp -> *) ->
+         if comp then (* when Globnames.is_global (ConstRef const) fcomp -> *) 
             (* When a comp *) applistc f args
-         | _ ->
-            let args = rel_list 0 (List.length lctx) in
-            let before, after = List.chop (pred recarg) args in
-            applistc f (before @ List.tl after)
+         else 
+           let args = rel_list 0 (List.length lctx) in
+           let before, after = 
+             if recarg == -1 then List.drop_last args, []
+             else let bf, after = List.chop (pred recarg) args in
+               bf, List.tl after
+           in
+           applistc f (before @ after)
        in
        it_mkLambda_or_LetIn app lctx
     | None -> f
@@ -827,6 +833,7 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 		 (applistc head (lift_constrs hypslen pats @ [c']))
 		 hyps) ctx
           in
+          (* msg_debug (print_constr_env env ty); *)
           Some ty
       | REmpty i -> None
     in (refine, body, cstr)
@@ -981,6 +988,7 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 	(tclTHENLIST [to82 intros; to82 unf; to82 (solve_equation_tac (ConstRef cst))])
       in
       let env = Global.env () in
+      (* msg_debug (str"Typing equation " ++ pr_constr_env env !evd c); *)
       let evd, _ = Typing.type_of env !evd c in
 	ignore(Obligations.add_definition ~kind:info.decl_kind
 		  ideq c ~tactic:(of82 tac) ~hook:(Lemmas.mk_hook hook)
@@ -1022,6 +1030,11 @@ let simpl_of csts =
     Global.set_strategy (ConstKey cst) Conv_oracle.Expand) csts
   in opacify, transp
 
+let get_proj_eval_ref p =
+  match p with
+  | LogicalDirect (loc, id) -> EvalVarRef id
+  | LogicalProj r -> EvalConstRef r.comp_proj
+
 let prove_unfolding_lemma info proj f_cst funf_cst split gl =
   let depelim h = depelim_tac h in
   let helpercsts = List.map (fun (_, _, i) -> fst (destConst (global_reference i)))
@@ -1038,10 +1051,11 @@ let prove_unfolding_lemma info proj f_cst funf_cst split gl =
     match kind_of_term (pf_concl gl) with
     | App (eq, [| ty; x; y |]) ->
 	let xf, _ = decompose_app x and yf, _ = decompose_app y in
-	  if eq_constr (mkConst f_cst) xf && eq_constr proj yf then
+	  if eq_constr (mkConst f_cst) xf && is_rec_call proj yf then
+            let proj_unf = get_proj_eval_ref proj in
 	    let unfolds = unfold_in_concl 
 	      [((Locus.OnlyOccurrences [1]), EvalConstRef f_cst); 
-	       ((Locus.OnlyOccurrences [1]), EvalConstRef (fst (destConst proj)))]
+	       ((Locus.OnlyOccurrences [1]), proj_unf)]
 	    in 
 	      tclTHENLIST [unfolds; simpltac; to82 (pi_tac ())] gl
 	  else to82 reflexivity gl
@@ -1127,33 +1141,43 @@ let prove_unfolding_lemma info proj f_cst funf_cst split gl =
       
 let update_split env evd is_rec cmap f prob id split =
   match is_rec with
-  | Some (Structural _) -> subst_rec_split env !evd f None None prob [(id, f)] split
+  | Some (Structural _) -> subst_rec_split env !evd f false None prob [(id, f)] split
   | Some (Logical r) -> 
-    let split' = subst_comp_proj_split f (mkConst r.comp_proj) split in
-    let rec aux = function
+    let proj = match r with
+      | LogicalDirect (_, id) -> mkVar id
+      | LogicalProj r -> mkConst r.comp_proj
+    in
+    let split' = subst_comp_proj_split f proj split in
+    let rec aux env f = function
       | RecValid (id, Valid (ctx, ty, args, tac, view, 
-			    [goal, args', newprob, invsubst, rest])) ->	  
-	 let rest = aux (subst_rec_split env !evd f r.comp (Some r.comp_recarg)
-                                         newprob [(id, f)] rest) in
+			    [goal, args', newprob, invsubst, rest])) ->
+        let recarg = match r with
+          | LogicalDirect _ -> Some (-1)
+          | LogicalProj r -> Some r.comp_recarg
+        in
+	let rest = aux env f (subst_rec_split env !evd f false recarg
+                     newprob [(id, f)] rest) in
 	 (match invsubst with
 	  | Some s -> Mapping (s, rest)
 	  | None -> rest)
-      | Mapping (lhs, s) -> Mapping (lhs, aux s)
-      | Split (lhs, y, z, cs) -> Split (lhs, y, z, Array.map (Option.map aux) cs)
-      | RecValid (id, c) -> RecValid (id, aux c)
+      | Mapping (lhs, s) -> Mapping (lhs, aux env f s)
+      | Split (lhs, y, z, cs) -> Split (lhs, y, z, Array.map (Option.map (aux env f)) cs)
+      | RecValid (id, c) -> RecValid (id, aux env f c)
       | Valid (lhs, y, z, w, u, cs) ->
 	Valid (lhs, y, z, w, u, 
-	       List.map (fun (gl, cl, subst, invs, s) -> (gl, cl, subst, invs, aux s)) cs)
-      | Refined (lhs, info, s) -> Refined (lhs, info, aux s)
+	       List.map (fun (gl, cl, subst, invs, s) -> (gl, cl, subst, invs, aux env f s)) cs)
+      | Refined (lhs, info, s) -> Refined (lhs, info, aux env f s)
       | Compute (lhs, wheres, p, q) -> 
          let subst_where w = 
+           let env = push_named_context w.where_nctx env in
            let evm, ev =
-             new_evar (push_named_context w.where_nctx env) !evd w.where_type
+             new_evar env !evd w.where_type
            in evd := evm;
-              { w with where_term = ev; where_splitting = aux w.where_splitting }
+           let term' = substl (List.map (fun x -> mkVar (pi1 x)) w.where_nctx) w.where_term in
+              { w with where_term = ev; where_splitting = aux env term' w.where_splitting }
          in
          Compute (lhs, List.map subst_where wheres, p, q)
-    in aux split'
+    in aux env f split'
   | _ -> split
 
 	
@@ -1254,8 +1278,8 @@ let define_by_eqs opts i l t nt eqs =
          else [] in
        Impargs.declare_manual_implicits true (ConstRef compproj) [impls @ impl];
        Table.extraction_inline true [Ident (dummy_loc, projid)];
-       let compinfo = { comp = Option.map snd comp; comp_app = compapp; 
-			comp_proj = compproj; comp_recarg = succ (length sign) } in
+       let compinfo = LogicalProj { comp = Option.map snd comp; comp_app = compapp; 
+			            comp_proj = compproj; comp_recarg = succ (length sign) } in
        let compapp, is_recursive =
 	 if b then compapp, Some (Logical compinfo)
 	 else compapp, Some (Structural with_rec)
@@ -1339,6 +1363,7 @@ let define_by_eqs opts i l t nt eqs =
 			   f_cst f prob split
 	| Some (Logical r) ->
 	   let prob = id_subst sign in
+    let () = msg_debug (str"udpdate split" ++ spc () ++ pr_splitting env split) in
 	   let unfold_split =
              update_split env evd is_recursive cmap f prob i split
            in
@@ -1364,8 +1389,7 @@ let define_by_eqs opts i l t nt eqs =
 		(mkEq (Global.env ()) evd arity (mkApp (f, extended_rel_vect 0 sign))
 		    (mkApp (funfc, extended_rel_vect 0 sign))) sign 
 	      in
-	      let tac = prove_unfolding_lemma info (mkConst r.comp_proj)
-					      f_cst funf_cst unfold_split in
+	      let tac = prove_unfolding_lemma info r f_cst funf_cst unfold_split in
 	      let unfold_eq_id = add_suffix unfoldi "_eq" in
 	        ignore(Obligations.add_definition ~kind:info.decl_kind
 			 ~hook:(Lemmas.mk_hook hook_eqs) ~reduce:(fun x -> x)

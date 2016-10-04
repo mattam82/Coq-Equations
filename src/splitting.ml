@@ -102,7 +102,7 @@ let helper_evar evm evar env typ src =
     evm', mkEvar (evar, Array.of_list instance)
 
 let term_of_tree status isevar env0 tree =
-  let oblevars = ref Evar.Set.empty in
+  let oblevars = ref Evar.Map.empty in
   let helpers = ref [] in
   let rec aux env evm = function
     | Compute ((ctx, _, _), where, ty, RProgram rhs) -> 
@@ -115,16 +115,20 @@ let term_of_tree status isevar env0 tree =
              (* FIXME push ctx too if mutual wheres *)
              let evm, c', ty' = aux env evm where_splitting in
              let inst = List.map pi1 where_nctx in
-             let c' = subst_vars inst c' in
-             let ty' = subst_vars inst ty' in
+             (** In de Bruijn context *)
+             let cdb = subst_vars inst c' in
+             let tydb = subst_vars inst ty' in
              let evm, c', ty' =
                match kind_of_term where_term with
                | Evar (ev, _) -> 
-                  let evm = Evd.define ev c' evm in
-                  oblevars := Evar.Set.add ev !oblevars; 
-                  evm, c', ty'
+                 let term' = mkLetIn (Name (id_of_string "prog"), c', ty', lift 1 ty') in
+                 let evm, term = helper_evar evm ev env term' (dummy_loc, QuestionMark (Define false)) in
+                 let ev = fst (destEvar term) in
+                  oblevars := Evar.Map.add ev (List.length where_nctx) !oblevars;
+                  helpers := (ev, 0) :: !helpers;
+                  evm, subst_vars inst term, tydb
                | _ -> (* Already defined, we're looking at an unfold split, ignore *)
-                  evm, c', ty'
+                  evm, cdb, tydb
              in
              (evm, (Name where_id, Some c', ty') :: ctx))
            where (evm,ctx)
@@ -143,7 +147,7 @@ let term_of_tree status isevar env0 tree =
        let evm, term = 
          new_evar env evm ~src:(dummy_loc, QuestionMark (Define true)) let_ty' in
        let ev = fst (destEvar term) in
-       oblevars := Evar.Set.add ev !oblevars;
+       oblevars := Evar.Map.add ev 0 !oblevars;
        evm, term, ty'
 
     | Mapping ((ctx, p, ctx'), s) ->
@@ -167,7 +171,7 @@ let term_of_tree status isevar env0 tree =
 	  let evm, term = helper_evar evm ev (Global.env ()) term
 	    (dummy_loc, QuestionMark (Define false)) 
 	  in
-	    oblevars := Evar.Set.add ev !oblevars;
+	    oblevars := Evar.Map.add ev 0 !oblevars;
 	    helpers := (ev, rarg) :: !helpers;
 	    evm, term, ty
 	in
@@ -227,7 +231,7 @@ let term_of_tree status isevar env0 tree =
 	  let ty = it_mkLambda_or_LetIn (lift 2 ty) [nbbranches;nbdiscr] in
 	  let evm, term = new_evar env evm ~src:(dummy_loc, QuestionMark status) ty in
 	  let ev = fst (destEvar term) in
-	    oblevars := Evar.Set.add ev !oblevars;
+	    oblevars := Evar.Map.add ev 0 !oblevars;
 	    evm, term
 	in       
 	let casetyp = it_mkProd_or_subst ty ctx in
@@ -241,9 +245,11 @@ let is_comp_obl comp hole_kind =
   match comp with
   | None -> false
   | Some r -> 
-      match hole_kind with 
-      | ImplicitArg (ConstRef c, (n, _), _) ->
+      match hole_kind, r with 
+      | ImplicitArg (ConstRef c, (n, _), _), LogicalProj r ->
 	Constant.equal c r.comp_proj && n == r.comp_recarg 
+      | ImplicitArg (ConstRef c, (n, _), _), LogicalDirect (loc, id) ->
+        is_rec_call r (mkConst c)
       | _ -> false
 
 let zeta_red =
@@ -264,16 +270,22 @@ let define_tree is_recursive poly impls status isevar env (i, sign, arity)
   in
   let obls = 
     Array.map (fun (id, ty, loc, s, d, t) ->
+      let assc = rev_assoc Id.equal id emap in
       let tac = 
-	if Evar.Set.mem (rev_assoc Id.equal id emap) oblevs 
-	then Some (equations_tac ()) 
+	if Evar.Map.mem assc oblevs 
+	then 
+          let intros = Evar.Map.find assc oblevs in
+          Some (Tacticals.New.tclTHEN (Tacticals.New.tclDO intros (of82 intro)) (equations_tac ()))
 	else if is_comp_obl comp (snd loc) then
 	  let unfolds =
-            Option.cata
-              (fun comp -> unfold_in_concl 
-	                  [((Locus.AllOccurrencesBut [1]), EvalConstRef comp)])
-              tclIDTAC (Option.get comp).comp
-	  in
+            match Option.get comp with
+            | LogicalDirect _ -> tclIDTAC
+            | LogicalProj r ->
+              Option.cata
+                (fun comp -> unfold_in_concl 
+	            [((Locus.AllOccurrencesBut [1]), EvalConstRef comp)])
+                tclIDTAC r.comp
+          in
 	    Some (of82 (tclTRY 
 			  (tclTHENLIST [zeta_red; to82 Tactics.intros; unfolds;
 					(to82 (solve_rec_tac ()))])))

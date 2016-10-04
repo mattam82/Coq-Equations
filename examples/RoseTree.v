@@ -83,20 +83,20 @@ Module RoseTree.
     Defined.
 
     (** To solve measure subgoals *)
-    Hint Extern 4 (_ < _) => simpl; omega : rec_decision.
+    (* Hint Extern 4 (_ < _) => abstract (simpl; omega) : rec_decision. *)
 
-    Equations elements' (r : t) : list A :=
-    elements' l by rec r (MR lt size) :=
-    elements' (leaf a) := [a];
-    elements' (node l) := fn l _
+    (* Equations elements' (r : t) : list A := *)
+    (* elements' l by rec r (MR lt size) := *)
+    (* elements' (leaf a) := [a]; *)
+    (* elements' (node l) := fn l _ *)
 
-    where fn (x : list t) (H : list_size size x < size (node l)) : list A :=
-    fn nil _ := nil;
-    fn (cons x xs) _ := elements' x.
+    (* where fn (x : list t) (H : list_size size x < size (node l)) : list A := *)
+    (* fn nil _ := nil; *)
+    (* fn (cons x xs) _ := elements' x. *)
 
-(* Nested rec
+(* Nested rec *)
 
-    Equations(noeqns noind) elements' (r : t) : list A :=
+    Equations(noind) elements' (r : t) : list A :=
     elements' l by rec r (MR lt size) :=
     elements' (leaf a) := [a];
     elements' (node l) := fn l _
@@ -104,15 +104,20 @@ Module RoseTree.
     where fn (x : list t) (H : list_size size x < size (node l)) : list A :=
     fn x H by rec x (MR lt (list_size size)) :=
     fn nil _ := nil;
-    fn (cons x xs) _ := elements' x ++ fn xs _ _.
+    fn (cons x xs) _ := elements' x ++ fn xs _.
+
     Next Obligation.
-      intros. simpl in *. omega.
+      apply elements'. red.
+      intros. simpl in *. abstract omega.
+    Defined.
+
+    Next Obligation.
+      intros. simpl in *. abstract omega.
     Defined.
     Next Obligation.
-      red; intros. simpl in *. omega.
+      intros. red. simpl in *. abstract omega.
     Defined.
-*)                                  
-    
+
     Equations(nocomp) elements_def (r : t) : list A :=
     elements_def (leaf a) := [a];
     elements_def (node l) := concat (List.map elements l).

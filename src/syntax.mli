@@ -68,7 +68,10 @@ type pre_equation =
 
 type rec_type = 
   | Structural of Id.t located option
-  | Logical of rec_info
+  | Logical of logical_rec
+and logical_rec =
+  | LogicalDirect of Id.t located
+  | LogicalProj of rec_info
 and rec_info = {
   comp : constant option;
   comp_app : constr;
@@ -76,7 +79,7 @@ and rec_info = {
   comp_recarg : int;
 }
 val is_structural : rec_type option -> bool
-
+val is_rec_call : logical_rec -> constr -> bool
 val next_ident_away : Id.t -> Id.t list ref -> Id.t
 
 type equation_option = 

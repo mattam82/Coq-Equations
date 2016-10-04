@@ -57,7 +57,7 @@ val ind_fun_tac :
   term_info -> Id.t -> splitting -> 'a -> Proof_type.tactic
 val subst_rec_split : Environ.env -> Evd.evar_map ->
                       constr ->
-                      constant option ->
+  bool ->
                       int option ->
   context_map ->
   (Id.t * constr) list -> splitting -> splitting
@@ -103,7 +103,7 @@ val simpl_of : constant list -> (unit -> unit) * (unit -> unit)
 
 val prove_unfolding_lemma :
   term_info ->
-  constr ->
+  Syntax.logical_rec ->
   constant ->
   constant ->
   splitting -> Proof_type.goal Evd.sigma -> Proof_type.goal list Evd.sigma

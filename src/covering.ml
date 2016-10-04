@@ -1401,7 +1401,8 @@ and interp_wheres env ctx evars path data s lets w =
     let data = (id,false(* with_comp *),data) in
     let problem = id_subst sign in
     let relty = subst_vars (List.map destVar inst) ty in
-    let sigma, term = new_evar envctx !evars ~src:(loc, Evar_kinds.InternalHole) relty in
+    let src = (loc, QuestionMark (Evar_kinds.Define false)) in
+    let sigma, term = new_evar envctx !evars ~src relty in
     let () = evars := sigma in
     let ev = destEvar term in
     let path = (fst ev) :: path in

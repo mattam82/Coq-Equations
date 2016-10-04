@@ -166,7 +166,11 @@ let pr_equation_options  _prc _prlc _prt l =
 
 type rec_type = 
   | Structural of Id.t located option
-  | Logical of rec_info
+  | Logical of logical_rec
+
+and logical_rec =
+  | LogicalDirect of Id.t located
+  | LogicalProj of rec_info
 
 and rec_info = {
   comp : constant option;
@@ -177,6 +181,16 @@ and rec_info = {
 
 let is_structural = function Some (Structural _) -> true | _ -> false
 
+let is_rec_call r f =
+  match r with
+  | LogicalProj r -> Globnames.is_global (ConstRef r.comp_proj) f
+  | LogicalDirect (loc, id) -> 
+    match kind_of_term f with
+    | Var id' -> Id.equal id id'
+    | Const (c, _) ->
+      let id' = Label.to_id (Constant.label c) in
+      Id.equal id id'
+    | _ -> false
 
 let rec translate_cases_pattern env avoid = function
   | PatVar (loc, Name id) -> PUVar id
@@ -294,14 +308,17 @@ let interp_eqn i is_rec env impls eqn =
       | Some (Logical r) -> 
          (pats, interp_rhs ((i, r) :: recinfo) fn curpats' rhs)
       | None -> (pats, interp_rhs recinfo fn curpats' rhs)
-  and interp_rhs recinfo fn curpats = function
+  and interp_rhs recinfo (i, is_rec as fn) curpats = function
     | Refine (c, eqs) -> Refine (interp_constr_expr recinfo !avoid c, 
                                 map (aux recinfo fn curpats) eqs)
-    | Program (c, w) -> 
+    | Program (c, w) ->
        let w = interp_wheres recinfo avoid w in
        Program (interp_constr_expr recinfo !avoid c, w)
     | Empty i -> Empty i
-    | Rec (i, r, id, s) -> Rec (i, r, id, map (aux recinfo fn curpats) s)
+    | Rec (i, r, id, s) -> 
+      let rec_info = LogicalDirect (Constrexpr_ops.constr_loc i, fst fn) in
+      let recinfo = (fst fn, rec_info) :: recinfo in
+      Rec (i, r, id, map (aux recinfo fn curpats) s)
     | By (x, s) -> By (x, map (aux recinfo fn curpats) s)
   and interp_wheres recinfo avoid w =
     let interp_where (((loc,id),b,t) as p,eqns) =
@@ -313,13 +330,15 @@ let interp_eqn i is_rec env impls eqn =
     | CApp (loc, (None, CRef (Ident (loc',id'), _)), args)
       when List.mem_assoc_f Id.equal id' recinfo ->
        let r = List.assoc_f Id.equal id' recinfo in
-       let qidproj =
-         Nametab.shortest_qualid_of_global Idset.empty (ConstRef r.comp_proj) in
        let args =
          List.map (fun (c, expl) -> interp_constr_expr recinfo ids c, expl) args in
-       let arg = if Option.is_empty r.comp then
-                   [CApp (loc, (None, c), [chole loc]), None] else [] in
-       CApp (loc, (None, CRef (Qualid (loc', qidproj), None)), args @ arg)
-    | _ -> map_constr_expr_with_binders (fun id l -> id :: l) 
-	(interp_constr_expr recinfo) ids c
+       let arg = CApp (loc, (None, c), [chole loc]) in
+       (match r with
+        | LogicalDirect _ -> arg 
+        | LogicalProj r -> 
+          let arg = if Option.is_empty r.comp then [arg, None] else [] in
+          let qidproj = Nametab.shortest_qualid_of_global Idset.empty (ConstRef r.comp_proj) in
+          CApp (loc, (None, CRef (Qualid (loc', qidproj), None)), args @ arg))
+    | _ -> map_constr_expr_with_binders (fun id l -> id :: l)
+	     (interp_constr_expr recinfo) ids c
   in aux [] (i, is_rec) [] eqn
