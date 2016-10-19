@@ -23,7 +23,7 @@ open Pp
 open Proof_type
 
 open Locus
-open Context
+open Context.Rel.Declaration
 
 open Glob_term
 open Retyping
@@ -59,10 +59,12 @@ let check_type env evd t =
 let typecheck_rel_context evd ctx =
   let _ =
     List.fold_right
-      (fun (na, b, t as rel) env ->
-	 check_type env evd t;
-	 Option.iter (fun c -> check_term env evd c t) b;
-	 push_rel rel env)
+      (fun rel env ->
+        (match rel with
+        | LocalAssum (_,t) -> check_type env evd t
+        | LocalDef (_,c,t) -> check_type env evd t;
+                              check_term env evd c t);
+        push_rel rel env)
       ctx (Global.env ())
   in ()
 
