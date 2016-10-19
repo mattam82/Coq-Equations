@@ -11,6 +11,8 @@ open Context
 open Environ
 open Names
 
+module RelDecl = Context.Rel.Declaration
+
 val debug : bool
 
 (* Tactics *)
@@ -53,9 +55,9 @@ val tac_of_string :
 
 (** Context lifting *)
 val lift_rel_contextn :
-  int -> int -> Context.rel_context -> Context.rel_context
+  int -> int -> Context.Rel.t -> Context.Rel.t
 
-val lift_context : int -> Context.rel_context -> Context.rel_context
+val lift_context : int -> Context.Rel.t -> Context.Rel.t
 
 val lift_list : constr list -> constr list
 val lift_constrs : int -> constr list -> constr list
@@ -68,7 +70,7 @@ val check_term :
   Environ.env -> Evd.evar_map -> Term.constr -> Term.types -> unit
 val check_type : Environ.env -> Evd.evar_map -> Term.types -> unit
 val typecheck_rel_context :
-  Evd.evar_map -> Context.rel_context -> unit
+  Evd.evar_map -> Context.Rel.t -> unit
 
 val e_conv :
   env -> Evd.evar_map ref -> constr -> constr -> bool
@@ -83,9 +85,9 @@ val mkNot : Term.constr -> Term.constr
 val mkProd_or_subst :
   Names.Name.t * Constr.constr option * Term.types ->
   Term.types -> Term.types
-val mkProd_or_clear : Context.rel_declaration -> Term.constr -> Constr.constr
+val mkProd_or_clear : RelDecl.t -> Term.constr -> Constr.constr
 val it_mkProd_or_clear :
-  Term.constr -> Context.rel_declaration list -> Term.constr
+  Term.constr -> RelDecl.t list -> Term.constr
 val mkLambda_or_subst :
   Names.Name.t * Constr.constr option * Term.types ->
   Term.constr -> Term.constr
@@ -96,12 +98,12 @@ val mkProd_or_subst_or_clear :
   Names.Name.t * Constr.constr option * Term.types ->
   Term.constr -> Term.types
 val it_mkProd_or_subst :
-  Term.types -> Context.rel_declaration list -> Term.constr
+  Term.types -> RelDecl.t list -> Term.constr
 val it_mkProd_or_clean :
   Constr.constr ->
   (Names.name * Constr.t option * Constr.t) list -> Term.constr
 val it_mkLambda_or_subst :
-  Term.constr -> Context.rel_declaration list -> Term.constr
+  Term.constr -> RelDecl.t list -> Term.constr
 val it_mkLambda_or_subst_or_clear :
   Term.constr ->
   (Names.Name.t * Constr.constr option * Term.types) list -> Term.constr
@@ -146,7 +148,7 @@ val declare_instance :
   Names.identifier ->
   Decl_kinds.polymorphic ->
   Evd.evar_map ->
-  Context.rel_context ->
+  Context.Rel.t ->
   Typeclasses.typeclass Term.puniverses -> Term.constr list -> Term.constr
 
 (** Standard datatypes *)
@@ -249,31 +251,29 @@ val below_tac : string -> Names.kernel_name
 val tacident_arg :
   Names.Id.t ->
   < constant : 'a; dterm : 'b; level : 'c; name : 'd; pattern : 'e;
-    reference : Libnames.reference; tacexpr : 'f; term : 'g; utrm : 'h > Tacexpr.gen_tactic_arg
+    reference : Libnames.reference; tacexpr : 'f; term : 'g > Tacexpr.gen_tactic_arg
 val tacvar_arg :
   Names.Id.t ->
   < constant : 'a; dterm : 'b; level : Genarg.rlevel; name : 'c;
-    pattern : 'd; reference : 'e; tacexpr : 'f; term : 'g; utrm : 'h > Tacexpr.gen_tactic_arg
+    pattern : 'd; reference : 'e; tacexpr : 'f; term : 'g > Tacexpr.gen_tactic_arg
 val rec_tac :
   Names.Id.t ->
   Names.Id.t ->
   < constant : 'a; dterm : 'b; level : Genarg.rlevel; name : 'c;
-    pattern : 'd; reference : Libnames.reference; tacexpr : 'e; term : 'f;
-    utrm : 'g >
+    pattern : 'd; reference : Libnames.reference; tacexpr : 'e; term : 'f >
 	   Tacexpr.gen_tactic_expr
 val rec_wf_tac :
   Names.Id.t ->
   Names.Id.t ->
   'a ->
   < constant : 'b; dterm : 'c; level : Genarg.rlevel; name : 'd;
-    pattern : 'e; reference : Libnames.reference; tacexpr : 'f; term : 'a;
-    utrm : 'g >
+    pattern : 'e; reference : Libnames.reference; tacexpr : 'f; term : 'a >
 	   Tacexpr.gen_tactic_expr
 val unfold_recursor_tac : unit -> unit Proofview.tactic
 val equations_tac_expr :
   unit ->
   < constant : 'a; dterm : 'b; level : 'c; name : 'd; pattern : 'e;
-    reference : Libnames.reference; tacexpr : 'f; term : 'g; utrm : 'h >
+    reference : Libnames.reference; tacexpr : 'f; term : 'g >
 								    Tacexpr.gen_tactic_expr
 val equations_tac : unit -> unit Proofview.tactic
 val set_eos_tac : unit -> unit Proofview.tactic
