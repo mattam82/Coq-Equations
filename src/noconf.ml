@@ -8,7 +8,6 @@
 
 open Cases
 open Util
-open Errors
 open Names
 open Nameops
 open Term
@@ -23,7 +22,6 @@ open Typeops
 open Type_errors
 open Pp
 open Proof_type
-open Errors
 open Glob_term
 open Retyping
 open Pretype_errors
@@ -72,8 +70,8 @@ let mkcase env c ty constrs =
     mkCase (ci, ty, c, brs)
 
 let mk_eq env evd args args' indty = 
-  let _, _, make = Sigma.telescope evd args in
-  let _, _, make' = Sigma.telescope evd args' in
+  let _, _, make = Sigma_types.telescope evd args in
+  let _, _, make' = Sigma_types.telescope evd args' in
   let make = lift (List.length args + 1) make in
   let ty = Retyping.get_type_of env !evd make in
   mkEq evd ty make make'
@@ -93,7 +91,7 @@ let derive_no_confusion env evd (ind,u as indu) =
       mkApp (mkIndU indu, argsvect), mkRel 1, ctx, []
     else
       let evm, pred, pars, indty, valsig, ctx, lenargs, idx =
-        Sigma.build_sig_of_ind env !evd indu
+        Sigma_types.build_sig_of_ind env !evd indu
       in
       let () = evd := evm in
       let sigma = Evarutil.e_new_global evd (Lazy.force coq_sigma) in
@@ -104,9 +102,9 @@ let derive_no_confusion env evd (ind,u as indu) =
   let tru = Universes.constr_of_global (Lazy.force (get_one ())) in
   let fls = Universes.constr_of_global (Lazy.force (get_zero ())) in
   let xid = id_of_string "x" and yid = id_of_string "y" in
-  let xdecl = (Name xid, None, argty) in
+  let xdecl = of_tuple (Name xid, None, argty) in
   let binders = xdecl :: ctx in
-  let ydecl = (Name yid, None, lift 1 argty) in
+  let ydecl = of_tuple (Name yid, None, lift 1 argty) in
   let fullbinders = ydecl :: binders in
   let s = Evarutil.evd_comb1 (Evd.fresh_sort_in_family env) evd (get_sort ()) in
   let s = mkSort s in
@@ -121,16 +119,16 @@ let derive_no_confusion env evd (ind,u as indu) =
     let elim =
       let app = pack_ind_with_parlift (args + 1) in
 	it_mkLambda_or_LetIn 
-	  (mkProd_or_LetIn (Anonymous, None, lift 1 app) s)
-	  ((Name xid, None, ind_with_parlift (1 + lenargs)) :: argsctx)
+	  (mkProd_or_LetIn (of_tuple (Anonymous, None, lift 1 app)) s)
+	  (of_tuple (Name xid, None, ind_with_parlift (1 + lenargs)) :: argsctx)
     in
       mkcase env x elim (fun ind i id nparams args arity ->
 	let ydecl = (Name yid, None, pack_ind_with_parlift (List.length args + 1)) in
-	let env' = push_rel_context (ydecl :: args) env in
+	let env' = push_rel_context (of_tuple ydecl :: args) env in
 	let elimdecl = (Name yid, None, ind_with_parlift (List.length args + 2)) in
-	  mkLambda_or_LetIn ydecl
+	  mkLambda_or_LetIn (of_tuple ydecl)
 	    (mkcase env' x
-		(it_mkLambda_or_LetIn s (elimdecl :: argsctx))
+		(it_mkLambda_or_LetIn s (of_tuple elimdecl :: argsctx))
 		(fun _ i' id' nparams args' arity' ->
 		  if i = i' then 
 		    if List.length args = 0 then tru
@@ -175,7 +173,7 @@ let derive_no_confusion env evd (ind,u as indu) =
   let _ = Typing.e_type_of env evd term in
   let hook vis gr _ectx = 
     Typeclasses.add_instance
-      (Typeclasses.new_instance tc None true poly gr)
+      (Typeclasses.new_instance tc empty_hint_info true poly gr)
   in
   let oblinfo, _, term, ty = Obligations.eterm_obligations env noid !evd 0 term ty in
     ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hook) packid 

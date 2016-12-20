@@ -26,9 +26,8 @@ val decompose_indapp :
   Term.constr -> Term.constr array -> Term.constr * Term.constr array
 val telescope :
   Evd.evar_map ref ->
-  (Names.Name.t * 'a option * Constr.constr) list ->
-  Term.constr * (Names.Name.t * Term.constr option * Term.constr) list *
-  Term.constr
+  rel_context ->
+  Term.constr * rel_context * Term.constr
 val sigmaize :
   ?liftty:int ->
   Environ.env ->

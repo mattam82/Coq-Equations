@@ -124,6 +124,8 @@ val decompose_indapp :
 
 val refresh_universes_strict : Evd.evar_map ref -> Term.types -> Term.types
 
+val new_global : Evd.evar_map -> Globnames.global_reference -> Evd.evar_map * Term.constr
+                                                                 
 (** {6 Linking to Coq} *)
 
 val find_constant : Coqlib.message -> string list -> string -> Term.constr
@@ -331,6 +333,7 @@ val of_named_tuple : Names.Id.t * Constr.t option * Constr.t -> named_declaratio
 
 val get_type : rel_declaration -> Constr.t
 val get_name : rel_declaration -> Names.Name.t
+val get_value : rel_declaration -> Constr.t option
 val make_assum : Names.Name.t -> Constr.t -> rel_declaration
 val make_def : Names.Name.t -> Constr.t option -> Constr.t -> rel_declaration
 val make_named_def : Names.Id.t -> Constr.t option -> Constr.t -> named_declaration
@@ -374,3 +377,9 @@ val new_evar :            Environ.env ->
            ?src:Loc.t * Evar_kinds.t ->
            Term.types -> Evd.evar_map * Term.constr
 
+val new_type_evar :            Environ.env ->
+           Evd.evar_map -> 
+           ?src:Loc.t * Evar_kinds.t -> Evd.rigid ->
+           Evd.evar_map * (Term.constr * Term.sorts)
+
+val empty_hint_info : 'a Vernacexpr.hint_info_gen

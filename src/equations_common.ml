@@ -147,7 +147,7 @@ let declare_instance id poly evd ctx cl args =
   let term = it_mkLambda_or_LetIn (Option.get c) ctx in
   let typ = it_mkProd_or_LetIn t ctx in
   let cst = declare_constant id term (Some typ) poly evd (IsDefinition Instance) in
-  let inst = new_instance (fst cl) None true poly (Globnames.ConstRef cst) in
+  let inst = new_instance (fst cl) Hints.empty_hint_info true poly (Globnames.ConstRef cst) in
     add_instance inst; mkConst cst
 
 let coq_unit = lazy (init_reference ["Coq";"Init";"Datatypes"] "unit")
@@ -728,6 +728,13 @@ let rel_of_named_context ctx =
       let decl = make_def (Name n) (Option.map (subst_vars subst) b) (subst_vars subst t) in 
       (decl :: ctx', n :: subst)) ctx ([],[])
 
+let empty_hint_info = Hints.empty_hint_info
+
+let new_global evd gr =
+  let sigma = Sigma.Unsafe.of_evar_map evd in
+  let Sigma.Sigma (gr, sigma, _) = Evarutil.new_global sigma gr in
+  Sigma.to_evar_map sigma, gr
+
 (* Substitute a list of constrs [cstrs] in rel_context [ctx] for variable [k] and above. *)
 
 let subst_rel_context k cstrs ctx = 
@@ -797,3 +804,8 @@ let evar_declare sign ev ty ?src evm =
 let new_evar env evm ?src ty =
   let Sigma.Sigma (term, evm, _) = Evarutil.new_evar env (Sigma.Unsafe.of_evar_map evm) ?src ty in
   Sigma.to_evar_map evm, term
+
+let new_type_evar env evm ?src rigid =
+  let Sigma.Sigma (term, evm, _) = Evarutil.new_type_evar env (Sigma.Unsafe.of_evar_map evm) rigid ?src in
+  Sigma.to_evar_map evm, term
+                           

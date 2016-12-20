@@ -20,7 +20,6 @@ open Typeops
 open Type_errors
 open Pp
 open Proof_type
-open CErrors
 open Glob_term
 open Retyping
 open Pretype_errors
@@ -176,7 +175,7 @@ let derive_subterm env sigma ind =
     let subind = mkInd (k,0) in
     let constrhints = 
       List.map_i (fun i entry -> 
-	List.map_i (fun j _ -> None, poly, true, Hints.PathAny, 
+	List.map_i (fun j _ -> empty_hint_info, poly, true, Hints.PathAny, 
 	  Hints.IsGlobRef (ConstructRef ((k,i),j))) 1 entry.mind_entry_lc)
 	0 inds 
     in Hints.add_hints false [subterm_relation_base]
@@ -245,7 +244,8 @@ let derive_subterm env sigma ind =
       let body = it_mkLambda_or_LetIn (Option.get body) parambinders in
       let hook vis gr _ =
 	let cst = match gr with ConstRef kn -> kn | _ -> assert false in
-	let inst = Typeclasses.new_instance (fst kl) None global poly (ConstRef cst) in
+	let inst = Typeclasses.new_instance (fst kl) empty_hint_info
+                                            global poly (ConstRef cst) in
 	  Typeclasses.add_instance inst
       in
       let _bodyty = Typing.e_type_of (Global.env ()) evm body in

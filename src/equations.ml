@@ -47,6 +47,7 @@ open Printer
 open Ppconstr
 open Decl_kinds
 open Constrintern
+
 open Syntax
 open Covering
 open Splitting
@@ -67,7 +68,7 @@ let abstract_rec_calls ?(do_subst=true) is_rec len protos c =
 	Some (i, arity, args')
     | None -> 
 	match is_rec with
-	| Some (Logical r) when eq_constr (mkConst r.comp_proj) f -> 
+	| Some (Syntax.Logical r) when eq_constr (mkConst r.comp_proj) f -> 
 	    Some (lenprotos - 1, r.comp_app, array_remove_last args)
 	| _ -> None
   in
@@ -137,26 +138,26 @@ let below_transparent_state () =
   Hints.Hint_db.transparent_state (Hints.searchtable_map "Below")
 
 let unfold_constr c = 
-  unfold_in_concl [(Locus.AllOccurrences, EvalConstRef (fst (destConst c)))]
+  to82 (unfold_in_concl [(Locus.AllOccurrences, EvalConstRef (fst (destConst c)))])
 
 let simpl_star = 
   tclTHEN (to82 simpl_in_concl) (onAllHyps (fun id -> to82 (simpl_in_hyp (id, Locus.InHyp))))
 
-let eauto_with_below l =
-  Class_tactics.typeclasses_eauto
-    ~st:(below_transparent_state ()) (l@["subterm_relation"; "Below"; "rec_decision"])
+let eauto_with_below ~depth l =
+  to82 (Class_tactics.typeclasses_eauto ~depth
+    ~st:(below_transparent_state ()) (l@["subterm_relation"; "Below"; "rec_decision"]))
 
 let simp_eqns l =
   tclREPEAT (tclTHENLIST [Proofview.V82.of_tactic 
 			     (Autorewrite.autorewrite (Tacticals.New.tclIDTAC) l);
 			  (* simpl_star; Autorewrite.autorewrite tclIDTAC l; *)
-			  tclTRY (to82 (eauto_with_below ~depth:None l))])
+			  tclTRY (eauto_with_below ~depth:None l)])
 
 let simp_eqns_in clause l =
   tclREPEAT (tclTHENLIST 
 		[Proofview.V82.of_tactic
 		    (Autorewrite.auto_multi_rewrite l clause);
-		 tclTRY (to82 (eauto_with_below ~depth:None l))])
+		 tclTRY (eauto_with_below ~depth:None l)])
 
 let autorewrites b = 
   tclREPEAT (Proofview.V82.of_tactic (Autorewrite.autorewrite Tacticals.New.tclIDTAC [b]))
@@ -283,11 +284,12 @@ let rec aux_ind_fun info = function
   | Compute (_, _, _) ->
      (* observe "compute" *)
              (tclTHENLIST [intros_reducing; autorewrite_one info.base_id;
-		  (to82 (eauto_with_below ~depth:None [info.base_id]))])
+		  (eauto_with_below ~depth:None [info.base_id])])
 
   | Mapping (_, s) -> aux_ind_fun info s
 
-		 
+open Sigma
+       
 let ind_fun_tac is_rec f info fid split ind =
   if is_structural is_rec then
     let c = constant_value_in (Global.env ()) (destConst f) in
@@ -298,11 +300,12 @@ let ind_fun_tac is_rec f info fid split ind =
 	  [to82 (set_eos_tac ()); to82 (fix (Some recid) (succ i));
 	   onLastDecl (fun decl gl ->
              let (n,b,t) = to_named_tuple decl in
-	     let fixprot pats sigma =
+	     let fixprot pats =
+               { run = fun sigma ->
 	       let c = 
 		 mkLetIn (Anonymous, Universes.constr_of_global (Lazy.force coq_fix_proto),
 			  Universes.constr_of_global (Lazy.force coq_unit), t) in
-	       sigma, c
+	       Sigma.here c sigma }
 	     in
 	     Proofview.V82.of_tactic
 	       (change_in_hyp None fixprot (n, Locus.InHyp)) gl);
@@ -367,15 +370,17 @@ let subst_rec_split evd f comp comprecarg prob s split =
 	 let pats, cutctx', _, _ =
 	   (* From Γ |- ps, prec, ps' : Δ, rec, Δ', build
 	       Γ |- ps, ps' : Δ, Δ' *)
-	   fold_right (fun (n, b, t) (pats, ctx', i, subs) ->
-		       match n with
-		       | Name n when mem_assoc n s ->
-			  let term = assoc n s in
-			  let term = map_proto term t in
-			  (pats, ctx', pred i, term :: subs)
-		       | _ ->
-			  (i :: pats, (n, Option.map (substl subs) b, substl subs t) :: ctx', 
-			   pred i, mkRel 1 :: map (lift 1) subs))
+	   fold_right (fun d (pats, ctx', i, subs) ->
+               let (n, b, t) = to_tuple d in
+	       match n with
+	       | Name n when mem_assoc n s ->
+		  let term = assoc n s in
+		  let term = map_proto term t in
+		  (pats, ctx', pred i, term :: subs)
+	       | _ ->
+                  let decl = of_tuple (n, Option.map (substl subs) b, substl subs t) in
+		  (i :: pats, decl :: ctx', 
+		   pred i, mkRel 1 :: map (lift 1) subs))
 		      ctx' ([], [], length ctx', [])
  	 in (ctx', map (fun i -> PRel i) pats, cutctx')
        in
@@ -389,14 +394,15 @@ let subst_rec_split evd f comp comprecarg prob s split =
        let app', arg' =
 	 if Option.has_some comprecarg then
 	   let refarg = ref 0 in
-  	   let args' = List.fold_left_i
-		         (fun i acc c -> 
-		           if i == arg then (refarg := List.length acc);
-		           if isRel c then
-		             let (n, _, ty) = List.nth (pi1 lhs) (pred (destRel c)) in
-		             if mem_assoc (out_name n) s then acc
-		             else (mapping_constr subst c) :: acc
-		           else (mapping_constr subst c) :: acc) 0 [] args 
+  	   let args' =
+             List.fold_left_i
+	       (fun i acc c -> 
+		 if i == arg then (refarg := List.length acc);
+		 if isRel c then
+		   let d = List.nth (pi1 lhs) (pred (destRel c)) in
+		   if mem_assoc (out_name (get_name d)) s then acc
+		   else (mapping_constr subst c) :: acc
+		 else (mapping_constr subst c) :: acc) 0 [] args 
 	   in (mkEvar (ev', [||]), rev args'), !refarg
 	 else 
 	   let first, last = List.chop (length s) (map (mapping_constr subst) args) in
@@ -462,22 +468,22 @@ let clear_ind_assums ind ctx =
     | _ -> c
   in map_rel_context clear_assums ctx
 
-let unfold s = Tactics.unfold_in_concl [Locus.AllOccurrences, s]
+let unfold s = to82 (Tactics.unfold_in_concl [Locus.AllOccurrences, s])
 
 let ind_elim_tac indid inds info gl = 
   let eauto = Class_tactics.typeclasses_eauto [info.base_id; "funelim"] in
   let _nhyps = List.length (pf_hyps gl) in
   let prove_methods tac gl = 
-    tclTHEN tac (tclTHEN simpl_in_concl eauto) gl
+    tclTHEN tac (tclTHEN (to82 simpl_in_concl) (to82 (eauto ~depth:None))) gl
   in
   let rec applyind args gl =
     match kind_of_term (pf_concl gl) with
     | LetIn (Name id, b, t, t') ->
 	tclTHENLIST [Proofview.V82.of_tactic (convert_concl_no_check (subst1 b t') DEFAULTcast);
 		     applyind (b :: args)] gl
-    | _ -> tclTHENLIST [simpl_in_concl; to82 intros; 
+    | _ -> tclTHENLIST [to82 simpl_in_concl; to82 intros; 
  	 prove_methods (Proofview.V82.of_tactic
-			(apply (nf_beta (project gl) (applistc indid (rev args)))))] gl
+			(Tactics.apply (nf_beta (project gl) (applistc indid (rev args)))))] gl
   in
   try tclTHENLIST [intro; onLastHypId (fun id -> applyind [mkVar id])] gl
   with e -> tclFAIL 0 (str"exception") gl
@@ -485,7 +491,7 @@ let ind_elim_tac indid inds info gl =
 
 let type_of_rel t ctx =
   match kind_of_term t with
-  | Rel k -> lift k (pi3 (List.nth ctx (pred k)))
+  | Rel k -> lift k (get_type (List.nth ctx (pred k)))
   | c -> mkProp
 
 let compute_elim_type evd is_rec protos k leninds ind_stmts all_stmts sign app elimty =
@@ -496,16 +502,17 @@ let compute_elim_type evd is_rec protos k leninds ind_stmts all_stmts sign app e
   if leninds == 1 then List.length newctx', it_mkProd_or_LetIn newarity newctx' else
   let methods, preds = List.chop (List.length newctx - leninds) newctx' in
   let ppred, preds = List.sep_last preds in
-  let newpredfn i (n, b, t) (idx, (f', path, sign, arity, pats, args), _, _) =
+  let newpredfn i d (idx, (f', path, sign, arity, pats, args), _, _) =
+    let (n, b, t) = to_tuple d in 
     let signlen = List.length sign in
-    let ctx = (Anonymous, None, arity) :: sign in
+    let ctx = of_tuple (Anonymous, None, arity) :: sign in
     let app =
       let argsinfo =
 	List.map_i
 	  (fun i (c, arg) -> 
 	   let idx = signlen - arg + 1 in (* lift 1, over return value *)
 	   let ty = lift (idx (* 1 for return value *)) 
-			 (pi3 (List.nth sign (pred (pred idx)))) 
+			 (get_type (List.nth sign (pred (pred idx)))) 
 	   in
 	   (idx, ty, lift 1 c, mkRel idx)) 
 	  0 args
@@ -610,7 +617,7 @@ let compute_elim_type evd is_rec protos k leninds ind_stmts all_stmts sign app e
 	  ctx
     in
     let ty = it_mkProd_or_LetIn mkProp ctx in
-    (n, Some app, ty)
+    of_tuple (n, Some app, ty)
   in
   let newpreds = List.map2_i newpredfn 1 preds (rev (List.tl ind_stmts)) in
   let skipped, methods' = (* Skip the indirection methods due to refinements, 
@@ -723,7 +730,7 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 	match alias with
 	| Some (f', unf, split) -> 
 	    (f', path, sign, arity, pats, args), f', Equality.rewriteLR unf
-	| None -> fs, f', Proofview.V82.tactic (unfold_constr f)
+	| None -> fs, f', of82 (unfold_constr f)
       else fs, f', Tacticals.New.tclIDTAC
     in fs, unftac, map (statement i f') c in
   let stmts = List.map_i statements 0 comps in
@@ -765,7 +772,7 @@ let build_equations with_ind env evd id info sign is_rec arity cst
     let _ =
       List.iteri (fun i ind ->
 	let constrs = 
-	  List.map_i (fun j _ -> None, poly, true, Hints.PathAny, 
+	  List.map_i (fun j _ -> Hints.empty_hint_info, poly, true, Hints.PathAny, 
 	    Hints.IsGlobRef (ConstructRef ((k,i),j))) 1 ind.mind_entry_lc in
 	  Hints.add_hints false [info.base_id] (Hints.HintsResolveEntry constrs))
 	inds
@@ -837,8 +844,8 @@ let build_equations with_ind env evd id info sign is_rec arity cst
       try ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hookind) ~kind:info.decl_kind
 	    indid statement ~tactic:(of82 (ind_fun_tac is_rec f info id split ind)) ctx [||])
       with e ->
-	msg_warning (str "Induction principle could not be proved automatically: " ++ fnl () ++
-		Errors.print e)
+	Feedback.msg_warning (str "Induction principle could not be proved automatically: " ++ fnl () ++
+		CErrors.print e)
   in
   let proof (j, f, unf, stmts) =
     let eqns = Array.make (List.length stmts) false in
@@ -851,7 +858,9 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 	    [dummy_loc, Universes.fresh_global_instance (Global.env()) gr, true, None]
 	else (Typeclasses.declare_instance None true gr;
 	      Hints.add_hints false [info.base_id] 
-		(Hints.HintsExternEntry (0, None, impossible_call_tac (ConstRef cst))));
+		              (Hints.HintsExternEntry
+                               (Vernacexpr.{hint_priority = Some 0; hint_pattern = None},
+                                impossible_call_tac (ConstRef cst))));
 	eqns.(pred i) <- true;
 	if Array.for_all (fun x -> x) eqns then (
 	  (* From now on, we don't need the reduction behavior of the constant anymore *)
@@ -897,7 +906,7 @@ let convert_projection proj f_cst = fun gl ->
 let simpl_except (ids, csts) =
   let csts = Cset.fold Cpred.remove csts Cpred.full in
   let ids = Idset.fold Idpred.remove ids Idpred.full in
-    Closure.RedFlags.red_add_transparent Closure.betadeltaiota
+    CClosure.RedFlags.red_add_transparent CClosure.all
       (ids, csts)
       
 let simpl_of csts =
@@ -928,7 +937,7 @@ let prove_unfolding_lemma info proj f_cst funf_cst split gl =
 	      [((Locus.OnlyOccurrences [1]), EvalConstRef f_cst); 
 	       ((Locus.OnlyOccurrences [1]), EvalConstRef (fst (destConst proj)))]
 	    in 
-	      tclTHENLIST [unfolds; simpltac; to82 (pi_tac ())] gl
+	      tclTHENLIST [to82 unfolds; simpltac; to82 (pi_tac ())] gl
 	  else to82 reflexivity gl
     | _ -> to82 reflexivity gl
   in
@@ -953,7 +962,7 @@ let prove_unfolding_lemma info proj f_cst funf_cst split gl =
 	    
     | Valid ((ctx, _, _), ty, substc, tac, valid, rest) ->
 	tclTHEN_i tac (fun i -> let _, _, subst, invsubst, split = nth rest (pred i) in
-				  tclTHEN (Lazy.force unfold_add_pattern) (aux split))
+				  tclTHEN (to82 (Lazy.force unfold_add_pattern)) (aux split))
 
     | RecValid (id, cs) -> 
 	tclTHEN (to82 (unfold_recursor_tac ())) (aux cs)
@@ -985,7 +994,7 @@ let prove_unfolding_lemma info proj f_cst funf_cst split gl =
       to82 (abstract (of82 (tclTHENLIST [to82 intros; tclTRY unfolds; simpltac; solve_eq])))
 	  
     | Compute ((ctx,_,_), _, REmpty id) ->
-	let (na,_,_) = nth ctx (pred id) in
+	let na = get_name (nth ctx (pred id)) in
 	let id = out_name na in
 	  to82 (abstract (depelim id))
   in
@@ -996,7 +1005,7 @@ let prove_unfolding_lemma info proj f_cst funf_cst split gl =
       in
       let res =
 	tclTHENLIST 
-	  [to82 (set_eos_tac ()); to82 intros; unfolds; simpl_in_concl; 
+	  [to82 (set_eos_tac ()); to82 intros; to82 unfolds; to82 simpl_in_concl; 
 	   to82 (unfold_recursor_tac ());
 	   (fun gl -> 
 	     Global.set_strategy (ConstKey f_cst) Conv_oracle.Opaque;
@@ -1084,7 +1093,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   let is_recursive = is_recursive i eqs in
   let (sign, oarity, arity, comp, is_recursive) = 
     let body = it_mkLambda_or_LetIn oarity sign in
-    let _ = check_evars env Evd.empty !evd body in
+    let _ = Pretyping.check_evars env Evd.empty !evd body in
     let comp, compapp, oarity =
       if with_comp then
 	let compid = add_suffix i "_comp" in
@@ -1114,7 +1123,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
        let compproj = 
 	 let body =
            it_mkLambda_or_LetIn (mkRel 1)
-				((Name (id_of_string "comp"), None, compapp) :: sign)
+				(of_tuple (Name (id_of_string "comp"), None, compapp) :: sign)
 	 in
 	 let _ty = e_type_of (Global.env ()) evd body in
 	 let nf, _ = Evarutil.e_nf_evars_and_universes evd in
@@ -1144,7 +1153,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
   in
   let fixprot = mkLetIn (Anonymous, Universes.constr_of_global (Lazy.force coq_fix_proto),
 			 Universes.constr_of_global (Lazy.force coq_unit), ty) in
-  let fixdecls = [(Name i, None, fixprot)] in
+  let fixdecls = [of_tuple (Name i, None, fixprot)] in
   let implsinfo = Impargs.compute_implicits_with_manual env oty false impls in
   let equations = 
     Metasyntax.with_syntax_protection (fun () ->
@@ -1194,7 +1203,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
 	| Some (Structural _) ->
 	    let cutprob, norecprob = 
 	      let (ctx, pats, ctx' as ids) = id_subst sign in
-	      let fixdecls' = [Name i, Some f, fixprot] in
+	      let fixdecls' = [of_tuple (Name i, Some f, fixprot)] in
 		(ctx @ fixdecls', pats, ctx'), ids
 	    in
 	    let split = update_split grevd is_recursive cmap f cutprob i split in
@@ -1273,7 +1282,7 @@ let solve_equations_goal destruct_tac tac gl =
     in aux brs b
   in
   let ids = targetn :: branchesn :: map pi1 branches in
-  let cleantac = tclTHEN (to82 (intros_using ids)) (thin ids) in
+  let cleantac = tclTHEN (to82 (intros_using ids)) (to82 (clear ids)) in
   let dotac = tclDO (succ targ) intro in
   let letintac (id, br, brt) = 
     tclTHEN (to82 (letin_tac None (Name id) br (Some brt) nowhere)) tac 
@@ -1285,11 +1294,12 @@ let solve_equations_goal destruct_tac tac gl =
 let dependencies env c ctx =
   let init = global_vars_set env c in
   let deps =
-    Context.fold_named_context_reverse 
-      (fun variables (n, _, _ as decl) ->
-	let dvars = global_vars_set_of_decl env decl in
-	  if Idset.mem n variables then Idset.union dvars variables
-	  else variables)
+    fold_named_context_reverse 
+    (fun variables decl ->
+      let n = get_id decl in
+      let dvars = global_vars_set_of_decl env decl in
+        if Idset.mem n variables then Idset.union dvars variables
+        else variables)
       ~init:init ctx
   in
     (init, Idset.diff deps init)

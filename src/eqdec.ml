@@ -158,7 +158,7 @@ let derive_eq_dec env sigma ind =
         let entry = (DefinitionEntry ce, IsDefinition Instance) in
 	let inst = Declare.declare_constant (add_suffix ind.ind_name "_EqDec") entry in
         let inst =
-          Typeclasses.new_instance (fst cl) None true poly (Globnames.ConstRef inst)
+          Typeclasses.new_instance (fst cl) Hints.empty_hint_info true poly (Globnames.ConstRef inst)
 	in Typeclasses.add_instance inst)
     indsl
   in
