@@ -1,5 +1,4 @@
 FLG -rectypes
-PKG coqdev85.all 
+PKG coq.intf coq.kernel coq.tactics coq.proofs
 S src
-B src
 S theories
