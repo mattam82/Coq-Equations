@@ -44,21 +44,22 @@ Ltac eqdec_loop t u :=
   (left; reflexivity) || 
   (solve [right; intro He; inversion He]) ||
   (let x := match t with
-             | appcontext C [ _ ?x ] => constr:x
+             | appcontext C [ _ ?x ] => constr:(x)
              end
     in
     let y := match u with
-             | appcontext C [ _ ?y ] => constr:y
+             | appcontext C [ _ ?y ] => constr:(y)
              end
     in
-    let contrad := intro Hn; right; intro He; apply Hn; inversion He; reflexivity in
+    let contrad := let Hn := fresh in
+                   intro Hn; right; intro He; apply Hn; inversion He; reflexivity in
     let good := intros ->;
       let t' := match t with
-                | appcontext C [ ?x _ ] => constr:x
+                | appcontext C [ ?x _ ] => constr:(x)
                 end
       in
       let u' := match u with
-                | appcontext C [ ?y _ ] => constr:y
+                | appcontext C [ ?y _ ] => constr:(y)
                 end
       in
       (* idtac "there" t' u'; *)  try (eqdec_loop t' u')

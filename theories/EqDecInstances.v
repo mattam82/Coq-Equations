@@ -10,7 +10,8 @@ Hint Extern 2 (@EqDecPoint ?A ?x) =>
 
 Ltac eqdec_one x y :=
   let good := intros -> in
-  let contrad := intro Hn; right; red; simplify_dep_elim; apply Hn; reflexivity in
+  let contrad := let Hn := fresh in
+   intro Hn; right; red; simplify_dep_elim; apply Hn; reflexivity in
   try match goal with
        | [ H : forall z, dec_eq x z |- _ ] =>
          case (H y); [good|contrad]
