@@ -1,6 +1,7 @@
 -I src
 -I test-suite
 -R theories Equations
+-R examples EquationExamples
 -I theories
 -I examples
 -extra-phony doc "html" "mkdir -p html/api && ocamldoc -html -d html/api `ocamlfind query -r coqdev85.all -i-format` -rectypes -I src src/*.ml"
