@@ -212,7 +212,7 @@ let define_tree is_recursive poly impls status isevar env (i, sign, arity)
   in
   let hook x y = 
     let l = Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Ident (dummy_loc, id)) obls in
-      Table.extraction_inline true l;
+      (* Table.extraction_inline true l; *)
       hook cmap term_info x y
   in
   let hook = Lemmas.mk_hook hook in

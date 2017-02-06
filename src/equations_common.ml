@@ -809,3 +809,6 @@ let new_type_evar env evm ?src rigid =
   let Sigma.Sigma (term, evm, _) = Evarutil.new_type_evar env (Sigma.Unsafe.of_evar_map evm) rigid ?src in
   Sigma.to_evar_map evm, term
                            
+let to_evar_map = Sigma.to_evar_map
+let of_evar_map = Sigma.Unsafe.of_evar_map
+let evar_absorb_arguments = Evardefine.evar_absorb_arguments

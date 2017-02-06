@@ -178,8 +178,8 @@ let find_helper_info info f =
 
 let inline_helpers i = 
   let l = List.map (fun (_, _, id) -> Ident (dummy_loc, id)) i.helpers_info in
-    Table.extraction_inline true l
-
+  (* Table.extraction_inline true l *)
+  ()
 let is_polymorphic info = pi2 info.decl_kind
   			    
 let find_helper_arg info f args =
@@ -943,7 +943,7 @@ let prove_unfolding_lemma info proj f_cst funf_cst split gl =
   in
   let solve_eq =
     tclORELSE (to82 reflexivity)
-      (tclTHEN (tclTRY (to82 Cctac.f_equal)) solve_rec_eq)
+              (tclTHEN (tclTRY (to82 (* Cctac.f_equal *) (Proofview.tclUNIT ()))) solve_rec_eq)
   in
   let abstract tac = tclABSTRACT None tac in
   let rec aux = function
@@ -1110,7 +1110,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
         hintdb_set_transparency comp false "program";
         hintdb_set_transparency comp false "subterm_relation";
         Impargs.declare_manual_implicits true (ConstRef comp) [impls];
-        Table.extraction_inline true [Ident (dummy_loc, compid)];
+        (* Table.extraction_inline true [Ident (dummy_loc, compid)]; *)
         Some (compid, comp), compapp, oarity
       else
         (* let compapp = mkApp (body, rel_vect 0 (length sign)) in *)
@@ -1136,7 +1136,7 @@ let define_by_eqs opts i (l,ann) t nt eqs =
        in
        let impl = if with_comp then [ExplByPos (succ (List.length sign), None), (true, false, true)] else [] in
        Impargs.declare_manual_implicits true (ConstRef compproj) [impls @ impl];
-       Table.extraction_inline true [Ident (dummy_loc, projid)];
+       (* Table.extraction_inline true [Ident (dummy_loc, projid)]; *)
        let compinfo = { comp = Option.map snd comp; comp_app = compapp; 
 			comp_proj = compproj; comp_recarg = succ (length sign) } in
        let compapp, is_recursive =

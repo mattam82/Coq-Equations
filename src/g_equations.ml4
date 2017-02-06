@@ -234,12 +234,23 @@ VERNAC COMMAND EXTEND Derive_NoConfusion CLASSIFIED AS SIDEFF
       c
   ]
 END
+                             
+let pr_sorts_family _ _ _ = function
+  | InSet -> str"Set"
+  | InProp -> str"Prop"
+  | InType -> str"Type"
+
+ARGUMENT EXTEND sorts_family
+PRINTED BY pr_sorts_family
+| [ "Set" ] -> [ InSet ]
+| [ "Prop" ] -> [ InProp ]
+| [ "Type" ] -> [ InType ]
+END
 
 VERNAC COMMAND EXTEND Equations_Logic CLASSIFIED AS QUERY
-| [ "Equations" "Logic" sort(s) global(eq) global(eqr) global(z) global(o) global(ov) ] -> [
+| [ "Equations" "Logic" sorts_family(s) global(eq) global(eqr) global(z) global(o) global(ov) ] -> [
   let gr x = Lazy.from_val (Nametab.global x) in
   let open Misctypes in
-  let s = match s with GProp -> InProp | GSet -> InSet | GType _ -> InType in
   Equations_common.(set_logic { logic_eqty = gr eq;
 				logic_eqrefl = gr eqr;
 				logic_sort = s;
@@ -279,9 +290,11 @@ END
 open Extraargs
 TACTIC EXTEND solve_equations
   [ "solve_equations" tactic(destruct) tactic(tac) ] -> 
-  [ of82 (Equations.solve_equations_goal (to82 (Tacinterp.eval_tactic destruct)) (to82 (Tacinterp.eval_tactic tac))) ]
+     [ of82 (Equations.solve_equations_goal (to82 (Tacinterp.tactic_of_value ist destruct))
+                                            (to82 (Tacinterp.tactic_of_value ist tac))) ]
 END
 
+let wit_preident = Stdarg.wit_preident
 TACTIC EXTEND simp
 | [ "simp" ne_preident_list(l) clause(c) ] -> 
     [ of82 (Equations.simp_eqns_in c l) ]
@@ -297,11 +310,10 @@ open Equations
 open Syntax
 
 ARGUMENT EXTEND equation_user_option
-TYPED AS equation_user_option
 PRINTED BY pr_r_equation_user_option
 | [ "noind" ] -> [ OInd false ]
 | [ "ind" ] -> [ OInd true ]
-| [ "struct" ident(i) ] -> [ ORec (Some (loc, i)) ]
+(* | [ "struct" ident(i) ] -> [ ORec (Some (loc, i)) ] *)
 | [ "nostruct" ] -> [ ORec None ]
 | [ "comp" ] -> [ OComp true ]
 | [ "nocomp" ] -> [ OComp false ]
@@ -310,16 +322,16 @@ PRINTED BY pr_r_equation_user_option
 END
 
 ARGUMENT EXTEND equation_options
-TYPED AS equation_options
 PRINTED BY pr_equation_options
 | [ "(" ne_equation_user_option_list(l) ")" ] -> [ l ]
 | [ ] -> [ [] ]
 END
 
-let pr_lident _ _ _ (loc, id) = pr_id id
+open Pcoq.Prim
 
+let pr_lident _ _ _ (loc, id) = pr_id id
+       
 ARGUMENT EXTEND lident
-TYPED AS lident
 PRINTED BY pr_lident
 | [ ident(i) ] -> [ (loc, i) ]
 END
@@ -336,28 +348,28 @@ type binders_let2_argtype =
 type deppat_equations_argtype = Syntax.pre_equation list Genarg.uniform_genarg_type
 
 let wit_binders_let2 : binders_let2_argtype =
-  Genarg.create_arg None "binders_let2"
+  Genarg.create_arg "binders_let2"
 
 let pr_raw_binders_let2 _ _ _ l = mt ()
 let pr_glob_binders_let2 _ _ _ l = mt ()
 let pr_binders_let2 _ _ _ l = mt ()
 
 let binders_let2 : (local_binder list * (identifier Loc.located option * recursion_order_expr)) Gram.entry =
-  Pcoq.create_generic_entry "binders_let2" (Genarg.rawwit wit_binders_let2)
+  Pcoq.create_generic_entry Pcoq.uconstr "binders_let2" (Genarg.rawwit wit_binders_let2)
 
 let _ = Pptactic.declare_extra_genarg_pprule wit_binders_let2
   pr_raw_binders_let2 pr_glob_binders_let2 pr_binders_let2
 
 
 let wit_deppat_equations : deppat_equations_argtype =
-  Genarg.create_arg None "deppat_equations"
+  Genarg.create_arg "deppat_equations"
 
 let pr_raw_deppat_equations _ _ _ l = mt ()
 let pr_glob_deppat_equations _ _ _ l = mt ()
 let pr_deppat_equations _ _ _ l = mt ()
 
 let deppat_equations : Syntax.pre_equation list Gram.entry =
-  Pcoq.create_generic_entry "deppat_equations" (Genarg.rawwit wit_deppat_equations)
+  Pcoq.create_generic_entry Pcoq.uvernac "deppat_equations" (Genarg.rawwit wit_deppat_equations)
 
 let _ = Pptactic.declare_extra_genarg_pprule wit_deppat_equations
   pr_raw_deppat_equations pr_glob_deppat_equations pr_deppat_equations
@@ -523,40 +535,38 @@ open Proofview.Goal
   [ctx |- ?P args = ty] and then refines the goal with [c]. *)
 
 let refine_ho c =
-  nf_enter (fun gl ->
+  nf_enter { enter = fun gl ->
     let env = env gl in
     let sigma = sigma gl in  
     let concl = concl gl in
     let ty = Tacmach.New.pf_apply Retyping.get_type_of gl c in
     let ts = Names.full_transparent_state in
-    let evd = ref sigma in
+    let evd = ref (to_evar_map sigma) in
     let rec aux env concl ty =
       match kind_of_term concl, kind_of_term ty with
       | Prod (na, b, t), Prod (na', b', t') ->
          let ok = Evarconv.e_conv ~ts env evd b b' in
          if not ok then
            error "Products do not match"
-         else aux (Environ.push_rel (na,None,b) env) t t'
+         else aux (Environ.push_rel (of_tuple (na,None,b)) env) t t'
       (* | _, LetIn (na, b, _, t') -> *)
       (*    aux env t (subst1 b t') *)
       | _, App (ev, args) when isEvar ev ->
          let (evk, subst as ev) = destEvar ev in
          let sigma = !evd in
-         let sigma,ev =
-           Evarutil.evar_absorb_arguments env sigma ev (Array.to_list args) in
+         let sigma,ev = evar_absorb_arguments env sigma ev (Array.to_list args) in
          let argoccs = Array.map_to_list (fun _ -> None) (snd ev) in
          let sigma, b = Evarconv.second_order_matching ts env sigma ev argoccs concl in
          if not b then
            error "Second-order matching failed"
          else Proofview.Unsafe.tclEVARS sigma <*>
-                Proofview.Refine.refine ~unsafe:true (fun sigma -> sigma, c)
+                Refine.refine ~unsafe:true { run = fun sigma -> Sigma.here c sigma }
       | _, _ -> error "Couldn't find a second-order pattern to match"
-    in aux env concl ty)
+    in aux env concl ty }
 
 TACTIC EXTEND refine_ho
 | [ "refine_ho" open_constr(c) ] ->
-   [ Proofview.tclTHEN (Proofview.Unsafe.tclEVARS (fst c))
-                       (refine_ho (snd c)) ]
+   [ refine_ho c ]
 END
 
 TACTIC EXTEND eqns_specialize_eqs
