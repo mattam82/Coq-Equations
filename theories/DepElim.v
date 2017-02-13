@@ -944,17 +944,20 @@ Ltac simplify_one_dep_elim_term c :=
       (let hyp := fresh H in intros hyp ;
         move hyp before x ; move x before hyp; revert_blocking_until x; revert x;
           (match goal with
-            | |- let x := _ in _ = _ -> @?B x =>
-               refine (@solution_left_let _ B _ _ _)
-             | _ => refine (@solution_left _ _ _ _) || refine (@solution_left_dep _ _ _ _); simpl eq_rect
+           | |- let x := _ in _ = _ -> @?B x =>
+             (let check := type of B in (* Check that the abstraction is really well-typed *)
+              refine (@solution_left_let _ B _ _ _))
+           | _ => refine (@solution_left _ _ _ _) || refine (@solution_left_dep _ _ _ _); simpl eq_rect
            end)) ||
-      (let hyp := fresh "Heq" in intros hyp ;
+      (let hyp := fresh H in intros hyp ;
         move hyp before y ; move y before hyp; revert_blocking_until y; revert y;
           (match goal with
-             | |- let x := ?b in (let _ := block in ?t = _) -> @?B x =>
-               (refine (@solution_right_let _ B _ _ _); let B' := eval cbv beta in (B t) in
-                                                            change (t = b -> B'))
-             | _ => refine (@solution_right _ _ _ _) || refine (@solution_right_dep _ _ _ _); simpl eq_rect
+           | |- let x := ?b in (let _ := block in ?t = _) -> @?B x =>
+             (let check := type of B in (* Check that the abstraction is really well-typed *)
+              refine (@solution_right_let _ B _ _ _); let B' := eval cbv beta in (B t) in
+                                                          change (t = b -> B'))
+           | _ => (refine (@solution_right _ _ _ _) || refine (@solution_right_dep _ _ _ _); simpl eq_rect) ||
+                  (let na := fresh in intros na; subst na)
            end))
 
     | forall H : Id ?x ?y, _ => (* variables case *)
