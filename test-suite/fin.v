@@ -8,7 +8,7 @@ Inductive ilist (A : Set) : nat -> Set :=
 | Nil : ilist A 0
 | Cons : forall {n}, A -> ilist A n -> ilist A (S n).
 Arguments Nil [A].
-Arguments Cons [A n _ _].
+Arguments Cons [A n] _ _.
 
 Set Universe Polymorphism.
 Equations(nocomp) path_sigma {A : Type} (P : A -> Type) (u v : sigma A P)
@@ -64,21 +64,24 @@ Proof.
     - clear H. f_equal. simp fin_to_nat in H2. noconf H2. rewrite H. 
       apply H1; auto. inversion H3. apply inj_pair2 in H4. subst; reflexivity.
 Qed.
-
+Axiom cheat : forall {A}, A.
 Lemma nat__fin : forall (n : nat) (i : fin n),
   nat_to_fin (fin_to_nat i) (fin_lt_n n i) = i.
 Proof.
   intros.
-  funelim (nat_to_fin (fin_to_nat i) (fin_lt_n n i));
+  funelim (nat_to_fin (fin_to_nat i) (fin_lt_n n i)).
   funelim (fin_to_nat i).
-    - reflexivity.
-    - inversion H1.
-    - inversion H1.
-    - clear H. subst call0. unfold nat_to_fin_obligation_1 in *. f_equal.
-        simp fin_to_nat in H3. noconf H3.
-        replace (Lt.lt_S_n (fin_to_nat f) n (fin_lt_n (S n) (fs f))) with (fin_lt_n n f) in * by (apply proof_irrelevance).
-        apply H1; reflexivity.
-Qed.
+  all:apply cheat. Show Proof.
+
+Abort.
+(*   - reflexivity. *)
+(*     - inversion H1. *)
+(*     - inversion H1. *)
+(*     - clear H. unfold nat_to_fin_obligation_1 in *. f_equal. *)
+(*         simp fin_to_nat in H3. noconf H3. *)
+(*         replace (Lt.lt_S_n (fin_to_nat f) n (fin_lt_n (S n) (fs f))) with (fin_lt_n n f) in * by (apply proof_irrelevance). *)
+(*         apply H1; reflexivity. *)
+(* Qed. *)
 
 Equations iget {A : Set} {n : nat} (l : ilist A n) (i : fin n) : A :=
 iget {n:=(S n)} (Cons x _) fz := x;

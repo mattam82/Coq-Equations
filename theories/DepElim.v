@@ -1194,12 +1194,6 @@ Ltac solve_split :=
 
 (** If defining recursive functions, the prototypes come first. *)
 
-Ltac intro_prototypes :=
-  match goal with
-    | [ |- ∀ x : _, _ ] => intro ; intro_prototypes
-    | _ => idtac
-  end.
-
 Ltac introduce p := first [
   match p with _ => (* Already there, generalize dependent hyps *)
     generalize dependent p ; intros p

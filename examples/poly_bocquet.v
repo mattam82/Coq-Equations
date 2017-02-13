@@ -633,16 +633,16 @@ Module M1.
   Ltac list_add a l :=
     let rec aux a l n :=
         match l with
-          | nil => constr:(n, cons a l)
-          | cons a _ => constr:(n, l)
+          | nil => constr:((n, cons a l))
+          | cons a _ => constr:((n, l))
           | cons ?x ?l =>
-            match aux a l (S n) with (?n, ?l) => constr:(n, cons x l) end
+            match aux a l (S n) with (?n, ?l) => constr:((n, cons x l)) end
         end in
     aux a l 0.
 
   Ltac vector_of_list l :=
     match l with
-      | nil => constr:Vector.nil
+      | nil => constr:(Vector.nil)
       | cons ?x ?xs => constr:(Vector.cons x xs)
     end.
   (* end hide *)
@@ -655,21 +655,21 @@ Module M1.
   (** ** 2.1.c *)
   Ltac read_formula f l :=
     match f with
-      | true => constr:(@f_const nat true, l)
-      | false => constr:(@f_const nat false, l)
+      | true => constr:((@f_const nat true, l))
+      | false => constr:((@f_const nat false, l))
       | orb ?x ?y => match read_formula x l with (?x', ?l') =>
-                    match read_formula y l' with (?y', ?l'') => constr:(f_or x' y', l'')
+                    match read_formula y l' with (?y', ?l'') => constr:((f_or x' y', l''))
                     end end
       | andb ?x ?y => match read_formula x l with (?x', ?l') =>
-                     match read_formula y l' with (?y', ?l'') => constr:(f_and x' y', l'')
+                     match read_formula y l' with (?y', ?l'') => constr:((f_and x' y', l''))
                      end end
-      | negb ?x => match read_formula x l with (?x', ?l') => constr:(f_not x', l') end
-      | _ => match list_add f l with (?n, ?l') => constr:(f_var n, l') end
+      | negb ?x => match read_formula x l with (?x', ?l') => constr:((f_not x', l')) end
+      | _ => match list_add f l with (?n, ?l') => constr:((f_var n, l')) end
     end.
 
   Ltac read_formulas x y :=
     match read_formula x (@nil bool) with (?x', ?l) =>
-    match read_formula y l with (?y', ?l') => constr:((x', y'), l')
+    match read_formula y l with (?y', ?l') => constr:(((x', y'), l'))
     end end.
 
   (** La tactique finale.

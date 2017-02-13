@@ -8,9 +8,9 @@ Inductive Tuple : forall n, TupleT n -> Type :=
   nil : Tuple _ nilT
 | cons {n A} (x : A) (F : A -> TupleT n) : Tuple _ (F x) -> Tuple _ (consT A F).
 
-Inductive TupleMap : forall n, TupleT n -> TupleT n -> Type :=
+Inductive TupleMap@{i j} : forall n, TupleT n -> TupleT n -> Type@{j} :=
   tmNil : TupleMap _ nilT nilT
-| tmCons {n} {A B} (F : A -> TupleT n) (G : B -> TupleT n)
+| tmCons {n} {A B : Type@{i}} (F : A -> TupleT n) (G : B -> TupleT n)
   : (forall x, sigT (TupleMap _ (F x) ∘ G)) -> TupleMap _ (consT A F) (consT B G).
 
 Derive Signature for TupleMap.

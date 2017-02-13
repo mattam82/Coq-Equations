@@ -71,10 +71,6 @@ Equations(nocomp) nth {A} {n} (v : Vector.t A n) (f : fin n) : A :=
 nth (vcons a n v) fz := a ;
 nth (vcons a n v) (fs n f) := nth v f.
 
-Goal ∀ (A : Type) (n : nat) (a : A) (H : vector A n), nth (vcons a H) (fz) = a.
-  intros. funind (nth (vcons a H) fz) nfz.
-Qed.
-
 Equations(nocomp) tabulate {A} {n} (f : fin n -> A) : vector A n :=
 tabulate {n:=O} f := vnil ;
 tabulate {n:=(S n)} f := vcons (f fz) (tabulate (f ∘ fs)).

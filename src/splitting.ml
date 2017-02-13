@@ -68,7 +68,7 @@ let term_of_tree status isevar env (i, delta, ty) ann tree =
 	let ty' = it_mkProd_or_LetIn ty ctx in
 	let let_ty' = mkLambda_or_LetIn split (lift 1 ty') in
         let evm, term = new_evar env evm
-            ~src:(dummy_loc, QuestionMark (Define true)) let_ty' in
+            ~src:(dummy_loc, QuestionMark (Define false)) let_ty' in
 	let ev = fst (destEvar term) in
 	  oblevars := Evar.Set.add ev !oblevars;
 	  evm, term, ty'

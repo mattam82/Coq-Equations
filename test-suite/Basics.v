@@ -174,7 +174,6 @@ Import Vector.
 (* End unzip_dec_def. *)
 Section foo.
   Context {A B} `{EqDec A} `{EqDec B}.
-  Let eos := the_end_of_the_section.
 
   Equations unzip_dec {n} (v : vector (A * B) n) : vector A n * vector B n :=
   unzip_dec v by rec (signature_pack v) (@vector_subterm (A * B)) :=
