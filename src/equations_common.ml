@@ -48,7 +48,7 @@ let id x = x
 
 (* Debugging infrastructure. *)
 
-let debug = true
+let debug = false
 
 let check_term env evd c t =
   Typing.check env (ref evd) c t

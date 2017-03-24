@@ -74,6 +74,7 @@ type splitting =
 and where_clause =
   { where_id : identifier;
     where_path : path;
+    where_orig : path;
     where_nctx : named_context;
     where_prob : context_map;
     where_arity : types; (* In nctx + pi1 prob *)
@@ -926,7 +927,10 @@ let pr_splitting env ?(verbose=false) split =
 	      aux s)
   in aux split
 
-let ppsplit env s =
+let pp s = pp_with !Pp_control.deep_ft s
+
+let ppsplit s =
+  let env = Global.env () in
   pp (pr_splitting env s)
     
 let subst_matches_constr k s c = 
@@ -1127,7 +1131,6 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 	      Some (Compute (prob, [], ty, REmpty (get_var loc i s)))
 
 	    | Rec (term, rel, name, spl) ->
-              (* let term, _ = interp_constr_in_rhs env ctx evars data None s lets term in *)
                let name =
                  match name with Some (loc, id) -> id
                                | None -> pi1 data
@@ -1411,6 +1414,7 @@ and interp_wheres env ctx evars path data s lets w =
     let nadecl = (id, Some (substl inst term), ty) in
     let covering =
       {where_id = id; where_path = path;
+       where_orig = path;
        where_nctx = nactx; where_prob = problem;
        where_arity = arity;
        where_term = term; where_type = ty;

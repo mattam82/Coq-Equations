@@ -116,19 +116,17 @@ let term_of_tree status isevar env0 tree =
              let evm, c', ty' = aux env evm where_splitting in
              let inst = List.map pi1 where_nctx in
              (** In de Bruijn context *)
-             let cdb = subst_vars inst c' in
              let tydb = subst_vars inst ty' in
              let evm, c', ty' =
                match kind_of_term where_term with
-               | Evar (ev, _) -> 
+               | Evar (ev, _) ->
                  let term' = mkLetIn (Name (id_of_string "prog"), c', ty', lift 1 ty') in
                  let evm, term = helper_evar evm ev env term' (dummy_loc, QuestionMark (Define false)) in
                  let ev = fst (destEvar term) in
                   oblevars := Evar.Map.add ev (List.length where_nctx) !oblevars;
                   helpers := (ev, 0) :: !helpers;
                   evm, subst_vars inst term, tydb
-               | _ -> (* Already defined, we're looking at an unfold split, ignore *)
-                  evm, cdb, tydb
+               | _ -> assert(false)
              in
              (evm, (Name where_id, Some c', ty') :: ctx))
            where (evm,ctx)

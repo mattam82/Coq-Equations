@@ -121,6 +121,7 @@ type splitting =
 and where_clause =
   { where_id : identifier;
     where_path : path;
+    where_orig : path;
     where_nctx : named_context;
     where_prob : context_map;
     where_arity : types; (* In nctx + pi1 prob *)
@@ -147,7 +148,7 @@ val pr_path : Evd.evar_map -> Evd.evar list -> Pp.std_ppcmds
 val eq_path : Evar.t list -> Evar.t list -> bool
 
 val pr_splitting : env -> ?verbose:bool -> splitting -> Pp.std_ppcmds
-val ppsplit : env -> splitting -> unit
+val ppsplit : splitting -> unit
 
 (** Covering computation *)
 

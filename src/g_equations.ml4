@@ -137,10 +137,17 @@ TACTIC EXTEND curry
 [ "curry" hyp(id) ] -> [ 
   Proofview.V82.tactic 
     (fun gl ->
-      match curry_hyp (pf_env gl) (project gl) id (pf_get_hyp_typ gl id) with
-      | Some (prf, typ) -> 
-	 (tclTHENFIRST (Proofview.V82.of_tactic (assert_before_replacing id typ))
-		       (Tacmach.refine_no_check prf)) gl
+      let (na, body, ty) = pf_get_hyp gl id in
+      match curry_hyp (pf_env gl) (project gl) id ty with
+      | Some (prf, typ) ->
+         (match body with
+          | Some b ->
+             let newprf = Vars.replace_vars [(id,b)] prf in
+             tclTHEN (clear [id]) (to82 (Tactics.letin_tac None (Name id) newprf (Some typ) nowhere))
+                     gl
+          | None ->
+	     (tclTHENFIRST (Proofview.V82.of_tactic (assert_before_replacing id typ))
+		           (Tacmach.refine_no_check prf)) gl)
       | None -> tclFAIL 0 (str"No currying to do in " ++ pr_id id) gl) ]
 | ["curry"] -> [ 
     Proofview.Goal.nf_enter (fun gl ->

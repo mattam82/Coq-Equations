@@ -81,22 +81,44 @@ Module RoseTree.
     Next Obligation.
       intros. simpl in *. red. simpl. omega.
     Defined.
+      
+    Equations(nocomp) elements_def (r : t) : list A :=
+    elements_def (leaf a) := [a];
+    elements_def (node l) := concat (List.map elements l).
+    Lemma elements_equation (r : t) : elements r = elements_def r.
+    Proof.
+      funelim (elements r); simp elements_def.
+      now rewrite list_map_size_spec.
+    Qed.
+
+    Lemma FixWf_unfold_step : 
+      ∀ (A : Type) (R : Relation_Definitions.relation A) (WF : WellFounded R) (P : A → Type)
+        (step : ∀ x : A, (∀ y : A, R y x → P y) → P x) (x : A)
+        (step' : ∀ y : A, R y x → P y),
+        step' = (λ (y : A) (_ : R y x), FixWf P step y) ->
+        FixWf P step x = step x step'.
+    Proof. intros. rewrite FixWf_unfold, H. reflexivity. Qed.
+    
+    Definition hidebody {A : Type} {a : A} := a.
+    Ltac hidebody H :=
+      match goal with
+        [ H := ?b |- _ ] => change (@hidebody _ b) in (value of H)
+      end.
+
+    Ltac unfold_FixWf ::=
+      match goal with
+        |- appcontext [ @FixWf ?A ?R ?WF ?P ?f ?x ] =>
+        let step := fresh in set(step := fun y (_ : R y x) => @FixWf A R WF P f y) in *;
+                             rewrite (@FixWf_unfold_step A R WF P f x step); [hidebody step|reflexivity]
+
+      end.
 
     (** To solve measure subgoals *)
-    (* Hint Extern 4 (_ < _) => abstract (simpl; omega) : rec_decision. *)
+    Hint Extern 4 (_ < _) => abstract (simpl; omega) : rec_decision.
+    Hint Extern 4 (MR lt _ _ _) => abstract (red; simpl in *; omega) : rec_decision.
 
-    (* Equations elements' (r : t) : list A := *)
-    (* elements' l by rec r (MR lt size) := *)
-    (* elements' (leaf a) := [a]; *)
-    (* elements' (node l) := fn l _ *)
-
-    (* where fn (x : list t) (H : list_size size x < size (node l)) : list A := *)
-    (* fn nil _ := nil; *)
-    (* fn (cons x xs) _ := elements' x. *)
-
-(* Nested rec *)
-
-    Equations(noind) elements' (r : t) : list A :=
+(* Nested rec *) 
+    Equations(nocomp) elements' (r : t) : list A :=
     elements' l by rec r (MR lt size) :=
     elements' (leaf a) := [a];
     elements' (node l) := fn l _
@@ -107,26 +129,25 @@ Module RoseTree.
     fn (cons x xs) _ := elements' x ++ fn xs _.
 
     Next Obligation.
-      apply elements'. red.
-      intros. simpl in *. abstract omega.
+      abstract (simpl; omega).
     Defined.
 
-    Next Obligation.
-      intros. simpl in *. abstract omega.
-    Defined.
-    Next Obligation.
-      intros. red. simpl in *. abstract omega.
-    Defined.
+    Equations(nocomp) elements'_def (r : t) : list A :=
+    elements'_def (leaf a) := [a];
+    elements'_def (node l) := concat (List.map elements' l).
 
-    Equations(nocomp) elements_def (r : t) : list A :=
-    elements_def (leaf a) := [a];
-    elements_def (node l) := concat (List.map elements l).
-
-    Lemma elements_equation (r : t) : elements r = elements_def r.
+    Lemma elements'_equation (r : t) : elements' r = elements'_def r.
     Proof.
-      funelim (elements r); simp elements_def.
-      now rewrite list_map_size_spec.
-    Qed.
+      pose (fun_elim (f:=elements')).
+      apply (p (fun r f => f = elements'_def r) (fun l x H r => r = concat (List.map elements' x))); clear p;
+        simp elements'_def.
+
+      intros. simpl. f_equal.
+      (** Needs missing IH on nested recursive call *)
+      admit.
+    Admitted.
+
+
   End roserec.
   Arguments t : clear implicits.
 

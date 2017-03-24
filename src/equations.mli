@@ -33,10 +33,20 @@ val simp_eqns_in :
 val autorewrites : string -> Proof_type.tactic
 val autorewrite_one : string -> Proofview.V82.tac
 
+module PathMap : Map.S with type key = Covering.path
+
 type term_info = {
   base_id : string;
   decl_kind : Decl_kinds.definition_kind;
-  helpers_info : (existential_key * int * identifier) list;
+  helpers_info : (existential_key * int * identifier) list
+}
+
+type where_map = constr Evar.Map.t
+
+type ind_info = {
+ term_info : term_info;
+ pathmap : (Names.Id.t * Constr.t list) PathMap.t; (* path -> inductive name + parameters (de Bruijn) *)
+ wheremap : where_map;
 }
 
 (** Generation of equations and inductive graph *)
@@ -50,11 +60,11 @@ val find_helper_arg :
   term_info -> constr -> 'a array -> existential_key * 'a
 val find_splitting_var : pat list -> int -> constr list -> Id.t
 val intros_reducing : Proof_type.tactic
-val aux_ind_fun : term_info -> int -> splitting -> Proof_type.tactic
+val aux_ind_fun : ind_info -> int -> splitting option -> splitting -> Proof_type.tactic
 val ind_fun_tac :
   rec_type option ->
   constr ->
-  term_info -> Id.t -> splitting -> 'a -> Proof_type.tactic
+  ind_info -> Id.t -> splitting -> splitting option -> Proof_type.tactic
 val subst_rec_split : Environ.env -> Evd.evar_map ->
                       constr ->
   bool ->
@@ -81,7 +91,7 @@ val ind_elim_tac :
 val build_equations :
   bool (* with_ind *) -> env -> Evd.evar_map -> Id.t ->
   term_info -> rel_context -> rec_type option -> types ->
-  constant -> constr -> ?alias:constr * constr * splitting ->
+  constant -> constr -> ?alias:(constr * constr * splitting * where_map) ->
   context_map -> splitting -> unit
 
 
@@ -103,10 +113,14 @@ val simpl_of : constant list -> (unit -> unit) * (unit -> unit)
 
 val prove_unfolding_lemma :
   term_info ->
+  constr Evar.Map.t ->
   Syntax.logical_rec ->
   constant ->
   constant ->
-  splitting -> Proof_type.goal Evd.sigma -> Proof_type.goal list Evd.sigma
+  splitting -> splitting ->
+  Id.Set.t ref ->
+  Proof_type.goal Evd.sigma ->
+  Proof_type.goal list Evd.sigma
 
 val update_split : Environ.env ->
   Evd.evar_map ref ->
@@ -114,7 +128,7 @@ val update_split : Environ.env ->
   ((Id.t -> constr) -> constr -> constr) ->
   constr ->
   context_map ->
-  Id.t -> splitting -> splitting
+  Id.t -> splitting -> splitting * constr Evar.Map.t
 
 val make_ref : string list -> string -> Globnames.global_reference
 val fix_proto_ref : unit -> constant
