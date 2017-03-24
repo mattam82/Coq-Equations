@@ -91,28 +91,6 @@ Module RoseTree.
       now rewrite list_map_size_spec.
     Qed.
 
-    Lemma FixWf_unfold_step : 
-      ∀ (A : Type) (R : Relation_Definitions.relation A) (WF : WellFounded R) (P : A → Type)
-        (step : ∀ x : A, (∀ y : A, R y x → P y) → P x) (x : A)
-        (step' : ∀ y : A, R y x → P y),
-        step' = (λ (y : A) (_ : R y x), FixWf P step y) ->
-        FixWf P step x = step x step'.
-    Proof. intros. rewrite FixWf_unfold, H. reflexivity. Qed.
-    
-    Definition hidebody {A : Type} {a : A} := a.
-    Ltac hidebody H :=
-      match goal with
-        [ H := ?b |- _ ] => change (@hidebody _ b) in (value of H)
-      end.
-
-    Ltac unfold_FixWf ::=
-      match goal with
-        |- appcontext [ @FixWf ?A ?R ?WF ?P ?f ?x ] =>
-        let step := fresh in set(step := fun y (_ : R y x) => @FixWf A R WF P f y) in *;
-                             rewrite (@FixWf_unfold_step A R WF P f x step); [hidebody step|reflexivity]
-
-      end.
-
     (** To solve measure subgoals *)
     Hint Extern 4 (_ < _) => abstract (simpl; omega) : rec_decision.
     Hint Extern 4 (MR lt _ _ _) => abstract (red; simpl in *; omega) : rec_decision.

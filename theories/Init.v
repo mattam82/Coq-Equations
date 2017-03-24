@@ -14,6 +14,15 @@ Declare ML Module "equations_plugin".
 (** A marker for fixpoint prototypes in the context *)
 Definition fixproto := tt.
 
+(** A constant to avoid displaying large let-defined terms
+    in the context. *)
+Definition hidebody {A : Type} {a : A} := a.
+
+Ltac hidebody H :=
+  match goal with
+    [ H := ?b |- _ ] => change (@hidebody _ b) in (value of H)
+  end.
+
 Ltac destruct_rec_calls ::=
   match goal with
     | [ H : let _ := fixproto in _ |- _ ] => red in H; destruct_calls H ; clear H

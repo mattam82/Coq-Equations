@@ -46,11 +46,22 @@ Qed.
 
 Hint Rewrite @FixWf_unfold : Recursors.
 
+Lemma FixWf_unfold_step : 
+  ∀ (A : Type) (R : Relation_Definitions.relation A) (WF : WellFounded R) (P : A → Type)
+    (step : ∀ x : A, (∀ y : A, R y x → P y) → P x) (x : A)
+    (step' : ∀ y : A, R y x → P y),
+    step' = (λ (y : A) (_ : R y x), FixWf P step y) ->
+    FixWf P step x = step x step'.
+Proof. intros. rewrite FixWf_unfold, H. reflexivity. Qed.
+
+Hint Rewrite @FixWf_unfold_step : Recursors.
+
 Ltac unfold_FixWf :=
   match goal with
     |- appcontext [ @FixWf ?A ?R ?WF ?P ?f ?x ] =>
-      rewrite (@FixWf_unfold A R WF P f);
-        let step := fresh in set(step := fun y (_ : R y x) => @FixWf A R WF P f y) in *
+    let step := fresh in
+    set(step := fun y (_ : R y x) => @FixWf A R WF P f y) in *;
+    rewrite (@FixWf_unfold_step A R WF P f x step); [hidebody step|reflexivity]
   end.
 
 Ltac unfold_recursor := unfold_FixWf.
