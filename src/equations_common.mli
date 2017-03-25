@@ -238,6 +238,7 @@ val coq_inacc : Term.constr lazy_t
 val coq_block : Term.constr lazy_t
 val coq_hide : Term.constr lazy_t
 val coq_add_pattern : Term.constr lazy_t
+val coq_end_of_section_id : Names.Id.t
 val coq_end_of_section_constr : Term.constr lazy_t
 val coq_end_of_section : Term.constr lazy_t
 val coq_notT : Term.constr lazy_t

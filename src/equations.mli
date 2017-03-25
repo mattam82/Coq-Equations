@@ -20,7 +20,7 @@ val abstract_rec_calls :
   ?do_subst:bool ->
   rec_type option ->
   int ->
-  (constr * constr option * int * constr) list ->
+  (constr * (constr * int list) option * int * constr) list ->
   constr -> rel_context * int * constr
 val below_transparent_state : unit -> transparent_state
 
@@ -60,7 +60,7 @@ val find_helper_arg :
   term_info -> constr -> 'a array -> existential_key * 'a
 val find_splitting_var : pat list -> int -> constr list -> Id.t
 val intros_reducing : Proof_type.tactic
-val aux_ind_fun : ind_info -> int -> splitting option -> splitting -> Proof_type.tactic
+val aux_ind_fun : ind_info -> int -> splitting option -> Id.t list -> splitting -> Proof_type.tactic
 val ind_fun_tac :
   rec_type option ->
   constr ->
@@ -171,16 +171,16 @@ val compute_elim_type :
            Environ.env ->
            Evd.evar_map ref ->
            Syntax.rec_type option ->
-           (Term.constr * Term.constr option * int * Term.constr) list ->
+           (Term.constr * (Term.constr * int list) option * int * Term.constr) list ->
            Names.mutual_inductive ->
            int ->
            (int *
             ('a * 'b * Evar.t list * Context.rel_declaration list *
              Constr.constr * Term.constr list * (Constr.constr * int) list *
              (bool * bool)) *
-            'b * 'c)
+              'c)
            list ->
-           (bool * 'd * 'e) list ->
+           (bool * 'd * 'e * 'f) list ->
            Context.rel_context ->
            Constr.constr -> Term.types -> int * Term.types
 

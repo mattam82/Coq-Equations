@@ -301,6 +301,7 @@ let coq_inacc = lazy (init_constant ["Equations";"DepElim"] "inaccessible_patter
 let coq_block = lazy (init_constant ["Equations";"DepElim"] "block")
 let coq_hide = lazy (init_constant ["Equations";"DepElim"] "hide_pattern")
 let coq_add_pattern = lazy (init_constant ["Equations";"DepElim"] "add_pattern")
+let coq_end_of_section_id = id_of_string "eos"
 let coq_end_of_section_constr = lazy (init_constant ["Equations";"DepElim"] "the_end_of_the_section")
 let coq_end_of_section = lazy (init_constant ["Equations";"DepElim"] "end_of_section")
 

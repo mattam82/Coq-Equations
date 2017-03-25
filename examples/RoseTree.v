@@ -92,23 +92,23 @@ Module RoseTree.
 
     (** To solve measure subgoals *)
     Hint Extern 4 (_ < _) => abstract (simpl; omega) : rec_decision.
-    Hint Extern 4 (MR lt _ _ _) => abstract (red; simpl in *; omega) : rec_decision.
+    Hint Extern 4 (MR _ _ _ _) => abstract (repeat red; simpl in *; omega) : rec_decision.
 
-(* Nested rec *) 
+    (* Nested rec *) 
     Equations(nocomp) elements' (r : t) : list A :=
     elements' l by rec r (MR lt size) :=
     elements' (leaf a) := [a];
-    elements' (node l) := fn l _
+    elements' (node l) := fn l hidebody
 
     where fn (x : list t) (H : list_size size x < size (node l)) : list A :=
     fn x H by rec x (MR lt (list_size size)) :=
     fn nil _ := nil;
-    fn (cons x xs) _ := elements' x ++ fn xs _.
+    fn (cons x xs) _ := elements' x ++ fn xs hidebody.
 
     Next Obligation.
       abstract (simpl; omega).
     Defined.
-
+    
     Equations(nocomp) elements'_def (r : t) : list A :=
     elements'_def (leaf a) := [a];
     elements'_def (node l) := concat (List.map elements' l).
@@ -119,11 +119,8 @@ Module RoseTree.
       apply (p (fun r f => f = elements'_def r) (fun l x H r => r = concat (List.map elements' x))); clear p;
         simp elements'_def.
 
-      intros. simpl. f_equal.
-      (** Needs missing IH on nested recursive call *)
-      admit.
-    Admitted.
-
+      intros. simpl. rewrite fn_unfold_eq in *. f_equal. apply H1.
+    Qed.
 
   End roserec.
   Arguments t : clear implicits.

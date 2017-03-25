@@ -68,28 +68,65 @@ module PathOT =
   end
 
 module PathMap = Map.Make (PathOT)
-   
+
+let head c = fst (decompose_app c)
+
+let constr_of_ident id =
+  Universes.constr_of_global (Nametab.locate (qualid_of_ident id))
+
+let match_arguments l l' =
+  let rec aux i =
+    if i < Array.length l then
+      if eq_constr l.(i) l'.(i) then
+        i :: aux (succ i)
+      else aux (succ i)
+    else []
+  in aux 0
+
+let filter_arguments f l =
+  let rec aux i f l =
+    match f, l with
+    | n :: f', a :: l' ->
+       if i < n then aux (succ i) f l'
+       else if i = n then
+         a :: aux (succ i) f' l'
+       else assert false
+    | n :: f, [] -> assert false
+    | [], _ -> []
+  in aux 0 f l
+
 let abstract_rec_calls ?(do_subst=true) is_rec len protos c =
   let lenprotos = length protos in
   let proto_fs = map (fun (f, _, _, _) -> f) protos in
-  let find_rec_call f =
-    try Some (List.find (fun (f', alias, idx, arity) ->
-      eq_constr (fst (decompose_app f')) f || 
-	(match alias with Some f' -> eq_constr f' f | None -> false)) protos) 
+  let find_rec_call f args =
+    let fm (f', alias, idx, arity) =
+      let f', args' = decompose_app_vect f' in
+      if eq_constr f' f then
+        Some (idx, arity, snd (List.chop (Array.length args') args))
+      else
+	match alias with
+        | Some (f',argsf) ->
+           let f', args' = decompose_app_vect f' in
+           if eq_constr (head f') f then
+             let len = Array.length args' in
+             let left, right = List.chop len args in
+             Some (idx, arity, List.append (filter_arguments argsf left) right)
+           else None
+        | None -> None
+    in
+    try Some (List.find_map fm protos)
     with Not_found -> None
   in
   let find_rec_call f args =
-    match find_rec_call f with
-    | Some (f', _, i, arity) -> 
-	let args' = snd (Array.chop (length (snd (decompose_app f'))) args) in
-	Some (i, arity, args')
+    match find_rec_call f args with
+    | Some (i, arity, args') -> Some (i, arity, args')
     | None -> 
 	match is_rec with
 	| Some (Logical r) when is_rec_call r f ->
            (match r with
            | LogicalDirect _ -> None
            | LogicalProj r -> 
-	     Some (lenprotos - 1, r.comp_app, array_remove_last args))
+	     Some (lenprotos - 1, r.comp_app, List.drop_last args))
 	| _ -> None
   in
   let rec aux n env c =
@@ -104,18 +141,19 @@ let abstract_rec_calls ?(do_subst=true) is_rec len protos c =
 	      (ctx''@ctx, len', c'))
 	    ([],0,[]) args
 	in
-	let args = Array.of_list (List.rev args) in
+	let args = List.rev args in
 	let f' = lift lenctx f' in
 	  (match find_rec_call f' args with
 	  | Some (i, arity, args') ->
-	      let resty = substl (rev (Array.to_list args')) arity in
-	      let result = (Name (id_of_string "recres"), Some (mkApp (f', args)), resty) in
+	      let resty = substl (rev args') arity in
+	      let result = (Name (id_of_string "recres"),
+                            Some (mkApp (f', Array.of_list args)), resty) in
 	      let hypty = mkApp (mkApp (mkRel (i + len + lenctx + 2 + n), 
-				       Array.map (lift 1) args'), [| mkRel 1 |]) 
+				       Array.map (lift 1) (Array.of_list args')), [| mkRel 1 |]) 
 	      in
 	      let hyp = (Name (id_of_string "Hind"), None, hypty) in
 		[hyp;result]@ctx, lenctx + 2, mkRel 2
-	  | None -> (ctx, lenctx, mkApp (f', args)))
+	  | None -> (ctx, lenctx, mkApp (f', Array.of_list args)))
 	    
     | Lambda (na,t,b) ->
 	let ctx',lenctx',b' = aux (succ n) ((na,None,t) :: env) b in
@@ -275,7 +313,7 @@ let map_opt_split f s =
   | None -> None
   | Some s -> f s
 
-let rec aux_ind_fun info chop unfs = function
+let rec aux_ind_fun info chop unfs unfids = function
   | Split ((ctx,pats,_), var, _, splits) ->
      let unfs =
        let unfs = map_opt_split destSplit unfs in
@@ -300,16 +338,16 @@ let rec aux_ind_fun info chop unfs = function
 	  | None -> to82 (simpl_dep_elim_tac ())
 	  | Some s ->
 	      tclTHEN (to82 (simpl_dep_elim_tac ()))
-		(aux_ind_fun info chop (unfs (pred i)) s))
+		(aux_ind_fun info chop (unfs (pred i)) unfids s))
 	  
   | Valid ((ctx, _, _), ty, substc, tac, valid, rest) ->
      observe "valid"
     (tclTHEN (to82 intros)
       (tclTHEN_i tac (fun i -> let _, _, subst, invsubst, split = nth rest (pred i) in
 				 tclTHEN (Lazy.force unfold_add_pattern) 
-				   (aux_ind_fun info chop unfs split))))
+				   (aux_ind_fun info chop unfs unfids split))))
       
-  | RecValid (id, cs) -> aux_ind_fun info chop unfs cs
+  | RecValid (id, cs) -> aux_ind_fun info chop unfs unfids cs
       
   | Refined ((ctx, _, _), refinfo, s) -> 
     let unfs = map_opt_split destRefined unfs in
@@ -323,7 +361,7 @@ let rec aux_ind_fun info chop unfs = function
 	 let id = pf_get_new_id id gl in
 	 tclTHENLIST
 	 [to82 (letin_tac None (Name id) elim None Locusops.allHypsAndConcl); 
-	  Proofview.V82.of_tactic (clear_body [id]); aux_ind_fun info chop unfs s] gl
+	  Proofview.V82.of_tactic (clear_body [id]); aux_ind_fun info chop unfs unfids s] gl
       | _ -> tclFAIL 0 (str"Unexpected refinement goal in functional induction proof") gl
     in
     observe "refine"
@@ -342,8 +380,8 @@ let rec aux_ind_fun info chop unfs = function
     let wheretac = 
       if not (List.is_empty wheres) then
         let wheretac acc s unfs =
-          let where_term, chop, where_nctx = match unfs with
-            | None -> s.where_term, chop, s.where_nctx
+          let where_term, chop, unfids, where_nctx = match unfs with
+            | None -> s.where_term, chop, unfids, s.where_nctx
             | Some w ->
                let assoc, unf, split =
                  try Evar.Map.find (List.hd w.where_path) info.wheremap
@@ -352,13 +390,14 @@ let rec aux_ind_fun info chop unfs = function
                (* msg_debug (str"Unfolded where " ++ str"term: " ++ pr_constr w.where_term ++ *)
                (*              str" type: " ++ pr_constr w.where_type ++ str" assoc " ++ *)
                (*              pr_constr assoc); *)
-               assoc, chop + List.length w.where_nctx, w.where_nctx
+               assoc, chop + List.length w.where_nctx, unf :: unfids, w.where_nctx
           in
           let wheretac =
-            tclTHENLIST [to82 intros;
+            tclTHENLIST [tclTRY (move_hyp coq_end_of_section_id Misctypes.MoveLast);
+                         to82 intros;
                          autorewrite_one (info.term_info.base_id ^ "_where");
                          (aux_ind_fun info chop (Option.map (fun s -> s.where_splitting) unfs)
-                                      s.where_splitting)]
+                                      unfids s.where_splitting)]
           in
           let wherepath, args =
             try PathMap.find s.where_path info.pathmap
@@ -394,11 +433,19 @@ let rec aux_ind_fun info chop unfs = function
        (tclTHENLIST [intros_reducing; wheretac; to82 (find_empty_tac ())])
      | RProgram _ ->
       observe "compute "
-       (tclTHENLIST [intros_reducing; autorewrite_one info.term_info.base_id;
-                     wheretac;
-		     eauto_with_below [info.term_info.base_id]]))
+      (tclTHENLIST
+         [intros_reducing; autorewrite_one info.term_info.base_id;
+          observe "wheretac" wheretac;
+          cstrtac info.term_info;
+          (** Each of the recursive calls result in an assumption. If it
+              is a rec call in a where clause to itself we need to
+              explicitely rewrite with the unfolding lemma (as the where
+              clause induction hypothesis is about the unfolding whereas
+              the term itself mentions the original function. *)
+          tclMAP (fun i -> tclTRY (to82 (Equality.rewriteLR (constr_of_ident i)))) unfids;
+	  eauto_with_below [info.term_info.base_id]]))
 
-  | Mapping (_, s) -> aux_ind_fun info chop unfs s
+  | Mapping (_, s) -> aux_ind_fun info chop unfs unfids s
 
 		 
 let ind_fun_tac is_rec f info fid split unfsplit =
@@ -418,9 +465,9 @@ let ind_fun_tac is_rec f info fid split unfsplit =
 	     in
 	     Proofview.V82.of_tactic
 	       (change_in_hyp None fixprot (n, Locus.InHyp)) gl);
-	   to82 intros; aux_ind_fun info 0 None split])
+	   to82 intros; aux_ind_fun info 0 None [] split])
   else tclCOMPLETE (tclTHENLIST
-      [to82 (set_eos_tac ()); to82 intros; aux_ind_fun info 0 unfsplit split])
+      [to82 (set_eos_tac ()); to82 intros; aux_ind_fun info 0 unfsplit [] split])
 
 let extend_prob decl (ctx, pats, ctx') =
   (decl :: ctx, lift_pats 1 pats, ctx')
@@ -654,7 +701,7 @@ let compute_elim_type env evd is_rec protos k leninds
   if leninds == 1 then List.length newctx', it_mkProd_or_LetIn newarity newctx' else
   let methods, preds = List.chop (List.length newctx - leninds) newctx' in
   let ppred, preds = List.sep_last preds in
-  let newpredfn i (n, b, t) (idx, (f', alias, path, sign, arity, pats, args, (refine, cut)), _, _) =
+  let newpredfn i (n, b, t) (idx, (f', alias, path, sign, arity, pats, args, (refine, cut)), _) =
     if not refine then (n, b, t) else
     let signlen = List.length sign in
     let ctx = (Anonymous, None, arity) :: sign in
@@ -737,7 +784,7 @@ let compute_elim_type env evd is_rec protos k leninds
 	| [] -> assert false
 	| ev :: path -> 
 	   let res = 
-	     list_find_map_i (fun i' (_, (_, _, path', _, _, _, _, _), _, _) ->
+	     list_find_map_i (fun i' (_, (_, _, path', _, _, _, _, _), _) ->
 			      if eq_path path' path then Some (idx + 1 - i')
 			      else None) 1 ind_stmts
 	   in match res with None -> assert false | Some i -> i
@@ -776,9 +823,9 @@ let compute_elim_type env evd is_rec protos k leninds
 			      as they are trivially provable *)
     let rec aux stmts meths n meths' = 
       match stmts, meths with
-      | (true, _, _) :: stmts, decl :: decls ->
+      | (true, _, _, _) :: stmts, decl :: decls ->
 	 aux stmts (subst_telescope mkProp decls) (succ n) meths'
-      | (false, _, _) :: stmts, decl :: decls ->
+      | (false, _, _, _) :: stmts, decl :: decls ->
 	 aux stmts decls n (decl :: meths')
       | [], [] -> n, meths'
       | [], decls -> n, List.rev decls @ meths'
@@ -811,9 +858,8 @@ let pr_where env ctx {where_id; where_nctx; where_prob; where_term;
 let where_instance w =
   List.map (fun w -> w.where_term) w
 
-let constr_of_ident id =
-  Universes.constr_of_global (Nametab.locate (qualid_of_ident id))
-  
+let arguments c = snd (decompose_app_vect c)
+
 let build_equations with_ind env evd id info sign is_rec arity wheremap cst 
     f ?(alias:(constr * Names.Id.t * splitting) option) prob split =
   let rec computations env prob f alias refine = function
@@ -826,7 +872,10 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
         (** nctx; lhs |- nterm *)
         let nterm = substl instc w.where_term in
         let alias =
-          try Some (Evar.Map.find (hd w.where_path) wheremap)
+          try
+            let (f, id, s) = Evar.Map.find (hd w.where_path) wheremap in
+            let args = match_arguments (arguments nterm) (arguments f) in
+            Some ((f, args), id, s)
           with Not_found -> None
         in
         let env' = push_named_context w.where_nctx env in
@@ -910,6 +959,7 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
   in
   let comps =
     let (top, rest) = flatten_comps comps in
+    let alias = match alias with Some (f, id, x) -> Some ((f, []), id, x) | None -> None in
       ((f, alias, [], sign, arity, rev_map pat_constr (pi2 prob), [], (false,false)), top) :: rest
   in
   let protos = map fst comps in
@@ -921,19 +971,19 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
       let alias =
         match alias with
         | None -> None
-        | Some (f, _, _) ->
-           let hd, args = decompose_app f in
-           Some hd
+        | Some (f, _, _) -> Some f
       in
       (f', alias, lenprotos - i, arity))
       1 protos
   in
   let evd = ref evd in    
   let poly = is_polymorphic info in
-  let rec statement i f (ctx, fl, flalias, pats, ty, f', (refine, cut), c) =
-    let hd = match flalias with
-      | Some (f', _, _) -> f'
-      | None -> fl
+  let rec statement i (ctx, fl, flalias, pats, ty, f', (refine, cut), c) =
+    let hd, unf = match flalias with
+      | Some (f', unf, _) -> f', Equality.rewriteLR (constr_of_ident unf)
+      | None -> fl,
+               if eq_constr fl f then of82 (unfold_constr f)
+               else Tacticals.New.tclIDTAC
     in
     let comp = applistc hd pats in
     let body =
@@ -965,31 +1015,27 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
 		 hyps) ctx
           in Some ty
       | REmpty i -> None
-    in (refine, body, cstr)
+    in (refine, unf, body, cstr)
   in
   let statements i ((f', alias, path, sign, arity, pats, args, refine as fs), c) = 
-    let fs, f', unftac = 
+    let fs =
       match alias with
-      | Some (f', unf, split) -> 
-	 (f', None, path, sign, arity, pats, args, refine), f', Equality.rewriteLR (constr_of_ident unf)
-      | None ->
-         let tac =
-           if eq_constr f f' then Proofview.V82.tactic (unfold_constr f)
-           else Tacticals.New.tclIDTAC in
-         fs, f', tac
-    in fs, unftac, map (statement i f') c in
+      | Some ((f',_), unf, split) -> 
+	 (f', None, path, sign, arity, pats, args, refine)
+      | None -> fs
+    in fs, map (statement i) c in
   let stmts = List.map_i statements 0 comps in
   let ind_stmts = List.map_i 
-    (fun i (f, unf, c) -> i, f, unf, List.map_i (fun j x -> j, x) 1 c) 0 stmts 
+    (fun i (f, c) -> i, f, List.map_i (fun j x -> j, x) 1 c) 0 stmts
   in
-  let all_stmts = concat (map (fun (f, unf, c) -> c) stmts) in
+  let all_stmts = concat (map (fun (f, c) -> c) stmts) in
   let fnind_map = ref PathMap.empty in
-  let declare_one_ind (i, (f, alias, path, sign, arity, pats, refs, refine), unf, stmts) = 
+  let declare_one_ind (i, (f, alias, path, sign, arity, pats, refs, refine), stmts) =
     let indid = add_suffix id (if i == 0 then "_ind" else ("_ind_" ^ string_of_int i)) in
     let indapp = List.rev_map (fun x -> mkVar (out_name (pi1 x))) sign in
     let () = fnind_map := PathMap.add path (indid,indapp) !fnind_map in
-    let constructors = List.map_filter (fun (_, (_, _, n)) -> n) stmts in
-    let consnames = List.map_filter (fun (i, (r, _, n)) -> 
+    let constructors = List.map_filter (fun (_, (_, _, _, n)) -> n) stmts in
+    let consnames = List.map_filter (fun (i, (r, _, _, n)) ->
       Option.map (fun _ -> 
 	let suff = (if not r then "_equation_" else "_refinement_") ^ string_of_int i in
 	  add_suffix indid suff) n) stmts
@@ -1101,10 +1147,10 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
 	msg_warning (str "Induction principle could not be proved automatically: " ++ fnl () ++
 		Errors.print e)
   in
-  let proof (j, f, unf, stmts) =
+  let proof (j, f, stmts) =
     let eqns = Array.make (List.length stmts) false in
     let id = if j != 0 then add_suffix id ("_helper_" ^ string_of_int j) else id in
-    let proof (i, (r, c, n)) = 
+    let proof (i, (r, unf, c, n)) =
       let ideq = add_suffix id ("_equation_" ^ string_of_int i) in
       let hook subst gr _ = 
 	if n != None then
@@ -1128,7 +1174,7 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
 	(tclTHENLIST [to82 intros; to82 unf; to82 (solve_equation_tac (ConstRef cst))])
       in
       let env = Global.env () in
-      msg_debug (str"Typing equation " ++ pr_constr_env env !evd c);
+      (* msg_debug (str"Typing equation " ++ pr_constr_env env !evd c); *)
       let evd, _ = Typing.type_of env !evd c in
 	ignore(Obligations.add_definition ~kind:info.decl_kind
 		  ideq c ~tactic:(of82 tac) ~hook:(Lemmas.mk_hook hook)

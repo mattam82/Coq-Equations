@@ -1081,7 +1081,7 @@ let instance_of_pats env evars (ctx : rel_context) (pats : (int * bool) list) =
 let push_rel_context_eos ctx env =
   if named_context env <> [] then
     let env' =
-      push_named (id_of_string "eos", Some (Lazy.force coq_end_of_section_constr), 
+      push_named (coq_end_of_section_id, Some (Lazy.force coq_end_of_section_constr), 
 		 Lazy.force coq_end_of_section) env
     in push_rel_context ctx env'
   else push_rel_context ctx env

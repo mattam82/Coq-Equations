@@ -100,8 +100,7 @@ Proof.
 Qed.
 
 Equations convert_ilist {A : Set} {n m : nat} (p : n = m) (l : ilist A n) : ilist A m :=
-convert_ilist p Nil with p => {
-  | eq_refl := Nil };
+convert_ilist p Nil with p => { | eq_refl := Nil };
 convert_ilist p (Cons a l) with p => | eq_refl := Cons a (convert_ilist eq_refl l).
 
 Lemma convert_ilist_refl {A} (n : nat) (l : ilist A n) : convert_ilist eq_refl l = l.
