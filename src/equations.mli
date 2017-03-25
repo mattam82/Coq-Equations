@@ -41,7 +41,7 @@ type term_info = {
   helpers_info : (existential_key * int * identifier) list
 }
 
-type where_map = constr Evar.Map.t
+type where_map = (constr * Names.Id.t * splitting) Evar.Map.t
 
 type ind_info = {
  term_info : term_info;
@@ -91,7 +91,7 @@ val ind_elim_tac :
 val build_equations :
   bool (* with_ind *) -> env -> Evd.evar_map -> Id.t ->
   term_info -> rel_context -> rec_type option -> types ->
-  constant -> constr -> ?alias:(constr * constr * splitting * where_map) ->
+  where_map -> constant -> constr -> ?alias:(constr * Names.Id.t * splitting) ->
   context_map -> splitting -> unit
 
 
@@ -113,12 +113,11 @@ val simpl_of : constant list -> (unit -> unit) * (unit -> unit)
 
 val prove_unfolding_lemma :
   term_info ->
-  constr Evar.Map.t ->
+  where_map ->
   Syntax.logical_rec ->
   constant ->
   constant ->
   splitting -> splitting ->
-  Id.Set.t ref ->
   Proof_type.goal Evd.sigma ->
   Proof_type.goal list Evd.sigma
 
@@ -128,7 +127,7 @@ val update_split : Environ.env ->
   ((Id.t -> constr) -> constr -> constr) ->
   constr ->
   context_map ->
-  Id.t -> splitting -> splitting * constr Evar.Map.t
+  Id.t -> splitting -> splitting * where_map
 
 val make_ref : string list -> string -> Globnames.global_reference
 val fix_proto_ref : unit -> constant

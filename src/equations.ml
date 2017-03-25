@@ -190,7 +190,7 @@ type term_info = {
   decl_kind: Decl_kinds.definition_kind;
   helpers_info : (existential_key * int * identifier) list }
 
-type where_map = constr Evar.Map.t
+type where_map = (constr * Names.Id.t * splitting) Evar.Map.t
 
 type ind_info = {
   term_info : term_info;
@@ -345,7 +345,7 @@ let rec aux_ind_fun info chop unfs = function
           let where_term, chop, where_nctx = match unfs with
             | None -> s.where_term, chop, s.where_nctx
             | Some w ->
-               let assoc =
+               let assoc, unf, split =
                  try Evar.Map.find (List.hd w.where_path) info.wheremap
                  with Not_found -> assert false
                in
@@ -810,9 +810,12 @@ let pr_where env ctx {where_id; where_nctx; where_prob; where_term;
 
 let where_instance w =
   List.map (fun w -> w.where_term) w
-    
-let build_equations with_ind env evd id info sign is_rec arity cst 
-    f ?(alias:(constr * constr * splitting * constr Evar.Map.t) option) prob split =
+
+let constr_of_ident id =
+  Universes.constr_of_global (Nametab.locate (qualid_of_ident id))
+  
+let build_equations with_ind env evd id info sign is_rec arity wheremap cst 
+    f ?(alias:(constr * Names.Id.t * splitting) option) prob split =
   let rec computations env prob f alias refine = function
     | Compute (lhs, where, ty, c) ->
       let where_comp w =
@@ -822,13 +825,17 @@ let build_equations with_ind env evd id info sign is_rec arity cst
         let instc = List.map mkVar inst in
         (** nctx; lhs |- nterm *)
         let nterm = substl instc w.where_term in
+        let alias =
+          try Some (Evar.Map.find (hd w.where_path) wheremap)
+          with Not_found -> None
+        in
         let env' = push_named_context w.where_nctx env in
         let comps = computations env' w.where_prob nterm None (false,false) w.where_splitting in
         let gencomp (ctx, fl, alias, pats, ty, f, b, c, l) =
           (** ctx' = rctx ++ lhs is a dB context *)
           let lift, ctx' = replace_vars_context inst ctx in
           let ctx' = ctx' @ rctx in
-          ctx', substn_vars lift inst fl, alias, (* FIXME *)
+          ctx', substn_vars lift inst fl, alias,
           pats, substn_vars lift inst ty,
           substn_vars lift inst f, b,
           map_rhs (substn_vars lift inst) (fun x -> x) c, l
@@ -910,7 +917,7 @@ let build_equations with_ind env evd id info sign is_rec arity cst
         if eq_constr f' f then
           match alias with
           | None -> None
-          | Some (f, _, _, _) -> Some f
+          | Some (f, _, _) -> Some f
         else None
       in
       (f', alias, lenprotos - i, arity))
@@ -920,7 +927,7 @@ let build_equations with_ind env evd id info sign is_rec arity cst
   let poly = is_polymorphic info in
   let rec statement i f (ctx, fl, flalias, pats, ty, f', (refine, cut), c) =
     let hd = match flalias with
-      | Some (f', _, _, _) -> f'
+      | Some (f', _, _) -> f'
       | None -> fl
     in
     let comp = applistc hd pats in
@@ -959,8 +966,8 @@ let build_equations with_ind env evd id info sign is_rec arity cst
     let fs, f', unftac = 
       if eq_constr f' f then 
 	match alias with
-	| Some (f', unf, split, _) -> 
-	    (f', path, sign, arity, pats, args, refine), f', Equality.rewriteLR unf
+	| Some (f', unf, split) -> 
+	    (f', path, sign, arity, pats, args, refine), f', Equality.rewriteLR (constr_of_ident unf)
 	| None -> fs, f', Proofview.V82.tactic (unfold_constr f)
       else fs, f', Tacticals.New.tclIDTAC
     in fs, unftac, map (statement i f') c in
@@ -1013,10 +1020,10 @@ let build_equations with_ind env evd id info sign is_rec arity cst
     in
     let indid = add_suffix id "_ind_fun" in
     let args = rel_list 0 (List.length sign) in
-    let f, split, unfsplit, wheremap =
+    let f, split, unfsplit =
       match alias with
-      | Some (f, _, recsplit, where_map) -> f, recsplit, Some split, where_map
-      | None -> f, split, None, Evar.Map.empty
+      | Some (f, _, recsplit) -> f, recsplit, Some split
+      | None -> f, split, None
     in
     let app = applist (f, args) in
     let statement = it_mkProd_or_subst (applist (ind, args @ [app])) sign in
@@ -1104,7 +1111,7 @@ let build_equations with_ind env evd id info sign is_rec arity cst
 	  (* From now on, we don't need the reduction behavior of the constant anymore *)
 	  Typeclasses.set_typeclass_transparency (EvalConstRef cst) false false;
           (match alias with
-           | Some (f, _, _, _) ->
+           | Some (f, _, _) ->
               Global.set_strategy (ConstKey (fst (destConst f))) Conv_oracle.Opaque
            | None -> ());
 	  Global.set_strategy (ConstKey cst) Conv_oracle.Opaque;
@@ -1161,7 +1168,7 @@ let get_proj_eval_ref p =
   | LogicalDirect (loc, id) -> EvalVarRef id
   | LogicalProj r -> EvalConstRef r.comp_proj
 
-let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split where_eqs gl =
+let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split gl =
   let depelim h = depelim_tac h in
   let helpercsts = List.map (fun (_, _, i) -> fst (destConst (global_reference i)))
 			    info.helpers_info in
@@ -1247,7 +1254,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
 	    
     | Compute (_, wheres, _, RProgram _), Compute (_, unfwheres, _, RProgram c) ->
        let wheretac acc w unfw =
-         let assoc =
+         let assoc, id, _ =
            try Evar.Map.find (List.hd unfw.where_path) where_map
            with Not_found -> assert false
          in
@@ -1278,8 +1285,6 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
 	   (* Global.set_strategy (ConstKey funf_cst) Conv_oracle.Opaque; *)
            res
          in
-         let id = pf_get_new_id (add_suffix w.where_id "_unfold_eq") gl in
-         let () = where_eqs := Id.Set.add id !where_eqs in
          let tac =
            let tac =
              of82 (tclTHENLIST [to82 intros; unfolds;
@@ -1367,12 +1372,14 @@ let update_split env evd is_rec cmap f prob id split =
            let () = evd := evm in
            let term' = substl (List.map (fun x -> mkVar (pi1 x)) w.where_nctx) w.where_term in
            let evk = fst (destEvar ev) in
-           let () = where_map := Evar.Map.add evk term' !where_map in
+           let split' = aux env term' w.where_splitting in
+           let id = add_suffix w.where_id "_unfold_eq" in
+           let () = where_map := Evar.Map.add evk (term', id, split') !where_map in
            (* msg_debug (str"At where in update_split, calling recursively with term" ++ *)
            (*              pr_constr w.where_term ++ str " associated to " ++ int (Evar.repr evk)); *)
            { w with where_term = ev;
                     where_path = evk :: List.tl w.where_path;
-                    where_splitting = aux env term' w.where_splitting }
+                    where_splitting = split' }
          in
          Compute (lhs, List.map subst_where wheres, p, q)
     in
@@ -1550,16 +1557,16 @@ let define_by_eqs opts i l t nt eqs =
 	      let fixdecls' = [Name i, Some f, fixprot] in
 		(ctx @ fixdecls', pats, ctx'), ids
 	    in
-	    let split, _ = update_split env evd is_recursive
+	    let split, where_map = update_split env evd is_recursive
                                      cmap f cutprob i split in
 	      build_equations with_ind env !evd i info sign is_recursive arity 
-			      f_cst f norecprob split
+			      where_map f_cst f norecprob split
 	| None ->
 	   let prob = id_subst sign in
-	   let split, _ = update_split env evd is_recursive cmap
+	   let split, where_map = update_split env evd is_recursive cmap
                                     f prob i split in
 	   build_equations with_ind env !evd i info sign is_recursive arity 
-			   f_cst f prob split
+			   where_map f_cst f prob split
 	| Some (Logical r) ->
 	   let prob = id_subst sign in
     (* let () = msg_debug (str"udpdate split" ++ spc () ++ pr_splitting env split) in *)
@@ -1575,24 +1582,23 @@ let define_by_eqs opts i l t nt eqs =
 	      let funf_cst = match gr' with ConstRef c -> c | _ -> assert false in
 	      let funfc = e_new_global evd gr' in
 	      let unfold_split = map_evars_in_split !evd cmap unfold_split in
-              let where_eqs = ref Id.Set.empty in
+	      let unfold_eq_id = add_suffix unfoldi "_eq" in
 	      let hook_eqs subst grunfold _ =
 		Global.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
-		let env = Global.env () in
-		let () = if not poly then evd := (Evd.from_env env) in
-		let grc = e_new_global evd grunfold in
-                let () =
-                  let decl id =
+                let () = (* Declare the subproofs of unfolding for where as rewrite rules *)
+                  let decl _ (_, id, _) =
                     let gr = Nametab.locate_constant (qualid_of_ident id) in
                     let grc = Universes.fresh_global_instance (Global.env()) (ConstRef gr) in
                     Autorewrite.add_rew_rules (info.base_id ^ "_where") [dummy_loc, grc, true, None];
                     Autorewrite.add_rew_rules (info.base_id ^ "_where_rev") [dummy_loc, grc, false, None]
                   in
-                  Id.Set.iter decl !where_eqs
+                  Evar.Map.iter decl where_map
                 in
+		let env = Global.env () in
+		let () = if not poly then evd := (Evd.from_env env) in
 		  build_equations with_ind env !evd i info sign None arity
-				  funf_cst funfc ~alias:(f, grc, split, where_map)
-                                  prob unfold_split
+		                  where_map funf_cst funfc
+                                  ~alias:(f, unfold_eq_id, split) prob unfold_split
 	      in
 	      let evd = ref (Evd.from_env (Global.env ())) in
 	      let stmt = it_mkProd_or_LetIn 
@@ -1601,9 +1607,8 @@ let define_by_eqs opts i l t nt eqs =
 	      in
 	      let tac =
                 prove_unfolding_lemma info where_map r f_cst funf_cst
-                                      split unfold_split where_eqs
+                                      split unfold_split
               in
-	      let unfold_eq_id = add_suffix unfoldi "_eq" in
 	        ignore(Obligations.add_definition ~kind:info.decl_kind
 			 ~hook:(Lemmas.mk_hook hook_eqs) ~reduce:(fun x -> x)
 			 ~implicits:impls unfold_eq_id stmt ~tactic:(of82 tac)
