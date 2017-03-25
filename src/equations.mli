@@ -175,7 +175,7 @@ val compute_elim_type :
            Names.mutual_inductive ->
            int ->
            (int *
-            ('a * Evar.t list * Context.rel_declaration list *
+            ('a * 'b * Evar.t list * Context.rel_declaration list *
              Constr.constr * Term.constr list * (Constr.constr * int) list *
              (bool * bool)) *
             'b * 'c)

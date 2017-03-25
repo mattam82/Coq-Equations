@@ -654,7 +654,7 @@ let compute_elim_type env evd is_rec protos k leninds
   if leninds == 1 then List.length newctx', it_mkProd_or_LetIn newarity newctx' else
   let methods, preds = List.chop (List.length newctx - leninds) newctx' in
   let ppred, preds = List.sep_last preds in
-  let newpredfn i (n, b, t) (idx, (f', path, sign, arity, pats, args, (refine, cut)), _, _) =
+  let newpredfn i (n, b, t) (idx, (f', alias, path, sign, arity, pats, args, (refine, cut)), _, _) =
     if not refine then (n, b, t) else
     let signlen = List.length sign in
     let ctx = (Anonymous, None, arity) :: sign in
@@ -737,7 +737,7 @@ let compute_elim_type env evd is_rec protos k leninds
 	| [] -> assert false
 	| ev :: path -> 
 	   let res = 
-	     list_find_map_i (fun i' (_, (_, path', _, _, _, _, _), _, _) ->
+	     list_find_map_i (fun i' (_, (_, _, path', _, _, _, _, _), _, _) ->
 			      if eq_path path' path then Some (idx + 1 - i')
 			      else None) 1 ind_stmts
 	   in match res with None -> assert false | Some i -> i
@@ -835,7 +835,12 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
           (** ctx' = rctx ++ lhs is a dB context *)
           let lift, ctx' = replace_vars_context inst ctx in
           let ctx' = ctx' @ rctx in
-          ctx', substn_vars lift inst fl, alias,
+          let alias' =
+            match alias with
+            | Some (hd, id, s) -> Some (substn_vars lift inst hd, id, s)
+            | None -> None
+          in
+          ctx', substn_vars lift inst fl, alias',
           pats, substn_vars lift inst ty,
           substn_vars lift inst f, b,
           map_rhs (substn_vars lift inst) (fun x -> x) c, l
@@ -846,7 +851,7 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
         (** ctx' is a dB context for nctx + where_prob *)
         let hd = substn_vars lift inst nterm in
         let arity = substn_vars lift inst w.where_arity in
-        (hd, w.where_orig, ctx', arity,
+        (hd, alias, w.where_orig, ctx', arity,
          rev_map pat_constr (pi2 w.where_prob) (*?*),
          [] (*?*), rest)
       in
@@ -879,7 +884,7 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
 	in
 	[pi1 lhs, f, alias, patsconstrs, info.refined_rettyp, f, (true, true),
 	 RProgram (applist info.refined_app),
-	 Some [fst (info.refined_app), info.refined_path, pi1 info.refined_newprob,
+	 Some [fst (info.refined_app), None, info.refined_path, pi1 info.refined_newprob,
 	       info.refined_newty, refinedpats,
 	       [mapping_constr info.refined_newprob_to_lhs c, info.refined_arg],
 	       computations env info.refined_newprob (fst info.refined_app) None (false, true) cs]]
@@ -894,9 +899,9 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
     let rest = match rest with
       | None -> []
       | Some l ->
-         List.map_append (fun (f, path, ctx, ty, pats, newargs, rest) ->
+         List.map_append (fun (f, alias, path, ctx, ty, pats, newargs, rest) ->
 	  let nextlevel, rest = flatten_comps rest in
-	    ((f, path, ctx, ty, pats, newargs, refine), nextlevel) :: rest) l
+	    ((f, alias, path, ctx, ty, pats, newargs, refine), nextlevel) :: rest) l
     in (ctx, fl, flalias, pats, ty, f, refine, c), rest
   and flatten_comps r =
     fold_right (fun cmp (acc, rest) -> 
@@ -905,20 +910,20 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
   in
   let comps =
     let (top, rest) = flatten_comps comps in
-      ((f, [], sign, arity, rev_map pat_constr (pi2 prob), [], (false,false)), top) :: rest
+      ((f, alias, [], sign, arity, rev_map pat_constr (pi2 prob), [], (false,false)), top) :: rest
   in
   let protos = map fst comps in
   let lenprotos = length protos in
   let protos = 
-    List.map_i (fun i (f', path, sign, arity, pats, args, (refine, cut)) -> 
+    List.map_i (fun i (f', alias, path, sign, arity, pats, args, (refine, cut)) -> 
       let f' = strip_outer_cast f' in
       let f' = if not (refine || cut) then fst (decompose_app f') else f' in
       let alias =
-        if eq_constr f' f then
-          match alias with
-          | None -> None
-          | Some (f, _, _) -> Some f
-        else None
+        match alias with
+        | None -> None
+        | Some (f, _, _) ->
+           let hd, args = decompose_app f in
+           Some hd
       in
       (f', alias, lenprotos - i, arity))
       1 protos
@@ -962,14 +967,16 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
       | REmpty i -> None
     in (refine, body, cstr)
   in
-  let statements i ((f', path, sign, arity, pats, args, refine as fs), c) = 
+  let statements i ((f', alias, path, sign, arity, pats, args, refine as fs), c) = 
     let fs, f', unftac = 
-      if eq_constr f' f then 
-	match alias with
-	| Some (f', unf, split) -> 
-	    (f', path, sign, arity, pats, args, refine), f', Equality.rewriteLR (constr_of_ident unf)
-	| None -> fs, f', Proofview.V82.tactic (unfold_constr f)
-      else fs, f', Tacticals.New.tclIDTAC
+      match alias with
+      | Some (f', unf, split) -> 
+	 (f', None, path, sign, arity, pats, args, refine), f', Equality.rewriteLR (constr_of_ident unf)
+      | None ->
+         let tac =
+           if eq_constr f f' then Proofview.V82.tactic (unfold_constr f)
+           else Tacticals.New.tclIDTAC in
+         fs, f', tac
     in fs, unftac, map (statement i f') c in
   let stmts = List.map_i statements 0 comps in
   let ind_stmts = List.map_i 
@@ -977,7 +984,7 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
   in
   let all_stmts = concat (map (fun (f, unf, c) -> c) stmts) in
   let fnind_map = ref PathMap.empty in
-  let declare_one_ind (i, (f, path, sign, arity, pats, refs, refine), unf, stmts) = 
+  let declare_one_ind (i, (f, alias, path, sign, arity, pats, refs, refine), unf, stmts) = 
     let indid = add_suffix id (if i == 0 then "_ind" else ("_ind_" ^ string_of_int i)) in
     let indapp = List.rev_map (fun x -> mkVar (out_name (pi1 x))) sign in
     let () = fnind_map := PathMap.add path (indid,indapp) !fnind_map in
@@ -1121,7 +1128,7 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
 	(tclTHENLIST [to82 intros; to82 unf; to82 (solve_equation_tac (ConstRef cst))])
       in
       let env = Global.env () in
-      (* msg_debug (str"Typing equation " ++ pr_constr_env env !evd c); *)
+      msg_debug (str"Typing equation " ++ pr_constr_env env !evd c);
       let evd, _ = Typing.type_of env !evd c in
 	ignore(Obligations.add_definition ~kind:info.decl_kind
 		  ideq c ~tactic:(of82 tac) ~hook:(Lemmas.mk_hook hook)

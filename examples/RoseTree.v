@@ -72,7 +72,6 @@ Module RoseTree.
       Defined.
     End elimtree.
 
-    (* TODO where clauses *)
     Equations(nocomp) elements (r : t) : list A :=
     elements l by rec r (MR lt size) :=
     elements (leaf a) := [a];
