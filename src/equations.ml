@@ -76,11 +76,13 @@ let constr_of_ident id =
 
 let match_arguments l l' =
   let rec aux i =
-    if i < Array.length l then
-      if eq_constr l.(i) l'.(i) then
-        i :: aux (succ i)
+    if i < Array.length l' then
+      if i < Array.length l then
+        if eq_constr l.(i) l'.(i) then
+          i :: aux (succ i)
+        else aux (succ i)
       else aux (succ i)
-    else []
+    else [i]
   in aux 0
 
 let filter_arguments f l =
@@ -91,26 +93,23 @@ let filter_arguments f l =
        else if i = n then
          a :: aux (succ i) f' l'
        else assert false
-    | n :: f, [] -> assert false
-    | [], _ -> []
+    | _, _ -> l
   in aux 0 f l
 
 let abstract_rec_calls ?(do_subst=true) is_rec len protos c =
   let lenprotos = length protos in
-  let proto_fs = map (fun (f, _, _, _) -> f) protos in
+  let proto_fs = map (fun ((f,args), _, _, _) -> f) protos in
   let find_rec_call f args =
-    let fm (f', alias, idx, arity) =
+    let fm ((f',filter), alias, idx, arity) =
       let f', args' = decompose_app_vect f' in
       if eq_constr f' f then
-        Some (idx, arity, snd (List.chop (Array.length args') args))
+        Some (idx, arity, filter_arguments filter args)
       else
 	match alias with
         | Some (f',argsf) ->
            let f', args' = decompose_app_vect f' in
            if eq_constr (head f') f then
-             let len = Array.length args' in
-             let left, right = List.chop len args in
-             Some (idx, arity, List.append (filter_arguments argsf left) right)
+             Some (idx, arity, filter_arguments argsf args)
            else None
         | None -> None
     in
@@ -899,8 +898,16 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
         let ctx' = ctx' @ rctx in
         (** ctx' is a dB context for nctx + where_prob *)
         let hd = substn_vars lift inst nterm in
+        let args =
+          let rec aux i a =
+            match a with
+            | [] -> []
+            | hd :: tl -> if isRel hd then i :: aux (succ i) tl
+                         else aux (succ i) tl
+          in aux 0 (Array.to_list (arguments hd))
+        in
         let arity = substn_vars lift inst w.where_arity in
-        (hd, alias, w.where_orig, ctx', arity,
+        ((hd, args), alias, w.where_orig, ctx', arity,
          rev_map pat_constr (pi2 w.where_prob) (*?*),
          [] (*?*), rest)
       in
@@ -931,9 +938,10 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
 	let refinedpats = rev_map pat_constr
 	   (pi2 (compose_subst env ~sigma:evd info.refined_newprob_to_lhs s))
 	in
+        let filter = [Array.length (arguments (fst info.refined_app))] in
 	[pi1 lhs, f, alias, patsconstrs, info.refined_rettyp, f, (true, true),
 	 RProgram (applist info.refined_app),
-	 Some [fst (info.refined_app), None, info.refined_path, pi1 info.refined_newprob,
+	 Some [(fst (info.refined_app), filter), None, info.refined_path, pi1 info.refined_newprob,
 	       info.refined_newty, refinedpats,
 	       [mapping_constr info.refined_newprob_to_lhs c, info.refined_arg],
 	       computations env info.refined_newprob (fst info.refined_app) None (false, true) cs]]
@@ -960,25 +968,25 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
   let comps =
     let (top, rest) = flatten_comps comps in
     let alias = match alias with Some (f, id, x) -> Some ((f, []), id, x) | None -> None in
-      ((f, alias, [], sign, arity, rev_map pat_constr (pi2 prob), [], (false,false)), top) :: rest
+      (((f,[]), alias, [], sign, arity, rev_map pat_constr (pi2 prob), [], (false,false)), top) :: rest
   in
   let protos = map fst comps in
   let lenprotos = length protos in
   let protos = 
-    List.map_i (fun i (f', alias, path, sign, arity, pats, args, (refine, cut)) -> 
+    List.map_i (fun i ((f',filterf'), alias, path, sign, arity, pats, args, (refine, cut)) ->
       let f' = strip_outer_cast f' in
-      let f' = if not (refine || cut) then fst (decompose_app f') else f' in
+      (* let f' = if not (refine || cut) then fst (decompose_app f') else f' in *)
       let alias =
         match alias with
         | None -> None
         | Some (f, _, _) -> Some f
       in
-      (f', alias, lenprotos - i, arity))
+      ((f',filterf'), alias, lenprotos - i, arity))
       1 protos
   in
   let evd = ref evd in    
   let poly = is_polymorphic info in
-  let rec statement i (ctx, fl, flalias, pats, ty, f', (refine, cut), c) =
+  let rec statement i filter (ctx, fl, flalias, pats, ty, f', (refine, cut), c) =
     let hd, unf = match flalias with
       | Some (f', unf, _) -> f', Equality.rewriteLR (constr_of_ident unf)
       | None -> fl,
@@ -1006,7 +1014,7 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
             if cut then f 
             else 
               let fn, args = decompose_app (strip_outer_cast fl) in
-              applistc f (lift_constrs hypslen args)
+              applistc f (filter_arguments filter (lift_constrs hypslen args))
           in
           let ty = 
 	    it_mkProd_or_clear
@@ -1018,12 +1026,12 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
     in (refine, unf, body, cstr)
   in
   let statements i ((f', alias, path, sign, arity, pats, args, refine as fs), c) = 
-    let fs =
+    let fs, filter =
       match alias with
-      | Some ((f',_), unf, split) -> 
-	 (f', None, path, sign, arity, pats, args, refine)
-      | None -> fs
-    in fs, map (statement i) c in
+      | Some (f', unf, split) ->
+	 (f', None, path, sign, arity, pats, args, refine), snd f'
+      | None -> fs, snd f'
+    in fs, map (statement i filter) c in
   let stmts = List.map_i statements 0 comps in
   let ind_stmts = List.map_i 
     (fun i (f, c) -> i, f, List.map_i (fun j x -> j, x) 1 c) 0 stmts

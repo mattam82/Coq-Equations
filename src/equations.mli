@@ -20,7 +20,7 @@ val abstract_rec_calls :
   ?do_subst:bool ->
   rec_type option ->
   int ->
-  (constr * (constr * int list) option * int * constr) list ->
+  ((constr * int list) * (constr * int list) option * int * constr) list ->
   constr -> rel_context * int * constr
 val below_transparent_state : unit -> transparent_state
 
@@ -171,7 +171,7 @@ val compute_elim_type :
            Environ.env ->
            Evd.evar_map ref ->
            Syntax.rec_type option ->
-           (Term.constr * (Term.constr * int list) option * int * Term.constr) list ->
+           ((Term.constr * int list) * (Term.constr * int list) option * int * Term.constr) list ->
            Names.mutual_inductive ->
            int ->
            (int *

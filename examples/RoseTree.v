@@ -108,7 +108,7 @@ Module RoseTree.
     Next Obligation.
       abstract (simpl; omega).
     Defined.
-    
+
     Equations(nocomp) elements'_def (r : t) : list A :=
     elements'_def (leaf a) := [a];
     elements'_def (node l) := concat (List.map elements' l).
@@ -116,12 +116,11 @@ Module RoseTree.
     Lemma elements'_equation (r : t) : elements' r = elements'_def r.
     Proof.
       pose (fun_elim (f:=elements')).
-      apply (p (fun r f => f = elements'_def r) (fun l x H r => r = concat (List.map elements' x))); clear p;
-        simp elements'_def.
-
-      intros. simpl. rewrite fn_unfold_eq in *. f_equal. apply H1.
+      apply (p (fun r f => f = elements'_def r) (fun l x H r => r = concat (List.map elements' x)));
+        clear p; intros; simp elements'_def.
+      simpl. f_equal. apply H1.
     Qed.
-
+    
   End roserec.
   Arguments t : clear implicits.
 
