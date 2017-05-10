@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2015 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -259,6 +259,11 @@ let derive_subterm env sigma ind =
 	  ~kind:(Decl_kinds.Global,poly,Decl_kinds.Instance) 
 	  ~hook:(Lemmas.mk_hook hook) ~tactic:(solve_subterm_tac ()) obls
   in ignore(declare_ind ())
+
+let () =
+  Derive.(register_derive
+            { derive_name = "Subterm";
+              derive_fn = make_derive_ind derive_subterm })
     
 let derive_below env sigma (ind,univ) =
   let evd = ref sigma in
@@ -383,3 +388,7 @@ let derive_below env sigma (ind,univ) =
     ignore(declare_constant id bodyb None poly evd
 	     (Decl_kinds.IsDefinition Decl_kinds.Definition))
     
+let () =
+  Derive.(register_derive
+            { derive_name = "Below";
+              derive_fn = make_derive_ind derive_below })

@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2015 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -16,6 +16,15 @@ Global Unset Shrink Obligations.
 
 (** A marker for fixpoint prototypes in the context *)
 Definition fixproto := tt.
+
+(** A constant to avoid displaying large let-defined terms
+    in the context. *)
+Definition hidebody {A : Type} {a : A} := a.
+
+Ltac hidebody H :=
+  match goal with
+    [ H := ?b |- _ ] => change (@hidebody _ b) in (value of H)
+  end.
 
 Ltac destruct_rec_calls ::=
   match goal with

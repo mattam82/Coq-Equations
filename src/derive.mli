@@ -1,0 +1,27 @@
+(**********************************************************************)
+(* Equations                                                          *)
+(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(**********************************************************************)
+(* This file is distributed under the terms of the                    *)
+(* GNU Lesser General Public License Version 2.1                      *)
+(**********************************************************************)
+
+type derive_record =
+  { derive_name : string;
+    derive_fn : Globnames.global_reference -> unit }
+
+(** When the Derive expects a constr. *)                                 
+val make_derive :
+  (Environ.env -> Evd.evar_map -> Constr.constr -> unit) ->
+  Globnames.global_reference -> unit
+
+(** When the Derive works on inductive types only. *)                                 
+val make_derive_ind :
+  (Environ.env -> Evd.evar_map -> Constr.pinductive -> unit) ->
+  Globnames.global_reference -> unit
+    
+val register_derive : derive_record -> unit
+
+val derive : string list -> Globnames.global_reference list -> unit
+
+                                                               

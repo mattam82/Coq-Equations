@@ -5,11 +5,7 @@ Inductive bar2 (A : Type) : (A -> A) -> Prop := .
 Inductive bar3 (A B : Type) : A -> Prop := .
 Inductive bar4 (A B : Type) : B -> Prop := .
 
-Derive Signature for bar1.
-Derive Signature for bar2.
-Derive Signature for bar3.
-Derive Signature for bar4.
-
+Derive Signature for bar1 bar2 bar3 bar4.
 Derive Signature for eq.
 
 Goal forall (U V : Type), Some U = Some V -> U = V.

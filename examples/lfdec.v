@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2015 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -10,8 +10,7 @@ Require Import Equations.Equations Omega.
 Require Import List.
 Require Import Equations.EqDec Equations.DepElimDec.
 
-Derive Signature for le.
-Derive Signature for CompareSpec.
+Derive Signature for le CompareSpec.
 
 Inductive term := 
 | Var (n : nat)
@@ -20,9 +19,7 @@ Inductive term :=
 | Pair (t u : term)
 | Fst (t : term) | Snd (t : term)
 | Tt.
-Derive NoConfusion for term.
-Derive Subterm for term.
-Derive Equality for term.
+Derive NoConfusion Subterm EqDec for term.
 
 Coercion Var : nat >-> term.
 
@@ -42,9 +39,7 @@ Inductive type :=
 | unit
 | arrow (a b : type).
 
-Derive NoConfusion for type.
-Derive Subterm for type.
-Derive Equality for type.
+Derive NoConfusion Subterm EqDec for type.
 
 Coercion atom : atomic_type >-> type.
 Notation " x × y " := (product x y) (at level 90).
@@ -405,8 +400,7 @@ with synthetize : ctx -> term -> type -> Prop :=
 
 where "Γ |-- i => A " := (synthetize Γ i A)
 and  "Γ |-- i <= A " := (check Γ i A).
-Derive Signature for check.
-Derive Signature for synthetize.
+Derive Signature for check synthetize.
 
 Hint Constructors synthetize check : term.
 
@@ -449,8 +443,7 @@ with neutral : term -> Prop :=
 | neutral_snd t : neutral t -> neutral (Snd t)
 | neutral_app t n : neutral t -> normal n -> neutral (@(t, n)).
 
-Derive Signature for normal.
-Derive Signature for neutral.
+Derive Signature for normal neutral.
 Hint Constructors normal neutral : term.
 
 Lemma check_lift_gen Δ t T (H : Δ |-- t <= T) : forall Γ Γ', Δ = Γ' @ Γ ->

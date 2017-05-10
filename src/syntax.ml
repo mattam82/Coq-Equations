@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2015 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -73,12 +73,17 @@ and clause = lhs * clause rhs
 and lhs = user_pats
 
 and 'a rhs = 
-  | Program of constr_expr
+  | Program of constr_expr * 'a where_clause list
   | Empty of identifier Loc.located
-  | Rec of constr_expr * constr_expr option * 'a list
+  | Rec of constr_expr * constr_expr option *
+             identifier Loc.located option * 'a list
   | Refine of constr_expr * 'a list
   | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) union * 'a list
 
+and prototype =
+  identifier located * Constrexpr.local_binder list * Constrexpr.constr_expr
+
+and 'a where_clause = prototype * 'a list
 
 let rec pr_user_pat env = function
   | PUVar i -> pr_id i
@@ -97,10 +102,12 @@ let pplhs lhs = pp (pr_lhs (Global.env ()) lhs)
 
 let rec pr_rhs env = function
   | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ pr_id var
-  | Rec (t, rel, s) -> 
+  | Rec (t, rel, id, s) -> 
      spc () ++ str "=>" ++ spc () ++ str"rec " ++ pr_constr_expr t ++ spc () ++
+       pr_opt (fun (_, id) -> pr_id id) id ++ spc () ++
       hov 1 (str "{" ++ pr_clauses env s ++ str "}")
-  | Program rhs -> spc () ++ str ":=" ++ spc () ++ pr_constr_expr rhs
+  | Program (rhs, where) -> spc () ++ str ":=" ++ spc () ++ pr_constr_expr rhs ++
+                             pr_wheres env where
   | Refine (rhs, s) -> spc () ++ str "<=" ++ spc () ++ pr_constr_expr rhs ++ 
       spc () ++ str "=>" ++ spc () ++
       hov 1 (str "{" ++ pr_clauses env s ++ str "}")
@@ -108,7 +115,13 @@ let rec pr_rhs env = function
       ++ spc () ++ hov 1 (str "{" ++ pr_clauses env s ++ str "}")
   | By (Inr tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_glob_tactic env tac
       ++ spc () ++ hov 1 (str "{" ++ pr_clauses env s ++ str "}")
-      
+
+and pr_wheres env l =
+  prlist_with_sep fnl (pr_where env) l
+and pr_where env (sign, eqns) =
+  pr_proto sign ++ pr_clauses env eqns
+and pr_proto ((_,id), l, t) =
+  pr_id id ++ pr_binders l ++ str" : " ++ pr_constr_expr t
 and pr_clause env (lhs, rhs) =
   pr_lhs env lhs ++ pr_rhs env rhs
 
@@ -152,7 +165,11 @@ let pr_equation_options  _prc _prlc _prt l =
 
 type rec_type = 
   | Structural of Id.t located option
-  | Logical of rec_info
+  | Logical of logical_rec
+
+and logical_rec =
+  | LogicalDirect of Id.t located
+  | LogicalProj of rec_info
 
 and rec_info = {
   comp : constant option;
@@ -163,6 +180,16 @@ and rec_info = {
 
 let is_structural = function Some (Structural _) -> true | _ -> false
 
+let is_rec_call r f =
+  match r with
+  | LogicalProj r -> Globnames.is_global (ConstRef r.comp_proj) f
+  | LogicalDirect (loc, id) -> 
+    match kind_of_term f with
+    | Var id' -> Id.equal id id'
+    | Const (c, _) ->
+      let id' = Label.to_id (Constant.label c) in
+      Id.equal id id'
+    | _ -> false
 
 let rec translate_cases_pattern env avoid = function
   | PatVar (loc, Name id) -> PUVar id
@@ -256,7 +283,7 @@ let interp_eqn i is_rec env impls eqn =
 	  | _ -> user_err_loc (loc, "interp_pats", str "Or patterns not supported by equations")
 	in upat
   in
-  let rec aux curpats (idopt, pats, rhs) =
+  let rec aux recinfo (i, is_rec as fn) curpats (idopt, pats, rhs) =
     let curpats' = 
       match pats with
       | SignPats l -> l
@@ -276,23 +303,41 @@ let interp_eqn i is_rec env impls eqn =
     let curpats'' = add_implicits impls avoid curpats' in
     let pats = map interp_pat curpats'' in
       match is_rec with
-      | Some (Structural _) -> (PUVar i :: pats, interp_rhs curpats' None rhs)
-      | Some (Logical r) -> (pats, interp_rhs curpats' (Some (ConstRef r.comp_proj, Option.is_empty r.comp)) rhs)
-      | None -> (pats, interp_rhs curpats' None rhs)
-  and interp_rhs curpats compproj = function
-    | Refine (c, eqs) -> Refine (interp_constr_expr compproj !avoid c, map (aux curpats) eqs)
-    | Program c -> Program (interp_constr_expr compproj !avoid c)
+      | Some (Structural _) -> (PUVar i :: pats, interp_rhs recinfo fn curpats' rhs)
+      | Some (Logical r) -> 
+         (pats, interp_rhs ((i, r) :: recinfo) fn curpats' rhs)
+      | None -> (pats, interp_rhs recinfo fn curpats' rhs)
+  and interp_rhs recinfo (i, is_rec as fn) curpats = function
+    | Refine (c, eqs) -> Refine (interp_constr_expr recinfo !avoid c, 
+                                map (aux recinfo fn curpats) eqs)
+    | Program (c, w) ->
+       let w = interp_wheres recinfo avoid w in
+       Program (interp_constr_expr recinfo !avoid c, w)
     | Empty i -> Empty i
-    | Rec (i, r, s) -> Rec (i, r, map (aux curpats) s)
-    | By (x, s) -> By (x, map (aux curpats) s)
-  and interp_constr_expr compproj ids c = 
-    match c, compproj with
+    | Rec (i, r, id, s) -> 
+      let rec_info = LogicalDirect (Constrexpr_ops.constr_loc i, fst fn) in
+      let recinfo = (fst fn, rec_info) :: recinfo in
+      Rec (i, r, id, map (aux recinfo fn curpats) s)
+    | By (x, s) -> By (x, map (aux recinfo fn curpats) s)
+  and interp_wheres recinfo avoid w =
+    let interp_where (((loc,id),b,t) as p,eqns) =
+      p, map (aux recinfo (id,None) []) eqns
+    in List.map interp_where w
+  and interp_constr_expr recinfo ids c = 
+    match c with
     (* |   | CAppExpl of loc * (proj_flag * reference) * constr_expr list *)
-    | CApp (loc, (None, CRef (Ident (loc',id'), _)), args), Some (cproj, nocomp) when Id.equal i id' ->
-       let qidproj = Nametab.shortest_qualid_of_global Idset.empty cproj in
-       let args = List.map (fun (c, expl) -> interp_constr_expr compproj ids c, expl) args in
-       let arg = if nocomp then [CApp (loc, (None, c), [chole loc]), None] else [] in
-       CApp (loc, (None, CRef (Qualid (loc', qidproj), None)), args @ arg)
-    | _ -> map_constr_expr_with_binders (fun id l -> id :: l) 
-	(interp_constr_expr compproj) ids c
-  in aux [] eqn
+    | CApp (loc, (None, CRef (Ident (loc',id'), _)), args)
+      when List.mem_assoc_f Id.equal id' recinfo ->
+       let r = List.assoc_f Id.equal id' recinfo in
+       let args =
+         List.map (fun (c, expl) -> interp_constr_expr recinfo ids c, expl) args in
+       let arg = CApp (loc, (None, c), [chole loc]) in
+       (match r with
+        | LogicalDirect _ -> arg 
+        | LogicalProj r -> 
+          let arg = if Option.is_empty r.comp then [arg, None] else [] in
+          let qidproj = Nametab.shortest_qualid_of_global Idset.empty (ConstRef r.comp_proj) in
+          CApp (loc, (None, CRef (Qualid (loc', qidproj), None)), args @ arg))
+    | _ -> map_constr_expr_with_binders (fun id l -> id :: l)
+	     (interp_constr_expr recinfo) ids c
+  in aux [] (i, is_rec) [] eqn

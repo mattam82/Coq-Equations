@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2015 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -48,7 +48,7 @@ let id x = x
 
 (* Debugging infrastructure. *)
 
-let debug = true
+let debug = false
 
 let check_term env evd c t =
   Typing.e_check env (ref evd) c t
@@ -56,17 +56,22 @@ let check_term env evd c t =
 let check_type env evd t =
   ignore(Typing.e_sort_of env (ref evd) t)
       
-let typecheck_rel_context evd ctx =
+let typecheck_rel_context env evd ctx =
   let open Context.Rel.Declaration in
+  try
   let _ =
     List.fold_right
       (fun rel env ->
 	 check_type env evd (get_type rel);
 	 Option.iter (fun c -> check_term env evd c (get_type rel)) (get_value rel);
 	 push_rel rel env)
-      ctx (Global.env ())
+      ctx env
   in ()
-
+  with e ->
+    Printf.eprintf "Exception while typechecking context %s : %s\n"
+                   (Pp.string_of_ppcmds (print_rel_context (push_rel_context ctx env)))
+                   (Printexc.to_string e);
+    raise e
 
 let new_untyped_evar () =
   let open Sigma in
@@ -230,27 +235,28 @@ let get_one () = (!logic).logic_one
 let get_one_prf () = (!logic).logic_one_val
 let get_zero () = (!logic).logic_zero
 
-let mkapp evdref t args =
-  let evd, c = Evd.fresh_global (Global.env ()) !evdref (Lazy.force t) in
+let mkapp env evdref t args =
+  let evd, c = Evd.fresh_global env !evdref (Lazy.force t) in
   let _ = evdref := evd in
     mkApp (c, args)
 
-let refresh_universes_strict evd t = 
-  let evd', t' = Evarsolve.refresh_universes (Some true) (Global.env()) !evd t in
+let refresh_universes_strict env evd t = 
+  let evd', t' = Evarsolve.refresh_universes (Some true) env !evd t in
     evd := evd'; t'
 
-let mkEq evd t x y = 
-  mkapp evd (get_eq ()) [| refresh_universes_strict evd t; x; y |]
+let mkEq env evd t x y = 
+  mkapp env evd (get_eq ()) [| refresh_universes_strict env evd t; x; y |]
     
-let mkRefl evd t x = 
-  mkapp evd (get_eq_refl ()) [| refresh_universes_strict evd t; x |]
+let mkRefl env evd t x = 
+  mkapp env evd (get_eq_refl ()) [| refresh_universes_strict env evd t; x |]
 
-let mkHEq evd t x u y =
-  mkapp evd coq_heq [| refresh_universes_strict evd t; x; refresh_universes_strict evd u; y |]
+let mkHEq env evd t x u y =
+  mkapp env evd coq_heq [| refresh_universes_strict env evd t; x;
+                           refresh_universes_strict env evd u; y |]
     
-let mkHRefl evd t x =
-  mkapp evd coq_heq_refl
-    [| refresh_universes_strict evd t; x |]
+let mkHRefl env evd t x =
+  mkapp env evd coq_heq_refl
+    [| refresh_universes_strict env evd t; x |]
 
 let dummy_loc = Loc.dummy_loc 
 type 'a located = 'a Loc.located
@@ -296,6 +302,7 @@ let coq_inacc = lazy (init_constant ["Equations";"DepElim"] "inaccessible_patter
 let coq_block = lazy (init_constant ["Equations";"DepElim"] "block")
 let coq_hide = lazy (init_constant ["Equations";"DepElim"] "hide_pattern")
 let coq_add_pattern = lazy (init_constant ["Equations";"DepElim"] "add_pattern")
+let coq_end_of_section_id = id_of_string "eos"
 let coq_end_of_section_constr = lazy (init_constant ["Equations";"DepElim"] "the_end_of_the_section")
 let coq_end_of_section = lazy (init_constant ["Equations";"DepElim"] "end_of_section")
 
@@ -774,14 +781,24 @@ let set_in_ctx (n : int) (c : constr) (ctx : rel_context) : rel_context =
       else aux (succ k) (decl :: after) before
   in aux 1 [] ctx
 
-
-
 let get_id decl = Context.Named.Declaration.get_id decl
 
 let fold_named_context_reverse = Context.Named.fold_inside
 let map_rel_context = Context.Rel.map
 let map_rel_declaration = Context.Rel.Declaration.map_constr
 let map_named_declaration = Context.Named.Declaration.map_constr
+let map_named_context = Context.Named.map
+let lookup_named = Context.Named.lookup
+
+let subst_in_named_ctx (n : Id.t) (c : constr) (ctx : named_context) : named_context =
+  let rec aux after = function
+    | [] -> []
+    | decl :: before ->
+       let name = get_id decl in
+       if Id.equal name n then (rev after) @ before
+       else aux (map_named_declaration (replace_vars [n,c]) decl :: after)
+                before
+  in aux [] ctx
 
 let pp cmds = Feedback.msg_info cmds
 

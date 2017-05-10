@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2015 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -22,7 +22,7 @@ congS eq_refl := eq_refl.
 
 Module TestF.
 
-  Equations(nocomp) f (n : nat) : nat :=
+  Equations(nocomp noind) f (n : nat) : nat :=
   f 0 := 42 ;
   f (S m)  with f m :=
   {
@@ -57,6 +57,7 @@ Section FilterDef.
   filter (List.cons a l) <= p a => {
                          | true := a :: filter l ;
                          | false := filter l }.
+
 End FilterDef.
 
 (* Equations(nocomp) filter {A} (l : list A) (p : A -> bool) : list A := *)

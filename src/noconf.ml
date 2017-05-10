@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2015 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -74,7 +74,7 @@ let mk_eq env evd args args' indty =
   let _, _, make' = Sigma_types.telescope evd args' in
   let make = lift (List.length args + 1) make in
   let ty = Retyping.get_type_of env !evd make in
-  mkEq evd ty make make'
+  mkEq env evd ty make make'
 
 let derive_no_confusion env evd (ind,u as indu) =
   let evd = ref evd in
@@ -179,3 +179,7 @@ let derive_no_confusion env evd (ind,u as indu) =
     ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hook) packid 
 	      ~term ty ~tactic:(noconf_tac ()) 
 	      (Evd.evar_universe_context !evd) oblinfo)
+let () =
+  Derive.(register_derive
+            { derive_name = "NoConfusion";
+              derive_fn = make_derive_ind derive_no_confusion })

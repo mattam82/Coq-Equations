@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2015 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -52,25 +52,6 @@ END
 (* END *)
 
 (* Sigma *)
-
-let get_inductive c =
-  let c = Smartlocate.global_with_alias c in
-  match c with
-  | Globnames.IndRef i ->
-     let env = Global.env () in
-     let sigma = Evd.from_env env in
-     let sigma, i = Evd.fresh_inductive_instance env sigma i in
-     env, sigma, i
-  | _ -> error "Expected an inductive type"
-
-VERNAC COMMAND EXTEND Derive_Signature CLASSIFIED AS QUERY
-| [ "Derive" "Signature" "for" global_list(c) ] -> [ 
-  List.iter (fun c ->
-	     let env, sigma, i = get_inductive c in
-	     ignore(Sigma_types.declare_sig_of_ind env sigma i))
-	    c
-  ]
-END
 
 open Proofview.Notations
 open Proofview.Goal
@@ -157,10 +138,18 @@ TACTIC EXTEND curry
 [ "curry" hyp(id) ] -> [ 
   Proofview.V82.tactic 
     (fun gl ->
-      match curry_hyp (pf_env gl) (project gl) id (pf_get_hyp_typ gl id) with
-      | Some (prf, typ) -> 
-	 (tclTHENFIRST (Proofview.V82.of_tactic (assert_before_replacing id typ))
-		       (Tacmach.refine_no_check prf)) gl
+    let decl = pf_get_hyp gl id in
+    let (na, body, ty) = to_named_tuple decl in
+      match curry_hyp (pf_env gl) (project gl) id ty with
+      | Some (prf, typ) ->
+         (match body with
+          | Some b ->
+             let newprf = Vars.replace_vars [(id,b)] prf in
+             tclTHEN (to82 (clear [id])) (to82 (Tactics.letin_tac None (Name id) newprf (Some typ) nowhere))
+                     gl
+          | None ->
+	     (tclTHENFIRST (Proofview.V82.of_tactic (assert_before_replacing id typ))
+		           (Tacmach.refine_no_check prf)) gl)
       | None -> tclFAIL 0 (str"No currying to do in " ++ pr_id id) gl) ]
 | ["curry"] -> [ 
     nf_enter { enter = fun gl ->
@@ -211,54 +200,24 @@ TACTIC EXTEND dependent_pattern_from
     [ Proofview.V82.tactic (Depelim.dependent_pattern ~pattern_term:false c) ]
 END
 
-VERNAC COMMAND EXTEND Derive_DependentElimination CLASSIFIED AS QUERY
-| [ "Derive" "DependentElimination" "for" global_list(c) ] -> [ 
-  List.iter (fun c ->
-	     let env, sigma, i = get_inductive c in
-	     ignore(Depelim.derive_dep_elimination env sigma i))
-	    c
-  ]
-END
-
 TACTIC EXTEND pattern_call
 [ "pattern_call" constr(c) ] -> [ of82 (Depelim.pattern_call c) ]
 END
 
 (* Noconf *)
 
-VERNAC COMMAND EXTEND Derive_NoConfusion CLASSIFIED AS SIDEFF
-| [ "Derive" "NoConfusion" "for" global_list(c) ] -> [ 
-  List.iter (fun c ->
-	     let env, evd, i = get_inductive c in
-	     Noconf.derive_no_confusion env evd i)
-      c
-  ]
-END
-                             
-let pr_sorts_family _ _ _ = function
-  | InSet -> str"Set"
-  | InProp -> str"Prop"
-  | InType -> str"Type"
-
-ARGUMENT EXTEND sorts_family
-PRINTED BY pr_sorts_family
-| [ "Set" ] -> [ InSet ]
-| [ "Prop" ] -> [ InProp ]
-| [ "Type" ] -> [ InType ]
-END
-
-VERNAC COMMAND EXTEND Equations_Logic CLASSIFIED AS QUERY
-| [ "Equations" "Logic" sorts_family(s) global(eq) global(eqr) global(z) global(o) global(ov) ] -> [
-  let gr x = Lazy.from_val (Nametab.global x) in
-  let open Misctypes in
-  Equations_common.(set_logic { logic_eqty = gr eq;
-				logic_eqrefl = gr eqr;
-				logic_sort = s;
-				logic_zero = gr z;
-				logic_one = gr o;
-				logic_one_val = gr ov})
-  ]
-END
+(* VERNAC COMMAND EXTEND Equations_Logic CLASSIFIED AS QUERY *)
+(* | [ "Equations" "Logic" sorts(s) global(eq) global(eqr) global(z) global(o) global(ov) ] -> [ *)
+(*   let gr x = Lazy.from_val (Nametab.global x) in *)
+(*   let open Misctypes in *)
+(*   Equations_common.(set_logic { logic_eqty = gr eq; *)
+(* 				logic_eqrefl = gr eqr; *)
+(* 				logic_sort = s; *)
+(* 				logic_zero = gr z; *)
+(* 				logic_one = gr o; *)
+(* 				logic_one_val = gr ov}) *)
+(*   ] *)
+(* END *)
 
 (* TACTIC EXTEND dependent_generalize *)
 (* | ["dependent" "generalize" hyp(id) "as" ident(id') ] ->  *)
@@ -341,25 +300,25 @@ module Gram = Pcoq.Gram
 module Vernac = Pcoq.Vernac_
 module Tactic = Pcoq.Tactic
 
-type binders_let2_argtype =
-    (Constrexpr.local_binder list *
-     (Names.identifier Loc.located option * Constrexpr.recursion_order_expr))
-    Genarg.uniform_genarg_type
+type binders_argtype = Constrexpr.local_binder list Genarg.uniform_genarg_type
+
+let pr_raw_binders2 _ _ _ l = mt ()
+let pr_glob_binders2 _ _ _ l = mt ()
+let pr_binders2 _ _ _ l = mt ()
+
+(* let wit_binders_let2 : binders_let2_argtype = *)
+(*   Genarg.create_arg "binders_let2" *)
+
+let wit_binders2 : binders_argtype =
+  Genarg.create_arg "binders2"
+
+let binders2 : local_binder list Gram.entry =
+  Pcoq.create_generic_entry Pcoq.uconstr "binders2" (Genarg.rawwit wit_binders2)
+
+let _ = Pptactic.declare_extra_genarg_pprule wit_binders2
+  pr_raw_binders2 pr_glob_binders2 pr_binders2
+
 type deppat_equations_argtype = Syntax.pre_equation list Genarg.uniform_genarg_type
-
-let wit_binders_let2 : binders_let2_argtype =
-  Genarg.create_arg "binders_let2"
-
-let pr_raw_binders_let2 _ _ _ l = mt ()
-let pr_glob_binders_let2 _ _ _ l = mt ()
-let pr_binders_let2 _ _ _ l = mt ()
-
-let binders_let2 : (local_binder list * (identifier Loc.located option * recursion_order_expr)) Gram.entry =
-  Pcoq.create_generic_entry Pcoq.uconstr "binders_let2" (Genarg.rawwit wit_binders_let2)
-
-let _ = Pptactic.declare_extra_genarg_pprule wit_binders_let2
-  pr_raw_binders_let2 pr_glob_binders_let2 pr_binders_let2
-
 
 let wit_deppat_equations : deppat_equations_argtype =
   Genarg.create_arg "deppat_equations"
@@ -386,14 +345,13 @@ open Tok
 open Syntax
 
 GEXTEND Gram
-  GLOBAL: pattern deppat_equations binders_let2 lident;
+  GLOBAL: pattern deppat_equations binders2 lident;
  
+  binders2 : 
+     [ [ b = binders -> b ] ]
+  ;
   deppat_equations:
     [ [ l = LIST1 equation SEP ";" -> l ] ]
-  ;
-
-  binders_let2:
-    [ [ l = binders -> l, (None, CStructRec)  ] ]
   ;
   
   equation:
@@ -435,15 +393,22 @@ GEXTEND Gram
           in build_refine (fun e -> e) cs
     ] ]
   ;
-
+  where_clause:
+    [ [ id = lident; l = binders2; ":"; t = Constr.lconstr;
+        ":="; eqs = deppat_equations -> ((id, l, t), eqs) ] ]
+  ;
+  where:
+    [ [ "where"; l = LIST1 where_clause -> l
+      | -> []
+    ] ]
+  ;
   rhs:
     [ [ ":=!"; id = identref -> Empty id
-      |":="; c = Constr.lconstr -> Program c
-      |"=>"; c = Constr.lconstr -> Program c
+      | [":="|"=>"]; c = Constr.lconstr; w = where -> Program (c, w)
       | ["with"|"<="]; ref = refine; [":="|"=>"]; e = equations -> ref e
       | "<-"; "(" ; t = Tactic.tactic; ")"; e = equations -> By (Inl t, e)
-      | "by"; IDENT "rec"; c = constr; rel = OPT constr; [":="|"=>"]; 
-        e = deppat_equations -> Rec (c, rel, e)
+      | "by"; IDENT "rec"; c = constr; rel = OPT constr; id = OPT identref;
+        [":="|"=>"]; e = deppat_equations -> Rec (c, rel, id, e)
     ] ]
   ;
 
@@ -456,7 +421,7 @@ GEXTEND Gram
   END
 
 VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS SIDEFF
-| [ "Equations" equation_options(opt) lident(i) binders_let2(l) 
+| [ "Equations" equation_options(opt) lident(i) binders2(l) 
       ":" lconstr(t) ":=" deppat_equations(eqs)
       (* decl_notation(nt) *) ] ->
     [ Equations.equations opt i l t [] eqs ]
@@ -493,31 +458,6 @@ VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS SIDEFF
 
 (* Subterm *)
 
-VERNAC COMMAND EXTEND Derive_Subterm CLASSIFIED AS SIDEFF
-| [ "Derive" "Subterm" "for" global_list(c) ] -> [
-List.iter (fun c -> let env, sigma, i = get_inductive c in
-		    Subterm.derive_subterm env sigma i)
-	    c
-  ]
-END
-
-VERNAC COMMAND EXTEND Derive_Below CLASSIFIED AS SIDEFF
-| [ "Derive" "Below" "for" global_list(c) ] -> [
-  List.iter (fun c -> let env, sigma, i = get_inductive c in
-		      Subterm.derive_below env sigma i)
-	    c
-]
-END
-
-(* Eqdec *)
-
-VERNAC COMMAND EXTEND Derive_EqDec CLASSIFIED AS SIDEFF
-| [ "Derive" "Equality" "for" global_list(c) ] -> [
-List.iter (fun c -> let env, sigma, i = get_inductive c in
-		    Eqdec.derive_eq_dec env sigma i)
-	    c
-  ]
-END
 
 TACTIC EXTEND is_secvar
 | [ "is_secvar" constr(x) ] ->
@@ -578,4 +518,13 @@ END
 TACTIC EXTEND move_after_deps
 | [ "move_after_deps" ident(i) constr(c) ] ->
  [ Equations_common.move_after_deps i c ]
+END
+
+(** Deriving *)
+
+VERNAC COMMAND EXTEND Derive CLASSIFIED AS SIDEFF
+| [ "Derive" ne_ident_list(ds) "for" global_list(c) ] -> [
+    Derive.derive (List.map Id.to_string ds)
+                  (List.map Smartlocate.global_with_alias c)
+  ]
 END

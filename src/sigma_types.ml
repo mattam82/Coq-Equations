@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2015 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -239,6 +239,12 @@ let declare_sig_of_ind env sigma (ind,u) =
   (* Table.extraction_inline true [Ident (dummy_loc, pack_id)]; *)
   (* Table.extraction_inline true [Ident (dummy_loc, signature_id)]; *)
   inst
+
+let () =
+  let fn env sigma c = ignore (declare_sig_of_ind env sigma c) in
+  Derive.(register_derive
+            { derive_name = "Signature";
+              derive_fn = make_derive_ind fn })
 
 let get_signature env sigma ty =
   try

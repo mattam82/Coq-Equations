@@ -102,8 +102,7 @@ Proof.
 Qed.
 
 Equations convert_ilist {A : Set} {n m : nat} (p : n = m) (l : ilist A n) : ilist A m :=
-convert_ilist p Nil with p => {
-  | eq_refl := Nil };
+convert_ilist p Nil with p => { | eq_refl := Nil };
 convert_ilist p (Cons a l) with p => | eq_refl := Cons a (convert_ilist eq_refl l).
 
 Lemma convert_ilist_refl {A} (n : nat) (l : ilist A n) : convert_ilist eq_refl l = l.
@@ -204,16 +203,10 @@ Require Import EqDec EqDecInstances DepElimDec.
 
 Derive Signature for eq.
 
-Derive Signature for fin.
-Derive NoConfusion for fin.
-Derive DependentElimination for fin.
-Derive Equality for fin.
+Derive Signature NoConfusion DependentElimination EqDec for fin.
 Print Assumptions fin_eqdec.
 
-Derive Signature for fle.
-Derive NoConfusion for fle.
-Derive Equality for fle.
-Derive Subterm for fle.
+Derive Signature NoConfusion EqDec Subterm for fle.
 Print Assumptions fle_eqdec.
 
 Equations fle_trans' {n : nat} {i j : fin n} (p : fle i j) {k} (q : fle j k) : fle i k :=

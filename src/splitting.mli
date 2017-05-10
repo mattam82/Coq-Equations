@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2015 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -25,15 +25,13 @@ val term_of_tree :
   Evar_kinds.obligation_definition_status ->
   Evd.evar_map ref ->
   env ->
-  Id.t * rel_context * types ->
-  'd ->
   splitting ->
-  (existential_key * int) list * Evar.Set.t * constr * constr
+  (existential_key * int) list * int Evar.Map.t * constr * constr
 
 
 (** Compilation from splitting tree to terms. *)
 
-val is_comp_obl : rec_info option -> Evar_kinds.t -> bool
+val is_comp_obl : logical_rec option -> Evar_kinds.t -> bool
 
 val define_tree :
   rec_type option -> Decl_kinds.polymorphic ->
@@ -42,10 +40,9 @@ val define_tree :
   Evd.evar_map ref ->
   env ->
   Id.t * rel_context * types ->
-  rec_info option ->
-  'c ->
+  logical_rec option ->
   splitting ->
-  (((Id.t -> constr) -> constr -> constr) ->
+  (splitting -> ((Id.t -> constr) -> constr -> constr) ->
    (existential_key * int * Id.t) list ->
    Decl_kinds.locality -> Globnames.global_reference ->
    Evd.evar_universe_context -> unit) ->

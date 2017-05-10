@@ -1,12 +1,13 @@
 Equations_common
+Derive
 Sigma_types
 Subterm
 Eqdec
+Noconf
 Depelim
 Syntax
 Covering
 Splitting
 Equations
-Noconf
 G_equations
 Equations_plugin_mod

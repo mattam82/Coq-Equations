@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2015 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -73,7 +73,7 @@ val check_term :
   Environ.env -> Evd.evar_map -> Term.constr -> Term.types -> unit
 val check_type : Environ.env -> Evd.evar_map -> Term.types -> unit
 val typecheck_rel_context :
-  Evd.evar_map -> rel_context -> unit
+  Environ.env -> Evd.evar_map -> rel_context -> unit
 
 val e_conv :
   env -> Evd.evar_map ref -> constr -> constr -> bool
@@ -122,7 +122,7 @@ val idset_of_list : Id.t list -> Idset.t
 val decompose_indapp :
   constr -> constr array -> constr * constr array
 
-val refresh_universes_strict : Evd.evar_map ref -> Term.types -> Term.types
+val refresh_universes_strict : Environ.env -> Evd.evar_map ref -> Term.types -> Term.types
 
 val new_global : Evd.evar_map -> Globnames.global_reference -> Evd.evar_map * Term.constr
                                                                  
@@ -207,16 +207,16 @@ val coq_eq_refl : Globnames.global_reference lazy_t
 val coq_heq : Globnames.global_reference lazy_t
 val coq_heq_refl : Globnames.global_reference lazy_t
 val coq_fix_proto : Globnames.global_reference lazy_t
-val mkapp :
+val mkapp : Environ.env ->
   Evd.evar_map ref ->
   Globnames.global_reference Lazy.t -> Term.constr array -> Term.constr
-val mkEq :
+val mkEq : Environ.env ->
   Evd.evar_map ref -> Term.types -> Term.constr -> Term.constr -> Term.constr
-val mkRefl : Evd.evar_map ref -> Term.types -> Term.constr -> Term.constr
-val mkHEq :
+val mkRefl : Environ.env -> Evd.evar_map ref -> Term.types -> Term.constr -> Term.constr
+val mkHEq : Environ.env ->
   Evd.evar_map ref ->
   Term.types -> Term.constr -> Term.types -> Term.constr -> Term.constr
-val mkHRefl : Evd.evar_map ref -> Term.types -> Term.constr -> Term.constr
+val mkHRefl : Environ.env -> Evd.evar_map ref -> Term.types -> Term.constr -> Term.constr
 
 (** Bindings to theories/ files *)
 
@@ -245,6 +245,7 @@ val coq_inacc : Term.constr lazy_t
 val coq_block : Term.constr lazy_t
 val coq_hide : Term.constr lazy_t
 val coq_add_pattern : Term.constr lazy_t
+val coq_end_of_section_id : Names.Id.t
 val coq_end_of_section_constr : Term.constr lazy_t
 val coq_end_of_section : Term.constr lazy_t
 val coq_notT : Term.constr lazy_t
@@ -353,6 +354,8 @@ val fold_named_context_reverse : ('a -> named_declaration -> 'a) -> init:'a -> n
 val map_rel_context : (Constr.t -> Constr.t) -> rel_context -> rel_context
 val map_rel_declaration : (Constr.t -> Constr.t) -> rel_declaration -> rel_declaration
 val map_named_declaration : (Constr.t -> Constr.t) -> named_declaration -> named_declaration
+val map_named_context : (Constr.t -> Constr.t) -> named_context -> named_context
+val lookup_named : Id.t -> named_context -> named_declaration
 
 val to_evar_map : 'a Sigma.t -> Evd.evar_map
 val of_evar_map : Evd.evar_map -> 'a Sigma.t
@@ -370,6 +373,8 @@ val nf_betadeltaiota : Reductionops.reduction_function
 val subst_telescope : Constr.constr -> rel_context -> rel_context
 val subst_in_ctx : int -> Term.constr -> rel_context -> rel_context
 val set_in_ctx : int -> Term.constr -> rel_context -> rel_context
+val subst_in_named_ctx :
+  Names.Id.t -> constr -> named_context -> named_context
 
 val evar_declare : named_context_val ->
   Evd.evar -> 

@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2015 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -52,16 +52,16 @@ val pat_of_constr : constr -> pat
 val pr_constr_pat : env -> constr -> Pp.std_ppcmds
 val pr_pat : env -> pat -> Pp.std_ppcmds
 val pr_context : env -> rel_context -> Pp.std_ppcmds
-val ppcontext : rel_context -> unit
+val ppcontext : env -> rel_context -> unit
 val pr_context_map : env -> context_map -> Pp.std_ppcmds
-val ppcontext_map : context_map -> unit
+val ppcontext_map : env -> context_map -> unit
 val typecheck_map :
-  Evd.evar_map -> context_map -> unit
+  env -> Evd.evar_map -> context_map -> unit
 val check_ctx_map :
-  Evd.evar_map -> context_map -> context_map
+  env -> Evd.evar_map -> context_map -> context_map
 
 (** Smart constructor (doing runtime checks) *)
-val mk_ctx_map :
+val mk_ctx_map : Environ.env ->
   Evd.evar_map ->
   rel_context ->
   pat list ->
@@ -93,7 +93,7 @@ val lift_pats : int -> pat list -> pat list
 type path = Evd.evar list
 
 type splitting =
-    Compute of context_map * types * splitting_rhs
+    Compute of context_map * where_clause list * types * splitting_rhs
   | Split of context_map * int * types * splitting option array
   | Valid of context_map * types * identifier list *
       Tacmach.tactic * (Proofview.entry * Proofview.proofview) *
@@ -101,6 +101,17 @@ type splitting =
   | Mapping of context_map * splitting
   | RecValid of identifier * splitting
   | Refined of context_map * refined_node * splitting
+
+and where_clause =
+  { where_id : identifier;
+    where_path : path;
+    where_orig : path;
+    where_nctx : named_context;
+    where_prob : context_map;
+    where_arity : types; (* In nctx + pi1 prob *)
+    where_term : constr; (* In original context, de Bruijn only *)
+    where_type : types;
+    where_splitting : splitting }
 
 and refined_node = {
   refined_obj : identifier * constr * types;
@@ -120,7 +131,7 @@ and splitting_rhs = RProgram of constr | REmpty of int
 val pr_path : Evd.evar_map -> Evd.evar list -> Pp.std_ppcmds
 val eq_path : Evar.t list -> Evar.t list -> bool
 
-val pr_splitting : env -> splitting -> Pp.std_ppcmds
+val pr_splitting : env -> ?verbose:bool -> splitting -> Pp.std_ppcmds
 val ppsplit : splitting -> unit
 
 (** Covering computation *)
@@ -173,7 +184,7 @@ val check_eq_context_nolet :
   Evd.evar_map ->
   context_map ->
   context_map -> unit
-val compose_subst :
+val compose_subst : Environ.env ->
   ?sigma:Evd.evar_map ->
   context_map ->
   context_map ->
@@ -183,7 +194,7 @@ val push_mapping_context :
   context_map ->
   context_map
 val lift_subst :
-  Evd.evar_map -> context_map -> rel_context -> context_map
+  Environ.env -> Evd.evar_map -> context_map -> rel_context -> context_map
 val single_subst :
   env ->
   Evd.evar_map ->
@@ -297,6 +308,17 @@ val rel_id : (Name.t * 'a * 'b) list -> int -> Id.t
 val push_named_context :
   named_context -> env -> env
 
+val where_context : where_clause list -> rel_context
+
+val env_of_rhs : 
+           Evd.evar_map ref ->
+           rel_context ->
+           Environ.env ->
+           (Names.Id.t * pat) list ->
+           rel_declaration list ->
+           rel_context *
+           Environ.env * int * Constr.constr list
+
 val covering_aux :
   env ->
   Evd.evar_map ref ->
@@ -311,6 +333,6 @@ val covering :
   env ->
   Evd.evar_map ref ->
   identifier * bool * Constrintern.internalization_env ->
-  clause list ->
+  clause list -> Evd.evar list ->
   context_map ->
   constr -> splitting

@@ -6,23 +6,13 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-open Environ
-open Declarations
-open Names
+(** This module sets the set constants of Equations to transparent mode so
+  that computation is possible inside Coq. *)
 
-(*
-val mkcase :
-  env ->
-  constr ->
-  constr ->
-  ((MutInd.t * int) * Univ.universe_instance ->
-   int ->
-   Id.t -> int -> rel_context -> types -> constr) ->
-  constr
-*)
-(* val mk_eqs : *)
-(*   env -> *)
-(*   Evd.evar_map ref -> *)
-(*   constr list -> constr list -> Constr.constr -> types *)
-val derive_no_confusion :
-  env -> Evd.evar_map -> Term.pinductive -> unit
+From Equations Require Import DepElim.
+
+Global Transparent simplification_existT2 simplification_existT2_dec
+       simplification_sigma2 simplification_sigma2_dec
+       simplification_sigma2_dec_point
+       simplification_heq simplification_K simplification_K_dec
+       simplify_ind_pack simplified_ind_pack Id_simplification_sigma2.

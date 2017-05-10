@@ -1,3 +1,7 @@
+- Add where clauses for subprograms
+- Rename helpers from refine node into "helper_" constants, not obligations
+
+Low priority:
 { struct n } should introduce an eta-expansion if necessary:
 
 
@@ -10,5 +14,3 @@
                        end
     | _ => cheat
     end) b2 p2
-
-- Rename helpers from refine node into "helper_" constants, not obligations
