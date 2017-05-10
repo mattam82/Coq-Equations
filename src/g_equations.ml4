@@ -205,19 +205,26 @@ TACTIC EXTEND pattern_call
 END
 
 (* Noconf *)
+let pr_sort_family _ _ _ s = mt ()
 
-(* VERNAC COMMAND EXTEND Equations_Logic CLASSIFIED AS QUERY *)
-(* | [ "Equations" "Logic" sorts(s) global(eq) global(eqr) global(z) global(o) global(ov) ] -> [ *)
-(*   let gr x = Lazy.from_val (Nametab.global x) in *)
-(*   let open Misctypes in *)
-(*   Equations_common.(set_logic { logic_eqty = gr eq; *)
-(* 				logic_eqrefl = gr eqr; *)
-(* 				logic_sort = s; *)
-(* 				logic_zero = gr z; *)
-(* 				logic_one = gr o; *)
-(* 				logic_one_val = gr ov}) *)
-(*   ] *)
-(* END *)
+ARGUMENT EXTEND sort_family
+PRINTED BY pr_sort_family
+| [ "Type" ] -> [ InType ]
+| [ "Prop" ] -> [ InProp ]
+END
+
+VERNAC COMMAND EXTEND Equations_Logic CLASSIFIED AS QUERY
+| [ "Equations" "Logic" sort_family(s) global(eq) global(eqr) global(z) global(o) global(ov) ] -> [
+  let gr x = Lazy.from_val (Nametab.global x) in
+  let open Misctypes in
+  Equations_common.(set_logic { logic_eqty = gr eq;
+				logic_eqrefl = gr eqr;
+				logic_sort = s;
+				logic_zero = gr z;
+				logic_one = gr o;
+				logic_one_val = gr ov})
+  ]
+END
 
 (* TACTIC EXTEND dependent_generalize *)
 (* | ["dependent" "generalize" hyp(id) "as" ident(id') ] ->  *)

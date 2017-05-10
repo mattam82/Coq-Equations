@@ -12,6 +12,7 @@ Check (_ : HSet nat).
 
 Equations test_k (x : nat) (r : x = x) : r = r :=
 test_k x id_refl := id_refl.
+Print Assumptions test_k.
 
 (* Fail *)
 (* Equations fail_k (A : Type) (x : A) (r : x = x) : r = r :=  *)
