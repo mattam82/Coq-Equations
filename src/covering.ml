@@ -1328,7 +1328,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 
 and interp_wheres env ctx evars path data s lets w =
   let (ctx, envctx, liftn, subst) = env_of_rhs evars ctx env s lets in
-  let nsubst, inst, nactx = named_of_rel_context (fun () -> raise (Invalid_argument "interp_wheres")) ctx in
+  let inst, args, nactx = named_of_rel_context (fun () -> raise (Invalid_argument "interp_wheres")) ctx in
   let envna = push_named_context nactx env in
   let rec aux (lets,nlets,coverings,env (* named *),envctx)
               (((loc,id),b,t),clauses) =
