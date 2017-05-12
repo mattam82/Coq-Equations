@@ -2,3 +2,4 @@ FLG -rectypes
 PKG coq.intf coq.kernel coq.tactics coq.proofs coq.toplevel coq.ltac
 S src
 S theories
+B src

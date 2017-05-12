@@ -22,26 +22,21 @@ val constr_of_global : Globnames.global_reference -> constr
 
 val define_by_eqs :
   Syntax.equation_option list ->
-  identifier ->
-  Constrexpr.local_binder list ->
-  Constrexpr.constr_expr ->
+  Syntax.pre_equations ->
   (Vernacexpr.lstring * Constrexpr.constr_expr *
    Notation_term.scope_name option)
   list ->
-  ((Loc.t * identifier) option * input_pats * 'b rhs as 'b) list ->
   unit
 
 val with_rollback : ('a -> 'b) -> 'a -> 'b
 
 val equations :
   Syntax.equation_option list ->
-  Loc.t * identifier ->
-  Constrexpr.local_binder list ->
-  Constrexpr.constr_expr ->
+  Syntax.pre_equations ->
   (Vernacexpr.lstring * Constrexpr.constr_expr *
    Notation_term.scope_name option)
-  list -> pre_equation list -> unit
-
+  list ->
+  unit
 
 val solve_equations_goal :
   Proof_type.tactic ->
