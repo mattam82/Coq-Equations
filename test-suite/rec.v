@@ -233,7 +233,7 @@ Module RecMeasure.
       intuition auto with arith. subst. pose (r:=refl_le x y); apply ltb_leb in H4; now depelim r.
       apply ltb_leb in H4.
       pose (r:=refl_le x a); pose (r':=refl_le a y); depelim r; depelim r'; reverse; simplify_dep_elim; auto. 
-      transitivity a; auto. elim H5.  elim H4. elim H4.
+      transitivity a; auto.
     Qed.
     Require Import EquivDec.
     Require Import Permutation.

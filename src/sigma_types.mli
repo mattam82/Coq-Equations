@@ -64,3 +64,9 @@ val curry : Names.Name.t -> Term.constr ->
 
 val uncurry_call : Environ.env -> Evd.evar_map -> Term.constr ->
                    Evd.evar_map * Term.constr * Term.types
+
+val smart_case : Environ.env -> Evd.evar_map ref -> rel_context ->
+  int -> Term.types ->
+  rel_context * Term.types *
+  (Term.types * int * Covering.context_map) array *
+  int * Covering.context_map * Term.constr list * bool

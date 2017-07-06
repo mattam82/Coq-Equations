@@ -214,7 +214,7 @@ Global Set Keyed Unification.
 
 Ltac simplify_IH_hyps := repeat
   match goal with
-    | [ hyp : _ |- _ ] => eqns_specialize_eqs hyp
+    | [ hyp : _ |- _ ] => simpl in hyp; eqns_specialize_eqs hyp
   end.
 
 (** We split substitution tactics in the two directions depending on which 
@@ -284,8 +284,8 @@ Lemma apply_noConfusion {A} {noconf : NoConfusionPackage A}
       (p q : A) {B : p = q -> Type} :
   (forall H : NoConfusion p q, B (noConfusion_inv H)) -> (forall H : p = q, B H).
 Proof.
-  intros. generalize (noConfusion_is_equiv H). destruct H.
-  intros <-. apply X.
+  intros. generalize (noConfusion_is_equiv H).
+  intros e. destruct e. apply X.
 Defined.
 
 Polymorphic
@@ -656,15 +656,19 @@ Proof.
 Defined.
 
 Polymorphic
+Definition opaque_ind_pack_eq_inv {A : Type} {eqdec : EqDec A}
+  {B : A -> Type} {x : A} {p q : B x} (G : p = q -> Type) (e : (x; p) = (x; q)) :=
+  let e' := @ind_pack_eq_inv A eqdec B x p q e in G e'.
+Arguments opaque_ind_pack_eq_inv : simpl never.
+
+Polymorphic
 Lemma simplify_ind_pack {A : Type} {eqdec : EqDec A}
       (B : A → Type) (x : A) (p q : B x) (G : p = q -> Type) :
-      (forall e : (x; p) = (x; q),
-          let e' := @ind_pack_eq_inv A eqdec B x p q e in
-          G e') ->
+      (forall e : (x; p) = (x; q), opaque_ind_pack_eq_inv G e) ->
   (forall e : p = q, G e).
 Proof.
   intros H. intros e. 
-  specialize (H (ind_pack_eq e)). simpl in H. 
+  specialize (H (ind_pack_eq e)). unfold opaque_ind_pack_eq_inv in H.
   rewrite ind_pack_eq_inv_equiv in H. apply H.
 Defined.
 Arguments simplify_ind_pack : simpl never.
@@ -672,10 +676,9 @@ Arguments simplify_ind_pack : simpl never.
 Polymorphic
 Lemma simplify_ind_pack_inv {A : Type} {eqdec : EqDec A}
       (B : A -> Type) (x : A) (p : B x) (G : p = p -> Type) :
-  G eq_refl ->
-  let e := @ind_pack_eq_inv A eqdec B x p p eq_refl in G e.
+  G eq_refl -> opaque_ind_pack_eq_inv G eq_refl.
 Proof.
-  intros H.
+  intros H. unfold opaque_ind_pack_eq_inv.
   rewrite ind_pack_eq_inv_refl. apply H.
 Defined.
 Arguments simplify_ind_pack_inv : simpl never.
@@ -683,15 +686,14 @@ Arguments simplify_ind_pack_inv : simpl never.
 Polymorphic
 Definition simplified_ind_pack {A : Type} {eqdec : EqDec A}
   (B : A -> Type) (x : A) (p : B x) (G : p = p -> Type)
-  (t : let e := @ind_pack_eq_inv A eqdec B x p p eq_refl in G e) :=
+  (t : opaque_ind_pack_eq_inv G eq_refl) :=
   eq_rect _ G t _ (@ind_pack_eq_inv_refl A eqdec B x p).
 Arguments simplified_ind_pack : simpl never.
 
 Polymorphic
 Lemma simplify_ind_pack_refl {A : Type} {eqdec : EqDec A}
 (B : A → Type) (x : A) (p : B x) (G : p = p -> Type)
-(t : forall (e : (x; p) = (x; p)),
-  let e' := @ind_pack_eq_inv A eqdec B x p p e in G e') :
+(t : forall (e : (x; p) = (x; p)), opaque_ind_pack_eq_inv G e) :
   simplify_ind_pack B x p p G t eq_refl =
   simplified_ind_pack B x p G (t eq_refl).
 Proof. reflexivity. Qed.
@@ -715,6 +717,7 @@ Global Opaque simplification_existT2 simplification_existT2_dec
        simplification_sigma2_dec_point
        simplification_heq simplification_K simplification_K_dec
        simplify_ind_pack simplified_ind_pack Id_simplification_sigma2.
+Global Opaque opaque_ind_pack_eq_inv.
 
 Ltac rewrite_sigma2_refl :=
   match goal with
@@ -773,6 +776,7 @@ Hint Unfold solution_left solution_right
   Id_solution_left_dep Id_solution_right_dep
   Id_solution_right_let Id_solution_left_let
   Id_simplification_sigma1
+  apply_noConfusion apply_noConfusionId
   eq_rect_r eq_rec eq_ind eq_ind_r : equations.
 
 (** Makes these definitions disappear at extraction time *)
@@ -1052,7 +1056,7 @@ Ltac simplify_one_dep_elim :=
     | [ |- context [@eq_rect_dep_r _ _ _ _ _ eq_refl]] => simpl eq_rect_dep_r
     | [ |- context [@Id_rect_dep_r _ _ _ _ _ id_refl]] => simpl Id_rect_dep_r
     | [ |- context [noConfusion_inv (pack_sigma_eq eq_refl eq_refl)]] => simpl noConfusion_inv
-    | [ |- let e := @ind_pack_eq_inv ?A ?eqdec ?B ?x ?p _ eq_refl in @?G e] =>
+    | [ |- @opaque_ind_pack_eq_inv ?A ?eqdec ?B ?x ?p _ ?G eq_refl] =>
             apply (@simplify_ind_pack_inv A eqdec B x p G)
     | [ |- ?gl ] => simplify_one_dep_elim_term gl
   end.

@@ -56,12 +56,12 @@ val ppcontext : env -> rel_context -> unit
 val pr_context_map : env -> context_map -> Pp.std_ppcmds
 val ppcontext_map : env -> context_map -> unit
 val typecheck_map :
-  env -> Evd.evar_map -> context_map -> unit
+  Environ.env -> Evd.evar_map -> context_map -> unit
 val check_ctx_map :
-  env -> Evd.evar_map -> context_map -> context_map
+  ?unsafe:bool -> Environ.env -> Evd.evar_map -> context_map -> context_map
 
 (** Smart constructor (doing runtime checks) *)
-val mk_ctx_map : Environ.env ->
+val mk_ctx_map : ?unsafe:bool -> Environ.env ->
   Evd.evar_map ->
   rel_context ->
   pat list ->
@@ -85,6 +85,8 @@ val lift_patn : int -> int -> pat -> pat
 val lift_patns : int -> int -> pat list -> pat list
 val lift_pat : int -> pat -> pat
 val lift_pats : int -> pat list -> pat list
+val make_permutation : ?env:Environ.env -> Evd.evar_map ->
+  context_map -> context_map -> context_map
 
 (** Programs and splitting trees *)
 
@@ -136,6 +138,7 @@ val ppsplit : splitting -> unit
 
 (** Covering computation *)
 
+val context_map_of_splitting : splitting -> context_map
 val specialize_mapping_constr : context_map -> constr -> constr
 val rels_of_tele : 'a list -> constr list
 val patvars_of_tele : 'a list -> pat list
@@ -175,6 +178,16 @@ val strengthen :
   Int.Set.elt ->
   constr ->
   context_map * (int * int) list
+
+(* Return a substitution and its inverse. *)
+(* For more flexibility, [rels] is a set of indices which are to be
+ * moved before the variable. By default, this is everything already before
+ * the variable. *)
+val new_strengthen :
+  Environ.env -> Evd.evar_map ->
+  rel_context -> int -> ?rels:Int.Set.t -> Term.constr ->
+  context_map * context_map
+
 val id_subst : 'a list -> 'a list * pat list * 'a list
 val eq_context_nolet :
   env ->
@@ -184,7 +197,7 @@ val check_eq_context_nolet :
   Evd.evar_map ->
   context_map ->
   context_map -> unit
-val compose_subst : Environ.env ->
+val compose_subst : ?unsafe:bool -> Environ.env ->
   ?sigma:Evd.evar_map ->
   context_map ->
   context_map ->
@@ -196,6 +209,7 @@ val push_mapping_context :
 val lift_subst :
   Environ.env -> Evd.evar_map -> context_map -> rel_context -> context_map
 val single_subst :
+  ?unsafe:bool ->
   env ->
   Evd.evar_map ->
   Int.Set.elt ->

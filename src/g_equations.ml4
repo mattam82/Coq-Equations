@@ -181,7 +181,6 @@ TACTIC EXTEND uncurry_call
       ]
 END
 
-
 (* TACTIC EXTEND pattern_tele *)
 (* [ "pattern_tele" constr(c) ident(hyp) ] -> [ fun gl -> *)
 (*   let settac = letin_tac None (Name hyp) c None onConcl in *)
@@ -507,7 +506,7 @@ let refine_ho c =
          if not b then
            error "Second-order matching failed"
          else Proofview.Unsafe.tclEVARS sigma <*>
-                Refine.refine ~unsafe:true { run = fun sigma -> Sigma.here c sigma }
+                Refine.refine ~unsafe:true { Sigma.run = fun sigma -> Sigma.here c sigma }
       | _, _ -> error "Couldn't find a second-order pattern to match"
     in aux env concl ty }
 
@@ -534,4 +533,72 @@ VERNAC COMMAND EXTEND Derive CLASSIFIED AS SIDEFF
     Derive.derive (List.map Id.to_string ds)
                   (List.map Smartlocate.global_with_alias c)
   ]
+END
+
+
+(* Simplify *)
+
+type simplification_rules_argtype = Simplify.simplification_rules Genarg.uniform_genarg_type
+
+let wit_g_simplification_rules : simplification_rules_argtype =
+  Genarg.create_arg "g_simplification_rules"
+
+let pr_raw_g_simplification_rules _ _ _ = Simplify.pr_simplification_rules
+let pr_glob_g_simplification_rules _ _ _ = Simplify.pr_simplification_rules
+let pr_g_simplification_rules _ _ _ = Simplify.pr_simplification_rules
+
+let g_simplification_rules : Simplify.simplification_rules Gram.entry =
+  Pcoq.create_generic_entry Pcoq.utactic "g_simplification_rules"
+    (Genarg.rawwit wit_g_simplification_rules)
+
+let _ = Pptactic.declare_extra_genarg_pprule wit_g_simplification_rules
+  pr_raw_g_simplification_rules pr_glob_g_simplification_rules pr_g_simplification_rules
+
+GEXTEND Gram
+  GLOBAL: g_simplification_rules;
+
+  g_simplification_rules:
+    [ [ l = LIST1 simplification_rule_located -> l ] ]
+  ;
+
+  simplification_rule_located:
+    [ [ r = simplification_rule -> (!@loc, r) ] ]
+  ;
+
+  simplification_rule:
+    [ [ step = simplification_step -> Simplify.Step step
+      | "?" -> Simplify.Infer_one
+      | "<->" -> Simplify.Infer_direction
+      | "*" -> Simplify.Infer_many
+    ] ];
+
+  simplification_step :
+    [ [ "-" -> Simplify.Deletion false
+      | "-!" -> Simplify.Deletion true
+      | "$" -> Simplify.NoConfusion []
+      | "$"; "{"; rules = g_simplification_rules; "}" ->
+          Simplify.NoConfusion rules
+      | dir = direction -> Simplify.Solution dir
+    ] ];
+
+  direction:
+    [ [ "->" -> Simplify.Left
+      | "<-" -> Simplify.Right
+    ] ];
+END
+
+(* We need these alias due to the limitations of parsing macros. *)
+type simplification_rules = Simplify.simplification_rules
+let pr_simplification_rules _ _ _ = Simplify.pr_simplification_rules
+
+ARGUMENT EXTEND simplification_rules
+PRINTED BY pr_simplification_rules
+  | [ g_simplification_rules(l) ] -> [ l ]
+END
+
+TACTIC EXTEND simplify
+| [ "simplify" simplification_rules(l) ] ->
+  [ Simplify.simplify_tac l ]
+| [ "simplify" ] ->
+  [ Simplify.simplify_tac [] ]
 END

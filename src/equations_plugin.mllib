@@ -1,12 +1,13 @@
 Equations_common
 Derive
+Syntax
+Covering
 Sigma_types
 Subterm
 Eqdec
 Noconf
 Depelim
-Syntax
-Covering
+Simplify
 Splitting
 Equations
 G_equations
