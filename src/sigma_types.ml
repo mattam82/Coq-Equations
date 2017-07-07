@@ -625,7 +625,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
       let left_sig = Vars.substl (List.rev tele_lhs) sigconstr in
       let right_sig = Vars.substl (List.rev tele_rhs) sigconstr in
       (* TODO Swap left_sig and right_sig... *)
-      let eq = Equations_common.mkEq env evd sigty left_sig right_sig in
+      let eq = Equations_common.mkEq env evd sigty right_sig left_sig in
       let goal = Vars.lift 1 goal in
       let goal = Term.mkProd (Anonymous, eq, goal) in
 
