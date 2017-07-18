@@ -1260,6 +1260,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
   let opacify, transp = simpl_of helpercsts in
   let opacified tac gl = opacify (); let res = tac gl in transp (); res in
   let simpltac gl = opacified (to82 (simpl_equations_tac ())) gl in
+  let my_simpl = opacified (to82 (simpl_in_concl)) in
   let unfolds = tclTHEN (autounfold_first [info.base_id] None)
     (autounfold_first [info.base_id ^ "_unfold"] None)
   in
@@ -1338,6 +1339,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
 		else tclTHENLIST [unfolds; simpltac; reftac] gl
 	  | _ -> tclFAIL 0 (str"Unexpected unfolding lemma goal") gl
 	in
+        let reftac = observe "refined" reftac in
 	  to82 (abstract (of82 (tclTHENLIST [to82 intros; simpltac; reftac])))
 	    
     | Compute (_, wheres, _, RProgram _), Compute (_, unfwheres, _, RProgram c) ->
@@ -1408,7 +1410,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
       in
       let res =
 	tclTHENLIST 
-	  [to82 (set_eos_tac ()); to82 intros; to82 unfolds; to82 simpl_in_concl;
+	  [to82 (set_eos_tac ()); to82 intros; to82 unfolds; my_simpl;
 	   (* to82 (unfold_recursor_tac ()); *)
 	   (fun gl ->
 	     Global.set_strategy (ConstKey f_cst) Conv_oracle.Opaque;
@@ -1514,7 +1516,8 @@ let define_by_eqs opts i l t nt eqs =
       try_bool_opt (OComp false), irec,
       try_bool_opt (OEquations false), try_bool_opt (OInd false)
   in
-  let with_comp = with_comp && not !Equations_common.ocaml_splitting in
+  (* TODO Uncomment this line. For now, it makes some tests fail. *)
+  (* let with_comp = with_comp && not !Equations_common.ocaml_splitting in*)
   let env = Global.env () in
   let poly = Flags.is_universe_polymorphism () in
   let evd = ref (Evd.from_env env) in

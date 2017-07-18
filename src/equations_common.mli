@@ -13,6 +13,7 @@ open Names
 
 (* Options *)
 val ocaml_splitting : bool ref
+val simplify_withK : bool ref
 
 val debug : bool
 

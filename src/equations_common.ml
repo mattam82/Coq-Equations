@@ -47,7 +47,9 @@ let (&&&) f g (x, y) = (f x, g y)
 let id x = x
 
 (* Options. *)
-let ocaml_splitting = ref false
+let ocaml_splitting = ref true
+let simplify_withK = ref true
+
 let _ = Goptions.declare_bool_option {
   Goptions.optsync  = true;
   Goptions.optdepr  = false;
@@ -55,6 +57,15 @@ let _ = Goptions.declare_bool_option {
   Goptions.optkey   = ["Equations"; "OCaml"; "Splitting"];
   Goptions.optread  = (fun () -> !ocaml_splitting);
   Goptions.optwrite = (fun b -> ocaml_splitting := b)
+}
+
+let _ = Goptions.declare_bool_option {
+  Goptions.optsync  = true;
+  Goptions.optdepr  = false;
+  Goptions.optname  = "using K during simplification";
+  Goptions.optkey   = ["Equations"; "WithK"];
+  Goptions.optread  = (fun () -> !simplify_withK);
+  Goptions.optwrite = (fun b -> simplify_withK := b)
 }
 
 (* Debugging infrastructure. *)

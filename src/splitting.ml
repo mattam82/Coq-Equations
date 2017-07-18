@@ -220,6 +220,7 @@ let term_of_tree status isevar env0 tree =
            * a sanity-check. *)
           (*
           let () =
+            let open Feedback in
             let ctx = cut_ctx @ new_ctx @ ctx' in
             msg_info(str"Simplifying term:");
             msg_info(let env = Environ.push_rel_context ctx env in
@@ -249,6 +250,9 @@ let term_of_tree status isevar env0 tree =
                 let next_subst = Covering.context_map_of_splitting s in
                 let perm_subst = Covering.make_permutation evm subst next_subst in
                 let next_term = Covering.mapping_constr perm_subst next_term in
+                let _ =
+                  Typing.type_of next_env evm next_term
+                in
                 evd := Evarsolve.evar_define conv_fun next_env evm None ev next_term;
                 c
             (* This should not happen... *)

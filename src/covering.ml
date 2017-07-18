@@ -212,6 +212,8 @@ let typecheck_map env evars (ctx, subst, ctx') =
       ctx' subst []
   in ()
 
+let debug = true
+
 let check_ctx_map ?(unsafe = false) env evars map =
   if debug && not unsafe then
     try typecheck_map env evars map; map
@@ -797,7 +799,7 @@ let env_of_rhs evars ctx env s lets =
     in
       pats, x @ y, List.length x 
   in
-  let pats = List.map (lift (-letslen)) pats @ map (lift len) patslets in
+  let pats = List.map (lift (-letslen)) pats @ patslets in
   ctx, envctx, len + letslen, pats
 
 let interp_constr_in_rhs_env env evars impls (ctx, envctx, liftn, subst) c ty =

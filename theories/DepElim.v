@@ -1052,7 +1052,7 @@ Ltac simplify_one_dep_elim_term c :=
 Ltac simplify_one_dep_elim :=
   match goal with
     | [ |- context [eq_rect_r _ _ eq_refl]] => unfold eq_rect_r at 1; simpl eq_rect
-    | [ |- context [eq_rect _ _ _ _ eq_refl]] => simpl eq_rect
+    | [ |- context [eq_rect _ _ _ _ eq_refl]] => unfold eq_rect at 1; simpl eq_rect
     | [ |- context [@eq_rect_dep_r _ _ _ _ _ eq_refl]] => simpl eq_rect_dep_r
     | [ |- context [@Id_rect_dep_r _ _ _ _ _ id_refl]] => simpl Id_rect_dep_r
     | [ |- context [noConfusion_inv (pack_sigma_eq eq_refl eq_refl)]] => simpl noConfusion_inv

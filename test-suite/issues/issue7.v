@@ -78,7 +78,7 @@ Hint Extern 5 => progress simpl : subterm_relation.
 (*   simplification_existT2_dec simplification_K simplification_K_dec : equations. *)
 
 (* Derive Signature for TupleT. *)
-(* Derive NoConfusion for TupleT. *)
+Derive NoConfusion for TupleT.
 (* Derive Signature for Tuple. *)
 (* Derive NoConfusion for Tuple. *)
 (* Derive Signature for TupleMap. *)

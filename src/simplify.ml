@@ -519,27 +519,27 @@ let deletion ~(force:bool) : simplification_fun =
     subst
   else
     let tB = Constr.mkLambda (name, ty1, ty2) in
-    if force then
-      (* The user wants to use K directly. *)
-      let tsimpl_K = Globnames.ConstRef (Lazy.force EqRefs.simpl_K) in
-      let args = [Some tA; Some tx; Some tB; None] in
-        build_app_infer env evd (ctx, ty) ctx tsimpl_K args, subst
-    else
+    try
       (* We will try to find an instance of K for the type [A]. *)
       let tsimpl_K_dec = Globnames.ConstRef (Lazy.force EqRefs.simpl_K_dec) in
       let eqdec_ty = Constr.mkApp (Builder.eq_dec evd, [| tA |]) in
       let tdec =
         let env = Environ.push_rel_context ctx env in
-        try
           Evarutil.evd_comb1
             (Typeclasses.resolve_one_typeclass env) evd eqdec_ty
-        with Not_found ->
-          raise (CannotSimplify (str
-            "[deletion] Cannot simplify without K on type " ++
-            Printer.pr_constr_env env !evd tA))
       in
       let args = [Some tA; Some tdec; Some tx; Some tB; None] in
         build_app_infer env evd (ctx, ty) ctx tsimpl_K_dec args, subst
+    with Not_found ->
+      if force || !Equations_common.simplify_withK then
+        (* We can use K as an axiom. *)
+        let tsimpl_K = Globnames.ConstRef (Lazy.force EqRefs.simpl_K) in
+        let args = [Some tA; Some tx; Some tB; None] in
+          build_app_infer env evd (ctx, ty) ctx tsimpl_K args, subst
+      else
+        raise (CannotSimplify (str
+          "[deletion] Cannot simplify without K on type " ++
+          Printer.pr_constr_env env !evd tA))
 
 let solution ~(dir:direction) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
@@ -641,9 +641,13 @@ let maybe_pack : simplification_fun =
   let fA, _ = Term.decompose_app tA in
   let f1, _ = Term.decompose_app t1 in
   let f2, _ = Term.decompose_app t2 in
-  if not (Term.isInd fA && Term.isConstruct f1 && Term.isConstruct f2) then
+  if not (Term.isConstruct f1 && Term.isConstruct f2) then
     raise (CannotSimplify (str "This is not an equality between constructors."));
-  let indty = Inductiveops.find_rectype env !evd tA in
+  let indty =
+    try Inductiveops.find_rectype env !evd tA
+    with Not_found ->
+      raise (CannotSimplify (str "This is not an equality between constructors."));
+  in
   let indfam, args = Inductiveops.dest_ind_type indty in
   if CList.is_empty args then
     identity env evd (ctx, ty)
@@ -835,11 +839,13 @@ let infer_step ~(loc:Loc.t) ~(isSol:bool)
       else
       let check_ind t =
         let f, _ = Term.decompose_app t in
-          Term.isInd f
+        try ignore (Inductive.find_rectype env f); true
+        with Not_found -> false
       in
       let check_construct t =
-          let f, _ = Term.decompose_app t in
-            Term.isConstruct f
+        let f, _ = Term.decompose_app t in
+        let f = Tacred.hnf_constr env !evd f in
+          Term.isConstruct f
       in
       (* FIXME What is the correct order here? Should we first check if we
        * have K directly? *)
@@ -878,7 +884,7 @@ let expand_many rule env evd ((_, ty) : goal) : simplification_rules =
       let ty = Tacred.hnf_constr env !evd ty in
       let f, args = Term.decompose_appvect ty in
       if check_inductive (Lazy.force SigmaRefs.sigma) f then
-        let _, _, next_ty = Term.destLambda args.(1) in
+        let next_ty = Reduction.beta_applist args.(1) [Constr.mkRel 1] in
         aux next_ty (rule :: acc)
       else acc
     in aux ty [rule]
