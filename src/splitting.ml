@@ -218,8 +218,7 @@ let term_of_tree status isevar env0 tree =
           (* TODO This context should be the same as (pi1 csubst). We could
            * either optimize (but names in [csubst] are worse) or just insert
            * a sanity-check. *)
-          (*
-          let () =
+          if debug then begin
             let open Feedback in
             let ctx = cut_ctx @ new_ctx @ ctx' in
             msg_info(str"Simplifying term:");
@@ -227,8 +226,7 @@ let term_of_tree status isevar env0 tree =
               Printer.pr_constr_env env !evd ty);
             msg_info(str"... in context:");
             msg_info(Printer.pr_rel_context env !evd ctx)
-          in
-          *)
+          end;
           let ((hole, c), lsubst) = simpl_step (cut_ctx @ new_ctx @ ctx', ty) in
           let subst = Covering.compose_subst ~unsafe:true env ~sigma:!evd csubst subst in
           let subst = Covering.compose_subst ~unsafe:true env ~sigma:!evd lsubst subst in
@@ -248,7 +246,7 @@ let term_of_tree status isevar env0 tree =
                 let next_term = Reduction.beta_appvect next_term args in
                 (* Finally, we might need to permutate some rels. *)
                 let next_subst = Covering.context_map_of_splitting s in
-                let perm_subst = Covering.make_permutation evm subst next_subst in
+                let perm_subst = Covering.make_permutation ~env evm subst next_subst in
                 let next_term = Covering.mapping_constr perm_subst next_term in
                 let _ =
                   Typing.type_of next_env evm next_term
@@ -270,14 +268,17 @@ let term_of_tree status isevar env0 tree =
         let rel_ty = Context.Rel.Declaration.get_type decl in
         let rel_ty = Vars.lift rel rel_ty in
         let rel_t = Constr.mkRel rel in
-        let pind, _ = Inductive.find_inductive env rel_ty in
+        let pind, args = Inductive.find_inductive env rel_ty in
 
         (* Build the case. *)
         let case_info = Inductiveops.make_case_info env (fst pind) Constr.RegularStyle in
-        let case = Constr.mkCase (case_info, case_ty, rel_t, branches) in
+        let indfam = Inductiveops.make_ind_family (pind, args) in
+        let case = Inductiveops.make_case_or_project env indfam case_info
+          case_ty rel_t branches in
         let term = Constr.mkApp (case, Array.of_list to_apply) in
         let term = Term.it_mkLambda_or_LetIn term ctx in
         let typ = it_mkProd_or_subst ty ctx in
+        let term = Evarutil.nf_evar !evd term in
         Typing.e_check env evd term typ;
           !evd, term, typ
       else

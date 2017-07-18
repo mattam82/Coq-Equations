@@ -195,70 +195,8 @@ type simplification_fun = Environ.env -> Evd.evar_map ref -> goal ->
   open_term * Covering.context_map
 
 (* Auxiliary functions. *)
-(*
-(* Return a substitution (and its inverse) which is just a permutation
- * of the variables in the context which is well-typed, and such that
- * all variables in [t] (and their own dependencies) are now declared
- * before [x] in the context. *)
-let strengthen (env : Environ.env) (evd : Evd.evar_map) (ctx : Context.rel_context)
-  (x : int) ?(rels : Int.Set.t = Covering.rels_above ctx x) (t : Term.constr) :
-    Covering.context_map * Covering.context_map =
-  let rels = Int.Set.union rels (Covering.dependencies_of_term env evd ctx t x) in
-  let maybe_reduce k t =
-    if Int.Set.mem k (Termops.free_rels t) then
-      Reductionops.nf_betadeltaiota env evd t
-    else t
-  in
-  (* We may have to normalize some declarations in the context if they
-   * mention [x] syntactically when they shouldn't. *)
-  let ctx = CList.map_i (fun k decl ->
-    if Int.Set.mem k rels && k < x then
-      Context.map_rel_declaration (maybe_reduce (x - k)) decl
-    else decl) 1 ctx in
-  (* Now we want to put everything in [rels] as the oldest part of the context,
-   * and everything else after. The invariant is that the context
-   * [subst (rev (before @ after)) @ ctx] is well-typed. *)
-  (* We also create along what we need to build the actual substitution. *)
-  let len_ctx = Context.rel_context_length ctx in
-  let lifting = len_ctx - Int.Set.cardinal rels in
-  let rev_subst = Array.make len_ctx (Covering.PRel 0) in
-  let rec aux k before after n subst = function
-  | decl :: ctx ->
-      if Int.Set.mem k rels then
-        let subst = Covering.PRel (k + lifting - n + 1) :: subst in
-        rev_subst.(k + lifting - n) <- Covering.PRel k;
-        (* We lift the declaration not to be well-typed in the new context,
-         * but so that it reflects in a raw way its movement in the context.
-         * This allows to apply a simple substitution afterwards, instead
-         * of going through the whole context at each step. *)
-        let decl = Context.map_rel_declaration (Vars.lift (n - lifting - 1)) decl in
-        aux (succ k) (decl :: before) after n subst ctx
-      else
-        let subst = Covering.PRel n :: subst in
-        rev_subst.(n - 1) <- Covering.PRel k;
-        let decl = Context.map_rel_declaration (Vars.lift (k - n)) decl in
-        aux (succ k) before (decl :: after) (succ n) subst ctx
-  | [] -> CList.rev (before @ after), CList.rev subst
-  in
-  (* Now [subst] is a list of indices which represents the substitution
-   * that we must apply. *)
-  (* Right now, [ctx'] is an ill-typed rel_context, we need to apply [subst]. *)
-  let (ctx', subst) = aux 1 [] [] 1 [] ctx in
-  let rev_subst = Array.to_list rev_subst in
-  (* Fix the context [ctx'] by using [subst]. *)
-  (* We lift each declaration to make it appear as if it was under the
-   * whole context, which allows then to apply the substitution, and lift
-   * it back to its place. *)
-  let do_subst k c = Vars.lift (-k)
-    (Covering.specialize_constr subst (Vars.lift k c)) in
-  let ctx' = CList.map_i (fun k decl ->
-    Context.map_rel_declaration (do_subst k) decl) 1 ctx' in
-  (* Now we have everything need to build the two substitutions. *)
-  let s = Covering.mk_ctx_map evd ctx' subst ctx in
-  let rev_s = Covering.mk_ctx_map evd ctx rev_subst ctx' in
-    s, rev_s
-*)
-(* Same, but no inference. *)
+
+(* Build a term with an evar out of [constr -> constr] function. *)
 let build_term (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal)
   ((ctx', ty') : goal) (f : Term.constr -> Term.constr) : open_term =
   let tev =
@@ -875,13 +813,13 @@ let infer_step ~(loc:Loc.t) ~(isSol:bool)
 
 let expand_many rule env evd ((_, ty) : goal) : simplification_rules =
   (* FIXME: maybe it's too brutal/expensive? *)
-  let ty = Tacred.hnf_constr env !evd ty in
+  let ty = Reductionops.whd_all env !evd ty in
   let _, ty, _ = check_prod ty in
   try
-    let ty = Tacred.hnf_constr env !evd ty in
+    let ty = Reductionops.whd_all env !evd ty in
     let ty, _, _ = check_equality ty in
     let rec aux ty acc =
-      let ty = Tacred.hnf_constr env !evd ty in
+      let ty = Reductionops.whd_betaiotazeta !evd ty in
       let f, args = Term.decompose_appvect ty in
       if check_inductive (Lazy.force SigmaRefs.sigma) f then
         let next_ty = Reduction.beta_applist args.(1) [Constr.mkRel 1] in

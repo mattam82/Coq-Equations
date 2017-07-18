@@ -547,8 +547,8 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
    (Covering.mapping_constr subst (Constr.mkRel 1))) in
   (* [ctx'] is the context under which we will build the case in a first step. *)
   (* This is [ctx] where everything omitted and cut is removed. *)
-  let ctx' = List.skipn (nb_cuts_omit + oib.mind_nrealargs + 1) (pi1 subst) in
-  let rev_subst' = List.skipn (nb_cuts_omit + oib.mind_nrealargs + 1) (pi2 subst) in
+  let ctx' = List.skipn (nb_cuts_omit + oib.mind_nrealargs + 1) (pi3 rev_subst) in
+  let rev_subst' = List.skipn (nb_cuts_omit + oib.mind_nrealargs + 1) (pi2 rev_subst) in
   let rev_subst' = Covering.lift_pats (-(oib.mind_nrealargs+1)) rev_subst' in
   let rev_subst_without_cuts = Covering.mk_ctx_map env !evd ctx rev_subst' ctx' in
   (* Now we will work under a context with [ctx'] as a prefix, so we will be
