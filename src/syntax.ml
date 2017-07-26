@@ -325,11 +325,12 @@ let interp_eqn i is_rec env impls eqn =
   and interp_constr_expr recinfo ids c = 
     match c with
     (* |   | CAppExpl of loc * (proj_flag * reference) * constr_expr list *)
-    | CApp (loc, (None, CRef (Ident (loc',id'), _)), args)
+    | CApp (loc, (None, CRef (Ident (loc',id'), ie)), args)
       when List.mem_assoc_f Id.equal id' recinfo ->
        let r = List.assoc_f Id.equal id' recinfo in
        let args =
          List.map (fun (c, expl) -> interp_constr_expr recinfo ids c, expl) args in
+       let c = CApp (loc, (None, CRef (Ident (loc', id'), ie)), args) in
        let arg = CApp (loc, (None, c), [chole loc]) in
        (match r with
         | LogicalDirect _ -> arg 

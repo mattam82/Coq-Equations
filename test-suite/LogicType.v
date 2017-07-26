@@ -1,5 +1,5 @@
 From Equations Require Import Equations DepElimDec HSets.
-
+Unset Equations OCaml Splitting.
 Set Universe Polymorphism.
 
 Equations Logic Type Id Id_rect Empty unit tt.

@@ -11,6 +11,5 @@ f (S m) with f m :=
 f (S m) IH := _
 }.
 
-Next Obligation. exact IH. Defined.
 Write State bisect.
 End TestF.

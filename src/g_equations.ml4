@@ -274,11 +274,13 @@ END
 open Equations
 open Syntax
 
+open Pcoq.Prim
+
 ARGUMENT EXTEND equation_user_option
 PRINTED BY pr_r_equation_user_option
 | [ "noind" ] -> [ OInd false ]
 | [ "ind" ] -> [ OInd true ]
-(* | [ "struct" ident(i) ] -> [ ORec (Some (loc, i)) ] *)
+| [ "struct" ident(i) ] -> [ ORec (Some (loc, i)) ]
 | [ "nostruct" ] -> [ ORec None ]
 | [ "comp" ] -> [ OComp true ]
 | [ "nocomp" ] -> [ OComp false ]
@@ -291,8 +293,6 @@ PRINTED BY pr_equation_options
 | [ "(" ne_equation_user_option_list(l) ")" ] -> [ l ]
 | [ ] -> [ [] ]
 END
-
-open Pcoq.Prim
 
 let pr_lident _ _ _ (loc, id) = pr_id id
        

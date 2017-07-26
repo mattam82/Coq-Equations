@@ -36,7 +36,11 @@ Next Obligation.
 Defined.
 
 Next Obligation.
-  apply test. red; cbn. omega.
+  auto with arith.
+Defined.
+
+Next Obligation.
+  auto with arith.
 Defined.
 
 Next Obligation.

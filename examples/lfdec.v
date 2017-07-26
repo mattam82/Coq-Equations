@@ -644,10 +644,10 @@ hereditary_subst (pair (pair A a) t) k with t := {
 
 Solve Obligations with
    unfold her_type;
-   intros; apply hereditary_subst; constructor 2; do 2 constructor.
+   intros; constructor 2; do 2 constructor.
 
-Next Obligation. 
-  apply hereditary_subst. destruct prf; subst; eauto 10 with subterm_relation. 
+Next Obligation.
+  destruct prf; subst; eauto 10 with subterm_relation.
 Defined.
 
 Hint Unfold her_type : subterm_relation.
