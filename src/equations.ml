@@ -605,7 +605,15 @@ let subst_rec_split env evd f comp comprecarg prob s split =
 		   if mem_assoc (out_name (get_name d)) s then acc
 		   else (mapping_constr subst c) :: acc
 		 else (mapping_constr subst c) :: acc) 0 [] args 
-	   in (mkEvar (ev', [||]), rev args'), !refarg
+           in
+           let secvars =
+             let named_context = Environ.named_context env in
+               List.map (fun decl ->
+                 let id = Context.Named.Declaration.get_id decl in
+                 Constr.mkVar id) named_context
+           in
+           let secvars = Array.of_list secvars in
+	    (mkEvar (ev', secvars), rev args'), !refarg
 	 else 
 	   let first, last = List.chop (length s) (map (mapping_constr subst) args) in
 	   (applistc (mapping_constr subst fev) first, last), arg - length s
@@ -1250,10 +1258,9 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
   let helpercsts = List.map (fun (_, _, i) -> fst (destConst (global_reference i)))
 			    info.helpers_info in
   let opacify, transp = simpl_of helpercsts in
-  let simpltac gl = opacify ();
-    let res = to82 (simpl_equations_tac ()) gl in
-      transp (); res
-  in
+  let opacified tac gl = opacify (); let res = tac gl in transp (); res in
+  let simpltac gl = opacified (to82 (simpl_equations_tac ())) gl in
+  let my_simpl = opacified (to82 (simpl_in_concl)) in
   let unfolds = tclTHEN (autounfold_first [info.base_id] None)
     (autounfold_first [info.base_id ^ "_unfold"] None)
   in
@@ -1284,8 +1291,13 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
 	  match kind_of_term (pf_concl gl) with
 	  | App (eq, [| ty; x; y |]) -> 
 	     let f, pats' = decompose_app y in
-	     let c = List.nth (List.rev pats') (pred var) in
-	     let id = destVar (fst (decompose_app c)) in
+             let c, unfolds =
+                if !Equations_common.ocaml_splitting then
+                  let _, _, c, _ = Term.destCase f in c, tclIDTAC
+                else
+                  List.nth (List.rev pats') (pred var), unfolds
+             in
+             let id = destVar (fst (decompose_app c)) in
 	     let splits = List.map_filter (fun x -> x) (Array.to_list splits) in
 	     let unfsplits = List.map_filter (fun x -> x) (Array.to_list unfsplits) in
 	       to82 (abstract (of82 (tclTHEN_i (to82 (depelim id))
@@ -1327,6 +1339,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
 		else tclTHENLIST [unfolds; simpltac; reftac] gl
 	  | _ -> tclFAIL 0 (str"Unexpected unfolding lemma goal") gl
 	in
+        let reftac = observe "refined" reftac in
 	  to82 (abstract (of82 (tclTHENLIST [to82 intros; simpltac; reftac])))
 	    
     | Compute (_, wheres, _, RProgram _), Compute (_, unfwheres, _, RProgram c) ->
@@ -1397,7 +1410,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
       in
       let res =
 	tclTHENLIST 
-	  [to82 (set_eos_tac ()); to82 intros; to82 unfolds; to82 simpl_in_concl;
+	  [to82 (set_eos_tac ()); to82 intros; to82 unfolds; my_simpl;
 	   (* to82 (unfold_recursor_tac ()); *)
 	   (fun gl ->
 	     Global.set_strategy (ConstKey f_cst) Conv_oracle.Opaque;
@@ -1503,6 +1516,8 @@ let define_by_eqs opts i l t nt eqs =
       try_bool_opt (OComp false), irec,
       try_bool_opt (OEquations false), try_bool_opt (OInd false)
   in
+  (* TODO Uncomment this line. For now, it makes some tests fail. *)
+  let with_comp = with_comp && not !Equations_common.ocaml_splitting in
   let env = Global.env () in
   let poly = Flags.is_universe_polymorphism () in
   let evd = ref (Evd.from_env env) in

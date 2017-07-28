@@ -46,6 +46,28 @@ let ($) f g = fun x -> f (g x)
 let (&&&) f g (x, y) = (f x, g y)
 let id x = x
 
+(* Options. *)
+let ocaml_splitting = ref true
+let simplify_withK = ref true
+
+let _ = Goptions.declare_bool_option {
+  Goptions.optsync  = true;
+  Goptions.optdepr  = false;
+  Goptions.optname  = "splitting variables in OCaml";
+  Goptions.optkey   = ["Equations"; "OCaml"; "Splitting"];
+  Goptions.optread  = (fun () -> !ocaml_splitting);
+  Goptions.optwrite = (fun b -> ocaml_splitting := b)
+}
+
+let _ = Goptions.declare_bool_option {
+  Goptions.optsync  = true;
+  Goptions.optdepr  = false;
+  Goptions.optname  = "using K during simplification";
+  Goptions.optkey   = ["Equations"; "WithK"];
+  Goptions.optread  = (fun () -> !simplify_withK);
+  Goptions.optwrite = (fun b -> simplify_withK := b)
+}
+
 (* Debugging infrastructure. *)
 
 let debug = false
@@ -717,14 +739,14 @@ open Context.Rel.Declaration
 
 let lookup_rel = Context.Rel.lookup
 
-let named_of_rel_context default l =
+let named_of_rel_context ?(keeplets = false) default l =
   let acc, args, _, ctx =
     List.fold_right
       (fun decl (subst, args, ids, ctx) ->
         let decl = Context.Rel.Declaration.map_constr (substl subst) decl in
 	let id = match get_name decl with Anonymous -> default () | Name id -> id in
 	let d = Named.Declaration.of_tuple (id, get_value decl, get_type decl) in
-	let args = if is_local_assum decl then mkVar id :: args else args in
+	let args = if keeplets || is_local_assum decl then mkVar id :: args else args in
 	  (mkVar id :: subst, args, id :: ids, d :: ctx))
       l ([], [], [], [])
   in acc, rev args, ctx

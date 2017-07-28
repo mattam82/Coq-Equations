@@ -192,6 +192,7 @@ Inductive fle : forall {n}, fin n -> fin n -> Set :=
 Equations fin0_empty (i : fin 0) : False :=
 fin0_empty i :=! i.
 
+Derive Signature NoConfusion DependentElimination EqDec for fin.
 Equations(nocomp) fle_trans {n : nat} {i j k : fin n} (p : fle i j) (q : fle j k) : fle i k :=
 fle_trans flez _ := flez;
 fle_trans (fles p') (fles q') := fles (fle_trans p' q').
@@ -203,7 +204,6 @@ Require Import EqDec EqDecInstances DepElimDec.
 
 Derive Signature for eq.
 
-Derive Signature NoConfusion DependentElimination EqDec for fin.
 Print Assumptions fin_eqdec.
 
 Derive Signature NoConfusion EqDec Subterm for fle.

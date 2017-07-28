@@ -11,6 +11,10 @@ open Context
 open Environ
 open Names
 
+(* Options *)
+val ocaml_splitting : bool ref
+val simplify_withK : bool ref
+
 val debug : bool
 
 (* Tactics *)
@@ -342,7 +346,7 @@ val to_context : (Names.Name.t * Constr.t option * Constr.t) list -> rel_context
 
 val localdef : Constr.t -> Entries.local_entry
 val localassum : Constr.t -> Entries.local_entry
-val named_of_rel_context : (unit -> Names.Id.t) -> rel_context -> Vars.substl * Term.constr list * named_context
+val named_of_rel_context : ?keeplets:bool -> (unit -> Names.Id.t) -> rel_context -> Vars.substl * Term.constr list * named_context
 val rel_of_named_context : named_context -> rel_context * Names.Id.t list
 val subst_rel_context : int -> Vars.substl -> rel_context -> rel_context
 val get_id : named_declaration -> Names.Id.t

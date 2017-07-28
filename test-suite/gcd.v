@@ -15,8 +15,12 @@ Proof. red. apply measure_wf. apply Wf_nat.lt_wf. Defined.
 
 Require Import Omega.
 
+Ltac subst_all :=
+  repeat match goal with
+  | id := _ |- _ => subst id
+  end.
 Hint Extern 5 => 
-  unfold gcd_rel, gcd_order, MR; simpl; omega : Below.
+  unfold gcd_rel, gcd_order, MR; simpl; subst_all; omega : Below.
 
 
 Equations gcd (p : nat * nat) : nat :=

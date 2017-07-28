@@ -105,7 +105,7 @@ Derive Subterm for exp.
 Ltac rec ::= rec_wf_eqns.
 Unset Implicit Arguments.
   (* Equations(struct e) cfold t (e : exp t) : exp t := *)
-
+Derive NoConfusion for type.
 Equations cfold {t} (e : exp t) : exp t :=
 cfold e by rec (signature_pack e) exp_subterm :=
 cfold (NConst n) => NConst n;
