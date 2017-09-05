@@ -6,11 +6,11 @@ Sigma_types
 Subterm
 Eqdec
 Noconf
-Depelim
 Simplify
 Splitting
 Principles_proofs
 Principles
+Depelim
 Equations
 G_equations
 Equations_plugin_mod

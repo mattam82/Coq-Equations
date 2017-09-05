@@ -102,10 +102,13 @@ val translate_cases_pattern :
 
 val ids_of_pats : pat_expr located list -> identifier list
 
+val interp_pat : Environ.env -> ?avoid:Names.Id.t list ref ->
+  user_pat_expr -> Loc.t * user_pat
+
 val interp_eqn :
   identifier ->
   rec_type option ->
   env ->
   Impargs.implicit_status list ->
-  ((Loc.t * identifier) option * input_pats * 'f rhs as 'f) ->
+  pre_equation ->
   clause
