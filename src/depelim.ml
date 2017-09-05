@@ -502,6 +502,30 @@ let specialize_eqs id gl =
     tclFAIL 0 (str "Specialization not allowed on dependent hypotheses") gl
   else specialize_eqs id gl
 
+(* Produce a list of default patterns to eliminate an inductive value in [ind]. *)
+let default_patterns env ?(avoid = ref []) ind : (Loc.t * Syntax.user_pat) list =
+  let nparams = Inductiveops.inductive_nparams ind in
+  let mib, oib = Inductive.lookup_mind_specif env ind in
+  let make_pattern (i : int) : Loc.t * Syntax.user_pat =
+    let construct = Names.ith_constructor_of_inductive ind (succ i) in
+    let args =
+      let arity = oib.mind_nf_lc.(i) in
+      let ctx, _ = Term.decompose_prod_assum arity in
+      (* Make an identifier for each argument of the constructor. *)
+      List.rev_map (fun decl ->
+        let id =
+          match Context.Rel.Declaration.get_name decl with
+          | Names.Name id -> id
+          | Names.Anonymous ->
+              let ty = Context.Rel.Declaration.get_type decl in
+              let hd = Namegen.hdchar env ty in
+                Namegen.next_ident_away (Names.id_of_string hd) !avoid
+        in avoid := id :: !avoid;
+      Loc.dummy_loc, Syntax.PUVar (id, true)) ctx
+    in
+      Loc.dummy_loc, Syntax.PUCstr (construct, nparams, args)
+  in List.init (Array.length oib.mind_consnames) make_pattern
+
 (* Dependent elimination using Equations. *)
 let dependent_elim_tac ?patterns id : unit Proofview.tactic =
   Proofview.Goal.nf_enter { Proofview.Goal.enter = fun gl ->
@@ -522,15 +546,18 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
     (* We also need to convert the goal for it to be well-typed in
      * the [rel_context]. *)
     let ty = Vars.subst_vars subst concl in
-    let patterns : Syntax.user_pat_expr list =
-      match patterns with
-      | None -> (* Produce default patterns. *) assert false
-      | Some p -> p
-    in
-    (* Interpret each pattern. *)
     let patterns : (Loc.t * Syntax.user_pat) list =
-      let avoid = ref [] in
-      List.map (Syntax.interp_pat env ~avoid) patterns
+      match patterns with
+      | None ->
+          (* Produce directly a user_pat. *)
+          let decl = Context.Named.lookup id loc_hyps in
+          let ty = Context.Named.Declaration.get_type decl in
+          let (ind, _), _ = Inductive.find_rectype env ty in
+            default_patterns env ind
+      | Some p ->
+          (* Interpret each pattern. *)
+          let avoid = ref [] in
+            List.map (Syntax.interp_pat env ~avoid) p
     in
 
     (* For each pattern, produce a clause. *)
@@ -549,6 +576,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
           (loc, lhs, rhs)
     in
     let clauses : Syntax.clause list = List.map make_clause patterns in
+    if !debug then
     Feedback.msg_info (str "Generated clauses: " ++ fnl() ++ Syntax.pr_clauses env clauses);
 
     (* Produce dummy data for covering. *)
