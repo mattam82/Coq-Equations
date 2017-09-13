@@ -1,4 +1,4 @@
-Require Export Unicode.Utf8_core.
+Require Export Unicode.Utf8.
 Require Import Coq.Program.Tactics Setoid.
 
 Require Import Equations.Equations.
@@ -96,7 +96,7 @@ transport P id_refl u := u.
 Transparent transport.
 
 Notation "p # x" := (transport _ p x) (right associativity, at level 65, only parsing).
-
+Open Scope sigma_scope.
 Equations path_sigma {A : Type} (P : A -> Type) (u v : sigma A P)
   (p : u.1 = v.1) (q : p # u.2 = v.2)
 : u = v :=
@@ -351,7 +351,7 @@ Definition contr_sigma A {P : A -> Type}
   {H : Contr A} `{H0 : forall a, Contr (P a)}
   : Contr (sigma A P).
 Proof.
-  exists (center A; center (P (center A))). 
+  exists &(center A & center (P (center A))).
   intros [a Ha]. unshelve refine (path_sigma _ _ _ _).
   simpl. apply H. simpl. apply transport_inv.
   apply (H0 (center A)).
@@ -378,7 +378,7 @@ Defined.
 Notation "p ..2" := (pr2_path p) (at level 3).
 
 Definition eta_path_sigma_uncurried A `{P : A -> Type} {u v : sigma A P}
-           (p : u = v) : path_sigma_uncurried _ _ (p..1; p..2) = p.
+           (p : u = v) : path_sigma_uncurried _ _ &(p..1& p..2) = p.
   destruct p. apply id_refl.
 Defined.
 
@@ -389,7 +389,7 @@ Definition eta_path_sigma A `{P : A -> Type} {u v : sigma A P} (p : u = v)
 Definition path_sigma_equiv {A : Type} (P : A -> Type) (u v : sigma A P):
   IsEquiv (path_sigma_uncurried u v).
   unshelve refine (BuildIsEquiv _ _ _).
-  - exact (fun r => (r..1; r..2)).
+  - exact (fun r => &(r..1 & r..2)).
   - intro. apply eta_path_sigma_uncurried.
   - destruct u, v; intros [p q]; simpl in *.
     destruct p. simpl in *. destruct q.

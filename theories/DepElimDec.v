@@ -49,7 +49,7 @@ Ltac simplify_dep_elim ::= repeat simplify_one_dep_elim'.
 
 Ltac decompose_exists id id' := hnf in id ;
   match type of id with
-    | sigma _ _ => let xn := fresh id "'" in 
+    | @sigma _ _ => let xn := fresh id "'" in
       destruct id as [xn id]; decompose_exists xn id; 
         cbv beta delta [ pr1 pr2 ] iota in id, id';
           decompose_exists id id'
@@ -151,10 +151,10 @@ Ltac funelim c ::= funelim_sig_tac c ltac:(fun _ => idtac).
 
 Polymorphic Definition eqdec_sig@{i j} {A : Type@{i}} {B : A -> Type@{j}}
             `(EqDec A) `(forall a, EqDec (B a)) :
-  EqDec { x : A & B x }.
+  EqDec (sigma A B).
 Proof.
-  intros. intros x y. decompose_exists x x. decompose_exists y y.
-  case (eq_dec x' y'). intros ->. case (eq_dec x y). intros ->. left. reflexivity.
+  intros. intros [x0 x1] [y0 y1].
+  case (eq_dec x0 y0). intros ->. case (eq_dec x1 y1). intros ->. left. reflexivity.
   intros. right. red. apply simplification_sigma2_dec@{i j Set}. apply n.
   intros. right. red. apply simplification_sigma1@{i j Set}.
   intros e _; revert e. apply n.
@@ -164,7 +164,7 @@ Polymorphic Existing Instance eqdec_sig.
 
 Polymorphic Definition eqdec_sig_Id@{i j k} {A : Type@{i}} {B : A -> Type@{j}}
             `(HSets.EqDec A) `(forall a, HSets.EqDec (B a)) :
-  HSets.EqDec@{k} { x : A & B x }.
+  HSets.EqDec@{k} (sigma A B).
 Proof.
   intros. intros x y. decompose_exists x x. decompose_exists y y.
   case (HSets.eq_dec x' y'). intros Hx'y'. destruct Hx'y'. case (HSets.eq_dec x y).
@@ -174,4 +174,4 @@ Proof.
     intros He _; revert He. apply e.
 Defined.
 
-Existing Instance eqdec_sig_Id.
+Polymorphic Existing Instance eqdec_sig_Id.

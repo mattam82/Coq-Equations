@@ -13,8 +13,8 @@ Require Import Coq.Program.Program Equations.Equations.
 (** [fin n] is the type of naturals smaller than [n]. *)
 
 Inductive fin : nat -> Set :=
-| fz : ∀ {n}, fin (S n)
-| fs : ∀ {n}, fin n -> fin (S n).
+| fz : forall {n}, fin (S n)
+| fs : forall {n}, fin n -> fin (S n).
 
 (** We can inject it into [nat]. *)
 
@@ -49,9 +49,9 @@ Qed.
 
 (** Won't pass the guardness check which diverges anyway. *)
 
-Inductive finle : ∀ (n : nat) (x : fin n) (y : fin n), Prop :=
-| leqz : ∀ {n j}, finle (S n) fz j
-| leqs : ∀ {n i j}, finle n i j -> finle (S n) (fs i) (fs j).
+Inductive finle : forall (n : nat) (x : fin n) (y : fin n), Prop :=
+| leqz : forall {n j}, finle (S n) fz j
+| leqs : forall {n i j}, finle n i j -> finle (S n) (fs i) (fs j).
 
 Scheme finle_ind_dep := Induction for finle Sort Prop.
 
@@ -81,14 +81,14 @@ Derive NoConfusion for fin.
 
 (** [Below] recursor for [fin]. *)
 
-Equations(nocomp noind) Below_fin (P : ∀ n, fin n -> Type) {n} (v : fin n) : Type :=
+Equations(nocomp noind) Below_fin (P : forall n, fin n -> Type) {n} (v : fin n) : Type :=
 Below_fin P fz := unit ;
 Below_fin P (fs n f) := (P n f * Below_fin P f)%type.
 
 Hint Rewrite Below_fin_equation_2 (* Below_fin_equation_3 *) : Below.
 
-Equations(nocomp noeqns noind) below_fin (P : ∀ n, fin n -> Type)
-  (step : ∀ n (v : fin n), Below_fin P v -> P n v)
+Equations(nocomp noeqns noind) below_fin (P : forall n, fin n -> Type)
+  (step : forall n (v : fin n), Below_fin P v -> P n v)
   {n} (v : fin n) : Below_fin P v :=
 below_fin P step fz := tt ;
 below_fin P step (fs n f) := 
@@ -97,10 +97,10 @@ below_fin P step (fs n f) :=
 
 Global Opaque Below_fin.
 
-Definition rec_fin (P : ∀ n, fin n -> Type) {n} v
-  (step : ∀ n (v : fin n), Below_fin P v -> P n v) : P n v :=
+Definition rec_fin (P : forall n, fin n -> Type) {n} v
+  (step : forall n (v : fin n), Below_fin P v -> P n v) : P n v :=
   step n v (below_fin P step v).
 
 Instance fin_Recursor n : Recursor (fin n) :=
-  { rec_type := λ v, ∀ (P : ∀ n, fin n -> Type) step, P n v;
-    rec := λ v P step, rec_fin P v step }.
+  { rec_type := fun v => forall (P : forall n, fin n -> Type) step, P n v;
+    rec := fun v P step => rec_fin P v step }.

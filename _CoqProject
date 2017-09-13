@@ -4,6 +4,7 @@
 -I theories
 -I examples
 -extra-phony doc "html" "mkdir -p html/api && ocamldoc -html -d html/api `ocamlfind query -r coqdev85.all -i-format` -rectypes -I src src/*.ml"
+-extra-phony test-suite "" "cd test-suite && make"
 ZDEBUG = "-bin-annot -g -for-pack Equations"
 COQDOCFLAGS = "-parse-comments -utf8 -interpolate"
 src/equations_common.mli
@@ -48,23 +49,6 @@ theories/Equations.v
 theories/TransparentEquations.v
 theories/OpaqueEquations.v
 theories/Fin.v
-test-suite/Basics.v
-test-suite/BasicsDec.v
-test-suite/rec.v
-test-suite/f91.v
-test-suite/Noconfinv.v
-test-suite/zoe.v
-test-suite/fin.v
-test-suite/gcd.v
-test-suite/DataStruct.v
-test-suite/MoreDep.v
-test-suite/daaa.v
-test-suite/nestedobls.v
-test-suite/scope.v
-test-suite/issues/issue7.v
-test-suite/issues/issue8.v
-test-suite/issues/issue13.v
-test-suite/LogicType.v
 examples/lf.v
 examples/lfdec.v
 examples/HoTT_light.v

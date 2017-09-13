@@ -343,11 +343,11 @@ Ltac elim_ind p := elim_tac ltac:(fun p el => induction p using el) p.
 
 (** Lemmas used by the simplifier, mainly rephrasings of [eq_rect], [eq_ind]. *)
 
-Lemma solution_left : ∀ {A} {B : A -> Type} (t : A), B t -> (∀ x, x = t -> B x).
+Lemma solution_left : forall {A} {B : A -> Type} (t : A), B t -> (forall x, x = t -> B x).
 Proof. intros A B t H x eq. symmetry in eq. destruct eq. apply H. Defined.
 
 Polymorphic
-Lemma Id_solution_left : ∀ {A} {B : A -> Type} (t : A), B t -> (∀ x, Id x t -> B x).
+Lemma Id_solution_left : forall {A} {B : A -> Type} (t : A), B t -> (forall x, Id x t -> B x).
 Proof. intros A B t H x eq. destruct eq. apply H. Defined.
 
 Scheme eq_rect_dep := Induction for eq Sort Type.
@@ -361,64 +361,64 @@ Lemma Id_rect_dep_r {A} (x : A) (P : forall a, Id a x -> Type) (p : P x id_refl)
       (y : A) (e : Id y x) : P y e.
 Proof. destruct e. apply p. Defined.
 
-Lemma solution_left_dep : ∀ {A} (t : A) {B : forall (x : A), (x = t -> Type)},
-    B t eq_refl -> (∀ x (Heq : x = t), B x Heq).
+Lemma solution_left_dep : forall {A} (t : A) {B : forall (x : A), (x = t -> Type)},
+    B t eq_refl -> (forall x (Heq : x = t), B x Heq).
 Proof. intros A t B H x eq. destruct eq. apply H. Defined.
 
 Polymorphic
-Lemma Id_solution_left_dep : ∀ {A} (t : A) {B : forall (x : A), (Id x t -> Type)},
-    B t id_refl -> (∀ x (Heq : Id x t), B x Heq).
+Lemma Id_solution_left_dep : forall {A} (t : A) {B : forall (x : A), (Id x t -> Type)},
+    B t id_refl -> (forall x (Heq : Id x t), B x Heq).
 Proof. intros A t B H x eq. destruct eq. apply H. Defined.
 
-Lemma solution_right : ∀ {A} {B : A -> Type} (t : A), B t -> (∀ x, t = x -> B x).
+Lemma solution_right : forall {A} {B : A -> Type} (t : A), B t -> (forall x, t = x -> B x).
 Proof. intros A B t H x eq. destruct eq. apply H. Defined.
 
 Polymorphic
-Lemma Id_solution_right : ∀ {A} {B : A -> Type} (t : A), B t -> (∀ x, Id t x -> B x).
+Lemma Id_solution_right : forall {A} {B : A -> Type} (t : A), B t -> (forall x, Id t x -> B x).
 Proof. intros A B t H x eq. destruct eq. apply H. Defined.
 
-Lemma solution_right_dep : ∀ {A} (t : A) {B : forall (x : A), (t = x -> Type)},
-    B t eq_refl -> (∀ x (Heq : t = x), B x Heq).
+Lemma solution_right_dep : forall {A} (t : A) {B : forall (x : A), (t = x -> Type)},
+    B t eq_refl -> (forall x (Heq : t = x), B x Heq).
 Proof. intros A t B H x eq. destruct eq. apply H. Defined.
 
 Polymorphic
-Lemma Id_solution_right_dep : ∀ {A} (t : A) {B : forall (x : A), (Id t x -> Type)},
-    B t id_refl -> (∀ x (Heq : Id t x), B x Heq).
+Lemma Id_solution_right_dep : forall {A} (t : A) {B : forall (x : A), (Id t x -> Type)},
+    B t id_refl -> (forall x (Heq : Id t x), B x Heq).
 Proof. intros A t B H x eq. destruct eq. apply H. Defined.
 
-Lemma solution_left_let : ∀ {A} {B : A -> Type} (b : A) (t : A), 
+Lemma solution_left_let : forall {A} {B : A -> Type} (b : A) (t : A),
   (b = t -> B t) -> (let x := b in x = t -> B x).
 Proof. intros A B b t H x eq. subst x. destruct eq. apply H. reflexivity. Defined.
 
-Lemma solution_right_let : ∀ {A} {B : A -> Type} (b t : A), 
+Lemma solution_right_let : forall {A} {B : A -> Type} (b t : A),
   (t = b -> B t) -> (let x := b in t = x -> B x).
 Proof. intros A B b t H x eq. subst x. destruct eq. apply H. reflexivity. Defined.
 
 Polymorphic
-Lemma Id_solution_left_let : ∀ {A} {B : A -> Type} (b : A) (t : A), 
+Lemma Id_solution_left_let : forall {A} {B : A -> Type} (b : A) (t : A),
   (Id b t -> B t) -> (let x := b in Id x t -> B x).
 Proof. intros A B b t H x eq. subst x. destruct eq. apply H. reflexivity. Defined.
 
 Polymorphic
-Lemma Id_solution_right_let : ∀ {A} {B : A -> Type} (b t : A), 
+Lemma Id_solution_right_let : forall {A} {B : A -> Type} (b t : A),
   (Id t b -> B t) -> (let x := b in Id t x -> B x).
 Proof. intros A B b t H x eq. subst x. destruct eq. apply H. reflexivity. Defined.
 
-Lemma deletion : ∀ {A B} (t : A), B -> (t = t -> B).
+Lemma deletion : forall {A B} (t : A), B -> (t = t -> B).
 Proof. intros; assumption. Defined.
 
 Polymorphic
-Lemma Id_deletion : ∀ {A B} (t : A), B -> (Id t t -> B).
+Lemma Id_deletion : forall {A B} (t : A), B -> (Id t t -> B).
 Proof. intros; assumption. Defined.
 
-Lemma simplification_heq : ∀ {A B} (x y : A), (x = y -> B) -> (JMeq x y -> B).
+Lemma simplification_heq : forall {A B} (x y : A), (x = y -> B) -> (JMeq x y -> B).
 Proof. intros; apply X; apply (JMeq_eq H). Defined.
 
 Lemma simplification_heq_refl {A B} (x : A) (p : x = x -> B) :
     simplification_heq x x p JMeq_refl = p eq_refl.
 Proof. unfold simplification_heq. now rewrite JMeq_eq_refl. Defined.
 
-Lemma simplification_existT2 : ∀ {A} {P : A -> Type} {B} (p : A) (x y : P p),
+Lemma simplification_existT2 : forall {A} {P : A -> Type} {B} (p : A) (x y : P p),
   (x = y -> B) -> (existT P p x = existT P p y -> B).
 Proof. intros. apply X. apply inj_pair2. exact H. Defined.
 
@@ -427,7 +427,7 @@ Lemma simplification_existT2_refl {A} {P : A -> Type} {B} (p : A) (x : P p)
   simplification_existT2 p x x e eq_refl = e eq_refl.
 Proof. unfold simplification_existT2. rewrite inj_pairT2_refl. constructor. Defined.
 
-Polymorphic Lemma simplification_sigma2 : ∀ {A} {P : A -> Type} {B} (p : A) (x y : P p),
+Polymorphic Lemma simplification_sigma2 : forall {A} {P : A -> Type} {B} (p : A) (x y : P p),
   (x = y -> B) -> (sigmaI P p x = sigmaI P p y -> B).
 Proof. intros. apply X. apply inj_sigma2. exact H. Defined.
 Arguments simplification_sigma2 : simpl never.
@@ -453,13 +453,13 @@ Proof.
   now rewrite inj_right_pair_refl.
 Defined.
 
-Polymorphic Lemma simplification_sigma2_dec : ∀ {A} `{EqDec A} {P : A -> Type} {B}
+Polymorphic Lemma simplification_sigma2_dec : forall {A} `{EqDec A} {P : A -> Type} {B}
     (p : A) (x y : P p),
     (x = y -> B) -> (sigmaI P p x = sigmaI P p y -> B).
 Proof. intros. apply X. apply inj_right_sigma in H0. assumption. Defined.
 
 Polymorphic Lemma simplification_sigma2_dec_refl :
-  ∀ {A} {eqdec:EqDec A} {P : A -> Type} {B}
+  forall {A} {eqdec:EqDec A} {P : A -> Type} {B}
     (p : A) (x : P p) (G : x = x -> B),
       @simplification_sigma2_dec A eqdec P B p x x G eq_refl = G eq_refl.
 Proof.
@@ -469,13 +469,13 @@ Defined.
 Arguments simplification_sigma2_dec : simpl never.
 
 Polymorphic Lemma simplification_sigma2_dec_point :
-  ∀ {A} (p : A) `{EqDecPoint A p} {P : A -> Type} {B}
+  forall {A} (p : A) `{EqDecPoint A p} {P : A -> Type} {B}
     (x y : P p),
     (x = y -> B) -> (sigmaI P p x = sigmaI P p y -> B).
 Proof. intros. apply X. apply inj_right_sigma_point in H0. assumption. Defined.
 
 Polymorphic Lemma simplification_sigma2_dec_point_refl :
-  ∀ {A} (p : A) `{eqdec:EqDecPoint A p} {P : A -> Type} {B}
+  forall {A} (p : A) `{eqdec:EqDecPoint A p} {P : A -> Type} {B}
     (x : P p) (G : x = x -> B),
       @simplification_sigma2_dec_point A p eqdec P B x x G eq_refl = G eq_refl.
 Proof.
@@ -484,7 +484,7 @@ Proof.
 Defined.
 Arguments simplification_sigma2_dec_point : simpl never.
 
-Polymorphic Lemma Id_simplification_sigma2 : ∀ {A} `{HSets.HSet A} {P : A -> Type} {B}
+Polymorphic Lemma Id_simplification_sigma2 : forall {A} `{HSets.HSet A} {P : A -> Type} {B}
                                                (p : A) (x y : P p),
   (Id x y -> B) -> (Id (sigmaI P p x) (sigmaI P p y) -> B).
 Proof. intros. apply X. apply HSets.inj_sigma_r. exact X0. Defined.
@@ -498,7 +498,7 @@ Proof.
   now rewrite HSets.inj_sigma_r_refl.
 Defined.
 
-Lemma simplification_existT1 : ∀ {A} {P : A -> Type} {B} (p q : A) (x : P p) (y : P q),
+Lemma simplification_existT1 : forall {A} {P : A -> Type} {B} (p q : A) (x : P p) (y : P q),
   (p = q -> existT P p x = existT P q y -> B) -> (existT P p x = existT P q y -> B).
 Proof.
   intros. refine (X _ H).
@@ -506,11 +506,13 @@ Proof.
   now destruct H.
  Defined.
 
-Polymorphic Lemma simplification_sigma1 : ∀ {A} {P : A -> Type} {B} (p q : A) (x : P p) (y : P q),
+Local Open Scope sigma_scope.
+
+Polymorphic Lemma simplification_sigma1 : forall {A} {P : A -> Type} {B} (p q : A) (x : P p) (y : P q),
   (p = q -> sigmaI P p x = sigmaI P q y -> B) -> (sigmaI P p x = sigmaI P q y -> B).
 Proof.
   intros. refine (X _ H).
-  change (pr1 (p; x) = pr1 (q; y)).
+  change (pr1 &(p & x) = pr1 &(q & y)).
   now destruct H.
 Defined.
 
@@ -518,7 +520,7 @@ Polymorphic Lemma Id_simplification_sigma1 {A} {P : A -> Type} {B} (p q : A) (x 
   (Id p q -> Id (sigmaI P p x) (sigmaI P q y) -> B) -> (Id (sigmaI P p x) (sigmaI P q y) -> B).
 Proof.
   intros. refine (X _ X0).
-  change (Id (pr1 (p; x)) (pr1 (q; y))).
+  change (Id (pr1 &(p & x)) (pr1 &(q & y))).
   now destruct X0.
 Defined.
 
@@ -530,10 +532,10 @@ Polymorphic Lemma eq_simplification_sigma1 {A} {P : Type} {B}
   (sigmaI (fun _ => P) p x = sigmaI (fun _ => P) q y -> B).
 Proof.
   intros. revert X.
-  change p with (pr1 (p; x)).
-  change q with (pr1 (q; y)).
-  change x with (pr2 (p; x)) at 2.
-  change y with (pr2 (q; y)) at 2.
+  change p with (pr1 &(p & x)).
+  change q with (pr1 &(q & y)).
+  change x with (pr2 &(p & x)) at 2.
+  change y with (pr2 &(q & y)) at 2.
   destruct H.
   intros X. eapply (X eq_refl). apply eq_refl.
 Defined.
@@ -544,28 +546,28 @@ Polymorphic Lemma eq_simplification_sigma1_dep {A} {P : A -> Type} {B}
   (sigmaI P p x = sigmaI P q y -> B).
 Proof.
   intros. revert X.
-  change p with (pr1 (p; x)).
-  change q with (pr1 (q; y)).
-  change x with (pr2 (p; x)) at 3.
-  change y with (pr2 (q; y)) at 4.
+  change p with (pr1 &(p& x)).
+  change q with (pr1 &(q & y)).
+  change x with (pr2 &(p& x)) at 3.
+  change y with (pr2 &(q & y)) at 4.
   destruct H.
   intros X. eapply (X eq_refl). apply eq_refl.
 Defined.
 
 Polymorphic Definition pack_sigma_eq {A} {P : A -> Type} {p q : A} {x : P p} {y : P q}
-  (e' : p = q) (e : @eq_rect A p P x q e' = y) : (p; x) = (q; y).
+  (e' : p = q) (e : @eq_rect A p P x q e' = y) : &(p& x) = &(q & y).
 Proof. destruct e'. simpl in e. destruct e. apply eq_refl. Defined.
 
 Polymorphic Lemma eq_simplification_sigma1_dep_dep {A} {P : A -> Type}
-  (p q : A) (x : P p) (y : P q) {B : (p; x) = (q; y) -> Type} :
+  (p q : A) (x : P p) (y : P q) {B : &(p& x) = &(q & y) -> Type} :
   (forall e' : p = q, forall e : @eq_rect A p P x q e' = y, B (pack_sigma_eq e' e)) ->
   (forall e : sigmaI P p x = sigmaI P q y, B e).
 Proof.
   intros. revert X.
-  change p with (pr1 (p; x)).
-  change q with (pr1 (q; y)).
-  change x with (pr2 (p; x)) at 3 5.
-  change y with (pr2 (q; y)) at 4 6.
+  change p with (pr1 &(p & x)).
+  change q with (pr1 &(q & y)).
+  change x with (pr2 &(p & x)) at 3 5.
+  change y with (pr2 &(q & y)) at 4 6.
   destruct e.
   intros X. simpl in *.
   apply (X eq_refl eq_refl). 
@@ -576,19 +578,19 @@ Polymorphic Lemma Id_simplification_sigma1' {A} {P : A -> Type} {B} (p q : A) (x
   (Id (sigmaI P p x) (sigmaI P q y) -> B).
 Proof.
   intros. revert X.
-  change p with (pr1 (p; x)).
-  change q with (pr1 (q; y)).
-  change x with (pr2 (p; x)) at 3.
-  change y with (pr2 (q; y)) at 4.
+  change p with (pr1 &(p & x)).
+  change q with (pr1 &(q & y)).
+  change x with (pr2 &(p & x)) at 3.
+  change y with (pr2 &(q & y)) at 4.
   destruct X0.
   intros X. eapply (X id_refl). apply id_refl.
 Defined.
 
-Lemma simplification_K : ∀ {A} (x : A) {B : x = x -> Type}, B eq_refl -> (∀ p : x = x, B p).
+Lemma simplification_K : forall {A} (x : A) {B : x = x -> Type}, B eq_refl -> (forall p : x = x, B p).
 Proof. intros. rewrite (UIP_refl A). assumption. Defined.
 Arguments simplification_K : simpl never.
 
-Lemma simplification_K_refl : ∀ {A} (x : A) {B : x = x -> Type}
+Lemma simplification_K_refl : forall {A} (x : A) {B : x = x -> Type}
                                     (p : B eq_refl),
   simplification_K x p eq_refl = p.
 Proof.
@@ -598,12 +600,12 @@ Proof.
   reflexivity.
 Defined.
 
-Lemma simplification_K_dec : ∀ {A} `{EqDec A} (x : A) {B : x = x -> Type}, 
-  B eq_refl -> (∀ p : x = x, B p).
+Lemma simplification_K_dec : forall {A} `{EqDec A} (x : A) {B : x = x -> Type},
+  B eq_refl -> (forall p : x = x, B p).
 Proof. intros. apply K_dec. assumption. Defined.
 Arguments simplification_K_dec : simpl never.
 
-Lemma simplification_K_dec_refl : ∀ {A} `{EqDec A} (x : A) {B : x = x -> Type}
+Lemma simplification_K_dec_refl : forall {A} `{EqDec A} (x : A) {B : x = x -> Type}
                                     (p : B eq_refl),
   simplification_K_dec x p eq_refl = p.
 Proof.
@@ -615,12 +617,12 @@ Proof.
 Defined.
 
 Polymorphic
-Lemma Id_simplification_K : ∀ {A} `{HSets.HSet A} (x : A) {B : Id x x -> Type}, 
-  B id_refl -> (∀ p : Id x x, B p).
+Lemma Id_simplification_K : forall {A} `{HSets.HSet A} (x : A) {B : Id x x -> Type},
+  B id_refl -> (forall p : Id x x, B p).
 Proof. intros. apply HSets.K. assumption. Defined.
 
 Polymorphic
-Lemma Id_simplification_K_refl : ∀ {A} `{HSets.HSet A} (x : A) {B : Id x x -> Type}
+Lemma Id_simplification_K_refl : forall {A} `{HSets.HSet A} (x : A) {B : Id x x -> Type}
   (b : B id_refl), Id_simplification_K x b id_refl = b.
 Proof.
   intros. pose HSets.K.
@@ -630,18 +632,18 @@ Defined.
 
 Polymorphic
 Definition ind_pack_eq {A : Type} {B : A -> Type} {x : A} {p q : B x} (e : p = q) :
-  @eq (sigma A (fun x => B x)) (x; p) (x; q).
+  @eq (sigma A (fun x => B x)) &(x & p) &(x & q).
 Proof. destruct e. reflexivity. Defined.
 
 Polymorphic
 Definition ind_pack_eq_inv {A : Type} {eqdec : EqDec A}
-           {B : A -> Type} (x : A) (p q : B x) (e : @eq (sigma A (fun x => B x)) (x; p) (x; q)) : p = q.
+           {B : A -> Type} (x : A) (p q : B x) (e : @eq (sigma A (fun x => B x)) &(x & p) &(x & q)) : p = q.
 Proof. revert e. apply simplification_sigma2_dec. apply id. Defined.
 
 Polymorphic
 Definition ind_pack_eq_inv_refl  {A : Type} {eqdec : EqDec A}
            {B : A -> Type} {x : A} (p : B x) :
-  ind_pack_eq_inv _ _ _ (@eq_refl _ (x; p)) = eq_refl.
+  ind_pack_eq_inv _ _ _ (@eq_refl _ &(x & p)) = eq_refl.
 Proof.
   unfold ind_pack_eq_inv. simpl. unfold simplification_sigma2_dec.
   unfold id. apply inj_right_sigma_refl.
@@ -657,14 +659,14 @@ Defined.
 
 Polymorphic
 Definition opaque_ind_pack_eq_inv {A : Type} {eqdec : EqDec A}
-  {B : A -> Type} {x : A} {p q : B x} (G : p = q -> Type) (e : (x; p) = (x; q)) :=
+  {B : A -> Type} {x : A} {p q : B x} (G : p = q -> Type) (e : &(x & p) = &(x & q)) :=
   let e' := @ind_pack_eq_inv A eqdec B x p q e in G e'.
 Arguments opaque_ind_pack_eq_inv : simpl never.
 
 Polymorphic
 Lemma simplify_ind_pack {A : Type} {eqdec : EqDec A}
-      (B : A → Type) (x : A) (p q : B x) (G : p = q -> Type) :
-      (forall e : (x; p) = (x; q), opaque_ind_pack_eq_inv G e) ->
+      (B : A -> Type) (x : A) (p q : B x) (G : p = q -> Type) :
+      (forall e : &(x & p) = &(x & q), opaque_ind_pack_eq_inv G e) ->
   (forall e : p = q, G e).
 Proof.
   intros H. intros e. 
@@ -692,8 +694,8 @@ Arguments simplified_ind_pack : simpl never.
 
 Polymorphic
 Lemma simplify_ind_pack_refl {A : Type} {eqdec : EqDec A}
-(B : A → Type) (x : A) (p : B x) (G : p = p -> Type)
-(t : forall (e : (x; p) = (x; p)), opaque_ind_pack_eq_inv G e) :
+(B : A -> Type) (x : A) (p : B x) (G : p = p -> Type)
+(t : forall (e : &(x & p) = &(x & p)), opaque_ind_pack_eq_inv G e) :
   simplify_ind_pack B x p p G t eq_refl =
   simplified_ind_pack B x p G (t eq_refl).
 Proof. reflexivity. Qed.
@@ -1234,7 +1236,7 @@ Ltac recursive_equations :=
 
 Ltac equations := set_eos ;
   match goal with
-    | [ |- ∀ x : _, _ ] => intro ; recursive_equations
+    | [ |- forall x : _, _ ] => intro ; recursive_equations
     | [ |- let x := _ in ?T ] => intro x ; exact x
     | _ => nonrec_equations
   end.

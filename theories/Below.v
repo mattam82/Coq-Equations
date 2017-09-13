@@ -19,12 +19,12 @@ Require Export Equations.Init Equations.DepElim.
 
 Class BelowPackage (A : Type) := {
   Below : A -> Type ;
-  below : ∀ (a : A), Below a }.
+  below : forall (a : A), Below a }.
 
 (** The [Recursor] class defines a recursor on a type *)
 
 Class Recursor (A : Type) :=
-  { rec_type : ∀ x : A, Type ; rec : ∀ x : A, rec_type x }.
+  { rec_type : forall x : A, Type ; rec : forall x : A, rec_type x }.
 
 (** A hintdb for transparency information of definitions related to [Below] and
    for solving goals related to [Below] instances. *)
@@ -69,19 +69,19 @@ Hint Extern 100 => apply_fix_proto : Below.
 
 Derive Below for nat.
 
-Definition rec_nat (P : nat -> Type) n (step : ∀ n, Below_nat P n -> P n) : P n :=
+Definition rec_nat (P : nat -> Type) n (step : forall n, Below_nat P n -> P n) : P n :=
   step n (below_nat P step n).
 
 Instance nat_Recursor : Recursor nat :=
-  { rec_type := λ n, ∀ P step, P n ;
-    rec := λ n P step, rec_nat P n step }.
+  { rec_type := fun n => forall P step, P n ;
+    rec := fun n P step => rec_nat P n step }.
 
 Notation vector := Vector.t.
 Import Vector.
 Implicit Arguments nil [[A]].
 Implicit Arguments cons [[A] [n]].
 
-Equations(nocomp noind) Below_vector A (P : ∀ n, vector A n -> Type) n (v : vector A n) : Type :=
+Equations(nocomp noind) Below_vector A (P : forall n, vector A n -> Type) n (v : vector A n) : Type :=
 Below_vector A P ?(0) nil := unit ;
 Below_vector A P ?(S n) (cons a n v) := 
   ((P n v) * Below_vector A P n v)%type.

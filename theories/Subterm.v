@@ -23,7 +23,7 @@ Scheme Acc_dep := Induction for Acc Sort Prop.
    just reusing the [Wf.Fix] combinator. *)
 
 Definition FixWf `{WF:WellFounded A R} (P : A -> Type)
-  (step : ∀ x : A, (∀ y : A, R y x -> P y) -> P x) : ∀ x : A, P x :=
+  (step : forall x : A, (forall y : A, R y x -> P y) -> P x) : forall x : A, P x :=
   Fix wellfounded P step.
 
 Lemma Acc_pi (A : Type) (R : relation A) i (x y : Acc R i) : x = y.
@@ -36,7 +36,7 @@ Proof.
 Qed.
 
 Lemma FixWf_unfold `{WF : WellFounded A R} (P : A -> Type)
-  (step : ∀ x : A, (∀ y : A, R y x -> P y) -> P x) (x : A) : 
+  (step : forall x : A, (forall y : A, R y x -> P y) -> P x) (x : A) :
   FixWf P step x = step x (fun y _ => FixWf P step y).
 Proof.
   intros. unfold FixWf, Fix. destruct wellfounded.
@@ -47,10 +47,10 @@ Qed.
 Hint Rewrite @FixWf_unfold : Recursors.
 
 Lemma FixWf_unfold_step : 
-  ∀ (A : Type) (R : Relation_Definitions.relation A) (WF : WellFounded R) (P : A → Type)
-    (step : ∀ x : A, (∀ y : A, R y x → P y) → P x) (x : A)
-    (step' : ∀ y : A, R y x → P y),
-    step' = (λ (y : A) (_ : R y x), FixWf P step y) ->
+  forall (A : Type) (R : Relation_Definitions.relation A) (WF : WellFounded R) (P : A -> Type)
+    (step : forall x : A, (forall y : A, R y x -> P y) -> P x) (x : A)
+    (step' : forall y : A, R y x -> P y),
+    step' = (fun (y : A) (_ : R y x) => FixWf P step y) ->
     FixWf P step x = step x step'.
 Proof. intros. rewrite FixWf_unfold, H. reflexivity. Qed.
 

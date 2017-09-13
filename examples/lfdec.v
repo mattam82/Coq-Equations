@@ -7,7 +7,7 @@
 (**********************************************************************)
 
 Require Import Equations.Equations Omega.
-Require Import List.
+Require Import List Utf8.
 Require Import Equations.EqDec Equations.DepElimDec.
 
 Derive Signature for le CompareSpec.

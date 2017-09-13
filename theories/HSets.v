@@ -24,12 +24,13 @@ Class HSet A := is_hset : forall {x y : A}, HProp (Id x y).
 
 Inductive sum (A : Type) (B : Type) := inl : A -> sum A B | inr : B -> sum A B.
 
+Set Warnings "-notation-overridden".
 Import IdNotations.
 
 Definition ap {A : Type} {B : Type} (f : A -> B) {x y : A} (p : x = y) : f x = f y :=
   match p with id_refl => id_refl end.
 
-Definition Id_rew (A : Type) (a : A) (P : A → Type) (p : P a) (y : A) (e : a = y) : P y :=
+Definition Id_rew (A : Type) (a : A) (P : A -> Type) (p : P a) (y : A) (e : a = y) : P y :=
   match e with id_refl => p end.
                              
 Set Printing Universes.
@@ -44,22 +45,22 @@ Ltac eqdec_loop t u :=
   (left; reflexivity) || 
   (solve [right; intro He; inversion He]) ||
   (let x := match t with
-             | appcontext C [ _ ?x ] => constr:(x)
+             | context C [ _ ?x ] => constr:(x)
              end
     in
     let y := match u with
-             | appcontext C [ _ ?y ] => constr:(y)
+             | context C [ _ ?y ] => constr:(y)
              end
     in
     let contrad := let Hn := fresh in
                    intro Hn; right; intro He; apply Hn; inversion He; reflexivity in
     let good := intros ->;
       let t' := match t with
-                | appcontext C [ ?x _ ] => constr:(x)
+                | context C [ ?x _ ] => constr:(x)
                 end
       in
       let u' := match u with
-                | appcontext C [ ?y _ ] => constr:(y)
+                | context C [ ?y _ ] => constr:(y)
                 end
       in
       (* idtac "there" t' u'; *)  try (eqdec_loop t' u')
@@ -258,12 +259,16 @@ Defined.
 Definition transport {A : Type} {P : A -> Type} {x y : A} (p : x = y) : P x -> P y :=
   match p with id_refl => fun h => h end.
 
+Open Scope sigma_scope.
+
+Notation " '{' x : A & y } " := (@sigma A (fun x : A => y)%type) : sigma_scope.
+Delimit Scope sigma_scope with sigma.
 Lemma sigma_eq (A : Type) (P : A -> Type) (x y : sigma A P) :
-  x = y -> { p : x.1 = y.1 & transport p x.2 = y.2 }.
+  x = y -> { p : (x.1 = y.1) & transport p x.2 = y.2 }%sigma.
 Proof.
   intros H; destruct H.
   destruct x as [x px]. simpl.
-  refine (id_refl; id_refl).
+  refine &(id_refl & id_refl).
 Defined.  
 
 Theorem inj_sigma_r {A : Type} `{H : HSet A} :

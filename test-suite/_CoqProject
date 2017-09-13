@@ -1,0 +1,19 @@
+-I "../src"
+-R "../theories" Equations
+Basics.v
+BasicsDec.v
+rec.v
+f91.v
+Noconfinv.v
+zoe.v
+fin.v
+gcd.v
+DataStruct.v
+MoreDep.v
+daaa.v
+nestedobls.v
+scope.v
+issues/issue7.v
+issues/issue8.v
+issues/issue13.v
+LogicType.v

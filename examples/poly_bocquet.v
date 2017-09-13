@@ -9,12 +9,11 @@ Require Import Psatz.
 Require Import NPeano.
 Require Import Nat.
 From Equations Require Import DepElimDec.
+Require Import Coq.Vectors.VectorDef.
 
 Derive Signature for vector eq.
 
 Module M1.
-  Require Import Coq.Vectors.VectorDef.
-
   (** Je ne sais pas pourquoi je n'ai pas utilisé [z <> 0] ici *)
   
   Inductive IsNZ : Z -> Prop :=
@@ -183,7 +182,9 @@ Module M1.
 
   (** Définition de [plus] (extraite d'une définition via Equations) *)
   (** ** 1.3.a *)
-  
+  Open Scope sigma_scope.
+  Notation " '{' x : A & y } " := (@sigma A (fun x : A => y)%type) : type_scope.
+
   Equations(noind nocomp) plus {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) : { b : bool & poly b n } :=
     plus poly_z        poly_z          := apoly _ poly_z;
     plus poly_z        (poly_c y ny)   := apoly _ (poly_c y ny);
@@ -199,8 +200,8 @@ Module M1.
     plus (poly_s p1 q1) (poly_l p2)    := apoly _ (poly_s (pr2 (plus p1 p2)) q1);
 
     plus (poly_s p1 q1) (poly_s p2 q2) := match plus q1 q2 with
-                                            | (false; q3) => apoly _ (poly_s (pr2 (plus p1 p2)) q3)
-                                            | (true; _)   => apoly _ (poly_l (pr2 (plus p1 p2)))
+                                            | &(false & q3) => apoly _ (poly_s (pr2 (plus p1 p2)) q3)
+                                            | &(true & _)   => apoly _ (poly_l (pr2 (plus p1 p2)))
                                           end.
   
   (** [plus] se comporte comme il faut par rapport à [eval] *)
@@ -373,7 +374,7 @@ Module M1.
     depind p2; intros; depelim v; Y; simpl; Y; destruct (z * z0)%Z; simpl...
     - assert (mult_l_eval : forall {b2} (q : poly b2 (S n)) v h,
                               match mult_l q (@mult _ _ p1) with
-                                | (mb; mp) => eval mp (Vector.cons h v) =
+                                | &(mb & mp) => eval mp (Vector.cons h v) =
                                              (eval q (Vector.cons h v) * eval p1 v)%Z
                               end).
       + depind q; intros; Y;
@@ -383,7 +384,7 @@ Module M1.
     - assert (mult_s_eval :
                 forall {b2} (q : poly b2 (S n)) v h,
                   match mult_s q (@mult _ _ p1_1) (@mult _ _ p1_2) with
-                    | (mb; mp) =>
+                    | &(mb & mp) =>
                       eval mp (Vector.cons h v) =
                       (eval q (Vector.cons h v) * (eval p1_1 v + h * eval p1_2 (Vector.cons h v)))%Z
                   end).

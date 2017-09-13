@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Export Coq.Unicode.Utf8_core.
+Require Import Coq.Unicode.Utf8_core.
 Require Export Coq.Program.Program.
 
 Declare ML Module "equations_plugin".
@@ -48,15 +48,16 @@ Unset Primitive Projections.
 Arguments sigma A B : clear implicits.
 Arguments sigmaI {A} B pr1 pr2.
 
-Notation " { x : A & y } " := (@sigma A (fun x : A => y)%type).
-Notation " { x : A & y } " := (@sigma A (fun x : A => y)%type) : type_scope.
-Notation " ( x ; y ) " := (@sigmaI _ _ x y) (only parsing).
+Set Warnings "-notation-overridden".
+
+Notation " '&{' x : A & y } " := (@sigma A (fun x : A => y)%type) : sigma_scope.
+Notation " '&{' x : A & y } " := (@sigma A (fun x : A => y)%type) : type_scope.
 Notation "'&(' x , .. , y & z ')'" :=
   (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
     (right associativity, at level 4,
-     format "'&(' x ,  .. ,  y  &  z ')'").
-Notation " x .1 " := (pr1 x) (at level 3, left associativity, format "x .1").
-Notation " x .2 " := (pr2 x) (at level 3, left associativity, format "x .2").
+     format "'&(' x ,  .. ,  y  &  z ')'") : sigma_scope.
+Notation " x .1 " := (pr1 x) (at level 3, left associativity, format "x .1") : sigma_scope.
+Notation " x .2 " := (pr2 x) (at level 3, left associativity, format "x .2") : sigma_scope.
 
 (** The polymorphic equality type used by Equations. *)
 
@@ -70,14 +71,12 @@ Arguments id_refl {A a}, [A] a.
 
 Module IdNotations.
 
-  Notation " x = y " := (@Id _ x y).
+  Notation " x = y " := (@Id _ x y) : id_scope.
   Notation " x = y " := (@Id _ x y) : type_scope.
-
-  Notation " x <> y " := (@Id _ x y -> Empty).
+  Notation " x <> y " := (@Id _ x y -> Empty) : id_scope.
   Notation " x <> y " := (@Id _ x y -> Empty) : type_scope.
-
-  Notation " 1 " := (@id_refl _ _).
-
+  Notation " 1 " := (@id_refl _ _) : id_scope.
+  Open Scope id_scope.
 End IdNotations.
 
 Section IdTheory.
@@ -85,7 +84,7 @@ Section IdTheory.
   Context {A : Type@{i}}.
 
   Import IdNotations.
-  
+
   Lemma id_sym {x y : A} : x = y -> y = x.
   Proof. destruct 1. apply 1. Defined.
 

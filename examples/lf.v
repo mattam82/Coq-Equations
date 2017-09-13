@@ -7,7 +7,7 @@
 (**********************************************************************)
 
 Require Import Equations.Equations Omega.
-Require Import List.
+Require Import Utf8 List.
 
 Inductive term := 
 | Var (n : nat)

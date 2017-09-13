@@ -7,7 +7,7 @@
 (**********************************************************************)
 
 From Equations Require Import Equations Fin DepElimDec.
-Require Import Omega.
+Require Import Omega Utf8.
 
 Section list_size.
   Context {A : Type} (f : A -> nat).
