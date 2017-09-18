@@ -260,11 +260,8 @@ Definition transport {A : Type} {P : A -> Type} {x y : A} (p : x = y) : P x -> P
   match p with id_refl => fun h => h end.
 
 Open Scope sigma_scope.
-
-Notation " '{' x : A & y } " := (@sigma A (fun x : A => y)%type) : sigma_scope.
-Delimit Scope sigma_scope with sigma.
 Lemma sigma_eq (A : Type) (P : A -> Type) (x y : sigma A P) :
-  x = y -> { p : (x.1 = y.1) & transport p x.2 = y.2 }%sigma.
+  x = y -> &{ p : (x.1 = y.1) & transport p x.2 = y.2 }.
 Proof.
   intros H; destruct H.
   destruct x as [x px]. simpl.
