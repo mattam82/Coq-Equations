@@ -60,12 +60,11 @@ Scheme finle_ind_dep := Induction for finle Sort Prop.
 Instance finle_ind_pack n x y : DependentEliminationPackage (finle n x y) :=
   { elim_type := _ ; elim := finle_ind_dep }.
 
-Implicit Arguments finle [[n]].
+Arguments finle {n}.
 
 Require Vectors.Vector.
-Implicit Arguments Vector.nil [[A]].
-Implicit Arguments Vector.cons [[A] [n]].
-
+Arguments Vector.nil {A}.
+Arguments Vector.cons {A} _ {n}.
 Notation vnil := Vector.nil.
 Notation vcons := Vector.cons.
 

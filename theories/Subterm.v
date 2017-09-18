@@ -58,7 +58,7 @@ Hint Rewrite @FixWf_unfold_step : Recursors.
 
 Ltac unfold_FixWf :=
   match goal with
-    |- appcontext [ @FixWf ?A ?R ?WF ?P ?f ?x ] =>
+    |- context [ @FixWf ?A ?R ?WF ?P ?f ?x ] =>
     let step := fresh in
     set(step := fun y (_ : R y x) => @FixWf A R WF P f y) in *;
     rewrite (@FixWf_unfold_step A R WF P f x step); [hidebody step|reflexivity]
@@ -209,7 +209,7 @@ Ltac pi := repeat progress (f_equal || reflexivity) ; apply proof_irrelevance.
 
 Require Import Wellfounded Relation_Definitions.
 Require Import Relation_Operators Lexicographic_Product Wf_nat.
-Implicit Arguments lexprod [A B].
+Arguments lexprod [A] [B] _ _.
 
 Section Lexicographic_Product.
 

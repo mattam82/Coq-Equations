@@ -520,7 +520,7 @@ Hint Constructors lexprod : subterm_relation.
 
 Require Import Lexicographic_Product.
 
-Implicit Arguments lexprod [A B].
+Arguments lexprod [A B] _ _.
 
 Definition lexicographic {A B} (R : relation A) (S : relation B) : relation (A * B) :=
   fun x y => 
@@ -550,7 +550,7 @@ Hint Unfold her_order lexicographic : subterm_relation.
 
 Obligation Tactic := program_simpl.
 
-Implicit Arguments exist [[A] [P]].
+Arguments exist [A] [P].
 
 Definition hereditary_type (t : type * term * term) :=
   (term * option { u : type | u = (fst (fst t)) \/ type_subterm u (fst (fst t)) })%type.

@@ -50,8 +50,8 @@ Notation " x ~= y " := (@JMeq _ x _ y) (at level 70, no associativity).
 
 (** Notation for the single element of [x = x] and [x ~= x]. *)
 
-Implicit Arguments eq_refl [[A] [x]].
-Implicit Arguments JMeq_refl [[A] [x]].
+Arguments eq_refl {A} {x}.
+Arguments JMeq_refl {A} {x}.
 
 (** Do something on an heterogeneous equality appearing in the context. *)
 
@@ -1202,7 +1202,7 @@ Ltac solve_method rec :=
 
 Ltac solve_split :=
   match goal with 
-    | [ |- let split := ?x : nat in _ ] => intros _ ;
+    | [ |- let split := ?x in _ ] => intros _ ;
       clear_fix_protos x ltac:(fun n => clear ; abstract (solve_empty n))
   end.
 

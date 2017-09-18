@@ -21,7 +21,7 @@ Class FunctionalInduction {A : Type} (f : A) :=
 
 Ltac funind c Hcall := 
   match c with
-    appcontext C [ ?f ] => 
+    context C [ ?f ] =>
       let x := constr:(fun_ind_prf (f:=f)) in
         (let prf := eval simpl in x in
          let p := context C [ prf ] in
@@ -76,7 +76,7 @@ Ltac with_last_secvar tac orelse :=
 
 Ltac get_elim c :=
   match c with
-  | appcontext [?f] => constr:(fun_elim (f:=f))
+  | context [?f] => constr:(fun_elim (f:=f))
   end.
 
 Ltac remember_let H :=

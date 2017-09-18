@@ -78,8 +78,8 @@ Instance nat_Recursor : Recursor nat :=
 
 Notation vector := Vector.t.
 Import Vector.
-Implicit Arguments nil [[A]].
-Implicit Arguments cons [[A] [n]].
+Arguments nil {A}.
+Arguments cons {A} _ {n}.
 
 Equations(nocomp noind) Below_vector A (P : forall n, vector A n -> Type) n (v : vector A n) : Type :=
 Below_vector A P ?(0) nil := unit ;

@@ -652,7 +652,7 @@ Definition wm_listxlist (A:Set) (xys: list A * list A) :=
 Definition lex_listxlist (A:Set) :=
   (make_mwlt (list A * list A) (wm_listxlist A)).
 
-Variable ltb : nat -> nat -> bool.
+Parameter ltb : nat -> nat -> bool.
 
 Program Fixpoint merge (xys: list nat * list nat) {wf (lex_listxlist nat) xys} : list nat :=
   match xys with
@@ -722,7 +722,7 @@ Definition m_listlist (A:Set) (xss : list (list A)) :=
 Definition lt_listlist (A:Set) (xss yss : list (list A)) :=
   (wlt (m_listlist A xss) (m_listlist A yss)).
 
-Variable A:Set.
+Parameter A:Set.
 
 Program Fixpoint list_concat (xss : list (list A))
         {wf (lt_listlist A) xss} : list A :=
@@ -827,16 +827,16 @@ by_Acc_mwlt lt_btree.
 Defined.
 
 (* Theory *)
-Variable g1 : nat -> nat.
-Variable g2 : nat -> nat -> nat.
-Variable g3 : nat -> nat -> nat.
-Variable g4 : nat -> nat -> nat.
-Variable g5 : nat -> nat -> nat -> nat.
-Variable g6 : nat -> nat -> nat -> nat.
-Variable g7 : nat -> nat -> nat -> nat.
-Variable h1 : nat -> nat -> nat -> nat.
-Variable h2 : nat -> nat -> nat -> nat.
-Variable h3 : nat -> nat -> nat -> nat -> nat -> nat.
+Axiom g1 : nat -> nat.
+Axiom g2 : nat -> nat -> nat.
+Axiom g3 : nat -> nat -> nat.
+Axiom g4 : nat -> nat -> nat.
+Axiom g5 : nat -> nat -> nat -> nat.
+Axiom g6 : nat -> nat -> nat -> nat.
+Axiom g7 : nat -> nat -> nat -> nat.
+Axiom h1 : nat -> nat -> nat -> nat.
+Axiom h2 : nat -> nat -> nat -> nat.
+Axiom h3 : nat -> nat -> nat -> nat -> nat -> nat.
 
 Definition wm_nat3 (xyz:nat * nat * nat) :=
   match xyz with
@@ -920,7 +920,7 @@ by_Acc_mwlt wm_nat3.
 Defined.
 
 (* Bootstrap *)
-Variable eqb : nat -> nat -> bool.
+Parameter eqb : nat -> nat -> bool.
 
 Program Fixpoint listordi (xsys : list nat * list nat) {wf (lex_listxlist nat) xsys} : bool :=
   match xsys with

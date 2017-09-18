@@ -24,9 +24,9 @@ Ltac eqdec_one x y :=
 
 Ltac eqdec_loop t u :=
   match t with
-  | appcontext C [ ?t ?x ] =>
+  | context C [ ?t ?x ] =>
     match u with
-    | appcontext C [ ?u ?y] => eqdec_loop t u; eqdec_one x y
+    | context C [ ?u ?y] => eqdec_loop t u; eqdec_one x y
     end
    | _ => eqdec_one t u
   end.

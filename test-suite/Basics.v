@@ -105,10 +105,10 @@ testn (S n) <= testn n => {
 
 Require Import Vectors.Vector.
 
-Implicit Arguments Vector.nil [ [A] ].
-Implicit Arguments Vector.cons [ [A] [n] ].
+Arguments Vector.nil {A}.
+Arguments Vector.cons {A} _ {n}.
 
-Open Local Scope vect_scope.
+Local Open Scope vect_scope.
 
 Equations (nocomp) vapp' {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
   vapp' []v w := w ;
@@ -356,7 +356,7 @@ Derive NoConfusion for vect.
 Inductive Split {X : Type}{m n : nat} : vector X (m + n) -> Type :=
   append : ∀ (xs : vector X m)(ys : vector X n), Split (vapp' xs ys).
 
-Implicit Arguments Split [ [ X ] ].
+Arguments Split [ X ].
 
 (* Eval compute in @app'. *)
 (* About nil. About vector. *)

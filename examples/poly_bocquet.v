@@ -713,9 +713,9 @@ Module M1.
 End M1.
 
 (** * Preuve des premières questions *)
+Require Import List.
 
 Module M2.
-  Require Import List.
 
   Inductive poly : Type :=
   | Cst  : Z -> poly
