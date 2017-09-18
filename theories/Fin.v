@@ -23,6 +23,8 @@ fog {n:=?(S n)} (fz n) := 0 ;
 fog (fs n f) := S (fog f).
 
 (** The injection preserves the number: *)
+Require Import FunctionalInduction.
+
 
 Lemma fog_inj {n} (f : fin n) : fog f < n.
 Proof with auto with arith. intros.
@@ -71,7 +73,7 @@ Equations(nocomp) nth {A} {n} (v : Vector.t A n) (f : fin n) : A :=
 nth (vcons a n v) fz := a ;
 nth (vcons a n v) (fs n f) := nth v f.
 
-Equations(nocomp) tabulate {A} {n} (f : fin n -> A) : vector A n :=
+Equations(nocomp) tabulate {A} {n} (f : fin n -> A) : Vector.t A n :=
 tabulate {n:=O} f := vnil ;
 tabulate {n:=(S n)} f := vcons (f fz) (tabulate (f ∘ fs)).
 
@@ -100,6 +102,8 @@ Global Opaque Below_fin.
 Definition rec_fin (P : forall n, fin n -> Type) {n} v
   (step : forall n (v : fin n), Below_fin P v -> P n v) : P n v :=
   step n v (below_fin P step v).
+
+Import Equations.Below.
 
 Instance fin_Recursor n : Recursor (fin n) :=
   { rec_type := fun v => forall (P : forall n, fin n -> Type) step, P n v;

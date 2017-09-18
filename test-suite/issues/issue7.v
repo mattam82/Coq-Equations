@@ -1,4 +1,4 @@
-Require Import Equations.Equations.
+Require Import Equations.Equations Utf8.
 
 Inductive TupleT : nat -> Type :=
 | nilT : TupleT 0
@@ -45,7 +45,7 @@ Inductive TupleMap_direct_subterm
   TupleMap_direct_subterm _ _ (G (projT1 (H _))) _ _ _ (projT2 (H x)) (tmCons _ _ H).
 Hint Constructors TupleMap_direct_subterm : subterm_relation.
 Definition TupleMap_subterm := Relation_Operators.clos_trans _
-  (λ x y : {index : {n : nat & sigma _ (λ _ : TupleT n, TupleT n)} &
+  (λ x y : &{index : &{n : nat & sigma _ (λ _ : TupleT n, TupleT n)} &
                    TupleMap (pr1 index) (pr1 (pr2 index)) (pr2 (pr2 index))},
           TupleMap_direct_subterm _ _ _ _ _ _ (pr2 x) (pr2 y)).
 
@@ -63,8 +63,22 @@ Ltac wf_subterm := intro;
     intuition.
 
 Next Obligation.
-  Admitted.
-
+  unfold TupleMap_subterm.
+  apply Transitive_Closure.wf_clos_trans.
+  red. intros ((n&H1&H2)&map). simpl in map.
+  match goal with |- context [ Acc ?R _ ] => set(rel:=R) end.
+  move rel at top.
+  revert_until rel. fix map 4.
+  intros.
+  constructor. intros ((n'&H1'&H2')&map'). simpl in *.
+  intros H.
+  destruct map0.
+  clear map. red in H. simpl in H. depelim H.
+  red in H. simpl in H.
+  depelim H.
+  apply map.
+Qed.
+Print Assumptions WellFounded_TupleMap_subterm.
 Hint Extern 3 (TupleMap_subterm _ _) =>
   unfold TupleMap_subterm; simpl : subterm_relation.
 Hint Extern 5 => progress simpl : subterm_relation.
@@ -101,7 +115,7 @@ myComp (tmCons G H g) (tmCons F ?(G) f) :=
 
 Ltac unfold_FixWf :=
   match goal with
-    |- appcontext C [ @FixWf ?A ?R ?WF ?P ?f ?x ] =>
+    |- context C [ @FixWf ?A ?R ?WF ?P ?f ?x ] =>
       rewrite (@FixWf_unfold A R WF P f);
       let step := fresh in set(step := f) in *;
         try let c' := context C [step x step] in change c'

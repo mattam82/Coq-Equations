@@ -2,7 +2,7 @@ Require Export Unicode.Utf8.
 Require Import Coq.Program.Tactics Setoid.
 
 Require Import Equations.Equations.
-
+Import Init. Import IdNotations.
 Set Standard Proposition Elimination Names.
 Set Universe Polymorphism.
 Set Primitive Projections.
@@ -249,7 +249,7 @@ concat_A1p {f:=f} p {x:=x} id_refl with p x, f x :=
 concat_A1p p id_refl id_refl _ := id_refl.
 
 Notation " 'rew' H 'in' c " := (eq_rect_r _ c H) (at level 20).
-Notation " 'rewd' H 'in' c " := (@eq_rect_dep_r _ _ _ c _ H) (at level 20).
+Notation " 'rewd' H 'in' c " := (@DepElim.eq_rect_dep_r _ _ _ c _ H) (at level 20).
 Lemma concat_A1p_lemma {A} (f : A -> A) (p : forall x, f x = x) {x y : A} (q : x = y) :
   eq (concat_A1p p q) (concat_A1p p q).
 Proof.

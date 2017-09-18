@@ -47,7 +47,7 @@ Module M1.
   Derive Signature NoConfusion Subterm for mono.
 
   Time Equations(nocomp) get_coef {n} (m : mono n) {b} (p : poly b n) : Z :=
-  get_coef m p by rec (signature_pack m) mono_subterm :=
+  get_coef m p by rec (Signature.signature_pack m) mono_subterm :=
   get_coef mono_z     poly_z       := 0%Z;
   get_coef mono_z     (poly_c z _) := z;
   get_coef (mono_l m) (poly_l p)   := get_coef m p;
@@ -107,7 +107,7 @@ Module M1.
    ** 1.2.c
    *)
   Equations(nocomp) eval {n} {b} (p : poly b n) (v : Vector.t Z n) : Z :=
-  eval p v by rec (signature_pack p) poly_subterm :=
+  eval p v by rec (Signature.signature_pack p) poly_subterm :=
   eval poly_z         Vector.nil           := 0%Z;
   eval (poly_c z _)   Vector.nil           := z;
   eval (poly_l p)     (Vector.cons x xs)   := eval p xs;

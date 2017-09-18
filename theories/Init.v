@@ -50,12 +50,12 @@ Arguments sigmaI {A} B pr1 pr2.
 
 Set Warnings "-notation-overridden".
 
-Notation "& { x : A & y } " := (@sigma A (fun x : A => y)%type) (x at level 99) : sigma_scope.
-Notation "& { x : A & y } " := (@sigma A (fun x : A => y)%type) (x at level 99) : type_scope.
-Notation "& ( x , .. , y & z )" :=
+Notation "&{ x : A & y }" := (@sigma A (fun x : A => y)%type) (x at level 99) : sigma_scope.
+Notation "&{ x : A & y }" := (@sigma A (fun x : A => y)%type) (x at level 99) : type_scope.
+Notation "&( x , .. , y & z )" :=
   (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
     (right associativity, at level 4,
-     format "& ( x ,  .. ,  y  &  z )") : sigma_scope.
+     format "&( x ,  .. ,  y  &  z )") : sigma_scope.
 Notation " x .1 " := (pr1 x) (at level 3, format "x .1") : sigma_scope.
 Notation " x .2 " := (pr2 x) (at level 3, format "x .2") : sigma_scope.
 

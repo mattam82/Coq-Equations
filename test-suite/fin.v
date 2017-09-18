@@ -11,6 +11,7 @@ Arguments Nil [A].
 Arguments Cons [A n] _ _.
 
 Set Universe Polymorphism.
+Open Scope sigma_scope.
 Equations(nocomp) path_sigma {A : Type} (P : A -> Type) (u v : sigma A P)
  (p : u = v) : u.1 = v.1 :=
 path_sigma _ _ _ eq_refl := eq_refl.
@@ -210,7 +211,7 @@ Derive Signature NoConfusion EqDec Subterm for fle.
 Print Assumptions fle_eqdec.
 
 Equations fle_trans' {n : nat} {i j : fin n} (p : fle i j) {k} (q : fle j k) : fle i k :=
-fle_trans' p q by rec (signature_pack p) (@fle_subterm) :=
+fle_trans' p q by rec (Signature.signature_pack p) (@fle_subterm) :=
 fle_trans' flez _ := flez;
 fle_trans' (fles p') (fles q') := fles (fle_trans' p' q').
 Print Assumptions fle_trans'.

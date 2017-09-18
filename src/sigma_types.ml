@@ -236,8 +236,8 @@ let declare_sig_of_ind env sigma (ind,u) =
        mkApp (indsig, extended_rel_vect lenargs pars);
        mkApp (pack_fn, extended_rel_vect 0 ctx)]
   in
-  (* Table.extraction_inline true [Ident (dummy_loc, pack_id)]; *)
-  (* Table.extraction_inline true [Ident (dummy_loc, signature_id)]; *)
+  Extraction_plugin.Table.extraction_inline true [Ident (dummy_loc, pack_id)];
+  Extraction_plugin.Table.extraction_inline true [Ident (dummy_loc, signature_id)];
   inst
 
 let () =

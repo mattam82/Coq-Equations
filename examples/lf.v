@@ -6,8 +6,8 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Equations.Equations Omega.
-Require Import Utf8 List.
+From Equations Require Import Equations FunctionalInduction DepElim.
+From Coq Require Import Omega Utf8 List.
 
 Inductive term := 
 | Var (n : nat)
@@ -512,10 +512,9 @@ Qed.
 Lemma η_normal : forall Γ A t, neutral t -> Γ |-- t => A -> normal (η A t).
 Proof. intros. now apply eta_expand in H0; term. Qed.
 
-Ltac rec ::= rec_wf_eqns.
+Ltac Below.rec ::= Subterm.rec_wf_eqns.
 Require Import Arith Wf_nat.
-Instance wf_nat : WellFounded lt := lt_wf.
-
+Instance wf_nat : Subterm.WellFounded lt := lt_wf.
 Derive Subterm for term.
 Hint Constructors lexprod : subterm_relation.
 
@@ -529,7 +528,8 @@ Definition lexicographic {A B} (R : relation A) (S : relation B) : relation (A *
     let (y1, y2) := y in
       lexprod R (const S) (existS _ x1 x2) (existS _ y1 y2).
 
-Instance lexicographic_wellfounded {A R B S} `{WellFounded A R} `{WellFounded B S} : WellFounded (lexicographic R S).
+Instance lexicographic_wellfounded {A R B S} `{Subterm.WellFounded A R} `{Subterm.WellFounded B S} :
+  Subterm.WellFounded (lexicographic R S).
 Proof. red in H, H0. red. unfold lexicographic. 
   assert(wfS:forall x : A, well_founded (const S x)) by auto.
   assert(wfprod:=wf_lexprod A (fun _ => B) R (const S) H wfS).
@@ -590,7 +590,7 @@ Definition her_type (t : type * term * term) :=
    { u : type | u = u' \/ type_subterm u u' }.
 
 Remove Hints t_step : subterm_relation.
-Remove Hints clos_trans_stepr : subterm_relation.
+Remove Hints Subterm.clos_trans_stepr : subterm_relation.
 
 Ltac apply_step :=
   match goal with 
@@ -677,7 +677,7 @@ Obligation Tactic := idtac.
 Next Obligation.
 Proof.
   intros.
-  rec_wf_rel hsubst t her_order.
+  Subterm.rec_wf_rel hsubst t her_order.
   depelim t. depelim p. simph. 
   constructor. depelim t1.
   constructor. 

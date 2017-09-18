@@ -7,7 +7,8 @@
 (**********************************************************************)
 
 Require Import Program Bvector List Relations.
-From Equations Require Import Equations.
+From Equations Require Import Equations Signature.
+Require Import Utf8.
 
 Inductive le : nat -> nat -> Set :=
 | le_0 n : le 0 (S n)

@@ -11,8 +11,6 @@ Derive Signature for eq.
 Goal forall (U V : Type), Some U = Some V -> U = V.
 Proof. intros. depelim H. reflexivity. Qed.
 
-Notation " x ~=~ y " := ((existT _ _ x) = (existT _ _ y)).
-
 Unset Printing All.
 
 Inductive foo (A : Type)

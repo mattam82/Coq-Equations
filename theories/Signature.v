@@ -12,11 +12,6 @@
    can be packed. *)
 
 From Equations Require Import Init EqDec.
-  
-Polymorphic Lemma inj_sigma2 (U : Type) (P : U -> Type) (p : U) (x y : P p) :
-  sigmaI P p x = sigmaI P p y -> x = y.
-Proof.
-Admitted.
 
 (** For right associated sigmas *)
 Ltac destruct_right_sigma H :=
@@ -45,7 +40,3 @@ Polymorphic Class Signature (fam : Type) (signature_index : Type) : Type := {
 }.
 
 Extraction Inline signature signature_pack.
-
-Notation " x ~=~ y " := (signature_pack x = signature_pack y) (at level 90).
-
-Notation " '(' x '&' y ')' " := (existT _ x y) : equations. 

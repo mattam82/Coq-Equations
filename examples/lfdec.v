@@ -6,9 +6,11 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Equations.Equations Omega.
+Require Equations.Equations.
+Import DepElim FunctionalInduction.
+Require Import Omega.
 Require Import List Utf8.
-Require Import Equations.EqDec Equations.DepElimDec.
+From Equations Require Import EqDec DepElimDec.
 
 Derive Signature for le CompareSpec.
 
@@ -527,9 +529,11 @@ Qed.
 Lemma η_normal : forall Γ A t, neutral t -> Γ |-- t => A -> normal (η A t).
 Proof. intros. now apply eta_expand in H0; term. Qed.
 
-Ltac rec ::= rec_wf_eqns.
+(** Going to use the subterm order *)
+
+Ltac Below.rec ::= Subterm.rec_wf_eqns.
 Require Import Arith Wf_nat.
-Instance wf_nat : WellFounded lt := lt_wf.
+Instance wf_nat : Subterm.WellFounded lt := lt_wf.
 
 Hint Constructors Subterm.lexprod : subterm_relation.
 
@@ -538,10 +542,6 @@ Notation lexicographic R S := (Subterm.lexprod _ _ R S).
 
 From Equations Require Import EqDec.
 
-Instance lexicographic_wellfounded {A R B S} 
-         `{WellFounded A R} `{WellFounded B S} : WellFounded (lexicographic R S).
-Proof. now apply wf_lexprod. Defined.
-
 Definition her_order : relation (type * term * term) :=
   lexicographic (lexicographic type_subterm term_subterm) term_subterm.  
 
@@ -549,7 +549,7 @@ Hint Unfold her_order : subterm_relation.
 
 Obligation Tactic := program_simpl.
 
-Implicit Arguments exist [[A] [P]].
+Arguments exist [A] [P].
 
 Definition hereditary_type (t : type * term * term) :=
   (term * option { u : type | u = (fst (fst t)) \/ type_subterm u (fst (fst t)) })%type.
@@ -589,7 +589,7 @@ Definition her_type (t : type * term * term) :=
    { u : type | u = u' \/ type_subterm u u' }.
 
 Remove Hints t_step : subterm_relation.
-Remove Hints clos_trans_stepr : subterm_relation.
+Remove Hints Subterm.clos_trans_stepr : subterm_relation.
 
 Ltac apply_step :=
   match goal with 
@@ -676,7 +676,7 @@ Obligation Tactic := idtac.
 Next Obligation.
 Proof.
   intros.
-  rec_wf_rel hsubst t her_order.
+  Subterm.rec_wf_rel hsubst t her_order.
   depelim t. depelim p. simph. 
   constructor. depelim t1.
   constructor. 
@@ -985,7 +985,7 @@ Proof.
       constructor; auto.
     
   (* Pair *)
-  - simp is_pair in Heq. simpl in prf.
+  - simpl in Heq. autorewrite with is_pair in Heq. simpl in prf.
     rename t0 into U. intros Γ T Hu.
     assert( (Γ' @ (U :: Γ) |-- Fst t5 => T → Γ' @ Γ |-- u <= T ∧ a = T)).
     intros Ht; depelim Ht. specialize (Hind _ (A × B) Hu). revert Hind.

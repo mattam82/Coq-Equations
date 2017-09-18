@@ -81,6 +81,9 @@ Require Import Eqdep.
 (** Simplify dependent equality using sigmas to equality of the second projections if possible.
    Uses UIP. *)
 
+Axiom inj_sigma2 : forall (U : Type) (P : U -> Type) (p : U) (x y : P p),
+  sigmaI P p x = sigmaI P p y -> x = y.
+
 Ltac simpl_existT :=
   match goal with
     [ H : existT _ ?x _ = existT _ ?x _ |- _ ] =>

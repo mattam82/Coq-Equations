@@ -90,8 +90,8 @@ let map_split f split =
 	  refined_newprob_to_lhs = map_ctx_map f info.refined_newprob_to_lhs;
 	  refined_newty = f info.refined_newty}, aux s)
     | Compute (lhs, where, ty, (REmpty _ as em)) ->
-      (* let lhs' = map_ctx_map f lhs in *)
-	Compute (lhs, where, f ty, em)
+       let lhs' = map_ctx_map f lhs in
+       Compute (lhs', where, f ty, em)
   in aux split
 
 let helper_evar evm evar env typ src =
@@ -383,9 +383,9 @@ let define_tree is_recursive poly impls status isevar env (i, sign, arity)
     (ev, arg, List.assoc ev emap)) helpers
   in
   let hook x y = 
-    let _l =
+    let l =
       Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Ident (dummy_loc, id)) obls in
-      (* FIXME Table.extraction_inline true l; *)
+      Extraction_plugin.Table.extraction_inline true l;
       hook split cmap term_info x y
   in
   let hook = Lemmas.mk_hook hook in

@@ -52,6 +52,8 @@ open Syntax
 open Covering
 open Splitting
 
+open Extraction_plugin
+
 module PathOT =
   struct
     type t = Covering.path
@@ -226,7 +228,7 @@ let simp_eqns_in clause l =
 let autorewrites b = 
   tclREPEAT (Proofview.V82.of_tactic (Autorewrite.autorewrite Tacticals.New.tclIDTAC [b]))
 
-let autorewrite_one b =  (*FIXME*)
+let autorewrite_one b =
   (Proofview.V82.of_tactic (Autorewrite.autorewrite Tacticals.New.tclIDTAC [b]))
 
 type term_info = {
@@ -249,9 +251,9 @@ let find_helper_info info f =
   with Not_found -> anomaly (str"Helper not found while proving induction lemma.")
 
 let inline_helpers i = 
-  let _l = List.map (fun (_, _, id) -> Ident (dummy_loc, id)) i.helpers_info in
-  (* FIXME Table.extraction_inline true l *)
-  ()
+  let l = List.map (fun (_, _, id) -> Ident (dummy_loc, id)) i.helpers_info in
+  Table.extraction_inline true l
+
 let is_polymorphic info = pi2 info.decl_kind
   			    
 let find_helper_arg info f args =
@@ -1307,7 +1309,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
 	  | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl)
 	    
     | Valid (_, _, _, _, _, rest), (* Valid ((ctx, _, _), ty, substc, tac, valid, unfrest) -> *) _ ->
-    (* FIXME *)
+       (* FIXME: Valid could take a splitting with more than 1 branch *)
        observe "valid"
                (aux (let (_, _, _, _, split) = List.nth rest 0 in split) unfold_split)
        (* tclTHEN_i tac (fun i -> let _, _, _, _, split = nth rest (pred i) in *)
@@ -1545,7 +1547,7 @@ let define_by_eqs opts i l t nt eqs =
         hintdb_set_transparency comp false "program";
         hintdb_set_transparency comp false "subterm_relation";
         Impargs.declare_manual_implicits true (ConstRef comp) [impls];
-        (* Table.extraction_inline true [Ident (dummy_loc, compid)]; *)
+        Table.extraction_inline true [Ident (dummy_loc, compid)];
         Some (compid, comp), compapp, oarity
       else
         (* let compapp = mkApp (body, rel_vect 0 (length sign)) in *)
@@ -1575,7 +1577,7 @@ let define_by_eqs opts i l t nt eqs =
            [ExplByPos (succ (List.length sign), None), (true, false, true)]
          else [] in
        Impargs.declare_manual_implicits true (ConstRef compproj) [impls @ impl];
-       (* FIXME Table.extraction_inline true [Ident (dummy_loc, projid)]; *)
+       Table.extraction_inline true [Ident (dummy_loc, projid)];
        let compinfo = LogicalProj { comp = Option.map snd comp; comp_app = compapp;
 			            comp_proj = compproj; comp_recarg = succ (length sign) } in
        let compapp, is_recursive =

@@ -6,13 +6,13 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Program. 
+Require Import Program Utf8.
 From Equations Require Import Equations DepElimDec.
 Require Import Bvector List Relations.
 Require Import Omega Arith Wf_nat.
 Instance wf_nat : WellFounded lt := lt_wf.
 Hint Resolve lt_n_Sn : Below.
-Ltac rec ::= rec_wf_eqns.
+Ltac Below.rec ::= Subterm.rec_wf_eqns.
 
 Module RecRel.
   
@@ -104,6 +104,9 @@ Proof with simpl; intros. intros.
   auto using Permutation_cons_app. elim H1.
 Qed.
 
+Require Import EquivDec.
+Require Import Permutation.
+
 Module RecMeasure.
 
   Instance wf_MR {A R} `(WellFounded A R) {B} (f : B -> A) : WellFounded (MR R f).
@@ -121,7 +124,7 @@ Module RecMeasure.
   f O m := m ;
   f (S n) m := S (f n m) + m.
 
-  Implicit Arguments length [[A]].
+  Arguments length [A] _.
 
   Equations g (l : list nat) : nat :=
   g l by rec l (MR lt (@length nat)) :=
@@ -235,8 +238,6 @@ Module RecMeasure.
       pose (r:=refl_le x a); pose (r':=refl_le a y); depelim r; depelim r'; reverse; simplify_dep_elim; auto. 
       transitivity a; auto.
     Qed.
-    Require Import EquivDec.
-    Require Import Permutation.
 
     Lemma qs_perm l : Permutation l (qs l).
     Proof.
