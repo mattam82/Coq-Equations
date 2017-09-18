@@ -74,6 +74,8 @@ Ltac simpl_equations ::=
 
 Derive NoConfusion for TupleT.
 
+(** This is due to a limitation of the guard condition in 8.6 (see github PR #920) *)
+Unset Equations OCaml Splitting.
 Equations myComp {n} {B C : TupleT n} (tm1 : TupleMap _ B C) {A : TupleT n} (tm2 : TupleMap _ A B)
 : TupleMap _ A C :=
 myComp tmNil tmNil := tmNil;
