@@ -82,14 +82,14 @@ sublist p (cons x xs) with p x := {
 
 (* Print Assumptions sublist. *)
 
-Ltac rec ::= rec_wf_eqns.
+Ltac rec ::= Subterm.rec_wf_eqns.
 
 (* Derive Subterm for nat.  *)
 Derive Subterm for vector.
 
 Require Import Arith Wf_nat.
 
-Instance wf_nat : WellFounded lt := lt_wf.
+Instance wf_nat : Subterm.WellFounded lt := lt_wf.
 
 Hint Resolve lt_n_Sn : lt.
 
@@ -145,7 +145,7 @@ Defined.
 Definition vector_subterm A := t_subterm A.
 
 Instance well_founded_vector_direct_subterm' :
-  forall A : Type, EqDec A -> WellFounded (vector_subterm A) | 0.
+  forall A : Type, EqDec A -> Subterm.WellFounded (vector_subterm A) | 0.
 Proof.   intros. 
   apply Transitive_Closure.wf_clos_trans.
   intro. simp_sigmas. induction a.

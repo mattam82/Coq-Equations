@@ -7,15 +7,9 @@
 (**********************************************************************)
 
 Require Import Wf_nat Arith.Lt Bvector Relations Wellfounded.
-From Equations Require Import Init Below Signature EqDec NoConfusion.
+From Equations Require Import Init Classes Below Signature EqDec NoConfusion.
 
 Generalizable Variables A R S B.
-
-(** A class for well foundedness proofs.
-   Instances can be derived automatically using [Derive Subterm for ind]. *)
-
-Class WellFounded {A : Type} (R : relation A) :=
-  wellfounded : well_founded R.
 
 Scheme Acc_dep := Induction for Acc Sort Prop.
 
@@ -195,9 +189,6 @@ Ltac rec_wf_eqns_rel recname x rel :=
 
 Ltac rec_wf_rel recname x rel :=
   rec_wf_rel_aux recname x rel ltac:(fun rechyp => idtac).
-
-Ltac solve_rec ::= simpl in * ; cbv zeta ; intros ; 
-  try typeclasses eauto with subterm_relation Below rec_decision.
 
 (** The [pi] tactic solves an equality between applications of the same function,
    possibly using proof irrelevance to discharge equality of proofs. *)

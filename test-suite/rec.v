@@ -10,10 +10,10 @@ Require Import Program Utf8.
 From Equations Require Import Equations DepElimDec.
 Require Import Bvector List Relations.
 Require Import Omega Arith Wf_nat.
+Require Import Subterm.
+
 Instance wf_nat : WellFounded lt := lt_wf.
 Hint Resolve lt_n_Sn : Below.
-Ltac Below.rec ::= Subterm.rec_wf_eqns.
-
 Module RecRel.
   
   Equations id (n : nat) : nat :=

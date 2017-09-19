@@ -10,6 +10,7 @@ Require Import Program.
 Require Import Equations Bvector List.
 Require Import Relations.
 Require Import DepElimDec.
+Require Import Subterm.
 
 Require Import Arith Wf_nat.
 Instance wf_nat : WellFounded lt := lt_wf.

@@ -35,6 +35,7 @@ src/g_equations.ml4
 src/equations_plugin_mod.ml
 src/equations_plugin.mllib
 theories/Init.v
+theories/Classes.v
 theories/Signature.v
 theories/EqDec.v
 theories/HSets.v

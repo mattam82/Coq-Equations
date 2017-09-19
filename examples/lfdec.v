@@ -533,7 +533,7 @@ Proof. intros. now apply eta_expand in H0; term. Qed.
 
 Ltac Below.rec ::= Subterm.rec_wf_eqns.
 Require Import Arith Wf_nat.
-Instance wf_nat : Subterm.WellFounded lt := lt_wf.
+Instance wf_nat : Classes.WellFounded lt := lt_wf.
 
 Hint Constructors Subterm.lexprod : subterm_relation.
 

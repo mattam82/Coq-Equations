@@ -307,7 +307,7 @@ let dependent_elimination_class () =
 
 let below_path = ["Equations";"Below"]
 
-let coq_wellfounded_class = lazy (init_constant ["Equations";"Subterm"] "WellFounded")
+let coq_wellfounded_class = lazy (init_constant ["Equations";"Classes"] "WellFounded")
 let coq_wellfounded = lazy (init_constant ["Coq";"Init";"Wf"] "well_founded")
 let coq_relation = lazy (init_constant ["Coq";"Relations";"Relation_Definitions"] "relation")
 let coq_clos_trans = lazy (init_constant ["Coq";"Relations";"Relation_Operators"] "clos_trans")
@@ -510,13 +510,13 @@ let equations_tac_expr () =
 
 let solve_rec_tac_expr () =
   (TacArg(dummy_loc, TacCall(dummy_loc, 
-   Qualid (dummy_loc, qualid_of_string "Equations.Below.solve_rec"), [])))
+   Qualid (dummy_loc, qualid_of_string "Equations.Equations.solve_rec"), [])))
 
 let equations_tac () = tac_of_string "Equations.DepElim.equations" []
 
 let set_eos_tac () = tac_of_string "Equations.DepElim.set_eos" []
     
-let solve_rec_tac () = tac_of_string "Equations.Below.solve_rec" []
+let solve_rec_tac () = tac_of_string "Equations.Equations.solve_rec" []
 
 let find_empty_tac () = tac_of_string "Equations.DepElim.find_empty" []
 

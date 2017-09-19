@@ -13,5 +13,9 @@ Require Import Coq.Program.Program.
 (** This exports tactics *)
 Declare ML Module "equations_plugin".
 
-From Equations Require Import Init NoConfusion EqDecInstances.
-From Equations Require Export Signature DepElim FunctionalInduction Below Subterm.
+From Equations Require Export Classes Signature DepElim FunctionalInduction Below.
+From Equations Require Import Init NoConfusion EqDecInstances Subterm.
+
+(** Tactic to solve well-founded proof obligations by default *)
+Ltac solve_rec := simpl in * ; cbv zeta ; intros ;
+  try typeclasses eauto with subterm_relation Below rec_decision.
