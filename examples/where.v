@@ -21,9 +21,8 @@ g (S _) := false.
 Next Obligation.
   induction n. constructor.
 
-  assert(forall n, f_ind_1 n n (f_obligation_2 f n n)).
+  assert(forall n, f_ind_1 n n (f_obligation_1 f n n)).
   destruct n0. 
   constructor. constructor.
   simp f.
 Defined.
-  

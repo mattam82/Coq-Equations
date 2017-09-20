@@ -57,3 +57,4 @@ examples/poly_bocquet.v
 examples/ordinals.v
 examples/ordinal_rec.v
 examples/RoseTree.v
+examples/where.v
