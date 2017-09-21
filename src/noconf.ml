@@ -64,12 +64,12 @@ let mkcase env c ty constrs =
       let args = substl (List.rev origparams) (it_mkProd_or_LetIn arity realargs) in
       let args, arity = decompose_prod_assum args in
       let res = constrs ind i id params args arity in
-	it_mkLambda_or_LetIn res args)
+      it_mkLambda_or_LetIn res args)
       oneind.mind_consnames oneind.mind_nf_lc
   in
     mkCase (ci, ty, c, brs)
 
-let mk_eq env evd args args' indty = 
+let mk_eq env evd args args' =
   let _, _, make = Sigma_types.telescope evd args in
   let _, _, make' = Sigma_types.telescope evd args' in
   let make = lift (List.length args + 1) make in
@@ -81,6 +81,7 @@ let derive_no_confusion env evd (ind,u as indu) =
   let poly = Flags.is_universe_polymorphism () in
   let mindb, oneind = Global.lookup_inductive ind in
   let ctx = subst_instance_context u oneind.mind_arity_ctxt in
+  let ctx = smash_rel_context ctx in
   let len = List.length ctx in
   let params = mindb.mind_nparams in
   let args = oneind.mind_nrealargs in
@@ -95,10 +96,10 @@ let derive_no_confusion env evd (ind,u as indu) =
       in
       let () = evd := evm in
       let sigma = Evarutil.e_new_global evd (Lazy.force coq_sigma) in
-      let indty = mkApp (sigma, [|idx; pred|]) in
-      nf_betaiotazeta !evd indty, mkProj (Lazy.force coq_pr2, mkRel 1), pars, ctx
+      let _, pred' = decompose_lam_n (List.length pars) pred in
+      let indty = mkApp (sigma, [|idx; pred'|]) in
+      nf_betaiotazeta !evd indty, mkProj (Lazy.force coq_pr2, mkRel 1), pars, (List.firstn lenargs ctx)
   in
-  let indty = mkApp (mkIndU indu, argsvect) in
   let tru = Universes.constr_of_global (Lazy.force (get_one ())) in
   let fls = Universes.constr_of_global (Lazy.force (get_zero ())) in
   let xid = id_of_string "x" and yid = id_of_string "y" in
@@ -110,30 +111,33 @@ let derive_no_confusion env evd (ind,u as indu) =
   let s = mkSort s in
   let arity = it_mkProd_or_LetIn s fullbinders in
   let env = push_rel_context binders env in
+  let paramsvect = Context.Rel.to_extended_vect 0 ctx in
   let pack_ind_with_parlift n = lift n argty in
   let ind_with_parlift n = 
     mkApp (mkIndU indu, Array.append (Array.map (lift n) paramsvect) rest) 
   in
-  let lenargs = List.length argsctx in
+  let lenindices = List.length argsctx in
   let pred =
     let elim =
-      let app = pack_ind_with_parlift (args + 1) in
+      (* In pars ; x |- fun args (x : ind pars args) => forall y, Prop *)
+      let app = pack_ind_with_parlift (args + 2) in
 	it_mkLambda_or_LetIn 
-	  (mkProd_or_LetIn (of_tuple (Anonymous, None, lift 1 app)) s)
-	  (of_tuple (Name xid, None, ind_with_parlift (1 + lenargs)) :: argsctx)
+	  (mkProd_or_LetIn (of_tuple (Anonymous, None, app)) s)
+	  (of_tuple (Name xid, None, ind_with_parlift (lenindices + 1)) ::
+             lift_rel_context 1 argsctx)
     in
       mkcase env x elim (fun ind i id nparams args arity ->
 	let ydecl = (Name yid, None, pack_ind_with_parlift (List.length args + 1)) in
 	let env' = push_rel_context (of_tuple ydecl :: args) env in
-	let elimdecl = (Name yid, None, ind_with_parlift (List.length args + 2)) in
+	let elimdecl = (Name yid, None, ind_with_parlift (List.length args + lenindices + 2)) in
 	  mkLambda_or_LetIn (of_tuple ydecl)
 	    (mkcase env' x
-		(it_mkLambda_or_LetIn s (of_tuple elimdecl :: argsctx))
-		(fun _ i' id' nparams args' arity' ->
-		  if i = i' then 
-		    if List.length args = 0 then tru
-		    else mk_eq (push_rel_context args' env') evd args args' indty
-		  else fls)))
+	        (it_mkLambda_or_LetIn s (of_tuple elimdecl :: argsctx))
+	        (fun _ i' id' nparams args' arity' ->
+	          if i = i' then
+	            if List.length args = 0 then tru
+	            else mk_eq (push_rel_context args' env') evd args args'
+	          else fls)))
   in
   let app = it_mkLambda_or_LetIn pred binders in
   let ce = make_definition ~poly evd ~types:arity app in

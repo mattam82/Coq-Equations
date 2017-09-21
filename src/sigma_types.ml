@@ -136,6 +136,7 @@ let sigmaize ?(liftty=0) env0 evd pars f =
   let env = push_rel_context pars env0 in
   let ty = Retyping.get_type_of env !evd f in
   let ctx, concl = splay_prod_assum env !evd ty in
+  let ctx = smash_rel_context ctx in
   let argtyp, letbinders, make = telescope evd ctx in
     (* Everyting is in env, move to index :: letbinders :: env *) 
   let lenb = List.length letbinders in
@@ -186,6 +187,7 @@ let signature_class evd =
 let build_sig_of_ind env sigma (ind,u as indu) =
   let (mib, oib as _mind) = Global.lookup_inductive ind in
   let ctx = inductive_alldecls indu in
+  let ctx = smash_rel_context ctx in
   let lenpars = mib.mind_nparams_rec in
   let lenargs = List.length ctx - lenpars in
   if lenargs = 0 then
