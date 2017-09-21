@@ -2,7 +2,6 @@
 \usepackage[T1]{fontenc}
 %\usepackage{fullpage}
 \usepackage{amsmath,amssymb}
-\usepackage{me}
 \usepackage[color]{coqdoc}
 \usepackage{hyperref}
 \usepackage{abbrevs}
@@ -17,9 +16,11 @@
 \usepackage{code}
 \usepackage{coq}
 
-\author{\myname}
+\def\eqnversion{\texttt{1.0beta}\xspace}
+
+\author{Matthieu Sozeau}
 \date{\today}
-\title{\Equations: A Dependent Pattern-Matching Suite}
+\title{\Equations \eqnversion Reference Manual}
 \begin{document}
 
 \maketitle
@@ -46,11 +47,25 @@ recursive definitions in interactive proof assistants like (\Coq, \Agda
 or \Isabelle).
 
 A technical description of the tool appeared in
-\cite{sozeau.Coq/Equations/ITP10}, this article's purpose is to
-introduce the system by way of introductory examples
-(\autoref{cha:gentle-intro}), a completely worked-out formalization
-(\autoref{cha:strong-norm-simply}) and a comprehensive documentation of
+\cite{sozeau.Coq/Equations/ITP10}, this manual provides an
+overview of the system by way of introductory examples
+(\autoref{cha:gentle-intro}), and a comprehensive documentation of
 its features (\autoref{cha:manual}).
+
+This manual describes version \eqnversion of the package.
+
+\section*{Installation}
+
+Equations is available through the
+\texttt{opam}\footnote{\url{http://opam.ocaml.org}} package manager as
+package \texttt{coq-equations}. To install it on an already existing
+\texttt{opam} installation, simply input the command:
+\begin{verbatim}
+# opam install coq-equations
+\end{verbatim}
+
+The development version which can be installed by hand is available at
+\url{http://github.com/mattam82/Coq-Equations}.
 
 \doparttoc
 \parttoc
@@ -59,10 +74,6 @@ its features (\autoref{cha:manual}).
 \chapter{A gentle introduction to Equations}
 \label{cha:gentle-intro}
 \input{intro}
-
-\chapter{Strong Normalization for Simply-Typed \texorpdfstring{$\lambda$}{Lambda}-calculus}
-\label{cha:strong-norm-simply}
-\input{stlc}
 
 \chapter{Manual}
 \label{cha:manual}

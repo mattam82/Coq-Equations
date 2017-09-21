@@ -1,0 +1,43 @@
+\usepackage{lambda}
+\usepackage{ml}
+\usepackage{code}
+
+\def\coqor{\ensuremath{|~}}
+\def\coqbar{\ensuremath{|}}
+\def\coqdoublebar{\ensuremath{\|}}
+
+\def\coqcoerce{$:>~$}
+\def\coqlambda{\textrm{λ}}
+\def\coqforall{$\forall$}
+
+\def\destml{\mlkw{dest}}
+\newcommand{\eqrec}[6]{\cst{eq\_rec}~#1~#2~#3~#4~#5~#6}
+\newcommand{\eqrect}[6]{\cst{eq\_rect}~#1~#2~#3~#4~#5~#6}
+
+% Coq
+% \newcommand{\elt}[4]{\constr{elt}~#1~#2~#3~#4}
+% \newcommand{\elts}[2]{\constr{elt}~#1~#2}
+% \newcommand{\curryelt}[4]{\constr{elt}~#3~#4}
+\newcommand{\mysubset}[3]{\{~#1 : #2 `| #3~\}}
+
+\def\Definition{\kw{Definition}}
+\def\Fixpoint{\kw{Fixpoint}}
+\def\Inductive{\kw{Inductive}}
+\def\Variable{\kw{Variable}}
+
+\newcommand{\Prop}{\kw{Prop}\xspace}
+\newcommand{\Set}{\kw{Set}\xspace}
+%\newcommand{\Type}{\kw{Type}\xspace}
+
+\def\setproptype{\ensuremath{\{ \Set, \Prop, \Type \}}}
+\def\setprop{\ensuremath{\{ \Set, \Prop \}}}
+
+% Framed goals
+
+\def\coqframeindent#1{\noindent\kern#1\hskip2em}
+\def\coqframenoindent#1{\noindent}
+\def\frameindent{\def\coqdocindent{\coqframeindent}}
+\def\noframeindent{\def\coqdocindent{\coqframenoindent}}
+\usepackage{framed}
+%\newenvironment{goal}{\begin{framed}\frameindent}
+%  {\end{framed}\noframeindent}

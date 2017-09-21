@@ -1,0 +1,134 @@
+\usepackage{ifmtarg}
+\usepackage{ifthen}
+\usepackage{qsymbols}
+\usepackage{xspace}
+
+\newqsymbol{`<}{\langle}
+\newqsymbol{`>}{\rangle}
+
+\newcommand{\unique}{\mbox{ unique }}
+\def\text#1{\mbox{#1}}
+
+\newcommand{\dom}[1]{\mathbb{#1}}
+\newqsymbol{`N}{\dom{N}}
+\newqsymbol{`Z}{\dom{Z}}
+\newqsymbol{`R}{\dom{R}}
+\newqsymbol{`Q}{\dom{Q}}
+
+\newqsymbol{`|}{\mid}
+\newqsymbol{`O}{\varnothing}
+
+% Definitional equality
+\def\eqdef{\triangleq}
+%\def\eqdef{\buildrel \rm {\scriptsize def} \over =}
+%\newqsymbol{"="}{\eqdef}
+\def\FV#1{\mathcal{F}\mathcal{V}(#1)}
+
+% Similar or equal
+%\newqsymbol{"~="}{\simeq}
+
+% Names 
+\def\namefont{\textsc}
+\newcommand{\name}[1]{\namefont{#1}\xspace}
+
+\def\SSReflect{\name{SSReflect}}
+\def\Isabelle{\name{Isabelle}}
+\def\IsabelleHOL{\name{Isabelle/HOL}}
+\def\HOL{\name{HOL}}
+\def\Coq{\name{Coq}}
+\def\Gallina{\name{Gallina}}
+\def\Gallium{\name{Gallium}}
+\def\CoC{\name{CoC}}
+\def\CCIfull{Calcul des Constructions (Co-)Inductives}
+\def\CCI{\name{CCI}}
+\def\CICfull{Calculus of (Co-)Inductive Constructions}
+\def\CIC{\name{CIC}}
+\def\CICq{\namefont{CIC}$_{?}$\xspace}
+\def\CCq{$\namefont{CC}_{?}$\xspace}
+\def\CC{\name{CC}}
+\def\ECC{\name{ECC}}
+\def\ECCfull{Extended Calculus of Constructions}
+\def\CCfull{Calcul des Constructions}
+\def\TCC{\name{TCC}}
+\def\PVS{\name{PVS}}
+\def\ML{\name{ML}}
+\def\DML{\name{DML}}
+\def\Twelf{\name{Twelf}}
+\def\Cayenne{\name{Cayenne}}
+\def\Epigram{\name{Epigram}}
+\def\Agda{\name{Agda}}
+\def\Alf{\name{Alf}}
+\def\AgdaTwo{\name{Agda 2}}
+\def\ATS{\name{ATS}}
+\def\Concoqtion{\name{Concoqtion}}
+\def\Omegapdx{\name{$\Omega\text{mega}$}}
+\def\omegapdx{\name{$\Omega\text{mega}$}}
+\def\C{\name{C}}
+\def\CVS{\name{CVS}}
+\def\Refine{\name{Refine}}
+\def\LogiCal{\name{LogiCal}}
+\def\TypiCal{\name{TypiCal}}
+\def\PCRI{\name{PCRI}}
+\def\Demons{\name{D\'emons}}
+\def\LRI{\name{LRI}}
+\def\INRIAFuturs{\name{INRIA} Futurs}
+\def\INRIASaclay{\name{INRIA} Saclay}
+\def\ProVal{\name{ProVal}}
+\def\Programatica{\name{Programatica}}
+\def\Program{\name{Program}}
+\def\CurryHoward{\textsc{C}urry-\textsc{H}oward\xspace}
+\def\lc{$\lambda$-calcul}
+\def\lcst{$\lambda^{\rightarrow}$}
+\def\LMS{\name{LMS}}
+\def\Haskell{\name{Haskell}}
+\def\Russell{\name{Russell}}
+\def\Ocaml{\name{OCaml}}
+\def\Ynot{\name{Ynot}}
+\def\Subtac{\name{Subtac}}
+\def\eterm{\name{eterm}}
+\def\ps{\emph{Predicate subtyping}}
+\def\Ltac{$\mathcal{L}_{\text{tac}}$\xspace}
+\def\Prolog{\name{Prolog}}
+\def\Function{\name{Function}}
+\def\CurryHoward{\name{Curry}-\name{Howard}}
+\def\Ynot{\name{Ynot}}
+\def\JML{\name{JML}}
+\def\Pangolin{\name{Pangolin}}
+\def\Oleg{\name{OLEG}}
+\def\Lego{\name{LEGO}}
+\def\CDuce{\name{$\mathbb{C}$Duce}}
+\def\Hoare{\name{Hoare}}
+\def\Java{\name{Java}}
+\def\Why{\name{Why}}
+\def\Krakatoa{\name{Krakatoa}}
+\def\Caduceus{\name{Caduceus}}
+\def\Ergo{\name{Alt-Ergo}}
+\def\Simplify{\name{Simplify}}
+\def\Equations{\name{Equations}}
+\def\NuPRL{\name{NuPRL}}
+\def\Matita{\name{Matita}}
+
+\def\INRIA{\name{INRIA}}
+\def\Microsoft{\name{Microsoft}}
+
+\def\GHC{\name{GHC}}
+
+\newcommand{\TODO}[1]{\textbf{TODO:} \emph{#1}}
+\newcommand{\FIXME}[1]{\textbf{FIXME:} \emph{#1}}
+\newcommand{\KEEP}[1]{\textbf{KEEP ?  #1}}
+%\newcommand{\Problem}[1]{\textbf{Problem:} \emph{#1}}
+
+% Equations environment
+\newenvironment{equations}{\begin{displaymath}\begin{array}{ll}}{\end{array}\end{displaymath}}
+\newcommand{\firsteq}[1]{& #1 }
+\newcommand{\step}[3]{\vspace{0.2em}\\ & 
+  \if#1\empty\\ #2 & #3\else\quad\textbf{\{ #1 \}}\vspace{0.2em}\\ #2 & #3\fi}
+
+% Usualy not defined
+\def\coloneqq{:\mathrel{=}}
+\def\Coloneqq{::\mathrel{=}}
+
+\def\opcit{\textit{op. cit.}\xspace}
+
+\def\eng#1{``\textit{#1}''}
+\def\people#1{\textsf{#1}}

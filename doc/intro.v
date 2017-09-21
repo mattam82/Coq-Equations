@@ -1,40 +1,13 @@
-(** 
-   [Equations] is a plugin for Coq%\footnote{Currently available for the trunk version only}
-   \cite{Coq}% that comes with a few support modules defining classes and tactics for 
-   running it. We will introduce its main features through a handful of examples, requiring 
-   no prior knowledge of the tool. We start our Coq primer session by importing the [Equations]
-   module.
-   *)
+(** [Equations] is a plugin for Coq%\footnote{Available for Coq 8.5 and
+   Coq 8.6} \cite{Coq}% that comes with a few support modules defining
+   classes and tactics for running it. We will introduce its main
+   features through a handful of examples. We start our Coq primer
+   session by importing the [Equations] module.  *)
 
-Require Import Equations.
+From Equations Require Import Equations.
 
 (* begin hide *)
 Check @eq.
-Ltac funind c Hcall ::= 
-  match c with
-    appcontext C [ ?f ] => 
-      let x := constr:(fun_ind_prf (f:=f)) in
-        (let prf := eval simpl in x in
-         let p := context C [ prf ] in
-         let prf := fresh in
-         let call := fresh in
-           assert(prf:=p) ;
-           (* Abstract the call *)
-           set(call:=c) in *; generalize (refl_equal : call = c); clearbody call ; intro Hcall ;
-           (* Now do dependent elimination and simplifications *)
-           dependent induction prf ; simplify_IH_hyps)
-           (* Use the simplifiers for the constant to get a nicer goal. *)
-           (* try on_last_hyp ltac:(fun id => simpc f in id ; noconf id)) *)
-        || fail 1 "Internal error in funind"
-  end || fail "Maybe you didn't declare the functional induction principle for" c.
-
-Ltac funelim c :=
-  match c with
-    appcontext C [ ?f ] => 
-      let x := constr:(fun_elim (f:=f)) in
-        (let prf := eval simpl in x in
-          dependent pattern c ; apply prf)
-  end.
 Require Import Bvector.
 
 (* Derive DependentElimination for nat bool option sum prod list vector. *)
@@ -55,7 +28,7 @@ neg true := false ;
 neg false := true.
 
 (* begin hide *)
-Check neg_ind. Check neg_comp.
+Check neg_ind.
 Check neg_ind_equation_1.
 Check neg_ind_equation_2.
 
@@ -87,7 +60,7 @@ Proof. intros b. funelim (neg b); simp neg. Defined.
    principle on the function. 
 
    I.e., for [neg] the inductive graph is defined as: [[
-Inductive neg_ind : forall b : bool, bool -> Prop :=
+Inductive neg_ind : bool -> bool -> Prop :=
 | neg_ind_equation_1 : neg_ind true false
 | neg_ind_equation_2 : neg_ind false true ]]
 
@@ -120,14 +93,18 @@ Notation "x :: l" := (cons x l).
 
 (** No special support for polymorphism is needed, as type arguments are treated 
    like regular arguments in dependent type theories. Note however that one cannot
-   match on type arguments, there is no intensional type analysis. We will present 
-   later how to program with universes to achive the same kind of genericity. 
+   match on type arguments, there is no intensional type analysis.
    We can write the polymorphic [tail] function as follows:
 *)
 
 Equations tail {A} (l : list A) : list A :=
-tail A nil := nil ;
-tail A (cons a v) := v.
+tail nil := nil ;
+tail (cons a v) := v.
+
+(** Note that the argument [{A}] is declared implicit and must hence be
+ omitted in the defining clauses. In each of the branches it is named
+ [A]. To specify it explicitely one can use the syntax [{A:=B}],
+ renaming that implicit argument to [B] in this particular case *)
 
 (** ** Recursive inductive types 
    
@@ -138,15 +115,15 @@ tail A (cons a v) := v.
    A classical example is list concatenation: *)
 
 Equations app {A} (l l' : list A) : list A :=
-app A nil l' := l' ;
-app A (cons a l) l' := cons a (app l l').
+app nil l' := l' ;
+app (cons a l) l' := cons a (app l l').
 
 (** Recursive definitions like [app] can be unfolded easily so proving the 
    equations as rewrite rules is direct. The induction principle associated 
    to this definition is more interesting however. We can derive from it the 
    following _elimination_ principle for calls to [app]: [[
    app_elim :
-   forall P : forall (A : Type) (l l' : list A), app_comp l l' -> Prop,
+   forall P : forall (A : Type) (l l' : list A), list A -> Prop,
    (forall (A : Type) (l' : list A), P A nil l' l') ->
    (forall (A : Type) (a : A) (l l' : list A),
    P A l l' (app l l') -> P A (a :: l) l' (a :: app l l')) ->
@@ -155,44 +132,51 @@ app A (cons a l) l' := cons a (app l l').
   structure of the function definition, instead of redoing the splitting 
   by hand. This idea is already present in the [Function] package 
   %\cite{Barthe:2006gp}% that derives induction principles from
-  function definitions, we will discuss the main differences with [Equations]
-  in section %\ref{sec:related}%.
+  function definitions.
  *)
 
 (* begin hide *)
-Check app_ind. Check @app_comp. Check @app_ind_equation_1. Check @app_ind_equation_2.
+Check app_ind. Check @app_ind_equation_1. Check @app_ind_equation_2.
 (* end hide *)
 
 (** ** Moving to the left
 
-   The structure of real programs is richer than a simple case tree on the 
-   original arguments in general. In the course of a computation, we might 
-   want to scrutinize intermediate results (e.g. coming from function calls)
-   to produce an answer. This literally means adding a new pattern to the left of
-   our equations made available for further refinement. This concept is know as with
-   clauses in the Agda %\cite{norell:thesis}% community and was first presented 
-   and implemented in the Epigram language %\cite{DBLP:journals/jfp/McBrideM04}%. 
+   The structure of real programs is richer than a simple case tree on
+   the original arguments in general. In the course of a computation, we
+   might want to scrutinize intermediate results (e.g. coming from
+   function calls) to produce an answer. This literally means adding a
+   new pattern to the left of our equations made available for further
+   refinement. This concept is know as with clauses in the Agda
+   %\cite{norell:thesis}% community and was first presented and
+   implemented in the Epigram language
+   %\cite{DBLP:journals/jfp/McBrideM04}%.
 
-   The compilation of with clauses and its treatment for generating equations and the
-   induction principle are quite involved and will be discussed in section %\ref{sec:with}%.
-   Suffice is to say that each with node generates an auxiliary definition from the clauses
-   in the curly brackets, taking the additional object as argument. The equation for the
-   with node will simply be an indirection to the auxiliary definition and simplification 
-   will continue as usual with the auxiliary definition's rewrite rules.
-   *)
+   The compilation of with clauses and its treatment for generating
+   equations and the induction principle are quite involved in the
+   presence of dependencies, but the basic idea is to add a new case
+   analysis to the program. To compute the type of the new subprogram,
+   we actually abstract the discriminee term from the expected type of
+   the clause, so that the type can get refined in the subprogram. In
+   the non-dependent case this does not change anything though.
+
+   Each [with] node generates an auxiliary definition from the clauses
+   in the curly brackets, taking the additional object as argument. The
+   equation for the with node will simply be an indirection to the
+   auxiliary definition and simplification will continue as usual with
+   the auxiliary definition's rewrite rules.  *)
 
 Equations filter {A} (l : list A) (p : A -> bool) : list A :=
-filter A nil p := nil ;
-filter A (cons a l) p <= p a => {
-  filter A (cons a l) p true := a :: filter l p ;
-  filter A (cons a l) p false := filter l p }.
+filter nil p := nil ;
+filter (cons a l) p <= p a => {
+  filter (cons a l) p true := a :: filter l p ;
+  filter (cons a l) p false := filter l p }.
 
 (** A common use of with clauses is to scrutinize recursive results like the following: *)
 
 Equations unzip {A B} (l : list (A * B)) : list A * list B :=
-unzip A B nil := (nil, nil) ;
-unzip A B (cons p l) <= unzip l => {
-  unzip A B (cons (pair a b) l) (pair la lb) := (a :: la, b :: lb) }.
+unzip nil := (nil, nil) ;
+unzip (cons p l) <= unzip l => {
+  unzip (cons (pair a b) l) (pair la lb) := (a :: la, b :: lb) }.
 
 (** The real power of with however comes when it is used with dependent types. *)
 
@@ -237,9 +221,9 @@ equal x y := right _.
    to be non-empty using the specification:
 *)
 
-Equations head A (l : list A) (pf : l <> nil) : A :=
-head A nil pf :=! pf;
-head A (cons a v) _ := a.
+Equations head {A} (l : list A) (pf : l <> nil) : A :=
+head nil pf :=! pf;
+head (cons a v) _ := a.
 
 (** We decompose the list and are faced with two cases:
 
@@ -270,10 +254,6 @@ head A (cons a v) _ := a.
 Inductive eq (A : Type) (x : A) : A -> Prop := 
  eq_refl : eq A x x. ]]
    
-   It is a central tool in the compilation process so we present it in detail here.
-   It is also a contentious subject in the type theory community, we'll discuss 
-   it in section %\ref{sec:equality}%.
-
    Equality is a polymorphic relation on [A]. (The [Prop] sort (or kind) categorizes
    propositions, while the [Set] sort, equivalent to $\star$ in Haskell categorizes 
    computational types.) Equality is _parameterized_ by a value [x] of type [A] and 
@@ -292,34 +272,34 @@ forall (A : Type) (x : A) (P : A -> Type), P x -> forall y : A, x = y -> P y ]]
  *)
 
 Equations eqt {A} (x y z : A) (p : x = y) (q : y = z) : x = z :=
-eqt A ?(x) ?(x) ?(x) eq_refl eq_refl := eq_refl.
+eqt ?(x) ?(x) ?(x) eq_refl eq_refl := eq_refl.
 
-(** Let us explain the meaning of the non-linear patterns here that we 
-   slipped through in the [equal] example. By pattern-matching on the 
-   equalities, we have unified [x], [y] and [z], hence we determined the 
-   _values_ of the patterns for the variables to be [x]. The [?(x)] 
-   notation is essentially denoting that the pattern is not a candidate 
-   for refinement, as it is determined by another pattern. 
+(** Let us explain the meaning of the non-linear patterns here that we
+   slipped through in the [equal] example. By pattern-matching on the
+   equalities, we have unified [x], [y] and [z], hence we determined the
+   _values_ of the patterns for the variables to be [x]. The [?(x)]
+   notation is essentially denoting that the pattern is not a candidate
+   for refinement, as it is determined by another pattern. This
+   particular patterns are called "inaccessible".
 
    *** Indexed datatypes
    
-   Functions on [vector]s provide more stricking examples of this situation.
-   The [vector] family is indexed by a natural number representing the size of 
-   the vector: [[
-Inductive vector (A : Type) : nat -> Type :=
-| Vnil : vector A O
-| Vcons : A -> forall n : nat, vector A n -> vector A (S n) ]]
+   Functions on [vector]s provide more stricking examples of this
+   situation.  The [vector] family is indexed by a natural number
+   representing the size of the vector: [[ Inductive vector (A : Type) :
+   nat -> Type := | Vnil : vector A O | Vcons : A -> forall n : nat,
+   vector A n -> vector A (S n) ]]
 
-   The empty vector [Vnil] has size [O] while the cons operation increments 
-   the size by one. Now let us define the usual map on vectors:
- *)
+   The empty vector [Vnil] has size [O] while the cons operation
+   increments the size by one. Now let us define the usual map on
+   vectors: *)
 Notation Vnil := Vector.nil.
 Notation Vcons := Vector.cons.
 
 Equations vmap {A B} (f : A -> B) {n} (v : vector A n) :
   vector B n :=
-vmap A B f ?(0) Vnil := Vnil ;
-vmap A B f ?(S n) (Vcons a n v) := Vcons (f a) (vmap f v).
+vmap f {n:=?(0)} Vnil := Vnil ;
+vmap f {n:=?(S n)} (Vcons a n v) := Vcons (f a) (vmap f v).
 
 (** Here the value of the index representing the size of the vector 
    is directly determined by the constructor, hence in the case tree
@@ -334,8 +314,8 @@ vmap A B f ?(S n) (Vcons a n v) := Vcons (f a) (vmap f v).
    [vtail]:
  *)
 
-Equations(nocomp) vtail {A n} (v : vector A (S n)) : vector A n :=
-vtail A n (Vcons a n v') := v'.
+Equations vtail {A n} (v : vector A (S n)) : vector A n :=
+vtail (Vcons a n v') := v'.
 
 (** The type of [v] ensures that [vtail] can only be applied to 
    non-empty vectors, moreover the patterns only need to consider 
@@ -361,24 +341,110 @@ forall (A : Type) (n : nat) (v : vector A (S n)), P A n v (vtail v) ]]
    which computes the diagonal of a square matrix of size [n * n].
 *) 
 
-Equations(nocomp noind) diag {A n} 
-  (v : vector (vector A n) n) : vector A n :=
-diag A O Vnil := Vnil ;
-diag A (S n) (Vcons (Vcons a n v) n v') := 
+Equations diag {A n} (v : vector (vector A n) n) : vector A n :=
+diag {n:=O} Vnil := Vnil ;
+diag {n:=(S n)} (Vcons (Vcons a n v) n v') :=
   Vcons a (diag (vmap vtail v')).
 
 (** Here in the second equation, we know that the elements of the vector 
    are necessarily of size [S n] too, hence we can do a nested refinement
-   on the first one to find the first element of the diagonal. 
-   The [nocomp] and [noind] flags of [Equations] used here allow the 
-   guardness checker of Coq to validate the definition and the equations
-   proofs in reasonable time, but it takes too long to check that the
-   induction principle proof is well-formed%\footnote{Or guarded in Coq jargon}%.
+   on the first one to find the first element of the diagonal. *)
 
-   This closes our presentation of the basic features of [Equations]. 
-   We demonstrated a realistic implementation of dependent pattern-matching
-   which can be used to write programs on inductive families, also 
-   providing tools to reason on them. We will now delve into the details of 
-   the implementation and come back to the user side later, introducing 
-   the more novel features of our system, including a more robust
-   handling of recursion. *)
+(** ** Recursion
+
+  Notice how in the [diag] example above we explicitely pattern-matched
+  on the index [n], even though the [Vnil] and [Vcons] pattern matching
+  would have been enough to determine these indices. This is because the
+  following definitions fails: *)
+
+Fail Equations diag' {A n} (v : vector (vector A n) n) : vector A n :=
+diag' Vnil := Vnil ;
+diag' (Vcons (Vcons a n v) n v') :=
+  Vcons a (diag' (vmap vtail v')).
+
+(** Indeed, Coq cannot guess the decreasing argument of this fixpoint
+    using its limited syntactic guard criterion: [vmap vtail v'] cannot
+    be seen to be a (large) subterm of [v'] using this criterion, even
+    if it is clearly "smaller". In general, it can also be the case that
+    the compilation algorithm introduces decorations to the proof term
+    that prevent the syntactic guard check from seeing that the
+    definition is structurally recursive.
+
+    To aleviate this problem, [Equations] provides support for
+    _well-founded_ recursive definitions which do not rely on syntactic
+    checks. *)
+
+Require Import Equations.Subterm.
+
+(** To aleviate this problem, [Equations] provides support for
+    _well-founded_ recursive definitions which do not rely on syntactic
+    checks.
+
+    The simplest example of this is using the [lt] order on natural numbers
+    to define a recursive definition of identity: *)
+
+Equations id (n : nat) : nat :=
+  id n by rec n lt :=
+  id 0 := 0;
+  id (S n') := id n'.
+
+(** Here [id] is defined by well-founded recursion on [lt] on the (only)
+    argument [n] using the [by rec] node.  At recursive calls of [id],
+    obligations are generated to show that the arguments effectively
+    decrease according to this relation.  Here the proof that [n' < S
+    n'] is discharged automatically.
+
+  Wellfounded recursion on arbitrary dependent families is not as easy
+  to use, as in general the relations on families are _heterogeneous_,
+  as the must related inhabitants of potentially different instances of
+  the family.  [Equations] provides a [Derive] command to generate the
+  subterm relation on any such inductive family and derive the
+  well-foundedness of its transitive closure, which is often what's
+  required. This provides course-of-values or so-called "mathematical"
+  induction on these objects, mimicking the structural recursion
+  criterion in the logic. *)
+
+Derive Signature Subterm for vector.
+
+(** For vectors for example, the relation is defined as: [[
+Inductive t_direct_subterm (A : Type) :
+  forall n n0 : nat, vector A n -> vector A n0 -> Prop :=
+    t_direct_subterm_1_1 : forall (h : A) (n : nat) (H : vector A n),
+      t_direct_subterm A n (S n) H (Vcons h H) ]]
+
+  And we get a proof of:
+ *)
+
+Check well_founded_t_subterm : forall A, WellFounded (t_subterm A).
+
+(** [t_subterm] itself is the transitive closure of the relation
+    seen as an homogeneous one by packing the indices of the family
+    with the object itself. Once this is derived, we can use it to
+    define recursive definitions on vectors that the guard condition
+    couldn't handle:*)
+
+(* Section Skip. *)
+(*   Context {A : Type} (p : A -> bool). *)
+
+(*   Equations skip_first {n} (v : vector A n) : { n : nat & vector A n } := *)
+(*   skip_first Vnil := existT _ 0 Vnil; *)
+(*   skip_first (Vcons a n v') <= p a => { *)
+(*                      | true => existT _ _ (Vcons a v'); *)
+(*                      | false => skip_first v' }. *)
+(* End Skip. *)
+
+(* Equations fn {n} (v : vector nat n) : nat := *)
+(* fn v by rec (signature_pack v) (t_subterm nat) := *)
+(* fn Vnil := 0 ; *)
+(* fn (Vcons a n v) := fn (projT2 (skip_first (fun x => Nat.leb x a) v)). *)
+
+(* Next Obligation. *)
+(*   red. constructor. *)
+(*   simpl. *)
+(*                Equations diag' {n} (v : vector A n) : vector A n := *)
+(*   diag' v by rec (signature_pack v) (t_subterm A) := *)
+(*   diag' Vnil := Vnil ; *)
+(*   diag' (Vcons a n v') := Vcons a (diag' (vflip v' Vnil)). *)
+(*   Axiom cheat : forall A, A. *)
+(*   Next Obligation. apply cheat. Defined. *)
+(*   Next Obligation. apply cheat. Defined. *)

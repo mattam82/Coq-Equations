@@ -1,3 +1,4 @@
+
 \section{Vernacular Commands}
 
 \subsection{Derive}
@@ -6,12 +7,10 @@
 families and generate definitions based on them. The common syntax for
 these is:
 
-\begin{verbatim}
-Derive C for Ind.
-\end{verbatim}
+\[\mathtt{Derive}~\ind{C}_1 \ldots \ind{C}_n~\mathtt{for}~\ind{ind}_1 \ldots \ind{ind}_n.\]
 
-Which will (try to) generate an instance of type class \ind{C} on
-inductive type \ind{Ind}. We assume $\ind{C} : Π Δ. s$.
+Which will try to generate an instance of type class \ind{C} on
+inductive type \ind{Ind}. We assume $\ind{ind}_i : Π Δ. s$.
 The derivations provided by \Equations are:
 
 \begin{itemize}
