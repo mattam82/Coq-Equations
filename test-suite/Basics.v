@@ -89,7 +89,7 @@ Derive Subterm for vector.
 
 Require Import Arith Wf_nat.
 
-Instance wf_nat : Subterm.WellFounded lt := lt_wf.
+Instance wf_nat : WellFounded lt := lt_wf.
 
 Hint Resolve lt_n_Sn : lt.
 
@@ -145,7 +145,7 @@ Defined.
 Definition vector_subterm A := t_subterm A.
 
 Instance well_founded_vector_direct_subterm' :
-  forall A : Type, EqDec A -> Subterm.WellFounded (vector_subterm A) | 0.
+  forall A : Type, EqDec A -> WellFounded (vector_subterm A) | 0.
 Proof.   intros. 
   apply Transitive_Closure.wf_clos_trans.
   intro. simp_sigmas. induction a.
@@ -556,11 +556,11 @@ Equations vmake {A} (n : nat) (a : A) : vector A n :=
 vmake O a := nil ;
 vmake (S n) a := cons a (vmake n a).
 
-Equations(nocomp) vfold_right {A : nat -> Type} {B} (f : ∀ n, B -> A n -> A (S n)) (e : A 0) {n} (v : vector B n) : A n :=
+Equations vfold_right {A : nat -> Type} {B} (f : ∀ n, B -> A n -> A (S n)) (e : A 0) {n} (v : vector B n) : A n :=
 vfold_right f e nil := e ;
 vfold_right f e (cons a n v) := f n a (vfold_right f e v).
 
-Equations(nocomp) vzip {A B C n} (f : A -> B -> C) (v : vector A n) (w : vector B n) : vector C n :=
+Equations vzip {A B C n} (f : A -> B -> C) (v : vector A n) (w : vector B n) : vector C n :=
 vzip f nil _ := nil ;
 vzip f (cons a n v) (cons a' n v') := cons (f a a') (vzip f v v').
 
@@ -595,7 +595,7 @@ Proof. revert f. funelim (diag v); intros f.
   rewrite H. simp nth.
 Qed.
 
-Equations(nocomp) assoc (x y z : nat) : x + y + z = x + (y + z) :=
+Equations assoc (x y z : nat) : x + y + z = x + (y + z) :=
 assoc 0 y z := eq_refl;
 assoc (S x) y z <= assoc x y z, x + (y + z) => {
 assoc (S x) y z eq_refl p' := eq_refl }.

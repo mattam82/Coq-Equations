@@ -39,7 +39,7 @@ Print Assumptions well_founded_t_subterm.
    of [A]. *)
 
 Lemma well_founded_vector_direct_subterm' :
-  forall A : Type, EqDec A -> Subterm.WellFounded (t_subterm A).
+  forall A : Type, EqDec A -> WellFounded (t_subterm A).
 Proof. intros.
   apply Transitive_Closure.wf_clos_trans.
   intro. simp_sigmas.

@@ -113,38 +113,3 @@ myComp (tmCons G H g) (tmCons F ?(G) f) :=
   tmCons _ _ (fun x => existT (fun y => TupleMap _ _ (_ y)) (projT1 (g (projT1 (f x))))
                            (myComp (projT2 (g (projT1 (f x)))) (projT2 (f x)))).
 
-Ltac unfold_FixWf :=
-  match goal with
-    |- context C [ @FixWf ?A ?R ?WF ?P ?f ?x ] =>
-      rewrite (@FixWf_unfold A R WF P f);
-      let step := fresh in set(step := f) in *;
-        try let c' := context C [step x step] in change c'
-  end.
-Ltac simpl_equations ::= 
-     repeat ((red_eq || rewrite_sigma2_refl); simpl).
-
-(* Next Obligation. *)
-(*   intros. *)
-(*   rec_wf_rel tm1 IH @TupleMap_subterm. *)
-(*   unfold myComp, myComp_unfold. *)
-(*   unfold_FixWf. simpl. *)
-(*   depelim H0; *)
-(*   depelim tm2. *)
-  
-(*   simpl. *)
-(*   unfold myComp_unfold_obligation_1. *)
-(*   simpl. unfold myComp_obligation_2. simpl. *)
-(*   simpl_equations. reflexivity. *)
-(*   red_eq. Time repeat ((rewrite_sigma2_refl || red_eq); simpl). *)
-
-
-(*   Time simpl_equations. *)
-(*   repeat (hnf_eq; unfold_equations; rewrite_refl_id). reflexivity. *)
-(*   simpl. *)
-(*   unfold myComp_unfold_obligation_2. *)
-(*   unfold TupleMap_depelim_obligation_1. *)
-(*   unfold myComp_obligation_3. *)
-(*   simpl. *)
-(*   Time repeat ((red_eq || rewrite_sigma2_refl); simpl). *)
-(*   reflexivity. *)
-(* Time Defined. *)

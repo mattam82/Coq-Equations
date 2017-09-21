@@ -102,7 +102,7 @@ Require Import Wellfounded.
 Derive Signature for exp.
 Derive Subterm for exp.
 
-Ltac rec ::= rec_wf_eqns.
+Ltac rec ::= Subterm.rec_wf_eqns.
 Unset Implicit Arguments.
   (* Equations(struct e) cfold t (e : exp t) : exp t := *)
 Derive NoConfusion for type.
