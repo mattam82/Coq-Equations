@@ -283,7 +283,7 @@ let rec intros_reducing gl =
 let observe s tac = 
   let open Proofview in
   let open Proofview.Notations in
-  if not debug then tac
+  if not !debug then tac
   else
     fun gls ->
     Feedback.msg_debug (str"Applying " ++ str s ++ str " on " ++ pr_goal gls);
@@ -329,7 +329,8 @@ let rec aux_ind_fun info chop unfs unfids = function
        | None -> fun i -> None
        | Some f -> fun i -> f.(i)
      in
-     tclTHEN_i
+     observe "split"
+     (tclTHEN_i
        (fun gl ->
 	match kind_of_term (pf_concl gl) with
 	| App (ind, args) -> 
@@ -346,7 +347,7 @@ let rec aux_ind_fun info chop unfs unfids = function
 	  | None -> to82 (simpl_dep_elim_tac ())
 	  | Some s ->
 	      tclTHEN (to82 (simpl_dep_elim_tac ()))
-		(aux_ind_fun info chop (unfs (pred i)) unfids s))
+		(aux_ind_fun info chop (unfs (pred i)) unfids s)))
 	  
   | Valid ((ctx, _, _), ty, substc, tac, valid, rest) ->
      observe "valid"
@@ -389,7 +390,7 @@ let rec aux_ind_fun info chop unfs unfids = function
       if not (List.is_empty wheres) then
         let wheretac acc s unfs =
           let where_term, chop, unfids, where_nctx = match unfs with
-            | None -> s.where_term, chop, unfids, s.where_nctx
+            | None -> s.where_term, chop + List.length s.where_nctx, unfids, s.where_nctx
             | Some w ->
                let assoc, unf, split =
                  try Evar.Map.find (List.hd w.where_path) info.wheremap
@@ -401,26 +402,29 @@ let rec aux_ind_fun info chop unfs unfids = function
                assoc, chop + List.length w.where_nctx, unf :: unfids, w.where_nctx
           in
           let wheretac =
-            tclTHENLIST [tclTRY (to82 (move_hyp coq_end_of_section_id Misctypes.MoveLast));
+            observe "one where"
+            (tclTHENLIST [tclTRY (to82 (move_hyp coq_end_of_section_id Misctypes.MoveLast));
                          to82 intros;
-                         autorewrite_one (info.term_info.base_id ^ "_where");
+                         if Option.is_empty unfs then tclIDTAC
+                         else autorewrite_one (info.term_info.base_id ^ "_where");
                          (aux_ind_fun info chop (Option.map (fun s -> s.where_splitting) unfs)
-                                      unfids s.where_splitting)]
+                                      unfids s.where_splitting)])
           in
           let wherepath, args =
             try PathMap.find s.where_path info.pathmap
             with Not_found ->
               error "Couldn't find associated args of where"
           in
-          (* msg_debug (str"Found path " ++ str (Id.to_string wherepath) ++ str" where: " ++ *)
-          (*              pr_id s.where_id ++ str"term: " ++ pr_constr s.where_term ++ *)
-          (*              str" instance: " ++ prlist_with_sep spc pr_constr args ); *)
+          Feedback.msg_debug (str"Found path " ++ str (Id.to_string wherepath) ++ str" where: " ++
+                       pr_id s.where_id ++ str"term: " ++ pr_constr s.where_term ++
+                                str" instance: " ++ prlist_with_sep spc pr_constr args ++ str" context map " ++
+                             pr_context_map (Global.env ()) s.where_prob);
           let ty =
             let ind = Nametab.locate (qualid_of_ident wherepath) in
             let ctx = pi1 s.where_prob in
-            let fnapp = applistc (lift (length ctx) where_term) (extended_rel_list 0 ctx) in
-            let args = List.append (List.map (fun x -> mkVar (get_id x)) where_nctx)
-                                   (extended_rel_list 0 ctx) in
+            let subst = List.map (fun x -> mkVar (get_id x)) where_nctx in
+            let fnapp = applistc (substl subst where_term) (extended_rel_list 0 ctx) in
+            let args = List.append subst (extended_rel_list 0 ctx) in
             let app = applistc (Universes.constr_of_global ind) (List.append args [fnapp]) in
             it_mkProd_or_LetIn app ctx
           in
@@ -431,7 +435,8 @@ let rec aux_ind_fun info chop unfs unfids = function
                 (tclTHENLIST
                    [autorewrite_one info.term_info.base_id;
                     cstrtac info.term_info;
-                    tclTRY (autorewrite_one (info.term_info.base_id ^ "_where_rev"));
+                    if Option.is_empty unfs then tclIDTAC
+                    else tclTRY (autorewrite_one (info.term_info.base_id ^ "_where_rev"));
                     eauto_with_below []])
       else tclIDTAC
     in
@@ -1530,9 +1535,9 @@ let define_by_eqs opts i l t nt eqs =
   let is_recursive = is_recursive i eqs in
   let (sign, oarity, arity, comp, is_recursive) = 
     let body = it_mkLambda_or_LetIn oarity sign in
-    let _ = Pretyping.check_evars env Evd.empty !evd body in
     let comp, compapp, oarity =
       if with_comp then
+        let _ = Pretyping.check_evars env Evd.empty !evd body in
 	let compid = add_suffix i "_comp" in
 	let ce = make_definition ~poly evd body in
 	let comp =

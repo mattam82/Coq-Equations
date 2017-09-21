@@ -12,6 +12,7 @@ Require Export Coq.Program.Program.
 Declare ML Module "equations_plugin".
 
 (** For now we don't support obligation shrinking. Need to sync ML code with this. *)
+Set Warnings "-deprecated-option".
 Global Unset Shrink Obligations.
 
 (** A marker for fixpoint prototypes in the context *)

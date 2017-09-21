@@ -70,7 +70,16 @@ let _ = Goptions.declare_bool_option {
 
 (* Debugging infrastructure. *)
 
-let debug = false
+let debug = ref false
+
+let _ = Goptions.declare_bool_option {
+  Goptions.optsync  = true;
+  Goptions.optdepr  = false;
+  Goptions.optname  = "Equations debug output";
+  Goptions.optkey   = ["Equations"; "Debug"];
+  Goptions.optread  = (fun () -> !debug);
+  Goptions.optwrite = (fun b -> debug := b)
+}
 
 let check_term env evd c t =
   Typing.e_check env (ref evd) c t

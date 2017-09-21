@@ -218,7 +218,7 @@ let term_of_tree status isevar env0 tree =
           (* TODO This context should be the same as (pi1 csubst). We could
            * either optimize (but names in [csubst] are worse) or just insert
            * a sanity-check. *)
-          if debug then begin
+          if !debug then begin
             let open Feedback in
             let ctx = cut_ctx @ new_ctx @ ctx' in
             msg_info(str"Simplifying term:");

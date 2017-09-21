@@ -5,7 +5,7 @@
 -I examples
 -extra-phony doc "html" "mkdir -p html/api && ocamldoc -html -d html/api `ocamlfind query -r coqdev85.all -i-format` -rectypes -I src src/*.ml"
 -extra-phony test-suite "" "cd test-suite && make"
-ZDEBUG = "-bin-annot -g -for-pack Equations"
+ZDEBUG = "-bin-annot -g -for-pack Equations -w -58"
 COQDOCFLAGS = "-parse-comments -utf8 -interpolate"
 src/equations_common.mli
 src/equations_common.ml

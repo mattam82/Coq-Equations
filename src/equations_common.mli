@@ -15,7 +15,7 @@ open Names
 val ocaml_splitting : bool ref
 val simplify_withK : bool ref
 
-val debug : bool
+val debug : bool ref
 
 (* Tactics *)
 val to82 : 'a Proofview.tactic -> Proofview.V82.tac
