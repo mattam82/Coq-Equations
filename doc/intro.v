@@ -448,3 +448,21 @@ Check well_founded_t_subterm : forall A, WellFounded (t_subterm A).
 (*   Axiom cheat : forall A, A. *)
 (*   Next Obligation. apply cheat. Defined. *)
 (*   Next Obligation. apply cheat. Defined. *)
+Require Import NoConfusion.
+Ltac solve_noconf_prf ::= idtac.
+Check   fun (A : Type) (x : &{ index : nat & vector A index}) =>
+  match pr2 x with
+  | Vnil => fun y : &{ index : nat & vector A index} => match pr2 y with
+                                                        | Vnil => True
+                                                        | @Vector.cons _ _ n _ => False
+                                                        end
+  | @Vector.cons _ h n x0 =>
+      fun y : &{ index : nat & vector A index} =>
+      match pr2 y with
+      | Vnil => False
+      | @Vector.cons _ h0 n0 x1 =>
+        @eq (sigma A (fun _ : A => sigma nat (fun n1 : nat => Vector.t A n1))) {| pr1 := h; pr2 := {| pr1 := n; pr2 := x0 |} |} {| pr1 := h0; pr2 := {| pr1 := n0; pr2 := x1 |} |}
+      end
+  end.
+
+Derive NoConfusion for Vector.t.

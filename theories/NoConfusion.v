@@ -33,7 +33,7 @@ Ltac solve_noconf_prf := intros;
   on_last_hyp ltac:(fun id => destruct id) ; (* Subtitute a = b *)
   on_last_hyp ltac:(fun id =>
                       destruct_sigma id;
-                      destruct id) ; (* Destruct the inductive object a *)
+                      elim id) ; (* Destruct the inductive object a *)
   constructor.
 
 Ltac destruct_tele_eq H :=
@@ -46,8 +46,8 @@ Ltac destruct_tele_eq H :=
 
 Ltac solve_noconf_inv := intros;
   match goal with
-    |- ?R ?a ?b => destruct_sigma a; destruct_sigma b;
-                 destruct a; destruct b; simpl in * |-;
+    |- ?R ?a ?b => destruct_sigma a; destruct_sigma b; 
+                   destruct a ; destruct b; simpl in * |-;
                  on_last_hyp ltac:(fun id => destruct_tele_eq id || destruct id);
                  solve [constructor]
   end.
@@ -57,7 +57,7 @@ Ltac solve_noconf_inv_equiv :=
   (* Subtitute a = b *)
   on_last_hyp ltac:(fun id => destruct id) ;
   (* Destruct the inductive object a *)
-  on_last_hyp ltac:(fun id => destruct_sigma id; destruct id) ;
+  on_last_hyp ltac:(fun id => destruct_sigma id; elim id) ;
   simpl; constructor.
 
 Ltac solve_noconf := simpl; intros;

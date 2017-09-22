@@ -9,17 +9,16 @@
 open Environ
 open Declarations
 open Names
-
-(*
+open Constr
+open Context
 val mkcase :
   env ->
   constr ->
   constr ->
   ((MutInd.t * int) * Univ.universe_instance ->
    int ->
-   Id.t -> int -> rel_context -> types -> constr) ->
+   Id.t -> int -> Context.Rel.t -> types -> constr) ->
   constr
-*)
 (* val mk_eqs : *)
 (*   env -> *)
 (*   Evd.evar_map ref -> *)
