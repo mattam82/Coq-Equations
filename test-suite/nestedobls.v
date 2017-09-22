@@ -50,7 +50,7 @@ Defined.
 Next Obligation.
 Proof.
   rewrite test_unfold_eq.
-  rec_wf_rel IH n lt.
+  Subterm.rec_wf_rel IH n lt.
   destruct n; simp test.
   constructor.
   rewrite test_unfold_eq. apply IH. omega.
