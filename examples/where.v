@@ -17,12 +17,3 @@ f (S n) := if g n then f n else S (f n)
 where g (n : nat) : bool :=
 g 0 := true ;
 g (S _) := false.
-
-Next Obligation.
-  induction n. constructor.
-
-  assert(forall n, f_ind_1 n n (f_obligation_1 f n n)).
-  destruct n0. 
-  constructor. constructor.
-  simp f.
-Defined.
