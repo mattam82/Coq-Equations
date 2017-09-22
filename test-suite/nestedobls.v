@@ -26,69 +26,45 @@ test 0 p := exist _ 0 _;
 test (S n) p <= test n _ => {
                 | exist 0 _ := exist _ 0 _;
                 | exist (S n') p with test n' _ := {
-                                                | exist k p' := exist _ k _ } }.
+                                                  | exist k p' := exist _ k _ } }.
+
+Next Obligation. auto with arith. Defined.
+Next Obligation. auto with arith. Defined.
+Next Obligation. auto with arith. Defined.
+Next Obligation. auto with arith. Defined.
+Solve Obligations with program_simpl; omega.
+Solve Obligations.
+
+Module Bug.
+  
+Equations(noind) test' (n : { n : nat | n >= 0 }) : { n' : nat | n' <= `n } :=
+test' n by rec n (MR (@proj1_sig nat (fun x : nat => x >= 0)) lt) :=
+test' (exist n p) with n := {
+  | 0 := exist _ 0 _;
+  | S n <= test' (exist _ n _) => {
+                  | exist 0 _ := exist _ 0 _;
+                  | exist (S n') p with test' (exist _ n' _) := {
+                      | exist k p' := exist _ k _ } } }.
 Next Obligation.
   auto with arith.
 Defined.
 
 Next Obligation.
+  red. simpl. intros. simpl.
   auto with arith.
 Defined.
 
 Next Obligation.
+  intros. red. simpl.
   auto with arith.
 Defined.
 
 Next Obligation.
-  auto with arith.
+  red; simpl; auto with arith.
 Defined.
 
 Next Obligation.
   omega.
 Defined.
 
-Next Obligation.
-Proof.
-  rewrite test_unfold_eq.
-  Subterm.rec_wf_rel IH n lt.
-  destruct n; simp test.
-  constructor.
-  rewrite test_unfold_eq. apply IH. omega.
-  rewrite test_unfold_eq.
-  destruct_call test_unfold. destruct x; simp test.
-  constructor. rewrite test_unfold_eq. apply IH. omega.
-  simp test. rewrite test_unfold_eq. simp test.
-  destruct_call test_unfold. simp test.
-Defined.
-  
-(* BUGGY *)
-(* Module Bug. *)
-  
-(* Equations(noind) test (n : { n : nat | n >= 0 }) : { n' : nat | n' <= `n } := *)
-(* test n by rec n (MR (@proj1_sig nat (fun x : nat => x >= 0)) lt) := *)
-(* test (exist n p) with n := { *)
-(*   | 0 := exist _ 0 _; *)
-(*   | S n <= test (exist _ n _) => { *)
-(*                   | exist 0 _ := exist _ 0 _; *)
-(*                   | exist (S n') p with test (exist _ n' _) := { *)
-(*                       | exist k p' := exist _ k _ } } }. *)
-(* Next Obligation. *)
-(*   auto with arith. *)
-(* Defined. *)
-
-(* Next Obligation. *)
-(*   apply test. red; cbn. auto with arith. *)
-(* Defined. *)
-
-(* Next Obligation. *)
-(*   auto with arith. *)
-(* Defined. *)
-
-(* Next Obligation. *)
-(*   apply test. red; cbn. omega. *)
-(* Defined. *)
-
-(* Next Obligation. *)
-(*   omega. *)
-(* Defined. *)
-(* End Bug. *)
+End Bug.

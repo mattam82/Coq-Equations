@@ -209,9 +209,12 @@ let unfold_constr c =
 let simpl_star = 
   tclTHEN (to82 simpl_in_concl) (onAllHyps (fun id -> to82 (simpl_in_hyp (id, Locus.InHyp))))
 
-let eauto_with_below l =
-  to82 (Class_tactics.typeclasses_eauto ~depth:None
+let eauto_with_below ?depth l =
+  to82 (Class_tactics.typeclasses_eauto ~depth
     ~st:(below_transparent_state ()) (l@["subterm_relation"; "Below"; "rec_decision"]))
+
+let wf_obligations_base info =
+  info.base_id ^ "_wf_obligations"
 
 let simp_eqns l =
   tclREPEAT (tclTHENLIST [Proofview.V82.of_tactic 
@@ -316,6 +319,11 @@ let map_opt_split f s =
   | None -> None
   | Some s -> f s
 
+let solve_ind_rec_tac info =
+  Tacticals.New.pf_constr_of_global info.term_id (fun c ->
+  Proofview.tclTHEN (Tactics.pose_proof Anonymous c)
+                    (of82 (eauto_with_below ~depth:10 [info.base_id; wf_obligations_base info])))
+
 let rec aux_ind_fun info chop unfs unfids = function
   | Split ((ctx,pats,_), var, _, splits) ->
      let unfs =
@@ -372,7 +380,7 @@ let rec aux_ind_fun info chop unfs unfids = function
     (tclTHENLIST [ to82 intros;
                    tclTHENLAST (tclTHEN (tclTRY (autorewrite_one info.term_info.base_id))
                                         (cstrtac info.term_info)) (tclSOLVE [elimtac]);
-		   to82 (solve_rec_tac ())])
+		   to82 (solve_ind_rec_tac info.term_info)])
 
   | Compute (_, wheres, _, c) ->
     let unfswheres =
@@ -451,7 +459,7 @@ let rec aux_ind_fun info chop unfs unfids = function
               clause induction hypothesis is about the unfolding whereas
               the term itself mentions the original function. *)
           tclMAP (fun i -> tclTRY (to82 (Equality.rewriteLR (constr_of_ident i)))) unfids;
-	  eauto_with_below [info.term_info.base_id]]))
+          (to82 (solve_ind_rec_tac info.term_info))]))
 
   | Mapping (_, s) -> aux_ind_fun info chop unfs unfids s
 
@@ -1504,6 +1512,16 @@ let is_recursive i eqs =
     else Some false
   in occur_eqns eqs
 
+let declare_wf_obligations info =
+  let make_resolve gr =
+    (Hints.empty_hint_info, is_polymorphic info, true,
+     Hints.PathAny, Hints.IsGlobRef gr)
+  in let constrs =
+    Id.Set.fold (fun wfobl acc ->
+    let gr = Nametab.locate_constant (qualid_of_ident wfobl) in
+    make_resolve (ConstRef gr) :: acc) info.comp_obls [] in
+  Hints.add_hints false [wf_obligations_base info] (Hints.HintsResolveEntry constrs)
+
 let define_by_eqs opts i l t nt eqs =
   let with_comp, with_rec, with_eqns, with_ind =
     let try_bool_opt opt =
@@ -1623,9 +1641,10 @@ let define_by_eqs opts i l t nt eqs =
     let trs = (ids, Cpred.remove fix_proto_ref csts) in
     Hints.create_hint_db false (Id.to_string i) trs true
   in
-  let hook split cmap info gr ectx =
+  let hook split cmap info ectx =
     let () = inline_helpers info in
-    let f_cst = match gr with ConstRef c -> c | _ -> assert false in
+    let () = declare_wf_obligations info in
+    let f_cst = match info.term_id with ConstRef c -> c | _ -> assert false in
     let env = Global.env () in
     let () = evd := Evd.from_ctx ectx in
     let split = map_evars_in_split !evd cmap split in
@@ -1634,7 +1653,7 @@ let define_by_eqs opts i l t nt eqs =
     let arity = nf_evar !evd arity in
     let fixprot = nf_evar !evd fixprot in
     let f =
-      let (f, uc) = Universes.unsafe_constr_of_global gr in
+      let (f, uc) = Universes.unsafe_constr_of_global info.term_id in
         evd := Evd.from_env env;
 	if poly then
   	  evd := Evd.merge_context_set Evd.univ_rigid !evd
@@ -1667,13 +1686,13 @@ let define_by_eqs opts i l t nt eqs =
            in
 	   (* We first define the unfolding and show the fixpoint equation. *)
 	   let unfoldi = add_suffix i "_unfold" in
-	   let hook_unfold _ cmap info' gr' ectx =
+	   let hook_unfold _ cmap info' ectx =
 	     let info =
                { info' with base_id = info.base_id;
                             helpers_info = info.helpers_info @ info'.helpers_info } in
 	     let () = inline_helpers info in
-	     let funf_cst = match gr' with ConstRef c -> c | _ -> assert false in
-	     let funfc = e_new_global evd gr' in
+	     let funf_cst = match info'.term_id with ConstRef c -> c | _ -> assert false in
+	     let funfc = e_new_global evd info'.term_id in
 	     let unfold_split = map_evars_in_split !evd cmap unfold_split in
 	     let unfold_eq_id = add_suffix unfoldi "_eq" in
 	     let hook_eqs subst grunfold _ =

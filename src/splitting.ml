@@ -334,7 +334,7 @@ let is_comp_obl comp hole_kind =
   | Some r -> 
       match hole_kind, r with 
       | ImplicitArg (ConstRef c, (n, _), _), LogicalProj r ->
-	Constant.equal c r.comp_proj && n == r.comp_recarg 
+	(* Constant.equal c r.comp_proj &&  *)n == 0
       | ImplicitArg (ConstRef c, (n, _), _), LogicalDirect (loc, id) ->
         is_rec_call r (mkConst c)
       | _ -> false
@@ -346,6 +346,7 @@ let zeta_red =
     reduct_in_concl (red, DEFAULTcast)
 
 type term_info = {
+  term_id : global_reference;
   base_id : string;
   decl_kind: Decl_kinds.definition_kind;
   helpers_info : (existential_key * int * identifier) list;
@@ -397,9 +398,9 @@ let define_tree is_recursive poly impls status isevar env (i, sign, arity)
     Extraction_plugin.Table.extraction_inline true l;
     let kind = (locality, poly, Decl_kinds.Definition) in
     let baseid = string_of_id i in
-    let term_info = { base_id = baseid; helpers_info = helpers; decl_kind = kind;
-                 comp_obls = !compobls } in
-      hook split cmap term_info gr
+    let term_info = { term_id = gr; base_id = baseid; helpers_info = helpers; decl_kind = kind;
+                      comp_obls = !compobls } in
+      hook split cmap term_info
   in
   let hook = Lemmas.mk_hook hook in
   let reduce = 

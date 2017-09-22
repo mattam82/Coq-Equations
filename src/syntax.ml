@@ -235,9 +235,11 @@ let add_implicits impls avoid pats =
     | [] -> List.map snd pats
   in aux impls pats
 
-let chole loc =
-  let tac = Genarg.in_gen (Genarg.rawwit Constrarg.wit_tactic) (solve_rec_tac_expr ()) in
-  CHole (loc,None,Misctypes.IntroAnonymous,Some tac), None
+let chole c loc =
+  (* let tac = Genarg.in_gen (Genarg.rawwit Constrarg.wit_tactic) (solve_rec_tac_expr ()) in *)
+  let kn = Lib.make_kn c in
+  let cst = Names.Constant.make kn kn in
+  CHole (loc,Some (ImplicitArg (ConstRef cst, (0,None), false)),Misctypes.IntroAnonymous,None), None
     
 let interp_eqn i is_rec env impls eqn =
   let avoid = ref [] in
@@ -331,7 +333,7 @@ let interp_eqn i is_rec env impls eqn =
        let args =
          List.map (fun (c, expl) -> interp_constr_expr recinfo ids c, expl) args in
        let c = CApp (loc, (None, CRef (Ident (loc', id'), ie)), args) in
-       let arg = CApp (loc, (None, c), [chole loc]) in
+       let arg = CApp (loc, (None, c), [chole id' loc]) in
        (match r with
         | LogicalDirect _ -> arg 
         | LogicalProj r -> 

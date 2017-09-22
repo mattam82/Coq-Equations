@@ -27,16 +27,16 @@ Section Nested.
 
   Ltac destruct_proj1_sig :=
     match goal with 
-      | [ |- context [ ` (?x) ] ] => destruct_proj1_sigs x
-    end
-  with destruct_proj1_sigs x :=
-    lazymatch x with
-      | context [ ` (?x') ] => destruct_proj1_sigs x'
-      | _ =>
-        let x' := fresh in
-        let H' := fresh in
-          destruct x as [x' H'] ; simpl proj1_sig
+      | [ |- context [ ` (?x) ] ] => destruct x as [?x' ?H]; simpl
     end.
+  (* with destruct_proj1_sigs x := *)
+  (*     match x with *)
+  (*     (* | context [ ` (?x') ] => destruct_proj1_sigs x' *) *)
+  (*     | _ => *)
+  (*       let x' := fresh in *)
+  (*       let H' := fresh in *)
+  (*         destruct x as [x' H'] ; simpl proj1_sig; destruct_proj1_sig *)
+  (*   end. *)
 
   Hint Extern 3 => progress destruct_proj1_sig : Below.
   
@@ -48,11 +48,11 @@ Section Nested.
   f (S n) := exist _ (proj1_sig (f (proj1_sig (f n)))) _.
 
   Next Obligation. 
-    repeat destruct_proj1_sig. omega.
+    unfold f_comp_proj. repeat destruct_proj1_sig.
+    revert H. destruct_proj1_sig.
+    intros. omega.
   Defined.
 
-  
-  
 End Nested.
 
 Require Import Coq.Lists.SetoidList.

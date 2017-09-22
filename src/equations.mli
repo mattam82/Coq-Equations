@@ -26,7 +26,7 @@ val below_transparent_state : unit -> transparent_state
 
 
 val simpl_star : Proof_type.tactic
-val eauto_with_below : Hints.hint_db_name list -> Proofview.V82.tac
+val eauto_with_below : ?depth:Int.t -> Hints.hint_db_name list -> Proofview.V82.tac
 val simp_eqns : Hints.hint_db_name list -> Proof_type.tactic
 val simp_eqns_in :
   Locus.clause -> Hints.hint_db_name list -> Proof_type.tactic

@@ -34,6 +34,7 @@ val term_of_tree :
 val is_comp_obl : logical_rec option -> Evar_kinds.t -> bool
 
 type term_info = {
+  term_id : Globnames.global_reference;
   base_id : string;
   decl_kind : Decl_kinds.definition_kind;
   helpers_info : (existential_key * int * identifier) list;
@@ -50,7 +51,7 @@ val define_tree :
   logical_rec option ->
   splitting ->
   (splitting -> ((Id.t -> constr) -> constr -> constr) ->
-   term_info -> Globnames.global_reference ->
+   term_info ->
    Evd.evar_universe_context -> unit) ->
   unit
 
