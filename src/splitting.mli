@@ -33,6 +33,13 @@ val term_of_tree :
 
 val is_comp_obl : logical_rec option -> Evar_kinds.t -> bool
 
+type term_info = {
+  base_id : string;
+  decl_kind : Decl_kinds.definition_kind;
+  helpers_info : (existential_key * int * identifier) list;
+  comp_obls : Id.Set.t; (** The recursive call proof obligations *)
+}
+
 val define_tree :
   rec_type option -> Decl_kinds.polymorphic ->
   (Constrexpr.explicitation * (bool * bool * bool)) list ->
@@ -43,8 +50,7 @@ val define_tree :
   logical_rec option ->
   splitting ->
   (splitting -> ((Id.t -> constr) -> constr -> constr) ->
-   (existential_key * int * Id.t) list ->
-   Decl_kinds.locality -> Globnames.global_reference ->
+   term_info -> Globnames.global_reference ->
    Evd.evar_universe_context -> unit) ->
   unit
 

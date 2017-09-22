@@ -35,12 +35,6 @@ val autorewrite_one : string -> Proofview.V82.tac
 
 module PathMap : Map.S with type key = Covering.path
 
-type term_info = {
-  base_id : string;
-  decl_kind : Decl_kinds.definition_kind;
-  helpers_info : (existential_key * int * identifier) list
-}
-
 type where_map = (constr * Names.Id.t * splitting) Evar.Map.t
 
 type ind_info = {

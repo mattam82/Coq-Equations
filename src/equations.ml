@@ -231,11 +231,6 @@ let autorewrites b =
 let autorewrite_one b =
   (Proofview.V82.of_tactic (Autorewrite.autorewrite Tacticals.New.tclIDTAC [b]))
 
-type term_info = {
-  base_id : string;
-  decl_kind: Decl_kinds.definition_kind;
-  helpers_info : (existential_key * int * identifier) list }
-
 type where_map = (constr * Names.Id.t * splitting) Evar.Map.t
 
 type ind_info = {
@@ -1620,17 +1615,15 @@ let define_by_eqs opts i l t nt eqs =
     else id_subst sign
   in
   let split = covering env evd (i,with_comp,data) equations [] prob arity in
-  let status = (* if is_recursive then Expand else *) Define false in
-  let baseid = string_of_id i in
+  let status = Define false in
   let (ids, csts) = full_transparent_state in
   let fix_proto_ref = destConstRef (Lazy.force coq_fix_proto) in
-  let kind = (Decl_kinds.Global, poly, Decl_kinds.Definition) in
+  (** Necessary for the definition of [i] *)
   let () =
     let trs = (ids, Cpred.remove fix_proto_ref csts) in
-    Hints.create_hint_db false baseid trs true
+    Hints.create_hint_db false (Id.to_string i) trs true
   in
-  let hook split cmap helpers subst gr ectx =
-    let info = { base_id = baseid; helpers_info = helpers; decl_kind = kind } in
+  let hook split cmap info gr ectx =
     let () = inline_helpers info in
     let f_cst = match gr with ConstRef c -> c | _ -> assert false in
     let env = Global.env () in
@@ -1674,15 +1667,16 @@ let define_by_eqs opts i l t nt eqs =
            in
 	   (* We first define the unfolding and show the fixpoint equation. *)
 	   let unfoldi = add_suffix i "_unfold" in
-	   let hook_unfold _ cmap helpers' vis gr' ectx = 
-	      let info = { base_id = baseid; helpers_info = helpers @ helpers'; 
-			   decl_kind = kind } in
-	      let () = inline_helpers info in
-	      let funf_cst = match gr' with ConstRef c -> c | _ -> assert false in
-	      let funfc = e_new_global evd gr' in
-	      let unfold_split = map_evars_in_split !evd cmap unfold_split in
-	      let unfold_eq_id = add_suffix unfoldi "_eq" in
-	      let hook_eqs subst grunfold _ =
+	   let hook_unfold _ cmap info' gr' ectx =
+	     let info =
+               { info' with base_id = info.base_id;
+                            helpers_info = info.helpers_info @ info'.helpers_info } in
+	     let () = inline_helpers info in
+	     let funf_cst = match gr' with ConstRef c -> c | _ -> assert false in
+	     let funfc = e_new_global evd gr' in
+	     let unfold_split = map_evars_in_split !evd cmap unfold_split in
+	     let unfold_eq_id = add_suffix unfoldi "_eq" in
+	     let hook_eqs subst grunfold _ =
 		Global.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
                 let () = (* Declare the subproofs of unfolding for where as rewrite rules *)
                   let decl _ (_, id, _) =

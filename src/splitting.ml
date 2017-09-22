@@ -345,6 +345,13 @@ let zeta_red =
   in
     reduct_in_concl (red, DEFAULTcast)
 
+type term_info = {
+  base_id : string;
+  decl_kind: Decl_kinds.definition_kind;
+  helpers_info : (existential_key * int * identifier) list;
+  comp_obls : Id.Set.t; (** The recursive call proof obligations *)
+}
+
 let define_tree is_recursive poly impls status isevar env (i, sign, arity)
                 comp split hook =
   let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
@@ -355,6 +362,7 @@ let define_tree is_recursive poly impls status isevar env (i, sign, arity)
     Obligations.eterm_obligations env i !isevar
       0 ~status (nf t) (whd_betalet !isevar (nf ty))
   in
+  let compobls = ref Id.Set.empty in
   let obls = 
     Array.map (fun (id, ty, loc, s, d, t) ->
       let assc = rev_assoc Id.equal id emap in
@@ -364,7 +372,8 @@ let define_tree is_recursive poly impls status isevar env (i, sign, arity)
           let intros = Evar.Map.find assc oblevs in
           Some (Tacticals.New.tclTHEN (Tacticals.New.tclDO intros (of82 intro)) (equations_tac ()))
 	else if is_comp_obl comp (snd loc) then
-	  let unfolds =
+          let () = compobls := Id.Set.add id !compobls in
+          let unfolds =
             match Option.get comp with
             | LogicalDirect _ -> tclIDTAC
             | LogicalProj r ->
@@ -379,14 +388,18 @@ let define_tree is_recursive poly impls status isevar env (i, sign, arity)
 	else Some ((!Obligations.default_tactic))
       in (id, ty, loc, s, d, tac)) obls
   in
-  let term_info = map (fun (ev, arg) ->
+  let helpers = map (fun (ev, arg) ->
     (ev, arg, List.assoc ev emap)) helpers
   in
-  let hook x y = 
+  let hook locality gr =
     let l =
       Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Ident (dummy_loc, id)) obls in
-      Extraction_plugin.Table.extraction_inline true l;
-      hook split cmap term_info x y
+    Extraction_plugin.Table.extraction_inline true l;
+    let kind = (locality, poly, Decl_kinds.Definition) in
+    let baseid = string_of_id i in
+    let term_info = { base_id = baseid; helpers_info = helpers; decl_kind = kind;
+                 comp_obls = !compobls } in
+      hook split cmap term_info gr
   in
   let hook = Lemmas.mk_hook hook in
   let reduce = 
