@@ -412,7 +412,8 @@ Inductive t_direct_subterm (A : Type) :
     t_direct_subterm_1_1 : forall (h : A) (n : nat) (H : vector A n),
       t_direct_subterm A n (S n) H (Vcons h H) ]]
 
-  And we get a proof of:
+  That is, there is only one recursive subterm, for the subvector
+  in the [Vcons] constructor. We also get a proof of:
  *)
 
 Check well_founded_t_subterm : forall A, WellFounded (t_subterm A).
@@ -422,47 +423,61 @@ Check well_founded_t_subterm : forall A, WellFounded (t_subterm A).
     with the object itself. Once this is derived, we can use it to
     define recursive definitions on vectors that the guard condition
     couldn't handle:*)
+Require Import Relation_Operators.
+Local Open Scope sigma_scope.
+Section Skip.
+  Context {A : Type} (p : A -> bool).
+  Equations skip_first {n} (v : vector A n) : &{ n : nat & vector A n } :=
+  skip_first Vnil := &(0 & Vnil);
+  skip_first (Vcons a n v') <= p a => {
+                     | true => &(_ & Vcons a v');
+                     | false => skip_first v' }.
 
-(* Section Skip. *)
-(*   Context {A : Type} (p : A -> bool). *)
+  Lemma skip_first_subterm {n} (v : vector A n) : clos_refl _ (t_subterm _) (skip_first v) &(_ & v).
+  Proof.
+    funelim (skip_first v).
+    constructor 2.
+    constructor 2.
+    depelim H.
+    constructor 1.
+    eapply clos_trans_stepr. simpl.
+    apply (t_direct_subterm_1_1 _ _ _ (&(_ & t).2)). apply H.
+    rewrite H. constructor. eauto with subterm_relation.
+  Qed.
+  
+End Skip.
 
-(*   Equations skip_first {n} (v : vector A n) : { n : nat & vector A n } := *)
-(*   skip_first Vnil := existT _ 0 Vnil; *)
-(*   skip_first (Vcons a n v') <= p a => { *)
-(*                      | true => existT _ _ (Vcons a v'); *)
-(*                      | false => skip_first v' }. *)
-(* End Skip. *)
+Equations fn {n} (v : vector nat n) : nat :=
+fn v by rec (signature_pack v) (t_subterm nat) :=
+fn Vnil := 0 ;
+fn (Vcons a n v) := let sk := skip_first (fun x => Nat.leb x a) v in fn sk.2.
+Require Import Relations.
+Lemma clos_trans_stepr_refl A (R : relation A) (x y z : A) :
+  R y z -> clos_refl _ (clos_trans A R) x y -> clos_trans A R x z.
+Proof.
+  intros Hyz Hxy.
+  destruct Hxy. eapply clos_trans_stepr; eauto.
+  now constructor.
+Qed.
 
-(* Equations fn {n} (v : vector nat n) : nat := *)
-(* fn v by rec (signature_pack v) (t_subterm nat) := *)
-(* fn Vnil := 0 ; *)
-(* fn (Vcons a n v) := fn (projT2 (skip_first (fun x => Nat.leb x a) v)). *)
+Next Obligation.
+  red. simpl.
+  subst n1. simpl.
+  eapply clos_trans_stepr_refl.
+  simpl. apply (t_direct_subterm_1_1 _ _ _ (&(_ & v).2)).
+  pose (skip_first_subterm (fun x => Nat.leb x a) v).
+  apply c.
+Qed.
 
-(* Next Obligation. *)
-(*   red. constructor. *)
-(*   simpl. *)
-(*                Equations diag' {n} (v : vector A n) : vector A n := *)
-(*   diag' v by rec (signature_pack v) (t_subterm A) := *)
-(*   diag' Vnil := Vnil ; *)
-(*   diag' (Vcons a n v') := Vcons a (diag' (vflip v' Vnil)). *)
-(*   Axiom cheat : forall A, A. *)
-(*   Next Obligation. apply cheat. Defined. *)
-(*   Next Obligation. apply cheat. Defined. *)
-Require Import NoConfusion.
-Ltac solve_noconf_prf ::= idtac.
-Check   fun (A : Type) (x : &{ index : nat & vector A index}) =>
-  match pr2 x with
-  | Vnil => fun y : &{ index : nat & vector A index} => match pr2 y with
-                                                        | Vnil => True
-                                                        | @Vector.cons _ _ n _ => False
-                                                        end
-  | @Vector.cons _ h n x0 =>
-      fun y : &{ index : nat & vector A index} =>
-      match pr2 y with
-      | Vnil => False
-      | @Vector.cons _ h0 n0 x1 =>
-        @eq (sigma A (fun _ : A => sigma nat (fun n1 : nat => Vector.t A n1))) {| pr1 := h; pr2 := {| pr1 := n; pr2 := x0 |} |} {| pr1 := h0; pr2 := {| pr1 := n0; pr2 := x1 |} |}
-      end
-  end.
+Next Obligation.
+  rec_wf_rel aux (signature_pack v) (t_subterm nat).
+  depelim v. constructor.
+  simp fn. econstructor.
+  apply aux. 
+  red. simpl.
+  eapply clos_trans_stepr_refl.
+  simpl. apply (t_direct_subterm_1_1 _ _ _ (&(_ & v).2)).
+  pose (skip_first_subterm (fun x => Nat.leb x h) v).
+  apply c.
+Defined.
 
-Derive NoConfusion for Vector.t.
