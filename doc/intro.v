@@ -425,6 +425,16 @@ Check well_founded_t_subterm : forall A, WellFounded (t_subterm A).
     couldn't handle:*)
 Require Import Relation_Operators.
 Local Open Scope sigma_scope.
+Require Import Relations.
+Lemma clos_trans_stepr_refl A (R : relation A) (x y z : A) :
+  R y z -> clos_refl _ (clos_trans A R) x y -> clos_trans A R x z.
+Proof.
+  intros Hyz Hxy.
+  destruct Hxy. eapply clos_trans_stepr; eauto.
+  now constructor.
+Qed.
+
+
 Section Skip.
   Context {A : Type} (p : A -> bool).
   Equations skip_first {n} (v : vector A n) : &{ n : nat & vector A n } :=
@@ -447,18 +457,13 @@ Section Skip.
   
 End Skip.
 
-Equations fn {n} (v : vector nat n) : nat :=
+Axiom inhab : Set.
+Axiom hab_inhab : inhab.
+
+Equations fn {n} (v : vector nat n) : inhab :=
 fn v by rec (signature_pack v) (t_subterm nat) :=
-fn Vnil := 0 ;
+fn Vnil := hab_inhab ;
 fn (Vcons a n v) := let sk := skip_first (fun x => Nat.leb x a) v in fn sk.2.
-Require Import Relations.
-Lemma clos_trans_stepr_refl A (R : relation A) (x y z : A) :
-  R y z -> clos_refl _ (clos_trans A R) x y -> clos_trans A R x z.
-Proof.
-  intros Hyz Hxy.
-  destruct Hxy. eapply clos_trans_stepr; eauto.
-  now constructor.
-Qed.
 
 Next Obligation.
   red. simpl.
@@ -468,16 +473,13 @@ Next Obligation.
   pose (skip_first_subterm (fun x => Nat.leb x a) v).
   apply c.
 Qed.
+Hint Resolve fn_obligation_1 : fn_obligations.
+Hint Resolve fn : fn_obligations.
 
 Next Obligation.
   rec_wf_rel aux (signature_pack v) (t_subterm nat).
   depelim v. constructor.
   simp fn. econstructor.
-  apply aux. 
-  red. simpl.
-  eapply clos_trans_stepr_refl.
-  simpl. apply (t_direct_subterm_1_1 _ _ _ (&(_ & v).2)).
-  pose (skip_first_subterm (fun x => Nat.leb x h) v).
-  apply c.
+  apply aux. info_eauto with fn_obligations.
 Defined.
 
