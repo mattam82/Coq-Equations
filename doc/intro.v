@@ -4,6 +4,7 @@
    features through a handful of examples. We start our Coq primer
    session by importing the [Equations] module.  *)
 
+Require Import Arith Omega.
 From Equations Require Import Equations.
 
 (* begin hide *)
@@ -423,6 +424,7 @@ Check well_founded_t_subterm : forall A, WellFounded (t_subterm A).
     with the object itself. Once this is derived, we can use it to
     define recursive definitions on vectors that the guard condition
     couldn't handle:*)
+(* begin hide *)
 Require Import Relation_Operators.
 Local Open Scope sigma_scope.
 Require Import Relations.
@@ -433,53 +435,116 @@ Proof.
   destruct Hxy. eapply clos_trans_stepr; eauto.
   now constructor.
 Qed.
+(* end hide *)
 
-
+(** We put ourselves in a section to parameterize skip by a predicate *)
 Section Skip.
   Context {A : Type} (p : A -> bool).
   Equations skip_first {n} (v : vector A n) : &{ n : nat & vector A n } :=
   skip_first Vnil := &(0 & Vnil);
   skip_first (Vcons a n v') <= p a => {
-                     | true => &(_ & Vcons a v');
-                     | false => skip_first v' }.
+                     | true => skip_first v';
+                     | false => &(_ & Vcons a v') }.
+
+  (** It is relatively straitforward to show that [skip] leaves returns a (large) subvector of its argument *)
 
   Lemma skip_first_subterm {n} (v : vector A n) : clos_refl _ (t_subterm _) (skip_first v) &(_ & v).
   Proof.
     funelim (skip_first v).
-    constructor 2.
     constructor 2.
     depelim H.
     constructor 1.
     eapply clos_trans_stepr. simpl.
     apply (t_direct_subterm_1_1 _ _ _ (&(_ & t).2)). apply H.
     rewrite H. constructor. eauto with subterm_relation.
+    constructor 2.
   Qed.
   
 End Skip.
 
-Axiom inhab : Set.
-Axiom hab_inhab : inhab.
+(** This function takes an unsorted vector and returns a sorted vector corresponding to it
+    starting from its head [a], removing all elements smaller than [a] and recursing.  *)
 
-Equations fn {n} (v : vector nat n) : inhab :=
-fn v by rec (signature_pack v) (t_subterm nat) :=
-fn Vnil := hab_inhab ;
-fn (Vcons a n v) := let sk := skip_first (fun x => Nat.leb x a) v in fn sk.2.
+Equations sort {n} (v : vector nat n) : &{n' : _ & vector nat n'} :=
+sort v by rec (signature_pack v) (t_subterm nat) :=
+sort Vnil := &( _ & Vnil );
+sort (Vcons a n v) := let sk := skip_first (fun x => Nat.leb x a) v in &(_ & Vcons a (sort sk.2).2).
 
-Next Obligation.
-  red. simpl.
-  subst n1. simpl.
-  eapply clos_trans_stepr_refl.
-  simpl. apply (t_direct_subterm_1_1 _ _ _ (&(_ & v).2)).
-  pose (skip_first_subterm (fun x => Nat.leb x a) v).
-  apply c.
+(** Here we prove that the recursive call is correct as skip preserves the size of its argument *)
+Obligations.
+  Next Obligation.
+    red. simpl.
+    subst n1. simpl.
+    eapply clos_trans_stepr_refl.
+    simpl. apply (t_direct_subterm_1_1 _ _ _ (&(_ & v).2)).
+    refine (skip_first_subterm _ _).
+  Qed.
+(* End Obligations. *)
+
+(** Small issue: induction hypotheses repeated in the eliminator due to dependencies *)
+
+(** To prove it we need a few supporting lemmas, we first write a predicate on vectors
+    equivalent to [List.forall]. *)
+
+Equations forall_vect {A} (p : A -> bool) {n} (v : vector A n) : bool :=
+forall_vect _ Vnil := true;
+forall_vect p (Vcons x n v) := p x && forall_vect p v.
+
+Require Import Bool.
+
+(** By functional elimination it is easy to prove that this respects the implication
+    order on predicates *)
+
+Lemma forall_vect_impl {A} p p' {n} (v : vector A n)
+      (fp : forall x, p x = true -> p' x = true) :
+  forall_vect p v = true -> forall_vect p' v = true.
+Proof.
+  funelim (forall_vect p v). auto.
+  simp forall_vect. rewrite !andb_true_iff; intuition auto.
 Qed.
-Hint Resolve fn_obligation_1 : fn_obligations.
-Hint Resolve fn : fn_obligations.
 
-Next Obligation.
-  rec_wf_rel aux (signature_pack v) (t_subterm nat).
-  depelim v. constructor.
-  simp fn. econstructor.
-  apply aux. info_eauto with fn_obligations.
-Defined.
+(** We now define a simple-minded sorting predicate *)
 
+Inductive sorted : forall {n}, vector nat n -> Prop :=
+| sorted_nil : sorted Vnil
+| sorted_cons x n (v : vector nat n) :
+    forall_vect (fun y => Nat.leb x y) v = true ->
+    sorted v -> sorted (Vcons x v).
+
+(** Again, we show this by repeat functional eliminations. *)
+
+Lemma fn_sorted n (v : vector nat n) : sorted (sort v).2.
+Proof.
+  funelim (sort v). (** The first elimination just gives the two fn cases. *)
+  - constructor.
+  - constructor; auto.
+    (** Here we have a nested call to skip_first, for which the induction hypothesis holds: [[
+  H : sorted (fn (skip_first (fun x : nat => x <=? h) t).2).2
+  ============================
+  forall_vect (fun y : nat => h <=? y) (fn (skip_first (fun x : nat => x <=? h) t).2).2 = true
+]]
+
+   We can apply functional elimination likewise, even if the predicate argument is instantiated
+   here.
+ *)
+    funelim (skip_first (fun x : nat => Nat.leb x h) t); simp sort forall_vect in *; simpl in *.
+    (** After further simplifications, we get: [[
+  Heq : (h0 <=? h) = false
+  H : sorted (Vcons h0 (fn (skip_first (fun x : nat => x <=? h0) t).2).2)
+  ============================
+  (h <=? h0) && forall_vect (fun y : nat => h <=? y) (fn (skip_first (fun x : nat => x <=? h0) t).2).2 = true
+]]
+
+    This requires inversion on the sorted predicate to find out that, by induction,
+    [h0] is smaller than all of [fn (skip_first ...)], and hence [h] is as well.
+    This is just regular reasoning. Just note how we got to this point in just
+    two invocations of [funelim].
+*)
+    depelim H.
+    rewrite andb_true_iff.
+    enough (h <=? h0 = true). split; auto.
+    eapply forall_vect_impl in H.
+    apply H.
+    intros x h0x. simpl. rewrite Nat.leb_le in *. omega.
+    rewrite Nat.leb_le, Nat.leb_nle in *. omega.
+Qed.
