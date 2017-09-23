@@ -446,7 +446,7 @@ Section Skip.
                      | true => skip_first v';
                      | false => &(_ & Vcons a v') }.
 
-  (** It is relatively straitforward to show that [skip] leaves returns a (large) subvector of its argument *)
+  (** It is relatively straitforward to show that [skip] returns a (large) subvector of its argument *)
 
   Lemma skip_first_subterm {n} (v : vector A n) : clos_refl _ (t_subterm _) (skip_first v) &(_ & v).
   Proof.
@@ -481,8 +481,6 @@ Obligations.
   Qed.
 (* End Obligations. *)
 
-(** Small issue: induction hypotheses repeated in the eliminator due to dependencies *)
-
 (** To prove it we need a few supporting lemmas, we first write a predicate on vectors
     equivalent to [List.forall]. *)
 
@@ -515,13 +513,13 @@ Inductive sorted : forall {n}, vector nat n -> Prop :=
 
 Lemma fn_sorted n (v : vector nat n) : sorted (sort v).2.
 Proof.
-  funelim (sort v). (** The first elimination just gives the two fn cases. *)
+  funelim (sort v). (** The first elimination just gives the two [sort] cases. *)
   - constructor.
   - constructor; auto.
     (** Here we have a nested call to skip_first, for which the induction hypothesis holds: [[
-  H : sorted (fn (skip_first (fun x : nat => x <=? h) t).2).2
+  H : sorted (sort (skip_first (fun x : nat => x <=? h) t).2).2
   ============================
-  forall_vect (fun y : nat => h <=? y) (fn (skip_first (fun x : nat => x <=? h) t).2).2 = true
+  forall_vect (fun y : nat => h <=? y) (sort (skip_first (fun x : nat => x <=? h) t).2).2 = true
 ]]
 
    We can apply functional elimination likewise, even if the predicate argument is instantiated
@@ -530,9 +528,9 @@ Proof.
     funelim (skip_first (fun x : nat => Nat.leb x h) t); simp sort forall_vect in *; simpl in *.
     (** After further simplifications, we get: [[
   Heq : (h0 <=? h) = false
-  H : sorted (Vcons h0 (fn (skip_first (fun x : nat => x <=? h0) t).2).2)
+  H : sorted (Vcons h0 (sort (skip_first (fun x : nat => x <=? h0) t).2).2)
   ============================
-  (h <=? h0) && forall_vect (fun y : nat => h <=? y) (fn (skip_first (fun x : nat => x <=? h0) t).2).2 = true
+  (h <=? h0) && forall_vect (fun y : nat => h <=? y) (sort (skip_first (fun x : nat => x <=? h0) t).2).2 = true
 ]]
 
     This requires inversion on the sorted predicate to find out that, by induction,

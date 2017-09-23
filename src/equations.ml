@@ -106,6 +106,26 @@ let filter_arguments f l =
     | _, _ -> l
   in aux 0 f l
 
+let clean_rec_calls (ctx, ctxlen, c) =
+  let open Context.Rel.Declaration in
+  let is_seen def prev =
+    List.exists (Term.eq_constr def) prev
+  in
+  let rec aux (ctx, ctxlen, c) k ctx' seen =
+    match ctx with
+    | (LocalAssum _ as ass) :: ((LocalDef (recres, call, _) as def) :: rest) ->
+       let subst = [mkProp; call] in
+       if is_seen call seen then
+         aux (rest, ctxlen - 2, substnl subst k c) k
+             (subst_rel_context 0 subst ctx')
+             (List.map (substnl subst 0) seen)
+       else
+         aux (rest, ctxlen, c) (k + 2) (List.append ctx' [ass; def])
+             (List.map (substnl subst 0) (call :: seen))
+    | rest -> (List.append ctx' rest, k + List.length rest, c)
+  in
+  aux (ctx, ctxlen, c) 0 [] []
+
 let abstract_rec_calls ?(do_subst=true) is_rec len protos c =
   let lenprotos = length protos in
   let proto_fs = map (fun ((f,args), _, _, _) -> f) protos in
@@ -198,8 +218,8 @@ let abstract_rec_calls ?(do_subst=true) is_rec len protos c =
          ctx', lenctx', mkProj (p, c')
 			     
     | _ -> [], 0, if do_subst then (substnl proto_fs (len + n) c) else c
-  in aux 0 [] c
-
+  in clean_rec_calls (aux 0 [] c)
+  
 let below_transparent_state () =
   Hints.Hint_db.transparent_state (Hints.searchtable_map "Below")
 
