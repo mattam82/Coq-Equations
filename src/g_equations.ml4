@@ -262,9 +262,9 @@ END
 let wit_preident = Stdarg.wit_preident
 TACTIC EXTEND simp
 | [ "simp" ne_preident_list(l) clause(c) ] -> 
-    [ of82 (Equations.simp_eqns_in c l) ]
+    [ of82 (Principles_proofs.simp_eqns_in c l) ]
 | [ "simpc" constr_list(l) clause(c) ] -> 
-    [ of82 (Equations.simp_eqns_in c (dbs_of_constrs l)) ]
+    [ of82 (Principles_proofs.simp_eqns_in c (dbs_of_constrs l)) ]
 END
 
 

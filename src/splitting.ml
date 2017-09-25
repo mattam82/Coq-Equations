@@ -353,6 +353,8 @@ type term_info = {
   comp_obls : Id.Set.t; (** The recursive call proof obligations *)
 }
 
+let is_polymorphic info = pi2 info.decl_kind
+
 let define_tree is_recursive poly impls status isevar env (i, sign, arity)
                 comp split hook =
   let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
@@ -371,7 +373,7 @@ let define_tree is_recursive poly impls status isevar env (i, sign, arity)
 	if Evar.Map.mem assc oblevs 
 	then 
           let intros = Evar.Map.find assc oblevs in
-          Some (Tacticals.New.tclTHEN (Tacticals.New.tclDO intros (of82 intro)) (equations_tac ()))
+          Some (Tacticals.New.tclTHEN (Tacticals.New.tclDO intros intro) (equations_tac ()))
 	else if is_comp_obl comp (snd loc) then
           let () = compobls := Id.Set.add id !compobls in
           let unfolds =

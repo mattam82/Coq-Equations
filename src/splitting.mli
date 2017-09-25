@@ -41,6 +41,8 @@ type term_info = {
   comp_obls : Id.Set.t; (** The recursive call proof obligations *)
 }
 
+val is_polymorphic : term_info -> bool
+
 val define_tree :
   rec_type option -> Decl_kinds.polymorphic ->
   (Constrexpr.explicitation * (bool * bool * bool)) list ->

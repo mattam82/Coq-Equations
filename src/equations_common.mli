@@ -140,6 +140,10 @@ val init_constant : string list -> string -> esigma -> Term.constr
 val init_reference : string list -> string -> Globnames.global_reference
 val gen_constant : string list -> string -> constr
 
+val global_reference : Id.t -> Globnames.global_reference
+(* Unsafe, avoid *)
+val constr_of_ident : Id.t -> Term.constr
+  
 val get_class : Term.constr -> Typeclasses.typeclass Term.puniverses
 
 val make_definition :
@@ -259,6 +263,8 @@ val coq_notT : esigma -> Term.constr
 val coq_ImpossibleCall : esigma -> Term.constr
 val unfold_add_pattern : unit Proofview.tactic lazy_t
 
+val observe : string -> Proofview.V82.tac -> Proofview.V82.tac
+  
 val below_tactics_path : Names.dir_path
 val below_tac : string -> Names.kernel_name
 val tacident_arg :
@@ -403,3 +409,8 @@ val evar_absorb_arguments :
   Environ.env -> Evd.evar_map ->
   Term.existential ->
   Term.constr list -> Evd.evar_map * Term.existential
+
+
+val hintdb_set_transparency :
+  Constant.t -> bool -> Hints.hint_db_name -> unit
+  

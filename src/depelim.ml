@@ -230,9 +230,6 @@ let abstract_args gl generalize_vars dep id defined f args =
 	     dep, succ (List.length ctx), vars)
     else None
 
-let intro = 
-  Proofview.V82.of_tactic intro
-      
 let abstract_generalize ?(generalize_vars=true) ?(force_dep=false) id gl =
   Coqlib.check_required_library ["Coq";"Logic";"JMeq"];
   let f, args, def, id, oldid = 
@@ -255,10 +252,10 @@ let abstract_generalize ?(generalize_vars=true) ?(force_dep=false) id gl =
 	  let tac =
 	    if dep then
 	      tclTHENLIST [refine newc; Proofview.V82.of_tactic (rename_hyp [(id, oldid)]); 
-			   tclDO n intro; 
+			   tclDO n (to82 intro); 
 			   to82 (generalize_dep ~with_let:true (mkVar oldid))]
 	    else
-	      tclTHENLIST [refine newc; to82 (clear [id]); tclDO n intro]
+	      tclTHENLIST [refine newc; to82 (clear [id]); tclDO n (to82 intro)]
 	  in 
 	    if vars = [] then tac gl
 	    else tclTHEN tac 

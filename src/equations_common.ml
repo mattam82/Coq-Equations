@@ -160,6 +160,12 @@ let init_constant dir s evd = find_constant contrib_name dir s evd
 let init_reference dir s = Coqlib.find_reference contrib_name dir s
 let gen_constant dir s = Coqlib.gen_constant "equations" dir s
 
+let global_reference id =
+  Smartlocate.global_of_extended_global (Nametab.locate_extended (qualid_of_ident id))
+
+let constr_of_ident id =
+  Universes.constr_of_global (Nametab.locate (qualid_of_ident id))
+
 let e_type_of = Typing.e_type_of ~refresh:false				 
 
 let make_definition ?opaque ?(poly=false) evd ?types b =
@@ -720,6 +726,27 @@ let move_after_deps id c =
     Tactics.move_hyp id (Misctypes.MoveAfter first)
   in Proofview.Goal.enter { Proofview.Goal.enter = enter }
 
+let observe s tac = 
+  let open Proofview in
+  let open Proofview.Notations in
+  if not !debug then tac
+  else
+    fun gls ->
+    Feedback.msg_debug (str"Applying " ++ str s ++ str " on " ++ Printer.pr_goal gls);
+    to82
+      (Proofview.tclORELSE
+         (Proofview.tclTHEN
+            (of82 tac)
+            (Proofview.numgoals >>= fun gls ->
+             if gls = 0 then (Feedback.msg_debug (str "succeeded"); Proofview.tclUNIT ())
+             else
+               (of82
+                  (fun gls -> Feedback.msg_debug (str "Subgoal: " ++ Printer.pr_goal gls);
+                           Evd.{ it = [gls.it]; sigma = gls.sigma }))))
+         (fun iexn -> Feedback.msg_debug (str"Failed with: " ++
+                                Coqloop.print_toplevel_error iexn);
+                   Proofview.tclUNIT ())) gls
+
 (** Compat definitions *)
 
 type rel_context = Context.Rel.t
@@ -868,3 +895,8 @@ let new_type_evar env evm ?src rigid =
 let to_evar_map = Sigma.to_evar_map
 let of_evar_map = Sigma.Unsafe.of_evar_map
 let evar_absorb_arguments = Evardefine.evar_absorb_arguments
+
+let hintdb_set_transparency cst b db =
+  Hints.add_hints false [db] 
+    (Hints.HintsTransparencyEntry ([EvalConstRef cst], b))
+                          

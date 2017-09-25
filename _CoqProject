@@ -21,10 +21,14 @@ src/depelim.mli
 src/depelim.ml
 src/syntax.mli
 src/syntax.ml
-src/covering.ml
 src/covering.mli
-src/splitting.ml
+src/covering.ml
 src/splitting.mli
+src/splitting.ml
+src/principles_proofs.mli
+src/principles_proofs.ml
+src/principles.mli
+src/principles.ml
 src/equations.mli
 src/equations.ml
 src/noconf.ml

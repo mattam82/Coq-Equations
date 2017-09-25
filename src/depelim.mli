@@ -44,7 +44,6 @@ val abstract_args :
   constr ->
   constr array ->
   (constr * bool * int * Idset.elt list) option
-val intro : Proofview.V82.tac
 val abstract_generalize :
   ?generalize_vars:bool ->
   ?force_dep:bool ->
