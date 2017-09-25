@@ -312,7 +312,7 @@ val instance_of_pats :
   (int * bool) list ->
   rel_context * pat list *
   pat list
-val push_rel_context_eos : rel_context -> env -> env
+val push_rel_context_eos : rel_context -> env -> esigma -> env
 val split_at_eos :
   named_context -> named_context * named_context
 val pr_problem :

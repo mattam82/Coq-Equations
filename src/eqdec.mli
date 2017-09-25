@@ -24,11 +24,11 @@ val inductive_info :
   (Names.MutInd.t * int) * Univ.universe_instance -> mutual_inductive_info
 
 val eq_dec_class :
-  unit ->
+  esigma ->
   rel_context *
   (Typeclasses.typeclass Term.puniverses * Term.constr list)
 
-val dec_eq : unit -> Term.constr
+val dec_eq : esigma -> Term.constr
 
 val vars_of_pars : named_context -> Term.constr array
 

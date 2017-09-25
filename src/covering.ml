@@ -95,11 +95,14 @@ and splitting_rhs =
   | RProgram of constr
   | REmpty of int
 
+(** FIXME if innac becomes polymorphic *)
 let mkInac env c =
-  mkApp (Lazy.force coq_inacc, [| Retyping.get_type_of env Evd.empty c ; c |])
+  mkApp (Universes.constr_of_global (Lazy.force coq_inacc),
+         [| Retyping.get_type_of env Evd.empty c ; c |])
 
 let mkHide env c =
-  mkApp (Lazy.force coq_hide, [| Retyping.get_type_of env Evd.empty c ; c |])
+  mkApp (Universes.constr_of_global (Lazy.force coq_hide),
+         [| Retyping.get_type_of env Evd.empty c ; c |])
 
 let rec pat_constr = function
   | PRel i -> mkRel i
@@ -142,9 +145,9 @@ let rec pats_of_constrs l = map pat_of_constr l
 and pat_of_constr c =
   match kind_of_term c with
   | Rel i -> PRel i
-  | App (f, [| a ; c |]) when eq_constr f (Lazy.force coq_inacc) ->
+  | App (f, [| a ; c |]) when is_global (Lazy.force coq_inacc) f ->
       PInac c
-  | App (f, [| a ; c |]) when eq_constr f (Lazy.force coq_hide) ->
+  | App (f, [| a ; c |]) when is_global (Lazy.force coq_hide) f ->
       PHide (destRel c)
   | App (f, args) when isConstruct f ->
       let ((ind,_),_ as cstr) = destConstruct f in
@@ -1132,18 +1135,18 @@ let instance_of_pats env evars (ctx : rel_context) (pats : (int * bool) list) =
       1 ctx'
   in fst (rel_of_named_context ctx'), pats', pats''
 
-let push_rel_context_eos ctx env =
+let push_rel_context_eos ctx env evars =
   if named_context env <> [] then
     let env' =
       push_named (make_named_def coq_end_of_section_id
-                    (Some (Lazy.force coq_end_of_section_constr))
-		    (Lazy.force coq_end_of_section)) env
+                    (Some (coq_end_of_section_constr evars))
+		    (coq_end_of_section evars)) env
     in push_rel_context ctx env'
   else push_rel_context ctx env
     
 let split_at_eos ctx =
   List.split_when (fun decl ->
-		   eq_constr (get_named_type decl) (Lazy.force coq_end_of_section)) ctx
+    Globnames.is_global (Lazy.force coq_end_of_section_ref) (get_named_type decl)) ctx
 
 let pr_problem (id, _, _) env (delta, patcs, _) =
   let env' = push_rel_context delta env in
@@ -1166,7 +1169,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 	(* 	    if List.exists (fun (_, used) -> not used) prev then *)
 	(* 	      user_err_loc (dummy_loc, "equations", str "Unused clause: " ++ pr_clause env (lhs, rhs)); *)
 	if List.is_empty prevmatch then
-	  let env' = push_rel_context_eos ctx env in
+	  let env' = push_rel_context_eos ctx env evars in
 	  let get_var loc i s =
 	    match assoc i s with
 	    | PRel i -> i
@@ -1227,7 +1230,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		    let ty' = subst_vars subst concl in
 		    let ty', prob, subst, invsubst = match kind_of_term ty' with
 		      | App (f, args) -> 
-			 if eq_constr f (Lazy.force coq_add_pattern) then
+			 if Globnames.is_global (Lazy.force coq_add_pattern) f then
 			   let comp = args.(1) and newpattern = pat_of_constr args.(2) in
 			   if pi2 data (* with_comp *) then
 			     let pats = rev_map pat_of_constr (snd (decompose_app comp)) in

@@ -12,8 +12,9 @@ From Equations Require Import EqDec DepElim.
    principles associated to a function [f]. Such principles are automatically 
    generated for definitions made using [Equations]. *)
 
+Polymorphic
 Class FunctionalInduction {A : Type} (f : A) :=
-  { fun_ind_prf_ty : Prop; fun_ind_prf : fun_ind_prf_ty }.
+  { fun_ind_prf_ty : Type; fun_ind_prf : fun_ind_prf_ty }.
 
 (** The tactic [funind c Hc] applies functional induction on the application 
    [c] which must be of the form [f args] where [f] has a [FunctionalInduction]
@@ -47,7 +48,8 @@ Ltac funind_call f H :=
    eliminator.
    *)
 
-Class FunctionalElimination {A : Type} (f : A) (fun_elim_ty : Prop) (n : nat) := 
+Polymorphic
+Class FunctionalElimination {A : Type} (f : A) (fun_elim_ty : Type) (n : nat) :=
   fun_elim : fun_elim_ty.
 
 Ltac make_refine n c :=

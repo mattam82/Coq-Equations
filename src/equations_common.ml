@@ -143,12 +143,20 @@ let array_filter_map f a =
     a []
   in Array.of_list l'
 
+let new_global evd gr =
+  let sigma = Sigma.Unsafe.of_evar_map evd in
+  let Sigma.Sigma (gr, sigma, _) = Evarutil.new_global sigma gr in
+  Sigma.to_evar_map sigma, gr
 
-let find_constant contrib dir s =
-  Universes.constr_of_global (Coqlib.find_reference contrib dir s)
+let e_new_global evdref gr =
+  let sigma, gr = new_global !evdref gr in
+  evdref := sigma; gr
+
+let find_constant contrib dir s evd =
+  e_new_global evd (Coqlib.find_reference contrib dir s)
 
 let contrib_name = "Equations"
-let init_constant dir s = find_constant contrib_name dir s
+let init_constant dir s evd = find_constant contrib_name dir s evd
 let init_reference dir s = Coqlib.find_reference contrib_name dir s
 let gen_constant dir s = Coqlib.gen_constant "equations" dir s
 
@@ -194,8 +202,8 @@ let coq_True = lazy (init_reference ["Coq";"Init";"Logic"] "True")
 let coq_I = lazy (init_reference ["Coq";"Init";"Logic"] "I")
 let coq_False = lazy (init_reference ["Coq";"Init";"Logic"] "False")
 
-let coq_prod = lazy (init_constant ["Coq";"Init";"Datatypes"] "prod")
-let coq_pair = lazy (init_constant ["Coq";"Init";"Datatypes"] "pair")
+let coq_prod = init_constant ["Coq";"Init";"Datatypes"] "prod"
+let coq_pair = init_constant ["Coq";"Init";"Datatypes"] "pair"
 
 let coq_zero = lazy (gen_constant ["Init"; "Datatypes"] "O")
 let coq_succ = lazy (gen_constant ["Init"; "Datatypes"] "S")
@@ -298,51 +306,56 @@ let tac_of_string str args =
 
 let equations_path = ["Equations";"Equations"]
 
-let get_class c = 
+let get_class c =
   let x = Typeclasses.class_of_constr c in
     fst (snd (Option.get x))
 
-let functional_induction_class () =
-  get_class
-    (init_constant ["Equations";"FunctionalInduction"] "FunctionalInduction")
+type esigma = Evd.evar_map ref
 
-let functional_elimination_class () =
-  get_class
-    (init_constant ["Equations";"FunctionalInduction"] "FunctionalElimination")
+let functional_induction_class evd =
+  let evdref = ref evd in
+  let cl = init_constant ["Equations";"FunctionalInduction"] "FunctionalInduction" evdref in
+  !evdref, get_class cl
 
-let dependent_elimination_class () =
-  get_class 
-    (init_constant ["Equations";"DepElim"] "DependentEliminationPackage")
+let functional_elimination_class evd =
+  let evdref = ref evd in
+  let cl = init_constant ["Equations";"FunctionalInduction"] "FunctionalElimination" evdref in
+  !evdref, get_class cl
+
+let dependent_elimination_class evd =
+  get_class
+    (init_constant ["Equations";"DepElim"] "DependentEliminationPackage" evd)
 
 let below_path = ["Equations";"Below"]
 
-let coq_wellfounded_class = lazy (init_constant ["Equations";"Classes"] "WellFounded")
-let coq_wellfounded = lazy (init_constant ["Coq";"Init";"Wf"] "well_founded")
-let coq_relation = lazy (init_constant ["Coq";"Relations";"Relation_Definitions"] "relation")
-let coq_clos_trans = lazy (init_constant ["Coq";"Relations";"Relation_Operators"] "clos_trans")
-let coq_id = lazy (init_constant ["Coq";"Init";"Datatypes"] "id")
+let coq_wellfounded_class = init_constant ["Equations";"Classes"] "WellFounded"
+let coq_wellfounded = init_constant ["Coq";"Init";"Wf"] "well_founded"
+let coq_relation = init_constant ["Coq";"Relations";"Relation_Definitions"] "relation"
+let coq_clos_trans = init_constant ["Coq";"Relations";"Relation_Operators"] "clos_trans"
+let coq_id = init_constant ["Coq";"Init";"Datatypes"] "id"
 
 let list_path = ["Lists";"List"]
-let coq_list_ind = lazy (init_constant list_path "list")
-let coq_list_nil = lazy (init_constant list_path "nil")
-let coq_list_cons = lazy (init_constant list_path "cons")
+let coq_list_ind = init_constant list_path "list"
+let coq_list_nil = init_constant list_path "nil"
+let coq_list_cons = init_constant list_path "cons"
 
 let coq_noconfusion_class = lazy (init_reference ["Equations";"DepElim"] "NoConfusionPackage")
   
-let coq_inacc = lazy (init_constant ["Equations";"DepElim"] "inaccessible_pattern")
-let coq_block = lazy (init_constant ["Equations";"DepElim"] "block")
-let coq_hide = lazy (init_constant ["Equations";"DepElim"] "hide_pattern")
-let coq_add_pattern = lazy (init_constant ["Equations";"DepElim"] "add_pattern")
+let coq_inacc = lazy (init_reference ["Equations";"DepElim"] "inaccessible_pattern")
+let coq_block = lazy (init_reference ["Equations";"DepElim"] "block")
+let coq_hide = lazy (init_reference ["Equations";"DepElim"] "hide_pattern")
+let coq_add_pattern = lazy (init_reference ["Equations";"DepElim"] "add_pattern")
 let coq_end_of_section_id = id_of_string "eos"
-let coq_end_of_section_constr = lazy (init_constant ["Equations";"DepElim"] "the_end_of_the_section")
-let coq_end_of_section = lazy (init_constant ["Equations";"DepElim"] "end_of_section")
+let coq_end_of_section_constr = init_constant ["Equations";"DepElim"] "the_end_of_the_section"
+let coq_end_of_section = init_constant ["Equations";"DepElim"] "end_of_section"
+let coq_end_of_section_ref = lazy (init_reference ["Equations";"DepElim"] "end_of_section")
 
-let coq_notT = lazy (init_constant ["Coq";"Init";"Logic_Type"] "notT")
-let coq_ImpossibleCall = lazy (init_constant ["Equations";"DepElim"] "ImpossibleCall")
+let coq_notT = init_constant ["Coq";"Init";"Logic_Type"] "notT"
+let coq_ImpossibleCall = init_constant ["Equations";"DepElim"] "ImpossibleCall"
 
-let unfold_add_pattern = lazy
-  (Tactics.unfold_in_concl [(Locus.AllOccurrences, 
-			     EvalConstRef (fst (destConst (Lazy.force coq_add_pattern))))])
+let unfold_add_pattern =
+  lazy (Tactics.unfold_in_concl [(Locus.AllOccurrences,
+			     EvalConstRef (Globnames.destConstRef (Lazy.force coq_add_pattern)))])
 
 let subterm_relation_base = "subterm_relation"
 
@@ -767,11 +780,6 @@ let rel_of_named_context ctx =
       (decl :: ctx', n :: subst)) ctx ([],[])
 
 let empty_hint_info = Hints.empty_hint_info
-
-let new_global evd gr =
-  let sigma = Sigma.Unsafe.of_evar_map evd in
-  let Sigma.Sigma (gr, sigma, _) = Evarutil.new_global sigma gr in
-  Sigma.to_evar_map sigma, gr
 
 (* Substitute a list of constrs [cstrs] in rel_context [ctx] for variable [k] and above. *)
 

@@ -368,12 +368,14 @@ let derive_dep_elimination env sigma (i,u) =
   let evd, ctx, ty, gref = depcase i in
   let indid = Nametab.basename_of_global (IndRef i) in
   let id = add_prefix "DependentElimination_" indid in
-  let cl = dependent_elimination_class () in
-  let casety = Global.type_of_global_unsafe gref in
-  let poly = false in (*FIXME*)
+  let evdref = ref evd in
+  let cl = dependent_elimination_class evdref in
+  let caseterm = e_new_global evdref gref in
+  let casety = Retyping.get_type_of env !evdref caseterm in
+  let poly = Flags.is_universe_polymorphism () in
   let args = extended_rel_vect 0 ctx in
     Equations_common.declare_instance id poly evd ctx cl [ty; prod_appvect casety args; 
-				mkApp (Universes.constr_of_global gref, args)]     
+				mkApp (caseterm, args)]
 
 let () =
   let fn env sigma c = ignore (derive_dep_elimination env sigma c) in

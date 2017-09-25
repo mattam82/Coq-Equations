@@ -186,7 +186,7 @@ let derive_subterm env sigma ind =
       let id = add_prefix "well_founded_" relid in
       let evm = ref sigma in
       let env = Global.env () in
-      let kl = get_class (Lazy.force coq_wellfounded_class) in
+      let kl = get_class (coq_wellfounded_class evm) in
       let parambinders, body, ty =
 	let pars, ty, rel = 
 	  if List.is_empty argbinders then
@@ -217,11 +217,11 @@ let derive_subterm env sigma ind =
 	in
 	let relation =
 	  let def = it_mkLambda_or_LetIn 
-	    (mkApp (Lazy.force coq_clos_trans, [| ty; rel |]))
+	    (mkApp (coq_clos_trans evm, [| ty; rel |]))
 	    pars
 	  in
 	  let ty = Some (it_mkProd_or_LetIn
-			    (mkApp (Lazy.force coq_relation, [| ty |]))
+			    (mkApp (coq_relation evm, [| ty |]))
 			    parambinders) 
 	  in
 	  let cst = declare_constant relid def ty poly !evm
@@ -234,7 +234,7 @@ let derive_subterm env sigma ind =
 	in
 	let env' = push_rel_context pars env in
 	let evar = 
-	  let evt = (mkApp (Lazy.force coq_wellfounded, [| ty; relation |])) in
+	  let evt = (mkApp (coq_wellfounded evm, [| ty; relation |])) in
 	    e_new_evar env' evm evt
 	in
 	let b, t = Typeclasses.instance_constructor kl [ ty; relation; evar ] in
@@ -311,8 +311,8 @@ let derive_below env sigma (ind,univ) =
 	  List.fold_left (fun acc x ->
 	    match acc with
 	    | Some (c, ty) -> Option.cata (fun x -> Some x) acc (f (fun (c', ty') ->
-		mkApp (Lazy.force coq_pair, [| ty' ; ty ; c' ; c |]),
-		mkApp (Lazy.force coq_prod, [| ty' ; ty |])) x)
+		mkApp (coq_pair evd, [| ty' ; ty ; c' ; c |]),
+		mkApp (coq_prod evd, [| ty' ; ty |])) x)
 	    | None -> f (fun x -> x) x)
 	    None args
 	in Option.cata (fun x -> x)
@@ -334,7 +334,7 @@ let derive_below env sigma (ind,univ) =
               Some (g (res, ty))
           else None in
       let _, bodyB = fold_unit (wrapper (fun args _ ->
-        let ty = mkApp (Lazy.force coq_prod,
+        let ty = mkApp (coq_prod evd,
           [| mkApp (mkVar pid, args) ;
              mkApp (mkVar recid, args) |]) in
           mkRel 0, ty)) arg_tys in
@@ -342,12 +342,12 @@ let derive_below env sigma (ind,univ) =
         let reccall = mkApp (mkVar recid, args) in
         let belowargs = Array.append (rel_vect (nargs + nprem) params)
           (Array.append [| mkVar pid |] args) in
-        let res = mkApp (Lazy.force coq_pair,
+        let res = mkApp (coq_pair evd,
                          [| mkApp (mkVar pid, args) ;
                             mkApp (mkVar belowid, belowargs) ;
                             mkApp (mkApp (mkVar stepid, args), [| reccall |]);
                             reccall |]) in
-        let ty = mkApp (Lazy.force coq_prod,
+        let ty = mkApp (coq_prod evd,
                        [| mkApp (mkVar pid, args) ;
                           mkApp (mkVar belowid, belowargs) |]) in
         res, ty)) arg_tys in

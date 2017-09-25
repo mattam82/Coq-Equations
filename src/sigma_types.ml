@@ -381,7 +381,7 @@ let uncurry_hyps name =
     let sigma = Goal.sigma gl in
     let hyps, _ =
       List.split_when (fun d ->
-          Constr.equal (get_named_type d) (Lazy.force coq_end_of_section)
+         Globnames.is_global (Lazy.force coq_end_of_section_ref) (get_named_type d)
           || is_section_variable (get_id d)) hyps in
     let rec ondecl (sigma, acc, ty) d =
       let (dna, _, dty) = to_named_tuple d in

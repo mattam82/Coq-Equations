@@ -96,13 +96,13 @@ let inductive_info ((mind, _ as ind),u) =
     { mutind_params = params;
       mutind_inds = inds }
     
-let eq_dec_class () =
+let eq_dec_class evd =
   Option.get 
     (Typeclasses.class_of_constr
-	(init_constant ["Equations";"EqDec"] "EqDec"))
+	(init_constant ["Equations";"EqDec"] "EqDec" evd))
 
-let dec_eq () =
-  init_constant ["Equations";"EqDec"] "dec_eq"
+let dec_eq evd =
+  init_constant ["Equations";"EqDec"] "dec_eq" evd
 
 open Decl_kinds
 let vars_of_pars pars = 
@@ -112,13 +112,13 @@ let derive_eq_dec env sigma ind =
   let info = inductive_info ind in
   let ctx = info.mutind_params in
   let poly = Flags.is_universe_polymorphism () in
-  let cl = fst (snd (eq_dec_class ())) in
   let evdref = ref sigma in
+  let cl = fst (snd (eq_dec_class evdref)) in
   let info_of ind =
     let argsvect = extended_rel_vect 0 ind.ind_args in
     let indapp = mkApp (ind.ind_c, argsvect) in
     let app = 
-      mkApp (dec_eq (), [| indapp |])
+      mkApp (dec_eq evdref, [| indapp |])
     in
     let app = 
       let xname = Name (id_of_string "x") in

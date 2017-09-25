@@ -276,7 +276,7 @@ Class NoConfusionPackage (A : Type) := {
   noConfusion_is_equiv : forall {a b} (e : a = b), noConfusion_inv (noConfusion e) = e;
 }.
 
-Class NoConfusionIdPackage (A : Type) := {
+Polymorphic Class NoConfusionIdPackage (A : Type) := {
   NoConfusionId : A -> A -> Type;
   noConfusionId : forall {a b}, Id a b -> NoConfusionId a b;
   noConfusionId_inv : forall {a b}, NoConfusionId a b -> Id a b;

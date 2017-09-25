@@ -38,6 +38,8 @@ val proper_tails : 'a list -> 'a list list
 (* Stop at the first Some *)
 val list_find_map_i : (int -> 'a -> 'b option) -> int -> 'a list -> 'b option
 
+type esigma = Evd.evar_map ref
+
 val head_of_constr : Term.constr -> Term.constr
 val nowhere : 'a Locus.clause_expr
 val dummy_loc : Loc.t
@@ -80,9 +82,9 @@ val typecheck_rel_context :
   Environ.env -> Evd.evar_map -> rel_context -> unit
 
 val e_conv :
-  env -> Evd.evar_map ref -> constr -> constr -> bool
+  env -> esigma -> constr -> constr -> bool
 
-val e_type_of : env -> Evd.evar_map ref -> constr -> types
+val e_type_of : env -> esigma -> constr -> types
 						     
 val reference_of_global : Globnames.global_reference -> Libnames.reference
 
@@ -126,15 +128,15 @@ val idset_of_list : Id.t list -> Idset.t
 val decompose_indapp :
   constr -> constr array -> constr * constr array
 
-val refresh_universes_strict : Environ.env -> Evd.evar_map ref -> Term.types -> Term.types
+val refresh_universes_strict : Environ.env -> esigma -> Term.types -> Term.types
 
 val new_global : Evd.evar_map -> Globnames.global_reference -> Evd.evar_map * Term.constr
+val e_new_global : esigma -> Globnames.global_reference -> Term.constr
                                                                  
 (** {6 Linking to Coq} *)
 
-val find_constant : Coqlib.message -> string list -> string -> Term.constr
 val contrib_name : string
-val init_constant : string list -> string -> Term.constr
+val init_constant : string list -> string -> esigma -> Term.constr
 val init_reference : string list -> string -> Globnames.global_reference
 val gen_constant : string list -> string -> constr
 
@@ -143,7 +145,7 @@ val get_class : Term.constr -> Typeclasses.typeclass Term.puniverses
 val make_definition :
   ?opaque:'a ->
   ?poly:Decl_kinds.polymorphic ->
-  Evd.evar_map ref ->
+  esigma ->
   ?types:Term.constr -> Term.constr -> Safe_typing.private_constants Entries.definition_entry
 
 val declare_constant :
@@ -192,8 +194,8 @@ val get_zero : unit -> Globnames.global_reference lazy_t
 val coq_unit : Globnames.global_reference lazy_t
 val coq_tt : Globnames.global_reference lazy_t
 						  
-val coq_prod : Term.constr lazy_t
-val coq_pair : Term.constr lazy_t
+val coq_prod : esigma -> Term.constr
+val coq_pair : esigma -> Term.constr
 
 val coq_sigma : Globnames.global_reference lazy_t
 val coq_sigmaI : Globnames.global_reference lazy_t
@@ -212,15 +214,15 @@ val coq_heq : Globnames.global_reference lazy_t
 val coq_heq_refl : Globnames.global_reference lazy_t
 val coq_fix_proto : Globnames.global_reference lazy_t
 val mkapp : Environ.env ->
-  Evd.evar_map ref ->
+  esigma ->
   Globnames.global_reference Lazy.t -> Term.constr array -> Term.constr
 val mkEq : Environ.env ->
-  Evd.evar_map ref -> Term.types -> Term.constr -> Term.constr -> Term.constr
-val mkRefl : Environ.env -> Evd.evar_map ref -> Term.types -> Term.constr -> Term.constr
+  esigma -> Term.types -> Term.constr -> Term.constr -> Term.constr
+val mkRefl : Environ.env -> esigma -> Term.types -> Term.constr -> Term.constr
 val mkHEq : Environ.env ->
-  Evd.evar_map ref ->
+  esigma ->
   Term.types -> Term.constr -> Term.types -> Term.constr -> Term.constr
-val mkHRefl : Environ.env -> Evd.evar_map ref -> Term.types -> Term.constr -> Term.constr
+val mkHRefl : Environ.env -> esigma -> Term.types -> Term.constr -> Term.constr
 
 (** Bindings to theories/ files *)
 
@@ -230,30 +232,31 @@ val list_path : string list
 val subterm_relation_base : string
 
 val functional_induction_class :
-  unit -> Typeclasses.typeclass Term.puniverses
+  Evd.evar_map -> Evd.evar_map * Typeclasses.typeclass Term.puniverses
 val functional_elimination_class :
-  unit -> Typeclasses.typeclass Term.puniverses
+  Evd.evar_map -> Evd.evar_map * Typeclasses.typeclass Term.puniverses
 val dependent_elimination_class :
-  unit -> Typeclasses.typeclass Term.puniverses
+  esigma -> Typeclasses.typeclass Term.puniverses
 
-val coq_wellfounded_class : Term.constr lazy_t
-val coq_wellfounded : Term.constr lazy_t
-val coq_relation : Term.constr lazy_t
-val coq_clos_trans : Term.constr lazy_t
-val coq_id : Term.constr lazy_t
-val coq_list_ind : Term.constr lazy_t
-val coq_list_nil : Term.constr lazy_t
-val coq_list_cons : Term.constr lazy_t
+val coq_wellfounded_class : esigma -> Term.constr
+val coq_wellfounded : esigma -> Term.constr
+val coq_relation : esigma -> Term.constr
+val coq_clos_trans : esigma -> Term.constr
+val coq_id : esigma -> Term.constr
+val coq_list_ind : esigma -> Term.constr
+val coq_list_nil : esigma -> Term.constr
+val coq_list_cons : esigma -> Term.constr
 val coq_noconfusion_class : Globnames.global_reference lazy_t
-val coq_inacc : Term.constr lazy_t
-val coq_block : Term.constr lazy_t
-val coq_hide : Term.constr lazy_t
-val coq_add_pattern : Term.constr lazy_t
+val coq_inacc : Globnames.global_reference Lazy.t
+val coq_block : Globnames.global_reference Lazy.t
+val coq_hide : Globnames.global_reference Lazy.t
+val coq_add_pattern : Globnames.global_reference Lazy.t
 val coq_end_of_section_id : Names.Id.t
-val coq_end_of_section_constr : Term.constr lazy_t
-val coq_end_of_section : Term.constr lazy_t
-val coq_notT : Term.constr lazy_t
-val coq_ImpossibleCall : Term.constr lazy_t
+val coq_end_of_section_constr : esigma -> Term.constr
+val coq_end_of_section : esigma -> Term.constr
+val coq_end_of_section_ref : Globnames.global_reference Lazy.t
+val coq_notT : esigma -> Term.constr
+val coq_ImpossibleCall : esigma -> Term.constr
 val unfold_add_pattern : unit Proofview.tactic lazy_t
 
 val below_tactics_path : Names.dir_path

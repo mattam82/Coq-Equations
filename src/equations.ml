@@ -1049,9 +1049,9 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
     let body =
       let b = match c with
 	| RProgram c ->
-	    mkEq env evd ty comp (nf_beta Evd.empty c)
+	    mkEq env evd ty comp (nf_beta !evd c)
 	| REmpty i ->
-	   mkApp (Lazy.force coq_ImpossibleCall, [| ty; comp |])
+	   mkApp (coq_ImpossibleCall evd, [| ty; comp |])
       in it_mkProd_or_LetIn b ctx
     in
     let cstr = 
@@ -1177,7 +1177,7 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
 	  let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in
 	  let evd, f = Evd.fresh_global env evd f_gr in
 	  let evd, elimcgr = Evd.fresh_global env evd elimgr in
-	  let cl = functional_elimination_class () in
+	  let evd, cl = functional_elimination_class evd in
           let args_of_elim = coq_nat_of_int nargs in
 	  let args = [Retyping.get_type_of env evd f; f; 
 		      Retyping.get_type_of env evd elimcgr;
@@ -1198,7 +1198,7 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
       let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in
       let evd, f = Evd.fresh_global env evd f_gr in
       let evd, indcgr = Evd.fresh_global env evd indgr in
-      let cl = functional_induction_class () in
+      let evd, cl = functional_induction_class evd in
       let args = [Retyping.get_type_of env evd f; f; 
 		  Retyping.get_type_of env evd indcgr; indcgr]
       in
