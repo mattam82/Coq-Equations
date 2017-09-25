@@ -243,9 +243,11 @@ let compute_elim_type env evd is_rec protos k leninds
                       ind_stmts all_stmts sign app elimty =
   let ctx, arity = decompose_prod_assum elimty in
   let newctx = CList.skipn (List.length sign + 2) ctx in
+  (* Assumes non-dep eliminator of the graph *)
   let newarity = it_mkProd_or_LetIn (substl [mkProp; app] arity) sign in
   let newctx' = clear_ind_assums k newctx in
   if leninds == 1 then List.length newctx', it_mkProd_or_LetIn newarity newctx' else
+  let sort = fresh_logic_sort evd in
   let methods, preds = CList.chop (List.length newctx - leninds) newctx' in
   let ppred, preds = CList.sep_last preds in
   let newpredfn i d (idx, (f', alias, path, sign, arity, pats, args, (refine, cut)), _) =
@@ -367,7 +369,7 @@ let compute_elim_type env evd is_rec protos k leninds
 				   (Termops.lift_rel_context lenargs indhyps)))
 	  ctx
     in
-    let ty = it_mkProd_or_LetIn mkProp ctx in
+    let ty = it_mkProd_or_LetIn sort ctx in
     of_tuple (n, Some app, ty)
   in
   let newpreds = CList.map2_i newpredfn 1 preds (List.rev (List.tl ind_stmts)) in
@@ -632,100 +634,225 @@ let update_split env evd is_rec cmap f prob id split =
     split', !where_map
   | _ -> split, !where_map
 
-  
+let computations env evd prob wheremap f alias refine split =
+  let rec computations env prob f alias refine = function
+  | Compute (lhs, where, ty, c) ->
+     let where_comp w =
+       (** Where term is in lhs, now move relative references to
+              lhs to named ones, this puts it in nctx. *)
+       let rctx, inst = rel_of_named_context w.where_nctx in
+       let instc = List.map mkVar inst in
+       (** nctx; lhs |- nterm *)
+       let nterm = substl instc w.where_term in
+       let alias =
+         try
+         let (f, id, s) = Evar.Map.find (List.hd w.where_path) wheremap in
+         let args = match_arguments (arguments nterm) (arguments f) in
+         Some ((f, args), id, s)
+         with Not_found -> None
+       in
+       let env' = push_named_context w.where_nctx env in
+       let comps = computations env' w.where_prob nterm None (false,false) w.where_splitting in
+       let gencomp (ctx, fl, alias, pats, ty, f, b, c, l) =
+         (** ctx' = rctx ++ lhs is a dB context *)
+         let lift, ctx' = replace_vars_context inst ctx in
+         let ctx' = ctx' @ rctx in
+         let alias' =
+           match alias with
+           | Some (hd, id, s) -> Some (substn_vars lift inst hd, id, s)
+           | None -> None
+         in
+         ctx', substn_vars lift inst fl, alias',
+         pats, substn_vars lift inst ty,
+         substn_vars lift inst f, b,
+         map_rhs (substn_vars lift inst) (fun x -> x) c, l
+       in
+       let rest = List.map gencomp comps in
+       let lift, ctx' = replace_vars_context inst (pi1 w.where_prob) in
+       let ctx' = ctx' @ rctx in
+       (** ctx' is a dB context for nctx + where_prob *)
+       let hd = substn_vars lift inst nterm in
+       let args =
+         let rec aux i a =
+           match a with
+           | [] -> []
+           | hd :: tl -> if isRel hd then i :: aux (succ i) tl
+                         else aux (succ i) tl
+         in aux 0 (Array.to_list (arguments hd))
+       in
+       let arity = substn_vars lift inst w.where_arity in
+       ((hd, args), alias, w.where_orig, ctx', arity,
+        List.rev_map pat_constr (pi2 w.where_prob) (*?*),
+        [] (*?*), rest)
+     in
+     let wheres = List.map where_comp where in
+     let ctx = compose_subst env ~sigma:evd lhs prob in
+     let inst = where_instance where in
+     (* msg_debug (str"where_instance: " ++ prlist_with_sep spc pr_c inst); *)
+     let ninst = List.map (fun n -> Nameops.out_name (get_name n)) (pi1 ctx) in
+     let inst = List.map (fun c -> substn_vars 1 ninst c) inst in
+     let c' = map_rhs (fun c -> Reductionops.nf_beta Evd.empty (substl inst c)) (fun x -> x) c in
+     let patsconstrs = List.rev_map pat_constr (pi2 ctx) in
+     [pi1 ctx, f, alias, patsconstrs, substl inst ty, f, refine, c', Some wheres]
+
+  | Split (_, _, _, cs) -> Array.fold_left (fun acc c ->
+	                   match c with None -> acc | Some c ->
+	                                               acc @ computations env prob f alias refine c) [] cs
+
+  | Mapping (lhs, c) ->
+     let _newprob = compose_subst env ~sigma:evd prob lhs in
+     computations env prob f alias refine c
+
+  | RecValid (id, cs) -> computations env prob f alias (false, false) cs
+
+  | Refined (lhs, info, cs) ->
+     let (id, c, t) = info.refined_obj in
+     let (ctx', pats', _ as s) = compose_subst env ~sigma:evd lhs prob in
+     let patsconstrs = List.rev_map pat_constr pats' in
+     let refinedpats = List.rev_map pat_constr
+	                            (pi2 (compose_subst env ~sigma:evd info.refined_newprob_to_lhs s))
+     in
+     let filter = [Array.length (arguments (fst info.refined_app))] in
+     [pi1 lhs, f, alias, patsconstrs, info.refined_rettyp, f, (true, true),
+      RProgram (applist info.refined_app),
+      Some [(fst (info.refined_app), filter), None, info.refined_path, pi1 info.refined_newprob,
+	    info.refined_newty, refinedpats,
+	    [mapping_constr info.refined_newprob_to_lhs c, info.refined_arg],
+	    computations env info.refined_newprob (fst info.refined_app) None (false, true) cs]]
+
+  | Valid ((ctx,pats,del), _, _, _, _, cs) ->
+     List.fold_left (fun acc (_, _, subst, invsubst, c) ->
+     let subst = compose_subst env ~sigma:evd subst prob in
+     acc @ computations env subst f alias (false,false) c) [] cs
+  in computations env prob f alias refine split
+
+let constr_of_global_univ gr u =
+  let open Globnames in
+  match gr with
+  | ConstRef c -> mkConstU (c, u)
+  | IndRef i -> mkIndU (i, u)
+  | ConstructRef c -> mkConstructU (c, u)
+  | VarRef id -> mkVar id
+
+let declare_funelim info env evd is_rec protos ind_stmts all_stmts sign app subst inds kn indgr ectx =
+  let id = Id.of_string info.base_id in
+  let leninds = List.length inds in
+  let elim =
+    if leninds > 1 || get_sort () != InProp then
+    (let sort = match get_sort () with
+     | InProp -> Misctypes.GProp
+     | InSet -> Misctypes.GSet
+     | InType -> Misctypes.GType []
+     in
+     Indschemes.do_mutual_induction_scheme
+     (CList.map_i (fun i ind ->
+      let id = (dummy_loc, Nameops.add_suffix ind.Entries.mind_entry_typename "_mut") in
+      (id, false, (kn, i), sort)) 0 inds);
+     let elimid =
+       Nameops.add_suffix (List.hd inds).Entries.mind_entry_typename "_mut"
+     in Smartlocate.global_with_alias (reference_of_id elimid))
+    else
+    let elimid = Nameops.add_suffix id "_ind_ind" in
+    Smartlocate.global_with_alias (reference_of_id elimid)
+  in
+  let elimc, elimty =
+    let elimty, uctx = Global.type_of_global_in_context (Global.env ()) elim in
+    let () = evd := Evd.from_env (Global.env ()) in
+    if is_polymorphic info then
+      let _fty, fctx = Global.type_of_global_in_context (Global.env ()) info.term_id in
+      let fctx = Univ.ContextSet.of_context fctx in
+      let elimctx = Univ.ContextSet.of_context uctx in
+      (** They share universes in general *)
+      let fullctx = Univ.ContextSet.union fctx elimctx in
+      let () = evd := Evd.merge_context_set Evd.univ_flexible !evd fullctx in
+      let u = Univ.UContext.instance uctx in
+      let elimty = subst_instance_constr u elimty in
+      let elimc = constr_of_global_univ elim u in
+      (** evd contains the universes of the elim and the function, which
+          correspond to the universes in ind_stmts, all_stmts etc...
+          This is a bit dirty but avoids keeping track of a universe substitution
+          and applying it to all the derived datastructures. *)
+      elimc, elimty
+    else (* If not polymorphic, we just use the global environment's universes for f and elim *)
+      (let elimc = constr_of_global_univ elim Univ.Instance.empty in
+       elimc, elimty)
+  in
+  let nargs, newty =
+    compute_elim_type env evd is_rec protos kn leninds ind_stmts all_stmts
+		      sign app elimty
+  in
+  let hookelim _ elimgr _ =
+    let env = Global.env () in
+    let evd = Evd.from_env env in
+    let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in
+    let evd, f = Evd.fresh_global env evd f_gr in
+    let evd, elimcgr = Evd.fresh_global env evd elimgr in
+    let evd, cl = functional_elimination_class evd in
+    let args_of_elim = coq_nat_of_int nargs in
+    let args = [Retyping.get_type_of env evd f; f;
+		Retyping.get_type_of env evd elimcgr;
+                args_of_elim; elimcgr]
+    in
+    let instid = Nameops.add_prefix "FunctionalElimination_" id in
+    let poly = is_polymorphic info in
+    ignore(Equations_common.declare_instance instid poly evd [] cl args)
+  in
+  let tactic = of82 (ind_elim_tac elimc leninds info) in
+  let _ = e_type_of (Global.env ()) evd newty in
+  ignore(Obligations.add_definition (Nameops.add_suffix id "_elim")
+	                            ~tactic ~hook:(Lemmas.mk_hook hookelim) ~kind:info.decl_kind
+                                    newty (Evd.evar_universe_context !evd) [||])
+
+let declare_funind info alias env evd is_rec protos ind_stmts all_stmts sign inds kn f split ind =
+  let poly = is_polymorphic info.term_info in
+  let id = Id.of_string info.term_info.base_id in
+  let indid = Nameops.add_suffix id "_ind_fun" in
+  let args = Termops.rel_list 0 (List.length sign) in
+  let f, split, unfsplit =
+    match alias with
+    | Some (f, _, recsplit) -> f, recsplit, Some split
+    | None -> f, split, None
+  in
+  let app = applist (f, args) in
+  let statement = it_mkProd_or_subst (applist (ind, args @ [app])) sign in
+  let hookind subst indgr ectx =
+    let env = Global.env () in (* refresh *)
+    Hints.add_hints false [info.term_info.base_id]
+	            (Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef indgr]);
+    let () = declare_funelim info.term_info env evd is_rec protos
+                             ind_stmts all_stmts sign app subst inds kn indgr ectx in
+    let evd = Evd.from_env env in
+    let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in
+    let evd, f = Evd.fresh_global env evd f_gr in
+    let evd, indcgr = Evd.fresh_global env evd indgr in
+    let evd, cl = functional_induction_class evd in
+    let args = [Retyping.get_type_of env evd f; f;
+	        Retyping.get_type_of env evd indcgr; indcgr]
+    in
+    let instid = Nameops.add_prefix "FunctionalInduction_" id in
+    ignore(Equations_common.declare_instance instid poly evd [] cl args)
+  in
+  let ctx = Evd.evar_universe_context (if poly then !evd else Evd.from_env (Global.env ())) in
+  try ignore(Obligations.add_definition
+             ~hook:(Lemmas.mk_hook hookind)
+             ~kind:info.term_info.decl_kind
+	     indid statement ~tactic:(of82 (ind_fun_tac is_rec f info id split unfsplit)) ctx [||])
+  with e ->
+    Feedback.msg_warning Pp.(str "Induction principle could not be proved automatically: " ++ fnl () ++
+		             CErrors.print e)
+
+
+let level_of_context env evd ctx acc =
+  let _, lev =
+    List.fold_right (fun decl (env, lev) ->
+        let s = Retyping.get_sort_of env evd (get_type decl) in
+        (Environ.push_rel decl env, Univ.sup (Sorts.univ_of_sort s) lev))
+                    ctx (env,acc)
+  in lev
+
 let build_equations with_ind env evd id info sign is_rec arity wheremap cst 
     f ?(alias:(constr * Names.Id.t * splitting) option) prob split =
-  let rec computations env prob f alias refine = function
-    | Compute (lhs, where, ty, c) ->
-      let where_comp w =
-        (** Where term is in lhs, now move relative references to 
-              lhs to named ones, this puts it in nctx. *)
-        let rctx, inst = rel_of_named_context w.where_nctx in
-        let instc = List.map mkVar inst in
-        (** nctx; lhs |- nterm *)
-        let nterm = substl instc w.where_term in
-        let alias =
-          try
-            let (f, id, s) = Evar.Map.find (List.hd w.where_path) wheremap in
-            let args = match_arguments (arguments nterm) (arguments f) in
-            Some ((f, args), id, s)
-          with Not_found -> None
-        in
-        let env' = push_named_context w.where_nctx env in
-        let comps = computations env' w.where_prob nterm None (false,false) w.where_splitting in
-        let gencomp (ctx, fl, alias, pats, ty, f, b, c, l) =
-          (** ctx' = rctx ++ lhs is a dB context *)
-          let lift, ctx' = replace_vars_context inst ctx in
-          let ctx' = ctx' @ rctx in
-          let alias' =
-            match alias with
-            | Some (hd, id, s) -> Some (substn_vars lift inst hd, id, s)
-            | None -> None
-          in
-          ctx', substn_vars lift inst fl, alias',
-          pats, substn_vars lift inst ty,
-          substn_vars lift inst f, b,
-          map_rhs (substn_vars lift inst) (fun x -> x) c, l
-        in
-        let rest = List.map gencomp comps in
-        let lift, ctx' = replace_vars_context inst (pi1 w.where_prob) in
-        let ctx' = ctx' @ rctx in
-        (** ctx' is a dB context for nctx + where_prob *)
-        let hd = substn_vars lift inst nterm in
-        let args =
-          let rec aux i a =
-            match a with
-            | [] -> []
-            | hd :: tl -> if isRel hd then i :: aux (succ i) tl
-                         else aux (succ i) tl
-          in aux 0 (Array.to_list (arguments hd))
-        in
-        let arity = substn_vars lift inst w.where_arity in
-        ((hd, args), alias, w.where_orig, ctx', arity,
-         List.rev_map pat_constr (pi2 w.where_prob) (*?*),
-         [] (*?*), rest)
-      in
-      let wheres = List.map where_comp where in
-      let ctx = compose_subst env ~sigma:evd lhs prob in
-      let inst = where_instance where in
-      (* msg_debug (str"where_instance: " ++ prlist_with_sep spc pr_c inst); *)
-      let ninst = List.map (fun n -> Nameops.out_name (get_name n)) (pi1 ctx) in
-      let inst = List.map (fun c -> substn_vars 1 ninst c) inst in
-      let c' = map_rhs (fun c -> Reductionops.nf_beta Evd.empty (substl inst c)) (fun x -> x) c in
-      let patsconstrs = List.rev_map pat_constr (pi2 ctx) in
-      [pi1 ctx, f, alias, patsconstrs, substl inst ty, f, refine, c', Some wheres]
-      
-    | Split (_, _, _, cs) -> Array.fold_left (fun acc c ->
-	match c with None -> acc | Some c -> 
-	  acc @ computations env prob f alias refine c) [] cs
-
-    | Mapping (lhs, c) ->
-       let _newprob = compose_subst env ~sigma:evd prob lhs in
-       computations env prob f alias refine c
-					     
-    | RecValid (id, cs) -> computations env prob f alias (false, false) cs
-	
-    | Refined (lhs, info, cs) ->
-	let (id, c, t) = info.refined_obj in
-	let (ctx', pats', _ as s) = compose_subst env ~sigma:evd lhs prob in
-	let patsconstrs = List.rev_map pat_constr pats' in
-	let refinedpats = List.rev_map pat_constr
-	   (pi2 (compose_subst env ~sigma:evd info.refined_newprob_to_lhs s))
-	in
-        let filter = [Array.length (arguments (fst info.refined_app))] in
-	[pi1 lhs, f, alias, patsconstrs, info.refined_rettyp, f, (true, true),
-	 RProgram (applist info.refined_app),
-	 Some [(fst (info.refined_app), filter), None, info.refined_path, pi1 info.refined_newprob,
-	       info.refined_newty, refinedpats,
-	       [mapping_constr info.refined_newprob_to_lhs c, info.refined_arg],
-	       computations env info.refined_newprob (fst info.refined_app) None (false, true) cs]]
-	   
-    | Valid ((ctx,pats,del), _, _, _, _, cs) -> 
-	List.fold_left (fun acc (_, _, subst, invsubst, c) ->
-            let subst = compose_subst env ~sigma:evd subst prob in
-	    acc @ computations env subst f alias (false,false) c) [] cs
-  in
-  let comps = computations env prob f alias (false,false) split in
+  let comps = computations env evd prob wheremap f alias (false,false) split in
   let rec flatten_comp (ctx, fl, flalias, pats, ty, f, refine, c, rest) =
     let rest = match rest with
       | None -> []
@@ -775,7 +902,11 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
 	    mkEq env evd ty comp (Reductionops.nf_beta !evd c)
 	| REmpty i ->
 	   mkApp (coq_ImpossibleCall evd, [| ty; comp |])
-      in it_mkProd_or_LetIn b ctx
+      in
+      let body = it_mkProd_or_LetIn b ctx in
+      (* msg_debug (str"Typing equation " ++ pr_constr_env env !evd c); *)
+      let _ = Typing.e_type_of env evd body in
+      body
     in
     let cstr = 
       match c with
@@ -813,8 +944,6 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
   in
   let all_stmts = List.concat (List.map (fun (f, c) -> c) stmts) in
   let fnind_map = ref PathMap.empty in
-  let evars, sort = Evd.fresh_sort_in_family env !evd (get_sort ()) in
-  let sort = evd := evars; mkSort sort in
   let declare_one_ind (i, (f, alias, path, sign, arity, pats, refs, refine), stmts) =
     let indid = Nameops.add_suffix id (if i == 0 then "_ind" else ("_ind_" ^ string_of_int i)) in
     let indapp = List.rev_map (fun x -> mkVar (Nameops.out_name (get_name x))) sign in
@@ -825,8 +954,17 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
 	let suff = (if not r then "_equation_" else "_refinement_") ^ string_of_int i in
 	  Nameops.add_suffix indid suff) n) stmts
     in
+    let ind_sort =
+      if get_sort () == InProp then
+        (** Define graph impredicatively *)
+        mkProp
+      else (** Compute sort as max of products *)
+        let ctx = (of_tuple (Anonymous, None, arity) :: sign) in
+        let signlev = level_of_context env !evd ctx Univ.type0m_univ in
+        mkSort (Sorts.sort_of_univ signlev)
+    in
       Entries.{ mind_entry_typename = indid;
-	mind_entry_arity = it_mkProd_or_LetIn (mkProd (Anonymous, arity, sort)) sign;
+	mind_entry_arity = it_mkProd_or_LetIn (mkProd (Anonymous, arity, ind_sort)) sign;
 	mind_entry_consnames = consnames;    
 	mind_entry_lc = constructors;
 	mind_entry_template = false }
@@ -856,86 +994,17 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
 	  Hints.add_hints false [info.base_id] (Hints.HintsResolveEntry constrs))
 	inds
     in
-    let indid = Nameops.add_suffix id "_ind_fun" in
-    let args = Termops.rel_list 0 (List.length sign) in
-    let f, split, unfsplit =
-      match alias with
-      | Some (f, _, recsplit) -> f, recsplit, Some split
-      | None -> f, split, None
-    in
-    let app = applist (f, args) in
-    let statement = it_mkProd_or_subst (applist (ind, args @ [app])) sign in
-    let hookind subst indgr ectx = 
-      let env = Global.env () in (* refresh *)
-      Hints.add_hints false [info.base_id]
-	(Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef indgr]);
-      let _funind_stmt =
-	let leninds = List.length inds in
-	let elim =
-	  if leninds > 1 then
-	    (let sort = match get_sort () with
-               | InProp -> Misctypes.GProp
-               | InSet -> Misctypes.GSet
-               | InType -> Misctypes.GType []
-             in
-                 Indschemes.do_mutual_induction_scheme
-		(CList.map_i (fun i ind ->
-		  let id = (dummy_loc, Nameops.add_suffix ind.Entries.mind_entry_typename "_mut") in
-		    (id, false, (k, i), sort)) 0 inds);
-	     let elimid = 
-	       Nameops.add_suffix (List.hd inds).Entries.mind_entry_typename "_mut"
-	     in Smartlocate.global_with_alias (reference_of_id elimid))
-	  else 
-	    let elimid = Nameops.add_suffix id "_ind_ind" in
-	      Smartlocate.global_with_alias (reference_of_id elimid) 
-	in
-	let elimty = Global.type_of_global_unsafe elim in
-	let nargs, newty =
-	  compute_elim_type env evd is_rec protos k leninds ind_stmts all_stmts
-			    sign app elimty
-	in
-	let hookelim _ elimgr _ =
-	  let env = Global.env () in
-	  let evd = Evd.from_env env in
-	  let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in
-	  let evd, f = Evd.fresh_global env evd f_gr in
-	  let evd, elimcgr = Evd.fresh_global env evd elimgr in
-	  let evd, cl = functional_elimination_class evd in
-          let args_of_elim = coq_nat_of_int nargs in
-	  let args = [Retyping.get_type_of env evd f; f; 
-		      Retyping.get_type_of env evd elimcgr;
-                      args_of_elim; elimcgr]
-	  in
-	  let instid = Nameops.add_prefix "FunctionalElimination_" id in
-	    ignore(Equations_common.declare_instance instid poly evd [] cl args)
-	in
-	let tactic =
-	  of82 (ind_elim_tac (fst (Universes.unsafe_constr_of_global elim)) leninds info)
-	in
-	let _ = e_type_of (Global.env ()) evd newty in
-	ignore(Obligations.add_definition (Nameops.add_suffix id "_elim")
-	  ~tactic ~hook:(Lemmas.mk_hook hookelim) ~kind:info.decl_kind
-          newty (Evd.evar_universe_context !evd) [||])
-      in
-      let evd = Evd.from_env env in
-      let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in
-      let evd, f = Evd.fresh_global env evd f_gr in
-      let evd, indcgr = Evd.fresh_global env evd indgr in
-      let evd, cl = functional_induction_class evd in
-      let args = [Retyping.get_type_of env evd f; f; 
-		  Retyping.get_type_of env evd indcgr; indcgr]
-      in
-      let instid = Nameops.add_prefix "FunctionalInduction_" id in
-	ignore(Equations_common.declare_instance instid poly evd [] cl args)
-    in
     let info = { term_info = info; pathmap = !fnind_map; wheremap } in
-    let ctx = Evd.evar_universe_context (if poly then !evd else Evd.from_env (Global.env ())) in
-    try ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hookind)
-                                          ~kind:info.term_info.decl_kind
-	    indid statement ~tactic:(of82 (ind_fun_tac is_rec f info id split unfsplit)) ctx [||])
-      with e ->
-	Feedback.msg_warning Pp.(str "Induction principle could not be proved automatically: " ++ fnl () ++
-		CErrors.print e)
+    declare_funind info alias env evd is_rec protos ind_stmts all_stmts sign inds k f split ind
+  in
+  let () = evd := Evd.nf_constraints !evd in
+  let () =
+    if not poly then
+      (** Declare the universe context necessary to typecheck the following
+          definitions once and for all. *)
+      (Declare.declare_universe_context false (Evd.universe_context_set !evd);
+       evd := Evd.from_env (Global.env ()))
+    else ()
   in
   let proof (j, f, stmts) =
     let eqns = Array.make (List.length stmts) false in
@@ -966,11 +1035,15 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
 	(Tacticals.tclTHENLIST [to82 Tactics.intros; to82 unf;
                                 to82 (solve_equation_tac (Globnames.ConstRef cst))])
       in
-      let env = Global.env () in
-      (* msg_debug (str"Typing equation " ++ pr_constr_env env !evd c); *)
-      let evd, _ = Typing.type_of env !evd c in
-	ignore(Obligations.add_definition ~kind:info.decl_kind
-		  ideq c ~tactic:(of82 tac) ~hook:(Lemmas.mk_hook hook)
-		  (Evd.evar_universe_context evd) [||])
+      let () =
+        (** Refresh at each equation, accumulating known constraints. *)
+        if not poly then evd := Evd.from_env (Global.env ())
+        else ()
+      in
+      ignore(Obligations.add_definition
+               ~kind:info.decl_kind
+	       ideq (Evarutil.nf_evar !evd c)
+               ~tactic:(of82 tac) ~hook:(Lemmas.mk_hook hook)
+	       (Evd.evar_universe_context !evd) [||])
     in List.iter proof stmts
   in List.iter proof ind_stmts

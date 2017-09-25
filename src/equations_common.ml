@@ -280,6 +280,10 @@ let get_one () = (!logic).logic_one
 let get_one_prf () = (!logic).logic_one_val
 let get_zero () = (!logic).logic_zero
 
+let fresh_logic_sort evd =
+  let evars, sort = Evd.fresh_sort_in_family (Global.env ()) !evd (get_sort ()) in
+  evd := evars; mkSort sort
+
 let mkapp env evdref t args =
   let evd, c = Evd.fresh_global env !evdref (Lazy.force t) in
   let _ = evdref := evd in

@@ -217,6 +217,7 @@ val coq_eq_refl : Globnames.global_reference lazy_t
 val coq_heq : Globnames.global_reference lazy_t
 val coq_heq_refl : Globnames.global_reference lazy_t
 val coq_fix_proto : Globnames.global_reference lazy_t
+val fresh_logic_sort : esigma -> Term.constr
 val mkapp : Environ.env ->
   esigma ->
   Globnames.global_reference Lazy.t -> Term.constr array -> Term.constr
