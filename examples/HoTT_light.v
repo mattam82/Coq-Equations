@@ -65,6 +65,28 @@ Class IsEquiv {A B : Type} (f : A -> B) := BuildIsEquiv {
   eissect : Sect f equiv_inv;
   eisadj : forall x : A, eisretr (f x) = ap f (eissect x)
 }.
+Arguments eisretr {A B}%type_scope {f%function_scope} {_} _.
+Arguments eissect {A B}%type_scope {f%function_scope} {_} _.
+Arguments eisadj {A B}%type_scope {f%function_scope} {_} _.
+Arguments IsEquiv {A B}%type_scope f%function_scope.
+
+(** A record that includes all the data of an adjoint equivalence. *)
+Record Equiv A B := BuildEquiv {
+  equiv_fun : A -> B ;
+  equiv_isequiv : IsEquiv equiv_fun
+}.
+
+Coercion equiv_fun : Equiv >-> Funclass.
+
+Global Existing Instance equiv_isequiv.
+
+Arguments equiv_fun {A B} _ _.
+Arguments equiv_isequiv {A B} _.
+
+Bind Scope equiv_scope with Equiv.
+
+Reserved Infix "<~>" (at level 85).
+Notation "A <~> B" := (Equiv A B) (at level 85) : type_scope.
 
 Notation "f ^^-1" := (@equiv_inv _ _ f _) (at level 3).
 
@@ -422,4 +444,6 @@ Program Instance contr_prod A B {CA : Contr A} {CB : Contr B} : Contr (prod A B)
 Next Obligation. exact (@center _ CA, @center _ CB). Defined.
 Next Obligation. apply path_prod; apply contr. Defined.
 
-Unset Printing All.
+Definition hfiber {A B : Type} (f : A -> B) (y : B) := &{ x : A & f x = y }.
+
+Global Arguments hfiber {A B}%type_scope f%function_scope y.
