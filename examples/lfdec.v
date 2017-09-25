@@ -806,8 +806,8 @@ Proof.
   depelim H0. specialize (Hind _ _ H H0).
   rewrite Heq0 in Hind. specialize (Hind _ _ eq_refl).
   destruct Hind. depelim H1. intuition auto. 
-  simplify_IH_hyps. noconf H2.
-  now noconf H1.
+  simplify_IH_hyps. noconf H1.
+  now noconf H2.
 
   (* Fst no redex *)
   apply is_pair_inr in Heq. revert Heq. 
@@ -820,8 +820,8 @@ Proof.
   depelim H0. specialize (Hind _ _ H H0).
   rewrite Heq0 in Hind. specialize (Hind _ _ eq_refl).
   destruct Hind. depelim H1. intuition auto. 
-  simplify_IH_hyps. noconf H2.
-  now noconf H1. 
+  simplify_IH_hyps. noconf H1.
+  now noconf H2.
 
   (* Snd no redex *)
   apply is_pair_inr in Heq. revert Heq.

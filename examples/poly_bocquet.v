@@ -46,7 +46,7 @@ Module M1.
   | mono_s : forall {n}, mono (S n) -> mono (S n).
   Derive Signature NoConfusion Subterm for mono.
 
-  Time Equations(nocomp) get_coef {n} (m : mono n) {b} (p : poly b n) : Z :=
+  Time Equations get_coef {n} (m : mono n) {b} (p : poly b n) : Z :=
   get_coef m p by rec (Signature.signature_pack m) mono_subterm :=
   get_coef mono_z     poly_z       := 0%Z;
   get_coef mono_z     (poly_c z _) := z;
@@ -54,15 +54,11 @@ Module M1.
   get_coef (mono_l m) (poly_s p _) := get_coef m p;
   get_coef (mono_s m) (poly_l _)   := 0%Z;
   get_coef (mono_s m) (poly_s p1 p2) := get_coef m p2.
-    
-  (* Next Obligation. *)
-  (*   Time depind m; depelim p; simp get_coef. *)
-  (* Defined. *)
-  
+      
   (** Un polynôme non nul a un coefficient non nul *)
   Lemma poly_nz : forall {n} (p : poly false n), exists m, IsNZ (get_coef m p).
   Proof with (autorewrite with get_coef; auto).
-    intros. depind p; unfold poly_sig in *; simplify_IH_hyps.
+    intros. depind p.
     exists mono_z...
     destruct IHp. exists (mono_l x)...
     destruct IHp2. exists (mono_s x)...
@@ -79,12 +75,12 @@ Module M1.
     intros. 
     depind p1; depelim p2; intros; try rename n0 into n; auto;
     try (specialize (H mono_z); autorewrite with get_coef in H; destruct i; discriminate; fail).
-    specialize (H mono_z); autorewrite with get_coef in H; depelim i; depelim i0; inversion H; auto.
+    specialize (H mono_z); simp get_coef in H; depelim i; depelim i0; inversion H; auto.
 
     specialize (IHp1 _ p2).
     forward IHp1.
-    intro. specialize (H (mono_l m)). now simp get_coef in H. 
-    now depelim IHp1. 
+    intro. specialize (H (mono_l m)). now simp get_coef in H.
+    now noconf IHp1.
 
     destruct (poly_nz p2_2).
     specialize (H (mono_s x))... destruct H0; discriminate.
@@ -106,7 +102,7 @@ Module M1.
    Une valuation des variables est donnée par le type Vector.t Z n
    ** 1.2.c
    *)
-  Equations(nocomp) eval {n} {b} (p : poly b n) (v : Vector.t Z n) : Z :=
+  Equations eval {n} {b} (p : poly b n) (v : Vector.t Z n) : Z :=
   eval p v by rec (Signature.signature_pack p) poly_subterm :=
   eval poly_z         Vector.nil           := 0%Z;
   eval (poly_c z _)   Vector.nil           := z;
@@ -114,12 +110,6 @@ Module M1.
   eval (poly_s p1 p2) (Vector.cons y _ ys) :=
     (eval p1 ys + y * eval p2 (Vector.cons y ys))%Z.
   
-  (* In case nocomp + no by rec, unsolvable without a much stronger guard condition *)
-  (* Next Obligation. *)
-  (*   depind p; depelim v; simp eval. (* FIXME *) *)
-  (* Defined. *)
-  
-    (** *)
   (*  On veut montrer qu'un polynôme non nul peut s'évaluer vers un entier non nul. *)
   (*  Le lemme principal est [poly_nz_eval]. *)
   (*  Il procède par induction sur le [n] le nombre de variables et montre d'abord le résultat cherché puis un résultat plus fort via [poly_nz_eval'] pour que l'induction fonctionne. *)
@@ -131,11 +121,11 @@ Module M1.
                            exists v, forall m, exists x,
                                        x <> 0%Z /\
                                        (Z.abs (x * eval p (Vector.cons x v)) > Z.abs m)%Z).
-  Proof with (autorewrite with eval).
+  Proof with (simp eval).
     depind p.
     - destruct (H p) as [v Hv].
       exists v; intros; exists (1 + Z.abs m)%Z... nia.
-    - destruct (IHp2 _ H p2 eq_refl) as [v Hv]; exists v; intros.
+    - destruct (IHp2 H) as [v Hv]; exists v; intros.
       destruct (Hv (Z.abs (eval p1 v) + Z.abs m)%Z) as [x [Hx0 Hx1]]; exists x...
       split; auto.
       nia.
@@ -159,10 +149,7 @@ Module M1.
         exists (Vector.cons x v)...
         nia.
   Qed.
-  
-  Ltac try_discriminate ::= fail.
-  Ltac try_injection H ::= fail.
-  
+
 (** *)
   (*  Un polynôme nul ne peut s'évaluer que vers 0. *)
 (*  *)
@@ -180,52 +167,52 @@ Module M1.
 
   Definition apoly {n} := sigmaI (fun b => poly b n).
 
-  (** Définition de [plus] (extraite d'une définition via Equations) *)
+  (** Définition de [plus] *)
   (** ** 1.3.a *)
   Open Scope sigma_scope.
   Notation " '{' x : A & y } " := (@sigma A (fun x : A => y)%type) : type_scope.
 
-  Equations(noind nocomp) plus {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) : { b : bool & poly b n } :=
+  Equations plus {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) : { b : bool & poly b n } :=
     plus poly_z        poly_z          := apoly _ poly_z;
     plus poly_z        (poly_c y ny)   := apoly _ (poly_c y ny);
     plus (poly_c x nx) poly_z          := apoly _ (poly_c x nx);
-    plus (poly_c x nx) (poly_c y ny)   := let z := (x + y)%Z in
-                                          match z with
-                                            | Z0 => apoly _ poly_z
-                                            | Zpos z' => apoly _ (poly_c (Zpos z') (IsPos z'))
+    plus (poly_c x nx) (poly_c y ny)   <= (x + y)%Z => {
+                                            | Z0 => apoly _ poly_z ;
+                                            | Zpos z' => apoly _ (poly_c (Zpos z') (IsPos z')) ;
                                             | Zneg z' => apoly _ (poly_c (Zneg z') (IsNeg z'))
-                                          end;                                            
+                                          };
     plus (poly_l p1)    (poly_l p2)    := apoly _ (poly_l (pr2 (plus p1 p2)));
     plus (poly_l p1)    (poly_s p2 q2) := apoly _ (poly_s (pr2 (plus p1 p2)) q2);
     plus (poly_s p1 q1) (poly_l p2)    := apoly _ (poly_s (pr2 (plus p1 p2)) q1);
 
-    plus (poly_s p1 q1) (poly_s p2 q2) := match plus q1 q2 with
-                                            | &(false & q3) => apoly _ (poly_s (pr2 (plus p1 p2)) q3)
-                                            | &(true & _)   => apoly _ (poly_l (pr2 (plus p1 p2)))
-                                          end.
+    plus (poly_s p1 q1) (poly_s p2 q2) <= plus q1 q2 => {
+                                            | (sigmaI false q3) => apoly _ (poly_s (pr2 (plus p1 p2)) q3);
+                                            | (sigmaI true _)   => apoly _ (poly_l (pr2 (plus p1 p2)))
+                                          }.
+
+  (** The induction principle cannot be defined using a raw fixpoint, the guard condition fails.
+      However, as deep pattern-matching is not necessary, simple (dependent) induction can be used
+      instead *)
+  Next Obligation.
+    depind p1; depelim p2; simp plus.
+    constructor. destruct (z + z0)%Z; simp plus.
+    constructor. auto. set (foo:=plus p1_2 p2_2). depelim foo. depelim pr1.
+    simp plus. simp plus.
+  Defined.
   
   (** [plus] se comporte comme il faut par rapport à [eval] *)
   Lemma plus_eval : forall {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) v,
                       (eval p1 v + eval p2 v)%Z = eval (pr2 (plus p1 p2)) v.
   Proof with (autorewrite with plus eval; auto with zarith).
     Ltac X := (autorewrite with plus eval; auto with zarith).
-    depind p1; depelim p2; intros; depelim v; X; simpl; X.
-    - destruct (z + z0)%Z; simpl...
-    - simpl... rewrite <- IHp1...
-    - simpl... rewrite <- IHp1_1...
-    - specialize (IHp1_2 _ p2_2 (Vector.cons h v)).
-      remember (plus p1_2 p2_2) as p.
-      destruct p as [p1 p2]; depelim p1.
-      + simpl... rewrite <- IHp1_1...
-        rewrite poly_z_eval in IHp1_2; nia.
-      + simpl... rewrite <- IHp1_1... rewrite <- IHp1_2...
-        nia.
+    intros until p2. funelim (plus p1 p2); intros; depelim v; X; try rewrite <- H; X.
+    - rewrite Heq in Hind.
+      specialize (Hind (Vector.cons h v)).
+      rewrite poly_z_eval in Hind. nia.
+    - rewrite Heq in Hind. rewrite <- Hind. nia.
   Qed.
 
   Hint Rewrite <- @plus_eval : eval.
-
-  Ltac try_discriminate ::= discriminate.
-  Ltac try_injection H ::= fail.
 
   (**
    La négation d'un polynôme (utilisée pour définir la soustraction)
@@ -274,7 +261,7 @@ Module M1.
       specialize (IHp1_1 _ p2_1); specialize (IHp1_2 _ p2_2).
       remember (plus p1_2 (poly_neg p2_2)) as P; remember (plus p1_1 (poly_neg p2_1)) as Q.
       destruct P as [bP P]; destruct Q as [bQ Q].
-      destruct bP; destruct bQ; simpl in H; try discriminate.
+      destruct bP; destruct bQ; simpl in H; try rewrite <- HeqQ in H; try discriminate.
       specialize (IHp1_1 eq_refl); specialize (IHp1_2 eq_refl).
       depelim IHp1_1; (*MS: fixme, depends on depelimdec *) try depelim IHp1_2; auto.
   Qed.
@@ -326,7 +313,7 @@ Module M1.
 
   (* [mult (poly_l p) q = mult_l q (mult p)] *)
   (* MS: FIXME: noind necessary *)
-  Equations(nocomp) mult_l {n} {b2} (p2 : poly b2 (S n)) (m : forall {b2} (p2 : poly b2 n), { b : bool & poly b n }) :
+  Equations mult_l {n} {b2} (p2 : poly b2 (S n)) (m : forall {b2} (p2 : poly b2 n), { b : bool & poly b n }) :
     { b : bool & poly b (S n) } :=
   mult_l (poly_l p2) m := apoly _ (poly_l (pr2 (m _ p2)));
   mult_l (poly_s p1 p2) m := poly_l_or_s (pr2 (m _ p1)) (pr2 (mult_l p2 m)).
@@ -335,7 +322,7 @@ Module M1.
   Defined.
     
   (* [mult (poly_s p1 p2) q = mult_s q (mult p1) (mult p2)] *)
-  Equations(nocomp) mult_s {n} {b2} (p2 : poly b2 (S n))
+  Equations mult_s {n} {b2} (p2 : poly b2 (S n))
      (m1 : forall {b2} (p2 : poly b2 n), { b : bool & poly b n })
      (m2 : forall {b2} (p2 : poly b2 (S n)), { b : bool & poly b (S n) }) :
     { b : bool & poly b (S n) } :=
@@ -409,7 +396,7 @@ Module M1.
   (** ** 2.1.b
    Évaluation des formules étant donné une valuation [v : A -> bool]
    *)
-  Equations(nocomp) eval_formula {A} (v : A -> bool) (f : @formula A) : bool :=
+  Equations eval_formula {A} (v : A -> bool) (f : @formula A) : bool :=
   eval_formula f (f_var v)   := f v;
   eval_formula f (f_const b) := b;
   eval_formula f (f_and a b) := andb (eval_formula f a) (eval_formula f b);
@@ -460,7 +447,7 @@ Module M1.
   Proof. depind n; depelim v; intros; simpl; autorewrite with eval; auto. Qed.  
   Hint Rewrite <- @one_eval : eval.
   
-  Equations(nocomp) poly_var {n} (f : Fin.t n) : poly false n :=
+  Equations poly_var {n} (f : Fin.t n) : poly false n :=
   poly_var Fin.F1     := poly_s poly_zero poly_one;
   poly_var (Fin.FS f) := poly_l (poly_var f).
   Lemma var_eval : forall n f v, Vector.nth v f = eval (@poly_var n f) v.
@@ -472,7 +459,7 @@ Module M1.
   (** ** 2.2.a
    [poly_of_formula] transforme une formule avec [n] variables en polynôme à [n] variables.
    *)
-  Equations(nocomp) poly_of_formula {n} (f : @formula (Fin.t n)) : { b : bool & poly b n } :=
+  Equations poly_of_formula {n} (f : @formula (Fin.t n)) : { b : bool & poly b n } :=
   poly_of_formula (f_var v)       := apoly _ (poly_var v);
   poly_of_formula (f_const false) := apoly _ poly_zero;
   poly_of_formula (f_const true)  := apoly _ poly_one;
@@ -518,11 +505,11 @@ Module M1.
   (** * Preuve de complétude *)
   
 
-  Equations(nocomp) reduce_aux {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 (S n)) : { b : bool & poly b (S n) } :=
+  Equations reduce_aux {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 (S n)) : { b : bool & poly b (S n) } :=
   reduce_aux p1 (poly_l p2) := poly_l_or_s p1 (poly_l p2);
   reduce_aux p1 (poly_s p2_1 p2_2) := poly_l_or_s p1 (pr2 (plus (poly_l p2_1) p2_2)).
   
-  Equations(nocomp) reduce {n} {b} (p : poly b n) : { b : bool & poly b n } :=
+  Equations reduce {n} {b} (p : poly b n) : { b : bool & poly b n } :=
   reduce poly_z       := apoly _ poly_z;
   reduce (poly_c x y) := apoly _ (poly_c x y);
   reduce (poly_l p)   := apoly _ (poly_l (pr2 (reduce p)));

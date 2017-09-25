@@ -67,3 +67,5 @@ val pattern_call :
   constr -> Proof_type.goal Tacmach.sigma -> Evar.t list Evd.sigma
 
 val specialize_eqs : Names.Id.t -> Proof_type.tactic
+
+val compare_upto_variables : constr -> constr -> bool

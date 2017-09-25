@@ -416,15 +416,28 @@ let destPolyRef c =
   | Construct (cstr, u) -> ConstructRef cstr, u
   | _ -> raise (Invalid_argument "destPolyRef")
               
+(** Compare up-to variables in v, skipping parameters of inductive constructors. *)
 let rec compare_upto_variables t v =
   if (isVar v || isRel v) then true
-  else compare_constr compare_upto_variables t v
+  else
+    match kind_of_term t, kind_of_term v with
+    | App (cnstr, args), App (cnstr', args') when eq_constr_nounivs cnstr cnstr' && isConstruct cnstr ->
+       let cnstr, _u = destConstruct cnstr in
+       let real = constructor_nrealargs cnstr in
+       if real <= Array.length args && real <= Array.length args' then
+         let args = CArray.sub args (Array.length args - real) real in
+         let args' = CArray.sub args' (Array.length args' - real) real in
+         CArray.for_all2 compare_upto_variables args args'
+       else
+         compare_constr compare_upto_variables t v
+    | _, _ -> compare_constr compare_upto_variables t v
 
 let specialize_eqs id gl =
   let env = pf_env gl in
   let ty = pf_get_hyp_typ gl id in
   let evars = ref (project gl) in
-  let unif env evars c1 c2 = Evarconv.e_conv env evars c1 c2 in
+  let unif env ctx evars c1 c2 =
+    Evarconv.e_conv env evars (it_mkLambda_or_subst c1 ctx) (it_mkLambda_or_subst c2 ctx) in
   let rec aux in_eqs ctx acc ty =
     match kind_of_term ty with
     | Prod (na, t, b) ->
@@ -439,7 +452,7 @@ let specialize_eqs id gl =
             let eqr = Universes.constr_of_global_univ (Lazy.force coq_eq_refl, u) in
 	    let p = mkApp (eqr, [| eqty; c |]) in
 	    if compare_upto_variables c o &&
-                 unif (push_rel_context ctx env) evars o c then
+                 unif env ctx evars o c then
 		aux true ctx (mkApp (acc, [| p |])) (subst1 p b)
 	      else acc, in_eqs, ctx, ty
 	 | App (heq, [| eqty; x; eqty'; y |]) when
@@ -452,15 +465,14 @@ let specialize_eqs id gl =
               else eqty', y, x in
             let eqr = Universes.constr_of_global_univ (Lazy.force coq_heq_refl, u) in
 	    let p = mkApp (eqr, [| eqt; c |]) in
-            let env' = push_rel_context ctx env in
-	    if compare_upto_variables c o && unif env' evars eqty eqty' &&
-                 unif env' evars o c then
+	    if compare_upto_variables c o && unif env ctx evars eqty eqty' &&
+                 unif env ctx evars o c then
 		aux true ctx (mkApp (acc, [| p |])) (subst1 p b)
 	      else acc, in_eqs, ctx, ty
 	| _ ->
 	    if in_eqs then acc, in_eqs, ctx, ty
 	    else
-	      let e = e_new_evar (push_rel_context ctx env) evars t in
+	      let e = e_new_evar env evars (it_mkLambda_or_subst t ctx) in
 		aux false (make_def na (Some e) t :: ctx) (mkApp (lift 1 acc, [| mkRel 1 |])) b)
     | t -> acc, in_eqs, ctx, ty
   in
@@ -474,8 +486,8 @@ let specialize_eqs id gl =
   in
   let ty' = it_mkProd_or_LetIn ty ctx'' in
   let acc' = it_mkLambda_or_LetIn acc ctx'' in
-  let ty' = Tacred.whd_simpl env !evars ty'
-  and acc' = Tacred.whd_simpl env !evars acc' in
+  (* let ty' = Tacred.whd_simpl env !evars ty' *)
+  (* and acc' = Tacred.whd_simpl env !evars acc' in *)
   let acc' = Evarutil.nf_evar !evars acc' in
   let ty' = Evarutil.nf_evar !evars ty' in
     if worked then
