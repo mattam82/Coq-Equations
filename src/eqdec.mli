@@ -32,4 +32,4 @@ val dec_eq : esigma -> Term.constr
 
 val vars_of_pars : named_context -> Term.constr array
 
-val derive_eq_dec : Environ.env -> Evd.evar_map -> Term.pinductive -> unit
+val derive_eq_dec : Environ.env -> Evd.evar_map -> polymorphic:bool -> Term.pinductive -> unit

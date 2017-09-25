@@ -296,8 +296,7 @@ let dependent_pattern ?(pattern_term=true) c gl =
   let conclapp = applistc concllda (List.rev_map pi1 subst) in
     Proofview.V82.of_tactic (convert_concl_no_check conclapp DEFAULTcast) gl
 
-
-let depcase (mind, i as ind) =
+let depcase poly (mind, i as ind) =
   let indid = Nametab.basename_of_global (IndRef ind) in
   let mindb, oneind = Global.lookup_inductive ind in
   let inds = List.rev (Array.to_list (Array.mapi (fun i oib -> mkInd (mind, i)) mindb.mind_packets)) in
@@ -357,28 +356,29 @@ let depcase (mind, i as ind) =
 	:: ((List.rev (Array.to_list (Array.map fst branches))) 
 	    @ (make_assum (Name (id_of_string "P")) pred :: ctx)))
   in
-  let ce = Declare.definition_entry ~univs:(snd (Evd.universe_context !evd)) body in
+  let ce = Declare.definition_entry ~poly ~univs:(snd (Evd.universe_context !evd)) body in
   let kn = 
     let id = add_suffix indid "_dep_elim" in
       ConstRef (Declare.declare_constant id
 		  (DefinitionEntry ce, IsDefinition Scheme))
-  in Evd.from_env (Global.env ()), ctx, indapp, kn
+  in
+  let env = (Global.env ()) in (* Refresh after declare constant *)
+  env, Evd.from_env env, ctx, indapp, kn
 
-let derive_dep_elimination env sigma (i,u) =
-  let evd, ctx, ty, gref = depcase i in
+let derive_dep_elimination env sigma ~polymorphic (i,u) =
+  let env, evd, ctx, ty, gref = depcase polymorphic i in
   let indid = Nametab.basename_of_global (IndRef i) in
   let id = add_prefix "DependentElimination_" indid in
   let evdref = ref evd in
   let cl = dependent_elimination_class evdref in
   let caseterm = e_new_global evdref gref in
   let casety = Retyping.get_type_of env !evdref caseterm in
-  let poly = Flags.is_universe_polymorphism () in
   let args = extended_rel_vect 0 ctx in
-    Equations_common.declare_instance id poly evd ctx cl [ty; prod_appvect casety args; 
+    Equations_common.declare_instance id polymorphic !evdref ctx cl [ty; prod_appvect casety args;
 				mkApp (caseterm, args)]
 
 let () =
-  let fn env sigma c = ignore (derive_dep_elimination env sigma c) in
+  let fn env sigma ~polymorphic c = ignore (derive_dep_elimination env sigma ~polymorphic c) in
   Derive.(register_derive
             { derive_name = "DependentElimination";
               derive_fn = make_derive_ind fn })

@@ -76,9 +76,8 @@ let mk_eq env evd args args' =
   let ty = Retyping.get_type_of env !evd make in
   mkEq env evd ty make make'
 
-let derive_no_confusion env evd (ind,u as indu) =
+let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let evd = ref evd in
-  let poly = Flags.is_universe_polymorphism () in
   let mindb, oneind = Global.lookup_inductive ind in
   let ctx = subst_instance_context u oneind.mind_arity_ctxt in
   let ctx = smash_rel_context ctx in
@@ -140,7 +139,7 @@ let derive_no_confusion env evd (ind,u as indu) =
 	          else fls)))
   in
   let app = it_mkLambda_or_LetIn pred binders in
-  let ce = make_definition ~poly evd ~types:arity app in
+  let ce = make_definition ~poly:polymorphic evd ~types:arity app in
   let indid = Nametab.basename_of_global (IndRef ind) in
   let id = add_prefix "NoConfusion_" indid
   and noid = add_prefix "noConfusion_" indid
@@ -177,7 +176,7 @@ let derive_no_confusion env evd (ind,u as indu) =
   let _ = Typing.e_type_of env evd term in
   let hook vis gr _ectx = 
     Typeclasses.add_instance
-      (Typeclasses.new_instance tc empty_hint_info true poly gr)
+      (Typeclasses.new_instance tc empty_hint_info true polymorphic gr)
   in
   let oblinfo, _, term, ty = Obligations.eterm_obligations env noid !evd 0 term ty in
     ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hook) packid 

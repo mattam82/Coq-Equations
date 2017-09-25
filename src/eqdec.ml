@@ -64,8 +64,9 @@ type mutual_inductive_info = {
     
 let inductive_info ((mind, _ as ind),u) =
   let mindb, oneind = Global.lookup_inductive ind in
+  let params_ctxt = subst_instance_context u mindb.mind_params_ctxt in
   let subst, paramargs, params =
-    named_of_rel_context (fun () -> id_of_string "param") mindb.mind_params_ctxt in
+    named_of_rel_context (fun () -> id_of_string "param") params_ctxt in
   let nparams = List.length params in
   let env = List.fold_right push_named params (Global.env ()) in
   let info_of_ind i ind =
@@ -108,10 +109,9 @@ open Decl_kinds
 let vars_of_pars pars = 
   Array.of_list (List.map (fun x -> mkVar (get_id x)) pars)
 
-let derive_eq_dec env sigma ind =
+let derive_eq_dec env sigma ~polymorphic ind =
   let info = inductive_info ind in
   let ctx = info.mutind_params in
-  let poly = Flags.is_universe_polymorphism () in
   let evdref = ref sigma in
   let cl = fst (snd (eq_dec_class evdref)) in
   let info_of ind =
@@ -144,7 +144,7 @@ let derive_eq_dec env sigma ind =
 				     (it_mkProd_or_LetIn ty ind.ind_args) ctx);
   	  const_entry_opaque = false; const_entry_secctx = None;
 	  const_entry_feedback = None;
-	  const_entry_polymorphic = poly;
+	  const_entry_polymorphic = polymorphic;
 	  const_entry_universes = snd (Evd.universe_context !evdref);
 	  const_entry_inline_code = false;
 	}
@@ -159,7 +159,7 @@ let derive_eq_dec env sigma ind =
         let entry = (DefinitionEntry ce, IsDefinition Instance) in
 	let inst = Declare.declare_constant (add_suffix ind.ind_name "_EqDec") entry in
         let inst =
-          Typeclasses.new_instance (fst cl) Hints.empty_hint_info true poly (Globnames.ConstRef inst)
+          Typeclasses.new_instance (fst cl) Hints.empty_hint_info true polymorphic (Globnames.ConstRef inst)
 	in Typeclasses.add_instance inst)
     indsl
   in

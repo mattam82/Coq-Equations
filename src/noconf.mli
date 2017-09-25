@@ -24,4 +24,4 @@ val mkcase :
 (*   Evd.evar_map ref -> *)
 (*   constr list -> constr list -> Constr.constr -> types *)
 val derive_no_confusion :
-  env -> Evd.evar_map -> Term.pinductive -> unit
+  env -> Evd.evar_map -> polymorphic:bool -> Term.pinductive -> unit

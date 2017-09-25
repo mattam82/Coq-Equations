@@ -43,9 +43,8 @@ let solve_subterm_tac () = tac_of_string "Equations.Subterm.solve_subterm" []
 
 let refresh_universes t = t (* MS: FIXME *)
 
-let derive_subterm env sigma ind =
+let derive_subterm env sigma ~polymorphic ind =
   let global = true in
-  let poly = Flags.is_universe_polymorphism () in
   let (mind, oneind as ms) = Global.lookup_pinductive ind in
   let ctx = oneind.mind_arity_ctxt in
   let len = List.length ctx in
@@ -162,7 +161,7 @@ let derive_subterm env sigma ind =
 	  | None -> (out_name n, localassum (refresh_universes t)))
 	  parambinders;
 	mind_entry_inds = inds;
-	mind_entry_polymorphic = poly;
+	mind_entry_polymorphic = polymorphic;
 	mind_entry_private = None;
 	mind_entry_universes = uctx }
     in
@@ -171,11 +170,11 @@ let derive_subterm env sigma ind =
       let env = Global.env () in
       let sigma = Evd.from_env env in
       let sigma, ind = Evd.fresh_inductive_instance env sigma (k,0) in
-      ignore (Sigma_types.declare_sig_of_ind env sigma ind) in
+      ignore (Sigma_types.declare_sig_of_ind env sigma polymorphic ind) in
     let subind = mkInd (k,0) in
     let constrhints = 
       List.map_i (fun i entry -> 
-	List.map_i (fun j _ -> empty_hint_info, poly, true, Hints.PathAny, 
+	List.map_i (fun j _ -> empty_hint_info, polymorphic, true, Hints.PathAny,
 	  Hints.IsGlobRef (ConstructRef ((k,i),j))) 1 entry.mind_entry_lc)
 	0 inds 
     in Hints.add_hints false [subterm_relation_base]
@@ -224,7 +223,7 @@ let derive_subterm env sigma ind =
 			    (mkApp (coq_relation evm, [| ty |]))
 			    parambinders) 
 	  in
-	  let cst = declare_constant relid def ty poly !evm
+	  let cst = declare_constant relid def ty polymorphic !evm
 	    (Decl_kinds.IsDefinition Decl_kinds.Definition) in
 	    (* Impargs.declare_manual_implicits false (ConstRef cst) ~enriching:false *)
 	    (* 	(list_map_i (fun i _ -> ExplByPos (i, None), (true, true, true)) 1 parambinders); *)
@@ -245,7 +244,7 @@ let derive_subterm env sigma ind =
       let hook vis gr _ =
 	let cst = match gr with ConstRef kn -> kn | _ -> assert false in
 	let inst = Typeclasses.new_instance (fst kl) empty_hint_info
-                                            global poly (ConstRef cst) in
+                                            global polymorphic (ConstRef cst) in
 	  Typeclasses.add_instance inst
       in
       let _bodyty = Typing.e_type_of (Global.env ()) evm body in
@@ -256,7 +255,7 @@ let derive_subterm env sigma ind =
       in
       let ctx = Evd.evar_universe_context evm in
 	Obligations.add_definition id ~term:constr typ ctx
-	  ~kind:(Decl_kinds.Global,poly,Decl_kinds.Instance) 
+	  ~kind:(Decl_kinds.Global,polymorphic,Decl_kinds.Instance)
 	  ~hook:(Lemmas.mk_hook hook) ~tactic:(solve_subterm_tac ()) obls
   in ignore(declare_ind ())
 
@@ -265,7 +264,7 @@ let () =
             { derive_name = "Subterm";
               derive_fn = make_derive_ind derive_subterm })
     
-let derive_below env sigma (ind,univ) =
+let derive_below env sigma ~polymorphic (ind,univ) =
   let evd = ref sigma in
   let mind, oneind = Global.lookup_inductive ind in
   let ctx = oneind.mind_arity_ctxt in
@@ -367,8 +366,7 @@ let derive_below env sigma (ind,univ) =
 				     [| subst_vars [recid; pid] termB |])) in
   let bodyB = it_mkLambda_or_LetIn fixB (pdecl :: parambinders) in
   let id = add_prefix "Below_" (Nametab.basename_of_global (IndRef ind)) in
-  let poly = Flags.is_universe_polymorphism () in
-  let below = declare_constant id bodyB None poly !evd
+  let below = declare_constant id bodyB None polymorphic !evd
     (Decl_kinds.IsDefinition Decl_kinds.Definition) in
   let fixb = mkFix (([| realargs |], 0), ([| Name recid |], [| arityb |],
 				    [| subst_vars [recid; stepid] termb |])) in
@@ -384,8 +382,8 @@ let derive_below env sigma (ind,univ) =
   in
   let bodyb = replace_vars [belowid, mkConst below] bodyb in
   let id = add_prefix "below_" (Nametab.basename_of_global (IndRef ind)) in
-  let evd = if poly then !evd else Evd.from_env (Global.env ()) in
-    ignore(declare_constant id bodyb None poly evd
+  let evd = if polymorphic then !evd else Evd.from_env (Global.env ()) in
+    ignore(declare_constant id bodyb None polymorphic evd
 	     (Decl_kinds.IsDefinition Decl_kinds.Definition))
     
 let () =

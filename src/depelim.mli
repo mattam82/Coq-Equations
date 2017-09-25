@@ -55,11 +55,11 @@ val dependent_pattern :
   constr -> Proof_type.goal Tacmach.sigma -> Evar.t list Evd.sigma
 
 
-val depcase :
+val depcase : Decl_kinds.polymorphic ->
   MutInd.t * int ->
-  Evd.evar_map * rel_context * constr * Globnames.global_reference
+  Environ.env * Evd.evar_map * rel_context * constr * Globnames.global_reference
 val derive_dep_elimination :
-  Environ.env -> Evd.evar_map -> pinductive -> constr
+  Environ.env -> Evd.evar_map -> polymorphic:Decl_kinds.polymorphic -> pinductive -> constr
 
 
 val pattern_call :

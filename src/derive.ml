@@ -8,24 +8,26 @@
 
 open Term
 
+type derive_fn_ty = polymorphic:bool -> Globnames.global_reference -> unit
+
 type derive_record =
   { derive_name : string;
-    derive_fn : Globnames.global_reference -> unit }
+    derive_fn : polymorphic:bool -> Globnames.global_reference -> unit }
 
-let make_derive fn s =
+let make_derive fn ~polymorphic s =
   let env = Global.env () in
   let sigma = Evd.from_env env in
   let Sigma.Sigma (c, sigma, _) = Evarutil.new_global (Sigma.Unsafe.of_evar_map sigma) s in
-  fn env (Sigma.to_evar_map sigma) c
+  fn env (Sigma.to_evar_map sigma) ~polymorphic c
 
-let make_derive_ind fn s =
-  let fn env sigma c =
+let make_derive_ind fn ~polymorphic s =
+  let fn env sigma ~polymorphic c =
     match kind_of_term c with
-    | Ind i -> fn env sigma i
+    | Ind i -> fn env sigma ~polymorphic i
     | _ -> CErrors.error "Expected an inductive type"
-  in make_derive fn s
+  in make_derive fn ~polymorphic s
                  
-let table = ref CString.Map.empty
+let table = ref (CString.Map.empty : derive_fn_ty CString.Map.t)
     
 let register_derive d =
   table := CString.Map.add d.derive_name d.derive_fn !table
@@ -34,9 +36,10 @@ let get_derive d =
   try CString.Map.find d !table
   with Not_found -> CErrors.error ("No derive declared for " ^ d)
                                  
-let derive_one d grs =
+let derive_one polymorphic d grs =
   let fn = get_derive d in
-  List.iter fn grs
+  List.iter (fun x -> fn ~polymorphic x) grs
 
 let derive ds grs =
-  List.iter (fun d -> derive_one d grs) ds
+  let poly = Flags.use_polymorphic_flag () in
+  List.iter (fun d -> derive_one poly d grs) ds

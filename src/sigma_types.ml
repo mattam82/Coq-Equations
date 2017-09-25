@@ -203,13 +203,12 @@ let build_sig_of_ind env sigma (ind,u as indu) =
   let sigma = !evd in
     sigma, pred, pars, fullapp, valsig, ctx, lenargs, idx
 
-let declare_sig_of_ind env sigma (ind,u) =
+let declare_sig_of_ind env sigma poly (ind,u) =
   let sigma, pred, pars, fullapp, valsig, ctx, lenargs, idx =
     build_sig_of_ind env sigma (ind, u) in
   let indid = ind_name ind in
   let simpl = Tacred.simpl env sigma in
-  let poly = Flags.is_universe_polymorphism () in
-  let indsig = 
+  let indsig =
     let indsigid = add_suffix indid "_sig" in
       declare_constant indsigid pred
 	None poly sigma (IsDefinition Definition)
@@ -243,7 +242,7 @@ let declare_sig_of_ind env sigma (ind,u) =
   inst
 
 let () =
-  let fn env sigma c = ignore (declare_sig_of_ind env sigma c) in
+  let fn env sigma ~polymorphic c = ignore (declare_sig_of_ind env sigma polymorphic c) in
   Derive.(register_derive
             { derive_name = "Signature";
               derive_fn = make_derive_ind fn })

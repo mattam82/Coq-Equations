@@ -327,6 +327,7 @@ Ltac blocked t := block_goal ; t ; unblock_goal.
    be used by the [equations] resolver. It is especially useful to register the dependent elimination
    principles for things in [Prop] which are not automatically generated. *)
 
+Polymorphic
 Class DependentEliminationPackage (A : Type) :=
   { elim_type : Type ; elim : elim_type }.
 

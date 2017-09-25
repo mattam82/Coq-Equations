@@ -8,17 +8,17 @@
 
 type derive_record =
   { derive_name : string;
-    derive_fn : Globnames.global_reference -> unit }
+    derive_fn : polymorphic:Decl_kinds.polymorphic -> Globnames.global_reference -> unit }
 
 (** When the Derive expects a constr. *)                                 
 val make_derive :
-  (Environ.env -> Evd.evar_map -> Constr.constr -> unit) ->
-  Globnames.global_reference -> unit
+  (Environ.env -> Evd.evar_map -> polymorphic:Decl_kinds.polymorphic -> Constr.constr -> unit) ->
+  polymorphic:bool -> Globnames.global_reference -> unit
 
 (** When the Derive works on inductive types only. *)                                 
 val make_derive_ind :
-  (Environ.env -> Evd.evar_map -> Constr.pinductive -> unit) ->
-  Globnames.global_reference -> unit
+  (Environ.env -> Evd.evar_map -> polymorphic:Decl_kinds.polymorphic -> Constr.pinductive -> unit) ->
+  polymorphic:bool -> Globnames.global_reference -> unit
     
 val register_derive : derive_record -> unit
 
