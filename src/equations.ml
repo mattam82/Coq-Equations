@@ -1090,6 +1090,8 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
   in
   let all_stmts = concat (map (fun (f, c) -> c) stmts) in
   let fnind_map = ref PathMap.empty in
+  let evars, sort = Evd.fresh_sort_in_family env !evd (get_sort ()) in
+  let sort = evd := evars; mkSort sort in
   let declare_one_ind (i, (f, alias, path, sign, arity, pats, refs, refine), stmts) =
     let indid = add_suffix id (if i == 0 then "_ind" else ("_ind_" ^ string_of_int i)) in
     let indapp = List.rev_map (fun x -> mkVar (out_name (get_name x))) sign in
@@ -1101,7 +1103,7 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
 	  add_suffix indid suff) n) stmts
     in
       { mind_entry_typename = indid;
-	mind_entry_arity = it_mkProd_or_LetIn (mkProd (Anonymous, arity, mkProp)) sign;
+	mind_entry_arity = it_mkProd_or_LetIn (mkProd (Anonymous, arity, sort)) sign;
 	mind_entry_consnames = consnames;    
 	mind_entry_lc = constructors;
 	mind_entry_template = false }
@@ -1148,10 +1150,15 @@ let build_equations with_ind env evd id info sign is_rec arity wheremap cst
 	let leninds = List.length inds in
 	let elim =
 	  if leninds > 1 then
-	    (Indschemes.do_mutual_induction_scheme
+	    (let sort = match get_sort () with
+               | InProp -> Misctypes.GProp
+               | InSet -> Misctypes.GSet
+               | InType -> Misctypes.GType []
+             in
+                 Indschemes.do_mutual_induction_scheme
 		(List.map_i (fun i ind ->
 		  let id = (dummy_loc, add_suffix ind.mind_entry_typename "_mut") in
-		    (id, false, (k, i), Misctypes.GProp)) 0 inds);
+		    (id, false, (k, i), sort)) 0 inds);
 	     let elimid = 
 	       add_suffix (List.hd inds).mind_entry_typename "_mut"
 	     in Smartlocate.global_with_alias (reference_of_id elimid))
