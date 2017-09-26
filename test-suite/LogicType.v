@@ -16,5 +16,5 @@ Set Printing Universes.
 Equations test_k (x : nat) (r : x = x) : r = r :=
 test_k x id_refl := id_refl.
 
-Equations(nocomp) foo (A : Type) (x : A) : A :=
+Equations foo (A : Type) (x : A) : A :=
 foo A x := x.

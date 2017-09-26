@@ -105,7 +105,7 @@ let define_by_eqs opts i l t nt eqs =
 	List.find_map (function ORec i -> Some i | _ -> None) opts 
       with Not_found -> None
     in
-      try_bool_opt (OComp false), irec,
+      not (try_bool_opt (OComp true)), irec,
       try_bool_opt (OEquations false), try_bool_opt (OInd false)
   in
   (* TODO Uncomment this line. For now, it makes some tests fail. *)
