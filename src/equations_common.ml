@@ -563,16 +563,28 @@ let simpl_equations_tac () = tac_of_string "Equations.DepElim.simpl_equations" [
 let reference_of_global c =
   Qualid (dummy_loc, Nametab.shortest_qualid_of_global Idset.empty c)
 
-let solve_equation_tac c =
-  Tacinterp.interp
-    (TacArg(dummy_loc,TacCall(dummy_loc,
-  Qualid (dummy_loc, qualid_of_string "Equations.DepElim.solve_equation"),
-  [ConstrMayEval (Genredexpr.ConstrTerm
-                    (Constrexpr.CAppExpl (dummy_loc,
-                                          (None, reference_of_global c, None),
-                                          [])))])))
+open Names
+open Tacexpr
+open Misctypes
 
-  (* tac_of_string "Equations.DepElim.solve_equation" *)
+let call_tac_on_ref tac c =
+  let var = Id.of_string "x" in
+  let tac = ArgArg (dummy_loc, tac) in
+  let val_reference = Geninterp.val_tag (Genarg.topwit Constrarg.wit_constr) in
+  (** This is a hack to avoid generating useless universes *)
+  let c = fst (Universes.unsafe_constr_of_global c) in
+  let c = Geninterp.Val.inject val_reference c in
+  let ist = Tacinterp.default_ist () in
+  let ist = Geninterp.{ ist with lfun = Id.Map.add var c ist.lfun } in
+  let var = Reference (ArgVar (dummy_loc, var)) in
+  let tac = TacArg (dummy_loc, TacCall (dummy_loc, tac, [var])) in
+  Tacinterp.eval_tactic_ist ist tac
+
+let mp = MPfile (DirPath.make (List.map Id.of_string ["DepElim"; "Equations"]))
+let solve_equation = KerName.make mp DirPath.empty (Label.make "solve_equation")
+
+let solve_equation_tac (c : Globnames.global_reference) =
+  call_tac_on_ref solve_equation c
 
 let impossible_call_tac c = Tacintern.glob_tactic
   (TacArg(dummy_loc,TacCall(dummy_loc,

@@ -35,6 +35,14 @@ TACTIC EXTEND decompose_app
   ]
 END
 
+TACTIC EXTEND autounfold_ref
+| [ "autounfold_ref" reference(myref) ] -> [
+    let db = match myref with
+      | Globnames.ConstRef c -> Names.Label.to_string (Names.con_label c)
+      | _ -> assert false
+    in Eauto.autounfold ["core";db] Locusops.onConcl
+  ]
+END
 
 (* TACTIC EXTEND abstract_match *)
 (* [ "abstract_match" ident(hyp) constr(c) ] -> [ *)

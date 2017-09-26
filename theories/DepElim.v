@@ -1492,7 +1492,7 @@ Ltac simpl_equation_impl :=
 
 Ltac simplify_equation c :=
   make_simplify_goal; simpl;
-  repeat (try autounfoldify c;
+  repeat (try autounfold_ref c;
           progress (simpl; unfold_equations) ||
           (progress (autorewrite with refl_id)) ||
           reflexivity ||
