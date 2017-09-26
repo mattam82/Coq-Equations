@@ -6,6 +6,7 @@ nilT : TupleT 0
 Require Import Utf8.
 Require Import Equations.Equations.
 Open Scope sigma_scope.
+Set Warnings "-notation-overridden".
 Notation " '{' x : A & y } " := (@sigma A (fun x : A => y)%type) : type_scope.
 
 Inductive Tuple : forall n, TupleT n -> Type :=

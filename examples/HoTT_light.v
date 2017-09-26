@@ -2,7 +2,9 @@ Require Export Unicode.Utf8.
 Require Import Coq.Program.Tactics Setoid.
 
 Require Import Equations.Equations.
-Import Init. Import IdNotations.
+Import Init.
+Set Warnings "-notation-overridden".
+Import IdNotations.
 Set Standard Proposition Elimination Names.
 Set Universe Polymorphism.
 Set Primitive Projections.

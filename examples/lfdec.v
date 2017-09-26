@@ -933,11 +933,11 @@ Proof.
     destruct o; try destruct h; destruct H.
     destruct (H H2). subst x.
     specialize (H0 _ B0 H7).
-    destruct o0 as [[ty typrf] _|]; destruct H0 as [Hcheck Hinf].
+    destruct o0 as [[ty typrf]|]; destruct H0 as [Hcheck Hinf].
     now apply Hcheck. now apply Hcheck.
     
     specialize (H0 _ B0 (H H2)).
-    destruct o0 as [[ty typrf] _|]; destruct H0 as [Hcheck Hinf].
+    destruct o0 as [[ty typrf]|]; destruct H0 as [Hcheck Hinf].
     now apply Hcheck. now apply Hcheck.
     
     split; auto.

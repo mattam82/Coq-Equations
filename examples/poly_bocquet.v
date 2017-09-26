@@ -170,6 +170,7 @@ Module M1.
   (** Définition de [plus] *)
   (** ** 1.3.a *)
   Open Scope sigma_scope.
+  Set Warnings "-notation-overridden".
   Notation " '{' x : A & y } " := (@sigma A (fun x : A => y)%type) : type_scope.
 
   Equations plus {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) : { b : bool & poly b n } :=

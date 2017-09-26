@@ -576,7 +576,7 @@ let maybe_pack : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
   let name, ty1, ty2 = check_prod ty in
   let tA, t1, t2 = check_equality ty1 in
-  let fA, _ = Term.decompose_app tA in
+  let _fA, _ = Term.decompose_app tA in
   let f1, _ = Term.decompose_app t1 in
   let f2, _ = Term.decompose_app t2 in
   if not (Term.isConstruct f1 && Term.isConstruct f2) then
