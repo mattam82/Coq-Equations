@@ -155,7 +155,7 @@ let derive_eq_dec env sigma ~polymorphic ind =
   let indsl = List.map (fun ind -> ind, info_of ind) indsl in
   let hook _ gr _ =
     List.iter (fun (ind, (stmt, tc)) -> 
-	let ce = tc (lazy gr) in
+	let ce = tc gr in
         let entry = (DefinitionEntry ce, IsDefinition Instance) in
 	let inst = Declare.declare_constant (add_suffix ind.ind_name "_EqDec") entry in
         let inst =

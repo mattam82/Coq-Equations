@@ -221,11 +221,14 @@ PRINTED BY pr_sort_family
 END
 
 VERNAC COMMAND EXTEND Equations_Logic CLASSIFIED AS QUERY
-| [ "Equations" "Logic" sort_family(s) global(eq) global(eqr) global(z) global(o) global(ov) ] -> [
+| [ "Equations" "Logic" sort_family(s) global(eq) global(eqr) global(z) global(o) global(ov)
+    global(eq_case) global(eq_elim) ] -> [
   let gr x = Lazy.from_val (Nametab.global x) in
   let open Misctypes in
-  Equations_common.(set_logic { logic_eqty = gr eq;
-				logic_eqrefl = gr eqr;
+  Equations_common.(set_logic { logic_eq_ty = gr eq;
+				logic_eq_refl = gr eqr;
+                                logic_eq_case = gr eq_case;
+                                logic_eq_elim = gr eq_elim;
 				logic_sort = s;
 				logic_zero = gr z;
 				logic_one = gr o;

@@ -99,8 +99,8 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
       let indty = mkApp (sigma, [|idx; pred'|]) in
       nf_betaiotazeta !evd indty, mkProj (Lazy.force coq_pr2, mkRel 1), pars, (List.firstn lenargs ctx)
   in
-  let tru = Universes.constr_of_global (Lazy.force (get_one ())) in
-  let fls = Universes.constr_of_global (Lazy.force (get_zero ())) in
+  let tru = Universes.constr_of_global (get_one ()) in
+  let fls = Universes.constr_of_global (get_zero ()) in
   let xid = id_of_string "x" and yid = id_of_string "y" in
   let xdecl = of_tuple (Name xid, None, argty) in
   let binders = xdecl :: ctx in

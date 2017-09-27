@@ -232,6 +232,8 @@ let fresh_id avoid id gl =
 
 let coq_eq = Lazy.from_fun Coqlib.build_coq_eq
 let coq_eq_refl = lazy ((Coqlib.build_coq_eq_data ()).Coqlib.refl)
+let coq_eq_case = lazy (Coqlib.coq_reference "coq_eq_case" ["Init";"Logic"] "eq_rect_r")
+let coq_eq_elim = lazy (init_reference ["Equations";"DepElim"] "eq_rect_dep_r")
 
 let coq_heq = lazy (Coqlib.coq_reference "mkHEq" ["Logic";"JMeq"] "JMeq")
 let coq_heq_refl = lazy (Coqlib.coq_reference "mkHEq" ["Logic";"JMeq"] "JMeq_refl")
@@ -245,47 +247,50 @@ let coq_Id_refl = lazy (init_reference ["Equations";"Init"] "id_refl")
 type logic_ref = Globnames.global_reference lazy_t
 							       
 type logic = {
-  logic_eqty : logic_ref;
-  logic_eqrefl: logic_ref;
+  logic_eq_ty : logic_ref;
+  logic_eq_refl: logic_ref;
+  logic_eq_case: logic_ref;
+  logic_eq_elim: logic_ref;
   logic_sort : sorts_family;
   logic_zero : logic_ref;
   logic_one : logic_ref;
   logic_one_val : logic_ref;
-  (* logic_prod : logic_ref; *)
+  (* logic_sigma : logic_ref; *)
   (* logic_pair : logic_ref; *)
   (* logic_fst : logic_ref; *)
   (* logic_snd : logic_ref; *)
 }
 
 let prop_logic =
-  { logic_eqty = coq_eq; logic_eqrefl = coq_eq_refl; logic_sort = InProp;
-    logic_zero = coq_False;
+  { logic_eq_ty = coq_eq; logic_eq_refl = coq_eq_refl;
+    logic_eq_case = coq_eq_case; logic_eq_elim = coq_eq_elim;
+    logic_sort = InProp; logic_zero = coq_False;
     logic_one = coq_True; logic_one_val = coq_I;
-    
-
   }
   
-let type_logic =
-  { logic_eqty = coq_Id; logic_eqrefl = coq_Id_refl; logic_sort = InType;
-    logic_zero = coq_Empty; logic_one = coq_unit; logic_one_val = coq_tt }
+(* let type_logic = *)
+(*   { logic_eqty = coq_Id; logic_eqrefl = coq_Id_refl; logic_sort = InType; *)
+(*     logic_zero = coq_Empty; logic_one = coq_unit; logic_one_val = coq_tt } *)
   
 let logic = ref prop_logic
 	     
 let set_logic l = logic := l
 	     
 let get_sort () = !logic.logic_sort
-let get_eq () = (!logic).logic_eqty
-let get_eq_refl () = (!logic).logic_eqrefl
-let get_one () = (!logic).logic_one
-let get_one_prf () = (!logic).logic_one_val
-let get_zero () = (!logic).logic_zero
+let get_eq () = Lazy.force (!logic).logic_eq_ty
+let get_eq_refl () = Lazy.force (!logic).logic_eq_refl
+let get_eq_case () = Lazy.force (!logic).logic_eq_case
+let get_eq_elim () = Lazy.force (!logic).logic_eq_elim
+let get_one () = Lazy.force (!logic).logic_one
+let get_one_prf () = Lazy.force (!logic).logic_one_val
+let get_zero () = Lazy.force (!logic).logic_zero
 
 let fresh_logic_sort evd =
   let evars, sort = Evd.fresh_sort_in_family (Global.env ()) !evd (get_sort ()) in
   evd := evars; mkSort sort
 
 let mkapp env evdref t args =
-  let evd, c = Evd.fresh_global env !evdref (Lazy.force t) in
+  let evd, c = Evd.fresh_global env !evdref t in
   let _ = evdref := evd in
     mkApp (c, args)
 
@@ -300,11 +305,11 @@ let mkRefl env evd t x =
   mkapp env evd (get_eq_refl ()) [| refresh_universes_strict env evd t; x |]
 
 let mkHEq env evd t x u y =
-  mkapp env evd coq_heq [| refresh_universes_strict env evd t; x;
+  mkapp env evd (Lazy.force coq_heq) [| refresh_universes_strict env evd t; x;
                            refresh_universes_strict env evd u; y |]
     
 let mkHRefl env evd t x =
-  mkapp env evd coq_heq_refl
+  mkapp env evd (Lazy.force coq_heq_refl)
     [| refresh_universes_strict env evd t; x |]
 
 let dummy_loc = Loc.dummy_loc 

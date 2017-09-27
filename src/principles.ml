@@ -212,16 +212,18 @@ let ind_elim_tac indid inds info gl =
   let open Tacmach in
   let open Proofview.Goal in
   let eauto = Class_tactics.typeclasses_eauto [info.base_id; "funelim"] in
-  let prove_methods tac gl = 
-    tclTHEN tac (tclTHEN (to82 simpl_in_concl) (to82 (eauto ~depth:None))) gl
+  let prove_methods c gl =
+    let sigma, _ = Typing.type_of (pf_env gl) (project gl) c in
+    tclTHENLIST [to82 (Proofview.Unsafe.tclEVARS sigma);
+                 Proofview.V82.of_tactic (Tactics.apply c);
+                 to82 simpl_in_concl;
+                 to82 (eauto ~depth:None)] gl
   in
   let rec applyind leninds args gl =
     match leninds, kind_of_term (pf_concl gl) with
     | 0, _ -> 
-      tclTHENLIST [to82 simpl_in_concl; to82 intros;
- 	           prove_methods (Proofview.V82.of_tactic
-			            (Tactics.apply (Reductionops.nf_beta (project gl) (applistc indid
-                  (List.rev args)))))] gl
+       tclTHENLIST [to82 simpl_in_concl; to82 intros;
+ 	            prove_methods (Reductionops.nf_beta (project gl) (applistc indid (List.rev args)))] gl
     | _, LetIn (_, b, _, t') ->
 	tclTHENLIST [Proofview.V82.of_tactic (convert_concl_no_check (subst1 b t') DEFAULTcast);
 		     applyind (pred leninds) (b :: args)] gl
@@ -267,7 +269,7 @@ let compute_elim_type env evd is_rec protos k leninds
 	  0 args
       in
       let lenargs = List.length argsinfo in
-      let transport = e_new_global evd (global_reference (id_of_string "eq_rect_r")) in
+      let transport = e_new_global evd (get_eq_case ()) in
       let transport ty x y eq c cty =
 	mkApp (transport,
 	       [| ty; x;
@@ -320,7 +322,7 @@ let compute_elim_type env evd is_rec protos k leninds
 	       subst
 	   in
            let transportd =
-             e_new_global evd (global_reference (id_of_string "eq_rect_dep_r"))
+             e_new_global evd (get_eq_elim ())
            in
 	   let app = 
 	     mkApp (transportd,

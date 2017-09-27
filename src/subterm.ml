@@ -315,8 +315,8 @@ let derive_below env sigma ~polymorphic (ind,univ) =
 	    | None -> f (fun x -> x) x)
 	    None args
 	in Option.cata (fun x -> x)
-		       (Universes.constr_of_global (Lazy.force (get_one_prf ())),
-			Universes.constr_of_global (Lazy.force (get_one ()))) res
+		       (Universes.constr_of_global (get_one_prf ()),
+			Universes.constr_of_global (get_one ())) res
       in
       (* This wrapper checks if the argument is a recursive one,
        * and do the appropriate transformations if it is a product. *)

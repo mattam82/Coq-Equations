@@ -150,6 +150,8 @@ Ltac specialize_hyps :=
   match goal with
     [ H : forall _ : ?x = ?x, _ |- _ ] => 
     specialize (H (@eq_refl _ x)); unfold eq_rect_r, eq_rect in H ; simpl in H
+  | [ H : forall _ : @Id _ ?x ?x, _ |- _ ] =>
+    specialize (H (@id_refl _ x)); unfold Id_rect_dep_r, Id_rect_r, Id_rect in H ; simpl in H
   end.
 
 Hint Extern 100 => specialize_hyps : funelim.

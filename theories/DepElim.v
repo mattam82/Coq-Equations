@@ -361,6 +361,14 @@ Lemma eq_rect_dep_r {A} (x : A) (P : forall a, a = x -> Type) (p : P x eq_refl)
 Proof. destruct e. apply p. Defined.
 
 Polymorphic
+Definition Id_rect (A : Type) (x : A) (P : A -> Type) : P x -> forall y : A, Id x y -> P y.
+Proof. intros Px y e. destruct e. exact Px. Defined.
+
+Polymorphic
+Definition Id_rect_r (A : Type) (x : A) (P : A -> Type) : P x -> forall y : A, Id y x -> P y.
+Proof. intros Px y e. eapply (Id_rect _ x _ Px y (id_sym e)). Defined.
+
+Polymorphic
 Lemma Id_rect_dep_r {A} (x : A) (P : forall a, Id a x -> Type) (p : P x id_refl)
       (y : A) (e : Id y x) : P y e.
 Proof. destruct e. apply p. Defined.
