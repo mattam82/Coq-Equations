@@ -11,8 +11,9 @@ Set Primitive Projections.
 
 Set Implicit Arguments.
 
-Definition id {A : Type} (a : A) : A := a.
+Set Equations Transparent.
 
+Definition id {A : Type} (a : A) : A := a.
 Section TypeEq.
 
   Equations(nocomp) eq_sym (A : Type) (x y : A) (eq : Id x y) : Id y x :=
@@ -126,7 +127,7 @@ Equations path_sigma {A : Type} (P : A -> Type) (u v : sigma A P)
 : u = v :=
 path_sigma _ (sigmaI _ _) (sigmaI _ _) id_refl id_refl := id_refl.
 
-Equations(nocomp) path_prod_uncurried {A B : Type} (z z' : A * B)
+Equations path_prod_uncurried {A B : Type} (z z' : A * B)
            (pq : (fst z = fst z') * (snd z = snd z')): z = z' :=
 path_prod_uncurried (pair _ _) (pair _ _) (pair id_refl id_refl) := id_refl.
 

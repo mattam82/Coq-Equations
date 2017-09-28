@@ -14,6 +14,7 @@ open Names
 (* Options *)
 val ocaml_splitting : bool ref
 val simplify_withK : bool ref
+val equations_transparent : bool ref
 
 val debug : bool ref
 

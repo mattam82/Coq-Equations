@@ -49,6 +49,7 @@ let id x = x
 (* Options. *)
 let ocaml_splitting = ref true
 let simplify_withK = ref true
+let equations_transparent = ref false
 
 let _ = Goptions.declare_bool_option {
   Goptions.optsync  = true;
@@ -66,6 +67,15 @@ let _ = Goptions.declare_bool_option {
   Goptions.optkey   = ["Equations"; "WithK"];
   Goptions.optread  = (fun () -> !simplify_withK);
   Goptions.optwrite = (fun b -> simplify_withK := b)
+}
+
+let _ = Goptions.declare_bool_option {
+  Goptions.optsync  = true;
+  Goptions.optdepr  = false;
+  Goptions.optname  = "leave definitions transparent";
+  Goptions.optkey   = ["Equations"; "Transparent"];
+  Goptions.optread  = (fun () -> !equations_transparent);
+  Goptions.optwrite = (fun b -> equations_transparent := b)
 }
 
 (* Debugging infrastructure. *)

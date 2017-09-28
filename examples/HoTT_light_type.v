@@ -10,6 +10,9 @@ Set Universe Polymorphism.
 Set Primitive Projections.
 Unset Equations OCaml Splitting.
 
+(** We want our definitions to stay transparent. *)
+Set Equations Transparent.
+
 Polymorphic Definition transport_r (A : Type) (x : A) (P : A → Type) : P x → ∀ y : A, y = x → P y.
 Proof. intros Px y e. apply id_sym in e. destruct e. exact Px. Defined.
 

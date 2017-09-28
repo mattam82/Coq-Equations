@@ -832,7 +832,13 @@ let declare_funind info alias env evd is_rec protos ind_stmts all_stmts sign ind
 	        Retyping.get_type_of env evd indcgr; indcgr]
     in
     let instid = Nameops.add_prefix "FunctionalInduction_" id in
-    ignore(Equations_common.declare_instance instid poly evd [] cl args)
+    ignore(Equations_common.declare_instance instid poly evd [] cl args);
+    (** If desired the definitions should be made transparent again. *)
+    if !Equations_common.equations_transparent then
+      (Global.set_strategy (ConstKey (fst (destConst f))) Conv_oracle.transparent;
+        match alias with
+        | None -> ()
+        | Some (f, _, _) -> Global.set_strategy (ConstKey (fst (destConst f))) Conv_oracle.transparent)
   in
   let ctx = Evd.evar_universe_context (if poly then !evd else Evd.from_env (Global.env ())) in
   try ignore(Obligations.add_definition
