@@ -260,6 +260,7 @@ val coq_noconfusion_class : Globnames.global_reference lazy_t
 val coq_inacc : Globnames.global_reference Lazy.t
 val coq_block : Globnames.global_reference Lazy.t
 val coq_hide : Globnames.global_reference Lazy.t
+val coq_hidebody : Globnames.global_reference Lazy.t
 val coq_add_pattern : Globnames.global_reference Lazy.t
 val coq_end_of_section_id : Names.Id.t
 val coq_end_of_section_constr : esigma -> Term.constr

@@ -369,6 +369,7 @@ let coq_noconfusion_class = lazy (init_reference ["Equations";"DepElim"] "NoConf
 let coq_inacc = lazy (init_reference ["Equations";"DepElim"] "inaccessible_pattern")
 let coq_block = lazy (init_reference ["Equations";"DepElim"] "block")
 let coq_hide = lazy (init_reference ["Equations";"DepElim"] "hide_pattern")
+let coq_hidebody = lazy (init_reference ["Equations";"Init"] "hidebody")
 let coq_add_pattern = lazy (init_reference ["Equations";"DepElim"] "add_pattern")
 let coq_end_of_section_id = id_of_string "eos"
 let coq_end_of_section_constr = init_constant ["Equations";"DepElim"] "the_end_of_the_section"
@@ -774,8 +775,13 @@ let observe s tac =
                (of82
                   (fun gls -> Feedback.msg_debug (str "Subgoal: " ++ Printer.pr_goal gls);
                            Evd.{ it = [gls.it]; sigma = gls.sigma }))))
-         (fun iexn -> Feedback.msg_debug (str"Failed with: " ++
-                                Coqloop.print_toplevel_error iexn);
+         (fun iexn -> Feedback.msg_debug
+                        (str"Failed with: " ++
+                           (match fst iexn with
+                            | Refiner.FailError (n,expl) ->
+                               (str" Fail error " ++ int n ++ str " for " ++ str s ++ spc () ++ Lazy.force expl ++
+                                  str " on " ++ Printer.pr_goal gls)
+                            | _ -> Coqloop.print_toplevel_error iexn));
                    Proofview.tclUNIT ())) gls
 
 (** Compat definitions *)

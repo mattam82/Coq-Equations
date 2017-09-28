@@ -114,7 +114,26 @@ let autorewrites b =
   tclREPEAT (Proofview.V82.of_tactic (Autorewrite.autorewrite Tacticals.New.tclIDTAC [b]))
 
 let autorewrite_one b =
-  (Proofview.V82.of_tactic (Autorewrite.autorewrite Tacticals.New.tclIDTAC [b]))
+  let rew_rules = Autorewrite.find_rewrites b in
+  let rec aux rules =
+    match rules with
+    | [] -> Tacticals.New.tclFAIL 0 (str"Couldn't rewrite")
+    | r :: rules ->
+       let global = global_of_constr r.Autorewrite.rew_lemma in
+       let tac = Tacticals.New.pf_constr_of_global global
+          (if r.Autorewrite.rew_l2r then Equality.rewriteLR else Equality.rewriteRL)
+       in
+       Proofview.tclOR
+         (if !debug then
+            (Proofview.Goal.nf_enter
+               Proofview.Goal.{
+               enter = fun gl -> let concl = Proofview.Goal.concl gl in
+                                 Feedback.msg_debug (str"Trying " ++ pr_global global ++ str " on " ++
+                                                       pr_constr concl);
+                                 tac })
+          else tac)
+         (fun e -> if !debug then Feedback.msg_debug (str"failed"); aux rules)
+  in Proofview.V82.of_tactic (aux rew_rules)
                   
 let find_helper_arg info f args =
   let (ev, arg, id) = find_helper_info info f in
@@ -259,10 +278,11 @@ let rec aux_ind_fun info chop unfs unfids = function
             with Not_found ->
               error "Couldn't find associated args of where"
           in
-          Feedback.msg_debug (str"Found path " ++ str (Id.to_string wherepath) ++ str" where: " ++
-                       pr_id s.where_id ++ str"term: " ++ pr_constr s.where_term ++
-                                str" instance: " ++ prlist_with_sep spc pr_constr args ++ str" context map " ++
-                             pr_context_map (Global.env ()) s.where_prob);
+          if !debug then
+            Feedback.msg_debug (str"Found path " ++ str (Id.to_string wherepath) ++ str" where: " ++
+                                  pr_id s.where_id ++ str"term: " ++ pr_constr s.where_term ++
+                                  str" instance: " ++ prlist_with_sep spc pr_constr args ++ str" context map " ++
+                                  pr_context_map (Global.env ()) s.where_prob);
           let ty =
             let ind = Nametab.locate (qualid_of_ident wherepath) in
             let ctx = pi1 s.where_prob in
@@ -275,13 +295,13 @@ let rec aux_ind_fun info chop unfs unfids = function
           tclTHEN acc (to82 (assert_by (Name s.where_id) ty (of82 wheretac)))
         in
         let tac = List.fold_left2 wheretac tclIDTAC wheres unfswheres in
-        tclTHEN tac
-                (tclTHENLIST
-                   [autorewrite_one info.term_info.base_id;
-                    cstrtac info.term_info;
-                    if Option.is_empty unfs then tclIDTAC
-                    else tclTRY (autorewrite_one (info.term_info.base_id ^ "_where_rev"));
-                    eauto_with_below []])
+        tclTHENLIST [tac;
+                     tclTRY (autorewrite_one info.term_info.base_id);
+                     cstrtac info.term_info;
+                     if Option.is_empty unfs then tclIDTAC
+                     else observe "whererev"
+                                  (tclTRY (autorewrite_one (info.term_info.base_id ^ "_where_rev")));
+                     eauto_with_below []]
       else tclIDTAC
     in
     (match c with
@@ -291,7 +311,8 @@ let rec aux_ind_fun info chop unfs unfids = function
      | RProgram _ ->
       observe "compute "
       (tclTHENLIST
-         [intros_reducing; autorewrite_one info.term_info.base_id;
+         [intros_reducing;
+          tclTRY (autorewrite_one info.term_info.base_id);
           observe "wheretac" wheretac;
           cstrtac info.term_info;
           (** Each of the recursive calls result in an assumption. If it
@@ -299,7 +320,10 @@ let rec aux_ind_fun info chop unfs unfids = function
               explicitely rewrite with the unfolding lemma (as the where
               clause induction hypothesis is about the unfolding whereas
               the term itself mentions the original function. *)
-          tclMAP (fun i -> tclTRY (to82 (Equality.rewriteLR (* FIXME constr_of_ident *) (constr_of_ident i)))) unfids;
+          tclMAP (fun i ->
+              tclTRY (to82 (Tacticals.New.pf_constr_of_global
+                              (Equations_common.global_reference i)
+                              Equality.rewriteLR))) unfids;
           (to82 (solve_ind_rec_tac info.term_info))]))
 
   | Mapping (_, s) -> aux_ind_fun info chop unfs unfids s
@@ -352,7 +376,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
   let depelim h = depelim_tac h in
   let helpercsts = List.map (fun (_, _, i) -> fst (destConst (global_reference i)))
 			    info.helpers_info in
-  let opacify, transp = simpl_of helpercsts in
+  let opacify, transp = simpl_of (destConstRef (Lazy.force coq_hidebody) :: helpercsts) in
   let opacified tac gl = opacify (); let res = tac gl in transp (); res in
   let simpltac gl = opacified (to82 (simpl_equations_tac ())) gl in
   let my_simpl = opacified (to82 (simpl_in_concl)) in
@@ -373,10 +397,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
 	  else to82 reflexivity gl
     | _ -> to82 reflexivity gl
   in
-  let solve_eq =
-    tclORELSE (to82 reflexivity)
-              (tclTHEN (tclTRY (to82 (* Cctac.f_equal *) (Proofview.tclUNIT ()))) solve_rec_eq)
-  in
+  let solve_eq = tclORELSE (to82 reflexivity) solve_rec_eq in
   let abstract tac = tclABSTRACT None tac in
   let rec aux split unfold_split =
     match split, unfold_split with
