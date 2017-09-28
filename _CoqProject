@@ -63,3 +63,4 @@ examples/ordinals.v
 examples/ordinal_rec.v
 examples/RoseTree.v
 examples/where.v
+examples/string_matching.v
