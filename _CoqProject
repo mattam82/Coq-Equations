@@ -57,6 +57,7 @@ theories/Fin.v
 examples/lf.v
 examples/lfdec.v
 examples/HoTT_light.v
+examples/HoTT_light_type.v
 examples/poly_bocquet.v
 examples/ordinals.v
 examples/ordinal_rec.v
