@@ -67,7 +67,7 @@ type program =
 
 and signature = identifier * rel_context * constr
   
-and clause = lhs * clause rhs
+and clause = Loc.t * lhs * clause rhs
   
 and lhs = user_pats
 
@@ -121,7 +121,7 @@ and pr_where env (sign, eqns) =
   pr_proto sign ++ pr_clauses env eqns
 and pr_proto ((_,id), l, t) =
   pr_id id ++ pr_binders l ++ str" : " ++ pr_constr_expr t
-and pr_clause env (lhs, rhs) =
+and pr_clause env (loc, lhs, rhs) =
   pr_lhs env lhs ++ pr_rhs env rhs
 
 and pr_clauses env =
@@ -302,12 +302,23 @@ let interp_eqn i is_rec env impls eqn =
     (* 		 str "Patterns do not match the signature " ++  *)
     (* 		   pr_rel_context env sign); *)
     let curpats'' = add_implicits impls avoid curpats' in
+    let loc =
+      let beginloc = match idopt with
+        | Some (loc, id) -> loc
+        | None -> match List.hd curpats' with
+                  | (Some (loc, _), _) -> loc
+                  | (None, (loc, _)) -> loc
+      in
+      let endloc = match List.last curpats' with
+        | (_, (loc, _)) -> loc
+      in Loc.merge beginloc endloc
+    in
     let pats = map interp_pat curpats'' in
       match is_rec with
-      | Some (Structural _) -> (PUVar i :: pats, interp_rhs recinfo fn curpats' rhs)
+      | Some (Structural _) -> (loc, PUVar i :: pats, interp_rhs recinfo fn curpats' rhs)
       | Some (Logical r) -> 
-         (pats, interp_rhs ((i, r) :: recinfo) fn curpats' rhs)
-      | None -> (pats, interp_rhs recinfo fn curpats' rhs)
+         (loc, pats, interp_rhs ((i, r) :: recinfo) fn curpats' rhs)
+      | None -> (loc, pats, interp_rhs recinfo fn curpats' rhs)
   and interp_rhs recinfo (i, is_rec as fn) curpats = function
     | Refine (c, eqs) -> Refine (interp_constr_expr recinfo !avoid c, 
                                 map (aux recinfo fn curpats) eqs)

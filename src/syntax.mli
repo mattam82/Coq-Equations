@@ -36,7 +36,7 @@ and prototype =
 and 'a where_clause = prototype * 'a list
 and program = signature * clause list
 and signature = identifier * rel_context * constr (* f : Π Δ. τ *)
-and clause = lhs * clause rhs (* lhs rhs *)
+and clause = Loc.t * lhs * clause rhs (* lhs rhs *)
 
 val pr_user_pat : env -> user_pat -> Pp.std_ppcmds
 val pr_user_pats : env -> user_pat list -> Pp.std_ppcmds

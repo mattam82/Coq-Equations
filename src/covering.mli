@@ -337,11 +337,11 @@ val covering_aux :
   env ->
   Evd.evar_map ref ->
   identifier * bool * Constrintern.internalization_env ->
-  ((user_pats * 'a rhs as 'a) * bool) list ->
-  ('a * bool) list ->
+  (clause * bool) list ->
+  (clause * bool) list ->
   Evd.evar list ->
   context_map ->
-  rel_context -> constr -> splitting option
+  rel_context -> constr -> ((clause * bool) list * splitting) option
 
 val covering :
   env ->

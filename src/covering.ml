@@ -1159,297 +1159,321 @@ let rel_id ctx n =
   out_name (pi1 (List.nth ctx (pred n)))
 
 let push_named_context = List.fold_right push_named
-      
+
+let check_unused_clauses env cl =
+  let unused = List.filter (fun (_, used) -> not used) cl in
+  match unused with
+  | ((loc, _, _) as cl, _) :: cls ->
+    user_err_loc (loc, "covering", str "Unused clause " ++ pr_clause env cl)
+  | [] -> ()
+                       
 let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) lets ty =
   match clauses with
-  | ((lhs, rhs), used as clause) :: clauses' -> 
-    (match matches lhs prob with
-    | UnifSuccess s -> 
-      let prevmatch = List.filter (fun ((lhs',rhs'),used) -> matches lhs' prob <> UnifFailure) prev in
-	(* 	    if List.exists (fun (_, used) -> not used) prev then *)
-	(* 	      user_err_loc (dummy_loc, "equations", str "Unused clause: " ++ pr_clause env (lhs, rhs)); *)
-	if List.is_empty prevmatch then
-	  let env' = push_rel_context_eos ctx env evars in
-	  let get_var loc i s =
-	    match assoc i s with
-	    | PRel i -> i
-	    | _ -> user_err_loc (loc, "equations", str"Unbound variable " ++ pr_id i)
-	  in
-	    match rhs with
-	    | Program (c,w) -> 
-              let envctx,lets,env',coverings,lift,subst = 
-                interp_wheres env ctx evars path data s lets w in
-	      let c', ty' = 
-                interp_constr_in_rhs_env env evars (pi3 data)
-                  (lets, envctx, lift, subst) c (Some (Vars.lift (List.length w) ty)) in
-              let res = Compute (prob, coverings, ty', RProgram c') in
-	      Some res
+  | ((loc, lhs, rhs), used as clause) :: clauses' -> 
+     (match matches lhs prob with
+      | UnifSuccess s -> 
+         let interp =
+           interp_clause env evars data prev clauses' path (ctx,pats,ctx') lets ty
+                         ((loc,lhs,rhs), used) s
+         in
+         (match interp with
+          | None -> None
+          | Some s -> Some (List.rev prev @ ((loc,lhs,rhs),true) :: clauses', s))
+         
+      | UnifFailure -> covering_aux env evars data (clause :: prev) clauses' path prob lets ty
+      | UnifStuck -> 
+         let blocks = blockers lhs prob in
+	 fold_left (fun acc var ->
+	   match acc with
+	   | None -> 
+	     (match split_var (env,evars) var (pi1 prob) with
+	      | Some (var, newctx, s) ->
+	         let prob' = (newctx, pats, ctx') in
+	         let coverrec clauses s =
+                   covering_aux env evars data []
+		                clauses path (compose_subst env ~sigma:!evars s prob')
+		                (specialize_rel_context (pi2 s) lets)
+		                (specialize_constr (pi2 s) ty)
+	         in
+		 (try
+                    let rec_call clauses x =
+                      match x with
+                      | Some s ->
+                         (match coverrec clauses s with
+                          | None -> raise Not_found
+                          | Some (clauses, s) -> clauses, Some s)
+                      | None -> clauses, None
+                    in
+		    let clauses, rest = Array.fold_map rec_call (List.rev prev @ clauses) s in
+                    Some (clauses, Split (prob', var, ty, rest))
+		  with Not_found -> None)
+	      | None -> None) 
+	   | _ -> acc) None blocks)
+  | [] -> (* Every clause failed for the problem, it's either uninhabited or
+	     the clauses are not e   xhaustive *)
+     match find_empty (env,evars) (pi1 prob) with
+     | Some i -> Some (List.rev prev @ clauses, Compute (prob, [], ty, REmpty i))
+     | None ->
+	errorlabstrm "deppat"
+		     (str "Non-exhaustive pattern-matching, no clause found for:" ++ fnl () ++
+		        pr_problem data env prob)
 
-	    | Empty (loc,i) ->
-	      Some (Compute (prob, [], ty, REmpty (get_var loc i s)))
+and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets ty
+                  ((loc,lhs,rhs), used) s =
+  let env' = push_rel_context_eos ctx env evars in
+  let get_var loc i s =
+    match assoc i s with
+    | PRel i -> i
+    | _ -> user_err_loc (loc, "equations", str"Unbound variable " ++ pr_id i)
+  in
+  match rhs with
+  | Program (c,w) -> 
+     let envctx,lets,env',coverings,lift,subst = 
+       interp_wheres env ctx evars path data s lets w in
+     let c', ty' = 
+       interp_constr_in_rhs_env env evars (pi3 data)
+         (lets, envctx, lift, subst) c (Some (Vars.lift (List.length w) ty)) in
+     let res = Compute (prob, coverings, ty', RProgram c') in
+     Some res
+     
+  | Empty (loc,i) ->
+     Some (Compute (prob, [], ty, REmpty (get_var loc i s)))
+    
+  | Rec (term, rel, name, spl) ->
+     let name =
+       match name with Some (loc, id) -> id
+                     | None -> pi1 data
+     in
+     let tac = 
+       match rel with
+       | None -> rec_tac term name
+       | Some r -> rec_wf_tac term name r
+     in
+     let rhs = By (Inl tac, spl) in
+     (match covering_aux env evars data [] [(loc,lhs,rhs),false] path prob lets ty with
+      | None -> None
+      | Some (clauses, split) -> Some (RecValid (pi1 data, split)))
+     
+  | By (tac, s) ->
+     let sign, t', rels, _, _ = push_rel_context_to_named_context env' ty in
+     let sign = named_context_of_val sign in
+     let sign', secsign = split_at_eos sign in
+     let ids = List.map get_id sign in
+     let tac = match tac with
+       | Inl tac -> 
+	  Tacinterp.interp_tac_gen Id.Map.empty ids Tactic_debug.DebugOff tac 
+       | Inr tac -> Tacinterp.eval_tactic tac
+     in
+     let env' = reset_with_named_context (val_of_named_context sign) env in
+     let entry, proof = Proofview.init !evars [(env', t')] in
+     let _, res, _, _ = Proofview.apply env' tac proof in
+     let gls = Proofview.V82.goals res in
+     evars := gls.sigma;
+     if Proofview.finished res then
+       let c = List.hd (Proofview.partial_proof entry res) in
+       Some (Compute (prob, [], ty, RProgram c))
+     else
+       let solve_goal gl =
+	 let nctx = named_context_of_val (Goal.V82.hyps !evars gl) in
+	 let concl = Goal.V82.concl !evars gl in
+	 let nctx, secctx = split_at_eos nctx in
+	 let rctx, subst = rel_of_named_context nctx in
+	 let ty' = subst_vars subst concl in
+	 let ty', prob, subst, invsubst = match kind_of_term ty' with
+	   | App (f, args) -> 
+	      if Globnames.is_global (Lazy.force coq_add_pattern) f then
+		let comp = args.(1) and newpattern = pat_of_constr args.(2) in
+		if pi2 data (* with_comp *) then
+		  let pats = rev_map pat_of_constr (snd (decompose_app comp)) in
+		  let newprob =
+		    (List.tl rctx, List.map (lift_pat (-1)) pats, ctx)
+		  in
+		  let (d,p,g as invsubst) = invert_subst env !evars newprob in
+		  let ctxr = specialize_rel_context p [List.hd rctx] @ ctx in
+		  let newprob =
+		    mk_ctx_map env !evars rctx (newpattern :: pats) ctxr
+		  in
+		  let ty' = 
+		    match newpattern with
+		    | PHide _ -> comp
+		    | _ -> ty'
+		  in
+		  let substpats = map (lift_pat 1) (id_pats ctx) in
+		  let subst = mk_ctx_map env !evars ctxr substpats ctx in
+		  let invsubst = Some (mk_ctx_map env !evars ctx p (List.tl rctx)) in
+		  ty', newprob, subst, invsubst
+		else 
+		  let pats =
+		    let l = pat_vars_list (List.length rctx) in
+		    newpattern :: List.tl l
+		  in
+		  let newprob = rctx, pats, rctx in
+		  let subst = (rctx, List.tl pats, List.tl rctx) in
+		  comp, newprob, subst, None
+	      else
+		let pats = rev_map pat_of_constr (Array.to_list args) in
+		let newprob = rctx, pats, ctx' in
+		ty', newprob, id_subst ctx', None
+	   | _ -> raise (Invalid_argument "covering_aux: unexpected output of tactic call")
+	 in 
+	 match covering_aux env evars data [] (map (fun x -> x, false) s) path prob lets ty' with
+	 | None ->
+	    anomaly ~label:"covering"
+		    (str "Unable to find a covering for the result of a by clause:" 
+		     ++ fnl () ++ pr_clause env (loc, lhs, rhs) ++
+		       str" refining " ++ pr_context_map env prob)
+	 | Some (clauses, s) ->
+	    let args = rev (List.map_filter (fun decl ->
+			        if get_named_value decl == None then Some (mkVar (get_id decl)) else None) nctx)
+	    in
+            let () = check_unused_clauses env clauses in
+            (gl, args, subst, invsubst, s)
+       in
+       let goals = map solve_goal gls.it in
+       Some (Valid (prob, ty, map get_id sign', Proofview.V82.of_tactic tac, 
+		    (entry, res), goals))
 
-	    | Rec (term, rel, name, spl) ->
-               let name =
-                 match name with Some (loc, id) -> id
-                               | None -> pi1 data
-               in
-	       let tac = 
-		match rel with
-		| None -> rec_tac term name
-		| Some r -> rec_wf_tac term name r
-	      in
-	      let rhs = By (Inl tac, spl) in
-		(match covering_aux env evars data [] [(lhs,rhs),false] path prob lets ty with
-		| None -> None
-		| Some split -> Some (RecValid (pi1 data, split)))
-		  
-	    | By (tac, s) ->
-	      let sign, t', rels, _, _ = push_rel_context_to_named_context env' ty in
-	      let sign = named_context_of_val sign in
-	      let sign', secsign = split_at_eos sign in
-	      let ids = List.map get_id sign in
-	      let tac = match tac with
-		| Inl tac -> 
-		  Tacinterp.interp_tac_gen Id.Map.empty ids Tactic_debug.DebugOff tac 
-		| Inr tac -> Tacinterp.eval_tactic tac
-	      in
-	      let env' = reset_with_named_context (val_of_named_context sign) env in
-	      let entry, proof = Proofview.init !evars [(env', t')] in
-	      let _, res, _, _ = Proofview.apply env' tac proof in
-	      let gls = Proofview.V82.goals res in
-		evars := gls.sigma;
-		if Proofview.finished res then
-		  let c = List.hd (Proofview.partial_proof entry res) in
-		    Some (Compute (prob, [], ty, RProgram c))
-		else
-		  let solve_goal gl =
-		    let nctx = named_context_of_val (Goal.V82.hyps !evars gl) in
-		    let concl = Goal.V82.concl !evars gl in
-		    let nctx, secctx = split_at_eos nctx in
-		    let rctx, subst = rel_of_named_context nctx in
-		    let ty' = subst_vars subst concl in
-		    let ty', prob, subst, invsubst = match kind_of_term ty' with
-		      | App (f, args) -> 
-			 if Globnames.is_global (Lazy.force coq_add_pattern) f then
-			   let comp = args.(1) and newpattern = pat_of_constr args.(2) in
-			   if pi2 data (* with_comp *) then
-			     let pats = rev_map pat_of_constr (snd (decompose_app comp)) in
-			     let newprob =
-			       (List.tl rctx, List.map (lift_pat (-1)) pats, ctx)
-			     in
-			     let (d,p,g as invsubst) = invert_subst env !evars newprob in
-			     let ctxr = specialize_rel_context p [List.hd rctx] @ ctx in
-			     let newprob =
-			       mk_ctx_map env !evars rctx (newpattern :: pats) ctxr
-			     in
-			     let ty' = 
-			       match newpattern with
-			       | PHide _ -> comp
-			       | _ -> ty'
-			     in
-			     let substpats = map (lift_pat 1) (id_pats ctx) in
-			     let subst = mk_ctx_map env !evars ctxr substpats ctx in
-			     let invsubst = Some (mk_ctx_map env !evars ctx p (List.tl rctx)) in
-			       ty', newprob, subst, invsubst
-			   else 
-			     let pats =
-			       let l = pat_vars_list (List.length rctx) in
-			       newpattern :: List.tl l
-			     in
-			     let newprob = rctx, pats, rctx in
-			     let subst = (rctx, List.tl pats, List.tl rctx) in
-			       comp, newprob, subst, None
-			else
-			  let pats = rev_map pat_of_constr (Array.to_list args) in
-			  let newprob = rctx, pats, ctx' in
-			    ty', newprob, id_subst ctx', None
-		      | _ -> raise (Invalid_argument "covering_aux: unexpected output of tactic call")
-		    in 
-		      match covering_aux env evars data [] (map (fun x -> x, false) s) path prob lets ty' with
-		      | None ->
-			anomaly ~label:"covering"
-			  (str "Unable to find a covering for the result of a by clause:" 
-			   ++ fnl () ++ pr_clause env (lhs, rhs) ++
-			     str" refining " ++ pr_context_map env prob)
-		      | Some s ->
-			let args = rev (List.map_filter (fun decl ->
-			  if get_named_value decl == None then Some (mkVar (get_id decl)) else None) nctx)
-			in gl, args, subst, invsubst, s
-		  in Some (Valid (prob, ty, map get_id sign', Proofview.V82.of_tactic tac, 
-				  (entry, res), map solve_goal gls.it))
+  | Refine (c, cls) -> 
+     (* The refined term and its type *)
+     let cconstr, cty = interp_constr_in_rhs env ctx evars data None s lets c in
 
-	    | Refine (c, cls) -> 
-	       (* The refined term and its type *)
-	      let cconstr, cty = interp_constr_in_rhs env ctx evars data None s lets c in
-
-	      let vars = variables_of_pats pats in
-	      let newctx, pats', pats'' = instance_of_pats env evars ctx vars in
-	      (* revctx is a variable substitution from a reordered context to the
+     let vars = variables_of_pats pats in
+     let newctx, pats', pats'' = instance_of_pats env evars ctx vars in
+     (* revctx is a variable substitution from a reordered context to the
 	         current context. Needed for ?? *)
-	      let revctx = check_ctx_map env !evars (newctx, pats', ctx) in
-	      let idref = Namegen.next_ident_away (id_of_string "refine") (ids_of_rel_context newctx) in
-	      let decl = make_assum (Name idref) (mapping_constr revctx cty) in
-	      let extnewctx = decl :: newctx in
-	      (* cmap : Δ -> ctx, cty,
+     let revctx = check_ctx_map env !evars (newctx, pats', ctx) in
+     let idref = Namegen.next_ident_away (id_of_string "refine") (ids_of_rel_context newctx) in
+     let decl = make_assum (Name idref) (mapping_constr revctx cty) in
+     let extnewctx = decl :: newctx in
+     (* cmap : Δ -> ctx, cty,
 	         strinv associates to indexes in the strenghtened context to
 		 variables in the original context.
-	       *)
-	      let refterm = lift 1 (mapping_constr revctx cconstr) in
-	      let cmap, strinv = strengthen ~full:false ~abstract:true env !evars extnewctx 1 refterm in
-	      let (idx_of_refined, _) = List.find (fun (i, j) -> j = 1) strinv in
-	      let newprob_to_lhs =
-		let inst_refctx = set_in_ctx idx_of_refined (mapping_constr cmap refterm) (pi1 cmap) in
-		let str_to_new =
-		  inst_refctx, (specialize_pats (pi2 cmap) (lift_pats 1 pats')), newctx
-		in
-		  compose_subst env ~sigma:!evars str_to_new revctx
-	      in	
-	      let newprob = 
-		let ctx = pi1 cmap in
-		let pats = 
-		  rev_map (fun c -> 
-		    let idx = destRel c in
-		      (* find out if idx in ctx should be hidden depending
+      *)
+     let refterm = lift 1 (mapping_constr revctx cconstr) in
+     let cmap, strinv = strengthen ~full:false ~abstract:true env !evars extnewctx 1 refterm in
+     let (idx_of_refined, _) = List.find (fun (i, j) -> j = 1) strinv in
+     let newprob_to_lhs =
+       let inst_refctx = set_in_ctx idx_of_refined (mapping_constr cmap refterm) (pi1 cmap) in
+       let str_to_new =
+	 inst_refctx, (specialize_pats (pi2 cmap) (lift_pats 1 pats')), newctx
+       in
+       compose_subst env ~sigma:!evars str_to_new revctx
+     in	
+     let newprob = 
+       let ctx = pi1 cmap in
+       let pats = 
+	 rev_map (fun c -> 
+	     let idx = destRel c in
+	     (* find out if idx in ctx should be hidden depending
 			 on its use in newprob_to_lhs *)
-		      if List.exists (function PHide idx' -> idx == idx' | _ -> false)
-			(pi2 newprob_to_lhs) then
-			PHide idx
-		      else PRel idx) (rels_of_tele ctx) in
-		  (ctx, pats, ctx)
-	      in
-	      let newty =
-		let env' = push_rel_context extnewctx env in
-		  subst_term refterm
-		    (Tacred.simpl env'
-		       !evars (lift 1 (mapping_constr revctx ty)))
-	      in
-	      let newty = mapping_constr cmap newty in
-	      (* The new problem forces a reordering of patterns under the refinement
+	     if List.exists (function PHide idx' -> idx == idx' | _ -> false)
+			    (pi2 newprob_to_lhs) then
+	       PHide idx
+	     else PRel idx) (rels_of_tele ctx) in
+       (ctx, pats, ctx)
+     in
+     let newty =
+       let env' = push_rel_context extnewctx env in
+       subst_term refterm
+		  (Tacred.simpl env'
+		                !evars (lift 1 (mapping_constr revctx ty)))
+     in
+     let newty = mapping_constr cmap newty in
+     (* The new problem forces a reordering of patterns under the refinement
 		 to make them match up to the context map. *)
-	      let sortinv = List.sort (fun (i, _) (i', _) -> i' - i) strinv in
-	      let vars' = List.rev_map snd sortinv in
-	      let rec cls' n cls =
-		let next_unknown =
-		  let str = id_of_string "unknown" in
-		  let i = ref (-1) in fun () ->
-		    incr i; add_suffix str (string_of_int !i)
-		in
-		  List.map_filter (fun (lhs, rhs) -> 
-		    let oldpats, newpats = List.chop (List.length lhs - n) lhs in
-		    let newref, nextrefs = 
-		      match newpats with hd :: tl -> hd, tl | [] -> assert false 
-		    in
-		      match matches_user prob oldpats with
-		      | UnifSuccess (s, alias) -> 
-			      (* A substitution from the problem variables to user patterns and 
+     let sortinv = List.sort (fun (i, _) (i', _) -> i' - i) strinv in
+     let vars' = List.rev_map snd sortinv in
+     let rec cls' n cls =
+       let next_unknown =
+	 let str = id_of_string "unknown" in
+	 let i = ref (-1) in fun () ->
+		             incr i; add_suffix str (string_of_int !i)
+       in
+       List.map_filter (fun (loc, lhs, rhs) -> 
+	   let oldpats, newpats = List.chop (List.length lhs - n) lhs in
+	   let newref, nextrefs = 
+	     match newpats with hd :: tl -> hd, tl | [] -> assert false 
+	   in
+	   match matches_user prob oldpats with
+	   | UnifSuccess (s, alias) -> 
+	      (* A substitution from the problem variables to user patterns and 
 				 from user pattern variables to patterns instantiating problem variables. *)
-			let newlhs = 
-			  List.map_filter 
-			    (fun i ->
-			      if i == 1 then Some newref
-			      else
-				if List.exists (fun (i', b) -> i' == pred i && b) vars then None
-				else
-				  try Some (List.assoc (pred i) s)
-				  with Not_found -> (* The problem is more refined than the user vars*)
-				    Some (PUVar (next_unknown ())))
-			    vars'
-			in
-			let newrhs = match rhs with
-			  | Refine (c, cls) -> Refine (c, cls' (succ n) cls)
-			  | Rec (v, rel, id, s) -> Rec (v, rel, id, cls' n s)
-			  | By (v, s) -> By (v, cls' n s)
-			  | _ -> rhs
-			in
-			  Some (rev newlhs @ nextrefs, newrhs)
-		      | _ -> 
-			errorlabstrm "covering"
-			  (str "Non-matching clause in with subprogram:" ++ fnl () ++
-			     str"Problem is " ++ spc () ++ pr_context_map env prob ++ 
-			     str"And the user patterns are: " ++ fnl () ++
-			     pr_user_pats env oldpats)) cls
+	      let newlhs = 
+		List.map_filter 
+		  (fun i ->
+		    if i == 1 then Some newref
+		    else
+		      if List.exists (fun (i', b) -> i' == pred i && b) vars then None
+		      else
+			try Some (List.assoc (pred i) s)
+			with Not_found -> (* The problem is more refined than the user vars*)
+			  Some (PUVar (next_unknown ())))
+		  vars'
 	      in
-	      let cls' = cls' 1 cls in
-	      let strength_app, refarg =
-		let sortinv = List.sort (fun (i, _) (i', _) -> i' - i) strinv in
-		let argref = ref 0 in
-		let args = 
-		  map (fun (i, j) (* i variable in strengthened context, 
+	      let newrhs = match rhs with
+		| Refine (c, cls) -> Refine (c, cls' (succ n) cls)
+		| Rec (v, rel, id, s) -> Rec (v, rel, id, cls' n s)
+		| By (v, s) -> By (v, cls' n s)
+		| _ -> rhs
+	      in
+	      Some (loc, rev newlhs @ nextrefs, newrhs)
+	   | _ -> 
+	      errorlabstrm "covering"
+			   (str "Non-matching clause in with subprogram:" ++ fnl () ++
+			      str"Problem is " ++ spc () ++ pr_context_map env prob ++ 
+			      str"And the user patterns are: " ++ fnl () ++
+			      pr_user_pats env oldpats)) cls
+     in
+     let cls' = cls' 1 cls in
+     let strength_app, refarg =
+       let sortinv = List.sort (fun (i, _) (i', _) -> i' - i) strinv in
+       let argref = ref 0 in
+       let args = 
+	 map (fun (i, j) (* i variable in strengthened context, 
 				     j variable in the original one *) -> 
-		    if j == 1 then (argref := (List.length strinv - i); 
-				   cconstr)
-		    else let (var, _) = List.nth vars (pred (pred j)) in
-			   mkRel var) sortinv
-		in args, !argref
-	      in
-              (* Don't forget section variables. *)
-              let secvars =
-                let named_context = Environ.named_context env in
-                  List.map (fun decl ->
-                    let id = Context.Named.Declaration.get_id decl in
-                    Constr.mkVar id) named_context
-              in
-              let secvars = Array.of_list secvars in
-	      let evar = new_untyped_evar () in
-	      let path' = evar :: path in
-	      let lets' =
-		let letslen = length lets in
-		let _, ctxs, _ = lets_of_ctx env ctx evars s in
-		let newlets = (lift_rel_context (succ letslen) ctxs) 
-		  @ (lift_rel_context 1 lets) 
-		in specialize_rel_context (pi2 cmap) newlets
-	      in
-		match covering_aux env evars data [] (map (fun x -> x, false) cls') path' newprob lets' newty with
-		| None -> None
-		| Some s -> 
-		  let info =
-		    { refined_obj = (idref, cconstr, cty);
-		      refined_rettyp = ty;
-		      refined_arg = refarg;
-		      refined_path = path';
-		      refined_ex = evar;
-		      refined_app = (mkEvar (evar, secvars), strength_app);
-		      refined_revctx = revctx;
-		      refined_newprob = newprob;
-		      refined_newprob_to_lhs = newprob_to_lhs;
-		      refined_newty = newty }
-		  in  Some (Refined (prob, info, s))
-	else 
-	  anomaly ~label:"covering"
-	    (str "Found overlapping clauses:" ++ fnl () ++ pr_clauses env (map fst prevmatch) ++
-	       spc () ++ str"refining" ++ spc () ++ pr_context_map env prob)
-
-    | UnifFailure -> covering_aux env evars data (clause :: prev) clauses' path prob lets ty
-    | UnifStuck -> 
-      let blocks = blockers lhs prob in
-	fold_left (fun acc var ->
-	  match acc with
-	  | None -> 
-	    (match split_var (env,evars) var (pi1 prob) with
-	    | Some (var, newctx, s) ->
-	      let prob' = (newctx, pats, ctx') in
-	      let coverrec s = covering_aux env evars data []
-		(List.rev prev @ clauses) path (compose_subst env ~sigma:!evars s prob')
-		(specialize_rel_context (pi2 s) lets)
-		(specialize_constr (pi2 s) ty)
-	      in
-		(try 
-		   let rest = Array.map (Option.map (fun x -> 
-		     match coverrec x with
-		     | None -> raise Not_found
-		     | Some s -> s)) s 
-		   in Some (Split (prob', var, ty, rest))
-		 with Not_found -> None)
-	    | None -> None) 
-	  | _ -> acc) None blocks)
-	    | [] -> (* Every clause failed for the problem, it's either uninhabited or
-		       the clauses are not exhaustive *)
-	      match find_empty (env,evars) (pi1 prob) with
-	      | Some i -> Some (Compute (prob, [], ty, REmpty i))
-	      | None ->
-		errorlabstrm "deppat"
-		  (str "Non-exhaustive pattern-matching, no clause found for:" ++ fnl () ++
-		     pr_problem data env prob)
+	     if j == 1 then (argref := (List.length strinv - i); 
+			     cconstr)
+	     else let (var, _) = List.nth vars (pred (pred j)) in
+		  mkRel var) sortinv
+       in args, !argref
+     in
+     (* Don't forget section variables. *)
+     let secvars =
+       let named_context = Environ.named_context env in
+       List.map (fun decl ->
+           let id = Context.Named.Declaration.get_id decl in
+           Constr.mkVar id) named_context
+     in
+     let secvars = Array.of_list secvars in
+     let evar = new_untyped_evar () in
+     let path' = evar :: path in
+     let lets' =
+       let letslen = length lets in
+       let _, ctxs, _ = lets_of_ctx env ctx evars s in
+       let newlets = (lift_rel_context (succ letslen) ctxs) 
+		     @ (lift_rel_context 1 lets) 
+       in specialize_rel_context (pi2 cmap) newlets
+     in
+     match covering_aux env evars data [] (map (fun x -> x, false) cls') path' newprob lets' newty with
+     | None -> None
+     | Some (clauses, s) ->
+        let () = check_unused_clauses env clauses in
+	let info =
+	  { refined_obj = (idref, cconstr, cty);
+	    refined_rettyp = ty;
+	    refined_arg = refarg;
+	    refined_path = path';
+	    refined_ex = evar;
+	    refined_app = (mkEvar (evar, secvars), strength_app);
+	    refined_revctx = revctx;
+	    refined_newprob = newprob;
+	    refined_newprob_to_lhs = newprob_to_lhs;
+	    refined_newty = newty }
+	in  Some (Refined (prob, info, s))
+     (* else  *)
+     (*   anomaly ~label:"covering" *)
+     (*     (str "Found overlapping clauses:" ++ fnl () ++ pr_clauses env (map fst prevmatch) ++ *)
+     (*        spc () ++ str"refining" ++ spc () ++ pr_context_map env prob) *)
 
 and interp_wheres env ctx evars path data s lets w =
   let (ctx, envctx, liftn, subst) = env_of_rhs evars ctx env s lets in
@@ -1497,7 +1521,9 @@ and interp_wheres env ctx evars path data s lets w =
 and covering env evars data (clauses : clause list) path prob ty =
   let clauses = (map (fun x -> (x,false)) clauses) in
   match covering_aux env evars data [] clauses path prob [] ty with
-  | Some cov -> cov
+  | Some (clauses, cov) ->
+     let () = check_unused_clauses env clauses in
+     cov
   | None ->
       errorlabstrm "deppat"
 	(str "Unable to build a covering for:" ++ fnl () ++
