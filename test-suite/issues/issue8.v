@@ -80,5 +80,5 @@ Unset Equations OCaml Splitting.
 Equations myComp {n} {B C : TupleT n} (tm1 : TupleMap _ B C) {A : TupleT n} (tm2 : TupleMap _ A B)
 : TupleMap _ A C :=
 myComp tmNil tmNil := tmNil;
-myComp (tmCons G H g) (tmCons F ?(G) f)
+myComp (tmCons ?(G) H g) (tmCons F G f)
 := tmCons _ _ (fun x => existT (fun y => TupleMap _ _ (_ y)) (projT1 (g (projT1 (f x)))) (myComp (projT2 (g (projT1 (f x)))) (projT2 (f x)))).

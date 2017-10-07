@@ -84,8 +84,8 @@ Proof.
 Qed.
 
 Equations iget {A : Set} {n : nat} (l : ilist A n) (i : fin n) : A :=
-iget {n:=(S n)} (Cons x _) fz := x;
-iget {n:=(S n)} (Cons _ t) (fs j) := iget t j.
+iget (Cons x n) (fz n) := x;
+iget (Cons _ t) (fs n j) := iget t j.
 
 Equations isnoc {A : Set} {n : nat} (l : ilist A n) (x : A) : ilist A (S n) :=
 isnoc Nil x := Cons x Nil;

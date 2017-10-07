@@ -340,7 +340,7 @@ Defined.
 
 Equations ap_p {A B : Type} (f : A -> B) {x y : A} (p q: x = y) (e : p = q) :
   ap f p = ap f q :=
-ap_p f p q id_refl := id_refl.
+ap_p f p _ id_refl := id_refl.
 
 Instance ap_morphism (A : Type) (B : Type) x y f :
   Proper (@Id (@Id A x y) ==> @Id (@Id B (f x) (f y))) (@ap A B f x y).
@@ -403,7 +403,7 @@ Defined.
 Equations path_sigma_uncurried (A : Type) (P : A -> Type) (u v : sigma A P)
   (pq : sigma _ (fun p => p # u.2 = v.2))
   : u = v :=
-path_sigma_uncurried _ _ (sigmaI u1 u2) (sigmaI v1 v2) (sigmaI id_refl id_refl) :=
+path_sigma_uncurried _ _ (sigmaI u1 u2) (sigmaI _ _) (sigmaI id_refl id_refl) :=
   id_refl.
 Transparent path_sigma_uncurried.
 

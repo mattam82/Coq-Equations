@@ -13,11 +13,13 @@ open Names
 open Equations_common
 
 (** User-level patterns *)
+type generated = bool
+
 type user_pat =
-    PUVar of identifier
-  | PUCstr of constructor * int * user_pat list
+    PUVar of identifier * generated
+  | PUCstr of constructor * int * user_pats
   | PUInac of Constrexpr.constr_expr
-type user_pats = user_pat list
+and user_pats = user_pat Loc.located list
 
 
 (** Globalized syntax *)
@@ -38,11 +40,11 @@ and program = signature * clause list
 and signature = identifier * rel_context * constr (* f : Π Δ. τ *)
 and clause = Loc.t * lhs * clause rhs (* lhs rhs *)
 
-val pr_user_pat : env -> user_pat -> Pp.std_ppcmds
-val pr_user_pats : env -> user_pat list -> Pp.std_ppcmds
+val pr_user_pat : env -> user_pat Loc.located -> Pp.std_ppcmds
+val pr_user_pats : env -> user_pats -> Pp.std_ppcmds
 
-val pr_lhs : env -> user_pat list -> Pp.std_ppcmds
-val pplhs : user_pat list -> unit
+val pr_lhs : env -> user_pats -> Pp.std_ppcmds
+val pplhs : user_pats -> unit
 val pr_rhs : env -> clause rhs -> Pp.std_ppcmds
 val pr_clause :
   env -> clause -> Pp.std_ppcmds
@@ -96,7 +98,7 @@ type equation_options = equation_option list
 val pr_equation_options : 'a -> 'b -> 'c -> 'd -> Pp.std_ppcmds
 
 val translate_cases_pattern :
-  'a -> Id.t list ref -> Glob_term.cases_pattern -> user_pat
+  'a -> Id.t list ref -> Glob_term.cases_pattern -> user_pat Loc.located
 
 val ids_of_pats : pat_expr located list -> identifier list
 

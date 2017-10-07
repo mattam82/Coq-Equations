@@ -48,6 +48,8 @@ Definition TupleMap_subterm := Relation_Operators.clos_trans _
   (λ x y : &{index : &{n : nat & sigma _ (λ _ : TupleT n, TupleT n)} &
                    TupleMap (pr1 index) (pr1 (pr2 index)) (pr2 (pr2 index))},
           TupleMap_direct_subterm _ _ _ _ _ _ (pr2 x) (pr2 y)).
+Require Import DepElimDec.
+Derive Signature for TupleMap_direct_subterm.
 
 Program Instance WellFounded_TupleMap_subterm : WellFounded TupleMap_subterm.
 
@@ -68,17 +70,18 @@ Next Obligation.
   red. intros ((n&H1&H2)&map). simpl in map.
   match goal with |- context [ Acc ?R _ ] => set(rel:=R) end.
   move rel at top.
-  revert_until rel. fix map 4.
-  intros.
-  constructor. intros ((n'&H1'&H2')&map'). simpl in *.
-  intros H.
-  destruct map0.
-  clear map. red in H. simpl in H. depelim H.
-  red in H. simpl in H.
-  depelim H.
-  apply map.
+  depelim map.
+  + constructor. intros ((n'&H1'&H2')&map'). simpl in *.
+    intros H. red in H. simpl in H.
+    depelim H.
+    
+  + constructor. intros ((n'&H1'&H2')&map'). simpl in *.
+    intros H; red in H. simpl in H.
+    depelim H. simpl in *. apply r.
 Qed.
+
 Print Assumptions WellFounded_TupleMap_subterm.
+
 Hint Extern 3 (TupleMap_subterm _ _) =>
   unfold TupleMap_subterm; simpl : subterm_relation.
 Hint Extern 5 => progress simpl : subterm_relation.
@@ -109,7 +112,8 @@ Time Equations myComp {n} {B C : TupleT n} (tm1 : TupleMap _ B C) {A : TupleT n}
 : TupleMap _ A C :=
 myComp tm1 tm2 by rec (signature_pack tm1) TupleMap_subterm :=
 myComp tmNil tmNil := tmNil;
-myComp (tmCons G H g) (tmCons F ?(G) f) :=
+myComp (tmCons ?(G) H g) (tmCons F G f) :=
   tmCons _ _ (fun x => existT (fun y => TupleMap _ _ (_ y)) (projT1 (g (projT1 (f x))))
                            (myComp (projT2 (g (projT1 (f x)))) (projT2 (f x)))).
 
+Print Assumptions myComp.

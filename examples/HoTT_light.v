@@ -17,10 +17,10 @@ Definition id {A : Type} (a : A) : A := a.
 Section TypeEq.
 
   Equations(nocomp) eq_sym (A : Type) (x y : A) (eq : Id x y) : Id y x :=
-  eq_sym _ _ _ id_refl := id_refl _.
+  eq_sym _ x ?(x) id_refl := id_refl _.
 
   Equations(nocomp) eq_trans (A : Type) (x y z : A) (eq1 : Id x y) (eq2 : Id y z) : Id x z :=
-  eq_trans _ _ _ _ id_refl id_refl := id_refl _.
+  eq_trans _ x ?(x) ?(x) id_refl id_refl := id_refl _.
 End TypeEq.
 
 Arguments Id {A} _ _.
@@ -322,7 +322,7 @@ Defined.
 
 Equations ap_p {A B : Type} (f : A -> B) {x y : A} (p q: x = y) (e : p = q) :
   ap f p = ap f q :=
-ap_p f p q id_refl := id_refl.
+ap_p f p ?(p) id_refl := id_refl.
 
 Instance ap_morphism (A : Type) (B : Type) x y f :
   Proper (@Id (@Id A x y) ==> @Id (@Id B (f x) (f y))) (@ap A B f x y).
@@ -385,7 +385,7 @@ Defined.
 Equations(nocomp) path_sigma_uncurried (A : Type) (P : A -> Type) (u v : sigma A P)
   (pq : sigma _ (fun p => p # u.2 = v.2))
   : u = v :=
-path_sigma_uncurried _ _ (sigmaI u1 u2) (sigmaI v1 v2) (sigmaI id_refl id_refl) :=
+path_sigma_uncurried _ _ (sigmaI u1 u2) (sigmaI ?(u1) ?(u2)) (sigmaI id_refl id_refl) :=
   id_refl.
 Transparent path_sigma_uncurried.
 

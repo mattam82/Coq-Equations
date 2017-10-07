@@ -338,16 +338,16 @@ Module M1.
   (* Définition de la multiplication *)
   (* FIXME noind *)
   Equations(noind) mult n b1 (p1 : poly b1 n) b2 (p2 : poly b2 n) : { b : bool & poly b n } :=
-    mult n b1 poly_z        b2 _ := apoly _ poly_z;
-    mult n b1 (poly_c x nx) b2 poly_z := apoly _ poly_z;
-    mult n b1 (poly_c x nx) b2 (poly_c y ny) :=
+    mult ?(0) ?(true) poly_z        b2 _ := apoly _ poly_z;
+    mult ?(0) ?(false) (poly_c x nx) ?(true) poly_z := apoly _ poly_z;
+    mult ?(0) ?(false) (poly_c x nx) ?(false) (poly_c y ny) :=
     match (x * y)%Z with
       | Z0 => apoly _ poly_z
       | Zpos z' => apoly _ (poly_c (Zpos z') (IsPos z'))
       | Zneg z' => apoly _ (poly_c (Zneg z') (IsNeg z'))
     end;
-    mult n b1 (poly_l p1)    b2 q := mult_l q (mult _ _ p1);
-    mult n b1 (poly_s p1 q1) b2 q := mult_s q (mult _ _ p1) (mult _ _ q1).
+    mult ?(S n) ?(b) (poly_l n b p1)    b2 q := mult_l q (mult _ _ p1);
+    mult ?(S n) ?(false) (poly_s n b p1 q1) b2 q := mult_s q (mult _ _ p1) (mult _ _ q1).
   Arguments mult {n} {b1} p1 {b2} p2.
 
   (**

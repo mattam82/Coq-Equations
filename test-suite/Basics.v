@@ -40,10 +40,10 @@ Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
 K x P p eq_refl := p.
 
 Equations eq_sym {A} (x y : A) (H : x = y) : y = x :=
-eq_sym x x eq_refl := eq_refl.
+eq_sym x _ eq_refl := eq_refl.
 
 Equations eq_trans {A} (x y z : A) (p : x = y) (q : y = z) : x = z :=
-eq_trans x x x eq_refl eq_refl := eq_refl.
+eq_trans x _ _ eq_refl eq_refl := eq_refl.
 
 Notation " x |:| y " := (@Vector.cons _ x _ y) (at level 20, right associativity) : vect_scope.
 Notation " x |: n :| y " := (@Vector.cons _ x n y) (at level 20, right associativity) : vect_scope.
@@ -364,7 +364,7 @@ Arguments Split [ X ].
 Equations split {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
 split {m:=m} xs by rec m :=
 split {m:=O} xs := append nil xs ;
-split {m:=(S m)} (cons x ?(m + n) xs) <= split xs => {
+split {m:=(S m)} {n:=n} (cons x ?(m + n) xs) <= split xs => {
   | append xs' ys' := append (cons x xs') ys' }.
 
 Lemma split_vapp' : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
@@ -407,8 +407,8 @@ vmap' f (cons a n v) := cons (f a) (vmap' f v).
 Hint Resolve lt_n_Sn : subterm_relation.
 Equations vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
 vmap f {n:=n} v by rec n :=
-vmap f {n:=O} nil := nil ;
-vmap f {n:=(S n)} (cons a n v) := cons (f a) (vmap f v).
+vmap f {n:=?(O)} nil := nil ;
+vmap f {n:=?(S n)} (cons a n v) := cons (f a) (vmap f v).
 
 Transparent vmap.
 
@@ -532,13 +532,13 @@ Defined.
 Equations(nocomp) parity (n : nat) : Parity n :=
 parity O := even 0 ;
 parity (S n) <= parity n => {
-  parity (S ?(2 * k))     (even k) := odd k ;
-  parity (S ?(2 * k + 1)) (odd k)  := cast (even (S k)) _ }.
+  parity (S ?(mult 2 k))     (even k) := odd k ;
+  parity (S ?(S (mult 2 k))) (odd k)  := cast (even (S k)) _ }.
 
 Equations half (n : nat) : nat :=
 half n <= parity n => {
-  half ?(2 * k) (odd k) := k ;
-  half ?(2 * k + 1) (even k) := k }.
+  half ?(S (mult 2 k)) (odd k) := k ;
+  half ?(mult 2 k) (even k) := k }.
 
 Equations(nocomp) vtail {A n} (v : vector A (S n)) : vector A n :=
 vtail (cons a n v') := v'.
@@ -548,7 +548,7 @@ Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars id.
 
 Equations(nocomp) diag {A n} (v : vector (vector A n) n) : vector A n :=
 diag {n:=O} nil := nil ;
-diag {n:=(S n)} (cons (cons a n v) n v') := cons a (diag (vmap vtail v')).
+diag {n:=(S ?(n))} (cons (cons a n v) _ v') := cons a (diag (vmap vtail v')).
 
 Definition mat A n m := vector (vector A m) n.
 
@@ -562,7 +562,7 @@ vfold_right f e (cons a n v) := f n a (vfold_right f e v).
 
 Equations vzip {A B C n} (f : A -> B -> C) (v : vector A n) (w : vector B n) : vector C n :=
 vzip f nil _ := nil ;
-vzip f (cons a n v) (cons a' n v') := cons (f a a') (vzip f v v').
+vzip f (cons a _ v) (cons a' n v') := cons (f a a') (vzip f v v').
 
 Definition transpose {A m n} : mat A m n -> mat A n m :=
   vfold_right (A:=λ m, mat A n m)
@@ -598,4 +598,4 @@ Qed.
 Equations assoc (x y z : nat) : x + y + z = x + (y + z) :=
 assoc 0 y z := eq_refl;
 assoc (S x) y z <= assoc x y z, x + (y + z) => {
-assoc (S x) y z eq_refl p' := eq_refl }.
+assoc (S x) y z eq_refl _ := eq_refl }.

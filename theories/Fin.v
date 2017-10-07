@@ -69,8 +69,8 @@ Notation vnil := Vector.nil.
 Notation vcons := Vector.cons.
 
 Equations(nocomp) nth {A} {n} (v : Vector.t A n) (f : fin n) : A :=
-nth (vcons a n v) fz := a ;
-nth (vcons a n v) (fs n f) := nth v f.
+nth (vcons a _ v) fz := a ;
+nth (vcons a _ v) (fs n f) := nth v f.
 
 Equations(nocomp) tabulate {A} {n} (f : fin n -> A) : Vector.t A n :=
 tabulate {n:=O} f := vnil ;

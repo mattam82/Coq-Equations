@@ -54,12 +54,13 @@ open Equations_common
 open Constrintern
 open Decl_kinds
 
+type generated = bool
 (** User-level patterns *)
 type user_pat =
-    PUVar of identifier
-  | PUCstr of constructor * int * user_pat list
+    PUVar of identifier * generated
+  | PUCstr of constructor * int * user_pats
   | PUInac of Constrexpr.constr_expr
-type user_pats = user_pat list
+and user_pats = user_pat Loc.located list
 
 (** AST *)
 type program = 
@@ -84,8 +85,9 @@ and prototype =
 
 and 'a where_clause = prototype * 'a list
 
-let rec pr_user_pat env = function
-  | PUVar i -> pr_id i
+let rec pr_user_pat env (loc,pat) =
+  match pat with
+  | PUVar (i, gen) -> pr_id i ++ if gen then str "#" else mt ()
   | PUCstr (c, i, f) -> 
       let pc = pr_constructor env c in
 	if not (List.is_empty f) then str "(" ++ pc ++ spc () ++ pr_user_pats env f ++ str ")"
@@ -191,12 +193,13 @@ let is_rec_call r f =
     | _ -> false
 
 let rec translate_cases_pattern env avoid = function
-  | PatVar (loc, Name id) -> PUVar id
+  | PatVar (loc, Name id) -> loc, PUVar (id, false)
   | PatVar (loc, Anonymous) -> 
       let n = next_ident_away (id_of_string "wildcard") avoid in
-	avoid := n :: !avoid; PUVar n
+	avoid := n :: !avoid; loc, PUVar (n, true)
   | PatCstr (loc, (ind, _ as cstr), pats, Anonymous) ->
-      PUCstr (cstr, (Inductiveops.inductive_nparams ind), map (translate_cases_pattern env avoid) pats)
+     loc, PUCstr (cstr, (Inductiveops.inductive_nparams ind),
+             map (translate_cases_pattern env avoid) pats)
   | PatCstr (loc, cstr, pats, Name id) ->
       user_err_loc (loc, "interp_pats", str "Aliases not supported by Equations")
 
@@ -248,7 +251,7 @@ let interp_eqn i is_rec env impls eqn =
     | PEApp ((loc,f), l) -> 
 	let r =
 	  try Inl (Smartlocate.smart_global f)
-	  with e -> Inr (PUVar (ident_of_smart_global f))
+	  with e -> Inr (PUVar (ident_of_smart_global f, false))
 	in
 	  (match r with
 	   | Inl (ConstructRef c) ->
@@ -262,17 +265,17 @@ let interp_eqn i is_rec env impls eqn =
 		 else l
 	       in 
 		 Dumpglob.add_glob loc (ConstructRef c);
-		 PUCstr (c, nparams, map interp_pat l')
+		 loc, PUCstr (c, nparams, map interp_pat l')
 	   | Inl _ ->
 	       if l != [] then 
 		 user_err_loc (loc, "interp_pats",
 			       str "Pattern variable " ++ pr_smart_global f ++ str" cannot be applied ")
-	       else PUVar (ident_of_smart_global f)
-	   | Inr p -> p)
-    | PEInac c -> PUInac c
+	       else loc, PUVar (ident_of_smart_global f, false)
+	   | Inr p -> loc, p)
+    | PEInac c -> loc, PUInac c
     | PEWildcard -> 
 	let n = next_ident_away (id_of_string "wildcard") avoid in
-	  avoid := n :: !avoid; PUVar n
+	  avoid := n :: !avoid; loc, PUVar (n, true)
 
     | PEPat p ->
 	let ids, pats = intern_pattern env p in
@@ -315,7 +318,7 @@ let interp_eqn i is_rec env impls eqn =
     in
     let pats = map interp_pat curpats'' in
       match is_rec with
-      | Some (Structural _) -> (loc, PUVar i :: pats, interp_rhs recinfo fn curpats' rhs)
+      | Some (Structural _) -> (loc, (dummy_loc, PUVar (i, false)) :: pats, interp_rhs recinfo fn curpats' rhs)
       | Some (Logical r) -> 
          (loc, pats, interp_rhs ((i, r) :: recinfo) fn curpats' rhs)
       | None -> (loc, pats, interp_rhs recinfo fn curpats' rhs)

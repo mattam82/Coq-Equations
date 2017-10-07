@@ -698,20 +698,22 @@ and accessibles l =
   
 let hidden = function PHide _ -> true | _ -> false
 
-let rec match_pattern p c =
+let rec match_pattern (loc,p) c =
   match p, c with
-  | PUVar i, t -> [i, t]
+  | PUVar (i,gen), (PCstr _ | PRel _ | PHide _) -> [i, c], [], []
   | PUCstr (c, i, pl), PCstr ((c',u), pl') -> 
-      if eq_constructor c c' then
-	let params, args = List.chop i pl' in
-	  match_patterns pl args
-      else raise Conflict
-  | PUInac _, _ -> []
+     if eq_constructor c c' then
+       let params, args = List.chop i pl' in
+       match_patterns pl args
+     else raise Conflict
+  | PUInac t, t' ->
+     [], [t, t'], []
+  | _, PInac t -> [], [], [(loc,p), t]
   | _, _ -> raise Stuck
 
 and match_patterns pl l =
   match pl, l with
-  | [], [] -> []
+  | [], [] -> [], [], []
   | hd :: tl, hd' :: tl' -> 
       let l = 
 	try Some (match_pattern hd hd')
@@ -722,10 +724,9 @@ and match_patterns pl l =
 	with Stuck -> None
       in
 	(match l, l' with
-	| Some l, Some l' -> l @ l'
+	| Some (l, li, ri), Some (l', li', ri') -> l @ l', li @ li', ri @ ri'
 	| _, _ -> raise Stuck)
   | _ -> raise Conflict
-      
 
 open Constrintern
 
@@ -735,7 +736,7 @@ let matches (p : user_pats) ((phi,p',g') : context_map) =
       UnifSuccess (match_patterns p p')
   with Conflict -> UnifFailure | Stuck -> UnifStuck
 
-let rec match_user_pattern p c =
+let rec match_user_pattern p (loc,c) =
   match p, c with
   | PRel i, t -> [i, t], []
   | PCstr ((c',_), pl'), PUCstr (c, i, pl) -> 
@@ -743,7 +744,7 @@ let rec match_user_pattern p c =
       let params, args = List.chop i pl' in
 	match_user_patterns args pl
     else raise Conflict
-  | PCstr _, PUVar n -> [], [n, p]
+  | PCstr _, PUVar (n,gen) -> [], [n, p]
   | PInac _, _ -> [], []
   | _, _ -> raise Stuck
 
@@ -892,9 +893,9 @@ let unify_type env evars before id ty after =
     None
 
 let blockers curpats ((_, patcs, _) : context_map) =
-  let rec pattern_blockers p c =
+  let rec pattern_blockers (loc,p) c =
     match p, c with
-    | PUVar i, t -> []
+    | PUVar (i, _), t -> []
     | PUCstr (c, i, pl), PCstr ((c',_), pl') -> 
 	if eq_constructor c c' then patterns_blockers pl (snd (List.chop i pl'))
 	else []
@@ -1219,12 +1220,51 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
 		        pr_problem data env prob)
 
 and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets ty
-                  ((loc,lhs,rhs), used) s =
+                  ((loc,lhs,rhs), used) (s, uinnacs, innacs) =
   let env' = push_rel_context_eos ctx env evars in
   let get_var loc i s =
     match assoc i s with
     | PRel i -> i
     | _ -> user_err_loc (loc, "equations", str"Unbound variable " ++ pr_id i)
+  in
+  let () = (* Check innaccessibles are correct *)
+    let check_uinnac (user, t) =
+      let userc, usercty = interp_constr_in_rhs env ctx evars data None s lets user in
+      match t with
+      | PInac t ->
+         let evars', b = Reductionops.infer_conv env' !evars userc t in
+         if b then (evars := evars')
+         else
+           user_err_loc (Constrexpr_ops.constr_loc user, "covering",
+                         str "Incompatible innaccessible pattern " ++
+                           Printer.pr_constr_env env' !evars userc ++
+                           spc () ++ str "should be convertible to " ++
+                           Printer.pr_constr_env env' !evars t)
+      | _ ->
+         let t = pat_constr t in
+         user_err_loc (Constrexpr_ops.constr_loc user, "covering",
+                       str "Pattern " ++
+                         Printer.pr_constr_env env' !evars userc ++
+                         spc () ++ str "is not inaccessible, but should refine pattern " ++
+                         Printer.pr_constr_env env' !evars t)
+    in
+    let check_innac ((loc,user), forced) =
+      if Loc.is_ghost loc then
+        () (** Allow patterns not written by the user to be forced innaccessible silently *)
+      else
+        match user with
+        | PUVar (i, true) ->
+           (** If the pattern comes from a wildcard, allow forcing innaccessibles too *)
+           ()
+        | _ ->
+           let ctx, envctx, liftn, subst = env_of_rhs evars ctx env s lets in
+           let forcedsubst = substnl subst 0 forced in
+           user_err_loc (loc, "covering",
+                         str "This pattern must be innaccessible and equal to " ++
+                           Printer.pr_constr_env (push_rel_context ctx env) !evars forcedsubst)
+    in
+    List.iter check_uinnac uinnacs;
+    List.iter check_innac innacs
   in
   match rhs with
   | Program (c,w) -> 
@@ -1397,7 +1437,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
 	   match matches_user prob oldpats with
 	   | UnifSuccess (s, alias) -> 
 	      (* A substitution from the problem variables to user patterns and 
-				 from user pattern variables to patterns instantiating problem variables. *)
+		 from user pattern variables to patterns instantiating problem variables. *)
 	      let newlhs = 
 		List.map_filter 
 		  (fun i ->
@@ -1405,9 +1445,9 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
 		    else
 		      if List.exists (fun (i', b) -> i' == pred i && b) vars then None
 		      else
-			try Some (List.assoc (pred i) s)
+			try Some (dummy_loc, List.assoc (pred i) s)
 			with Not_found -> (* The problem is more refined than the user vars*)
-			  Some (PUVar (next_unknown ())))
+			  Some (dummy_loc, PUVar (next_unknown (), true)))
 		  vars'
 	      in
 	      let newrhs = match rhs with
