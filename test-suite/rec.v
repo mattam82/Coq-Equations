@@ -5,7 +5,6 @@
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
-
 Require Import Program Utf8.
 From Equations Require Import Equations DepElimDec.
 Require Import Bvector List Relations.
@@ -15,12 +14,11 @@ Require Import Subterm.
 Instance wf_nat : WellFounded lt := lt_wf.
 Hint Resolve lt_n_Sn : Below.
 Module RecRel.
-  
   Equations id (n : nat) : nat :=
   id n by rec n lt :=
   id O := 0 ;
   id (S n) := S (id n).
-
+  
 End RecRel.
 
 Section Nested.

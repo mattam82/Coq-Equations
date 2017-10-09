@@ -392,8 +392,13 @@ GEXTEND Gram
     ] ]
   ;
 
+  pat_head:
+    [ [ id=smart_global -> (!@loc, id) 
+    ] ]
+  ;
+
   lpatt:
-    [ [ id = smart_global; pats = LIST0 patt -> !@loc, PEApp ((!@loc,id), pats)
+    [ [ head = pat_head; pats = LIST0 patt -> !@loc, PEApp (head, pats)
       | p = patt -> p
     ] ]
   ;

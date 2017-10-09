@@ -336,6 +336,7 @@ let interp_eqn i is_rec env impls eqn =
     | By (x, s) -> By (x, map (aux recinfo fn curpats) s)
   and interp_wheres recinfo avoid w =
     let interp_where (((loc,id),b,t) as p,eqns) =
+      Dumpglob.dump_reference loc "<>" (string_of_id id) "def";
       p, map (aux recinfo (id,None) []) eqns
     in List.map interp_where w
   and interp_constr_expr recinfo ids c = 
