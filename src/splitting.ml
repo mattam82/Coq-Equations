@@ -248,11 +248,20 @@ let term_of_tree status isevar env0 tree =
                 (* We know the term is a correct instantiation of the evar, we
                  * just need to apply it to the correct variables. *)
                 let ev_info = Evd.find_undefined evm (fst ev) in
-                let hyps = Evd.evar_context ev_info in
-                let args = Context.Named.to_instance hyps in
-                let term = Vars.substl args next_term in
+                let ev_ctx = Evd.evar_context ev_info in
+                (* [next_term] is typed under [env, next_ctx] while the evar
+                 * is typed under [ev_ctx] *)
+                let ev_ctx_constrs = List.map (fun decl ->
+                  let id = Context.Named.Declaration.get_id decl in
+                    Constr.mkVar id) ev_ctx in
+                let rels, named = List.chop (List.length next_ctx) ev_ctx_constrs in
+                let vars_subst = List.map2 (fun decl c ->
+                  let id = Context.Named.Declaration.get_id decl in
+                    id, c) (Environ.named_context env) named in
+                let term = Vars.replace_vars vars_subst next_term in
+                let term = Vars.substl rels term in
                 let _ =
-                  let env = Environ.push_named_context hyps env in
+                  let env = Evd.evar_env ev_info in
                   Typing.type_of env evm term
                 in
                 evd := Evd.define (fst ev) term evm;
