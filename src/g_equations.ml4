@@ -547,7 +547,7 @@ END
 VERNAC COMMAND EXTEND Derive CLASSIFIED AS SIDEFF
 | [ "Derive" ne_ident_list(ds) "for" global_list(c) ] -> [
     Derive.derive (List.map Id.to_string ds)
-                  (List.map Smartlocate.global_with_alias c)
+                  (List.map (fun x -> Libnames.loc_of_reference x, Smartlocate.global_with_alias x) c)
   ]
 END
 

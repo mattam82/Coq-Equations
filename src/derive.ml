@@ -42,4 +42,5 @@ let derive_one polymorphic d grs =
 
 let derive ds grs =
   let poly = Flags.use_polymorphic_flag () in
+  let grs = List.map (fun (loc, gr) -> Dumpglob.add_glob loc gr; gr) grs in
   List.iter (fun d -> derive_one poly d grs) ds
