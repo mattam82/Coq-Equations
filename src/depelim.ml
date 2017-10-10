@@ -521,9 +521,9 @@ let default_patterns env ?(avoid = ref []) ind : (Loc.t * Syntax.user_pat) list 
               let hd = Namegen.hdchar env ty in
                 Namegen.next_ident_away (Names.id_of_string hd) !avoid
         in avoid := id :: !avoid;
-      Loc.dummy_loc, Syntax.PUVar (id, true)) ctx
+      Loc.ghost, Syntax.PUVar (id, true)) ctx
     in
-      Loc.dummy_loc, Syntax.PUCstr (construct, nparams, args)
+      Loc.ghost, Syntax.PUCstr (construct, nparams, args)
   in List.init (Array.length oib.mind_consnames) make_pattern
 
 (* Dependent elimination using Equations. *)
@@ -567,13 +567,13 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
           List.rev_map (fun decl ->
             let decl_id = Context.Named.Declaration.get_id decl in
             if Names.Id.equal decl_id id then loc, pat
-            else loc, Syntax.PUVar (decl_id, false)) loc_hyps
+            else Loc.ghost, Syntax.PUVar (decl_id, false)) loc_hyps
         in
         let rhs =
-          let prog = Constrexpr.CHole (loc, None, Misctypes.IntroAnonymous, None) in
+          let prog = Constrexpr.CHole (Loc.ghost, None, Misctypes.IntroAnonymous, None) in
             Syntax.Program (prog, [])
         in
-          (loc, lhs, rhs)
+          (Loc.ghost, lhs, rhs)
     in
     let clauses : Syntax.clause list = List.map make_clause patterns in
     if !debug then
