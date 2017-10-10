@@ -1129,3 +1129,350 @@ Defined.
     unfold cong_tel_proj.
     exact X.
   Defined.
+
+  Lemma NoConfusionPackage_isequiv {A} (a b : A) {e : NoConfusionPackage A} : Equiv (a = b) (NoConfusion a b).
+  Proof.
+    unshelve refine {| equiv := noConfusion |}.
+    unshelve refine {| equiv_inv := noConfusion_inv |}.
+    red; intros.
+    apply axiom_triangle.
+    red. apply noConfusion_is_equiv.
+    apply axiom_triangle.
+  Defined.
+
+  Lemma apply_equiv_codom {A} {B B' : A -> Type} (e : forall x, Equiv (B x) (B' x)) :
+    (forall x : A, B x) <~> forall x : A, B' x.
+  Proof.
+    intros.
+    unshelve refine {| equiv f := fun x => e x (f x) |}.
+    unshelve refine {| equiv_inv f := fun x => (e x)^-1 (f x) |}.
+    red; intros.
+    extensionality y. apply inv_equiv_equiv.
+    intro. extensionality y. apply equiv_inv_equiv.
+    intros.
+    apply axiom_triangle.
+  Defined.
+
+  (* Lemma equiv_K A {NC : NoConfusionPackage A} (x y : A) : forall p q : NoConfusion x y, p = q. *)
+  (* Proof. *)
+  (*   intros. *)
+  (*   pose (NoConfusionPackage_isequiv x y). *)
+  (*   destruct x, y; simpl in *. *)
+  (*   destruct p, q. reflexivity. *)
+  (*   destruct p. *)
+  (*   destruct p. *)
+  (*   destruct p. *)
+
+  Equations noConf_nat (x y : nat) : Type :=
+    noConf_nat 0 0 := True;
+    noConf_nat (S x) (S y) := noConf_nat x y;
+    noConf_nat _ _ := False.
+  (* BUG if with ind *)
+  Equations(noind) noConf_nat_inv (x y : nat) (e : x = y) : noConf_nat x y :=
+    noConf_nat_inv x ?(x) eq_refl <= x =>
+    { | 0 => I;
+      | S n => (noConf_nat_inv n n eq_refl) }.
+
+  Next Obligation.
+    Transparent noConf_nat_inv.
+    unfold noConf_nat_inv.
+    destruct x.
+    simpl. apply eq_refl.
+    apply eq_refl.
+  Defined.
+
+  Lemma noConfusion_nat_k (x y : nat) (p : noConf_nat x y) : x = y.
+  Proof.
+    induction x in y, p |- *; destruct y.
+    destruct p. reflexivity.
+    destruct p.
+    destruct p.
+    apply Top.cong. apply IHx.
+    apply p.
+  Defined.
+
+  Lemma iseq x y : IsEquiv (noConfusion_nat_k x y).
+  Proof.
+    unshelve refine {| equiv_inv := noConf_nat_inv x y |}.
+    apply axiom_triangle.
+    apply axiom_triangle.
+    apply axiom_triangle.
+  Defined.
+
+  Definition equiv' x y : Equiv (noConf_nat x y) (x = y) .
+  Proof.
+    refine {| equiv := noConfusion_nat_k x y |}.
+    apply iseq.
+  Defined.
+
+  Lemma noConfusion_nat_k3 (x : nat) (p : noConf_nat x x) : noConfusion_nat_k x x p = eq_refl.
+  Proof.
+    induction x.
+    simpl. destruct p. reflexivity.
+    simpl. rewrite IHx.
+    reflexivity.
+  Defined.
+
+  Lemma equiv_unit A (x : A) : inj (@eq_refl A x = eq_refl) <~> inj unit.
+  Proof.
+    refine {| equiv x := tt |}.
+    unshelve refine {| equiv_inv x := eq_refl |}.
+    red; intros.
+    destruct x0.
+    reflexivity.
+
+    red; intros.
+    revert x0.
+    set (foo:=@eq_refl A x).
+    clearbody foo.
+    intros x0.
+    apply axiom_triangle.
+    apply axiom_triangle.
+  Defined.
+
+  Lemma noConf_nat_refl_true n : noConf_nat n n <~> inj unit.
+  Proof.
+    refine {| equiv x := tt |}.
+    unshelve refine {| equiv_inv x := _ |}.
+    induction n. constructor.
+    apply IHn.
+
+    red; intros.
+    destruct x.
+    reflexivity.
+    red; intros.
+    induction n.
+    destruct x.
+    reflexivity.
+    simpl.
+    apply IHn.
+
+    simpl. intros.
+    induction n ; simpl.
+    destruct x. reflexivity.
+    simpl.
+    apply IHn.
+  Defined.
+
+
+
+  Lemma example' {A} :
+    &{ Γ' : Tel &
+           tele (n : nat) (x y : A) (v v' : Vector.t A n) in
+        (Vector.cons x v = Vector.cons y v') <~> Γ' }.
+  Proof.
+    intros. eexists.
+    refine (equiv_compose _ _).
+    do 5 intros_tele.
+    2:simpl.
+    refine (equiv_compose _ _).
+    refine (solution_inv_tele (A:=nat) (Vector.t A) _ _ _).
+
+    refine (equiv_compose _ _).
+    refine (reorder_tele (tele (e0 : S n = S n) in (Vector.cons x v ={ vector A ; e0} (Vector.cons y v'))) (fun ρ => inj (ρ.1 = eq_refl))).
+    simpl.
+    refine (equiv_compose _ _).
+    refine (equiv_sym _).
+    refine (equiv_tele_l _).
+    refine (equiv_sym _).
+    refine (injectivity_cons2 &(x, n & v) &(y, n & v')).
+    refine (equiv_compose
+              (C:=tele (e : x = y) in (v ={ (λ _ : A, inj (vector A n)); e} v'))
+              _ _).
+    refine (equiv_tele_r _).
+    intros.
+
+    unfold telescope in x0. simpl in x0.
+
+    destruct x0.
+
+    destruct pr2.
+    destruct pr1.
+
+    simpl in *.
+    unfold injectivity_cons2.
+    simpl.
+    unfold noconf_equiv, equiv, equiv_sym, inv_equiv, equiv_inv.
+    simpl.
+
+
+    simpl.
+    intros. eexists.
+    refine (equiv_compose _ _).
+    do 5 intros_tele.
+    2:simpl.
+    refine (equiv_compose _ _).
+    refine (solution_inv_tele (A:=nat) (Vector.t A) _ _ _).
+
+
+    refine (reorder_tele (tele (e0 : S n = S n) in (Vector.cons x v ={ vector A ; e0} (Vector.cons y v'))) (fun ρ => inj (ρ.1 = eq_refl))).
+    simpl.
+    refine (equiv_compose _ _).
+    refine (equiv_sym _).
+    refine (equiv_tele_l _).
+    refine (equiv_sym _).
+    refine (injectivity_cons2 &(x, n & v) &(y, n & v')).
+
+
+
+    refine (equiv_compose _ _).
+    refine (equiv_sym _).
+    refine (equiv_tele_l _).
+    refine (equiv' _ _).
+    simpl.
+    unfold equiv', equiv.
+    simpl.
+    refine (equiv_compose _ _).
+    intros_tele.
+    rewrite noConfusion_nat_k3. simpl.
+    unfold telescope. intros_tele.
+    refine (equiv_unit _ _).
+    simpl.
+    refine (equiv_compose _ _).
+    refine (equiv_sym _).
+    refine (equiv_tele_l _).
+    refine (equiv_sym _).
+    refine (noConf_nat_refl_true _).
+    simpl.
+    intros_tele.
+    simpl.
+    refine (equiv_compose _ _).
+    unfold telescope.
+    intros_tele.
+    refine (equiv_id _).
+    refine (equiv_id _).
+
+    simpl. rewrite noConfusion_nat_k3. simpl.
+    unfold telescope. intros_tele.
+    refine (equiv_unit _ _).
+    simpl.
+
+    pose (lower_solution A n).
+    pose (inv_equiv e &(x & v)).
+    simpl in e.
+    pose (telei x n in v : telu A).
+    pose (sol:=lifted_solution (tele (_ : A) (n' : nat) in vector A n')).
+    simpl in sol.
+    simpl in t0.
+    unfold e, lower_solution, equiv, equiv_inv, inv_equiv in t0. simpl in t0.
+    unfold e, lower_solution, equiv, equiv_inv, inv_equiv in t0. simpl in t0.
+    set (solinst :=
+           sigmaI (fun x => sigma nat (fun n => vector A n)) t0.1 &(t0.2.1 & t0.2.2.1)).
+    specialize (sol solinst).
+    specialize (sol &(y, n & v')).
+    (* specialize (sol solinst). (*&(y, n & v')).*) *)
+    specialize (sol (telv A n)).
+    specialize (sol (inj nat)).
+    simpl in e.
+    specialize (sol (fun x => S x.2.1) (fun x => S n) eq_refl eq_refl). simpl in sol.
+    specialize (sol e). subst e.
+    simpl in sol.
+    unfold solution_left in *.
+    simpl in *.
+    unfold inv_equiv in sol. unfold eq_points_equiv in sol. simpl in *.
+    unfold equiv_inv in *. simpl in *.
+    unfold cong in sol. simpl in *.
+
+    refine (equiv_compose
+              (C:=tele (e : x = y) in (v ={ (λ _ : A, inj (vector A n)); e} v'))
+              _ sol).
+    refine (equiv_tele_r _).
+    intros.
+
+
+  
+  Lemma noConfusion_nat_k2 (x y : nat) (p q : noConf_nat x y) : p = q.
+  Proof.
+    induction x in y, p, q |- *; destruct y.
+    destruct p, q. reflexivity.
+    destruct p.
+    destruct p.
+    simpl in p, q.
+    apply IHx.
+  Defined.
+
+
+  Lemma noConf_HProp (x y : nat) :  (forall p q : x = y, p = q).
+  Proof.
+    unshelve refine (apply_equiv_dom _ _ _).
+    shelve.
+    refine (equiv_sym (NoConfusionPackage_isequiv x y)).
+    intros x0.
+    unshelve refine (apply_equiv_dom _ _ _).
+    shelve.
+    refine (equiv_sym (NoConfusionPackage_isequiv x y)).
+    revert x0.
+    revert x y. fix 1.
+    unfold equiv, equiv_inv, equiv_sym, inv_equiv, NoConfusionPackage_isequiv, NoConfusion.noConfusion_nat_obligation_1;
+    simpl;
+    unfold equiv, equiv_inv, equiv_sym, inv_equiv, NoConfusionPackage_isequiv, NoConfusion.noConfusion_nat_obligation_1;
+    simpl.
+    destruct x; destruct y;
+    intros. destruct x0, x.
+    reflexivity.
+    destruct x0.
+    destruct x0.
+    change (Top.cong S x0 = Top.cong S x1).
+    apply Top.cong.
+    simpl in x0, x1.
+
+
+    intros.
+    simpl in x0, x1.
+    pose (equiv (NoConfusionPackage_isequiv x y) x0).
+    pose (equiv (NoConfusionPackage_isequiv x y) x1).
+    specialize (noConf_HProp _ _ n n0).
+    simpl.
+    subst n n0.
+    change (
+        @equiv (@NoConfusion nat NoConfusionPackage_nat x y) (@Logic.eq nat x y)
+               (@equiv_sym (@Logic.eq nat x y) (@NoConfusion nat NoConfusionPackage_nat x y)
+                           (@NoConfusionPackage_isequiv nat x y NoConfusionPackage_nat)))
+      with (@inv_equiv _ _ (@NoConfusionPackage_isequiv nat x y NoConfusionPackage_nat)) in *.
+    rewrite equiv_inv_equiv in noConf_HProp.
+    rewrite equiv_inv_equiv in noConf_HProp.
+    apply noConf_HProp.
+  Defined.
+
+
+  Eval compute in noConf_HProp.
+  Lemma noConf_HProp : (forall x y : nat, NoConfusion_nat x y) <~> (forall x y : nat, forall p q : x = y, p = q).
+  Proof.
+    refine (equiv_compose _ _).
+    refine (equiv_sym _).
+    refine (apply_equiv_codom _).
+    intros x. refine (apply_equiv_codom _).
+    intros x0.
+    refine (NoConfusionPackage_isequiv x x0).
+    simpl.
+
+    unshelve refine {| equiv f := fun x y p q => _ |}.
+    pose (f x y).
+    transitivity e.
+    destruct p.
+
+
+
+    unshelve refine {| equiv_inv f := fun x y => _ |}.
+    refine (match f x y with
+            | left p => p
+            | right e => _
+            end).
+
+  
+  Lemma noConf_K : (forall x y : nat, NoConfusion_nat x y) <~> (forall x y : nat, { x = y } + { x <> y }).
+  Proof.
+    refine (equiv_compose _ _).
+    refine (equiv_sym _).
+    refine (apply_equiv_codom _).
+    intros x. refine (apply_equiv_codom _).
+    intros x0.
+    refine (NoConfusionPackage_isequiv x x0).
+    simpl.
+
+    unshelve refine {| equiv f := fun x y => left (f x y) |}.
+    unshelve refine {| equiv_inv f := fun x y => _ |}.
+    refine (match f x y with
+            | left p => p
+            | right e => _
+            end).
