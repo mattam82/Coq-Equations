@@ -25,3 +25,5 @@ Makefile
 /html/
 /examples/nlia.cache
 /examples/.nia.cache
+docs/.sass-cache/
+docs/_site
