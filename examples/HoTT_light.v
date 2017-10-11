@@ -8,19 +8,31 @@ Import IdNotations.
 Set Standard Proposition Elimination Names.
 Set Universe Polymorphism.
 Set Primitive Projections.
+Unset Equations OCaml Splitting.
+
+(** We want our definitions to stay transparent. *)
+Set Equations Transparent.
+
+Polymorphic Definition transport_r (A : Type) (x : A) (P : A → Type) : P x → ∀ y : A, y = x → P y.
+Proof. intros Px y e. apply id_sym in e. destruct e. exact Px. Defined.
+
+Polymorphic Definition transport_dep_r (A : Type) (x : A) (P : forall y : A, y = x → Type) :
+  P x id_refl → ∀ (y : A) (e : y = x), P y e.
+Proof. intros Px y e. destruct e. apply Px. Defined.
+
+Equations Logic Type Id Id_rect Empty unit tt Id_rect_r Id_rect_dep_r.
 
 Set Implicit Arguments.
 
-Set Equations Transparent.
-
 Definition id {A : Type} (a : A) : A := a.
+
 Section TypeEq.
 
-  Equations(nocomp) eq_sym (A : Type) (x y : A) (eq : Id x y) : Id y x :=
-  eq_sym _ x ?(x) id_refl := id_refl _.
+  Equations eq_sym (A : Type) (x y : A) (eq : Id x y) : Id y x :=
+  eq_sym _ _ _ id_refl := id_refl _.
 
-  Equations(nocomp) eq_trans (A : Type) (x y z : A) (eq1 : Id x y) (eq2 : Id y z) : Id x z :=
-  eq_trans _ x ?(x) ?(x) id_refl id_refl := id_refl _.
+  Equations eq_trans (A : Type) (x y z : A) (eq1 : Id x y) (eq2 : Id y z) : Id x z :=
+  eq_trans _ _ _ _ id_refl id_refl := id_refl _.
 End TypeEq.
 
 Arguments Id {A} _ _.
@@ -45,11 +57,11 @@ Inductive prod (A B : Type) := pair : A -> B -> prod A B.
 Notation " X * Y " := (prod X Y) : type_scope.
 Notation " ( x , p ) " := (@pair _ _ x p).
 
-Equations(nocomp) fst {A B} (p : A * B) : A :=
+Equations fst {A B} (p : A * B) : A :=
 fst (pair a b) := a.
 Transparent fst.
 
-Equations(nocomp) snd {A B} (p : A * B) : B :=
+Equations snd {A B} (p : A * B) : B :=
 snd (pair a b) := b.
 Transparent snd.
 
@@ -59,6 +71,15 @@ Definition Sect {A B : Type} (s : A -> B) (r : B -> A) :=
 Equations ap {A B : Type} (f : A -> B) {x y : A} (p : x = y) : f x = f y :=
 ap f id_refl := id_refl.
 Transparent ap.
+
+Equations transport {A : Type} (P : A -> Type) {x y : A} (p : x = y) (u : P x) : P y :=
+transport P id_refl u := u.
+Transparent transport.
+Notation "p # x" := (transport _ p x) (right associativity, at level 65, only parsing).
+
+Equations apd {A} {B : A -> Type} (f : forall x : A, B x) {x y : A} (p : x = y) :
+  p # f x = f y :=
+apd f id_refl := id_refl.
 
 (** A typeclass that includes the data making [f] into an adjoin equivalence*)
 
@@ -103,7 +124,7 @@ Notation "f == g" := (pointwise_paths f g) (at level 70, no associativity) : typ
 
 (* This definition has slightly changed: the match on the Id is external
    to the function. *)
-Equations(nocomp) apD10 {A} {B : A -> Type} {f g : forall x, B x} (h : f = g) : f == g :=
+Equations apD10 {A} {B : A -> Type} {f g : forall x, B x} (h : f = g) : f == g :=
 apD10 id_refl := fun h => id_refl.
 
 Class Funext :=
@@ -116,11 +137,6 @@ Definition path_forall `{Funext} {A : Type} {P : A -> Type} (f g : forall x : A,
   :=
   (@apD10 A P f g)^^-1.
 
-Equations transport {A : Type} (P : A -> Type) {x y : A} (p : x = y) (u : P x) : P y :=
-transport P id_refl u := u.
-Transparent transport.
-
-Notation "p # x" := (transport _ p x) (right associativity, at level 65, only parsing).
 Open Scope sigma_scope.
 Equations path_sigma {A : Type} (P : A -> Type) (u v : sigma A P)
   (p : u.1 = v.1) (q : p # u.2 = v.2)
@@ -182,7 +198,7 @@ Proof.
   intro f.  apply path_forall.  intro a.  apply contr.
 Defined.
 
-Equations(nocomp) concat {A} {x y z : A} (e : x = y) (e' : y = z) : x = z :=
+Equations concat {A} {x y z : A} (e : x = y) (e' : y = z) : x = z :=
 concat id_refl q := q.
 Infix "@@" := concat (at level 50).
 
@@ -203,7 +219,7 @@ Equations concat_1p {A : Type} {x y : A} (p : x = y) :
   id_refl @@ p = p :=
 concat_1p id_refl := id_refl.
 
-Equations(nocomp) concat_p1 {A : Type} {x y : A} (p : x = y) :
+Equations concat_p1 {A : Type} {x y : A} (p : x = y) :
   p @@ id_refl  = p :=
 concat_p1 id_refl := id_refl.
 
@@ -268,18 +284,20 @@ Equations ap_compose {A B C : Type} (f : A -> B) (g : B -> C) {x y : A} (p : x =
   ap (fun x => g (f x)) p = ap g (ap f p) :=
 ap_compose f g id_refl := id_refl.
 
-Equations(nocomp) concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) :
-  (ap f q) @@ (p y) = (p x) @@ q :=
-concat_A1p {f:=f} p {x:=x} id_refl with p x, f x :=
+Equations concat_A1p {A : Type} {g : A -> A} (p : forall x, g x = x) {x y : A} (q : x = y) :
+  (ap g q) @@ (p y) = (p x) @@ q :=
+concat_A1p {g:=g} p {x:=x} id_refl with p x, g x :=
 concat_A1p p id_refl id_refl _ := id_refl.
 
-Notation " 'rew' H 'in' c " := (eq_rect_r _ c H) (at level 20).
-Notation " 'rewd' H 'in' c " := (@DepElim.eq_rect_dep_r _ _ _ c _ H) (at level 20).
+Notation " 'rew' H 'in' c " := (@Id_rect_r _ _ _ c _ H) (at level 20).
+Notation " 'rewd' H 'in' c " := (@Id_rect_dep_r _ _ _ c _ H) (at level 20).
 Lemma concat_A1p_lemma {A} (f : A -> A) (p : forall x, f x = x) {x y : A} (q : x = y) :
-  eq (concat_A1p p q) (concat_A1p p q).
+  (concat_A1p p q) = (concat_A1p p q).
 Proof.
   funelim (concat_A1p p q).
-  rewrite Heq0. simpl. rewrite <- Heq. simpl. reflexivity.
+  elim Heq0 using Id_rect_dep_r. simpl.
+  Fail rewrite Heq0. (* bug *)
+  elim Heq using Id_rect_dep_r. simpl. reflexivity.
 Qed.
 
 Equations ap_pp {A B : Type} (f : A -> B) {x y z : A} (p : x = y) (q : y = z) :
@@ -322,7 +340,7 @@ Defined.
 
 Equations ap_p {A B : Type} (f : A -> B) {x y : A} (p q: x = y) (e : p = q) :
   ap f p = ap f q :=
-ap_p f p ?(p) id_refl := id_refl.
+ap_p f p _ id_refl := id_refl.
 
 Instance ap_morphism (A : Type) (B : Type) x y f :
   Proper (@Id (@Id A x y) ==> @Id (@Id B (f x) (f y))) (@ap A B f x y).
@@ -382,10 +400,10 @@ Proof.
   apply (H0 (center A)).
 Defined.
 
-Equations(nocomp) path_sigma_uncurried (A : Type) (P : A -> Type) (u v : sigma A P)
+Equations path_sigma_uncurried (A : Type) (P : A -> Type) (u v : sigma A P)
   (pq : sigma _ (fun p => p # u.2 = v.2))
   : u = v :=
-path_sigma_uncurried _ _ (sigmaI u1 u2) (sigmaI ?(u1) ?(u2)) (sigmaI id_refl id_refl) :=
+path_sigma_uncurried _ _ (sigmaI u1 u2) (sigmaI _ _) (sigmaI id_refl id_refl) :=
   id_refl.
 Transparent path_sigma_uncurried.
 

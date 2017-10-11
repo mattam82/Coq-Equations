@@ -1,3 +1,10 @@
+(** Polynomials and a reflexive tactic for solving boolean goals (using
+   heyting or classical boolean algebra).  Original version by Rafael
+   Bocquet, 2016. Updated to use Equations for all definitions by M. Sozeau,
+   2016-2017. If running this interactively you can ignore the printing 
+   and hide directives which are just used to instruct coqdoc. *)
+
+(* begin hide *)
 (** printing elimination %\coqdoctac{elimination}% *)
 (** printing noconf %\coqdoctac{noconf}% *)
 (** printing simp %\coqdoctac{simp}% *)
@@ -9,11 +16,7 @@
 (** printing Signature %\coqdocclass{Signature}% *)
 (** printing Subterm %\coqdocclass{Subterm}% *)
 (** printing NoConfusion %\coqdocclass{NoConfusion}% *)
-(* begin hide *)
-(** Polynomials and a reflexive tactic for solving boolean goals (using
-   heyting or classical boolean algebra).  Original version by Rafael
-   Bocquet, 2016. Updated to use Equations for all definitions by M. Sozeau,
-   2016-2017 *)
+(* end hide *)
 Require Import Equations.Equations.
 From Equations Require Import DepElimDec.
 Require Import ZArith.
@@ -22,8 +25,8 @@ Require Import Psatz.
 Require Import NPeano.
 Require Import Nat.
 Require Import Coq.Vectors.VectorDef.
-Derive Signature for vector eq.
 
+Derive Signature for vector eq.
 Coercion Bool.Is_true : bool >-> Sortclass.
 
 Notation pack := Signature.signature_pack.
@@ -60,7 +63,7 @@ Proof.
   funelim (IsNZ z); unfold not; split; intros;
     (discriminate || contradiction || constructor).
 Qed.
-(* end hide *)
+
 (** *** Multivariate polynomials
 
    Using an indexed inductive type, we ensure that polynomials of
@@ -115,9 +118,9 @@ Inductive mono : nat -> Type :=
 | mono_z : mono O
 | mono_l : forall {n}, mono n -> mono (S n)
 | mono_s : forall {n}, mono (S n) -> mono (S n).
-(* begin hide *)
+
 Derive Signature NoConfusion Subterm for mono.
-(* end hide *)
+
 (** Our first interesting definition computes the coefficient in [Z] by which
     a monomial [m] is multiplied in a polynomial [p]. *)
 
@@ -164,7 +167,7 @@ get_coef (mono_s m) (poly_s p1 p2) := get_coef m p2.
   The monomial decomposition is actually a complete characterization
   of a polynomial: two polynomials with the same coefficients for every
   monomial are the same. *)
-(* begin hide *)
+
 (** To show this, we need a lemma that shows that every non-null polynomial,
     has a monomial with non-null coefficient:
     this proof is done by dependent induction on the polynomial [p].
@@ -179,7 +182,6 @@ Proof with (autorewrite with get_coef; auto).
 Qed.
 
 Notation " ( x ; p ) " := (existT _ x p).
-(* end hide *)
 
 Theorem get_coef_eq {n} b1 b2
   (p1 : poly b1 n) (p2 : poly b2 n) :
@@ -200,14 +202,12 @@ induction p1 as [ | z Hz | n b p1 | n b p1 IHp q1 IHq ]
  dependent elimination p2 as [poly_z | poly_c z i] |
  dependent elimination p2 as
      [poly_l n b' p2 | poly_s n b' p2 q2] ..].
-(* begin hide *)
   all:(intros; try rename n0 into n; auto;
       try (specialize (Hcoef mono_z); simp get_coef in Hcoef; subst z;
            (elim i || elim Hz ||
             ltac:(repeat f_equal; auto)); fail)).
   - specialize (IHp1 _ p2). forward IHp1. intro m.
     specialize (Hcoef (mono_l m))... clear Hcoef.
-(* end hide *)
 
     (** We first do an induction on [p1] and then eliminate (dependently)
         [p2], the first two branches need to consider variable-closed [p2]s
@@ -249,6 +249,7 @@ induction p1 as [ | z Hz | n b p1 | n b p1 IHp q1 IHq ]
     now depelim IHq.
 Qed.
 (* end hide *)
+
 (** The next step is to give an evaluation semantics to polynomials.
     We program [eval p v] where [v] is a valuation in [Z] for all the
     variables in [p : poly _ n]. *)
@@ -321,21 +322,11 @@ Qed.
   directly follows from the induction hypothesis correspondinng to the
   recursive call. The second subgoal is hence discharged with an
   [assumption] call.
-  
-  Using %\Equations%, we can define more complex definitions on our
-  polynomials, ultimately equipping [poly] with the structure of a
-  ring. We stop our presentation here, but the reader can refer to the
-  online version to finish the example. It culminates in a reflexive
-  tactic that can solve tautologies in Heyting or Classical boolean
-  algebras. *)
 
-(* begin hide *)
-(* We present the definition of addition below *)
-
-(** Addition is defined on two polynomials with the same number of variables and returns
-    a (possibly null) polynomial with the same number of variables.
-    We define an injection function to constructs objects in the dependent pair type
-    [{b : bool & poly b n}]. *)
+  Addition is defined on two polynomials with the same number of variables and returns
+  a (possibly null) polynomial with the same number of variables.
+  We define an injection function to constructs objects in the dependent pair type
+  [{b : bool & poly b n}]. *)
 
 Definition apoly {n b} := existT (fun b => poly b n) b.
 
@@ -475,13 +466,6 @@ Equations poly_l_or_s {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 (S n)) :
 poly_l_or_s p1 {b2 := true} p2 := apoly (poly_l p1);
 poly_l_or_s p1 {b2 := false} p2 := apoly (poly_s p1 p2).
                                         
-  
-    (* poly b2 (S n) -> {b : bool & poly b (S n) } := *)
-    (* match b2 with *)
-    (*   | false => fun p2 => apoly (poly_s p1 p2) *)
-    (*   | true  => fun p2 => apoly (poly_l p1) *)
-    (* end. *)
-
 Lemma poly_l_or_s_eval : forall {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 (S n)) h v,
     eval (poly_l_or_s p1 p2).2 (Vector.cons h v) =
     (eval p1 v + h * eval p2 (Vector.cons h v))%Z.
@@ -534,6 +518,7 @@ Arguments mult {n} {b1} p1 {b2} p2.
 
 (** The proof that multiplication is a morphism for evaluation works as usual by induction,
     using previously proved lemma to get equations in [Z] that the [nia] tactic can handle. *)
+
 Lemma mult_eval : forall {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) v,
     (eval p1 v * eval p2 v)%Z = eval (mult p1 p2).2 v.
 Proof with (autorewrite with mult mult_l mult_s eval; auto with zarith).
@@ -669,6 +654,7 @@ Proof.
   - rewrite <- IHf1, <- IHf2; destruct (eval_formula (Vector.nth v) f1); destruct (eval_formula (Vector.nth v) f2); auto.
   - rewrite <- IHf; destruct (eval_formula (Vector.nth v) f); auto.
 Qed.
+(* end hide *)
 
 (** From this, we can derive that two boolean formulas are equivalent if
     the translated polynomials are themselves _syntactically_ equal,
@@ -884,4 +870,3 @@ Example neg_involutive: forall a, orb (negb a) a = true.
 Fail bool_tauto_with @correctness_heyting.
 bool_tauto_with @correctness_classical.
 Qed.
-(* end hide *)

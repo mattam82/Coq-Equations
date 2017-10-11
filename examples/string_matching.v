@@ -1,3 +1,5 @@
+(** Example by Nicky Vazou, unfinished *)
+
 Require Import Arith.
 Require Import Coq.Classes.DecidableClass.
 Require Import Coq.Program.Wf.
