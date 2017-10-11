@@ -10,17 +10,6 @@ Inductive ilist (A : Set) : nat -> Set :=
 Arguments Nil [A].
 Arguments Cons [A n] _ _.
 
-Set Universe Polymorphism.
-Open Scope sigma_scope.
-Equations(nocomp) path_sigma {A : Type} (P : A -> Type) (u v : sigma A P)
- (p : u = v) : u.1 = v.1 :=
-path_sigma _ _ _ eq_refl := eq_refl.
-
-Unset Universe Polymorphism.
-
-
-Notation " ( x , p ) " := (@sigmaI _ _ x p).
-
 Equations fin_to_nat {n : nat} (i : fin n) : nat :=
 fin_to_nat fz := 0;
 fin_to_nat (fs j) := S (fin_to_nat j).
