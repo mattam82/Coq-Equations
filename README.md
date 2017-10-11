@@ -17,9 +17,9 @@ providing a definitional extension to the Coq kernel.
 A preliminary documentation is available in `doc/` and
 some examples in `test-suite/` and `examples/`.
 
-The [reference manual](http://github.com/mattam82/Coq-Equations/doc/equations.pdf)
+The [reference manual](http://github.com/mattam82/Coq-Equations/tree/master/doc/equations.pdf)
 providing an introduction is available along
-with [examples](http://github.com/mattam82/Coq-Equations/examples).
+with [examples](http://github.com/mattam82/Coq-Equations/tree/master/examples).
 
 ## Bibliography
 
