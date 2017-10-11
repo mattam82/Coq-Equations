@@ -16,8 +16,6 @@ eliminators for inductive types, equality and accessibility,
 providing a definitional extension to the Coq kernel.
 
 ## Documentation
-A preliminary documentation is available in `doc/` and
-some examples in `test-suite/` and `examples/`.
 
 The [reference manual](http://github.com/mattam82/Coq-Equations/tree/master/doc/equations.pdf)
 providing an introduction is available along
