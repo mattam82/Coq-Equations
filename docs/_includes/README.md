@@ -1,4 +1,4 @@
-## **Equations** - a function definition plugin.
+### **Equations** - a function definition plugin.
 
 Copyright 2009-2017 Matthieu Sozeau `matthieu.sozeau@inria.fr`  
 Copyright 2015-2017 Cyprien Mangin `cyprien.mangin@m4x.org`
@@ -15,12 +15,12 @@ in [Coq](http://coq.inria.fr). It compiles everything down to
 eliminators for inductive types, equality and accessibility,
 providing a definitional extension to the Coq kernel.
 
-# Documentation
+## Documentation
 
 The [reference manual](http://github.com/mattam82/Coq-Equations/raw/master/doc/equations.pdf)
 providing an introduction is available along with [examples](examples).
 
-# Bibliography
+## Papers
 
 Two articles describing the system are available:
 
@@ -33,11 +33,11 @@ Two articles describing the system are available:
   Proving. ITP 2010. Lecture Notes in Computer Science,
   vol 6172. Springer, Berlin, Heidelberg.
   
-# Installation
+## Installation
 
 The current development version works with Coq 8.6.
 
-### Install with OPAM
+# Install with OPAM
 This package is available on [OPAM](http://opam.ocaml.org/).
 Activate the [Coq repository](https://github.com/coq/opam-coq-archive)
 if you didn't do it yet:
@@ -56,7 +56,7 @@ To get the development version of Equations, activate the repository:
 
     opam repo add coq-extra-dev https://coq.inria.fr/opam/extra-dev
 
-### Install by hand
+# Install by hand
 Alternatively, to compile Equations, simply run:
 
     coq_makefile -f _CoqProject -o Makefile
