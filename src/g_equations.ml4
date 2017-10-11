@@ -350,6 +350,21 @@ let deppat_equations : Syntax.pre_equation list Gram.entry =
 let _ = Pptactic.declare_extra_genarg_pprule wit_deppat_equations
   pr_raw_deppat_equations pr_glob_deppat_equations pr_deppat_equations
 
+type deppat_elim_argtype = Syntax.user_pat_expr list Genarg.uniform_genarg_type
+
+let wit_deppat_elim : deppat_elim_argtype =
+ Genarg.create_arg "deppat_elim"
+
+let pr_raw_deppat_elim _ _ _ l = mt ()
+let pr_glob_deppat_elim _ _ _ l = mt ()
+let pr_deppat_elim _ _ _ l = mt ()
+
+let deppat_elim : Syntax.user_pat_expr list Gram.entry =
+  Pcoq.create_generic_entry Pcoq.utactic "deppat_elim" (Genarg.rawwit wit_deppat_elim)
+
+let _ = Pptactic.declare_extra_genarg_pprule wit_deppat_elim
+  pr_raw_deppat_elim pr_glob_deppat_elim pr_deppat_elim
+
 open Glob_term
 open Util
 open Pcoq
@@ -362,13 +377,17 @@ open Tok
 open Syntax
 
 GEXTEND Gram
-  GLOBAL: pattern deppat_equations binders2 lident;
+  GLOBAL: pattern deppat_equations deppat_elim binders2 lident;
  
   binders2 : 
      [ [ b = binders -> b ] ]
   ;
   deppat_equations:
     [ [ l = LIST1 equation SEP ";" -> l ] ]
+  ;
+
+  deppat_elim:
+    [ [ "["; l = LIST0 lpatt SEP "|"; "]" -> l ] ]
   ;
   
   equation:
@@ -477,6 +496,21 @@ VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS SIDEFF
 (* 	convert_concl newconcl DEFAULTcast gl  *)
 (*   | _ -> tclFAIL 0 (str "Not a recognizable call") gl ] *)
 (* END *)
+
+(* Dependent elimination using Equations. *)
+
+let pr_elim_patterns _ _ _ l = mt ()
+
+ARGUMENT EXTEND elim_patterns
+PRINTED BY pr_elim_patterns
+  | [ deppat_elim(l) ] -> [ l ]
+END
+
+TACTIC EXTEND dependent_elimination
+| ["dependent" "elimination" ident(id) ] -> [ Depelim.dependent_elim_tac id ]
+| ["dependent" "elimination" ident(id) "as" elim_patterns(l) ] ->
+    [ Depelim.dependent_elim_tac ~patterns:l id ]
+END
 
 (* Subterm *)
 

@@ -501,4 +501,105 @@ let specialize_eqs id gl =
   then
     tclFAIL 0 (str "Specialization not allowed on dependent hypotheses") gl
   else specialize_eqs id gl
-                            
+
+(* Produce a list of default patterns to eliminate an inductive value in [ind]. *)
+let default_patterns env ?(avoid = ref []) ind : (Loc.t * Syntax.user_pat) list =
+  let nparams = Inductiveops.inductive_nparams ind in
+  let mib, oib = Inductive.lookup_mind_specif env ind in
+  let make_pattern (i : int) : Loc.t * Syntax.user_pat =
+    let construct = Names.ith_constructor_of_inductive ind (succ i) in
+    let args =
+      let arity = oib.mind_nf_lc.(i) in
+      let ctx, _ = Term.decompose_prod_assum arity in
+      (* Make an identifier for each argument of the constructor. *)
+      List.rev_map (fun decl ->
+        let id =
+          match Context.Rel.Declaration.get_name decl with
+          | Names.Name id -> id
+          | Names.Anonymous ->
+              let ty = Context.Rel.Declaration.get_type decl in
+              let hd = Namegen.hdchar env ty in
+                Namegen.next_ident_away (Names.id_of_string hd) !avoid
+        in avoid := id :: !avoid;
+      Loc.ghost, Syntax.PUVar (id, true)) ctx
+    in
+      Loc.ghost, Syntax.PUCstr (construct, nparams, args)
+  in List.init (Array.length oib.mind_consnames) make_pattern
+
+(* Dependent elimination using Equations. *)
+let dependent_elim_tac ?patterns id : unit Proofview.tactic =
+  Proofview.Goal.nf_enter { Proofview.Goal.enter = fun gl ->
+    let env = Environ.reset_context (Proofview.Goal.env gl) in
+    let hyps = Proofview.Goal.hyps gl in
+    (* Keep aside the section variables. *)
+    let loc_hyps, sec_hyps = CList.split_when
+      (fun decl ->
+        let id = Context.Named.Declaration.get_id decl in
+        Termops.is_section_variable id) hyps in
+    let env = Environ.push_named_context sec_hyps env in
+    (* We want to work in a [rel_context], not a [named_context]. *)
+    let ctx, subst = Equations_common.rel_of_named_context loc_hyps in
+    let _, rev_subst, _ =
+      let err () = assert false in
+      Equations_common.named_of_rel_context ~keeplets:true err ctx in
+    let concl = Proofview.Goal.concl gl in
+    (* We also need to convert the goal for it to be well-typed in
+     * the [rel_context]. *)
+    let ty = Vars.subst_vars subst concl in
+    let patterns : (Loc.t * Syntax.user_pat) list =
+      match patterns with
+      | None ->
+          (* Produce directly a user_pat. *)
+          let decl = Context.Named.lookup id loc_hyps in
+          let ty = Context.Named.Declaration.get_type decl in
+          let (ind, _), _ = Inductive.find_rectype env ty in
+            default_patterns env ind
+      | Some p ->
+          (* Interpret each pattern. *)
+          let avoid = ref [] in
+            List.map (Syntax.interp_pat env ~avoid) p
+    in
+
+    (* For each pattern, produce a clause. *)
+    let make_clause : (Loc.t * Syntax.user_pat) -> Syntax.clause =
+      fun (loc, pat) ->
+        let lhs =
+          List.rev_map (fun decl ->
+            let decl_id = Context.Named.Declaration.get_id decl in
+            if Names.Id.equal decl_id id then loc, pat
+            else Loc.ghost, Syntax.PUVar (decl_id, false)) loc_hyps
+        in
+        let rhs =
+          let prog = Constrexpr.CHole (Loc.ghost, None, Misctypes.IntroAnonymous, None) in
+            Syntax.Program (prog, [])
+        in
+          (Loc.ghost, lhs, rhs)
+    in
+    let clauses : Syntax.clause list = List.map make_clause patterns in
+    if !debug then
+    Feedback.msg_info (str "Generated clauses: " ++ fnl() ++ Syntax.pr_clauses env clauses);
+
+    (* Produce dummy data for covering. *)
+    (* FIXME Not very clean. *)
+    let data = (Names.Id.of_string "dummy", false,
+      Constrintern.empty_internalization_env) in
+
+    (* Initial problem. *)
+    let prob = Covering.id_subst ctx in
+    let args = Context.Rel.to_extended_list 0 ctx in
+
+    Refine.refine ~unsafe:false { Sigma.run = fun evars ->
+      let evd = ref (Sigma.to_evar_map evars) in
+      (* Produce a splitting tree. *)
+      let split : Covering.splitting =
+        Covering.covering env evd data clauses [] prob ty
+      in
+
+      let helpers, oblevs, c, ty =
+        Splitting.term_of_tree Evar_kinds.Expand evd env split
+      in
+      let c = Reduction.beta_applist c args in
+      let c = Vars.substl (List.rev rev_subst) c in
+        Sigma.Unsafe.of_pair (c, !evd)
+    }
+  }

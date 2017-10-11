@@ -243,50 +243,48 @@ let chole c loc =
   let kn = Lib.make_kn c in
   let cst = Names.Constant.make kn kn in
   CHole (loc,Some (ImplicitArg (ConstRef cst, (0,None), false)),Misctypes.IntroAnonymous,None), None
-    
+
+let rec interp_pat env ?(avoid = ref []) (loc, p) =
+  match p with
+  | PEApp ((loc, f), l) ->
+      let r =
+        try Inl (Smartlocate.smart_global f)
+        with e -> Inr (PUVar (ident_of_smart_global f, false))
+      in begin match r with
+      | Inl (ConstructRef c) ->
+          let ind, _ = c in
+          let nparams = Inductiveops.inductive_nparams ind in
+          let nargs = Inductiveops.constructor_nrealargs c in
+          let len = List.length l in
+          let l' =
+            if len < nargs then List.make (nargs - len) (loc, PEWildcard) @ l
+            else l
+          in
+            Dumpglob.add_glob loc (ConstructRef c);
+            loc, PUCstr (c, nparams, map (interp_pat env ~avoid) l')
+      | Inl _ ->
+          if l != [] then
+            user_err_loc (loc, "interp_pat",
+              str "Pattern variable " ++ pr_smart_global f ++ str " cannot be applied")
+          else loc, PUVar (ident_of_smart_global f, false)
+      | Inr p -> loc, p
+      end
+  | PEInac c -> loc, PUInac c
+  | PEWildcard ->
+      let n = next_ident_away (id_of_string "wildcard") avoid in
+        avoid := n :: !avoid; loc, PUVar (n, true)
+  | PEPat p ->
+      let ids, pats = intern_pattern env p in
+      let upat =
+        match pats with
+        | [(l, pat)] -> translate_cases_pattern env avoid pat
+        | _ -> user_err_loc (loc, "interp_pat",
+                             str "Or patterns not supported by Equations")
+      in upat
+
 let interp_eqn i is_rec env impls eqn =
   let avoid = ref [] in
-  let rec interp_pat (loc, p) =
-    match p with
-    | PEApp ((loc,f), l) -> 
-	let r =
-	  try Inl (Smartlocate.smart_global f)
-	  with e -> Inr (PUVar (ident_of_smart_global f, false))
-	in
-	  (match r with
-	   | Inl (ConstructRef c) ->
-	       let (ind,_) = c in
-	       let nparams = Inductiveops.inductive_nparams ind in
-	       let nargs = constructor_nrealargs c in
-	       let len = List.length l in
-	       let l' =
-		 if len < nargs then 
-		   List.make (nargs - len) (loc,PEWildcard) @ l
-		 else l
-	       in 
-		 Dumpglob.add_glob loc (ConstructRef c);
-		 loc, PUCstr (c, nparams, map interp_pat l')
-	   | Inl _ ->
-	       if l != [] then 
-		 user_err_loc (loc, "interp_pats",
-			       str "Pattern variable " ++ pr_smart_global f ++ str" cannot be applied ")
-	       else loc, PUVar (ident_of_smart_global f, false)
-	   | Inr p -> loc, p)
-    | PEInac c -> loc, PUInac c
-    | PEWildcard -> 
-	let n = next_ident_away (id_of_string "wildcard") avoid in
-	  avoid := n :: !avoid; loc, PUVar (n, true)
-
-    | PEPat p ->
-	let ids, pats = intern_pattern env p in
-	  (* Names.identifier list * *)
-	  (*   ((Names.identifier * Names.identifier) list * Rawterm.cases_pattern) list *)
-	let upat = 
-	  match pats with
-	  | [(l, pat)] -> translate_cases_pattern env avoid pat
-	  | _ -> user_err_loc (loc, "interp_pats", str "Or patterns not supported by equations")
-	in upat
-  in
+  let interp_pat = interp_pat env ~avoid in
   let rec aux recinfo (i, is_rec as fn) curpats (idopt, pats, rhs) =
     let curpats' = 
       match pats with

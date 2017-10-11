@@ -68,3 +68,6 @@ val pattern_call :
 val specialize_eqs : Names.Id.t -> Proof_type.tactic
 
 val compare_upto_variables : constr -> constr -> bool
+
+val dependent_elim_tac : ?patterns:Syntax.user_pat_expr list -> Names.Id.t ->
+  unit Proofview.tactic

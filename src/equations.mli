@@ -40,9 +40,7 @@ val equations :
   Constrexpr.constr_expr ->
   (Vernacexpr.lstring * Constrexpr.constr_expr *
    Notation_term.scope_name option)
-  list ->
-  ((Loc.t * identifier) option * input_pats * 'b rhs as 'b) list ->
-  unit
+  list -> pre_equation list -> unit
 
 
 val solve_equations_goal :

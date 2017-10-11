@@ -42,7 +42,6 @@ open Evd
 open Evarutil
 open Evar_kinds
 open Equations_common
-open Depelim
 open Termops
 open Syntax
 open Covering
@@ -239,19 +238,33 @@ let term_of_tree status isevar env0 tree =
             | Some ((next_ctx, _), ev), Some s ->
                 let evm, next_term, next_ty = aux env !evd s in
                 (* Now we need to instantiate [ev] with the term [next_term]. *)
-                let conv_fun = Evarconv.evar_conv_x Names.full_transparent_state in
-                let next_env = Environ.push_rel_context next_ctx env in
                 (* [next_term] starts with lambdas, so we apply it to its context. *)
                 let args = Equations_common.extended_rel_vect 0 next_ctx in
                 let next_term = Reduction.beta_appvect next_term args in
-                (* Finally, we might need to permutate some rels. *)
+                (* We might need to permutate some rels. *)
                 let next_subst = Covering.context_map_of_splitting s in
                 let perm_subst = Covering.make_permutation ~env evm subst next_subst in
                 let next_term = Covering.mapping_constr perm_subst next_term in
+                (* We know the term is a correct instantiation of the evar, we
+                 * just need to apply it to the correct variables. *)
+                let ev_info = Evd.find_undefined evm (fst ev) in
+                let ev_ctx = Evd.evar_context ev_info in
+                (* [next_term] is typed under [env, next_ctx] while the evar
+                 * is typed under [ev_ctx] *)
+                let ev_ctx_constrs = List.map (fun decl ->
+                  let id = Context.Named.Declaration.get_id decl in
+                    Constr.mkVar id) ev_ctx in
+                let rels, named = List.chop (List.length next_ctx) ev_ctx_constrs in
+                let vars_subst = List.map2 (fun decl c ->
+                  let id = Context.Named.Declaration.get_id decl in
+                    id, c) (Environ.named_context env) named in
+                let term = Vars.replace_vars vars_subst next_term in
+                let term = Vars.substl rels term in
                 let _ =
-                  Typing.type_of next_env evm next_term
+                  let env = Evd.evar_env ev_info in
+                  Typing.type_of env evm term
                 in
-                evd := Evarsolve.evar_define conv_fun next_env evm None ev next_term;
+                evd := Evd.define (fst ev) term evm;
                 c
             (* This should not happen... *)
             | _ -> failwith "Should not fail here, please report."
