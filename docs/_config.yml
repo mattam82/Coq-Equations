@@ -16,14 +16,14 @@
 title: Equations
 email: matthieu.sozeau@inria.fr
 description: The Equations plugin
-baseurl: "" # the subpath of your site, e.g. /blog
-url: "" # the base hostname & protocol for your site, e.g. http://example.com
+baseurl: "/Coq-Equations" # the subpath of your site, e.g. /blog
+url: "http://mattam82.gihub.io" # the base hostname & protocol for your site, e.g. http://example.com
 twitter_username: mattam_
 github_username:  mattam82
 
 # Build settings
-markdown: kramdown
-theme: jekyll-theme-cayman
+theme: minima
+
 #plugins:
 #  - jekyll-feed
 
