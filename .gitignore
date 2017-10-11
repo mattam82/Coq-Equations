@@ -23,3 +23,5 @@ Makefile
 /theories/.coq-native/
 /test-suite/.coq-native/
 /html/
+/examples/nlia.cache
+/examples/.nia.cache
