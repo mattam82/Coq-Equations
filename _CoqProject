@@ -3,7 +3,7 @@
 -R theories Equations
 -I theories
 -I examples
--extra-phony siteexamples "html" "coqdoc -parse-comments --no-index -utf8 -interpolate -html -R theories Equations -d docs/examples examples/*.v"
+-extra-phony siteexamples "examples/*.glob" "sh siteexamples.sh"
 -extra-phony doc "html" "mkdir -p html/api && ocamldoc -html -d html/api `ocamlfind query -r coq.intf coq.kernel coq.tactics coq.proofs coq.toplevel coq.ltac -i-format` -rectypes -I src src/*.ml"
 -extra-phony test-suite "" "cd test-suite && make"
 ZDEBUG = "-bin-annot -g -for-pack Equations -w -58"
@@ -62,3 +62,4 @@ examples/ordinals.v
 examples/ordinal_rec.v
 examples/RoseTree.v
 examples/string_matching.v
+examples/MoreDep.v

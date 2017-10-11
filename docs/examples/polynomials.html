@@ -126,15 +126,15 @@ The specification of this test is that it returns true iff the variable is indee
 <li> <span class="inlinecode"><a class="idref" href="polynomials.html#poly_z"><span class="id" title="constructor">poly_z</span></a></span> represents the null polynomial.
 
 </li>
-<li> <span class="inlinecode"><a class="idref" href="polynomials.html#poly_c"><span class="id" title="constructor">poly_c</span></a></span> <span class="inlinecode"><a class="idref" href="HoTT_light.html#c"><span class="id" title="variable">c</span></a></span> represents the constant polynomial <span class="inlinecode"><a class="idref" href="HoTT_light.html#c"><span class="id" title="variable">c</span></a></span> where <span class="inlinecode"><a class="idref" href="HoTT_light.html#c"><span class="id" title="variable">c</span></a></span> is non-zero (i.e. has a proof of <span class="inlinecode"><a class="idref" href="polynomials.html#IsNZ"><span class="id" title="definition">IsNZ</span></a></span> <span class="inlinecode"><a class="idref" href="HoTT_light.html#c"><span class="id" title="variable">c</span></a></span>).
+<li> <span class="inlinecode"><a class="idref" href="polynomials.html#poly_c"><span class="id" title="constructor">poly_c</span></a></span> <span class="inlinecode"><span class="id" title="var">c</span></span> represents the constant polynomial <span class="inlinecode"><span class="id" title="var">c</span></span> where <span class="inlinecode"><span class="id" title="var">c</span></span> is non-zero (i.e. has a proof of <span class="inlinecode"><a class="idref" href="polynomials.html#IsNZ"><span class="id" title="definition">IsNZ</span></a></span> <span class="inlinecode"><span class="id" title="var">c</span></span>).
 
 </li>
-<li> <span class="inlinecode"><a class="idref" href="polynomials.html#poly_l"><span class="id" title="constructor">poly_l</span></a></span> <span class="inlinecode"><a class="idref" href="STLC.html#n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode"><span class="id" title="var">Q</span></span> represents the injection of <span class="inlinecode"><span class="id" title="var">Q</span></span>, a
-  polynomial on <span class="inlinecode"><a class="idref" href="STLC.html#n"><span class="id" title="variable">n</span></a></span> variables, as a polynomial on <span class="inlinecode"><a class="idref" href="STLC.html#n"><span class="id" title="variable">n</span></a>+1</span> variables.
+<li> <span class="inlinecode"><a class="idref" href="polynomials.html#poly_l"><span class="id" title="constructor">poly_l</span></a></span> <span class="inlinecode"><a class="idref" href="polynomials.html#n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode"><span class="id" title="var">Q</span></span> represents the injection of <span class="inlinecode"><span class="id" title="var">Q</span></span>, a
+  polynomial on <span class="inlinecode"><a class="idref" href="polynomials.html#n"><span class="id" title="variable">n</span></a></span> variables, as a polynomial on <span class="inlinecode"><a class="idref" href="polynomials.html#n"><span class="id" title="variable">n</span></a>+1</span> variables.
 
 </li>
-<li> Finally, <span class="inlinecode"><a class="idref" href="polynomials.html#poly_s"><span class="id" title="constructor">poly_s</span></a></span> <span class="inlinecode"><a class="idref" href="HoTT_light.html#P"><span class="id" title="variable">P</span></a></span> <span class="inlinecode"><span class="id" title="var">Q</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="polynomials.html#poly"><span class="id" title="inductive">poly</span></a></span> <span class="inlinecode"><span class="id" title="var">_</span></span> <span class="inlinecode">(<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><a class="idref" href="STLC.html#n"><span class="id" title="variable">n</span></a>)</span> represents 
-  where <span class="inlinecode"><a class="idref" href="HoTT_light.html#P"><span class="id" title="variable">P</span></a></span> cannot mention the variable  but <span class="inlinecode"><span class="id" title="var">Q</span></span> can mention
+<li> Finally, <span class="inlinecode"><a class="idref" href="polynomials.html#poly_s"><span class="id" title="constructor">poly_s</span></a></span> <span class="inlinecode"><span class="id" title="var">P</span></span> <span class="inlinecode"><span class="id" title="var">Q</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="polynomials.html#poly"><span class="id" title="inductive">poly</span></a></span> <span class="inlinecode"><span class="id" title="var">_</span></span> <span class="inlinecode">(<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><a class="idref" href="polynomials.html#n"><span class="id" title="variable">n</span></a>)</span> represents 
+  where <span class="inlinecode"><span class="id" title="var">P</span></span> cannot mention the variable  but <span class="inlinecode"><span class="id" title="var">Q</span></span> can mention
   the variables up to and including , and the multiplication is
   not trivial as <span class="inlinecode"><span class="id" title="var">Q</span></span> is non-null.
 
@@ -174,7 +174,7 @@ In addition to the usual eliminators of the inductive type
   (equation ).
 
 </li>
-<li> Finally, its <span class="inlinecode"><span class="id" title="library">Subterm</span></span> relation, to be used when performing
+<li> Finally, its <span class="inlinecode"><span class="id" title="var">Subterm</span></span> relation, to be used when performing
   well-founded recursion on <span class="inlinecode"><a class="idref" href="polynomials.html#poly"><span class="id" title="inductive">poly</span></a></span>. 
 </li>
 </ul>
@@ -206,7 +206,7 @@ In addition to the usual eliminators of the inductive type
 
 <div class="doc">
 Our first interesting definition computes the coefficient in <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Numbers.BinNums.html#Z"><span class="id" title="inductive">Z</span></a></span> by which
-    a monomial <span class="inlinecode"><a class="idref" href="STLC.html#m"><span class="id" title="variable">m</span></a></span> is multiplied in a polynomial <span class="inlinecode"><a class="idref" href="HoTT_light.html#p"><span class="id" title="variable">p</span></a></span>. 
+    a monomial <span class="inlinecode"><a class="idref" href="polynomials.html#m"><span class="id" title="variable">m</span></a></span> is multiplied in a polynomial <span class="inlinecode"><a class="idref" href="polynomials.html#p"><span class="id" title="variable">p</span></a></span>. 
 </div>
 <div class="code">
 
@@ -242,10 +242,10 @@ The definition can be done using either the usual structural
 
 <div class="paragraph"> </div>
 
-  We want to do recursion on the (dependent) <span class="inlinecode"><a class="idref" href="STLC.html#m"><span class="id" title="variable">m</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="polynomials.html#mono"><span class="id" title="inductive">mono</span></a></span> <span class="inlinecode"><a class="idref" href="STLC.html#n"><span class="id" title="variable">n</span></a></span> argument,
+  We want to do recursion on the (dependent) <span class="inlinecode"><a class="idref" href="polynomials.html#m"><span class="id" title="variable">m</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="polynomials.html#mono"><span class="id" title="inductive">mono</span></a></span> <span class="inlinecode"><a class="idref" href="polynomials.html#n"><span class="id" title="variable">n</span></a></span> argument,
   using the derived <span class="inlinecode"><a class="idref" href="polynomials.html#mono_subterm"><span class="id" title="definition">mono_subterm</span></a></span> relation, which expects an element in
-  the signature of <span class="inlinecode"><a class="idref" href="polynomials.html#mono"><span class="id" title="inductive">mono</span></a></span>, <span class="inlinecode">{</span> <span class="inlinecode"><a class="idref" href="STLC.html#n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a></span> <span class="inlinecode">&amp;</span> <span class="inlinecode"><a class="idref" href="polynomials.html#mono"><span class="id" title="inductive">mono</span></a></span> <span class="inlinecode"><a class="idref" href="STLC.html#n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">}</span>, so we use <span class="inlinecode"><a class="idref" href="polynomials.html#pack"><span class="id" title="abbreviation">pack</span></a></span> <span class="inlinecode"><a class="idref" href="STLC.html#m"><span class="id" title="variable">m</span></a></span> to
-  lift <span class="inlinecode"><a class="idref" href="STLC.html#m"><span class="id" title="variable">m</span></a></span> into its signature type (<span class="inlinecode"><a class="idref" href="polynomials.html#pack"><span class="id" title="abbreviation">pack</span></a></span> is just an abbreviation for
+  the signature of <span class="inlinecode"><a class="idref" href="polynomials.html#mono"><span class="id" title="inductive">mono</span></a></span>, <span class="inlinecode">{</span> <span class="inlinecode"><a class="idref" href="polynomials.html#n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a></span> <span class="inlinecode">&amp;</span> <span class="inlinecode"><a class="idref" href="polynomials.html#mono"><span class="id" title="inductive">mono</span></a></span> <span class="inlinecode"><a class="idref" href="polynomials.html#n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">}</span>, so we use <span class="inlinecode"><a class="idref" href="polynomials.html#pack"><span class="id" title="abbreviation">pack</span></a></span> <span class="inlinecode"><a class="idref" href="polynomials.html#m"><span class="id" title="variable">m</span></a></span> to
+  lift <span class="inlinecode"><a class="idref" href="polynomials.html#m"><span class="id" title="variable">m</span></a></span> into its signature type (<span class="inlinecode"><a class="idref" href="polynomials.html#pack"><span class="id" title="abbreviation">pack</span></a></span> is just an abbreviation for
   the <span class="inlinecode"><span class="id" title="method">signature_pack</span></span> overloaded constant defined in ).
 
 <div class="paragraph"> </div>
@@ -269,8 +269,8 @@ The definition can be done using either the usual structural
 
  To show this, we need a lemma that shows that every non-null polynomial,
     has a monomial with non-null coefficient:
-    this proof is done by dependent induction on the polynomial <span class="inlinecode"><a class="idref" href="HoTT_light.html#p"><span class="id" title="variable">p</span></a></span>.
-    Note that the index of <span class="inlinecode"><a class="idref" href="HoTT_light.html#p"><span class="id" title="variable">p</span></a></span> rules out the <span class="inlinecode"><a class="idref" href="polynomials.html#poly_z"><span class="id" title="constructor">poly_z</span></a></span> case. 
+    this proof is done by dependent induction on the polynomial <span class="inlinecode"><a class="idref" href="polynomials.html#p"><span class="id" title="variable">p</span></a></span>.
+    Note that the index of <span class="inlinecode"><a class="idref" href="polynomials.html#p"><span class="id" title="variable">p</span></a></span> rules out the <span class="inlinecode"><a class="idref" href="polynomials.html#poly_z"><span class="id" title="constructor">poly_z</span></a></span> case. 
 </div>
 <div class="code">
 
@@ -326,7 +326,7 @@ Throughout the proof, we use the <span class="inlinecode"><span class="id" title
 <div class="doc">
 We first do an induction on <span class="inlinecode"><a class="idref" href="polynomials.html#p1"><span class="id" title="variable">p1</span></a></span> and then eliminate (dependently)
         <span class="inlinecode"><a class="idref" href="polynomials.html#p2"><span class="id" title="variable">p2</span></a></span>, the first two branches need to consider variable-closed <span class="inlinecode"><a class="idref" href="polynomials.html#p2"><span class="id" title="variable">p2</span></a></span>s
-        while the next two branches have <span class="inlinecode"><a class="idref" href="polynomials.html#p2"><span class="id" title="variable">p2</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="polynomials.html#poly"><span class="id" title="inductive">poly</span></a></span> <span class="inlinecode"><span class="id" title="var">_</span></span> <span class="inlinecode">(<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><a class="idref" href="STLC.html#n"><span class="id" title="variable">n</span></a>)</span>, hence the <span class="inlinecode"><a class="idref" href="polynomials.html#poly_l"><span class="id" title="constructor">poly_l</span></a></span> 
+        while the next two branches have <span class="inlinecode"><a class="idref" href="polynomials.html#p2"><span class="id" title="variable">p2</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="polynomials.html#poly"><span class="id" title="inductive">poly</span></a></span> <span class="inlinecode"><span class="id" title="var">_</span></span> <span class="inlinecode">(<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><a class="idref" href="polynomials.html#n"><span class="id" title="variable">n</span></a>)</span>, hence the <span class="inlinecode"><a class="idref" href="polynomials.html#poly_l"><span class="id" title="constructor">poly_l</span></a></span> 
         and <span class="inlinecode"><a class="idref" href="polynomials.html#poly_s"><span class="id" title="constructor">poly_s</span></a></span> patterns. The elided rest of the tactic solves simple subgoals. 
 
 <div class="paragraph"> </div>
@@ -335,10 +335,10 @@ We first do an induction on <span class="inlinecode"><a class="idref" href="poly
       After some simplifications of the induction hypothesis using 
       the <span class="inlinecode"><span class="id" title="var">Hcoef</span></span> hypothesis, we get to the following goal:
 <br/>
-<span class="inlinecode">&nbsp;&nbsp;(<a class="idref" href="STLC.html#b"><span class="id" title="variable">b</span></a>, <span class="id" title="var">b'</span> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a>) (<a class="idref" href="STLC.html#n"><span class="id" title="variable">n</span></a> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<a class="idref" href="polynomials.html#p1"><span class="id" title="variable">p1</span></a> : <a class="idref" href="polynomials.html#poly"><span class="id" title="inductive">poly</span></a> <a class="idref" href="STLC.html#b"><span class="id" title="variable">b</span></a> <a class="idref" href="STLC.html#n"><span class="id" title="variable">n</span></a>) (<a class="idref" href="polynomials.html#p2"><span class="id" title="variable">p2</span></a> : <a class="idref" href="polynomials.html#poly"><span class="id" title="inductive">poly</span></a> <span class="id" title="var">b'</span> <a class="idref" href="STLC.html#n"><span class="id" title="variable">n</span></a>)<br/>
-&nbsp;&nbsp;<span class="id" title="var">IHp1</span> : (<a class="idref" href="STLC.html#b"><span class="id" title="variable">b</span></a>; <a class="idref" href="polynomials.html#p1"><span class="id" title="variable">p1</span></a>) = (<span class="id" title="var">b'</span>; <a class="idref" href="polynomials.html#p2"><span class="id" title="variable">p2</span></a>)<br/>
+<span class="inlinecode">&nbsp;&nbsp;(<a class="idref" href="polynomials.html#b"><span class="id" title="variable">b</span></a>, <span class="id" title="var">b'</span> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a>) (<a class="idref" href="polynomials.html#n"><span class="id" title="variable">n</span></a> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<a class="idref" href="polynomials.html#p1"><span class="id" title="variable">p1</span></a> : <a class="idref" href="polynomials.html#poly"><span class="id" title="inductive">poly</span></a> <a class="idref" href="polynomials.html#b"><span class="id" title="variable">b</span></a> <a class="idref" href="polynomials.html#n"><span class="id" title="variable">n</span></a>) (<a class="idref" href="polynomials.html#p2"><span class="id" title="variable">p2</span></a> : <a class="idref" href="polynomials.html#poly"><span class="id" title="inductive">poly</span></a> <span class="id" title="var">b'</span> <a class="idref" href="polynomials.html#n"><span class="id" title="variable">n</span></a>)<br/>
+&nbsp;&nbsp;<span class="id" title="var">IHp1</span> : (<a class="idref" href="polynomials.html#b"><span class="id" title="variable">b</span></a>; <a class="idref" href="polynomials.html#p1"><span class="id" title="variable">p1</span></a>) = (<span class="id" title="var">b'</span>; <a class="idref" href="polynomials.html#p2"><span class="id" title="variable">p2</span></a>)<br/>
 &nbsp;&nbsp;============================<br/>
-&nbsp;&nbsp;(<a class="idref" href="STLC.html#b"><span class="id" title="variable">b</span></a>; <a class="idref" href="polynomials.html#poly_l"><span class="id" title="constructor">poly_l</span></a> <a class="idref" href="polynomials.html#p1"><span class="id" title="variable">p1</span></a>) = (<span class="id" title="var">b'</span>; <a class="idref" href="polynomials.html#poly_l"><span class="id" title="constructor">poly_l</span></a> <a class="idref" href="polynomials.html#p2"><span class="id" title="variable">p2</span></a>)
+&nbsp;&nbsp;(<a class="idref" href="polynomials.html#b"><span class="id" title="variable">b</span></a>; <a class="idref" href="polynomials.html#poly_l"><span class="id" title="constructor">poly_l</span></a> <a class="idref" href="polynomials.html#p1"><span class="id" title="variable">p1</span></a>) = (<span class="id" title="var">b'</span>; <a class="idref" href="polynomials.html#poly_l"><span class="id" title="constructor">poly_l</span></a> <a class="idref" href="polynomials.html#p2"><span class="id" title="variable">p2</span></a>)
 <div class="paragraph"> </div>
 
 </span>
@@ -346,7 +346,7 @@ We first do an induction on <span class="inlinecode"><a class="idref" href="poly
 
   The <span class="inlinecode"><span class="id" title="var">IHp1</span></span> hypothesis, as a general equality between dependent 
   pairs can again be eliminated dependently to substitute <span class="inlinecode"><span class="id" title="var">b'</span></span> by 
-  <span class="inlinecode"><a class="idref" href="STLC.html#b"><span class="id" title="variable">b</span></a></span> and <span class="inlinecode"><a class="idref" href="polynomials.html#p2"><span class="id" title="variable">p2</span></a></span> by <span class="inlinecode"><a class="idref" href="polynomials.html#p1"><span class="id" title="variable">p1</span></a></span> simultaneously, using 
+  <span class="inlinecode"><a class="idref" href="polynomials.html#b"><span class="id" title="variable">b</span></a></span> and <span class="inlinecode"><a class="idref" href="polynomials.html#p2"><span class="id" title="variable">p2</span></a></span> by <span class="inlinecode"><a class="idref" href="polynomials.html#p1"><span class="id" title="variable">p1</span></a></span> simultaneously, using 
   <span class="inlinecode"><span class="id" title="tactic">dependent</span></span> <span class="inlinecode"><span class="id" title="var">elimination</span></span> <span class="inlinecode"><span class="id" title="var">IHp1</span></span> <span class="inlinecode"><span class="id" title="keyword">as</span></span> <span class="inlinecode">[<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#eq_refl"><span class="id" title="constructor">eq_refl</span></a>]</span>, leaving us with 
   a trivial subgoal. 
 </div>
@@ -357,8 +357,8 @@ We first do an induction on <span class="inlinecode"><a class="idref" href="poly
 
 <div class="doc">
 The next step is to give an evaluation semantics to polynomials.
-    We program <span class="inlinecode"><span class="id" title="tactic">eval</span></span> <span class="inlinecode"><a class="idref" href="HoTT_light.html#p"><span class="id" title="variable">p</span></a></span> <span class="inlinecode"><a class="idref" href="HoTT_light.html#v"><span class="id" title="variable">v</span></a></span> where <span class="inlinecode"><a class="idref" href="HoTT_light.html#v"><span class="id" title="variable">v</span></a></span> is a valuation in <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Numbers.BinNums.html#Z"><span class="id" title="inductive">Z</span></a></span> for all the
-    variables in <span class="inlinecode"><a class="idref" href="HoTT_light.html#p"><span class="id" title="variable">p</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="polynomials.html#poly"><span class="id" title="inductive">poly</span></a></span> <span class="inlinecode"><span class="id" title="var">_</span></span> <span class="inlinecode"><a class="idref" href="STLC.html#n"><span class="id" title="variable">n</span></a></span>. 
+    We program <span class="inlinecode"><span class="id" title="tactic">eval</span></span> <span class="inlinecode"><a class="idref" href="polynomials.html#p"><span class="id" title="variable">p</span></a></span> <span class="inlinecode"><a class="idref" href="polynomials.html#v"><span class="id" title="variable">v</span></a></span> where <span class="inlinecode"><a class="idref" href="polynomials.html#v"><span class="id" title="variable">v</span></a></span> is a valuation in <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Numbers.BinNums.html#Z"><span class="id" title="inductive">Z</span></a></span> for all the
+    variables in <span class="inlinecode"><a class="idref" href="polynomials.html#p"><span class="id" title="variable">p</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="polynomials.html#poly"><span class="id" title="inductive">poly</span></a></span> <span class="inlinecode"><span class="id" title="var">_</span></span> <span class="inlinecode"><a class="idref" href="polynomials.html#n"><span class="id" title="variable">n</span></a></span>. 
 </div>
 <div class="code">
 
@@ -375,7 +375,7 @@ The next step is to give an evaluation semantics to polynomials.
 </div>
 
 <div class="doc">
-Again we are using well-founded recursion on <span class="inlinecode"><a class="idref" href="HoTT_light.html#p"><span class="id" title="variable">p</span></a></span> using the subterm
+Again we are using well-founded recursion on <span class="inlinecode"><a class="idref" href="polynomials.html#p"><span class="id" title="variable">p</span></a></span> using the subterm
     order. It is quite clear that two equal polynomials should have the
     same value for any valuation. To show this, we first need to prove
     that evaluating a null polynomial always computes to <span class="inlinecode">0</span>, whichever
@@ -402,9 +402,9 @@ This is a typical case where the proof directly follows the definition
 </div>
 
 <div class="doc">
-This leaves us with two goals as the <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a></span> index in <span class="inlinecode"><a class="idref" href="HoTT_light.html#p"><span class="id" title="variable">p</span></a></span> implies
+This leaves us with two goals as the <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a></span> index in <span class="inlinecode"><a class="idref" href="polynomials.html#p"><span class="id" title="variable">p</span></a></span> implies
   that the <span class="inlinecode"><a class="idref" href="polynomials.html#poly_c"><span class="id" title="constructor">poly_c</span></a></span> and <span class="inlinecode"><a class="idref" href="polynomials.html#poly_s"><span class="id" title="constructor">poly_s</span></a></span> clauses do not need to be considered.
-  We have to show <span class="inlinecode">0</span> <span class="inlinecode">=</span> <span class="inlinecode">0</span> for the case <span class="inlinecode"><a class="idref" href="HoTT_light.html#p"><span class="id" title="variable">p</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="polynomials.html#poly_z"><span class="id" title="constructor">poly_z</span></a></span> and <span class="inlinecode"><span class="id" title="tactic">eval</span></span> <span class="inlinecode"><a class="idref" href="HoTT_light.html#q"><span class="id" title="variable">q</span></a></span> <span class="inlinecode"><a class="idref" href="HoTT_light.html#v"><span class="id" title="variable">v</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode">0</span>
+  We have to show <span class="inlinecode">0</span> <span class="inlinecode">=</span> <span class="inlinecode">0</span> for the case <span class="inlinecode"><a class="idref" href="polynomials.html#p"><span class="id" title="variable">p</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="polynomials.html#poly_z"><span class="id" title="constructor">poly_z</span></a></span> and <span class="inlinecode"><span class="id" title="tactic">eval</span></span> <span class="inlinecode"><a class="idref" href="polynomials.html#q"><span class="id" title="variable">q</span></a></span> <span class="inlinecode"><a class="idref" href="polynomials.html#v"><span class="id" title="variable">v</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode">0</span>
   for the <span class="inlinecode"><a class="idref" href="polynomials.html#poly_l"><span class="id" title="constructor">poly_l</span></a></span> recursive constructor, in which case the conclusion
   directly follows from the induction hypothesis correspondinng to the
   recursive call. The second subgoal is hence discharged with an
@@ -415,7 +415,7 @@ This leaves us with two goals as the <span class="inlinecode"><a class="idref" h
   Addition is defined on two polynomials with the same number of variables and returns
   a (possibly null) polynomial with the same number of variables.
   We define an injection function to constructs objects in the dependent pair type
-  <span class="inlinecode">{<a class="idref" href="STLC.html#b"><span class="id" title="variable">b</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a></span> <span class="inlinecode">&amp;</span> <span class="inlinecode"><a class="idref" href="polynomials.html#poly"><span class="id" title="inductive">poly</span></a></span> <span class="inlinecode"><a class="idref" href="STLC.html#b"><span class="id" title="variable">b</span></a></span> <span class="inlinecode"><a class="idref" href="STLC.html#n"><span class="id" title="variable">n</span></a>}</span>. 
+  <span class="inlinecode">{<a class="idref" href="polynomials.html#b"><span class="id" title="variable">b</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a></span> <span class="inlinecode">&amp;</span> <span class="inlinecode"><a class="idref" href="polynomials.html#poly"><span class="id" title="inductive">poly</span></a></span> <span class="inlinecode"><a class="idref" href="polynomials.html#b"><span class="id" title="variable">b</span></a></span> <span class="inlinecode"><a class="idref" href="polynomials.html#n"><span class="id" title="variable">n</span></a>}</span>. 
 </div>
 <div class="code">
 
@@ -599,7 +599,7 @@ Equality can be decided using the difference of polynoms
 <div class="paragraph"> </div>
 
  The <span class="inlinecode"><a class="idref" href="polynomials.html#poly_l_or_s"><span class="id" title="definition">poly_l_or_s</span></a></span> definition is a smart constructor to construct
-    <span class="inlinecode"><a class="idref" href="HoTT_light.html#p"><span class="id" title="variable">p</span></a></span> <span class="inlinecode">+</span> <span class="inlinecode"><span class="id" title="var">X</span></span> <span class="inlinecode">×</span> <span class="inlinecode"><a class="idref" href="HoTT_light.html#q"><span class="id" title="variable">q</span></a></span> when <span class="inlinecode"><a class="idref" href="HoTT_light.html#q"><span class="id" title="variable">q</span></a></span> can be null. 
+    <span class="inlinecode"><a class="idref" href="polynomials.html#p"><span class="id" title="variable">p</span></a></span> <span class="inlinecode">+</span> <span class="inlinecode"><span class="id" title="var">X</span></span> <span class="inlinecode">×</span> <span class="inlinecode"><a class="idref" href="polynomials.html#q"><span class="id" title="variable">q</span></a></span> when <span class="inlinecode"><a class="idref" href="polynomials.html#q"><span class="id" title="variable">q</span></a></span> can be null. 
 </div>
 <div class="code">
 
@@ -709,7 +709,7 @@ The proof that multiplication is a morphism for evaluation works as usual by ind
   Armed with these definitions, we can define a reflexive tactic that
   solves boolean tautologies using a translation into polynomials on <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Numbers.BinNums.html#Z"><span class="id" title="inductive">Z</span></a></span>.
   We start with the syntax of our formulas, including variables of some type
-  <span class="inlinecode"><a class="idref" href="ordinals.html#A"><span class="id" title="axiom">A</span></a></span>, constants, conjunction disjunction and negation: 
+  <span class="inlinecode"><a class="idref" href="polynomials.html#A"><span class="id" title="variable">A</span></a></span>, constants, conjunction disjunction and negation: 
 </div>
 <div class="code">
 
@@ -799,8 +799,8 @@ Definitions of constant 0 <span class="inlinecode"><a class="idref" href="polyno
 </div>
 
 <div class="doc">
-We define an injection of variables represented as indices in <span class="inlinecode"><span class="id" title="var">Fin.t</span></span> <span class="inlinecode"><a class="idref" href="STLC.html#n"><span class="id" title="variable">n</span></a></span> into
-    non-null polynoms of <span class="inlinecode"><a class="idref" href="STLC.html#n"><span class="id" title="variable">n</span></a></span> variables: 
+We define an injection of variables represented as indices in <span class="inlinecode"><span class="id" title="var">Fin.t</span></span> <span class="inlinecode"><a class="idref" href="polynomials.html#n"><span class="id" title="variable">n</span></a></span> into
+    non-null polynoms of <span class="inlinecode"><a class="idref" href="polynomials.html#n"><span class="id" title="variable">n</span></a></span> variables: 
 </div>
 <div class="code">
 

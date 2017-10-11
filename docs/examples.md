@@ -18,3 +18,6 @@ title: Gallery of programs
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/string_matching.v)).
 - [Rose Trees](examples/RoseTree.html): nested recursion
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/RoseTree.v)).
+- [MoreDep](examples/MoreDep.html): part of chapter 8 of Adam
+  Chlipala's [CPDT](http://adam.chlipala.net/cpdt/html/toc.html)
+  ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/MoreDep.v)).
