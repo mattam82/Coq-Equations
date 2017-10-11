@@ -35,7 +35,9 @@ Two articles describing the system are available:
   
 ## Installation
 
-The current development version works with Coq 8.6.
+The current development version works with Coq 8.6,
+see [releases](https://github.com/mattam82/Coq-Equations/releases) for
+sources.
 
 # Install with OPAM
 This package is available on [OPAM](http://opam.ocaml.org/).
