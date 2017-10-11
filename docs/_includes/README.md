@@ -24,7 +24,7 @@ providing an introduction is available along with [examples](examples).
 
 Two articles describing the system are available:
 
-- [Equations Reloaded](http://hal.inria.fr/), Cyprien Mangin and
+- [Equations Reloaded](http://www.irif.fr/~sozeau/research/publications/drafts/Equations_Reloaded.pdf), Cyprien Mangin and
   Matthieu Sozeau (October
   2017). Submitted.
 - [Equations: A Dependent Pattern-Matching Compiler](https://link.springer.com/chapter/10.1007/978-3-642-14052-5_29) Matthieu
