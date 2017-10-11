@@ -273,7 +273,7 @@ forall (A : Type) (x : A) (P : A -> Type), P x -> forall y : A, x = y -> P y ]]
  *)
 
 Equations eqt {A} (x y z : A) (p : x = y) (q : y = z) : x = z :=
-eqt ?(x) ?(x) ?(x) eq_refl eq_refl := eq_refl.
+eqt x ?(x) ?(x) eq_refl eq_refl := eq_refl.
 
 (** Let us explain the meaning of the non-linear patterns here that we
    slipped through in the [equal] example. By pattern-matching on the
@@ -344,7 +344,7 @@ forall (A : Type) (n : nat) (v : vector A (S n)), P A n v (vtail v) ]]
 
 Equations diag {A n} (v : vector (vector A n) n) : vector A n :=
 diag {n:=O} Vnil := Vnil ;
-diag {n:=(S n)} (Vcons (Vcons a n v) n v') :=
+diag {n:=(S ?(n))} (Vcons (Vcons a n v) ?(n) v') :=
   Vcons a (diag (vmap vtail v')).
 
 (** Here in the second equation, we know that the elements of the vector 
@@ -474,7 +474,6 @@ sort (Vcons a n v) := let sk := skip_first (fun x => Nat.leb x a) v in &(_ & Vco
 Obligations.
   Next Obligation.
     red. simpl.
-    subst n1. simpl.
     eapply clos_trans_stepr_refl.
     simpl. apply (t_direct_subterm_1_1 _ _ _ (&(_ & v).2)).
     refine (skip_first_subterm _ _).
