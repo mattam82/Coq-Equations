@@ -2,8 +2,10 @@
 
 A function definition plugin.
 
-Copyright 2009-2017 Matthieu Sozeau `matthieu.sozeau@inria.fr`.
-Copyright 2015-2017 Cyprien Mangin `cyprien.mangin@m4x.org`.
+Copyright 2009-2017 Matthieu Sozeau `matthieu.sozeau@inria.fr`
+
+Copyright 2015-2017 Cyprien Mangin `cyprien.mangin@m4x.org`
+
 Distributed under the terms of the GNU Lesser General Public
 License Version 2.1 (see `LICENSE` for details).
 
@@ -27,9 +29,10 @@ Two articles describing the system are available:
 
 - [Equations Reloaded](http://hal.inria.fr/), Cyprien Mangin and
   Matthieu Sozeau (October
-  2017). Submitted.  -
-  [Equations: A Dependent Pattern-Matching Compiler](https://link.springer.com/chapter/10.1007/978-3-642-14052-5_29) Matthieu
-  Sozeau (2010) In: Kaufmann M., Paulson L.C. (eds) Interactive Theorem
+  2017). Submitted.
+- [Equations: A Dependent Pattern-Matching Compiler](https://link.springer.com/chapter/10.1007/978-3-642-14052-5_29) Matthieu
+  Sozeau (2010) 
+  In: Kaufmann M., Paulson L.C. (eds) Interactive Theorem
   Proving. ITP 2010. Lecture Notes in Computer Science,
   vol 6172. Springer, Berlin, Heidelberg.
   
