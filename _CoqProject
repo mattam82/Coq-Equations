@@ -3,7 +3,8 @@
 -R theories Equations
 -I theories
 -I examples
--extra-phony doc "html" "mkdir -p html/api && ocamldoc -html -d html/api `ocamlfind query -r coqdev85.all -i-format` -rectypes -I src src/*.ml"
+-extra-phony siteexamples "html" "coqdoc -parse-comments --no-index -utf8 -interpolate -html -R theories Equations -d docs/examples examples/*.v"
+-extra-phony doc "html" "mkdir -p html/api && ocamldoc -html -d html/api `ocamlfind query -r coq.intf coq.kernel coq.tactics coq.proofs coq.toplevel coq.ltac -i-format` -rectypes -I src src/*.ml"
 -extra-phony test-suite "" "cd test-suite && make"
 ZDEBUG = "-bin-annot -g -for-pack Equations -w -58"
 COQDOCFLAGS = "-parse-comments -utf8 -interpolate"
@@ -54,11 +55,10 @@ theories/Equations.v
 theories/TransparentEquations.v
 theories/OpaqueEquations.v
 theories/Fin.v
-examples/lf.v
+examples/STLC.v
 examples/HoTT_light.v
 examples/polynomials.v
 examples/ordinals.v
 examples/ordinal_rec.v
 examples/RoseTree.v
-examples/where.v
 examples/string_matching.v

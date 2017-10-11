@@ -1,0 +1,80 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link href="coqdoc.css" rel="stylesheet" type="text/css" />
+<title>graph_complete</title>
+</head>
+
+<body>
+
+<div id="page">
+
+<div id="header">
+</div>
+
+<div id="main">
+
+<h1 class="libtitle">Library graph_complete</h1>
+
+<div class="code">
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="keyword">Equations</span>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="var">HoTT_light</span>.<br/>
+<span class="id" title="keyword">Set</span> <span class="id" title="var">Universe</span> <span class="id" title="var">Polymorphism</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">Logic</span> <span class="id" title="keyword">Type</span> <span class="id" title="var">Id</span> <span class="id" title="var">Id_rect</span> <span class="id" title="var">Empty</span> <span class="id" title="var">unit</span> <span class="id" title="var">tt</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Import</span> <span class="id" title="var">IdNotations</span>.<br/>
+
+<br/>
+<span class="id" title="var">Derive</span> <span class="id" title="var">Signature</span> <span class="id" title="keyword">for</span> <span class="id" title="var">Id</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">neg</span> (<span class="id" title="var">b</span> : <span class="id" title="var">bool</span>) : <span class="id" title="var">bool</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="var">neg</span> <span class="id" title="var">true</span> := <span class="id" title="var">false</span>; <span class="id" title="var">neg</span> <span class="id" title="var">false</span> := <span class="id" title="var">true</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">neg_fib</span> (<span class="id" title="var">x</span> : <span class="id" title="var">bool</span>) := &amp;{ <span class="id" title="var">a</span> : <span class="id" title="var">bool</span> &amp; <span class="id" title="var">neg_ind</span> <span class="id" title="var">a</span> <span class="id" title="var">x</span> }.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">hfiber_graph</span> : &amp;{ <span class="id" title="var">x</span> : <span class="id" title="var">bool</span> &amp; <span class="id" title="var">hfiber</span> <span class="id" title="var">neg</span> <span class="id" title="var">x</span> } &lt;~&gt; &amp;{ <span class="id" title="var">x</span> : <span class="id" title="var">bool</span> &amp; <span class="id" title="var">neg_fib</span> <span class="id" title="var">x</span> }.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">unshelve</span> <span class="id" title="tactic">refine</span> {| <span class="id" title="var">equiv_fun</span> := <span class="id" title="keyword">fun</span> <span class="id" title="var">h</span> ⇒ &amp;(<span class="id" title="var">h</span>.1 &amp; <span class="id" title="var">_</span>) |}.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">red</span>. <span class="id" title="tactic">destruct</span> <span class="id" title="var">h</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">res</span> [<span class="id" title="var">arg</span> <span class="id" title="var">Heq</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">∃</span> <span class="id" title="var">arg</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">rewrite</span> &lt;- <span class="id" title="var">Heq</span>. <span class="id" title="tactic">apply</span> <span class="id" title="var">neg_ind_fun</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">simpl</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">unshelve</span> <span class="id" title="tactic">refine</span> {| <span class="id" title="var">equiv_inv</span> <span class="id" title="var">h</span> := &amp;(<span class="id" title="var">h</span>.1 &amp; <span class="id" title="var">_</span>) |}.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">red</span>. <span class="id" title="tactic">destruct</span> <span class="id" title="var">h</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">res</span> [<span class="id" title="var">arg</span> <span class="id" title="var">Heq</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">∃</span> <span class="id" title="var">arg</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">induction</span> <span class="id" title="var">Heq</span>. <span class="id" title="tactic">reflexivity</span>. <span class="id" title="tactic">reflexivity</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">red</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">intros</span> [<span class="id" title="var">x</span> [<span class="id" title="var">res</span> <span class="id" title="var">Hind</span>]]. <span class="id" title="tactic">simpl</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">induction</span> <span class="id" title="var">Hind</span>; <span class="id" title="tactic">simpl</span>; <span class="id" title="tactic">reflexivity</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">intros</span> [<span class="id" title="var">res</span> [<span class="id" title="var">arg</span> <span class="id" title="var">Heq</span>]]. <span class="id" title="tactic">simpl</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">Heq</span>; <span class="id" title="tactic">simpl</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="var">path_sigma_uncurried</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">∃</span> <span class="id" title="var">id_refl</span>. <span class="id" title="tactic">simpl</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="var">path_sigma_uncurried</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">∃</span> <span class="id" title="var">id_refl</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">destruct</span> <span class="id" title="var">arg</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">reflexivity</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">reflexivity</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">simpl</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">intros</span> [<span class="id" title="var">res</span> [<span class="id" title="var">arg</span> <span class="id" title="var">Heq</span>]]. <span class="id" title="tactic">destruct</span> <span class="id" title="var">Heq</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">arg</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">reflexivity</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">reflexivity</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+<hr/>This page has been generated by <a href="http://coq.inria.fr/">coqdoc</a>
+</div>
+
+</div>
+
+</body>
+</html>
