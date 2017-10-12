@@ -45,7 +45,7 @@ Equations include:
     from an inductive type: its signature, no-confusion property,
     well-founded subterm relation and decidable equality proof.
 
-The current system has some limitations we will address (see
+The current system has known limitations we will address (see
 [FAQ][faq]), but is already usable for developping non-toy programs and
 proofs. Documentation and examples are available on the website.
 We are seeking and welcoming [feedback][issues] from you on the
