@@ -10,10 +10,10 @@ through `opam` (package `coq-equations.1.0~beta`).
 
   We are pleased to announce release 1.0-beta of the [Equations][www]
 package. Equations is a function definition plugin for Coq (supporting
-Coq 8.6 currently), that allows the definitions of functions by
-dependent pattern-matching and (well-founded) recursion and compiling
+Coq 8.6 currently), that allows the definition of functions by
+dependent pattern-matching and (well-founded) recursion and compiles
 them into core terms. This version of Equations is based on a new
-simplification engine for dependent equalities appearing in dependent
+simplification engine for the dependent equalities appearing in dependent
 eliminations that is also usable as a separate tactic, providing an
 axiom-free variant of [dependent destruction].  The main features of
 Equations include:
@@ -45,9 +45,10 @@ Equations include:
     from an inductive type: its signature, no-confusion property,
     well-founded subterm relation and decidable equality proof.
 
-The current system still has some limitations we will address (see
+The current system has some limitations we will address (see
 [FAQ][faq]), but is already usable for developping non-toy programs and
-proofs. We are seeking and welcoming [feedback][issues] from you on the
+proofs. Documentation and examples are available on the website.
+We are seeking and welcoming [feedback][issues] from you on the
 usage of these tools!
 
 [release]: https://github.com/mattam82/Coq-Equations/releases/tag/v1.0-beta
