@@ -1,6 +1,7 @@
 ---
 layout: page
 title: FAQ
+permalink: /FAQ
 ---
 
 ## Known limitations
