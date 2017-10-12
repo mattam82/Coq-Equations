@@ -7,3 +7,42 @@ categories: equations
 
 Release [1.0beta](https://github.com/mattam82/Coq-Equations/releases/tag/v1.0-beta)
 of Equations is available.
+
+  We are pleased to announce release 1.0beta of the Equations [1]
+package. Equations is a function definition plugin for Coq (supporting
+Coq 8.6 currently), that allows the definitions of functions by
+dependent pattern-matching and (well-founded) recursion	and compiling
+them into core terms. This version of Equations	is based on a
+new simplification engine for dependent equalities appearing in
+dependent eliminations that is also usable as a separate tactic,
+providing an axiom-free variant of [dependent destruction].
+The main features of Equations include:
+
+  - Dependent pattern-matching in the style of Agda/Epigram,
+    with inaccessible patterns, [with] and [where] clauses.
+    The use of the K axiom or a proof of K is configurable.
+  - Support for well-founded recursion using [by rec] annotations, and
+    automatic derivation of the subterm relation for inductive families.
+  - Automatic generation of the defining equations as rewrite rules for
+    every definition.
+  - Automatic generation of the unfolding lemma for well-founded
+    definitions (requiring only functional extensionality).
+  - Automatic derivation of the graph of the function and its
+    elimination principle.
+    In case the	automation fails to prove these principles, the user
+    is asked to provide a proof.
+  - A new [dependent elimination] tactic based on the same splitting
+    tree compilation scheme that can advantageously replace [dependent
+    destruction] and sometimes [inversion] as well. The "as" clause of
+    [dependent elimination] allows to specify exactly the patterns and
+    naming of new variables needed for an elimination.
+  - A set of [Derive] commands for automatic derivation of constructions
+    from an inductive type: its signature, no-confusion property,
+    well-founded subterm relation and decidable equality proof.
+
+The current system still has some limitations we will address [2], but is
+already usable for developping non-toy programs and proofs. We are
+seeking and welcoming feedback from you on the usage of these tool!
+
+[1] http://mattam82.github.io/Coq-Equations
+[2] http://mattam82.github.io/Coq-Equations/FAQ
