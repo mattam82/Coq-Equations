@@ -8,7 +8,7 @@ categories: equations
 Release [1.0-beta][release] of Equations is available, as source and
 through `opam` (package `coq-equations.1.0~beta`).
 
-  We are pleased to announce release 1.0beta of the [Equations][www]
+  We are pleased to announce release 1.0-beta of the [Equations][www]
 package. Equations is a function definition plugin for Coq (supporting
 Coq 8.6 currently), that allows the definitions of functions by
 dependent pattern-matching and (well-founded) recursion and compiling
