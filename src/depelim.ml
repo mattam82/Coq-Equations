@@ -510,12 +510,13 @@ let default_patterns env ?(avoid = ref []) ind : (Loc.t * Syntax.user_pat) list 
     let construct = Names.ith_constructor_of_inductive ind (succ i) in
     let args =
       let arity = oib.mind_nf_lc.(i) in
+      let params, arity = Term.decompose_prod_n_assum nparams arity in
       let ctx, _ = Term.decompose_prod_assum arity in
       (* Make an identifier for each argument of the constructor. *)
       List.rev_map (fun decl ->
         let id =
           match Context.Rel.Declaration.get_name decl with
-          | Names.Name id -> id
+          | Names.Name id -> Namegen.next_ident_away id !avoid
           | Names.Anonymous ->
               let ty = Context.Rel.Declaration.get_type decl in
               let hd = Namegen.hdchar env ty in
