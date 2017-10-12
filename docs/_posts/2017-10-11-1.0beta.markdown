@@ -8,7 +8,7 @@ categories: equations
 Release [1.0beta](https://github.com/mattam82/Coq-Equations/releases/tag/v1.0-beta)
 of Equations is available.
 
-  We are pleased to announce release 1.0beta of the [Equations]([www])
+  We are pleased to announce release 1.0beta of the [Equations][www]
 package. Equations is a function definition plugin for Coq (supporting
 Coq 8.6 currently), that allows the definitions of functions by
 dependent pattern-matching and (well-founded) recursion	and compiling
@@ -40,7 +40,7 @@ The main features of Equations include:
     from an inductive type: its signature, no-confusion property,
     well-founded subterm relation and decidable equality proof.
 
-The current system still has some limitations we will address, see [faq](faq), but is
+The current system still has some limitations we will address (see [FAQ][faq]), but is
 already usable for developping non-toy programs and proofs. We are
 seeking and welcoming feedback from you on the usage of these tool!
 
