@@ -475,6 +475,7 @@ let deletion ~(force:bool) : simplification_fun =
         let args = [Some tA; Some tx; Some tB; None] in
           build_app_infer env evd (ctx, ty) ctx tsimpl_K args, subst
       else
+        let env = Environ.push_rel_context ctx env in
         raise (CannotSimplify (str
           "[deletion] Cannot simplify without K on type " ++
           Printer.pr_constr_env env !evd tA))
