@@ -42,8 +42,13 @@ The main features of Equations include:
 
 The current system still has some limitations we will address (see
 [FAQ][faq]), but is already usable for developping non-toy programs and
-proofs. We are seeking and welcoming feedback from you on the usage of
+proofs. We are seeking and welcoming [feedback][issues] from you on the usage of
 these tools!
 
 [www]: http://mattam82.github.io/Coq-Equations
 [faq]: http://mattam82.github.io/Coq-Equations/FAQ
+[issues]: http://github.com/mattam82/Coq-Equations/issues
+
+-- Matthieu Sozeau and Cyprien Mangin
+
+
