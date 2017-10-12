@@ -510,12 +510,13 @@ let default_patterns env ?(avoid = ref []) ind : (Loc.t * Syntax.user_pat) list 
     let construct = Names.ith_constructor_of_inductive ind (succ i) in
     let args =
       let arity = oib.mind_nf_lc.(i) in
+      let params, arity = Term.decompose_prod_n_assum nparams arity in
       let ctx, _ = Term.decompose_prod_assum arity in
       (* Make an identifier for each argument of the constructor. *)
       List.rev_map (fun decl ->
         let id =
           match Context.Rel.Declaration.get_name decl with
-          | Names.Name id -> id
+          | Names.Name id -> Namegen.next_ident_away id !avoid
           | Names.Anonymous ->
               let ty = Context.Rel.Declaration.get_type decl in
               let hd = Namegen.hdchar env ty in
@@ -537,6 +538,13 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
         let id = Context.Named.Declaration.get_id decl in
         Termops.is_section_variable id) hyps in
     let env = Environ.push_named_context sec_hyps env in
+
+    (* Check that [id] exists in the current context. *)
+    begin try ignore (Context.Named.lookup id loc_hyps)
+    with Not_found ->
+      raise (Logic.(RefinerError (NoSuchHyp id)))
+    end;
+
     (* We want to work in a [rel_context], not a [named_context]. *)
     let ctx, subst = Equations_common.rel_of_named_context loc_hyps in
     let _, rev_subst, _ =
