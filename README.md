@@ -1,13 +1,13 @@
-# Equations
+### **Equations** - a function definition plugin.
 
-A function definition plugin.
-
-Copyright 2009-2017 Matthieu Sozeau `matthieu.sozeau@inria.fr`
-
+Copyright 2009-2017 Matthieu Sozeau `matthieu.sozeau@inria.fr`  
 Copyright 2015-2017 Cyprien Mangin `cyprien.mangin@m4x.org`
 
-Distributed under the terms of the GNU Lesser General Public
-License Version 2.1 (see `LICENSE` for details).
+Distributed under the terms of the GNU Lesser General Public License
+Version 2.1
+(see
+[LICENSE](http://github.com/mattam82/Coq-Equations/raw/master/LICENSE)
+for details).
 
 Equations provides a notation for writing programs by dependent 
 pattern-matching and (well-founded) recursion
@@ -18,14 +18,13 @@ providing a definitional extension to the Coq kernel.
 ## Documentation
 
 The [reference manual](http://github.com/mattam82/Coq-Equations/raw/master/doc/equations.pdf)
-providing an introduction is available along
-with [examples](http://github.com/mattam82/Coq-Equations/raw/master/examples).
+providing an introduction is available along with [examples](examples).
 
-## Bibliography
+## Papers
 
 Two articles describing the system are available:
 
-- [Equations Reloaded](http://hal.inria.fr/), Cyprien Mangin and
+- [Equations Reloaded](http://www.irif.fr/~sozeau/research/publications/drafts/Equations_Reloaded.pdf), Cyprien Mangin and
   Matthieu Sozeau (October
   2017). Submitted.
 - [Equations: A Dependent Pattern-Matching Compiler](https://link.springer.com/chapter/10.1007/978-3-642-14052-5_29) Matthieu
@@ -36,9 +35,11 @@ Two articles describing the system are available:
   
 ## Installation
 
-Below are installation instructions.
+The current development version works with Coq 8.6,
+see [releases](https://github.com/mattam82/Coq-Equations/releases) for
+sources.
 
-### Install with OPAM
+# Install with OPAM
 This package is available on [OPAM](http://opam.ocaml.org/).
 Activate the [Coq repository](https://github.com/coq/opam-coq-archive)
 if you didn't do it yet:
@@ -57,7 +58,7 @@ To get the development version of Equations, activate the repository:
 
     opam repo add coq-extra-dev https://coq.inria.fr/opam/extra-dev
 
-### Install by hand
+# Install by hand
 Alternatively, to compile Equations, simply run:
 
     coq_makefile -f _CoqProject -o Makefile
