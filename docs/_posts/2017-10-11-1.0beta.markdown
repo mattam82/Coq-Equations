@@ -19,9 +19,9 @@ providing an axiom-free variant of [dependent destruction].
 The main features of Equations include:
 
   - Dependent pattern-matching in the style of Agda/Epigram,
-    with inaccessible patterns, [with] and [where] clauses.
+    with inaccessible patterns, `with` and `where` clauses.
     The use of the K axiom or a proof of K is configurable.
-  - Support for well-founded recursion using [by rec] annotations, and
+  - Support for well-founded recursion using `by rec` annotations, and
     automatic derivation of the subterm relation for inductive families.
   - Automatic generation of the defining equations as rewrite rules for
     every definition.
@@ -31,18 +31,19 @@ The main features of Equations include:
     elimination principle.
     In case the	automation fails to prove these principles, the user
     is asked to provide a proof.
-  - A new [dependent elimination] tactic based on the same splitting
-    tree compilation scheme that can advantageously replace [dependent
-    destruction] and sometimes [inversion] as well. The "as" clause of
-    [dependent elimination] allows to specify exactly the patterns and
+  - A new `dependent elimination` tactic based on the same splitting
+    tree compilation scheme that can advantageously replace `dependent
+    destruction` and sometimes `inversion` as well. The `as` clause of
+    `dependent elimination` allows to specify exactly the patterns and
     naming of new variables needed for an elimination.
-  - A set of [Derive] commands for automatic derivation of constructions
+  - A set of `Derive` commands for automatic derivation of constructions
     from an inductive type: its signature, no-confusion property,
     well-founded subterm relation and decidable equality proof.
 
-The current system still has some limitations we will address (see [FAQ][faq]), but is
-already usable for developping non-toy programs and proofs. We are
-seeking and welcoming feedback from you on the usage of these tool!
+The current system still has some limitations we will address (see
+[FAQ][faq]), but is already usable for developping non-toy programs and
+proofs. We are seeking and welcoming feedback from you on the usage of
+these tools!
 
 [www]: http://mattam82.github.io/Coq-Equations
 [faq]: http://mattam82.github.io/Coq-Equations/FAQ
