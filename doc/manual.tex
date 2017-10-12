@@ -10,8 +10,8 @@ The \kw{Equations} command takes a few options using the syntax
   function and the derived eliminator.
 \item \texttt{noeqns}: Do not generate the equations correponding to the
   (expanded) clauses of the program. This implies \texttt{noind}.
-\item \texttt{struct} \var{x}: Declare the function structurally
-  recursive on variable \var{x}.
+\item \texttt{struct} $x$: Declare the function structurally
+  recursive on variable $x$.
 \end{itemize}
 
 The syntax of \Equations itself is described in this paper
@@ -62,7 +62,7 @@ Class EqDec (A : Type) :=
 \end{verbatim}
   
 \item \ind{Subterm}: this generates the direct subterm relation for the
-  inductive (asuming it is in \Set or \Type) as an inductive family.
+  inductive (asuming it is in \kw{Set} or \kw{Type}) as an inductive family.
   It then derives the well-foundedness of this relation and wraps it
   as an homogeneous relation on the signature of the datatype (in case
   it is indexed). These relations can be used with the \texttt{by rec}

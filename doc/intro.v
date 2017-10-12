@@ -1,5 +1,12 @@
-(** [Equations] is a plugin for Coq%\footnote{Available for Coq 8.5 and
-   Coq 8.6} \cite{Coq}% that comes with a few support modules defining
+(** printing funelim %\coqdoctac{funelim}% *)
+(** printing Derive %\coqdockw{Derive}% *)
+(** printing Signature %\coqdocind{Signature}% *)
+(** printing NoConfusion %\coqdocind{NoConfusion}% *)
+(** printing simp %\coqdoctac{simp}% *)
+(** printing <= %$\Leftarrow$% *)
+(** printing <=? %$\le?$% *)
+
+(** [Equations] is a plugin for %\cite{Coq}% that comes with a few support modules defining
    classes and tactics for running it. We will introduce its main
    features through a handful of examples. We start our Coq primer
    session by importing the [Equations] module.  *)
@@ -89,7 +96,7 @@ Inductive neg_ind : bool -> bool -> Prop :=
 
 Inductive list {A} : Type := nil : list | cons : A -> list -> list.
 
-Implicit Arguments list.
+Arguments list : clear implicits.
 Notation "x :: l" := (cons x l). 
 
 (** No special support for polymorphism is needed, as type arguments are treated 
@@ -107,13 +114,13 @@ tail (cons a v) := v.
  [A]. To specify it explicitely one can use the syntax [{A:=B}],
  renaming that implicit argument to [B] in this particular case *)
 
-(** ** Recursive inductive types 
+(** ** Recursive inductive types
    
-   Of course with inductive types comes recursion. Coq accepts a subset of the 
-   structurally recursive definitions by default (it is incomplete due to its 
-   syntactic nature). We will use this as a first step towards a more robust 
-   treatment of recursion via well-founded relations in section %\ref{sec:wfrec}%.
-   A classical example is list concatenation: *)
+   Of course with inductive types comes recursion. Coq accepts a subset
+   of the structurally recursive definitions by default (it is
+   incomplete due to its syntactic nature). We will use this as a first
+   step towards a more robust treatment of recursion via well-founded
+   relations. A classical example is list concatenation: *)
 
 Equations app {A} (l l' : list A) : list A :=
 app nil l' := l' ;
@@ -471,14 +478,13 @@ sort Vnil := &( _ & Vnil );
 sort (Vcons a n v) := let sk := skip_first (fun x => Nat.leb x a) v in &(_ & Vcons a (sort sk.2).2).
 
 (** Here we prove that the recursive call is correct as skip preserves the size of its argument *)
-Obligations.
-  Next Obligation.
-    red. simpl.
-    eapply clos_trans_stepr_refl.
-    simpl. apply (t_direct_subterm_1_1 _ _ _ (&(_ & v).2)).
-    refine (skip_first_subterm _ _).
-  Qed.
-(* End Obligations. *)
+
+Next Obligation.
+  red. simpl.
+  eapply clos_trans_stepr_refl.
+  simpl. apply (t_direct_subterm_1_1 _ _ _ (&(_ & v).2)).
+  refine (skip_first_subterm _ _).
+Qed.
 
 (** To prove it we need a few supporting lemmas, we first write a predicate on vectors
     equivalent to [List.forall]. *)
@@ -522,10 +528,11 @@ Proof.
 ]]
 
    We can apply functional elimination likewise, even if the predicate argument is instantiated
-   here.
- *)
-    funelim (skip_first (fun x : nat => Nat.leb x h) t); simp sort forall_vect in *; simpl in *.
-    (** After further simplifications, we get: [[
+   here. *)
+
+  funelim (skip_first (fun x : nat => Nat.leb x h) t); simp sort forall_vect in *; simpl in *.
+
+  (** After further simplifications, we get: [[
   Heq : (h0 <=? h) = false
   H : sorted (Vcons h0 (sort (skip_first (fun x : nat => x <=? h0) t).2).2)
   ============================
@@ -535,8 +542,8 @@ Proof.
     This requires inversion on the sorted predicate to find out that, by induction,
     [h0] is smaller than all of [fn (skip_first ...)], and hence [h] is as well.
     This is just regular reasoning. Just note how we got to this point in just
-    two invocations of [funelim].
-*)
+    two invocations of [funelim]. *)
+
     depelim H.
     rewrite andb_true_iff.
     enough (h <=? h0 = true). split; auto.
