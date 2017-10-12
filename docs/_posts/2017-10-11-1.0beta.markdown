@@ -5,8 +5,8 @@ date:   2017-10-11 18:26:05 +0200
 categories: equations
 ---
 
-Release [1.0beta](https://github.com/mattam82/Coq-Equations/releases/tag/v1.0-beta)
-of Equations is available.
+Release [1.0beta][release] of Equations is available, as source and
+through `opam` (package `coq-equations.1.0~beta`).
 
   We are pleased to announce release 1.0beta of the [Equations][www]
 package. Equations is a function definition plugin for Coq (supporting
@@ -45,10 +45,9 @@ The current system still has some limitations we will address (see
 proofs. We are seeking and welcoming [feedback][issues] from you on the usage of
 these tools!
 
+[release]: https://github.com/mattam82/Coq-Equations/releases/tag/v1.0-beta
 [www]: http://mattam82.github.io/Coq-Equations
 [faq]: http://mattam82.github.io/Coq-Equations/FAQ
 [issues]: http://github.com/mattam82/Coq-Equations/issues
 
 -- Matthieu Sozeau and Cyprien Mangin
-
-
