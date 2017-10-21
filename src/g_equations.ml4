@@ -451,7 +451,7 @@ GEXTEND Gram
   ;
   where_clause:
     [ [ id = lident; l = binders2; ":"; t = Constr.lconstr;
-        ":="; eqs = deppat_equations -> ((id, l, t), eqs) ] ]
+        ":="; eqs = sub_equations -> ((id, l, t), eqs) ] ]
   ;
   where:
     [ [ "where"; l = LIST1 where_clause -> l

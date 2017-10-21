@@ -167,7 +167,7 @@ let pr_equation_options  _prc _prlc _prt l =
   mt ()
 
 type rec_type = 
-  | Structural of Id.t located option
+  | Structural of (Id.t * Id.t located option) list (* for mutual rec *)
   | Logical of logical_rec
 
 and logical_rec =
@@ -287,7 +287,7 @@ let rec interp_pat env ?(avoid = ref []) (loc, p) =
 let interp_eqn i is_rec env impls eqn =
   let avoid = ref [] in
   let interp_pat = interp_pat env ~avoid in
-  let rec aux recinfo (i, is_rec as fn) curpats (idopt, pats, rhs) =
+  let rec aux recinfo i is_rec curpats (idopt, pats, rhs) =
     let curpats' = 
       match pats with
       | SignPats l -> l
@@ -318,26 +318,30 @@ let interp_eqn i is_rec env impls eqn =
     in
     let pats = map interp_pat curpats'' in
       match is_rec with
-      | Some (Structural _) -> (loc, (dummy_loc, PUVar (i, false)) :: pats, interp_rhs recinfo fn curpats' rhs)
+      | Some (Structural l) ->
+         (* let fnpat = (dummy_loc, PUVar (i, false)) in *)
+         let structpats = List.map (fun (id,_) -> (dummy_loc, PUVar (id, false))) l in
+         (loc, structpats @ pats,
+          interp_rhs recinfo i is_rec curpats' rhs)
       | Some (Logical r) -> 
-         (loc, pats, interp_rhs ((i, r) :: recinfo) fn curpats' rhs)
-      | None -> (loc, pats, interp_rhs recinfo fn curpats' rhs)
-  and interp_rhs recinfo (i, is_rec as fn) curpats = function
+         (loc, pats, interp_rhs ((i, r) :: recinfo) i is_rec curpats' rhs)
+      | None -> (loc, pats, interp_rhs recinfo i is_rec curpats' rhs)
+  and interp_rhs recinfo i is_rec curpats = function
     | Refine (c, eqs) -> Refine (interp_constr_expr recinfo !avoid c, 
-                                map (aux recinfo fn curpats) eqs)
+                                map (aux recinfo i is_rec curpats) eqs)
     | Program (c, w) ->
        let w = interp_wheres recinfo avoid w in
        Program (interp_constr_expr recinfo !avoid c, w)
     | Empty i -> Empty i
-    | Rec (i, r, id, s) -> 
-      let rec_info = LogicalDirect (Constrexpr_ops.constr_loc i, fst fn) in
-      let recinfo = (fst fn, rec_info) :: recinfo in
-      Rec (i, r, id, map (aux recinfo fn curpats) s)
-    | By (x, s) -> By (x, map (aux recinfo fn curpats) s)
+    | Rec (fni, r, id, s) -> 
+      let rec_info = LogicalDirect (Constrexpr_ops.constr_loc fni, i) in
+      let recinfo = (i, rec_info) :: recinfo in
+      Rec (fni, r, id, map (aux recinfo i is_rec curpats) s)
+    | By (x, s) -> By (x, map (aux recinfo i is_rec curpats) s)
   and interp_wheres recinfo avoid w =
     let interp_where (((loc,id),b,t) as p,eqns) =
       Dumpglob.dump_reference loc "<>" (string_of_id id) "def";
-      p, map (aux recinfo (id,None) []) eqns
+      p, map (aux recinfo id None []) eqns
     in List.map interp_where w
   and interp_constr_expr recinfo ids c = 
     match c with
@@ -357,4 +361,4 @@ let interp_eqn i is_rec env impls eqn =
           CApp (loc, (None, CRef (Qualid (loc', qidproj), None)), args @ arg))
     | _ -> map_constr_expr_with_binders (fun id l -> id :: l)
 	     (interp_constr_expr recinfo) ids c
-  in aux [] (i, is_rec) [] eqn
+  in aux [] i is_rec [] eqn

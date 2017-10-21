@@ -44,7 +44,7 @@ type term_info = {
 val is_polymorphic : term_info -> bool
 
 val define_tree :
-  rec_type option -> Decl_kinds.polymorphic ->
+  rec_type option -> rel_context -> Decl_kinds.polymorphic ->
   (Constrexpr.explicitation * (bool * bool * bool)) list ->
   Evar_kinds.obligation_definition_status ->
   Evd.evar_map ref ->

@@ -368,7 +368,7 @@ type term_info = {
 
 let is_polymorphic info = pi2 info.decl_kind
 
-let define_tree is_recursive poly impls status isevar env (i, sign, arity)
+let define_tree is_recursive fixprots poly impls status isevar env (i, sign, arity)
                 comp split hook =
   let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
   let helpers, oblevs, t, ty = term_of_tree status isevar env split in
@@ -430,11 +430,17 @@ let define_tree is_recursive poly impls status isevar env (i, sign, arity)
   let ty' = it_mkProd_or_LetIn arity sign in
   let ty' = nf ty' in
     match is_recursive with
-    | Some (Structural id) ->
+    | Some (Structural [id]) ->
         let ty' = it_mkProd_or_LetIn ty' [make_assum Anonymous ty'] in
 	ignore(Obligations.add_mutual_definitions [(i, t', ty', impls, obls)] 
 		 (Evd.evar_universe_context !isevar) [] ~kind
-		 ~reduce ~hook (Obligations.IsFixpoint [id, CStructRec]))
+		 ~reduce ~hook (Obligations.IsFixpoint [snd id, CStructRec]))
+    | Some (Structural ids) ->
+        let ty' = it_mkProd_or_LetIn ty' fixprots in
+	ignore(Obligations.add_definition
+                 ~hook ~kind
+                 ~implicits:impls (add_suffix i "_functional") ~term:t' ty' ~reduce              
+		 (Evd.evar_universe_context !isevar) obls)
     | _ ->
       ignore(Obligations.add_definition ~hook ~kind
 	       ~implicits:impls i ~term:t' ty'

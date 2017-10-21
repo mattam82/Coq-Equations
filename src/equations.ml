@@ -121,6 +121,10 @@ type flags = {
   with_ind : bool }  
   
 let define_principles flags fixprots progs =
+  let fixctx = 
+    let fn fixprot (p, prog) = of_tuple (Name p.program_id, None, fixprot) in
+    List.rev (List.map2 fn fixprots progs)
+  in
   let fixdecls =
     let fn fixprot (p, prog) =
       let f = fst (Universes.unsafe_constr_of_global (ConstRef prog.program_cst)) in
@@ -212,10 +216,42 @@ let define_principles flags fixprots progs =
 		    ~implicits:p.program_impls unfold_eq_id stmt ~tactic:(of82 tac)
 		    (Evd.evar_universe_context !evd) [||])
 	 in
-	 define_tree None flags.polymorphic p.program_impls (Define false) evd env
+	 define_tree None [] flags.polymorphic p.program_impls (Define false) evd env
 		     (unfoldi, sign, oarity) None unfold_split hook_unfold
     else ()
-  in List.iter principles progs
+  in
+  match progs with
+  | [prog] -> principles prog
+  | l ->
+     (** In the mutually recursive case, only the functionals have been defined, 
+         we build the block and its projections now *)
+     let structargs = Array.map_of_list (fun (p,_) ->
+                          (List.length p.program_sign) - 1) l in
+     let evd = ref (Evd.from_env (Global.env ())) in
+     let decl =
+       let blockfn (p, prog) = 
+         let na = Name p.program_id in
+         let body = Evarutil.e_new_global evd (ConstRef prog.program_cst) in
+         let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
+         let fullctx = p.program_sign @ fixctx in
+         let body = mkApp (body, extended_rel_vect 0 fullctx) in
+         let body = it_mkLambda_or_LetIn body p.program_sign in
+         na, ty, body
+       in
+       let blockl = List.map blockfn l in
+       let names, tys, bodies = List.split3 blockl in
+       Array.of_list names, Array.of_list tys, Array.of_list bodies
+     in
+     let declare_fn i (p,prog) =
+       let fix = mkFix ((structargs, i), decl) in
+       let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
+       let _kn =
+         declare_constant p.program_id fix (Some ty) flags.polymorphic
+                          !evd (IsDefinition Fixpoint)
+       in ()
+     in
+     let () = List.iteri declare_fn l in
+     List.iter principles l
   
 let define_by_eqs opts eqs nt =
   let with_comp, with_rec, with_eqns, with_ind =
@@ -237,6 +273,7 @@ let define_by_eqs opts eqs nt =
   let poly = Flags.is_universe_polymorphism () in
   let flags = { polymorphic = poly; with_eqns; with_ind } in
   let evd = ref (Evd.from_env env) in
+  let recids = List.map (fun (((loc,i),_,_),_) -> i, None) eqs in
   let interp_arities (((loc,i),l,t),eqs) =
     let ienv, ((env', sign), impls) = interp_context_evars env evd l in
     let arity = interp_type_evars env' evd t in
@@ -301,7 +338,7 @@ let define_by_eqs opts eqs nt =
 			            comp_proj = compproj; comp_recarg = succ (length sign) } in
        let compapp, is_recursive =
 	 if b then compapp, Some (Logical compinfo)
-	 else compapp, Some (Structural with_rec)
+	 else compapp, Some (Structural recids)
        in
        { program_id = i;
          program_sign = sign;
@@ -331,6 +368,7 @@ let define_by_eqs opts eqs nt =
 	     Universes.constr_of_global (Lazy.force coq_unit), ty)) otys in
   let fixdecls =
     List.map2 (fun i fixprot -> of_tuple (Name i, None, fixprot)) names fixprots in
+  let fixdecls = List.rev fixdecls in
   let implsinfo = List.map (fun (_, (oty, ty), impls) ->
                   Impargs.compute_implicits_with_manual env oty false impls) tys in
   let equations = 
@@ -389,7 +427,7 @@ let define_by_eqs opts eqs nt =
       Some (Logical l) -> Some l
     | _ -> None
     in
-    define_tree p.program_rec poly p.program_impls status evd env
+    define_tree p.program_rec fixdecls poly p.program_impls status evd env
                 (p.program_id, p.program_sign, p.program_oarity)
 		comp split (hook !idx p);
     incr idx

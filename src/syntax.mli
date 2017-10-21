@@ -70,7 +70,7 @@ type pre_equations = pre_equation where_clause list
 
 
 type rec_type = 
-  | Structural of Id.t located option
+  | Structural of (Id.t * Id.t located option) list (* for mutual rec *)
   | Logical of logical_rec
 and logical_rec =
   | LogicalDirect of Id.t located
