@@ -451,7 +451,7 @@ let subst_rec_split env evd f comp comprecarg prob s split =
   let subst_rec cutprob s (ctx, p, _ as lhs) =
     let subst = List.fold_left (fun (ctx, _, ctx' as lhs') (id, b) ->
       let rel, _, ty = Termops.lookup_rel_id id ctx in
-      let fK = map_proto f (lift rel ty) in
+      let fK = map_proto b (lift rel ty) in
       let substf = single_subst env evd rel (PInac fK) ctx
       (* ctx[n := f] |- _ : ctx *) in
       compose_subst env ~sigma:evd substf lhs') (id_subst ctx) s
@@ -464,7 +464,7 @@ let subst_rec_split env evd f comp comprecarg prob s split =
   let subst_rec_named s acc = 
     List.fold_left (fun (acc, ctx) (id, b) ->
         let (_, _, ty) = to_named_tuple (lookup_named id ctx) in
-        let fK = map_proto f ty in
+        let fK = map_proto b ty in
         (id, fK) :: acc, subst_in_named_ctx id fK ctx)
               ([], acc) s
   in
@@ -583,10 +583,10 @@ let subst_rec_split env evd f comp comprecarg prob s split =
 
 open Typeclasses
       
-let update_split env evd is_rec cmap f prob id split =
+let update_split env evd is_rec cmap f prob recs split =
   let where_map = ref Evar.Map.empty in
   match is_rec with
-  | Some (Structural _) -> subst_rec_split env !evd f false None prob [(id, f)] split, !where_map
+  | Some (Structural _) -> subst_rec_split env !evd f false None prob recs split, !where_map
   | Some (Logical r) -> 
     let proj = match r with
       | LogicalDirect (_, id) -> mkVar id

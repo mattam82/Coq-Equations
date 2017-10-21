@@ -67,13 +67,23 @@ val unfold_constr : Term.constr -> Proofview.V82.tac
 
 (** Unfolding lemma tactic *)
 
+val subst_rec_split :            Environ.env ->
+           Evd.evar_map ->
+           Term.constr ->
+           bool ->
+           int option ->
+           Covering.context_map ->
+           (Names.Id.t * Term.constr) list ->
+           Covering.splitting -> Covering.splitting
+
+  
 val update_split : Environ.env ->
   Evd.evar_map ref ->
   Syntax.rec_type option ->
   ((Names.Id.t -> Constr.constr) -> Constr.constr -> Constr.constr) ->
   Constr.constr ->
   Covering.context_map ->
-  Names.Id.t -> Covering.splitting -> Covering.splitting * Principles_proofs.where_map
+  (Names.Id.t * Constr.constr) list -> Covering.splitting -> Covering.splitting * Principles_proofs.where_map
 
 
 val build_equations :

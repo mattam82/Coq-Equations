@@ -8,7 +8,7 @@ with term_list : Set :=
 | nilt : term_list
 | const : term -> term_list -> term_list.
 
-Equations(noeqns noind) id_term (t : term) : term := {
+Equations id_term (t : term) : term := {
 id_term (Var n) := Var n;
 id_term (App t l) := App (id_term t) (id_tlist l) }
 

@@ -125,14 +125,9 @@ let define_principles flags fixprots progs =
     let fn fixprot (p, prog) = of_tuple (Name p.program_id, None, fixprot) in
     List.rev (List.map2 fn fixprots progs)
   in
-  let fixdecls =
-    let fn fixprot (p, prog) =
-      let f = fst (Universes.unsafe_constr_of_global (ConstRef prog.program_cst)) in
-      of_tuple (Name p.program_id, Some f, fixprot)
-    in
-    List.map2 fn fixprots progs
-  in
-  let principles (p, prog) =
+  let principles fixdecls (p, prog) =
+    let fixsubst = List.map (fun d -> let na, b, t = to_tuple d in
+                                      (out_name na, Option.get b)) fixdecls in
     let i = p.program_id in
     let sign = p.program_sign in
     let oarity = p.program_oarity in
@@ -157,21 +152,21 @@ let define_principles flags fixprots progs =
 	 in
 	 let split, where_map =
            update_split env evd p.program_rec
-                        prog.program_cmap f cutprob i prog.program_split in
+                        prog.program_cmap f cutprob fixsubst prog.program_split in
 	 build_equations flags.with_ind env !evd i prog.program_split_info sign p.program_rec arity 
 			 where_map prog.program_cst f norecprob split
       | None ->
 	 let prob = id_subst sign in
 	 let split, where_map =
            update_split env evd p.program_rec prog.program_cmap
-                        f prob i prog.program_split in
+                        f prob [] prog.program_split in
 	 build_equations flags.with_ind env !evd i prog.program_split_info sign p.program_rec arity 
 			 where_map prog.program_cst f prob split
       | Some (Logical r) ->
 	 let prob = id_subst sign in
          (* let () = msg_debug (str"udpdate split" ++ spc () ++ pr_splitting env split) in *)
 	 let unfold_split, where_map =
-           update_split env evd p.program_rec prog.program_cmap f prob i prog.program_split
+           update_split env evd p.program_rec prog.program_cmap f prob [(i,f)] prog.program_split
          in
 	 (* We first define the unfolding and show the fixpoint equation. *)
 	 let unfoldi = add_suffix i "_unfold" in
@@ -221,7 +216,15 @@ let define_principles flags fixprots progs =
     else ()
   in
   match progs with
-  | [prog] -> principles prog
+  | [prog] ->
+     let fixdecls =
+       let fn fixprot (p, prog) =
+         let f = fst (Universes.unsafe_constr_of_global (ConstRef prog.program_cst)) in
+         of_tuple (Name p.program_id, Some f, fixprot)
+       in
+       List.map2 fn fixprots progs
+     in
+     principles fixdecls prog
   | l ->
      (** In the mutually recursive case, only the functionals have been defined, 
          we build the block and its projections now *)
@@ -245,13 +248,22 @@ let define_principles flags fixprots progs =
      let declare_fn i (p,prog) =
        let fix = mkFix ((structargs, i), decl) in
        let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
-       let _kn =
+       let kn =
          declare_constant p.program_id fix (Some ty) flags.polymorphic
                           !evd (IsDefinition Fixpoint)
-       in ()
+       in
+       let prog' = { prog with program_cst = kn } in
+       (p, prog')
      in
-     let () = List.iteri declare_fn l in
-     List.iter principles l
+     let l' = List.mapi declare_fn l in
+     let fixdecls =
+       let fn fixprot (p, prog) =
+         let f = fst (Universes.unsafe_constr_of_global (ConstRef prog.program_cst)) in
+         of_tuple (Name p.program_id, Some f, fixprot)
+       in
+       List.rev (List.map2 fn fixprots l')
+     in
+     List.iter (principles fixdecls) l'
   
 let define_by_eqs opts eqs nt =
   let with_comp, with_rec, with_eqns, with_ind =

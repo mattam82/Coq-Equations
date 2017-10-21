@@ -28,6 +28,31 @@ val define_by_eqs :
   list ->
   unit
 
+type program_info = {
+  program_id : Id.t;
+  program_sign : rel_context;
+  program_arity : Constr.t;
+  program_oarity : Constr.t;
+  program_rec : Syntax.rec_type option;
+  program_impls : Impargs.manual_explicitation list;
+}
+
+type compiled_program_info = {
+    program_cst : Constant.t;
+    program_cmap : (Id.t -> Constr.t) -> Constr.t -> Constr.t;
+    program_split : splitting;
+    program_split_info : Splitting.term_info }
+
+type flags = {
+  polymorphic : bool;
+  with_eqns : bool;
+  with_ind : bool }  
+
+val define_principles :
+  flags ->
+  Constr.t list ->
+  (program_info * compiled_program_info) list -> unit
+  
 val with_rollback : ('a -> 'b) -> 'a -> 'b
 
 val equations :
