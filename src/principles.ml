@@ -636,7 +636,18 @@ let update_split env evd is_rec cmap f prob recs split =
     split', !where_map
   | _ -> split, !where_map
 
-let computations env evd prob wheremap f alias refine split =
+type equations_info = {
+ equations_id : Names.Id.t;
+ equations_where_map : Principles_proofs.where_map;
+ equations_f : Constr.constr;
+ equations_prob : Covering.context_map;
+ equations_split : Covering.splitting }
+
+let computations env evd alias refine eqninfo =
+  let { equations_prob = prob;
+        equations_where_map = wheremap;
+        equations_f = f;
+        equations_split = split } = eqninfo in
   let rec computations env prob f alias refine = function
   | Compute (lhs, where, ty, c) ->
      let where_comp w =
@@ -858,14 +869,8 @@ let level_of_context env evd ctx acc =
                     ctx (env,acc)
   in lev
 
-type equations_info = {
- equations_id : Names.Id.t;
- equations_where_map : Principles_proofs.where_map;
- equations_f : Constr.constr;
- equations_prob : Covering.context_map;
- equations_split : Covering.splitting }
-
-let build_equations with_ind env evd p prog ?(alias:(constr * Names.Id.t * splitting) option) eqninfo =
+let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) option) progs =
+  let p, prog, eqninfo = List.hd progs in
   let { equations_id = id;
         equations_where_map = wheremap;
         equations_f = f;
@@ -874,9 +879,11 @@ let build_equations with_ind env evd p prog ?(alias:(constr * Names.Id.t * split
   let info = prog.program_split_info in
   let sign = p.program_sign in
   let is_rec = p.program_rec in
-  let arity = p.program_arity in
   let cst = prog.program_cst in
-  let comps = computations env evd prob wheremap f alias (false,false) split in
+  let comps =
+    let fn = computations env evd alias (false,false) in
+    List.map (fun (p, prog, eqninfo) -> p, eqninfo, fn eqninfo) progs
+  in
   let rec flatten_comp (ctx, fl, flalias, pats, ty, f, refine, c, rest) =
     let rest = match rest with
       | None -> []
@@ -890,12 +897,16 @@ let build_equations with_ind env evd p prog ?(alias:(constr * Names.Id.t * split
       let stmt, rest' = flatten_comp cmp in
 	(stmt :: acc, rest' @ rest)) r ([], [])
   in
-  let comps =
-    let (top, rest) = flatten_comps comps in
+  let flatten_top_comps (p, eqninfo, one_comps) acc =
+    let (top, rest) = flatten_comps one_comps in
     let alias = match alias with Some (f, id, x) -> Some ((f, []), id, x) | None -> None in
-    (((f,[]), alias, [], sign, arity, List.rev_map pat_constr (pi2 prob), [],
-      (false,false)), top) :: rest
+    let topcomp = (((eqninfo.equations_f,[]), alias, [],
+                    p.program_sign, p.program_arity,
+                    List.rev_map pat_constr (pi2 eqninfo.equations_prob), [],
+                    (false,false)), top) in
+    topcomp :: (rest @ acc)
   in
+  let comps = List.fold_right flatten_top_comps comps [] in
   let protos = List.map fst comps in
   let lenprotos = List.length protos in
   let protos = 

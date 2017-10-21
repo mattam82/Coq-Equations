@@ -202,8 +202,8 @@ let define_principles flags fixprots progs =
                  equations_prob = prob;
                  equations_split = unfold_split }
              in
-             build_equations flags.with_ind env !evd p prog' eqninfo
-                             ~alias:(f, unfold_eq_id, prog.program_split)
+             build_equations flags.with_ind env !evd ~alias:(f, unfold_eq_id, prog.program_split)
+                             [p, prog', eqninfo]
 	   in
 	   let evd = ref (Evd.from_env (Global.env ())) in
 	   let stmt = it_mkProd_or_LetIn 
@@ -230,16 +230,15 @@ let define_principles flags fixprots progs =
        let evm = !evd in
        (match p.program_rec with
         | Some (Structural _) ->
-           build_equations flags.with_ind env evm p prog eqninfo
+           build_equations flags.with_ind env evm [p, prog, eqninfo]
         | Some (Logical _) -> ()
         | None ->
-           build_equations flags.with_ind env evm p prog eqninfo)
+           build_equations flags.with_ind env evm [p, prog, eqninfo])
     | [_, _, None] -> ()
     | splits ->
        let splits = List.map (fun (p,prog,s) -> p, prog, Option.get s) splits in
        let evm = !evd in
-       let fn (p, prog, eqns) = build_equations flags.with_ind env evm p prog eqns in
-       List.iter fn splits
+       build_equations flags.with_ind env evm splits
   in
   match progs with
   | [prog] ->
