@@ -17,11 +17,6 @@ id_tlist (t : term_list) : term_list := {
   id_tlist (const t tl) := const (id_term t) (id_tlist tl) }.
 
 Next Obligation.
-  revert t. fix 1. destruct t. constructor.
-  constructor. apply id_term_ind_fun_obligation.
-  clear t; revert l. fix 1.
-  destruct l. constructor.
-  constructor. auto. auto.
+  revert t. fix ft 1 with (ftl (l : term_list) {struct l} : id_term_ind_1 l (id_tlist l));
+              (destruct t || destruct l); constructor; auto.
 Defined.
-  
-  
