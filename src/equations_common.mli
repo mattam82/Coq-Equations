@@ -18,6 +18,12 @@ val equations_transparent : bool ref
 
 val debug : bool ref
 
+(** Common flags *)
+type flags = {
+  polymorphic : bool;
+  with_eqns : bool;
+  with_ind : bool }  
+  
 (* Tactics *)
 val to82 : 'a Proofview.tactic -> Proofview.V82.tac
 val of82 : Proofview.V82.tac -> unit Proofview.tactic

@@ -85,18 +85,19 @@ val update_split : Environ.env ->
   Covering.context_map ->
   (Names.Id.t * Constr.constr) list -> Covering.splitting -> Covering.splitting * Principles_proofs.where_map
 
+type equations_info = {
+ equations_id : Names.Id.t;
+ equations_where_map : Principles_proofs.where_map;
+ equations_f : Constr.constr;
+ equations_prob : Covering.context_map;
+ equations_split : Covering.splitting }
 
 val build_equations :
   bool ->
   Environ.env ->
   Evd.evar_map ->
-  Names.Id.t ->
-  Splitting.term_info ->
-  Equations_common.rel_context ->
-  Syntax.rec_type option ->
-  Constr.constr ->
-  Principles_proofs.where_map ->
-  Names.constant ->
-  Constr.constr ->
+  Splitting.program_info ->
+  Splitting.compiled_program_info ->
   ?alias:Term.constr * Names.Id.t * Covering.splitting ->
-  Covering.context_map -> Covering.splitting -> unit
+  equations_info ->
+  unit

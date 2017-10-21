@@ -91,6 +91,11 @@ let _ = Goptions.declare_bool_option {
   Goptions.optwrite = (fun b -> debug := b)
 }
 
+type flags = {
+  polymorphic : bool;
+  with_eqns : bool;
+  with_ind : bool }  
+
 let check_term env evd c t =
   Typing.e_check env (ref evd) c t
 

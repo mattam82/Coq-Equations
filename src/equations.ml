@@ -94,38 +94,20 @@ let declare_wf_obligations info =
     make_resolve (ConstRef gr) :: acc) info.comp_obls [] in
   Hints.add_hints false [Principles_proofs.wf_obligations_base info] (Hints.HintsResolveEntry constrs)
 
-type program_info = {
-  program_id : Id.t;
-  program_sign : rel_context;
-  program_arity : Constr.t;
-  program_oarity : Constr.t;
-  program_rec : Syntax.rec_type option;
-  program_impls : Impargs.manual_explicitation list;
-}
-
-type compiled_program_info = {
-    program_cst : Constant.t;
-    program_cmap : (Id.t -> Constr.t) -> Constr.t -> Constr.t;
-    program_split : splitting;
-    program_split_info : Splitting.term_info }
-                  
 let nf_program_info evm p =
   { p with
     program_sign = nf_rel_context_evar evm p.program_sign;
     program_arity = nf_evar evm p.program_arity;
     program_oarity = nf_evar evm p.program_oarity }
-
-type flags = {
-  polymorphic : bool;
-  with_eqns : bool;
-  with_ind : bool }  
   
 let define_principles flags fixprots progs =
   let fixctx = 
     let fn fixprot (p, prog) = of_tuple (Name p.program_id, None, fixprot) in
     List.rev (List.map2 fn fixprots progs)
   in
-  let principles fixdecls (p, prog) =
+  let env = Global.env () in
+  let evd = ref (Evd.from_env env) in
+  let newsplits env fixdecls (p, prog) =
     let fixsubst = List.map (fun d -> let na, b, t = to_tuple d in
                                       (out_name na, Option.get b)) fixdecls in
     let i = p.program_id in
@@ -133,17 +115,13 @@ let define_principles flags fixprots progs =
     let oarity = p.program_oarity in
     let arity = p.program_arity in
     let gr = ConstRef prog.program_cst in
-    let evd = ref Evd.empty in
-    let env = Global.env () in
     let f =
       let (f, uc) = Universes.unsafe_constr_of_global gr in
-      evd := Evd.from_env env;
       if flags.polymorphic then
   	evd := Evd.merge_context_set Evd.univ_rigid !evd
 	                             (Univ.ContextSet.of_context (Univ.instantiate_univ_context uc));
       f
     in
-    if flags.with_eqns || flags.with_ind then
       match p.program_rec with
       | Some (Structural _) ->
 	 let cutprob, norecprob = 
@@ -153,15 +131,28 @@ let define_principles flags fixprots progs =
 	 let split, where_map =
            update_split env evd p.program_rec
                         prog.program_cmap f cutprob fixsubst prog.program_split in
-	 build_equations flags.with_ind env !evd i prog.program_split_info sign p.program_rec arity 
-			 where_map prog.program_cst f norecprob split
+         let eqninfo =
+           { equations_id = i;
+             equations_where_map = where_map;
+             equations_f = f;
+             equations_prob = norecprob;
+             equations_split = split }
+         in
+         Some eqninfo
       | None ->
 	 let prob = id_subst sign in
 	 let split, where_map =
            update_split env evd p.program_rec prog.program_cmap
                         f prob [] prog.program_split in
-	 build_equations flags.with_ind env !evd i prog.program_split_info sign p.program_rec arity 
-			 where_map prog.program_cst f prob split
+         let eqninfo =
+           { equations_id = i;
+             equations_where_map = where_map;
+             equations_f = f;
+             equations_prob = prob;
+             equations_split = split }
+         in
+         Some eqninfo
+
       | Some (Logical r) ->
 	 let prob = id_subst sign in
          (* let () = msg_debug (str"udpdate split" ++ spc () ++ pr_splitting env split) in *)
@@ -192,9 +183,27 @@ let define_principles flags fixprots progs =
              in
 	     let env = Global.env () in
 	     let () = if not flags.polymorphic then evd := (Evd.from_env env) in
-	     build_equations flags.with_ind env !evd i info sign None arity
-		             where_map funf_cst funfc
-                             ~alias:(f, unfold_eq_id, prog.program_split) prob unfold_split
+             let prog' = { program_cst = funf_cst;
+                          program_cmap = cmap;
+                          program_split = unfold_split;
+                          program_split_info = info }
+             in
+             let p = { program_id = i;
+                       program_sign = sign;
+                       program_arity = arity;
+                       program_oarity = arity;
+                       program_rec = None;
+                       program_impls = p.program_impls }
+             in
+             let eqninfo =
+               { equations_id = i;
+                 equations_where_map = where_map;
+                 equations_f = funfc;
+                 equations_prob = prob;
+                 equations_split = unfold_split }
+             in
+             build_equations flags.with_ind env !evd p prog' eqninfo
+                             ~alias:(f, unfold_eq_id, prog.program_split)
 	   in
 	   let evd = ref (Evd.from_env (Global.env ())) in
 	   let stmt = it_mkProd_or_LetIn 
@@ -212,8 +221,25 @@ let define_principles flags fixprots progs =
 		    (Evd.evar_universe_context !evd) [||])
 	 in
 	 define_tree None [] flags.polymorphic p.program_impls (Define false) evd env
-		     (unfoldi, sign, oarity) None unfold_split hook_unfold
-    else ()
+		     (unfoldi, sign, oarity) None unfold_split hook_unfold;
+         None
+  in
+  let principles env newsplits =
+    match newsplits with
+    | [p, prog, Some eqninfo] ->
+       let evm = !evd in
+       (match p.program_rec with
+        | Some (Structural _) ->
+           build_equations flags.with_ind env evm p prog eqninfo
+        | Some (Logical _) -> ()
+        | None ->
+           build_equations flags.with_ind env evm p prog eqninfo)
+    | [_, _, None] -> ()
+    | splits ->
+       let splits = List.map (fun (p,prog,s) -> p, prog, Option.get s) splits in
+       let evm = !evd in
+       let fn (p, prog, eqns) = build_equations flags.with_ind env evm p prog eqns in
+       List.iter fn splits
   in
   match progs with
   | [prog] ->
@@ -224,7 +250,8 @@ let define_principles flags fixprots progs =
        in
        List.map2 fn fixprots progs
      in
-     principles fixdecls prog
+     let newsplits = newsplits env fixdecls prog in
+     principles env [fst prog, snd prog, newsplits]
   | l ->
      (** In the mutually recursive case, only the functionals have been defined, 
          we build the block and its projections now *)
@@ -256,6 +283,8 @@ let define_principles flags fixprots progs =
        (p, prog')
      in
      let l' = List.mapi declare_fn l in
+     let env = Global.env () in (* side-effect: refresh env with global decls *)
+     let () = evd := Evd.from_env env in
      let fixdecls =
        let fn fixprot (p, prog) =
          let f = fst (Universes.unsafe_constr_of_global (ConstRef prog.program_cst)) in
@@ -263,7 +292,8 @@ let define_principles flags fixprots progs =
        in
        List.rev (List.map2 fn fixprots l')
      in
-     List.iter (principles fixdecls) l'
+     let newsplits = List.map (fun (p, prog as x) -> p, prog, newsplits env fixdecls x) l' in
+     principles env newsplits
   
 let define_by_eqs opts eqs nt =
   let with_comp, with_rec, with_eqns, with_ind =
@@ -431,7 +461,8 @@ let define_by_eqs opts eqs nt =
     if Array.for_all (fun x -> not (Option.is_empty x)) progs then
       (let fixprots = List.map (nf_evar !evd) fixprots in
        let progs = Array.map_to_list (fun x -> Option.get x) progs in
-       define_principles flags fixprots progs)
+       if flags.with_eqns || flags.with_ind then
+         define_principles flags fixprots progs)
   in
   let idx = ref 0 in
   let define_tree p split =

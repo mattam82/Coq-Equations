@@ -858,8 +858,24 @@ let level_of_context env evd ctx acc =
                     ctx (env,acc)
   in lev
 
-let build_equations with_ind env evd id info sign is_rec arity wheremap cst 
-    f ?(alias:(constr * Names.Id.t * splitting) option) prob split =
+type equations_info = {
+ equations_id : Names.Id.t;
+ equations_where_map : Principles_proofs.where_map;
+ equations_f : Constr.constr;
+ equations_prob : Covering.context_map;
+ equations_split : Covering.splitting }
+
+let build_equations with_ind env evd p prog ?(alias:(constr * Names.Id.t * splitting) option) eqninfo =
+  let { equations_id = id;
+        equations_where_map = wheremap;
+        equations_f = f;
+        equations_prob = prob;
+        equations_split = split } = eqninfo in
+  let info = prog.program_split_info in
+  let sign = p.program_sign in
+  let is_rec = p.program_rec in
+  let arity = p.program_arity in
+  let cst = prog.program_cst in
   let comps = computations env evd prob wheremap f alias (false,false) split in
   let rec flatten_comp (ctx, fl, flalias, pats, ty, f, refine, c, rest) =
     let rest = match rest with

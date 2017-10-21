@@ -366,6 +366,22 @@ type term_info = {
   comp_obls : Id.Set.t; (** The recursive call proof obligations *)
 }
 
+type program_info = {
+  program_id : Id.t;
+  program_sign : rel_context;
+  program_arity : Constr.t;
+  program_oarity : Constr.t;
+  program_rec : Syntax.rec_type option;
+  program_impls : Impargs.manual_explicitation list;
+}
+
+type compiled_program_info = {
+    program_cst : Constant.t;
+    program_cmap : (Id.t -> Constr.t) -> Constr.t -> Constr.t;
+    program_split : splitting;
+    program_split_info : term_info }
+                  
+
 let is_polymorphic info = pi2 info.decl_kind
 
 let define_tree is_recursive fixprots poly impls status isevar env (i, sign, arity)

@@ -41,6 +41,21 @@ type term_info = {
   comp_obls : Id.Set.t; (** The recursive call proof obligations *)
 }
 
+type program_info = {
+  program_id : Id.t;
+  program_sign : rel_context;
+  program_arity : Constr.t;
+  program_oarity : Constr.t;
+  program_rec : Syntax.rec_type option;
+  program_impls : Impargs.manual_explicitation list;
+}
+
+type compiled_program_info = {
+    program_cst : Constant.t;
+    program_cmap : (Id.t -> Constr.t) -> Constr.t -> Constr.t;
+    program_split : splitting;
+    program_split_info : term_info }
+
 val is_polymorphic : term_info -> bool
 
 val define_tree :
