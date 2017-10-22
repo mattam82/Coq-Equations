@@ -43,9 +43,9 @@ open Topconstr
 open Util
 open Entries
 
+open EConstr   
 
 open Equations_common
-open Sigma
 
 type one_inductive_info = {
   ind_name : identifier;
@@ -61,27 +61,31 @@ type mutual_inductive_info = {
   mutind_params : named_context; (* Mutual parameters as a named context *)
   mutind_inds : one_inductive_info array; (* Each inductive. *)
 }
-    
-let inductive_info ((mind, _ as ind),u) =
+
+let enamed_context = List.map of_named_decl
+let erel_context = List.map of_rel_decl
+let einstance = EConstr.EInstance.make
+
+let inductive_info sigma ((mind, _ as ind),u) =
   let mindb, oneind = Global.lookup_inductive ind in
-  let params_ctxt = subst_instance_context u mindb.mind_params_ctxt in
+  let params_ctxt = subst_instance_context (EInstance.kind sigma u) mindb.mind_params_ctxt in
   let subst, paramargs, params =
-    named_of_rel_context (fun () -> id_of_string "param") params_ctxt in
+    named_of_rel_context (fun () -> id_of_string "param") (erel_context params_ctxt) in
   let nparams = List.length params in
   let env = List.fold_right push_named params (Global.env ()) in
   let info_of_ind i ind =
     let ctx = ind.mind_arity_ctxt in
     let args, _ = List.chop ind.mind_nrealargs ctx in
-    let args' = subst_rel_context 0 subst args in
+    let args' = subst_rel_context 0 subst (erel_context args) in
     let induct = ((mind, i),u) in
     let indname = Nametab.basename_of_global (Globnames.IndRef (mind,i)) in
-    let indapp = applist (mkIndU induct, paramargs) in    
-    let arities = arities_of_constructors env induct in
+    let indapp = applist (mkIndU induct, paramargs) in
+    let arities = arities_of_constructors env (from_peuniverses sigma induct) in
      let constrs =
       Array.map (fun ty -> 
-	let _, rest = decompose_prod_n_assum nparams ty in
-	let constrty = substl subst rest in
-	  decompose_prod_assum constrty)
+	let _, rest = decompose_prod_n_assum sigma nparams (EConstr.of_constr ty) in
+	let constrty = Vars.substl subst rest in
+	decompose_prod_assum sigma constrty)
 	arities
     in
     let case c pred brs =
@@ -99,7 +103,7 @@ let inductive_info ((mind, _ as ind),u) =
     
 let eq_dec_class evd =
   Option.get 
-    (Typeclasses.class_of_constr
+    (Typeclasses.class_of_constr !evd
 	(init_constant ["Equations";"EqDec"] "EqDec" evd))
 
 let dec_eq evd =
@@ -109,8 +113,10 @@ open Decl_kinds
 let vars_of_pars pars = 
   Array.of_list (List.map (fun x -> mkVar (get_id x)) pars)
 
+open EConstr.Vars  
+
 let derive_eq_dec env sigma ~polymorphic ind =
-  let info = inductive_info ind in
+  let info = inductive_info sigma ind in
   let ctx = info.mutind_params in
   let evdref = ref sigma in
   let cl = fst (snd (eq_dec_class evdref)) in
@@ -132,16 +138,18 @@ let derive_eq_dec env sigma ~polymorphic ind =
     let tc gr = 
       let b, ty = 
 	Typeclasses.instance_constructor
-          cl [indapp; mkapp (Global.env ()) evdref gr
-                            (Array.append (vars_of_pars ctx) argsvect) ] in
+          (from_peuniverses sigma cl)
+          (List.map (to_constr sigma)
+                    [indapp; mkapp (Global.env ()) evdref gr
+                                   (Array.append (vars_of_pars ctx) argsvect) ]) in
       let body = 
 	it_mkNamedLambda_or_LetIn 
-	  (it_mkLambda_or_LetIn (Option.get b) ind.ind_args) ctx
+	  (it_mkLambda_or_LetIn (of_constr (Option.get b)) ind.ind_args) ctx
       in
       let ce = 
-	{ const_entry_body = Future.from_val ((body,Univ.ContextSet.empty), Safe_typing.empty_private_constants);
-  	  const_entry_type = Some (it_mkNamedProd_or_LetIn
-				     (it_mkProd_or_LetIn ty ind.ind_args) ctx);
+	{ const_entry_body = Future.from_val ((to_constr sigma body,Univ.ContextSet.empty), Safe_typing.empty_private_constants);
+  	  const_entry_type = Some (to_constr sigma (it_mkNamedProd_or_LetIn
+				     (it_mkProd_or_LetIn (of_constr ty) ind.ind_args) ctx));
   	  const_entry_opaque = false; const_entry_secctx = None;
 	  const_entry_feedback = None;
 	  const_entry_polymorphic = polymorphic;
@@ -166,7 +174,7 @@ let derive_eq_dec env sigma ~polymorphic ind =
   List.iter 
     (fun (ind, (stmt, tc)) ->
      let id = add_suffix ind.ind_name "_eqdec" in
-     ignore(Obligations.add_definition id stmt (Evd.evar_universe_context !evdref) 
+     ignore(Obligations.add_definition id (to_constr sigma stmt) (Evd.evar_universe_context !evdref) 
                                        [||] ~tactic:(eqdec_tac ())
 				       ~hook:(Lemmas.mk_hook hook)))
     indsl

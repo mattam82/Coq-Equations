@@ -6,7 +6,6 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-open Cases
 open Util
 open Names
 open Nameops
@@ -14,30 +13,17 @@ open Term
 open Termops
 open Declarations
 open Inductiveops
-open Environ
-open Context
-open Vars
 open Reductionops
-open Typeops
-open Type_errors
 open Pp
-open Proof_type
-open Glob_term
-open Retyping
-open Pretype_errors
 open Evarutil
-open Evarconv
 open List
 open Libnames
-open Topconstr
-open Coqlib
 open Globnames
 open Tactics
-open Refiner
 open Tacticals
-open Tacmach
 open Decl_kinds
 open Equations_common
+open EConstr
 
 let mkConstructG c u =
   mkConstructU (destConstructRef (Lazy.force c), u)
@@ -61,11 +47,11 @@ let mkSig evd (n, c, t) =
 
 let constrs_of_coq_sigma env evd t alias = 
   let rec aux env proj c ty =
-    match kind_of_term c with
-    | App (f, args) when is_global (Lazy.force coq_sigmaI) f && 
+    match kind !evd c with
+    | App (f, args) when is_global !evd (Lazy.force coq_sigmaI) f && 
 	                   Array.length args = 4 ->
        let ty = Retyping.get_type_of env !evd args.(1) in
-	(match kind_of_term ty with
+	(match kind !evd ty with
 	| Prod (n, b, t) ->
 	    let p1 = mkProj (Lazy.force coq_pr1, proj) in
 	    let p2 = mkProj (Lazy.force coq_pr2, proj) in
@@ -75,16 +61,16 @@ let constrs_of_coq_sigma env evd t alias =
     | _ -> [(Anonymous, c, proj, ty)]
   in aux env alias t (Retyping.get_type_of env !evd t)
 
-let decompose_coq_sigma t = 
+let decompose_coq_sigma sigma t = 
   let s = Lazy.force coq_sigma in
-    match kind_of_term t with
-    | App (f, args) when is_global s f && Array.length args = 2 ->
-       let ind, u = destInd f in
+    match kind sigma t with
+    | App (f, args) when is_global sigma s f && Array.length args = 2 ->
+       let ind, u = destInd sigma f in
          Some (u, args.(0), args.(1))
     | _ -> None
 
-let decompose_indapp f args =
-  match kind_of_term f with
+let decompose_indapp sigma f args =
+  match kind sigma f with
   | Construct ((ind,_),_)
   | Ind (ind,_) ->
       let (mib,mip) = Global.lookup_inductive ind in
@@ -98,7 +84,7 @@ let decompose_indapp f args =
 
 let telescope evd = function
   | [] -> assert false
-  | [d] -> let (n, _, t) = to_tuple d in t, [of_tuple (n, Some (mkRel 1), lift 1 t)],
+  | [d] -> let (n, _, t) = to_tuple d in t, [of_tuple (n, Some (mkRel 1), Vars.lift 1 t)],
                                         mkRel 1
   | d :: tl ->
       let (n, _, t) = to_tuple d in
@@ -109,17 +95,17 @@ let telescope evd = function
             let (n, b, t) = to_tuple d in
 	    let pred = mkLambda (n, t, ty) in
 	    let sigty = mkAppG evd (Lazy.force coq_sigma) [|t; pred|] in
-            let _, u = destInd (fst (destApp sigty)) in
+            let _, u = destInd !evd (fst (destApp !evd sigty)) in
 	      (sigty, (u, pred) :: tys))
 	  (t, []) tl
       in
       let constr, _ = 
 	List.fold_right (fun (u, pred) (intro, k) ->
 	  let pred = Vars.lift k pred in
-	  let (n, dom, codom) = destLambda pred in
+	  let (n, dom, codom) = destLambda !evd pred in
 	  let intro =
-            mkApp (Universes.constr_of_global_univ
-                     (Lazy.force coq_sigmaI, u), [| dom; pred; mkRel k; intro|]) in
+            mkApp (constr_of_global_univ !evd (Lazy.force coq_sigmaI, u),
+                   [| dom; pred; mkRel k; intro|]) in
 	    (intro, succ k))
 	  tys (mkRel 1, 2)
       in
@@ -128,22 +114,22 @@ let telescope evd = function
           let (n, b, t) = to_tuple d in
 	  let proj1 = mkProj (Lazy.force coq_pr1, prev) in
 	  let proj2 = mkProj (Lazy.force coq_pr2, prev) in
-	    (lift 1 proj2, succ k, of_tuple (n, Some proj1, liftn 1 k t) :: subst))
+	    (Vars.lift 1 proj2, succ k, of_tuple (n, Some proj1, Vars.liftn 1 k t) :: subst))
 	(List.rev tys) tl (mkRel 1, 1, [])
-      in ty, (of_tuple (n, Some last, liftn 1 len t) :: subst), constr
+      in ty, (of_tuple (n, Some last, Vars.liftn 1 len t) :: subst), constr
 
 let sigmaize ?(liftty=0) env0 evd pars f =
   let env = push_rel_context pars env0 in
   let ty = Retyping.get_type_of env !evd f in
   let ctx, concl = splay_prod_assum env !evd ty in
-  let ctx = smash_rel_context ctx in
+  let ctx = smash_rel_context !evd ctx in
   let argtyp, letbinders, make = telescope evd ctx in
     (* Everyting is in env, move to index :: letbinders :: env *) 
   let lenb = List.length letbinders in
   let pred =
     mkLambda (Name (id_of_string "index"), argtyp,
 	      it_mkProd_or_LetIn
-	        (mkApp (lift (succ lenb) f, 
+	        (mkApp (Vars.lift (succ lenb) f, 
 		        rel_vect 0 lenb))
 	        letbinders)
   in
@@ -152,27 +138,27 @@ let sigmaize ?(liftty=0) env0 evd pars f =
   let indexproj = Lazy.force coq_pr1 in
   let valproj = Lazy.force coq_pr2 in
   let indices = 
-    (List.rev_map (fun l -> substl (tl l) (hd l)) 
-     (Equations_common.proper_tails (map (fun d -> Option.get (pi2 (to_tuple d))) letbinders)))
+    (List.rev_map (fun l -> Vars.substl (tl l) (hd l)) 
+     (Equations_common.proper_tails (List.map (fun d -> Option.get (pi2 (to_tuple d))) letbinders)))
   in
   let valsig =
-    let argtyp = lift (succ lenb) argtyp in
+    let argtyp = Vars.lift (succ lenb) argtyp in
     let pred = 
       mkLambda (Name (id_of_string "index"), argtyp,
 	       it_mkProd_or_LetIn
-		 (mkApp (lift (2 * succ lenb) f,
+		 (mkApp (Vars.lift (2 * succ lenb) f,
 			rel_vect 0 lenb))
 		 (Equations_common.lift_rel_contextn 1 (succ lenb) letbinders))
     in
-    let _tylift = lift lenb argtyp in
+    let _tylift = Vars.lift lenb argtyp in
       mkAppG evd (Lazy.force coq_sigmaI)
-	[|argtyp; pred; lift 1 make; mkRel 1|]
+	[|argtyp; pred; Vars.lift 1 make; mkRel 1|]
   in
   let pred = it_mkLambda_or_LetIn pred pars in
   let _ = Typing.e_type_of env0 evd pred in
-  let nf, _ = Evarutil.e_nf_evars_and_universes evd in
-    (nf argtyp, nf pred, map_rel_context nf pars, List.map nf indices,
-     indexproj, valproj, nf valsig, nf tysig)
+  let _nf, _ = Evarutil.e_nf_evars_and_universes evd in
+    (argtyp, pred, pars, indices,
+     indexproj, valproj, valsig, tysig)
 
 let ind_name ind = Nametab.basename_of_global (Globnames.IndRef ind)
 
@@ -182,16 +168,17 @@ let signature_pack = lazy (init_reference ["Equations";"Signature"] "signature_p
 
 let signature_class evd =
   let evd, c = new_global evd (Lazy.force signature_ref) in
-    evd, fst (snd (Option.get (Typeclasses.class_of_constr c)))
+    evd, fst (snd (Option.get (Typeclasses.class_of_constr evd c)))
 
 let build_sig_of_ind env sigma (ind,u as indu) =
   let (mib, oib as _mind) = Global.lookup_inductive ind in
-  let ctx = inductive_alldecls indu in
-  let ctx = smash_rel_context ctx in
+  let ctx = inductive_alldecls (from_peuniverses sigma indu) in
+  let ctx = List.map of_rel_decl ctx in
+  let ctx = smash_rel_context sigma ctx in
   let lenpars = mib.mind_nparams_rec in
   let lenargs = List.length ctx - lenpars in
   if lenargs = 0 then
-    user_err_loc (dummy_loc, "Derive Signature", 
+    user_err_loc (None, "Derive Signature", 
 		 str"No signature to derive for non-dependent inductive types");
   let args, pars = List.chop lenargs ctx in
   let parapp = mkApp (mkIndU indu, extended_rel_vect 0 pars) in
@@ -203,11 +190,17 @@ let build_sig_of_ind env sigma (ind,u as indu) =
   let sigma = !evd in
     sigma, pred, pars, fullapp, valsig, ctx, lenargs, idx
 
+let nf_econstr sigma c =
+  EConstr.of_constr (EConstr.to_constr sigma c)
+
 let declare_sig_of_ind env sigma poly (ind,u) =
   let sigma, pred, pars, fullapp, valsig, ctx, lenargs, idx =
     build_sig_of_ind env sigma (ind, u) in
   let indid = ind_name ind in
   let simpl = Tacred.simpl env sigma in
+  let sigma = Evd.nf_constraints sigma in
+  let fullapp = nf_econstr sigma fullapp in
+  let idx = nf_econstr sigma idx in
   let indsig =
     let indsigid = add_suffix indid "_sig" in
       declare_constant indsigid pred
@@ -233,9 +226,9 @@ let declare_sig_of_ind env sigma poly (ind,u) =
   let inst = 
     declare_instance signature_id
       poly sigma ctx c
-      [fullapp; lift lenargs idx;
-       mkApp (indsig, extended_rel_vect lenargs pars);
-       mkApp (pack_fn, extended_rel_vect 0 ctx)]
+      [fullapp; Vars.lift lenargs idx;
+       mkApp (of_constr indsig, extended_rel_vect lenargs pars);
+       mkApp (of_constr pack_fn, extended_rel_vect 0 ctx)]
   in
   Extraction_plugin.Table.extraction_inline true [Ident (dummy_loc, pack_id)];
   Extraction_plugin.Table.extraction_inline true [Ident (dummy_loc, signature_id)];
@@ -252,25 +245,26 @@ let get_signature env sigma ty =
     let sigma', (idx, _) = 
       new_type_evar env sigma Evd.univ_flexible
                     ~src:(dummy_loc, Evar_kinds.InternalHole) in
-    let _idxev = fst (destEvar idx) in
+    let _idxev = fst (destEvar sigma idx) in
     let sigma', cl = new_global sigma' (Lazy.force signature_ref) in
     let inst = mkApp (cl, [| ty; idx |]) in
     let sigma', tc = Typeclasses.resolve_one_typeclass env sigma' inst in
-    let _, u = destInd (fst (destApp inst)) in
+    let _, u = destInd sigma (fst (destApp sigma inst)) in
     let ssig = mkApp (mkConstG signature_sig u, [| ty; idx; tc |]) in
     let spack = mkApp (mkConstG signature_pack u, [| ty; idx; tc |]) in
       (sigma', nf_evar sigma' ssig, nf_evar sigma' spack)
   with Not_found ->
-    let pind, args = Inductive.find_rectype env ty in
+    let pind, args = Inductive.find_rectype env (to_constr sigma ty) in
     let sigma, pred, pars, _, valsig, ctx, _, _ =
-      build_sig_of_ind env sigma pind in
+      build_sig_of_ind env sigma (to_peuniverses pind) in
     Feedback.msg_warning (str "Automatically inlined signature for type " ++
     Printer.pr_pinductive env pind ++ str ". Use [Derive Signature for " ++
     Printer.pr_pinductive env pind ++ str ".] to avoid this.");
     let indsig = pred in
     let vbinder = of_tuple (Anonymous, None, ty) in
     let pack_fn = it_mkLambda_or_LetIn valsig (vbinder :: ctx) in
-    let pack_fn = beta_applist (pack_fn, args) in
+    let args = List.map of_constr args in
+    let pack_fn = beta_applist sigma (pack_fn, args) in
       (sigma, nf_evar sigma (mkApp (indsig, Array.of_list args)),
        nf_evar sigma pack_fn)
 
@@ -295,50 +289,50 @@ let pattern_sigma ~assoc_right c hyp env sigma =
 	    constrs_of_coq_sigma env evd t p @ terms
          | _ -> terms
   in
-  let pat = Patternops.pattern_of_constr env !evd in
+  let pat x = Patternops.pattern_of_constr env !evd (to_constr !evd x) in
   let terms = 
     if assoc_right then terms
     else match terms with
          | (x, t, p, rest) :: _ :: _ -> terms @ constrs_of_coq_sigma env evd t p 
          | _ -> terms
   in
-  let projs = map (fun (x, t, p, rest) -> (pat t, make_change_arg p)) terms in
+  let projs = List.map (fun (x, t, p, rest) -> (pat t, make_change_arg p)) terms in
   let projabs =
     tclTHENLIST ((if assoc_right then rev_map
-                  else map) (fun (t, p) -> to82 (change (Some t) p Locusops.onConcl))
+                  else List.map) (fun (t, p) -> to82 (change (Some t) p Locusops.onConcl))
                             projs) in
     Proofview.V82.tactic (tclTHEN (Refiner.tclEVARS !evd) projabs)
 			 
 let curry_left_hyp env sigma c t =
   let aux c t na u ty pred concl =
-    let (n, idx, dom) = destLambda pred in
+    let (n, idx, dom) = destLambda sigma pred in
     let newctx = [of_tuple (na, None, dom); of_tuple (n, None, idx)] in
     let tuple = mkApp (mkConstructG coq_sigmaI u,
-		       [| lift 2 ty; lift 2 pred; mkRel 2; mkRel 1 |])
+		       [| Vars.lift 2 ty; Vars.lift 2 pred; mkRel 2; mkRel 1 |])
     in
-    let term = it_mkLambda_or_LetIn (mkApp (lift 2 c, [| tuple |])) newctx in
-    let typ = it_mkProd_or_LetIn (subst1 tuple (liftn 2 2 concl)) newctx in
+    let term = it_mkLambda_or_LetIn (mkApp (Vars.lift 2 c, [| tuple |])) newctx in
+    let typ = it_mkProd_or_LetIn (Vars.subst1 tuple (Vars.liftn 2 2 concl)) newctx in
       (term, typ)
   in
   let rec curry_index c t =
-    match kind_of_term t with
+    match kind sigma t with
     | Prod (na, dom, concl) ->
-       (match decompose_coq_sigma dom with
+       (match decompose_coq_sigma sigma dom with
 	| None -> (c, t)
 	| Some (u, ty, pred) ->
 	   let term, typ = aux c t na u ty pred concl in
-	   match kind_of_term typ with
+	   match kind sigma typ with
 	   | Prod (na', dom', concl') ->
-	      let body' = pi3 (destLambda term) in
+	      let body' = pi3 (destLambda sigma term) in
 	      let c, t = curry_index body' concl' in
 	      mkLambda (na', dom', c), mkProd (na', dom', t)
 	   | _ -> (term, typ))
     | _ -> (c, t)
   in
   let curry c t =
-    match kind_of_term t with
+    match kind sigma t with
     | Prod (na, dom, concl) ->
-       (match decompose_coq_sigma dom with
+       (match decompose_coq_sigma sigma dom with
 	| None -> None
 	| Some (inst, ty, pred) ->
 	   let term, typ = aux c t na inst ty pred concl in
@@ -347,68 +341,65 @@ let curry_left_hyp env sigma c t =
     | _ -> None
   in curry c t
 
-let curry na c =
+let curry sigma na c =
   let rec make_arg na t =
-    match decompose_coq_sigma t with
+    match decompose_coq_sigma sigma t with
     | None -> 
-       if Globnames.is_global (Lazy.force coq_unit) t then
-         let _, u = destInd t in
-         [], Universes.constr_of_global_univ (Lazy.force coq_tt, u)
+       if is_global sigma (Lazy.force coq_unit) t then
+         let _, u = destInd sigma t in
+         [], constr_of_global_univ sigma (Lazy.force coq_tt, u)
        else [of_tuple (na,None,t)], mkRel 1
     | Some (u, ty, pred) ->
        let na, _, codom =
-         if isLambda pred then destLambda pred 
+         if isLambda sigma pred then destLambda sigma pred 
          else (Anonymous, ty, mkApp (pred, [|mkRel 1|])) in
        let ctx, rest = make_arg na codom in
        let len = List.length ctx in 
        let tuple = 
          mkApp (mkConstructG coq_sigmaI u,
-		[| lift (len + 1) ty; lift (len + 1) pred; mkRel (len + 1); rest |])
+		[| Vars.lift (len + 1) ty; Vars.lift (len + 1) pred; mkRel (len + 1); rest |])
        in
        ctx @ [of_tuple (na, None, ty)], tuple
   in
   make_arg na c
 
-open Sigma
-
 let uncurry_hyps name =
   let open Proofview in
   let open Proofview.Notations in
-  Proofview.Goal.enter { enter = fun gl ->
+  Proofview.Goal.enter (fun gl ->
     let hyps = Goal.hyps (Goal.assume gl) in
     let env = Goal.env gl in
     let sigma = Goal.sigma gl in
     let hyps, _ =
       List.split_when (fun d ->
-         Globnames.is_global (Lazy.force coq_end_of_section_ref) (get_named_type d)
+          is_global sigma (Lazy.force coq_end_of_section_ref) (get_named_type d)
           || is_section_variable (get_id d)) hyps in
-    let rec ondecl (sigma, acc, ty) d =
+    let ondecl (sigma, acc, ty) d =
       let (dna, _, dty) = to_named_tuple d in
-      let sigma, sigmaI = Evd.fresh_global env sigma (Lazy.force coq_sigmaI) in
-      let _, u = destConstruct sigmaI in
+      let sigma, sigmaI = new_global sigma (Lazy.force coq_sigmaI) in
+      let _, u = destConstruct sigma sigmaI in
       let types = [| dty; mkNamedLambda dna dty ty |] in
       let app = mkApp (sigmaI, Array.append types [| mkVar dna; acc |]) in
       (sigma, app, mkApp (mkIndG coq_sigma u, types))
     in
-    let Sigma (unit, sigma, p) = Sigma.fresh_global env sigma (Lazy.force coq_tt) in
-    let Sigma (unittype, sigma, q) =
-      Sigma.fresh_global env sigma (Lazy.force coq_unit) in
+    let sigma, unit = new_global sigma (Lazy.force coq_tt) in
+    let sigma, unittype = new_global sigma (Lazy.force coq_unit) in
     let sigma, term, ty = 
       fold_named_context_reverse 
-        ondecl ~init:(Sigma.to_evar_map sigma, unit, unittype) hyps
+        ondecl ~init:(sigma, unit, unittype) hyps
     in
     let sigma, _ = Typing.type_of env sigma term in
     Proofview.Unsafe.tclEVARS sigma <*>
-      Tactics.letin_tac None (Name name) term (Some ty) nowhere }
+      Tactics.letin_tac None (Name name) term (Some ty) nowhere )
 
 let uncurry_call env sigma c =
-  let hd, args = decompose_app c in
+  let hd, args = decompose_app sigma c in
   let ty = Retyping.get_type_of env sigma hd in
-  let ctx, concl = decompose_prod_n_assum (List.length args) ty in
+  let ctx, concl = decompose_prod_n_assum sigma (List.length args) ty in
   let evdref = ref sigma in
   (* let ctx = (Anonymous, None, concl) :: ctx in *)
   let sigty, sigctx, constr = telescope evdref ctx in
-  let app = substl (List.rev args) constr in
+  let app = Vars.substl (List.rev args) constr in
   !evdref, app, sigty
 
 (* Produce parts of a case on a variable, while introducing cuts and
@@ -424,23 +415,25 @@ let uncurry_call env sigma c =
  *   - a list of terms in [ctx] to apply to the case once it is built;
  *   - a boolean about the need for simplification or not. *)
 let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
-  (ctx : rel_context) (rel : int) (goal : Term.types) :
-    rel_context * Term.types *
-    (Term.types * int * Covering.context_map) array *
-    int * Covering.context_map * Term.constr list * bool =
+  (ctx : rel_context) (rel : int) (goal : EConstr.types) :
+    rel_context * EConstr.types *
+    (EConstr.types * int * Covering.context_map) array *
+    int * Covering.context_map * EConstr.constr list * bool =
   let after, rel_decl, before = Covering.split_context (pred rel) ctx in
   let rel_ty = Context.Rel.Declaration.get_type rel_decl in
   let rel_ty = Vars.lift rel rel_ty in
   let rel_t = Constr.mkRel rel in
   (* Fetch some information about the type of the variable being eliminated. *)
-  let pind, args = Inductive.find_inductive env rel_ty in
+  let pind, args = Inductive.find_inductive env (to_constr !evd rel_ty) in
   let mib, oib = Global.lookup_pinductive pind in
   let params, indices = List.chop mib.mind_nparams args in
   (* The variable itself will be treated for all purpose as one of its indices. *)
   let indices = indices @ [rel_t] in
   let indfam = Inductiveops.make_ind_family (pind, params) in
-  let arity_ctx = Inductiveops.make_arity_signature env true indfam in
+  let arity_ctx = Inductiveops.make_arity_signature env !evd true indfam in
   let rev_arity_ctx = List.rev arity_ctx in
+  let params = List.map of_constr params in
+  let indices = List.map of_constr indices in
 
   (* Firstly, we need to analyze each index to decide if we should introduce
    * an equality for it or not. *)
@@ -457,15 +450,15 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
     | idx :: indices, decl :: ctx ->
         let omit, cand =
           (* Variable. *)
-          if not (Term.isRel idx) then None, None
+          if not (isRel !evd idx) then None, None
           (* Linearity. *)
-          else if List.exists (Termops.dependent idx) params then None, None
-          else if List.exists (Termops.dependent idx) prev_indices then None, None
+          else if List.exists (Termops.dependent !evd idx) params then None, None
+          else if List.exists (Termops.dependent !evd idx) prev_indices then None, None
           (* Dependency. *)
           else
-            let rel = Term.destRel idx in
+            let rel = EConstr.destRel !evd idx in
             let decl_ty = Context.Rel.Declaration.get_type decl in
-            let deps = Termops.free_rels decl_ty in
+            let deps = Termops.free_rels !evd decl_ty in
             let omit =
               Int.Set.fold (fun x b ->
                 b && try Option.has_some (List.nth omitted (x-1))
@@ -506,7 +499,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
         let omit = CList.for_all_i (fun i decl ->
           let decl_ty = Context.Rel.Declaration.get_type decl in
           (* No dependency. *)
-          not (Termops.dependent (Constr.mkRel (rel - i)) decl_ty) ||
+          not (Termops.dependent !evd (mkRel (rel - i)) decl_ty) ||
           (* Already omitted. *)
           List.mem (Some i) rev_omitted) 0 after in
         if omit then
@@ -536,17 +529,17 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
     fun ((ctx, _, _) as subst, rev_subst) -> function
     | None -> subst, rev_subst
     | Some rel ->
-        let fresh_rel = Covering.mapping_constr subst (Constr.mkRel 1) in
-        let target_rel = Constr.mkRel (rel + oib.mind_nrealargs + 1) in
-        let target_rel = Covering.mapping_constr subst target_rel in
-        let target_rel = Term.destRel target_rel in
+        let fresh_rel = Covering.mapping_constr !evd subst (EConstr.mkRel 1) in
+        let target_rel = EConstr.mkRel (rel + oib.mind_nrealargs + 1) in
+        let target_rel = Covering.mapping_constr !evd subst target_rel in
+        let target_rel = EConstr.destRel !evd target_rel in
         let lsubst, lrev_subst = Covering.new_strengthen env !evd ctx target_rel fresh_rel in
         let res1 = Covering.compose_subst env ~sigma:!evd lsubst subst in
         let res2 = Covering.compose_subst env ~sigma:!evd rev_subst lrev_subst in
           res1, res2
   ) (subst, rev_subst) omitted in
-  let nb_cuts_omit = pred (Term.destRel
-   (Covering.mapping_constr subst (Constr.mkRel 1))) in
+  let nb_cuts_omit = pred (EConstr.destRel !evd
+   (Covering.mapping_constr !evd subst (EConstr.mkRel 1))) in
   (* [ctx'] is the context under which we will build the case in a first step. *)
   (* This is [ctx] where everything omitted and cut is removed. *)
   let ctx' = List.skipn (nb_cuts_omit + oib.mind_nrealargs + 1) (pi3 rev_subst) in
@@ -563,10 +556,10 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
     | None -> subst
     | Some rel ->
         let orig = oib.mind_nrealargs + 1 - i in
-        let fresh_rel = Covering.specialize pats (Covering.PRel orig) in
-        let target_rel = Constr.mkRel (rel + oib.mind_nrealargs + 1) in
-        let target_rel = Covering.mapping_constr subst target_rel in
-        let target_rel = Term.destRel target_rel in
+        let fresh_rel = Covering.specialize !evd pats (Covering.PRel orig) in
+        let target_rel = EConstr.mkRel (rel + oib.mind_nrealargs + 1) in
+        let target_rel = Covering.mapping_constr !evd subst target_rel in
+        let target_rel = EConstr.destRel !evd target_rel in
         (* We know that this call will fall in the simple case
          * of [single_subst], because we already strengthened everything. *)
         (* TODO Related to [compute_omitted_bis], we cannot actually substitute
@@ -575,8 +568,8 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
         let lsubst = Covering.single_subst ~unsafe:true env !evd target_rel fresh_rel ctx in
           Covering.compose_subst ~unsafe:true env ~sigma:!evd lsubst subst
   ) 0 omitted subst in
-  let nb_cuts = pred (Term.destRel
-   (Covering.mapping_constr subst (Constr.mkRel 1))) in
+  let nb_cuts = pred (EConstr.destRel !evd
+   (Covering.mapping_constr !evd subst (EConstr.mkRel 1))) in
   (* Also useful: a substitution from [ctx] to the context with cuts. *)
   let subst_to_cuts =
     let lift_subst = Covering.mk_ctx_map env !evd (arity_ctx @ ctx)
@@ -586,7 +579,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
   in
 
   (* Finally, we can work on producing a return type. *)
-  let goal = Covering.mapping_constr subst_to_cuts goal in
+  let goal = Covering.mapping_constr !evd subst_to_cuts goal in
 
   (* ===== CUTS ===== *)
   let cuts_ctx, remaining = List.chop nb_cuts (pi1 subst) in
@@ -594,7 +587,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
   let revert_cut x =
     let rec revert_cut i = function
       | [] -> failwith "Could not revert a cut, please report."
-      | Covering.PRel y :: _ when Int.equal x y -> Constr.mkRel i
+      | Covering.PRel y :: _ when Int.equal x y -> EConstr.mkRel i
       | _ :: l -> revert_cut (succ i) l
     in revert_cut (- oib.mind_nrealargs) (pi2 subst)
   in
@@ -605,17 +598,17 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
   let goal, to_apply, simpl =
     if Int.equal nb 0 then goal, [], false
     else
-      let arity_ctx' = Covering.specialize_rel_context (pi2 subst_to_cuts) arity_ctx in
-      let rev_indices' = List.map (Covering.mapping_constr subst_to_cuts) rev_indices in
+      let arity_ctx' = Covering.specialize_rel_context !evd (pi2 subst_to_cuts) arity_ctx in
+      let rev_indices' = List.map (Covering.mapping_constr !evd subst_to_cuts) rev_indices in
       let _, rev_sigctx, tele_lhs, tele_rhs =
         CList.fold_left3 (
           fun (k, rev_sigctx, tele_lhs, tele_rhs) decl idx -> function
           | Some _ -> (* Don't add a binder, but substitute *)
-              let fresh = Constr.mkRel (nb_cuts + oib.mind_nrealargs + 1) in
+              let fresh = EConstr.mkRel (nb_cuts + oib.mind_nrealargs + 1) in
               let rev_sigctx = Equations_common.subst_telescope fresh rev_sigctx in
               succ k, rev_sigctx, tele_lhs, tele_rhs
           | None -> (* Add a binder to the telescope. *)
-              let rhs = Constr.mkRel k in
+              let rhs = EConstr.mkRel k in
               succ k, decl :: rev_sigctx, idx :: tele_lhs, rhs :: tele_rhs
 
         ) (succ nb_cuts, [], [], []) arity_ctx' rev_indices' omitted
@@ -629,26 +622,28 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
       (* TODO Swap left_sig and right_sig... *)
       let eq = Equations_common.mkEq env evd sigty right_sig left_sig in
       let goal = Vars.lift 1 goal in
-      let goal = Term.mkProd (Anonymous, eq, goal) in
+      let goal = EConstr.mkProd (Anonymous, eq, goal) in
 
       (* Build a reflexivity proof to apply to the case. *)
       let tr_out t =
-        let t = Termops.it_mkLambda_or_LetIn t cuts_ctx in
-        let t = Termops.it_mkLambda_or_LetIn t fresh_ctx in
-        let t = Covering.mapping_constr rev_subst_without_cuts t in
-          Reductionops.beta_applist (t, indices @ cut_vars)
+        let t = it_mkLambda_or_LetIn t cuts_ctx in
+        let t = it_mkLambda_or_LetIn t fresh_ctx in
+        let t = Covering.mapping_constr !evd rev_subst_without_cuts t in
+          Reductionops.beta_applist !evd (t, indices @ cut_vars)
       in
         goal, [Equations_common.mkRefl env evd (tr_out sigty) (tr_out left_sig)], true
   in
 
   (* ===== RESOURCES FOR EACH BRANCH ===== *)
-  let params = List.map (Covering.mapping_constr subst_to_cuts) params in
+  let params = List.map (Covering.mapping_constr !evd subst_to_cuts) params in
   (* If something is wrong here, it means that one of the parameters was
    * omitted or cut, which should be wrong... *)
   let params = List.map (Vars.lift (-(nb_cuts + oib.mind_nrealargs + 1))) params in
   let goal = Termops.it_mkProd_or_LetIn goal cuts_ctx in
-  let goal = Term.it_mkLambda_or_LetIn goal fresh_ctx in
-  let branches_ty = Inductive.build_branches_type pind (mib, oib) params goal in
+  let goal = it_mkLambda_or_LetIn goal fresh_ctx in
+  let params = List.map (to_constr !evd) params in
+  let goal' = to_constr !evd goal in
+  let branches_ty = Inductive.build_branches_type pind (mib, oib) params goal' in
   (* Refresh the inductive family. *)
   let indfam = Inductiveops.make_ind_family (pind, params) in
   let branches_info = Inductiveops.get_constructors env indfam in
@@ -665,19 +660,22 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
     (* This summary is under context [ctx']. *)
     let indices = summary.Inductiveops.cs_concl_realargs in
     let params = Array.of_list summary.Inductiveops.cs_params in
-    let term = Constr.mkConstructU summary.Inductiveops.cs_cstr in
-    let term = Constr.mkApp (term, params) in
+    let params = Array.map of_constr params in
+    let indices = Array.map of_constr indices in
+    let term = EConstr.mkConstructU (to_peuniverses summary.Inductiveops.cs_cstr) in
+    let term = EConstr.mkApp (term, params) in
     let term = Vars.lift (summary.Inductiveops.cs_nargs) term in
-    let term = Constr.mkApp (term, Termops.rel_vect 0 summary.Inductiveops.cs_nargs) in
+    let term = EConstr.mkApp (term, rel_vect 0 summary.Inductiveops.cs_nargs) in
     (* Indices are typed under [args @ ctx'] *)
     let indices = (Array.to_list indices) @ [term] in
     let args = summary.Inductiveops.cs_args in
+    let args = List.map of_rel_decl args in
     (* Substitute the indices in [cuts_ctx]. *)
     let rev_indices = List.rev indices in
-    let pats_indices = List.map Covering.pat_of_constr rev_indices in
+    let pats_indices = List.map (Covering.pat_of_constr !evd) rev_indices in
     let pats_ctx' = Covering.lift_pats summary.Inductiveops.cs_nargs pats_ctx' in
     let pats = pats_indices @ pats_ctx' in
-    let cuts_ctx = Covering.specialize_rel_context pats cuts_ctx in
+    let cuts_ctx = Covering.specialize_rel_context !evd pats cuts_ctx in
     let pats = Covering.lift_pats nb_cuts pats in
     let pats = pats_cuts @ pats in
     let csubst = Covering.mk_ctx_map env !evd (cuts_ctx @ args @ ctx') pats (pi1 subst) in
@@ -685,7 +683,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
   ) branches_info in
   let branches_nb = Array.map (fun summary ->
     summary.Inductiveops.cs_nargs) branches_info in
-  let branches_res = Array.map3 (fun x y z -> (x, y, z))
+  let branches_res = Array.map3 (fun x y z -> (of_constr x, y, z))
     branches_ty branches_nb branches_subst in
 
   (* ===== RESULT ===== *)

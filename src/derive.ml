@@ -17,14 +17,14 @@ type derive_record =
 let make_derive fn ~polymorphic s =
   let env = Global.env () in
   let sigma = Evd.from_env env in
-  let Sigma.Sigma (c, sigma, _) = Evarutil.new_global (Sigma.Unsafe.of_evar_map sigma) s in
-  fn env (Sigma.to_evar_map sigma) ~polymorphic c
+  let sigma, c = Evarutil.new_global sigma s in
+  fn env sigma ~polymorphic c
 
 let make_derive_ind fn ~polymorphic s =
   let fn env sigma ~polymorphic c =
-    match kind_of_term c with
-    | Ind i -> fn env sigma ~polymorphic i
-    | _ -> CErrors.error "Expected an inductive type"
+    match EConstr.kind sigma c with
+    | Ind (i,u) -> fn env sigma ~polymorphic (i,u)
+    | _ -> CErrors.user_err (Pp.str"Expected an inductive type")
   in make_derive fn ~polymorphic s
                  
 let table = ref (CString.Map.empty : derive_fn_ty CString.Map.t)
@@ -34,7 +34,7 @@ let register_derive d =
 
 let get_derive d =
   try CString.Map.find d !table
-  with Not_found -> CErrors.error ("No derive declared for " ^ d)
+  with Not_found -> CErrors.user_err Pp.(str"No derive declared for " ++ str d)
                                  
 let derive_one polymorphic d grs =
   let fn = get_derive d in
@@ -42,5 +42,5 @@ let derive_one polymorphic d grs =
 
 let derive ds grs =
   let poly = Flags.use_polymorphic_flag () in
-  let grs = List.map (fun (loc, gr) -> Dumpglob.add_glob loc gr; gr) grs in
+  let grs = List.map (fun (loc, gr) -> Dumpglob.add_glob ?loc gr; gr) grs in
   List.iter (fun d -> derive_one poly d grs) ds

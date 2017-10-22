@@ -848,7 +848,7 @@ Ltac simplify_eqs :=
    The argument is the concerned equation. *) 
 
 Ltac simplify_equations f := repeat ((unfold_equations ; simplify_eqs ; 
-  try autounfoldify f) || autorewrite with equations). 
+  try autounfold_ref f) || autorewrite with equations).
 
 Ltac simplify_equations_in e :=
   repeat progress (autounfold with equations in e ; simpl in e).

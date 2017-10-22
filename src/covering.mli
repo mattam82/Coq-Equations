@@ -7,17 +7,18 @@
 (**********************************************************************)
 
 open Term
-open Context
 open Environ
 open Names
-
+open EConstr
 open Equations_common
 open Syntax
+
+type peconstructor = Names.constructor peuniverses
 
 (** Internal patterns *)
 type pat =
     PRel of int
-  | PCstr of pconstructor * pat list
+  | PCstr of peconstructor * pat list
   | PInac of constr
   | PHide of int
 
@@ -45,16 +46,16 @@ val inaccs_of_constrs : constr list -> pat list
 
 (** Reverse of constr_of_pat turning applications of innac/hide into 
     the proper patterns *)
-val pats_of_constrs : constr list -> pat list
-val pat_of_constr : constr -> pat
+val pats_of_constrs : Evd.evar_map -> constr list -> pat list
+val pat_of_constr : Evd.evar_map -> constr -> pat
 
 (** Pretty-printing *)
-val pr_constr_pat : env -> constr -> Pp.std_ppcmds
-val pr_pat : env -> pat -> Pp.std_ppcmds
-val pr_context : env -> rel_context -> Pp.std_ppcmds
-val ppcontext : env -> rel_context -> unit
-val pr_context_map : env -> context_map -> Pp.std_ppcmds
-val ppcontext_map : env -> context_map -> unit
+val pr_constr_pat : env -> Evd.evar_map -> constr -> Pp.std_ppcmds
+val pr_pat : env -> Evd.evar_map -> pat -> Pp.std_ppcmds
+val pr_context : env -> Evd.evar_map -> rel_context -> Pp.std_ppcmds
+val ppcontext : env -> Evd.evar_map -> rel_context -> unit
+val pr_context_map : env -> Evd.evar_map -> context_map -> Pp.std_ppcmds
+val ppcontext_map : env -> Evd.evar_map -> context_map -> unit
 val typecheck_map :
   Environ.env -> Evd.evar_map -> context_map -> unit
 val check_ctx_map :
@@ -68,19 +69,19 @@ val mk_ctx_map : ?unsafe:bool -> Environ.env ->
   rel_context -> context_map
 
 val map_ctx_map :
-  (Constr.t -> Constr.t) -> context_map -> context_map
+  (EConstr.t -> EConstr.t) -> context_map -> context_map
 
 (** Substitution and specialization *)
-val subst_pats_constr : int -> pat list -> constr -> constr
-val subst_context : pat list -> rel_context -> rel_context
-val specialize : pat list -> pat -> pat
-val specialize_constr : pat list -> constr -> constr
-val specialize_pats : pat list -> pat list -> pat list
+val subst_pats_constr : Evd.evar_map -> int -> pat list -> constr -> constr
+val subst_context : Evd.evar_map -> pat list -> rel_context -> rel_context
+val specialize : Evd.evar_map -> pat list -> pat -> pat
+val specialize_constr : Evd.evar_map -> pat list -> constr -> constr
+val specialize_pats : Evd.evar_map -> pat list -> pat list -> pat list
 val specialize_rel_context :
-  pat list -> rel_context -> rel_context
-val mapping_constr : context_map -> constr -> constr
-val subst_constr_pat : int -> constr -> pat -> pat
-val subst_constr_pats : int -> constr -> pat list -> pat list
+  Evd.evar_map -> pat list -> rel_context -> rel_context
+val mapping_constr : Evd.evar_map -> context_map -> constr -> constr
+val subst_constr_pat : Evd.evar_map -> int -> constr -> pat -> pat
+val subst_constr_pats : Evd.evar_map -> int -> constr -> pat list -> pat list
 val lift_patn : int -> int -> pat -> pat
 val lift_patns : int -> int -> pat list -> pat list
 val lift_pat : int -> pat -> pat
@@ -133,13 +134,13 @@ and splitting_rhs = RProgram of constr | REmpty of int
 val pr_path : Evd.evar_map -> Evd.evar list -> Pp.std_ppcmds
 val eq_path : Evar.t list -> Evar.t list -> bool
 
-val pr_splitting : env -> ?verbose:bool -> splitting -> Pp.std_ppcmds
+val pr_splitting : env -> Evd.evar_map -> ?verbose:bool -> splitting -> Pp.std_ppcmds
 val ppsplit : splitting -> unit
 
 (** Covering computation *)
 
 val context_map_of_splitting : splitting -> context_map
-val specialize_mapping_constr : context_map -> constr -> constr
+val specialize_mapping_constr : Evd.evar_map -> context_map -> constr -> constr
 val rels_of_tele : 'a list -> constr list
 val patvars_of_tele : 'a list -> pat list
 val pat_vars_list : int -> pat list
@@ -151,8 +152,8 @@ val split_tele :
   rel_context * rel_declaration *
     rel_context
 val rels_above : 'a list -> int -> Int.Set.t
-val is_fix_proto : constr -> bool
-val fix_rels : rel_context -> Int.Set.t
+val is_fix_proto : Evd.evar_map -> constr -> bool
+val fix_rels : Evd.evar_map -> rel_context -> Int.Set.t
 val dependencies_of_rel :
   env ->
   Evd.evar_map ->
@@ -165,9 +166,9 @@ val dependencies_of_term :
   rel_context ->
   constr ->
   Int.Set.elt -> Int.Set.t
-val non_dependent :
+val non_dependent : Evd.evar_map -> 
   ('a * 'b * constr) list -> constr -> Int.Set.t
-val subst_term_in_context :
+val subst_term_in_context : Evd.evar_map -> 
   constr -> rel_context -> rel_context
 val strengthen :
   ?full:bool ->
@@ -185,7 +186,7 @@ val strengthen :
  * the variable. *)
 val new_strengthen :
   Environ.env -> Evd.evar_map ->
-  rel_context -> int -> ?rels:Int.Set.t -> Term.constr ->
+  rel_context -> int -> ?rels:Int.Set.t -> constr ->
   context_map * context_map
 
 val id_subst : 'a list -> 'a list * pat list * 'a list
@@ -202,7 +203,7 @@ val compose_subst : ?unsafe:bool -> Environ.env ->
   context_map ->
   context_map ->
   context_map
-val push_mapping_context :
+val push_mapping_context : Evd.evar_map ->
   rel_declaration ->
   context_map ->
   context_map
@@ -289,9 +290,9 @@ val unify_type :
   option
 
 val blockers : user_pats -> context_map -> int list
-val pr_rel_name : rel_context -> int -> Pp.std_ppcmds
+val pr_rel_name : Environ.env -> int -> Pp.std_ppcmds
 
-val subst_matches_constr :
+val subst_matches_constr : Evd.evar_map ->
   int -> (int * constr) list -> constr -> constr
 val is_all_variables : 'a * pat list * 'b -> bool
 val do_renamings : rel_context -> rel_context
@@ -308,19 +309,19 @@ val lift_rel_declaration :
   int -> rel_declaration -> rel_declaration
 val lookup_named_i :
   Id.t -> named_context -> int * named_declaration
-val instance_of_pats :
-  'a ->
-  'b ->
+val instance_of_pats : 
+  Environ.env -> 
+  Evd.evar_map ->
   rel_context ->
   (int * bool) list ->
   rel_context * pat list *
   pat list
 val push_rel_context_eos : rel_context -> env -> esigma -> env
-val split_at_eos :
+val split_at_eos : Evd.evar_map ->
   named_context -> named_context * named_context
 val pr_problem :
   Id.t * 'a * 'b ->
-  env -> rel_context * pat list * 'c -> Pp.std_ppcmds
+  env -> Evd.evar_map -> rel_context * pat list * 'c -> Pp.std_ppcmds
 val rel_id : (Name.t * 'a * 'b) list -> int -> Id.t
 val push_named_context :
   named_context -> env -> env
@@ -334,7 +335,7 @@ val env_of_rhs :
            (Names.Id.t * pat) list ->
            rel_declaration list ->
            rel_context *
-           Environ.env * int * Constr.constr list
+           Environ.env * int * constr list
 
 val covering_aux :
   env ->

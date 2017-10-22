@@ -7,13 +7,14 @@
 (**********************************************************************)
 
 open Equations_common
+open EConstr
 
 type one_inductive_info = {
   ind_name : Names.identifier;
-  ind_c : Term.constr;
+  ind_c : constr;
   ind_args : rel_context;
-  ind_constr : (rel_context * Term.types) array;
-  ind_case : Term.constr -> Term.types -> Term.constr array -> Term.constr;
+  ind_constr : (rel_context * types) array;
+  ind_case : constr -> types -> constr array -> constr;
 }
 type mutual_inductive_info = {
   mutind_params : named_context;
@@ -21,15 +22,16 @@ type mutual_inductive_info = {
 }
 
 val inductive_info :
-  (Names.MutInd.t * int) * Univ.universe_instance -> mutual_inductive_info
+  Evd.evar_map -> (Names.MutInd.t * int) * EInstance.t -> mutual_inductive_info
 
 val eq_dec_class :
   esigma ->
   rel_context *
-  (Typeclasses.typeclass Term.puniverses * Term.constr list)
+  (Typeclasses.typeclass peuniverses * Term.constr list)
 
-val dec_eq : esigma -> Term.constr
+val dec_eq : esigma -> constr
 
-val vars_of_pars : named_context -> Term.constr array
+val vars_of_pars : named_context -> constr array
 
-val derive_eq_dec : Environ.env -> Evd.evar_map -> polymorphic:bool -> Term.pinductive -> unit
+val derive_eq_dec : Environ.env -> Evd.evar_map -> polymorphic:bool ->
+                    Names.inductive * EInstance.t -> unit

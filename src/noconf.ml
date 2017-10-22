@@ -6,63 +6,42 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-open Cases
 open Util
 open Names
 open Nameops
 open Term
-open Termops
 open Declarations
 open Inductiveops
-open Environ
-open Vars
 open Globnames
 open Reductionops
-open Typeops
-open Type_errors
-open Pp
-open Proof_type
-open Glob_term
-open Retyping
-open Pretype_errors
-open Evarutil
-open Evarconv
-open List
-open Libnames
-open Topconstr
 open Entries
-open Constrexpr
 open Vars
-open Tacexpr
-open Tactics
-open Tacticals
-open Tacmach
-open Context
 open Decl_kinds
 
 open Equations_common
-open Depelim
+open EConstr
+open Vars
 
-
-let mkcase env c ty constrs =
-  let cty = Retyping.get_type_of env Evd.empty c in
-  let ind, origargs = Inductive.find_rectype env cty in
-  let mind, ind = match ind with
-    | ((mu, n),_ as i) -> mu, i
+let mkcase env sigma c ty constrs =
+  let cty = Retyping.get_type_of env sigma c in
+  let ind, origargs = find_rectype env sigma cty in
+  let mind, ind, origparams = match dest_ind_family ind with
+    | (((mu, n),_ as i), pars) -> mu, i, pars
   in
   let mindb, oneind = Global.lookup_inductive (fst ind) in
-  let inds = List.rev (Array.to_list (Array.mapi (fun i oib -> mkIndU ((mind, i),snd ind)) mindb.mind_packets)) in
+  let inds = List.rev (Array.to_list (Array.mapi
+                                      (fun i oib ->
+                                      mkIndU ((mind, i),snd ind)) mindb.mind_packets)) in
   let ctx = oneind.mind_arity_ctxt in
   let _len = List.length ctx in
   let params = mindb.mind_nparams in
-  let origparams, _ = List.chop params origargs in
   let ci = make_case_info env (fst ind) RegularStyle in
   let brs = 
     Array.map2_i (fun i id cty ->
-      let (args, arity) = decompose_prod_assum (substl inds cty) in
+      let (args, arity) = decompose_prod_assum sigma (substl inds (of_constr cty)) in
       let realargs, pars = List.chop (List.length args - params) args in
       let args = substl (List.rev origparams) (it_mkProd_or_LetIn arity realargs) in
-      let args, arity = decompose_prod_assum args in
+      let args, arity = decompose_prod_assum sigma args in
       let res = constrs ind i id params args arity in
       it_mkLambda_or_LetIn res args)
       oneind.mind_consnames oneind.mind_nf_lc
@@ -79,8 +58,9 @@ let mk_eq env evd args args' =
 let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let evd = ref evd in
   let mindb, oneind = Global.lookup_inductive ind in
-  let ctx = subst_instance_context u oneind.mind_arity_ctxt in
-  let ctx = smash_rel_context ctx in
+  let ctx = subst_instance_context (EInstance.kind !evd u) oneind.mind_arity_ctxt in
+  let ctx = List.map of_rel_decl ctx in
+  let ctx = smash_rel_context !evd ctx in
   let len = List.length ctx in
   let params = mindb.mind_nparams in
   let args = oneind.mind_nrealargs in
@@ -95,12 +75,12 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
       in
       let () = evd := evm in
       let sigma = Evarutil.e_new_global evd (Lazy.force coq_sigma) in
-      let _, pred' = decompose_lam_n (List.length pars) pred in
-      let indty = mkApp (sigma, [|idx; pred'|]) in
+      let _, pred' = decompose_lam_n (List.length pars) (EConstr.to_constr !evd pred) in
+      let indty = mkApp (sigma, [|idx; of_constr pred'|]) in
       nf_betaiotazeta !evd indty, mkProj (Lazy.force coq_pr2, mkRel 1), pars, (List.firstn lenargs ctx)
   in
-  let tru = Universes.constr_of_global (get_one ()) in
-  let fls = Universes.constr_of_global (get_zero ()) in
+  let tru = e_new_global evd (get_one ()) in
+  let fls = e_new_global evd (get_zero ()) in
   let xid = id_of_string "x" and yid = id_of_string "y" in
   let xdecl = of_tuple (Name xid, None, argty) in
   let binders = xdecl :: ctx in
@@ -110,7 +90,7 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let s = mkSort s in
   let arity = it_mkProd_or_LetIn s fullbinders in
   let env = push_rel_context binders env in
-  let paramsvect = Context.Rel.to_extended_vect 0 ctx in
+  let paramsvect = Context.Rel.to_extended_vect mkRel 0 ctx in
   let pack_ind_with_parlift n = lift n argty in
   let ind_with_parlift n = 
     mkApp (mkIndU indu, Array.append (Array.map (lift n) paramsvect) rest) 
@@ -125,12 +105,12 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
 	  (of_tuple (Name xid, None, ind_with_parlift (lenindices + 1)) ::
              lift_rel_context 1 argsctx)
     in
-      mkcase env x elim (fun ind i id nparams args arity ->
+      mkcase env !evd x elim (fun ind i id nparams args arity ->
 	let ydecl = (Name yid, None, pack_ind_with_parlift (List.length args + 1)) in
 	let env' = push_rel_context (of_tuple ydecl :: args) env in
 	let elimdecl = (Name yid, None, ind_with_parlift (List.length args + lenindices + 2)) in
 	  mkLambda_or_LetIn (of_tuple ydecl)
-	    (mkcase env' x
+            (mkcase env' !evd x
 	        (it_mkLambda_or_LetIn s (of_tuple elimdecl :: argsctx))
 	        (fun _ i' id' nparams args' arity' ->
 	          if i = i' then
@@ -150,20 +130,20 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let tc = Typeclasses.class_info (Lazy.force coq_noconfusion_class) in
   let noconf = Evarutil.e_new_global evd (ConstRef cstNoConf) in
   let noconfcl = Evarutil.e_new_global evd tc.Typeclasses.cl_impl in
-  let inst, u = destInd noconfcl in
+  let inst, u = destInd !evd noconfcl in
   let noconfterm = mkApp (noconf, paramsvect) in
   let argty =
     let ty = Retyping.get_type_of env !evd noconfterm in
-    match kind_of_term ty with
+    match kind !evd ty with
     | Prod (_, b, _) -> b
     | _ -> assert false
   in
   let b, ty = 
-    Typeclasses.instance_constructor (tc,u) [argty; noconfterm]
+    Equations_common.instance_constructor !evd (tc,u) [argty; noconfterm]
   in
   let env = push_rel_context ctx (Global.env ()) in
   let rec term c ty =
-    match kind_of_term ty with
+    match kind !evd ty with
     | Prod (na, t, ty) ->
        let arg = Evarutil.e_new_evar env evd t in
        term (mkApp (c, [|arg|])) (subst1 arg ty)
@@ -178,7 +158,8 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
     Typeclasses.add_instance
       (Typeclasses.new_instance tc empty_hint_info true polymorphic gr)
   in
-  let oblinfo, _, term, ty = Obligations.eterm_obligations env noid !evd 0 term ty in
+  let oblinfo, _, term, ty = Obligations.eterm_obligations env noid !evd 0 (to_constr !evd term)
+                                                           (to_constr !evd ty) in
     ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hook) packid 
 	      ~term ty ~tactic:(noconf_tac ()) 
 	      (Evd.evar_universe_context !evd) oblinfo)

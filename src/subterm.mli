@@ -8,5 +8,5 @@
 
 val solve_subterm_tac : unit -> unit Proofview.tactic
 
-val derive_subterm : Environ.env -> Evd.evar_map -> polymorphic:bool -> Constr.pinductive -> unit
-val derive_below : Environ.env -> Evd.evar_map -> polymorphic:bool -> Constr.pinductive -> unit
+val derive_subterm : Environ.env -> Evd.evar_map -> polymorphic:bool -> Names.inductive * EConstr.EInstance.t -> unit
+val derive_below : Environ.env -> Evd.evar_map -> polymorphic:bool -> Names.inductive * EConstr.EInstance.t -> unit

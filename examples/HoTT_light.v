@@ -5,6 +5,7 @@ Require Import Equations.Equations.
 Import Init.
 Set Warnings "-notation-overridden".
 Import IdNotations.
+Set Warnings "-deprecated-option".
 Set Standard Proposition Elimination Names.
 Set Universe Polymorphism.
 Set Primitive Projections.

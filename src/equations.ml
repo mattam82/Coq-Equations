@@ -6,45 +6,25 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-open Cases
 open Util
 open Names
 open Nameops
 open Term
 open Termops
-open Declarations
-open Inductiveops
 open Environ
-open Vars
 open Globnames
-open Reductionops
-open Typeops
-open Type_errors
-open Pp
-open Proof_type
-open Glob_term
-open Retyping
-open Pretype_errors
-open Evarutil
-open Evarconv
 open List
 open Libnames
 open Topconstr
 open Entries
 open Constrexpr
 open Vars
-open Tacexpr
 open Tactics
 open Tacticals
 open Tacmach
-open Context
-open Evd
 open Evarutil
 open Evar_kinds
 open Equations_common
-open Depelim
-open Printer
-open Ppconstr
 open Decl_kinds
 open Constrintern
 
@@ -52,6 +32,7 @@ open Syntax
 open Covering
 open Splitting
 open Principles
+open EConstr
 
 open Extraction_plugin
                 
@@ -59,7 +40,7 @@ let inline_helpers i =
   let l = List.map (fun (_, _, id) -> Ident (dummy_loc, id)) i.helpers_info in
   Table.extraction_inline true l
 
-let make_ref dir s = Coqlib.gen_reference "Program" dir s
+let make_ref dir s = Coqlib.find_reference "Program" dir s
 
 let fix_proto_ref () = 
   match make_ref ["Program";"Tactics"] "fix_proto" with
@@ -78,7 +59,7 @@ let is_recursive i eqs =
     | Rec _ -> Some true
     | _ -> None
   and occur_eqns eqs =
-    let occurs = map occur_eqn eqs in
+    let occurs = List.map occur_eqn eqs in
     if for_all Option.is_empty occurs then None
     else if exists (function Some true -> true | _ -> false) occurs then Some true
     else Some false
@@ -118,8 +99,7 @@ let define_principles flags fixprots progs =
     let f =
       let (f, uc) = Universes.unsafe_constr_of_global gr in
       if flags.polymorphic then
-  	evd := Evd.merge_context_set Evd.univ_rigid !evd
-	                             (Univ.ContextSet.of_context (Univ.instantiate_univ_context uc));
+        evd := Evd.merge_context_set Evd.univ_rigid !evd (Univ.ContextSet.of_context uc);
       f
     in
       match p.program_rec with
@@ -130,7 +110,7 @@ let define_principles flags fixprots progs =
 	 in
 	 let split, where_map =
            update_split env evd p.program_rec
-                        prog.program_cmap f cutprob fixsubst prog.program_split in
+                        (of_constr f) cutprob fixsubst prog.program_split in
          let eqninfo =
            { equations_id = i;
              equations_where_map = where_map;
@@ -142,8 +122,8 @@ let define_principles flags fixprots progs =
       | None ->
 	 let prob = id_subst sign in
 	 let split, where_map =
-           update_split env evd p.program_rec prog.program_cmap
-                        f prob [] prog.program_split in
+           update_split env evd p.program_rec
+                        (of_constr f) prob [] prog.program_split in
          let eqninfo =
            { equations_id = i;
              equations_where_map = where_map;
@@ -157,7 +137,8 @@ let define_principles flags fixprots progs =
 	 let prob = id_subst sign in
          (* let () = msg_debug (str"udpdate split" ++ spc () ++ pr_splitting env split) in *)
 	 let unfold_split, where_map =
-           update_split env evd p.program_rec prog.program_cmap f prob [(i,f)] prog.program_split
+           update_split env evd p.program_rec (of_constr f)
+                        prob [(i,of_constr f)] prog.program_split
          in
 	 (* We first define the unfolding and show the fixpoint equation. *)
 	 let unfoldi = add_suffix i "_unfold" in
@@ -168,7 +149,7 @@ let define_principles flags fixprots progs =
 	   let () = inline_helpers info in
 	   let funf_cst = match info'.term_id with ConstRef c -> c | _ -> assert false in
 	   let funfc = e_new_global evd info'.term_id in
-	   let unfold_split = map_evars_in_split !evd cmap unfold_split in
+           let unfold_split = map_evars_in_split !evd (fun f x -> of_constr (cmap f x)) unfold_split in
 	   let unfold_eq_id = add_suffix unfoldi "_eq" in
 	   let hook_eqs subst grunfold _ =
 	     Global.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
@@ -176,8 +157,8 @@ let define_principles flags fixprots progs =
                let decl _ (_, id, _) =
                  let gr = Nametab.locate_constant (qualid_of_ident id) in
                  let grc = Universes.fresh_global_instance (Global.env()) (ConstRef gr) in
-                 Autorewrite.add_rew_rules (info.base_id ^ "_where") [dummy_loc, grc, true, None];
-                 Autorewrite.add_rew_rules (info.base_id ^ "_where_rev") [dummy_loc, grc, false, None]
+                 Autorewrite.add_rew_rules (info.base_id ^ "_where") [None, (grc, true, None)];
+                 Autorewrite.add_rew_rules (info.base_id ^ "_where_rev") [None, (grc, false, None)]
                in
                Evar.Map.iter decl where_map
              in
@@ -198,16 +179,16 @@ let define_principles flags fixprots progs =
              let eqninfo =
                { equations_id = i;
                  equations_where_map = where_map;
-                 equations_f = funfc;
+                 equations_f = to_constr !evd funfc;
                  equations_prob = prob;
                  equations_split = unfold_split }
              in
-             build_equations flags.with_ind env !evd ~alias:(f, unfold_eq_id, prog.program_split)
+             build_equations flags.with_ind env !evd ~alias:(of_constr f, unfold_eq_id, prog.program_split)
                              [p, prog', eqninfo]
 	   in
 	   let evd = ref (Evd.from_env (Global.env ())) in
 	   let stmt = it_mkProd_or_LetIn 
-		        (mkEq (Global.env ()) evd arity (mkApp (f, extended_rel_vect 0 sign))
+                        (mkEq (Global.env ()) evd arity (mkApp (of_constr f, extended_rel_vect 0 sign))
 		              (mkApp (funfc, extended_rel_vect 0 sign))) sign 
 	   in
 	   let tac =
@@ -217,7 +198,8 @@ let define_principles flags fixprots progs =
 	   ignore(Obligations.add_definition
                     ~kind:info.decl_kind
 		    ~hook:(Lemmas.mk_hook hook_eqs) ~reduce:(fun x -> x)
-		    ~implicits:p.program_impls unfold_eq_id stmt ~tactic:(of82 tac)
+                    ~implicits:p.program_impls unfold_eq_id (to_constr !evd stmt)
+                    ~tactic:(of82 tac)
 		    (Evd.evar_universe_context !evd) [||])
 	 in
 	 define_tree None [] flags.polymorphic p.program_impls (Define false) evd env
@@ -245,7 +227,7 @@ let define_principles flags fixprots progs =
      let fixdecls =
        let fn fixprot (p, prog) =
          let f = fst (Universes.unsafe_constr_of_global (ConstRef prog.program_cst)) in
-         of_tuple (Name p.program_id, Some f, fixprot)
+         of_tuple (Name p.program_id, Some (of_constr f), fixprot)
        in
        List.map2 fn fixprots progs
      in
@@ -287,7 +269,7 @@ let define_principles flags fixprots progs =
      let fixdecls =
        let fn fixprot (p, prog) =
          let f = fst (Universes.unsafe_constr_of_global (ConstRef prog.program_cst)) in
-         of_tuple (Name p.program_id, Some f, fixprot)
+         of_tuple (Name p.program_id, Some (of_constr f), fixprot)
        in
        List.rev (List.map2 fn fixprots l')
      in
@@ -360,11 +342,10 @@ let define_by_eqs opts eqs nt =
 				(of_tuple (Name (id_of_string "comp"), None, compapp) :: sign)
 	 in
 	 let _ty = e_type_of (Global.env ()) evd body in
-	 let nf, _ = Evarutil.e_nf_evars_and_universes evd in
-	 let ce =
-           Declare.definition_entry ~fix_exn:(Stm.get_fix_exn ())
+         let ce =
+           Declare.definition_entry (* ~fix_exn: FIXME needed ? *)
 				    ~poly ~univs:(snd (Evd.universe_context !evd))
-				    (nf body)
+                                    (to_constr !evd body)
 	 in
 	 Declare.declare_constant projid
 				  (DefinitionEntry ce, IsDefinition Definition)
@@ -375,7 +356,7 @@ let define_by_eqs opts eqs nt =
          else [] in
        Impargs.declare_manual_implicits true (ConstRef compproj) [impls @ impl];
        Table.extraction_inline true [Ident (dummy_loc, projid)];
-       let compinfo = LogicalProj { comp = Option.map snd comp; comp_app = compapp;
+       let compinfo = LogicalProj { comp = Option.map snd comp; comp_app = to_constr !evd compapp;
 			            comp_proj = compproj; comp_recarg = succ (length sign) } in
        let compapp, is_recursive =
 	 if b then compapp, Some (Logical compinfo)
@@ -400,23 +381,23 @@ let define_by_eqs opts eqs nt =
   let names, otys, impls = List.split3 tys in
   let data =
     Constrintern.compute_internalization_env
-    env Constrintern.Recursive names (List.map fst otys) impls
+    env Constrintern.Recursive names (List.map (fun x -> to_constr !evd (fst x)) otys) impls
   in
   let fixprots =
     List.map (fun (oty, ty) ->
     mkLetIn (Anonymous,
-             Universes.constr_of_global (Lazy.force coq_fix_proto),
-	     Universes.constr_of_global (Lazy.force coq_unit), ty)) otys in
+             e_new_global evd (Lazy.force coq_fix_proto),
+             e_new_global evd (Lazy.force coq_unit), ty)) otys in
   let fixdecls =
     List.map2 (fun i fixprot -> of_tuple (Name i, None, fixprot)) names fixprots in
   let fixdecls = List.rev fixdecls in
   let implsinfo = List.map (fun (_, (oty, ty), impls) ->
-                  Impargs.compute_implicits_with_manual env oty false impls) tys in
+                  Impargs.compute_implicits_with_manual env (to_constr !evd oty) false impls) tys in
   let equations = 
     Metasyntax.with_syntax_protection (fun () ->
       List.iter (Metasyntax.set_notation_for_interpretation data) nt;
       List.map3 (fun implsinfo ar eqs ->
-        map (interp_eqn ar.program_id ar.program_rec env implsinfo) eqs)
+        List.map (interp_eqn ar.program_id ar.program_rec env implsinfo) eqs)
         implsinfo arities eqs)
       ()
   in
@@ -450,7 +431,7 @@ let define_by_eqs opts eqs nt =
     let () = declare_wf_obligations info in
     let f_cst = match info.term_id with ConstRef c -> c | _ -> assert false in
     let () = evd := Evd.from_ctx ectx in
-    let split = map_evars_in_split !evd cmap split in
+    let split = map_evars_in_split !evd (fun f x -> of_constr (cmap f x)) split in
     let p = nf_program_info !evd p in
     let compiled_info = { program_cst = f_cst;
                           program_cmap = cmap;
@@ -479,7 +460,7 @@ let with_rollback f x =
   States.with_state_protection_on_exception f x
 
 let equations opts eqs nt =
-  List.iter (fun (((loc, i), l, t),eqs) -> Dumpglob.dump_definition (loc, i) false "def") eqs;
+  List.iter (fun (((loc, i), l, t),eqs) -> Dumpglob.dump_definition (Some loc, i) false "def") eqs;
   define_by_eqs opts eqs nt
 
 let solve_equations_goal destruct_tac tac gl =
@@ -489,7 +470,7 @@ let solve_equations_goal destruct_tac tac gl =
       match kind_of_term goal with
       | Prod (Name id, _, t) -> 
          let id = fresh_id_in_env [] id (pf_env gl) in
-         let tac, move, goal = intros (subst1 (mkVar id) t) (Some id) in
+         let tac, move, goal = intros (subst1 (Constr.mkVar id) t) (Some id) in
          tclTHEN (to82 intro) tac, move, goal
       | LetIn (Name id, c, _, t) -> 
          if String.equal (Id.to_string id) "target" then 
@@ -500,7 +481,7 @@ let solve_equations_goal destruct_tac tac gl =
            tclTHEN (to82 intro) tac, move, goal
       | _ -> tclIDTAC, move, goal
     in 
-    intros concl None
+    intros (to_constr (project gl) concl) None
   in
   let move_tac = 
     match move with
@@ -508,25 +489,26 @@ let solve_equations_goal destruct_tac tac gl =
     | Some id' -> fun id -> to82 (move_hyp id (Misctypes.MoveBefore id'))
   in
   let targetn, branchesn, targ, brs, b =
-    match kind_of_term concl with
+    match kind (project gl) (of_constr concl) with
     | LetIn (Name target, targ, _, b) ->
-	(match kind_of_term b with
+        (match kind (project gl) b with
 	| LetIn (Name branches, brs, _, b) ->
-	    target, branches, int_of_coq_nat targ, int_of_coq_nat brs, b
+           target, branches, int_of_coq_nat (to_constr (project gl) targ),
+           int_of_coq_nat (to_constr (project gl) brs), b
 	| _ -> error "Unnexpected goal")
     | _ -> error "Unnexpected goal"
   in
   let branches, b =
     let rec aux n c =
       if n == 0 then [], c
-      else match kind_of_term c with
+      else match kind (project gl) c with
       | LetIn (Name id, br, brt, b) ->
 	  let rest, b = aux (pred n) b in
 	    (id, br, brt) :: rest, b
       | _ -> error "Unnexpected goal"
     in aux brs b
   in
-  let ids = targetn :: branchesn :: map pi1 branches in
+  let ids = targetn :: branchesn :: List.map pi1 branches in
   let cleantac = tclTHEN (to82 (intros_using ids)) (to82 (clear ids)) in
   let dotac = tclDO (succ targ) (to82 intro) in
   let letintac (id, br, brt) = 
@@ -534,16 +516,16 @@ let solve_equations_goal destruct_tac tac gl =
             (tclTHEN (move_tac id) tac)
   in
   let subtacs =
-    tclTHENS destruct_tac (map letintac branches)
+    tclTHENS destruct_tac (List.map letintac branches)
   in tclTHENLIST [intros; cleantac ; dotac ; subtacs] gl
 
-let dependencies env c ctx =
+let dependencies env sigma c ctx =
   let init = global_vars_set env c in
   let deps =
     fold_named_context_reverse 
     (fun variables decl ->
       let n = get_id decl in
-      let dvars = global_vars_set_of_decl env decl in
+      let dvars = global_vars_set_of_decl env sigma decl in
         if Idset.mem n variables then Idset.union dvars variables
         else variables)
       ~init:init ctx

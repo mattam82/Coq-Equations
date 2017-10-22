@@ -21,6 +21,7 @@ Inductive term :=
 | Pair (t u : term)
 | Fst (t : term) | Snd (t : term)
 | Tt.
+
 Derive NoConfusion Subterm EqDec for term.
 
 Coercion Var : nat >-> term.

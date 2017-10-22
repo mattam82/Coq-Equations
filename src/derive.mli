@@ -12,12 +12,12 @@ type derive_record =
 
 (** When the Derive expects a constr. *)                                 
 val make_derive :
-  (Environ.env -> Evd.evar_map -> polymorphic:Decl_kinds.polymorphic -> Constr.constr -> unit) ->
+  (Environ.env -> Evd.evar_map -> polymorphic:Decl_kinds.polymorphic -> EConstr.constr -> unit) ->
   polymorphic:bool -> Globnames.global_reference -> unit
 
 (** When the Derive works on inductive types only. *)                                 
 val make_derive_ind :
-  (Environ.env -> Evd.evar_map -> polymorphic:Decl_kinds.polymorphic -> Constr.pinductive -> unit) ->
+  (Environ.env -> Evd.evar_map -> polymorphic:Decl_kinds.polymorphic -> Names.inductive * EConstr.EInstance.t -> unit) ->
   polymorphic:bool -> Globnames.global_reference -> unit
     
 val register_derive : derive_record -> unit

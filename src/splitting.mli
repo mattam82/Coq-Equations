@@ -7,18 +7,17 @@
 (**********************************************************************)
 
 open Term
-open Context
 open Environ
 open Names
 open Syntax
 open Covering
-open Equations_common
+open EConstr
 
 val helper_evar :
   Evd.evar_map ->
   Evd.evar ->
   env ->
-  types -> Loc.t * Evar_kinds.t -> Evd.evar_map * constr
+  types -> Evar_kinds.t Loc.located -> Evd.evar_map * constr
 
 (** Compilation to Coq terms *)
 val term_of_tree :
@@ -31,7 +30,7 @@ val term_of_tree :
 
 (** Compilation from splitting tree to terms. *)
 
-val is_comp_obl : logical_rec option -> Evar_kinds.t -> bool
+val is_comp_obl : Evd.evar_map -> logical_rec option -> Evar_kinds.t -> bool
 
 type term_info = {
   term_id : Globnames.global_reference;
@@ -43,9 +42,9 @@ type term_info = {
 
 type program_info = {
   program_id : Id.t;
-  program_sign : rel_context;
-  program_arity : Constr.t;
-  program_oarity : Constr.t;
+  program_sign : EConstr.rel_context;
+  program_arity : EConstr.t;
+  program_oarity : EConstr.t;
   program_rec : Syntax.rec_type option;
   program_impls : Impargs.manual_explicitation list;
 }
@@ -67,21 +66,21 @@ val define_tree :
   Id.t * rel_context * types ->
   logical_rec option ->
   splitting ->
-  (splitting -> ((Id.t -> constr) -> constr -> constr) ->
+  (splitting -> ((Id.t -> Term.constr) -> Term.constr -> Term.constr) ->
    term_info ->
    Evd.evar_universe_context -> unit) ->
   unit
 
-val mapping_rhs : context_map -> splitting_rhs -> splitting_rhs
+val mapping_rhs : Evd.evar_map -> context_map -> splitting_rhs -> splitting_rhs
 val map_rhs :
   (constr -> constr) ->
   (int -> int) -> splitting_rhs -> splitting_rhs
 val clean_clause :
   'a * 'b * 'c * splitting_rhs -> 'a * 'b * 'c * splitting_rhs
 val map_evars_in_constr :
-  Evd.evar_map -> ((Id.t -> constr) -> constr -> 'b) -> constr -> 'b
+  Evd.evar_map -> ((Id.t -> Constr.t) -> Constr.t -> 'b) -> constr -> 'b
 val map_split : (constr -> constr) -> splitting -> splitting
 val map_evars_in_split :
   Evd.evar_map ->
-  ((Id.t -> constr) -> constr -> constr) ->
+  ((Id.t -> Constr.t) -> Constr.t -> constr) ->
   splitting -> splitting

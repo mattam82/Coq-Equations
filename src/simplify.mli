@@ -13,14 +13,14 @@ and simplification_rule =
   | Infer_one
   | Infer_direction
   | Infer_many
-and simplification_rules = (Loc.t * simplification_rule) list
+and simplification_rules = (Loc.t option * simplification_rule) list
 
-type goal = Context.Rel.t * Term.types
+type goal = EConstr.rel_context * EConstr.types
 (* The [goal] corresponds to the context and type of an evar representing a
  * hole in the term. *)
-type open_term = (goal * Constr.existential) option * Term.constr
+type open_term = (goal * EConstr.existential) option * EConstr.constr
 
-exception CannotSimplify of Pp.std_ppcmds
+exception CannotSimplify of Pp.t
 
 (* TODO Move the context_map inside the open_term... *)
 type simplification_fun =
@@ -35,7 +35,7 @@ type simplification_fun =
  * the variable. *)
 val strengthen :
   Environ.env -> Evd.evar_map ->
-  Context.rel_context -> int -> ?rels:Int.Set.t -> Term.constr ->
+  Context.rel_context -> int -> ?rels:Int.Set.t -> EConstr.constr ->
   Covering.context_map * Covering.context_map
 *)
 
@@ -62,7 +62,7 @@ val identity : simplification_fun
 val execute_step : simplification_step -> simplification_fun
 
 val infer_step :
-  loc:Loc.t -> isSol:bool -> Environ.env -> Evd.evar_map ref ->
+  ?loc:Loc.t -> isSol:bool -> Environ.env -> Evd.evar_map ref ->
   goal -> simplification_step
 
 val simplify : simplification_rules -> simplification_fun

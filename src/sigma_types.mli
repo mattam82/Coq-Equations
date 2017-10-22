@@ -6,67 +6,67 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-open Equations_common
+open EConstr
 
 val mkAppG :
   Evd.evar_map ref ->
-  Globnames.global_reference -> Term.constr array -> Term.constr
+  Globnames.global_reference -> constr array -> constr
 val applistG :
   Evd.evar_map ref ->
-  Globnames.global_reference -> Term.constr list -> Term.constr
+  Globnames.global_reference -> constr list -> constr
 val mkSig :
-  Evd.evar_map ref -> Names.Name.t * Term.types * Term.constr -> Term.constr
+  Evd.evar_map ref -> Names.Name.t * types * constr -> constr
 val constrs_of_coq_sigma : 
   Environ.env ->
   Evd.evar_map ref ->
-  Term.constr ->
-  Term.constr -> (Names.name * Term.constr * Term.constr * Term.constr) list
-val decompose_coq_sigma : Term.constr -> (Univ.Instance.t * Term.constr * Term.constr) option
-val decompose_indapp :
-  Term.constr -> Term.constr array -> Term.constr * Term.constr array
+  constr ->
+  constr -> (Names.name * constr * constr * constr) list
+val decompose_coq_sigma : Evd.evar_map -> constr -> (EInstance.t * constr * constr) option
+val decompose_indapp : Evd.evar_map ->
+  constr -> constr array -> constr * constr array
 val telescope :
   Evd.evar_map ref ->
   rel_context ->
-  Term.constr * rel_context * Term.constr
+  constr * rel_context * constr
 val sigmaize :
   ?liftty:int ->
   Environ.env ->
   Evd.evar_map ref ->
   rel_context ->
-  Term.constr ->
-  Term.constr * Term.constr * rel_context * Constr.constr list * Names.projection *
-  Names.projection * Term.constr * Term.constr
+  constr ->
+  constr * constr * rel_context * constr list * Names.projection *
+  Names.projection * constr * constr
 val ind_name : Names.inductive -> Names.Id.t
-val declare_sig_of_ind : Environ.env -> Evd.evar_map -> bool -> Term.pinductive -> Term.constr
+val declare_sig_of_ind : Environ.env -> Evd.evar_map -> bool -> Names.inductive * EConstr.EInstance.t -> constr
 val get_signature :
-  Environ.env -> Evd.evar_map -> Term.constr -> Evd.evar_map * Term.constr * Term.constr
+  Environ.env -> Evd.evar_map -> constr -> Evd.evar_map * constr * constr
 val pattern_sigma : assoc_right:bool ->
-  Term.constr ->
+  constr ->
   Names.Id.t -> Environ.env -> Evd.evar_map -> unit Proofview.tactic
 
 (* Unused for now *)
 val curry_left_hyp : Environ.env -> Evd.evar_map ->
-  Term.constr -> Term.types -> (Term.constr * Term.types) option
+  constr -> types -> (constr * types) option
 
 val build_sig_of_ind : Environ.env ->
                        Evd.evar_map ->
-                       Term.pinductive ->
-                       Evd.evar_map * Term.constr * rel_context * Term.constr *
-                         Term.constr * rel_context * int * Term.constr
+                       Names.inductive Equations_common.peuniverses ->
+                       Evd.evar_map * constr * rel_context * constr *
+                         constr * rel_context * int * constr
 
 (** Pack all hypotheses into a new one using sigmas *)
 val uncurry_hyps : Names.Id.t -> unit Proofview.tactic
 
 (** Curry a term starting with a quantification on a sigma type,
     associated to the right. *)
-val curry : Names.Name.t -> Term.constr ->
-            rel_context * Term.constr
+val curry : Evd.evar_map -> Names.Name.t -> constr ->
+            rel_context * constr
 
-val uncurry_call : Environ.env -> Evd.evar_map -> Term.constr ->
-                   Evd.evar_map * Term.constr * Term.types
+val uncurry_call : Environ.env -> Evd.evar_map -> constr ->
+                   Evd.evar_map * constr * types
 
 val smart_case : Environ.env -> Evd.evar_map ref -> rel_context ->
-  int -> Term.types ->
-  rel_context * Term.types *
-  (Term.types * int * Covering.context_map) array *
-  int * Covering.context_map * Term.constr list * bool
+  int -> types ->
+  rel_context * types *
+  (types * int * Covering.context_map) array *
+  int * Covering.context_map * constr list * bool

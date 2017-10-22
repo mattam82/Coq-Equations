@@ -7,10 +7,9 @@
 (**********************************************************************)
 
 open Term
-open Context
 open Environ
 open Names
-open Equations_common
+open EConstr
 
 val mk_term_eq :
   env ->
@@ -28,11 +27,11 @@ val make_abstract_generalize :
   constr ->
   constr list -> constr list -> constr list -> constr
 val hyps_of_vars :
-  env ->
+  env -> Evd.evar_map ->
   named_context ->
   Idset.t -> Idset.t -> Idset.elt list
 exception Seen
-val linear : Idset.t -> constr array -> bool
+val linear : Evd.evar_map -> Idset.t -> constr array -> bool
 val needs_generalization :
   Proof_type.goal Tacmach.sigma -> Id.t -> bool
 val abstract_args :
@@ -67,7 +66,7 @@ val pattern_call :
 
 val specialize_eqs : Names.Id.t -> Proof_type.tactic
 
-val compare_upto_variables : constr -> constr -> bool
+val compare_upto_variables : Evd.evar_map -> constr -> constr -> bool
 
-val dependent_elim_tac : ?patterns:Syntax.user_pat_expr list -> Names.Id.t ->
+val dependent_elim_tac : ?patterns:Syntax.user_pat_expr list -> Names.Id.t Syntax.with_loc ->
   unit Proofview.tactic

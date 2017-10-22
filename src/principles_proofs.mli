@@ -1,3 +1,5 @@
+open EConstr
+
 module PathOT :
   sig
     type t = Covering.path
@@ -5,7 +7,7 @@ module PathOT :
   end
 module PathMap : Map.S with type key = PathOT.t
 
-type where_map = (Term.constr * Names.Id.t * Covering.splitting) Evar.Map.t
+type where_map = (constr * Names.Id.t * Covering.splitting) Evar.Map.t
 
 
 type ind_info = {
@@ -29,8 +31,8 @@ val autorewrites : string -> Proof_type.tactic
 val autorewrite_one : string -> Proofview.V82.tac
 val find_helper_arg :
   Splitting.term_info -> Term.constr -> 'a array -> Term.existential_key * 'a
-val find_splitting_var :
-  Covering.pat list -> int -> Term.constr list -> Names.Id.t
+val find_splitting_var : Evd.evar_map ->
+  Covering.pat list -> int -> constr list -> Names.Id.t
 val intros_reducing : Proof_type.tactic
 val cstrtac : 'a -> Proof_type.tactic
 val destSplit : Covering.splitting -> Covering.splitting option array option

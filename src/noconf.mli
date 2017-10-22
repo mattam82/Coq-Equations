@@ -7,21 +7,17 @@
 (**********************************************************************)
 
 open Environ
-open Declarations
 open Names
-open Constr
-open Context
+open EConstr
+
 val mkcase :
-  env ->
+  env -> Evd.evar_map ->
   constr ->
   constr ->
-  ((MutInd.t * int) * Univ.universe_instance ->
+  ((MutInd.t * int) * EInstance.t ->
    int ->
-   Id.t -> int -> Context.Rel.t -> types -> constr) ->
+   Id.t -> int -> rel_context -> types -> constr) ->
   constr
-(* val mk_eqs : *)
-(*   env -> *)
-(*   Evd.evar_map ref -> *)
-(*   constr list -> constr list -> Constr.constr -> types *)
+
 val derive_no_confusion :
-  env -> Evd.evar_map -> polymorphic:bool -> Term.pinductive -> unit
+  env -> Evd.evar_map -> polymorphic:bool -> Names.inductive * EInstance.t -> unit

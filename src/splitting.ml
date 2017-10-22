@@ -6,45 +6,27 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-open Cases
 open Util
 open Names
 open Nameops
 open Term
-open Termops
-open Declarations
 open Inductiveops
-open Environ
-open Vars
 open Globnames
 open Reductionops
-open Typeops
-open Type_errors
 open Pp
-open Proof_type
-open Glob_term
-open Retyping
-open Pretype_errors
-open Evarutil
-open Evarconv
 open List
 open Libnames
-open Topconstr
-open Entries
 open Constrexpr
-open Vars
-open Tacexpr
 open Tactics
 open Tacticals
-open Tacmach
-open Context
-open Evd
 open Evarutil
 open Evar_kinds
 open Equations_common
 open Termops
 open Syntax
 open Covering
+open EConstr
+open Vars
 
 let map_where f w =
   { w with
@@ -94,7 +76,7 @@ let map_split f split =
   in aux split
 
 let helper_evar evm evar env typ src =
-  let sign, typ', instance, _, _ = push_rel_context_to_named_context env typ in
+  let sign, typ', instance, _, _ = push_rel_context_to_named_context env evm typ in
   let evm' = evar_declare sign evar typ' ~src evm in
     evm', mkEvar (evar, Array.of_list instance)
 
@@ -113,13 +95,15 @@ let term_of_tree status isevar env0 tree =
              let evm, c', ty' = aux env evm where_splitting in
              let inst = List.map get_id where_nctx in
              (** In de Bruijn context *)
-             let tydb = subst_vars inst ty' in
+             let tydb = Vars.subst_vars inst ty' in
              let evm, c', ty' =
-               match kind_of_term where_term with
+               match kind evm where_term with
                | Evar (ev, _) ->
                  let term' = mkLetIn (Name (id_of_string "prog"), c', ty', lift 1 ty') in
-                 let evm, term = helper_evar evm ev env term' (dummy_loc, QuestionMark (Define false)) in
-                 let ev = fst (destEvar term) in
+                 let evm, term =
+                   helper_evar evm ev env term'
+                               (dummy_loc, QuestionMark (Define false, Name where_id)) in
+                 let ev = fst (destEvar !isevar term) in
                   oblevars := Evar.Map.add ev (List.length where_nctx) !oblevars;
                   helpers := (ev, 0) :: !helpers;
                   evm, subst_vars inst term, tydb
@@ -133,15 +117,16 @@ let term_of_tree status isevar env0 tree =
 
     | Compute ((ctx, _, _), where, ty, REmpty split) ->
        assert (List.is_empty where);
+       let evm, coq_nat = new_global evm (Lazy.force coq_nat) in
 	let split = make_def (Name (id_of_string "split"))
-          (Some (coq_nat_of_int (succ (length ctx - split))))
-          (Lazy.force coq_nat)
+          (Some (of_constr (coq_nat_of_int (succ (length ctx - split)))))
+          coq_nat
        in
        let ty' = it_mkProd_or_LetIn ty ctx in
        let let_ty' = mkLambda_or_LetIn split (lift 1 ty') in
        let evm, term = 
-         new_evar env evm ~src:(dummy_loc, QuestionMark (Define false)) let_ty' in
-       let ev = fst (destEvar term) in
+         new_evar env evm ~src:(dummy_loc, QuestionMark (Define false, Anonymous)) let_ty' in
+       let ev = fst (destEvar evm term) in
        oblevars := Evar.Map.add ev 0 !oblevars;
        evm, term, ty'
 
@@ -149,7 +134,7 @@ let term_of_tree status isevar env0 tree =
        let evm, term, ty = aux env evm s in
        let args = Array.rev_of_list (constrs_of_pats ~inacc:false env p) in
        let term = it_mkLambda_or_LetIn (whd_beta evm (mkApp (term, args))) ctx in
-       let ty = it_mkProd_or_subst (prod_appvect ty args) ctx in
+       let ty = it_mkProd_or_subst (prod_appvect evm ty args) ctx in
          evm, term, ty
 		    
     | RecValid (id, rest) -> aux env evm rest
@@ -164,7 +149,7 @@ let term_of_tree status isevar env0 tree =
 	let evm, term, ty = 
 	  let term = mkLetIn (Name (id_of_string "prog"), sterm, sty, lift 1 sty) in
 	  let evm, term = helper_evar evm ev (Global.env ()) term
-	    (dummy_loc, QuestionMark (Define false)) 
+            (dummy_loc, QuestionMark (Define false, Name id))
 	  in
 	    oblevars := Evar.Map.add ev 0 !oblevars;
 	    helpers := (ev, rarg) :: !helpers;
@@ -177,10 +162,10 @@ let term_of_tree status isevar env0 tree =
 
     | Valid ((ctx, _, _), ty, substc, tac, (entry, pv), rest) ->
 	let tac = Proofview.tclDISPATCH 
-	  (map (fun (goal, args, subst, invsubst, x) -> 
-	    Refine.refine { Sigma.run = fun evm ->
-	      let evm, term, ty = aux env (Sigma.to_evar_map evm) x in
-       Sigma.here (applistc term args) (Sigma.Unsafe.of_evar_map evm)}) rest)
+          (List.map (fun (goal, args, subst, invsubst, x) ->
+            Refine.refine ~typecheck:false begin fun evm ->
+              let evm, term, ty = aux env evm x in
+              (evm, applistc term args) end) rest)
 	in
 	let pv : Proofview_monad.proofview = Obj.magic pv in
 	let pv = { pv with Proofview_monad.solution = evm } in
@@ -198,22 +183,21 @@ let term_of_tree status isevar env0 tree =
 
         (* The next step is to use [simplify]. *)
         let simpl_step = if simpl then
-          Simplify.simplify [Loc.dummy_loc, Simplify.Infer_many] env evd
+          Simplify.simplify [None, Simplify.Infer_many] env evd
           else Simplify.identity env evd
         in
         let branches = Array.map2 (fun (ty, nb, csubst) next ->
           (* We get the context from the constructor arity. *)
-          let new_ctx, ty = Term.decompose_prod_n_assum nb ty in
-          let new_ctx = Namegen.name_context env new_ctx in
+          let new_ctx, ty = EConstr.decompose_prod_n_assum !isevar nb ty in
+          let new_ctx = Namegen.name_context env !isevar new_ctx in
           let ty =
             if simpl || nb_cuts > 0 then
-              let env = Environ.push_rel_context (new_ctx @ ctx') env in
+              let env = push_rel_context (new_ctx @ ctx') env in
               Tacred.hnf_constr env !evd ty
             else ty
           in
           (* Remove the cuts and append them to the context. *)
-          let cut_ctx, ty = Term.decompose_prod_n_assum nb_cuts ty in
-
+          let cut_ctx, ty = EConstr.decompose_prod_n_assum !isevar nb_cuts ty in
           (* TODO This context should be the same as (pi1 csubst). We could
            * either optimize (but names in [csubst] are worse) or just insert
            * a sanity-check. *)
@@ -221,10 +205,10 @@ let term_of_tree status isevar env0 tree =
             let open Feedback in
             let ctx = cut_ctx @ new_ctx @ ctx' in
             msg_info(str"Simplifying term:");
-            msg_info(let env = Environ.push_rel_context ctx env in
-              Printer.pr_constr_env env !evd ty);
+            msg_info(let env = push_rel_context ctx env in
+              print_constr_env env !evd ty);
             msg_info(str"... in context:");
-            msg_info(Printer.pr_rel_context env !evd ctx)
+            msg_info(pr_context env !evd ctx)
           end;
           let ((hole, c), lsubst) = simpl_step (cut_ctx @ new_ctx @ ctx', ty) in
           let subst = Covering.compose_subst ~unsafe:true env ~sigma:!evd csubst subst in
@@ -240,11 +224,11 @@ let term_of_tree status isevar env0 tree =
                 (* Now we need to instantiate [ev] with the term [next_term]. *)
                 (* [next_term] starts with lambdas, so we apply it to its context. *)
                 let args = Equations_common.extended_rel_vect 0 next_ctx in
-                let next_term = Reduction.beta_appvect next_term args in
+                let next_term = beta_appvect !isevar next_term args in
                 (* We might need to permutate some rels. *)
                 let next_subst = Covering.context_map_of_splitting s in
                 let perm_subst = Covering.make_permutation ~env evm subst next_subst in
-                let next_term = Covering.mapping_constr perm_subst next_term in
+                let next_term = Covering.mapping_constr evm perm_subst next_term in
                 (* We know the term is a correct instantiation of the evar, we
                  * just need to apply it to the correct variables. *)
                 let ev_info = Evd.find_undefined evm (fst ev) in
@@ -253,7 +237,7 @@ let term_of_tree status isevar env0 tree =
                  * is typed under [ev_ctx] *)
                 let ev_ctx_constrs = List.map (fun decl ->
                   let id = Context.Named.Declaration.get_id decl in
-                    Constr.mkVar id) ev_ctx in
+                  EConstr.mkVar id) ev_ctx in
                 let rels, named = List.chop (List.length next_ctx) ev_ctx_constrs in
                 let vars_subst = List.map2 (fun decl c ->
                   let id = Context.Named.Declaration.get_id decl in
@@ -264,32 +248,32 @@ let term_of_tree status isevar env0 tree =
                   let env = Evd.evar_env ev_info in
                   Typing.type_of env evm term
                 in
-                evd := Evd.define (fst ev) term evm;
+                evd := Evd.define (fst ev) (EConstr.to_constr evm term) evm;
                 c
             (* This should not happen... *)
             | _ -> failwith "Should not fail here, please report."
           in
-            Term.it_mkLambda_or_LetIn c (cut_ctx @ new_ctx)
+            EConstr.it_mkLambda_or_LetIn c (cut_ctx @ new_ctx)
         ) branches_res sp in
 
         (* Get back to the original context. *)
-        let case_ty = Covering.mapping_constr rev_subst case_ty in
-        let branches = Array.map (Covering.mapping_constr rev_subst) branches in
+        let case_ty = Covering.mapping_constr !evd rev_subst case_ty in
+        let branches = Array.map (Covering.mapping_constr !evd rev_subst) branches in
 
         (* Fetch the type of the variable that we want to eliminate. *)
         let after, decl, before = Covering.split_context (pred rel) ctx in
         let rel_ty = Context.Rel.Declaration.get_type decl in
         let rel_ty = Vars.lift rel rel_ty in
-        let rel_t = Constr.mkRel rel in
-        let pind, args = Inductive.find_inductive env rel_ty in
+        let rel_t = EConstr.mkRel rel in
+        let pind, args = find_inductive env !evd rel_ty in
 
         (* Build the case. *)
         let case_info = Inductiveops.make_case_info env (fst pind) Constr.RegularStyle in
-        let indfam = Inductiveops.make_ind_family (pind, args) in
-        let case = Inductiveops.make_case_or_project env indfam case_info
+        let indfam = Inductiveops.make_ind_family (from_peuniverses !evd pind, args) in
+        let case = Inductiveops.make_case_or_project env !evd indfam case_info
           case_ty rel_t branches in
-        let term = Constr.mkApp (case, Array.of_list to_apply) in
-        let term = Term.it_mkLambda_or_LetIn term ctx in
+        let term = EConstr.mkApp (case, Array.of_list to_apply) in
+        let term = EConstr.it_mkLambda_or_LetIn term ctx in
         let typ = it_mkProd_or_subst ty ctx in
         let term = Evarutil.nf_evar !evd term in
         Typing.e_check env evd term typ;
@@ -297,13 +281,14 @@ let term_of_tree status isevar env0 tree =
       else
 	let before, decl, after = split_tele (pred rel) ctx in
 	let evd = ref evm in
+        let coqnat = e_new_global evd (Lazy.force coq_nat) in
 	let branches = 
 	  Array.map (fun split -> 
 	    match split with
 	    | Some s -> let evm', c, t = aux env !evd s in evd := evm'; c,t
 	    | None ->
 		(* dead code, inversion will find a proof of False by splitting on the rel'th hyp *)
-	      coq_nat_of_int rel, Lazy.force coq_nat)
+               of_constr (coq_nat_of_int rel), coqnat)
 	    sp 
 	in
 	let evm = !evd in
@@ -316,21 +301,22 @@ let term_of_tree status isevar env0 tree =
 	    (succ n, map_rel_declaration (lift n) decl :: lets))
 	    (0, []) branches_ctx
 	in
-	let liftctx = lift_context (Array.length branches) ctx in
+        let liftctx = Equations_common.lift_rel_context (Array.length branches) ctx in
 	let evm, case =
 	  let ty = it_mkProd_or_LetIn ty liftctx in
 	  let ty = it_mkLambda_or_LetIn ty branches_lets in
           let nbbranches =
             make_def (Name (id_of_string "branches"))
-	      (Some (coq_nat_of_int (length branches_lets))) (Lazy.force coq_nat)
+                     (Some (of_constr (coq_nat_of_int (length branches_lets))))
+            coqnat
 	  in
 	  let nbdiscr = make_def (Name (id_of_string "target"))
-			(Some (coq_nat_of_int (length before)))
-			(Lazy.force coq_nat)
+                        (Some (of_constr (coq_nat_of_int (length before))))
+                        coqnat
 	  in
 	  let ty = it_mkLambda_or_LetIn (lift 2 ty) [nbbranches;nbdiscr] in
-	  let evm, term = new_evar env evm ~src:(dummy_loc, QuestionMark status) ty in
-	  let ev = fst (destEvar term) in
+          let evm, term = new_evar env evm ~src:(dummy_loc, QuestionMark (status, Anonymous)) ty in
+          let ev = fst (destEvar evm term) in
 	    oblevars := Evar.Map.add ev 0 !oblevars;
 	    evm, term
 	in       
@@ -341,7 +327,7 @@ let term_of_tree status isevar env0 tree =
     isevar := evm;
     !helpers, !oblevars, term, typ
 
-let is_comp_obl comp hole_kind =
+let is_comp_obl sigma comp hole_kind =
   match comp with
   | None -> false
   | Some r -> 
@@ -349,7 +335,7 @@ let is_comp_obl comp hole_kind =
       | ImplicitArg (ConstRef c, (n, _), _), LogicalProj r ->
 	(* Constant.equal c r.comp_proj &&  *)n == 0
       | ImplicitArg (ConstRef c, (n, _), _), LogicalDirect (loc, id) ->
-        is_rec_call r (mkConst c)
+        is_rec_call sigma r (mkConst c)
       | _ -> false
 
 let zeta_red =
@@ -368,9 +354,9 @@ type term_info = {
 
 type program_info = {
   program_id : Id.t;
-  program_sign : rel_context;
-  program_arity : Constr.t;
-  program_oarity : Constr.t;
+  program_sign : EConstr.rel_context;
+  program_arity : EConstr.t;
+  program_oarity : EConstr.t;
   program_rec : Syntax.rec_type option;
   program_impls : Impargs.manual_explicitation list;
 }
@@ -389,10 +375,10 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
   let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
   let helpers, oblevs, t, ty = term_of_tree status isevar env split in
   let split = map_split (nf_evar !isevar) split in
-  let nf, subst = Evarutil.e_nf_evars_and_universes isevar in
+  let _nf, _subst = Evarutil.e_nf_evars_and_universes isevar in
   let obls, (emap, cmap), t', ty' = 
     Obligations.eterm_obligations env i !isevar
-      0 ~status (nf t) (whd_betalet !isevar (nf ty))
+      0 ~status (EConstr.to_constr !isevar t) (EConstr.to_constr !isevar (whd_betalet !isevar ty))
   in
   let compobls = ref Id.Set.empty in
   let obls = 
@@ -403,7 +389,7 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
 	then 
           let intros = Evar.Map.find assc oblevs in
           Some (Tacticals.New.tclTHEN (Tacticals.New.tclDO intros intro) (equations_tac ()))
-	else if is_comp_obl comp (snd loc) then
+        else if is_comp_obl !isevar comp (snd loc) then
           let () = compobls := Id.Set.add id !compobls in
           let unfolds =
             match Option.get comp with
@@ -420,7 +406,7 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
 	else Some ((!Obligations.default_tactic))
       in (id, ty, loc, s, d, tac)) obls
   in
-  let helpers = map (fun (ev, arg) ->
+  let helpers = List.map (fun (ev, arg) ->
     (ev, arg, List.assoc ev emap)) helpers
   in
   let hook locality gr =
@@ -434,36 +420,37 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
       hook split cmap term_info
   in
   let hook = Lemmas.mk_hook hook in
-  let reduce = 
-    let open CClosure.RedFlags in
+  let reduce x =
     let flags = CClosure.betaiotazeta in
     (* let flags = match comp with None -> flags *)
     (*   | Some f -> fCONST f.comp :: fCONST f.comp_proj :: flags *)
     (* in *)
-      clos_norm_flags flags (Global.env ()) Evd.empty
+    to_constr !isevar (clos_norm_flags flags (Global.env ()) !isevar (of_constr x))
   in
   let kind = (Decl_kinds.Global, poly, Decl_kinds.Definition) in
   let ty' = it_mkProd_or_LetIn arity sign in
-  let ty' = nf ty' in
     match is_recursive with
     | Some (Structural [id]) ->
         let ty' = it_mkProd_or_LetIn ty' [make_assum Anonymous ty'] in
+        let ty' = EConstr.to_constr !isevar ty' in
 	ignore(Obligations.add_mutual_definitions [(i, t', ty', impls, obls)] 
 		 (Evd.evar_universe_context !isevar) [] ~kind
-		 ~reduce ~hook (Obligations.IsFixpoint [snd id, CStructRec]))
+                 ~reduce ~hook (Obligations.IsFixpoint [Option.map (fun (loc, x) -> (Some loc, x)) (snd id), CStructRec]))
     | Some (Structural ids) ->
         let ty' = it_mkProd_or_LetIn ty' fixprots in
-	ignore(Obligations.add_definition
+        let ty' = EConstr.to_constr !isevar ty' in
+        ignore(Obligations.add_definition
                  ~hook ~kind
                  ~implicits:impls (add_suffix i "_functional") ~term:t' ty' ~reduce              
 		 (Evd.evar_universe_context !isevar) obls)
     | _ ->
-      ignore(Obligations.add_definition ~hook ~kind
+       let ty' = EConstr.to_constr !isevar ty' in
+       ignore(Obligations.add_definition ~hook ~kind
 	       ~implicits:impls i ~term:t' ty'
 	       ~reduce (Evd.evar_universe_context !isevar) obls)
 
-let mapping_rhs s = function
-  | RProgram c -> RProgram (mapping_constr s c)
+let mapping_rhs sigma s = function
+  | RProgram c -> RProgram (mapping_constr sigma s c)
   | REmpty i -> 
       try match nth (pi2 s) (pred i) with 
       | PRel i' -> REmpty i'
@@ -482,6 +469,6 @@ let map_evars_in_constr evd evar_map c =
   evar_map (fun id ->
 	    let gr = Nametab.global (Qualid (dummy_loc, qualid_of_ident id)) in
 	    let (f, uc) = Universes.unsafe_constr_of_global gr in f)
-	   (nf_evars_universes evd c)
+           (EConstr.to_constr evd c)
 
 let map_evars_in_split evd m = map_split (map_evars_in_constr evd m)
