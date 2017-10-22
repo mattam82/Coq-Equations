@@ -396,7 +396,10 @@ open Syntax
 
 GEXTEND Gram
   GLOBAL: pattern deppat_equations deppat_elim binders2 equations lident;
- 
+
+  identloc:
+    [ [ id = IDENT -> (!@loc, Id.of_string id) ] ]
+  ;
   binders2 : 
      [ [ b = binders -> b ] ]
   ;
@@ -452,9 +455,22 @@ GEXTEND Gram
           in build_refine (fun e -> e) cs
     ] ]
   ;
+  struct_annot:
+    [ [ "("; "struct"; id = identloc; ")" -> Some id
+      | -> None
+    ] ]
+  ;
+  rec_annot:
+    [ [ "where"; an = struct_annot -> Some (Nested, an)
+      | "with"; an = struct_annot -> Some (Struct, an)
+      | -> None
+    ] ]
+  ;
+
   where_clause:
-    [ [ id = lident; l = binders2; ":"; t = Constr.lconstr;
-        ":="; eqs = sub_equations -> ((id, l, t), eqs) ] ]
+    [ [ r = rec_annot;
+        id = lident; l = binders2; ":"; t = Constr.lconstr;
+        ":="; eqs = sub_equations -> ((id, r, l, t), eqs) ] ]
   ;
   where:
     [ [ "where"; l = LIST1 where_clause -> l

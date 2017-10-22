@@ -503,10 +503,10 @@ let specialize_eqs id gl =
   else specialize_eqs id gl
 
 (* Produce a list of default patterns to eliminate an inductive value in [ind]. *)
-let default_patterns env ?(avoid = ref []) ind : (Loc.t * Syntax.user_pat) list =
+let default_patterns env ?(avoid = ref []) ind : (Loc.t option * Syntax.user_pat) list =
   let nparams = Inductiveops.inductive_nparams ind in
   let mib, oib = Inductive.lookup_mind_specif env ind in
-  let make_pattern (i : int) : Loc.t * Syntax.user_pat =
+  let make_pattern (i : int) : Loc.t option * Syntax.user_pat =
     let construct = Names.ith_constructor_of_inductive ind (succ i) in
     let args =
       let arity = oib.mind_nf_lc.(i) in
@@ -522,9 +522,9 @@ let default_patterns env ?(avoid = ref []) ind : (Loc.t * Syntax.user_pat) list 
               let hd = Namegen.hdchar env ty in
                 Namegen.next_ident_away (Names.id_of_string hd) !avoid
         in avoid := id :: !avoid;
-      Loc.ghost, Syntax.PUVar (id, true)) ctx
+      None, Syntax.PUVar (id, true)) ctx
     in
-      Loc.ghost, Syntax.PUCstr (construct, nparams, args)
+      None, Syntax.PUCstr (construct, nparams, args)
   in List.init (Array.length oib.mind_consnames) make_pattern
 
 (* Dependent elimination using Equations. *)
@@ -554,7 +554,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
     (* We also need to convert the goal for it to be well-typed in
      * the [rel_context]. *)
     let ty = Vars.subst_vars subst concl in
-    let patterns : (Loc.t * Syntax.user_pat) list =
+    let patterns : (Loc.t option * Syntax.user_pat) list =
       match patterns with
       | None ->
           (* Produce directly a user_pat. *)
@@ -569,13 +569,13 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
     in
 
     (* For each pattern, produce a clause. *)
-    let make_clause : (Loc.t * Syntax.user_pat) -> Syntax.clause =
+    let make_clause : (Loc.t option * Syntax.user_pat) -> Syntax.clause =
       fun (loc, pat) ->
         let lhs =
           List.rev_map (fun decl ->
             let decl_id = Context.Named.Declaration.get_id decl in
             if Names.Id.equal decl_id id then loc, pat
-            else Loc.ghost, Syntax.PUVar (decl_id, false)) loc_hyps
+            else None, Syntax.PUVar (decl_id, false)) loc_hyps
         in
         let rhs =
           let prog = Constrexpr.CHole (Loc.ghost, None, Misctypes.IntroAnonymous, None) in

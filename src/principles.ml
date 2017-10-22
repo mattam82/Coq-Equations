@@ -26,6 +26,16 @@ type node_kind =
   | Regular
   | Refine
   | Where
+  | Nested
+
+let kind_of_prog p =
+  match p.program_rec_annot with
+  | Some (Syntax.Nested, _) -> Nested
+  | _ -> Regular
+
+let regular_or_nested = function
+  | Regular | Nested -> true
+  | _ -> false
 
 let pi1 (x,_,_) = x
 let pi2 (_,y,_) = y
@@ -250,7 +260,7 @@ let compute_elim_type env evd is_rec protos k leninds
                       ind_stmts all_stmts sign app elimty =
   let ctx, arity = decompose_prod_assum elimty in
   let lenrealinds =
-    List.length (List.filter (fun (_, (_,_,_,_,_,_,_,(kind,_)),_) -> kind == Regular) ind_stmts) in
+    List.length (List.filter (fun (_, (_,_,_,_,_,_,_,(kind,_)),_) -> regular_or_nested kind) ind_stmts) in
   let newctx =
     if lenrealinds == 1 then CList.skipn (List.length sign + 2) ctx
     else ctx
@@ -857,10 +867,9 @@ let declare_funind info alias env evd is_rec protos ind_stmts all_stmts sign ind
     | None -> f, split, None
   in
   let app = applist (f, args) in
-  (* let statement = it_mkProd_or_subst (applist (ind, args @ [app])) sign in *)
   let statement =
     let stmt (i, ((f,_), alias, _, sign, ar, _, _, (nodek, cut)), _) =
-      if nodek != Regular then None else
+      if not (regular_or_nested nodek) then None else
       let f, split, unfsplit =
         match alias with
         | Some ((f,_), _, recsplit) -> f, recsplit, Some split
@@ -929,7 +938,7 @@ let level_of_context env evd ctx acc =
         (Environ.push_rel decl env, Univ.sup (Sorts.univ_of_sort s) lev))
                     ctx (env,acc)
   in lev
-
+  
 let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) option) progs =
   let p, prog, eqninfo = List.hd progs in
   let { equations_id = id;
@@ -942,8 +951,8 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
   let is_rec = p.program_rec in
   let cst = prog.program_cst in
   let comps =
-    let fn = computations env evd alias (Regular,false) in
-    List.map (fun (p, prog, eqninfo) -> p, eqninfo, fn eqninfo) progs
+    let fn p = computations env evd alias (kind_of_prog p,false) in
+    List.map (fun (p, prog, eqninfo) -> p, eqninfo, fn p eqninfo) progs
   in
   let rec flatten_comp (ctx, fl, flalias, pats, ty, f, refine, c, rest) =
     let rest = match rest with
@@ -964,7 +973,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
     let topcomp = (((eqninfo.equations_f,[]), alias, [],
                     p.program_sign, p.program_arity,
                     List.rev_map pat_constr (pi2 eqninfo.equations_prob), [],
-                    (Regular,false)), top) in
+                    (kind_of_prog p,false)), top) in
     topcomp :: (rest @ acc)
   in
   let comps = List.fold_right flatten_top_comps comps [] in
@@ -973,7 +982,6 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
   let protos = 
     CList.map_i (fun i ((f',filterf'), alias, path, sign, arity, pats, args, (refine, cut)) ->
       let f' = strip_outer_cast f' in
-      (* let f' = if not (refine || cut) then fst (decompose_app f') else f' in *)
       let alias =
         match alias with
         | None -> None
@@ -1094,8 +1102,8 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
       Indschemes.do_mutual_induction_scheme mutual;
       if List.length inds != 1 then
         let scheme = Nameops.add_suffix (Id.of_string info.base_id) "_ind_comb" in
-        let mutual = List.map2 (fun (i, _, _, _) (_, (_, _, _, _, _, _, _, (refine, cut)), _) ->
-                         i, refine == Regular) mutual ind_stmts in
+        let mutual = List.map2 (fun (i, _, _, _) (_, (_, _, _, _, _, _, _, (kind, cut)), _) ->
+                         i, regular_or_nested kind) mutual ind_stmts in
         let () =
           Indschemes.do_combined_scheme
             (Loc.ghost, scheme)

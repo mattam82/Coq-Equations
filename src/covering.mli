@@ -241,16 +241,16 @@ val flexible : pat list -> 'a list -> Int.Set.t
 val accessible : pat -> Int.Set.t
 val accessibles : pat list -> Int.Set.t
 val hidden : pat -> bool
-val match_pattern : user_pat Loc.located -> pat ->
+val match_pattern : user_pat Syntax.located -> pat ->
                     (identifier * pat) list * (Constrexpr.constr_expr * pat) list *
-                      (user_pat Loc.located * constr) list
+                      (user_pat Syntax.located * constr) list
 val match_patterns :
   user_pats -> pat list -> (identifier * pat) list * (Constrexpr.constr_expr * pat) list *
-                                                   (user_pat Loc.located * constr) list
+                                                   (user_pat Syntax.located * constr) list
 val matches :
-  user_pats -> context_map -> ((identifier * pat) list * (Constrexpr.constr_expr * pat) list *                       (user_pat Loc.located * constr) list)  unif_result
+  user_pats -> context_map -> ((identifier * pat) list * (Constrexpr.constr_expr * pat) list *                       (user_pat Syntax.located * constr) list)  unif_result
 val match_user_pattern :
-  pat -> user_pat Loc.located -> (int * user_pat) list * (identifier * pat) list
+  pat -> user_pat Syntax.located -> (int * user_pat) list * (identifier * pat) list
 val match_user_patterns :
   pat list ->
   user_pats -> (int * user_pat) list * (identifier * pat) list

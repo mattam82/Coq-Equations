@@ -18,3 +18,5 @@ issues/issue13.v
 LogicType.v
 innacs.v
 mutrec.v
+nestedrec.v
+nestedrec2.v

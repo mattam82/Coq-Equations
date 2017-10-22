@@ -1249,7 +1249,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
                          Printer.pr_constr_env env' !evars t)
     in
     let check_innac ((loc,user), forced) =
-      if Loc.is_ghost loc then
+      if Option.is_empty loc then
         () (** Allow patterns not written by the user to be forced innaccessible silently *)
       else
         match user with
@@ -1259,7 +1259,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
         | _ ->
            let ctx, envctx, liftn, subst = env_of_rhs evars ctx env s lets in
            let forcedsubst = substnl subst 0 forced in
-           user_err_loc (loc, "covering",
+           user_err_loc (Option.get loc, "covering",
                          str "This pattern must be innaccessible and equal to " ++
                            Printer.pr_constr_env (push_rel_context ctx env) !evars forcedsubst)
     in
@@ -1445,9 +1445,9 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
 		    else
 		      if List.exists (fun (i', b) -> i' == pred i && b) vars then None
 		      else
-			try Some (dummy_loc, List.assoc (pred i) s)
+                        try Some (None, List.assoc (pred i) s)
 			with Not_found -> (* The problem is more refined than the user vars*)
-			  Some (dummy_loc, PUVar (next_unknown (), true)))
+                          Some (None, PUVar (next_unknown (), true)))
 		  vars'
 	      in
 	      let newrhs = match rhs with
@@ -1519,8 +1519,8 @@ and interp_wheres env ctx evars path data s lets w =
   let (ctx, envctx, liftn, subst) = env_of_rhs evars ctx env s lets in
   let inst, args, nactx = named_of_rel_context (fun () -> raise (Invalid_argument "interp_wheres")) ctx in
   let envna = push_named_context nactx env in
-  let rec aux (lets,nlets,coverings,env (* named *),envctx)
-              (((loc,id),b,t),clauses) =
+  let aux (lets,nlets,coverings,env (* named *),envctx)
+              (((loc,id),nested,b,t),clauses) =
     let ienv, ((env', sign), impls) = interp_context_evars env evars b in
     let arity = interp_type_evars env' evars t in
     let sign = subst_rel_context nlets subst sign in

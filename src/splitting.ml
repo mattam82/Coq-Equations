@@ -371,6 +371,7 @@ type program_info = {
   program_sign : rel_context;
   program_arity : Constr.t;
   program_oarity : Constr.t;
+  program_rec_annot : Syntax.rec_annot;
   program_rec : Syntax.rec_type option;
   program_impls : Impargs.manual_explicitation list;
 }
@@ -450,7 +451,7 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
         let ty' = it_mkProd_or_LetIn ty' [make_assum Anonymous ty'] in
 	ignore(Obligations.add_mutual_definitions [(i, t', ty', impls, obls)] 
 		 (Evd.evar_universe_context !isevar) [] ~kind
-		 ~reduce ~hook (Obligations.IsFixpoint [snd id, CStructRec]))
+                 ~reduce ~hook (Obligations.IsFixpoint [Option.map (fun (loc, x) -> (loc, x)) (pi3 id), CStructRec]))
     | Some (Structural ids) ->
         let ty' = it_mkProd_or_LetIn ty' fixprots in
 	ignore(Obligations.add_definition

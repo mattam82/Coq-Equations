@@ -82,7 +82,11 @@ let is_recursive i eqs =
     if for_all Option.is_empty occurs then None
     else if exists (function Some true -> true | _ -> false) occurs then Some true
     else Some false
-  in occur_eqns eqs
+  in
+  let occurs = List.map (fun (_,eqs) -> occur_eqns eqs) eqs in
+  if for_all Option.is_empty occurs then None
+  else if exists (function Some true -> true | _ -> false) occurs then Some true
+  else Some false
 
 let declare_wf_obligations info =
   let make_resolve gr =
@@ -101,10 +105,6 @@ let nf_program_info evm p =
     program_oarity = nf_evar evm p.program_oarity }
   
 let define_principles flags fixprots progs =
-  let fixctx = 
-    let fn fixprot (p, prog) = of_tuple (Name p.program_id, None, fixprot) in
-    List.rev (List.map2 fn fixprots progs)
-  in
   let env = Global.env () in
   let evd = ref (Evd.from_env env) in
   let newsplits env fixdecls (p, prog) =
@@ -192,6 +192,7 @@ let define_principles flags fixprots progs =
                        program_sign = sign;
                        program_arity = arity;
                        program_oarity = arity;
+                       program_rec_annot = None;
                        program_rec = None;
                        program_impls = p.program_impls }
              in
@@ -240,59 +241,130 @@ let define_principles flags fixprots progs =
        let evm = !evd in
        build_equations flags.with_ind env evm splits
   in
+  let fixdecls =
+    let fn fixprot (p, prog) =
+      let f = fst (Universes.unsafe_constr_of_global (ConstRef prog.program_cst)) in
+      of_tuple (Name p.program_id, Some f, fixprot)
+    in
+    List.rev (List.map2 fn fixprots progs)
+  in
+  let newsplits = List.map (fun (p, prog as x) -> p, prog, newsplits env fixdecls x) progs in
+  principles env newsplits
+
+let is_nested p =
+  match p.program_rec_annot with
+  | Some (Nested, _) -> true
+  | _ -> false
+
+let struct_index olid ctx =
+  match olid with
+  | None -> List.length ctx - 1
+  | Some lid ->
+     try
+       let k, _, _ = lookup_rel_id (snd lid) ctx in
+       List.length ctx - k
+     with Not_found ->
+       user_err_loc ((fst lid), "struct_index",
+                     Pp.(str"No argument named " ++ pr_id (snd lid) ++ str" found"))
+
+let define_mutual_nested flags progs =
   match progs with
-  | [prog] ->
-     let fixdecls =
-       let fn fixprot (p, prog) =
-         let f = fst (Universes.unsafe_constr_of_global (ConstRef prog.program_cst)) in
-         of_tuple (Name p.program_id, Some f, fixprot)
-       in
-       List.map2 fn fixprots progs
-     in
-     let newsplits = newsplits env fixdecls prog in
-     principles env [fst prog, snd prog, newsplits]
+  | [prog] -> progs
   | l ->
+     let mutual =
+       List.filter (fun (p, prog) -> not (is_nested p)) l
+     in
      (** In the mutually recursive case, only the functionals have been defined, 
          we build the block and its projections now *)
      let structargs = Array.map_of_list (fun (p,_) ->
-                          (List.length p.program_sign) - 1) l in
+                          match p.program_rec_annot with
+                          | Some (Struct, lid) -> struct_index lid p.program_sign
+                          | _ -> (List.length p.program_sign) - 1) mutual in
      let evd = ref (Evd.from_env (Global.env ())) in
      let decl =
        let blockfn (p, prog) = 
          let na = Name p.program_id in
          let body = Evarutil.e_new_global evd (ConstRef prog.program_cst) in
          let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
-         let fullctx = p.program_sign @ fixctx in
-         let body = mkApp (body, extended_rel_vect 0 fullctx) in
+         let rec fixsubst i acc l =
+           match l with
+           | (p', prog') :: rest ->
+              (match p'.program_rec_annot with
+              | Some (Nested, lid) ->
+                let idx = struct_index lid p'.program_sign in
+                let fixb = (Array.make 1 idx, 0) in
+                let fixna = Array.make 1 (Name p'.program_id) in
+                let fixty = Array.make 1 (it_mkProd_or_LetIn p'.program_arity p'.program_sign) in
+                let fixbody =
+                  Vars.lift 1 (* lift over itself *)
+                       (mkApp (mkConst prog'.program_cst,
+                               rel_vect (List.length p'.program_sign) (List.length mutual)))
+                in
+                (** Apply to itself *)
+                let fixbody = mkApp (fixbody, rel_vect (List.length p'.program_sign) 1) in
+                (** Apply to its arguments *)
+                let fixbody = mkApp (fixbody, extended_rel_vect 0 p'.program_sign) in
+                let fixbody = it_mkLambda_or_LetIn fixbody p'.program_sign in
+                let term = mkFix (fixb, (fixna, fixty, Array.make 1 fixbody)) in
+                fixsubst i (term :: acc) rest
+              | _ -> fixsubst (pred i) (mkRel i :: acc) rest)
+           | [] -> List.rev acc
+         in
+         let body = mkApp (body, Array.of_list (fixsubst (List.length mutual) [] l)) in
+         let body = mkApp (Vars.lift (List.length p.program_sign) body,
+                           extended_rel_vect 0 p.program_sign) in
          let body = it_mkLambda_or_LetIn body p.program_sign in
          na, ty, body
        in
-       let blockl = List.map blockfn l in
+       let blockl = List.map blockfn mutual in
        let names, tys, bodies = List.split3 blockl in
        Array.of_list names, Array.of_list tys, Array.of_list bodies
      in
-     let declare_fn i (p,prog) =
-       let fix = mkFix ((structargs, i), decl) in
+     let declare_fix_fns i (p,prog) =
+       if not (is_nested p) then
+         let fix = mkFix ((structargs, i), decl) in
+         let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
+         let kn =
+           declare_constant p.program_id fix (Some ty) flags.polymorphic
+                            !evd (IsDefinition Fixpoint)
+         in
+         let prog' = { prog with program_cst = kn } in
+         (p, prog')
+       else (p,prog)
+     in
+     let fixes = List.mapi declare_fix_fns l in
+     let nested, mutual = List.partition (fun (p,prog) -> is_nested p) fixes in
+     let declare_nested (p,prog) =
        let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
-       let kn =
-         declare_constant p.program_id fix (Some ty) flags.polymorphic
-                          !evd (IsDefinition Fixpoint)
+       let idx =
+         match p.program_rec_annot with
+         | Some (Nested, lid) -> struct_index lid p.program_sign
+         | _ -> (List.length p.program_sign) - 1
        in
+       let body =
+         let body = e_new_global evd (ConstRef prog.program_cst) in
+         let body = mkApp (body,
+                           Array.map_of_list (fun (p',prog') ->
+                               if p'.program_id = p.program_id then
+                                 mkRel 1
+                               else
+                                 e_new_global evd (ConstRef prog'.program_cst)) fixes) in
+         let body = mkApp (Vars.lift (List.length p.program_sign) body,
+                           extended_rel_vect 0 p.program_sign) in
+         let fixbody = it_mkLambda_or_LetIn body p.program_sign in
+         let fixb = (Array.make 1 idx, 0) in
+         let fixna = Array.make 1 (Name p.program_id) in
+         let fixty = Array.make 1 (it_mkProd_or_LetIn p.program_arity p.program_sign) in
+         mkFix (fixb, (fixna, fixty, Array.make 1 fixbody))
+       in
+       let kn = declare_constant p.program_id body (Some ty) flags.polymorphic
+                                 !evd (IsDefinition Fixpoint) in
        let prog' = { prog with program_cst = kn } in
        (p, prog')
      in
-     let l' = List.mapi declare_fn l in
-     let env = Global.env () in (* side-effect: refresh env with global decls *)
-     let () = evd := Evd.from_env env in
-     let fixdecls =
-       let fn fixprot (p, prog) =
-         let f = fst (Universes.unsafe_constr_of_global (ConstRef prog.program_cst)) in
-         of_tuple (Name p.program_id, Some f, fixprot)
-       in
-       List.rev (List.map2 fn fixprots l')
-     in
-     let newsplits = List.map (fun (p, prog as x) -> p, prog, newsplits env fixdecls x) l' in
-     principles env newsplits
+     let nested = List.map declare_nested nested in
+     mutual @ nested
+     
   
 let define_by_eqs opts eqs nt =
   let with_comp, with_rec, with_eqns, with_ind =
@@ -308,14 +380,13 @@ let define_by_eqs opts eqs nt =
       not (try_bool_opt (OComp true)), irec,
       try_bool_opt (OEquations false), try_bool_opt (OInd false)
   in
-  (* TODO Uncomment this line. For now, it makes some tests fail. *)
   let with_comp = with_comp && not !Equations_common.ocaml_splitting in
   let env = Global.env () in
   let poly = Flags.is_universe_polymorphism () in
   let flags = { polymorphic = poly; with_eqns; with_ind } in
   let evd = ref (Evd.from_env env) in
-  let recids = List.map (fun (((loc,i),_,_),_) -> i, None) eqs in
-  let interp_arities (((loc,i),l,t),eqs) =
+  let recids = List.map (fun (((loc,i),nested,_,_),_) -> i, nested, None) eqs in
+  let interp_arities (((loc,i),rec_annot,l,t),_) =
     let ienv, ((env', sign), impls) = interp_context_evars env evd l in
     let arity = interp_type_evars env' evd t in
     let sign = nf_rel_context_evar ( !evd) sign in
@@ -350,6 +421,7 @@ let define_by_eqs opts eqs nt =
          program_sign = sign;
          program_oarity = oarity;
          program_arity = oarity;
+         program_rec_annot = rec_annot;
          program_rec = None;
          program_impls = impls }
     | Some b ->
@@ -385,6 +457,7 @@ let define_by_eqs opts eqs nt =
          program_sign = sign;
          program_oarity = oarity;
          program_arity = compapp;
+         program_rec_annot = rec_annot;
          program_rec = is_recursive;
          program_impls = impls }
   in
@@ -460,8 +533,9 @@ let define_by_eqs opts eqs nt =
     if CArray.for_all (fun x -> not (Option.is_empty x)) progs then
       (let fixprots = List.map (nf_evar !evd) fixprots in
        let progs = Array.map_to_list (fun x -> Option.get x) progs in
+       let progs' = define_mutual_nested flags progs in
        if flags.with_eqns || flags.with_ind then
-         define_principles flags fixprots progs)
+         define_principles flags fixprots progs')
   in
   let idx = ref 0 in
   let define_tree p split =
@@ -479,7 +553,7 @@ let with_rollback f x =
   States.with_state_protection_on_exception f x
 
 let equations opts eqs nt =
-  List.iter (fun (((loc, i), l, t),eqs) -> Dumpglob.dump_definition (loc, i) false "def") eqs;
+  List.iter (fun (((loc, i), nested, l, t),eqs) -> Dumpglob.dump_definition (loc, i) false "def") eqs;
   define_by_eqs opts eqs nt
 
 let solve_equations_goal destruct_tac tac gl =
