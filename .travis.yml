@@ -1,0 +1,37 @@
+dist: trusty
+sudo: required
+language: c
+cache:
+  apt: true
+  directories:
+  - $HOME/.opam
+
+addons:
+  apt:
+    sources:
+    - avsm
+    packages:
+    - opam
+    - aspcud
+    - gcc-multilib
+
+env:
+  global:
+  - NJOBS=2
+  # system is == 4.02.3
+  - COMPILER="system"
+  - CAMLP5_VER="6.14"
+  - FINDLIB_VER="1.4.1"
+  - NATIVE_COMP="yes"
+  - COQ_VER="8.7.0"
+
+install:
+- opam init -j ${NJOBS} --compiler=${COMPILER} -n -y
+- eval $(opam config env)
+- opam config list
+- opam install -j ${NJOBS} -y camlp5.${CAMLP5_VER} ocamlfind.${FINDLIB_VER} coq.${COQ_VER}
+- opam list
+
+script:
+ - coq_makefile -f _CoqProject -o Makefile && make all examples
+ - cd test-suite && coq_makefile -f _CoqProject -o Makefile && make
