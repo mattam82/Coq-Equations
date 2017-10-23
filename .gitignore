@@ -1,6 +1,6 @@
 *.d
 *.vo
-Makefile
+/Makefile
 *.bak
 *.cm*
 *.o
