@@ -1065,7 +1065,7 @@ let find_empty env delta =
   let r = List.filter (fun v -> 
     match split_var env v delta with
     | None -> false
-    | Some (v, _, r) -> Array.for_all (fun x -> x == None) r)
+    | Some (v, _, r) -> CArray.for_all (fun x -> x == None) r)
     (CList.init (List.length delta) succ)
   in match r with x :: _ -> Some x | _ -> None
     

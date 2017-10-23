@@ -438,7 +438,7 @@ let define_by_eqs opts eqs nt =
                           program_split = split;
                           program_split_info = info } in
     progs.(i) <- Some (p, compiled_info);
-    if Array.for_all (fun x -> not (Option.is_empty x)) progs then
+    if CArray.for_all (fun x -> not (Option.is_empty x)) progs then
       (let fixprots = List.map (nf_evar !evd) fixprots in
        let progs = Array.map_to_list (fun x -> Option.get x) progs in
        if flags.with_eqns || flags.with_ind then
