@@ -221,8 +221,8 @@ PRINTED BY pr_sort_family
 END
 
 VERNAC COMMAND EXTEND Equations_Logic CLASSIFIED AS QUERY
-| [ "Equations" "Logic" sort_family(s) global(eq) global(eqr) global(z) global(o) global(ov)
-    global(eq_case) global(eq_elim) ] -> [
+| [ "Equations" "Logic" sort_family(s) global(eq) global(eqr) global(eq_case) global(eq_elim)
+                global(z) global(o) global(ov) ] -> [
   let gr x = Lazy.from_val (Nametab.global x) in
   Equations_common.(set_logic { logic_eq_ty = gr eq;
 				logic_eq_refl = gr eqr;
