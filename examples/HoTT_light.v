@@ -20,7 +20,7 @@ Polymorphic Definition transport_dep_r (A : Type) (x : A) (P : forall y : A, y =
   P x id_refl → ∀ (y : A) (e : y = x), P y e.
 Proof. intros Px y e. destruct e. apply Px. Defined.
 
-Equations Logic Type Id Id_rect Empty unit tt Id_rect_r Id_rect_dep_r.
+Equations Logic Type Id Id_rect Id_rect_r Id_rect_dep_r Empty unit tt.
 
 Set Implicit Arguments.
 
