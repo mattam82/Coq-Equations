@@ -2,7 +2,7 @@ Require Import Equations.
 Require Import HoTT_light.
 Set Universe Polymorphism.
 
-Equations Logic Type Id Id_rect Empty unit tt.
+Equations Logic Type Id id_refl Id_rect Id_rect_dep_r Empty unit tt.
 
 Import IdNotations.
 
