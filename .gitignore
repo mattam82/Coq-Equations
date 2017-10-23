@@ -27,3 +27,5 @@ Makefile
 /examples/.nia.cache
 docs/.sass-cache/
 docs/_site
+/examples/*.tex
+/examples/coqdoc.sty
