@@ -1056,7 +1056,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
                                (Vernacexpr.{hint_priority = Some 0; hint_pattern = None},
                                 impossible_call_tac (Globnames.ConstRef cst))));
 	eqns.(pred i) <- true;
-	if Array.for_all (fun x -> x) eqns then (
+	if CArray.for_all (fun x -> x) eqns then (
 	  (* From now on, we don't need the reduction behavior of the constant anymore *)
 	  Typeclasses.set_typeclass_transparency (EvalConstRef cst) false false;
           (match alias with
