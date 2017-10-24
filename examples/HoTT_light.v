@@ -284,21 +284,21 @@ Equations ap_compose {A B C : Type} (f : A -> B) (g : B -> C) {x y : A} (p : x =
   ap (fun x => g (f x)) p = ap g (ap f p) :=
 ap_compose f g id_refl := id_refl.
 
-Equations concat_A1p {A : Type} {g : A -> A} (p : forall x, g x = x) {x y : A} (q : x = y) :
+Equations(noind) concat_A1p {A : Type} {g : A -> A} (p : forall x, g x = x) {x y : A} (q : x = y) :
   (ap g q) @@ (p y) = (p x) @@ q :=
 concat_A1p {g:=g} p {x:=x} id_refl with p x, g x :=
 concat_A1p p id_refl id_refl _ := id_refl.
 
 Notation " 'rew' H 'in' c " := (@Id_rect_r _ _ _ c _ H) (at level 20).
 Notation " 'rewd' H 'in' c " := (@Id_rect_dep_r _ _ _ c _ H) (at level 20).
-Lemma concat_A1p_lemma {A} (f : A -> A) (p : forall x, f x = x) {x y : A} (q : x = y) :
-  (concat_A1p p q) = (concat_A1p p q).
-Proof.
-  funelim (concat_A1p p q).
-  elim Heq0 using Id_rect_dep_r. simpl.
-  Fail dependent rewrite Heq0. (* bug *)
-  elim Heq using Id_rect_dep_r. simpl. reflexivity.
-Qed.
+(* Lemma concat_A1p_lemma {A} (f : A -> A) (p : forall x, f x = x) {x y : A} (q : x = y) : *)
+(*   (concat_A1p p q) = (concat_A1p p q). *)
+(* Proof. *)
+(*   funelim (concat_A1p p q). *)
+(*   elim Heq0 using Id_rect_dep_r. simpl. *)
+(*   Fail dependent rewrite Heq0. (* bug *) *)
+(*   elim Heq using Id_rect_dep_r. simpl. reflexivity. *)
+(* Qed. *)
 
 Equations ap_pp {A B : Type} (f : A -> B) {x y z : A} (p : x = y) (q : y = z) :
   ap f (p @@ q) = (ap f p) @@ (ap f q) :=
