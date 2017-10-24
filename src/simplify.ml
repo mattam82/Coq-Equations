@@ -782,12 +782,14 @@ let infer_step ~(loc:Loc.t) ~(isSol:bool)
       in
       let check_construct t =
         let f, _ = Term.decompose_app t in
+        let env = Environ.push_rel_context ctx env in
         let f = Tacred.hnf_constr env !evd f in
           Term.isConstruct f
       in
       (* FIXME What is the correct order here? Should we first check if we
        * have K directly? *)
-      if Constr.equal tu tv then Deletion false (* Never force K. *)
+      if Evarutil.evd_comb2 (Reductionops.infer_conv (Environ.push_rel_context ctx env)) evd tu tv then
+        Deletion false (* Never force K. *)
       else if check_ind tA && check_construct tu && check_construct tv then
         NoConfusion [loc, Infer_many]
       else
