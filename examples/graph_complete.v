@@ -2,7 +2,7 @@ Require Import Equations.
 Require Import HoTT_light.
 Set Universe Polymorphism.
 
-Equations Logic Type Id id_refl Id_rect Id_rect_dep_r Empty unit tt.
+Equations Logic Type Id id_refl Id_rect Id_rect_dep_r Empty unit tt prod pair.
 
 Import IdNotations.
 
@@ -10,6 +10,9 @@ Derive Signature for Id.
 
 Equations neg (b : bool) : bool :=
   neg true := false; neg false := true.
+
+Scheme neg_ind_rec := Minimality for neg_ind Sort Set.
+Scheme neg_ind_rect_dep := Induction for neg_ind Sort Type.
 
 Definition neg_fib (x : bool) := &{ a : bool & neg_ind a x }.
 
@@ -25,7 +28,7 @@ Proof.
   red.
 
   - intros [x [res Hind]]. simpl.
-    induction Hind; simpl; reflexivity.
+    induction Hind using neg_ind_rect_dep; simpl; reflexivity.
 
   - intros [res [arg Heq]]. simpl.
     destruct Heq; simpl.
@@ -38,4 +41,3 @@ Proof.
     intros [res [arg Heq]]. destruct Heq. 
     destruct arg. simpl. reflexivity. simpl. reflexivity.
 Qed.
-

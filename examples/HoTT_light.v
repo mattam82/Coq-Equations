@@ -20,7 +20,7 @@ Polymorphic Definition transport_dep_r (A : Type) (x : A) (P : forall y : A, y =
   P x id_refl → ∀ (y : A) (e : y = x), P y e.
 Proof. intros Px y e. destruct e. apply Px. Defined.
 
-Equations Logic Type Id Id_rect Id_rect_r Id_rect_dep_r Empty unit tt.
+Equations Logic Type Id Id_rect Id_rect_r Id_rect_dep_r Empty unit tt prod pair.
 
 Set Implicit Arguments.
 
@@ -296,7 +296,7 @@ Lemma concat_A1p_lemma {A} (f : A -> A) (p : forall x, f x = x) {x y : A} (q : x
 Proof.
   funelim (concat_A1p p q).
   elim Heq0 using Id_rect_dep_r. simpl.
-  Fail rewrite Heq0. (* bug *)
+  Fail dependent rewrite Heq0. (* bug *)
   elim Heq using Id_rect_dep_r. simpl. reflexivity.
 Qed.
 
