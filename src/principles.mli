@@ -3,6 +3,11 @@
 type statement = Term.constr * Term.types option
 type statements = statement list
 
+type node_kind =
+  | Regular
+  | Refine
+  | Where
+
 val pi1 : 'a * 'b * 'c -> 'a
 val pi2 : 'a * 'b * 'c -> 'b
 val match_arguments : Term.constr array -> Term.constr array -> int list
@@ -38,23 +43,7 @@ val ind_elim_tac :
   Proof_type.goal Evd.sigma -> Proof_type.goal list Evd.sigma
 val type_of_rel :
   Term.constr -> Equations_common.rel_declaration list -> Constr.constr
-val compute_elim_type :
-  Environ.env ->
-  Equations_common.esigma ->
-  Syntax.rec_type option ->
-  ((Term.constr * int list) * (Term.constr * int list) option * int *
-   Term.constr)
-  list ->
-  Names.mutual_inductive ->
-  int ->
-  (int *
-   ('a * 'b * Evar.t list * Equations_common.rel_declaration list *
-    Constr.constr * Term.constr list * (Constr.constr * int) list *
-    (bool * 'c)) *
-   'd)
-  list ->
-  (bool * 'e * 'f * 'g) list ->
-  Context.Rel.t -> Constr.constr -> Term.types -> int * Term.types
+
 val replace_vars_context :
   Names.Id.t list ->
   Equations_common.rel_declaration list ->

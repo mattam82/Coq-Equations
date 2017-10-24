@@ -646,13 +646,12 @@ Theorem poly_of_formula_eval :
     eval (poly_of_formula f).2 (Vector.map (fun x : bool => if x then 1%Z else 0%Z) v).
 (* begin hide *)
 Proof.
-  depind f; intros;
-    autorewrite with eval_formula poly_of_formula eval in *.
+  intros. funelim (poly_of_formula f); intros;
+    autorewrite with eval_formula poly_of_formula eval in *; trivial.
   - erewrite Vector.nth_map; auto.
-  - destruct b; autorewrite with eval; auto.
-  - rewrite <- IHf1, <- IHf2; destruct (eval_formula (Vector.nth v) f1); destruct (eval_formula (Vector.nth v) f2); auto.
-  - rewrite <- IHf1, <- IHf2; destruct (eval_formula (Vector.nth v) f1); destruct (eval_formula (Vector.nth v) f2); auto.
-  - rewrite <- IHf; destruct (eval_formula (Vector.nth v) f); auto.
+  - rewrite <- H, <- H0; destruct (eval_formula (Vector.nth v) f); destruct (eval_formula (Vector.nth v) f0); auto.
+  - rewrite <- H, <- H0; destruct (eval_formula (Vector.nth v) f1); destruct (eval_formula (Vector.nth v) f2); auto.
+  - rewrite <- H; destruct (eval_formula (Vector.nth v) f3); auto.
 Qed.
 (* end hide *)
 
