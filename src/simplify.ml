@@ -344,15 +344,15 @@ let check_equality sigma ?(equal_terms : bool = false)
   let tx, ty = args.(1), args.(2) in
   if equal_terms && not (EConstr.eq_constr sigma tx ty) then
     raise (CannotSimplify (str
-      "The first hypothesis in the goal is not an equality\
+      "The first hypothesis in the goal is not an equality \
        between identical terms."));
   if var_left && not (EConstr.isRel sigma tx) then
     raise (CannotSimplify (str
-      "The left-hand side of the first hypothesis in the goal is\
+      "The left-hand side of the first hypothesis in the goal is \
        not a variable."));
   if var_right && not (EConstr.isRel sigma ty) then
     raise (CannotSimplify (str
-      "The right-hand side of the first hypothesis in the goal is\
+      "The right-hand side of the first hypothesis in the goal is \
        not a variable."));
   tA, tx, ty
 
