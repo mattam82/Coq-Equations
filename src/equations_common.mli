@@ -178,6 +178,8 @@ type logic = {
   logic_zero : logic_ref;
   logic_one : logic_ref;
   logic_one_val : logic_ref;
+  logic_product : logic_ref;
+  logic_pair : logic_ref;
   (* logic_sigma : logic_ref; *)
   (* logic_pair : logic_ref; *)
   (* logic_fst : logic_ref; *)
@@ -186,6 +188,7 @@ type logic = {
 
 val set_logic : logic -> unit
 val prop_logic : logic
+val type_logic : logic
 
 val get_sort : unit -> Term.sorts_family
 val get_eq : unit -> Globnames.global_reference

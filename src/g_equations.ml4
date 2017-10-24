@@ -222,7 +222,7 @@ END
 
 VERNAC COMMAND EXTEND Equations_Logic CLASSIFIED AS QUERY
 | [ "Equations" "Logic" sort_family(s) global(eq) global(eqr) global(eq_case) global(eq_elim)
-                global(z) global(o) global(ov) ] -> [
+                global(z) global(o) global(ov) global(oprod) global(opair) ] -> [
   let gr x = Lazy.from_val (Nametab.global x) in
   Equations_common.(set_logic { logic_eq_ty = gr eq;
 				logic_eq_refl = gr eqr;
@@ -231,7 +231,10 @@ VERNAC COMMAND EXTEND Equations_Logic CLASSIFIED AS QUERY
 				logic_sort = s;
 				logic_zero = gr z;
 				logic_one = gr o;
-				logic_one_val = gr ov})
+				logic_one_val = gr ov;
+                                logic_product = gr oprod;
+                                logic_pair = gr opair;
+  })
   ]
 END
 

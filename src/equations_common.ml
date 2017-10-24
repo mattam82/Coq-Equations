@@ -241,6 +241,8 @@ let coq_fix_proto = lazy (init_reference ["Equations";"Init"] "fixproto")
 let coq_Empty = lazy (init_reference ["Equations";"Init"] "Empty")
 let coq_Id = lazy (init_reference ["Equations";"Init"] "Id")
 let coq_Id_refl = lazy (init_reference ["Equations";"Init"] "id_refl")
+let coq_Id_case = lazy (init_reference ["Equations";"DepElim"] "Id_rect_r")
+let coq_Id_elim = lazy (init_reference ["Equations";"DepElim"] "Id_rect_dep_r")
 			 
 
 type logic_ref = Globnames.global_reference lazy_t
@@ -254,6 +256,8 @@ type logic = {
   logic_zero : logic_ref;
   logic_one : logic_ref;
   logic_one_val : logic_ref;
+  logic_product : logic_ref;
+  logic_pair : logic_ref;
   (* logic_sigma : logic_ref; *)
   (* logic_pair : logic_ref; *)
   (* logic_fst : logic_ref; *)
@@ -265,13 +269,19 @@ let prop_logic =
     logic_eq_case = coq_eq_case; logic_eq_elim = coq_eq_elim;
     logic_sort = InProp; logic_zero = coq_False;
     logic_one = coq_True; logic_one_val = coq_I;
+    logic_product = lazy (Coqlib.coq_reference "product" ["Init";"Logic"] "and");
+    logic_pair = lazy (Coqlib.coq_reference "product" ["Init";"Logic"] "conj");
   }
   
-(* let type_logic = *)
-(*   { logic_eq_ty = coq_Id; logic_eq_refl = coq_Id_refl; logic_sort = InType; *)
-(*     logic_zero = coq_Empty; logic_one = coq_unit; logic_one_val = coq_tt; *)
-(*     logic_eq_case = } *)
-  
+let type_logic =
+  { logic_eq_ty = coq_Id; logic_eq_refl = coq_Id_refl;
+    logic_eq_case = coq_Id_case;
+    logic_eq_elim = coq_Id_elim;
+    logic_sort = InType;
+    logic_zero = coq_Empty; logic_one = coq_unit; logic_one_val = coq_tt;
+    logic_product = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "prod");
+    logic_pair = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "pair") }
+
 let logic = ref prop_logic
 	     
 let set_logic l = logic := l
