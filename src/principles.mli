@@ -4,6 +4,11 @@ open EConstr
 type statement = constr * types option
 type statements = statement list
 
+type node_kind =
+  | Regular
+  | Refine
+  | Where
+
 val pi1 : 'a * 'b * 'c -> 'a
 val pi2 : 'a * 'b * 'c -> 'b
 val match_arguments : Evd.evar_map -> constr array -> constr array -> int list
@@ -47,13 +52,16 @@ val compute_elim_type :
   list ->
   Names.mutual_inductive ->
   int ->
-  (int *
-   ('a * 'b * Evar.t list * Equations_common.rel_declaration list *
-    constr * constr list * (constr * int) list *
-    (bool * 'c)) *
-   'd)
-  list ->
-  (bool * 'e * 'f * 'g) list ->
+         (int *
+          ((EConstr.constr * int list) *
+           ((EConstr.constr * int list) * Names.Id.t * Covering.splitting)
+           option * Covering.path * EConstr.rel_context * EConstr.types *
+           EConstr.constr list * (EConstr.constr * int) list * (node_kind * bool)) *
+          (int *
+           (bool * unit Proofview.tactic * EConstr.t * EConstr.constr option))
+          list)
+         list ->
+  (node_kind * 'e * 'f * 'g) list ->
   rel_context -> constr -> types -> int * types
 val replace_vars_context :
   Names.Id.t list ->
