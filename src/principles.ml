@@ -223,42 +223,70 @@ let clear_ind_assums sigma ind ctx =
 
 let unfold s = to82 (Tactics.unfold_in_concl [Locus.AllOccurrences, s])
 
-let ind_elim_tac indid inds info gl =
-  let open Tactics in
-  let open Tacticals in
-  let open Tacmach in
-  let eauto = Class_tactics.typeclasses_eauto [info.base_id; "funelim"] in
-  let prove_methods c gl =
-    let sigma, _ = Typing.type_of (pf_env gl) (project gl) c in
-    tclTHENLIST [to82 (Proofview.Unsafe.tclEVARS sigma);
-                 Proofview.V82.of_tactic (Tactics.apply c);
-                 to82 simpl_in_concl;
-                 to82 (eauto ~depth:None)] gl
+let rec mk_app_holes env sigma = function
+| [] -> (sigma, [])
+| decl :: rem ->
+  let (sigma, arg) = Evarutil.new_evar env sigma (get_type decl) in
+  let (sigma, rem) = mk_app_holes env sigma (subst_rel_context 0 [arg] rem) in
+  (sigma, arg :: rem)
+
+let observe_tac s t = of82 (observe s (to82 t))
+
+let ind_elim_tac indid inds info ind_fun =
+  let open Proofview in
+  let open Notations in
+  let open Tacticals.New in
+  let eauto = Class_tactics.typeclasses_eauto ["funelim"; info.base_id] in
+  let prove_methods c =
+    Proofview.Goal.enter (fun gl ->
+        let sigma, _ = Typing.type_of (Goal.env gl) (Goal.sigma gl) c in
+        tclTHENLIST [Proofview.Unsafe.tclEVARS sigma;
+                     Tactics.apply c;
+                     Tactics.simpl_in_concl;
+                     eauto ~depth:None])
   in
-  let rec applyind leninds args gl =
-    match leninds, kind (project gl) (pf_concl gl) with
+  let rec applyind leninds args =
+    Proofview.Goal.enter (fun gl ->
+    let env = Goal.env gl in
+    let sigma = Goal.sigma gl in
+    match leninds, kind sigma (Goal.concl gl) with
     | 0, _ ->
-       (* if inds == 1 then *)
-         tclTHENLIST [to82 simpl_in_concl; to82 intros;
- 	              prove_methods (Reductionops.nf_beta (project gl) (applistc indid (List.rev args)))] gl
-       (* else *)
-       (*   let appelim = *)
-       (*     let app = applistc indid (List.rev args) in *)
-       (*     let sigma, ty = Typing.type_of (pf_env gl) (project gl) c in *)
-       (*     let ctx, concl = decompose_prod_assum (project gl) ty in *)
-       (*   in *)
-       (*   tclTHENLIST [to82 simpl_in_concl; *)
+       if inds == 1 then
+         tclTHENLIST [Tactics.simpl_in_concl; Tactics.intros;
+                      prove_methods (Reductionops.nf_beta (Goal.sigma gl)
+                                                          (applistc indid (List.rev args)))]
+       else
+         let app = applistc indid (List.rev args) in
+         let sigma, ty = Typing.type_of env sigma app in
+         let ctx, concl = decompose_prod_assum sigma ty in
+         let mkapp env sigma =
+           let sigma, args = mk_app_holes env sigma ctx in
+           (sigma, applist (app, List.rev args))
+         in
+         Tactics.simpl_in_concl <*> Tactics.intros <*>
+           Tactics.cut concl <*>
+           tclDISPATCH
+             [tclONCE (Tactics.intro <*>
+                         observe_tac "finish using induction principle"
+                                     (pf_constr_of_global ind_fun >>= Tactics.pose_proof Anonymous <*>
+                                        eauto ~depth:None));
+              tclONCE
+                (observe_tac "refining"
+                             (Proofview.Goal.enter (fun gl ->
+                                  Refine.refine ~typecheck:false (mkapp (Goal.env gl))) <*>
+                                Tactics.simpl_in_concl <*> eauto ~depth:None))]
+
+
     | _, LetIn (_, b, _, t') ->
-	tclTHENLIST [Proofview.V82.of_tactic (convert_concl_no_check (subst1 b t') DEFAULTcast);
-		     applyind (pred leninds) (b :: args)] gl
+       tclTHENLIST [Tactics.convert_concl_no_check (subst1 b t') DEFAULTcast;
+                    applyind (pred leninds) (b :: args)]
     | _, Prod (_, _, t') ->
-	tclTHENLIST [to82 intro; 
-              onLastHypId (fun id -> applyind (pred leninds) (mkVar id :: args))] gl
-    | _, _ -> assert false
+        tclTHENLIST [Tactics.intro;
+                     onLastHypId (fun id -> applyind (pred leninds) (mkVar id :: args))]
+    | _, _ -> assert false)
   in
-  try applyind inds [] gl
-  with e -> tclFAIL 0 (Pp.str"exception") gl
-	     
+  try applyind inds []
+  with e -> tclFAIL 0 (Pp.str"exception")
 
 let type_of_rel t ctx =
   match kind_of_term t with
@@ -682,13 +710,6 @@ let update_split env evd is_rec f prob recs split =
     split', !where_map
   | _ -> split, !where_map
 
-type equations_info = {
- equations_id : Names.Id.t;
- equations_where_map : Principles_proofs.where_map;
- equations_f : Constr.constr;
- equations_prob : Covering.context_map;
- equations_split : Covering.splitting }
-
 let computations env evd alias refine eqninfo =
   let { equations_prob = prob;
         equations_where_map = wheremap;
@@ -845,7 +866,7 @@ let declare_funelim info env evd is_rec protos ind_stmts all_stmts sign app subs
     let poly = is_polymorphic info in
     ignore(Equations_common.declare_instance instid poly evd [] cl args)
   in
-  let tactic = of82 (ind_elim_tac elimc leninds info) in
+  let tactic = ind_elim_tac elimc leninds info indgr in
   let _ = e_type_of (Global.env ()) evd newty in
   ignore(Obligations.add_definition (Nameops.add_suffix id "_elim")
 	                            ~tactic ~hook:(Lemmas.mk_hook hookelim) ~kind:info.decl_kind
@@ -860,7 +881,8 @@ let mkConj evd sort x y =
   in
     mkApp (prod, [| x; y |])
 
-let declare_funind info alias env evd is_rec protos ind_stmts all_stmts sign inds kn comb f split ind =
+let declare_funind info alias env evd is_rec protos progs
+                   ind_stmts all_stmts sign inds kn comb f split ind =
   let poly = is_polymorphic info.term_info in
   let id = Id.of_string info.term_info.base_id in
   let indid = Nameops.add_suffix id "_ind_fun" in
@@ -930,7 +952,7 @@ let declare_funind info alias env evd is_rec protos ind_stmts all_stmts sign ind
              ~hook:(Lemmas.mk_hook hookind)
              ~kind:info.term_info.decl_kind
              indid (to_constr !evd statement)
-             ~tactic:(of82 (ind_fun_tac is_rec (to_constr !evd f) info id split unfsplit)) ctx [||])
+             ~tactic:(ind_fun_tac is_rec (to_constr !evd f) info id split unfsplit progs) ctx [||])
   with e ->
     Feedback.msg_warning Pp.(str "Induction principle could not be proved automatically: " ++ fnl () ++
 		             CErrors.print e)
@@ -1133,7 +1155,8 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
 	inds
     in
     let info = { term_info = info; pathmap = !fnind_map; wheremap } in
-    declare_funind info alias env evd is_rec protos ind_stmts all_stmts sign inds kn comb
+    declare_funind info alias env evd is_rec protos progs
+                   ind_stmts all_stmts sign inds kn comb
                    (of_constr f) split ind
   in
   let () = evd := Evd.nf_constraints !evd in

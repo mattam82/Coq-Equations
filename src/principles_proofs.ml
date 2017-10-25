@@ -50,6 +50,13 @@ end
 
 type where_map = (constr * Names.Id.t * splitting) Evar.Map.t
 
+type equations_info = {
+ equations_id : Names.Id.t;
+ equations_where_map : where_map;
+ equations_f : Constr.constr;
+ equations_prob : Covering.context_map;
+ equations_split : Covering.splitting }
+
 type ind_info = {
   term_info : term_info;
   pathmap : (Names.Id.t * Constr.t list) PathMap.t; (* path -> inductive name *)
@@ -112,7 +119,89 @@ let autorewrite_one b =
           else tac)
          (fun e -> if !debug then Feedback.msg_debug (str"failed"); aux rules)
   in Proofview.V82.of_tactic (aux rew_rules)
-                  
+
+(** fix generalization *)
+
+let rec mk_holes env sigma = function
+| [] -> (sigma, [])
+| arg :: rem ->
+  let (sigma, arg) = Evarutil.new_evar env sigma arg in
+  let (sigma, rem) = mk_holes env sigma rem in
+  (sigma, arg :: rem)
+
+let rec check_mutind env sigma k cl = match EConstr.kind sigma (Termops.strip_outer_cast sigma cl) with
+| Prod (na, c1, b) ->
+  if Int.equal k 1 then
+    try
+      let ((sp, _), u), _ = Inductiveops.find_inductive env sigma c1 in
+      (sp, u)
+    with Not_found -> error "Cannot do a fixpoint on a non inductive type."
+  else
+    check_mutind (push_rel (Context.Rel.Declaration.LocalAssum (na, c1)) env) sigma (pred k) b
+| LetIn (na, c1, t, b) ->
+    check_mutind (push_rel (Context.Rel.Declaration.LocalDef (na, c1, t)) env) sigma k b
+| _ -> CErrors.user_err (str"Not enough products in " ++ print_constr_env env sigma cl)
+
+open Context.Named.Declaration
+(* Refine as a fixpoint *)
+let mutual_fix l =
+  let open Proofview in
+  let open Notations in
+  let mfix env sigma gls =
+    let types = List.map (fun ev -> EConstr.of_constr (Evd.evar_concl (Evd.find sigma ev))) gls in
+    let li = List.mapi (fun i ev -> match Evd.evar_ident ev sigma with
+                                     | Some id -> id
+                                     | None -> Id.of_string ("fix_" ^ string_of_int i)) gls in
+    let () =
+      let lenid = List.length li in
+      let lenidxs = List.length l in
+      let lengoals = List.length types in
+      if not (Int.equal lenid lenidxs && Int.equal lenid lengoals) then
+        CErrors.user_err ~hdr:"mfix"
+                         (str "Cannot apply mutual fixpoint, invald arguments: " ++
+                            int lenid ++ str" names, " ++
+                            int lenidxs ++ str" indices and " ++
+                            int lengoals ++ str" subgoals.")
+    in
+    let all = CList.map3 (fun id n ar -> (id,n,ar)) li l types in
+    let (_, n, ar) = List.hd all in
+    let (sp, u) = check_mutind env sigma n ar in
+    let rec mk_sign sign = function
+      | [] -> sign
+      | (f, n, ar) :: oth ->
+         let (sp', u')  = check_mutind env sigma n ar in
+         if not (eq_mind sp sp') then
+           error "Fixpoints should be on the same mutual inductive declaration.";
+         if Termops.mem_named_context_val f sign then
+           CErrors.user_err ~hdr:"Logic.prim_refiner"
+                    (str "Name " ++ pr_id f ++ str " already used in the environment");
+         mk_sign (push_named_context_val (LocalAssum (f, ar)) sign) oth
+    in
+    let sign = mk_sign (Environ.named_context_val env) all in
+    let idx = Array.map_of_list pred l in
+    let nas = Array.map_of_list (fun id -> Name id) li in
+    let body = ref (fun i -> assert false) in
+    let one_body =
+      Refine.refine ~typecheck:false
+      (fun sigma ->
+        let (sigma, evs) = mk_holes (Environ.reset_with_named_context sign env) sigma types in
+        let evs = Array.map_of_list (Vars.subst_vars (List.rev li)) evs in
+        let types = Array.of_list types in
+        let decl = (nas,types,evs) in
+        let () = body := (fun i -> mkFix ((idx,i),decl)) in
+        sigma, !body 0)
+    in
+    let other_body i =
+      Refine.refine ~typecheck:false
+      (fun sigma -> sigma, !body (succ i))
+    in
+    tclDISPATCH (one_body :: List.init (Array.length idx - 1) other_body)
+  in
+  tclENV >>= fun env ->
+  tclEVARMAP >>= fun sigma ->
+  Unsafe.tclGETGOALS >>= mfix env sigma
+
+
 let find_helper_arg info f args =
   let (ev, arg, id) = find_helper_info info f in
     ev, args.(arg)
@@ -308,13 +397,14 @@ let rec aux_ind_fun info chop unfs unfids = function
 
   | Mapping (_, s) -> aux_ind_fun info chop unfs unfids s
 
-let ind_fun_tac is_rec f info fid split unfsplit =
-  if is_structural is_rec then
+let ind_fun_tac is_rec f info fid split unfsplit progs =
+  match is_rec with
+  | Some (Structural [_]) ->
     let c = constant_value_in (Global.env ()) (Term.destConst f) in
     let i = let (inds, _), _ = Term.destFix c in inds.(0) in
     let recid = add_suffix fid "_rec" in
       (* tclCOMPLETE  *)
-      (tclTHENLIST
+      of82 (tclTHENLIST
 	  [to82 (set_eos_tac ()); to82 (fix (Some recid) (succ i));
 	   onLastDecl (fun decl gl ->
              let (n,b,t) = to_named_tuple decl in
@@ -326,9 +416,23 @@ let ind_fun_tac is_rec f info fid split unfsplit =
 	     in
 	     Proofview.V82.of_tactic
 	       (change_in_hyp None fixprot (n, Locus.InHyp)) gl);
-	   to82 intros; aux_ind_fun info 0 None [] split])
-  else tclCOMPLETE (tclTHENLIST
-      [to82 (set_eos_tac ()); to82 intros; aux_ind_fun info 0 unfsplit [] split])
+           to82 intros; aux_ind_fun info 0 None [] split])
+
+  | Some (Structural l) ->
+     let open Proofview in
+     let open Notations in
+     let annots = List.map (fun (_, (kind, ann), _) -> ann + 1) l in
+     let rec splits l =
+       match l with
+       | [] | _ :: [] -> tclUNIT ()
+       | _ :: l -> Tactics.split Misctypes.NoBindings <*> tclDISPATCH [tclUNIT (); splits l]
+     in
+     set_eos_tac () <*>
+       of82 (observe " mutual_fix " (to82 (splits l <*> mutual_fix annots))) <*> intros <*>
+       tclDISPATCH (List.map (fun (_,_,e) -> of82 (aux_ind_fun info 0 None [] e.equations_split)) progs)
+
+  | _ -> of82 (tclCOMPLETE (tclTHENLIST
+      [to82 (set_eos_tac ()); to82 intros; aux_ind_fun info 0 unfsplit [] split]))
 
 
 let simpl_of csts =
