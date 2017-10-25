@@ -791,7 +791,7 @@ let observe s tac =
          (Proofview.tclTHEN
             (of82 tac)
             (Proofview.numgoals >>= fun gls ->
-             if gls = 0 then (Feedback.msg_debug (str "succeeded"); Proofview.tclUNIT ())
+             if gls = 0 then (Feedback.msg_debug (str s ++ str "succeeded"); Proofview.tclUNIT ())
              else
                (of82
                   (fun gls -> Feedback.msg_debug (str "Subgoal: " ++ Printer.pr_goal gls);
