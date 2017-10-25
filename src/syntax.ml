@@ -6,53 +6,22 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-open Term
-open Context
-open Environ
-open Names
 open Printer
 open Ppconstr
-
-
-open Cases
 open Util
 open Names
 open Nameops
 open Term
-open Termops
-open Declarations
-open Inductiveops
-open Environ
-open Vars
 open Globnames
-open Reductionops
-open Typeops
-open Type_errors
 open Pp
-open Proof_type
 open Glob_term
-open Retyping
-open Pretype_errors
-open Evarutil
-open Evarconv
 open List
 open Libnames
 open Topconstr
-open Entries
 open Constrexpr
-open Vars
-open Tacexpr
-open Tactics
-open Tacticals
-open Tacmach
-open Context
-open Evd
-open Evarutil
 open Evar_kinds
 open Equations_common
-
 open Constrintern
-open Decl_kinds
 
 type 'a with_loc = Loc.t * 'a
 type 'a located = Loc.t option * 'a
