@@ -22,9 +22,7 @@ type rec_annotation =
   | Nested
   | Struct
 
-type rec_arg_annot = Id.t with_loc option
-
-type rec_annot = (rec_annotation * rec_arg_annot) option
+type user_rec_annot = (rec_annotation * Id.t with_loc option) option
 
 type user_pat =
     PUVar of identifier * generated
@@ -34,6 +32,7 @@ and user_pats = user_pat located list
 
 
 (** Globalized syntax *)
+type rec_annot = rec_annotation * int
 
 type lhs = user_pats (* p1 ... pn *)
 and 'a rhs =
@@ -45,7 +44,7 @@ and 'a rhs =
   | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) Util.union *
       'a list
 and prototype =
-  identifier with_loc * rec_annot * Constrexpr.local_binder list * Constrexpr.constr_expr
+  identifier with_loc * user_rec_annot * Constrexpr.local_binder list * Constrexpr.constr_expr
 
 and 'a where_clause = prototype * 'a list
 and program = (signature * clause list) list

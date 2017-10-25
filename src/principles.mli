@@ -41,9 +41,29 @@ val ind_elim_tac :
   Term.constr ->
   int ->
   Splitting.term_info ->
-  Proof_type.goal Evd.sigma -> Proof_type.goal list Evd.sigma
-val type_of_rel :
-  Term.constr -> Equations_common.rel_declaration list -> Constr.constr
+  Globnames.global_reference ->
+  unit Proofview.tactic
+val type_of_rel : Term.constr -> Equations_common.rel_context -> Constr.t
+val compute_elim_type :
+  Environ.env ->
+  Equations_common.esigma ->
+  Syntax.rec_type option ->
+  ((Constr.t * int list) * (Constr.t * int list) option * int *
+   Term.constr)
+  list ->
+  Names.mutual_inductive ->
+  int ->
+         (int *
+          ((Constr.constr * int list) *
+           ((Constr.constr * int list) * Names.Id.t * Covering.splitting)
+           option * Covering.path * Equations_common.rel_context * Constr.types *
+           Constr.constr list * (Constr.constr * int) list * (node_kind * bool)) *
+          (int *
+           (bool * unit Proofview.tactic * Constr.t * Constr.constr option))
+          list)
+         list ->
+  (node_kind * 'e * 'f * 'g) list ->
+  Equations_common.rel_context -> Constr.t -> Constr.types -> int * Constr.types
 
 val replace_vars_context :
   Names.Id.t list ->
@@ -75,17 +95,10 @@ val update_split : Environ.env ->
   Covering.context_map ->
   (Names.Id.t * Constr.constr) list -> Covering.splitting -> Covering.splitting * Principles_proofs.where_map
 
-type equations_info = {
- equations_id : Names.Id.t;
- equations_where_map : Principles_proofs.where_map;
- equations_f : Constr.constr;
- equations_prob : Covering.context_map;
- equations_split : Covering.splitting }
-
 val build_equations :
   bool ->
   Environ.env ->
   Evd.evar_map ->
-  ?alias:Term.constr * Names.Id.t * Covering.splitting ->
-  (Splitting.program_info * Splitting.compiled_program_info * equations_info) list ->
+  ?alias:Constr.t * Names.Id.t * Covering.splitting ->
+  (Splitting.program_info * Splitting.compiled_program_info * Principles_proofs.equations_info) list ->
   unit

@@ -688,3 +688,9 @@ TACTIC EXTEND simplify
 | [ "simplify" ] ->
   [ Simplify.simplify_tac [] ]
 END
+
+open Stdarg
+
+TACTIC EXTEND mutual_fix
+[ "mfix" int_list(l) ] -> [ Principles_proofs.mutual_fix l ]
+END

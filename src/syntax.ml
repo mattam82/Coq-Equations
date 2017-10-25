@@ -40,9 +40,8 @@ type rec_annotation =
   | Nested
   | Struct
 
-type rec_arg_annot = Id.t with_loc option
-
-type rec_annot = (rec_annotation * rec_arg_annot) option
+type user_rec_annot = (rec_annotation * Id.t with_loc option) option
+type rec_annot = rec_annotation * int
 
 type program =
   (signature * clause list) list
@@ -62,7 +61,7 @@ and 'a rhs =
   | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) union * 'a list
 
 and prototype =
-  identifier with_loc * rec_annot * Constrexpr.local_binder list * Constrexpr.constr_expr
+  identifier with_loc * user_rec_annot * Constrexpr.local_binder list * Constrexpr.constr_expr
 
 and 'a where_clause = prototype * 'a list
 

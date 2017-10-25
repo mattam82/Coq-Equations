@@ -7,6 +7,12 @@ module PathMap : Map.S with type key = PathOT.t
 
 type where_map = (Term.constr * Names.Id.t * Covering.splitting) Evar.Map.t
 
+type equations_info = {
+ equations_id : Names.Id.t;
+ equations_where_map : where_map;
+ equations_f : Constr.t;
+ equations_prob : Covering.context_map;
+ equations_split : Covering.splitting }
 
 type ind_info = {
  term_info : Splitting.term_info;
@@ -27,6 +33,10 @@ val simp_eqns_in :
   Locus.clause -> Hints.hint_db_name list -> Proof_type.tactic
 val autorewrites : string -> Proof_type.tactic
 val autorewrite_one : string -> Proofview.V82.tac
+
+(** The multigoal fix tactic *)
+val mutual_fix : int list -> unit Proofview.tactic
+
 val find_helper_arg :
   Splitting.term_info -> Term.constr -> 'a array -> Term.existential_key * 'a
 val find_splitting_var :
@@ -48,7 +58,9 @@ val ind_fun_tac :
   Term.constr ->
   ind_info ->
   Names.Id.t ->
-  Covering.splitting -> Covering.splitting option -> Proof_type.tactic
+  Covering.splitting -> Covering.splitting option ->
+  (Splitting.program_info * Splitting.compiled_program_info * equations_info) list ->
+  unit Proofview.tactic
 
 val prove_unfolding_lemma :
   Splitting.term_info ->

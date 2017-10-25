@@ -22,14 +22,4 @@ Next Obligation.
   fix 1. destruct t; constructor; auto.
 Defined.
 
-Next Obligation.
-  pose (id_term_ind_comb P P0).
-  edestruct a; eauto.
-  split; intros; eauto with funelim.
-  apply H.
-  apply id_term_ind_fun.
-  apply H0.
-  apply id_term_ind_fun.
-Defined.
-
 Check eq_refl : List.map id_term = id_tlist.

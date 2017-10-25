@@ -132,7 +132,7 @@ let define_principles flags fixprots progs =
            update_split env evd p.program_rec
                         prog.program_cmap f cutprob fixsubst prog.program_split in
          let eqninfo =
-           { equations_id = i;
+           Principles_proofs.{ equations_id = i;
              equations_where_map = where_map;
              equations_f = f;
              equations_prob = norecprob;
@@ -145,7 +145,7 @@ let define_principles flags fixprots progs =
            update_split env evd p.program_rec prog.program_cmap
                         f prob [] prog.program_split in
          let eqninfo =
-           { equations_id = i;
+           Principles_proofs.{ equations_id = i;
              equations_where_map = where_map;
              equations_f = f;
              equations_prob = prob;
@@ -197,7 +197,7 @@ let define_principles flags fixprots progs =
                        program_impls = p.program_impls }
              in
              let eqninfo =
-               { equations_id = i;
+               Principles_proofs.{ equations_id = i;
                  equations_where_map = where_map;
                  equations_f = funfc;
                  equations_prob = prob;
@@ -256,17 +256,6 @@ let is_nested p =
   | Some (Nested, _) -> true
   | _ -> false
 
-let struct_index olid ctx =
-  match olid with
-  | None -> List.length ctx - 1
-  | Some lid ->
-     try
-       let k, _, _ = lookup_rel_id (snd lid) ctx in
-       List.length ctx - k
-     with Not_found ->
-       user_err_loc ((fst lid), "struct_index",
-                     Pp.(str"No argument named " ++ pr_id (snd lid) ++ str" found"))
-
 let define_mutual_nested flags progs =
   match progs with
   | [prog] -> progs
@@ -278,7 +267,7 @@ let define_mutual_nested flags progs =
          we build the block and its projections now *)
      let structargs = Array.map_of_list (fun (p,_) ->
                           match p.program_rec_annot with
-                          | Some (Struct, lid) -> struct_index lid p.program_sign
+                          | Some (Struct, lid) -> lid
                           | _ -> (List.length p.program_sign) - 1) mutual in
      let evd = ref (Evd.from_env (Global.env ())) in
      let decl =
@@ -290,8 +279,7 @@ let define_mutual_nested flags progs =
            match l with
            | (p', prog') :: rest ->
               (match p'.program_rec_annot with
-              | Some (Nested, lid) ->
-                let idx = struct_index lid p'.program_sign in
+              | Some (Nested, idx) ->
                 let fixb = (Array.make 1 idx, 0) in
                 let fixna = Array.make 1 (Name p'.program_id) in
                 let fixty = Array.make 1 (it_mkProd_or_LetIn p'.program_arity p'.program_sign) in
@@ -338,7 +326,7 @@ let define_mutual_nested flags progs =
        let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
        let idx =
          match p.program_rec_annot with
-         | Some (Nested, lid) -> struct_index lid p.program_sign
+         | Some (Nested, lid) -> lid
          | _ -> (List.length p.program_sign) - 1
        in
        let body =
@@ -385,13 +373,24 @@ let define_by_eqs opts eqs nt =
   let poly = Flags.is_universe_polymorphism () in
   let flags = { polymorphic = poly; with_eqns; with_ind } in
   let evd = ref (Evd.from_env env) in
-  let recids = List.map (fun (((loc,i),nested,_,_),_) -> i, nested, None) eqs in
   let interp_arities (((loc,i),rec_annot,l,t),_) =
     let ienv, ((env', sign), impls) = interp_context_evars env evd l in
     let arity = interp_type_evars env' evd t in
     let sign = nf_rel_context_evar ( !evd) sign in
     let oarity = nf_evar ( !evd) arity in
     let is_recursive = is_recursive i eqs in
+    let rec_annot =
+      match rec_annot with
+      | None -> None
+      | Some (reck, None) -> Some (reck, List.length sign - 1)
+      | Some (reck, Some lid) ->
+         try
+           let k, _, _ = lookup_rel_id (snd lid) sign in
+           Some (reck, List.length sign - k)
+         with Not_found ->
+           user_err_loc (fst lid, "struct_index",
+                         Pp.(str"No argument named " ++ pr_id (snd lid) ++ str" found"))
+    in
     let body = it_mkLambda_or_LetIn oarity sign in
     let _ = Pretyping.check_evars env Evd.empty !evd body in
     let comp, compapp, oarity =
@@ -451,7 +450,7 @@ let define_by_eqs opts eqs nt =
 			            comp_proj = compproj; comp_recarg = succ (length sign) } in
        let compapp, is_recursive =
 	 if b then compapp, Some (Logical compinfo)
-	 else compapp, Some (Structural recids)
+         else compapp, Some (Structural [])
        in
        { program_id = i;
          program_sign = sign;
@@ -462,6 +461,13 @@ let define_by_eqs opts eqs nt =
          program_impls = impls }
   in
   let arities = List.map interp_arities eqs in
+  let recids = List.map (fun p ->
+                   p.program_id, (match p.program_rec_annot with Some i -> i | _ -> Nested, 0), None)
+                        arities in
+  let arities = List.map (fun p ->
+                    match p.program_rec with
+                    | Some (Structural _) -> { p with program_rec = Some (Structural recids) }
+                    | _ -> p) arities in
   let eqs = List.map snd eqs in
   let env = Global.env () in (* To find the comp constant *)
 
