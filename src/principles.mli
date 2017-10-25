@@ -8,6 +8,7 @@ type node_kind =
   | Regular
   | Refine
   | Where
+  | Nested
 
 val pi1 : 'a * 'b * 'c -> 'a
 val pi2 : 'a * 'b * 'c -> 'b
@@ -36,12 +37,6 @@ val reference_of_id : Names.Id.t -> Libnames.reference
 val clear_ind_assums : Evd.evar_map ->
   Names.mutual_inductive ->
   Equations_common.rel_context -> Equations_common.rel_context
-val unfold : Names.evaluable_global_reference -> Proofview.V82.tac
-val ind_elim_tac :
-  constr ->
-  int ->
-  Splitting.term_info ->
-  Proof_type.goal Evd.sigma -> Proof_type.goal list Evd.sigma
 val type_of_rel : Term.constr -> rel_context -> constr
 val compute_elim_type :
   Environ.env ->
@@ -92,17 +87,10 @@ val update_split : Environ.env ->
   Covering.context_map ->
   (Names.Id.t * constr) list -> Covering.splitting -> Covering.splitting * Principles_proofs.where_map
 
-type equations_info = {
- equations_id : Names.Id.t;
- equations_where_map : Principles_proofs.where_map;
- equations_f : Constr.t;
- equations_prob : Covering.context_map;
- equations_split : Covering.splitting }
-
 val build_equations :
   bool ->
   Environ.env ->
   Evd.evar_map ->
   ?alias:constr * Names.Id.t * Covering.splitting ->
-  (Splitting.program_info * Splitting.compiled_program_info * equations_info) list ->
+  (Splitting.program_info * Splitting.compiled_program_info * Principles_proofs.equations_info) list ->
   unit

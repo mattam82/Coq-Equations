@@ -156,6 +156,14 @@ Ltac specialize_hyps :=
 
 Hint Extern 100 => specialize_hyps : funelim.
 
+(** Destruct conjunctions everywhere, starting with the hypotheses *)
+Hint Extern 50 => match goal with
+                    [ H : _ /\ _ |- _ ] => destruct H
+                  | [ |- _ /\ _ ] => split
+                  | [ H : _ * _ |- _ ] => destruct H
+                  | [ |- _ * _ ] => split
+                  end : funelim.
+
 (** Destruct existentials, including [existsT]'s. *)
 
 (* Hint Extern 101 => progress (destruct_exists; try (is_ground_goal; simplify_eqs)) : funelim. *)

@@ -11,10 +11,16 @@ open Environ
 open Names
 open Equations_common
 
+type 'a with_loc = Loc.t * 'a
+
 (** User-level patterns *)
 type generated = bool
 
-type 'a with_loc = Loc.t * 'a
+type rec_annotation =
+  | Nested
+  | Struct
+
+type user_rec_annot = (rec_annotation * Id.t with_loc option) option
 
 type user_pat =
     PUVar of identifier * generated
@@ -24,6 +30,7 @@ and user_pats = user_pat located list
 
 
 (** Globalized syntax *)
+type rec_annot = rec_annotation * int
 
 type lhs = user_pats (* p1 ... pn *)
 and 'a rhs =
@@ -35,7 +42,8 @@ and 'a rhs =
   | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) Util.union *
       'a list
 and prototype =
-  identifier with_loc * Constrexpr.local_binder_expr list * Constrexpr.constr_expr
+  identifier with_loc * user_rec_annot * Constrexpr.local_binder_expr list * Constrexpr.constr_expr
+
 and 'a where_clause = prototype * 'a list
 and program = (signature * clause list) list
 and signature = identifier * rel_context * constr (* f : Π Δ. τ *)
@@ -69,9 +77,8 @@ type pre_equation =
     identifier with_loc option * input_pats * pre_equation rhs
 type pre_equations = pre_equation where_clause list
 
-
 type rec_type = 
-  | Structural of (Id.t * Id.t with_loc option) list (* for mutual rec *)
+  | Structural of (Id.t * rec_annot * Id.t with_loc option) list (* for mutual rec *)
   | Logical of logical_rec
 and logical_rec =
   | LogicalDirect of Id.t with_loc

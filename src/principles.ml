@@ -28,6 +28,16 @@ type node_kind =
   | Regular
   | Refine
   | Where
+  | Nested
+
+let kind_of_prog p =
+  match p.program_rec_annot with
+  | Some (Syntax.Nested, _) -> Nested
+  | _ -> Regular
+
+let regular_or_nested = function
+  | Regular | Nested -> true
+  | _ -> false
 
 let pi1 (x,_,_) = x
 let pi2 (_,y,_) = y
@@ -211,44 +221,6 @@ let clear_ind_assums sigma ind ctx =
     | _ -> c
   in map_rel_context clear_assums ctx
 
-let unfold s = to82 (Tactics.unfold_in_concl [Locus.AllOccurrences, s])
-
-let ind_elim_tac indid inds info gl =
-  let open Tactics in
-  let open Tacticals in
-  let open Tacmach in
-  let eauto = Class_tactics.typeclasses_eauto [info.base_id; "funelim"] in
-  let prove_methods c gl =
-    let sigma, _ = Typing.type_of (pf_env gl) (project gl) c in
-    tclTHENLIST [to82 (Proofview.Unsafe.tclEVARS sigma);
-                 Proofview.V82.of_tactic (Tactics.apply c);
-                 to82 simpl_in_concl;
-                 to82 (eauto ~depth:None)] gl
-  in
-  let rec applyind leninds args gl =
-    match leninds, kind (project gl) (pf_concl gl) with
-    | 0, _ ->
-       (* if inds == 1 then *)
-         tclTHENLIST [to82 simpl_in_concl; to82 intros;
- 	              prove_methods (Reductionops.nf_beta (project gl) (applistc indid (List.rev args)))] gl
-       (* else *)
-       (*   let appelim = *)
-       (*     let app = applistc indid (List.rev args) in *)
-       (*     let sigma, ty = Typing.type_of (pf_env gl) (project gl) c in *)
-       (*     let ctx, concl = decompose_prod_assum (project gl) ty in *)
-       (*   in *)
-       (*   tclTHENLIST [to82 simpl_in_concl; *)
-    | _, LetIn (_, b, _, t') ->
-	tclTHENLIST [Proofview.V82.of_tactic (convert_concl_no_check (subst1 b t') DEFAULTcast);
-		     applyind (pred leninds) (b :: args)] gl
-    | _, Prod (_, _, t') ->
-	tclTHENLIST [to82 intro; 
-              onLastHypId (fun id -> applyind (pred leninds) (mkVar id :: args))] gl
-    | _, _ -> assert false
-  in
-  try applyind inds [] gl
-  with e -> tclFAIL 0 (Pp.str"exception") gl
-	     
 
 let type_of_rel t ctx =
   match kind_of_term t with
@@ -259,7 +231,7 @@ let compute_elim_type env evd is_rec protos k leninds
                       ind_stmts all_stmts sign app elimty =
   let ctx, arity = decompose_prod_assum !evd elimty in
   let lenrealinds =
-    List.length (List.filter (fun (_, (_,_,_,_,_,_,_,(kind,_)),_) -> kind == Regular) ind_stmts) in
+    List.length (List.filter (fun (_, (_,_,_,_,_,_,_,(kind,_)),_) -> regular_or_nested kind) ind_stmts) in
   let newctx =
     if lenrealinds == 1 then CList.skipn (List.length sign + 2) ctx
     else ctx
@@ -672,13 +644,6 @@ let update_split env evd is_rec f prob recs split =
     split', !where_map
   | _ -> split, !where_map
 
-type equations_info = {
- equations_id : Names.Id.t;
- equations_where_map : Principles_proofs.where_map;
- equations_f : Constr.constr;
- equations_prob : Covering.context_map;
- equations_split : Covering.splitting }
-
 let computations env evd alias refine eqninfo =
   let { equations_prob = prob;
         equations_where_map = wheremap;
@@ -783,7 +748,8 @@ let constr_of_global_univ gr u =
   | ConstructRef c -> mkConstructU (c, u)
   | VarRef id -> mkVar id
 
-let declare_funelim info env evd is_rec protos ind_stmts all_stmts sign app subst inds kn comb
+let declare_funelim info env evd is_rec protos progs
+                    ind_stmts all_stmts sign app subst inds kn comb
                     indgr ectx =
   let id = Id.of_string info.base_id in
   let leninds = List.length inds in
@@ -835,7 +801,7 @@ let declare_funelim info env evd is_rec protos ind_stmts all_stmts sign app subs
     let poly = is_polymorphic info in
     ignore(Equations_common.declare_instance instid poly evd [] cl args)
   in
-  let tactic = of82 (ind_elim_tac elimc leninds info) in
+  let tactic = ind_elim_tac elimc leninds (List.length progs) info indgr in
   let _ = e_type_of (Global.env ()) evd newty in
   ignore(Obligations.add_definition (Nameops.add_suffix id "_elim")
 	                            ~tactic ~hook:(Lemmas.mk_hook hookelim) ~kind:info.decl_kind
@@ -850,7 +816,8 @@ let mkConj evd sort x y =
   in
     mkApp (prod, [| x; y |])
 
-let declare_funind info alias env evd is_rec protos ind_stmts all_stmts sign inds kn comb f split ind =
+let declare_funind info alias env evd is_rec protos progs
+                   ind_stmts all_stmts sign inds kn comb f split ind =
   let poly = is_polymorphic info.term_info in
   let id = Id.of_string info.term_info.base_id in
   let indid = Nameops.add_suffix id "_ind_fun" in
@@ -861,10 +828,9 @@ let declare_funind info alias env evd is_rec protos ind_stmts all_stmts sign ind
     | None -> f, split, None
   in
   let app = applist (f, args) in
-  (* let statement = it_mkProd_or_subst (applist (ind, args @ [app])) sign in *)
   let statement =
     let stmt (i, ((f,_), alias, _, sign, ar, _, _, (nodek, cut)), _) =
-      if nodek != Regular then None else
+      if not (regular_or_nested nodek) then None else
       let f, split, unfsplit =
         match alias with
         | Some ((f,_), _, recsplit) -> f, recsplit, Some split
@@ -897,7 +863,7 @@ let declare_funind info alias env evd is_rec protos ind_stmts all_stmts sign ind
     let env = Global.env () in (* refresh *)
     Hints.add_hints false [info.term_info.base_id]
 	            (Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef indgr]);
-    let () = declare_funelim info.term_info env evd is_rec protos
+    let () = declare_funelim info.term_info env evd is_rec protos progs
                              ind_stmts all_stmts sign app subst inds kn comb indgr ectx in
     let evd = Evd.from_env env in
     let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in
@@ -921,7 +887,7 @@ let declare_funind info alias env evd is_rec protos ind_stmts all_stmts sign ind
              ~hook:(Lemmas.mk_hook hookind)
              ~kind:info.term_info.decl_kind
              indid (to_constr !evd statement)
-             ~tactic:(of82 (ind_fun_tac is_rec (to_constr !evd f) info id split unfsplit)) ctx [||])
+             ~tactic:(ind_fun_tac is_rec (to_constr !evd f) info id split unfsplit progs) ctx [||])
   with e ->
     Feedback.msg_warning Pp.(str "Induction principle could not be proved automatically: " ++ fnl () ++
 		             CErrors.print e)
@@ -934,7 +900,7 @@ let level_of_context env evd ctx acc =
         (push_rel decl env, Univ.sup (Sorts.univ_of_sort s) lev))
                     ctx (env,acc)
   in lev
-
+  
 let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) option) progs =
   let p, prog, eqninfo = List.hd progs in
   let { equations_id = id;
@@ -947,8 +913,8 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
   let is_rec = p.program_rec in
   let cst = prog.program_cst in
   let comps =
-    let fn = computations env evd alias (Regular,false) in
-    List.map (fun (p, prog, eqninfo) -> p, eqninfo, fn eqninfo) progs
+    let fn p = computations env evd alias (kind_of_prog p,false) in
+    List.map (fun (p, prog, eqninfo) -> p, eqninfo, fn p eqninfo) progs
   in
   let rec flatten_comp (ctx, fl, flalias, pats, ty, f, refine, c, rest) =
     let rest = match rest with
@@ -969,7 +935,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
     let topcomp = (((of_constr eqninfo.equations_f,[]), alias, [],
                     p.program_sign, p.program_arity,
                     List.rev_map pat_constr (pi2 eqninfo.equations_prob), [],
-                    (Regular,false)), top) in
+                    (kind_of_prog p,false)), top) in
     topcomp :: (rest @ acc)
   in
   let comps = List.fold_right flatten_top_comps comps [] in
@@ -978,7 +944,6 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
   let protos = 
     CList.map_i (fun i ((f',filterf'), alias, path, sign, arity, pats, args, (refine, cut)) ->
       let f' = Termops.strip_outer_cast evd f' in
-      (* let f' = if not (refine || cut) then fst (decompose_app f') else f' in *)
       let alias =
         match alias with
         | None -> None
@@ -1100,8 +1065,8 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
       Indschemes.do_mutual_induction_scheme mutual;
       if List.length inds != 1 then
         let scheme = Nameops.add_suffix (Id.of_string info.base_id) "_ind_comb" in
-        let mutual = List.map2 (fun (i, _, _, _) (_, (_, _, _, _, _, _, _, (refine, cut)), _) ->
-                         i, refine == Regular) mutual ind_stmts in
+        let mutual = List.map2 (fun (i, _, _, _) (_, (_, _, _, _, _, _, _, (kind, cut)), _) ->
+                         i, regular_or_nested kind) mutual ind_stmts in
         let () =
           Indschemes.do_combined_scheme
             (None, scheme)
@@ -1125,7 +1090,8 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
 	inds
     in
     let info = { term_info = info; pathmap = !fnind_map; wheremap } in
-    declare_funind info alias env evd is_rec protos ind_stmts all_stmts sign inds kn comb
+    declare_funind info alias env evd is_rec protos progs
+                   ind_stmts all_stmts sign inds kn comb
                    (of_constr f) split ind
   in
   let () = evd := Evd.nf_constraints !evd in

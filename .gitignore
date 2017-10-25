@@ -29,3 +29,4 @@ docs/.sass-cache/
 docs/_site
 /examples/*.tex
 /examples/coqdoc.sty
+/test-suite/Makefile
