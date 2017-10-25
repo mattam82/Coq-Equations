@@ -219,78 +219,6 @@ let clear_ind_assums ind ctx =
     | _ -> c
   in map_rel_context clear_assums ctx
 
-let unfold s = to82 (Tactics.unfold_in_concl [Locus.AllOccurrences, s])
-
-let rec mk_app_holes env sigma = function
-| [] -> (sigma, [])
-| decl :: rem ->
-  let (sigma, arg) = Equations_common.new_evar env sigma (get_type decl) in
-  let (sigma, rem) = mk_app_holes env sigma (subst_rel_context 0 [arg] rem) in
-  (sigma, arg :: rem)
-
-let observe_tac s t = of82 (observe s (to82 t))
-
-let goal_sigma gl = Sigma.to_evar_map (Proofview.Goal.sigma gl)
-
-let ind_elim_tac indid inds info ind_fun =
-  let open Proofview in
-  let open Notations in
-  let open Tacticals.New in
-  let eauto = Class_tactics.typeclasses_eauto ["funelim"; info.base_id] in
-  let prove_methods c =
-    Proofview.Goal.enter {enter = fun gl ->
-        let sigma, _ = Typing.type_of (Goal.env gl) (goal_sigma gl) c in
-        tclTHENLIST [Proofview.Unsafe.tclEVARS sigma;
-                     Tactics.apply c;
-                     Tactics.simpl_in_concl;
-                     eauto ~depth:None]}
-  in
-  let rec applyind leninds args =
-    Proofview.Goal.nf_enter {enter = fun gl ->
-    let env = Goal.env gl in
-    let sigma = goal_sigma gl in
-    match leninds, kind_of_term (Goal.concl gl) with
-    | 0, _ ->
-       if inds == 1 then
-         tclTHENLIST [Tactics.simpl_in_concl; Tactics.intros;
-                      prove_methods (Reductionops.nf_beta (goal_sigma gl)
-                                                          (applistc indid (List.rev args)))]
-       else
-         let app = applistc indid (List.rev args) in
-         let sigma, ty = Typing.type_of env sigma app in
-         let ctx, concl = decompose_prod_assum ty in
-         let mkapp env =
-           { Sigma.run = fun sigma ->
-           let sigma = Sigma.to_evar_map sigma in
-           let sigma, args = mk_app_holes env sigma ctx in
-           Sigma.here (applist (app, List.rev args)) (Sigma.Unsafe.of_evar_map sigma) }
-         in
-         Tactics.simpl_in_concl <*> Tactics.intros <*>
-           Tactics.cut concl <*>
-           tclDISPATCH
-             [tclONCE (Tactics.intro <*>
-                         observe_tac "finish using induction principle"
-                                     (pf_constr_of_global ind_fun (fun ind_fun ->
-                                      Tactics.pose_proof Anonymous ind_fun <*>
-                                        eauto ~depth:None)));
-              tclONCE
-                (observe_tac "refining"
-                             (Proofview.Goal.enter ({enter = fun gl ->
-                                  Refine.refine ~unsafe:true (mkapp (Goal.env gl))}) <*>
-                                Tactics.simpl_in_concl <*> eauto ~depth:None))]
-
-
-    | _, LetIn (_, b, _, t') ->
-       tclTHENLIST [Tactics.convert_concl_no_check (subst1 b t') DEFAULTcast;
-                    applyind (pred leninds) (b :: args)]
-    | _, Prod (_, _, t') ->
-        tclTHENLIST [Tactics.intro;
-                     onLastHypId (fun id -> applyind (pred leninds) (mkVar id :: args))]
-    | _, _ -> assert false}
-  in
-  try applyind inds []
-  with e -> tclFAIL 0 (Pp.str"exception")
-
 let type_of_rel t ctx =
   match kind_of_term t with
   | Rel k -> lift k (get_type (List.nth ctx (pred k)))
@@ -822,7 +750,8 @@ let constr_of_global_univ gr u =
   | ConstructRef c -> mkConstructU (c, u)
   | VarRef id -> mkVar id
 
-let declare_funelim info env evd is_rec protos ind_stmts all_stmts sign app subst inds kn comb
+let declare_funelim info env evd is_rec protos progs
+                    ind_stmts all_stmts sign app subst inds kn comb
                     indgr ectx =
   let id = Id.of_string info.base_id in
   let leninds = List.length inds in
@@ -874,7 +803,7 @@ let declare_funelim info env evd is_rec protos ind_stmts all_stmts sign app subs
     let poly = is_polymorphic info in
     ignore(Equations_common.declare_instance instid poly evd [] cl args)
   in
-  let tactic = ind_elim_tac elimc leninds info indgr in
+  let tactic = ind_elim_tac elimc leninds (List.length progs) info indgr in
   let _ = e_type_of (Global.env ()) evd newty in
   ignore(Obligations.add_definition (Nameops.add_suffix id "_elim")
 	                            ~tactic ~hook:(Lemmas.mk_hook hookelim) ~kind:info.decl_kind
@@ -936,7 +865,7 @@ let declare_funind info alias env evd is_rec protos progs
     let env = Global.env () in (* refresh *)
     Hints.add_hints false [info.term_info.base_id]
 	            (Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef indgr]);
-    let () = declare_funelim info.term_info env evd is_rec protos
+    let () = declare_funelim info.term_info env evd is_rec protos progs
                              ind_stmts all_stmts sign app subst inds kn comb indgr ectx in
     let evd = Evd.from_env env in
     let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in

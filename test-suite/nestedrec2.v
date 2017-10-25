@@ -23,25 +23,6 @@ where(struct t) subst_tlist (k : nat) (u : term) (t : list term) : list term := 
   subst_tlist k u (cons t ts) := cons (subst_term k u t) (subst_tlist k u ts) }.
   (* id_tlist t := List.map id_term t }. *)
 
-Next Obligation.
-  assert (forall k u t, subst_term_ind k u t (subst_term k u t)).
-  fix 3. destruct t; constructor; auto.
-  revert k u l. fix 3. destruct l; constructor; auto.
-  split; auto.
-
-  fix 3. destruct t; constructor; auto.
-Defined.
-
-Next Obligation.
-  pose (subst_term_ind_comb P P0).
-  edestruct a; eauto.
-  split; intros; eauto with funelim.
-  apply H.
-  apply subst_term_ind_fun.
-  apply H0.
-  apply subst_term_ind_fun.
-Defined.
-
 Lemma subst_subst k u t : subst_term k u t = subst_term k u t.
 Proof.
   revert k u t.

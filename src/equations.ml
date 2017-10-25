@@ -381,7 +381,10 @@ let define_by_eqs opts eqs nt =
     let is_recursive = is_recursive i eqs in
     let rec_annot =
       match rec_annot with
-      | None -> None
+      | None ->
+         (match is_recursive with
+          | Some false -> Some (Struct, List.length sign - 1)
+          | _ -> None)
       | Some (reck, None) -> Some (reck, List.length sign - 1)
       | Some (reck, Some lid) ->
          try
@@ -462,7 +465,9 @@ let define_by_eqs opts eqs nt =
   in
   let arities = List.map interp_arities eqs in
   let recids = List.map (fun p ->
-                   p.program_id, (match p.program_rec_annot with Some i -> i | _ -> Nested, 0), None)
+                   p.program_id, (match p.program_rec_annot with
+                                  | Some i -> i
+                                  | _ -> Nested, 0), None)
                         arities in
   let arities = List.map (fun p ->
                     match p.program_rec with

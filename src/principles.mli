@@ -36,13 +36,6 @@ val reference_of_id : Names.Id.t -> Libnames.reference
 val clear_ind_assums :
   Names.mutual_inductive ->
   Equations_common.rel_context -> Equations_common.rel_context
-val unfold : Names.evaluable_global_reference -> Proofview.V82.tac
-val ind_elim_tac :
-  Term.constr ->
-  int ->
-  Splitting.term_info ->
-  Globnames.global_reference ->
-  unit Proofview.tactic
 val type_of_rel : Term.constr -> Equations_common.rel_context -> Constr.t
 val compute_elim_type :
   Environ.env ->

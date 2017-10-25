@@ -72,3 +72,10 @@ val prove_unfolding_lemma :
   Proof_type.goal Evd.sigma ->
   Proof_type.goal list Evd.sigma
   
+val ind_elim_tac :
+  Term.constr ->
+  int ->
+  int ->
+  Splitting.term_info ->
+  Globnames.global_reference ->
+  unit Proofview.tactic

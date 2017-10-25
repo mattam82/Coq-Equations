@@ -172,6 +172,13 @@ let mutual_fix l =
   let open Notations in
   let mfix env sigma gls =
     let types = List.map (fun ev -> (Evd.evar_concl (Evd.find sigma ev))) gls in
+    let env =
+      let ctxs = List.map (fun ev -> Evd.evar_context (Evd.find sigma ev)) gls in
+      let fst, rest = List.sep_last ctxs in
+      if List.for_all (fun y -> Context.Named.equal fst y) rest then
+        Environ.push_named_context fst env
+      else env
+    in
     let li = List.mapi (fun i ev -> match Evd.evar_ident ev sigma with
                                      | Some id -> id
                                      | None -> Id.of_string ("fix_" ^ string_of_int i)) gls in
@@ -195,12 +202,12 @@ let mutual_fix l =
          let (sp', u')  = check_mutind env sigma n ar in
          if not (eq_mind sp sp') then
            error "Fixpoints should be on the same mutual inductive declaration.";
-         if Termops.mem_named_context_val f sign then
+         if try ignore (lookup_named f sign); true with Not_found -> false then
            user_err_loc (Loc.ghost, "Logic.prim_refiner",
                     (str "Name " ++ pr_id f ++ str " already used in the environment"));
-         mk_sign (push_named_context_val (LocalAssum (f, ar)) sign) oth
+         mk_sign ((LocalAssum (f, ar)) :: sign) oth
     in
-    let sign = mk_sign (Environ.named_context_val env) all in
+    let sign = mk_sign (Environ.named_context env) all in
     let idx = Array.map_of_list pred l in
     let nas = Array.map_of_list (fun id -> Name id) li in
     let body = ref (fun i -> assert false) in
@@ -208,7 +215,8 @@ let mutual_fix l =
       Refine.refine ~unsafe:true
       ({Sigma.run = fun sigma ->
         let sigma = Sigma.to_evar_map sigma in
-        let (sigma, evs) = mk_holes (Environ.reset_with_named_context sign env) sigma types in
+        let nenv = Environ.reset_with_named_context (Environ.val_of_named_context sign) env in
+        let (sigma, evs) = mk_holes nenv sigma types in
         let evs = Array.map_of_list (Vars.subst_vars (List.rev li)) evs in
         let types = Array.of_list types in
         let decl = (nas,types,evs) in
@@ -405,7 +413,7 @@ let rec aux_ind_fun info chop unfs unfids = function
          [intros_reducing;
           tclTRY (autorewrite_one info.term_info.base_id);
           observe "wheretac" wheretac;
-          cstrtac info.term_info;
+          observe "applying compute rule" (cstrtac info.term_info);
           (** Each of the recursive calls result in an assumption. If it
               is a rec call in a where clause to itself we need to
               explicitely rewrite with the unfolding lemma (as the where
@@ -418,6 +426,36 @@ let rec aux_ind_fun info chop unfs unfids = function
           (to82 (solve_ind_rec_tac info.term_info))]))
 
   | Mapping (_, s) -> aux_ind_fun info chop unfs unfids s
+
+let observe_tac s tac =
+  let open Proofview in
+  let open Proofview.Notations in
+  if not !debug then tac
+  else
+    tclENV >>= fun env ->
+    tclEVARMAP >>= fun sigma ->
+    Unsafe.tclGETGOALS >>= fun gls ->
+    Feedback.msg_debug (str"Applying " ++ str s ++ str " on " ++
+                          Printer.pr_subgoals None sigma [] [] [] gls);
+    Proofview.tclORELSE
+      (Proofview.tclTHEN tac
+                         (Proofview.numgoals >>= fun gls ->
+                          if gls = 0 then (Feedback.msg_debug (str s ++ str "succeeded");
+                                           Proofview.tclUNIT ())
+             else
+               (of82
+                  (fun gls -> Feedback.msg_debug (str "Subgoal: " ++ Printer.pr_goal gls);
+                           Evd.{ it = [gls.it]; sigma = gls.sigma }))))
+      (fun iexn -> Feedback.msg_debug
+                     (str"Failed with: " ++
+                        (match fst iexn with
+                         | Refiner.FailError (n,expl) ->
+                            (str" Fail error " ++ int n ++ str " for " ++ str s ++
+                               spc () ++ Lazy.force expl ++
+                               str " on " ++
+                               Printer.pr_subgoals None sigma [] [] [] gls)
+                         | _ -> CErrors.iprint iexn));
+                   Proofview.tclUNIT ())
 
 let ind_fun_tac is_rec f info fid split unfsplit progs =
   match is_rec with
@@ -444,15 +482,75 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
   | Some (Structural l) ->
      let open Proofview in
      let open Notations in
-     let annots = List.map (fun (_, (kind, ann), _) -> ann + 1) l in
+     let mutual, nested = List.partition (fun (_, (kind, _), _) -> kind == Struct) l in
+     let mutannots = List.map (fun (_, (kind, ann), _) -> ann + 1) mutual in
+     let mutprogs, nestedprogs =
+       List.partition (fun (p,_,e) -> match p.program_rec_annot with
+                                      | Some (Struct, _) -> true
+                                      | _ -> false) progs
+     in
+     let eauto = Class_tactics.typeclasses_eauto ["funelim"; info.term_info.base_id] in
      let rec splits l =
        match l with
        | [] | _ :: [] -> tclUNIT ()
        | _ :: l -> Tactics.split Misctypes.NoBindings <*> tclDISPATCH [tclUNIT (); splits l]
      in
-     set_eos_tac () <*>
-       of82 (observe " mutual_fix " (to82 (splits l <*> mutual_fix annots))) <*> intros <*>
-       tclDISPATCH (List.map (fun (_,_,e) -> of82 (aux_ind_fun info 0 None [] e.equations_split)) progs)
+     let prove_progs progs =
+       intros <*>
+         tclDISPATCH (List.map (fun (_,_,e) -> (* observe_tac "proving one mutual " *) (of82 (aux_ind_fun info 0 None [] e.equations_split)))
+                               progs)
+     in
+     let prove_nested =
+       tclDISPATCH (List.map (fun (_,(_,ann),_) -> fix None (ann + 1)) nested) <*>
+         prove_progs nestedprogs
+     in
+     let mutfix =
+       mutual_fix mutannots <*> prove_progs mutprogs
+     in
+     let mutlen = List.length mutprogs in
+     (* let intros_conj len = *)
+     (*   if len == 1 then *)
+     (*     Tactics.intro *)
+     (*   else *)
+     (*     Tactics.intros_patterns false *)
+     (*     Proofview.Goal.enter (fun gl -> *)
+     (*         match concl_kind gl with *)
+     (*         | Prod (na, a, b) -> *)
+     (*            match kind *)
+     (* in *)
+     let tac gl =
+       let sigma = Goal.sigma gl in
+       let mutprops, nestedprops =
+         let rec aux concl i =
+           match kind_of_term concl with
+             | App (conj, [| a; b |]) ->
+                if i == 1 then
+                  a, Some b
+                else
+                  let muts, nested = aux b (pred i) in
+                  mkApp (conj, [| a ; muts |]), nested
+             | _ -> if i == 1 then concl, None
+                    else assert false
+         in aux (Goal.concl gl) mutlen
+       in
+       set_eos_tac () <*>
+         (match nestedprops with
+          | Some p ->
+             assert_before Anonymous (mkProd (Anonymous, mutprops, p)) <*>
+               tclDISPATCH
+                 [observe_tac "assert mut -> nest first subgoal " (* observe_tac *)
+                  (*   "proving mut -> nested" *)
+                              (intro <*> observe_tac "spliting nested" (splits nestedprogs) <*> prove_nested);
+                  tclUNIT ()]
+          | None -> tclUNIT ()) <*>
+         assert_before Anonymous mutprops <*>
+         tclDISPATCH
+           [observe_tac "mutfix"
+                        (splits mutprogs <*> tclFOCUS 1 (List.length mutual) mutfix);
+            tclUNIT ()] <*>
+         (* On the rest of the goals, do the nested proofs *)
+         observe_tac "after mut -> nested and mut provable" (eauto ~depth:None)
+     in Proofview.Goal.nf_enter ({enter = fun gl -> tac gl})
 
   | _ -> of82 (tclCOMPLETE (tclTHENLIST
       [to82 (set_eos_tac ()); to82 intros; aux_ind_fun info 0 unfsplit [] split]))
@@ -644,3 +742,71 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
       Global.set_strategy (ConstKey funf_cst) Conv_oracle.Expand;
       raise e
   
+
+let unfold s = to82 (Tactics.unfold_in_concl [Locus.AllOccurrences, s])
+
+(* let rec mk_app_holes env sigma = function *)
+(* | [] -> (sigma, []) *)
+(* | decl :: rem -> *)
+(*   let (sigma, arg) = Equations_common.new_evar env sigma (get_type decl) in *)
+(*   let (sigma, rem) = mk_app_holes env sigma (subst_rel_context 0 [arg] rem) in *)
+(*   (sigma, arg :: rem) *)
+
+let observe_tac s t = of82 (observe s (to82 t))
+
+let goal_sigma gl = Sigma.to_evar_map (Proofview.Goal.sigma gl)
+
+let ind_elim_tac indid inds mutinds info ind_fun =
+  let open Proofview in
+  let open Notations in
+  let open Tacticals.New in
+  let eauto = Class_tactics.typeclasses_eauto ["funelim"; info.base_id] in
+  let prove_methods c =
+    Proofview.Goal.enter {enter = fun gl ->
+        let sigma, _ = Typing.type_of (Goal.env gl) (goal_sigma gl) c in
+        tclTHENLIST [Proofview.Unsafe.tclEVARS sigma;
+                     Tactics.apply c;
+                     Tactics.simpl_in_concl;
+                     eauto ~depth:None]}
+  in
+  let rec applyind leninds args =
+    Proofview.Goal.nf_enter {enter = fun gl ->
+    let env = Goal.env gl in
+    let sigma = goal_sigma gl in
+    match leninds, kind_of_term (Goal.concl gl) with
+    | 0, _ ->
+       if mutinds == 1 then
+         tclTHENLIST [Tactics.simpl_in_concl; Tactics.intros;
+                      prove_methods (Reductionops.nf_beta (goal_sigma gl)
+                                                          (applistc indid (List.rev args)))]
+       else
+         let app = applistc indid (List.rev args) in
+         let sigma, ty = Typing.type_of env sigma app in
+         let ctx, concl = decompose_prod_assum ty in
+         (* let mkapp env = *)
+         (*   { Sigma.run = fun sigma -> *)
+         (*   let sigma = Sigma.to_evar_map sigma in *)
+         (*   let sigma, args = mk_app_holes env sigma ctx in *)
+         (*   Sigma.here (applist (app, List.rev args)) (Sigma.Unsafe.of_evar_map sigma) } *)
+         (* in *)
+         Tactics.simpl_in_concl <*> Tactics.intros <*>
+           Tactics.cut concl <*>
+           tclDISPATCH
+             [tclONCE (Tactics.intro <*>
+                         (pf_constr_of_global ind_fun (fun ind_fun ->
+                                      Tactics.pose_proof Anonymous ind_fun <*>
+                                        eauto ~depth:None)));
+              tclONCE (Tactics.apply app <*>
+                                Tactics.simpl_in_concl <*> eauto ~depth:None)]
+
+
+    | _, LetIn (_, b, _, t') ->
+       tclTHENLIST [Tactics.convert_concl_no_check (subst1 b t') DEFAULTcast;
+                    applyind (pred leninds) (b :: args)]
+    | _, Prod (_, _, t') ->
+        tclTHENLIST [Tactics.intro;
+                     onLastHypId (fun id -> applyind (pred leninds) (mkVar id :: args))]
+    | _, _ -> assert false}
+  in
+  try applyind inds []
+  with e -> tclFAIL 0 (Pp.str"exception")
