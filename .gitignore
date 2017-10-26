@@ -1,6 +1,7 @@
 *.d
 *.vo
 /Makefile
+/Makefile.conf
 *.bak
 *.cm*
 *.o
@@ -30,3 +31,5 @@ docs/_site
 /examples/*.tex
 /examples/coqdoc.sty
 /test-suite/Makefile
+/test-suite/bisect.coq
+/test-suite/Makefile.conf
