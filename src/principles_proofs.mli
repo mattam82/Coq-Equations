@@ -35,7 +35,7 @@ val autorewrites : string -> Proof_type.tactic
 val autorewrite_one : string -> Proofview.V82.tac
 
 (** The multigoal fix tactic *)
-val mutual_fix : int list -> unit Proofview.tactic
+val mutual_fix : string list -> int list -> unit Proofview.tactic
 
 val find_helper_arg :
   Splitting.term_info -> Term.constr -> 'a array -> Term.existential_key * 'a

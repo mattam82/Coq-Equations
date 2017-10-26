@@ -383,7 +383,39 @@ let equations : pre_equation where_clause list Gram.entry =
 let _ = Pptactic.declare_extra_genarg_pprule wit_equations
   pr_raw_equations pr_glob_equations pr_equations
 
-open Glob_term
+(* preidents that are not interpreted focused *)
+let interp_my_preident ist s = s
+
+let make0 ?dyn name =
+  let wit = Genarg.make0 name in
+  let () = Geninterp.register_val0 wit dyn in
+  wit
+
+let wit_my_preident : string Genarg.uniform_genarg_type =
+  make0 ~dyn:(Geninterp.val_tag (Genarg.topwit Stdarg.wit_string)) "my_preident"
+
+let def_intern ist x = (ist, x)
+let def_subst _ x = x
+let def_interp ist x = Ftactic.return x
+
+let register_interp0 wit f =
+  let interp ist v =
+    Ftactic.bind (f ist v)
+      (fun v -> Ftactic.return (Geninterp.Val.inject (Geninterp.val_tag (Genarg.topwit wit)) v))
+  in
+  Geninterp.register_interp0 wit interp
+
+let declare_uniform t =
+  Genintern.register_intern0 t def_intern;
+  Genintern.register_subst0 t def_subst;
+  register_interp0 t def_interp
+
+let () =
+  declare_uniform wit_my_preident
+
+let my_preident : string Gram.entry =
+  Pcoq.create_generic_entry Pcoq.utactic "my_preident" (Genarg.rawwit wit_my_preident)
+
 open Util
 open Pcoq
 open Prim
@@ -395,12 +427,15 @@ open Tok
 open Syntax
 
 GEXTEND Gram
-  GLOBAL: pattern deppat_equations deppat_elim binders2 equations lident;
+  GLOBAL: pattern deppat_equations deppat_elim binders2 equations lident my_preident;
 
+  my_preident:
+    [ [ id = IDENT -> id ] ]
+  ;
   identloc:
     [ [ id = IDENT -> (!@loc, Id.of_string id) ] ]
   ;
-  binders2 : 
+  binders2 :
      [ [ b = binders -> b ] ]
   ;
   deppat_equations:
@@ -692,5 +727,5 @@ END
 open Stdarg
 
 TACTIC EXTEND mutual_fix
-[ "mfix" int_list(l) ] -> [ Principles_proofs.mutual_fix l ]
+[ "mfix" my_preident_list(li) int_list(l) ] -> [ Principles_proofs.mutual_fix li l ]
 END
