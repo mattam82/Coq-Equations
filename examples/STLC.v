@@ -781,7 +781,7 @@ Proof.
   simplify_IH_hyps. simpl in H0.
   depelim H2.
   specialize (H _ A H1 H2_0). 
-  specialize (Hind _ (A ---> B) H1). rewrite Heq0 in Hind.
+  specialize (Hind _ (A ---> B) H1). rewrite Heq in Hind.
   specialize (Hind H2_ _ _ eq_refl).
   depelim Hind. 
   noconf H2. 
@@ -802,9 +802,9 @@ Proof.
   eapply H; eauto.
 
   simpl in *.
-  (* Fst redex *) clear Heq.
+  (* Fst redex *)
   depelim H0. specialize (Hind _ _ H H0).
-  rewrite Heq0 in Hind. specialize (Hind _ _ eq_refl).
+  rewrite Heq in Hind. specialize (Hind _ _ eq_refl).
   destruct Hind. depelim H1. intuition auto. 
   simplify_IH_hyps. noconf H1.
   now noconf H2.
@@ -816,9 +816,9 @@ Proof.
   specialize (Hind _ _ H H0); eauto.
   destruct Hind. subst t2. now apply pair_elim_fst with B.
 
-  (* Snd redex *) clear Heq.
+  (* Snd redex *)
   depelim H0. specialize (Hind _ _ H H0).
-  rewrite Heq0 in Hind. specialize (Hind _ _ eq_refl).
+  rewrite Heq in Hind. specialize (Hind _ _ eq_refl).
   destruct Hind. depelim H1. intuition auto. 
   simplify_IH_hyps. noconf H1.
   now noconf H2.
@@ -916,7 +916,7 @@ Proof.
     on_call (hereditary_subst (U,u0,u))
             ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
     specialize (H0 _ _ _ [] eq_refl). 
-    rewrite Heq0 in Hind. 
+    rewrite Heq in Hind. 
     revert H0.
     on_call hereditary_subst
             ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
@@ -990,7 +990,7 @@ Proof.
     assert( (Γ' @ (U :: Γ) |-- Fst t5 => T → Γ' @ Γ |-- u <= T ∧ a = T)).
     intros Ht; depelim Ht. specialize (Hind _ (A × B) Hu). revert Hind.
     on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). 
-    noconf Heq0.
+    noconf Heq.
     intros [Hind Hind']. 
     specialize (Hind' Ht). destruct Hind' as [H0 H1]. noconf H1.
     depelim H0. split; auto.
@@ -1019,7 +1019,7 @@ Proof.
     intros Ht; depelim Ht. specialize (Hind _ (A × B) Hu). revert Hind.
     on_call hereditary_subst 
             ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *). 
-    noconf Heq0.
+    noconf Heq.
     intros [Hind Hind']. 
     specialize (Hind' Ht). destruct Hind' as [H0 H1]. noconf H1.
     depelim H0. split; auto. depelim H.
