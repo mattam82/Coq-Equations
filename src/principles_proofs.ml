@@ -144,7 +144,7 @@ let rec check_mutind env sigma k cl = match EConstr.kind sigma (Termops.strip_ou
 
 open Context.Named.Declaration
 (* Refine as a fixpoint *)
-let mutual_fix l =
+let mutual_fix li l =
   let open Proofview in
   let open Notations in
   let mfix env sigma gls =
@@ -156,19 +156,25 @@ let mutual_fix l =
         Environ.push_named_context fst env
       else env
     in
-    let li = List.mapi (fun i ev -> match Evd.evar_ident ev sigma with
-                                     | Some id -> id
-                                     | None -> Id.of_string ("fix_" ^ string_of_int i)) gls in
+    let li =
+      match li with
+      | [] ->
+         List.mapi (fun i ev -> match Evd.evar_ident ev sigma with
+                                | Some id -> id
+                                | None -> Id.of_string ("fix_" ^ string_of_int i)) gls
+      | l -> List.map Id.of_string l
+    in
     let () =
       let lenid = List.length li in
       let lenidxs = List.length l in
       let lengoals = List.length types in
       if not (Int.equal lenid lenidxs && Int.equal lenid lengoals) then
         CErrors.user_err ~hdr:"mfix"
-                         (str "Cannot apply mutual fixpoint, invald arguments: " ++
-                            int lenid ++ str" names, " ++
-                            int lenidxs ++ str" indices and " ++
-                            int lengoals ++ str" subgoals.")
+                         (str "Cannot apply mutual fixpoint, invalid arguments: " ++
+                            int lenid ++ (str (String.plural lenid " name")) ++ str " " ++
+                            int lenidxs ++ str (if lenidxs == 1 then " index"
+                                                else " indices") ++ str" and " ++
+                            int lengoals ++ str(String.plural lengoals " subgoal"))
     in
     let all = CList.map3 (fun id n ar -> (id,n,ar)) li l types in
     let (_, n, ar) = List.hd all in
@@ -482,7 +488,7 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
          prove_progs nestedprogs
      in
      let mutfix =
-       mutual_fix mutannots <*> prove_progs mutprogs
+       mutual_fix [] mutannots <*> prove_progs mutprogs
      in
      let mutlen = List.length mutprogs in
      (* let intros_conj len = *)
@@ -717,12 +723,12 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
       raise e
   
 
-let rec mk_app_holes env sigma = function
-| [] -> (sigma, [])
-| decl :: rem ->
-  let (sigma, arg) = Evarutil.new_evar env sigma (Context.Rel.Declaration.get_type decl) in
-  let (sigma, rem) = mk_app_holes env sigma (subst_rel_context 0 [arg] rem) in
-  (sigma, arg :: rem)
+(* let rec mk_app_holes env sigma = function *)
+(* | [] -> (sigma, []) *)
+(* | decl :: rem -> *)
+(*   let (sigma, arg) = Evarutil.new_evar env sigma (Context.Rel.Declaration.get_type decl) in *)
+(*   let (sigma, rem) = mk_app_holes env sigma (subst_rel_context 0 [arg] rem) in *)
+(*   (sigma, arg :: rem) *)
 
 let ind_elim_tac indid inds mutinds info ind_fun =
   let open Proofview in
