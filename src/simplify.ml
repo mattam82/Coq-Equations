@@ -249,6 +249,11 @@ let build_app_infer (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : go
         EConstr.mkApp (tf, targs) end
 
 let conv_fun = Evarconv.evar_conv_x Names.full_transparent_state
+let is_conv (env : Environ.env) (sigma : Evd.evar_map) (ctx : rel_context)
+  (t1 : EConstr.t) (t2 : EConstr.t) : bool =
+  let env = push_rel_context ctx env in
+  let _, res = Reductionops.infer_conv env sigma t1 t2 in
+    res
 
 (* Build an open term by substituting the second term for the hole in the
  * first term. *)
@@ -306,8 +311,10 @@ let while_fun (f : simplification_fun) : simplification_fun =
     match f env evd gl with
     | (Some (gl', _), _), _ as res1 ->
         begin try
-          let res2 = aux env evd gl' in
-            compose_res env evd res1 res2
+          let evd' = ref !evd in
+          let res2 = aux env evd' gl' in
+          let res = compose_res env evd' res1 res2 in
+            evd := !evd'; res
         with CannotSimplify _ -> res1 end
     | (None, _), _ as res1 -> res1
   in try
@@ -333,7 +340,7 @@ let check_prod sigma (ty : EConstr.types) : Names.name * EConstr.types * EConstr
 (* Check that the given type is an equality, and some
  * additional constraints if specified. Raise CannotSimplify if it's not
  * the case. Otherwise, return its arguments *)
-let check_equality sigma ?(equal_terms : bool = false)
+let check_equality env sigma ctx ?(equal_terms : bool = false)
   ?(var_left : bool = false) ?(var_right : bool = false) (ty : EConstr.types) :
     EConstr.types * EConstr.constr * EConstr.constr =
   let f, args = Equations_common.decompose_appvect sigma ty in
@@ -342,7 +349,7 @@ let check_equality sigma ?(equal_terms : bool = false)
       "The first hypothesis in the goal is not an equality."));
   let tA = args.(0) in
   let tx, ty = args.(1), args.(2) in
-  if equal_terms && not (EConstr.eq_constr sigma tx ty) then
+  if equal_terms && not (is_conv env sigma ctx tx ty) then
     raise (CannotSimplify (str
       "The first hypothesis in the goal is not an equality \
        between identical terms."));
@@ -386,7 +393,7 @@ let with_retry (f : simplification_fun) : simplification_fun =
       (* If the head is an equality, reduce it. *)
       try
         let name, ty1, ty2 = check_prod !evd ty in
-        let tA, t1, t2 = check_equality !evd ty1 in
+        let tA, t1, t2 = check_equality env !evd ctx ty1 in
         let t1 = reduce t1 in
         let t2 = reduce t2 in
         let ty1 = EConstr.mkApp (Builder.eq evd, [| tA; t1; t2 |]) in
@@ -406,7 +413,7 @@ let with_retry (f : simplification_fun) : simplification_fun =
 let remove_sigma : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
-  let _, t1, t2 = check_equality !evd ty1 in
+  let _, t1, t2 = check_equality env !evd ctx ty1 in
   let f, args =
     match decompose_sigma !evd t1, decompose_sigma !evd t2 with
     | Some (tA, tB, tt, tp), Some (_, _, tu, tq) ->
@@ -450,7 +457,7 @@ let remove_sigma = while_fun remove_sigma
 let deletion ~(force:bool) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
-  let tA, tx, _ = check_equality !evd ~equal_terms:true ty1 in
+  let tA, tx, _ = check_equality env !evd ctx ~equal_terms:true ty1 in
   let subst = Covering.id_subst ctx in
   if Vars.noccurn !evd 1 ty2 then
     (* The goal does not depend on the equality, we can just eliminate it. *)
@@ -487,7 +494,7 @@ let solution ~(dir:direction) : simplification_fun =
   let var_left = match dir with Left -> true | Right -> false in
   let var_right = not var_left in
   let name, ty1, ty2 = check_prod !evd ty in
-  let tA, tx, tz = check_equality !evd ~var_left ~var_right ty1 in
+  let tA, tx, tz = check_equality env !evd ctx ~var_left ~var_right ty1 in
   let trel, term =
     if var_left then tx, tz
     else tz, tx
@@ -578,7 +585,7 @@ let solution ~(dir:direction) : simplification_fun =
 let maybe_pack : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
-  let tA, t1, t2 = check_equality !evd ty1 in
+  let tA, t1, t2 = check_equality env !evd ctx ty1 in
   let f1, _ = EConstr.decompose_app !evd t1 in
   let f2, _ = EConstr.decompose_app !evd t2 in
   if not (EConstr.isConstruct !evd f1 && EConstr.isConstruct !evd f2) then
@@ -628,7 +635,7 @@ let maybe_pack : simplification_fun =
 let apply_noconf : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
-  let tA, t1, t2 = check_equality !evd ty1 in
+  let tA, t1, t2 = check_equality env !evd ctx ty1 in
   let noconf_ty = EConstr.mkApp (Builder.noConfusion evd, [| tA |]) in
   let tnoconf =
     let env = push_rel_context ctx env in
@@ -678,7 +685,7 @@ let simplify_ind_pack_inv : simplification_fun =
     let tsigma = EConstr.mkApp (Builder.sigma evd, [| tA; tB |]) in
     let tsigmaI = EConstr.mkApp (Builder.sigmaI evd, [| tA; tB; tx; tp |]) in
     let teq_refl = EConstr.mkApp (Builder.eq_refl evd, [| tsigma; tsigmaI |]) in
-    if not (Evarconv.e_cumul env evd teq teq_refl) then
+    if not (is_conv env !evd ctx teq teq_refl) then
       (* FIXME Horrible error message... *)
       raise (CannotSimplify (str
         "[opaque_ind_pack_eq_inv] should be applied to [eq_refl]."));
@@ -757,7 +764,7 @@ let infer_step ?(loc:Loc.t option) ~(isSol:bool)
     else
     (* We need to destruct the equality at the head
        to analyze it. *)
-    let tA, tu, tv = check_equality !evd ty1 in
+    let tA, tu, tv = check_equality env !evd ctx ty1 in
     (* FIXME What is the correct way to do it? *)
     let choose u v = (*if u < v then Left else Right in*) Left in
     (* If the user wants a solution, we need to respect his wishes. *)
@@ -790,7 +797,7 @@ let infer_step ?(loc:Loc.t option) ~(isSol:bool)
       in
       (* FIXME What is the correct order here? Should we first check if we
        * have K directly? *)
-      if Evarutil.evd_comb2 (Reductionops.infer_conv (push_rel_context ctx env)) evd tu tv then
+      if is_conv env !evd ctx tu tv then
         Deletion false (* Never force K. *)
       else if check_ind tA && check_construct tu && check_construct tv then
         NoConfusion [loc, Infer_many]
@@ -816,13 +823,13 @@ let infer_step ?(loc:Loc.t option) ~(isSol:bool)
     end
   end
 
-let expand_many rule env evd ((_, ty) : goal) : simplification_rules =
+let expand_many rule env evd ((ctx, ty) : goal) : simplification_rules =
   (* FIXME: maybe it's too brutal/expensive? *)
   let ty = Reductionops.whd_all env !evd ty in
   let _, ty, _ = check_prod !evd ty in
   try
     let ty = Reductionops.whd_all env !evd ty in
-    let ty, _, _ = check_equality !evd ty in
+    let ty, _, _ = check_equality env !evd ctx ty in
     let rec aux ty acc =
       let ty = Reductionops.whd_betaiotazeta !evd ty in
       let f, args = Equations_common.decompose_appvect !evd ty in
