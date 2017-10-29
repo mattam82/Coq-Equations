@@ -11,6 +11,16 @@ Require Export Coq.Program.Program.
 
 Declare ML Module "equations_plugin".
 
+(** A notation scope for equations declarations.
+
+  The general mechanism of notations forces us to define
+  notations in this scope in separate modules that we can
+  avoid to export to remain compatible with user developments.
+*)
+
+Delimit Scope equations_scope with equations.
+Local Open Scope equations_scope.
+
 (** For now we don't support obligation shrinking. Need to sync ML code with this. *)
 Set Warnings "-deprecated-option".
 Global Unset Shrink Obligations.
@@ -51,14 +61,20 @@ Arguments sigmaI {A} B pr1 pr2.
 
 Set Warnings "-notation-overridden".
 
-Notation "&{ x : A & y }" := (@sigma A (fun x : A => y)%type) (x at level 99) : sigma_scope.
-Notation "&{ x : A & y }" := (@sigma A (fun x : A => y)%type) (x at level 99) : type_scope.
-Notation "&( x , .. , y & z )" :=
-  (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
-    (right associativity, at level 4,
-     format "&( x ,  .. ,  y  &  z )") : sigma_scope.
-Notation " x .1 " := (pr1 x) (at level 3, format "x .1") : sigma_scope.
-Notation " x .2 " := (pr2 x) (at level 3, format "x .2") : sigma_scope.
+Module Sigma_Notations.
+
+  Notation "&{ x : A & y }" := (@sigma A (fun x : A => y)%type) (x at level 99) : equations_scope.
+  Notation "&{ x : A & y }" := (@sigma A (fun x : A => y)%type) (x at level 99) : type_scope.
+  Notation "&( x , .. , y & z )" :=
+    (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
+      (right associativity, at level 4,
+       format "&( x ,  .. ,  y  &  z )") : equations_scope.
+  Notation " x .1 " := (pr1 x) (at level 3, format "x .1") : equations_scope.
+  Notation " x .2 " := (pr2 x) (at level 3, format "x .2") : equations_scope.
+
+End Sigma_Notations.
+
+Import Sigma_Notations.
 
 (** The polymorphic equality type used by Equations. *)
 
@@ -70,21 +86,23 @@ Inductive Id@{i} {A : Type@{i}} (a : A) : A -> Type@{i} :=
   id_refl : Id a a.
 Arguments id_refl {A a}, [A] a.
 
-Module IdNotations.
+Module Id_Notations.
 
-  Notation " x = y " := (@Id _ x y) : id_scope.
+  Notation " x = y " := (@Id _ x y) : equations_scope.
   Notation " x = y " := (@Id _ x y) : type_scope.
-  Notation " x <> y " := (@Id _ x y -> Empty) : id_scope.
+  Notation " x <> y " := (@Id _ x y -> Empty) : equations_scope.
   Notation " x <> y " := (@Id _ x y -> Empty) : type_scope.
-  Notation " 1 " := (@id_refl _ _) : id_scope.
-  Open Scope id_scope.
-End IdNotations.
+  Notation " 1 " := (@id_refl _ _) : equations_scope.
+
+End Id_Notations.
+
+Import Id_Notations.
 
 Section IdTheory.
   Universe i.
   Context {A : Type@{i}}.
 
-  Import IdNotations.
+  Import Id_Notations.
 
   Lemma id_sym {x y : A} : x = y -> y = x.
   Proof. destruct 1. apply 1. Defined.

@@ -335,8 +335,8 @@ Definition apoly {n b} := existT (fun b => poly b n) b.
     one case to inject an integer into a polynomial and in the
     [poly_s], [poly_s] case to inspect a recursive call. *)
 
-Notation " x .1 " := (projT1 x).
-Notation " x .2 " := (projT2 x).
+Notation " x .1 " := (projT1 x) (at level 3, format "x .1").
+Notation " x .2 " := (projT2 x) (at level 3, format "x .2").
 
 Equations plus {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) : { b : bool & poly b n } :=
   plus poly_z        poly_z          := apoly poly_z;

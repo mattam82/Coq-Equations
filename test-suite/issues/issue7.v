@@ -44,6 +44,9 @@ Inductive TupleMap_direct_subterm
   (H : forall x, sigT (TupleMap _ (F x) ∘ G)) (x : A),
   TupleMap_direct_subterm _ _ (G (projT1 (H _))) _ _ _ (projT2 (H x)) (tmCons _ _ H).
 Hint Constructors TupleMap_direct_subterm : subterm_relation.
+
+Import Sigma_Notations.
+
 Definition TupleMap_subterm := Relation_Operators.clos_trans _
   (λ x y : &{index : &{n : nat & sigma _ (λ _ : TupleT n, TupleT n)} &
                    TupleMap (pr1 index) (pr1 (pr2 index)) (pr2 (pr2 index))},

@@ -4,7 +4,10 @@ Require Import Coq.Program.Tactics Setoid.
 Require Import Equations.Equations.
 Import Init.
 Set Warnings "-notation-overridden".
-Import IdNotations.
+Import Id_Notations.
+Import Sigma_Notations.
+Set Warnings "-deprecated-option".
+
 Set Standard Proposition Elimination Names.
 Set Universe Polymorphism.
 Set Primitive Projections.
@@ -137,7 +140,7 @@ Definition path_forall `{Funext} {A : Type} {P : A -> Type} (f g : forall x : A,
   :=
   (@apD10 A P f g)^^-1.
 
-Open Scope sigma_scope.
+Open Scope equations_scope.
 Equations path_sigma {A : Type} (P : A -> Type) (u v : sigma A P)
   (p : u.1 = v.1) (q : p # u.2 = v.2)
 : u = v :=
