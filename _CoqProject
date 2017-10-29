@@ -47,6 +47,7 @@ theories/Classes.v
 theories/Signature.v
 theories/EqDec.v
 theories/HSets.v
+theories/HSetInstances.v
 theories/DepElim.v
 theories/DepElimDec.v
 theories/NoConfusion.v

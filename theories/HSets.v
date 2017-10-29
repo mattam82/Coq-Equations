@@ -25,7 +25,9 @@ Class HSet A := is_hset : forall {x y : A}, HProp (Id x y).
 Inductive sum (A : Type) (B : Type) := inl : A -> sum A B | inr : B -> sum A B.
 
 Set Warnings "-notation-overridden".
-Import IdNotations.
+Import Id_Notations.
+Import Sigma_Notations.
+Local Open Scope equations_scope.
 
 Definition ap {A : Type} {B : Type} (f : A -> B) {x y : A} (p : x = y) : f x = f y :=
   match p with id_refl => id_refl end.
@@ -33,7 +35,6 @@ Definition ap {A : Type} {B : Type} (f : A -> B) {x y : A} (p : x = y) : f x = f
 Definition Id_rew (A : Type) (a : A) (P : A -> Type) (p : P a) (y : A) (e : a = y) : P y :=
   match e with id_refl => p end.
                              
-Set Printing Universes.
 Definition dec_eq@{i} {A : Type@{i}} (x y : A) := sum (x = y) (x = y -> Empty@{i}).
 
 Class EqDec@{i} (A : Type@{i}) := eq_dec : forall x y : A, sum (x = y) (x = y -> Empty@{i}).
@@ -87,26 +88,6 @@ Ltac eqdec_proof := try red; intros;
       |- sum (Id ?x ?y) _ => eqdec_loop x y
     end
   end.
-
-(** Standard instances. *)
-
-Instance unit_eqdec : EqDec unit. 
-Proof. eqdec_proof. Defined.
-
-Instance bool_eqdec : EqDec bool. 
-Proof. eqdec_proof. Defined.
-
-Instance nat_eqdec : EqDec nat.
-Proof. eqdec_proof. Defined.
-
-Instance prod_eqdec {A B} `(EqDec A) `(EqDec B) : EqDec (prod A B).
-Proof. eqdec_proof. Defined.
-
-Instance sum_eqdec {A B} `(EqDec A) `(EqDec B) : EqDec (A + B).
-Proof. eqdec_proof. Defined.
-
-Instance list_eqdec {A} `(EqDec A) : EqDec (list A). 
-Proof. eqdec_proof. Defined.
 
 (** Derivation of principles on sigma types whose domain is decidable. *)
 
@@ -212,54 +193,11 @@ Section EqdepDec.
     rewrite eq_dec_refl. reflexivity.
   Defined.
 
-  (* Let proj (P:A -> Type) (exP:sigT P) (def:P x) : P x := *)
-  (*   match exP with *)
-  (*     | existT _ x' prf => *)
-  (*       match eq_dec x' x with *)
-  (*         | inl _ eqprf => Id_rect _ x' (fun x _ => P x) prf x eqprf *)
-  (*         | _ => def *)
-  (*       end *)
-  (*   end. *)
-
-  (* Theorem inj_right_pair : *)
-  (*   forall (P:A -> Type) (y y':P x), *)
-  (*     existT P x y = existT P x y' -> y = y'. *)
-  (* Proof. *)
-  (*   intros. *)
-  (*   cut (proj (existT P x y) y = proj (existT P x y') y). *)
-  (*   simpl in |- *. *)
-  (*   case (eq_dec x x). *)
-  (*   intro e. *)
-  (*   elim e using K_dec; trivial. *)
-
-  (*   intros. *)
-  (*   case e; apply id_refl. *)
-
-  (*   case X. reflexivity. *)
-  (* Defined. *)
-
-  (* Lemma inj_right_pair_refl (P : A -> Type) (y : P x) : *)
-  (*   inj_right_pair (y:=y) (y':=y) (id_refl _) = (id_refl _). *)
-  (* Proof. unfold inj_right_pair. intros.  *)
-  (*   unfold eq_rect. unfold proj. rewrite eq_dec_refl.  *)
-  (*   unfold K_dec. simpl. *)
-  (*   unfold eq_proofs_unicity. subst proj.  *)
-  (*   simpl. unfold nu_inv, comp, nu. simpl.  *)
-  (*   unfold eq_ind, nu_left_inv, trans_sym_eq, eq_rect, nu_constant. *)
-  (*   rewrite eq_dec_refl. reflexivity. *)
-  (* Defined. *)
-
 End EqdepDec.
-
-Instance eqdec_hset (A : Type) `(EqDec A) : HSet A.
-Proof.  
-  red. red. apply eq_proofs_unicity.
-Defined.
 
 Definition transport {A : Type} {P : A -> Type} {x y : A} (p : x = y) : P x -> P y :=
   match p with id_refl => fun h => h end.
 
-Open Scope sigma_scope.
 Lemma sigma_eq (A : Type) (P : A -> Type) (x y : sigma A P) :
   x = y -> &{ p : (x.1 = y.1) & transport p x.2 = y.2 }.
 Proof.

@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-From Equations Require Import Init Signature DepElim EqDec.
+From Equations Require Import Init Signature DepElim EqDec HSetInstances.
 
 (** Alternative implementation of generalization using sigma types only,
    allowing to use K on decidable domains. *)
@@ -146,32 +146,3 @@ Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars_sig id.
 Require Import FunctionalInduction.
 
 Ltac funelim c ::= funelim_sig_tac c ltac:(fun _ => idtac).
-
-(** Any signature made up entirely of decidable types is decidable. *)
-
-Polymorphic Definition eqdec_sig@{i j} {A : Type@{i}} {B : A -> Type@{j}}
-            `(EqDec A) `(forall a, EqDec (B a)) :
-  EqDec (sigma A B).
-Proof.
-  intros. intros [x0 x1] [y0 y1].
-  case (eq_dec x0 y0). intros ->. case (eq_dec x1 y1). intros ->. left. reflexivity.
-  intros. right. red. apply simplification_sigma2_dec@{i j Set}. apply n.
-  intros. right. red. apply simplification_sigma1@{i j Set}.
-  intros e _; revert e. apply n.
-Defined.
-
-Polymorphic Existing Instance eqdec_sig.
-
-Polymorphic Definition eqdec_sig_Id@{i j k} {A : Type@{i}} {B : A -> Type@{j}}
-            `(HSets.EqDec A) `(forall a, HSets.EqDec (B a)) :
-  HSets.EqDec@{k} (sigma A B).
-Proof.
-  intros. intros x y. decompose_exists x x. decompose_exists y y.
-  case (HSets.eq_dec x' y'). intros Hx'y'. destruct Hx'y'. case (HSets.eq_dec x y).
-  + intros He; destruct He. left. reflexivity.
-  + intros. right. apply Id_simplification_sigma2. apply e.
-  + intros. right. apply Id_simplification_sigma1.
-    intros He _; revert He. apply e.
-Defined.
-
-Polymorphic Existing Instance eqdec_sig_Id.

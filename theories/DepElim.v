@@ -46,7 +46,12 @@ Ltac unblock_goal := unfold block in *; cbv zeta.
 
 (** Notation for heterogenous equality. *)
 
-Notation " x ~= y " := (@JMeq _ x _ y) (at level 70, no associativity).
+Module JMeq_Notations.
+
+  Notation " x ~= y " := (@JMeq _ x _ y) (at level 70, no associativity) : JMeq_scope.
+
+End JMeq_Notations.
+Import JMeq_Notations.
 
 (** Notation for the single element of [x = x] and [x ~= x]. *)
 
@@ -518,7 +523,8 @@ Proof.
   now destruct H.
  Defined.
 
-Local Open Scope sigma_scope.
+Local Open Scope equations_scope.
+Import Sigma_Notations.
 
 Polymorphic Lemma simplification_sigma1 : forall {A} {P : A -> Type} {B} (p q : A) (x : P p) (y : P q),
   (p = q -> sigmaI P p x = sigmaI P q y -> B) -> (sigmaI P p x = sigmaI P q y -> B).
@@ -1103,7 +1109,13 @@ Ltac destruct_last :=
 
 Definition inaccessible_pattern {A : Type} (t : A) := t.
 
-Notation "?( t )" := (inaccessible_pattern t).
+Module Inaccessible_Notations.
+
+  Notation "?( t )" := (inaccessible_pattern t) : equations_scope.
+
+End Inaccessible_Notations.
+
+Import Inaccessible_Notations.
 
 Definition hide_pattern {A : Type} (t : A) := t.
 

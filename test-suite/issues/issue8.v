@@ -5,7 +5,7 @@ nilT : TupleT 0
 
 Require Import Utf8.
 Require Import Equations.Equations.
-Open Scope sigma_scope.
+Open Scope equations_scope.
 Set Warnings "-notation-overridden".
 Notation " '{' x : A & y } " := (@sigma A (fun x : A => y)%type) : type_scope.
 

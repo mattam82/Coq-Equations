@@ -4,7 +4,8 @@ Set Universe Polymorphism.
 
 Equations Logic Type Id id_refl Id_rect Id_rect_dep_r Empty unit tt prod pair.
 
-Import IdNotations.
+Import Id_Notations.
+Import Sigma_Notations.
 
 Derive Signature for Id.
 
