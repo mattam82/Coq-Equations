@@ -3,7 +3,7 @@ module PathOT :
     type t = Covering.path
     val compare : Evar.t list -> Evar.t list -> int
   end
-module PathMap : Map.S with type key = PathOT.t
+module PathMap : CSig.MapS with type key = PathOT.t
 
 type where_map = (Term.constr * Names.Id.t * Covering.splitting) Evar.Map.t
 
