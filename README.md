@@ -37,7 +37,7 @@ Two articles describing the system are available:
   
 ## Installation
 
-The current development version works with Coq 8.6,
+The current development version works with Coq 8.6 (branch [master](https://github.com/mattam82/Coq-Equations/tree/master)) and Coq 8.7 (branch [8.7](https://github.com/mattam82/Coq-Equations/tree/8.7)),
 see [releases](https://github.com/mattam82/Coq-Equations/releases) for
 sources.
 
@@ -60,7 +60,7 @@ To get the development version of Equations, activate the repository:
 
     opam repo add coq-extra-dev https://coq.inria.fr/opam/extra-dev
 
-# Install by hand
+# Install from source
 Alternatively, to compile Equations, simply run:
 
     coq_makefile -f _CoqProject -o Makefile
