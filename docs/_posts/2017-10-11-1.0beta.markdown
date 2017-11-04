@@ -15,7 +15,7 @@ dependent pattern-matching and (well-founded) recursion and compiles
 them into core terms. This version of Equations is based on a new
 simplification engine for the dependent equalities appearing in dependent
 eliminations that is also usable as a separate tactic, providing an
-axiom-free variant of [dependent destruction].  The main features of
+axiom-free variant of `dependent destruction`.  The main features of
 Equations include:
 
   - Dependent pattern-matching in the style of Agda/Epigram, with
@@ -47,13 +47,14 @@ Equations include:
 
 The current system has known limitations we will address (see
 [FAQ][faq]), but is already usable for developping non-toy programs and
-proofs. Documentation and examples are available on the website.
+proofs (see [examples][examples]). Documentation is available on the website.
 We are seeking and welcoming [feedback][issues] from you on the
 usage of these tools!
 
 [release]: https://github.com/mattam82/Coq-Equations/releases/tag/v1.0-beta
 [www]: http://mattam82.github.io/Coq-Equations
 [faq]: http://mattam82.github.io/Coq-Equations/FAQ
+[examples]: http://mattam82.github.io/Coq-Equations/examples
 [issues]: http://github.com/mattam82/Coq-Equations/issues
 
 -- Matthieu Sozeau and Cyprien Mangin
