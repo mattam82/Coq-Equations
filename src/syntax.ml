@@ -41,7 +41,10 @@ type rec_annotation =
   | Struct
 
 type user_rec_annot = (rec_annotation * Id.t with_loc option) option
-type rec_annot = rec_annotation * int
+
+type rec_annot =
+  | StructuralOn of int
+  | NestedOn of int option
 
 type program =
   (signature * clause list) list
@@ -272,7 +275,7 @@ let rec interp_pat env ?(avoid = ref []) (loc, p) =
                              str "Or patterns not supported by Equations")
       in upat
 
-let interp_eqn i is_rec env impls eqn =
+let interp_eqn initi is_rec env impls eqn =
   let avoid = ref [] in
   let interp_pat = interp_pat env ~avoid in
   let rec aux recinfo i is_rec curpats (idopt, pats, rhs) =
@@ -308,7 +311,12 @@ let interp_eqn i is_rec env impls eqn =
       match is_rec with
       | Some (Structural l) ->
          (* let fnpat = (dummy_loc, PUVar (i, false)) in *)
-         let structpats = List.map (fun (id,_,_) -> (None, PUVar (id, false))) l in
+         let addpat (id, k, _) =
+           match k with
+           | NestedOn None when Id.equal id initi -> None
+           | _ -> Some (None, PUVar (id, false))
+         in
+         let structpats = List.map_filter addpat l in
          (loc, structpats @ pats,
           interp_rhs recinfo i is_rec curpats' rhs)
       | Some (Logical r) -> 
@@ -349,4 +357,4 @@ let interp_eqn i is_rec env impls eqn =
           CApp (loc, (None, CRef (Qualid (loc', qidproj), None)), args @ arg))
     | _ -> map_constr_expr_with_binders (fun id l -> id :: l)
 	     (interp_constr_expr recinfo) ids c
-  in aux [] i is_rec [] eqn
+  in aux [] initi is_rec [] eqn

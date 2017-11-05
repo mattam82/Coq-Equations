@@ -32,7 +32,10 @@ and user_pats = user_pat located list
 
 
 (** Globalized syntax *)
-type rec_annot = rec_annotation * int
+
+type rec_annot =
+  | StructuralOn of int
+  | NestedOn of int option
 
 type lhs = user_pats (* p1 ... pn *)
 and 'a rhs =

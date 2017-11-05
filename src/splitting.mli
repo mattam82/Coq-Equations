@@ -46,7 +46,7 @@ type program_info = {
   program_sign : rel_context;
   program_arity : Constr.t;
   program_oarity : Constr.t;
-  program_rec_annot : Syntax.rec_annot option;
+  program_rec_annot : rec_annot option;
   program_rec : Syntax.rec_type option;
   program_impls : Impargs.manual_explicitation list;
 }

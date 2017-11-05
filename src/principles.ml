@@ -22,19 +22,27 @@ open Principles_proofs
 type statement = constr * types option
 type statements = statement list
 
+type recursive = bool
+
 type node_kind =
   | Regular
   | Refine
   | Where
-  | Nested
+  | Nested of recursive
 
 let kind_of_prog p =
   match p.program_rec_annot with
-  | Some (Syntax.Nested, _) -> Nested
+  | Some (NestedOn (Some _)) -> Nested true
+  | Some (NestedOn None) -> Nested false
   | _ -> Regular
 
 let regular_or_nested = function
-  | Regular | Nested -> true
+  | Regular | Nested _ -> true
+  | _ -> false
+
+let regular_or_nested_rec = function
+  | Regular -> true
+  | Nested r -> r
   | _ -> false
 
 let pi1 (x,_,_) = x
@@ -85,14 +93,38 @@ let clean_rec_calls (ctx, ctxlen, c) =
 
 let head c = fst (decompose_app c)
 
+let find_firsti f l =
+  let rec aux i = function
+    | hd :: tl ->
+       (match f i hd with
+        | Some x -> x
+        | None -> aux (succ i) tl)
+    | [] -> raise Not_found
+  in aux 0 l
+
+let is_applied_to_structarg i is_rec lenargs =
+  match is_rec with
+  | Some (Structural ids) -> begin
+     try
+       let fn, kind, _ = List.nth ids i in
+       match kind with
+       | StructuralOn idx | NestedOn (Some idx) -> lenargs > idx
+       | NestedOn None -> true
+     with Invalid_argument _
+        | Failure _ -> true
+    end
+  | _ -> true
+
 let abstract_rec_calls ?(do_subst=true) is_rec len protos c =
   let lenprotos = List.length protos in
   let proto_fs = List.map (fun ((f,args), _, _, _) -> f) protos in
   let find_rec_call f args =
-    let fm ((f',filter), alias, idx, arity) =
+    let fm i ((f',filter), alias, idx, arity) =
       let f', args' = Termops.decompose_app_vect f' in
       if eq_constr f' f then
-        Some (idx, arity, filter_arguments filter args)
+        if is_applied_to_structarg i is_rec (List.length args) then
+          Some (idx, arity, filter_arguments filter args)
+        else None
       else
 	match alias with
         | Some (f',argsf) ->
@@ -102,7 +134,7 @@ let abstract_rec_calls ?(do_subst=true) is_rec len protos c =
            else None
         | None -> None
     in
-    try Some (CList.find_map fm protos)
+    try Some (find_firsti fm protos)
     with Not_found -> None
   in
   let find_rec_call f args =
@@ -228,7 +260,7 @@ let compute_elim_type env evd is_rec protos k leninds
                       ind_stmts all_stmts sign app elimty =
   let ctx, arity = decompose_prod_assum elimty in
   let lenrealinds =
-    List.length (List.filter (fun (_, (_,_,_,_,_,_,_,(kind,_)),_) -> regular_or_nested kind) ind_stmts) in
+    List.length (List.filter (fun (_, (_,_,_,_,_,_,_,(kind,_)),_) -> regular_or_nested_rec kind) ind_stmts) in
   let newctx =
     if lenrealinds == 1 then CList.skipn (List.length sign + 2) ctx
     else ctx
@@ -460,11 +492,12 @@ let subst_rec_split env evd f comp comprecarg prob s split =
   in
   let subst_rec cutprob s (ctx, p, _ as lhs) =
     let subst = List.fold_left (fun (ctx, _, ctx' as lhs') (id, b) ->
-      let rel, _, ty = Termops.lookup_rel_id id ctx in
-      let fK = map_proto b (lift rel ty) in
-      let substf = single_subst env evd rel (PInac fK) ctx
-      (* ctx[n := f] |- _ : ctx *) in
-      compose_subst env ~sigma:evd substf lhs') (id_subst ctx) s
+        try let rel, _, ty = Termops.lookup_rel_id id ctx in
+            let fK = map_proto b (lift rel ty) in
+            let substf = single_subst env evd rel (PInac fK) ctx
+            (* ctx[n := f] |- _ : ctx *) in
+            compose_subst env ~sigma:evd substf lhs'
+        with Not_found (* lookup *) -> lhs') (id_subst ctx) s
     in
     let csubst = 
       compose_subst env ~sigma:evd
@@ -473,10 +506,11 @@ let subst_rec_split env evd f comp comprecarg prob s split =
   in
   let subst_rec_named s acc = 
     List.fold_left (fun (acc, ctx) (id, b) ->
-        let (_, _, ty) = to_named_tuple (lookup_named id ctx) in
-        let fK = map_proto b ty in
-        (id, fK) :: acc, subst_in_named_ctx id fK ctx)
-              ([], acc) s
+        try let (_, _, ty) = to_named_tuple (lookup_named id ctx) in
+            let fK = map_proto b ty in
+            (id, fK) :: acc, subst_in_named_ctx id fK ctx
+        with Not_found -> acc, ctx)
+                   ([], acc) s
   in
   let rec aux cutprob s path = function
     | Compute ((ctx,pats,del as lhs), where, ty, c) ->
@@ -596,7 +630,7 @@ open Typeclasses
 let update_split env evd is_rec cmap f prob recs split =
   let where_map = ref Evar.Map.empty in
   match is_rec with
-  | Some (Structural _) -> subst_rec_split env !evd f false None prob recs split, !where_map
+  | Some (Syntax.Structural _) -> subst_rec_split env !evd f false None prob recs split, !where_map
   | Some (Logical r) -> 
     let proj = match r with
       | LogicalDirect (_, id) -> mkVar id
@@ -1067,7 +1101,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
       if List.length inds != 1 then
         let scheme = Nameops.add_suffix (Id.of_string info.base_id) "_ind_comb" in
         let mutual = List.map2 (fun (i, _, _, _) (_, (_, _, _, _, _, _, _, (kind, cut)), _) ->
-                         i, regular_or_nested kind) mutual ind_stmts in
+                         i, regular_or_nested_rec kind) mutual ind_stmts in
         let () =
           Indschemes.do_combined_scheme
             (Loc.ghost, scheme)
