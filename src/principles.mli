@@ -3,12 +3,13 @@ open EConstr
 
 type statement = constr * types option
 type statements = statement list
+type recursive = bool
 
 type node_kind =
   | Regular
   | Refine
   | Where
-  | Nested
+  | Nested of recursive
 
 val pi1 : 'a * 'b * 'c -> 'a
 val pi2 : 'a * 'b * 'c -> 'b

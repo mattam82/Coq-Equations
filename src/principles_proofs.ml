@@ -443,7 +443,7 @@ let observe_tac s tac =
 
 let ind_fun_tac is_rec f info fid split unfsplit progs =
   match is_rec with
-  | Some (Structural [_]) ->
+  | Some (Syntax.Structural [_]) ->
     let c = constant_value_in (Global.env ()) (Term.destConst f) in
     let i = let (inds, _), _ = Term.destFix c in inds.(0) in
     let recid = add_suffix fid "_rec" in
@@ -465,11 +465,11 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
   | Some (Structural l) ->
      let open Proofview in
      let open Notations in
-     let mutual, nested = List.partition (fun (_, (kind, _), _) -> kind == Struct) l in
-     let mutannots = List.map (fun (_, (kind, ann), _) -> ann + 1) mutual in
+     let mutual, nested = List.partition (function (_, StructuralOn _, _) -> true | _ -> false) l in
+     let mutannots = List.map (function (_, StructuralOn ann, _) -> ann + 1 | _ -> -1) mutual in
      let mutprogs, nestedprogs =
        List.partition (fun (p,_,e) -> match p.program_rec_annot with
-                                      | Some (Struct, _) -> true
+                                      | Some (StructuralOn _) -> true
                                       | _ -> false) progs
      in
      let eauto = Class_tactics.typeclasses_eauto ["funelim"; info.term_info.base_id] in
@@ -484,7 +484,8 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
                                progs)
      in
      let prove_nested =
-       tclDISPATCH (List.map (fun (_,(_,ann),_) -> fix None (ann + 1)) nested) <*>
+       tclDISPATCH (List.map (function (_,NestedOn (Some ann),_) -> fix None (ann + 1)
+                                     | _ -> tclUNIT ()) nested) <*>
          prove_progs nestedprogs
      in
      let mutfix =
@@ -502,10 +503,9 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
      (*            match kind *)
      (* in *)
      let tac gl =
-       let sigma = Goal.sigma gl in
        let mutprops, nestedprops =
          let rec aux concl i =
-           match kind sigma concl with
+           match kind (Goal.sigma gl) concl with
              | App (conj, [| a; b |]) ->
                 if i == 1 then
                   a, Some b
@@ -757,10 +757,6 @@ let ind_elim_tac indid inds mutinds info ind_fun =
          let app = applistc indid (List.rev args) in
          let sigma, ty = Typing.type_of env sigma app in
          let ctx, concl = decompose_prod_assum sigma ty in
-         (* let mkapp env sigma = *)
-         (*   let sigma, args = mk_app_holes env sigma ctx in *)
-         (*   (sigma, applist (app, List.rev args)) *)
-         (* in *)
          Tactics.simpl_in_concl <*> Tactics.intros <*>
            Tactics.cut concl <*>
            tclDISPATCH

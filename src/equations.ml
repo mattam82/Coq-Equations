@@ -84,7 +84,16 @@ let nf_program_info evm p =
     program_sign = nf_rel_context_evar evm p.program_sign;
     program_arity = nf_evar evm p.program_arity;
     program_oarity = nf_evar evm p.program_oarity }
-  
+
+let program_fixdecls p fixdecls =
+  match p.program_rec_annot with
+  | Some (NestedOn None) -> (** Actually the definition is not self-recursive *)
+     List.filter (fun decl ->
+         let na = Context.Rel.Declaration.get_name decl in
+         let id = Nameops.out_name na in
+         not (Id.equal id p.program_id)) fixdecls
+  | _ -> fixdecls
+
 let define_principles flags fixprots progs =
   let env = Global.env () in
   let evd = ref (Evd.from_env env) in
@@ -104,7 +113,8 @@ let define_principles flags fixprots progs =
     in
       match p.program_rec with
       | Some (Structural _) ->
-	 let cutprob, norecprob = 
+         let fixdecls = program_fixdecls p fixdecls in
+         let cutprob, norecprob =
 	   let (ctx, pats, ctx' as ids) = id_subst sign in
 	   (ctx @ fixdecls, pats, ctx'), ids
 	 in
@@ -235,7 +245,7 @@ let define_principles flags fixprots progs =
 
 let is_nested p =
   match p.program_rec_annot with
-  | Some (Nested, _) -> true
+  | Some (NestedOn _) -> true
   | _ -> false
 
 let define_mutual_nested flags progs =
@@ -249,7 +259,7 @@ let define_mutual_nested flags progs =
          we build the block and its projections now *)
      let structargs = Array.map_of_list (fun (p,_) ->
                           match p.program_rec_annot with
-                          | Some (Struct, lid) -> lid
+                          | Some (StructuralOn lid) -> lid
                           | _ -> (List.length p.program_sign) - 1) mutual in
      let evd = ref (Evd.from_env (Global.env ())) in
      let decl =
@@ -260,24 +270,31 @@ let define_mutual_nested flags progs =
          let rec fixsubst i acc l =
            match l with
            | (p', prog') :: rest ->
-              (match p'.program_rec_annot with
-              | Some (Nested, idx) ->
-                let fixb = (Array.make 1 idx, 0) in
-                let fixna = Array.make 1 (Name p'.program_id) in
-                let fixty = Array.make 1 (it_mkProd_or_LetIn p'.program_arity p'.program_sign) in
-                let fixbody =
-                  Vars.lift 1 (* lift over itself *)
-                       (mkApp (mkConst prog'.program_cst,
-                               rel_vect (List.length p'.program_sign) (List.length mutual)))
-                in
-                (** Apply to itself *)
-                let fixbody = mkApp (fixbody, rel_vect (List.length p'.program_sign) 1) in
-                (** Apply to its arguments *)
-                let fixbody = mkApp (fixbody, extended_rel_vect 0 p'.program_sign) in
-                let fixbody = it_mkLambda_or_LetIn fixbody p'.program_sign in
-                let term = mkFix (fixb, (fixna, fixty, Array.make 1 fixbody)) in
-                fixsubst i (term :: acc) rest
-              | _ -> fixsubst (pred i) (mkRel i :: acc) rest)
+             (match p'.program_rec_annot with
+             | Some (NestedOn idx) ->
+               (match idx with
+                | Some idx ->
+                   let fixbody =
+                     Vars.lift 1 (* lift over itself *)
+                               (mkApp (mkConst prog'.program_cst,
+                                       rel_vect (List.length p'.program_sign) (List.length mutual)))
+                   in
+                   let fixb = (Array.make 1 idx, 0) in
+                   let fixna = Array.make 1 (Name p'.program_id) in
+                   let fixty = Array.make 1 (it_mkProd_or_LetIn p'.program_arity p'.program_sign) in
+                   (** Apply to itself *)
+                   let fixbody = mkApp (fixbody, rel_vect (List.length p'.program_sign) 1) in
+                   (** Apply to its arguments *)
+                   let fixbody = mkApp (fixbody, extended_rel_vect 0 p'.program_sign) in
+                   let fixbody = it_mkLambda_or_LetIn fixbody p'.program_sign in
+                   let term = mkFix (fixb, (fixna, fixty, Array.make 1 fixbody)) in
+                   fixsubst i (term :: acc) rest
+                | None -> (* Non immediately recursive nested def *)
+                   let term =
+                     mkApp (mkConst prog'.program_cst, rel_vect 0 (List.length mutual))
+                   in
+                   fixsubst i (term :: acc) rest)
+             | _ -> fixsubst (pred i) (mkRel i :: acc) rest)
            | [] -> List.rev acc
          in
          let body = mkApp (body, Array.of_list (fixsubst (List.length mutual) [] l)) in
@@ -298,6 +315,7 @@ let define_mutual_nested flags progs =
            declare_constant p.program_id fix (Some ty) flags.polymorphic
                             !evd (IsDefinition Fixpoint)
          in
+         Impargs.declare_manual_implicits true (ConstRef kn) [p.program_impls];
          let prog' = { prog with program_cst = kn } in
          (p, prog')
        else (p,prog)
@@ -308,27 +326,33 @@ let define_mutual_nested flags progs =
        let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
        let idx =
          match p.program_rec_annot with
-         | Some (Nested, lid) -> lid
-         | _ -> (List.length p.program_sign) - 1
+         | Some (NestedOn lid) -> lid
+         | _ -> None
        in
        let body =
          let body = e_new_global evd (ConstRef prog.program_cst) in
-         let body = mkApp (body,
-                           Array.map_of_list (fun (p',prog') ->
-                               if p'.program_id = p.program_id then
-                                 mkRel 1
-                               else
-                                 e_new_global evd (ConstRef prog'.program_cst)) fixes) in
+         let args = List.map_filter
+                      (fun (p',prog') ->
+                        if p'.program_id = p.program_id then
+                          Option.map (fun _ -> mkRel 1) idx
+                        else
+                          Some (e_new_global evd (ConstRef prog'.program_cst))) fixes
+         in
+         let body = mkApp (body, Array.of_list args) in
          let body = mkApp (Vars.lift (List.length p.program_sign) body,
                            extended_rel_vect 0 p.program_sign) in
          let fixbody = it_mkLambda_or_LetIn body p.program_sign in
-         let fixb = (Array.make 1 idx, 0) in
-         let fixna = Array.make 1 (Name p.program_id) in
-         let fixty = Array.make 1 (it_mkProd_or_LetIn p.program_arity p.program_sign) in
-         mkFix (fixb, (fixna, fixty, Array.make 1 fixbody))
+         match idx with
+         | Some idx ->
+            let fixb = (Array.make 1 idx, 0) in
+            let fixna = Array.make 1 (Name p.program_id) in
+            let fixty = Array.make 1 (it_mkProd_or_LetIn p.program_arity p.program_sign) in
+            mkFix (fixb, (fixna, fixty, Array.make 1 fixbody))
+         | None -> fixbody
        in
        let kn = declare_constant p.program_id body (Some ty) flags.polymorphic
                                  !evd (IsDefinition Fixpoint) in
+       Impargs.declare_manual_implicits true (ConstRef kn) [p.program_impls];
        let prog' = { prog with program_cst = kn } in
        (p, prog')
      in
@@ -355,23 +379,32 @@ let define_by_eqs opts eqs nt =
   let poly = Flags.is_universe_polymorphism () in
   let flags = { polymorphic = poly; with_eqns; with_ind } in
   let evd = ref (Evd.from_env env) in
-  let interp_arities (((loc,i),rec_annot,l,t),_) =
+  let interp_arities (((loc,i),rec_annot,l,t),_ as ieqs) =
     let ienv, ((env', sign), impls) = interp_context_evars env evd l in
     let arity = interp_type_evars env' evd t in
     let sign = nf_rel_context_evar ( !evd) sign in
     let oarity = nf_evar ( !evd) arity in
-    let is_recursive = is_recursive i eqs in
+    let is_rec = is_recursive i eqs in
+    let interp_reca k i =
+      match k with
+      | Struct -> StructuralOn i
+      | Nested -> NestedOn (Some i)
+    in
     let rec_annot =
       match rec_annot with
       | None ->
-         (match is_recursive with
-          | Some false -> Some (Struct, List.length sign - 1)
+         (match is_rec with
+          | Some false -> Some (StructuralOn (List.length sign - 1))
           | _ -> None)
-      | Some (reck, None) -> Some (reck, List.length sign - 1)
+      | Some (reck, None) ->
+         (match is_recursive i [ieqs] with (* Recursive in its own body? *)
+          | Some _ -> Some (interp_reca reck (List.length sign - 1))
+          | None -> if reck == Nested then Some (NestedOn None)
+                    else Some (StructuralOn (List.length sign - 1)))
       | Some (reck, Some lid) ->
          try
            let k, _, _ = lookup_rel_id (snd lid) sign in
-           Some (reck, List.length sign - k)
+           Some (interp_reca reck (List.length sign - k))
          with Not_found ->
            user_err_loc (Some (fst lid), "struct_index",
                          Pp.(str"No argument named " ++ pr_id (snd lid) ++ str" found"))
@@ -399,7 +432,7 @@ let define_by_eqs opts eqs nt =
         Some (compid, comp), compapp, oarity
       else None, arity, arity
     in
-    match is_recursive with
+    match is_rec with
     | None ->
        { program_id = i;
          program_sign = sign;
@@ -432,7 +465,7 @@ let define_by_eqs opts eqs nt =
        Table.extraction_inline true [Ident (dummy_loc, projid)];
        let compinfo = LogicalProj { comp = Option.map snd comp; comp_app = to_constr !evd compapp;
 			            comp_proj = compproj; comp_recarg = succ (length sign) } in
-       let compapp, is_recursive =
+       let compapp, is_rec =
 	 if b then compapp, Some (Logical compinfo)
          else compapp, Some (Structural [])
        in
@@ -441,14 +474,14 @@ let define_by_eqs opts eqs nt =
          program_oarity = oarity;
          program_arity = compapp;
          program_rec_annot = rec_annot;
-         program_rec = is_recursive;
+         program_rec = is_rec;
          program_impls = impls }
   in
   let arities = List.map interp_arities eqs in
   let recids = List.map (fun p ->
                    p.program_id, (match p.program_rec_annot with
-                                  | Some i -> i
-                                  | _ -> Nested, 0), None)
+                                  | Some ann -> ann
+                                  | None -> NestedOn None), None)
                         arities in
   let arities = List.map (fun p ->
                     match p.program_rec with
@@ -490,7 +523,16 @@ let define_by_eqs opts eqs nt =
     let sign = nf_rel_context_evar !evd p.program_sign in
     let prob =
       if is_structural p.program_rec then
-        id_subst (sign @ fixdecls)
+        match p.program_rec_annot with
+        | Some (NestedOn None) -> (** Actually the definition is not self-recursive *)
+           let fixdecls =
+             List.filter (fun decl ->
+                 let na = Context.Rel.Declaration.get_name decl in
+                 let id = Nameops.out_name na in
+                 not (Id.equal id p.program_id)) fixdecls
+           in
+           id_subst (sign @ fixdecls)
+        | _ -> id_subst (sign @ fixdecls)
       else id_subst sign
     in
     let _oarity = nf_evar !evd p.program_oarity in
@@ -534,6 +576,15 @@ let define_by_eqs opts eqs nt =
     let comp = match p.program_rec with
       Some (Logical l) -> Some l
     | _ -> None
+    in
+    let fixdecls =
+      match p.program_rec_annot with
+      | Some (NestedOn None) -> (** Actually the definition is not self-recursive *)
+         List.filter (fun decl ->
+             let na = Context.Rel.Declaration.get_name decl in
+             let id = Nameops.out_name na in
+             not (Id.equal id p.program_id)) fixdecls
+      | _ -> fixdecls
     in
     define_tree p.program_rec fixdecls poly p.program_impls status evd env
                 (p.program_id, p.program_sign, p.program_oarity)

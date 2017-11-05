@@ -45,7 +45,7 @@ type program_info = {
   program_sign : EConstr.rel_context;
   program_arity : EConstr.t;
   program_oarity : EConstr.t;
-  program_rec_annot : Syntax.rec_annot option;
+  program_rec_annot : rec_annot option;
   program_rec : Syntax.rec_type option;
   program_impls : Impargs.manual_explicitation list;
 }
