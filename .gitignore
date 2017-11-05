@@ -33,3 +33,8 @@ docs/_site
 /test-suite/Makefile
 /test-suite/bisect.coq
 /test-suite/Makefile.conf
+/src/*.annot
+*.lock
+/doc/equations.fls
+/doc/equations.fdb_latexmk
+/.nia.cache
