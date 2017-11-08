@@ -50,11 +50,11 @@ val pats_of_constrs : Evd.evar_map -> constr list -> pat list
 val pat_of_constr : Evd.evar_map -> constr -> pat
 
 (** Pretty-printing *)
-val pr_constr_pat : env -> Evd.evar_map -> constr -> Pp.std_ppcmds
-val pr_pat : env -> Evd.evar_map -> pat -> Pp.std_ppcmds
-val pr_context : env -> Evd.evar_map -> rel_context -> Pp.std_ppcmds
+val pr_constr_pat : env -> Evd.evar_map -> constr -> Pp.t
+val pr_pat : env -> Evd.evar_map -> pat -> Pp.t
+val pr_context : env -> Evd.evar_map -> rel_context -> Pp.t
 val ppcontext : env -> Evd.evar_map -> rel_context -> unit
-val pr_context_map : env -> Evd.evar_map -> context_map -> Pp.std_ppcmds
+val pr_context_map : env -> Evd.evar_map -> context_map -> Pp.t
 val ppcontext_map : env -> Evd.evar_map -> context_map -> unit
 val typecheck_map :
   Environ.env -> Evd.evar_map -> context_map -> unit
@@ -131,10 +131,10 @@ and refined_node = {
 
 and splitting_rhs = RProgram of constr | REmpty of int
 
-val pr_path : Evd.evar_map -> Evd.evar list -> Pp.std_ppcmds
+val pr_path : Evd.evar_map -> Evd.evar list -> Pp.t
 val eq_path : Evar.t list -> Evar.t list -> bool
 
-val pr_splitting : env -> Evd.evar_map -> ?verbose:bool -> splitting -> Pp.std_ppcmds
+val pr_splitting : env -> Evd.evar_map -> ?verbose:bool -> splitting -> Pp.t
 val ppsplit : splitting -> unit
 
 (** Covering computation *)
@@ -290,7 +290,7 @@ val unify_type :
   option
 
 val blockers : user_pats -> context_map -> int list
-val pr_rel_name : Environ.env -> int -> Pp.std_ppcmds
+val pr_rel_name : Environ.env -> int -> Pp.t
 
 val subst_matches_constr : Evd.evar_map ->
   int -> (int * constr) list -> constr -> constr
@@ -321,7 +321,7 @@ val split_at_eos : Evd.evar_map ->
   named_context -> named_context * named_context
 val pr_problem :
   Id.t * 'a * 'b ->
-  env -> Evd.evar_map -> rel_context * pat list * 'c -> Pp.std_ppcmds
+  env -> Evd.evar_map -> rel_context * pat list * 'c -> Pp.t
 val rel_id : (Name.t * 'a * 'b) list -> int -> Id.t
 val push_named_context :
   named_context -> env -> env

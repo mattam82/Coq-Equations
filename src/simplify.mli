@@ -69,4 +69,4 @@ val simplify : simplification_rules -> simplification_fun
 
 val simplify_tac : simplification_rules -> unit Proofview.tactic
 
-val pr_simplification_rules : simplification_rules -> Pp.std_ppcmds
+val pr_simplification_rules : simplification_rules -> Pp.t

@@ -24,7 +24,7 @@ type ind_info = {
 
 val find_helper_info :
   Splitting.term_info ->
-  Term.constr -> Term.existential_key * int * Names.identifier
+  Term.constr -> Term.existential_key * int * Names.Id.t
 val below_transparent_state : unit -> Names.transparent_state
 val simpl_star : Proof_type.tactic
 val eauto_with_below :

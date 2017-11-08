@@ -10,7 +10,7 @@ open Equations_common
 open EConstr
 
 type one_inductive_info = {
-  ind_name : Names.identifier;
+  ind_name : identifier;
   ind_c : constr;
   ind_args : rel_context;
   ind_constr : (rel_context * types) array;

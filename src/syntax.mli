@@ -22,6 +22,8 @@ type rec_annotation =
 
 type user_rec_annot = (rec_annotation * Id.t with_loc option) option
 
+type identifier = Names.Id.t
+
 type user_pat =
     PUVar of identifier * generated
   | PUCstr of constructor * int * user_pats
@@ -52,16 +54,16 @@ and program = (signature * clause list) list
 and signature = identifier * rel_context * constr (* f : Π Δ. τ *)
 and clause = Loc.t * lhs * clause rhs (* lhs rhs *)
 
-val pr_user_pat : env -> user_pat located -> Pp.std_ppcmds
-val pr_user_pats : env -> user_pats -> Pp.std_ppcmds
+val pr_user_pat : env -> user_pat located -> Pp.t
+val pr_user_pats : env -> user_pats -> Pp.t
 
-val pr_lhs : env -> user_pats -> Pp.std_ppcmds
+val pr_lhs : env -> user_pats -> Pp.t
 val pplhs : user_pats -> unit
-val pr_rhs : env -> clause rhs -> Pp.std_ppcmds
+val pr_rhs : env -> clause rhs -> Pp.t
 val pr_clause :
-  env -> clause -> Pp.std_ppcmds
+  env -> clause -> Pp.t
 val pr_clauses :
-  env -> clause list -> Pp.std_ppcmds
+  env -> clause list -> Pp.t
 val ppclause : clause -> unit
 
 
@@ -87,14 +89,14 @@ and logical_rec =
   | LogicalDirect of Id.t with_loc
   | LogicalProj of rec_info
 and rec_info = {
-  comp : constant option;
+  comp : Names.Constant.t option;
   comp_app : constr;
   comp_proj : constant;
   comp_recarg : int;
 }
 val is_structural : rec_type option -> bool
 val is_rec_call : Evd.evar_map -> logical_rec -> EConstr.constr -> bool
-val next_ident_away : Id.t -> Id.t list ref -> Id.t
+val next_ident_away : Id.t -> Id.Set.t ref -> Id.t
 
 type equation_option = 
   | OInd of bool | ORec of Id.t with_loc option 
@@ -103,18 +105,18 @@ type equation_option =
 
 type equation_user_option = equation_option
 
-val pr_r_equation_user_option : 'a -> 'b -> 'c -> 'd -> Pp.std_ppcmds
+val pr_r_equation_user_option : 'a -> 'b -> 'c -> 'd -> Pp.t
 
 type equation_options = equation_option list
 
-val pr_equation_options : 'a -> 'b -> 'c -> 'd -> Pp.std_ppcmds
+val pr_equation_options : 'a -> 'b -> 'c -> 'd -> Pp.t
 
 val translate_cases_pattern :
-  'a -> Id.t list ref -> ?loc:Loc.t -> Glob_term.cases_pattern_r -> user_pat located
+  'a -> Id.Set.t ref -> ?loc:Loc.t -> 'b Glob_term.cases_pattern_r -> user_pat located
 
-val ids_of_pats : pat_expr with_loc list -> identifier list
+val ids_of_pats : pat_expr with_loc list -> Id.Set.t
 
-val interp_pat : Environ.env -> ?avoid:Names.Id.t list ref ->
+val interp_pat : Environ.env -> ?avoid:Id.Set.t ref ->
   user_pat_expr -> user_pat located
 
 val interp_eqn :

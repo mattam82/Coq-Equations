@@ -99,7 +99,7 @@ let term_of_tree status isevar env0 tree =
              let evm, c', ty' =
                match kind evm where_term with
                | Evar (ev, _) ->
-                 let term' = mkLetIn (Name (id_of_string "prog"), c', ty', lift 1 ty') in
+                 let term' = mkLetIn (Name (Id.of_string "prog"), c', ty', lift 1 ty') in
                  let evm, term =
                    helper_evar evm ev env term'
                                (dummy_loc, QuestionMark (Define false, Name where_id)) in
@@ -118,7 +118,7 @@ let term_of_tree status isevar env0 tree =
     | Compute ((ctx, _, _), where, ty, REmpty split) ->
        assert (List.is_empty where);
        let evm, coq_nat = new_global evm (Lazy.force coq_nat) in
-	let split = make_def (Name (id_of_string "split"))
+        let split = make_def (Name (Id.of_string "split"))
           (Some (of_constr (coq_nat_of_int (succ (length ctx - split)))))
           coq_nat
        in
@@ -147,7 +147,7 @@ let term_of_tree status isevar env0 tree =
 	in
 	let evm, sterm, sty = aux env evm rest in
 	let evm, term, ty = 
-	  let term = mkLetIn (Name (id_of_string "prog"), sterm, sty, lift 1 sty) in
+          let term = mkLetIn (Name (Id.of_string "prog"), sterm, sty, lift 1 sty) in
 	  let evm, term = helper_evar evm ev (Global.env ()) term
             (dummy_loc, QuestionMark (Define false, Name id))
 	  in
@@ -293,7 +293,7 @@ let term_of_tree status isevar env0 tree =
 	in
 	let evm = !evd in
 	let branches_ctx =
-	  Array.mapi (fun i (br, brt) -> make_def (Name (id_of_string ("m_" ^ string_of_int i))) (Some br) brt)
+          Array.mapi (fun i (br, brt) -> make_def (Name (Id.of_string ("m_" ^ string_of_int i))) (Some br) brt)
 	    branches
 	in
 	let n, branches_lets =
@@ -306,11 +306,11 @@ let term_of_tree status isevar env0 tree =
 	  let ty = it_mkProd_or_LetIn ty liftctx in
 	  let ty = it_mkLambda_or_LetIn ty branches_lets in
           let nbbranches =
-            make_def (Name (id_of_string "branches"))
+            make_def (Name (Id.of_string "branches"))
                      (Some (of_constr (coq_nat_of_int (length branches_lets))))
             coqnat
 	  in
-	  let nbdiscr = make_def (Name (id_of_string "target"))
+          let nbdiscr = make_def (Name (Id.of_string "target"))
                         (Some (of_constr (coq_nat_of_int (length before))))
                         coqnat
 	  in
@@ -413,9 +413,9 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
   let hook locality gr =
     let l =
       Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Ident (dummy_loc, id)) obls in
-    Extraction_plugin.Table.extraction_inline true l;
+    Extraction_plugin.Table.extraction_inline true (Obj.magic l);
     let kind = (locality, poly, Decl_kinds.Definition) in
-    let baseid = string_of_id i in
+    let baseid = Id.to_string i in
     let term_info = { term_id = gr; base_id = baseid; helpers_info = helpers; decl_kind = kind;
                       comp_obls = !compobls } in
       hook split cmap term_info
@@ -469,7 +469,7 @@ let clean_clause (ctx, pats, ty, c) =
 let map_evars_in_constr evd evar_map c = 
   evar_map (fun id ->
 	    let gr = Nametab.global (Qualid (dummy_loc, qualid_of_ident id)) in
-	    let (f, uc) = Universes.unsafe_constr_of_global gr in f)
+            let (f, uc) = Global.constr_of_global_in_context (Global.env ()) gr in f)
            (EConstr.to_constr evd c)
 
 let map_evars_in_split evd m = map_split (map_evars_in_constr evd m)

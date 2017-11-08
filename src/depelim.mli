@@ -29,24 +29,24 @@ val make_abstract_generalize :
 val hyps_of_vars :
   env -> Evd.evar_map ->
   named_context ->
-  Idset.t -> Idset.t -> Idset.elt list
+  Id.Set.t -> Id.Set.t -> Id.Set.elt list
 exception Seen
-val linear : Evd.evar_map -> Idset.t -> constr array -> bool
+val linear : Evd.evar_map -> Id.Set.t -> constr array -> bool
 val needs_generalization :
   Proof_type.goal Tacmach.sigma -> Id.t -> bool
 val abstract_args :
   Proof_type.goal Tacmach.sigma ->
   bool ->
   bool ->
-  Idset.elt ->
+  Id.Set.elt ->
   bool ->
   constr ->
   constr array ->
-  (constr * bool * int * Idset.elt list) option
+  (constr * bool * int * Id.Set.elt list) option
 val abstract_generalize :
   ?generalize_vars:bool ->
   ?force_dep:bool ->
-  Idset.elt ->
+  Id.Set.elt ->
   Proof_type.goal Tacmach.sigma -> Proof_type.goal list Evd.sigma
 val dependent_pattern :
   ?pattern_term:bool ->

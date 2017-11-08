@@ -1,3 +1,4 @@
+-bypass-API
 -I src
 -I test-suite
 -R theories Equations

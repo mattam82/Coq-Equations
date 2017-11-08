@@ -764,19 +764,19 @@ let lets_of_ctx env ctx evars s =
     fold_left (fun (ctx', cs, varsubst, k, ids) (id, pat) -> 
     let c = pat_constr pat in
       match pat with
-      | PRel i -> (ctx', cs, (i, id) :: varsubst, k, id :: ids)
+      | PRel i -> (ctx', cs, (i, id) :: varsubst, k, Id.Set.add id ids)
       | _ -> 
 	  let ty = Typing.e_type_of envctx evars c in
 	    (make_def (Name id) (Some (lift k c)) (lift k ty) :: ctx', (c :: cs),
-	     varsubst, succ k, id :: ids))
-    ([],[],[],0,[]) s
+             varsubst, succ k, Id.Set.add id ids))
+    ([],[],[],0,Id.Set.empty) s
   in
   let _, _, ctx' = List.fold_right (fun decl (ids, i, ctx') ->
     let (n, b, t) = to_tuple decl in
     try ids, pred i, (make_def (Name (List.assoc i varsubst)) b t :: ctx')
     with Not_found -> 
       let id' = Namegen.next_name_away n ids in
-	id' :: ids, pred i, (make_def (Name id') b t :: ctx')) ctx (ids, List.length ctx, [])
+        Id.Set.add id' ids, pred i, (make_def (Name id') b t :: ctx')) ctx (ids, List.length ctx, [])
   in pats, ctxs, ctx'
       
 let env_of_rhs evars ctx env s lets = 
@@ -1021,9 +1021,9 @@ let do_renamings ctx =
       | Name id -> 
 	  let id' = Namegen.next_ident_away id ids in
 	  let decl' = make_def (Name id') b t in
-	    (id' :: ids, decl' :: acc)
+            (Id.Set.add id' ids, decl' :: acc)
       | Anonymous -> assert false)
-      ctx ([], [])
+      ctx (Id.Set.empty, [])
   in ctx'
 
 let split_var (env,evars) var delta =
@@ -1289,14 +1289,15 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
      let sign = named_context_of_val sign in
      let sign', secsign = split_at_eos !evars sign in
      let ids = List.map get_id sign in
+     let ids = API.Names.Id.Set.of_list (Obj.magic ids) in
      let tac = match tac with
        | Inl tac -> 
-	  Tacinterp.interp_tac_gen Id.Map.empty ids Tactic_debug.DebugOff tac 
+          Tacinterp.interp_tac_gen API.Names.Id.Map.empty ids Tactic_debug.DebugOff tac
        | Inr tac -> Tacinterp.eval_tactic tac
      in
      let env' = reset_with_named_context (val_of_named_context sign) env in
      let entry, proof = Proofview.init !evars [(env', t')] in
-     let _, res, _, _ = Proofview.apply env' tac proof in
+     let _, res, _, _ = Proofview.apply env' (Obj.magic tac) proof in
      let gls = Proofview.V82.goals res in
      evars := gls.sigma;
      if Proofview.finished res then
@@ -1360,7 +1361,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
             (gl, args, subst, invsubst, s)
        in
        let goals = List.map solve_goal gls.it in
-       Some (Valid (prob, ty, List.map get_id sign', Proofview.V82.of_tactic tac, 
+       Some (Valid (prob, ty, List.map get_id sign', Proofview.V82.of_tactic (Obj.magic tac),
 		    (entry, res), goals))
 
   | Refine (c, cls) -> 
@@ -1372,7 +1373,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
      (* revctx is a variable substitution from a reordered context to the
 	         current context. Needed for ?? *)
      let revctx = check_ctx_map env !evars (newctx, pats', ctx) in
-     let idref = Namegen.next_ident_away (id_of_string "refine") (ids_of_rel_context newctx) in
+     let idref = Namegen.next_ident_away (Id.of_string "refine") (Id.Set.of_list (ids_of_rel_context newctx)) in
      let decl = make_assum (Name idref) (mapping_constr !evars revctx cty) in
      let extnewctx = decl :: newctx in
      (* cmap : Δ -> ctx, cty,
@@ -1415,7 +1416,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
      let vars' = List.rev_map snd sortinv in
      let rec cls' n cls =
        let next_unknown =
-	 let str = id_of_string "unknown" in
+         let str = Id.of_string "unknown" in
 	 let i = ref (-1) in fun () ->
 		             incr i; add_suffix str (string_of_int !i)
        in

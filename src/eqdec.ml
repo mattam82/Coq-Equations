@@ -70,7 +70,7 @@ let inductive_info sigma ((mind, _ as ind),u) =
   let mindb, oneind = Global.lookup_inductive ind in
   let params_ctxt = subst_instance_context (EInstance.kind sigma u) mindb.mind_params_ctxt in
   let subst, paramargs, params =
-    named_of_rel_context (fun () -> id_of_string "param") (erel_context params_ctxt) in
+    named_of_rel_context (fun () -> Id.of_string "param") (erel_context params_ctxt) in
   let nparams = List.length params in
   let env = List.fold_right push_named params (Global.env ()) in
   let info_of_ind i ind =
@@ -127,8 +127,8 @@ let derive_eq_dec env sigma ~polymorphic ind =
       mkApp (dec_eq evdref, [| indapp |])
     in
     let app = 
-      let xname = Name (id_of_string "x") in
-      let yname = Name (id_of_string "y") in
+      let xname = Name (Id.of_string "x") in
+      let yname = Name (Id.of_string "y") in
 	mkProd (xname, indapp,
 	       mkProd (yname, lift 1 indapp,
   		      mkApp (lift 2 app, [| mkRel 2; mkRel 1 |])))
@@ -146,14 +146,17 @@ let derive_eq_dec env sigma ~polymorphic ind =
 	it_mkNamedLambda_or_LetIn 
 	  (it_mkLambda_or_LetIn (of_constr (Option.get b)) ind.ind_args) ctx
       in
+      let univs = snd (Evd.universe_context ~names:[] ~extensible:true !evdref) in
       let ce = 
 	{ const_entry_body = Future.from_val ((to_constr sigma body,Univ.ContextSet.empty), Safe_typing.empty_private_constants);
   	  const_entry_type = Some (to_constr sigma (it_mkNamedProd_or_LetIn
 				     (it_mkProd_or_LetIn (of_constr ty) ind.ind_args) ctx));
   	  const_entry_opaque = false; const_entry_secctx = None;
 	  const_entry_feedback = None;
-	  const_entry_polymorphic = polymorphic;
-	  const_entry_universes = snd (Evd.universe_context !evdref);
+          (* const_entry_polymorphic = polymorphic; *)
+          const_entry_universes =
+            if polymorphic then Polymorphic_const_entry univs
+            else Monomorphic_const_entry univs;
 	  const_entry_inline_code = false;
 	}
       in ce

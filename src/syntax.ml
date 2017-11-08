@@ -25,6 +25,7 @@ open Constrintern
 open Ltac_plugin
 
 type 'a with_loc = Loc.t * 'a
+type identifier = Names.Id.t
    
 type generated = bool
 (** User-level patterns *)
@@ -97,7 +98,7 @@ let rec pr_rhs env = function
       hov 1 (str "{" ++ pr_clauses env s ++ str "}")
   | By (Inl tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_raw_tactic tac
       ++ spc () ++ hov 1 (str "{" ++ pr_clauses env s ++ str "}")
-  | By (Inr tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_glob_tactic env tac
+  | By (Inr tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_glob_tactic (Obj.magic env) tac
       ++ spc () ++ hov 1 (str "{" ++ pr_clauses env s ++ str "}")
 
 and pr_wheres env l =
@@ -134,7 +135,7 @@ type pre_equations = pre_equation where_clause list
 
 let next_ident_away s ids =
   let n' = Namegen.next_ident_away s !ids in
-    ids := n' :: !ids; n'
+    ids := Id.Set.add n' !ids; n'
 
 type equation_option = | OInd of bool | ORec of Id.t with_loc option
                        | OComp of bool | OEquations of bool
@@ -182,11 +183,11 @@ let default_loc = Loc.make_loc (0, 0)
 let rec translate_cases_pattern env avoid ?loc = function
   | PatVar (Name id) -> loc, PUVar (id, false)
   | PatVar Anonymous -> 
-      let n = next_ident_away (id_of_string "wildcard") avoid in
-	avoid := n :: !avoid; loc, PUVar (n, true)
+      let n = next_ident_away (Id.of_string "wildcard") avoid in
+        avoid := Id.Set.add n !avoid; loc, PUVar (n, true)
   | PatCstr ((ind, _ as cstr), pats, Anonymous) ->
      loc, PUCstr (cstr, (Inductiveops.inductive_nparams ind),
-                  List.map (CAst.with_loc_val (translate_cases_pattern env avoid)) pats)
+                  List.map (DAst.with_loc_val (translate_cases_pattern env avoid)) pats)
   | PatCstr (cstr, pats, Name id) ->
       CErrors.user_err ?loc ~hdr:"interp_pats" (str "Aliases not supported by Equations")
 
@@ -195,11 +196,11 @@ let rec ids_of_pats pats =
     match p with
     | PEApp ((loc,f), l) -> 
 	let lids = ids_of_pats l in
-	  (try ident_of_smart_global f :: lids with _ -> lids) @ ids
+        Id.Set.union (try Id.Set.add (ident_of_smart_global f) lids with _ -> lids) ids
     | PEWildcard -> ids
     | PEInac _ -> ids
     | PEPat _ -> ids)
-    [] pats
+    Id.Set.empty pats
 
 let add_implicits impls avoid pats =
   let rec aux l pats =
@@ -214,7 +215,7 @@ let add_implicits impls avoid pats =
 	 with Not_found ->
 	   let n = next_ident_away id avoid in
 	   let pat = PEPat (CAst.make (CPatAtom (Some (Ident (None, n))))) in
-  	   avoid := n :: !avoid;
+           avoid := Id.Set.add n !avoid;
 	   (default_loc, pat) :: aux imps pats
        else begin
          match pats with
@@ -231,7 +232,7 @@ let chole c loc =
   CAst.make ~loc
   (CHole (Some (ImplicitArg (ConstRef cst, (0,None), false)),Misctypes.IntroAnonymous,None)), None
 
-let rec interp_pat env ?(avoid = ref []) (loc, p) =
+let rec interp_pat env ?(avoid = ref Id.Set.empty) (loc, p) =
   match p with
   | PEApp ((loc, f), l) ->
       let r =
@@ -258,19 +259,19 @@ let rec interp_pat env ?(avoid = ref []) (loc, p) =
       end
   | PEInac c -> Some loc, PUInac c
   | PEWildcard ->
-      let n = next_ident_away (id_of_string "wildcard") avoid in
-        avoid := n :: !avoid; Some loc, PUVar (n, true)
+      let n = next_ident_away (Id.of_string "wildcard") avoid in
+        avoid := Id.Set.add n !avoid; Some loc, PUVar (n, true)
   | PEPat p ->
       let ids, pats = intern_pattern env p in
       let upat =
         match pats with
-        | [(l, pat)] -> CAst.with_loc_val (translate_cases_pattern env avoid) pat
+        | [(l, pat)] -> DAst.with_loc_val (translate_cases_pattern env avoid) pat
         | _ -> user_err_loc (Some loc, "interp_pat",
                              str "Or patterns not supported by Equations")
       in upat
 
 let interp_eqn initi is_rec env impls eqn =
-  let avoid = ref [] in
+  let avoid = ref Id.Set.empty in
   let interp_pat = interp_pat env ~avoid in
   let rec aux recinfo i is_rec curpats (idopt, pats, rhs) =
     let curpats' = 
@@ -278,12 +279,12 @@ let interp_eqn initi is_rec env impls eqn =
       | SignPats l -> l
       | RefinePats l -> curpats @ List.map (fun x -> None, x) l
     in
-    avoid := !avoid @ ids_of_pats (List.map snd curpats');
+    avoid := Id.Set.union !avoid (ids_of_pats (List.map snd curpats'));
     Option.iter (fun (loc,id) ->
       if not (Id.equal id i) then
 	user_err_loc (Some loc, "interp_pats",
 		     str "Expecting a pattern for " ++ pr_id i);
-      Dumpglob.dump_reference ~loc "<>" (string_of_id id) "def")
+      Dumpglob.dump_reference ~loc "<>" (Id.to_string id) "def")
       idopt;
     (*   if List.length pats <> List.length sign then *)
     (*     user_err_loc (loc, "interp_pats", *)
@@ -330,7 +331,7 @@ let interp_eqn initi is_rec env impls eqn =
     | By (x, s) -> By (x, map (aux recinfo i is_rec curpats) s)
   and interp_wheres recinfo avoid w =
     let interp_where (((loc,id),nested,b,t) as p,eqns) =
-      Dumpglob.dump_reference ~loc "<>" (string_of_id id) "def";
+      Dumpglob.dump_reference ~loc "<>" (Id.to_string id) "def";
       p, map (aux recinfo id None []) eqns
     in List.map interp_where w
   and interp_constr_expr recinfo ids ?(loc=default_loc) c =
@@ -347,9 +348,9 @@ let interp_eqn initi is_rec env impls eqn =
         | LogicalDirect _ -> arg
         | LogicalProj r -> 
           let arg = if Option.is_empty r.comp then [arg, None] else [] in
-          let qidproj = Nametab.shortest_qualid_of_global Idset.empty (ConstRef r.comp_proj) in
+          let qidproj = Nametab.shortest_qualid_of_global Id.Set.empty (ConstRef r.comp_proj) in
           CAst.make ~loc (CApp ((None, CAst.make ?loc:loc' (CRef (Qualid (loc', qidproj), None))),
                                 args @ arg)))
-    | _ -> map_constr_expr_with_binders (fun id l -> id :: l)
+    | _ -> map_constr_expr_with_binders Id.Set.add
              (fun ids -> CAst.with_loc_val (interp_constr_expr recinfo ids)) ids (CAst.make ~loc c)
   in aux [] initi is_rec [] eqn

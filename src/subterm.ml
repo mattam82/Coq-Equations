@@ -76,9 +76,9 @@ let derive_subterm env sigma ~polymorphic ind =
     let liftargbinders = lift_rel_context lenargs argbinders in
     let liftargbinders' = lift_rel_context lenargs liftargbinders in
     let indapp n = (mkApp (lift (3 * lenargs + n) indapp, extended_rel_vect (n + (2 - n) * lenargs) argbinders)) in
-    let terms = [(Name (id_of_string "z"), None, indapp 2);
-                 (Name (id_of_string "y"), None, indapp 1);
-                 (Name (id_of_string "x"), None, indapp 0)]
+    let terms = [(Name (Id.of_string "z"), None, indapp 2);
+                 (Name (Id.of_string "y"), None, indapp 1);
+                 (Name (Id.of_string "x"), None, indapp 0)]
     in
     let binders = to_context terms @ liftargbinders' @ liftargbinders @ argbinders in
     let lenbinders = 3 * succ lenargs in
@@ -132,7 +132,7 @@ let derive_subterm env sigma ~polymorphic ind =
         mind_entry_consnames = consnames;
         mind_entry_lc = constructors }
   in
-  let pl, uctx = Evd.universe_context sigma in
+  let pl, uctx = Evd.universe_context ~names:[] ~extensible:true sigma in
   let declare_ind () =
     let inds = [declare_one_ind 0 ind branches] in
     let inductive =
@@ -192,8 +192,8 @@ let derive_subterm env sigma ~polymorphic ind =
                                  (xindices @ yindices @
                                     [mkProj (valproj, mkRel 2); mkProj (valproj, mkRel 1)]))
             in
-            mkLambda (Name (id_of_string "x"), typesig,
-                      mkLambda (Name (id_of_string "y"), lift 1 typesig,
+            mkLambda (Name (Id.of_string "x"), typesig,
+                      mkLambda (Name (Id.of_string "y"), lift 1 typesig,
                                 apprel))
           in
           let typesig = Tacred.simpl env' !evm typesig in
@@ -260,19 +260,19 @@ let derive_below env sigma ~polymorphic (ind,univ as indu) =
   let ctx = List.map of_rel_decl ctx in
   let allargsvect = extended_rel_vect 0 ctx in
   let indty = mkApp (mkIndU indu, allargsvect) in
-  let ctx = of_tuple (Name (id_of_string "c"), None, indty) :: ctx in
+  let ctx = of_tuple (Name (Id.of_string "c"), None, indty) :: ctx in
   let argbinders, parambinders = List.chop (succ realdecls) ctx in
   let u = Evarutil.e_new_Type ~rigid:Evd.univ_rigid env evd in
   let arity = it_mkProd_or_LetIn u argbinders in
   let aritylam = lift (succ realdecls) (it_mkLambda_or_LetIn u argbinders) in
   let paramsvect = rel_vect (succ realdecls) params in
   let argsvect = extended_rel_vect 0 (CList.firstn (succ realdecls) ctx) in
-  let pid = id_of_string "P" in
+  let pid = Id.of_string "P" in
   let pdecl = make_assum (Name pid) arity in
   let arity = lift 1 arity in
-  let stepid = id_of_string "step" in
-  let recid = id_of_string "rec" in
-  let belowid = id_of_string "below" in
+  let stepid = Id.of_string "step" in
+  let recid = Id.of_string "rec" in
+  let belowid = Id.of_string "below" in
   let paramspargs = Array.append (Array.append paramsvect [| mkVar pid |]) argsvect in
   let tyb = mkApp (mkVar belowid, paramspargs) in
   let arityb = lift 2 (it_mkProd_or_LetIn tyb argbinders) in

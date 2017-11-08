@@ -168,11 +168,11 @@ let abstract_rec_calls sigma ?(do_subst=true) is_rec len protos c =
 	  (match find_rec_call f' args with
 	  | Some (i, arity, args') ->
               let resty = substl (List.rev args') (of_constr arity) in
-	      let result = make_def (Name (id_of_string "recres")) (Some (mkApp (f', Array.of_list args))) resty in
+              let result = make_def (Name (Id.of_string "recres")) (Some (mkApp (f', Array.of_list args))) resty in
 	      let hypty = mkApp (mkApp (mkRel (i + len + lenctx + 2 + n),
 				       Array.map (lift 1) (Array.of_list args')), [| mkRel 1 |]) 
 	      in
-	      let hyp = make_assum (Name (id_of_string "Hind")) hypty in
+              let hyp = make_assum (Name (Id.of_string "Hind")) hypty in
 		[hyp;result]@ctx, lenctx + 2, mkRel 2
 	  | None -> (ctx, lenctx, mkApp (f', Array.of_list args)))
 	    
@@ -318,7 +318,7 @@ let compute_elim_type env evd is_rec protos k leninds
       let transport ty x y eq c cty =
 	mkApp (transport,
 	       [| ty; x;
-		  mkLambda (Name (id_of_string "abs"), ty,
+                  mkLambda (Name (Id.of_string "abs"), ty,
                             Termops.replace_term !evd (lift 1 x) (mkRel 1) (lift 1 cty));
 		  c; y; eq (* equality *) |])
       in
@@ -372,8 +372,8 @@ let compute_elim_type env evd is_rec protos k leninds
 	   let app = 
 	     mkApp (transportd,
 		    [| lift lenargs ty; lift lenargs rel;
-  		       mkLambda (Name (id_of_string "refine"), lift lenargs ty,
-				 mkLambda (Name (id_of_string "refine_eq"), eqty, pred'));
+                       mkLambda (Name (Id.of_string "refine"), lift lenargs ty,
+                                 mkLambda (Name (Id.of_string "refine_eq"), eqty, pred'));
 		       acc; (lift lenargs c); mkRel 1 (* equality *) |])
 	   in (app, subst1 c pred)
 	 else (acc, subst1 c pred))
@@ -398,7 +398,7 @@ let compute_elim_type env evd is_rec protos k leninds
       let refeqs = List.map (fun (i, ty, c, rel) -> mkEq env evd ty c rel) argsinfo in
       let app c = List.fold_right
 		  (fun c acc ->
-		   mkProd (Name (id_of_string "Heq"), c, acc))
+                   mkProd (Name (Id.of_string "Heq"), c, acc))
 		  refeqs c
       in
       let indhyps =
@@ -798,12 +798,12 @@ let declare_funelim info env evd is_rec protos progs
     let () = evd := Evd.from_env (Global.env ()) in
     if is_polymorphic info then
       let _fty, fctx = Global.type_of_global_in_context (Global.env ()) info.term_id in
-      let fctx = Univ.ContextSet.of_context fctx in
-      let elimctx = Univ.ContextSet.of_context uctx in
+      let fctx = ucontext_of_aucontext fctx in
+      let elimctx = ucontext_of_aucontext uctx in
       (** They share universes in general *)
       let fullctx = Univ.ContextSet.union fctx elimctx in
       let () = evd := Evd.merge_context_set Evd.univ_flexible !evd fullctx in
-      let u = Univ.UContext.instance uctx in
+      let u = Univ.AUContext.instance uctx in
       let elimty = subst_instance_constr u elimty in
       let elimc = constr_of_global_univ elim (EInstance.make u) in
       (** evd contains the universes of the elim and the function, which
@@ -1071,7 +1071,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
   in
   let declare_ind () =
     let inds = List.map declare_one_ind ind_stmts in
-    let uctx = snd (Evd.universe_context !evd) in
+    let uctx = snd (Evd.universe_context ~names:[] ~extensible:true !evd) in
     let inductive =
       Entries.{ mind_entry_record = None;
                 mind_entry_universes = if poly then Polymorphic_ind_entry uctx
@@ -1085,10 +1085,11 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
     let kn = Command.declare_mutual_inductive_with_eliminations inductive [] [] in
     let () = Goptions.set_bool_option_value_gen (Some true) ["Elimination";"Schemes"] true in
     let kn, comb =
-      let sort, suff = match get_sort () with
-        | InProp -> Misctypes.GProp, "_ind"
-        | InSet -> Misctypes.GSet, "_rec"
-        | InType -> Misctypes.GType [], "_rect"
+      let sort = get_sort () in
+      let suff = match sort with
+        | InProp -> "_ind"
+        | InSet ->  "_rec"
+        | InType -> "_rect"
       in
       let mutual =
         (CList.map_i (fun i ind ->

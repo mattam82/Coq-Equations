@@ -189,7 +189,7 @@ and simplification_rules = (Loc.t option * simplification_rule) list
 type goal = rel_context * EConstr.types
 type open_term = (goal * EConstr.existential) option * EConstr.constr
 
-exception CannotSimplify of Pp.std_ppcmds
+exception CannotSimplify of Pp.t
 
 type simplification_fun = Environ.env -> Evd.evar_map ref -> goal ->
   open_term * Covering.context_map
@@ -807,8 +807,7 @@ let infer_step ?(loc:Loc.t option) ~(isSol:bool)
       (* Note that we also don't need to care about binders, since we can
          only go through constructors and nothing else. *)
       let check_occur t u =
-        let eq t = match Universes.eq_constr_universes (to_constr !evd t) (to_constr !evd u)
-        with None -> false | Some _ -> true in
+        let eq t = eq_constr !evd t u in
         let rec aux t =
           if eq t then raise Termops.Occur;
           let f, args = EConstr.decompose_app !evd t in
@@ -918,7 +917,7 @@ let simplify_tac (rules : simplification_rules) : unit Proofview.tactic =
 
 (* Printing functions. *)
 
-let pr_simplification_step : simplification_step -> Pp.std_ppcmds = function
+let pr_simplification_step : simplification_step -> Pp.t = function
   | Deletion false -> str "-"
   | Deletion true -> str "-!"
   | Solution (Left) -> str "->"
@@ -930,11 +929,11 @@ let pr_simplification_step : simplification_step -> Pp.std_ppcmds = function
   | ElimFalse -> str "ElimFalse"
 
 let pr_simplification_rule ((_, rule) : Loc.t option * simplification_rule) :
-  Pp.std_ppcmds = match rule with
+  Pp.t = match rule with
   | Infer_one -> str "?"
   | Infer_direction -> str "<->"
   | Infer_many -> str "*"
   | Step step -> pr_simplification_step step
 
-let pr_simplification_rules : simplification_rules -> Pp.std_ppcmds =
+let pr_simplification_rules : simplification_rules -> Pp.t =
   prlist_with_sep spc pr_simplification_rule

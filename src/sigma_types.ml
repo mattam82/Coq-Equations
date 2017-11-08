@@ -127,7 +127,7 @@ let sigmaize ?(liftty=0) env0 evd pars f =
     (* Everyting is in env, move to index :: letbinders :: env *) 
   let lenb = List.length letbinders in
   let pred =
-    mkLambda (Name (id_of_string "index"), argtyp,
+    mkLambda (Name (Id.of_string "index"), argtyp,
 	      it_mkProd_or_LetIn
 	        (mkApp (Vars.lift (succ lenb) f, 
 		        rel_vect 0 lenb))
@@ -144,7 +144,7 @@ let sigmaize ?(liftty=0) env0 evd pars f =
   let valsig =
     let argtyp = Vars.lift (succ lenb) argtyp in
     let pred = 
-      mkLambda (Name (id_of_string "index"), argtyp,
+      mkLambda (Name (Id.of_string "index"), argtyp,
 	       it_mkProd_or_LetIn
 		 (mkApp (Vars.lift (2 * succ lenb) f,
 			rel_vect 0 lenb))
@@ -230,8 +230,10 @@ let declare_sig_of_ind env sigma poly (ind,u) =
        mkApp (of_constr indsig, extended_rel_vect lenargs pars);
        mkApp (of_constr pack_fn, extended_rel_vect 0 ctx)]
   in
-  Extraction_plugin.Table.extraction_inline true [Ident (dummy_loc, pack_id)];
-  Extraction_plugin.Table.extraction_inline true [Ident (dummy_loc, signature_id)];
+  Extraction_plugin.Table.extraction_inline true
+                                            [API.Libnames.Ident (dummy_loc, Obj.magic pack_id)];
+  Extraction_plugin.Table.extraction_inline true
+                                            [API.Libnames.Ident (dummy_loc, Obj.magic signature_id)];
   inst
 
 let () =

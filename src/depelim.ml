@@ -77,18 +77,18 @@ let make_abstract_generalize gl evd id concl dep ctx body c eqs args refls =
     mkApp (appeqs, abshypt)
 
 let hyps_of_vars env sigma sign nogen hyps =
-  if Idset.is_empty hyps then [] 
+  if Id.Set.is_empty hyps then []
   else
     let (_,lh) =
       fold_named_context_reverse
         (fun (hs,hl) decl ->
            let x = get_id decl in
-	  if Idset.mem x nogen then (hs,hl)
-	  else if Idset.mem x hs then (hs,x::hl)
+          if Id.Set.mem x nogen then (hs,hl)
+          else if Id.Set.mem x hs then (hs,x::hl)
 	  else
             let xvars = global_vars_set_of_decl env sigma decl in
-	      if not (Idset.equal (Idset.diff xvars hs) Idset.empty) then
-		(Idset.add x hs, x :: hl)
+              if not (Id.Set.equal (Id.Set.diff xvars hs) Id.Set.empty) then
+                (Id.Set.add x hs, x :: hl)
 	      else (hs, hl))
         ~init:(hyps,[])
         sign 
@@ -100,11 +100,11 @@ let linear sigma vars args =
   let seen = ref vars in
     try 
       Array.iter (fun i -> 
-        let rels = ids_of_constr ~all:true sigma Idset.empty i in
+        let rels = ids_of_constr ~all:true sigma Id.Set.empty i in
 	let seen' = 
-	  Idset.fold (fun id acc ->
-	    if Idset.mem id acc then raise Seen
-	    else Idset.add id acc)
+          Id.Set.fold (fun id acc ->
+            if Id.Set.mem id acc then raise Seen
+            else Id.Set.add id acc)
 	    rels !seen
 	in seen := seen')
 	args;
@@ -128,7 +128,7 @@ let needs_generalization gl id =
     else
       let args = Array.of_list args in
       let f', args' = decompose_indapp sigma f args in
-      let parvars = ids_of_constr ~all:true sigma Idset.empty f' in
+      let parvars = ids_of_constr ~all:true sigma Id.Set.empty f' in
         if not (linear sigma parvars args') then true
         else Array.exists (fun x -> not (isVar sigma x)) args'
 	  
@@ -139,10 +139,10 @@ let abstract_args gl generalize_vars dep id defined f args =
   let env = pf_env gl in
   let concl = pf_concl gl in
   let dep = dep || dependent sigma (mkVar id) concl in
-  let avoid = ref [] in
+  let avoid = ref Id.Set.empty in
   let get_id name =
-    let id = fresh_id !avoid (match name with Name n -> n | Anonymous -> id_of_string "gen_x") gl in
-      avoid := id :: !avoid; id
+    let id = fresh_id !avoid (match name with Name n -> n | Anonymous -> Id.of_string "gen_x") gl in
+      avoid := Id.Set.add id !avoid; id
   in
     (* Build application generalized w.r.t. the argument plus the necessary eqs.
        From env |- c : forall G, T and args : G we build
@@ -163,9 +163,9 @@ let abstract_args gl generalize_vars dep id defined f args =
     let liftargty = lift lenctx argty in
     let leq = constr_cmp sigma Reduction.CUMUL liftargty ty in
       match kind sigma arg with
-      | Var id when leq && not (Idset.mem id nongenvars) ->
+      | Var id when leq && not (Id.Set.mem id nongenvars) ->
       	  (subst1 arg arity, ctx, ctxenv, mkApp (c, [|arg|]), args, eqs, refls,
-      	  Idset.add id nongenvars, Idset.remove id vars, env)
+          Id.Set.add id nongenvars, Id.Set.remove id vars, env)
       | _ ->
 	  let name = get_id name in
 	  let decl = make_assum (Name name) ty in
@@ -185,11 +185,11 @@ let abstract_args gl generalize_vars dep id defined f args =
 	  let refls = refl :: refls in
           let argvars = ids_of_constr sigma vars arg in
 	    (arity, ctx, push_rel decl ctxenv, c', args, eqs, refls, 
-	    nongenvars, Idset.union argvars vars, env)
+            nongenvars, Id.Set.union argvars vars, env)
   in 
   let f', args' = decompose_indapp sigma f args in
   let dogen, f', args' =
-    let parvars = ids_of_constr sigma ~all:true Idset.empty f' in
+    let parvars = ids_of_constr sigma ~all:true Id.Set.empty f' in
       if not (linear sigma parvars args') then true, f, args
       else
         match Array.findi (fun i x -> not (isVar sigma x)) args' with
@@ -200,12 +200,12 @@ let abstract_args gl generalize_vars dep id defined f args =
   in
     if dogen then
       let arity, ctx, ctxenv, c', args, eqs, refls, nogen, vars, env = 
-	Array.fold_left aux (pf_get_type_of gl f',[],env,f',[],[],[],Idset.empty,Idset.empty,env) args'
+        Array.fold_left aux (pf_get_type_of gl f',[],env,f',[],[],[],Id.Set.empty,Id.Set.empty,env) args'
       in
       let args, refls = List.rev args, List.rev refls in
       let vars = 
 	if generalize_vars then
-	  let nogen = Idset.add id nogen in
+          let nogen = Id.Set.add id nogen in
             hyps_of_vars (pf_env gl) (project gl) (pf_hyps gl) nogen vars
 	else []
       in
@@ -260,7 +260,7 @@ let dependent_pattern ?(pattern_term=true) c gl =
   in
   let varname c = match kind sigma c with
     | Var id -> id
-    | _ -> pf_get_new_id (id_of_string (hdchar (pf_env gl) (project gl) c)) gl
+    | _ -> pf_get_new_id (Id.of_string (hdchar (pf_env gl) (project gl) c)) gl
   in
   let env = pf_env gl in
   let mklambda (ty, evd) (c, id, cty) =
@@ -310,7 +310,7 @@ let depcase poly (mind, i as ind) =
       in
       let body = mkRel (1 + nconstrs - i) in
       let br = it_mkProd_or_LetIn arity realargs in
-	(make_assum (Name (id_of_string ("P" ^ string_of_int i))) br), body)
+        (make_assum (Name (Id.of_string ("P" ^ string_of_int i))) br), body)
       oneind.mind_consnames oneind.mind_nf_lc
   in
   let ci = make_case_info (Global.env ()) ind RegularStyle in
@@ -338,9 +338,9 @@ let depcase poly (mind, i as ind) =
     it_mkLambda_or_LetIn case 
       (make_assum xid (lift len indapp) 
 	:: ((List.rev (Array.to_list (Array.map fst branches))) 
-	    @ (make_assum (Name (id_of_string "P")) pred :: ctx)))
+            @ (make_assum (Name (Id.of_string "P")) pred :: ctx)))
   in
-  let ce = Declare.definition_entry ~poly ~univs:(snd (Evd.universe_context !evd)) (EConstr.to_constr !evd body) in
+  let ce = Declare.definition_entry ~poly ~univs:(snd (Evd.universe_context ~names:[] ~extensible:true !evd)) (EConstr.to_constr !evd body) in
   let kn = 
     let id = add_suffix indid "_dep_elim" in
       ConstRef (Declare.declare_constant id
@@ -371,7 +371,7 @@ let pattern_call ?(pattern_term=true) c gl =
   let env = pf_env gl in
   let sigma = project gl in
   let cty = pf_get_type_of gl c in
-  let ids = ids_of_named_context (pf_hyps gl) in
+  let ids = Id.Set.of_list (ids_of_named_context (pf_hyps gl)) in
   let deps =
     match kind sigma c with
     | App (f, args) -> Array.to_list args
@@ -379,7 +379,7 @@ let pattern_call ?(pattern_term=true) c gl =
   in
   let varname c = match kind sigma c with
     | Var id -> id
-    | _ -> Namegen.next_ident_away (id_of_string (Namegen.hdchar env sigma c))
+    | _ -> Namegen.next_ident_away (Id.of_string (Namegen.hdchar env sigma c))
 	ids
   in
   let mklambda ty (c, id, cty) =
@@ -479,7 +479,7 @@ let specialize_eqs id gl =
   let acc' = Evarutil.nf_evar !evars acc' in
   let ty' = Evarutil.nf_evar !evars ty' in
     if worked then
-      tclTHENFIRST (Tacmach.internal_cut true id ty')
+      tclTHENFIRST (to82 (Tactics.assert_before_replacing id ty'))
 	(to82 (exact_no_check acc')) gl
     else tclFAIL 0 (str "Nothing to do in hypothesis " ++ pr_id id) gl
 
@@ -492,7 +492,7 @@ let specialize_eqs id gl =
   else specialize_eqs id gl
 
 (* Produce a list of default patterns to eliminate an inductive value in [ind]. *)
-let default_patterns env sigma ?(avoid = ref []) ind : (Syntax.user_pat Loc.located) list =
+let default_patterns env sigma ?(avoid = ref Id.Set.empty) ind : (Syntax.user_pat Loc.located) list =
   let nparams = Inductiveops.inductive_nparams ind in
   let mib, oib = Inductive.lookup_mind_specif env ind in
   let make_pattern (i : int) : Syntax.user_pat Loc.located =
@@ -509,8 +509,8 @@ let default_patterns env sigma ?(avoid = ref []) ind : (Syntax.user_pat Loc.loca
           | Names.Anonymous ->
               let ty = Context.Rel.Declaration.get_type decl in
               let hd = Namegen.hdchar env sigma ty in
-                Namegen.next_ident_away (Names.id_of_string hd) !avoid
-        in avoid := id :: !avoid;
+                Namegen.next_ident_away (Names.Id.of_string hd) !avoid
+        in avoid := Id.Set.add id !avoid;
       None, Syntax.PUVar (id, true)) ctx
     in
       None, Syntax.PUCstr (construct, nparams, args)
@@ -556,7 +556,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
             default_patterns env sigma ind
       | Some p ->
           (* Interpret each pattern. *)
-          let avoid = ref [] in
+          let avoid = ref Id.Set.empty in
             List.map (Syntax.interp_pat env ~avoid) p
     in
 

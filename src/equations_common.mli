@@ -55,10 +55,10 @@ type 'a located = 'a Loc.located
 
 (** Fresh names *)
 val fresh_id_in_env :
-  Names.Id.t list -> Names.Id.t -> Environ.env -> Names.Id.t
+  Names.Id.Set.t -> Names.Id.t -> Environ.env -> Names.Id.t
 val fresh_id :
-  Names.Id.t list ->
-  Names.Id.t -> Proof_type.goal Tacmach.sigma -> Names.Id.t
+  Names.Id.Set.t ->
+  Names.Id.t -> Goal.goal Evd.sigma -> Names.Id.t
 
 (** Refer to a tactic *)
 val tac_of_string :
@@ -94,8 +94,6 @@ val e_conv :
 
 val e_type_of : env -> esigma -> constr -> types
 						     
-val reference_of_global : Globnames.global_reference -> Libnames.reference
-
 (** Term manipulation *)
 
 val mkNot : Environ.env -> Evd.evar_map ref -> constr -> constr
@@ -120,9 +118,9 @@ val it_mkLambda_or_subst_or_clear : Evd.evar_map -> constr -> rel_context -> con
 val it_mkProd_or_subst_or_clear : Evd.evar_map -> constr -> rel_context -> constr
 
 val ids_of_constr : Evd.evar_map ->
-  ?all:bool -> Idset.t -> constr -> Idset.t
-val deps_of_var : Evd.evar_map -> Id.t -> env -> Idset.t
-val idset_of_list : Id.t list -> Idset.t
+  ?all:bool -> Id.Set.t -> constr -> Id.Set.t
+val deps_of_var : Evd.evar_map -> Id.t -> env -> Id.Set.t
+val idset_of_list : Id.t list -> Id.Set.t
 
 val decompose_indapp : Evd.evar_map ->
   constr -> constr array -> constr * constr array
@@ -152,14 +150,14 @@ val make_definition :
   ?types:constr -> constr -> Safe_typing.private_constants Entries.definition_entry
 
 val declare_constant :
-  Names.identifier ->
+  Id.t ->
   constr ->
   constr option ->
   Decl_kinds.polymorphic ->
-  Evd.evar_map -> Decl_kinds.logical_kind -> Names.constant
+  Evd.evar_map -> Decl_kinds.logical_kind -> Names.Constant.t
 
 val declare_instance :
-  Names.identifier ->
+  Names.Id.t ->
   Decl_kinds.polymorphic ->
   Evd.evar_map ->
   rel_context ->
@@ -209,8 +207,8 @@ val coq_pair : esigma -> constr
 
 val coq_sigma : Globnames.global_reference lazy_t
 val coq_sigmaI : Globnames.global_reference lazy_t
-val coq_pr1 : Names.projection lazy_t
-val coq_pr2 : Names.projection lazy_t
+val coq_pr1 : Names.Projection.t lazy_t
+val coq_pr2 : Names.Projection.t lazy_t
 			    
 val coq_zero : Globnames.global_reference lazy_t
 val coq_succ : Globnames.global_reference lazy_t
@@ -273,40 +271,9 @@ val unfold_add_pattern : unit Proofview.tactic lazy_t
 
 val observe : string -> Proofview.V82.tac -> Proofview.V82.tac
   
-val below_tactics_path : Names.dir_path
-val below_tac : string -> Names.kernel_name
-val tacident_arg :
-  Names.Id.t ->
-  < constant : 'a; dterm : 'b; level : 'c; name : 'd; pattern : 'e;
-    reference : Libnames.reference; tacexpr : 'f; term : 'g > Tacexpr.gen_tactic_arg
-val tacvar_arg :
-  Names.Id.t ->
-  < constant : 'a; dterm : 'b; level : Genarg.rlevel; name : 'c;
-    pattern : 'd; reference : 'e; tacexpr : 'f; term : 'g > Tacexpr.gen_tactic_arg
-val rec_tac :
-  'f ->
-  Names.Id.t ->
-  < constant : 'a; dterm : 'b; level : Genarg.rlevel; name : 'c;
-    pattern : 'd; reference : Libnames.reference; tacexpr : 'e; term : 'f; >
-	   Tacexpr.gen_tactic_expr
-val rec_wf_tac :
-  'a ->
-  Names.Id.t ->
-  'a ->
-  < constant : 'b; dterm : 'c; level : Genarg.rlevel; name : 'd;
-    pattern : 'e; reference : Libnames.reference; tacexpr : 'f; term : 'a;>
-	   Tacexpr.gen_tactic_expr
+val below_tactics_path : Names.DirPath.t
+val below_tac : string -> Names.KerName.t
 val unfold_recursor_tac : unit -> unit Proofview.tactic
-val equations_tac_expr :
-  unit ->
-  < constant : 'a; dterm : 'b; level : 'c; name : 'd; pattern : 'e;
-    reference : Libnames.reference; tacexpr : 'f; term : 'g >
-								    Tacexpr.gen_tactic_expr
-val solve_rec_tac_expr :
-  unit ->
-  < constant : 'a; dterm : 'b; level : 'c; name : 'd; pattern : 'e;
-    reference : Libnames.reference; tacexpr : 'f; term : 'g >
-								    Tacexpr.gen_tactic_expr
 val equations_tac : unit -> unit Proofview.tactic
 val set_eos_tac : unit -> unit Proofview.tactic
 val solve_rec_tac : unit -> unit Proofview.tactic
@@ -322,24 +289,29 @@ val do_empty_tac : Names.Id.t -> unit Proofview.tactic
 val depelim_nosimpl_tac : Names.Id.t -> unit Proofview.tactic
 val simpl_dep_elim_tac : unit -> unit Proofview.tactic
 val depind_tac : Names.Id.t -> unit Proofview.tactic
-
+val rec_tac :            'a ->
+                         Names.Id.t ->
+                         Tacexpr.r_dispatch Tacexpr.gen_tactic_expr
+val rec_wf_tac :            'a ->
+           Names.Id.t -> 'a ->
+                         Tacexpr.r_dispatch Tacexpr.gen_tactic_expr
 (** Unfold the first occurrence of a constant declared unfoldable in db
   (with Hint Unfold) *)
 val autounfold_first :
   Hints.hint_db_name list ->
   Locus.hyp_location option ->
-  Proof_type.goal Tacmach.sigma -> Proof_type.goal list Evd.sigma
+  Goal.goal Evd.sigma -> Goal.goal list Evd.sigma
 
 type hintdb_name = string
 val db_of_constr : Term.constr -> hintdb_name
 val dbs_of_constrs : Term.constr list -> hintdb_name list
 
 val pr_smart_global :
-  Libnames.reference Misctypes.or_by_notation -> Pp.std_ppcmds
+  Libnames.reference Misctypes.or_by_notation -> Pp.t
 val string_of_smart_global :
   Libnames.reference Misctypes.or_by_notation -> string
 val ident_of_smart_global :
-  Libnames.reference Misctypes.or_by_notation -> identifier
+  Libnames.reference Misctypes.or_by_notation -> Id.t
 
 val pf_get_type_of : Goal.goal Evd.sigma -> constr -> types
 
@@ -362,9 +334,9 @@ val to_context : (Names.Name.t * constr option * constr) list -> rel_context
 
 val localdef : Constr.t -> Entries.local_entry
 val localassum : Constr.t -> Entries.local_entry
-val named_of_rel_context : ?keeplets:bool -> (unit -> Names.Id.t) -> rel_context -> Vars.substl * constr list * named_context
+val named_of_rel_context : ?keeplets:bool -> (unit -> Names.Id.t) -> rel_context -> EConstr.t list * constr list * named_context
 val rel_of_named_context : named_context -> rel_context * Names.Id.t list
-val subst_rel_context : int -> Vars.substl -> rel_context -> rel_context
+val subst_rel_context : int -> EConstr.t list -> rel_context -> rel_context
 val get_id : named_declaration -> Names.Id.t
 val get_named_type : named_declaration -> constr
 val get_named_value : named_declaration -> constr option
@@ -380,13 +352,13 @@ val lookup_named : Id.t -> named_context -> named_declaration
 val to_evar_map : Evd.evar_map -> Evd.evar_map
 val of_evar_map : Evd.evar_map -> Evd.evar_map
 
-val pp : Pp.std_ppcmds -> unit
-val user_err_loc : (Loc.t option * string * Pp.std_ppcmds) -> 'a
+val pp : Pp.t -> unit
+val user_err_loc : (Loc.t option * string * Pp.t) -> 'a
 val error : string -> 'a
-val errorlabstrm : string -> Pp.std_ppcmds -> 'a
+val errorlabstrm : string -> Pp.t -> 'a
 val is_anomaly : exn -> bool
-val print_error : exn -> Pp.std_ppcmds
-val anomaly : ?label:string -> Pp.std_ppcmds -> 'a
+val print_error : exn -> Pp.t
+val anomaly : ?label:string -> Pp.t -> 'a
                                 
 val nf_betadeltaiota : Reductionops.reduction_function
 
@@ -408,7 +380,7 @@ val new_evar :            Environ.env ->
 val new_type_evar :            Environ.env ->
            Evd.evar_map -> 
            ?src:Evar_kinds.t Loc.located -> Evd.rigid ->
-           Evd.evar_map * (constr * Term.sorts)
+           Evd.evar_map * (constr * Sorts.t)
 
 val empty_hint_info : 'a Vernacexpr.hint_info_gen
 
@@ -441,3 +413,7 @@ val prod_appvect : Evd.evar_map -> constr -> constr array -> constr
 val beta_appvect : Evd.evar_map -> constr -> constr array -> constr
 
 val find_rectype : Environ.env -> Evd.evar_map -> types -> Inductiveops.inductive_family * constr list
+
+type identifier = Names.Id.t
+
+val ucontext_of_aucontext : Univ.AUContext.t -> Univ.ContextSet.t

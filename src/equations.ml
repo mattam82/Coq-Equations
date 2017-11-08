@@ -37,7 +37,7 @@ open EConstr
 open Extraction_plugin
                 
 let inline_helpers i = 
-  let l = List.map (fun (_, _, id) -> Ident (dummy_loc, id)) i.helpers_info in
+  let l = List.map (fun (_, _, id) -> API.Libnames.Ident (dummy_loc, Obj.magic id)) i.helpers_info in
   Table.extraction_inline true l
 
 let make_ref dir s = Coqlib.find_reference "Program" dir s
@@ -106,9 +106,10 @@ let define_principles flags fixprots progs =
     let arity = p.program_arity in
     let gr = ConstRef prog.program_cst in
     let f =
-      let (f, uc) = Universes.unsafe_constr_of_global gr in
+      let (f, uc) = Global.constr_of_global_in_context env gr in
       if flags.polymorphic then
-        evd := Evd.merge_context_set Evd.univ_rigid !evd (Univ.ContextSet.of_context uc);
+        evd := Evd.merge_context_set Evd.univ_rigid !evd
+                                     (ucontext_of_aucontext uc);
       f
     in
       match p.program_rec with
@@ -235,7 +236,7 @@ let define_principles flags fixprots progs =
   in
   let fixdecls =
     let fn fixprot (p, prog) =
-      let f = fst (Universes.unsafe_constr_of_global (ConstRef prog.program_cst)) in
+      let f = fst (Global.constr_of_global_in_context env (ConstRef prog.program_cst)) in
       of_tuple (Name p.program_id, Some (of_constr f), fixprot)
     in
     List.rev (List.map2 fn fixprots progs)
@@ -428,7 +429,7 @@ let define_by_eqs opts eqs nt =
         hintdb_set_transparency comp false "program";
         hintdb_set_transparency comp false "subterm_relation";
         Impargs.declare_manual_implicits true (ConstRef comp) [impls];
-        Table.extraction_inline true [Ident (dummy_loc, compid)];
+        Table.extraction_inline true [API.Libnames.Ident (dummy_loc, Obj.magic compid)];
         Some (compid, comp), compapp, oarity
       else None, arity, arity
     in
@@ -446,12 +447,13 @@ let define_by_eqs opts eqs nt =
        let compproj =
 	 let body =
            it_mkLambda_or_LetIn (mkRel 1)
-				(of_tuple (Name (id_of_string "comp"), None, compapp) :: sign)
+                                (of_tuple (Name (Id.of_string "comp"), None, compapp) :: sign)
 	 in
-	 let _ty = e_type_of (Global.env ()) evd body in
+         let _ty = e_type_of (Global.env ()) evd body in
+         let univs = snd (Evd.universe_context ~names:[] ~extensible:true !evd) in
          let ce =
            Declare.definition_entry (* ~fix_exn: FIXME needed ? *)
-				    ~poly ~univs:(snd (Evd.universe_context !evd))
+                                    ~poly ~univs
                                     (to_constr !evd body)
 	 in
 	 Declare.declare_constant projid
@@ -462,7 +464,7 @@ let define_by_eqs opts eqs nt =
            [ExplByPos (succ (List.length sign), None), (true, false, true)]
          else [] in
        Impargs.declare_manual_implicits true (ConstRef compproj) [impls @ impl];
-       Table.extraction_inline true [Ident (dummy_loc, projid)];
+       Table.extraction_inline true [API.Libnames.Ident (dummy_loc, Obj.magic projid)];
        let compinfo = LogicalProj { comp = Option.map snd comp; comp_app = to_constr !evd compapp;
 			            comp_proj = compproj; comp_recarg = succ (length sign) } in
        let compapp, is_rec =
@@ -512,7 +514,7 @@ let define_by_eqs opts eqs nt =
                   Impargs.compute_implicits_with_manual env (to_constr !evd oty) false impls) tys in
   let equations = 
     Metasyntax.with_syntax_protection (fun () ->
-      List.iter (Metasyntax.set_notation_for_interpretation data) nt;
+      List.iter (Metasyntax.set_notation_for_interpretation env data) nt;
       List.map3 (fun implsinfo ar eqs ->
         List.map (interp_eqn ar.program_id ar.program_rec env implsinfo) eqs)
         implsinfo arities eqs)
@@ -545,7 +547,7 @@ let define_by_eqs opts eqs nt =
   let fix_proto_ref = destConstRef (Lazy.force coq_fix_proto) in
   let _kind = (Decl_kinds.Global, poly, Decl_kinds.Definition) in
   let baseid =
-    let p = List.hd arities in string_of_id p.program_id in
+    let p = List.hd arities in Id.to_string p.program_id in
   (** Necessary for the definition of [i] *)
   let () =
     let trs = (ids, Cpred.remove fix_proto_ref csts) in
@@ -592,9 +594,6 @@ let define_by_eqs opts eqs nt =
     incr idx
   in CList.iter2 define_tree arities coverings
 
-let with_rollback f x =
-  States.with_state_protection_on_exception f x
-
 let equations opts eqs nt =
   List.iter (fun (((loc, i), nested, l, t),eqs) -> Dumpglob.dump_definition (Some loc, i) false "def") eqs;
   define_by_eqs opts eqs nt
@@ -605,14 +604,14 @@ let solve_equations_goal destruct_tac tac gl =
     let rec intros goal move = 
       match kind_of_term goal with
       | Prod (Name id, _, t) -> 
-         let id = fresh_id_in_env [] id (pf_env gl) in
+         let id = fresh_id_in_env Id.Set.empty id (pf_env gl) in
          let tac, move, goal = intros (subst1 (Constr.mkVar id) t) (Some id) in
          tclTHEN (to82 intro) tac, move, goal
       | LetIn (Name id, c, _, t) -> 
          if String.equal (Id.to_string id) "target" then 
            tclIDTAC, move, goal
          else 
-           let id = fresh_id_in_env [] id (pf_env gl) in
+           let id = fresh_id_in_env Id.Set.empty id (pf_env gl) in
            let tac, move, goal = intros (subst1 c t) (Some id) in
            tclTHEN (to82 intro) tac, move, goal
       | _ -> tclIDTAC, move, goal
@@ -662,8 +661,8 @@ let dependencies env sigma c ctx =
     (fun variables decl ->
       let n = get_id decl in
       let dvars = global_vars_set_of_decl env sigma decl in
-        if Idset.mem n variables then Idset.union dvars variables
+        if Id.Set.mem n variables then Id.Set.union dvars variables
         else variables)
       ~init:init ctx
   in
-    (init, Idset.diff deps init)
+    (init, Id.Set.diff deps init)

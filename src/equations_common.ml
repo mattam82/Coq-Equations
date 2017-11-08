@@ -180,13 +180,13 @@ let make_definition ?opaque ?(poly=false) evd ?types b =
   let used = Univ.LSet.union used used' in
   let evm = Evd.restrict_universe_context evm used in
   evd := evm;
-  Declare.definition_entry ~poly ~univs:(snd (Evd.universe_context evm))
+  Declare.definition_entry ~poly ~univs:(snd (Evd.universe_context ~names:[] ~extensible:true evm))
       ?types:typ body
 
 let declare_constant id body ty poly evd kind =
   let ce = make_definition ~opaque:false ~poly (ref evd) ?types:ty body in
   let cst = Declare.declare_constant id (DefinitionEntry ce, kind) in
-    Flags.if_verbose Feedback.msg_info (str((string_of_id id) ^ " is defined"));
+    Flags.if_verbose Feedback.msg_info (str((Id.to_string id) ^ " is defined"));
     cst
     
 let declare_instance id poly evd ctx cl args =
@@ -223,7 +223,7 @@ let rec int_of_coq_nat c =
   | _ -> 0
 
 let fresh_id_in_env avoid id env =
-  Namegen.next_ident_away_in_goal id (avoid@ids_of_named_context (named_context env))
+  Namegen.next_ident_away_in_goal id (Id.Set.union avoid (Id.Set.of_list (ids_of_named_context (named_context env))))
 
 let fresh_id avoid id gl =
   fresh_id_in_env avoid id (pf_env gl)
@@ -328,8 +328,8 @@ let dummy_loc = None
 type 'a located = 'a Loc.located
 
 let tac_of_string str args =
-  Tacinterp.interp (TacArg(dummy_loc, 
-			   TacCall(dummy_loc, (Libnames.Qualid (dummy_loc, Libnames.qualid_of_string str), args))))
+  Obj.magic (Tacinterp.interp (TacArg(dummy_loc,
+                           TacCall(dummy_loc, (API.Libnames.Qualid (dummy_loc, API.Libnames.qualid_of_string str), args)))))
 
 let equations_path = ["Equations";"Equations"]
 
@@ -375,7 +375,7 @@ let coq_block = lazy (init_reference ["Equations";"DepElim"] "block")
 let coq_hide = lazy (init_reference ["Equations";"DepElim"] "hide_pattern")
 let coq_hidebody = lazy (init_reference ["Equations";"Init"] "hidebody")
 let coq_add_pattern = lazy (init_reference ["Equations";"DepElim"] "add_pattern")
-let coq_end_of_section_id = id_of_string "eos"
+let coq_end_of_section_id = Id.of_string "eos"
 let coq_end_of_section_constr = init_constant ["Equations";"DepElim"] "the_end_of_the_section"
 let coq_end_of_section = init_constant ["Equations";"DepElim"] "end_of_section"
 let coq_end_of_section_ref = lazy (init_reference ["Equations";"DepElim"] "end_of_section")
@@ -471,7 +471,7 @@ let lift_list l = List.map (Vars.lift 1) l
 let unfold_head env sigma (ids, csts) c = 
   let rec aux c = 
     match kind sigma c with
-    | Var id when Idset.mem id ids ->
+    | Var id when Id.Set.mem id ids ->
 	(match Environ.named_body id env with
 	| Some b -> true, of_constr b
 	| None -> false, c)
@@ -509,7 +509,7 @@ let autounfold_first db cl gl =
 	with Not_found -> user_err ~hdr:"autounfold" (str "Unknown database " ++ str dbname)
       in
       let (ids, csts) = Hints.Hint_db.unfolds db in
-	(Idset.union ids i, Cset.union csts c)) (Idset.empty, Cset.empty) db
+        (Id.Set.union ids i, Cset.union csts c)) (Id.Set.empty, Cset.empty) db
   in
   let did, c' = unfold_head (pf_env gl) (project gl) st
     (match cl with Some (id, _) -> pf_get_hyp_typ gl id | None -> pf_concl gl) 
@@ -532,13 +532,10 @@ let dbs_of_constrs = List.map db_of_constr
 (** Bindings to Coq *)
 
 let below_tactics_path =
-  make_dirpath (List.map id_of_string ["Below";"Equations"])
+  make_dirpath (List.map Id.of_string ["Below";"Equations"])
 
 let below_tac s =
   make_kn (MPfile below_tactics_path) (make_dirpath []) (mk_label s)
-
-let tacident_arg h =
-  Reference (Ident (dummy_loc,h))
 
 let tacvar_arg h =
   let ipat = Genarg.in_gen (Genarg.rawwit Stdarg.wit_intro_pattern) 
@@ -546,16 +543,16 @@ let tacvar_arg h =
     TacGeneric ipat
 
 let rec_tac h h' = 
-  TacArg(dummy_loc, TacCall(dummy_loc, 
+  Obj.magic (TacArg(dummy_loc, TacCall(dummy_loc,
                             (Qualid (dummy_loc, qualid_of_string "Equations.Below.rec"),
-                             [tacvar_arg h'; ConstrMayEval (Genredexpr.ConstrTerm h)])))
+                             [tacvar_arg h'; ConstrMayEval (API.Genredexpr.ConstrTerm h)]))))
 
 let rec_wf_tac h h' rel = 
-  TacArg(dummy_loc, TacCall(dummy_loc, 
+  Obj.magic (TacArg(dummy_loc, TacCall(dummy_loc,
     (Qualid (dummy_loc, qualid_of_string "Equations.Subterm.rec_wf_eqns_rel"),
     [tacvar_arg h';
-     ConstrMayEval (Genredexpr.ConstrTerm h);
-     ConstrMayEval (Genredexpr.ConstrTerm rel)])))
+     ConstrMayEval (API.Genredexpr.ConstrTerm h);
+     ConstrMayEval (API.Genredexpr.ConstrTerm rel)]))))
 
 let unfold_recursor_tac () = tac_of_string "Equations.Subterm.unfold_recursor" []
 
@@ -583,41 +580,43 @@ let eqdec_tac () = tac_of_string "Equations.EqDecInstances.eqdec_proof" []
 
 let simpl_equations_tac () = tac_of_string "Equations.DepElim.simpl_equations" []
 
-let reference_of_global c =
-  Qualid (dummy_loc, Nametab.shortest_qualid_of_global Idset.empty c)
+open API.Misctypes
+open API.Libnames
 
-open Names
-open Tacexpr
-open Misctypes
+let reference_of_global c =
+  API.Libnames.Qualid (dummy_loc, API.Nametab.shortest_qualid_of_global API.Names.Id.Set.empty c)
+
+let tacident_arg h =
+  Reference (Ident (dummy_loc,Obj.magic h))
 
 let call_tac_on_ref tac c =
-  let var = Id.of_string "x" in
+  let var = API.Names.Id.of_string "x" in
   let tac = ArgArg (dummy_loc, tac) in
-  let val_reference = Geninterp.val_tag (Genarg.topwit Stdarg.wit_constr) in
+  let val_reference = API.Geninterp.val_tag (Genarg.topwit Stdarg.wit_constr) in
   (** This is a hack to avoid generating useless universes *)
   let c = Universes.constr_of_global_univ (c, Univ.Instance.empty) in
-  let c = Geninterp.Val.inject val_reference (EConstr.of_constr c) in
-  let ist = Tacinterp.default_ist () in
-  let ist = Geninterp.{ ist with lfun = Id.Map.add var c ist.lfun } in
-  let var = Reference (ArgVar (dummy_loc, var)) in
+  let c = API.Geninterp.Val.inject val_reference (EConstr.of_constr c) in
+  let ist = API.Geninterp.{ lfun = API.Names.Id.Map.add var c API.Names.Id.Map.empty;
+                            extra = API.Geninterp.TacStore.empty } in
+  let var = Reference (API.Misctypes.ArgVar (dummy_loc, var)) in
   let tac = TacArg (dummy_loc, TacCall (dummy_loc, (tac, [var]))) in
   ist, tac
 
-let mp = MPfile (DirPath.make (List.map Id.of_string ["DepElim"; "Equations"]))
-let solve_equation = KerName.make mp DirPath.empty (Label.make "solve_equation")
-let impossible_call = KerName.make mp DirPath.empty (Label.make "impossible_call")
+let mp = API.Names.MPfile (API.Names.DirPath.make (List.map API.Names.Id.of_string ["DepElim"; "Equations"]))
+let solve_equation = API.Names.KerName.make mp API.Names.DirPath.empty (API.Names.Label.make "solve_equation")
+let impossible_call = API.Names.KerName.make mp API.Names.DirPath.empty (API.Names.Label.make "impossible_call")
 
 let solve_equation_tac (c : Globnames.global_reference) =
   let ist, tac = call_tac_on_ref solve_equation c in
-  Tacinterp.eval_tactic_ist ist tac
+  Obj.magic (Tacinterp.eval_tactic_ist ist tac)
 
 let impossible_call_tac c =
   let tac = Tacintern.glob_tactic
   (TacArg(dummy_loc,TacCall(dummy_loc,
-  (Qualid (dummy_loc, qualid_of_string "Equations.DepElim.impossible_call"),
-   [Reference (reference_of_global c)])))) in
+  (API.Libnames.Qualid (dummy_loc, API.Libnames.qualid_of_string "Equations.DepElim.impossible_call"),
+   [Reference (reference_of_global (Obj.magic c))])))) in
   let val_tac = Genarg.glbwit Tacarg.wit_tactic in
-  Genarg.in_gen val_tac tac
+  Obj.magic (Genarg.in_gen val_tac tac)
 (* let impossible_call_tac c = *)
 (*   let ist, tac = call_tac_on_ref impossible_call c in *)
 (*   let val_tac = Genarg.glbwit Tacarg.wit_tactic in *)
@@ -706,7 +705,7 @@ let lift_constrs n cs = List.map (lift n) cs
 let ids_of_constr sigma ?(all=false) vars c =
   let rec aux vars c =
     match kind sigma c with
-    | Var id -> Idset.add id vars
+    | Var id -> Id.Set.add id vars
     | App (f, args) -> 
 	(match kind sigma f with
 	| Construct ((ind,_),_)
@@ -737,24 +736,24 @@ let e_conv env evdref t t' =
       
 let deps_of_var sigma id env =
   Environ.fold_named_context
-    (fun _ decl (acc : Idset.t) ->
+    (fun _ decl (acc : Id.Set.t) ->
        let n, b, t = Context.Named.Declaration.to_tuple decl in
        if Option.cata (fun x -> occur_var env sigma id (of_constr x)) false b ||
             occur_var env sigma id (of_constr t) then
-	Idset.add n acc
+        Id.Set.add n acc
       else acc)
-    env ~init:Idset.empty
+    env ~init:Id.Set.empty
     
 let idset_of_list =
-  List.fold_left (fun s x -> Idset.add x s) Idset.empty
+  List.fold_left (fun s x -> Id.Set.add x s) Id.Set.empty
 
-let pr_smart_global = Pptactic.pr_or_by_notation pr_reference
+let pr_smart_global f = Pptactic.pr_or_by_notation pr_reference (Obj.magic f)
 let string_of_smart_global = function
   | Misctypes.AN ref -> string_of_reference ref
   | Misctypes.ByNotation (loc, (s, _)) -> s
 
 let ident_of_smart_global x = 
-  id_of_string (string_of_smart_global x)
+  Id.of_string (string_of_smart_global x)
 
 let pf_get_type_of               = pf_reduce Retyping.get_type_of
   
@@ -991,3 +990,10 @@ let beta_appvect sigma p args =
 let find_rectype env sigma ty =
   let Inductiveops.IndType (ind, args) = Inductiveops.find_rectype env sigma ty in
   ind, args
+
+type identifier = Names.Id.t
+
+let ucontext_of_aucontext ctx =
+  let inst = Univ.AUContext.instance ctx in
+  Univ.ContextSet.of_context
+    (Univ.UContext.make (inst, (Univ.AUContext.instantiate inst ctx)))

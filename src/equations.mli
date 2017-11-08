@@ -27,8 +27,6 @@ val define_principles :
   flags ->
   EConstr.t list ->
   (program_info * compiled_program_info) list -> unit
-  
-val with_rollback : ('a -> 'b) -> 'a -> 'b
 
 val equations :
   Syntax.equation_option list ->
@@ -45,4 +43,4 @@ val solve_equations_goal :
 
 val dependencies :
   env -> Evd.evar_map ->
-  Term.constr -> named_context -> Id.Set.t * Idset.t
+  Term.constr -> named_context -> Id.Set.t * Id.Set.t
