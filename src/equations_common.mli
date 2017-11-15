@@ -182,7 +182,7 @@ type logic = {
   logic_eq_refl: logic_ref;
   logic_eq_case: logic_ref;
   logic_eq_elim: logic_ref;
-  logic_sort : sorts_family;
+  logic_sort : Sorts.family;
   logic_zero : logic_ref;
   logic_one : logic_ref;
   logic_one_val : logic_ref;
