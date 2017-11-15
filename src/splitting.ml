@@ -392,7 +392,6 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
   let nf, subst = Evarutil.e_nf_evars_and_universes isevar in
   let split = map_split (nf_evar !isevar) split in
   let obls, (emap, cmap), t', ty' =
-  let obls, (emap, cmap), t', ty' =
     Obligations.eterm_obligations env i !isevar
       0 ~status (nf t) (whd_betalet !isevar (nf ty))
   in

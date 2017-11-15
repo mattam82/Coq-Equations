@@ -11,13 +11,8 @@
 
 DECLARE PLUGIN "equations_plugin"
 
-open Equations_common
-open Extraargs
-open Eauto
-open Locusops
 open Term
 open Names
-open Tactics
 open Pp
 open Nameops
 open Refiner
@@ -25,23 +20,11 @@ open Constrexpr
 open Constrarg
    
 TACTIC EXTEND decompose_app
-[ "decompose_app" ident(h) ident(h') constr(c) ] -> [ 
-  Proofview.Goal.enter { Proofview.Goal.enter = fun gl ->
-    let f, args = decompose_app c in
-    let fty = Tacmach.New.pf_hnf_type_of gl f in
-    let flam = mkLambda (Name (id_of_string "f"), fty, mkApp (mkRel 1, Array.of_list args)) in
-      (Proofview.tclTHEN (letin_tac None (Name h) f None allHyps)
-  	 (letin_tac None (Name h') flam None allHyps)) }
-  ]
+[ "decompose_app" ident(h) ident(h') constr(c) ] -> [ Extra_tactics.decompose_app h h' c ]
 END
 
 TACTIC EXTEND autounfold_ref
-| [ "autounfold_ref" reference(myref) ] -> [
-    let db = match myref with
-      | Globnames.ConstRef c -> Names.Label.to_string (Names.con_label c)
-      | _ -> assert false
-    in Eauto.autounfold ["core";db] Locusops.onConcl
-  ]
+| [ "autounfold_ref" reference(myref) ] -> [ Extra_tactics.autounfold_ref myref ]
 END
 
 (* TACTIC EXTEND abstract_match *)
@@ -61,20 +44,10 @@ END
 
 (* Sigma *)
 
-open Proofview.Notations
 open Proofview.Goal
 
 TACTIC EXTEND get_signature_pack
-[ "get_signature_pack" hyp(id) ident(id') ] -> [ 
-  enter { enter = fun gl ->
-    let gl = Proofview.Goal.assume gl in
-    let env = Proofview.Goal.env gl in
-    let sigma = Proofview.Goal.sigma gl in
-    let sigma', sigsig, sigpack =
-      Sigma_types.get_signature env (Sigma.to_evar_map sigma)
-                                (Tacmach.New.pf_get_hyp_typ id gl) in
-    Proofview.Unsafe.tclEVARS sigma' <*>
-    letin_tac None (Name id') (mkApp (sigpack, [| mkVar id |])) None nowhere } ]
+[ "get_signature_pack" hyp(id) ident(id') ] -> [ Sigma_types.Tactics.get_signature_pack id id' ]
 END
       
 TACTIC EXTEND pattern_sigma
@@ -86,91 +59,12 @@ TACTIC EXTEND pattern_sigma
 (*     let decl = Tacmach.New.pf_get_hyp id gl in *)
 (*     let term = Option.get (Util.pi2 decl) in *)
 (*     Sigma.pattern_sigma ~assoc_right:false term id env sigma) ] *)
-| [ "pattern" "sigma" hyp(id) ] -> [
-  enter { enter = fun gl ->
-    let gl = Proofview.Goal.assume gl in
-    let env = Proofview.Goal.env gl in
-    let sigma = Proofview.Goal.sigma gl in
-    let decl = Tacmach.New.pf_get_hyp id gl in
-    let term = Option.get (get_named_value decl) in
-    Sigma_types.pattern_sigma ~assoc_right:true term id env
-                              (Sigma.to_evar_map sigma) } ]
+| [ "pattern" "sigma" hyp(id) ] -> [ Sigma_types.Tactics.pattern_sigma id ]
 END
 
-open Tacmach
-
-let curry_hyp env sigma hyp t =
-  let curry t =
-    match kind_of_term t with
-    | Prod (na, dom, concl) ->
-       let ctx, arg = Sigma_types.curry na dom in
-       let term = mkApp (mkVar hyp, [| arg |]) in
-       let ty = Reductionops.nf_betaiota sigma (Vars.subst1 arg concl) in
-       Some (it_mkLambda_or_LetIn term ctx, it_mkProd_or_LetIn ty ctx)
-    | _ -> None
-  in curry t
-
-open CClosure.RedFlags
-
-let red_curry () =
-  let redpr pr = 
-    fCONST (Projection.constant (Lazy.force pr)) in
-  let reds = mkflags [redpr coq_pr1; redpr coq_pr2; fBETA; fMATCH] in
-  Reductionops.clos_norm_flags reds
-
-let curry_concl env sigma na dom codom =
-  let ctx, arg = Sigma_types.curry na dom in
-  let newconcl =
-    let body = it_mkLambda_or_LetIn (Vars.subst1 arg codom) ctx in
-    let inst = extended_rel_vect 0 ctx in
-    red_curry () env sigma (it_mkProd_or_LetIn (mkApp (body, inst)) ctx) in
-  let proj last decl (terms, acc) =
-    if last then (acc :: terms, acc)
-    else
-      let term = mkProj (Lazy.force coq_pr1, acc) in
-      let acc = mkProj (Lazy.force coq_pr2, acc) in
-      (term :: terms, acc)
-  in
-  let terms, acc =
-    match ctx with
-    | hd :: (_ :: _ as tl) ->
-       proj true hd (List.fold_right (proj false) tl ([], mkRel 1))
-    | hd :: tl -> ([mkRel 1], mkRel 1)
-    | [] -> ([mkRel 1], mkRel 1)
-  in
-  let sigma, ev = new_evar env sigma newconcl in
-  let term = mkLambda (na, dom, mkApp (ev, CArray.rev_of_list terms)) in
-  sigma, term
-
 TACTIC EXTEND curry
-[ "curry" hyp(id) ] -> [ 
-  Proofview.V82.tactic 
-    (fun gl ->
-    let decl = pf_get_hyp gl id in
-    let (na, body, ty) = to_named_tuple decl in
-      match curry_hyp (pf_env gl) (project gl) id ty with
-      | Some (prf, typ) ->
-         (match body with
-          | Some b ->
-             let newprf = Vars.replace_vars [(id,b)] prf in
-             tclTHEN (to82 (clear [id])) (to82 (Tactics.letin_tac None (Name id) newprf (Some typ) nowhere))
-                     gl
-          | None ->
-	     (tclTHENFIRST (Proofview.V82.of_tactic (assert_before_replacing id typ))
-		           (Tacmach.refine_no_check prf)) gl)
-      | None -> tclFAIL 0 (str"No currying to do in " ++ pr_id id) gl) ]
-| ["curry"] -> [ 
-    nf_enter { enter = fun gl ->
-      let env = Proofview.Goal.env gl in
-      let concl = Proofview.Goal.concl gl in
-      match kind_of_term concl with
-      | Prod (na, dom, codom) ->
-         Refine.refine
-           { Sigma.run = fun sigma ->
-             let sigma, prf = curry_concl env (Sigma.to_evar_map sigma) na dom codom in
-             Sigma.here prf (Sigma.Unsafe.of_evar_map sigma) }
-      | _ -> Tacticals.New.tclFAIL 0 (str"Goal cannot be curried") }
-  ]
+[ "curry" hyp(id) ] -> [ Sigma_types.Tactics.curry_hyp id ]
+| ["curry"] -> [ Sigma_types.Tactics.curry ]
 END
 
 TACTIC EXTEND curry_hyps
@@ -178,15 +72,7 @@ TACTIC EXTEND curry_hyps
 END
 
 TACTIC EXTEND uncurry_call
-[ "uncurry_call" constr(c) ident(id) ] -> [
-    enter { enter = fun gl ->
-        let env = Proofview.Goal.env gl in
-        let sigma = Proofview.Goal.sigma gl in
-        let sigma, term, ty = Sigma_types.uncurry_call env (Sigma.to_evar_map sigma) c in
-        let sigma, _ = Typing.type_of env sigma term in
-        Proofview.Unsafe.tclEVARS sigma <*>
-          Tactics.letin_tac None (Name id) term (Some ty) nowhere }
-      ]
+[ "uncurry_call" constr(c) ident(id) ] -> [ Sigma_types.Tactics.uncurry_call c id ]
 END
 
 (* TACTIC EXTEND pattern_tele *)
@@ -208,7 +94,7 @@ TACTIC EXTEND dependent_pattern_from
 END
 
 TACTIC EXTEND pattern_call
-[ "pattern_call" constr(c) ] -> [ of82 (Depelim.pattern_call c) ]
+[ "pattern_call" constr(c) ] -> [ Proofview.V82.tactic (Depelim.pattern_call c) ]
 END
 
 (* Noconf *)
@@ -267,6 +153,8 @@ END
 (* Equations *)
 
 open Extraargs
+open Equations_common
+
 TACTIC EXTEND solve_equations
   [ "solve_equations" tactic(destruct) tactic(tac) ] -> 
      [ of82 (Equations.solve_equations_goal (to82 (Tacinterp.tactic_of_value ist destruct))
@@ -593,47 +481,8 @@ TACTIC EXTEND is_secvar
     | _ -> Tacticals.New.tclFAIL 0 (str "Not a section variable or hypothesis") ]
 END
 
-open Proofview.Goal
-
-(** [refine_ho c]
-
-  Matches a lemma [c] of type [∀ ctx, ty] with a conclusion of the form
-  [∀ ctx, ?P args] using second-order matching on the problem
-  [ctx |- ?P args = ty] and then refines the goal with [c]. *)
-
-let refine_ho c =
-  nf_enter { enter = fun gl ->
-    let env = env gl in
-    let sigma = sigma gl in  
-    let concl = concl gl in
-    let ty = Tacmach.New.pf_apply Retyping.get_type_of gl c in
-    let ts = Names.full_transparent_state in
-    let evd = ref (to_evar_map sigma) in
-    let rec aux env concl ty =
-      match kind_of_term concl, kind_of_term ty with
-      | Prod (na, b, t), Prod (na', b', t') ->
-         let ok = Evarconv.e_conv ~ts env evd b b' in
-         if not ok then
-           error "Products do not match"
-         else aux (Environ.push_rel (of_tuple (na,None,b)) env) t t'
-      (* | _, LetIn (na, b, _, t') -> *)
-      (*    aux env t (subst1 b t') *)
-      | _, App (ev, args) when isEvar ev ->
-         let (evk, subst as ev) = destEvar ev in
-         let sigma = !evd in
-         let sigma,ev = evar_absorb_arguments env sigma ev (Array.to_list args) in
-         let argoccs = Array.map_to_list (fun _ -> None) (snd ev) in
-         let sigma, b = Evarconv.second_order_matching ts env sigma ev argoccs concl in
-         if not b then
-           error "Second-order matching failed"
-         else Proofview.Unsafe.tclEVARS sigma <*>
-                Refine.refine ~unsafe:true { Sigma.run = fun sigma -> Sigma.here c sigma }
-      | _, _ -> error "Couldn't find a second-order pattern to match"
-    in aux env concl ty }
-
 TACTIC EXTEND refine_ho
-| [ "refine_ho" open_constr(c) ] ->
-   [ refine_ho c ]
+| [ "refine_ho" open_constr(c) ] -> [ Extra_tactics.refine_ho c ]
 END
 
 TACTIC EXTEND eqns_specialize_eqs
