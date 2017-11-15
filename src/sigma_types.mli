@@ -70,3 +70,12 @@ val smart_case : Environ.env -> Evd.evar_map ref -> rel_context ->
   rel_context * types *
   (types * int * Covering.context_map) array *
   int * Covering.context_map * constr list * bool
+
+module Tactics : sig
+  val curry_hyp : Names.Id.t -> unit Proofview.tactic
+  val curry : unit Proofview.tactic
+  val uncurry_call : constr -> Names.Id.t -> unit Proofview.tactic
+
+  val pattern_sigma : Names.Id.t -> unit Proofview.tactic
+  val get_signature_pack : Names.Id.t -> Names.Id.t -> unit Proofview.tactic
+end

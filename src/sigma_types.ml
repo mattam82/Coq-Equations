@@ -698,3 +698,110 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
    *  - a reverse substitution [rev_subst_without_cuts] from [ctx] to [ctx'];
    *  - some terms in [ctx] to apply to the case once it is built. *)
       (ctx', goal, branches_res, nb_cuts, rev_subst_without_cuts, to_apply, simpl)
+
+
+open Tacmach
+
+let curry_hyp env sigma hyp t =
+  let curry t =
+    match kind sigma t with
+    | Prod (na, dom, concl) ->
+       let ctx, arg = curry sigma na dom in
+       let term = mkApp (mkVar hyp, [| arg |]) in
+       let ty = Reductionops.nf_betaiota sigma (Vars.subst1 arg concl) in
+       Some (it_mkLambda_or_LetIn term ctx, it_mkProd_or_LetIn ty ctx)
+    | _ -> None
+  in curry t
+
+open CClosure.RedFlags
+
+let red_curry () =
+  let redpr pr =
+    fCONST (Projection.constant (Lazy.force pr)) in
+  let reds = mkflags [redpr coq_pr1; redpr coq_pr2; fBETA; fMATCH] in
+  Reductionops.clos_norm_flags reds
+
+let curry_concl env sigma na dom codom =
+  let ctx, arg = curry sigma na dom in
+  let newconcl =
+    let body = it_mkLambda_or_LetIn (Vars.subst1 arg codom) ctx in
+    let inst = extended_rel_vect 0 ctx in
+    red_curry () env sigma (it_mkProd_or_LetIn (mkApp (body, inst)) ctx) in
+  let proj last decl (terms, acc) =
+    if last then (acc :: terms, acc)
+    else
+      let term = mkProj (Lazy.force coq_pr1, acc) in
+      let acc = mkProj (Lazy.force coq_pr2, acc) in
+      (term :: terms, acc)
+  in
+  let terms, acc =
+    match ctx with
+    | hd :: (_ :: _ as tl) ->
+       proj true hd (List.fold_right (proj false) tl ([], mkRel 1))
+    | hd :: tl -> ([mkRel 1], mkRel 1)
+    | [] -> ([mkRel 1], mkRel 1)
+  in
+  let sigma, ev = new_evar env sigma newconcl in
+  let term = mkLambda (na, dom, mkApp (ev, CArray.rev_of_list terms)) in
+  sigma, term
+
+module Tactics =struct
+  open Proofview.Notations
+  open Proofview.Goal
+
+  let curry_hyp id =
+  Proofview.V82.tactic
+    (fun gl ->
+    let decl = pf_get_hyp gl id in
+    let (na, body, ty) = to_named_tuple decl in
+      match curry_hyp (pf_env gl) (project gl) id ty with
+      | Some (prf, typ) ->
+         (match body with
+          | Some b ->
+             let newprf = Vars.replace_vars [(id,b)] prf in
+             tclTHEN (to82 (clear [id])) (to82 (Tactics.letin_tac None (Name id) newprf (Some typ) nowhere))
+                     gl
+          | None ->
+             (tclTHENFIRST (Proofview.V82.of_tactic (assert_before_replacing id typ))
+                           (Tacmach.refine_no_check prf)) gl)
+      | None -> tclFAIL 0 (str"No currying to do in " ++ pr_id id) gl)
+
+  let curry =
+    Proofview.Goal.nf_enter begin fun gl ->
+      let env = env gl in
+      let sigma = sigma gl in
+      let concl = concl gl in
+      match kind sigma concl with
+      | Prod (na, dom, codom) ->
+         Refine.refine ~typecheck:true
+           (fun sigma -> curry_concl env sigma na dom codom)
+      | _ -> Tacticals.New.tclFAIL 0 (str"Goal cannot be curried") end
+
+  let uncurry_call c id =
+    enter begin fun gl ->
+          let env = env gl in
+          let sigma = sigma gl in
+          let sigma, term, ty = uncurry_call env sigma c in
+          let sigma, _ = Typing.type_of env sigma term in
+          Proofview.Unsafe.tclEVARS sigma <*>
+            Tactics.letin_tac None (Name id) term (Some ty) nowhere end
+
+  let get_signature_pack id id' =
+    enter begin fun gl ->
+      let gl = Proofview.Goal.assume gl in
+      let env = Proofview.Goal.env gl in
+      let sigma = Proofview.Goal.sigma gl in
+      let sigma', sigsig, sigpack =
+        get_signature env sigma (Tacmach.New.pf_get_hyp_typ id gl) in
+      Proofview.Unsafe.tclEVARS sigma' <*>
+        letin_tac None (Name id') (mkApp (sigpack, [| mkVar id |])) None nowhere end
+
+  let pattern_sigma id =
+    enter begin fun gl ->
+    let gl = Proofview.Goal.assume gl in
+    let env = Proofview.Goal.env gl in
+    let sigma = Proofview.Goal.sigma gl in
+    let decl = Tacmach.New.pf_get_hyp id gl in
+    let term = Option.get (get_named_value decl) in
+    pattern_sigma ~assoc_right:true term id env sigma end
+end

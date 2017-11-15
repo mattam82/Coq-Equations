@@ -500,7 +500,6 @@ let unfold_head env sigma (ids, csts) c =
 	in !done_, c'
   in aux c
 
-open Auto
 open CErrors
 
 let autounfold_first db cl gl =

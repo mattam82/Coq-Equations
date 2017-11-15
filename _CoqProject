@@ -39,6 +39,8 @@ src/noconf.ml
 src/noconf.mli
 src/simplify.ml
 src/simplify.mli
+src/extra_tactics.ml
+src/extra_tactics.mli
 src/g_equations.ml4
 src/equations_plugin_mod.ml
 src/equations_plugin.mllib
