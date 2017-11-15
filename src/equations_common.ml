@@ -995,5 +995,5 @@ type identifier = Names.Id.t
 
 let ucontext_of_aucontext ctx =
   let inst = Univ.AUContext.instance ctx in
-  Univ.ContextSet.of_context
-    (Univ.UContext.make (inst, (Univ.AUContext.instantiate inst ctx)))
+  inst, Univ.ContextSet.of_context
+        (Univ.UContext.make (inst, (Univ.AUContext.instantiate inst ctx)))

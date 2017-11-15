@@ -348,7 +348,7 @@ type term_info = {
   term_id : global_reference;
   base_id : string;
   decl_kind: Decl_kinds.definition_kind;
-  helpers_info : (existential_key * int * identifier) list;
+  helpers_info : (Constr.existential_key * int * identifier) list;
   comp_obls : Id.Set.t; (** The recursive call proof obligations *)
 }
 
@@ -375,9 +375,9 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
                 comp split hook =
   let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
   let helpers, oblevs, t, ty = term_of_tree status isevar env split in
-  let split = map_split (nf_evar !isevar) split in
   let _nf, _subst = Evarutil.e_nf_evars_and_universes isevar in
-  let obls, (emap, cmap), t', ty' = 
+  let split = map_split (nf_evar !isevar) split in
+  let obls, (emap, cmap), t', ty' =
     Obligations.eterm_obligations env i !isevar
       0 ~status (EConstr.to_constr !isevar t) (EConstr.to_constr !isevar (whd_betalet !isevar ty))
   in
@@ -469,7 +469,9 @@ let clean_clause (ctx, pats, ty, c) =
 let map_evars_in_constr evd evar_map c = 
   evar_map (fun id ->
 	    let gr = Nametab.global (Qualid (dummy_loc, qualid_of_ident id)) in
-            let (f, uc) = Global.constr_of_global_in_context (Global.env ()) gr in f)
+            let (f, uc) = Global.constr_of_global_in_context (Global.env ()) gr in
+            let inst, ctx = ucontext_of_aucontext uc in
+            Universes.constr_of_global_univ (Globnames.global_of_constr f, inst))
            (EConstr.to_constr evd c)
 
 let map_evars_in_split evd m = map_split (map_evars_in_constr evd m)

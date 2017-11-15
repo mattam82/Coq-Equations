@@ -172,7 +172,7 @@ type logic = {
   logic_eq_refl: logic_ref;
   logic_eq_case: logic_ref;
   logic_eq_elim: logic_ref;
-  logic_sort : Term.sorts_family;
+  logic_sort : Sorts.family;
   logic_zero : logic_ref;
   logic_one : logic_ref;
   logic_one_val : logic_ref;
@@ -416,4 +416,4 @@ val find_rectype : Environ.env -> Evd.evar_map -> types -> Inductiveops.inductiv
 
 type identifier = Names.Id.t
 
-val ucontext_of_aucontext : Univ.AUContext.t -> Univ.ContextSet.t
+val ucontext_of_aucontext : Univ.AUContext.t -> Univ.Instance.t * Univ.ContextSet.t

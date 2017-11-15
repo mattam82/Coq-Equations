@@ -108,9 +108,10 @@ let define_principles flags fixprots progs =
     let f =
       let (f, uc) = Global.constr_of_global_in_context env gr in
       if flags.polymorphic then
-        evd := Evd.merge_context_set Evd.univ_rigid !evd
-                                     (ucontext_of_aucontext uc);
-      f
+        let inst, ctx = ucontext_of_aucontext uc in
+        let () = evd := Evd.merge_context_set Evd.univ_rigid !evd ctx in
+        Universes.constr_of_global_univ (global_of_constr f, inst)
+      else f
     in
       match p.program_rec with
       | Some (Structural _) ->

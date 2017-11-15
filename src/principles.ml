@@ -798,8 +798,8 @@ let declare_funelim info env evd is_rec protos progs
     let () = evd := Evd.from_env (Global.env ()) in
     if is_polymorphic info then
       let _fty, fctx = Global.type_of_global_in_context (Global.env ()) info.term_id in
-      let fctx = ucontext_of_aucontext fctx in
-      let elimctx = ucontext_of_aucontext uctx in
+      let finst, fctx = ucontext_of_aucontext fctx in
+      let eliminst, elimctx = ucontext_of_aucontext uctx in
       (** They share universes in general *)
       let fullctx = Univ.ContextSet.union fctx elimctx in
       let () = evd := Evd.merge_context_set Evd.univ_flexible !evd fullctx in
