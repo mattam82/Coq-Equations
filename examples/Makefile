@@ -16,6 +16,8 @@ clean:
 $(vfiles:.v=.vo): %.vo: %.v
 	$(COQC) $(COQFLAGS) $<
 
+graph_complete.vo: HoTT_light.vo
+
 $(vfiles:.v=.tex): %.tex: %.vo
 	$(COQDOC) --latex --interpolate --parse-comments ${<:.vo=.v}
 

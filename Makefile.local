@@ -1,0 +1,27 @@
+makefiles: test-suite/Makefile
+
+test-suite/Makefile: test-suite/_CoqProject
+		     cd test-suite && coq_makefile -f _CoqProject -o Makefile
+
+pre-all:: makefiles
+
+# Ensure we make the bytecode version as well
+post-all:: bytefiles
+
+clean-examples:
+	cd examples && $(MAKE) clean
+
+clean-test-suite: makefiles
+	cd test-suite && $(MAKE) clean
+
+test-suite: makefiles
+	cd test-suite && $(MAKE)
+
+.PHONY: test-suite
+
+examples: examples/Makefile
+	cd examples && $(MAKE)
+
+.PHONY: examples
+
+clean:: makefiles clean-examples clean-test-suite
