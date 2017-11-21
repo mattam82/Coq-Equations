@@ -1,8 +1,10 @@
-(** Polynomials and a reflexive tactic for solving boolean goals (using
-   heyting or classical boolean algebra).  Original version by Rafael
-   Bocquet, 2016. Updated to use Equations for all definitions by M. Sozeau,
-   2016-2017. If running this interactively you can ignore the printing 
-   and hide directives which are just used to instruct coqdoc. *)
+(** * Polynomials
+
+  Polynomials and a reflexive tactic for solving boolean goals (using
+  heyting or classical boolean algebra).  Original version by Rafael
+  Bocquet, 2016. Updated to use Equations for all definitions by M. Sozeau,
+  2016-2017. If running this interactively you can ignore the printing
+  and hide directives which are just used to instruct coqdoc. *)
 
 (* begin hide *)
 (** printing elimination %\coqdoctac{elimination}% *)

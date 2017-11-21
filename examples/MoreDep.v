@@ -1,4 +1,7 @@
-(* http://adam.chlipala.net/cpdt/html/MoreDep.html *)
+(** * MoreDep
+
+  Porting a chapter of Adam Chlipala's Certified Programming with Dependent Types,
+  #<a href="http://adam.chlipala.net/cpdt/html/MoreDep.html">More Dependent Types</a>#. *)
 
 Require Import Bool Arith List Program. 
 From Equations Require Import Equations.
@@ -213,7 +216,7 @@ Section present.
 End present.
 
 Notation "{< x >}" := (sigmaI _ _ x).
-
+Import Sigma_Notations.
 (* No need for convoy pattern! *)
 Equations balance1 n (a : rtree n) (data : nat) c2 (b : rbtree c2 n) : &{c : color & rbtree c (S n)} :=
 balance1 _ (RedNode' _ c0 _ t1 y t2) data _ d <= t1 => {

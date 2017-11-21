@@ -1051,7 +1051,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
     let constructors = CList.map_filter (fun (_, (_, _, _, n)) -> Option.map (to_constr !evd) n) stmts in
     let consnames = CList.map_filter (fun (i, (r, _, _, n)) ->
       Option.map (fun _ -> 
-	let suff = (if r == Regular then "_equation_" else "_refinement_") ^ string_of_int i in
+        let suff = (if r != Refine then "_equation_" else "_refinement_") ^ string_of_int i in
 	  Nameops.add_suffix indid suff) n) stmts
     in
     let ind_sort =

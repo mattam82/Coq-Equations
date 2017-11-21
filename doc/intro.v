@@ -380,7 +380,7 @@ diag' (Vcons (Vcons a n v) n v') :=
 
     To aleviate this problem, [Equations] provides support for
     _well-founded_ recursive definitions which do not rely on syntactic
-    checks. *)
+    checks.
 
     The simplest example of this is using the [lt] order on natural numbers
     to define a recursive definition of identity: *)
@@ -429,7 +429,8 @@ Check well_founded_t_subterm : forall A, WellFounded (t_subterm A).
     couldn't handle:*)
 (* begin hide *)
 Require Import Relation_Operators.
-Local Open Scope sigma_scope.
+Import Sigma_Notations.
+Local Open Scope equations_scope.
 Require Import Relations.
 Lemma clos_trans_stepr_refl A (R : relation A) (x y z : A) :
   R y z -> clos_refl _ (clos_trans A R) x y -> clos_trans A R x z.
