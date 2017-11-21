@@ -38,7 +38,7 @@ val autorewrite_one : string -> Proofview.V82.tac
 val mutual_fix : string list -> int list -> unit Proofview.tactic
 
 val find_helper_arg :
-  Splitting.term_info -> Term.constr -> 'a array -> Term.existential_key * 'a
+  Splitting.term_info -> Term.constr -> 'a array -> Term.existential_key * int * 'a
 val find_splitting_var :
   Covering.pat list -> int -> Term.constr list -> Names.Id.t
 val intros_reducing : Proof_type.tactic
@@ -50,7 +50,7 @@ val map_opt_split : ('a -> 'b option) -> 'a option -> 'b option
 val solve_ind_rec_tac : Splitting.term_info -> unit Proofview.tactic
 val aux_ind_fun :
   ind_info ->
-  int ->
+  int * int ->
   Covering.splitting option ->
   Names.Id.t list -> Covering.splitting -> Proof_type.tactic
 val ind_fun_tac :

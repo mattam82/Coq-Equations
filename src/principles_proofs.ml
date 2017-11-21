@@ -242,7 +242,7 @@ let mutual_fix li l =
 
 let find_helper_arg info f args =
   let (ev, arg, id) = find_helper_info info f in
-    ev, args.(arg)
+    ev, arg, args.(arg)
       
 let find_splitting_var pats var constrs =
   let rec find_pat_var p c =
@@ -289,6 +289,11 @@ let solve_ind_rec_tac info =
   Proofview.tclTHEN (Tactics.pose_proof Anonymous c)
                     (of82 (eauto_with_below ~depth:10 [info.base_id; wf_obligations_base info])))
 
+let change_in_app f args idx arg =
+  let args' = Array.copy args in
+  args'.(idx) <- arg;
+  mkApp (f, args')
+
 let rec aux_ind_fun info chop unfs unfids = function
   | Split ((ctx,pats,_), var, _, splits) ->
      let unfs =
@@ -304,8 +309,8 @@ let rec aux_ind_fun info chop unfs unfids = function
 	| App (ind, args) -> 
 	   let pats' = List.drop_last (Array.to_list args) in
            let pats' = 
-             if chop < 0 then pats'
-             else snd (List.chop chop pats') in
+             if fst chop < 0 then pats'
+             else snd (List.chop (fst chop) pats') in
 	   let pats = filter (fun x -> not (hidden x)) pats in
 	   let id = find_splitting_var pats var pats' in
 	      to82 (depelim_nosimpl_tac id) gl
@@ -332,13 +337,21 @@ let rec aux_ind_fun info chop unfs unfids = function
     let elimtac gl =
       match kind_of_term (pf_concl gl) with
       | App (ind, args) ->
-	 let last_arg = args.(Array.length args - 1) in
-	 let f, args = destApp last_arg in
-	 let _, elim = find_helper_arg info.term_info f args in
-	 let id = pf_get_new_id id gl in
+         let before, last_arg = CArray.chop (Array.length args - 1) args in
+         let f, fargs = destApp last_arg.(0) in
+         let _, pos, elim = find_helper_arg info.term_info f fargs in
+         let id = pf_get_new_id id gl in
+         let occs = Locusops.allHyps in
+         let newconcl =
+           let fnapp = change_in_app f fargs pos (mkVar id) in
+           let indapp = change_in_app ind before (pos - snd chop) (mkVar id) in
+           mkApp (indapp, [| fnapp |])
+         in
 	 tclTHENLIST
-	 [to82 (letin_tac None (Name id) elim None Locusops.allHypsAndConcl); 
-	  Proofview.V82.of_tactic (clear_body [id]); aux_ind_fun info chop unfs unfids s] gl
+          [to82 (letin_tac None (Name id) elim None occs);
+           to82 (convert_concl_no_check newconcl DEFAULTcast);
+           Proofview.V82.of_tactic (clear_body [id]);
+           aux_ind_fun info chop unfs unfids s] gl
       | _ -> tclFAIL 0 (str"Unexpected refinement goal in functional induction proof") gl
     in
     observe "refine"
@@ -357,8 +370,8 @@ let rec aux_ind_fun info chop unfs unfids = function
     let wheretac = 
       if not (List.is_empty wheres) then
         let wheretac acc s unfs =
-          let where_term, chop, unfids, where_nctx = match unfs with
-            | None -> s.where_term, chop + List.length s.where_nctx, unfids, s.where_nctx
+          let where_term, fstchop, unfids, where_nctx = match unfs with
+            | None -> s.where_term, fst chop + List.length s.where_nctx, unfids, s.where_nctx
             | Some w ->
                let assoc, unf, split =
                  try Evar.Map.find (List.hd w.where_path) info.wheremap
@@ -367,8 +380,9 @@ let rec aux_ind_fun info chop unfs unfids = function
                (* msg_debug (str"Unfolded where " ++ str"term: " ++ pr_constr w.where_term ++ *)
                (*              str" type: " ++ pr_constr w.where_type ++ str" assoc " ++ *)
                (*              pr_constr assoc); *)
-               assoc, chop + List.length w.where_nctx, unf :: unfids, w.where_nctx
+               assoc, fst chop + List.length w.where_nctx, unf :: unfids, w.where_nctx
           in
+          let chop = fstchop, snd chop in
           let wheretac =
             observe "one where"
             (tclTHENLIST [tclTRY (to82 (move_hyp coq_end_of_section_id Misctypes.MoveLast));
@@ -483,7 +497,7 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
 	     in
 	     Proofview.V82.of_tactic
 	       (change_in_hyp None fixprot (n, Locus.InHyp)) gl);
-           to82 intros; aux_ind_fun info 0 None [] split])
+           to82 intros; aux_ind_fun info (0, 1) None [] split])
 
   | Some (Structural l) ->
      let open Proofview in
@@ -503,7 +517,7 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
      in
      let prove_progs progs =
        intros <*>
-         tclDISPATCH (List.map (fun (_,_,e) -> (* observe_tac "proving one mutual " *) (of82 (aux_ind_fun info 0 None [] e.equations_split)))
+         tclDISPATCH (List.map (fun (_,_,e) -> (* observe_tac "proving one mutual " *) (of82 (aux_ind_fun info (0, List.length mutual) None [] e.equations_split)))
                                progs)
      in
      let prove_nested =
@@ -559,7 +573,7 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
      in Proofview.Goal.nf_enter ({enter = fun gl -> tac gl})
 
   | _ -> of82 (tclCOMPLETE (tclTHENLIST
-      [to82 (set_eos_tac ()); to82 intros; aux_ind_fun info 0 unfsplit [] split]))
+      [to82 (set_eos_tac ()); to82 intros; aux_ind_fun info (0, 0) unfsplit [] split]))
 
 
 let simpl_except (ids, csts) =
@@ -651,8 +665,8 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
 	  match kind_of_term (pf_concl gl) with
 	  | App (f, [| ty; term1; term2 |]) ->
 	      let f1, arg1 = destApp term1 and f2, arg2 = destApp term2 in
-	      let _, a1 = find_helper_arg info f1 arg1 
-	      and ev2, a2 = find_helper_arg info f2 arg2 in
+              let _, posa1, a1 = find_helper_arg info f1 arg1
+              and ev2, posa2, a2 = find_helper_arg info f2 arg2 in
 	      let id = pf_get_new_id id gl in
 		if Evar.equal ev2 ev then 
 	  	  tclTHENLIST
