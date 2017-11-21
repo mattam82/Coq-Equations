@@ -15,6 +15,8 @@ scope.v
 issues/issue7.v
 issues/issue8.v
 issues/issue13.v
+issues/issue24.v
+issues/issue25.v
 LogicType.v
 innacs.v
 mfix.v
