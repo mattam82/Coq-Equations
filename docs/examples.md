@@ -16,8 +16,10 @@ title: Gallery of programs
 - [String Matching](examples/string_matching.html): beginning of example
   by Nicky Vazou on string matching, uses well-founded recursion
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/string_matching.v)).
-- [Rose Trees](examples/RoseTree.html): nested recursion
+- [Rose Trees](examples/RoseTree.html): nested well-founded recursion
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/RoseTree.v)).
+- [Nested mutual recursion](examples/nested_mut_rec.html): structural mutual and nested recursion
+  ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/nested_mut_rec.v)).
 - [MoreDep](examples/MoreDep.html): part of chapter 8 of Adam
   Chlipala's [CPDT](http://adam.chlipala.net/cpdt/html/toc.html)
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/MoreDep.v)).
