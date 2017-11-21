@@ -382,14 +382,10 @@ diag' (Vcons (Vcons a n v) n v') :=
     _well-founded_ recursive definitions which do not rely on syntactic
     checks. *)
 
-Require Import Equations.Subterm.
-
-(** To aleviate this problem, [Equations] provides support for
-    _well-founded_ recursive definitions which do not rely on syntactic
-    checks.
-
     The simplest example of this is using the [lt] order on natural numbers
     to define a recursive definition of identity: *)
+
+Require Import Equations.Subterm.
 
 Equations id (n : nat) : nat :=
   id n by rec n lt :=
