@@ -1,3 +1,6 @@
+(** * HoTT-light
+ ** A lightweight version of the Homotopy Type Theory library prelude. *)
+
 Require Export Unicode.Utf8.
 Require Import Coq.Program.Tactics Setoid.
 

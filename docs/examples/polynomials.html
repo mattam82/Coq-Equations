@@ -16,17 +16,20 @@
 
 <div id="main">
 
-<h1 class="libtitle">Library polynomials</h1>
-
 <div class="code">
 </div>
 
 <div class="doc">
-Polynomials and a reflexive tactic for solving boolean goals (using
-   heyting or classical boolean algebra).  Original version by Rafael
-   Bocquet, 2016. Updated to use Equations for all definitions by M. Sozeau,
-   2016-2017. If running this interactively you can ignore the printing 
-   and hide directives which are just used to instruct coqdoc. 
+<a name="lab1"></a><h1 class="section">Polynomials</h1>
+
+
+<div class="paragraph"> </div>
+
+  Polynomials and a reflexive tactic for solving boolean goals (using
+  heyting or classical boolean algebra).  Original version by Rafael
+  Bocquet, 2016. Updated to use Equations for all definitions by M. Sozeau,
+  2016-2017. If running this interactively you can ignore the printing
+  and hide directives which are just used to instruct coqdoc. 
 </div>
 <div class="code">
 
@@ -98,7 +101,7 @@ The specification of this test is that it returns true iff the variable is indee
 </div>
 
 <div class="doc">
-<a name="lab1"></a><h3 class="section">Multivariate polynomials</h3>
+<a name="lab2"></a><h3 class="section">Multivariate polynomials</h3>
 
 
 <div class="paragraph"> </div>
@@ -181,7 +184,7 @@ In addition to the usual eliminators of the inductive type
 
 <div class="paragraph"> </div>
 
-<a name="lab2"></a><h3 class="section">Monomials</h3>
+<a name="lab3"></a><h3 class="section">Monomials</h3>
 
 
 <div class="paragraph"> </div>
@@ -257,7 +260,7 @@ The definition can be done using either the usual structural
   polynomials built from <span class="inlinecode"><a class="idref" href="polynomials.html#poly_z"><span class="id" title="constructor">poly_z</span></a></span> or <span class="inlinecode"><a class="idref" href="polynomials.html#poly_c"><span class="id" title="constructor">poly_c</span></a></span>, etc. 
 <div class="paragraph"> </div>
 
-<a name="lab3"></a><h3 class="section">Two detailed proofs</h3>
+<a name="lab4"></a><h3 class="section">Two detailed proofs</h3>
 
 
 <div class="paragraph"> </div>
@@ -562,7 +565,7 @@ Equality can be decided using the difference of polynoms
 </div>
 
 <div class="doc">
-<a name="lab4"></a><h3 class="section">Two polynomials with the same values are syntacically equal.</h3>
+<a name="lab5"></a><h3 class="section">Two polynomials with the same values are syntacically equal.</h3>
 
  This is shown using <span class="inlinecode"><a class="idref" href="polynomials.html#poly_nz_eval"><span class="id" title="lemma">poly_nz_eval</span></a></span>: the difference of two polynomials with the same values is null.
  Then use <span class="inlinecode"><a class="idref" href="polynomials.html#poly_diff_z_eq"><span class="id" title="lemma">poly_diff_z_eq</span></a></span>
@@ -588,7 +591,7 @@ Equality can be decided using the difference of polynoms
 </div>
 
 <div class="doc">
-<a name="lab5"></a><h3 class="section">Multiplication of polynomials</h3>
+<a name="lab6"></a><h3 class="section">Multiplication of polynomials</h3>
 
 
 <div class="paragraph"> </div>
@@ -701,7 +704,7 @@ The proof that multiplication is a morphism for evaluation works as usual by ind
 </div>
 
 <div class="doc">
-<a name="lab6"></a><h2 class="section">Boolean formulas</h2>
+<a name="lab7"></a><h2 class="section">Boolean formulas</h2>
 
 
 <div class="paragraph"> </div>
@@ -883,7 +886,7 @@ From this, we can derive that two boolean formulas are equivalent if
 </div>
 
 <div class="doc">
-<a name="lab7"></a><h3 class="section">Completeness</h3>
+<a name="lab8"></a><h3 class="section">Completeness</h3>
 
 
 <div class="paragraph"> </div>
@@ -1028,7 +1031,7 @@ One can check that all definitions here are axiom free, and only the proofs
     which depend on unfolding lemmas use the <span class="inlinecode"><span class="id" title="var">functional_extensionality_dep</span></span> axiom. 
 <div class="paragraph"> </div>
 
-<a name="lab8"></a><h3 class="section">Reflexive tactic</h3>
+<a name="lab9"></a><h3 class="section">Reflexive tactic</h3>
 
 
 <div class="paragraph"> </div>
