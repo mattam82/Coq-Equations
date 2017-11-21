@@ -1,3 +1,7 @@
+(** * Nested and mutual structurally recursive definitions
+
+  Example of a term structure with two constructors taking lists of terms. *)
+
 (** printing elimination %\coqdoctac{elimination}% *)
 (** printing <= %\rightarrow% #⇐# *)
 Require Import Equations.Equations.
