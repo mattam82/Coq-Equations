@@ -147,7 +147,7 @@ let term_of_tree status isevar env0 tree =
 
     | Mapping ((ctx, p, ctx'), s) ->
        let evm, term, ty = aux env evm s in
-       let args = Array.rev_of_list (constrs_of_pats ~inacc:false env p) in
+       let args = Array.rev_of_list (snd (constrs_of_pats ~inacc_and_hide:false env evm p)) in
        let term = it_mkLambda_or_LetIn (whd_beta evm (mkApp (term, args))) ctx in
        let ty = it_mkProd_or_subst (prod_appvect ty args) ctx in
          evm, term, ty

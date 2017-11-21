@@ -26,15 +26,16 @@ type pat =
 type context_map = rel_context * pat list * rel_context
 
 (** Tag with a constant application (needs env to infer type) *)
-val mkInac : env -> constr -> constr
-val mkHide : env -> constr -> constr
+val mkInac : env -> esigma -> constr -> constr
+val mkHide : env -> esigma -> constr -> constr
 
 (* Constr of a pattern *)
 val pat_constr : pat -> constr
 
-(* Constr of a pattern marking innaccessibles *)
-val constr_of_pat : ?inacc:bool -> env -> pat -> constr
-val constrs_of_pats : ?inacc:bool -> env -> pat list -> constr list
+(* Constr of a pattern optionally marking innaccessibles and hidden patterns
+   and modifying the evar_map in this case only. *)
+val constr_of_pat : ?inacc_and_hide:bool -> env -> Evd.evar_map -> pat -> Evd.evar_map * constr
+val constrs_of_pats : ?inacc_and_hide:bool -> env -> Evd.evar_map -> pat list -> Evd.evar_map * constr list
 
 (** Free pattern variables (excluding inaccessibles and hiddens) *)
 val pat_vars : pat -> Int.Set.t
@@ -50,7 +51,7 @@ val pat_of_constr : constr -> pat
 
 (** Pretty-printing *)
 val pr_constr_pat : env -> constr -> Pp.std_ppcmds
-val pr_pat : env -> pat -> Pp.std_ppcmds
+val pr_pat : env -> Evd.evar_map -> pat -> Pp.std_ppcmds
 val pr_context : env -> rel_context -> Pp.std_ppcmds
 val ppcontext : env -> rel_context -> unit
 val pr_context_map : env -> context_map -> Pp.std_ppcmds

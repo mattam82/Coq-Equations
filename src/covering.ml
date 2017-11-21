@@ -95,14 +95,20 @@ and splitting_rhs =
   | RProgram of constr
   | REmpty of int
 
-(** FIXME if innac becomes polymorphic *)
-let mkInac env c =
-  mkApp (Universes.constr_of_global (Lazy.force coq_inacc),
-         [| Retyping.get_type_of env Evd.empty c ; c |])
+let type_of_refresh env evdref c =
+  let ty = Retyping.get_type_of env !evdref c in
+  let sigma, ty =
+    Evarsolve.refresh_universes ~status:Evd.univ_flexible ~onlyalg:true (Some false)
+                                env !evdref ty
+  in evdref := sigma; ty
 
-let mkHide env c =
-  mkApp (Universes.constr_of_global (Lazy.force coq_hide),
-         [| Retyping.get_type_of env Evd.empty c ; c |])
+let mkInac env evdref c =
+  mkApp (e_new_global evdref (Lazy.force coq_inacc),
+         [| type_of_refresh env evdref c ; c |])
+
+let mkHide env evdref c =
+  mkApp (e_new_global evdref (Lazy.force coq_hide),
+         [| type_of_refresh env evdref c ; c |])
 
 let rec pat_constr = function
   | PRel i -> mkRel i
@@ -112,16 +118,27 @@ let rec pat_constr = function
   | PInac r -> r
   | PHide c -> mkRel c
     
-let rec constr_of_pat ?(inacc=true) env = function
+let rec constr_of_pat inacc_and_hide env evdref = function
   | PRel i -> mkRel i
   | PCstr (c, p) ->
       let c' = mkConstructU c in
-	mkApp (c', Array.of_list (constrs_of_pats ~inacc env p))
+        mkApp (c', Array.of_list (constrs_of_pats inacc_and_hide env evdref p))
   | PInac r ->
-      if inacc then try mkInac env r with _ -> r else r
-  | PHide i -> mkHide env (mkRel i)
+      if inacc_and_hide then try mkInac env evdref r with _ -> r else r
+  | PHide i -> if inacc_and_hide then mkHide env evdref (mkRel i) else mkRel i
 
-and constrs_of_pats ?(inacc=true) env l = map (constr_of_pat ~inacc env) l
+and constrs_of_pats inacc_and_hide env evdref l =
+  List.map (constr_of_pat inacc_and_hide env evdref) l
+
+let constr_of_pat ?(inacc_and_hide=true) env sigma p =
+  let evdref = ref sigma in
+  let pc = constr_of_pat inacc_and_hide env evdref p in
+  !evdref, pc
+
+let constrs_of_pats ?(inacc_and_hide=true) env sigma ps =
+  let evdref = ref sigma in
+  let pcs = constrs_of_pats inacc_and_hide env evdref ps in
+  !evdref, pcs
 
 let rec pat_vars = function
   | PRel i -> Int.Set.singleton i
@@ -166,8 +183,8 @@ let pr_constr_pat env c =
     | App _ -> str "(" ++ pr ++ str ")"
     | _ -> pr
 
-let pr_pat env c =
-  let patc = constr_of_pat env c in
+let pr_pat env sigma c =
+  let sigma, patc = constr_of_pat env sigma c in
     pr_constr_pat env patc
 
 let pr_context env c =
@@ -188,7 +205,7 @@ let pr_context env c =
 
 let ppcontext env c = pp (pr_context env c)
 
-let pr_pats env patcs = prlist_with_sep (fun _ -> str " ") (pr_pat env) (List.rev patcs)
+let pr_pats env patcs = prlist_with_sep (fun _ -> str " ") (pr_pat env Evd.empty) (List.rev patcs)
 
 let pr_context_map env (delta, patcs, gamma) =
   let env' = push_rel_context delta env in
@@ -207,12 +224,12 @@ let typecheck_map env evars (ctx, subst, ctx') =
   let env = push_rel_context ctx env in
   let _ = 
     List.fold_right2 
-      (fun decl p subst ->
+      (fun decl p (evars, subst) ->
          let (na, b, t) = to_tuple decl in
-         let c = constr_of_pat env p in
+         let evars, c = constr_of_pat ~inacc_and_hide:false env evars p in
 	   check_term env evars c (substl subst t);
-	   (c :: subst))
-      ctx' subst []
+           (evars, c :: subst))
+      ctx' subst (evars, [])
   in ()
 
 let debug = true
@@ -354,8 +371,8 @@ let make_permutation ?(env = Global.env ()) (sigma : Evd.evar_map)
     let env1 = Environ.push_rel_context ctx1 env in
     let env2 = Environ.push_rel_context ctx2 env in
     let merge_pats pat1 pat2 =
-      let c1 = constr_of_pat env1 pat1 in
-      let c2 = constr_of_pat env2 pat2 in
+      let sigma, c1 = constr_of_pat ~inacc_and_hide:false env1 sigma pat1 in
+      let sigma, c2 = constr_of_pat ~inacc_and_hide:false env2 sigma pat2 in
       let c1 = Tacred.compute env1 sigma c1 in
       let c2 = Tacred.compute env2 sigma c2 in
         merge_constrs c1 c2
