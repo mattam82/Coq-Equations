@@ -800,6 +800,8 @@ let observe s tac =
                             | Refiner.FailError (n,expl) ->
                                (str" Fail error " ++ int n ++ str " for " ++ str s ++ spc () ++ Lazy.force expl ++
                                   str " on " ++ Printer.pr_goal gls)
+                            | Pretype_errors.PretypeError (env, sigma, e) ->
+                               (str " Pretype error: " ++ Himsg.explain_pretype_error env sigma e)
                             | _ -> CErrors.iprint iexn));
                    Proofview.tclUNIT ())) gls
 
