@@ -294,6 +294,10 @@ let change_in_app f args idx arg =
   args'.(idx) <- arg;
   mkApp (f, args')
 
+let hyps_after sigma pos args =
+  let args' = Array.sub args (pos + 1) (Array.length args - (pos + 1)) in
+  Array.fold_right (fun c acc -> ids_of_constr ~all:true acc c) args' Id.Set.empty
+
 let rec aux_ind_fun info chop unfs unfids = function
   | Split ((ctx,pats,_), var, _, splits) ->
      let unfs =
@@ -341,15 +345,17 @@ let rec aux_ind_fun info chop unfs unfids = function
          let f, fargs = destApp last_arg.(0) in
          let _, pos, elim = find_helper_arg info.term_info f fargs in
          let id = pf_get_new_id id gl in
-         let occs = Locusops.allHyps in
+         let hyps = Id.Set.elements (hyps_after (project gl) (pos - snd chop) before) in
+         let occs = Some (List.map (fun h -> (Locus.AllOccurrences, h), Locus.InHyp) hyps) in
+         let occs = Locus.{ onhyps = occs; concl_occs = NoOccurrences } in
          let newconcl =
            let fnapp = change_in_app f fargs pos (mkVar id) in
            let indapp = change_in_app ind before (pos - snd chop) (mkVar id) in
            mkApp (indapp, [| fnapp |])
          in
-	 tclTHENLIST
-          [to82 (letin_tac None (Name id) elim None occs);
-           to82 (convert_concl_no_check newconcl DEFAULTcast);
+         tclTHENLIST
+          [observe "letin" (to82 (letin_pat_tac None (Name id) ((project gl, project gl), elim) occs));
+           observe "convert concl" (to82 (convert_concl_no_check newconcl DEFAULTcast));
            Proofview.V82.of_tactic (clear_body [id]);
            aux_ind_fun info chop unfs unfids s] gl
       | _ -> tclFAIL 0 (str"Unexpected refinement goal in functional induction proof") gl
