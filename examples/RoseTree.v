@@ -9,44 +9,48 @@
 From Equations Require Import Equations Fin DepElimDec.
 Require Import Omega Utf8.
 
+Require Import List.
+
+Equations(nocomp) map_In {A B : Type}
+     (l : list A) (f : forall (x : A), In x l -> B) : list B :=
+  map_In nil _ := nil;
+  map_In (cons x xs) f := cons (f x _) (map_In xs (fun x H => f x _)).
+
+Lemma map_In_spec {A B : Type} (f : A -> B) (l : list A) :
+  map_In l (fun (x : A) (_ : In x l) => f x) = List.map f l.
+Proof.
+  (* Why does funelim not work here? *)
+  (* funelim (map_In l (fun (x : A) (_ : In x l) => f x)). *)
+  induction l; simpl; trivial.
+  rewrite map_In_equation_2. rewrite IHl. trivial.
+Qed.
+  
 Section list_size.
   Context {A : Type} (f : A -> nat).
   Equations(nocomp) list_size (l : list A) : nat :=
   list_size nil := 0;
   list_size (cons x xs) := S (f x + list_size xs).
-
-  Context {B : Type}.
-  Equations(nocomp) list_map_size (l : list A)
-           (g : forall (x : A), f x < list_size l -> B) : list B :=
-  list_map_size nil _ := nil;
-  list_map_size (cons x xs) g := cons (g x _) (list_map_size xs (fun x H => g x _)).
-  Next Obligation.
-    simp list_size. auto with arith.
-  Defined.    
-  Next Obligation.
-    simp list_size. omega.
-  Defined.    
-
-  Lemma list_map_size_spec (g : A -> B) (l : list A) :
-    list_map_size l (fun x _ => g x) = List.map g l.
+  
+  Lemma In_list_size:
+    forall x xs, In x xs -> f x < S (list_size xs).
   Proof.
-    funelim (list_map_size l (λ (x : A) (_ : f x < list_size l), g x)); simpl; trivial.
-    now rewrite H.
+    intros. induction xs; simpl in *; try contradiction; 
+     rewrite list_size_equation_2; destruct H.
+    * subst; omega.
+    * intuition.
   Qed.
 End list_size.
-
-Require Import List.
 
 Module RoseTree.
 
   Section roserec.
     Context {A : Set} {A_eqdec : EqDec.EqDec A}.
-    
+
     Inductive t : Set :=
     | leaf (a : A) : t
     | node (l : list t) : t.
     Derive NoConfusion for t.
-    
+
     Fixpoint size (r : t) :=
       match r with
       | leaf a => 0
@@ -75,10 +79,11 @@ Module RoseTree.
     Equations(nocomp) elements (r : t) : list A :=
     elements l by rec r (MR lt size) :=
     elements (leaf a) := [a];
-    elements (node l) := concat (list_map_size size l (fun x H => elements x)).
+    elements (node l) := concat (map_In l (fun x H => elements x)).
     
     Next Obligation.
-      intros. simpl in *. red. simpl. omega.
+      intros. simpl in *. red. simpl.
+      apply In_list_size. auto.
     Defined.
       
     Equations(nocomp) elements_def (r : t) : list A :=
@@ -87,7 +92,7 @@ Module RoseTree.
     Lemma elements_equation (r : t) : elements r = elements_def r.
     Proof.
       funelim (elements r); simp elements_def.
-      now rewrite list_map_size_spec.
+      now rewrite map_In_spec.
     Qed.
 
     (** To solve measure subgoals *)
