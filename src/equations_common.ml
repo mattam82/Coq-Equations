@@ -180,8 +180,8 @@ let make_definition ?opaque ?(poly=false) evd ?types b =
   let used = Univ.LSet.union used used' in
   let evm = Evd.restrict_universe_context evm used in
   evd := evm;
-  Declare.definition_entry ~poly ~univs:(snd (Evd.universe_context ~names:[] ~extensible:true evm))
-      ?types:typ body
+  let univs = Evd.const_univ_entry ~poly evm in
+  Declare.definition_entry ~univs ?types:typ body
 
 let declare_constant id body ty poly evd kind =
   let ce = make_definition ~opaque:false ~poly (ref evd) ?types:ty body in

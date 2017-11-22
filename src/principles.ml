@@ -1071,18 +1071,17 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
   in
   let declare_ind () =
     let inds = List.map declare_one_ind ind_stmts in
-    let uctx = snd (Evd.universe_context ~names:[] ~extensible:true !evd) in
+    let uctx = Evd.ind_univ_entry ~poly !evd in
     let inductive =
       Entries.{ mind_entry_record = None;
-                mind_entry_universes = if poly then Polymorphic_ind_entry uctx
-                                       else Monomorphic_ind_entry uctx;
+                mind_entry_universes = uctx;
                 mind_entry_private = None;
                 mind_entry_finite = Decl_kinds.Finite;
                 mind_entry_params = []; (* (identifier * local_entry) list; *)
                 mind_entry_inds = inds }
     in
     let () = Goptions.set_bool_option_value_gen (Some true) ["Elimination";"Schemes"] false in
-    let kn = Command.declare_mutual_inductive_with_eliminations inductive [] [] in
+    let kn = Command.declare_mutual_inductive_with_eliminations inductive Universes.empty_binders [] in
     let () = Goptions.set_bool_option_value_gen (Some true) ["Elimination";"Schemes"] true in
     let kn, comb =
       let sort = get_sort () in
@@ -1112,9 +1111,14 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
         kn, Smartlocate.global_with_alias (reference_of_id scheme)
     in
     let ind =
-      if poly then
+      let open Entries in
+      match uctx with
+      | Cumulative_ind_entry uctx ->
+        mkIndU ((kn,0), EInstance.make (Univ.UContext.instance
+                                          (Univ.CumulativityInfo.univ_context uctx)))
+      | Polymorphic_ind_entry uctx ->
         mkIndU ((kn,0), EInstance.make (Univ.UContext.instance uctx))
-      else mkInd (kn,0)
+      | Monomorphic_ind_entry _ -> mkInd (kn,0)
     in
     let _ =
       List.iteri (fun i ind ->
