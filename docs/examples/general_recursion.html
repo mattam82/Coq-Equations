@@ -26,10 +26,15 @@
 <div class="paragraph"> </div>
 
   This file explores a way to formalize general recursive functions
-  without worrying about termination proofs. The definitions are actually
-  defined by well-founded recursion on the total relation (which isn't well-founded).
-  Using fueling of the accessibility proof, we can however compute with
-  these definitions inside Coq and reason on them independently of the termination proof. 
+  without worrying about termination proofs, counters or monads.
+
+<div class="paragraph"> </div>
+
+  The definitions are actually defined by well-founded recursion on the
+  total relation (which isn't well-founded).  Using fueling of the
+  accessibility proof, we can however compute with these definitions
+  inside Coq and reason on them independently of the termination
+  proof. 
 </div>
 <div class="code">
 
@@ -103,8 +108,10 @@ Now we define an obviously non-terminating function.
 </div>
 
 <div class="doc">
-The automation has a little trouble here, its just a bug.
-      We show the second equation: <span class="inlinecode"><a class="idref" href="general_recursion.html#nonterm"><span class="id" title="definition">nonterm</span></a></span> <span class="inlinecode">(<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><a class="idref" href="general_recursion.html#n"><span class="id" title="variable">n</span></a>)</span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode">(<a class="idref" href="general_recursion.html#nonterm"><span class="id" title="definition">nonterm</span></a></span> <span class="inlinecode">(<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><a class="idref" href="general_recursion.html#n"><span class="id" title="variable">n</span></a>))</span> 
+The automation has a little trouble here as it assumes
+      well-founded definitions implicitely.  We show the second
+      equation: <span class="inlinecode"><a class="idref" href="general_recursion.html#nonterm"><span class="id" title="definition">nonterm</span></a></span> <span class="inlinecode">(<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><a class="idref" href="general_recursion.html#n"><span class="id" title="variable">n</span></a>)</span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode">(<a class="idref" href="general_recursion.html#nonterm"><span class="id" title="definition">nonterm</span></a></span> <span class="inlinecode">(<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><a class="idref" href="general_recursion.html#n"><span class="id" title="variable">n</span></a>))</span> using the
+      unfolding equation. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Next</span> <span class="id" title="keyword">Obligation</span>.<br/>
