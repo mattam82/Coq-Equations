@@ -107,7 +107,7 @@ h4.section {
 
 .doc .code { 
     display: inline;
-    font-size: 120%; 
+/*    font-size: 120%; */
 /*    color: rgb(30%,30%,70%); */
     font-family: monospace } 
 
@@ -119,8 +119,7 @@ h4.section {
 
 .code { 
     display: block;
-/*  padding-left: 15px; */
-    font-size: 110%; 
+    padding-left: 15px;
     font-family: monospace;
  } 
 
