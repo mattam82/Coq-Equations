@@ -91,34 +91,30 @@ h4.section {
 .inlinecode { 
     display: inline;
 /*    font-size: 125%; */
-    color: #666666;
+/*    color: #666666; */
     font-family: monospace } 
 
 .doc .inlinecode { 
     display: inline;
     font-size: 120%; 
-    color: rgb(30%,30%,70%);
+/*    color: rgb(30%,30%,70%); */
     font-family: monospace } 
-
-.doc .inlinecode .id { 
-    color: rgb(30%,30%,70%); 
-} 
 
 .inlinecodenm { 
     display: inline;
-    color: #444444;
+/*    color: #444444; */
 }
 
 .doc .code { 
     display: inline;
     font-size: 120%; 
-    color: rgb(30%,30%,70%); 
+/*    color: rgb(30%,30%,70%); */
     font-family: monospace } 
 
 .comment { 
     display: inline;
     font-family: monospace;
-    color: rgb(50%,50%,80%); 
+/*    color: rgb(50%,50%,80%); */
 } 
 
 .code { 
@@ -270,11 +266,6 @@ tr.infrulemiddle hr {
  color : #cf1d1d;
 /*     color: black; */
 }
-
-.inlinecode .id {
-    color: rgb(0%,0%,0%);
-}
-
 
 /* TOC */
 
