@@ -26,11 +26,10 @@
 <div class="paragraph"> </div>
 
   Example of a term structure with two constructors taking lists of terms. 
-<div class="paragraph"> </div>
-
- printing elimination   printing &lt;=  ⇐ 
 </div>
 <div class="code">
+
+<br/>
 <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">Equations.Equations</span>.<br/>
 <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Arith.Arith.html#"><span class="id" title="library">Arith</span></a>.<br/>
 <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Arith.Compare_dec.html#"><span class="id" title="library">Compare_dec</span></a>.<br/>
@@ -61,7 +60,7 @@ Defining capture-avoiding substitution for this language:
 
 <br/>
 <span class="id" title="keyword">Equations</span> <a name="subst_var"><span class="id" title="definition">subst_var</span></a> (<span class="id" title="var">k</span> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<span class="id" title="var">u</span> : <a class="idref" href="nested_mut_rec.html#term"><span class="id" title="inductive">term</span></a>) (<span class="id" title="var">t</span> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) : <a class="idref" href="nested_mut_rec.html#term"><span class="id" title="inductive">term</span></a> :=<br/>
-&nbsp;&nbsp;<a class="idref" href="nested_mut_rec.html#subst_var"><span class="id" title="definition">subst_var</span></a> <span class="id" title="var">k</span> <span class="id" title="var">u</span> <span class="id" title="var">n</span> ≤ <span class="id" title="var">k</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Arith.PeanoNat.html#077d59fc4b7dcdc90a5f14633e7da3ad"><span class="id" title="notation">?=</span></a> <span class="id" title="var">n</span> ⇒<br/>
+&nbsp;&nbsp;<a class="idref" href="nested_mut_rec.html#subst_var"><span class="id" title="definition">subst_var</span></a> <span class="id" title="var">k</span> <span class="id" title="var">u</span> <span class="id" title="var">n</span> ⇐ <span class="id" title="var">k</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Arith.PeanoNat.html#077d59fc4b7dcdc90a5f14633e7da3ad"><span class="id" title="notation">?=</span></a> <span class="id" title="var">n</span> ⇒<br/>
 &nbsp;&nbsp;&nbsp;{ | <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#Eq"><span class="id" title="constructor">Eq</span></a> ⇒ <span class="id" title="var">u</span>;                                                                <br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#Gt"><span class="id" title="constructor">Gt</span></a> ⇒ <a class="idref" href="nested_mut_rec.html#Var"><span class="id" title="constructor">Var</span></a> <span class="id" title="var">n</span>;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#Lt"><span class="id" title="constructor">Lt</span></a> ⇒ <a class="idref" href="nested_mut_rec.html#Var"><span class="id" title="constructor">Var</span></a> (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Peano.html#pred"><span class="id" title="abbreviation">pred</span></a> <span class="id" title="var">n</span>) }.<br/>

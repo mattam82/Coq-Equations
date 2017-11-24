@@ -1,12 +1,3 @@
-(** * Polynomials
-
-  Polynomials and a reflexive tactic for solving boolean goals (using
-  heyting or classical boolean algebra).  Original version by Rafael
-  Bocquet, 2016. Updated to use Equations for all definitions by M. Sozeau,
-  2016-2017. If running this interactively you can ignore the printing
-  and hide directives which are just used to instruct coqdoc. *)
-
-(* begin hide *)
 (** printing elimination %\coqdoctac{elimination}% *)
 (** printing noconf %\coqdoctac{noconf}% *)
 (** printing simp %\coqdoctac{simp}% *)
@@ -18,7 +9,14 @@
 (** printing Signature %\coqdocclass{Signature}% *)
 (** printing Subterm %\coqdocclass{Subterm}% *)
 (** printing NoConfusion %\coqdocclass{NoConfusion}% *)
-(* end hide *)
+(** * Polynomials
+
+  Polynomials and a reflexive tactic for solving boolean goals (using
+  heyting or classical boolean algebra).  Original version by Rafael
+  Bocquet, 2016. Updated to use Equations for all definitions by M. Sozeau,
+  2016-2017. If running this interactively you can ignore the printing
+  and hide directives which are just used to instruct coqdoc. *)
+(* begin hide *)
 Require Import Equations.Equations.
 From Equations Require Import DepElimDec.
 Require Import ZArith.
@@ -45,6 +43,8 @@ Check positive.
 Check NoConfusion.
 About Signature.
 Check Signature.signature_pack.
+(* end hide *)
+
 (** We start with a simple definition deciding if some integer is equal
     to [0] or not. Integers are encoded using an inductive type [Z]
     with three constructors [Z0], [Zpos] and [Zneg], the latter two
@@ -361,12 +361,13 @@ Equations plus {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) : { b : bool & po
 (** The induction principle cannot be defined using a raw fixpoint, the guard condition fails.
     However, as deep pattern-matching is not necessary, simple (dependent) induction can be used
     instead *)
-Next Obligation.
-  depind p1; depelim p2; simp plus.
+
+  Next Obligation.
+    depind p1; depelim p2; simp plus.
     constructor. destruct (z + z0)%Z; simp plus.
     constructor. auto. set (foo:=plus p1_2 p2_2). depelim foo. depelim x.
     simp plus. simp plus.
-Defined.
+  Defined.
 
 (** The functional elimination principle can be derived all the same
     for [plus], allowing us to make quick work of the proof that it
@@ -478,6 +479,7 @@ Qed.
 Hint Rewrite @poly_l_or_s_eval : eval.
 
 (* [mult (poly_l p) q = mult_l q (mult p)] *)
+
 Equations mult_l {n} {b2} (p2 : poly b2 (S n)) (m : forall {b2} (p2 : poly b2 n), { b : bool & poly b n }) :
   { b : bool & poly b (S n) } :=
   mult_l (poly_l p2) m := apoly (poly_l (m _ p2).2);
@@ -488,23 +490,26 @@ Equations mult_l {n} {b2} (p2 : poly b2 (S n)) (m : forall {b2} (p2 : poly b2 n)
   Defined.
     
 (* [mult (poly_s p1 p2) q = mult_s q (mult p1) (mult p2)] *)
+
 Equations mult_s {n} {b2} (p2 : poly b2 (S n))
      (m1 : forall {b2} (p2 : poly b2 n), { b : bool & poly b n })
      (m2 : forall {b2} (p2 : poly b2 (S n)), { b : bool & poly b (S n) }) :
     { b : bool & poly b (S n) } :=
   mult_s (poly_l p1) m1 m2 := poly_l_or_s (m1 _ p1).2 (m2 _ (poly_l p1)).2;
   mult_s (poly_s p2 q2) m1 m2 :=
-  poly_l_or_s (m1 _ p2).2
-              (plus (m2 _ (poly_l p2)).2 (mult_s q2 m1 m2).2).2.
+    poly_l_or_s (m1 _ p2).2
+                (plus (m2 _ (poly_l p2)).2 (mult_s q2 m1 m2).2).2.
+
   Next Obligation.
     depind p2; simp mult_s.
   Defined.
   
-(* Finally, the multiplication definition. We use the (noind) option to deal with 
+(** Finally, the multiplication definition. We use the (noind) option to deal with
    a bug with the partial applications of the recursive function being passed to
    [mult_l] and [mult_s], in the structurally recursive case. This relies on the 
    guard condition being able to unfold the definitions of [mult_l] and [mult_s] to
    see that multiplication is well-guarded. *)
+
 Equations(noind) mult n b1 (p1 : poly b1 n) b2 (p2 : poly b2 n) : { b : bool & poly b n } :=
     mult ?(0) ?(true) poly_z        b2 _ := apoly poly_z;
     mult ?(0) ?(false) (poly_c x nx) ?(true) poly_z := apoly poly_z;
@@ -594,6 +599,7 @@ Defined.
 
 (** Definitions of constant 0 [poly_zero] and 1 [poly_one] polynomials along with variable polynomials
     [poly_var] and corresponding evaluation lemmas *)
+
 Fixpoint poly_zero {n} : poly true n :=
   match n with
   | O   => poly_z
@@ -629,6 +635,7 @@ Qed.
 Hint Rewrite <- @var_eval : eval.
 
 (** Finally, we explain our interpretation of formulas as polynomials: *)
+
 Equations poly_of_formula {n} (f : @formula (Fin.t n)) : { b : bool & poly b n } :=
   poly_of_formula (f_var v)       := apoly (poly_var v);
   poly_of_formula (f_const false) := apoly poly_zero;
@@ -762,6 +769,7 @@ Proof.
 Qed.
 
 (** We have completeness for this form: *)
+
 Lemma correctness_classical : forall {n} (f1 f2 : @formula (Fin.t n)),
     reduce (poly_of_formula f1).2 = reduce (poly_of_formula f2).2 <->
     forall v, eval_formula (Vector.nth v) f1 = eval_formula (Vector.nth v) f2.
@@ -814,6 +822,7 @@ Ltac vector_of_list l :=
   end.
 
 (** Reify boolean formulas with variables in [nat] *)
+
 Ltac read_formula f l :=
   match f with
   | true => constr:((@f_const nat true, l))
@@ -834,6 +843,7 @@ Ltac read_formulas x y :=
   end end.
 
 (** The final reflexive tactic, taking either of the correctness lemmas as argument. *)
+
 Ltac bool_tauto_with f :=
   intros;
   match goal with
@@ -857,6 +867,7 @@ Ltac bool_tauto_with f :=
   end.
 
 (** Examples *)
+
 Goal forall a b, andb a b = andb b a.
   bool_tauto_with @correctness_heyting.
 Qed.
