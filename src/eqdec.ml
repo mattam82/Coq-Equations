@@ -134,15 +134,15 @@ let derive_eq_dec env sigma ~polymorphic ind =
 	Typeclasses.instance_constructor
           cl [indapp; mkapp (Global.env ()) evdref gr
                             (Array.append (vars_of_pars ctx) argsvect) ] in
-      let body = 
+      let body =
 	it_mkNamedLambda_or_LetIn 
 	  (it_mkLambda_or_LetIn (Option.get b) ind.ind_args) ctx
       in
       let ce = 
-	{ const_entry_body = Future.from_val ((body,Univ.ContextSet.empty), Safe_typing.empty_private_constants);
+        { const_entry_body = Future.from_val ((body,Univ.ContextSet.empty), Safe_typing.empty_private_constants);
   	  const_entry_type = Some (it_mkNamedProd_or_LetIn
 				     (it_mkProd_or_LetIn ty ind.ind_args) ctx);
-  	  const_entry_opaque = false; const_entry_secctx = None;
+          const_entry_opaque = false; const_entry_secctx = None;
 	  const_entry_feedback = None;
 	  const_entry_polymorphic = polymorphic;
 	  const_entry_universes = snd (Evd.universe_context !evdref);
@@ -166,7 +166,7 @@ let derive_eq_dec env sigma ~polymorphic ind =
   List.iter 
     (fun (ind, (stmt, tc)) ->
      let id = add_suffix ind.ind_name "_eqdec" in
-     ignore(Obligations.add_definition id stmt (Evd.evar_universe_context !evdref) 
+     ignore(Obligations.add_definition id (nf_evar !evdref stmt) (Evd.evar_universe_context !evdref)
                                        [||] ~tactic:(eqdec_tac ())
 				       ~hook:(Lemmas.mk_hook hook)))
     indsl
