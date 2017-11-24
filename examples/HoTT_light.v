@@ -133,6 +133,7 @@ Class Funext :=
   { isequiv_apD10 :> forall (A : Type) (P : A -> Type) f g, IsEquiv (@apD10 A P f g) }.
 
 Axiom funext : Funext.
+Existing Instance funext.
 
 Definition path_forall `{Funext} {A : Type} {P : A -> Type} (f g : forall x : A, P x) :
   f == g -> f = g

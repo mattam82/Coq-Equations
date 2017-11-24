@@ -35,6 +35,7 @@ Notation " << t , u >> " := (Pair (t%term) (u%term)).
 
 Parameter atomic_type : Set.
 Parameter atomic_type_eqdec : EqDec.EqDec atomic_type.
+Existing Instance atomic_type_eqdec.
 
 Inductive type :=
 | atom (a : atomic_type)
