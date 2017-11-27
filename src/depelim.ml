@@ -521,6 +521,7 @@ let default_patterns env sigma ?(avoid = ref Id.Set.empty) ind : (Syntax.user_pa
 let dependent_elim_tac ?patterns id : unit Proofview.tactic =
   Proofview.Goal.nf_enter begin fun gl ->
     let env = Environ.reset_context (Proofview.Goal.env gl) in
+    let sigma = Proofview.Goal.sigma gl in
     let hyps = Proofview.Goal.hyps gl in
     let default_loc, id = id in
     (* Keep aside the section variables. *)
@@ -533,7 +534,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
     (* Check that [id] exists in the current context. *)
     begin try ignore (Context.Named.lookup id loc_hyps)
     with Not_found ->
-      raise (Logic.(RefinerError (NoSuchHyp id)))
+      raise (Logic.(RefinerError (env, sigma, NoSuchHyp id)))
     end;
 
     (* We want to work in a [rel_context], not a [named_context]. *)
