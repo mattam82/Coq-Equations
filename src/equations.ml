@@ -446,15 +446,15 @@ let define_by_eqs opts eqs nt =
     | Some b ->
        let projid = add_suffix i "_comp_proj" in
        let compproj =
-	 let body =
+         let body =
            it_mkLambda_or_LetIn (mkRel 1)
-                                (of_tuple (Name (Id.of_string "comp"), None, compapp) :: sign)
-	 in
+             (of_tuple (Name (Id.of_string "comp"), None, compapp) :: sign)
+         in
          let _ty = e_type_of (Global.env ()) evd body in
-         let univs = snd (Evd.universe_context ~names:[] ~extensible:true !evd) in
+         let univs = Evd.const_univ_entry ~poly !evd in
          let ce =
            Declare.definition_entry (* ~fix_exn: FIXME needed ? *)
-                                    ~poly ~univs
+                                    ~univs
                                     (to_constr !evd body)
 	 in
 	 Declare.declare_constant projid

@@ -146,17 +146,15 @@ let derive_eq_dec env sigma ~polymorphic ind =
 	it_mkNamedLambda_or_LetIn 
 	  (it_mkLambda_or_LetIn (of_constr (Option.get b)) ind.ind_args) ctx
       in
-      let univs = snd (Evd.universe_context ~names:[] ~extensible:true !evdref) in
-      let ce = 
+      let univs = Evd.const_univ_entry ~poly:polymorphic !evdref in
+      let ce =
         { const_entry_body = Future.from_val ((to_constr !evdref body,Univ.ContextSet.empty), Safe_typing.empty_private_constants);
           const_entry_type = Some (to_constr !evdref (it_mkNamedProd_or_LetIn
-				     (it_mkProd_or_LetIn (of_constr ty) ind.ind_args) ctx));
+                                     (it_mkProd_or_LetIn (of_constr ty) ind.ind_args) ctx));
   	  const_entry_opaque = false; const_entry_secctx = None;
 	  const_entry_feedback = None;
           (* const_entry_polymorphic = polymorphic; *)
-          const_entry_universes =
-            if polymorphic then Polymorphic_const_entry univs
-            else Monomorphic_const_entry univs;
+          const_entry_universes = univs;
 	  const_entry_inline_code = false;
 	}
       in ce

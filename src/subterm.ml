@@ -132,7 +132,7 @@ let derive_subterm env sigma ~polymorphic ind =
         mind_entry_consnames = consnames;
         mind_entry_lc = constructors }
   in
-  let pl, uctx = Evd.universe_context ~names:[] ~extensible:true sigma in
+  let uctx = Evd.ind_univ_entry ~poly:polymorphic sigma in
   let declare_ind () =
     let inds = [declare_one_ind 0 ind branches] in
     let inductive =
@@ -146,11 +146,9 @@ let derive_subterm env sigma ~polymorphic ind =
           parambinders;
         mind_entry_inds = inds;
         mind_entry_private = None;
-        mind_entry_universes =
-        if polymorphic then Polymorphic_ind_entry uctx
-        else Monomorphic_ind_entry uctx}
+        mind_entry_universes = uctx}
     in
-    let k = Command.declare_mutual_inductive_with_eliminations inductive pl [] in
+    let k = Command.declare_mutual_inductive_with_eliminations inductive Universes.empty_binders [] in
     let () =
       let env = Global.env () in
       let sigma = Evd.from_env env in
