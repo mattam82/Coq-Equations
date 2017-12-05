@@ -647,7 +647,8 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
 	       to82 (abstract (of82 (tclTHEN_i (to82 (depelim id))
 				               (fun i -> let split = nth splits (pred i) in
                                                       let unfsplit = nth unfsplits (pred i) in
-					      tclTHENLIST [unfolds; aux split unfsplit])))) gl
+                                                      tclTHENLIST [unfolds; simpltac;
+                                                                   aux split unfsplit])))) gl
 	  | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl)
 	    
     | Valid (_, _, _, _, _, rest), (* Valid ((ctx, _, _), ty, substc, tac, valid, unfrest) -> *) _ ->

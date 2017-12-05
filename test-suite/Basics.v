@@ -546,9 +546,25 @@ vtail (cons a n v') := v'.
 Ltac generalize_by_eqs id ::= generalize_eqs id.
 Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars id.
 
-Equations(nocomp) diag {A n} (v : vector (vector A n) n) : vector A n :=
-diag {n:=O} nil := nil ;
-diag {n:=(S ?(n))} (cons (cons a n v) _ v') := cons a (diag (vmap vtail v')).
+(** Well-founded recursion: note that it's polymorphic recursion in a sense:
+    the type of vectors change at each recursive call. It does not follow
+    a canonical elimination principle in this nested case. *)
+
+Equations diag {A n} (v : vector (vector A n) n) : vector A n :=
+diag v by rec n lt :=
+diag nil := nil ;
+diag (cons (cons a n v) _ v') := cons a (diag (vmap vtail v')).
+
+(** The computational content is the right one here: only the vector is
+    matched relevantly, not its indices, which could hence
+    disappear. *)
+
+Extraction diag.
+
+(** It can be done structurally as well but we're matching on the index now. *)
+Equations(struct n) diag_struct {A n} (v : vector (vector A n) n) : vector A n :=
+diag_struct {n:=O} nil := nil ;
+diag_struct {n:=(S ?(n))} (cons (cons a n v) _ v') := cons a (diag_struct (vmap vtail v')).
 
 Definition mat A n m := vector (vector A m) n.
 
