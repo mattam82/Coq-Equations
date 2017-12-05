@@ -295,6 +295,7 @@ Proof.
   intros. generalize (noConfusion_is_equiv H).
   intros e. destruct e. apply X.
 Defined.
+Extraction Inline apply_noConfusion.
 
 Polymorphic
 Lemma apply_noConfusionId {A} {noconf : NoConfusionIdPackage A}
@@ -304,6 +305,7 @@ Proof.
   intros. generalize (noConfusionId_is_equiv e). destruct e.
   intros <-. apply X.
 Defined.
+Extraction Inline apply_noConfusionId.
 
 (** Apply [noConfusion] on a given hypothsis. *)
 
