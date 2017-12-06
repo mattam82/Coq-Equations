@@ -175,8 +175,8 @@ let make_definition ?opaque ?(poly=false) evd ?types b =
   in
   let evm, nf = Evarutil.nf_evars_and_universes evm in
   let body = EConstr.to_constr evm b and typ = Option.map (EConstr.to_constr evm) types in
-  let used = Univops.universes_of_constr body in
-  let used' = Option.cata Univops.universes_of_constr Univ.LSet.empty typ in
+  let used = Univops.universes_of_constr env body in
+  let used' = Option.cata (Univops.universes_of_constr env) Univ.LSet.empty typ in
   let used = Univ.LSet.union used used' in
   let evm = Evd.restrict_universe_context evm used in
   evd := evm;
