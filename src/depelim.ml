@@ -482,7 +482,7 @@ let specialize_eqs id gl =
     if worked then
       tclTHENFIRST (to82 (Tactics.assert_before_replacing id ty'))
 	(to82 (exact_no_check acc')) gl
-    else tclFAIL 0 (str "Nothing to do in hypothesis " ++ pr_id id) gl
+    else tclFAIL 0 (str "Nothing to do in hypothesis " ++ Id.print id) gl
 
 let specialize_eqs id gl =
   if
@@ -519,6 +519,7 @@ let default_patterns env sigma ?(avoid = ref Id.Set.empty) ind : (Syntax.user_pa
 
 (* Dependent elimination using Equations. *)
 let dependent_elim_tac ?patterns id : unit Proofview.tactic =
+  let open Proofview.Notations in
   Proofview.Goal.nf_enter begin fun gl ->
     let env = Environ.reset_context (Proofview.Goal.env gl) in
     let hyps = Proofview.Goal.hyps gl in
@@ -531,10 +532,10 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
     let env = push_named_context sec_hyps env in
 
     (* Check that [id] exists in the current context. *)
-    begin try ignore (Context.Named.lookup id loc_hyps)
+    begin try ignore (Context.Named.lookup id loc_hyps); Proofview.tclUNIT ()
     with Not_found ->
-      raise (Logic.(RefinerError (NoSuchHyp id)))
-    end;
+      Tacticals.New.tclZEROMSG (str "No such hypothesis: " ++ Id.print id)
+    end >>= fun () ->
 
     (* We want to work in a [rel_context], not a [named_context]. *)
     let ctx, subst = Equations_common.rel_of_named_context loc_hyps in
