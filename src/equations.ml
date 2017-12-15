@@ -382,8 +382,8 @@ let define_by_eqs opts eqs nt =
   let flags = { polymorphic = poly; with_eqns; with_ind } in
   let evd = ref (Evd.from_env env) in
   let interp_arities (((loc,i),rec_annot,l,t),_ as ieqs) =
-    let ienv, ((env', sign), impls) = interp_context_evars env evd l in
-    let arity = interp_type_evars env' evd t in
+    let ienv, ((env', sign), impls) = Evarutil.evd_comb1 (interp_context_evars env) evd l in
+    let arity = Evarutil.evd_comb1 (interp_type_evars env' ?impls:None) evd t in
     let sign = nf_rel_context_evar ( !evd) sign in
     let oarity = nf_evar ( !evd) arity in
     let is_rec = is_recursive i eqs in
