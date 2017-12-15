@@ -1,0 +1,869 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link href="coqdoc.css" rel="stylesheet" type="text/css" />
+<title>intro</title>
+</head>
+
+<body>
+
+<div id="page">
+
+<div id="header">
+</div>
+
+<div id="main">
+
+<div class="code">
+
+<br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="keyword">Equations</span></span> is a plugin for  that comes with a few support modules defining
+   classes and tactics for running it. We will introduce its main
+   features through a handful of examples. We start our Coq primer
+   session by importing the <span class="inlinecode"><span class="id" title="keyword">Equations</span></span> module.  
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Arith.Arith.html#"><span class="id" title="library">Arith</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.omega.Omega.html#"><span class="id" title="library">Omega</span></a>.<br/>
+<span class="id" title="var">From</span> <span class="id" title="keyword">Equations</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="keyword">Equations</span>.<br/>
+
+<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a name="lab1"></a><h1 class="section">Inductive types</h1>
+
+
+<div class="paragraph"> </div>
+
+   In its simplest form, <span class="inlinecode"><span class="id" title="keyword">Equations</span></span> allows to define functions on inductive datatypes.
+   Take for example the booleans defined as an inductive type with two constructors <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a></span> and <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a></span>:
+   <br/>
+<span class="inlinecode">&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Inductive</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> : <span class="id" title="keyword">Set</span> := <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> | <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> 
+<div class="paragraph"> </div>
+
+</span>
+<div class="paragraph"> </div>
+
+   We can define the boolean negation as follows: 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <a name="neg"><span class="id" title="definition">neg</span></a> (<span class="id" title="var">b</span> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a>) : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> :=<br/>
+<a class="idref" href="intro.html#neg"><span class="id" title="definition">neg</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a> := <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a> ;<br/>
+<a class="idref" href="intro.html#neg"><span class="id" title="definition">neg</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a> := <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a>.<br/>
+<span class="id" title="keyword">Print</span> <span class="id" title="keyword">All</span>.<br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="keyword">Equations</span></span> declarations are formed by a signature definition and a set of <i>clauses</i> 
+   that must form a <i>covering</i> of this signature. The compiler is then expected to
+   automatically find a corresponding case-splitting tree that implements the function.
+   In this case, it simply needs to split on the single variable <span class="inlinecode"><a class="idref" href="intro.html#b"><span class="id" title="variable">b</span></a></span> to
+   produce two new <i>programming problems</i> <span class="inlinecode"><a class="idref" href="intro.html#neg"><span class="id" title="definition">neg</span></a></span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a></span> and <span class="inlinecode"><a class="idref" href="intro.html#neg"><span class="id" title="definition">neg</span></a></span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a></span> that are directly 
+   handled by the user clauses. We will see in more complex examples that this search
+   for a splitting tree may be non-trivial. 
+<div class="paragraph"> </div>
+
+<a name="lab2"></a><h1 class="section">Reasoning principles</h1>
+
+
+<div class="paragraph"> </div>
+
+   In the setting of a proof assistant like Coq, we need not only the ability 
+   to define complex functions but also get good reasoning support for them.
+   Practically, this translates to the ability to simplify applications of functions 
+   appearing in the goal and to give strong enough proof principles for (recursive)
+   definitions.
+
+<div class="paragraph"> </div>
+
+   <span class="inlinecode"><span class="id" title="keyword">Equations</span></span> provides this through an automatic generation of proofs related to
+   the function. Namely, each defining equation gives rise to a lemma stating the 
+   equality between the left and right hand sides. These equations can be used as 
+   rewrite rules for simplification during proofs, without having to rely on the
+   fragile simplifications implemented by raw reduction. We can also generate the
+   inductive graph of any <span class="inlinecode"><span class="id" title="keyword">Equations</span></span> definition, giving the strongest elimination
+   principle on the function. 
+
+<div class="paragraph"> </div>
+
+   I.e., for <span class="inlinecode"><a class="idref" href="intro.html#neg"><span class="id" title="definition">neg</span></a></span> the inductive graph is defined as: <br/>
+<span class="inlinecode"><span class="id" title="keyword">Inductive</span> <a class="idref" href="intro.html#neg_ind"><span class="id" title="inductive">neg_ind</span></a> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> → <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> → <span class="id" title="keyword">Prop</span> :=<br/>
+| <a class="idref" href="intro.html#neg_ind_equation_1"><span class="id" title="constructor">neg_ind_equation_1</span></a> : <a class="idref" href="intro.html#neg_ind"><span class="id" title="inductive">neg_ind</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a><br/>
+| <a class="idref" href="intro.html#neg_ind_equation_2"><span class="id" title="constructor">neg_ind_equation_2</span></a> : <a class="idref" href="intro.html#neg_ind"><span class="id" title="inductive">neg_ind</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a> 
+<div class="paragraph"> </div>
+
+</span>
+<div class="paragraph"> </div>
+
+   Along with a proof of <span class="inlinecode"><span class="id" title="var">Π</span></span> <span class="inlinecode"><a class="idref" href="intro.html#b"><span class="id" title="variable">b</span></a>,</span> <span class="inlinecode"><a class="idref" href="intro.html#neg_ind"><span class="id" title="inductive">neg_ind</span></a></span> <span class="inlinecode"><a class="idref" href="intro.html#b"><span class="id" title="variable">b</span></a></span> <span class="inlinecode">(<a class="idref" href="intro.html#neg"><span class="id" title="definition">neg</span></a></span> <span class="inlinecode"><a class="idref" href="intro.html#b"><span class="id" title="variable">b</span></a>)</span>, we can eliminate any call
+   to <span class="inlinecode"><a class="idref" href="intro.html#neg"><span class="id" title="definition">neg</span></a></span> specializing its argument and result in a single command. 
+   Suppose we want to show that <span class="inlinecode"><a class="idref" href="intro.html#neg"><span class="id" title="definition">neg</span></a></span> is involutive for example, our goal will 
+   look like: <br/>
+<span class="inlinecode">&nbsp;&nbsp;<a class="idref" href="intro.html#b"><span class="id" title="variable">b</span></a> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a><br/>
+&nbsp;&nbsp;============================<br/>
+&nbsp;&nbsp;&nbsp;<a class="idref" href="intro.html#neg"><span class="id" title="definition">neg</span></a> (<a class="idref" href="intro.html#neg"><span class="id" title="definition">neg</span></a> <a class="idref" href="intro.html#b"><span class="id" title="variable">b</span></a>) = <a class="idref" href="intro.html#b"><span class="id" title="variable">b</span></a> 
+<div class="paragraph"> </div>
+
+</span>   An application of the tactic <span class="inlinecode"><span class="id" title="var">funelim</span></span> <span class="inlinecode">(<a class="idref" href="intro.html#neg"><span class="id" title="definition">neg</span></a></span> <span class="inlinecode"><a class="idref" href="intro.html#b"><span class="id" title="variable">b</span></a>)</span> will produce two goals corresponding to 
+   the splitting done in <span class="inlinecode"><a class="idref" href="intro.html#neg"><span class="id" title="definition">neg</span></a></span>: <span class="inlinecode"><a class="idref" href="intro.html#neg"><span class="id" title="definition">neg</span></a></span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a></span> and <span class="inlinecode"><a class="idref" href="intro.html#neg"><span class="id" title="definition">neg</span></a></span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a></span>.
+   These correspond exactly to the rewriting lemmas generated for <span class="inlinecode"><a class="idref" href="intro.html#neg"><span class="id" title="definition">neg</span></a></span>.
+
+<div class="paragraph"> </div>
+
+   In the following sections we will show how these ideas generalize to more complex 
+   types and definitions involving dependencies, overlapping clauses and recursion.
+
+<div class="paragraph"> </div>
+
+<a name="lab3"></a><h1 class="section">Building up</h1>
+
+
+<div class="paragraph"> </div>
+
+<a name="lab4"></a><h2 class="section">Polymorphism</h2>
+
+
+<div class="paragraph"> </div>
+
+   Coq's inductive types can be parameterized by types, giving polymorphic datatypes.
+   For example the list datatype is defined as:
+   
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Inductive</span> <a name="list"><span class="id" title="inductive">list</span></a> {<span class="id" title="var">A</span>} : <span class="id" title="keyword">Type</span> := <a name="nil"><span class="id" title="constructor">nil</span></a> : <a class="idref" href="intro.html#list"><span class="id" title="inductive">list</span></a> | <a name="cons"><span class="id" title="constructor">cons</span></a> : <span class="id" title="var">A</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#d43e996736952df71ebeeae74d10a287"><span class="id" title="notation">→</span></a> <a class="idref" href="intro.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#d43e996736952df71ebeeae74d10a287"><span class="id" title="notation">→</span></a> <a class="idref" href="intro.html#list"><span class="id" title="inductive">list</span></a>.<br/>
+
+<br/>
+<span class="id" title="var">Arguments</span> <a class="idref" href="intro.html#list"><span class="id" title="inductive">list</span></a> : <span class="id" title="tactic">clear</span> <span class="id" title="var">implicits</span>.<br/>
+<span class="id" title="keyword">Notation</span> <a name="cff9c6e3fbbb9de4085b1fe1a075f16b"><span class="id" title="notation">&quot;</span></a>x :: l" := (<a class="idref" href="intro.html#cons"><span class="id" title="constructor">cons</span></a> <span class="id" title="var">x</span> <span class="id" title="var">l</span>).<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+No special support for polymorphism is needed, as type arguments are treated 
+   like regular arguments in dependent type theories. Note however that one cannot
+   match on type arguments, there is no intensional type analysis.
+   We can write the polymorphic <span class="inlinecode"><a class="idref" href="intro.html#tail"><span class="id" title="definition">tail</span></a></span> function as follows:
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <a name="tail"><span class="id" title="definition">tail</span></a> {<span class="id" title="var">A</span>} (<span class="id" title="var">l</span> : <a class="idref" href="intro.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a>) : <a class="idref" href="intro.html#list"><span class="id" title="inductive">list</span></a> <span class="id" title="var">A</span> :=<br/>
+<a class="idref" href="intro.html#tail"><span class="id" title="definition">tail</span></a> <a class="idref" href="intro.html#nil"><span class="id" title="constructor">nil</span></a> := <a class="idref" href="intro.html#nil"><span class="id" title="constructor">nil</span></a> ;<br/>
+<a class="idref" href="intro.html#tail"><span class="id" title="definition">tail</span></a> (<a class="idref" href="intro.html#cons"><span class="id" title="constructor">cons</span></a> <span class="id" title="var">a</span> <span class="id" title="var">v</span>) := <span class="id" title="var">v</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Note that the argument <span class="inlinecode">{<a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a>}</span> is declared implicit and must hence be
+ omitted in the defining clauses. In each of the branches it is named
+ <span class="inlinecode"><a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a></span>. To specify it explicitely one can use the syntax <span class="inlinecode">{<a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a>:=<a class="idref" href="intro.html#B"><span class="id" title="variable">B</span></a>}</span>,
+ renaming that implicit argument to <span class="inlinecode"><a class="idref" href="intro.html#B"><span class="id" title="variable">B</span></a></span> in this particular case 
+<div class="paragraph"> </div>
+
+<a name="lab5"></a><h2 class="section">Recursive inductive types</h2>
+
+
+<div class="paragraph"> </div>
+
+   Of course with inductive types comes recursion. Coq accepts a subset
+   of the structurally recursive definitions by default (it is
+   incomplete due to its syntactic nature). We will use this as a first
+   step towards a more robust treatment of recursion via well-founded
+   relations. A classical example is list concatenation: 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <a name="app"><span class="id" title="definition">app</span></a> {<span class="id" title="var">A</span>} (<span class="id" title="var">l</span> <span class="id" title="var">l'</span> : <a class="idref" href="intro.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a>) : <a class="idref" href="intro.html#list"><span class="id" title="inductive">list</span></a> <span class="id" title="var">A</span> :=<br/>
+<a class="idref" href="intro.html#app"><span class="id" title="definition">app</span></a> <a class="idref" href="intro.html#nil"><span class="id" title="constructor">nil</span></a> <span class="id" title="var">l'</span> := <span class="id" title="var">l'</span> ;<br/>
+<a class="idref" href="intro.html#app"><span class="id" title="definition">app</span></a> (<a class="idref" href="intro.html#cons"><span class="id" title="constructor">cons</span></a> <span class="id" title="var">a</span> <span class="id" title="var">l</span>) <span class="id" title="var">l'</span> := <a class="idref" href="intro.html#cons"><span class="id" title="constructor">cons</span></a> <span class="id" title="var">a</span> (<a class="idref" href="intro.html#app"><span class="id" title="definition">app</span></a> <span class="id" title="var">l</span> <span class="id" title="var">l'</span>).<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Recursive definitions like <span class="inlinecode"><a class="idref" href="intro.html#app"><span class="id" title="definition">app</span></a></span> can be unfolded easily so proving the 
+   equations as rewrite rules is direct. The induction principle associated 
+   to this definition is more interesting however. We can derive from it the 
+   following <i>elimination</i> principle for calls to <span class="inlinecode"><a class="idref" href="intro.html#app"><span class="id" title="definition">app</span></a></span>: <br/>
+<span class="inlinecode">&nbsp;&nbsp;&nbsp;<span class="id" title="var">app_elim</span> :<br/>
+&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <span class="id" title="var">P</span> : <span class="id" title="keyword">∀</span> (<a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> : <span class="id" title="keyword">Type</span>) (<a class="idref" href="intro.html#l"><span class="id" title="variable">l</span></a> <span class="id" title="var">l'</span> : <a class="idref" href="intro.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a>), <a class="idref" href="intro.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> → <span class="id" title="keyword">Prop</span>,<br/>
+&nbsp;&nbsp;&nbsp;(<span class="id" title="keyword">∀</span> (<a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> : <span class="id" title="keyword">Type</span>) (<span class="id" title="var">l'</span> : <a class="idref" href="intro.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a>), <span class="id" title="var">P</span> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> <a class="idref" href="intro.html#nil"><span class="id" title="constructor">nil</span></a> <span class="id" title="var">l'</span> <span class="id" title="var">l'</span>) →<br/>
+&nbsp;&nbsp;&nbsp;(<span class="id" title="keyword">∀</span> (<a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> : <span class="id" title="keyword">Type</span>) (<span class="id" title="var">a</span> : <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a>) (<a class="idref" href="intro.html#l"><span class="id" title="variable">l</span></a> <span class="id" title="var">l'</span> : <a class="idref" href="intro.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a>),<br/>
+&nbsp;&nbsp;&nbsp;<span class="id" title="var">P</span> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> <a class="idref" href="intro.html#l"><span class="id" title="variable">l</span></a> <span class="id" title="var">l'</span> (<a class="idref" href="intro.html#app"><span class="id" title="definition">app</span></a> <a class="idref" href="intro.html#l"><span class="id" title="variable">l</span></a> <span class="id" title="var">l'</span>) → <span class="id" title="var">P</span> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> (<span class="id" title="var">a</span> :: <a class="idref" href="intro.html#l"><span class="id" title="variable">l</span></a>) <span class="id" title="var">l'</span> (<span class="id" title="var">a</span> :: <a class="idref" href="intro.html#app"><span class="id" title="definition">app</span></a> <a class="idref" href="intro.html#l"><span class="id" title="variable">l</span></a> <span class="id" title="var">l'</span>)) →<br/>
+&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">∀</span> (<a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> : <span class="id" title="keyword">Type</span>) (<a class="idref" href="intro.html#l"><span class="id" title="variable">l</span></a> <span class="id" title="var">l'</span> : <a class="idref" href="intro.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a>), <span class="id" title="var">P</span> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> <a class="idref" href="intro.html#l"><span class="id" title="variable">l</span></a> <span class="id" title="var">l'</span> (<a class="idref" href="intro.html#app"><span class="id" title="definition">app</span></a> <a class="idref" href="intro.html#l"><span class="id" title="variable">l</span></a> <span class="id" title="var">l'</span>) 
+<div class="paragraph"> </div>
+
+</span>  Using this eliminator, we can write proofs exactly following the 
+  structure of the function definition, instead of redoing the splitting 
+  by hand. This idea is already present in the <span class="inlinecode"><span class="id" title="keyword">Function</span></span> package 
+   that derives induction principles from
+  function definitions.
+ 
+</div>
+<div class="code">
+
+<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a name="lab6"></a><h2 class="section">Moving to the left</h2>
+
+
+<div class="paragraph"> </div>
+
+   The structure of real programs is richer than a simple case tree on
+   the original arguments in general. In the course of a computation, we
+   might want to scrutinize intermediate results (e.g. coming from
+   function calls) to produce an answer. This literally means adding a
+   new pattern to the left of our equations made available for further
+   refinement. This concept is know as with clauses in the Agda
+    community and was first presented and
+   implemented in the Epigram language
+   .
+
+<div class="paragraph"> </div>
+
+   The compilation of with clauses and its treatment for generating
+   equations and the induction principle are quite involved in the
+   presence of dependencies, but the basic idea is to add a new case
+   analysis to the program. To compute the type of the new subprogram,
+   we actually abstract the discriminee term from the expected type of
+   the clause, so that the type can get refined in the subprogram. In
+   the non-dependent case this does not change anything though.
+
+<div class="paragraph"> </div>
+
+   Each <span class="inlinecode"><span class="id" title="keyword">with</span></span> node generates an auxiliary definition from the clauses
+   in the curly brackets, taking the additional object as argument. The
+   equation for the with node will simply be an indirection to the
+   auxiliary definition and simplification will continue as usual with
+   the auxiliary definition's rewrite rules.  
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <a name="filter"><span class="id" title="definition">filter</span></a> {<span class="id" title="var">A</span>} (<span class="id" title="var">l</span> : <a class="idref" href="intro.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a>) (<span class="id" title="var">p</span> : <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#d43e996736952df71ebeeae74d10a287"><span class="id" title="notation">→</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a>) : <a class="idref" href="intro.html#list"><span class="id" title="inductive">list</span></a> <span class="id" title="var">A</span> :=<br/>
+<a class="idref" href="intro.html#filter"><span class="id" title="definition">filter</span></a> <a class="idref" href="intro.html#nil"><span class="id" title="constructor">nil</span></a> <span class="id" title="var">p</span> := <a class="idref" href="intro.html#nil"><span class="id" title="constructor">nil</span></a> ;<br/>
+<a class="idref" href="intro.html#filter"><span class="id" title="definition">filter</span></a> (<a class="idref" href="intro.html#cons"><span class="id" title="constructor">cons</span></a> <span class="id" title="var">a</span> <span class="id" title="var">l</span>) <span class="id" title="var">p</span> ≤ <span class="id" title="var">p</span> <span class="id" title="var">a</span> ⇒ {<br/>
+&nbsp;&nbsp;<a class="idref" href="intro.html#filter"><span class="id" title="definition">filter</span></a> (<a class="idref" href="intro.html#cons"><span class="id" title="constructor">cons</span></a> <span class="id" title="var">a</span> <span class="id" title="var">l</span>) <span class="id" title="var">p</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a> := <span class="id" title="var">a</span> <a class="idref" href="intro.html#cff9c6e3fbbb9de4085b1fe1a075f16b"><span class="id" title="notation">::</span></a> <a class="idref" href="intro.html#filter"><span class="id" title="definition">filter</span></a> <span class="id" title="var">l</span> <span class="id" title="var">p</span> ;<br/>
+&nbsp;&nbsp;<a class="idref" href="intro.html#filter"><span class="id" title="definition">filter</span></a> (<a class="idref" href="intro.html#cons"><span class="id" title="constructor">cons</span></a> <span class="id" title="var">a</span> <span class="id" title="var">l</span>) <span class="id" title="var">p</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a> := <a class="idref" href="intro.html#filter"><span class="id" title="definition">filter</span></a> <span class="id" title="var">l</span> <span class="id" title="var">p</span> }.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+A common use of with clauses is to scrutinize recursive results like the following: 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <a name="unzip"><span class="id" title="definition">unzip</span></a> {<span class="id" title="var">A</span> <span class="id" title="var">B</span>} (<span class="id" title="var">l</span> : <a class="idref" href="intro.html#list"><span class="id" title="inductive">list</span></a> (<a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#d19c7eafd0e2d195d10df94b392087b5"><span class="id" title="notation">×</span></a> <a class="idref" href="intro.html#B"><span class="id" title="variable">B</span></a>)) : <a class="idref" href="intro.html#list"><span class="id" title="inductive">list</span></a> <span class="id" title="var">A</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#d19c7eafd0e2d195d10df94b392087b5"><span class="id" title="notation">×</span></a> <a class="idref" href="intro.html#list"><span class="id" title="inductive">list</span></a> <span class="id" title="var">B</span> :=<br/>
+<a class="idref" href="intro.html#unzip"><span class="id" title="definition">unzip</span></a> <a class="idref" href="intro.html#nil"><span class="id" title="constructor">nil</span></a> := <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#44400027531d4bc3f586a1997dc874c0"><span class="id" title="notation">(</span></a><a class="idref" href="intro.html#nil"><span class="id" title="constructor">nil</span></a><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#44400027531d4bc3f586a1997dc874c0"><span class="id" title="notation">,</span></a> <a class="idref" href="intro.html#nil"><span class="id" title="constructor">nil</span></a><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#44400027531d4bc3f586a1997dc874c0"><span class="id" title="notation">)</span></a> ;<br/>
+<a class="idref" href="intro.html#unzip"><span class="id" title="definition">unzip</span></a> (<a class="idref" href="intro.html#cons"><span class="id" title="constructor">cons</span></a> <span class="id" title="var">p</span> <span class="id" title="var">l</span>) ≤ <a class="idref" href="intro.html#unzip"><span class="id" title="definition">unzip</span></a> <span class="id" title="var">l</span> ⇒ {<br/>
+&nbsp;&nbsp;<a class="idref" href="intro.html#unzip"><span class="id" title="definition">unzip</span></a> (<a class="idref" href="intro.html#cons"><span class="id" title="constructor">cons</span></a> (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#pair"><span class="id" title="constructor">pair</span></a> <span class="id" title="var">a</span> <span class="id" title="var">b</span>) <span class="id" title="var">l</span>) (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#pair"><span class="id" title="constructor">pair</span></a> <span class="id" title="var">la</span> <span class="id" title="var">lb</span>) := <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#44400027531d4bc3f586a1997dc874c0"><span class="id" title="notation">(</span></a><span class="id" title="var">a</span> <a class="idref" href="intro.html#cff9c6e3fbbb9de4085b1fe1a075f16b"><span class="id" title="notation">::</span></a> <span class="id" title="var">la</span><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#44400027531d4bc3f586a1997dc874c0"><span class="id" title="notation">,</span></a> <span class="id" title="var">b</span> <a class="idref" href="intro.html#cff9c6e3fbbb9de4085b1fe1a075f16b"><span class="id" title="notation">::</span></a> <span class="id" title="var">lb</span><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#44400027531d4bc3f586a1997dc874c0"><span class="id" title="notation">)</span></a> }.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The real power of with however comes when it is used with dependent types. 
+<div class="paragraph"> </div>
+
+<a name="lab7"></a><h1 class="section">Dependent types</h1>
+
+
+<div class="paragraph"> </div>
+
+   Coq supports writing dependent functions, in other words, it gives the ability to
+   make the results <i>type</i> depend on actual <i>values</i>, like the arguments of the function.
+   A simple example is given below of a function which decides the equality of two 
+   natural numbers, returning a sum type carrying proofs of the equality or disequality 
+   of the arguments. The sum type <span class="inlinecode">{</span> <span class="inlinecode"><a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">}</span> <span class="inlinecode">+</span> <span class="inlinecode">{</span> <span class="inlinecode"><a class="idref" href="intro.html#B"><span class="id" title="variable">B</span></a></span> <span class="inlinecode">}</span> is a constructive variant of disjunction 
+   that can be used in programs to give at the same time a boolean algorithmic information 
+   (are we in branch <span class="inlinecode"><a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a></span> or <span class="inlinecode"><a class="idref" href="intro.html#B"><span class="id" title="variable">B</span></a></span>) and a <i>logical</i> information (a proof witness of <span class="inlinecode"><a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a></span> or <span class="inlinecode"><a class="idref" href="intro.html#B"><span class="id" title="variable">B</span></a></span>).
+   Hence its constructors <span class="inlinecode"><span class="id" title="tactic">left</span></span> and <span class="inlinecode"><span class="id" title="tactic">right</span></span> take proofs as arguments. The <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#eq_refl"><span class="id" title="constructor">eq_refl</span></a></span> proof 
+   term is the single proof of <span class="inlinecode"><a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a></span> (the <span class="inlinecode"><a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a></span> is generaly infered automatically).
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <a name="equal"><span class="id" title="definition">equal</span></a> (<span class="id" title="var">n</span> <span class="id" title="var">m</span> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Specif.html#5bf2050e90b21ebc82dc5463d1ba338e"><span class="id" title="notation">{</span></a> <span class="id" title="var">n</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#1c39bf18749e5cc609e83c0a0ba5a372"><span class="id" title="notation">=</span></a> <span class="id" title="var">m</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Specif.html#5bf2050e90b21ebc82dc5463d1ba338e"><span class="id" title="notation">}</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Specif.html#5bf2050e90b21ebc82dc5463d1ba338e"><span class="id" title="notation">+</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Specif.html#5bf2050e90b21ebc82dc5463d1ba338e"><span class="id" title="notation">{</span></a> <span class="id" title="var">n</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#32263a1c8b01baecdff9deb038955bc9"><span class="id" title="notation">≠</span></a> <span class="id" title="var">m</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Specif.html#5bf2050e90b21ebc82dc5463d1ba338e"><span class="id" title="notation">}</span></a> :=<br/>
+<a class="idref" href="intro.html#equal"><span class="id" title="definition">equal</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#O"><span class="id" title="constructor">O</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#O"><span class="id" title="constructor">O</span></a> := <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Specif.html#left"><span class="id" title="constructor">left</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#eq_refl"><span class="id" title="constructor">eq_refl</span></a> ;<br/>
+<a class="idref" href="intro.html#equal"><span class="id" title="definition">equal</span></a> (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> <span class="id" title="var">n</span>) (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> <span class="id" title="var">m</span>) <span class="id" title="keyword">with</span> <a class="idref" href="intro.html#equal"><span class="id" title="definition">equal</span></a> <span class="id" title="var">n</span> <span class="id" title="var">m</span> := {<br/>
+&nbsp;&nbsp;<a class="idref" href="intro.html#equal"><span class="id" title="definition">equal</span></a> (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> <span class="id" title="var">n</span>) (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> ?(<span class="id" title="var">n</span>)) (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Specif.html#left"><span class="id" title="constructor">left</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#eq_refl"><span class="id" title="constructor">eq_refl</span></a>) := <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Specif.html#left"><span class="id" title="constructor">left</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#eq_refl"><span class="id" title="constructor">eq_refl</span></a> ;<br/>
+&nbsp;&nbsp;<a class="idref" href="intro.html#equal"><span class="id" title="definition">equal</span></a> (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> <span class="id" title="var">n</span>) (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> <span class="id" title="var">m</span>) (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Specif.html#right"><span class="id" title="constructor">right</span></a> <span class="id" title="var">p</span>) := <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Specif.html#right"><span class="id" title="constructor">right</span></a> <span class="id" title="var">_</span> } ;<br/>
+<a class="idref" href="intro.html#equal"><span class="id" title="definition">equal</span></a> <span class="id" title="var">x</span> <span class="id" title="var">y</span> := <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Specif.html#right"><span class="id" title="constructor">right</span></a> <span class="id" title="var">_</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Of particular interest here is the inner program refining the recursive result.
+   As <span class="inlinecode"><a class="idref" href="intro.html#equal"><span class="id" title="definition">equal</span></a></span> <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode"><span class="id" title="var">m</span></span> is of type <span class="inlinecode">{</span> <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="var">m</span></span> <span class="inlinecode">}</span> <span class="inlinecode">+</span> <span class="inlinecode">{</span> <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">≠</span> <span class="inlinecode"><span class="id" title="var">m</span></span> <span class="inlinecode">}</span> we have two cases to consider:
+
+<div class="paragraph"> </div>
+
+<ul class="doclist">
+<li> Either we are in the <span class="inlinecode"><span class="id" title="tactic">left</span></span> <span class="inlinecode"><a class="idref" href="intro.html#p"><span class="id" title="variable">p</span></a></span> case, and we know that <span class="inlinecode"><a class="idref" href="intro.html#p"><span class="id" title="variable">p</span></a></span> is a proof of <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="var">m</span></span>,
+     in which case we can do a nested match on <span class="inlinecode"><a class="idref" href="intro.html#p"><span class="id" title="variable">p</span></a></span>. The result of matching this equality
+     proof is to unify <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a></span> and <span class="inlinecode"><span class="id" title="var">m</span></span>, hence the left hand side patterns become <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a></span> and
+     <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode">?(<a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a>)</span> and the return type of this branch is refined to <span class="inlinecode">{</span> <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">}</span> <span class="inlinecode">+</span> <span class="inlinecode">{</span> <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">≠</span> <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">}</span>.
+     We can easily provide a proof for the left case. 
+
+<div class="paragraph"> </div>
+
+
+</li>
+<li> In the right case, we mark the proof unfilled with an underscore. This will
+     generate an obligation for the hole, that can be filled automatically by a 
+     predefined tactic or interactively by the user in proof mode (this uses the
+     same obligation mechanism as the Program extension
+     ). In this case the automatic tactic 
+     is able to derive by itself that <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">≠</span> <span class="inlinecode"><span class="id" title="var">m</span></span> <span class="inlinecode">→</span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">≠</span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><span class="id" title="var">m</span></span>.
+
+</li>
+</ul>
+
+<div class="paragraph"> </div>
+
+   Dependent types are also useful to turn partial functions into total functions by
+   restricting their domain. Typically, we can force the list passed to <span class="inlinecode"><a class="idref" href="intro.html#head"><span class="id" title="definition">head</span></a></span> 
+   to be non-empty using the specification:
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <a name="head"><span class="id" title="definition">head</span></a> {<span class="id" title="var">A</span>} (<span class="id" title="var">l</span> : <a class="idref" href="intro.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a>) (<span class="id" title="var">pf</span> : <a class="idref" href="intro.html#l"><span class="id" title="variable">l</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#32263a1c8b01baecdff9deb038955bc9"><span class="id" title="notation">≠</span></a> <a class="idref" href="intro.html#nil"><span class="id" title="constructor">nil</span></a>) : <span class="id" title="var">A</span> :=<br/>
+<a class="idref" href="intro.html#head"><span class="id" title="definition">head</span></a> <a class="idref" href="intro.html#nil"><span class="id" title="constructor">nil</span></a> <span class="id" title="var">pf</span> :=! <span class="id" title="var">pf</span>;<br/>
+<a class="idref" href="intro.html#head"><span class="id" title="definition">head</span></a> (<a class="idref" href="intro.html#cons"><span class="id" title="constructor">cons</span></a> <span class="id" title="var">a</span> <span class="id" title="var">v</span>) <span class="id" title="var">_</span> := <span class="id" title="var">a</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+We decompose the list and are faced with two cases:
+
+<div class="paragraph"> </div>
+
+<ul class="doclist">
+<li> In the first case, the list is empty, hence the proof <span class="inlinecode"><span class="id" title="var">pf</span></span> of type 
+     <span class="inlinecode"><a class="idref" href="intro.html#nil"><span class="id" title="constructor">nil</span></a></span> <span class="inlinecode">≠</span> <span class="inlinecode"><a class="idref" href="intro.html#nil"><span class="id" title="constructor">nil</span></a></span> allows us to derive a contradiction. We make use of
+     another category of right-hand sides, which we call <i>empty</i> nodes
+     to inform the compiler that a contradiction is derivable in this case.
+     In general we cannot expect the compiler to find by himself that 
+     the context contains a contradiction, as it is undecidable 
+     .
+
+</li>
+<li> In the second case, we simply return the head of the list, disregarding
+     the proof.
+
+</li>
+</ul>
+ 
+<div class="paragraph"> </div>
+
+<a name="lab8"></a><h2 class="section">Inductive families</h2>
+
+
+<div class="paragraph"> </div>
+
+   The next step is to make constraints such as non-emptiness part of the 
+   datatype itself. This capability is provided through inductive families in
+   Coq , which are a similar concept to the generalization 
+   of algebraic datatypes to GADTs in functional languages like Haskell 
+   . Families provide a way to associate to each constructor 
+   a different type, making it possible to give specific information about a value 
+   in its type. 
+
+<div class="paragraph"> </div>
+
+<a name="lab9"></a><h3 class="section">Equality</h3>
+
+   The alma mater of inductive families is the propositional equality 
+   <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#eq"><span class="id" title="inductive">eq</span></a></span> defined as: <br/>
+<span class="inlinecode"><span class="id" title="keyword">Inductive</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#eq"><span class="id" title="inductive">eq</span></a> (<a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> : <span class="id" title="keyword">Type</span>) (<a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a> : <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a>) : <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> → <span class="id" title="keyword">Prop</span> := <br/>
+&nbsp;<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#eq_refl"><span class="id" title="constructor">eq_refl</span></a> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#eq"><span class="id" title="inductive">eq</span></a> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> <a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a> <a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a>. 
+<div class="paragraph"> </div>
+
+</span>
+<div class="paragraph"> </div>
+
+   Equality is a polymorphic relation on <span class="inlinecode"><a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a></span>. (The <span class="inlinecode"><span class="id" title="keyword">Prop</span></span> sort (or kind) categorizes
+   propositions, while the <span class="inlinecode"><span class="id" title="keyword">Set</span></span> sort, equivalent to  in Haskell categorizes 
+   computational types.) Equality is <i>parameterized</i> by a value <span class="inlinecode"><a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a></span> of type <span class="inlinecode"><a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a></span> and 
+   <i>indexed</i> by another value of type <span class="inlinecode"><a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a></span>. Its single constructor states that 
+   equality is reflexive, so the only way to build an object of <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#eq"><span class="id" title="inductive">eq</span></a></span> <span class="inlinecode"><a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode"><a class="idref" href="intro.html#y"><span class="id" title="variable">y</span></a></span> is if 
+   <span class="inlinecode"><a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">~=</span> <span class="inlinecode"><a class="idref" href="intro.html#y"><span class="id" title="variable">y</span></a></span>, that is if <span class="inlinecode"><a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a></span> is definitionaly equal to <span class="inlinecode"><a class="idref" href="intro.html#y"><span class="id" title="variable">y</span></a></span>. 
+
+<div class="paragraph"> </div>
+
+   Now what is the elimination principle associated to this inductive family?
+   It is the good old Leibniz substitution principle: <br/>
+<span class="inlinecode"><span class="id" title="keyword">∀</span> (<a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> : <span class="id" title="keyword">Type</span>) (<a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a> : <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a>) (<span class="id" title="var">P</span> : <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> → <span class="id" title="keyword">Type</span>), <span class="id" title="var">P</span> <a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a> → <span class="id" title="keyword">∀</span> <a class="idref" href="intro.html#y"><span class="id" title="variable">y</span></a> : <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a>, <a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a> = <a class="idref" href="intro.html#y"><span class="id" title="variable">y</span></a> → <span class="id" title="var">P</span> <a class="idref" href="intro.html#y"><span class="id" title="variable">y</span></a> 
+<div class="paragraph"> </div>
+
+</span>
+<div class="paragraph"> </div>
+
+   Provided a proof that <span class="inlinecode"><a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="intro.html#y"><span class="id" title="variable">y</span></a></span>, we can create on object of type <span class="inlinecode"><span class="id" title="var">P</span></span> <span class="inlinecode"><a class="idref" href="intro.html#y"><span class="id" title="variable">y</span></a></span> from an 
+   existing object of type <span class="inlinecode"><span class="id" title="var">P</span></span> <span class="inlinecode"><a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a></span>. This substitution principle is enough to show
+   that equality is symmetric and transitive. For example we can use 
+   pattern-matching on equality proofs to show:
+ 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <a name="eqt"><span class="id" title="definition">eqt</span></a> {<span class="id" title="var">A</span>} (<span class="id" title="var">x</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span> : <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a>) (<span class="id" title="var">p</span> : <a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#1c39bf18749e5cc609e83c0a0ba5a372"><span class="id" title="notation">=</span></a> <a class="idref" href="intro.html#y"><span class="id" title="variable">y</span></a>) (<span class="id" title="var">q</span> : <a class="idref" href="intro.html#y"><span class="id" title="variable">y</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#1c39bf18749e5cc609e83c0a0ba5a372"><span class="id" title="notation">=</span></a> <a class="idref" href="intro.html#z"><span class="id" title="variable">z</span></a>) : <span class="id" title="var">x</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#1c39bf18749e5cc609e83c0a0ba5a372"><span class="id" title="notation">=</span></a> <span class="id" title="var">z</span> :=<br/>
+<a class="idref" href="intro.html#eqt"><span class="id" title="definition">eqt</span></a> <span class="id" title="var">x</span> ?(<span class="id" title="var">x</span>) ?(<span class="id" title="var">x</span>) <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#eq_refl"><span class="id" title="constructor">eq_refl</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#eq_refl"><span class="id" title="constructor">eq_refl</span></a> := <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#eq_refl"><span class="id" title="constructor">eq_refl</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Let us explain the meaning of the non-linear patterns here that we
+   slipped through in the <span class="inlinecode"><a class="idref" href="intro.html#equal"><span class="id" title="definition">equal</span></a></span> example. By pattern-matching on the
+   equalities, we have unified <span class="inlinecode"><a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a></span>, <span class="inlinecode"><a class="idref" href="intro.html#y"><span class="id" title="variable">y</span></a></span> and <span class="inlinecode"><a class="idref" href="intro.html#z"><span class="id" title="variable">z</span></a></span>, hence we determined the
+   <i>values</i> of the patterns for the variables to be <span class="inlinecode"><a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a></span>. The <span class="inlinecode">?(<a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a>)</span>
+   notation is essentially denoting that the pattern is not a candidate
+   for refinement, as it is determined by another pattern. This
+   particular patterns are called "inaccessible".
+
+<div class="paragraph"> </div>
+
+<a name="lab10"></a><h3 class="section">Indexed datatypes</h3>
+
+
+<div class="paragraph"> </div>
+
+   Functions on <span class="inlinecode"><span class="id" title="abbreviation">vector</span></span>s provide more stricking examples of this
+   situation.  The <span class="inlinecode"><span class="id" title="abbreviation">vector</span></span> family is indexed by a natural number
+   representing the size of the vector: <span class="inlinecode">[</span> <span class="inlinecode"><span class="id" title="keyword">Inductive</span></span> <span class="inlinecode"><span class="id" title="abbreviation">vector</span></span> <span class="inlinecode">(<a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="keyword">Type</span>)</span> <span class="inlinecode">:</span>
+   <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a></span> <span class="inlinecode">→</span> <span class="inlinecode"><span class="id" title="keyword">Type</span></span> <span class="inlinecode">:=</span> <span class="inlinecode">|</span> <span class="inlinecode"><a class="idref" href="intro.html#Vnil"><span class="id" title="abbreviation">Vnil</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="abbreviation">vector</span></span> <span class="inlinecode"><a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#O"><span class="id" title="constructor">O</span></a></span> <span class="inlinecode">|</span> <span class="inlinecode"><a class="idref" href="intro.html#Vcons"><span class="id" title="abbreviation">Vcons</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">→</span> <span class="inlinecode"><span class="id" title="keyword">∀</span></span> <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>,</span>
+   <span class="inlinecode"><span class="id" title="abbreviation">vector</span></span> <span class="inlinecode"><a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">→</span> <span class="inlinecode"><span class="id" title="abbreviation">vector</span></span> <span class="inlinecode"><a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">(<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a>)</span> <span class="inlinecode">]</span>
+
+<div class="paragraph"> </div>
+
+   The empty vector <span class="inlinecode"><a class="idref" href="intro.html#Vnil"><span class="id" title="abbreviation">Vnil</span></a></span> has size <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#O"><span class="id" title="constructor">O</span></a></span> while the cons operation
+   increments the size by one. Now let us define the usual map on
+   vectors: 
+</div>
+<div class="code">
+<span class="id" title="keyword">Notation</span> <a name="Vnil"><span class="id" title="abbreviation">Vnil</span></a> := <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Vectors.Vector.html#nil"><span class="id" title="constructor">Vector.nil</span></a>.<br/>
+<span class="id" title="keyword">Notation</span> <a name="Vcons"><span class="id" title="abbreviation">Vcons</span></a> := <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Vectors.Vector.html#cons"><span class="id" title="constructor">Vector.cons</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Equations</span> <a name="vmap"><span class="id" title="definition">vmap</span></a> {<span class="id" title="var">A</span> <span class="id" title="var">B</span>} (<span class="id" title="var">f</span> : <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#d43e996736952df71ebeeae74d10a287"><span class="id" title="notation">→</span></a> <a class="idref" href="intro.html#B"><span class="id" title="variable">B</span></a>) {<span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="abbreviation">vector</span> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a>) :<br/>
+&nbsp;&nbsp;<span class="id" title="abbreviation">vector</span> <span class="id" title="var">B</span> <span class="id" title="var">n</span> :=<br/>
+<a class="idref" href="intro.html#vmap"><span class="id" title="definition">vmap</span></a> <span class="id" title="var">f</span> {<span class="id" title="var">n</span>:=?(0)} <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Vectors.Vector.html#nil"><span class="id" title="constructor">Vnil</span></a> := <a class="idref" href="intro.html#Vnil"><span class="id" title="abbreviation">Vnil</span></a> ;<br/>
+<a class="idref" href="intro.html#vmap"><span class="id" title="definition">vmap</span></a> <span class="id" title="var">f</span> {<span class="id" title="var">n</span>:=?(<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> <span class="id" title="var">n</span>)} (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Vectors.Vector.html#cons"><span class="id" title="constructor">Vcons</span></a> <span class="id" title="var">a</span> <span class="id" title="var">n</span> <span class="id" title="var">v</span>) := <a class="idref" href="intro.html#Vcons"><span class="id" title="abbreviation">Vcons</span></a> (<span class="id" title="var">f</span> <span class="id" title="var">a</span>) (<a class="idref" href="intro.html#vmap"><span class="id" title="definition">vmap</span></a> <span class="id" title="var">f</span> <span class="id" title="var">v</span>).<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Here the value of the index representing the size of the vector 
+   is directly determined by the constructor, hence in the case tree
+   we have no need to eliminate <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a></span>. This means in particular that 
+   the function <span class="inlinecode"><a class="idref" href="intro.html#vmap"><span class="id" title="definition">vmap</span></a></span> does not do any computation with <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a></span>, and 
+   the argument could be eliminated in the extracted code.
+   In other words, it provides only <i>logical</i> information about 
+   the shape of <span class="inlinecode"><a class="idref" href="intro.html#v"><span class="id" title="variable">v</span></a></span> but no computational information.
+
+<div class="paragraph"> </div>
+
+   The <span class="inlinecode"><a class="idref" href="intro.html#vmap"><span class="id" title="definition">vmap</span></a></span> function works on every member of the <span class="inlinecode"><span class="id" title="abbreviation">vector</span></span> family,
+   but some functions may work only for some subfamilies, for example
+   <span class="inlinecode"><a class="idref" href="intro.html#vtail"><span class="id" title="definition">vtail</span></a></span>:
+ 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <a name="vtail"><span class="id" title="definition">vtail</span></a> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="abbreviation">vector</span> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a>)) : <span class="id" title="abbreviation">vector</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> :=<br/>
+<a class="idref" href="intro.html#vtail"><span class="id" title="definition">vtail</span></a> (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Vectors.Vector.html#cons"><span class="id" title="constructor">Vcons</span></a> <span class="id" title="var">a</span> <span class="id" title="var">n</span> <span class="id" title="var">v'</span>) := <span class="id" title="var">v'</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The type of <span class="inlinecode"><a class="idref" href="intro.html#v"><span class="id" title="variable">v</span></a></span> ensures that <span class="inlinecode"><a class="idref" href="intro.html#vtail"><span class="id" title="definition">vtail</span></a></span> can only be applied to 
+   non-empty vectors, moreover the patterns only need to consider 
+   constructors that can produce objects in the subfamily <span class="inlinecode"><span class="id" title="abbreviation">vector</span></span> <span class="inlinecode"><a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">(<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a>)</span>,
+   excluding <span class="inlinecode"><a class="idref" href="intro.html#Vnil"><span class="id" title="abbreviation">Vnil</span></a></span>. The pattern-matching compiler uses unification 
+   with the theory of constructors to discover which cases need to 
+   be considered and which are impossible. In this case the failed 
+   unification of <span class="inlinecode">0</span> and <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a></span> shows that the <span class="inlinecode"><a class="idref" href="intro.html#Vnil"><span class="id" title="abbreviation">Vnil</span></a></span> case is impossible.
+   This powerful unification engine running under the hood permits to write
+   concise code where all uninteresting cases are handled automatically.
+
+<div class="paragraph"> </div>
+
+   Of course the equations and the induction principle are simplified in a 
+   similar way. If we encounter a call to <span class="inlinecode"><a class="idref" href="intro.html#vtail"><span class="id" title="definition">vtail</span></a></span> in a proof, we can 
+   use the following elimination principle to simplify both the call and the
+   argument which will be automatically substituted by an object of the form
+   <span class="inlinecode"><a class="idref" href="intro.html#Vcons"><span class="id" title="abbreviation">Vcons</span></a></span> <span class="inlinecode"><span class="id" title="var">_</span></span> <span class="inlinecode"><span class="id" title="var">_</span></span> <span class="inlinecode"><span class="id" title="var">_</span></span>:<br/>
+<span class="inlinecode"><span class="id" title="keyword">∀</span> <span class="id" title="var">P</span> : <span class="id" title="keyword">∀</span> (<a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> : <span class="id" title="keyword">Type</span>) (<a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>), <span class="id" title="abbreviation">vector</span> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a>) → <span class="id" title="abbreviation">vector</span> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a> → <span class="id" title="keyword">Prop</span>,<br/>
+(<span class="id" title="keyword">∀</span> (<a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> : <span class="id" title="keyword">Type</span>) (<a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<span class="id" title="var">a</span> : <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a>) (<a class="idref" href="intro.html#v"><span class="id" title="variable">v</span></a> : <span class="id" title="abbreviation">vector</span> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a>), <br/>
+&nbsp;&nbsp;<span class="id" title="var">P</span> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a> (<a class="idref" href="intro.html#Vcons"><span class="id" title="abbreviation">Vcons</span></a> <span class="id" title="var">a</span> <a class="idref" href="intro.html#v"><span class="id" title="variable">v</span></a>) <a class="idref" href="intro.html#v"><span class="id" title="variable">v</span></a>) →<br/>
+<span class="id" title="keyword">∀</span> (<a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> : <span class="id" title="keyword">Type</span>) (<a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<a class="idref" href="intro.html#v"><span class="id" title="variable">v</span></a> : <span class="id" title="abbreviation">vector</span> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a>)), <span class="id" title="var">P</span> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a> <a class="idref" href="intro.html#v"><span class="id" title="variable">v</span></a> (<a class="idref" href="intro.html#vtail"><span class="id" title="definition">vtail</span></a> <a class="idref" href="intro.html#v"><span class="id" title="variable">v</span></a>) 
+<div class="paragraph"> </div>
+
+</span>
+<div class="paragraph"> </div>
+
+   As a witness of the power of the unification, consider the following function 
+   which computes the diagonal of a square matrix of size <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">×</span> <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a></span>.
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <a name="diag"><span class="id" title="definition">diag</span></a> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="abbreviation">vector</span> (<span class="id" title="abbreviation">vector</span> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a>) <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a>) : <span class="id" title="abbreviation">vector</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> :=<br/>
+<a class="idref" href="intro.html#diag"><span class="id" title="definition">diag</span></a> {<span class="id" title="var">n</span>:=<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#O"><span class="id" title="constructor">O</span></a>} <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Vectors.Vector.html#nil"><span class="id" title="constructor">Vnil</span></a> := <a class="idref" href="intro.html#Vnil"><span class="id" title="abbreviation">Vnil</span></a> ;<br/>
+<a class="idref" href="intro.html#diag"><span class="id" title="definition">diag</span></a> {<span class="id" title="var">n</span>:=(<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> ?(<span class="id" title="var">n</span>))} (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Vectors.Vector.html#cons"><span class="id" title="constructor">Vcons</span></a> (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Vectors.Vector.html#cons"><span class="id" title="constructor">Vcons</span></a> <span class="id" title="var">a</span> <span class="id" title="var">n</span> <span class="id" title="var">v</span>) ?(<span class="id" title="var">n</span>) <span class="id" title="var">v'</span>) :=<br/>
+&nbsp;&nbsp;<a class="idref" href="intro.html#Vcons"><span class="id" title="abbreviation">Vcons</span></a> <span class="id" title="var">a</span> (<a class="idref" href="intro.html#diag"><span class="id" title="definition">diag</span></a> (<a class="idref" href="intro.html#vmap"><span class="id" title="definition">vmap</span></a> <a class="idref" href="intro.html#vtail"><span class="id" title="definition">vtail</span></a> <span class="id" title="var">v'</span>)).<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Here in the second equation, we know that the elements of the vector 
+   are necessarily of size <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a></span> too, hence we can do a nested refinement
+   on the first one to find the first element of the diagonal. 
+<div class="paragraph"> </div>
+
+<a name="lab11"></a><h2 class="section">Recursion</h2>
+
+
+<div class="paragraph"> </div>
+
+  Notice how in the <span class="inlinecode"><a class="idref" href="intro.html#diag"><span class="id" title="definition">diag</span></a></span> example above we explicitely pattern-matched
+  on the index <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a></span>, even though the <span class="inlinecode"><a class="idref" href="intro.html#Vnil"><span class="id" title="abbreviation">Vnil</span></a></span> and <span class="inlinecode"><a class="idref" href="intro.html#Vcons"><span class="id" title="abbreviation">Vcons</span></a></span> pattern matching
+  would have been enough to determine these indices. This is because the
+  following definitions fails: 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="var">Fail</span> <span class="id" title="keyword">Equations</span> <a name="diag'"><span class="id" title="definition">diag'</span></a> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="abbreviation">vector</span> (<span class="id" title="abbreviation">vector</span> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a>) <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a>) : <span class="id" title="abbreviation">vector</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> :=<br/>
+<a class="idref" href="intro.html#diag'"><span class="id" title="definition">diag'</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Vectors.Vector.html#nil"><span class="id" title="constructor">Vnil</span></a> := <a class="idref" href="intro.html#Vnil"><span class="id" title="abbreviation">Vnil</span></a> ;<br/>
+<a class="idref" href="intro.html#diag'"><span class="id" title="definition">diag'</span></a> (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Vectors.Vector.html#cons"><span class="id" title="constructor">Vcons</span></a> (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Vectors.Vector.html#cons"><span class="id" title="constructor">Vcons</span></a> <span class="id" title="var">a</span> <span class="id" title="var">n</span> <span class="id" title="var">v</span>) <span class="id" title="var">n</span> <span class="id" title="var">v'</span>) :=<br/>
+&nbsp;&nbsp;<span class="id" title="var">Vcons</span> <span class="id" title="var">a</span> (<span class="id" title="var">diag'</span> (<span class="id" title="var">vmap</span> <span class="id" title="var">vtail</span> <span class="id" title="var">v'</span>)).<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Indeed, Coq cannot guess the decreasing argument of this fixpoint
+    using its limited syntactic guard criterion: <span class="inlinecode"><a class="idref" href="intro.html#vmap"><span class="id" title="definition">vmap</span></a></span> <span class="inlinecode"><a class="idref" href="intro.html#vtail"><span class="id" title="definition">vtail</span></a></span> <span class="inlinecode"><span class="id" title="var">v'</span></span> cannot
+    be seen to be a (large) subterm of <span class="inlinecode"><span class="id" title="var">v'</span></span> using this criterion, even
+    if it is clearly "smaller". In general, it can also be the case that
+    the compilation algorithm introduces decorations to the proof term
+    that prevent the syntactic guard check from seeing that the
+    definition is structurally recursive.
+
+<div class="paragraph"> </div>
+
+    To aleviate this problem, <span class="inlinecode"><span class="id" title="keyword">Equations</span></span> provides support for
+    <i>well-founded</i> recursive definitions which do not rely on syntactic
+    checks.
+
+<div class="paragraph"> </div>
+
+    The simplest example of this is using the <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Peano.html#lt"><span class="id" title="definition">lt</span></a></span> order on natural numbers
+    to define a recursive definition of identity: 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">Equations.Subterm</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Equations</span> <a name="id"><span class="id" title="definition">id</span></a> (<span class="id" title="var">n</span> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> :=<br/>
+&nbsp;&nbsp;<a class="idref" href="intro.html#id"><span class="id" title="definition">id</span></a> <span class="id" title="var">n</span> <span class="id" title="tactic">by</span> <span class="id" title="var">rec</span> <span class="id" title="var">n</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Peano.html#lt"><span class="id" title="definition">lt</span></a> :=<br/>
+&nbsp;&nbsp;<a class="idref" href="intro.html#id"><span class="id" title="definition">id</span></a> 0 := 0;<br/>
+&nbsp;&nbsp;<a class="idref" href="intro.html#id"><span class="id" title="definition">id</span></a> (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> <span class="id" title="var">n'</span>) := <a class="idref" href="intro.html#id_comp_proj"><span class="id" title="definition">id</span></a> <span class="id" title="var">n'</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Here <span class="inlinecode"><a class="idref" href="intro.html#id"><span class="id" title="definition">id</span></a></span> is defined by well-founded recursion on <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Peano.html#lt"><span class="id" title="definition">lt</span></a></span> on the (only)
+    argument <span class="inlinecode"><a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a></span> using the <span class="inlinecode"><span class="id" title="tactic">by</span></span> <span class="inlinecode"><span class="id" title="var">rec</span></span> node.  At recursive calls of <span class="inlinecode"><a class="idref" href="intro.html#id"><span class="id" title="definition">id</span></a></span>,
+    obligations are generated to show that the arguments effectively
+    decrease according to this relation.  Here the proof that <span class="inlinecode"><span class="id" title="var">n'</span></span> <span class="inlinecode">&lt;</span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span>
+    <span class="inlinecode"><span class="id" title="var">n'</span></span> is discharged automatically.
+
+<div class="paragraph"> </div>
+
+  Wellfounded recursion on arbitrary dependent families is not as easy
+  to use, as in general the relations on families are <i>heterogeneous</i>,
+  as the must related inhabitants of potentially different instances of
+  the family.  <span class="inlinecode"><span class="id" title="keyword">Equations</span></span> provides a <span class="inlinecode"><span class="id" title="var">Derive</span></span> command to generate the
+  subterm relation on any such inductive family and derive the
+  well-foundedness of its transitive closure, which is often what's
+  required. This provides course-of-values or so-called "mathematical"
+  induction on these objects, mimicking the structural recursion
+  criterion in the logic. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="var">Derive</span> <span class="id" title="var">Signature</span> <span class="id" title="var">Subterm</span> <span class="id" title="keyword">for</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Vectors.Vector.html#t"><span class="id" title="inductive">vector</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+For vectors for example, the relation is defined as: <br/>
+<span class="inlinecode"><span class="id" title="keyword">Inductive</span> <span class="id" title="var">t_direct_subterm</span> (<a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> : <span class="id" title="keyword">Type</span>) :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a> <span class="id" title="var">n0</span> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>, <span class="id" title="abbreviation">vector</span> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a> → <span class="id" title="abbreviation">vector</span> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> <span class="id" title="var">n0</span> → <span class="id" title="keyword">Prop</span> :=<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="intro.html#t_direct_subterm_1_1"><span class="id" title="constructor">t_direct_subterm_1_1</span></a> : <span class="id" title="keyword">∀</span> (<span class="id" title="var">h</span> : <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a>) (<a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<span class="id" title="var">H</span> : <span class="id" title="abbreviation">vector</span> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a>),<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">t_direct_subterm</span> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a> (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a>) <span class="id" title="var">H</span> (<a class="idref" href="intro.html#Vcons"><span class="id" title="abbreviation">Vcons</span></a> <span class="id" title="var">h</span> <span class="id" title="var">H</span>) 
+<div class="paragraph"> </div>
+
+</span>
+<div class="paragraph"> </div>
+
+  That is, there is only one recursive subterm, for the subvector
+  in the <span class="inlinecode"><a class="idref" href="intro.html#Vcons"><span class="id" title="abbreviation">Vcons</span></a></span> constructor. We also get a proof of:
+ 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Check</span> <a class="idref" href="intro.html#well_founded_t_subterm"><span class="id" title="instance">well_founded_t_subterm</span></a> : <span class="id" title="keyword">∀</span> <span class="id" title="var">A</span>, <span class="id" title="class">WellFounded</span> (<a class="idref" href="intro.html#t_subterm"><span class="id" title="definition">t_subterm</span></a> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a>).<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="intro.html#t_subterm"><span class="id" title="definition">t_subterm</span></a></span> itself is the transitive closure of the relation
+    seen as an homogeneous one by packing the indices of the family
+    with the object itself. Once this is derived, we can use it to
+    define recursive definitions on vectors that the guard condition
+    couldn't handle:
+</div>
+<div class="code">
+
+<br/>
+</div>
+
+<div class="doc">
+We put ourselves in a section to parameterize skip by a predicate 
+</div>
+<div class="code">
+<span class="id" title="keyword">Section</span> <a name="Skip"><span class="id" title="section">Skip</span></a>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Context</span> {<span class="id" title="var">A</span> : <span class="id" title="keyword">Type</span>} (<span class="id" title="var">p</span> : <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#d43e996736952df71ebeeae74d10a287"><span class="id" title="notation">→</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a>).<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Equations</span> <a name="skip_first"><span class="id" title="definition">skip_first</span></a> {<span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="abbreviation">vector</span> <a class="idref" href="intro.html#Skip.A"><span class="id" title="variable">A</span></a> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a>) : <span class="id" title="notation">&amp;{</span> <span class="id" title="var">n</span> <span class="id" title="notation">:</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <span class="id" title="notation">&amp;</span> <span class="id" title="abbreviation">vector</span> <a class="idref" href="intro.html#Skip.A"><span class="id" title="variable">A</span></a> <span class="id" title="var">n</span> <span class="id" title="notation">}</span> :=<br/>
+&nbsp;&nbsp;<a class="idref" href="intro.html#skip_first"><span class="id" title="definition">skip_first</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Vectors.Vector.html#nil"><span class="id" title="constructor">Vnil</span></a> := <span class="id" title="notation">&amp;(</span>0 <span class="id" title="notation">&amp;</span> <a class="idref" href="intro.html#Vnil"><span class="id" title="abbreviation">Vnil</span></a><span class="id" title="notation">)</span>;<br/>
+&nbsp;&nbsp;<a class="idref" href="intro.html#skip_first"><span class="id" title="definition">skip_first</span></a> (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Vectors.Vector.html#cons"><span class="id" title="constructor">Vcons</span></a> <span class="id" title="var">a</span> <span class="id" title="var">n</span> <span class="id" title="var">v'</span>) ≤ <a class="idref" href="intro.html#Skip.p"><span class="id" title="variable">p</span></a> <span class="id" title="var">a</span> ⇒ {<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a> ⇒ <a class="idref" href="intro.html#skip_first"><span class="id" title="definition">skip_first</span></a> <span class="id" title="var">v'</span>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a> ⇒ <span class="id" title="notation">&amp;(</span><span class="id" title="var">_</span> <span class="id" title="notation">&amp;</span> <a class="idref" href="intro.html#Vcons"><span class="id" title="abbreviation">Vcons</span></a> <span class="id" title="var">a</span> <span class="id" title="var">v'</span><span class="id" title="notation">)</span> }.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+It is relatively straitforward to show that <span class="inlinecode"><span class="id" title="var">skip</span></span> returns a (large) subvector of its argument 
+</div>
+<div class="code">
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <a name="skip_first_subterm"><span class="id" title="lemma">skip_first_subterm</span></a> {<span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="abbreviation">vector</span> <a class="idref" href="intro.html#Skip.A"><span class="id" title="variable">A</span></a> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a>) : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Relations.Relation_Operators.html#clos_refl"><span class="id" title="inductive">clos_refl</span></a> <span class="id" title="var">_</span> (<a class="idref" href="intro.html#t_subterm"><span class="id" title="definition">t_subterm</span></a> <span class="id" title="var">_</span>) (<a class="idref" href="intro.html#skip_first"><span class="id" title="definition">skip_first</span></a> <a class="idref" href="intro.html#v"><span class="id" title="variable">v</span></a>) <span class="id" title="notation">&amp;(</span><span class="id" title="var">_</span> <span class="id" title="notation">&amp;</span> <a class="idref" href="intro.html#v"><span class="id" title="variable">v</span></a><span class="id" title="notation">)</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">funelim</span> (<a class="idref" href="intro.html#skip_first"><span class="id" title="definition">skip_first</span></a> <span class="id" title="var">v</span>).<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">constructor</span> 2.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">depelim</span> <span class="id" title="var">H</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">constructor</span> 1.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <span class="id" title="lemma">clos_trans_stepr</span>. <span class="id" title="tactic">simpl</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> (<a class="idref" href="intro.html#t_direct_subterm_1_1"><span class="id" title="constructor">t_direct_subterm_1_1</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<span class="id" title="notation">&amp;(</span><span class="id" title="var">_</span> <span class="id" title="notation">&amp;</span> <span class="id" title="var">t</span><span class="id" title="notation">)</span><span class="id" title="notation">.2</span>)). <span class="id" title="tactic">apply</span> <span class="id" title="var">H</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> <span class="id" title="var">H</span>. <span class="id" title="tactic">constructor</span>. <span class="id" title="tactic">eauto</span> <span class="id" title="keyword">with</span> <span class="id" title="var">subterm_relation</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">constructor</span> 2.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">End</span> <a class="idref" href="intro.html#Skip"><span class="id" title="section">Skip</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+This function takes an unsorted vector and returns a sorted vector corresponding to it
+    starting from its head <span class="inlinecode"><span class="id" title="var">a</span></span>, removing all elements smaller than <span class="inlinecode"><span class="id" title="var">a</span></span> and recursing.  
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <a name="sort"><span class="id" title="definition">sort</span></a> {<span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="abbreviation">vector</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a>) : <span class="id" title="notation">&amp;{</span><span class="id" title="var">n'</span> <span class="id" title="notation">:</span> <span class="id" title="var">_</span> <span class="id" title="notation">&amp;</span> <span class="id" title="abbreviation">vector</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <span class="id" title="var">n'</span><span class="id" title="notation">}</span> :=<br/>
+<a class="idref" href="intro.html#sort"><span class="id" title="definition">sort</span></a> <span class="id" title="var">v</span> <span class="id" title="tactic">by</span> <span class="id" title="var">rec</span> (<span class="id" title="method">signature_pack</span> <span class="id" title="var">v</span>) (<a class="idref" href="intro.html#t_subterm"><span class="id" title="definition">t_subterm</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) :=<br/>
+<a class="idref" href="intro.html#sort"><span class="id" title="definition">sort</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Vectors.Vector.html#nil"><span class="id" title="constructor">Vnil</span></a> := <span class="id" title="notation">&amp;(</span> <span class="id" title="var">_</span> <span class="id" title="notation">&amp;</span> <a class="idref" href="intro.html#Vnil"><span class="id" title="abbreviation">Vnil</span></a> <span class="id" title="notation">)</span>;<br/>
+<a class="idref" href="intro.html#sort"><span class="id" title="definition">sort</span></a> (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Vectors.Vector.html#cons"><span class="id" title="constructor">Vcons</span></a> <span class="id" title="var">a</span> <span class="id" title="var">n</span> <span class="id" title="var">v</span>) := <span class="id" title="keyword">let</span> <span class="id" title="var">sk</span> := <a class="idref" href="intro.html#skip_first"><span class="id" title="definition">skip_first</span></a> (<span class="id" title="keyword">fun</span> <span class="id" title="var">x</span> ⇒ <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Arith.PeanoNat.html#Nat.leb"><span class="id" title="definition">Nat.leb</span></a> <a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a> <span class="id" title="var">a</span>) <span class="id" title="var">v</span> <span class="id" title="keyword">in</span> <span class="id" title="notation">&amp;(</span><span class="id" title="var">_</span> <span class="id" title="notation">&amp;</span> <a class="idref" href="intro.html#Vcons"><span class="id" title="abbreviation">Vcons</span></a> <span class="id" title="var">a</span> <span class="id" title="notation">(</span><a class="idref" href="intro.html#sort_comp_proj"><span class="id" title="definition">sort</span></a> <a class="idref" href="intro.html#sk"><span class="id" title="variable">sk</span></a><span class="id" title="notation">.2).2</span><span class="id" title="notation">)</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Here we prove that the recursive call is correct as skip preserves the size of its argument 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Next</span> <span class="id" title="keyword">Obligation</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">red</span>. <span class="id" title="tactic">simpl</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="intro.html#clos_trans_stepr_refl"><span class="id" title="lemma">clos_trans_stepr_refl</span></a>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">apply</span> (<a class="idref" href="intro.html#t_direct_subterm_1_1"><span class="id" title="constructor">t_direct_subterm_1_1</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<span class="id" title="notation">&amp;(</span><span class="id" title="var">_</span> <span class="id" title="notation">&amp;</span> <span class="id" title="var">v</span><span class="id" title="notation">)</span><span class="id" title="notation">.2</span>)).<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">refine</span> (<a class="idref" href="intro.html#skip_first_subterm"><span class="id" title="lemma">skip_first_subterm</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span>).<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+To prove it we need a few supporting lemmas, we first write a predicate on vectors
+    equivalent to <span class="inlinecode"><span class="id" title="var">List.forall</span></span>. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <a name="forall_vect"><span class="id" title="definition">forall_vect</span></a> {<span class="id" title="var">A</span>} (<span class="id" title="var">p</span> : <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#d43e996736952df71ebeeae74d10a287"><span class="id" title="notation">→</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a>) {<span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="abbreviation">vector</span> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a>) : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> :=<br/>
+<a class="idref" href="intro.html#forall_vect"><span class="id" title="definition">forall_vect</span></a> <span class="id" title="var">_</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Vectors.Vector.html#nil"><span class="id" title="constructor">Vnil</span></a> := <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a>;<br/>
+<a class="idref" href="intro.html#forall_vect"><span class="id" title="definition">forall_vect</span></a> <span class="id" title="var">p</span> (<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Vectors.Vector.html#cons"><span class="id" title="constructor">Vcons</span></a> <span class="id" title="var">x</span> <span class="id" title="var">n</span> <span class="id" title="var">v</span>) := <span class="id" title="var">p</span> <span class="id" title="var">x</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#49ac24efa716d8b0ee8943bc1d1769a9"><span class="id" title="notation">&amp;&amp;</span></a> <a class="idref" href="intro.html#forall_vect"><span class="id" title="definition">forall_vect</span></a> <span class="id" title="var">p</span> <span class="id" title="var">v</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Bool.Bool.html#"><span class="id" title="library">Bool</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+By functional elimination it is easy to prove that this respects the implication
+    order on predicates 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <a name="forall_vect_impl"><span class="id" title="lemma">forall_vect_impl</span></a> {<span class="id" title="var">A</span>} <span class="id" title="var">p</span> <span class="id" title="var">p'</span> {<span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="abbreviation">vector</span> <a class="idref" href="intro.html#A"><span class="id" title="variable">A</span></a> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="var">fp</span> : <span class="id" title="keyword">∀</span> <span class="id" title="var">x</span>, <a class="idref" href="intro.html#p"><span class="id" title="variable">p</span></a> <a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#1c39bf18749e5cc609e83c0a0ba5a372"><span class="id" title="notation">=</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#d43e996736952df71ebeeae74d10a287"><span class="id" title="notation">→</span></a> <a class="idref" href="intro.html#p'"><span class="id" title="variable">p'</span></a> <a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#1c39bf18749e5cc609e83c0a0ba5a372"><span class="id" title="notation">=</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a>) :<br/>
+&nbsp;&nbsp;<a class="idref" href="intro.html#forall_vect"><span class="id" title="definition">forall_vect</span></a> <a class="idref" href="intro.html#p"><span class="id" title="variable">p</span></a> <a class="idref" href="intro.html#v"><span class="id" title="variable">v</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#1c39bf18749e5cc609e83c0a0ba5a372"><span class="id" title="notation">=</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#d43e996736952df71ebeeae74d10a287"><span class="id" title="notation">→</span></a> <a class="idref" href="intro.html#forall_vect"><span class="id" title="definition">forall_vect</span></a> <a class="idref" href="intro.html#p'"><span class="id" title="variable">p'</span></a> <a class="idref" href="intro.html#v"><span class="id" title="variable">v</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#1c39bf18749e5cc609e83c0a0ba5a372"><span class="id" title="notation">=</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">funelim</span> (<a class="idref" href="intro.html#forall_vect"><span class="id" title="definition">forall_vect</span></a> <span class="id" title="var">p</span> <span class="id" title="var">v</span>). <span class="id" title="tactic">auto</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">simp</span> <span class="id" title="var">forall_vect</span>. <span class="id" title="tactic">rewrite</span> !<a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Bool.Bool.html#andb_true_iff"><span class="id" title="lemma">andb_true_iff</span></a>; <span class="id" title="tactic">intuition</span> <span class="id" title="tactic">auto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+We now define a simple-minded sorting predicate 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Inductive</span> <a name="sorted"><span class="id" title="inductive">sorted</span></a> : <span class="id" title="keyword">∀</span> {<span class="id" title="var">n</span>}, <span class="id" title="abbreviation">vector</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#d43e996736952df71ebeeae74d10a287"><span class="id" title="notation">→</span></a> <span class="id" title="keyword">Prop</span> :=<br/>
+| <a name="sorted_nil"><span class="id" title="constructor">sorted_nil</span></a> : <a class="idref" href="intro.html#sorted"><span class="id" title="inductive">sorted</span></a> <a class="idref" href="intro.html#Vnil"><span class="id" title="abbreviation">Vnil</span></a><br/>
+| <a name="sorted_cons"><span class="id" title="constructor">sorted_cons</span></a> <span class="id" title="var">x</span> <span class="id" title="var">n</span> (<span class="id" title="var">v</span> : <span class="id" title="abbreviation">vector</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a>) :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="intro.html#forall_vect"><span class="id" title="definition">forall_vect</span></a> (<span class="id" title="keyword">fun</span> <span class="id" title="var">y</span> ⇒ <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Arith.PeanoNat.html#Nat.leb"><span class="id" title="definition">Nat.leb</span></a> <a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a> <a class="idref" href="intro.html#y"><span class="id" title="variable">y</span></a>) <a class="idref" href="intro.html#v"><span class="id" title="variable">v</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#1c39bf18749e5cc609e83c0a0ba5a372"><span class="id" title="notation">=</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#d43e996736952df71ebeeae74d10a287"><span class="id" title="notation">→</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="intro.html#sorted"><span class="id" title="inductive">sorted</span></a> <a class="idref" href="intro.html#v"><span class="id" title="variable">v</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#d43e996736952df71ebeeae74d10a287"><span class="id" title="notation">→</span></a> <a class="idref" href="intro.html#sorted"><span class="id" title="inductive">sorted</span></a> (<a class="idref" href="intro.html#Vcons"><span class="id" title="abbreviation">Vcons</span></a> <a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a> <a class="idref" href="intro.html#v"><span class="id" title="variable">v</span></a>).<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Again, we show this by repeat functional eliminations. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <a name="fn_sorted"><span class="id" title="lemma">fn_sorted</span></a> <span class="id" title="var">n</span> (<span class="id" title="var">v</span> : <span class="id" title="abbreviation">vector</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="intro.html#n"><span class="id" title="variable">n</span></a>) : <a class="idref" href="intro.html#sorted"><span class="id" title="inductive">sorted</span></a> <span class="id" title="notation">(</span><a class="idref" href="intro.html#sort"><span class="id" title="definition">sort</span></a> <a class="idref" href="intro.html#v"><span class="id" title="variable">v</span></a><span class="id" title="notation">).2</span>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">funelim</span> (<a class="idref" href="intro.html#sort"><span class="id" title="definition">sort</span></a> <span class="id" title="var">v</span>). </div>
+
+<div class="doc">
+The first elimination just gives the two <span class="inlinecode"><a class="idref" href="intro.html#sort"><span class="id" title="definition">sort</span></a></span> cases. 
+</div>
+<div class="code">
+&nbsp;&nbsp;- <span class="id" title="tactic">constructor</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">constructor</span>; <span class="id" title="tactic">auto</span>.<br/>
+</div>
+
+<div class="doc">
+Here we have a nested call to skip_first, for which the induction hypothesis holds: <br/>
+<span class="inlinecode">&nbsp;&nbsp;<span class="id" title="var">H</span> : <a class="idref" href="intro.html#sorted"><span class="id" title="inductive">sorted</span></a> (<a class="idref" href="intro.html#sort"><span class="id" title="definition">sort</span></a> (<a class="idref" href="intro.html#skip_first"><span class="id" title="definition">skip_first</span></a> (<span class="id" title="keyword">fun</span> <a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> ⇒ <a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a> &lt;=? <span class="id" title="var">h</span>) <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Vectors.Vector.html#t"><span class="id" title="inductive">t</span></a>).2).2<br/>
+&nbsp;&nbsp;============================<br/>
+&nbsp;&nbsp;<a class="idref" href="intro.html#forall_vect"><span class="id" title="definition">forall_vect</span></a> (<span class="id" title="keyword">fun</span> <a class="idref" href="intro.html#y"><span class="id" title="variable">y</span></a> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> ⇒ <span class="id" title="var">h</span> &lt;=? <a class="idref" href="intro.html#y"><span class="id" title="variable">y</span></a>) (<a class="idref" href="intro.html#sort"><span class="id" title="definition">sort</span></a> (<a class="idref" href="intro.html#skip_first"><span class="id" title="definition">skip_first</span></a> (<span class="id" title="keyword">fun</span> <a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> ⇒ <a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a> &lt;=? <span class="id" title="var">h</span>) <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Vectors.Vector.html#t"><span class="id" title="inductive">t</span></a>).2).2 = <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a>
+<div class="paragraph"> </div>
+
+</span>
+<div class="paragraph"> </div>
+
+   We can apply functional elimination likewise, even if the predicate argument is instantiated
+   here. 
+</div>
+<div class="code">
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="var">funelim</span> (<a class="idref" href="intro.html#skip_first"><span class="id" title="definition">skip_first</span></a> (<span class="id" title="keyword">fun</span> <span class="id" title="var">x</span> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> ⇒ <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Arith.PeanoNat.html#Nat.leb"><span class="id" title="definition">Nat.leb</span></a> <a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a> <span class="id" title="var">h</span>) <span class="id" title="var">t</span>); <span class="id" title="var">simp</span> <span class="id" title="var">sort</span> <span class="id" title="var">forall_vect</span> <span class="id" title="keyword">in</span> *; <span class="id" title="tactic">simpl</span> <span class="id" title="keyword">in</span> ×.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+After further simplifications, we get: <br/>
+<span class="inlinecode">&nbsp;&nbsp;<span class="id" title="var">Heq</span> : (<span class="id" title="var">h0</span> &lt;=? <span class="id" title="var">h</span>) = <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a><br/>
+&nbsp;&nbsp;<span class="id" title="var">H</span> : <a class="idref" href="intro.html#sorted"><span class="id" title="inductive">sorted</span></a> (<a class="idref" href="intro.html#Vcons"><span class="id" title="abbreviation">Vcons</span></a> <span class="id" title="var">h0</span> (<a class="idref" href="intro.html#sort"><span class="id" title="definition">sort</span></a> (<a class="idref" href="intro.html#skip_first"><span class="id" title="definition">skip_first</span></a> (<span class="id" title="keyword">fun</span> <a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> ⇒ <a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a> &lt;=? <span class="id" title="var">h0</span>) <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Vectors.Vector.html#t"><span class="id" title="inductive">t</span></a>).2).2)<br/>
+&nbsp;&nbsp;============================<br/>
+&nbsp;&nbsp;(<span class="id" title="var">h</span> &lt;=? <span class="id" title="var">h0</span>) &amp;&amp; <a class="idref" href="intro.html#forall_vect"><span class="id" title="definition">forall_vect</span></a> (<span class="id" title="keyword">fun</span> <a class="idref" href="intro.html#y"><span class="id" title="variable">y</span></a> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> ⇒ <span class="id" title="var">h</span> &lt;=? <a class="idref" href="intro.html#y"><span class="id" title="variable">y</span></a>) (<a class="idref" href="intro.html#sort"><span class="id" title="definition">sort</span></a> (<a class="idref" href="intro.html#skip_first"><span class="id" title="definition">skip_first</span></a> (<span class="id" title="keyword">fun</span> <a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a> : <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> ⇒ <a class="idref" href="intro.html#x"><span class="id" title="variable">x</span></a> &lt;=? <span class="id" title="var">h0</span>) <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Vectors.Vector.html#t"><span class="id" title="inductive">t</span></a>).2).2 = <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a>
+<div class="paragraph"> </div>
+
+</span>
+<div class="paragraph"> </div>
+
+    This requires inversion on the sorted predicate to find out that, by induction,
+    <span class="inlinecode"><span class="id" title="var">h0</span></span> is smaller than all of <span class="inlinecode"><span class="id" title="var">fn</span></span> <span class="inlinecode">(<a class="idref" href="intro.html#skip_first"><span class="id" title="definition">skip_first</span></a></span> <span class="inlinecode">...)</span>, and hence <span class="inlinecode"><span class="id" title="var">h</span></span> is as well.
+    This is just regular reasoning. Just note how we got to this point in just
+    two invocations of <span class="inlinecode"><span class="id" title="var">funelim</span></span>. 
+</div>
+<div class="code">
+
+<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">depelim</span> <span class="id" title="var">H</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Bool.Bool.html#andb_true_iff"><span class="id" title="lemma">andb_true_iff</span></a>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">enough</span> (<span class="id" title="var">h</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Arith.PeanoNat.html#01f84f7b4db7ca25b5fbdf8f04a7bebc"><span class="id" title="notation">&lt;=?</span></a> <span class="id" title="var">h0</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Logic.html#1c39bf18749e5cc609e83c0a0ba5a372"><span class="id" title="notation">=</span></a> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a>). <span class="id" title="tactic">split</span>; <span class="id" title="tactic">auto</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="intro.html#forall_vect_impl"><span class="id" title="lemma">forall_vect_impl</span></a> <span class="id" title="keyword">in</span> <span class="id" title="var">H</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="var">H</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">x</span> <span class="id" title="var">h0x</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">rewrite</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Arith.PeanoNat.html#Nat.leb_le"><span class="id" title="lemma">Nat.leb_le</span></a> <span class="id" title="keyword">in</span> ×. <span class="id" title="tactic">omega</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Arith.PeanoNat.html#Nat.leb_le"><span class="id" title="lemma">Nat.leb_le</span></a>, <a class="idref" href="http://coq.inria.fr/distrib/8.6/stdlib/Coq.Arith.PeanoNat.html#Nat.leb_nle"><span class="id" title="lemma">Nat.leb_nle</span></a> <span class="id" title="keyword">in</span> ×. <span class="id" title="tactic">omega</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+</div>
+<hr/>This page has been generated by <a href="http://coq.inria.fr/">coqdoc</a>
+</div>
+
+</div>
+
+</body>
+</html>
