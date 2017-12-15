@@ -22,7 +22,7 @@ providing a definitional extension to the Coq kernel.
 - The [reference manual](http://github.com/mattam82/Coq-Equations/raw/master/doc/equations.pdf)
   provides an introduction and a summary of the commands and options.
   This introduction can also be followed interactively with Equations installed:
-  [introduction.v](http://github.com/mattam82/Coq-Equations/raw/master/doc/intro.v)
+  [equations_intro.v](http://github.com/mattam82/Coq-Equations/raw/master/doc/equations_intro.v)
   
 - A gallery of [examples](examples) provides more consequent
   developments using Equations.
