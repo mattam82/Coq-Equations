@@ -34,7 +34,7 @@ Require Import Bvector.
 Equations neg (b : bool) : bool :=
 neg true := false ;
 neg false := true.
-
+Print All.
 (* begin hide *)
 Check neg_ind.
 Check neg_ind_equation_1.
