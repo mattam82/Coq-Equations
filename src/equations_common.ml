@@ -192,9 +192,9 @@ let declare_constant id body ty poly evd kind =
 let declare_instance id poly evd ctx cl args =
   let open Typeclasses in
   let open EConstr in
-  let c, t = instance_constructor (from_peuniverses evd cl) (List.map (EConstr.to_constr evd) args) in
-  let term = it_mkLambda_or_LetIn (of_constr (Option.get c)) ctx in
-  let typ = EConstr.it_mkProd_or_LetIn (of_constr t) ctx in
+  let c, t = instance_constructor cl args in
+  let term = it_mkLambda_or_LetIn (Option.get c) ctx in
+  let typ = EConstr.it_mkProd_or_LetIn t ctx in
   let cst = declare_constant id term (Some typ) poly evd (IsDefinition Instance) in
   let inst = new_instance (fst cl) Hints.empty_hint_info true poly (Globnames.ConstRef cst) in
     add_instance inst; mkConst cst
@@ -971,10 +971,7 @@ let rel_vect n m = Array.map of_constr (rel_vect n m)
 let applistc c a = applist (c, a)
 
 let instance_constructor sigma tc args =
-  let k, args =
-    Typeclasses.instance_constructor (from_peuniverses sigma tc) (List.map (to_constr sigma) args)
-  in
-  Option.map of_constr k, of_constr args
+  Typeclasses.instance_constructor tc args
 
 let decompose_appvect sigma t =
   match kind sigma t with
