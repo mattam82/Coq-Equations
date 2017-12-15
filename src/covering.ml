@@ -815,7 +815,7 @@ let env_of_rhs evars ctx env s lets =
 let interp_constr_in_rhs_env env evars impls (ctx, envctx, liftn, subst) c ty =
   match ty with
   | None ->
-     let c, _ = Evarutil.evd_comb0 (fun evars -> interp_constr_evars_impls (push_rel_context ctx env) evars ~impls c) evars
+     let c, _ = interp_constr_evars_impls (push_rel_context ctx env) evars ~impls c 
      in
      let c' = substnl subst 0 c in
      evars := Typeclasses.resolve_typeclasses
@@ -826,8 +826,8 @@ let interp_constr_in_rhs_env env evars impls (ctx, envctx, liftn, subst) c ty =
   | Some ty -> 
      let ty' = lift liftn ty in
      let ty' = nf_evar !evars ty' in
-     let c, _ = Evarutil.evd_comb0 (fun evars -> interp_casted_constr_evars_impls 
-	          (push_rel_context ctx env) evars ~impls c ty') evars
+     let c, _ = interp_casted_constr_evars_impls 
+	          (push_rel_context ctx env) evars ~impls c ty'
      in
      evars := Typeclasses.resolve_typeclasses 
                ~filter:Typeclasses.all_evars env !evars;
@@ -1529,8 +1529,8 @@ and interp_wheres env ctx evars path data s lets w =
   let envna = push_named_context nactx env in
   let aux (lets,nlets,coverings,env (* named *),envctx)
               (((loc,id),nested,b,t),clauses) =
-    let ienv, ((env', sign), impls) = Evarutil.evd_comb1 (interp_context_evars env) evars b in
-    let arity = Evarutil.evd_comb1 (interp_type_evars env' ?impls:None) evars t in
+    let ienv, ((env', sign), impls) = interp_context_evars env evars b in
+    let arity = interp_type_evars env' evars t in
     let sign = subst_rel_context nlets subst sign in
     let arity = substnl subst (List.length sign + nlets) arity in
     let sign = nf_rel_context_evar !evars sign in
