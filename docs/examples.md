@@ -4,6 +4,10 @@ permalink: /examples/
 title: Gallery of programs
 ---
 
+- [Basics](examples/Basics.html): basic examples demonstrating the
+  features of Equations
+  ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/Basics.v)).
+
 - [Polynomials](examples/polynomials.html): a reflexive tactic for
   solving boolean tautologies
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/polynomials.v)).
