@@ -1,4 +1,4 @@
-vfiles := intro.v
+vfiles := equations_intro.v
 texfiles := equations.tex manual.tex
 
 COQC?="$(COQBIN)coqc"
