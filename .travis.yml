@@ -26,7 +26,7 @@ env:
   - COQ_VER="8.6"
 
 install:
-- opam init -j ${NJOBS} --compiler=${COMPILER} -n -y
+- opam init -j ${NJOBS} --switch=${COMPILER} -n -y
 - eval $(opam config env)
 - opam config list
 - opam install -j ${NJOBS} -y camlp5.${CAMLP5_VER} ocamlfind.${FINDLIB_VER} coq.${COQ_VER}
