@@ -179,6 +179,11 @@ filter (cons a l) p <= p a => {
   filter (cons a l) p true := a :: filter l p ;
   filter (cons a l) p false := filter l p }.
 
+(** By default, equations makes definitions opaque after definition,
+    to avoid spurious unfoldings, but this can be reverted on a case by case
+    basis, or using the global [Set Equations Transparent] option. *)
+Global Transparent filter.
+
 (** A common use of with clauses is to scrutinize recursive results like the following: *)
 
 Equations unzip {A B} (l : list (A * B)) : list A * list B :=
@@ -422,11 +427,31 @@ Inductive t_direct_subterm (A : Type) :
 
 Check well_founded_t_subterm : forall A, WellFounded (t_subterm A).
 
-(** [t_subterm] itself is the transitive closure of the relation
-    seen as an homogeneous one by packing the indices of the family
-    with the object itself. Once this is derived, we can use it to
-    define recursive definitions on vectors that the guard condition
-    couldn't handle:*)
+(** The relation is actually called [t_subterm] as [vector] is just
+    a notation for [Vector.t].
+    [t_subterm] itself is the transitive closure of the relation seen as
+    an homogeneous one by packing the indices of the family with the
+    object itself. Once this is derived, we can use it to define
+    recursive definitions on vectors that the guard condition couldn't
+    handle. The signature provides a [signature_pack] function to pack a
+    vector with its index. The well-founded relation is defined on the
+    packed vector type. *)
+
+Module UnzipVect.
+  Context {A B : Type}.
+
+  (** We can use the packed relation to do well-founded recursion on the vector.
+      Note that we do a recursive call on a substerm of type [vector A n] which
+      must be shown smaller than a [vector A (S n)]. They are actually compared
+      at the packed type [{ n : nat & vector A n}]. *)
+
+  Equations unzip {n} (v : vector (A * B) n) : vector A n * vector B n :=
+  unzip v by rec (signature_pack v) (@t_subterm (A * B)) :=
+  unzip Vnil := (Vnil, Vnil) ;
+  unzip (Vector.cons (pair x y) n v) with unzip v := {
+    | pair xs ys := (Vector.cons x xs, Vector.cons y ys) }.
+End UnzipVect.
+
 (* begin hide *)
 Require Import Relation_Operators.
 Import Sigma_Notations.
@@ -441,7 +466,10 @@ Proof.
 Qed.
 (* end hide *)
 
-(** We put ourselves in a section to parameterize skip by a predicate *)
+(** While this was just mimicking simple structural recursion, we can of
+    course use this for more elaborate termination arguments. We put
+    ourselves in a section to parameterize a [skip] function by a predicate: *)
+
 Section Skip.
   Context {A : Type} (p : A -> bool).
   Equations skip_first {n} (v : vector A n) : &{ n : nat & vector A n } :=
@@ -549,3 +577,29 @@ Proof.
     intros x h0x. simpl. rewrite Nat.leb_le in *. omega.
     rewrite Nat.leb_le, Nat.leb_nle in *. omega.
 Qed.
+
+(** *** Pattern-matching and axiom K *)
+
+Module KAxiom.
+
+  (** By default we allow the K axiom, but it can be unset. *)
+
+  Unset Equations WithK.
+
+  (** In this case the following definition fails as [K] is not derivable on type [A]. *)
+
+  Fail Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
+    K x P p eq_refl := p.
+
+  (** However, types enjoying a provable instance of the [K] axiom are fine.
+      This relies on an instance of the [EqDec] typeclass for natural numbers.
+      Note that the computational behavior of this definition on open terms
+      is not to reduce to [p] but pattern-matches on the decidable equality proof.
+      However the defining equation still holds as a _propositional_ equality. *)
+
+  Equations K (x : nat) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
+    K x P p eq_refl := p.
+
+  Print Assumptions K. (* Closed under the global context *)
+
+End KAxiom.
