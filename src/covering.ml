@@ -357,11 +357,15 @@ let make_permutation ?(env = Global.env ()) (sigma : Evd.evar_map)
      * so on. It also need better error handling. *)
     let env1 = push_rel_context ctx1 env in
     let env2 = push_rel_context ctx2 env in
+    let reduce env sigma c =
+      let flags = CClosure.RedFlags.red_sub CClosure.all CClosure.RedFlags.fDELTA in
+        Reductionops.clos_norm_flags flags env sigma c
+    in
     let merge_pats pat1 pat2 =
       let sigma, c1 = constr_of_pat ~inacc_and_hide:false env1 sigma pat1 in
       let sigma, c2 = constr_of_pat ~inacc_and_hide:false env2 sigma pat2 in
-      let c1 = Tacred.compute env1 sigma c1 in
-      let c2 = Tacred.compute env2 sigma c2 in
+      let c1 = reduce env1 sigma c1 in
+      let c2 = reduce env2 sigma c2 in
         merge_constrs c1 c2
     in
     List.iter2 merge_pats pats1 pats2;
