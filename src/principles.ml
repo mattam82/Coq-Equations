@@ -1081,7 +1081,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
                 mind_entry_inds = inds }
     in
     let () = Goptions.set_bool_option_value_gen (Some true) ["Elimination";"Schemes"] false in
-    let kn = Command.declare_mutual_inductive_with_eliminations inductive Universes.empty_binders [] in
+    let kn = ComInductive.declare_mutual_inductive_with_eliminations inductive Universes.empty_binders [] in
     let () = Goptions.set_bool_option_value_gen (Some true) ["Elimination";"Schemes"] true in
     let kn, comb =
       let sort = get_sort () in

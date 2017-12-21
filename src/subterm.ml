@@ -148,7 +148,7 @@ let derive_subterm env sigma ~polymorphic ind =
         mind_entry_private = None;
         mind_entry_universes = uctx}
     in
-    let k = Command.declare_mutual_inductive_with_eliminations inductive Universes.empty_binders [] in
+    let k = ComInductive.declare_mutual_inductive_with_eliminations inductive Universes.empty_binders [] in
     let () =
       let env = Global.env () in
       let sigma = Evd.from_env env in
