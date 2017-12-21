@@ -167,9 +167,8 @@ let term_of_tree status isevar env0 tree =
               let evm, term, ty = aux env evm x in
               (evm, applistc term args) end) rest)
 	in
-	let pv : Proofview_monad.proofview = Obj.magic pv in
-	let pv = { pv with Proofview_monad.solution = evm } in
-	let _, pv', _, _ = Proofview.apply env tac (Obj.magic pv) in
+        let tac = Proofview.tclTHEN (Proofview.Unsafe.tclEVARS evm) tac in
+	let _, pv', _, _ = Proofview.apply env tac pv in
 	let c = List.hd (Proofview.partial_proof entry pv') in
 	  Proofview.return pv', 
 	  it_mkLambda_or_LetIn (subst_vars substc c) ctx, it_mkProd_or_LetIn ty ctx
