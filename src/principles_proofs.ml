@@ -40,12 +40,12 @@ module PathMap = struct
 
   include Map.Make (PathOT)
 
-  let union f = merge (fun k l r ->
-                  match l, r with
-                  | Some l, Some r -> f k l r
-                  | Some _, _ -> l
-                  | _, Some _ -> r
-                  | _, _ -> l)
+  (* let union f = merge (fun k l r ->
+   *                 match l, r with
+   *                 | Some l, Some r -> f k l r
+   *                 | Some _, _ -> l
+   *                 | _, Some _ -> r
+   *                 | _, _ -> l) *)
 end
 
 type where_map = (constr * Names.Id.t * splitting) Evar.Map.t
@@ -183,7 +183,7 @@ let mutual_fix li l =
       | [] -> sign
       | (f, n, ar) :: oth ->
          let (sp', u')  = check_mutind env sigma n ar in
-         if not (eq_mind sp sp') then
+         if not (MutInd.equal sp sp') then
            error "Fixpoints should be on the same mutual inductive declaration.";
          if try ignore (Context.Named.lookup f sign); true with Not_found -> false then
            CErrors.user_err ~hdr:"Logic.prim_refiner"
@@ -380,10 +380,13 @@ let rec aux_ind_fun info chop unfs unfids = function
               error "Couldn't find associated args of where"
           in
           if !debug then
-            Feedback.msg_debug (str"Found path " ++ str (Id.to_string wherepath) ++ str" where: " ++
-                                  pr_id s.where_id ++ str"term: " ++ pr_constr (Unsafe.to_constr s.where_term) ++
-                                  str" instance: " ++ prlist_with_sep spc pr_constr args ++ str" context map " ++
-                                  pr_context_map (Global.env ()) Evd.empty s.where_prob);
+            (let env = Global.env () in
+             Feedback.msg_debug (str"Found path " ++ str (Id.to_string wherepath) ++ str" where: " ++
+                                  pr_id s.where_id ++ str"term: " ++
+                                  print_constr_env env Evd.empty s.where_term ++
+                                  str" instance: " ++ prlist_with_sep spc (fun x -> print_constr_env env Evd.empty (EConstr.of_constr x)) args ++
+                                  str" context map " ++
+                                  pr_context_map env Evd.empty s.where_prob));
           let ty =
             let ind = Nametab.locate (qualid_of_ident wherepath) in
             let ctx = pi1 s.where_prob in
@@ -464,8 +467,8 @@ let observe_tac s tac =
 let ind_fun_tac is_rec f info fid split unfsplit progs =
   match is_rec with
   | Some (Syntax.Structural [_]) ->
-    let c = constant_value_in (Global.env ()) (Term.destConst f) in
-    let i = let (inds, _), _ = Term.destFix c in inds.(0) in
+    let c = constant_value_in (Global.env ()) (Constr.destConst f) in
+    let i = let (inds, _), _ = Constr.destFix c in inds.(0) in
     let recid = add_suffix fid "_rec" in
       (* tclCOMPLETE  *)
       of82 (tclTHENLIST
@@ -717,7 +720,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
 
     | Compute (_, _, _, _), Compute ((ctx,_,_), _, _, REmpty id) ->
 	let d = nth ctx (pred id) in
-	let id = out_name (get_name d) in
+	let id = Name.get_id (get_name d) in
 	to82 (abstract (depelim id))
 
     | _, _ -> assert false

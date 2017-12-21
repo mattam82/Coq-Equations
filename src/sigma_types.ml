@@ -17,7 +17,6 @@ open Reductionops
 open Pp
 open Evarutil
 open List
-open Libnames
 open Globnames
 open Tactics
 open Tacticals
@@ -766,7 +765,7 @@ module Tactics =struct
           | None ->
              (tclTHENFIRST (Proofview.V82.of_tactic (assert_before_replacing id typ))
                            (Tacmach.refine_no_check prf)) gl)
-      | None -> tclFAIL 0 (str"No currying to do in " ++ pr_id id) gl)
+      | None -> tclFAIL 0 (str"No currying to do in " ++ Id.print id) gl)
 
   let curry =
     Proofview.Goal.nf_enter begin fun gl ->

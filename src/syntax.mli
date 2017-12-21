@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-open Term
+open Constr
 open Environ
 open Names
 open Equations_common
@@ -91,7 +91,7 @@ and logical_rec =
 and rec_info = {
   comp : Names.Constant.t option;
   comp_app : constr;
-  comp_proj : constant;
+  comp_proj : Constant.t;
   comp_recarg : int;
 }
 val is_structural : rec_type option -> bool

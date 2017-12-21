@@ -20,7 +20,7 @@ val constrs_of_coq_sigma :
   Environ.env ->
   Evd.evar_map ref ->
   constr ->
-  constr -> (Names.name * constr * constr * constr) list
+  constr -> (Names.Name.t * constr * constr * constr) list
 val decompose_coq_sigma : Evd.evar_map -> constr -> (EInstance.t * constr * constr) option
 val decompose_indapp : Evd.evar_map ->
   constr -> constr array -> constr * constr array

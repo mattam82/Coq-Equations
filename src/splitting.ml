@@ -347,7 +347,7 @@ type term_info = {
   term_id : global_reference;
   base_id : string;
   decl_kind: Decl_kinds.definition_kind;
-  helpers_info : (Constr.existential_key * int * identifier) list;
+  helpers_info : (Evar.t * int * identifier) list;
   comp_obls : Id.Set.t; (** The recursive call proof obligations *)
 }
 

@@ -15,7 +15,7 @@ open Environ
 open Globnames
 open List
 open Libnames
-open Topconstr
+open Constrexpr_ops
 open Entries
 open Constrexpr
 open Vars
@@ -90,7 +90,7 @@ let program_fixdecls p fixdecls =
   | Some (NestedOn None) -> (** Actually the definition is not self-recursive *)
      List.filter (fun decl ->
          let na = Context.Rel.Declaration.get_name decl in
-         let id = Nameops.out_name na in
+         let id = Nameops.Name.get_id na in
          not (Id.equal id p.program_id)) fixdecls
   | _ -> fixdecls
 
@@ -99,7 +99,7 @@ let define_principles flags fixprots progs =
   let evd = ref (Evd.from_env env) in
   let newsplits env fixdecls (p, prog) =
     let fixsubst = List.map (fun d -> let na, b, t = to_tuple d in
-                                      (out_name na, Option.get b)) fixdecls in
+                                      (Nameops.Name.get_id na, Option.get b)) fixdecls in
     let i = p.program_id in
     let sign = p.program_sign in
     let oarity = p.program_oarity in
@@ -409,7 +409,7 @@ let define_by_eqs opts eqs nt =
            Some (interp_reca reck (List.length sign - k))
          with Not_found ->
            user_err_loc (Some (fst lid), "struct_index",
-                         Pp.(str"No argument named " ++ pr_id (snd lid) ++ str" found"))
+                         Pp.(str"No argument named " ++ Id.print (snd lid) ++ str" found"))
     in
     let body = it_mkLambda_or_LetIn oarity sign in
     let _ = Pretyping.check_evars env Evd.empty !evd body in
@@ -531,7 +531,7 @@ let define_by_eqs opts eqs nt =
            let fixdecls =
              List.filter (fun decl ->
                  let na = Context.Rel.Declaration.get_name decl in
-                 let id = Nameops.out_name na in
+                 let id = Nameops.Name.get_id na in
                  not (Id.equal id p.program_id)) fixdecls
            in
            id_subst (sign @ fixdecls)
@@ -585,7 +585,7 @@ let define_by_eqs opts eqs nt =
       | Some (NestedOn None) -> (** Actually the definition is not self-recursive *)
          List.filter (fun decl ->
              let na = Context.Rel.Declaration.get_name decl in
-             let id = Nameops.out_name na in
+             let id = Nameops.Name.get_id na in
              not (Id.equal id p.program_id)) fixdecls
       | _ -> fixdecls
     in
@@ -603,7 +603,7 @@ let solve_equations_goal destruct_tac tac gl =
   let concl = pf_concl gl in
   let intros, move, concl =
     let rec intros goal move = 
-      match kind_of_term goal with
+      match Constr.kind goal with
       | Prod (Name id, _, t) -> 
          let id = fresh_id_in_env Id.Set.empty id (pf_env gl) in
          let tac, move, goal = intros (subst1 (Constr.mkVar id) t) (Some id) in

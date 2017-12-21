@@ -12,36 +12,36 @@ module type EQREFS = sig
   (* Equality type. *)
   val eq : Names.inductive Lazy.t
   val eq_refl : Names.constructor Lazy.t
-  val eq_rect : Names.constant Lazy.t
-  val eq_rect_r : Names.constant Lazy.t
+  val eq_rect : Names.Constant.t Lazy.t
+  val eq_rect_r : Names.Constant.t Lazy.t
   (* Decidable equality typeclass. *)
-  val eq_dec : Names.constant Lazy.t
+  val eq_dec : Names.Constant.t Lazy.t
   (* Logic types. *)
   val zero : Names.inductive Lazy.t
   val one : Names.inductive Lazy.t
   val one_val : Names.constructor Lazy.t
-  val one_ind_dep : Names.constant Lazy.t
-  val zero_ind : Names.constant Lazy.t
-  val zero_ind_dep : Names.constant Lazy.t
+  val one_ind_dep : Names.Constant.t Lazy.t
+  val zero_ind : Names.Constant.t Lazy.t
+  val zero_ind_dep : Names.Constant.t Lazy.t
   (* NoConfusion. *)
   val noConfusion : Names.inductive Lazy.t
-  val apply_noConfusion : Names.constant Lazy.t
-  val simplify_ind_pack : Names.constant Lazy.t
-  val simplify_ind_pack_inv : Names.constant Lazy.t
-  val opaque_ind_pack_eq_inv : Names.constant Lazy.t
+  val apply_noConfusion : Names.Constant.t Lazy.t
+  val simplify_ind_pack : Names.Constant.t Lazy.t
+  val simplify_ind_pack_inv : Names.Constant.t Lazy.t
+  val opaque_ind_pack_eq_inv : Names.Constant.t Lazy.t
   (* Simplification of dependent pairs. *)
-  val simpl_sigma : Names.constant Lazy.t
-  val simpl_sigma_dep : Names.constant Lazy.t
-  val simpl_sigma_dep_dep : Names.constant Lazy.t
-  val pack_sigma_eq : Names.constant Lazy.t
+  val simpl_sigma : Names.Constant.t Lazy.t
+  val simpl_sigma_dep : Names.Constant.t Lazy.t
+  val simpl_sigma_dep_dep : Names.Constant.t Lazy.t
+  val pack_sigma_eq : Names.Constant.t Lazy.t
   (* Deletion using K. *)
-  val simpl_K : Names.constant Lazy.t
-  val simpl_K_dec : Names.constant Lazy.t
+  val simpl_K : Names.Constant.t Lazy.t
+  val simpl_K_dec : Names.Constant.t Lazy.t
   (* Solution lemmas. *)
-  val solution_left : Names.constant Lazy.t
-  val solution_left_dep : Names.constant Lazy.t
-  val solution_right : Names.constant Lazy.t
-  val solution_right_dep : Names.constant Lazy.t
+  val solution_left : Names.Constant.t Lazy.t
+  val solution_left_dep : Names.Constant.t Lazy.t
+  val solution_right : Names.Constant.t Lazy.t
+  val solution_right_dep : Names.Constant.t Lazy.t
 end
 
 module RefsHelper = struct
@@ -328,13 +328,13 @@ let check_inductive sigma (ind : Names.inductive) : EConstr.types -> bool =
 let check_construct sigma (constr : Names.constructor) : EConstr.constr -> bool =
   is_global sigma (Globnames.ConstructRef constr)
 (* Check if a term is a given constant. *)
-let check_constant sigma (cst : Names.constant) : EConstr.constr -> bool =
+let check_constant sigma (cst : Names.Constant.t) : EConstr.constr -> bool =
   is_global sigma (Globnames.ConstRef cst)
 
 (* Deconstruct the goal if it's a product. Otherwise, raise CannotSimplify. *)
-let check_prod sigma (ty : EConstr.types) : Names.name * EConstr.types * EConstr.types =
+let check_prod sigma (ty : EConstr.types) : Names.Name.t * EConstr.types * EConstr.types =
   let name, ty1, ty2 = try destProd sigma ty
-    with Term.DestKO -> raise (CannotSimplify (str "The goal is not a product."))
+    with Constr.DestKO -> raise (CannotSimplify (str "The goal is not a product."))
   in name, ty1, ty2
 
 (* Check that the given type is an equality, and some
@@ -399,7 +399,7 @@ let with_retry (f : simplification_fun) : simplification_fun =
         let ty1 = EConstr.mkApp (Builder.eq evd, [| tA; t1; t2 |]) in
           EConstr.mkProd (name, ty1, ty2)
       with CannotSimplify _ -> ty
-      with Term.DestKO -> ty
+      with Constr.DestKO -> ty
     in
       f env evd (ctx, ty)
 
@@ -431,9 +431,9 @@ let remove_sigma : simplification_fun =
               let args = [Some tA; Some tP; Some tB; Some tt; Some tu;
                           Some tp; Some tq; None] in
                 tsimpl_sigma, args
-            else raise Term.DestKO
+            else raise Constr.DestKO
           with
-          | Term.DestKO ->
+          | Constr.DestKO ->
               (* Dependency in the pair, but not in the goal. *)
               let tsimpl_sigma = Globnames.ConstRef (Lazy.force EqRefs.simpl_sigma_dep) in
               let tP = tB in

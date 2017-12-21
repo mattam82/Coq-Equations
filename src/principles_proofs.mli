@@ -24,7 +24,7 @@ type ind_info = {
 
 val find_helper_info :
   Splitting.term_info ->
-  Term.constr -> Term.existential_key * int * Names.Id.t
+  Constr.t -> Evar.t * int * Names.Id.t
 val below_transparent_state : unit -> Names.transparent_state
 val simpl_star : Proof_type.tactic
 val eauto_with_below :
@@ -40,7 +40,7 @@ val autorewrite_one : string -> Proofview.V82.tac
 val mutual_fix : string list -> int list -> unit Proofview.tactic
 
 val find_helper_arg :
-  Splitting.term_info -> Term.constr -> 'a array -> Term.existential_key * int * 'a
+  Splitting.term_info -> Constr.t -> 'a array -> Evar.t * int * 'a
 val find_splitting_var : Evd.evar_map ->
   Covering.pat list -> int -> constr list -> Names.Id.t
 val intros_reducing : Proof_type.tactic
@@ -57,7 +57,7 @@ val aux_ind_fun :
   Names.Id.t list -> Covering.splitting -> Proof_type.tactic
 val ind_fun_tac :
   Syntax.rec_type option ->
-  Term.constr ->
+  Constr.t ->
   ind_info ->
   Names.Id.t ->
   Covering.splitting -> Covering.splitting option ->
@@ -68,8 +68,8 @@ val prove_unfolding_lemma :
   Splitting.term_info ->
   where_map ->
   Syntax.logical_rec ->
-  Names.constant ->
-  Names.constant ->
+  Names.Constant.t ->
+  Names.Constant.t ->
   Covering.splitting -> Covering.splitting ->
   Proof_type.goal Evd.sigma ->
   Proof_type.goal list Evd.sigma

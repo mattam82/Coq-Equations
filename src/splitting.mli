@@ -6,7 +6,6 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-open Term
 open Environ
 open Names
 open Syntax
@@ -15,7 +14,7 @@ open EConstr
 
 val helper_evar :
   Evd.evar_map ->
-  Evd.evar ->
+  Evar.t ->
   env ->
   types -> Evar_kinds.t Loc.located -> Evd.evar_map * constr
 
@@ -25,7 +24,7 @@ val term_of_tree :
   Evd.evar_map ref ->
   env ->
   splitting ->
-  (existential_key * int) list * int Evar.Map.t * constr * constr
+  (Evar.t * int) list * int Evar.Map.t * constr * constr
 
 
 (** Compilation from splitting tree to terms. *)
@@ -36,7 +35,7 @@ type term_info = {
   term_id : Globnames.global_reference;
   base_id : string;
   decl_kind : Decl_kinds.definition_kind;
-  helpers_info : (existential_key * int * identifier) list;
+  helpers_info : (Evar.t * int * identifier) list;
   comp_obls : Id.Set.t; (** The recursive call proof obligations *)
 }
 
@@ -67,9 +66,9 @@ val define_tree :
   Id.t * rel_context * types ->
   logical_rec option ->
   splitting ->
-  (splitting -> ((Id.t -> Term.constr) -> Term.constr -> Term.constr) ->
+  (splitting -> ((Id.t -> Constr.t) -> Constr.t -> Constr.t) ->
    term_info ->
-   Evd.evar_universe_context -> unit) ->
+   UState.t -> unit) ->
   unit
 
 val mapping_rhs : Evd.evar_map -> context_map -> splitting_rhs -> splitting_rhs

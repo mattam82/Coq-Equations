@@ -12,8 +12,8 @@ open Equations_common
 open Splitting
 
 val make_ref : string list -> string -> Globnames.global_reference
-val fix_proto_ref : unit -> constant
-val constr_of_global : Globnames.global_reference -> Term.constr
+val fix_proto_ref : unit -> Constant.t
+val constr_of_global : Globnames.global_reference -> Constr.t
 
 val define_by_eqs :
   Syntax.equation_option list ->
@@ -39,8 +39,8 @@ val equations :
 val solve_equations_goal :
   Proof_type.tactic ->
   Proof_type.tactic ->
-  Proof_type.goal Tacmach.sigma -> Proof_type.goal list Evd.sigma
+  Proof_type.goal Evd.sigma -> Proof_type.goal list Evd.sigma
 
 val dependencies :
   env -> Evd.evar_map ->
-  Term.constr -> named_context -> Id.Set.t * Id.Set.t
+  Constr.t -> named_context -> Id.Set.t * Id.Set.t

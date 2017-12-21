@@ -81,7 +81,7 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   in
   let tru = e_new_global evd (get_one ()) in
   let fls = e_new_global evd (get_zero ()) in
-  let xid = id_of_string "x" and yid = id_of_string "y" in
+  let xid = Id.of_string "x" and yid = Id.of_string "y" in
   let xdecl = of_tuple (Name xid, None, argty) in
   let binders = xdecl :: ctx in
   let ydecl = of_tuple (Name yid, None, lift 1 argty) in

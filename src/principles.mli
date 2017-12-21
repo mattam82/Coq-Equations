@@ -24,7 +24,7 @@ val abstract_rec_calls : Evd.evar_map ->
   Syntax.rec_type option ->
   int ->
   ((constr * int list) * (constr * int list) option * int *
-   Term.constr)
+   Constr.t)
   list -> constr -> rel_context * int * constr
 val subst_app :Evd.evar_map ->
   constr ->
@@ -36,17 +36,17 @@ val subst_comp_proj_split : Evd.evar_map ->
   constr -> constr -> Covering.splitting -> Covering.splitting
 val reference_of_id : Names.Id.t -> Libnames.reference
 val clear_ind_assums : Evd.evar_map ->
-  Names.mutual_inductive ->
+  Names.MutInd.t ->
   Equations_common.rel_context -> Equations_common.rel_context
-val type_of_rel : Term.constr -> rel_context -> constr
+val type_of_rel : Constr.t -> rel_context -> constr
 val compute_elim_type :
   Environ.env ->
   Equations_common.esigma ->
   Syntax.rec_type option ->
   ((constr * int list) * (constr * int list) option * int *
-   Term.constr)
+   Constr.t)
   list ->
-  Names.mutual_inductive ->
+  Names.MutInd.t ->
   int ->
          (int *
           ((EConstr.constr * int list) *

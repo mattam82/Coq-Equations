@@ -80,7 +80,7 @@ val lift_list : constr list -> constr list
 val lift_constrs : int -> constr list -> constr list
 
 (** Evars *)
-val new_untyped_evar : unit -> Evd.evar
+val new_untyped_evar : unit -> Evar.t
 
 (** Checking *)
 val check_term :
@@ -188,7 +188,7 @@ val set_logic : logic -> unit
 val prop_logic : logic
 val type_logic : logic
 
-val get_sort : unit -> Term.sorts_family
+val get_sort : unit -> Sorts.family
 val get_eq : unit -> Globnames.global_reference
 val get_eq_refl : unit -> Globnames.global_reference
 val get_eq_case : unit -> Globnames.global_reference
@@ -213,8 +213,8 @@ val coq_pr2 : Names.Projection.t lazy_t
 val coq_zero : Globnames.global_reference lazy_t
 val coq_succ : Globnames.global_reference lazy_t
 val coq_nat : Globnames.global_reference lazy_t
-val coq_nat_of_int : int -> Term.constr
-val int_of_coq_nat : Term.constr -> int
+val coq_nat_of_int : int -> Constr.t
+val int_of_coq_nat : Constr.t -> int
 
 val coq_eq : Globnames.global_reference Lazy.t
 val coq_eq_refl : Globnames.global_reference lazy_t
@@ -295,7 +295,7 @@ val rec_tac :            'a ->
 val rec_wf_tac :            'a ->
            Names.Id.t -> 'a ->
                          Tacexpr.r_dispatch Tacexpr.gen_tactic_expr
-(** Unfold the first occurrence of a constant declared unfoldable in db
+(** Unfold the first occurrence of a Constant.t declared unfoldable in db
   (with Hint Unfold) *)
 val autounfold_first :
   Hints.hint_db_name list ->
@@ -303,8 +303,8 @@ val autounfold_first :
   Goal.goal Evd.sigma -> Goal.goal list Evd.sigma
 
 type hintdb_name = string
-val db_of_constr : Term.constr -> hintdb_name
-val dbs_of_constrs : Term.constr list -> hintdb_name list
+val db_of_constr : Constr.t -> hintdb_name
+val dbs_of_constrs : Constr.t list -> hintdb_name list
 
 val pr_smart_global :
   Libnames.reference Misctypes.or_by_notation -> Pp.t
@@ -369,7 +369,7 @@ val subst_in_named_ctx :
   Names.Id.t -> constr -> named_context -> named_context
 
 val evar_declare : named_context_val ->
-  Evd.evar -> 
+  Evar.t -> 
   EConstr.types -> ?src:(Evar_kinds.t Loc.located) -> Evd.evar_map -> Evd.evar_map
 
 val new_evar :            Environ.env ->
@@ -394,8 +394,8 @@ val hintdb_set_transparency :
   Constant.t -> bool -> Hints.hint_db_name -> unit
   
 (** To add to the API *)
-val to_peuniverses : 'a Constr.puniverses -> 'a peuniverses
-val from_peuniverses : Evd.evar_map -> 'a peuniverses -> 'a Constr.puniverses
+val to_peuniverses : 'a Univ.puniverses -> 'a peuniverses
+val from_peuniverses : Evd.evar_map -> 'a peuniverses -> 'a Univ.puniverses
 
 val is_global : Evd.evar_map -> Globnames.global_reference -> constr -> bool
 val constr_of_global_univ : Evd.evar_map -> Globnames.global_reference peuniverses -> constr

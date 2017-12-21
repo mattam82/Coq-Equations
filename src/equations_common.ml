@@ -8,8 +8,7 @@
 
 open Util
 open Names
-open Nameops
-open Term
+open Constr
 open Termops
 open Environ
 open Reductionops
@@ -218,7 +217,7 @@ let rec coq_nat_of_int = function
   | n -> mkApp (Universes.constr_of_global (Lazy.force coq_succ), [| coq_nat_of_int (pred n) |])
 
 let rec int_of_coq_nat c = 
-  match kind_of_term c with
+  match Constr.kind c with
   | App (f, [| arg |]) -> succ (int_of_coq_nat arg)
   | _ -> 0
 
@@ -252,7 +251,7 @@ type logic = {
   logic_eq_refl: logic_ref;
   logic_eq_case: logic_ref;
   logic_eq_elim: logic_ref;
-  logic_sort : sorts_family;
+  logic_sort : Sorts.family;
   logic_zero : logic_ref;
   logic_one : logic_ref;
   logic_one_val : logic_ref;
@@ -267,7 +266,7 @@ type logic = {
 let prop_logic =
   { logic_eq_ty = coq_eq; logic_eq_refl = coq_eq_refl;
     logic_eq_case = coq_eq_case; logic_eq_elim = coq_eq_elim;
-    logic_sort = InProp; logic_zero = coq_False;
+    logic_sort = Sorts.InProp; logic_zero = coq_False;
     logic_one = coq_True; logic_one_val = coq_I;
     logic_product = lazy (Coqlib.coq_reference "product" ["Init";"Logic"] "and");
     logic_pair = lazy (Coqlib.coq_reference "product" ["Init";"Logic"] "conj");
@@ -277,7 +276,7 @@ let type_logic =
   { logic_eq_ty = coq_Id; logic_eq_refl = coq_Id_refl;
     logic_eq_case = coq_Id_case;
     logic_eq_elim = coq_Id_elim;
-    logic_sort = InType;
+    logic_sort = Sorts.InType;
     logic_zero = coq_Empty; logic_one = coq_unit; logic_one_val = coq_tt;
     logic_product = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "prod");
     logic_pair = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "pair") }
@@ -436,7 +435,7 @@ let lift_list l = List.map (Vars.lift 1) l
 (*   let body = constant_value (Global.env ()) cst in *)
 (*   let init, n, c =  *)
 (*     let ctx, body =  *)
-(*       match kind_of_term body with *)
+(*       match Constr.kind body with *)
 (*       | Lambda _ -> decompose_lam_assum c  *)
 (*       | _ -> [], c *)
 (*     in *)
@@ -457,7 +456,7 @@ let lift_list l = List.map (Vars.lift 1) l
 (*       (pars, []) args *)
 (*   in *)
 (*   let rec aux pars n c = *)
-(*     match kind_of_term c with *)
+(*     match Constr.kind c with *)
 (*     | App (f, args) -> *)
 (* 	if f = mkConst cst then *)
 (* 	  let _, pars' = params_of_args pars n args in *)
@@ -522,8 +521,8 @@ let autounfold_first db cl gl =
 
 type hintdb_name = string
 
-let rec db_of_constr c = match kind_of_term c with
-  | Const (c,_) -> string_of_label (con_label c)
+let rec db_of_constr c = match Constr.kind c with
+  | Const (c,_) -> Label.to_string (Constant.label c)
   | App (c,al) -> db_of_constr c
   | _ -> assert false
 
@@ -532,10 +531,10 @@ let dbs_of_constrs = List.map db_of_constr
 (** Bindings to Coq *)
 
 let below_tactics_path =
-  make_dirpath (List.map Id.of_string ["Below";"Equations"])
+  DirPath.make (List.map Id.of_string ["Below";"Equations"])
 
 let below_tac s =
-  make_kn (MPfile below_tactics_path) (make_dirpath []) (mk_label s)
+  KerName.make (MPfile below_tactics_path) (DirPath.make []) (Label.make s)
 
 let tacvar_arg h =
   let ipat = Genarg.in_gen (Genarg.rawwit Stdarg.wit_intro_pattern) 
@@ -555,14 +554,6 @@ let rec_wf_tac h h' rel =
      ConstrMayEval (API.Genredexpr.ConstrTerm rel)]))))
 
 let unfold_recursor_tac () = tac_of_string "Equations.Subterm.unfold_recursor" []
-
-let equations_tac_expr () = 
-  (TacArg(dummy_loc, TacCall(dummy_loc, 
-   (Qualid (dummy_loc, qualid_of_string "Equations.DepElim.equations"), []))))
-
-let solve_rec_tac_expr () =
-  (TacArg(dummy_loc, TacCall(dummy_loc, 
-   (Qualid (dummy_loc, qualid_of_string "Equations.Equations.solve_rec"), []))))
 
 let equations_tac () = tac_of_string "Equations.DepElim.equations" []
 
@@ -604,7 +595,6 @@ let call_tac_on_ref tac c =
 
 let mp = API.Names.MPfile (API.Names.DirPath.make (List.map API.Names.Id.of_string ["DepElim"; "Equations"]))
 let solve_equation = API.Names.KerName.make mp API.Names.DirPath.empty (API.Names.Label.make "solve_equation")
-let impossible_call = API.Names.KerName.make mp API.Names.DirPath.empty (API.Names.Label.make "impossible_call")
 
 let solve_equation_tac (c : Globnames.global_reference) =
   let ist, tac = call_tac_on_ref solve_equation c in
@@ -772,13 +762,12 @@ let move_after_deps id c =
       match snd (List.split_when find (List.rev hyps)) with
       | a :: _ -> get_id a
       | [] -> user_err ~hdr:"move_before_deps"
-        Pp.(str"Found no hypothesis on which " ++ pr_id id ++ str" depends")
+        Pp.(str"Found no hypothesis on which " ++ Id.print id ++ str" depends")
     in
     Tactics.move_hyp id (Misctypes.MoveAfter first)
   in Proofview.Goal.enter enter
 
 let observe s tac = 
-  let open Proofview in
   let open Proofview.Notations in
   if not !debug then tac
   else
@@ -983,7 +972,7 @@ let dest_ind_family fam =
   to_peuniverses ind, List.map of_constr fam
 
 let prod_appvect sigma p args =
-  of_constr (prod_appvect (to_constr sigma p) (Array.map (to_constr sigma) args))
+  of_constr (Term.prod_appvect (to_constr sigma p) (Array.map (to_constr sigma) args))
 let beta_appvect sigma p args =
   of_constr (Reduction.beta_appvect (to_constr sigma p) (Array.map (to_constr sigma) args))
 let find_rectype env sigma ty =

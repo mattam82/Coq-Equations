@@ -141,8 +141,8 @@ let derive_subterm env sigma ~polymorphic ind =
         mind_entry_params = List.map (fun decl ->
           let (n, b, t) = to_tuple decl in
           match b with
-          | Some b -> (out_name n, localdef (refresh_universes (to_constr sigma b)))
-          | None -> (out_name n, localassum (refresh_universes (to_constr sigma t))))
+          | Some b -> (Nameops.Name.get_id n, localdef (refresh_universes (to_constr sigma b)))
+          | None -> (Nameops.Name.get_id n, localassum (refresh_universes (to_constr sigma t))))
           parambinders;
         mind_entry_inds = inds;
         mind_entry_private = None;

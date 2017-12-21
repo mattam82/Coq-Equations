@@ -27,7 +27,7 @@ val inductive_info :
 val eq_dec_class :
   esigma ->
   rel_context *
-  (Typeclasses.typeclass peuniverses * Term.constr list)
+  (Typeclasses.typeclass peuniverses * Constr.t list)
 
 val dec_eq : esigma -> constr
 

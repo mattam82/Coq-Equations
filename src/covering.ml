@@ -41,7 +41,7 @@ type pat =
 type context_map = rel_context * pat list * rel_context
 
 (** Splitting trees *)
-type path = Evd.evar list
+type path = Evar.t list
 
 type splitting = 
   | Compute of context_map * where_clause list * types * splitting_rhs
@@ -69,7 +69,7 @@ and refined_node =
     refined_rettyp : types; 
     refined_arg : int;
     refined_path : path;
-    refined_ex : existential_key;
+    refined_ex : Evar.t;
     refined_app : constr * constr list;
     refined_revctx : context_map;
     refined_newprob : context_map;
@@ -178,7 +178,7 @@ let pr_context env sigma c =
     let (id,b,t) = to_tuple decl in
     let bstr = match b with Some b ->
                             str ":=" ++ spc () ++ print_constr_env env sigma b | None -> mt() in
-    let idstr = match id with Name id -> pr_id id | Anonymous -> str"_" in
+    let idstr = match id with Name id -> Id.print id | Anonymous -> str"_" in
       idstr ++ bstr ++ str " : " ++ print_constr_env env sigma t
   in
   let (_, pp) =
@@ -299,7 +299,7 @@ let specialize_rel_context sigma s ctx =
 
 let mapping_constr sigma (s : context_map) c = specialize_constr sigma (pi2 s) c
 
-(* Substitute a constr in a pattern. *)
+(* Substitute a Constr.t in a pattern. *)
 
 let rec subst_constr_pat sigma k t p = 
   match p with
@@ -921,7 +921,7 @@ let blockers curpats ((_, patcs, _) : context_map) =
   in patterns_blockers curpats (rev patcs)
 
 let pr_rel_name env i =
-  pr_name (get_name (lookup_rel i env))
+  Name.print (get_name (lookup_rel i env))
 
 
 let pr_path evd = prlist_with_sep (fun () -> str":") (pr_existential_key evd)
@@ -949,7 +949,7 @@ let pr_splitting env sigma ?(verbose=false) split =
     | Compute (lhs, wheres, ty, c) -> 
 	let env' = push_rel_context (pi1 lhs) env in
         let ppwhere w =
-          hov 2 (str"where " ++ pr_id w.where_id ++ str " : " ++
+          hov 2 (str"where " ++ Id.print w.where_id ++ str " : " ++
                    print_constr_env env'  sigma w.where_type ++
                    str " := " ++ Pp.fnl () ++ aux w.where_splitting)
         in
@@ -980,7 +980,7 @@ let pr_splitting env sigma ?(verbose=false) split =
     | Mapping (ctx, s) ->
        hov 2 (str"Mapping " ++ pr_context_map env sigma ctx ++ Pp.fnl () ++ aux s)
     | RecValid (id, c) -> 
-	hov 2 (str "RecValid " ++ pr_id id ++ Pp.fnl () ++ aux c)
+	hov 2 (str "RecValid " ++ Id.print id ++ Pp.fnl () ++ aux c)
     | Valid (lhs, ty, ids, ev, tac, cs) ->
 	let _env' = push_rel_context (pi1 lhs) env in
 	  hov 2 (str "Valid " ++ str " in context " ++ pr_context_map env sigma lhs ++ 
@@ -994,7 +994,7 @@ let pr_splitting env sigma ?(verbose=false) split =
 	  info.refined_revctx, info.refined_newprob, info.refined_newty
 	in
 	let env' = push_rel_context (pi1 lhs) env in
-	  hov 2 (pplhs env' sigma lhs ++ str " refine " ++ pr_id id ++ str" " ++ 
+	  hov 2 (pplhs env' sigma lhs ++ str " refine " ++ Id.print id ++ str" " ++ 
 	           print_constr_env env' sigma (mapping_constr sigma revctx c) ++
                    verbose (str " : " ++ print_constr_env env' sigma cty ++ str" " ++
 	      print_constr_env env' sigma ty ++ str" " ++
@@ -1071,7 +1071,7 @@ let split_var (env,evars) var delta =
 	if Array.exists (fun x -> x == UnifStuck) unify then
 	  None
 (* 	  user_err_loc (dummy_loc, "split_var",  *)
-(* 		       str"Unable to split variable " ++ pr_name id ++ str" of (reduced) type " ++ *)
+(* 		       str"Unable to split variable " ++ Name.print id ++ str" of (reduced) type " ++ *)
 (* 			 print_constr_env (push_rel_context before env) newty  *)
 (* 		       ++ str" to match a user pattern") *)
 	else 
@@ -1086,9 +1086,7 @@ let find_empty env delta =
     (CList.init (List.length delta) succ)
   in match r with x :: _ -> Some x | _ -> None
     
-open Evd
-
-(* The list of variables appearing in a list of patterns, 
+(* The list of variables appearing in a list of patterns,
    ordered increasingly. *)
 let variables_of_pats pats = 
   let rec aux acc pats = 
@@ -1159,12 +1157,12 @@ let split_at_eos sigma ctx =
 let pr_problem (id, _, _) env sigma (delta, patcs, _) =
   let env' = push_rel_context delta env in
   let ctx = pr_context env sigma delta in
-  pr_id id ++ str" " ++ pr_pats env' sigma patcs ++
+  Id.print id ++ str" " ++ pr_pats env' sigma patcs ++
     (if List.is_empty delta then ctx else 
        fnl () ++ str "In context: " ++ fnl () ++ ctx)
 
 let rel_id ctx n = 
-  out_name (pi1 (List.nth ctx (pred n)))
+ Nameops.Name.get_id (pi1 (List.nth ctx (pred n)))
 
 let push_named_context = List.fold_right push_named
 
@@ -1232,7 +1230,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
   let get_var loc i s =
     match assoc i s with
     | PRel i -> i
-    | _ -> user_err_loc (Some loc, "equations", str"Unbound variable " ++ pr_id i)
+    | _ -> user_err_loc (Some loc, "equations", str"Unbound variable " ++ Id.print i)
   in
   let () = (* Check innaccessibles are correct *)
     let check_uinnac (user, t) =
@@ -1315,8 +1313,8 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
      let env' = reset_with_named_context (val_of_named_context sign) env in
      let entry, proof = Proofview.init !evars [(env', t')] in
      let _, res, _, _ = Proofview.apply env' (Obj.magic tac) proof in
-     let gls = Proofview.V82.goals res in
-     evars := gls.sigma;
+     let gls, sigma = Proofview.proofview res in
+     evars := sigma;
      if Proofview.finished res then
        let c = List.hd (Proofview.partial_proof entry res) in
        Some (Compute (prob, [], ty, RProgram c))
@@ -1377,7 +1375,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
             let () = check_unused_clauses env clauses in
             (gl, args, subst, invsubst, s)
        in
-       let goals = List.map solve_goal gls.it in
+       let goals = List.map solve_goal gls in
        Some (Valid (prob, ty, List.map get_id sign', Proofview.V82.of_tactic (Obj.magic tac),
 		    (entry, res), goals))
 

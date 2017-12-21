@@ -243,7 +243,7 @@ let clear_ind_assums sigma ind ctx =
         let t, _ = decompose_app sigma b in
           if isInd sigma t then
             let (ind', _), _ = destInd sigma t in
-	      if eq_mind ind' ind then (
+	      if MutInd.equal ind' ind then (
                 assert(not (Termops.dependent sigma (mkRel 1) c));
 		clear_assums (subst1 mkProp c))
 	      else mkProd (na, b, clear_assums c)
@@ -255,7 +255,7 @@ let clear_ind_assums sigma ind ctx =
 
 
 let type_of_rel t ctx =
-  match kind_of_term t with
+  match Constr.kind t with
   | Rel k -> lift k (get_type (List.nth ctx (pred k)))
   | c -> mkProp
 
@@ -452,7 +452,7 @@ let pr_where env sigma ctx {where_id; where_nctx; where_prob; where_term;
   let envc = Environ.push_rel_context ctx env in
   let envw = push_named_context where_nctx env in
   Termops.print_constr_env envc sigma where_term ++ fnl () ++
-    str"where " ++ Nameops.pr_id where_id ++ str" : " ++
+    str"where " ++ Names.Id.print where_id ++ str" : " ++
     Termops.print_constr_env envc sigma where_type ++
     str" := " ++ fnl () ++
     pr_context_map envw sigma where_prob ++ fnl () ++
@@ -589,7 +589,7 @@ let subst_rec_split env evd f comp comprecarg prob s split =
 		 if i == arg then (refarg := List.length acc);
                  if isRel evd c then
                    let d = List.nth (pi1 lhs) (pred (destRel evd c)) in
-		   if List.mem_assoc (Nameops.out_name (get_name d)) s then acc
+		   if List.mem_assoc (Nameops.Name.get_id (get_name d)) s then acc
                    else (mapping_constr evd subst c) :: acc
                  else (mapping_constr evd subst c) :: acc) 0 [] args
            in
@@ -737,7 +737,7 @@ let computations env evd alias refine eqninfo =
      let ctx = compose_subst env ~sigma:evd lhs prob in
      let inst = where_instance where in
      (* msg_debug (str"where_instance: " ++ prlist_with_sep spc pr_c inst); *)
-     let ninst = List.map (fun n -> Nameops.out_name (get_name n)) (pi1 ctx) in
+     let ninst = List.map (fun n -> Nameops.Name.get_id (get_name n)) (pi1 ctx) in
      let inst = List.map (fun c -> substn_vars 1 ninst c) inst in
      let c' = map_rhs (fun c -> Reductionops.nf_beta Evd.empty (substl inst c)) (fun x -> x) c in
      let patsconstrs = List.rev_map pat_constr (pi2 ctx) in
@@ -1046,7 +1046,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
   let fnind_map = ref PathMap.empty in
   let declare_one_ind (i, (f, alias, path, sign, arity, pats, refs, refine), stmts) =
     let indid = Nameops.add_suffix id (if i == 0 then "_ind" else ("_ind_" ^ string_of_int i)) in
-    let indapp = List.rev_map (fun x -> Constr.mkVar (Nameops.out_name (get_name x))) sign in
+    let indapp = List.rev_map (fun x -> Constr.mkVar (Nameops.Name.get_id (get_name x))) sign in
     let () = fnind_map := PathMap.add path (indid,indapp) !fnind_map in
     let constructors = CList.map_filter (fun (_, (_, _, _, n)) -> Option.map (to_constr !evd) n) stmts in
     let consnames = CList.map_filter (fun (i, (r, _, _, n)) ->

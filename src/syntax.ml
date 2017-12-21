@@ -10,14 +10,13 @@ open Printer
 open Ppconstr
 open Util
 open Names
-open Nameops
-open Term
+open Constr
 open Globnames
 open Pp
 open Glob_term
 open List
 open Libnames
-open Topconstr
+open Constrexpr_ops
 open Constrexpr
 open Evar_kinds
 open Equations_common
@@ -50,7 +49,7 @@ type rec_annot =
 type program =
   (signature * clause list) list
 
-and signature = identifier * rel_context * constr
+and signature = identifier * rel_context * Constr.t
   
 and clause = Loc.t * lhs * clause rhs
   
@@ -71,7 +70,7 @@ and 'a where_clause = prototype * 'a list
 
 let rec pr_user_pat env (loc,pat) =
   match pat with
-  | PUVar (i, gen) -> pr_id i ++ if gen then str "#" else mt ()
+  | PUVar (i, gen) -> Id.print i ++ if gen then str "#" else mt ()
   | PUCstr (c, i, f) -> 
       let pc = pr_constructor env c in
 	if not (List.is_empty f) then str "(" ++ pc ++ spc () ++ pr_user_pats env f ++ str ")"
@@ -86,10 +85,10 @@ let pr_lhs = pr_user_pats
 let pplhs lhs = pp (pr_lhs (Global.env ()) lhs)
 
 let rec pr_rhs env = function
-  | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ pr_id var
+  | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ Id.print var
   | Rec (t, rel, id, s) -> 
      spc () ++ str "=>" ++ spc () ++ str"rec " ++ pr_constr_expr t ++ spc () ++
-       pr_opt (fun (_, id) -> pr_id id) id ++ spc () ++
+       pr_opt (fun (_, id) -> Id.print id) id ++ spc () ++
       hov 1 (str "{" ++ pr_clauses env s ++ str "}")
   | Program (rhs, where) -> spc () ++ str ":=" ++ spc () ++ pr_constr_expr rhs ++
                              pr_wheres env where
@@ -106,7 +105,7 @@ and pr_wheres env l =
 and pr_where env (sign, eqns) =
   pr_proto sign ++ pr_clauses env eqns
 and pr_proto ((_,id), _, l, t) =
-  pr_id id ++ pr_binders l ++ str" : " ++ pr_constr_expr t
+  Id.print id ++ pr_binders l ++ str" : " ++ pr_constr_expr t
 and pr_clause env (loc, lhs, rhs) =
   pr_lhs env lhs ++ pr_rhs env rhs
 
@@ -159,9 +158,9 @@ and logical_rec =
   | LogicalProj of rec_info
 
 and rec_info = {
-  comp : constant option;
-  comp_app : constr;
-  comp_proj : constant;
+  comp : Constant.t option;
+  comp_app : Constr.t;
+  comp_proj : Constant.t;
   comp_recarg : int;
 }
 
@@ -283,7 +282,7 @@ let interp_eqn initi is_rec env impls eqn =
     Option.iter (fun (loc,id) ->
       if not (Id.equal id i) then
 	user_err_loc (Some loc, "interp_pats",
-		     str "Expecting a pattern for " ++ pr_id i);
+		     str "Expecting a pattern for " ++ Id.print i);
       Dumpglob.dump_reference ~loc "<>" (Id.to_string id) "def")
       idopt;
     (*   if List.length pats <> List.length sign then *)

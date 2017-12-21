@@ -16,7 +16,6 @@
 
 *)
 
-open Cases
 open Util
 open Names
 open Nameops
@@ -24,23 +23,7 @@ open Term
 open Termops
 open Declarations
 open Inductiveops
-open Environ
-open Context
 open Vars
-open Reductionops
-open Typeops
-open Type_errors
-open Pp
-open Proof_type
-open Glob_term
-open Retyping
-open Pretype_errors
-open Evarutil
-open Evarconv
-open List
-open Libnames
-open Topconstr
-open Util
 open Entries
 
 open EConstr   
@@ -62,9 +45,7 @@ type mutual_inductive_info = {
   mutind_inds : one_inductive_info array; (* Each inductive. *)
 }
 
-let enamed_context = List.map of_named_decl
 let erel_context = List.map of_rel_decl
-let einstance = EConstr.EInstance.make
 
 let inductive_info sigma ((mind, _ as ind),u) =
   let mindb, oneind = Global.lookup_inductive ind in

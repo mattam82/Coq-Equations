@@ -6,7 +6,6 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-open Term
 open Environ
 open Names
 open EConstr
@@ -26,7 +25,7 @@ type pat =
 (** Substitutions *)
 type context_map = rel_context * pat list * rel_context
 
-(** Tag with a constant application (needs env to infer type) *)
+(** Tag with a Constant.t application (needs env to infer type) *)
 val mkInac : env -> esigma -> constr -> constr
 val mkHide : env -> esigma -> constr -> constr
 
@@ -94,7 +93,7 @@ val make_permutation : ?env:Environ.env -> Evd.evar_map ->
 
 (** Splitting trees *)
 
-type path = Evd.evar list
+type path = Evar.t list
 
 type splitting =
     Compute of context_map * where_clause list * types * splitting_rhs
@@ -122,7 +121,7 @@ and refined_node = {
   refined_rettyp : types;
   refined_arg : int;
   refined_path : path;
-  refined_ex : existential_key;
+  refined_ex : Evar.t;
   refined_app : constr * constr list;
   refined_revctx : context_map;
   refined_newprob : context_map;
@@ -132,7 +131,7 @@ and refined_node = {
 
 and splitting_rhs = RProgram of constr | REmpty of int
 
-val pr_path : Evd.evar_map -> Evd.evar list -> Pp.t
+val pr_path : Evd.evar_map -> Evar.t list -> Pp.t
 val eq_path : Evar.t list -> Evar.t list -> bool
 
 val pr_splitting : env -> Evd.evar_map -> ?verbose:bool -> splitting -> Pp.t
@@ -344,7 +343,7 @@ val covering_aux :
   identifier * bool * Constrintern.internalization_env ->
   (clause * bool) list ->
   (clause * bool) list ->
-  Evd.evar list ->
+  Evar.t list ->
   context_map ->
   rel_context -> constr -> ((clause * bool) list * splitting) option
 
@@ -352,6 +351,6 @@ val covering :
   env ->
   Evd.evar_map ref ->
   identifier * bool * Constrintern.internalization_env ->
-  clause list -> Evd.evar list ->
+  clause list -> Evar.t list ->
   context_map ->
   constr -> splitting
