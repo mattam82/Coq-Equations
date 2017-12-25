@@ -42,6 +42,15 @@ Two articles describing the system are available:
   Proving. ITP 2010. Lecture Notes in Computer Science,
   vol 6172. Springer, Berlin, Heidelberg.
   
+We did a case study on a proof of normalization for an hereditary substitution
+procedure:
+
+- [Equations for Hereditary Substitution in Leivant's Predicative
+SystemF: A Case Study](http://www.irif.fr/~sozeau/research/publications/Equations_for_Hereditary_Substitution_in_Leivants_Predicative_System_F:_a_case_study.pdf)
+  Cyprien Mangin and Matthieu Sozeau. 
+  In: Proceedings Tenth International Workshop on Logical Frameworks and Meta Languages: Theory and Practice. 
+  Volume 185 of EPTCS. May 2015 - LFMTP'15. 
+
 ## Installation
 
 The current development version works with Coq 8.6 (branch [master](https://github.com/mattam82/Coq-Equations/tree/master)) and Coq 8.7 (branch [8.7](https://github.com/mattam82/Coq-Equations/tree/8.7)),
