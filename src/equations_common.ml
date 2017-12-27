@@ -195,7 +195,7 @@ let declare_instance id poly evd ctx cl args =
   let term = it_mkLambda_or_LetIn (Option.get c) ctx in
   let typ = EConstr.it_mkProd_or_LetIn t ctx in
   let cst = declare_constant id term (Some typ) poly evd (IsDefinition Instance) in
-  let inst = new_instance (fst cl) Hints.empty_hint_info true poly (Globnames.ConstRef cst) in
+  let inst = new_instance (fst cl) Hints.empty_hint_info true (Globnames.ConstRef cst) in
     add_instance inst; mkConst cst
 
 let coq_unit = lazy (init_reference ["Coq";"Init";"Datatypes"] "unit")

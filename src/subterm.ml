@@ -228,7 +228,7 @@ let derive_subterm env sigma ~polymorphic ind =
     let hook vis gr _ =
       let cst = match gr with ConstRef kn -> kn | _ -> assert false in
       let inst = Typeclasses.new_instance (fst kl) empty_hint_info
-                                          global polymorphic (ConstRef cst) in
+                                          global (ConstRef cst) in
       Typeclasses.add_instance inst
     in
     let _bodyty = Typing.e_type_of (Global.env ()) evm body in

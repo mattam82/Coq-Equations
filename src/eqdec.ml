@@ -148,7 +148,7 @@ let derive_eq_dec env sigma ~polymorphic ind =
         let entry = (DefinitionEntry ce, IsDefinition Instance) in
 	let inst = Declare.declare_constant (add_suffix ind.ind_name "_EqDec") entry in
         let inst =
-          Typeclasses.new_instance (fst cl) Hints.empty_hint_info true polymorphic (Globnames.ConstRef inst)
+          Typeclasses.new_instance (fst cl) Hints.empty_hint_info true (Globnames.ConstRef inst)
 	in Typeclasses.add_instance inst)
     indsl
   in
