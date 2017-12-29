@@ -22,4 +22,4 @@ val make_derive_ind :
     
 val register_derive : derive_record -> unit
 
-val derive : string list -> Globnames.global_reference Loc.located list -> unit
+val derive : poly:bool -> string list -> Globnames.global_reference Loc.located list -> unit

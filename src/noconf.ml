@@ -156,7 +156,7 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let _ = Typing.e_type_of env evd term in
   let hook vis gr _ectx = 
     Typeclasses.add_instance
-      (Typeclasses.new_instance tc empty_hint_info true polymorphic gr)
+      (Typeclasses.new_instance tc empty_hint_info true gr)
   in
   let oblinfo, _, term, ty = Obligations.eterm_obligations env noid !evd 0 (to_constr !evd term)
                                                            (to_constr !evd ty) in
