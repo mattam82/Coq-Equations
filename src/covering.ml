@@ -1304,10 +1304,10 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
      let sign = named_context_of_val sign in
      let sign', secsign = split_at_eos !evars sign in
      let ids = List.map get_id sign in
-     let ids = API.Names.Id.Set.of_list (Obj.magic ids) in
+     let ids = Names.Id.Set.of_list (Obj.magic ids) in
      let tac = match tac with
        | Inl tac -> 
-          Tacinterp.interp_tac_gen API.Names.Id.Map.empty ids Tactic_debug.DebugOff tac
+          Tacinterp.interp_tac_gen Names.Id.Map.empty ids Tactic_debug.DebugOff tac
        | Inr tac -> Tacinterp.eval_tactic tac
      in
      let env' = reset_with_named_context (val_of_named_context sign) env in

@@ -328,7 +328,7 @@ type 'a located = 'a Loc.located
 
 let tac_of_string str args =
   Obj.magic (Tacinterp.interp (TacArg(dummy_loc,
-                           TacCall(dummy_loc, (API.Libnames.Qualid (dummy_loc, API.Libnames.qualid_of_string str), args)))))
+                           TacCall(dummy_loc, (Libnames.Qualid (dummy_loc, Libnames.qualid_of_string str), args)))))
 
 let equations_path = ["Equations";"Equations"]
 
@@ -544,14 +544,14 @@ let tacvar_arg h =
 let rec_tac h h' = 
   Obj.magic (TacArg(dummy_loc, TacCall(dummy_loc,
                             (Qualid (dummy_loc, qualid_of_string "Equations.Below.rec"),
-                             [tacvar_arg h'; ConstrMayEval (API.Genredexpr.ConstrTerm h)]))))
+                             [tacvar_arg h'; ConstrMayEval (Genredexpr.ConstrTerm h)]))))
 
 let rec_wf_tac h h' rel = 
   Obj.magic (TacArg(dummy_loc, TacCall(dummy_loc,
     (Qualid (dummy_loc, qualid_of_string "Equations.Subterm.rec_wf_eqns_rel"),
     [tacvar_arg h';
-     ConstrMayEval (API.Genredexpr.ConstrTerm h);
-     ConstrMayEval (API.Genredexpr.ConstrTerm rel)]))))
+     ConstrMayEval (Genredexpr.ConstrTerm h);
+     ConstrMayEval (Genredexpr.ConstrTerm rel)]))))
 
 let unfold_recursor_tac () = tac_of_string "Equations.Subterm.unfold_recursor" []
 
@@ -571,30 +571,30 @@ let eqdec_tac () = tac_of_string "Equations.EqDecInstances.eqdec_proof" []
 
 let simpl_equations_tac () = tac_of_string "Equations.DepElim.simpl_equations" []
 
-open API.Misctypes
-open API.Libnames
+open Misctypes
+open Libnames
 
 let reference_of_global c =
-  API.Libnames.Qualid (dummy_loc, API.Nametab.shortest_qualid_of_global API.Names.Id.Set.empty c)
+  Libnames.Qualid (dummy_loc, Nametab.shortest_qualid_of_global Names.Id.Set.empty c)
 
 let tacident_arg h =
   Reference (Ident (dummy_loc,Obj.magic h))
 
 let call_tac_on_ref tac c =
-  let var = API.Names.Id.of_string "x" in
+  let var = Names.Id.of_string "x" in
   let tac = ArgArg (dummy_loc, tac) in
-  let val_reference = API.Geninterp.val_tag (Genarg.topwit Stdarg.wit_constr) in
+  let val_reference = Geninterp.val_tag (Genarg.topwit Stdarg.wit_constr) in
   (** This is a hack to avoid generating useless universes *)
   let c = Universes.constr_of_global_univ (c, Univ.Instance.empty) in
-  let c = API.Geninterp.Val.inject val_reference (EConstr.of_constr c) in
-  let ist = API.Geninterp.{ lfun = API.Names.Id.Map.add var c API.Names.Id.Map.empty;
-                            extra = API.Geninterp.TacStore.empty } in
-  let var = Reference (API.Misctypes.ArgVar (dummy_loc, var)) in
+  let c = Geninterp.Val.inject val_reference (EConstr.of_constr c) in
+  let ist = Geninterp.{ lfun = Names.Id.Map.add var c Names.Id.Map.empty;
+                            extra = Geninterp.TacStore.empty } in
+  let var = Reference (Misctypes.ArgVar (dummy_loc, var)) in
   let tac = TacArg (dummy_loc, TacCall (dummy_loc, (tac, [var]))) in
   ist, tac
 
-let mp = API.Names.MPfile (API.Names.DirPath.make (List.map API.Names.Id.of_string ["DepElim"; "Equations"]))
-let solve_equation = API.Names.KerName.make mp API.Names.DirPath.empty (API.Names.Label.make "solve_equation")
+let mp = Names.MPfile (Names.DirPath.make (List.map Names.Id.of_string ["DepElim"; "Equations"]))
+let solve_equation = Names.KerName.make mp Names.DirPath.empty (Names.Label.make "solve_equation")
 
 let solve_equation_tac (c : Globnames.global_reference) =
   let ist, tac = call_tac_on_ref solve_equation c in
@@ -603,7 +603,7 @@ let solve_equation_tac (c : Globnames.global_reference) =
 let impossible_call_tac c =
   let tac = Tacintern.glob_tactic
   (TacArg(dummy_loc,TacCall(dummy_loc,
-  (API.Libnames.Qualid (dummy_loc, API.Libnames.qualid_of_string "Equations.DepElim.impossible_call"),
+  (Libnames.Qualid (dummy_loc, Libnames.qualid_of_string "Equations.DepElim.impossible_call"),
    [Reference (reference_of_global (Obj.magic c))])))) in
   let val_tac = Genarg.glbwit Tacarg.wit_tactic in
   Obj.magic (Genarg.in_gen val_tac tac)
