@@ -1,6 +1,6 @@
 ### **Equations** - a function definition plugin.
 
-[![Build Status](https://travis-ci.org/mattam82/Coq-Equations.svg?branch=8.7)](https://travis-ci.org/mattam82/Coq-Equations)
+[![Build Status](https://travis-ci.org/mattam82/Coq-Equations.svg?branch=8.8%2Balpha)](https://travis-ci.org/mattam82/Coq-Equations/branches)
 
 Copyright 2009-2017 Matthieu Sozeau `matthieu.sozeau@inria.fr`  
 Copyright 2015-2017 Cyprien Mangin `cyprien.mangin@m4x.org`
