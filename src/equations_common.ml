@@ -327,8 +327,8 @@ let dummy_loc = None
 type 'a located = 'a Loc.located
 
 let tac_of_string str args =
-  Obj.magic (Tacinterp.interp (TacArg(dummy_loc,
-                           TacCall(dummy_loc, (Libnames.Qualid (dummy_loc, Libnames.qualid_of_string str), args)))))
+  Tacinterp.interp (TacArg(dummy_loc,
+                           TacCall(dummy_loc, (Libnames.Qualid (dummy_loc, Libnames.qualid_of_string str), args))))
 
 let equations_path = ["Equations";"Equations"]
 
@@ -542,16 +542,16 @@ let tacvar_arg h =
     TacGeneric ipat
 
 let rec_tac h h' = 
-  Obj.magic (TacArg(dummy_loc, TacCall(dummy_loc,
+  TacArg(dummy_loc, TacCall(dummy_loc,
                             (Qualid (dummy_loc, qualid_of_string "Equations.Below.rec"),
-                             [tacvar_arg h'; ConstrMayEval (Genredexpr.ConstrTerm h)]))))
+                             [tacvar_arg h'; ConstrMayEval (Genredexpr.ConstrTerm h)])))
 
 let rec_wf_tac h h' rel = 
-  Obj.magic (TacArg(dummy_loc, TacCall(dummy_loc,
+  TacArg(dummy_loc, TacCall(dummy_loc,
     (Qualid (dummy_loc, qualid_of_string "Equations.Subterm.rec_wf_eqns_rel"),
     [tacvar_arg h';
      ConstrMayEval (Genredexpr.ConstrTerm h);
-     ConstrMayEval (Genredexpr.ConstrTerm rel)]))))
+     ConstrMayEval (Genredexpr.ConstrTerm rel)])))
 
 let unfold_recursor_tac () = tac_of_string "Equations.Subterm.unfold_recursor" []
 
@@ -578,7 +578,7 @@ let reference_of_global c =
   Libnames.Qualid (dummy_loc, Nametab.shortest_qualid_of_global Names.Id.Set.empty c)
 
 let tacident_arg h =
-  Reference (Ident (dummy_loc,Obj.magic h))
+  Reference (Ident (dummy_loc, h))
 
 let call_tac_on_ref tac c =
   let var = Names.Id.of_string "x" in
@@ -598,15 +598,15 @@ let solve_equation = Names.KerName.make mp Names.DirPath.empty (Names.Label.make
 
 let solve_equation_tac (c : Globnames.global_reference) =
   let ist, tac = call_tac_on_ref solve_equation c in
-  Obj.magic (Tacinterp.eval_tactic_ist ist tac)
+  Tacinterp.eval_tactic_ist ist tac
 
 let impossible_call_tac c =
   let tac = Tacintern.glob_tactic
   (TacArg(dummy_loc,TacCall(dummy_loc,
   (Libnames.Qualid (dummy_loc, Libnames.qualid_of_string "Equations.DepElim.impossible_call"),
-   [Reference (reference_of_global (Obj.magic c))])))) in
+   [Reference (reference_of_global c)])))) in
   let val_tac = Genarg.glbwit Tacarg.wit_tactic in
-  Obj.magic (Genarg.in_gen val_tac tac)
+  Genarg.in_gen val_tac tac
 (* let impossible_call_tac c = *)
 (*   let ist, tac = call_tac_on_ref impossible_call c in *)
 (*   let val_tac = Genarg.glbwit Tacarg.wit_tactic in *)
@@ -737,7 +737,7 @@ let deps_of_var sigma id env =
 let idset_of_list =
   List.fold_left (fun s x -> Id.Set.add x s) Id.Set.empty
 
-let pr_smart_global f = Pptactic.pr_or_by_notation pr_reference (Obj.magic f)
+let pr_smart_global f = Pptactic.pr_or_by_notation pr_reference f
 let string_of_smart_global = function
   | Misctypes.AN ref -> string_of_reference ref
   | Misctypes.ByNotation (loc, (s, _)) -> s

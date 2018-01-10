@@ -230,9 +230,9 @@ let declare_sig_of_ind env sigma poly (ind,u) =
        mkApp (of_constr pack_fn, extended_rel_vect 0 ctx)]
   in
   Extraction_plugin.Table.extraction_inline true
-                                            [Libnames.Ident (dummy_loc, Obj.magic pack_id)];
+                                            [Libnames.Ident (dummy_loc, pack_id)];
   Extraction_plugin.Table.extraction_inline true
-                                            [Libnames.Ident (dummy_loc, Obj.magic signature_id)];
+                                            [Libnames.Ident (dummy_loc, signature_id)];
   inst
 
 let () =

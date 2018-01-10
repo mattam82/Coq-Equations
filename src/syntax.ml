@@ -97,7 +97,7 @@ let rec pr_rhs env = function
       hov 1 (str "{" ++ pr_clauses env s ++ str "}")
   | By (Inl tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_raw_tactic tac
       ++ spc () ++ hov 1 (str "{" ++ pr_clauses env s ++ str "}")
-  | By (Inr tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_glob_tactic (Obj.magic env) tac
+  | By (Inr tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_glob_tactic env tac
       ++ spc () ++ hov 1 (str "{" ++ pr_clauses env s ++ str "}")
 
 and pr_wheres env l =

@@ -37,7 +37,7 @@ open EConstr
 open Extraction_plugin
                 
 let inline_helpers i = 
-  let l = List.map (fun (_, _, id) -> Libnames.Ident (dummy_loc, Obj.magic id)) i.helpers_info in
+  let l = List.map (fun (_, _, id) -> Libnames.Ident (dummy_loc, id)) i.helpers_info in
   Table.extraction_inline true l
 
 let make_ref dir s = Coqlib.find_reference "Program" dir s
@@ -430,7 +430,7 @@ let define_by_eqs opts eqs nt =
         hintdb_set_transparency comp false "program";
         hintdb_set_transparency comp false "subterm_relation";
         Impargs.declare_manual_implicits true (ConstRef comp) [impls];
-        Table.extraction_inline true [Libnames.Ident (dummy_loc, Obj.magic compid)];
+        Table.extraction_inline true [Libnames.Ident (dummy_loc, compid)];
         Some (compid, comp), compapp, oarity
       else None, arity, arity
     in
@@ -465,7 +465,7 @@ let define_by_eqs opts eqs nt =
            [ExplByPos (succ (List.length sign), None), (true, false, true)]
          else [] in
        Impargs.declare_manual_implicits true (ConstRef compproj) [impls @ impl];
-       Table.extraction_inline true [Libnames.Ident (dummy_loc, Obj.magic projid)];
+       Table.extraction_inline true [Libnames.Ident (dummy_loc, projid)];
        let compinfo = LogicalProj { comp = Option.map snd comp; comp_app = to_constr !evd compapp;
 			            comp_proj = compproj; comp_recarg = succ (length sign) } in
        let compapp, is_rec =

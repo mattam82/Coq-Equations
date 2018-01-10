@@ -412,7 +412,7 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
   let hook locality gr =
     let l =
       Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Ident (dummy_loc, id)) obls in
-    Extraction_plugin.Table.extraction_inline true (Obj.magic l);
+    Extraction_plugin.Table.extraction_inline true l;
     let kind = (locality, poly, Decl_kinds.Definition) in
     let baseid = Id.to_string i in
     let term_info = { term_id = gr; base_id = baseid; helpers_info = helpers; decl_kind = kind;

@@ -1308,7 +1308,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
      let sign = named_context_of_val sign in
      let sign', secsign = split_at_eos !evars sign in
      let ids = List.map get_id sign in
-     let ids = Names.Id.Set.of_list (Obj.magic ids) in
+     let ids = Names.Id.Set.of_list ids in
      let tac = match tac with
        | Inl tac -> 
           Tacinterp.interp_tac_gen Names.Id.Map.empty ids Tactic_debug.DebugOff tac
@@ -1316,7 +1316,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
      in
      let env' = reset_with_named_context (val_of_named_context sign) env in
      let entry, proof = Proofview.init !evars [(env', t')] in
-     let _, res, _, _ = Proofview.apply env' (Obj.magic tac) proof in
+     let _, res, _, _ = Proofview.apply env' tac proof in
      let gls, sigma = Proofview.proofview res in
      evars := sigma;
      if Proofview.finished res then
@@ -1380,7 +1380,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
             (gl, args, subst, invsubst, s)
        in
        let goals = List.map solve_goal gls in
-       Some (Valid (prob, ty, List.map get_id sign', Proofview.V82.of_tactic (Obj.magic tac),
+       Some (Valid (prob, ty, List.map get_id sign', Proofview.V82.of_tactic tac,
 		    (entry, res), goals))
 
   | Refine (c, cls) -> 

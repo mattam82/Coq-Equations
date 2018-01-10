@@ -24,11 +24,11 @@ open Pltac
 let of82 = Proofview.V82.tactic
 
 TACTIC EXTEND decompose_app
-[ "decompose_app" ident(h) ident(h') constr(c) ] -> [ Obj.magic (Extra_tactics.decompose_app (Obj.magic h) (Obj.magic h') (Obj.magic c)) ]
+[ "decompose_app" ident(h) ident(h') constr(c) ] -> [ Extra_tactics.decompose_app h h' c ]
 END
 
 TACTIC EXTEND autounfold_ref
-| [ "autounfold_ref" reference(myref) ] -> [ Obj.magic (Extra_tactics.autounfold_ref (Obj.magic myref)) ]
+| [ "autounfold_ref" reference(myref) ] -> [ Extra_tactics.autounfold_ref myref ]
 END
 
 (* TACTIC EXTEND abstract_match *)
@@ -52,7 +52,7 @@ open Proofview.Goal
 
 TACTIC EXTEND get_signature_pack
 [ "get_signature_pack" hyp(id) ident(id') ] ->
-     [ Obj.magic (Sigma_types.Tactics.get_signature_pack (Obj.magic id) (Obj.magic id')) ]
+     [ Sigma_types.Tactics.get_signature_pack id id' ]
 END
       
 TACTIC EXTEND pattern_sigma
@@ -64,20 +64,20 @@ TACTIC EXTEND pattern_sigma
 (*     let decl = Tacmach.New.pf_get_hyp id gl in *)
 (*     let term = Option.get (Util.pi2 decl) in *)
 (*     Sigma.pattern_sigma ~assoc_right:false term id env sigma) ] *)
-| [ "pattern" "sigma" hyp(id) ] -> [ Obj.magic (Sigma_types.Tactics.pattern_sigma (Obj.magic id)) ]
+| [ "pattern" "sigma" hyp(id) ] -> [ Sigma_types.Tactics.pattern_sigma id ]
 END
 
 TACTIC EXTEND curry
-[ "curry" hyp(id) ] -> [ Obj.magic (Sigma_types.Tactics.curry_hyp (Obj.magic id)) ]
-| ["curry"] -> [ Obj.magic Sigma_types.Tactics.curry ]
+[ "curry" hyp(id) ] -> [ Sigma_types.Tactics.curry_hyp id ]
+| ["curry"] -> [ Sigma_types.Tactics.curry ]
 END
 
 TACTIC EXTEND curry_hyps
-[ "uncurry_hyps" ident(id) ] -> [ Obj.magic (Sigma_types.uncurry_hyps (Obj.magic id)) ]
+[ "uncurry_hyps" ident(id) ] -> [ Sigma_types.uncurry_hyps id ]
 END
 
 TACTIC EXTEND uncurry_call
-[ "uncurry_call" constr(c) ident(id) ] -> [ Obj.magic (Sigma_types.Tactics.uncurry_call (Obj.magic c) (Obj.magic id)) ]
+[ "uncurry_call" constr(c) ident(id) ] -> [ Sigma_types.Tactics.uncurry_call c id ]
 END
 
 (* TACTIC EXTEND pattern_tele *)
@@ -90,16 +90,16 @@ END
 
 TACTIC EXTEND dependent_pattern
 | ["dependent" "pattern" constr(c) ] -> [ 
-    Proofview.V82.tactic (Obj.magic (Depelim.dependent_pattern (Obj.magic c))) ]
+    Proofview.V82.tactic (Depelim.dependent_pattern c) ]
 END
 
 TACTIC EXTEND dependent_pattern_from
 | ["dependent" "pattern" "from" constr(c) ] ->
-    [ Proofview.V82.tactic (Obj.magic (Depelim.dependent_pattern ~pattern_term:false (Obj.magic c))) ]
+    [ Proofview.V82.tactic (Depelim.dependent_pattern ~pattern_term:false c) ]
 END
 
 TACTIC EXTEND pattern_call
-[ "pattern_call" constr(c) ] -> [ Proofview.V82.tactic (Obj.magic (Depelim.pattern_call (Obj.magic c))) ]
+[ "pattern_call" constr(c) ] -> [ Proofview.V82.tactic (Depelim.pattern_call c) ]
 END
 
 (* Noconf *)
@@ -107,12 +107,12 @@ END
 VERNAC COMMAND EXTEND Equations_Logic CLASSIFIED AS QUERY
 | [ "Equations" "Logic" sort_family(s) global(eq) global(eqr) global(eq_case) global(eq_elim)
                 global(z) global(o) global(ov) global(oprod) global(opair) ] -> [
-  let gr x = Obj.magic (Lazy.from_val (Nametab.global x)) in
+  let gr x = Lazy.from_val (Nametab.global x) in
   Equations_common.(set_logic { logic_eq_ty = gr eq;
 				logic_eq_refl = gr eqr;
                                 logic_eq_case = gr eq_case;
                                 logic_eq_elim = gr eq_elim;
-                                logic_sort = Obj.magic s;
+                                logic_sort = s;
 				logic_zero = gr z;
 				logic_one = gr o;
 				logic_one_val = gr ov;
@@ -142,7 +142,7 @@ END
 TACTIC EXTEND needs_generalization
 | [ "needs_generalization" hyp(id) ] -> 
     [ Proofview.V82.tactic (fun gl -> 
-      if Depelim.needs_generalization (Obj.magic gl) (Obj.magic id)
+      if Depelim.needs_generalization gl id
       then tclIDTAC gl
       else tclFAIL 0 (str"No generalization needed") gl) ]
 END
@@ -152,17 +152,17 @@ END
 open Tacarg
 TACTIC EXTEND solve_equations
   [ "solve_equations" tactic(destruct) tactic(tac) ] -> 
-     [ of82 (Obj.magic (Equations.solve_equations_goal (to82 (Obj.magic (Tacinterp.tactic_of_value ist destruct)))
-                                            (to82 (Obj.magic (Tacinterp.tactic_of_value ist tac))))) ]
+     [ of82 (Equations.solve_equations_goal (to82 (Tacinterp.tactic_of_value ist destruct))
+                                            (to82 (Tacinterp.tactic_of_value ist tac))) ]
 END
 
 TACTIC EXTEND simp
 | [ "simp" ne_preident_list(l) clause(c) ] -> 
-    [ of82 (Obj.magic (Principles_proofs.simp_eqns_in (Obj.magic c) (Obj.magic l))) ]
+    [ of82 (Principles_proofs.simp_eqns_in c l) ]
 | [ "simpc" constr_list(l) clause(c) ] -> 
-   [ of82 (Obj.magic (Principles_proofs.simp_eqns_in
-                        (Obj.magic c)
-                        (dbs_of_constrs (Obj.magic (List.map EConstr.Unsafe.to_constr l))))) ]
+   [ of82 (Principles_proofs.simp_eqns_in
+                        c
+                        (dbs_of_constrs (List.map EConstr.Unsafe.to_constr l))) ]
 END
 
 
@@ -177,7 +177,7 @@ ARGUMENT EXTEND equation_user_option
 PRINTED BY pr_r_equation_user_option
 | [ "noind" ] -> [ OInd false ]
 | [ "ind" ] -> [ OInd true ]
-| [ "struct" ident(i) ] -> [ ORec (Some (loc, Obj.magic i)) ]
+| [ "struct" ident(i) ] -> [ ORec (Some (loc, i)) ]
 | [ "nostruct" ] -> [ ORec None ]
 | [ "comp" ] -> [ OComp true ]
 | [ "nocomp" ] -> [ OComp false ]
@@ -331,23 +331,23 @@ GEXTEND Gram
   identloc :
    [ [ id = ident -> (!@loc, id) ] ] ;
   equation:
-    [ [ id = identloc; 	pats = LIST1 ipatt; r = rhs -> (Some (Obj.magic id), SignPats pats, r)
+    [ [ id = identloc; 	pats = LIST1 ipatt; r = rhs -> (Some id, SignPats pats, r)
       | "|"; pats = LIST1 lpatt SEP "|"; r = rhs -> (None, RefinePats pats, r) 
     ] ]
   ;
 
   ipatt:
-    [ [ "{"; id = identloc; ":="; p = patt; "}" -> (Some (Obj.magic id), p)
+    [ [ "{"; id = identloc; ":="; p = patt; "}" -> (Some id, p)
       | p = patt -> (None, p)
       ] ]
   ;
     
   patt:
-    [ [ id = smart_global -> !@loc, PEApp ((!@loc,(Obj.magic id)), [])
+    [ [ id = smart_global -> !@loc, PEApp ((!@loc,id), [])
       | "_" -> !@loc, PEWildcard
       | "("; p = lpatt; ")" -> p
-      | "?("; c = Constr.lconstr; ")" -> !@loc, PEInac (Obj.magic c)
-      | p = pattern LEVEL "0" -> !@loc, PEPat (Obj.magic p)
+      | "?("; c = Constr.lconstr; ")" -> !@loc, PEInac c
+      | p = pattern LEVEL "0" -> !@loc, PEPat p
     ] ]
   ;
 
@@ -357,7 +357,7 @@ GEXTEND Gram
   ;
 
   lpatt:
-    [ [ head = pat_head; pats = LIST0 patt -> !@loc, PEApp ((Obj.magic head), Obj.magic pats)
+    [ [ head = pat_head; pats = LIST0 patt -> !@loc, PEApp (head, pats)
       | p = patt -> p
     ] ]
   ;
@@ -371,7 +371,7 @@ GEXTEND Gram
                 let acc = fun e ->
                   acc (Refine (c, [(None, RefinePats [!@loc, PEWildcard], e)])) in
                 build_refine acc cs
-          in build_refine (fun e -> e) (Obj.magic cs)
+          in build_refine (fun e -> e) cs
     ] ]
   ;
   struct_annot:
@@ -397,12 +397,12 @@ GEXTEND Gram
     ] ]
   ;
   rhs:
-    [ [ ":=!"; id = identloc -> Empty (Obj.magic id)
-      | [":="|"=>"]; c = Constr.lconstr; w = where -> Program (Obj.magic c, Obj.magic w)
+    [ [ ":=!"; id = identloc -> Empty id
+      | [":="|"=>"]; c = Constr.lconstr; w = where -> Program (c, w)
       | ["with"|"<="]; ref = refine; [":="|"=>"]; e = sub_equations -> ref e
       | "<-"; "(" ; t = tactic; ")"; e = sub_equations -> By (Inl t, e)
       | "by"; IDENT "rec"; c = constr; rel = OPT constr; id = OPT identloc;
-        [":="|"=>"]; e = deppat_equations -> Rec (Obj.magic c, Obj.magic rel, Obj.magic id, e)
+        [":="|"=>"]; e = deppat_equations -> Rec (c, rel, id, e)
     ] ]
   ;
 
@@ -413,7 +413,7 @@ GEXTEND Gram
   ;
 
   equations:
-  [ [ l = LIST1 where_clause -> Obj.magic l ] ]
+  [ [ l = LIST1 where_clause -> l ] ]
   ;
   END
 
@@ -462,9 +462,9 @@ PRINTED BY pr_elim_patterns
 END
 
 TACTIC EXTEND dependent_elimination
-| ["dependent" "elimination" ident(id) ] -> [ Obj.magic (Depelim.dependent_elim_tac (Loc.make_loc (0, 0), Obj.magic id)) ]
+| ["dependent" "elimination" ident(id) ] -> [ Depelim.dependent_elim_tac (Loc.make_loc (0, 0), id) ]
 | ["dependent" "elimination" ident(id) "as" elim_patterns(l) ] ->
-   [ Obj.magic (Depelim.dependent_elim_tac ~patterns:l (Loc.make_loc (0, 0), Obj.magic id) (* FIXME *)) ]
+   [ Depelim.dependent_elim_tac ~patterns:l (Loc.make_loc (0, 0), id) (* FIXME *) ]
 END
 
 (* Subterm *)
@@ -479,18 +479,18 @@ TACTIC EXTEND is_secvar
 END
 
 TACTIC EXTEND refine_ho
-| [ "refine_ho" open_constr(c) ] -> [ Obj.magic (Extra_tactics.refine_ho (Obj.magic c)) ]
+| [ "refine_ho" open_constr(c) ] -> [ Extra_tactics.refine_ho c ]
 END
 
 TACTIC EXTEND eqns_specialize_eqs
 | [ "eqns_specialize_eqs" ident(i) ] -> [
-    Proofview.V82.tactic (Obj.magic (Depelim.specialize_eqs (Obj.magic i)))
+    Proofview.V82.tactic (Depelim.specialize_eqs i)
   ]
 END
 
 TACTIC EXTEND move_after_deps
 | [ "move_after_deps" ident(i) constr(c) ] ->
-[ Obj.magic (Equations_common.move_after_deps (Obj.magic i) (Obj.magic c)) ]
+[ Equations_common.move_after_deps i c ]
 END
 
 (** Deriving *)
@@ -498,7 +498,7 @@ END
 VERNAC COMMAND FUNCTIONAL EXTEND Derive CLASSIFIED AS SIDEFF
 | [ "Derive" ne_ident_list(ds) "for" global_list(c) ] -> [
     fun ~atts ~st -> Derive.derive ~poly:atts.polymorphic (List.map Id.to_string ds)
-                  (Obj.magic (List.map (fun x -> Libnames.loc_of_reference x, Smartlocate.global_with_alias x) c)); st
+                  (List.map (fun x -> Libnames.loc_of_reference x, Smartlocate.global_with_alias x) c); st
   ]
 END
 
@@ -568,11 +568,11 @@ END
 
 TACTIC EXTEND simplify
 | [ "simplify" simplification_rules(l) ] ->
-  [ Obj.magic (Simplify.simplify_tac l) ]
+  [ Simplify.simplify_tac l ]
 | [ "simplify" ] ->
-  [ Obj.magic (Simplify.simplify_tac []) ]
+  [ Simplify.simplify_tac [] ]
 END
 
 TACTIC EXTEND mutual_fix
-[ "mfix" my_preident_list(li) int_list(l) ] -> [ Obj.magic (Principles_proofs.mutual_fix li l) ]
+[ "mfix" my_preident_list(li) int_list(l) ] -> [ Principles_proofs.mutual_fix li l ]
 END
