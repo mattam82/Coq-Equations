@@ -148,7 +148,7 @@ Ltac sigma_pack t :=
   let xpack := fresh "pack" in
   uncurry_hyps packhyps; 
     (progress (set(xpack := t) in |- ;
-               cbv in xpack; revert xpack;
+               cbv beta iota zeta in xpack; revert xpack;
                pattern sigma packhyps; 
                clearbody packhyps;
                revert packhyps;
