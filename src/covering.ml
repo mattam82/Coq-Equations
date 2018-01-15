@@ -526,27 +526,28 @@ let new_strengthen (env : Environ.env) (evd : Evd.evar_map) (ctx : rel_context)
       Equations_common.map_rel_declaration (maybe_reduce (x - k)) decl
     else decl) 1 ctx in
   (* Now we want to put everything in [rels] as the oldest part of the context,
-   * and everything else after. The invariant is that the context
-   * [subst (rev (before @ after)) @ ctx] is well-typed. *)
-  (* We also create along what we need to build the actual substitution. *)
+   * and everything else after. *)
   let len_ctx = Context.Rel.length ctx in
   let lifting = len_ctx - Int.Set.cardinal rels in
   let rev_subst = Array.make len_ctx (PRel 0) in
+  (* [k] is the current rel in [ctx].
+   * [n] is the position of the next rel that should be in the newer part of [ctx'].
+   * [lifting] is the number of rels that will end in this newer part.
+   * [before] and [after] are the older and newer parts of [ctx']. *)
   let rec aux k before after n subst = function
   | decl :: ctx ->
+      (* We just lift the declaration so that it is typed under the whole
+       * context [ctx]. We will perform the proper substitution right after. *)
+      let decl = Equations_common.map_rel_declaration (Vars.lift k) decl in
       if Int.Set.mem k rels then
-        let subst = PRel (k + lifting - n + 1) :: subst in
+        (* [k - n + 1] is the position of this rel in the older part of [ctx'], which
+         * is shifted by [lifting]. *)
+        let subst = PRel (lifting + k - n + 1) :: subst in
         rev_subst.(k + lifting - n) <- PRel k;
-        (* We lift the declaration not to be well-typed in the new context,
-         * but so that it reflects in a raw way its movement in the context.
-         * This allows to apply a simple substitution afterwards, instead
-         * of going through the whole context at each step. *)
-        let decl = Equations_common.map_rel_declaration (Vars.lift (n - lifting - 1)) decl in
         aux (succ k) (decl :: before) after n subst ctx
       else
         let subst = PRel n :: subst in
         rev_subst.(n - 1) <- PRel k;
-        let decl = Equations_common.map_rel_declaration (Vars.lift (k - n)) decl in
         aux (succ k) before (decl :: after) (succ n) subst ctx
   | [] -> CList.rev (before @ after), CList.rev subst
   in
@@ -556,11 +557,10 @@ let new_strengthen (env : Environ.env) (evd : Evd.evar_map) (ctx : rel_context)
   let (ctx', subst) = aux 1 [] [] 1 [] ctx in
   let rev_subst = Array.to_list rev_subst in
   (* Fix the context [ctx'] by using [subst]. *)
-  (* We lift each declaration to make it appear as if it was under the
-   * whole context, which allows then to apply the substitution, and lift
-   * it back to its place. *)
-  let do_subst k c = Vars.lift (-k)
-    (specialize_constr evd subst (Vars.lift k c)) in
+  (* Currently, each declaration in [ctx'] is actually typed under [ctx]. *)
+  (* We can apply the substitution to get a declaration typed under [ctx'],
+   * and lift it back to its place in [ctx']. *)
+  let do_subst k c = Vars.lift (-k) (specialize_constr evd subst c) in
   let ctx' = CList.map_i (fun k decl ->
     Equations_common.map_rel_declaration (do_subst k) decl) 1 ctx' in
   (* Now we have everything need to build the two substitutions. *)
