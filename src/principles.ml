@@ -200,7 +200,7 @@ let abstract_rec_calls sigma ?(do_subst=true) is_rec len protos c =
 	  (match ctx' with
 	   | [] -> [], 0, c
 	   | hyp :: rest -> 
-	      let ty = mkProd (na, t, it_mkProd_or_LetIn (get_type hyp) rest) in
+	      let ty = mkProd (na, t, it_mkProd_or_clear sigma (get_type hyp) rest) in
 	      [make_assum (Name (id_of_string "Hind")) ty], 1, lift 1 c)
 
     (* | Cast (_, _, f) when is_comp f -> aux n f *)
