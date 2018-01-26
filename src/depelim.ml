@@ -492,31 +492,6 @@ let specialize_eqs id gl =
     tclFAIL 0 (str "Specialization not allowed on dependent hypotheses") gl
   else specialize_eqs id gl
 
-(* Produce a list of default patterns to eliminate an inductive value in [ind]. *)
-let default_patterns env sigma ?(avoid = ref Id.Set.empty) ind : (Syntax.user_pat Loc.located) list =
-  let nparams = Inductiveops.inductive_nparams ind in
-  let mib, oib = Inductive.lookup_mind_specif env ind in
-  let make_pattern (i : int) : Syntax.user_pat Loc.located =
-    let construct = Names.ith_constructor_of_inductive ind (succ i) in
-    let args =
-      let arity = oib.mind_nf_lc.(i) in
-      let params, arity = EConstr.decompose_prod_n_assum sigma nparams (of_constr arity) in
-      let ctx, _ = EConstr.decompose_prod_assum sigma arity in
-      (* Make an identifier for each argument of the constructor. *)
-      List.rev_map (fun decl ->
-        let id =
-          match Context.Rel.Declaration.get_name decl with
-          | Names.Name id -> Namegen.next_ident_away id !avoid
-          | Names.Anonymous ->
-              let ty = Context.Rel.Declaration.get_type decl in
-              let hd = Namegen.hdchar env sigma ty in
-                Namegen.next_ident_away (Names.Id.of_string hd) !avoid
-        in avoid := Id.Set.add id !avoid;
-      None, Syntax.PUVar (id, true)) ctx
-    in
-      None, Syntax.PUCstr (construct, nparams, args)
-  in List.init (Array.length oib.mind_consnames) make_pattern
-
 (* Dependent elimination using Equations. *)
 let dependent_elim_tac ?patterns id : unit Proofview.tactic =
   let open Proofview.Notations in
@@ -532,10 +507,15 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
     let env = push_named_context sec_hyps env in
 
     (* Check that [id] exists in the current context. *)
-    begin try ignore (Context.Named.lookup id loc_hyps); Proofview.tclUNIT ()
+    begin try
+      let rec lookup k = function
+        | decl :: _ when Id.equal id (Context.Named.Declaration.get_id decl) -> k
+        | _ :: sign -> lookup (succ k) sign
+        | [] -> raise Not_found
+      in Proofview.tclUNIT (lookup 1 loc_hyps)
     with Not_found ->
       Tacticals.New.tclZEROMSG (str "No such hypothesis: " ++ Id.print id)
-    end >>= fun () ->
+    end >>= fun rel ->
 
     (* We want to work in a [rel_context], not a [named_context]. *)
     let ctx, subst = Equations_common.rel_of_named_context loc_hyps in
@@ -547,37 +527,40 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
     (* We also need to convert the goal for it to be well-typed in
      * the [rel_context]. *)
     let ty = Vars.subst_vars subst concl in
-    let patterns : (Syntax.user_pat Loc.located) list =
-      match patterns with
-      | None ->
-          (* Produce directly a user_pat. *)
-          let decl = Context.Named.lookup id loc_hyps in
-          let ty = Context.Named.Declaration.get_type decl in
-          let indf, _ = find_rectype env sigma ty in
-          let ((ind,_), _) = dest_ind_family indf in
-            default_patterns env sigma ind
-      | Some p ->
-          (* Interpret each pattern. *)
+    let rhs =
+      let prog = Constrexpr.CHole (None, Misctypes.IntroAnonymous, None) in
+        Syntax.Program (CAst.make prog, [])
+    in
+    begin match patterns with
+    | None ->
+        (* Produce default clauses from the variable to split. *)
+        let evd = ref sigma in
+        begin match Covering.split_var (env, evd) rel ctx with
+        | None -> Tacticals.New.tclZEROMSG (str "Could not eliminate variable " ++ Id.print id)
+        | Some (_, newctx, brs) ->
+            let brs = Option.List.flatten (Array.to_list brs) in
+            let clauses_lhs = List.map Covering.context_map_to_lhs brs in
+            let clauses = List.map (fun lhs -> (default_loc, lhs, rhs)) clauses_lhs in
+              Proofview.tclUNIT clauses
+        end
+    | Some p ->
+        (* Interpret each pattern to then produce clauses. *)
+        let patterns : (Syntax.user_pat Loc.located) list =
           let avoid = ref Id.Set.empty in
-            List.map (Syntax.interp_pat env ~avoid) p
-    in
-
-    (* For each pattern, produce a clause. *)
-    let make_clause : (Syntax.user_pat Loc.located) -> Syntax.clause =
-      fun (loc, pat) ->
-        let lhs =
-          List.rev_map (fun decl ->
-            let decl_id = Context.Named.Declaration.get_id decl in
-            if Names.Id.equal decl_id id then loc, pat
-            else None, Syntax.PUVar (decl_id, false)) loc_hyps
+          List.map (Syntax.interp_pat env ~avoid) p
         in
-        let rhs =
-          let prog = Constrexpr.CHole (None, Misctypes.IntroAnonymous, None) in
-            Syntax.Program (CAst.make prog, [])
-        in
-          (Option.default default_loc loc, lhs, rhs)
-    in
-    let clauses : Syntax.clause list = List.map make_clause patterns in
+        (* For each pattern, produce a clause. *)
+        let make_clause : (Syntax.user_pat Loc.located) -> Syntax.clause =
+          fun (loc, pat) ->
+            let lhs =
+              List.rev_map (fun decl ->
+                let decl_id = Context.Named.Declaration.get_id decl in
+                if Names.Id.equal decl_id id then loc, pat
+                else None, Syntax.PUVar (decl_id, false)) loc_hyps
+            in
+              (Option.default default_loc loc, lhs, rhs)
+        in Proofview.tclUNIT (List.map make_clause patterns)
+    end >>= fun clauses ->
     if !debug then
     Feedback.msg_info (str "Generated clauses: " ++ fnl() ++ Syntax.pr_clauses env clauses);
 

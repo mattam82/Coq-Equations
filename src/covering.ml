@@ -161,6 +161,29 @@ and pat_of_constr sigma c =
   | _ -> PInac c
 
 
+let rec pat_to_user_pat ?(avoid = ref Id.Set.empty) ?loc ctx = function
+  | PRel i ->
+      let decl = List.nth ctx (pred i) in
+      let name = Context.Rel.Declaration.get_name decl in
+      let id = Namegen.next_name_away name !avoid in
+      avoid := Id.Set.add id !avoid;
+        Some (loc, Syntax.PUVar (id, false))
+  | PCstr (((ind, _ as cstr), _), pats) ->
+      let n = Inductiveops.inductive_nparams ind in
+      let _, pats = List.chop n pats in
+        Some (loc, Syntax.PUCstr (cstr, n, pats_to_lhs ~avoid ?loc ctx pats))
+  | PInac c ->
+      let id = Namegen.next_ident_away (Id.of_string "wildcard") !avoid in
+      avoid := Id.Set.add id !avoid;
+        Some (loc, Syntax.PUVar (id, true))
+  | PHide i -> None
+and pats_to_lhs ?(avoid = ref Id.Set.empty) ?loc ctx pats =
+  List.map_filter (pat_to_user_pat ~avoid ?loc ctx) pats
+
+let context_map_to_lhs ?(avoid = Id.Set.empty) ?loc (ctx, pats, _) =
+  let avoid = ref avoid in
+  List.rev (pats_to_lhs ~avoid ?loc ctx pats)
+
 (** Pretty-printing *)
 
 let pr_constr_pat env sigma c =
