@@ -16,11 +16,12 @@ Equations map_In {A B : Type}
   map_In nil _ := nil;
   map_In (cons x xs) f := cons (f x _) (map_In xs (fun x H => f x _)).
 
+Instance: Params (@map_In) 2.
+
 Lemma map_In_spec {A B : Type} (f : A -> B) (l : list A) :
   map_In l (fun (x : A) (_ : In x l) => f x) = List.map f l.
 Proof.
-  remember (fun (x : A) (_ : In x l) => f x) as g.
-  funelim (map_In l g); rewrite ?H; trivial.
+  funelim (map_In l (fun x (_ : In x l) => f x)); rewrite ?H; trivial.
 Qed.
   
 Section list_size.

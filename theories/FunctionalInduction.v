@@ -115,24 +115,30 @@ Ltac funelim_JMeq_tac c tac :=
       intros_until_block; intros_until_block;
       unblock_goal; tac elim ].
 
+Class Params {A : Type} (a : A) (n : nat).
+
 Ltac funelim_sig_tac c tac :=
   let elimc := get_elim c in
   let packcall := fresh "packcall" in
+  let elimf := match elimc with fun_elim (f:=?f) => constr:(f) end in
   let elimn := match elimc with fun_elim (n:=?n) => constr:(n) end in
+  let nparams :=
+      constr:(ltac:((let term := eval simpl in (let _ := _ : Params elimf ?[n] in ?n) in exact term) || exact (0%nat)))
+  in
   block_goal;
-  uncurry_call c packcall;
+  uncurry_call c nparams packcall;
   with_last_secvar ltac:(fun eos => move packcall before eos)
                           ltac:(move packcall at top) ;
   revert_until packcall;
   pattern sigma packcall;
   remember_let packcall;
   with_last_secvar ltac:(fun eos => move packcall before eos)
-                          ltac:(move packcall at top) ;
+                          ltac:(move packcall at top);
   revert_until packcall; revert packcall; curry;
-  let elimt := make_refine elimn elimc in
+  let elimt := make_refine elimn elimc in do_nat nparams ltac:(idtac; revert_last);
   unshelve refine_ho elimt; hnf;
   simplify_dep_elim; simplify_IH_hyps; intros _ (* block *);
-  unblock_goal; simplify_IH_hyps; tac c.
+  unblock_goal; simplify_IH_hyps; simpl eq_rect; tac c.
 
 Ltac funelim c := funelim_JMeq_tac c ltac:(fun _ => idtac).
 

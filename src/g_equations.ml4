@@ -71,8 +71,11 @@ TACTIC EXTEND curry_hyps
 [ "uncurry_hyps" ident(id) ] -> [ Sigma_types.uncurry_hyps id ]
 END
 
+open Extraargs
+
 TACTIC EXTEND uncurry_call
-[ "uncurry_call" constr(c) ident(id) ] -> [ Sigma_types.Tactics.uncurry_call c id ]
+[ "uncurry_call" constr(c) constr_opt(pars) ident(id) ] ->
+[ Sigma_types.Tactics.uncurry_call c pars id ]
 END
 
 (* TACTIC EXTEND pattern_tele *)

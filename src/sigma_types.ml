@@ -401,14 +401,21 @@ let uncurry_hyps name =
     Proofview.Unsafe.tclEVARS sigma <*>
       Tactics.letin_tac None (Name name) term (Some ty) nowhere }
 
-let uncurry_call env sigma c =
-  let hd, args = decompose_app c in
+let uncurry_call env sigma c pars =
+  let hd, args = decompose_app_vect c in
+  let hd, args =
+    match pars with
+    | None -> hd, args
+    | Some npars ->
+       let bef, after = Array.chop npars args in
+       mkApp (hd, bef), after
+  in
   let ty = Retyping.get_type_of env sigma hd in
-  let ctx, concl = decompose_prod_n_assum (List.length args) ty in
+  let ctx, concl = decompose_prod_n_assum (Array.length args) ty in
   let evdref = ref sigma in
   (* let ctx = (Anonymous, None, concl) :: ctx in *)
   let sigty, sigctx, constr = telescope evdref ctx in
-  let app = substl (List.rev args) constr in
+  let app = substl (Array.rev_to_list args) constr in
   !evdref, app, sigty
 
 (* Produce parts of a case on a variable, while introducing cuts and
@@ -780,11 +787,12 @@ module Tactics =struct
              Sigma.here prf (Sigma.Unsafe.of_evar_map sigma) }
       | _ -> Tacticals.New.tclFAIL 0 (str"Goal cannot be curried") }
 
-  let uncurry_call c id =
+  let uncurry_call c pars id =
     enter { enter = fun gl ->
         let env = Proofview.Goal.env gl in
         let sigma = Proofview.Goal.sigma gl in
-        let sigma, term, ty = uncurry_call env (Sigma.to_evar_map sigma) c in
+        let pars = Option.map int_of_coq_nat pars in
+        let sigma, term, ty = uncurry_call env (Sigma.to_evar_map sigma) c pars in
         let sigma, _ = Typing.type_of env sigma term in
         Proofview.Unsafe.tclEVARS sigma <*>
           Tactics.letin_tac None (Name id) term (Some ty) nowhere }
