@@ -137,7 +137,7 @@ let derive_subterm env sigma ~polymorphic ind =
     let inds = [declare_one_ind 0 ind branches] in
     let inductive =
       { mind_entry_record = None;
-        mind_entry_finite = Decl_kinds.Finite;
+        mind_entry_finite = Declarations.Finite;
         mind_entry_params = List.map (fun decl ->
           let (n, b, t) = to_tuple decl in
           match b with

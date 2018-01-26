@@ -497,7 +497,7 @@ END
 
 VERNAC COMMAND FUNCTIONAL EXTEND Derive CLASSIFIED AS SIDEFF
 | [ "Derive" ne_ident_list(ds) "for" global_list(c) ] -> [
-    fun ~atts ~st -> Derive.derive ~poly:atts.polymorphic (List.map Id.to_string ds)
+    fun ~atts ~st -> Derive.derive ~poly:atts.Vernacinterp.polymorphic (List.map Id.to_string ds)
                   (List.map (fun x -> Libnames.loc_of_reference x, Smartlocate.global_with_alias x) c); st
   ]
 END

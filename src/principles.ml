@@ -1076,7 +1076,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
       Entries.{ mind_entry_record = None;
                 mind_entry_universes = uctx;
                 mind_entry_private = None;
-                mind_entry_finite = Decl_kinds.Finite;
+                mind_entry_finite = Declarations.Finite;
                 mind_entry_params = []; (* (identifier * local_entry) list; *)
                 mind_entry_inds = inds }
     in
