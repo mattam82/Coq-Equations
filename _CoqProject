@@ -3,9 +3,7 @@
 -R theories Equations
 -I theories
 -I examples
--extra-phony siteexamples "examples/*.glob" "sh siteexamples.sh"
--extra-phony doc "html" "mkdir -p html/api && ocamldoc -html -d html/api `ocamlfind query -r coq.intf coq.kernel coq.tactics coq.proofs coq.toplevel coq.ltac -i-format` -rectypes -I src src/*.ml"
-ZDEBUG = "-bin-annot -g -for-pack Equations -w -58"
+CAMLDEBUG = "-bin-annot -g -for-pack Equations -w -58"
 COQDOCFLAGS = "-parse-comments -utf8 -interpolate"
 src/equations_common.mli
 src/equations_common.ml
