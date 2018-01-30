@@ -76,7 +76,7 @@ let map_split f split =
   in aux split
 
 let helper_evar evm evar env typ src =
-  let sign, typ', instance, _, _ = push_rel_context_to_named_context env evm typ in
+  let sign, typ', instance, _ = push_rel_context_to_named_context env evm typ in
   let evm' = evar_declare sign evar typ' ~src evm in
     evm', mkEvar (evar, Array.of_list instance)
 

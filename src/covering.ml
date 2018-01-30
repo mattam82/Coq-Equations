@@ -1327,7 +1327,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
       | Some (clauses, split) -> Some (RecValid (pi1 data, split)))
      
   | By (tac, s) ->
-     let sign, t', rels, _, _ = push_rel_context_to_named_context env' !evars ty in
+     let sign, t', rels, _ = push_rel_context_to_named_context env' !evars ty in
      let sign = named_context_of_val sign in
      let sign', secsign = split_at_eos !evars sign in
      let ids = List.map get_id sign in
