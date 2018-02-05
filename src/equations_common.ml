@@ -668,14 +668,14 @@ let mkProd_or_subst_or_clear sigma decl c =
   | None -> subst1 mkProp c
   | Some b -> subst1 b c
 
-let it_mkProd_or_subst ty ctx = 
-  nf_beta Evd.empty (List.fold_left 
-		       (fun c d -> whd_betalet Evd.empty (mkProd_or_LetIn d c)) ty ctx)
+let it_mkProd_or_subst env sigma ty ctx =
+  nf_beta env sigma (List.fold_left
+                       (fun c d -> whd_betalet sigma (mkProd_or_LetIn d c)) ty ctx)
 
-let it_mkProd_or_clean ty ctx =
+let it_mkProd_or_clean env sigma ty ctx =
   let open Context.Rel.Declaration in
-  nf_beta Evd.empty (List.fold_left 
-		       (fun c d -> whd_betalet Evd.empty 
+  nf_beta env sigma (List.fold_left
+                       (fun c d -> whd_betalet sigma
 			 (if (get_name d) == Anonymous then subst1 mkProp c
 			  else (mkProd_or_LetIn d c))) ty ctx)
 

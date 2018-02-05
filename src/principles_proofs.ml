@@ -775,7 +775,7 @@ let ind_elim_tac indid inds mutinds info ind_fun =
     | 0, _ ->
        if mutinds == 1 then
          tclTHENLIST [Tactics.simpl_in_concl; Tactics.intros;
-                      prove_methods (Reductionops.nf_beta (Goal.sigma gl)
+                      prove_methods (Reductionops.nf_beta env sigma
                                                           (applistc indid (List.rev args)))]
        else
          let app = applistc indid (List.rev args) in

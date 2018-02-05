@@ -112,7 +112,7 @@ let term_of_tree status isevar env0 tree =
              (evm, (make_def (Name where_id) (Some c') ty' :: ctx)))
            where (evm,ctx)
        in
-       let body = it_mkLambda_or_LetIn rhs ctx and typ = it_mkProd_or_subst ty ctx in
+       let body = it_mkLambda_or_LetIn rhs ctx and typ = it_mkProd_or_subst env evm ty ctx in
        evm, body, typ
 
     | Compute ((ctx, _, _), where, ty, REmpty split) ->
@@ -134,7 +134,7 @@ let term_of_tree status isevar env0 tree =
        let evm, term, ty = aux env evm s in
        let args = Array.rev_of_list (snd (constrs_of_pats ~inacc_and_hide:false env evm p)) in
        let term = it_mkLambda_or_LetIn (whd_beta evm (mkApp (term, args))) ctx in
-       let ty = it_mkProd_or_subst (prod_appvect evm ty args) ctx in
+       let ty = it_mkProd_or_subst env evm (prod_appvect evm ty args) ctx in
          evm, term, ty
 		    
     | RecValid (id, rest) -> aux env evm rest
@@ -157,7 +157,7 @@ let term_of_tree status isevar env0 tree =
 	in
 	let term = applist (f, args) in
 	let term = it_mkLambda_or_LetIn term ctx in
-	let ty = it_mkProd_or_subst ty ctx in
+        let ty = it_mkProd_or_subst env evm ty ctx in
 	  evm, term, ty
 
     | Valid ((ctx, _, _), ty, substc, tac, (entry, pv), rest) ->
@@ -273,7 +273,7 @@ let term_of_tree status isevar env0 tree =
           case_ty rel_t branches in
         let term = EConstr.mkApp (case, Array.of_list to_apply) in
         let term = EConstr.it_mkLambda_or_LetIn term ctx in
-        let typ = it_mkProd_or_subst ty ctx in
+        let typ = it_mkProd_or_subst env evm ty ctx in
         let term = Evarutil.nf_evar !evd term in
         Typing.e_check env evd term typ;
           !evd, term, typ
@@ -319,7 +319,7 @@ let term_of_tree status isevar env0 tree =
 	    oblevars := Evar.Map.add ev 0 !oblevars;
 	    evm, term
 	in       
-	let casetyp = it_mkProd_or_subst ty ctx in
+        let casetyp = it_mkProd_or_subst env evm ty ctx in
 	  evm, mkCast(case, DEFAULTcast, casetyp), casetyp
   in 
   let evm, term, typ = aux env0 !isevar tree in
@@ -461,11 +461,7 @@ let map_rhs f g = function
   | RProgram c -> RProgram (f c)
   | REmpty i -> REmpty (g i)
 
-let clean_clause (ctx, pats, ty, c) =
-  (ctx, pats, ty, 
-  map_rhs (nf_beta Evd.empty) (fun x -> x) c)
-
-let map_evars_in_constr evd evar_map c = 
+let map_evars_in_constr evd evar_map c =
   evar_map (fun id ->
 	    let gr = Nametab.global (Qualid (dummy_loc, qualid_of_ident id)) in
             let (f, uc) = Global.constr_of_global_in_context (Global.env ()) gr in

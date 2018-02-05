@@ -406,13 +406,13 @@ let compute_elim_type env evd is_rec protos k leninds
 	(List.map (fun (c, _) ->
 	      let hyps, hypslen, c' = 
                 abstract_rec_calls !evd ~do_subst:false
-		   is_rec signlen protos (Reductionops.nf_beta !evd (lift 1 c)) 
+                   is_rec signlen protos (Reductionops.nf_beta env !evd (lift 1 c))
 	      in 
 	      let lifthyps = lift_rel_contextn (signlen + 2) (- (pred i)) hyps in
 	        lifthyps) args)
       in
         it_mkLambda_or_LetIn
-	  (app (it_mkProd_or_clean (lift (List.length indhyps) papp) 
+          (app (it_mkProd_or_clean env !evd (lift (List.length indhyps) papp)
                                    (lift_rel_context lenargs indhyps)))
 	  ctx
     in
@@ -739,7 +739,7 @@ let computations env evd alias refine eqninfo =
      (* msg_debug (str"where_instance: " ++ prlist_with_sep spc pr_c inst); *)
      let ninst = List.map (fun n -> Nameops.Name.get_id (get_name n)) (pi1 ctx) in
      let inst = List.map (fun c -> substn_vars 1 ninst c) inst in
-     let c' = map_rhs (fun c -> Reductionops.nf_beta Evd.empty (substl inst c)) (fun x -> x) c in
+     let c' = map_rhs (fun c -> Reductionops.nf_beta env evd (substl inst c)) (fun x -> x) c in
      let patsconstrs = List.rev_map pat_constr (pi2 ctx) in
      [pi1 ctx, f, alias, patsconstrs, substl inst ty, f, (Where, snd refine), c', Some wheres]
 
@@ -875,7 +875,7 @@ let declare_funind info alias env evd is_rec protos progs
       let ind = Nameops.add_suffix (Id.of_string info.term_info.base_id)
                                    ("_ind" ^ if i == 0 then "" else "_" ^ string_of_int i) in
       let indt = e_new_global evd (global_reference ind) in
-      Some (it_mkProd_or_subst (applist (indt, args @ [app])) sign)
+      Some (it_mkProd_or_subst env !evd (applist (indt, args @ [app])) sign)
     in
     match ind_stmts with
     | [] -> assert false
@@ -999,7 +999,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
     let body =
       let b = match c with
 	| RProgram c ->
-	    mkEq env evd ty comp (Reductionops.nf_beta !evd c)
+            mkEq env evd ty comp (Reductionops.nf_beta env !evd c)
 	| REmpty i ->
 	   mkApp (coq_ImpossibleCall evd, [| ty; comp |])
       in
@@ -1013,7 +1013,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
       | RProgram c ->
 	  let len = List.length ctx in
 	  let hyps, hypslen, c' =
-            abstract_rec_calls !evd is_rec len protos (Reductionops.nf_beta Evd.empty c)
+            abstract_rec_calls !evd is_rec len protos (Reductionops.nf_beta env !evd c)
           in
           let head =
             let f = mkRel (len + (lenprotos - i) + hypslen) in
@@ -1024,7 +1024,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
           in
           let ty = 
             it_mkProd_or_clear !evd
-              (it_mkProd_or_clean
+              (it_mkProd_or_clean env !evd
 		 (applistc head (lift_constrs hypslen pats @ [c']))
 		 hyps) ctx
           in Some ty

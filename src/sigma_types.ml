@@ -709,7 +709,7 @@ let curry_hyp env sigma hyp t =
     | Prod (na, dom, concl) ->
        let ctx, arg = curry sigma na dom in
        let term = mkApp (mkVar hyp, [| arg |]) in
-       let ty = Reductionops.nf_betaiota sigma (Vars.subst1 arg concl) in
+       let ty = Reductionops.nf_betaiota env sigma (Vars.subst1 arg concl) in
        Some (it_mkLambda_or_LetIn term ctx, it_mkProd_or_LetIn ty ctx)
     | _ -> None
   in curry t
