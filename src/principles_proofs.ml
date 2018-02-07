@@ -148,6 +148,7 @@ let mutual_fix li l =
   let open Proofview in
   let open Notations in
   let mfix env sigma gls =
+    let gls = List.map Proofview.drop_state gls in
     let types = List.map (fun ev -> EConstr.of_constr (Evd.evar_concl (Evd.find sigma ev))) gls in
     let env =
       let ctxs = List.map (fun ev -> Evd.evar_context (Evd.find sigma ev)) gls in
@@ -442,6 +443,7 @@ let observe_tac s tac =
     tclENV >>= fun env ->
     tclEVARMAP >>= fun sigma ->
     Unsafe.tclGETGOALS >>= fun gls ->
+    let gls = List.map Proofview.drop_state gls in
     Feedback.msg_debug (str"Applying " ++ str s ++ str " on " ++
                           Printer.pr_subgoals None sigma [] [] [] [] gls);
     Proofview.tclORELSE
