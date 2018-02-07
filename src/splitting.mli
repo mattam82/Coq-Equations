@@ -75,8 +75,6 @@ val mapping_rhs : Evd.evar_map -> context_map -> splitting_rhs -> splitting_rhs
 val map_rhs :
   (constr -> constr) ->
   (int -> int) -> splitting_rhs -> splitting_rhs
-val clean_clause :
-  'a * 'b * 'c * splitting_rhs -> 'a * 'b * 'c * splitting_rhs
 val map_evars_in_constr :
   Evd.evar_map -> ((Id.t -> Constr.t) -> Constr.t -> 'b) -> constr -> 'b
 val map_split : (constr -> constr) -> splitting -> splitting

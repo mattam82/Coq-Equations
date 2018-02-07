@@ -77,7 +77,7 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
       let sigma = Evarutil.e_new_global evd (Lazy.force coq_sigma) in
       let _, pred' = decompose_lam_n (List.length pars) (EConstr.to_constr !evd pred) in
       let indty = mkApp (sigma, [|idx; of_constr pred'|]) in
-      nf_betaiotazeta !evd indty, mkProj (Lazy.force coq_pr2, mkRel 1), pars, (List.firstn lenargs ctx)
+      nf_betaiotazeta env !evd indty, mkProj (Lazy.force coq_pr2, mkRel 1), pars, (List.firstn lenargs ctx)
   in
   let tru = e_new_global evd (get_one ()) in
   let fls = e_new_global evd (get_zero ()) in
