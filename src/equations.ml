@@ -165,10 +165,12 @@ let define_principles flags fixprots progs =
 	     Global.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
              let () = (* Declare the subproofs of unfolding for where as rewrite rules *)
                let decl _ (_, id, _) =
-                 let gr = Nametab.locate_constant (qualid_of_ident id) in
-                 let grc = Universes.fresh_global_instance (Global.env()) (ConstRef gr) in
-                 Autorewrite.add_rew_rules (info.base_id ^ "_where") [None, (grc, true, None)];
-                 Autorewrite.add_rew_rules (info.base_id ^ "_where_rev") [None, (grc, false, None)]
+                 try let gr = Nametab.locate_constant (qualid_of_ident id) in
+                     let grc = Universes.fresh_global_instance (Global.env()) (ConstRef gr) in
+                     Autorewrite.add_rew_rules (info.base_id ^ "_where") [None, (grc, true, None)];
+                     Autorewrite.add_rew_rules (info.base_id ^ "_where_rev") [None, (grc, false, None)]
+                 with Not_found ->
+                   Feedback.msg_warning Pp.(str"Unfolding subproofs not found for " ++ Id.print id)
                in
                Evar.Map.iter decl where_map
              in

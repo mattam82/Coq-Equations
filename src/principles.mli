@@ -24,7 +24,7 @@ val abstract_rec_calls : Evd.evar_map ->
   Syntax.rec_type option ->
   int ->
   ((constr * int list) * (constr * int list) option * int *
-   Term.constr)
+     EConstr.rel_context * Term.constr)
   list -> constr -> rel_context * int * constr
 val subst_app :Evd.evar_map ->
   constr ->
@@ -44,7 +44,7 @@ val compute_elim_type :
   Equations_common.esigma ->
   Syntax.rec_type option ->
   ((constr * int list) * (constr * int list) option * int *
-   Term.constr)
+     EConstr.rel_context * Term.constr)
   list ->
   Names.mutual_inductive ->
   int ->
