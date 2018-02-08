@@ -248,7 +248,7 @@ let build_app_infer (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : go
       let targs = Array.of_list (CList.map (Option.default c) args) in
         EConstr.mkApp (tf, targs) end
 
-let conv_fun = Evarconv.evar_conv_x Names.full_transparent_state
+let conv_fun types_or_terms = Evarconv.(evar_conv_x (default_flags_of Names.full_transparent_state))
 let is_conv (env : Environ.env) (sigma : Evd.evar_map) (ctx : rel_context)
   (t1 : EConstr.t) (t2 : EConstr.t) : bool =
   let env = push_rel_context ctx env in

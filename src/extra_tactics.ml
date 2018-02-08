@@ -50,8 +50,12 @@ let refine_ho c =
          let (evk, subst as ev) = destEvar sigma ev in
          let sigma = !evd in
          let sigma,ev = evar_absorb_arguments env sigma ev (Array.to_list args) in
-         let argoccs = CArray.map_to_list (fun _ -> None) (snd ev) in
-         let sigma, b = Evarconv.second_order_matching ts env sigma ev argoccs concl in
+         let occtest = Evarconv.default_occurrence_test ~frozen_evars:Evar.Set.empty ts in
+         let occsel = CList.init (Array.length (snd ev)) (fun _ -> Evarconv.Unspecified true) in
+           (* Prefer abstraction *)
+         let occsel = (occtest, occsel) in
+         let sigma, b = Evarconv.(second_order_matching (default_flags_of ts)
+                                  env sigma ev occsel concl) in
          if not b then
            error "Second-order matching failed"
          else Proofview.Unsafe.tclEVARS sigma <*>
