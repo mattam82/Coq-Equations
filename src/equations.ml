@@ -501,7 +501,7 @@ let define_by_eqs opts eqs nt =
   let names, otys, impls = List.split3 tys in
   let data =
     Constrintern.compute_internalization_env
-    env Constrintern.Recursive names (List.map (fun x -> to_constr !evd (fst x)) otys) impls
+    env !evd Constrintern.Recursive names (List.map fst otys) impls
   in
   let fixprots =
     List.map (fun (oty, ty) ->
@@ -512,7 +512,7 @@ let define_by_eqs opts eqs nt =
     List.map2 (fun i fixprot -> of_tuple (Name i, None, fixprot)) names fixprots in
   let fixdecls = List.rev fixdecls in
   let implsinfo = List.map (fun (_, (oty, ty), impls) ->
-                  Impargs.compute_implicits_with_manual env (to_constr !evd oty) false impls) tys in
+                  Impargs.compute_implicits_with_manual env !evd oty false impls) tys in
   let equations = 
     Metasyntax.with_syntax_protection (fun () ->
       List.iter (Metasyntax.set_notation_for_interpretation env data) nt;
