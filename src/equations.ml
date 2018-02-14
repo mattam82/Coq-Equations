@@ -596,7 +596,7 @@ let define_by_eqs opts eqs nt =
   in CList.iter2 define_tree arities coverings
 
 let equations opts eqs nt =
-  List.iter (fun (((loc, i), nested, l, t),eqs) -> Dumpglob.dump_definition (Some loc, i) false "def") eqs;
+  List.iter (fun (((loc, i), nested, l, t),eqs) -> Dumpglob.dump_definition CAst.(make ~loc i) false "def") eqs;
   define_by_eqs opts eqs nt
 
 let solve_equations_goal destruct_tac tac gl =

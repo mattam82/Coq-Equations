@@ -1093,7 +1093,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
       let mutual =
         (CList.map_i (fun i ind ->
              let suff = if List.length inds != 1 then "_mut" else suff in
-             let id = (dummy_loc, Nameops.add_suffix ind.Entries.mind_entry_typename suff) in
+             let id = CAst.make @@ Nameops.add_suffix ind.Entries.mind_entry_typename suff in
              (id, false, (kn, i), sort)) 0 inds)
       in
       Indschemes.do_mutual_induction_scheme mutual;
@@ -1103,7 +1103,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
                          i, regular_or_nested_rec kind) mutual ind_stmts in
         let () =
           Indschemes.do_combined_scheme
-            (None, scheme)
+            CAst.(make scheme)
             (CList.map_filter (fun (id, b) -> if b then Some id else None) mutual)
         in kn, Smartlocate.global_with_alias (reference_of_id scheme)
       else 

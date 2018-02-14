@@ -18,7 +18,7 @@ val constr_of_global : Globnames.global_reference -> Constr.t
 val define_by_eqs :
   Syntax.equation_option list ->
   Syntax.pre_equations ->
-  (Vernacexpr.lstring * Constrexpr.constr_expr *
+  (Misctypes.lstring * Constrexpr.constr_expr *
    Notation_term.scope_name option)
   list ->
   unit
@@ -31,7 +31,7 @@ val define_principles :
 val equations :
   Syntax.equation_option list ->
   Syntax.pre_equations ->
-  (Vernacexpr.lstring * Constrexpr.constr_expr *
+  (Misctypes.lstring * Constrexpr.constr_expr *
    Notation_term.scope_name option)
   list ->
   unit
