@@ -235,7 +235,9 @@ let derive_subterm env sigma ~polymorphic ind =
     let _ty' = Typing.e_type_of (Global.env ()) evm ty in
     let evm, nf = Evarutil.nf_evars_and_universes !evm in
     let obls, _, constr, typ =
-      Obligations.eterm_obligations env id evm 0 (to_constr evm body) (to_constr evm ty)
+      Obligations.eterm_obligations env id evm 0
+        (to_constr ~abort_on_undefined_evars:false evm body)
+        (to_constr ~abort_on_undefined_evars:false evm ty)
     in
     let ctx = Evd.evar_universe_context evm in
     Obligations.add_definition id ~term:constr typ ctx

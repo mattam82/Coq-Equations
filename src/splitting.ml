@@ -247,7 +247,7 @@ let term_of_tree status isevar env0 tree =
                   let env = Evd.evar_env ev_info in
                   Typing.type_of env evm term
                 in
-                evd := Evd.define (fst ev) (EConstr.to_constr evm term) evm;
+                evd := Evd.define (fst ev) (EConstr.to_constr ~abort_on_undefined_evars:false evm term) evm;
                 c
             (* This should not happen... *)
             | _ -> failwith "Should not fail here, please report."
@@ -377,8 +377,10 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
   let _nf, _subst = Evarutil.e_nf_evars_and_universes isevar in
   let split = map_split (nf_evar !isevar) split in
   let obls, (emap, cmap), t', ty' =
+    (* XXX: EConstr Problem upstream indeed. *)
     Obligations.eterm_obligations env i !isevar
-      0 ~status (EConstr.to_constr !isevar t) (EConstr.to_constr !isevar (whd_betalet !isevar ty))
+      0 ~status (EConstr.to_constr ~abort_on_undefined_evars:false !isevar t)
+                (EConstr.to_constr ~abort_on_undefined_evars:false !isevar (whd_betalet !isevar ty))
   in
   let compobls = ref Id.Set.empty in
   let obls = 
@@ -467,6 +469,6 @@ let map_evars_in_constr evd evar_map c =
             let (f, uc) = Global.constr_of_global_in_context (Global.env ()) gr in
             let inst, ctx = ucontext_of_aucontext uc in
             Universes.constr_of_global_univ (Globnames.global_of_constr f, inst))
-           (EConstr.to_constr evd c)
+           (EConstr.to_constr ~abort_on_undefined_evars:false evd c)
 
 let map_evars_in_split evd m = map_split (map_evars_in_constr evd m)
