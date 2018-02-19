@@ -1,6 +1,7 @@
 Require Import Equations Utf8.
 Set Universe Polymorphism.
-Open Scope sigma_scope.
+Open Scope equations_scope.
+Import Sigma_Notations.
 Polymorphic
 Definition pr1_seq {A} {P : A -> Type} {p q : sigma A P} (e : p = q) : p.1 = q.1.
 Proof. destruct e. apply eq_refl. Defined.
@@ -29,13 +30,13 @@ Definition cong {A B : Type} (f : A -> B) {x y : A} (e : x = y) : f x = f y :=
 (* aka ap *)
 
 Lemma cong_iter {A B C} (f : A -> B) (g : B -> C) (x y : A) (e : x = y) :
-  Top.cong g (Top.cong f e) = Top.cong (fun x => g (f x)) e.
-Proof. revert y e. refine (Top.J _ _). reflexivity. Qed.
+  cong g (cong f e) = cong (fun x => g (f x)) e.
+Proof. revert y e. refine (J _ _). reflexivity. Qed.
 
 Lemma cong_subst2 {A B C} (f : C -> B) (x y : A) (e : x = y) (z w : A -> C) (p : z x = w x) :
-  Top.cong f (Top.subst2 (P:=fun x : A => z x = w x) p y e) =
-  Top.subst2 (P := fun x : A => f (z x) = f (w x)) (Top.cong f p) y e.
-Proof. revert y e. refine (Top.J _ _). simpl. reflexivity. Defined.
+  cong f (subst2 (P:=fun x : A => z x = w x) p y e) =
+  subst2 (P := fun x : A => f (z x) = f (w x)) (cong f p) y e.
+Proof. revert y e. refine (J _ _). simpl. reflexivity. Defined.
   
 Definition congd {A} {B : A -> Type} (f : forall x : A, B x) {x y : A} (p : x = y) :
   subst p (f x) = f y :=
@@ -107,12 +108,6 @@ Defined.
 
 Require Import DepElimDec.
 
-(* Unset Equations OCaml Splitting. *)
-(* BUG *)
-(* Equations tel_eq (Δ : Tel) (t s : Tuple Δ) : Type :=  *)
-(* tel_eq nil nil nil := unit; *)
-(* tel_eq (consTel A f) (cons t ts) (cons s ss) := *)
-(*   sigma (t = s) (fun e : t = s => tel_eq (f s) (rewP e at fun x => Tuple (f x) in ts) ss). *)
 Set Equations Transparent.
 
 Set Refolding Reduction.
@@ -125,7 +120,7 @@ Ltac rewrite_change c :=
 Equations path_sigma_uncurried {A : Type} {P : A -> Type} (u v : sigma A P)
   (pq : sigma _ (fun p => subst p u.2 = v.2))
   : u = v :=
-path_sigma_uncurried (sigmaI u1 u2) (sigmaI v1 v2) (sigmaI eq_refl eq_refl) :=
+path_sigma_uncurried (sigmaI u1 u2) (sigmaI _ _) (sigmaI eq_refl eq_refl) :=
   eq_refl.
 
 Definition pr1_path {A} `{P : A -> Type} {u v : sigma A P} (p : u = v)
@@ -188,7 +183,7 @@ Module Telescopes.
 
   Example onetel :=
     ext Type (fun A => ext nat (fun n => inj (vector A n))).
-  
+  Set Printing Universes.
   Equations telescope (T : Tel) : Type :=
     telescope (inj A) := A;
     telescope (ext A f) := sigma A (fun x => telescope (f x)).
@@ -226,9 +221,9 @@ Module Telescopes.
   
   Equations J {Δ : Tel} (r : Δ) (P : forall s : Δ, eq Δ r s -> Type) 
             (p : P r (refl r)) (s : Δ) (e : eq _ r s) : P s e :=
-    J {Δ:=(inj A)} a P p b e := Top.J P p b e;
+    J {Δ:=(inj A)} a P p b e := telescopes.J P p b e;
     J {Δ:=(ext A f)} (sigmaI r rs) P p (sigmaI s ss) (sigmaI e es) := 
-     Top.J (x:=r)
+     telescopes.J (x:=r)
        (fun (s' : A) (e' : r = s') =>
         forall (ss' : f s') (es' : eq (f s') (rewP e' at f in rs) ss'),
           P &(s' & ss') &(e' & es'))
@@ -300,7 +295,7 @@ Module Telescopes.
     unshelve refine {| equiv_inv e := telei t in eq_refl |}.
     - red; intros. destruct x. reflexivity.
     - red; intros. destruct x. now destruct pr2.
-    - intros [x eq]. revert t eq. refine (Top.J _ _). constructor.
+    - intros [x eq]. revert t eq. refine (telescopes.J _ _). constructor.
   Defined.
   
   Equations eq_eq_equiv (Δ : Tel) (u v : Δ) (e : u = v) : u == v :=
@@ -370,8 +365,8 @@ Module Telescopes.
     set (bar := (equiv_inv (equiv _ foo))) in *.
     change (bar = foo) in H0. symmetry in H0.
     unfold foo in H0. subst foo. clearbody bar. revert bar H0.
-    refine (@Top.subst2 _ _ _ _). simpl.
-    simpl. red in H. specialize (H _ _ _ He.2). destruct He. simpl. apply Top.cong. apply H.
+    refine (@telescopes.subst2 _ _ _ _). simpl.
+    simpl. red in H. specialize (H _ _ _ He.2). destruct He. simpl. apply telescopes.cong. apply H.
   Defined.
 
   Require Import EqDecInstances.
@@ -388,7 +383,7 @@ Module Telescopes.
                     (equiv_inv (IsEquiv := path_sigma_equiv _ _ _) e).2).
       set (foo := eq_eq_equiv_inv _ _ _ _) in *.
       symmetry in H. clearbody foo. revert foo H.
-      refine (Top.subst2 _).
+      refine (telescopes.subst2 _).
       refine (eisretr (path_sigma_uncurried u v) _).
   Defined.
 
@@ -406,14 +401,14 @@ Module Telescopes.
     - apply retr. 
     - revert v.
       induction Δ as [ | A t IH].
-      + refine (Top.J _ _). constructor.
-      + simpl in u; refine (Top.J _ _). simpl.
+      + refine (telescopes.J _ _). constructor.
+      + simpl in u; refine (telescopes.J _ _). simpl.
         rewrite IH.
         set (r:=retr (t u.1) u.2 u.2 eq_refl) in *.
         set(lhs:=eq_eq_equiv_inv _ _ _ _) in *.
         clearbody r. clearbody lhs.
         revert r. refine (eq_sym_dep _ _ _ _).
-        revert lhs. now refine (Top.J _ _). 
+        revert lhs. now refine (telescopes.J _ _).
   Defined.
   
   (** Telescopic equality is equivalent to equality of the sigmas. *)
@@ -497,9 +492,9 @@ Module Telescopes.
                     (compose f^-1 g^-1) _ _ _ .
   Proof.
     exact
-      (fun c => Top.cong g (eisretr f (g^-1 c)) @ eisretr g c).
+      (fun c => telescopes.cong g (eisretr f (g^-1 c)) @ eisretr g c).
     exact
-      (fun a => Top.cong (f^-1) (eissect g (f a)) @ eissect f a).
+      (fun a => telescopes.cong (f^-1) (eissect g (f a)) @ eissect f a).
     intro.
     simpl.
     apply axiom_triangle.
@@ -519,7 +514,7 @@ End Telescopes.
 
 Module Example_cons.
 
-Notation " 'rewP' H 'at' B 'in' c " := (@Top.subst _ _ B _ H c) (at level 20, only parsing).
+Notation " 'rewP' H 'at' B 'in' c " := (@telescopes.subst _ _ B _ H c) (at level 20, only parsing).
 
 Import Telescopes.
 
@@ -571,7 +566,7 @@ Defined.
   Proof. 
     intros.
     apply eq_points_equiv.
-    apply (Top.cong equiv_inv) in H.
+    apply (telescopes.cong equiv_inv) in H.
     transitivity (f ^-1 (f u)). symmetry. apply (eissect f u).
     transitivity (f ^-1 (f v)). apply H. apply (eissect f v).
   Defined.
@@ -598,15 +593,15 @@ Defined.
                                       format "'[' 'telei'  '/  ' x  ..  y  'in'  z ']'", only parsing)
                                    : telescope.
 
-  Notation " a '={' P ; e } b " := (Top.subst (P:=P) e a = b) (at level 90).
+  Notation " a '={' P ; e } b " := (telescopes.subst (P:=P) e a = b) (at level 90).
 
   Notation " a '==={' P ; e } b " := (subst P _ _ e a = b) (at level 90, only parsing) : telescope.
 
   Lemma equiv_cong_subst {A B} (P : B -> Type) (f : A -> B)
         (s t : A) (e : s = t) (u : P (f s))
-        (v : P (f t)) : u =_{(fun x => P (f x)); e} v <~> (u =_{P; Top.cong f e} v).
+        (v : P (f t)) : u =_{(fun x => P (f x)); e} v <~> (u =_{P; telescopes.cong f e} v).
   Proof.
-    unfold Top.subst.
+    unfold telescopes.subst.
     destruct e. simpl. apply equiv_id.
   Defined.
 
@@ -614,10 +609,10 @@ Defined.
         (P : forall x : A, B x -> Type) (f : forall x : A, B x)
         (s t : A) (e : s = t) (u : P s (f s))
         (v : P t (f t)) : u =_{(fun x => P x (f x)); e} v <~>
-                              (Top.J (fun y e => P y (rew e in (f s)))
-                                     u _ e =_{(fun x => P _ x); Top.congd f e} v).
+                              (telescopes.J (fun y e => P y (rew e in (f s)))
+                                     u _ e =_{(fun x => P _ x); telescopes.congd f e} v).
   Proof.
-    unfold Top.subst.
+    unfold telescopes.subst.
     destruct e. simpl. apply equiv_id.
   Defined.
   
@@ -645,14 +640,6 @@ Defined.
     apply axiom_triangle.
     apply axiom_triangle.
     apply axiom_triangle.
-    
-    (* apply eisretr. *)
-    (* red; intros. simpl. destruct x. simpl. apply Top.cong. *)
-    (* apply eissect. *)
-
-    (* intros [x bx]. *)
-    (* simpl. rewrite eisadj. simpl. *)
-    (* destruct (eissect (e x) bx). simpl. reflexivity. *)
   Defined.
 
   Lemma equiv_tele_r {A} {B B' : A -> Type} (e : forall x : A, Equiv (B x) (B' x)) :
@@ -661,9 +648,9 @@ Defined.
     simpl.
     unshelve refine {| equiv a := &(a.1 & e a.1 a.2) |}.
     unshelve refine {| equiv_inv a := &(a.1 & inv_equiv (e a.1) a.2) |}.
-    red; intros. simpl. destruct x. simpl. apply Top.cong.
+    red; intros. simpl. destruct x. simpl. apply telescopes.cong.
     apply eisretr.
-    red; intros. simpl. destruct x. simpl. apply Top.cong.
+    red; intros. simpl. destruct x. simpl. apply telescopes.cong.
     apply eissect.
 
     intros [x bx].
@@ -697,7 +684,7 @@ Defined.
     induction Δ.
     + simpl in *. destruct r.
       unfold subst. simpl.
-      rewrite Top.J_on_refl.
+      rewrite telescopes.J_on_refl.
       apply eq_sym_equiv.
     + unfold subst.
       revert b r s. refine (J _ _ _).
@@ -705,6 +692,7 @@ Defined.
       rewrite (J_on_refl).
       refine (eq_tele_sym_equiv).
   Defined.
+
   (** This is the square we get (almost) by applying congruence: 
       it is dependent over e. *)
   Definition dep_square {Γ : Tel} (Δ : Γ -> Tel) u v (e : u =={Γ} v)
@@ -734,7 +722,7 @@ Defined.
       simpl inj_extend_tel.
       refine (equiv_tele_r _). intros x.
       unfold square_tel. 
-      revert v x s. refine (Top.J _ _). intros s.
+      revert v x s. refine (telescopes.J _ _). intros s.
       simpl. unfold square_tel. unfold cong_tel. simpl.
       subst eqΔ. simpl in *.
       refine (equiv_sym _). apply subst_subst.
@@ -742,7 +730,7 @@ Defined.
     - simpl. refine (equiv_tele_r _). intros.
       destruct v. simpl in *. subst eqΔ. simpl in *.
       revert pr1 x pr2 s. 
-      refine (Top.J _ _).
+      refine (telescopes.J _ _).
       simpl. intros. specialize (X u.1 u.2 pr2).
       specialize (X (fun ρ => a &(u.1 & ρ))).
       simpl in X. specialize (X (fun ρ => b &(u.1 & ρ))).
@@ -796,7 +784,7 @@ Defined.
     unfold NoConfusion.noConfusion_nat_obligation_1. simpl.
     destruct x. destruct pr2. destruct pr2. simpl.
     red in pr3.
-    refine (Top.cong _ _).
+    refine (telescopes.cong _ _).
     revert pr3. simplify_one_dep_elim.
     simplify_one_dep_elim. intros.
     reflexivity.
@@ -804,7 +792,7 @@ Defined.
     intros.
     simpl. destruct x as (x&n'&v&e).
     unfold solution_left_dep, apply_noConfusion. simpl.
-    unfold Top.cong.
+    unfold telescopes.cong.
     revert e. simpl.
     simplify_one_dep_elim.
     simplify_one_dep_elim.
@@ -962,8 +950,8 @@ Defined.
 
   Lemma rew_sym (A : Type) {Δ : A -> Tel} (x y : A) (px : Δ x) (py : Δ y)
         (e : y = x) :
-    px =={Δ x} Top.subst (P:=Δ) e py ->
-    Top.subst (P:=Δ) (eq_sym e) px =={Δ y} py.
+    px =={Δ x} telescopes.subst (P:=Δ) e py ->
+    telescopes.subst (P:=Δ) (eq_sym e) px =={Δ y} py.
   Proof. destruct e. simpl. trivial. Defined.
 
   Equations sym {Δ : Tel} {s t : Δ} (e : s =={Δ} t) : t =={Δ} s :=
@@ -1068,411 +1056,5 @@ Defined.
   Defined.
   Print Assumptions example.
   Eval compute in (pr1 (@example nat)).
-  
-  Definition uncurry4 {A} {B : A -> Type} {C : forall x : A, B x -> Type}
-           {D : forall (a : A) (b : B a) (c : C a b), Type}
-           {E : forall (a : A) (b : B a) (c : C a b) (d : D a b c), Type}
-           (f : forall s : tele (a : A) (b : B a) (c : C a b) in (D a b c),
-               E s.1 s.2.1 s.2.2.1 s.2.2.2) :
-  forall (x : A) (b : B x) (c : C x b) (d : D x b c), E x b c d :=
-  fun x b c d => f &(x , b , c & d).
 
-  Definition uncurry5 {A} {B : A -> Type} {C : forall x : A, B x -> Type}
-           {D : forall (a : A) (b : B a) (c : C a b), Type}
-           {E : forall (a : A) (b : B a) (c : C a b) (d : D a b c), Type}
-           {F : forall (a : A) (b : B a) (c : C a b) (d : D a b c) (e : E a b c d), Type}
-           (f : forall s : tele (a : A) (b : B a) (c : C a b) (d : D a b c) in E a b c d,
-               F s.1 s.2.1 s.2.2.1 s.2.2.2.1 s.2.2.2.2) :
-    forall (x : A) (b : B x) (c : C x b) (d : D x b c) (e : E x b c d),
-           F x b c d e :=
-  fun x b c d e => f &(x , b , c , d & e).
-  (* Lemma apply_equiv_dom {A B} (P : B -> Type) (e : Equiv A B) : *)
-  (*   (forall x : A, P (equiv e x)) -> forall x : B, P x. *)
-  (* Proof. *)
-  (*   intros. *)
-  (*   specialize (X (e ^-1 x)). *)
-  (*   rewrite inv_equiv_equiv in X. exact X. *)
-  (* Defined. *)
-
-  Definition uncurry6 {A} {B : A -> Type} {C : forall x : A, B x -> Type}
-           {D : forall (a : A) (b : B a) (c : C a b), Type}
-           {E : forall (a : A) (b : B a) (c : C a b) (d : D a b c), Type}
-           {F : forall (a : A) (b : B a) (c : C a b) (d : D a b c) (e : E a b c d), Type}
-           {G : forall (a : A) (b : B a) (c : C a b) (d : D a b c) (e : E a b c d) (f : F a b c d e), Type}
-           (fn : forall s : tele (a : A) (b : B a) (c : C a b) (d : D a b c)
-                                (e : E a b c d)
-               in F a b c d e,
-               G s.1 s.2.1 s.2.2.1 s.2.2.2.1 s.2.2.2.2.1 s.2.2.2.2.2) :
-    forall (x : A) (b : B x) (c : C x b) (d : D x b c) (e : E x b c d)
-      (f : F x b c d e), G x b c d e f :=
-  fun x b c d e f => fn &(x , b , c , d , e & f).
-
-  Goal forall {A} n (x y : A) (v v' : Vector.t A n)
-              (e : Vector.cons x v = Vector.cons y v')
-              (P : forall n x y v v' (e : Vector.cons x v = Vector.cons y v'), Type),
-      (P n x x v v eq_refl) -> P n x y v v' e.
-  Proof.
-    intros. revert e P X.
-    revert n x y v v'.
-    refine (uncurry6 _).
-    unshelve refine (apply_equiv_dom _ _ _).
-    shelve.
-    refine (equiv_sym _).
-    refine (pr2 (@example A)).
-    intros.
-    Transparent telescope eq.
-    simpl in x.
-    destruct x as (n&x&y&v&v'&e&e').
-    vm_compute in X. simpl in e'.
-    destruct e. destruct e'.
-    vm_compute.
-    unfold cong_tel_proj.
-    exact X.
-  Defined.
-
-  Lemma NoConfusionPackage_isequiv {A} (a b : A) {e : NoConfusionPackage A} : Equiv (a = b) (NoConfusion a b).
-  Proof.
-    unshelve refine {| equiv := noConfusion |}.
-    unshelve refine {| equiv_inv := noConfusion_inv |}.
-    red; intros.
-    apply axiom_triangle.
-    red. apply noConfusion_is_equiv.
-    apply axiom_triangle.
-  Defined.
-
-  Lemma apply_equiv_codom {A} {B B' : A -> Type} (e : forall x, Equiv (B x) (B' x)) :
-    (forall x : A, B x) <~> forall x : A, B' x.
-  Proof.
-    intros.
-    unshelve refine {| equiv f := fun x => e x (f x) |}.
-    unshelve refine {| equiv_inv f := fun x => (e x)^-1 (f x) |}.
-    red; intros.
-    extensionality y. apply inv_equiv_equiv.
-    intro. extensionality y. apply equiv_inv_equiv.
-    intros.
-    apply axiom_triangle.
-  Defined.
-
-  (* Lemma equiv_K A {NC : NoConfusionPackage A} (x y : A) : forall p q : NoConfusion x y, p = q. *)
-  (* Proof. *)
-  (*   intros. *)
-  (*   pose (NoConfusionPackage_isequiv x y). *)
-  (*   destruct x, y; simpl in *. *)
-  (*   destruct p, q. reflexivity. *)
-  (*   destruct p. *)
-  (*   destruct p. *)
-  (*   destruct p. *)
-
-  Equations noConf_nat (x y : nat) : Type :=
-    noConf_nat 0 0 := True;
-    noConf_nat (S x) (S y) := noConf_nat x y;
-    noConf_nat _ _ := False.
-  (* BUG if with ind *)
-  Equations(noind) noConf_nat_inv (x y : nat) (e : x = y) : noConf_nat x y :=
-    noConf_nat_inv x ?(x) eq_refl <= x =>
-    { | 0 => I;
-      | S n => (noConf_nat_inv n n eq_refl) }.
-
-  Next Obligation.
-    Transparent noConf_nat_inv.
-    unfold noConf_nat_inv.
-    destruct x.
-    simpl. apply eq_refl.
-    apply eq_refl.
-  Defined.
-
-  Lemma noConfusion_nat_k (x y : nat) (p : noConf_nat x y) : x = y.
-  Proof.
-    induction x in y, p |- *; destruct y.
-    destruct p. reflexivity.
-    destruct p.
-    destruct p.
-    apply Top.cong. apply IHx.
-    apply p.
-  Defined.
-
-  Lemma iseq x y : IsEquiv (noConfusion_nat_k x y).
-  Proof.
-    unshelve refine {| equiv_inv := noConf_nat_inv x y |}.
-    apply axiom_triangle.
-    apply axiom_triangle.
-    apply axiom_triangle.
-  Defined.
-
-  Definition equiv' x y : Equiv (noConf_nat x y) (x = y) .
-  Proof.
-    refine {| equiv := noConfusion_nat_k x y |}.
-    apply iseq.
-  Defined.
-
-  Lemma noConfusion_nat_k3 (x : nat) (p : noConf_nat x x) : noConfusion_nat_k x x p = eq_refl.
-  Proof.
-    induction x.
-    simpl. destruct p. reflexivity.
-    simpl. rewrite IHx.
-    reflexivity.
-  Defined.
-
-  Lemma equiv_unit A (x : A) : inj (@eq_refl A x = eq_refl) <~> inj unit.
-  Proof.
-    refine {| equiv x := tt |}.
-    unshelve refine {| equiv_inv x := eq_refl |}.
-    red; intros.
-    destruct x0.
-    reflexivity.
-
-    red; intros.
-    revert x0.
-    set (foo:=@eq_refl A x).
-    clearbody foo.
-    intros x0.
-    apply axiom_triangle.
-    apply axiom_triangle.
-  Defined.
-
-  Lemma noConf_nat_refl_true n : noConf_nat n n <~> inj unit.
-  Proof.
-    refine {| equiv x := tt |}.
-    unshelve refine {| equiv_inv x := _ |}.
-    induction n. constructor.
-    apply IHn.
-
-    red; intros.
-    destruct x.
-    reflexivity.
-    red; intros.
-    induction n.
-    destruct x.
-    reflexivity.
-    simpl.
-    apply IHn.
-
-    simpl. intros.
-    induction n ; simpl.
-    destruct x. reflexivity.
-    simpl.
-    apply IHn.
-  Defined.
-
-
-
-  Lemma example' {A} :
-    &{ Γ' : Tel &
-           tele (n : nat) (x y : A) (v v' : Vector.t A n) in
-        (Vector.cons x v = Vector.cons y v') <~> Γ' }.
-  Proof.
-    intros. eexists.
-    refine (equiv_compose _ _).
-    do 5 intros_tele.
-    2:simpl.
-    refine (equiv_compose _ _).
-    refine (solution_inv_tele (A:=nat) (Vector.t A) _ _ _).
-
-    refine (equiv_compose _ _).
-    refine (reorder_tele (tele (e0 : S n = S n) in (Vector.cons x v ={ vector A ; e0} (Vector.cons y v'))) (fun ρ => inj (ρ.1 = eq_refl))).
-    simpl.
-    refine (equiv_compose _ _).
-    refine (equiv_sym _).
-    refine (equiv_tele_l _).
-    refine (equiv_sym _).
-    refine (injectivity_cons2 &(x, n & v) &(y, n & v')).
-    refine (equiv_compose
-              (C:=tele (e : x = y) in (v ={ (λ _ : A, inj (vector A n)); e} v'))
-              _ _).
-    refine (equiv_tele_r _).
-    intros.
-
-    unfold telescope in x0. simpl in x0.
-
-    destruct x0.
-
-    destruct pr2.
-    destruct pr1.
-
-    simpl in *.
-    unfold injectivity_cons2.
-    simpl.
-    unfold noconf_equiv, equiv, equiv_sym, inv_equiv, equiv_inv.
-    simpl.
-
-
-    simpl.
-    intros. eexists.
-    refine (equiv_compose _ _).
-    do 5 intros_tele.
-    2:simpl.
-    refine (equiv_compose _ _).
-    refine (solution_inv_tele (A:=nat) (Vector.t A) _ _ _).
-
-
-    refine (reorder_tele (tele (e0 : S n = S n) in (Vector.cons x v ={ vector A ; e0} (Vector.cons y v'))) (fun ρ => inj (ρ.1 = eq_refl))).
-    simpl.
-    refine (equiv_compose _ _).
-    refine (equiv_sym _).
-    refine (equiv_tele_l _).
-    refine (equiv_sym _).
-    refine (injectivity_cons2 &(x, n & v) &(y, n & v')).
-
-
-
-    refine (equiv_compose _ _).
-    refine (equiv_sym _).
-    refine (equiv_tele_l _).
-    refine (equiv' _ _).
-    simpl.
-    unfold equiv', equiv.
-    simpl.
-    refine (equiv_compose _ _).
-    intros_tele.
-    rewrite noConfusion_nat_k3. simpl.
-    unfold telescope. intros_tele.
-    refine (equiv_unit _ _).
-    simpl.
-    refine (equiv_compose _ _).
-    refine (equiv_sym _).
-    refine (equiv_tele_l _).
-    refine (equiv_sym _).
-    refine (noConf_nat_refl_true _).
-    simpl.
-    intros_tele.
-    simpl.
-    refine (equiv_compose _ _).
-    unfold telescope.
-    intros_tele.
-    refine (equiv_id _).
-    refine (equiv_id _).
-
-    simpl. rewrite noConfusion_nat_k3. simpl.
-    unfold telescope. intros_tele.
-    refine (equiv_unit _ _).
-    simpl.
-
-    pose (lower_solution A n).
-    pose (inv_equiv e &(x & v)).
-    simpl in e.
-    pose (telei x n in v : telu A).
-    pose (sol:=lifted_solution (tele (_ : A) (n' : nat) in vector A n')).
-    simpl in sol.
-    simpl in t0.
-    unfold e, lower_solution, equiv, equiv_inv, inv_equiv in t0. simpl in t0.
-    unfold e, lower_solution, equiv, equiv_inv, inv_equiv in t0. simpl in t0.
-    set (solinst :=
-           sigmaI (fun x => sigma nat (fun n => vector A n)) t0.1 &(t0.2.1 & t0.2.2.1)).
-    specialize (sol solinst).
-    specialize (sol &(y, n & v')).
-    (* specialize (sol solinst). (*&(y, n & v')).*) *)
-    specialize (sol (telv A n)).
-    specialize (sol (inj nat)).
-    simpl in e.
-    specialize (sol (fun x => S x.2.1) (fun x => S n) eq_refl eq_refl). simpl in sol.
-    specialize (sol e). subst e.
-    simpl in sol.
-    unfold solution_left in *.
-    simpl in *.
-    unfold inv_equiv in sol. unfold eq_points_equiv in sol. simpl in *.
-    unfold equiv_inv in *. simpl in *.
-    unfold cong in sol. simpl in *.
-
-    refine (equiv_compose
-              (C:=tele (e : x = y) in (v ={ (λ _ : A, inj (vector A n)); e} v'))
-              _ sol).
-    refine (equiv_tele_r _).
-    intros.
-
-
-  
-  Lemma noConfusion_nat_k2 (x y : nat) (p q : noConf_nat x y) : p = q.
-  Proof.
-    induction x in y, p, q |- *; destruct y.
-    destruct p, q. reflexivity.
-    destruct p.
-    destruct p.
-    simpl in p, q.
-    apply IHx.
-  Defined.
-
-
-  Lemma noConf_HProp (x y : nat) :  (forall p q : x = y, p = q).
-  Proof.
-    unshelve refine (apply_equiv_dom _ _ _).
-    shelve.
-    refine (equiv_sym (NoConfusionPackage_isequiv x y)).
-    intros x0.
-    unshelve refine (apply_equiv_dom _ _ _).
-    shelve.
-    refine (equiv_sym (NoConfusionPackage_isequiv x y)).
-    revert x0.
-    revert x y. fix 1.
-    unfold equiv, equiv_inv, equiv_sym, inv_equiv, NoConfusionPackage_isequiv, NoConfusion.noConfusion_nat_obligation_1;
-    simpl;
-    unfold equiv, equiv_inv, equiv_sym, inv_equiv, NoConfusionPackage_isequiv, NoConfusion.noConfusion_nat_obligation_1;
-    simpl.
-    destruct x; destruct y;
-    intros. destruct x0, x.
-    reflexivity.
-    destruct x0.
-    destruct x0.
-    change (Top.cong S x0 = Top.cong S x1).
-    apply Top.cong.
-    simpl in x0, x1.
-
-
-    intros.
-    simpl in x0, x1.
-    pose (equiv (NoConfusionPackage_isequiv x y) x0).
-    pose (equiv (NoConfusionPackage_isequiv x y) x1).
-    specialize (noConf_HProp _ _ n n0).
-    simpl.
-    subst n n0.
-    change (
-        @equiv (@NoConfusion nat NoConfusionPackage_nat x y) (@Logic.eq nat x y)
-               (@equiv_sym (@Logic.eq nat x y) (@NoConfusion nat NoConfusionPackage_nat x y)
-                           (@NoConfusionPackage_isequiv nat x y NoConfusionPackage_nat)))
-      with (@inv_equiv _ _ (@NoConfusionPackage_isequiv nat x y NoConfusionPackage_nat)) in *.
-    rewrite equiv_inv_equiv in noConf_HProp.
-    rewrite equiv_inv_equiv in noConf_HProp.
-    apply noConf_HProp.
-  Defined.
-
-
-  Eval compute in noConf_HProp.
-  Lemma noConf_HProp : (forall x y : nat, NoConfusion_nat x y) <~> (forall x y : nat, forall p q : x = y, p = q).
-  Proof.
-    refine (equiv_compose _ _).
-    refine (equiv_sym _).
-    refine (apply_equiv_codom _).
-    intros x. refine (apply_equiv_codom _).
-    intros x0.
-    refine (NoConfusionPackage_isequiv x x0).
-    simpl.
-
-    unshelve refine {| equiv f := fun x y p q => _ |}.
-    pose (f x y).
-    transitivity e.
-    destruct p.
-
-
-
-    unshelve refine {| equiv_inv f := fun x y => _ |}.
-    refine (match f x y with
-            | left p => p
-            | right e => _
-            end).
-
-  
-  Lemma noConf_K : (forall x y : nat, NoConfusion_nat x y) <~> (forall x y : nat, { x = y } + { x <> y }).
-  Proof.
-    refine (equiv_compose _ _).
-    refine (equiv_sym _).
-    refine (apply_equiv_codom _).
-    intros x. refine (apply_equiv_codom _).
-    intros x0.
-    refine (NoConfusionPackage_isequiv x x0).
-    simpl.
-
-    unshelve refine {| equiv f := fun x y => left (f x y) |}.
-    unshelve refine {| equiv_inv f := fun x y => _ |}.
-    refine (match f x y with
-            | left p => p
-            | right e => _
-            end).
+End Example_cons.
