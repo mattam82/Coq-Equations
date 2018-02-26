@@ -589,7 +589,7 @@ let call_tac_on_ref tac c =
   let c = Geninterp.Val.inject val_reference (EConstr.of_constr c) in
   let ist = Geninterp.{ lfun = Names.Id.Map.add var c Names.Id.Map.empty;
                             extra = Geninterp.TacStore.empty } in
-  let var = Reference (Misctypes.ArgVar (dummy_loc, var)) in
+  let var = Reference (Misctypes.ArgVar CAst.(make var)) in
   let tac = TacArg (dummy_loc, TacCall (dummy_loc, (tac, [var]))) in
   ist, tac
 
