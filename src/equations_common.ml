@@ -21,12 +21,12 @@ open List
 open Libnames
 open Entries
 open Tacmach
-open Tacexpr
 open Tactics
 open Tacticals
 open Decl_kinds
 
 open Ltac_plugin
+open Tacexpr
 
 let ($) f g = fun x -> f (g x)
 let (&&&) f g (x, y) = (f x, g y)
