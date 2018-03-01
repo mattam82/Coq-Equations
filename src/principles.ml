@@ -1150,7 +1150,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
       let hook subst gr _ = 
 	if n != None then
 	  Autorewrite.add_rew_rules info.base_id 
-            [None, (Universes.fresh_global_instance (Global.env()) gr, true, None)]
+            [CAst.make (Universes.fresh_global_instance (Global.env()) gr, true, None)]
 	else (Typeclasses.declare_instance None true gr
 	      (* Hints.add_hints false [info.base_id]  *)
 	      (*                 (Hints.HintsExternEntry *)
