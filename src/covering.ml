@@ -1562,7 +1562,7 @@ and interp_wheres env ctx evars path data s lets w =
     let arity = nf_evar !evars arity in
     let ty = it_mkProd_or_LetIn arity sign in
     let data = Constrintern.compute_internalization_env
-                 env Constrintern.Recursive [id] [to_constr !evars ty] [impls] 
+                 env !evars Constrintern.Recursive [id] [ty] [impls]
     in
     let data = (id,false(* with_comp *),data) in
     let problem = id_subst sign in
