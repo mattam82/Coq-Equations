@@ -233,8 +233,8 @@ let subst_comp_proj sigma f proj c =
 let subst_comp_proj_split sigma f proj s =
   map_split (subst_comp_proj sigma f proj) s
 
-let reference_of_id s = 
-  Ident (None, s)
+let reference_of_id s =
+  CAst.make @@ Ident s
 
 let clear_ind_assums sigma ind ctx =
   let rec clear_assums c =

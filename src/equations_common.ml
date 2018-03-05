@@ -328,7 +328,7 @@ type 'a located = 'a Loc.located
 
 let tac_of_string str args =
   Tacinterp.interp (TacArg(dummy_loc,
-                           TacCall(dummy_loc, (Libnames.Qualid (dummy_loc, Libnames.qualid_of_string str), args))))
+                           TacCall(dummy_loc, (CAst.make Libnames.(Qualid (qualid_of_string str)), args))))
 
 let equations_path = ["Equations";"Equations"]
 
@@ -543,12 +543,12 @@ let tacvar_arg h =
 
 let rec_tac h h' = 
   TacArg(dummy_loc, TacCall(dummy_loc,
-                            (Qualid (dummy_loc, qualid_of_string "Equations.Below.rec"),
+                            (CAst.make (Qualid (qualid_of_string "Equations.Below.rec")),
                              [tacvar_arg h'; ConstrMayEval (Genredexpr.ConstrTerm h)])))
 
 let rec_wf_tac h h' rel = 
   TacArg(dummy_loc, TacCall(dummy_loc,
-    (Qualid (dummy_loc, qualid_of_string "Equations.Subterm.rec_wf_eqns_rel"),
+    (CAst.make (Qualid (qualid_of_string "Equations.Subterm.rec_wf_eqns_rel")),
     [tacvar_arg h';
      ConstrMayEval (Genredexpr.ConstrTerm h);
      ConstrMayEval (Genredexpr.ConstrTerm rel)])))
@@ -575,10 +575,10 @@ open Misctypes
 open Libnames
 
 let reference_of_global c =
-  Libnames.Qualid (dummy_loc, Nametab.shortest_qualid_of_global Names.Id.Set.empty c)
+  CAst.make @@ Libnames.Qualid (Nametab.shortest_qualid_of_global Names.Id.Set.empty c)
 
 let tacident_arg h =
-  Reference (Ident (dummy_loc, h))
+  Reference (CAst.make (Ident h))
 
 let call_tac_on_ref tac c =
   let var = Names.Id.of_string "x" in
@@ -603,7 +603,7 @@ let solve_equation_tac (c : Globnames.global_reference) =
 let impossible_call_tac c =
   let tac = Tacintern.glob_tactic
   (TacArg(dummy_loc,TacCall(dummy_loc,
-  (Libnames.Qualid (dummy_loc, Libnames.qualid_of_string "Equations.DepElim.impossible_call"),
+  (CAst.make @@ Libnames.Qualid (Libnames.qualid_of_string "Equations.DepElim.impossible_call"),
    [Reference (reference_of_global c)])))) in
   let val_tac = Genarg.glbwit Tacarg.wit_tactic in
   Genarg.in_gen val_tac tac
@@ -739,8 +739,8 @@ let idset_of_list =
 
 let pr_smart_global f = Pptactic.pr_or_by_notation pr_reference f
 let string_of_smart_global = function
-  | Misctypes.AN ref -> string_of_reference ref
-  | Misctypes.ByNotation {CAst.v=(s, _)} -> s
+  | {CAst.v=Misctypes.AN ref} -> string_of_reference ref
+  | {CAst.v=Misctypes.ByNotation (s, _)} -> s
 
 let ident_of_smart_global x = 
   Id.of_string (string_of_smart_global x)
@@ -750,7 +750,6 @@ let pf_get_type_of               = pf_reduce Retyping.get_type_of
 let move_after_deps id c =
   let open Context.Named.Declaration in
   let enter gl =
-    let gl = Proofview.Goal.assume gl in
     let sigma = Proofview.Goal.sigma gl in
     let hyps = Proofview.Goal.hyps gl in
     let deps = collect_vars sigma c in

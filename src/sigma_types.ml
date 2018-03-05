@@ -230,9 +230,9 @@ let declare_sig_of_ind env sigma poly (ind,u) =
        mkApp (of_constr pack_fn, extended_rel_vect 0 ctx)]
   in
   Extraction_plugin.Table.extraction_inline true
-                                            [Libnames.Ident (dummy_loc, pack_id)];
+                                            [CAst.make @@ Libnames.Ident pack_id];
   Extraction_plugin.Table.extraction_inline true
-                                            [Libnames.Ident (dummy_loc, signature_id)];
+                                            [CAst.make @@ Libnames.Ident signature_id];
   inst
 
 let () =
@@ -368,7 +368,7 @@ let uncurry_hyps name =
   let open Proofview in
   let open Proofview.Notations in
   Proofview.Goal.enter (fun gl ->
-    let hyps = Goal.hyps (Goal.assume gl) in
+    let hyps = Goal.hyps gl in
     let env = Goal.env gl in
     let sigma = Goal.sigma gl in
     let hyps, _ =
@@ -789,7 +789,6 @@ module Tactics =struct
 
   let get_signature_pack id id' =
     enter begin fun gl ->
-      let gl = Proofview.Goal.assume gl in
       let env = Proofview.Goal.env gl in
       let sigma = Proofview.Goal.sigma gl in
       let sigma', sigsig, sigpack =
@@ -799,7 +798,6 @@ module Tactics =struct
 
   let pattern_sigma id =
     enter begin fun gl ->
-    let gl = Proofview.Goal.assume gl in
     let env = Proofview.Goal.env gl in
     let sigma = Proofview.Goal.sigma gl in
     let decl = Tacmach.New.pf_get_hyp id gl in
