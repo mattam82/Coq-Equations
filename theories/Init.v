@@ -6,8 +6,14 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
+Require Import HoTT.
 Require Import Coq.Unicode.Utf8_core.
-Require Export Coq.Program.Program.
+
+Require Export Coq.extraction.Extraction.
+(*Require Export FunctionalExtensionality.*)
+(*Require Export Coq.Program.Equality. (* depelim *)*)
+Require Export Coq.Program.Tactics.
+(*Require Export Coq.Program.Wf. (* MR *)*)
 
 Declare ML Module "equations_plugin".
 
@@ -108,12 +114,13 @@ Section IdTheory.
   Proof. destruct 1. apply 1. Defined.
 
   Lemma id_trans {x y z : A} : x = y -> y = z -> x = z.
-  Proof. destruct 1. apply id. Defined.
+  Proof. destruct 1. apply (fun a => a). Defined.
 
 End IdTheory.
 
 (** Forward reference for the NoConfusion tactic. *)
-Ltac noconf H := congruence || injection H; intros; subst.
+(* TODO. Missing congruence tactic.
+Ltac noconf H := congruence || injection H; intros; subst.*)
 
 (** Such a useful tactic it should be part of the stdlib. *)
 Ltac forward_gen H tac :=

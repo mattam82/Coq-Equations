@@ -6,6 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
+Require Import HoTT.
 Require Import Equations.Init.
 
 (** Decidable equality.
@@ -17,10 +18,10 @@ Require Import Equations.Init.
 Set Implicit Arguments.
 
 Definition dec_eq {A} (x y : A) := 
-  { x = y } + { x <> y }.
+  ( x = y ) + ( x <> y ).
 
 Class EqDec (A : Type) :=
-  eq_dec : forall x y : A, { x = y } + { x <> y }.
+  eq_dec : forall x y : A, ( x = y ) + ( x <> y ).
 
 (** Derivation of principles on sigma types whose domain is decidable. *)
 
@@ -29,9 +30,9 @@ Section EqdepDec.
   Context {A : Type} `{EqDec A}.
   
   Let comp (x y y':A) (eq1:x = y) (eq2:x = y') : y = y' :=
-    eq_ind _ (fun a => a = y') eq2 _ eq1.
+    paths_ind _ (fun a _ => a = y') eq2 _ eq1.
 
-  Remark trans_sym_eq : forall (x y:A) (u:x = y), comp u u = refl_equal y.
+  Remark trans_sym_eq : forall (x y:A) (u:x = y), comp u u = idpath y.
   Proof.
     intros.
     case u; trivial.
@@ -41,8 +42,8 @@ Section EqdepDec.
 
   Let nu (y:A) (u:x = y) : x = y :=
     match eq_dec x y with
-      | left eqxy => eqxy
-      | right neqxy => False_ind _ (neqxy u)
+      | inl eqxy => eqxy
+      | inr neqxy => Overture.Empty_ind (fun _ => x = y) (neqxy u)
     end.
 
   Let nu_constant : forall (y:A) (u v:x = y), nu u = nu v.
@@ -54,7 +55,7 @@ Section EqdepDec.
     case n; trivial.
   Defined.
 
-  Let nu_inv (y:A) (v:x = y) : x = y := comp (nu (refl_equal x)) v.
+  Let nu_inv (y:A) (v:x = y) : x = y := comp (nu (idpath x)) v.
 
   Remark nu_left_inv : forall (y:A) (u:x = y), nu_inv (nu u) = u.
   Proof.
@@ -73,15 +74,15 @@ Section EqdepDec.
   Defined.
 
   Theorem K_dec :
-    forall P:x = x -> Type, P (refl_equal x) -> forall p:x = x, P p.
+    forall P:x = x -> Type, P (idpath x) -> forall p:x = x, P p.
   Proof.
     intros.
-    elim eq_proofs_unicity with x (refl_equal x) p.
+    elim eq_proofs_unicity with x (idpath x) p.
     trivial.
   Defined.
 
-  Lemma eq_dec_refl : eq_dec x x = left _ (eq_refl x).
-  Proof. case eq_dec. intros. f_equal. apply eq_proofs_unicity. 
+  Lemma eq_dec_refl : eq_dec x x = inl _ (idpath x).
+  Proof. case eq_dec. intros. f_ap. apply eq_proofs_unicity.
     intro. congruence.
   Defined.
 
@@ -128,7 +129,7 @@ Section EqdepDec.
 End EqdepDec.
 
 Class EqDecPoint (A : Type) (x : A) :=
-  eq_dec_point : forall y : A, { x = y } + { x <> y }.
+  eq_dec_point : forall y : A, ( x = y ) + ( x <> y ).
 
 Instance EqDec_EqDecPoint A `(EqDec A) (x : A) : EqDecPoint x :=
   eq_dec x.
@@ -191,7 +192,7 @@ Section PointEqdepDec.
   Defined.
 
   Lemma eq_dec_refl_point : eq_dec_point x = left _ (eq_refl x).
-  Proof. case eq_dec_point. intros. f_equal. apply eq_proofs_unicity_point. 
+  Proof. case eq_dec_point. intros. f_ap. apply eq_proofs_unicity_point.
     intro. congruence.
   Defined.
 
