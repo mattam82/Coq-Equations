@@ -30,7 +30,7 @@ Ltac funind c Hcall :=
          let call := fresh in
            assert(prf:=p) ;
            (* Abstract the call *)
-           set(call:=c) in *; generalize (refl_equal : call = c); clearbody call ; intro Hcall ;
+           set(call:=c) in *; generalize (idpath : call = c); clearbody call ; intro Hcall ;
            (* Now do dependent elimination and simplifications *)
            dependent induction prf ; simplify_IH_hyps ; 
            (* Use the simplifiers for the constant to get a nicer goal. *)
@@ -84,7 +84,7 @@ Ltac get_elim c :=
 Ltac remember_let H :=
   lazymatch goal with
   | [ H := ?body : ?type |- _ ] =>
-    generalize (eq_refl : body = H); clearbody H
+    generalize (idpath : body = H); clearbody H
   end.
 
 Ltac clear_non_secvar := repeat
@@ -149,9 +149,9 @@ Hint Extern 0 (_ = _) => reflexivity : funelim.
 Ltac specialize_hyps :=
   match goal with
     [ H : forall _ : ?x = ?x, _ |- _ ] => 
-    specialize (H (@eq_refl _ x)); unfold eq_rect_r, eq_rect in H ; simpl in H
+    specialize (H (@idpath _ x)); unfold paths_ind in H ; simpl in H
   | [ H : forall _ : @Id _ ?x ?x, _ |- _ ] =>
-    specialize (H (@id_refl _ x)); unfold Id_rect_dep_r, Id_rect_r, Id_rect in H ; simpl in H
+    specialize (H (@idpath _ x)); unfold Id_rect_dep_r, Id_rect_r, Id_rect in H ; simpl in H
   end.
 
 Hint Extern 100 => specialize_hyps : funelim.

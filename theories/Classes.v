@@ -1,4 +1,6 @@
-Require Import Relation_Definitions.
+Require Import HoTT.Basics.Overture.
+Require Import Coq.Init.Wf.
+
 (** A class for well foundedness proofs.
    Instances can be derived automatically using [Derive Subterm for ind]. *)
 

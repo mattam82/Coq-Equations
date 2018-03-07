@@ -22,13 +22,17 @@
   If running this interactively you can ignore the printing
   and hide directives which are just used to instruct coqdoc. *)
 
-Require Import Program Bvector List Relations.
-From Equations Require Import Equations Signature.
+(* Require Import Program Bvector List Relations. *)
+From Equations Require Import Equations Signature HoTTUtil.
 Require Import Utf8.
 Require Import DepElimDec.
+Require Import HoTT.Types.Bool.
+Definition Bool_rect := Bool_ind.
+
+Local Open Scope path_scope.
 
 (** Just pattern-matching *)
-Equations neg (b : bool) : bool :=
+Equations neg (b : Bool) : Bool :=
 neg true := false ;
 neg false := true.
 
@@ -57,7 +61,6 @@ End Obligations.
 (** Structural recursion and use of the [with] feature to look at the result
     of a recursive call (here with a trivial pattern-matching. *)
 
-Import List.
 Equations app_with {A} (l l' : list A) : list A :=
 app_with nil l := l ;
 app_with (cons a v) l <= app_with v l => {
@@ -67,14 +70,14 @@ app_with (cons a v) l <= app_with v l => {
 (** Structurally recursive function on natural numbers, with inspection of a recursive
     call result. We use [auto with arith] to discharge the obligations. *)
 
-Obligation Tactic := program_simpl ; auto with arith.
+Obligation Tactic := program_simpl ; eauto with nat_paths.
 
-Equations equal (n m : nat) : { n = m } + { n <> m } :=
-equal O O := in_left ;
+Equations equal (n m : nat) : ( n = m ) + ( n <> m ) :=
+equal O O := inl _ ;
 equal (S n) (S m) <= equal n m => {
-  equal (S n) (S ?(n)) (left eq_refl) := left eq_refl ;
-  equal (S n) (S m) (right p) := in_right } ;
-equal x y := in_right.
+  equal (S n) (S ?(n)) (inl 1) := inl _ ;
+  equal (S n) (S m) (inr p) := inr _ } ;
+equal x y := inr _.
 
 (** Pattern-matching on the indexed equality type. *)
 Equations eq_sym {A} (x y : A) (H : x = y) : y = x :=

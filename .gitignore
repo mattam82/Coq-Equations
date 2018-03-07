@@ -39,3 +39,4 @@ docs/_site
 /doc/equations.fdb_latexmk
 /.nia.cache
 .merlin
+/custom-HoTT/

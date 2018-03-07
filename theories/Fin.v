@@ -8,13 +8,16 @@
 
 (** An example development of the [fin] datatype using [equations]. *)
 
-Require Import Coq.Program.Program Equations.Equations.
+Require Import HoTT.Basics.Overture.
+Require Import HoTT.Spaces.Nat.
+Require Import HoTT.DProp.
+Require Import Equations.Equations.
 
 (** [fin n] is the type of naturals smaller than [n]. *)
 
 Inductive fin : nat -> Set :=
-| fz : forall {n}, fin (S n)
-| fs : forall {n}, fin n -> fin (S n).
+| fz : forall {n : nat}, fin (S n)
+| fs : forall {n : nat}, fin n -> fin (S n).
 
 (** We can inject it into [nat]. *)
 
@@ -25,10 +28,9 @@ fog (fs n f) := S (fog f).
 (** The injection preserves the number: *)
 Require Import FunctionalInduction.
 
-
 Lemma fog_inj {n} (f : fin n) : fog f < n.
-Proof with auto with arith. intros.
-  depind f; simp fog...
+Proof. intros.
+  depind f; simp fog; constructor.
 Qed.
 
 (** Of course it has an inverse. *)
@@ -38,8 +40,8 @@ gof O := fz ;
 gof (S n) := fs (gof n).
 
 Lemma fog_gof n : fog (gof n) = n.
-Proof with auto with arith. intros.
-  funind (gof n) gofn; simp fog gof...
+Proof with auto.  (* funind (gof n) gofn; simp fog gof... *)
+  induction n; simp fog gof; rewrite IHn...
 Qed.
 
 (** Let's do some arithmetic on [fin] *)
@@ -51,16 +53,18 @@ Qed.
 
 (** Won't pass the guardness check which diverges anyway. *)
 
-Inductive finle : forall (n : nat) (x : fin n) (y : fin n), Prop :=
+Inductive finle : forall (n : nat) (x : fin n) (y : fin n), Type :=
 | leqz : forall {n j}, finle (S n) fz j
 | leqs : forall {n i j}, finle n i j -> finle (S n) (fs i) (fs j).
 
-Scheme finle_ind_dep := Induction for finle Sort Prop.
+Scheme finle_ind_dep := Induction for finle Sort Type.
 
 Instance finle_ind_pack n x y : DependentEliminationPackage (finle n x y) :=
   { elim_type := _ ; elim := finle_ind_dep }.
 
 Arguments finle {n}.
+
+(* FIXME Missing Vector.
 
 Require Vectors.Vector.
 Arguments Vector.nil {A}.
@@ -107,3 +111,5 @@ Import Equations.Below.
 Instance fin_Recursor n : Recursor (fin n) :=
   { rec_type := fun v => forall (P : forall n, fin n -> Type) step, P n v;
     rec := fun v P step => rec_fin P v step }.
+
+*)

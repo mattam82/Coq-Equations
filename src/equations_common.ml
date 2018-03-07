@@ -100,7 +100,7 @@ let typecheck_rel_context env evd ctx =
   in ()
   with e ->
     Printf.eprintf "Exception while typechecking context %s : %s\n"
-                   (Pp.string_of_ppcmds (Internal.print_rel_context (EConstr.push_rel_context ctx env)))
+                   (Pp.string_of_ppcmds (Termops.print_rel_context (EConstr.push_rel_context ctx env)))
                    (Printexc.to_string e);
     raise e
 
@@ -228,7 +228,6 @@ let fresh_id_in_env avoid id env =
 let fresh_id avoid id gl =
   fresh_id_in_env avoid id (pf_env gl)
 
-
 let coq_heq = lazy (Coqlib.coq_reference "mkHEq" ["Logic";"JMeq"] "JMeq")
 let coq_heq_refl = lazy (Coqlib.coq_reference "mkHEq" ["Logic";"JMeq"] "JMeq_refl")
 
@@ -284,29 +283,32 @@ let prop_logic =
     logic_transitive_closure = lazy_reference ["Coq";"Relations";"Relation_Operators"] "clos_trans";
   }
 
+let hott_eq = lazy (init_reference ["HoTT";"Basics";"Overture"] "paths")
+let hott_eq_refl = lazy (init_reference ["HoTT";"Basics";"Overture"] "idpath")
+let hott_eq_case = lazy (init_reference ["Equations";"Init"] "eq_rect_r")
+let hott_eq_elim = lazy (init_reference ["Equations";"DepElim"] "eq_rect_dep_r")
+
 let type_logic =
-  { logic_sort = Sorts.InType;
-    logic_eq_ty = lazy (init_reference ["Equations";"Init"] "Id");
-    logic_eq_refl = lazy (init_reference ["Equations";"Init"] "id_refl");
-    logic_eq_case = lazy (init_reference ["Equations";"DepElim"] "Id_rect_r");
-    logic_eq_elim = lazy (init_reference ["Equations";"DepElim"] "Id_rect_dep_r");
-    logic_bot = lazy (init_reference ["Equations";"Init"] "Empty");
-    logic_unit = coq_unit;
-    logic_top = coq_unit;
+  { logic_eq_ty = hott_eq; logic_eq_refl = hott_eq_refl;
+    logic_eq_case = hott_eq_case; logic_eq_elim = hott_eq_elim;
+    logic_sort = Sorts.InType;
+    logic_bot = lazy (Coqlib.find_reference "zero" ["HoTT";"Basics";"Overture"] "Empty");
+    logic_top = lazy (Coqlib.find_reference "one" ["HoTT";"Basics";"Overture"] "Unit");
+    logic_top_intro = lazy (Coqlib.find_reference "one_val" ["HoTT";"Basics";"Overture"] "tt");
     logic_conj = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "prod");
     logic_conj_intro = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "pair");
-    logic_unit_intro = coq_tt;
-    logic_top_intro = coq_tt;
+    logic_unit = lazy (Coqlib.find_reference "one" ["HoTT";"Basics";"Overture"] "Unit");
+    logic_unit_intro = lazy (Coqlib.find_reference "one_val" ["HoTT";"Basics";"Overture"] "tt");
     logic_product = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "prod");
     logic_pair = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "pair");
     (* FIXME unsupported yet *)
     logic_wellfounded_class = lazy_reference ["Equations";"Classes"] "WellFounded";
     logic_wellfounded = lazy_reference ["Coq";"Init";"Wf"] "well_founded";
-    logic_relation = lazy_reference ["Coq";"Classes";"CRelationClasses"] "crelation";
+    logic_relation = lazy (Coqlib.find_reference "zero" ["HoTT";"Basics";"Overture"] "relation");
     logic_transitive_closure = lazy_reference ["Equations";"Classes"] "transitive_closure";
   }
 
-let logic = ref prop_logic
+let logic = ref type_logic
 	     
 let set_logic l = logic := l
 	     
@@ -400,7 +402,7 @@ let below_path = ["Equations";"Below"]
 
 let coq_id = init_constant ["Equations";"Init"] "id"
 
-let list_path = ["Lists";"List"]
+let list_path = ["Coq";"Init";"Datatypes"]
 let coq_list_ind = init_constant list_path "list"
 let coq_list_nil = init_constant list_path "nil"
 let coq_list_cons = init_constant list_path "cons"

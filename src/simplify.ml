@@ -59,10 +59,10 @@ module EqRefs : EQREFS = struct
 
   let eq = lazy (Globnames.destIndRef (Coqlib.build_coq_eq ()))
   let eq_refl = lazy (Globnames.destConstructRef (Coqlib.build_coq_eq_refl ()))
-  let eq_rect = init_constant ["Coq"; "Init"; "Logic"] "eq_rect"
-  let eq_rect_r = init_constant ["Coq"; "Init"; "Logic"] "eq_rect_r"
+  let eq_rect = init_constant ["HoTT";"Basics";"Overture"] "paths_ind"
+  let eq_rect_r = init_constant ["Equations"; "Init"] "eq_rect_r"
   let eq_dec = init_constant ["Equations"; "EqDec"] "EqDec"
-  let zero = init_inductive ["Coq"; "Init"; "Logic"] "False"
+  let zero = init_inductive ["HoTT";"Basics";"Overture"] "Empty"
   let one = init_inductive ["Coq"; "Init"; "Logic"] "True"
   let one_val = init_constructor ["Coq"; "Init"; "Logic"] "I"
   let one_ind_dep = init_depelim "True_rect_dep"

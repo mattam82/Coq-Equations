@@ -166,7 +166,7 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
       (to_constr !evd ty) in
     ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hook) packid 
              ~kind ~term ty ~tactic:(noconf_tac ())
-	      (Evd.evar_universe_context !evd) oblinfo)
+              (Evd.evar_universe_context !evd) oblinfo)
 
 let () =
   Ederive.(register_derive

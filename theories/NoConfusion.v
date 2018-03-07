@@ -10,7 +10,7 @@
    [equations] when it needs applications of injectivity or discrimination
    on some equation. *)
 
-Require Import Coq.Program.Program Bvector List.
+(*Require Import Coq.Program.Program Bvector List.*)
 Require Import Equations.Signature Equations.EqDec.
 Require Export Equations.DepElim.
 
@@ -62,14 +62,60 @@ Ltac solve_noconf_inv_equiv :=
 
 Ltac solve_noconf := simpl; intros;
     match goal with
-      [ H : @eq _ _ _ |- @eq _ _ _ ] => solve_noconf_inv_equiv
-    | [ H : @eq _ _ _ |- _ ] => solve_noconf_prf
-    | [ |- @eq _ _ _ ] => solve_noconf_inv
+      [ H : @paths _ _ _ |- @paths _ _ _ ] => solve_noconf_inv_equiv
+    | [ H : @paths _ _ _ |- _ ] => solve_noconf_prf
+    | [ |- @paths _ _ _ ] => solve_noconf_inv
     end.
 
-Derive NoConfusion for unit bool nat option sum prod list sigT sig.
+Require Import HoTT.Types.Bool.
+Definition Bool_rect := Bool_ind.
+
+Derive NoConfusion for Unit Bool nat option list sum prod sig.
+Next Obligation. solve_noconf. Defined.
+Next Obligation. solve_noconf. Defined.
+Next Obligation. solve_noconf. Defined.
+
+Next Obligation. solve_noconf. Defined.
+Next Obligation. solve_noconf. Defined.
+Next Obligation. solve_noconf. Defined.
+
+Next Obligation. solve_noconf. Defined.
+Next Obligation. solve_noconf. Defined.
+Next Obligation. solve_noconf. Defined.
+
+Next Obligation. solve_noconf. Defined.
+Next Obligation. solve_noconf. Defined.
+Next Obligation. solve_noconf. Defined.
+
+Next Obligation. solve_noconf. Defined.
+Next Obligation. solve_noconf. Defined.
+Next Obligation. solve_noconf. Defined.
+
+Next Obligation. destruct X; reflexivity. Defined.
+Next Obligation. 
+  apply (
+    paths_ind
+      {| pr1 := fst0; pr2 := snd0 |}
+      (fun s _ => (fst0, snd0) = (s.(pr1), s.(pr2)))
+      idpath
+      {| pr1 := fst; pr2 := snd |}
+      X). Defined.
+Next Obligation. destruct e. reflexivity. Defined.
+
+Next Obligation. destruct X; reflexivity. Defined.
+Next Obligation.
+  apply (
+    paths_ind
+      {| pr1 := a; pr2 := X1 |}
+      (fun s _ => (a; X1) = (s.(pr1); s.(pr2)))
+      idpath
+      {| pr1 := b; pr2 := X0 |}
+      X). Defined.
+Next Obligation. destruct e; reflexivity. Defined.
+
+Next Obligation. solve_noconf. Defined.
+Next Obligation. solve_noconf. Defined.
+Next Obligation. solve_noconf. Defined.
 
 (* FIXME should be done by the derive command *)
 Extraction Inline noConfusion NoConfusionPackage_nat.
-
-
