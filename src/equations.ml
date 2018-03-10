@@ -169,8 +169,8 @@ let define_principles flags fixprots progs =
                let decl _ (_, id, _) =
                  let gr = Nametab.locate_constant (qualid_of_ident id) in
                  let grc = Universes.fresh_global_instance (Global.env()) (ConstRef gr) in
-                 Autorewrite.add_rew_rules (info.base_id ^ "_where") [None, (grc, true, None)];
-                 Autorewrite.add_rew_rules (info.base_id ^ "_where_rev") [None, (grc, false, None)]
+                 Autorewrite.add_rew_rules (info.base_id ^ "_where") [CAst.make (grc, true, None)];
+                 Autorewrite.add_rew_rules (info.base_id ^ "_where_rev") [CAst.make (grc, false, None)]
                in
                Evar.Map.iter decl where_map
              in

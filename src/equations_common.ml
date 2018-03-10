@@ -538,7 +538,7 @@ let below_tac s =
 
 let tacvar_arg h =
   let ipat = Genarg.in_gen (Genarg.rawwit Stdarg.wit_intro_pattern) 
-    (dummy_loc, Misctypes.IntroNaming (Misctypes.IntroIdentifier h)) in
+    (CAst.make @@ Misctypes.IntroNaming (Misctypes.IntroIdentifier h)) in
     TacGeneric ipat
 
 let rec_tac h h' = 
@@ -740,7 +740,7 @@ let idset_of_list =
 let pr_smart_global f = Pptactic.pr_or_by_notation pr_reference f
 let string_of_smart_global = function
   | Misctypes.AN ref -> string_of_reference ref
-  | Misctypes.ByNotation (loc, (s, _)) -> s
+  | Misctypes.ByNotation {CAst.v=(s, _)} -> s
 
 let ident_of_smart_global x = 
   Id.of_string (string_of_smart_global x)
