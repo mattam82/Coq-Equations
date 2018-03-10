@@ -10,6 +10,7 @@ open Constr
 open Environ
 open Names
 open Equations_common
+open Ltac_plugin
 
 type 'a with_loc = Loc.t * 'a
 

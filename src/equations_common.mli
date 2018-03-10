@@ -9,6 +9,7 @@
 open EConstr
 open Environ
 open Names
+open Ltac_plugin
 
 type 'a peuniverses = 'a * EConstr.EInstance.t
 
