@@ -213,7 +213,7 @@ let add_implicits impls avoid pats =
 	     pat :: aux imps pats
 	 with Not_found ->
 	   let n = next_ident_away id avoid in
-	   let pat = PEPat (CAst.make (CPatAtom (Some (Ident (None, n))))) in
+	   let pat = PEPat (CAst.make (CPatAtom (Some (CAst.make (Ident n))))) in
            avoid := Id.Set.add n !avoid;
 	   (default_loc, pat) :: aux imps pats
        else begin
@@ -336,19 +336,19 @@ let interp_eqn initi is_rec env impls eqn =
   and interp_constr_expr recinfo ids ?(loc=default_loc) c =
     match c with
     (* |   | CAppExpl of loc * (proj_flag * reference) * constr_expr list *)
-    | CApp ((None, { CAst.v = CRef (Ident (loc',id'), ie) }), args)
+    | CApp ((None, { CAst.v = CRef ({ CAst.loc=loc'; v=Ident id'}, ie) }), args)
       when List.mem_assoc_f Id.equal id' recinfo ->
        let r = List.assoc_f Id.equal id' recinfo in
        let args =
          List.map (fun (c, expl) -> CAst.with_loc_val (interp_constr_expr recinfo ids) c, expl) args in
-       let c = CApp ((None, CAst.make ~loc (CRef (Ident (loc', id'), ie))), args) in
+       let c = CApp ((None, CAst.(make ~loc (CRef (CAst.make ?loc:loc' (Ident id'), ie)))), args) in
        let arg = CAst.make ~loc (CApp ((None, CAst.make ~loc c), [chole id' loc])) in
        (match r with
         | LogicalDirect _ -> arg
         | LogicalProj r -> 
           let arg = if Option.is_empty r.comp then [arg, None] else [] in
           let qidproj = Nametab.shortest_qualid_of_global Id.Set.empty (ConstRef r.comp_proj) in
-          CAst.make ~loc (CApp ((None, CAst.make ?loc:loc' (CRef (Qualid (loc', qidproj), None))),
+          CAst.make ~loc (CApp ((None, CAst.make ?loc:loc' (CRef (CAst.make ?loc:loc' (Qualid qidproj), None))),
                                 args @ arg)))
     | _ -> map_constr_expr_with_binders Id.Set.add
              (fun ids -> CAst.with_loc_val (interp_constr_expr recinfo ids)) ids (CAst.make ~loc c)
