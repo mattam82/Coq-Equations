@@ -7,6 +7,7 @@
 (**********************************************************************)
 
 From Equations Require Import Init DepElim HSets.
+Require Import HoTT.Types.Bool.
 
 Set Universe Polymorphism.
 
@@ -17,10 +18,10 @@ Defined.
 
 (** Standard instances. *)
 
-Instance unit_eqdec : EqDec unit.
+Instance unit_eqdec : EqDec Unit.
 Proof. eqdec_proof. Defined.
 
-Instance bool_eqdec : EqDec bool.
+Instance bool_eqdec : EqDec Bool.
 Proof. eqdec_proof. Defined.
 
 Instance nat_eqdec : EqDec nat.

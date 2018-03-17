@@ -6,9 +6,9 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import HoTT.
 Require Import Coq.Unicode.Utf8_core.
 
+Require Export HoTT.Basics.Overture.
 Require Export Coq.extraction.Extraction.
 (*Require Export FunctionalExtensionality.*)
 (*Require Export Coq.Program.Equality. (* depelim *)*)
@@ -119,7 +119,7 @@ Section IdTheory.
 End IdTheory.
 
 (** Forward reference for the NoConfusion tactic. *)
-(* TODO. Missing congruence tactic.
+(* TODO. Is this needed?
 Ltac noconf H := congruence || injection H; intros; subst.*)
 
 (** Such a useful tactic it should be part of the stdlib. *)

@@ -16,7 +16,7 @@ From Equations Require Import Init EqDec.
 (** For right associated sigmas *)
 Ltac destruct_right_sigma H :=
   match type of H with
-  | @sigma _ (fun x => unit) => 
+  | @sigma _ (fun x => Unit) => 
     let ph := fresh in
     destruct H as [x ph];
       cbn [pr1 pr2] in * |- *; try clear ph

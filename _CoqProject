@@ -38,6 +38,11 @@ src/extra_tactics.mli
 src/g_equations.ml4
 src/equations_plugin_mod.ml
 src/equations_plugin.mllib
+theories/LogicEqdepFacts.v
+theories/LogicEqdep.v
+theories/LogicJMeq.v
+theories/LogicProofIrrelevance.v
+theories/ProgramEquality.v
 theories/Init.v
 theories/Classes.v
 theories/Signature.v
