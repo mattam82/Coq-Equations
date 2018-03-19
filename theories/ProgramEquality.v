@@ -78,11 +78,11 @@ Ltac elim_eq_rect :=
   match goal with
     | [ |- ?t ] =>
       match t with
-        | context [ @paths_rect _ _ (fun _ _ => _) _ _ ?p ] =>
+        | context [ @paths_rect _ _ _ _ _ ?p ] =>
           let P := fresh "P" in
             set (P := p); simpl in P ;
 	      ((case P ; clear P) || (clearbody P; rewrite (UIP_refl _ _ P); clear P))
-        | context [ @paths_rect _ _ (fun _ _ => _) _ _ ?p _ ] =>
+        | context [ @paths_rect _ _ _ _ _ ?p _ ] =>
           let P := fresh "P" in
             set (P := p); simpl in P ;
 	      ((case P ; clear P) || (clearbody P; rewrite (UIP_refl _ _ P); clear P))
@@ -98,9 +98,7 @@ Ltac simpl_uip :=
 
 (** Simplify equalities appearing in the context and goal. *)
 
-(* FIXME ?
-Ltac simpl_eq := simpl ; unfold eq_rec_r, eq_rec ; repeat (elim_eq_rect ; simpl) ; repeat (simpl_uip ; simpl).
-*)
+Ltac simpl_eq := simpl ; unfold (*eq_rec_r,*) eq_rec ; repeat (elim_eq_rect ; simpl) ; repeat (simpl_uip ; simpl).
 
 (** Try to abstract a proof of equality, if no proof of the same equality is present in the context. *)
 
@@ -121,7 +119,7 @@ Ltac abstract_eq_hyp H' p :=
 
 Ltac on_coerce_proof tac T :=
   match T with
-    | context [ paths_rect _ _ (fun _ _ => _) _ _ ?p ] => tac p
+    | context [ paths_rect _ _ _ _ _ ?p ] => tac p
   end.
 
 Ltac on_coerce_proof_gl tac :=
