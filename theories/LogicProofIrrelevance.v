@@ -10,7 +10,7 @@
 
 (** This defines the functor that build consequences of proof-irrelevance *)
 
-Require Export Equations.LogicEqdepFacts.
+Require Export Coq.Logic.EqdepFacts.
 Require Import HoTT.Basics.Overture.
 
 Module Type ProofIrrelevance.

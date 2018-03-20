@@ -8,7 +8,7 @@
 
 (** The set of libraries required to run Equations with all features. *)
 
-Require Import Coq.Program.Program.
+Require Import Coq.extraction.Extraction.
 
 (** This exports tactics *)
 Declare ML Module "equations_plugin".

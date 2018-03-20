@@ -8,7 +8,7 @@
 
 (** Instances of [Below] for the standard datatypes. To be used by 
    [equations] when it needs to do recursion on a type. *)
-
+(* FIXME Missing Vector.
 Require Import Bvector.
 Require Import Vectors.Vector.
 Require Import Coq.Program.Program.
@@ -108,7 +108,7 @@ Hint Rewrite Below_vector_equation_2 : Below.
 
 (* Hint Unfold rec_nat rec_vector : Recursors. *)
 
-Hint Extern 4 => progress (unfold hide_pattern in *) : Below.
+Hint Extern 4 => progress (unfold hide_pattern in * ) : Below.
 
 Ltac add_pattern t :=
   match goal with
@@ -136,3 +136,4 @@ Ltac rec_debug v recname := intro_block v ; move v at top ;
       add_pattern (hide_pattern recname).
 
 Ltac rec recname v := rec_fast v recname.
+*)

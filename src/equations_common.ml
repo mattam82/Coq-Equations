@@ -198,12 +198,12 @@ let declare_instance id poly evd ctx cl args =
   let inst = new_instance (fst cl) Hints.empty_hint_info true (Globnames.ConstRef cst) in
     add_instance inst; mkConst cst
 
-let coq_unit = lazy (init_reference ["Coq";"Init";"Datatypes"] "unit")
-let coq_tt = lazy (init_reference ["Coq";"Init";"Datatypes"] "tt")
+let coq_unit = lazy (init_reference ["HoTT";"Basics";"Overture"] "Unit")
+let coq_tt = lazy (init_reference ["HoTT";"Basics";"Overture"] "tt")
 
-let coq_True = lazy (init_reference ["Coq";"Init";"Logic"] "True")
-let coq_I = lazy (init_reference ["Coq";"Init";"Logic"] "I")
-let coq_False = lazy (init_reference ["Coq";"Init";"Logic"] "False")
+let coq_True = lazy (init_reference ["HoTT";"Basics";"Overture"] "Unit")
+let coq_I = lazy (init_reference ["HoTT";"Basics";"Overture"] "tt")
+let coq_False = lazy (init_reference ["HoTT";"Basics";"Overture"] "Empty")
 
 let coq_prod = init_constant ["Coq";"Init";"Datatypes"] "prod"
 let coq_pair = init_constant ["Coq";"Init";"Datatypes"] "pair"
@@ -227,9 +227,9 @@ let fresh_id_in_env avoid id env =
 let fresh_id avoid id gl =
   fresh_id_in_env avoid id (pf_env gl)
 
-let coq_eq = Lazy.from_fun Coqlib.build_coq_eq
-let coq_eq_refl = lazy ((Coqlib.build_coq_eq_data ()).Coqlib.refl)
-let coq_eq_case = lazy (Coqlib.coq_reference "coq_eq_case" ["Init";"Logic"] "eq_rect_r")
+let coq_eq = lazy (init_reference ["HoTT";"Basics";"Overture"] "paths")
+let coq_eq_refl = lazy (init_reference ["HoTT";"Basics";"Overture"] "idpath")
+let coq_eq_case = lazy (init_reference ["Equations";"Init"] "eq_rect_r")
 let coq_eq_elim = lazy (init_reference ["Equations";"DepElim"] "eq_rect_dep_r")
 
 let coq_heq = lazy (Coqlib.coq_reference "mkHEq" ["Logic";"JMeq"] "JMeq")
@@ -266,10 +266,10 @@ type logic = {
 let prop_logic =
   { logic_eq_ty = coq_eq; logic_eq_refl = coq_eq_refl;
     logic_eq_case = coq_eq_case; logic_eq_elim = coq_eq_elim;
-    logic_sort = Sorts.InProp; logic_zero = coq_False;
+    logic_sort = Sorts.InType; logic_zero = coq_False;
     logic_one = coq_True; logic_one_val = coq_I;
-    logic_product = lazy (Coqlib.coq_reference "product" ["Init";"Logic"] "and");
-    logic_pair = lazy (Coqlib.coq_reference "product" ["Init";"Logic"] "conj");
+    logic_product = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "prod");
+    logic_pair = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "pair");
   }
   
 let type_logic =

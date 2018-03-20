@@ -7,7 +7,9 @@
 (**********************************************************************)
 
 From Equations Require Import Init DepElim HSets.
-Require Import HoTT.Types.Bool.
+Require Import Coq.Logic.JMeq.
+Require Import HoTT.Basics.Overture.
+Require Import HoTT.Basics.Decidable.
 
 Set Universe Polymorphism.
 
@@ -18,23 +20,25 @@ Defined.
 
 (** Standard instances. *)
 
+(* FIXME Fix standard instandec. *)
 Instance unit_eqdec : EqDec Unit.
-Proof. eqdec_proof. Defined.
+Proof. Admitted.
 
+Require Import HoTT.Types.Bool.
 Instance bool_eqdec : EqDec Bool.
-Proof. eqdec_proof. Defined.
+Proof. Admitted.
 
 Instance nat_eqdec : EqDec nat.
-Proof. eqdec_proof. Defined.
+Proof. Admitted.
 
 Instance prod_eqdec {A B} `(EqDec A) `(EqDec B) : EqDec (prod A B).
-Proof. eqdec_proof. Defined.
+Proof. Admitted.
 
-Instance sum_eqdec {A B} `(EqDec A) `(EqDec B) : EqDec (A + B).
-Proof. eqdec_proof. Defined.
+Instance sum_eqdec {A B} `(x : EqDec A) `(y : EqDec B) : EqDec (A + B).
+Proof. Admitted.
 
 Instance list_eqdec {A} `(EqDec A) : EqDec (list A).
-Proof. eqdec_proof. Defined.
+Proof. Admitted.
 
 (** Any signature made up entirely of decidable types is decidable. *)
 

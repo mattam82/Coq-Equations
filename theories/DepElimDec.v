@@ -64,7 +64,7 @@ Ltac generalize_sig_gen id cont :=
   hnf in (value of id'); hnf in (type of id');
   lazymatch goal with
   | id' := ?v |- context[ id ] =>
-    generalize (@eq_refl _ id' : v = id') ;
+    generalize (@idpath _ id' : v = id') ;
     clearbody id'; simpl in id';
     cont id id' id v
   | id' := ?v |- _ => 
@@ -74,7 +74,7 @@ Ltac generalize_sig_gen id cont :=
     try red in (type of id'2);
     match goal with
       [ id'1 := ?t |- _ ] =>
-      generalize (@eq_refl _ id'1 : t = id'1);
+      generalize (@idpath _ id'1 : t = id'1);
         clearbody id'2 id'1; clear id' id;
         try unfold signature in id'2; hnf in id'2; simpl in id'2;
         rename id'2 into id; cont id id id'1 t

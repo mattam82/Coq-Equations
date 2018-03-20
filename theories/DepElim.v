@@ -8,8 +8,8 @@
 
 (** Tactics related to (dependent) equality and proof irrelevance. *)
 
-Require Export Equations.LogicProofIrrelevance.
-Require Export Equations.LogicJMeq.
+Require Export Coq.Logic.ProofIrrelevance.
+Require Export Coq.Logic.JMeq.
 
 Require Import Coq.Program.Tactics.
 Require Export Equations.Init.
@@ -82,7 +82,7 @@ Ltac simpl_one_dep_JMeq :=
   ltac:(fun H => let H' := fresh "H" in
     assert (H' := JMeq_eq H)).
 
-Require Import Equations.LogicEqdep.
+Require Import Coq.Logic.Eqdep.
 
 (** Simplify dependent equality using sigmas to equality of the second projections if possible.
    Uses UIP. *)
@@ -117,7 +117,7 @@ Ltac elim_eq_rect :=
       end
   end.
 
-(** Rewrite using uniqueness of indentity proofs [H = eq_refl]. *)
+(** Rewrite using uniqueness of indentity proofs [H = idpath]. *)
 
 Ltac simpl_uip :=
   match goal with
@@ -125,7 +125,7 @@ Ltac simpl_uip :=
   end.
 
 (** Simplify equalities appearing in the context and goal. *)
-Ltac simpl_eq := simpl ; unfold (*eq_rec_r,*) paths_rec ; repeat (elim_eq_rect ; simpl) ; repeat (simpl_uip ; simpl).
+Ltac simpl_eq := simpl ; unfold (*FIXME eq_rec_r,*) paths_rec ; repeat (elim_eq_rect ; simpl) ; repeat (simpl_uip ; simpl).
 
 (** Try to abstract a proof of equality, if no proof of the same equality is present in the context. *)
 
@@ -192,17 +192,17 @@ Ltac clear_eq_proofs :=
 Hint Rewrite <- eq_rect_eq : refl_id.
 
 (** The [refl_id] database should be populated with lemmas of the form
-   [coerce_* t eq_refl = t]. *)
+   [coerce_* t idpath = t]. *)
 
 Lemma JMeq_eq_refl {A} (x : A) : JMeq_eq (@JMeq_refl _ x) = 1.
 Proof. intros. apply proof_irrelevance. Qed.
 
 Lemma UIP_refl_refl : forall A (x : A),
-  Equations.LogicEqdep.EqdepTheory.UIP_refl A x idpath = idpath.
+  Coq.Logic.Eqdep.EqdepTheory.UIP_refl A x idpath = idpath.
 Proof. intros. apply UIP_refl. Qed.
 
 Lemma inj_pairT2_refl : forall A (x : A) (P : A -> Type) (p : P x),
-  Equations.LogicEqdep.EqdepTheory.inj_pairT2 A P x p p idpath = idpath.
+  Coq.Logic.Eqdep.EqdepTheory.inj_pairT2 A P x p p idpath = idpath.
 Proof. intros. apply UIP_refl. Qed.
 
 Polymorphic Lemma inj_sigma2_refl : forall A (x : A) (P : A -> Type) (p : P x),
@@ -275,7 +275,7 @@ Ltac simpl_depind_r := subst_right_no_fail ; autoinjections_right ; try discrimi
    *)
 
 Class NoConfusionPackage (A : Type) := {
-  NoConfusion : A -> A -> Prop;
+  NoConfusion : A -> A -> Type;
   noConfusion : forall {a b}, a = b -> NoConfusion a b;
   noConfusion_inv : forall {a b}, NoConfusion a b -> a = b;
   noConfusion_is_equiv : forall {a b} (e : a = b), noConfusion_inv (noConfusion e) = e;
@@ -725,14 +725,14 @@ Polymorphic
 Lemma simplify_ind_pack_refl {A : Type} {eqdec : EqDec A}
 (B : A -> Type) (x : A) (p : B x) (G : p = p -> Type)
 (t : forall (e : &(x & p) = &(x & p)), opaque_ind_pack_eq_inv G e) :
-  simplify_ind_pack B x p p G t eq_refl =
-  simplified_ind_pack B x p G (t eq_refl).
+  simplify_ind_pack B x p p G t idpath =
+  simplified_ind_pack B x p G (t idpath).
 Proof. reflexivity. Qed.
 
 Polymorphic
 Lemma simplify_ind_pack_elim {A : Type} {eqdec : EqDec A}
   (B : A -> Type) (x : A) (p : B x) (G : p = p -> Type)
-  (t : G eq_refl) :
+  (t : G idpath) :
   simplified_ind_pack B x p G (simplify_ind_pack_inv B x p G t) = t.
 Proof.
   unfold simplified_ind_pack, simplify_ind_pack_inv.
@@ -752,29 +752,29 @@ Global Opaque opaque_ind_pack_eq_inv.
 
 Ltac rewrite_sigma2_refl :=
   match goal with
-  | |- context [inj_sigma2 ?A ?P ?x ?p _ eq_refl] =>
+  | |- context [inj_sigma2 ?A ?P ?x ?p _ idpath] =>
     rewrite (inj_sigma2_refl A x P p)
 
   | |- context [@inj_right_sigma ?A ?H ?x ?P ?y ?y' _] =>
     rewrite (@inj_right_sigma_refl A H x P y)
 
-  | |- context [@simplification_sigma2 ?A ?P ?B ?p ?x ?y ?X eq_refl] =>
+  | |- context [@simplification_sigma2 ?A ?P ?B ?p ?x ?y ?X idpath] =>
     rewrite (@simplification_sigma2_refl A P B p x X); simpl
 
   | |- context [@Id_simplification_sigma2 ?A ?H ?P ?B ?p ?x ?y ?X id_refl] =>
     rewrite (@Id_simplification_sigma2_refl A H P B p x X); simpl
 
-  | |- context [@simplification_sigma2_dec ?A ?H ?P ?B ?p ?x ?y ?X eq_refl] =>
+  | |- context [@simplification_sigma2_dec ?A ?H ?P ?B ?p ?x ?y ?X idpath] =>
     rewrite (@simplification_sigma2_dec_refl A H P B p x X); simpl
 
-  | |- context [@simplification_sigma2_dec_point ?A ?p ?H ?P ?B ?x ?y ?X eq_refl] =>
+  | |- context [@simplification_sigma2_dec_point ?A ?p ?H ?P ?B ?x ?y ?X idpath] =>
     rewrite (@simplification_sigma2_dec_point_refl A p H P B x X); simpl
 
-  | |- context [@simplification_K ?A ?x ?B ?p eq_refl] =>
-    rewrite (@simplification_K_refl A x B p); simpl eq_rect
+  | |- context [@simplification_K ?A ?x ?B ?p idpath] =>
+    rewrite (@simplification_K_refl A x B p); simpl paths_rect
 
-  | |- context [@simplification_K_dec ?A ?dec ?x ?B ?p eq_refl] =>
-    rewrite (@simplification_K_dec_refl A dec x B p); simpl eq_rect
+  | |- context [@simplification_K_dec ?A ?dec ?x ?B ?p idpath] =>
+    rewrite (@simplification_K_dec_refl A dec x B p); simpl paths_rect
 
   | |- context [@HSets.inj_sigma_r ?A ?H ?P ?x ?y ?y' _] =>
     rewrite (@HSets.inj_sigma_r_refl A H P x y)
@@ -782,13 +782,13 @@ Ltac rewrite_sigma2_refl :=
   | |- context [@simplification_heq ?A ?B ?x _ ?p JMeq_refl] =>
     rewrite (@simplification_heq_refl A B x p)
 
-  | |- context [@simplification_existT2_dec ?A ?eq ?P ?B ?p ?x ?y ?X eq_refl] =>
+  | |- context [@simplification_existT2_dec ?A ?eq ?P ?B ?p ?x ?y ?X idpath] =>
     rewrite (@simplification_existT2_dec_refl A eq P B p x X); simpl
 
-  | |- context [@simplification_existT2 ?A ?P ?B ?p ?x ?y ?X eq_refl] =>
+  | |- context [@simplification_existT2 ?A ?P ?B ?p ?x ?y ?X idpath] =>
     rewrite (@simplification_existT2_refl A P B p x X); simpl
 
-  | |- context [@simplify_ind_pack ?A ?eqdec ?B ?x ?p _ ?G _ eq_refl] =>
+  | |- context [@simplify_ind_pack ?A ?eqdec ?B ?x ?p _ ?G _ idpath] =>
     rewrite (@simplify_ind_pack_refl A eqdec B x p G _)
 
   | |- context [@simplified_ind_pack ?A ?eqdec ?B ?x ?p ?G
@@ -808,7 +808,7 @@ Hint Unfold solution_left solution_right
   Id_solution_right_let Id_solution_left_let
   Id_simplification_sigma1
   apply_noConfusion apply_noConfusionId
-  eq_rect_r eq_rec eq_ind eq_ind_r : equations.
+  (* FIXME eq_rect_r*) paths_rec paths_ind (* FIXME eq_ind_r*) : equations.
 
 (** Makes these definitions disappear at extraction time *)
 Extraction Inline solution_right_dep solution_right solution_left solution_left_dep.
@@ -877,7 +877,7 @@ Ltac simplify_equations_in e :=
 
 Ltac block_equality id :=
   match type of id with
-    | @eq ?A ?t ?u => change (let _ := block in (@eq A t u)) in id
+    | @paths ?A ?t ?u => change (let _ := block in (@paths A t u)) in id
     | _ => idtac
   end.
 
@@ -898,7 +898,7 @@ Ltac try_injection H := injection H.
 Ltac simplify_one_dep_elim_term c :=
   match c with
     | @JMeq _ _ _ _ -> _ => refine (@simplification_heq _ _ _ _ _)
-    | @eq ?A ?t ?t -> _ =>
+    | @paths ?A ?t ?t -> _ =>
       intros _ ||
              (let eqdec := constr:(_ : EqDec A) in
               refine (simplification_K_dec (A:=A) (H:=eqdec) _ _))
@@ -982,7 +982,7 @@ Ltac simplify_one_dep_elim_term c :=
            | |- let x := _ in _ = _ -> @?B x =>
              (let check := type of B in (* Check that the abstraction is really well-typed *)
               refine (@solution_left_let _ B _ _ _))
-           | _ => refine (@solution_left _ _ _ _) || refine (@solution_left_dep _ _ _ _); simpl eq_rect
+           | _ => refine (@solution_left _ _ _ _) || refine (@solution_left_dep _ _ _ _); simpl paths_rect
            end)) ||
       (let hyp := fresh H in intros hyp ;
         move hyp before y ; move y before hyp; revert_blocking_until y; revert y;
@@ -991,7 +991,7 @@ Ltac simplify_one_dep_elim_term c :=
              (let check := type of B in (* Check that the abstraction is really well-typed *)
               refine (@solution_right_let _ B _ _ _); let B' := eval cbv beta in (B t) in
                                                           change (t = b -> B'))
-           | _ => (refine (@solution_right _ _ _ _) || refine (@solution_right_dep _ _ _ _); simpl eq_rect) ||
+           | _ => (refine (@solution_right _ _ _ _) || refine (@solution_right_dep _ _ _ _); simpl paths_rect) ||
                   (let na := fresh in intros na; subst na)
            end))
 
@@ -1012,13 +1012,13 @@ Ltac simplify_one_dep_elim_term c :=
              | _ => refine (@Id_solution_right _ _ _ _) || refine (@Id_solution_right_dep _ _ _ _)
            end))
 
-    | @eq ?A ?t ?u -> ?P =>
+    | @paths ?A ?t ?u -> ?P =>
       (let hyp := fresh in intros hyp ; noconf_ref hyp)
 
     | @Id ?A ?t ?u -> ?P =>
       (let hyp := fresh in intros hyp ; noconf_ref hyp) 
 
-    | @eq ?A ?x ?y -> _ =>
+    | @paths ?A ?x ?y -> _ =>
       not_var x; not_var y;
      try (let packx := constr:(signature_pack x) in
         let packy := constr:(signature_pack y) in
@@ -1082,12 +1082,12 @@ Ltac simplify_one_dep_elim_term c :=
 
 Ltac simplify_one_dep_elim :=
   match goal with
-    | [ |- context [eq_rect_r _ _ eq_refl]] => unfold eq_rect_r at 1; simpl eq_rect
-    | [ |- context [eq_rect _ _ _ _ eq_refl]] => unfold eq_rect at 1; simpl eq_rect
-    | [ |- context [@eq_rect_dep_r _ _ _ _ _ eq_refl]] => simpl eq_rect_dep_r
+    (* FIXME | [ |- context [eq_rect_r _ _ idpath]] => unfold eq_rect_r at 1; simpl eq_rect*)
+    | [ |- context [@paths_rect _ _ _ _ _ idpath]] => unfold paths_rect at 1; simpl paths_rect
+    | [ |- context [@eq_rect_dep_r _ _ _ _ _ idpath]] => simpl eq_rect_dep_r
     | [ |- context [@Id_rect_dep_r _ _ _ _ _ id_refl]] => simpl Id_rect_dep_r
-    | [ |- context [noConfusion_inv (pack_sigma_eq eq_refl eq_refl)]] => simpl noConfusion_inv
-    | [ |- @opaque_ind_pack_eq_inv ?A ?eqdec ?B ?x ?p _ ?G eq_refl] =>
+    | [ |- context [noConfusion_inv (pack_sigma_eq idpath idpath)]] => simpl noConfusion_inv
+    | [ |- @opaque_ind_pack_eq_inv ?A ?eqdec ?B ?x ?p _ ?G idpath] =>
             apply (@simplify_ind_pack_inv A eqdec B x p G)
     | [ |- ?gl ] => simplify_one_dep_elim_term gl
   end.
@@ -1401,7 +1401,7 @@ Ltac find_empty := simpl in * ; elimtype False ;
 
 Ltac make_simplify_goal :=
   match goal with 
-    [ |- @eq ?A ?T ?U ] => let eqP := fresh "eqP" in 
+    [ |- @paths ?A ?T ?U ] => let eqP := fresh "eqP" in 
       set (eqP := fun x : A => x = U) ; change (eqP T)
   | [ |- @Id ?A ?T ?U ] => let eqP := fresh "eqP" in 
       set (eqP := fun x : A => @Id A x U) ; change (eqP T)
@@ -1452,32 +1452,32 @@ Ltac red_gl :=
 
 Ltac rewrite_sigma2_rule c :=
   match c with
-  | inj_sigma2 ?A ?P ?x ?p _ eq_refl =>
+  | inj_sigma2 ?A ?P ?x ?p _ idpath =>
     rewrite (inj_sigma2_refl A x P p)
   | @inj_right_sigma ?A ?H ?x ?P ?y ?y' _ =>
     rewrite (@inj_right_sigma_refl A H x P y)
-  | @simplify_ind_pack ?A ?eqdec ?B ?x ?p _ ?G _ eq_refl=>
+  | @simplify_ind_pack ?A ?eqdec ?B ?x ?p _ ?G _ idpath=>
     rewrite (@simplify_ind_pack_refl A eqdec B x p G _)
-  | @simplification_sigma2 ?A ?P ?B ?p ?x ?y ?X eq_refl=>
+  | @simplification_sigma2 ?A ?P ?B ?p ?x ?y ?X idpath=>
     rewrite (@simplification_sigma2_refl A P B p x X); simpl
   | @Id_simplification_sigma2 ?A ?H ?P ?B ?p ?x ?y ?X id_refl=>
     rewrite (@Id_simplification_sigma2_refl A H P B p x X); simpl
-  | @simplification_sigma2_dec ?A ?H ?P ?B ?p ?x ?y ?X eq_refl=>
+  | @simplification_sigma2_dec ?A ?H ?P ?B ?p ?x ?y ?X idpath=>
     rewrite (@simplification_sigma2_dec_refl A H P B p x X); simpl
-  | @simplification_sigma2_dec_point ?A ?p ?H ?P ?B ?x ?y ?X eq_refl=>
+  | @simplification_sigma2_dec_point ?A ?p ?H ?P ?B ?x ?y ?X idpath=>
     rewrite (@simplification_sigma2_dec_point_refl A p H P B x X); simpl
-  | @simplification_K ?A ?x ?B ?p eq_refl=>
-    rewrite (@simplification_K_refl A x B p); simpl eq_rect
-  | @simplification_K_dec ?A ?dec ?x ?B ?p eq_refl=>
-    rewrite (@simplification_K_dec_refl A dec x B p); simpl eq_rect
+  | @simplification_K ?A ?x ?B ?p idpath=>
+    rewrite (@simplification_K_refl A x B p); simpl paths_rect
+  | @simplification_K_dec ?A ?dec ?x ?B ?p idpath=>
+    rewrite (@simplification_K_dec_refl A dec x B p); simpl paths_rect
   | @HSets.inj_sigma_r ?A ?H ?P ?x ?y ?y' _=>
     rewrite (@HSets.inj_sigma_r_refl A H P x y)
 
   | @simplification_heq ?A ?B ?x _ ?p JMeq_refl=>
     rewrite (@simplification_heq_refl A B x p)
-  | @simplification_existT2_dec ?A ?eq ?P ?B ?p ?x ?y ?X eq_refl=>
+  | @simplification_existT2_dec ?A ?eq ?P ?B ?p ?x ?y ?X idpath=>
     rewrite (@simplification_existT2_dec_refl A eq P B p x X); simpl
-  | @simplification_existT2 ?A ?P ?B ?p ?x ?y ?X eq_refl=>
+  | @simplification_existT2 ?A ?P ?B ?p ?x ?y ?X idpath=>
     rewrite (@simplification_existT2_refl A P B p x X); simpl
   end.
 

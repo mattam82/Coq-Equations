@@ -10,7 +10,7 @@
    [equations] when it needs applications of injectivity or discrimination
    on some equation. *)
 
-Require Import Coq.Program.Program Bvector List.
+(*Require Import Coq.Program.Program Bvector List.*)
 Require Import Equations.Signature Equations.EqDec.
 Require Export Equations.DepElim.
 
@@ -62,14 +62,15 @@ Ltac solve_noconf_inv_equiv :=
 
 Ltac solve_noconf := simpl; intros;
     match goal with
-      [ H : @eq _ _ _ |- @eq _ _ _ ] => solve_noconf_inv_equiv
-    | [ H : @eq _ _ _ |- _ ] => solve_noconf_prf
-    | [ |- @eq _ _ _ ] => solve_noconf_inv
+      [ H : @paths _ _ _ |- @paths _ _ _ ] => solve_noconf_inv_equiv
+    | [ H : @paths _ _ _ |- _ ] => solve_noconf_prf
+    | [ |- @paths _ _ _ ] => solve_noconf_inv
     end.
 
-Derive NoConfusion for unit bool nat option sum prod list sigT sig.
+(* FIXME *)
+(*Derive NoConfusion for Unit Bool nat option sum prod list sigT sig.*)
 
 (* FIXME should be done by the derive command *)
-Extraction Inline noConfusion NoConfusionPackage_nat.
+(*Extraction Inline noConfusion NoConfusionPackage_nat.*)
 
 

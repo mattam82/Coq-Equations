@@ -7,7 +7,7 @@
 (**********************************************************************)
 
 Require Import Equations.Init.
-Require Import Equations.ProgramEquality.
+Require Import Coq.Program.Equality.
 
 (** Decidable equality.
 

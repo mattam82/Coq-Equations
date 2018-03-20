@@ -58,30 +58,6 @@ Require Import HoTT.Basics.Overture.
 Require Import HoTT.Types.Sigma.
 Require Import HoTT.Types.Universe.
 
-(* TODO Maybe this should be somewhere else. *)
-Module PathNotations.
-  Notation "'rew' H 'in' H'" := (paths_rect _ _ (fun _ _ => _) H' _ H)
-    (at level 10, H' at level 10,
-     format "'[' 'rew'  H  in  '/' H' ']'").
-  Notation "'rew' [ P ] H 'in' H'" := (paths_rect _ _ (fun x _ => P x) H' _ H)
-    (at level 10, H' at level 10,
-     format "'[' 'rew'  [ P ]  '/    ' H  in  '/' H' ']'").
-(*
-  Notation "'rew' <- H 'in' H'" := (eq_rect_r _ H' H)
-    (at level 10, H' at level 10,
-     format "'[' 'rew'  <-  H  in  '/' H' ']'").
-  Notation "'rew' <- [ P ] H 'in' H'" := (eq_rect_r P H' H)
-    (at level 10, H' at level 10,
-     format "'[' 'rew'  <-  [ P ]  '/    ' H  in  '/' H' ']'").
-*)
-  Notation "'rew' -> H 'in' H'" := (paths_rect _ _ (fun _ _ => _) H' _ H)
-    (at level 10, H' at level 10, only parsing).
-  Notation "'rew' -> [ P ] H 'in' H'" := (paths_rect _ _ (fun x _ => P x) H' _ H)
-    (at level 10, H' at level 10, only parsing).
-End PathNotations.
-
-Import PathNotations.
-
 Section Dependent_Equality.
 
   Variable U : Type.
@@ -116,7 +92,7 @@ Section Dependent_Equality.
       equalities *)
 
   Inductive eq_dep1 (p:U) (x:P p) (q:U) (y:P q) : Type :=
-    eq_dep1_intro : forall h:q = p, x = rew h in y -> eq_dep1 p x q y.
+    eq_dep1_intro : forall h:q = p, x = (paths_rect _ _ (fun _ _ => _) y _ h) -> eq_dep1 p x q y.
 
   Lemma eq_dep1_dep :
     forall (p:U) (x:P p) (q:U) (y:P q), eq_dep1 p x q y -> eq_dep p x q y.
@@ -196,8 +172,9 @@ Qed.
 
 Set Implicit Arguments.
 
-Lemma eq_sigT_sig_eq : forall X P (x1 x2:X) H1 H2, existT P x1 H1 = existT P x2 H2 <->
-                                                   {H:x1=x2 | rew H in H1 = H2}.
+Lemma eq_sigT_sig_eq :
+  forall X P (x1 x2:X) H1 H2, existT P x1 H1 = existT P x2 H2 <->
+                              {H:x1=x2 | (paths_rect _ _ (fun _ _ => _) H1 _ H) = H2}.
 Proof.
   intros; split; intro H.
   - change x2 with (projT1 (existT P x2 H2)).
@@ -220,7 +197,7 @@ Proof.
 Defined.
 
 Lemma eq_sigT_snd :
-  forall X P (x1 x2:X) H1 H2 (H:existT P x1 H1 = existT P x2 H2), rew (eq_sigT_fst H) in H1 = H2.
+  forall X P (x1 x2:X) H1 H2 (H:existT P x1 H1 = existT P x2 H2), (paths_rect _ _ (fun _ _ => _) H1 _ (eq_sigT_fst H)) = H2.
 Proof.
   intros.
   unfold eq_sigT_fst.
@@ -240,7 +217,7 @@ Proof.
 Defined.
 
 Lemma eq_sig_snd :
-  forall X P (x1 x2:X) H1 H2 (H:exist P x1 H1 = exist P x2 H2), rew (eq_sig_fst H) in H1 = H2.
+  forall X P (x1 x2:X) H1 H2 (H:exist P x1 H1 = exist P x2 H2), (paths_rect _ _ (fun _ _ => _) H1 _ (eq_sig_fst H)) = H2.
 Proof.
   intros.
   unfold eq_sig_fst, paths_ind.
@@ -363,7 +340,7 @@ Section Equivalences.
       Reflexive Equality Proofs *)
 
   Lemma Streicher_K_on__eq_rect_eq_on (p : U) (P : U -> Type) (x : P p) :
-    Streicher_K_on_ p (fun h => x = rew -> [P] h in x)
+    Streicher_K_on_ p (fun h => x = paths_rect _ _ (fun x _ => P x) x _ h)
     -> Eq_rect_eq_on p P x.
   Proof.
     intro Streicher_K; red; intros.

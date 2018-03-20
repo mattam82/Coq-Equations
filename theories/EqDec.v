@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import HoTT.
+Require Import HoTT.Basics.Overture.
 Require Import Equations.Init.
 
 (** Decidable equality.

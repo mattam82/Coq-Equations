@@ -10,7 +10,7 @@
 
 (** Tactics related to (dependent) equality and proof irrelevance. *)
 
-Require Export Equations.LogicJMeq.
+Require Export Coq.Logic.JMeq.
 
 Require Import HoTT.Basics.Overture.
 Require Import Coq.Program.Tactics.
@@ -59,7 +59,7 @@ Ltac simpl_one_dep_JMeq :=
   ltac:(fun H => let H' := fresh "H" in
     assert (H' := JMeq_eq H)).
 
-Require Import Equations.LogicEqdep.
+Require Import Coq.Logic.Eqdep.
 
 (** Simplify dependent equality using sigmas to equality of the second projections if possible.
    Uses UIP. *)
@@ -98,7 +98,7 @@ Ltac simpl_uip :=
 
 (** Simplify equalities appearing in the context and goal. *)
 
-Ltac simpl_eq := simpl ; unfold (*eq_rec_r,*) eq_rec ; repeat (elim_eq_rect ; simpl) ; repeat (simpl_uip ; simpl).
+Ltac simpl_eq := simpl ; unfold (* FIXME eq_rec_r,*) paths_rec ; repeat (elim_eq_rect ; simpl) ; repeat (simpl_uip ; simpl).
 
 (** Try to abstract a proof of equality, if no proof of the same equality is present in the context. *)
 
@@ -171,11 +171,11 @@ Lemma JMeq_eq_refl {A} (x : A) : JMeq_eq (@JMeq_refl _ x) = idpath.
 Proof. apply UIP. Qed.
 
 Lemma UIP_refl_refl A (x : A) :
-  Equations.LogicEqdep.EqdepTheory.UIP_refl A x idpath = idpath.
+  Coq.Logic.Eqdep.EqdepTheory.UIP_refl A x idpath = idpath.
 Proof. apply UIP_refl. Qed.
 
 Lemma inj_pairT2_refl A (x : A) (P : A -> Type) (p : P x) :
-  Equations.LogicEqdep.EqdepTheory.inj_pairT2 A P x p p idpath = idpath.
+  Coq.Logic.Eqdep.EqdepTheory.inj_pairT2 A P x p p idpath = idpath.
 Proof. apply UIP_refl. Qed.
 
 Hint Rewrite @JMeq_eq_refl @UIP_refl_refl @inj_pairT2_refl : refl_id.
@@ -234,6 +234,7 @@ Ltac subst_right_no_fail :=
             [ H : ?X = ?Y |- _ ] => subst Y
           end).
 
+(* FIXME Missing inversion tactic...
 Ltac inject_left H :=
   progress (inversion H ; subst_left_no_fail ; clear_dups) ; clear H.
 
@@ -243,13 +244,14 @@ Ltac inject_right H :=
 Ltac autoinjections_left := repeat autoinjection ltac:(inject_left).
 Ltac autoinjections_right := repeat autoinjection ltac:(inject_right).
 
-Ltac simpl_depind := subst_no_fail ; autoinjections ; try discriminates ; 
-  simpl_JMeq ; simpl_existTs ; simplify_IH_hyps.
-
 Ltac simpl_depind_l := subst_left_no_fail ; autoinjections_left ; try discriminates ; 
   simpl_JMeq ; simpl_existTs ; simplify_IH_hyps.
 
 Ltac simpl_depind_r := subst_right_no_fail ; autoinjections_right ; try discriminates ; 
+  simpl_JMeq ; simpl_existTs ; simplify_IH_hyps.
+*)
+
+Ltac simpl_depind := subst_no_fail ; autoinjections ; try discriminates ; 
   simpl_JMeq ; simpl_existTs ; simplify_IH_hyps.
 
 Ltac blocked t := block_goal ; t ; unblock_goal.
@@ -317,7 +319,7 @@ Proof. intros. rewrite (UIP_refl A). assumption. Defined.
 
 Hint Unfold solution_left solution_right deletion simplification_heq
   simplification_existT1 simplification_existT2 simplification_K
-  (*eq_rect_r*) paths_rec paths_ind : dep_elim.
+  (* FIXME eq_rect_r*) paths_rec paths_ind : dep_elim.
 
 (** Using these we can make a simplifier that will perform the unification
    steps needed to put the goal in normalised form (provided there are only

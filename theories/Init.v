@@ -10,12 +10,13 @@ Require Import Coq.Unicode.Utf8_core.
 
 Require Export HoTT.Basics.Overture.
 Require Export Coq.extraction.Extraction.
-(*Require Export FunctionalExtensionality.*)
-(*Require Export Coq.Program.Equality. (* depelim *)*)
 Require Export Coq.Program.Tactics.
-(*Require Export Coq.Program.Wf. (* MR *)*)
 
 Declare ML Module "equations_plugin".
+
+(* FIXME. This is used by ML, but this is probably not a good solution. *)
+Definition eq_rect_r {A : Type} (x : A) (P : A -> Type) (b : P x) (y : A) (H : y = x) : P y :=
+  paths_rew_r A y x P b H.
 
 (** A notation scope for equations declarations.
 
@@ -119,8 +120,7 @@ Section IdTheory.
 End IdTheory.
 
 (** Forward reference for the NoConfusion tactic. *)
-(* TODO. Is this needed?
-Ltac noconf H := congruence || injection H; intros; subst.*)
+Ltac noconf H := (* FIXME congruence || *) injection H; intros; subst.
 
 (** Such a useful tactic it should be part of the stdlib. *)
 Ltac forward_gen H tac :=

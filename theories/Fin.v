@@ -8,7 +8,7 @@
 
 (** An example development of the [fin] datatype using [equations]. *)
 
-Require Import Coq.Program.Program Equations.Equations.
+Require Import Equations.Equations.
 
 (** [fin n] is the type of naturals smaller than [n]. *)
 
@@ -51,11 +51,11 @@ Qed.
 
 (** Won't pass the guardness check which diverges anyway. *)
 
-Inductive finle : forall (n : nat) (x : fin n) (y : fin n), Prop :=
+Inductive finle : forall (n : nat) (x : fin n) (y : fin n), Type :=
 | leqz : forall {n j}, finle (S n) fz j
 | leqs : forall {n i j}, finle n i j -> finle (S n) (fs i) (fs j).
 
-Scheme finle_ind_dep := Induction for finle Sort Prop.
+Scheme finle_ind_dep := Induction for finle Sort Type.
 
 Instance finle_ind_pack n x y : DependentEliminationPackage (finle n x y) :=
   { elim_type := _ ; elim := finle_ind_dep }.

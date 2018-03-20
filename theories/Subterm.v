@@ -6,12 +6,13 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Wf_nat Arith.Lt Bvector Relations Wellfounded.
+(*Require Import Wf_nat Arith.Lt Bvector Relations Wellfounded.*)
 From Equations Require Import Init Classes Below Signature EqDec NoConfusion.
+Require Import Coq.Init.Wf.
 
 Generalizable Variables A R S B.
 
-Scheme Acc_dep := Induction for Acc Sort Prop.
+Scheme Acc_dep := Induction for Acc Sort Type.
 
 (** The fixpoint combinator associated to a well-founded relation,
    just reusing the [Wf.Fix] combinator. *)
@@ -20,33 +21,39 @@ Definition FixWf `{WF:WellFounded A R} (P : A -> Type)
   (step : forall x : A, (forall y : A, R y x -> P y) -> P x) : forall x : A, P x :=
   Fix wellfounded P step.
 
-Lemma Acc_pi (A : Type) (R : relation A) i (x y : Acc R i) : x = y.
+Lemma Acc_pi `{Funext} (A : Type) (R : relation A) i (x y : Acc R i) : x = y.
 Proof.
   revert y.
   induction x using Acc_dep.
   intros. destruct y.
-  f_equal.
-  extensionality y. extensionality H'. apply H.
+  f_ap.
+  apply path_forall.
+  unfold pointwise_paths.
+  intros.
+  apply path_forall.
+  unfold pointwise_paths.
+  trivial.
 Qed.
 
-Lemma FixWf_unfold `{WF : WellFounded A R} (P : A -> Type)
+Lemma FixWf_unfold `{Funext} `{WF : WellFounded A R} (P : A -> Type)
   (step : forall x : A, (forall y : A, R y x -> P y) -> P x) (x : A) :
   FixWf P step x = step x (fun y _ => FixWf P step y).
 Proof.
   intros. unfold FixWf, Fix. destruct wellfounded.
-  simpl. f_equal. extensionality y. extensionality h.
-  f_equal. apply Acc_pi.
+  simpl. f_ap. apply path_forall; unfold pointwise_paths.
+  intros; apply path_forall; unfold pointwise_paths.
+  intros; f_ap. apply Acc_pi.
 Qed.
 
 Hint Rewrite @FixWf_unfold : Recursors.
 
-Lemma FixWf_unfold_step : 
-  forall (A : Type) (R : Relation_Definitions.relation A) (WF : WellFounded R) (P : A -> Type)
+Lemma FixWf_unfold_step `{Funext} : 
+  forall (A : Type) (R : relation A) (WF : WellFounded R) (P : A -> Type)
     (step : forall x : A, (forall y : A, R y x -> P y) -> P x) (x : A)
     (step' : forall y : A, R y x -> P y),
     step' = (fun (y : A) (_ : R y x) => FixWf P step y) ->
     FixWf P step x = step x step'.
-Proof. intros. rewrite FixWf_unfold, H. reflexivity. Qed.
+Proof. intros. rewrite FixWf_unfold, X. reflexivity. Qed.
 
 Hint Rewrite @FixWf_unfold_step : Recursors.
 
@@ -78,6 +85,8 @@ Create HintDb rec_decision discriminated.
    Note that this definition is transparent as well as [wf_clos_trans],
    to allow computations with functions defined by well-founded recursion.
    *)
+
+(* TODO Missing rest of file...
 
 Lemma WellFounded_trans_clos `(WF : WellFounded A R) : WellFounded (clos_trans A R).
 Proof. apply wf_clos_trans. apply WF. Defined.
@@ -206,10 +215,10 @@ Section Lexicographic_Product.
 
   Variable A : Type.
   Variable B : Type.
-  Variable leA : A -> A -> Prop.
-  Variable leB : B -> B -> Prop.
+  Variable leA : A -> A -> Type.
+  Variable leB : B -> B -> Type.
 
-  Inductive lexprod : A * B -> A * B -> Prop :=
+  Inductive lexprod : A * B -> A * B -> Type :=
     | left_lex :
       forall (x x':A) (y:B) (y':B),
         leA x x' -> lexprod (x, y) (x', y')
@@ -246,3 +255,5 @@ Instance wellfounded_lexprod A B R S `(wfR : WellFounded A R, wfS : WellFounded 
   WellFounded (lexprod A B R S) := wf_lexprod A B R S wfR wfS.
 
 Hint Constructors lexprod : Below.
+
+*)

@@ -21,7 +21,7 @@
     Intensional Type Theory, Habilitationsschrift, LMU München, 1993.
 *)
 
-Require Export Equations.LogicEqdepFacts.
+Require Export Coq.Logic.EqdepFacts.
 Require Import HoTT.Basics.Overture.
 
 Module Eq_rect_eq.
