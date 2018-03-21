@@ -158,7 +158,7 @@ Section EqdepDec.
     unfold K_dec. simpl.
     unfold eq_proofs_unicity. subst proj. 
     simpl. unfold nu_inv, comp, nu. simpl. 
-    unfold paths_ind, nu_left_inv, trans_sym_eq, paths_rect, nu_constant.
+    unfold paths_ind, nu_left_inv, trans_sym_eq, nu_constant.
     rewrite eq_dec_refl. reflexivity.
   Defined.
 

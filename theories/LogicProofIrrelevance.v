@@ -26,7 +26,7 @@ Module ProofIrrelevanceTheory' (M:ProofIrrelevance).
   Module Eq_rect_eq.
     Lemma eq_rect_eq :
       forall (U:Type) (p:U) (Q:U -> Type) (x:Q p) (h:p = p),
-        x = paths_rect _ p (fun a _ => Q a) x p h.
+        x = paths_ind p (fun a _ => Q a) x p h.
     Proof.
       intros; rewrite M.proof_irrelevance with (p1:=h) (p2:=idpath p).
       reflexivity.
@@ -47,7 +47,7 @@ Module ProofIrrelevanceTheory' (M:ProofIrrelevance).
       x = y -> exist P x p = exist P y q.
   Proof.
     intros U P x y p q H.
-    rewrite M.proof_irrelevance with (p1:=q) (p2:=paths_rect _ x (fun a _ => P a) p y H).
+    rewrite M.proof_irrelevance with (p1:=q) (p2:=paths_ind x (fun a _ => P a) p y H).
     elim H using eq_indd.
     reflexivity.
   Qed.
@@ -57,7 +57,7 @@ Module ProofIrrelevanceTheory' (M:ProofIrrelevance).
       x = y -> existT P x p = existT P y q.
   Proof.
     intros U P x y p q H.
-    rewrite M.proof_irrelevance with (p1:=q) (p2:=paths_rect _ x (fun a _ => P a) p y H).
+    rewrite M.proof_irrelevance with (p1:=q) (p2:=paths_ind x (fun a _ => P a) p y H).
     elim H using eq_indd.
     reflexivity.
   Qed.

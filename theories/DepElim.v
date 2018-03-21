@@ -106,11 +106,11 @@ Ltac elim_eq_rect :=
   match goal with
     | [ |- ?t ] =>
       match t with
-        | context [ @paths_rect _ _ _ _ _ ?p ] =>
+        | context [ @paths_ind _ _ _ _ _ ?p ] =>
           let P := fresh "P" in
             set (P := p); simpl in P ;
 	      ((case P ; clear P) || (clearbody P; rewrite (UIP_refl _ _ P); clear P))
-        | context [ @paths_rect _ _ _ _ _ ?p _ ] =>
+        | context [ @paths_ind _ _ _ _ _ ?p _ ] =>
           let P := fresh "P" in
             set (P := p); simpl in P ;
 	      ((case P ; clear P) || (clearbody P; rewrite (UIP_refl _ _ P); clear P))
@@ -146,7 +146,7 @@ Ltac abstract_eq_hyp H' p :=
 
 Ltac on_coerce_proof tac T :=
   match T with
-    | context [ @paths_rect _ _ _ _ _ ?p ] => tac p
+    | context [ @paths_ind _ _ _ _ _ ?p ] => tac p
   end.
 
 Ltac on_coerce_proof_gl tac :=
@@ -571,7 +571,7 @@ Defined.
 
 Polymorphic Lemma eq_simplification_sigma1_dep {A} {P : A -> Type} {B}
   (p q : A) (x : P p) (y : P q) :
-  (forall e : p = q, (@paths_rect A p (fun a _ => P a) x q e) = y -> B) ->
+  (forall e : p = q, (@paths_ind A p (fun a _ => P a) x q e) = y -> B) ->
   (sigmaI P p x = sigmaI P q y -> B).
 Proof.
   intros X H. revert X.
@@ -584,12 +584,12 @@ Proof.
 Defined.
 
 Polymorphic Definition pack_sigma_eq {A} {P : A -> Type} {p q : A} {x : P p} {y : P q}
-  (e' : p = q) (e : @paths_rect A p (fun a _ => P a) x q e' = y) : &(p& x) = &(q & y).
+  (e' : p = q) (e : @paths_ind A p (fun a _ => P a) x q e' = y) : &(p& x) = &(q & y).
 Proof. destruct e'. simpl in e. destruct e. apply idpath. Defined.
 
 Polymorphic Lemma eq_simplification_sigma1_dep_dep {A} {P : A -> Type}
   (p q : A) (x : P p) (y : P q) {B : &(p& x) = &(q & y) -> Type} :
-  (forall e' : p = q, forall e : @paths_rect A p (fun a _ => P a) x q e' = y, B (pack_sigma_eq e' e)) ->
+  (forall e' : p = q, forall e : @paths_ind A p (fun a _ => P a) x q e' = y, B (pack_sigma_eq e' e)) ->
   (forall e : sigmaI P p x = sigmaI P q y, B e).
 Proof.
   intros X e. revert X.
@@ -718,7 +718,7 @@ Polymorphic
 Definition simplified_ind_pack {A : Type} {eqdec : EqDec A}
   (B : A -> Type) (x : A) (p : B x) (G : p = p -> Type)
   (t : opaque_ind_pack_eq_inv G idpath) :=
-  paths_rect _ _ (fun a _ => G a) t _ (@ind_pack_eq_inv_refl A eqdec B x p).
+  paths_ind _ (fun a _ => G a) t _ (@ind_pack_eq_inv_refl A eqdec B x p).
 Arguments simplified_ind_pack : simpl never.
 
 Polymorphic
@@ -771,10 +771,10 @@ Ltac rewrite_sigma2_refl :=
     rewrite (@simplification_sigma2_dec_point_refl A p H P B x X); simpl
 
   | |- context [@simplification_K ?A ?x ?B ?p idpath] =>
-    rewrite (@simplification_K_refl A x B p); simpl paths_rect
+    rewrite (@simplification_K_refl A x B p); simpl paths_ind
 
   | |- context [@simplification_K_dec ?A ?dec ?x ?B ?p idpath] =>
-    rewrite (@simplification_K_dec_refl A dec x B p); simpl paths_rect
+    rewrite (@simplification_K_dec_refl A dec x B p); simpl paths_ind
 
   | |- context [@HSets.inj_sigma_r ?A ?H ?P ?x ?y ?y' _] =>
     rewrite (@HSets.inj_sigma_r_refl A H P x y)
@@ -982,7 +982,7 @@ Ltac simplify_one_dep_elim_term c :=
            | |- let x := _ in _ = _ -> @?B x =>
              (let check := type of B in (* Check that the abstraction is really well-typed *)
               refine (@solution_left_let _ B _ _ _))
-           | _ => refine (@solution_left _ _ _ _) || refine (@solution_left_dep _ _ _ _); simpl paths_rect
+           | _ => refine (@solution_left _ _ _ _) || refine (@solution_left_dep _ _ _ _); simpl paths_ind
            end)) ||
       (let hyp := fresh H in intros hyp ;
         move hyp before y ; move y before hyp; revert_blocking_until y; revert y;
@@ -991,7 +991,7 @@ Ltac simplify_one_dep_elim_term c :=
              (let check := type of B in (* Check that the abstraction is really well-typed *)
               refine (@solution_right_let _ B _ _ _); let B' := eval cbv beta in (B t) in
                                                           change (t = b -> B'))
-           | _ => (refine (@solution_right _ _ _ _) || refine (@solution_right_dep _ _ _ _); simpl paths_rect) ||
+           | _ => (refine (@solution_right _ _ _ _) || refine (@solution_right_dep _ _ _ _); simpl paths_ind) ||
                   (let na := fresh in intros na; subst na)
            end))
 
@@ -1083,7 +1083,7 @@ Ltac simplify_one_dep_elim_term c :=
 Ltac simplify_one_dep_elim :=
   match goal with
     (* FIXME | [ |- context [eq_rect_r _ _ idpath]] => unfold eq_rect_r at 1; simpl eq_rect*)
-    | [ |- context [@paths_rect _ _ _ _ _ idpath]] => unfold paths_rect at 1; simpl paths_rect
+    | [ |- context [@paths_ind _ _ _ _ _ idpath]] => unfold paths_ind at 1; simpl paths_ind
     | [ |- context [@eq_rect_dep_r _ _ _ _ _ idpath]] => simpl eq_rect_dep_r
     | [ |- context [@Id_rect_dep_r _ _ _ _ _ id_refl]] => simpl Id_rect_dep_r
     | [ |- context [noConfusion_inv (pack_sigma_eq idpath idpath)]] => simpl noConfusion_inv
@@ -1467,9 +1467,9 @@ Ltac rewrite_sigma2_rule c :=
   | @simplification_sigma2_dec_point ?A ?p ?H ?P ?B ?x ?y ?X idpath=>
     rewrite (@simplification_sigma2_dec_point_refl A p H P B x X); simpl
   | @simplification_K ?A ?x ?B ?p idpath=>
-    rewrite (@simplification_K_refl A x B p); simpl paths_rect
+    rewrite (@simplification_K_refl A x B p); simpl paths_ind
   | @simplification_K_dec ?A ?dec ?x ?B ?p idpath=>
-    rewrite (@simplification_K_dec_refl A dec x B p); simpl paths_rect
+    rewrite (@simplification_K_dec_refl A dec x B p); simpl paths_ind
   | @HSets.inj_sigma_r ?A ?H ?P ?x ?y ?y' _=>
     rewrite (@HSets.inj_sigma_r_refl A H P x y)
 

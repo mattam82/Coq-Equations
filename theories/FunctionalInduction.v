@@ -149,7 +149,7 @@ Hint Extern 0 (_ = _) => reflexivity : funelim.
 Ltac specialize_hyps :=
   match goal with
     [ H : forall _ : ?x = ?x, _ |- _ ] => 
-    specialize (H (@idpath _ x)); unfold (* FIXME eq_rect_r,*) paths_rect in H ; simpl in H
+    specialize (H (@idpath _ x)); unfold (* FIXME eq_rect_r,*) paths_ind in H ; simpl in H
   | [ H : forall _ : @Id _ ?x ?x, _ |- _ ] =>
     specialize (H (@idpath _ x)); unfold Id_rect_dep_r, Id_rect_r, Id_rect in H ; simpl in H
   end.

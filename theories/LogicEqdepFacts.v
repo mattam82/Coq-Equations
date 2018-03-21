@@ -92,7 +92,7 @@ Section Dependent_Equality.
       equalities *)
 
   Inductive eq_dep1 (p:U) (x:P p) (q:U) (y:P q) : Type :=
-    eq_dep1_intro : forall h:q = p, x = (paths_rect _ _ (fun _ _ => _) y _ h) -> eq_dep1 p x q y.
+    eq_dep1_intro : forall h:q = p, x = (paths_ind _ (fun _ _ => _) y _ h) -> eq_dep1 p x q y.
 
   Lemma eq_dep1_dep :
     forall (p:U) (x:P p) (q:U) (y:P q), eq_dep1 p x q y -> eq_dep p x q y.
@@ -174,7 +174,7 @@ Set Implicit Arguments.
 
 Lemma eq_sigT_sig_eq :
   forall X P (x1 x2:X) H1 H2, existT P x1 H1 = existT P x2 H2 <->
-                              {H:x1=x2 | (paths_rect _ _ (fun _ _ => _) H1 _ H) = H2}.
+                              {H:x1=x2 | (paths_ind _ (fun _ _ => _) H1 _ H) = H2}.
 Proof.
   intros; split; intro H.
   - change x2 with (projT1 (existT P x2 H2)).
@@ -197,7 +197,7 @@ Proof.
 Defined.
 
 Lemma eq_sigT_snd :
-  forall X P (x1 x2:X) H1 H2 (H:existT P x1 H1 = existT P x2 H2), (paths_rect _ _ (fun _ _ => _) H1 _ (eq_sigT_fst H)) = H2.
+  forall X P (x1 x2:X) H1 H2 (H:existT P x1 H1 = existT P x2 H2), (paths_ind _ (fun _ _ => _) H1 _ (eq_sigT_fst H)) = H2.
 Proof.
   intros.
   unfold eq_sigT_fst.
@@ -217,12 +217,12 @@ Proof.
 Defined.
 
 Lemma eq_sig_snd :
-  forall X P (x1 x2:X) H1 H2 (H:exist P x1 H1 = exist P x2 H2), (paths_rect _ _ (fun _ _ => _) H1 _ (eq_sig_fst H)) = H2.
+  forall X P (x1 x2:X) H1 H2 (H:exist P x1 H1 = exist P x2 H2), (paths_ind _ (fun _ _ => _) H1 _ (eq_sig_fst H)) = H2.
 Proof.
   intros.
   unfold eq_sig_fst, paths_ind.
   change x2 with (proj1_sig (exist P x2 H2)).
-  change H2 with (proj2_sig (exist P x2 H2)) at 3.
+  change H2 with (proj2_sig (exist P x2 H2)) at 2.
   destruct H.
   reflexivity.
 Defined.
@@ -244,7 +244,7 @@ Section Equivalences.
   (** Invariance by Substitution of Reflexive Equality Proofs *)
 
   Definition Eq_rect_eq_on (p : U) (Q : U -> Type) (x : Q p) :=
-    forall (h : p = p), x = paths_rect _ p (fun a _ => Q a) x p h.
+    forall (h : p = p), x = paths_ind p (fun a _ => Q a) x p h.
   Definition Eq_rect_eq := forall p Q x, Eq_rect_eq_on p Q x.
 
   (** Injectivity of Dependent Equality *)
@@ -340,7 +340,7 @@ Section Equivalences.
       Reflexive Equality Proofs *)
 
   Lemma Streicher_K_on__eq_rect_eq_on (p : U) (P : U -> Type) (x : P p) :
-    Streicher_K_on_ p (fun h => x = paths_rect _ _ (fun x _ => P x) x _ h)
+    Streicher_K_on_ p (fun h => x = paths_ind _ (fun x _ => P x) x _ h)
     -> Eq_rect_eq_on p P x.
   Proof.
     intro Streicher_K; red; intros.
@@ -429,7 +429,7 @@ Module Type EqdepElimination.
 
   Axiom eq_rect_eq :
     forall (U:Type) (p:U) (Q:U -> Type) (x:Q p) (h:p = p),
-      x = paths_rect _ p (fun a _ => Q a) x p h.
+      x = paths_ind p (fun a _ => Q a) x p h.
 
 End EqdepElimination.
 
@@ -442,7 +442,7 @@ Module EqdepTheory (M:EqdepElimination).
 (** Invariance by Substitution of Reflexive Equality Proofs *)
 
 Lemma eq_rect_eq :
-  forall (p:U) (Q:U -> Type) (x:Q p) (h:p = p), x = paths_rect _ p (fun a _ => Q a) x p h.
+  forall (p:U) (Q:U -> Type) (x:Q p) (h:p = p), x = paths_ind p (fun a _ => Q a) x p h.
 Proof M.eq_rect_eq U.
 
 Lemma eq_rec_eq :

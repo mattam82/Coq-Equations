@@ -67,8 +67,14 @@ Ltac solve_noconf := simpl; intros;
     | [ |- @paths _ _ _ ] => solve_noconf_inv
     end.
 
-(* FIXME *)
-(*Derive NoConfusion for Unit Bool nat option sum prod list sigT sig.*)
+Require Import HoTT.Types.Bool.
+Derive NoConfusion for Bool.
+Next Obligation. Admitted.
+Next Obligation. Admitted.
+Next Obligation. Admitted.
+
+(* Derive NoConfusion for Unit Bool nat option list sum prod sig. *)
+
 
 (* FIXME should be done by the derive command *)
 (*Extraction Inline noConfusion NoConfusionPackage_nat.*)

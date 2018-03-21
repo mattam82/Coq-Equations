@@ -92,7 +92,7 @@ Section EqdepDec.
     match exP with
       | existT x' prf =>
         match eq_dec x' x with
-          | inl eqprf => paths_rect A x' (fun a _ => P a) prf x eqprf
+          | inl eqprf => paths_ind x' (fun a _ => P a) prf x eqprf
           | _ => def
         end
     end.
@@ -119,11 +119,11 @@ Section EqdepDec.
   Lemma inj_right_pair_refl (P : A -> Type) (y : P x) :
     inj_right_pair (y:=y) (y':=y) (idpath _) = (idpath _).
   Proof. unfold inj_right_pair. intros. 
-    unfold paths_rect. unfold proj. rewrite eq_dec_refl.
+    unfold paths_ind. unfold proj. rewrite eq_dec_refl.
     unfold K_dec. simpl.
     unfold eq_proofs_unicity. subst proj. 
     simpl. unfold nu_inv, comp, nu. simpl. 
-    unfold paths_ind, nu_left_inv, trans_sym_eq, paths_rect, nu_constant.
+    unfold paths_ind, nu_left_inv, trans_sym_eq, nu_constant.
     rewrite eq_dec_refl. reflexivity.
   Defined.
 
@@ -203,7 +203,7 @@ Section PointEqdepDec.
     match exP with
       | sigmaI x' prf =>
         match eq_dec_point x' with
-          | inl eqprf => paths_rect A x' (fun a _ => P a) prf x (inverse eqprf)
+          | inl eqprf => paths_ind x' (fun a _ => P a) prf x (inverse eqprf)
           | _ => def
         end
     end.
@@ -229,11 +229,11 @@ Section PointEqdepDec.
   Lemma inj_right_sigma_refl_point (P : A -> Type) (y : P x) :
     inj_right_sigma_point (y:=y) (y':=y) (idpath _) = (idpath _).
   Proof. unfold inj_right_sigma_point. intros. 
-    unfold paths_rect. unfold proj. rewrite eq_dec_refl_point.
+    unfold paths_ind. unfold proj. rewrite eq_dec_refl_point.
     unfold K_dec_point. simpl.
     unfold eq_proofs_unicity_point. subst proj. 
     simpl. unfold nu_inv, comp, nu. simpl. 
-    unfold paths_ind, nu_left_inv, trans_sym_eq, paths_rect, nu_constant.
+    unfold paths_ind, nu_left_inv, trans_sym_eq, nu_constant.
     rewrite eq_dec_refl_point. reflexivity.
   Defined.
 
@@ -307,7 +307,7 @@ Section PEqdepDec.
     match exP with
       | sigmaI x' prf =>
         match eq_dec x' x with
-          | inl eqprf => paths_rect A x' (fun a _ => P a) prf x eqprf
+          | inl eqprf => paths_ind x' (fun a _ => P a) prf x eqprf
           | _ => def
         end
     end.
@@ -333,11 +333,11 @@ Section PEqdepDec.
   Lemma inj_right_sigma_refl (P : A -> Type) (y : P x) :
     inj_right_sigma (y:=y) (y':=y) (idpath _) = (idpath _).
   Proof. unfold inj_right_sigma. intros. 
-    unfold paths_rect. unfold projs. rewrite peq_dec_refl.
+    unfold paths_ind. unfold projs. rewrite peq_dec_refl.
     unfold pK_dec. simpl.
     unfold peq_proofs_unicity. subst projs.
     simpl. unfold nu_inv, comp, nu. simpl.
-    unfold paths_ind, nu_left_inv, ptrans_sym_eq, paths_rect, nu_constant.
+    unfold paths_ind, nu_left_inv, ptrans_sym_eq, nu_constant.
     rewrite peq_dec_refl. reflexivity.
   Defined.
 

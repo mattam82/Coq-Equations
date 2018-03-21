@@ -186,11 +186,11 @@ Section EqdepDec.
   Lemma inj_right_sigma_refl (P : A -> Type) (y : P x) :
     inj_right_sigma (y:=y) (y':=y) (id_refl _) = (id_refl _).
   Proof. unfold inj_right_sigma. intros. 
-    unfold paths_rect. unfold projs. rewrite eq_dec_refl.
+    unfold paths_ind. unfold projs. rewrite eq_dec_refl.
     unfold K_dec. simpl.
     unfold eq_proofs_unicity. subst projs.
     simpl. unfold nu_inv, comp, nu. simpl.
-    unfold paths_ind, nu_left_inv, trans_sym_eq, paths_rect, nu_constant.
+    unfold paths_ind, nu_left_inv, trans_sym_eq, nu_constant.
     rewrite eq_dec_refl. reflexivity.
   Defined.
 

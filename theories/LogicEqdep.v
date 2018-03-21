@@ -27,7 +27,7 @@ Require Import HoTT.Basics.Overture.
 Module Eq_rect_eq.
 
 Axiom eq_rect_eq :
-  forall (U:Type) (p:U) (Q:U -> Type) (x:Q p) (h:p = p), x = paths_rect _ p (fun a _ => Q a) x p h.
+  forall (U:Type) (p:U) (Q:U -> Type) (x:Q p) (h:p = p), x = paths_ind p (fun a _ => Q a) x p h.
 
 End Eq_rect_eq.
 
