@@ -67,16 +67,20 @@ Ltac solve_noconf := simpl; intros;
     | [ |- @paths _ _ _ ] => solve_noconf_inv
     end.
 
+(* Error: Anomaly "Universe Equations.NoConfusion.15 undefined."
+Derive NoConfusion for option.
+*)
+
+(* Error: Anomaly "Universe Equations.NoConfusion.19 undefined."
 Require Import HoTT.Types.Bool.
 Derive NoConfusion for Bool.
+(* Obligations should probably be solved automatically... *)
 Next Obligation. Admitted.
 Next Obligation. Admitted.
 Next Obligation. Admitted.
+*)
 
 (* Derive NoConfusion for Unit Bool nat option list sum prod sig. *)
 
-
 (* FIXME should be done by the derive command *)
 (*Extraction Inline noConfusion NoConfusionPackage_nat.*)
-
-

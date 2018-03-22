@@ -71,7 +71,7 @@ Proof. Admitted.
 Instance sigma_eqdec {A B} `(EqDec A) `(forall x, EqDec (B x)) : EqDec {x : A & B x}.
 Proof. Admitted.
 
-(* FIXME
+(* Error: Universe {Top.79} is unbound
 Polymorphic Definition eqdec_sig@{i j} {A : Type@{i}} {B : A -> Type@{j}}
             `(EqDec A) `(forall a, EqDec (B a)) :
   EqDec (sigma A B).
@@ -81,18 +81,7 @@ Proof.
   intros. right. red. apply simplification_sigma2_dec@{i j Set}. apply n.
   intros. right. red. apply simplification_sigma1@{i j Set}.
   intros e _; revert e. apply n.
-Defined. *)
-
-(* TODO. Remove this when above is fixed. *)
-Polymorphic Definition eqdec_sig {A : Type} {B : A -> Type}
-            `(EqDec A) `(forall a, EqDec (B a)) :
-  EqDec (sigma A B).
-Proof.
-  intros. intros [x0 x1] [y0 y1].
-  case (eq_dec x0 y0). intros ->. case (eq_dec x1 y1). intros ->. left. reflexivity.
-  intros. right. red. apply simplification_sigma2_dec. apply n.
-  intros. right. red. apply simplification_sigma1.
-  intros e _; revert e. apply n.
 Defined.
 
 Polymorphic Existing Instance eqdec_sig.
+*)

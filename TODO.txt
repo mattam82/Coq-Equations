@@ -1,16 +1,16 @@
-I should use paths_rew and paths_rew_r instead of paths_{ind,rect}.
+Main problems:
+  - NoConfusion.v problem with universe polymorphim when deriving, 2*FIXME.
+  - EqDecInstances.v Problem with Universe levels, FIXME and TODO in end of file.
+  - Fin.v Missing most of file. Depends on Equations working.
 
-Problems:
-  - Init.v temporary re_rect_r definition to satisfy ML, FIXME.
+Minor problems:
+  - Init.v temporary eq_rect_r definition to satisfy ML, FIXME.
   - Init.v missing congruence, FIXME.
   - EqDecInstances.v Missing proof for standard instances, FIXME.
-  - EqDecInstances.v Problem with Universe levels, FIXME and TODO in end of file.
   - ProgramEquality.v Missing inversion tactic, FIXME.
-  - NoConfusion.v problem with universe poymorphims when deriving, 2*FIXME.
   - Below.v Missing whole file, FIXME in top of file.
   - HSetInstances.v Fix standard instances, FIXME.
   - Subterm.v Missing rest of file, TODO.
-  - Fin.v Depends on Equations working. Problem with Universes.
   - Telescopes.v Missing last proof, FIXME.
   - ProgramEquality.v Missing eq_rec_r, FIXME.
   - ProgramEquality.v Missing eq_rect_r, FIXME.
