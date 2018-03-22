@@ -51,7 +51,7 @@ Ltac eqdec_proof := try red; intros;
 
 (* FIXME missing proofs... *)
 Instance unit_eqdec : EqDec Unit. 
-Proof. Admitted.
+Proof. eqdec_proof. Defined.
 
 Instance bool_eqdec : EqDec Bool.
 Proof. Admitted.
@@ -70,18 +70,17 @@ Proof. Admitted.
 
 Instance sigma_eqdec {A B} `(EqDec A) `(forall x, EqDec (B x)) : EqDec {x : A & B x}.
 Proof. Admitted.
-
-(* Error: Universe {Top.79} is unbound
-Polymorphic Definition eqdec_sig@{i j} {A : Type@{i}} {B : A -> Type@{j}}
+Set Printing Universes.
+(* Error: Universe {Top.79} is unbound*)
+Polymorphic Definition eqdec_sig@{i j k} {A : Type@{i}} {B : A -> Type@{j}}
             `(EqDec A) `(forall a, EqDec (B a)) :
-  EqDec (sigma A B).
+  EqDec@{k} (sigma A B).
 Proof.
   intros. intros [x0 x1] [y0 y1].
   case (eq_dec x0 y0). intros ->. case (eq_dec x1 y1). intros ->. left. reflexivity.
-  intros. right. red. apply simplification_sigma2_dec@{i j Set}. apply n.
-  intros. right. red. apply simplification_sigma1@{i j Set}.
+  intros. right. red. apply simplification_sigma2_dec@{i Set j k}. apply n.
+  intros. right. red. apply simplification_sigma1@{i j k Set}.
   intros e _; revert e. apply n.
 Defined.
 
 Polymorphic Existing Instance eqdec_sig.
-*)
