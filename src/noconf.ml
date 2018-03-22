@@ -132,10 +132,11 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let noconfcl = Evarutil.e_new_global evd tc.Typeclasses.cl_impl in
   let inst, u = destInd !evd noconfcl in
   let noconfterm = mkApp (noconf, paramsvect) in
-  let argty =
-    let ty = Retyping.get_type_of env !evd noconfterm in
+  let ctx, argty =
+    let ty = Retyping.get_type_of env !evd noconf in
+    let ctx, ty = EConstr.decompose_prod_n_assum !evd (List.length oneind.mind_arity_ctxt) ty in
     match kind !evd ty with
-    | Prod (_, b, _) -> b
+    | Prod (_, b, _) -> ctx, b
     | _ -> assert false
   in
   let b, ty = 
