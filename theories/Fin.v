@@ -12,14 +12,14 @@ Require Import Equations.Equations.
 
 (** [fin n] is the type of naturals smaller than [n]. *)
 
-Inductive fin : nat -> Set :=
-| fz : forall {n}, fin (S n)
-| fs : forall {n}, fin n -> fin (S n).
+Inductive fin@{} : nat -> Set :=
+| fz : forall {n : nat}, fin (S n)
+| fs : forall {n : nat}, fin n -> fin (S n).
 
 (** We can inject it into [nat]. *)
 
 (* Conversion test raised an anomaly:
-     Anomaly "Universe Var(1) undefined."
+     Anomaly "Universe Var(1) undefined." *)
 Equations(nocomp) fog {n} (f : fin n) : nat :=
 fog {n:=?(S n)} (fz n) := 0 ; 
 fog (fs n f) := S (fog f).
