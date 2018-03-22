@@ -67,9 +67,14 @@ Ltac solve_noconf := simpl; intros;
     | [ |- @paths _ _ _ ] => solve_noconf_inv
     end.
 
-(* Error: Anomaly "Universe Equations.NoConfusion.15 undefined."
+(* Error: Anomaly "Universe Equations.NoConfusion.15 undefined." *)
+Set Printing Universes.
 Derive NoConfusion for option.
-*)
+Obligation Tactic := idtac.
+
+Next Obligation. solve_noconf. Defined.
+Next Obligation. solve_noconf. Defined.
+Next Obligation. solve_noconf. Defined.
 
 (* Error: Anomaly "Universe Equations.NoConfusion.19 undefined."
 Require Import HoTT.Types.Bool.
