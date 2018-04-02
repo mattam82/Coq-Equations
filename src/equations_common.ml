@@ -719,10 +719,10 @@ let decompose_indapp sigma f args =
   | _ -> f, args
 
 let e_conv env evdref t t' =
-  try let sigma, b = Reductionops.infer_conv env !evdref ~pb:Reduction.CONV t t' in
-      if b then (evdref := sigma; true) else b
-  with Reduction.NotConvertible -> false
-
+  match Reductionops.infer_conv env !evdref ~pb:Reduction.CONV t t' with
+  | Some sigma -> (evdref := sigma; true)
+  | None -> false
+  | exception Reduction.NotConvertible -> false
       
 let deps_of_var sigma id env =
   Environ.fold_named_context
