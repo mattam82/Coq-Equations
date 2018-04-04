@@ -149,9 +149,10 @@ let mutual_fix li l =
   let open Notations in
   let mfix env sigma gls =
     let gls = List.map Proofview.drop_state gls in
-    let types = List.map (fun ev -> EConstr.of_constr (Evd.evar_concl (Evd.find sigma ev))) gls in
+    let types = List.map (fun ev -> Evd.evar_concl (Evd.find sigma ev)) gls in
     let env =
-      let ctxs = List.map (fun ev -> Evd.evar_context (Evd.find sigma ev)) gls in
+      let ctxs = List.map (fun ev -> EConstr.Unsafe.to_named_context @@
+                            Evd.evar_context (Evd.find sigma ev)) gls in
       let fst, rest = List.sep_last ctxs in
       if List.for_all (fun y -> Context.Named.equal Constr.equal fst y) rest then
         Environ.push_named_context fst env

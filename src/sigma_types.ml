@@ -225,8 +225,8 @@ let declare_sig_of_ind env sigma poly (ind,u) =
     declare_instance signature_id
       poly sigma ctx c
       [fullapp; Vars.lift lenargs idx;
-       mkApp (of_constr indsig, extended_rel_vect lenargs pars);
-       mkApp (of_constr pack_fn, extended_rel_vect 0 ctx)]
+       mkApp (indsig, extended_rel_vect lenargs pars);
+       mkApp (pack_fn, extended_rel_vect 0 ctx)]
   in
   Extraction_plugin.Table.extraction_inline true
                                             [CAst.make @@ Libnames.Ident pack_id];
