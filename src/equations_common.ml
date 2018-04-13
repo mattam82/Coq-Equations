@@ -970,8 +970,6 @@ let dest_ind_family fam =
   let ind, fam = Inductiveops.dest_ind_family fam in
   to_peuniverses ind, List.map of_constr fam
 
-(* XXX: EConstr-versions fo these functions really needed XXX *)
-let to_constr = to_constr ~abort_on_undefined_evars:false
 let prod_appvect sigma p args =
   of_constr (Term.prod_appvect (to_constr sigma p) (Array.map (to_constr sigma) args))
 let beta_appvect sigma p args =

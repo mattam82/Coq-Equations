@@ -189,7 +189,8 @@ let build_sig_of_ind env sigma (ind,u as indu) =
   let sigma = !evd in
     sigma, pred, pars, fullapp, valsig, ctx, lenargs, idx
 
-let nf_econstr sigma c = Evarutil.nf_evar sigma c
+let nf_econstr sigma c =
+  EConstr.of_constr (EConstr.to_constr sigma c)
 
 let declare_sig_of_ind env sigma poly (ind,u) =
   let sigma, pred, pars, fullapp, valsig, ctx, lenargs, idx =
@@ -424,7 +425,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
   let rel_ty = Vars.lift rel rel_ty in
   let rel_t = Constr.mkRel rel in
   (* Fetch some information about the type of the variable being eliminated. *)
-  let pind, args = Inductive.find_inductive env (to_constr ~abort_on_undefined_evars:false !evd rel_ty) in
+  let pind, args = Inductive.find_inductive env (to_constr !evd rel_ty) in
   let mib, oib = Global.lookup_pinductive pind in
   let params, indices = List.chop mib.mind_nparams args in
   (* The variable itself will be treated for all purpose as one of its indices. *)
@@ -641,8 +642,8 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
   let params = List.map (Vars.lift (-(nb_cuts + oib.mind_nrealargs + 1))) params in
   let goal = Termops.it_mkProd_or_LetIn goal cuts_ctx in
   let goal = it_mkLambda_or_LetIn goal fresh_ctx in
-  let params = List.map (to_constr ~abort_on_undefined_evars:false !evd) params in
-  let goal' = to_constr ~abort_on_undefined_evars:false !evd goal in
+  let params = List.map (to_constr !evd) params in
+  let goal' = to_constr !evd goal in
   let branches_ty = Inductive.build_branches_type pind (mib, oib) params goal' in
   (* Refresh the inductive family. *)
   let indfam = Inductiveops.make_ind_family (pind, params) in
