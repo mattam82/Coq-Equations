@@ -158,7 +158,7 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
     Typeclasses.add_instance
       (Typeclasses.new_instance tc empty_hint_info true gr)
   in
-  let oblinfo, _, term, ty = Obligations.eterm_obligations env noid !evd 0 (to_constr !evd term)
+  let oblinfo, _, term, ty = Obligations.eterm_obligations env noid !evd 0 (to_constr ~abort_on_undefined_evars:false !evd term)
                                                            (to_constr !evd ty) in
     ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hook) packid 
 	      ~term ty ~tactic:(noconf_tac ()) 
