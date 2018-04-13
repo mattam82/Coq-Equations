@@ -4,8 +4,8 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1117297.svg)](https://doi.org/10.5281/zenodo.1117297)
 [![Gitter](https://img.shields.io/gitter/room/nwjs/nw.js.svg)](https://gitter.im/coq/Equations)
 
-Copyright 2009-2017 Matthieu Sozeau `matthieu.sozeau@inria.fr`  
-Copyright 2015-2017 Cyprien Mangin `cyprien.mangin@m4x.org`
+Copyright 2009-2018 Matthieu Sozeau `matthieu.sozeau@inria.fr`  
+Copyright 2015-2018 Cyprien Mangin `cyprien.mangin@m4x.org`
 
 Distributed under the terms of the GNU Lesser General Public License
 Version 2.1
