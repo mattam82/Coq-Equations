@@ -247,7 +247,7 @@ let term_of_tree status isevar env0 tree =
                   let env = Evd.evar_env ev_info in
                   Typing.type_of env evm term
                 in
-                evd := Evd.define (fst ev) (EConstr.to_constr ~abort_on_undefined_evars:false evm term) evm;
+                evd := Evd.define (fst ev) term evm;
                 c
             (* This should not happen... *)
             | _ -> failwith "Should not fail here, please report."
