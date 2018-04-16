@@ -21,8 +21,13 @@ providing a definitional extension to the Coq kernel.
 
 ## Documentation
 
-The [reference manual](http://github.com/mattam82/Coq-Equations/raw/master/doc/equations.pdf)
-providing an introduction is available along with [examples](examples).
+- The [reference manual](http://github.com/mattam82/Coq-Equations/raw/master/doc/equations.pdf)
+  provides an introduction and a summary of the commands and options.
+  This introduction can also be followed interactively with Equations installed:
+  [equations_intro.v](http://github.com/mattam82/Coq-Equations/raw/master/doc/equations_intro.v)
+
+- A gallery of [examples](examples) provides more consequent
+  developments using Equations.
 
 ## Papers
 
@@ -48,9 +53,16 @@ SystemF: A Case Study](http://www.irif.fr/~sozeau/research/publications/Equation
 
 ## Installation
 
-The current development version works with Coq 8.6 (branch [master](https://github.com/mattam82/Coq-Equations/tree/master)) and Coq 8.7 (branch [8.7](https://github.com/mattam82/Coq-Equations/tree/8.7)),
-see [releases](https://github.com/mattam82/Coq-Equations/releases) for
-sources.
+The current development version works with Coq 8.6 (branch
+[8.6](https://github.com/mattam82/Coq-Equations/tree/8.6), deprecated), Coq 8.7
+(branch [8.7](https://github.com/mattam82/Coq-Equations/tree/8.7)),
+Coq 8.8 (branch
+[8.7](https://github.com/mattam82/Coq-Equations/tree/8.8)),
+and the current Coq master branch (branch
+[master](https://github.com/mattam82/Coq-Equations/tree/master)).
+
+See [releases](https://github.com/mattam82/Coq-Equations/releases) for
+sources and official releases.
 
 # Install with OPAM
 This package is available on [OPAM](http://opam.ocaml.org/).
