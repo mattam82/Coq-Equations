@@ -57,7 +57,7 @@ The current development version works with Coq 8.6 (branch
 [8.6](https://github.com/mattam82/Coq-Equations/tree/8.6), deprecated), Coq 8.7
 (branch [8.7](https://github.com/mattam82/Coq-Equations/tree/8.7)),
 Coq 8.8 (branch
-[8.7](https://github.com/mattam82/Coq-Equations/tree/8.8)),
+[8.8](https://github.com/mattam82/Coq-Equations/tree/8.8)),
 and the current Coq master branch (branch
 [master](https://github.com/mattam82/Coq-Equations/tree/master)).
 
