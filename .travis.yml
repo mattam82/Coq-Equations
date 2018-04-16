@@ -32,7 +32,7 @@ install:
 - opam config list
 - opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev || echo "coq-core-dev registered"
 - opam install -j ${NJOBS} -y camlp5.${CAMLP5_VER} ocamlfind.${FINDLIB_VER} coq.${COQ_VER}
-- opam upgrade
+- opam upgrade -y coq.${COQ_VER}
 - opam list
 
 script:
