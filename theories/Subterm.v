@@ -229,7 +229,7 @@ Section Lexicographic_Product.
     injection H1. injection H3. intros. subst. clear H1 H3.
     apply IHAcc; auto with sets. 
     noconf H3; noconf H1. 
-  Qed.
+  Defined.
 
   Theorem wf_lexprod :
     well_founded leA ->
