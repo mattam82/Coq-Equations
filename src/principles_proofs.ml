@@ -446,7 +446,7 @@ let observe_tac s tac =
     Unsafe.tclGETGOALS >>= fun gls ->
     let gls = List.map Proofview.drop_state gls in
     Feedback.msg_debug (str"Applying " ++ str s ++ str " on " ++
-                          Printer.pr_subgoals None sigma [] [] [] [] gls);
+                          Printer.pr_subgoals None sigma ~seeds:[] ~shelf:[] ~stack:[] ~unfocused:[] ~goals:gls);
     Proofview.tclORELSE
       (Proofview.tclTHEN tac
                          (Proofview.numgoals >>= fun gls ->
@@ -463,7 +463,7 @@ let observe_tac s tac =
                             (str" Fail error " ++ int n ++ str " for " ++ str s ++
                                spc () ++ Lazy.force expl ++
                                str " on " ++
-                               Printer.pr_subgoals None sigma [] [] [] [] gls)
+                             Printer.pr_subgoals None sigma ~seeds:[] ~shelf:[] ~stack:[] ~unfocused:[] ~goals:gls)
                          | _ -> CErrors.iprint iexn));
                    Proofview.tclUNIT ())
 

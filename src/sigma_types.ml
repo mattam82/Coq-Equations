@@ -155,7 +155,7 @@ let sigmaize ?(liftty=0) env0 evd pars f =
   in
   let pred = it_mkLambda_or_LetIn pred pars in
   let _ = Typing.e_type_of env0 evd pred in
-  let _nf, _ = Evarutil.e_nf_evars_and_universes evd in
+  let () = evd := Evd.minimize_universes !evd in
     (argtyp, pred, pars, indices,
      indexproj, valproj, valsig, tysig)
 
@@ -196,7 +196,7 @@ let declare_sig_of_ind env sigma poly (ind,u) =
     build_sig_of_ind env sigma (ind, u) in
   let indid = ind_name ind in
   let simpl = Tacred.simpl env sigma in
-  let sigma = Evd.nf_constraints sigma in
+  let sigma = Evd.minimize_universes sigma in
   let fullapp = nf_econstr sigma fullapp in
   let idx = nf_econstr sigma idx in
   let indsig =

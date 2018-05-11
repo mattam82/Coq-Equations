@@ -183,11 +183,11 @@ Module IdealNoSec.
   Proof.
     intros.
     assert((forall (a : Type) (a_C : C a) (t : tree a), P0 a a_C t (tree_P3 t))).
-    fix 3. destruct t. simpl. apply H.
-    revert l. fix 1. destruct l; simpl. apply H0. apply H1. apply my_P3_elim.
+    fix my_P3_elim 3. destruct t. simpl. apply H.
+    revert l. fix my_P3_elim0 1. destruct l; simpl. apply H0. apply H1. apply my_P3_elim.
     apply my_P3_elim0.
     firstorder.
-    revert l. fix 1. destruct l; simpl. apply H0. apply H1. apply H2. apply my_P3_elim.
+    revert l. fix my_P3_elim 1. destruct l; simpl. apply H0. apply H1. apply H2. apply my_P3_elim.
   Defined.
 
   Section P3_proof.

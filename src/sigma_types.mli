@@ -34,8 +34,8 @@ val sigmaize :
   Evd.evar_map ref ->
   rel_context ->
   constr ->
-  constr * constr * rel_context * constr list * Names.projection *
-  Names.projection * constr * constr
+  constr * constr * rel_context * constr list * Names.Projection.t *
+  Names.Projection.t * constr * constr
 val ind_name : Names.inductive -> Names.Id.t
 val declare_sig_of_ind : Environ.env -> Evd.evar_map -> bool -> Names.inductive * EConstr.EInstance.t -> constr
 val get_signature :

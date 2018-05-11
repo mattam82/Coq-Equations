@@ -374,7 +374,7 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
                 comp split hook =
   let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
   let helpers, oblevs, t, ty = term_of_tree status isevar env split in
-  let _nf, _subst = Evarutil.e_nf_evars_and_universes isevar in
+  let () = isevar := Evd.minimize_universes !isevar in
   let split = map_split (nf_evar !isevar) split in
   let obls, (emap, cmap), t', ty' =
     (* XXX: EConstr Problem upstream indeed. *)

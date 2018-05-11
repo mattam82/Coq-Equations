@@ -888,7 +888,6 @@ and simplify (rules : simplification_rules) : simplification_fun =
 
 let simplify_tac (rules : simplification_rules) : unit Proofview.tactic =
   Proofview.Goal.enter (fun gl ->
-    let gl = Proofview.Goal.assume gl in
     let env = Environ.reset_context (Proofview.Goal.env gl) in
     let hyps = Proofview.Goal.hyps gl in
     (* Keep aside the section variables. *)

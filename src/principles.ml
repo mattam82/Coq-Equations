@@ -1080,9 +1080,9 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
                 mind_entry_params = []; (* (identifier * local_entry) list; *)
                 mind_entry_inds = inds }
     in
-    let () = Goptions.set_bool_option_value_gen ~locality:OptLocal ["Elimination";"Schemes"] false in
+    let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] false in
     let kn = ComInductive.declare_mutual_inductive_with_eliminations inductive Universes.empty_binders [] in
-    let () = Goptions.set_bool_option_value_gen ~locality:OptLocal ["Elimination";"Schemes"] true in
+    let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] true in
     let kn, comb =
       let sort = get_sort () in
       let suff = match sort with
@@ -1133,7 +1133,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
                    ind_stmts all_stmts sign inds kn comb
                    (of_constr f) split ind
   in
-  let () = evd := Evd.nf_constraints !evd in
+  let () = evd := Evd.minimize_universes !evd in
   let () =
     if not poly then
       (** Declare the universe context necessary to typecheck the following

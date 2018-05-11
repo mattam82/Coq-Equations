@@ -1237,7 +1237,7 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
                           | Some (clauses, s) -> clauses, Some s)
                       | None -> clauses, None
                     in
-		    let clauses, rest = Array.fold_map rec_call (List.rev prev @ clauses) s in
+                    let clauses, rest = Array.fold_left_map rec_call (List.rev prev @ clauses) s in
                     Some (clauses, Split (prob', var, ty, rest))
 		  with Not_found -> None)
 	      | None -> None) 

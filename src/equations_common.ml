@@ -172,7 +172,7 @@ let make_definition ?opaque ?(poly=false) evd ?types b =
     | None -> !evd
     | Some t -> let _s = Typing.e_type_of env evd t in !evd
   in
-  let evm, nf = Evarutil.nf_evars_and_universes evm in
+  let evm = Evd.minimize_universes evm in
   let body = EConstr.to_constr evm b and typ = Option.map (EConstr.to_constr evm) types in
   let used = Univops.universes_of_constr env body in
   let used' = Option.cata (Univops.universes_of_constr env) Univ.LSet.empty typ in
