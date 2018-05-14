@@ -475,7 +475,7 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
     let recid = add_suffix fid "_rec" in
       (* tclCOMPLETE  *)
       of82 (tclTHENLIST
-	  [to82 (set_eos_tac ()); to82 (fix (Some recid) (succ i));
+	  [to82 (set_eos_tac ()); to82 (fix recid (succ i));
 	   onLastDecl (fun decl gl ->
              let (n,b,t) = to_named_tuple decl in
              let fixprot pats sigma =
@@ -510,7 +510,8 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
                                progs)
      in
      let prove_nested =
-       tclDISPATCH (List.map (function (_,NestedOn (Some ann),_) -> fix None (ann + 1)
+       let nested_ident = Id.of_string "XXX" in
+       tclDISPATCH (List.map (function (_,NestedOn (Some ann),_) -> fix nested_ident (ann + 1)
                                      | _ -> tclUNIT ()) nested) <*>
          prove_progs nestedprogs
      in
