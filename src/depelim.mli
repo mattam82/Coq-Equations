@@ -55,7 +55,7 @@ val dependent_pattern :
 
 val depcase : Decl_kinds.polymorphic ->
   MutInd.t * int ->
-  Environ.env * Evd.evar_map * rel_context * constr * Globnames.global_reference
+  Environ.env * Evd.evar_map * rel_context * constr * Names.GlobRef.t
 val derive_dep_elimination :
   Environ.env -> Evd.evar_map -> polymorphic:Decl_kinds.polymorphic -> pinductive -> constr
 

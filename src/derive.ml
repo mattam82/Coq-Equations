@@ -8,11 +8,11 @@
 
 open Term
 
-type derive_fn_ty = polymorphic:bool -> Globnames.global_reference -> unit
+type derive_fn_ty = polymorphic:bool -> Names.GlobRef.t -> unit
 
 type derive_record =
   { derive_name : string;
-    derive_fn : polymorphic:bool -> Globnames.global_reference -> unit }
+    derive_fn : polymorphic:bool -> Names.GlobRef.t -> unit }
 
 let make_derive fn ~polymorphic s =
   let env = Global.env () in

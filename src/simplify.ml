@@ -211,7 +211,7 @@ let build_term (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal)
 
 
 let build_app_infer (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal)
-  (ctx' : EConstr.rel_context) (f : Globnames.global_reference)
+  (ctx' : EConstr.rel_context) (f : Names.GlobRef.t)
   (args : EConstr.constr option list) : open_term =
   let tf, ty =
     match f with
