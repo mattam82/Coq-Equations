@@ -353,7 +353,7 @@ let define_mutual_nested flags progs =
      let nested, mutual = List.partition (fun (p,prog) -> is_nested p) fixes in
      let declare_nested (p,prog) body =
        let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
-       let args = List.map (fun (p',prog') -> e_new_global evd (ConstRef prog'.program_cst)) mutual in
+       let args = List.rev_map (fun (p',prog') -> e_new_global evd (ConstRef prog'.program_cst)) mutual in
        let body = Vars.substl args body in
        let kn = declare_constant p.program_id body (Some ty) flags.polymorphic
                                  !evd (IsDefinition Fixpoint) in
