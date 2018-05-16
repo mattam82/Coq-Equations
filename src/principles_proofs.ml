@@ -506,12 +506,15 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
      in
      let prove_progs progs =
        intros <*>
-         tclDISPATCH (List.map (fun (_,_,e) -> (* observe_tac "proving one mutual " *) (of82 (aux_ind_fun info (0, List.length mutual) None [] e.equations_split)))
-                               progs)
+       tclDISPATCH (List.map (fun (_,_,e) ->
+                    (* observe_tac "proving one mutual " *)
+                    (of82 (aux_ind_fun info (0, List.length mutual) None [] e.equations_split)))
+                    progs)
      in
      let prove_nested =
-       tclDISPATCH (List.map (function (_,NestedOn (Some ann),_) -> fix None (ann + 1)
-                                     | _ -> tclUNIT ()) nested) <*>
+       tclDISPATCH
+         (List.map (function (id,NestedOn (Some ann),_) -> fix (Some id) (ann + 1)
+                         | _ -> tclUNIT ()) nested) <*>
          prove_progs nestedprogs
      in
      let mutfix =
