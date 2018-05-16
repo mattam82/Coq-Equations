@@ -284,7 +284,7 @@ let define_mutual_nested flags progs =
            let rec aux acc n =
              if Int.equal n after then acc
              else
-             let term = applist (mkRel (signlen + nested + n), acc) in
+             let term = applist (mkRel (signlen + nested - n), acc) in
              aux (acc @ [term]) (succ n)
            in aux (beforeargs @ [fixref]) 0
          in
