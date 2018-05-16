@@ -9,12 +9,18 @@ Equations f (x: foo) : nat := {
   f (Foo1 l):= aux1 l;
   f (Foo2 l) := aux2 l
 }
+
 where aux1 (l : list foo) : nat := {
   aux1 [] := 1;
   aux1 (cons hd tl) := f hd + aux1 tl + aux2 tl }
+
 where aux2 (l : list foo) : nat := {
   aux2 [] := 1;
   aux2 (cons hd tl) := f hd + aux2 tl }.
+
+(* where aux3 (l : list foo) : nat := { *)
+(*   aux3 [] := 1; *)
+(*   aux3 (cons hd tl) := f hd + aux3 tl }. *)
 
 Next Obligation.
   assert ((forall x : foo, f_ind x (f x)) ->
@@ -43,3 +49,26 @@ Next Obligation.
   apply H0.
   intuition.
 Defined.
+
+Module Three.
+
+Equations f (x: foo) : nat := {
+  f (Foo1 l):= aux1 l;
+  f (Foo2 l) := aux2 l
+}
+
+where aux1 (l : list foo) : nat := {
+  aux1 [] := 1;
+  aux1 (cons hd tl) := f hd + aux1 tl + aux2 tl }
+
+where aux2 (l : list foo) : nat := {
+  aux2 [] := 1;
+  aux2 (cons hd tl) := f hd + aux2 tl }
+
+where aux3 (l : list foo) : nat := {
+  aux3 [] := 1;
+  aux3 (cons hd tl) := f hd + aux3 tl }.
+
+Axiom cheat : forall {A}, A.
+Next Obligation. apply cheat. Defined.
+End Three.
