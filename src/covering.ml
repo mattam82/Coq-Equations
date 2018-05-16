@@ -41,7 +41,12 @@ type pat =
 type context_map = rel_context * pat list * rel_context
 
 (** Splitting trees *)
-type path = Evar.t list
+
+type path_component =
+  | Evar of Evar.t
+  | Ident of Id.t
+
+type path = path_component list
 
 type splitting = 
   | Compute of context_map * where_clause list * types * splitting_rhs
@@ -950,14 +955,23 @@ let blockers curpats ((_, patcs, _) : context_map) =
 let pr_rel_name env i =
   Name.print (get_name (lookup_rel i env))
 
+let pr_path_component evd = function
+  | Evar ev -> pr_existential_key evd ev
+  | Ident id -> Id.print id
 
-let pr_path evd = prlist_with_sep (fun () -> str":") (pr_existential_key evd)
+let pr_path evd = prlist_with_sep (fun () -> str":") (pr_path_component evd)
+
+let path_component_eq x y =
+  match x, y with
+  | Evar ev, Evar ev' -> Evar.equal ev ev'
+  | Ident id, Ident id' -> Id.equal id id'
+  | _, _ -> false
 
 let eq_path path path' =
   let rec aux path path' =
     match path, path' with
     | [], [] -> true
-    | hd :: tl, hd' :: tl' -> Evar.equal hd hd' && aux tl tl'
+    | hd :: tl, hd' :: tl' -> path_component_eq hd hd' && aux tl tl'
     | _, _ -> false
   in 
     aux path path'
@@ -1322,7 +1336,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
        | Some r -> rec_wf_tac term name r
      in
      let rhs = By (Inl tac, spl) in
-     (match covering_aux env evars data [] [(loc,lhs,rhs),false] path prob lets ty with
+     (match covering_aux env evars data [] [(loc,lhs,rhs),false] (Ident name :: path) prob lets ty with
       | None -> None
       | Some (clauses, split) -> Some (RecValid (pi1 data, split)))
      
@@ -1519,7 +1533,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
      in
      let secvars = Array.of_list secvars in
      let evar = new_untyped_evar () in
-     let path' = evar :: path in
+     let path' = Evar evar :: path in
      let lets' =
        let letslen = length lets in
        let _, ctxs, _ = lets_of_ctx env ctx evars s in
@@ -1571,7 +1585,7 @@ and interp_wheres env ctx evars path data s lets w =
     let sigma, term = Equations_common.new_evar envctx !evars ~src relty in
     let () = evars := sigma in
     let ev = destEvar !evars term in
-    let path = (fst ev) :: path in
+    let path = Evar (fst ev) :: path in
     let splitting = covering env evars data clauses path problem arity in
     let decl = make_def (Name id) (Some term) relty in
     let nadecl = make_named_def id (Some (substl inst term)) ty in

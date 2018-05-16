@@ -120,7 +120,7 @@ Module RoseTree.
       pose (fun_elim (f:=elements')).
       apply (p (fun r f => f = elements'_def r) (fun l x H r => r = concat (List.map elements' x)));
         clear p; intros; simp elements'_def.
-      simpl. f_equal. apply H1.
+      simpl. f_equal. apply H2.
     Qed.
     
   End roserec.

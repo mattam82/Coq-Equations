@@ -3,7 +3,7 @@ open EConstr
 module PathOT :
   sig
     type t = Covering.path
-    val compare : Evar.t list -> Evar.t list -> int
+    val compare : t -> t -> int
   end
 module PathMap : CSig.MapS with type key = PathOT.t
 

@@ -25,10 +25,18 @@ open Vars
 module PathOT =
   struct
     type t = Covering.path
+
+    let path_component_compare p p' =
+      match p, p' with
+      | Evar ev, Evar ev' -> Evar.compare ev ev'
+      | Ident id, Ident id' -> Id.compare id id'
+      | Evar _, Ident _ -> -1
+      | Ident _, Evar _ -> 1
+
     let rec compare p p' =
       match p, p' with
       | ev :: p, ev' :: p' ->
-         let c = Evar.compare ev ev' in
+         let c = path_component_compare ev ev' in
          if c == 0 then compare p p'
          else c
       | _ :: _, [] -> -1
@@ -333,7 +341,7 @@ let rec aux_ind_fun info chop unfs unfids = function
          tclTHENLIST
           [observe "letin" (to82 (letin_pat_tac true None (Name id) (project gl, elim) occs));
            observe "convert concl" (to82 (convert_concl_no_check newconcl DEFAULTcast));
-           Proofview.V82.of_tactic (clear_body [id]);
+           observe "clear body" (Proofview.V82.of_tactic (clear_body [id]));
            aux_ind_fun info chop unfs unfids s] gl
       | _ -> tclFAIL 0 (str"Unexpected refinement goal in functional induction proof") gl
     in
@@ -357,7 +365,9 @@ let rec aux_ind_fun info chop unfs unfids = function
             | None -> s.where_term, fst chop + List.length s.where_nctx, unfids, s.where_nctx
             | Some w ->
                let assoc, unf, split =
-                 try Evar.Map.find (List.hd w.where_path) info.wheremap
+                 try match List.hd w.where_path with
+                     | Evar ev -> Evar.Map.find ev info.wheremap
+                     | Ident _ -> assert false
                  with Not_found -> assert false
                in
                (* msg_debug (str"Unfolded where " ++ str"term: " ++ pr_constr w.where_term ++ *)
@@ -505,9 +515,12 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
      in
      let prove_progs progs =
        intros <*>
-       tclDISPATCH (List.map (fun (_,_,e) ->
+       tclDISPATCH (List.map (fun (_,cpi,e) ->
                     (* observe_tac "proving one mutual " *)
-                    (of82 (aux_ind_fun info (0, List.length mutual) None [] e.equations_split)))
+                    let proginfo =
+                      { info with term_info = { info.term_info with helpers_info = info.term_info.helpers_info @ cpi.program_split_info.helpers_info } }
+                    in
+                    (of82 (aux_ind_fun proginfo (0, List.length l) None [] e.equations_split)))
                     progs)
      in
      let prove_nested =
@@ -672,7 +685,9 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
     | Compute (_, wheres, _, RProgram _), Compute (_, unfwheres, _, RProgram c) ->
        let wheretac acc w unfw =
          let assoc, id, _ =
-           try Evar.Map.find (List.hd unfw.where_path) where_map
+           try match List.hd unfw.where_path with
+               | Evar ev -> Evar.Map.find ev where_map
+               | Ident _ -> assert false
            with Not_found -> assert false
          in
          (* msg_debug (str"Found where: " ++ *)

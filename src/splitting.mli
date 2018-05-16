@@ -37,6 +37,7 @@ type term_info = {
   decl_kind : Decl_kinds.definition_kind;
   helpers_info : (Evar.t * int * identifier) list;
   comp_obls : Id.Set.t; (** The recursive call proof obligations *)
+  user_obls : Id.Set.t; (** The user proof obligations *)
 }
 
 type program_info = {
