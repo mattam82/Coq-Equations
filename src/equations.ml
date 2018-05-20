@@ -77,7 +77,7 @@ let declare_wf_obligations info =
     Id.Set.fold (fun wfobl acc ->
     let gr = Nametab.locate_constant (qualid_of_ident wfobl) in
     make_resolve (ConstRef gr) :: acc) info.comp_obls [] in
-  Hints.add_hints false [Principles_proofs.wf_obligations_base info] (Hints.HintsResolveEntry constrs)
+  Hints.add_hints ~local:false [Principles_proofs.wf_obligations_base info] (Hints.HintsResolveEntry constrs)
 
 let nf_program_info evm p =
   { p with

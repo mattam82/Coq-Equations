@@ -161,7 +161,7 @@ let derive_subterm env sigma ~polymorphic ind =
           Hints.IsGlobRef (ConstructRef ((k,i),j))) 1 entry.mind_entry_lc)
         0 inds
     in
-    let () = Hints.add_hints false [subterm_relation_base]
+    let () = Hints.add_hints ~local:false [subterm_relation_base]
                              (Hints.HintsResolveEntry (List.concat constrhints)) in
     (* Proof of Well-foundedness *)
     let relid = add_suffix (Nametab.basename_of_global (IndRef (fst ind)))
@@ -211,7 +211,7 @@ let derive_subterm env sigma ~polymorphic ind =
                                    (Decl_kinds.IsDefinition Decl_kinds.Definition) in
         (* Impargs.declare_manual_implicits false (ConstRef cst) ~enriching:false *)
         (* 	(list_map_i (fun i _ -> ExplByPos (i, None), (true, true, true)) 1 parambinders); *)
-        Hints.add_hints false [subterm_relation_base]
+        Hints.add_hints ~local:false [subterm_relation_base]
                         (Hints.HintsUnfoldEntry [EvalConstRef cst]);
         mkApp (mkConst cst, extended_rel_vect 0 parambinders)
       in

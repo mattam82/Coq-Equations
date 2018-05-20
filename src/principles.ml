@@ -910,7 +910,7 @@ let declare_funind info alias env evd is_rec protos progs
   in
   let hookind subst indgr ectx =
     let env = Global.env () in (* refresh *)
-    Hints.add_hints false [info.term_info.base_id]
+    Hints.add_hints ~local:false [info.term_info.base_id]
 	            (Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef indgr]);
     let () = declare_funelim info.term_info env evd is_rec protos progs
                              ind_stmts all_stmts sign app subst inds kn comb indgr ectx in
@@ -1144,7 +1144,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
 	let constrs = 
 	  CList.map_i (fun j _ -> Hints.empty_hint_info, poly, true, Hints.PathAny, 
 	    Hints.IsGlobRef (Globnames.ConstructRef ((kn,i),j))) 1 ind.Entries.mind_entry_lc in
-	  Hints.add_hints false [info.base_id] (Hints.HintsResolveEntry constrs))
+	  Hints.add_hints ~local:false [info.base_id] (Hints.HintsResolveEntry constrs))
 	inds
     in
     let info = { term_info = info; pathmap = !fnind_map; wheremap } in
@@ -1171,7 +1171,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
 	  Autorewrite.add_rew_rules info.base_id 
             [CAst.make (Universes.fresh_global_instance (Global.env()) gr, true, None)]
 	else (Typeclasses.declare_instance None true gr
-	      (* Hints.add_hints false [info.base_id]  *)
+	      (* Hints.add_hints ~local:false [info.base_id]  *)
 	      (*                 (Hints.HintsExternEntry *)
               (*                  (Vernacexpr.{hint_priority = Some 0; hint_pattern = None}, *)
               (*                   impossible_call_tac (Globnames.ConstRef cst))) *));
