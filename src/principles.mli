@@ -78,6 +78,7 @@ val subst_rec_split :            Environ.env ->
            constr ->
            bool ->
            int option ->
+           Covering.path ->
            Covering.context_map ->
            (Names.Id.t * constr) list ->
            Covering.splitting -> Covering.splitting
@@ -85,6 +86,7 @@ val subst_rec_split :            Environ.env ->
   
 val update_split : Environ.env ->
   Evd.evar_map ref ->
+  Names.Id.t ->
   Syntax.rec_type option ->
   constr ->
   Covering.context_map ->
@@ -97,3 +99,19 @@ val build_equations :
   ?alias:constr * Names.Id.t * Covering.splitting ->
   (Splitting.program_info * Splitting.compiled_program_info * Principles_proofs.equations_info) list ->
   unit
+
+val computations :            Environ.env ->
+           Evd.evar_map ->
+           (EConstr.t * 'a * 'b) option ->
+           node_kind * bool ->
+           Principles_proofs.equations_info ->
+           ((Equations_common.rel_context * EConstr.t *
+             (EConstr.t * 'a * 'b) option * EConstr.constr list * EConstr.t *
+             EConstr.t * (node_kind * bool) * Covering.splitting_rhs *
+             ((EConstr.t * int list) *
+              ((EConstr.constr * int list) * Names.Id.t * Covering.splitting)
+              option * Covering.path * Equations_common.rel_context *
+              EConstr.t * EConstr.constr list * (EConstr.constr * int) list *
+              'c)
+             list option)
+            list as 'c)

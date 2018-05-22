@@ -121,7 +121,7 @@ let define_principles flags fixprots progs =
 	   (ctx @ fixdecls, pats, ctx'), ids
 	 in
 	 let split, where_map =
-           update_split env evd p.program_rec
+           update_split env evd p.program_id p.program_rec
                         (of_constr f) cutprob fixsubst prog.program_split in
          let eqninfo =
            Principles_proofs.{ equations_id = i;
@@ -134,7 +134,7 @@ let define_principles flags fixprots progs =
       | None ->
 	 let prob = id_subst sign in
 	 let split, where_map =
-           update_split env evd p.program_rec
+           update_split env evd p.program_id p.program_rec
                         (of_constr f) prob [] prog.program_split in
          let eqninfo =
            Principles_proofs.{ equations_id = i;
@@ -149,7 +149,7 @@ let define_principles flags fixprots progs =
 	 let prob = id_subst sign in
          (* let () = msg_debug (str"udpdate split" ++ spc () ++ pr_splitting env split) in *)
 	 let unfold_split, where_map =
-           update_split env evd p.program_rec (of_constr f)
+           update_split env evd p.program_id p.program_rec (of_constr f)
                         prob [(i,of_constr f)] prog.program_split
          in
 	 (* We first define the unfolding and show the fixpoint equation. *)
@@ -543,7 +543,7 @@ let define_by_eqs opts eqs nt =
     in
     let _oarity = nf_evar !evd p.program_oarity in
     let arity = nf_evar !evd p.program_arity in
-    covering env evd (p.program_id,with_comp,data) eqs [] prob arity
+    covering env evd (p.program_id,with_comp,data) eqs [Ident p.program_id] prob arity
   in
   let coverings = List.map2 (covering env) arities equations in
   let status = Define false in

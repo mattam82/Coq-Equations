@@ -10,7 +10,6 @@
 
 open Term
 open Names
-open Libnames
 open Vars
 open Equations_common
 open Syntax
@@ -241,7 +240,7 @@ let subst_comp_proj_split sigma f proj s =
   map_split (subst_comp_proj sigma f proj) s
 
 let reference_of_id s =
-  CAst.make @@ Ident s
+  CAst.make @@ Libnames.Ident s
 
 let clear_ind_assums sigma ind ctx =
   let rec clear_assums c =
@@ -293,10 +292,9 @@ let compute_elim_type env evd is_rec protos k leninds
         | App (conj, [| arity; rest |]),
           (i, ((fn, _), _, _, sign, ar, _, _, (refine, cut)), _) :: stmts ->
            mkApp (conj, [| clean_one arity sign fn ; aux rest stmts |])
-        | _, [ (i, ((fn, _), _, _, sign, ar, _, _, _), _) ] ->
-           clean_one arity sign fn
+        | _, (i, ((fn, _), _, _, sign, ar, _, _, _), _) :: stmts ->
+           aux (clean_one arity sign fn) stmts
         | _, [] -> arity
-        | _, _ -> assert false
       in aux arity ind_stmts
   in
   let newctx' = clear_ind_assums !evd k newctx in
@@ -391,8 +389,8 @@ let compute_elim_type env evd is_rec protos k leninds
 	match path with
 	| [] -> assert false
 	| ev :: path -> 
-	   let res = 
-	     list_find_map_i (fun i' (_, (_, _, path', _, _, _, _, _), _) ->
+           let res =
+             list_find_map_i (fun i' (_, (_, _, path', _, _, _, _, _), _) ->
 			      if eq_path path' path then Some (idx + 1 - i')
 			      else None) 1 ind_stmts
 	   in match res with None -> assert false | Some i -> i
@@ -476,7 +474,7 @@ let unfold_constr sigma c =
 let extend_prob_ctx delta (ctx, pats, ctx') =
   (delta @ ctx, lift_pats (List.length delta) pats, ctx')
 
-let subst_rec_split env evd f comp comprecarg prob s split =
+let subst_rec_split env evd f comp comprecarg path prob s split =
   let map_proto f ty =
     match comprecarg with
     | Some recarg ->
@@ -553,7 +551,7 @@ let subst_rec_split env evd f comp comprecarg prob s split =
        Mapping (lhs', aux cutprob s path c)
 	       
     | RecValid (id, c) ->
-       RecValid (id, aux cutprob s path c)
+       RecValid (id, aux cutprob s (Ident id :: path) c)
 		
     | Refined (lhs, info, sp) -> 
        let (id, c, cty), ty, arg, ev, (fev, args), revctx, newprob, newty =
@@ -586,7 +584,7 @@ let subst_rec_split env evd f comp comprecarg prob s split =
        let _, newprob_to_prob' = 
 	 subst_rec (cutprob (pi3 info.refined_newprob_to_lhs)) s info.refined_newprob_to_lhs in
        let ev' = if Option.has_some comprecarg then new_untyped_evar () else ev in
-       let path' = ev' :: path in
+       let path' = Evar ev' :: path in
        let app', arg' =
 	 if Option.has_some comprecarg then
 	   let refarg = ref 0 in
@@ -630,12 +628,12 @@ let subst_rec_split env evd f comp comprecarg prob s split =
        let subst, lhs' = subst_rec cutprob s lhs in
        Valid (lhs', x, y, w, u, 
 	      List.map (fun (g, l, subst, invsubst, sp) -> (g, l, subst, invsubst, aux cutprob s path sp)) cs)
-  in aux prob s [] split
+  in aux prob s path split
 
-let update_split env evd is_rec f prob recs split =
+let update_split env evd id is_rec f prob recs split =
   let where_map = ref Evar.Map.empty in
   match is_rec with
-  | Some (Syntax.Structural _) -> subst_rec_split env !evd f false None prob recs split, !where_map
+  | Some (Syntax.Structural _) -> subst_rec_split env !evd f false None [Ident id] prob recs split, !where_map
   | Some (Logical r) -> 
     let proj = match r with
       | LogicalDirect (_, id) -> mkVar id
@@ -649,7 +647,7 @@ let update_split env evd is_rec f prob recs split =
           | LogicalDirect _ -> Some (-1)
           | LogicalProj r -> Some r.comp_recarg
         in
-	let rest = aux env f (subst_rec_split env !evd f false recarg
+        let rest = aux env f (subst_rec_split env !evd f false recarg [Ident id]
                      newprob [(id, f)] rest) in
 	 (match invsubst with
 	  | Some s -> Mapping (s, rest)
@@ -676,7 +674,7 @@ let update_split env evd is_rec f prob recs split =
            (* msg_debug (str"At where in update_split, calling recursively with term" ++ *)
            (*              pr_constr w.where_term ++ str " associated to " ++ int (Evar.repr evk)); *)
            { w with where_term = ev;
-                    where_path = evk :: List.tl w.where_path;
+                    where_path = Evar evk :: List.tl w.where_path;
                     where_splitting = split' }
          in
          Compute (lhs, List.map subst_where wheres, p, q)
@@ -701,7 +699,9 @@ let computations env evd alias refine eqninfo =
        let nterm = substl instc w.where_term in
        let alias =
          try
-         let (f, id, s) = Evar.Map.find (List.hd w.where_path) wheremap in
+         let (f, id, s) = match List.hd w.where_path with
+         | Evar ev -> Evar.Map.find ev wheremap
+         | Ident _ -> assert false in
          let args = match_arguments evd (arguments evd nterm) (arguments evd f) in
          Some ((f, args), id, s)
          with Not_found -> None
@@ -973,7 +973,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
   let flatten_top_comps (p, eqninfo, one_comps) acc =
     let (top, rest) = flatten_comps one_comps in
     let alias = match alias with Some (f, id, x) -> Some ((f, []), id, x) | None -> None in
-    let topcomp = (((of_constr eqninfo.equations_f,[]), alias, [],
+    let topcomp = (((of_constr eqninfo.equations_f,[]), alias, [Ident p.program_id],
                     p.program_sign, p.program_arity,
                     List.rev_map pat_constr (pi2 eqninfo.equations_prob), [],
                     (kind_of_prog p,false)), top) in
