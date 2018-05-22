@@ -675,9 +675,9 @@ let it_mkProd_or_subst env sigma ty ctx =
 let it_mkProd_or_clean env sigma ty ctx =
   let open Context.Rel.Declaration in
   nf_beta env sigma (List.fold_left
-                       (fun c d -> whd_betalet sigma
+                       (fun c d ->
 			 (if (get_name d) == Anonymous then subst1 mkProp c
-			  else (mkProd_or_LetIn d c))) ty ctx)
+                          else mkProd_or_subst d c)) ty ctx)
 
 let it_mkLambda_or_subst ty ctx = 
   whd_betalet Evd.empty

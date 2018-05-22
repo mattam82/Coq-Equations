@@ -242,23 +242,26 @@ let subst_comp_proj_split sigma f proj s =
 let reference_of_id s =
   CAst.make @@ Libnames.Ident s
 
+let is_ind_assum sigma ind b =
+  let _, concl = decompose_prod_assum sigma b in
+  let t, _ = decompose_app sigma concl in
+  if isInd sigma t then
+    let (ind', _), _ = destInd sigma t in
+    MutInd.equal ind' ind
+  else false
+
 let clear_ind_assums sigma ind ctx =
   let rec clear_assums c =
     match kind sigma c with
     | Prod (na, b, c) ->
-        let t, _ = decompose_app sigma b in
-          if isInd sigma t then
-            let (ind', _), _ = destInd sigma t in
-	      if MutInd.equal ind' ind then (
-                assert(not (Termops.dependent sigma (mkRel 1) c));
-		clear_assums (subst1 mkProp c))
-	      else mkProd (na, b, clear_assums c)
-	  else mkProd (na, b, clear_assums c)
+       if is_ind_assum sigma ind b then
+         (assert(not (Termops.dependent sigma (mkRel 1) c));
+          clear_assums (subst1 mkProp c))
+       else mkProd (na, b, clear_assums c)
     | LetIn (na, b, t, c) ->
 	mkLetIn (na, b, t, clear_assums c)
     | _ -> c
   in map_rel_context clear_assums ctx
-
 
 let type_of_rel t ctx =
   match Constr.kind t with

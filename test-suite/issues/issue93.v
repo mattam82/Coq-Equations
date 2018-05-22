@@ -20,6 +20,7 @@ Equations foo_type (ft:foo) : Type :=
 Transparent foo_type.
 
 (* val was moved into the result type, rather than being an argument, to work around issues #73 and #85 *)
+Set Equations Debug.
 Equations sum (fx:foo) : forall (val:foo_type fx), nat := {
   sum (Nat f _) := fun val => sum f val;
   sum (List ff) := fun val => sum_list ff val }
