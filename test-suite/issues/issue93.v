@@ -32,26 +32,26 @@ where(struct fs) sum_list (fs : list foo) (vval: compact_prod (map foo_type fs))
     sum_list (cons hd nil) val1 _ := sum hd val1;
     sum_list (cons hd _) val1 sumtl := sum hd (fst val1) + sumtl (snd val1)}}.
 
-Next Obligation.
-  assert ((forall fx : foo, sum_ind fx (sum fx)) -> (forall fs vval, sum_ind_1 fs vval (sum_list fs vval))).
-  intros H.
-  fix Hsl 1.
-  intros.
-  destruct fs; constructor.
-  intros.
-  apply Hsl.
-  simp sum.
-  destruct fs.
-  econstructor.
-  apply H.
-  econstructor.
-  apply H.
+(* Next Obligation. *)
+(*   assert ((forall fx : foo, sum_ind fx (sum fx)) -> (forall fs vval, sum_ind_1 fs vval (sum_list fs vval))). *)
+(*   intros H. *)
+(*   fix Hsl 1. *)
+(*   intros. *)
+(*   destruct fs; constructor. *)
+(*   intros. *)
+(*   apply Hsl. *)
+(*   simp sum. *)
+(*   destruct fs. *)
+(*   econstructor. *)
+(*   apply H. *)
+(*   econstructor. *)
+(*   apply H. *)
 
-  assert (forall fx : foo, sum_ind fx (sum fx)).
-  fix IH 1. specialize (H IH). intros fx. destruct fx.
-  simpl. rewrite sum_equation_1. constructor. simpl. intros. apply IH.
-  autorewrite with sum. constructor.
-  simpl. intros. apply H.
+(*   assert (forall fx : foo, sum_ind fx (sum fx)). *)
+(*   fix IH 1. specialize (H IH). intros fx. destruct fx. *)
+(*   simpl. rewrite sum_equation_1. constructor. simpl. intros. apply IH. *)
+(*   autorewrite with sum. constructor. *)
+(*   simpl. intros. apply H. *)
 
-  intuition.
-Defined.
+(*   intuition. *)
+(* Defined. *)
