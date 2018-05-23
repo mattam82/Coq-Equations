@@ -116,7 +116,12 @@ let is_applied_to_structarg i is_rec lenargs =
     end
   | _ -> None
 
-let abstract_rec_calls sigma ?(do_subst=true) is_rec len protos c =
+let is_user_obl sigma user_obls f =
+  match kind sigma f with
+  | Const (c, u) -> Id.Set.mem (Label.to_id (Constant.label c)) user_obls
+  | _ -> false
+
+let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
   let lenprotos = List.length protos in
   let proto_fs = List.map (fun ((f,args), _, _, _, _) -> f) protos in
   let find_rec_call f args =
@@ -158,8 +163,8 @@ let abstract_rec_calls sigma ?(do_subst=true) is_rec len protos c =
   in
   let rec aux n env c =
     match kind sigma c with
-    | App (f', args) ->
-	let (ctx, lenctx, args) = 
+    | App (f', args) when not (is_user_obl sigma user_obls f') ->
+        let (ctx, lenctx, args) =
 	  Array.fold_left (fun (ctx,len,c) arg -> 
 	    let ctx', lenctx', arg' = aux n env arg in
 	    let len' = lenctx' + len in
@@ -268,7 +273,7 @@ let type_of_rel t ctx =
   | Rel k -> lift k (get_type (List.nth ctx (pred k)))
   | c -> mkProp
 
-let compute_elim_type env evd is_rec protos k leninds
+let compute_elim_type env evd user_obls is_rec protos k leninds
                       ind_stmts all_stmts sign app elimty =
   let ctx, arity = decompose_prod_assum !evd elimty in
   let lenrealinds =
@@ -413,7 +418,7 @@ let compute_elim_type env evd is_rec protos k leninds
 	List.concat
 	(List.map (fun (c, _) ->
 	      let hyps, hypslen, c' = 
-                abstract_rec_calls !evd ~do_subst:false
+                abstract_rec_calls !evd user_obls ~do_subst:false
                    is_rec signlen protos (Reductionops.nf_beta env !evd (lift 1 c))
 	      in 
 	      let lifthyps = lift_rel_contextn (signlen + 2) (- (pred i)) hyps in
@@ -826,7 +831,7 @@ let declare_funelim info env evd is_rec protos progs
        elimc, elimty)
   in
   let nargs, newty =
-    compute_elim_type env evd is_rec protos kn leninds ind_stmts all_stmts
+    compute_elim_type env evd info.user_obls is_rec protos kn leninds ind_stmts all_stmts
                       sign app (of_constr elimty)
   in
   let hookelim _ elimgr _ =
@@ -947,6 +952,10 @@ let level_of_context env evd ctx acc =
   
 let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) option) progs =
   let p, prog, eqninfo = List.hd progs in
+  let user_obls =
+    List.fold_left (fun acc (p, prog, eqninfo) ->
+      Id.Set.union prog.program_split_info.user_obls acc) Id.Set.empty progs
+  in
   let { equations_id = id;
         equations_where_map = wheremap;
         equations_f = f;
@@ -1023,7 +1032,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
       | RProgram c ->
 	  let len = List.length ctx in
 	  let hyps, hypslen, c' =
-            abstract_rec_calls !evd is_rec len protos (Reductionops.nf_beta env !evd c)
+            abstract_rec_calls !evd user_obls is_rec len protos (Reductionops.nf_beta env !evd c)
           in
           let head =
             let f = mkRel (len + (lenprotos - i) + hypslen) in

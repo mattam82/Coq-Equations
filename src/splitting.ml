@@ -349,6 +349,7 @@ type term_info = {
   decl_kind: Decl_kinds.definition_kind;
   helpers_info : (Evar.t * int * identifier) list;
   comp_obls : Id.Set.t; (** The recursive call proof obligations *)
+  user_obls : Id.Set.t; (** The user obligations *)
 }
 
 type program_info = {
@@ -383,6 +384,7 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
                 (EConstr.to_constr ~abort_on_undefined_evars:false !isevar (whd_betalet !isevar ty))
   in
   let compobls = ref Id.Set.empty in
+  let userobls = ref Id.Set.empty in
   let obls = 
     Array.map (fun (id, ty, loc, s, d, t) ->
       let assc = rev_assoc Id.equal id emap in
@@ -405,7 +407,8 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
 	    Some (of82 (tclTRY
 			  (tclTHENLIST [to82 zeta_red; to82 Tactics.intros; unfolds;
 					(to82 (solve_rec_tac ()))])))
-	else Some ((!Obligations.default_tactic))
+        else (userobls := Id.Set.add id !userobls;
+              Some ((!Obligations.default_tactic)))
       in (id, ty, loc, s, d, tac)) obls
   in
   let helpers = List.map (fun (ev, arg) ->
@@ -418,7 +421,7 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
     let kind = (locality, poly, Decl_kinds.Definition) in
     let baseid = Id.to_string i in
     let term_info = { term_id = gr; base_id = baseid; helpers_info = helpers; decl_kind = kind;
-                      comp_obls = !compobls } in
+                      comp_obls = !compobls; user_obls = Id.Set.union !compobls !userobls } in
       hook split cmap term_info
   in
   let hook = Lemmas.mk_hook hook in

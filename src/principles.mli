@@ -21,7 +21,7 @@ val clean_rec_calls : Evd.evar_map ->
 val head : Evd.evar_map -> constr -> constr
 val is_applied_to_structarg :            int -> Syntax.rec_type option -> int -> bool option
 
-val abstract_rec_calls : Evd.evar_map ->
+val abstract_rec_calls : Evd.evar_map -> Names.Id.Set.t ->
   ?do_subst:bool ->
   Syntax.rec_type option ->
   int ->
@@ -43,7 +43,7 @@ val clear_ind_assums : Evd.evar_map ->
 val type_of_rel : Constr.t -> rel_context -> constr
 val compute_elim_type :
   Environ.env ->
-  Equations_common.esigma ->
+  Equations_common.esigma -> Names.Id.Set.t ->
   Syntax.rec_type option ->
   ((constr * int list) * (constr * int list) option * int *
    EConstr.rel_context * Constr.t)
