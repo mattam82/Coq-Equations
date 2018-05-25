@@ -577,3 +577,4 @@ END
 TACTIC EXTEND mutual_fix
 [ "mfix" my_preident_list(li) int_list(l) ] -> [ Principles_proofs.mutual_fix li l ]
 END
+  
