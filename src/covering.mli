@@ -96,7 +96,11 @@ val make_permutation : ?env:Environ.env -> Evd.evar_map ->
 
 (** Splitting trees *)
 
-type path = Evar.t list
+type path_component =
+  | Evar of Evar.t
+  | Ident of Id.t
+
+type path = path_component list
 
 type splitting =
     Compute of context_map * where_clause list * types * splitting_rhs
@@ -134,8 +138,8 @@ and refined_node = {
 
 and splitting_rhs = RProgram of constr | REmpty of int
 
-val pr_path : Evd.evar_map -> Evar.t list -> Pp.t
-val eq_path : Evar.t list -> Evar.t list -> bool
+val pr_path : Evd.evar_map -> path -> Pp.t
+val eq_path : path -> path -> bool
 
 val pr_splitting : env -> Evd.evar_map -> ?verbose:bool -> splitting -> Pp.t
 val ppsplit : splitting -> unit
@@ -346,7 +350,7 @@ val covering_aux :
   identifier * bool * Constrintern.internalization_env ->
   (clause * bool) list ->
   (clause * bool) list ->
-  Evar.t list ->
+  path ->
   context_map ->
   rel_context -> constr -> ((clause * bool) list * splitting) option
 
@@ -354,6 +358,6 @@ val covering :
   env ->
   Evd.evar_map ref ->
   identifier * bool * Constrintern.internalization_env ->
-  clause list -> Evar.t list ->
+  clause list -> path ->
   context_map ->
   constr -> splitting

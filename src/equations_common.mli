@@ -128,17 +128,17 @@ val decompose_indapp : Evd.evar_map ->
 
 val refresh_universes_strict : Environ.env -> esigma -> types -> types
 
-val new_global : Evd.evar_map -> Globnames.global_reference -> Evd.evar_map * constr
-val e_new_global : esigma -> Globnames.global_reference -> constr
+val new_global : Evd.evar_map -> Names.GlobRef.t -> Evd.evar_map * constr
+val e_new_global : esigma -> Names.GlobRef.t -> constr
                                                                  
 (** {6 Linking to Coq} *)
 
 val contrib_name : string
 val init_constant : string list -> string -> esigma -> constr
-val init_reference : string list -> string -> Globnames.global_reference
-val coq_constant : string list -> string -> Globnames.global_reference
+val init_reference : string list -> string -> Names.GlobRef.t
+val coq_constant : string list -> string -> Names.GlobRef.t
 
-val global_reference : Id.t -> Globnames.global_reference
+val global_reference : Id.t -> Names.GlobRef.t
 (* Unsafe, avoid *)
 val constr_of_ident : Id.t -> constr
   
@@ -166,7 +166,7 @@ val declare_instance :
 
 (** Standard datatypes *)
 
-type logic_ref = Globnames.global_reference lazy_t
+type logic_ref = Names.GlobRef.t lazy_t
 							       
 type logic = {
   logic_eq_ty : logic_ref;
@@ -190,42 +190,42 @@ val prop_logic : logic
 val type_logic : logic
 
 val get_sort : unit -> Sorts.family
-val get_eq : unit -> Globnames.global_reference
-val get_eq_refl : unit -> Globnames.global_reference
-val get_eq_case : unit -> Globnames.global_reference
-val get_eq_elim : unit -> Globnames.global_reference
+val get_eq : unit -> Names.GlobRef.t
+val get_eq_refl : unit -> Names.GlobRef.t
+val get_eq_case : unit -> Names.GlobRef.t
+val get_eq_elim : unit -> Names.GlobRef.t
 
-val get_one : unit -> Globnames.global_reference
-val get_one_prf : unit -> Globnames.global_reference
-val get_zero : unit -> Globnames.global_reference
+val get_one : unit -> Names.GlobRef.t
+val get_one_prf : unit -> Names.GlobRef.t
+val get_zero : unit -> Names.GlobRef.t
 
-val coq_unit : Globnames.global_reference lazy_t
-val coq_tt : Globnames.global_reference lazy_t
+val coq_unit : Names.GlobRef.t lazy_t
+val coq_tt : Names.GlobRef.t lazy_t
 
   
 val coq_prod : esigma -> constr
 val coq_pair : esigma -> constr
 
-val coq_sigma : Globnames.global_reference lazy_t
-val coq_sigmaI : Globnames.global_reference lazy_t
+val coq_sigma : Names.GlobRef.t lazy_t
+val coq_sigmaI : Names.GlobRef.t lazy_t
 val coq_pr1 : Names.Projection.t lazy_t
 val coq_pr2 : Names.Projection.t lazy_t
 			    
-val coq_zero : Globnames.global_reference lazy_t
-val coq_succ : Globnames.global_reference lazy_t
-val coq_nat : Globnames.global_reference lazy_t
+val coq_zero : Names.GlobRef.t lazy_t
+val coq_succ : Names.GlobRef.t lazy_t
+val coq_nat : Names.GlobRef.t lazy_t
 val coq_nat_of_int : int -> Constr.t
 val int_of_coq_nat : Constr.t -> int
 
-val coq_eq : Globnames.global_reference Lazy.t
-val coq_eq_refl : Globnames.global_reference lazy_t
-val coq_heq : Globnames.global_reference lazy_t
-val coq_heq_refl : Globnames.global_reference lazy_t
-val coq_fix_proto : Globnames.global_reference lazy_t
+val coq_eq : Names.GlobRef.t Lazy.t
+val coq_eq_refl : Names.GlobRef.t lazy_t
+val coq_heq : Names.GlobRef.t lazy_t
+val coq_heq_refl : Names.GlobRef.t lazy_t
+val coq_fix_proto : Names.GlobRef.t lazy_t
 val fresh_logic_sort : esigma -> constr
 val mkapp : Environ.env ->
   esigma ->
-  Globnames.global_reference -> constr array -> constr
+  Names.GlobRef.t -> constr array -> constr
 val mkEq : Environ.env ->
   esigma -> types -> constr -> constr -> constr
 val mkRefl : Environ.env -> esigma -> types -> constr -> constr
@@ -256,16 +256,16 @@ val coq_id : esigma -> constr
 val coq_list_ind : esigma -> constr
 val coq_list_nil : esigma -> constr
 val coq_list_cons : esigma -> constr
-val coq_noconfusion_class : Globnames.global_reference lazy_t
-val coq_inacc : Globnames.global_reference Lazy.t
-val coq_block : Globnames.global_reference Lazy.t
-val coq_hide : Globnames.global_reference Lazy.t
-val coq_hidebody : Globnames.global_reference Lazy.t
-val coq_add_pattern : Globnames.global_reference Lazy.t
+val coq_noconfusion_class : Names.GlobRef.t lazy_t
+val coq_inacc : Names.GlobRef.t Lazy.t
+val coq_block : Names.GlobRef.t Lazy.t
+val coq_hide : Names.GlobRef.t Lazy.t
+val coq_hidebody : Names.GlobRef.t Lazy.t
+val coq_add_pattern : Names.GlobRef.t Lazy.t
 val coq_end_of_section_id : Names.Id.t
 val coq_end_of_section_constr : esigma -> constr
 val coq_end_of_section : esigma -> constr
-val coq_end_of_section_ref : Globnames.global_reference Lazy.t
+val coq_end_of_section_ref : Names.GlobRef.t Lazy.t
 val coq_notT : esigma -> constr
 val coq_ImpossibleCall : esigma -> constr
 val unfold_add_pattern : unit Proofview.tactic lazy_t
@@ -283,8 +283,8 @@ val pi_tac : unit -> unit Proofview.tactic
 val noconf_tac : unit -> unit Proofview.tactic
 val eqdec_tac : unit -> unit Proofview.tactic
 val simpl_equations_tac : unit -> unit Proofview.tactic
-val solve_equation_tac : Globnames.global_reference -> unit Proofview.tactic
-val impossible_call_tac : Globnames.global_reference -> Genarg.glevel Genarg.generic_argument
+val solve_equation_tac : Names.GlobRef.t -> unit Proofview.tactic
+val impossible_call_tac : Names.GlobRef.t -> Genarg.glevel Genarg.generic_argument
 val depelim_tac : Names.Id.t -> unit Proofview.tactic
 val do_empty_tac : Names.Id.t -> unit Proofview.tactic
 val depelim_nosimpl_tac : Names.Id.t -> unit Proofview.tactic
@@ -398,8 +398,8 @@ val hintdb_set_transparency :
 val to_peuniverses : 'a Univ.puniverses -> 'a peuniverses
 val from_peuniverses : Evd.evar_map -> 'a peuniverses -> 'a Univ.puniverses
 
-val is_global : Evd.evar_map -> Globnames.global_reference -> constr -> bool
-val constr_of_global_univ : Evd.evar_map -> Globnames.global_reference peuniverses -> constr
+val is_global : Evd.evar_map -> Names.GlobRef.t -> constr -> bool
+val constr_of_global_univ : Evd.evar_map -> Names.GlobRef.t peuniverses -> constr
 val smash_rel_context : Evd.evar_map -> rel_context -> rel_context (** expand lets in context *)
 
 val rel_vect : int -> int -> constr array

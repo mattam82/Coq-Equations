@@ -32,11 +32,12 @@ val term_of_tree :
 val is_comp_obl : Evd.evar_map -> logical_rec option -> Evar_kinds.t -> bool
 
 type term_info = {
-  term_id : Globnames.global_reference;
+  term_id : Names.GlobRef.t;
   base_id : string;
   decl_kind : Decl_kinds.definition_kind;
   helpers_info : (Evar.t * int * identifier) list;
   comp_obls : Id.Set.t; (** The recursive call proof obligations *)
+  user_obls : Id.Set.t; (** The user proof obligations *)
 }
 
 type program_info = {

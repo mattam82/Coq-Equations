@@ -244,7 +244,7 @@ let coq_Id_case = lazy (init_reference ["Equations";"DepElim"] "Id_rect_r")
 let coq_Id_elim = lazy (init_reference ["Equations";"DepElim"] "Id_rect_dep_r")
 			 
 
-type logic_ref = Globnames.global_reference lazy_t
+type logic_ref = Names.GlobRef.t lazy_t
 							       
 type logic = {
   logic_eq_ty : logic_ref;
@@ -596,7 +596,7 @@ let call_tac_on_ref tac c =
 let mp = Names.MPfile (Names.DirPath.make (List.map Names.Id.of_string ["DepElim"; "Equations"]))
 let solve_equation = Names.KerName.make mp Names.DirPath.empty (Names.Label.make "solve_equation")
 
-let solve_equation_tac (c : Globnames.global_reference) =
+let solve_equation_tac (c : Names.GlobRef.t) =
   let ist, tac = call_tac_on_ref solve_equation c in
   Tacinterp.eval_tactic_ist ist tac
 
@@ -677,7 +677,7 @@ let it_mkProd_or_clean env sigma ty ctx =
   nf_beta env sigma (List.fold_left
                        (fun c d -> whd_betalet sigma
 			 (if (get_name d) == Anonymous then subst1 mkProp c
-			  else (mkProd_or_LetIn d c))) ty ctx)
+                          else mkProd_or_LetIn d c)) ty ctx)
 
 let it_mkLambda_or_subst ty ctx = 
   whd_betalet Evd.empty
