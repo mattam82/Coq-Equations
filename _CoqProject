@@ -21,6 +21,8 @@ src/syntax.mli
 src/syntax.ml
 src/covering.mli
 src/covering.ml
+src/inversion.ml
+src/inversion.mli
 src/splitting.mli
 src/splitting.ml
 src/principles_proofs.mli
