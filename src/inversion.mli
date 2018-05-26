@@ -9,15 +9,13 @@
 open EConstr
 open Covering
 
-type matching_problem = pat list * pat list
+type matching_problem
 type clause = rel_context * matching_problem
 type problems = rel_context * clause list
 
 val make_inversion_pb :
-  Environ.env -> Evd.evar_map -> Names.inductive * EConstr.EInstance.t -> problems * constr
-
-val find_split : rel_context ->
-  (context_map * (Covering.pat list * Covering.pat list)) list -> int option
+  Environ.env -> Evd.evar_map -> Names.inductive * EConstr.EInstance.t -> Names.Id.t ->
+  problems * constr * Syntax.rec_type option
 
 val is_prel_pat : int -> pat -> bool
 
