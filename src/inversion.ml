@@ -124,10 +124,11 @@ let name_ctx ctx =
       | Name _ -> decl)
       ctx
 
-let make_inversion_pb env sigma (ind, u) na : problems * constr * Syntax.rec_type option =
+let make_inversion_pb env sigma (ind, u as oindu) na =
   let indu = (ind, EInstance.kind sigma u) in
   let arity = EConstr.of_constr (Inductiveops.type_of_inductive env indu) in
   let cstrs = Array.map EConstr.of_constr (Inductiveops.type_of_constructors env indu) in
+  let sigma, arity = Evarsolve.refresh_universes (Some false) env sigma arity in
   let outer, sort = splay_prod_assum env sigma arity in (* With lets *)
   let recursive =
     let (mib, oib) = Inductive.lookup_mind_specif env ind in
@@ -141,23 +142,28 @@ let make_inversion_pb env sigma (ind, u) na : problems * constr * Syntax.rec_typ
       in ctx, Some rec_info
     else [], None
   in
-  let outer = name_ctx outer @ init_ctx in
+  let replace_rec_calls ty (* under na : arity; outer *) =
+    Termops.replace_term sigma (mkIndU oindu) (mkRel (succ (List.length outer))) ty
+  in
+  let outer = name_ctx outer in
   let env = push_rel_context init_ctx env in
   let params = Inductiveops.inductive_nparams_env env ind in
-  let _paramsdecls = Inductiveops.inductive_nparamdecls_env env ind in
   let realdecls = Inductiveops.inductive_nrealdecls_env env ind in
   let args_ctx, params_ctx = CList.chop realdecls outer in
   let params_rels = Context.Rel.to_extended_vect mkRel realdecls params_ctx in
   let realargs_rels = Context.Rel.to_extended_vect mkRel 0 args_ctx in
-  let params_env = push_rel_context params_ctx env in
+  let params_env = push_rel_context outer env in
   let problems =
     Array.map_to_list (fun ty ->
+      let ty = Vars.lift realdecls ty in (* in init; params; args *)
       let instty = hnf_prod_appvect params_env sigma ty params_rels in
+      let instty = replace_rec_calls instty in
       let inner, concl = splay_prod_assum params_env sigma instty in
       let hd, args = decompose_app_vect sigma concl in (* I pars args *)
       let cpars, cargs = Array.chop params args in
       let pbs = Array.map2 (fun oarg carg ->
-	(pattern_of_constr sigma oarg, pattern_of_constr sigma carg))
+	(pattern_of_constr sigma (Vars.lift (List.length inner) oarg),
+	 pattern_of_constr sigma carg))
 	realargs_rels cargs
       in
       let pbs = 
@@ -165,22 +171,24 @@ let make_inversion_pb env sigma (ind, u) na : problems * constr * Syntax.rec_typ
 	  ProblemSet.add (l, r) acc) ProblemSet.empty pbs
       in inner, pbs) cstrs
   in
-    (outer, problems), sort, rec_info
+    sigma, (outer @ init_ctx, problems), outer, sort, rec_info
 
 let is_prel_pat n = function
   | PRel n' -> Int.equal n n'
   | _ -> false
-    
+
 let is_constructor_pat = function
   | PCstr _ -> true
   | _ -> false
 
-let make_telescope evdref g =
+let make_telescope env evdref g =
   if List.is_empty g then
     let sigma, g = Evarutil.new_global !evdref (Equations_common.get_one ()) in
       (evdref := sigma; g)
   else
-    let c, ctx, p = Sigma_types.telescope evdref g in c
+    let c, ctx, p = Sigma_types.telescope evdref g in
+    let sigma, _ty = Typing.type_of env !evdref c in
+      (evdref := sigma; c)
 						     
 let find_split env sigma outer problems =
   let do_split x =
@@ -245,7 +253,6 @@ let solve_problem env sigma ty (outer, problems) =
   let problems = List.map (fun (inner, pbs) ->
      (* outer ; inner |- .. : outer ; inner *)
     let subst = id_subst (inner @ outer) in
-    let pbs = ProblemSet.map (fun (l, r) -> (lift_pat (List.length inner) l, r)) pbs in
       (subst, pbs))
     problems
   in
@@ -271,7 +278,8 @@ let solve_problem env sigma ty (outer, problems) =
 	(* Found a single matching constructor *)
 	let innerlen = List.length (pi1 subst) - List.length outer in
 	let inner = List.firstn innerlen (pi1 subst) in
-	Compute (lhs, [], ty, RProgram (make_telescope evdref inner))
+	let rhs = make_telescope (push_rel_context (pi1 lhs) env) evdref inner in
+	  Compute (lhs, [], ty, RProgram rhs)
       | _ ->
 	match find_split env sigma outer pbs with
 	| Some var ->
@@ -294,12 +302,11 @@ let solve_problem env sigma ty (outer, problems) =
 let derive_inversion env sigma ~polymorphic indu =
   let na = Nametab.basename_of_global (Names.GlobRef.IndRef (fst indu)) in
   let name = Nameops.add_prefix "invert_" na in
-  let (outer, _ as problems), ty, rec_info = make_inversion_pb env sigma indu name in
-  let sigma, ty = Evarsolve.refresh_universes (Some false) env sigma ty in
+  let sigma, (outer, _ as problems), sign, ty, rec_info = make_inversion_pb env sigma indu name in
   let sigma, splitting = solve_problem env sigma ty problems in
   let hook splitting cmap terminfo ustate = () in
     Splitting.define_tree rec_info outer false [] (Evar_kinds.Define false)
-      (ref sigma) env (name, outer, ty) None splitting hook
+      (ref sigma) env (name, sign, ty) None splitting hook
 
 let _derive =
   Derive.(register_derive { derive_name = "Invert";
