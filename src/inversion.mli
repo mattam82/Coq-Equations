@@ -15,7 +15,7 @@ type problems = rel_context * clause list
 
 val make_inversion_pb :
   Environ.env -> Evd.evar_map -> Names.inductive * EConstr.EInstance.t -> Names.Id.t ->
-  problems * constr * Syntax.rec_type option
+  Evd.evar_map * problems * rel_context * constr * Syntax.rec_type option
 
 val is_prel_pat : int -> pat -> bool
 

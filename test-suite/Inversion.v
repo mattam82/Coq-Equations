@@ -5,6 +5,7 @@ Inductive le : nat -> nat -> Prop :=
 | le_0 n : le 0 n
 | le_S n m (H : le n m) : le (S n) (S m).
 Derive Invert for le.
+Print invert_le.
 
 Section Image.
   Context {A B : Type} (f : A -> B).
@@ -25,11 +26,7 @@ Section Vector.
   | vcons (a : A) (n : nat) (v : vector A n) : vector A (S n).
 
   Derive Invert for vector.
-  Print invert_vector.
-End Vector.
 
-(* Local Variables: *)
-(* coq-prog-name: "/Volumes/Dev/coq/trunk/bin/coqtop.byte" *)
-(* coq-prog-args: ("-emacs" "-bt" "-I" "../src" "-R" "../theories" "Equations") *)
-(* coq-load-path: nil *)
-(* End: *)
+  Set Printing Universes.
+  Print invert_vector. 
+End Vector.
