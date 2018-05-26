@@ -14,7 +14,70 @@ open EConstr
 open Reductionops
 open Termops
 
-type matching_problem = pat list * pat list
+module MatchingProblem = struct
+  type t = pat * pat
+
+  let rec pat_compare x y =
+    match x, y with
+    | PRel i, PRel j -> Int.compare i j
+    | PCstr ((c, u), pl), PCstr ((c', u'), pl') ->
+      let x = Names.constructor_ord c c' in
+	if Int.equal x 0 then
+	  compare_pats pl pl'
+	else x
+    | PInac t, PInac t' -> Constr.compare (EConstr.Unsafe.to_constr t) (EConstr.Unsafe.to_constr t')
+    | PRel _, _ -> -1
+    | _, PRel _ -> 1
+    | PCstr _, _ -> -1
+    | _, PCstr _ -> 1
+    | PHide _, _ -> -1
+    | _, PHide _ -> 1
+      
+  and compare_pats pl pl' =
+    match pl, pl' with
+    | hd :: tl, hd' :: tl' ->
+      let x = pat_compare hd hd' in
+	if Int.equal x 0 then compare_pats tl tl'
+	else x
+    | [], [] -> 0
+    | _ :: _, _ -> 1
+    | [], _ :: _ -> -1
+      
+  let compare (p, q) (r, s) =
+    let x = pat_compare p r in
+      if Int.equal x 0 then pat_compare q s
+      else x
+end
+
+module ProblemSet = Set.Make(MatchingProblem)
+
+let specialize_pb sigma rho (l, r) =
+  let spec = specialize sigma (pi2 rho) in
+    (spec l, spec r)
+
+let specialize_pbs sigma rho pbs =
+  ProblemSet.map (specialize_pb sigma rho) pbs
+
+let pp_pb env sigma (l, r) =
+  let open Pp in
+    pr_pat env sigma l ++ str" =? " ++ pr_pat env sigma r 
+  
+let pp_pbs env sigma pbs =
+  let open Pp in
+    ProblemSet.fold (fun pb acc ->
+      pp_pb env sigma pb ++ spc () ++ acc)
+      pbs (mt ())
+
+let pr_one_pb env sigma (inner, pbs) =
+  let open Pp in
+  pr_context_map env sigma inner ++ str " | " ++
+    pp_pbs (push_rel_context (pi1 inner) env) sigma pbs
+
+let pr_all_pbs env sigma pbs =
+  let open Pp in
+    prlist_with_sep spc (pr_one_pb env sigma) pbs
+      
+type matching_problem = ProblemSet.t    
 type clause = rel_context * matching_problem
 type problems = rel_context * clause list
 
@@ -25,34 +88,32 @@ let rec pattern_of_constr sigma c =
   | Rel n when List.is_empty args -> PRel n
   | _ -> PInac c
 
-let rec match_pattern env sigma gamma p c =
+let rec decompose_pattern env sigma p c =
   match p, c with
   | p, PRel i ->
-    let rho = single_subst env sigma i p gamma in
-      rho, ([], [])
+    ProblemSet.singleton (p, c)
   | PCstr ((c,_), pl), PCstr ((c', _), pl') -> 
     if Names.eq_constructor c c' then
-      match_patterns env sigma gamma pl pl'
+      decompose_patterns env sigma pl pl'
     else raise Conflict
   | PInac t, u ->
     let uc = pat_constr u in
-      if is_conv env sigma t uc then id_subst gamma, ([], [])
-      else id_subst gamma, ([p], [c])
-  | _, _ -> raise Stuck
-	
-and match_patterns env sigma gamma pl l =
+      if is_conv env sigma t uc then ProblemSet.empty
+      else ProblemSet.singleton (p, c)
+  | _, _ -> ProblemSet.singleton (p, c)
+
+and decompose_patterns env sigma pl l =
   match pl, l with
-  | [], [] -> id_subst gamma, ([], [])
+  | [], [] -> ProblemSet.empty
   | hd :: tl, hd' :: tl' -> 
-    let rho, rest = match_pattern env sigma gamma hd hd' in
-    let gamma' = pi1 rho in
-    let spec = specialize_pats sigma (pi2 rho) in
-    let rho', rest' =
-      match_patterns env sigma gamma' (spec tl) (spec tl')
-    in
-    let spec' = specialize_pats sigma (pi2 rho') in
-      compose_subst env ~sigma rho' rho, (spec' (fst rest) @ fst rest', spec' (snd rest) @ snd rest')
-  | _ -> raise Conflict
+    let pbs = decompose_pattern env sigma hd hd' in
+      ProblemSet.union pbs (decompose_patterns env sigma tl tl')
+  | _, _ -> raise Conflict
+
+let decompose_problems env sigma pbs =
+  ProblemSet.fold (fun (l, r) acc ->
+    ProblemSet.union (decompose_pattern env sigma l r) acc)
+    pbs ProblemSet.empty
 
 let name_ctx ctx =
   let open Names in
@@ -63,12 +124,25 @@ let name_ctx ctx =
       | Name _ -> decl)
       ctx
 
-let make_inversion_pb env sigma (ind, u) : problems * constr =
+let make_inversion_pb env sigma (ind, u) na : problems * constr * Syntax.rec_type option =
   let indu = (ind, EInstance.kind sigma u) in
   let arity = EConstr.of_constr (Inductiveops.type_of_inductive env indu) in
   let cstrs = Array.map EConstr.of_constr (Inductiveops.type_of_constructors env indu) in
   let outer, sort = splay_prod_assum env sigma arity in (* With lets *)
-  let outer = name_ctx outer in
+  let recursive =
+    let (mib, oib) = Inductive.lookup_mind_specif env ind in
+      mib.Declarations.mind_finite == Declarations.Finite
+  in
+  let init_ctx, rec_info =
+    if recursive then
+      let ctx = [Context.Rel.Declaration.LocalAssum (Names.Name na, arity)] in
+      let rec_info =
+	Syntax.Structural [(na, Syntax.StructuralOn 0, None)]
+      in ctx, Some rec_info
+    else [], None
+  in
+  let outer = name_ctx outer @ init_ctx in
+  let env = push_rel_context init_ctx env in
   let params = Inductiveops.inductive_nparams_env env ind in
   let _paramsdecls = Inductiveops.inductive_nparamdecls_env env ind in
   let realdecls = Inductiveops.inductive_nrealdecls_env env ind in
@@ -85,9 +159,13 @@ let make_inversion_pb env sigma (ind, u) : problems * constr =
       let pbs = Array.map2 (fun oarg carg ->
 	(pattern_of_constr sigma oarg, pattern_of_constr sigma carg))
 	realargs_rels cargs
-      in inner, CList.split (Array.to_list pbs)) cstrs
+      in
+      let pbs = 
+	Array.fold_left (fun acc (l, r) ->
+	  ProblemSet.add (l, r) acc) ProblemSet.empty pbs
+      in inner, pbs) cstrs
   in
-    (outer, problems), sort
+    (outer, problems), sort, rec_info
 
 let is_prel_pat n = function
   | PRel n' -> Int.equal n n'
@@ -103,13 +181,15 @@ let make_telescope evdref g =
       (evdref := sigma; g)
   else
     let c, ctx, p = Sigma_types.telescope evdref g in c
-
-let find_split outer problems =
+						     
+let find_split env sigma outer problems =
   let do_split x =
-    let do_split (inner, (l, r)) =
+    let do_split (inner, pbs) =
+      let open Pp in
+      let () = Feedback.msg_debug (str"splitting on: " ++ int x ++ str" in " ++ pr_one_pb env sigma (inner, pbs)) in
       let diff = List.length (pi1 inner) - List.length outer in
       let x = x + diff in
-	List.exists2 (fun l r -> is_prel_pat x l && is_constructor_pat r) l r
+	ProblemSet.exists (fun (l, r) -> is_prel_pat x l && is_constructor_pat r) pbs
     in
       List.for_all do_split problems
   in
@@ -120,49 +200,80 @@ let find_split outer problems =
       else aux (succ i)
     else None
   in aux 0
-						
+
+let solve_problems env sigma rho pbs =
+  let rec aux rho' pbs postponed =
+    if ProblemSet.is_empty pbs then
+      (compose_subst env ~sigma rho' rho,
+       specialize_pbs sigma rho' postponed)
+    else 
+      let pb = ProblemSet.choose pbs in
+      let pbs = ProblemSet.remove pb pbs in
+      let (l, r) = specialize_pb sigma rho' pb in
+	match l, r with
+	| _, PRel i -> 
+	  let rho'' = single_subst env sigma i l (pi1 rho') in
+	    aux (compose_subst env ~sigma rho'' rho') pbs postponed
+	| PInac t, u ->
+	  let uc = pat_constr u in
+	    if is_conv env sigma t uc then aux rho' pbs postponed
+	    else aux rho' pbs (ProblemSet.add pb postponed)
+	| _, _ -> aux rho' pbs (ProblemSet.add pb postponed)
+  in aux (id_subst (pi1 rho)) pbs ProblemSet.empty
+    
 let simplify_problems env sigma problems =
-  let aux (rho, (l, r as pbs)) =
+  let open Pp in
+  let aux (rho, pbs) =
     try
-      let rho', (l, r) = match_patterns env sigma (pi1 rho) l r in
-      let rho' = compose_subst env ~sigma rho' rho in
-      let rho'', rest' = match_patterns env sigma (pi1 rho') l r in
-	Some (rho'', rest')
-    with Conflict -> None
-    | Stuck -> Some (rho, pbs)
+      let () = Feedback.msg_debug (str"decomposing: " ++ pp_pbs env sigma pbs) in
+      let pbs = decompose_problems env sigma pbs in
+      let () = Feedback.msg_debug (str"decomposed: " ++ pp_pbs env sigma pbs) in
+      let rho, pbs = solve_problems env sigma rho pbs in
+      let () = Feedback.msg_debug (str"solved: " ++ pp_pbs env sigma pbs) in
+      let pbs = decompose_problems env sigma pbs in
+      let () = Feedback.msg_debug (str"decomposing postponed: " ++ pp_pbs env sigma pbs) in
+	Some (solve_problems env sigma rho pbs)
+    with Conflict ->
+      Feedback.msg_debug (str"Conflict!");
+      None
+    | Stuck ->
+      Feedback.msg_debug (str"Stuck!");
+      Some (rho, pbs)
   in List.map_filter aux problems
 
 let solve_problem env sigma ty (outer, problems) =
-  let problems = List.map (fun (inner, (l, r)) ->
+  let problems = List.map (fun (inner, pbs) ->
      (* outer ; inner |- .. : outer ; inner *)
     let subst = id_subst (inner @ outer) in
-      (subst, (List.map (lift_pat (List.length inner)) l, r)))
+    let pbs = ProblemSet.map (fun (l, r) -> (lift_pat (List.length inner) l, r)) pbs in
+      (subst, pbs))
     problems
   in
   let update_problems pbs s (* outer' |- .. : outer *) =
-    let update_problem (rho, (l, r)) =
+    let update_problem (rho, pbs) =
       let gamma = pi1 rho in (* outer', gamma *)
       let innerlen = List.length gamma - List.length (pi3 s) in
       let s' = lift_subst env sigma s (List.firstn innerlen gamma) in
       (* outer', gamma |- s' : outer ; gamma *)
-	(compose_subst env ~sigma s' rho,
-	 (specialize_pats sigma (pi2 s') l,
-	  specialize_pats sigma (pi2 s') r))
+	(compose_subst env ~sigma s' rho, specialize_pbs sigma s' pbs)
     in List.map update_problem pbs
   in
   let sigma, coq_false = Evarutil.new_global sigma (Equations_common.get_zero ()) in
   let evdref = ref sigma in
   let rec aux (outer, problems) lhs =
+    let () = Feedback.msg_debug Pp.(str"Simplifying pbs: " ++ pr_all_pbs env sigma problems) in
     let pbs = simplify_problems env !evdref problems in
+    let () = Feedback.msg_debug Pp.(str"Simplified pbs: " ++ pr_all_pbs env sigma pbs) in
       match pbs with
       | [] -> (* No matching constructor *)
 	Compute (lhs, [], ty, RProgram coq_false)
-      | [(subst, ([], []))] -> (* Found a single matching constructor *)
+      | [(subst, pbs)] when ProblemSet.is_empty pbs ->
+	(* Found a single matching constructor *)
 	let innerlen = List.length (pi1 subst) - List.length outer in
 	let inner = List.firstn innerlen (pi1 subst) in
 	Compute (lhs, [], ty, RProgram (make_telescope evdref inner))
       | _ ->
-	match find_split outer pbs with
+	match find_split env sigma outer pbs with
 	| Some var ->
 	  (match split_var (env, evdref) var outer with
 	  | Some (k, newctx, split) -> (* outer' |- s : outer *)
@@ -183,11 +294,10 @@ let solve_problem env sigma ty (outer, problems) =
 let derive_inversion env sigma ~polymorphic indu =
   let na = Nametab.basename_of_global (Names.GlobRef.IndRef (fst indu)) in
   let name = Nameops.add_prefix "invert_" na in
-  let (outer, _ as problems), ty = make_inversion_pb env sigma indu in
+  let (outer, _ as problems), ty, rec_info = make_inversion_pb env sigma indu name in
   let sigma, ty = Evarsolve.refresh_universes (Some false) env sigma ty in
   let sigma, splitting = solve_problem env sigma ty problems in
   let hook splitting cmap terminfo ustate = () in
-  let rec_info = None in
     Splitting.define_tree rec_info outer false [] (Evar_kinds.Define false)
       (ref sigma) env (name, outer, ty) None splitting hook
 
