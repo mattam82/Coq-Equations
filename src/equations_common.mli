@@ -208,8 +208,12 @@ val coq_pair : esigma -> constr
 
 val coq_sigma : Names.GlobRef.t lazy_t
 val coq_sigmaI : Names.GlobRef.t lazy_t
+val coq_sigmaP : Names.GlobRef.t lazy_t
+val coq_sigmaPI : Names.GlobRef.t lazy_t
 val coq_pr1 : Names.Projection.t lazy_t
 val coq_pr2 : Names.Projection.t lazy_t
+val coq_prP1 : Names.Projection.t lazy_t
+val coq_prP2 : Names.Projection.t lazy_t
 			    
 val coq_zero : Names.GlobRef.t lazy_t
 val coq_succ : Names.GlobRef.t lazy_t
