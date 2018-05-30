@@ -159,6 +159,7 @@ let make_inversion_pb env sigma (ind, u as oindu) na =
       let instty = hnf_prod_appvect params_env sigma ty params_rels in
       let instty = replace_rec_calls instty in
       let inner, concl = splay_prod_assum params_env sigma instty in
+      let inner = name_ctx inner in
       let hd, args = decompose_app_vect sigma concl in (* I pars args *)
       let cpars, cargs = Array.chop params args in
       let pbs = Array.map2 (fun oarg carg ->
