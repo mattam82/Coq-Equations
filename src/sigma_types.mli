@@ -26,6 +26,7 @@ val decompose_indapp : Evd.evar_map ->
   constr -> constr array -> constr * constr array
 val telescope :
   Evd.evar_map ref ->
+  Sorts.family ->
   rel_context ->
   constr * rel_context * constr
 val sigmaize :
@@ -34,6 +35,7 @@ val sigmaize :
   Evd.evar_map ref ->
   rel_context ->
   constr ->
+  Sorts.family ->
   constr * constr * rel_context * constr list * Names.Projection.t *
   Names.Projection.t * constr * constr
 val ind_name : Names.inductive -> Names.Id.t

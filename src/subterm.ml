@@ -178,7 +178,7 @@ let derive_subterm env sigma ~polymorphic ind =
           (* Construct a family relation by packaging all indexes into
              a sigma type *)
           let _, _, pars, indices, indexproj, valproj, valsig, typesig =
-            sigmaize env evm parambinders indapp in
+            sigmaize env evm parambinders indapp InType in
           let env' = push_rel_context pars env in
           let subrel =
             let liftindices = List.map (liftn 2 2) indices in

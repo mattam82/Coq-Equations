@@ -81,11 +81,15 @@ let decompose_indapp sigma f args =
 
 (* let sigT_info = lazy (make_case_info (Global.env ()) (Globnames.destIndRef (Lazy.force sigT).typ) LetStyle) *)
 
-let telescope evd = function
+let telescope evd indsort = function
   | [] -> assert false
   | [d] -> let (n, _, t) = to_tuple d in t, [of_tuple (n, Some (mkRel 1), Vars.lift 1 t)],
                                         mkRel 1
   | d :: tl ->
+    let (coq_sigma_from_sort,coq_sigma_from_sortI,coq_pr1_from_sort,coq_pr2_from_sort) = match indsort with
+      | InProp -> (coq_sigmaP,coq_sigmaPI,coq_prP1,coq_prP2)
+      | InSet | InType -> (coq_sigma,coq_sigmaI,coq_pr1,coq_pr2)
+    in  
       let (n, _, t) = to_tuple d in
       let len = succ (List.length tl) in
       let ty, tys =
@@ -93,7 +97,7 @@ let telescope evd = function
 	  (fun (ty, tys) d ->
             let (n, b, t) = to_tuple d in
 	    let pred = mkLambda (n, t, ty) in
-	    let sigty = mkAppG evd (Lazy.force coq_sigma) [|t; pred|] in
+	    let sigty = mkAppG evd (Lazy.force coq_sigma_from_sort) [|t; pred|] in
             let _, u = destInd !evd (fst (destApp !evd sigty)) in
 	      (sigty, (u, pred) :: tys))
 	  (t, []) tl
@@ -103,7 +107,7 @@ let telescope evd = function
 	  let pred = Vars.lift k pred in
 	  let (n, dom, codom) = destLambda !evd pred in
 	  let intro =
-            mkApp (constr_of_global_univ !evd (Lazy.force coq_sigmaI, u),
+            mkApp (constr_of_global_univ !evd (Lazy.force coq_sigma_from_sortI, u),
                    [| dom; pred; mkRel k; intro|]) in
 	    (intro, succ k))
 	  tys (mkRel 1, 2)
@@ -111,18 +115,18 @@ let telescope evd = function
       let (last, _, subst) = List.fold_right2
 	(fun pred d (prev, k, subst) ->
           let (n, b, t) = to_tuple d in
-	  let proj1 = mkProj (Lazy.force coq_pr1, prev) in
-	  let proj2 = mkProj (Lazy.force coq_pr2, prev) in
+	  let proj1 = mkProj (Lazy.force coq_pr1_from_sort, prev) in
+	  let proj2 = mkProj (Lazy.force coq_pr2_from_sort, prev) in
 	    (Vars.lift 1 proj2, succ k, of_tuple (n, Some proj1, Vars.liftn 1 k t) :: subst))
 	(List.rev tys) tl (mkRel 1, 1, [])
       in ty, (of_tuple (n, Some last, Vars.liftn 1 len t) :: subst), constr
 
-let sigmaize ?(liftty=0) env0 evd pars f =
+let sigmaize ?(liftty=0) env0 evd pars f indsort =
   let env = push_rel_context pars env0 in
   let ty = Retyping.get_type_of env !evd f in
   let ctx, concl = splay_prod_assum env !evd ty in
   let ctx = smash_rel_context !evd ctx in
-  let argtyp, letbinders, make = telescope evd ctx in
+  let argtyp, letbinders, make = telescope evd indsort ctx in
     (* Everyting is in env, move to index :: letbinders :: env *) 
   let lenb = List.length letbinders in
   let pred =
@@ -174,6 +178,7 @@ let build_sig_of_ind env sigma (ind,u as indu) =
   let ctx = inductive_alldecls (from_peuniverses sigma indu) in
   let ctx = List.map of_rel_decl ctx in
   let ctx = smash_rel_context sigma ctx in
+  let indsort = Inductive.inductive_sort_family oib in
   let lenpars = mib.mind_nparams_rec in
   let lenargs = List.length ctx - lenpars in
   if lenargs = 0 then
@@ -184,7 +189,7 @@ let build_sig_of_ind env sigma (ind,u as indu) =
   let fullapp = mkApp (mkIndU indu, extended_rel_vect 0 ctx) in
   let evd = ref sigma in
   let idx, pred, pars, _, _, _, valsig, _ = 
-    sigmaize env evd pars parapp 
+    sigmaize env evd pars parapp indsort
   in
   let sigma = !evd in
     sigma, pred, pars, fullapp, valsig, ctx, lenargs, idx
@@ -398,7 +403,7 @@ let uncurry_call env sigma c =
   let ctx, concl = decompose_prod_n_assum sigma (List.length args) ty in
   let evdref = ref sigma in
   (* let ctx = (Anonymous, None, concl) :: ctx in *)
-  let sigty, sigctx, constr = telescope evdref ctx in
+  let sigty, sigctx, constr = telescope evdref InType ctx  in
   let app = Vars.substl (List.rev args) constr in
   !evdref, app, sigty
 
@@ -614,7 +619,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
         ) (succ nb_cuts, [], [], []) arity_ctx' rev_indices' omitted
       in
       let sigctx = List.rev rev_sigctx in
-      let sigty, _, sigconstr = telescope evd sigctx in
+      let sigty, _, sigconstr = telescope evd InType sigctx in
 
       (* Build a goal with an equality of telescopes at the front. *)
       let left_sig = Vars.substl (List.rev tele_lhs) sigconstr in

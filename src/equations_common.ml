@@ -394,13 +394,19 @@ let subterm_relation_base = "subterm_relation"
 let coq_sigma = lazy (init_reference ["Equations";"Init"] "sigma")
 let coq_sigmaI = lazy (init_reference ["Equations";"Init"] "sigmaI")
 
+let coq_sigmaP = lazy (init_reference ["Equations";"Init"] "sigmaP")
+let coq_sigmaPI = lazy (init_reference ["Equations";"Init"] "sigmaPI")
+
 let init_projection dp i =
   let r = init_reference dp i in
   Names.Projection.make (Globnames.destConstRef r) false
 			
 let coq_pr1 = lazy (init_projection ["Equations";"Init"] "pr1")
 let coq_pr2 = lazy (init_projection ["Equations";"Init"] "pr2")
-			    
+
+let coq_prP1 = lazy (init_projection ["Equations";"Init"] "prP1")
+let coq_prP2 = lazy (init_projection ["Equations";"Init"] "prP2")
+
 (* Misc tactics *)
 
 
