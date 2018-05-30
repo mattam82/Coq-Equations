@@ -200,7 +200,7 @@ END
 
 
 module Gram = Pcoq.Gram
-module Vernac = Pcoq.Vernac_
+module Vernac = Pvernac.Vernac_
 
 type binders_argtype = Constrexpr.local_binder_expr list Genarg.uniform_genarg_type
 
@@ -234,7 +234,7 @@ let pr_glob_deppat_equations _ _ _ l = mt ()
 let pr_deppat_equations _ _ _ l = mt ()
 
 let deppat_equations : Syntax.pre_equation list Gram.entry =
-  Pcoq.create_generic_entry Pcoq.uvernac "deppat_equations" (Genarg.rawwit wit_deppat_equations)
+  Pcoq.create_generic_entry Pvernac.uvernac "deppat_equations" (Genarg.rawwit wit_deppat_equations)
 
 let _ = Pptactic.declare_extra_genarg_pprule wit_deppat_equations
   pr_raw_deppat_equations pr_glob_deppat_equations pr_deppat_equations
@@ -267,7 +267,7 @@ let pr_glob_equations _ _ _ l = mt ()
 let pr_equations _ _ _ l = mt ()
 
 let equations : pre_equation where_clause list Gram.entry =
-  Pcoq.create_generic_entry Pcoq.uvernac "equations" (Genarg.rawwit wit_equations)
+  Pcoq.create_generic_entry Pvernac.uvernac "equations" (Genarg.rawwit wit_equations)
 
 let _ = Pptactic.declare_extra_genarg_pprule wit_equations
   pr_raw_equations pr_glob_equations pr_equations
