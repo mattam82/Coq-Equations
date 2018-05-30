@@ -1505,11 +1505,11 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
 	      in
 	      Some (loc, rev newlhs @ nextrefs, newrhs)
 	   | _ -> 
-	      errorlabstrm "covering"
+	      CErrors.user_err ~hdr:"covering" ~loc
 			   (str "Non-matching clause in with subprogram:" ++ fnl () ++
-			      str"Problem is " ++ spc () ++ pr_context_map env !evars prob ++ 
-			      str"And the user patterns are: " ++ fnl () ++
-			      pr_user_pats env oldpats)) cls
+			      str"Problem is " ++ spc () ++ pr_context_map env !evars prob ++ fnl () ++
+			      str"And the user patterns are: " ++ spc () ++
+			      pr_user_pats env lhs)) cls
      in
      let cls' = cls' 1 cls in
      let strength_app, refarg =
