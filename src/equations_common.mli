@@ -221,8 +221,13 @@ val is_lglobal : lazy_ref -> Constr.constr -> bool
 
 val coq_sigma : lazy_ref
 val coq_sigmaI : lazy_ref
+val coq_sigmaP : lazy_ref
+val coq_sigmaPI : lazy_ref
+
 val coq_pr1 : Names.Projection.t lazy_t
 val coq_pr2 : Names.Projection.t lazy_t
+val coq_prP1 : Names.Projection.t lazy_t
+val coq_prP2 : Names.Projection.t lazy_t
 			    
 val coq_zero : lazy_ref
 val coq_succ : lazy_ref

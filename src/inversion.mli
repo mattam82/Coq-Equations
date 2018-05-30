@@ -15,10 +15,10 @@ type problems = rel_context * clause list
 
 val make_inversion_pb :
   Environ.env -> Evd.evar_map -> Names.inductive * EConstr.EInstance.t -> Names.Id.t ->
-  Evd.evar_map * problems * rel_context * constr * Syntax.rec_type option
+  Evd.evar_map * problems * rel_context * constr * Sorts.family * Syntax.rec_type option
 
 val is_prel_pat : int -> pat -> bool
 
 val simplify_problems : Environ.env -> Evd.evar_map -> (context_map * matching_problem) list -> (context_map * matching_problem) list
-val solve_problem : Environ.env -> Evd.evar_map -> constr -> problems -> Evd.evar_map * splitting
+val solve_problem : Environ.env -> Evd.evar_map -> constr -> Sorts.family -> problems -> Evd.evar_map * splitting
 

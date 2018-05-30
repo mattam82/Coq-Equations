@@ -362,6 +362,12 @@ let init_projection gr =
 let coq_pr1 = lazy (init_projection (Lazy.force (find_global "sigma.pr1")))
 let coq_pr2 = lazy (init_projection (Lazy.force (find_global "sigma.pr2")))
 			    
+let coq_sigmaP = find_global "sigmaP.type"
+let coq_sigmaPI = find_global "sigmaP.intro"
+
+let coq_prP1 = lazy (init_projection (Lazy.force (find_global "sigmaP.pr1")))
+let coq_prP2 = lazy (init_projection (Lazy.force (find_global "sigmaP.pr2")))
+
 (* Misc tactics *)
 
 

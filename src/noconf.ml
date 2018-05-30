@@ -49,8 +49,8 @@ let mkcase env sigma c ty constrs =
     make_case_or_project env sigma indf ci ty c brs
 
 let mk_eq env evd args args' =
-  let _, _, make = Sigma_types.telescope evd args in
-  let _, _, make' = Sigma_types.telescope evd args' in
+  let _, _, make = Sigma_types.telescope evd InType args in
+  let _, _, make' = Sigma_types.telescope evd InType args' in
   let make = lift (List.length args + 1) make in
   let ty = Retyping.get_type_of env !evd make in
   mkEq env evd ty make make'

@@ -142,6 +142,7 @@ let make_inversion_pb env sigma (ind, u as oindu) na =
       in ctx, Some rec_info
     else [], None
   in
+  let indsort = Sorts.family (ESorts.kind sigma (destSort sigma sort)) in
   let replace_rec_calls ty (* under na : arity; outer *) =
     Termops.replace_term sigma (mkIndU oindu) (mkRel (succ (List.length outer))) ty
   in
@@ -172,7 +173,7 @@ let make_inversion_pb env sigma (ind, u as oindu) na =
 	  ProblemSet.add (l, r) acc) ProblemSet.empty pbs
       in inner, pbs) cstrs
   in
-    sigma, (outer @ init_ctx, problems), outer, sort, rec_info
+    sigma, (outer @ init_ctx, problems), outer, sort, indsort, rec_info
 
 let is_prel_pat n = function
   | PRel n' -> Int.equal n n'
@@ -182,12 +183,12 @@ let is_constructor_pat = function
   | PCstr _ -> true
   | _ -> false
 
-let make_telescope env evdref g =
+let make_telescope env evdref indSort g =
   if List.is_empty g then
     let sigma, g = Evarutil.new_global !evdref (Equations_common.get_one ()) in
       (evdref := sigma; g)
   else
-    let c, ctx, p = Sigma_types.telescope evdref g in
+    let c, ctx, p = Sigma_types.telescope evdref indSort g in
     let sigma, _ty = Typing.type_of env !evdref c in
       (evdref := sigma; c)
 						     
@@ -250,7 +251,7 @@ let simplify_problems env sigma problems =
       Some (rho, pbs)
   in List.map_filter aux problems
 
-let solve_problem env sigma ty (outer, problems) =
+let solve_problem env sigma ty indsort (outer, problems) =
   let problems = List.map (fun (inner, pbs) ->
      (* outer ; inner |- .. : outer ; inner *)
     let subst = id_subst (inner @ outer) in
@@ -279,7 +280,7 @@ let solve_problem env sigma ty (outer, problems) =
 	(* Found a single matching constructor *)
 	let innerlen = List.length (pi1 subst) - List.length outer in
 	let inner = List.firstn innerlen (pi1 subst) in
-	let rhs = make_telescope (push_rel_context (pi1 lhs) env) evdref inner in
+	let rhs = make_telescope (push_rel_context (pi1 lhs) env) evdref indsort inner in
 	  Compute (lhs, [], ty, RProgram rhs)
       | _ ->
 	match find_split env sigma outer pbs with
@@ -303,12 +304,12 @@ let solve_problem env sigma ty (outer, problems) =
 let derive_inversion env sigma ~polymorphic indu =
   let na = Nametab.basename_of_global (Names.GlobRef.IndRef (fst indu)) in
   let name = Nameops.add_prefix "invert_" na in
-  let sigma, (outer, _ as problems), sign, ty, rec_info = make_inversion_pb env sigma indu name in
-  let sigma, splitting = solve_problem env sigma ty problems in
+  let sigma, (outer, _ as problems), sign, ty, indsort, rec_info = make_inversion_pb env sigma indu name in
+  let sigma, splitting = solve_problem env sigma ty indsort problems in
   let hook splitting cmap terminfo ustate = () in
     Splitting.define_tree rec_info outer false [] (Evar_kinds.Define false)
       (ref sigma) env (name, sign, ty) None splitting hook
 
 let _derive =
   Derive.(register_derive { derive_name = "Invert";
-			    derive_fn = make_derive_ind derive_inversion })
+			    derive_fn = make_derive_ind derive_inversion})
