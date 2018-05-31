@@ -59,6 +59,11 @@ Unset Primitive Projections.
 Arguments sigma A B : clear implicits.
 Arguments sigmaI {A} B pr1 pr2.
 
+Record sigmaP {A : Prop} {B : A -> Prop} : Prop := sigmaPI { prP1 : A; prP2 : B prP1 }.
+
+Arguments sigmaP A B : clear implicits.
+Arguments sigmaPI {A} B prP1 prP2.
+
 Set Warnings "-notation-overridden".
 
 Module Sigma_Notations.
