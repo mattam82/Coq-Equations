@@ -14,6 +14,11 @@ Register Equations.Init.sigmaI as equations.sigma.intro.
 Register Equations.Init.pr1 as equations.sigma.pr1.
 Register Equations.Init.pr2 as equations.sigma.pr2.
 
+Register Equations.Init.sigmaP as equations.sigmaP.type.
+Register Equations.Init.sigmaPI as equations.sigmaP.intro.
+Register Equations.Init.prP1 as equations.sigmaP.pr1.
+Register Equations.Init.prP2 as equations.sigmaP.pr2.
+
 (** Classes *)
 Register Equations.FunctionalInduction.FunctionalInduction as equations.funind.class.
 Register Equations.FunctionalInduction.FunctionalElimination as equations.funelim.class.

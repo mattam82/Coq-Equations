@@ -55,12 +55,17 @@ Set Primitive Projections.
 Global Unset Printing Primitive Projection Parameters.
 Global Unset Printing Primitive Projection Compatibility.
 Polymorphic Record sigma {A : Type} {B : A -> Type} : Type := sigmaI { pr1 : A; pr2 : B pr1 }.
-Unset Primitive Projections.
 
 Arguments sigma A B : clear implicits.
 Arguments sigmaI {A} B pr1 pr2.
 
 Polymorphic Definition prod (A : Type) (B : Type) := sigma A (fun _ => B).
+
+Record sigmaP {A : Prop} {B : A -> Prop} : Prop := sigmaPI { prP1 : A; prP2 : B prP1 }.
+
+Arguments sigmaP A B : clear implicits.
+Arguments sigmaPI {A} B prP1 prP2.
+Unset Primitive Projections.
 
 Set Warnings "-notation-overridden".
 
