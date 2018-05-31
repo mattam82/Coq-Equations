@@ -19,7 +19,7 @@ val clean_rec_calls : Evd.evar_map ->
                       rel_context * int * constr ->
                       rel_context * int * constr
 val head : Evd.evar_map -> constr -> constr
-val is_applied_to_structarg :            int -> Syntax.rec_type option -> int -> bool option
+val is_applied_to_structarg : Names.Id.t -> Syntax.rec_type option -> int -> bool option
 
 val abstract_rec_calls : Evd.evar_map -> Names.Id.Set.t ->
   ?do_subst:bool ->

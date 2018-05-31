@@ -156,13 +156,31 @@ Ltac specialize_hyps :=
 
 Hint Extern 100 => specialize_hyps : funelim.
 
-(** Destruct conjunctions everywhere, starting with the hypotheses *)
-Hint Extern 50 => match goal with
-                    [ H : _ /\ _ |- _ ] => destruct H
-                  | [ |- _ /\ _ ] => split
-                  | [ H : _ * _ |- _ ] => destruct H
-                  | [ |- _ * _ ] => split
-                  end : funelim.
+(** Destruct conjunctions everywhere, starting with the hypotheses.
+   This tactic allows to close functional induction proofs involving
+   multiple nested and/or mutual recursive definitions. *)
+
+Lemma uncurry_conj (A B C : Prop) : (A /\ B -> C) -> (A -> B -> C).
+Proof. intros H a b. exact (H (conj a b)). Defined.
+
+Ltac specialize_mutual_nested := 
+  match goal with
+    [ H : _ /\ _ |- _ ] => destruct H
+  | [ |- _ /\ _ ] => split
+  | [ H : _ * _ |- _ ] => destruct H
+  | [ |- _ * _ ] => split
+  end.
+
+Hint Extern 50 => specialize_mutual_nested : funelim.
+
+Ltac specialize_mutual := 
+  match goal with
+    [ H : _ /\ _ |- _ ] => destruct H
+  | [ H : ?X -> _, H' : ?X |- _ ] => specialize (H H')
+  | [ H : (?A /\ ?B) -> ?C |- _ ] => apply (uncurry_conj A B C) in H
+  end.
+
+Ltac specialize_mutfix := repeat specialize_mutual.
 
 (** Destruct existentials, including [existsT]'s. *)
 
