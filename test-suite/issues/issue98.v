@@ -17,9 +17,12 @@ Inductive Foo :=
 Equations foo_type (t : Foo) : Type :=
   foo_type (Foo1 fs) := compact_prod (List.map foo_type fs);
   foo_type (Foo2 fs) := compact_prod (List.map foo_type fs).
+Transparent foo_type.
 
 (* Moving val nato the return type, rather than having it as an argument might be unnecessary if
    https://github.com/mattam82/Coq-Equations/issues/73 was fixed *)
+(* Set Equations Debug. *)
+
 Equations (struct t) do_foo (t : Foo) : forall (val : foo_type t), nat := {
   do_foo (Foo1 fs) := fun val => do_foo1 fs val;
   do_foo (Foo2 fs) := fun val => do_foo2 fs val }
@@ -27,6 +30,8 @@ Equations (struct t) do_foo (t : Foo) : forall (val : foo_type t), nat := {
   where (struct fs)
     do_foo1 (fs:list Foo) : forall (val : compact_prod (map foo_type fs)), nat := {
     do_foo1 nil := fun val => 0;
+    (* do_foo1 (cons hd nil) := fun val => do_foo hd val; *)
+    (* do_foo1 (cons hd tl) := fun val => 0 } *)
     (* Attempting to work around https://github.com/mattam82/Coq-Equations/issues/78 *)
     do_foo1 (cons hd tl) <= (fun val => do_foo1 tl val) => {
       do_foo1 (cons hd nil) _ := fun val => do_foo hd val;
@@ -38,5 +43,4 @@ Equations (struct t) do_foo (t : Foo) : forall (val : foo_type t), nat := {
     do_foo2 nil := fun val => 0;
     do_foo2 (cons var nil) :=
       fun val => do_foo var val;
-    do_foo2 _ := fun val => 0
-}.
+    do_foo2 _ := fun val => 0 }.

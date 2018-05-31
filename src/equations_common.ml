@@ -571,6 +571,8 @@ let eqdec_tac () = tac_of_string "Equations.EqDecInstances.eqdec_proof" []
 
 let simpl_equations_tac () = tac_of_string "Equations.DepElim.simpl_equations" []
 
+let specialize_mutfix_tac () = tac_of_string "Equations.FunctionalInduction.specialize_mutfix" []
+  
 open Misctypes
 open Libnames
 

@@ -531,7 +531,7 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
          prove_progs nestedprogs
      in
      let mutfix =
-       mutual_fix [] mutannots <*> prove_progs mutprogs
+       mutual_fix [] mutannots <*> specialize_mutfix_tac () <*> prove_progs mutprogs
      in
      let mutlen = List.length mutprogs in
      (* let intros_conj len = *)
@@ -571,7 +571,7 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
          assert_before Anonymous mutprops <*>
          tclDISPATCH
            [observe_tac "mutfix"
-                        (splits mutprogs <*> tclFOCUS 1 (List.length mutual) mutfix);
+               (splits mutprogs <*> tclFOCUS 1 (List.length mutual) mutfix);
             tclUNIT ()] <*>
          (* On the rest of the goals, do the nested proofs *)
          observe_tac "after mut -> nested and mut provable" (eauto ~depth:None)
