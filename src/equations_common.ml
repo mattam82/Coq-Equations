@@ -540,7 +540,7 @@ let below_tac s =
   KerName.make (MPfile below_tactics_path) (DirPath.make []) (Label.make s)
 
 let tacvar_arg h =
-  let ipat = Genarg.in_gen (Genarg.rawwit Stdarg.wit_intro_pattern) 
+  let ipat = Genarg.in_gen (Genarg.rawwit Tacarg.wit_intro_pattern) 
     (CAst.make @@ Misctypes.IntroNaming (Misctypes.IntroIdentifier h)) in
     TacGeneric ipat
 
