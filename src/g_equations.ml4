@@ -10,7 +10,8 @@
 (*i camlp4deps: "grammar/grammar.cma" i*)
 
 DECLARE PLUGIN "equations_plugin"
-open Term
+
+open Constr
 open Names
 open Pp
 open Refiner

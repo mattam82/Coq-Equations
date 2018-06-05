@@ -9,7 +9,7 @@
 open Util
 open Names
 open Nameops
-open Term
+open Constr
 open Termops
 open Environ
 open Globnames
@@ -47,7 +47,7 @@ let fix_proto_ref () =
   | ConstRef c -> c
   | _ -> assert false
 
-let constr_of_global = Universes.constr_of_global
+let constr_of_global = UnivGen.constr_of_global
 
 let is_recursive i eqs =
   let rec occur_eqn (_, _, rhs) =
@@ -110,7 +110,7 @@ let define_principles flags fixprots progs =
       if flags.polymorphic then
         let inst, ctx = ucontext_of_aucontext uc in
         let () = evd := Evd.merge_context_set Evd.univ_rigid !evd ctx in
-        Universes.constr_of_global_univ (global_of_constr f, inst)
+        UnivGen.constr_of_global_univ (global_of_constr f, inst)
       else f
     in
       match p.program_rec with
@@ -169,7 +169,7 @@ let define_principles flags fixprots progs =
              let () = (* Declare the subproofs of unfolding for where as rewrite rules *)
                let decl _ (_, id, _) =
                  let gr = Nametab.locate_constant (qualid_of_ident id) in
-                 let grc = Universes.fresh_global_instance (Global.env()) (ConstRef gr) in
+                 let grc = UnivGen.fresh_global_instance (Global.env()) (ConstRef gr) in
                  Autorewrite.add_rew_rules (info.base_id ^ "_where") [CAst.make (grc, true, None)];
                  Autorewrite.add_rew_rules (info.base_id ^ "_where_rev") [CAst.make (grc, false, None)]
                in
@@ -325,7 +325,8 @@ let define_mutual_nested flags progs =
      let decl =
        let blockfn (p, prog) = 
          let na = Name p.program_id in
-         let body = Evarutil.e_new_global evd (ConstRef prog.program_cst) in
+         let evm, body = Evarutil.new_global !evd (ConstRef prog.program_cst) in
+         let () = evd := evm in
          let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
          let body = mkApp (body, Array.append (Array.of_list mutualapp) (Array.of_list nestedbodies)) in
          let body = mkApp (Vars.lift (List.length p.program_sign) body,
