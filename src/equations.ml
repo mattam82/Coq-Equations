@@ -417,6 +417,8 @@ let define_by_eqs opts eqs nt =
     in
     let body = it_mkLambda_or_LetIn oarity sign in
     let _ = Pretyping.check_evars env Evd.empty !evd body in
+    let () = evd := Evd.minimize_universes !evd in
+    let arity = nf_evar !evd arity in
     let comp, compapp, oarity =
       if with_comp then
         let _ = Pretyping.check_evars env Evd.empty !evd body in
