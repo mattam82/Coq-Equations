@@ -252,8 +252,9 @@ let conv_fun = Evarconv.evar_conv_x Names.full_transparent_state
 let is_conv (env : Environ.env) (sigma : Evd.evar_map) (ctx : rel_context)
   (t1 : EConstr.t) (t2 : EConstr.t) : bool =
   let env = push_rel_context ctx env in
-  let _, res = Reductionops.infer_conv env sigma t1 t2 in
-    res
+  match Reductionops.infer_conv env sigma t1 t2 with
+  | Some _ -> true
+  | None -> false
 
 (* Build an open term by substituting the second term for the hole in the
  * first term. *)

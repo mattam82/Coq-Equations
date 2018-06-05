@@ -1278,14 +1278,15 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
       let userc, usercty = interp_constr_in_rhs env ctx evars data None s lets user in
       match t with
       | PInac t ->
-         let evars', b = Reductionops.infer_conv env' !evars userc t in
-         if b then (evars := evars')
-         else
+        begin match Reductionops.infer_conv env' !evars userc t with
+        | Some evars' -> evars := evars'
+        | None ->
            CErrors.user_err ?loc:(Constrexpr_ops.constr_loc user) ~hdr:"covering"
                          (str "Incompatible innaccessible pattern " ++
                            print_constr_env env' !evars userc ++
                            spc () ++ str "should be convertible to " ++
                            print_constr_env env' !evars t)
+        end
       | _ ->
          let t = pat_constr t in
          CErrors.user_err ?loc:(Constrexpr_ops.constr_loc user) ~hdr:"covering"
