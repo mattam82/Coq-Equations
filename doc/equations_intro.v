@@ -395,7 +395,7 @@ Require Import Equations.Subterm.
 Equations id (n : nat) : nat :=
   id n by rec n lt :=
   id 0 := 0;
-  id (S n') := id n'.
+  id (S n') := S (id n').
 
 (** Here [id] is defined by well-founded recursion on [lt] on the (only)
     argument [n] using the [by rec] node.  At recursive calls of [id],
