@@ -103,16 +103,17 @@ let find_firsti f l =
     | [] -> raise Not_found
   in aux 0 l
 
-let is_applied_to_structarg i is_rec lenargs =
+let is_applied_to_structarg f is_rec lenargs =
   match is_rec with
   | Some (Structural ids) -> begin
      try
-       let fn, kind, _ = List.nth ids i in
+       let kind =
+	 CList.find_map (fun (f', k, r) -> if Id.equal f f' then Some k else None) ids
+       in
        match kind with
        | StructuralOn idx | NestedOn (Some idx) -> Some (lenargs > idx)
        | NestedOn None -> Some true
-     with Invalid_argument _
-        | Failure _ -> None
+     with Not_found -> None
     end
   | _ -> None
 
@@ -125,11 +126,12 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
   let lenprotos = List.length protos in
   let proto_fs = List.map (fun ((f,args), _, _, _, _) -> f) protos in
   let find_rec_call f args =
-    let fm i ((f',filter), alias, idx, sign, arity) =
+    let fm ((f',filter), alias, idx, sign, arity) =
       let f', args' = Termops.decompose_app_vect sigma f' in
       let nhyps = Context.Rel.nhyps sign + Array.length args' in
       if eq_constr sigma f' f then
-        match is_applied_to_structarg i is_rec (List.length args) with
+	let f' = fst (destConst sigma f') in
+        match is_applied_to_structarg (Names.Label.to_id (Names.Constant.label f')) is_rec (List.length args) with
         | Some true ->
            let args, rest =
              if nhyps < List.length args then CList.chop nhyps args
@@ -146,7 +148,7 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
            else None
         | None -> None
     in
-    try Some (find_firsti fm protos)
+    try Some (CList.find_map fm protos)
     with Not_found -> None
   in
   let find_rec_call f args =
