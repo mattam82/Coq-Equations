@@ -127,13 +127,13 @@ end
 module BuilderHelper = struct
   let gen_from_inductive ind = fun evd ->
     let glob = Globnames.IndRef (Lazy.force ind) in
-      Evarutil.e_new_global evd glob
+    Equations_common.e_new_global evd glob
   let gen_from_constant cst = fun evd ->
     let glob = Globnames.ConstRef (Lazy.force cst) in
-      Evarutil.e_new_global evd glob
+    Equations_common.e_new_global evd glob
   let gen_from_constructor constr = fun evd ->
     let glob = Globnames.ConstructRef (Lazy.force constr) in
-      Evarutil.e_new_global evd glob
+    Equations_common.e_new_global evd glob
 end
 
 module BuilderGen (SigmaRefs : SIGMAREFS) (EqRefs : EQREFS) : BUILDER = struct
@@ -201,11 +201,11 @@ let build_term (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal)
   ((ctx', ty') : goal) (f : EConstr.constr -> EConstr.constr) : open_term =
   let tev =
     let env = push_rel_context ctx' env in
-      Evarutil.e_new_evar env evd ty'
+    Evarutil.evd_comb1 (Evarutil.new_evar env) evd ty'
   in
   let c = f tev in
   let env = push_rel_context ctx env in
-  let _ = Typing.e_type_of env evd c in
+  let _ = Evarutil.evd_comb1 (Typing.type_of env) evd c in
   let ev = EConstr.destEvar !evd tev in
     Some ((ctx', ty'), ev), c
 
@@ -288,7 +288,7 @@ let safe_fun (f : simplification_fun) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
   let (_, c), _ as res = f env evd (ctx, ty) in
   let env = push_rel_context ctx env in
-  Typing.e_check env evd c ty;
+  evd := Typing.check env !evd c ty;
   res
 
 (* Applies [g] to the goal, then [f]. *)
@@ -743,7 +743,7 @@ let elim_false : simplification_fun =
   (* We need to type the term in order to solve eventual universes
    * constraints. *)
   let _ = let env = push_rel_context ctx env in
-    Typing.e_type_of env evd c in
+          Evarutil.evd_comb1 (Typing.type_of env) evd c in
     (None, c), subst
 
 

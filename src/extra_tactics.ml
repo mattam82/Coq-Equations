@@ -1,5 +1,5 @@
 open Locusops
-open Term
+open Constr
 open Names
 open Tactics
 open Equations_common
@@ -40,10 +40,10 @@ let refine_ho c =
     let rec aux env concl ty =
       match kind sigma concl, kind sigma ty with
       | Prod (na, b, t), Prod (na', b', t') ->
-         let ok = Evarconv.e_conv ~ts env evd b b' in
-         if not ok then
-           error "Products do not match"
-         else aux (push_rel (of_tuple (na,None,b)) env) t t'
+         (match Evarconv.conv ~ts env !evd b b' with
+          | None -> error "Products do not match"
+          | Some evm -> evd := evm;
+                        aux (push_rel (of_tuple (na,None,b)) env) t t')
       (* | _, LetIn (na, b, _, t') -> *)
       (*    aux env t (subst1 b t') *)
       | _, App (ev, args) when isEvar sigma ev ->

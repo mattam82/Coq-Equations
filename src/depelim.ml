@@ -12,7 +12,7 @@
 open Util
 open Names
 open Nameops
-open Term
+open Constr
 open Termops
 open Declarations
 open Inductiveops
@@ -290,7 +290,7 @@ let depcase poly (mind, i as ind) =
   let nargs = List.length args in
   let indapp = mkApp (mkInd ind, extended_rel_vect 0 ctx) in
   let evd = ref (Evd.from_env (Global.env())) in
-  let pred = it_mkProd_or_LetIn (e_new_Type (Global.env ()) evd) 
+  let pred = it_mkProd_or_LetIn (evd_comb0 (Evarutil.new_Type (Global.env ())) evd)
     (make_assum Anonymous indapp :: args)
   in
   let nconstrs = Array.length oneind.mind_nf_lc in
@@ -426,7 +426,10 @@ let specialize_eqs id gl =
   let ty = pf_get_hyp_typ gl id in
   let evars = ref (project gl) in
   let unif env ctx evars c1 c2 =
-    Evarconv.e_conv env evars (it_mkLambda_or_subst c1 ctx) (it_mkLambda_or_subst c2 ctx) in
+    match Evarconv.conv env !evars (it_mkLambda_or_subst c1 ctx) (it_mkLambda_or_subst c2 ctx) with
+    | None -> false
+    | Some evm -> evars := evm; true
+  in
   let rec aux in_eqs ctx acc ty =
     match kind !evars ty with
     | Prod (na, t, b) ->
@@ -461,7 +464,7 @@ let specialize_eqs id gl =
 	| _ ->
 	    if in_eqs then acc, in_eqs, ctx, ty
 	    else
-	      let e = e_new_evar env evars (it_mkLambda_or_subst t ctx) in
+              let e = evd_comb1 (Evarutil.new_evar env) evars (it_mkLambda_or_subst t ctx) in
 		aux false (make_def na (Some e) t :: ctx) (mkApp (lift 1 acc, [| mkRel 1 |])) b)
     | t -> acc, in_eqs, ctx, ty
   in

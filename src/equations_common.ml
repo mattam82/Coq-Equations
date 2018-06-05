@@ -82,10 +82,10 @@ type flags = {
   with_ind : bool }  
 
 let check_term env evd c t =
-  Typing.e_check env (ref evd) c t
+  ignore(Typing.check env evd c t)
 
 let check_type env evd t =
-  ignore(Typing.e_sort_of env (ref evd) t)
+  ignore(Typing.sort_of env evd t)
       
 let typecheck_rel_context env evd ctx =
   let open Context.Rel.Declaration in
@@ -160,17 +160,20 @@ let coq_constant dir s = Coqlib.coq_reference "equations" dir s
 let global_reference id =
   Smartlocate.global_of_extended_global (Nametab.locate_extended (qualid_of_ident id))
 
-let constr_of_ident id =
-  EConstr.of_constr (Universes.constr_of_global (Nametab.locate (qualid_of_ident id)))
+let constr_of_global = UnivGen.constr_of_global
 
-let e_type_of = Typing.e_type_of ~refresh:false				 
+let constr_of_ident id =
+  EConstr.of_constr (constr_of_global (Nametab.locate (qualid_of_ident id)))
+
+let e_type_of env evd =
+  Evarutil.evd_comb1 (Typing.type_of ~refresh:false env) evd
 
 let make_definition ?opaque ?(poly=false) evd ?types b =
   let env = Global.env () in
-  let _t = Typing.e_type_of env evd b in
+  let _t = e_type_of env evd b in
   let evm = match types with
     | None -> !evd
-    | Some t -> let _s = Typing.e_type_of env evd t in !evd
+    | Some t -> let _s = e_type_of env evd t in !evd
   in
   let evm = Evd.minimize_universes evm in
   let body = EConstr.to_constr evm b and typ = Option.map (EConstr.to_constr evm) types in
@@ -213,8 +216,8 @@ let coq_succ = lazy (coq_constant ["Init"; "Datatypes"] "S")
 let coq_nat = lazy (coq_constant ["Init"; "Datatypes"] "nat")
 
 let rec coq_nat_of_int = function
-  | 0 -> Universes.constr_of_global (Lazy.force coq_zero)
-  | n -> mkApp (Universes.constr_of_global (Lazy.force coq_succ), [| coq_nat_of_int (pred n) |])
+  | 0 -> UnivGen.constr_of_global (Lazy.force coq_zero)
+  | n -> mkApp (constr_of_global (Lazy.force coq_succ), [| coq_nat_of_int (pred n) |])
 
 let rec int_of_coq_nat c = 
   match Constr.kind c with
@@ -587,7 +590,7 @@ let call_tac_on_ref tac c =
   let tac = ArgArg (dummy_loc, tac) in
   let val_reference = Geninterp.val_tag (Genarg.topwit Stdarg.wit_constr) in
   (** This is a hack to avoid generating useless universes *)
-  let c = Universes.constr_of_global_univ (c, Univ.Instance.empty) in
+  let c = UnivGen.constr_of_global_univ (c, Univ.Instance.empty) in
   let c = Geninterp.Val.inject val_reference (EConstr.of_constr c) in
   let ist = Geninterp.{ lfun = Names.Id.Map.add var c Names.Id.Map.empty;
                             extra = Geninterp.TacStore.empty } in
@@ -952,7 +955,7 @@ let hintdb_set_transparency cst b db =
 
 let is_global sigma f ec = Globnames.is_global f (to_constr sigma ec)                                  
 
-let constr_of_global_univ sigma u = of_constr (Universes.constr_of_global_univ (from_peuniverses sigma u))
+let constr_of_global_univ sigma u = of_constr (UnivGen.constr_of_global_univ (from_peuniverses sigma u))
 
 let smash_rel_context sigma ctx =
   List.map of_rel_decl (smash_rel_context (List.map (to_rel_decl sigma) ctx))

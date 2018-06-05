@@ -9,7 +9,7 @@
 open Util
 open Names
 open Nameops
-open Term
+open Constr
 open Termops
 open Declarations
 open Inductiveops
@@ -154,7 +154,7 @@ let sigmaize ?(liftty=0) env0 evd pars f =
 	[|argtyp; pred; Vars.lift 1 make; mkRel 1|]
   in
   let pred = it_mkLambda_or_LetIn pred pars in
-  let _ = Typing.e_type_of env0 evd pred in
+  let _ = e_type_of env0 evd pred in
   let () = evd := Evd.minimize_universes !evd in
     (argtyp, pred, pars, indices,
      indexproj, valproj, valsig, tysig)

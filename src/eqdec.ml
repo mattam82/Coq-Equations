@@ -19,7 +19,6 @@
 open Util
 open Names
 open Nameops
-open Term
 open Termops
 open Declarations
 open Inductiveops
@@ -70,7 +69,7 @@ let inductive_info sigma ((mind, _ as ind),u) =
 	arities
     in
     let case c pred brs =
-      let ci = make_case_info (Global.env ()) (mind,i) RegularStyle in
+      let ci = make_case_info (Global.env ()) (mind,i) Constr.RegularStyle in
 	mkCase (ci, pred, c, brs)
     in
       { ind_name = indname;

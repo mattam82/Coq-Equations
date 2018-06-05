@@ -1,7 +1,7 @@
 open Util
 open Names
 open Nameops
-open Term
+open Constr
 open Termops
 open Environ
 open Globnames
@@ -405,7 +405,7 @@ let rec aux_ind_fun info chop unfs unfids = function
             let subst = List.map (fun x -> mkVar (get_id x)) where_nctx in
             let fnapp = applistc (substl subst where_term) (extended_rel_list 0 ctx) in
             let args = List.append subst (extended_rel_list 0 ctx) in
-            let app = applistc (EConstr.of_constr (Universes.constr_of_global ind)) (* FIXME *)
+            let app = applistc (EConstr.of_constr (UnivGen.constr_of_global ind)) (* FIXME *)
                                (List.append args [fnapp]) in
             it_mkProd_or_LetIn app ctx
           in
@@ -490,8 +490,8 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
              let (n,b,t) = to_named_tuple decl in
              let fixprot pats sigma =
 	       let c = 
-                 mkLetIn (Anonymous, of_constr (Universes.constr_of_global (Lazy.force coq_fix_proto)),
-                          of_constr (Universes.constr_of_global (Lazy.force coq_unit)), t) in
+                 mkLetIn (Anonymous, of_constr (UnivGen.constr_of_global (Lazy.force coq_fix_proto)),
+                          of_constr (UnivGen.constr_of_global (Lazy.force coq_unit)), t) in
                (sigma, c)
 	     in
 	     Proofview.V82.of_tactic

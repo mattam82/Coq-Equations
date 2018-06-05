@@ -8,7 +8,7 @@
 
 (** Principles derived from equation definitions. *)
 
-open Term
+open Constr
 open Names
 open Vars
 open Equations_common
@@ -93,15 +93,6 @@ let clean_rec_calls sigma (ctx, ctxlen, c) =
   aux (ctx, ctxlen, c) 0 [] []
 
 let head sigma c = fst (decompose_app sigma c)
-
-let find_firsti f l =
-  let rec aux i = function
-    | hd :: tl ->
-       (match f i hd with
-        | Some x -> x
-        | None -> aux (succ i) tl)
-    | [] -> raise Not_found
-  in aux 0 l
 
 let is_applied_to_structarg f is_rec lenargs =
   match is_rec with
@@ -805,7 +796,7 @@ let declare_funelim info env evd is_rec protos progs
   let id = Id.of_string info.base_id in
   let leninds = List.length inds in
   let elim =
-    if leninds > 1 || get_sort () != InProp then comb
+    if leninds > 1 || get_sort () != Sorts.InProp then comb
     else
       let elimid = Nameops.add_suffix id "_ind_ind" in
       Smartlocate.global_with_alias (reference_of_id elimid)
@@ -860,7 +851,7 @@ let declare_funelim info env evd is_rec protos progs
 
 let mkConj evd sort x y =
   let prod =
-    if sort == InProp then
+    if sort == Sorts.InProp then
       e_new_global evd (Lazy.force Equations_common.prop_logic.logic_product)
     else
       e_new_global evd (Lazy.force Equations_common.type_logic.logic_product)
@@ -907,7 +898,7 @@ let declare_funind info alias env evd is_rec protos progs
          in aux ind_stmts
        in
        List.fold_right (fun x acc -> match stmt x with
-                                     | Some t -> mkConj evd InProp t acc
+                                     | Some t -> mkConj evd Sorts.InProp t acc
                                      | None -> acc) last l
   in
   let hookind subst indgr ectx =
@@ -1026,7 +1017,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
       in
       let body = it_mkProd_or_LetIn b ctx in
       (* msg_debug (str"Typing equation " ++ pr_constr_env env !evd c); *)
-      let _ = Typing.e_type_of env evd body in
+      let _ = Evarutil.evd_comb1 (Typing.type_of env) evd body in
       body
     in
     let cstr = 
@@ -1076,7 +1067,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
 	  Nameops.add_suffix indid suff) n) stmts
     in
     let ind_sort =
-      if get_sort () == InProp then
+      if get_sort () == Sorts.InProp then
         (** Define graph impredicatively *)
         mkProp
       else (** Compute sort as max of products *)
@@ -1103,14 +1094,14 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
                 mind_entry_inds = inds }
     in
     let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] false in
-    let kn = ComInductive.declare_mutual_inductive_with_eliminations inductive Universes.empty_binders [] in
+    let kn = ComInductive.declare_mutual_inductive_with_eliminations inductive UnivNames.empty_binders [] in
     let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] true in
     let kn, comb =
       let sort = get_sort () in
       let suff = match sort with
-        | InProp -> "_ind"
-        | InSet ->  "_rec"
-        | InType -> "_rect"
+        | Sorts.InProp -> "_ind"
+        | Sorts.InSet ->  "_rec"
+        | Sorts.InType -> "_rect"
       in
       let mutual =
         (CList.map_i (fun i ind ->
@@ -1171,7 +1162,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
       let hook subst gr _ = 
 	if n != None then
 	  Autorewrite.add_rew_rules info.base_id 
-            [CAst.make (Universes.fresh_global_instance (Global.env()) gr, true, None)]
+            [CAst.make (UnivGen.fresh_global_instance (Global.env()) gr, true, None)]
 	else (Typeclasses.declare_instance None true gr
 	      (* Hints.add_hints ~local:false [info.base_id]  *)
 	      (*                 (Hints.HintsExternEntry *)

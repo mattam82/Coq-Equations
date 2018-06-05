@@ -9,7 +9,7 @@
 open Util
 open Names
 open Nameops
-open Term
+open Constr
 open Inductiveops
 open Globnames
 open Reductionops
@@ -275,8 +275,8 @@ let term_of_tree status isevar env0 tree =
         let term = EConstr.it_mkLambda_or_LetIn term ctx in
         let typ = it_mkProd_or_subst env evm ty ctx in
         let term = Evarutil.nf_evar !evd term in
-        Typing.e_check env evd term typ;
-          !evd, term, typ
+        evd := Typing.check env !evd term typ;
+        !evd, term, typ
       else
 	let before, decl, after = split_tele (pred rel) ctx in
 	let evd = ref evm in
@@ -471,7 +471,7 @@ let map_evars_in_constr evd evar_map c =
 	    let gr = Nametab.global (CAst.make @@ Qualid (qualid_of_ident id)) in
             let (f, uc) = Global.constr_of_global_in_context (Global.env ()) gr in
             let inst, ctx = ucontext_of_aucontext uc in
-            Universes.constr_of_global_univ (Globnames.global_of_constr f, inst))
+            UnivGen.constr_of_global_univ (Globnames.global_of_constr f, inst))
            (EConstr.to_constr ~abort_on_undefined_evars:false evd c)
 
 let map_evars_in_split evd m = map_split (map_evars_in_constr evd m)

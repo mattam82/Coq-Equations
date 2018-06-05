@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-open Term
+open Constr
 
 type derive_fn_ty = polymorphic:bool -> Names.GlobRef.t -> unit
 

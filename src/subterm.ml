@@ -8,11 +8,10 @@
 
 open Names
 open Nameops
-open Term
+open Constr
 open Termops
 open Declarations
 open Inductiveops
-open Evarutil
 open Util
 open Entries
 
@@ -148,7 +147,7 @@ let derive_subterm env sigma ~polymorphic ind =
         mind_entry_private = None;
         mind_entry_universes = uctx}
     in
-    let k = ComInductive.declare_mutual_inductive_with_eliminations inductive Universes.empty_binders [] in
+    let k = ComInductive.declare_mutual_inductive_with_eliminations inductive UnivNames.empty_binders [] in
     let () =
       let env = Global.env () in
       let sigma = Evd.from_env env in
@@ -218,7 +217,7 @@ let derive_subterm env sigma ~polymorphic ind =
       let env' = push_rel_context pars env in
       let evar =
         let evt = (mkApp (coq_wellfounded evm, [| ty; relation |])) in
-        e_new_evar env' evm evt
+        Evarutil.evd_comb1 (Evarutil.new_evar env') evm evt
       in
       let b, t = instance_constructor !evm kl [ ty; relation; evar ] in
       (pars, b, t)
@@ -231,8 +230,8 @@ let derive_subterm env sigma ~polymorphic ind =
                                           global (ConstRef cst) in
       Typeclasses.add_instance inst
     in
-    let _bodyty = Typing.e_type_of (Global.env ()) evm body in
-    let _ty' = Typing.e_type_of (Global.env ()) evm ty in
+    let _bodyty = e_type_of (Global.env ()) evm body in
+    let _ty' = e_type_of (Global.env ()) evm ty in
     let evm = Evd.minimize_universes !evm in
     let obls, _, constr, typ =
       Obligations.eterm_obligations env id evm 0
@@ -262,7 +261,7 @@ let derive_below env sigma ~polymorphic (ind,univ as indu) =
   let indty = mkApp (mkIndU indu, allargsvect) in
   let ctx = of_tuple (Name (Id.of_string "c"), None, indty) :: ctx in
   let argbinders, parambinders = List.chop (succ realdecls) ctx in
-  let u = Evarutil.e_new_Type ~rigid:Evd.univ_rigid env evd in
+  let u = Evarutil.evd_comb0 (Evarutil.new_Type ~rigid:Evd.univ_rigid env) evd in
   let arity = it_mkProd_or_LetIn u argbinders in
   let aritylam = lift (succ realdecls) (it_mkLambda_or_LetIn u argbinders) in
   let paramsvect = rel_vect (succ realdecls) params in

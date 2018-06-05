@@ -384,7 +384,7 @@ val new_type_evar :            Environ.env ->
            ?src:Evar_kinds.t Loc.located -> Evd.rigid ->
            Evd.evar_map * (constr * Sorts.t)
 
-val empty_hint_info : 'a Vernacexpr.hint_info_gen
+val empty_hint_info : 'a Typeclasses.hint_info_gen
 
 val evar_absorb_arguments :
   Environ.env -> Evd.evar_map ->

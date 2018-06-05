@@ -9,7 +9,7 @@
 open Util
 open Names
 open Nameops
-open Term
+open Constr
 open Declarations
 open Inductiveops
 open Globnames
@@ -74,8 +74,9 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
         Sigma_types.build_sig_of_ind env !evd indu
       in
       let () = evd := evm in
-      let sigma = Evarutil.e_new_global evd (Lazy.force coq_sigma) in
-      let _, pred' = decompose_lam_n (List.length pars) (EConstr.to_constr !evd pred) in
+      let evm, sigma = Evarutil.new_global !evd (Lazy.force coq_sigma) in
+      let () = evd := evm in
+      let _, pred' = Term.decompose_lam_n (List.length pars) (EConstr.to_constr !evd pred) in
       let indty = mkApp (sigma, [|idx; of_constr pred'|]) in
       nf_betaiotazeta env !evd indty, mkProj (Lazy.force coq_pr2, mkRel 1), pars, (List.firstn lenargs ctx)
   in
@@ -128,8 +129,8 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let env = Global.env () in
   let evd = ref (Evd.from_env env) in
   let tc = Typeclasses.class_info (Lazy.force coq_noconfusion_class) in
-  let noconf = Evarutil.e_new_global evd (ConstRef cstNoConf) in
-  let noconfcl = Evarutil.e_new_global evd tc.Typeclasses.cl_impl in
+  let noconf = e_new_global evd (ConstRef cstNoConf) in
+  let noconfcl = e_new_global evd tc.Typeclasses.cl_impl in
   let inst, u = destInd !evd noconfcl in
   let noconfterm = mkApp (noconf, paramsvect) in
   let argty =
@@ -145,7 +146,7 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let rec term c ty =
     match kind !evd ty with
     | Prod (na, t, ty) ->
-       let arg = Evarutil.e_new_evar env evd t in
+       let arg = Evarutil.evd_comb1 (Evarutil.new_evar env) evd t in
        term (mkApp (c, [|arg|])) (subst1 arg ty)
     | _ -> c, ty
   in
@@ -153,7 +154,7 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let term, ty = term (Option.get b) cty in
   let term = it_mkLambda_or_LetIn term ctx in
   let ty = it_mkProd_or_LetIn ty ctx in
-  let _ = Typing.e_type_of env evd term in
+  let _ = Evarutil.evd_comb1 (Typing.type_of env) evd term in
   let hook vis gr _ectx = 
     Typeclasses.add_instance
       (Typeclasses.new_instance tc empty_hint_info true gr)

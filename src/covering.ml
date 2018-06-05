@@ -9,7 +9,7 @@
 open Util
 open Names
 open Nameops
-open Term
+open Constr
 open Environ
 open Reductionops
 open Pp
@@ -815,7 +815,7 @@ let lets_of_ctx env ctx evars s =
       match pat with
       | PRel i -> (ctx', cs, (i, id) :: varsubst, k, Id.Set.add id ids)
       | _ -> 
-	  let ty = Typing.e_type_of envctx evars c in
+          let ty = e_type_of envctx evars c in
 	    (make_def (Name id) (Some (lift k c)) (lift k ty) :: ctx', (c :: cs),
              varsubst, succ k, Id.Set.add id ids))
     ([],[],[],0,Id.Set.empty) s
