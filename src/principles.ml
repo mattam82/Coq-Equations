@@ -79,15 +79,15 @@ let clean_rec_calls sigma (ctx, ctxlen, c) =
   in
   let rec aux (ctx, ctxlen, c) k ctx' seen =
     match ctx with
-    | (LocalAssum _ as ass) :: ((LocalDef (recres, call, _) as def) :: rest) ->
-       let subst = [mkProp; call] in
-       if is_seen call seen then
-         aux (rest, ctxlen - 2, substnl subst k c) k
+    | (LocalAssum (na, t) as ass) :: rest ->
+       let subst = [mkProp] in
+       if is_seen t seen then
+         aux (rest, ctxlen - 1, substnl subst k c) k
              (subst_rel_context 0 subst ctx')
              (List.map (substnl subst 0) seen)
        else
-         aux (rest, ctxlen, c) (k + 2) (List.append ctx' [ass; def])
-             (List.map (substnl subst 0) (call :: seen))
+         aux (rest, ctxlen, c) (k + 1) (List.append ctx' [ass])
+             (List.map (substnl subst 0) (t :: seen))
     | rest -> (List.append ctx' rest, k + List.length rest, c)
   in
   aux (ctx, ctxlen, c) 0 [] []
@@ -180,22 +180,23 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
 	  (match find_rec_call f' args with
            | Some (i, arity, filter, args', rest) ->
               let fargs' = filter_arguments filter args' in
-              let resty = substl (List.rev fargs') (of_constr arity) in
-              let result = make_def (Name (Id.of_string "recres")) (Some (mkApp (f', Array.of_list args'))) resty in
-	      let hypty = mkApp (mkApp (mkRel (i + len + lenctx + 2 + n),
-                                       Array.map (lift 1) (Array.of_list fargs')), [| mkRel 1 |])
+              let result = mkApp (f', Array.of_list args') in
+              let hypty = mkApp (mkApp (mkRel (i + len + lenctx + 1 + n),
+                                       Array.of_list fargs'), [| result |])
 	      in
               let hyp = make_assum (Name (Id.of_string "Hind")) hypty in
-                [hyp;result]@ctx, lenctx + 2, applist (mkRel 2, List.map (lift 2) rest)
+                [hyp]@ctx, lenctx + 1, lift 1 (applist (result, rest))
 	  | None -> (ctx, lenctx, mkApp (f', Array.of_list args)))
 	    
     | Lambda (na,t,b) ->
-	let ctx',lenctx',b' = aux (succ n) ((na,None,t) :: env) b in
-	  (match ctx' with
-	   | [] -> [], 0, c
-	   | hyp :: rest -> 
-	       let ty = mkProd (na, t, it_mkProd_or_LetIn (get_type hyp) rest) in
-                 [make_assum (Name (Id.of_string "Hind")) ty], 1, lift 1 c)
+       let ctx',lenctx',b' = aux (succ n) ((na,None,t) :: env) b in
+       let assums =
+         List.mapi (fun i decl ->
+           let open Context.Rel.Declaration in
+           let ty = get_type decl in
+           set_type (mkProd (na, lift (lenctx' - 1 - i) t, ty)) decl) ctx'
+       in
+       assums, lenctx', lift lenctx' c
 
     (* | Cast (_, _, f) when is_comp f -> aux n f *)
 	  
