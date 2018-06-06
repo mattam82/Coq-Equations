@@ -18,7 +18,6 @@ open Splitting
 open Principles_proofs
 
 open EConstr
-open Vars (* lift, subst etc... *)
 
 type statement = constr * types option
 type statements = statement list
@@ -72,25 +71,32 @@ let filter_arguments f l =
     | _, _ -> l
   in aux 0 f l
 
-let clean_rec_calls sigma (ctx, ctxlen, c) =
+module CMap = Map.Make(Constr)
+
+let clean_rec_calls sigma (hyps, c) =
   let open Context.Rel.Declaration in
-  let is_seen def prev =
-    List.exists (eq_constr sigma def) prev
+  (** Remove duplicate induction hypotheses under contexts *)
+  let under_context, hyps =
+    CMap.partition (fun ty n -> Constr.isProd ty || Constr.isLetIn ty) hyps
   in
-  let rec aux (ctx, ctxlen, c) k ctx' seen =
-    match ctx with
-    | (LocalAssum (na, t) as ass) :: rest ->
-       let subst = [mkProp] in
-       if is_seen t seen then
-         aux (rest, ctxlen - 1, substnl subst k c) k
-             (subst_rel_context 0 subst ctx')
-             (List.map (substnl subst 0) seen)
-       else
-         aux (rest, ctxlen, c) (k + 1) (List.append ctx' [ass])
-             (List.map (substnl subst 0) (t :: seen))
-    | rest -> (List.append ctx' rest, k + List.length rest, c)
+  let hyps =
+    CMap.fold (fun ty n hyps ->
+      let ctx, concl = Term.decompose_prod_assum ty in
+      let len = List.length ctx in
+	if noccur_between 1 len concl then
+	  if CMap.mem (lift (-len) concl) hyps then hyps
+	  else CMap.add ty n hyps
+	else CMap.add ty n hyps)
+      under_context hyps
   in
-  aux (ctx, ctxlen, c) 0 [] []
+  (** Sort by occurrence *)
+  let elems = List.sort (fun x y -> Int.compare (snd x) (snd y)) (CMap.bindings hyps) in
+  let (size, ctx) =
+    List.fold_left (fun (n, acc) (ty, _) ->
+    (succ n, LocalAssum (Name (Id.of_string "Hind"), Vars.lift n (EConstr.of_constr ty)) :: acc))
+    (0, []) elems
+  in
+  (ctx, size, Vars.lift size (EConstr.of_constr c))
 
 let head sigma c = fst (decompose_app sigma c)
 
@@ -122,6 +128,20 @@ let is_user_obl sigma user_obls f =
   | Const (c, u) -> Id.Set.mem (Label.to_id (Constant.label c)) user_obls
   | _ -> false
 
+let cmap_map f c =
+  CMap.fold (fun ty n hyps -> CMap.add (f ty) n hyps) c CMap.empty
+
+let cmap_union g h =
+  CMap.merge (fun ty n m ->
+    match n, m with
+    | Some n, Some m -> Some (min n m)
+    | Some _, None -> n
+    | None, Some _ -> m
+    | None, None -> None) g h
+
+let cmap_add ty n h =
+  cmap_union (CMap.singleton ty n) h
+    
 let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
   let lenprotos = List.length protos in
   let proto_fs = List.map (fun ((f,args), _, _, _, _) -> f) protos in
@@ -163,69 +183,60 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
               Some (lenprotos - 1, r.comp_app, [] (* filter *), CList.drop_last args, []))
 	| _ -> None
   in
-  let rec aux n env c =
-    match kind sigma c with
-    | App (f', args) when not (is_user_obl sigma user_obls f') ->
-        let (ctx, lenctx, args) =
-	  Array.fold_left (fun (ctx,len,c) arg -> 
-	    let ctx', lenctx', arg' = aux n env arg in
-	    let len' = lenctx' + len in
-            let ctx'' = lift_rel_context len ctx' in
-	    let c' = (liftn len (succ lenctx') arg') :: List.map (lift lenctx') c in
-	      (ctx''@ctx, len', c'))
-	    ([],0,[]) args
-	in
-	let args = List.rev args in
-	let f' = lift lenctx f' in
-	  (match find_rec_call f' args with
-           | Some (i, arity, filter, args', rest) ->
-              let fargs' = filter_arguments filter args' in
-              let result = mkApp (f', Array.of_list args') in
-              let hypty = mkApp (mkApp (mkRel (i + len + lenctx + 1 + n),
-                                       Array.of_list fargs'), [| result |])
-	      in
-              let hyp = make_assum (Name (Id.of_string "Hind")) hypty in
-                [hyp]@ctx, lenctx + 1, lift 1 (applist (result, rest))
-	  | None -> (ctx, lenctx, mkApp (f', Array.of_list args)))
+  let occ = ref 0 in
+  let rec aux n env hyps c =
+    let open Constr in
+    match kind c with
+    | App (f', args) when not (is_user_obl sigma user_obls (EConstr.of_constr f')) ->
+      let hyps =
+	 (** TODO: use filter here *)
+        Array.fold_left (fun hyps arg -> let hyps', arg' = aux n env hyps arg in
+                                           hyps')
+          hyps args
+      in
+      let args = Array.to_list args in
+	(match find_rec_call (EConstr.of_constr f') args with
+        | Some (i, arity, filter, args', rest) ->
+          let fargs' = filter_arguments filter args' in
+          let result = mkApp (f', Array.of_list args') in
+          let hyp = mkApp (mkApp (mkRel (i + 1 + len + n), Array.of_list fargs'), [| result |]) in
+	  let hyps = cmap_add hyp !occ hyps in
+	  let () = incr occ in
+	    hyps, Term.applist (result, rest)
+        | None -> hyps, mkApp (f', Array.of_list args))
 	    
     | Lambda (na,t,b) ->
-       let ctx',lenctx',b' = aux (succ n) ((na,None,t) :: env) b in
-       let assums =
-         List.mapi (fun i decl ->
-           let open Context.Rel.Declaration in
-           let ty = get_type decl in
-           set_type (mkProd (na, lift (lenctx' - 1 - i) t, ty)) decl) ctx'
-       in
-       assums, lenctx', lift lenctx' c
+      let hyps',b' = aux (succ n) ((na,None,t) :: env) CMap.empty b in
+      let hyps' = cmap_map (fun ty -> mkProd (na, t, ty)) hyps' in
+	cmap_union hyps hyps', c
 
     (* | Cast (_, _, f) when is_comp f -> aux n f *)
 	  
-    | LetIn (na,b,t,c) ->
-	let ctx',lenctx',b' = aux n env b in
-	let ctx'',lenctx'',c' = aux (succ n) ((na,Some b,t) :: env) c in
-	let ctx'' = lift_rel_contextn 1 lenctx' ctx'' in
-	let fullctx = ctx'' @ [make_def na  (Some b') (lift lenctx' t)] @ ctx' in
-	  fullctx, lenctx'+lenctx''+1, liftn lenctx' (lenctx'' + 2) c'
-
-    | Prod (na, d, c) when not (Termops.dependent sigma (mkRel 1) c)  ->
-	let ctx',lenctx',d' = aux n env d in
-	let ctx'',lenctx'',c' = aux n env (subst1 mkProp c) in
-          lift_rel_context lenctx' ctx'' @ ctx', lenctx' + lenctx'',
-	mkProd (na, lift lenctx'' d', 
-	       liftn lenctx' (lenctx'' + 2) 
-		 (lift 1 c'))
-
+    | LetIn (na,b,t,body) ->
+      let hyps',b' = aux n env hyps b in
+      let hyps'',body' = aux (succ n) ((na,Some b,t) :: env) CMap.empty body in
+        cmap_union hyps' (cmap_map (fun ty -> Constr.mkLetIn (na,b,t,ty)) hyps''), c
+	  
+    | Prod (na, d, c) when noccurn 1 c  ->
+      let hyps',d' = aux n env hyps d in
+      let hyps'',c' = aux n env hyps' (subst1 mkProp c) in
+        hyps'', mkProd (na, d', lift 1 c')
+	  
     | Case (ci, p, c, br) ->
-	let ctx', lenctx', c' = aux n env c in
-	let case' = mkCase (ci, lift lenctx' p, c', Array.map (lift lenctx') br) in
-	  ctx', lenctx', substnl proto_fs (succ len + lenctx') case'
-
+      let hyps', c' = aux n env hyps c in
+      let case' = mkCase (ci, p, c', br) in
+        hyps', EConstr.Unsafe.to_constr (Vars.substnl proto_fs (succ len) (EConstr.of_constr case'))
+	  
     | Proj (p, c) ->
-       let ctx', lenctx', c' = aux n env c in
-         ctx', lenctx', mkProj (p, c')
-			     
-    | _ -> [], 0, if do_subst then (substnl proto_fs (len + n) c) else c
-  in clean_rec_calls sigma (aux 0 [] c)
+      let hyps', c' = aux n env hyps c in
+	hyps', mkProj (p, c')
+	  
+    | _ ->
+      let c' =
+	if do_subst then (EConstr.Unsafe.to_constr (Vars.substnl proto_fs (len + n) (EConstr.of_constr c)))
+        else c
+      in hyps, c'
+  in clean_rec_calls sigma (aux 0 [] CMap.empty (EConstr.Unsafe.to_constr c))
                 
 let subst_app sigma f fn c =
   let rec aux n c =
@@ -264,7 +275,7 @@ let clear_ind_assums sigma ind ctx =
     | Prod (na, b, c) ->
        if is_ind_assum sigma ind b then
          (assert(not (Termops.dependent sigma (mkRel 1) c));
-          clear_assums (subst1 mkProp c))
+          clear_assums (Vars.subst1 mkProp c))
        else mkProd (na, b, clear_assums c)
     | LetIn (na, b, t, c) ->
 	mkLetIn (na, b, t, clear_assums c)
@@ -273,9 +284,11 @@ let clear_ind_assums sigma ind ctx =
 
 let type_of_rel t ctx =
   match Constr.kind t with
-  | Rel k -> lift k (get_type (List.nth ctx (pred k)))
+  | Rel k -> Vars.lift k (get_type (List.nth ctx (pred k)))
   | c -> mkProp
 
+open Vars
+    
 let compute_elim_type env evd user_obls is_rec protos k leninds
                       ind_stmts all_stmts sign app elimty =
   let ctx, arity = decompose_prod_assum !evd elimty in
@@ -288,12 +301,12 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
   (* Assumes non-dep mutual eliminator of the graph *)
   let newarity =
     if lenrealinds == 1 then
-      it_mkProd_or_LetIn (substl [mkProp; app] arity) sign
+      it_mkProd_or_LetIn (Vars.substl [mkProp; app] arity) sign
     else
       let clean_one a sign fn =
         let ctx, concl = decompose_prod_assum !evd a in
         let newctx = CList.skipn 2 ctx in
-        let newconcl = substl [mkProp; mkApp (fn, extended_rel_vect 0 sign)] concl in
+        let newconcl = Vars.substl [mkProp; mkApp (fn, extended_rel_vect 0 sign)] concl in
         it_mkProd_or_LetIn newconcl newctx
       in
       let rec aux arity ind_stmts =
@@ -323,7 +336,7 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
 	CList.map_i
 	  (fun i (c, arg) -> 
 	   let idx = signlen - arg + 1 in (* lift 1, over return value *)
-	   let ty = lift (idx (* 1 for return value *)) 
+	   let ty = Vars.lift (idx (* 1 for return value *)) 
 			 (get_type (List.nth sign (pred (pred idx)))) 
 	   in
 	   (idx, ty, lift 1 c, mkRel idx)) 
@@ -335,7 +348,7 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
 	mkApp (transport,
 	       [| ty; x;
                   mkLambda (Name (Id.of_string "abs"), ty,
-                            Termops.replace_term !evd (lift 1 x) (mkRel 1) (lift 1 cty));
+                            Termops.replace_term !evd (Vars.lift 1 x) (mkRel 1) (Vars.lift 1 cty));
 		  c; y; eq (* equality *) |])
       in
       let pargs, subst =
