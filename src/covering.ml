@@ -1334,7 +1334,9 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
      let tac = 
        match rel with
        | None -> rec_tac term name
-       | Some r -> rec_wf_tac term name r
+       | Some r ->
+	 let _rel_check = interp_constr_evars env (!evars) r in
+	 rec_wf_tac term name r
      in
      let rhs = By (Inl tac, spl) in
      (match covering_aux env evars data [] [(loc,lhs,rhs),false] (Ident name :: path) prob lets ty with
