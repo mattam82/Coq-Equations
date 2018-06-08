@@ -501,8 +501,8 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
   | Some (Structural l) ->
      let open Proofview in
      let open Notations in
-     let mutual, nested = List.partition (function (_, StructuralOn _, _) -> true | _ -> false) l in
-     let mutannots = List.map (function (_, StructuralOn ann, _) -> ann + 1 | _ -> -1) mutual in
+     let mutual, nested = List.partition (function (_, StructuralOn _) -> true | _ -> false) l in
+     let mutannots = List.map (function (_, StructuralOn (ann, _)) -> ann + 1 | _ -> -1) mutual in
      let mutprogs, nestedprogs =
        List.partition (fun (p,_,e) -> match p.program_rec_annot with
                                       | Some (StructuralOn _) -> true
@@ -526,7 +526,7 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
      in
      let prove_nested =
        tclDISPATCH
-         (List.map (function (id,NestedOn (Some ann),_) -> fix id (ann + 1)
+         (List.map (function (id,NestedOn (Some (ann,_))) -> fix id (ann + 1)
                          | _ -> tclUNIT ()) nested) <*>
          prove_progs nestedprogs
      in

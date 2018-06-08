@@ -34,9 +34,11 @@ and user_pats = user_pat located list
 
 (** Globalized syntax *)
 
+type rec_arg = int * Id.t with_loc option
+    
 type rec_annot =
-  | StructuralOn of int
-  | NestedOn of int option
+  | StructuralOn of rec_arg
+  | NestedOn of rec_arg option
 
 type lhs = user_pats (* p1 ... pn *)
 and 'a rhs =
@@ -84,7 +86,7 @@ type pre_equation =
 type pre_equations = pre_equation where_clause list
 
 type rec_type = 
-  | Structural of (Id.t * rec_annot * Id.t with_loc option) list (* for mutual rec *)
+  | Structural of (Id.t * rec_annot) list (* for mutual rec *)
   | Logical of logical_rec
 and logical_rec =
   | LogicalDirect of Id.t with_loc
