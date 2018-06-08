@@ -52,7 +52,8 @@ let constr_of_global = UnivGen.constr_of_global
 let is_recursive i eqs =
   let rec occur_eqn (_, _, rhs) =
     match rhs with
-    | Program (c,w) -> if occur_var_constr_expr i c then Some false else None
+    | Program (c,w) -> if occur_var_constr_expr i c then Some false else
+	occurs w
     | Refine (c, eqs) -> 
        if occur_var_constr_expr i c then Some false
        else occur_eqns eqs
@@ -63,11 +64,12 @@ let is_recursive i eqs =
     if for_all Option.is_empty occurs then None
     else if exists (function Some true -> true | _ -> false) occurs then Some true
     else Some false
-  in
-  let occurs = List.map (fun (_,eqs) -> occur_eqns eqs) eqs in
-  if for_all Option.is_empty occurs then None
-  else if exists (function Some true -> true | _ -> false) occurs then Some true
-  else Some false
+  and occurs eqs =
+    let occurs = List.map (fun (_,eqs) -> occur_eqns eqs) eqs in
+      if for_all Option.is_empty occurs then None
+      else if exists (function Some true -> true | _ -> false) occurs then Some true
+      else Some false
+  in occurs eqs
 
 let declare_wf_obligations info =
   let make_resolve gr =
