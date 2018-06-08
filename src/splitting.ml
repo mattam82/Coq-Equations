@@ -404,9 +404,12 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
 	            [((Locus.AllOccurrencesBut [1]), EvalConstRef comp)]))
                 tclIDTAC r.comp
           in
-	    Some (of82 (tclTRY
-			  (tclTHENLIST [to82 zeta_red; to82 Tactics.intros; unfolds;
-					(to82 (solve_rec_tac ()))])))
+	  let open Tacticals.New in
+	    Some (tclORELSE
+		    (tclTRY
+		       (tclTHENLIST [zeta_red; Tactics.intros; of82 unfolds;
+				     solve_rec_tac ()]))
+		    !Obligations.default_tactic)
         else (userobls := Id.Set.add id !userobls;
               Some ((!Obligations.default_tactic)))
       in (id, ty, loc, s, d, tac)) obls
