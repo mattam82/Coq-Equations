@@ -49,8 +49,8 @@ scope_le_app p scope_le_n := p;
 scope_le_app p (scope_le_S q) := scope_le_S (scope_le_app p q);
 scope_le_app p (scope_le_map q) with p :=
 { | scope_le_n := scope_le_map q;
-  | scope_le_S p := scope_le_S (scope_le_app p q);
-  | (scope_le_map p) := scope_le_map (scope_le_app p q) }.
+  | scope_le_S p' := scope_le_S (scope_le_app p' q);
+  | (scope_le_map p') := scope_le_map (scope_le_app p' q) }.
 
 Hint Unfold NoConfusion.noConfusion_nat_obligation_1 : equations.
 Derive NoConfusion for scope_le.

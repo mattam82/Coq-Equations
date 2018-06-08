@@ -271,6 +271,20 @@ let rec interp_pat env ?(avoid = ref Id.Set.empty) (loc, p) =
                              str "Or patterns not supported by Equations")
       in upat
 
+let check_linearity pats =
+  let rec aux ids pats = 
+    List.fold_left (fun ids (loc, pat) ->
+      match pat with
+      | PUVar (n, _) ->
+	if Id.Set.mem n ids then
+	  CErrors.user_err ?loc ~hdr:"ids_of_pats"
+	    (str "Non-linear occurrence of variable in patterns")
+	else Id.Set.add n ids
+      | PUInac _ -> ids
+      | PUCstr (_, _, pats) -> aux ids pats)
+      ids pats
+  in ignore (aux Id.Set.empty pats)
+	
 let interp_eqn initi is_rec env impls eqn =
   let avoid = ref Id.Set.empty in
   let interp_pat = interp_pat env ~avoid in
@@ -304,6 +318,7 @@ let interp_eqn initi is_rec env impls eqn =
       in Loc.merge beginloc endloc
     in
     let pats = map interp_pat curpats'' in
+    let () = check_linearity pats in
       match is_rec with
       | Some (Structural l) ->
          (* let fnpat = (dummy_loc, PUVar (i, false)) in *)
