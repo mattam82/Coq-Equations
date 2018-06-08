@@ -262,7 +262,7 @@ let define_mutual_nested flags progs =
          we build the block and its projections now *)
      let structargs = Array.map_of_list (fun (p,_) ->
                           match p.program_rec_annot with
-                          | Some (StructuralOn lid) -> lid
+                          | Some (StructuralOn (lid,_)) -> lid
                           | _ -> (List.length p.program_sign) - 1) mutual in
      let evd = ref (Evd.from_env (Global.env ())) in
      let mutualapp, nestedbodies =
@@ -303,7 +303,7 @@ let define_mutual_nested flags progs =
             (match p'.program_rec_annot with
              | Some (NestedOn idx) ->
                 (match idx with
-                 | Some idx ->
+                 | Some (idx,_) ->
                     let term = one_nested k p' prog' idx in
                     fixsubst i (succ k) ((true, term) :: acc) rest
                  | None -> (* Non immediately recursive nested def *)
@@ -405,20 +405,24 @@ let define_by_eqs opts eqs nt =
       | Nested -> NestedOn (Some i)
     in
     let rec_annot =
+      let default_recarg () =
+	let idx = List.length sign - 1 in
+	  (idx, None)
+      in
       match rec_annot with
       | None ->
          (match is_rec with
-          | Some false -> Some (StructuralOn (List.length sign - 1))
+          | Some false -> Some (StructuralOn (default_recarg ()))
           | _ -> None)
       | Some (reck, None) ->
          (match is_recursive i [ieqs] with (* Recursive in its own body? *)
-          | Some _ -> Some (interp_reca reck (List.length sign - 1))
+          | Some _ -> Some (interp_reca reck (default_recarg ()))
           | None -> if reck == Nested then Some (NestedOn None)
-                    else Some (StructuralOn (List.length sign - 1)))
+                    else Some (StructuralOn (default_recarg ())))
       | Some (reck, Some lid) ->
          try
            let k, _, _ = lookup_rel_id (snd lid) sign in
-           Some (interp_reca reck (List.length sign - k))
+           Some (interp_reca reck (List.length sign - k, Some lid))
          with Not_found ->
            user_err_loc (Some (fst lid), "struct_index",
                          Pp.(str"No argument named " ++ Id.print (snd lid) ++ str" found"))
@@ -496,10 +500,13 @@ let define_by_eqs opts eqs nt =
   in
   let arities = List.map interp_arities eqs in
   let recids = List.map (fun p ->
-                   p.program_id, (match p.program_rec_annot with
-                                  | Some ann -> ann
-                                  | None -> NestedOn None), None)
-                        arities in
+    let ann =
+      match p.program_rec_annot with
+      | Some ann -> ann
+      | None -> NestedOn None
+    in p.program_id, ann)
+    arities
+  in
   let arities = List.map (fun p ->
                     match p.program_rec with
                     | Some (Structural _) -> { p with program_rec = Some (Structural recids) }

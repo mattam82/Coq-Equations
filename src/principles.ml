@@ -114,10 +114,10 @@ let is_applied_to_structarg f is_rec lenargs =
   | Some (Structural ids) -> begin
      try
        let kind =
-	 CList.find_map (fun (f', k, r) -> if Id.equal f f' then Some k else None) ids
+	 CList.find_map (fun (f', k) -> if Id.equal f f' then Some k else None) ids
        in
        match kind with
-       | StructuralOn idx | NestedOn (Some idx) -> Some (lenargs > idx)
+       | StructuralOn (idx,_) | NestedOn (Some (idx,_)) -> Some (lenargs > idx)
        | NestedOn None -> Some true
      with Not_found -> None
     end
@@ -151,7 +151,8 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
       let nhyps = Context.Rel.nhyps sign + Array.length args' in
       if eq_constr sigma f' f then
 	let f' = fst (destConst sigma f') in
-        match is_applied_to_structarg (Names.Label.to_id (Names.Constant.label f')) is_rec (List.length args) with
+        match is_applied_to_structarg (Names.Label.to_id (Names.Constant.label f')) is_rec
+	  (List.length args) with
         | Some true ->
            let args, rest =
              if nhyps < List.length args then CList.chop nhyps args
