@@ -380,6 +380,14 @@ let define_by_eqs opts eqs nt =
       not (try_bool_opt (OComp true)), irec,
       try_bool_opt (OEquations false), try_bool_opt (OInd false)
   in
+  let eqs =
+    match eqs with
+    | ((li,ra,l,t), eqns) :: tl ->
+      (match with_rec with
+      | Some lid -> ((li, (Some (Struct, Some lid)), l, t), eqns) :: tl
+      | _ -> eqs)
+    | _ -> assert false
+  in
   let with_comp = with_comp && not !Equations_common.ocaml_splitting in
   let env = Global.env () in
   let poly = Flags.is_universe_polymorphism () in
