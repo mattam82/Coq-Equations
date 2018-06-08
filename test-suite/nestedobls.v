@@ -25,8 +25,8 @@ test n p by rec n lt :=
 test 0 p := exist _ 0 _;
 test (S n) p <= test n _ => {
                 | exist 0 _ := exist _ 0 _;
-                | exist (S n') p with test n' _ := {
-                                                  | exist k p' := exist _ k _ } }.
+                | exist (S n') p' with test n' _ := {
+                                                  | exist k p'' := exist _ k _ } }.
 
 Next Obligation. auto with arith. Defined.
 Next Obligation. auto with arith. Defined.
@@ -41,10 +41,10 @@ Equations(noind) test' (n : { n : nat | n >= 0 }) : { n' : nat | n' <= `n } :=
 test' n by rec n (MR (@proj1_sig nat (fun x : nat => x >= 0)) lt) :=
 test' (exist n p) with n := {
   | 0 := exist _ 0 _;
-  | S n <= test' (exist _ n _) => {
+  | S n' <= test' (exist _ n' _) => {
                   | exist 0 _ := exist _ 0 _;
-                  | exist (S n') p with test' (exist _ n' _) := {
-                      | exist k p' := exist _ k _ } } }.
+                  | exist (S n'') p' with test' (exist _ n'' _) := {
+                      | exist k p'' := exist _ k _ } } }.
 Next Obligation.
   auto with arith.
 Defined.

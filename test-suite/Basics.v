@@ -222,7 +222,7 @@ Obligation Tactic := program_simpl ; auto with arith.
 Equations(nocomp) equal (n m : nat) : { n = m } + { n <> m } :=
 equal O O := in_left ;
 equal (S n) (S m) <= equal n m => {
-  equal (S n) (S n) (left eq_refl) := left eq_refl ;
+  equal (S n) (S ?(n)) (left eq_refl) := left eq_refl ;
   equal (S n) (S m) (right p) := in_right } ;
 equal x y := in_right.
 

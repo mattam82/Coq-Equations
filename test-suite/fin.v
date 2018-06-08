@@ -73,7 +73,7 @@ Proof.
 Qed.
 
 Equations iget {A : Set} {n : nat} (l : ilist A n) (i : fin n) : A :=
-iget (Cons x n) (fz n) := x;
+iget (Cons x t) (fz n) := x;
 iget (Cons _ t) (fs n j) := iget t j.
 
 Equations isnoc {A : Set} {n : nat} (l : ilist A n) (x : A) : ilist A (S n) :=

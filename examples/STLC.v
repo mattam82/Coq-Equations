@@ -628,7 +628,7 @@ hereditary_subst (pair (pair A a) t) k with t := {
     | Lt := (Var i, None) ;
     | Gt := (Var (pred i), None) } ;
 
-  | Lambda t := (Lambda (fst (hereditary_subst (A, a, t) (S k))), None) ;
+  | Lambda t' := (Lambda (fst (hereditary_subst (A, a, t') (S k))), None) ;
 
   | App f arg with hereditary_subst (A, a, f) k := {
     | p with is_lambda p := {
@@ -640,15 +640,15 @@ hereditary_subst (pair (pair A a) t) k with t := {
   | Pair i j :=
     (<< fst (hereditary_subst (A, a, i) k), fst (hereditary_subst (A, a, j) k) >>, None) ;
 
-  | Fst t with hereditary_subst (A, a, t) k := {
+  | Fst t' with hereditary_subst (A, a, t') k := {
     | p with is_pair p := {
-      | inl (isPair u v a b prf) := (u, Some (exist a _)) ;
-      | inr p := (Fst p, None) } } ;
+      | inl (isPair u v a' b' prf) := (u, Some (exist a' _)) ;
+      | inr p' := (Fst p', None) } } ;
 
-  | Snd t with hereditary_subst (A, a, t) k := {
+  | Snd t' with hereditary_subst (A, a, t') k := {
     | p with is_pair p := {
-      | inl (isPair u v a b prf) := (v, Some (exist b _)) ;
-      | inr p := (Snd p, None) } } ;
+      | inl (isPair u v a' b' prf) := (v, Some (exist b' _)) ;
+      | inr p' := (Snd p', None) } } ;
 
   | Tt := (Tt, None) }.
 
