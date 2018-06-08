@@ -447,6 +447,8 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
       match stmts, meths with
       | (Refine, _, _, _) :: stmts, decl :: decls ->
 	 aux stmts (subst_telescope mkProp decls) (succ n) meths'
+      | (Where, _, _, None) :: stmts, decls -> (* Empty node, no constructor *)
+	 aux stmts decls n meths'
       | (_, _, _, _) :: stmts, decl :: decls ->
 	 aux stmts decls n (decl :: meths')
       | [], [] -> n, meths'

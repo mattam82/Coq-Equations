@@ -56,7 +56,7 @@ val compute_elim_type :
            (bool * unit Proofview.tactic * EConstr.t * EConstr.constr option))
           list)
          list ->
-  (node_kind * 'e * 'f * 'g) list ->
+  (node_kind * 'e * 'f * 'g option) list ->
   rel_context -> constr -> types -> int * types
 val replace_vars_context :
   Names.Id.t list ->
