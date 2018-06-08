@@ -42,9 +42,11 @@ type rec_annotation =
 
 type user_rec_annot = (rec_annotation * Id.t with_loc option) option
 
+type rec_arg = int * Id.t with_loc option
+    
 type rec_annot =
-  | StructuralOn of int
-  | NestedOn of int option
+  | StructuralOn of rec_arg
+  | NestedOn of rec_arg option
 
 type program =
   (signature * clause list) list
@@ -150,7 +152,7 @@ let pr_equation_options  _prc _prlc _prt l =
   mt ()
 
 type rec_type = 
-  | Structural of (Id.t * rec_annot * Id.t with_loc option) list (* for mutual rec *)
+  | Structural of (Id.t * rec_annot) list (* for mutual rec *)
   | Logical of logical_rec
 
 and logical_rec =
@@ -305,7 +307,7 @@ let interp_eqn initi is_rec env impls eqn =
       match is_rec with
       | Some (Structural l) ->
          (* let fnpat = (dummy_loc, PUVar (i, false)) in *)
-         let addpat (id, k, _) =
+         let addpat (id, k) =
            match k with
            | NestedOn None when Id.equal id initi -> None
            | _ -> Some (None, PUVar (id, false))
