@@ -19,7 +19,9 @@ foldLeft T R l z f :=
              (fun _ => foldLeft T R (tail T l) (f z (head T l)) f)
              (fun _ => z).
 Next Obligation. Timeout 10 Admitted.
-Check foldLeft_unfold_eq.
+Definition check := foldLeft_unfold_eq.
+Axiom cheat : forall {A}, A.
+Next Obligation. apply cheat. Defined.
 (* 
 Next Obligation. 
   Subterm.rec_wf_rel foldLef 0 lt.
