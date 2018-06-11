@@ -290,7 +290,7 @@ let depcase poly (mind, i as ind) =
   let nargs = List.length args in
   let indapp = mkApp (mkInd ind, extended_rel_vect 0 ctx) in
   let evd = ref (Evd.from_env (Global.env())) in
-  let pred = it_mkProd_or_LetIn (evd_comb0 (Evarutil.new_Type (Global.env ())) evd)
+  let pred = it_mkProd_or_LetIn (evd_comb0 Evarutil.new_Type evd)
     (make_assum Anonymous indapp :: args)
   in
   let nconstrs = Array.length oneind.mind_nf_lc in
