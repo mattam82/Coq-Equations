@@ -582,10 +582,10 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
 
 
 let simpl_of csts =
-  let opacify () = List.iter (fun cst -> 
+  let opacify () = List.iter (fun (cst,_) ->
     Global.set_strategy (ConstKey cst) Conv_oracle.Opaque) csts
-  and transp () = List.iter (fun cst -> 
-    Global.set_strategy (ConstKey cst) Conv_oracle.Expand) csts
+  and transp () = List.iter (fun (cst, level) ->
+    Global.set_strategy (ConstKey cst) level) csts
   in opacify, transp
 
 let get_proj_eval_ref p =
@@ -597,8 +597,10 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
   let depelim h = depelim_tac h in
   let helpercsts = List.map (fun (_, _, i) -> destConstRef (global_reference i))
 			    info.helpers_info in
-  let opacify, transp = simpl_of (destConstRef (Lazy.force coq_hidebody) :: helpercsts) in
+  let opacify, transp = simpl_of ((destConstRef (Lazy.force coq_hidebody), Conv_oracle.transparent)
+    :: List.map (fun x -> x, Conv_oracle.Expand) (f_cst :: funf_cst :: helpercsts)) in
   let opacified tac gl = opacify (); let res = tac gl in transp (); res in
+  let transparent tac gl = transp (); let res = tac gl in opacify (); res in
   let simpltac gl = opacified (to82 (simpl_equations_tac ())) gl in
   let my_simpl = opacified (to82 (simpl_in_concl)) in
   let unfolds = tclTHEN (autounfold_first [info.base_id] None)
@@ -619,7 +621,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
 	  else to82 reflexivity gl
     | _ -> to82 reflexivity gl
   in
-  let solve_eq = tclORELSE (to82 reflexivity) solve_rec_eq in
+  let solve_eq = observe "solve_eq" (tclORELSE (transparent (to82 reflexivity)) solve_rec_eq) in
   let abstract tac = tclABSTRACT None tac in
   let rec aux split unfold_split =
     match split, unfold_split with
@@ -691,9 +693,6 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
                | Ident _ -> assert false
            with Not_found -> assert false
          in
-         (* msg_debug (str"Found where: " ++ *)
-         (*              pr_id unfw.where_id ++ str"term: " ++ pr_constr unfw.where_term ++ *)
-         (*              str " where assoc " ++ pr_constr assoc); *)
          fun gl ->
          let env = pf_env gl in
          let evd = ref (project gl) in
@@ -714,8 +713,6 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
            let res = to82 (unfold_in_concl
 	     [Locus.OnlyOccurrences [1], EvalConstRef f_cst;
 	      (Locus.OnlyOccurrences [1], EvalConstRef funf_cst)]) gl in
-           (* Global.set_strategy (ConstKey f_cst) Conv_oracle.Opaque; *)
-	   (* Global.set_strategy (ConstKey funf_cst) Conv_oracle.Opaque; *)
            res
          in
          let tac =
@@ -735,9 +732,9 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
          List.fold_left2 wheretac tclIDTAC wheres unfwheres
        in
        observe "compute"
-               (to82 (abstract (of82 (tclTHENLIST [to82 intros; wheretacs;
-                                                   observe "compute rhs" (tclTRY unfolds);
-                                                   simpltac; solve_eq]))))
+         (tclTHENLIST [to82 intros; wheretacs;
+                       observe "compute rhs" (tclTRY unfolds);
+                       simpltac; solve_eq])
 
     | Compute (_, _, _, _), Compute ((ctx,_,_), _, _, REmpty id) ->
 	let d = nth ctx (pred id) in
@@ -759,13 +756,8 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
 	     Global.set_strategy (ConstKey f_cst) Conv_oracle.Opaque;
 	     Global.set_strategy (ConstKey funf_cst) Conv_oracle.Opaque;
 	     aux split unfold_split gl)] gl
-      in Global.set_strategy (ConstKey f_cst) Conv_oracle.Expand;
-	Global.set_strategy (ConstKey funf_cst) Conv_oracle.Expand;
-	res
-    with e ->
-      Global.set_strategy (ConstKey f_cst) Conv_oracle.Expand;
-      Global.set_strategy (ConstKey funf_cst) Conv_oracle.Expand;
-      raise e
+      in transp (); res
+    with e -> transp (); raise e
   
 
 (* let rec mk_app_holes env sigma = function *)
