@@ -17,9 +17,7 @@ open Covering
 open Splitting
 open Principles_proofs
 
-open EConstr
-
-type statement = constr * types option
+type statement = EConstr.constr * EConstr.types option
 type statements = statement list
 
 type recursive = bool
@@ -53,7 +51,7 @@ let match_arguments sigma l l' =
   let rec aux i =
     if i < Array.length l' then
       if i < Array.length l then
-        if eq_constr sigma l.(i) l'.(i) then
+        if EConstr.eq_constr sigma l.(i) l'.(i) then
           i :: aux (succ i)
         else aux (succ i)
       else aux (succ i)
@@ -93,12 +91,12 @@ let clean_rec_calls sigma (hyps, c) =
   let elems = List.sort (fun x y -> Int.compare (snd x) (snd y)) (CMap.bindings hyps) in
   let (size, ctx) =
     List.fold_left (fun (n, acc) (ty, _) ->
-    (succ n, LocalAssum (Name (Id.of_string "Hind"), Vars.lift n (EConstr.of_constr ty)) :: acc))
+    (succ n, LocalAssum (Name (Id.of_string "Hind"), EConstr.Vars.lift n (EConstr.of_constr ty)) :: acc))
     (0, []) elems
   in
-  (ctx, size, Vars.lift size (EConstr.of_constr c))
+  (ctx, size, EConstr.Vars.lift size (EConstr.of_constr c))
 
-let head sigma c = fst (decompose_app sigma c)
+let head c = fst (Constr.decompose_app c)
 
 let is_applied_to_structarg f is_rec lenargs =
   match is_rec with
@@ -115,7 +113,7 @@ let is_applied_to_structarg f is_rec lenargs =
   | _ -> None
 
 let is_user_obl sigma user_obls f =
-  match kind sigma f with
+  match EConstr.kind sigma f with
   | Const (c, u) -> Id.Set.mem (Label.to_id (Constant.label c)) user_obls
   | _ -> false
 
@@ -133,30 +131,55 @@ let cmap_union g h =
 let cmap_add ty n h =
   cmap_union (CMap.singleton ty n) h
     
+
+let subst_telescope cstr ctx =
+  let (_, ctx') = List.fold_left
+    (fun (k, ctx') decl ->
+      (succ k, (Context.Rel.Declaration.map_constr (substnl [cstr] k) decl) :: ctx'))
+    (0, []) ctx
+  in List.rev ctx'
+
+let substitute_args args ctx =
+  let open Context.Rel.Declaration in
+  let rec aux ctx args =
+    match args, ctx with
+    | a :: args, LocalAssum _ :: ctx -> aux (subst_telescope a ctx) args
+    | _ :: _, LocalDef (na, b, t) :: ctx -> aux (subst_telescope b ctx) args
+    | [], ctx -> List.rev ctx
+    | _, [] -> assert false
+  in aux (List.rev ctx) args
+
 let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
   let lenprotos = List.length protos in
   let proto_fs = List.map (fun ((f,args), _, _, _, _) -> f) protos in
   let find_rec_call f args =
     let fm ((f',filter), alias, idx, sign, arity) =
       let f', args' = Termops.decompose_app_vect sigma f' in
+      let f' = EConstr.Unsafe.to_constr f' in
+      let args' = Array.map EConstr.Unsafe.to_constr args' in
       let nhyps = Context.Rel.nhyps sign + Array.length args' in
-      if eq_constr sigma f' f then
-	let f' = fst (destConst sigma f') in
+      if Constr.equal f' f then
+        let f' = fst (Constr.destConst f') in
         match is_applied_to_structarg (Names.Label.to_id (Names.Constant.label f')) is_rec
 	  (List.length args) with
         | Some true ->
-           let args, rest =
-             if nhyps < List.length args then CList.chop nhyps args
-             else args, []
-           in Some (idx, arity, filter, args, rest)
+           let sign, args =
+             if nhyps <= List.length args then [], CList.chop nhyps args
+             else
+               let sign = List.map EConstr.Unsafe.to_rel_decl sign in
+               let sign = substitute_args args sign in
+               let signlen = List.length sign in
+               sign, (List.map (lift signlen) args @ Context.Rel.to_extended_list mkRel 0 sign, [])
+           in Some (idx, arity, filter, sign, args)
         | Some false -> None
-        | None -> Some (idx, arity, filter, args, [])
+        | None -> Some (idx, arity, filter, [], (args, []))
       else
         match alias with
         | Some (f',argsf) ->
            let f', args' = Termops.decompose_app_vect sigma f' in
-           if eq_constr sigma (head sigma f') f then
-             Some (idx, arity, argsf, args, [])
+           let f' = EConstr.Unsafe.to_constr f' in
+           if Constr.equal (head f') f then
+             Some (idx, arity, argsf, [], (args, []))
            else None
         | None -> None
     in
@@ -168,11 +191,11 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
     | Some (i, arity, filter, args', rest) -> Some (i, arity, filter, args', rest)
     | None -> 
 	match is_rec with
-        | Some (Logical r) when is_rec_call sigma r f ->
+        | Some (Logical r) when is_rec_call sigma r (EConstr.of_constr f) ->
            (match r with
            | LogicalDirect _ -> None
            | LogicalProj r -> 
-              Some (lenprotos - 1, r.comp_app, [] (* filter *), CList.drop_last args, []))
+              Some (lenprotos - 1, r.comp_app, [] (* filter *), [], (CList.drop_last args, [])))
 	| _ -> None
   in
   let occ = ref 0 in
@@ -187,14 +210,19 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
           hyps args
       in
       let args = Array.to_list args in
-	(match find_rec_call (EConstr.of_constr f') args with
-        | Some (i, arity, filter, args', rest) ->
+        (match find_rec_call f' args with
+         | Some (i, arity, filter, sign, (args', rest)) ->
           let fargs' = filter_arguments filter args' in
-          let result = mkApp (f', Array.of_list args') in
-          let hyp = mkApp (mkApp (mkRel (i + 1 + len + n), Array.of_list fargs'), [| result |]) in
+          let result = Termops.it_mkLambda_or_LetIn (mkApp (f', CArray.of_list args')) sign in
+          let hyp =
+            Term.it_mkProd_or_LetIn
+              (Constr.mkApp (mkApp (mkRel (i + 1 + len + n + List.length sign), Array.of_list fargs'),
+                      [| Term.applistc (lift (List.length sign) result) (Context.Rel.to_extended_list mkRel 0 sign) |]))
+              sign
+          in
 	  let hyps = cmap_add hyp !occ hyps in
 	  let () = incr occ in
-	    hyps, Term.applist (result, rest)
+            hyps, Term.applist (result, rest)
         | None -> hyps, mkApp (f', Array.of_list args))
 	    
     | Lambda (na,t,b) ->
@@ -218,7 +246,7 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
       let hyps', c' = aux n env hyps c in
       let hyps' = Array.fold_left (fun hyps br -> fst (aux n env hyps br)) hyps' brs in
       let case' = mkCase (ci, p, c', brs) in
-        hyps', EConstr.Unsafe.to_constr (Vars.substnl proto_fs (succ len) (EConstr.of_constr case'))
+        hyps', EConstr.Unsafe.to_constr (EConstr.Vars.substnl proto_fs (succ len) (EConstr.of_constr case'))
 	  
     | Proj (p, c) ->
       let hyps', c' = aux n env hyps c in
@@ -226,11 +254,13 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
 	  
     | _ ->
       let c' =
-	if do_subst then (EConstr.Unsafe.to_constr (Vars.substnl proto_fs (len + n) (EConstr.of_constr c)))
+        if do_subst then (EConstr.Unsafe.to_constr (EConstr.Vars.substnl proto_fs (len + n) (EConstr.of_constr c)))
         else c
       in hyps, c'
   in clean_rec_calls sigma (aux 0 [] CMap.empty (EConstr.Unsafe.to_constr c))
-                
+
+open EConstr
+
 let subst_app sigma f fn c =
   let rec aux n c =
     match kind sigma c with
@@ -447,7 +477,7 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
     let rec aux stmts meths n meths' = 
       match stmts, meths with
       | (Refine, _, _, _) :: stmts, decl :: decls ->
-	 aux stmts (subst_telescope mkProp decls) (succ n) meths'
+         aux stmts (Equations_common.subst_telescope mkProp decls) (succ n) meths'
       | (Where, _, _, None) :: stmts, decls -> (* Empty node, no constructor *)
 	 aux stmts decls n meths'
       | (_, _, _, _) :: stmts, decl :: decls ->
