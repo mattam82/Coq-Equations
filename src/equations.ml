@@ -320,7 +320,7 @@ let define_mutual_nested flags progs =
        let nested = fixsubst (List.length mutual) 0 [] l in
        let nested, mutual = List.partition (fun (x, y) -> x) nested in
        let gns = List.fold_right (fun (_, g) acc -> applist (g, acc) :: acc) nested [] in
-       let nested = List.fold_left (fun acc g -> applist (g, acc) :: acc) [] gns in
+       let nested = List.fold_left (fun acc g -> applist (g, List.rev acc) :: acc) [] gns in
        let nested = List.rev_map (Reductionops.nf_beta (Global.env ()) !evd) nested in
        List.map snd mutual, nested
      in
