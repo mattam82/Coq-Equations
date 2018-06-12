@@ -15,7 +15,6 @@ val pi1 : 'a * 'b * 'c -> 'a
 val pi2 : 'a * 'b * 'c -> 'b
 val match_arguments : Evd.evar_map -> constr array -> constr array -> int list
 val filter_arguments : int list -> 'a list -> 'a list
-val head : Evd.evar_map -> constr -> constr
 val is_applied_to_structarg : Names.Id.t -> Syntax.rec_type option -> int -> bool option
 
 val abstract_rec_calls : Evd.evar_map -> Names.Id.Set.t ->
