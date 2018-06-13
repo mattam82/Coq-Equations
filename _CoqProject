@@ -7,8 +7,8 @@ CAMLDEBUG = "-bin-annot -g -for-pack Equations -w -58"
 COQDOCFLAGS = "-parse-comments -utf8 -interpolate"
 src/equations_common.mli
 src/equations_common.ml
-src/derive.ml
-src/derive.mli
+src/ederive.ml
+src/ederive.mli
 src/sigma_types.mli
 src/sigma_types.ml
 src/subterm.mli

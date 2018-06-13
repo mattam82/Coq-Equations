@@ -364,7 +364,7 @@ let derive_dep_elimination env sigma ~polymorphic (i,u) =
 
 let () =
   let fn env sigma ~polymorphic c = ignore (derive_dep_elimination env sigma ~polymorphic c) in
-  Derive.(register_derive
+  Ederive.(register_derive
             { derive_name = "DependentElimination";
               derive_fn = make_derive_ind fn })
 

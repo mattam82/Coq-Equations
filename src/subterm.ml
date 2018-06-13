@@ -245,7 +245,7 @@ let derive_subterm env sigma ~polymorphic ind =
   in ignore(declare_ind ())
 
 let () =
-  Derive.(register_derive
+  Ederive.(register_derive
             { derive_name = "Subterm";
               derive_fn = make_derive_ind derive_subterm })
     
@@ -375,6 +375,6 @@ let derive_below env sigma ~polymorphic (ind,univ as indu) =
 	     (Decl_kinds.IsDefinition Decl_kinds.Definition))
     
 let () =
-  Derive.(register_derive
+  Ederive.(register_derive
             { derive_name = "Below";
               derive_fn = make_derive_ind derive_below })

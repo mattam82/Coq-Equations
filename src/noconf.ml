@@ -165,6 +165,6 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
 	      ~term ty ~tactic:(noconf_tac ()) 
 	      (Evd.evar_universe_context !evd) oblinfo)
 let () =
-  Derive.(register_derive
+  Ederive.(register_derive
             { derive_name = "NoConfusion";
               derive_fn = make_derive_ind derive_no_confusion })

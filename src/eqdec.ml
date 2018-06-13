@@ -160,6 +160,6 @@ let derive_eq_dec env sigma ~polymorphic ind =
     indsl
 
 let () =
-  Derive.(register_derive
+  Ederive.(register_derive
             { derive_name = "EqDec";
               derive_fn = make_derive_ind derive_eq_dec })

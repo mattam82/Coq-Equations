@@ -236,7 +236,7 @@ let declare_sig_of_ind env sigma poly (ind,u) =
 
 let () =
   let fn env sigma ~polymorphic c = ignore (declare_sig_of_ind env sigma polymorphic c) in
-  Derive.(register_derive
+  Ederive.(register_derive
             { derive_name = "Signature";
               derive_fn = make_derive_ind fn })
 
