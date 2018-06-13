@@ -541,7 +541,7 @@ let below_tac s =
 
 let tacvar_arg h =
   let ipat = Genarg.in_gen (Genarg.rawwit Tacarg.wit_intro_pattern) 
-    (CAst.make @@ Misctypes.IntroNaming (Misctypes.IntroIdentifier h)) in
+    (CAst.make @@ Tactypes.IntroNaming (Namegen.IntroIdentifier h)) in
     TacGeneric ipat
 
 let rec_tac h h' = 
@@ -576,7 +576,6 @@ let simpl_equations_tac () = tac_of_string "Equations.DepElim.simpl_equations" [
 
 let specialize_mutfix_tac () = tac_of_string "Equations.FunctionalInduction.specialize_mutfix" []
   
-open Misctypes
 open Libnames
 
 let reference_of_global c =
@@ -587,14 +586,14 @@ let tacident_arg h =
 
 let call_tac_on_ref tac c =
   let var = Names.Id.of_string "x" in
-  let tac = ArgArg (dummy_loc, tac) in
+  let tac = Locus.ArgArg (dummy_loc, tac) in
   let val_reference = Geninterp.val_tag (Genarg.topwit Stdarg.wit_constr) in
   (** This is a hack to avoid generating useless universes *)
   let c = UnivGen.constr_of_global_univ (c, Univ.Instance.empty) in
   let c = Geninterp.Val.inject val_reference (EConstr.of_constr c) in
   let ist = Geninterp.{ lfun = Names.Id.Map.add var c Names.Id.Map.empty;
                             extra = Geninterp.TacStore.empty } in
-  let var = Reference (Misctypes.ArgVar CAst.(make var)) in
+  let var = Reference (Locus.ArgVar CAst.(make var)) in
   let tac = TacArg (dummy_loc, TacCall (dummy_loc, (tac, [var]))) in
   ist, tac
 
@@ -744,8 +743,8 @@ let idset_of_list =
 
 let pr_smart_global f = Pptactic.pr_or_by_notation pr_reference f
 let string_of_smart_global = function
-  | {CAst.v=Misctypes.AN ref} -> string_of_reference ref
-  | {CAst.v=Misctypes.ByNotation (s, _)} -> s
+  | {CAst.v=Constrexpr.AN ref} -> string_of_reference ref
+  | {CAst.v=Constrexpr.ByNotation (s, _)} -> s
 
 let ident_of_smart_global x = 
   Id.of_string (string_of_smart_global x)
@@ -768,7 +767,7 @@ let move_after_deps id c =
       | [] -> user_err ~hdr:"move_before_deps"
         Pp.(str"Found no hypothesis on which " ++ Id.print id ++ str" depends")
     in
-    Tactics.move_hyp id (Misctypes.MoveAfter first)
+    Tactics.move_hyp id (Logic.MoveAfter first)
   in Proofview.Goal.enter enter
 
 let observe s tac = 

@@ -379,7 +379,7 @@ let rec aux_ind_fun info chop unfs unfids = function
           let chop = fstchop, snd chop in
           let wheretac =
             observe "one where"
-            (tclTHENLIST [tclTRY (to82 (move_hyp coq_end_of_section_id Misctypes.MoveLast));
+            (tclTHENLIST [tclTRY (to82 (move_hyp coq_end_of_section_id Logic.MoveLast));
                          to82 intros;
                          if Option.is_empty unfs then tclIDTAC
                          else autorewrite_one (info.term_info.base_id ^ "_where");
@@ -512,7 +512,7 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
      let rec splits l =
        match l with
        | [] | _ :: [] -> tclUNIT ()
-       | _ :: l -> Tactics.split Misctypes.NoBindings <*> tclDISPATCH [tclUNIT (); splits l]
+       | _ :: l -> Tactics.split Tactypes.NoBindings <*> tclDISPATCH [tclUNIT (); splits l]
      in
      let prove_progs progs =
        intros <*>

@@ -652,7 +652,7 @@ let solve_equations_goal destruct_tac tac gl =
   let move_tac = 
     match move with
     | None -> fun _ -> tclIDTAC
-    | Some id' -> fun id -> to82 (move_hyp id (Misctypes.MoveBefore id'))
+    | Some id' -> fun id -> to82 (move_hyp id (Logic.MoveBefore id'))
   in
   let targetn, branchesn, targ, brs, b =
     match kind (project gl) (of_constr concl) with

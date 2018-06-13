@@ -118,7 +118,7 @@ let ppclause clause =
   pp(pr_clause (Global.env ()) clause)
 
 type pat_expr = 
-  | PEApp of reference Misctypes.or_by_notation with_loc * pat_expr with_loc list
+  | PEApp of reference Constrexpr.or_by_notation with_loc * pat_expr with_loc list
   | PEWildcard
   | PEInac of constr_expr
   | PEPat of cases_pattern_expr
@@ -231,7 +231,7 @@ let chole c loc =
   let kn = Lib.make_kn c in
   let cst = Names.Constant.make kn kn in
   CAst.make ~loc
-  (CHole (Some (ImplicitArg (ConstRef cst, (0,None), false)),Misctypes.IntroAnonymous,None)), None
+  (CHole (Some (ImplicitArg (ConstRef cst, (0,None), false)), Namegen.IntroAnonymous,None)), None
 
 let rec interp_pat env ?(avoid = ref Id.Set.empty) (loc, p) =
   match p with
