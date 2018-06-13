@@ -269,7 +269,7 @@ let define_mutual_nested flags progs =
      let evd = ref (Evd.from_env (Global.env ())) in
      let mutualapp, nestedbodies =
        let nested = List.length l - List.length mutual in
-       let one_nested before p prog idx =
+       let one_nested before p prog afterctx idx =
          let signlen = List.length p.program_sign in
          let fixbody =
            Vars.lift 1 (* lift over itself *)
@@ -283,17 +283,22 @@ let define_mutual_nested flags progs =
          (** Apply to itself *)
          let beforeargs = rel_list (signlen + 1) before in
          let fixref = mkRel (signlen + 1) in
-         let afterargs =
-           let rec aux acc n =
-             if Int.equal n after then acc
+         let (afterargs, afterctx) =
+           let rec aux (acc, ctx) n afterctx =
+             if Int.equal n after then acc, ctx
              else
-             let term = applist (mkRel (signlen + nested - n), acc) in
-             aux (acc @ [term]) (succ n)
-           in aux (beforeargs @ [fixref]) 0
+              match afterctx with
+              | ty :: tl ->
+                let term = applist (mkRel (signlen + nested), acc) in
+                let decl = Context.Rel.Declaration.LocalDef (Name (Id.of_string "H"), term, ty) in
+                  aux (List.map (Vars.lift 1) acc @ [mkRel 1], decl :: ctx) (succ n) tl
+              | [] -> assert false
+           in aux (beforeargs @ [fixref], []) 0 afterctx
          in
-         let fixbody = applist (fixbody, afterargs) in
+         let fixbody = applist (Vars.lift after fixbody, afterargs) in
          (** Apply to its arguments *)
-         let fixbody = mkApp (fixbody, extended_rel_vect 0 p.program_sign) in
+         let fixbody = mkApp (fixbody, extended_rel_vect after p.program_sign) in
+	 let fixbody = it_mkLambda_or_LetIn fixbody afterctx in
          let fixbody = it_mkLambda_or_LetIn fixbody p.program_sign in
          it_mkLambda_or_LetIn
          (mkFix (fixb, (fixna, fixty, Array.make 1 fixbody)))
@@ -304,15 +309,16 @@ let define_mutual_nested flags progs =
          | (p', prog') :: rest ->
             (match p'.program_rec_annot with
              | Some (NestedOn idx) ->
-                (match idx with
-                 | Some (idx,_) ->
-                    let term = one_nested k p' prog' idx in
-                    fixsubst i (succ k) ((true, term) :: acc) rest
-                 | None -> (* Non immediately recursive nested def *)
-                    let term =
-                      mkApp (mkConst prog'.program_cst, rel_vect 0 (List.length mutual))
-                    in
-                    fixsubst i (succ k) ((true, term) :: acc) rest)
+               (match idx with
+	       | Some (idx,_) ->
+		 let rest_tys = List.map (fun (p,_) -> it_mkProd_or_LetIn p.program_arity p.program_sign) rest in
+                 let term = one_nested k p' prog' rest_tys idx in
+                   fixsubst i (succ k) ((true, term) :: acc) rest
+               | None -> (* Non immediately recursive nested def *)
+                 let term =
+                   mkApp (mkConst prog'.program_cst, rel_vect 0 (List.length mutual))
+                 in
+                   fixsubst i (succ k) ((true, term) :: acc) rest)
              | _ -> fixsubst (pred i) k ((false, mkRel i) :: acc) rest)
          | [] -> List.rev acc
        in
