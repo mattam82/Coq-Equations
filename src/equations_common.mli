@@ -309,11 +309,11 @@ val db_of_constr : Constr.t -> hintdb_name
 val dbs_of_constrs : Constr.t list -> hintdb_name list
 
 val pr_smart_global :
-  Libnames.reference Misctypes.or_by_notation -> Pp.t
+  Libnames.reference Constrexpr.or_by_notation -> Pp.t
 val string_of_smart_global :
-  Libnames.reference Misctypes.or_by_notation -> string
+  Libnames.reference Constrexpr.or_by_notation -> string
 val ident_of_smart_global :
-  Libnames.reference Misctypes.or_by_notation -> Id.t
+  Libnames.reference Constrexpr.or_by_notation -> Id.t
 
 val pf_get_type_of : Goal.goal Evd.sigma -> constr -> types
 

@@ -72,7 +72,7 @@ val ppclause : clause -> unit
 
 (** Raw syntax *)
 type pat_expr =
-    PEApp of Libnames.reference Misctypes.or_by_notation with_loc *
+    PEApp of Libnames.reference Constrexpr.or_by_notation with_loc *
       pat_expr with_loc list
   | PEWildcard
   | PEInac of Constrexpr.constr_expr
