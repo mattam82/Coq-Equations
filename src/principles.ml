@@ -527,7 +527,7 @@ let where_instance w =
 let arguments sigma c = snd (Termops.decompose_app_vect sigma c)
 
 let unfold_constr sigma c =
-  to82 (Tactics.unfold_in_concl [(Locus.AllOccurrences, EvalConstRef (fst (destConst sigma c)))])
+  to82 (Tactics.unfold_in_concl [(Locus.OnlyOccurrences [1], EvalConstRef (fst (destConst sigma c)))])
 
 let extend_prob_ctx delta (ctx, pats, ctx') =
   (delta @ ctx, lift_pats (List.length delta) pats, ctx')
@@ -1061,8 +1061,9 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
     let hd, unf = match flalias with
       | Some (f', unf, _) -> f', Equality.rewriteLR (constr_of_ident unf)
       | None -> fl,
-               if eq_constr !evd fl (of_constr f) then of82 (unfold_constr !evd (of_constr f))
-               else Tacticals.New.tclIDTAC
+        if eq_constr !evd fl (of_constr f) then
+	  Tacticals.New.tclORELSE Tactics.reflexivity (of82 (unfold_constr !evd (of_constr f)))
+        else Tacticals.New.tclIDTAC
     in
     let comp = applistc hd pats in
     let body =
