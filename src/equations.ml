@@ -406,7 +406,7 @@ let define_by_eqs opts eqs nt =
       | Struct -> StructuralOn i
       | Nested -> NestedOn (Some i)
     in
-    let rec_annot =
+    let is_rec, rec_annot =
       let default_recarg () =
 	let idx = List.length sign - 1 in
 	  (idx, None)
@@ -414,17 +414,17 @@ let define_by_eqs opts eqs nt =
       match rec_annot with
       | None ->
          (match is_rec with
-          | Some false -> Some (StructuralOn (default_recarg ()))
-          | _ -> None)
+          | Some false -> is_rec, Some (StructuralOn (default_recarg ()))
+          | _ -> is_rec, None)
       | Some (reck, None) ->
          (match is_recursive i [ieqs] with (* Recursive in its own body? *)
-          | Some _ -> Some (interp_reca reck (default_recarg ()))
-          | None -> if reck == Nested then Some (NestedOn None)
-                    else Some (StructuralOn (default_recarg ())))
+          | Some _ -> Some false, Some (interp_reca reck (default_recarg ()))
+          | None -> if reck == Nested then is_rec, Some (NestedOn None)
+                    else Some false, Some (StructuralOn (default_recarg ())))
       | Some (reck, Some lid) ->
          try
            let k, _, _ = lookup_rel_id (snd lid) sign in
-           Some (interp_reca reck (List.length sign - k, Some lid))
+           Some false, Some (interp_reca reck (List.length sign - k, Some lid))
          with Not_found ->
            user_err_loc (Some (fst lid), "struct_index",
                          Pp.(str"No argument named " ++ Id.print (snd lid) ++ str" found"))
