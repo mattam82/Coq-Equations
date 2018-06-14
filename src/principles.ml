@@ -1158,14 +1158,14 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
              let id = CAst.make @@ Nameops.add_suffix ind.Entries.mind_entry_typename suff in
              (id, false, (kn, i), sort)) 0 inds)
       in
-      Indschemes.do_mutual_induction_scheme mutual;
+      Indschemes.do_mutual_induction_scheme (* ~force_mutual:true *) mutual;
       if List.length inds != 1 then
         let scheme = Nameops.add_suffix (Id.of_string info.base_id) "_ind_comb" in
         let mutual = List.map2 (fun (i, _, _, _) (_, (_, _, _, _, _, _, _, (kind, cut)), _) ->
                          i, regular_or_nested_rec kind) mutual ind_stmts in
         let () =
           Indschemes.do_combined_scheme CAst.(make scheme)
-            (CList.map_filter (fun (id, b) -> if b then Some id else None) mutual)
+	    (CList.map_filter (fun (id, b) -> if b then Some id else None) mutual)
         in kn, Smartlocate.global_with_alias (reference_of_id scheme)
       else 
         let scheme = Nameops.add_suffix (Id.of_string info.base_id) ("_ind" ^ suff) in
@@ -1226,7 +1226,10 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
               Global.set_strategy (ConstKey (fst (destConst !evd f))) Conv_oracle.Opaque
            | None -> ());
 	  Global.set_strategy (ConstKey cst) Conv_oracle.Opaque;
-	  if with_ind && succ j == List.length ind_stmts then declare_ind ())
+	  if with_ind && succ j == List.length ind_stmts then
+	    try declare_ind ()
+	    with e -> Feedback.msg_info Pp.(str "Exception raised while declaring inductive: " ++
+					  CErrors.print_no_report e))
       in
       let tac =
 	(Tacticals.tclTHENLIST [to82 Tactics.intros; to82 unf;
