@@ -138,7 +138,7 @@ let make_inversion_pb env sigma (ind, u as oindu) na =
     if recursive then
       let ctx = [Context.Rel.Declaration.LocalAssum (Names.Name na, arity)] in
       let rec_info =
-	Syntax.Structural [(na, Syntax.StructuralOn 0, None)]
+	Syntax.Structural [(na, Syntax.StructuralOn (0, None))]
       in ctx, Some rec_info
     else [], None
   in
@@ -311,5 +311,5 @@ let derive_inversion env sigma ~polymorphic indu =
       (ref sigma) env (name, sign, ty) None splitting hook
 
 let _derive =
-  Derive.(register_derive { derive_name = "Invert";
+  Ederive.(register_derive { derive_name = "Invert";
 			    derive_fn = make_derive_ind derive_inversion})
