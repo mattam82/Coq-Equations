@@ -331,7 +331,7 @@ type 'a located = 'a Loc.located
 
 let tac_of_string str args =
   Tacinterp.interp (TacArg(dummy_loc,
-                           TacCall(dummy_loc, (CAst.make Libnames.(Qualid (qualid_of_string str)), args))))
+                           TacCall(dummy_loc, (Libnames.qualid_of_string str, args))))
 
 let equations_path = ["Equations";"Equations"]
 
@@ -546,12 +546,12 @@ let tacvar_arg h =
 
 let rec_tac h h' = 
   TacArg(dummy_loc, TacCall(dummy_loc,
-                            (CAst.make (Qualid (qualid_of_string "Equations.Below.rec")),
+                            (qualid_of_string "Equations.Below.rec",
                              [tacvar_arg h'; ConstrMayEval (Genredexpr.ConstrTerm h)])))
 
 let rec_wf_tac h h' rel = 
   TacArg(dummy_loc, TacCall(dummy_loc,
-    (CAst.make (Qualid (qualid_of_string "Equations.Subterm.rec_wf_eqns_rel")),
+    (qualid_of_string "Equations.Subterm.rec_wf_eqns_rel",
     [tacvar_arg h';
      ConstrMayEval (Genredexpr.ConstrTerm h);
      ConstrMayEval (Genredexpr.ConstrTerm rel)])))
@@ -578,11 +578,10 @@ let specialize_mutfix_tac () = tac_of_string "Equations.FunctionalInduction.spec
   
 open Libnames
 
-let reference_of_global c =
-  CAst.make @@ Libnames.Qualid (Nametab.shortest_qualid_of_global Names.Id.Set.empty c)
+let reference_of_global c = Nametab.shortest_qualid_of_global Names.Id.Set.empty c
 
 let tacident_arg h =
-  Reference (CAst.make (Ident h))
+  Reference (qualid_of_ident h)
 
 let call_tac_on_ref tac c =
   let var = Names.Id.of_string "x" in
@@ -607,7 +606,7 @@ let solve_equation_tac (c : Names.GlobRef.t) =
 let impossible_call_tac c =
   let tac = Tacintern.glob_tactic
   (TacArg(dummy_loc,TacCall(dummy_loc,
-  (CAst.make @@ Libnames.Qualid (Libnames.qualid_of_string "Equations.DepElim.impossible_call"),
+  (Libnames.qualid_of_string "Equations.DepElim.impossible_call",
    [Reference (reference_of_global c)])))) in
   let val_tac = Genarg.glbwit Tacarg.wit_tactic in
   Genarg.in_gen val_tac tac
@@ -741,9 +740,9 @@ let deps_of_var sigma id env =
 let idset_of_list =
   List.fold_left (fun s x -> Id.Set.add x s) Id.Set.empty
 
-let pr_smart_global f = Pptactic.pr_or_by_notation pr_reference f
+let pr_smart_global f = Pptactic.pr_or_by_notation pr_qualid f
 let string_of_smart_global = function
-  | {CAst.v=Constrexpr.AN ref} -> string_of_reference ref
+  | {CAst.v=Constrexpr.AN ref} -> string_of_qualid ref
   | {CAst.v=Constrexpr.ByNotation (s, _)} -> s
 
 let ident_of_smart_global x = 

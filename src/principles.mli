@@ -32,7 +32,6 @@ val subst_comp_proj : Evd.evar_map ->
   constr -> constr -> constr -> constr
 val subst_comp_proj_split : Evd.evar_map ->
   constr -> constr -> Covering.splitting -> Covering.splitting
-val reference_of_id : Names.Id.t -> Libnames.reference
 val clear_ind_assums : Evd.evar_map ->
   Names.MutInd.t ->
   Equations_common.rel_context -> Equations_common.rel_context
