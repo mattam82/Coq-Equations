@@ -91,7 +91,7 @@ let clean_rec_calls sigma (hyps, c) =
   let elems = List.sort (fun x y -> Int.compare (snd x) (snd y)) (CMap.bindings hyps) in
   let (size, ctx) =
     List.fold_left (fun (n, acc) (ty, _) ->
-    (succ n, LocalAssum (Name (Id.of_string "Hind"), EConstr.Vars.lift n (EConstr.of_constr ty)) :: acc))
+    (succ n, LocalAssum (annot (Name (Id.of_string "Hind")), EConstr.Vars.lift n (EConstr.of_constr ty)) :: acc))
     (0, []) elems
   in
   (ctx, size, EConstr.Vars.lift size (EConstr.of_constr c))
@@ -242,10 +242,10 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
       let hyps'',c' = aux n env hyps' (subst1 mkProp c) in
         hyps'', mkProd (na, d', lift 1 c')
 	  
-    | Case (ci, p, c, brs) ->
+    | Case (ci, p, ann, c, brs) ->
       let hyps', c' = aux n env hyps c in
       let hyps' = Array.fold_left (fun hyps br -> fst (aux n env hyps br)) hyps' brs in
-      let case' = mkCase (ci, p, c', brs) in
+      let case' = mkCase (ci, p, ann, c', brs) in
         hyps', EConstr.Unsafe.to_constr (EConstr.Vars.substnl proto_fs (succ len) (EConstr.of_constr case'))
 	  
     | Proj (p, c) ->
@@ -350,7 +350,7 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
     if refine != Refine then d else
     let (n, b, t) = to_tuple d in
     let signlen = List.length sign in
-    let ctx = of_tuple (Anonymous, None, arity) :: sign in
+    let ctx = of_tuple (annot Anonymous, None, arity) :: sign in
     let app =
       let argsinfo =
 	CList.map_i
@@ -367,7 +367,7 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
       let transport ty x y eq c cty =
 	mkApp (transport,
 	       [| ty; x;
-                  mkLambda (Name (Id.of_string "abs"), ty,
+                  mkLambda (annot (Name (Id.of_string "abs")), ty,
                             Termops.replace_term !evd (Vars.lift 1 x) (mkRel 1) (Vars.lift 1 cty));
 		  c; y; eq (* equality *) |])
       in
@@ -419,8 +419,8 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
            let app =
 	     mkApp (transportd,
 		    [| lift lenargs ty; lift lenargs rel;
-                       mkLambda (Name (Id.of_string "refine"), lift lenargs ty,
-                                 mkLambda (Name (Id.of_string "refine_eq"), eqty, pred'));
+                       mkLambda (annot (Name (Id.of_string "refine")), lift lenargs ty,
+                                 mkLambda (annot (Name (Id.of_string "refine_eq")), eqty, pred'));
 		       acc; (lift lenargs c); mkRel 1 (* equality *) |])
 	   in (app, subst1 c pred)
 	 else (acc, subst1 c pred))
@@ -445,7 +445,7 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
       let refeqs = List.map (fun (i, ty, c, rel) -> mkEq env evd ty c rel) argsinfo in
       let app c = List.fold_right
 		  (fun c acc ->
-                   mkProd (Name (Id.of_string "Heq"), c, acc))
+                   mkProd (annot (Name (Id.of_string "Heq")), c, acc))
 		  refeqs c
       in
       let indhyps =
@@ -610,7 +610,7 @@ let subst_rec_split env evd f comp comprecarg path prob s split =
 	       Γ |- ps, ps' : Δ, Δ' *)
 	   List.fold_right (fun d (pats, ctx', i, subs) ->
                let (n, b, t) = to_tuple d in
-	       match n with
+               match Context.binder_name n with
 	       | Name n when List.mem_assoc n s ->
 		  let term = List.assoc n s in
 		  let term = map_proto term t in
@@ -1108,13 +1108,13 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
         (** Define graph impredicatively *)
         mkProp
       else (** Compute sort as max of products *)
-        let ctx = (of_tuple (Anonymous, None, arity) :: sign) in
+        let ctx = (of_tuple (annot Anonymous, None, arity) :: sign) in
         let signlev = level_of_context env !evd ctx Univ.type0m_univ in
         mkSort (Sorts.sort_of_univ signlev)
     in
     (* let fullsign, arity = Reductionops.splay_prod_assum (push_rel_context sign env) !evd arity in *)
       Entries.{ mind_entry_typename = indid;
-        mind_entry_arity = to_constr !evd (it_mkProd_or_LetIn (mkProd (Anonymous, arity, ind_sort)) (sign));
+        mind_entry_arity = to_constr !evd (it_mkProd_or_LetIn (mkProd (annot Anonymous, arity, ind_sort)) (sign));
 	mind_entry_consnames = consnames;    
 	mind_entry_lc = constructors;
 	mind_entry_template = false }
@@ -1136,7 +1136,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
     let kn, comb =
       let sort = Lazy.force logic_sort in
       let suff = match sort with
-        | Sorts.InProp -> "_ind"
+        | Sorts.InProp | Sorts.InSProp -> "_ind"
         | Sorts.InSet ->  "_rec"
         | Sorts.InType -> "_rect"
       in
