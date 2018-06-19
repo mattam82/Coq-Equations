@@ -97,7 +97,6 @@ let needs_generalization gl id =
         if not (linear sigma parvars args') then true
         else Array.exists (fun x -> not (isVar sigma x) || is_section_variable (destVar sigma x)) args'
 
-
 let dependent_pattern ?(pattern_term=true) c gl =
   let sigma = gl.sigma in
   let cty = pf_hnf_type_of gl c in
@@ -109,8 +108,8 @@ let dependent_pattern ?(pattern_term=true) c gl =
     | _ -> []
   in
   let varname c = match kind sigma c with
-    | Var id -> id
-    | _ -> pf_get_new_id (Id.of_string (hdchar (pf_env gl) (project gl) c)) gl
+    | Var id -> annot id
+    | _ -> annot (pf_get_new_id (Id.of_string (hdchar (pf_env gl) (project gl) c)) gl)
   in
   let env = pf_env gl in
   let mklambda (ty, evd) (c, id, cty) =
@@ -141,7 +140,7 @@ let depcase poly (mind, i as ind) =
   let indapp = mkApp (mkInd ind, extended_rel_vect 0 ctx) in
   let evd = ref (Evd.from_env (Global.env())) in
   let pred = it_mkProd_or_LetIn (evd_comb0 Evarutil.new_Type evd)
-    (make_assum Anonymous indapp :: args)
+    (make_assum (annot Anonymous) indapp :: args)
   in
   let nconstrs = Array.length oneind.mind_nf_lc in
   let branches =
@@ -160,10 +159,10 @@ let depcase poly (mind, i as ind) =
       in
       let body = mkRel (1 + nconstrs - i) in
       let br = it_mkProd_or_LetIn arity realargs in
-        (make_assum (Name (Id.of_string ("P" ^ string_of_int i))) br), body)
+        (make_assum (annot (Name (Id.of_string ("P" ^ string_of_int i)))) br), body)
       oneind.mind_consnames oneind.mind_nf_lc
   in
-  let ci = make_case_info (Global.env ()) ind RegularStyle in
+  let ci = make_case_info (Global.env ()) ind Sorts.Relevant RegularStyle in
   (*   ci_ind = ind; *)
   (*   ci_npar = nparams; *)
   (*   ci_cstr_nargs = oneind.mind_consnrealargs; *)
@@ -175,20 +174,20 @@ let depcase poly (mind, i as ind) =
           (Array.append (extended_rel_vect (nargs + nconstrs + i) params)
               (extended_rel_vect 0 args)))
   in
-  let ctxpred = make_assum Anonymous (obj (2 + nargs)) :: args in
+  let ctxpred = make_assum (annot Anonymous) (obj (2 + nargs)) :: args in
   let app = mkApp (mkRel (nargs + nconstrs + 3),
                   (extended_rel_vect 0 ctxpred))
   in
   let ty = it_mkLambda_or_LetIn app ctxpred in
-  let case = mkCase (ci, ty, mkRel 1, Array.map snd branches) in
+  let case = mkCase (ci, ty, None, mkRel 1, Array.map snd branches) in
   let xty = obj 1 in
   let xid = Namegen.named_hd (Global.env ()) !evd xty Anonymous in
   let body =
     let len = 1 (* P *) + Array.length branches in
     it_mkLambda_or_LetIn case
-      (make_assum xid (lift len indapp)
+      (make_assum (annot xid) (lift len indapp)
         :: ((List.rev (Array.to_list (Array.map fst branches)))
-            @ (make_assum (Name (Id.of_string "P")) pred :: ctx)))
+            @ (make_assum (annot (Name (Id.of_string "P"))) pred :: ctx)))
   in
   let univs = Evd.const_univ_entry ~poly !evd in
   let ce = Declare.definition_entry ~univs (EConstr.to_constr !evd body) in
@@ -229,9 +228,9 @@ let pattern_call ?(pattern_term=true) c gl =
     | _ -> []
   in
   let varname c = match kind sigma c with
-    | Var id -> id
-    | _ -> Namegen.next_ident_away (Id.of_string (Namegen.hdchar env sigma c))
-        ids
+    | Var id -> annot id
+    | _ -> annot (Namegen.next_ident_away (Id.of_string (Namegen.hdchar env sigma c))
+                    ids)
   in
   let mklambda ty (c, id, cty) =
     let conclvar, _ = Find_subterm.subst_closed_term_occ env (project gl)

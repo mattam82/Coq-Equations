@@ -337,7 +337,7 @@ let check_constant sigma (cst : Names.Constant.t) : EConstr.constr -> bool =
   is_global sigma (Globnames.ConstRef cst)
 
 (* Deconstruct the goal if it's a product. Otherwise, raise CannotSimplify. *)
-let check_prod sigma (ty : EConstr.types) : Names.Name.t * EConstr.types * EConstr.types =
+let check_prod sigma (ty : EConstr.types) : Names.Name.t Context.binder_annot * EConstr.types * EConstr.types =
   let name, ty1, ty2 = try destProd sigma ty
     with Constr.DestKO -> raise (CannotSimplify (str "The goal is not a product."))
   in name, ty1, ty2
@@ -546,7 +546,7 @@ let solution ~(dir:direction) : simplification_fun =
       let body' = EConstr.it_mkProd_or_LetIn body after' in
         (* [body] is a term in the context [decl' :: before'],
          * whereas [tA'] lives in [ctx']. *)
-        EConstr.mkLambda (name', Vars.lift (-rel') tA', body'), body
+        EConstr.mkLambda (Equations_common.annot name', Vars.lift (-rel') tA', body'), body
     else
       (* We make some room for the equality. *)
       let body = Vars.liftn 1 (succ rel') body in
@@ -554,7 +554,7 @@ let solution ~(dir:direction) : simplification_fun =
       let after' = Equations_common.lift_rel_context 1 after' in
       let body' = EConstr.it_mkProd_or_LetIn body after' in
       let body' = EConstr.mkLambda (name, Vars.lift (1-rel') ty1', body') in
-        EConstr.mkLambda (name', Vars.lift (-rel') tA', body'), body
+        EConstr.mkLambda (Equations_common.annot name', Vars.lift (-rel') tA', body'), body
   in
   (* [tB'] is a term in the context [before']. We want it in [ctx']. *)
   let tB' = Vars.lift rel' tB' in

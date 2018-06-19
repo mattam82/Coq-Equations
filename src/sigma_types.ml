@@ -9,6 +9,7 @@
 open Util
 open Names
 open Nameops
+open Context
 open Constr
 open Termops
 open Declarations
@@ -57,7 +58,7 @@ let constrs_of_coq_sigma env evd t alias =
 	    (n, args.(2), p1, args.(0)) ::
               aux (push_rel (of_tuple (n, None, b)) env) p2 args.(3) t
 	| _ -> raise (Invalid_argument "constrs_of_coq_sigma"))
-    | _ -> [(Anonymous, c, proj, ty)]
+    | _ -> [(make_annot Anonymous Sorts.Relevant, c, proj, ty)]
   in aux env alias t (Retyping.get_type_of env !evd t)
 
 let decompose_coq_sigma sigma t = 
@@ -88,7 +89,7 @@ let telescope evd indsort = function
   | d :: tl ->
     let (coq_sigma_from_sort,coq_sigma_from_sortI,coq_pr1_from_sort,coq_pr2_from_sort) = match indsort with
       | Sorts.InProp -> (coq_sigmaP,coq_sigmaPI,coq_prP1,coq_prP2)
-      | Sorts.InSet | Sorts.InType -> (coq_sigma,coq_sigmaI,coq_pr1,coq_pr2)
+      | Sorts.InSProp | Sorts.InSet | Sorts.InType -> (coq_sigma,coq_sigmaI,coq_pr1,coq_pr2)
     in  
       let (n, _, t) = to_tuple d in
       let len = succ (List.length tl) in
@@ -130,7 +131,7 @@ let sigmaize ?(liftty=0) env0 evd pars f indsort =
     (* Everyting is in env, move to index :: letbinders :: env *) 
   let lenb = List.length letbinders in
   let pred =
-    mkLambda (Name (Id.of_string "index"), argtyp,
+    mkLambda (make_annot (Name (Id.of_string "index")) Sorts.Relevant, argtyp,
 	      it_mkProd_or_LetIn
 	        (mkApp (Vars.lift (succ lenb) f, 
 		        rel_vect 0 lenb))
@@ -147,7 +148,7 @@ let sigmaize ?(liftty=0) env0 evd pars f indsort =
   let valsig =
     let argtyp = Vars.lift (succ lenb) argtyp in
     let pred = 
-      mkLambda (Name (Id.of_string "index"), argtyp,
+      mkLambda (make_annot (Name (Id.of_string "index")) Sorts.Relevant, argtyp,
 	       it_mkProd_or_LetIn
 		 (mkApp (Vars.lift (2 * succ lenb) f,
 			rel_vect 0 lenb))
@@ -208,8 +209,8 @@ let declare_sig_of_ind env sigma poly (ind,u) =
   in
   let pack_id = add_suffix indid "_sig_pack" in
   let _, (sigma, pack_fn) =
-    let vbinder = of_tuple (Name (add_suffix indid "_var"), None, fullapp) in
-    let term = it_mkLambda_or_LetIn valsig (vbinder :: ctx) 
+    let vbinder = of_tuple (make_annot (Name (add_suffix indid "_var")) Sorts.Relevant, None, fullapp) in
+    let term = it_mkLambda_or_LetIn valsig (vbinder :: ctx)
     in
     (* let rettype = mkApp (mkConst indsig, extended_rel_vect (succ lenargs) pars) in *)
       declare_constant pack_id (simpl term)
@@ -260,7 +261,7 @@ let get_signature env sigma ty =
     Printer.pr_pinductive env sigma pind ++ str ". Use [Derive Signature for " ++
     Printer.pr_pinductive env sigma pind ++ str ".] to avoid this.");
     let indsig = pred in
-    let vbinder = of_tuple (Anonymous, None, ty) in
+    let vbinder = of_tuple (make_annot Anonymous Sorts.Relevant, None, ty) in
     let pack_fn = it_mkLambda_or_LetIn valsig (vbinder :: ctx) in
     let args = List.map of_constr args in
     let pack_fn = beta_applist sigma (pack_fn, args) in
@@ -351,7 +352,7 @@ let curry sigma na c =
     | Some (u, ty, pred) ->
        let na, _, codom =
          if isLambda sigma pred then destLambda sigma pred 
-         else (Anonymous, ty, mkApp (pred, [|mkRel 1|])) in
+         else (make_annot Anonymous Sorts.Relevant, ty, mkApp (pred, [|mkRel 1|])) in
        let ctx, rest = make_arg na codom in
        let len = List.length ctx in 
        let tuple = 
@@ -378,7 +379,7 @@ let uncurry_hyps name =
       let sigma, sigmaI = new_global sigma (Lazy.force coq_sigmaI) in
       let _, u = destConstruct sigma sigmaI in
       let types = [| dty; mkNamedLambda dna dty ty |] in
-      let app = mkApp (sigmaI, Array.append types [| mkVar dna; acc |]) in
+      let app = mkApp (sigmaI, Array.append types [| mkVar (binder_name dna); acc |]) in
       (sigma, app, mkApp (mkIndG coq_sigma u, types))
     in
     let sigma, unit = get_fresh sigma logic_unit_intro in
@@ -400,7 +401,7 @@ let uncurry_call env sigma fn c =
   let ctx, concl = decompose_prod_n_assum sigma (List.length args) ty in
   let evdref = ref sigma in
   (* let ctx = (Anonymous, None, concl) :: ctx in *)
-  let sigty, sigctx, constr = telescope evdref InType ctx  in
+  let sigty, sigctx, constr = telescope evdref Sorts.InType ctx  in
   let app = Vars.substl (List.rev args) constr in
   let fnapp = mkApp (hd, rel_vect 0 (List.length sigctx)) in
   let fnapp = it_mkLambda_or_subst fnapp sigctx in
@@ -507,7 +508,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
     | None :: omitted, Some rel :: candidate, idx :: rev_indices ->
         (* We know that [idx] is [Rel rel] and a candidate for omission. *)
         (* TODO Very inefficient... *)
-        let new_decl = Context.Rel.Declaration.LocalAssum (Anonymous, goal) in
+        let new_decl = Context.Rel.Declaration.LocalAssum (make_annot Anonymous Sorts.Relevant, goal) in
         let after = new_decl :: CList.firstn (pred rel) ctx in
         let omit = CList.for_all_i (fun i decl ->
           let decl_ty = Context.Rel.Declaration.get_type decl in
@@ -627,7 +628,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
         ) (succ nb_cuts, [], [], []) arity_ctx' rev_indices' omitted
       in
       let sigctx = List.rev rev_sigctx in
-      let sigty, _, sigconstr = telescope evd InType sigctx in
+      let sigty, _, sigconstr = telescope evd Sorts.InType sigctx in
 
       (* Build a goal with an equality of telescopes at the front. *)
       let left_sig = Vars.substl (List.rev tele_lhs) sigconstr in
@@ -635,7 +636,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
       (* TODO Swap left_sig and right_sig... *)
       let eq = Equations_common.mkEq env evd sigty right_sig left_sig in
       let goal = Vars.lift 1 goal in
-      let goal = EConstr.mkProd (Anonymous, eq, goal) in
+      let goal = EConstr.mkProd (make_annot Anonymous Sorts.Relevant, eq, goal) in
 
       (* Build a reflexivity proof to apply to the case. *)
       let tr_out t =

@@ -9,6 +9,7 @@
 open Util
 open Names
 open Nameops
+open Context
 open Constr
 open Environ
 open Reductionops
@@ -205,7 +206,7 @@ let pr_context env sigma c =
     let (id,b,t) = to_tuple decl in
     let bstr = match b with Some b ->
       str ":=" ++ spc () ++ Printer.pr_econstr_env env sigma b | None -> mt() in
-    let idstr = match id with Name id -> Id.print id | Anonymous -> str"_" in
+    let idstr = match Context.binder_name id with Name id -> Id.print id | Anonymous -> str"_" in
     idstr ++ bstr ++ str " : " ++ Printer.pr_econstr_env env sigma t
   in
   let (_, pp) =
@@ -834,16 +835,17 @@ let lets_of_ctx env ctx evars s =
         | PRel i -> (ctx', cs, (i, id) :: varsubst, k, Id.Set.add id ids)
         | _ -> 
           let ty = e_type_of envctx evars c in
-          (make_def (Name id) (Some (lift k c)) (lift k ty) :: ctx', (c :: cs),
+          (make_def (Context.make_annot (Name id) Sorts.Relevant)
+             (Some (lift k c)) (lift k ty) :: ctx', (c :: cs),
            varsubst, succ k, Id.Set.add id ids))
       ([],[],[],0,Id.Set.empty) s
   in
   let _, _, ctx' = List.fold_right (fun decl (ids, i, ctx') ->
       let (n, b, t) = to_tuple decl in
-      try ids, pred i, (make_def (Name (List.assoc i varsubst)) b t :: ctx')
+      try ids, pred i, (make_def (Context.map_annot (fun _ -> Name (List.assoc i varsubst)) n) b t :: ctx')
       with Not_found -> 
-        let id' = Namegen.next_name_away n ids in
-        Id.Set.add id' ids, pred i, (make_def (Name id') b t :: ctx')) ctx (ids, List.length ctx, [])
+      let id' = Namegen.next_name_away (binder_name n) ids in
+        Id.Set.add id' ids, pred i, (make_def (map_annot (fun _ -> Name id') n) b t :: ctx')) ctx (ids, List.length ctx, [])
   in pats, ctxs, ctx'
 
 let env_of_rhs evars ctx env s lets = 
@@ -937,14 +939,14 @@ let unify_type env evars before id ty after =
           let ctx = 
             fold_right (fun decl acc ->
                 let (n, b, t) = to_tuple decl in
-                match n with
+                match binder_name n with
                 | Name id -> let id' = next_ident_away id in
-                  (make_def (Name id') b t :: acc)
+                  (make_def (map_annot (fun _ -> Name id') n) b t :: acc)
                 | Anonymous ->
                   let x = Namegen.id_of_name_using_hdchar
                       (push_rel_context acc envb) !evars t Anonymous in
                   let id = next_ident_away x in
-                  (make_def (Name id) b t :: acc))
+                  (make_def (map_annot (fun _ -> Name id) n) b t :: acc))
               ctx []
           in
           let env' = push_rel_context ctx env in
@@ -1021,7 +1023,7 @@ let where_context wheres =
   List.map (fun {where_id; where_nctx; where_prob; where_term;
                  where_type; where_splitting } ->
              let inst = List.map get_id where_nctx in
-             make_def (Name where_id) (Some (subst_vars inst where_term))
+             make_def (make_annot (Name where_id) Sorts.Relevant) (Some (subst_vars inst where_term))
                (subst_vars inst where_type)) wheres
 
 let pr_splitting env sigma ?(verbose=false) split =
@@ -1116,10 +1118,10 @@ let do_renamings ctx =
   let avoid, ctx' =
     List.fold_right (fun decl (ids, acc) ->
         let (n, b, t) = to_tuple decl in
-        match n with
+        match binder_name n with
         | Name id -> 
           let id' = Namegen.next_ident_away id ids in
-          let decl' = make_def (Name id') b t in
+          let decl' = make_def (map_annot (fun _ -> Name id') n) b t in
           (Id.Set.add id' ids, decl' :: acc)
         | Anonymous -> assert false)
       ctx (Id.Set.empty, [])
@@ -1217,7 +1219,7 @@ let instance_of_pats env evars (ctx : rel_context) (pats : (int * bool) list) =
   let pats'' =
     List.map_i (fun i decl ->
         let (id, b, t) = to_named_tuple decl in
-        let i', _ = lookup_named_i id nctx in
+        let i', _ = lookup_named_i (binder_name id) nctx in
         CList.find_map (fun (i'', hide) ->
             if i'' == i' then Some (if hide then PHide i else PRel i)
             else None) pats)
@@ -1227,7 +1229,7 @@ let instance_of_pats env evars (ctx : rel_context) (pats : (int * bool) list) =
 let push_rel_context_eos ctx env evars =
   if named_context env <> [] then
     let env' =
-      push_named (make_named_def coq_end_of_section_id
+      push_named (make_named_def (make_annot coq_end_of_section_id Sorts.Relevant)
                     (Some (get_efresh coq_the_end_of_the_section evars))
                     (get_efresh coq_end_of_section evars)) env
     in push_rel_context ctx env'
@@ -1493,7 +1495,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
        current context. Needed for ?? *)
     let revctx = check_ctx_map env !evars (newctx, pats', ctx) in
     let idref = Namegen.next_ident_away (Id.of_string "refine") (Id.Set.of_list (ids_of_rel_context newctx)) in
-    let decl = make_assum (Name idref) (mapping_constr !evars revctx cty) in
+    let decl = make_assum (make_annot (Name idref) Sorts.Relevant) (mapping_constr !evars revctx cty) in
     let extnewctx = decl :: newctx in
     (* cmap : Δ -> ctx, cty,
        strinv associates to indexes in the strenghtened context to
@@ -1660,8 +1662,8 @@ and interp_wheres env ctx evars path data s lets w =
     let ev = destEvar !evars term in
     let path = Evar (fst ev) :: path in
     let splitting = covering env evars data clauses path problem arity in
-    let decl = make_def (Name id) (Some term) relty in
-    let nadecl = make_named_def id (Some (substl inst term)) ty in
+    let decl = make_def (make_annot (Name id) Sorts.Relevant) (Some term) relty in
+    let nadecl = make_named_def (make_annot id Sorts.Relevant) (Some (substl inst term)) ty in
     let covering =
       {where_id = id; where_path = path;
        where_orig = path;

@@ -136,7 +136,7 @@ let make_inversion_pb env sigma (ind, u as oindu) na =
   in
   let init_ctx, rec_info =
     if recursive then
-      let ctx = [Context.Rel.Declaration.LocalAssum (Names.Name na, arity)] in
+      let ctx = [Context.Rel.Declaration.LocalAssum (Equations_common.annot (Names.Name na), arity)] in
       let rec_info =
 	Syntax.Structural [(na, Syntax.StructuralOn (0, None))]
       in ctx, Some rec_info
@@ -185,7 +185,7 @@ let is_constructor_pat = function
 
 let make_telescope env evdref indSort g =
   if List.is_empty g then
-    let sigma, g = Evarutil.new_global !evdref (Equations_common.get_one ()) in
+    let sigma, g = Evarutil.new_global !evdref (Equations_common.get_top ()) in
       (evdref := sigma; g)
   else
     let c, ctx, p = Sigma_types.telescope evdref indSort g in
@@ -267,7 +267,7 @@ let solve_problem env sigma ty indsort (outer, problems) =
 	(compose_subst env ~sigma s' rho, specialize_pbs sigma s' pbs)
     in List.map update_problem pbs
   in
-  let sigma, coq_false = Evarutil.new_global sigma (Equations_common.get_zero ()) in
+  let sigma, coq_false = Evarutil.new_global sigma (Equations_common.get_bot ()) in
   let evdref = ref sigma in
   let rec aux (outer, problems) lhs =
     let () = Feedback.msg_debug Pp.(str"Simplifying pbs: " ++ pr_all_pbs env sigma problems) in
