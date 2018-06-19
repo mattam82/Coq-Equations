@@ -269,7 +269,7 @@ let term_of_tree status isevar env0 tree =
 
         (* Build the case. *)
         let case_info = Inductiveops.make_case_info env (fst pind) Sorts.Relevant Constr.RegularStyle in
-        let case = Inductiveops.make_case_or_project env !evd indty ~with_is:true case_info
+        let case = Inductiveops.make_case_or_project env !evd indty case_info
           case_ty rel_t branches in
         let term = EConstr.mkApp (case, Array.of_list to_apply) in
         let term = EConstr.it_mkLambda_or_LetIn term ctx in
