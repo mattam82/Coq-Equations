@@ -69,8 +69,8 @@ let inductive_info sigma ((mind, _ as ind),u) =
 	arities
     in
     let case c pred brs =
-      let ci = make_case_info (Global.env ()) (mind,i) Constr.RegularStyle in
-	mkCase (ci, pred, c, brs)
+      let ci = make_case_info (Global.env ()) (mind,i) Sorts.Relevant Constr.RegularStyle in
+        mkCase (ci, pred, None, c, brs)
     in
       { ind_name = indname;
 	ind_c = indapp; ind_args = args';
@@ -109,8 +109,8 @@ let derive_eq_dec env sigma ~polymorphic ind =
     let app = 
       let xname = Name (Id.of_string "x") in
       let yname = Name (Id.of_string "y") in
-	mkProd (xname, indapp,
-	       mkProd (yname, lift 1 indapp,
+        mkProd (annot xname, indapp,
+               mkProd (annot yname, lift 1 indapp,
   		      mkApp (lift 2 app, [| mkRel 2; mkRel 1 |])))
     in
     let typ = it_mkProd_or_LetIn app ind.ind_args in

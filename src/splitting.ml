@@ -99,7 +99,7 @@ let term_of_tree status isevar env0 tree =
              let evm, c', ty' =
                match kind evm where_term with
                | Evar (ev, _) ->
-                 let term' = mkLetIn (Name (Id.of_string "prog"), c', ty', lift 1 ty') in
+                 let term' = mkLetIn (annot (Name (Id.of_string "prog")), c', ty', lift 1 ty') in
                  let evm, term =
                    helper_evar evm ev env term'
                                (dummy_loc, QuestionMark (Define false, Name where_id)) in
@@ -109,7 +109,7 @@ let term_of_tree status isevar env0 tree =
                   evm, subst_vars inst term, tydb
                | _ -> assert(false)
              in
-             (evm, (make_def (Name where_id) (Some c') ty' :: ctx)))
+             (evm, (make_def (annot (Name where_id)) (Some c') ty' :: ctx)))
            where (evm,ctx)
        in
        let body = it_mkLambda_or_LetIn rhs ctx and typ = it_mkProd_or_subst env evm ty ctx in
@@ -118,7 +118,7 @@ let term_of_tree status isevar env0 tree =
     | Compute ((ctx, _, _), where, ty, REmpty split) ->
        assert (List.is_empty where);
        let evm, coq_nat = new_global evm (Lazy.force coq_nat) in
-        let split = make_def (Name (Id.of_string "split"))
+        let split = make_def (annot (Name (Id.of_string "split")))
           (Some (of_constr (coq_nat_of_int (succ (length ctx - split)))))
           coq_nat
        in
@@ -147,7 +147,7 @@ let term_of_tree status isevar env0 tree =
 	in
 	let evm, sterm, sty = aux env evm rest in
 	let evm, term, ty = 
-          let term = mkLetIn (Name (Id.of_string "prog"), sterm, sty, lift 1 sty) in
+          let term = mkLetIn (annot (Name (Id.of_string "prog")), sterm, sty, lift 1 sty) in
 	  let evm, term = helper_evar evm ev (Global.env ()) term
             (dummy_loc, QuestionMark (Define false, Name id))
 	  in
@@ -264,12 +264,12 @@ let term_of_tree status isevar env0 tree =
         let rel_ty = Context.Rel.Declaration.get_type decl in
         let rel_ty = Vars.lift rel rel_ty in
         let rel_t = EConstr.mkRel rel in
-        let pind, args = find_inductive env !evd rel_ty in
+        let IndType (indfam, args) as indty = Inductiveops.find_rectype env !evd rel_ty in
+        let (pind, pars) = dest_ind_family indfam in
 
         (* Build the case. *)
-        let case_info = Inductiveops.make_case_info env (fst pind) Constr.RegularStyle in
-        let indfam = Inductiveops.make_ind_family (from_peuniverses !evd pind, args) in
-        let case = Inductiveops.make_case_or_project env !evd indfam case_info
+        let case_info = Inductiveops.make_case_info env (fst pind) Sorts.Relevant Constr.RegularStyle in
+        let case = Inductiveops.make_case_or_project env !evd indty ~with_is:true case_info
           case_ty rel_t branches in
         let term = EConstr.mkApp (case, Array.of_list to_apply) in
         let term = EConstr.it_mkLambda_or_LetIn term ctx in
@@ -292,7 +292,7 @@ let term_of_tree status isevar env0 tree =
 	in
 	let evm = !evd in
 	let branches_ctx =
-          Array.mapi (fun i (br, brt) -> make_def (Name (Id.of_string ("m_" ^ string_of_int i))) (Some br) brt)
+          Array.mapi (fun i (br, brt) -> make_def (annot (Name (Id.of_string ("m_" ^ string_of_int i)))) (Some br) brt)
 	    branches
 	in
 	let n, branches_lets =
@@ -305,11 +305,11 @@ let term_of_tree status isevar env0 tree =
 	  let ty = it_mkProd_or_LetIn ty liftctx in
 	  let ty = it_mkLambda_or_LetIn ty branches_lets in
           let nbbranches =
-            make_def (Name (Id.of_string "branches"))
+            make_def (annot (Name (Id.of_string "branches")))
                      (Some (of_constr (coq_nat_of_int (length branches_lets))))
             coqnat
 	  in
-          let nbdiscr = make_def (Name (Id.of_string "target"))
+          let nbdiscr = make_def (annot (Name (Id.of_string "target")))
                         (Some (of_constr (coq_nat_of_int (length before))))
                         coqnat
 	  in
@@ -439,7 +439,7 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
   let ty' = it_mkProd_or_LetIn arity sign in
     match is_recursive with
     | Some (Syntax.Structural [id]) ->
-        let ty' = it_mkProd_or_LetIn ty' [make_assum Anonymous ty'] in
+        let ty' = it_mkProd_or_LetIn ty' [make_assum (annot Anonymous) ty'] in
         let ty' = EConstr.to_constr !isevar ty' in
 	let recarg =
 	  match snd id with

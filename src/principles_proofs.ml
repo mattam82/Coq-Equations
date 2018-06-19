@@ -198,11 +198,11 @@ let mutual_fix li l =
          if try ignore (Context.Named.lookup f sign); true with Not_found -> false then
            CErrors.user_err ~hdr:"Logic.prim_refiner"
                     (str "Name " ++ pr_id f ++ str " already used in the environment");
-         mk_sign (LocalAssum (f, EConstr.to_constr sigma ar) :: sign) oth
+         mk_sign (LocalAssum (annot f, EConstr.to_constr sigma ar) :: sign) oth
     in
     let sign = mk_sign (Environ.named_context env) all in
     let idx = Array.map_of_list pred l in
-    let nas = Array.map_of_list (fun id -> Name id) li in
+    let nas = Array.map_of_list (fun id -> annot (Name id)) li in
     let body = ref (fun i -> assert false) in
     let one_body =
       Refine.refine ~typecheck:false
@@ -490,12 +490,12 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
              let (n,b,t) = to_named_tuple decl in
              let fixprot pats sigma =
 	       let c = 
-                 mkLetIn (Anonymous, of_constr (UnivGen.constr_of_global (Lazy.force coq_fix_proto)),
+                 mkLetIn (annot Anonymous, of_constr (UnivGen.constr_of_global (Lazy.force coq_fix_proto)),
                           of_constr (UnivGen.constr_of_global (Lazy.force coq_unit)), t) in
                (sigma, c)
 	     in
 	     Proofview.V82.of_tactic
-	       (change_in_hyp None fixprot (n, Locus.InHyp)) gl);
+               (change_in_hyp None fixprot (binder_name n, Locus.InHyp)) gl);
            to82 intros; aux_ind_fun info (0, 1) None [] split])
 
   | Some (Structural l) ->
@@ -561,7 +561,7 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
        set_eos_tac () <*>
          (match nestedprops with
           | Some p ->
-             assert_before Anonymous (mkProd (Anonymous, mutprops, p)) <*>
+             assert_before Anonymous (mkProd (annot Anonymous, mutprops, p)) <*>
                tclDISPATCH
                  [observe_tac "assert mut -> nest first subgoal " (* observe_tac *)
                   (*   "proving mut -> nested" *)
@@ -634,7 +634,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
              let f, pats' = decompose_app sigma y in
              let c, unfolds =
                 if !Equations_common.ocaml_splitting then
-                  let _, _, c, _ = destCase sigma f in c, tclIDTAC
+                  let _, _, _, c, _ = destCase sigma f in c, tclIDTAC
                 else
                   List.nth (List.rev pats') (pred var), unfolds
              in

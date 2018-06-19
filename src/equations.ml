@@ -101,7 +101,7 @@ let define_principles flags fixprots progs =
   let evd = ref (Evd.from_env env) in
   let newsplits env fixdecls (p, prog) =
     let fixsubst = List.map (fun d -> let na, b, t = to_tuple d in
-                                      (Nameops.Name.get_id na, Option.get b)) fixdecls in
+                                      (Nameops.Name.get_id (binder_name na), Option.get b)) fixdecls in
     let i = p.program_id in
     let sign = p.program_sign in
     let oarity = p.program_oarity in
@@ -241,7 +241,7 @@ let define_principles flags fixprots progs =
   let fixdecls =
     let fn fixprot (p, prog) =
       let f = fst (Global.constr_of_global_in_context env (ConstRef prog.program_cst)) in
-      of_tuple (Name p.program_id, Some (of_constr f), fixprot)
+      of_tuple (annot (Name p.program_id), Some (of_constr f), fixprot)
     in
     List.rev (List.map2 fn fixprots progs)
   in
@@ -278,7 +278,7 @@ let define_mutual_nested flags progs =
          in
          let after = (nested - 1) - before in
          let fixb = (Array.make 1 idx, 0) in
-         let fixna = Array.make 1 (Name p.program_id) in
+         let fixna = Array.make 1 (annot (Name p.program_id)) in
          let fixty = Array.make 1 (it_mkProd_or_LetIn p.program_arity p.program_sign) in
          (** Apply to itself *)
          let beforeargs = rel_list (signlen + 1) before in
@@ -290,7 +290,7 @@ let define_mutual_nested flags progs =
               match afterctx with
               | ty :: tl ->
                 let term = applist (mkRel (signlen + nested), acc) in
-                let decl = Context.Rel.Declaration.LocalDef (Name (Id.of_string "H"), term, ty) in
+                let decl = Context.Rel.Declaration.LocalDef (annot (Name (Id.of_string "H")), term, ty) in
                   aux (List.map (Vars.lift 1) acc @ [mkRel 1], decl :: ctx) (succ n) tl
               | [] -> assert false
            in aux (beforeargs @ [fixref], []) 0 afterctx
@@ -302,7 +302,7 @@ let define_mutual_nested flags progs =
          let fixbody = it_mkLambda_or_LetIn fixbody p.program_sign in
          it_mkLambda_or_LetIn
          (mkFix (fixb, (fixna, fixty, Array.make 1 fixbody)))
-         (List.init (nested - 1) (fun _ -> (Context.Rel.Declaration.LocalAssum (Anonymous, mkProp))))
+         (List.init (nested - 1) (fun _ -> (Context.Rel.Declaration.LocalAssum (annot Anonymous, mkProp))))
        in
        let rec fixsubst i k acc l =
          match l with
@@ -340,7 +340,7 @@ let define_mutual_nested flags progs =
          let body = mkApp (Vars.lift (List.length p.program_sign) body,
                            extended_rel_vect 0 p.program_sign) in
          let body = it_mkLambda_or_LetIn body p.program_sign in
-         na, ty, body
+         annot na, ty, body
        in
        let blockl = List.map blockfn mutual in
        let names, tys, bodies = List.split3 blockl in
@@ -475,7 +475,7 @@ let define_by_eqs opts eqs nt =
        let compproj =
          let body =
            it_mkLambda_or_LetIn (mkRel 1)
-             (of_tuple (Name (Id.of_string "comp"), None, compapp) :: sign)
+             (of_tuple (annot (Name (Id.of_string "comp")), None, compapp) :: sign)
          in
          let _ty = e_type_of (Global.env ()) evd body in
          let univs = Evd.const_univ_entry ~poly !evd in
@@ -535,11 +535,11 @@ let define_by_eqs opts eqs nt =
   in
   let fixprots =
     List.map (fun (oty, ty) ->
-    mkLetIn (Anonymous,
+    mkLetIn (annot Anonymous,
              e_new_global evd (Lazy.force coq_fix_proto),
              e_new_global evd (Lazy.force coq_unit), ty)) otys in
   let fixdecls =
-    List.map2 (fun i fixprot -> of_tuple (Name i, None, fixprot)) names fixprots in
+    List.map2 (fun i fixprot -> of_tuple (annot (Name i), None, fixprot)) names fixprots in
   let fixdecls = List.rev fixdecls in
   let implsinfo = List.map (fun (_, (oty, ty), impls) ->
                   Impargs.compute_implicits_with_manual env !evd oty false impls) tys in
@@ -634,17 +634,23 @@ let solve_equations_goal destruct_tac tac gl =
   let intros, move, concl =
     let rec intros goal move = 
       match Constr.kind goal with
-      | Prod (Name id, _, t) -> 
-         let id = fresh_id_in_env Id.Set.empty id (pf_env gl) in
-         let tac, move, goal = intros (subst1 (Constr.mkVar id) t) (Some id) in
-         tclTHEN (to82 intro) tac, move, goal
-      | LetIn (Name id, c, _, t) -> 
+      | Prod (na, _, t) ->
+        (match binder_name na with
+        | Name id ->
+          let id = fresh_id_in_env Id.Set.empty id (pf_env gl) in
+          let tac, move, goal = intros (subst1 (Constr.mkVar id) t) (Some id) in
+            tclTHEN (to82 intro) tac, move, goal
+        | Anonymous -> tclIDTAC, move, goal)
+      | LetIn (na, c, _, t) ->
+        (match binder_name na with
+        | Name id ->
          if String.equal (Id.to_string id) "target" then 
            tclIDTAC, move, goal
          else 
            let id = fresh_id_in_env Id.Set.empty id (pf_env gl) in
            let tac, move, goal = intros (subst1 c t) (Some id) in
-           tclTHEN (to82 intro) tac, move, goal
+             tclTHEN (to82 intro) tac, move, goal
+        | Anonymous -> tclIDTAC, move, goal)
       | _ -> tclIDTAC, move, goal
     in 
     intros (to_constr (project gl) concl) None
@@ -656,21 +662,30 @@ let solve_equations_goal destruct_tac tac gl =
   in
   let targetn, branchesn, targ, brs, b =
     match kind (project gl) (of_constr concl) with
-    | LetIn (Name target, targ, _, b) ->
+    | LetIn (na, targ, _, b) ->
+      (match binder_name na with
+      | Name target ->
         (match kind (project gl) b with
-	| LetIn (Name branches, brs, _, b) ->
-           target, branches, int_of_coq_nat (to_constr (project gl) targ),
-           int_of_coq_nat (to_constr (project gl) brs), b
-	| _ -> error "Unnexpected goal")
+        | LetIn (branches, brs, _, b) ->
+          (match binder_name branches with
+          | Name branches ->
+            target, branches, int_of_coq_nat (to_constr (project gl) targ),
+            int_of_coq_nat (to_constr (project gl) brs), b
+          | _ -> error "Unnexpected goal")
+        | _ -> error "Unnexpected goal")
+      | _ -> error "Unnexpected goal")
     | _ -> error "Unnexpected goal"
   in
   let branches, b =
     let rec aux n c =
       if n == 0 then [], c
       else match kind (project gl) c with
-      | LetIn (Name id, br, brt, b) ->
+      | LetIn (na, br, brt, b) ->
+        (match binder_name na with
+        | Name id ->
 	  let rest, b = aux (pred n) b in
-	    (id, br, brt) :: rest, b
+            (id, br, brt) :: rest, b
+        | _ -> error "Unnexpected goal")
       | _ -> error "Unnexpected goal"
     in aux brs b
   in

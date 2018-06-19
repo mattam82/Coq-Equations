@@ -136,7 +136,7 @@ let make_inversion_pb env sigma (ind, u as oindu) na =
   in
   let init_ctx, rec_info =
     if recursive then
-      let ctx = [Context.Rel.Declaration.LocalAssum (Names.Name na, arity)] in
+      let ctx = [Context.Rel.Declaration.LocalAssum (Equations_common.annot (Names.Name na), arity)] in
       let rec_info =
 	Syntax.Structural [(na, Syntax.StructuralOn (0, None))]
       in ctx, Some rec_info
