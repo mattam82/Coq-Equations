@@ -229,9 +229,9 @@ let declare_sig_of_ind env sigma poly (ind,u) =
        mkApp (pack_fn, extended_rel_vect 0 ctx)]
   in
   Extraction_plugin.Table.extraction_inline true
-                                            [CAst.make @@ Libnames.Ident pack_id];
+                                            [Libnames.qualid_of_ident pack_id];
   Extraction_plugin.Table.extraction_inline true
-                                            [CAst.make @@ Libnames.Ident signature_id];
+                                            [Libnames.qualid_of_ident signature_id];
   inst
 
 let () =

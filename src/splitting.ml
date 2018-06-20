@@ -419,7 +419,7 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
   in
   let hook locality gr =
     let l =
-      Array.map_to_list (fun (id, ty, loc, s, d, tac) -> CAst.make @@ Libnames.Ident id) obls in
+      Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
     Extraction_plugin.Table.extraction_inline true l;
     let kind = (locality, poly, Decl_kinds.Definition) in
     let baseid = Id.to_string i in
@@ -477,7 +477,7 @@ let map_rhs f g = function
 
 let map_evars_in_constr evd evar_map c =
   evar_map (fun id ->
-	    let gr = Nametab.global (CAst.make @@ Qualid (qualid_of_ident id)) in
+	    let gr = Nametab.global (qualid_of_ident id) in
             let (f, uc) = Global.constr_of_global_in_context (Global.env ()) gr in
             let inst, ctx = ucontext_of_aucontext uc in
             UnivGen.constr_of_global_univ (Globnames.global_of_constr f, inst))

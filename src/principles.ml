@@ -281,9 +281,6 @@ let subst_comp_proj sigma f proj c =
 let subst_comp_proj_split sigma f proj s =
   map_split (subst_comp_proj sigma f proj) s
 
-let reference_of_id s =
-  CAst.make @@ Libnames.Ident s
-
 let is_ind_assum sigma ind b =
   let _, concl = decompose_prod_assum sigma b in
   let t, _ = decompose_app sigma concl in
@@ -847,7 +844,7 @@ let declare_funelim info env evd is_rec protos progs
     if leninds > 1 || get_sort () != Sorts.InProp then comb
     else
       let elimid = Nameops.add_suffix id "_ind_ind" in
-      Smartlocate.global_with_alias (reference_of_id elimid)
+      Smartlocate.global_with_alias (Libnames.qualid_of_ident elimid)
   in
   let elimc, elimty =
     let elimty, uctx = Global.type_of_global_in_context (Global.env ()) elim in
@@ -1166,10 +1163,10 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
         let () =
           Indschemes.do_combined_scheme CAst.(make scheme)
             (CList.map_filter (fun (id, b) -> if b then Some id else None) mutual)
-        in kn, Smartlocate.global_with_alias (reference_of_id scheme)
+        in kn, Smartlocate.global_with_alias (Libnames.qualid_of_ident scheme)
       else 
         let scheme = Nameops.add_suffix (Id.of_string info.base_id) ("_ind" ^ suff) in
-        kn, Smartlocate.global_with_alias (reference_of_id scheme)
+        kn, Smartlocate.global_with_alias (Libnames.qualid_of_ident scheme)
     in
     let ind =
       let open Entries in
