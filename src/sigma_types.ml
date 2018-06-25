@@ -258,8 +258,8 @@ let get_signature env sigma ty =
     let sigma, pred, pars, _, valsig, ctx, _, _ =
       build_sig_of_ind env sigma (to_peuniverses pind) in
     Feedback.msg_warning (str "Automatically inlined signature for type " ++
-    Printer.pr_pinductive env pind ++ str ". Use [Derive Signature for " ++
-    Printer.pr_pinductive env pind ++ str ".] to avoid this.");
+    Printer.pr_pinductive env sigma pind ++ str ". Use [Derive Signature for " ++
+    Printer.pr_pinductive env sigma pind ++ str ".] to avoid this.");
     let indsig = pred in
     let vbinder = of_tuple (Anonymous, None, ty) in
     let pack_fn = it_mkLambda_or_LetIn valsig (vbinder :: ctx) in
