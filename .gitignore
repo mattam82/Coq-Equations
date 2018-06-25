@@ -38,3 +38,4 @@ docs/_site
 /doc/equations.fls
 /doc/equations.fdb_latexmk
 /.nia.cache
+.merlin
