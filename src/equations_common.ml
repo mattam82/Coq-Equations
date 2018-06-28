@@ -396,7 +396,9 @@ let coq_sigmaI = lazy (init_reference ["Equations";"Init"] "sigmaI")
 
 let init_projection dp i =
   let r = init_reference dp i in
-  Names.Projection.make (Globnames.destConstRef r) false
+  let cst = Globnames.destConstRef r in
+  let p = Option.get @@ Recordops.find_primitive_projection cst in
+  Projection.make p false
 			
 let coq_pr1 = lazy (init_projection ["Equations";"Init"] "pr1")
 let coq_pr2 = lazy (init_projection ["Equations";"Init"] "pr2")
