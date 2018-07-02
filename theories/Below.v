@@ -59,6 +59,7 @@ Hint Extern 2 => progress (autorewrite with Below in * ;
 Ltac apply_fix_proto := 
   match goal with
     [ f : fix_proto _ |- _ ] => unfold fix_proto in f ; apply f (*  ; guarded  *)
+  | [ f : let _ := fixproto in _ |- _ ] => apply f
   end.
 
 Hint Opaque fix_proto : Below.

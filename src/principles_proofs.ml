@@ -271,9 +271,19 @@ let map_opt_split f s =
   | Some s -> f s
 
 let solve_ind_rec_tac info =
-  Proofview.tclBIND (Tacticals.New.pf_constr_of_global info.term_id) (fun c ->
-  Proofview.tclTHEN (Tactics.pose_proof Anonymous c)
-                    (of82 (eauto_with_below ~depth:10 [info.base_id; wf_obligations_base info])))
+  let open Proofview in
+    tclBIND (Tacticals.New.pf_constr_of_global info.term_id)
+    (fun c ->
+    tclBIND (Tacticals.New.pf_constr_of_global (Lazy.force coq_fix_proto))
+    (fun fixprot ->
+    tclBIND (Tacticals.New.pf_constr_of_global (Lazy.force coq_unit))
+    (fun unit ->
+      Goal.enter (fun gl ->
+        let ty = Tacmach.New.pf_get_type_of gl c in
+        let term = mkLetIn (Anonymous, fixprot, unit, ty) in
+        let clause = Locus.{ onhyps = Some []; concl_occs = NoOccurrences } in
+          (Proofview.tclTHEN (Tactics.letin_tac None Anonymous c (Some term) clause)
+             (of82 (eauto_with_below ~depth:10 [info.base_id; wf_obligations_base info])))))))
 
 let change_in_app f args idx arg =
   let args' = Array.copy args in
