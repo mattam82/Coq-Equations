@@ -949,7 +949,7 @@ let evar_absorb_arguments = Evardefine.evar_absorb_arguments
 
 let hintdb_set_transparency cst b db =
   Hints.add_hints ~local:false [db] 
-    (Hints.HintsTransparencyEntry ([EvalConstRef cst], b))
+    (Hints.HintsTransparencyEntry (Hints.HintsReferences [EvalConstRef cst], b))
 
 let is_global sigma f ec = Globnames.is_global f (to_constr sigma ec)                                  
 
