@@ -300,7 +300,7 @@ let get_zero () = Lazy.force (!logic).logic_zero
 open EConstr
 
 let fresh_logic_sort evd =
-  let evars, sort = Evd.fresh_sort_in_family (Global.env ()) !evd (get_sort ()) in
+  let evars, sort = Evd.fresh_sort_in_family !evd (get_sort ()) in
   evd := evars; mkSort sort
 
 let mkapp env evdref t args =
