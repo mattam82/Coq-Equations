@@ -1584,10 +1584,10 @@ and interp_wheres env ctx evars path data s lets w =
     let data = (id,false(* with_comp *),data) in
     let problem = id_subst sign in
     let relty = subst_vars (List.map (destVar !evars) inst) ty in
-    let src = (Some loc, Evar_kinds.QuestionMark {
-            Evar_kinds.qm_obligation=Evar_kinds.Define false;
-            Evar_kinds.qm_name=Name id;
-            Evar_kinds.qm_record_field=None;
+    let src = (Some loc, QuestionMark {
+            qm_obligation=Define false;
+            qm_name=Name id;
+            qm_record_field=None;
         }) in
     let sigma, term = Equations_common.new_evar envctx !evars ~src relty in
     let () = evars := sigma in
