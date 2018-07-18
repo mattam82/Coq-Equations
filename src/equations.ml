@@ -99,22 +99,13 @@ let program_fixdecls p fixdecls =
 let define_principles flags fixprots progs =
   let env = Global.env () in
   let evd = ref (Evd.from_env env) in
-  let newsplits env fixdecls (p, prog) =
+  let newsplits env fixdecls (p, prog, f) =
     let fixsubst = List.map (fun d -> let na, b, t = to_tuple d in
                                       (Nameops.Name.get_id na, Option.get b)) fixdecls in
     let i = p.program_id in
     let sign = p.program_sign in
     let oarity = p.program_oarity in
     let arity = p.program_arity in
-    let gr = ConstRef prog.program_cst in
-    let f =
-      let (f, uc) = Global.constr_of_global_in_context env gr in
-      if flags.polymorphic then
-        let inst, ctx = ucontext_of_aucontext uc in
-        let () = evd := Evd.merge_context_set Evd.univ_rigid !evd ctx in
-        UnivGen.constr_of_global_univ (global_of_constr f, inst)
-      else f
-    in
       match p.program_rec with
       | Some (Structural _) ->
          let fixdecls = program_fixdecls p fixdecls in
@@ -238,14 +229,23 @@ let define_principles flags fixprots progs =
        let evm = !evd in
        build_equations flags.with_ind env evm splits
   in
-  let fixdecls =
+  let progs, fixdecls =
     let fn fixprot (p, prog) =
-      let f = fst (Global.constr_of_global_in_context env (ConstRef prog.program_cst)) in
-      of_tuple (Name p.program_id, Some (of_constr f), fixprot)
+      let f =
+        let gr = ConstRef prog.program_cst in
+        let (f, uc) = Global.constr_of_global_in_context env gr in
+        if flags.polymorphic then
+          let inst, ctx = ucontext_of_aucontext uc in
+          let () = evd := Evd.merge_context_set Evd.univ_rigid !evd ctx in
+          Universes.constr_of_global_univ (global_of_constr f, inst)
+        else f
+      in
+      (p, prog, f), of_tuple (Name p.program_id, Some (of_constr f), fixprot)
     in
-    List.rev (List.map2 fn fixprots progs)
+    let progs, fixdecls = List.split (List.map2 fn fixprots progs) in
+    progs, List.rev fixdecls
   in
-  let newsplits = List.map (fun (p, prog as x) -> p, prog, newsplits env fixdecls x) progs in
+  let newsplits = List.map (fun (p, prog, f as x) -> p, prog, newsplits env fixdecls x) progs in
   principles env newsplits
 
 let is_nested p =
