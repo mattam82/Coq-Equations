@@ -102,7 +102,11 @@ let term_of_tree status isevar env0 tree =
                  let term' = mkLetIn (Name (Id.of_string "prog"), c', ty', lift 1 ty') in
                  let evm, term =
                    helper_evar evm ev env term'
-                               (dummy_loc, QuestionMark (Define false, Name where_id)) in
+                    (dummy_loc, QuestionMark {
+                        qm_obligation=Define false;
+                        qm_name=Name where_id;
+                        qm_record_field=None;
+                    }) in
                  let ev = fst (destEvar !isevar term) in
                   oblevars := Evar.Map.add ev (List.length where_nctx) !oblevars;
                   helpers := (ev, 0) :: !helpers;
@@ -125,7 +129,11 @@ let term_of_tree status isevar env0 tree =
        let ty' = it_mkProd_or_LetIn ty ctx in
        let let_ty' = mkLambda_or_LetIn split (lift 1 ty') in
        let evm, term = 
-         new_evar env evm ~src:(dummy_loc, QuestionMark (Define false, Anonymous)) let_ty' in
+         new_evar env evm ~src:(dummy_loc, QuestionMark {
+            qm_obligation=Define false;
+            qm_name=Anonymous;
+            qm_record_field=None;
+        }) let_ty' in
        let ev = fst (destEvar evm term) in
        oblevars := Evar.Map.add ev 0 !oblevars;
        evm, term, ty'
@@ -149,7 +157,11 @@ let term_of_tree status isevar env0 tree =
 	let evm, term, ty = 
           let term = mkLetIn (Name (Id.of_string "prog"), sterm, sty, lift 1 sty) in
 	  let evm, term = helper_evar evm ev (Global.env ()) term
-            (dummy_loc, QuestionMark (Define false, Name id))
+        (dummy_loc, QuestionMark {
+            qm_obligation=Define false;
+            qm_name=Name id;
+            qm_record_field=None;
+        })
 	  in
 	    oblevars := Evar.Map.add ev 0 !oblevars;
 	    helpers := (ev, rarg) :: !helpers;
@@ -314,7 +326,11 @@ let term_of_tree status isevar env0 tree =
                         coqnat
 	  in
 	  let ty = it_mkLambda_or_LetIn (lift 2 ty) [nbbranches;nbdiscr] in
-          let evm, term = new_evar env evm ~src:(dummy_loc, QuestionMark (status, Anonymous)) ty in
+          let evm, term = new_evar env evm ~src:(dummy_loc, QuestionMark {
+            Evar_kinds.qm_obligation=status;
+            Evar_kinds.qm_name=Anonymous;
+            Evar_kinds.qm_record_field=None;
+        }) ty in
           let ev = fst (destEvar evm term) in
 	    oblevars := Evar.Map.add ev 0 !oblevars;
 	    evm, term
