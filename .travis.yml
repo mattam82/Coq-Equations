@@ -26,8 +26,8 @@ env:
   - COQ_VER="dev"
 
 install:
-- opam update
 - opam init -j ${NJOBS} --switch=${COMPILER} -n -y
+- opam update
 - eval $(opam config env)
 - opam config list
 - opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev || echo "coq-core-dev registered"
