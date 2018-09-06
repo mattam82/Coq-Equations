@@ -83,6 +83,8 @@ eq_sym x _ eq_refl := eq_refl.
 Equations eq_trans {A} (x y z : A) (p : x = y) (q : y = z) : x = z :=
 eq_trans x _ _ eq_refl eq_refl := eq_refl.
 
+Derive Signature for eq vector.
+
 Module KAxiom.
 
   (** By default we allow the K axiom, but it can be unset. *)
@@ -183,7 +185,7 @@ Defined.
     a [signature_pack] function to pack a vector with its index. The
     well-founded relation is defined on the packed vector type. *)
 
-Derive Signature Subterm for vector.
+Derive Subterm for vector.
 
 (** The relation is actually called [t_subterm] as [vector] is just
     a notation for [Vector.t]. *)

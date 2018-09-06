@@ -3,7 +3,7 @@ vfiles := HoTT_light.v RoseTree.v graph_complete.v STLC.v polynomials.v string_m
 texfiles := $(vfiles:.v=.tex)
 
 COQC?="$(COQBIN)coqc"
-COQFLAGS = -I ../src -R ../theories Equations
+COQFLAGS = -w "+compatibility-notation" -I ../src -R ../theories Equations
 COQDOC?="$(COQBIN)coqdoc"
 
 all: $(texfiles)

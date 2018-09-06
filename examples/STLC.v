@@ -60,7 +60,7 @@ Notation " x ---> y " := (arrow x y) (at level 30).
 Require Import Arith.
 
 Equations(nocomp) lift (k n : nat) (t : term) : term :=
-lift k n (Var i) with nat_compare i k := {
+lift k n (Var i) with Nat.compare i k := {
   | Lt := Var i ;
   | _ := Var (i + n) } ;
 lift k n (Lambda t) := Lambda (lift (S k) n t) ;
@@ -105,18 +105,18 @@ Lemma lift_k_lift_k k n m t : lift k n (lift k m t) = lift k (n + m) t.
 Proof.
   funelim (lift k m t); intros; simp lift; try rewrite H ; try rewrite H0; auto.
        
-  destruct (nat_compare_spec n0 k); try discriminate. subst.
-  case_eq (nat_compare (k + n) k); intro H; simp lift; try term.
-  rewrite <- nat_compare_lt in H; term.
+  destruct (Nat.compare_spec n0 k); try discriminate. subst.
+  case_eq (Nat.compare (k + n) k); intro H; simp lift; try term.
+  rewrite Nat.compare_lt_iff in H; term.
   rewrite Heq; simp lift; term.
 
-  rewrite Heq. rewrite <- nat_compare_gt in Heq. simp lift.
-  destruct (nat_compare_spec (n0 + n) k); try discriminate; simp lift; term.
+  rewrite Heq. rewrite Nat.compare_gt_iff in Heq. simp lift.
+  destruct (Nat.compare_spec (n0 + n) k); try discriminate; simp lift; term.
 Qed.
 Hint Rewrite lift_k_lift_k : lift.
 
 Equations(nocomp) subst (k : nat) (t : term) (u : term) : term :=
-subst k (Var i) u with nat_compare i k := {
+subst k (Var i) u with Nat.compare i k := {
   | Eq := lift 0 k u ;
   | Lt := i ;
   | Gt := Var (pred i) } ;
@@ -129,8 +129,8 @@ subst k Tt _ := Tt.
 
 Lemma substnn n t : subst n n t = lift 0 n t.
 Proof. funelim (subst n n t) ; try rewrite H ; try rewrite H0; simp lift; auto.
-  rewrite <- nat_compare_lt in Heq; absurd omega.
-  rewrite <- nat_compare_gt in Heq; absurd omega.
+  rewrite Nat.compare_lt_iff in Heq; absurd omega.
+  rewrite Nat.compare_gt_iff in Heq; absurd omega.
 Qed.
 Hint Rewrite substnn : subst.
 Notation ctx := (list type).
@@ -175,8 +175,8 @@ Lemma nat_compare_elim (P : nat -> nat -> comparison -> Prop)
   (PEq : forall i, P i i Eq)
   (PLt : forall i j, i < j -> P i j Lt)
   (PGt : forall i j, i > j -> P i j Gt) :
-  forall i j, P i j (nat_compare i j).
-Proof. intros. case (nat_compare_spec i j); intros; subst; auto. Qed.
+  forall i j, P i j (Nat.compare i j).
+Proof. intros. case (Nat.compare_spec i j); intros; subst; auto. Qed.
 
 Lemma nth_extend_left {A} (a : A) n (l l' : list A) : nth n l a = nth (length l' + n) (l' @ l) a.
 Proof. induction l'; auto. Qed.
@@ -195,12 +195,12 @@ Proof.
 Qed.
 
 Lemma nth_extend_middle {A} (a : A) n (l l' l'' : list A) : 
-  match nat_compare n (length l') with
+  match Nat.compare n (length l') with
     | Lt => nth n (l' @ l) a = nth n (l' @ l'' @ l) a
     | _ => nth n (l' @ l) a = nth (n + length l'') (l' @ l'' @ l) a
   end.
 Proof.
-  assert (foo:=nat_compare_spec n (length l')).
+  assert (foo:=Nat.compare_spec n (length l')).
   depelim foo; fold (length l') in H;
   try rewrite H0; try rewrite H. rewrite <- nth_extend_left.
   replace (length l'') with (length l'' + 0) by auto with arith. rewrite <- nth_extend_left.
@@ -220,7 +220,7 @@ Proof.
   depind H; intros; simp lift; eauto with term.
 
   generalize (nth_extend_middle unit i Γ0 Γ' Γ'').
-  destruct nat_compare; intros H'; rewrite H'; simp lift;
+  destruct Nat.compare; intros H'; rewrite H'; simp lift;
     apply axiom; autorewrite with list in H |- *; omega.
   
   apply abstraction. rewrite app_comm_cons. now apply IHtypes. 
@@ -248,7 +248,7 @@ Proof with term.
   intros H. depind H; term. intros.
   
   (* Var *)
-  assert (spec:=nat_compare_spec i (length Γ')).
+  assert (spec:=Nat.compare_spec i (length Γ')).
   depelim spec; try fold (length Γ') in H1; subst;
   try rewrite H1; try rewrite H2 ; simp subst.
 
@@ -478,7 +478,7 @@ Proof.
   destruct H; intros; simp lift; try solve [econstructor; term].
   clear check_lift_gen synthetize_lift_gen. subst.
   generalize (nth_extend_middle unit i Γ0 Γ' Γ'').
-  destruct nat_compare; intros H'; rewrite H'; simp lift; apply axiom_synth; autorewrite with list in H |- *; omega.
+  destruct Nat.compare; intros H'; rewrite H'; simp lift; apply axiom_synth; autorewrite with list in H |- *; omega.
 Qed.
 
 Definition check_lift Γ t T Γ' (H : Γ' @ Γ |-- t <= T) : 
@@ -518,7 +518,7 @@ Lemma normal_lift {t k n} : normal t → normal (lift k n t)
   with neutral_lift {t k n} : neutral t -> neutral (lift k n t).
 Proof. destruct 1; simp lift; constructor; term.
   destruct 1; simp lift; try (constructor; term).
-  destruct nat_compare; term.
+  destruct Nat.compare; term.
 Qed.
 Hint Resolve @normal_lift @neutral_lift : term.
 
@@ -623,7 +623,7 @@ Equations hereditary_subst (t : type * term * term) (k : nat) :
 hereditary_subst t k by rec t her_order :=
 
 hereditary_subst (pair (pair A a) t) k with t := {
-  | Var i with nat_compare i k := {
+  | Var i with Nat.compare i k := {
     | Eq := (lift 0 k a, Some (exist A _)) ;
     | Lt := (Var i, None) ;
     | Gt := (Var (pred i), None) } ;
@@ -690,7 +690,7 @@ Proof.
   depelim t. depelim p. simph.
   constructor. depelim t1.
   constructor.
-  destruct (nat_compare n k); try constructor.
+  destruct (Nat.compare n k); try constructor.
 
   simph. 
 
@@ -769,12 +769,12 @@ Proof.
 
   (* Var *)
   depelim H0.
-  apply nat_compare_eq in Heq; subst i.
+  apply Nat.compare_eq in Heq; subst i.
   rewrite !nth_length. split. term. intros.
   noconf H1. auto.
  
   (* Lt *)
-  apply nat_compare_lt in Heq. depelim H0.
+  apply Nat.compare_lt_iff in Heq. depelim H0.
   replace (nth i (Γ' @ (t0 :: Γ)) unit) with (nth i (Γ' @ Γ) unit).
   constructor. rewrite app_length. auto with arith.
   now do 2 rewrite <- nth_extend_right by auto. 
@@ -897,20 +897,20 @@ Proof.
     elim (synth_unit False H1).
 
   (* Var: eq *)
-  - apply nat_compare_eq in Heq; subst n.
+  - apply Nat.compare_eq in Heq; subst n.
     split; intros Hsyn; depelim Hsyn; rewrite ?nth_length.
     depelim H1; rewrite !nth_length.
     now split; term. split; term.
  
   (* Lt *)
-  - apply nat_compare_lt in Heq.
+  - apply Nat.compare_lt_iff in Heq.
     split; intros Hsyn; depelim Hsyn;
     [depelim H1;constructor;auto|];
     (rewrite nth_app_l by omega; rewrite <- nth_app_l with (l':=Γ) by omega;
      constructor; rewrite app_length; auto with arith). 
   
   (* Gt *)
-  - apply nat_compare_gt in Heq.
+  - apply Nat.compare_gt_iff in Heq.
     split; intros Hsyn; depelim Hsyn.
     depelim H1. constructor. auto.
     replace (nth i (Γ' @ (t0 :: Γ)) unit) with (nth (pred i) (Γ' @ Γ) unit).

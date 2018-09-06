@@ -10,7 +10,6 @@ Set Warnings "-notation-overridden".
 Import Id_Notations.
 Import Sigma_Notations.
 Set Warnings "-deprecated-option".
-Set Standard Proposition Elimination Names.
 Set Universe Polymorphism.
 Set Primitive Projections.
 Unset Equations OCaml Splitting.
