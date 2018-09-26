@@ -539,7 +539,7 @@ let below_tactics_path =
   DirPath.make (List.map Id.of_string ["Below";"Equations"])
 
 let below_tac s =
-  KerName.make (MPfile below_tactics_path) (DirPath.make []) (Label.make s)
+  KerName.make (MPfile below_tactics_path) (Label.make s)
 
 let tacvar_arg h =
   let ipat = Genarg.in_gen (Genarg.rawwit Tacarg.wit_intro_pattern) 
@@ -599,7 +599,7 @@ let call_tac_on_ref tac c =
   ist, tac
 
 let mp = Names.MPfile (Names.DirPath.make (List.map Names.Id.of_string ["DepElim"; "Equations"]))
-let solve_equation = Names.KerName.make mp Names.DirPath.empty (Names.Label.make "solve_equation")
+let solve_equation = Names.KerName.make mp (Names.Label.make "solve_equation")
 
 let solve_equation_tac (c : Names.GlobRef.t) =
   let ist, tac = call_tac_on_ref solve_equation c in
