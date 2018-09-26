@@ -498,7 +498,7 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
 	  [to82 (set_eos_tac ()); to82 (fix recid (succ i));
 	   onLastDecl (fun decl gl ->
              let (n,b,t) = to_named_tuple decl in
-             let fixprot pats sigma =
+             let fixprot pats _env sigma =
 	       let c = 
                  mkLetIn (Anonymous, of_constr (UnivGen.constr_of_global (Lazy.force coq_fix_proto)),
                           of_constr (UnivGen.constr_of_global (Lazy.force coq_unit)), t) in
