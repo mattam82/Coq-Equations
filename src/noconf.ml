@@ -133,10 +133,11 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let noconfcl = e_new_global evd tc.Typeclasses.cl_impl in
   let inst, u = destInd !evd noconfcl in
   let noconfterm = mkApp (noconf, paramsvect) in
-  let argty =
-    let ty = Retyping.get_type_of env !evd noconfterm in
+  let ctx, argty =
+    let ty = Retyping.get_type_of env !evd noconf in
+    let ctx, ty = EConstr.decompose_prod_n_assum !evd params ty in
     match kind !evd ty with
-    | Prod (_, b, _) -> b
+    | Prod (_, b, _) -> ctx, b
     | _ -> assert false
   in
   let b, ty = 
@@ -159,11 +160,14 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
     Typeclasses.add_instance
       (Typeclasses.new_instance tc empty_hint_info true gr)
   in
-  let oblinfo, _, term, ty = Obligations.eterm_obligations env noid !evd 0 (to_constr ~abort_on_undefined_evars:false !evd term)
-                                                           (to_constr !evd ty) in
+  let kind = (Global, polymorphic, Definition) in
+  let oblinfo, _, term, ty = Obligations.eterm_obligations env noid !evd 0
+      (to_constr ~abort_on_undefined_evars:false !evd term)
+      (to_constr !evd ty) in
     ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hook) packid 
-	      ~term ty ~tactic:(noconf_tac ()) 
+             ~kind ~term ty ~tactic:(noconf_tac ())
 	      (Evd.evar_universe_context !evd) oblinfo)
+
 let () =
   Ederive.(register_derive
             { derive_name = "NoConfusion";
