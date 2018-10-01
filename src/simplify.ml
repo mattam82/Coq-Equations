@@ -57,17 +57,17 @@ module EqRefs : EQREFS = struct
 
   let init_depelim s = init_constant ["Equations"; "DepElim"] s
 
-  let eq = lazy (Globnames.destIndRef (Coqlib.build_coq_eq ()))
-  let eq_refl = lazy (Globnames.destConstructRef (Coqlib.build_coq_eq_refl ()))
+  let eq = init_inductive ["HoTT";"Basics";"Overture"] "paths"
+  let eq_refl = init_constructor ["HoTT";"Basics";"Overture"] "idpath"
   let eq_rect = init_constant ["HoTT";"Basics";"Overture"] "paths_ind"
   let eq_rect_r = init_constant ["Equations"; "Init"] "eq_rect_r"
   let eq_dec = init_constant ["Equations"; "EqDec"] "EqDec"
   let zero = init_inductive ["HoTT";"Basics";"Overture"] "Empty"
-  let one = init_inductive ["Coq"; "Init"; "Logic"] "True"
-  let one_val = init_constructor ["Coq"; "Init"; "Logic"] "I"
-  let one_ind_dep = init_depelim "True_rect_dep"
-  let zero_ind = init_constant ["Coq"; "Init"; "Logic"] "False_rect"
-  let zero_ind_dep = init_depelim "False_rect_dep"
+  let one = init_inductive ["HoTT";"Basics";"Overture"] "Unit"
+  let one_val = init_constructor ["HoTT";"Basics";"Overture"] "tt"
+  let one_ind_dep = init_constant ["HoTT"; "Basics"; "Overture"] "Unit_rect"
+  let zero_ind = init_constant ["HoTT"; "Basics"; "Overture"] "Empty_rec"
+  let zero_ind_dep = init_constant ["HoTT"; "Basics"; "Overture"] "Empty_rect"
   let noConfusion = init_inductive ["Equations"; "DepElim"] "NoConfusionPackage"
   let apply_noConfusion = init_depelim "apply_noConfusion"
   let simplify_ind_pack = init_depelim "simplify_ind_pack"
