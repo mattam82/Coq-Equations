@@ -492,11 +492,13 @@ let map_rhs f g = function
   | REmpty i -> REmpty (g i)
 
 let map_evars_in_constr evd evar_map c =
-  evar_map (fun id ->
-	    let gr = Nametab.global (qualid_of_ident id) in
-            let (f, uc) = Global.constr_of_global_in_context (Global.env ()) gr in
-            let inst, ctx = ucontext_of_aucontext uc in
-            UnivGen.constr_of_global_univ (Globnames.global_of_constr f, inst))
-           (EConstr.to_constr ~abort_on_undefined_evars:false evd c)
+  evar_map
+    (fun id ->
+       let gr = Nametab.global (qualid_of_ident id) in
+       let (f, uc) = Global.constr_of_global_in_context (Global.env ()) gr in
+       let inst, ctx = ucontext_of_aucontext uc in
+       let c = UnivGen.constr_of_global_univ (Globnames.global_of_constr f, inst) in
+       Evarutil.nf_evars_universes evd c)
+    (EConstr.to_constr ~abort_on_undefined_evars:false evd c)
 
 let map_evars_in_split evd m = map_split (map_evars_in_constr evd m)
