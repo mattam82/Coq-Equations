@@ -36,7 +36,7 @@ Module HoTTUtil.
   Lemma nat_path_O_S (n : nat) (H : O = n.+1) : Empty.
   Proof. refine (
     match H in _ = i return
-      match i with
+      match i return Type0 with
       | O => Unit
       | _.+1 => Empty
       end
