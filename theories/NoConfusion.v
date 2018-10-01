@@ -13,6 +13,7 @@
 (*Require Import Coq.Program.Program Bvector List.*)
 Require Import Equations.Signature Equations.EqDec.
 Require Export Equations.DepElim.
+From HoTT Require Import Basics.Overture.
 
 Ltac noconf H ::=
   blocked ltac:(noconf_ref H; simplify_dep_elim) ; auto 3.
@@ -48,7 +49,7 @@ Ltac solve_noconf_inv := intros;
   match goal with
     |- ?R ?a ?b => destruct_sigma a; destruct_sigma b; 
                    destruct a ; destruct b; simpl in * |-;
-                 on_last_hyp ltac:(fun id => destruct_tele_eq id || destruct id);
+                 on_last_hyp ltac:(fun id => try red in id; (destruct_tele_eq id || destruct id));
                  solve [constructor]
   end.
 
@@ -71,51 +72,6 @@ Require Import HoTT.Types.Bool.
 Definition Bool_rect := Bool_ind.
 
 Derive NoConfusion for Unit Bool nat option list sum prod sig.
-Next Obligation. solve_noconf. Defined.
-Next Obligation. solve_noconf. Defined.
-Next Obligation. solve_noconf. Defined.
-
-Next Obligation. solve_noconf. Defined.
-Next Obligation. solve_noconf. Defined.
-Next Obligation. solve_noconf. Defined.
-
-Next Obligation. solve_noconf. Defined.
-Next Obligation. solve_noconf. Defined.
-Next Obligation. solve_noconf. Defined.
-
-Next Obligation. solve_noconf. Defined.
-Next Obligation. solve_noconf. Defined.
-Next Obligation. solve_noconf. Defined.
-
-Next Obligation. solve_noconf. Defined.
-Next Obligation. solve_noconf. Defined.
-Next Obligation. solve_noconf. Defined.
-
-Next Obligation. destruct X; reflexivity. Defined.
-Next Obligation. 
-  apply (
-    paths_ind
-      {| pr1 := fst0; pr2 := snd0 |}
-      (fun s _ => (fst0, snd0) = (s.(pr1), s.(pr2)))
-      idpath
-      {| pr1 := fst; pr2 := snd |}
-      X). Defined.
-Next Obligation. destruct e. reflexivity. Defined.
-
-Next Obligation. destruct X; reflexivity. Defined.
-Next Obligation.
-  apply (
-    paths_ind
-      {| pr1 := a; pr2 := X1 |}
-      (fun s _ => (a; X1) = (s.(pr1); s.(pr2)))
-      idpath
-      {| pr1 := b; pr2 := X0 |}
-      X). Defined.
-Next Obligation. destruct e; reflexivity. Defined.
-
-Next Obligation. solve_noconf. Defined.
-Next Obligation. solve_noconf. Defined.
-Next Obligation. solve_noconf. Defined.
 
 (* FIXME should be done by the derive command *)
 Extraction Inline noConfusion NoConfusionPackage_nat.
