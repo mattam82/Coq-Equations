@@ -24,7 +24,7 @@
 
 (* Require Import Program Bvector List Relations. *)
 From Equations Require Import Equations Signature HoTTUtil.
-Require Import Utf8.
+From Coq Require Import Utf8.
 Require Import DepElimDec.
 Require Import HoTT.Types.Bool.
 Definition Bool_rect := Bool_ind.
@@ -81,12 +81,12 @@ equal x y := inr _.
 
 (** Pattern-matching on the indexed equality type. *)
 Equations eq_sym {A} (x y : A) (H : x = y) : y = x :=
-eq_sym x _ eq_refl := eq_refl.
+eq_sym x _ 1 := 1.
 
 Equations eq_trans {A} (x y z : A) (p : x = y) (q : y = z) : x = z :=
-eq_trans x _ _ eq_refl eq_refl := eq_refl.
+eq_trans x _ _ 1 1 := 1.
 
-Derive Signature for eq vector.
+Derive Signature for paths.
 
 Module KAxiom.
 
@@ -94,12 +94,12 @@ Module KAxiom.
   Unset Equations WithK.
 
   (** In this case the following definition fails as [K] is not derivable on type [A]. *)
-  Fail Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
-    K x P p eq_refl := p.
+  Fail Equations K {A} (x : A) (P : x = x -> Type) (p : P 1) (H : x = x) : P H :=
+    K x P p 1 := p.
 
   (** However, types enjoying a provable instance of the [K] axiom are fine. *)
-  Equations K (x : nat) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
-    K x P p eq_refl := p.
+  Equations K (x : nat) (P : x = x -> Type) (p : P 1) (H : x = x) : P H :=
+    K x P p 1 := p.
   Print Assumptions K. (* Closed under the global context *)
 
 End KAxiom.
@@ -107,7 +107,7 @@ End KAxiom.
 (** The [with] construct allows to pattern-match on an intermediary computation.
     The "|" syntax provides a shortcut to repeating the previous patterns. *)
 Section FilterDef.
-  Context {A} (p : A -> bool).
+  Context {A} (p : A -> Bool).
 
   Equations filter (l : list A) : list A :=
   filter nil := nil ;
@@ -123,14 +123,15 @@ Section FilterDef.
 End FilterDef.
 
 (** We define inclusion of a list in another one, to specify the behavior of [filter] *)
+
 Inductive incl {A} : relation (list A) :=
-  stop : incl nil nil 
-| keep {x : A} {xs ys : list A} : incl xs ys -> incl (x :: xs) (x :: ys)
-| skip {x : A} {xs ys : list A} : incl xs ys -> incl (xs) (x :: ys).
+| stop : incl nil nil
+| keep {x : A} {xs ys : list A} : incl xs ys -> incl (cons x xs) (cons x ys)
+| skip {x : A} {xs ys : list A} : incl xs ys -> incl xs (cons x ys).
 
 (** Using [with] again, we can produce a proof that the filtered list is a
     sublist of the original list. *)
-Equations sublist {A} (p : A -> bool) (xs : list A) : incl (filter p xs) xs :=
+Equations sublist {A} (p : A -> Bool) (xs : list A) : incl (filter p xs) xs :=
 sublist p nil := stop ;
 sublist p (cons x xs) with p x := {
   | true := keep (sublist p xs) ;
@@ -138,34 +139,44 @@ sublist p (cons x xs) with p x := {
 
 (** Well-founded definitions: *)
 
-Require Import Arith Wf_nat.
+(* Require Import Arith Wf_nat. *)
+Require Import Spaces.Nat.
 
-(** One can declare new well-founded relations using instances of the [WellFounded] typeclass. *)
-Instance wf_nat : WellFounded lt := lt_wf.
-Hint Resolve lt_n_Sn : lt.
+(* (** One can declare new well-founded relations using instances of the [WellFounded] typeclass. *) *)
+(* Instance wf_nat : WellFounded lt := lt_wf. *)
+(* Hint Resolve lt_n_Sn : lt. *)
 
-(** The [by rec n lt] annotation indicates the kind of well-founded recursion we want. *)
-Equations testn (n : nat) : nat :=
-testn n by rec n lt :=
-testn 0 := 0 ;
-testn (S n) <= testn n => {
-  | 0 := S 0 ;
-  | (S n') := S n' }.
+(* (** The [by rec n lt] annotation indicates the kind of well-founded recursion we want. *) *)
+(* Equations testn (n : nat) : nat := *)
+(* testn n by rec n lt := *)
+(* testn 0 := 0 ; *)
+(* testn (S n) <= testn n => { *)
+(*   | 0 := S 0 ; *)
+(*   | (S n') := S n' }. *)
 
 (** Notations for vectors *)
-Arguments Vector.nil {A}.
-Arguments Vector.cons {A} _ {n}.
+Unset Printing Universes.
+Inductive vector A : nat -> Type :=
+| vnil : vector A 0
+| vcons (a : A) (n : nat) (v : vector A n) : vector A (S n).
+Derive Signature for vector.
+Derive NoConfusion for vector.
 
-Notation " x |:| y " := (@Vector.cons _ x _ y) (at level 20, right associativity) : vect_scope.
-Notation " x |: n :| y " := (@Vector.cons _ x n y) (at level 20, right associativity) : vect_scope.
-Notation "[]v" := Vector.nil (at level 0) : vect_scope.
+Arguments vnil {A}.
+Arguments vcons {A} _ {n}.
+
+Notation " x |:| y " := (@vcons _ x _ y) (at level 20, right associativity) : vect_scope.
+Notation " x |: n :| y " := (@vcons _ x n y) (at level 20, right associativity) : vect_scope.
+Notation "[]v" := vnil (at level 0) : vect_scope.
 Local Open Scope vect_scope.
 
 (** We can define functions by structural recursion on indexed datatypes like vectors. *)
 
+Local Open Scope nat_scope.
+
 Equations vapp {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
   vapp []v w := w ;
-  vapp (Vector.cons a n v) w := a |:| vapp v w.
+  vapp (vcons a n v) w := a |:| vapp v w.
 
 (** We can also support well-founded recursion on indexed datatypes. *)
 
@@ -174,13 +185,14 @@ From Equations Require Import EqDec.
 (** We show that decidable equality of the elements type implied decidable equality of vectors. *)
 
 Instance vector_eqdec {A n} `(EqDec A) : EqDec (vector A n).
-Proof. intros. intros x. induction x. left. now depelim y.
+Proof.
+  intros. intros x. induction x. left. depelim y; auto.
   intro y; depelim y.
-  destruct (eq_dec h h0); subst. 
-  destruct (IHx y). subst.
+  destruct (eq_dec a a0); subst. destruct p.
+  destruct (IHx y). destruct p.
   left; reflexivity.
-  right. intro. apply n. injection H0. simpdep. reflexivity.
-  right. intro. apply n. injection H0. simpdep. reflexivity.
+  right. intro. apply n. simpdep. reflexivity.
+  right. intro. apply n. simpdep. reflexivity.
 Defined.
 
 (** We automatically derive the signature and subterm relation for
