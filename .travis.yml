@@ -18,9 +18,9 @@ addons:
 env:
   global:
   - NJOBS=2
-  - COMPILER="4.07.0"
-  - CAMLP5_VER="6.14"
-  - FINDLIB_VER="1.4.1"
+  - COMPILER="4.06.0"
+  - CAMLP5_VER="7.05"
+  - FINDLIB_VER="1.8.0"
   - NATIVE_COMP="yes"
   - COQ_VER="dev"
 
