@@ -22,7 +22,6 @@ open Tacticals
 open Evarutil
 open Evar_kinds
 open Equations_common
-open Termops
 open Syntax
 open Covering
 open EConstr
@@ -217,7 +216,7 @@ let term_of_tree status isevar env0 tree =
             let ctx = cut_ctx @ new_ctx @ ctx' in
             msg_info(str"Simplifying term:");
             msg_info(let env = push_rel_context ctx env in
-              Internal.print_constr_env env !evd ty);
+              Printer.pr_econstr_env env !evd ty);
             msg_info(str"... in context:");
             msg_info(pr_context env !evd ctx)
           end;
