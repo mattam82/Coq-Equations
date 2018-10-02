@@ -108,7 +108,8 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
     in
       mkcase env !evd x elim (fun ind i id nparams args arity ->
 	let ydecl = (Name yid, None, pack_ind_with_parlift (List.length args + 1)) in
-	let env' = push_rel_context (of_tuple ydecl :: args) env in
+        let env' = push_rel_context (of_tuple ydecl :: args) env in
+        let argsctx = lift_rel_context (List.length args + 2) argsctx in
 	let elimdecl = (Name yid, None, ind_with_parlift (List.length args + lenindices + 2)) in
 	  mkLambda_or_LetIn (of_tuple ydecl)
             (mkcase env' !evd x
