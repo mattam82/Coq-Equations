@@ -7,7 +7,7 @@
 (**********************************************************************)
 
 (*Require Import Wf_nat Arith.Lt Bvector Relations Wellfounded.*)
-From Equations Require Import Init Classes Below Signature EqDec NoConfusion.
+From Equations Require Import Init Classes Below Signature EqDec NoConfusion DepElimDec.
 Require Import Coq.Init.Wf.
 
 Generalizable Variables A R S B.
@@ -62,7 +62,7 @@ Ltac unfold_FixWf :=
     |- context [ @FixWf ?A ?R ?WF ?P ?f ?x ] =>
     let step := fresh in
     set(step := fun y (_ : R y x) => @FixWf A R WF P f y) in *;
-    rewrite (@FixWf_unfold_step A R WF P f x step); [hidebody step|reflexivity]
+    rewrite (@FixWf_unfold_step _ A R WF P f x step); [hidebody step|reflexivity]
   end.
 
 Ltac unfold_recursor := unfold_FixWf.
@@ -86,32 +86,65 @@ Create HintDb rec_decision discriminated.
    to allow computations with functions defined by well-founded recursion.
    *)
 
-(* TODO Missing rest of file...
+(* TODO Missing rest of file... *)
 
-Lemma WellFounded_trans_clos `(WF : WellFounded A R) : WellFounded (clos_trans A R).
-Proof. apply wf_clos_trans. apply WF. Defined.
+Definition MR {A B} (R : relation B) (f : A -> B) : relation A :=
+  fun x y => R (f x) (f y).
 
-Hint Extern 4 (WellFounded (clos_trans _ _)) => 
+Lemma WellFounded_trans_clos `(WF : WellFounded A R) : WellFounded (transitive_closure R).
+Proof. apply wf_transitive_closure. apply WF. Defined.
+
+Hint Extern 4 (WellFounded (transitive_closure _ _)) =>
   apply @WellFounded_trans_clos : typeclass_instances.
 
+
+(** Taken from the standard library (B. Barras' proof), but transparent *)
+Section Inverse_Image.
+
+  Variables A B : Type.
+  Variable R : B -> B -> Type.
+  Variable f : A -> B.
+
+  Let Rof (x y : A) := R (f x) (f y).
+
+  Remark Acc_lemma : forall y:B, Acc R y -> forall x:A, y = f x -> Acc Rof x.
+  Proof.
+    induction 1 as [y _ IHAcc]; intros x H.
+    apply Acc_intro; intros y0 H1.
+    apply (IHAcc (f y0)); try trivial.
+    rewrite H; trivial.
+  Defined.
+
+  Lemma Acc_inverse_image : forall x:A, Acc R (f x) -> Acc Rof x.
+  Proof.
+    intros; apply (Acc_lemma (f x)); trivial.
+  Defined.
+
+  Theorem wf_inverse_image : well_founded R -> well_founded Rof.
+  Proof.
+    red; intros; apply Acc_inverse_image; auto.
+  Defined.
+End Inverse_Image.
+
 Instance wf_MR {A R} `(WellFounded A R) {B} (f : B -> A) : WellFounded (MR R f).
-Proof. red. apply measure_wf. apply H. Defined.
+Proof. red. apply (wf_inverse_image _ _ R _ H). Defined.
 
 Hint Extern 0 (MR _ _ _ _) => red : Below.
 
-Instance lt_wf : WellFounded lt := lt_wf.
-Hint Resolve lt_n_Sn : Below.
+(* No definition of lt in HoTT? *)
+(* Instance lt_wf : WellFounded lt := lt_wf. *)
+(* Hint Resolve lt_n_Sn : Below. *)
 
-(** We also add hints for transitive closure, not using [t_trans] but forcing to 
+(** We also add hints for transitive closure, not using [t_trans] but forcing to
    build the proof by successive applications of the inner relation. *)
 
 Hint Resolve t_step : subterm_relation.
 
-Lemma clos_trans_stepr A (R : relation A) (x y z : A) :
-  R y z -> clos_trans A R x y -> clos_trans A R x z.
-Proof. intros Hyz Hxy. exact (t_trans _ _ x y z Hxy (t_step _ _ _ _ Hyz)). Defined.
+Lemma trans_clos_stepr A (R : relation A) (x y z : A) :
+  R y z -> transitive_closure R x y -> transitive_closure R x z.
+Proof. intros Hyz Hxy. exact (t_trans _ _ _ _ Hxy (t_step _ _ _ Hyz)). Defined.
 
-Hint Resolve clos_trans_stepr : subterm_relation.
+Hint Resolve trans_clos_stepr : subterm_relation.
 
 (** The default tactic to build proofs of well foundedness of subterm relations. *)
 
@@ -128,7 +161,7 @@ Hint Extern 4 (_ = _) => reflexivity : solve_subterm.
 Hint Extern 10 => eapply_hyp : solve_subterm.
 
 Ltac solve_subterm := intros;
-  apply Transitive_Closure.wf_clos_trans;
+  apply wf_transitive_closure;
   red; intros; simp_sigmas; on_last_hyp ltac:(fun H => depind H); constructor;
   intros; simp_sigmas; on_last_hyp ltac:(fun HR => depind HR);
   simplify_dep_elim; try typeclasses eauto with solve_subterm.
@@ -202,14 +235,10 @@ Ltac rec_wf_rel recname x rel :=
 (** The [pi] tactic solves an equality between applications of the same function,
    possibly using proof irrelevance to discharge equality of proofs. *)
 
-Ltac pi := repeat progress (f_equal || reflexivity) ; apply proof_irrelevance.
+Ltac pi := repeat progress (apply ap2 || apply ap || reflexivity) ; apply proof_irrelevance.
 
 
 (** Define non-dependent lexicographic products *)
-
-Require Import Wellfounded Relation_Definitions.
-Require Import Relation_Operators Lexicographic_Product Wf_nat.
-Arguments lexprod [A] [B] _ _.
 
 Section Lexicographic_Product.
 
@@ -225,6 +254,7 @@ Section Lexicographic_Product.
     | right_lex :
       forall (x:A) (y y':B),
         leB y y' -> lexprod (x, y) (x, y').
+  Derive Signature for lexprod.
 
   Lemma acc_A_B_lexprod :
     forall x:A, Acc leA x -> (well_founded leB) ->
@@ -234,10 +264,7 @@ Section Lexicographic_Product.
     induction 1 as [x0 H IHAcc0]; intros.
     apply Acc_intro.
     destruct y as [x2 y1]; intro H6.
-    simple inversion H6; intro.
-    injection H1. injection H3. intros. subst. clear H1 H3.
-    apply IHAcc; auto with sets. 
-    noconf H3; noconf H1. 
+    depelim H6. apply IHAcc; auto. auto.
   Defined.
 
   Theorem wf_lexprod :
@@ -246,7 +273,7 @@ Section Lexicographic_Product.
   Proof.
     intros wfA wfB; unfold well_founded.
     destruct a. 
-    apply acc_A_B_lexprod; auto with sets; intros.
+    apply acc_A_B_lexprod; auto; intros.
   Defined.
 
 End Lexicographic_Product.
@@ -255,5 +282,3 @@ Instance wellfounded_lexprod A B R S `(wfR : WellFounded A R, wfS : WellFounded 
   WellFounded (lexprod A B R S) := wf_lexprod A B R S wfR wfS.
 
 Hint Constructors lexprod : Below.
-
-*)

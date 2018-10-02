@@ -205,6 +205,12 @@ Derive Subterm for vector.
 (** The relation is actually called [t_subterm] as [vector] is just
     a notation for [Vector.t]. *)
 
+Lemma f_g_eq {A B C D} (f : A -> B -> C) (g : D -> B -> C) :
+  forall x y z z', f x z = g y z -> z = z' -> f x z = g y z'.
+Proof.
+  intros. destruct X0. auto.
+Defined.
+
 Section foo.
   Context {A B : Type}.
 
@@ -214,10 +220,20 @@ Section foo.
       at the packed type [{ n : nat & vector A n}]. *)
 
   Equations unzip {n} (v : vector (A * B) n) : vector A n * vector B n :=
-  unzip v by rec (signature_pack v) (@t_subterm (A * B)) :=
+  unzip v by rec (signature_pack v) (@vector_subterm (A * B)) :=
   unzip []v := ([]v, []v) ;
-  unzip (Vector.cons (pair x y) n v) with unzip v := {
-    | pair xs ys := (Vector.cons x xs, Vector.cons y ys) }.
+  unzip (vcons (pair x y) n v) with unzip v := {
+    | pair xs ys := (vcons x xs, vcons y ys) }.
+
+  Axiom F : Funext.
+  Next Obligation.
+    Subterm.rec_wf_rel IH (signature_pack v) (@vector_subterm (A * B)).
+    unfold unzip. pose F. Subterm.unfold_FixWf.
+    destruct v. reflexivity. simpl.
+    apply f_g_eq. reflexivity.
+    unfold unzip_comp_proj. reflexivity.
+  Defined.
+
 End foo.
 
 (** Playing with lists and functional induction, we define a tail-recursive version
