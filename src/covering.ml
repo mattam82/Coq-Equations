@@ -192,7 +192,7 @@ let context_map_to_lhs ?(avoid = Id.Set.empty) ?loc (ctx, pats, _) =
 (** Pretty-printing *)
 
 let pr_constr_pat env sigma c =
-  let pr = print_constr_env env sigma c in
+  let pr = Internal.print_constr_env env sigma c in
   match kind sigma c with
   | App _ -> str "(" ++ pr ++ str ")"
   | _ -> pr
@@ -205,9 +205,9 @@ let pr_context env sigma c =
   let pr_decl env decl =
     let (id,b,t) = to_tuple decl in
     let bstr = match b with Some b ->
-      str ":=" ++ spc () ++ print_constr_env env sigma b | None -> mt() in
+      str ":=" ++ spc () ++ Internal.print_constr_env env sigma b | None -> mt() in
     let idstr = match id with Name id -> Id.print id | Anonymous -> str"_" in
-    idstr ++ bstr ++ str " : " ++ print_constr_env env sigma t
+    idstr ++ bstr ++ str " : " ++ Internal.print_constr_env env sigma t
   in
   let (_, pp) =
     match List.rev c with
@@ -613,8 +613,8 @@ let eq_context_nolet env sigma (g : rel_context) (d : rel_context) =
      | e ->
        Printf.eprintf
          "Exception while comparing contexts %s and %s : %s\n"
-         (Pp.string_of_ppcmds (print_rel_context (push_rel_context g env)))
-         (Pp.string_of_ppcmds (print_rel_context (push_rel_context d env)))
+         (Pp.string_of_ppcmds (Internal.print_rel_context (push_rel_context g env)))
+         (Pp.string_of_ppcmds (Internal.print_rel_context (push_rel_context d env)))
          (Printexc.to_string e);
        raise e
 
@@ -991,15 +991,15 @@ let pr_splitting env sigma ?(verbose=false) split =
       let env' = push_rel_context (pi1 lhs) env in
       let ppwhere w =
         hov 2 (str"where " ++ Id.print w.where_id ++ str " : " ++
-               print_constr_env env'  sigma w.where_type ++
+               Internal.print_constr_env env'  sigma w.where_type ++
                str " := " ++ Pp.fnl () ++ aux w.where_splitting)
       in
       let ppwheres = prlist_with_sep Pp.fnl ppwhere wheres in
       let env'' = push_rel_context (where_context wheres) env' in
       ((match c with
           | RProgram c -> pplhs env' sigma lhs ++ str" := " ++
-                          print_constr_env env'' sigma c ++ 
-                          (verbose (str " : " ++ print_constr_env env'' sigma ty))
+                          Internal.print_constr_env env'' sigma c ++ 
+                          (verbose (str " : " ++ Internal.print_constr_env env'' sigma ty))
           | REmpty i -> pplhs env' sigma lhs ++ str" :=! " ++
                         pr_rel_name env'' i)
        ++ Pp.fnl () ++ ppwheres ++
@@ -1009,7 +1009,7 @@ let pr_splitting env sigma ?(verbose=false) split =
       (pplhs env' sigma lhs ++ str " split: " ++ pr_rel_name env' var ++
        Pp.fnl () ++
        verbose (str" : " ++
-                print_constr_env env' sigma ty ++ 
+                Internal.print_constr_env env' sigma ty ++ 
                 str " in context " ++ 
                 pr_context_map env sigma lhs ++ spc ()) ++
        (Array.fold_left 
@@ -1036,12 +1036,12 @@ let pr_splitting env sigma ?(verbose=false) split =
       in
       let env' = push_rel_context (pi1 lhs) env in
       hov 2 (pplhs env' sigma lhs ++ str " refine " ++ Id.print id ++ str" " ++ 
-             print_constr_env env' sigma (mapping_constr sigma revctx c) ++
-             verbose (str " : " ++ print_constr_env env' sigma cty ++ str" " ++
-                      print_constr_env env' sigma ty ++ str" " ++
+             Internal.print_constr_env env' sigma (mapping_constr sigma revctx c) ++
+             verbose (str " : " ++ Internal.print_constr_env env' sigma cty ++ str" " ++
+                      Internal.print_constr_env env' sigma ty ++ str" " ++
                       str " in " ++ pr_context_map env sigma lhs ++ spc () ++
                       str "New problem: " ++ pr_context_map env sigma newprob ++ str " for type " ++
-                      print_constr_env (push_rel_context (pi1 newprob) env) sigma newty ++ spc () ++
+                      Internal.print_constr_env (push_rel_context (pi1 newprob) env) sigma newty ++ spc () ++
                       spc () ++ str" eliminating " ++ pr_rel_name (push_rel_context (pi1 newprob) env) arg ++ spc () ++
                       str "Revctx is: " ++ pr_context_map env sigma revctx ++ spc () ++
                       str "New problem to problem substitution is: " ++ 
@@ -1113,7 +1113,7 @@ let split_var (env,evars) var delta =
       None
       (* 	  user_err_loc (dummy_loc, "split_var",  *)
       (* 		       str"Unable to split variable " ++ Name.print id ++ str" of (reduced) type " ++ *)
-      (* 			 print_constr_env (push_rel_context before env) newty  *)
+      (* 			 Internal.print_constr_env (push_rel_context before env) newty  *)
       (* 		       ++ str" to match a user pattern") *)
     else 
       let newdelta = after @ (make_def id b newty :: before) in
@@ -1283,17 +1283,17 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
           | None ->
             CErrors.user_err ?loc:(Constrexpr_ops.constr_loc user) ~hdr:"covering"
               (str "Incompatible innaccessible pattern " ++
-               print_constr_env env' !evars userc ++
+               Internal.print_constr_env env' !evars userc ++
                spc () ++ str "should be convertible to " ++
-               print_constr_env env' !evars t)
+               Internal.print_constr_env env' !evars t)
         end
       | _ ->
         let t = pat_constr t in
         CErrors.user_err ?loc:(Constrexpr_ops.constr_loc user) ~hdr:"covering"
           (str "Pattern " ++
-           print_constr_env env' !evars userc ++
+           Internal.print_constr_env env' !evars userc ++
            spc () ++ str "is not inaccessible, but should refine pattern " ++
-           print_constr_env env' !evars t)
+           Internal.print_constr_env env' !evars t)
     in
     let check_innac ((loc,user), forced) =
       if Option.is_empty loc then
@@ -1308,7 +1308,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
           let forcedsubst = substnl subst 0 forced in
           CErrors.user_err ?loc ~hdr:"covering"
             (str "This pattern must be innaccessible and equal to " ++
-             print_constr_env (push_rel_context ctx env) !evars forcedsubst)
+             Internal.print_constr_env (push_rel_context ctx env) !evars forcedsubst)
     in
     List.iter check_uinnac uinnacs;
     List.iter check_innac innacs

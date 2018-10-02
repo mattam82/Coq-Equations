@@ -18,6 +18,7 @@ Declare ML Module "equations_plugin".
   avoid to export to remain compatible with user developments.
 *)
 
+Declare Scope equations_scope.
 Delimit Scope equations_scope with equations.
 Local Open Scope equations_scope.
 

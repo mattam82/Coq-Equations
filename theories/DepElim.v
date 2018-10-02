@@ -47,7 +47,7 @@ Ltac unblock_goal := unfold block in *; cbv zeta.
 (** Notation for heterogenous equality. *)
 
 Module JMeq_Notations.
-
+  Declare Scope JMeq_scope.
   Notation " x ~= y " := (@JMeq _ x _ y) (at level 70, no associativity) : JMeq_scope.
 
 End JMeq_Notations.

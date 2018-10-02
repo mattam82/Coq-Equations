@@ -122,7 +122,7 @@ let autorewrite_one b =
             (Proofview.Goal.enter
                begin fun gl -> let concl = Proofview.Goal.concl gl in
                                  Feedback.msg_debug (str"Trying " ++ pr_global global ++ str " on " ++
-                                                       print_constr_env (Proofview.Goal.env gl) (Proofview.Goal.sigma gl) concl);
+                                                       Internal.print_constr_env (Proofview.Goal.env gl) (Proofview.Goal.sigma gl) concl);
                                  tac end)
           else tac)
          (fun e -> if !debug then Feedback.msg_debug (str"failed"); aux rules)
@@ -148,7 +148,7 @@ let rec check_mutind env sigma k cl = match EConstr.kind sigma (Termops.strip_ou
     check_mutind (push_rel (Context.Rel.Declaration.LocalAssum (na, c1)) env) sigma (pred k) b
 | LetIn (na, c1, t, b) ->
     check_mutind (push_rel (Context.Rel.Declaration.LocalDef (na, c1, t)) env) sigma k b
-| _ -> CErrors.user_err (str"Not enough products in " ++ print_constr_env env sigma cl)
+| _ -> CErrors.user_err (str"Not enough products in " ++ Internal.print_constr_env env sigma cl)
 
 open Context.Named.Declaration
 (* Refine as a fixpoint *)
@@ -403,12 +403,15 @@ let rec aux_ind_fun info chop unfs unfids = function
           in
           if !debug then
             (let env = Global.env () in
-             Feedback.msg_debug (str"Found path " ++ str (Id.to_string wherepath) ++ str" where: " ++
-                                  pr_id s.where_id ++ str"term: " ++
-                                  print_constr_env env Evd.empty s.where_term ++
-                                  str" instance: " ++ prlist_with_sep spc (fun x -> print_constr_env env Evd.empty (EConstr.of_constr x)) args ++
-                                  str" context map " ++
-                                  pr_context_map env Evd.empty s.where_prob));
+             Feedback.msg_debug
+             (str"Found path " ++ str (Id.to_string wherepath) ++ str" where: " ++
+              pr_id s.where_id ++ str"term: " ++
+              Internal.print_constr_env env Evd.empty s.where_term ++
+              str" instance: " ++
+              prlist_with_sep spc
+              (fun x -> Internal.print_constr_env env Evd.empty (EConstr.of_constr x)) args ++
+              str" context map " ++
+              pr_context_map env Evd.empty s.where_prob));
           let ind = Nametab.locate (qualid_of_ident wherepath) in
           let ty ind =
             let ctx = pi1 s.where_prob in

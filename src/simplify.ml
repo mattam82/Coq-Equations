@@ -488,7 +488,7 @@ let deletion ~(force:bool) : simplification_fun =
         let env = push_rel_context ctx env in
         raise (CannotSimplify (str
           "[deletion] Cannot simplify without K on type " ++
-          Termops.print_constr_env env !evd tA))
+          Termops.Internal.print_constr_env env !evd tA))
 
 let solution ~(dir:direction) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
@@ -615,7 +615,7 @@ let maybe_pack : simplification_fun =
       with Not_found ->
         raise (CannotSimplify (str
           "[noConfusion] Cannot simplify without K on type " ++
-          Termops.print_constr_env env !evd tA))
+          Termops.Internal.print_constr_env env !evd tA))
     in
     let tx =
       let _, _, tx, _ = Option.get (decompose_sigma !evd valsig) in
@@ -646,7 +646,7 @@ let apply_noconf : simplification_fun =
     with Not_found ->
       raise (CannotSimplify (str
         "[noConfusion] Cannot find an instance of NoConfusion for type " ++
-        Termops.print_constr_env env !evd tA))
+        Termops.Internal.print_constr_env env !evd tA))
   in
   let tapply_noconf = Globnames.ConstRef (Lazy.force EqRefs.apply_noConfusion) in
   let tB = EConstr.mkLambda (name, ty1, ty2) in

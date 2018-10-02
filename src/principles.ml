@@ -502,9 +502,9 @@ let pr_where env sigma ctx {where_id; where_nctx; where_prob; where_term;
   let open Pp in
   let envc = Environ.push_rel_context ctx env in
   let envw = push_named_context where_nctx env in
-  Termops.print_constr_env envc sigma where_term ++ fnl () ++
+  Termops.Internal.print_constr_env envc sigma where_term ++ fnl () ++
     str"where " ++ Names.Id.print where_id ++ str" : " ++
-    Termops.print_constr_env envc sigma where_type ++
+    Termops.Internal.print_constr_env envc sigma where_type ++
     str" := " ++ fnl () ++
     pr_context_map envw sigma where_prob ++ fnl () ++
     pr_splitting envw sigma where_splitting
