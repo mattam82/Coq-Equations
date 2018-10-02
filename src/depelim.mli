@@ -57,7 +57,8 @@ val depcase : Decl_kinds.polymorphic ->
   MutInd.t * int ->
   Environ.env * Evd.evar_map * rel_context * constr * Names.GlobRef.t
 val derive_dep_elimination :
-  Environ.env -> Evd.evar_map -> polymorphic:Decl_kinds.polymorphic -> pinductive -> constr
+  Environ.env -> Evd.evar_map -> polymorphic:Decl_kinds.polymorphic -> pinductive ->
+  Constant.t * (Evd.evar_map * constr)
 
 
 val pattern_call :

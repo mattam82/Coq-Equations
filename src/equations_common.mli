@@ -147,42 +147,60 @@ val get_class : Evd.evar_map -> constr -> Typeclasses.typeclass * EConstr.EInsta
 val make_definition :
   ?opaque:'a ->
   ?poly:Decl_kinds.polymorphic ->
-  esigma ->
-  ?types:constr -> constr -> Safe_typing.private_constants Entries.definition_entry
+  Evd.evar_map ->
+  ?types:constr -> constr -> Evd.evar_map * Safe_typing.private_constants Entries.definition_entry
+
+(** Declares a constant relative to an evar_map.
+
+    It returns a constant and, in addition, an evar_map and econstr
+   corresponding to it.
+
+   - If the constant is polymorphic, it returns the
+     minimized universes and a well-formed instance of the constant in that evar_map.
+   - If it is not polymorphic, it returns a fresh evar map from the updated global
+     environment.
+
+   This allows easy construction of tactics that generate multiple related constants,
+   even in the polymorphic case. *)
 
 val declare_constant :
   Id.t ->
   constr ->
   constr option ->
   Decl_kinds.polymorphic ->
-  Evd.evar_map -> Decl_kinds.logical_kind -> Names.Constant.t
+  Evd.evar_map -> Decl_kinds.logical_kind ->
+  Constant.t * (Evd.evar_map * EConstr.t)
 
 val declare_instance :
   Names.Id.t ->
   Decl_kinds.polymorphic ->
   Evd.evar_map ->
   rel_context ->
-  Typeclasses.typeclass peuniverses -> constr list -> constr
+  Typeclasses.typeclass peuniverses -> constr list -> Constant.t * (Evd.evar_map * EConstr.t)
 
 (** Standard datatypes *)
 
 type logic_ref = Names.GlobRef.t lazy_t
-							       
+
 type logic = {
   logic_eq_ty : logic_ref;
   logic_eq_refl: logic_ref;
   logic_eq_case: logic_ref;
   logic_eq_elim: logic_ref;
   logic_sort : Sorts.family;
-  logic_zero : logic_ref;
-  logic_one : logic_ref;
-  logic_one_val : logic_ref;
+  logic_bot : logic_ref;
+  logic_top : logic_ref;
+  logic_top_intro : logic_ref;
+  logic_conj : logic_ref;
+  logic_conj_intro : logic_ref;
+  logic_unit : logic_ref;
+  logic_unit_intro : logic_ref;
   logic_product : logic_ref;
   logic_pair : logic_ref;
-  (* logic_sigma : logic_ref; *)
-  (* logic_pair : logic_ref; *)
-  (* logic_fst : logic_ref; *)
-  (* logic_snd : logic_ref; *)
+  logic_wellfounded_class : logic_ref;
+  logic_wellfounded : logic_ref;
+  logic_relation : logic_ref;
+  logic_transitive_closure : logic_ref;
 }
 
 val set_logic : logic -> unit
@@ -195,16 +213,26 @@ val get_eq_refl : unit -> Names.GlobRef.t
 val get_eq_case : unit -> Names.GlobRef.t
 val get_eq_elim : unit -> Names.GlobRef.t
 
-val get_one : unit -> Names.GlobRef.t
-val get_one_prf : unit -> Names.GlobRef.t
-val get_zero : unit -> Names.GlobRef.t
+(** In Prop, True is top, bot is False, conjunction is and *)
+val get_top : unit -> Names.GlobRef.t
+val get_top_intro : unit -> Names.GlobRef.t
+val get_bot : unit -> Names.GlobRef.t
+val get_conj : unit -> Names.GlobRef.t
+val get_conj_intro : unit -> Names.GlobRef.t
 
-val coq_unit : Names.GlobRef.t lazy_t
-val coq_tt : Names.GlobRef.t lazy_t
+val get_unit : unit -> Names.GlobRef.t
+val get_unit_intro : unit -> Names.GlobRef.t
 
-  
-val coq_prod : esigma -> constr
-val coq_pair : esigma -> constr
+val get_product : unit -> Names.GlobRef.t
+val get_pair : unit -> Names.GlobRef.t
+
+val get_relation : unit -> Names.GlobRef.t
+val get_well_founded : unit -> Names.GlobRef.t
+val get_well_founded_class : unit -> Names.GlobRef.t
+val get_transitive_closure : unit -> Names.GlobRef.t
+
+val get_fresh : Evd.evar_map -> (unit -> Names.GlobRef.t) -> Evd.evar_map * constr
+val get_efresh : (unit -> Names.GlobRef.t) -> esigma -> constr
 
 val coq_sigma : Names.GlobRef.t lazy_t
 val coq_sigmaI : Names.GlobRef.t lazy_t
@@ -217,8 +245,6 @@ val coq_nat : Names.GlobRef.t lazy_t
 val coq_nat_of_int : int -> Constr.t
 val int_of_coq_nat : Constr.t -> int
 
-val coq_eq : Names.GlobRef.t Lazy.t
-val coq_eq_refl : Names.GlobRef.t lazy_t
 val coq_heq : Names.GlobRef.t lazy_t
 val coq_heq_refl : Names.GlobRef.t lazy_t
 val coq_fix_proto : Names.GlobRef.t lazy_t
@@ -248,10 +274,6 @@ val functional_elimination_class :
 val dependent_elimination_class :
   esigma -> Typeclasses.typeclass peuniverses
 
-val coq_wellfounded_class : esigma -> constr
-val coq_wellfounded : esigma -> constr
-val coq_relation : esigma -> constr
-val coq_clos_trans : esigma -> constr
 val coq_id : esigma -> constr
 val coq_list_ind : esigma -> constr
 val coq_list_nil : esigma -> constr

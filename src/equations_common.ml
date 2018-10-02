@@ -100,7 +100,7 @@ let typecheck_rel_context env evd ctx =
   in ()
   with e ->
     Printf.eprintf "Exception while typechecking context %s : %s\n"
-                   (Pp.string_of_ppcmds (print_rel_context (EConstr.push_rel_context ctx env)))
+                   (Pp.string_of_ppcmds (Internal.print_rel_context (EConstr.push_rel_context ctx env)))
                    (Printexc.to_string e);
     raise e
 
@@ -168,48 +168,46 @@ let constr_of_ident id =
 let e_type_of env evd =
   Evarutil.evd_comb1 (Typing.type_of ~refresh:false env) evd
 
-let make_definition ?opaque ?(poly=false) evd ?types b =
+let make_definition ?opaque ?(poly=false) evm ?types b =
   let env = Global.env () in
-  let _t = e_type_of env evd b in
   let evm = match types with
-    | None -> !evd
-    | Some t -> let _s = e_type_of env evd t in !evd
+    | None -> fst (Typing.type_of env evm b)
+    | Some t ->
+      let evm = fst (Typing.type_of env evm t) in
+      Typing.check env evm b t
   in
   let evm = Evd.minimize_universes evm in
+  let evm0 = evm in
   let body = EConstr.to_constr evm b and typ = Option.map (EConstr.to_constr evm) types in
   let used = Univops.universes_of_constr body in
   let used' = Option.cata Univops.universes_of_constr Univ.LSet.empty typ in
   let used = Univ.LSet.union used used' in
   let evm = Evd.restrict_universe_context evm used in
-  evd := evm;
   let univs = Evd.const_univ_entry ~poly evm in
-  Declare.definition_entry ~univs ?types:typ body
+  evm0, evm, Declare.definition_entry ~univs ?types:typ body
 
 let declare_constant id body ty poly evd kind =
-  let ce = make_definition ~opaque:false ~poly (ref evd) ?types:ty body in
+  let evm0, evm, ce = make_definition ~opaque:false ~poly evd ?types:ty body in
   let cst = Declare.declare_constant id (DefinitionEntry ce, kind) in
-    Flags.if_verbose Feedback.msg_info (str((Id.to_string id) ^ " is defined"));
-    cst
-    
-let declare_instance id poly evd ctx cl args =
+  Flags.if_verbose Feedback.msg_info (str((Id.to_string id) ^ " is defined"));
+  if poly then
+    let cstr = EConstr.(mkConstU (cst, EInstance.make (Univ.UContext.instance (Evd.to_universe_context evm)))) in
+    cst, (evm0, cstr)
+  else cst, (evm0, EConstr.mkConst cst)
+
+let make_definition ?opaque ?(poly=false) evm ?types b =
+  let evm', _, t = make_definition ?opaque ~poly evm ?types b in
+  evm', t
+
+let declare_instance id poly evm ctx cl args =
   let open Typeclasses in
   let open EConstr in
   let c, t = instance_constructor cl args in
   let term = it_mkLambda_or_LetIn (Option.get c) ctx in
   let typ = EConstr.it_mkProd_or_LetIn t ctx in
-  let cst = declare_constant id term (Some typ) poly evd (IsDefinition Instance) in
+  let cst, ecst = declare_constant id term (Some typ) poly evm (IsDefinition Instance) in
   let inst = new_instance (fst cl) Hints.empty_hint_info true (Globnames.ConstRef cst) in
-    add_instance inst; mkConst cst
-
-let coq_unit = lazy (init_reference ["Coq";"Init";"Datatypes"] "unit")
-let coq_tt = lazy (init_reference ["Coq";"Init";"Datatypes"] "tt")
-
-let coq_True = lazy (init_reference ["Coq";"Init";"Logic"] "True")
-let coq_I = lazy (init_reference ["Coq";"Init";"Logic"] "I")
-let coq_False = lazy (init_reference ["Coq";"Init";"Logic"] "False")
-
-let coq_prod = init_constant ["Coq";"Init";"Datatypes"] "prod"
-let coq_pair = init_constant ["Coq";"Init";"Datatypes"] "pair"
+    add_instance inst; cst, ecst
 
 let coq_zero = lazy (coq_constant ["Init"; "Datatypes"] "O")
 let coq_succ = lazy (coq_constant ["Init"; "Datatypes"] "S")
@@ -230,22 +228,11 @@ let fresh_id_in_env avoid id env =
 let fresh_id avoid id gl =
   fresh_id_in_env avoid id (pf_env gl)
 
-let coq_eq = Lazy.from_fun Coqlib.build_coq_eq
-let coq_eq_refl = lazy ((Coqlib.build_coq_eq_data ()).Coqlib.refl)
-let coq_eq_case = lazy (Coqlib.coq_reference "coq_eq_case" ["Init";"Logic"] "eq_rect_r")
-let coq_eq_elim = lazy (init_reference ["Equations";"DepElim"] "eq_rect_dep_r")
 
 let coq_heq = lazy (Coqlib.coq_reference "mkHEq" ["Logic";"JMeq"] "JMeq")
 let coq_heq_refl = lazy (Coqlib.coq_reference "mkHEq" ["Logic";"JMeq"] "JMeq_refl")
 
 let coq_fix_proto = lazy (init_reference ["Equations";"Init"] "fixproto")
-
-let coq_Empty = lazy (init_reference ["Equations";"Init"] "Empty")
-let coq_Id = lazy (init_reference ["Equations";"Init"] "Id")
-let coq_Id_refl = lazy (init_reference ["Equations";"Init"] "id_refl")
-let coq_Id_case = lazy (init_reference ["Equations";"DepElim"] "Id_rect_r")
-let coq_Id_elim = lazy (init_reference ["Equations";"DepElim"] "Id_rect_dep_r")
-			 
 
 type logic_ref = Names.GlobRef.t lazy_t
 							       
@@ -255,34 +242,69 @@ type logic = {
   logic_eq_case: logic_ref;
   logic_eq_elim: logic_ref;
   logic_sort : Sorts.family;
-  logic_zero : logic_ref;
-  logic_one : logic_ref;
-  logic_one_val : logic_ref;
+  logic_bot : logic_ref;
+  logic_top : logic_ref;
+  logic_top_intro : logic_ref;
+  logic_conj : logic_ref;
+  logic_conj_intro : logic_ref;
+  logic_unit : logic_ref;
+  logic_unit_intro : logic_ref;
   logic_product : logic_ref;
   logic_pair : logic_ref;
-  (* logic_sigma : logic_ref; *)
-  (* logic_pair : logic_ref; *)
-  (* logic_fst : logic_ref; *)
-  (* logic_snd : logic_ref; *)
+  logic_wellfounded_class : logic_ref;
+  logic_wellfounded : logic_ref;
+  logic_relation : logic_ref;
+  logic_transitive_closure : logic_ref;
 }
 
+let lazy_reference dp c =
+  lazy (Coqlib.find_reference "" dp c)
+
+let coq_unit = lazy (Coqlib.coq_reference "unit" ["Init"; "Datatypes"] "unit")
+let coq_tt = lazy (Coqlib.coq_reference "unit" ["Init"; "Datatypes"] "tt")
+
 let prop_logic =
-  { logic_eq_ty = coq_eq; logic_eq_refl = coq_eq_refl;
-    logic_eq_case = coq_eq_case; logic_eq_elim = coq_eq_elim;
-    logic_sort = Sorts.InProp; logic_zero = coq_False;
-    logic_one = coq_True; logic_one_val = coq_I;
-    logic_product = lazy (Coqlib.coq_reference "product" ["Init";"Logic"] "and");
-    logic_pair = lazy (Coqlib.coq_reference "product" ["Init";"Logic"] "conj");
-  }
-  
-let type_logic =
-  { logic_eq_ty = coq_Id; logic_eq_refl = coq_Id_refl;
-    logic_eq_case = coq_Id_case;
-    logic_eq_elim = coq_Id_elim;
-    logic_sort = Sorts.InType;
-    logic_zero = coq_Empty; logic_one = coq_unit; logic_one_val = coq_tt;
+  { logic_sort = Sorts.InProp;
+    logic_eq_ty = Lazy.from_fun Coqlib.build_coq_eq;
+    logic_eq_refl = lazy ((Coqlib.build_coq_eq_data ()).Coqlib.refl);
+    logic_eq_case = lazy (Coqlib.coq_reference "coq_eq_case" ["Init";"Logic"] "eq_rect_r");
+    logic_eq_elim = lazy (init_reference ["Equations";"DepElim"] "eq_rect_dep_r");
+    logic_bot = lazy (init_reference ["Coq";"Init";"Logic"] "False");
+    logic_top = lazy (init_reference ["Coq";"Init";"Logic"] "True");
+    logic_top_intro = lazy (init_reference ["Coq";"Init";"Logic"] "I");
+    logic_conj = lazy (Coqlib.coq_reference "conjunction" ["Init";"Logic"] "and");
+    logic_conj_intro = lazy (Coqlib.coq_reference "conjunction intro" ["Init";"Datatypes"] "conj");
+    logic_unit = coq_unit;
+    logic_unit_intro = coq_tt;
     logic_product = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "prod");
-    logic_pair = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "pair") }
+    logic_pair = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "pair");
+    logic_wellfounded_class = lazy_reference ["Equations";"Classes"] "WellFounded";
+    logic_wellfounded = lazy_reference ["Coq";"Init";"Wf"] "well_founded";
+    logic_relation = lazy_reference ["Coq";"Relations";"Relation_Definitions"] "relation";
+    logic_transitive_closure = lazy_reference ["Coq";"Relations";"Relation_Operators"] "clos_trans";
+  }
+
+let type_logic =
+  { logic_sort = Sorts.InType;
+    logic_eq_ty = lazy (init_reference ["Equations";"Init"] "Id");
+    logic_eq_refl = lazy (init_reference ["Equations";"Init"] "id_refl");
+    logic_eq_case = lazy (init_reference ["Equations";"DepElim"] "Id_rect_r");
+    logic_eq_elim = lazy (init_reference ["Equations";"DepElim"] "Id_rect_dep_r");
+    logic_bot = lazy (init_reference ["Equations";"Init"] "Empty");
+    logic_unit = coq_unit;
+    logic_top = coq_unit;
+    logic_conj = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "prod");
+    logic_conj_intro = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "pair");
+    logic_unit_intro = coq_tt;
+    logic_top_intro = coq_tt;
+    logic_product = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "prod");
+    logic_pair = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "pair");
+    (* FIXME unsupported yet *)
+    logic_wellfounded_class = lazy_reference ["Equations";"Classes"] "WellFounded";
+    logic_wellfounded = lazy_reference ["Coq";"Init";"Wf"] "well_founded";
+    logic_relation = lazy_reference ["Coq";"Classes";"CRelationClasses"] "crelation";
+    logic_transitive_closure = lazy_reference ["Equations";"Classes"] "transitive_closure";
+  }
 
 let logic = ref prop_logic
 	     
@@ -293,9 +315,26 @@ let get_eq () = Lazy.force (!logic).logic_eq_ty
 let get_eq_refl () = Lazy.force (!logic).logic_eq_refl
 let get_eq_case () = Lazy.force (!logic).logic_eq_case
 let get_eq_elim () = Lazy.force (!logic).logic_eq_elim
-let get_one () = Lazy.force (!logic).logic_one
-let get_one_prf () = Lazy.force (!logic).logic_one_val
-let get_zero () = Lazy.force (!logic).logic_zero
+let get_top () = Lazy.force (!logic).logic_top
+let get_top_intro () = Lazy.force (!logic).logic_top_intro
+let get_bot () = Lazy.force (!logic).logic_bot
+let get_conj () = Lazy.force (!logic).logic_conj
+let get_conj_intro () = Lazy.force (!logic).logic_conj_intro
+
+let get_unit () = Lazy.force (!logic).logic_unit
+let get_unit_intro () = Lazy.force (!logic).logic_unit_intro
+let get_product () = Lazy.force (!logic).logic_product
+let get_pair () = Lazy.force (!logic).logic_pair
+let get_relation () = Lazy.force (!logic).logic_relation
+let get_well_founded () = Lazy.force (!logic).logic_wellfounded
+let get_well_founded_class () = Lazy.force (!logic).logic_wellfounded_class
+let get_transitive_closure () = Lazy.force (!logic).logic_transitive_closure
+
+let get_fresh sigma r =
+  new_global sigma (r ())
+
+let get_efresh r evd =
+  e_new_global evd (r ())
 
 open EConstr
 
@@ -359,11 +398,7 @@ let dependent_elimination_class evd =
 
 let below_path = ["Equations";"Below"]
 
-let coq_wellfounded_class = init_constant ["Equations";"Classes"] "WellFounded"
-let coq_wellfounded = init_constant ["Coq";"Init";"Wf"] "well_founded"
-let coq_relation = init_constant ["Coq";"Relations";"Relation_Definitions"] "relation"
-let coq_clos_trans = init_constant ["Coq";"Relations";"Relation_Operators"] "clos_trans"
-let coq_id = init_constant ["Coq";"Init";"Datatypes"] "id"
+let coq_id = init_constant ["Equations";"Init"] "id"
 
 let list_path = ["Lists";"List"]
 let coq_list_ind = init_constant list_path "list"

@@ -1,8 +1,12 @@
 From Equations Require Import Equations DepElimDec HSets.
 Unset Equations OCaml Splitting.
 Set Universe Polymorphism.
+Require Import Relations.
 
-Equations Logic Type Id Id_rect Id_rect_r Id_rect_dep_r Empty unit tt prod pair.
+Equations Logic
+          Type Id Id_rect Id_rect_r Id_rect_dep_r
+          Empty unit tt prod pair
+          relation clos_trans WellFounded well_founded.
 
 Set Warnings "-notation-overridden".
 Import Id_Notations.

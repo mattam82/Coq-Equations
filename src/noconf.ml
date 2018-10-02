@@ -80,8 +80,8 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
       let indty = mkApp (sigma, [|idx; of_constr pred'|]) in
       nf_betaiotazeta env !evd indty, mkProj (Lazy.force coq_pr2, mkRel 1), pars, (List.firstn lenargs ctx)
   in
-  let tru = e_new_global evd (get_one ()) in
-  let fls = e_new_global evd (get_zero ()) in
+  let tru = e_new_global evd (get_top ()) in
+  let fls = e_new_global evd (get_bot ()) in
   let xid = Id.of_string "x" and yid = Id.of_string "y" in
   let xdecl = of_tuple (Name xid, None, argty) in
   let binders = xdecl :: ctx in
@@ -120,7 +120,7 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
 	          else fls)))
   in
   let app = it_mkLambda_or_LetIn pred binders in
-  let ce = make_definition ~poly:polymorphic evd ~types:arity app in
+  let _, ce = make_definition ~poly:polymorphic !evd ~types:arity app in
   let indid = Nametab.basename_of_global (IndRef ind) in
   let id = add_prefix "NoConfusion_" indid
   and noid = add_prefix "noConfusion_" indid

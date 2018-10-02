@@ -119,7 +119,7 @@ let autorewrite_one b =
        in
        Proofview.tclOR
          (if !debug then
-            (Proofview.Goal.nf_enter
+            (Proofview.Goal.enter
                begin fun gl -> let concl = Proofview.Goal.concl gl in
                                  Feedback.msg_debug (str"Trying " ++ pr_global global ++ str " on " ++
                                                        print_constr_env (Proofview.Goal.env gl) (Proofview.Goal.sigma gl) concl);
@@ -276,7 +276,7 @@ let solve_ind_rec_tac info =
     (fun c ->
     tclBIND (Tacticals.New.pf_constr_of_global (Lazy.force coq_fix_proto))
     (fun fixprot ->
-    tclBIND (Tacticals.New.pf_constr_of_global (Lazy.force coq_unit))
+    tclBIND (Tacticals.New.pf_constr_of_global (get_unit ()))
     (fun unit ->
       Goal.enter (fun gl ->
         let ty = Tacmach.New.pf_get_type_of gl c in
@@ -409,17 +409,17 @@ let rec aux_ind_fun info chop unfs unfids = function
                                   str" instance: " ++ prlist_with_sep spc (fun x -> print_constr_env env Evd.empty (EConstr.of_constr x)) args ++
                                   str" context map " ++
                                   pr_context_map env Evd.empty s.where_prob));
-          let ty =
-            let ind = Nametab.locate (qualid_of_ident wherepath) in
+          let ind = Nametab.locate (qualid_of_ident wherepath) in
+          let ty ind =
             let ctx = pi1 s.where_prob in
             let subst = List.map (fun x -> mkVar (get_id x)) where_nctx in
             let fnapp = applistc (substl subst where_term) (extended_rel_list 0 ctx) in
             let args = List.append subst (extended_rel_list 0 ctx) in
-            let app = applistc (EConstr.of_constr (UnivGen.constr_of_global ind)) (* FIXME *)
-                               (List.append args [fnapp]) in
+            let app = applistc ind (List.append args [fnapp]) in
             it_mkProd_or_LetIn app ctx
           in
-          tclTHEN acc (to82 (assert_by (Name s.where_id) ty (of82 wheretac)))
+          tclTHEN acc (to82 (Proofview.tclBIND (Tacticals.New.pf_constr_of_global ind)
+                               (fun ind -> assert_by (Name s.where_id) (ty ind) (of82 wheretac))))
         in
         let tac = List.fold_left2 wheretac tclIDTAC wheres unfswheres in
         tclTHENLIST [tac;
@@ -501,7 +501,7 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
              let fixprot pats sigma =
 	       let c = 
                  mkLetIn (Anonymous, of_constr (UnivGen.constr_of_global (Lazy.force coq_fix_proto)),
-                          of_constr (UnivGen.constr_of_global (Lazy.force coq_unit)), t) in
+                          of_constr (UnivGen.constr_of_global (get_unit ())), t) in
                (sigma, c)
 	     in
 	     Proofview.V82.of_tactic

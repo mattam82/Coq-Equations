@@ -147,17 +147,18 @@ let define_principles flags fixprots progs =
          in
 	 (* We first define the unfolding and show the fixpoint equation. *)
 	 let unfoldi = add_suffix i "_unfold" in
-	 let hook_unfold _ cmap info' ectx =
-	   let info =
+         let hook_unfold _ cmap info' ectx =
+           let info =
              { info' with base_id = prog.program_split_info.base_id;
                           helpers_info = prog.program_split_info.helpers_info @ info'.helpers_info;
                           user_obls = Id.Set.union prog.program_split_info.user_obls info'.user_obls } in
 	   let () = inline_helpers info in
-	   let funf_cst = match info'.term_id with ConstRef c -> c | _ -> assert false in
-	   let funfc = e_new_global evd info'.term_id in
+           let funf_cst = match info'.term_id with ConstRef c -> c | _ -> assert false in
+           let () = if flags.polymorphic then evd := Evd.from_ctx ectx in
+           let funfc = e_new_global evd info'.term_id in
            let unfold_split = map_evars_in_split !evd (fun f x -> of_constr (cmap f x)) unfold_split in
 	   let unfold_eq_id = add_suffix unfoldi "_eq" in
-	   let hook_eqs subst grunfold _ =
+           let hook_eqs subst grunfold _ =
 	     Global.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
              let () = (* Declare the subproofs of unfolding for where as rewrite rules *)
                let decl _ (_, id, _) =
@@ -193,21 +194,22 @@ let define_principles flags fixprots progs =
              build_equations flags.with_ind env !evd ~alias:(of_constr f, unfold_eq_id, prog.program_split)
                              [p, prog', eqninfo]
 	   in
-	   let evd = ref (Evd.from_env (Global.env ())) in
-	   let stmt = it_mkProd_or_LetIn 
+           let () = if not flags.polymorphic then (evd := Evd.from_env (Global.env ())) in
+           let stmt = it_mkProd_or_LetIn
                         (mkEq (Global.env ()) evd arity (mkApp (of_constr f, extended_rel_vect 0 sign))
 		              (mkApp (funfc, extended_rel_vect 0 sign))) sign 
 	   in
-	   let tac =
+           let evd, stmt = Typing.solve_evars (Global.env ()) !evd stmt in
+           let tac =
              Principles_proofs.prove_unfolding_lemma info where_map r prog.program_cst funf_cst
                                                      prog.program_split unfold_split
            in
 	   ignore(Obligations.add_definition
                     ~kind:info.decl_kind
 		    ~hook:(Lemmas.mk_hook hook_eqs) ~reduce:(fun x -> x)
-                    ~implicits:p.program_impls unfold_eq_id (to_constr !evd stmt)
+                    ~implicits:p.program_impls unfold_eq_id (to_constr evd stmt)
                     ~tactic:(of82 tac)
-		    (Evd.evar_universe_context !evd) [||])
+                    (Evd.evar_universe_context evd) [||])
 	 in
 	 define_tree None [] flags.polymorphic p.program_impls (Define false) evd env
 		     (unfoldi, sign, oarity) None unfold_split hook_unfold;
@@ -350,7 +352,7 @@ let define_mutual_nested flags progs =
        if not (is_nested p) then
          let fix = mkFix ((structargs, i), decl) in
          let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
-         let kn =
+         let kn, _ =
            declare_constant p.program_id fix (Some ty) flags.polymorphic
                             !evd (IsDefinition Fixpoint)
          in
@@ -365,7 +367,7 @@ let define_mutual_nested flags progs =
        let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
        let args = List.rev_map (fun (p',prog') -> e_new_global evd (ConstRef prog'.program_cst)) mutual in
        let body = Vars.substl args body in
-       let kn = declare_constant p.program_id body (Some ty) flags.polymorphic
+       let kn, _ = declare_constant p.program_id body (Some ty) flags.polymorphic
                                  !evd (IsDefinition Fixpoint) in
        Impargs.declare_manual_implicits true (ConstRef kn) [p.program_impls];
        let prog' = { prog with program_cst = kn } in
@@ -444,21 +446,18 @@ let define_by_eqs opts eqs nt =
       if with_comp then
         let _ = Pretyping.check_evars env Evd.empty !evd body in
 	let compid = add_suffix i "_comp" in
-	let ce = make_definition ~poly evd body in
-	let comp =
-	  Declare.declare_constant compid (DefinitionEntry ce, IsDefinition Definition)
+        let compkn, (evm, comp) = declare_constant compid body None poly !evd (IsDefinition Definition)
 	in (*Typeclasses.add_constant_class c;*)
-        let oarity = nf_evar !evd arity in
-        let sign = nf_rel_context_evar !evd sign in
-	evd := if poly then !evd else Evd.from_env (Global.env ());
-	let compc = e_new_global evd (ConstRef comp) in
-	let compapp = mkApp (compc, rel_vect 0 (length sign)) in
-        hintdb_set_transparency comp false "Below";
-        hintdb_set_transparency comp false "program";
-        hintdb_set_transparency comp false "subterm_relation";
-        Impargs.declare_manual_implicits true (ConstRef comp) [impls];
+        let oarity = nf_evar evm arity in
+        let sign = nf_rel_context_evar evm sign in
+        evd := if poly then evm else Evd.from_env (Global.env ());
+        let compapp = mkApp (comp, rel_vect 0 (length sign)) in
+        hintdb_set_transparency compkn false "Below";
+        hintdb_set_transparency compkn false "program";
+        hintdb_set_transparency compkn false "subterm_relation";
+        Impargs.declare_manual_implicits true (ConstRef compkn) [impls];
         Table.extraction_inline true [Libnames.qualid_of_ident compid];
-        Some (compid, comp), compapp, oarity
+        Some (compid, compkn), compapp, oarity
       else None, arity, arity
     in
     match is_rec with
@@ -537,7 +536,7 @@ let define_by_eqs opts eqs nt =
     List.map (fun (oty, ty) ->
     mkLetIn (Anonymous,
              e_new_global evd (Lazy.force coq_fix_proto),
-             e_new_global evd (Lazy.force coq_unit), ty)) otys in
+             e_new_global evd (get_unit ()), ty)) otys in
   let fixdecls =
     List.map2 (fun i fixprot -> of_tuple (Name i, None, fixprot)) names fixprots in
   let fixdecls = List.rev fixdecls in

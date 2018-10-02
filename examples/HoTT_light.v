@@ -3,7 +3,7 @@
 
 Require Export Unicode.Utf8.
 Require Import Coq.Program.Tactics Setoid.
-
+Require Import Relations.
 Require Import Equations.Equations.
 Import Init.
 Set Warnings "-notation-overridden".
@@ -24,7 +24,8 @@ Polymorphic Definition transport_dep_r (A : Type) (x : A) (P : forall y : A, y =
   P x id_refl → ∀ (y : A) (e : y = x), P y e.
 Proof. intros Px y e. destruct e. apply Px. Defined.
 
-Equations Logic Type Id Id_rect Id_rect_r Id_rect_dep_r Empty unit tt prod pair.
+Equations Logic Type Id Id_rect Id_rect_r Id_rect_dep_r Empty unit tt prod pair
+          relation clos_trans WellFounded well_founded.
 
 Set Implicit Arguments.
 

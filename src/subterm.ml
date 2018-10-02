@@ -14,7 +14,7 @@ open Declarations
 open Inductiveops
 open Util
 open Entries
-
+open Vars
 open EConstr
 open Vars
 open Globnames
@@ -26,16 +26,24 @@ let solve_subterm_tac () = tac_of_string "Equations.Subterm.solve_subterm" []
 
 let refresh_universes t = t (* MS: FIXME *)
 
-let derive_subterm env sigma ~polymorphic ind =
+let derive_subterm env sigma ~polymorphic (ind, u as indu) =
   let global = true in
-  let (mind, oneind as ms) = Global.lookup_pinductive (from_peuniverses sigma ind) in
-  let ctx = oneind.mind_arity_ctxt in
+  let (mind, oneind as ms) = Global.lookup_inductive ind in
+  let ctx = subst_instance_context (EInstance.kind sigma u) oneind.mind_arity_ctxt in
+  let sort =
+    match get_sort () with
+    | Sorts.InProp -> mkProp
+    | Sorts.InSet -> mkSet
+    | Sorts.InType ->
+      let indty = Inductive.type_of_inductive env (ms, EInstance.kind sigma u) in
+      EConstr.mkSort (snd (Term.destArity indty))
+  in
   let len = List.length ctx in
   let params = mind.mind_nparams in
   (* let ctx = map_rel_context refresh_universes ctx in FIXME *)
   let lenargs = len - params in
   let argbinders, parambinders = List.chop lenargs (List.map of_rel_decl ctx) in
-  let indapp = mkApp (mkIndU ind, extended_rel_vect 0 parambinders) in
+  let indapp = mkApp (mkIndU indu, extended_rel_vect 0 parambinders) in
   let getargs t = snd (List.chop params (snd (decompose_app sigma t))) in
   let inds =
     let branches = Array.mapi (fun i ty ->
@@ -47,11 +55,11 @@ let derive_subterm env sigma ~polymorphic ind =
         let (n, _, t) = to_tuple decl in
         let ctx, ar = decompose_prod_assum sigma t in
           match kind sigma (fst (decompose_app sigma ar)) with
-          | Ind (ind',_) when eq_ind ind' (fst ind) ->
+          | Ind (ind',_) when eq_ind ind' ind ->
               Some (ctx, i, mkRel (succ i), getargs (lift (succ i) ar))
           | _ -> None) args'
       in
-      let constr = mkApp (mkConstructUi (ind, succ i), extended_rel_vect 0 args) in
+      let constr = mkApp (mkConstructUi (indu, succ i), extended_rel_vect 0 args) in
       let constrargs = getargs concl in
       let branches = List.map_i
         (fun j (ctx, i', r, rargs) ->
@@ -67,7 +75,7 @@ let derive_subterm env sigma ~polymorphic ind =
             (i, j, it_mkProd_or_LetIn (it_mkProd_or_LetIn relapp
                                           (lift_rel_context (succ i') ctx)) args'))
         1 recargs
-      in branches) (Inductive.type_of_constructors (from_peuniverses sigma ind) ms)
+      in branches) (Inductive.type_of_constructors (from_peuniverses sigma indu) ms)
     in branches
   in
   let branches = Array.fold_right (fun x acc -> x @ acc) inds [] in
@@ -122,7 +130,7 @@ let derive_subterm env sigma ~polymorphic ind =
     let arity = it_mkProd_or_LetIn
       (mkProd (Anonymous, mkApp (appparams, extended_rel_vect lenargs argbinders),
               mkProd (Anonymous, lift 1 (mkApp (appparams, extended_rel_vect 0 argbinders)),
-                     mkProp)))
+                      sort)))
       binders
     in
       { mind_entry_template = false;
@@ -133,7 +141,7 @@ let derive_subterm env sigma ~polymorphic ind =
   in
   let uctx = Evd.ind_univ_entry ~poly:polymorphic sigma in
   let declare_ind () =
-    let inds = [declare_one_ind 0 ind branches] in
+    let inds = [declare_one_ind 0 indu branches] in
     let inductive =
       { mind_entry_record = None;
         mind_entry_finite = Declarations.Finite;
@@ -153,7 +161,7 @@ let derive_subterm env sigma ~polymorphic ind =
       let sigma = Evd.from_env env in
       let sigma, ind = Evd.fresh_inductive_instance env sigma (k,0) in
       ignore (Sigma_types.declare_sig_of_ind env sigma polymorphic (to_peuniverses ind)) in
-    let subind = mkInd (k,0) in
+    let subind = mkIndU ((k,0), u) in
     let constrhints =
       List.map_i (fun i entry ->
         List.map_i (fun j _ -> empty_hint_info, polymorphic, true, Hints.PathAny,
@@ -163,12 +171,13 @@ let derive_subterm env sigma ~polymorphic ind =
     let () = Hints.add_hints ~local:false [subterm_relation_base]
                              (Hints.HintsResolveEntry (List.concat constrhints)) in
     (* Proof of Well-foundedness *)
-    let relid = add_suffix (Nametab.basename_of_global (IndRef (fst ind)))
+    let relid = add_suffix (Nametab.basename_of_global (IndRef ind))
                            "_subterm" in
     let id = add_prefix "well_founded_" relid in
     let evm = ref sigma in
     let env = Global.env () in
-    let kl = get_class sigma (coq_wellfounded_class evm) in
+    let kl = get_efresh get_well_founded_class evm in
+    let kl = get_class sigma kl in
     let parambinders, body, ty =
       let pars, ty, rel =
         if List.is_empty argbinders then
@@ -199,24 +208,26 @@ let derive_subterm env sigma ~polymorphic ind =
       in
       let relation =
         let def = it_mkLambda_or_LetIn
-                    (mkApp (coq_clos_trans evm, [| ty; rel |]))
+                    (mkApp (get_efresh get_transitive_closure evm, [| ty; rel |]))
                     pars
         in
-        let ty = Some (it_mkProd_or_LetIn
-                         (mkApp (coq_relation evm, [| ty |]))
-                         parambinders)
+        let ty = it_mkProd_or_LetIn
+            (mkApp (get_efresh get_relation evm, [| ty |]))
+            parambinders
         in
-        let cst = declare_constant relid def ty polymorphic !evm
-                                   (Decl_kinds.IsDefinition Decl_kinds.Definition) in
+        let kn, (evm', cst) =
+          declare_constant relid def (Some ty) polymorphic !evm
+            (Decl_kinds.IsDefinition Decl_kinds.Definition) in
+        evm := evm';
         (* Impargs.declare_manual_implicits false (ConstRef cst) ~enriching:false *)
         (* 	(list_map_i (fun i _ -> ExplByPos (i, None), (true, true, true)) 1 parambinders); *)
         Hints.add_hints ~local:false [subterm_relation_base]
-                        (Hints.HintsUnfoldEntry [EvalConstRef cst]);
-        mkApp (mkConst cst, extended_rel_vect 0 parambinders)
+                        (Hints.HintsUnfoldEntry [EvalConstRef kn]);
+        mkApp (cst, extended_rel_vect 0 parambinders)
       in
       let env' = push_rel_context pars env in
       let evar =
-        let evt = (mkApp (coq_wellfounded evm, [| ty; relation |])) in
+        let evt = (mkApp (get_efresh get_well_founded evm, [| ty; relation |])) in
         Evarutil.evd_comb1 (Evarutil.new_evar env') evm evt
       in
       let b, t = instance_constructor !evm kl [ ty; relation; evar ] in
@@ -298,13 +309,13 @@ let derive_below env sigma ~polymorphic (ind,univ as indu) =
 	  List.fold_left (fun acc x ->
 	    match acc with
 	    | Some (c, ty) -> Option.cata (fun x -> Some x) acc (f (fun (c', ty') ->
-		mkApp (coq_pair evd, [| ty' ; ty ; c' ; c |]),
-		mkApp (coq_prod evd, [| ty' ; ty |])) x)
+                mkApp (get_efresh get_pair evd, [| ty' ; ty ; c' ; c |]),
+                mkApp (get_efresh get_product evd, [| ty' ; ty |])) x)
 	    | None -> f (fun x -> x) x)
 	    None args
 	in Option.cata (fun x -> x)
-                       (e_new_global evd (get_one_prf ()),
-                        e_new_global evd (get_one ())) res
+                       (get_efresh get_unit_intro evd,
+                        get_efresh get_unit evd) res
       in
       (* This wrapper checks if the argument is a recursive one,
        * and do the appropriate transformations if it is a product. *)
@@ -320,8 +331,9 @@ let derive_below env sigma ~polymorphic (ind,univ as indu) =
             let ty = it_mkProd_or_LetIn ty prem in
               Some (g (res, ty))
           else None in
+      let prod = get_efresh get_product evd in
       let _, bodyB = fold_unit (wrapper (fun args _ ->
-        let ty = mkApp (coq_prod evd,
+        let ty = mkApp (prod,
           [| mkApp (mkVar pid, args) ;
              mkApp (mkVar recid, args) |]) in
           mkRel 0, ty)) arg_tys in
@@ -329,12 +341,12 @@ let derive_below env sigma ~polymorphic (ind,univ as indu) =
         let reccall = mkApp (mkVar recid, args) in
         let belowargs = Array.append (rel_vect (nargs + nprem) params)
           (Array.append [| mkVar pid |] args) in
-        let res = mkApp (coq_pair evd,
+        let res = mkApp (get_efresh get_pair evd,
                          [| mkApp (mkVar pid, args) ;
                             mkApp (mkVar belowid, belowargs) ;
                             mkApp (mkApp (mkVar stepid, args), [| reccall |]);
                             reccall |]) in
-        let ty = mkApp (coq_prod evd,
+        let ty = mkApp (prod,
                        [| mkApp (mkVar pid, args) ;
                           mkApp (mkVar belowid, belowargs) |]) in
         res, ty)) arg_tys in
@@ -354,13 +366,13 @@ let derive_below env sigma ~polymorphic (ind,univ as indu) =
 				     [| subst_vars [recid; pid] termB |])) in
   let bodyB = it_mkLambda_or_LetIn fixB (pdecl :: parambinders) in
   let id = add_prefix "Below_" (Nametab.basename_of_global (IndRef ind)) in
-  let below = declare_constant id bodyB None polymorphic !evd
+  let _, (evd, belowB) = declare_constant id bodyB None polymorphic !evd
     (Decl_kinds.IsDefinition Decl_kinds.Definition) in
   let fixb = mkFix (([| realargs |], 0), ([| Name recid |], [| arityb |],
 				    [| subst_vars [recid; stepid] termb |])) in
-  let stepdecl = 
-    let stepty = mkProd (Anonymous, mkApp (mkConst below, paramspargs),
-			mkApp (mkVar pid, Array.map (lift 1) argsvect))
+  let stepdecl =
+    let stepty = mkProd (Anonymous, mkApp (belowB, paramspargs),
+                        mkApp (mkVar pid, Array.map (lift 1) argsvect))
     in make_assum (Name stepid) (lift 1 (it_mkProd_or_LetIn stepty argbinders))
   in
   let bodyb = 
@@ -368,9 +380,9 @@ let derive_below env sigma ~polymorphic (ind,univ as indu) =
       (subst_vars [pid] (mkLambda_or_LetIn stepdecl fixb))
       (pdecl :: parambinders)
   in
-  let bodyb = replace_vars [belowid, mkConst below] bodyb in
+  let bodyb = replace_vars [belowid, belowB] bodyb in
   let id = add_prefix "below_" (Nametab.basename_of_global (IndRef ind)) in
-  let evd = if polymorphic then !evd else Evd.from_env (Global.env ()) in
+  let evd = if polymorphic then evd else Evd.from_env (Global.env ()) in
     ignore(declare_constant id bodyb None polymorphic evd
 	     (Decl_kinds.IsDefinition Decl_kinds.Definition))
     

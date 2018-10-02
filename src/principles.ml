@@ -894,13 +894,8 @@ let declare_funelim info env evd is_rec protos progs
 	                            ~tactic ~hook:(Lemmas.mk_hook hookelim) ~kind:info.decl_kind
                                     (to_constr !evd newty) (Evd.evar_universe_context !evd) [||])
 
-let mkConj evd sort x y =
-  let prod =
-    if sort == Sorts.InProp then
-      e_new_global evd (Lazy.force Equations_common.prop_logic.logic_product)
-    else
-      e_new_global evd (Lazy.force Equations_common.type_logic.logic_product)
-  in
+let mkConj evd x y =
+  let prod = get_efresh Equations_common.get_conj evd in
     mkApp (prod, [| x; y |])
 
 let declare_funind info alias env evd is_rec protos progs
@@ -943,7 +938,7 @@ let declare_funind info alias env evd is_rec protos progs
          in aux ind_stmts
        in
        List.fold_right (fun x acc -> match stmt x with
-                                     | Some t -> mkConj evd Sorts.InProp t acc
+                                     | Some t -> mkConj evd t acc
                                      | None -> acc) last l
   in
   let hookind subst indgr ectx =
@@ -969,12 +964,14 @@ let declare_funind info alias env evd is_rec protos progs
         | None -> ()
         | Some (f, _, _) -> Global.set_strategy (ConstKey (fst (destConst evd f))) Conv_oracle.transparent)
   in
+  (* let evm, stmt = Typing.type_of (Global.env ()) !evd statement in *)
+  let stmt = to_constr !evd statement and f = to_constr !evd f in
   let ctx = Evd.evar_universe_context (if poly then !evd else Evd.from_env (Global.env ())) in
   try ignore(Obligations.add_definition
              ~hook:(Lemmas.mk_hook hookind)
              ~kind:info.term_info.decl_kind
-             indid (to_constr !evd statement)
-             ~tactic:(ind_fun_tac is_rec (to_constr !evd f) info id split unfsplit progs) ctx [||])
+             indid stmt
+             ~tactic:(ind_fun_tac is_rec f info id split unfsplit progs) ctx [||])
   with e ->
     Feedback.msg_warning Pp.(str "Induction principle could not be proved automatically: " ++ fnl () ++
 		             CErrors.print e)
@@ -1187,7 +1184,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
 	inds
     in
     let info = { term_info = info; pathmap = !fnind_map; wheremap } in
-    declare_funind info alias env evd is_rec protos progs
+    declare_funind info alias (Global.env ()) evd is_rec protos progs
                    ind_stmts all_stmts sign inds kn comb
                    (of_constr f) split ind
   in

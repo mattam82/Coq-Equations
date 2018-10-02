@@ -199,27 +199,24 @@ let declare_sig_of_ind env sigma poly (ind,u) =
   let sigma = Evd.minimize_universes sigma in
   let fullapp = nf_econstr sigma fullapp in
   let idx = nf_econstr sigma idx in
-  let indsig =
+  let _, (sigma, indsig) =
     let indsigid = add_suffix indid "_sig" in
-      declare_constant indsigid pred
-	None poly sigma (IsDefinition Definition)
+    declare_constant indsigid pred
+        None poly sigma (IsDefinition Definition)
   in
   let pack_id = add_suffix indid "_sig_pack" in
-  let pack_fn = 
+  let _, (sigma, pack_fn) =
     let vbinder = of_tuple (Name (add_suffix indid "_var"), None, fullapp) in
     let term = it_mkLambda_or_LetIn valsig (vbinder :: ctx) 
     in
     (* let rettype = mkApp (mkConst indsig, extended_rel_vect (succ lenargs) pars) in *)
       declare_constant pack_id (simpl term)
 	None (* (Some (it_mkProd_or_LetIn rettype (vbinder :: ctx))) *)
-	poly sigma
+        poly sigma
 	(IsDefinition Definition)
   in
   let sigma = if not poly then Evd.from_env (Global.env ()) else sigma in
   let sigma, c = signature_class sigma in
-  let env = Global.env () in
-  let sigma, indsig = Evd.fresh_global env sigma (ConstRef indsig) in
-  let sigma, pack_fn = Evd.fresh_global env sigma (ConstRef pack_fn) in
   let signature_id = add_suffix indid "_Signature" in
   let inst = 
     declare_instance signature_id
@@ -345,9 +342,9 @@ let curry sigma na c =
   let rec make_arg na t =
     match decompose_coq_sigma sigma t with
     | None -> 
-       if is_global sigma (Lazy.force coq_unit) t then
+       if is_global sigma (get_unit ()) t then
          let _, u = destInd sigma t in
-         [], constr_of_global_univ sigma (Lazy.force coq_tt, u)
+         [], constr_of_global_univ sigma (get_unit_intro (), u)
        else [of_tuple (na,None,t)], mkRel 1
     | Some (u, ty, pred) ->
        let na, _, codom =
@@ -382,8 +379,8 @@ let uncurry_hyps name =
       let app = mkApp (sigmaI, Array.append types [| mkVar dna; acc |]) in
       (sigma, app, mkApp (mkIndG coq_sigma u, types))
     in
-    let sigma, unit = new_global sigma (Lazy.force coq_tt) in
-    let sigma, unittype = new_global sigma (Lazy.force coq_unit) in
+    let sigma, unit = get_fresh sigma get_unit_intro in
+    let sigma, unittype = get_fresh sigma get_unit in
     let sigma, term, ty = 
       fold_named_context_reverse 
         ondecl ~init:(sigma, unit, unittype) hyps
@@ -767,7 +764,7 @@ module Tactics =struct
       | None -> tclFAIL 0 (str"No currying to do in " ++ Id.print id) gl)
 
   let curry =
-    Proofview.Goal.nf_enter begin fun gl ->
+    Proofview.Goal.enter begin fun gl ->
       let env = env gl in
       let sigma = sigma gl in
       let concl = concl gl in

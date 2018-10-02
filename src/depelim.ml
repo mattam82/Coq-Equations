@@ -435,13 +435,13 @@ let specialize_eqs id gl =
     | Prod (na, t, b) ->
         (match kind !evars t with
 	 | App (eq, [| eqty; x; y |]) when
-                (is_global !evars (Lazy.force coq_eq) eq &&
+                (is_global !evars (get_eq ()) eq &&
                    (noccur_between !evars 1 (List.length ctx) x ||
                       noccur_between !evars 1 (List.length ctx) y)) ->
             let _, u = destPolyRef !evars eq in
             let c, o = if noccur_between !evars 1 (List.length ctx) x then x, y
                        else y, x in
-            let eqr = constr_of_global_univ !evars (Lazy.force coq_eq_refl, u) in
+            let eqr = constr_of_global_univ !evars (get_eq_refl (), u) in
 	    let p = mkApp (eqr, [| eqty; c |]) in
             if compare_upto_variables !evars c o &&
                  unif env ctx evars o c then
@@ -498,7 +498,7 @@ let specialize_eqs id gl =
 (* Dependent elimination using Equations. *)
 let dependent_elim_tac ?patterns id : unit Proofview.tactic =
   let open Proofview.Notations in
-  Proofview.Goal.nf_enter begin fun gl ->
+  Proofview.Goal.enter begin fun gl ->
     let env = Environ.reset_context (Proofview.Goal.env gl) in
     let hyps = Proofview.Goal.hyps gl in
     let default_loc, id = id in

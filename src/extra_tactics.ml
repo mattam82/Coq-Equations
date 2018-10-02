@@ -30,7 +30,7 @@ open Proofview.Notations
   [ctx |- ?P args = ty] and then refines the goal with [c]. *)
 
 let refine_ho c =
-  nf_enter begin fun gl ->
+  enter begin fun gl ->
     let env = env gl in
     let sigma = sigma gl in
     let concl = concl gl in
