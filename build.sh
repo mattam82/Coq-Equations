@@ -172,6 +172,9 @@ elif [ "$1" = Ex ]; then
   buildExamples
 elif [ "$1" = HoTT ]; then
   buildHoTT
+elif [ "$1" = Links ]; then
+    createHoTTSymlinks
+    buildCustomHoTTFiles
 else
   usageExit
 fi
