@@ -86,6 +86,22 @@ Arguments eissect {A B}%type_scope {f%function_scope} {_} _.
 Arguments eisadj {A B}%type_scope {f%function_scope} {_} _.
 Arguments IsEquiv {A B}%type_scope f%function_scope.
 
+Axiom cheat : forall {A}, A.
+Lemma isEquiv_cong {A B : Type} (f : A -> B) :
+  IsEquiv f -> forall x y, IsEquiv (@f_equal _ _ f x y).
+Proof.
+  intros He.
+  intros x y.
+  unshelve econstructor.
+  intros H. apply (f_equal equiv_inv) in H.
+  rewrite !eissect in H. apply H.
+  red. intros. unfold eq_ind.
+  apply cheat.
+  apply cheat.
+  apply cheat.
+Defined.
+
+
 (* Polymorphic *)
 (*   Definition lemma1 {I : Type} {D : I -> Type} {A : Type} *)
 (*   (v : A -> I) (t1 t2 : A) (ct1 : D (v t1)) (ct2 : D (v t2)) *)
@@ -243,6 +259,15 @@ Definition sigma_eq_2_cong  {A A'} {B : A' -> Type} {f : A -> A'} {x y : &{ x : 
 Proof.
   destruct e. reflexivity.
 Defined.
+Polymorphic
+
+Definition sigma_eq_2_cong' {A A'} {B : A' -> Type} {f : A -> A'} {x y : &{ x : A & B (f x) }} :
+  forall e : x.1 = y.1,
+    (@eq_rect A' (f x.1) (fun x : A' => B x) x.2 (f y.1) (f_equal f e)) =
+    (@eq_rect A x.1 (fun x : A => B (f x)) x.2 y.1 e).
+Proof.
+  destruct e. reflexivity.
+Defined.
 
 (* Polymorphic *)
 (* Definition sigma_eq_2_cong_gl  {A} {B : A -> Type} {f : A -> A} {x y : &{ x : A & B (f x) }} *)
@@ -284,7 +309,6 @@ Polymorphic
 
 
 Set Nested Proofs Allowed.
-Axiom cheat : forall {A}, A.
 Equations param_vector_vcons E (A : Set) (a : A) (n : ℕ E) (v : Vec E A n)
           (X : vector_param E A (S n) (cons a v)) : vector_param E A n v :=
   param_vector_vcons E A _ _ _  (vcons_param _ _ _ X) := X.
@@ -322,12 +346,61 @@ Next Obligation.
   intros H.
   change (@eq_refl _ (S n0)) with (f_equal (fun x : &{ n : ℕ E & &{ _ : A & Vec E A n}} => S x.1) (@eq_refl _ &(n0, a & v))) at 1.
 
-  Lemma f_equal_inv {A} {B : Type} (f : A -> B) (x y : A) (p q : x = y)
-        (G : f_equal f p = f_equal f q -> Type) :
-    (forall x y, f x = f y -> G x = y) ->
-    forall (e : f_equal f p = f_equal f q), G e.
+
+Polymorphic
+Definition sigma_eq_2_f  {A A'} {B : A' -> Type} {f : A -> A'} {x y : &{ x : A & B (f x) }} : (x = y) -> (&(f x.1 & x.2) = &(f y.1 & y.2)).
+Proof.
+  destruct x, y. simpl.
+  intros H.
+  apply sigma_eq_decomp. simpl.
+  apply sigma_eq_decomp_inv in H as [H1 H2]. simpl in *.
+  exists (f_equal f H1). simpl. destruct H1. simpl in *. exact H2.
+Defined.
+
+Definition sigma_eq_2_f_inv  {A A'} {B : A' -> Type} {f : A -> A'}
+           {fequiv : IsEquiv f}
+           {x y : &{ x : A & B (f x) }} : (&(f x.1 & x.2) = &(f y.1 & y.2)) -> (x = y).
+Proof.
+  intros. apply sigma_eq_decomp_inv in H.
+  apply sigma_eq_decomp. simpl in *. destruct H.
+  revert pr2.
+  pose proof (isEquiv_cong f fequiv x.1 y.1).
+  simpl in *. pose proof (eisretr (IsEquiv := H) pr1).
+  rewrite <- H0.
+  exists (equiv_inv pr1). clear -pr2.
+  revert pr2.
+  generalize (equiv_inv pr1). destruct y.
+  simpl. intros <-. trivial.
+Defined.
+
+Polymorphic
+  Lemma f_equal_inv {A} {B : Type} (a b : A -> B) (u v : A)
+        (F : &{ x : A & a x = b x } -> Type)
+        (r : a u = b u)
+        (s : a v = b v)
+        (e : u = v)
+        (e' : eq_trans (eq_sym r) (eq_trans (f_equal a e : a u = a v) s) = f_equal b e) :
+    (F &(u & r) = F &(v & s)).
   Proof.
-    intros. specialize (H x y).
+    intros.
+    pose (@f_equal _ _ F &(u & r) &(v & s)). apply e0. clear e0.
+
+    pose (@make_sigma_eq A (fun x => b u = b x) u v). simpl in e0.
+    specialize (e0 (eq_trans (eq_sym r) (eq_trans (f_equal a e) (eq_trans s (f_equal b (eq_sym e))))) (f_equal b e) e). forward e0. apply cheat.
+    apply (sigma_eq_2_f (f := fun x => b x)) in e0.
+    simpl in *.
+
+
+    pose proof (sigma_eq_2_cong
+                  (A := A) (A' := B) (B := fun y :  => @eq B (a y) (b y))
+                  (x := &(u & r)) (y := &(v & s)) (f := fun x : A => a x)
+               ). simpl in H.
+
+    aply forward e0.
+
+
+
+    destruct s. unfold eq_trans, eq specialize (H x y).
     destruct p. simpl in *. apply
 
 
