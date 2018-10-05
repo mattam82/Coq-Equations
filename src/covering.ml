@@ -231,6 +231,10 @@ let pr_context_map env sigma (delta, patcs, gamma) =
 
 let ppcontext_map env sigma context_map = pp (pr_context_map env sigma context_map)
 
+let ppcontext_map_empty context_map =
+  let env = Global.env () in
+  ppcontext_map env (Evd.from_env env) context_map
+
 (** Debugging functions *)
 
 let typecheck_map env evars (ctx, subst, ctx') =
@@ -366,7 +370,15 @@ let make_permutation ?(env = Global.env ()) (sigma : Evd.evar_map)
     match perm.(pred i2) with
     | None -> perm.(pred i2) <- Some i1
     | Some j when Int.equal i1 j -> ()
-    | _ -> failwith "Could not generate a permutation"
+    | Some k ->
+      let rel_id i ctx =
+        Pp.int i ++ str " = " ++
+        Names.Name.print (Equations_common.(get_name (lookup_rel i ctx))) in
+      failwith
+        (Pp.string_of_ppcmds
+           (str "Could not generate a permutation: two different instances:" ++
+              rel_id i2 ctx2 ++ str" in ctx2 is invertible to " ++
+              rel_id k ctx1 ++ str" and " ++ rel_id i1 ctx1))
   in
   let rec collect_rels k acc c =
     if isRel sigma c then
@@ -379,7 +391,7 @@ let make_permutation ?(env = Global.env ()) (sigma : Evd.evar_map)
     let rels1 = collect_rels 0 [] c1 in
     let rels2 = collect_rels 0 [] c2 in
     try List.iter2 merge_rels rels1 rels2
-    with Invalid_argument _ -> failwith "Could not generate a permutation"
+    with Invalid_argument _ -> failwith "Could not generate a permutation: different variables"
   in
   (* FIXME This function could also check that constructors are the same and
    * so on. It also need better error handling. *)

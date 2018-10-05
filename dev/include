@@ -1,3 +1,5 @@
+#use "include";;
+
 #cd".";;
 #directory "src";;
 
@@ -9,3 +11,4 @@ open Splitting
 #install_printer  (* lhs *) pplhs;;
 #install_printer  (* clause *) ppclause;;
 #install_printer  (* splitting *) ppsplit;;
+#install_printer  (* splitting *) ppcontext_map_empty;;

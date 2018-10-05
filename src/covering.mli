@@ -59,6 +59,8 @@ val pr_context : env -> Evd.evar_map -> rel_context -> Pp.t
 val ppcontext : env -> Evd.evar_map -> rel_context -> unit
 val pr_context_map : env -> Evd.evar_map -> context_map -> Pp.t
 val ppcontext_map : env -> Evd.evar_map -> context_map -> unit
+val ppcontext_map_empty : context_map -> unit
+
 val typecheck_map :
   Environ.env -> Evd.evar_map -> context_map -> unit
 val check_ctx_map :
