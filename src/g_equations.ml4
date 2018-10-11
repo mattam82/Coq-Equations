@@ -432,7 +432,7 @@ GEXTEND Gram
 VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS SIDEFF
 | [ "Equations" equation_options(opt) equations(eqns)
     (* decl_notation(nt) *) ] ->
-    [ Equations.equations opt eqns [] ]
+    [ Equations.equations ~poly:(Attributes.(parse polymorphic atts)) opt eqns [] ]
       END
 
 (* TACTIC EXTEND block_goal *)
@@ -509,7 +509,7 @@ END
 
 VERNAC COMMAND FUNCTIONAL EXTEND Derive CLASSIFIED AS SIDEFF
 | [ "Derive" ne_ident_list(ds) "for" global_list(c) ] -> [
-  fun ~atts ~st -> Ederive.derive ~poly:atts.Vernacinterp.polymorphic (List.map Id.to_string ds)
+  fun ~atts ~st -> Ederive.derive ~poly:(Attributes.only_polymorphism atts) (List.map Id.to_string ds)
     (List.map (fun x -> x.CAst.loc, Smartlocate.global_with_alias x) c); st
   ]
 END

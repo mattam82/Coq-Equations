@@ -254,7 +254,7 @@ Definition trans_co_eq_inv_arrow_morphism@{i j k} :
     Transitive R → Proper@{k j} (respectful@{i j k j k j} R
     (respectful@{i j k j k j} Id (@flip@{k k k} _ _ Type@{j} arrow))) R.
 Proof. reduce. transitivity y. assumption. now destruct X1. Defined.
-Polymorphic Existing Instance trans_co_eq_inv_arrow_morphism.
+Existing Instance trans_co_eq_inv_arrow_morphism.
 
 Equations concat_pp_A1 {A : Type} {g : A -> A} (p : forall x, x = g x)
   {x y : A} (q : x = y)

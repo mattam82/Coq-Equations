@@ -49,4 +49,4 @@ Proof.
     intros He _; revert He. apply e.
 Defined.
 
-Polymorphic Existing Instance eqdec_sig_Id.
+Existing Instance eqdec_sig_Id.

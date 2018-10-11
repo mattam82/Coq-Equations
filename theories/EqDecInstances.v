@@ -79,4 +79,4 @@ Proof.
   intros e _; revert e. apply n.
 Defined.
 
-Polymorphic Existing Instance eqdec_sig.
+Existing Instance eqdec_sig.
