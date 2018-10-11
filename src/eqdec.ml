@@ -148,12 +148,13 @@ let derive_eq_dec env sigma ~polymorphic ind =
 	in Typeclasses.add_instance inst)
     indsl
   in
-  List.iter 
+  let univ_hook = Obligations.mk_univ_hook hook in
+  List.iter
     (fun (ind, (stmt, tc)) ->
      let id = add_suffix ind.ind_name "_eqdec" in
-     ignore(Obligations.add_definition id (to_constr !evdref stmt) (Evd.evar_universe_context !evdref)
-                                       [||] ~tactic:(eqdec_tac ())
-				       ~hook:(Obligations.mk_univ_hook hook)))
+     ignore(Obligations.add_definition id (to_constr !evdref stmt)
+              (Evd.evar_universe_context !evdref)
+              ~tactic:(eqdec_tac ()) ~univ_hook [||]))
     indsl
 
 let () =
