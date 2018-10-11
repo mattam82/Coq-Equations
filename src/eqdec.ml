@@ -141,7 +141,7 @@ let derive_eq_dec env sigma ~polymorphic ind =
   in
   let indsl = Array.to_list info.mutind_inds in
   let indsl = List.map (fun ind -> ind, info_of ind) indsl in
-  let hook _ gr _ =
+  let hook _ _ gr =
     List.iter (fun (ind, (stmt, tc)) -> 
 	let ce = tc gr in
         let entry = (DefinitionEntry ce, IsDefinition Instance) in
@@ -156,7 +156,7 @@ let derive_eq_dec env sigma ~polymorphic ind =
      let id = add_suffix ind.ind_name "_eqdec" in
      ignore(Obligations.add_definition id (to_constr !evdref stmt) (Evd.evar_universe_context !evdref)
                                        [||] ~tactic:(eqdec_tac ())
-				       ~hook:(Lemmas.mk_hook hook)))
+				       ~hook:(Obligations.mk_univ_hook hook)))
     indsl
 
 let () =

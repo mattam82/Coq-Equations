@@ -235,7 +235,7 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
     in
     let ty = it_mkProd_or_LetIn ty parambinders in
     let body = it_mkLambda_or_LetIn (Option.get body) parambinders in
-    let hook vis gr _ =
+    let hook _ vis gr =
       let cst = match gr with ConstRef kn -> kn | _ -> assert false in
       let inst = Typeclasses.new_instance (fst kl) empty_hint_info
                                           global (ConstRef cst) in
@@ -252,7 +252,7 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
     let ctx = Evd.evar_universe_context evm in
     Obligations.add_definition id ~term:constr typ ctx
                                ~kind:(Decl_kinds.Global,polymorphic,Decl_kinds.Instance)
-                               ~hook:(Lemmas.mk_hook hook) ~tactic:(solve_subterm_tac ()) obls
+                               ~hook:(Obligations.mk_univ_hook hook) ~tactic:(solve_subterm_tac ()) obls
   in ignore(declare_ind ())
 
 let () =

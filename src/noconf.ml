@@ -157,7 +157,7 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let term = it_mkLambda_or_LetIn term ctx in
   let ty = it_mkProd_or_LetIn ty ctx in
   let _ = Evarutil.evd_comb1 (Typing.type_of env) evd term in
-  let hook vis gr _ectx = 
+  let hook _ectx vis gr =
     Typeclasses.add_instance
       (Typeclasses.new_instance tc empty_hint_info true gr)
   in
@@ -165,7 +165,7 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let oblinfo, _, term, ty = Obligations.eterm_obligations env noid !evd 0
       (to_constr ~abort_on_undefined_evars:false !evd term)
       (to_constr !evd ty) in
-    ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hook) packid 
+    ignore(Obligations.add_definition ~hook:(Obligations.mk_univ_hook hook) packid
              ~kind ~term ty ~tactic:(noconf_tac ())
 	      (Evd.evar_universe_context !evd) oblinfo)
 
