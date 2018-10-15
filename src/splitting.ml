@@ -432,7 +432,7 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
   let helpers = List.map (fun (ev, arg) ->
     (ev, arg, List.assoc ev emap)) helpers
   in
-  let hook locality gr =
+  let hook uctx locality gr =
     let l =
       Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
     Extraction_plugin.Table.extraction_inline true l;
@@ -440,9 +440,9 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
     let baseid = Id.to_string i in
     let term_info = { term_id = gr; base_id = baseid; helpers_info = helpers; decl_kind = kind;
                       comp_obls = !compobls; user_obls = Id.Set.union !compobls !userobls } in
-      hook split cmap term_info
+      hook split cmap term_info uctx
   in
-  let hook = Lemmas.mk_hook hook in
+  let hook = Obligations.mk_univ_hook hook in
   let reduce x =
     let flags = CClosure.betaiotazeta in
     (* let flags = match comp with None -> flags *)

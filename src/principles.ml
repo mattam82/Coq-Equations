@@ -872,7 +872,7 @@ let declare_funelim info env evd is_rec protos progs
     compute_elim_type env evd info.user_obls is_rec protos kn leninds ind_stmts all_stmts
                       sign app (of_constr elimty)
   in
-  let hookelim _ elimgr _ =
+  let hookelim _ _ elimgr =
     let env = Global.env () in
     let evd = Evd.from_env env in
     let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in
@@ -891,7 +891,7 @@ let declare_funelim info env evd is_rec protos progs
   let tactic = ind_elim_tac elimc leninds (List.length progs) info indgr in
   let _ = e_type_of (Global.env ()) evd newty in
   ignore(Obligations.add_definition (Nameops.add_suffix id "_elim")
-	                            ~tactic ~hook:(Lemmas.mk_hook hookelim) ~kind:info.decl_kind
+	                            ~tactic ~hook:(Obligations.mk_univ_hook hookelim) ~kind:info.decl_kind
                                     (to_constr !evd newty) (Evd.evar_universe_context !evd) [||])
 
 let mkConj evd x y =
@@ -941,7 +941,7 @@ let declare_funind info alias env evd is_rec protos progs
                                      | Some t -> mkConj evd t acc
                                      | None -> acc) last l
   in
-  let hookind subst indgr ectx =
+  let hookind ectx subst indgr =
     let env = Global.env () in (* refresh *)
     Hints.add_hints ~local:false [info.term_info.base_id]
 	            (Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef indgr]);
@@ -968,7 +968,7 @@ let declare_funind info alias env evd is_rec protos progs
   let stmt = to_constr !evd statement and f = to_constr !evd f in
   let ctx = Evd.evar_universe_context (if poly then !evd else Evd.from_env (Global.env ())) in
   try ignore(Obligations.add_definition
-             ~hook:(Lemmas.mk_hook hookind)
+             ~hook:(Obligations.mk_univ_hook hookind)
              ~kind:info.term_info.decl_kind
              indid stmt
              ~tactic:(ind_fun_tac is_rec f info id split unfsplit progs) ctx [||])
@@ -1202,7 +1202,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
     let id = if j != 0 then Nameops.add_suffix id ("_helper_" ^ string_of_int j) else id in
     let proof (i, (r, unf, c, n)) =
       let ideq = Nameops.add_suffix id ("_equation_" ^ string_of_int i) in
-      let hook subst gr _ = 
+      let hook _ subst gr = 
 	if n != None then
 	  Autorewrite.add_rew_rules info.base_id 
             [CAst.make (UnivGen.fresh_global_instance (Global.env()) gr, true, None)]
@@ -1234,7 +1234,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
       ignore(Obligations.add_definition
                ~kind:info.decl_kind
                ideq (to_constr !evd c)
-               ~tactic:(of82 tac) ~hook:(Lemmas.mk_hook hook)
+               ~tactic:(of82 tac) ~hook:(Obligations.mk_univ_hook hook)
 	       (Evd.evar_universe_context !evd) [||])
     in List.iter proof stmts
   in List.iter proof ind_stmts

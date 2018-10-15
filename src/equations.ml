@@ -158,7 +158,7 @@ let define_principles flags fixprots progs =
            let funfc = e_new_global evd info'.term_id in
            let unfold_split = map_evars_in_split !evd (fun f x -> of_constr (cmap f x)) unfold_split in
 	   let unfold_eq_id = add_suffix unfoldi "_eq" in
-           let hook_eqs subst grunfold _ =
+           let hook_eqs _ subst grunfold =
 	     Global.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
              let () = (* Declare the subproofs of unfolding for where as rewrite rules *)
                let decl _ (_, id, _) =
@@ -206,7 +206,7 @@ let define_principles flags fixprots progs =
            in
 	   ignore(Obligations.add_definition
                     ~kind:info.decl_kind
-		    ~hook:(Lemmas.mk_hook hook_eqs) ~reduce:(fun x -> x)
+		    ~hook:(Obligations.mk_univ_hook hook_eqs) ~reduce:(fun x -> x)
                     ~implicits:p.program_impls unfold_eq_id (to_constr evd stmt)
                     ~tactic:(of82 tac)
                     (Evd.evar_universe_context evd) [||])
