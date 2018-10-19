@@ -565,14 +565,13 @@ let define_by_eqs ~poly opts eqs nt =
   in
   let coverings = List.map2 (covering env) arities equations in
   let status = Define false in
-  let (ids, csts) = full_transparent_state in
   let fix_proto_ref = destConstRef (Lazy.force coq_fix_proto) in
   let _kind = (Decl_kinds.Global, poly, Decl_kinds.Definition) in
   let baseid =
     let p = List.hd arities in Id.to_string p.program_id in
   (** Necessary for the definition of [i] *)
   let () =
-    let trs = (ids, Cpred.remove fix_proto_ref csts) in
+    let trs = { TransparentState.full with TransparentState.tr_cst = Cpred.complement (Cpred.singleton fix_proto_ref) } in
     Hints.create_hint_db false baseid trs true
   in
   let progs = Array.make (List.length eqs) None in
