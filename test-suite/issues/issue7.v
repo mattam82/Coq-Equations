@@ -1,3 +1,4 @@
+
 Require Import Equations.Equations Utf8.
 
 Inductive TupleT : nat -> Type :=

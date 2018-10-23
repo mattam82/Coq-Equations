@@ -446,13 +446,13 @@ Lemma simplification_existT2_refl {A} {P : A -> Type} {B} (p : A) (x : P p)
   simplification_existT2 p x x e eq_refl = e eq_refl.
 Proof. unfold simplification_existT2. rewrite inj_pairT2_refl. constructor. Defined.
 
-Polymorphic Lemma simplification_sigma2 : forall {A} {P : A -> Type} {B} (p : A) (x y : P p),
+Polymorphic Lemma simplification_sigma2@{i j} : forall {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}} (p : A) (x y : P p),
   (x = y -> B) -> (sigmaI P p x = sigmaI P p y -> B).
 Proof. intros. apply X. apply inj_sigma2. exact H. Defined.
 Arguments simplification_sigma2 : simpl never.
 
 Polymorphic
-Lemma simplification_sigma2_refl {A} {P : A -> Type} {B} (p : A) (x : P p)
+Lemma simplification_sigma2_refl@{i j} {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}} (p : A) (x : P p)
   (G : x = x -> B) : simplification_sigma2 p x x G eq_refl = G eq_refl.
 Proof. unfold simplification_sigma2. rewrite inj_sigma2_refl. constructor. Defined.
 
@@ -472,13 +472,14 @@ Proof.
   now rewrite inj_right_pair_refl.
 Defined.
 
-Polymorphic Lemma simplification_sigma2_dec : forall {A} `{EqDec A} {P : A -> Type} {B}
+Polymorphic Lemma simplification_sigma2_dec@{i j} : forall {A : Type@{i}} `{EqDec A} {P : A -> Type@{i}}
+                                                           {B : Type@{j}}
     (p : A) (x y : P p),
     (x = y -> B) -> (sigmaI P p x = sigmaI P p y -> B).
 Proof. intros. apply X. apply inj_right_sigma in H0. assumption. Defined.
 
-Polymorphic Lemma simplification_sigma2_dec_refl :
-  forall {A} {eqdec:EqDec A} {P : A -> Type} {B}
+Polymorphic Lemma simplification_sigma2_dec_refl@{i j} :
+  forall {A : Type@{i}} {eqdec:EqDec A} {P : A -> Type@{i}} {B : Type@{j}}
     (p : A) (x : P p) (G : x = x -> B),
       @simplification_sigma2_dec A eqdec P B p x x G eq_refl = G eq_refl.
 Proof.
@@ -488,12 +489,12 @@ Defined.
 Arguments simplification_sigma2_dec : simpl never.
 
 Polymorphic Lemma simplification_sigma2_dec_point :
-  forall {A} (p : A) `{EqDecPoint A p} {P : A -> Type} {B}
+  forall {A : Type} (p : A) `{EqDecPoint A p} {P : A -> Type} {B : Type}
     (x y : P p),
     (x = y -> B) -> (sigmaI P p x = sigmaI P p y -> B).
 Proof. intros. apply X. apply inj_right_sigma_point in H0. assumption. Defined.
 
-Polymorphic Lemma simplification_sigma2_dec_point_refl :
+Polymorphic Lemma simplification_sigma2_dec_point_refl@{i +} :
   forall {A} (p : A) `{eqdec:EqDecPoint A p} {P : A -> Type} {B}
     (x : P p) (G : x = x -> B),
       @simplification_sigma2_dec_point A p eqdec P B x x G eq_refl = G eq_refl.
@@ -503,8 +504,9 @@ Proof.
 Defined.
 Arguments simplification_sigma2_dec_point : simpl never.
 
-Polymorphic Lemma Id_simplification_sigma2 : forall {A} `{HSets.HSet A} {P : A -> Type} {B}
-                                               (p : A) (x y : P p),
+Polymorphic Lemma Id_simplification_sigma2@{i j} :
+  forall {A : Type@{i}} `{HSets.HSet A} {P : A -> Type@{i}} {B : Type@{j}}
+         (p : A) (x y : P p),
   (Id x y -> B) -> (Id (sigmaI P p x) (sigmaI P p y) -> B).
 Proof. intros. apply X. apply HSets.inj_sigma_r. exact X0. Defined.
 
@@ -528,7 +530,7 @@ Proof.
 Local Open Scope equations_scope.
 Import Sigma_Notations.
 
-Polymorphic Lemma simplification_sigma1 : forall {A} {P : A -> Type} {B} (p q : A) (x : P p) (y : P q),
+Polymorphic Lemma simplification_sigma1@{i j} : forall {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}} (p q : A) (x : P p) (y : P q),
   (p = q -> sigmaI P p x = sigmaI P q y -> B) -> (sigmaI P p x = sigmaI P q y -> B).
 Proof.
   intros. refine (X _ H).
@@ -536,7 +538,8 @@ Proof.
   now destruct H.
 Defined.
 
-Polymorphic Lemma Id_simplification_sigma1 {A} {P : A -> Type} {B} (p q : A) (x : P p) (y : P q) :
+Polymorphic Lemma Id_simplification_sigma1@{i j} {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{i}}
+            (p q : A) (x : P p) (y : P q) :
   (Id p q -> Id (sigmaI P p x) (sigmaI P q y) -> B) -> (Id (sigmaI P p x) (sigmaI P q y) -> B).
 Proof.
   intros. refine (X _ X0).
@@ -546,7 +549,7 @@ Defined.
 
 Scheme Id_rew := Minimality for Id Sort Type.
 
-Polymorphic Lemma eq_simplification_sigma1 {A} {P : Type} {B}
+Polymorphic Lemma eq_simplification_sigma1@{i j} {A : Type@{i}} {P : Type@{i}} {B : Type@{j}}
   (p q : A) (x : P) (y : P) :
   (p = q -> x = y -> B) ->
   (sigmaI (fun _ => P) p x = sigmaI (fun _ => P) q y -> B).
@@ -574,7 +577,7 @@ Proof.
   intros X. eapply (X id_refl). apply id_refl.
 Defined.
 
-Polymorphic Lemma eq_simplification_sigma1_dep {A} {P : A -> Type} {B}
+Polymorphic Lemma eq_simplification_sigma1_dep@{i j} {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}}
   (p q : A) (x : P p) (y : P q) :
   (forall e : p = q, (@eq_rect A p P x q e) = y -> B) ->
   (sigmaI P p x = sigmaI P q y -> B).
@@ -602,12 +605,12 @@ Proof.
   intros X. eapply (X id_refl). apply id_refl.
 Defined.
 
-Polymorphic Definition pack_sigma_eq {A} {P : A -> Type} {p q : A} {x : P p} {y : P q}
+Polymorphic Definition pack_sigma_eq@{i} {A : Type@{i}} {P : A -> Type@{i}} {p q : A} {x : P p} {y : P q}
   (e' : p = q) (e : @eq_rect A p P x q e' = y) : &(p& x) = &(q & y).
 Proof. destruct e'. simpl in e. destruct e. apply eq_refl. Defined.
 
-Polymorphic Lemma eq_simplification_sigma1_dep_dep {A} {P : A -> Type}
-  (p q : A) (x : P p) (y : P q) {B : &(p& x) = &(q & y) -> Type} :
+Polymorphic Lemma eq_simplification_sigma1_dep_dep@{i j} {A : Type@{i}} {P : A -> Type@{i}}
+  (p q : A) (x : P p) (y : P q) {B : &(p& x) = &(q & y) -> Type@{j}} :
   (forall e' : p = q, forall e : @eq_rect A p P x q e' = y, B (pack_sigma_eq e' e)) ->
   (forall e : sigmaI P p x = sigmaI P q y, B e).
 Proof.
@@ -640,7 +643,7 @@ Proof.
   apply (X id_refl id_refl).
 Defined.
 
-Polymorphic Lemma Id_simplification_sigma1' {A} {P : A -> Type} {B} (p q : A) (x : P p) (y : P q) :
+Polymorphic Lemma Id_simplification_sigma1'@{i j} {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}} (p q : A) (x : P p) (y : P q) :
   (forall e : Id p q, Id (Id_rew A p P x q e) y -> B) ->
   (Id (sigmaI P p x) (sigmaI P q y) -> B).
 Proof.
@@ -714,18 +717,18 @@ Proof.
 Defined.
 
 Polymorphic
-Definition ind_pack_eq {A : Type} {B : A -> Type} {x : A} {p q : B x} (e : p = q) :
+Definition ind_pack_eq@{i} {A : Type@{i}} {B : A -> Type@{i}} {x : A} {p q : B x} (e : p = q) :
   @eq (sigma A (fun x => B x)) &(x & p) &(x & q).
 Proof. destruct e. reflexivity. Defined.
 
 Polymorphic
-Definition ind_pack_eq_inv {A : Type} {eqdec : EqDec A}
-           {B : A -> Type} (x : A) (p q : B x) (e : @eq (sigma A (fun x => B x)) &(x & p) &(x & q)) : p = q.
-Proof. revert e. apply simplification_sigma2_dec. apply id. Defined.
+Definition ind_pack_eq_inv@{i} {A : Type@{i}} {eqdec : EqDec A}
+           {B : A -> Type@{i}} (x : A) (p q : B x) (e : @eq (sigma A (fun x => B x)) &(x & p) &(x & q)) : p = q.
+Proof. revert e. apply simplification_sigma2_dec@{i i}. apply id. Defined.
 
 Polymorphic
-Definition ind_pack_eq_inv_refl  {A : Type} {eqdec : EqDec A}
-           {B : A -> Type} {x : A} (p : B x) :
+Definition ind_pack_eq_inv_refl@{i} {A : Type@{i}} {eqdec : EqDec A}
+           {B : A -> Type@{i}} {x : A} (p : B x) :
   ind_pack_eq_inv _ _ _ (@eq_refl _ &(x & p)) = eq_refl.
 Proof.
   unfold ind_pack_eq_inv. simpl. unfold simplification_sigma2_dec.
@@ -733,22 +736,22 @@ Proof.
 Defined.
 
 Polymorphic
-Definition ind_pack_eq_inv_equiv {A : Type} {eqdec : EqDec A}
-           {B : A -> Type} {x : A} (p q : B x) (e : p = q) :
+Definition ind_pack_eq_inv_equiv@{i} {A : Type@{i}} {eqdec : EqDec A}
+           {B : A -> Type@{i}} {x : A} (p q : B x) (e : p = q) :
   ind_pack_eq_inv _ _ _ (ind_pack_eq e) = e.
 Proof.
   destruct e. apply ind_pack_eq_inv_refl. 
 Defined.
 
 Polymorphic
-Definition opaque_ind_pack_eq_inv {A : Type} {eqdec : EqDec A}
-  {B : A -> Type} {x : A} {p q : B x} (G : p = q -> Type) (e : &(x & p) = &(x & q)) :=
+Definition opaque_ind_pack_eq_inv@{i j} {A : Type@{i}} {eqdec : EqDec A}
+  {B : A -> Type@{i}} {x : A} {p q : B x} (G : p = q -> Type@{j}) (e : &(x & p) = &(x & q)) :=
   let e' := @ind_pack_eq_inv A eqdec B x p q e in G e'.
 Arguments opaque_ind_pack_eq_inv : simpl never.
 
 Polymorphic
-Lemma simplify_ind_pack {A : Type} {eqdec : EqDec A}
-      (B : A -> Type) (x : A) (p q : B x) (G : p = q -> Type) :
+Lemma simplify_ind_pack@{i j} {A : Type@{i}} {eqdec : EqDec A}
+      (B : A -> Type@{i}) (x : A) (p q : B x) (G : p = q -> Type@{j}) :
       (forall e : &(x & p) = &(x & q), opaque_ind_pack_eq_inv G e) ->
   (forall e : p = q, G e).
 Proof.
@@ -759,8 +762,8 @@ Defined.
 Arguments simplify_ind_pack : simpl never.
 
 Polymorphic
-Lemma simplify_ind_pack_inv {A : Type} {eqdec : EqDec A}
-      (B : A -> Type) (x : A) (p : B x) (G : p = p -> Type) :
+Lemma simplify_ind_pack_inv@{i j} {A : Type@{i}} {eqdec : EqDec A}
+      (B : A -> Type@{i}) (x : A) (p : B x) (G : p = p -> Type@{j}) :
   G eq_refl -> opaque_ind_pack_eq_inv G eq_refl.
 Proof.
   intros H. unfold opaque_ind_pack_eq_inv.
@@ -769,23 +772,23 @@ Defined.
 Arguments simplify_ind_pack_inv : simpl never.
 
 Polymorphic
-Definition simplified_ind_pack {A : Type} {eqdec : EqDec A}
-  (B : A -> Type) (x : A) (p : B x) (G : p = p -> Type)
+Definition simplified_ind_pack@{i j} {A : Type@{i}} {eqdec : EqDec A}
+  (B : A -> Type@{i}) (x : A) (p : B x) (G : p = p -> Type@{j})
   (t : opaque_ind_pack_eq_inv G eq_refl) :=
   eq_rect _ G t _ (@ind_pack_eq_inv_refl A eqdec B x p).
 Arguments simplified_ind_pack : simpl never.
 
 Polymorphic
-Lemma simplify_ind_pack_refl {A : Type} {eqdec : EqDec A}
-(B : A -> Type) (x : A) (p : B x) (G : p = p -> Type)
+Lemma simplify_ind_pack_refl@{i j} {A : Type@{i}} {eqdec : EqDec A}
+(B : A -> Type@{i}) (x : A) (p : B x) (G : p = p -> Type@{j})
 (t : forall (e : &(x & p) = &(x & p)), opaque_ind_pack_eq_inv G e) :
   simplify_ind_pack B x p p G t eq_refl =
   simplified_ind_pack B x p G (t eq_refl).
 Proof. reflexivity. Qed.
 
 Polymorphic
-Lemma simplify_ind_pack_elim {A : Type} {eqdec : EqDec A}
-  (B : A -> Type) (x : A) (p : B x) (G : p = p -> Type)
+Lemma simplify_ind_pack_elim@{i j} {A : Type@{i}} {eqdec : EqDec A}
+  (B : A -> Type@{i}) (x : A) (p : B x) (G : p = p -> Type@{j})
   (t : G eq_refl) :
   simplified_ind_pack B x p G (simplify_ind_pack_inv B x p G t) = t.
 Proof.

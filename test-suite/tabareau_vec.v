@@ -300,7 +300,7 @@ Definition cong {A B : Type} (f : A -> B) {x y : A} (e : x = y) : f x = f y :=
 
 Lemma cong_iter {A B C} (f : A -> B) (g : B -> C) (x y : A) (e : x = y) :
   Top.cong g (Top.cong f e) = Top.cong (fun x => g (f x)) e.
-Proof. revert y e. refine (J _ _). reflexivity. Qed.
+Proof. revert y e. refine (J _ _). reflexivity. Defined.
 
 Notation " 'rew' H 'in' c " := (@subst _ _ _ _ H c) (at level 20).
 
@@ -352,12 +352,12 @@ Proof.
 Defined.
 Axiom cheat : forall {A}, A.
 Lemma isEquiv_cong {A B : Type} (f : A -> B) :
-  IsEquiv f -> forall x y, IsEquiv (@f_equal _ _ f x y).
+  IsEquiv f -> forall x y, IsEquiv (@cong _ _ f x y).
 Proof.
   intros He.
   intros x y.
   unshelve econstructor.
-  intros H. apply (f_equal equiv_inv) in H.
+  intros H. apply (cong equiv_inv) in H.
   rewrite !eissect in H. apply H.
   red. intros. unfold eq_ind. unfold equiv_inv. destruct He.
   apply cheat.
@@ -480,20 +480,30 @@ Polymorphic
   destruct e. reflexivity.
 Defined.
 
+Lemma rew_cong' {A B} (f : A -> B) (x y : A) (e : x = y)  : rewP e at (fun z => eq (f z) (f y)) in cong f e = eq_refl.
+  destruct e. simpl. reflexivity.
+Defined.
+  Lemma rew_cong {A B} (f : A -> B) (x y : A) (e : x = y)  : (rew cong f e in (@eq_refl B (f x))) = cong f e.
+  Proof. destruct e. reflexivity. Defined.
+
 Polymorphic
 Definition ind_pack_eq_inv {A : Type}
   {B : A -> Type} (x y : A) (p : B x) (q : B y)
   (e : @eq (sigma A (fun x => B x)) &(x & p) &(y & q))
   (i : @eq A x y)
-  (e' : cong pr1 e = i) : rew i in p = q.
+  (ee : rewP e at (fun z => eq z.1 y) in i = eq_refl) :
+  rew i in p = q.
 Proof.
-  pose proof (sigma_eq_2' e). simpl in H. destruct e'. apply H.
+  revert i ee. change y with (@sigmaI A (fun x => B x) y q).1 at 1 3 4 7 8.
+  unfold subst_expl.
+  change q with (@sigmaI A (fun x => B x) y q).2 at 9.
+  set (s :=@sigmaI A (fun x => B x) y q) in *. clearbody s. destruct e.
+  simpl. intros i e. symmetry in e. destruct e. reflexivity.
 Defined.
-
 Polymorphic
 Definition opaque_ind_pack_eq_inv {A : Type} {B : A -> Type} {x y : A}
   (i : @eq A x y) {p : B x} {q : B y} (G : p =_{B;i} q -> Type) (e : &(x & p) = &(y & q))
-  (ee : cong pr1 e = i)
+  (ee : rewP e at (fun z => eq z.1 y) in i = eq_refl)
   := G (@ind_pack_eq_inv A B x y p q e i ee).
 
 Polymorphic
@@ -501,7 +511,7 @@ Lemma simplify_ind_pack {A : Type}
   (B : A -> Type) (x y : A) (p : B x) (q : B y) (i : x = y)
   (G : p =_{B;i} q -> Type) :
   (forall (exp : @eq (sigma A (fun x => B x)) &(x & p) &(y & q))
-          (ee : cong pr1 exp = i),
+          (ee : rewP exp at (fun z => eq z.1 y) in i = eq_refl),
           opaque_ind_pack_eq_inv i G exp ee) ->
   (forall e : p =_{B;i} q, G e).
 Proof.
@@ -511,11 +521,42 @@ Proof.
 Defined.
 Arguments simplify_ind_pack : simpl never.
 
-Lemma pr1_pack_sigma_eq : ∀ (A : Type) (P : A → Type) (p q : A) (x : P p) (y : P q) (e1 : p = q)
-                            (e2 : rew e1 in x = y), cong pr1 (pack_sigma_eq e1 e2) = e1.
+
+Polymorphic
+Definition ind_pack_eq_inv_cong {A : Type}
+  {B : A -> Type} (x y : A) (p : B x) (q : B y)
+  (e : @eq (sigma A (fun x => B x)) &(x & p) &(y & q))
+  (i : @eq A x y)
+  (ee : rewP cong (fun x => x.1) e at (fun z => eq z y) in i = eq_refl) :
+  rew i in p = q.
 Proof.
-  intros. destruct e1. destruct e2. simpl. reflexivity.
+  revert i ee. change y with (@sigmaI A (fun x => B x) y q).1 at 1 3 4 8 9.
+  unfold subst_expl.
+  change q with (@sigmaI A (fun x => B x) y q).2 at 10.
+  set (s :=@sigmaI A (fun x => B x) y q) in *. clearbody s. destruct e.
+  simpl. intros i e. symmetry in e. destruct e. reflexivity.
 Defined.
+
+Polymorphic
+Lemma simplify_ind_pack_cong {A : Type}
+  (B : A -> Type) (x y : A) (p : B x) (q : B y) (i : x = y)
+  (G : p =_{B;i} q -> Type) :
+  (forall (exp : @eq (sigma A (fun x => B x)) &(x & p) &(y & q))
+          (ee : rewP cong pr1 exp at (fun z => eq z y) in i = eq_refl),
+           G (@ind_pack_eq_inv_cong A B x y p q exp i ee)) ->
+  (forall e : p =_{B;i} q, G e).
+Proof.
+  intros H. intros e.
+  specialize (H (make_sigma_eq i e)). unfold opaque_ind_pack_eq_inv in H.
+  destruct i, e. simpl in H. specialize (H eq_refl). simpl in G. apply H.
+Defined.
+Arguments simplify_ind_pack : simpl never.
+
+(* Lemma pr1_pack_sigma_eq : ∀ (A : Type) (P : A → Type) (p q : A) (x : P p) (y : P q) (e1 : p = q) *)
+(*                             (e2 : rew e1 in x = y), cong' pr1 (pack_sigma_eq e1 e2) = e1. *)
+(* Proof. *)
+(*   intros. destruct e1. destruct e2. simpl. reflexivity. *)
+(* Defined. *)
 
 Lemma sigma_eq_1_pack_sigma_eq : ∀ (A : Type) (P : A → Type) (p q : A) (x : P p) (y : P q) (e1 : p = q)
                             (e2 : rew e1 in x = y), sigma_eq_1 (pack_sigma_eq e1 e2) = e1.
@@ -608,13 +649,28 @@ Admitted.
 Lemma cong_f {A B} (f : A -> B) (g : B -> A)
       (retr : forall x, g (f x) = x)
       (x y : A) (e : x = y) (e' : f x = f y) :
-  cong f e = e' -> e = rewP retr x at (fun z => z = y) in (rewP (retr y) at (fun z => g (f x) = z) in cong g e').
+  (forall e' : f x = f x, cong (fun x => f (g x)) e' = eq_refl -> eq_refl = e') ->
+
+  (cong f e = e') <~>
+  (rewP retr x at (fun z => z = y) in (rewP (retr y) at (fun z => g (f x) = z) in cong g e') = e).
 Proof.
-  intros.
+  intros Hc.
   destruct e. simpl in *.
   unfold subst_expl. unfold subst.
-  destruct H. simpl. destruct (retr x). simpl. reflexivity.
-Qed.
+  destruct (retr x). simpl.
+  unshelve econstructor. intros H.
+  destruct H. reflexivity.
+  unshelve econstructor. intros H.
+  apply (cong (cong f)) in H.
+  revert H.
+  rewrite cong_iter. simpl.
+  apply Hc.
+  red. intros. unfold eq_ind_r. unfold cong_iter. simpl.
+  unfold eq_sym, J, eq_ind.
+  apply cheat.
+  red. intros. apply cheat. apply cheat.
+
+Defined.
 
   Definition eq_fn {A B} (e : A = B) : A -> B.
     destruct e. exact id.
@@ -649,6 +705,22 @@ Definition vect_tl {A E n} (v : Vec A E (S n)) :=
   | cons a' v' => v'
   end.
 
+Polymorphic
+  Lemma f_equal_inv_dep {A} {B : Type} (a b : A -> B) (u v : A)
+        (e : u = v)
+        (r : u = v -> a u = b u)
+        (s : a v = b v)
+        (H : rewP e at (fun x => a x = b x) in r e = s :> (a v = b v)) :
+  rewP s at (fun x => b u = x) in
+    (rewP (r e) at (fun x => x = a v) in
+        (cong a e : a u = a v)) = cong b e.
+  Proof.
+    intros.
+    unfold subst_expl in H.
+    apply flip_square.
+    destruct e. simpl in *. destruct H. reflexivity.
+  Defined.
+
  Equations param_vector_vcons E (A : Set) (a : A) (n : ℕ E) (v : Vec E A n)
           (X : vector_param E A (S n) (cons a v)) : vector_param E A n v :=
   param_vector_vcons E A _ _ _  (vcons_param _ _ _ X) := X.
@@ -662,7 +734,7 @@ Next Obligation.
   simplify ?.
   simplify ?.
   simpl noConfusion_inv.
-  Opaque pack_sigma_eq.
+  Opaque pack_sigma_eq. simpl.
   change (cons a v) with (rewP (cong S eq_refl) at (fun x => Vec E A x) in (cons a v)).
   unfold subst_expl.
   refine (simplify_ind_pack _ _ _ _ _ _ _ _). simpl. unfold opaque_ind_pack_eq_inv.
@@ -693,37 +765,104 @@ Next Obligation.
   (* simpl in e'. *)
  set(cf := (λ x : &{ n : ℕ E & &{ _ : A & Vec E A n}}, &(S x.(pr1) & cons x.(pr2).(pr1) x.(pr2).(pr2)))).
   revert H.
-  refine (eq_simplification_sigma1_dep_dep _ _ _ _ _).
-  intros.
-  revert e0.
-  revert ee.
-  intros ee.
 
-  revert ee.
+  unshelve evar(eequiv:&{ p : &{ n : ℕ E & &{ _ : A & Vec E A n } } & S p.1 = S n0 } <~>  &{ _ : A & Vec E A n0 }).
+  unshelve econstructor. intros [[n r] He]. revert He. simplify ?. simplify ?. exact r.
+  unshelve econstructor. intros r. exists &(n0 & r). exact eq_refl.
+  red; intros r. unfold apply_noConfusion. simpl. reflexivity.
+  red; intros []. unfold apply_noConfusion. simpl. revert pr2. simplify ?. simplify ?. simpl. reflexivity.
+  intros [n He]. revert He. simplify ?. simplify ?. simpl. reflexivity.
+  simpl in eequiv.
+  intros H ee.
+  (* pose (r := &(&(n0, a0 & v0) & eq_refl)  : &{ p : &{ n : ℕ E & &{ _ : A & Vec E A n}} & S p.(pr1) = S n0}). *)
+  (* pose proof ee as ee'. *)
+  (* rewrite (cong_iter cf pr1 _ _ H) in ee'. *)
+  (* rewrite <- (rew_cong _ _ _ H) in ee'. *)
+  (* unfold subst_expl in ee'. simpl in ee'. *)
+  (* apply (inv_equiv *)
+  (*          (equiv_cong_subst *)
+  (*             (fun x => eq (S n0) x) (fun x : &{ n : ℕ E & &{ _ : A & Vec E A n}} => S x.1) _ _ H _ _)) in ee'. *)
+  pose (l := &(&(n0, a & v) & cong pr1 (cong cf H)) : &{ p : &{ n : ℕ E & &{ _ : A & Vec E A n}} & S p.(pr1) = S n0}).
+  pose proof (@isEquiv_cong _ _ _ (is_equiv _ _ eequiv) l &(&(n0, a0 & v0) & eq_refl)). simpl in i.
+  match goal with
+    _ : IsEquiv ?f |- _ => set(equivfn := f) in *
+  end. simpl in equivfn. subst l.
+  simpl in equivfn.
+  forward equivfn.
+  apply sigma_eq_decomp. simpl. exists H. rewrite cong_iter.
 
 
-  unshelve evar(x : (@eq_refl _ (S n0)) = (cong (fun x => S x) e')).
-  { rewrite <- ee.
-    rewrite (cong_iter cf pr1 _ _ (pack_sigma_eq e' e)).
-    subst cf. simpl.
-    rewrite <- (cong_iter pr1 (fun x => S x) _ _ (pack_sigma_eq e' e)).
-    rewrite pr1_pack_sigma_eq. reflexivity. }
-  exact H. subst x.
+  pose (rew_cong' (fun x => (cf x).1) _ _ H). unfold subst_expl in e0. simpl in e0.
+  rewrite <- e0. reflexivity.
+
+
+  Lemma rew_cong
+
+  unfold cf. simpl.
+
+  Transparent pack_sigma_eq.
+  Lemma cong_pack (A : Type) (P : A → Type) (B : A -> Type) (x y : A) (p : P x) (q : P y)
+        (e : x = y) (e' : rew e in p = q)
+        (f : A -> A) (g : forall x, P x -> B (f x)) :
+    &{ e'' : _ &
+    cong (fun x => &(f x.1 & g x.1 x.2)) (pack_sigma_eq e e') =
+    pack_sigma_eq (cong f e) e'' }.
+  Proof.
+    unshelve eexists. simpl. destruct e. simpl. destruct e'. simpl. reflexivity.
+    destruct e, e'. simpl. reflexivity.
+  Defined.
+
+  unshelve evar(He' : (eq_refl = e') <~> (cong pr1 (cong cf (pack_sigma_eq e' e)) = eq_refl)).
+  destruct (cong_pack _ _ (fun x => Vec E A x) n0 n0 _ _ e' e (fun x => S x) (fun x y => cons y.1 y.2))
+    as [He'' Hpack].
+  rewrite Hpack. rewrite pr1_pack_sigma_eq.
+  clear He'' Hpack.
+
+  unshelve econstructor. intros <-. reflexivity.
+  unshelve econstructor.
+  intros. symmetry.
+  change eq_refl with (@cong _ _ (fun x : ℕ E => S x) n0 n0 eq_refl) in H.
+
+  Lemma cong_eq_inj {A B} (x y : A) (e e' : x = y) (f : A -> B) (g : B -> A) : cong f e = cong f e' -> e = e'.
+  Proof. intros He.
+         apply (cong (cong g)) in He.
+
+  specialize (f_equal_inv'
+                (fun x => S x) (fun _ => S n0) n0 n0 eq_refl eq_refl e'). simpl.
+  rewrite H. simpl.
+
+  rewrite rew_cong.
+
 
   set (g := (fun x => match x return ℕ E with S x => x | _ => x end)).
   unshelve evar(retr : forall x, g (S x) = x).
   intros. unfold g. reflexivity.
-  symmetry in X1. eapply (cong_f S g retr) in X1.
-  subst retr. simpl in X1. subst e'.
-  revert ee. simpl. simpl in e.
-  revert e.
-  simplify ?. simpl.
-  simplify ?. simpl.
+  pose (cong_f (fun x => S x) g retr _ _ e' eq_refl). simpl in e0.
+  forward e0. simpl. intros.
+
+  Lemma cong_id {A} (f g : A -> A) (x y : A) (e : x = y)
+    (ex : x = f (g x)) (ey : y = f (g y)) :
+    cong (fun x => f (g x)) e =
+    rewP ex at (fun z => z = f (g y)) in rewP ey at (fun z => x = z) in e.
+  Proof.
+    destruct e. simpl. destruct ex. simpl. apply cheat.
+  Defined.
+
+  unshelve erewrite cong_id in H. simpl. reflexivity. simpl. reflexivity.
+  simpl in H. symmetry in H. apply H.
+
+  apply (equiv_sym e0).
 
 
   refine (apply_equiv_dom _ He _).
   intros x. destruct x.
-  simpl.
+  subst He. simpl.
+  revert e. simpl.
+  simplify ?.
+  simplify ?. simpl.
+  Transparent pack_sigma_eq. simpl.
+  unfold ind_pack_eq_inv. simpl. unfold inv_equiv. simpl.
+  unfold eq_ind_r. simpl. unfold eq_ind. unfold eq_sym. simpl.
 
   apply cheat. Defined.
   simplify ?. simpl.
@@ -759,9 +898,6 @@ Defined.
   revert H X1.
   refine (eq_simplification_sigma1_dep_dep _ _ _ _ _).
   intros.
-
-  Lemma rew_cong {A B} (f : A -> B) (x y : A) (e : x = y)  : (rew cong f e in (@eq_refl B (f x))) = cong f e.
-  Proof. destruct e. reflexivity. Defined.
 
   pose proof (rew_cong (λ x : &{ n : ℕ E & &{ _ : A & Vec E A n}}, S x.(pr1)) _ _ (pack_sigma_eq e' e)).
   simpl in H0.

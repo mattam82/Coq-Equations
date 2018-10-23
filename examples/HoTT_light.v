@@ -82,6 +82,11 @@ transport P id_refl u := u.
 Transparent transport.
 Notation "p # x" := (transport _ p x) (right associativity, at level 65, only parsing).
 
+Notation "1" := id_refl : equations_scope.
+Reserved Notation "p @ q" (at level 20).
+Reserved Notation "p ^" (at level 3, format "p '^'").
+Notation "p ^" := (eq_sym p%equations) : equations_scope.
+
 Equations apd {A} {B : A -> Type} (f : forall x : A, B x) {x y : A} (p : x = y) :
   p # f x = f y :=
 apd f id_refl := id_refl.
@@ -94,9 +99,9 @@ Class IsEquiv {A B : Type} (f : A -> B) := BuildIsEquiv {
   eissect : Sect f equiv_inv;
   eisadj : forall x : A, eisretr (f x) = ap f (eissect x)
 }.
-Arguments eisretr {A B}%type_scope {f%function_scope} {_} _.
-Arguments eissect {A B}%type_scope {f%function_scope} {_} _.
-Arguments eisadj {A B}%type_scope {f%function_scope} {_} _.
+Arguments eisretr {A B}%type_scope f%function_scope {_} _.
+Arguments eissect {A B}%type_scope f%function_scope {_} _.
+Arguments eisadj {A B}%type_scope f%function_scope {_} _.
 Arguments IsEquiv {A B}%type_scope f%function_scope.
 
 (** A record that includes all the data of an adjoint equivalence. *)
@@ -206,11 +211,11 @@ Defined.
 
 Equations concat {A} {x y z : A} (e : x = y) (e' : y = z) : x = z :=
 concat id_refl q := q.
-Infix "@@" := concat (at level 50).
+Notation "p @ q" := (concat p q).
 
 Definition moveR_E A B (f:A -> B) {H : IsEquiv f} (x : A) (y : B) (p : x = f^^-1 y)
   : (f x = y)
-  := ap f p @@ (@eisretr _ _ f _ y).
+  := ap f p @ (@eisretr _ _ f _ y).
 
 Lemma contr_equiv A B (f : A -> B) `{IsEquiv A B f} `{Contr A}
   : Contr B.
@@ -222,22 +227,22 @@ Proof.
 Qed.
 
 Equations concat_1p {A : Type} {x y : A} (p : x = y) :
-  id_refl @@ p = p :=
+  id_refl @ p = p :=
 concat_1p id_refl := id_refl.
 
 Equations concat_p1 {A : Type} {x y : A} (p : x = y) :
-  p @@ id_refl  = p :=
+  p @ id_refl  = p :=
 concat_p1 id_refl := id_refl.
 
 Equations concat_Vp {A : Type} {x y : A} (p : x = y) :
-  eq_sym p @@ p = id_refl :=
+  eq_sym p @ p = id_refl :=
 concat_Vp id_refl := id_refl.
 
-Equations concat_pV {A : Type} {x y : A} (p : x = y) : p @@ eq_sym p = id_refl :=
+Equations concat_pV {A : Type} {x y : A} (p : x = y) : p @ eq_sym p = id_refl :=
 concat_pV id_refl := id_refl.
 
 Equations concat_p_pp {A : Type} {x y z t : A} (p : x = y) (q : y = z) (r : z = t) :
-  p @@ (q @@ r) = (p @@ q) @@ r :=
+  p @ (q @ r) = (p @ q) @ r :=
 concat_p_pp id_refl _ _ := id_refl.
 
 Hint Rewrite @concat_p1 @concat_Vp @concat_pV : concat.
@@ -260,19 +265,19 @@ Equations concat_pp_A1 {A : Type} {g : A -> A} (p : forall x, x = g x)
   {x y : A} (q : x = y)
   {w : A} (r : w = x)
   :
-    (r @@ p x) @@ ap g q = (r @@ q) @@ p y :=
+    (r @ p x) @ ap g q = (r @ q) @ p y :=
 concat_pp_A1 _ id_refl id_refl := concat_p1 _.
 
 Equations whiskerL {A : Type} {x y z : A} (p : x = y)
-           {q r : y = z} (h : q = r) : p @@ q = p @@ r :=
+           {q r : y = z} (h : q = r) : p @ q = p @ r :=
 whiskerL _ id_refl := id_refl.
 
 Equations whiskerR {A : Type} {x y z : A} {p q : x = y}
-           (h : p = q) (r : y = z) : p @@ r = q @@ r :=
+           (h : p = q) (r : y = z) : p @ r = q @ r :=
 whiskerR id_refl _ := id_refl.
 
 Equations moveL_M1 {A : Type} {x y : A} (p q : x = y) :
-  eq_sym q @@ p = id_refl -> p = q :=
+  eq_sym q @ p = id_refl -> p = q :=
 moveL_M1 _ id_refl := fun e => e.
 
 Definition inverse2 {A : Type} {x y : A} {p q : x = y} (h : p = q)
@@ -283,7 +288,7 @@ ap02 f id_refl := id_refl.
 
 Equations ap_p_pp {A B : Type} (f : A -> B) {w : B} {x y z : A}
   (r : w = f x) (p : x = y) (q : y = z) :
-  r @@ (ap f (p @@ q)) = (r @@ ap f p) @@ (ap f q) :=
+  r @ (ap f (p @ q)) = (r @ ap f p) @ (ap f q) :=
 ap_p_pp f _ id_refl _ := concat_p_pp _ id_refl _.
 
 Equations ap_compose {A B C : Type} (f : A -> B) (g : B -> C) {x y : A} (p : x = y) :
@@ -291,7 +296,7 @@ Equations ap_compose {A B C : Type} (f : A -> B) (g : B -> C) {x y : A} (p : x =
 ap_compose f g id_refl := id_refl.
 
 Equations concat_A1p {A : Type} {g : A -> A} (p : forall x, g x = x) {x y : A} (q : x = y) :
-  (ap g q) @@ (p y) = (p x) @@ q :=
+  (ap g q) @ (p y) = (p x) @ q :=
 concat_A1p {g:=g} p {x:=x} id_refl with p x, g x :=
 concat_A1p p id_refl id_refl _ := id_refl.
 
@@ -307,11 +312,11 @@ Proof.
 Qed.
 
 Equations ap_pp {A B : Type} (f : A -> B) {x y z : A} (p : x = y) (q : y = z) :
-  ap f (p @@ q) = (ap f p) @@ (ap f q) :=
+  ap f (p @ q) = (ap f p) @ (ap f q) :=
 ap_pp _ id_refl id_refl => id_refl.
 
 Equations concat_pp_V {A : Type} {x y z : A} (p : x = y) (q : y = z) :
-  (p @@ q) @@ eq_sym q = p :=
+  (p @ q) @ eq_sym q = p :=
 concat_pp_V id_refl id_refl => id_refl.
 
 Equations ap_V {A B : Type} (f : A -> B) {x y : A} (p : x = y) :
@@ -322,22 +327,22 @@ Hint Rewrite @ap_pp @ap_V : ap.
 Hint Rewrite  @concat_pp_V : concat.
 
 Equations concat_pA1 {A : Type} {f : A -> A} (p : forall x, x = f x) {x y : A} (q : x = y) :
-  (p x) @@ (ap f q) = q @@ (p y) :=
+  (p x) @ (ap f q) = q @ (p y) :=
 concat_pA1 p id_refl := concat_p1 (p _).
 
 Equations concat_p_Vp {A : Type} {x y z : A} (p : x = y) (q : x = z) :
-  p @@ (eq_sym p @@ q) = q :=
+  p @ (eq_sym p @ q) = q :=
 concat_p_Vp id_refl id_refl := id_refl.
 
 Equations concat_pV_p {A : Type} {x y z : A} (p : x = z) (q : y = z) :
-  (p @@ eq_sym q) @@ q = p :=
+  (p @ eq_sym q) @ q = p :=
 concat_pV_p id_refl id_refl := id_refl.
 Hint Rewrite @concat_pA1 @concat_p_Vp @concat_pV_p : concat.
 Transparent concat.
 Definition concat_pA1_p {A : Type} {f : A -> A} (p : forall x, f x = x)
   {x y : A} (q : x = y)
   {w : A} (r : w = f x)
-  : (r @@ ap f q) @@ p y = (r @@ p x) @@ q.
+  : (r @ ap f q) @ p y = (r @ p x) @ q.
 Proof.
   destruct q; simpl.
   now rewrite !concat_p1.
@@ -360,25 +365,25 @@ Instance isequiv_inverse A B (f:A -> B) (H:IsEquiv f) : IsEquiv (f^^-1) | 1000.
 Proof.
   refine (BuildIsEquiv (@eissect _ _ f _) (@eisretr _ _ f _) _).
   intros b. 
-  rewrite <- (concat_1p (eissect _)).
-  rewrite <- (concat_Vp  (ap f^^-1 (eisretr (f (f^^-1 b))))).
-  rewrite (whiskerR (inverse2 (ap02 f^^-1 (eisadj (f^^-1 b)))) _).
-  refine (whiskerL _ (eq_sym (concat_1p (eissect _))) @@ _).
-  rewrite <- (concat_Vp (eissect (f^^-1 (f (f^^-1 b))))).
-  rewrite <- (whiskerL _ (concat_1p (eissect (f^^-1 (f (f^^-1 b)))))).
-  rewrite <- (concat_pV (ap f^^-1 (eisretr (f (f^^-1 b))))).
+  rewrite <- (concat_1p (eissect _ _)).
+  rewrite <- (concat_Vp  (ap f^^-1 (eisretr _ (f (f^^-1 b))))).
+  rewrite (whiskerR (inverse2 (ap02 f^^-1 (eisadj _ (f^^-1 b)))) _).
+  refine (whiskerL _ (eq_sym (concat_1p (eissect _ _))) @ _).
+  rewrite <- (concat_Vp (eissect _ (f^^-1 (f (f^^-1 b))))).
+  rewrite <- (whiskerL _ (concat_1p (eissect _ (f^^-1 (f (f^^-1 b)))))).
+  rewrite <- (concat_pV (ap f^^-1 (eisretr _ (f (f^^-1 b))))).
   apply moveL_M1.
   repeat rewrite concat_p_pp.
     (* Now we apply lots of naturality and cancel things. *)
-  rewrite <- (concat_pp_A1 (fun a => eq_sym (eissect a)) _ _).
+  rewrite <- (concat_pp_A1 (fun a => eq_sym (eissect _ a)) _ _).
   rewrite (ap_compose f f^^-1).
-  rewrite <- (ap_p_pp _ _ (ap f (ap f^^-1 (eisretr (f (f^^-1 b))))) _).
+  rewrite <- (ap_p_pp _ _ (ap f (ap f^^-1 (eisretr _ (f (f^^-1 b))))) _).
   rewrite <- (ap_compose f^^-1 f).
   rewrite (concat_A1p (@eisretr _ _ f _) _).
   rewrite ap_pp, concat_p_pp.
-  rewrite (concat_pp_V _ (ap f^^-1 (eisretr (f (f^^-1 b))))).
+  rewrite (concat_pp_V _ (ap f^^-1 (eisretr _ (f (f^^-1 b))))).
   repeat rewrite <- ap_V. rewrite <- ap_pp.
-  rewrite <- (concat_pA1 (fun y => eq_sym (eissect y)) _).
+  rewrite <- (concat_pA1 (fun y => eq_sym (eissect _ y)) _).
   rewrite ap_compose, <- (ap_compose f^^-1 f).
   rewrite <- ap_p_pp.
   rewrite (concat_A1p (@eisretr _ _ f _) _).
@@ -447,6 +452,83 @@ Definition path_sigma_equiv {A : Type} (P : A -> Type) (u v : sigma A P):
     destruct p. simpl in *. destruct q; simpl in *.
     apply id_refl.
 Defined.
+
+Definition moveR_M1 {A : Type} {x y : A} (p q : x = y) :
+  1 = p^ @ q -> p = q.
+Proof.
+  destruct p.
+  intro h. exact (h @ (concat_1p _)).
+Defined.
+
+Definition moveL_Vp {A : Type} {x y z : A} (p : x = z) (q : y = z) (r : x = y) :
+  r @ q = p -> q = r^ @ p.
+Proof.
+  destruct r.
+  intro h. exact ((concat_1p _)^ @ h @ (concat_1p _)^).
+Defined.
+
+Section Adjointify.
+
+  Context {A B : Type} (f : A -> B) (g : B -> A).
+  Context (isretr : Sect g f) (issect : Sect f g).
+
+  (* This is the modified [eissect]. *)
+  Let issect' := fun x =>
+    ap g (ap f (issect x)^)  @  ap g (isretr (f x))  @  issect x.
+
+  Let is_adjoint' (a : A) : isretr (f a) = ap f (issect' a).
+  Proof.
+    unfold issect'.
+    apply moveR_M1.
+    repeat rewrite ap_pp, concat_p_pp; rewrite <- ap_compose.
+    rewrite (concat_pA1 (fun b => (isretr b)^) (ap f (issect a)^)).
+    repeat rewrite concat_pp_p; rewrite ap_V.
+    rewrite <- concat_p_pp.
+    rewrite <- concat_p_pp.
+    apply moveL_Vp. rewrite concat_p1.
+    rewrite concat_p_pp, <- ap_compose.
+    rewrite (concat_pA1 (fun b => (isretr b)^) (isretr (f a))).
+    rewrite concat_pV, concat_1p; reflexivity.
+  Qed.
+
+  (** We don't make this a typeclass instance, because we want to control when we are applying it. *)
+  Definition isequiv_adjointify : IsEquiv f
+    := @BuildIsEquiv A B f g isretr issect' is_adjoint'.
+
+  Definition equiv_adjointify : A <~> B
+    := @BuildEquiv A B f isequiv_adjointify.
+
+End Adjointify.
+
+Arguments isequiv_adjointify {A B}%type_scope (f g)%function_scope isretr issect.
+Arguments equiv_adjointify {A B}%type_scope (f g)%function_scope isretr issect.
+
+Definition concat2 {A} {x y z : A} {p p' : x = y} {q q' : y = z} (h : p = p') (h' : q = q')
+  : p @ q = p' @ q'
+:= match h, h' with id_refl, id_refl => 1 end.
+
+Reserved Notation "p @@ q" (at level 20).
+Notation "p @@ q" := (concat2 p q)%equations : equations_scope.
+
+(** If [f] is an equivalence, then so is [ap f].  We are lazy and use [adjointify]. *)
+Global Instance isequiv_ap {A B} f `{IsEquiv A B f} (x y : A)
+  : IsEquiv (@ap A B f x y) | 1000
+  := isequiv_adjointify (ap f)
+  (fun q => (eissect f x)^  @  ap f^^-1 q  @  eissect f y)
+  (fun q =>
+    ap_pp f _ _
+    @ whiskerR (ap_pp f _ _) _
+    @ ((ap_V f _ @ inverse2 (eisadj f _)^)
+      @@ (ap_compose f^^-1 f _)^
+      @@ (eisadj f _)^)
+    @ concat_pA1_p (eisretr f) _ _
+    @ whiskerR (concat_Vp _) _
+    @ concat_1p _)
+  (fun p =>
+    whiskerR (whiskerL _ (ap_compose f f^^-1 _)^) _
+    @ concat_pA1_p (eissect f) _ _
+    @ whiskerR (concat_Vp _) _
+    @ concat_1p _).
 
 Instance contr_unit : Contr unit | 0 := let x := {|
   center := tt;

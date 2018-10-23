@@ -22,7 +22,7 @@ Class HProp A := is_hprop : forall x y : A, Id x y.
 
 Class HSet A := is_hset : forall {x y : A}, HProp (Id x y).
 
-Inductive sum (A : Type) (B : Type) := inl : A -> sum A B | inr : B -> sum A B.
+Cumulative Inductive sum@{i} (A : Type@{i}) (B : Type@{i}) := inl : A -> sum A B | inr : B -> sum A B.
 
 Set Warnings "-notation-overridden".
 Import Id_Notations.
@@ -92,8 +92,8 @@ Ltac eqdec_proof := try red; intros;
 (** Derivation of principles on sigma types whose domain is decidable. *)
 
 Section EqdepDec.
-
-  Context {A : Type} `{EqDec A}.
+  Universe  i.
+  Context {A : Type@{i}} `{EqDec A}.
 
   Let comp (x y y':A) (eq1:x = y) (eq2:x = y') : y = y' :=
     Id_rect _ _ (fun a _ => a = y') eq2 _ eq1.
@@ -140,7 +140,7 @@ Section EqdepDec.
   Defined.    
   
   Theorem K_dec :
-    forall P:x = x -> Type, P (id_refl x) -> forall p:x = x, P p.
+    forall P:x = x -> Type@{i}, P (id_refl x) -> forall p:x = x, P p.
   Proof.
     intros.
     elim eq_proofs_unicity with x (id_refl x) p.
@@ -156,7 +156,7 @@ Section EqdepDec.
   (** The corollary *)
   (* On [sigma] *)
   
-  Let projs (P:A -> Type) (exP:sigma A P) (def:P x) : P x :=
+  Let projs (P:A -> Type@{i}) (exP:sigma A P) (def:P x) : P x :=
     match exP with
       | sigmaI _ x' prf =>
         match eq_dec x' x with
@@ -166,7 +166,7 @@ Section EqdepDec.
     end.
 
   Theorem inj_right_sigma :
-    forall (P:A -> Type) (y y':P x),
+    forall (P:A -> Type@{i}) (y y':P x),
       sigmaI P x y = sigmaI P x y' -> y = y'.
   Proof.
     intros.
@@ -182,15 +182,17 @@ Section EqdepDec.
     case X; reflexivity.
   Defined.
 
-  Lemma inj_right_sigma_refl (P : A -> Type) (y : P x) :
+  Lemma inj_right_sigma_refl (P : A -> Type@{i}) (y : P x) :
     inj_right_sigma (y:=y) (y':=y) (id_refl _) = (id_refl _).
-  Proof. unfold inj_right_sigma. intros. 
-    unfold eq_rect. unfold projs. rewrite eq_dec_refl. 
+  Proof.
+    unfold inj_right_sigma. intros.
+    unfold eq_rect. unfold projs.
+    destruct (id_sym@{i} eq_dec_refl@{i}).
     unfold K_dec. simpl.
     unfold eq_proofs_unicity. subst projs.
     simpl. unfold nu_inv, comp, nu. simpl.
     unfold eq_ind, nu_left_inv, trans_sym_eq, eq_rect, nu_constant.
-    rewrite eq_dec_refl. reflexivity.
+    destruct (id_sym@{i} eq_dec_refl@{i}). reflexivity.
   Defined.
 
 End EqdepDec.
@@ -198,7 +200,7 @@ End EqdepDec.
 Definition transport {A : Type} {P : A -> Type} {x y : A} (p : x = y) : P x -> P y :=
   match p with id_refl => fun h => h end.
 
-Lemma sigma_eq (A : Type) (P : A -> Type) (x y : sigma A P) :
+Lemma sigma_eq@{i} (A : Type@{i}) (P : A -> Type@{i}) (x y : sigma A P) :
   x = y -> &{ p : (x.1 = y.1) & transport p x.2 = y.2 }.
 Proof.
   intros H; destruct H.
@@ -206,8 +208,8 @@ Proof.
   refine &(id_refl & id_refl).
 Defined.  
 
-Theorem inj_sigma_r {A : Type} `{H : HSet A} :
-  forall (P:A -> Type) {x} {y y':P x},
+Theorem inj_sigma_r@{i} {A : Type@{i}} `{H : HSet A} :
+  forall (P:A -> Type@{i}) {x} {y y':P x},
     sigmaI P x y = sigmaI P x y' -> y = y'.
 Proof.
   intros P x y y' [H' H'']%sigma_eq. cbn in *.
@@ -250,7 +252,7 @@ Proof.
   apply hset_pi.
 Defined.  
 
-Lemma inj_sigma_r_refl (A : Type) (H : HSet A) (P : A -> Type) x (y : P x) :
+Lemma inj_sigma_r_refl@{i} (A : Type@{i}) (H : HSet A) (P : A -> Type@{i}) x (y : P x) :
   inj_sigma_r (y:=y) (y':=y) (id_refl _) = (id_refl _).
 Proof.
   unfold inj_sigma_r. intros.

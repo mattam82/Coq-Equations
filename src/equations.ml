@@ -137,7 +137,7 @@ let define_principles flags fixprots progs =
                         prob [(i,of_constr f)] prog.program_split
          in
 	 (* We first define the unfolding and show the fixpoint equation. *)
-	 let unfoldi = add_suffix i "_unfold" in
+         let unfoldi = add_suffix i "_unfold" in
          let hook_unfold _ cmap info' ectx =
            let info =
              { info' with base_id = prog.program_split_info.base_id;

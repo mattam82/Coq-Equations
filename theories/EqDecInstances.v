@@ -68,14 +68,14 @@ Proof. eqdec_proof. Defined.
 Instance sigma_eqdec {A B} `(EqDec A) `(forall x, EqDec (B x)) : EqDec {x : A & B x}.
 Proof. eqdec_proof. Defined.
 
-Polymorphic Definition eqdec_sig@{i j} {A : Type@{i}} {B : A -> Type@{j}}
+Polymorphic Definition eqdec_sig@{i} {A : Type@{i}} {B : A -> Type@{i}}
             `(EqDec A) `(forall a, EqDec (B a)) :
   EqDec (sigma A B).
 Proof.
   intros. intros [x0 x1] [y0 y1].
   case (eq_dec x0 y0). intros ->. case (eq_dec x1 y1). intros ->. left. reflexivity.
-  intros. right. red. apply simplification_sigma2_dec@{i j Set}. apply n.
-  intros. right. red. apply simplification_sigma1@{i j Set}.
+  intros. right. red. apply simplification_sigma2_dec@{i Set}. apply n.
+  intros. right. red. apply simplification_sigma1@{i Set}.
   intros e _; revert e. apply n.
 Defined.
 
