@@ -356,8 +356,6 @@ val make_def : Names.Name.t -> constr option -> constr -> rel_declaration
 val make_named_def : Names.Id.t -> constr option -> constr -> named_declaration
 val to_context : (Names.Name.t * constr option * constr) list -> rel_context
 
-val localdef : Constr.t -> Entries.local_entry
-val localassum : Constr.t -> Entries.local_entry
 val named_of_rel_context : ?keeplets:bool -> (unit -> Names.Id.t) -> rel_context -> EConstr.t list * constr list * named_context
 val rel_of_named_context : named_context -> rel_context * Names.Id.t list
 val subst_rel_context : int -> EConstr.t list -> rel_context -> rel_context

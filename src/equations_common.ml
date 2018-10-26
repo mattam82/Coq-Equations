@@ -850,9 +850,6 @@ let of_named_tuple = Context.Named.Declaration.of_tuple
 let to_context c =
   List.map of_tuple c
 
-let localdef c = LocalDefEntry c
-let localassum c = LocalAssumEntry c
-
 let get_type = Context.Rel.Declaration.get_type
 let get_value = Context.Rel.Declaration.get_value
 let get_name = Context.Rel.Declaration.get_name

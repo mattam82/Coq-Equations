@@ -145,12 +145,7 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
     let inductive =
       { mind_entry_record = None;
         mind_entry_finite = Declarations.Finite;
-        mind_entry_params = List.map (fun decl ->
-          let (n, b, t) = to_tuple decl in
-          match b with
-          | Some b -> (Nameops.Name.get_id n, localdef (refresh_universes (to_constr sigma b)))
-          | None -> (Nameops.Name.get_id n, localassum (refresh_universes (to_constr sigma t))))
-          parambinders;
+        mind_entry_params = List.map (fun d -> to_rel_decl sigma (Context.Rel.Declaration.map_constr refresh_universes d)) parambinders;
         mind_entry_inds = inds;
         mind_entry_private = None;
         mind_entry_universes = uctx}
