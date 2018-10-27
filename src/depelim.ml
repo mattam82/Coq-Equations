@@ -157,7 +157,7 @@ let abstract_args gl generalize_vars dep id defined f args =
     in
     let argty = pf_get_type_of gl arg in
     let argty = 
-      Evarutil.evd_comb1
+      Equations_common.evd_comb1
 	(Evarsolve.refresh_universes (Some true) env) evd argty in
     let lenctx = List.length ctx in
     let liftargty = lift lenctx argty in
@@ -435,13 +435,13 @@ let specialize_eqs id gl =
     | Prod (na, t, b) ->
         (match kind !evars t with
 	 | App (eq, [| eqty; x; y |]) when
-                (is_global !evars (get_eq ()) eq &&
+                (is_global !evars (Lazy.force logic_eq_type) eq &&
                    (noccur_between !evars 1 (List.length ctx) x ||
                       noccur_between !evars 1 (List.length ctx) y)) ->
             let _, u = destPolyRef !evars eq in
             let c, o = if noccur_between !evars 1 (List.length ctx) x then x, y
                        else y, x in
-            let eqr = constr_of_global_univ !evars (get_eq_refl (), u) in
+            let eqr = constr_of_global_univ !evars (Lazy.force logic_eq_refl, u) in
 	    let p = mkApp (eqr, [| eqty; c |]) in
             if compare_upto_variables !evars c o &&
                  unif env ctx evars o c then

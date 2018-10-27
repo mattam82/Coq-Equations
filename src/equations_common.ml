@@ -149,24 +149,25 @@ let e_new_global evdref gr =
   let sigma, gr = new_global !evdref gr in
   evdref := sigma; gr
 
-let find_constant contrib dir s evd =
-  e_new_global evd (Coqlib.find_reference contrib dir s)
+type lazy_ref = Names.GlobRef.t Lazy.t
 
-let contrib_name = "Equations"
-let init_constant dir s evd = find_constant contrib_name dir s evd
-let init_reference dir s = Coqlib.find_reference contrib_name dir s
-let coq_constant dir s = Coqlib.coq_reference "equations" dir s
+let equations_lib_ref s = Coqlib.lib_ref ("equations." ^ s)
+
+let find_global s = lazy (equations_lib_ref s)
+
+let find_constant s evd = e_new_global evd (equations_lib_ref s)
 
 let global_reference id =
   Smartlocate.global_of_extended_global (Nametab.locate_extended (qualid_of_ident id))
 
-let constr_of_global = UnivGen.constr_of_global
+let constr_of_global = UnivGen.constr_of_monomorphic_global
 
 let constr_of_ident id =
   EConstr.of_constr (constr_of_global (Nametab.locate (qualid_of_ident id)))
 
-let e_type_of env evd =
-  Evarutil.evd_comb1 (Typing.type_of ~refresh:false env) evd
+let e_type_of env evd t =
+  let evm, t = Typing.type_of ~refresh:false env !evd t in
+  evd := evm; t
 
 let make_definition ?opaque ?(poly=false) evm ?types b =
   let env = Global.env () in
@@ -179,8 +180,8 @@ let make_definition ?opaque ?(poly=false) evm ?types b =
   let evm = Evd.minimize_universes evm in
   let evm0 = evm in
   let body = EConstr.to_constr evm b and typ = Option.map (EConstr.to_constr evm) types in
-  let used = Univops.universes_of_constr body in
-  let used' = Option.cata Univops.universes_of_constr Univ.LSet.empty typ in
+  let used = Vars.universes_of_constr body in
+  let used' = Option.cata Vars.universes_of_constr Univ.LSet.empty typ in
   let used = Univ.LSet.union used used' in
   let evm = Evd.restrict_universe_context evm used in
   let univs = Evd.const_univ_entry ~poly evm in
@@ -209,12 +210,12 @@ let declare_instance id poly evm ctx cl args =
   let inst = new_instance (fst cl) Hints.empty_hint_info true (Globnames.ConstRef cst) in
     add_instance inst; cst, ecst
 
-let coq_zero = lazy (coq_constant ["Init"; "Datatypes"] "O")
-let coq_succ = lazy (coq_constant ["Init"; "Datatypes"] "S")
-let coq_nat = lazy (coq_constant ["Init"; "Datatypes"] "nat")
+let coq_zero = (find_global "nat.zero")
+let coq_succ = (find_global "nat.succ")
+let coq_nat = (find_global "nat.type")
 
 let rec coq_nat_of_int = function
-  | 0 -> UnivGen.constr_of_global (Lazy.force coq_zero)
+  | 0 -> constr_of_global (Lazy.force coq_zero)
   | n -> mkApp (constr_of_global (Lazy.force coq_succ), [| coq_nat_of_int (pred n) |])
 
 let rec int_of_coq_nat c = 
@@ -229,121 +230,61 @@ let fresh_id avoid id gl =
   fresh_id_in_env avoid id (pf_env gl)
 
 
-let coq_heq = lazy (Coqlib.coq_reference "mkHEq" ["Logic";"JMeq"] "JMeq")
-let coq_heq_refl = lazy (Coqlib.coq_reference "mkHEq" ["Logic";"JMeq"] "JMeq_refl")
+let coq_heq = (find_global "JMeq.type")
+let coq_heq_refl = (find_global "JMeq.refl")
 
-let coq_fix_proto = lazy (init_reference ["Equations";"Init"] "fixproto")
+let coq_fix_proto = (find_global "fixproto")
 
-type logic_ref = Names.GlobRef.t lazy_t
-							       
-type logic = {
-  logic_eq_ty : logic_ref;
-  logic_eq_refl: logic_ref;
-  logic_eq_case: logic_ref;
-  logic_eq_elim: logic_ref;
-  logic_sort : Sorts.family;
-  logic_bot : logic_ref;
-  logic_top : logic_ref;
-  logic_top_intro : logic_ref;
-  logic_conj : logic_ref;
-  logic_conj_intro : logic_ref;
-  logic_unit : logic_ref;
-  logic_unit_intro : logic_ref;
-  logic_product : logic_ref;
-  logic_pair : logic_ref;
-  logic_wellfounded_class : logic_ref;
-  logic_wellfounded : logic_ref;
-  logic_relation : logic_ref;
-  logic_transitive_closure : logic_ref;
-}
+let compute_sort_family l =
+  let env = Global.env () in
+  let evd = Evd.from_env env in
+  let evd, c = Evarutil.new_global evd (Lazy.force l) in
+  let _, s = EConstr.destArity evd (Retyping.get_type_of env evd c) in
+  Sorts.family (EConstr.ESorts.kind evd s)
 
-let lazy_reference dp c =
-  lazy (Coqlib.find_reference "" dp c)
+let logic_eq_type = (find_global "equality.type")
+let logic_eq_refl = (find_global "equality.refl")
+let logic_eq_case = (find_global "equality.case")
+let logic_eq_elim = (find_global "equality.elim")
+let logic_sort = lazy (compute_sort_family logic_eq_type)
+let logic_bot = (find_global "bottom.type")
+let logic_bot_case = (find_global "bottom.case")
+let logic_bot_elim = (find_global "bottom.elim")
+let logic_top = (find_global "top.type")
+let logic_top_intro = (find_global "top.intro")
+let logic_top_elim = (find_global "top.elim")
+let logic_conj = (find_global "conj.type")
+let logic_conj_intro = (find_global "conj.intro")
+let logic_unit = (find_global "unit.type")
+let logic_unit_intro = (find_global "unit.intro")
+let logic_product = (find_global "product.type")
+let logic_pair = (find_global "product.intro")
+let logic_wellfounded_class = (find_global "wellfounded.class")
+let logic_wellfounded = (find_global "wellfounded.type")
+let logic_relation = (find_global "relation.type")
+let logic_transitive_closure = (find_global "relation.transitive_closure")
 
-let coq_unit = lazy (Coqlib.coq_reference "unit" ["Init"; "Datatypes"] "unit")
-let coq_tt = lazy (Coqlib.coq_reference "unit" ["Init"; "Datatypes"] "tt")
+let logic_eqdec_class = (find_global "eqdec.class")
+let logic_eqdec_dec_eq = (find_global "eqdec.dec_eq")
 
-let prop_logic =
-  { logic_sort = Sorts.InProp;
-    logic_eq_ty = Lazy.from_fun Coqlib.build_coq_eq;
-    logic_eq_refl = lazy ((Coqlib.build_coq_eq_data ()).Coqlib.refl);
-    logic_eq_case = lazy (Coqlib.coq_reference "coq_eq_case" ["Init";"Logic"] "eq_rect_r");
-    logic_eq_elim = lazy (init_reference ["Equations";"DepElim"] "eq_rect_dep_r");
-    logic_bot = lazy (init_reference ["Coq";"Init";"Logic"] "False");
-    logic_top = lazy (init_reference ["Coq";"Init";"Logic"] "True");
-    logic_top_intro = lazy (init_reference ["Coq";"Init";"Logic"] "I");
-    logic_conj = lazy (Coqlib.coq_reference "conjunction" ["Init";"Logic"] "and");
-    logic_conj_intro = lazy (Coqlib.coq_reference "conjunction intro" ["Init";"Datatypes"] "conj");
-    logic_unit = coq_unit;
-    logic_unit_intro = coq_tt;
-    logic_product = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "prod");
-    logic_pair = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "pair");
-    logic_wellfounded_class = lazy_reference ["Equations";"Classes"] "WellFounded";
-    logic_wellfounded = lazy_reference ["Coq";"Init";"Wf"] "well_founded";
-    logic_relation = lazy_reference ["Coq";"Relations";"Relation_Definitions"] "relation";
-    logic_transitive_closure = lazy_reference ["Coq";"Relations";"Relation_Operators"] "clos_trans";
-  }
+let logic_signature_class = find_global "signature.class"
+let logic_signature_sig = find_global "signature.signature"
+let logic_signature_pack = find_global "signature.pack"
 
-let type_logic =
-  { logic_sort = Sorts.InType;
-    logic_eq_ty = lazy (init_reference ["Equations";"Init"] "Id");
-    logic_eq_refl = lazy (init_reference ["Equations";"Init"] "id_refl");
-    logic_eq_case = lazy (init_reference ["Equations";"DepElim"] "Id_rect_r");
-    logic_eq_elim = lazy (init_reference ["Equations";"DepElim"] "Id_rect_dep_r");
-    logic_bot = lazy (init_reference ["Equations";"Init"] "Empty");
-    logic_unit = coq_unit;
-    logic_top = coq_unit;
-    logic_conj = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "prod");
-    logic_conj_intro = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "pair");
-    logic_unit_intro = coq_tt;
-    logic_top_intro = coq_tt;
-    logic_product = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "prod");
-    logic_pair = lazy (Coqlib.coq_reference "product" ["Init";"Datatypes"] "pair");
-    (* FIXME unsupported yet *)
-    logic_wellfounded_class = lazy_reference ["Equations";"Classes"] "WellFounded";
-    logic_wellfounded = lazy_reference ["Coq";"Init";"Wf"] "well_founded";
-    logic_relation = lazy_reference ["Coq";"Classes";"CRelationClasses"] "crelation";
-    logic_transitive_closure = lazy_reference ["Equations";"Classes"] "transitive_closure";
-  }
+let get_fresh sigma r = new_global sigma (Lazy.force r)
 
-let logic = ref prop_logic
-	     
-let set_logic l = logic := l
-	     
-let get_sort () = !logic.logic_sort
-let get_eq () = Lazy.force (!logic).logic_eq_ty
-let get_eq_refl () = Lazy.force (!logic).logic_eq_refl
-let get_eq_case () = Lazy.force (!logic).logic_eq_case
-let get_eq_elim () = Lazy.force (!logic).logic_eq_elim
-let get_top () = Lazy.force (!logic).logic_top
-let get_top_intro () = Lazy.force (!logic).logic_top_intro
-let get_bot () = Lazy.force (!logic).logic_bot
-let get_conj () = Lazy.force (!logic).logic_conj
-let get_conj_intro () = Lazy.force (!logic).logic_conj_intro
+let get_efresh r evd = e_new_global evd (Lazy.force r)
 
-let get_unit () = Lazy.force (!logic).logic_unit
-let get_unit_intro () = Lazy.force (!logic).logic_unit_intro
-let get_product () = Lazy.force (!logic).logic_product
-let get_pair () = Lazy.force (!logic).logic_pair
-let get_relation () = Lazy.force (!logic).logic_relation
-let get_well_founded () = Lazy.force (!logic).logic_wellfounded
-let get_well_founded_class () = Lazy.force (!logic).logic_wellfounded_class
-let get_transitive_closure () = Lazy.force (!logic).logic_transitive_closure
-
-let get_fresh sigma r =
-  new_global sigma (r ())
-
-let get_efresh r evd =
-  e_new_global evd (r ())
+let is_lglobal gr c = Globnames.is_global (Lazy.force gr) c
 
 open EConstr
 
 let fresh_logic_sort evd =
-  let evars, sort = Evd.fresh_sort_in_family !evd (get_sort ()) in
+  let evars, sort = Evd.fresh_sort_in_family !evd (Lazy.force logic_sort) in
   evd := evars; mkSort sort
 
 let mkapp env evdref t args =
-  let evd, c = fresh_global env !evdref t in
+  let evd, c = fresh_global env !evdref (Lazy.force t) in
   let _ = evdref := evd in
     mkApp (c, args)
 
@@ -352,18 +293,17 @@ let refresh_universes_strict env evd t =
     evd := evd'; t'
     
 let mkEq env evd t x y = 
-  mkapp env evd (get_eq ()) [| refresh_universes_strict env evd t; x; y |]
+  mkapp env evd logic_eq_type [| refresh_universes_strict env evd t; x; y |]
     
 let mkRefl env evd t x = 
-  mkapp env evd (get_eq_refl ()) [| refresh_universes_strict env evd t; x |]
+  mkapp env evd logic_eq_refl [| refresh_universes_strict env evd t; x |]
 
 let mkHEq env evd t x u y =
-  mkapp env evd (Lazy.force coq_heq) [| refresh_universes_strict env evd t; x;
+  mkapp env evd coq_heq [| refresh_universes_strict env evd t; x;
                            refresh_universes_strict env evd u; y |]
     
 let mkHRefl env evd t x =
-  mkapp env evd (Lazy.force coq_heq_refl)
-    [| refresh_universes_strict env evd t; x |]
+  mkapp env evd coq_heq_refl [| refresh_universes_strict env evd t; x |]
 
 let dummy_loc = None
 type 'a located = 'a Loc.located
@@ -371,8 +311,6 @@ type 'a located = 'a Loc.located
 let tac_of_string str args =
   Tacinterp.interp (TacArg(dummy_loc,
                            TacCall(dummy_loc, (Libnames.qualid_of_string str, args))))
-
-let equations_path = ["Equations";"Equations"]
 
 let get_class sigma c =
   let x = Typeclasses.class_of_constr sigma c in
@@ -384,41 +322,29 @@ type 'a peuniverses = 'a * EConstr.EInstance.t
 
 let functional_induction_class evd =
   let evdref = ref evd in
-  let cl = init_constant ["Equations";"FunctionalInduction"] "FunctionalInduction" evdref in
+  let cl = find_constant "funind.class" evdref in
   !evdref, get_class !evdref cl
 
 let functional_elimination_class evd =
   let evdref = ref evd in
-  let cl = init_constant ["Equations";"FunctionalInduction"] "FunctionalElimination" evdref in
+  let cl = find_constant "funelim.class" evdref in
   !evdref, get_class !evdref cl
 
 let dependent_elimination_class evd =
-  get_class !evd
-    (init_constant ["Equations";"DepElim"] "DependentEliminationPackage" evd)
+  get_class !evd (find_constant "depelim.class" evd)
 
-let below_path = ["Equations";"Below"]
+let coq_noconfusion_class = (find_global "noconfusion.class")
 
-let coq_id = init_constant ["Equations";"Init"] "id"
-
-let list_path = ["Lists";"List"]
-let coq_list_ind = init_constant list_path "list"
-let coq_list_nil = init_constant list_path "nil"
-let coq_list_cons = init_constant list_path "cons"
-
-let coq_noconfusion_class = lazy (init_reference ["Equations";"DepElim"] "NoConfusionPackage")
-  
-let coq_inacc = lazy (init_reference ["Equations";"DepElim"] "inaccessible_pattern")
-let coq_block = lazy (init_reference ["Equations";"DepElim"] "block")
-let coq_hide = lazy (init_reference ["Equations";"DepElim"] "hide_pattern")
-let coq_hidebody = lazy (init_reference ["Equations";"Init"] "hidebody")
-let coq_add_pattern = lazy (init_reference ["Equations";"DepElim"] "add_pattern")
+let coq_inacc = (find_global "internal.inaccessible_pattern")
+let coq_block = (find_global "internal.block")
+let coq_hide = (find_global "internal.hide_pattern")
+let coq_hidebody = (find_global "internal.hidebody")
+let coq_add_pattern = (find_global "internal.add_pattern")
 let coq_end_of_section_id = Id.of_string "eos"
-let coq_end_of_section_constr = init_constant ["Equations";"DepElim"] "the_end_of_the_section"
-let coq_end_of_section = init_constant ["Equations";"DepElim"] "end_of_section"
-let coq_end_of_section_ref = lazy (init_reference ["Equations";"DepElim"] "end_of_section")
+let coq_the_end_of_the_section = (find_global "internal.the_end_of_the_section")
+let coq_end_of_section = (find_global "internal.end_of_section")
 
-let coq_notT = init_constant ["Coq";"Init";"Logic_Type"] "notT"
-let coq_ImpossibleCall = init_constant ["Equations";"DepElim"] "ImpossibleCall"
+let coq_ImpossibleCall evd = find_constant "impossiblecall.class" evd
 
 let unfold_add_pattern =
   lazy (Tactics.unfold_in_concl [(Locus.AllOccurrences,
@@ -426,17 +352,16 @@ let unfold_add_pattern =
 
 let subterm_relation_base = "subterm_relation"
 
-let coq_sigma = lazy (init_reference ["Equations";"Init"] "sigma")
-let coq_sigmaI = lazy (init_reference ["Equations";"Init"] "sigmaI")
+let coq_sigma = (find_global "sigma.type")
+let coq_sigmaI = (find_global "sigma.intro")
 
-let init_projection dp i =
-  let r = init_reference dp i in
-  let cst = Globnames.destConstRef r in
+let init_projection gr =
+  let cst = Globnames.destConstRef gr in
   let p = Option.get @@ Recordops.find_primitive_projection cst in
   Projection.make p false
 			
-let coq_pr1 = lazy (init_projection ["Equations";"Init"] "pr1")
-let coq_pr2 = lazy (init_projection ["Equations";"Init"] "pr2")
+let coq_pr1 = lazy (init_projection (Lazy.force (find_global "sigma.pr1")))
+let coq_pr2 = lazy (init_projection (Lazy.force (find_global "sigma.pr2")))
 			    
 (* Misc tactics *)
 
@@ -625,7 +550,7 @@ let call_tac_on_ref tac c =
   let tac = Locus.ArgArg (dummy_loc, tac) in
   let val_reference = Geninterp.val_tag (Genarg.topwit Stdarg.wit_constr) in
   (** This is a hack to avoid generating useless universes *)
-  let c = UnivGen.constr_of_global_univ (c, Univ.Instance.empty) in
+  let c = Constr.mkRef (c, Univ.Instance.empty) in
   let c = Geninterp.Val.inject val_reference (EConstr.of_constr c) in
   let ist = Geninterp.{ lfun = Names.Id.Map.add var c Names.Id.Map.empty;
                             extra = Geninterp.TacStore.empty } in
@@ -666,9 +591,6 @@ let simpl_dep_elim_tac () = tac_of_string "Equations.DepElim.simpl_dep_elim" []
 
 let depind_tac h = tac_of_string "Equations.DepElim.depind"
   [tacident_arg h]
-
-let mkNot env evd t =
-  mkapp env evd (Coqlib.build_coq_not ()) [| t |]
 
 open EConstr.Vars
    
@@ -987,7 +909,7 @@ let hintdb_set_transparency cst b db =
 
 let is_global sigma f ec = Globnames.is_global f (to_constr sigma ec)                                  
 
-let constr_of_global_univ sigma u = of_constr (UnivGen.constr_of_global_univ (from_peuniverses sigma u))
+let constr_of_global_univ sigma u = of_constr (Constr.mkRef (from_peuniverses sigma u))
 
 let smash_rel_context sigma ctx =
   List.map of_rel_decl (smash_rel_context (List.map (to_rel_decl sigma) ctx))
@@ -1023,3 +945,11 @@ let ucontext_of_aucontext ctx =
   let inst = Univ.AUContext.instance ctx in
   inst, Univ.ContextSet.of_context
         (Univ.UContext.make (inst, (Univ.AUContext.instantiate inst ctx)))
+
+let evd_comb0 f evd =
+  let evm, r = f !evd in
+  evd := evm; r
+
+let evd_comb1 f evd x =
+  let evm, r = f !evd x in
+  evd := evm; r

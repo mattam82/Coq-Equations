@@ -161,12 +161,9 @@ let sigmaize ?(liftty=0) env0 evd pars f =
 
 let ind_name ind = Nametab.basename_of_global (Globnames.IndRef ind)
 
-let signature_ref = lazy (init_reference ["Equations";"Signature"] "Signature")
-let signature_sig = lazy (init_reference ["Equations";"Signature"] "signature")
-let signature_pack = lazy (init_reference ["Equations";"Signature"] "signature_pack")
 
 let signature_class evd =
-  let evd, c = new_global evd (Lazy.force signature_ref) in
+  let evd, c = get_fresh evd logic_signature_class in
     evd, fst (snd (Option.get (Typeclasses.class_of_constr evd c)))
 
 let build_sig_of_ind env sigma (ind,u as indu) =
@@ -243,12 +240,12 @@ let get_signature env sigma ty =
       new_type_evar env sigma Evd.univ_flexible
                     ~src:(dummy_loc, Evar_kinds.InternalHole) in
     let _idxev = fst (destEvar sigma idx) in
-    let sigma', cl = new_global sigma' (Lazy.force signature_ref) in
+    let sigma', cl = get_fresh sigma' logic_signature_class in
     let inst = mkApp (cl, [| ty; idx |]) in
     let sigma', tc = Typeclasses.resolve_one_typeclass env sigma' inst in
     let _, u = destInd sigma (fst (destApp sigma inst)) in
-    let ssig = mkApp (mkConstG signature_sig u, [| ty; idx; tc |]) in
-    let spack = mkApp (mkConstG signature_pack u, [| ty; idx; tc |]) in
+    let ssig = mkApp (mkConstG logic_signature_sig u, [| ty; idx; tc |]) in
+    let spack = mkApp (mkConstG logic_signature_pack u, [| ty; idx; tc |]) in
       (sigma', nf_evar sigma' ssig, nf_evar sigma' spack)
   with Not_found ->
     let pind, args = Inductive.find_rectype env (to_constr sigma ty) in
@@ -342,9 +339,9 @@ let curry sigma na c =
   let rec make_arg na t =
     match decompose_coq_sigma sigma t with
     | None -> 
-       if is_global sigma (get_unit ()) t then
+       if is_global sigma (Lazy.force logic_unit) t then
          let _, u = destInd sigma t in
-         [], constr_of_global_univ sigma (get_unit_intro (), u)
+         [], constr_of_global_univ sigma (Lazy.force logic_unit_intro, u)
        else [of_tuple (na,None,t)], mkRel 1
     | Some (u, ty, pred) ->
        let na, _, codom =
@@ -369,7 +366,7 @@ let uncurry_hyps name =
     let sigma = Goal.sigma gl in
     let hyps, _ =
       List.split_when (fun d ->
-          is_global sigma (Lazy.force coq_end_of_section_ref) (get_named_type d)
+          is_global sigma (Lazy.force coq_end_of_section) (get_named_type d)
           || is_section_variable (get_id d)) hyps in
     let ondecl (sigma, acc, ty) d =
       let (dna, _, dty) = to_named_tuple d in
@@ -379,8 +376,8 @@ let uncurry_hyps name =
       let app = mkApp (sigmaI, Array.append types [| mkVar dna; acc |]) in
       (sigma, app, mkApp (mkIndG coq_sigma u, types))
     in
-    let sigma, unit = get_fresh sigma get_unit_intro in
-    let sigma, unittype = get_fresh sigma get_unit in
+    let sigma, unit = get_fresh sigma logic_unit_intro in
+    let sigma, unittype = get_fresh sigma logic_unit in
     let sigma, term, ty = 
       fold_named_context_reverse 
         ondecl ~init:(sigma, unit, unittype) hyps

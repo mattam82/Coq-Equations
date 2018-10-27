@@ -275,7 +275,7 @@ let solve_ind_rec_tac info =
     (fun c ->
     tclBIND (Tacticals.New.pf_constr_of_global (Lazy.force coq_fix_proto))
     (fun fixprot ->
-    tclBIND (Tacticals.New.pf_constr_of_global (get_unit ()))
+    tclBIND (Tacticals.New.pf_constr_of_global (Lazy.force logic_unit))
     (fun unit ->
       Goal.enter (fun gl ->
         let ty = Tacmach.New.pf_get_type_of gl c in
@@ -500,10 +500,9 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
 	  [to82 (set_eos_tac ()); to82 (fix recid (succ i));
 	   onLastDecl (fun decl gl ->
              let (n,b,t) = to_named_tuple decl in
-             let fixprot pats _env sigma =
-	       let c = 
-                 mkLetIn (Anonymous, of_constr (UnivGen.constr_of_global (Lazy.force coq_fix_proto)),
-                          of_constr (UnivGen.constr_of_global (get_unit ())), t) in
+             let fixprot pats env sigma =
+               let sigma, fixprot = get_fresh sigma coq_fix_proto in
+               let c = mkLetIn (Anonymous, fixprot, Retyping.get_type_of env sigma fixprot, t) in
                (sigma, c)
 	     in
 	     Proofview.V82.of_tactic

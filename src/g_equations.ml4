@@ -105,34 +105,34 @@ END
 
 (* Noconf *)
 
-VERNAC COMMAND EXTEND Equations_Logic CLASSIFIED AS QUERY
-| [ "Equations" "Logic" sort_family(s) global(eq) global(eqr) global(eq_case) global(eq_elim)
-      global(z) global(o) global(ov) global(oprod) global(opair)
-      global(rel) global(transclos) global(wfc) global(wf)
-  ] -> [
-  let gr x = Lazy.from_val (Nametab.global x) in
-  Equations_common.(set_logic { logic_eq_ty = gr eq;
-				logic_eq_refl = gr eqr;
-                                logic_eq_case = gr eq_case;
-                                logic_eq_elim = gr eq_elim;
-                                logic_sort = s;
-                                logic_bot = gr z;
-                                logic_top = gr o;
-                                logic_top_intro = gr ov;
-
-                                logic_conj = gr oprod;
-                                logic_conj_intro = gr opair;
-
-                                logic_unit = gr o;
-                                logic_unit_intro = gr ov;
-                                logic_product = gr oprod;
-                                logic_pair = gr opair;
-                                logic_relation = gr rel;
-                                logic_transitive_closure = gr transclos;
-                                logic_wellfounded_class = gr wfc;
-                                logic_wellfounded = gr wf })
-  ]
-END
+(* VERNAC COMMAND EXTEND Equations_Logic CLASSIFIED AS QUERY
+ * | [ "Equations" "Logic" sort_family(s) global(eq) global(eqr) global(eq_case) global(eq_elim)
+ *       global(z) global(o) global(ov) global(oprod) global(opair)
+ *       global(rel) global(transclos) global(wfc) global(wf)
+ *   ] -> [
+ *   let gr x = Lazy.from_val (Nametab.global x) in
+ *   Equations_common.(set_logic { logic_eq_ty = gr eq;
+ * 				logic_eq_refl = gr eqr;
+ *                                 logic_eq_case = gr eq_case;
+ *                                 logic_eq_elim = gr eq_elim;
+ *                                 logic_sort = s;
+ *                                 logic_bot = gr z;
+ *                                 logic_top = gr o;
+ *                                 logic_top_intro = gr ov;
+ *
+ *                                 logic_conj = gr oprod;
+ *                                 logic_conj_intro = gr opair;
+ *
+ *                                 logic_unit = gr o;
+ *                                 logic_unit_intro = gr ov;
+ *                                 logic_product = gr oprod;
+ *                                 logic_pair = gr opair;
+ *                                 logic_relation = gr rel;
+ *                                 logic_transitive_closure = gr transclos;
+ *                                 logic_wellfounded_class = gr wfc;
+ *                                 logic_wellfounded = gr wf })
+ *   ]
+ * END *)
 
 (* TACTIC EXTEND dependent_generalize *)
 (* | ["dependent" "generalize" hyp(id) "as" ident(id') ] ->  *)

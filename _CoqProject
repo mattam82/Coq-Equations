@@ -3,7 +3,7 @@
 -R theories Equations
 -I theories
 -I examples
-CAMLDEBUG = "-bin-annot -g -for-pack Equations -w -58"
+CAMLDEBUG = "-bin-annot -g -for-pack Equations -w -58@3"
 COQDOCFLAGS = "-parse-comments -utf8 -interpolate"
 src/equations_common.mli
 src/equations_common.ml
@@ -48,6 +48,7 @@ theories/DepElim.v
 theories/DepElimDec.v
 theories/NoConfusion.v
 theories/FunctionalInduction.v
+theories/Constants.v
 theories/EqDecInstances.v
 theories/Below.v
 theories/Subterm.v

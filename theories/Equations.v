@@ -13,7 +13,7 @@ Require Import Coq.Program.Program.
 (** This exports tactics *)
 Declare ML Module "equations_plugin".
 
-From Equations Require Export Classes Signature DepElim FunctionalInduction Below.
+From Equations Require Export Classes Signature DepElim FunctionalInduction Below Constants.
 From Equations Require Export EqDecInstances HSetInstances.
 From Equations Require Import Init NoConfusion Subterm.
 

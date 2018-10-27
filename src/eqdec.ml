@@ -82,12 +82,9 @@ let inductive_info sigma ((mind, _ as ind),u) =
       mutind_inds = inds }
     
 let eq_dec_class evd =
-  Option.get 
-    (Typeclasses.class_of_constr !evd
-	(init_constant ["Equations";"EqDec"] "EqDec" evd))
+  Option.get (Typeclasses.class_of_constr !evd (get_efresh logic_eqdec_class evd))
 
-let dec_eq evd =
-  init_constant ["Equations";"EqDec"] "dec_eq" evd
+let dec_eq evd = get_efresh logic_eqdec_dec_eq evd
 
 open Decl_kinds
 let vars_of_pars pars = 
@@ -119,7 +116,7 @@ let derive_eq_dec env sigma ~polymorphic ind =
       let b, ty = 
 	Typeclasses.instance_constructor
           cl
-          [indapp; mkapp (Global.env ()) evdref gr
+          [indapp; mkapp (Global.env ()) evdref (Lazy.from_val gr)
              (Array.append (vars_of_pars ctx) argsvect) ] in
       let body = 
 	it_mkNamedLambda_or_LetIn 

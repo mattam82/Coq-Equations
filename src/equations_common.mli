@@ -97,7 +97,6 @@ val e_type_of : env -> esigma -> constr -> types
 						     
 (** Term manipulation *)
 
-val mkNot : Environ.env -> Evd.evar_map ref -> constr -> constr
 val mkProd_or_subst :
   rel_declaration ->
   types -> types
@@ -132,11 +131,6 @@ val new_global : Evd.evar_map -> Names.GlobRef.t -> Evd.evar_map * constr
 val e_new_global : esigma -> Names.GlobRef.t -> constr
                                                                  
 (** {6 Linking to Coq} *)
-
-val contrib_name : string
-val init_constant : string list -> string -> esigma -> constr
-val init_reference : string list -> string -> Names.GlobRef.t
-val coq_constant : string list -> string -> Names.GlobRef.t
 
 val global_reference : Id.t -> Names.GlobRef.t
 (* Unsafe, avoid *)
@@ -180,78 +174,68 @@ val declare_instance :
 
 (** Standard datatypes *)
 
-type logic_ref = Names.GlobRef.t lazy_t
+type lazy_ref = Names.GlobRef.t Lazy.t
 
-type logic = {
-  logic_eq_ty : logic_ref;
-  logic_eq_refl: logic_ref;
-  logic_eq_case: logic_ref;
-  logic_eq_elim: logic_ref;
-  logic_sort : Sorts.family;
-  logic_bot : logic_ref;
-  logic_top : logic_ref;
-  logic_top_intro : logic_ref;
-  logic_conj : logic_ref;
-  logic_conj_intro : logic_ref;
-  logic_unit : logic_ref;
-  logic_unit_intro : logic_ref;
-  logic_product : logic_ref;
-  logic_pair : logic_ref;
-  logic_wellfounded_class : logic_ref;
-  logic_wellfounded : logic_ref;
-  logic_relation : logic_ref;
-  logic_transitive_closure : logic_ref;
-}
+val equations_lib_ref : string -> Names.GlobRef.t
+val find_global : string -> lazy_ref
 
-val set_logic : logic -> unit
-val prop_logic : logic
-val type_logic : logic
-
-val get_sort : unit -> Sorts.family
-val get_eq : unit -> Names.GlobRef.t
-val get_eq_refl : unit -> Names.GlobRef.t
-val get_eq_case : unit -> Names.GlobRef.t
-val get_eq_elim : unit -> Names.GlobRef.t
+val logic_sort : Sorts.family lazy_t
+val logic_eq_type : lazy_ref
+val logic_eq_refl : lazy_ref
+val logic_eq_case : lazy_ref
+val logic_eq_elim : lazy_ref
 
 (** In Prop, True is top, bot is False, conjunction is and *)
-val get_top : unit -> Names.GlobRef.t
-val get_top_intro : unit -> Names.GlobRef.t
-val get_bot : unit -> Names.GlobRef.t
-val get_conj : unit -> Names.GlobRef.t
-val get_conj_intro : unit -> Names.GlobRef.t
+val logic_top : lazy_ref
+val logic_top_intro : lazy_ref
+val logic_top_elim : lazy_ref
 
-val get_unit : unit -> Names.GlobRef.t
-val get_unit_intro : unit -> Names.GlobRef.t
+val logic_bot : lazy_ref
+val logic_bot_case : lazy_ref
+val logic_bot_elim : lazy_ref
 
-val get_product : unit -> Names.GlobRef.t
-val get_pair : unit -> Names.GlobRef.t
+val logic_conj : lazy_ref
+val logic_conj_intro : lazy_ref
 
-val get_relation : unit -> Names.GlobRef.t
-val get_well_founded : unit -> Names.GlobRef.t
-val get_well_founded_class : unit -> Names.GlobRef.t
-val get_transitive_closure : unit -> Names.GlobRef.t
+val logic_unit : lazy_ref
+val logic_unit_intro : lazy_ref
 
-val get_fresh : Evd.evar_map -> (unit -> Names.GlobRef.t) -> Evd.evar_map * constr
-val get_efresh : (unit -> Names.GlobRef.t) -> esigma -> constr
+val logic_product : lazy_ref
+val logic_pair : lazy_ref
 
-val coq_sigma : Names.GlobRef.t lazy_t
-val coq_sigmaI : Names.GlobRef.t lazy_t
+val logic_relation : lazy_ref
+val logic_wellfounded : lazy_ref
+val logic_wellfounded_class : lazy_ref
+val logic_transitive_closure : lazy_ref
+val logic_eqdec_class : lazy_ref
+val logic_eqdec_dec_eq : lazy_ref
+
+val logic_signature_class : lazy_ref
+val logic_signature_sig : lazy_ref
+val logic_signature_pack : lazy_ref
+
+val get_fresh : Evd.evar_map -> lazy_ref -> Evd.evar_map * constr
+val get_efresh : lazy_ref -> esigma -> constr
+val is_lglobal : lazy_ref -> Constr.constr -> bool
+
+val coq_sigma : lazy_ref
+val coq_sigmaI : lazy_ref
 val coq_pr1 : Names.Projection.t lazy_t
 val coq_pr2 : Names.Projection.t lazy_t
 			    
-val coq_zero : Names.GlobRef.t lazy_t
-val coq_succ : Names.GlobRef.t lazy_t
-val coq_nat : Names.GlobRef.t lazy_t
+val coq_zero : lazy_ref
+val coq_succ : lazy_ref
+val coq_nat : lazy_ref
 val coq_nat_of_int : int -> Constr.t
 val int_of_coq_nat : Constr.t -> int
 
-val coq_heq : Names.GlobRef.t lazy_t
-val coq_heq_refl : Names.GlobRef.t lazy_t
-val coq_fix_proto : Names.GlobRef.t lazy_t
+val coq_heq : lazy_ref
+val coq_heq_refl : lazy_ref
+val coq_fix_proto : lazy_ref
+
 val fresh_logic_sort : esigma -> constr
-val mkapp : Environ.env ->
-  esigma ->
-  Names.GlobRef.t -> constr array -> constr
+val mkapp : Environ.env -> esigma -> lazy_ref -> constr array -> constr
+
 val mkEq : Environ.env ->
   esigma -> types -> constr -> constr -> constr
 val mkRefl : Environ.env -> esigma -> types -> constr -> constr
@@ -262,9 +246,6 @@ val mkHRefl : Environ.env -> esigma -> types -> constr -> constr
 
 (** Bindings to theories/ files *)
 
-val equations_path : string list
-val below_path : string list
-val list_path : string list
 val subterm_relation_base : string
 
 val functional_induction_class :
@@ -274,10 +255,6 @@ val functional_elimination_class :
 val dependent_elimination_class :
   esigma -> Typeclasses.typeclass peuniverses
 
-val coq_id : esigma -> constr
-val coq_list_ind : esigma -> constr
-val coq_list_nil : esigma -> constr
-val coq_list_cons : esigma -> constr
 val coq_noconfusion_class : Names.GlobRef.t lazy_t
 val coq_inacc : Names.GlobRef.t Lazy.t
 val coq_block : Names.GlobRef.t Lazy.t
@@ -285,10 +262,8 @@ val coq_hide : Names.GlobRef.t Lazy.t
 val coq_hidebody : Names.GlobRef.t Lazy.t
 val coq_add_pattern : Names.GlobRef.t Lazy.t
 val coq_end_of_section_id : Names.Id.t
-val coq_end_of_section_constr : esigma -> constr
-val coq_end_of_section : esigma -> constr
-val coq_end_of_section_ref : Names.GlobRef.t Lazy.t
-val coq_notT : esigma -> constr
+val coq_the_end_of_the_section : Names.GlobRef.t Lazy.t
+val coq_end_of_section : Names.GlobRef.t Lazy.t
 val coq_ImpossibleCall : esigma -> constr
 val unfold_add_pattern : unit Proofview.tactic lazy_t
 
@@ -439,3 +414,6 @@ val find_rectype : Environ.env -> Evd.evar_map -> types -> Inductiveops.inductiv
 type identifier = Names.Id.t
 
 val ucontext_of_aucontext : Univ.AUContext.t -> Univ.Instance.t * Univ.ContextSet.t
+
+val evd_comb1 : (Evd.evar_map -> 'a -> Evd.evar_map * 'b) -> Evd.evar_map ref -> 'a -> 'b
+val evd_comb0 : (Evd.evar_map -> Evd.evar_map * 'b) -> Evd.evar_map ref -> 'b

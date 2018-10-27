@@ -31,7 +31,7 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
   let (mind, oneind as ms) = Global.lookup_inductive ind in
   let ctx = subst_instance_context (EInstance.kind sigma u) oneind.mind_arity_ctxt in
   let sort =
-    match get_sort () with
+    match Lazy.force logic_sort with
     | Sorts.InProp -> mkProp
     | Sorts.InSet -> mkSet
     | Sorts.InType ->
@@ -171,7 +171,7 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
     let id = add_prefix "well_founded_" relid in
     let evm = ref sigma in
     let env = Global.env () in
-    let kl = get_efresh get_well_founded_class evm in
+    let kl = get_efresh logic_wellfounded_class evm in
     let kl = get_class sigma kl in
     let parambinders, body, ty =
       let pars, ty, rel =
@@ -203,11 +203,11 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
       in
       let relation =
         let def = it_mkLambda_or_LetIn
-                    (mkApp (get_efresh get_transitive_closure evm, [| ty; rel |]))
+                    (mkApp (get_efresh logic_transitive_closure evm, [| ty; rel |]))
                     pars
         in
         let ty = it_mkProd_or_LetIn
-            (mkApp (get_efresh get_relation evm, [| ty |]))
+            (mkApp (get_efresh logic_relation evm, [| ty |]))
             parambinders
         in
         let kn, (evm', cst) =
@@ -222,8 +222,8 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
       in
       let env' = push_rel_context pars env in
       let evar =
-        let evt = (mkApp (get_efresh get_well_founded evm, [| ty; relation |])) in
-        Evarutil.evd_comb1 (Evarutil.new_evar env') evm evt
+        let evt = (mkApp (get_efresh logic_wellfounded evm, [| ty; relation |])) in
+        evd_comb1 (Evarutil.new_evar env') evm evt
       in
       let b, t = instance_constructor !evm kl [ ty; relation; evar ] in
       (pars, b, t)
@@ -267,7 +267,7 @@ let derive_below env sigma ~polymorphic (ind,univ as indu) =
   let indty = mkApp (mkIndU indu, allargsvect) in
   let ctx = of_tuple (Name (Id.of_string "c"), None, indty) :: ctx in
   let argbinders, parambinders = List.chop (succ realdecls) ctx in
-  let u = Evarutil.evd_comb0 (Evarutil.new_Type ~rigid:Evd.univ_rigid) evd in
+  let u = evd_comb0 (Evarutil.new_Type ~rigid:Evd.univ_rigid) evd in
   let arity = it_mkProd_or_LetIn u argbinders in
   let aritylam = lift (succ realdecls) (it_mkLambda_or_LetIn u argbinders) in
   let paramsvect = rel_vect (succ realdecls) params in
@@ -304,13 +304,13 @@ let derive_below env sigma ~polymorphic (ind,univ as indu) =
 	  List.fold_left (fun acc x ->
 	    match acc with
 	    | Some (c, ty) -> Option.cata (fun x -> Some x) acc (f (fun (c', ty') ->
-                mkApp (get_efresh get_pair evd, [| ty' ; ty ; c' ; c |]),
-                mkApp (get_efresh get_product evd, [| ty' ; ty |])) x)
+                mkApp (get_efresh logic_pair evd, [| ty' ; ty ; c' ; c |]),
+                mkApp (get_efresh logic_product evd, [| ty' ; ty |])) x)
 	    | None -> f (fun x -> x) x)
 	    None args
 	in Option.cata (fun x -> x)
-                       (get_efresh get_unit_intro evd,
-                        get_efresh get_unit evd) res
+                       (get_efresh logic_unit_intro evd,
+                        get_efresh logic_unit evd) res
       in
       (* This wrapper checks if the argument is a recursive one,
        * and do the appropriate transformations if it is a product. *)
@@ -326,7 +326,7 @@ let derive_below env sigma ~polymorphic (ind,univ as indu) =
             let ty = it_mkProd_or_LetIn ty prem in
               Some (g (res, ty))
           else None in
-      let prod = get_efresh get_product evd in
+      let prod = get_efresh logic_product evd in
       let _, bodyB = fold_unit (wrapper (fun args _ ->
         let ty = mkApp (prod,
           [| mkApp (mkVar pid, args) ;
@@ -336,7 +336,7 @@ let derive_below env sigma ~polymorphic (ind,univ as indu) =
         let reccall = mkApp (mkVar recid, args) in
         let belowargs = Array.append (rel_vect (nargs + nprem) params)
           (Array.append [| mkVar pid |] args) in
-        let res = mkApp (get_efresh get_pair evd,
+        let res = mkApp (get_efresh logic_pair evd,
                          [| mkApp (mkVar pid, args) ;
                             mkApp (mkVar belowid, belowargs) ;
                             mkApp (mkApp (mkVar stepid, args), [| reccall |]);

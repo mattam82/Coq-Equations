@@ -45,40 +45,44 @@ module type EQREFS = sig
 end
 
 module RefsHelper = struct
-  let init_reference = Coqlib.find_reference "Equations.Simplify"
-  let init_inductive dir s = lazy (Globnames.destIndRef (init_reference dir s))
-  let init_constructor dir s = lazy (Globnames.destConstructRef (init_reference dir s))
-  let init_constant dir s = lazy (Globnames.destConstRef (init_reference dir s))
+  let init_gr s = Lazy.force s
+  let init_inductive s = lazy (Globnames.destIndRef (init_gr s))
+  let init_constructor s = lazy (Globnames.destConstructRef (init_gr s))
+  let init_constant s = lazy (Globnames.destConstRef (init_gr s))
 end
 
 (* This should be parametrizable by the user. *)
 module EqRefs : EQREFS = struct
   include RefsHelper
 
-  let init_depelim s = init_constant ["Equations"; "DepElim"] s
+  open Equations_common
 
-  let eq = lazy (Globnames.destIndRef (Coqlib.build_coq_eq ()))
-  let eq_refl = lazy (Globnames.destConstructRef (Coqlib.build_coq_eq_refl ()))
-  let eq_rect = init_constant ["Coq"; "Init"; "Logic"] "eq_rect"
-  let eq_rect_r = init_constant ["Coq"; "Init"; "Logic"] "eq_rect_r"
-  let eq_dec = init_constant ["Equations"; "EqDec"] "EqDec"
-  let zero = init_inductive ["Coq"; "Init"; "Logic"] "False"
-  let one = init_inductive ["Coq"; "Init"; "Logic"] "True"
-  let one_val = init_constructor ["Coq"; "Init"; "Logic"] "I"
-  let one_ind_dep = init_depelim "True_rect_dep"
-  let zero_ind = init_constant ["Coq"; "Init"; "Logic"] "False_rect"
-  let zero_ind_dep = init_depelim "False_rect_dep"
-  let noConfusion = init_inductive ["Equations"; "DepElim"] "NoConfusionPackage"
+  let eq = init_inductive logic_eq_type
+  let eq_refl = init_constructor logic_eq_refl
+  let eq_rect = init_constant logic_eq_case
+  let eq_rect_r = init_constant logic_eq_elim
+  let eq_dec = init_constant logic_eqdec_class
+  let zero = init_inductive logic_bot
+  let one = init_inductive logic_top
+  let one_val = init_constructor logic_top_intro
+  let one_ind_dep = init_constant logic_top_elim
+  let zero_ind = init_constant logic_bot_case
+  let zero_ind_dep = init_constant logic_bot_elim
+
+  let noConfusion = init_inductive coq_noconfusion_class
+
+  let init_depelim s = init_constant (find_global ("depelim." ^ s))
+
   let apply_noConfusion = init_depelim "apply_noConfusion"
   let simplify_ind_pack = init_depelim "simplify_ind_pack"
   let simplify_ind_pack_inv = init_depelim "simplify_ind_pack_inv"
   let opaque_ind_pack_eq_inv = init_depelim "opaque_ind_pack_eq_inv"
-  let simpl_sigma = init_depelim "eq_simplification_sigma1"
-  let simpl_sigma_dep = init_depelim "eq_simplification_sigma1_dep"
-  let simpl_sigma_dep_dep = init_depelim "eq_simplification_sigma1_dep_dep"
+  let simpl_sigma = init_depelim "simpl_sigma"
+  let simpl_sigma_dep = init_depelim "simpl_sigma_dep"
+  let simpl_sigma_dep_dep = init_depelim "simpl_sigma_dep_dep"
   let pack_sigma_eq = init_depelim "pack_sigma_eq"
-  let simpl_K = init_depelim "simplification_K"
-  let simpl_K_dec = init_depelim "simplification_K_dec"
+  let simpl_K = init_depelim "simpl_K"
+  let simpl_K_dec = init_depelim "simpl_K_dec"
   let solution_left = init_depelim "solution_left"
   let solution_left_dep = init_depelim "solution_left_dep"
   let solution_right = init_depelim "solution_right"
@@ -89,8 +93,8 @@ end
 module SigmaRefs : SIGMAREFS = struct
   include RefsHelper
 
-  let sigma = init_inductive ["Equations"; "Init"] "sigma"
-  let sigmaI = init_constructor ["Equations"; "Init"] "sigmaI"
+  let sigma = init_inductive Equations_common.coq_sigma
+  let sigmaI = init_constructor Equations_common.coq_sigmaI
 end
 
 (* From the references, we can build terms. *)
@@ -201,11 +205,11 @@ let build_term (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal)
   ((ctx', ty') : goal) (f : EConstr.constr -> EConstr.constr) : open_term =
   let tev =
     let env = push_rel_context ctx' env in
-    Evarutil.evd_comb1 (Evarutil.new_evar env) evd ty'
+    Equations_common.evd_comb1 (Evarutil.new_evar env) evd ty'
   in
   let c = f tev in
   let env = push_rel_context ctx env in
-  let _ = Evarutil.evd_comb1 (Typing.type_of env) evd c in
+  let _ = Equations_common.evd_comb1 (Typing.type_of env) evd c in
   let ev = EConstr.destEvar !evd tev in
     Some ((ctx', ty'), ev), c
 
@@ -217,17 +221,17 @@ let build_app_infer (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : go
     match f with
     | Globnames.VarRef var -> assert false
     | Globnames.ConstRef cst ->
-        let pcst = Evarutil.evd_comb1 (Evd.fresh_constant_instance env) evd cst in
+        let pcst = Equations_common.evd_comb1 (Evd.fresh_constant_instance env) evd cst in
         let tf = Constr.mkConstU pcst in
         let ty = Typeops.type_of_constant_in env pcst in
           tf, ty
     | Globnames.IndRef ind ->
-        let pind = Evarutil.evd_comb1 (Evd.fresh_inductive_instance env) evd ind in
+        let pind = Equations_common.evd_comb1 (Evd.fresh_inductive_instance env) evd ind in
         let tf = Constr.mkIndU pind in
         let ty = Inductiveops.type_of_inductive env pind in
           tf, ty
     | Globnames.ConstructRef cstr ->
-        let pcstr = Evarutil.evd_comb1 (Evd.fresh_constructor_instance env) evd cstr in
+        let pcstr = Equations_common.evd_comb1 (Evd.fresh_constructor_instance env) evd cstr in
         let tf = Constr.mkConstructU pcstr in
         let ty = Inductiveops.type_of_constructor env pcstr in
           tf, ty
@@ -473,7 +477,7 @@ let deletion ~(force:bool) : simplification_fun =
       let eqdec_ty = EConstr.mkApp (Builder.eq_dec evd, [| tA |]) in
       let tdec =
         let env = push_rel_context ctx env in
-          Evarutil.evd_comb1
+          Equations_common.evd_comb1
             (Typeclasses.resolve_one_typeclass env) evd eqdec_ty
       in
       let args = [Some tA; Some tdec; Some tx; Some tB; None] in
@@ -610,7 +614,7 @@ let maybe_pack : simplification_fun =
     let tdec =
       let env = push_rel_context ctx env in
       try
-        Evarutil.evd_comb1
+        Equations_common.evd_comb1
           (Typeclasses.resolve_one_typeclass env) evd eqdec_ty
       with Not_found ->
         raise (CannotSimplify (str
@@ -641,7 +645,7 @@ let apply_noconf : simplification_fun =
   let tnoconf =
     let env = push_rel_context ctx env in
     try
-      Evarutil.evd_comb1
+      Equations_common.evd_comb1
         (Typeclasses.resolve_one_typeclass env) evd noconf_ty
     with Not_found ->
       raise (CannotSimplify (str
@@ -743,7 +747,7 @@ let elim_false : simplification_fun =
   (* We need to type the term in order to solve eventual universes
    * constraints. *)
   let _ = let env = push_rel_context ctx env in
-          Evarutil.evd_comb1 (Typing.type_of env) evd c in
+          Equations_common.evd_comb1 (Typing.type_of env) evd c in
     (None, c), subst
 
 

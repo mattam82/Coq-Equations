@@ -847,22 +847,20 @@ let env_of_rhs evars ctx env s lets =
 let interp_constr_in_rhs_env env evars impls (ctx, envctx, liftn, subst) c ty =
   match ty with
   | None ->
-    let c, _ = Evarutil.evd_comb0 (fun evars -> interp_constr_evars_impls (push_rel_context ctx env) evars ~impls c) evars
-    in
+    let sigma, (c, _) = interp_constr_evars_impls (push_rel_context ctx env) !evars ~impls c in
     let c' = substnl subst 0 c in
-    evars := Typeclasses.resolve_typeclasses
-        ~filter:Typeclasses.all_evars env !evars;
-    let c' = nf_evar !evars c' in
-    c', Retyping.get_type_of envctx !evars c'
+    let sigma = Typeclasses.resolve_typeclasses ~filter:Typeclasses.all_evars env sigma in
+    let c' = nf_evar sigma c' in
+    evars := sigma; c', Retyping.get_type_of envctx sigma c'
 
   | Some ty -> 
     let ty' = lift liftn ty in
     let ty' = nf_evar !evars ty' in
-    let c, _ = Evarutil.evd_comb0 (fun evars -> interp_casted_constr_evars_impls 
-                                      (push_rel_context ctx env) evars ~impls c ty') evars
+    let sigma, (c, _) = interp_casted_constr_evars_impls
+        (push_rel_context ctx env) !evars ~impls c ty'
     in
     evars := Typeclasses.resolve_typeclasses 
-        ~filter:Typeclasses.all_evars env !evars;
+        ~filter:Typeclasses.all_evars env sigma;
     let c' = nf_evar !evars (substnl subst 0 c) in
     c', nf_evar !evars (substnl subst 0 ty')
 
@@ -1186,14 +1184,14 @@ let push_rel_context_eos ctx env evars =
   if named_context env <> [] then
     let env' =
       push_named (make_named_def coq_end_of_section_id
-                    (Some (coq_end_of_section_constr evars))
-                    (coq_end_of_section evars)) env
+                    (Some (get_efresh coq_the_end_of_the_section evars))
+                    (get_efresh coq_end_of_section evars)) env
     in push_rel_context ctx env'
   else push_rel_context ctx env
 
 let split_at_eos sigma ctx =
   List.split_when (fun decl ->
-      Globnames.is_global (Lazy.force coq_end_of_section_ref) (to_constr sigma (get_named_type decl))) ctx
+      is_lglobal coq_end_of_section (to_constr sigma (get_named_type decl))) ctx
 
 let pr_problem (id, _, _) env sigma (delta, patcs, _) =
   let env' = push_rel_context delta env in
@@ -1571,8 +1569,9 @@ and interp_wheres env ctx evars path data s lets w =
   let envna = push_named_context nactx env in
   let aux (lets,nlets,coverings,env (* named *),envctx)
       (((loc,id),nested,b,t),clauses) =
-    let ienv, ((env', sign), impls) = Evarutil.evd_comb1 (interp_context_evars env) evars b in
-    let arity = Evarutil.evd_comb1 (interp_type_evars env' ?impls:None) evars t in
+    let sigma, (ienv, ((env', sign), impls)) = interp_context_evars env !evars b in
+    let sigma, arity = interp_type_evars env' ?impls:None sigma t in
+    let () = evars := sigma in
     let sign = subst_rel_context nlets subst sign in
     let arity = substnl subst (List.length sign + nlets) arity in
     let sign = nf_rel_context_evar !evars sign in

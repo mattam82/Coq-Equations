@@ -363,7 +363,7 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
 	  0 args
       in
       let lenargs = List.length argsinfo in
-      let transport = e_new_global evd (get_eq_case ()) in
+      let transport = get_efresh logic_eq_case evd in
       let transport ty x y eq c cty =
 	mkApp (transport,
 	       [| ty; x;
@@ -415,10 +415,8 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
                (lift 1 (Termops.replace_term !evd (mkRel idx) (mkRel 1) pred))
 	       subst
 	   in
-           let transportd =
-             e_new_global evd (get_eq_elim ())
-           in
-	   let app = 
+           let transportd = get_efresh logic_eq_elim evd in
+           let app =
 	     mkApp (transportd,
 		    [| lift lenargs ty; lift lenargs rel;
                        mkLambda (Name (Id.of_string "refine"), lift lenargs ty,
@@ -841,16 +839,16 @@ let declare_funelim info env evd is_rec protos progs
   let id = Id.of_string info.base_id in
   let leninds = List.length inds in
   let elim =
-    if leninds > 1 || get_sort () != Sorts.InProp then comb
+    if leninds > 1 || Lazy.force logic_sort != Sorts.InProp then comb
     else
       let elimid = Nameops.add_suffix id "_ind_ind" in
       Smartlocate.global_with_alias (Libnames.qualid_of_ident elimid)
   in
   let elimc, elimty =
-    let elimty, uctx = Global.type_of_global_in_context (Global.env ()) elim in
+    let elimty, uctx = Typeops.type_of_global_in_context (Global.env ()) elim in
     let () = evd := Evd.from_env (Global.env ()) in
     if is_polymorphic info then
-      let _fty, fctx = Global.type_of_global_in_context (Global.env ()) info.term_id in
+      let _fty, fctx = Typeops.type_of_global_in_context (Global.env ()) info.term_id in
       let finst, fctx = ucontext_of_aucontext fctx in
       let eliminst, elimctx = ucontext_of_aucontext uctx in
       (** They share universes in general *)
@@ -895,7 +893,7 @@ let declare_funelim info env evd is_rec protos progs
                                     (to_constr !evd newty) (Evd.evar_universe_context !evd) [||])
 
 let mkConj evd x y =
-  let prod = get_efresh Equations_common.get_conj evd in
+  let prod = get_efresh logic_conj evd in
     mkApp (prod, [| x; y |])
 
 let declare_funind info alias env evd is_rec protos progs
@@ -1060,7 +1058,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
       in
       let body = it_mkProd_or_LetIn b ctx in
       (* msg_debug (str"Typing equation " ++ pr_constr_env env !evd c); *)
-      let _ = Evarutil.evd_comb1 (Typing.type_of env) evd body in
+      let _ = Equations_common.evd_comb1 (Typing.type_of env) evd body in
       body
     in
     let cstr = 
@@ -1110,7 +1108,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
 	  Nameops.add_suffix indid suff) n) stmts
     in
     let ind_sort =
-      if get_sort () == Sorts.InProp then
+      if Lazy.force logic_sort == Sorts.InProp then
         (** Define graph impredicatively *)
         mkProp
       else (** Compute sort as max of products *)
@@ -1140,7 +1138,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
     let kn = ComInductive.declare_mutual_inductive_with_eliminations inductive UnivNames.empty_binders [] in
     let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] true in
     let kn, comb =
-      let sort = get_sort () in
+      let sort = Lazy.force logic_sort in
       let suff = match sort with
         | Sorts.InProp -> "_ind"
         | Sorts.InSet ->  "_rec"

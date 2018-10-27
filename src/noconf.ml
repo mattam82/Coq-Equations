@@ -80,14 +80,14 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
       let indty = mkApp (sigma, [|idx; of_constr pred'|]) in
       nf_betaiotazeta env !evd indty, mkProj (Lazy.force coq_pr2, mkRel 1), pars, (List.firstn lenargs ctx)
   in
-  let tru = e_new_global evd (get_top ()) in
-  let fls = e_new_global evd (get_bot ()) in
+  let tru = get_efresh logic_top evd in
+  let fls = get_efresh logic_bot evd in
   let xid = Id.of_string "x" and yid = Id.of_string "y" in
   let xdecl = of_tuple (Name xid, None, argty) in
   let binders = xdecl :: ctx in
   let ydecl = of_tuple (Name yid, None, lift 1 argty) in
   let fullbinders = ydecl :: binders in
-  let s = Evarutil.evd_comb1 Evd.fresh_sort_in_family evd (get_sort ()) in
+  let s = Equations_common.evd_comb1 Evd.fresh_sort_in_family evd (Lazy.force logic_sort) in
   let s = mkSort s in
   let arity = it_mkProd_or_LetIn s fullbinders in
   let env = push_rel_context binders env in
@@ -148,7 +148,7 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let rec term c ty =
     match kind !evd ty with
     | Prod (na, t, ty) ->
-       let arg = Evarutil.evd_comb1 (Evarutil.new_evar env) evd t in
+       let arg = Equations_common.evd_comb1 (Evarutil.new_evar env) evd t in
        term (mkApp (c, [|arg|])) (subst1 arg ty)
     | _ -> c, ty
   in
@@ -156,7 +156,7 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let term, ty = term (Option.get b) cty in
   let term = it_mkLambda_or_LetIn term ctx in
   let ty = it_mkProd_or_LetIn ty ctx in
-  let _ = Evarutil.evd_comb1 (Typing.type_of env) evd term in
+  let _ = Equations_common.evd_comb1 (Typing.type_of env) evd term in
   let hook _ectx vis gr =
     Typeclasses.add_instance
       (Typeclasses.new_instance tc empty_hint_info true gr)

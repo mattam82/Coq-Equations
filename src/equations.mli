@@ -11,10 +11,6 @@ open Names
 open Equations_common
 open Splitting
 
-val make_ref : string list -> string -> Names.GlobRef.t
-val fix_proto_ref : unit -> Constant.t
-val constr_of_global : Names.GlobRef.t -> Constr.t
-
 val define_by_eqs :
   Syntax.equation_option list ->
   Syntax.pre_equations ->

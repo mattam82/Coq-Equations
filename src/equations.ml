@@ -40,15 +40,6 @@ let inline_helpers i =
   let l = List.map (fun (_, _, id) -> Libnames.qualid_of_ident id) i.helpers_info in
   Table.extraction_inline true l
 
-let make_ref dir s = Coqlib.find_reference "Program" dir s
-
-let fix_proto_ref () = 
-  match make_ref ["Program";"Tactics"] "fix_proto" with
-  | ConstRef c -> c
-  | _ -> assert false
-
-let constr_of_global = UnivGen.constr_of_global
-
 let is_recursive i eqs =
   let rec occur_eqn (_, _, rhs) =
     match rhs with
@@ -235,11 +226,11 @@ let define_principles flags fixprots progs =
     let fn fixprot (p, prog) =
       let f =
         let gr = ConstRef prog.program_cst in
-        let (f, uc) = Global.constr_of_global_in_context env gr in
+        let (f, uc) = Typeops.constr_of_global_in_context env gr in
         if flags.polymorphic then
           let inst, ctx = ucontext_of_aucontext uc in
           let () = evd := Evd.merge_context_set Evd.univ_rigid !evd ctx in
-          UnivGen.constr_of_global_univ (global_of_constr f, inst)
+          Constr.mkRef (global_of_constr f, inst)
         else f
       in
       (p, prog, f), of_tuple (Name p.program_id, Some (of_constr f), fixprot)
@@ -405,8 +396,8 @@ let define_by_eqs opts eqs nt =
   let flags = { polymorphic = poly; with_eqns; with_ind } in
   let evd = ref (Evd.from_env env) in
   let interp_arities (((loc,i),rec_annot,l,t),_ as ieqs) =
-    let ienv, ((env', sign), impls) = Evarutil.evd_comb1 (interp_context_evars env) evd l in
-    let arity = Evarutil.evd_comb1 (interp_type_evars env' ?impls:None) evd t in
+    let ienv, ((env', sign), impls) = Equations_common.evd_comb1 (interp_context_evars env) evd l in
+    let arity = Equations_common.evd_comb1 (interp_type_evars env' ?impls:None) evd t in
     let sign = nf_rel_context_evar ( !evd) sign in
     let oarity = nf_evar ( !evd) arity in
     let is_rec = is_recursive i eqs in
@@ -534,9 +525,9 @@ let define_by_eqs opts eqs nt =
   in
   let fixprots =
     List.map (fun (oty, ty) ->
-    mkLetIn (Anonymous,
-             e_new_global evd (Lazy.force coq_fix_proto),
-             e_new_global evd (get_unit ()), ty)) otys in
+        let fixproto = get_efresh coq_fix_proto evd in
+        mkLetIn (Anonymous, fixproto,
+                 Retyping.get_type_of env !evd fixproto, ty)) otys in
   let fixdecls =
     List.map2 (fun i fixprot -> of_tuple (Name i, None, fixprot)) names fixprots in
   let fixdecls = List.rev fixdecls in
