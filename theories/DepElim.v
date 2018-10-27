@@ -560,6 +560,20 @@ Proof.
   intros X. eapply (X eq_refl). apply eq_refl.
 Defined.
 
+Polymorphic Lemma Id_simplification_sigma1_nondep {A} {P : Type} {B}
+  (p q : A) (x : P) (y : P) :
+  (Id p q -> Id x y -> B) ->
+  Id (sigmaI (fun _ => P) p x) (sigmaI (fun _ => P) q y) -> B.
+Proof.
+  intros. revert X.
+  change p with (pr1 &(p & x)).
+  change q with (pr1 &(q & y)).
+  change x with (pr2 &(p & x)) at 2.
+  change y with (pr2 &(q & y)) at 2.
+  destruct X0.
+  intros X. eapply (X id_refl). apply id_refl.
+Defined.
+
 Polymorphic Lemma eq_simplification_sigma1_dep {A} {P : A -> Type} {B}
   (p q : A) (x : P p) (y : P q) :
   (forall e : p = q, (@eq_rect A p P x q e) = y -> B) ->
@@ -572,6 +586,20 @@ Proof.
   change y with (pr2 &(q & y)) at 4.
   destruct H.
   intros X. eapply (X eq_refl). apply eq_refl.
+Defined.
+
+Polymorphic Lemma Id_simplification_sigma1_dep {A} {P : A -> Type} {B}
+  (p q : A) (x : P p) (y : P q) :
+  (forall e : Id p q, Id (@Id_rect A p P x q e) y -> B) ->
+  (Id (sigmaI P p x) (sigmaI P q y) -> B).
+Proof.
+  intros. revert X.
+  change p with (pr1 &(p& x)).
+  change q with (pr1 &(q & y)).
+  change x with (pr2 &(p& x)) at 3.
+  change y with (pr2 &(q & y)) at 4.
+  destruct X0.
+  intros X. eapply (X id_refl). apply id_refl.
 Defined.
 
 Polymorphic Definition pack_sigma_eq {A} {P : A -> Type} {p q : A} {x : P p} {y : P q}
@@ -591,6 +619,25 @@ Proof.
   destruct e.
   intros X. simpl in *.
   apply (X eq_refl eq_refl). 
+Defined.
+
+Polymorphic Definition pack_sigma_Id {A} {P : A -> Type} {p q : A} {x : P p} {y : P q}
+  (e' : Id p q) (e : Id (@Id_rect A p P x q e') y) : Id &(p& x) &(q & y).
+Proof. destruct e'. simpl in e. destruct e. apply id_refl. Defined.
+
+Polymorphic Lemma Id_simplification_sigma1_dep_dep {A} {P : A -> Type}
+  (p q : A) (x : P p) (y : P q) {B : Id &(p& x) &(q & y) -> Type} :
+  (forall e' : Id p q, forall e : Id (@Id_rect A p P x q e') y, B (pack_sigma_Id e' e)) ->
+  (forall e : Id (sigmaI P p x) (sigmaI P q y), B e).
+Proof.
+  intros. revert X.
+  change p with (pr1 &(p & x)).
+  change q with (pr1 &(q & y)).
+  change x with (pr2 &(p & x)) at 3 5.
+  change y with (pr2 &(q & y)) at 4 6.
+  destruct e.
+  intros X. simpl in *.
+  apply (X id_refl id_refl).
 Defined.
 
 Polymorphic Lemma Id_simplification_sigma1' {A} {P : A -> Type} {B} (p q : A) (x : P p) (y : P q) :
@@ -635,6 +682,22 @@ Proof.
   destruct (eq_proofs_unicity eq_refl pf).
   reflexivity.
 Defined.
+
+
+(* Polymorphic Lemma Id_simplification_K_ax : *)
+(*   forall {A} (x : A) {B : Id x x -> Type}, B id_refl -> (forall p : Id x x, B p). *)
+(* Proof. intros. rewrite (UIP_refl A). assumption. Defined. *)
+(* Arguments simplification_K : simpl never. *)
+
+(* Lemma Id_simplification_K_refl : forall {A} (x : A) {B : x = x -> Type} *)
+(*                                     (p : B eq_refl), *)
+(*   simplification_K x p eq_refl = p. *)
+(* Proof. *)
+(*   intros. *)
+(*   unfold simplification_K. *)
+(*   rewrite UIP_refl_refl. unfold eq_rect_r. simpl. *)
+(*   reflexivity. *)
+(* Defined. *)
 
 Polymorphic
 Lemma Id_simplification_K : forall {A} `{HSets.HSet A} (x : A) {B : Id x x -> Type},
@@ -730,6 +793,64 @@ Proof.
   destruct (ind_pack_eq_inv_refl p). reflexivity.
 Qed.
 
+(** For the Id equality type *)
+
+Polymorphic
+Definition ind_pack_Id {A : Type} {B : A -> Type} {x : A} {p q : B x} (e : Id p q) :
+  @Id (sigma A (fun x => B x)) &(x & p) &(x & q).
+Proof. destruct e. reflexivity. Defined.
+
+Polymorphic
+Definition ind_pack_Id_inv {A : Type} {eqdec : HSets.HSet A}
+           {B : A -> Type} (x : A) (p q : B x) (e : @Id (sigma A (fun x => B x)) &(x & p) &(x & q)) : Id p q.
+Proof. revert e. apply Id_simplification_sigma2. apply id. Defined.
+
+Polymorphic
+Definition ind_pack_Id_inv_refl  {A : Type} {eqdec : HSets.HSet A}
+           {B : A -> Type} {x : A} (p : B x) :
+  Id (ind_pack_Id_inv _ _ _ (@id_refl _ &(x & p))) id_refl.
+Proof.
+  unfold ind_pack_Id_inv. simpl. unfold Id_simplification_sigma2.
+  unfold id. apply HSets.inj_sigma_r_refl.
+Defined.
+
+Polymorphic
+Definition ind_pack_Id_inv_equiv {A : Type} {eqdec : HSets.HSet A}
+           {B : A -> Type} {x : A} (p q : B x) (e : Id p q) :
+  Id (ind_pack_Id_inv _ _ _ (ind_pack_Id e)) e.
+Proof.
+  destruct e. apply ind_pack_Id_inv_refl.
+Defined.
+
+Polymorphic
+Definition opaque_ind_pack_Id_inv {A : Type} {eqdec : HSets.HSet A}
+  {B : A -> Type} {x : A} {p q : B x} (G : Id p q -> Type) (e : Id &(x & p) &(x & q)) :=
+  let e' := @ind_pack_Id_inv A eqdec B x p q e in G e'.
+Arguments opaque_ind_pack_Id_inv : simpl never.
+
+Polymorphic
+Lemma Id_simplify_ind_pack {A : Type} {eqdec : HSets.HSet A}
+      (B : A -> Type) (x : A) (p q : B x) (G : Id p q -> Type) :
+      (forall e : Id &(x & p) &(x & q), opaque_ind_pack_Id_inv G e) ->
+  (forall e : Id p q, G e).
+Proof.
+  intros H. intros e.
+  specialize (H (ind_pack_Id e)). unfold opaque_ind_pack_Id_inv in H.
+  rewrite ind_pack_Id_inv_equiv in H. apply H.
+Defined.
+Arguments Id_simplify_ind_pack : simpl never.
+
+Polymorphic
+Lemma Id_simplify_ind_pack_inv {A : Type} {eqdec : HSets.HSet A}
+      (B : A -> Type) (x : A) (p : B x) (G : Id p p -> Type) :
+  G id_refl -> opaque_ind_pack_Id_inv G id_refl.
+Proof.
+  intros H. unfold opaque_ind_pack_Id_inv.
+  rewrite ind_pack_Id_inv_refl. apply H.
+Defined.
+Arguments Id_simplify_ind_pack_inv : simpl never.
+
+
 (** All the simplification rules involving axioms are treated as opaque 
   when proving lemmas about definitions. To actually compute with these
   inside Coq, one has to make them transparent again. *)
@@ -767,6 +888,9 @@ Ltac rewrite_sigma2_refl :=
   | |- context [@simplification_K_dec ?A ?dec ?x ?B ?p eq_refl] =>
     rewrite (@simplification_K_dec_refl A dec x B p); simpl eq_rect
 
+  | |- context [@Id_simplification_K ?A ?dec ?x ?B ?p id_refl] =>
+    rewrite (@Id_simplification_K_refl A dec x B p); simpl Id_rect
+
   | |- context [@HSets.inj_sigma_r ?A ?H ?P ?x ?y ?y' _] =>
     rewrite (@HSets.inj_sigma_r_refl A H P x y)
 
@@ -799,7 +923,8 @@ Hint Unfold solution_left solution_right
   Id_solution_right_let Id_solution_left_let
   Id_simplification_sigma1
   apply_noConfusion apply_noConfusionId
-  eq_rect_r eq_rec eq_ind eq_ind_r : equations.
+  eq_rect_r eq_rec eq_ind eq_ind_r
+  Id_rect_r : equations.
 
 (** Makes these definitions disappear at extraction time *)
 Extraction Inline solution_right_dep solution_right solution_left solution_left_dep.

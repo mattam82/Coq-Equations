@@ -5,6 +5,10 @@ Require Export Unicode.Utf8.
 Require Import Coq.Program.Tactics Setoid.
 Require Import Relations.
 Require Import Equations.Equations.
+
+(** Switches to constants in Type *)
+Require Import ConstantsType.
+
 Import Init.
 Set Warnings "-notation-overridden".
 Import Id_Notations.
@@ -12,7 +16,6 @@ Import Sigma_Notations.
 Set Warnings "-deprecated-option".
 Set Universe Polymorphism.
 Set Primitive Projections.
-Unset Equations OCaml Splitting.
 
 (** We want our definitions to stay transparent. *)
 Set Equations Transparent.
@@ -23,9 +26,6 @@ Proof. intros Px y e. apply id_sym in e. destruct e. exact Px. Defined.
 Polymorphic Definition transport_dep_r (A : Type) (x : A) (P : forall y : A, y = x → Type) :
   P x id_refl → ∀ (y : A) (e : y = x), P y e.
 Proof. intros Px y e. destruct e. apply Px. Defined.
-
-Equations Logic Type Id Id_rect Id_rect_r Id_rect_dep_r Empty unit tt prod pair
-          relation clos_trans WellFounded well_founded.
 
 Set Implicit Arguments.
 

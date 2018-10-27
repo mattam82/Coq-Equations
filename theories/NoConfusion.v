@@ -67,7 +67,7 @@ Ltac solve_noconf := simpl; intros;
     | [ |- @eq _ _ _ ] => solve_noconf_inv
     end.
 
-Derive NoConfusion for unit bool nat option sum prod list sigT sig.
+Derive NoConfusion for unit bool nat option sum Datatypes.prod list sigT sig.
 
 (* FIXME should be done by the derive command *)
 Extraction Inline noConfusion NoConfusionPackage_nat.

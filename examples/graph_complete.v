@@ -2,9 +2,7 @@ Require Import Equations.
 Require Import HoTT_light.
 Set Universe Polymorphism.
 Require Import Relations.
-
-Equations Logic Type Id id_refl Id_rect Id_rect_dep_r Empty unit tt prod pair
-          relation clos_trans WellFounded well_founded.
+Require Import ConstantsType.
 
 Import Id_Notations.
 Import Sigma_Notations.

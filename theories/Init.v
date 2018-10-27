@@ -60,6 +60,8 @@ Unset Primitive Projections.
 Arguments sigma A B : clear implicits.
 Arguments sigmaI {A} B pr1 pr2.
 
+Polymorphic Definition prod (A : Type) (B : Type) := sigma A (fun _ => B).
+
 Set Warnings "-notation-overridden".
 
 Module Sigma_Notations.
@@ -82,6 +84,8 @@ Import Sigma_Notations.
 Set Universe Polymorphism.
 
 Inductive Empty@{i} : Type@{i} :=.
+
+Scheme Empty_case := Minimality for Empty Sort Type.
 
 Inductive Id@{i} {A : Type@{i}} (a : A) : A -> Type@{i} :=
   id_refl : Id a a.
