@@ -3,7 +3,7 @@
 -R theories Equations
 -I theories
 -I examples
-CAMLDEBUG = "-bin-annot -g -for-pack Equations -w -58@3"
+CAMLDEBUG = "-bin-annot -g -for-pack Equations -w -58"
 COQDOCFLAGS = "-parse-comments -utf8 -interpolate"
 src/equations_common.mli
 src/equations_common.ml
