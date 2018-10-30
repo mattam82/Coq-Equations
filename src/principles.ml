@@ -889,7 +889,7 @@ let declare_funelim info env evd is_rec protos progs
   let tactic = ind_elim_tac elimc leninds (List.length progs) info indgr in
   let _ = e_type_of (Global.env ()) evd newty in
   ignore(Obligations.add_definition (Nameops.add_suffix id "_elim")
-	                            ~tactic ~hook:(Obligations.mk_univ_hook hookelim) ~kind:info.decl_kind
+	                            ~tactic ~hook:(Lemmas.mk_hook hookelim) ~kind:info.decl_kind
                                     (to_constr !evd newty) (Evd.evar_universe_context !evd) [||])
 
 let mkConj evd x y =
@@ -966,7 +966,7 @@ let declare_funind info alias env evd is_rec protos progs
   let stmt = to_constr !evd statement and f = to_constr !evd f in
   let ctx = Evd.evar_universe_context (if poly then !evd else Evd.from_env (Global.env ())) in
   try ignore(Obligations.add_definition
-             ~hook:(Obligations.mk_univ_hook hookind)
+             ~hook:(Lemmas.mk_hook hookind)
              ~kind:info.term_info.decl_kind
              indid stmt
              ~tactic:(ind_fun_tac is_rec f info id split unfsplit progs) ctx [||])
@@ -1232,7 +1232,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
       ignore(Obligations.add_definition
                ~kind:info.decl_kind
                ideq (to_constr !evd c)
-               ~tactic:(of82 tac) ~hook:(Obligations.mk_univ_hook hook)
+               ~tactic:(of82 tac) ~hook:(Lemmas.mk_hook hook)
 	       (Evd.evar_universe_context !evd) [||])
     in List.iter proof stmts
   in List.iter proof ind_stmts

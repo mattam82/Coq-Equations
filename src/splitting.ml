@@ -442,7 +442,7 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
                       comp_obls = !compobls; user_obls = Id.Set.union !compobls !userobls } in
       hook split cmap term_info uctx
   in
-  let hook = Obligations.mk_univ_hook hook in
+  let hook = Lemmas.mk_hook hook in
   let reduce x =
     let flags = CClosure.betaiotazeta in
     (* let flags = match comp with None -> flags *)

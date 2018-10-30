@@ -247,7 +247,7 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
     let ctx = Evd.evar_universe_context evm in
     Obligations.add_definition id ~term:constr typ ctx
                                ~kind:(Decl_kinds.Global,polymorphic,Decl_kinds.Instance)
-                               ~hook:(Obligations.mk_univ_hook hook) ~tactic:(solve_subterm_tac ()) obls
+                               ~hook:(Lemmas.mk_hook hook) ~tactic:(solve_subterm_tac ()) obls
   in ignore(declare_ind ())
 
 let () =
