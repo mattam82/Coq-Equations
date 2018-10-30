@@ -633,7 +633,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
     | _ -> to82 reflexivity gl
   in
   let solve_eq = observe "solve_eq" (tclORELSE (transparent (to82 reflexivity)) solve_rec_eq) in
-  let abstract tac = tclABSTRACT None tac in
+  let abstract tac = Abstract.tclABSTRACT None tac in
   let rec aux split unfold_split =
     match split, unfold_split with
     | Split (_, _, _, splits), Split ((ctx,pats,_), var, _, unfsplits) ->
@@ -732,7 +732,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
                                 (observe "where"
                                          (aux w.where_splitting unfw.where_splitting))])
            in
-           assert_by (Name id) ty (of82 (tclTHEN (to82 (keep [])) (to82 (tclABSTRACT (Some id) tac))))
+           assert_by (Name id) ty (of82 (tclTHEN (to82 (keep [])) (to82 (Abstract.tclABSTRACT (Some id) tac))))
          in
          tclTHENLIST [Refiner.tclEVARS !evd; to82 tac;
                       to82 (Equality.rewriteLR (mkVar id));
