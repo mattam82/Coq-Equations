@@ -157,7 +157,7 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let term = it_mkLambda_or_LetIn term ctx in
   let ty = it_mkProd_or_LetIn ty ctx in
   let _ = Equations_common.evd_comb1 (Typing.type_of env) evd term in
-  let hook _ectx vis gr =
+  let hook _ectx _evars vis gr =
     Typeclasses.add_instance
       (Typeclasses.new_instance tc empty_hint_info true gr)
   in

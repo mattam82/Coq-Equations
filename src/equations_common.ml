@@ -941,11 +941,6 @@ let find_rectype env sigma ty =
 
 type identifier = Names.Id.t
 
-let ucontext_of_aucontext ctx =
-  let inst = Univ.AUContext.instance ctx in
-  inst, Univ.ContextSet.of_context
-        (Univ.UContext.make (inst, (Univ.AUContext.instantiate inst ctx)))
-
 let evd_comb0 f evd =
   let evm, r = f !evd in
   evd := evm; r

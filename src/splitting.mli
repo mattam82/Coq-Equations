@@ -33,6 +33,8 @@ val is_comp_obl : Evd.evar_map -> logical_rec option -> Evar_kinds.t -> bool
 
 type term_info = {
   term_id : Names.GlobRef.t;
+  term_ustate : UState.t;
+  term_evars : (Id.t * Constr.t) list;
   base_id : string;
   decl_kind : Decl_kinds.definition_kind;
   helpers_info : (Evar.t * int * identifier) list;
@@ -52,7 +54,6 @@ type program_info = {
 
 type compiled_program_info = {
     program_cst : Constant.t;
-    program_cmap : (Id.t -> Constr.t) -> Constr.t -> Constr.t;
     program_split : splitting;
     program_split_info : term_info }
 
@@ -67,7 +68,7 @@ val define_tree :
   Id.t * rel_context * types ->
   logical_rec option ->
   splitting ->
-  (splitting -> ((Id.t -> Constr.t) -> Constr.t -> Constr.t) ->
+  (splitting -> (Constr.t -> Constr.t) ->
    term_info ->
    UState.t -> unit) ->
   unit
@@ -76,10 +77,4 @@ val mapping_rhs : Evd.evar_map -> context_map -> splitting_rhs -> splitting_rhs
 val map_rhs :
   (constr -> constr) ->
   (int -> int) -> splitting_rhs -> splitting_rhs
-val map_evars_in_constr :
-  Evd.evar_map -> ((Id.t -> Constr.t) -> Constr.t -> 'b) -> constr -> 'b
 val map_split : (constr -> constr) -> splitting -> splitting
-val map_evars_in_split :
-  Evd.evar_map ->
-  ((Id.t -> Constr.t) -> Constr.t -> constr) ->
-  splitting -> splitting

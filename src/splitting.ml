@@ -15,7 +15,6 @@ open Globnames
 open Reductionops
 open Pp
 open List
-open Libnames
 open Constrexpr
 open Tactics
 open Tacticals
@@ -360,6 +359,8 @@ let zeta_red =
 
 type term_info = {
   term_id : Names.GlobRef.t;
+  term_ustate : UState.t;
+  term_evars : (Id.t * Constr.t) list;
   base_id : string;
   decl_kind: Decl_kinds.definition_kind;
   helpers_info : (Evar.t * int * identifier) list;
@@ -379,7 +380,6 @@ type program_info = {
 
 type compiled_program_info = {
     program_cst : Constant.t;
-    program_cmap : (Id.t -> Constr.t) -> Constr.t -> Constr.t;
     program_split : splitting;
     program_split_info : term_info }
                   
@@ -432,14 +432,18 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
   let helpers = List.map (fun (ev, arg) ->
     (ev, arg, List.assoc ev emap)) helpers
   in
-  let hook uctx locality gr =
+  let hook uctx evars locality gr =
     let l =
       Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
     Extraction_plugin.Table.extraction_inline true l;
     let kind = (locality, poly, Decl_kinds.Definition) in
     let baseid = Id.to_string i in
-    let term_info = { term_id = gr; base_id = baseid; helpers_info = helpers; decl_kind = kind;
+    let term_info = { term_id = gr; term_ustate = uctx; term_evars = evars;
+                      base_id = baseid; helpers_info = helpers; decl_kind = kind;
                       comp_obls = !compobls; user_obls = Id.Set.union !compobls !userobls } in
+    let cmap = cmap (fun id -> try List.assoc id evars
+                      with Not_found -> anomaly (Pp.str"Incomplete obligation to term substitution"))
+    in
       hook split cmap term_info uctx
   in
   let hook = Obligations.mk_univ_hook hook in
@@ -489,15 +493,3 @@ let mapping_rhs sigma s = function
 let map_rhs f g = function
   | RProgram c -> RProgram (f c)
   | REmpty i -> REmpty (g i)
-
-let map_evars_in_constr evd evar_map c =
-  evar_map
-    (fun id ->
-       let gr = Nametab.global (qualid_of_ident id) in
-       let (f, uc) = Typeops.constr_of_global_in_context (Global.env ()) gr in
-       let inst, ctx = ucontext_of_aucontext uc in
-       let c = Constr.mkRef (Globnames.global_of_constr f, inst) in
-       Evarutil.nf_evars_universes evd c)
-    (EConstr.to_constr ~abort_on_undefined_evars:false evd c)
-
-let map_evars_in_split evd m = map_split (map_evars_in_constr evd m)
