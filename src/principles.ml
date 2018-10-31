@@ -848,29 +848,25 @@ let declare_funelim info env evd is_rec protos progs
     let elimty, uctx = Typeops.type_of_global_in_context (Global.env ()) elim in
     let () = evd := Evd.from_env (Global.env ()) in
     if is_polymorphic info then
-      let _fty, fctx = Typeops.type_of_global_in_context (Global.env ()) info.term_id in
-      let finst, fctx = ucontext_of_aucontext fctx in
-      let eliminst, elimctx = ucontext_of_aucontext uctx in
-      (** They share universes in general *)
-      let fullctx = Univ.ContextSet.union fctx elimctx in
-      let () = evd := Evd.merge_context_set Evd.univ_flexible !evd fullctx in
-      let u = Univ.AUContext.instance uctx in
-      let elimty = subst_instance_constr u elimty in
-      let elimc = constr_of_global_univ elim (EInstance.make u) in
-      (** evd contains the universes of the elim and the function, which
-          correspond to the universes in ind_stmts, all_stmts etc...
-          This is a bit dirty but avoids keeping track of a universe substitution
-          and applying it to all the derived datastructures. *)
+      (** We merge the contexts of the term and eliminator in which
+         ind_stmts and all_stmts are derived, universe unification will
+         take care of unifying the eliminator's fresh instance with the
+         universes of the constant and the functional induction lemma. *)
+      let () = evd := Evd.merge_universe_context !evd info.term_ustate in
+      let () = evd := Evd.merge_universe_context !evd ectx in
+      let sigma, elimc = Evarutil.new_global !evd elim in
+      let elimty = Retyping.get_type_of env sigma elimc in
+      let () = evd := sigma in
       elimc, elimty
     else (* If not polymorphic, we just use the global environment's universes for f and elim *)
       (let elimc = constr_of_global_univ elim EInstance.empty in
-       elimc, elimty)
+       elimc, of_constr elimty)
   in
   let nargs, newty =
     compute_elim_type env evd info.user_obls is_rec protos kn leninds ind_stmts all_stmts
-                      sign app (of_constr elimty)
+                      sign app elimty
   in
-  let hookelim _ _ elimgr =
+  let hookelim _ _ _ elimgr =
     let env = Global.env () in
     let evd = Evd.from_env env in
     let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in
@@ -939,7 +935,7 @@ let declare_funind info alias env evd is_rec protos progs
                                      | Some t -> mkConj evd t acc
                                      | None -> acc) last l
   in
-  let hookind ectx subst indgr =
+  let hookind ectx _obls subst indgr =
     let env = Global.env () in (* refresh *)
     Hints.add_hints ~local:false [info.term_info.base_id]
 	            (Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef indgr]);
@@ -951,16 +947,16 @@ let declare_funind info alias env evd is_rec protos progs
     let evd, indcgr = new_global evd indgr in
     let evd, cl = functional_induction_class evd in
     let args = [Retyping.get_type_of env evd f; f;
-	        Retyping.get_type_of env evd indcgr; indcgr]
+                Retyping.get_type_of env evd indcgr; indcgr]
     in
     let instid = Nameops.add_prefix "FunctionalInduction_" id in
     ignore(Equations_common.declare_instance instid poly evd [] cl args);
     (** If desired the definitions should be made transparent again. *)
     if !Equations_common.equations_transparent then
       (Global.set_strategy (ConstKey (fst (destConst evd f))) Conv_oracle.transparent;
-        match alias with
-        | None -> ()
-        | Some (f, _, _) -> Global.set_strategy (ConstKey (fst (destConst evd f))) Conv_oracle.transparent)
+       match alias with
+       | None -> ()
+       | Some (f, _, _) -> Global.set_strategy (ConstKey (fst (destConst evd f))) Conv_oracle.transparent)
   in
   (* let evm, stmt = Typing.type_of (Global.env ()) !evd statement in *)
   let stmt = to_constr !evd statement and f = to_constr !evd f in
@@ -1200,7 +1196,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
     let id = if j != 0 then Nameops.add_suffix id ("_helper_" ^ string_of_int j) else id in
     let proof (i, (r, unf, c, n)) =
       let ideq = Nameops.add_suffix id ("_equation_" ^ string_of_int i) in
-      let hook _ subst gr = 
+      let hook _ _obls subst gr =
 	if n != None then
 	  Autorewrite.add_rew_rules info.base_id 
             [CAst.make (UnivGen.fresh_global_instance (Global.env()) gr, true, None)]

@@ -413,7 +413,5 @@ val find_rectype : Environ.env -> Evd.evar_map -> types -> Inductiveops.inductiv
 
 type identifier = Names.Id.t
 
-val ucontext_of_aucontext : Univ.AUContext.t -> Univ.Instance.t * Univ.ContextSet.t
-
 val evd_comb1 : (Evd.evar_map -> 'a -> Evd.evar_map * 'b) -> Evd.evar_map ref -> 'a -> 'b
 val evd_comb0 : (Evd.evar_map -> Evd.evar_map * 'b) -> Evd.evar_map ref -> 'b

@@ -138,7 +138,7 @@ let derive_eq_dec env sigma ~polymorphic ind =
   in
   let indsl = Array.to_list info.mutind_inds in
   let indsl = List.map (fun ind -> ind, info_of ind) indsl in
-  let hook _ _ gr =
+  let hook _ _ _ gr =
     List.iter (fun (ind, (stmt, tc)) -> 
 	let ce = tc gr in
         let entry = (DefinitionEntry ce, IsDefinition Instance) in

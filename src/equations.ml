@@ -147,9 +147,10 @@ let define_principles flags fixprots progs =
            let funf_cst = match info'.term_id with ConstRef c -> c | _ -> assert false in
            let () = if flags.polymorphic then evd := Evd.from_ctx ectx in
            let funfc = e_new_global evd info'.term_id in
-           let unfold_split = map_evars_in_split !evd (fun f x -> of_constr (cmap f x)) unfold_split in
+           let cmap' x = of_constr (cmap (EConstr.to_constr ~abort_on_undefined_evars:false !evd x)) in
+           let unfold_split = map_split cmap' unfold_split in
 	   let unfold_eq_id = add_suffix unfoldi "_eq" in
-           let hook_eqs _ subst grunfold =
+           let hook_eqs _ _obls subst grunfold =
 	     Global.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
              let () = (* Declare the subproofs of unfolding for where as rewrite rules *)
                let decl _ (_, id, _) =
@@ -163,7 +164,6 @@ let define_principles flags fixprots progs =
 	     let env = Global.env () in
 	     let () = if not flags.polymorphic then evd := (Evd.from_env env) in
              let prog' = { program_cst = funf_cst;
-                          program_cmap = cmap;
                           program_split = unfold_split;
                           program_split_info = info }
              in
@@ -226,12 +226,14 @@ let define_principles flags fixprots progs =
     let fn fixprot (p, prog) =
       let f =
         let gr = ConstRef prog.program_cst in
-        let (f, uc) = Typeops.constr_of_global_in_context env gr in
-        if flags.polymorphic then
-          let inst, ctx = ucontext_of_aucontext uc in
-          let () = evd := Evd.merge_context_set Evd.univ_rigid !evd ctx in
-          Constr.mkRef (global_of_constr f, inst)
-        else f
+        let inst =
+          if flags.polymorphic then
+            let ustate = prog.program_split_info.term_ustate in
+            let inst = Univ.UContext.instance (UState.context ustate) in
+            let () = evd := Evd.merge_universe_context !evd ustate in
+            inst
+          else Univ.Instance.empty
+        in Constr.mkRef (gr, inst)
       in
       (p, prog, f), of_tuple (Name p.program_id, Some (of_constr f), fixprot)
     in
@@ -579,10 +581,10 @@ let define_by_eqs ~poly opts eqs nt =
     let () = declare_wf_obligations info in
     let f_cst = match info.term_id with ConstRef c -> c | _ -> assert false in
     let () = evd := Evd.from_ctx ectx in
-    let split = map_evars_in_split !evd (fun f x -> of_constr (cmap f x)) split in
+    let cmap' x = of_constr (cmap (EConstr.to_constr ~abort_on_undefined_evars:false !evd x)) in
+    let split = map_split cmap' split in
     let p = nf_program_info !evd p in
     let compiled_info = { program_cst = f_cst;
-                          program_cmap = cmap;
                           program_split = split;
                           program_split_info = info } in
     progs.(i) <- Some (p, compiled_info);
