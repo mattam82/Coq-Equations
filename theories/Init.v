@@ -62,9 +62,13 @@ Arguments sigmaI {A} B pr1 pr2.
 Polymorphic Definition prod (A : Type) (B : Type) := sigma A (fun _ => B).
 
 Record sigmaP {A : Prop} {B : A -> Prop} : Prop := sigmaPI { prP1 : A; prP2 : B prP1 }.
-
 Arguments sigmaP A B : clear implicits.
 Arguments sigmaPI {A} B prP1 prP2.
+
+Record sigmaSP {A : SProp} {B : A -> SProp} : SProp := sigmaPI { prSP1 : A; prSP2 : B prSP1 }.
+Arguments sigmaSP A B : clear implicits.
+Arguments sigmaSPI {A} B prSP1 prSP2.
+
 Unset Primitive Projections.
 
 Set Warnings "-notation-overridden".

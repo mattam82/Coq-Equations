@@ -279,8 +279,10 @@ let solve_problem env sigma ty indsort (outer, problems) =
       | [(subst, pbs)] when ProblemSet.is_empty pbs ->
 	(* Found a single matching constructor *)
 	let innerlen = List.length (pi1 subst) - List.length outer in
-	let inner = List.firstn innerlen (pi1 subst) in
+        let inner = List.firstn innerlen (pi1 subst) in
+        Feedback.msg_debug (Pp.str "making telescope");
 	let rhs = make_telescope (push_rel_context (pi1 lhs) env) evdref indsort inner in
+        Feedback.msg_debug (Pp.str " telescope made");
 	  Compute (lhs, [], ty, RProgram rhs)
       | _ ->
 	match find_split env sigma outer pbs with
@@ -307,6 +309,7 @@ let derive_inversion env sigma ~polymorphic indu =
   let sigma, (outer, _ as problems), sign, ty, indsort, rec_info = make_inversion_pb env sigma indu name in
   let sigma, splitting = solve_problem env sigma ty indsort problems in
   let hook splitting cmap terminfo ustate = () in
+  let () = Feedback.msg_debug (Pp.str"defining the tree") in
     Splitting.define_tree rec_info outer false [] (Evar_kinds.Define false)
       (ref sigma) env (name, sign, ty) None splitting hook
 

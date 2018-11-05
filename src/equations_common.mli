@@ -222,11 +222,15 @@ val coq_sigma : lazy_ref
 val coq_sigmaI : lazy_ref
 val coq_sigmaP : lazy_ref
 val coq_sigmaPI : lazy_ref
+val coq_sigmasP : lazy_ref
+val coq_sigmasPI : lazy_ref
 
 val coq_pr1 : Names.Projection.t lazy_t
 val coq_pr2 : Names.Projection.t lazy_t
 val coq_prP1 : Names.Projection.t lazy_t
 val coq_prP2 : Names.Projection.t lazy_t
+val coq_prsP1 : Names.Projection.t lazy_t
+val coq_prsP2 : Names.Projection.t lazy_t
 			    
 val coq_zero : lazy_ref
 val coq_succ : lazy_ref
