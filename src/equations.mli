@@ -11,7 +11,7 @@ open Names
 open Equations_common
 open Splitting
 
-val define_by_eqs :
+val define_by_eqs : poly:bool ->
   Syntax.equation_option list ->
   Syntax.pre_equations ->
   (Names.lstring * Constrexpr.constr_expr *
@@ -24,7 +24,7 @@ val define_principles :
   EConstr.t list ->
   (program_info * compiled_program_info) list -> unit
 
-val equations :
+val equations : poly:bool ->
   Syntax.equation_option list ->
   Syntax.pre_equations ->
   (Names.lstring * Constrexpr.constr_expr *

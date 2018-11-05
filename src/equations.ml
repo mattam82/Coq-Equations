@@ -368,7 +368,7 @@ let define_mutual_nested flags progs =
      mutual @ nested
      
   
-let define_by_eqs opts eqs nt =
+let define_by_eqs ~poly opts eqs nt =
   let with_comp, with_rec, with_eqns, with_ind =
     let try_bool_opt opt =
       if List.mem opt opts then false
@@ -392,7 +392,6 @@ let define_by_eqs opts eqs nt =
   in
   let with_comp = with_comp && not !Equations_common.ocaml_splitting in
   let env = Global.env () in
-  let poly = Flags.is_universe_polymorphism () in
   let flags = { polymorphic = poly; with_eqns; with_ind } in
   let evd = ref (Evd.from_env env) in
   let interp_arities (((loc,i),rec_annot,l,t),_ as ieqs) =
@@ -615,9 +614,9 @@ let define_by_eqs opts eqs nt =
     incr idx
   in CList.iter2 define_tree arities coverings
 
-let equations opts eqs nt =
+let equations ~poly opts eqs nt =
   List.iter (fun (((loc, i), nested, l, t),eqs) -> Dumpglob.dump_definition CAst.(make ~loc i) false "def") eqs;
-  define_by_eqs opts eqs nt
+  define_by_eqs ~poly opts eqs nt
 
 let solve_equations_goal destruct_tac tac gl =
   let concl = pf_concl gl in
