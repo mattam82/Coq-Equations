@@ -89,8 +89,9 @@ let telescope evd indsort = function
   | d :: tl ->
     let (coq_sigma_from_sort,coq_sigma_from_sortI,coq_pr1_from_sort,coq_pr2_from_sort) = match indsort with
       | Sorts.InProp -> (coq_sigmaP,coq_sigmaPI,coq_prP1,coq_prP2)
-      | Sorts.InSProp | Sorts.InSet | Sorts.InType -> (coq_sigma,coq_sigmaI,coq_pr1,coq_pr2)
-    in  
+      | Sorts.InSProp -> (coq_sigmasP,coq_sigmasPI,coq_prsP1,coq_prsP2)
+      | Sorts.InSet | Sorts.InType -> (coq_sigma,coq_sigmaI,coq_pr1,coq_pr2)
+    in
       let (n, _, t) = to_tuple d in
       let len = succ (List.length tl) in
       let ty, tys =
