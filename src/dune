@@ -1,0 +1,10 @@
+(library
+ (name coq_equations)
+ (public_name coq.plugins.equations)
+ (flags :standard -warn-error -3)
+ (libraries coq.plugins.extraction))
+
+(rule
+ (targets g_equations.ml)
+ (deps (:pp-file g_equations.ml4))
+ (action (run coqp5 -loc loc -impl %{pp-file} -o %{targets})))
