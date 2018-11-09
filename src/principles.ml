@@ -1162,10 +1162,10 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
     let ind =
       let open Entries in
       match uctx with
-      | Cumulative_ind_entry uctx ->
+      | Cumulative_ind_entry (_, uctx) ->
         mkIndU ((kn,0), EInstance.make (Univ.UContext.instance
                                           (Univ.CumulativityInfo.univ_context uctx)))
-      | Polymorphic_ind_entry uctx ->
+      | Polymorphic_ind_entry (_, uctx) ->
         mkIndU ((kn,0), EInstance.make (Univ.UContext.instance uctx))
       | Monomorphic_ind_entry _ -> mkInd (kn,0)
     in
