@@ -1,6 +1,8 @@
 From Equations Require Import Equations DepElimDec HSets.
 Set Universe Polymorphism.
 
+Unset Equations WithK.
+
 Inductive ℕ (E:Set) : Set :=
 | O : ℕ E
 | S : ℕ E -> ℕ E
@@ -572,12 +574,125 @@ Polymorphic Definition pack_sigma_eq_cong {A} {x y : A} (f : A -> A)
     sigma_eq_1 a = e }.
 Proof. destruct e. destruct e''. simpl. exists eq_refl. apply eq_refl. Defined.
 
-Lemma apply_equiv_dom {A B} (P : B -> Type) (e : Equiv A B) :
-  (forall x : A, P (equiv e x)) -> forall x : B, P x.
+Lemma apply_equiv_dom {A B} (P : A -> Type) (e : Equiv A B) :
+  (forall x : B, P (inv_equiv e x)) -> forall x : A, P x.
 Proof.
-  intros. destruct e.
-  specialize (X (equiv_inv x)).
-  rewrite inv_equiv_equiv in X. exact X.
+  intros. specialize (X (equiv e x)).
+  rewrite equiv_inv_equiv in X. exact X.
+Defined.
+
+Set Primitive Projections.
+Record pair (A B : Type) := mkPair { fst : A; snd : B }.
+Arguments mkPair {A B}.
+Arguments fst {A B}.
+Arguments snd {A B}.
+
+Derive NoConfusion for pair.
+Next Obligation.
+  destruct a, b. simpl in H.
+  red in H. revert H. simplify *. reflexivity.
+Defined.
+
+Definition NoConfVec {E A n} (v v' : Vec E A n) : Type :=
+  match v in Vec _ _ n return Vec E A n -> Type with
+  | nil => fun v' =>
+             match v' in Vec _ _ _ return Type with
+             | nil => True
+             | cons _ _ => False
+             end
+  | @cons _ _ n' x xs => fun v' =>
+                           match v' in Vec _ _ n'' return
+                                 match n'' with
+                                 | O => Type
+                                 | S n'' => Vec E A n'' -> Type
+                                 | E => Type
+                                 end with
+                       | nil => False
+                       | @cons _ _ n'' x' xs' => fun xs => mkPair x xs = mkPair x' xs'
+                       end xs
+  end v'.
+
+Definition noConfVec_eq {E A n} (v v' : Vec E A n) : v = v' -> NoConfVec v v'.
+Proof.
+  intros ->. destruct v'. constructor. simpl. constructor.
+Defined.
+
+Definition vnil_elim {E A} (P : Vec E A O -> Type) (v : P nil) : forall v, P v.
+Proof.
+  intros.
+  refine (match v0 as v' in Vec _ _ n' return
+                match n' return Vec E A n' -> Type with
+                | O => fun v' => P v'
+                | _ => fun _ => True
+                end v'
+          with
+          | nil => _
+          | cons _ _ => I
+          end). exact v.
+Defined.
+
+Definition vcons_elim {E A} (P : forall n, Vec E A (S n) -> Type) (H : forall n a (v' : Vec E A n), P n (cons a v')) : forall n v, P n v.
+Proof.
+  intros.
+  refine (match v as v' in Vec _ _ n' return
+                match n' as n'' return n' = n'' -> Vec E A n' -> Type with
+                | O => fun _ _ => True
+                | S n' => fun H v => P _ (rew H in v')
+                | raise _ _ => fun _ _ => True
+                end eq_refl v'
+          with
+          | nil => I
+          | cons a v' => H _ a v'
+          end).
+Defined.
+
+Definition noConfVec_eq_inv {E A n} (v v' : Vec E A n) : NoConfVec v v' -> v = v'.
+Proof.
+  destruct v. simpl.
+  revert v'. refine (vnil_elim _ _). intros. constructor.
+  revert n v' v. refine (vcons_elim _ _).
+  simpl. intros. change a with ((mkPair a v').(fst)). change v' with ((mkPair a v').(snd)) at 2.
+  destruct H. reflexivity.
+Defined.
+
+Lemma noConfVec_eq_eq_inv {E A n} (v v' : Vec E A n) (e : v = v') :
+  noConfVec_eq_inv _ _ (noConfVec_eq _ _ e) = e.
+Proof.
+  destruct e. destruct v. unfold noConfVec_eq_inv. simpl. reflexivity.
+  simpl. unfold eq_ind_r, eq_ind. simpl. reflexivity.
+Defined.
+
+Lemma noConfVec_refl {E A n} (v : Vec E A n) : NoConfVec v v.
+Proof. destruct v. reflexivity. reflexivity. Defined.
+
+Lemma noConfVec_eq_inv_eq_refl {E A n} (v : Vec E A n) :
+  noConfVec_eq _ _ (noConfVec_eq_inv v v (noConfVec_refl v)) = (noConfVec_refl v).
+Proof.
+  destruct v. reflexivity. reflexivity.
+Defined.
+
+Lemma noConfVec_eq_inv_eq {E A n} (v v' : Vec E A n) (e : NoConfVec v v') :
+  noConfVec_eq _ _ (noConfVec_eq_inv _ _ e) = e.
+Proof.
+  destruct v. revert v' e. refine (vnil_elim _ _). simpl. destruct e. reflexivity.
+  revert n v' v e. refine (vcons_elim _ _). intros.
+  simpl in e.
+  simpl.
+  change a with (mkPair a v').(fst) at 1 2. change v' with (mkPair a v').(snd) at 2 4.
+  revert e. generalize (mkPair a v'). intros p e. destruct e. reflexivity.
+Defined.
+
+Definition noConf_vec_equiv {E A n} (v v' : Vec E A n) : Equiv (v = v') (NoConfVec v v').
+Proof.
+  refine {| equiv := noConfVec_eq v v' |}.
+  unshelve refine {| equiv_inv := noConfVec_eq_inv v v' |}.
+  red. intros.
+  apply noConfVec_eq_inv_eq.
+  red; intros.
+  apply noConfVec_eq_eq_inv.
+  intros ->.
+  destruct v'. simpl. reflexivity.
+  simpl. reflexivity.
 Defined.
 
 Definition vector_args_type {A} {E} (n : ℕ E) (v : Vec E A n) : Type :=
@@ -734,71 +849,17 @@ Next Obligation.
   simplify ?.
   simplify ?.
   simpl noConfusion_inv.
-  Opaque pack_sigma_eq. simpl.
-  change (cons a v) with (rewP (cong S eq_refl) at (fun x => Vec E A x) in (cons a v)).
-  unfold subst_expl.
-  refine (simplify_ind_pack _ _ _ _ _ _ _ _). simpl. unfold opaque_ind_pack_eq_inv.
+  simpl.
+  refine (apply_equiv_dom _ (noConf_vec_equiv _ _) _).
+  simpl.
   simplify ?.
-  set (pack := NoConfusionPackage_Vec E A).
-  unfold NoConfusion. unfold NoConfusionPackage_Vec.
-  unfold NoConfusion_Vec.
-  intros H. simpl in H.
-  (* assert (∀ (a b : &{ index : ℕ E & Vec E A index}) (e : NoConfusion a b), noConfusion (noConfusion_inv e) = e). *)
-  (* destruct a1, b. destruct pr2, pr3; simpl. intros. *)
-  (* unfold noConfusion_Vec_obligation_1. destruct e. simpl. reflexivity. *)
-  (* intros e. destruct e. *)
-  (* intros e. destruct e. *)
-  (* intros e. *)
-  (* unfold noConfusion_Vec_obligation_1. destruct e. simpl. reflexivity. *)
-  (* specialize (H0 &(S n0 & cons a v) &(S n0 & cons a0 v0) H). *)
-  (* apply (cong (cong cf)) in H0. *)
+  simplify ?.
+  simplify ?.
+  simplify ?.
+  simpl.
+  constructor.
+Defined.
 
-  unfold noConfusion_inv. simpl.
-  unfold noConfusion_Vec_obligation_2.
-  change (match
-             H in (_ = y)
-             return (&(S n0 & cons a v) = &(S y.(pr1) & cons y.(pr2).(pr1) y.(pr2).(pr2)))
-           with
-           | eq_refl => eq_refl
-           end) with (cong (fun x => &(S x.1 & cons x.2.1 x.2.2)) H).
-  (* remember ((cong (λ x : &{ n : ℕ E & &{ _ : A & Vec E A n}}, &(S x.(pr1) & cons x.(pr2).(pr1) x.(pr2).(pr2))) H)) as e'. *)
-  (* simpl in e'. *)
- set(cf := (λ x : &{ n : ℕ E & &{ _ : A & Vec E A n}}, &(S x.(pr1) & cons x.(pr2).(pr1) x.(pr2).(pr2)))).
-  revert H.
-
-  unshelve evar(eequiv:&{ p : &{ n : ℕ E & &{ _ : A & Vec E A n } } & S p.1 = S n0 } <~>  &{ _ : A & Vec E A n0 }).
-  unshelve econstructor. intros [[n r] He]. revert He. simplify ?. simplify ?. exact r.
-  unshelve econstructor. intros r. exists &(n0 & r). exact eq_refl.
-  red; intros r. unfold apply_noConfusion. simpl. reflexivity.
-  red; intros []. unfold apply_noConfusion. simpl. revert pr2. simplify ?. simplify ?. simpl. reflexivity.
-  intros [n He]. revert He. simplify ?. simplify ?. simpl. reflexivity.
-  simpl in eequiv.
-  intros H ee.
-  (* pose (r := &(&(n0, a0 & v0) & eq_refl)  : &{ p : &{ n : ℕ E & &{ _ : A & Vec E A n}} & S p.(pr1) = S n0}). *)
-  (* pose proof ee as ee'. *)
-  (* rewrite (cong_iter cf pr1 _ _ H) in ee'. *)
-  (* rewrite <- (rew_cong _ _ _ H) in ee'. *)
-  (* unfold subst_expl in ee'. simpl in ee'. *)
-  (* apply (inv_equiv *)
-  (*          (equiv_cong_subst *)
-  (*             (fun x => eq (S n0) x) (fun x : &{ n : ℕ E & &{ _ : A & Vec E A n}} => S x.1) _ _ H _ _)) in ee'. *)
-  pose (l := &(&(n0, a & v) & cong pr1 (cong cf H)) : &{ p : &{ n : ℕ E & &{ _ : A & Vec E A n}} & S p.(pr1) = S n0}).
-  pose proof (@isEquiv_cong _ _ _ (is_equiv _ _ eequiv) l &(&(n0, a0 & v0) & eq_refl)). simpl in i.
-  match goal with
-    _ : IsEquiv ?f |- _ => set(equivfn := f) in *
-  end. simpl in equivfn. subst l.
-  simpl in equivfn.
-  forward equivfn.
-  apply sigma_eq_decomp. simpl. exists H. rewrite cong_iter.
-
-
-  pose (rew_cong' (fun x => (cf x).1) _ _ H). unfold subst_expl in e0. simpl in e0.
-  rewrite <- e0. reflexivity.
-
-
-  Lemma rew_cong
-
-  unfold cf. simpl.
 
   Transparent pack_sigma_eq.
   Lemma cong_pack (A : Type) (P : A → Type) (B : A -> Type) (x y : A) (p : P x) (q : P y)
