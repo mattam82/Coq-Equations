@@ -653,6 +653,8 @@ let apply_noconf : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
   let tA, t1, t2 = check_equality env !evd ctx ty1 in
+  if not (is_construct_sigma_2 !evd t1 && is_construct_sigma_2 !evd t2) then
+    raise (CannotSimplify (str "This is not an equality between constructors."));
   let noconf_ty = EConstr.mkApp (Builder.noConfusion evd, [| tA |]) in
   let tnoconf =
     let env = push_rel_context ctx env in
@@ -921,16 +923,18 @@ and simplify_one ((loc, rule) : Loc.t option * simplification_rule) :
      let rec aux env evd gl =
        let first =
          or_fun check_block
-           (or_fun noConfusion
-              (wrap (infer_step ?loc ~isSol:false)))
+           (or_fun apply_noconf
+              (or_fun noConfusion
+                 (wrap (infer_step ?loc ~isSol:false))))
        in
        try compose_fun (or_fun check_block_notprod aux)
              first env evd gl
        with Blocked -> identity env evd gl
      in handle_error aux
   | Step step -> wrap_handle (fun _ _ _ -> step)
-  | Infer_one -> handle_error (or_fun noConfusion
-                                 (wrap (infer_step ?loc ~isSol:false)))
+  | Infer_one -> handle_error (or_fun apply_noconf
+                                 (or_fun noConfusion
+                                 (wrap (infer_step ?loc ~isSol:false))))
   | Infer_direction -> wrap_handle (infer_step ?loc ~isSol:true)
 
 and simplify (rules : simplification_rules) : simplification_fun =
