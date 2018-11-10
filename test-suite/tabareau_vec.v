@@ -581,18 +581,6 @@ Proof.
   rewrite equiv_inv_equiv in X. exact X.
 Defined.
 
-Set Primitive Projections.
-Record pair (A B : Type) := mkPair { fst : A; snd : B }.
-Arguments mkPair {A B}.
-Arguments fst {A B}.
-Arguments snd {A B}.
-
-Derive NoConfusion for pair.
-Next Obligation.
-  destruct a, b. simpl in H.
-  red in H. revert H. simplify *. reflexivity.
-Defined.
-
 Definition NoConfVec {E A n} (v v' : Vec E A n) : Type :=
   match v in Vec _ _ n return Vec E A n -> Type with
   | nil => fun v' =>
@@ -608,7 +596,7 @@ Definition NoConfVec {E A n} (v v' : Vec E A n) : Type :=
                                  | E => Type
                                  end with
                        | nil => False
-                       | @cons _ _ n'' x' xs' => fun xs => mkPair x xs = mkPair x' xs'
+                       | @cons _ _ n'' x' xs' => fun xs => {| pr1 := x; pr2 := xs |} = {| pr1 := x'; pr2 := xs' |}
                        end xs
   end v'.
 
@@ -651,7 +639,7 @@ Proof.
   destruct v. simpl.
   revert v'. refine (vnil_elim _ _). intros. constructor.
   revert n v' v. refine (vcons_elim _ _).
-  simpl. intros. change a with ((mkPair a v').(fst)). change v' with ((mkPair a v').(snd)) at 2.
+  simpl. intros. change a with (&(a & v').1). change v' with (&(a & v').2) at 2.
   destruct H. reflexivity.
 Defined.
 
@@ -677,9 +665,7 @@ Proof.
   destruct v. revert v' e. refine (vnil_elim _ _). simpl. destruct e. reflexivity.
   revert n v' v e. refine (vcons_elim _ _). intros.
   simpl in e.
-  simpl.
-  change a with (mkPair a v').(fst) at 1 2. change v' with (mkPair a v').(snd) at 2 4.
-  revert e. generalize (mkPair a v'). intros p e. destruct e. reflexivity.
+  revert e. simplify *. simpl. reflexivity.
 Defined.
 
 Definition noConf_vec_equiv {E A n} (v v' : Vec E A n) : Equiv (v = v') (NoConfVec v v').
@@ -690,9 +676,7 @@ Proof.
   apply noConfVec_eq_inv_eq.
   red; intros.
   apply noConfVec_eq_eq_inv.
-  intros ->.
-  destruct v'. simpl. reflexivity.
-  simpl. reflexivity.
+  simplify *. destruct v'; reflexivity.
 Defined.
 
 Definition vector_args_type {A} {E} (n : ℕ E) (v : Vec E A n) : Type :=
@@ -854,9 +838,7 @@ Next Obligation.
   simpl.
   simplify ?.
   simplify ?.
-  simplify ?.
-  simplify ?.
-  simpl.
+  simplify ?. simpl. compute.
   constructor.
 Defined.
 
