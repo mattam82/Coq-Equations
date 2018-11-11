@@ -611,8 +611,19 @@ let maybe_pack : simplification_fun =
     with Not_found ->
       raise (CannotSimplify (str "This is not an equality between constructors."));
   in
+  let has_noconf () =
+    let noconf_ty = EConstr.mkApp (Builder.noConfusion evd, [| tA |]) in
+    let env = push_rel_context ctx env in
+    try
+      let noconf = Equations_common.evd_comb1
+          (Typeclasses.resolve_one_typeclass env) evd noconf_ty in
+      true
+    with Not_found -> false
+  in
   let indfam, args = Inductiveops.dest_ind_type indty in
   if CList.is_empty args then
+    identity env evd (ctx, ty)
+  else if has_noconf () then
     identity env evd (ctx, ty)
   else begin
     (* We need to apply [simplify_ind_pack]. *)
@@ -923,18 +934,16 @@ and simplify_one ((loc, rule) : Loc.t option * simplification_rule) :
      let rec aux env evd gl =
        let first =
          or_fun check_block
-           (or_fun apply_noconf
-              (or_fun noConfusion
-                 (wrap (infer_step ?loc ~isSol:false))))
+           (or_fun noConfusion
+              (wrap (infer_step ?loc ~isSol:false)))
        in
        try compose_fun (or_fun check_block_notprod aux)
              first env evd gl
        with Blocked -> identity env evd gl
      in handle_error aux
   | Step step -> wrap_handle (fun _ _ _ -> step)
-  | Infer_one -> handle_error (or_fun apply_noconf
-                                 (or_fun noConfusion
-                                 (wrap (infer_step ?loc ~isSol:false))))
+  | Infer_one -> handle_error (or_fun (compose_fun noConfusion remove_sigma)
+                                 (wrap (infer_step ?loc ~isSol:false)))
   | Infer_direction -> wrap_handle (infer_step ?loc ~isSol:true)
 
 and simplify (rules : simplification_rules) : simplification_fun =
