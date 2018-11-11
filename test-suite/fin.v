@@ -184,10 +184,88 @@ fin0_empty i :=! i.
 
 Derive Signature NoConfusion for fin.
 
+Require Import DepElimDec.
+
+Set Equations OCaml Splitting.
+Unset Equations WithK.
+
+Equations noConf_fin {n} (v v' : fin n) : Prop :=
+noConf_fin fz fz := True;
+noConf_fin (fs f) (fs f') := f = f';
+noConf_fin _ _ := False.
+Transparent noConf_fin.
+Print Assumptions noConf_fin_elim.
+
+(* Next Obligation. *)
+(* Proof. *)
+(*   depelim v. *)
+(*   generalize_eqs_sig v'. destruct v'. *)
+(*   simplify ?. *)
+(*   refine (eq_simplification_sigma1_dep _ _ _ _ _). destruct v'; *)
+(*   simplify *. constructor. *)
+(*   generalize_eqs_sig v'. *)
+(*   refine (eq_simplification_sigma1_dep _ _ _ _ _). destruct v'; *)
+(*   simplify *; constructor. *)
+(*   generalize_eqs_sig v'. *)
+(*   refine (eq_simplification_sigma1_dep _ _ _ _ _). destruct v'; *)
+(*                                                      simplify *; constructor. *)
+(* Defined. *)
+
+Definition noConf_fin_eq {n} (v v' : fin n) : v = v' -> noConf_fin v v'.
+Proof.
+  intros ->. destruct v'; constructor.
+Defined.
+
+Definition noConf_fin_eq_inv {n} (v v' : fin n) : noConf_fin v v' -> v = v'.
+Proof.
+  funelim (noConf_fin v v'); try simplify *; constructor.
+  (* refine (@f_equal _ _ (fun x => cons x.1 x.2) _ _). *)
+  (* simplify ?. *)
+  (* simplify ?. *)
+  (* refine (@f_equal _ _ (fun x => cons' x) _ _). *)
+Defined.
+
+Lemma noConf_fin_eq_eq_inv {n} (v v' : fin n) (e : v = v') :
+  noConf_fin_eq_inv _ _ (noConf_fin_eq _ _ e) = e.
+Proof.
+  destruct e. destruct v; reflexivity.
+Defined.
+
+Lemma noConf_fin_refl {n} (v : fin n) : noConf_fin v v.
+Proof. destruct v; reflexivity. Defined.
+
+Lemma noConf_fin_eq_inv_eq_refl {n} (v : fin n) :
+  noConf_fin_eq _ _ (noConf_fin_eq_inv v v (noConf_fin_refl v)) = (noConf_fin_refl v).
+Proof.
+  destruct v; reflexivity.
+Defined.
+
+Lemma noConf_fin_eq_inv_eq {n} (v v' : fin n) (e : noConf_fin v v') :
+  noConf_fin_eq _ _ (noConf_fin_eq_inv _ _ e) = e.
+Proof.
+  destruct v; revert e; depelim v'; simplify *; reflexivity.
+Defined.
+
+Lemma noConf_fin_hom_equiv : forall n, NoConfusionPackage (fin n).
+Proof.
+  unshelve econstructor.
+  refine noConf_fin.
+  apply noConf_fin_eq.
+  apply noConf_fin_eq_inv.
+  apply noConf_fin_eq_eq_inv.
+Defined.
+Existing Instances noConf_fin_hom_equiv.
+
+
 Equations(nocomp) fle_trans {n : nat} {i j k : fin n} (p : fle i j) (q : fle j k) : fle i k :=
 fle_trans flez _ := flez;
 fle_trans (fles p') (fles q') := fles (fle_trans p' q').
 Print Assumptions fle_trans.
+Extraction fle_trans.
+Next Obligation.
+  induction p. depelim q. constructor.
+  constructor. depelim q. constructor. auto.
+Defined.
 
 Hint Unfold NoConfusion.noConfusion_nat_obligation_1 : equations.
 
