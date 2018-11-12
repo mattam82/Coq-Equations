@@ -721,11 +721,18 @@ and unify_constrs env evd flex g l l' =
   match l, l' with
   | [], [] -> id_subst g
   | hd :: tl, hd' :: tl' ->
-    let (d,s,_ as hdunif) = unify env evd flex g hd hd' in
-    let specrest = List.map (specialize_constr evd s) in
-    let tl = specrest tl and tl' = specrest tl' in
-    let tlunif = unify_constrs env evd flex d tl tl' in
-    compose_subst env ~sigma:evd tlunif hdunif
+    (try
+       let (d,s,_ as hdunif) = unify env evd flex g hd hd' in
+       let specrest = List.map (specialize_constr evd s) in
+       let tl = specrest tl and tl' = specrest tl' in
+       let tlunif = unify_constrs env evd flex d tl tl' in
+       compose_subst env ~sigma:evd tlunif hdunif
+     with Stuck ->
+       let tlunif = unify_constrs env evd flex g tl tl' in
+       let spec = specialize_constr evd (pi2 tlunif) in
+       let hd = spec hd and hd' = spec hd' in
+       let (d, s, _) as hdunif = unify env evd flex g hd hd' in
+       compose_subst env ~sigma:evd tlunif hdunif)
   | _, _ -> raise Conflict
 
 let flexible pats gamma =

@@ -420,7 +420,7 @@ let with_retry (f : simplification_fun) : simplification_fun =
 (* This function is not accessible by the user for now. It is used to project
  * (if needed) the first component of an equality between sigmas. It will not
  * do anything if it fails. *)
-let remove_sigma : simplification_fun =
+let remove_one_sigma : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
   let _, t1, t2 = check_equality env !evd ctx ty1 in
@@ -462,7 +462,7 @@ let remove_sigma : simplification_fun =
             tsimpl_sigma, args
     | _, _ -> raise (CannotSimplify (str "If you see this, please report."))
   in build_app_infer env evd (ctx, ty) ctx f args, Covering.id_subst ctx
-let remove_sigma = while_fun remove_sigma
+let remove_sigma = while_fun remove_one_sigma
 
 let deletion ~(force:bool) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
@@ -895,6 +895,11 @@ let check_block_notprod : simplification_fun =
       raise (CannotSimplify (str"a product"))
     with Constr.DestKO -> identity env evd gl
 
+let rec apply_noConfusions =
+  fun env evd goal ->
+    or_fun noConfusion
+      (compose_fun apply_noConfusions remove_one_sigma) env evd goal
+
 (* Execution machinery. *)
 
 let rec execute_step : simplification_step -> simplification_fun = function
@@ -934,7 +939,7 @@ and simplify_one ((loc, rule) : Loc.t option * simplification_rule) :
      let rec aux env evd gl =
        let first =
          or_fun check_block
-           (or_fun noConfusion
+           (or_fun apply_noConfusions
               (wrap (infer_step ?loc ~isSol:false)))
        in
        try compose_fun (or_fun check_block_notprod aux)
@@ -942,7 +947,7 @@ and simplify_one ((loc, rule) : Loc.t option * simplification_rule) :
        with Blocked -> identity env evd gl
      in handle_error aux
   | Step step -> wrap_handle (fun _ _ _ -> step)
-  | Infer_one -> handle_error (or_fun (compose_fun noConfusion remove_sigma)
+  | Infer_one -> handle_error (or_fun apply_noConfusions
                                  (wrap (infer_step ?loc ~isSol:false)))
   | Infer_direction -> wrap_handle (infer_step ?loc ~isSol:true)
 
