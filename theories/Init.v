@@ -65,7 +65,7 @@ Record sigmaP {A : Prop} {B : A -> Prop} : Prop := sigmaPI { prP1 : A; prP2 : B 
 Arguments sigmaP A B : clear implicits.
 Arguments sigmaPI {A} B prP1 prP2.
 
-Record sigmaSP {A : SProp} {B : A -> SProp} : SProp := sigmaPI { prSP1 : A; prSP2 : B prSP1 }.
+Record sigmaSP {A : SProp} {B : A -> SProp} : SProp := sigmaSPI { prSP1 : A; prSP2 : B prSP1 }.
 Arguments sigmaSP A B : clear implicits.
 Arguments sigmaSPI {A} B prSP1 prSP2.
 

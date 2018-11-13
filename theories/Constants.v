@@ -19,8 +19,8 @@ Register Equations.Init.sigmaPI as equations.sigmaP.intro.
 Register Equations.Init.prP1 as equations.sigmaP.pr1.
 Register Equations.Init.prP2 as equations.sigmaP.pr2.
 
-Register Equations.Init.sigmasSP as equations.sigmaSP.type.
-Register Equations.Init.sigmasSPI as equations.sigmaSP.intro.
+Register Equations.Init.sigmaSP as equations.sigmaSP.type.
+Register Equations.Init.sigmaSPI as equations.sigmaSP.intro.
 Register Equations.Init.prSP1 as equations.sigmaSP.pr1.
 Register Equations.Init.prSP2 as equations.sigmaSP.pr2.
 

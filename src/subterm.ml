@@ -31,14 +31,14 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
   let global = true in
   let (mind, oneind as ms) = Global.lookup_inductive ind in
   let ctx = subst_instance_context (EInstance.kind sigma u) oneind.mind_arity_ctxt in
-  let sort =
-    match Lazy.force logic_sort with
-    | Sorts.InProp -> mkProp
-    | Sorts.InSet -> mkSet
-    | Sorts.InType ->
-      let indty = Inductive.type_of_inductive env (ms, EInstance.kind sigma u) in
-      EConstr.mkSort (snd (Term.destArity indty))
-  in
+  (* let sort =
+   *   match Lazy.force logic_sort with
+   *   | Sorts.InProp -> mkProp
+   *   | Sorts.InSet -> mkSet
+   *   | Sorts.InType ->
+   *     let indty = Inductive.type_of_inductive env (ms, EInstance.kind sigma u) in
+   *     EConstr.mkSort (snd (Term.destArity indty))
+   * in *)
   let len = List.length ctx in
   let params = mind.mind_nparams in
   (* let ctx = map_rel_context refresh_universes ctx in FIXME *)
@@ -151,12 +151,7 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
     let inductive =
       { mind_entry_record = None;
         mind_entry_finite = Declarations.Finite;
-        mind_entry_params = List.map (fun decl ->
-          let (n, b, t) = to_tuple decl in
-          match b with
-          | Some b -> (Nameops.Name.get_id (binder_name n), localdef (refresh_universes (to_constr sigma b)))
-          | None -> (Nameops.Name.get_id (binder_name n), localassum (refresh_universes (to_constr sigma t))))
-          parambinders;
+        mind_entry_params = List.map EConstr.Unsafe.to_rel_decl parambinders;
         mind_entry_inds = inds;
         mind_entry_private = None;
         mind_entry_universes = uctx}
