@@ -52,6 +52,7 @@ theories/NoConfusion.v
 theories/FunctionalInduction.v
 theories/Constants.v
 theories/ConstantsType.v
+theories/ConstantsSProp.v
 theories/EqDecInstances.v
 theories/Below.v
 theories/Subterm.v
