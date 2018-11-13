@@ -185,7 +185,7 @@ let is_constructor_pat = function
 
 let make_telescope env evdref indSort g =
   if List.is_empty g then
-    let sigma, g = Evarutil.new_global !evdref (Equations_common.get_top ()) in
+    let sigma, g = Equations_common.(get_fresh !evdref logic_top) in
       (evdref := sigma; g)
   else
     let c, ctx, p = Sigma_types.telescope evdref indSort g in
@@ -267,7 +267,7 @@ let solve_problem env sigma ty indsort (outer, problems) =
 	(compose_subst env ~sigma s' rho, specialize_pbs sigma s' pbs)
     in List.map update_problem pbs
   in
-  let sigma, coq_false = Evarutil.new_global sigma (Equations_common.get_bot ()) in
+  let sigma, coq_false = Equations_common.(get_fresh sigma logic_bot) in
   let evdref = ref sigma in
   let rec aux (outer, problems) lhs =
     let () = Feedback.msg_debug Pp.(str"Simplifying pbs: " ++ pr_all_pbs env sigma problems) in
