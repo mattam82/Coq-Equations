@@ -22,10 +22,9 @@ Definition measure {A B} (f : A -> B) (R : relation B) : relation A :=
 
 Definition f91_rel : relation nat :=
   measure (fun x => 101 - x) lt.
-
+Axiom cheat : forall {A}, A.
 Instance gt_bound_wf : WellFounded f91_rel.
-Proof. red. red. intros.
-Admitted.
+Proof. red. red. intros. constructor. intros. constructor. apply cheat. Defined.
 
 Set Program Mode.
 Equations f91 n : { m : nat | if le_lt_dec n 100 then m = 91 else m = n - 10 } :=
@@ -59,3 +58,14 @@ Next Obligation.
 Defined.
 
 Notation "( x &?) " := (exist _ x _).
+Transparent f91 f91_unfold.
+
+(* Lemma f91_unfold_eq' : forall n : nat, f91 n = f91_unfold n. *)
+(* Proof. *)
+(*   intros. *)
+(*   unfold f91. *)
+(*   unfold f91_unfold. *)
+(*   unfold FixWf. unfold Fix. unfold Fix_F. simpl. unfold wellfounded. *)
+(*   simpl. destruct (le_lt_dec n 100); [|reflexivity]. *)
+(*   simpl. unfold f91_comp_proj. unfold f91_obligation_5. simpl. reflexivity. *)
+(*   f_equal. *)

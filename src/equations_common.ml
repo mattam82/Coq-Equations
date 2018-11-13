@@ -525,7 +525,7 @@ let rec_tac h h' =
 
 let rec_wf_tac h h' rel = 
   TacArg(dummy_loc, TacCall(dummy_loc,
-    (qualid_of_string "Equations.Subterm.rec_wf_eqns_rel",
+    (qualid_of_string "Equations.SSubterm.rec_wf_eqns_rel",
     [tacvar_arg h';
      ConstrMayEval (Genredexpr.ConstrTerm h);
      ConstrMayEval (Genredexpr.ConstrTerm rel)])))

@@ -85,7 +85,7 @@ sublist p (cons x xs) with p x := {
 Ltac rec ::= Subterm.rec_wf_eqns.
 
 (* Derive Subterm for nat.  *)
-Derive Subterm for vector.
+(* Derive Subterm for vector. *)
 
 Require Import Arith Wf_nat.
 
@@ -96,13 +96,35 @@ Hint Resolve lt_n_Sn : lt.
 Ltac solve_rec ::= simpl in * ; cbv zeta ; intros ; 
   try typeclasses eauto with subterm_relation Below lt.
 
+Require Import ConstantsSProp SSubterm.
+Ltac rec ::= SSubterm.rec_wf_eqns.
+
 Equations testn (n : nat) : nat :=
 testn n by rec n lt :=
 testn 0 := 0 ;
-testn (S n) <= testn n => {
-  | 0 := S 0 ;
-  | (S n') := S n' }.
+testn (S n) := S (testn n).
+Next Obligation. red. apply le_x_x. Defined.
+Next Obligation. destruct n; reflexivity. Defined.
 
+Transparent testn testn_unfold.
+
+Lemma testn_unfold_eq' : ∀ n : nat, testn n = testn_unfold n.
+Proof.
+  intros n.
+  unfold testn.
+  (* Subterm.rec_wf_rel IH n lt. *)
+  destruct n; try reflexivity.
+  simpl.
+  unfold testn, testn_unfold. unfold Subterm.FixWf. simpl. unfold Fix.
+  cbn. f_equal. f_equal.
+  (* destruct H0. *)
+  extensionality n'.
+  extensionality H. simpl. f_equal.
+  f_equal. f_equal.
+Admitted.
+
+
+(* Check fun n => eq_refl : testn (S n) = S (testn n). *)
 Require Import Vectors.Vector.
 
 Arguments Vector.nil {A}.
@@ -143,6 +165,41 @@ Defined.
    of [A]. *)
 
 Definition vector_subterm A := t_subterm A.
+
+Inductive AccT {A} (R : A -> A -> Type) (x : A) : Type :=
+| AccT_intro : (forall y : A, R y x -> AccT R y) -> AccT R x.
+
+Lemma AccT_pi (A : Type) (R : A -> A -> Type) i (x y : AccT R i) : x = y.
+Proof.
+  revert y. induction x.
+  intros. destruct y.
+  f_equal.
+  extensionality y. extensionality H'. apply H.
+Qed.
+
+Import Sigma_Notations.
+Local Open Scope equations_scope.
+
+Definition levec {A} (v v' : &{ n : nat & vector A n }) : Prop :=
+  t_direct_subterm _ _ _ v.2 v'.2.
+Require Import DepElimDec.
+Lemma direct_inv:
+  ∀ (A : Type) (h : A) (n : nat) (pr2 : vector A n) (m : nat) (y : vector A m),
+    t_direct_subterm A m (S n) y (h |: n :| pr2) → &(m & y) = &(n & pr2).
+Proof.
+  intros A h n pr2 m y H.
+  depelim H. reflexivity.
+Qed.
+
+Lemma subterm_le_wf A x : AccT (@levec A) x.
+Proof.
+  destruct x.
+  induction pr2.
+  constructor. intros. elimtype False. inversion H.
+  constructor. intros [m y] H. red in H. simpl in H.
+  apply direct_inv in H. rewrite H. apply IHpr2.
+Defined.
+
 
 Instance well_founded_vector_direct_subterm' :
   forall A : Type, EqDec A -> WellFounded (vector_subterm A) | 0.
@@ -343,11 +400,50 @@ vrev (cons a n v) := vector_append_one (vrev v) a.
 
 Definition cast_vector {A n m} (v : vector A n) (H : n = m) : vector A m.
 intros; subst; assumption. Defined.
+Obligation Tactic := idtac.
+
+Lemma foo n m : n + S m = S (n + m).
+Proof.
+  intros. clear. induction n. reflexivity. simpl.
+  now apply f_equal.
+Defined.
 
 Equations(nocomp) vrev_acc {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
 vrev_acc nil w := w;
-vrev_acc (cons a n v) w := cast_vector (vrev_acc v (cons a w)) _.
-(* About vapp'. *)
+vrev_acc (cons a n v) w with (foo n m) :=
+                    { | prf := vrev_acc v (cons a w) }.
+
+Next Obligation.
+  intros. clear. induction n. reflexivity. simpl.
+  now apply f_equal.
+Defined.
+
+Transparent vrev_acc.
+Program Definition vrev'' {A n} (v : vector A n) : vector A n :=
+  cast_vector (vrev_acc v nil) _.
+Next Obligation.
+  intros A n _. induction n; simpl; try reflexivity. now apply f_equal.
+Defined.
+Lemma vrev''_nil {A} : vrev'' (@nil A) = nil.
+Proof.
+  unfold vrev''. reflexivity.
+Defined.
+
+Lemma vrev''_cons {A} (a : A) {n m} (v : vector A n) (v' : vector A m) :
+  vrev_acc (@cons A a n v) v' = vrev_acc v (cons a v').
+
+
+vector_append_one (vrev'' v) a.
+Proof.
+  unfold vrev''. simpl.
+
+
+
+reflexivity.
+Defined.
+
+
+About vrev_acc.
 
 Record vect {A} := mkVect { vect_len : nat; vect_vector : vector A vect_len }.
 Coercion mkVect : vector >-> vect.
@@ -405,7 +501,7 @@ vmap' f nil := nil ;
 vmap' f (cons a n v) := cons (f a) (vmap' f v).
 
 Hint Resolve lt_n_Sn : subterm_relation.
-Equations vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
+Equations(noind) vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
 vmap f {n:=n} v by rec n :=
 vmap f {n:=?(O)} nil := nil ;
 vmap f {n:=?(S n)} (cons a n v) := cons (f a) (vmap f v).
@@ -480,6 +576,9 @@ Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars id.
 Equations(nocomp) vlast' {A} {n} (v : vector A (S n)) : A :=
 vlast' (cons a O Vnil) := a ;
 vlast' (cons a (S n) v) := vlast' v.
+Transparent vlast'.
+
+Check fun x : vector nat (S 0) => (eq_refl : vlast' (cons 1 x) = vlast' x).
 
 Require Import DepElimDec.
 Ltac generalize_by_eqs id ::= generalize_eqs_sig id.
