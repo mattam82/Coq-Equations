@@ -863,10 +863,37 @@ let env_of_rhs evars ctx env s lets =
   let pats = List.map (lift (-letslen)) pats @ patslets in
   ctx, envctx, len + letslen, pats
 
+let interp_program_body env sigma ctx impls body ty =
+  match body with
+  | ConstrExpr c ->
+    let env = push_rel_context ctx env in
+    let sigma, (c, _) =
+      match ty with
+      | None -> interp_constr_evars_impls env sigma ~impls c
+      | Some ty -> interp_casted_constr_evars_impls env sigma ~impls c ty
+    in
+    sigma, c
+  | Constr c ->
+    let env = Environ.reset_with_named_context (Environ.named_context_val env) env in
+    let env = push_rel_context ctx env in
+    let subst =
+      List.fold_left_i (fun i subst decl ->
+          match get_name decl with
+          | Name na -> (na, mkRel i) :: subst
+          | _ -> subst) 1 [] ctx
+    in
+    let c = Vars.replace_vars subst c in
+    let sigma =
+      match ty with
+      | None -> fst (Typing.type_of env sigma c)
+      | Some ty -> Typing.check env sigma c ty
+    in
+    sigma, c
+
 let interp_constr_in_rhs_env env evars impls (ctx, envctx, liftn, subst) c ty =
   match ty with
   | None ->
-    let sigma, (c, _) = interp_constr_evars_impls (push_rel_context ctx env) !evars ~impls c in
+    let sigma, c = interp_program_body env !evars ctx impls c None in
     let c' = substnl subst 0 c in
     let sigma = Typeclasses.resolve_typeclasses ~filter:Typeclasses.all_evars env sigma in
     let c' = nf_evar sigma c' in
@@ -875,9 +902,7 @@ let interp_constr_in_rhs_env env evars impls (ctx, envctx, liftn, subst) c ty =
   | Some ty -> 
     let ty' = lift liftn ty in
     let ty' = nf_evar !evars ty' in
-    let sigma, (c, _) = interp_casted_constr_evars_impls
-        (push_rel_context ctx env) !evars ~impls c ty'
-    in
+    let sigma, c = interp_program_body env !evars ctx impls c (Some ty') in
     evars := Typeclasses.resolve_typeclasses 
         ~filter:Typeclasses.all_evars env sigma;
     let c' = nf_evar !evars (substnl subst 0 c) in
@@ -1228,7 +1253,7 @@ let check_unused_clauses env cl =
   let unused = List.filter (fun (_, used) -> not used) cl in
   match unused with
   | ((loc, _, _) as cl, _) :: cls ->
-    user_err_loc (Some loc, "covering", str "Unused clause " ++ pr_clause env cl)
+    user_err_loc (loc, "covering", str "Unused clause " ++ pr_clause env cl)
   | [] -> ()
 
 let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) lets ty =
@@ -1292,7 +1317,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
   in
   let () = (* Check innaccessibles are correct *)
     let check_uinnac (user, t) =
-      let userc, usercty = interp_constr_in_rhs env ctx evars data None s lets user in
+      let userc, usercty = interp_constr_in_rhs env ctx evars data None s lets (ConstrExpr user) in
       match t with
       | PInac t ->
         begin match Reductionops.infer_conv env' !evars userc t with
@@ -1442,7 +1467,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
 
   | Refine (c, cls) -> 
     (* The refined term and its type *)
-    let cconstr, cty = interp_constr_in_rhs env ctx evars data None s lets c in
+    let cconstr, cty = interp_constr_in_rhs env ctx evars data None s lets (ConstrExpr c) in
 
     let vars = variables_of_pats pats in
     let newctx, pats', pats'' = instance_of_pats env !evars ctx vars in
@@ -1525,7 +1550,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
             in
             Some (loc, rev newlhs @ nextrefs, newrhs)
           | _ -> 
-            CErrors.user_err ~hdr:"covering" ~loc
+            CErrors.user_err ~hdr:"covering" ?loc
               (str "Non-matching clause in with subprogram:" ++ fnl () ++
                str"Problem is " ++ spc () ++ pr_context_map env !evars prob ++ fnl () ++
                str"And the user patterns are: " ++ spc () ++

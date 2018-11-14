@@ -43,8 +43,11 @@ let inline_helpers i =
 let is_recursive i eqs =
   let rec occur_eqn (_, _, rhs) =
     match rhs with
-    | Program (c,w) -> if occur_var_constr_expr i c then Some false else
-	occurs w
+    | Program (c,w) ->
+      (match c with
+      | ConstrExpr c ->
+        if occur_var_constr_expr i c then Some false else occurs w
+      | Constr _ -> occurs w)
     | Refine (c, eqs) -> 
        if occur_var_constr_expr i c then Some false
        else occur_eqns eqs

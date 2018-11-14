@@ -40,9 +40,15 @@ type rec_annot =
   | StructuralOn of rec_arg
   | NestedOn of rec_arg option
 
+type program_body =
+  | ConstrExpr of Constrexpr.constr_expr
+  | Constr of EConstr.constr (* We interpret a constr by substituting
+                                [Var names] of the lhs bound variables
+                                with the proper de Bruijn indices *)
+
 type lhs = user_pats (* p1 ... pn *)
 and 'a rhs =
-    Program of Constrexpr.constr_expr * 'a where_clause list
+    Program of program_body * 'a where_clause list
   | Empty of identifier with_loc
   | Rec of Constrexpr.constr_expr * Constrexpr.constr_expr option *
              identifier with_loc option * 'a list
@@ -55,7 +61,7 @@ and prototype =
 and 'a where_clause = prototype * 'a list
 and program = (signature * clause list) list
 and signature = identifier * rel_context * constr (* f : Π Δ. τ *)
-and clause = Loc.t * lhs * clause rhs (* lhs rhs *)
+and clause = Loc.t option * lhs * clause rhs (* lhs rhs *)
 
 val pr_user_pat : env -> user_pat located -> Pp.t
 val pr_user_pats : env -> user_pats -> Pp.t

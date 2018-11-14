@@ -615,7 +615,7 @@ let maybe_pack : simplification_fun =
     let noconf_ty = EConstr.mkApp (Builder.noConfusion evd, [| tA |]) in
     let env = push_rel_context ctx env in
     try
-      let noconf = Equations_common.evd_comb1
+      let _noconf = Equations_common.evd_comb1
           (Typeclasses.resolve_one_typeclass env) evd noconf_ty in
       true
     with Not_found -> false

@@ -19,8 +19,8 @@ Inductive P : forall {i}, D i -> Set :=
 Derive Signature NoConfusion for P.
 
 Equations noConfP {i} {d : D i} (p q : P d) : Prop :=
-  noConfP {d:=?(d1)} p1 p1 := True;
-  noConfP {d:=?(d2)} p2 p2 := True.
+  noConfP p1 p1 := True;
+  noConfP p2 p2 := True.
 
 Definition noConfP_eq {i} {d : D i} (v v' : P d) : v = v' -> noConfP v v'.
 Proof.

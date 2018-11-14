@@ -276,6 +276,18 @@ val lets_of_ctx :
   constr list *
   rel_context *
   rel_context
+val interp_program_body : Environ.env ->
+           Evd.evar_map -> EConstr.rel_context ->
+           Constrintern.internalization_env ->
+           Syntax.program_body ->
+           EConstr.types option -> Evd.evar_map * EConstr.constr
+val interp_constr_in_rhs_env :Environ.env ->
+           Evd.evar_map ref ->
+           Constrintern.internalization_env ->
+           EConstr.rel_context * Environ.env * int * EConstr.Vars.substl ->
+           Syntax.program_body ->
+           EConstr.t option -> EConstr.constr * EConstr.types
+
 val interp_constr_in_rhs :
   env ->
   rel_context ->
@@ -284,7 +296,7 @@ val interp_constr_in_rhs :
   constr option ->
   (Id.t * pat) list ->
   rel_context ->
-  Constrexpr.constr_expr -> constr * types
+  program_body -> constr * types
 val unify_type :
   env ->
   Evd.evar_map ref ->
