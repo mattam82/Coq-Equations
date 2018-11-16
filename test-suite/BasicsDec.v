@@ -11,6 +11,8 @@ Derive Signature for eq.
 Goal forall (U V : Type), Some U = Some V -> U = V.
 Proof. intros. depelim H. reflexivity. Qed.
 
+Derive NoConfusionHom for vector.
+
 Unset Printing All.
 
 Inductive foo (A : Type)
@@ -28,8 +30,9 @@ Proof. intros. intros x. induction x. left. now depelim y.
   destruct (eq_dec h h0) as [eq|neq]; subst. 
   destruct (IHx y) as [eqy|neqy]. subst.
   left; reflexivity.
-  right. intro H0. apply neqy. injection H0. simpdep. reflexivity.
-  right. intro H0. apply neq. injection H0. simpdep. reflexivity.
+  right. intro H0. apply neqy. injection H0. revert H0.
+  repeat simplify ?. simpl. reflexivity.
+  right. intro H0. apply neq. simpdep. reflexivity.
 Defined.
 
 Derive Subterm for vector.

@@ -7,7 +7,7 @@ Require Import Coq.Logic.Eqdep_dec.
 Require Import Coq.Classes.EquivDec.
 Require Import Program.
 Require Import Arith.
-
+Derive Signature for eq.
 Ltac simpl_exist :=
   repeat (
       repeat match goal with
@@ -58,59 +58,11 @@ Next Obligation.
   reflexivity. reflexivity.
 Defined.
 
-
-  depelim b. dmit.
-  - elim H. (* do_intros b. *)
-    (* generalize_by_eqs b. *)
-    (* destruct b. simplify ?. simpl. (* MISSING noCycle *) *)
-    (* intros e. elimtype False. apply noCycle_nat in e. apply e. constructor. *)
-    (* simplify *. simpl. simplify *. *)
-    (* simplify *. simpl. simplify *. *)
-
-  - revert H. simplify *.
-  - revert H.
-    do_intros b.
-    generalize_by_eqs b.
-    destruct b.
-
-    Set Equations Debug.
-    simplify *. simpl. simplify *.
-
-    + simplify *. simpl; simplify *. reflexivity.
-    + simplify *. simpl; simplify *.
-  - depelim b. elim H. elim H.
-    revert H. simplify *. constructor.
-Defined.
-
-
-    + simplify *. simpl. simplify ?. reflexivity.
-
-    + simplify *. simpl. simplify *.
-
-  - revert H. generalize_by_eqs b.
-    destruct b. simplify *. simplify *. simplify *. reflexivity.
-Defined.
-
-    (* MISSING noCycle *)
-    intros e. elimtype False. apply noCycle_nat in e. apply e. constructor.
-    simplify *. simpl. simplify *.
-    simplify *. simpl. simplify *.
-    depelim b.
-
-    simplify *.
-
-
-  simplify ?.
-  depelim b.
-
-
-
 Derive Subterm for scope_le.
 
 Ltac rec ::= Subterm.rec_wf_eqns.
 
 Equations scope_le_app {a b c} (p : scope_le a b) (q : scope_le b c) : scope_le a c :=
-scope_le_app p q by rec (signature_pack q) scope_le_subterm :=
 scope_le_app p scope_le_n := p;
 scope_le_app p (scope_le_S q) := scope_le_S (scope_le_app p q);
 scope_le_app p (scope_le_map q) with p :=
@@ -118,8 +70,16 @@ scope_le_app p (scope_le_map q) with p :=
   | scope_le_S p' := scope_le_S (scope_le_app p' q);
   | (scope_le_map p') := scope_le_map (scope_le_app p' q) }.
 
+(* Equations scope_le_app {a b c} (p : scope_le a b) (q : scope_le b c) : scope_le a c := *)
+(* scope_le_app p q by rec (signature_pack q) scope_le_subterm := *)
+(* scope_le_app p scope_le_n := p; *)
+(* scope_le_app p (scope_le_S q) := scope_le_S (scope_le_app p q); *)
+(* scope_le_app p (scope_le_map q) with p := *)
+(* { | scope_le_n := scope_le_map q; *)
+(*   | scope_le_S p' := scope_le_S (scope_le_app p' q); *)
+(*   | (scope_le_map p') := scope_le_map (scope_le_app p' q) }. *)
+
 Hint Unfold NoConfusion.noConfusion_nat_obligation_1 : equations.
-Derive NoConfusion for scope_le.
 
 Lemma scope_le_app_len n m (q : scope_le n m) : scope_le_app scope_le_n q = q.
 Proof.
@@ -133,11 +93,12 @@ Inductive type : scope -> Type :=
 | tarr : forall {n}, type n -> type n -> type n
 | tall : forall {n}, type n -> type (S n) -> type n
 .
-
+Derive Signature for type.
 Inductive env : scope -> scope -> Set :=
 | empty : forall {n}, env n n
 | cons : forall {n m}, type m -> env n m -> env n (S m)
 .
+Derive Signature for env.
 
 Lemma env_scope_le : forall {n m}, env n m -> scope_le n m.
 Proof. intros n m Γ; depind Γ; constructor; auto. Defined.
@@ -209,6 +170,12 @@ lookup {n:=(S _)} (cons a Γ) FO     := lift_type_by (scope_le_S scope_le_n) a;
 lookup {n:=(S _)} (cons a Γ) (FS x) := lift_type_by (scope_le_S scope_le_n) (lookup Γ x)
 .
 
+(** FIXME: not done automatically *)
+Next Obligation.
+  induction n. depelim x.
+  depelim Γ. depelim x. constructor. constructor. apply IHn.
+Defined.
+
 Lemma lookup_app : forall {n} (Γ : env O (S n)) {m} (Δ : env (S n) (S m)) x,
                      lookup (env_app Γ Δ) (lift_var_by (env_scope_le Δ) x) =
                      lift_type_by (env_scope_le Δ) (lookup Γ x).
@@ -233,6 +200,7 @@ Inductive sa : forall {n}, env O n -> type n -> type n -> Prop :=
              sa (cons t1 Γ) s2 t2 ->
              sa Γ (tall s1 s2) (tall t1 t2)
 .
+Derive Signature for sa.
 
 Inductive sa_env : forall {n}, env O n -> env O n -> Prop :=
 | sa_empty : sa_env empty empty
@@ -240,6 +208,7 @@ Inductive sa_env : forall {n}, env O n -> env O n -> Prop :=
               sa Γ a b ->
               sa_env Γ Δ -> sa_env (cons a Γ) (cons b Δ)
 .
+Derive Signature for sa_env.
 
 Lemma sa_refl : forall {n} (Γ : env O n) x, sa Γ x x.
 Proof. depind x; constructor; auto. Qed.
@@ -254,6 +223,7 @@ Inductive env_extend : forall {b c}, env O b -> env O c -> scope_le b c -> Prop 
 | env_extend_2 : forall {b c} (Γ : env O b) (Δ : env O c) p a,
                       env_extend Γ Δ p -> env_extend Γ (cons a Δ) (scope_le_S p)
 .
+Derive Signature for env_extend.
 
 Lemma env_app_extend : forall {b c} (Γ : env O b) (Δ : env b c), env_extend Γ (env_app Γ Δ) (env_scope_le Δ).
 Proof.
@@ -349,10 +319,8 @@ Proof.
   end.
   - clear IHB1 IHB2.
     depelim C; [constructor|]; destruct_pairs.
-    constructor; eauto.
-    apply (H1 _ A Γ _ C1 _ empty _ _) in B2; autorewrite with env_app in B2; eauto.
-    Unshelve.
-    all:eauto.
+    constructor; eauto. simpl in H. simpl in H0.
+    apply (H1 _ A Γ0 _ C1 _ empty _ _) in B2; autorewrite with env_app in B2; eauto.
 Qed.
 
 (* *)

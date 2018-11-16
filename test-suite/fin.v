@@ -1,14 +1,19 @@
-Require Import Program Equations.Equations.
+Require Import Program Equations.Equations DepElimDec.
+
+Set Equations WithKDec.
 
 Inductive fin : nat -> Set :=
 | fz : forall {n}, fin (S n)
 | fs : forall {n}, fin n -> fin (S n).
+Derive Signature NoConfusion NoConfusionHom for fin.
 
 Inductive ilist (A : Set) : nat -> Set :=
 | Nil : ilist A 0
 | Cons : forall {n}, A -> ilist A n -> ilist A (S n).
 Arguments Nil [A].
 Arguments Cons [A n] _ _.
+
+Derive Signature NoConfusion for ilist.
 
 Equations fin_to_nat {n : nat} (i : fin n) : nat :=
 fin_to_nat fz := 0;
@@ -40,19 +45,14 @@ nat_bound_to_fin 0 (exist _ p) :=! p;
 nat_bound_to_fin (S n') (exist 0 _) := fz;
 nat_bound_to_fin (S n') (exist (S m) p) := fs (nat_bound_to_fin _ m).
 
-Next Obligation. auto with arith. Defined.
+Next Obligation. auto with arith || inversion p. Defined.
 
 Lemma fin__nat : forall (n : nat) (m : nat) (p : m < n),
   fin_to_nat (nat_to_fin m p) = m.
 Proof.
   intros.
-  funelim (fin_to_nat (nat_to_fin m p));
-  funelim (nat_to_fin m p).
-    - reflexivity.
-    - inversion H1.
-    - inversion H1.
-    - clear H. f_equal. simp fin_to_nat in H2. noconf H2. rewrite H. 
-      apply H1; auto. inversion H3. apply inj_pair2 in H4. subst; reflexivity.
+  funelim (nat_to_fin m p); simp fin_to_nat.
+  simpl. now rewrite H.
 Qed.
 
 Axiom cheat : forall {A}, A.
@@ -61,15 +61,10 @@ Lemma nat__fin : forall (n : nat) (i : fin n),
   nat_to_fin (fin_to_nat i) (fin_lt_n n i) = i.
 Proof.
   intros.
-  funelim (nat_to_fin (fin_to_nat i) (fin_lt_n n i));
-    funelim (fin_to_nat i).
-  - reflexivity.
-  - inversion H1.
-  - inversion H1.
-  - clear H. unfold nat_to_fin_obligation_1 in *. f_equal.
-    simp fin_to_nat in H3. noconf H3.
-    replace (Lt.lt_S_n (fin_to_nat f) n (fin_lt_n (S n) (fs f))) with (fin_lt_n n f) in * by (apply proof_irrelevance).
-    apply H1; reflexivity.
+  funelim (fin_to_nat i). simp fin_to_nat.
+  simp fin_to_nat. Transparent fin_to_nat. simpl.
+  simp nat_to_fin. f_equal. rewrite <- H at 4. f_equal.
+  apply proof_irrelevance.
 Qed.
 
 Equations iget {A : Set} {n : nat} (l : ilist A n) (i : fin n) : A :=
@@ -87,18 +82,17 @@ Proof.
     - depelim l. simp isnoc nat_to_fin iget.
     - depelim l. simp isnoc nat_to_fin iget.
       unfold nat_to_fin_obligation_1.
-      replace (Lt.lt_S_n n (S n) (Lt.lt_n_Sn (S n))) with (Lt.lt_n_Sn n) by (apply proof_irrelevance).
+      replace (Lt.lt_S_n n0 (S n0) (Lt.lt_n_Sn (S n0))) with (Lt.lt_n_Sn n0) by (apply proof_irrelevance).
       apply IHn.
 Qed.
 
 Equations convert_ilist {A : Set} {n m : nat} (p : n = m) (l : ilist A n) : ilist A m :=
 convert_ilist p Nil with p => { | eq_refl := Nil };
 convert_ilist p (Cons a l) with p => | eq_refl := Cons a (convert_ilist eq_refl l).
-
+Transparent convert_ilist.
 Lemma convert_ilist_refl {A} (n : nat) (l : ilist A n) : convert_ilist eq_refl l = l.
 Proof.
-  funelim (convert_ilist eq_refl l). reflexivity.
-  now rewrite H.
+  induction l. reflexivity. simpl. now rewrite IHl.
 Defined.
 
 Lemma convert_ilist_trans : forall {A : Set} {n m o : nat} (p : n = m) (r : m = o) (l : ilist A n),
@@ -138,18 +132,22 @@ Definition rev_aux_app_stmt := forall (A : Set) (i j1 j2 : nat) (l : ilist A i)
   (acc1 : ilist A j1) (acc2 : ilist A j2) H,
   convert_ilist H (irev_aux l (iapp acc1 acc2)) = iapp (irev_aux l acc1) acc2.
 
+Ltac funelim c ::= funelim_JMeq_tac c ltac:(fun _ => idtac).
+
 Lemma rev_aux_app : rev_aux_app_stmt.
 Proof.
   unfold rev_aux_app_stmt.
   intros.
+  (* FIXME *)
   funelim (irev_aux l acc1).
     - simp irev_aux iapp. simpl in H. depelim H; simp convert_ilist. 
     - simp irev_aux iapp. rewrite convert_ilist_trans.
       rewrite <- iapp_cons.
       set (He := eq_trans _ _). clearbody He.
       set (He' := irev_aux_obligation_1 _ _ _ _ _ _ _). clearbody He'.
-      simpl in H0. simpl in H. 
+      simpl in H0. simpl in H.
 Admitted.
+
 
 Equations irev' {A : Set} {n : nat} (l : ilist A n) : ilist A n :=
 irev' Nil := Nil;
@@ -183,14 +181,11 @@ Derive Signature for fle.
 Equations fin0_empty (i : fin 0) : False :=
 fin0_empty i :=! i.
 
-Derive Signature NoConfusion for fin.
-
 Require Import DepElimDec.
 
 Set Equations OCaml Splitting.
 Unset Equations WithK.
 
-Derive NoConfusionHom for fin.
 Transparent NoConfusionHom_fin.
 
 Equations fle_trans {n : nat} {i j k : fin n} (p : fle i j) (q : fle j k) : fle i k :=
