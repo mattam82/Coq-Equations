@@ -47,8 +47,9 @@ let occur_rigidly sigma i concl =
   let hd, args = decompose_appvect sigma concl in
   Array.exists aux args
 
+(* On [xn :: ... x1] returns [forcedn :: .. :: forced1] *)
 let get_forced_positions sigma args concl =
-  let is_forced i acc args =
+  let is_forced i acc _ =
     if occur_rigidly sigma i concl then true :: acc
     else false :: acc
   in
@@ -163,9 +164,11 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
       let name' = Namegen.next_ident_away (add_suffix id "1") avoid in
       let acc =
         if forced then
-          let acc' = List.fold_left_i
-              (fun i acc (na,na',decl) -> (na, na', Vars.substnl [mkVar name'] i decl) :: acc) 0 [] acc in
-          List.rev acc'
+          let acc' =
+            List.fold_left_i
+              (fun i acc (na,na',decl) -> (na, na', Vars.substnl [mkVar name'] i decl) :: acc)
+              0 [] acc
+          in List.rev acc'
         else ((name, name', get_type decl) :: acc) in
       (avoid, acc), (Syntax.PUVar (name, true), Syntax.PUVar (name', true))
     in
@@ -178,13 +181,13 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
       | [] -> tru
       | (name, name', ty) :: eqs ->
         let ty, lhs, rhs =
-          let get_type (na, na', ty) (restty, restl, restr) =
+          let get_type (restty, restl, restr) (na, na', ty) =
             let codom = mkLambda (Name na, ty, restty) in
             mkApp (sigT, [| ty; codom |]),
-            mkApp (sigI, [| ty; codom; mkVar na; restl |]),
-            mkApp (sigI, [| ty; codom; mkVar na'; restr |])
+            mkApp (sigI, [| ty; codom; mkVar na; subst1 (mkVar na) restl |]),
+            mkApp (sigI, [| ty; codom; mkVar na'; subst1 (mkVar na') restr |])
           in
-          List.fold_right get_type eqs (ty, mkVar name, mkVar name')
+          List.fold_left get_type (ty, mkVar name, mkVar name') eqs
         in mkApp (eqT, [| ty; lhs; rhs |])
     in
     (loc, lhs, Syntax.Program (Syntax.Constr rhs, []))
