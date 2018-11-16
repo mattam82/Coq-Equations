@@ -25,6 +25,7 @@ Proof.
     - apply Le.le_n_S; apply Le.le_0_n.
     - apply Lt.lt_n_S; assumption.
 Defined.
+Derive Signature for le.
 
 Equations nat_to_fin {n : nat} (m : nat) (p : m < n) : fin n :=
 nat_to_fin {n:=(S n)} 0 _ := fz;

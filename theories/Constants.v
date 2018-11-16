@@ -115,4 +115,6 @@ Register Coq.Classes.CRelationClasses.crelation as equations.relation.type
 Register Equations.Classes.transitive_closure as equations.relation.transitive_closure.
 
 Register Equations.DepElim.NoConfusionIdPackage as equations.noconfusion.class.
-*)
+ *)
+
+Derive Signature for eq.

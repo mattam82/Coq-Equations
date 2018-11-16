@@ -422,16 +422,13 @@ Section Univ.
 
 End Univ.
 
-Ltac generalize_by_eqs id ::= generalize_eqs id.
-Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars id.
-
-Equations(nocomp) vlast' {A} {n} (v : vector A (S n)) : A :=
-vlast' (cons a O Vnil) := a ;
-vlast' (cons a (S n) v) := vlast' v.
-
-Require Import DepElimDec.
-Ltac generalize_by_eqs id ::= generalize_eqs_sig id.
-Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars_sig id.
+Equations vlast {A} {n} (v : vector A (S n)) : A :=
+vlast (cons a O Vnil) := a ;
+vlast (cons a (S n) v) := vlast v.
+Transparent vlast.
+Next Obligation.
+  depind v. destruct n. constructor. simp vlast.
+Defined.
 
 (** The parity predicate embeds a divisor of n or n-1 *)
 
@@ -459,9 +456,6 @@ half n <= parity n => {
 
 Equations vtail {A n} (v : vector A (S n)) : vector A n :=
   vtail (cons a n v') := v'.
-
-(* Ltac generalize_by_eqs id ::= generalize_eqs id. *)
-(* Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars id. *)
 
 Equations diag {A n} (v : vector (vector A n) n) : vector A n :=
 diag {n:=O} nil := nil ;
