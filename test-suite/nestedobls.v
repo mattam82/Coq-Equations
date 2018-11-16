@@ -58,8 +58,12 @@ Next Obligation.
   intros. red. simpl.
   auto with arith.
 Defined.
-Obligations.
-Obligation 7.
+
+Next Obligation.
+  red; simpl; eauto with arith; omega.
+Defined.
+
+Next Obligation.
   simpl; eauto with arith; omega.
 Defined.
 
