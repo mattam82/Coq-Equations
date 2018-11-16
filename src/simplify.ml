@@ -515,7 +515,7 @@ let solution ~(dir:direction) : simplification_fun =
     if Int.Set.mem rel (Covering.dependencies_of_term ~with_red:true env !evd ctx term rel) then
       raise (CannotSimplify (str  "[solution] The variable appears on both sides of the equality."))
   in
-  let () = Feedback.msg_debug (str "solution on " ++ Printer.pr_econstr_env (push_rel_context ctx env) !evd ty) in
+  (* let () = Feedback.msg_debug (str "solution on " ++ Printer.pr_econstr_env (push_rel_context ctx env) !evd ty) in *)
   let (ctx', _, _) as subst, rev_subst = Covering.new_strengthen env !evd ctx rel term in
   let trel' = Covering.mapping_constr !evd subst trel in
   let rel' = EConstr.destRel !evd trel' in
