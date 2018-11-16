@@ -16,14 +16,14 @@ Arguments S {_} _.
 
 Inductive Vec E (A : Set) : ℕ E -> Set :=
   nil  : Vec E A O
-| cons : forall {n} (x : A) (xs : Vec E A n), Vec E A (S n)
-| cons' : forall {n} (x : A), Vec E A (S n)
-| cons3 : forall n, Vec E A n.
+| cons : forall {n} (x : A) (xs : Vec E A n), Vec E A (S n).
+(* | cons' : forall {n} (x : A), Vec E A (S n) *)
+(* | cons3 : forall n, Vec E A n. *)
 
 Derive Signature for Vec.
 Arguments nil {_ _}.
 Arguments cons {_ _ _} _ _.
-Arguments cons' {_ _ _} _ .
+(* Arguments cons' {_ _ _} _ . *)
 
 
 Inductive vector_param E (A : Set) : forall (n : ℕ E), Vec E A n -> Set :=
@@ -83,15 +83,15 @@ Proof.
   rewrite equiv_inv_equiv in X. exact X.
 Defined.
 
-Equations noConfVec {E A n} (v v' : Vec E A n) : Prop :=
-noConfVec nil nil := True;
-noConfVec (cons _ x xs) (cons _ x' xs') :=
-  {| pr1 := x; pr2 := xs |} = {| pr1 := x'; pr2 := xs' |};
-noConfVec (cons' x) (cons' x') := x = x';
-noConfVec cons3 cons3 := True;
-noConfVec _ _ := False.
-Transparent noConfVec.
-Print Assumptions noConfVec_elim.
+(* Equations noConfVec {E A n} (v v' : Vec E A n) : Prop := *)
+(* noConfVec nil nil := True; *)
+(* noConfVec (cons _ x xs) (cons _ x' xs') := *)
+(*   {| pr1 := x; pr2 := xs |} = {| pr1 := x'; pr2 := xs' |}; *)
+(* noConfVec (cons' x) (cons' x') := x = x'; *)
+(* noConfVec cons3 cons3 := True; *)
+(* noConfVec _ _ := False. *)
+(* Transparent noConfVec. *)
+(* Print Assumptions noConfVec_elim. *)
 
 (* Next Obligation. *)
 (* Proof. *)
@@ -108,62 +108,53 @@ Print Assumptions noConfVec_elim.
 (*                                                      simplify *; constructor. *)
 (* Defined. *)
 
-Definition noConfVec_eq {E A n} (v v' : Vec E A n) : v = v' -> noConfVec v v'.
-Proof.
-  intros ->. destruct v'; constructor.
-Defined.
+(* Definition noConfVec_eq {E A n} (v v' : Vec E A n) : v = v' -> noConfVec v v'. *)
+(* Proof. *)
+(*   intros ->. destruct v'; constructor. *)
+(* Defined. *)
 
-Definition noConfVec_eq_inv {E A n} (v v' : Vec E A n) : noConfVec v v' -> v = v'.
-Proof.
-  funelim (noConfVec v v'); try simplify *; constructor.
-  (* refine (@f_equal _ _ (fun x => cons x.1 x.2) _ _). *)
-  (* simplify ?. *)
-  (* simplify ?. *)
-  (* refine (@f_equal _ _ (fun x => cons' x) _ _). *)
-Defined.
+(* Definition noConfVec_eq_inv {E A n} (v v' : Vec E A n) : noConfVec v v' -> v = v'. *)
+(* Proof. *)
+(*   funelim (noConfVec v v'); try simplify *; constructor. *)
+(*   (* refine (@f_equal _ _ (fun x => cons x.1 x.2) _ _). *) *)
+(*   (* simplify ?. *) *)
+(*   (* simplify ?. *) *)
+(*   (* refine (@f_equal _ _ (fun x => cons' x) _ _). *) *)
+(* Defined. *)
 
-Lemma noConfVec_eq_eq_inv {E A n} (v v' : Vec E A n) (e : v = v') :
-  noConfVec_eq_inv _ _ (noConfVec_eq _ _ e) = e.
-Proof.
-  destruct e. destruct v; reflexivity.
-Defined.
+(* Lemma noConfVec_eq_eq_inv {E A n} (v v' : Vec E A n) (e : v = v') : *)
+(*   noConfVec_eq_inv _ _ (noConfVec_eq _ _ e) = e. *)
+(* Proof. *)
+(*   destruct e. destruct v; reflexivity. *)
+(* Defined. *)
 
-Lemma noConfVec_refl {E A n} (v : Vec E A n) : noConfVec v v.
-Proof. destruct v; reflexivity. Defined.
+(* Lemma noConfVec_refl {E A n} (v : Vec E A n) : noConfVec v v. *)
+(* Proof. destruct v; reflexivity. Defined. *)
 
-Lemma noConfVec_eq_inv_eq_refl {E A n} (v : Vec E A n) :
-  noConfVec_eq _ _ (noConfVec_eq_inv v v (noConfVec_refl v)) = (noConfVec_refl v).
-Proof.
-  destruct v; reflexivity.
-Defined.
+(* Lemma noConfVec_eq_inv_eq_refl {E A n} (v : Vec E A n) : *)
+(*   noConfVec_eq _ _ (noConfVec_eq_inv v v (noConfVec_refl v)) = (noConfVec_refl v). *)
+(* Proof. *)
+(*   destruct v; reflexivity. *)
+(* Defined. *)
 
-Lemma noConfVec_eq_inv_eq {E A n} (v v' : Vec E A n) (e : noConfVec v v') :
-  noConfVec_eq _ _ (noConfVec_eq_inv _ _ e) = e.
-Proof.
-  destruct v; revert e; depelim v'; simplify *; reflexivity.
-Defined.
+(* Lemma noConfVec_eq_inv_eq {E A n} (v v' : Vec E A n) (e : noConfVec v v') : *)
+(*   noConfVec_eq _ _ (noConfVec_eq_inv _ _ e) = e. *)
+(* Proof. *)
+(*   destruct v; revert e; depelim v'; simplify *; reflexivity. *)
+(* Defined. *)
 
-(* Definition NoConfVec {E A n} (v v' : Vec E A n) : Prop := *)
-(*   match v in Vec _ _ n return Vec E A n -> Prop with *)
-(*   | nil => fun v' => *)
-(*              match v' in Vec _ _ O return Prop with *)
-(*              | nil => True *)
-(*              | _ => False *)
-(*              end *)
-(*   | @cons _ _ n' x xs => *)
-(*     fun v' => *)
-(*       match v' in Vec _ _ (S n'') return Vec E A n'' -> Prop with *)
-(*       | @cons _ _ n'' x' xs' => fun xs => {| pr1 := x; pr2 := xs |} = {| pr1 := x'; pr2 := xs' |} *)
-(*       | cons' _ => fun _ => False *)
-(*       end xs *)
-(*   | @cons' _ _ n' x => *)
-(*     fun v' => *)
-(*       match v' in Vec _ _ (S n'') return Prop with *)
-(*       | nil => False *)
-(*       | @cons' _ _ n'' x' => x = x' *)
-(*       | cons _ _ => False *)
-(*       end *)
-(*   end v'. *)
+Definition NoConfVec {E A n} (v v' : Vec E A n) : Prop :=
+  match v in Vec _ _ n return Vec E A n -> Prop with
+  | nil => fun v' =>
+             match v' in Vec _ _ O return Prop with
+             | nil => True
+             end
+  | @cons _ _ n' x xs =>
+    fun v' =>
+      match v' in Vec _ _ (S n'') return Vec E A n'' -> Prop with
+      | @cons _ _ n'' x' xs' => fun xs => {| pr1 := x; pr2 := xs |} = {| pr1 := x'; pr2 := xs' |}
+      end xs
+  end v'.
 
 (* Definition noConfVec_eq {E A n} (v v' : Vec E A n) : v = v' -> NoConfVec v v'. *)
 (* Proof. *)

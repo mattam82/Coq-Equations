@@ -472,22 +472,22 @@ let fix_rels sigma ctx =
       if is_fix_proto sigma (get_type decl) then Int.Set.add i acc else acc)
     1 Int.Set.empty ctx
 
-let rec dependencies_of_rel env evd ctx k x =
+let rec dependencies_of_rel ~with_red env evd ctx k x =
   let (n,b,t) = to_tuple (nth ctx (pred k)) in
   let b = Option.map (lift k) b and t = lift k t in
-  let bdeps = match b with Some b -> dependencies_of_term env evd ctx b x | None -> Int.Set.empty in
-  Int.Set.union (Int.Set.singleton k) (Int.Set.union bdeps (dependencies_of_term env evd ctx t x))
+  let bdeps = match b with Some b -> dependencies_of_term ~with_red env evd ctx b x | None -> Int.Set.empty in
+  Int.Set.union (Int.Set.singleton k) (Int.Set.union bdeps (dependencies_of_term ~with_red env evd ctx t x))
 
-and dependencies_of_term env evd ctx t x =
+and dependencies_of_term ~with_red env evd ctx t x =
   (* First we get the syntactic dependencies of t. *)
   let rels = free_rels evd t in
   let rels =
     (* We check if it mentions x. If it does, we reduce t because
        we know it should not. *)
-    if Int.Set.mem x rels then
+    if with_red && Int.Set.mem x rels then
       free_rels evd (nf_betadeltaiota env evd t)
     else rels
-  in Int.Set.fold (fun i -> Int.Set.union (dependencies_of_rel env evd ctx i x)) rels Int.Set.empty
+  in Int.Set.fold (fun i -> Int.Set.union (dependencies_of_rel ~with_red env evd ctx i x)) rels Int.Set.empty
 
 let non_dependent evd ctx c =
   List.fold_left_i (fun i acc (_, _, t) -> 
@@ -507,7 +507,7 @@ let subst_term_in_context sigma t ctx =
 let strengthen ?(full=true) ?(abstract=false) env evd (ctx : rel_context) x (t : constr) =
   let _rels = dependencies_of_term env evd ctx t x in
   let rels = Int.Set.union (if full then rels_above ctx x else Int.Set.singleton x)
-      (* (Int.Set.union *) (Int.Set.union (dependencies_of_term env evd ctx t x) (fix_rels evd ctx))
+      (* (Int.Set.union *) (Int.Set.union (dependencies_of_term ~with_red:true env evd ctx t x) (fix_rels evd ctx))
   (* (non_dependent ctx t)) *)
   in
   (* For each variable that we need to push under x, we check
@@ -553,7 +553,7 @@ let strengthen ?(full=true) ?(abstract=false) env evd (ctx : rel_context) x (t :
 let new_strengthen (env : Environ.env) (evd : Evd.evar_map) (ctx : rel_context)
     (x : int) ?(rels : Int.Set.t = rels_above ctx x) (t : constr) :
   context_map * context_map =
-  let rels = Int.Set.union rels (dependencies_of_term env evd ctx t x) in
+  let rels = Int.Set.union rels (dependencies_of_term ~with_red:true env evd ctx t x) in
   let maybe_reduce k t =
     if Int.Set.mem k (Termops.free_rels evd t) then
       Equations_common.nf_betadeltaiota env evd t
@@ -1655,11 +1655,11 @@ and interp_wheres env ctx evars path data s lets w =
   in (envctx, lets, push_rel_context ctx env, coverings, liftn, subst)
 
 
-and covering env evars data (clauses : clause list) path prob ty =
+and covering ?(check_unused=true) env evars data (clauses : clause list) path prob ty =
   let clauses = (List.map (fun x -> (x,false)) clauses) in
   match covering_aux env evars data [] clauses path prob [] ty with
   | Some (clauses, cov) ->
-    let () = check_unused_clauses env clauses in
+    let () = if check_unused then check_unused_clauses env clauses in
     cov
   | None ->
     errorlabstrm "deppat"

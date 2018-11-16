@@ -37,7 +37,8 @@ let from_peuniverses sigma (x, u) = (x, EConstr.EInstance.kind sigma u)
 
 (* Options. *)
 let ocaml_splitting = ref true
-let simplify_withK = ref true
+let simplify_withK = ref false
+let simplify_withK_dec = ref false
 let equations_transparent = ref false
 
 let _ = Goptions.declare_bool_option {
@@ -50,10 +51,18 @@ let _ = Goptions.declare_bool_option {
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = false;
-  Goptions.optname  = "using K during simplification";
+  Goptions.optname  = "using axiomatic K during simplification";
   Goptions.optkey   = ["Equations"; "WithK"];
   Goptions.optread  = (fun () -> !simplify_withK);
   Goptions.optwrite = (fun b -> simplify_withK := b)
+}
+
+let _ = Goptions.declare_bool_option {
+  Goptions.optdepr  = false;
+  Goptions.optname  = "using propositional K during simplification";
+  Goptions.optkey   = ["Equations"; "WithKDec"];
+  Goptions.optread  = (fun () -> !simplify_withK_dec);
+  Goptions.optwrite = (fun b -> simplify_withK_dec := b)
 }
 
 let _ = Goptions.declare_bool_option {
@@ -531,6 +540,8 @@ let find_empty_tac () = tac_of_string "Equations.DepElim.find_empty" []
 let pi_tac () = tac_of_string "Equations.Subterm.pi" []
 
 let noconf_tac () = tac_of_string "Equations.NoConfusion.solve_noconf" []
+
+let noconf_hom_tac () = tac_of_string "Equations.NoConfusion.solve_noconf_hom" []
 
 let eqdec_tac () = tac_of_string "Equations.EqDecInstances.eqdec_proof" []
 

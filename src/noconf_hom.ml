@@ -54,12 +54,62 @@ let get_forced_positions sigma args concl =
   in
   List.rev (List.fold_left_i is_forced 1 [] args)
 
-let derive_no_confusion_hom env sigma ~polymorphic (ind,u as indu) =
+let derive_noConfusion_package env sigma polymorphic (ind,u as indu) indid cstNoConf =
   let mindb, oneind = Global.lookup_inductive ind in
   let pi = (fst indu, EConstr.EInstance.kind sigma (snd indu)) in
   let ctx = subst_instance_context (snd pi) oneind.mind_arity_ctxt in
   let ctx = List.map of_rel_decl ctx in
   let ctx = smash_rel_context sigma ctx in
+  let len = List.length ctx in
+  let argsvect = rel_vect 0 len in
+  let noid = add_prefix "noConfusionHom_" indid
+  and packid = add_prefix "NoConfusionHomPackage_" indid in
+  let tc = Typeclasses.class_info (Lazy.force coq_noconfusion_class) in
+  let sigma, noconf = new_global sigma (ConstRef cstNoConf) in
+  let sigma, noconfcl = new_global sigma tc.Typeclasses.cl_impl in
+  let inst, u = destInd sigma noconfcl in
+  let noconfterm = mkApp (noconf, argsvect) in
+  let ctx, argty =
+    let ty = Retyping.get_type_of env sigma noconf in
+    let ctx, ty = EConstr.decompose_prod_n_assum sigma len ty in
+    match kind sigma ty with
+    | Prod (_, b, _) -> ctx, b
+    | _ -> assert false
+  in
+  let b, ty =
+    Equations_common.instance_constructor sigma (tc,u) [argty; noconfterm]
+  in
+  let env = push_rel_context ctx (Global.env ()) in
+  let rec term sigma c ty =
+    match kind sigma ty with
+    | Prod (na, t, ty) ->
+       let sigma, arg = Evarutil.new_evar env sigma t in
+       term sigma (mkApp (c, [|arg|])) (subst1 arg ty)
+    | _ -> sigma, c, ty
+  in
+  let cty = Retyping.get_type_of env sigma (Option.get b) in
+  let sigma, term, ty = term sigma (Option.get b) cty in
+  let term = it_mkLambda_or_LetIn term ctx in
+  let ty = it_mkProd_or_LetIn ty ctx in
+  let sigma, _ = Typing.type_of env sigma term in
+  let hook _ectx _evars vis gr =
+    Typeclasses.add_instance
+      (Typeclasses.new_instance tc empty_hint_info true gr)
+  in
+  let kind = Decl_kinds.(Global, polymorphic, Definition) in
+  let oblinfo, _, term, ty = Obligations.eterm_obligations env noid sigma 0
+      (to_constr ~abort_on_undefined_evars:false sigma term)
+      (to_constr sigma ty) in
+    ignore(Obligations.add_definition ~hook:(Obligations.mk_univ_hook hook) packid
+             ~kind ~term ty ~tactic:(noconf_hom_tac ())
+              (Evd.evar_universe_context sigma) oblinfo)
+
+let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
+  let mindb, oneind = Global.lookup_inductive ind in
+  let pi = (fst indu, EConstr.EInstance.kind sigma0 (snd indu)) in
+  let ctx = subst_instance_context (snd pi) oneind.mind_arity_ctxt in
+  let ctx = List.map of_rel_decl ctx in
+  let ctx = smash_rel_context sigma0 ctx in
   let len = List.length ctx in
   let params = mindb.mind_nparams in
   let args = oneind.mind_nrealargs in
@@ -68,7 +118,7 @@ let derive_no_confusion_hom env sigma ~polymorphic (ind,u as indu) =
   let argty, x, ctx, argsctx =
     mkApp (mkIndU indu, argsvect), mkRel 1, ctx, []
   in
-  let sigma, tru = get_fresh sigma logic_top in
+  let sigma, tru = get_fresh sigma0 logic_top in
   let sigma, fls = get_fresh sigma logic_bot in
   let ctx = name_context env sigma ctx in
   let xid = Id.of_string "x" and yid = Id.of_string "y" in
@@ -139,13 +189,22 @@ let derive_no_confusion_hom env sigma ~polymorphic (ind,u as indu) =
     in
     (loc, lhs, Syntax.Program (Syntax.Constr rhs, []))
   in
-  let clauses = Array.mapi mk_clause constructors in
+  let clauses = Array.to_list (Array.mapi mk_clause constructors) in
+  let hole x = Syntax.PUVar (Id.of_string x, true) in
+  let catch_all =
+    let lhs = parampats @ [Loc.tag (hole "x"); Loc.tag (hole "y")] in
+    let rhs = Syntax.Program (Syntax.Constr fls, []) in
+    (None, lhs, rhs)
+  in
+  let clauses = clauses @ [catch_all] in
   let indid = Nametab.basename_of_global (IndRef ind) in
   let id = add_prefix "NoConfusionHom_" indid in
   let evd = ref sigma in
-  let splitting = Covering.covering env evd
-      (id, false, Names.Id.Map.empty)
-      (Array.to_list clauses) [] ctxmap s in
+  let splitting =
+    Covering.covering
+      ~check_unused:false (* The catch-all clause might not be needed *)
+      env evd
+      (id, false, Names.Id.Map.empty) clauses [] ctxmap s in
   let hook split fn terminfo ustate =
     let proginfo =
       Splitting.{ program_id = id;
@@ -156,64 +215,24 @@ let derive_no_confusion_hom env sigma ~polymorphic (ind,u as indu) =
         program_rec = None;
         program_impls = [] }
     in
-    let compiled_info = Splitting.{ program_cst = (match terminfo.term_id with ConstRef c -> c | _ -> assert false);
-                          program_split = split;
-                          program_split_info = terminfo } in
+    let program_cst = match terminfo.Splitting.term_id with ConstRef c -> c | _ -> assert false in
+    let compiled_info = Splitting.{ program_cst; program_split = split;
+                                    program_split_info = terminfo } in
     let flags = { polymorphic; with_eqns = true; with_ind = true } in
     let fixprots = [s] in
-    Equations.define_principles flags fixprots [proginfo, compiled_info]
+    let () = Equations.define_principles flags fixprots [proginfo, compiled_info] in
+    (** The principles are now shown, let's prove this forms an equivalence *)
+    Global.set_strategy (ConstKey program_cst) Conv_oracle.transparent;
+    let env = Global.env () in
+    let sigma = Evd.from_env env in
+    let sigma, indu = Evarutil.new_global sigma (IndRef ind) in
+    let indu = destInd sigma indu in
+    derive_noConfusion_package (Global.env ()) sigma0 polymorphic indu indid program_cst
  in
   Splitting.define_tree None [] polymorphic [] (Evar_kinds.Define false) evd env
                 (id, fullbinders, s)
                 None splitting hook
 
-
-  (* let _, ce = make_definition ~poly:polymorphic !evd ~types:arity app in
-   * let id = add_prefix "NoConfusion_" indid
-   * and noid = add_prefix "noConfusion_" indid
-   * and packid = add_prefix "NoConfusionPackage_" indid in
-   * let cstNoConf = Declare.declare_constant id (DefinitionEntry ce, IsDefinition Definition) in
-   * let env = Global.env () in
-   * let evd = ref (Evd.from_env env) in
-   * let tc = Typeclasses.class_info (Lazy.force coq_noconfusion_class) in
-   * let noconf = e_new_global evd (ConstRef cstNoConf) in
-   * let noconfcl = e_new_global evd tc.Typeclasses.cl_impl in
-   * let inst, u = destInd !evd noconfcl in
-   * let noconfterm = mkApp (noconf, paramsvect) in
-   * let ctx, argty =
-   *   let ty = Retyping.get_type_of env !evd noconf in
-   *   let ctx, ty = EConstr.decompose_prod_n_assum !evd params ty in
-   *   match kind !evd ty with
-   *   | Prod (_, b, _) -> ctx, b
-   *   | _ -> assert false
-   * in
-   * let b, ty =
-   *   Equations_common.instance_constructor !evd (tc,u) [argty; noconfterm]
-   * in
-   * let env = push_rel_context ctx (Global.env ()) in
-   * let rec term c ty =
-   *   match kind !evd ty with
-   *   | Prod (na, t, ty) ->
-   *      let arg = Equations_common.evd_comb1 (Evarutil.new_evar env) evd t in
-   *      term (mkApp (c, [|arg|])) (subst1 arg ty)
-   *   | _ -> c, ty
-   * in
-   * let cty = Retyping.get_type_of env !evd (Option.get b) in
-   * let term, ty = term (Option.get b) cty in
-   * let term = it_mkLambda_or_LetIn term ctx in
-   * let ty = it_mkProd_or_LetIn ty ctx in
-   * let _ = Equations_common.evd_comb1 (Typing.type_of env) evd term in
-   * let hook _ectx _evars vis gr =
-   *   Typeclasses.add_instance
-   *     (Typeclasses.new_instance tc empty_hint_info true gr)
-   * in
-   * let kind = (Global, polymorphic, Definition) in
-   * let oblinfo, _, term, ty = Obligations.eterm_obligations env noid !evd 0
-   *     (to_constr ~abort_on_undefined_evars:false !evd term)
-   *     (to_constr !evd ty) in
-   *   ignore(Obligations.add_definition ~hook:(Obligations.mk_univ_hook hook) packid
-   *            ~kind ~term ty ~tactic:(noconf_tac ())
-   *             (Evd.evar_universe_context !evd) oblinfo) *)
 
 let () =
   Ederive.(register_derive

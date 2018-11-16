@@ -380,9 +380,23 @@ Lemma Id_rect_dep_r {A} (x : A) (P : forall a, Id a x -> Type) (p : P x id_refl)
       (y : A) (e : Id y x) : P y e.
 Proof. destruct e. apply p. Defined.
 
+Lemma eq_sym_invol {A} (x y : A) (e : x = y) : eq_sym (eq_sym e) = e.
+Proof. destruct e. reflexivity. Defined.
+
+Lemma eq_symmetry_dep {A} {t : A} {B : forall (x : A), x = t -> Type} :
+  (forall (x : A) (eq : t = x), B x (eq_sym eq)) ->
+  (forall (x : A) (eq : x = t), B x eq).
+Proof.
+  intros. rewrite <- eq_sym_invol.
+  generalize (eq_sym eq). apply X.
+Defined.
+
 Lemma solution_left_dep : forall {A} (t : A) {B : forall (x : A), (x = t -> Type)},
     B t eq_refl -> (forall x (Heq : x = t), B x Heq).
-Proof. intros A t B H x eq. destruct eq. apply H. Defined.
+Proof.
+  intros A t B H x eq. apply eq_symmetry_dep. clear eq. intros.
+  destruct eq. exact H.
+Defined.
 
 Polymorphic
 Lemma Id_solution_left_dep : forall {A} (t : A) {B : forall (x : A), (Id x t -> Type)},
@@ -918,6 +932,7 @@ Ltac rewrite_sigma2_refl :=
    unfold everything to [eq_rect]s. *)
 
 Hint Unfold solution_left solution_right
+  eq_sym_invol eq_symmetry_dep
   solution_left_dep solution_right_dep deletion
   simplification_existT1 simplification_sigma1
   eq_simplification_sigma1 eq_simplification_sigma1_dep
@@ -931,6 +946,7 @@ Hint Unfold solution_left solution_right
 
 (** Makes these definitions disappear at extraction time *)
 Extraction Inline solution_right_dep solution_right solution_left solution_left_dep.
+Extraction Inline eq_sym_invol eq_symmetry_dep.
 Extraction Inline solution_right_let solution_left_let deletion.
 Extraction Inline simplification_heq simplification_existT2.
 Extraction Inline simplification_existT1 simplification_existT2_dec.

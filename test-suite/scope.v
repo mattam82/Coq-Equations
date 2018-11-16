@@ -2,9 +2,11 @@
   and well-scoped variables (and terms, types and environments). *)
 
 Require Import Equations.Equations.
+Require Import Equations.DepElimDec.
 Require Import Coq.Logic.Eqdep_dec.
 Require Import Coq.Classes.EquivDec.
 Require Import Program.
+Require Import Arith.
 
 Ltac simpl_exist :=
   repeat (
@@ -20,6 +22,14 @@ Inductive var : scope -> Set :=
 | FO : forall {n}, var (S n)
 | FS : forall {n}, var n -> var (S n)
 .
+Derive Signature NoConfusion NoConfusionHom for var.
+Derive Subterm for nat.
+
+Definition noCycle_nat (n m : nat) : n = m -> ~ nat_direct_subterm n m.
+Proof.
+  induction m in n |- *. intros. intro H'. depelim H'.
+  intros H H'. depelim H'. apply IHm. rewrite H at 2. constructor.
+Defined.
 
 Lemma var_dec_eq : forall {n} (x y : var n), {x = y} + {x <> y}.
 Proof.
@@ -29,8 +39,10 @@ Proof.
   - right; intro H; inversion H.
   - destruct (IHx y); subst.
     + left; reflexivity.
-    + right; intro H; inversion H; simpl_exist; auto.
+    + right; intro H; inversion H. noconf H. contradiction.
 Qed.
+
+Set Equations WithKDec.
 
 Inductive scope_le : scope -> scope -> Set :=
 | scope_le_n : forall {n}, scope_le n n
@@ -38,7 +50,61 @@ Inductive scope_le : scope -> scope -> Set :=
 | scope_le_map : forall {n m}, scope_le n m -> scope_le (S n) (S m)
 .
 
-Derive Signature for scope_le.
+Derive Signature NoConfusion NoConfusionHom for scope_le.
+
+Next Obligation.
+  destruct b. simpl. simpl_equation_impl. simpl.
+  simpl_equation_impl. simpl. reflexivity.
+  reflexivity. reflexivity.
+Defined.
+
+
+  depelim b. dmit.
+  - elim H. (* do_intros b. *)
+    (* generalize_by_eqs b. *)
+    (* destruct b. simplify ?. simpl. (* MISSING noCycle *) *)
+    (* intros e. elimtype False. apply noCycle_nat in e. apply e. constructor. *)
+    (* simplify *. simpl. simplify *. *)
+    (* simplify *. simpl. simplify *. *)
+
+  - revert H. simplify *.
+  - revert H.
+    do_intros b.
+    generalize_by_eqs b.
+    destruct b.
+
+    Set Equations Debug.
+    simplify *. simpl. simplify *.
+
+    + simplify *. simpl; simplify *. reflexivity.
+    + simplify *. simpl; simplify *.
+  - depelim b. elim H. elim H.
+    revert H. simplify *. constructor.
+Defined.
+
+
+    + simplify *. simpl. simplify ?. reflexivity.
+
+    + simplify *. simpl. simplify *.
+
+  - revert H. generalize_by_eqs b.
+    destruct b. simplify *. simplify *. simplify *. reflexivity.
+Defined.
+
+    (* MISSING noCycle *)
+    intros e. elimtype False. apply noCycle_nat in e. apply e. constructor.
+    simplify *. simpl. simplify *.
+    simplify *. simpl. simplify *.
+    depelim b.
+
+    simplify *.
+
+
+  simplify ?.
+  depelim b.
+
+
+
 Derive Subterm for scope_le.
 
 Ltac rec ::= Subterm.rec_wf_eqns.

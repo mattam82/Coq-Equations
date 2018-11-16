@@ -477,6 +477,7 @@ let deletion ~(force:bool) : simplification_fun =
   else
     let tB = EConstr.mkLambda (name, ty1, ty2) in
     try
+      if not !Equations_common.simplify_withK_dec then raise Not_found else
       (* We will try to find an instance of K for the type [A]. *)
       let tsimpl_K_dec = Globnames.ConstRef (Lazy.force EqRefs.simpl_K_dec) in
       let eqdec_ty = EConstr.mkApp (Builder.eq_dec evd, [| tA |]) in
@@ -510,9 +511,11 @@ let solution ~(dir:direction) : simplification_fun =
     else tz, tx
   in
   let rel = EConstr.destRel !evd trel in
-  if Int.Set.mem rel (Covering.dependencies_of_term env !evd ctx term rel) then
-   raise (CannotSimplify (str
-    "[solution] The variable appears on both sides of the equality.")); 
+  let () =
+    if Int.Set.mem rel (Covering.dependencies_of_term ~with_red:true env !evd ctx term rel) then
+      raise (CannotSimplify (str  "[solution] The variable appears on both sides of the equality."))
+  in
+  let () = Feedback.msg_debug (str "solution on " ++ Printer.pr_econstr_env (push_rel_context ctx env) !evd ty) in
   let (ctx', _, _) as subst, rev_subst = Covering.new_strengthen env !evd ctx rel term in
   let trel' = Covering.mapping_constr !evd subst trel in
   let rel' = EConstr.destRel !evd trel' in
@@ -590,6 +593,35 @@ let solution ~(dir:direction) : simplification_fun =
       (* And now we recover a term in the context [ctx]. *)
         Covering.mapping_constr !evd rev_subst c
   in build_term env evd (ctx, ty) (ctx'', ty'') f, subst
+
+let pre_solution ~(dir:direction) : simplification_fun =
+  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
+  let var_left = match dir with Left -> true | Right -> false in
+  let var_right = not var_left in
+  let name, ty1, ty2 = check_prod !evd ty in
+  let tA, tx, tz = check_equality env !evd ctx ~var_left ~var_right ty1 in
+  let trel, term =
+    if var_left then tx, tz
+    else tz, tx
+  in
+  let rel = EConstr.destRel !evd trel in
+  (** Check dependencies in both tA and term *)
+  if not (Int.Set.mem rel (Covering.dependencies_of_term ~with_red:false env !evd ctx (mkApp (tA, [| term |])) rel)) then
+    identity env evd (ctx, ty)
+  else
+    let tA = Reductionops.whd_all (push_rel_context ctx env) !evd tA in
+    let term = Reductionops.whd_all (push_rel_context ctx env) !evd term in
+    if Int.Set.mem rel (Covering.dependencies_of_term ~with_red:false env !evd ctx (mkApp (tA, [|term|])) rel) then
+      raise (CannotSimplify (str  "[solution] cannot remove dependency in the variable "))
+    else
+      let f c = c in
+      let eqf, _ = Equations_common.decompose_appvect !evd ty1 in
+      let ty1 =
+        if var_left then mkApp (eqf, [| tA; trel; term |])
+        else mkApp (eqf, [| tA; term; trel |])
+      in
+      let ty' = mkProd (name, ty1, ty2) in
+      build_term env evd (ctx, ty) (ctx, ty') f, Covering.id_subst ctx
 
 let is_construct_sigma_2 sigma f =
   let term = match decompose_sigma sigma f with
@@ -796,7 +828,7 @@ let infer_step ?(loc:Loc.t option) ~(isSol:bool)
        to analyze it. *)
     let tA, tu, tv = check_equality env !evd ctx ty1 in
     (* FIXME What is the correct way to do it? *)
-    let choose u v = (*if u < v then Left else Right in*) Left in
+    let choose u v = Left (* if u < v then Left else Right *) in
     (* If the user wants a solution, we need to respect his wishes. *)
     if isSol then
       if EConstr.isRel !evd tu && EConstr.isRel !evd tv then
@@ -807,7 +839,7 @@ let infer_step ?(loc:Loc.t option) ~(isSol:bool)
     else begin
       let check_occur trel term =
         let rel = EConstr.destRel !evd trel in
-          not (Int.Set.mem rel (Covering.dependencies_of_term env !evd ctx term rel))
+          not (Int.Set.mem rel (Covering.dependencies_of_term ~with_red:true env !evd ctx term rel))
       in
       if EConstr.isRel !evd tu && EConstr.isRel !evd tv && check_occur tu tv then
         Solution (choose (EConstr.destRel !evd tu) (EConstr.destRel !evd tv))
@@ -904,7 +936,7 @@ let rec apply_noConfusions =
 
 let rec execute_step : simplification_step -> simplification_fun = function
   | Deletion force -> deletion ~force
-  | Solution dir -> solution ~dir:dir
+  | Solution dir -> compose_fun (solution ~dir:dir) (pre_solution ~dir:dir)
   (* FIXME Not enough retries? *)
   | NoConfusion rules ->
       let noconf_out = (*with_retry*) simplify_ind_pack_inv in
@@ -939,7 +971,7 @@ and simplify_one ((loc, rule) : Loc.t option * simplification_rule) :
      let rec aux env evd gl =
        let first =
          or_fun check_block
-           (or_fun apply_noConfusions
+           (or_fun (with_retry apply_noConfusions)
               (wrap (infer_step ?loc ~isSol:false)))
        in
        try compose_fun (or_fun check_block_notprod aux)
@@ -947,7 +979,7 @@ and simplify_one ((loc, rule) : Loc.t option * simplification_rule) :
        with Blocked -> identity env evd gl
      in handle_error aux
   | Step step -> wrap_handle (fun _ _ _ -> step)
-  | Infer_one -> handle_error (or_fun apply_noConfusions
+  | Infer_one -> handle_error (or_fun (with_retry apply_noConfusions)
                                  (wrap (infer_step ?loc ~isSol:false)))
   | Infer_direction -> wrap_handle (infer_step ?loc ~isSol:true)
 

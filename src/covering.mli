@@ -164,12 +164,14 @@ val rels_above : 'a list -> int -> Int.Set.t
 val is_fix_proto : Evd.evar_map -> constr -> bool
 val fix_rels : Evd.evar_map -> rel_context -> Int.Set.t
 val dependencies_of_rel :
+  with_red:bool ->
   env ->
   Evd.evar_map ->
   rel_context ->
   Int.Set.elt ->
   Int.Set.elt -> Int.Set.t
 val dependencies_of_term :
+  with_red:bool ->
   env ->
   Evd.evar_map ->
   rel_context ->
@@ -368,7 +370,7 @@ val covering_aux :
   context_map ->
   rel_context -> constr -> ((clause * bool) list * splitting) option
 
-val covering :
+val covering : ?check_unused:bool ->
   env ->
   Evd.evar_map ref ->
   identifier * bool * Constrintern.internalization_env ->
