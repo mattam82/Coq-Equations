@@ -309,8 +309,7 @@ let dummy_loc = None
 type 'a located = 'a Loc.located
 
 let tac_of_string str args =
-  Tacinterp.interp (TacArg(dummy_loc,
-                           TacCall(dummy_loc, (Libnames.qualid_of_string str, args))))
+  Tacinterp.interp (TacArg(CAst.(make @@ TacCall(make (Libnames.qualid_of_string str, args)))))
 
 let get_class sigma c =
   let x = Typeclasses.class_of_constr sigma c in
@@ -507,16 +506,17 @@ let tacvar_arg h =
     TacGeneric ipat
 
 let rec_tac h h' = 
-  TacArg(dummy_loc, TacCall(dummy_loc,
-                            (qualid_of_string "Equations.Below.rec",
-                             [tacvar_arg h'; ConstrMayEval (Genredexpr.ConstrTerm h)])))
+  TacArg(CAst.(make @@ TacCall(
+      make
+        (qualid_of_string "Equations.Below.rec",
+         [tacvar_arg h'; ConstrMayEval (Genredexpr.ConstrTerm h)]))))
 
 let rec_wf_tac h h' rel = 
-  TacArg(dummy_loc, TacCall(dummy_loc,
+  TacArg(CAst.(make @@ TacCall(make
     (qualid_of_string "Equations.Subterm.rec_wf_eqns_rel",
     [tacvar_arg h';
      ConstrMayEval (Genredexpr.ConstrTerm h);
-     ConstrMayEval (Genredexpr.ConstrTerm rel)])))
+     ConstrMayEval (Genredexpr.ConstrTerm rel)]))))
 
 let unfold_recursor_tac () = tac_of_string "Equations.Subterm.unfold_recursor" []
 
@@ -555,7 +555,7 @@ let call_tac_on_ref tac c =
   let ist = Geninterp.{ lfun = Names.Id.Map.add var c Names.Id.Map.empty;
                             extra = Geninterp.TacStore.empty } in
   let var = Reference (Locus.ArgVar CAst.(make var)) in
-  let tac = TacArg (dummy_loc, TacCall (dummy_loc, (tac, [var]))) in
+  let tac = TacArg (CAst.(make @@ TacCall (make (tac, [var])))) in
   ist, tac
 
 let mp = Names.MPfile (Names.DirPath.make (List.map Names.Id.of_string ["DepElim"; "Equations"]))
@@ -567,9 +567,9 @@ let solve_equation_tac (c : Names.GlobRef.t) =
 
 let impossible_call_tac c =
   let tac = Tacintern.glob_tactic
-  (TacArg(dummy_loc,TacCall(dummy_loc,
+  (TacArg(CAst.(make @@ TacCall(make
   (Libnames.qualid_of_string "Equations.DepElim.impossible_call",
-   [Reference (reference_of_global c)])))) in
+   [Reference (reference_of_global c)]))))) in
   let val_tac = Genarg.glbwit Tacarg.wit_tactic in
   Genarg.in_gen val_tac tac
 (* let impossible_call_tac c = *)
