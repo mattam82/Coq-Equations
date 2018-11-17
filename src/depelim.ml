@@ -234,13 +234,15 @@ let abstract_generalize ?(generalize_vars=true) ?(force_dep=false) id gl =
       match newc with
       | None -> tclIDTAC gl
       | Some (newc, dep, n, vars) -> 
-	  let tac =
-	    if dep then
-	      tclTHENLIST [refine newc; Proofview.V82.of_tactic (rename_hyp [(id, oldid)]); 
-			   tclDO n (to82 intro); 
-			   to82 (generalize_dep ~with_let:true (mkVar oldid))]
+        let tac =
+          if dep then
+            tclTHENLIST
+              [Refiner.refiner ~check:true EConstr.Unsafe.(to_constr newc);
+               Proofview.V82.of_tactic (rename_hyp [(id, oldid)]);
+	       tclDO n (to82 intro);
+	       to82 (generalize_dep ~with_let:true (mkVar oldid))]
 	    else
-	      tclTHENLIST [refine newc; to82 (clear [id]); tclDO n (to82 intro)]
+	      tclTHENLIST [Refiner.refiner ~check:true EConstr.Unsafe.(to_constr newc); to82 (clear [id]); tclDO n (to82 intro)]
 	  in 
 	    if vars = [] then tac gl
 	    else tclTHEN tac 

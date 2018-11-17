@@ -757,7 +757,7 @@ module Tactics =struct
                      gl
           | None ->
              (tclTHENFIRST (Proofview.V82.of_tactic (assert_before_replacing id typ))
-                           (Tacmach.refine_no_check prf)) gl)
+                           (Refiner.refiner ~check:false EConstr.Unsafe.(to_constr prf))) gl)
       | None -> tclFAIL 0 (str"No currying to do in " ++ Id.print id) gl)
 
   let curry =
