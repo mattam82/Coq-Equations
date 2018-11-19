@@ -39,5 +39,9 @@ docs/_site
 /doc/equations.fls
 /doc/equations.fdb_latexmk
 /.nia.cache
-.merlin
 /src/g_equations.ml
+
+# Dune-generated files
+.merlin
+_build
+*.install
