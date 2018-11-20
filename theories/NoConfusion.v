@@ -47,8 +47,8 @@ Ltac destruct_tele_eq H :=
 Ltac solve_noconf_inv := intros;
   match goal with
     |- ?R ?a ?b => destruct_sigma a; destruct_sigma b; 
-                   destruct a ; destruct b; simpl in * |-;
-                 on_last_hyp ltac:(fun id => destruct_tele_eq id || destruct id);
+                   destruct a ; depelim b; simpl in * |-;
+                 on_last_hyp ltac:(fun id => hnf in id; destruct_tele_eq id || destruct id);
                  solve [constructor]
   end.
 
@@ -61,6 +61,13 @@ Ltac solve_noconf_inv_equiv :=
   simpl; constructor.
 
 Ltac solve_noconf := simpl; intros;
+    match goal with
+      [ H : @eq _ _ _ |- @eq _ _ _ ] => solve_noconf_inv_equiv
+    | [ H : @eq _ _ _ |- _ ] => solve_noconf_prf
+    | [ |- @eq _ _ _ ] => solve_noconf_inv
+    end.
+
+Ltac solve_noconf_hom := simpl; intros;
     match goal with
       [ H : @eq _ _ _ |- @eq _ _ _ ] => solve_noconf_inv_equiv
     | [ H : @eq _ _ _ |- _ ] => solve_noconf_prf

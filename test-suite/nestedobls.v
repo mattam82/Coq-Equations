@@ -60,11 +60,11 @@ Next Obligation.
 Defined.
 
 Next Obligation.
-  red; simpl; auto with arith.
+  red; simpl; eauto with arith; omega.
 Defined.
 
 Next Obligation.
-  omega.
+  simpl; eauto with arith; omega.
 Defined.
 
 End Bug.

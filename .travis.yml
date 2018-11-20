@@ -19,7 +19,7 @@ env:
   global:
   - NJOBS=2
   - COMPILER="4.06.0"
-  - CAMLP5_VER="7.05"
+  - CAMLP5_VER="7.06"
   - FINDLIB_VER="1.8.0"
   - NATIVE_COMP="yes"
   - COQ_VER="dev"

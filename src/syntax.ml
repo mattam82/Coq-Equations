@@ -48,17 +48,23 @@ type rec_annot =
   | StructuralOn of rec_arg
   | NestedOn of rec_arg option
 
+type program_body =
+  | ConstrExpr of Constrexpr.constr_expr
+  | Constr of EConstr.constr (* We interpret a constr by substituting
+                                [Var names] of the lhs bound variables
+                                with the proper de Bruijn indices *)
+
 type program =
   (signature * clause list) list
 
 and signature = identifier * rel_context * Constr.t
   
-and clause = Loc.t * lhs * clause rhs
+and clause = Loc.t option * lhs * clause rhs
   
 and lhs = user_pats
 
 and 'a rhs = 
-  | Program of constr_expr * 'a where_clause list
+  | Program of program_body * 'a where_clause list
   | Empty of identifier with_loc
   | Rec of constr_expr * constr_expr option *
              identifier with_loc option * 'a list
@@ -92,7 +98,10 @@ let rec pr_rhs env = function
      spc () ++ str "=>" ++ spc () ++ str"rec " ++ pr_constr_expr t ++ spc () ++
        pr_opt (fun (_, id) -> Id.print id) id ++ spc () ++
       hov 1 (str "{" ++ pr_clauses env s ++ str "}")
-  | Program (rhs, where) -> spc () ++ str ":=" ++ spc () ++ pr_constr_expr rhs ++
+  | Program (rhs, where) -> spc () ++ str ":=" ++ spc () ++
+                            (match rhs with
+                             | ConstrExpr rhs -> pr_constr_expr rhs
+                             | Constr c -> str"<constr>") ++
                              pr_wheres env where
   | Refine (rhs, s) -> spc () ++ str "<=" ++ spc () ++ pr_constr_expr rhs ++ 
       spc () ++ str "=>" ++ spc () ++
@@ -328,17 +337,22 @@ let interp_eqn initi is_rec env impls eqn =
            | _ -> Some (None, PUVar (id, false))
          in
          let structpats = List.map_filter addpat l in
-         (loc, structpats @ pats,
+         (Some loc, structpats @ pats,
           interp_rhs recinfo i is_rec curpats' rhs)
       | Some (Logical r) -> 
-         (loc, pats, interp_rhs ((i, r) :: recinfo) i is_rec curpats' rhs)
-      | None -> (loc, pats, interp_rhs recinfo i is_rec curpats' rhs)
+         (Some loc, pats, interp_rhs ((i, r) :: recinfo) i is_rec curpats' rhs)
+      | None -> (Some loc, pats, interp_rhs recinfo i is_rec curpats' rhs)
   and interp_rhs recinfo i is_rec curpats = function
     | Refine (c, eqs) -> Refine (CAst.with_loc_val (interp_constr_expr recinfo !avoid) c, 
                                 map (aux recinfo i is_rec curpats) eqs)
     | Program (c, w) ->
        let w = interp_wheres recinfo avoid w in
-       Program (CAst.with_loc_val (interp_constr_expr recinfo !avoid) c, w)
+       let c =
+         match c with
+         | ConstrExpr c -> ConstrExpr (CAst.with_loc_val (interp_constr_expr recinfo !avoid) c)
+         | Constr c -> Constr c
+       in
+       Program (c, w)
     | Empty i -> Empty i
     | Rec (fni, r, id, s) -> 
       let rec_info = LogicalDirect (Option.get (Constrexpr_ops.constr_loc fni), i) in

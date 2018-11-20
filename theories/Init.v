@@ -54,9 +54,9 @@ Ltac program_simplify ::=
 Set Primitive Projections.
 Global Unset Printing Primitive Projection Parameters.
 Global Unset Printing Primitive Projection Compatibility.
-Polymorphic Record sigma {A : Type} {B : A -> Type} : Type := sigmaI { pr1 : A; pr2 : B pr1 }.
+Polymorphic Cumulative Record sigma@{i} {A : Type@{i}} {B : A -> Type@{i}} : Type@{i} :=
+  sigmaI { pr1 : A; pr2 : B pr1 }.
 Unset Primitive Projections.
-
 Arguments sigma A B : clear implicits.
 Arguments sigmaI {A} B pr1 pr2.
 
@@ -87,7 +87,7 @@ Inductive Empty@{i} : Type@{i} :=.
 
 Scheme Empty_case := Minimality for Empty Sort Type.
 
-Inductive Id@{i} {A : Type@{i}} (a : A) : A -> Type@{i} :=
+Cumulative Inductive Id@{i} {A : Type@{i}} (a : A) : A -> Type@{i} :=
   id_refl : Id a a.
 Arguments id_refl {A a}, [A] a.
 

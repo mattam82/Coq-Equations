@@ -87,14 +87,28 @@ Derive Signature for eq vector.
 
 Module KAxiom.
 
-  (** By default we allow the K axiom, but it can be unset. *)
-  Unset Equations WithK.
+  (** By default we disallow the K axiom, but it can be set. *)
 
   (** In this case the following definition fails as [K] is not derivable on type [A]. *)
   Fail Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
     K x P p eq_refl := p.
 
-  (** However, types enjoying a provable instance of the [K] axiom are fine. *)
+  Set Equations WithK.
+
+  Equations K_ax {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
+    K_ax x P p eq_refl := p.
+
+  (** The definition is however using an axiom equivalent to [K], so it cannot reduce
+      on closed or open terms. *)
+
+  Unset Equations WithK.
+
+  (** However, types enjoying a provable instance of the [K] principle are fine using the WithKDec
+      option. Note that the following definition does *not* reduce according to its single clause
+      on open terms, it instead computes using the decidable equality proof on natural numbers. *)
+
+  Set Equations WithKDec.
+
   Equations K (x : nat) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
     K x P p eq_refl := p.
   Print Assumptions K. (* Closed under the global context *)
@@ -150,6 +164,8 @@ testn (S n) <= testn n => {
   | (S n') := S n' }.
 
 (** Notations for vectors *)
+Derive NoConfusion NoConfusionHom for vector.
+
 Arguments Vector.nil {A}.
 Arguments Vector.cons {A} _ {n}.
 
@@ -176,9 +192,10 @@ Proof. intros. intros x. induction x. left. now depelim y.
   destruct (eq_dec h h0); subst. 
   destruct (IHx y). subst.
   left; reflexivity.
-  right. intro. apply n. injection H0. simpdep. reflexivity.
-  right. intro. apply n. injection H0. simpdep. reflexivity.
+  right. intro. apply n. noconf H0. constructor.
+  right. intro. apply n. noconf H0. constructor.
 Defined.
+Print Assumptions vector_eqdec.
 
 (** We automatically derive the signature and subterm relation for
     vectors and prove it's well-foundedness. The signature provides
@@ -354,11 +371,12 @@ Hint Resolve lt_n_Sn : subterm_relation.
 Transparent vmap'.
 
 (** The same, using well-founded recursion on [n]. *)
+Set Shrink Obligations.
 Equations vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
 vmap f {n:=n} v by rec n :=
 vmap f {n:=?(O)} nil := nil ;
 vmap f {n:=?(S n)} (cons a n v) := cons (f a) (vmap f v).
-
+Unset Shrink Obligations.
 Transparent vmap.
 Eval compute in (vmap' id (@nil nat)).
 Eval compute in (vmap' id (@cons nat 2 _ nil)).
@@ -404,16 +422,13 @@ Section Univ.
 
 End Univ.
 
-Ltac generalize_by_eqs id ::= generalize_eqs id.
-Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars id.
-
-Equations(nocomp) vlast' {A} {n} (v : vector A (S n)) : A :=
-vlast' (cons a O Vnil) := a ;
-vlast' (cons a (S n) v) := vlast' v.
-
-Require Import DepElimDec.
-Ltac generalize_by_eqs id ::= generalize_eqs_sig id.
-Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars_sig id.
+Equations vlast {A} {n} (v : vector A (S n)) : A :=
+vlast (cons a O Vnil) := a ;
+vlast (cons a (S n) v) := vlast v.
+Transparent vlast.
+Next Obligation.
+  depind v. destruct n. constructor. simp vlast.
+Defined.
 
 (** The parity predicate embeds a divisor of n or n-1 *)
 
@@ -440,14 +455,20 @@ half n <= parity n => {
   half ?(mult 2 k) (even k) := k }.
 
 Equations vtail {A n} (v : vector A (S n)) : vector A n :=
-vtail (cons a n v') := v'.
+  vtail (cons a n v') := v'.
 
-Ltac generalize_by_eqs id ::= generalize_eqs id.
-Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars id.
-
-Equations(nocomp) diag {A n} (v : vector (vector A n) n) : vector A n :=
+Equations diag {A n} (v : vector (vector A n) n) : vector A n :=
 diag {n:=O} nil := nil ;
 diag {n:=(S ?(n))} (cons (cons a n v) _ v') := cons a (diag (vmap vtail v')).
+Transparent diag.
+
+(** FIXME: cannot be proven by structural fixpoint *)
+Next Obligation.
+Proof.
+  induction n.
+  depelim v. constructor.
+  depelim v. depelim h. constructor. apply IHn.
+Defined.
 
 Definition mat A n m := vector (vector A m) n.
 

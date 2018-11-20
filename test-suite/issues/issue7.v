@@ -1,17 +1,30 @@
-Require Import Equations.Equations Utf8.
+
+Require Import Equations.Equations Utf8 DepElimDec.
 
 Inductive TupleT : nat -> Type :=
 | nilT : TupleT 0
 | consT {n} A : (A -> TupleT n) -> TupleT (S n).
 
+Derive Signature NoConfusion NoConfusionHom for TupleT.
+
 Inductive Tuple : forall n, TupleT n -> Type :=
   nil : Tuple _ nilT
 | cons {n A} (x : A) (F : A -> TupleT n) : Tuple _ (F x) -> Tuple _ (consT A F).
+
+Derive Signature NoConfusionHom for Tuple.
 
 Inductive TupleMap@{i j} : forall n, TupleT n -> TupleT n -> Type@{j} :=
   tmNil : TupleMap _ nilT nilT
 | tmCons {n} {A B : Type@{i}} (F : A -> TupleT n) (G : B -> TupleT n)
   : (forall x, sigT (TupleMap _ (F x) ∘ G)) -> TupleMap _ (consT A F) (consT B G).
+
+Derive Signature NoConfusion for TupleMap.
+Derive NoConfusionHom for TupleMap.
+
+Equations TupleMap_noconf {n : nat} {x y : TupleT n}
+  (f g : TupleMap n x y) : Prop :=
+TupleMap_noconf tmNil tmNil := True;
+TupleMap_noconf (tmCons _ _ fn) (tmCons F G fn') := fn = fn'.
 
 Unset Printing Primitive Projection Parameters.
 
@@ -30,8 +43,6 @@ Next Obligation.
   Ltac destruct' x := destruct x.
   on_last_hyp destruct'; [ | apply X0 ]; auto. 
 Defined.
-
-Derive Signature for TupleMap.
 
 (* Doesn't know how to deal with the nested TupleMap  *)
 (* Derive Subterm for TupleMap. *)
@@ -96,9 +107,6 @@ Hint Extern 5 => progress simpl : subterm_relation.
 
 (* Hint Unfold simplification_sigma2 simplification_existT2 simplification_heq *)
 (*   simplification_existT2_dec simplification_K simplification_K_dec : equations. *)
-
-(* Derive Signature for TupleT. *)
-Derive NoConfusion for TupleT.
 (* Derive Signature for Tuple. *)
 (* Derive NoConfusion for Tuple. *)
 (* Derive Signature for TupleMap. *)
@@ -113,10 +121,18 @@ Derive NoConfusion for TupleT.
 
 Time Equations myComp {n} {B C : TupleT n} (tm1 : TupleMap _ B C) {A : TupleT n} (tm2 : TupleMap _ A B)
 : TupleMap _ A C :=
-myComp tm1 tm2 by rec (signature_pack tm1) TupleMap_subterm :=
 myComp tmNil tmNil := tmNil;
 myComp (tmCons ?(G) H g) (tmCons F G f) :=
   tmCons _ _ (fun x => existT (fun y => TupleMap _ _ (_ y)) (projT1 (g (projT1 (f x))))
                            (myComp (projT2 (g (projT1 (f x)))) (projT2 (f x)))).
 
+Time Equations myComp_wf {n} {B C : TupleT n} (tm1 : TupleMap _ B C) {A : TupleT n} (tm2 : TupleMap _ A B)
+: TupleMap _ A C :=
+myComp_wf tm1 tm2 by rec (signature_pack tm1) TupleMap_subterm :=
+myComp_wf tmNil tmNil := tmNil;
+myComp_wf (tmCons ?(G) H g) (tmCons F G f) :=
+  tmCons _ _ (fun x => existT (fun y => TupleMap _ _ (_ y)) (projT1 (g (projT1 (f x))))
+                           (myComp_wf (projT2 (g (projT1 (f x)))) (projT2 (f x)))).
+
 Print Assumptions myComp.
+Print Assumptions myComp_wf.

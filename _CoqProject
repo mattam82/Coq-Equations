@@ -31,6 +31,8 @@ src/equations.mli
 src/equations.ml
 src/noconf.ml
 src/noconf.mli
+src/noconf_hom.ml
+src/noconf_hom.mli
 src/simplify.ml
 src/simplify.mli
 src/extra_tactics.ml

@@ -8,17 +8,20 @@
 
 (** An example development of the [fin] datatype using [equations]. *)
 
-Require Import Coq.Program.Program Equations.Equations.
-
+Require Import Coq.Program.Program Equations.Equations NoConfusion Equations.DepElimDec.
+Unset Equations WithK.
 (** [fin n] is the type of naturals smaller than [n]. *)
 
 Inductive fin : nat -> Set :=
 | fz : forall {n}, fin (S n)
 | fs : forall {n}, fin n -> fin (S n).
+Derive Signature for fin.
+(** NoConfusion For [fin]. *)
+Derive NoConfusion NoConfusionHom for fin.
 
 (** We can inject it into [nat]. *)
 
-Equations(nocomp) fog {n} (f : fin n) : nat :=
+Equations fog {n} (f : fin n) : nat :=
 fog {n:=?(S n)} (fz n) := 0 ; 
 fog (fs n f) := S (fog f).
 
@@ -33,7 +36,7 @@ Qed.
 
 (** Of course it has an inverse. *)
 
-Equations(nocomp) gof n : fin (S n) :=
+Equations gof n : fin (S n) :=
 gof O := fz ;
 gof (S n) := fs (gof n).
 
@@ -42,13 +45,29 @@ Proof with auto with arith. intros.
   funind (gof n) gofn; simp fog gof...
 Qed.
 
+Equations fin_inj_one {n} (f : fin n) : fin (S n) :=
+fin_inj_one fz := fz;
+fin_inj_one (fs f) := fs (fin_inj_one f).
+
+Inductive le : nat -> nat -> Type :=
+| le_O n : 0 <= n
+| le_S n m : n <= m -> S n <= S m
+where "n <= m" := (le n m).
+Derive Signature for le.
+
+Equations le_S_inv {n m} (p : S n <= S m) : n <= m :=
+le_S_inv (le_S p) := p.
+
+Equations fin_inj {n} {m} (f : fin n) (k : n <= m) : fin m :=
+fin_inj fz (le_S p) := fz;
+fin_inj (fs f) (le_S p) := fs (fin_inj f p).
+
 (** Let's do some arithmetic on [fin] *)
 
-(* Equations_nocomp fin_plus {n m} (x : fin n) (y : fin m) : fin (n + m) := *)
-(* fin_plus ?(S n) ?(S m) (fz n) (fz m) := fz ; *)
-(* fin_plus ?(S n) ?(S m) (fs n x) y := fs (fin_plus x y) ; *)
-(* fin_plus ?(S n) ?(S m) (fz n) (fs m y) := fs (fin_plus fz y).  *)
-
+(* Equations fin_plus {n m} (x : fin n) (y : fin m) : fin (n + m) := *)
+(* fin_plus (fz n) f := fin_inj f _ ; *)
+(* fin_plus (fs n x) y := fs (fin_plus x y). *)
+(* Next Obligation. destruct n; try constructor. *)
 (** Won't pass the guardness check which diverges anyway. *)
 
 Inductive finle : forall (n : nat) (x : fin n) (y : fin n), Prop :=
@@ -75,10 +94,6 @@ nth (vcons a _ v) (fs n f) := nth v f.
 Equations(nocomp) tabulate {A} {n} (f : fin n -> A) : Vector.t A n :=
 tabulate {n:=O} f := vnil ;
 tabulate {n:=(S n)} f := vcons (f fz) (tabulate (f ∘ fs)).
-
-(** NoConfusion For [fin]. *)
-
-Derive NoConfusion for fin.
 
 (** [Below] recursor for [fin]. *)
 

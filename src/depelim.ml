@@ -532,7 +532,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
     let ty = Vars.subst_vars subst concl in
     let rhs =
       let prog = Constrexpr.CHole (None, Namegen.IntroAnonymous, None) in
-        Syntax.Program (CAst.make prog, [])
+        Syntax.Program (Syntax.ConstrExpr (CAst.make prog), [])
     in
     begin match patterns with
     | None ->
@@ -543,7 +543,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
         | Some (_, newctx, brs) ->
             let brs = Option.List.flatten (Array.to_list brs) in
             let clauses_lhs = List.map Covering.context_map_to_lhs brs in
-            let clauses = List.map (fun lhs -> (default_loc, lhs, rhs)) clauses_lhs in
+            let clauses = List.map (fun lhs -> (Some default_loc, lhs, rhs)) clauses_lhs in
               Proofview.tclUNIT clauses
         end
     | Some p ->
@@ -561,7 +561,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
                 if Names.Id.equal decl_id id then loc, pat
                 else None, Syntax.PUVar (decl_id, false)) loc_hyps
             in
-              (Option.default default_loc loc, lhs, rhs)
+              (loc, lhs, rhs)
         in Proofview.tclUNIT (List.map make_clause patterns)
     end >>= fun clauses ->
     if !debug then

@@ -43,8 +43,11 @@ let inline_helpers i =
 let is_recursive i eqs =
   let rec occur_eqn (_, _, rhs) =
     match rhs with
-    | Program (c,w) -> if occur_var_constr_expr i c then Some false else
-	occurs w
+    | Program (c,w) ->
+      (match c with
+      | ConstrExpr c ->
+        if occur_var_constr_expr i c then Some false else occurs w
+      | Constr _ -> occurs w)
     | Refine (c, eqs) -> 
        if occur_var_constr_expr i c then Some false
        else occur_eqns eqs
@@ -137,7 +140,7 @@ let define_principles flags fixprots progs =
                         prob [(i,of_constr f)] prog.program_split
          in
 	 (* We first define the unfolding and show the fixpoint equation. *)
-	 let unfoldi = add_suffix i "_unfold" in
+         let unfoldi = add_suffix i "_unfold" in
          let hook_unfold _ cmap info' ectx =
            let info =
              { info' with base_id = prog.program_split_info.base_id;

@@ -16,6 +16,7 @@ type 'a peuniverses = 'a * EConstr.EInstance.t
 (* Options *)
 val ocaml_splitting : bool ref
 val simplify_withK : bool ref
+val simplify_withK_dec : bool ref
 val equations_transparent : bool ref
 
 val debug : bool ref
@@ -278,6 +279,7 @@ val solve_rec_tac : unit -> unit Proofview.tactic
 val find_empty_tac : unit -> unit Proofview.tactic
 val pi_tac : unit -> unit Proofview.tactic
 val noconf_tac : unit -> unit Proofview.tactic
+val noconf_hom_tac : unit -> unit Proofview.tactic
 val eqdec_tac : unit -> unit Proofview.tactic
 val simpl_equations_tac : unit -> unit Proofview.tactic
 val solve_equation_tac : Names.GlobRef.t -> unit Proofview.tactic

@@ -59,7 +59,7 @@ Notation " x ---> y " := (arrow x y) (at level 30).
 
 Require Import Arith.
 
-Equations(nocomp) lift (k n : nat) (t : term) : term :=
+Equations lift (k n : nat) (t : term) : term :=
 lift k n (Var i) with Nat.compare i k := {
   | Lt := Var i ;
   | _ := Var (i + n) } ;
@@ -115,7 +115,7 @@ Proof.
 Qed.
 Hint Rewrite lift_k_lift_k : lift.
 
-Equations(nocomp) subst (k : nat) (t : term) (u : term) : term :=
+Equations subst (k : nat) (t : term) (u : term) : term :=
 subst k (Var i) u with Nat.compare i k := {
   | Eq := lift 0 k u ;
   | Lt := i ;

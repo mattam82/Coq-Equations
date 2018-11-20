@@ -59,6 +59,8 @@ val pr_context : env -> Evd.evar_map -> rel_context -> Pp.t
 val ppcontext : env -> Evd.evar_map -> rel_context -> unit
 val pr_context_map : env -> Evd.evar_map -> context_map -> Pp.t
 val ppcontext_map : env -> Evd.evar_map -> context_map -> unit
+val ppcontext_map_empty : context_map -> unit
+
 val typecheck_map :
   Environ.env -> Evd.evar_map -> context_map -> unit
 val check_ctx_map :
@@ -162,12 +164,14 @@ val rels_above : 'a list -> int -> Int.Set.t
 val is_fix_proto : Evd.evar_map -> constr -> bool
 val fix_rels : Evd.evar_map -> rel_context -> Int.Set.t
 val dependencies_of_rel :
+  with_red:bool ->
   env ->
   Evd.evar_map ->
   rel_context ->
   Int.Set.elt ->
   Int.Set.elt -> Int.Set.t
 val dependencies_of_term :
+  with_red:bool ->
   env ->
   Evd.evar_map ->
   rel_context ->
@@ -274,6 +278,18 @@ val lets_of_ctx :
   constr list *
   rel_context *
   rel_context
+val interp_program_body : Environ.env ->
+           Evd.evar_map -> EConstr.rel_context ->
+           Constrintern.internalization_env ->
+           Syntax.program_body ->
+           EConstr.types option -> Evd.evar_map * EConstr.constr
+val interp_constr_in_rhs_env :Environ.env ->
+           Evd.evar_map ref ->
+           Constrintern.internalization_env ->
+           EConstr.rel_context * Environ.env * int * EConstr.Vars.substl ->
+           Syntax.program_body ->
+           EConstr.t option -> EConstr.constr * EConstr.types
+
 val interp_constr_in_rhs :
   env ->
   rel_context ->
@@ -282,7 +298,7 @@ val interp_constr_in_rhs :
   constr option ->
   (Id.t * pat) list ->
   rel_context ->
-  Constrexpr.constr_expr -> constr * types
+  program_body -> constr * types
 val unify_type :
   env ->
   Evd.evar_map ref ->
@@ -354,7 +370,7 @@ val covering_aux :
   context_map ->
   rel_context -> constr -> ((clause * bool) list * splitting) option
 
-val covering :
+val covering : ?check_unused:bool ->
   env ->
   Evd.evar_map ref ->
   identifier * bool * Constrintern.internalization_env ->

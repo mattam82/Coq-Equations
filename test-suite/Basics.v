@@ -15,7 +15,7 @@ Inductive le : nat -> nat -> Set :=
 | le_S n m : le n m -> le (S n) (S m).
 Derive Signature for le.
 
-Equations(nocomp) congS {x y : nat} (p : x = y) : S x = S y :=
+Equations congS {x y : nat} (p : x = y) : S x = S y :=
 congS eq_refl := eq_refl.
   
 (* Equations antisym {x y : nat} (p : le x y) (q : le y x) : x = y := *)
@@ -36,8 +36,10 @@ Instance eqsig {A} (x : A) : Signature (x = x) A :=
   { signature a := x = a ;
     signature_pack e := sigmaI _ x e }.
 
+Set Equations WithK.
 Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
 K x P p eq_refl := p.
+Unset Equations WithK.
 
 Equations eq_sym {A} (x y : A) (H : x = y) : y = x :=
 eq_sym x _ eq_refl := eq_refl.
@@ -53,7 +55,7 @@ Notation "[]v" := Vector.nil (at level 0) : vect_scope.
 Section FilterDef.
   Context {A} (p : A -> bool).
 
-  Equations(nocomp) filter (l : list A) : list A :=
+  Equations filter (l : list A) : list A :=
   filter List.nil := List.nil ;
   filter (List.cons a l) <= p a => {
                          | true := a :: filter l ;
@@ -61,7 +63,7 @@ Section FilterDef.
 
 End FilterDef.
 
-(* Equations(nocomp) filter {A} (l : list A) (p : A -> bool) : list A := *)
+(* Equations filter {A} (l : list A) (p : A -> bool) : list A := *)
 (* filter A List.nil p := List.nil ; *)
 (* filter A (List.cons a l) p <= p a => { *)
 (*   | true := a :: filter l p ; *)
@@ -74,7 +76,7 @@ Inductive incl {A} : relation (list A) :=
 
 Global Transparent filter.
 
-Equations(nocomp) sublist {A} (p : A -> bool) (xs : list A) : incl (filter p xs) xs :=
+Equations sublist {A} (p : A -> bool) (xs : list A) : incl (filter p xs) xs :=
 sublist p nil := stop ;
 sublist p (cons x xs) with p x := {
   | true := keep (sublist p xs) ;
@@ -110,13 +112,13 @@ Arguments Vector.cons {A} _ {n}.
 
 Local Open Scope vect_scope.
 
-Equations (nocomp) vapp' {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
+Equations  vapp' {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
   vapp' []v w := w ;
   vapp' (Vector.cons a n v) w := Vector.cons a (vapp' v w).
 
 (* Section vapp_def. *)
 (*   Context {A : Type}. *)
-(*   Equations (nocomp) vapp' {n m} (v : vector A n) (w : vector A m) : vector A (n + m) := *)
+(*   Equations  vapp' {n m} (v : vector A n) (w : vector A m) : vector A (n + m) := *)
 (*   vapp' []v w := w ; *)
 (*   vapp' (Vector.cons a n v) w := Vector.cons a (vapp' v w). *)
 (* End vapp_def. *)
@@ -200,7 +202,7 @@ Typeclasses Transparent vector_subterm.
 (*
 Ltac generalize_by_eqs v ::= generalize_eqs v.
 
-Equations(nocomp) unzip_n {A B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
+Equations unzip_n {A B} {n} (v : vector (A * B) n) : vector A n * vector B n :=
 unzip_n A B O Vnil := (Vnil, Vnil) ;
 unzip_n A B (S n) (cons (pair x y) n v) with unzip_n v := {
   | pair xs ys := (cons x xs, cons y ys) }. *)
@@ -219,7 +221,7 @@ nos_with (S m) with nos_with m := {
 
 Obligation Tactic := program_simpl ; auto with arith.
 
-Equations(nocomp) equal (n m : nat) : { n = m } + { n <> m } :=
+Equations equal (n m : nat) : { n = m } + { n <> m } :=
 equal O O := in_left ;
 equal (S n) (S m) <= equal n m => {
   equal (S n) (S ?(n)) (left eq_refl) := left eq_refl ;
@@ -344,7 +346,7 @@ vrev (cons a n v) := vector_append_one (vrev v) a.
 Definition cast_vector {A n m} (v : vector A n) (H : n = m) : vector A m.
 intros; subst; assumption. Defined.
 
-Equations(nocomp) vrev_acc {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
+Equations vrev_acc {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
 vrev_acc nil w := w;
 vrev_acc (cons a n v) w := cast_vector (vrev_acc v (cons a w)) _.
 (* About vapp'. *)
@@ -382,7 +384,7 @@ Qed.
 
 Require Import Bvector.
 
-Equations (nocomp) split_struct {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
+Equations  split_struct {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
 split_struct {m:=0} xs := append nil xs ;
 split_struct {m:=(S m)} (cons x _ xs) <= split_struct xs => {
   split_struct {m:=(S m)} (cons x _ xs) (append xs' ys') := append (cons x xs') ys' }.
@@ -405,6 +407,8 @@ vmap' f nil := nil ;
 vmap' f (cons a n v) := cons (f a) (vmap' f v).
 
 Hint Resolve lt_n_Sn : subterm_relation.
+
+Set Shrink Obligations.
 Equations vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
 vmap f {n:=n} v by rec n :=
 vmap f {n:=?(O)} nil := nil ;
@@ -434,7 +438,7 @@ Section Univ.
   Inductive univ : Set :=
   | ubool | unat | uarrow (from:univ) (to:univ).
 
-  Equations (nocomp) interp (u : univ) : Set :=
+  Equations  interp (u : univ) : Set :=
   interp ubool := bool; interp unat := nat;
   interp (uarrow from to) := interp from -> interp to.
 
@@ -470,14 +474,14 @@ bla baz := false.
 Lemma eq_trans_eq A x : @eq_trans A x x x eq_refl eq_refl = eq_refl.
 Proof. reflexivity. Qed.
 
-(* Equations(nocomp) vlast {A} {n} (v : vector A (S n)) : A := *)
+(* Equations vlast {A} {n} (v : vector A (S n)) : A := *)
 (* vlast A O (cons a ?(O) Vnil) := a ; *)
 (* vlast A (S n) (cons a ?(S n) v) := vlast v. *)
 
 Ltac generalize_by_eqs id ::= generalize_eqs id.
 Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars id.
 
-Equations(nocomp) vlast' {A} {n} (v : vector A (S n)) : A :=
+Equations vlast' {A} {n} (v : vector A (S n)) : A :=
 vlast' (cons a O Vnil) := a ;
 vlast' (cons a (S n) v) := vlast' v.
 
@@ -490,7 +494,7 @@ Ltac fix_block tac :=
     [ |- ?T ] => tac ; on_last_hyp ltac:(fun id => change (fix_proto T) in id)
   end.
 
-(* Equations (nocomp) vliat {A} {n} (v : vector A (S n)) : vector A n := *)
+(* Equations  vliat {A} {n} (v : vector A (S n)) : vector A n := *)
 (* vliat A ?(O) (cons a O Vnil) := Vnil ; *)
 (* vliat A ?(S n) (cons a n v) := cons a (vliat v). *)
 
@@ -528,8 +532,9 @@ Inductive Parity : nat -> Set :=
 Definition cast {A B : Type} (a : A) (p : A = B) : B.
   intros. subst. exact a.
 Defined.
-  
-Equations(nocomp) parity (n : nat) : Parity n :=
+
+Unset Shrink Obligations.
+Equations parity (n : nat) : Parity n :=
 parity O := even 0 ;
 parity (S n) <= parity n => {
   parity (S ?(mult 2 k))     (even k) := odd k ;
@@ -540,7 +545,7 @@ half n <= parity n => {
   half ?(S (mult 2 k)) (odd k) := k ;
   half ?(mult 2 k) (even k) := k }.
 
-Equations(nocomp) vtail {A n} (v : vector A (S n)) : vector A n :=
+Equations vtail {A n} (v : vector A (S n)) : vector A n :=
 vtail (cons a n v') := v'.
 
 Ltac generalize_by_eqs id ::= generalize_eqs id.

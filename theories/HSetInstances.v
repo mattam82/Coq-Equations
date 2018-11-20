@@ -37,15 +37,16 @@ Proof. eqdec_proof. Defined.
 
 (** Any signature made up entirely of decidable types is decidable. *)
 
-Polymorphic Definition eqdec_sig_Id@{i j k} {A : Type@{i}} {B : A -> Type@{j}}
+Polymorphic Definition eqdec_sig_Id@{i} {A : Type@{i}} {B : A -> Type@{i}}
             `(HSets.EqDec A) `(forall a, HSets.EqDec (B a)) :
-  HSets.EqDec@{k} (sigma A B).
+  HSets.EqDec@{i} (sigma A B).
 Proof.
+  Set Printing Universes.
   intros. intros [xa xb] [ya yb].
   case (HSets.eq_dec xa ya). intros Hxya. destruct Hxya. case (HSets.eq_dec xb yb).
   + intros He; destruct He. left. reflexivity.
-  + intros. right. apply Id_simplification_sigma2. apply e.
-  + intros. right. apply Id_simplification_sigma1.
+  + intros. right. apply Id_simplification_sigma2@{i i}. apply e.
+  + intros. right. apply Id_simplification_sigma1@{i i}.
     intros He _; revert He. apply e.
 Defined.
 
