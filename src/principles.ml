@@ -961,14 +961,17 @@ let declare_funind info alias env evd is_rec protos progs
   (* let evm, stmt = Typing.type_of (Global.env ()) !evd statement in *)
   let stmt = to_constr !evd statement and f = to_constr !evd f in
   let ctx = Evd.evar_universe_context (if poly then !evd else Evd.from_env (Global.env ())) in
-  try ignore(Obligations.add_definition
+  let launch_ind tactic =
+    ignore(Obligations.add_definition
              ~hook:(Obligations.mk_univ_hook hookind)
              ~kind:info.term_info.decl_kind
-             indid stmt
-             ~tactic:(ind_fun_tac is_rec f info id split unfsplit progs) ctx [||])
+             indid stmt ~tactic ctx [||])
+  in
+  try launch_ind (ind_fun_tac is_rec f info id split unfsplit progs)
   with e ->
     Feedback.msg_warning Pp.(str "Induction principle could not be proved automatically: " ++ fnl () ++
-		             CErrors.print e)
+                             CErrors.print e);
+    launch_ind (Proofview.tclUNIT ())
 
 
 let level_of_context env evd ctx acc =
