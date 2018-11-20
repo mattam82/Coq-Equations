@@ -25,7 +25,7 @@ type ind_info = {
 val find_helper_info :
   Splitting.term_info ->
   Constr.t -> Evar.t * int * Names.Id.t
-val below_transparent_state : unit -> Names.transparent_state
+val below_transparent_state : unit -> TransparentState.t
 val simpl_star : Proof_type.tactic
 val eauto_with_below :
   ?depth:Int.t -> Hints.hint_db_name list -> Proofview.V82.tac

@@ -35,7 +35,7 @@ let refine_ho c =
     let sigma = sigma gl in
     let concl = concl gl in
     let ty = Tacmach.New.pf_apply Retyping.get_type_of gl c in
-    let ts = Names.full_transparent_state in
+    let ts = TransparentState.full in
     let evd = ref (to_evar_map sigma) in
     let rec aux env concl ty =
       match kind sigma concl, kind sigma ty with
