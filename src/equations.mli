@@ -33,9 +33,9 @@ val equations : poly:bool ->
   unit
 
 val solve_equations_goal :
-  Proof_type.tactic ->
-  Proof_type.tactic ->
-  Proof_type.goal Evd.sigma -> Proof_type.goal list Evd.sigma
+  Proofview.V82.tac ->
+  Proofview.V82.tac ->
+  Goal.goal Evd.sigma -> Goal.goal list Evd.sigma
 
 val dependencies :
   env -> Evd.evar_map ->

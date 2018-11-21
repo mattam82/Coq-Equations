@@ -26,14 +26,14 @@ val find_helper_info :
   Splitting.term_info ->
   Constr.t -> Evar.t * int * Names.Id.t
 val below_transparent_state : unit -> TransparentState.t
-val simpl_star : Proof_type.tactic
+val simpl_star : Proofview.V82.tac
 val eauto_with_below :
   ?depth:Int.t -> Hints.hint_db_name list -> Proofview.V82.tac
 val wf_obligations_base : Splitting.term_info -> string
-val simp_eqns : Hints.hint_db_name list -> Proof_type.tactic
+val simp_eqns : Hints.hint_db_name list -> Proofview.V82.tac
 val simp_eqns_in :
-  Locus.clause -> Hints.hint_db_name list -> Proof_type.tactic
-val autorewrites : string -> Proof_type.tactic
+  Locus.clause -> Hints.hint_db_name list -> Proofview.V82.tac
+val autorewrites : string -> Proofview.V82.tac
 val autorewrite_one : string -> Proofview.V82.tac
 
 (** The multigoal fix tactic *)
@@ -43,8 +43,8 @@ val find_helper_arg :
   Splitting.term_info -> Constr.t -> 'a array -> Evar.t * int * 'a
 val find_splitting_var : Evd.evar_map ->
   Covering.pat list -> int -> constr list -> Names.Id.t
-val intros_reducing : Proof_type.tactic
-val cstrtac : 'a -> Proof_type.tactic
+val intros_reducing : Proofview.V82.tac
+val cstrtac : 'a -> Proofview.V82.tac
 val destSplit : Covering.splitting -> Covering.splitting option array option
 val destRefined : Covering.splitting -> Covering.splitting option
 val destWheres : Covering.splitting -> Covering.where_clause list option
@@ -54,7 +54,7 @@ val aux_ind_fun :
   ind_info ->
   int * int ->
   Covering.splitting option ->
-  Names.Id.t list -> Covering.splitting -> Proof_type.tactic
+  Names.Id.t list -> Covering.splitting -> Proofview.V82.tac
 val ind_fun_tac :
   Syntax.rec_type option ->
   Constr.t ->
@@ -71,8 +71,8 @@ val prove_unfolding_lemma :
   Names.Constant.t ->
   Names.Constant.t ->
   Covering.splitting -> Covering.splitting ->
-  Proof_type.goal Evd.sigma ->
-  Proof_type.goal list Evd.sigma
+  Goal.goal Evd.sigma ->
+  Goal.goal list Evd.sigma
   
 val ind_elim_tac :
   constr ->

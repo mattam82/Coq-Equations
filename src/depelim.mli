@@ -17,7 +17,7 @@ val mk_term_eq :
   constr ->
   constr -> constr -> constr -> constr * constr
 val make_abstract_generalize :
-  Proof_type.goal Evd.sigma ->
+  Goal.goal Evd.sigma ->
   Evd.evar_map ref ->
   Id.t ->
   constr ->
@@ -33,9 +33,9 @@ val hyps_of_vars :
 exception Seen
 val linear : Evd.evar_map -> Id.Set.t -> constr array -> bool
 val needs_generalization :
-  Proof_type.goal Evd.sigma -> Id.t -> bool
+  Goal.goal Evd.sigma -> Id.t -> bool
 val abstract_args :
-  Proof_type.goal Evd.sigma ->
+  Goal.goal Evd.sigma ->
   bool ->
   bool ->
   Id.Set.elt ->
@@ -47,10 +47,10 @@ val abstract_generalize :
   ?generalize_vars:bool ->
   ?force_dep:bool ->
   Id.Set.elt ->
-  Proof_type.goal Evd.sigma -> Proof_type.goal list Evd.sigma
+  Goal.goal Evd.sigma -> Goal.goal list Evd.sigma
 val dependent_pattern :
   ?pattern_term:bool ->
-  constr -> Proof_type.goal Evd.sigma -> Evar.t list Evd.sigma
+  constr -> Goal.goal Evd.sigma -> Evar.t list Evd.sigma
 
 
 val depcase : Decl_kinds.polymorphic ->
@@ -63,9 +63,9 @@ val derive_dep_elimination :
 
 val pattern_call :
   ?pattern_term:bool ->
-  constr -> Proof_type.goal Evd.sigma -> Evar.t list Evd.sigma
+  constr -> Goal.goal Evd.sigma -> Evar.t list Evd.sigma
 
-val specialize_eqs : Names.Id.t -> Proof_type.tactic
+val specialize_eqs : Names.Id.t -> Proofview.V82.tac
 
 val compare_upto_variables : Evd.evar_map -> constr -> constr -> bool
 

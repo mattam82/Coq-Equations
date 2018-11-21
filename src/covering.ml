@@ -13,7 +13,6 @@ open Constr
 open Environ
 open Reductionops
 open Pp
-open Proof_type
 open Pretype_errors
 open List
 open Tacmach
@@ -53,7 +52,7 @@ type splitting =
   | Split of context_map * int * types * splitting option array
   | Valid of context_map * types * identifier list * tactic *
              (Proofview.entry * Proofview.proofview) *
-             (goal * constr list * context_map * context_map option * splitting) list
+             (Goal.goal * constr list * context_map * context_map option * splitting) list
   | Mapping of context_map * splitting (* Mapping Γ |- p : Γ' and splitting Γ' |- p : Δ *)
   | RecValid of identifier * splitting
   | Refined of context_map * refined_node * splitting

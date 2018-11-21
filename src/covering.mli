@@ -109,7 +109,7 @@ type splitting =
   | Split of context_map * int * types * splitting option array
   | Valid of context_map * types * identifier list *
       Tacmach.tactic * (Proofview.entry * Proofview.proofview) *
-      (Proof_type.goal * constr list * context_map * context_map option * splitting) list
+      (Goal.goal * constr list * context_map * context_map option * splitting) list
   | Mapping of context_map * splitting
   | RecValid of identifier * splitting
   | Refined of context_map * refined_node * splitting
