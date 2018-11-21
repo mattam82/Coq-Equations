@@ -319,11 +319,16 @@ val subst_matches_constr : Evd.evar_map ->
   int -> (int * constr) list -> constr -> constr
 val is_all_variables : 'a * pat list * 'b -> bool
 val do_renamings : rel_context -> rel_context
+
+type 'a split_var_result =
+  | Splitted of 'a
+  | CannotSplit of Names.Name.t * rel_context * constr
+
 val split_var :
   env * Evd.evar_map ref ->
   int ->
   rel_context ->
-  (int * rel_context * context_map option array) option
+  (int * rel_context * context_map option array) split_var_result option
     
 val find_empty : env * Evd.evar_map ref -> rel_context -> int option
 val variables_of_pats : pat list -> (int * bool) list

@@ -1125,6 +1125,10 @@ let do_renamings ctx =
       ctx (Id.Set.empty, [])
   in ctx'
 
+type 'a split_var_result =
+  | Splitted of 'a
+  | CannotSplit of Names.Name.t * rel_context * constr
+
 let split_var (env,evars) var delta =
   (* delta = before; id; after |- curpats : gamma *)	    
   let before, decl, after = split_tele (pred var) delta in
@@ -1151,20 +1155,17 @@ let split_var (env,evars) var delta =
   | Some (newty, unify) ->
     (* Some constructor's type is not refined enough to match ty *)
     if Array.exists (fun x -> x == UnifStuck) unify then
-      None
-      (* 	  user_err_loc (dummy_loc, "split_var",  *)
-      (* 		       str"Unable to split variable " ++ Name.print id ++ str" of (reduced) type " ++ *)
-      (* 			 Printer.pr_econstr_env (push_rel_context before env) newty  *)
-      (* 		       ++ str" to match a user pattern") *)
-    else 
+      Some (CannotSplit (id, before, newty))
+    else
       let newdelta = after @ (make_def id b newty :: before) in
-      Some (var, do_renamings newdelta, Array.map branch unify)
+      Some (Splitted (var, do_renamings newdelta, Array.map branch unify))
 
 let find_empty env delta =
   let r = List.filter (fun v -> 
       match split_var env v delta with
       | None -> false
-      | Some (v, _, r) -> CArray.for_all (fun x -> x == None) r)
+      | Some (CannotSplit _) -> false
+      | Some (Splitted (v, _, r)) -> CArray.for_all (fun x -> x == None) r)
       (CList.init (List.length delta) succ)
   in match r with x :: _ -> Some x | _ -> None
 
@@ -1271,34 +1272,51 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
      | UnifFailure -> covering_aux env evars data (clause :: prev) clauses' path prob lets ty
      | UnifStuck -> 
        let blocks = blockers lhs prob in
-       fold_left (fun acc var ->
-           match acc with
-           | None -> 
-             (match split_var (env,evars) var (pi1 prob) with
-              | Some (var, newctx, s) ->
-                let prob' = (newctx, pats, ctx') in
-                let coverrec clauses s =
-                  covering_aux env evars data []
-                    clauses path (compose_subst env ~sigma:!evars s prob')
-                    (specialize_rel_context !evars (pi2 s) lets)
-                    (specialize_constr !evars (pi2 s) ty)
-                in
-                (try
-                   let rec_call clauses x =
-                     match x with
-                     | Some s ->
-                       (match coverrec clauses s with
-                        | None -> raise Not_found
-                        | Some (clauses, s) -> clauses, Some s)
-                     | None -> clauses, None
-                   in
-                   let clauses, rest = Array.fold_left_map rec_call (List.rev prev @ clauses) s in
-                   Some (clauses, Split (prob', var, ty, rest))
-                 with Not_found -> None)
-              | None -> None) 
-           | _ -> acc) None blocks)
+       let try_split acc var =
+         match acc with
+         | None
+         | Some (CannotSplit _) ->
+           (match split_var (env,evars) var (pi1 prob) with
+            | Some (Splitted (var, newctx, s)) ->
+              let prob' = (newctx, pats, ctx') in
+              let coverrec clauses s =
+                covering_aux env evars data []
+                  clauses path (compose_subst env ~sigma:!evars s prob')
+                  (specialize_rel_context !evars (pi2 s) lets)
+                  (specialize_constr !evars (pi2 s) ty)
+              in
+              (try
+                 let rec_call clauses x =
+                   match x with
+                   | Some s ->
+                     (match coverrec clauses s with
+                      | None -> raise Not_found
+                      | Some (clauses, s) -> clauses, Some s)
+                   | None -> clauses, None
+                 in
+                 let clauses, rest = Array.fold_left_map rec_call (List.rev prev @ clauses) s in
+                 Some (Splitted (clauses, Split (prob', var, ty, rest)))
+               with Not_found -> acc)
+            | Some (CannotSplit _) as x ->
+              begin match acc with
+                | None -> x
+                | _ -> acc
+              end
+            | None -> None)
+         | _ -> acc
+       in
+       let result = fold_left try_split None blocks in
+       (match result with
+       | Some (Splitted (clauses, s)) -> Some (clauses, s)
+       | Some (CannotSplit (id, before, newty)) ->
+           user_err_loc
+            (dummy_loc, "split_var",
+             str"Unable to split variable " ++ Name.print id ++ str" of (reduced) type " ++
+             Printer.pr_econstr_env (push_rel_context before env) !evars newty ++ str" to match a user pattern."
+             ++ fnl () ++ str "Maybe unification is stuck as it cannot refine a section variable.")
+       | None -> None))
   | [] -> (* Every clause failed for the problem, it's either uninhabited or
-             the clauses are not e   xhaustive *)
+             the clauses are not exhaustive *)
     match find_empty (env,evars) (pi1 prob) with
     | Some i -> Some (List.rev prev @ clauses, Compute (prob, [], ty, REmpty i))
     | None ->
@@ -1585,8 +1603,13 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
                     @ (lift_rel_context 1 lets)
       in specialize_rel_context !evars (pi2 cmap) newlets
     in
-    match covering_aux env evars data [] (List.map (fun x -> x, false) cls') path' newprob lets' newty with
-    | None -> None
+    let clauses' = List.map (fun x -> x, false) cls' in
+    match covering_aux env evars data [] clauses' path' newprob lets' newty with
+    | None ->
+      errorlabstrm "deppat"
+        (str "Unable to build a covering for with subprogram:" ++ fnl () ++
+         pr_problem data env !evars newprob ++ fnl () ++
+         str "And clauses: " ++ pr_clauses env cls')
     | Some (clauses, s) ->
       let () = check_unused_clauses env clauses in
       let info =

@@ -88,7 +88,7 @@ TACTIC EXTEND curry_hyps
 END
 
 TACTIC EXTEND uncurry_call
-| [ "uncurry_call" constr(c) ident(id) ] -> { Sigma_types.Tactics.uncurry_call c id }
+| [ "uncurry_call" constr(c) constr(c') ident(id) ] -> { Sigma_types.Tactics.uncurry_call c c' id }
 END
 
 (* TACTIC EXTEND pattern_tele *)
@@ -527,7 +527,10 @@ END
 
 TACTIC EXTEND eqns_specialize_eqs
 | [ "eqns_specialize_eqs" ident(i) ] -> {
-    Proofview.V82.tactic (Depelim.specialize_eqs i)
+    Proofview.V82.tactic (Depelim.specialize_eqs ~with_block:false i)
+  }
+| [ "eqns_specialize_eqs_block" ident(i) ] -> {
+    Proofview.V82.tactic (Depelim.specialize_eqs ~with_block:true i)
   }
 END
 

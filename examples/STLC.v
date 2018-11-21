@@ -96,7 +96,7 @@ Ltac crush := do_rewrites; auto; try term.
 
 Lemma lift0 k t : lift k 0 t = t.
 Proof.
-  funelim (lift k 0 t); term || rewrite H; crush.
+  funelim (lift k 0 t); term || rewrite ?H; crush.
 Qed.
 Hint Rewrite lift0 : lift.
 Require Import Omega.
@@ -754,10 +754,10 @@ Lemma hereditary_subst_type Γ Γ' t T u U : Γ |-- u : U -> Γ' @ (U :: Γ) |--
 Proof.
   intros. revert H1.
   funelim (hereditary_subst (U, u, t) (length Γ'));
-  simpl_dep_elim; subst;
+    simpl_dep_elim; subst;
     try (split; [ (intros; try discriminate) | solve [ intros; discriminate ] ]).
 
-  invert_term. apply abstraction.
+  invert_term. simpl in *. simplify_IH_hyps. apply abstraction.
   specialize (H (A :: Γ')). simpl in H. simplify_IH_hyps.
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   apply H with o; auto. 

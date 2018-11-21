@@ -264,7 +264,8 @@ Lemma sa_toname : forall {n m} Γ (Δ : env (S n) m) x,
                     x <> lift_var_by (env_scope_le Δ) FO ->
                     forall p q, lookup (env_app (cons p Γ) Δ) x = lookup (env_app (cons q Γ) Δ) x.
 Proof.
-  intros n m Γ Δ; depind Δ; intros x A p q;
+  intros n m Γ Δ.
+  depind Δ; intros x A p q;
   depelim x; simpl in *;
   autorewrite with env_app lookup lift_var_by in *; auto.
   - exfalso; auto.

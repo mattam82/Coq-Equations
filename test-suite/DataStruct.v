@@ -1,7 +1,7 @@
 (* http://adam.chlipala.net/cpdt/html/DataStruct.html *)
 
 Require Import Arith List.
-Require Import Program Equations.Equations.
+Require Import Program Equations.Equations DepElimDec.
 Set Implicit Arguments.
 
 Section ilist.
@@ -20,7 +20,7 @@ Section ilist.
   get (Cons _ t) (Next j) := get t j.
 
 End ilist.
-Set Printing Universes.
+
 Arguments Nil [A].
 Arguments First [n].
 
@@ -37,7 +37,7 @@ Section ilist_map.
   Proof.
     intros. funelim (imap ls).
       - depelim i.
-      - (* simp get. *) depelim i0.
+      - depelim i0.
         + repeat rewrite get_equation_2. reflexivity.
         + repeat rewrite get_equation_3. apply H.
   Qed.
@@ -113,6 +113,7 @@ Section filist.
   Equations filist (n : nat) : Set :=
   filist 0 := unit;
   filist (S n) := (A * filist n)%type.
+  Transparent filist.
 
   Equations ffin (n : nat) : Set :=
   ffin 0 := Empty_set;
@@ -124,8 +125,6 @@ Section filist.
   fget {n:=(S n)} (pair x _) None := x;
   fget {n:=(S n)} (pair _ ls) (Some i) := fget ls i.
 
-  (* FIXME *)
-  Next Obligation. induction n; destruct i; destruct ls; simp fget. Defined.
 End filist.
 
 Arguments fget [A n] _ _.
@@ -154,6 +153,7 @@ Section fhlist.
   Equations fhlist (ls : list A) : Type :=
   fhlist nil := unit;
   fhlist (cons x ls) := (B x * fhlist ls)%type.
+  Transparent fhlist.
 
   Variable elm : A.
 
@@ -166,7 +166,7 @@ Section fhlist.
   fhget nil _ i :=! i;
   fhget _ (pair x _) (inl eq_refl) := x;
   fhget (cons _ ls) (pair _ l) (inr i) := fhget ls l i.
-  Next Obligation. induction ls; destruct i; subst; destruct mls; simp fhget. Defined.
+
 End fhlist.
 Arguments fhget [A B elm ls] _ _.
 
@@ -240,35 +240,38 @@ sum (Node _ f) := rifoldr plus 0 (fun i => sum (f i)).
 Equations inc (t : tree nat) : tree nat :=
 inc (Leaf n) := Leaf (S n);
 inc (Node _ f) := Node (fun i => inc (f i)).
+Import Sigma_Notations.
 
 Lemma sum_inc' : forall n (f1 f2 : ffin n -> nat),
   (forall i, f1 i >= f2 i) ->
   rifoldr plus 0 f1 >= rifoldr plus 0 f2.
 Proof.
   intros.
-  funelim (rifoldr plus 0 f1); simpl.
-    - constructor.
-    - apply Plus.plus_le_compat.
-      + apply H0.
-      + apply H. intros. apply H0.
+  funelim (rifoldr plus 0 f1).
+  - constructor.
+  - intros. simpl. apply Plus.plus_le_compat.
+    + apply H0.
+    + apply H. intros. apply H0.
 Qed.
 
 Theorem sum_inc : forall t, sum (inc t) >= sum t.
 Proof.
-  intros. induction t; simp inc sum. (* funelim (inc t); simp sum. *)
-    - apply Le.le_n_Sn.
-    - apply sum_inc'. assumption.
+  intros t. funelim (inc t); simp sum. auto.
+  apply sum_inc'. assumption.
 Qed.
 
 Inductive type' : Type := Nat | Bool.
+Derive NoConfusion for type'.
 
-Inductive exp' : type' -> Type :=
+Inductive exp' : type' -> Set :=
 | NConst : nat -> exp' Nat
 | Plus : exp' Nat -> exp' Nat -> exp' Nat
 | Eq : exp' Nat -> exp' Nat -> exp' Bool
 | BConst : bool -> exp' Bool
 | Cond : forall n t, (ffin n -> exp' Bool)
   -> (ffin n -> exp' t) -> exp' t -> exp' t.
+Derive Signature NoConfusion for exp'.
+(* Derive NoConfusionHom for exp'. *)
 
 Equations type'Denote (t : type') : Set :=
 type'Denote Nat := nat;
@@ -307,26 +310,47 @@ Goal exp'Denote (Eq someExp' (NConst 3)) = true.
 Proof. simp exp'Denote. Qed.
 
 Section cfoldCond.
+  (* A weakness? of Equations: we cannot refine section variables:
+     here in the inner clause we would need to refine [t] to Nat or Bool. *)
+
   Variable t : type'.
   Variable default : exp' t.
-(*
-  Equations cfoldCond (n : nat) (tests : ffin n -> exp' Bool) (bodies : ffin n -> exp' t) : exp' t :=
+
+  Fail Equations cfoldCond (n : nat) (tests : ffin n -> exp' Bool) (bodies : ffin n -> exp' t) : exp' t :=
   cfoldCond 0 _ _ := default;
   cfoldCond (S n) tests bodies <= tests None => {
     | BConst true := bodies None;
     | BConst false := cfoldCond n (fun i => tests (Some i)) (fun i => bodies (Some i));
-    | _ <= cfoldCond n (fun i => tests (Some i)) (fun i => bodies (Some i)) => {
-      | Cond n' _ tests' bodies' default' := default'; (*
-          Cond (S n') (fun i => match i with
-                                | None => tests None
-                                | Some i => tests' i
-                                end)
-                      (fun i => match i with
-                                | None => bodies None
-                                | Some i => bodies' i
-                                end)
-               default';*)
-     | e := Cond 1 (fun _ => tests None) (fun _ => bodies None) e
- }}.
-*)
+    | Eq e1 e2 <= cfoldCond n (fun i => tests (Some i)) (fun i => bodies (Some i)) => {
+      | Cond n' _ tests' bodies' default' :=
+        Cond (S n') (fun i => match i with
+                              | None => tests None
+                              | Some i => tests' i
+                              end)
+             (fun i => match i with
+                       | None => bodies None
+                       | Some i => bodies' i
+                       end)
+             default';
+      | e := Cond 1 (fun _ => tests None) (fun _ => bodies None) e };
+    | _ := default }.
 End cfoldCond.
+
+Equations cfoldCond (t : type') (default : exp' t) (n : nat) (tests : ffin n -> exp' Bool) (bodies : ffin n -> exp' t) : exp' t :=
+cfoldCond t default 0 _ _ := default;
+cfoldCond t default (S n) tests bodies <= tests None => {
+    | BConst true := bodies None;
+    | BConst false := cfoldCond default n (fun i => tests (Some i)) (fun i => bodies (Some i));
+    | _ <= cfoldCond default n (fun i => tests (Some i)) (fun i => bodies (Some i)) => {
+      | Cond n' _ tests' bodies' default' :=
+        Cond (S n') (fun i => match i with
+                              | None => tests None
+                              | Some i => tests' i
+                              end)
+             (fun i => match i with
+                       | None => bodies None
+                       | Some i => bodies' i
+                       end)
+             default';
+      | e := Cond 1 (fun _ => tests None) (fun _ => bodies None) e }}.
+

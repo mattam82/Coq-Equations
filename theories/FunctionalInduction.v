@@ -115,23 +115,31 @@ Ltac funelim_JMeq_tac c tac :=
       intros_until_block; intros_until_block;
       unblock_goal; tac elim ].
 
+Ltac simplify_IH_hyps' := repeat
+  match goal with
+  | [ hyp : context [ block ] |- _ ] => cbv beta in hyp; eqns_specialize_eqs_block hyp; cbv zeta in hyp
+  end.
+
 Ltac funelim_sig_tac c tac :=
   let elimc := get_elim c in
   let packcall := fresh "packcall" in
+  let elimfn := match elimc with fun_elim (f:=?f) => constr:(f) end in
   let elimn := match elimc with fun_elim (n:=?n) => constr:(n) end in
   block_goal;
-  uncurry_call c packcall;
+  uncurry_call elimfn c packcall;
   with_last_secvar ltac:(fun eos => move packcall before eos)
-                          ltac:(move packcall at top) ;
+                          ltac:(move packcall at top);
   revert_until packcall;
   pattern sigma packcall;
   remember_let packcall;
   with_last_secvar ltac:(fun eos => move packcall before eos)
                           ltac:(move packcall at top) ;
-  revert_until packcall; revert packcall; curry;
+  revert_until packcall; block_goal; revert packcall; curry;
   let elimt := make_refine elimn elimc in
-  unshelve refine_ho elimt; hnf;
-  simplify_dep_elim; simplify_IH_hyps; intros _ (* block *);
+  unshelve refine_ho elimt; intros;
+  cbv beta; simplify_dep_elim; intros_until_block; simplify_dep_elim;
+  simpl eq_rect_dep_r in *; simpl eq_rect in *;
+  simplify_IH_hyps'; intros _;
   unblock_goal; simplify_IH_hyps; tac c.
 
 Ltac funelim c := funelim_JMeq_tac c ltac:(fun _ => idtac).

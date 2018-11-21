@@ -386,8 +386,11 @@ let uncurry_hyps name =
     Proofview.Unsafe.tclEVARS sigma <*>
       Tactics.letin_tac None (Name name) term (Some ty) nowhere )
 
-let uncurry_call env sigma c =
+let uncurry_call env sigma fn c =
+  let hd', args' = decompose_app sigma fn in
   let hd, args = decompose_app sigma c in
+  let params, args = List.chop (List.length args') args in
+  let hd = applist (hd, params) in
   let ty = Retyping.get_type_of env sigma hd in
   let ctx, concl = decompose_prod_n_assum sigma (List.length args) ty in
   let evdref = ref sigma in
@@ -771,11 +774,11 @@ module Tactics =struct
            (fun sigma -> curry_concl env sigma na dom codom)
       | _ -> Tacticals.New.tclFAIL 0 (str"Goal cannot be curried") end
 
-  let uncurry_call c id =
+  let uncurry_call c c' id =
     enter begin fun gl ->
           let env = env gl in
           let sigma = sigma gl in
-          let sigma, term, ty = uncurry_call env sigma c in
+          let sigma, term, ty = uncurry_call env sigma c c' in
           let sigma, _ = Typing.type_of env sigma term in
           Proofview.Unsafe.tclEVARS sigma <*>
             Tactics.letin_tac None (Name id) term (Some ty) nowhere end

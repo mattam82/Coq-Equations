@@ -181,21 +181,13 @@ Module RecMeasure.
     Lemma qs_same (l : list A) : forall a, In a l <-> In a (qs l).
     Proof.
       funelim (qs l).
-      - reflexivity.
-      - intros a'.
-        simpl. split; intros.
-        destruct H1. subst. auto with datatypes.
-        rewrite in_app_iff. 
-        simpl.
-        rewrite <- H, <- H0.
-        rewrite !filter_In'.
-        cut (ltb a' a ∨ a = a' ∨ leb a a'). intuition auto.
-        destruct (compspec a a'); intuition auto.
-        right; right. apply ltb_leb. revert H2. case (refl_lt a a'). split. intros.
-        contradiction.
-        left. case (refl_lt a' a). split. contradiction.
-        rewrite in_app_iff, <- H in H1. simpl in H1; rewrite <- H0 in H1.
-        rewrite !filter_In in H1. intuition auto.
+      - simpl. reflexivity.
+      - intros a'. rewrite in_app_iff. simpl.
+        rewrite <- H, <- H0, !filter_In'. intuition auto.
+        destruct (compspec a a'); intuition auto. right. right. intuition auto with arith.
+        apply ltb_leb. destruct (refl_lt a a'); auto. constructor. contradiction.
+        left. intuition auto.
+        destruct (refl_lt a' a); auto. constructor. contradiction.
     Qed.
 
     Lemma sort_le_app :

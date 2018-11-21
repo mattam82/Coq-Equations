@@ -65,7 +65,7 @@ val pattern_call :
   ?pattern_term:bool ->
   constr -> Goal.goal Evd.sigma -> Evar.t list Evd.sigma
 
-val specialize_eqs : Names.Id.t -> Proofview.V82.tac
+val specialize_eqs : with_block:bool -> Names.Id.t -> Proofview.V82.tac
 
 val compare_upto_variables : Evd.evar_map -> constr -> constr -> bool
 

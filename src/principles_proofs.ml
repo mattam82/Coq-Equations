@@ -591,6 +591,13 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
   | _ -> of82 (tclCOMPLETE (tclTHENLIST
       [to82 (set_eos_tac ()); to82 intros; aux_ind_fun info (0, 0) unfsplit [] split]))
 
+let ind_fun_tac is_rec f info fid split unfsplit progs =
+  Proofview.tclORELSE (ind_fun_tac is_rec f info fid split unfsplit progs)
+    (fun e ->
+       match fst e with
+       | Pretype_errors.PretypeError (env, evd, err) ->
+         Feedback.msg_warning (Himsg.explain_pretype_error env evd err); iraise e
+       | _ -> iraise e)
 
 let simpl_of csts =
   let opacify () = List.iter (fun (cst,_) ->
