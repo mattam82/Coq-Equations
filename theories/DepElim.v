@@ -44,19 +44,9 @@ Ltac block_goal :=
 
 Ltac unblock_goal := unfold block in *; cbv zeta.
 
-(** Notation for heterogenous equality. *)
-
-Module JMeq_Notations.
-  Declare Scope JMeq_scope.
-  Notation " x ~= y " := (@JMeq _ x _ y) (at level 70, no associativity) : JMeq_scope.
-
-End JMeq_Notations.
-Import JMeq_Notations.
-
-(** Notation for the single element of [x = x] and [x ~= x]. *)
+(** Notation for the single element of [x = x]. *)
 
 Arguments eq_refl {A} {x}.
-Arguments JMeq_refl {A} {x}.
 
 (** Do something on an heterogeneous equality appearing in the context. *)
 
@@ -965,42 +955,6 @@ Ltac unfold_equations_in H := repeat progress autounfold with equations in H.
 
 Ltac rewrite_refl_id :=
   repeat (progress (autorewrite with refl_id) || (try rewrite_sigma2_refl)).
-
-(** Clear the context and goal of equality proofs. *)
-
-Ltac clear_eq_ctx :=
-  rewrite_refl_id ; clear_eq_proofs.
-
-(** Reapeated elimination of [eq_rect] applications.
-   Abstracting equalities makes it run much faster than an naive implementation. *)
-
-Ltac simpl_eqs :=
-  repeat (elim_eq_rect ; simpl ; clear_eq_ctx).
-
-(** Clear unused reflexivity proofs. *)
-
-Ltac clear_refl_eq :=
-  match goal with [ H : ?X = ?X |- _ ] => clear H end.
-Ltac clear_refl_eqs := repeat clear_refl_eq.
-
-(** Clear unused equality proofs. *)
-
-Ltac clear_eq :=
-  match goal with [ H : _ = _ |- _ ] => clear H end.
-Ltac clear_eqs := repeat clear_eq.
-
-(** Combine all the tactics to simplify goals containing coercions. *)
-
-Ltac simplify_eqs :=
-  simpl ; simpl_eqs ; clear_eq_ctx ; clear_refl_eqs ;
-    try subst ; simpl ; repeat simpl_uip ; rewrite_refl_id.
-
-(** The tactic [simplify_equations] is to be used when a program generated using [Equations] 
-   is in the goal. It simplifies it as much as possible, possibly using [K] if needed.
-   The argument is the concerned equation. *) 
-
-Ltac simplify_equations f := repeat ((unfold_equations ; simplify_eqs ; 
-  try autounfold_ref f) || autorewrite with equations).
 
 Ltac simplify_equations_in e :=
   repeat progress (autounfold with equations in e ; simpl in e).
