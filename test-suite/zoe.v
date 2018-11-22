@@ -174,7 +174,7 @@ infer_sort (IApp i1 i2) ie <= infer_sort i1 ie => {
 infer_sort (IApp i1 i2) ie (Some (ArrowS s1 s2)) <= infer_sort i2 ie =>
   { | None := None;
     | Some s1' <= eq_sort_dec s1 s1' => {
-                 | (left _) := Some s2;
+                 | (left Heq) := Some s2;
                  | (right _) := None } };
 infer_sort (IApp i1 i2) ie _ := None }.
 
@@ -190,6 +190,6 @@ Proof.
   - now constructor.
   - specialize (Hind _ Heq). now constructor.
   - specialize (Hind _ Heq). now constructor.  
-  - pose proof (Hind _ Heq0). pose proof (Hind0 _ Heq1).
+  - pose proof (Hind _ Heq0). pose proof (Hind0 _ Heq1). subst s.
     econstructor; eauto.
 Qed.

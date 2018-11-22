@@ -1,10 +1,10 @@
 Require Import Coq.Vectors.Vector.
 Require Import Coq.PArith.PArith.
-
+Require Import Lia.
 Require Import Equations.Equations.
 Require Import Equations.EqDec.
 Unset Equations WithK.
-
+Set Equations WithKDec.
 Generalizable All Variables.
 
 Definition obj_idx : Type := positive.
@@ -26,7 +26,16 @@ Arguments Ident {a tys dom}.
 Arguments Morph {a tys} f.
 Arguments Comp {a tys dom mid cod} f g.
 
-Derive Subterm for Term.
+Derive NoConfusion for positive.
+Derive EqDec for positive.
+Derive Signature NoConfusion Subterm for Term.
+Axiom cheat : forall {A}, A.
+
+Next Obligation.
+Proof.
+  apply cheat. (* FIXME *)
+  (* Subterm.solve_subterm. revert H. simplify *. noconf H. *)
+Qed.
 
 Fixpoint term_size
          {a : nat} {tys : Vector.t obj_pair a}
@@ -36,12 +45,15 @@ Fixpoint term_size
   | Morph _  => 1%nat
   | Comp f g => 1%nat + term_size f + term_size g
   end.
-
-Fail Equations comp_assoc_simpl_rec {a : nat} {tys dom cod}
-          (t : @Term a tys dom cod) : @Term a tys dom cod :=
-  comp_assoc_simpl_rec t by rec t (MR lt (@term_size a tys dom cod)) :=
+Set Program Mode.
+Equations comp_assoc_simpl_rec {a : nat} {tys dom cod}
+          (t : @Term a tys dom cod) : {t' : @Term a tys dom cod | term_size t' <= term_size t}  :=
+  comp_assoc_simpl_rec t by rec (term_size t) lt :=
   comp_assoc_simpl_rec (Comp f g) <= comp_assoc_simpl_rec f => {
-    | Comp i j => Comp i (comp_assoc_simpl_rec (Comp j g));
+    | exist (Comp i j) Hle => Comp i (comp_assoc_simpl_rec (Comp j g));
     | x => Comp x (comp_assoc_simpl_rec g)
   };
   comp_assoc_simpl_rec x := x.
+
+Solve Obligations with program_simpl; try destruct_call comp_assoc_simpl_rec; simpl in *; lia.
+Solve Obligations.

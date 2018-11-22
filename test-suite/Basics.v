@@ -87,6 +87,8 @@ sublist p (cons x xs) with p x := {
 Ltac rec ::= Subterm.rec_wf_eqns.
 
 (* Derive Subterm for nat.  *)
+Derive Signature for vector.
+Derive NoConfusion NoConfusionHom for vector.
 Derive Subterm for vector.
 
 Require Import Arith Wf_nat.
@@ -125,18 +127,17 @@ Equations  vapp' {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m) 
 
 (* Print Assumptions vapp'. *)
 
-Derive Signature for vector.
-
 From Equations Require Import EqDec.
 
 Instance vector_eqdec {A n} `(EqDec A) : EqDec (vector A n).
-Proof. intros. intros x. induction x. left. now depelim y.
+Proof.
+  intros. intros x. induction x. left. now depelim y.
   intro y; depelim y.
   destruct (eq_dec h h0); subst. 
   destruct (IHx y). subst.
   left; reflexivity.
-  right. intro. apply n0. injection H0. simpdep. reflexivity.
-  right. intro. apply n0. injection H0. simpdep. reflexivity.
+  right. intro. noconf H0. contradiction.
+  right. intro. noconf H0. contradiction.
 Defined.
 
 (* Print Assumptions well_founded_vector_direct_subterm. *)
@@ -287,15 +288,16 @@ rev (cons a v) := rev v +++ (cons a nil).
 
 Notation " [] " := List.nil.
 
+
 Lemma app'_nil : forall {A} (l : list A), l +++ [] = l.
 Proof.
-  intros. Opaque app'.
-  funelim (app' l []). reflexivity.
+  intros.
+  funelim (app' l []); auto.
   now rewrite H.
 Qed.
 
 Lemma app'_assoc : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l (app' l' l'').
-Proof. intros. Opaque app'. revert l''.
+Proof. intros. revert l''.
   funelim (l +++ l'); intros; simp app'. 
   rewrite H. reflexivity.
 Qed.
@@ -474,31 +476,15 @@ bla baz := false.
 Lemma eq_trans_eq A x : @eq_trans A x x x eq_refl eq_refl = eq_refl.
 Proof. reflexivity. Qed.
 
-(* Equations vlast {A} {n} (v : vector A (S n)) : A := *)
-(* vlast A O (cons a ?(O) Vnil) := a ; *)
-(* vlast A (S n) (cons a ?(S n) v) := vlast v. *)
+Equations vlast {A} {n} (v : vector A (S n)) : A :=
+vlast (cons a O Vnil) := a ;
+vlast (cons a (S n) v) := vlast v.
 
-Ltac generalize_by_eqs id ::= generalize_eqs id.
-Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars id.
-
-Equations vlast' {A} {n} (v : vector A (S n)) : A :=
-vlast' (cons a O Vnil) := a ;
-vlast' (cons a (S n) v) := vlast' v.
-
-Require Import DepElimDec.
-Ltac generalize_by_eqs id ::= generalize_eqs_sig id.
-Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars_sig id.
-
-Ltac fix_block tac :=
-  match goal with
-    [ |- ?T ] => tac ; on_last_hyp ltac:(fun id => change (fix_proto T) in id)
-  end.
-
-(* Equations  vliat {A} {n} (v : vector A (S n)) : vector A n := *)
-(* vliat A ?(O) (cons a O Vnil) := Vnil ; *)
-(* vliat A ?(S n) (cons a n v) := cons a (vliat v). *)
-
-(* Eval compute in (vliat (cons 2 (cons 5 (cons 4 Vnil)))). *)
+Next Obligation.
+  depind v. destruct n; simp vlast.
+Defined.
+Transparent vlast.
+Eval compute in (vlast (cons 2 (cons 5 (cons 4 nil)))).
 
 Fixpoint vapp {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
   match v with
@@ -506,9 +492,7 @@ Fixpoint vapp {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
     | cons a v' => cons a (vapp v' w)
   end.
 
-Lemma JMeq_cons_inj A n m a (x : vector A n) (y : vector A m) : n = m -> JMeq x y -> JMeq (cons a x) (cons a y).
-Proof. simplify_dep_elim. reflexivity. Qed.
-  
+
 (* Eval compute in (split (vapp Vnil (cons 2 Vnil))). *)
 (* Eval compute in (split (vapp (cons 3 Vnil) (cons 2 Vnil))). *)
 
@@ -548,9 +532,6 @@ half n <= parity n => {
 Equations vtail {A n} (v : vector A (S n)) : vector A n :=
 vtail (cons a n v') := v'.
 
-Ltac generalize_by_eqs id ::= generalize_eqs id.
-Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars id.
-
 (** Well-founded recursion: note that it's polymorphic recursion in a sense:
     the type of vectors change at each recursive call. It does not follow
     a canonical elimination principle in this nested case. *)
@@ -570,6 +551,9 @@ Extraction diag.
 Equations(struct n) diag_struct {A n} (v : vector (vector A n) n) : vector A n :=
 diag_struct {n:=O} nil := nil ;
 diag_struct {n:=(S ?(n))} (cons (cons a n v) _ v') := cons a (diag_struct (vmap vtail v')).
+Next Obligation.
+  induction n. depelim v; constructor. depelim v. depelim h. simp diag_struct.
+Defined.
 
 Definition mat A n m := vector (vector A m) n.
 

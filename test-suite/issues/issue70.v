@@ -2,6 +2,8 @@ From Coq Require Import Fin.
 From Equations Require Import Equations.
 Set Equations Transparent.
 
+Derive Signature NoConfusion NoConfusionHom for t.
+
 Equations FL (n : nat) : Fin.t (S n) :=
   FL 0     := F1;
   FL (S n) := FS (FL n).
@@ -31,6 +33,10 @@ Equations invertFinInv {n : nat} (x : Fin.t n) :
                                      (invFULemma (invertFin y))
                                      (f_equal _ (invertFinInv y))).
 
+Next Obligation.
+  induction n; depelim x. constructor. constructor. auto.
+Defined.
+
 Definition invFinViewType {n : nat} (x : (Fin.t n)) : Type :=
   { y : Fin.t n & x = invertFin y }.
 
@@ -43,4 +49,3 @@ Equations finFUOrFL {n : nat} (x : Fin.t (S n)) :
   finFUOrFL  {n:=(S _)} x <= invFinView x => {
                           | (existT F1 eq)     := (inr eq);
                           | (existT (FS _) eq) := (inl (existT _ (invertFin _) eq))}.
-

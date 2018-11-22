@@ -115,7 +115,7 @@ Section Chunk.
   Context{T : Type} `{M : ChunkableMonoid T}.
   Set Program Mode.
   Equations chunk (i: { i: nat | i > 0 }) (x: T) : list T :=
-  chunk i x by rec x (MR lt length) :=
+  chunk i x by rec (length x) lt :=
   chunk i x with dec (Nat.leb (length x) i) :=    
     { | left _ => [x] ;
       | right p => take i x :: chunk i (drop i x) }.
@@ -148,11 +148,46 @@ Eval compute in (chunk (exist _ 3 _) [0; 1; 2; 3; 4; 5; 6; 7; 8; 9]).
   : list (list nat)
  *)
 
-Equations mconcat {M: Type} `{Monoid M} (l: list M): M :=
+Section mconcat.
+  Context {M : Type} `{Monoid M}.
+
+  Equations mconcat (l: list M): M :=
   mconcat [] := unit;
-  mconcat (cons x xs) := x ** mconcat xs.                  
+  mconcat (cons x xs) := x ** mconcat xs.
+End mconcat.
+Transparent mconcat.
 
 Definition strong_induction := well_founded_induction lt_wf.
+
+Ltac make_packcall packcall c :=
+  match goal with
+  | [ packcall : ?type |- _ ] => change (let _ := c in type) in (type of packcall)
+  end.
+
+Ltac funelim_sig_tac c tac ::=
+  let elimc := get_elim c in
+  let packcall := fresh "packcall" in
+  let elimfn := match elimc with fun_elim (f:=?f) => constr:(f) end in
+  let elimn := match elimc with fun_elim (n:=?n) => constr:(n) end in
+  block_goal;
+  uncurry_call elimfn c packcall; make_packcall packcall elimfn;
+  with_last_secvar ltac:(fun eos => move packcall before eos)
+                          ltac:(move packcall at top);
+  revert_until packcall; simpl in (value of packcall);
+  pattern sigma packcall;
+  remember_let packcall;
+  with_last_secvar ltac:(fun eos => move packcall before eos)
+                          ltac:(move packcall at top);
+  revert_until packcall; block_goal;
+  cbv zeta in packcall; revert packcall; curry;
+  let elimt := make_refine elimn elimc in
+  unshelve refine_ho elimt; intros;
+  cbv beta; simplify_dep_elim; intros_until_block; simplify_dep_elim;
+  simpl eq_rect_dep_r in *; simpl eq_rect in *;
+  simplify_IH_hyps'; intros _;
+  unblock_goal; simplify_IH_hyps; tac c.
+
+Derive NoConfusion for N.
 
 Theorem morphism_distribution:
   forall {M N: Type}
@@ -246,10 +281,11 @@ Section pmconcat.
 End pmconcat.
 
 Instance mconcat_mon T : MonoidMorphism (@mconcat (list T) _).
+
 Next Obligation.
 Proof.
-  funelim (mconcat x); simp mconcat.
-  rewrite H0. now rewrite <- app_assoc. 
+  funelim (mconcat x). reflexivity.
+  simpl. rewrite H. now rewrite <- app_assoc.
 Qed.
 
 Theorem concatEquivalence: forall {T: Type} i (x: list (list T)),

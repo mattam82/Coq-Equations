@@ -65,8 +65,12 @@ Proof. eqdec_proof. Defined.
 Instance list_eqdec {A} `(EqDec A) : EqDec (list A). 
 Proof. eqdec_proof. Defined.
 
+Local Set Equations WithKDec.
+
 Instance sigma_eqdec {A B} `(EqDec A) `(forall x, EqDec (B x)) : EqDec {x : A & B x}.
-Proof. eqdec_proof. Defined.
+Proof.
+  eqdec_proof.
+Defined.
 
 Polymorphic Definition eqdec_sig@{i} {A : Type@{i}} {B : A -> Type@{i}}
             `(EqDec A) `(forall a, EqDec (B a)) :

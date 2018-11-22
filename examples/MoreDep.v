@@ -41,6 +41,7 @@ Inductive type : Set :=
 | Nat : type
 | Bool : type
 | Prod : type -> type -> type.
+Derive NoConfusion EqDec for type.
 
 Inductive exp : type -> Set :=
 | NConst : nat -> exp Nat
@@ -52,6 +53,11 @@ Inductive exp : type -> Set :=
 | Pair : forall t1 t2, exp t1 -> exp t2 -> exp (Prod t1 t2)
 | Fst : forall t1 t2, exp (Prod t1 t2) -> exp t1
 | Snd : forall t1 t2, exp (Prod t1 t2) -> exp t2.
+
+Derive Signature NoConfusion for exp.
+(* FIXME *) (* Derive NoConfusionHom for exp. *)
+Set Equations WithKDec.
+(* FIXME Derive Subterm for exp. *)
 
 Equations typeDenote (t : type) : Set :=
 typeDenote Nat := nat;
@@ -74,17 +80,12 @@ expDenote _ (If e e1 e2) <= expDenote e => {
 expDenote _ (Pair _ _ e1 e2) := (expDenote e1, expDenote e2);
 expDenote _ (Fst _ _ e) := fst (expDenote e);
 expDenote _ (Snd _ _ e) := snd (expDenote e).
-Next Obligation.
-  induction e; constructor; auto.
-  destruct Nat.eq_dec; constructor; auto.
-  destruct (expDenote e1); constructor; auto.
-Defined.
 
-Equations(nocomp) pairOutType2 (t : type) : Set :=
+Equations pairOutType2 (t : type) : Set :=
 pairOutType2 (Prod t1 t2) := option (exp t1 * exp t2);
 pairOutType2 _ := option unit.
 
-Equations(nocomp) pairOutTypeDef (t : type) : Set :=
+Equations pairOutTypeDef (t : type) : Set :=
 pairOutTypeDef (Prod t1 t2) := exp t1 * exp t2;
 pairOutTypeDef _ := unit.
 
@@ -102,15 +103,12 @@ Set Printing Depth 1000000.
 
 Require Import Wellfounded.
 
-Derive Signature for exp.
-Derive Subterm for exp.
 
 Ltac rec ::= Subterm.rec_wf_eqns.
 Unset Implicit Arguments.
   (* Equations(struct e) cfold t (e : exp t) : exp t := *)
-Derive NoConfusion for type.
 Equations cfold {t} (e : exp t) : exp t :=
-cfold e by rec (signature_pack e) exp_subterm :=
+(* FIXME! cfold e by rec (signature_pack e) exp_subterm := *)
 cfold (NConst n) => NConst n;
 cfold (Plus e1 e2) <= (cfold e1, cfold e2) => {
   | pair (NConst n1) (NConst n2) := NConst (n1 + n2);
@@ -308,10 +306,38 @@ Section insert.
       try rewrite present_insResult_equation_1; try rewrite present_insResult_equation_2;
       funelim (ins t0); intro; assumption.
 
+Ltac make_packcall packcall c :=
+  match goal with
+  | [ packcall : ?type |- _ ] => change (let _ := c in type) in (type of packcall)
+  end.
+
+Ltac funelim_sig_tac c tac ::=
+  let elimc := get_elim c in
+  let packcall := fresh "packcall" in
+  let elimfn := match elimc with fun_elim (f:=?f) => constr:(f) end in
+  let elimn := match elimc with fun_elim (n:=?n) => constr:(n) end in
+  block_goal;
+  uncurry_call elimfn c packcall; make_packcall packcall elimfn;
+  with_last_secvar ltac:(fun eos => move packcall before eos)
+                          ltac:(move packcall at top);
+  revert_until packcall; simpl in (value of packcall);
+  pattern sigma packcall; cbv zeta in packcall.
+  (* remember_let packcall. *)
+  (* (* with_last_secvar ltac:(fun eos => move packcall before eos) *) *)
+  (* (*                         ltac:(move packcall at top); *) *)
+  (* (* revert_until packcall;  *)block_goal; *)
+  (* cbv zeta in packcall; revert packcall; curry; *)
+  (* let elimt := make_refine elimn elimc in *)
+  (* unshelve refine_ho elimt; intros; *)
+  (* cbv beta; simplify_dep_elim; intros_until_block; simplify_dep_elim; *)
+  (* simpl eq_rect_dep_r in *; simpl eq_rect in *; *)
+  (* simplify_IH_hyps'; intros _; *)
+  (* unblock_goal; simplify_IH_hyps; tac c. *)
+
     Theorem present_insert_Red : forall n (t : rbtree Red n),
       present z (insert t)
       <-> (z = x \/ present z t).
-    Proof. present_insert t t0. Qed. 
+    Proof. intros. funelim (insert t). present_insert t t0. Qed.
 
     Theorem present_insert_Black : forall n (t : rbtree Black n),
       present z (pr2 (insert t))

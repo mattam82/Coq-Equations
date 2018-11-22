@@ -48,162 +48,7 @@ Ltac unblock_goal := unfold block in *; cbv zeta.
 
 Arguments eq_refl {A} {x}.
 
-(** Do something on an heterogeneous equality appearing in the context. *)
-
-Ltac on_JMeq tac :=
-  match goal with
-    | [ H : @JMeq ?x ?X ?y ?Y |- _ ] => tac H
-  end.
-
-(** Try to apply [JMeq_eq] to get back a regular equality when the two types are equal. *)
-
-Ltac simpl_one_JMeq :=
-  on_JMeq ltac:(fun H => apply JMeq_eq in H).
-
-(** Repeat it for every possible hypothesis. *)
-
-Ltac simpl_JMeq := repeat simpl_one_JMeq.
-
-(** Just simplify an h.eq. without clearing it. *)
-
-Ltac simpl_one_dep_JMeq :=
-  on_JMeq
-  ltac:(fun H => let H' := fresh "H" in
-    assert (H' := JMeq_eq H)).
-
-Require Import Eqdep.
-
-(** Simplify dependent equality using sigmas to equality of the second projections if possible.
-   Uses UIP. *)
-
-Axiom inj_sigma2 : forall (U : Type) (P : U -> Type) (p : U) (x y : P p),
-  sigmaI P p x = sigmaI P p y -> x = y.
-
-Ltac simpl_existT :=
-  match goal with
-    [ H : existT _ ?x _ = existT _ ?x _ |- _ ] =>
-    let Hi := fresh H in assert(Hi:=inj_pairT2 _ _ _ _ _ H) ; clear H
-  | [ H : sigmaI _ ?x _ = sigmaI _ ?x _ |- _ ] =>
-    let Hi := fresh H in assert(Hi:=@inj_sigma2 _ _ _ _ _ H) ; clear H
-  end.
-
-Ltac simpl_existTs := repeat simpl_existT.
-
-(** Tries to eliminate a call to [eq_rect] (the substitution principle) by any means available. *)
-
-Ltac elim_eq_rect :=
-  match goal with
-    | [ |- ?t ] =>
-      match t with
-        | context [ @eq_rect _ _ _ _ _ ?p ] =>
-          let P := fresh "P" in
-            set (P := p); simpl in P ;
-	      ((case P ; clear P) || (clearbody P; rewrite (UIP_refl _ _ P); clear P))
-        | context [ @eq_rect _ _ _ _ _ ?p _ ] =>
-          let P := fresh "P" in
-            set (P := p); simpl in P ;
-	      ((case P ; clear P) || (clearbody P; rewrite (UIP_refl _ _ P); clear P))
-      end
-  end.
-
-(** Rewrite using uniqueness of indentity proofs [H = eq_refl]. *)
-
-Ltac simpl_uip :=
-  match goal with
-    [ H : ?X = ?X |- _ ] => rewrite (UIP_refl _ _ H) in *; clear H
-  end.
-
-(** Simplify equalities appearing in the context and goal. *)
-
-Ltac simpl_eq := simpl ; unfold eq_rec_r, eq_rec ; repeat (elim_eq_rect ; simpl) ; repeat (simpl_uip ; simpl).
-
-(** Try to abstract a proof of equality, if no proof of the same equality is present in the context. *)
-
-Ltac abstract_eq_hyp H' p :=
-  let ty := type of p in
-  let tyred := eval simpl in ty in
-    match tyred with
-      ?X = ?Y =>
-      match goal with
-        | [ H : X = Y |- _ ] => fail 1
-        | _ => set (H':=p) ; try (change p with H') ; clearbody H' ; simpl in H'
-      end
-    end.
-
-(** Apply the tactic tac to proofs of equality appearing as coercion arguments.
-   Just redefine this tactic (using [Ltac on_coerce_proof tac ::=]) to handle custom coercion operators.
-   *)
-
-Ltac on_coerce_proof tac T :=
-  match T with
-    | context [ eq_rect _ _ _ _ ?p ] => tac p
-  end.
-
-Ltac on_coerce_proof_gl tac :=
-  match goal with
-    [ |- ?T ] => on_coerce_proof tac T
-  end.
-
-(** Abstract proofs of equalities of coercions. *)
-
-Ltac abstract_eq_proof := on_coerce_proof_gl ltac:(fun p => let H := fresh "eqH" in abstract_eq_hyp H p).
-
-Ltac abstract_eq_proofs := repeat abstract_eq_proof.
-
-(** Factorize proofs, by using proof irrelevance so that two proofs of the same equality
-   in the goal become convertible. *)
-
-Ltac pi_eq_proof_hyp p :=
-  let ty := type of p in
-  let tyred := eval simpl in ty in
-  match tyred with
-    ?X = ?Y =>
-    match goal with
-      | [ H : X = Y |- _ ] =>
-        match p with
-          | H => fail 2
-          | _ => rewrite (proof_irrelevance (X = Y) p H)
-        end
-      | _ => fail " No hypothesis with same type "
-    end
-  end.
-
-(** Factorize proofs of equality appearing as coercion arguments. *)
-
-Ltac pi_eq_proof := on_coerce_proof_gl pi_eq_proof_hyp.
-
-Ltac pi_eq_proofs := repeat pi_eq_proof.
-
-(** The two preceding tactics in sequence. *)
-
-Ltac clear_eq_proofs :=
-  abstract_eq_proofs ; pi_eq_proofs.
-
 Hint Rewrite <- eq_rect_eq : refl_id.
-
-(** The [refl_id] database should be populated with lemmas of the form
-   [coerce_* t eq_refl = t]. *)
-
-Lemma JMeq_eq_refl {A} (x : A) : JMeq_eq (@JMeq_refl _ x) = eq_refl.
-Proof. intros. apply proof_irrelevance. Qed.
-
-Lemma UIP_refl_refl : forall A (x : A),
-  Eqdep.EqdepTheory.UIP_refl A x eq_refl = eq_refl.
-Proof. intros. apply UIP_refl. Qed.
-
-Lemma inj_pairT2_refl : forall A (x : A) (P : A -> Type) (p : P x),
-  Eqdep.EqdepTheory.inj_pairT2 A P x p p eq_refl = eq_refl.
-Proof. intros. apply UIP_refl. Qed.
-
-Polymorphic Lemma inj_sigma2_refl : forall A (x : A) (P : A -> Type) (p : P x),
-  inj_sigma2 A P x p p eq_refl = eq_refl.
-Proof. intros. apply UIP_refl. Qed.
-
-Hint Rewrite @JMeq_eq_refl @UIP_refl_refl
-     @inj_pairT2_refl : refl_id.
-(** The inj_right_pair_refl lemma is now useful also when using noConfusion. *)
-Hint Rewrite @inj_right_pair_refl : refl_id.
-Hint Rewrite @HSets.inj_sigma_r_refl : refl_id.
 
 Global Set Keyed Unification.
 
@@ -214,38 +59,6 @@ Ltac simplify_IH_hyps := repeat
   match goal with
     | [ hyp : _ |- _ ] => simpl in hyp; eqns_specialize_eqs hyp
   end.
-
-(** We split substitution tactics in the two directions depending on which 
-   names we want to keep corresponding to the generalization performed by the
-   [generalize_eqs] tactic. *)
-
-Ltac subst_left_no_fail :=
-  repeat (match goal with
-            [ H : ?X = ?Y |- _ ] => subst X
-          end).
-
-Ltac subst_right_no_fail :=
-  repeat (match goal with
-            [ H : ?X = ?Y |- _ ] => subst Y
-          end).
-
-Ltac inject_left H :=
-  progress (inversion H ; subst_left_no_fail ; clear_dups) ; clear H.
-
-Ltac inject_right H :=
-  progress (inversion H ; subst_right_no_fail ; clear_dups) ; clear H.
-
-Ltac autoinjections_left := repeat autoinjection ltac:(inject_left).
-Ltac autoinjections_right := repeat autoinjection ltac:(inject_right).
-
-Ltac simpl_depind := subst_no_fail ; autoinjections ; try discriminates ; 
-  simpl_JMeq ; simpl_existTs ; simplify_IH_hyps.
-
-Ltac simpl_depind_l := subst_left_no_fail ; autoinjections_left ; try discriminates ; 
-  simpl_JMeq ; simpl_existTs ; simplify_IH_hyps.
-
-Ltac simpl_depind_r := subst_right_no_fail ; autoinjections_right ; try discriminates ; 
-  simpl_JMeq ; simpl_existTs ; simplify_IH_hyps.
 
 (** Support for the [Equations] command.
    These tactics implement the necessary machinery to solve goals produced by the
@@ -434,47 +247,8 @@ Polymorphic
 Lemma Id_deletion : forall {A B} (t : A), B -> (Id t t -> B).
 Proof. intros; assumption. Defined.
 
-Lemma simplification_heq : forall {A B} (x y : A), (x = y -> B) -> (JMeq x y -> B).
-Proof. intros; apply X; apply (JMeq_eq H). Defined.
-
-Lemma simplification_heq_refl {A B} (x : A) (p : x = x -> B) :
-    simplification_heq x x p JMeq_refl = p eq_refl.
-Proof. unfold simplification_heq. now rewrite JMeq_eq_refl. Defined.
-
-Lemma simplification_existT2 : forall {A} {P : A -> Type} {B} (p : A) (x y : P p),
-  (x = y -> B) -> (existT P p x = existT P p y -> B).
-Proof. intros. apply X. apply inj_pair2. exact H. Defined.
-
-Lemma simplification_existT2_refl {A} {P : A -> Type} {B} (p : A) (x : P p)
-      (e : x = x -> B) :
-  simplification_existT2 p x x e eq_refl = e eq_refl.
-Proof. unfold simplification_existT2. rewrite inj_pairT2_refl. constructor. Defined.
-
-Polymorphic Lemma simplification_sigma2@{i j} : forall {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}} (p : A) (x y : P p),
-  (x = y -> B) -> (sigmaI P p x = sigmaI P p y -> B).
-Proof. intros. apply X. apply inj_sigma2. exact H. Defined.
-Arguments simplification_sigma2 : simpl never.
-
-Polymorphic
-Lemma simplification_sigma2_refl@{i j} {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}} (p : A) (x : P p)
-  (G : x = x -> B) : simplification_sigma2 p x x G eq_refl = G eq_refl.
-Proof. unfold simplification_sigma2. rewrite inj_sigma2_refl. constructor. Defined.
-
 (** If we have decidable equality on [A] we use this version which is 
    axiom-free! *)
-
-Lemma simplification_existT2_dec {A} `{EqDec A} {P : A -> Type} {B}
-      (p : A) (x y : P p) :
-  (x = y -> B) -> (existT P p x = existT P p y -> B).
-Proof. intros. apply X. apply inj_right_pair in H0. assumption. Defined.
-
-Lemma simplification_existT2_dec_refl {A} `{EqDec A} {P : A -> Type} {B}
-      (p : A) (x : P p) (e : x = x -> B) :
-  simplification_existT2_dec p x x e eq_refl = e eq_refl.
-Proof.
-  intros. unfold simplification_existT2_dec.
-  now rewrite inj_right_pair_refl.
-Defined.
 
 Polymorphic Lemma simplification_sigma2_dec@{i j} : forall {A : Type@{i}} `{EqDec A} {P : A -> Type@{i}}
                                                            {B : Type@{j}}
@@ -663,6 +437,10 @@ Defined.
 Lemma simplification_K : forall {A} (x : A) {B : x = x -> Type}, B eq_refl -> (forall p : x = x, B p).
 Proof. intros. rewrite (UIP_refl A). assumption. Defined.
 Arguments simplification_K : simpl never.
+
+Lemma UIP_refl_refl : forall A (x : A),
+  UIP_refl A x eq_refl = eq_refl.
+Proof. intros. apply UIP_refl. Qed.
 
 Lemma simplification_K_refl : forall {A} (x : A) {B : x = x -> Type}
                                     (p : B eq_refl),
@@ -862,8 +640,7 @@ Arguments Id_simplify_ind_pack_inv : simpl never.
   when proving lemmas about definitions. To actually compute with these
   inside Coq, one has to make them transparent again. *)
 
-Global Opaque simplification_existT2 simplification_existT2_dec
-       simplification_sigma2 simplification_sigma2_dec
+Global Opaque simplification_sigma2_dec
        simplification_sigma2_dec_point
        simplification_heq simplification_K simplification_K_dec
        simplify_ind_pack simplified_ind_pack Id_simplification_sigma2.
@@ -871,14 +648,8 @@ Global Opaque opaque_ind_pack_eq_inv.
 
 Ltac rewrite_sigma2_refl :=
   match goal with
-  | |- context [inj_sigma2 ?A ?P ?x ?p _ eq_refl] =>
-    rewrite (inj_sigma2_refl A x P p)
-
   | |- context [@inj_right_sigma ?A ?H ?x ?P ?y ?y' _] =>
     rewrite (@inj_right_sigma_refl A H x P y)
-
-  | |- context [@simplification_sigma2 ?A ?P ?B ?p ?x ?y ?X eq_refl] =>
-    rewrite (@simplification_sigma2_refl A P B p x X); simpl
 
   | |- context [@Id_simplification_sigma2 ?A ?H ?P ?B ?p ?x ?y ?X id_refl] =>
     rewrite (@Id_simplification_sigma2_refl A H P B p x X); simpl
@@ -900,15 +671,6 @@ Ltac rewrite_sigma2_refl :=
 
   | |- context [@HSets.inj_sigma_r ?A ?H ?P ?x ?y ?y' _] =>
     rewrite (@HSets.inj_sigma_r_refl A H P x y)
-
-  | |- context [@simplification_heq ?A ?B ?x _ ?p JMeq_refl] =>
-    rewrite (@simplification_heq_refl A B x p)
-
-  | |- context [@simplification_existT2_dec ?A ?eq ?P ?B ?p ?x ?y ?X eq_refl] =>
-    rewrite (@simplification_existT2_dec_refl A eq P B p x X); simpl
-
-  | |- context [@simplification_existT2 ?A ?P ?B ?p ?x ?y ?X eq_refl] =>
-    rewrite (@simplification_existT2_refl A P B p x X); simpl
 
   | |- context [@simplify_ind_pack ?A ?eqdec ?B ?x ?p _ ?G _ eq_refl] =>
     rewrite (@simplify_ind_pack_refl A eqdec B x p G _)
@@ -939,9 +701,8 @@ Extraction Inline solution_right_dep solution_right solution_left solution_left_
 Extraction Inline eq_sym_invol eq_symmetry_dep.
 Extraction Inline solution_right_let solution_left_let deletion.
 Extraction Inline simplification_heq simplification_existT2.
-Extraction Inline simplification_existT1 simplification_existT2_dec.
+Extraction Inline simplification_existT1.
 Extraction Inline simplification_sigma1 simplification_sigma2_dec.
-Extraction Inline simplification_sigma2.
 Extraction Inline simplification_K simplification_K_dec.
 Extraction Inline Id_solution_right_dep Id_solution_right Id_solution_left Id_solution_left_dep.
 Extraction Inline Id_solution_right_let Id_solution_left_let Id_deletion.
@@ -984,201 +745,21 @@ Ltac not_var x := try (is_var x; fail 1).
 Ltac try_discriminate := discriminate.
 Ltac try_injection H := injection H.
 
-Ltac simplify_one_dep_elim_term c :=
-  match c with
-    | @JMeq _ _ _ _ -> _ => refine (@simplification_heq _ _ _ _ _)
-    | @eq ?A ?t ?t -> _ =>
-      intros _ ||
-             (let eqdec := constr:(_ : EqDec A) in
-              refine (simplification_K_dec (A:=A) (H:=eqdec) _ _))
-             || refine (@simplification_K _ t _ _)
-    | Id ?t ?t -> _ => intros _ || apply Id_simplification_K
-                            
-    | False -> _ => refine (@False_rect_dep _)
-
-    | True -> _ => refine (@True_rect_dep _ _)
-                     
-    | (@existT ?A ?P ?n ?x) = (@existT ?A ?P ?m ?y) -> ?B =>
-      (* Check if [n] and [m] are judgmentally equal. *)
-      match goal with
-      | |- _ =>
-        try (try (refine (@simplification_existT2 _ _ _ _ _ _ _); []; gfail 1); fail 1);
-        match goal with
-        | _ : x = y |- _ => intro
-        | _ =>
-          apply (simplification_existT2_dec (A:=A) (P:=P) (B:=B) n x y) ||
-            refine (@simplification_existT2 _ _ _ _ _ _ _)
-        end
-      | |- _ =>
-        match goal with
-        | _ : n = m |- _ => intro
-        | _ => refine (@simplification_existT1 _ _ _ _ _ _ _ _)
-        end
-      end
-    | (@sigmaI ?A ?P ?n ?x) = (@sigmaI _ _ ?m ?y) -> ?B =>
-      (* Check if [n] and [m] are judgmentally equal. *)
-      match goal with
-      | |- _ =>
-        try (try (refine (@simplification_sigma2 _ _ _ _ _ _ _); []; gfail 1); fail 1);
-        match goal with
-        | _ : x = y |- _ => intro
-        | _ =>
-          (refine (simplification_sigma2_dec_point (A:=A) (P:=P) (B:=B) n x y _);
-           (match goal with (* Sometimes leaves an unsolved evar for the non-dependent
-                               [EqDecPoint] subgoal *)
-            | |- @EqDecPoint _ _ => solve [typeclasses eauto]
-            | |- _ => idtac
-            end)) ||
-          apply (simplification_sigma2_dec (A:=A) (P:=P) (B:=B) n x y) ||
-            refine (@simplification_sigma2 _ _ _ _ _ _ _)
-        end
-      | |- _ =>
-        match goal with
-        | _ : n = m |- _ => intro
-        | _ =>
-          refine (@eq_simplification_sigma1 _ _ _ _ _ _ _ _) ||
-          refine (@eq_simplification_sigma1_dep _ _ _ _ _ _ _ _) ||
-          refine (@eq_simplification_sigma1_dep_dep _ _ _ _ _ _ _ _) ||
-          refine (@simplification_sigma1 _ _ _ _ _ _ _ _)
-        end
-      end
-
-    | (@sigmaI ?A ?P ?n ?x) = (@sigmaI _ _ ?m ?y) -> _ =>
-      refine (@eq_simplification_sigma1_dep_dep _ _ _ _ _ _ _ _)
-
-    | Id (@sigmaI ?A ?P ?n ?x) (@sigmaI _ _ ?m ?y) -> ?B =>
-      (* Check if [n] and [m] are judgmentally equal. *)
-      match goal with
-      | |- _ => unify n m;
-        match goal with
-        | _ : Id x y |- _ => intro
-        | _ =>
-          apply (Id_simplification_sigma2 (A:=A) (P:=P) (B:=B) n x y) ||
-                fail 100000 "Type " A " is not a declared HSet: cannot simplify"
-        end
-      | |- _ =>
-        match goal with
-        | _ : Id n m |- _ => intro
-        | _ => refine (@Id_simplification_sigma1'  _ _ _ _ _ _ _ _) ||
-                     refine (@Id_simplification_sigma1 _ _ _ _ _ _ _ _)
-        end
-      end
-
-    | forall H : ?x = ?y, _ => (* variables case *)
-      (let hyp := fresh H in intros hyp ;
-        move hyp before x ; move x before hyp; revert_blocking_until x; revert x;
-          (match goal with
-           | |- let x := _ in _ = _ -> @?B x =>
-             (let check := type of B in (* Check that the abstraction is really well-typed *)
-              refine (@solution_left_let _ B _ _ _))
-           | _ => refine (@solution_left _ _ _ _) || refine (@solution_left_dep _ _ _ _); simpl eq_rect
-           end)) ||
-      (let hyp := fresh H in intros hyp ;
-        move hyp before y ; move y before hyp; revert_blocking_until y; revert y;
-          (match goal with
-           | |- let x := ?b in (let _ := block in ?t = _) -> @?B x =>
-             (let check := type of B in (* Check that the abstraction is really well-typed *)
-              refine (@solution_right_let _ B _ _ _); let B' := eval cbv beta in (B t) in
-                                                          change (t = b -> B'))
-           | _ => (refine (@solution_right _ _ _ _) || refine (@solution_right_dep _ _ _ _); simpl eq_rect) ||
-                  (let na := fresh in intros na; subst na)
-           end))
-
-    | forall H : Id ?x ?y, _ => (* variables case *)
-      (let hyp := fresh H in intros hyp ;
-        move hyp before x ; move x before hyp; revert_blocking_until x; revert x;
-          (match goal with
-            | |- let x := _ in Id _ _ -> @?B x =>
-               refine (@Id_solution_left_let _ B _ _ _)
-             | _ => refine (@Id_solution_left _ _ _ _) || refine (@Id_solution_left_dep _ _ _ _)
-           end)) ||
-      (let hyp := fresh "Heq" in intros hyp ;
-        move hyp before y ; move y before hyp; revert_blocking_until y; revert y;
-          (match goal with
-             | |- let x := ?b in (let _ := block in Id ?t _) -> @?B x =>
-               (refine (@Id_solution_right_let _ B _ _ _); let B' := eval cbv beta in (B t) in
-                                                            change (t = b -> B'))
-             | _ => refine (@Id_solution_right _ _ _ _) || refine (@Id_solution_right_dep _ _ _ _)
-           end))
-
-    | @eq ?A ?t ?u -> ?P =>
-      (let hyp := fresh in intros hyp ; noconf_ref hyp)
-
-    | @Id ?A ?t ?u -> ?P =>
-      (let hyp := fresh in intros hyp ; noconf_ref hyp) 
-
-    | @eq ?A ?x ?y -> _ =>
-      not_var x; not_var y;
-     try (let packx := constr:(signature_pack x) in
-        let packy := constr:(signature_pack y) in
-        let tyx := type of packx in
-        match tyx with
-        | @sigma _ _ =>
-          change x with (pr2 packx) at 1; change y with (pr2 packy) at 1;
-          refine (simplify_ind_pack _ _ _ _ _ _)
-        end);
-      (refine (@apply_noConfusion _ _ _ _ _ _); progress simpl @NoConfusion;
-       match goal with
-         |- True -> _ => idtac
-       | |- False -> _ => idtac
-       | |- _ = _ -> _ => idtac
-       | _ => fail
-      end)
-
-    | @Id ?A ?t ?u -> _ =>
-      not_var t; not_var u;
-      (refine (@apply_noConfusionId A _ _ _ _ _);
-       progress simpl @NoConfusionId;
-       match goal with
-         |- True -> _ => idtac
-       | |- False -> _ => idtac
-       | |- @Id _ _ _ -> _ => idtac
-       | _ => fail
-       end)
-
-    | ?f ?x = ?g ?y -> _ =>
-      let H := fresh in progress (intros H ; try_injection H ; clear H)
-
-    | Id (?f ?x) (?g ?y) -> _ =>
-      let H := fresh in progress (intros H ; inversion H ; clear H)
-
-    | ?t = ?u -> _ => let hyp := fresh in
-      intros hyp ; elimtype False ; try_discriminate
-
-    | Id ?t ?u -> _ => let hyp := fresh in
-      intros hyp ; elimtype False ; solve [inversion hyp]
-
-    | ?x = ?y -> _ => let hyp := fresh in
-      intros hyp ; (try (clear hyp ; (* If non dependent, don't clear it! *) fail 1)) ;
-        case hyp (* ; clear hyp *)
-
-    | Id _ ?x ?y -> _ => let hyp := fresh in
-      intros hyp ; (try (clear hyp ; (* If non dependent, don't clear it! *) fail 1)) ;
-        case hyp (* ; clear hyp *)
-
-    | let _ := block in _ => fail 1 (* Do not put any part of the rhs in the hyps *)
-    | _ -> ?B => let ty := type of B in (* Works only with non-dependent products *)
-      intro || (let H := fresh in intro H)
-    | forall x, _ =>
-      let H := fresh x in intro H
-    | _ => intro
-
-    (* | _ -> ?T => intro; try (let x := type of T in idtac) *)
-    (*    (* Only really anonymous, non dependent hyps get automatically generated names. *) *)
-    (* | forall x, _ => intro x || (let H := fresh x in rename x into H ; intro x) (* Try to keep original names *) *)
-    (* | _ -> _ => intro *)
-  end.
-
 Ltac simplify_one_dep_elim :=
   match goal with
-    | [ |- context [eq_rect_r _ _ eq_refl]] => unfold eq_rect_r at 1; simpl eq_rect
-    | [ |- context [eq_rect _ _ _ _ eq_refl]] => unfold eq_rect at 1; simpl eq_rect
+    | [ |- context [eq_rect_r _ _ eq_refl]] => simpl eq_rect_r
+    | [ |- context [eq_rect _ _ _ _ eq_refl]] => simpl eq_rect
     | [ |- context [@eq_rect_dep_r _ _ _ _ _ eq_refl]] => simpl eq_rect_dep_r
     | [ |- context [@Id_rect_dep_r _ _ _ _ _ id_refl]] => simpl Id_rect_dep_r
     | [ |- context [noConfusion_inv (pack_sigma_eq eq_refl eq_refl)]] => simpl noConfusion_inv
     | [ |- @opaque_ind_pack_eq_inv ?A ?eqdec ?B ?x ?p _ ?G eq_refl] =>
             apply (@simplify_ind_pack_inv A eqdec B x p G)
-    | [ |- ?gl ] => simplify_one_dep_elim_term gl
+    | [ |- let _ := block in _ ] => fail 1
+    | [ |- _ ] => simplify ?
+    | [ |- _ -> ?B ] => let ty := type of B in (* Works only with non-dependent products *)
+      intro || (let H := fresh in intro H)
+    | [ |- forall x, _ ] => let H := fresh x in intro H
+    | [ |- _ ] => intro
   end.
 
 (** Repeat until no progress is possible. By construction, it should leave the goal with
@@ -1192,10 +773,105 @@ Ltac noconf H ::= blocked ltac:(noconf_ref H ; simplify_dep_elim).
 
 Ltac simpdep := reverse; simplify_dep_elim.
 
-(** The default implementation of generalization using JMeq. *)
+(** Decompose existential packages. *)
 
-Ltac generalize_by_eqs id := generalize_eqs id.
-Ltac generalize_by_eqs_vars id := generalize_eqs_vars id.
+Ltac decompose_exists id id' := hnf in id ;
+  match type of id with
+    | @sigma _ _ => let xn := fresh id "'" in
+      destruct id as [xn id]; decompose_exists xn id;
+        cbv beta delta [ pr1 pr2 ] iota in id, id';
+          decompose_exists id id'
+    | _ => cbv beta delta [ pr1 pr2 ] iota in id, id'
+  end.
+
+(** Dependent generalization using existentials only. *)
+
+Ltac generalize_sig_gen id cont :=
+  let id' := fresh id in
+  get_signature_pack id id';
+  hnf in (value of id'); hnf in (type of id');
+  lazymatch goal with
+  | id' := ?v |- context[ id ] =>
+    generalize (@eq_refl _ id' : v = id') ;
+    clearbody id'; simpl in id';
+    cont id id' id v
+  | id' := ?v |- _ =>
+    let id'1 := fresh id' in let id'2 := fresh id' in
+    set (id'2 := pr2 id'); set (id'1 := pr1 id') in id'2;
+    hnf in (value of id'1), (value of id'2);
+    try red in (type of id'2);
+    match goal with
+      [ id'1 := ?t |- _ ] =>
+      generalize (@eq_refl _ id'1 : t = id'1);
+        clearbody id'2 id'1; clear id' id;
+        try unfold signature in id'2; hnf in id'2; simpl in id'2;
+        rename id'2 into id; cont id id id'1 t
+    end
+  end.
+
+Ltac generalize_sig id cont :=
+  generalize_sig_gen id
+    ltac:(fun id id' id'1 t => (* Fails if id = id' *)
+            try rename id into id', id' into id;
+          cont id'1 id).
+
+Ltac generalize_sig_vars id cont :=
+  generalize_sig_gen id
+    ltac:(fun id id' id'1 t => move_after_deps id' t; revert_until id';
+          rename id' into id; cont id'1 id).
+
+Ltac Id_generalize_sig_gen id cont :=
+  let id' := fresh id in
+  get_signature_pack id id';
+  hnf in (value of id'); hnf in (type of id');
+  lazymatch goal with
+  | id' := ?v |- context[ id ] =>
+    generalize (@id_refl _ id' : Id id' id') ;
+    unfold id' at 1;
+    clearbody id'; simpl in id';
+    cont id id' id' v
+  | id' := ?v |- _ =>
+    let id'1 := fresh id' in let id'2 := fresh id' in
+    set (id'2 := pr2 id'); set (id'1 := pr1 id') in id'2;
+    hnf in (value of id'1), (value of id'2);
+    match goal with
+    | [ id'1 := ?t |- _ ] =>
+      generalize (@id_refl _ id'1 : Id t id'1);
+        clearbody id'2 id'1;
+        clear id' id; compute in id'2;
+        rename id'2 into id; cont id id id'1 v
+    end
+  end.
+
+Ltac Id_generalize_sig id cont :=
+  Id_generalize_sig_gen id
+    ltac:(fun id id' id'1 t => (* Fails if id = id' *)
+            try rename id into id', id' into id;
+          cont id'1 id).
+
+Ltac Id_generalize_sig_vars id cont :=
+  Id_generalize_sig_gen id
+    ltac:(fun id id' id'1 t => move_after_deps id' t; revert_until id';
+          rename id' into id; cont id'1 id).
+
+Ltac generalize_sig_dest id :=
+  generalize_sig id ltac:(fun id id' => decompose_exists id id').
+
+Ltac generalize_sig_vars_dest id :=
+  generalize_sig_vars id ltac:(fun id id' => decompose_exists id id').
+
+Ltac generalize_eqs_sig id :=
+  (needs_generalization id ; generalize_sig_dest id)
+    || idtac.
+
+Ltac generalize_eqs_vars_sig id :=
+  (needs_generalization id ; generalize_sig_vars_dest id)
+    || idtac.
+
+(** The default implementation of generalization using sigma types. *)
+
+Ltac generalize_by_eqs id := generalize_eqs_sig id.
+Ltac generalize_by_eqs_vars id := generalize_eqs_vars_sig id.
 
 (** Do dependent elimination of the last hypothesis, but not simplifying yet
    (used internally). *)
@@ -1541,14 +1217,10 @@ Ltac red_gl :=
 
 Ltac rewrite_sigma2_rule c :=
   match c with
-  | inj_sigma2 ?A ?P ?x ?p _ eq_refl =>
-    rewrite (inj_sigma2_refl A x P p)
   | @inj_right_sigma ?A ?H ?x ?P ?y ?y' _ =>
     rewrite (@inj_right_sigma_refl A H x P y)
   | @simplify_ind_pack ?A ?eqdec ?B ?x ?p _ ?G _ eq_refl=>
     rewrite (@simplify_ind_pack_refl A eqdec B x p G _)
-  | @simplification_sigma2 ?A ?P ?B ?p ?x ?y ?X eq_refl=>
-    rewrite (@simplification_sigma2_refl A P B p x X); simpl
   | @Id_simplification_sigma2 ?A ?H ?P ?B ?p ?x ?y ?X id_refl=>
     rewrite (@Id_simplification_sigma2_refl A H P B p x X); simpl
   | @simplification_sigma2_dec ?A ?H ?P ?B ?p ?x ?y ?X eq_refl=>
@@ -1561,13 +1233,6 @@ Ltac rewrite_sigma2_rule c :=
     rewrite (@simplification_K_dec_refl A dec x B p); simpl eq_rect
   | @HSets.inj_sigma_r ?A ?H ?P ?x ?y ?y' _=>
     rewrite (@HSets.inj_sigma_r_refl A H P x y)
-
-  | @simplification_heq ?A ?B ?x _ ?p JMeq_refl=>
-    rewrite (@simplification_heq_refl A B x p)
-  | @simplification_existT2_dec ?A ?eq ?P ?B ?p ?x ?y ?X eq_refl=>
-    rewrite (@simplification_existT2_dec_refl A eq P B p x X); simpl
-  | @simplification_existT2 ?A ?P ?B ?p ?x ?y ?X eq_refl=>
-    rewrite (@simplification_existT2_refl A P B p x X); simpl
   end.
 
 Ltac rewrite_sigma2_term x :=

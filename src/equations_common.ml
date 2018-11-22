@@ -556,6 +556,12 @@ let reference_of_global c = Nametab.shortest_qualid_of_global Names.Id.Set.empty
 let tacident_arg h =
   Reference (qualid_of_ident h)
 
+let depelim_tac h = tac_of_string "Equations.DepElim.depelim" [tacident_arg h]
+let do_empty_tac h = tac_of_string "Equations.DepElim.do_empty" [tacident_arg h]
+let depelim_nosimpl_tac h = tac_of_string "Equations.DepElim.depelim_nosimpl" [tacident_arg h]
+let simpl_dep_elim_tac () = tac_of_string "Equations.DepElim.simpl_dep_elim" []
+let depind_tac h = tac_of_string "Equations.DepElim.depind" [tacident_arg h]
+
 let call_tac_on_ref tac c =
   let var = Names.Id.of_string "x" in
   let tac = Locus.ArgArg (dummy_loc, tac) in
@@ -588,20 +594,6 @@ let impossible_call_tac c =
 (*   let val_tac = Genarg.glbwit Tacarg.wit_tactic in *)
 (*   let c = Genarg.in_gen val_tac tac in *)
 (*   c *)
-
-let depelim_tac h = tac_of_string "Equations.DepElim.depelim"
-  [tacident_arg h]
-
-let do_empty_tac h = tac_of_string "Equations.DepElim.do_empty"
-  [tacident_arg h]
-
-let depelim_nosimpl_tac h = tac_of_string "Equations.DepElim.depelim_nosimpl"
-  [tacident_arg h]
-
-let simpl_dep_elim_tac () = tac_of_string "Equations.DepElim.simpl_dep_elim" []
-
-let depind_tac h = tac_of_string "Equations.DepElim.depind"
-  [tacident_arg h]
 
 open EConstr.Vars
    

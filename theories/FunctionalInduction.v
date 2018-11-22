@@ -142,7 +142,7 @@ Ltac funelim_sig_tac c tac :=
   simplify_IH_hyps'; intros _;
   unblock_goal; simplify_IH_hyps; tac c.
 
-Ltac funelim c := funelim_JMeq_tac c ltac:(fun _ => idtac).
+Ltac funelim c := funelim_sig_tac c ltac:(fun _ => idtac).
 
 (** A special purpose database used to prove the elimination principle. *)
 
