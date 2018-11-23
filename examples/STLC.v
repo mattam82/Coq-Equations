@@ -18,7 +18,7 @@ Require Equations.Equations.
 Import DepElim FunctionalInduction.
 Require Import Omega.
 Require Import List Utf8.
-From Equations Require Import EqDec DepElimDec.
+From Equations Require Import EqDec.
 
 Derive Signature for le CompareSpec.
 
@@ -383,7 +383,6 @@ atomic_dec (atom a) := left (atomic_atom a) ;
 atomic_dec _ := right _.
 
   Solve Obligations with intros; intro H; inversion H. 
-  Solve All Obligations.
 
 Inductive check : ctx -> term -> type -> Prop :=
 | abstraction_check Γ A B t :
@@ -782,7 +781,7 @@ Proof.
   simp subst in t. rewrite Heq in t. simp subst in t.
 
   (* App *)
-  simpl in *.
+  simpl in *. rename u0 into t1.
   on_call (hereditary_subst (U, t1, u)) ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   noconf H3. simpl in H0.
@@ -875,7 +874,7 @@ Proof.
     split; intros Hsyn; [| elim (synth_arrow False Hsyn)].
 
     invert_term. constructor. 
-    specialize (Hind U t1 _ (A :: Γ') eq_refl Heqhsubst). simpl in *.
+    specialize (Hind U _ _ (A :: Γ') eq_refl Heqhsubst). simpl in *.
     specialize (Hind _ B Hu).
     destruct o as [[ty prf]|], Hind as [Hind0 Hind1].
     apply Hind0; eauto. eauto.
@@ -924,8 +923,7 @@ Proof.
     now apply nth_pred.
 
   (* App *)
-  - rename t1 into u0.
-    on_call (hereditary_subst (U,u0,u))
+  - on_call (hereditary_subst (U,u0,u))
             ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
     specialize (H0 _ _ _ [] eq_refl).
     rewrite Heq in Hind.
@@ -961,7 +959,6 @@ Proof.
   
   (* No redex *)
   - intros Γ T Hu.
-    rename t1 into u0.
     assert(Γ' @ (U :: Γ) |-- @( t3, u) => T
       → Γ' @ Γ |-- @( t2, fst (hereditary_subst (U, u0, u) (length Γ'))) => T).
     intros Ht; depelim Ht.

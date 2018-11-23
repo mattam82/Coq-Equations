@@ -8,9 +8,6 @@
 
 (** Tactics related to (dependent) equality and proof irrelevance. *)
 
-Require Export ProofIrrelevance.
-Require Export JMeq.
-
 Require Import Coq.Program.Tactics.
 Require Export Equations.Init.
 Require Import Equations.Signature.

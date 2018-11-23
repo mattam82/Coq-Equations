@@ -93,12 +93,12 @@ Inductive type : scope -> Type :=
 | tarr : forall {n}, type n -> type n -> type n
 | tall : forall {n}, type n -> type (S n) -> type n
 .
-Derive Signature for type.
+Derive Signature NoConfusion for type.
 Inductive env : scope -> scope -> Set :=
 | empty : forall {n}, env n n
 | cons : forall {n m}, type m -> env n m -> env n (S m)
 .
-Derive Signature for env.
+Derive Signature NoConfusion for env.
 
 Lemma env_scope_le : forall {n m}, env n m -> scope_le n m.
 Proof. intros n m Γ; depind Γ; constructor; auto. Defined.
@@ -272,6 +272,9 @@ Proof.
   - specialize (IHΔ Γ x). forward IHΔ by intro; subst; auto.
     now rewrite (IHΔ p q).
 Qed.
+
+(* FIXME following proof relies on dep_elim' strategy *)
+Ltac simplify_dep_elim ::= repeat simplify_one_dep_elim'.
 
 Lemma sa_narrowing : forall {s} q,
                        (forall {s'} (P : scope_le s s') (Γ : env O s') p (A : sa Γ p (lift_type_by P q))

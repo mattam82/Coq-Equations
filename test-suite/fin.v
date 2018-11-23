@@ -1,4 +1,4 @@
-Require Import Program Equations.Equations DepElimDec.
+Require Import Program Equations.Equations.
 
 Set Equations WithKDec.
 
@@ -179,8 +179,6 @@ Derive Signature for fle.
 Equations fin0_empty (i : fin 0) : False :=
 fin0_empty i :=! i.
 
-Require Import DepElimDec.
-
 Set Equations OCaml Splitting.
 Unset Equations WithK.
 
@@ -199,7 +197,8 @@ Derive Signature for eq.
 
 Print Assumptions fin_eqdec.
 
-Derive NoConfusion EqDec Subterm for fle.
+Derive NoConfusion NoConfusionHom EqDec Subterm for fle.
+
 Print Assumptions fle_eqdec.
 
 Equations fle_trans' {n : nat} {i j : fin n} (p : fle i j) {k} (q : fle j k) : fle i k :=
