@@ -1,5 +1,5 @@
 From Equations Require Import Init DepElim FunctionalInduction Classes.
-From Coq Require Import Relations Wellfounded.
+From Coq Require Import Relations.
 
 (** Naturals *)
 Register Init.Datatypes.O as equations.nat.zero.

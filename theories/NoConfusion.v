@@ -10,7 +10,7 @@
    [equations] when it needs applications of injectivity or discrimination
    on some equation. *)
 
-Require Import Coq.Program.Program Bvector List.
+Require Import Coq.Program.Tactics Bvector List.
 Require Import Equations.Signature Equations.EqDec Equations.Constants.
 Require Export Equations.DepElim.
 

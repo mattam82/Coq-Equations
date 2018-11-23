@@ -8,7 +8,8 @@
 
 (** An example development of the [fin] datatype using [equations]. *)
 
-Require Import Coq.Program.Program Equations.Equations NoConfusion Equations.DepElimDec.
+Require Import Program.Basics Program.Combinators.
+Require Import Equations.Equations NoConfusion Equations.DepElimDec.
 Unset Equations WithK.
 (** [fin n] is the type of naturals smaller than [n]. *)
 

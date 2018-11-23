@@ -11,7 +11,6 @@
 
 Require Import Bvector.
 Require Import Vectors.Vector.
-Require Import Coq.Program.Program.
 Require Export Equations.Init Equations.DepElim Equations.Constants.
 
 (** The [BelowPackage] class provides the definition of a [Below] predicate for some datatype,
@@ -35,8 +34,6 @@ Create HintDb Below discriminated.
    and the hypothesis. *)
 
 Hint Extern 0 (_ = _) => reflexivity : Below.
-Hint Extern 0 (_ ~= _) => reflexivity : Below.
-(* Hint Extern 3 => progress simpl : Below. *)
 
 (** Use it as well as the [equations] simplifications. *)
 
@@ -58,11 +55,8 @@ Hint Extern 2 => progress (autorewrite with Below in * ;
 
 Ltac apply_fix_proto := 
   match goal with
-    [ f : fix_proto _ |- _ ] => unfold fix_proto in f ; apply f (*  ; guarded  *)
   | [ f : let _ := fixproto in _ |- _ ] => apply f
   end.
-
-Hint Opaque fix_proto : Below.
 
 Hint Extern 100 => apply_fix_proto : Below.
 

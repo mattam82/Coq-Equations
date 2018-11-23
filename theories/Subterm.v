@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Wf_nat Arith.Lt Bvector Relations Wellfounded.
+Require Import Wf_nat Arith.Lt Bvector Relations.
 Require Export Program.Wf FunctionalExtensionality ProofIrrelevance (* FIXME Program.Wf doesn't need it *).
 From Equations Require Import Init Classes Below Signature EqDec NoConfusion.
 
@@ -79,6 +79,8 @@ Create HintDb rec_decision discriminated.
    Note that this definition is transparent as well as [wf_clos_trans],
    to allow computations with functions defined by well-founded recursion.
    *)
+
+Require Import Wellfounded.Transitive_Closure.
 
 Lemma WellFounded_trans_clos `(WF : WellFounded A R) : WellFounded (clos_trans A R).
 Proof. apply wf_clos_trans. apply WF. Defined.
