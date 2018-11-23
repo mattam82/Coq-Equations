@@ -1,4 +1,4 @@
-Require Import Utf8.
+Require Import Utf8 Program.
 Require Import Equations.Equations.
 Open Scope equations_scope.
 Set Warnings "-notation-overridden".

@@ -6,7 +6,8 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-From Equations Require Import Equations Fin DepElimDec.
+Require Import Program.
+From Equations Require Import Equations Fin.
 Require Import Omega Utf8.
 
 Require Import List.

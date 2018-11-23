@@ -7,7 +7,8 @@
 (**********************************************************************)
 
 Require Import Coq.Unicode.Utf8_core.
-Require Export Coq.Program.Program.
+From Coq Require Import Extraction.
+Require Export Coq.Program.Basics Coq.Program.Tactics Coq.Program.Utils.
 
 Declare ML Module "equations_plugin".
 
@@ -119,6 +120,9 @@ End IdTheory.
 
 (** Forward reference for the NoConfusion tactic. *)
 Ltac noconf H := congruence || injection H; intros; subst.
+
+(** Forward reference for Equations' [depelim] tactic, which will be defined in [DepElim]. *)
+Ltac depelim x := fail "not defined yet".
 
 (** Such a useful tactic it should be part of the stdlib. *)
 Ltac forward_gen H tac :=

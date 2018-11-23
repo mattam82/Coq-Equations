@@ -9,13 +9,13 @@
 Set Asymmetric Patterns.
 Set Implicit Arguments.
 Unset Strict Implicit.
-
 Require Import Arith.
 Require Import Omega.
 From Equations Require Import Equations.
 Require Import Wellfounded Relation_Definitions.
 Require Import Relation_Operators Lexicographic_Product Wf_nat.
 Unset Implicit Arguments.
+Require Import Program.
 
 Definition MR {A B} (f : A -> B) (R : relation B) : relation A :=
   fun x y => R (f x) (f y).
@@ -36,7 +36,6 @@ Solve Obligations with program_simpl; omega.
 Solve Obligations.
 
 Module Bug.
-  
 Equations(noind) test' (n : { n : nat | n >= 0 }) : { n' : nat | n' <= `n } :=
 test' n by rec n (MR (@proj1_sig nat (fun x : nat => x >= 0)) lt) :=
 test' (exist n p) with n := {

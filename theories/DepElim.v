@@ -45,8 +45,7 @@ Ltac unblock_goal := unfold block in *; cbv zeta.
 
 Arguments eq_refl {A} {x}.
 
-Hint Rewrite <- eq_rect_eq : refl_id.
-
+(** FIXME should not polute users *)
 Global Set Keyed Unification.
 
 (** A tactic that tries to remove trivial equality guards in induction hypotheses coming
@@ -431,24 +430,6 @@ Proof.
   intros X. eapply (X id_refl). apply id_refl.
 Defined.
 
-Lemma simplification_K : forall {A} (x : A) {B : x = x -> Type}, B eq_refl -> (forall p : x = x, B p).
-Proof. intros. rewrite (UIP_refl A). assumption. Defined.
-Arguments simplification_K : simpl never.
-
-Lemma UIP_refl_refl : forall A (x : A),
-  UIP_refl A x eq_refl = eq_refl.
-Proof. intros. apply UIP_refl. Qed.
-
-Lemma simplification_K_refl : forall {A} (x : A) {B : x = x -> Type}
-                                    (p : B eq_refl),
-  simplification_K x p eq_refl = p.
-Proof.
-  intros.
-  unfold simplification_K.
-  rewrite UIP_refl_refl. unfold eq_rect_r. simpl.
-  reflexivity.
-Defined.
-
 Lemma simplification_K_dec : forall {A} `{EqDec A} (x : A) {B : x = x -> Type},
   B eq_refl -> (forall p : x = x, B p).
 Proof. intros. apply K_dec. assumption. Defined.
@@ -464,22 +445,6 @@ Proof.
   destruct (eq_proofs_unicity eq_refl pf).
   reflexivity.
 Defined.
-
-
-(* Polymorphic Lemma Id_simplification_K_ax : *)
-(*   forall {A} (x : A) {B : Id x x -> Type}, B id_refl -> (forall p : Id x x, B p). *)
-(* Proof. intros. rewrite (UIP_refl A). assumption. Defined. *)
-(* Arguments simplification_K : simpl never. *)
-
-(* Lemma Id_simplification_K_refl : forall {A} (x : A) {B : x = x -> Type} *)
-(*                                     (p : B eq_refl), *)
-(*   simplification_K x p eq_refl = p. *)
-(* Proof. *)
-(*   intros. *)
-(*   unfold simplification_K. *)
-(*   rewrite UIP_refl_refl. unfold eq_rect_r. simpl. *)
-(*   reflexivity. *)
-(* Defined. *)
 
 Polymorphic
 Lemma Id_simplification_K : forall {A} `{HSets.HSet A} (x : A) {B : Id x x -> Type},
@@ -639,11 +604,11 @@ Arguments Id_simplify_ind_pack_inv : simpl never.
 
 Global Opaque simplification_sigma2_dec
        simplification_sigma2_dec_point
-       simplification_heq simplification_K simplification_K_dec
+       simplification_K_dec
        simplify_ind_pack simplified_ind_pack Id_simplification_sigma2.
 Global Opaque opaque_ind_pack_eq_inv.
 
-Ltac rewrite_sigma2_refl :=
+Ltac rewrite_sigma2_refl_noK :=
   match goal with
   | |- context [@inj_right_sigma ?A ?H ?x ?P ?y ?y' _] =>
     rewrite (@inj_right_sigma_refl A H x P y)
@@ -656,9 +621,6 @@ Ltac rewrite_sigma2_refl :=
 
   | |- context [@simplification_sigma2_dec_point ?A ?p ?H ?P ?B ?x ?y ?X eq_refl] =>
     rewrite (@simplification_sigma2_dec_point_refl A p H P B x X); simpl
-
-  | |- context [@simplification_K ?A ?x ?B ?p eq_refl] =>
-    rewrite (@simplification_K_refl A x B p); simpl eq_rect
 
   | |- context [@simplification_K_dec ?A ?dec ?x ?B ?p eq_refl] =>
     rewrite (@simplification_K_dec_refl A dec x B p); simpl eq_rect
@@ -676,6 +638,8 @@ Ltac rewrite_sigma2_refl :=
         (simplify_ind_pack_inv _ _ _ _ ?t)] =>
     rewrite (@simplify_ind_pack_elim A eqdec B x p G t)
   end.
+
+Ltac rewrite_sigma2_refl := rewrite_sigma2_refl_noK.
 
 (** This hint database and the following tactic can be used with [autounfold] to 
    unfold everything to [eq_rect]s. *)
@@ -697,10 +661,9 @@ Hint Unfold solution_left solution_right
 Extraction Inline solution_right_dep solution_right solution_left solution_left_dep.
 Extraction Inline eq_sym_invol eq_symmetry_dep.
 Extraction Inline solution_right_let solution_left_let deletion.
-Extraction Inline simplification_heq simplification_existT2.
 Extraction Inline simplification_existT1.
 Extraction Inline simplification_sigma1 simplification_sigma2_dec.
-Extraction Inline simplification_K simplification_K_dec.
+Extraction Inline simplification_K_dec.
 Extraction Inline Id_solution_right_dep Id_solution_right Id_solution_left Id_solution_left_dep.
 Extraction Inline Id_solution_right_let Id_solution_left_let Id_deletion.
 Extraction Inline eq_simplification_sigma1 eq_simplification_sigma1_dep.
@@ -742,7 +705,7 @@ Ltac not_var x := try (is_var x; fail 1).
 Ltac try_discriminate := discriminate.
 Ltac try_injection H := injection H.
 
-Ltac simplify_one_dep_elim ::=
+Ltac simplify_one_dep_elim :=
   match goal with
     | [ |- context [eq_rect_r _ _ eq_refl]] => simpl eq_rect_r
     | [ |- context [eq_rect _ _ _ _ eq_refl]] => simpl eq_rect
@@ -1012,13 +975,7 @@ Ltac do_case p := introduce p ; (elim_case p || destruct p || (case p ; clear p)
 Ltac do_ind p := introduce p ; (elim_ind p || induction p).
 
 Ltac case_last := block_goal ;
-  on_last_hyp ltac:(fun p => 
-    let ty := type of p in
-      match ty with
-        | ?x = ?x => revert p ; refine (simplification_K _ x _ _)
-        | ?x = ?y => revert p
-        | _ => simpl in p ; try simplify_equations_in p ; generalize_by_eqs p ; do_case p
-      end).
+  on_last_hyp ltac:(fun p => simpl in p ; try simplify_equations_in p ; generalize_by_eqs p ; do_case p).
 
 Ltac nonrec_equations :=
   solve [solve_equations (case_last) (solve_method idtac)] || solve [ solve_split ]
@@ -1083,7 +1040,7 @@ Ltac do_depind tac H :=
 
 (** To dependent elimination on some hyp. *)
 
-Ltac depelim id := do_depelim ltac:(fun hyp => do_case hyp) id.
+Ltac depelim id ::= do_depelim ltac:(fun hyp => do_case hyp) id.
 
 Ltac depelim_term c :=
   let H := fresh "term" in
@@ -1212,7 +1169,7 @@ Ltac red_gl :=
   end.
 
 
-Ltac rewrite_sigma2_rule c :=
+Ltac rewrite_sigma2_rule_noK c :=
   match c with
   | @inj_right_sigma ?A ?H ?x ?P ?y ?y' _ =>
     rewrite (@inj_right_sigma_refl A H x P y)
@@ -1224,13 +1181,14 @@ Ltac rewrite_sigma2_rule c :=
     rewrite (@simplification_sigma2_dec_refl A H P B p x X); simpl
   | @simplification_sigma2_dec_point ?A ?p ?H ?P ?B ?x ?y ?X eq_refl=>
     rewrite (@simplification_sigma2_dec_point_refl A p H P B x X); simpl
-  | @simplification_K ?A ?x ?B ?p eq_refl=>
-    rewrite (@simplification_K_refl A x B p); simpl eq_rect
   | @simplification_K_dec ?A ?dec ?x ?B ?p eq_refl=>
     rewrite (@simplification_K_dec_refl A dec x B p); simpl eq_rect
   | @HSets.inj_sigma_r ?A ?H ?P ?x ?y ?y' _=>
     rewrite (@HSets.inj_sigma_r_refl A H P x y)
   end.
+
+Ltac rewrite_sigma2_rule c :=
+  rewrite_sigma2_rule_noK c.
 
 Ltac rewrite_sigma2_term x :=
   match x with

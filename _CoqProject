@@ -48,6 +48,7 @@ theories/HSets.v
 theories/HSetInstances.v
 theories/DepElim.v
 theories/DepElimDec.v
+theories/DepElimK.v
 theories/NoConfusion.v
 theories/FunctionalInduction.v
 theories/Constants.v

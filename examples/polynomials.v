@@ -17,10 +17,10 @@
   2016-2017. If running this interactively you can ignore the printing
   and hide directives which are just used to instruct coqdoc. *)
 (* begin hide *)
+Require Import Program.
 Require Import Equations.Equations.
 From Equations Require Import DepElimDec.
 Require Import ZArith.
-Require Import Program.
 Require Import Psatz.
 Require Import NPeano.
 Require Import Nat.

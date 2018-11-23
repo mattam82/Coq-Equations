@@ -37,6 +37,7 @@ Instance eqsig {A} (x : A) : Signature (x = x) A :=
     signature_pack e := sigmaI _ x e }.
 
 Set Equations WithK.
+Require Import DepElimK.
 Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
 K x P p eq_refl := p.
 Unset Equations WithK.

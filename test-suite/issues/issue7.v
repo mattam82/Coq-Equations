@@ -1,5 +1,6 @@
 
-Require Import Equations.Equations Utf8 DepElimDec.
+Require Import Utf8 Program.
+Require Import Equations.Equations.
 
 Inductive TupleT : nat -> Type :=
 | nilT : TupleT 0
@@ -122,7 +123,7 @@ Hint Extern 5 => progress simpl : subterm_relation.
 Time Equations myComp {n} {B C : TupleT n} (tm1 : TupleMap _ B C) {A : TupleT n} (tm2 : TupleMap _ A B)
 : TupleMap _ A C :=
 myComp tmNil tmNil := tmNil;
-myComp (tmCons ?(G) H g) (tmCons F G f) :=
+myComp (tmCons _ H g) (tmCons F G f) :=
   tmCons _ _ (fun x => existT (fun y => TupleMap _ _ (_ y)) (projT1 (g (projT1 (f x))))
                            (myComp (projT2 (g (projT1 (f x)))) (projT2 (f x)))).
 
@@ -130,7 +131,7 @@ Time Equations myComp_wf {n} {B C : TupleT n} (tm1 : TupleMap _ B C) {A : TupleT
 : TupleMap _ A C :=
 myComp_wf tm1 tm2 by rec (signature_pack tm1) TupleMap_subterm :=
 myComp_wf tmNil tmNil := tmNil;
-myComp_wf (tmCons ?(G) H g) (tmCons F G f) :=
+myComp_wf (tmCons _ H g) (tmCons F G f) :=
   tmCons _ _ (fun x => existT (fun y => TupleMap _ _ (_ y)) (projT1 (g (projT1 (f x))))
                            (myComp_wf (projT2 (g (projT1 (f x)))) (projT2 (f x)))).
 

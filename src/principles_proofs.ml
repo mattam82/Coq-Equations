@@ -777,6 +777,13 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
       in transp (); res
     with e -> transp (); raise e
   
+let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split gl =
+  try prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split gl
+  with (Nametab.GlobalizationError e) as exn ->
+    Feedback.msg_debug (str"Could not globalize " ++ pr_qualid e);
+    raise exn
+
+
 
 (* let rec mk_app_holes env sigma = function *)
 (* | [] -> (sigma, []) *)

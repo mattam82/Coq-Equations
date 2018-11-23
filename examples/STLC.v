@@ -14,6 +14,7 @@
   well-founded order on typable terms and conclude with a normalizer building
   beta-short eta-long normal forms, typable in a bidirectional type system. *)
 
+Require Import Program.
 Require Equations.Equations.
 Import DepElim FunctionalInduction.
 Require Import Omega.

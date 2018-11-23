@@ -16,6 +16,7 @@ Declare ML Module "equations_plugin".
 From Equations Require Export Classes Signature DepElim FunctionalInduction Below Constants.
 From Equations Require Export EqDecInstances HSetInstances.
 From Equations Require Import Init NoConfusion Subterm DepElimDec.
+From Coq Require Export Program.Utils Program.Wf FunctionalExtensionality ProofIrrelevance.
 
 (** Tactic to solve well-founded proof obligations by default *)
 Ltac solve_rec := simpl in * ; cbv zeta ; intros ;

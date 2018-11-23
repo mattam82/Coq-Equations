@@ -1,4 +1,5 @@
 From Equations Require Import Init DepElim FunctionalInduction Classes.
+From Coq Require Import Relations Wellfounded.
 
 (** Naturals *)
 Register Init.Datatypes.O as equations.nat.zero.
@@ -75,7 +76,6 @@ Register Equations.DepElim.eq_simplification_sigma1 as equations.depelim.simpl_s
 Register Equations.DepElim.eq_simplification_sigma1_dep as equations.depelim.simpl_sigma_dep.
 Register Equations.DepElim.eq_simplification_sigma1_dep_dep as equations.depelim.simpl_sigma_dep_dep.
 Register Equations.DepElim.pack_sigma_eq as equations.depelim.pack_sigma_eq.
-Register Equations.DepElim.simplification_K as equations.depelim.simpl_K.
 Register Equations.DepElim.simplification_K_dec as equations.depelim.simpl_K_dec.
 Register Equations.DepElim.solution_left as equations.depelim.solution_left.
 Register Equations.DepElim.solution_left_dep as equations.depelim.solution_left_dep.

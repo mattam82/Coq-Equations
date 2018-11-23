@@ -152,7 +152,9 @@ let array_filter_map f a =
   in Array.of_list l'
 
 let new_global sigma gr =
-  Evarutil.new_global sigma gr
+  try Evarutil.new_global sigma gr
+  with e ->
+    CErrors.anomaly (Pp.str"new_global")
 
 let e_new_global evdref gr =
   let sigma, gr = new_global !evdref gr in
@@ -545,7 +547,7 @@ let reference_of_global c = Nametab.shortest_qualid_of_global Names.Id.Set.empty
 let tacident_arg h =
   Reference (qualid_of_ident h)
 
-let depelim_tac h = tac_of_string "Equations.DepElim.depelim" [tacident_arg h]
+let depelim_tac h = tac_of_string "Equations.Init.depelim" [tacident_arg h]
 let do_empty_tac h = tac_of_string "Equations.DepElim.do_empty" [tacident_arg h]
 let depelim_nosimpl_tac h = tac_of_string "Equations.DepElim.depelim_nosimpl" [tacident_arg h]
 let simpl_dep_elim_tac () = tac_of_string "Equations.DepElim.simpl_dep_elim" []

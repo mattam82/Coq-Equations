@@ -7,6 +7,7 @@
 (**********************************************************************)
 
 Require Import Wf_nat Arith.Lt Bvector Relations Wellfounded.
+Require Export Program.Wf FunctionalExtensionality ProofIrrelevance (* FIXME Program.Wf doesn't need it *).
 From Equations Require Import Init Classes Below Signature EqDec NoConfusion.
 
 Generalizable Variables A R S B.
@@ -194,8 +195,6 @@ Ltac rec_wf_rel recname x rel :=
    possibly using proof irrelevance to discharge equality of proofs. *)
 
 Ltac pi := repeat progress (f_equal || reflexivity) ; apply proof_irrelevance.
-
-
 (** Define non-dependent lexicographic products *)
 
 Require Import Wellfounded Relation_Definitions.

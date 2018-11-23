@@ -94,7 +94,7 @@ Module KAxiom.
     K x P p eq_refl := p.
 
   Set Equations WithK.
-
+  Require Import Equations.DepElimK.
   Equations K_ax {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
     K_ax x P p eq_refl := p.
 

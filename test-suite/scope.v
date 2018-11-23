@@ -6,6 +6,10 @@ Require Import Equations.DepElimDec.
 Require Import Coq.Logic.Eqdep_dec.
 Require Import Coq.Classes.EquivDec.
 Require Import Program.
+
+Ltac depelim x := Equations.Init.depelim x.
+Ltac depind x := Equations.DepElim.depind x.
+
 Require Import Arith.
 Derive Signature for eq.
 Ltac simpl_exist :=
@@ -274,7 +278,7 @@ Proof.
 Qed.
 
 (* FIXME following proof relies on dep_elim' strategy *)
-Ltac simplify_dep_elim ::= repeat simplify_one_dep_elim'.
+Ltac Equations.DepElim.simplify_dep_elim ::= repeat simplify_one_dep_elim'.
 
 Lemma sa_narrowing : forall {s} q,
                        (forall {s'} (P : scope_le s s') (Γ : env O s') p (A : sa Γ p (lift_type_by P q))
