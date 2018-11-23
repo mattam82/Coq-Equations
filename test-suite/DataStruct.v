@@ -270,8 +270,7 @@ Inductive exp' : type' -> Set :=
 | BConst : bool -> exp' Bool
 | Cond : forall n t, (ffin n -> exp' Bool)
   -> (ffin n -> exp' t) -> exp' t -> exp' t.
-Derive Signature NoConfusion for exp'.
-(* Derive NoConfusionHom for exp'. *)
+Derive Signature NoConfusion NoConfusionHom for exp'.
 
 Equations type'Denote (t : type') : Set :=
 type'Denote Nat := nat;
@@ -336,12 +335,12 @@ Section cfoldCond.
     | _ := default }.
 End cfoldCond.
 
-Equations cfoldCond (t : type') (default : exp' t) (n : nat) (tests : ffin n -> exp' Bool) (bodies : ffin n -> exp' t) : exp' t :=
-cfoldCond t default 0 _ _ := default;
-cfoldCond t default (S n) tests bodies <= tests None => {
+Equations cfoldCond (t : type') (default : exp' t) {n : nat} (tests : ffin n -> exp' Bool) (bodies : ffin n -> exp' t) : exp' t :=
+cfoldCond t default {n:=0} _ _ := default;
+cfoldCond t default {n:=(S n)} tests bodies <= tests None => {
     | BConst true := bodies None;
-    | BConst false := cfoldCond default n (fun i => tests (Some i)) (fun i => bodies (Some i));
-    | _ <= cfoldCond default n (fun i => tests (Some i)) (fun i => bodies (Some i)) => {
+    | BConst false := cfoldCond default (fun i => tests (Some i)) (fun i => bodies (Some i));
+    | _ <= cfoldCond default (fun i => tests (Some i)) (fun i => bodies (Some i)) => {
       | Cond n' _ tests' bodies' default' :=
         Cond (S n') (fun i => match i with
                               | None => tests None
@@ -354,3 +353,50 @@ cfoldCond t default (S n) tests bodies <= tests None => {
              default';
       | e := Cond 1 (fun _ => tests None) (fun _ => bodies None) e }}.
 
+Fixpoint cfold t (e : exp' t) : exp' t :=
+  match e with
+    | NConst n => NConst n
+    | Plus e1 e2 =>
+      let e1' := cfold e1 in
+      let e2' := cfold e2 in
+      match e1', e2' return exp' Nat with
+        | NConst n1, NConst n2 => NConst (n1 + n2)
+        | _, _ => Plus e1' e2'
+      end
+    | Eq e1 e2 =>
+      let e1' := cfold e1 in
+      let e2' := cfold e2 in
+      match e1', e2' return exp' Bool with
+        | NConst n1, NConst n2 => BConst (if eq_nat_dec n1 n2 then true else false)
+        | _, _ => Eq e1' e2'
+      end
+
+    | BConst b => BConst b
+    | Cond n tests bodies default =>
+      cfoldCond (cfold default)
+      (fun idx => cfold (tests idx))
+      (fun idx => cfold (bodies idx))
+  end.
+
+(* Lemma cfoldCond_correct : forall t (default : exp' t) *)
+(*   n (tests : ffin n -> exp' Bool) (bodies : ffin n -> exp' t), *)
+(*   exp'Denote (cfoldCond default tests bodies) *)
+(*   = exp'Denote (Cond n tests bodies default). *)
+(* Proof. *)
+(*   intros. funelim (cfoldCond default tests bodies). *)
+(*   all:simpl; rewrite ?H, ?Heq; simp exp'Denote. *)
+(*   unfold cond. simpl. rewrite Heq. simp exp'Denote. *)
+(*   simpl. rewrite Heq. simp cond. *)
+
+(*   induction n; crush; *)
+(*     match goal with *)
+(*       | [ IHn : forall tests bodies, _, tests : _ -> _, bodies : _ -> _ |- _ ] => *)
+(*         specialize (IHn (fun idx => tests (Some idx)) (fun idx => bodies (Some idx))) *)
+(*     end; *)
+(*     repeat (match goal with *)
+(*               | [ |- context[match ?E with NConst _ => _ | _ => _ end] ] => *)
+(*                 dep_destruct E *)
+(*               | [ |- context[if ?B then _ else _] ] => destruct B *)
+(*             end; crush). *)
+(* Qed. *)
+(* Equations *)
