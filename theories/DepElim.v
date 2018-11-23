@@ -59,7 +59,7 @@ Ltac simplify_IH_hyps := repeat
 (** Support for the [Equations] command.
    These tactics implement the necessary machinery to solve goals produced by the
    [Equations] command relative to dependent pattern-matching.
-   It is completely inspired from the "Eliminating Dependent Pattern-Matching" paper by
+   It is inspired from the "Eliminating Dependent Pattern-Matching" paper by
    Goguen, McBride and McKinna. *)
 
 

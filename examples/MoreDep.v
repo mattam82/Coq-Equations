@@ -55,14 +55,14 @@ Inductive exp : type -> Set :=
 | Snd : forall t1 t2, exp (Prod t1 t2) -> exp t2.
 
 Derive Signature NoConfusion for exp.
-(* FIXME *) (* Derive NoConfusionHom for exp. *)
-Set Equations WithKDec.
-(* FIXME Derive Subterm for exp. *)
+Derive NoConfusionHom for exp.
+Derive Subterm for exp.
 
 Equations typeDenote (t : type) : Set :=
 typeDenote Nat := nat;
 typeDenote Bool := bool;
 typeDenote (Prod t1 t2) := (typeDenote t1 * typeDenote t2)%type.
+
 Set Printing Depth 10000.
 Equations expDenote t (e : exp t) : typeDenote t :=
 expDenote _ (NConst n) := n;
@@ -108,7 +108,7 @@ Ltac rec ::= Subterm.rec_wf_eqns.
 Unset Implicit Arguments.
   (* Equations(struct e) cfold t (e : exp t) : exp t := *)
 Equations cfold {t} (e : exp t) : exp t :=
-(* FIXME! cfold e by rec (signature_pack e) exp_subterm := *)
+(* Works with well-foundedness too: cfold e by rec (signature_pack e) exp_subterm := *)
 cfold (NConst n) => NConst n;
 cfold (Plus e1 e2) <= (cfold e1, cfold e2) => {
   | pair (NConst n1) (NConst n2) := NConst (n1 + n2);

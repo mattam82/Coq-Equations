@@ -162,6 +162,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
       let name = Namegen.next_ident_away (add_suffix id "0") avoid in
       let avoid = Id.Set.add name avoid in
       let name' = Namegen.next_ident_away (add_suffix id "1") avoid in
+      let avoid = Id.Set.add name' avoid in
       let acc =
         if forced then
           let acc' =

@@ -238,7 +238,7 @@ Section pmconcat.
   Context {M : Type} `{ChunkableMonoid M}.
 
   Equations pmconcat (I : { i : nat | i > 0 }) (x : list M) : M :=
-  pmconcat i x by rec x (MR lt (@List.length M)) :=
+  pmconcat i x by rec (length x) lt :=
     pmconcat i x <= dec ((` i <=? 1) || (length x <=? ` i))%bool => {
     | left H => mconcat x ;
     | right Hd => pmconcat i (map mconcat (chunk i x)) }.
