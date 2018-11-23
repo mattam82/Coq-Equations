@@ -159,34 +159,6 @@ Transparent mconcat.
 
 Definition strong_induction := well_founded_induction lt_wf.
 
-Ltac make_packcall packcall c :=
-  match goal with
-  | [ packcall : ?type |- _ ] => change (let _ := c in type) in (type of packcall)
-  end.
-
-Ltac funelim_sig_tac c tac ::=
-  let elimc := get_elim c in
-  let packcall := fresh "packcall" in
-  let elimfn := match elimc with fun_elim (f:=?f) => constr:(f) end in
-  let elimn := match elimc with fun_elim (n:=?n) => constr:(n) end in
-  block_goal;
-  uncurry_call elimfn c packcall; make_packcall packcall elimfn;
-  with_last_secvar ltac:(fun eos => move packcall before eos)
-                          ltac:(move packcall at top);
-  revert_until packcall; simpl in (value of packcall);
-  pattern sigma packcall;
-  remember_let packcall;
-  with_last_secvar ltac:(fun eos => move packcall before eos)
-                          ltac:(move packcall at top);
-  revert_until packcall; block_goal;
-  cbv zeta in packcall; revert packcall; curry;
-  let elimt := make_refine elimn elimc in
-  unshelve refine_ho elimt; intros;
-  cbv beta; simplify_dep_elim; intros_until_block; simplify_dep_elim;
-  simpl eq_rect_dep_r in *; simpl eq_rect in *;
-  simplify_IH_hyps'; intros _;
-  unblock_goal; simplify_IH_hyps; tac c.
-
 Derive NoConfusion for N.
 
 Theorem morphism_distribution:
@@ -252,12 +224,12 @@ Proof.
   simpl.
   specialize (H H0).
   revert H. unfold drop. simpl.
-  pose proof (drop_spec (` i) x). simpl in H.
+  pose proof (drop_spec (` I) x0). simpl in H.
   rewrite H by omega. clear H.
   simp chunk. clear Heq. destruct dec. simp chunk; simpl; intros; try omega. intros.
   feed H. 
   clear H. apply leb_complete_conv in e. 
-  pose proof (drop_spec (` i) x). rewrite H in e; try omega;
+  pose proof (drop_spec (` I) x0). rewrite H in e; try omega;
                                     unfold length in *; simpl in *; omega.
   omega.
 Qed.

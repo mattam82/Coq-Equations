@@ -64,7 +64,7 @@ val curry : Evd.evar_map -> Names.Name.t -> constr ->
             rel_context * constr
 
 val uncurry_call : Environ.env -> Evd.evar_map -> constr -> constr ->
-                   Evd.evar_map * constr * types
+                   Evd.evar_map * constr * constr * types
 
 val smart_case : Environ.env -> Evd.evar_map ref -> rel_context ->
   int -> types ->
@@ -75,7 +75,7 @@ val smart_case : Environ.env -> Evd.evar_map ref -> rel_context ->
 module Tactics : sig
   val curry_hyp : Names.Id.t -> unit Proofview.tactic
   val curry : unit Proofview.tactic
-  val uncurry_call : constr -> constr -> Names.Id.t -> unit Proofview.tactic
+  val uncurry_call : constr -> constr -> Names.Id.t -> Names.Id.t -> unit Proofview.tactic
 
   val pattern_sigma : Names.Id.t -> unit Proofview.tactic
   val get_signature_pack : Names.Id.t -> Names.Id.t -> unit Proofview.tactic

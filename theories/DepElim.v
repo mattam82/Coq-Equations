@@ -57,7 +57,7 @@ Global Set Keyed Unification.
 
 Ltac simplify_IH_hyps := repeat
   match goal with
-    | [ hyp : _ |- _ ] => simpl in hyp; eqns_specialize_eqs hyp
+    | [ hyp : _ |- _ ] => simpl in hyp; eqns_specialize_eqs hyp; simpl in hyp
   end.
 
 (** Support for the [Equations] command.
@@ -745,17 +745,17 @@ Ltac not_var x := try (is_var x; fail 1).
 Ltac try_discriminate := discriminate.
 Ltac try_injection H := injection H.
 
-Ltac simplify_one_dep_elim :=
+Ltac simplify_one_dep_elim ::=
   match goal with
     | [ |- context [eq_rect_r _ _ eq_refl]] => simpl eq_rect_r
     | [ |- context [eq_rect _ _ _ _ eq_refl]] => simpl eq_rect
     | [ |- context [@eq_rect_dep_r _ _ _ _ _ eq_refl]] => simpl eq_rect_dep_r
     | [ |- context [@Id_rect_dep_r _ _ _ _ _ id_refl]] => simpl Id_rect_dep_r
-    | [ |- context [noConfusion_inv (pack_sigma_eq eq_refl eq_refl)]] => simpl noConfusion_inv
+    | [ |- context [noConfusion_inv _]] => simpl noConfusion_inv
     | [ |- @opaque_ind_pack_eq_inv ?A ?eqdec ?B ?x ?p _ ?G eq_refl] =>
             apply (@simplify_ind_pack_inv A eqdec B x p G)
     | [ |- let _ := block in _ ] => fail 1
-    | [ |- _ ] => simplify ?
+    | [ |- _ ] => (simplify * || simplify ?); cbv beta
     | [ |- _ -> ?B ] => let ty := type of B in (* Works only with non-dependent products *)
       intro || (let H := fresh in intro H)
     | [ |- forall x, _ ] => let H := fresh x in intro H

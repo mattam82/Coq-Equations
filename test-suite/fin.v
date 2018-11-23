@@ -58,12 +58,38 @@ Qed.
 
 Axiom cheat : forall {A}, A.
 
+(* Ltac funelim_sig_tac c tac ::= *)
+(*   let elimc := get_elim c in *)
+(*   let packcall := fresh "packcall" in *)
+(*   let packcall_fn := fresh "packcall_fn" in *)
+(*   let elimfn := match elimc with fun_elim (f:=?f) => constr:(f) end in *)
+(*   let elimn := match elimc with fun_elim (n:=?n) => constr:(n) end in *)
+(*   block_goal; *)
+(*   uncurry_call elimfn c packcall packcall_fn; *)
+(*   remember_let packcall_fn; unfold_packcall packcall; *)
+(*   (refine (eq_simplification_sigma1_dep _ _ _ _ _) || *)
+(*    refine (id_simplification_sigma1_dep _ _ _ _ _)); *)
+(*   let H := fresh "eqargs" in intros H Heq; *)
+(*   try rewrite <- Heq; revert_until H; revert H; *)
+(*   subst packcall_fn; clearbody packcall; *)
+(*   with_last_secvar ltac:(fun eos => move packcall before eos) *)
+(*                           ltac:(move packcall at top); *)
+(*   revert_until packcall; block_goal; revert packcall; curry; *)
+(*   let elimt := make_refine elimn elimc in *)
+(*   unshelve refine_ho elimt; intros; *)
+(*   cbv beta; simplify_dep_elim; intros_until_block; *)
+(*   simplify_dep_elim; *)
+(*   cbn beta iota delta [eq_rect_dep_r Id_rect_r eq_rect Id_rect pack_sigma_eq pack_sigma_Id] in *; *)
+(*   simplify_IH_hyps'; (* intros _; *) *)
+(*   unblock_goal; simplify_IH_hyps; tac c. *)
+
 Lemma nat__fin : forall (n : nat) (i : fin n),
   nat_to_fin (fin_to_nat i) (fin_lt_n n i) = i.
 Proof.
   intros.
-  funelim (fin_to_nat i). simp fin_to_nat.
-  simp fin_to_nat. Transparent fin_to_nat. simpl.
+  funelim (fin_to_nat i).
+  simp fin_to_nat.
+  Transparent fin_to_nat. simpl.
   simp nat_to_fin. f_equal. rewrite <- H at 4. f_equal.
   apply proof_irrelevance.
 Qed.
@@ -132,8 +158,6 @@ Proof. simp iapp. Qed.
 Definition rev_aux_app_stmt := forall (A : Set) (i j1 j2 : nat) (l : ilist A i)
   (acc1 : ilist A j1) (acc2 : ilist A j2) H,
   convert_ilist H (irev_aux l (iapp acc1 acc2)) = iapp (irev_aux l acc1) acc2.
-
-Ltac funelim c ::= funelim_JMeq_tac c ltac:(fun _ => idtac).
 
 Lemma rev_aux_app : rev_aux_app_stmt.
 Proof.

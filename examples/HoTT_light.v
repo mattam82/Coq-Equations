@@ -300,15 +300,46 @@ Equations concat_A1p {A : Type} {g : A -> A} (p : forall x, g x = x) {x y : A} (
 concat_A1p {g:=g} p {x:=x} id_refl with p x, g x :=
 concat_A1p p id_refl id_refl _ := id_refl.
 
+Ltac remember_let H ::=
+  lazymatch goal with
+  | [ H := ?body : ?type |- _ ] => generalize (id_refl : H = body)
+  end.
+
 Notation " 'rew' H 'in' c " := (@Id_rect_r _ _ _ c _ H) (at level 20).
 Notation " 'rewd' H 'in' c " := (@Id_rect_dep_r _ _ _ c _ H) (at level 20).
+
+Ltac unfold_packcall packcall ::=
+  lazymatch goal with
+    |- ?x = ?y -> ?P =>
+    let y' := eval unfold packcall in y in
+        change (x = y' -> P)
+  end.
+
+(** Singletons are contractible! *)
+Derive NoConfusion for Id.
+
+Next Obligation.
+  destruct X. destruct a0. destruct pr2. reflexivity.
+Defined.
+
+Next Obligation.
+  destruct a0, b. destruct pr2. destruct pr3. reflexivity.
+Defined.
+
+Next Obligation.
+  destruct a0, b. destruct pr2.
+  revert e. simplify ?. simpl.
+  simplify ?. simpl. reflexivity.
+Defined.
+
 Lemma concat_A1p_lemma {A} (f : A -> A) (p : forall x, f x = x) {x y : A} (q : x = y) :
   (concat_A1p p q) = (concat_A1p p q).
 Proof.
-  funelim (concat_A1p p q).
-  elim Heq0 using Id_rect_dep_r. simpl.
-  Fail dependent rewrite Heq0. (* bug *)
-  elim Heq using Id_rect_dep_r. simpl. reflexivity.
+  funelim (concat_A1p p q). simpl in *.
+  simpl in *.
+  elim Heq0 using Id_rect_dep_r. simpl. reflexivity.
+  (* Fail dependent rewrite Heq0. (* bug *) *)
+  (* elim Heq using Id_rect_dep_r. simpl. reflexivity. *)
 Qed.
 
 Equations ap_pp {A B : Type} (f : A -> B) {x y z : A} (p : x = y) (q : y = z) :

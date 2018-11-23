@@ -182,7 +182,7 @@ Module RecMeasure.
     Proof.
       funelim (qs l).
       - simpl. reflexivity.
-      - intros a'. rewrite in_app_iff. simpl.
+      - intros a'. simpl. rewrite in_app_iff. simpl.
         rewrite <- H, <- H0, !filter_In'. intuition auto.
         destruct (compspec a a'); intuition auto. right. right. intuition auto with arith.
         apply ltb_leb. destruct (refl_lt a a'); auto. constructor. contradiction.

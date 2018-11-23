@@ -88,7 +88,7 @@ TACTIC EXTEND curry_hyps
 END
 
 TACTIC EXTEND uncurry_call
-| [ "uncurry_call" constr(c) constr(c') ident(id) ] -> { Sigma_types.Tactics.uncurry_call c c' id }
+| [ "uncurry_call" constr(c) constr(c') ident(id) ident(id') ] -> { Sigma_types.Tactics.uncurry_call c c' id id' }
 END
 
 (* TACTIC EXTEND pattern_tele *)

@@ -257,7 +257,7 @@ Qed.
 Theorem sum_inc : forall t, sum (inc t) >= sum t.
 Proof.
   intros t. funelim (inc t); simp sum. auto.
-  apply sum_inc'. assumption.
+  apply sum_inc'. intros; auto.
 Qed.
 
 Inductive type' : Type := Nat | Bool.

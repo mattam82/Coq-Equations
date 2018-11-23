@@ -32,7 +32,8 @@ Section list_size.
   Lemma In_list_size:
     forall x xs, In x xs -> f x < S (list_size xs).
   Proof.
-    intros. funelim (list_size xs); simpl in *; destruct H0.
+    intros. funelim (list_size xs); simpl in *. destruct H.
+    destruct H0.
     * subst; omega.
     * specialize (H _ H0). intuition.
   Qed.

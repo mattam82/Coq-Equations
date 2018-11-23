@@ -14,6 +14,7 @@ Section ilist.
   Inductive ilist : nat -> Set :=
   | Nil : ilist O
   | Cons : forall n, A -> ilist n -> ilist (S n).
+  Derive Signature for ilist.
 
   Equations app n1 (ls1 : ilist n1) n2 (ls2 : ilist n2) : ilist (n1 + n2) :=
   app _ Nil _ ls2 := ls2;
@@ -29,8 +30,7 @@ Section ilist.
 
   Theorem unject_inverse : forall ls, unject (inject ls) = ls.
   Proof.
-    intros. funelim (inject ls); simpl; simp unject.
-    rewrite H. reflexivity.
+    intros. funelim (inject ls); simp unject; congruence.
   Qed.
 
   Equations hd n (ls : ilist (S n)) : A :=
@@ -146,11 +146,13 @@ cfold (Snd e) <= cfold e => {
 Set Implicit Arguments.
 
 Inductive color : Set := Red | Black.
+Derive NoConfusion for color.
 
 Inductive rbtree : color -> nat -> Set :=
 | Leaf : rbtree Black 0
 | RedNode : forall n, rbtree Black n -> nat -> rbtree Black n -> rbtree Red n
 | BlackNode : forall c1 c2 n, rbtree c1 n -> nat -> rbtree c2 n -> rbtree Black (S n).
+Derive Signature NoConfusion for rbtree.
 
 Require Import Max Min Omega.
 
@@ -165,7 +167,8 @@ End depth.
 
 Theorem depth_min : forall c n (t : rbtree c n), depth min t >= n.
 Proof.
-  intros. funelim (depth Nat.min t); auto;
+  intros. funelim (depth Nat.min t);
+            auto;
   match goal with
   | [ |- context[min ?X ?Y] ] =>
       let H := fresh in destruct (min_dec X Y) as [H|H]; rewrite H
@@ -278,12 +281,12 @@ Section insert.
     Lemma present_balance1 : forall n (a : rtree n) (y : nat) c2 (b : rbtree c2 n),
       present z (pr2 (balance1 a y b))
       <-> rpresent z a \/ z = y \/ present z b.
-    Proof. intros. funelim (balance1 a y b); simpl in *; tauto. Qed.
+    Proof. intros. funelim (balance1 a y b); subst; simpl in *; tauto. Qed.
 
     Lemma present_balance2 : forall n (a : rtree n) (y : nat) c2 (b : rbtree c2 n),
       present z (pr2 (balance2 a y b))
       <-> rpresent z a \/ z = y \/ present z b.
-    Proof. intros. funelim (balance2 a y b); simpl in *; tauto. Qed.
+    Proof. intros. funelim (balance2 a y b); subst; simpl in *; tauto. Qed.
 
     Equations present_insResult (c : color) (n : nat) (t : rbtree c n) (r : insResult c n): Prop :=
     present_insResult Red n t r := rpresent z r <-> z = x \/ present z t;
@@ -306,42 +309,20 @@ Section insert.
       try rewrite present_insResult_equation_1; try rewrite present_insResult_equation_2;
       funelim (ins t0); intro; assumption.
 
-Ltac make_packcall packcall c :=
-  match goal with
-  | [ packcall : ?type |- _ ] => change (let _ := c in type) in (type of packcall)
-  end.
-
-Ltac funelim_sig_tac c tac ::=
-  let elimc := get_elim c in
-  let packcall := fresh "packcall" in
-  let elimfn := match elimc with fun_elim (f:=?f) => constr:(f) end in
-  let elimn := match elimc with fun_elim (n:=?n) => constr:(n) end in
-  block_goal;
-  uncurry_call elimfn c packcall; make_packcall packcall elimfn;
-  with_last_secvar ltac:(fun eos => move packcall before eos)
-                          ltac:(move packcall at top);
-  revert_until packcall; simpl in (value of packcall);
-  pattern sigma packcall; cbv zeta in packcall.
-  (* remember_let packcall. *)
-  (* (* with_last_secvar ltac:(fun eos => move packcall before eos) *) *)
-  (* (*                         ltac:(move packcall at top); *) *)
-  (* (* revert_until packcall;  *)block_goal; *)
-  (* cbv zeta in packcall; revert packcall; curry; *)
-  (* let elimt := make_refine elimn elimc in *)
-  (* unshelve refine_ho elimt; intros; *)
-  (* cbv beta; simplify_dep_elim; intros_until_block; simplify_dep_elim; *)
-  (* simpl eq_rect_dep_r in *; simpl eq_rect in *; *)
-  (* simplify_IH_hyps'; intros _; *)
-  (* unblock_goal; simplify_IH_hyps; tac c. *)
-
     Theorem present_insert_Red : forall n (t : rbtree Red n),
       present z (insert t)
       <-> (z = x \/ present z t).
-    Proof. intros. funelim (insert t). present_insert t t0. Qed.
+    Proof.
+      intros.
+      funelim (insert t).
+      generalize (present_ins t). simpl.
+      try rewrite present_insResult_equation_1; try rewrite present_insResult_equation_2.
+      funelim (ins t). intros; assumption. intros; assumption.
+    Qed.
 
     Theorem present_insert_Black : forall n (t : rbtree Black n),
       present z (pr2 (insert t))
       <-> (z = x \/ present z t).
-    Proof. present_insert t t0. Qed.
+    Proof. present_insert t t. Qed.
   End present.
 End insert.

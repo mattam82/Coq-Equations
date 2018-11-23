@@ -397,7 +397,18 @@ let uncurry_call env sigma fn c =
   (* let ctx = (Anonymous, None, concl) :: ctx in *)
   let sigty, sigctx, constr = telescope evdref ctx in
   let app = Vars.substl (List.rev args) constr in
-  !evdref, app, sigty
+  let fnapp = mkApp (hd, rel_vect 0 (List.length sigctx)) in
+  let fnapp = it_mkLambda_or_subst fnapp sigctx in
+  let projsid = Name (Id.of_string "projs") in
+  let fnapp_ty = Retyping.get_type_of
+      (push_rel_context [Context.Rel.Declaration.LocalAssum (projsid, sigty)] env)
+      !evdref fnapp in
+  (* TODO: build (packargs, fn packargs.projs) = (args, c) equality *)
+  let sigma, sigmaI = get_fresh !evdref coq_sigmaI in
+  let packed =
+    mkApp (sigmaI, [| sigty; mkLambda (projsid, sigty, fnapp_ty); mkRel 1; fnapp |])
+  in
+  sigma, app, packed, sigty
 
 (* Produce parts of a case on a variable, while introducing cuts and
  * equalities when necessary.
@@ -774,14 +785,15 @@ module Tactics =struct
            (fun sigma -> curry_concl env sigma na dom codom)
       | _ -> Tacticals.New.tclFAIL 0 (str"Goal cannot be curried") end
 
-  let uncurry_call c c' id =
+  let uncurry_call c c' id id' =
     enter begin fun gl ->
           let env = env gl in
           let sigma = sigma gl in
-          let sigma, term, ty = uncurry_call env sigma c c' in
+          let sigma, term, fterm, ty = uncurry_call env sigma c c' in
           let sigma, _ = Typing.type_of env sigma term in
           Proofview.Unsafe.tclEVARS sigma <*>
-            Tactics.letin_tac None (Name id) term (Some ty) nowhere end
+            Tactics.letin_tac None (Name id) term (Some ty) nowhere <*>
+          Tactics.letin_tac None (Name id') (Vars.subst1 (mkVar id) fterm) None nowhere end
 
   let get_signature_pack id id' =
     enter begin fun gl ->
