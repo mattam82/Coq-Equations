@@ -230,8 +230,6 @@ val coq_nat : lazy_ref
 val coq_nat_of_int : int -> Constr.t
 val int_of_coq_nat : Constr.t -> int
 
-val coq_heq : lazy_ref
-val coq_heq_refl : lazy_ref
 val coq_fix_proto : lazy_ref
 
 val fresh_logic_sort : esigma -> constr
@@ -240,10 +238,6 @@ val mkapp : Environ.env -> esigma -> lazy_ref -> constr array -> constr
 val mkEq : Environ.env ->
   esigma -> types -> constr -> constr -> constr
 val mkRefl : Environ.env -> esigma -> types -> constr -> constr
-val mkHEq : Environ.env ->
-  esigma ->
-  types -> constr -> types -> constr -> constr
-val mkHRefl : Environ.env -> esigma -> types -> constr -> constr
 
 (** Bindings to theories/ files *)
 

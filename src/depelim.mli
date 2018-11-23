@@ -11,43 +11,18 @@ open Environ
 open Names
 open EConstr
 
-val mk_term_eq :
-  env ->
-  Evd.evar_map ref ->
-  constr ->
-  constr -> constr -> constr -> constr * constr
-val make_abstract_generalize :
-  Goal.goal Evd.sigma ->
-  Evd.evar_map ref ->
-  Id.t ->
-  constr ->
-  bool ->
-  rel_context ->
-  constr option ->
-  constr ->
-  constr list -> constr list -> constr list -> constr
 val hyps_of_vars :
   env -> Evd.evar_map ->
   named_context ->
   Id.Set.t -> Id.Set.t -> Id.Set.elt list
+
 exception Seen
+
 val linear : Evd.evar_map -> Id.Set.t -> constr array -> bool
+
 val needs_generalization :
   Goal.goal Evd.sigma -> Id.t -> bool
-val abstract_args :
-  Goal.goal Evd.sigma ->
-  bool ->
-  bool ->
-  Id.Set.elt ->
-  bool ->
-  constr ->
-  constr array ->
-  (constr * bool * int * Id.Set.elt list) option
-val abstract_generalize :
-  ?generalize_vars:bool ->
-  ?force_dep:bool ->
-  Id.Set.elt ->
-  Goal.goal Evd.sigma -> Goal.goal list Evd.sigma
+
 val dependent_pattern :
   ?pattern_term:bool ->
   constr -> Goal.goal Evd.sigma -> Evar.t list Evd.sigma

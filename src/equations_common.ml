@@ -238,10 +238,6 @@ let fresh_id_in_env avoid id env =
 let fresh_id avoid id gl =
   fresh_id_in_env avoid id (pf_env gl)
 
-
-let coq_heq = (find_global "JMeq.type")
-let coq_heq_refl = (find_global "JMeq.refl")
-
 let coq_fix_proto = (find_global "fixproto")
 
 let compute_sort_family l =
@@ -306,13 +302,6 @@ let mkEq env evd t x y =
     
 let mkRefl env evd t x = 
   mkapp env evd logic_eq_refl [| refresh_universes_strict env evd t; x |]
-
-let mkHEq env evd t x u y =
-  mkapp env evd coq_heq [| refresh_universes_strict env evd t; x;
-                           refresh_universes_strict env evd u; y |]
-    
-let mkHRefl env evd t x =
-  mkapp env evd coq_heq_refl [| refresh_universes_strict env evd t; x |]
 
 let dummy_loc = None
 type 'a located = 'a Loc.located

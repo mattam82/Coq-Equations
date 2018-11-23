@@ -5,10 +5,7 @@ Register Init.Datatypes.O as equations.nat.zero.
 Register Init.Datatypes.S as equations.nat.succ.
 Register Init.Datatypes.nat as equations.nat.type.
 
-(** Heterogeneous equality *)
-Register Logic.JMeq.JMeq as equations.JMeq.type.
-Register Logic.JMeq.JMeq_refl as equations.JMeq.refl.
-
+(* Sigma Types *)
 Register Equations.Init.sigma as equations.sigma.type.
 Register Equations.Init.sigmaI as equations.sigma.intro.
 Register Equations.Init.pr1 as equations.sigma.pr1.
