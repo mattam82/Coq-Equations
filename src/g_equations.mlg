@@ -236,7 +236,6 @@ END
 {
 
 
-module Gram = Pcoq.Gram
 module Vernac = Pvernac.Vernac_
 
 type binders_argtype = Constrexpr.local_binder_expr list Genarg.uniform_genarg_type
