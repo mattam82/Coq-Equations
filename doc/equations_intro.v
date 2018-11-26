@@ -233,11 +233,10 @@ equal x y := right _.
    restricting their domain. Typically, we can force the list passed to [head] 
    to be non-empty using the specification:
 *)
-Derive NoConfusion for list.
+
 Equations head {A} (l : list A) (pf : l <> nil) : A :=
 head nil pf :=! pf;
 head (cons a v) _ := a.
-(* FIXME *) Next Obligation. Defined.
 
 (** We decompose the list and are faced with two cases:
 

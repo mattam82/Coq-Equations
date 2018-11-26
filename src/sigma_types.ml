@@ -799,10 +799,14 @@ module Tactics =struct
     enter begin fun gl ->
       let env = Proofview.Goal.env gl in
       let sigma = Proofview.Goal.sigma gl in
-      let sigma', sigsig, sigpack =
-        get_signature env sigma (Tacmach.New.pf_get_hyp_typ id gl) in
-      Proofview.Unsafe.tclEVARS sigma' <*>
-        letin_tac None (Name id') (mkApp (sigpack, [| mkVar id |])) None nowhere end
+      try
+        let sigma', sigsig, sigpack =
+          get_signature env sigma (Tacmach.New.pf_get_hyp_typ id gl) in
+        Proofview.Unsafe.tclEVARS sigma' <*>
+        letin_tac None (Name id') (mkApp (sigpack, [| mkVar id |])) None nowhere
+      with Not_found ->
+        Tacticals.New.tclFAIL 0 (str"No Signature instance found")
+    end
 
   let pattern_sigma id =
     enter begin fun gl ->
