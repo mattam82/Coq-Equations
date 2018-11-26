@@ -18,7 +18,7 @@ From Equations Require Import Equations.
 Check @eq.
 Require Import Bvector.
 
-(* Derive DependentElimination for nat bool option sum prod list vector. *)
+(* Derive DependentElimination for nat bool option sum Datatypes.prod list *)
 (* end hide *)
 
 (** * Inductive types

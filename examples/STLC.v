@@ -782,7 +782,7 @@ Proof.
   simp subst in t. rewrite Heq in t. simp subst in t.
 
   (* App *)
-  simpl in *. rename u0 into t1.
+  simpl in *.
   on_call (hereditary_subst (U, t1, u)) ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   noconf H3. simpl in H0.
@@ -795,7 +795,7 @@ Proof.
   depelim H1.
   destruct H.
   specialize (H0 _ [] _ _ _ _ H H1).
-  simplify_IH_hyps. specialize (H0 t' o1 Heqhsubst0 eq_refl).
+  simplify_IH_hyps.
   destruct H0 as [H0 H4].
   split; auto.
   intros ty prf0 Heq'.
@@ -875,7 +875,7 @@ Proof.
     split; intros Hsyn; [| elim (synth_arrow False Hsyn)].
 
     invert_term. constructor. 
-    specialize (Hind U _ _ (A :: Γ') eq_refl Heqhsubst). simpl in *.
+    specialize (Hind U _ _ (A :: Γ') eq_refl). simpl in *.
     specialize (Hind _ B Hu).
     destruct o as [[ty prf]|], Hind as [Hind0 Hind1].
     apply Hind0; eauto. eauto.
@@ -924,7 +924,7 @@ Proof.
     now apply nth_pred.
 
   (* App *)
-  - on_call (hereditary_subst (U,u0,u))
+  - on_call (hereditary_subst (U,t1,u))
             ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
     specialize (H0 _ _ _ [] eq_refl).
     rewrite Heq in Hind.
@@ -943,11 +943,11 @@ Proof.
     
     destruct o; try destruct h; destruct H.
     destruct (H H2). subst x.
-    specialize (H0 Heqhsubst0 _ B0 H7).
+    specialize (H0 _ B0 H7).
     destruct o0 as [[ty typrf]|]; destruct H0 as [Hcheck Hinf].
     now apply Hcheck. now apply Hcheck.
     
-    specialize (H0 Heqhsubst0 _ B0 (H H2)).
+    specialize (H0 _ B0 (H H2)).
     destruct o0 as [[ty typrf]|]; destruct H0 as [Hcheck Hinf].
     now apply Hcheck. now apply Hcheck.
     
@@ -961,7 +961,7 @@ Proof.
   (* No redex *)
   - intros Γ T Hu.
     assert(Γ' @ (U :: Γ) |-- @( t3, u) => T
-      → Γ' @ Γ |-- @( t2, fst (hereditary_subst (U, u0, u) (length Γ'))) => T).
+      → Γ' @ Γ |-- @( t2, fst (hereditary_subst (U, t1, u) (length Γ'))) => T).
     intros Ht; depelim Ht.
     on_call hereditary_subst
             ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
