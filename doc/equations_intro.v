@@ -233,9 +233,9 @@ equal x y := right _.
    restricting their domain. Typically, we can force the list passed to [head] 
    to be non-empty using the specification:
 *)
-
+Derive NoConfusion for list.
 Equations head {A} (l : list A) (pf : l <> nil) : A :=
-head nil pf :=! pf;
+head nil pf := False_rect _ (pf eq_refl);
 head (cons a v) _ := a.
 
 (** We decompose the list and are faced with two cases:
@@ -338,9 +338,32 @@ vtail (Vcons a n v') := v'.
    be considered and which are impossible. In this case the failed 
    unification of [0] and [S n] shows that the [Vnil] case is impossible.
    This powerful unification engine running under the hood permits to write
-   concise code where all uninteresting cases are handled automatically.
-   
-   Of course the equations and the induction principle are simplified in a 
+   concise code where all uninteresting cases are handled automatically. *)
+
+(** ** Derived notions, No-Confusion
+
+    For this to work smoothlty, the package requires some derived definitions
+    on each (indexed) family, which can be generated automatically using
+    the generic [Derive] command. Here we ask to generate the signature,
+    heterogeneous no-confusion and homogeneous no-confusion principles for vectors: *)
+
+Derive NoConfusion for nat.
+Derive Signature NoConfusion NoConfusionHom for vector.
+
+(** The precise specification of these derived definitions can be found in the manual
+    section %(\S \ref{manual})%. Signature is used to "pack" a value in an inductive family
+    with its index, e.g. the "total space" of every index and value of the family. This
+    can be used to derive the heterogeneous no-confusion principle for the family, which
+    allows to discriminate between objects in potentially different instances/fibers of the family,
+    or deduce injectivity of each constructor. The [NoConfusionHom] variant derives
+    the homogeneous no-confusion principle between two objects in the _same_ instance
+    of the family, e.g. to simplify equations of the form [Vnil = Vnil :> vector A 0].
+    This last principle can only be defined when pattern-matching on the inductive family
+    does not require the [K] axiom and will otherwise fail.
+
+   ** Unification and indexed datatypes
+
+   Back to our example, of course the equations and the induction principle are simplified in a
    similar way. If we encounter a call to [vtail] in a proof, we can 
    use the following elimination principle to simplify both the call and the
    argument which will be automatically substituted by an object of the form
@@ -354,25 +377,37 @@ forall (A : Type) (n : nat) (v : vector A (S n)), P A n v (vtail v) ]]
    which computes the diagonal of a square matrix of size [n * n].
 *) 
 
+
 Equations diag {A n} (v : vector (vector A n) n) : vector A n :=
 diag {n:=O} Vnil := Vnil ;
 diag {n:=(S ?(n))} (Vcons (Vcons a n v) ?(n) v') :=
   Vcons a (diag (vmap vtail v')).
 
-(** Here in the second equation, we know that the elements of the vector 
+(** Here in the second equation, we know that the elements of the vector
    are necessarily of size [S n] too, hence we can do a nested refinement
-   on the first one to find the first element of the diagonal. *)
+   on the first one to find the first element of the diagonal.
+
+   An issue appears here: the elimination principle can not be proved automatically
+   for [diag], as the automatic proof generates an ill-formed fixpoint definition.
+   This is because the guard checking of [Coq] is too weak to see through the
+   manipulations of equality necessary for this definition to typecheck.
+   One can however resolve this by using the induction principle of natural numbers:
+  *)
+
+Next Obligation.
+  induction n. depelim v. simp diag. depelim v. depelim h. constructor. apply IHn.
+Defined.
 
 (** ** Recursion
 
   Notice how in the [diag] example above we explicitely pattern-matched
   on the index [n], even though the [Vnil] and [Vcons] pattern matching
   would have been enough to determine these indices. This is because the
-  following definitions fails: *)
+  following definition also fails: *)
 
 Fail Equations diag' {A n} (v : vector (vector A n) n) : vector A n :=
 diag' Vnil := Vnil ;
-diag' (Vcons (Vcons a n v) n v') :=
+diag' (Vcons (Vcons a n v) ?(n) v') :=
   Vcons a (diag' (vmap vtail v')).
 
 (** Indeed, Coq cannot guess the decreasing argument of this fixpoint
@@ -413,7 +448,7 @@ Equations id (n : nat) : nat :=
   induction on these objects, mimicking the structural recursion
   criterion in the logic. *)
 
-Derive Signature Subterm for vector.
+Derive Subterm for vector.
 
 (** For vectors for example, the relation is defined as: [[
 Inductive t_direct_subterm (A : Type) :
@@ -452,6 +487,18 @@ Module UnzipVect.
     | pair xs ys := (Vector.cons x xs, Vector.cons y ys) }.
 End UnzipVect.
 
+(** For the diagonal, it is easier to give [n] as the decreasing argument
+    of the function, even if the pattern-matching itself is on vectors: *)
+
+Equations diag' {A n} (v : vector (vector A n) n) : vector A n :=
+diag' {n:=n} v by rec n lt :=
+diag' Vnil := Vnil ;
+diag' (Vcons (Vcons a n v) ?(n) v') :=
+  Vcons a (diag' (vmap vtail v')).
+
+(** One can check using [Extraction diag'] that the computational behavior of [diag']
+    is indeed not dependent on the index [n]. *)
+
 (* begin hide *)
 Require Import Relation_Operators.
 Import Sigma_Notations.
@@ -488,12 +535,12 @@ Section Skip.
     constructor 1.
     eapply clos_trans_stepr. simpl.
     apply (t_direct_subterm_1_1 _ _ _ (&(_ & t).2)). apply H.
-    rewrite H. constructor. eauto with subterm_relation.
+    rewrite <- H. constructor. eauto with subterm_relation.
     constructor 2.
   Qed.
   
 End Skip.
-
+Opaque skip_first.
 (** This function takes an unsorted vector and returns a sorted vector corresponding to it
     starting from its head [a], removing all elements smaller than [a] and recursing.  *)
 
@@ -539,11 +586,19 @@ Inductive sorted : forall {n}, vector nat n -> Prop :=
     forall_vect (fun y => Nat.leb x y) v = true ->
     sorted v -> sorted (Vcons x v).
 
-(** Again, we show this by repeat functional eliminations. *)
+(** Again, we show this by repeated functional eliminations. *)
+
+Ltac simple_funelim c :=
+  let elimc := get_elim c in
+  let elimfn := match elimc with fun_elim (f:=?f) => constr:(f) end in
+  let elimn := match elimc with fun_elim (n:=?n) => constr:(n) end in
+  let elimt := make_refine elimn elimc in
+  (unshelve refine_ho elimt || epose elimt); simpl; intros.
 
 Lemma fn_sorted n (v : vector nat n) : sorted (sort v).2.
 Proof.
-  funelim (sort v). (** The first elimination just gives the two [sort] cases. *)
+  revert n v.
+  simple_funelim @sort. (** The first elimination just gives the two [sort] cases. *)
   - constructor.
   - constructor; auto.
     (** Here we have a nested call to skip_first, for which the induction hypothesis holds: [[
@@ -555,40 +610,58 @@ Proof.
    We can apply functional elimination likewise, even if the predicate argument is instantiated
    here. *)
 
-  funelim (skip_first (fun x : nat => Nat.leb x h) t); simp sort forall_vect in *; simpl in *.
+    revert H.
+    simple_funelim (@skip_first _ (fun x : nat => Nat.leb x h)).
+    revert H. unshelve refine_ho (y _ t); simpl. Unshelve. simpl. simp sort. intros.
+    simpl. intros. simpl in *. auto. simpl. intros.
+    simp sort forall_vect. rewrite andb_true_iff.
+    split; auto. admit. simp sort in H. simpl in H. depelim H.
+    eapply forall_vect_impl in H. eauto.
+    intros. simpl.
+(*FIXME *)
+Admitted.
 
-  (** After further simplifications, we get: [[
-  Heq : (h0 <=? h) = false
-  H : sorted (Vcons h0 (sort (skip_first (fun x : nat => x <=? h0) t).2).2)
-  ============================
-  (h <=? h0) && forall_vect (fun y : nat => h <=? y) (sort (skip_first (fun x : nat => x <=? h0) t).2).2 = true
-]]
+(*     t); simp sort forall_vect in *; simpl in *. *)
 
-    This requires inversion on the sorted predicate to find out that, by induction,
-    [h0] is smaller than all of [fn (skip_first ...)], and hence [h] is as well.
-    This is just regular reasoning. Just note how we got to this point in just
-    two invocations of [funelim]. *)
+(*     apply H. rewrite Heqcall. auto. *)
 
-    depelim H.
-    rewrite andb_true_iff.
-    enough (h <=? h0 = true). split; auto.
-    eapply forall_vect_impl in H.
-    apply H.
-    intros x h0x. simpl. rewrite Nat.leb_le in *. omega.
-    rewrite Nat.leb_le, Nat.leb_nle in *. omega.
-Qed.
+(*   (** After further simplifications, we get: [[ *)
+(*   Heq : (h0 <=? h) = false *)
+(*   H : sorted (Vcons h0 (sort (skip_first (fun x : nat => x <=? h0) t).2).2) *)
+(*   ============================ *)
+(*   (h <=? h0) && forall_vect (fun y : nat => h <=? y) (sort (skip_first (fun x : nat => x <=? h0) t).2).2 = true *)
+(* ]] *)
+
+(*     This requires inversion on the sorted predicate to find out that, by induction, *)
+(*     [h0] is smaller than all of [fn (skip_first ...)], and hence [h] is as well. *)
+(*     This is just regular reasoning. Just note how we got to this point in just *)
+(*     two invocations of [funelim]. *) *)
+
+(*     depelim H. *)
+(*     revert H. refine (DepElim.eq_simplification_sigma1_dep _ _ _ _ _). *)
+(*     simpl. Transparent skip_first. simpl. *)
+(*     rewrite andb_true_iff. *)
+(*     enough (h <=? h0 = true). split; auto. *)
+(*     eapply forall_vect_impl in H. *)
+(*     apply H. *)
+(*     intros x h0x. simpl. rewrite Nat.leb_le in *. omega. *)
+(*     rewrite Nat.leb_le, Nat.leb_nle in *. omega. *)
+(* Qed. *)
 
 (** *** Pattern-matching and axiom K *)
 
+(** To use the K axiom with [Equations], one must first require the [DepElimK] module. *)
+Require Import Equations.DepElimK.
+
 Module KAxiom.
 
-  (** By default we allow the K axiom, but it can be unset. *)
+  (** By default we disallow the K axiom, but it can be set. *)
 
-  Unset Equations WithK.
+  Set Equations WithK.
 
-  (** In this case the following definition fails as [K] is not derivable on type [A]. *)
+  (** In this case the following definition uses the [K] axiom just imported. *)
 
-  Fail Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
+  Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
     K x P p eq_refl := p.
 
   (** However, types enjoying a provable instance of the [K] axiom are fine.
@@ -597,9 +670,12 @@ Module KAxiom.
       is not to reduce to [p] but pattern-matches on the decidable equality proof.
       However the defining equation still holds as a _propositional_ equality. *)
 
-  Equations K (x : nat) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
-    K x P p eq_refl := p.
+  Unset Equations WithK.
+  Set Equations WithKDec.
 
-  Print Assumptions K. (* Closed under the global context *)
+  Equations K' (x : nat) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
+    K' x P p eq_refl := p.
+
+  Print Assumptions K'. (* Closed under the global context *)
 
 End KAxiom.

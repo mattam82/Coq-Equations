@@ -1,4 +1,5 @@
 \section{The \kw{Equations} Vernacular}
+\label{manual}
 
 The \kw{Equations} command takes a few options using the syntax
 \[\kw{Equations}(opts)~\cst{f}~\ldots\]
@@ -25,11 +26,30 @@ The \kw{Equations} command obeys a few global options:
   The \texttt{simp} $\cst{c}$ tactic is favored in this case to do
   simplifications using the equations generated for $\cst{c}$.
 
+\item \texttt{Equations WithKDec}: governs the use of instances of
+  \texttt{K} derived by the user using the decidable equality class
+  \texttt{Equations.EqDec.EqDec}. By default \emph{off}. When switched
+  on, equations will look for an instance of $\ind{EqDec}\~A$ when
+  solving equalities of the form \[\forall (e : x = x :> A), P e\],
+  i.e. to apply the deletion rule to such equations, or report an error
+  if it cannot find any. Note that when this option is on, the
+  computational behavior of \Equations definitions on open terms does
+  not follow the clauses: it might block on the decidable equality
+  test. The rewriting equations and functional elimination principle can
+  still be derived though and are the prefered way to reason on the
+  definition.
+
 \item \texttt{Equations WithK}: governs the use of the \texttt{K} axiom.
-  By default on. When switched off, equations will look for a provable
-  instance of the \texttt{K} axiom on the types it needs (through
-  \texttt{EqDec} instances for example), and report an error if it
-  cannot find any.
+  By default \emph{off}.
+  Users \emph{must} require the \texttt{Equations.DepElimK} module before
+  using this option, to load the \texttt{K} axiom in the current module.
+  When switched on, equations will use the axiom if it needs to simplify
+  reflexivity proofs \[\forall (e : x = x :> A), P~e\] and no instance of
+  $\ind{EqDec}$ is available. The computational behavior of definitions
+  using the axiom changes entirely: their reduction will get stuck even
+  on closed terms. It is advised to keep such definitions opaque and use
+  the derived rewriting equations and functional elimination principle
+  to reason on such definitions.
 \end{itemize}
 
 \section{Derive}
@@ -41,7 +61,7 @@ these is:
 \[\mathtt{Derive}~\ind{C}_1 \ldots \ind{C}_n~\mathtt{for}~\ind{ind}_1 \ldots \ind{ind}_n.\]
 
 Which will try to generate an instance of type class \ind{C} on
-inductive type \ind{Ind}. We assume $\ind{ind}_i : Π Δ. s$.
+inductive type \ind{Ind}. We assume $\ind{ind}_i : \Pi \Delta. s$.
 The derivations provided by \Equations are:
 
 \begin{itemize}
@@ -60,11 +80,24 @@ The derivations provided by \Equations are:
   \texttt{Equations.Signature.Signature}.
 
 \item \ind{NoConfusion}: generate the no-confusion principle for the
-  given family, which embodies the discrimination and injectivity
-  principles for (non-propositional) inductive types.  It derives an
-  instance of the class
+  given family, as an heterogeneous relation. It embodies the
+  discrimination and injectivity principles for the
+  total space of the given inductive family: i.e.
+  $\Sigma \Delta, \ind{I}~\bar{\Gamma}~\Delta$ for a family
+  $\ind{I} : \forall \Gamma, \Delta "->" \kw{Type}$ where $\Gamma$ are
+  (uniform) parameters of the inductive and $\Delta$ its indices.
 
-  \texttt{Equations.DepElim.NoConfusionPackage}.
+  It derives an instance of the class \texttt{Equations.DepElim.NoConfusionPackage}.
+
+\item \ind{NoConfusionHom}: generate the \emph{homogeneous} no-confusion
+  principle for the given family, which embodies the discrimination and
+  injectivity principles for (non-propositional) inductive types.
+  This principle can be derived if and only if pattern-matching on the
+  inductive family does not involve the \texttt{K} axiom.
+  In case of success it generates an instance of the class
+  \texttt{Equations.DepElim.NoConfusionPackage} for the type $\ind{I}~
+  \Delta~\Gamma$ applicable to equalities of two objects in the \emph{same}
+  instance of the family $\ind{I}$.
 
 \item \ind{EqDec}
   This derives a decidable equality on $C$, assuming decidable equality 
