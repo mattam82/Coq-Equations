@@ -588,13 +588,6 @@ Inductive sorted : forall {n}, vector nat n -> Prop :=
 
 (** Again, we show this by repeated functional eliminations. *)
 
-Ltac simple_funelim c :=
-  let elimc := get_elim c in
-  let elimfn := match elimc with fun_elim (f:=?f) => constr:(f) end in
-  let elimn := match elimc with fun_elim (n:=?n) => constr:(n) end in
-  let elimt := make_refine elimn elimc in
-  (unshelve refine_ho elimt || epose elimt); simpl; intros.
-
 Lemma fn_sorted n (v : vector nat n) : sorted (sort v).2.
 Proof.
   funelim (sort v). (** The first elimination just gives the two [sort] cases. *)
@@ -608,28 +601,26 @@ Proof.
 
    We can apply functional elimination likewise, even if the predicate argument is instantiated
    here. *)
-    revert H.
-    funelim (skip_first (fun x : nat => Nat.leb x h) t);
+    revert H. funelim (skip_first (fun x : nat => Nat.leb x h) t);
       simp sort forall_vect in *.
-    simpl. intros.
 
-  (** After further simplifications, we get: [[ *)
-(*   Heq : (h0 <=? h) = false *)
-(*   H : sorted (Vcons h0 (sort (skip_first (fun x : nat => x <=? h0) t).2).2) *)
-(*   ============================ *)
-(*   (h <=? h0) && forall_vect (fun y : nat => h <=? y) (sort (skip_first (fun x : nat => x <=? h0) t).2).2 = true *)
-(* ]] *)
+(**  After further simplifications, we get: [[
+  Heq : (h0 <=? h) = false
+  H : sorted (Vcons h0 (sort (skip_first (fun x : nat => x <=? h0) t).2).2)
+  ============================
+  (h <=? h0) && forall_vect (fun y : nat => h <=? y) (sort (skip_first (fun x : nat => x <=? h0) t).2).2 = true
+]]
 
-(*     This requires inversion on the sorted predicate to find out that, by induction, *)
-(*     [h0] is smaller than all of [fn (skip_first ...)], and hence [h] is as well. *)
-(*     This is just regular reasoning. Just note how we got to this point in just *)
-(*     two invocations of [funelim]. *)
+    This requires inversion on the sorted predicate to find out that, by induction,
+    [h0] is smaller than all of [fn (skip_first ...)], and hence [h] is as well.
+    This is just regular reasoning. Just note how we got to this point in just
+    two invocations of [funelim]. *)
 
-    rewrite andb_true_iff.
+    rewrite andb_true_iff. simpl.
     enough (h <=? h0 = true). split; auto.
-    depelim H.
-    eapply forall_vect_impl in H.
-    apply H.
+    depelim H0.
+    eapply forall_vect_impl in H0.
+    apply H0.
     intros x' h0x'. simpl. rewrite Nat.leb_le in *. omega.
     rewrite Nat.leb_le, Nat.leb_nle in *. omega.
 Qed.
