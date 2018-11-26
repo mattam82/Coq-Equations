@@ -235,8 +235,9 @@ equal x y := right _.
 *)
 Derive NoConfusion for list.
 Equations head {A} (l : list A) (pf : l <> nil) : A :=
-head nil pf := False_rect _ (pf eq_refl);
+head nil pf :=! pf;
 head (cons a v) _ := a.
+(* FIXME *) Next Obligation. Defined.
 
 (** We decompose the list and are faced with two cases:
 
@@ -586,11 +587,13 @@ Inductive sorted : forall {n}, vector nat n -> Prop :=
     forall_vect (fun y => Nat.leb x y) v = true ->
     sorted v -> sorted (Vcons x v).
 
-(** Again, we show this by repeated functional eliminations. *)
+(** Again, we show that [sort] produces a sorted vector
+    by repeated functional eliminations. *)
 
 Lemma fn_sorted n (v : vector nat n) : sorted (sort v).2.
 Proof.
-  funelim (sort v). (** The first elimination just gives the two [sort] cases. *)
+  funelim (sort v).
+  (** The first elimination just gives the two [sort] cases. *)
   - constructor.
   - constructor; auto.
     (** Here we have a nested call to skip_first, for which the induction hypothesis holds: [[
@@ -601,10 +604,12 @@ Proof.
 
    We can apply functional elimination likewise, even if the predicate argument is instantiated
    here. *)
-    revert H. funelim (skip_first (fun x : nat => Nat.leb x h) t);
-      simp sort forall_vect in *.
 
-(**  After further simplifications, we get: [[
+    revert H.
+    funelim (skip_first (fun x : nat => Nat.leb x h) t);
+      simp sort forall_vect in *; simpl in *; intros H.
+
+(**  After some simplifications, we get: [[
   Heq : (h0 <=? h) = false
   H : sorted (Vcons h0 (sort (skip_first (fun x : nat => x <=? h0) t).2).2)
   ============================
@@ -618,16 +623,16 @@ Proof.
 
     rewrite andb_true_iff. simpl.
     enough (h <=? h0 = true). split; auto.
-    depelim H0.
-    eapply forall_vect_impl in H0.
-    apply H0.
+    depelim H. eapply forall_vect_impl in H.
+    apply H.
     intros x' h0x'. simpl. rewrite Nat.leb_le in *. omega.
     rewrite Nat.leb_le, Nat.leb_nle in *. omega.
 Qed.
 
 (** *** Pattern-matching and axiom K *)
 
-(** To use the K axiom with [Equations], one must first require the [DepElimK] module. *)
+(** To use the K axiom with [Equations], one _must_ first require the [DepElimK] module. *)
+
 Require Import Equations.DepElimK.
 
 Module KAxiom.
@@ -638,21 +643,30 @@ Module KAxiom.
 
   (** In this case the following definition uses the [K] axiom just imported. *)
 
-  Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
+  Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl)
+            (H : x = x) : P H :=
     K x P p eq_refl := p.
 
-  (** However, types enjoying a provable instance of the [K] axiom are fine.
-      This relies on an instance of the [EqDec] typeclass for natural numbers.
-      Note that the computational behavior of this definition on open terms
-      is not to reduce to [p] but pattern-matches on the decidable equality proof.
-      However the defining equation still holds as a _propositional_ equality. *)
-
   Unset Equations WithK.
+
+  (** Note that the definition loses its computational content: it will
+      get stuck on an axiom. We hence do not recommend its use.
+
+      Equations allows however to use constructive proofs of K for types
+      enjoying decidable equality. The following example relies on an
+      instance of the [EqDec] typeclass for natural numbers.  Note that
+      the computational behavior of this definition on open terms is not
+      to reduce to [p] but pattern-matches on the decidable equality
+      proof.  However the defining equation still holds as a
+      _propositional_ equality, and the definition of K' is axiom-free. *)
+
   Set Equations WithKDec.
 
-  Equations K' (x : nat) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
+  Equations K' (x : nat) (P : x = x -> Type) (p : P eq_refl)
+            (H : x = x) : P H :=
     K' x P p eq_refl := p.
 
-  Print Assumptions K'. (* Closed under the global context *)
+  Print Assumptions K'.
+  (* Closed under the global context *)
 
 End KAxiom.
