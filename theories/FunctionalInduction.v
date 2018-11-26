@@ -121,7 +121,7 @@ Ltac funelim_sig_tac c tac :=
    refine (Id_simplification_sigma1_dep _ _ _ _ _));
   let H := fresh "eqargs" in
   let Heq := fresh "Heqcall" in intros H Heq;
-  try rewrite <- Heq; revert_until H; revert H;
+  try (rewrite <- Heq; clear Heq); revert_until H; revert H;
   subst packcall_fn; clearbody packcall;
   make_packcall packcall elimfn;
   with_last_secvar ltac:(fun eos => move packcall before eos)

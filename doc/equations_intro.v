@@ -540,7 +540,7 @@ Section Skip.
   Qed.
   
 End Skip.
-Opaque skip_first.
+
 (** This function takes an unsorted vector and returns a sorted vector corresponding to it
     starting from its head [a], removing all elements smaller than [a] and recursing.  *)
 
@@ -597,8 +597,7 @@ Ltac simple_funelim c :=
 
 Lemma fn_sorted n (v : vector nat n) : sorted (sort v).2.
 Proof.
-  revert n v.
-  simple_funelim @sort. (** The first elimination just gives the two [sort] cases. *)
+  funelim (sort v). (** The first elimination just gives the two [sort] cases. *)
   - constructor.
   - constructor; auto.
     (** Here we have a nested call to skip_first, for which the induction hypothesis holds: [[
@@ -609,23 +608,12 @@ Proof.
 
    We can apply functional elimination likewise, even if the predicate argument is instantiated
    here. *)
-
     revert H.
-    simple_funelim (@skip_first _ (fun x : nat => Nat.leb x h)).
-    revert H. unshelve refine_ho (y _ t); simpl. Unshelve. simpl. simp sort. intros.
-    simpl. intros. simpl in *. auto. simpl. intros.
-    simp sort forall_vect. rewrite andb_true_iff.
-    split; auto. admit. simp sort in H. simpl in H. depelim H.
-    eapply forall_vect_impl in H. eauto.
-    intros. simpl.
-(*FIXME *)
-Admitted.
+    funelim (skip_first (fun x : nat => Nat.leb x h) t);
+      simp sort forall_vect in *.
+    simpl. intros.
 
-(*     t); simp sort forall_vect in *; simpl in *. *)
-
-(*     apply H. rewrite Heqcall. auto. *)
-
-(*   (** After further simplifications, we get: [[ *)
+  (** After further simplifications, we get: [[ *)
 (*   Heq : (h0 <=? h) = false *)
 (*   H : sorted (Vcons h0 (sort (skip_first (fun x : nat => x <=? h0) t).2).2) *)
 (*   ============================ *)
@@ -635,18 +623,16 @@ Admitted.
 (*     This requires inversion on the sorted predicate to find out that, by induction, *)
 (*     [h0] is smaller than all of [fn (skip_first ...)], and hence [h] is as well. *)
 (*     This is just regular reasoning. Just note how we got to this point in just *)
-(*     two invocations of [funelim]. *) *)
+(*     two invocations of [funelim]. *)
 
-(*     depelim H. *)
-(*     revert H. refine (DepElim.eq_simplification_sigma1_dep _ _ _ _ _). *)
-(*     simpl. Transparent skip_first. simpl. *)
-(*     rewrite andb_true_iff. *)
-(*     enough (h <=? h0 = true). split; auto. *)
-(*     eapply forall_vect_impl in H. *)
-(*     apply H. *)
-(*     intros x h0x. simpl. rewrite Nat.leb_le in *. omega. *)
-(*     rewrite Nat.leb_le, Nat.leb_nle in *. omega. *)
-(* Qed. *)
+    rewrite andb_true_iff.
+    enough (h <=? h0 = true). split; auto.
+    depelim H.
+    eapply forall_vect_impl in H.
+    apply H.
+    intros x' h0x'. simpl. rewrite Nat.leb_le in *. omega.
+    rewrite Nat.leb_le, Nat.leb_nle in *. omega.
+Qed.
 
 (** *** Pattern-matching and axiom K *)
 
