@@ -39,3 +39,5 @@ Check param_vector_vcons_elim :
 
     forall (E A : Set) (a : A) (n : ℕ E) (v : Vec E A n) (X : vector_param E A (S n) (cons a v)),
       P E A a n v X (param_vector_vcons E A a n v X).
+
+Print Assumptions param_vector_vcons.
