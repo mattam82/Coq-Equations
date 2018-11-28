@@ -730,8 +730,8 @@ and unify_constrs env evd flex g l l' =
        let tlunif = unify_constrs env evd flex g tl tl' in
        let spec = specialize_constr evd (pi2 tlunif) in
        let hd = spec hd and hd' = spec hd' in
-       let (d, s, _) as hdunif = unify env evd flex g hd hd' in
-       compose_subst env ~sigma:evd tlunif hdunif)
+       let (d, s, _) as hdunif = unify env evd flex (pi1 tlunif) hd hd' in
+       compose_subst env ~sigma:evd hdunif tlunif)
   | _, _ -> raise Conflict
 
 let flexible pats gamma =
