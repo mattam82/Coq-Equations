@@ -28,11 +28,8 @@ unfold size; simpl.
 unfold lt; apply Peano.le_n_S; rewrite Nat.add_comm; apply Nat.le_add_r.
 Qed.
 
-Definition ltt (t1 : {T & btree T}) (t2 : {T & btree T}) :=
-  size (projT2 t1) < size (projT2 t2).
-
 Equations redo_rev_tree {T} (t : btree T) : btree T :=
-   redo_rev_tree t by rec (existT (fun T => btree T) T t) ltt :=
+   redo_rev_tree t by rec (size t) lt :=
    redo_rev_tree Leaf := Leaf ;
    redo_rev_tree (Node a t1 t2) := Node a (redo_rev_tree t2)
                                         (redo_rev_tree t1).
@@ -47,5 +44,5 @@ Equations redo_rev_tree {T} (t : btree T) : btree T :=
 Lemma redo_rev_tree_invol {T} (t : btree T) : redo_rev_tree (redo_rev_tree t) = t.
 Proof.
   funelim (redo_rev_tree t). reflexivity.
-  autorewrite with redo_rev_tree. rewrite H, H0. reflexivity.
+  simp redo_rev_tree. rewrite H, H0. reflexivity.
 Qed.
