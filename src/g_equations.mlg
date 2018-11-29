@@ -347,10 +347,11 @@ open Prim
 open Constr
 open Syntax
 
+let _ = CLexer.add_keyword "#"
 }
 
 GRAMMAR EXTEND Gram
-  GLOBAL: pattern deppat_equations deppat_elim binders2 equations lident my_preident;
+  GLOBAL: operconstr pattern deppat_equations deppat_elim binders2 equations lident my_preident;
 
   my_preident:
     [ [ id = IDENT -> { id } ] ]
@@ -366,6 +367,13 @@ GRAMMAR EXTEND Gram
     [ [ "["; l = LIST0 lconstr SEP "|"; "]" -> { l } ] ]
   ;
 
+  operconstr:
+    [ "7" [ "#"; "{" ; c = LIST1 equation SEP ";"; "}" -> {
+            CAst.make ~loc @@ CHole (None, IntroAnonymous,
+                                     Some (Genarg.in_gen (Genarg.rawwit Syntax.wit_equations_list) c)) } ] ]
+  ;
+
+    
   identloc :
    [ [ id = ident -> { (loc, id) } ] ] ;
 

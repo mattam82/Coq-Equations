@@ -135,3 +135,5 @@ val interp_eqn :
   Impargs.manual_explicitation list ->
   pre_equation ->
   clause
+
+val wit_equations_list : pre_equation list Genarg.uniform_genarg_type

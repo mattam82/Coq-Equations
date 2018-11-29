@@ -145,6 +145,26 @@ type pre_equation =
 
 type pre_equations = pre_equation where_clause list
 
+let wit_equations_list : pre_equation list Genarg.uniform_genarg_type =
+  Genarg.create_arg "equations_list"
+
+let def_intern ist x = (ist, x)
+let def_subst _ x = x
+let def_interp ist x = Ftactic.return x
+
+let register_interp0 wit f =
+  let interp ist v =
+    Ftactic.bind (f ist v)
+      (fun v -> Ftactic.return (Geninterp.Val.inject (Geninterp.val_tag (Genarg.topwit wit)) v))
+  in
+  Geninterp.register_interp0 wit interp
+
+let declare_uniform t =
+  Genintern.register_intern0 t def_intern;
+  Genintern.register_subst0 t def_subst;
+  register_interp0 t def_interp
+
+
 let next_ident_away s ids =
   let n' = Namegen.next_ident_away s !ids in
     ids := Id.Set.add n' !ids; n'
@@ -387,6 +407,7 @@ let interp_pat env ?(avoid = ref Id.Set.empty) fnid p =
 
 let interp_eqn initi is_rec env ty impls eqn =
   let avoid = ref Id.Set.empty in
+  let whereid = ref (Id.of_string "abs_where") in
   let interp_pat = interp_pat env ~avoid in
   let rec aux recinfo i is_rec curpats (pat, rhs) =
     let loc, pats =
@@ -445,16 +466,21 @@ let interp_eqn initi is_rec env ty impls eqn =
          (loc, pats, interp_rhs ((i, r) :: recinfo) i is_rec curpats' rhs)
       | None -> (loc, pats, interp_rhs recinfo i is_rec curpats' rhs)
   and interp_rhs recinfo i is_rec curpats = function
-    | Refine (c, eqs) -> Refine (CAst.with_loc_val (interp_constr_expr recinfo !avoid) c, 
-                                map (aux recinfo i is_rec curpats) eqs)
+    | Refine (c, eqs) ->
+       let wheres, c = CAst.with_loc_val (interp_constr_expr recinfo !avoid) c in
+       if not (List.is_empty wheres) then
+         user_err_loc (Constrexpr_ops.constr_loc c, "interp_eqns", str"Pattern-matching lambdas not allowed in refine");
+       Refine (c, map (aux recinfo i is_rec curpats) eqs)
     | Program (c, w) ->
        let w = interp_wheres recinfo avoid w in
-       let c =
+       let w', c =
          match c with
-         | ConstrExpr c -> ConstrExpr (CAst.with_loc_val (interp_constr_expr recinfo !avoid) c)
-         | Constr c -> Constr c
+         | ConstrExpr c ->
+            let wheres, c = CAst.with_loc_val (interp_constr_expr recinfo !avoid) c in
+            wheres, ConstrExpr c
+         | Constr c -> [], Constr c
        in
-       Program (c, w)
+       Program (c, List.append w' w)
     | Empty i -> Empty i
     | Rec (fni, r, id, s) -> 
       let rec_info = LogicalDirect (Option.get (Constrexpr_ops.constr_loc fni), i) in
@@ -467,23 +493,37 @@ let interp_eqn initi is_rec env ty impls eqn =
       p, map (aux recinfo id None []) eqns
     in List.map interp_where w
   and interp_constr_expr recinfo ids ?(loc=default_loc) c =
-    match c with
-    (* |   | CAppExpl of loc * (proj_flag * reference) * constr_expr list *)
-    | CApp ((None, { CAst.v = CRef (qid', ie) }), args)
-      when qualid_is_ident qid' && List.mem_assoc_f Id.equal (qualid_basename qid') recinfo ->
-       let id' = qualid_basename qid' in
-       let r = List.assoc_f Id.equal id' recinfo in
-       let args =
-         List.map (fun (c, expl) -> CAst.with_loc_val (interp_constr_expr recinfo ids) c, expl) args in
-       let c = CApp ((None, CAst.(make ~loc (CRef (qid', ie)))), args) in
-       let arg = CAst.make ~loc (CApp ((None, CAst.make ~loc c), [chole id' loc])) in
-       (match r with
-        | LogicalDirect _ -> arg
-        | LogicalProj r -> 
-          let arg = if Option.is_empty r.comp then [arg, None] else [] in
-          let qidproj = Nametab.shortest_qualid_of_global ?loc:qid'.CAst.loc Id.Set.empty (ConstRef r.comp_proj) in
-          CAst.make ~loc (CApp ((None, CAst.make ?loc:qid'.CAst.loc (CRef (qidproj, None))),
-                                args @ arg)))
-    | _ -> map_constr_expr_with_binders Id.Set.add
-             (fun ids -> CAst.with_loc_val (interp_constr_expr recinfo ids)) ids (CAst.make ~loc c)
+    let wheres = ref [] in
+    let rec aux' ids ?(loc=default_loc) c =
+      match c with
+      (* |   | CAppExpl of loc * (proj_flag * reference) * constr_expr list *)
+      | CApp ((None, { CAst.v = CRef (qid', ie) }), args)
+           when qualid_is_ident qid' && List.mem_assoc_f Id.equal (qualid_basename qid') recinfo ->
+         let id' = qualid_basename qid' in
+         let r = List.assoc_f Id.equal id' recinfo in
+         let args =
+           List.map (fun (c, expl) -> CAst.with_loc_val (aux' ids) c, expl) args in
+         let c = CApp ((None, CAst.(make ~loc (CRef (qid', ie)))), args) in
+         let arg = CAst.make ~loc (CApp ((None, CAst.make ~loc c), [chole id' loc])) in
+         (match r with
+          | LogicalDirect _ -> arg
+          | LogicalProj r ->
+             let arg = if Option.is_empty r.comp then [arg, None] else [] in
+             let qidproj = Nametab.shortest_qualid_of_global ?loc:qid'.CAst.loc Id.Set.empty (ConstRef r.comp_proj) in
+             CAst.make ~loc (CApp ((None, CAst.make ?loc:qid'.CAst.loc (CRef (qidproj, None))),
+                                   args @ arg)))
+      | CHole (k, i, Some eqns) when Genarg.has_type eqns (Genarg.rawwit wit_equations_list) ->
+         let eqns = Genarg.out_gen (Genarg.rawwit wit_equations_list) eqns in
+         let id = !whereid in
+         let eqns = List.map (fun (x, y) ->
+                    aux recinfo id None [] (x, y)) eqns in
+         let () =
+           wheres := (((loc, id), None, [], CAst.make ~loc (CHole (k, i, None))), eqns) :: !wheres;
+           whereid := Nameops.increment_subscript id;
+         in Constrexpr_ops.mkIdentC id
+      | _ -> map_constr_expr_with_binders Id.Set.add
+             (fun ids -> CAst.with_loc_val (aux' ids)) ids (CAst.make ~loc c)
+    in
+    let c' = aux' ids ~loc c in
+    !wheres, c'
   in aux [] initi is_rec [] eqn
