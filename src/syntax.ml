@@ -343,7 +343,7 @@ let interp_pat env ?(avoid = ref Id.Set.empty) fnid p =
   let env = Global.env () in
   let sigma = Evd.from_env env in
   let vars = (Id.Set.elements !avoid) (* (ids_of_pats [p])) *) in
-  let () = Feedback.msg_debug (str"Variables " ++ prlist_with_sep spc pr_id vars) in
+  (* let () = Feedback.msg_debug (str"Variables " ++ prlist_with_sep spc pr_id vars) in *)
   let tys = List.map (fun _ -> EConstr.mkProp) vars in
   let impls = List.map (fun _ -> []) vars in
   let vars, tys, impls =
@@ -351,7 +351,7 @@ let interp_pat env ?(avoid = ref Id.Set.empty) fnid p =
     | Some (id, ty, impl) -> (id :: vars, ty :: tys, impl :: impls)
     | None -> (vars, tys, impls)
   in
-  let () = Feedback.msg_debug (str"Internalizing " ++ pr_constr_expr p) in
+  (* let () = Feedback.msg_debug (str"Internalizing " ++ pr_constr_expr p) in *)
   let ienv = try compute_internalization_env env sigma Recursive vars tys impls with Not_found ->
     anomaly (str"Building internalization environment")
   in
@@ -438,7 +438,7 @@ let interp_eqn initi is_rec env ty impls eqn =
          in
          let structpats = List.map_filter addpat l in
          let pats = structpats @ pats in
-         Feedback.msg_debug (str "Patterns: " ++ pr_user_pats env pats);
+         (* Feedback.msg_debug (str "Patterns: " ++ pr_user_pats env pats); *)
          (loc, pats,
           interp_rhs recinfo i is_rec curpats' rhs)
       | Some (Logical r) -> 
