@@ -40,7 +40,7 @@ let map_split f split =
       let where' = 
         List.map
           (fun w -> let w' = map_where f w in
-                 { w' with where_splitting = aux w.where_splitting })
+                 { w' with where_splitting = Lazy.from_val (aux (Lazy.force w.where_splitting)) })
           where
       in
       let lhs' = map_ctx_map f lhs in
@@ -90,7 +90,7 @@ let term_of_tree status isevar env0 tree =
               (evm, ctx) ->
              let env = push_named_context where_nctx env0 in
              (* FIXME push ctx too if mutual wheres *)
-             let evm, c', ty' = aux env evm where_splitting in
+             let evm, c', ty' = aux env evm (Lazy.force where_splitting) in
              let inst = List.map get_id where_nctx in
              (** In de Bruijn context *)
              let tydb = Vars.subst_vars inst ty' in

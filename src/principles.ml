@@ -505,7 +505,7 @@ let pr_where env sigma ctx {where_id; where_nctx; where_prob; where_term;
     Printer.pr_econstr_env envc sigma where_type ++
     str" := " ++ fnl () ++
     pr_context_map envw sigma where_prob ++ fnl () ++
-    pr_splitting envw sigma where_splitting
+    pr_splitting envw sigma (Lazy.force where_splitting)
 
 let where_instance w =
   List.map (fun w -> w.where_term) w
@@ -574,11 +574,11 @@ let subst_rec_split env evd f comp comprecarg path prob s split =
          let where_term = mapping_constr evd subst where_term in
          let where_type = mapping_constr evd subst where_type in
          let where_splitting =
-           map_split (fun t -> replace_vars nsubst t) where_splitting
+           map_split (fun t -> replace_vars nsubst t) (Lazy.force where_splitting)
          in
          {where_id; where_path; where_orig; where_nctx; where_prob;
           where_arity; where_term;
-          where_type; where_splitting }
+          where_type; where_splitting = Lazy.from_val where_splitting }
        in
        let where' = List.map subst_where where in
        Compute (lhs', where', mapping_constr evd substprog ty,
@@ -712,14 +712,14 @@ let update_split env evd id is_rec f prob recs split =
            let () = evd := evm in
            let term' = substl (List.map (fun x -> mkVar (get_id x)) w.where_nctx) w.where_term in
            let evk = fst (destEvar !evd ev) in
-           let split' = aux env term' w.where_splitting in
+           let split' = aux env term' (Lazy.force w.where_splitting) in
            let id = Nameops.add_suffix w.where_id "_unfold_eq" in
            let () = where_map := Evar.Map.add evk (term', id, split') !where_map in
            (* msg_debug (str"At where in update_split, calling recursively with term" ++ *)
            (*              pr_constr w.where_term ++ str " associated to " ++ int (Evar.repr evk)); *)
            { w with where_term = ev;
                     where_path = Evar evk :: List.tl w.where_path;
-                    where_splitting = split' }
+                    where_splitting = Lazy.from_val split' }
          in
          Compute (lhs, List.map subst_where wheres, p, q)
     in
@@ -751,7 +751,7 @@ let computations env evd alias refine eqninfo =
          with Not_found -> None
        in
        let env' = push_named_context w.where_nctx env in
-       let comps = computations env' w.where_prob nterm None (Regular,false) w.where_splitting in
+       let comps = computations env' w.where_prob nterm None (Regular,false) (Lazy.force w.where_splitting) in
        let gencomp (ctx, fl, alias, pats, ty, f, b, c, l) =
          (** ctx' = rctx ++ lhs is a dB context *)
          let lift, ctx' = replace_vars_context inst ctx in

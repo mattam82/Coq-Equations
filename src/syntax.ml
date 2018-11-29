@@ -105,7 +105,7 @@ let rec pr_rhs env = function
                             (match rhs with
                              | ConstrExpr rhs -> pr_constr_expr rhs
                              | Constr c -> str"<constr>") ++
-                             pr_wheres env where
+                            spc () ++ pr_wheres env where
   | Refine (rhs, s) -> spc () ++ str "<=" ++ spc () ++ pr_constr_expr rhs ++ 
       spc () ++ str "=>" ++ spc () ++
       hov 1 (str "{" ++ pr_clauses env s ++ str "}")
@@ -115,9 +115,10 @@ let rec pr_rhs env = function
       ++ spc () ++ hov 1 (str "{" ++ pr_clauses env s ++ str "}")
 
 and pr_wheres env l =
-  prlist_with_sep fnl (pr_where env) l
+  if List.is_empty l then mt() else
+  str"where" ++ spc () ++ prlist_with_sep fnl (pr_where env) l
 and pr_where env (sign, eqns) =
-  pr_proto sign ++ pr_clauses env eqns
+  pr_proto sign ++ str "{" ++ pr_clauses env eqns ++ str "}"
 and pr_proto ((_,id), _, l, t) =
   Id.print id ++ pr_binders l ++ str" : " ++ pr_constr_expr t
 and pr_clause env (loc, lhs, rhs) =

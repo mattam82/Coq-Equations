@@ -66,7 +66,7 @@ and where_clause =
     where_arity : types; (* In nctx + pi1 prob *)
     where_term : constr; (* In original context, de Bruijn only *)
     where_type : types;
-    where_splitting : splitting }
+    where_splitting : splitting Lazy.t }
 
 and refined_node = 
   { refined_obj : identifier * constr * types;
@@ -1033,7 +1033,7 @@ let pr_splitting env sigma ?(verbose=false) split =
       let ppwhere w =
         hov 2 (str"where " ++ Id.print w.where_id ++ str " : " ++
                Printer.pr_econstr_env env'  sigma w.where_type ++
-               str " := " ++ Pp.fnl () ++ aux w.where_splitting)
+               str " := " ++ Pp.fnl () ++ aux (Lazy.force w.where_splitting))
       in
       let ppwheres = prlist_with_sep Pp.fnl ppwhere wheres in
       let env'' = push_rel_context (where_context wheres) env' in
@@ -1659,7 +1659,7 @@ and interp_wheres env ctx evars path data s lets w =
     let () = evars := sigma in
     let ev = destEvar !evars term in
     let path = Evar (fst ev) :: path in
-    let splitting = covering env evars data clauses path problem arity in
+    let splitting = lazy (covering env evars data clauses path problem arity) in
     let decl = make_def (Name id) (Some term) relty in
     let nadecl = make_named_def id (Some (substl inst term)) ty in
     let covering =
@@ -1680,6 +1680,7 @@ and interp_wheres env ctx evars path data s lets w =
 
 and covering ?(check_unused=true) env evars data (clauses : clause list) path prob ty =
   let clauses = (List.map (fun x -> (x,false)) clauses) in
+  (*TODO eta-expand clauses or type *)
   match covering_aux env evars data [] clauses path prob [] ty with
   | Some (clauses, cov) ->
     let () = if check_unused then check_unused_clauses env clauses in

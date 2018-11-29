@@ -564,6 +564,8 @@ let define_by_eqs ~poly opts eqs nt =
     let _oarity = nf_evar !evd p.program_oarity in
     let arity = nf_evar !evd p.program_arity in
     let idinfo = (p.program_id,with_comp,data) in
+    Feedback.msg_debug Pp.(str"Launching covering on "++ pr_clauses env eqs);
+
     covering env evd idinfo eqs [Ident p.program_id] prob arity
   in
   let coverings = List.map2 (covering env) arities equations in

@@ -123,7 +123,7 @@ and where_clause =
     where_arity : types; (* In nctx + pi1 prob *)
     where_term : constr; (* In original context, de Bruijn only *)
     where_type : types;
-    where_splitting : splitting }
+    where_splitting : splitting Lazy.t }
 
 and refined_node = {
   refined_obj : identifier * constr * types;

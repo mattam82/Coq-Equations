@@ -392,8 +392,8 @@ let rec aux_ind_fun info chop unfs unfids = function
                          to82 intros;
                          if Option.is_empty unfs then tclIDTAC
                          else autorewrite_one (info.term_info.base_id ^ "_where");
-                         (aux_ind_fun info chop (Option.map (fun s -> s.where_splitting) unfs)
-                                      unfids s.where_splitting)])
+                         (aux_ind_fun info chop (Option.map (fun s -> Lazy.force s.where_splitting) unfs)
+                                      unfids (Lazy.force s.where_splitting))])
           in
           let wherepath, args =
             try PathMap.find s.where_path info.pathmap
@@ -737,7 +737,8 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
            let tac =
              of82 (tclTHENLIST [to82 intros; unfolds;
                                 (observe "where"
-                                         (aux w.where_splitting unfw.where_splitting))])
+                                 (aux (Lazy.force w.where_splitting)
+                                  (Lazy.force unfw.where_splitting)))])
            in
            assert_by (Name id) ty (of82 (tclTHEN (to82 (keep [])) (to82 (Abstract.tclABSTRACT (Some id) tac))))
          in
