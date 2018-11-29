@@ -29,8 +29,8 @@ type user_pat =
     PUVar of identifier * generated
   | PUCstr of constructor * int * user_pats
   | PUInac of Constrexpr.constr_expr
-and user_pats = user_pat located list
-
+and user_pat_loc = (user_pat, [ `any ]) DAst.t
+and user_pats = user_pat_loc list
 
 (** Globalized syntax *)
 
@@ -63,7 +63,7 @@ and program = (signature * clause list) list
 and signature = identifier * rel_context * constr (* f : Π Δ. τ *)
 and clause = Loc.t option * lhs * clause rhs (* lhs rhs *)
 
-val pr_user_pat : env -> user_pat located -> Pp.t
+(* val pr_user_pat : env -> user_pat -> Pp.t *)
 val pr_user_pats : env -> user_pats -> Pp.t
 
 val pr_lhs : env -> user_pats -> Pp.t
@@ -82,13 +82,14 @@ type pat_expr =
       pat_expr with_loc list
   | PEWildcard
   | PEInac of Constrexpr.constr_expr
-  | PEPat of Constrexpr.cases_pattern_expr
+
 type user_pat_expr = pat_expr with_loc
-type input_pats =
-    SignPats of (Id.t with_loc option * user_pat_expr) list
-  | RefinePats of user_pat_expr list
+
+type 'a input_pats =
+    SignPats of 'a
+  | RefinePats of 'a list
 type pre_equation =
-    identifier with_loc option * input_pats * pre_equation rhs
+  Constrexpr.constr_expr input_pats * pre_equation rhs
 type pre_equations = pre_equation where_clause list
 
 type rec_type = 
@@ -120,18 +121,17 @@ type equation_options = equation_option list
 
 val pr_equation_options : 'a -> 'b -> 'c -> 'd -> Pp.t
 
-val translate_cases_pattern :
-  'a -> Id.Set.t ref -> ?loc:Loc.t -> 'b Glob_term.cases_pattern_r -> user_pat located
-
-val ids_of_pats : pat_expr with_loc list -> Id.Set.t
+(* val ids_of_pats : pat_expr with_loc list -> Id.Set.t *)
 
 val interp_pat : Environ.env -> ?avoid:Id.Set.t ref ->
-  user_pat_expr -> user_pat located
+  (Id.t * EConstr.types * Impargs.manual_explicitation list) option ->
+  Constrexpr.constr_expr -> user_pats
 
 val interp_eqn :
   identifier ->
   rec_type option ->
   env ->
-  Impargs.implicit_status list ->
+  EConstr.types ->
+  Impargs.manual_explicitation list ->
   pre_equation ->
   clause

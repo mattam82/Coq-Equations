@@ -32,7 +32,8 @@ type user_pat =
     PUVar of identifier * generated
   | PUCstr of constructor * int * user_pats
   | PUInac of Constrexpr.constr_expr
-and user_pats = user_pat located list
+and user_pat_loc = (user_pat, [ `any ]) DAst.t
+and user_pats = user_pat_loc list
 
 (** AST *)
 
@@ -76,7 +77,7 @@ and prototype =
 
 and 'a where_clause = prototype * 'a list
 
-let rec pr_user_pat env (loc,pat) =
+let rec pr_user_loc_pat env ?loc pat =
   match pat with
   | PUVar (i, gen) -> Id.print i ++ if gen then str "#" else mt ()
   | PUCstr (c, i, f) -> 
@@ -84,6 +85,8 @@ let rec pr_user_pat env (loc,pat) =
 	if not (List.is_empty f) then str "(" ++ pc ++ spc () ++ pr_user_pats env f ++ str ")"
 	else pc
   | PUInac c -> str "?(" ++ pr_constr_expr c ++ str ")"
+
+and pr_user_pat env = DAst.with_loc_val (pr_user_loc_pat env)
 
 and pr_user_pats env pats =
   prlist_with_sep spc (pr_user_pat env) pats
@@ -130,16 +133,15 @@ type pat_expr =
   | PEApp of qualid Constrexpr.or_by_notation with_loc * pat_expr with_loc list
   | PEWildcard
   | PEInac of constr_expr
-  | PEPat of cases_pattern_expr
 
 type user_pat_expr = pat_expr with_loc
 
-type input_pats =
-  | SignPats of (Id.t with_loc option * user_pat_expr) list
-  | RefinePats of user_pat_expr list
+type 'a input_pats =
+  | SignPats of 'a
+  | RefinePats of 'a list
 
 type pre_equation = 
-  identifier with_loc option * input_pats * pre_equation rhs
+  constr_expr input_pats * pre_equation rhs
 
 type pre_equations = pre_equation where_clause list
 
@@ -190,50 +192,55 @@ let is_rec_call sigma r f =
 
 let default_loc = Loc.make_loc (0, 0)
          
-let rec translate_cases_pattern env avoid ?loc = function
-  | PatVar (Name id) -> loc, PUVar (id, false)
-  | PatVar Anonymous -> 
-      let n = next_ident_away (Id.of_string "wildcard") avoid in
-        avoid := Id.Set.add n !avoid; loc, PUVar (n, true)
-  | PatCstr ((ind, _ as cstr), pats, Anonymous) ->
-     loc, PUCstr (cstr, (Inductiveops.inductive_nparams ind),
-                  List.map (DAst.with_loc_val (translate_cases_pattern env avoid)) pats)
-  | PatCstr (cstr, pats, Name id) ->
-      CErrors.user_err ?loc ~hdr:"interp_pats" (str "Aliases not supported by Equations")
+let is_inaccessible_qualid qid =
+  let id = qualid_basename qid in
+  Id.equal id (Id.of_string "inaccessible_pattern")
 
-let rec ids_of_pats pats =
-  fold_left (fun ids (_,p) ->
-    match p with
-    | PEApp ((loc,f), l) -> 
-	let lids = ids_of_pats l in
-        Id.Set.union (try Id.Set.add (ident_of_smart_global f) lids with _ -> lids) ids
-    | PEWildcard -> ids
-    | PEInac _ -> ids
-    | PEPat _ -> ids)
+let free_vars_of_constr_expr fid c =
+  let rec aux bdvars l = function
+    | { CAst.v = CRef (qid, _) } when qualid_is_ident qid ->
+      let id = qualid_basename qid in
+      if Id.List.mem id bdvars then l
+      else if Id.equal id fid then l
+      else
+        (try
+           match Nametab.locate_extended (Libnames.qualid_of_ident id) with
+           | TrueGlobal gr ->
+             if not (isConstructRef gr) then Id.Set.add id l
+             else l
+           | SynDef _ -> l
+         with Not_found -> Id.Set.add id l)
+    | { CAst.v = CApp ((_, { CAst.v = CRef (qid, _) }), _) }
+      when is_inaccessible_qualid qid -> l
+    | c -> fold_constr_expr_with_binders (fun a l -> a::l) aux bdvars l c
+  in aux [] Id.Set.empty c
+
+let ids_of_pats id pats =
+  fold_left (fun ids p -> Id.Set.union ids (free_vars_of_constr_expr id p))
     Id.Set.empty pats
 
-let add_implicits impls avoid pats =
-  let rec aux l pats =
-    match l with
-    | imp :: imps ->
-       if Impargs.is_status_implicit imp then
-         let id = Impargs.name_of_implicit imp in
-	 let eqf = function ((Some (_, id')), p) -> Id.equal id' id | _ -> false in
-	 try let pat = List.find_map (fun x -> if eqf x then Some (snd x) else None) pats in
-	     let pats = List.remove_first eqf pats in
-	     pat :: aux imps pats
-	 with Not_found ->
-	   let n = next_ident_away id avoid in
-	   let pat = PEPat (CAst.make (CPatAtom (Some (qualid_of_ident n)))) in
-           avoid := Id.Set.add n !avoid;
-	   (default_loc, pat) :: aux imps pats
-       else begin
-         match pats with
-	 | hd :: tl -> (snd hd) :: aux imps tl
-	 | [] -> List.map snd pats
-       end
-    | [] -> List.map snd pats
-  in aux impls pats
+(* let add_implicits impls avoid pats =
+ *   let rec aux l pats =
+ *     match l with
+ *     | imp :: imps ->
+ *        if Impargs.is_status_implicit imp then
+ *          let id = Impargs.name_of_implicit imp in
+ * 	 let eqf = function ((Some (_, id')), p) -> Id.equal id' id | _ -> false in
+ *          (\* try *\) let pat = List.find_map (fun x -> if eqf x then Some (snd x) else None) pats in
+ * 	     let pats = List.remove_first eqf pats in
+ * 	     pat :: aux imps pats
+ *          (\* with Not_found ->
+ *           *   let n = next_ident_away id avoid in
+ *           *   let pat = PEApp (CAst.make (qualid_of_ident n), []) in
+ *           *   avoid := Id.Set.add n !avoid;
+ *           *   (default_loc, pat) :: aux imps pats *\)
+ *        else begin
+ *          match pats with
+ * 	 | hd :: tl -> (snd hd) :: aux imps tl
+ * 	 | [] -> List.map snd pats
+ *        end
+ *     | [] -> List.map snd pats
+ *   in aux impls pats *)
 
 let chole c loc =
   (* let tac = Genarg.in_gen (Genarg.rawwit Constrarg.wit_tactic) (solve_rec_tac_expr ()) in *)
@@ -242,47 +249,48 @@ let chole c loc =
   CAst.make ~loc
   (CHole (Some (ImplicitArg (ConstRef cst, (0,None), false)), Namegen.IntroAnonymous,None)), None
 
-let rec interp_pat env ?(avoid = ref Id.Set.empty) (loc, p) =
-  match p with
-  | PEApp ((loc, f), l) ->
-      let r =
-        try Inl (Smartlocate.smart_global f)
-        with e -> Inr (PUVar (ident_of_smart_global f, false))
-      in begin match r with
-      | Inl (ConstructRef c) ->
-          let ind, _ = c in
-          let nparams = Inductiveops.inductive_nparams ind in
-          let nargs = Inductiveops.constructor_nrealargs c in
-          let len = List.length l in
-          let l' =
-            if len < nargs then List.make (nargs - len) (loc, PEWildcard) @ l
-            else l
-          in
-            Dumpglob.add_glob ~loc (ConstructRef c);
-            Some loc, PUCstr (c, nparams, List.map (interp_pat env ~avoid) l')
-      | Inl _ ->
-          if l != [] then
-            CErrors.user_err ~loc ~hdr:"interp_pat"
-                     (str "Pattern variable " ++ pr_smart_global f ++ str " cannot be applied")
-          else Some loc, PUVar (ident_of_smart_global f, false)
-      | Inr p -> Some loc, p
-      end
-  | PEInac c -> Some loc, PUInac c
-  | PEWildcard ->
-      let n = next_ident_away (Id.of_string "wildcard") avoid in
-        avoid := Id.Set.add n !avoid; Some loc, PUVar (n, true)
-  | PEPat p ->
-      let ids, pats = intern_pattern env p in
-      let upat =
-        match pats with
-        | [(l, pat)] -> DAst.with_loc_val (translate_cases_pattern env avoid) pat
-        | _ -> user_err_loc (Some loc, "interp_pat",
-                             str "Or patterns not supported by Equations")
-      in upat
+(* let rec interp_pat_expr env ?(avoid = ref Id.Set.empty) (loc, p) =
+ *   match p with
+ *   | PEApp ((loc, f), l) ->
+ *       let r =
+ *         try Inl (Smartlocate.smart_global f)
+ *         with e -> Inr (PUVar (ident_of_smart_global f, false))
+ *       in begin match r with
+ *       | Inl (ConstructRef c) ->
+ *           let ind, _ = c in
+ *           let nparams = Inductiveops.inductive_nparams ind in
+ *           let nargs = Inductiveops.constructor_nrealargs c in
+ *           let len = List.length l in
+ *           let l' =
+ *             if len < nargs then List.make (nargs - len) (loc, PEWildcard) @ l
+ *             else l
+ *           in
+ *             Dumpglob.add_glob ~loc (ConstructRef c);
+ *             Some loc, PUCstr (c, nparams, List.map (interp_pat_expr env ~avoid) l')
+ *       | Inl _ ->
+ *           if l != [] then
+ *             CErrors.user_err ~loc ~hdr:"interp_pat"
+ *                      (str "Pattern variable " ++ pr_smart_global f ++ str " cannot be applied")
+ *           else Some loc, PUVar (ident_of_smart_global f, false)
+ *       | Inr p -> Some loc, p
+ *       end
+ *   | PEInac c -> Some loc, PUInac c
+ *   | PEWildcard ->
+ *       let n = next_ident_away (Id.of_string "wildcard") avoid in
+ *         avoid := Id.Set.add n !avoid; Some loc, PUVar (n, true)
+ *   (\* | PEPat p ->
+ *    *     let ids, pats = intern_pattern env p in
+ *    *     let upat =
+ *    *       match pats with
+ *    *       | [(l, pat)] -> DAst.with_loc_val (translate_cases_pattern env avoid) pat
+ *    *       | _ -> user_err_loc (Some loc, "interp_pat",
+ *    *                            str "Or patterns not supported by Equations")
+ *    *     in upat *\) *)
 
 let check_linearity pats =
   let rec aux ids pats = 
-    List.fold_left (fun ids (loc, pat) ->
+    List.fold_left (fun ids pat ->
+      DAst.with_loc_val (fun ?loc pat ->
       match pat with
       | PUVar (n, _) ->
 	if Id.Set.mem n ids then
@@ -290,43 +298,131 @@ let check_linearity pats =
 	    (str "Non-linear occurrence of variable in patterns")
 	else Id.Set.add n ids
       | PUInac _ -> ids
-      | PUCstr (_, _, pats) -> aux ids pats)
+      | PUCstr (_, _, pats) -> aux ids pats) pat)
       ids pats
   in ignore (aux Id.Set.empty pats)
-	
-let interp_eqn initi is_rec env impls eqn =
+
+let pattern_of_glob_constr env avoid gc =
+  let rec constructor ?loc c l =
+    let ind, _ = c in
+    let nparams = Inductiveops.inductive_nparams ind in
+    (* let nargs = Inductiveops.constructor_nrealargs c in
+     * let len = List.length l in *)
+    let l =
+      List.skipn nparams l
+      (* if len < nargs then List.make (nargs - len) (DAst.make ?loc (GHole (Internal ) @ l
+       * else l *)
+    in
+    Dumpglob.add_glob ?loc (ConstructRef c);
+    PUCstr (c, nparams, List.map (DAst.map_with_loc aux) l)
+  and aux ?loc = function
+    | GVar id -> PUVar (id, false)
+    | GHole (_,_,_) ->
+      let n = next_ident_away (Id.of_string "wildcard") avoid in
+      avoid := Id.Set.add n !avoid; PUVar (n, true)
+    | GRef (ConstructRef cstr,_) -> constructor ?loc cstr []
+    | GApp (c, l) ->
+      begin match DAst.get c with
+        | GRef (ConstructRef cstr,_) -> constructor ?loc cstr l
+        | GRef (ConstRef _ as c, _) when GlobRef.equal c (Lazy.force coq_inacc) ->
+          let inacc = List.hd (List.tl l) in
+          PUInac (Constrextern.extern_glob_constr !avoid inacc)
+        | _ -> user_err_loc (loc, "pattern_of_glob_constr", str "Cannot interpret " ++ pr_glob_constr_env env c ++ str " as a constructor")
+      end
+  (* | GLetIn (Name id as na',b,None,e) when is_gvar id e && na = Anonymous ->
+   *    (\* A canonical encoding of aliases *\)
+   *    DAst.get (cases_pattern_of_glob_constr na' b) *)
+    | _ -> user_err_loc (loc, "pattern_of_glob_constr", str ("Cannot interpret globalized term as a pattern"))
+  in DAst.map_with_loc aux gc
+
+let interp_pat env ?(avoid = ref Id.Set.empty) fnid p =
+  let env = Global.env () in
+  let sigma = Evd.from_env env in
+  let vars = (Id.Set.elements !avoid) (* (ids_of_pats [p])) *) in
+  let () = Feedback.msg_debug (str"Variables " ++ prlist_with_sep spc pr_id vars) in
+  let tys = List.map (fun _ -> EConstr.mkProp) vars in
+  let impls = List.map (fun _ -> []) vars in
+  let vars, tys, impls =
+    match fnid with
+    | Some (id, ty, impl) -> (id :: vars, ty :: tys, impl :: impls)
+    | None -> (vars, tys, impls)
+  in
+  let () = Feedback.msg_debug (str"Internalizing " ++ pr_constr_expr p) in
+  let ienv = try compute_internalization_env env sigma Recursive vars tys impls with Not_found ->
+    anomaly (str"Building internalization environment")
+  in
+  let nctx =
+    List.map (fun id -> Context.Named.Declaration.LocalAssum (id, Constr.mkProp)) vars
+  in
+  let env = Environ.push_named_context nctx env in
+  let gc =
+    try Constrintern.intern_gen Pretyping.WithoutTypeConstraint ~impls:ienv env sigma p
+    with Not_found -> anomaly (str"Internalizing pattern")
+  in
+  try
+    match fnid with
+    | Some (id, _, _) ->
+      DAst.with_loc_val (fun ?loc g ->
+          match g with
+          | GApp (fn, args) ->
+            DAst.with_loc_val (fun ?loc gh ->
+                match gh with
+                | GVar fid when Id.equal fid id ->
+                  let args = List.map (pattern_of_glob_constr env avoid) args in
+                  args
+                | _ ->
+                  user_err_loc (loc, "interp_pats",
+                                str "Expecting a pattern for " ++ Id.print id))
+              fn
+          | _ ->
+            user_err_loc (loc, "interp_pats",
+                          str "Expecting a pattern for " ++ Id.print id))
+        gc
+    | None -> [pattern_of_glob_constr env avoid gc]
+  with Not_found -> anomaly (str"While translating pattern to glob constr")
+
+let interp_eqn initi is_rec env ty impls eqn =
   let avoid = ref Id.Set.empty in
   let interp_pat = interp_pat env ~avoid in
-  let rec aux recinfo i is_rec curpats (idopt, pats, rhs) =
-    let curpats' = 
-      match pats with
-      | SignPats l -> l
-      | RefinePats l -> curpats @ List.map (fun x -> None, x) l
+  let rec aux recinfo i is_rec curpats (pat, rhs) =
+    let loc, pats =
+      match pat with
+      | SignPats pat ->
+        avoid := Id.Set.union !avoid (ids_of_pats i [pat]);
+        let loc = Constrexpr_ops.constr_loc pat in
+        loc, interp_pat (Some (i, ty, impls)) pat
+      | RefinePats pats ->
+        avoid := Id.Set.union !avoid (ids_of_pats i pats);
+        let loc = Constrexpr_ops.constr_loc (List.hd pats) in
+        let pats = List.map (interp_pat None) pats in
+        let pats = List.map (fun x -> List.hd x) pats in
+        loc, curpats @ pats
     in
-    avoid := Id.Set.union !avoid (ids_of_pats (List.map snd curpats'));
-    Option.iter (fun (loc,id) ->
-      if not (Id.equal id i) then
-	user_err_loc (Some loc, "interp_pats",
-		     str "Expecting a pattern for " ++ Id.print i);
-      Dumpglob.dump_reference ~loc "<>" (Id.to_string id) "def")
-      idopt;
+    (* Option.iter (fun (loc,id) ->
+     *   if not (Id.equal id i) then
+     *     user_err_loc (Some loc, "interp_pats",
+     *     	     str "Expecting a pattern for " ++ Id.print i);
+     *   Dumpglob.dump_reference ~loc "<>" (Id.to_string id) "def")
+     *   idopt; *)
     (*   if List.length pats <> List.length sign then *)
     (*     user_err_loc (loc, "interp_pats", *)
     (* 		 str "Patterns do not match the signature " ++  *)
     (* 		   pr_rel_context env sign); *)
-    let curpats'' = add_implicits impls avoid curpats' in
-    let loc =
-      let beginloc = match idopt with
-        | Some (loc, id) -> loc
-        | _ -> match List.hd curpats' with
-               | (Some (loc, _), _) -> loc
-               | (None, (loc, _)) -> loc
-      in
-      let endloc = match List.last curpats' with
-        | (_, (loc, _)) -> loc
-      in Loc.merge beginloc endloc
-    in
-    let pats = map interp_pat curpats'' in
+    (* let curpats'' = add_implicits impls avoid curpats' in *)
+      (* let beginloc = match idopt with
+       *   | Some (loc, id) -> Some loc
+       *   | _ -> match List.hd curpats' with
+       *          | (Some (loc, _), _) -> Some loc
+       *          | (None, c) -> Constrexpr_ops.constr_loc c
+       * in
+       * let endloc = match List.last curpats' with
+       *   | (_, c) -> Constrexpr_ops.constr_loc c
+       * in
+       * match beginloc, endloc with
+       * | Some b, Some e -> Some (Loc.merge b e)
+       * | Some x, _ -> beginloc
+       * | _, _ -> endloc *)
+    let curpats' = pats in
     let () = check_linearity pats in
       match is_rec with
       | Some (Structural l) ->
@@ -334,14 +430,16 @@ let interp_eqn initi is_rec env impls eqn =
          let addpat (id, k) =
            match k with
            | NestedOn None when Id.equal id initi -> None
-           | _ -> Some (None, PUVar (id, false))
+           | _ -> Some (DAst.make (PUVar (id, false)))
          in
          let structpats = List.map_filter addpat l in
-         (Some loc, structpats @ pats,
+         let pats = structpats @ pats in
+         Feedback.msg_debug (str "Patterns: " ++ pr_user_pats env pats);
+         (loc, pats,
           interp_rhs recinfo i is_rec curpats' rhs)
       | Some (Logical r) -> 
-         (Some loc, pats, interp_rhs ((i, r) :: recinfo) i is_rec curpats' rhs)
-      | None -> (Some loc, pats, interp_rhs recinfo i is_rec curpats' rhs)
+         (loc, pats, interp_rhs ((i, r) :: recinfo) i is_rec curpats' rhs)
+      | None -> (loc, pats, interp_rhs recinfo i is_rec curpats' rhs)
   and interp_rhs recinfo i is_rec curpats = function
     | Refine (c, eqs) -> Refine (CAst.with_loc_val (interp_constr_expr recinfo !avoid) c, 
                                 map (aux recinfo i is_rec curpats) eqs)

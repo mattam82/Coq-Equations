@@ -76,10 +76,13 @@ Import Vector.
 Arguments nil {A}.
 Arguments cons {A} _ {n}.
 
+Open Scope equations_scope.
+Import Inaccessible_Notations.
+
 Equations(nocomp noind) Below_vector A (P : forall n, vector A n -> Type) n (v : vector A n) : Type :=
-Below_vector A P ?(0) nil := unit ;
-Below_vector A P ?(S n) (cons a n v) := 
-  ((P n v) * Below_vector A P n v)%type.
+Below_vector A P ?(0) [] := unit ;
+Below_vector A P _ (a :: v) :=
+  ((P _ v) * Below_vector A P _ v)%type.
 
 Hint Rewrite Below_vector_equation_2 : Below.
 

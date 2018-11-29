@@ -41,7 +41,7 @@ let inline_helpers i =
   Table.extraction_inline true l
 
 let is_recursive i eqs =
-  let rec occur_eqn (_, _, rhs) =
+  let rec occur_eqn (_, rhs) =
     match rhs with
     | Program (c,w) ->
       (match c with
@@ -535,13 +535,12 @@ let define_by_eqs ~poly opts eqs nt =
   let fixdecls =
     List.map2 (fun i fixprot -> of_tuple (Name i, None, fixprot)) names fixprots in
   let fixdecls = List.rev fixdecls in
-  let implsinfo = List.map (fun (_, (oty, ty), impls) ->
-                  Impargs.compute_implicits_with_manual env !evd oty false impls) tys in
+  let implsinfo = List.map (fun (_, (oty, ty), impls) -> oty, impls) tys in
   let equations = 
     Metasyntax.with_syntax_protection (fun () ->
       List.iter (Metasyntax.set_notation_for_interpretation env data) nt;
-      List.map3 (fun implsinfo ar eqs ->
-        List.map (interp_eqn ar.program_id ar.program_rec env implsinfo) eqs)
+      List.map3 (fun (oty, impls) ar eqs ->
+        List.map (interp_eqn ar.program_id ar.program_rec env oty impls) eqs)
         implsinfo arities eqs)
       ()
   in
@@ -564,7 +563,8 @@ let define_by_eqs ~poly opts eqs nt =
     in
     let _oarity = nf_evar !evd p.program_oarity in
     let arity = nf_evar !evd p.program_arity in
-    covering env evd (p.program_id,with_comp,data) eqs [Ident p.program_id] prob arity
+    let idinfo = (p.program_id,with_comp,data) in
+    covering env evd idinfo eqs [Ident p.program_id] prob arity
   in
   let coverings = List.map2 (covering env) arities equations in
   let status = Define false in

@@ -144,7 +144,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   let sigma, eqT = get_fresh sigma logic_eq_type in
   let parampats =
     List.rev_map (fun decl ->
-        Loc.tag (Syntax.PUVar (Name.get_id (get_name decl), true))) ctx
+        DAst.make (Syntax.PUVar (Name.get_id (get_name decl), true))) ctx
   in
   let mk_clause i ty =
     let ty = EConstr.of_constr ty in
@@ -175,8 +175,8 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
     in
     let (avoid, eqs), user_pats = List.fold_left2_map fn (Id.Set.empty, []) args forced in
     let patl, patr = List.split user_pats in
-    let cstr ps = Syntax.PUCstr ((ind, succ i), params, List.rev_map (fun p -> Loc.tag p) ps) in
-    let lhs = parampats @ [Loc.tag (cstr patl); Loc.tag (cstr patr)] in
+    let cstr ps = Syntax.PUCstr ((ind, succ i), params, List.rev_map (fun p -> DAst.make p) ps) in
+    let lhs = parampats @ [DAst.make (cstr patl); DAst.make (cstr patr)] in
     let rhs =
       match List.rev eqs with
       | [] -> tru
@@ -196,7 +196,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   let clauses = Array.to_list (Array.mapi mk_clause constructors) in
   let hole x = Syntax.PUVar (Id.of_string x, true) in
   let catch_all =
-    let lhs = parampats @ [Loc.tag (hole "x"); Loc.tag (hole "y")] in
+    let lhs = parampats @ [DAst.make (hole "x"); DAst.make (hole "y")] in
     let rhs = Syntax.Program (Syntax.Constr fls, []) in
     (None, lhs, rhs)
   in

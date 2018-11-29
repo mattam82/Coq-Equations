@@ -171,15 +171,15 @@ let rec pat_to_user_pat ?(avoid = ref Id.Set.empty) ?loc ctx = function
     let name = Context.Rel.Declaration.get_name decl in
     let id = Namegen.next_name_away name !avoid in
     avoid := Id.Set.add id !avoid;
-    Some (loc, Syntax.PUVar (id, false))
+    Some (DAst.make ?loc (Syntax.PUVar (id, false)))
   | PCstr (((ind, _ as cstr), _), pats) ->
     let n = Inductiveops.inductive_nparams ind in
     let _, pats = List.chop n pats in
-    Some (loc, Syntax.PUCstr (cstr, n, pats_to_lhs ~avoid ?loc ctx pats))
+    Some (DAst.make ?loc (Syntax.PUCstr (cstr, n, pats_to_lhs ~avoid ?loc ctx pats)))
   | PInac c ->
     let id = Namegen.next_ident_away (Id.of_string "wildcard") !avoid in
     avoid := Id.Set.add id !avoid;
-    Some (loc, Syntax.PUVar (id, true))
+    Some (DAst.make ?loc (Syntax.PUVar (id, true)))
   | PHide i -> None
 and pats_to_lhs ?(avoid = ref Id.Set.empty) ?loc ctx pats =
   List.map_filter (pat_to_user_pat ~avoid ?loc ctx) pats
@@ -754,8 +754,8 @@ and accessibles l =
 
 let hidden = function PHide _ -> true | _ -> false
 
-let rec match_pattern (loc,p) c =
-  match p, c with
+let rec match_pattern p c =
+  match DAst.get p, c with
   | PUVar (i,gen), (PCstr _ | PRel _ | PHide _) -> [i, c], [], []
   | PUCstr (c, i, pl), PCstr ((c',u), pl') -> 
     if eq_constructor c c' then
@@ -764,7 +764,7 @@ let rec match_pattern (loc,p) c =
     else raise Conflict
   | PUInac t, t' ->
     [], [t, t'], []
-  | _, PInac t -> [], [], [(loc,p), t]
+  | _, PInac t -> [], [], [p, t]
   | _, _ -> raise Stuck
 
 and match_patterns pl l =
@@ -792,8 +792,8 @@ let matches (p : user_pats) ((phi,p',g') : context_map) =
     UnifSuccess (match_patterns p p')
   with Conflict -> UnifFailure | Stuck -> UnifStuck
 
-let rec match_user_pattern p (loc,c) =
-  match p, c with
+let rec match_user_pattern p c =
+  match p, DAst.get c with
   | PRel i, t -> [i, t], []
   | PCstr ((c',_), pl'), PUCstr (c, i, pl) -> 
     if eq_constructor c c' then
@@ -973,8 +973,8 @@ let unify_type env evars before id ty after =
     None
 
 let blockers curpats ((_, patcs, _) : context_map) =
-  let rec pattern_blockers (loc,p) c =
-    match p, c with
+  let rec pattern_blockers p c =
+    match DAst.get p, c with
     | PUVar (i, _), t -> []
     | PUCstr (c, i, pl), PCstr ((c',_), pl') -> 
       if eq_constructor c c' then patterns_blockers pl (snd (List.chop i pl'))
@@ -1354,7 +1354,8 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
            spc () ++ str "is not inaccessible, but should refine pattern " ++
            Printer.pr_econstr_env env' !evars t)
     in
-    let check_innac ((loc,user), forced) =
+    let check_innac (user, forced) =
+      DAst.with_loc_val (fun ?loc user ->
       if Option.is_empty loc then
         () (** Allow patterns not written by the user to be forced innaccessible silently *)
       else
@@ -1367,7 +1368,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
           let forcedsubst = substnl subst 0 forced in
           CErrors.user_err ?loc ~hdr:"covering"
             (str "This pattern must be innaccessible and equal to " ++
-             Printer.pr_econstr_env (push_rel_context ctx env) !evars forcedsubst)
+             Printer.pr_econstr_env (push_rel_context ctx env) !evars forcedsubst)) user
     in
     List.iter check_uinnac uinnacs;
     List.iter check_innac innacs
@@ -1554,9 +1555,9 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
                    else
                    if List.exists (fun (i', b) -> i' == pred i && b) vars then None
                    else
-                     try Some (dummy_loc, List.assoc (pred i) s)
+                     try Some (DAst.make (List.assoc (pred i) s))
                      with Not_found -> (* The problem is more refined than the user vars*)
-                       Some (dummy_loc, PUVar (next_unknown (), true)))
+                       Some (DAst.make (PUVar (next_unknown (), true))))
                 vars'
             in
             let newrhs = match rhs with

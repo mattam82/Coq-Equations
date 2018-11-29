@@ -21,10 +21,9 @@ Derive Signature for fin.
 Derive NoConfusion NoConfusionHom for fin.
 
 (** We can inject it into [nat]. *)
-
 Equations fog {n} (f : fin n) : nat :=
-fog {n:=?(S n)} (fz n) := 0 ; 
-fog (fs n f) := S (fog f).
+fog (n:=?(S n)) (@fz n) := 0 ;
+fog (fs f) := S (fog f).
 
 (** The injection preserves the number: *)
 Require Import FunctionalInduction.
@@ -52,7 +51,7 @@ fin_inj_one (fs f) := fs (fin_inj_one f).
 
 Inductive le : nat -> nat -> Type :=
 | le_O n : 0 <= n
-| le_S n m : n <= m -> S n <= S m
+| le_S {n m} : n <= m -> S n <= S m
 where "n <= m" := (le n m).
 Derive Signature for le.
 
@@ -89,18 +88,18 @@ Notation vnil := Vector.nil.
 Notation vcons := Vector.cons.
 
 Equations(nocomp) nth {A} {n} (v : Vector.t A n) (f : fin n) : A :=
-nth (vcons a _ v) fz := a ;
-nth (vcons a _ v) (fs n f) := nth v f.
+nth (vcons a v) fz := a ;
+nth (vcons a v) (fs f) := nth v f.
 
 Equations(nocomp) tabulate {A} {n} (f : fin n -> A) : Vector.t A n :=
-tabulate {n:=O} f := vnil ;
-tabulate {n:=(S n)} f := vcons (f fz) (tabulate (f ∘ fs)).
+tabulate (n:=O) f := vnil ;
+tabulate (n:=(S n)) f := vcons (f fz) (tabulate (f ∘ fs)).
 
 (** [Below] recursor for [fin]. *)
 
 Equations(nocomp noind) Below_fin (P : forall n, fin n -> Type) {n} (v : fin n) : Type :=
 Below_fin P fz := unit ;
-Below_fin P (fs n f) := (P n f * Below_fin P f)%type.
+Below_fin P (fs f) := (P _ f * Below_fin P f)%type.
 
 Hint Rewrite Below_fin_equation_2 (* Below_fin_equation_3 *) : Below.
 
@@ -108,7 +107,7 @@ Equations(nocomp noeqns noind) below_fin (P : forall n, fin n -> Type)
   (step : forall n (v : fin n), Below_fin P v -> P n v)
   {n} (v : fin n) : Below_fin P v :=
 below_fin P step fz := tt ;
-below_fin P step (fs n f) := 
+below_fin P step (@fs n f) :=
   let bf := below_fin P step f in
     (step n f bf, bf).
 

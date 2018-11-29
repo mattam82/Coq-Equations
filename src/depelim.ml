@@ -401,20 +401,20 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
         end
     | Some p ->
         (* Interpret each pattern to then produce clauses. *)
-        let patterns : (Syntax.user_pat Loc.located) list =
+        let patterns : (Syntax.user_pat_loc) list =
           let avoid = ref Id.Set.empty in
-          List.map (Syntax.interp_pat env ~avoid) p
+          List.map (fun x -> List.hd (Syntax.interp_pat env ~avoid None x)) p
         in
         (* For each pattern, produce a clause. *)
-        let make_clause : (Syntax.user_pat Loc.located) -> Syntax.clause =
-          fun (loc, pat) ->
+        let make_clause : (Syntax.user_pat_loc) -> Syntax.clause =
+          DAst.with_loc_val (fun ?loc pat ->
             let lhs =
               List.rev_map (fun decl ->
                 let decl_id = Context.Named.Declaration.get_id decl in
-                if Names.Id.equal decl_id id then loc, pat
-                else None, Syntax.PUVar (decl_id, false)) loc_hyps
+                if Names.Id.equal decl_id id then DAst.make ?loc pat
+                else DAst.make (Syntax.PUVar (decl_id, false))) loc_hyps
             in
-              (loc, lhs, rhs)
+              (loc, lhs, rhs))
         in Proofview.tclUNIT (List.map make_clause patterns)
     end >>= fun clauses ->
     if !debug then

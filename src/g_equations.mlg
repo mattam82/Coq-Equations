@@ -275,7 +275,7 @@ let deppat_equations : Syntax.pre_equation list Pcoq.Entry.t =
 let _ = Pptactic.declare_extra_genarg_pprule wit_deppat_equations
   pr_raw_deppat_equations pr_glob_deppat_equations pr_deppat_equations
 
-type deppat_elim_argtype = Syntax.user_pat_expr list Genarg.uniform_genarg_type
+type deppat_elim_argtype = Constrexpr.constr_expr list Genarg.uniform_genarg_type
 
 let wit_deppat_elim : deppat_elim_argtype =
  Genarg.create_arg "deppat_elim"
@@ -286,7 +286,7 @@ let pr_raw_deppat_elim _ _ _ l = mt ()
 let pr_glob_deppat_elim _ _ _ l = mt ()
 let pr_deppat_elim _ _ _ l = mt ()
 
-let deppat_elim : Syntax.user_pat_expr list Pcoq.Entry.t =
+let deppat_elim : Constrexpr.constr_expr list Pcoq.Entry.t =
   Pcoq.create_generic_entry Pcoq.utactic "deppat_elim" (Genarg.rawwit wit_deppat_elim)
 
 let _ = Pptactic.declare_extra_genarg_pprule wit_deppat_elim
@@ -368,24 +368,26 @@ GRAMMAR EXTEND Gram
 
   identloc :
    [ [ id = ident -> { (loc, id) } ] ] ;
+
   equation:
-    [ [ id = identloc; 	pats = LIST1 ipatt; r = rhs -> { (Some id, SignPats pats, r) }
-      | "|"; pats = LIST1 lpatt SEP "|"; r = rhs -> { (None, RefinePats pats, r) }
+    [ [ "|"; pats = LIST1 constr SEP "|"; r = rhs -> { (RefinePats pats, r) }
+       | pat = lconstr; r = rhs -> { (SignPats pat, r) }
     ] ]
   ;
 
   ipatt:
     [ [ "{"; id = identloc; ":="; p = patt; "}" -> { (Some id, p) }
-      | p = patt -> { (None, p) }
+      | p = constr -> { (None, p) }
       ] ]
   ;
     
   patt:
-    [ [ id = smart_global -> { loc, PEApp ((loc,id), []) }
-      | "_" -> { loc, PEWildcard }
-      | "("; p = lpatt; ")" -> { p }
-      | "?("; c = Constr.lconstr; ")" -> { loc, PEInac c }
-      | p = pattern LEVEL "0" -> { loc, PEPat p }
+    [ [ c = lconstr -> { c }
+      (*     id = smart_global -> { loc, PEApp ((loc,id), []) }
+       * | "_" -> { loc, PEWildcard }
+       * | "("; p = lpatt; ")" -> { p }
+       * | "?("; c = Constr.lconstr; ")" -> { loc, PEInac c }
+       * | p = pattern LEVEL "0" -> { loc, PEPat p } *)
     ] ]
   ;
 
@@ -395,8 +397,8 @@ GRAMMAR EXTEND Gram
   ;
 
   lpatt:
-    [ [ head = pat_head; pats = LIST0 patt -> { loc, PEApp (head, pats) }
-      | p = patt -> { p }
+    [ [(*  head = pat_head; pats = LIST0 patt -> { loc, PEApp (head, pats) }
+       * | *) p = patt -> { p }
     ] ]
   ;
 
@@ -407,7 +409,7 @@ GRAMMAR EXTEND Gram
             | [c] -> fun e -> acc (Refine (c, e))
             | c :: cs ->
                 let acc = fun e ->
-                  acc (Refine (c, [(None, RefinePats [loc, PEWildcard], e)])) in
+                  acc (Refine (c, [(RefinePats [CAst.make (CHole (None, IntroAnonymous, None))], e)])) in
                 build_refine acc cs
           in build_refine (fun e -> e) cs }
     ] ]
@@ -436,10 +438,17 @@ GRAMMAR EXTEND Gram
   ;
   rhs:
     [ [ ":=!"; id = identloc -> { Empty id }
-      | [":=" -> { () } |"=>" -> { () } ]; c = Constr.lconstr; w = where -> { Program (ConstrExpr c, w) }
-      | ["with" -> { () }  |"<=" -> { () } ]; ref = refine; [":=" -> { () } |"=>" -> { () } ]; e = sub_equations -> { ref e }
+
+     | [":=" -> { () } |"=>" -> { () } ]; c = Constr.lconstr; w = where ->
+        { Program (ConstrExpr c, w) }
+
+      | ["with" -> { () }  |"<=" -> { () } ]; ref = refine; [":=" -> { () } |"=>" -> { () } ];
+        e = sub_equations -> { ref e }
+
       | "<-"; "(" ; t = tactic; ")"; e = sub_equations -> { By (Inl t, e) }
+
       | "by"; IDENT "rec"; c = constr; rel = OPT constr; id = OPT identloc;
+
         [":=" -> { () } |"=>" -> { () } ]; e = deppat_equations -> { Rec (c, rel, id, e) }
     ] ]
   ;
