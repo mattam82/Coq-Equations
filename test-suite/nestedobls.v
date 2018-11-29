@@ -23,10 +23,10 @@ Definition MR {A B} (f : A -> B) (R : relation B) : relation A :=
 Equations test (n : nat) (pre : n >= 0 ) : { n' : nat | n' <= n } :=
 test n p by rec n lt :=
 test 0 p := exist _ 0 _;
-test (S n) p <= test n _ => {
-                | exist 0 _ := exist _ 0 _;
-                | exist (S n') p' with test n' _ := {
-                                                  | exist k p'' := exist _ k _ } }.
+test (S n) p with test n _ => {
+                | exist _ 0 _ := exist _ 0 _;
+                | exist _ (S n') p' with test n' _ := {
+                                                  | exist _ k p'' := exist _ k _ } }.
 
 Next Obligation. auto with arith. Defined.
 Next Obligation. auto with arith. Defined.
@@ -38,12 +38,12 @@ Solve Obligations.
 Module Bug.
 Equations(noind) test' (n : { n : nat | n >= 0 }) : { n' : nat | n' <= `n } :=
 test' n by rec n (MR (@proj1_sig nat (fun x : nat => x >= 0)) lt) :=
-test' (exist n p) with n := {
+test' (exist _ n p) with n := {
   | 0 := exist _ 0 _;
-  | S n' <= test' (exist _ n' _) => {
-                  | exist 0 _ := exist _ 0 _;
-                  | exist (S n'') p' with test' (exist _ n'' _) := {
-                      | exist k p'' := exist _ k _ } } }.
+  | S n' with test' (exist _ n' _) => {
+                  | exist _ 0 _ := exist _ 0 _;
+                  | exist _ (S n'') p' with test' (exist _ n'' _) := {
+                      | exist _ k p'' := exist _ k _ } } }.
 Next Obligation.
   auto with arith.
 Defined.

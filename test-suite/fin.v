@@ -28,8 +28,8 @@ Defined.
 Derive Signature for le.
 
 Equations nat_to_fin {n : nat} (m : nat) (p : m < n) : fin n :=
-nat_to_fin {n:=(S n)} 0 _ := fz;
-nat_to_fin {n:=(S n)} (S m) p := fs (nat_to_fin m _).
+nat_to_fin (n:=(S n)) 0 _ := fz;
+nat_to_fin (n:=(S n)) (S m) p := fs (nat_to_fin m _).
 
 Next Obligation. apply Lt.lt_S_n; assumption. Defined.
 
@@ -40,6 +40,8 @@ fin_to_nat_bound fz := 0;
 fin_to_nat_bound (fs j) := let (m, p) := fin_to_nat_bound j in (S m).
 Next Obligation. apply Le.le_n_S; apply Le.le_0_n. Defined.
 Next Obligation. apply Lt.lt_n_S; assumption. Defined.
+
+Arguments exist {A} {P} _ _.
 
 Equations nat_bound_to_fin (n : nat) (m : {m : nat | m < n}) : fin n :=
 nat_bound_to_fin 0 (exist _ p) :=! p;
@@ -68,8 +70,8 @@ Proof.
 Qed.
 
 Equations iget {A : Set} {n : nat} (l : ilist A n) (i : fin n) : A :=
-iget (Cons x t) (fz n) := x;
-iget (Cons _ t) (fs n j) := iget t j.
+iget (Cons x t) fz := x;
+iget (Cons _ t) (fs j) := iget t j.
 
 Equations isnoc {A : Set} {n : nat} (l : ilist A n) (x : A) : ilist A (S n) :=
 isnoc Nil x := Cons x Nil;
@@ -88,7 +90,7 @@ Qed.
 
 Equations convert_ilist {A : Set} {n m : nat} (p : n = m) (l : ilist A n) : ilist A m :=
 convert_ilist p Nil with p => { | eq_refl := Nil };
-convert_ilist p (Cons a l) with p => | eq_refl := Cons a (convert_ilist eq_refl l).
+convert_ilist p (Cons a l) with p => { | eq_refl := Cons a (convert_ilist eq_refl l) }.
 Transparent convert_ilist.
 Lemma convert_ilist_refl {A} (n : nat) (l : ilist A n) : convert_ilist eq_refl l = l.
 Proof.

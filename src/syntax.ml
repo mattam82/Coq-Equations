@@ -306,13 +306,12 @@ let pattern_of_glob_constr env avoid gc =
   let rec constructor ?loc c l =
     let ind, _ = c in
     let nparams = Inductiveops.inductive_nparams ind in
-    (* let nargs = Inductiveops.constructor_nrealargs c in
-     * let len = List.length l in *)
-    let l =
-      List.skipn nparams l
-      (* if len < nargs then List.make (nargs - len) (DAst.make ?loc (GHole (Internal ) @ l
-       * else l *)
-    in
+    let nargs = Inductiveops.constructor_nrealargs c in
+    let l = List.skipn nparams l in
+    if List.length l < nargs then
+      user_err_loc (loc, "pattern_of_glob_constr", str "Constructor is applied to too few arguments")
+    else if List.length l > nargs then
+      user_err_loc (loc, "pattern_of_glob_constr", str "Constructor is applied to too many arguments");
     Dumpglob.add_glob ?loc (ConstructRef c);
     PUCstr (c, nparams, List.map (DAst.map_with_loc aux) l)
   and aux ?loc = function

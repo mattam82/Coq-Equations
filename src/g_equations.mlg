@@ -347,15 +347,6 @@ open Prim
 open Constr
 open Syntax
 
-let bar_head =
-  Pcoq.Entry.of_parser "impl_ident_head"
-    (fun strm ->
-      match stream_nth 0 strm with
-        | KEYWORD "|" ->
-          stream_njunk 1 strm;
-          ()
-        | _ -> raise Stream.Failure)
-
 }
 
 GRAMMAR EXTEND Gram
@@ -379,7 +370,7 @@ GRAMMAR EXTEND Gram
    [ [ id = ident -> { (loc, id) } ] ] ;
 
   equation:
-    [ [ bar_head; pats = LIST1 constr SEP "|"; r = rhs -> { (RefinePats pats, r) }
+    [ [ "|"; pats = LIST1 lconstr SEP "|"; r = rhs -> { (RefinePats pats, r) }
       | pat = pat; r = rhs -> { (SignPats pat, r) }
     ] ]
   ;
