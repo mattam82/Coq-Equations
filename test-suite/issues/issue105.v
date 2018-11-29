@@ -26,7 +26,7 @@ Equations (struct f) do_foo (f : foo) : forall (val : foo_type f), nat := {
     do_sum (f : foo) (otherval : foo_type f) (fs : list foo) :
       forall val : compact_sum (List.map foo_type fs), nat := {
     do_sum _ _ nil := fun val => 0;
-    do_sum f otherval (cons hd tl) <= (fun val => do_sum f otherval tl val) => {
+    do_sum f otherval (cons hd tl) with (fun val => do_sum f otherval tl val) => {
       do_sum _ _ (cons var nil) _ :=
         fun val => do_foo var val;
       do_sum _ _ (cons hd tl) do_foo_tl := fun val =>

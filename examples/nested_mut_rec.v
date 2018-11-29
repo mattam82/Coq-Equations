@@ -19,7 +19,7 @@ Inductive term : Set :=
     the case of variables. *)
 
 Equations subst_var (k : nat) (u : term) (t : nat) : term :=
-  subst_var k u n <= k ?= n =>
+  subst_var k u n with k ?= n =>
    { | Eq => u;                                                                
      | Gt => Var n;
      | Lt => Var (pred n) }.

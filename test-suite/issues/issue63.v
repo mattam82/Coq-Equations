@@ -49,8 +49,8 @@ Set Program Mode.
 Equations comp_assoc_simpl_rec {a : nat} {tys dom cod}
           (t : @Term a tys dom cod) : {t' : @Term a tys dom cod | term_size t' <= term_size t}  :=
   comp_assoc_simpl_rec t by rec (term_size t) lt :=
-  comp_assoc_simpl_rec (Comp f g) <= comp_assoc_simpl_rec f => {
-    | exist (Comp i j) Hle => Comp i (comp_assoc_simpl_rec (Comp j g));
+  comp_assoc_simpl_rec (Comp f g) with comp_assoc_simpl_rec f => {
+    | exist _ (Comp i j) Hle => Comp i (comp_assoc_simpl_rec (Comp j g));
     | x => Comp x (comp_assoc_simpl_rec g)
   };
   comp_assoc_simpl_rec x := x.

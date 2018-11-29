@@ -34,10 +34,10 @@ Definition id {A : Type} (a : A) : A := a.
 Section TypeEq.
 
   Equations eq_sym (A : Type) (x y : A) (eq : Id x y) : Id y x :=
-  eq_sym _ _ _ id_refl := id_refl _.
+  eq_sym id_refl := id_refl _.
 
   Equations eq_trans (A : Type) (x y z : A) (eq1 : Id x y) (eq2 : Id y z) : Id x z :=
-  eq_trans _ _ _ _ id_refl id_refl := id_refl _.
+  eq_trans id_refl id_refl := id_refl _.
 End TypeEq.
 
 Arguments Id {A} _ _.
@@ -149,24 +149,28 @@ Definition path_forall `{Funext} {A : Type} {P : A -> Type} (f g : forall x : A,
   (@apD10 A P f g)^^-1.
 
 Open Scope equations_scope.
+
+Unset Implicit Arguments.
+Arguments sigmaI {A} {B}.
+
 Equations path_sigma {A : Type} (P : A -> Type) (u v : sigma A P)
   (p : u.1 = v.1) (q : p # u.2 = v.2)
 : u = v :=
-path_sigma _ (sigmaI _ _) (sigmaI _ _) id_refl id_refl := id_refl.
+path_sigma _ (sigmaI _ _) (sigmaI _ _) 1 1 := 1.
 
 Equations path_prod_uncurried {A B : Type} (z z' : A * B)
            (pq : (fst z = fst z') * (snd z = snd z')): z = z' :=
-path_prod_uncurried (pair _ _) (pair _ _) (pair id_refl id_refl) := id_refl.
+path_prod_uncurried (_, _) (_, _) (1, 1) := 1.
 
 Definition path_prod {A B : Type} (z z' : A * B) (e : fst z = fst z') (f : snd z = snd z') : z = z' :=
   path_prod_uncurried _ _ (e, f).
 
 Equations path_prod_eq {A B : Type} (z z' : A * B) (e : fst z = fst z') (f : snd z = snd z') : z = z' :=
-path_prod_eq (pair _ _) (pair _ _) id_refl id_refl := id_refl.
+path_prod_eq (_, _) (_, _) 1 1 := 1.
 
 Equations eta_path_prod {A B : Type} {z z' : A * B} (p : z = z') :
   path_prod _ _ (ap fst p) (ap snd p) = p :=
-eta_path_prod {z:=(pair _ _)} id_refl := id_refl.
+eta_path_prod (z:=(pair _ _)) id_refl := id_refl.
 
 Definition path_prod' {A B : Type} {x x' : A} {y y' : B}
   : (x = x') -> (y = y') -> ((x,y) = (x',y'))
@@ -175,12 +179,12 @@ Definition path_prod' {A B : Type} {x x' : A} {y y' : B}
 Equations ap_fst_path_prod {A B : Type} {z z' : A * B}
   (p : fst z = fst z') (q : snd z = snd z') :
   ap fst (path_prod _ _ p q) = p :=
-ap_fst_path_prod {z:=(pair _ _)} {z':=(pair _ _)} id_refl id_refl := id_refl.
+ap_fst_path_prod (z:=(pair _ _)) (z':=(pair _ _)) id_refl id_refl := id_refl.
 
 Equations ap_snd_path_prod {A B : Type} {z z' : A * B}
   (p : fst z = fst z') (q : snd z = snd z') :
   ap snd (path_prod _ _ p q) = q :=
-ap_snd_path_prod {z:=(pair _ _)} {z':=(pair _ _)} id_refl id_refl := id_refl.
+ap_snd_path_prod (z:=(_, _)) (z':=(_, _)) id_refl id_refl := id_refl.
 
 Instance isequiv_path_prod {A B : Type} {z z' : A * B}
 : IsEquiv (path_prod_uncurried z z').
@@ -297,8 +301,8 @@ ap_compose f g id_refl := id_refl.
 
 Equations concat_A1p {A : Type} {g : A -> A} (p : forall x, g x = x) {x y : A} (q : x = y) :
   (ap g q) @ (p y) = (p x) @ q :=
-concat_A1p {g:=g} p {x:=x} id_refl with p x, g x :=
-concat_A1p p id_refl id_refl _ := id_refl.
+concat_A1p (g:=g) p (x:=x) 1 with p x, g x :=
+  { concat_A1p p 1 1 _ := 1 }.
 
 Ltac remember_let H ::=
   lazymatch goal with
@@ -424,7 +428,7 @@ Proof.
   rewrite concat_pV_p; apply concat_Vp.
 Defined.
 
-Definition path_contr A {H:Contr A} (x y : A) : x = y
+Definition path_contr {A} {H:Contr A} (x y : A) : x = y
   := concat (eq_sym (@contr _ H x)) (@contr _ H y).
 
 Definition transport_inv A {P : A -> Type} (x y :A) (e : x = y) (u:P x) v:
@@ -437,38 +441,37 @@ Definition contr_sigma A {P : A -> Type}
   : Contr (sigma A P).
 Proof.
   exists &(center A & center (P (center A))).
-  intros [a Ha]. unshelve refine (path_sigma _ _ _ _).
+  intros [a Ha]. unshelve refine (path_sigma _ _ _ _ _).
   simpl. apply H. simpl. apply transport_inv.
   apply (H0 (center A)).
 Defined.
 
-Equations path_sigma_uncurried (A : Type) (P : A -> Type) (u v : sigma A P)
+Equations path_sigma_uncurried {A : Type} {P : A -> Type} (u v : sigma A P)
   (pq : sigma _ (fun p => p # u.2 = v.2))
   : u = v :=
-path_sigma_uncurried _ _ (sigmaI u1 u2) (sigmaI _ _) (sigmaI id_refl id_refl) :=
-  id_refl.
+path_sigma_uncurried &(u1 & u2) &(_ & _) &(1 & 1) := 1.
 Transparent path_sigma_uncurried.
 
-Definition pr1_path A `{P : A -> Type} {u v : sigma A P} (p : u = v)
+Definition pr1_path {A} `{P : A -> Type} {u v : sigma A P} (p : u = v)
 : u.1 = v.1
   := ap (@pr1 _ _) p.
 
 Notation "p ..1" := (pr1_path p) (at level 3).
 
-Definition pr2_path A `{P : A -> Type} {u v : sigma A P} (p : u = v)
+Definition pr2_path {A} `{P : A -> Type} {u v : sigma A P} (p : u = v)
 : p..1 # u.2 = v.2.
   destruct p. apply id_refl.
 Defined.
 
 Notation "p ..2" := (pr2_path p) (at level 3).
 
-Definition eta_path_sigma_uncurried A `{P : A -> Type} {u v : sigma A P}
+Definition eta_path_sigma_uncurried {A} `{P : A -> Type} {u v : sigma A P}
            (p : u = v) : path_sigma_uncurried _ _ &(p..1& p..2) = p.
   destruct p. apply id_refl.
 Defined.
 
 Definition eta_path_sigma A `{P : A -> Type} {u v : sigma A P} (p : u = v)
-: path_sigma _ _ (p..1) (p..2) = p
+: path_sigma _ _ _ (p..1) (p..2) = p
   := eta_path_sigma_uncurried p.
 
 Definition path_sigma_equiv {A : Type} (P : A -> Type) (u v : sigma A P):
@@ -567,7 +570,7 @@ Instance contr_unit : Contr unit | 0 := let x := {|
 |} in x.
 
 
-Definition path2_contr A {H:Contr A} {x y : A} (p q : x = y) : p = q.
+Definition path2_contr {A} {H:Contr A} {x y : A} (p q : x = y) : p = q.
   assert (K : forall (r : x = y), r = path_contr x y).
   intro r; destruct r; symmetry; now apply concat_Vp.
   apply (transitivity (y:=path_contr x y)).

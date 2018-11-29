@@ -363,7 +363,7 @@ GRAMMAR EXTEND Gram
   ;
 
   deppat_elim:
-    [ [ "["; l = LIST0 constr SEP "|"; "]" -> { l } ] ]
+    [ [ "["; l = LIST0 lconstr SEP "|"; "]" -> { l } ] ]
   ;
 
   identloc :
@@ -406,7 +406,7 @@ GRAMMAR EXTEND Gram
   where_clause:
     [ [ r = rec_annot;
         id = lident; l = binders2; ":"; t = Constr.lconstr;
-        ":="; eqs = deppat_equations -> { ((id, r, l, t), eqs) } ] ]
+        ":="; eqs = sub_equations -> { ((id, r, l, t), eqs) } ] ]
   ;
   where:
     [ [ "where"; l = LIST1 where_clause -> { l }
@@ -432,7 +432,7 @@ GRAMMAR EXTEND Gram
 
   sub_equations:
     [ [ "{"; l = deppat_equations; "}" -> { l  }
-      (* | l = deppat_equations -> { l } *)
+      | l = deppat_equations -> { l }
     ] ]
   ;
 

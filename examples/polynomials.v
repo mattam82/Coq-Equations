@@ -212,7 +212,7 @@ induction p1 as [ | z Hz | n b p1 | n b p1 IHp q1 IHq ]
 [dependent elimination p2 as [poly_z | poly_c z i] |
  dependent elimination p2 as [poly_z | poly_c z i] |
  dependent elimination p2 as
-     [poly_l n b' p2 | poly_s n b' p2 q2] ..].
+     [@poly_l n b' p2 | @poly_s n b' p2 q2] ..].
   all:(intros; try rename n0 into n; auto;
       try (specialize (Hcoef mono_z); simp get_coef in Hcoef; subst z;
            (elim i || elim Hz ||
@@ -268,8 +268,8 @@ Qed.
 Equations eval {n} {b} (p : poly b n) (v : Vector.t Z n) : Z :=
   eval poly_z         nil           := 0%Z;
   eval (poly_c z _)   nil           := z;
-  eval (poly_l p)     (cons _ _ xs)   := eval p xs;
-  eval (poly_s p1 p2) (cons y _ ys) :=
+  eval (poly_l p)     (cons _ xs)   := eval p xs;
+  eval (poly_s p1 p2) (cons y ys) :=
     (eval p1 ys + y * eval p2 (cons y ys))%Z.
 
 (* Equations eval {n} {b} (p : poly b n) (v : Vector.t Z n) : Z *)
@@ -360,8 +360,7 @@ Equations plus {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) : { b : bool & po
   plus poly_z        poly_z          := apoly poly_z;
   plus poly_z        (poly_c y ny)   := apoly (poly_c y ny);
   plus (poly_c x nx) poly_z          := apoly (poly_c x nx);
-  plus (poly_c x nx) (poly_c y ny)
-      <= (x + y)%Z => {
+  plus (poly_c x nx) (poly_c y ny)   with (x + y)%Z => {
                  | Z0 => apoly poly_z ;
                  | Zpos z' => apoly (poly_c (Zpos z') I) ;
                  | Zneg z' => apoly (poly_c (Zneg z') I) };
@@ -369,10 +368,9 @@ Equations plus {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) : { b : bool & po
   plus (poly_l p1)    (poly_s p2 q2) := apoly (poly_s (plus p1 p2).2 q2);
   plus (poly_s p1 q1) (poly_l p2)    := apoly (poly_s (plus p1 p2).2 q1);
 
-  plus (poly_s p1 q1) (poly_s p2 q2)
-     <= plus q1 q2 => {
-       | (existT false q3) => apoly (poly_s (plus p1 p2).2 q3);
-       | (existT true _)   => apoly (poly_l (plus p1 p2).2) }.
+  plus (poly_s p1 q1) (poly_s p2 q2) with plus q1 q2 => {
+       | (existT _ false q3) => apoly (poly_s (plus p1 p2).2 q3);
+       | (existT _ true _)   => apoly (poly_l (plus p1 p2).2) }.
 
 (* (** The induction principle cannot be defined using a raw fixpoint, the guard condition fails. *)
 (*     However, as deep pattern-matching is not necessary, simple (dependent) induction can be used *)
@@ -482,8 +480,8 @@ Qed.
 
 Equations poly_l_or_s {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 (S n)) :
   {b : bool & poly b (S n)} :=
-poly_l_or_s p1 {b2 := true} p2 := apoly (poly_l p1);
-poly_l_or_s p1 {b2 := false} p2 := apoly (poly_s p1 p2).
+poly_l_or_s p1 (b2 := true) p2 := apoly (poly_l p1);
+poly_l_or_s p1 (b2 := false) p2 := apoly (poly_s p1 p2).
                                         
 Lemma poly_l_or_s_eval : forall {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 (S n)) h v,
     eval (poly_l_or_s p1 p2).2 (Vector.cons h v) =
@@ -527,8 +525,8 @@ Equations mult n b1 (p1 : poly b1 n) b2 (p2 : poly b2 n) : { b : bool & poly b n
       | Zpos z' => apoly (poly_c (Zpos z') I)
       | Zneg z' => apoly (poly_c (Zneg z') I)
     end;
-    mult ?(S n) ?(b) (poly_l n b p1)    b2 q := mult_l q (mult _ _ p1);
-    mult ?(S n) ?(false) (poly_s n b p1 q1) b2 q := mult_s q (mult _ _ p1) (mult _ _ q1).
+    mult ?(S n) ?(b) (@poly_l n b p1)    b2 q := mult_l q (mult _ _ p1);
+    mult ?(S n) ?(false) (@poly_s n b p1 q1) b2 q := mult_s q (mult _ _ p1) (mult _ _ q1).
 Arguments mult {n} {b1} p1 {b2} p2.
 
 (** The proof that multiplication is a morphism for evaluation works as usual by induction,

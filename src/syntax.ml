@@ -201,7 +201,7 @@ let free_vars_of_constr_expr fid c =
     | { CAst.v = CRef (qid, _) } when qualid_is_ident qid ->
       let id = qualid_basename qid in
       if Id.List.mem id bdvars then l
-      else if Id.equal id fid then l
+      else if Option.cata (Id.equal id) false fid then l
       else
         (try
            match Nametab.locate_extended (Libnames.qualid_of_ident id) with
@@ -307,11 +307,16 @@ let pattern_of_glob_constr env avoid gc =
     let ind, _ = c in
     let nparams = Inductiveops.inductive_nparams ind in
     let nargs = Inductiveops.constructor_nrealargs c in
-    let l = List.skipn nparams l in
-    if List.length l < nargs then
-      user_err_loc (loc, "pattern_of_glob_constr", str "Constructor is applied to too few arguments")
-    else if List.length l > nargs then
-      user_err_loc (loc, "pattern_of_glob_constr", str "Constructor is applied to too many arguments");
+    let l =
+      if List.length l < nargs then
+        user_err_loc (loc, "pattern_of_glob_constr", str "Constructor is applied to too few arguments")
+      else
+        if List.length l = nparams + nargs then
+          List.skipn nparams l
+        else if List.length l = nargs then l
+        else
+          user_err_loc (loc, "pattern_of_glob_constr", str "Constructor is applied to too many arguments");
+    in
     Dumpglob.add_glob ?loc (ConstructRef c);
     PUCstr (c, nparams, List.map (DAst.map_with_loc aux) l)
   and aux ?loc = function
@@ -387,11 +392,11 @@ let interp_eqn initi is_rec env ty impls eqn =
     let loc, pats =
       match pat with
       | SignPats pat ->
-        avoid := Id.Set.union !avoid (ids_of_pats i [pat]);
+        avoid := Id.Set.union !avoid (ids_of_pats (Some i) [pat]);
         let loc = Constrexpr_ops.constr_loc pat in
         loc, interp_pat (Some (i, ty, impls)) pat
       | RefinePats pats ->
-        avoid := Id.Set.union !avoid (ids_of_pats i pats);
+        avoid := Id.Set.union !avoid (ids_of_pats None pats);
         let loc = Constrexpr_ops.constr_loc (List.hd pats) in
         let pats = List.map (interp_pat None) pats in
         let pats = List.map (fun x -> List.hd x) pats in

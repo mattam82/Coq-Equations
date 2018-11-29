@@ -27,7 +27,7 @@ Equations(struct t) lookup (t:Foo) (val: foo_type t) (what: list nat) : option n
                                   (val : compact_prod (map foo_type ss)) 
                                   (what_hd: nat) (what_tl: list nat) : option nat := {
   lookup_prod nil _ _ _ := None;
-  lookup_prod (cons shd stl) _ _ what_tl <= (fun val what_hd => lookup_prod stl val what_hd what_tl) => {
+  lookup_prod (cons shd stl) _ _ what_tl with (fun val what_hd => lookup_prod stl val what_hd what_tl) => {
     lookup_prod (cons shd nil) val 0 what_tl _ := lookup shd val what_tl;
     lookup_prod (cons shd nil) _ _ _ _ := None;
     lookup_prod (cons shd _) val 0 what_tl _ := lookup shd (fst val) what_tl;

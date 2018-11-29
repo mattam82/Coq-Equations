@@ -33,7 +33,7 @@ Equations (struct t) do_foo (t : Foo) : forall (val : foo_type t), nat := {
     (* do_foo1 (cons hd nil) := fun val => do_foo hd val; *)
     (* do_foo1 (cons hd tl) := fun val => 0 } *)
     (* Attempting to work around https://github.com/mattam82/Coq-Equations/issues/78 *)
-    do_foo1 (cons hd tl) <= (fun val => do_foo1 tl val) => {
+    do_foo1 (cons hd tl) with (fun val => do_foo1 tl val) => {
       do_foo1 (cons hd nil) _ := fun val => do_foo hd val;
       do_foo1 (cons hd _) do_foo_tl := fun val =>
         (do_foo hd (fst val)) + (do_foo_tl (snd val))}}

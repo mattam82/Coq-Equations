@@ -239,7 +239,7 @@ Section pmconcat.
 
   Equations pmconcat (I : { i : nat | i > 0 }) (x : list M) : M :=
   pmconcat i x by rec (length x) lt :=
-    pmconcat i x <= dec ((` i <=? 1) || (length x <=? ` i))%bool => {
+    pmconcat i x with dec ((` i <=? 1) || (length x <=? ` i))%bool => {
     | left H => mconcat x ;
     | right Hd => pmconcat i (map mconcat (chunk i x)) }.
 

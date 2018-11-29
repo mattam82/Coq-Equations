@@ -7,7 +7,7 @@ Inductive foo: Set :=
 | Foo2 : list foo -> foo.
 
 Equations f (x: foo) : nat := {
-  f (Foo1 l):= aux1 l;
+  f (Foo1 l) := aux1 l;
   f (Foo2 l) := aux2 l
 }
 

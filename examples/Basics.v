@@ -60,7 +60,7 @@ End Obligations.
 Import List.
 Equations app_with {A} (l l' : list A) : list A :=
 app_with nil l := l ;
-app_with (cons a v) l <= app_with v l => {
+app_with (cons a v) l with app_with v l => {
   | vl := cons a vl }.
 
 
@@ -71,7 +71,7 @@ Obligation Tactic := program_simpl ; auto with arith.
 
 Equations equal (n m : nat) : { n = m } + { n <> m } :=
 equal O O := in_left ;
-equal (S n) (S m) <= equal n m => {
+equal (S n) (S m) with equal n m => {
   equal (S n) (S ?(n)) (left eq_refl) := left eq_refl ;
   equal (S n) (S m) (right p) := in_right } ;
 equal x y := in_right.
@@ -122,7 +122,7 @@ Section FilterDef.
 
   Equations filter (l : list A) : list A :=
   filter nil := nil ;
-  filter (cons a l) <= p a => {
+  filter (cons a l) with p a => {
                        | true := a :: filter l ;
                        | false := filter l }.
 
@@ -159,7 +159,7 @@ Hint Resolve lt_n_Sn : lt.
 Equations testn (n : nat) : nat :=
 testn n by rec n lt :=
 testn 0 := 0 ;
-testn (S n) <= testn n => {
+testn (S n) with testn n => {
   | 0 := S 0 ;
   | (S n') := S n' }.
 
@@ -178,7 +178,7 @@ Local Open Scope vect_scope.
 
 Equations vapp {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
   vapp []v w := w ;
-  vapp (Vector.cons a n v) w := a |:| vapp v w.
+  vapp (Vector.cons a v) w := a |:| vapp v w.
 
 (** We can also support well-founded recursion on indexed datatypes. *)
 
@@ -218,7 +218,7 @@ Section foo.
   Equations unzip {n} (v : vector (A * B) n) : vector A n * vector B n :=
   unzip v by rec (signature_pack v) (@t_subterm (A * B)) :=
   unzip []v := ([]v, []v) ;
-  unzip (Vector.cons (pair x y) n v) with unzip v := {
+  unzip (Vector.cons (x, y) v) with unzip v := {
     | pair xs ys := (Vector.cons x xs, Vector.cons y ys) }.
 End foo.
 
@@ -288,18 +288,18 @@ Import Vector.
 
 Equations vector_append_one {A n} (v : vector A n) (a : A) : vector A (S n) :=
 vector_append_one nil a := cons a nil;
-vector_append_one (cons a' n v) a := cons a' (vector_append_one v a).
+vector_append_one (cons a' v) a := cons a' (vector_append_one v a).
 
 Equations vrev {A n} (v : vector A n) : vector A n :=
 vrev nil := nil;
-vrev (cons a n v) := vector_append_one (vrev v) a.
+vrev (cons a v) := vector_append_one (vrev v) a.
 
 Definition cast_vector {A n m} (v : vector A n) (H : n = m) : vector A m.
 intros; subst; assumption. Defined.
 
 Equations(nocomp) vrev_acc {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
 vrev_acc nil w := w;
-vrev_acc (cons a n v) w := cast_vector (vrev_acc v (cons a w)) _.
+vrev_acc (cons a v) w := cast_vector (vrev_acc v (cons a w)) _.
 (* About vapp'. *)
 
 Record vect {A} := mkVect { vect_len : nat; vect_vector : vector A vect_len }.
@@ -318,9 +318,9 @@ Ltac rec ::= Subterm.rec_wf_eqns.
 (** We split by well-founded recursion on the index [m] here. *)
 
 Equations split {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
-split {m:=m} xs by rec m :=
-split {m:=O} xs := append nil xs ;
-split {m:=(S m)} {n:=n} (cons x ?(m + n) xs) <= split xs => {
+split (m:=m) xs by rec m :=
+split (m:=O) xs := append nil xs ;
+split (m:=(S m)) (n:=n) (cons x xs) with split xs => {
   | append xs' ys' := append (cons x xs') ys' }.
 
 (** The [split] and [vapp] functions are inverses. *)
@@ -343,9 +343,9 @@ Require Import Bvector.
 (** This function can also be defined by structural recursion on [m]. *)
 
 Equations split_struct {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
-split_struct {m:=0} xs := append nil xs ;
-split_struct {m:=(S m)} (cons x _ xs) <= split_struct xs => {
-  split_struct {m:=(S m)} (cons x _ xs) (append xs' ys') := append (cons x xs') ys' }.
+split_struct (m:=0) xs := append nil xs ;
+split_struct (m:=(S m)) (cons x xs) with split_struct xs => {
+  split_struct (m:=(S m)) (cons x xs) (append xs' ys') := append (cons x xs') ys' }.
 
 Lemma split_struct_vapp : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
   let 'append v' w' := split_struct (vapp v w) in
@@ -360,22 +360,22 @@ Qed.
 (** Taking the head of a non-empty vector. *)
 
 Equations vhead {A n} (v : vector A (S n)) : A := 
-vhead (cons a n v) := a.
+vhead (cons a v) := a.
 
 (** Mapping over a vector. *)
 
 Equations vmap' {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
 vmap' f nil := nil ;
-vmap' f (cons a n v) := cons (f a) (vmap' f v).
+vmap' f (cons a v) := cons (f a) (vmap' f v).
 Hint Resolve lt_n_Sn : subterm_relation.
 Transparent vmap'.
 
 (** The same, using well-founded recursion on [n]. *)
 Set Shrink Obligations.
 Equations vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
-vmap f {n:=n} v by rec n :=
-vmap f {n:=?(O)} nil := nil ;
-vmap f {n:=?(S n)} (cons a n v) := cons (f a) (vmap f v).
+vmap f (n:=n) v by rec n :=
+vmap f (n:=?(O)) nil := nil ;
+vmap f (cons a v) := cons (f a) (vmap f v).
 Unset Shrink Obligations.
 Transparent vmap.
 Eval compute in (vmap' id (@nil nat)).
@@ -423,8 +423,8 @@ Section Univ.
 End Univ.
 
 Equations vlast {A} {n} (v : vector A (S n)) : A :=
-vlast (cons a O Vnil) := a ;
-vlast (cons a (S n) v) := vlast v.
+vlast (@cons a O Vnil) := a ;
+vlast (@cons a (S n) v) := vlast v.
 Transparent vlast.
 Next Obligation.
   depind v. destruct n. constructor. simp vlast.
@@ -443,23 +443,23 @@ Defined.
   
 Equations parity (n : nat) : Parity n :=
 parity O := even 0 ;
-parity (S n) <= parity n => {
+parity (S n) with parity n => {
   parity (S ?(mult 2 k))     (even k) := odd k ;
   parity (S ?(S (mult 2 k))) (odd k)  := cast (even (S k)) _ }.
 
 (** We can halve a natural looking at its parity and using the lower truncation. *)
 
 Equations half (n : nat) : nat :=
-half n <= parity n => {
+half n with parity n => {
   half ?(S (mult 2 k)) (odd k) := k ;
   half ?(mult 2 k) (even k) := k }.
 
 Equations vtail {A n} (v : vector A (S n)) : vector A n :=
-  vtail (cons a n v') := v'.
+  vtail (cons a v') := v'.
 
 Equations diag {A n} (v : vector (vector A n) n) : vector A n :=
-diag {n:=O} nil := nil ;
-diag {n:=(S ?(n))} (cons (cons a n v) _ v') := cons a (diag (vmap vtail v')).
+diag (n:=O) nil := nil ;
+diag (n:=(S ?(n))) (cons (@cons a n v) v') := cons a (diag (vmap vtail v')).
 Transparent diag.
 
 (** FIXME: cannot be proven by structural fixpoint *)
@@ -478,11 +478,11 @@ vmake (S n) a := cons a (vmake n a).
 
 Equations vfold_right {A : nat -> Type} {B} (f : ∀ n, B -> A n -> A (S n)) (e : A 0) {n} (v : vector B n) : A n :=
 vfold_right f e nil := e ;
-vfold_right f e (cons a n v) := f n a (vfold_right f e v).
+vfold_right f e (@cons a n v) := f n a (vfold_right f e v).
 
 Equations vzip {A B C n} (f : A -> B -> C) (v : vector A n) (w : vector B n) : vector C n :=
 vzip f nil _ := nil ;
-vzip f (cons a _ v) (cons a' n v') := cons (f a a') (vzip f v v').
+vzip f (cons a v) (cons a' v') := cons (f a a') (vzip f v v').
 
 Definition transpose {A m n} : mat A m n -> mat A n m :=
   vfold_right (A:=λ m, mat A n m)
@@ -513,5 +513,5 @@ Qed.
 
 Equations assoc (x y z : nat) : x + y + z = x + (y + z) :=
 assoc 0 y z := eq_refl;
-assoc (S x) y z <= assoc x y z, x + (y + z) => {
+assoc (S x) y z with assoc x y z, x + (y + z) => {
 assoc (S x) y z eq_refl _ := eq_refl }.

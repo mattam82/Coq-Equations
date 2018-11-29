@@ -121,7 +121,7 @@ type equation_options = equation_option list
 
 val pr_equation_options : 'a -> 'b -> 'c -> 'd -> Pp.t
 
-(* val ids_of_pats : pat_expr with_loc list -> Id.Set.t *)
+val ids_of_pats : Names.Id.t option -> Constrexpr.constr_expr list -> Id.Set.t
 
 val interp_pat : Environ.env -> ?avoid:Id.Set.t ref ->
   (Id.t * EConstr.types * Impargs.manual_explicitation list) option ->

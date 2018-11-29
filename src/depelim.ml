@@ -402,7 +402,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
     | Some p ->
         (* Interpret each pattern to then produce clauses. *)
         let patterns : (Syntax.user_pat_loc) list =
-          let avoid = ref Id.Set.empty in
+          let avoid = ref (Syntax.ids_of_pats None p) in
           List.map (fun x -> List.hd (Syntax.interp_pat env ~avoid None x)) p
         in
         (* For each pattern, produce a clause. *)
