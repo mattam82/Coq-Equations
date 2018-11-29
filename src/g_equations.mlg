@@ -347,6 +347,15 @@ open Prim
 open Constr
 open Syntax
 
+let bar_head =
+  Pcoq.Entry.of_parser "impl_ident_head"
+    (fun strm ->
+      match stream_nth 0 strm with
+        | KEYWORD "|" ->
+          stream_njunk 1 strm;
+          ()
+        | _ -> raise Stream.Failure)
+
 }
 
 GRAMMAR EXTEND Gram
@@ -363,43 +372,20 @@ GRAMMAR EXTEND Gram
   ;
 
   deppat_elim:
-    [ [ "["; l = LIST0 lpatt SEP "|"; "]" -> { l } ] ]
+    [ [ "["; l = LIST0 constr SEP "|"; "]" -> { l } ] ]
   ;
 
   identloc :
    [ [ id = ident -> { (loc, id) } ] ] ;
 
   equation:
-    [ [ "|"; pats = LIST1 constr SEP "|"; r = rhs -> { (RefinePats pats, r) }
-       | pat = lconstr; r = rhs -> { (SignPats pat, r) }
+    [ [ bar_head; pats = LIST1 constr SEP "|"; r = rhs -> { (RefinePats pats, r) }
+      | pat = pat; r = rhs -> { (SignPats pat, r) }
     ] ]
   ;
 
-  ipatt:
-    [ [ "{"; id = identloc; ":="; p = patt; "}" -> { (Some id, p) }
-      | p = constr -> { (None, p) }
-      ] ]
-  ;
-    
-  patt:
-    [ [ c = lconstr -> { c }
-      (*     id = smart_global -> { loc, PEApp ((loc,id), []) }
-       * | "_" -> { loc, PEWildcard }
-       * | "("; p = lpatt; ")" -> { p }
-       * | "?("; c = Constr.lconstr; ")" -> { loc, PEInac c }
-       * | p = pattern LEVEL "0" -> { loc, PEPat p } *)
-    ] ]
-  ;
-
-  pat_head:
-    [ [ id=smart_global -> { (loc, id) }
-    ] ]
-  ;
-
-  lpatt:
-    [ [(*  head = pat_head; pats = LIST0 patt -> { loc, PEApp (head, pats) }
-       * | *) p = patt -> { p }
-    ] ]
+  pat:
+    [ [ p = lconstr -> { p } ] ]
   ;
 
   refine:
@@ -429,7 +415,7 @@ GRAMMAR EXTEND Gram
   where_clause:
     [ [ r = rec_annot;
         id = lident; l = binders2; ":"; t = Constr.lconstr;
-        ":="; eqs = sub_equations -> { ((id, r, l, t), eqs) } ] ]
+        ":="; eqs = deppat_equations -> { ((id, r, l, t), eqs) } ] ]
   ;
   where:
     [ [ "where"; l = LIST1 where_clause -> { l }
@@ -455,7 +441,7 @@ GRAMMAR EXTEND Gram
 
   sub_equations:
     [ [ "{"; l = deppat_equations; "}" -> { l  }
-      | l = deppat_equations -> { l }
+      (* | l = deppat_equations -> { l } *)
     ] ]
   ;
 
