@@ -396,7 +396,8 @@ let define_by_eqs ~poly opts eqs nt =
   let evd = ref (Evd.from_env env) in
   let interp_arities (((loc,i),rec_annot,l,t,by),clauses as ieqs) =
     let ienv, ((env', sign), impls) = Equations_common.evd_comb1 (interp_context_evars env) evd l in
-    let arity = Equations_common.evd_comb1 (interp_type_evars env' ?impls:None) evd t in
+    let (arity, impls') = Equations_common.evd_comb1 (interp_type_evars_impls env' ?impls:None) evd t in
+    let impls = impls @ impls' in
     let sign = nf_rel_context_evar ( !evd) sign in
     let arity = nf_evar ( !evd) arity in
     let default_recarg () =
@@ -566,12 +567,11 @@ let define_by_eqs ~poly opts eqs nt =
   and adapt_clauses progid clauses = List.map (adapt_clause progid) clauses in
   let covering env p eqs =
     let sign = nf_rel_context_evar !evd p.program_sign in
-    (* let sign, arity, clauses = Covering.adjust_sign_arity env !evd p.program_sign p.program_arity eqs in
-     * let p =
-     *   { p with program_sign = sign;
-     *            program_arity = arity;
-     *            program_oarity = arity }
-     * in *)
+    let sign, arity, clauses = Covering.adjust_sign_arity env !evd sign p.program_arity eqs in
+    let p =
+      { p with program_sign = sign;
+               program_arity = arity }
+    in
     let prob, eqs =
       match p.program_rec with
       | Some (Structural ann) ->
@@ -602,9 +602,10 @@ let define_by_eqs ~poly opts eqs nt =
     let arity = nf_evar !evd p.program_arity in
     let idinfo = (p.program_id,data) in
     Feedback.msg_debug Pp.(str"Launching covering on "++ pr_clauses env eqs);
-    covering env evd idinfo eqs [Ident p.program_id] prob arity
+    p, covering env evd idinfo eqs [Ident p.program_id] prob arity
   in
   let coverings = List.map2 (covering env) arities equations in
+  let arities, coverings = List.split coverings in
   let status = Define false in
   let fix_proto_ref = destConstRef (Lazy.force coq_fix_proto) in
   let _kind = (Decl_kinds.Global, poly, Decl_kinds.Definition) in

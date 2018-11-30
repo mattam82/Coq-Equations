@@ -819,11 +819,16 @@ let adjust_sign_arity env evars sign ty clauses =
         max acc len) 0 clauses
   in
   let fullty = it_mkProd_or_subst env evars ty sign in
-  let sign, ty = decompose_prod_n_assum evars max_args fullty in
+  let sign, ty =
+    try decompose_prod_n_assum evars max_args fullty
+    with CErrors.UserError _ ->
+      user_err_loc (None, "covering", str "Too many patterns in clauses for this type")
+  in
   let check_clause (loc, lhs, rhs) =
     if List.length lhs < max_args then user_err_loc (loc, "covering", str "This clause has not enough arguments")
     else ()
   in List.iter check_clause clauses;
+  let sign = Namegen.name_context env evars sign in
   sign, ty, clauses
 
 let lets_of_ctx env ctx evars s =
