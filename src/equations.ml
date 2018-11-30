@@ -545,6 +545,25 @@ let define_by_eqs ~poly opts eqs nt =
       ()
   in
   let fixdecls = nf_rel_context_evar !evd fixdecls in
+  let rec adapt_clause progid (loc, pats, rhs as clause) =
+    match rec_info with
+    | Some (Guarded l) ->
+      let addpat (id, k) =
+        match k with
+        | NestedOn None when Id.equal id progid -> None
+        | _ -> Some (DAst.make (PUVar (id, false)))
+      in
+      let structpats = List.map_filter addpat l in
+      let pats = structpats @ pats in
+      Feedback.msg_debug Pp.(str "Patterns: " ++ pr_user_pats env pats);
+      (loc, pats, adapt_rhs progid rhs)
+    | _ -> clause
+  and adapt_rhs progid = function
+    | Syntax.Refine (c, eqs) -> Refine (c, adapt_clauses progid eqs)
+    | Program (c, w) -> Program (c, w)
+    | Empty i -> Empty i
+    | x -> x
+  and adapt_clauses progid clauses = List.map (adapt_clause progid) clauses in
   let covering env p eqs =
     let sign = nf_rel_context_evar !evd p.program_sign in
     (* let sign, arity, clauses = Covering.adjust_sign_arity env !evd p.program_sign p.program_arity eqs in
@@ -556,19 +575,24 @@ let define_by_eqs ~poly opts eqs nt =
     let prob, eqs =
       match p.program_rec with
       | Some (Structural ann) ->
-        (match ann with
-         | NestedOn None -> (** Actually the definition is not self-recursive *)
-           let fixdecls =
-             List.filter (fun decl ->
-                 let na = Context.Rel.Declaration.get_name decl in
-                 let id = Nameops.Name.get_id na in
-                 not (Id.equal id p.program_id)) fixdecls
-           in
-           id_subst (sign @ fixdecls)
-         | _ -> id_subst (sign @ fixdecls)), eqs
+        let prob =
+          match ann with
+          | NestedOn None -> (** Actually the definition is not self-recursive *)
+            let fixdecls =
+              List.filter (fun decl ->
+                  let na = Context.Rel.Declaration.get_name decl in
+                  let id = Nameops.Name.get_id na in
+                  not (Id.equal id p.program_id)) fixdecls
+            in
+            id_subst (sign @ fixdecls)
+          | _ -> id_subst (sign @ fixdecls)
+        in
+        let eqs = adapt_clauses p.program_id eqs in
+        prob, eqs
       | Some (WellFounded (term, rel, l)) ->
         let pats =
-          List.map (fun decl -> DAst.make (PUVar (Name.get_id (Context.Rel.Declaration.get_name decl), false))) sign in
+          List.map (fun decl ->
+              DAst.make (PUVar (Name.get_id (Context.Rel.Declaration.get_name decl), false))) sign in
         let clause =
           [None, pats, Rec (term, rel, Some (p.program_loc, p.program_id), eqs)]
         in
