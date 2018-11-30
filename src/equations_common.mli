@@ -14,7 +14,6 @@ open Ltac_plugin
 type 'a peuniverses = 'a * EConstr.EInstance.t
 
 (* Options *)
-val ocaml_splitting : bool ref
 val simplify_withK : bool ref
 val simplify_withK_dec : bool ref
 val equations_transparent : bool ref

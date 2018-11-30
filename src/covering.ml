@@ -644,20 +644,7 @@ let push_mapping_context sigma decl (g,p,d) =
   let decl' = map_rel_declaration (specialize_constr sigma p) decl in
   (decl' :: g, (PRel 1 :: List.map (lift_pat 1) p), decl :: d)
 
-let invert_subst env sigma (g,p,d) =
-  let ar = Array.make (List.length g) (PRel 0) in
-  let subst i = function
-    | PRel j ->
-      ar.(j-1) <- PRel (i+1)
-    | PHide j ->
-      ar.(j-1) <- PHide (i+1)
-    | _ -> assert false
-  in
-  let () = List.iteri subst p in
-  mk_ctx_map env sigma d (Array.to_list ar) g
-(* d, Array.to_list ar, g *)
-
-let lift_subst env evd (ctx : context_map) (g : rel_context) = 
+let lift_subst env evd (ctx : context_map) (g : rel_context) =
   let map = List.fold_right (fun decl acc -> push_mapping_context evd decl acc) g ctx in
   check_ctx_map env evd map
 
@@ -825,6 +812,20 @@ let matches_user ((phi,p',g') : context_map) (p : user_pats) =
   try UnifSuccess (match_user_patterns (filter (fun x -> not (hidden x)) (rev p')) p)
   with Conflict -> UnifFailure | Stuck -> UnifStuck
 
+let adjust_sign_arity env evars sign ty clauses =
+  let max_args =
+    List.fold_left (fun acc (_, lhs, rhs) ->
+        let len = List.length lhs in
+        max acc len) 0 clauses
+  in
+  let fullty = it_mkProd_or_subst env evars ty sign in
+  let sign, ty = decompose_prod_n_assum evars max_args fullty in
+  let check_clause (loc, lhs, rhs) =
+    if List.length lhs < max_args then user_err_loc (loc, "covering", str "This clause has not enough arguments")
+    else ()
+  in List.iter check_clause clauses;
+  sign, ty, clauses
+
 let lets_of_ctx env ctx evars s =
   let envctx = push_rel_context ctx env in
   let ctxs, pats, varsubst, len, ids = 
@@ -907,7 +908,7 @@ let interp_constr_in_rhs_env env evars impls (ctx, envctx, liftn, subst) c ty =
     let c' = nf_evar !evars (substnl subst 0 c) in
     c', nf_evar !evars (substnl subst 0 ty')
 
-let interp_constr_in_rhs env ctx evars (i,comp,impls) ty s lets c =
+let interp_constr_in_rhs env ctx evars (i,impls) ty s lets c =
   let data = env_of_rhs evars ctx env s lets in
   interp_constr_in_rhs_env env evars impls data c ty
 
@@ -1121,7 +1122,10 @@ let do_renamings ctx =
           let id' = Namegen.next_ident_away id ids in
           let decl' = make_def (Name id') b t in
           (Id.Set.add id' ids, decl' :: acc)
-        | Anonymous -> assert false)
+        | Anonymous ->
+          let id' = Namegen.next_ident_away (Id.of_string "anonymous") ids in
+          let decl' = make_def (Name id') b t in
+          (Id.Set.add id' ids, decl' :: acc))
       ctx (Id.Set.empty, [])
   in ctx'
 
@@ -1237,7 +1241,7 @@ let split_at_eos sigma ctx =
   List.split_when (fun decl ->
       is_lglobal coq_end_of_section (to_constr sigma (get_named_type decl))) ctx
 
-let pr_problem (id, _, _) env sigma (delta, patcs, _) =
+let pr_problem (id, _) env sigma (delta, patcs, _) =
   let env' = push_rel_context delta env in
   let ctx = pr_context env sigma delta in
   Id.print id ++ str" " ++ pr_pats env' sigma patcs ++
@@ -1378,8 +1382,11 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
     let envctx,lets,env',coverings,lift,subst = 
       interp_wheres env ctx evars path data s lets w in
     let c', ty' = 
-      interp_constr_in_rhs_env env evars (pi3 data)
+      interp_constr_in_rhs_env env evars (snd data)
         (lets, envctx, lift, subst) c (Some (Vars.lift (List.length w) ty)) in
+    (* Compute the coverings using type information from the term using
+       the where clauses *)
+    let () = List.iter (fun c -> ignore (Lazy.force c.where_splitting)) coverings in
     let res = Compute (prob, coverings, ty', RProgram c') in
     Some res
 
@@ -1389,7 +1396,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
   | Rec (term, rel, name, spl) ->
     let name =
       match name with Some (loc, id) -> id
-                    | None -> pi1 data
+                    | None -> fst data
     in
     let tac = 
       match rel with
@@ -1401,7 +1408,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
     let rhs = By (Inl tac, spl) in
     (match covering_aux env evars data [] [(loc,lhs,rhs),false] (Ident name :: path) prob lets ty with
      | None -> None
-     | Some (clauses, split) -> Some (RecValid (pi1 data, split)))
+     | Some (clauses, split) -> Some (RecValid (fst data, split)))
 
   | By (tac, s) ->
     let sign, t', rels, _ = push_rel_context_to_named_context env' !evars ty in
@@ -1433,33 +1440,13 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
           | App (f, args) -> 
             if Equations_common.is_global !evars (Lazy.force coq_add_pattern) f then
               let comp = args.(1) and newpattern = pat_of_constr !evars args.(2) in
-              if pi2 data (* with_comp *) then
-                let pats = rev_map (pat_of_constr !evars) (snd (decompose_app !evars comp)) in
-                let newprob =
-                  (List.tl rctx, List.map (lift_pat (-1)) pats, ctx)
-                in
-                let (d,p,g as invsubst) = invert_subst env !evars newprob in
-                let ctxr = specialize_rel_context !evars p [List.hd rctx] @ ctx in
-                let newprob =
-                  mk_ctx_map env !evars rctx (newpattern :: pats) ctxr
-                in
-                let ty' = 
-                  match newpattern with
-                  | PHide _ -> comp
-                  | _ -> ty'
-                in
-                let substpats = List.map (lift_pat 1) (id_pats ctx) in
-                let subst = mk_ctx_map env !evars ctxr substpats ctx in
-                let invsubst = Some (mk_ctx_map env !evars ctx p (List.tl rctx)) in
-                ty', newprob, subst, invsubst
-              else 
-                let pats =
-                  let l = pat_vars_list (List.length rctx) in
-                  newpattern :: List.tl l
-                in
-                let newprob = rctx, pats, rctx in
-                let subst = (rctx, List.tl pats, List.tl rctx) in
-                comp, newprob, subst, None
+              let pats =
+                let l = pat_vars_list (List.length rctx) in
+                newpattern :: List.tl l
+              in
+              let newprob = rctx, pats, rctx in
+              let subst = (rctx, List.tl pats, List.tl rctx) in
+              comp, newprob, subst, None
             else
               let pats = rev_map (pat_of_constr !evars) (Array.to_list args) in
               let newprob = rctx, pats, ctx' in
@@ -1647,8 +1634,7 @@ and interp_wheres env ctx evars path data s lets w =
     let data = Constrintern.compute_internalization_env
         env !evars Constrintern.Recursive [id] [ty] [impls]
     in
-    let data = (id,false(* with_comp *),data) in
-    let problem = id_subst sign in
+    let data = (id,data) in
     let relty = subst_vars (List.map (destVar !evars) inst) ty in
     let src = (Some loc, QuestionMark {
         qm_obligation=Define false;
@@ -1659,6 +1645,8 @@ and interp_wheres env ctx evars path data s lets w =
     let () = evars := sigma in
     let ev = destEvar !evars term in
     let path = Evar (fst ev) :: path in
+    (* let sign, arity, clauses = adjust_sign_arity env !evars sign ty clauses in *)
+    let problem = id_subst sign in
     let splitting = lazy (covering env evars data clauses path problem arity) in
     let decl = make_def (Name id) (Some term) relty in
     let nadecl = make_named_def id (Some (substl inst term)) ty in
@@ -1676,7 +1664,6 @@ and interp_wheres env ctx evars path data s lets w =
   let (lets, nlets, coverings, envna, envctx') =
     List.fold_left aux (ctx, 0, [], envna, envctx) w
   in (envctx, lets, push_rel_context ctx env, coverings, liftn, subst)
-
 
 and covering ?(check_unused=true) env evars data (clauses : clause list) path prob ty =
   let clauses = (List.map (fun x -> (x,false)) clauses) in

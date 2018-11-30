@@ -651,10 +651,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
              let sigma = project gl in
              let f, pats' = decompose_app sigma y in
              let c, unfolds =
-                if !Equations_common.ocaml_splitting then
-                  let _, _, c, _ = destCase sigma f in c, tclIDTAC
-                else
-                  List.nth (List.rev pats') (pred var), unfolds
+               let _, _, c, _ = destCase sigma f in c, tclIDTAC
              in
              let id = destVar sigma (fst (decompose_app sigma c)) in
 	     let splits = List.map_filter (fun x -> x) (Array.to_list splits) in

@@ -207,14 +207,12 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   let splitting =
     Covering.covering
       ~check_unused:false (* The catch-all clause might not be needed *)
-      env evd
-      (id, false, Names.Id.Map.empty) clauses [] ctxmap s in
+      env evd (id, Names.Id.Map.empty) clauses [] ctxmap s in
   let hook split fn terminfo ustate =
     let proginfo =
       Splitting.{ program_id = id;
         program_sign = fullbinders;
         program_arity = s;
-        program_oarity = s;
         program_rec_annot = None;
         program_rec = None;
         program_impls = [] }

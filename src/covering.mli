@@ -294,7 +294,7 @@ val interp_constr_in_rhs :
   env ->
   rel_context ->
   Evd.evar_map ref ->
-  'a * 'b * Constrintern.internalization_env ->
+  'a * Constrintern.internalization_env ->
   constr option ->
   (Id.t * pat) list ->
   rel_context ->
@@ -348,7 +348,7 @@ val push_rel_context_eos : rel_context -> env -> esigma -> env
 val split_at_eos : Evd.evar_map ->
   named_context -> named_context * named_context
 val pr_problem :
-  Id.t * 'a * 'b ->
+  Id.t * 'b ->
   env -> Evd.evar_map -> rel_context * pat list * 'c -> Pp.t
 val rel_id : (Name.t * 'a * 'b) list -> int -> Id.t
 val push_named_context :
@@ -368,7 +368,7 @@ val env_of_rhs :
 val covering_aux :
   env ->
   Evd.evar_map ref ->
-  identifier * bool * Constrintern.internalization_env ->
+  identifier * Constrintern.internalization_env ->
   (clause * bool) list ->
   (clause * bool) list ->
   path ->
@@ -378,7 +378,15 @@ val covering_aux :
 val covering : ?check_unused:bool ->
   env ->
   Evd.evar_map ref ->
-  identifier * bool * Constrintern.internalization_env ->
+  identifier * Constrintern.internalization_env ->
   clause list -> path ->
   context_map ->
   constr -> splitting
+
+val adjust_sign_arity : Environ.env ->
+           Evd.evar_map ->
+           Equations_common.rel_declaration list ->
+           EConstr.types ->
+           (Loc.t option * 'a list * 'b) list ->
+           EConstr.rel_context * EConstr.t *
+           (Loc.t option * 'a list * 'b) list

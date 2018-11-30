@@ -149,23 +149,6 @@ type pre_equations = pre_equation where_clause list
 let wit_equations_list : pre_equation list Genarg.uniform_genarg_type =
   Genarg.create_arg "equations_list"
 
-let def_intern ist x = (ist, x)
-let def_subst _ x = x
-let def_interp ist x = Ftactic.return x
-
-let register_interp0 wit f =
-  let interp ist v =
-    Ftactic.bind (f ist v)
-      (fun v -> Ftactic.return (Geninterp.Val.inject (Geninterp.val_tag (Genarg.topwit wit)) v))
-  in
-  Geninterp.register_interp0 wit interp
-
-let declare_uniform t =
-  Genintern.register_intern0 t def_intern;
-  Genintern.register_subst0 t def_subst;
-  register_interp0 t def_interp
-
-
 let next_ident_away s ids =
   let n' = Namegen.next_ident_away s !ids in
     ids := Id.Set.add n' !ids; n'
@@ -192,7 +175,6 @@ and logical_rec =
   | LogicalProj of rec_info
 
 and rec_info = {
-  comp : Constant.t option;
   comp_app : Constr.t;
   comp_proj : Constant.t;
   comp_recarg : int;
@@ -509,7 +491,7 @@ let interp_eqn initi is_rec env ty impls eqn =
          (match r with
           | LogicalDirect _ -> arg
           | LogicalProj r ->
-             let arg = if Option.is_empty r.comp then [arg, None] else [] in
+             let arg = [arg, None] in
              let qidproj = Nametab.shortest_qualid_of_global ?loc:qid'.CAst.loc Id.Set.empty (ConstRef r.comp_proj) in
              CAst.make ~loc (CApp ((None, CAst.make ?loc:qid'.CAst.loc (CRef (qidproj, None))),
                                    args @ arg)))

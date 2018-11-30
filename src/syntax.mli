@@ -99,7 +99,6 @@ and logical_rec =
   | LogicalDirect of Id.t with_loc
   | LogicalProj of rec_info
 and rec_info = {
-  comp : Names.Constant.t option;
   comp_app : constr;
   comp_proj : Constant.t;
   comp_recarg : int;

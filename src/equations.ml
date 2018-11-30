@@ -17,7 +17,6 @@ open List
 open Libnames
 open Constrexpr_ops
 open Entries
-open Constrexpr
 open Vars
 open Tactics
 open Tacticals
@@ -78,8 +77,8 @@ let declare_wf_obligations info =
 let nf_program_info evm p =
   { p with
     program_sign = nf_rel_context_evar evm p.program_sign;
-    program_arity = nf_evar evm p.program_arity;
-    program_oarity = nf_evar evm p.program_oarity }
+    program_arity = nf_evar evm p.program_arity }
+
 
 let program_fixdecls p fixdecls =
   match p.program_rec_annot with
@@ -98,7 +97,6 @@ let define_principles flags fixprots progs =
                                       (Nameops.Name.get_id na, Option.get b)) fixdecls in
     let i = p.program_id in
     let sign = p.program_sign in
-    let oarity = p.program_oarity in
     let arity = p.program_arity in
       match p.program_rec with
       | Some (Structural _) ->
@@ -173,7 +171,6 @@ let define_principles flags fixprots progs =
              let p = { program_id = i;
                        program_sign = sign;
                        program_arity = arity;
-                       program_oarity = arity;
                        program_rec_annot = None;
                        program_rec = None;
                        program_impls = p.program_impls }
@@ -206,7 +203,7 @@ let define_principles flags fixprots progs =
                     (Evd.evar_universe_context evd) [||])
 	 in
 	 define_tree None [] flags.polymorphic p.program_impls (Define false) evd env
-		     (unfoldi, sign, oarity) None unfold_split hook_unfold;
+                     (unfoldi, sign, arity) None unfold_split hook_unfold;
          None
   in
   let principles env newsplits =
@@ -374,7 +371,7 @@ let define_mutual_nested flags progs =
      
   
 let define_by_eqs ~poly opts eqs nt =
-  let with_comp, with_rec, with_eqns, with_ind =
+  let with_rec, with_eqns, with_ind =
     let try_bool_opt opt =
       if List.mem opt opts then false
       else true 
@@ -384,8 +381,7 @@ let define_by_eqs ~poly opts eqs nt =
 	List.find_map (function ORec i -> Some i | _ -> None) opts 
       with Not_found -> None
     in
-      not (try_bool_opt (OComp true)), irec,
-      try_bool_opt (OEquations false), try_bool_opt (OInd false)
+      irec, try_bool_opt (OEquations false), try_bool_opt (OInd false)
   in
   let eqs =
     match eqs with
@@ -395,11 +391,10 @@ let define_by_eqs ~poly opts eqs nt =
       | _ -> eqs)
     | _ -> assert false
   in
-  let with_comp = with_comp && not !Equations_common.ocaml_splitting in
   let env = Global.env () in
   let flags = { polymorphic = poly; with_eqns; with_ind } in
   let evd = ref (Evd.from_env env) in
-  let interp_arities (((loc,i),rec_annot,l,t),_ as ieqs) =
+  let interp_arities (((loc,i),rec_annot,l,t),clauses as ieqs) =
     let ienv, ((env', sign), impls) = Equations_common.evd_comb1 (interp_context_evars env) evd l in
     let arity = Equations_common.evd_comb1 (interp_type_evars env' ?impls:None) evd t in
     let sign = nf_rel_context_evar ( !evd) sign in
@@ -437,29 +432,10 @@ let define_by_eqs ~poly opts eqs nt =
     let _ = Pretyping.check_evars env Evd.empty !evd body in
     let () = evd := Evd.minimize_universes !evd in
     let arity = nf_evar !evd arity in
-    let comp, compapp, oarity =
-      if with_comp then
-        let _ = Pretyping.check_evars env Evd.empty !evd body in
-	let compid = add_suffix i "_comp" in
-        let compkn, (evm, comp) = declare_constant compid body None poly !evd (IsDefinition Definition)
-	in (*Typeclasses.add_constant_class c;*)
-        let oarity = nf_evar evm arity in
-        let sign = nf_rel_context_evar evm sign in
-        evd := if poly then evm else Evd.from_env (Global.env ());
-        let compapp = mkApp (comp, rel_vect 0 (length sign)) in
-        hintdb_set_transparency compkn false "Below";
-        hintdb_set_transparency compkn false "program";
-        hintdb_set_transparency compkn false "subterm_relation";
-        Impargs.declare_manual_implicits true (ConstRef compkn) [impls];
-        Table.extraction_inline true [Libnames.qualid_of_ident compid];
-        Some (compid, compkn), compapp, oarity
-      else None, arity, arity
-    in
     match is_rec with
     | None ->
        { program_id = i;
          program_sign = sign;
-         program_oarity = oarity;
          program_arity = oarity;
          program_rec_annot = rec_annot;
          program_rec = None;
@@ -469,7 +445,7 @@ let define_by_eqs ~poly opts eqs nt =
        let compproj =
          let body =
            it_mkLambda_or_LetIn (mkRel 1)
-             (of_tuple (Name (Id.of_string "comp"), None, compapp) :: sign)
+             (of_tuple (Name (Id.of_string "comp"), None, arity) :: sign)
          in
          let _ty = e_type_of (Global.env ()) evd body in
          let univs = Evd.const_univ_entry ~poly !evd in
@@ -481,22 +457,17 @@ let define_by_eqs ~poly opts eqs nt =
 	 Declare.declare_constant projid
 				  (DefinitionEntry ce, IsDefinition Definition)
        in
-       let impl =
-         if with_comp then
-           [ExplByPos (succ (List.length sign), None), (true, false, true)]
-         else [] in
-       Impargs.declare_manual_implicits true (ConstRef compproj) [impls @ impl];
+       Impargs.declare_manual_implicits true (ConstRef compproj) [impls];
        Table.extraction_inline true [Libnames.qualid_of_ident projid];
-       let compinfo = LogicalProj { comp = Option.map snd comp; comp_app = to_constr !evd compapp;
+       let compinfo = LogicalProj { comp_app = to_constr !evd arity;
 			            comp_proj = compproj; comp_recarg = succ (length sign) } in
-       let compapp, is_rec =
-	 if b then compapp, Some (Logical compinfo)
-         else compapp, Some (Structural [])
+       let is_rec =
+         if b then Some (Logical compinfo)
+         else Some (Structural [])
        in
        { program_id = i;
          program_sign = sign;
-         program_oarity = oarity;
-         program_arity = compapp;
+         program_arity = arity;
          program_rec_annot = rec_annot;
          program_rec = is_rec;
          program_impls = impls }
@@ -517,25 +488,24 @@ let define_by_eqs ~poly opts eqs nt =
   let eqs = List.map snd eqs in
   let env = Global.env () in (* To find the comp constant *)
 
-  let tys = List.map (fun p ->
-            let oty = it_mkProd_or_LetIn p.program_oarity p.program_sign in
+  let protos = List.map (fun p ->
             let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
-            (p.program_id, (oty, ty), p.program_impls)) arities
+            (p.program_id, ty, p.program_impls)) arities
   in
-  let names, otys, impls = List.split3 tys in
+  let names, tys, impls = List.split3 protos in
   let data =
     Constrintern.compute_internalization_env
-    env !evd Constrintern.Recursive names (List.map fst otys) impls
+    env !evd Constrintern.Recursive names tys impls
   in
   let fixprots =
-    List.map (fun (oty, ty) ->
+    List.map (fun ty ->
         let fixproto = get_efresh coq_fix_proto evd in
         mkLetIn (Anonymous, fixproto,
-                 Retyping.get_type_of env !evd fixproto, ty)) otys in
+                 Retyping.get_type_of env !evd fixproto, ty)) tys in
   let fixdecls =
     List.map2 (fun i fixprot -> of_tuple (Name i, None, fixprot)) names fixprots in
   let fixdecls = List.rev fixdecls in
-  let implsinfo = List.map (fun (_, (oty, ty), impls) -> oty, impls) tys in
+  let implsinfo = List.map (fun (_, ty, impls) -> ty, impls) protos in
   let equations = 
     Metasyntax.with_syntax_protection (fun () ->
       List.iter (Metasyntax.set_notation_for_interpretation env data) nt;
@@ -547,6 +517,12 @@ let define_by_eqs ~poly opts eqs nt =
   let fixdecls = nf_rel_context_evar !evd fixdecls in
   let covering env p eqs =
     let sign = nf_rel_context_evar !evd p.program_sign in
+    (* let sign, arity, clauses = Covering.adjust_sign_arity env !evd p.program_sign p.program_arity eqs in
+     * let p =
+     *   { p with program_sign = sign;
+     *            program_arity = arity;
+     *            program_oarity = arity }
+     * in *)
     let prob =
       if is_structural p.program_rec then
         match p.program_rec_annot with
@@ -561,11 +537,9 @@ let define_by_eqs ~poly opts eqs nt =
         | _ -> id_subst (sign @ fixdecls)
       else id_subst sign
     in
-    let _oarity = nf_evar !evd p.program_oarity in
     let arity = nf_evar !evd p.program_arity in
-    let idinfo = (p.program_id,with_comp,data) in
-    Feedback.msg_debug Pp.(str"Launching covering on "++ pr_clauses env eqs);
-
+    let idinfo = (p.program_id,data) in
+    (* Feedback.msg_debug Pp.(str"Launching covering on "++ pr_clauses env eqs); *)
     covering env evd idinfo eqs [Ident p.program_id] prob arity
   in
   let coverings = List.map2 (covering env) arities equations in
@@ -615,7 +589,7 @@ let define_by_eqs ~poly opts eqs nt =
       | _ -> fixdecls
     in
     define_tree p.program_rec fixdecls poly p.program_impls status evd env
-                (p.program_id, p.program_sign, p.program_oarity)
+                (p.program_id, p.program_sign, p.program_arity)
 		comp split (hook !idx p);
     incr idx
   in CList.iter2 define_tree arities coverings

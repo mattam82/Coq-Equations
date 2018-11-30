@@ -33,14 +33,6 @@ open Equations_common
 open EConstr
 open Vars
 
-let lift_togethern n l =
-  let l', _ =
-    List.fold_right
-      (fun x (acc, n) ->
-        (lift n x :: acc, succ n))
-      l ([], n)
-  in l'
-
 let hyps_of_vars env sigma sign nogen hyps =
   if Id.Set.is_empty hyps then []
   else
@@ -422,7 +414,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
 
     (* Produce dummy data for covering. *)
     (* FIXME Not very clean. *)
-    let data = (Names.Id.of_string "dummy", false,
+    let data = (Names.Id.of_string "dummy",
       Constrintern.empty_internalization_env) in
 
     (* Initial problem. *)

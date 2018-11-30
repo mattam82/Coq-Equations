@@ -36,18 +36,9 @@ let to_peuniverses (x, u) = (x, EConstr.EInstance.make u)
 let from_peuniverses sigma (x, u) = (x, EConstr.EInstance.kind sigma u)
 
 (* Options. *)
-let ocaml_splitting = ref true
 let simplify_withK = ref false
 let simplify_withK_dec = ref false
 let equations_transparent = ref false
-
-let _ = Goptions.declare_bool_option {
-  Goptions.optdepr  = false;
-  Goptions.optname  = "splitting variables in OCaml";
-  Goptions.optkey   = ["Equations"; "OCaml"; "Splitting"];
-  Goptions.optread  = (fun () -> !ocaml_splitting);
-  Goptions.optwrite = (fun b -> ocaml_splitting := b)
-}
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = false;
