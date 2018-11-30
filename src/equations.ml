@@ -567,7 +567,8 @@ let define_by_eqs ~poly opts eqs nt =
   and adapt_clauses progid clauses = List.map (adapt_clause progid) clauses in
   let covering env p eqs =
     let sign = nf_rel_context_evar !evd p.program_sign in
-    let sign, arity, clauses = Covering.adjust_sign_arity env !evd sign p.program_arity eqs in
+    let sigma, sign, arity, clauses = Covering.adjust_sign_arity env !evd sign p.program_arity eqs in
+    let () = evd := sigma in
     let p =
       { p with program_sign = sign;
                program_arity = arity }

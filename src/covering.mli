@@ -388,5 +388,5 @@ val adjust_sign_arity : Environ.env ->
            Equations_common.rel_declaration list ->
            EConstr.types ->
            (Loc.t option * 'a list * 'b) list ->
-           EConstr.rel_context * EConstr.t *
-           (Loc.t option * 'a list * 'b) list
+  Evd.evar_map * EConstr.rel_context * EConstr.t *
+                  (Loc.t option * 'a list * 'b) list
