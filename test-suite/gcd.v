@@ -23,8 +23,7 @@ Hint Extern 5 =>
   unfold gcd_rel, gcd_order, MR; simpl; subst_all; omega : Below.
 
 
-Equations gcd (p : nat * nat) : nat :=
-gcd p by rec p gcd_rel :=
+Equations gcd (p : nat * nat) : nat by rec p gcd_rel :=
 gcd (pair 0 _) := 0 ;
 gcd (pair _ 0) := 0 ;
 gcd (pair (S x) (S y)) with gt_eq_gt_dec x y := {
@@ -32,8 +31,8 @@ gcd (pair (S x) (S y)) with gt_eq_gt_dec x y := {
   | inleft (right refl) := S x ;
   | inright xgty := gcd (x - y, S y) }.
 
-Equations gcd' (p : nat * nat) : nat :=
-gcd' p by rec p gcd_rel :=
+Equations gcd' (p : nat * nat) : nat
+  by rec p gcd_rel :=
 gcd' (pair 0 _) := 0 ;
 gcd' (pair _ 0) := 0 ;
 gcd' (pair x y) with gt_eq_gt_dec x y := {

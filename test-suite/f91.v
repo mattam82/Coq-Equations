@@ -28,8 +28,7 @@ Proof. red. red. intros.
 Admitted.
 
 Set Program Mode.
-Equations f91 n : { m : nat | if le_lt_dec n 100 then m = 91 else m = n - 10 } :=
-f91 n by rec n f91_rel :=
+Equations f91 n : { m : nat | if le_lt_dec n 100 then m = 91 else m = n - 10 } by rec n f91_rel :=
 f91 n with le_lt_dec n 100 := {
   | left H := f91 (f91 (n + 11)) ;
   | right H := (n - 10) }.

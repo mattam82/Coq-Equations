@@ -49,6 +49,7 @@ type rec_info =
   (rec_annot, wf_rec_info) Syntax.by_annot
 
 type program_info = {
+  program_loc : Loc.t;
   program_id : Id.t;
   program_sign : EConstr.rel_context;
   program_arity : EConstr.t;

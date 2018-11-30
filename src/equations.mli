@@ -11,6 +11,10 @@ open Names
 open Equations_common
 open Splitting
 
+val is_recursive : Names.Id.t ->
+           ('b * 'a Syntax.rhs as 'a) Syntax.where_clause list -> bool option
+
+
 val define_by_eqs : poly:bool ->
   Syntax.equation_option list ->
   Syntax.pre_equations ->

@@ -325,6 +325,7 @@ type rec_info =
   (rec_annot, wf_rec_info) Syntax.by_annot
 
 type program_info = {
+  program_loc : Loc.t;
   program_id : Id.t;
   program_sign : EConstr.rel_context;
   program_arity : EConstr.t;
@@ -409,9 +410,9 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
           | MutualOn (_, Some (loc, id))
 	  | NestedOn (Some (_, Some (loc, id))) -> Some (CAst.make ~loc id)
 	  | _ -> None
-	in
+        in
 	ignore(Obligations.add_mutual_definitions [(i, t', ty', impls, obls)]
-		 (Evd.evar_universe_context !isevar) [] ~kind
+                 (Evd.evar_universe_context !isevar) [] ~kind
                  ~reduce ~univ_hook (Obligations.IsFixpoint [recarg, CStructRec]))
     | Some (Guarded ids) ->
         let ty' = it_mkProd_or_LetIn ty' fixprots in

@@ -114,8 +114,7 @@ Require Import Omega.
 Section Chunk.
   Context{T : Type} `{M : ChunkableMonoid T}.
   Set Program Mode.
-  Equations chunk (i: { i: nat | i > 0 }) (x: T) : list T :=
-  chunk i x by rec (length x) lt :=
+  Equations chunk (i: { i: nat | i > 0 }) (x: T) : list T by rec (length x) lt :=
   chunk i x with dec (Nat.leb (length x) i) :=    
     { | left _ => [x] ;
       | right p => take i x :: chunk i (drop i x) }.
@@ -237,9 +236,8 @@ Qed.
 Section pmconcat.
   Context {M : Type} `{ChunkableMonoid M}.
 
-  Equations pmconcat (I : { i : nat | i > 0 }) (x : list M) : M :=
-  pmconcat i x by rec (length x) lt :=
-    pmconcat i x with dec ((` i <=? 1) || (length x <=? ` i))%bool => {
+  Equations pmconcat (I : { i : nat | i > 0 }) (x : list M) : M by rec (length x) lt :=
+  pmconcat i x with dec ((` i <=? 1) || (length x <=? ` i))%bool => {
     | left H => mconcat x ;
     | right Hd => pmconcat i (map mconcat (chunk i x)) }.
 

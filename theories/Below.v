@@ -79,7 +79,8 @@ Arguments cons {A} _ {n}.
 Open Scope equations_scope.
 Import Inaccessible_Notations.
 
-Equations(noind) Below_vector A (P : forall n, vector A n -> Type) n (v : vector A n) : Type :=
+Equations(noind) Below_vector A (P : forall n, vector A n -> Type) n (v : vector A n) : Type
+  by struct v :=
 Below_vector A P ?(0) [] := unit ;
 Below_vector A P _ (a :: v) :=
   ((P _ v) * Below_vector A P _ v)%type.

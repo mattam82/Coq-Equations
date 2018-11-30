@@ -18,7 +18,7 @@ subst_term k u (Var n) => subst_var k u n;
 subst_term k u (Lam t) => Lam (subst_term (S k) u t);
 subst_term k u (App t l) => App (subst_term k u t) (subst_tlist k u l) }
 
-where(struct t) subst_tlist (k : nat) (u : term) (t : list term) : list term := {
+where subst_tlist (k : nat) (u : term) (t : list term) : list term := {
   subst_tlist k u nil := nil;
   subst_tlist k u (cons t ts) := cons (subst_term k u t) (subst_tlist k u ts) }.
   (* id_tlist t := List.map id_term t }. *)

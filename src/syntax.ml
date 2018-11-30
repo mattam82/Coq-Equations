@@ -452,7 +452,7 @@ let interp_eqn initi is_rec env ty impls eqn =
          in
          let structpats = List.map_filter addpat l in
          let pats = structpats @ pats in
-         (* Feedback.msg_debug (str "Patterns: " ++ pr_user_pats env pats); *)
+         Feedback.msg_debug (str "Patterns: " ++ pr_user_pats env pats);
          (loc, pats,
           interp_rhs recinfo i is_rec curpats' rhs)
       | Some (Logical r) -> 

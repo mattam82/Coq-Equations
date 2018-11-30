@@ -22,9 +22,10 @@ Equations lookup (t:Foo) : forall (val: foo_type t) (what: list nat), option nat
   lookup (Prod ss) := fun val what =>
     match what with nil=> None | cons hd tail => lookup_prod ss val hd tail end}
 
-  where (struct ss) lookup_prod (ss: list Foo)
+  where lookup_prod (ss: list Foo)
                                   (val : compact_prod (map foo_type ss))
-                                  (what_hd: nat) (what_tl: list nat) : option nat := {
+                                  (what_hd: nat) (what_tl: list nat) : option nat
+         by struct ss := {
   lookup_prod nil _ _ _ := None;
   lookup_prod (cons shd stl) _ _ what_tl with (fun val what_hd => lookup_prod stl val what_hd what_tl) => {
     lookup_prod (cons shd nil) val 0 what_tl _ := lookup shd val what_tl;

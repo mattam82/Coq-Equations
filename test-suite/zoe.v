@@ -158,8 +158,8 @@ infer_sort ie (IApp i1 i2) <= infer_sort ie i1 => {
 (* BUG! not general enough, need to inverse the order of arguments so that ie can change 
   at recursive calls.
  *)
-Equations infer_sort (i : index)  (ie : env) : option sort :=
-infer_sort i ie by rec i (MR lt index_size) :=
+Equations infer_sort (i : index)  (ie : env) : option sort
+ by rec i (MR lt index_size) :=
 infer_sort (IBVar x) ie := None ;
 infer_sort (IFVar x) ie := get x ie;
 infer_sort Z ie := Some N;

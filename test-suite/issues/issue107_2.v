@@ -17,15 +17,15 @@ Equations foo_type (t : Foo) : Type :=
 (* Moving val into the return type, rather than having it as an argument might be unnecessary if
    https://github.com/mattam82/Coq-Equations/issues/73 was fixed *)
 
-Equations(struct t) lookup (t:Foo) (val: foo_type t) (what: list nat) : option nat := {
+Equations lookup (t:Foo) (val: foo_type t) (what: list nat) : option nat by struct t := {
   lookup (Prod ss) val nil := None;
   lookup (Prod ss) val (cons hd tl) := lookup_prod ss val hd tl }
                                                                             
     (* match what with nil=> None | cons hd tail => lookup_prod ss val hd tail end} *)
 
-  where (struct ss) lookup_prod (ss: list Foo) 
+  where lookup_prod (ss: list Foo)
                                   (val : compact_prod (map foo_type ss)) 
-                                  (what_hd: nat) (what_tl: list nat) : option nat := {
+                                  (what_hd: nat) (what_tl: list nat) : option nat by struct ss := {
   lookup_prod nil _ _ _ := None;
   lookup_prod (cons shd stl) _ _ what_tl with (fun val what_hd => lookup_prod stl val what_hd what_tl) => {
     lookup_prod (cons shd nil) val 0 what_tl _ := lookup shd val what_tl;

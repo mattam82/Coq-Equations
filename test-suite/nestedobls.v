@@ -20,8 +20,8 @@ Require Import Program.
 Definition MR {A B} (f : A -> B) (R : relation B) : relation A :=
   fun x y => R (f x) (f y).
 
-Equations test (n : nat) (pre : n >= 0 ) : { n' : nat | n' <= n } :=
-test n p by rec n lt :=
+Equations test (n : nat) (pre : n >= 0 ) : { n' : nat | n' <= n }
+ by rec n lt :=
 test 0 p := exist _ 0 _;
 test (S n) p with test n _ => {
                 | exist _ 0 _ := exist _ 0 _;
@@ -36,9 +36,9 @@ Solve Obligations with program_simpl; omega.
 Solve Obligations.
 
 Module Bug.
-Equations(noind) test' (n : { n : nat | n >= 0 }) : { n' : nat | n' <= `n } :=
-test' n by rec n (MR (@proj1_sig nat (fun x : nat => x >= 0)) lt) :=
-test' (exist _ n p) with n := {
+  Equations(noind) test' (n : { n : nat | n >= 0 }) : { n' : nat | n' <= `n }
+  by rec n (MR (@proj1_sig nat (fun x : nat => x >= 0)) lt) :=
+  test' (exist _ n p) with n := {
   | 0 := exist _ 0 _;
   | S n' with test' (exist _ n' _) => {
                   | exist _ 0 _ := exist _ 0 _;

@@ -210,7 +210,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
       env evd (id, Names.Id.Map.empty) clauses [] ctxmap s in
   let hook split fn terminfo ustate =
     let proginfo =
-      Splitting.{ program_id = id;
+      Splitting.{ program_loc = Loc.make_loc (0,0); program_id = id;
         program_sign = fullbinders;
         program_arity = s;
         program_rec = None;

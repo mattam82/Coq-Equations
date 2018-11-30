@@ -25,9 +25,10 @@ Equations (struct f) do_foo (f : foo) : forall (val : foo_type f), nat := {
   do_foo (Sum s) := fun val =>
     (do_foo (fst s) (fst val)) + (do_sum (snd s) (snd val)) }
 
-  where (struct fs)
+  where
     do_sum (fs : list foo) :
-      forall val : compact_sum (List.map foo_type fs), nat := {
+      forall val : compact_sum (List.map foo_type fs), nat
+      by struct fs := {
     do_sum nil := fun val => 0;
     (* Attempting to work around https://github.com/mattam82/Coq-Equations/issues/78 *)
     do_sum (cons hd tl) with (fun val => do_sum tl val) => {

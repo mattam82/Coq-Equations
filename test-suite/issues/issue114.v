@@ -21,6 +21,7 @@ Fixpoint foo_type (f:foo) : Type :=
 Equations (struct f) num (f:foo) (val:foo_type f) : nat := {
   num (List nil) val := 0;
   num (List (cons hd tl)) val := sum hd (num hd) tl val }
-where (struct fs) sum (f:foo) (numf: (foo_type f -> nat)) (fs : list foo) (val: compact_prod (map foo_type (f::fs))) : nat := {
+where sum (f:foo) (numf: (foo_type f -> nat)) (fs : list foo) (val: compact_prod (map foo_type (f::fs))) : nat
+  by struct fs         := {
   sum f numf nil val := numf val;
   sum f numf (cons hd tl) val := numf (fst val) + sum hd (num hd) tl (snd val)}.

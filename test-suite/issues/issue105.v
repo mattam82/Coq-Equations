@@ -18,13 +18,13 @@ Equations foo_type (t : foo) : Type :=
     (foo_type (fst u))
     * (compact_sum (List.map foo_type (snd u))).
 
-Equations (struct f) do_foo (f : foo) : forall (val : foo_type f), nat := {
+Equations do_foo (f : foo) : forall (val : foo_type f), nat by struct f := {
   do_foo (Sum (pair s1 s2)) := fun val =>
     (do_foo s1 (fst val)) + (do_sum s1 (fst val) s2 (snd val)) }
 
-  where (struct fs)
-    do_sum (f : foo) (otherval : foo_type f) (fs : list foo) :
-      forall val : compact_sum (List.map foo_type fs), nat := {
+where do_sum (f : foo) (otherval : foo_type f) (fs : list foo) :
+        forall val : compact_sum (List.map foo_type fs), nat
+        by struct fs := {
     do_sum _ _ nil := fun val => 0;
     do_sum f otherval (cons hd tl) with (fun val => do_sum f otherval tl val) => {
       do_sum _ _ (cons var nil) _ :=

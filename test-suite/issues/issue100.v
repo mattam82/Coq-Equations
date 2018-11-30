@@ -22,8 +22,9 @@ Equations foo_type (t : Foo) : Type :=
 Fail Equations (struct f) do_foo (f : Foo) : forall (val : foo_type f), nat := {
   do_foo (Sum u) := fun val => do_foo_sum u val }
 
-  where (struct fs)
-    do_foo_sum (fs : list Foo) : forall val : compact_sum (List.map foo_type fs), nat := {
+  where
+  do_foo_sum (fs : list Foo) : forall val : compact_sum (List.map foo_type fs), nat
+     by struct fs := {
     do_foo_sum nil := fun val => 0;
     (* Attempting to work around https://github.com/mattam82/Coq-Equations/issues/78 *)
     do_foo_sum (cons hd tl) with (fun val => do_foo_sum tl val) => {

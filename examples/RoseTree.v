@@ -61,8 +61,7 @@ Module RoseTree.
               (Pnil : P (node nil))
               (Pnode : forall x xs, P x -> P (node xs) -> P (node (cons x xs))).
               
-      Equations(noind) elim (r : t) : P r :=
-      elim r by rec r (MR lt size) :=
+      Equations(noind) elim (r : t) : P r by rec (size r) lt :=
       elim (leaf a) := Pleaf a;
       elim (node nil) := Pnil;
       elim (node (cons x xs)) := Pnode x xs (elim x) (elim (node xs)).
@@ -75,8 +74,7 @@ Module RoseTree.
       Defined.
     End elimtree.
 
-    Equations elements (r : t) : list A :=
-    elements l by rec r (MR lt size) :=
+    Equations elements (r : t) : list A by rec (size r) lt :=
     elements (leaf a) := [a];
     elements (node l) := concat (map_In l (fun x H => elements x)).
     
@@ -99,8 +97,7 @@ Module RoseTree.
     Hint Extern 4 (MR _ _ _ _) => abstract (repeat red; simpl in *; omega) : rec_decision.
 
     (* Nested rec *) 
-    Equations elements' (r : t) : list A :=
-    elements' l by rec r (MR lt size) :=
+    Equations elements' (r : t) : list A by rec r (MR lt size) :=
     elements' (leaf a) := [a];
     elements' (node l) := fn l hidebody
 

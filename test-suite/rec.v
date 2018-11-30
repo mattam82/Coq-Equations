@@ -14,8 +14,8 @@ Require Import Subterm.
 Instance wf_nat : WellFounded lt := lt_wf.
 Hint Resolve lt_n_Sn : Below.
 Module RecRel.
-  Equations id (n : nat) : nat :=
-  id n by rec n lt :=
+  Equations id (n : nat) : nat
+  by rec n lt :=
   id O := 0 ;
   id (S n) := S (id n).
   
@@ -40,8 +40,8 @@ Section Nested.
   
   Hint Extern 3 => progress auto with arith : Below.
 
-  Equations f (n : nat) : { x : nat | x <= n } :=
-  f n by rec n lt :=
+  Equations f (n : nat) : { x : nat | x <= n }
+   by rec n lt :=
   f 0 := exist _ 0 _ ;
   f (S n) := exist _ (proj1_sig (f (proj1_sig (f n)))) _.
 
@@ -112,20 +112,20 @@ Module RecMeasure.
 
   Hint Extern 0 (MR _ _ _ _) => red : Below.
 
-  Equations id (n : nat) : nat :=
-  id n by rec n (MR lt (fun n => n)) :=
+  Equations id (n : nat) : nat
+  by rec n (MR lt (fun n => n)) :=
   id O := 0 ;
   id (S n) := S (id n).
 
-  Equations f (n m : nat) : nat :=
-  f n m by rec n (MR lt (fun n => n)) :=
+  Equations f (n m : nat) : nat
+  by rec n (MR lt (fun n => n)) :=
   f O m := m ;
   f (S n) m := S (f n m) + m.
 
   Arguments length [A] _.
 
-  Equations g (l : list nat) : nat :=
-  g l by rec l (MR lt (@length nat)) :=
+  Equations g (l : list nat) : nat
+  by rec l (MR lt (@length nat)) :=
   g nil := 0 ;
   g (cons n l) := S (g l).
   
@@ -143,8 +143,7 @@ Module RecMeasure.
 
     Context {A : Type} (leb : A -> A -> bool) (ltb : A -> A -> bool).
 
-    Equations qs (l : list A) : list A :=
-    qs l by rec l (MR lt (@length A)) :=
+    Equations qs (l : list A) : list A by rec l (MR lt (@length A)) :=
     qs nil := nil ;
     qs (cons a l) := 
       let lower := filter (fun x => ltb x a) l in

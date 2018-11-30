@@ -156,8 +156,7 @@ Instance wf_nat : WellFounded lt := lt_wf.
 Hint Resolve lt_n_Sn : lt.
 
 (** The [by rec n lt] annotation indicates the kind of well-founded recursion we want. *)
-Equations testn (n : nat) : nat :=
-testn n by rec n lt :=
+Equations testn (n : nat) : nat by rec n lt :=
 testn 0 := 0 ;
 testn (S n) with testn n => {
   | 0 := S 0 ;
@@ -215,8 +214,8 @@ Section foo.
       must be shown smaller than a [vector A (S n)]. They are actually compared
       at the packed type [{ n : nat & vector A n}]. *)
 
-  Equations unzip {n} (v : vector (A * B) n) : vector A n * vector B n :=
-  unzip v by rec (signature_pack v) (@t_subterm (A * B)) :=
+  Equations unzip {n} (v : vector (A * B) n) : vector A n * vector B n
+    by rec (signature_pack v) (@t_subterm (A * B)) :=
   unzip []v := ([]v, []v) ;
   unzip (Vector.cons (x, y) v) with unzip v := {
     | pair xs ys := (Vector.cons x xs, Vector.cons y ys) }.
@@ -317,8 +316,7 @@ Ltac rec ::= Subterm.rec_wf_eqns.
 
 (** We split by well-founded recursion on the index [m] here. *)
 
-Equations split {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
-split (m:=m) xs by rec m :=
+Equations split {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs by rec m :=
 split (m:=O) xs := append nil xs ;
 split (m:=(S m)) (n:=n) (cons x xs) with split xs => {
   | append xs' ys' := append (cons x xs') ys' }.
@@ -372,8 +370,7 @@ Transparent vmap'.
 
 (** The same, using well-founded recursion on [n]. *)
 Set Shrink Obligations.
-Equations vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
-vmap f (n:=n) v by rec n :=
+Equations vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n by rec n :=
 vmap f (n:=?(O)) nil := nil ;
 vmap f (cons a v) := cons (f a) (vmap f v).
 Unset Shrink Obligations.
