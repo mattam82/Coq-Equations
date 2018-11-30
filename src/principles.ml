@@ -29,9 +29,9 @@ type node_kind =
   | Nested of recursive
 
 let kind_of_prog p =
-  match p.program_rec_annot with
-  | Some (NestedOn (Some _)) -> Nested true
-  | Some (NestedOn None) -> Nested false
+  match p.program_rec with
+  | Some (Structural (NestedOn (Some _))) -> Nested true
+  | Some (Structural (NestedOn None)) -> Nested false
   | _ -> Regular
 
 let regular_or_nested = function
@@ -100,13 +100,13 @@ let head c = fst (Constr.decompose_app c)
 
 let is_applied_to_structarg f is_rec lenargs =
   match is_rec with
-  | Some (Structural ids) -> begin
+  | Some (Guarded ids) -> begin
      try
        let kind =
 	 CList.find_map (fun (f', k) -> if Id.equal f f' then Some k else None) ids
        in
        match kind with
-       | StructuralOn (idx,_) | NestedOn (Some (idx,_)) -> Some (lenargs > idx)
+       | MutualOn (idx,_) | NestedOn (Some (idx,_)) -> Some (lenargs > idx)
        | NestedOn None -> Some true
      with Not_found -> None
     end
@@ -677,7 +677,7 @@ let subst_rec_split env evd f comp comprecarg path prob s split =
 let update_split env evd id is_rec f prob recs split =
   let where_map = ref Evar.Map.empty in
   match is_rec with
-  | Some (Syntax.Structural _) -> subst_rec_split env !evd f false None [Ident id] prob recs split, !where_map
+  | Some (Guarded _) -> subst_rec_split env !evd f false None [Ident id] prob recs split, !where_map
   | Some (Logical r) -> 
     let proj = match r with
       | LogicalDirect (_, id) -> mkVar id
@@ -982,7 +982,7 @@ let level_of_context env evd ctx acc =
                     ctx (env,acc)
   in lev
   
-let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) option) progs =
+let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) option) rec_info progs =
   let p, prog, eqninfo = List.hd progs in
   let user_obls =
     List.fold_left (fun acc (p, prog, eqninfo) ->
@@ -995,7 +995,6 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
         equations_split = split } = eqninfo in
   let info = prog.program_split_info in
   let sign = p.program_sign in
-  let is_rec = p.program_rec in
   let cst = prog.program_cst in
   let comps =
     let fn p = computations env evd alias (kind_of_prog p,false) in
@@ -1065,7 +1064,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
       | RProgram c ->
 	  let len = List.length ctx in
 	  let hyps, hypslen, c' =
-            abstract_rec_calls !evd user_obls is_rec len protos (Reductionops.nf_beta env !evd c)
+            abstract_rec_calls !evd user_obls rec_info len protos (Reductionops.nf_beta env !evd c)
           in
           let head =
             let f = mkRel (len + (lenprotos - i) + hypslen) in
@@ -1181,7 +1180,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
 	inds
     in
     let info = { term_info = info; pathmap = !fnind_map; wheremap } in
-    declare_funind info alias (Global.env ()) evd is_rec protos progs
+    declare_funind info alias (Global.env ()) evd rec_info protos progs
                    ind_stmts all_stmts sign inds kn comb
                    (of_constr f) split ind
   in

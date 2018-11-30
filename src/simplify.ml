@@ -891,7 +891,7 @@ let or_fun (f : simplification_fun) (g : simplification_fun) : simplification_fu
   with CannotSimplify _ ->
     evd := evd0; g env evd gl
 
-let expand_many rule env evd ((ctx, ty) : goal) : simplification_rules =
+let _expand_many rule env evd ((ctx, ty) : goal) : simplification_rules =
   (* FIXME: maybe it's too brutal/expensive? *)
   let ty = Reductionops.whd_all env !evd ty in
   let _, ty, _ = check_prod !evd ty in

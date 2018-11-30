@@ -491,7 +491,7 @@ let observe_tac s tac =
 
 let ind_fun_tac is_rec f info fid split unfsplit progs =
   match is_rec with
-  | Some (Syntax.Structural [_]) ->
+  | Some (Syntax.Guarded [_]) ->
     let c = constant_value_in (Global.env ()) (Constr.destConst f) in
     let i = let (inds, _), _ = Constr.destFix c in inds.(0) in
     let recid = add_suffix fid "_rec" in
@@ -509,14 +509,14 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
 	       (change_in_hyp None fixprot (n, Locus.InHyp)) gl);
            to82 intros; aux_ind_fun info (0, 1) None [] split])
 
-  | Some (Structural l) ->
+  | Some (Guarded l) ->
      let open Proofview in
      let open Notations in
-     let mutual, nested = List.partition (function (_, StructuralOn _) -> true | _ -> false) l in
-     let mutannots = List.map (function (_, StructuralOn (ann, _)) -> ann + 1 | _ -> -1) mutual in
+     let mutual, nested = List.partition (function (_, MutualOn _) -> true | _ -> false) l in
+     let mutannots = List.map (function (_, MutualOn (ann, _)) -> ann + 1 | _ -> -1) mutual in
      let mutprogs, nestedprogs =
-       List.partition (fun (p,_,e) -> match p.program_rec_annot with
-                                      | Some (StructuralOn _) -> true
+       List.partition (fun (p,_,e) -> match p.program_rec with
+                                      | Some (Structural (MutualOn _)) -> true
                                       | _ -> false) progs
      in
      let eauto = Class_tactics.typeclasses_eauto ["funelim"; info.term_info.base_id] in

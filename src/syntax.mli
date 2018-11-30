@@ -19,9 +19,9 @@ type generated = bool
 
 type rec_annotation =
   | Nested
-  | Struct
+  | Mutual
 
-type user_rec_annot = (rec_annotation * Id.t with_loc option) option
+type user_rec_annot = rec_annotation option
 
 type identifier = Names.Id.t
 
@@ -37,7 +37,7 @@ and user_pats = user_pat_loc list
 type rec_arg = int * Id.t with_loc option
     
 type rec_annot =
-  | StructuralOn of rec_arg
+  | MutualOn of rec_arg
   | NestedOn of rec_arg option
 
 type program_body =
@@ -56,7 +56,12 @@ and 'a rhs =
   | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) Util.union *
       'a list
 and prototype =
-  identifier with_loc * user_rec_annot * Constrexpr.local_binder_expr list * Constrexpr.constr_expr
+  identifier with_loc * user_rec_annot * Constrexpr.local_binder_expr list * Constrexpr.constr_expr *
+  (Id.t with_loc, Constrexpr.constr_expr * Constrexpr.constr_expr option) by_annot option
+
+and ('a, 'b) by_annot =
+  | Structural of 'a
+  | WellFounded of 'b
 
 and 'a where_clause = prototype * 'a list
 and program = (signature * clause list) list
@@ -92,8 +97,8 @@ type pre_equation =
   Constrexpr.constr_expr input_pats * pre_equation rhs
 type pre_equations = pre_equation where_clause list
 
-type rec_type = 
-  | Structural of (Id.t * rec_annot) list (* for mutual rec *)
+type rec_type =
+  | Guarded of (Id.t * rec_annot) list (* for mutual rec *)
   | Logical of logical_rec
 and logical_rec =
   | LogicalDirect of Id.t with_loc

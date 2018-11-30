@@ -39,14 +39,14 @@ and user_pats = user_pat_loc list
 
 type rec_annotation =
   | Nested
-  | Struct
+  | Mutual
 
-type user_rec_annot = (rec_annotation * Id.t with_loc option) option
+type user_rec_annot = rec_annotation option
 
 type rec_arg = int * Id.t with_loc option
     
 type rec_annot =
-  | StructuralOn of rec_arg
+  | MutualOn of rec_arg
   | NestedOn of rec_arg option
 
 type program_body =
@@ -73,7 +73,12 @@ and 'a rhs =
   | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) union * 'a list
 
 and prototype =
-  identifier with_loc * user_rec_annot * Constrexpr.local_binder_expr list * Constrexpr.constr_expr
+  identifier with_loc * user_rec_annot * Constrexpr.local_binder_expr list * Constrexpr.constr_expr *
+  (Id.t with_loc, Constrexpr.constr_expr * Constrexpr.constr_expr option) by_annot option
+
+and ('a, 'b) by_annot =
+  | Structural of 'a
+  | WellFounded of 'b
 
 and 'a where_clause = prototype * 'a list
 
@@ -119,8 +124,13 @@ and pr_wheres env l =
   str"where" ++ spc () ++ prlist_with_sep fnl (pr_where env) l
 and pr_where env (sign, eqns) =
   pr_proto sign ++ str "{" ++ pr_clauses env eqns ++ str "}"
-and pr_proto ((_,id), _, l, t) =
-  Id.print id ++ pr_binders l ++ str" : " ++ pr_constr_expr t
+and pr_proto ((_,id), _, l, t, ann) =
+  Id.print id ++ pr_binders l ++ str" : " ++ pr_constr_expr t ++
+  (match ann with
+     None -> mt ()
+   | Some (WellFounded (t, rel)) -> str"by rec " ++ pr_constr_expr t ++ pr_opt pr_constr_expr rel
+   | Some (Structural id) -> str"by struct " ++ pr_id (snd id))
+
 and pr_clause env (loc, lhs, rhs) =
   pr_lhs env lhs ++ pr_rhs env rhs
 
@@ -167,7 +177,7 @@ let pr_equation_options  _prc _prlc _prt l =
   mt ()
 
 type rec_type = 
-  | Structural of (Id.t * rec_annot) list (* for mutual rec *)
+  | Guarded of (Id.t * rec_annot) list (* for mutual rec *)
   | Logical of logical_rec
 
 and logical_rec =
@@ -180,7 +190,7 @@ and rec_info = {
   comp_recarg : int;
 }
 
-let is_structural = function Some (Structural _) -> true | _ -> false
+let is_structural = function Some (Guarded _) -> true | _ -> false
 
 let is_rec_call sigma r f =
   match r with
@@ -433,7 +443,7 @@ let interp_eqn initi is_rec env ty impls eqn =
     let curpats' = pats in
     let () = check_linearity pats in
       match is_rec with
-      | Some (Structural l) ->
+      | Some (Guarded l) ->
          (* let fnpat = (dummy_loc, PUVar (i, false)) in *)
          let addpat (id, k) =
            match k with
@@ -471,7 +481,7 @@ let interp_eqn initi is_rec env ty impls eqn =
       Rec (fni, r, id, map (aux recinfo i is_rec curpats) s)
     | By (x, s) -> By (x, map (aux recinfo i is_rec curpats) s)
   and interp_wheres recinfo avoid w =
-    let interp_where (((loc,id),nested,b,t) as p,eqns) =
+    let interp_where (((loc,id),nested,b,t,reca) as p,eqns) =
       Dumpglob.dump_reference ~loc "<>" (Id.to_string id) "def";
       p, map (aux recinfo id None []) eqns
     in List.map interp_where w
@@ -501,7 +511,7 @@ let interp_eqn initi is_rec env ty impls eqn =
          let eqns = List.map (fun (x, y) ->
                     aux recinfo id None [] (x, y)) eqns in
          let () =
-           wheres := (((loc, id), None, [], CAst.make ~loc (CHole (k, i, None))), eqns) :: !wheres;
+           wheres := (((loc, id), None, [], CAst.make ~loc (CHole (k, i, None)), None), eqns) :: !wheres;
            whereid := Nameops.increment_subscript id;
          in Constrexpr_ops.mkIdentC id
       | _ -> map_constr_expr_with_binders Id.Set.add

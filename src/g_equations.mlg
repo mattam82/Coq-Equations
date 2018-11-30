@@ -369,7 +369,7 @@ GRAMMAR EXTEND Gram
 
   operconstr:
     [ "7" [ "#"; "{" ; c = LIST1 equation SEP ";"; "}" -> {
-            CAst.make ~loc @@ CHole (None, IntroAnonymous,
+            CAst.make ~loc @@ CHole (None, Namegen.IntroAnonymous,
                                      Some (Genarg.in_gen (Genarg.rawwit Syntax.wit_equations_list) c)) } ] ]
   ;
 
@@ -394,19 +394,21 @@ GRAMMAR EXTEND Gram
             | [c] -> fun e -> acc (Refine (c, e))
             | c :: cs ->
                 let acc = fun e ->
-                  acc (Refine (c, [(RefinePats [CAst.make (CHole (None, IntroAnonymous, None))], e)])) in
+                  acc (Refine (c, [(RefinePats [CAst.make (CHole (None, Namegen.IntroAnonymous, None))], e)])) in
                 build_refine acc cs
           in build_refine (fun e -> e) cs }
     ] ]
   ;
-  struct_annot:
-    [ [ "("; "struct"; id = identloc; ")" -> { Some id }
+  rec_annot:
+    [ [ "where" -> { Some Syntax.Nested }
+      | "with" -> { Some Syntax.Mutual }
       | -> { None }
     ] ]
   ;
-  rec_annot:
-    [ [ "where"; an = struct_annot -> { Some (Nested, an) }
-      | "with"; an = struct_annot -> { Some (Struct, an) }
+
+  wf_annot:
+    [ [ "by"; IDENT "rec"; c = constr; rel = OPT constr -> { Some (WellFounded (c, rel)) }
+      | "by"; "struct"; id = identloc -> { Some (Structural id) }
       | -> { None }
     ] ]
   ;
@@ -414,7 +416,7 @@ GRAMMAR EXTEND Gram
   where_clause:
     [ [ r = rec_annot;
         id = lident; l = binders2; ":"; t = Constr.lconstr;
-        ":="; eqs = sub_equations -> { ((id, r, l, t), eqs) } ] ]
+        reca = wf_annot; ":="; eqs = sub_equations -> { ((id, r, l, t, reca), eqs) } ] ]
   ;
   where:
     [ [ "where"; l = LIST1 where_clause -> { l }

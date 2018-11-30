@@ -81,15 +81,15 @@ let nf_program_info evm p =
 
 
 let program_fixdecls p fixdecls =
-  match p.program_rec_annot with
-  | Some (NestedOn None) -> (** Actually the definition is not self-recursive *)
+  match p.program_rec with
+  | Some (Structural (NestedOn None)) -> (** Actually the definition is not self-recursive *)
      List.filter (fun decl ->
          let na = Context.Rel.Declaration.get_name decl in
          let id = Nameops.Name.get_id na in
          not (Id.equal id p.program_id)) fixdecls
   | _ -> fixdecls
 
-let define_principles flags fixprots progs =
+let define_principles flags rec_info fixprots progs =
   let env = Global.env () in
   let evd = ref (Evd.from_env env) in
   let newsplits env fixdecls (p, prog, f) =
@@ -98,15 +98,15 @@ let define_principles flags fixprots progs =
     let i = p.program_id in
     let sign = p.program_sign in
     let arity = p.program_arity in
-      match p.program_rec with
-      | Some (Structural _) ->
+      match rec_info with
+      | Some (Guarded _) ->
          let fixdecls = program_fixdecls p fixdecls in
          let cutprob, norecprob =
 	   let (ctx, pats, ctx' as ids) = id_subst sign in
 	   (ctx @ fixdecls, pats, ctx'), ids
 	 in
 	 let split, where_map =
-           update_split env evd p.program_id p.program_rec
+           update_split env evd p.program_id rec_info
                         (of_constr f) cutprob fixsubst prog.program_split in
          let eqninfo =
            Principles_proofs.{ equations_id = i;
@@ -119,7 +119,7 @@ let define_principles flags fixprots progs =
       | None ->
 	 let prob = id_subst sign in
 	 let split, where_map =
-           update_split env evd p.program_id p.program_rec
+           update_split env evd p.program_id rec_info
                         (of_constr f) prob [] prog.program_split in
          let eqninfo =
            Principles_proofs.{ equations_id = i;
@@ -134,7 +134,7 @@ let define_principles flags fixprots progs =
 	 let prob = id_subst sign in
          (* let () = msg_debug (str"udpdate split" ++ spc () ++ pr_splitting env split) in *)
 	 let unfold_split, where_map =
-           update_split env evd p.program_id p.program_rec (of_constr f)
+           update_split env evd p.program_id rec_info (of_constr f)
                         prob [(i,of_constr f)] prog.program_split
          in
 	 (* We first define the unfolding and show the fixpoint equation. *)
@@ -171,7 +171,6 @@ let define_principles flags fixprots progs =
              let p = { program_id = i;
                        program_sign = sign;
                        program_arity = arity;
-                       program_rec_annot = None;
                        program_rec = None;
                        program_impls = p.program_impls }
              in
@@ -183,7 +182,7 @@ let define_principles flags fixprots progs =
                  equations_split = unfold_split }
              in
              build_equations flags.with_ind env !evd ~alias:(of_constr f, unfold_eq_id, prog.program_split)
-                             [p, prog', eqninfo]
+               rec_info [p, prog', eqninfo]
 	   in
            let () = if not flags.polymorphic then (evd := Evd.from_env (Global.env ())) in
            let stmt = it_mkProd_or_LetIn
@@ -210,17 +209,17 @@ let define_principles flags fixprots progs =
     match newsplits with
     | [p, prog, Some eqninfo] ->
        let evm = !evd in
-       (match p.program_rec with
-        | Some (Structural _) ->
-           build_equations flags.with_ind env evm [p, prog, eqninfo]
+       (match rec_info with
+        | Some (Guarded _) ->
+           build_equations flags.with_ind env evm rec_info [p, prog, eqninfo]
         | Some (Logical _) -> ()
         | None ->
-           build_equations flags.with_ind env evm [p, prog, eqninfo])
+           build_equations flags.with_ind env evm rec_info [p, prog, eqninfo])
     | [_, _, None] -> ()
     | splits ->
        let splits = List.map (fun (p,prog,s) -> p, prog, Option.get s) splits in
        let evm = !evd in
-       build_equations flags.with_ind env evm splits
+       build_equations flags.with_ind env evm rec_info splits
   in
   let progs, fixdecls =
     let fn fixprot (p, prog) =
@@ -244,8 +243,8 @@ let define_principles flags fixprots progs =
   principles env newsplits
 
 let is_nested p =
-  match p.program_rec_annot with
-  | Some (NestedOn _) -> true
+  match p.program_rec with
+  | Some (Structural (NestedOn _)) -> true
   | _ -> false
 
 let define_mutual_nested flags progs =
@@ -258,8 +257,8 @@ let define_mutual_nested flags progs =
      (** In the mutually recursive case, only the functionals have been defined, 
          we build the block and its projections now *)
      let structargs = Array.map_of_list (fun (p,_) ->
-                          match p.program_rec_annot with
-                          | Some (StructuralOn (lid,_)) -> lid
+                          match p.program_rec with
+                          | Some (Structural (MutualOn (lid,_))) -> lid
                           | _ -> (List.length p.program_sign) - 1) mutual in
      let evd = ref (Evd.from_env (Global.env ())) in
      let mutualapp, nestedbodies =
@@ -302,8 +301,8 @@ let define_mutual_nested flags progs =
        let rec fixsubst i k acc l =
          match l with
          | (p', prog') :: rest ->
-            (match p'.program_rec_annot with
-             | Some (NestedOn idx) ->
+            (match p'.program_rec with
+             | Some (Structural (NestedOn idx)) ->
                (match idx with
 	       | Some (idx,_) ->
 		 let rest_tys = List.map (fun (p,_) -> it_mkProd_or_LetIn p.program_arity p.program_sign) rest in
@@ -385,62 +384,60 @@ let define_by_eqs ~poly opts eqs nt =
   in
   let eqs =
     match eqs with
-    | ((li,ra,l,t), eqns) :: tl ->
+    | ((li,ra,l,t,by), eqns) :: tl ->
       (match with_rec with
-      | Some lid -> ((li, (Some (Struct, Some lid)), l, t), eqns) :: tl
+      | Some lid -> ((li, Some Mutual, l, t, Some (Syntax.Structural lid)), eqns) :: tl
       | _ -> eqs)
     | _ -> assert false
   in
   let env = Global.env () in
   let flags = { polymorphic = poly; with_eqns; with_ind } in
   let evd = ref (Evd.from_env env) in
-  let interp_arities (((loc,i),rec_annot,l,t),clauses as ieqs) =
+  let interp_arities (((loc,i),rec_annot,l,t,by),clauses as ieqs) =
     let ienv, ((env', sign), impls) = Equations_common.evd_comb1 (interp_context_evars env) evd l in
     let arity = Equations_common.evd_comb1 (interp_type_evars env' ?impls:None) evd t in
     let sign = nf_rel_context_evar ( !evd) sign in
-    let oarity = nf_evar ( !evd) arity in
-    let is_rec = is_recursive i eqs in
+    let arity = nf_evar ( !evd) arity in
+    let default_recarg () =
+      let idx = List.length sign - 1 in
+      (idx, None)
+    in
     let interp_reca k i =
       match k with
-      | Struct -> StructuralOn i
-      | Nested -> NestedOn (Some i)
+      | None | Some Mutual -> MutualOn i
+      | Some Nested -> NestedOn (Some i)
     in
-    let is_rec, rec_annot =
-      let default_recarg () =
-	let idx = List.length sign - 1 in
-	  (idx, None)
-      in
-      match rec_annot with
+    let rec_annot =
+      match by with
       | None ->
-         (match is_rec with
-          | Some false -> is_rec, Some (StructuralOn (default_recarg ()))
-          | _ -> is_rec, None)
-      | Some (reck, None) ->
-         (match is_recursive i [ieqs] with (* Recursive in its own body? *)
-          | Some _ -> Some false, Some (interp_reca reck (default_recarg ()))
-          | None -> if reck == Nested then is_rec, Some (NestedOn None)
-                    else Some false, Some (StructuralOn (default_recarg ())))
-      | Some (reck, Some lid) ->
-         try
+        (match is_recursive i eqs with
+         | None -> None
+         | Some false ->
+           if rec_annot == Some Syntax.Nested && Option.is_empty (is_recursive i [ieqs]) then
+             (* Nested but not recursive in in its own body *)
+             Some (Structural (NestedOn None))
+           else Some (Structural (interp_reca rec_annot (default_recarg ())))
+         | Some true -> assert false)
+      | Some (Structural lid) ->
+        (try
            let k, _, _ = lookup_rel_id (snd lid) sign in
-           Some false, Some (interp_reca reck (List.length sign - k, Some lid))
+           Some (Structural (interp_reca rec_annot (List.length sign - k, Some lid)))
          with Not_found ->
            user_err_loc (Some (fst lid), "struct_index",
-                         Pp.(str"No argument named " ++ Id.print (snd lid) ++ str" found"))
+                         Pp.(str"No argument named " ++ Id.print (snd lid) ++ str" found")))
+      | Some (WellFounded (c, r)) -> Some (WellFounded (c, r))
     in
-    let body = it_mkLambda_or_LetIn oarity sign in
+    let body = it_mkLambda_or_LetIn arity sign in
     let _ = Pretyping.check_evars env Evd.empty !evd body in
     let () = evd := Evd.minimize_universes !evd in
-    let arity = nf_evar !evd arity in
-    match is_rec with
-    | None ->
+    match rec_annot with
+    | None | Some (Structural _) ->
        { program_id = i;
          program_sign = sign;
-         program_arity = oarity;
-         program_rec_annot = rec_annot;
+         program_arity = arity;
          program_rec = None;
          program_impls = impls }
-    | Some b ->
+    | Some (WellFounded (c, r)) ->
        let projid = add_suffix i "_comp_proj" in
        let compproj =
          let body =
@@ -461,30 +458,34 @@ let define_by_eqs ~poly opts eqs nt =
        Table.extraction_inline true [Libnames.qualid_of_ident projid];
        let compinfo = LogicalProj { comp_app = to_constr !evd arity;
 			            comp_proj = compproj; comp_recarg = succ (length sign) } in
-       let is_rec =
-         if b then Some (Logical compinfo)
-         else Some (Structural [])
-       in
        { program_id = i;
          program_sign = sign;
          program_arity = arity;
-         program_rec_annot = rec_annot;
-         program_rec = is_rec;
+         program_rec = Some (WellFounded (c, r, compinfo));
          program_impls = impls }
   in
   let arities = List.map interp_arities eqs in
-  let recids = List.map (fun p ->
-    let ann =
-      match p.program_rec_annot with
-      | Some ann -> ann
-      | None -> NestedOn None
-    in p.program_id, ann)
-    arities
+  let rec_info =
+    if List.for_all (fun p -> match p.program_rec with
+        | Some (Structural _)
+        | None -> true
+        | _ -> false) arities then
+      let recids =
+        List.map (fun p -> p.program_id,
+                           match p.program_rec with
+                           | Some (Structural ann) -> ann
+                           | None -> NestedOn None
+                           | _ -> assert false) arities
+      in Some (Guarded recids)
+    else begin
+      if List.length arities != 1 then
+        user_err_loc (None, "equations", Pp.str "Mutual well-founded definitions are not supported");
+      let p = List.hd arities in
+      match p.program_rec with
+      | Some (WellFounded (_, _, info)) -> Some (Logical info)
+      | _ -> assert false
+    end
   in
-  let arities = List.map (fun p ->
-                    match p.program_rec with
-                    | Some (Structural _) -> { p with program_rec = Some (Structural recids) }
-                    | _ -> p) arities in
   let eqs = List.map snd eqs in
   let env = Global.env () in (* To find the comp constant *)
 
@@ -510,7 +511,7 @@ let define_by_eqs ~poly opts eqs nt =
     Metasyntax.with_syntax_protection (fun () ->
       List.iter (Metasyntax.set_notation_for_interpretation env data) nt;
       List.map3 (fun (oty, impls) ar eqs ->
-        List.map (interp_eqn ar.program_id ar.program_rec env oty impls) eqs)
+        List.map (interp_eqn ar.program_id rec_info env oty impls) eqs)
         implsinfo arities eqs)
       ()
   in
@@ -524,9 +525,10 @@ let define_by_eqs ~poly opts eqs nt =
      *            program_oarity = arity }
      * in *)
     let prob =
-      if is_structural p.program_rec then
-        match p.program_rec_annot with
-        | Some (NestedOn None) -> (** Actually the definition is not self-recursive *)
+      match p.program_rec with
+      | Some (Structural ann) ->
+        (match ann with
+         | NestedOn None -> (** Actually the definition is not self-recursive *)
            let fixdecls =
              List.filter (fun decl ->
                  let na = Context.Rel.Declaration.get_name decl in
@@ -534,12 +536,12 @@ let define_by_eqs ~poly opts eqs nt =
                  not (Id.equal id p.program_id)) fixdecls
            in
            id_subst (sign @ fixdecls)
-        | _ -> id_subst (sign @ fixdecls)
-      else id_subst sign
+         | _ -> id_subst (sign @ fixdecls))
+      | _ -> id_subst sign
     in
     let arity = nf_evar !evd p.program_arity in
     let idinfo = (p.program_id,data) in
-    (* Feedback.msg_debug Pp.(str"Launching covering on "++ pr_clauses env eqs); *)
+    Feedback.msg_debug Pp.(str"Launching covering on "++ pr_clauses env eqs);
     covering env evd idinfo eqs [Ident p.program_id] prob arity
   in
   let coverings = List.map2 (covering env) arities equations in
@@ -571,31 +573,31 @@ let define_by_eqs ~poly opts eqs nt =
        let progs = Array.map_to_list (fun x -> Option.get x) progs in
        let progs' = define_mutual_nested flags progs in
        if flags.with_eqns || flags.with_ind then
-         define_principles flags fixprots progs')
+         define_principles flags rec_info fixprots progs')
   in
   let idx = ref 0 in
   let define_tree p split =
     let comp = match p.program_rec with
-      Some (Logical l) -> Some l
+      Some (WellFounded (_, _, l)) -> Some l
     | _ -> None
     in
     let fixdecls =
-      match p.program_rec_annot with
-      | Some (NestedOn None) -> (** Actually the definition is not self-recursive *)
+      match p.program_rec with
+      | Some (Structural (NestedOn None)) -> (** Actually the definition is not self-recursive *)
          List.filter (fun decl ->
              let na = Context.Rel.Declaration.get_name decl in
              let id = Nameops.Name.get_id na in
              not (Id.equal id p.program_id)) fixdecls
       | _ -> fixdecls
     in
-    define_tree p.program_rec fixdecls poly p.program_impls status evd env
+    define_tree rec_info fixdecls poly p.program_impls status evd env
                 (p.program_id, p.program_sign, p.program_arity)
 		comp split (hook !idx p);
     incr idx
   in CList.iter2 define_tree arities coverings
 
 let equations ~poly opts eqs nt =
-  List.iter (fun (((loc, i), nested, l, t),eqs) -> Dumpglob.dump_definition CAst.(make ~loc i) false "def") eqs;
+  List.iter (fun (((loc, i), nested, l, t, by),eqs) -> Dumpglob.dump_definition CAst.(make ~loc i) false "def") eqs;
   define_by_eqs ~poly opts eqs nt
 
 let solve_equations_goal destruct_tac tac gl =

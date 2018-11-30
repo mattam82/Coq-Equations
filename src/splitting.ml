@@ -318,12 +318,17 @@ type term_info = {
   user_obls : Id.Set.t; (** The user obligations *)
 }
 
+type wf_rec_info =
+  Constrexpr.constr_expr * Constrexpr.constr_expr option * Syntax.logical_rec
+
+type rec_info =
+  (rec_annot, wf_rec_info) Syntax.by_annot
+
 type program_info = {
   program_id : Id.t;
   program_sign : EConstr.rel_context;
   program_arity : EConstr.t;
-  program_rec_annot : rec_annot option;
-  program_rec : Syntax.rec_type option;
+  program_rec : rec_info option;
   program_impls : Impargs.manual_explicitation list;
 }
 
@@ -396,19 +401,19 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
   let kind = (Decl_kinds.Global, poly, Decl_kinds.Definition) in
   let ty' = it_mkProd_or_LetIn arity sign in
     match is_recursive with
-    | Some (Syntax.Structural [id]) ->
+    | Some (Syntax.Guarded [id]) ->
         let ty' = it_mkProd_or_LetIn ty' [make_assum Anonymous ty'] in
         let ty' = EConstr.to_constr !isevar ty' in
 	let recarg =
 	  match snd id with
-	  | StructuralOn (_, Some (loc, id))
+          | MutualOn (_, Some (loc, id))
 	  | NestedOn (Some (_, Some (loc, id))) -> Some (CAst.make ~loc id)
 	  | _ -> None
 	in
 	ignore(Obligations.add_mutual_definitions [(i, t', ty', impls, obls)]
 		 (Evd.evar_universe_context !isevar) [] ~kind
                  ~reduce ~univ_hook (Obligations.IsFixpoint [recarg, CStructRec]))
-    | Some (Structural ids) ->
+    | Some (Guarded ids) ->
         let ty' = it_mkProd_or_LetIn ty' fixprots in
         let ty' = EConstr.to_constr !isevar ty' in
         ignore(Obligations.add_definition

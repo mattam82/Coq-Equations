@@ -213,7 +213,6 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
       Splitting.{ program_id = id;
         program_sign = fullbinders;
         program_arity = s;
-        program_rec_annot = None;
         program_rec = None;
         program_impls = [] }
     in
@@ -222,7 +221,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
                                     program_split_info = terminfo } in
     let flags = { polymorphic; with_eqns = true; with_ind = true } in
     let fixprots = [s] in
-    let () = Equations.define_principles flags fixprots [proginfo, compiled_info] in
+    let () = Equations.define_principles flags None fixprots [proginfo, compiled_info] in
     (** The principles are now shown, let's prove this forms an equivalence *)
     Global.set_strategy (ConstKey program_cst) Conv_oracle.transparent;
     let env = Global.env () in

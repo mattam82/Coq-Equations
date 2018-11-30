@@ -92,6 +92,7 @@ val build_equations :
   Environ.env ->
   Evd.evar_map ->
   ?alias:constr * Names.Id.t * Covering.splitting ->
+  Syntax.rec_type option ->
   (Splitting.program_info * Splitting.compiled_program_info * Principles_proofs.equations_info) list ->
   unit
 

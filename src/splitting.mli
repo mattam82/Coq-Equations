@@ -42,12 +42,17 @@ type term_info = {
   user_obls : Id.Set.t; (** The user proof obligations *)
 }
 
+type wf_rec_info =
+  Constrexpr.constr_expr * Constrexpr.constr_expr option * Syntax.logical_rec
+
+type rec_info =
+  (rec_annot, wf_rec_info) Syntax.by_annot
+
 type program_info = {
   program_id : Id.t;
   program_sign : EConstr.rel_context;
   program_arity : EConstr.t;
-  program_rec_annot : rec_annot option;
-  program_rec : Syntax.rec_type option;
+  program_rec : rec_info option;
   program_impls : Impargs.manual_explicitation list;
 }
 

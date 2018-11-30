@@ -1622,7 +1622,7 @@ and interp_wheres env ctx evars path data s lets w =
   let inst, args, nactx = named_of_rel_context (fun () -> raise (Invalid_argument "interp_wheres")) ctx in
   let envna = push_named_context nactx env in
   let aux (lets,nlets,coverings,env (* named *),envctx)
-      (((loc,id),nested,b,t),clauses) =
+      (((loc,id),nested,b,t,reca),clauses) =
     let sigma, (ienv, ((env', sign), impls)) = interp_context_evars env !evars b in
     let sigma, arity = interp_type_evars env' ?impls:None sigma t in
     let () = evars := sigma in
