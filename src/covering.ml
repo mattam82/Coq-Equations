@@ -188,6 +188,23 @@ let context_map_to_lhs ?(avoid = Id.Set.empty) ?loc (ctx, pats, _) =
   let avoid = ref avoid in
   List.rev (pats_to_lhs ~avoid ?loc ctx pats)
 
+let do_renamings env sigma ctx =
+  let avoid, ctx' =
+    List.fold_right (fun decl (ids, acc) ->
+        let (n, b, t) = to_tuple decl in
+        match n with
+        | Name id ->
+          let id' = Namegen.next_ident_away id ids in
+          let decl' = make_def (Name id') b t in
+          (Id.Set.add id' ids, decl' :: acc)
+        | Anonymous ->
+          let id' = Namegen.id_of_name_using_hdchar (push_rel_context acc env) sigma t n in
+          let id' = Namegen.next_ident_away id' ids in
+          let decl' = make_def (Name id') b t in
+          (Id.Set.add id' ids, decl' :: acc))
+      ctx (Id.Set.empty, [])
+  in ctx'
+
 (** Pretty-printing *)
 
 let pr_constr_pat env sigma c =
@@ -743,7 +760,7 @@ let hidden = function PHide _ -> true | _ -> false
 
 let rec match_pattern p c =
   match DAst.get p, c with
-  | PUVar (i,gen), (PCstr _ | PRel _ | PHide _) -> [i, c], [], []
+  | PUVar (i,gen), (PCstr _ | PRel _ | PHide _) -> [(i, gen), c], [], []
   | PUCstr (c, i, pl), PCstr ((c',u), pl') -> 
     if eq_constructor c c' then
       let params, args = List.chop i pl' in
@@ -836,7 +853,7 @@ let adjust_sign_arity env evars sign ty clauses =
     if List.length lhs < max_args then user_err_loc (loc, "covering", str "This clause has not enough arguments")
     else ()
   in List.iter check_clause clauses;
-  let sign = Namegen.name_context env evars sign in
+  let sign = do_renamings env evars sign in
   evars, sign, ty, clauses
 
 let lets_of_ctx env ctx evars s =
@@ -875,6 +892,28 @@ let env_of_rhs evars ctx env s lets =
   in
   let pats = List.map (lift (-letslen)) pats @ patslets in
   ctx, envctx, len + letslen, pats
+
+let rename_prob_subst env ctx s =
+  let avoid = List.fold_left (fun avoid decl ->
+      match get_name decl with
+      | Anonymous -> avoid
+      | Name id -> Id.Set.add id avoid) Id.Set.empty ctx
+  in
+  let varsubst, rest =
+    fold_left (fun (varsubst, rest) ((id, gen), pat) ->
+        match pat with
+        | PRel i when gen = false -> ((i, id) :: varsubst, rest)
+        | _ -> (varsubst, (id, pat) :: rest))
+      ([], []) s
+  in
+  let ctx' =
+    List.fold_left_i (fun i acc decl ->
+        try let id = List.assoc i varsubst in
+          Context.Rel.Declaration.set_name (Name id) decl :: acc
+        with Not_found -> decl :: acc)
+      1 [] ctx
+  in
+  (List.rev ctx', id_pats ctx, ctx)
 
 let interp_program_body env sigma ctx impls body ty =
   match body with
@@ -922,8 +961,11 @@ let interp_constr_in_rhs_env env evars impls (ctx, envctx, liftn, subst) c ty =
     c', nf_evar !evars (substnl subst 0 ty')
 
 let interp_constr_in_rhs env ctx evars (i,impls) ty s lets c =
-  let data = env_of_rhs evars ctx env s lets in
-  interp_constr_in_rhs_env env evars impls data c ty
+  try
+    let data = env_of_rhs evars ctx env s lets in
+    interp_constr_in_rhs_env env evars impls data c ty
+  with Evarsolve.IllTypedInstance (env, t, u) ->
+    anomaly (str"Ill-typed instance in interp_constr_in_rhs")
 
 let unify_type env evars before id ty after =
   try
@@ -937,6 +979,7 @@ let unify_type env evars before id ty after =
         ctxids := id' :: !ctxids; id'
     in
     let envb = push_rel_context before env in
+    let ty = nf_evar !evars ty in
     let (indf, args) = find_rectype envb !evars ty in
     let ind, params = dest_ind_family indf in
     let vs = List.map (Tacred.whd_simpl envb !evars) args in
@@ -1046,8 +1089,9 @@ let pr_splitting env sigma ?(verbose=false) split =
       let env' = push_rel_context (pi1 lhs) env in
       let ppwhere w =
         hov 2 (str"where " ++ Id.print w.where_id ++ str " : " ++
-               Printer.pr_econstr_env env'  sigma w.where_type ++
-               str " := " ++ Pp.fnl () ++ aux (Lazy.force w.where_splitting))
+               (try Printer.pr_econstr_env env'  sigma w.where_type ++
+                    str " := " ++ Pp.fnl () ++ aux (Lazy.force w.where_splitting)
+                with e -> str "*raised an exception"))
       in
       let ppwheres = prlist_with_sep Pp.fnl ppwhere wheres in
       let env'' = push_rel_context (where_context wheres) env' in
@@ -1126,22 +1170,6 @@ let subst_matches_constr sigma k s c =
 let is_all_variables (delta, pats, gamma) =
   List.for_all (function PInac _ | PHide _ -> true | PRel _ -> true | PCstr _ -> false) pats
 
-let do_renamings ctx =
-  let avoid, ctx' =
-    List.fold_right (fun decl (ids, acc) ->
-        let (n, b, t) = to_tuple decl in
-        match n with
-        | Name id -> 
-          let id' = Namegen.next_ident_away id ids in
-          let decl' = make_def (Name id') b t in
-          (Id.Set.add id' ids, decl' :: acc)
-        | Anonymous ->
-          let id' = Namegen.next_ident_away (Id.of_string "anonymous") ids in
-          let decl' = make_def (Name id') b t in
-          (Id.Set.add id' ids, decl' :: acc))
-      ctx (Id.Set.empty, [])
-  in ctx'
-
 type 'a split_var_result =
   | Splitted of 'a
   | CannotSplit of Names.Name.t * rel_context * constr
@@ -1158,7 +1186,7 @@ let split_var (env,evars) var delta =
       (* ctx' |- s : before ; ctxc *)
       (* ctx' |- cpat : ty *)
       let cpat = specialize !evars s cstrpat in
-      let ctx' = do_renamings ctx' in
+      let ctx' = do_renamings env !evars ctx' in
       (* ctx' |- spat : before ; id *)
       let spat =
         let ctxcsubst, beforesubst = List.chop ctxlen s in
@@ -1175,7 +1203,7 @@ let split_var (env,evars) var delta =
       Some (CannotSplit (id, before, newty))
     else
       let newdelta = after @ (make_def id b newty :: before) in
-      Some (Splitted (var, do_renamings newdelta, Array.map branch unify))
+      Some (Splitted (var, do_renamings env !evars newdelta, Array.map branch unify))
 
 let find_empty env delta =
   let r = List.filter (fun v -> 
@@ -1277,9 +1305,12 @@ let rec covering_aux env evars data prev clauses path (ctx,pats,ctx' as prob) le
   match clauses with
   | ((loc, lhs, rhs), used as clause) :: clauses' -> 
     (match matches lhs prob with
-     | UnifSuccess s -> 
+     | UnifSuccess s ->
+       (* let renaming = rename_prob_subst env ctx (pi1 s) in *)
+       let s = (List.map (fun ((x, gen), y) -> x, y) (pi1 s), pi2 s, pi3 s) in
+       (* let prob = compose_subst env ~sigma:!evars renaming prob in *)
        let interp =
-         interp_clause env evars data prev clauses' path (ctx,pats,ctx') lets ty
+         interp_clause env evars data prev clauses' path prob lets ty
            ((loc,lhs,rhs), used) s
        in
        (match interp with
@@ -1400,6 +1431,9 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
     (* Compute the coverings using type information from the term using
        the where clauses *)
     let () = List.iter (fun c -> ignore (Lazy.force c.where_splitting)) coverings in
+    (* Feedback.msg_debug
+     *   (str"Where splittings computed: " ++
+     *    prlist_with_sep fnl (pr_splitting env !evars) (List.map (fun c -> Lazy.force c.where_splitting) coverings)); *)
     let res = Compute (prob, coverings, ty', RProgram c') in
     Some res
 
@@ -1424,7 +1458,7 @@ and interp_clause env evars data prev clauses' path (ctx,pats,ctx' as prob) lets
      | Some (clauses, split) -> Some (RecValid (fst data, split)))
 
   | By (tac, s) ->
-    let sign, t', rels, _ = push_rel_context_to_named_context env' !evars ty in
+    let sign, t', rels, _ = push_rel_context_to_named_context ~hypnaming:KeepExistingNames env' !evars ty in
     let sign = named_context_of_val sign in
     let sign', secsign = split_at_eos !evars sign in
     let ids = List.map get_id sign in
@@ -1643,6 +1677,8 @@ and interp_wheres env ctx evars path data s lets w =
     let arity = substnl subst (List.length sign + nlets) arity in
     let sign = nf_rel_context_evar !evars sign in
     let arity = nf_evar !evars arity in
+    let sigma, sign, arity, clauses = adjust_sign_arity env !evars sign arity clauses in
+    let () = evars := sigma in
     let ty = it_mkProd_or_LetIn arity sign in
     let data = Constrintern.compute_internalization_env
         env !evars Constrintern.Recursive [id] [ty] [impls]
@@ -1658,8 +1694,6 @@ and interp_wheres env ctx evars path data s lets w =
     let () = evars := sigma in
     let ev = destEvar !evars term in
     let path = Evar (fst ev) :: path in
-    let sigma, sign, arity, clauses = adjust_sign_arity env !evars sign ty clauses in
-    let () = evars := sigma in
     let problem = id_subst sign in
     let splitting = lazy (covering env evars data clauses path problem arity) in
     let decl = make_def (Name id) (Some term) relty in

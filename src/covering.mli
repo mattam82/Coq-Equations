@@ -254,13 +254,13 @@ val accessible : pat -> Int.Set.t
 val accessibles : pat list -> Int.Set.t
 val hidden : pat -> bool
 val match_pattern : user_pat_loc -> pat ->
-                    (identifier * pat) list * (Constrexpr.constr_expr * pat) list *
+                    ((identifier * bool) * pat) list * (Constrexpr.constr_expr * pat) list *
                       (user_pat_loc * constr) list
 val match_patterns :
-  user_pats -> pat list -> (identifier * pat) list * (Constrexpr.constr_expr * pat) list *
+  user_pats -> pat list -> ((identifier * bool) * pat) list * (Constrexpr.constr_expr * pat) list *
                                                    (user_pat_loc * constr) list
 val matches :
-  user_pats -> context_map -> ((identifier * pat) list * (Constrexpr.constr_expr * pat) list *                       (user_pat_loc * constr) list)  unif_result
+  user_pats -> context_map -> (((identifier * bool) * pat) list * (Constrexpr.constr_expr * pat) list *                       (user_pat_loc * constr) list)  unif_result
 val match_user_pattern :
   pat -> user_pat_loc -> (int * user_pat) list * (identifier * pat) list
 val match_user_patterns :
@@ -318,7 +318,7 @@ val pr_rel_name : Environ.env -> int -> Pp.t
 val subst_matches_constr : Evd.evar_map ->
   int -> (int * constr) list -> constr -> constr
 val is_all_variables : 'a * pat list * 'b -> bool
-val do_renamings : rel_context -> rel_context
+val do_renamings : env -> Evd.evar_map -> rel_context -> rel_context
 
 type 'a split_var_result =
   | Splitted of 'a

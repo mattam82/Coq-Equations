@@ -73,7 +73,7 @@ let map_split f split =
   in aux split
 
 let helper_evar evm evar env typ src =
-  let sign, typ', instance, _ = push_rel_context_to_named_context env evm typ in
+  let sign, typ', instance, _ = push_rel_context_to_named_context ~hypnaming:KeepExistingNames env evm typ in
   let evm' = evar_declare sign evar typ' ~src evm in
     evm', mkEvar (evar, Array.of_list instance)
 
@@ -184,6 +184,8 @@ let term_of_tree status isevar env0 tree =
 	      
     | Split ((ctx, _, _) as subst, rel, ty, sp) ->
       (* Produce parts of a case that will be relevant. *)
+      let evm, block = Equations_common.(get_fresh evm coq_block) in
+      let ty = mkLetIn (Anonymous, block, Retyping.get_type_of env evm block, lift 1 ty) in
       let evd = ref evm in
       let ctx', case_ty, branches_res, nb_cuts, rev_subst, to_apply, simpl =
         Sigma_types.smart_case env evd ctx rel ty in
@@ -215,9 +217,18 @@ let term_of_tree status isevar env0 tree =
           msg_info(let env = push_rel_context ctx env in
                    Printer.pr_econstr_env env !evd ty);
           msg_info(str"... in context:");
-          msg_info(pr_context env !evd ctx)
+          msg_info(pr_context env !evd ctx);
+          msg_info(str"... named context:");
+          msg_info(Printer.pr_named_context env !evd (EConstr.Unsafe.to_named_context (named_context env)));
         end;
         let ((hole, c), lsubst) = simpl_step (cut_ctx @ new_ctx @ ctx', ty) in
+        if !debug then
+          begin
+            let open Feedback in
+            msg_debug (str"Finished simplifying");
+            msg_info(let env = push_rel_context ctx env in
+                     Printer.pr_econstr_env env !evd c);
+          end;
         let subst = Covering.compose_subst ~unsafe:true env ~sigma:!evd csubst subst in
         let subst = Covering.compose_subst ~unsafe:true env ~sigma:!evd lsubst subst in
         (* Now we build a term to put in the match branch. *)
