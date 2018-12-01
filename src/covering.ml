@@ -208,10 +208,10 @@ let do_renamings env sigma ctx =
 (** Pretty-printing *)
 
 let pr_constr_pat env sigma c =
-  let pr = Printer.pr_econstr_env env sigma c in
-  match kind sigma c with
-  | App _ -> str "(" ++ pr ++ str ")"
-  | _ -> pr
+  Printer.pr_econstr_env env sigma c
+  (* match kind sigma c with
+   * | App _ -> str "(" ++ pr ++ str ")"
+   * | _ -> pr *)
 
 let pr_pat env sigma c =
   let sigma, patc = constr_of_pat env sigma c in
@@ -1680,7 +1680,7 @@ and interp_wheres env ctx evars path data s lets w =
     let sigma, sign, arity, clauses = adjust_sign_arity env !evars sign arity clauses in
     let () = evars := sigma in
     let ty = it_mkProd_or_LetIn arity sign in
-    let data = Constrintern.compute_internalization_env
+    let data = Constrintern.compute_internalization_env ~impls:(snd data)
         env !evars Constrintern.Recursive [id] [ty] [impls]
     in
     let data = (id,data) in
