@@ -37,6 +37,17 @@ and user_pats = user_pat_loc list
 
 (** AST *)
 
+type pat_expr =
+  | PEApp of qualid Constrexpr.or_by_notation with_loc * pat_expr with_loc list
+  | PEWildcard
+  | PEInac of constr_expr
+
+type user_pat_expr = pat_expr with_loc
+
+type 'a input_pats =
+  | SignPats of 'a
+  | RefinePats of 'a list
+
 type rec_annotation =
   | Nested
   | Mutual
@@ -55,16 +66,9 @@ type program_body =
                                 [Var names] of the lhs bound variables
                                 with the proper de Bruijn indices *)
 
-type program =
-  (signature * clause list) list
+type lhs = user_pats
 
-and signature = identifier * rel_context * Constr.t
-  
-and clause = Loc.t option * lhs * clause rhs
-  
-and lhs = user_pats
-
-and 'a rhs = 
+type 'a rhs =
   | Program of program_body * 'a where_clause list
   | Empty of identifier with_loc
   | Rec of constr_expr * constr_expr option *
@@ -72,7 +76,7 @@ and 'a rhs =
   | Refine of constr_expr * 'a list
   | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) union * 'a list
 
-and prototype =
+and pre_prototype =
   identifier with_loc * user_rec_annot * Constrexpr.local_binder_expr list * Constrexpr.constr_expr *
   (Id.t with_loc, Constrexpr.constr_expr * Constrexpr.constr_expr option) by_annot option
 
@@ -80,7 +84,18 @@ and ('a, 'b) by_annot =
   | Structural of 'a
   | WellFounded of 'b
 
-and 'a where_clause = prototype * 'a list
+and 'a where_clause = pre_prototype * 'a list
+
+type program = (signature * clause list) list
+and signature = identifier * rel_context * constr (* f : Π Δ. τ *)
+and clause = Loc.t option * lhs * clause rhs (* lhs rhs *)
+
+type pre_equation =
+  Constrexpr.constr_expr input_pats * pre_equation rhs
+
+type pre_clause = Loc.t option * lhs * pre_equation rhs
+
+type pre_equations = pre_equation where_clause list
 
 let rec pr_user_loc_pat env ?loc pat =
   match pat with
@@ -137,24 +152,50 @@ and pr_clause env (loc, lhs, rhs) =
 and pr_clauses env =
   prlist_with_sep fnl (pr_clause env)
 
+let pr_user_lhs env lhs =
+  match lhs with
+  | SignPats x -> pr_constr_expr x
+  | RefinePats l -> prlist_with_sep (fun () -> str "|") pr_constr_expr l
+
+let rec pr_prerhs env = function
+  | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ Id.print var
+  | Rec (t, rel, id, s) ->
+     spc () ++ str "=>" ++ spc () ++ str"rec " ++ pr_constr_expr t ++ spc () ++
+       pr_opt (fun (_, id) -> Id.print id) id ++ spc () ++
+      hov 1 (str "{" ++ pr_user_clauses env s ++ str "}")
+  | Program (rhs, where) -> spc () ++ str ":=" ++ spc () ++
+                            (match rhs with
+                             | ConstrExpr rhs -> pr_constr_expr rhs
+                             | Constr c -> str"<constr>") ++
+                            spc () ++ pr_prewheres env where
+  | Refine (rhs, s) -> spc () ++ str "<=" ++ spc () ++ pr_constr_expr rhs ++
+      spc () ++ str "=>" ++ spc () ++
+      hov 1 (str "{" ++ pr_user_clauses env s ++ str "}")
+  | By (Inl tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_raw_tactic tac
+      ++ spc () ++ hov 1 (str "{" ++ pr_user_clauses env s ++ str "}")
+  | By (Inr tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_glob_tactic env tac
+      ++ spc () ++ hov 1 (str "{" ++ pr_user_clauses env s ++ str "}")
+
+and pr_user_clause env (lhs, rhs) =
+  pr_user_lhs env lhs ++ pr_prerhs env rhs
+
+and pr_user_clauses env =
+  prlist_with_sep fnl (pr_user_clause env)
+
+and pr_prewheres env l =
+  if List.is_empty l then mt() else
+  str"where" ++ spc () ++ prlist_with_sep fnl (pr_prewhere env) l
+and pr_prewhere env (sign, eqns) =
+  pr_proto sign ++ str "{" ++ pr_user_clauses env eqns ++ str "}"
+
+let pr_preclause env (loc, lhs, rhs) =
+  pr_lhs env lhs ++ pr_prerhs env rhs
+
+let pr_preclauses env =
+  prlist_with_sep fnl (pr_preclause env)
+
 let ppclause clause =
   pp(pr_clause (Global.env ()) clause)
-
-type pat_expr = 
-  | PEApp of qualid Constrexpr.or_by_notation with_loc * pat_expr with_loc list
-  | PEWildcard
-  | PEInac of constr_expr
-
-type user_pat_expr = pat_expr with_loc
-
-type 'a input_pats =
-  | SignPats of 'a
-  | RefinePats of 'a list
-
-type pre_equation = 
-  constr_expr input_pats * pre_equation rhs
-
-type pre_equations = pre_equation where_clause list
 
 let wit_equations_list : pre_equation list Genarg.uniform_genarg_type =
   Genarg.create_arg "equations_list"
@@ -232,6 +273,21 @@ let ids_of_pats id pats =
   fold_left (fun ids p -> Id.Set.union ids (free_vars_of_constr_expr id p))
     Id.Set.empty pats
 
+type wf_rec_info =
+  EConstr.constr * EConstr.constr option * logical_rec
+
+type program_rec_info =
+  (rec_annot, wf_rec_info) by_annot
+
+type program_info = {
+  program_loc : Loc.t;
+  program_id : Id.t;
+  program_sign : EConstr.rel_context;
+  program_arity : EConstr.t;
+  program_rec : program_rec_info option;
+  program_impls : Impargs.manual_explicitation list;
+}
+
 let chole c loc =
   (* let tac = Genarg.in_gen (Genarg.rawwit Constrarg.wit_tactic) (solve_rec_tac_expr ()) in *)
   let kn = Lib.make_kn c in
@@ -291,16 +347,19 @@ let pattern_of_glob_constr env avoid gc =
     | _ -> user_err_loc (loc, "pattern_of_glob_constr", str ("Cannot interpret globalized term as a pattern"))
   in DAst.map_with_loc aux gc
 
-let interp_pat env ?(avoid = ref Id.Set.empty) fnid p =
-  let env = Global.env () in
+let program_type p = EConstr.it_mkProd_or_LetIn p.program_arity p.program_sign
+
+let interp_pat env ?(avoid = ref Id.Set.empty) p pat =
   let sigma = Evd.from_env env in
   let vars = (Id.Set.elements !avoid) (* (ids_of_pats [p])) *) in
   (* let () = Feedback.msg_debug (str"Variables " ++ prlist_with_sep spc pr_id vars) in *)
   let tys = List.map (fun _ -> EConstr.mkProp) vars in
   let impls = List.map (fun _ -> []) vars in
   let vars, tys, impls =
-    match fnid with
-    | Some (id, ty, impl) -> (id :: vars, ty :: tys, impl :: impls)
+    match p with
+    | Some p ->
+      let ty = program_type p in
+      (p.program_id :: vars, ty :: tys, p.program_impls :: impls)
     | None -> (vars, tys, impls)
   in
   (* let () = Feedback.msg_debug (str"Internalizing " ++ pr_constr_expr p) in *)
@@ -312,12 +371,12 @@ let interp_pat env ?(avoid = ref Id.Set.empty) fnid p =
   in
   let env = Environ.push_named_context nctx env in
   let gc =
-    try Constrintern.intern_gen Pretyping.WithoutTypeConstraint ~impls:ienv env sigma p
+    try Constrintern.intern_gen Pretyping.WithoutTypeConstraint ~impls:ienv env sigma pat
     with Not_found -> anomaly (str"Internalizing pattern")
   in
   try
-    match fnid with
-    | Some (id, _, _) ->
+    match p with
+    | Some { program_id = id } ->
       DAst.with_loc_val (fun ?loc g ->
           match g with
           | GApp (fn, args) ->
@@ -337,17 +396,78 @@ let interp_pat env ?(avoid = ref Id.Set.empty) fnid p =
     | None -> [pattern_of_glob_constr env avoid gc]
   with Not_found -> anomaly (str"While translating pattern to glob constr")
 
-let interp_eqn initi is_rec env ty impls eqn =
+let interp_eqn env is_rec p curpats eqn =
   let avoid = ref Id.Set.empty in
-  let whereid = ref (Id.of_string "abs_where") in
+  let whereid = ref (Nameops.add_suffix p.program_id "abs_where") in
   let interp_pat = interp_pat env ~avoid in
-  let rec aux recinfo i is_rec curpats (pat, rhs) =
+  let rec aux (pat, rhs) = (pat, interp_rhs rhs)
+  and interp_rhs = function
+    | Refine (c, eqs) ->
+       let wheres, c = CAst.with_loc_val interp_constr_expr c in
+       if not (List.is_empty wheres) then
+         user_err_loc (Constrexpr_ops.constr_loc c, "interp_eqns", str"Pattern-matching lambdas not allowed in refine");
+       Refine (c, map aux eqs)
+    | Program (c, w) ->
+       let w = interp_wheres avoid w in
+       let w', c =
+         match c with
+         | ConstrExpr c ->
+            let wheres, c = CAst.with_loc_val interp_constr_expr c in
+            wheres, ConstrExpr c
+         | Constr c -> [], Constr c
+       in
+       Program (c, List.append w' w)
+    | Empty i -> Empty i
+    | Rec (fni, r, id, s) -> Rec (fni, r, id, map aux s)
+    | By (x, s) -> By (x, map aux s)
+  and interp_wheres avoid w =
+    let interp_where (((loc,id),nested,b,t,reca) as p,eqns) =
+      Dumpglob.dump_reference ~loc "<>" (Id.to_string id) "def";
+      p, map aux eqns
+    in List.map interp_where w
+  and interp_constr_expr ?(loc=default_loc) c =
+    let wheres = ref [] in
+    let rec aux' ids ?(loc=default_loc) c =
+      match c with
+      | CApp ((None, { CAst.v = CRef (qid', ie) }), args)
+           when qualid_is_ident qid' && Id.equal (qualid_basename qid') p.program_id ->
+         let id' = qualid_basename qid' in
+         (match p.program_rec with
+          | None | Some (Structural _) -> CAst.make ~loc c
+          | Some (WellFounded (_, _, r)) ->
+            let args =
+              List.map (fun (c, expl) -> CAst.with_loc_val (aux' ids) c, expl) args in
+            let c = CApp ((None, CAst.(make ~loc (CRef (qid', ie)))), args) in
+            let arg = CAst.make ~loc (CApp ((None, CAst.make ~loc c), [chole id' loc])) in
+            (match r with
+             | LogicalDirect _ -> arg
+             | LogicalProj r ->
+               let arg = [arg, None] in
+               let qidproj = Nametab.shortest_qualid_of_global ?loc:qid'.CAst.loc Id.Set.empty (ConstRef r.comp_proj) in
+               CAst.make ~loc (CApp ((None, CAst.make ?loc:qid'.CAst.loc (CRef (qidproj, None))),
+                                     args @ arg))))
+      | CHole (k, i, Some eqns) when Genarg.has_type eqns (Genarg.rawwit wit_equations_list) ->
+         let eqns = Genarg.out_gen (Genarg.rawwit wit_equations_list) eqns in
+         let id = !whereid in
+         let () = avoid := Id.Set.add id !avoid in
+         let eqns = List.map aux eqns in
+         let () =
+           wheres := (((loc, id), None, [], CAst.make ~loc (CHole (k, i, None)), None), eqns) :: !wheres;
+           whereid := Nameops.increment_subscript id;
+         in Constrexpr_ops.mkIdentC id
+      | _ -> map_constr_expr_with_binders Id.Set.add
+             (fun avoid -> CAst.with_loc_val (aux' avoid)) ids (CAst.make ~loc c)
+    in
+    let c' = aux' !avoid ~loc c in
+    !wheres, c'
+  in
+  let interp_eqn curpats (pat, rhs) =
     let loc, pats =
       match pat with
       | SignPats pat ->
-        avoid := Id.Set.union !avoid (ids_of_pats (Some i) [pat]);
+        avoid := Id.Set.union !avoid (ids_of_pats (Some p.program_id) [pat]);
         let loc = Constrexpr_ops.constr_loc pat in
-        loc, interp_pat (Some (i, ty, impls)) pat
+        loc, interp_pat (Some p) pat
       | RefinePats pats ->
         avoid := Id.Set.union !avoid (ids_of_pats None pats);
         let loc = Constrexpr_ops.constr_loc (List.hd pats) in
@@ -355,71 +475,31 @@ let interp_eqn initi is_rec env ty impls eqn =
         let pats = List.map (fun x -> List.hd x) pats in
         loc, curpats @ pats
     in
-    let curpats' = pats in
     let () = check_linearity pats in
-      match is_rec with
-      | Some (Logical r) ->
-         (loc, pats, interp_rhs ((i, r) :: recinfo) i is_rec curpats' rhs)
-      | _ -> (loc, pats, interp_rhs recinfo i is_rec curpats' rhs)
-  and interp_rhs recinfo i is_rec curpats = function
+    (loc, pats, interp_rhs rhs)
+  in interp_eqn curpats eqn
+
+let is_recursive i : pre_equations -> bool option = fun eqs ->
+  let rec occur_eqn (_, rhs) =
+    match rhs with
+    | Program (c,w) ->
+      (match c with
+      | ConstrExpr c ->
+        if occur_var_constr_expr i c then Some false else occurs w
+      | Constr _ -> occurs w)
     | Refine (c, eqs) ->
-       let wheres, c = CAst.with_loc_val (interp_constr_expr recinfo !avoid) c in
-       if not (List.is_empty wheres) then
-         user_err_loc (Constrexpr_ops.constr_loc c, "interp_eqns", str"Pattern-matching lambdas not allowed in refine");
-       Refine (c, map (aux recinfo i is_rec curpats) eqs)
-    | Program (c, w) ->
-       let w = interp_wheres recinfo avoid w in
-       let w', c =
-         match c with
-         | ConstrExpr c ->
-            let wheres, c = CAst.with_loc_val (interp_constr_expr recinfo !avoid) c in
-            wheres, ConstrExpr c
-         | Constr c -> [], Constr c
-       in
-       Program (c, List.append w' w)
-    | Empty i -> Empty i
-    | Rec (fni, r, id, s) -> 
-      let rec_info = LogicalDirect (Option.get (Constrexpr_ops.constr_loc fni), i) in
-      let recinfo = (i, rec_info) :: recinfo in
-      Rec (fni, r, id, map (aux recinfo i is_rec curpats) s)
-    | By (x, s) -> By (x, map (aux recinfo i is_rec curpats) s)
-  and interp_wheres recinfo avoid w =
-    let interp_where (((loc,id),nested,b,t,reca) as p,eqns) =
-      Dumpglob.dump_reference ~loc "<>" (Id.to_string id) "def";
-      p, map (aux recinfo id None []) eqns
-    in List.map interp_where w
-  and interp_constr_expr recinfo ids ?(loc=default_loc) c =
-    let wheres = ref [] in
-    let rec aux' ids ?(loc=default_loc) c =
-      match c with
-      (* |   | CAppExpl of loc * (proj_flag * reference) * constr_expr list *)
-      | CApp ((None, { CAst.v = CRef (qid', ie) }), args)
-           when qualid_is_ident qid' && List.mem_assoc_f Id.equal (qualid_basename qid') recinfo ->
-         let id' = qualid_basename qid' in
-         let r = List.assoc_f Id.equal id' recinfo in
-         let args =
-           List.map (fun (c, expl) -> CAst.with_loc_val (aux' ids) c, expl) args in
-         let c = CApp ((None, CAst.(make ~loc (CRef (qid', ie)))), args) in
-         let arg = CAst.make ~loc (CApp ((None, CAst.make ~loc c), [chole id' loc])) in
-         (match r with
-          | LogicalDirect _ -> arg
-          | LogicalProj r ->
-             let arg = [arg, None] in
-             let qidproj = Nametab.shortest_qualid_of_global ?loc:qid'.CAst.loc Id.Set.empty (ConstRef r.comp_proj) in
-             CAst.make ~loc (CApp ((None, CAst.make ?loc:qid'.CAst.loc (CRef (qidproj, None))),
-                                   args @ arg)))
-      | CHole (k, i, Some eqns) when Genarg.has_type eqns (Genarg.rawwit wit_equations_list) ->
-         let eqns = Genarg.out_gen (Genarg.rawwit wit_equations_list) eqns in
-         let id = !whereid in
-         let eqns = List.map (fun (x, y) ->
-                    aux recinfo id None [] (x, y)) eqns in
-         let () =
-           wheres := (((loc, id), None, [], CAst.make ~loc (CHole (k, i, None)), None), eqns) :: !wheres;
-           whereid := Nameops.increment_subscript id;
-         in Constrexpr_ops.mkIdentC id
-      | _ -> map_constr_expr_with_binders Id.Set.add
-             (fun ids -> CAst.with_loc_val (aux' ids)) ids (CAst.make ~loc c)
-    in
-    let c' = aux' ids ~loc c in
-    !wheres, c'
-  in aux [] initi is_rec [] eqn
+       if occur_var_constr_expr i c then Some false
+       else occur_eqns eqs
+    | Rec _ -> Some true
+    | _ -> None
+  and occur_eqns eqs =
+    let occurs = List.map occur_eqn eqs in
+    if for_all Option.is_empty occurs then None
+    else if exists (function Some true -> true | _ -> false) occurs then Some true
+    else Some false
+  and occurs eqs =
+    let occurs = List.map (fun (_,eqs) -> occur_eqns eqs) eqs in
+      if for_all Option.is_empty occurs then None
+      else if exists (function Some true -> true | _ -> false) occurs then Some true
+      else Some false
+  in occurs eqs

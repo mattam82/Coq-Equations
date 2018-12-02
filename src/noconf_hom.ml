@@ -204,13 +204,28 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   let indid = Nametab.basename_of_global (IndRef ind) in
   let id = add_prefix "NoConfusionHom_" indid in
   let evd = ref sigma in
+  let data =
+    Covering.{
+      rec_info = None;
+      fixdecls = [];
+      intenv = Constrintern.empty_internalization_env;
+      notations = []
+    }
+  in
+  let p = Syntax.{program_loc = Obj.magic ();
+                  program_id = Names.Id.of_string "dummy";
+                  program_impls = [];
+                  program_rec = None;
+                  program_sign = ctx;
+                  program_arity = s}
+  in
   let splitting =
     Covering.covering
       ~check_unused:false (* The catch-all clause might not be needed *)
-      env evd (id, Names.Id.Map.empty) clauses [] ctxmap s in
+      env evd p data clauses [] ctxmap [] s in
   let hook split fn terminfo ustate =
     let proginfo =
-      Splitting.{ program_loc = Loc.make_loc (0,0); program_id = id;
+      Syntax.{ program_loc = Loc.make_loc (0,0); program_id = id;
         program_sign = fullbinders;
         program_arity = s;
         program_rec = None;

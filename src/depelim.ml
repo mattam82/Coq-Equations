@@ -398,7 +398,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
           List.map (fun x -> List.hd (Syntax.interp_pat env ~avoid None x)) p
         in
         (* For each pattern, produce a clause. *)
-        let make_clause : (Syntax.user_pat_loc) -> Syntax.clause =
+        let make_clause : (Syntax.user_pat_loc) -> Syntax.pre_clause =
           DAst.with_loc_val (fun ?loc pat ->
             let lhs =
               List.rev_map (fun decl ->
@@ -410,12 +410,23 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
         in Proofview.tclUNIT (List.map make_clause patterns)
     end >>= fun clauses ->
     if !debug then
-    Feedback.msg_info (str "Generated clauses: " ++ fnl() ++ Syntax.pr_clauses env clauses);
+    Feedback.msg_info (str "Generated clauses: " ++ fnl() ++ Syntax.pr_preclauses env clauses);
 
     (* Produce dummy data for covering. *)
     (* FIXME Not very clean. *)
-    let data = (Names.Id.of_string "dummy",
-      Constrintern.empty_internalization_env) in
+    let data =
+      Covering.{
+        rec_info = None;
+        fixdecls = [];
+        intenv = Constrintern.empty_internalization_env;
+        notations = []
+      } in
+    let p = Syntax.{program_loc = default_loc;
+                    program_id = Names.Id.of_string "dummy";
+                    program_impls = [];
+                    program_rec = None;
+                    program_sign = ctx;
+                    program_arity = ty} in
 
     (* Initial problem. *)
     let prob = Covering.id_subst ctx in
@@ -425,7 +436,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
       let evd = ref evars in
       (* Produce a splitting tree. *)
       let split : Covering.splitting =
-        Covering.covering env evd data clauses [] prob ty
+        Covering.covering env evd p data clauses [] prob [] ty
       in
 
       let helpers, oblevs, c, ty =

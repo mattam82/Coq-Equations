@@ -343,7 +343,6 @@ let my_preident : string Pcoq.Entry.t =
 
 open Util
 open Pcoq
-open Prim
 open Constr
 open Syntax
 

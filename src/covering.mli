@@ -278,14 +278,25 @@ val lets_of_ctx :
   constr list *
   rel_context *
   rel_context
+
+
+type int_data = {
+  rec_info : rec_type option;
+  fixdecls : rel_context;
+  intenv : Constrintern.internalization_env;
+  notations : (Names.lstring * Constrexpr.constr_expr *
+               Notation_term.scope_name option) list
+}
+
 val interp_program_body : Environ.env ->
            Evd.evar_map -> EConstr.rel_context ->
            Constrintern.internalization_env ->
            Syntax.program_body ->
            EConstr.types option -> Evd.evar_map * EConstr.constr
+
 val interp_constr_in_rhs_env :Environ.env ->
            Evd.evar_map ref ->
-           Constrintern.internalization_env ->
+  int_data ->
            EConstr.rel_context * Environ.env * int * EConstr.Vars.substl ->
            Syntax.program_body ->
            EConstr.t option -> EConstr.constr * EConstr.types
@@ -294,7 +305,7 @@ val interp_constr_in_rhs :
   env ->
   rel_context ->
   Evd.evar_map ref ->
-  'a * Constrintern.internalization_env ->
+  int_data ->
   constr option ->
   (Id.t * pat) list ->
   rel_context ->
@@ -348,7 +359,7 @@ val push_rel_context_eos : rel_context -> env -> esigma -> env
 val split_at_eos : Evd.evar_map ->
   named_context -> named_context * named_context
 val pr_problem :
-  Id.t * 'b ->
+  program_info ->
   env -> Evd.evar_map -> rel_context * pat list * 'c -> Pp.t
 val rel_id : (Name.t * 'a * 'b) list -> int -> Id.t
 val push_named_context :
@@ -368,19 +379,21 @@ val env_of_rhs :
 val covering_aux :
   env ->
   Evd.evar_map ref ->
-  identifier * Constrintern.internalization_env ->
-  (clause * bool) list ->
-  (clause * bool) list ->
+  program_info -> int_data ->
+  (pre_clause * bool) list ->
+  (pre_clause * bool) list ->
   path ->
   context_map ->
-  rel_context -> constr -> ((clause * bool) list * splitting) option
+  user_pats ->
+  rel_context -> constr ->
+  ((pre_clause * bool) list * splitting) option
 
 val covering : ?check_unused:bool ->
   env ->
   Evd.evar_map ref ->
-  identifier * Constrintern.internalization_env ->
-  clause list -> path ->
-  context_map ->
+  program_info -> int_data ->
+  pre_clause list -> path ->
+  context_map -> user_pats ->
   constr -> splitting
 
 val adjust_sign_arity : Environ.env ->
@@ -390,3 +403,28 @@ val adjust_sign_arity : Environ.env ->
            (Loc.t option * 'a list * 'b) list ->
   Evd.evar_map * EConstr.rel_context * EConstr.t *
                   (Loc.t option * 'a list * 'b) list
+
+val compute_recinfo : program_info list -> rec_type option
+val print_recinfo : program_info list -> unit
+val compute_fixdecls_data :
+           Environ.env ->
+           Evd.evar_map ref ->
+           ?data:Constrintern.internalization_env ->
+           Syntax.program_info list ->
+           Constrintern.internalization_env *
+           Equations_common.rel_declaration list * EConstr.t list
+
+val interp_arity : Environ.env ->
+  Evd.evar_map ref ->
+  bool ->
+  bool option ->
+  pre_equation Syntax.where_clause ->
+  program_info
+
+val coverings :
+  Environ.env ->
+  Evd.evar_map ref ->
+  int_data ->
+  Syntax.program_info list ->
+  pre_equation list list ->
+  (Syntax.program_info * splitting) list

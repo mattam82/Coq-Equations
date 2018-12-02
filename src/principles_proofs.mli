@@ -61,7 +61,7 @@ val ind_fun_tac :
   ind_info ->
   Names.Id.t ->
   Covering.splitting -> Covering.splitting option ->
-  (Splitting.program_info * Splitting.compiled_program_info * equations_info) list ->
+  (Syntax.program_info * Splitting.compiled_program_info * equations_info) list ->
   unit Proofview.tactic
 
 val prove_unfolding_lemma :

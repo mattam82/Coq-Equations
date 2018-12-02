@@ -162,7 +162,7 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
         let f' = fst (Constr.destConst f') in
         match is_applied_to_structarg (Names.Label.to_id (Names.Constant.label f')) is_rec
 	  (List.length args) with
-        | Some true ->
+        | Some true | None ->
            let sign, args =
              if nhyps <= List.length args then [], CList.chop nhyps args
              else
@@ -172,7 +172,6 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
                sign, (List.map (lift signlen) args @ Context.Rel.to_extended_list mkRel 0 sign, [])
            in Some (idx, arity, filter, sign, args)
         | Some false -> None
-        | None -> Some (idx, arity, filter, [], (args, []))
       else
         match alias with
         | Some (f',argsf) ->

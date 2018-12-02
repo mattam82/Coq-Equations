@@ -7,7 +7,6 @@
 (**********************************************************************)
 
 open Environ
-open Names
 open EConstr
 
 val derive_no_confusion_hom :

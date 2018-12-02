@@ -42,21 +42,6 @@ type term_info = {
   user_obls : Id.Set.t; (** The user proof obligations *)
 }
 
-type wf_rec_info =
-  Constrexpr.constr_expr * Constrexpr.constr_expr option * Syntax.logical_rec
-
-type rec_info =
-  (rec_annot, wf_rec_info) Syntax.by_annot
-
-type program_info = {
-  program_loc : Loc.t;
-  program_id : Id.t;
-  program_sign : EConstr.rel_context;
-  program_arity : EConstr.t;
-  program_rec : rec_info option;
-  program_impls : Impargs.manual_explicitation list;
-}
-
 type compiled_program_info = {
     program_cst : Constant.t;
     program_split : splitting;
