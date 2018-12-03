@@ -97,12 +97,12 @@ Module RoseTree.
     Hint Extern 4 (MR _ _ _ _) => abstract (repeat red; simpl in *; omega) : rec_decision.
 
     (* Nested rec *) 
+    Set Equations Debug.
     Equations elements' (r : t) : list A by rec r (MR lt size) :=
     elements' (leaf a) := [a];
     elements' (node l) := fn l hidebody
 
-    where fn (x : list t) (H : list_size size x < size (node l)) : list A :=
-    fn x H by rec x (MR lt (list_size size)) :=
+    where fn (x : list t) (H : list_size size x < size (node l)) : list A by rec x (MR lt (list_size size)) :=
     fn nil _ := nil;
     fn (cons x xs) _ := elements' x ++ fn xs hidebody _.
 

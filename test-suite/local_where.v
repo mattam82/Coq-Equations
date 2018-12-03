@@ -7,6 +7,10 @@ foo n := n + k 0
   where k (x : nat) : nat :=
           { k 0 := 0 ; k (S n') := n }.
 
+Next Obligation.
+  induction n; simp foo.
+Defined.
+
 Variable f : nat -> (nat * nat).
 
 Equations foo' (n : nat) : nat :=
