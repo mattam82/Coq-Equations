@@ -361,7 +361,7 @@ let rec aux_ind_fun info chop unfs unfids = function
                                         (cstrtac info.term_info)) (tclSOLVE [elimtac]);
 		   to82 (solve_ind_rec_tac info.term_info)])
 
-  | Compute (_, wheres, _, c) ->
+  | Compute ((ctx,_,_), wheres, _, c) ->
     let unfswheres =
       let unfs = map_opt_split destWheres unfs in
       match unfs with
@@ -371,8 +371,8 @@ let rec aux_ind_fun info chop unfs unfids = function
     let wheretac = 
       if not (List.is_empty wheres) then
         let wheretac acc s unfs =
-          let where_term, fstchop, unfids, where_nctx = match unfs with
-            | None -> s.where_term, fst chop + List.length s.where_nctx, unfids, s.where_nctx
+          let where_term, fstchop, unfids = match unfs with
+            | None -> s.where_term, fst chop + List.length ctx, unfids
             | Some w ->
                let assoc, unf, split =
                  try match List.hd w.where_path with
@@ -383,7 +383,7 @@ let rec aux_ind_fun info chop unfs unfids = function
                (* msg_debug (str"Unfolded where " ++ str"term: " ++ pr_constr w.where_term ++ *)
                (*              str" type: " ++ pr_constr w.where_type ++ str" assoc " ++ *)
                (*              pr_constr assoc); *)
-               assoc, fst chop + List.length w.where_nctx, unf :: unfids, w.where_nctx
+               assoc, fst chop + List.length ctx, unf :: unfids
           in
           let chop = fstchop, snd chop in
           let wheretac =
@@ -414,9 +414,8 @@ let rec aux_ind_fun info chop unfs unfids = function
           let ind = Nametab.locate (qualid_of_ident wherepath) in
           let ty ind =
             let ctx = pi1 s.where_prob in
-            let subst = List.map (fun x -> mkVar (get_id x)) where_nctx in
-            let fnapp = applistc (substl subst where_term) (extended_rel_list 0 ctx) in
-            let args = List.append subst (extended_rel_list 0 ctx) in
+            let fnapp = applistc (fst (destApp Evd.empty where_term)) (extended_rel_list 0 ctx) in
+            let args = extended_rel_list 0 ctx in
             let app = applistc ind (List.append args [fnapp]) in
             it_mkProd_or_LetIn app ctx
           in

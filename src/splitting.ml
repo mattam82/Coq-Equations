@@ -27,7 +27,6 @@ open Vars
 
 let map_where f w =
   { w with
-    where_nctx = map_named_context f w.where_nctx;
     where_prob = map_ctx_map f w.where_prob;
     where_term = f w.where_term;
     where_arity = f w.where_arity;
@@ -84,17 +83,18 @@ let term_of_tree status isevar env0 tree =
     | Compute ((ctx, _, _), where, ty, RProgram rhs) -> 
        let evm, ctx = 
          List.fold_right 
-           (fun {where_id; where_nctx; where_prob; where_term;
+           (fun {where_id; where_prob; where_term;
                where_type; where_splitting }
               (evm, ctx) ->
-             let env = push_named_context where_nctx env0 in
+             (* let env = push_rel_context ctx env0 in *)
              (* FIXME push ctx too if mutual wheres *)
              let evm, c', ty' = aux env evm (Lazy.force where_splitting) in
-             let inst = List.map get_id where_nctx in
+             (* let inst = List.map get_id where_nctx in *)
              (** In de Bruijn context *)
-             let tydb = Vars.subst_vars inst ty' in
+             (* let tydb = Vars.subst_vars inst ty' in *)
              let evm, c', ty' =
-               match kind evm where_term with
+               let hd, args = decompose_appvect evm where_term in
+               match kind evm hd with
                | Evar (ev, _) ->
                  let term' = mkLetIn (Name (Id.of_string "prog"), c', ty', lift 1 ty') in
                  let evm, term =
@@ -105,9 +105,9 @@ let term_of_tree status isevar env0 tree =
                         qm_record_field=None;
                     }) in
                  let ev = fst (destEvar !isevar term) in
-                  oblevars := Evar.Map.add ev (List.length where_nctx) !oblevars;
+                  oblevars := Evar.Map.add ev 0 !oblevars;
                   helpers := (ev, 0) :: !helpers;
-                  evm, subst_vars inst term, tydb
+                  evm, where_term, where_type
                | _ -> assert(false)
              in
              (evm, (make_def (Name where_id) (Some c') ty' :: ctx)))

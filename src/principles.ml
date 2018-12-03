@@ -494,17 +494,16 @@ let replace_vars_context inst ctx =
       (succ k, decl' :: acc))
     ctx (1, [])
 
-let pr_where env sigma ctx {where_id; where_nctx; where_prob; where_term;
+let pr_where env sigma ctx {where_id; where_prob; where_term;
                       where_type; where_splitting } =
   let open Pp in
   let envc = Environ.push_rel_context ctx env in
-  let envw = push_named_context where_nctx env in
   Printer.pr_econstr_env envc sigma where_term ++ fnl () ++
     str"where " ++ Names.Id.print where_id ++ str" : " ++
     Printer.pr_econstr_env envc sigma where_type ++
     str" := " ++ fnl () ++
-    pr_context_map envw sigma where_prob ++ fnl () ++
-    pr_splitting envw sigma (Lazy.force where_splitting)
+    pr_context_map env sigma where_prob ++ fnl () ++
+    pr_splitting env sigma (Lazy.force where_splitting)
 
 let where_instance w =
   List.map (fun w -> w.where_term) w
@@ -565,17 +564,16 @@ let subst_rec_split env evd f comp comprecarg path prob s split =
        let subst, lhs' = subst_rec cutprob s lhs in
        let progctx = (extend_prob_ctx (where_context where) lhs) in
        let substprog, _ = subst_rec cutprob s progctx in
-       let subst_where {where_id; where_path; where_orig; where_nctx;
+       let subst_where {where_id; where_path; where_orig;
                         where_prob; where_arity; where_term;
                         where_type; where_splitting } =
-         let nsubst, where_nctx = subst_rec_named s where_nctx in
          let where_arity = mapping_constr evd subst where_arity in
          let where_term = mapping_constr evd subst where_term in
          let where_type = mapping_constr evd subst where_type in
          let where_splitting =
-           map_split (fun t -> replace_vars nsubst t) (Lazy.force where_splitting)
+           aux cutprob s where_path (Lazy.force where_splitting)
          in
-         {where_id; where_path; where_orig; where_nctx; where_prob;
+         {where_id; where_path; where_orig; where_prob;
           where_arity; where_term;
           where_type; where_splitting = Lazy.from_val where_splitting }
        in
@@ -704,12 +702,12 @@ let update_split env evd id is_rec f prob recs split =
       | Refined (lhs, info, s) -> Refined (lhs, info, aux env f s)
       | Compute (lhs, wheres, p, q) -> 
          let subst_where w = 
-           let env = push_named_context w.where_nctx env in
+           let env = push_rel_context (pi1 lhs) env in
            let evm, ev = (* Why create an evar here ? *)
              Equations_common.new_evar env !evd w.where_type
            in
            let () = evd := evm in
-           let term' = substl (List.map (fun x -> mkVar (get_id x)) w.where_nctx) w.where_term in
+           let term' = w.where_term in
            let evk = fst (destEvar !evd ev) in
            let split' = aux env term' (Lazy.force w.where_splitting) in
            let id = Nameops.add_suffix w.where_id "_unfold_eq" in
@@ -734,54 +732,49 @@ let computations env evd alias refine eqninfo =
   let rec computations env prob f alias refine = function
   | Compute (lhs, where, ty, c) ->
      let where_comp w =
-       (** Where term is in lhs, now move relative references to
-              lhs to named ones, this puts it in nctx. *)
-       let rctx, inst = rel_of_named_context w.where_nctx in
-       let instc = List.map mkVar inst in
-       (** nctx; lhs |- nterm *)
-       let nterm = substl instc w.where_term in
+       (** Where term is in lhs *)
+       let ctx = pi1 lhs in
+       let term = fst (destApp evd w.where_term) in
        let alias =
          try
          let (f, id, s) = match List.hd w.where_path with
          | Evar ev -> Evar.Map.find ev wheremap
          | Ident _ -> assert false in
-         let args = match_arguments evd (arguments evd nterm) (arguments evd f) in
+         let args = match_arguments evd (arguments evd term) (arguments evd f) in
          Some ((f, args), id, s)
          with Not_found -> None
        in
-       let env' = push_named_context w.where_nctx env in
-       let comps = computations env' w.where_prob nterm None (Regular,false) (Lazy.force w.where_splitting) in
-       let gencomp (ctx, fl, alias, pats, ty, f, b, c, l) =
-         (** ctx' = rctx ++ lhs is a dB context *)
-         let lift, ctx' = replace_vars_context inst ctx in
-         let ctx' = ctx' @ rctx in
-         let alias' =
-           match alias with
-           | Some (hd, id, s) -> Some (substn_vars lift inst hd, id, s)
-           | None -> None
-         in
-         ctx', substn_vars lift inst fl, alias',
-         pats, substn_vars lift inst ty,
-         substn_vars lift inst f, b,
-         map_rhs (substn_vars lift inst) (fun x -> x) c, l
-       in
-       let rest = List.map gencomp comps in
-       let lift, ctx' = replace_vars_context inst (pi1 w.where_prob) in
-       let ctx' = ctx' @ rctx in
-       (** ctx' is a dB context for nctx + where_prob *)
-       let hd = substn_vars lift inst nterm in
+       let comps = computations env w.where_prob term None (Regular,false) (Lazy.force w.where_splitting) in
+       (* let gencomp (ctx, fl, alias, pats, ty, f, b, c, l) =
+        *   (\** ctx' = rctx ++ lhs is a dB context *\)
+        *   let alias' =
+        *     match alias with
+        *     | Some (hd, id, s) -> Some ((\* substn_vars lift inst *\) hd, id, s)
+        *     | None -> None
+        *   in
+        *   ctx', substn_vars lift inst fl, alias',
+        *   pats, substn_vars lift inst ty,
+        *   substn_vars lift inst f, b,
+        *   map_rhs (substn_vars lift inst) (fun x -> x) c, l
+        * in *)
+       (* let rest = List.map gencomp comps in *)
+       (* let lift, ctx' = replace_vars_context inst (pi1 w.where_prob) in
+        * let ctx' = ctx' @ rctx in
+        * (\** ctx' is a dB context for nctx + where_prob *\)
+        * let hd = substn_vars lift inst nterm in *)
+       let hd = w.where_term in
        let args =
          let rec aux i a =
            match a with
            | [] -> []
            | hd :: tl -> if isRel evd hd then i :: aux (succ i) tl
                          else aux (succ i) tl
-         in aux 0 (Array.to_list (arguments evd hd))
+         in aux 0 (Array.to_list (arguments evd w.where_term))
        in
-       let arity = substn_vars lift inst w.where_arity in
-       ((hd, args), alias, w.where_orig, ctx', arity,
+       let arity = (* substn_vars lift inst  *)w.where_arity in
+       ((hd, args), alias, w.where_orig, pi1 w.where_prob, arity,
         List.rev_map pat_constr (pi2 w.where_prob) (*?*),
-        [] (*?*), rest)
+        [] (*?*), comps)
      in
      let wheres = List.map where_comp where in
      let ctx = compose_subst env ~sigma:evd lhs prob in

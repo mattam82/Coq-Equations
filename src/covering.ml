@@ -62,9 +62,8 @@ and where_clause =
   { where_id : identifier;
     where_path : path;
     where_orig : path;
-    where_nctx : named_context;
     where_prob : context_map;
-    where_arity : types; (* In nctx + pi1 prob *)
+    where_arity : types; (* In pi1 prob *)
     where_term : constr; (* In original context, de Bruijn only *)
     where_type : types;
     where_splitting : splitting Lazy.t }
@@ -1085,11 +1084,9 @@ let eq_path path path' =
   aux path path'
 
 let where_context wheres =
-  List.map (fun {where_id; where_nctx; where_prob; where_term;
+  List.map (fun {where_id; where_prob; where_term;
                  where_type; where_splitting } ->
-             let inst = List.map get_id where_nctx in
-             make_def (Name where_id) (Some (subst_vars inst where_term))
-               (subst_vars inst where_type)) wheres
+             make_def (Name where_id) (Some where_term) where_type) wheres
 
 let pr_splitting env sigma ?(verbose=false) split =
   let verbose pp = if verbose then pp else mt () in
@@ -1476,6 +1473,10 @@ let recursive_patterns env progid rec_info =
     structpats
   | _ -> []
 
+let pats_of_sign sign =
+  List.map (fun decl ->
+      DAst.make (PUVar (Name.get_id (Context.Rel.Declaration.get_name decl), false))) sign
+
 let compute_rec_data env data p clauses =
   match p.program_rec with
   | Some (Structural ann) ->
@@ -1494,9 +1495,7 @@ let compute_rec_data env data p clauses =
     let pats = recursive_patterns env p.program_id data.rec_info in
     prob, pats, clauses
   | Some (WellFounded (term, rel, l)) ->
-    let pats =
-      List.map (fun decl ->
-          DAst.make (PUVar (Name.get_id (Context.Rel.Declaration.get_name decl), false))) p.program_sign in
+    let pats = pats_of_sign p.program_sign in
     let clause =
       [None, pats, Rec (term, rel, Some (p.program_loc, p.program_id), clauses)]
     in
@@ -1568,7 +1567,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * bool) list) 
             (dummy_loc, "split_var",
              str"Unable to split variable " ++ Name.print id ++ str" of (reduced) type " ++
              Printer.pr_econstr_env (push_rel_context before env) !evars newty ++ str" to match a user pattern."
-             ++ fnl () ++ str "Maybe unification is stuck as it cannot refine a section variable.")
+             ++ fnl () ++ str "Maybe unification is stuck as it cannot refine a context/section variable.")
        | None -> None))
   | [] -> (* Every clause failed for the problem, it's either uninhabited or
              the clauses are not exhaustive *)
@@ -1872,69 +1871,78 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
 (*     (str "Found overlapping clauses:" ++ fnl () ++ pr_clauses env (map fst prevmatch) ++ *)
 (*        spc () ++ str"refining" ++ spc () ++ pr_context_map env prob) *)
 
-and interp_wheres env ctx evars path data s lets (w : (pre_prototype * pre_equation list) list) =
-  let (ctx, envctx, liftn, subst) = env_of_rhs evars ctx env s lets in
-  let inst, args, nactx = named_of_rel_context (fun () -> raise (Invalid_argument "interp_wheres")) ctx in
-  let envna = push_named_context nactx env in
-  let aux (data, lets,nlets,coverings,env (* named *),envctx)
+and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equation list) list) =
+  let (ctx, envctx, liftn, subst) = env_of_rhs evars ctx env0 s lets in
+  (* let inst, args, nactx = named_of_rel_context (fun () -> raise (Invalid_argument "interp_wheres")) ctx in
+   * let envna = push_named_context nactx env in *)
+  let aux (data,lets,nlets,coverings,env)
       (((loc,id),nested,b,t,reca),clauses as eqs) =
 
     let p = interp_arity env evars ~poly:false ~is_rec:None ~with_evars:true eqs in
-    let sign = p.program_sign in
-    let arity = p.program_arity in
+    (* let sign = p.program_sign in
+     * let arity = p.program_arity in *)
     (* let sigma, (ienv, ((env', sign), impls)) = interp_context_evars env !evars b in
      * let sigma, arity = interp_type_evars env' ?impls:None sigma t in *)
     (* let () = evars := sigma in *)
-    let sign = subst_rel_context nlets subst sign in
-    let arity = substnl subst (List.length sign + nlets) arity in
-    let sign = nf_rel_context_evar !evars sign in
-    let arity = nf_evar !evars arity in
-    let p = { p with program_sign = sign; program_arity = arity } in
+    (* let sign = subst_rel_context nlets subst sign in
+     * let arity = substnl subst (List.length sign + nlets) arity in
+     * let sign = nf_rel_context_evar !evars sign in
+     * let arity = nf_evar !evars arity in *)
+    (* let p = { p with program_sign = sign; program_arity = arity } in *)
     let clauses = Metasyntax.with_syntax_protection (fun () ->
       List.iter (Metasyntax.set_notation_for_interpretation env data.intenv) data.notations;
       List.map (interp_eqn env p) clauses) ()
     in
     let sigma, p = adjust_sign_arity env !evars p clauses in
     let () = evars := sigma in
+
+    let pre_type = program_type p in
+    let p, ctxpats =
+      let sign = p.program_sign @ ctx in
+      let extpats = pats_of_sign ctx in
+      { p with program_sign = sign }, extpats
+    in
     let problem, extpats, clauses = compute_rec_data env data p clauses in
     let intenv = Constrintern.compute_internalization_env ~impls:data.intenv
         env !evars Constrintern.Recursive [id] [program_type p] [p.program_impls]
     in
     let data = { data with intenv; } in
-    let relty = subst_vars (List.map (destVar !evars) inst) (program_type p) in
+    let relty = (* subst_vars (List.map (destVar !evars) inst) *) (program_type p) in
     let src = (Some loc, QuestionMark {
         qm_obligation=Define false;
         qm_name=Name id;
         qm_record_field=None;
       }) in
-    let sigma, term = Equations_common.new_evar envctx !evars ~src relty in
+    let sigma, term = Equations_common.new_evar env0 !evars ~src relty in
     let () = evars := sigma in
     let ev = destEvar !evars term in
     let path = Evar (fst ev) :: path in
-    let splitting = lazy (covering env evars p data clauses path problem extpats p.program_arity) in
-    let decl = make_def (Name id) (Some term) relty in
-    let nadecl = make_named_def id (Some (substl inst term)) (program_type p) in
+    let splitting = lazy (covering env evars p data clauses path problem (extpats @ ctxpats) p.program_arity) in
+    let termapp = mkApp (term, extended_rel_vect 0 ctx) in
+    let decl = make_def (Name id) (Some termapp) pre_type in
+    (* let nadecl = make_named_def id (Some (substl inst term)) (program_type p) in *)
     let covering =
       {where_id = id; where_path = path;
        where_orig = path;
-       where_nctx = nactx; where_prob = problem;
+       where_prob = problem;
        where_arity = p.program_arity;
-       where_term = term;
-       where_type = program_type p;
+       where_term = termapp;
+       where_type = pre_type;
        where_splitting = splitting }
     in
     (data, decl :: lets, succ nlets, covering :: coverings,
-     push_named nadecl env, envctx)
+     push_rel decl envctx)
   in
-  let (data, lets, nlets, coverings, envna, envctx') =
-    List.fold_left aux (data, ctx, 0, [], envna, envctx) w
-  in (data, envctx, lets, push_rel_context ctx env, coverings, liftn, subst)
+  let (data, lets, nlets, coverings, envctx') =
+    List.fold_left aux (data, ctx, 0, [], push_rel_context ctx env0) w
+  in (data, envctx, lets, push_rel_context ctx env0, coverings, liftn, subst)
 
 and covering ?(check_unused=true) env evars p data (clauses : pre_clause list)
     path prob extpats ty =
   if !Equations_common.debug then
     Feedback.msg_debug Pp.(str"Launching covering on "++ pr_preclauses env clauses ++
-                           str " with problem " ++ pr_problem p env !evars prob);
+                           str " with problem " ++ pr_problem p env !evars prob ++
+                           str " extpats " ++ pr_user_pats env extpats);
   let clauses = (List.map (fun x -> (x,false)) clauses) in
   (*TODO eta-expand clauses or type *)
   match covering_aux env evars p data [] clauses path prob extpats [] ty with
