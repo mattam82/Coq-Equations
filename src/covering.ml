@@ -1370,7 +1370,7 @@ let compute_fixdecls_data env evd ?data programs =
     List.map2 (fun i fixprot -> of_tuple (Name i, None, fixprot)) names fixprots in
   data, List.rev fixdecls, fixprots
 
-let interp_arity env evd poly is_rec (((loc,i),rec_annot,l,t,by),clauses as ieqs) =
+let interp_arity env evd ~poly ~is_rec ~with_evars (((loc,i),rec_annot,l,t,by),clauses as ieqs) =
   let ienv, ((env', sign), impls) = Equations_common.evd_comb1 (interp_context_evars env) evd l in
   let (arity, impls') = Equations_common.evd_comb1 (interp_type_evars_impls env' ?impls:None) evd t in
   let impls = impls @ impls' in
@@ -1406,7 +1406,7 @@ let interp_arity env evd poly is_rec (((loc,i),rec_annot,l,t,by),clauses as ieqs
     | Some (WellFounded (c, r)) -> Some (WellFounded (c, r))
   in
   let body = it_mkLambda_or_LetIn arity sign in
-  let _ = Pretyping.check_evars env Evd.empty !evd body in
+  let _ = if not with_evars then Pretyping.check_evars env Evd.empty !evd body in
   let () = evd := Evd.minimize_universes !evd in
   match rec_annot with
   | None ->
@@ -1836,22 +1836,19 @@ and interp_wheres env ctx evars path data s lets (w : (pre_prototype * pre_equat
   let inst, args, nactx = named_of_rel_context (fun () -> raise (Invalid_argument "interp_wheres")) ctx in
   let envna = push_named_context nactx env in
   let aux (lets,nlets,coverings,env (* named *),envctx)
-      (((loc,id),nested,b,t,reca),(clauses : pre_equation list)) =
-    let sigma, (ienv, ((env', sign), impls)) = interp_context_evars env !evars b in
-    let sigma, arity = interp_type_evars env' ?impls:None sigma t in
-    let () = evars := sigma in
+      (((loc,id),nested,b,t,reca),clauses as eqs) =
+
+    let p = interp_arity env evars ~poly:false ~is_rec:None ~with_evars:true eqs in
+    let sign = p.program_sign in
+    let arity = p.program_arity in
+    (* let sigma, (ienv, ((env', sign), impls)) = interp_context_evars env !evars b in
+     * let sigma, arity = interp_type_evars env' ?impls:None sigma t in *)
+    (* let () = evars := sigma in *)
     let sign = subst_rel_context nlets subst sign in
     let arity = substnl subst (List.length sign + nlets) arity in
     let sign = nf_rel_context_evar !evars sign in
     let arity = nf_evar !evars arity in
-    let p =
-      { program_loc = loc;
-        program_id = id;
-        program_sign = sign;
-        program_arity = arity;
-        program_rec = None;
-        program_impls = impls }
-    in
+    let p = { p with program_sign = sign; program_arity = arity } in
     let clauses = Metasyntax.with_syntax_protection (fun () ->
       List.iter (Metasyntax.set_notation_for_interpretation env data.intenv) data.notations;
       List.map (interp_eqn env p) clauses) ()
@@ -1860,7 +1857,7 @@ and interp_wheres env ctx evars path data s lets (w : (pre_prototype * pre_equat
     let () = evars := sigma in
     let ty = it_mkProd_or_LetIn arity sign in
     let intenv = Constrintern.compute_internalization_env ~impls:data.intenv
-        env !evars Constrintern.Recursive [id] [ty] [impls]
+        env !evars Constrintern.Recursive [id] [ty] [p.program_impls]
     in
     let data = { data with intenv; } in
 

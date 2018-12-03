@@ -46,7 +46,7 @@ foo4 e1 := 0;
 foo4 (@e2 i e) := absw _ e
 
   where absw : forall {i}, expr i -> nat :=
-  absw _ e1 := 0;
-  absw _ (e2 _) := 0.
+  absw e1 := 0;
+  absw (e2 _) := 0.
 
 Next Obligation.

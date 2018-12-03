@@ -366,7 +366,7 @@ let define_by_eqs ~poly opts eqs nt =
   let evd = ref (Evd.from_env env) in
   let programs = List.map (fun (((loc,i),rec_annot,l,t,by),clauses as ieqs) ->
       let is_rec = is_recursive i eqs in
-      interp_arity env evd poly is_rec ieqs) eqs in
+      interp_arity env evd ~poly ~is_rec ~with_evars:false ieqs) eqs in
   let rec_info = compute_recinfo programs in
   let () = print_recinfo programs in
   let env = Global.env () in (* To find the comp constant *)

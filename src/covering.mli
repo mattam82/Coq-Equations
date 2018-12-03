@@ -416,8 +416,9 @@ val compute_fixdecls_data :
 
 val interp_arity : Environ.env ->
   Evd.evar_map ref ->
-  bool ->
-  bool option ->
+  poly:bool ->
+  is_rec:bool option ->
+  with_evars:bool ->
   pre_equation Syntax.where_clause ->
   program_info
 
