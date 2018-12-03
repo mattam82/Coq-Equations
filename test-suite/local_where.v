@@ -41,12 +41,10 @@ Derive Signature NoConfusion NoConfusionHom for expr.
 
 Variable kont' : forall x : index, (expr x -> nat) -> nat.
 
-Equations foo4 {i} (n : expr i) : nat :=
+Equations(noind) foo4 {i} (n : expr i) : nat :=
 foo4 e1 := 0;
-foo4 (@e2 i e) := absw _ e
+foo4 (@e2 i e) := absw e
 
   where absw : forall {i}, expr i -> nat :=
   absw e1 := 0;
   absw (e2 _) := 0.
-
-Next Obligation.

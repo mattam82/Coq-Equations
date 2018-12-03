@@ -1590,7 +1590,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
   in
   match rhs with
   | Program (c,w) -> 
-    let envctx,lets,env',coverings,lift,subst = 
+    let data,envctx,lets,env',coverings,lift,subst =
       interp_wheres env ctx evars path data s lets w in
     let c', ty' = 
       interp_constr_in_rhs_env env evars data
@@ -1835,7 +1835,7 @@ and interp_wheres env ctx evars path data s lets (w : (pre_prototype * pre_equat
   let (ctx, envctx, liftn, subst) = env_of_rhs evars ctx env s lets in
   let inst, args, nactx = named_of_rel_context (fun () -> raise (Invalid_argument "interp_wheres")) ctx in
   let envna = push_named_context nactx env in
-  let aux (lets,nlets,coverings,env (* named *),envctx)
+  let aux (data, lets,nlets,coverings,env (* named *),envctx)
       (((loc,id),nested,b,t,reca),clauses as eqs) =
 
     let p = interp_arity env evars ~poly:false ~is_rec:None ~with_evars:true eqs in
@@ -1883,12 +1883,12 @@ and interp_wheres env ctx evars path data s lets (w : (pre_prototype * pre_equat
        where_term = term; where_type = ty;
        where_splitting = splitting }
     in
-    (decl :: lets, succ nlets, covering :: coverings, 
+    (data, decl :: lets, succ nlets, covering :: coverings,
      push_named nadecl env, envctx)
   in
-  let (lets, nlets, coverings, envna, envctx') =
-    List.fold_left aux (ctx, 0, [], envna, envctx) w
-  in (envctx, lets, push_rel_context ctx env, coverings, liftn, subst)
+  let (data, lets, nlets, coverings, envna, envctx') =
+    List.fold_left aux (data, ctx, 0, [], envna, envctx) w
+  in (data, envctx, lets, push_rel_context ctx env, coverings, liftn, subst)
 
 and covering ?(check_unused=true) env evars p data (clauses : pre_clause list)
     path prob extpats ty =

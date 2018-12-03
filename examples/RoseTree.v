@@ -104,10 +104,14 @@ Module RoseTree.
     where fn (x : list t) (H : list_size size x < size (node l)) : list A :=
     fn x H by rec x (MR lt (list_size size)) :=
     fn nil _ := nil;
-    fn (cons x xs) _ := elements' x ++ fn xs hidebody.
+    fn (cons x xs) _ := elements' x ++ fn xs hidebody _.
 
     Next Obligation.
       abstract (simpl; omega).
+    Defined.
+
+    Next Obligation.
+      abstract (red; simpl; omega).
     Defined.
 
     Equations elements'_def (r : t) : list A :=
