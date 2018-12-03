@@ -838,13 +838,13 @@ let matches_user ((phi,p',g') : context_map) (p : user_pats) =
   try UnifSuccess (match_user_patterns (filter (fun x -> not (hidden x)) (rev p')) p)
   with Conflict -> UnifFailure | Stuck -> UnifStuck
 
-let adjust_sign_arity env evars sign ty clauses =
+let adjust_sign_arity env evars p clauses =
   let max_args =
     List.fold_left (fun acc (_, lhs, rhs) ->
         let len = List.length lhs in
         max acc len) 0 clauses
   in
-  let fullty = it_mkProd_or_subst env evars ty sign in
+  let fullty = it_mkProd_or_subst env evars p.program_arity p.program_sign in
   let evars, sign, ty =
     let rec aux evars args sign ty =
       match args with
@@ -863,7 +863,8 @@ let adjust_sign_arity env evars sign ty clauses =
     else ()
   in List.iter check_clause clauses;
   let sign = do_renamings env evars sign in
-  evars, sign, ty, clauses
+  let p = { p with program_sign = sign; program_arity = ty } in
+  evars, p
 
 let lets_of_ctx env ctx evars s =
   let envctx = push_rel_context ctx env in
@@ -1349,7 +1350,8 @@ let print_recinfo programs =
       str "wellfounded"
     | None -> str "not recursive"
   in
-  Feedback.msg_debug (str "Programs: " ++ prlist_with_sep fnl pr_rec programs)
+  if !Equations_common.debug then
+    Feedback.msg_debug (str "Programs: " ++ prlist_with_sep fnl pr_rec programs)
 
 let compute_fixdecls_data env evd ?data programs =
   let protos = List.map (fun p ->
@@ -1461,6 +1463,45 @@ let interp_arity env evd ~poly ~is_rec ~with_evars (((loc,i),rec_annot,l,t,by),c
       program_arity = arity;
       program_rec = Some (WellFounded (c, r, compinfo));
       program_impls = impls }
+
+let recursive_patterns env progid rec_info =
+  match rec_info with
+  | Some (Guarded l) ->
+    let addpat (id, k) =
+      match k with
+      | NestedOn None when Id.equal id progid -> None
+      | _ -> Some (DAst.make (PUVar (id, false)))
+    in
+    let structpats = List.map_filter addpat l in
+    structpats
+  | _ -> []
+
+let compute_rec_data env data p clauses =
+  match p.program_rec with
+  | Some (Structural ann) ->
+    let prob =
+      match ann with
+      | NestedOn None -> (** Actually the definition is not self-recursive *)
+        let fixdecls =
+          List.filter (fun decl ->
+              let na = Context.Rel.Declaration.get_name decl in
+              let id = Nameops.Name.get_id na in
+              not (Id.equal id p.program_id)) data.fixdecls
+        in
+        id_subst (p.program_sign @ fixdecls)
+      | _ -> id_subst (p.program_sign @ data.fixdecls)
+    in
+    let pats = recursive_patterns env p.program_id data.rec_info in
+    prob, pats, clauses
+  | Some (WellFounded (term, rel, l)) ->
+    let pats =
+      List.map (fun decl ->
+          DAst.make (PUVar (Name.get_id (Context.Rel.Declaration.get_name decl), false))) p.program_sign in
+    let clause =
+      [None, pats, Rec (term, rel, Some (p.program_loc, p.program_id), clauses)]
+    in
+    id_subst p.program_sign, [], clause
+  | _ -> id_subst p.program_sign, [], clauses
 
 (* let user_pats_of pats =
  *   List.map (fun p -> PUVar (Id.of_string "pat", true)) pats *)
@@ -1853,15 +1894,14 @@ and interp_wheres env ctx evars path data s lets (w : (pre_prototype * pre_equat
       List.iter (Metasyntax.set_notation_for_interpretation env data.intenv) data.notations;
       List.map (interp_eqn env p) clauses) ()
     in
-    let sigma, sign, arity, clauses = adjust_sign_arity env !evars sign arity clauses in
+    let sigma, p = adjust_sign_arity env !evars p clauses in
     let () = evars := sigma in
-    let ty = it_mkProd_or_LetIn arity sign in
+    let problem, extpats, clauses = compute_rec_data env data p clauses in
     let intenv = Constrintern.compute_internalization_env ~impls:data.intenv
-        env !evars Constrintern.Recursive [id] [ty] [p.program_impls]
+        env !evars Constrintern.Recursive [id] [program_type p] [p.program_impls]
     in
     let data = { data with intenv; } in
-
-    let relty = subst_vars (List.map (destVar !evars) inst) ty in
+    let relty = subst_vars (List.map (destVar !evars) inst) (program_type p) in
     let src = (Some loc, QuestionMark {
         qm_obligation=Define false;
         qm_name=Name id;
@@ -1871,16 +1911,16 @@ and interp_wheres env ctx evars path data s lets (w : (pre_prototype * pre_equat
     let () = evars := sigma in
     let ev = destEvar !evars term in
     let path = Evar (fst ev) :: path in
-    let problem = id_subst sign in
-    let splitting = lazy (covering env evars p data clauses path problem [] arity) in
+    let splitting = lazy (covering env evars p data clauses path problem extpats p.program_arity) in
     let decl = make_def (Name id) (Some term) relty in
-    let nadecl = make_named_def id (Some (substl inst term)) ty in
+    let nadecl = make_named_def id (Some (substl inst term)) (program_type p) in
     let covering =
       {where_id = id; where_path = path;
        where_orig = path;
        where_nctx = nactx; where_prob = problem;
-       where_arity = arity;
-       where_term = term; where_type = ty;
+       where_arity = p.program_arity;
+       where_term = term;
+       where_type = program_type p;
        where_splitting = splitting }
     in
     (data, decl :: lets, succ nlets, covering :: coverings,
@@ -1892,6 +1932,9 @@ and interp_wheres env ctx evars path data s lets (w : (pre_prototype * pre_equat
 
 and covering ?(check_unused=true) env evars p data (clauses : pre_clause list)
     path prob extpats ty =
+  if !Equations_common.debug then
+    Feedback.msg_debug Pp.(str"Launching covering on "++ pr_preclauses env clauses ++
+                           str " with problem " ++ pr_problem p env !evars prob);
   let clauses = (List.map (fun x -> (x,false)) clauses) in
   (*TODO eta-expand clauses or type *)
   match covering_aux env evars p data [] clauses path prob extpats [] ty with
@@ -1903,59 +1946,15 @@ and covering ?(check_unused=true) env evars p data (clauses : pre_clause list)
       (str "Unable to build a covering for:" ++ fnl () ++
        pr_problem p env !evars prob)
 
-let recursive_patterns env progid rec_info =
-  match rec_info with
-  | Some (Guarded l) ->
-    let addpat (id, k) =
-      match k with
-      | NestedOn None when Id.equal id progid -> None
-      | _ -> Some (DAst.make (PUVar (id, false)))
-    in
-    let structpats = List.map_filter addpat l in
-    structpats
-  | _ -> []
-
 let program_covering env evd data p clauses =
-  let sign = nf_rel_context_evar !evd p.program_sign in
   let clauses = Metasyntax.with_syntax_protection (fun () ->
       List.iter (Metasyntax.set_notation_for_interpretation env data.intenv) data.notations;
       List.map (interp_eqn env p) clauses) ()
   in
-  let sigma, sign, arity, clauses = adjust_sign_arity env !evd sign p.program_arity clauses in
+  let sigma, p = adjust_sign_arity env !evd p clauses in
   let () = evd := sigma in
-  let p =
-    { p with program_sign = sign;
-             program_arity = arity }
-  in
-  let prob, extpats, clauses =
-    match p.program_rec with
-    | Some (Structural ann) ->
-      let prob =
-        match ann with
-        | NestedOn None -> (** Actually the definition is not self-recursive *)
-          let fixdecls =
-            List.filter (fun decl ->
-                let na = Context.Rel.Declaration.get_name decl in
-                let id = Nameops.Name.get_id na in
-                not (Id.equal id p.program_id)) data.fixdecls
-          in
-          id_subst (sign @ fixdecls)
-        | _ -> id_subst (sign @ data.fixdecls)
-      in
-      let pats = recursive_patterns env p.program_id data.rec_info in
-      prob, pats, clauses
-    | Some (WellFounded (term, rel, l)) ->
-      let pats =
-        List.map (fun decl ->
-            DAst.make (PUVar (Name.get_id (Context.Rel.Declaration.get_name decl), false))) sign in
-      let clause =
-        [None, pats, Rec (term, rel, Some (p.program_loc, p.program_id), clauses)]
-      in
-      id_subst sign, [], clause
-    | _ -> id_subst sign, [], clauses
-  in
+  let prob, extpats, clauses = compute_rec_data env data p clauses in
   let arity = nf_evar !evd p.program_arity in
-  Feedback.msg_debug Pp.(str"Launching covering on "++ pr_preclauses env clauses);
   p, covering env evd p data clauses [Ident p.program_id] prob extpats arity
 
 let coverings env evd data programs equations =

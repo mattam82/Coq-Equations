@@ -152,6 +152,8 @@ type program_info = {
   program_impls : Impargs.manual_explicitation list;
 }
 
+val program_type : program_info -> EConstr.t
+
 val ids_of_pats : Names.Id.t option -> Constrexpr.constr_expr list -> Id.Set.t
 
 val interp_pat : Environ.env -> ?avoid:Id.Set.t ref ->

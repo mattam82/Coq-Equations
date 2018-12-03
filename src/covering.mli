@@ -397,12 +397,8 @@ val covering : ?check_unused:bool ->
   constr -> splitting
 
 val adjust_sign_arity : Environ.env ->
-           Evd.evar_map ->
-           Equations_common.rel_declaration list ->
-           EConstr.types ->
-           (Loc.t option * 'a list * 'b) list ->
-  Evd.evar_map * EConstr.rel_context * EConstr.t *
-                  (Loc.t option * 'a list * 'b) list
+  Evd.evar_map -> program_info -> Syntax.pre_clause list ->
+  Evd.evar_map * program_info
 
 val compute_recinfo : program_info list -> rec_type option
 val print_recinfo : program_info list -> unit
