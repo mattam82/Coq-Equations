@@ -170,7 +170,8 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
                let sign = substitute_args args sign in
                let signlen = List.length sign in
                sign, (List.map (lift signlen) args @ Context.Rel.to_extended_list mkRel 0 sign, [])
-           in Some (idx, arity, filter, sign, args)
+           in
+           Some (idx, arity, filter, sign, args)
         | Some false -> None
       else
         match alias with
@@ -518,7 +519,7 @@ let unfold_constr sigma c =
 let extend_prob_ctx delta (ctx, pats, ctx') =
   (delta @ ctx, lift_pats (List.length delta) pats, ctx')
 
-let subst_rec_split env evd f comp comprecarg path prob s split =
+let subst_rec_split env evd f comp comprecarg path prob fixdecls s split =
   let map_proto f ty =
     match comprecarg with
     | Some recarg ->
@@ -564,10 +565,16 @@ let subst_rec_split env evd f comp comprecarg path prob s split =
          let where_arity = mapping_constr evd subst where_arity in
          let where_term = mapping_constr evd subst where_term in
          let where_type = mapping_constr evd subst where_type in
+         let cutprob, where_prob =
+           let idctx = pi1 where_prob in
+           let idctx = CList.firstn (List.length idctx - List.length fixdecls) idctx in
+           let (ctx, pats, ctx' as ids) = id_subst idctx in
+           (ctx @ fixdecls, pats, ctx'), ids
+         in
          let where_splitting =
            aux cutprob s where_path (Lazy.force where_splitting)
          in
-         {where_id; where_path; where_orig; where_prob;
+         {where_id; where_path; where_orig; where_prob = where_prob;
           where_arity; where_term;
           where_type; where_splitting = Lazy.from_val where_splitting }
        in
@@ -665,10 +672,11 @@ let subst_rec_split env evd f comp comprecarg path prob s split =
               List.map (fun (g, l, subst, invsubst, sp) -> (g, l, subst, invsubst, aux cutprob s path sp)) cs)
   in aux prob s path split
 
-let update_split env evd id is_rec f prob recs split =
+let update_split env evd id is_rec f prob fixdecls recs split =
   let where_map = ref Evar.Map.empty in
   match is_rec with
-  | Some (Guarded _) -> subst_rec_split env !evd f false None [Ident id] prob recs split, !where_map
+  | Some (Guarded _) ->
+    subst_rec_split env !evd f false None [Ident id] prob fixdecls recs split, !where_map
   | Some (Logical r) ->
     let proj = match r with
       | LogicalDirect (_, id) -> mkVar id
@@ -683,7 +691,7 @@ let update_split env evd id is_rec f prob recs split =
           | LogicalProj r -> Some r.comp_recarg
         in
         let rest = aux env f (subst_rec_split env !evd f false recarg [Ident id]
-                     newprob [(id, f)] rest) in
+                     newprob [] [(id, f)] rest) in
          (match invsubst with
           | Some s -> Mapping (s, rest)
           | None -> rest)
@@ -727,7 +735,7 @@ let computations env evd alias refine eqninfo =
   | Compute (lhs, where, ty, c) ->
      let where_comp w =
        (** Where term is in lhs *)
-       let term = fst (decompose_app evd w.where_term) in
+       let term, args = decompose_app evd w.where_term in
        let alias =
          try
          let (f, id, s) = match List.hd w.where_path with
@@ -737,6 +745,16 @@ let computations env evd alias refine eqninfo =
          Some ((f, args), id, s)
          with Not_found -> None
        in
+       let args =
+         let rec aux i a =
+           match a with
+           | [] -> []
+           | hd :: tl ->
+             if isRel evd hd then []
+             else hd :: aux (succ i) tl
+         in aux 0 args
+       in
+       let term = applist (term, args) in
        let comps = computations env w.where_prob term None (Regular,false) (Lazy.force w.where_splitting) in
        (* let gencomp (ctx, fl, alias, pats, ty, f, b, c, l) =
         *   (\** ctx' = rctx ++ lhs is a dB context *\)
@@ -755,17 +773,8 @@ let computations env evd alias refine eqninfo =
         * let ctx' = ctx' @ rctx in
         * (\** ctx' is a dB context for nctx + where_prob *\)
         * let hd = substn_vars lift inst nterm in *)
-       let hd = w.where_term in
-       let args =
-         let rec aux i a =
-           match a with
-           | [] -> []
-           | hd :: tl -> if isRel evd hd then i :: aux (succ i) tl
-                         else aux (succ i) tl
-         in aux 0 (Array.to_list (arguments evd w.where_term))
-       in
        let arity = (* substn_vars lift inst  *)w.where_arity in
-       ((hd, args), alias, w.where_orig, pi1 w.where_prob, arity,
+       ((term, [List.length args]), alias, w.where_orig, pi1 w.where_prob, arity,
         List.rev_map pat_constr (pi2 w.where_prob) (*?*),
         [] (*?*), comps)
      in

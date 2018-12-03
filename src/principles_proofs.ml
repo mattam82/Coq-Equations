@@ -415,7 +415,9 @@ let rec aux_ind_fun info chop unfs unfids = function
           let ind = Nametab.locate (qualid_of_ident wherepath) in
           let ty ind =
             let ctx = pi1 s.where_prob in
-            let fnapp = applistc (fst (decompose_app Evd.empty where_term)) (extended_rel_list 0 ctx) in
+            let hd, args = decompose_app Evd.empty where_term in
+            let args = List.filter (fun x -> not (isRel Evd.empty x)) args in
+            let fnapp = applistc (applistc hd args) (extended_rel_list 0 ctx) in
             let args = extended_rel_list 0 ctx in
             let app = applistc ind (List.append args [fnapp]) in
             it_mkProd_or_LetIn app ctx
@@ -531,7 +533,10 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
        tclDISPATCH (List.map (fun (_,cpi,e) ->
                     (* observe_tac "proving one mutual " *)
                     let proginfo =
-                      { info with term_info = { info.term_info with helpers_info = info.term_info.helpers_info @ cpi.program_split_info.helpers_info } }
+                      { info with term_info = { info.term_info
+                                                with helpers_info =
+                                                       info.term_info.helpers_info @
+                                                       cpi.program_split_info.helpers_info } }
                     in
                     (of82 (aux_ind_fun proginfo (0, List.length l) None [] e.equations_split)))
                     progs)

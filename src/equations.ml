@@ -78,7 +78,7 @@ let define_principles flags rec_info fixprots progs =
 	 in
 	 let split, where_map =
            update_split env evd p.program_id rec_info
-                        (of_constr f) cutprob fixsubst prog.program_split in
+                        (of_constr f) cutprob fixdecls fixsubst prog.program_split in
          let eqninfo =
            Principles_proofs.{ equations_id = i;
              equations_where_map = where_map;
@@ -91,7 +91,7 @@ let define_principles flags rec_info fixprots progs =
 	 let prob = id_subst sign in
 	 let split, where_map =
            update_split env evd p.program_id rec_info
-                        (of_constr f) prob [] prog.program_split in
+                        (of_constr f) prob [] [] prog.program_split in
          let eqninfo =
            Principles_proofs.{ equations_id = i;
              equations_where_map = where_map;
@@ -106,7 +106,7 @@ let define_principles flags rec_info fixprots progs =
          (* let () = msg_debug (str"udpdate split" ++ spc () ++ pr_splitting env split) in *)
 	 let unfold_split, where_map =
            update_split env evd p.program_id rec_info (of_constr f)
-                        prob [(i,of_constr f)] prog.program_split
+                        prob [] [(i,of_constr f)] prog.program_split
          in
 	 (* We first define the unfolding and show the fixpoint equation. *)
          let unfoldi = add_suffix i "_unfold" in

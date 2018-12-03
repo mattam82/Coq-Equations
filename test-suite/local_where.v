@@ -55,4 +55,4 @@ foo5 (@e2 i e) := absw e
 
   where absw : expr i -> nat :=
   absw e1 := 0;
-  absw (e2 e') := 0.
+  absw (e2 e') := foo5 e'.

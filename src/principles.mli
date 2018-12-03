@@ -74,7 +74,8 @@ val subst_rec_split :            Environ.env ->
            bool ->
            int option ->
            Covering.path ->
-           Covering.context_map ->
+  Covering.context_map ->
+  rel_context ->
            (Names.Id.t * constr) list ->
            Covering.splitting -> Covering.splitting
 
@@ -85,6 +86,7 @@ val update_split : Environ.env ->
   Syntax.rec_type option ->
   constr ->
   Covering.context_map ->
+  rel_context ->
   (Names.Id.t * constr) list -> Covering.splitting -> Covering.splitting * Principles_proofs.where_map
 
 val build_equations :
