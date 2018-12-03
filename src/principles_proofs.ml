@@ -236,6 +236,7 @@ let find_splitting_var sigma pats var constrs =
     | PCstr (c, ps), (f,l) -> aux ps l
     | _, _ -> None
   and aux pats constrs =
+    assert(List.length pats = List.length constrs);
     List.fold_left2 (fun acc p c ->
       match acc with None -> find_pat_var p c | _ -> acc)
       None pats constrs
@@ -372,7 +373,7 @@ let rec aux_ind_fun info chop unfs unfids = function
       if not (List.is_empty wheres) then
         let wheretac acc s unfs =
           let where_term, fstchop, unfids = match unfs with
-            | None -> s.where_term, fst chop + List.length ctx, unfids
+            | None -> s.where_term, fst chop (* + List.length ctx *), unfids
             | Some w ->
                let assoc, unf, split =
                  try match List.hd w.where_path with
@@ -383,7 +384,7 @@ let rec aux_ind_fun info chop unfs unfids = function
                (* msg_debug (str"Unfolded where " ++ str"term: " ++ pr_constr w.where_term ++ *)
                (*              str" type: " ++ pr_constr w.where_type ++ str" assoc " ++ *)
                (*              pr_constr assoc); *)
-               assoc, fst chop + List.length ctx, unf :: unfids
+               assoc, fst chop (* + List.length ctx *), unf :: unfids
           in
           let chop = fstchop, snd chop in
           let wheretac =
@@ -422,6 +423,7 @@ let rec aux_ind_fun info chop unfs unfids = function
           tclTHEN acc (to82 (Proofview.tclBIND (Tacticals.New.pf_constr_of_global ind)
                                (fun ind -> assert_by (Name s.where_id) (ty ind) (of82 wheretac))))
         in
+        let () = assert (List.length wheres = List.length unfswheres) in
         let tac = List.fold_left2 wheretac tclIDTAC wheres unfswheres in
         tclTHENLIST [tac;
                      tclTRY (autorewrite_one info.term_info.base_id);

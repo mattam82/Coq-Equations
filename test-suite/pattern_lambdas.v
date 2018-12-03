@@ -14,8 +14,7 @@ Equations f : nat -> nat :=
   f 0 := 0;
   f (S n) := f n.
 
-
-Equations(noind) f' (n : nat) : nat :=
+Equations f' (n : nat) : nat :=
   f' n := test n (#{ | 0 => true ;
                      | S n => false }).
 
@@ -25,4 +24,3 @@ Equations decideeq (b b' : bool) : (b = b') + (~ b = b') :=
   decideeq false true := inr (#{ | x :=! x });
   decideeq true false := inr (#{ | x :=! x }).
 
-Fail Notation "'λ()'" := (#{ | x :=! x }).

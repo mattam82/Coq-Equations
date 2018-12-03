@@ -7,10 +7,6 @@ foo n := n + k 0
   where k (x : nat) : nat :=
           { k 0 := 0 ; k (S n') := n }.
 
-Next Obligation.
-  induction n; simp foo.
-Defined.
-
 Variable f : nat -> (nat * nat).
 
 Equations foo' (n : nat) : nat :=
@@ -19,11 +15,6 @@ foo' (S n) := n + k (f 0) (0, 0)
 
   where k (x : nat * nat) (y : nat * nat) : nat :=
   { k (x, y) (x', y') := x }.
-
-Next Obligation.
-  induction n. simp foo'.
-  simp foo'. constructor. destruct (f 0). simp foo'.
-Defined.
 
 Variable kont : ((nat * nat) -> nat) -> nat.
 
@@ -34,16 +25,10 @@ foo'' (S n) := n + kont absw
   where absw : (nat * nat) -> nat :=
   absw (x, y) := x.
 
-Next Obligation.
-  induction n. simp foo''.
-  simp foo''.
-Defined.
-
 Equations foo3 (n : nat) : nat :=
 foo3 0 := 0;
 foo3 (S n) := n + kont (#{ | (x, y) := x }).
-Next Obligation.
-Proof. induction n; simp foo3. Defined.
+
 Variant index : Set := i1 | i2.
 
 Derive NoConfusion for index.
@@ -56,7 +41,7 @@ Derive Signature NoConfusion NoConfusionHom for expr.
 
 Variable kont' : forall x : index, (expr x -> nat) -> nat.
 
-Equations(noind) foo4 {i} (n : expr i) : nat :=
+Equations foo4 {i} (n : expr i) : nat :=
 foo4 e1 := 0;
 foo4 (@e2 i e) := absw e
 
@@ -70,10 +55,4 @@ foo5 (@e2 i e) := absw e
 
   where absw : expr i -> nat :=
   absw e1 := 0;
-  absw (e2 _) := 0.
-Next Obligation.
-Proof. induction n; simp foo5. constructor.
-       depelim n.
-       simp foo5.
-       simp foo5.
-Defined.
+  absw (e2 e') := 0.

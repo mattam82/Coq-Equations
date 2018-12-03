@@ -201,29 +201,6 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
   let rec aux n env hyps c =
     let open Constr in
     match kind c with
-    | App (f', args) when not (is_user_obl sigma user_obls (EConstr.of_constr f')) ->
-      let hyps =
-         (** TODO: use filter here *)
-        Array.fold_left (fun hyps arg -> let hyps', arg' = aux n env hyps arg in
-                                           hyps')
-          hyps args
-      in
-      let args = Array.to_list args in
-        (match find_rec_call f' args with
-         | Some (i, arity, filter, sign, (args', rest)) ->
-          let fargs' = filter_arguments filter args' in
-          let result = Termops.it_mkLambda_or_LetIn (mkApp (f', CArray.of_list args')) sign in
-          let hyp =
-            Term.it_mkProd_or_LetIn
-              (Constr.mkApp (mkApp (mkRel (i + 1 + len + n + List.length sign), Array.of_list fargs'),
-                      [| Term.applistc (lift (List.length sign) result) (Context.Rel.to_extended_list mkRel 0 sign) |]))
-              sign
-          in
-          let hyps = cmap_add hyp !occ hyps in
-          let () = incr occ in
-            hyps, Term.applist (result, rest)
-        | None -> hyps, mkApp (f', Array.of_list args))
-
     | Lambda (na,t,b) ->
       let hyps',b' = aux (succ n) ((na,None,t) :: env) CMap.empty b in
       let hyps' = cmap_map (fun ty -> mkProd (na, t, ty)) hyps' in
@@ -252,10 +229,34 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
         hyps', mkProj (p, c')
 
     | _ ->
-      let c' =
-        if do_subst then (EConstr.Unsafe.to_constr (EConstr.Vars.substnl proto_fs (len + n) (EConstr.of_constr c)))
-        else c
-      in hyps, c'
+      let f', args = decompose_appvect c in
+      if not (is_user_obl sigma user_obls (EConstr.of_constr f')) then
+        let hyps =
+          (** TODO: use filter here *)
+          Array.fold_left (fun hyps arg -> let hyps', arg' = aux n env hyps arg in
+                            hyps')
+            hyps args
+        in
+        let args = Array.to_list args in
+        (match find_rec_call f' args with
+         | Some (i, arity, filter, sign, (args', rest)) ->
+           let fargs' = filter_arguments filter args' in
+           let result = Termops.it_mkLambda_or_LetIn (mkApp (f', CArray.of_list args')) sign in
+           let hyp =
+             Term.it_mkProd_or_LetIn
+               (Constr.mkApp (mkApp (mkRel (i + 1 + len + n + List.length sign), Array.of_list fargs'),
+                              [| Term.applistc (lift (List.length sign) result) (Context.Rel.to_extended_list mkRel 0 sign) |]))
+               sign
+           in
+           let hyps = cmap_add hyp !occ hyps in
+           let () = incr occ in
+           hyps, Term.applist (result, rest)
+         | None -> hyps, mkApp (f', Array.of_list args))
+      else
+        let c' =
+          if do_subst then (EConstr.Unsafe.to_constr (EConstr.Vars.substnl proto_fs (len + n) (EConstr.of_constr c)))
+          else c
+        in hyps, c'
   in clean_rec_calls sigma (aux 0 [] CMap.empty (EConstr.Unsafe.to_constr c))
 
 open EConstr
@@ -472,13 +473,14 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
       match stmts, meths with
       | (Refine, _, _, _) :: stmts, decl :: decls ->
          aux stmts (Equations_common.subst_telescope mkProp decls) (succ n) meths'
-      (* | (Where, _, _, None) :: stmts, decls -> (\* Empty node, no constructor *\)
-       *    aux stmts decls n meths' *)
+      | (_, _, _, None) :: stmts, decls -> (* Empty node, no constructor *)
+         aux stmts decls n meths'
       | (_, _, _, _) :: stmts, decl :: decls ->
          aux stmts decls n (decl :: meths')
       | [], [] -> n, meths'
       | [], decls -> n, List.rev decls @ meths'
-      | _, _ -> assert false
+      | (_, _, _, Some _) :: stmts, [] ->
+        anomaly Pp.(str"More statemsnts than declarations while computing eliminator")
     in aux all_stmts (List.rev methods) 0 []
   in
   let ctx = methods' @ newpreds @ [ppred] in
