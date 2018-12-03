@@ -551,14 +551,6 @@ let subst_rec_split env evd f comp comprecarg path prob s split =
         (compose_subst env ~sigma:evd subst lhs) cutprob
     in subst, csubst
   in
-  let subst_rec_named s acc = 
-    List.fold_left (fun (acc, ctx) (id, b) ->
-        try let (_, _, ty) = to_named_tuple (Equations_common.lookup_named id ctx) in
-            let fK = map_proto b ty in
-            (id, fK) :: acc, subst_in_named_ctx id fK ctx
-        with Not_found -> acc, ctx)
-                   ([], acc) s
-  in
   let rec aux cutprob s path = function
     | Compute ((ctx,pats,del as lhs), where, ty, c) ->
        let subst, lhs' = subst_rec cutprob s lhs in
@@ -733,7 +725,6 @@ let computations env evd alias refine eqninfo =
   | Compute (lhs, where, ty, c) ->
      let where_comp w =
        (** Where term is in lhs *)
-       let ctx = pi1 lhs in
        let term = fst (destApp evd w.where_term) in
        let alias =
          try

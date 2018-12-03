@@ -366,7 +366,7 @@ let define_by_eqs ~poly opts eqs nt =
   let evd = ref (Evd.from_env env) in
   let programs = List.map (fun (((loc,i),rec_annot,l,t,by),clauses as ieqs) ->
       let is_rec = is_recursive i eqs in
-      interp_arity env evd ~poly ~is_rec ~with_evars:false ieqs) eqs in
+      interp_arity env evd ~poly ~is_rec ~with_evars:false [] ieqs) eqs in
   let rec_info = compute_recinfo programs in
   let () = print_recinfo programs in
   let env = Global.env () in (* To find the comp constant *)
@@ -374,6 +374,7 @@ let define_by_eqs ~poly opts eqs nt =
   let fixdecls = nf_rel_context_evar !evd fixdecls in
   let intenv = { rec_info; fixdecls; intenv = data; notations = nt } in
   let coverings = coverings env evd intenv programs (List.map snd eqs) in
+  let env = Global.env () in (* coverings has the side effect of defining comp_proj constants for now *)
   let programs, coverings = List.split coverings in
   let status = Define false in
   let fix_proto_ref = destConstRef (Lazy.force coq_fix_proto) in

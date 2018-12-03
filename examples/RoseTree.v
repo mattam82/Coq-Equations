@@ -98,13 +98,28 @@ Module RoseTree.
 
     (* Nested rec *) 
     Set Equations Debug.
-    Equations elements' (r : t) : list A by rec r (MR lt size) :=
+
+    Ltac Equations.Subterm.rec_wf_eqns_rel recname x rel ::=
+      Subterm.rec_wf_rel_aux recname x rel ltac:(fun rechyp => add_pattern (hide_pattern rechyp));
+      unfold MR in *; simpl in *; try match goal with
+      | [ H : unit |- _ ] => destruct H
+      end.
+
+    Goal forall (l : list t) (elements' : (∀ r : t, MR lt size r (node l) → list A))
+                (x : list t) (H : list_size size x < size (node l)), True.
+      set_eos.
+      intros.
+      assert (eos' := the_end_of_the_section). move eos' before elements'.
+      Subterm.rec_wf_eqns_rel fn x (MR lt (list_size size)).
+    Admitted.
+
+    Equations(noeqns noind) elements' (r : t) : list A by rec r (MR lt size) :=
     elements' (leaf a) := [a];
     elements' (node l) := fn l hidebody
 
     where fn (x : list t) (H : list_size size x < size (node l)) : list A by rec x (MR lt (list_size size)) :=
     fn nil _ := nil;
-    fn (cons x xs) _ := elements' x ++ fn xs hidebody _.
+    fn (cons x xs) _ := elements' x ++ fn l elements' xs hidebody.
 
     Next Obligation.
       abstract (simpl; omega).
