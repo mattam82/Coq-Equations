@@ -68,13 +68,14 @@ type program_body =
 
 type lhs = user_pats
 
-type 'a rhs =
-  | Program of program_body * 'a where_clause list
+and ('a,'b) rhs =
+    Program of program_body * 'a where_clause list
   | Empty of identifier with_loc
-  | Rec of constr_expr * constr_expr option *
-             identifier with_loc option * 'a list
-  | Refine of constr_expr * 'a list
-  | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) union * 'a list
+  | Rec of Constrexpr.constr_expr * Constrexpr.constr_expr option *
+             identifier with_loc option * 'b list
+  | Refine of Constrexpr.constr_expr * 'b list
+  | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) Util.union *
+      'b list
 
 and pre_prototype =
   identifier with_loc * user_rec_annot * Constrexpr.local_binder_expr list * Constrexpr.constr_expr *
@@ -88,16 +89,11 @@ and 'a where_clause = pre_prototype * 'a list
 
 type program = (signature * clause list) list
 and signature = identifier * rel_context * constr (* f : Π Δ. τ *)
-and clause = Loc.t option * lhs * clause rhs (* lhs rhs *)
+and clause = Loc.t option * lhs * (clause, clause) rhs (* lhs rhs *)
 
-type pre_equation_lhs =
-  | RawLhs of Constrexpr.constr_expr input_pats
-  | GlobLhs of Loc.t option * lhs
+type pre_equation = Constrexpr.constr_expr input_pats * (pre_equation, pre_equation) rhs
 
-type pre_equation =
-  pre_equation_lhs * pre_equation rhs
-
-type pre_clause = Loc.t option * lhs * pre_equation rhs
+type pre_clause = Loc.t option * lhs * (pre_equation, pre_clause) rhs
 
 type pre_equations = pre_equation where_clause list
 
@@ -161,7 +157,7 @@ let pr_user_lhs env lhs =
   | SignPats x -> pr_constr_expr x
   | RefinePats l -> prlist_with_sep (fun () -> str "|") pr_constr_expr l
 
-let rec pr_prerhs env = function
+let rec pr_user_rhs env = function
   | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ Id.print var
   | Rec (t, rel, id, s) ->
      spc () ++ str "=>" ++ spc () ++ str"rec " ++ pr_constr_expr t ++ spc () ++
@@ -180,12 +176,27 @@ let rec pr_prerhs env = function
   | By (Inr tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_glob_tactic env tac
       ++ spc () ++ hov 1 (str "{" ++ pr_user_clauses env s ++ str "}")
 
-and pr_pre_user_lhs env = function
-  | RawLhs lhs -> pr_user_lhs env lhs
-  | GlobLhs (loc, lhs) -> pr_lhs env lhs
+and pr_prerhs env = function
+  | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ Id.print var
+  | Rec (t, rel, id, s) ->
+     spc () ++ str "=>" ++ spc () ++ str"rec " ++ pr_constr_expr t ++ spc () ++
+       pr_opt (fun (_, id) -> Id.print id) id ++ spc () ++
+      hov 1 (str "{" ++ pr_preclauses env s ++ str "}")
+  | Program (rhs, where) -> spc () ++ str ":=" ++ spc () ++
+                            (match rhs with
+                             | ConstrExpr rhs -> pr_constr_expr rhs
+                             | Constr c -> str"<constr>") ++
+                            spc () ++ pr_prewheres env where
+  | Refine (rhs, s) -> spc () ++ str "<=" ++ spc () ++ pr_constr_expr rhs ++
+      spc () ++ str "=>" ++ spc () ++
+      hov 1 (str "{" ++ pr_preclauses env s ++ str "}")
+  | By (Inl tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_raw_tactic tac
+      ++ spc () ++ hov 1 (str "{" ++ pr_preclauses env s ++ str "}")
+  | By (Inr tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_glob_tactic env tac
+      ++ spc () ++ hov 1 (str "{" ++ pr_preclauses env s ++ str "}")
 
 and pr_user_clause env (lhs, rhs) =
-  pr_pre_user_lhs env lhs ++ pr_prerhs env rhs
+  pr_user_lhs env lhs ++ pr_user_rhs env rhs
 
 and pr_user_clauses env =
   prlist_with_sep fnl (pr_user_clause env)
@@ -196,10 +207,10 @@ and pr_prewheres env l =
 and pr_prewhere env (sign, eqns) =
   pr_proto sign ++ str "{" ++ pr_user_clauses env eqns ++ str "}"
 
-let pr_preclause env (loc, lhs, rhs) =
+and pr_preclause env (loc, lhs, rhs) =
   pr_lhs env lhs ++ pr_prerhs env rhs
 
-let pr_preclauses env =
+and pr_preclauses env =
   prlist_with_sep fnl (pr_preclause env)
 
 let ppclause clause =
@@ -282,7 +293,7 @@ let ids_of_pats id pats =
     Id.Set.empty pats
 
 type wf_rec_info =
-  EConstr.constr * EConstr.constr option * logical_rec
+  Constrexpr.constr_expr * Constrexpr.constr_expr option * logical_rec
 
 type program_rec_info =
   (rec_annot, wf_rec_info) by_annot
@@ -303,7 +314,7 @@ let chole c loc =
   CAst.make ~loc
   (CHole (Some (ImplicitArg (ConstRef cst, (0,None), false)), Namegen.IntroAnonymous,None)), None
 
-let check_linearity pats =
+let check_linearity env opats =
   let rec aux ids pats = 
     List.fold_left (fun ids pat ->
       DAst.with_loc_val (fun ?loc pat ->
@@ -311,12 +322,12 @@ let check_linearity pats =
       | PUVar (n, _) ->
 	if Id.Set.mem n ids then
 	  CErrors.user_err ?loc ~hdr:"ids_of_pats"
-	    (str "Non-linear occurrence of variable in patterns")
+            (str "Non-linear occurrence of variable in patterns: " ++ pr_user_pats env opats)
 	else Id.Set.add n ids
       | PUInac _ -> ids
       | PUCstr (_, _, pats) -> aux ids pats) pat)
       ids pats
-  in ignore (aux Id.Set.empty pats)
+  in ignore (aux Id.Set.empty opats)
 
 let pattern_of_glob_constr env avoid gc =
   let rec constructor ?loc c l =
@@ -404,17 +415,34 @@ let interp_pat env ?(avoid = ref Id.Set.empty) p pat =
     | None -> [pattern_of_glob_constr env avoid gc]
   with Not_found -> anomaly (str"While translating pattern to glob constr")
 
-let interp_eqn env is_rec p curpats eqn =
+let interp_eqn env p eqn =
   let avoid = ref Id.Set.empty in
   let whereid = ref (Nameops.add_suffix p.program_id "abs_where") in
   let interp_pat = interp_pat env ~avoid in
-  let rec aux (pat, rhs) = (pat, interp_rhs rhs)
-  and interp_rhs = function
+  let rec aux curpats (pat, rhs) =
+    let loc, pats =
+      match pat with
+      | SignPats pat ->
+        avoid := Id.Set.union !avoid (ids_of_pats (Some p.program_id) [pat]);
+        let loc = Constrexpr_ops.constr_loc pat in
+        loc, interp_pat (Some p) pat
+      | RefinePats pats ->
+        avoid := Id.Set.union !avoid (ids_of_pats None pats);
+        let loc = Constrexpr_ops.constr_loc (List.hd pats) in
+        let pats = List.map (interp_pat None) pats in
+        let pats = List.map (fun x -> List.hd x) pats in
+        loc, curpats @ pats
+    in
+    let () = check_linearity env pats in
+    (loc, pats, interp_rhs pats rhs)
+  and aux2 (pat, rhs) =
+    (pat, interp_rhs' rhs)
+  and interp_rhs' = function
     | Refine (c, eqs) ->
        let wheres, c = CAst.with_loc_val interp_constr_expr c in
        if not (List.is_empty wheres) then
          user_err_loc (Constrexpr_ops.constr_loc c, "interp_eqns", str"Pattern-matching lambdas not allowed in refine");
-       Refine (c, map aux eqs)
+       Refine (c, map aux2 eqs)
     | Program (c, w) ->
        let w = interp_wheres avoid w in
        let w', c =
@@ -426,12 +454,31 @@ let interp_eqn env is_rec p curpats eqn =
        in
        Program (c, List.append w' w)
     | Empty i -> Empty i
-    | Rec (fni, r, id, s) -> Rec (fni, r, id, map aux s)
-    | By (x, s) -> By (x, map aux s)
+    | Rec (fni, r, id, s) -> Rec (fni, r, id, map aux2 s)
+    | By (x, s) -> By (x, map aux2 s)
+  and interp_rhs curpats = function
+    | Refine (c, eqs) ->
+       let wheres, c = CAst.with_loc_val interp_constr_expr c in
+       if not (List.is_empty wheres) then
+         user_err_loc (Constrexpr_ops.constr_loc c, "interp_eqns", str"Pattern-matching lambdas not allowed in refine");
+       Refine (c, map (aux curpats) eqs)
+    | Program (c, w) ->
+       let w = interp_wheres avoid w in
+       let w', c =
+         match c with
+         | ConstrExpr c ->
+            let wheres, c = CAst.with_loc_val interp_constr_expr c in
+            wheres, ConstrExpr c
+         | Constr c -> [], Constr c
+       in
+       Program (c, List.append w' w)
+    | Empty i -> Empty i
+    | Rec (fni, r, id, s) -> Rec (fni, r, id, map (aux curpats) s)
+    | By (x, s) -> By (x, map (aux curpats) s)
   and interp_wheres avoid w =
     let interp_where (((loc,id),nested,b,t,reca) as p,eqns) =
       Dumpglob.dump_reference ~loc "<>" (Id.to_string id) "def";
-      p, map aux eqns
+      p, map aux2 eqns
     in List.map interp_where w
   and interp_constr_expr ?(loc=default_loc) c =
     let wheres = ref [] in
@@ -451,14 +498,15 @@ let interp_eqn env is_rec p curpats eqn =
              | LogicalDirect _ -> arg
              | LogicalProj r ->
                let arg = [arg, None] in
-               let qidproj = Nametab.shortest_qualid_of_global ?loc:qid'.CAst.loc Id.Set.empty (ConstRef r.comp_proj) in
+               let qidproj = Nametab.shortest_qualid_of_global
+                   ?loc:qid'.CAst.loc Id.Set.empty (ConstRef r.comp_proj) in
                CAst.make ~loc (CApp ((None, CAst.make ?loc:qid'.CAst.loc (CRef (qidproj, None))),
                                      args @ arg))))
       | CHole (k, i, Some eqns) when Genarg.has_type eqns (Genarg.rawwit wit_equations_list) ->
          let eqns = Genarg.out_gen (Genarg.rawwit wit_equations_list) eqns in
          let id = !whereid in
          let () = avoid := Id.Set.add id !avoid in
-         let eqns = List.map aux eqns in
+         let eqns = List.map aux2 eqns in
          let () =
            wheres := (((loc, id), None, [], CAst.make ~loc (CHole (k, i, None)), None), eqns) :: !wheres;
            whereid := Nameops.increment_subscript id;
@@ -468,25 +516,7 @@ let interp_eqn env is_rec p curpats eqn =
     in
     let c' = aux' !avoid ~loc c in
     !wheres, c'
-  in
-  let interp_eqn curpats (pat, rhs) =
-    let loc, pats =
-      match pat with
-      | RawLhs (SignPats pat) ->
-        avoid := Id.Set.union !avoid (ids_of_pats (Some p.program_id) [pat]);
-        let loc = Constrexpr_ops.constr_loc pat in
-        loc, interp_pat (Some p) pat
-      | RawLhs (RefinePats pats) ->
-        avoid := Id.Set.union !avoid (ids_of_pats None pats);
-        let loc = Constrexpr_ops.constr_loc (List.hd pats) in
-        let pats = List.map (interp_pat None) pats in
-        let pats = List.map (fun x -> List.hd x) pats in
-        loc, curpats @ pats
-      | GlobLhs (loc, pats) -> loc, pats
-    in
-    let () = check_linearity pats in
-    (loc, pats, interp_rhs rhs)
-  in interp_eqn curpats eqn
+  in aux [] eqn
 
 let is_recursive i : pre_equations -> bool option = fun eqs ->
   let rec occur_eqn (_, rhs) =

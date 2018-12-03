@@ -100,9 +100,8 @@ Hint Resolve lt_n_Sn : lt.
 
 Ltac solve_rec ::= simpl in * ; cbv zeta ; intros ; 
   try typeclasses eauto with subterm_relation Below lt.
-
-Equations testn (n : nat) : nat
-  by rec n lt :=
+Unset Implicit Arguments.
+Equations testn (n : nat) : nat by rec n lt :=
 testn 0 := 0 ;
 testn (S n) with testn n => {
   | 0 := S 0 ;

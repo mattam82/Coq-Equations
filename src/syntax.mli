@@ -60,14 +60,14 @@ type program_body =
                                 with the proper de Bruijn indices *)
 
 type lhs = user_pats (* p1 ... pn *)
-and 'a rhs =
+and ('a,'b) rhs =
     Program of program_body * 'a where_clause list
   | Empty of identifier with_loc
   | Rec of Constrexpr.constr_expr * Constrexpr.constr_expr option *
-             identifier with_loc option * 'a list
-  | Refine of Constrexpr.constr_expr * 'a list
+             identifier with_loc option * 'b list
+  | Refine of Constrexpr.constr_expr * 'b list
   | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) Util.union *
-      'a list
+      'b list
 and pre_prototype =
   identifier with_loc * user_rec_annot * Constrexpr.local_binder_expr list * Constrexpr.constr_expr *
   (Id.t with_loc, Constrexpr.constr_expr * Constrexpr.constr_expr option) by_annot option
@@ -80,15 +80,11 @@ and 'a where_clause = pre_prototype * 'a list
 
 type program = (signature * clause list) list
 and signature = identifier * rel_context * constr (* f : Π Δ. τ *)
-and clause = Loc.t option * lhs * clause rhs (* lhs rhs *)
+and clause = Loc.t option * lhs * (clause, clause) rhs (* lhs rhs *)
 
-type pre_equation_lhs =
-  | RawLhs of Constrexpr.constr_expr input_pats
-  | GlobLhs of Loc.t option * lhs
+type pre_equation = Constrexpr.constr_expr input_pats * (pre_equation, pre_equation) rhs
 
-type pre_equation = pre_equation_lhs * pre_equation rhs
-
-type pre_clause = Loc.t option * lhs * pre_equation rhs
+type pre_clause = Loc.t option * lhs * (pre_equation, pre_clause) rhs
 
 type pre_equations = pre_equation where_clause list
 
@@ -97,7 +93,7 @@ val pr_user_pats : env -> user_pats -> Pp.t
 
 val pr_lhs : env -> user_pats -> Pp.t
 val pplhs : user_pats -> unit
-val pr_rhs : env -> clause rhs -> Pp.t
+val pr_rhs : env -> (clause,clause) rhs -> Pp.t
 val pr_clause :
   env -> clause -> Pp.t
 val pr_clauses :
@@ -142,7 +138,7 @@ type equation_options = equation_option list
 val pr_equation_options : 'a -> 'b -> 'c -> 'd -> Pp.t
 
 type wf_rec_info =
-  EConstr.constr * EConstr.constr option * logical_rec
+  Constrexpr.constr_expr * Constrexpr.constr_expr option * logical_rec
 
 type program_rec_info =
   (rec_annot, wf_rec_info) by_annot
@@ -162,7 +158,7 @@ val interp_pat : Environ.env -> ?avoid:Id.Set.t ref ->
   program_info option ->
   Constrexpr.constr_expr -> user_pats
 
-val interp_eqn : env -> rec_type option -> program_info -> user_pats -> pre_equation -> pre_clause
+val interp_eqn : env -> program_info -> pre_equation -> pre_clause
 
 val wit_equations_list : pre_equation list Genarg.uniform_genarg_type
 

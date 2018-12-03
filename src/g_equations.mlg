@@ -377,8 +377,8 @@ GRAMMAR EXTEND Gram
    [ [ id = ident -> { (loc, id) } ] ] ;
 
   equation:
-    [ [ "|"; pats = LIST1 lconstr SEP "|"; r = rhs -> { (RawLhs (RefinePats pats), r) }
-      | pat = pat; r = rhs -> { (RawLhs (SignPats pat), r) }
+    [ [ "|"; pats = LIST1 lconstr SEP "|"; r = rhs -> { (RefinePats pats, r) }
+      | pat = pat; r = rhs -> { (SignPats pat, r) }
     ] ]
   ;
 
@@ -393,7 +393,7 @@ GRAMMAR EXTEND Gram
             | [c] -> fun e -> acc (Refine (c, e))
             | c :: cs ->
                 let acc = fun e ->
-                  acc (Refine (c, [(RawLhs (RefinePats [CAst.make (CHole (None, Namegen.IntroAnonymous, None))]), e)])) in
+                  acc (Refine (c, [(RefinePats [CAst.make (CHole (None, Namegen.IntroAnonymous, None))], e)])) in
                 build_refine acc cs
           in build_refine (fun e -> e) cs }
     ] ]
