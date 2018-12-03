@@ -5,115 +5,122 @@ Set Universe Polymorphism.
 Import Sigma_Notations.
 Set Equations Transparent.
 
-Inductive tele : Type :=
-| tip (A : Type)
-| ext (A : Type) (B : A -> tele) : tele.
+Cumulative Inductive tele@{i} : Type :=
+| tip (A : Type@{i})
+| ext (A : Type@{i}) (B : A -> tele) : tele.
 
-Equations tele_sigma (t : tele) : Type :=
-tele_sigma (tip A) := A;
-tele_sigma (ext A B) := @sigma A (fun x => tele_sigma (B x)).
+Section TeleSigma.
+  Universe i.
 
-Coercion tele_sigma : tele >-> Sortclass.
+  Equations tele_sigma (t : tele@{i}) : Type@{i} :=
+  tele_sigma (tip A) := A;
+  tele_sigma (ext A B) := @sigma A (fun x => tele_sigma (B x)).
 
-Inductive tele_val : tele -> Type :=
-| tip_val {A} (a : A) : tele_val (tip A)
-| ext_val {A B} (a : A) (b : tele_val (B a)) : tele_val (ext A B).
+  Coercion tele_sigma : tele >-> Sortclass.
 
-Equations tele_type : tele -> Type :=
-| tip A := A -> Type;
-| ext A B := forall x : A, tele_type (B x).
+  Inductive tele_val : tele@{i} -> Type@{i+1} :=
+  | tip_val {A} (a : A) : tele_val (tip A)
+  | ext_val {A B} (a : A) (b : tele_val (B a)) : tele_val (ext A B).
 
-Equations tele_pred : tele -> Type :=
-| tip A := A -> Prop;
-| ext A B := forall x : A, tele_pred (B x).
+  Universes j k.
 
-Equations tele_pred_fn : tele -> Type -> Type :=
-| tip A | concl := A -> concl;
-| ext A B | concl := forall x : A, tele_pred_fn (B x) concl.
+  Equations tele_type : tele@{i} -> Type@{k} :=
+  | tip A := A -> Type@{j};
+  | ext A B := forall x : A, tele_type (B x).
 
-Equations tele_rel : tele -> tele -> Type :=
-| tip A | tip B := A -> B -> Prop;
-| ext A B | ext A' B' := forall (x : A) (y : A'), tele_rel (B x) (B' y);
-| _ | _ := False.
+  Equations tele_pred : tele -> Type :=
+  | tip A := A -> Prop;
+  | ext A B := forall x : A, tele_pred (B x).
 
-Equations tele_pred_app (T : tele) (P : tele_pred T) (x : tele_sigma T) : Type :=
-tele_pred_app (tip A) P a := P a;
-tele_pred_app (ext A B) P &( a & b ) := tele_pred_app (B a) (P a) b.
+  Equations tele_fn : tele@{i} -> Type@{j} -> Type :=
+  | tip A | concl := A -> concl;
+  | ext A B | concl := forall x : A, tele_fn (B x) concl.
 
-Equations tele_type_app (T : tele) (P : tele_type T) (x : tele_sigma T) : Type :=
-tele_type_app (tip A) P a := P a;
-tele_type_app (ext A B) P &( a & b ) := tele_type_app (B a) (P a) b.
+  Equations tele_rel : tele -> tele -> Type :=
+  | tip A | tip B := A -> B -> Prop;
+  | ext A B | ext A' B' := forall (x : A) (y : A'), tele_rel (B x) (B' y);
+  | _ | _ := False.
 
-Equations tele_rel_app (T U : tele) (P : tele_rel T U) (x : tele_sigma T) (y : tele_sigma U) : Type :=
-tele_rel_app (tip A) (tip A') P a a' := P a a';
-tele_rel_app (ext A B) (ext A' B') P &( a & b ) &(a' & b') := tele_rel_app (B a) (B' a') (P a a') b b'.
+  Equations tele_type_app (T : tele@{i}) (P : tele_type T) (x : tele_sigma T) : Type@{k} :=
+  tele_type_app (tip A) P a := P a;
+  tele_type_app (ext A B) P &( a & b ) := tele_type_app (B a) (P a) b.
 
-Equations tele_forall (T : tele) (P : tele_type T) : Type :=
-| tip A | P := forall x : A, P x;
-| ext A B | P := forall x : A, tele_forall (B x) (P x).
+  Equations tele_rel_app (T U : tele) (P : tele_rel T U) (x : tele_sigma T) (y : tele_sigma U) : Type :=
+  tele_rel_app (tip A) (tip A') P a a' := P a a';
+  tele_rel_app (ext A B) (ext A' B') P &( a & b ) &(a' & b') := tele_rel_app (B a) (B' a') (P a a') b b'.
 
-Equations tele_forall_impl (T : tele) (P : tele_type T) (Q : tele_type T) : Type :=
-| tip A | P | Q := forall x : A, P x -> Q x;
-| ext A B | P | Q := forall x : A, tele_forall_impl (B x) (P x) (Q x).
+  Equations tele_forall (T : tele@{i}) (P : tele_type T) : Type@{k} :=
+  | tip A | P := forall x : A, P x;
+  | ext A B | P := forall x : A, tele_forall (B x) (P x).
 
-Equations tele_forall_app (T : tele) (P : tele_type T) (f : tele_forall T P) (x : T) : tele_type_app T P x :=
-tele_forall_app (tip A)   P f x := f x;
-tele_forall_app (ext A B) P f x := tele_forall_app (B x.1) (P x.1) (f x.1) x.2.
+  Equations tele_forall_impl (T : tele@{i}) (P : tele_type T) (Q : tele_type T) : Type :=
+  | tip A | P | Q := forall x : A, P x -> Q x;
+  | ext A B | P | Q := forall x : A, tele_forall_impl (B x) (P x) (Q x).
 
-Equations tele_forall_type_app (T : tele) (P : tele_type T)
-          (fn : forall t, tele_type_app T P t) : tele_forall T P :=
-| (tip A) | P | fn := fn;
-| ext A B | P | fn := fun a : A => tele_forall_type_app (B a) (P a) (fun b => fn &(a & b)).
+  Equations tele_forall_app (T : tele@{i}) (P : tele_type T) (f : tele_forall T P) (x : T) : tele_type_app T P x :=
+  tele_forall_app (tip A)   P f x := f x;
+  tele_forall_app (ext A B) P f x := tele_forall_app (B x.1) (P x.1) (f x.1) x.2.
 
-Lemma tele_forall_app_type (T : tele) (P : tele_type T) (f : forall t, tele_type_app T P t) :
-  forall x, tele_forall_app T P (tele_forall_type_app T P f) x = f x.
-Proof.
-  induction T; simpl. reflexivity. intros [a b]. simpl.
-  rewrite H. reflexivity.
-Defined.
+  Equations tele_forall_type_app (T : tele) (P : tele_type T)
+            (fn : forall t, tele_type_app T P t) : tele_forall T P :=
+  | (tip A) | P | fn := fn;
+  | ext A B | P | fn := fun a : A => tele_forall_type_app (B a) (P a) (fun b => fn &(a & b)).
 
-Equations tele_forall_uncurry (T : tele) (P : T -> Type) : Type :=
-| (tip A) | P := forall x : A, P x;
-| ext A B | P := forall x : A, tele_forall_uncurry (B x) (fun y : tele_sigma (B x) => P &(x & y)).
+  Lemma tele_forall_app_type (T : tele) (P : tele_type T) (f : forall t, tele_type_app T P t) :
+    forall x, tele_forall_app T P (tele_forall_type_app T P f) x = f x.
+  Proof.
+    induction T; simpl. reflexivity. intros [a b]. simpl.
+    rewrite H. reflexivity.
+  Defined.
 
-Equations tele_rel_pack (T U : tele) (x : tele_rel T U) : tele_sigma T -> tele_sigma U -> Prop by struct T :=
-tele_rel_pack (tip A) (tip A') P := P;
-tele_rel_pack (ext A B) (ext A' B') P := fun x y => tele_rel_pack (B x.1) (B' y.1) (P _ _) x.2 y.2.
+  Equations tele_forall_uncurry (T : tele@{i}) (P : T -> Type@{j}) : Type@{k} :=
+  | tip A   | P := forall x : A, P x;
+  | ext A B | P := forall x : A, tele_forall_uncurry (B x) (fun y : tele_sigma (B x) => P &(x & y)).
 
-Equations tele_pred_pack (T : tele) (P : tele_pred T) : tele_sigma T -> Prop :=
-tele_pred_pack (tip A) P := P;
-tele_pred_pack (ext A B) P := fun x => tele_pred_pack (B x.1) (P x.1) x.2.
+  Equations tele_rel_pack (T U : tele) (x : tele_rel T U) : tele_sigma T -> tele_sigma U -> Prop by struct T :=
+  tele_rel_pack (tip A) (tip A') P := P;
+  tele_rel_pack (ext A B) (ext A' B') P := fun x y => tele_rel_pack (B x.1) (B' y.1) (P _ _) x.2 y.2.
 
-Equations tele_type_unpack (T : tele) (P : tele_sigma T -> Type) : tele_type T :=
-tele_type_unpack (tip A) P := P;
-tele_type_unpack (ext A B) P := fun x => tele_type_unpack (B x) (fun y => P &(x & y)).
+  Equations tele_pred_pack (T : tele) (P : tele_pred T) : tele_sigma T -> Prop :=
+  tele_pred_pack (tip A) P := P;
+  tele_pred_pack (ext A B) P := fun x => tele_pred_pack (B x.1) (P x.1) x.2.
 
-Equations tele_pred_fn_pack (T U : tele) (P : tele_pred_fn T (tele_pred U)) : tele_sigma T -> tele_sigma U -> Prop :=
-tele_pred_fn_pack (tip A) U P := fun x => tele_pred_pack U (P x);
-tele_pred_fn_pack (ext A B) U P := fun x => tele_pred_fn_pack (B x.1) U (P x.1) x.2.
+  Equations tele_type_unpack (T : tele) (P : tele_sigma T -> Type) : tele_type T :=
+  tele_type_unpack (tip A) P := P;
+  tele_type_unpack (ext A B) P := fun x => tele_type_unpack (B x) (fun y => P &(x & y)).
 
-Definition tele_rel_curried T := tele_pred_fn T (tele_pred T).
+  Equations tele_pred_fn_pack (T U : tele) (P : tele_fn T (tele_pred U)) : tele_sigma T -> tele_sigma U -> Prop :=
+  tele_pred_fn_pack (tip A) U P := fun x => tele_pred_pack U (P x);
+  tele_pred_fn_pack (ext A B) U P := fun x => tele_pred_fn_pack (B x.1) U (P x.1) x.2.
 
-Equations tele_forall_pack (T : tele) (P : T -> Type) (f : tele_forall_uncurry T P) (t : T) : P t :=
-| (tip A) | P | f | t := f t;
-| ext A B | P | f | &(a & b) := tele_forall_pack (B a) (fun b => P &(a & b)) (f a) b.
+  Definition tele_rel_curried T := tele_fn T (tele_pred T).
 
-Equations tele_forall_unpack (T : tele) (P : T -> Type) (f : forall (t : T), P t) : tele_forall_uncurry T P :=
-| (tip A) | P | f := f;
-| ext A B | P | f := fun a : A => tele_forall_unpack (B a) (fun b => P &(a & b)) (fun b => f &(a & b)).
+  Equations tele_forall_pack (T : tele) (P : T -> Type) (f : tele_forall_uncurry T P) (t : T) : P t :=
+  | (tip A) | P | f | t := f t;
+  | ext A B | P | f | &(a & b) := tele_forall_pack (B a) (fun b => P &(a & b)) (f a) b.
 
-Lemma tele_forall_pack_unpack (T : tele) (P : T -> Type) (f : forall t, P t) :
-  forall x, tele_forall_pack T P (tele_forall_unpack T P f) x = f x.
-Proof.
-  induction T; simpl. reflexivity. intros [a b]. simpl.
-  rewrite H. reflexivity.
-Defined.
+  Equations tele_forall_unpack (T : tele) (P : T -> Type) (f : forall (t : T), P t) : tele_forall_uncurry T P :=
+  | (tip A) | P | f := f;
+  | ext A B | P | f := fun a : A => tele_forall_unpack (B a) (fun b => P &(a & b)) (fun b => f &(a & b)).
+
+  Lemma tele_forall_pack_unpack (T : tele) (P : T -> Type) (f : forall t, P t) :
+    forall x, tele_forall_pack T P (tele_forall_unpack T P f) x = f x.
+  Proof.
+    induction T; simpl. reflexivity. intros [a b]. simpl.
+    rewrite H. reflexivity.
+  Defined.
+
+  Equations tele_MR (T : tele@{i}) (A : Type@{j}) (f : tele_fn@{i} T A) : T -> A :=
+  tele_MR (tip A)   C f := f;
+  tele_MR (ext A B) C f := fun x => tele_MR (B x.1) C (f x.1) x.2.
+End TeleSigma.
 
 Section Fix.
-  Context {T : tele} (R : T -> T -> Prop).
+  Universe i j k.
+  Context {T : tele@{i}} (R : T -> T -> Prop).
   Context (wf : well_founded R).
-  Context (P : tele_type T).
-
+  Context (P : tele_type@{i j k} T).
+  Set Printing Universes.
   (* (forall x : A, (forall y : A, R y x -> P y) -> P x) -> forall x : A, P x *)
   Definition functional_type :=
     tele_forall_uncurry T (fun x =>
@@ -206,7 +213,7 @@ Section TestFix.
   Proof.
     unfold myfix. rewrite FixWf_unfold.
     simpl. destruct m; try reflexivity.
-
+  Qed.
 
 End TestFix.
 
