@@ -414,7 +414,7 @@ let rec aux_ind_fun info chop unfs unfids = function
           let ind = Nametab.locate (qualid_of_ident wherepath) in
           let ty ind =
             let ctx = pi1 s.where_prob in
-            let fnapp = applistc (fst (destApp Evd.empty where_term)) (extended_rel_list 0 ctx) in
+            let fnapp = applistc (fst (decompose_app Evd.empty where_term)) (extended_rel_list 0 ctx) in
             let args = extended_rel_list 0 ctx in
             let app = applistc ind (List.append args [fnapp]) in
             it_mkProd_or_LetIn app ctx
@@ -713,7 +713,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
          let ty =
            let ctx = pi1 unfw.where_prob in
            let lhs = mkApp (assoc, extended_rel_vect 0 ctx) in
-           let rhs = mkApp (unfw.where_term, extended_rel_vect 0 ctx) in
+           let rhs = mkApp (fst (decompose_app !evd unfw.where_term), extended_rel_vect 0 ctx) in
            let eq = mkEq env evd unfw.where_arity lhs rhs in
            it_mkProd_or_LetIn eq ctx
          in

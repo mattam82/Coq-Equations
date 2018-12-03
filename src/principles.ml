@@ -81,10 +81,10 @@ let clean_rec_calls sigma (hyps, c) =
     CMap.fold (fun ty n hyps ->
       let ctx, concl = Term.decompose_prod_assum ty in
       let len = List.length ctx in
-	if noccur_between 1 len concl then
-	  if CMap.mem (lift (-len) concl) hyps then hyps
-	  else CMap.add ty n hyps
-	else CMap.add ty n hyps)
+      if noccur_between 1 len concl then
+          if CMap.mem (lift (-len) concl) hyps then hyps
+          else CMap.add ty n hyps
+        else CMap.add ty n hyps)
       under_context hyps
   in
   (** Sort by occurrence *)
@@ -103,7 +103,7 @@ let is_applied_to_structarg f is_rec lenargs =
   | Some (Guarded ids) -> begin
      try
        let kind =
-	 CList.find_map (fun (f', k) -> if Id.equal f f' then Some k else None) ids
+         CList.find_map (fun (f', k) -> if Id.equal f f' then Some k else None) ids
        in
        match kind with
        | MutualOn (idx,_) | NestedOn (Some (idx,_)) -> Some (lenargs > idx)
@@ -130,7 +130,7 @@ let cmap_union g h =
 
 let cmap_add ty n h =
   cmap_union (CMap.singleton ty n) h
-    
+
 
 let subst_telescope cstr ctx =
   let (_, ctx') = List.fold_left
@@ -161,7 +161,7 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
       if Constr.equal f' f then
         let f' = fst (Constr.destConst f') in
         match is_applied_to_structarg (Names.Label.to_id (Names.Constant.label f')) is_rec
-	  (List.length args) with
+          (List.length args) with
         | Some true | None ->
            let sign, args =
              if nhyps <= List.length args then [], CList.chop nhyps args
@@ -188,14 +188,14 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
   let find_rec_call f args =
     match find_rec_call f args with
     | Some (i, arity, filter, args', rest) -> Some (i, arity, filter, args', rest)
-    | None -> 
-	match is_rec with
+    | None ->
+        match is_rec with
         | Some (Logical r) when is_rec_call sigma r (EConstr.of_constr f) ->
            (match r with
            | LogicalDirect _ -> None
-           | LogicalProj r -> 
+           | LogicalProj r ->
               Some (lenprotos - 1, r.comp_app, [] (* filter *), [], (CList.drop_last args, [])))
-	| _ -> None
+        | _ -> None
   in
   let occ = ref 0 in
   let rec aux n env hyps c =
@@ -203,7 +203,7 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
     match kind c with
     | App (f', args) when not (is_user_obl sigma user_obls (EConstr.of_constr f')) ->
       let hyps =
-	 (** TODO: use filter here *)
+         (** TODO: use filter here *)
         Array.fold_left (fun hyps arg -> let hyps', arg' = aux n env hyps arg in
                                            hyps')
           hyps args
@@ -219,38 +219,38 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
                       [| Term.applistc (lift (List.length sign) result) (Context.Rel.to_extended_list mkRel 0 sign) |]))
               sign
           in
-	  let hyps = cmap_add hyp !occ hyps in
-	  let () = incr occ in
+          let hyps = cmap_add hyp !occ hyps in
+          let () = incr occ in
             hyps, Term.applist (result, rest)
         | None -> hyps, mkApp (f', Array.of_list args))
-	    
+
     | Lambda (na,t,b) ->
       let hyps',b' = aux (succ n) ((na,None,t) :: env) CMap.empty b in
       let hyps' = cmap_map (fun ty -> mkProd (na, t, ty)) hyps' in
-	cmap_union hyps hyps', c
+        cmap_union hyps hyps', c
 
     (* | Cast (_, _, f) when is_comp f -> aux n f *)
-	  
+
     | LetIn (na,b,t,body) ->
       let hyps',b' = aux n env hyps b in
       let hyps'',body' = aux (succ n) ((na,Some b,t) :: env) CMap.empty body in
         cmap_union hyps' (cmap_map (fun ty -> Constr.mkLetIn (na,b,t,ty)) hyps''), c
-	  
+
     | Prod (na, d, c) when noccurn 1 c  ->
       let hyps',d' = aux n env hyps d in
       let hyps'',c' = aux n env hyps' (subst1 mkProp c) in
         hyps'', mkProd (na, d', lift 1 c')
-	  
+
     | Case (ci, p, c, brs) ->
       let hyps', c' = aux n env hyps c in
       let hyps' = Array.fold_left (fun hyps br -> fst (aux n env hyps br)) hyps' brs in
       let case' = mkCase (ci, p, c', brs) in
         hyps', EConstr.Unsafe.to_constr (EConstr.Vars.substnl proto_fs (succ len) (EConstr.of_constr case'))
-	  
+
     | Proj (p, c) ->
       let hyps', c' = aux n env hyps c in
-	hyps', mkProj (p, c')
-	  
+        hyps', mkProj (p, c')
+
     | _ ->
       let c' =
         if do_subst then (EConstr.Unsafe.to_constr (EConstr.Vars.substnl proto_fs (len + n) (EConstr.of_constr c)))
@@ -267,10 +267,10 @@ let subst_app sigma f fn c =
       let args' = Array.map (map_with_binders sigma succ aux n) args in
       fn n f' args'
     | Var _ when eq_constr sigma f c ->
-       fn n c [||] 
+       fn n c [||]
     | _ -> map_with_binders sigma succ aux n c
   in aux 0 c
-  
+
 let subst_comp_proj sigma f proj c =
   subst_app sigma proj (fun n x args ->
     mkApp (f, Array.sub args 0 (Array.length args - 1)))
@@ -297,7 +297,7 @@ let clear_ind_assums sigma ind ctx =
           clear_assums (Vars.subst1 mkProp c))
        else mkProd (na, b, clear_assums c)
     | LetIn (na, b, t, c) ->
-	mkLetIn (na, b, t, clear_assums c)
+        mkLetIn (na, b, t, clear_assums c)
     | _ -> c
   in map_rel_context clear_assums ctx
 
@@ -307,7 +307,7 @@ let type_of_rel t ctx =
   | c -> mkProp
 
 open Vars
-    
+
 let compute_elim_type env evd user_obls is_rec protos k leninds
                       ind_stmts all_stmts sign app elimty =
   let ctx, arity = decompose_prod_assum !evd elimty in
@@ -352,130 +352,130 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
     let ctx = of_tuple (Anonymous, None, arity) :: sign in
     let app =
       let argsinfo =
-	CList.map_i
-	  (fun i (c, arg) -> 
-	   let idx = signlen - arg + 1 in (* lift 1, over return value *)
-	   let ty = Vars.lift (idx (* 1 for return value *)) 
-			 (get_type (List.nth sign (pred (pred idx)))) 
-	   in
-	   (idx, ty, lift 1 c, mkRel idx)) 
-	  0 args
+        CList.map_i
+          (fun i (c, arg) ->
+           let idx = signlen - arg + 1 in (* lift 1, over return value *)
+           let ty = Vars.lift (idx (* 1 for return value *))
+                         (get_type (List.nth sign (pred (pred idx))))
+           in
+           (idx, ty, lift 1 c, mkRel idx))
+          0 args
       in
       let lenargs = List.length argsinfo in
       let transport = get_efresh logic_eq_case evd in
       let transport ty x y eq c cty =
-	mkApp (transport,
-	       [| ty; x;
+        mkApp (transport,
+               [| ty; x;
                   mkLambda (Name (Id.of_string "abs"), ty,
                             Termops.replace_term !evd (Vars.lift 1 x) (mkRel 1) (Vars.lift 1 cty));
-		  c; y; eq (* equality *) |])
+                  c; y; eq (* equality *) |])
       in
       let pargs, subst =
-	match argsinfo with
-	| [] -> List.map (lift (lenargs+1)) pats, []
-	| (i, ty, c, rel) :: [] ->
-	   List.fold_right
-	   (fun t (pargs, subst) ->
-	    let _idx = i + 2 * lenargs in
-	    let rel = lift lenargs rel in
+        match argsinfo with
+        | [] -> List.map (lift (lenargs+1)) pats, []
+        | (i, ty, c, rel) :: [] ->
+           List.fold_right
+           (fun t (pargs, subst) ->
+            let _idx = i + 2 * lenargs in
+            let rel = lift lenargs rel in
             let tty = lift (lenargs+1) (type_of_rel (to_constr !evd t) sign) in
             if Termops.dependent !evd rel tty then
-	      let tr =
+              let tr =
                 if isRel !evd c then lift (lenargs+1) t
-		else
-		  transport (lift lenargs ty) rel (lift lenargs c)
+                else
+                  transport (lift lenargs ty) rel (lift lenargs c)
                             (mkRel 1) (lift (lenargs+1) (t)) tty
-	      in
-	      let t' =
+              in
+              let t' =
                 if isRel !evd c then lift (lenargs+3) (t)
-		else transport (lift (lenargs+2) ty)
-			       (lift 2 rel)
-			       (mkRel 2)
+                else transport (lift (lenargs+2) ty)
+                               (lift 2 rel)
+                               (mkRel 2)
                                (mkRel 1) (lift (lenargs+3) (t)) (lift 2 tty)
-	      in (tr :: pargs, (rel, t') :: subst)
-	    else (* for equalities + return value *)
+              in (tr :: pargs, (rel, t') :: subst)
+            else (* for equalities + return value *)
               let t' = lift (lenargs+1) (t) in
               let t' = Termops.replace_term !evd (lift (lenargs) c) rel t' in
-	      (t' :: pargs, subst)) pats ([], [])
-	| _ -> assert false
+              (t' :: pargs, subst)) pats ([], [])
+        | _ -> assert false
       in
-      let result, _ = 
-	List.fold_left
-  	(fun (acc, pred) (i, ty, c, rel) -> 
-	 let idx = i + 2 * lenargs in
+      let result, _ =
+        List.fold_left
+        (fun (acc, pred) (i, ty, c, rel) ->
+         let idx = i + 2 * lenargs in
          if Termops.dependent !evd (mkRel idx) pred then
-	   let eqty =
-	     mkEq env evd (lift (lenargs+1) ty) (mkRel 1)
-		  (lift (lenargs+1) rel)
-	   in
-	   let pred' = 
-	     List.fold_left
+           let eqty =
+             mkEq env evd (lift (lenargs+1) ty) (mkRel 1)
+                  (lift (lenargs+1) rel)
+           in
+           let pred' =
+             List.fold_left
                (fun acc (t, tr) -> Termops.replace_term !evd t tr acc)
                (lift 1 (Termops.replace_term !evd (mkRel idx) (mkRel 1) pred))
-	       subst
-	   in
+               subst
+           in
            let transportd = get_efresh logic_eq_elim evd in
            let app =
-	     mkApp (transportd,
-		    [| lift lenargs ty; lift lenargs rel;
+             mkApp (transportd,
+                    [| lift lenargs ty; lift lenargs rel;
                        mkLambda (Name (Id.of_string "refine"), lift lenargs ty,
                                  mkLambda (Name (Id.of_string "refine_eq"), eqty, pred'));
-		       acc; (lift lenargs c); mkRel 1 (* equality *) |])
-	   in (app, subst1 c pred)
-	 else (acc, subst1 c pred))
-	(mkRel (succ lenargs), lift (succ (lenargs * 2)) arity)
-	argsinfo
+                       acc; (lift lenargs c); mkRel 1 (* equality *) |])
+           in (app, subst1 c pred)
+         else (acc, subst1 c pred))
+        (mkRel (succ lenargs), lift (succ (lenargs * 2)) arity)
+        argsinfo
       in
-      let ppath = (* The preceding P *) 
-	match path with
-	| [] -> assert false
-	| ev :: path -> 
+      let ppath = (* The preceding P *)
+        match path with
+        | [] -> assert false
+        | ev :: path ->
            let res =
              list_find_map_i (fun i' (_, (_, _, path', _, _, _, _, _), _) ->
-			      if eq_path path' path then Some (idx + 1 - i')
-			      else None) 1 ind_stmts
-	   in match res with None -> assert false | Some i -> i
+                              if eq_path path' path then Some (idx + 1 - i')
+                              else None) 1 ind_stmts
+           in match res with None -> assert false | Some i -> i
       in
       let papp =
-	applistc (lift (succ signlen + lenargs) (mkRel ppath)) 
-		 pargs
+        applistc (lift (succ signlen + lenargs) (mkRel ppath))
+                 pargs
       in
       let papp = applistc papp [result] in
       let refeqs = List.map (fun (i, ty, c, rel) -> mkEq env evd ty c rel) argsinfo in
       let app c = List.fold_right
-		  (fun c acc ->
+                  (fun c acc ->
                    mkProd (Name (Id.of_string "Heq"), c, acc))
-		  refeqs c
+                  refeqs c
       in
       let indhyps =
-	List.concat
-	(List.map (fun (c, _) ->
-	      let hyps, hypslen, c' = 
+        List.concat
+        (List.map (fun (c, _) ->
+              let hyps, hypslen, c' =
                 abstract_rec_calls !evd user_obls ~do_subst:false
                    is_rec signlen protos (Reductionops.nf_beta env !evd (lift 1 c))
-	      in 
-	      let lifthyps = lift_rel_contextn (signlen + 2) (- (pred i)) hyps in
-	        lifthyps) args)
+              in
+              let lifthyps = lift_rel_contextn (signlen + 2) (- (pred i)) hyps in
+                lifthyps) args)
       in
         it_mkLambda_or_LetIn
           (app (it_mkProd_or_clean env !evd (lift (List.length indhyps) papp)
                                    (lift_rel_context lenargs indhyps)))
-	  ctx
+          ctx
     in
     let ty = it_mkProd_or_LetIn sort ctx in
     of_tuple (n, Some app, ty)
   in
   let newpreds = CList.map2_i newpredfn 1 preds (List.rev (List.tl ind_stmts)) in
-  let skipped, methods' = (* Skip the indirection methods due to refinements, 
-			      as they are trivially provable *)
-    let rec aux stmts meths n meths' = 
+  let skipped, methods' = (* Skip the indirection methods due to refinements,
+                              as they are trivially provable *)
+    let rec aux stmts meths n meths' =
       match stmts, meths with
       | (Refine, _, _, _) :: stmts, decl :: decls ->
          aux stmts (Equations_common.subst_telescope mkProp decls) (succ n) meths'
-      | (Where, _, _, None) :: stmts, decls -> (* Empty node, no constructor *)
-	 aux stmts decls n meths'
+      (* | (Where, _, _, None) :: stmts, decls -> (\* Empty node, no constructor *\)
+       *    aux stmts decls n meths' *)
       | (_, _, _, _) :: stmts, decl :: decls ->
-	 aux stmts decls n (decl :: meths')
+         aux stmts decls n (decl :: meths')
       | [], [] -> n, meths'
       | [], decls -> n, List.rev decls @ meths'
       | _, _ -> assert false
@@ -522,12 +522,12 @@ let subst_rec_split env evd f comp comprecarg path prob s split =
     | Some recarg ->
        let lctx, ty' = decompose_prod_assum evd ty in
        let app =
-         if comp then (* when Globnames.is_global (ConstRef const) fcomp -> *) 
+         if comp then (* when Globnames.is_global (ConstRef const) fcomp -> *)
            (let fcomp, args = decompose_app evd ty' in
            (* When a comp *) applistc f args)
          else
            let args = Termops.rel_list 0 (List.length lctx) in
-           let before, after = 
+           let before, after =
              if (* recarg == -1 *) true then CList.drop_last args, []
              else let bf, after = CList.chop (pred recarg) args in
                bf, List.tl after
@@ -546,7 +546,7 @@ let subst_rec_split env evd f comp comprecarg path prob s split =
             compose_subst env ~sigma:evd substf lhs'
         with Not_found (* lookup *) -> lhs') (id_subst ctx) s
     in
-    let csubst = 
+    let csubst =
       compose_subst env ~sigma:evd
         (compose_subst env ~sigma:evd subst lhs) cutprob
     in subst, csubst
@@ -572,62 +572,62 @@ let subst_rec_split env evd f comp comprecarg path prob s split =
        let where' = List.map subst_where where in
        Compute (lhs', where', mapping_constr evd substprog ty,
                 mapping_rhs evd substprog c)
-	       
-    | Split (lhs, n, ty, cs) -> 
+
+    | Split (lhs, n, ty, cs) ->
        let subst, lhs' = subst_rec cutprob s lhs in
        let n' = destRel evd (mapping_constr evd subst (mkRel n)) in
        Split (lhs', n', mapping_constr evd subst ty,
-	      Array.map (Option.map (aux cutprob s path)) cs)
+              Array.map (Option.map (aux cutprob s path)) cs)
 
     | Mapping (lhs, c) ->
        let subst, lhs' = subst_rec cutprob s lhs in
        Mapping (lhs', aux cutprob s path c)
-	       
+
     | RecValid (id, c) ->
        RecValid (id, aux cutprob s (Ident id :: path) c)
-		
-    | Refined (lhs, info, sp) -> 
+
+    | Refined (lhs, info, sp) ->
        let (id, c, cty), ty, arg, ev, (fev, args), revctx, newprob, newty =
-	 info.refined_obj, info.refined_rettyp,
-	 info.refined_arg, info.refined_ex, info.refined_app,
-	 info.refined_revctx, info.refined_newprob, info.refined_newty
+         info.refined_obj, info.refined_rettyp,
+         info.refined_arg, info.refined_ex, info.refined_app,
+         info.refined_revctx, info.refined_newprob, info.refined_newty
        in
        let subst, lhs' = subst_rec cutprob s lhs in
-       let cutprob ctx' = 
-	 let pats, cutctx', _, _ =
-	   (* From Γ |- ps, prec, ps' : Δ, rec, Δ', build
-	       Γ |- ps, ps' : Δ, Δ' *)
-	   List.fold_right (fun d (pats, ctx', i, subs) ->
+       let cutprob ctx' =
+         let pats, cutctx', _, _ =
+           (* From Γ |- ps, prec, ps' : Δ, rec, Δ', build
+               Γ |- ps, ps' : Δ, Δ' *)
+           List.fold_right (fun d (pats, ctx', i, subs) ->
                let (n, b, t) = to_tuple d in
-	       match n with
-	       | Name n when List.mem_assoc n s ->
-		  let term = List.assoc n s in
-		  let term = map_proto term t in
-		  (pats, ctx', pred i, term :: subs)
-	       | _ ->
+               match n with
+               | Name n when List.mem_assoc n s ->
+                  let term = List.assoc n s in
+                  let term = map_proto term t in
+                  (pats, ctx', pred i, term :: subs)
+               | _ ->
                   let decl = of_tuple (n, Option.map (substl subs) b, substl subs t) in
-		  (i :: pats, decl :: ctx', 
-		   pred i, mkRel 1 :: List.map (lift 1) subs))
-		      ctx' ([], [], List.length ctx', [])
- 	 in (ctx', List.map (fun i -> PRel i) pats, cutctx')
+                  (i :: pats, decl :: ctx',
+                   pred i, mkRel 1 :: List.map (lift 1) subs))
+                      ctx' ([], [], List.length ctx', [])
+         in (ctx', List.map (fun i -> PRel i) pats, cutctx')
        in
        let _, revctx' = subst_rec (cutprob (pi3 revctx)) s revctx in
        let cutnewprob = cutprob (pi3 newprob) in
        let subst', newprob' = subst_rec cutnewprob s newprob in
-       let _, newprob_to_prob' = 
-	 subst_rec (cutprob (pi3 info.refined_newprob_to_lhs)) s info.refined_newprob_to_lhs in
+       let _, newprob_to_prob' =
+         subst_rec (cutprob (pi3 info.refined_newprob_to_lhs)) s info.refined_newprob_to_lhs in
        let ev' = if Option.has_some comprecarg then new_untyped_evar () else ev in
        let path' = Evar ev' :: path in
        let app', arg' =
-	 if Option.has_some comprecarg then
-	   let refarg = ref 0 in
-  	   let args' =
+         if Option.has_some comprecarg then
+           let refarg = ref 0 in
+           let args' =
              CList.fold_left_i
-	       (fun i acc c -> 
-		 if i == arg then (refarg := List.length acc);
+               (fun i acc c ->
+                 if i == arg then (refarg := List.length acc);
                  if isRel evd c then
                    let d = List.nth (pi1 lhs) (pred (destRel evd c)) in
-		   if List.mem_assoc (Nameops.Name.get_id (get_name d)) s then acc
+                   if List.mem_assoc (Nameops.Name.get_id (get_name d)) s then acc
                    else (mapping_constr evd subst c) :: acc
                  else (mapping_constr evd subst c) :: acc) 0 [] args
            in
@@ -638,8 +638,8 @@ let subst_rec_split env evd f comp comprecarg path prob s split =
                  EConstr.mkVar id) named_context
            in
            let secvars = Array.of_list secvars in
-	    (mkEvar (ev', secvars), List.rev args'), !refarg
-	 else 
+            (mkEvar (ev', secvars), List.rev args'), !refarg
+         else
            let first, last = CList.chop (List.length s) (List.map (mapping_constr evd subst) args) in
            (applistc (mapping_constr evd subst fev) first, last), arg - List.length s
            (* FIXME , needs substituted position too *)
@@ -647,53 +647,53 @@ let subst_rec_split env evd f comp comprecarg path prob s split =
        let info =
          { refined_obj = (id, mapping_constr evd subst c, mapping_constr evd subst cty);
            refined_rettyp = mapping_constr evd subst ty;
-	   refined_arg = arg';
-	   refined_path = path';
-	   refined_ex = ev';
-	   refined_app = app';
-	   refined_revctx = revctx';
-	   refined_newprob = newprob';
-	   refined_newprob_to_lhs = newprob_to_prob';
+           refined_arg = arg';
+           refined_path = path';
+           refined_ex = ev';
+           refined_app = app';
+           refined_revctx = revctx';
+           refined_newprob = newprob';
+           refined_newprob_to_lhs = newprob_to_prob';
            refined_newty = mapping_constr evd subst' newty }
        in Refined (lhs', info, aux cutnewprob s path' sp)
 
-    | Valid (lhs, x, y, w, u, cs) -> 
+    | Valid (lhs, x, y, w, u, cs) ->
        let subst, lhs' = subst_rec cutprob s lhs in
-       Valid (lhs', x, y, w, u, 
-	      List.map (fun (g, l, subst, invsubst, sp) -> (g, l, subst, invsubst, aux cutprob s path sp)) cs)
+       Valid (lhs', x, y, w, u,
+              List.map (fun (g, l, subst, invsubst, sp) -> (g, l, subst, invsubst, aux cutprob s path sp)) cs)
   in aux prob s path split
 
 let update_split env evd id is_rec f prob recs split =
   let where_map = ref Evar.Map.empty in
   match is_rec with
   | Some (Guarded _) -> subst_rec_split env !evd f false None [Ident id] prob recs split, !where_map
-  | Some (Logical r) -> 
+  | Some (Logical r) ->
     let proj = match r with
       | LogicalDirect (_, id) -> mkVar id
       | LogicalProj r -> mkConst r.comp_proj
     in
     let split' = subst_comp_proj_split !evd f proj split in
     let rec aux env f = function
-      | RecValid (id, Valid (ctx, ty, args, tac, view, 
-			    [goal, args', newprob, invsubst, rest])) ->
+      | RecValid (id, Valid (ctx, ty, args, tac, view,
+                            [goal, args', newprob, invsubst, rest])) ->
         let recarg = match r with
           | LogicalDirect _ -> Some (-1)
           | LogicalProj r -> Some r.comp_recarg
         in
         let rest = aux env f (subst_rec_split env !evd f false recarg [Ident id]
                      newprob [(id, f)] rest) in
-	 (match invsubst with
-	  | Some s -> Mapping (s, rest)
-	  | None -> rest)
+         (match invsubst with
+          | Some s -> Mapping (s, rest)
+          | None -> rest)
       | Mapping (lhs, s) -> Mapping (lhs, aux env f s)
       | Split (lhs, y, z, cs) -> Split (lhs, y, z, Array.map (Option.map (aux env f)) cs)
       | RecValid (id, c) -> RecValid (id, aux env f c)
       | Valid (lhs, y, z, w, u, cs) ->
-	Valid (lhs, y, z, w, u, 
-	       List.map (fun (gl, cl, subst, invs, s) -> (gl, cl, subst, invs, aux env f s)) cs)
+        Valid (lhs, y, z, w, u,
+               List.map (fun (gl, cl, subst, invs, s) -> (gl, cl, subst, invs, aux env f s)) cs)
       | Refined (lhs, info, s) -> Refined (lhs, info, aux env f s)
-      | Compute (lhs, wheres, p, q) -> 
-         let subst_where w = 
+      | Compute (lhs, wheres, p, q) ->
+         let subst_where w =
            let env = push_rel_context (pi1 lhs) env in
            let evm, ev = (* Why create an evar here ? *)
              Equations_common.new_evar env !evd w.where_type
@@ -725,7 +725,7 @@ let computations env evd alias refine eqninfo =
   | Compute (lhs, where, ty, c) ->
      let where_comp w =
        (** Where term is in lhs *)
-       let term = fst (destApp evd w.where_term) in
+       let term = fst (decompose_app evd w.where_term) in
        let alias =
          try
          let (f, id, s) = match List.hd w.where_path with
@@ -777,9 +777,12 @@ let computations env evd alias refine eqninfo =
      let patsconstrs = List.rev_map pat_constr (pi2 ctx) in
      [pi1 ctx, f, alias, patsconstrs, substl inst ty, f, (Where, snd refine), c', Some wheres]
 
-  | Split (_, _, _, cs) -> Array.fold_left (fun acc c ->
-	                   match c with None -> acc | Some c ->
-	                                               acc @ computations env prob f alias refine c) [] cs
+  | Split (_, _, _, cs) ->
+    Array.fold_left (fun acc c ->
+        match c with
+   | None -> acc
+   | Some c ->
+   acc @ computations env prob f alias refine c) [] cs
 
   | Mapping (lhs, c) ->
      let _newprob = compose_subst env ~sigma:evd prob lhs in
@@ -792,15 +795,15 @@ let computations env evd alias refine eqninfo =
      let (ctx', pats', _ as s) = compose_subst env ~sigma:evd lhs prob in
      let patsconstrs = List.rev_map pat_constr pats' in
      let refinedpats = List.rev_map pat_constr
-	                            (pi2 (compose_subst env ~sigma:evd info.refined_newprob_to_lhs s))
+                                    (pi2 (compose_subst env ~sigma:evd info.refined_newprob_to_lhs s))
      in
      let filter = [Array.length (arguments evd (fst info.refined_app))] in
      [pi1 lhs, f, alias, patsconstrs, info.refined_rettyp, f, (Refine, true),
       RProgram (applist info.refined_app),
       Some [(fst (info.refined_app), filter), None, info.refined_path, pi1 info.refined_newprob,
-	    info.refined_newty, refinedpats,
+            info.refined_newty, refinedpats,
             [mapping_constr evd info.refined_newprob_to_lhs c, info.refined_arg],
-	    computations env info.refined_newprob (fst info.refined_app) None (Regular, true) cs]]
+            computations env info.refined_newprob (fst info.refined_app) None (Regular, true) cs]]
 
   | Valid ((ctx,pats,del), _, _, _, _, cs) ->
      List.fold_left (fun acc (_, _, subst, invsubst, c) ->
@@ -858,7 +861,7 @@ let declare_funelim info env evd is_rec protos progs
     let evd, cl = functional_elimination_class evd in
     let args_of_elim = coq_nat_of_int nargs in
     let args = [Retyping.get_type_of env evd f; f;
-		Retyping.get_type_of env evd elimcgr;
+                Retyping.get_type_of env evd elimcgr;
                 of_constr args_of_elim; elimcgr]
     in
     let instid = Nameops.add_prefix "FunctionalElimination_" id in
@@ -868,7 +871,7 @@ let declare_funelim info env evd is_rec protos progs
   let tactic = ind_elim_tac elimc leninds (List.length progs) info indgr in
   let _ = e_type_of (Global.env ()) evd newty in
   ignore(Obligations.add_definition (Nameops.add_suffix id "_elim")
-	                            ~tactic ~univ_hook:(Obligations.mk_univ_hook hookelim) ~kind:info.decl_kind
+                                    ~tactic ~univ_hook:(Obligations.mk_univ_hook hookelim) ~kind:info.decl_kind
                                     (to_constr !evd newty) (Evd.evar_universe_context !evd) [||])
 
 let mkConj evd x y =
@@ -921,7 +924,7 @@ let declare_funind info alias env evd is_rec protos progs
   let hookind ectx _obls subst indgr =
     let env = Global.env () in (* refresh *)
     Hints.add_hints ~local:false [info.term_info.base_id]
-	            (Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef indgr]);
+                    (Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef indgr]);
     let () = declare_funelim info.term_info env evd is_rec protos progs
                              ind_stmts all_stmts sign app subst inds kn comb indgr ectx in
     let evd = Evd.from_env env in
@@ -964,7 +967,7 @@ let level_of_context env evd ctx acc =
         (push_rel decl env, Univ.sup (Sorts.univ_of_sort s) lev))
                     ctx (env,acc)
   in lev
-  
+
 let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) option) rec_info progs =
   let p, prog, eqninfo = List.hd progs in
   let user_obls =
@@ -988,13 +991,13 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
       | None -> []
       | Some l ->
          CList.map_append (fun (f, alias, path, ctx, ty, pats, newargs, rest) ->
-	  let nextlevel, rest = flatten_comps rest in
-	    ((f, alias, path, ctx, ty, pats, newargs, refine), nextlevel) :: rest) l
+          let nextlevel, rest = flatten_comps rest in
+            ((f, alias, path, ctx, ty, pats, newargs, refine), nextlevel) :: rest) l
     in (ctx, fl, flalias, pats, ty, f, refine, c), rest
   and flatten_comps r =
-    List.fold_right (fun cmp (acc, rest) -> 
+    List.fold_right (fun cmp (acc, rest) ->
       let stmt, rest' = flatten_comp cmp in
-	(stmt :: acc, rest' @ rest)) r ([], [])
+        (stmt :: acc, rest' @ rest)) r ([], [])
   in
   let flatten_top_comps (p, eqninfo, one_comps) acc =
     let (top, rest) = flatten_comps one_comps in
@@ -1008,7 +1011,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
   let comps = List.fold_right flatten_top_comps comps [] in
   let protos = List.map fst comps in
   let lenprotos = List.length protos in
-  let protos = 
+  let protos =
     CList.map_i (fun i ((f',filterf'), alias, path, sign, arity, pats, args, (refine, cut)) ->
       let f' = Termops.strip_outer_cast evd f' in
       let alias =
@@ -1019,48 +1022,48 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
       ((f',filterf'), alias, lenprotos - i, sign, to_constr evd arity))
       1 protos
   in
-  let evd = ref evd in    
+  let evd = ref evd in
   let poly = is_polymorphic info in
   let statement i filter (ctx, fl, flalias, pats, ty, f', (refine, cut), c) =
     let hd, unf = match flalias with
       | Some (f', unf, _) -> f', Equality.rewriteLR (constr_of_ident unf)
       | None -> fl,
         if eq_constr !evd fl (of_constr f) then
-	  Tacticals.New.tclORELSE Tactics.reflexivity (of82 (unfold_constr !evd (of_constr f)))
+          Tacticals.New.tclORELSE Tactics.reflexivity (of82 (unfold_constr !evd (of_constr f)))
         else Tacticals.New.tclIDTAC
     in
     let comp = applistc hd pats in
     let body =
       let b = match c with
-	| RProgram c ->
+        | RProgram c ->
             mkEq env evd ty comp (Reductionops.nf_beta env !evd c)
-	| REmpty i ->
-	   mkApp (coq_ImpossibleCall evd, [| ty; comp |])
+        | REmpty i ->
+           mkApp (coq_ImpossibleCall evd, [| ty; comp |])
       in
       let body = it_mkProd_or_LetIn b ctx in
       (* msg_debug (str"Typing equation " ++ pr_constr_env env !evd c); *)
       let _ = Equations_common.evd_comb1 (Typing.type_of env) evd body in
       body
     in
-    let cstr = 
+    let cstr =
       match c with
       | RProgram c ->
-	  let len = List.length ctx in
-	  let hyps, hypslen, c' =
+          let len = List.length ctx in
+          let hyps, hypslen, c' =
             abstract_rec_calls !evd user_obls rec_info len protos (Reductionops.nf_beta env !evd c)
           in
           let head =
             let f = mkRel (len + (lenprotos - i) + hypslen) in
-            if cut then f 
-            else 
+            if cut then f
+            else
               let fn, args = decompose_app !evd (Termops.strip_outer_cast !evd fl) in
               applistc f (filter_arguments filter (lift_constrs hypslen args))
           in
-          let ty = 
+          let ty =
             it_mkProd_or_clear !evd
               (it_mkProd_or_clean env !evd
-		 (applistc head (lift_constrs hypslen pats @ [c']))
-		 hyps) ctx
+                 (applistc head (lift_constrs hypslen pats @ [c']))
+                 hyps) ctx
           in Some ty
       | REmpty i -> None
     in (refine, unf, body, cstr)
@@ -1069,11 +1072,11 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
     let fs, filter =
       match alias with
       | Some (f', unf, split) ->
-	 (f', None, path, sign, arity, pats, args, refine), snd f'
+         (f', None, path, sign, arity, pats, args, refine), snd f'
       | None -> fs, snd f'
     in fs, List.map (statement i filter) c in
   let stmts = CList.map_i statements 0 comps in
-  let ind_stmts = CList.map_i 
+  let ind_stmts = CList.map_i
     (fun i (f, c) -> i, f, CList.map_i (fun j x -> j, x) 1 c) 0 stmts
   in
   let all_stmts = List.concat (List.map (fun (f, c) -> c) stmts) in
@@ -1084,9 +1087,9 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
     let () = fnind_map := PathMap.add path (indid,indapp) !fnind_map in
     let constructors = CList.map_filter (fun (_, (_, _, _, n)) -> Option.map (to_constr !evd) n) stmts in
     let consnames = CList.map_filter (fun (i, (r, _, _, n)) ->
-      Option.map (fun _ -> 
+      Option.map (fun _ ->
         let suff = (if r != Refine then "_equation_" else "_refinement_") ^ string_of_int i in
-	  Nameops.add_suffix indid suff) n) stmts
+          Nameops.add_suffix indid suff) n) stmts
     in
     let ind_sort =
       if Lazy.force logic_sort == Sorts.InProp then
@@ -1100,9 +1103,9 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
     (* let fullsign, arity = Reductionops.splay_prod_assum (push_rel_context sign env) !evd arity in *)
       Entries.{ mind_entry_typename = indid;
         mind_entry_arity = to_constr !evd (it_mkProd_or_LetIn (mkProd (Anonymous, arity, ind_sort)) (sign));
-	mind_entry_consnames = consnames;    
-	mind_entry_lc = constructors;
-	mind_entry_template = false }
+        mind_entry_consnames = consnames;
+        mind_entry_lc = constructors;
+        mind_entry_template = false }
   in
   let declare_ind () =
     let inds = List.map declare_one_ind ind_stmts in
@@ -1140,7 +1143,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
           Indschemes.do_combined_scheme CAst.(make scheme)
             (CList.map_filter (fun (id, b) -> if b then Some id else None) mutual)
         in kn, Smartlocate.global_with_alias (Libnames.qualid_of_ident scheme)
-      else 
+      else
         let scheme = Nameops.add_suffix (Id.of_string info.base_id) ("_ind" ^ suff) in
         kn, Smartlocate.global_with_alias (Libnames.qualid_of_ident scheme)
     in
@@ -1156,11 +1159,11 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
     in
     let _ =
       List.iteri (fun i ind ->
-	let constrs = 
-	  CList.map_i (fun j _ -> Hints.empty_hint_info, poly, true, Hints.PathAny, 
-	    Hints.IsGlobRef (Globnames.ConstructRef ((kn,i),j))) 1 ind.Entries.mind_entry_lc in
-	  Hints.add_hints ~local:false [info.base_id] (Hints.HintsResolveEntry constrs))
-	inds
+        let constrs =
+          CList.map_i (fun j _ -> Hints.empty_hint_info, poly, true, Hints.PathAny,
+            Hints.IsGlobRef (Globnames.ConstructRef ((kn,i),j))) 1 ind.Entries.mind_entry_lc in
+          Hints.add_hints ~local:false [info.base_id] (Hints.HintsResolveEntry constrs))
+        inds
     in
     let info = { term_info = info; pathmap = !fnind_map; wheremap } in
     declare_funind info alias (Global.env ()) evd rec_info protos progs
@@ -1182,27 +1185,27 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
     let proof (i, (r, unf, c, n)) =
       let ideq = Nameops.add_suffix id ("_equation_" ^ string_of_int i) in
       let hook _ _obls subst gr =
-	if n != None then
-	  Autorewrite.add_rew_rules info.base_id 
+        if n != None then
+          Autorewrite.add_rew_rules info.base_id
             [CAst.make (UnivGen.fresh_global_instance (Global.env()) gr, true, None)]
-	else (Typeclasses.declare_instance None true gr
-	      (* Hints.add_hints ~local:false [info.base_id]  *)
-	      (*                 (Hints.HintsExternEntry *)
+        else (Typeclasses.declare_instance None true gr
+              (* Hints.add_hints ~local:false [info.base_id]  *)
+              (*                 (Hints.HintsExternEntry *)
               (*                  (Vernacexpr.{hint_priority = Some 0; hint_pattern = None}, *)
               (*                   impossible_call_tac (Globnames.ConstRef cst))) *));
-	eqns.(pred i) <- true;
-	if CArray.for_all (fun x -> x) eqns then (
-	  (* From now on, we don't need the reduction behavior of the constant anymore *)
-	  Typeclasses.set_typeclass_transparency (EvalConstRef cst) false false;
+        eqns.(pred i) <- true;
+        if CArray.for_all (fun x -> x) eqns then (
+          (* From now on, we don't need the reduction behavior of the constant anymore *)
+          Typeclasses.set_typeclass_transparency (EvalConstRef cst) false false;
           (match alias with
            | Some (f, _, _) ->
               Global.set_strategy (ConstKey (fst (destConst !evd f))) Conv_oracle.Opaque
            | None -> ());
-	  Global.set_strategy (ConstKey cst) Conv_oracle.Opaque;
-	  if with_ind && succ j == List.length ind_stmts then declare_ind ())
+          Global.set_strategy (ConstKey cst) Conv_oracle.Opaque;
+          if with_ind && succ j == List.length ind_stmts then declare_ind ())
       in
       let tac =
-	(Tacticals.tclTHENLIST [to82 Tactics.intros; to82 unf;
+        (Tacticals.tclTHENLIST [to82 Tactics.intros; to82 unf;
                                 to82 (solve_equation_tac (Globnames.ConstRef cst))])
       in
       let () =
