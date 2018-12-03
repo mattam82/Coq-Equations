@@ -82,8 +82,11 @@ type program = (signature * clause list) list
 and signature = identifier * rel_context * constr (* f : Π Δ. τ *)
 and clause = Loc.t option * lhs * clause rhs (* lhs rhs *)
 
-type pre_equation =
-  Constrexpr.constr_expr input_pats * pre_equation rhs
+type pre_equation_lhs =
+  | RawLhs of Constrexpr.constr_expr input_pats
+  | GlobLhs of Loc.t option * lhs
+
+type pre_equation = pre_equation_lhs * pre_equation rhs
 
 type pre_clause = Loc.t option * lhs * pre_equation rhs
 

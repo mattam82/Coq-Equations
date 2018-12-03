@@ -23,7 +23,7 @@ congS eq_refl := eq_refl.
 
 Module TestF.
 
-  Equations(nocomp noind) f (n : nat) : nat :=
+  Equations(noind) f (n : nat) : nat :=
   f 0 := 42 ;
   f (S m)  with f m :=
   {

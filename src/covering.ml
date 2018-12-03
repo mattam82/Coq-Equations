@@ -1424,7 +1424,8 @@ let interp_arity env evd poly is_rec (((loc,i),rec_annot,l,t,by),clauses as ieqs
       program_rec = Some (Structural ann);
       program_impls = impls }
   | Some (WellFounded (c, r)) ->
-    let evars, c = interp_constr_evars env !evd c in
+    let wfenv = push_rel_context sign env in
+    let evars, c = interp_constr_evars wfenv !evd c in
     let evars, r =
       match r with
       | Some r ->
@@ -1483,7 +1484,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * bool) list) 
 
      | UnifFailure -> covering_aux env evars p data (clause :: prev) clauses' path prob extpats lets ty
      | UnifStuck -> 
-       let blocks = blockers lhs prob in
+       let blocks = blockers (extpats @ lhs) prob in
        let try_split acc var =
          match acc with
          | None
@@ -1688,8 +1689,6 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
     (* The refined term and its type *)
     let cconstr, cty = interp_constr_in_rhs env ctx evars data None s lets (ConstrExpr c) in
 
-    let cls = List.map (fun c -> interp_eqn env data.rec_info p lhs c) cls in
-
     let vars = variables_of_pats pats in
     let newctx, pats', pats'' = instance_of_pats env !evars ctx vars in
     (* revctx is a variable substitution from a reordered context to the
@@ -1735,51 +1734,51 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
     (* The new problem forces a reordering of patterns under the refinement
        to make them match up to the context map. *)
     let sortinv = List.sort (fun (i, _) (i', _) -> i' - i) strinv in
-    let _vars' = List.rev_map snd sortinv in
-    (* FIXME or remove? *)
-    (*
+    let vars' = List.rev_map snd sortinv in
     let rec cls' n cls =
       let next_unknown =
         let str = Id.of_string "unknown" in
         let i = ref (-1) in fun () ->
           incr i; add_suffix str (string_of_int !i)
       in
-      List.map_filter (fun (loc, lhs, rhs) -> 
-          let oldpats, newpats = List.chop (List.length lhs - n) lhs in
-          let newref, nextrefs = 
-            match newpats with hd :: tl -> hd, tl | [] -> assert false 
+      List.map_filter (fun c ->
+        let (loc, lhs, rhs) = interp_eqn env data.rec_info p lhs c in
+        let oldpats, newpats = List.chop (List.length lhs - n) lhs in
+        let newref, nextrefs =
+          match newpats with hd :: tl -> hd, tl | [] -> assert false
+        in
+        match matches_user prob (extpats @ oldpats) with
+        | UnifSuccess (s, alias) ->
+          (* A substitution from the problem variables to user patterns and
+             from user pattern variables to patterns instantiating problem variables. *)
+          let newlhs =
+            List.map_filter
+              (fun i ->
+                 if i == 1 then Some newref
+                 else
+                 if List.exists (fun (i', b) -> i' == pred i && b) vars then None
+                 else
+                   try Some (DAst.make (List.assoc (pred i) s))
+                   with Not_found -> (* The problem is more refined than the user vars*)
+                     Some (DAst.make (PUVar (next_unknown (), true))))
+              vars'
           in
-          match matches_user prob oldpats with
-          | UnifSuccess (s, alias) -> 
-            (* A substitution from the problem variables to user patterns and 
-               from user pattern variables to patterns instantiating problem variables. *)
-            let newlhs = 
-              List.map_filter 
-                (fun i ->
-                   if i == 1 then Some newref
-                   else
-                   if List.exists (fun (i', b) -> i' == pred i && b) vars then None
-                   else
-                     try Some (DAst.make (List.assoc (pred i) s))
-                     with Not_found -> (* The problem is more refined than the user vars*)
-                       Some (DAst.make (PUVar (next_unknown (), true))))
-                vars'
-            in
-            let newrhs = match rhs with
-              | Refine (c, cls) -> Refine (c, cls' (succ n) cls)
-              | Rec (v, rel, id, s) -> Rec (v, rel, id, cls' n s)
-              | By (v, s) -> By (v, cls' n s)
-              | _ -> rhs
-            in
-            Some (loc, rev newlhs @ nextrefs, newrhs)
-          | _ -> 
-            CErrors.user_err ~hdr:"covering" ?loc
-              (str "Non-matching clause in with subprogram:" ++ fnl () ++
-               str"Problem is " ++ spc () ++ pr_context_map env !evars prob ++ fnl () ++
-               str"And the user patterns are: " ++ spc () ++
-               pr_user_pats env lhs)) cls
+          let newrhs = match rhs with
+            | Refine (c, cls) ->
+              Refine (c, cls' (succ n) cls)
+            | Rec (v, rel, id, s) -> Rec (v, rel, id, cls' n s)
+            | By (v, s) -> By (v, cls' n s)
+            | _ -> rhs
+          in
+          Some (GlobLhs (loc, rev newlhs @ nextrefs), newrhs)
+        | _ ->
+          CErrors.user_err ~hdr:"covering" ?loc
+            (str "Non-matching clause in with subprogram:" ++ fnl () ++
+             str"Problem is " ++ spc () ++ pr_context_map env !evars prob ++ fnl () ++
+             str"And the user patterns are: " ++ spc () ++
+             pr_user_pats env lhs)) cls
     in
-    let cls' = (* cls' 1 *) cls in *)
+    let cls' = cls' 1 cls in
     let strength_app, refarg =
       let sortinv = List.sort (fun (i, _) (i', _) -> i' - i) strinv in
       let argref = ref 0 in
@@ -1809,13 +1808,19 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
                     @ (lift_rel_context 1 lets)
       in specialize_rel_context !evars (pi2 cmap) newlets
     in
-    let clauses' = List.map (fun x -> x, false) cls in
-    match covering_aux env evars p data [] clauses' path' newprob extpats lets' newty with
+    let cls' =
+      List.map (fun (lhs, x) ->
+        match lhs with
+        | GlobLhs (loc, lhs) -> (loc, lhs, x)
+        | RawLhs _ -> assert false) cls'
+    in
+    let clauses' = List.map (fun x -> x, false) cls' in
+    match covering_aux env evars p data [] clauses' path' newprob [] lets' newty with
     | None ->
       errorlabstrm "deppat"
         (str "Unable to build a covering for with subprogram:" ++ fnl () ++
          pr_problem p env !evars newprob ++ fnl () ++
-         str "And clauses: " ++ pr_preclauses env cls)
+         str "And clauses: " ++ pr_preclauses env cls')
     | Some (clauses, s) ->
       let () = check_unused_clauses env clauses in
       let info =

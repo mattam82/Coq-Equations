@@ -90,8 +90,12 @@ type program = (signature * clause list) list
 and signature = identifier * rel_context * constr (* f : Π Δ. τ *)
 and clause = Loc.t option * lhs * clause rhs (* lhs rhs *)
 
+type pre_equation_lhs =
+  | RawLhs of Constrexpr.constr_expr input_pats
+  | GlobLhs of Loc.t option * lhs
+
 type pre_equation =
-  Constrexpr.constr_expr input_pats * pre_equation rhs
+  pre_equation_lhs * pre_equation rhs
 
 type pre_clause = Loc.t option * lhs * pre_equation rhs
 
@@ -176,8 +180,12 @@ let rec pr_prerhs env = function
   | By (Inr tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_glob_tactic env tac
       ++ spc () ++ hov 1 (str "{" ++ pr_user_clauses env s ++ str "}")
 
+and pr_pre_user_lhs env = function
+  | RawLhs lhs -> pr_user_lhs env lhs
+  | GlobLhs (loc, lhs) -> pr_lhs env lhs
+
 and pr_user_clause env (lhs, rhs) =
-  pr_user_lhs env lhs ++ pr_prerhs env rhs
+  pr_pre_user_lhs env lhs ++ pr_prerhs env rhs
 
 and pr_user_clauses env =
   prlist_with_sep fnl (pr_user_clause env)
@@ -464,16 +472,17 @@ let interp_eqn env is_rec p curpats eqn =
   let interp_eqn curpats (pat, rhs) =
     let loc, pats =
       match pat with
-      | SignPats pat ->
+      | RawLhs (SignPats pat) ->
         avoid := Id.Set.union !avoid (ids_of_pats (Some p.program_id) [pat]);
         let loc = Constrexpr_ops.constr_loc pat in
         loc, interp_pat (Some p) pat
-      | RefinePats pats ->
+      | RawLhs (RefinePats pats) ->
         avoid := Id.Set.union !avoid (ids_of_pats None pats);
         let loc = Constrexpr_ops.constr_loc (List.hd pats) in
         let pats = List.map (interp_pat None) pats in
         let pats = List.map (fun x -> List.hd x) pats in
         loc, curpats @ pats
+      | GlobLhs (loc, pats) -> loc, pats
     in
     let () = check_linearity pats in
     (loc, pats, interp_rhs rhs)
