@@ -65,7 +65,7 @@ let define_principles flags rec_info fixprots progs =
   let evd = ref (Evd.from_env env) in
   let newsplits env fixdecls (p, prog, f) =
     let fixsubst = List.map (fun d -> let na, b, t = to_tuple d in
-                                      (Nameops.Name.get_id na, Option.get b)) fixdecls in
+                                      (Nameops.Name.get_id na, (None, Option.get b))) fixdecls in
     let i = p.program_id in
     let sign = p.program_sign in
     let arity = p.program_arity in
@@ -77,8 +77,8 @@ let define_principles flags rec_info fixprots progs =
 	   (ctx @ fixdecls, pats, ctx'), ids
 	 in
 	 let split, where_map =
-           update_split env evd p.program_id rec_info
-                        (of_constr f) cutprob fixdecls fixsubst prog.program_split in
+           update_split env evd p rec_info
+                        (of_constr f) cutprob fixsubst prog.program_split in
          let eqninfo =
            Principles_proofs.{ equations_id = i;
              equations_where_map = where_map;
@@ -90,8 +90,8 @@ let define_principles flags rec_info fixprots progs =
       | None ->
 	 let prob = id_subst sign in
 	 let split, where_map =
-           update_split env evd p.program_id rec_info
-                        (of_constr f) prob [] [] prog.program_split in
+           update_split env evd p rec_info
+                        (of_constr f) prob [] prog.program_split in
          let eqninfo =
            Principles_proofs.{ equations_id = i;
              equations_where_map = where_map;
@@ -104,9 +104,13 @@ let define_principles flags rec_info fixprots progs =
       | Some (Logical r) ->
 	 let prob = id_subst sign in
          (* let () = msg_debug (str"udpdate split" ++ spc () ++ pr_splitting env split) in *)
+         let recarg = match r with
+           | LogicalDirect _ -> Some (-1)
+           | LogicalProj r -> Some r.comp_recarg
+         in
 	 let unfold_split, where_map =
-           update_split env evd p.program_id rec_info (of_constr f)
-                        prob [] [(i,of_constr f)] prog.program_split
+           update_split env evd p rec_info (of_constr f)
+             prob [(i, (recarg, of_constr f))] prog.program_split
          in
 	 (* We first define the unfolding and show the fixpoint equation. *)
          let unfoldi = add_suffix i "_unfold" in

@@ -497,12 +497,11 @@ let replace_vars_context inst ctx =
       (succ k, decl' :: acc))
     ctx (1, [])
 
-let pr_where env sigma ctx {where_id; where_prob; where_term;
-                      where_type; where_splitting } =
+let pr_where env sigma ctx ({where_prob; where_term; where_type; where_splitting} as w) =
   let open Pp in
   let envc = Environ.push_rel_context ctx env in
   Printer.pr_econstr_env envc sigma where_term ++ fnl () ++
-    str"where " ++ Names.Id.print where_id ++ str" : " ++
+    str"where " ++ Names.Id.print (where_id w) ++ str" : " ++
     Printer.pr_econstr_env envc sigma where_type ++
     str" := " ++ fnl () ++
     pr_context_map env sigma where_prob ++ fnl () ++
@@ -519,182 +518,61 @@ let unfold_constr sigma c =
 let extend_prob_ctx delta (ctx, pats, ctx') =
   (delta @ ctx, lift_pats (List.length delta) pats, ctx')
 
-let subst_rec_split env evd f comp comprecarg path prob fixdecls s split =
-  let map_proto f ty =
-    match comprecarg with
-    | Some recarg ->
-       let lctx, ty' = decompose_prod_assum evd ty in
-       let app =
-         if comp then (* when Globnames.is_global (ConstRef const) fcomp -> *)
-           (let fcomp, args = decompose_app evd ty' in
-           (* When a comp *) applistc f args)
-         else
-           let args = Termops.rel_list 0 (List.length lctx) in
-           let before, after =
-             if (* recarg == -1 *) true then CList.drop_last args, []
-             else let bf, after = CList.chop (pred recarg) args in
-               bf, List.tl after
-           in
-            applistc f (before @ after)
+let map_proto evd recarg f ty =
+  match recarg with
+  | Some recarg ->
+     let lctx, ty' = decompose_prod_assum evd ty in
+     let app =
+       let args = Termops.rel_list 0 (List.length lctx) in
+       let before, after =
+         if (* recarg == -1 *) true then CList.drop_last args, []
+         else let bf, after = CList.chop (pred recarg) args in
+              bf, List.tl after
        in
-       it_mkLambda_or_LetIn app lctx
-    | None -> f
+       applistc f (before @ after)
+     in
+     it_mkLambda_or_LetIn app lctx
+  | None -> f
+
+type rec_subst = (Names.Id.t * (int option * EConstr.constr)) list
+
+let cut_problem evd s ctx' =
+  let pats, cutctx', _, _ =
+    (* From Γ |- ps, prec, ps' : Δ, rec, Δ', build
+       Γ |- ps, ps' : Δ, Δ' *)
+    List.fold_right (fun d (pats, ctx', i, subs) ->
+    let (n, b, t) = to_tuple d in
+    match n with
+    | Name n when List.mem_assoc n s ->
+       let recarg, term = List.assoc n s in
+       let term = map_proto evd recarg term t in
+       (pats, ctx', pred i, term :: subs)
+    | _ ->
+       let decl = of_tuple (n, Option.map (substl subs) b, substl subs t) in
+       (i :: pats, decl :: ctx',
+        pred i, mkRel 1 :: List.map (lift 1) subs))
+    ctx' ([], [], List.length ctx', [])
+  in (ctx', List.map (fun i -> PRel i) pats, cutctx')
+
+let subst_rec env evd cutprob s (ctx, p, _ as lhs) =
+  let subst =
+    List.fold_left (fun (ctx, _, ctx' as lhs') (id, (recarg, b)) ->
+    try let rel, _, ty = Termops.lookup_rel_id id ctx in
+        let fK = map_proto evd recarg b (lift rel ty) in
+        let substf = single_subst env evd rel (PInac fK) ctx
+        (* ctx[n := f] |- _ : ctx *) in
+        compose_subst env ~sigma:evd substf lhs'
+    with Not_found (* lookup *) -> lhs') (id_subst ctx) s
   in
-  let subst_rec cutprob s (ctx, p, _ as lhs) =
-    let subst = List.fold_left (fun (ctx, _, ctx' as lhs') (id, b) ->
-        try let rel, _, ty = Termops.lookup_rel_id id ctx in
-            let fK = map_proto b (lift rel ty) in
-            let substf = single_subst env evd rel (PInac fK) ctx
-            (* ctx[n := f] |- _ : ctx *) in
-            compose_subst env ~sigma:evd substf lhs'
-        with Not_found (* lookup *) -> lhs') (id_subst ctx) s
-    in
-    let csubst =
-      compose_subst env ~sigma:evd
-        (compose_subst env ~sigma:evd subst lhs) cutprob
-    in subst, csubst
-  in
-  let rec aux cutprob s path = function
-    | Compute ((ctx,pats,del as lhs), where, ty, c) ->
-       let subst, lhs' = subst_rec cutprob s lhs in
-       let progctx = (extend_prob_ctx (where_context where) lhs) in
-       let substprog, _ = subst_rec cutprob s progctx in
-       let subst_where {where_id; where_path; where_orig;
-                        where_prob; where_arity; where_term;
-                        where_type; where_splitting } =
-         let where_arity = mapping_constr evd subst where_arity in
-         let where_term = mapping_constr evd subst where_term in
-         let where_type = mapping_constr evd subst where_type in
-         let cutprob, where_prob =
-           let idctx = pi1 where_prob in
-           let idctx = CList.firstn (List.length idctx - List.length fixdecls) idctx in
-           let (ctx, pats, ctx' as ids) = id_subst idctx in
-           (ctx @ fixdecls, pats, ctx'), ids
-         in
-         let where_splitting =
-           aux cutprob s where_path (Lazy.force where_splitting)
-         in
-         {where_id; where_path; where_orig; where_prob = where_prob;
-          where_arity; where_term;
-          where_type; where_splitting = Lazy.from_val where_splitting }
-       in
-       let where' = List.map subst_where where in
-       Compute (lhs', where', mapping_constr evd substprog ty,
-                mapping_rhs evd substprog c)
+  let csubst =
+    compose_subst env ~sigma:evd
+    (compose_subst env ~sigma:evd subst lhs) cutprob
+  in subst, csubst
 
-    | Split (lhs, n, ty, cs) ->
-       let subst, lhs' = subst_rec cutprob s lhs in
-       let n' = destRel evd (mapping_constr evd subst (mkRel n)) in
-       Split (lhs', n', mapping_constr evd subst ty,
-              Array.map (Option.map (aux cutprob s path)) cs)
+ (*
 
-    | Mapping (lhs, c) ->
-       let subst, lhs' = subst_rec cutprob s lhs in
-       Mapping (lhs', aux cutprob s path c)
 
-    | RecValid (id, c) ->
-       RecValid (id, aux cutprob s (Ident id :: path) c)
-
-    | Refined (lhs, info, sp) ->
-       let (id, c, cty), ty, arg, ev, (fev, args), revctx, newprob, newty =
-         info.refined_obj, info.refined_rettyp,
-         info.refined_arg, info.refined_ex, info.refined_app,
-         info.refined_revctx, info.refined_newprob, info.refined_newty
-       in
-       let subst, lhs' = subst_rec cutprob s lhs in
-       let cutprob ctx' =
-         let pats, cutctx', _, _ =
-           (* From Γ |- ps, prec, ps' : Δ, rec, Δ', build
-               Γ |- ps, ps' : Δ, Δ' *)
-           List.fold_right (fun d (pats, ctx', i, subs) ->
-               let (n, b, t) = to_tuple d in
-               match n with
-               | Name n when List.mem_assoc n s ->
-                  let term = List.assoc n s in
-                  let term = map_proto term t in
-                  (pats, ctx', pred i, term :: subs)
-               | _ ->
-                  let decl = of_tuple (n, Option.map (substl subs) b, substl subs t) in
-                  (i :: pats, decl :: ctx',
-                   pred i, mkRel 1 :: List.map (lift 1) subs))
-                      ctx' ([], [], List.length ctx', [])
-         in (ctx', List.map (fun i -> PRel i) pats, cutctx')
-       in
-       let _, revctx' = subst_rec (cutprob (pi3 revctx)) s revctx in
-       let cutnewprob = cutprob (pi3 newprob) in
-       let subst', newprob' = subst_rec cutnewprob s newprob in
-       let _, newprob_to_prob' =
-         subst_rec (cutprob (pi3 info.refined_newprob_to_lhs)) s info.refined_newprob_to_lhs in
-       let ev' = if Option.has_some comprecarg then new_untyped_evar () else ev in
-       let path' = Evar ev' :: path in
-       let app', arg' =
-         if Option.has_some comprecarg then
-           let refarg = ref 0 in
-           let args' =
-             CList.fold_left_i
-               (fun i acc c ->
-                 if i == arg then (refarg := List.length acc);
-                 if isRel evd c then
-                   let d = List.nth (pi1 lhs) (pred (destRel evd c)) in
-                   if List.mem_assoc (Nameops.Name.get_id (get_name d)) s then acc
-                   else (mapping_constr evd subst c) :: acc
-                 else (mapping_constr evd subst c) :: acc) 0 [] args
-           in
-           let secvars =
-             let named_context = Environ.named_context env in
-               List.map (fun decl ->
-                 let id = Context.Named.Declaration.get_id decl in
-                 EConstr.mkVar id) named_context
-           in
-           let secvars = Array.of_list secvars in
-            (mkEvar (ev', secvars), List.rev args'), !refarg
-         else
-           let first, last = CList.chop (List.length s) (List.map (mapping_constr evd subst) args) in
-           (applistc (mapping_constr evd subst fev) first, last), arg - List.length s
-           (* FIXME , needs substituted position too *)
-       in
-       let info =
-         { refined_obj = (id, mapping_constr evd subst c, mapping_constr evd subst cty);
-           refined_rettyp = mapping_constr evd subst ty;
-           refined_arg = arg';
-           refined_path = path';
-           refined_ex = ev';
-           refined_app = app';
-           refined_revctx = revctx';
-           refined_newprob = newprob';
-           refined_newprob_to_lhs = newprob_to_prob';
-           refined_newty = mapping_constr evd subst' newty }
-       in Refined (lhs', info, aux cutnewprob s path' sp)
-
-    | Valid (lhs, x, y, w, u, cs) ->
-       let subst, lhs' = subst_rec cutprob s lhs in
-       Valid (lhs', x, y, w, u,
-              List.map (fun (g, l, subst, invsubst, sp) -> (g, l, subst, invsubst, aux cutprob s path sp)) cs)
-  in aux prob s path split
-
-let update_split env evd id is_rec f prob fixdecls recs split =
-  let where_map = ref Evar.Map.empty in
-  match is_rec with
-  | Some (Guarded _) ->
-    subst_rec_split env !evd f false None [Ident id] prob fixdecls recs split, !where_map
-  | Some (Logical r) ->
-    let proj = match r with
-      | LogicalDirect (_, id) -> mkVar id
-      | LogicalProj r -> mkConst r.comp_proj
-    in
-    let split' = subst_comp_proj_split !evd f proj split in
     let rec aux env f = function
-      | RecValid (id, Valid (ctx, ty, args, tac, view,
-                            [goal, args', newprob, invsubst, rest])) ->
-        let recarg = match r with
-          | LogicalDirect _ -> Some (-1)
-          | LogicalProj r -> Some r.comp_recarg
-        in
-        let rest = aux env f (subst_rec_split env !evd f false recarg [Ident id]
-                     newprob [] [(id, f)] rest) in
-         (match invsubst with
-          | Some s -> Mapping (s, rest)
-          | None -> rest)
       | Mapping (lhs, s) -> Mapping (lhs, aux env f s)
       | Split (lhs, y, z, cs) -> Split (lhs, y, z, Array.map (Option.map (aux env f)) cs)
       | RecValid (id, c) -> RecValid (id, aux env f c)
@@ -704,14 +582,14 @@ let update_split env evd id is_rec f prob fixdecls recs split =
       | Refined (lhs, info, s) -> Refined (lhs, info, aux env f s)
       | Compute (lhs, wheres, p, q) ->
          let subst_where w =
-           let env = push_rel_context (pi1 lhs) env in
            let evm, ev = (* Why create an evar here ? *)
              Equations_common.new_evar env !evd w.where_type
            in
            let () = evd := evm in
            let term' = w.where_term in
+           let hd, tl = decompose_app !evd term' in
            let evk = fst (destEvar !evd ev) in
-           let split' = aux env term' (Lazy.force w.where_splitting) in
+           let split' = aux env hd (Lazy.force w.where_splitting) in
            let id = Nameops.add_suffix w.where_id "_unfold_eq" in
            let () = where_map := Evar.Map.add evk (term', id, split') !where_map in
            (* msg_debug (str"At where in update_split, calling recursively with term" ++ *)
@@ -724,7 +602,167 @@ let update_split env evd id is_rec f prob fixdecls recs split =
     in
     let split' = aux env f split' in
     split', !where_map
-  | _ -> split, !where_map
+  *)
+
+let subst_rec_split env evd p f path prob s split =
+  let where_map = ref Evar.Map.empty in
+  let evd = ref evd in
+  let cut_problem s ctx' = cut_problem !evd s ctx' in
+  let subst_rec cutprob s lhs = subst_rec env !evd cutprob s lhs in
+  let rec aux cutprob s p f path = function
+    | Compute ((ctx,pats,del as lhs), where, ty, c) ->
+       let subst, lhs' = subst_rec cutprob s lhs in
+       let progctx = (extend_prob_ctx (where_context where) lhs) in
+       let substprog, _ = subst_rec cutprob s progctx in
+       let islogical = List.exists (fun (id, (recarg, f)) -> Option.has_some recarg) s in
+       let subst_where ({where_program; where_path; where_orig;
+                         where_prob; where_arity; where_term;
+                         where_type; where_splitting} as w) =
+         let where_arity = mapping_constr !evd subst where_arity in
+         let where_term = mapping_constr !evd subst where_term in
+         let where_type = mapping_constr !evd subst where_type in
+         let cutprob = cut_problem s (pi1 where_prob) in
+         let where_prob = id_subst (pi3 cutprob) in
+         let where_impl, args = decompose_app !evd where_term in
+         let where_splitting =
+           aux cutprob s where_program where_impl where_path (Lazy.force where_splitting)
+         in
+         let where_term, where_path =
+           if islogical then
+             let evm, ev = (* We create an evar here for the new where implementation *)
+               Equations_common.new_evar env !evd where_type
+             in
+             let () = evd := evm in
+             let evk = fst (destEvar !evd ev) in
+             let id = Nameops.add_suffix (where_id w) "_unfold_eq" in
+             let () = where_map := Evar.Map.add evk (w.where_term (*? not substituted?*), id, where_splitting) !where_map in
+             (* msg_debug (str"At where in update_split, calling recursively with term" ++ *)
+             (*              pr_constr w.where_term ++ str " associated to " ++ int (Evar.repr evk)); *)
+             (applist (ev, extended_rel_list 0 (pi1 lhs')), Evar evk :: List.tl where_path)
+           else (where_term, where_path)
+         in
+         {where_program; where_path; where_orig; where_prob = where_prob;
+          where_arity; where_term;
+          where_type; where_splitting = Lazy.from_val where_splitting }
+       in
+       let where' = List.map subst_where where in
+       Compute (lhs', where', mapping_constr !evd substprog ty,
+                mapping_rhs !evd substprog c)
+
+    | Split (lhs, n, ty, cs) ->
+       let subst, lhs' = subst_rec cutprob s lhs in
+       let n' = destRel !evd (mapping_constr !evd subst (mkRel n)) in
+       Split (lhs', n', mapping_constr !evd subst ty,
+              Array.map (Option.map (aux cutprob s p f path)) cs)
+
+    | Mapping (lhs, c) ->
+       let subst, lhs' = subst_rec cutprob s lhs in
+       Mapping (lhs', aux cutprob s p f path c)
+
+    | RecValid (id, Valid (ctx, ty, args, tac, view,
+                           [goal, args', newprob, invsubst, rest])) ->
+       let recarg, proj = match p.program_rec with
+       | Some (WellFounded (_, _, r)) ->
+          (match r with
+           | LogicalDirect (recarg, id) -> (Some (-1)), mkVar id
+           | LogicalProj r -> (Some r.comp_recarg), mkConst r.comp_proj)
+       | _ -> anomaly Pp.(str"Not looking at the right program")
+       in
+       let rest = subst_comp_proj_split !evd f proj rest in
+       let s = (id, (recarg, f)) :: s in
+       let cutprob = (cut_problem s (pi1 newprob)) in
+       let rest = aux cutprob s p f (Ident id :: path) rest in
+
+              (* let cutprob = (cut_problem s (pi1 subst)) in
+               * let _subst, subst =
+               *   try subst_rec cutprob s subst
+               *   with e -> assert false in
+               * (\* let invsubst = Option.map (fun x -> snd (subst_rec (cut_problem s (pi3 x)) s x)) invsubst in *\)
+               *     (g, l, subst, invsubst,  *)
+       (match invsubst with
+        | Some s -> Mapping (s, rest)
+        | None -> rest)
+
+    | RecValid (id, c) ->
+       RecValid (id, aux cutprob s p f (Ident id :: path) c)
+
+    | Refined (lhs, info, sp) ->
+       let (id, c, cty), ty, arg, ev, (fev, args), revctx, newprob, newty =
+         info.refined_obj, info.refined_rettyp,
+         info.refined_arg, info.refined_ex, info.refined_app,
+         info.refined_revctx, info.refined_newprob, info.refined_newty
+       in
+       let subst, lhs' = subst_rec cutprob s lhs in
+       let _, revctx' = subst_rec (cut_problem s (pi3 revctx)) s revctx in
+       let cutnewprob = cut_problem s (pi3 newprob) in
+       let subst', newprob' = subst_rec cutnewprob s newprob in
+       let _, newprob_to_prob' =
+         subst_rec (cut_problem s (pi3 info.refined_newprob_to_lhs)) s info.refined_newprob_to_lhs in
+       let islogical = List.exists (fun (id, (recarg, f)) -> Option.has_some recarg) s in
+       let ev' = if islogical then new_untyped_evar () else ev in
+       let path' = Evar ev' :: path in
+       let app', arg' =
+         if islogical then
+           let refarg = ref 0 in
+           let args' =
+             CList.fold_left_i
+               (fun i acc c ->
+                 if i == arg then (refarg := List.length acc);
+                 if isRel !evd c then
+                   let d = List.nth (pi1 lhs) (pred (destRel !evd c)) in
+                   if List.mem_assoc (Nameops.Name.get_id (get_name d)) s then acc
+                   else (mapping_constr !evd subst c) :: acc
+                 else (mapping_constr !evd subst c) :: acc) 0 [] args
+           in
+           let secvars =
+             let named_context = Environ.named_context env in
+               List.map (fun decl ->
+                 let id = Context.Named.Declaration.get_id decl in
+                 EConstr.mkVar id) named_context
+           in
+           let secvars = Array.of_list secvars in
+            (mkEvar (ev', secvars), List.rev args'), !refarg
+         else
+           let first, last = CList.chop (List.length s) (List.map (mapping_constr !evd subst) args) in
+           (applistc (mapping_constr !evd subst fev) first, last), arg - List.length s
+           (* FIXME , needs substituted position too *)
+       in
+       let info =
+         { refined_obj = (id, mapping_constr !evd subst c, mapping_constr !evd subst cty);
+           refined_rettyp = mapping_constr !evd subst ty;
+           refined_arg = arg';
+           refined_path = path';
+           refined_ex = ev';
+           refined_app = app';
+           refined_revctx = revctx';
+           refined_newprob = newprob';
+           refined_newprob_to_lhs = newprob_to_prob';
+           refined_newty = mapping_constr !evd subst' newty }
+       in Refined (lhs', info, aux cutnewprob s p f path' sp)
+
+    | Valid (lhs, x, y, w, u, cs) ->
+       let subst, lhs' = subst_rec cutprob s lhs in
+       Valid (lhs', x, y, w, u,
+              List.map (fun (g, l, subst, invsubst, sp) ->
+              (g, l, subst, invsubst, aux cutprob s p f path sp)) cs)
+  in
+  let split' = aux prob s p f path split in
+  split', !where_map
+
+let update_split env evd p is_rec f prob recs split =
+  match is_rec with
+  | Some (Guarded _) ->
+    subst_rec_split env !evd p f [Ident p.program_id] prob recs split
+  | Some (Logical r) ->
+    let recarg, proj = match r with
+      | LogicalDirect (recarg, id) -> (Some (-1)), mkVar id
+      | LogicalProj r -> (Some r.comp_recarg), mkConst r.comp_proj
+    in
+    let split' = subst_comp_proj_split !evd f proj split in
+    let s = [(p.program_id, (recarg, f))] in
+    let cutprob = cut_problem !evd s (pi1 prob) in
+    subst_rec_split env !evd p f [Ident p.program_id] cutprob s split'
+  | _ -> split, Evar.Map.empty
 
 let computations env evd alias refine eqninfo =
   let { equations_prob = prob;

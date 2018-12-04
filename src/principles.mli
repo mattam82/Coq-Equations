@@ -68,26 +68,42 @@ val unfold_constr : Evd.evar_map -> constr -> Proofview.V82.tac
 
 (** Unfolding lemma tactic *)
 
-val subst_rec_split :            Environ.env ->
-           Evd.evar_map ->
-           constr ->
-           bool ->
-           int option ->
-           Covering.path ->
-  Covering.context_map ->
-  rel_context ->
-           (Names.Id.t * constr) list ->
-           Covering.splitting -> Covering.splitting
+type rec_subst = (Names.Id.t * (int option * EConstr.constr)) list
 
-  
-val update_split : Environ.env ->
-  Evd.evar_map ref ->
-  Names.Id.t ->
-  Syntax.rec_type option ->
-  constr ->
+val cut_problem :
+  Evd.evar_map -> rec_subst ->
+  Equations_common.rel_declaration list ->
+  Equations_common.rel_declaration list * Covering.pat list *
+  Equations_common.rel_declaration list
+
+val subst_rec :
+  Environ.env -> Evd.evar_map -> Covering.context_map ->
+  rec_subst ->
+  Equations_common.rel_context * Covering.pat list *
+  Equations_common.rel_context ->
+  Covering.context_map * Covering.context_map
+
+val subst_rec_split :
+  Environ.env ->
+  Evd.evar_map ->
+  Syntax.program_info ->
+  EConstr.t ->
+  Covering.path ->
   Covering.context_map ->
-  rel_context ->
-  (Names.Id.t * constr) list -> Covering.splitting -> Covering.splitting * Principles_proofs.where_map
+  rec_subst ->
+  Covering.splitting -> Covering.splitting *
+                        (EConstr.constr * Names.Id.t * Covering.splitting) Evar.Map.t
+
+val update_split :
+  Environ.env ->
+  Evd.evar_map ref ->
+  Syntax.program_info ->
+  Syntax.rec_type option ->
+  EConstr.t ->
+  Covering.context_map ->
+  rec_subst ->
+  Covering.splitting -> Covering.splitting *
+                        (EConstr.constr * Names.Id.t * Covering.splitting) Evar.Map.t
 
 val build_equations :
   bool ->

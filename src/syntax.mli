@@ -154,6 +154,8 @@ type program_info = {
 
 val program_type : program_info -> EConstr.t
 
+val map_program_info : (EConstr.t -> EConstr.t) -> program_info -> program_info
+
 val ids_of_pats : Names.Id.t option -> Constrexpr.constr_expr list -> Id.Set.t
 
 val interp_pat : Environ.env -> ?avoid:Id.Set.t ref ->

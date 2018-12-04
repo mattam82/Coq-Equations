@@ -27,6 +27,7 @@ open Vars
 
 let map_where f w =
   { w with
+    where_program = map_program_info f w.where_program;
     where_prob = map_ctx_map f w.where_prob;
     where_term = f w.where_term;
     where_arity = f w.where_arity;
@@ -83,8 +84,7 @@ let term_of_tree status isevar env0 tree =
     | Compute ((ctx, _, _), where, ty, RProgram rhs) -> 
        let evm, ctx = 
          List.fold_right 
-           (fun {where_id; where_prob; where_term;
-               where_type; where_splitting }
+         (fun ({where_program; where_prob; where_term; where_type; where_splitting} as w)
               (evm, ctx) ->
              (* let env = push_rel_context ctx env0 in *)
              (* FIXME push ctx too if mutual wheres *)
@@ -101,7 +101,7 @@ let term_of_tree status isevar env0 tree =
                    helper_evar evm ev env term'
                     (dummy_loc, QuestionMark {
                         qm_obligation=Define false;
-                        qm_name=Name where_id;
+                        qm_name=Name (where_id w);
                         qm_record_field=None;
                     }) in
                  let ev = fst (destEvar !isevar term) in
@@ -110,7 +110,7 @@ let term_of_tree status isevar env0 tree =
                   evm, where_term, where_type
                | _ -> assert(false)
              in
-             (evm, (make_def (Name where_id) (Some c') ty' :: ctx)))
+             (evm, (make_def (Name (where_id w)) (Some c') ty' :: ctx)))
            where (evm,ctx)
        in
        let body = it_mkLambda_or_LetIn rhs ctx and typ = it_mkProd_or_subst env evm ty ctx in

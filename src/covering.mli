@@ -115,7 +115,7 @@ type splitting =
   | Refined of context_map * refined_node * splitting
 
 and where_clause =
-  { where_id : identifier;
+  { where_program : program_info;
     where_path : path;
     where_orig : path;
     where_prob : context_map;
@@ -138,6 +138,8 @@ and refined_node = {
 }
 
 and splitting_rhs = RProgram of constr | REmpty of int
+
+val where_id : where_clause -> Id.t
 
 val pr_path : Evd.evar_map -> path -> Pp.t
 val eq_path : path -> path -> bool

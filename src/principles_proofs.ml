@@ -405,7 +405,7 @@ let rec aux_ind_fun info chop unfs unfids = function
             (let env = Global.env () in
              Feedback.msg_debug
              (str"Found path " ++ str (Id.to_string wherepath) ++ str" where: " ++
-              pr_id s.where_id ++ str"term: " ++
+              pr_id (where_id s) ++ str"term: " ++
               Printer.pr_econstr_env env Evd.empty s.where_term ++
               str" instance: " ++
               prlist_with_sep spc
@@ -423,7 +423,7 @@ let rec aux_ind_fun info chop unfs unfids = function
             it_mkProd_or_LetIn app ctx
           in
           tclTHEN acc (to82 (Proofview.tclBIND (Tacticals.New.pf_constr_of_global ind)
-                               (fun ind -> assert_by (Name s.where_id) (ty ind) (of82 wheretac))))
+                               (fun ind -> assert_by (Name (where_id s)) (ty ind) (of82 wheretac))))
         in
         let () = assert (List.length wheres = List.length unfswheres) in
         let tac = List.fold_left2 wheretac tclIDTAC wheres unfswheres in
@@ -784,10 +784,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
 let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split gl =
   try prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split gl
   with (Nametab.GlobalizationError e) as exn ->
-    Feedback.msg_debug (str"Could not globalize " ++ pr_qualid e);
     raise exn
-
-
 
 (* let rec mk_app_holes env sigma = function *)
 (* | [] -> (sigma, []) *)

@@ -59,7 +59,7 @@ type splitting =
   | Refined of context_map * refined_node * splitting
 
 and where_clause =
-  { where_id : identifier;
+  { where_program : program_info;
     where_path : path;
     where_orig : path;
     where_prob : context_map;
@@ -1097,10 +1097,12 @@ let eq_path path path' =
   in 
   aux path path'
 
+let where_id w = w.where_program.program_id
+
 let where_context wheres =
-  List.map (fun {where_id; where_prob; where_term;
-                 where_type; where_splitting } ->
-             make_def (Name where_id) (Some where_term) where_type) wheres
+  List.map (fun ({where_program; where_term;
+                 where_type; where_splitting } as w) ->
+             make_def (Name (where_id w)) (Some where_term) where_type) wheres
 
 let pr_splitting env sigma ?(verbose=false) split =
   let verbose pp = if verbose then pp else mt () in
@@ -1109,7 +1111,7 @@ let pr_splitting env sigma ?(verbose=false) split =
     | Compute (lhs, wheres, ty, c) -> 
       let env' = push_rel_context (pi1 lhs) env in
       let ppwhere w =
-        hov 2 (str"where " ++ Id.print w.where_id ++ str " : " ++
+        hov 2 (str"where " ++ Id.print (where_id w) ++ str " : " ++
                (try Printer.pr_econstr_env env'  sigma w.where_type ++
                     str " := " ++ Pp.fnl () ++ aux (Lazy.force w.where_splitting)
                 with e -> str "*raised an exception"))
@@ -1693,14 +1695,22 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
      | Some (clauses, split) -> Some (RecValid (p.program_id, split)))
 
   | By (tac, s) ->
-    let () = Feedback.msg_debug (str"solve_goal named context: " ++
-                                 Printer.pr_named_context env !evars (EConstr.Unsafe.to_named_context (named_context env'))) in
-    let () = Feedback.msg_debug (str"solve_goal rel context: " ++
-                                 Printer.pr_rel_context_of env' !evars) in
+    let () =
+      if !Equations_common.debug then begin
+      Feedback.msg_debug (str"solve_goal named context: " ++
+                          Printer.pr_named_context env !evars
+                          (EConstr.Unsafe.to_named_context (named_context env')));
+      Feedback.msg_debug (str"solve_goal rel context: " ++
+                          Printer.pr_rel_context_of env' !evars)
+      end
+    in
     let sign, t', rels, _ = push_rel_context_to_named_context ~hypnaming:KeepExistingNames env' !evars ty in
     let sign = named_context_of_val sign in
-    let () = Feedback.msg_debug (str"solve_goal named context: " ++
-                                 Printer.pr_named_context env !evars (EConstr.Unsafe.to_named_context sign)) in
+    let () =
+      if !Equations_common.debug then
+        Feedback.msg_debug (str"solve_goal named context: " ++
+                            Printer.pr_named_context env !evars (EConstr.Unsafe.to_named_context sign))
+    in
     let sign', secsign = split_at_eos !evars sign in
     let ids = List.map get_id sign in
     let ids = Names.Id.Set.of_list ids in
@@ -1733,7 +1743,6 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
                 newpattern :: List.tl l
               in
               let newprob = rctx, pats, rctx in
-              let () = Feedback.msg_debug (str"solve_goal newprob" ++ pr_problem p env !evars newprob) in
               let subst = (rctx, List.tl pats, List.tl rctx) in
               comp, newprob, subst, None
             else
@@ -1947,7 +1956,7 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
     let decl = make_def (Name id) (Some termapp) pre_type in
     (* let nadecl = make_named_def id (Some (substl inst term)) (program_type p) in *)
     let covering =
-      {where_id = id; where_path = path;
+      {where_program = p; where_path = path;
        where_orig = path;
        where_prob = problem;
        where_arity = p.program_arity;
