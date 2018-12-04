@@ -754,14 +754,14 @@ let update_split env evd p is_rec f prob recs split =
   | Some (Guarded _) ->
     subst_rec_split env !evd p f [Ident p.program_id] prob recs split
   | Some (Logical r) ->
-    let recarg, proj = match r with
-      | LogicalDirect (recarg, id) -> (Some (-1)), mkVar id
-      | LogicalProj r -> (Some r.comp_recarg), mkConst r.comp_proj
-    in
-    let split' = subst_comp_proj_split !evd f proj split in
-    let s = [(p.program_id, (recarg, f))] in
-    let cutprob = cut_problem !evd s (pi1 prob) in
-    subst_rec_split env !evd p f [Ident p.program_id] cutprob s split'
+    (* let recarg, proj = match r with
+     *   | LogicalDirect (recarg, id) -> (Some (-1)), mkVar id
+     *   | LogicalProj r -> (Some r.comp_recarg), mkConst r.comp_proj
+     * in
+     * let split' = subst_comp_proj_split !evd f proj split in
+     * let s = [(p.program_id, (recarg, f))] in
+     * let cutprob = cut_problem !evd s (pi1 prob) in *)
+    subst_rec_split env !evd p f [] prob [] split
   | _ -> split, Evar.Map.empty
 
 let computations env evd alias refine eqninfo =
