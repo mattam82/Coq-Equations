@@ -446,7 +446,7 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
     in
       hook split cmap term_info uctx
   in
-  let hook = Obligations.mk_univ_hook hook in
+  let univ_hook = Obligations.mk_univ_hook hook in
   let reduce x =
     let flags = CClosure.betaiotazeta in
     (* let flags = match comp with None -> flags *)
@@ -466,26 +466,26 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
 	  | NestedOn (Some (_, Some (loc, id))) -> Some (CAst.make ~loc id)
 	  | _ -> None
 	in
-	ignore(Obligations.add_mutual_definitions [(i, t', ty', impls, obls)] 
+	ignore(Obligations.add_mutual_definitions [(i, t', ty', impls, obls)]
 		 (Evd.evar_universe_context !isevar) [] ~kind
-                 ~reduce ~hook (Obligations.IsFixpoint [recarg, CStructRec]))
+                 ~reduce ~univ_hook (Obligations.IsFixpoint [recarg, CStructRec]))
     | Some (Structural ids) ->
         let ty' = it_mkProd_or_LetIn ty' fixprots in
         let ty' = EConstr.to_constr !isevar ty' in
         ignore(Obligations.add_definition
-                 ~hook ~kind
-                 ~implicits:impls (add_suffix i "_functional") ~term:t' ty' ~reduce              
+                 ~univ_hook ~kind
+                 ~implicits:impls (add_suffix i "_functional") ~term:t' ty' ~reduce
 		 (Evd.evar_universe_context !isevar) obls)
     | _ ->
        let ty' = EConstr.to_constr !isevar ty' in
-       ignore(Obligations.add_definition ~hook ~kind
+       ignore(Obligations.add_definition ~univ_hook ~kind
 	       ~implicits:impls i ~term:t' ty'
 	       ~reduce (Evd.evar_universe_context !isevar) obls)
 
 let mapping_rhs sigma s = function
   | RProgram c -> RProgram (mapping_constr sigma s c)
-  | REmpty i -> 
-      try match nth (pi2 s) (pred i) with 
+  | REmpty i ->
+      try match nth (pi2 s) (pred i) with
       | PRel i' -> REmpty i'
       | _ -> assert false
       with Not_found -> assert false

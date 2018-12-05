@@ -165,7 +165,7 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let oblinfo, _, term, ty = Obligations.eterm_obligations env noid !evd 0
       (to_constr ~abort_on_undefined_evars:false !evd term)
       (to_constr !evd ty) in
-    ignore(Obligations.add_definition ~hook:(Obligations.mk_univ_hook hook) packid
+    ignore(Obligations.add_definition ~univ_hook:(Obligations.mk_univ_hook hook) packid
              ~kind ~term ty ~tactic:(noconf_tac ())
 	      (Evd.evar_universe_context !evd) oblinfo)
 
