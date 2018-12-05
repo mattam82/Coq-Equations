@@ -76,6 +76,9 @@ val cut_problem :
   Equations_common.rel_declaration list * Covering.pat list *
   Equations_common.rel_declaration list
 
+val map_proto : Evd.evar_map -> int option -> EConstr.t -> EConstr.t -> EConstr.t
+
+
 val subst_rec :
   Environ.env -> Evd.evar_map -> Covering.context_map ->
   rec_subst ->
@@ -105,22 +108,27 @@ val update_split :
   Covering.splitting -> Covering.splitting *
                         (EConstr.constr * Names.Id.t * Covering.splitting) Evar.Map.t
 
+
+type alias
+
 val build_equations :
   bool ->
   Environ.env ->
   Evd.evar_map ->
-  ?alias:constr * Names.Id.t * Covering.splitting ->
+  ?alias:alias ->
   Syntax.rec_type option ->
   (Syntax.program_info * Splitting.compiled_program_info * Principles_proofs.equations_info) list ->
   unit
 
+
+
 val computations :            Environ.env ->
            Evd.evar_map ->
-           (EConstr.t * 'a * 'b) option ->
+  alias option ->
            node_kind * bool ->
            Principles_proofs.equations_info ->
            ((Equations_common.rel_context * EConstr.t *
-             (EConstr.t * 'a * 'b) option * EConstr.constr list * EConstr.t *
+             alias option * EConstr.constr list * EConstr.t *
              EConstr.t * (node_kind * bool) * Covering.splitting_rhs *
              ((EConstr.t * int list) *
               ((EConstr.constr * int list) * Names.Id.t * Covering.splitting)
@@ -129,3 +137,5 @@ val computations :            Environ.env ->
               'c)
              list option)
             list as 'c)
+
+val make_alias : (EConstr.t * Names.Id.t * Covering.splitting) -> alias

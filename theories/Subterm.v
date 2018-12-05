@@ -146,23 +146,29 @@ Ltac rec_wf_fix recname kont :=
 (** Generalize an object [x], packing it in a sigma type if necessary. *)
 
 
-Ltac sigma_pack t :=
+Ltac sigma_pack n t :=
   let packhyps := fresh "hypspack" in
   let xpack := fresh "pack" in
-  uncurry_hyps packhyps; 
-    (progress (set(xpack := t) in |- ;
-               cbv beta iota zeta in xpack; revert xpack;
-               pattern sigma packhyps; 
-               clearbody packhyps;
-               revert packhyps;
-               clear_nonsection)).
+  let eos' := fresh "eos" in
+  match constr:(n) with
+  | 0%nat => set (eos' := the_end_of_the_section); move eos' at top
+  | _ => do_nat n ltac:(idtac; revert_last); set (eos' := the_end_of_the_section);
+         do_nat n intro
+  end;
+  uncurry_hyps packhyps;
+  (progress (set(xpack := t) in |- ;
+             cbv beta iota zeta in xpack; revert xpack;
+             pattern sigma packhyps;
+             clearbody packhyps;
+             revert packhyps;
+             clear_nonsection; clear eos')).
 
 (** We specialize the tactic for [x] of type [A], first packing 
    [x] with its indices into a sigma type and finding the declared 
    relation on this type. *)
 
 Ltac rec_wf recname t kont := 
-  sigma_pack t;
+  sigma_pack 0 t;
     match goal with
       [ |- forall (s : ?T) (s0 := @?b s), @?P s ] => 
       let fn := constr:(fun s : T => b s) in
@@ -176,8 +182,8 @@ Ltac rec_wf_eqns recname x :=
   rec_wf recname x 
          ltac:(fun rechyp => add_pattern (hide_pattern rechyp)).
 
-Ltac rec_wf_rel_aux recname t rel kont := 
-  sigma_pack t;
+Ltac rec_wf_rel_aux recname n t rel kont :=
+  sigma_pack n t;
     match goal with
       [ |- forall (s : ?T) (s0 := @?b s), @?P s ] => 
       let fn := constr:(fun s : T => b s) in
@@ -185,13 +191,16 @@ Ltac rec_wf_rel_aux recname t rel kont :=
       let wf := constr:(FixWf (WF:=c)) in
       intros s _; revert s; refine (wf P _); simpl ;
       rec_wf_fix recname kont
-    end. 
+    end.
 
-Ltac rec_wf_eqns_rel recname x rel :=
-  rec_wf_rel_aux recname x rel ltac:(fun rechyp => add_pattern (hide_pattern rechyp)).
+Ltac rec_wf_eqns_rel recname n x rel :=
+  rec_wf_rel_aux recname n x rel
+                         ltac:(fun rechyp =>
+                                 unfold MR in rechyp; simpl in rechyp;
+                                 add_pattern (hide_pattern rechyp)).
 
 Ltac rec_wf_rel recname x rel :=
-  rec_wf_rel_aux recname x rel ltac:(fun rechyp => idtac).
+  rec_wf_rel_aux recname 0 x rel ltac:(fun rechyp => idtac).
 
 (** The [pi] tactic solves an equality between applications of the same function,
    possibly using proof irrelevance to discharge equality of proofs. *)

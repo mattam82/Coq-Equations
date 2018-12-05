@@ -1468,8 +1468,11 @@ let interp_arity env evd ctx ~poly ~is_rec ~with_evars (((loc,i),rec_annot,l,t,b
     in
     Impargs.declare_manual_implicits true (GlobRef.ConstRef compproj) [impls];
     Table.extraction_inline true [Libnames.qualid_of_ident projid];
-    let compinfo = LogicalProj { comp_app = to_constr !evd arity;
-                                 comp_proj = compproj; comp_recarg = succ (length (sign @ ctx)) } in
+      (* LogicalProj { comp_app = to_constr !evd arity;
+       *                            comp_proj = compproj; comp_recarg = succ (length (sign @ ctx)) } in *)
+    let compinfo =
+      LogicalDirect (loc, i)
+    in
     { program_loc = loc;
       program_id = i;
       program_sign = sign;
@@ -1687,7 +1690,9 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
       | None -> rec_tac term name
       | Some r ->
         let _rel_check = interp_constr_evars env (!evars) r in
-        rec_wf_tac term name r
+        let nat = coq_nat_of_int (List.length (pi1 prob) - List.length extpats) in
+        let nat = Constrextern.extern_constr false env !evars (EConstr.of_constr nat) in
+        rec_wf_tac term nat name r
     in
     let rhs = By (Inl tac, spl) in
     (match covering_aux env evars p data [] [(loc,lhs,rhs),false] (Ident name :: path) prob extpats lets ty with

@@ -502,10 +502,11 @@ let rec_tac h h' =
         (qualid_of_string "Equations.Below.rec",
          [tacvar_arg h'; ConstrMayEval (Genredexpr.ConstrTerm h)]))))
 
-let rec_wf_tac h h' rel = 
+let rec_wf_tac h n h' rel =
   TacArg(CAst.(make @@ TacCall(make
     (qualid_of_string "Equations.Subterm.rec_wf_eqns_rel",
     [tacvar_arg h';
+     ConstrMayEval (Genredexpr.ConstrTerm n);
      ConstrMayEval (Genredexpr.ConstrTerm h);
      ConstrMayEval (Genredexpr.ConstrTerm rel)]))))
 

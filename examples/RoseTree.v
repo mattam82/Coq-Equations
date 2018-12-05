@@ -113,6 +113,8 @@ Module RoseTree.
       Subterm.rec_wf_eqns_rel fn x (MR lt (list_size size)).
     Admitted.
 
+    Axiom cheat : forall {A}, A.
+
     Equations(noind) elements' (r : t) : list A by rec r (MR lt size) :=
     elements' (leaf a) := [a];
     elements' (node l) := fn l hidebody
@@ -128,6 +130,8 @@ Module RoseTree.
     Next Obligation.
       abstract (red; simpl; omega).
     Defined.
+
+    Next Obligation. intros. apply cheat. Defined.
 
     Equations elements'_def (r : t) : list A :=
     elements'_def (leaf a) := [a];

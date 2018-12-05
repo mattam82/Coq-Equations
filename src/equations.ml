@@ -130,7 +130,10 @@ let define_principles flags rec_info fixprots progs =
 	     Global.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
              let () = (* Declare the subproofs of unfolding for where as rewrite rules *)
                let decl _ (_, id, _) =
-                 let gr = Nametab.locate_constant (qualid_of_ident id) in
+                 let gr =
+                   try Nametab.locate_constant (qualid_of_ident id)
+                   with Not_found -> anomaly Pp.(str "Could not find where clause unfolding lemma " ++ Names.Id.print id)
+                 in
                  let grc = UnivGen.fresh_global_instance (Global.env()) (ConstRef gr) in
                  Autorewrite.add_rew_rules (info.base_id ^ "_where") [CAst.make (grc, true, None)];
                  Autorewrite.add_rew_rules (info.base_id ^ "_where_rev") [CAst.make (grc, false, None)]
@@ -157,7 +160,7 @@ let define_principles flags rec_info fixprots progs =
                  equations_prob = prob;
                  equations_split = unfold_split }
              in
-             build_equations flags.with_ind env !evd ~alias:(of_constr f, unfold_eq_id, prog.program_split)
+             build_equations flags.with_ind env !evd ~alias:(make_alias (of_constr f, unfold_eq_id, prog.program_split))
                rec_info [p, prog', eqninfo]
 	   in
            let () = if not flags.polymorphic then (evd := Evd.from_env (Global.env ())) in
