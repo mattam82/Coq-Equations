@@ -97,31 +97,14 @@ Module RoseTree.
     Hint Extern 4 (MR _ _ _ _) => abstract (repeat red; simpl in *; omega) : rec_decision.
 
     (* Nested rec *) 
-    Set Equations Debug.
 
-    Ltac Equations.Subterm.rec_wf_eqns_rel recname x rel ::=
-      Subterm.rec_wf_rel_aux recname x rel ltac:(fun rechyp => add_pattern (hide_pattern rechyp));
-      unfold MR in *; simpl in *; try match goal with
-      | [ H : unit |- _ ] => destruct H
-      end.
-
-    Goal forall (l : list t) (elements' : (∀ r : t, MR lt size r (node l) → list A))
-                (x : list t) (H : list_size size x < size (node l)), True.
-      set_eos.
-      intros.
-      assert (eos' := the_end_of_the_section). move eos' before elements'.
-      Subterm.rec_wf_eqns_rel fn x (MR lt (list_size size)).
-    Admitted.
-
-    Axiom cheat : forall {A}, A.
-
-    Equations(noind) elements' (r : t) : list A by rec r (MR lt size) :=
+    Equations elements' (r : t) : list A by rec r (MR lt size) :=
     elements' (leaf a) := [a];
     elements' (node l) := fn l hidebody
 
     where fn (x : list t) (H : list_size size x < size (node l)) : list A by rec x (MR lt (list_size size)) :=
     fn nil _ := nil;
-    fn (cons x xs) _ := elements' x ++ fn l elements' xs hidebody.
+    fn (cons x xs) _ := elements' x ++ fn xs hidebody.
 
     Next Obligation.
       abstract (simpl; omega).
@@ -130,8 +113,6 @@ Module RoseTree.
     Next Obligation.
       abstract (red; simpl; omega).
     Defined.
-
-    Next Obligation. intros. apply cheat. Defined.
 
     Equations elements'_def (r : t) : list A :=
     elements'_def (leaf a) := [a];
@@ -142,7 +123,7 @@ Module RoseTree.
       pose (fun_elim (f:=elements')).
       apply (p (fun r f => f = elements'_def r) (fun l x H r => r = concat (List.map elements' x)));
         clear p; intros; simp elements'_def.
-      simpl. f_equal. apply H2.
+      simpl. f_equal. apply H1.
     Qed.
     
   End roserec.

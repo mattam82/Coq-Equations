@@ -30,8 +30,6 @@ test (S n) p with test n _ => {
 
 Next Obligation. auto with arith. Defined.
 Next Obligation. auto with arith. Defined.
-Next Obligation. auto with arith. Defined.
-Next Obligation. auto with arith. Defined.
 Solve Obligations with program_simpl; omega.
 Solve Obligations.
 

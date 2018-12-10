@@ -36,12 +36,12 @@ f91 n with le_lt_dec n 100 := {
 Require Import Omega.
 
 Next Obligation. intros. do 2 red. try omega. Defined.
-Next Obligation. intros. destruct f91_comp_proj. simpl. do 2 red.
+Next Obligation. intros. destruct f91. simpl. do 2 red.
   destruct_call le_lt_dec. subst. omega. subst. omega.
 Defined.
 
-Next Obligation. destruct_call f91_comp_proj. simpl.
-  destruct_call f91_comp_proj. simpl in *. destruct le_lt_dec. subst. simpl in y. auto.
+Next Obligation. destruct_call f91; simpl.
+  destruct_call f91. simpl in *. destruct le_lt_dec. subst. simpl in y. auto.
   subst x0. destruct le_lt_dec; auto.
   subst x. simpl. omega.
 Defined.

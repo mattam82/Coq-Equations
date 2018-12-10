@@ -641,7 +641,7 @@ let subst_rec_split env evd p f path prob s split =
        (* let rest = subst_comp_proj_split !evd f proj rest in *)
        let s = (id, (recarg, lift 1 f)) :: s in
        let cutprob = (cut_problem s (pi1 newprob)) in
-       let rest = aux cutprob s p f path rest in
+       let rest = aux cutprob s p f (Ident id :: path) rest in
 
               (* let cutprob = (cut_problem s (pi1 subst)) in
                * let _subst, subst =
@@ -1081,7 +1081,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
            mkApp (coq_ImpossibleCall evd, [| ty; comp |])
       in
       let body = it_mkProd_or_LetIn b ctx in
-      Feedback.msg_debug Pp.(str"Typing equation " ++ Printer.pr_econstr_env env !evd body);
+      (* Feedback.msg_debug Pp.(str"Typing equation " ++ Printer.pr_econstr_env env !evd body); *)
       let _ = Equations_common.evd_comb1 (Typing.type_of env) evd body in
       body
     in
@@ -1250,8 +1250,8 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
           [Tactics.intros;
            unf;
            (solve_equation_tac (Globnames.ConstRef cst));
-           (if Option.is_empty alias then Tacticals.New.tclIDTAC
-            else of82 (autorewrites (info.base_id ^ "_where")));
+           (if Evar.Map.is_empty wheremap then Tacticals.New.tclIDTAC
+            else tclTRY (of82 (autorewrites (info.base_id ^ "_where"))));
            Tactics.reflexivity]
       in
       let () =

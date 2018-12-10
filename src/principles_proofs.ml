@@ -377,8 +377,8 @@ let rec aux_ind_fun info chop unfs unfids = function
       if not (List.is_empty wheres) then
         let wheretac acc s unfs =
           Proofview.Goal.enter (fun gl ->
-          let ctx, where_term, where_args, fstchop, unfids = match unfs with
-            | None -> pi1 s.where_prob, s.where_term, [], fst chop (* + List.length ctx *), unfids
+          let ctx, where_term, fstchop, unfids = match unfs with
+            | None -> pi1 s.where_prob, s.where_term, fst chop (* + List.length ctx *), unfids
             | Some w ->
                let assoc, unf, split =
                  try match List.hd w.where_path with
@@ -405,7 +405,7 @@ let rec aux_ind_fun info chop unfs unfids = function
                let ctx = subst_rel_context 0 subst before in
                Feedback.msg_debug (str"Unfolded where substitution:  " ++
                                    prlist_with_sep spc (Printer.pr_econstr_env env evd) subst);
-               ctx, substl subst w.where_term, subst, -1 (* + List.length ctx *), unf :: unfids
+               ctx, substl subst w.where_term, -1 (* + List.length ctx *), unf :: unfids
           in
           let chop = fstchop, snd chop in
           let wheretac =
@@ -440,7 +440,12 @@ let rec aux_ind_fun info chop unfs unfids = function
             let args = List.filter (fun x -> not (isRel Evd.empty x)) args in
             let args = List.append args (extended_rel_list 0 ctx) in
             let fnapp = applistc hd args in
-            let app = applistc ind (List.append args [fnapp]) in
+            let indargs =
+              match unfs with
+              | None -> extended_rel_list 0 ctx
+              | Some _ -> args
+            in
+            let app = applistc ind (List.append indargs [fnapp]) in
             it_mkProd_or_LetIn app ctx
           in
           Tacticals.New.tclTHEN acc (Proofview.tclBIND (Tacticals.New.pf_constr_of_global ind)
