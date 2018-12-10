@@ -3,8 +3,6 @@ sudo: required
 language: c
 cache:
   apt: true
-  directories:
-  - $HOME/.opam
 
 addons:
   apt:
