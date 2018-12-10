@@ -952,10 +952,10 @@ let interp_program_body env sigma ctx impls body ty =
     sigma, c
 
 let interp_program_body env evars ctx intenv c ty =
-  try interp_program_body env evars ctx intenv c ty
-  with PretypeError (env, evm, e) ->
-    user_err_loc (dummy_loc, "interp_program_body",
-                  str "Typechecking failed: " ++  Himsg.explain_pretype_error env evm e)
+ interp_program_body env evars ctx intenv c ty
+  (* try  with PretypeError (env, evm, e) ->
+   *   user_err_loc (dummy_loc, "interp_program_body",
+   *                 str "Typechecking failed: " ++  Himsg.explain_pretype_error env evm e) *)
      (* | e ->
       *   user_err_loc (dummy_loc, "interp_program_body",
       *                 str "Unexpected exception raised while typing body: " ++
