@@ -24,8 +24,8 @@ env:
   - COQ_VER="dev"
 
 install:
-- curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh > install.sh
-- echo | sudo sh install.sh
+- which opam || (rm -rf $HOME/.opam; curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh > install.sh;
+  echo | sudo sh install.sh --no-backup)
 - opam init --disable-sandboxing -j ${NJOBS} --compiler=${COMPILER} -n -y
 - opam --version
 - opam update
