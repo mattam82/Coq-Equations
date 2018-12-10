@@ -1242,5 +1242,5 @@ Ltac solve_equation c :=
   intros ; try simplify_equation c ; try
     (match goal with 
        | [ |- ImpossibleCall _ ] => elimtype False ; find_empty 
-       | _ => reflexivity || discriminates
+       | _ => try red; try (reflexivity || discriminates)
      end).

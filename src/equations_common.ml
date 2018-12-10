@@ -741,6 +741,36 @@ let observe s tac =
                             | _ -> CErrors.iprint iexn));
                    Proofview.tclUNIT ())) gls
 
+let observe_new s (tac : unit Proofview.tactic) =
+  let open Proofview.Notations in
+  let open Proofview in
+  if not !debug then tac
+  else
+    Goal.enter (fun gl ->
+        let env = Goal.env gl in
+        let sigma = Goal.sigma gl in
+        Feedback.msg_debug (str"Applying " ++ str s ++ str " on " ++
+                            Printer.pr_econstr_env env sigma (Goal.concl gl));
+        (Proofview.tclORELSE
+         (Proofview.tclTHEN
+            tac
+            (Proofview.numgoals >>= fun gls ->
+             if gls = 0 then (Feedback.msg_debug (str s ++ str "succeeded"); Proofview.tclUNIT ())
+             else
+               (of82
+                  (fun gls -> Feedback.msg_debug (str "Subgoal: " ++ Printer.pr_goal gls);
+                           Evd.{ it = [gls.it]; sigma = gls.sigma }))))
+         (fun iexn -> Feedback.msg_debug
+                        (str"Failed with: " ++
+                           (match fst iexn with
+                            | Refiner.FailError (n,expl) ->
+                               (str" Fail error " ++ int n ++ str " for " ++ str s ++ spc () ++ Lazy.force expl ++
+                                  str " on " ++ Printer.pr_econstr_env env sigma (Goal.concl gl))
+                            | Pretype_errors.PretypeError (env, sigma, e) ->
+                               (str " Pretype error: " ++ Himsg.explain_pretype_error env sigma e)
+                            | _ -> CErrors.iprint iexn));
+                   Proofview.tclUNIT ())))
+
 (** Compat definitions *)
 
 type rel_context = EConstr.rel_context

@@ -956,14 +956,14 @@ let interp_program_body env evars ctx intenv c ty =
   with PretypeError (env, evm, e) ->
     user_err_loc (dummy_loc, "interp_program_body",
                   str "Typechecking failed: " ++  Himsg.explain_pretype_error env evm e)
-     | e ->
-       user_err_loc (dummy_loc, "interp_program_body",
-                     str "Unexpected exception raised while typing body: " ++
-                     (match c with ConstrExpr c -> Ppconstr.pr_constr_expr c
-                                 | Constr c -> Printer.pr_econstr_env env evars c) ++
-                     str " in environment " ++ Printer.pr_rel_context_of (push_rel_context ctx env) evars ++
-                     str ":" ++
-                     str (Printexc.to_string e))
+     (* | e ->
+      *   user_err_loc (dummy_loc, "interp_program_body",
+      *                 str "Unexpected exception raised while typing body: " ++
+      *                 (match c with ConstrExpr c -> Ppconstr.pr_constr_expr c
+      *                             | Constr c -> Printer.pr_econstr_env env evars c) ++
+      *                 str " in environment " ++ Printer.pr_rel_context_of (push_rel_context ctx env) evars ++
+      *                 str ":" ++
+      *                 str (Printexc.to_string e)) *)
 
 let interp_constr_in_rhs_env env evars data (ctx, envctx, liftn, subst) c ty =
   match ty with

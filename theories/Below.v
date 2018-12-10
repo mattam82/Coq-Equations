@@ -107,7 +107,7 @@ Hint Rewrite Below_vector_equation_2 : Below.
 
 (* Hint Unfold rec_nat rec_vector : Recursors. *)
 
-Hint Extern 4 => progress (unfold hide_pattern in *) : Below.
+(* Hint Extern 4 => progress (unfold hide_pattern in * ) : Below. *)
 
 Ltac add_pattern t :=
   match goal with

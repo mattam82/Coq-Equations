@@ -262,6 +262,7 @@ val coq_ImpossibleCall : esigma -> constr
 val unfold_add_pattern : unit Proofview.tactic lazy_t
 
 val observe : string -> Proofview.V82.tac -> Proofview.V82.tac
+val observe_new : string -> unit Proofview.tactic -> unit Proofview.tactic
   
 val below_tactics_path : Names.DirPath.t
 val below_tac : string -> Names.KerName.t

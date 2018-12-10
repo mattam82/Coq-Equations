@@ -47,7 +47,7 @@ val intros_reducing : Proofview.V82.tac
 val cstrtac : 'a -> Proofview.V82.tac
 val destSplit : Covering.splitting -> Covering.splitting option array option
 val destRefined : Covering.splitting -> Covering.splitting option
-val destWheres : Covering.splitting -> Covering.where_clause list option
+val destWheres : Covering.splitting -> (Covering.context_map * Covering.where_clause list) option
 val map_opt_split : ('a -> 'b option) -> 'a option -> 'b option
 val solve_ind_rec_tac : Splitting.term_info -> unit Proofview.tactic
 val aux_ind_fun :

@@ -246,7 +246,8 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
            let hyp =
              Term.it_mkProd_or_LetIn
                (Constr.mkApp (mkApp (mkRel (i + 1 + len + n + List.length sign), Array.of_list fargs'),
-                              [| Term.applistc (lift (List.length sign) result) (Context.Rel.to_extended_list mkRel 0 sign) |]))
+                              [| Term.applistc (lift (List.length sign) result)
+                                   (Context.Rel.to_extended_list mkRel 0 sign) |]))
                sign
            in
            let hyps = cmap_add hyp !occ hyps in
@@ -726,29 +727,56 @@ let update_split env evd p is_rec f prob recs split =
     subst_rec_split env !evd p f [] prob [] split
   | _ -> split, Evar.Map.empty
 
-type alias = (EConstr.t * Names.Id.t * Covering.splitting)
 
-let make_alias x = x
+let subst_app sigma f fn c =
+  let rec aux n c =
+    match kind sigma c with
+    | App (f', args) when eq_constr sigma f f' ->
+      let args' = Array.map (map_with_binders sigma succ aux n) args in
+      fn n f' args'
+    | Var _ when eq_constr sigma f c ->
+       fn n c [||]
+    | _ -> map_with_binders sigma succ aux n c
+  in aux 0 c
+
+let substitute_alias evd ((f, fargs), term) c =
+  subst_app evd f (fun n f args ->
+      if n = 0 then
+        let args' = filter_arguments fargs (Array.to_list args) in
+        applist (term, args')
+      else mkApp (f, args)) c
+
+let substitute_aliases evd fsubst c =
+  List.fold_right (substitute_alias evd) fsubst c
+
+type alias = ((EConstr.t * int list) * Names.Id.t * Covering.splitting)
+
+let make_alias (f, id, s) = ((f, []), id, s)
 
 let computations env evd alias refine eqninfo =
   let { equations_prob = prob;
         equations_where_map = wheremap;
         equations_f = f;
         equations_split = split } = eqninfo in
-  let rec computations env prob f alias refine = function
+  let rec computations env prob f alias fsubst refine = function
   | Compute (lhs, where, ty, c) ->
      let where_comp w =
        (** Where term is in lhs *)
        let term, args = decompose_app evd w.where_term in
-       let alias, alias' =
+       let alias, fsubst =
          try
          let (f, id, s) = match List.hd w.where_path with
          | Evar ev -> Evar.Map.find ev wheremap
          | Ident _ -> assert false in
          let f, fargs = decompose_appvect evd f in
          let args = match_arguments evd (arguments evd w.where_term) fargs in
-         Some ((f, args), id, s), Some (f, id, s)
-         with Not_found -> None, None
+         let fsubst = ((f, args), term) :: fsubst in
+         Feedback.msg_info Pp.(str"Substituting " ++ Printer.pr_econstr_env env evd f ++
+                               spc () ++
+                            prlist_with_sep spc int args ++ str" by " ++
+                            Printer.pr_econstr_env env evd term);
+         Some ((f, args), id, s), fsubst
+         with Not_found -> None, fsubst
        in
        let args' =
          let rec aux i a =
@@ -760,7 +788,7 @@ let computations env evd alias refine eqninfo =
          in aux 0 args
        in
        let term = applist (term, args') in
-       let comps = computations env w.where_prob term None (Regular,false) (Lazy.force w.where_splitting) in
+       let comps = computations env w.where_prob term None fsubst (Regular,false) (Lazy.force w.where_splitting) in
        let arity = (* substn_vars lift inst  *)w.where_arity in
        let termf =
          if not (Evar.Map.is_empty wheremap) then
@@ -778,22 +806,27 @@ let computations env evd alias refine eqninfo =
      (* msg_debug (str"where_instance: " ++ prlist_with_sep spc pr_c inst); *)
      let ninst = List.map (fun n -> Nameops.Name.get_id (get_name n)) (pi1 ctx) in
      let inst = List.map (fun c -> substn_vars 1 ninst c) inst in
-     let c' = map_rhs (fun c -> Reductionops.nf_beta env evd (substl inst c)) (fun x -> x) c in
+     let fn c =
+       let c' = Reductionops.nf_beta env evd (substl inst c) in
+       substitute_aliases evd fsubst c'
+     in
+     let c' = map_rhs (fun c -> fn c) (fun x -> x) c in
      let patsconstrs = List.rev_map pat_constr (pi2 ctx) in
-     [pi1 ctx, f, alias, patsconstrs, substl inst ty, f, (Where, snd refine), c', Some wheres]
+     let ty = substl inst ty in
+     [pi1 ctx, f, alias, patsconstrs, ty, f, (Where, snd refine), c', Some wheres]
 
   | Split (_, _, _, cs) ->
     Array.fold_left (fun acc c ->
         match c with
    | None -> acc
    | Some c ->
-   acc @ computations env prob f alias refine c) [] cs
+   acc @ computations env prob f alias fsubst refine c) [] cs
 
   | Mapping (lhs, c) ->
      let _newprob = compose_subst env ~sigma:evd prob lhs in
-     computations env prob f alias refine c
+     computations env prob f alias fsubst refine c
 
-  | RecValid (id, cs) -> computations env prob f alias (fst refine, false) cs
+  | RecValid (id, cs) -> computations env prob f alias fsubst (fst refine, false) cs
 
   | Refined (lhs, info, cs) ->
      let (id, c, t) = info.refined_obj in
@@ -808,13 +841,13 @@ let computations env evd alias refine eqninfo =
       Some [(fst (info.refined_app), filter), None, info.refined_path, pi1 info.refined_newprob,
             info.refined_newty, refinedpats,
             [mapping_constr evd info.refined_newprob_to_lhs c, info.refined_arg],
-            computations env info.refined_newprob (fst info.refined_app) None (Regular, true) cs]]
+            computations env info.refined_newprob (fst info.refined_app) None fsubst (Regular, true) cs]]
 
   | Valid ((ctx,pats,del), _, _, _, _, cs) ->
      List.fold_left (fun acc (_, _, subst, invsubst, c) ->
      let subst = compose_subst env ~sigma:evd subst prob in
-     acc @ computations env subst f alias (fst refine,false) c) [] cs
-  in computations env prob (of_constr f) alias refine split
+     acc @ computations env subst f alias fsubst (fst refine,false) c) [] cs
+  in computations env prob (of_constr f) alias [] refine split
 
 let constr_of_global_univ gr u =
   let open Globnames in
@@ -891,7 +924,7 @@ let declare_funind info alias env evd is_rec protos progs
   let args = Termops.rel_list 0 (List.length sign) in
   let f, split, unfsplit =
     match alias with
-    | Some (f, _, recsplit) -> f, recsplit, Some split
+    | Some ((f, _), _, recsplit) -> f, recsplit, Some split
     | None -> f, split, None
   in
   let app = applist (f, args) in
@@ -947,7 +980,7 @@ let declare_funind info alias env evd is_rec protos progs
       (Global.set_strategy (ConstKey (fst (destConst evd f))) Conv_oracle.transparent;
        match alias with
        | None -> ()
-       | Some (f, _, _) -> Global.set_strategy (ConstKey (fst (destConst evd f))) Conv_oracle.transparent)
+       | Some ((f, _), _, _) -> Global.set_strategy (ConstKey (fst (destConst evd f))) Conv_oracle.transparent)
   in
   (* let evm, stmt = Typing.type_of (Global.env ()) !evd statement in *)
   let stmt = to_constr !evd statement and f = to_constr !evd f in
@@ -973,20 +1006,7 @@ let level_of_context env evd ctx acc =
                     ctx (env,acc)
   in lev
 
-let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) option) rec_info progs =
-  let p, prog, eqninfo = List.hd progs in
-  let user_obls =
-    List.fold_left (fun acc (p, prog, eqninfo) ->
-      Id.Set.union prog.program_split_info.user_obls acc) Id.Set.empty progs
-  in
-  let { equations_id = id;
-        equations_where_map = wheremap;
-        equations_f = f;
-        equations_prob = prob;
-        equations_split = split } = eqninfo in
-  let info = prog.program_split_info in
-  let sign = p.program_sign in
-  let cst = prog.program_cst in
+let all_computations env evd alias progs =
   let comps =
     let fn p = computations env evd alias (kind_of_prog p,false) in
     List.map (fun (p, prog, eqninfo) -> p, eqninfo, fn p eqninfo) progs
@@ -1006,14 +1026,29 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
   in
   let flatten_top_comps (p, eqninfo, one_comps) acc =
     let (top, rest) = flatten_comps one_comps in
-    let alias = match alias with Some (f, id, x) -> Some ((f, []), id, x) | None -> None in
     let topcomp = (((of_constr eqninfo.equations_f,[]), alias, [Ident p.program_id],
                     p.program_sign, p.program_arity,
                     List.rev_map pat_constr (pi2 eqninfo.equations_prob), [],
                     (kind_of_prog p,false)), top) in
     topcomp :: (rest @ acc)
   in
-  let comps = List.fold_right flatten_top_comps comps [] in
+  List.fold_right flatten_top_comps comps []
+
+let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
+  let p, prog, eqninfo = List.hd progs in
+  let user_obls =
+    List.fold_left (fun acc (p, prog, eqninfo) ->
+      Id.Set.union prog.program_split_info.user_obls acc) Id.Set.empty progs
+  in
+  let { equations_id = id;
+        equations_where_map = wheremap;
+        equations_f = f;
+        equations_prob = prob;
+        equations_split = split } = eqninfo in
+  let info = prog.program_split_info in
+  let sign = p.program_sign in
+  let cst = prog.program_cst in
+  let comps = all_computations env evd alias progs in
   let protos = List.map fst comps in
   let lenprotos = List.length protos in
   let protos =
@@ -1031,7 +1066,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
   let poly = is_polymorphic info in
   let statement i filter (ctx, fl, flalias, pats, ty, f', (refine, cut), c) =
     let hd, unf = match flalias with
-      | Some (f', unf, _) -> f', Equality.rewriteLR (constr_of_ident unf)
+      | Some ((f', _), unf, _) -> f', Equality.rewriteLR (constr_of_ident unf)
       | None -> fl,
         if eq_constr !evd fl (of_constr f) then
           Tacticals.New.tclORELSE Tactics.reflexivity (of82 (unfold_constr !evd (of_constr f)))
@@ -1046,7 +1081,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
            mkApp (coq_ImpossibleCall evd, [| ty; comp |])
       in
       let body = it_mkProd_or_LetIn b ctx in
-      (* msg_debug (str"Typing equation " ++ pr_constr_env env !evd c); *)
+      Feedback.msg_debug Pp.(str"Typing equation " ++ Printer.pr_econstr_env env !evd body);
       let _ = Equations_common.evd_comb1 (Typing.type_of env) evd body in
       body
     in
@@ -1203,15 +1238,21 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
           (* From now on, we don't need the reduction behavior of the constant anymore *)
           Typeclasses.set_typeclass_transparency (EvalConstRef cst) false false;
           (match alias with
-           | Some (f, _, _) ->
+           | Some ((f, _), _, _) ->
               Global.set_strategy (ConstKey (fst (destConst !evd f))) Conv_oracle.Opaque
            | None -> ());
           Global.set_strategy (ConstKey cst) Conv_oracle.Opaque;
           if with_ind && succ j == List.length ind_stmts then declare_ind ())
       in
       let tac =
-        (Tacticals.tclTHENLIST [to82 Tactics.intros; to82 unf;
-                                to82 (solve_equation_tac (Globnames.ConstRef cst))])
+        let open Tacticals.New in
+        tclTHENLIST
+          [Tactics.intros;
+           unf;
+           (solve_equation_tac (Globnames.ConstRef cst));
+           (if Option.is_empty alias then Tacticals.New.tclIDTAC
+            else of82 (autorewrites (info.base_id ^ "_where")));
+           Tactics.reflexivity]
       in
       let () =
         (** Refresh at each equation, accumulating known constraints. *)
@@ -1221,7 +1262,7 @@ let build_equations with_ind env evd ?(alias:(constr * Names.Id.t * splitting) o
       ignore(Obligations.add_definition
                ~kind:info.decl_kind
                ideq (to_constr !evd c)
-               ~tactic:(of82 tac) ~univ_hook:(Obligations.mk_univ_hook hook)
+               ~tactic:tac ~univ_hook:(Obligations.mk_univ_hook hook)
 	       (Evd.evar_universe_context !evd) [||])
     in List.iter proof stmts
   in List.iter proof ind_stmts

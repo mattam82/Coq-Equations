@@ -262,7 +262,7 @@ let destRefined = function
   | _ -> None
 
 let destWheres = function
-  | Compute (_, wheres, _, _) -> Some wheres
+  | Compute (ctx, wheres, _, _) -> Some (ctx, wheres)
   | _ -> None
 
 let map_opt_split f s =
@@ -296,7 +296,7 @@ let hyps_after sigma pos args =
 
 let rec aux_ind_fun info chop unfs unfids = function
   | Split ((ctx,pats,_), var, _, splits) ->
-     let unfs =
+     let unfs_splits =
        let unfs = map_opt_split destSplit unfs in
        match unfs with
        | None -> fun i -> None
@@ -306,12 +306,16 @@ let rec aux_ind_fun info chop unfs unfids = function
      (tclTHEN_i
        (fun gl ->
         match kind (project gl) (pf_concl gl) with
-	| App (ind, args) -> 
-	   let pats' = List.drop_last (Array.to_list args) in
+        | App (ind, args) ->
+           let pats' = List.drop_last (Array.to_list args) in
            let pats' = 
              if fst chop < 0 then pats'
              else snd (List.chop (fst chop) pats') in
-	   let pats = filter (fun x -> not (hidden x)) pats in
+           let pats, var =
+              match unfs with
+              | Some (Split ((_, pats, _), var, _, _)) -> pats, var
+              | _ -> filter (fun x -> not (hidden x)) pats, var
+           in
            let id = find_splitting_var (project gl) pats var pats' in
 	      to82 (depelim_nosimpl_tac id) gl
 	| _ -> tclFAIL 0 (str"Unexpected goal in functional induction proof") gl)
@@ -320,7 +324,7 @@ let rec aux_ind_fun info chop unfs unfids = function
 	  | None -> to82 (simpl_dep_elim_tac ())
 	  | Some s ->
 	      tclTHEN (to82 (simpl_dep_elim_tac ()))
-		(aux_ind_fun info chop (unfs (pred i)) unfids s)))
+                (aux_ind_fun info chop (unfs_splits (pred i)) unfids s)))
 	  
   | Valid ((ctx, _, _), ty, substc, tac, valid, rest) ->
      observe "valid"
@@ -363,17 +367,18 @@ let rec aux_ind_fun info chop unfs unfids = function
 		   to82 (solve_ind_rec_tac info.term_info)])
 
   | Compute ((ctx,_,_), wheres, _, c) ->
-    let unfswheres =
+    let unfctx, unfswheres =
       let unfs = map_opt_split destWheres unfs in
       match unfs with
-      | None -> List.map (fun _ -> None) wheres
-      | Some wheres -> List.map (fun w -> Some w) wheres
+      | None -> [], List.map (fun _ -> None) wheres
+      | Some (unfctx, wheres) -> pi1 unfctx, List.map (fun w -> Some w) wheres
     in
     let wheretac = 
       if not (List.is_empty wheres) then
         let wheretac acc s unfs =
-          let where_term, fstchop, unfids = match unfs with
-            | None -> s.where_term, fst chop (* + List.length ctx *), unfids
+          Proofview.Goal.enter (fun gl ->
+          let ctx, where_term, where_args, fstchop, unfids = match unfs with
+            | None -> pi1 s.where_prob, s.where_term, [], fst chop (* + List.length ctx *), unfids
             | Some w ->
                let assoc, unf, split =
                  try match List.hd w.where_path with
@@ -381,20 +386,37 @@ let rec aux_ind_fun info chop unfs unfids = function
                      | Ident _ -> assert false
                  with Not_found -> assert false
                in
-               (* msg_debug (str"Unfolded where " ++ str"term: " ++ pr_constr w.where_term ++ *)
-               (*              str" type: " ++ pr_constr w.where_type ++ str" assoc " ++ *)
-               (*              pr_constr assoc); *)
-               assoc, fst chop (* + List.length ctx *), unf :: unfids
+               let env = Global.env () in
+               let evd = Evd.empty in
+               Feedback.msg_debug (str"Unfolded where " ++ str"term: " ++ pr_econstr_env env evd w.where_term ++
+                                   str" type: " ++ pr_econstr_env env evd w.where_type ++ str" assoc " ++
+                                   pr_econstr_env env evd assoc);
+               let ctxlen = List.length (pi1 w.where_prob) - List.length unfctx in
+               let before, after = List.chop ctxlen (pi1 w.where_prob) in
+               let subst =
+                 let hyps = Proofview.Goal.hyps gl in
+                 let hyps, _ =
+                   List.split_when (fun decl -> Context.Named.Declaration.get_id decl = coq_end_of_section_id) hyps
+                 in
+                 if not (List.length hyps > List.length after) then
+                   anomaly (str"Mismatch between hypotheses in named context and program")
+                 else List.rev_map (fun decl -> mkVar (Context.Named.Declaration.get_id decl)) hyps
+               in
+               let ctx = subst_rel_context 0 subst before in
+               Feedback.msg_debug (str"Unfolded where substitution:  " ++
+                                   prlist_with_sep spc (Printer.pr_econstr_env env evd) subst);
+               ctx, substl subst w.where_term, subst, -1 (* + List.length ctx *), unf :: unfids
           in
           let chop = fstchop, snd chop in
           let wheretac =
-            observe "one where"
-            (tclTHENLIST [tclTRY (to82 (move_hyp coq_end_of_section_id Logic.MoveLast));
-                         to82 intros;
-                         if Option.is_empty unfs then tclIDTAC
-                         else autorewrite_one (info.term_info.base_id ^ "_where");
-                         (aux_ind_fun info chop (Option.map (fun s -> Lazy.force s.where_splitting) unfs)
-                                      unfids (Lazy.force s.where_splitting))])
+            let open Tacticals.New in
+            observe_new "one where"
+              (tclTHENLIST [tclTRY (move_hyp coq_end_of_section_id Logic.MoveLast);
+                            intros;
+                            (* if Option.is_empty unfs then tclIDTAC
+                             * else autorewrite_one (info.term_info.base_id ^ "_where"); *)
+                            (of82 (aux_ind_fun info chop (Option.map (fun s -> Lazy.force s.where_splitting) unfs)
+                                     unfids (Lazy.force s.where_splitting)))])
           in
           let wherepath, args =
             try PathMap.find s.where_path info.pathmap
@@ -411,28 +433,33 @@ let rec aux_ind_fun info chop unfs unfids = function
               prlist_with_sep spc
               (fun x -> Printer.pr_econstr_env env Evd.empty (EConstr.of_constr x)) args ++
               str" context map " ++
-              pr_context_map env Evd.empty s.where_prob));
+              pr_context_map env Evd.empty (id_subst ctx)));
           let ind = Nametab.locate (qualid_of_ident wherepath) in
           let ty ind =
-            let ctx = pi1 s.where_prob in
             let hd, args = decompose_app Evd.empty where_term in
             let args = List.filter (fun x -> not (isRel Evd.empty x)) args in
-            let fnapp = applistc (applistc hd args) (extended_rel_list 0 ctx) in
-            let args = extended_rel_list 0 ctx in
+            let args = List.append args (extended_rel_list 0 ctx) in
+            let fnapp = applistc hd args in
             let app = applistc ind (List.append args [fnapp]) in
             it_mkProd_or_LetIn app ctx
           in
-          tclTHEN acc (to82 (Proofview.tclBIND (Tacticals.New.pf_constr_of_global ind)
-                               (fun ind -> assert_by (Name (where_id s)) (ty ind) (of82 wheretac))))
+          Tacticals.New.tclTHEN acc (Proofview.tclBIND (Tacticals.New.pf_constr_of_global ind)
+            (fun ind ->
+              if !debug then
+                (let env = Global.env () in
+                 Feedback.msg_debug
+                   (str"Type of induction principle for " ++ str (Id.to_string (where_id s)) ++ str": " ++
+                    Printer.pr_econstr_env env Evd.empty (ty ind)));
+              assert_by (Name (where_id s)) (ty ind) wheretac)))
         in
         let () = assert (List.length wheres = List.length unfswheres) in
-        let tac = List.fold_left2 wheretac tclIDTAC wheres unfswheres in
-        tclTHENLIST [tac;
+        let tac = List.fold_left2 wheretac Tacticals.New.tclIDTAC wheres unfswheres in
+        tclTHENLIST [to82 tac;
                      tclTRY (autorewrite_one info.term_info.base_id);
                      cstrtac info.term_info;
-                     if Option.is_empty unfs then tclIDTAC
-                     else observe "whererev"
-                                  (tclTRY (autorewrite_one (info.term_info.base_id ^ "_where_rev")));
+                     (* if Option.is_empty unfs then tclIDTAC
+                      * else observe "whererev"
+                      *              (tclTRY (autorewrite_one (info.term_info.base_id ^ "_where_rev"))); *)
                      eauto_with_below []]
       else tclIDTAC
     in
@@ -452,11 +479,11 @@ let rec aux_ind_fun info chop unfs unfids = function
               explicitely rewrite with the unfolding lemma (as the where
               clause induction hypothesis is about the unfolding whereas
               the term itself mentions the original function. *)
-          tclMAP (fun i ->
-          tclTRY (to82 (Proofview.tclBIND
-                        (Tacticals.New.pf_constr_of_global
-                              (Equations_common.global_reference i))
-                        Equality.rewriteLR))) unfids;
+          (* tclMAP (fun i ->
+           * tclTRY (to82 (Proofview.tclBIND
+           *               (Tacticals.New.pf_constr_of_global
+           *                     (Equations_common.global_reference i))
+           *               Equality.rewriteLR))) unfids; *)
           observe "solving premises of compute rule" (to82 (solve_ind_rec_tac info.term_info))]))
 
   | Mapping (_, s) -> aux_ind_fun info chop unfs unfids s
@@ -706,7 +733,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
         let reftac = observe "refined" reftac in
 	  to82 (abstract (of82 (tclTHENLIST [to82 intros; simpltac; reftac])))
 	    
-    | Compute (_, wheres, _, RProgram _), Compute (_, unfwheres, _, RProgram c) ->
+    | Compute (_, wheres, _, RProgram _), Compute ((lctx, _, _), unfwheres, _, RProgram c) ->
        let wheretac acc w unfw =
          let assoc, id, _ =
            try match List.hd unfw.where_path with
@@ -719,11 +746,15 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
          let evd = ref (project gl) in
          let ty =
            let ctx = pi1 unfw.where_prob in
-           let lhs = mkApp (assoc, extended_rel_vect 0 ctx) in
+           let len = List.length ctx - List.length lctx in
+           let newctx, oldctx = List.chop len ctx in
+           let lhs = mkApp (lift len assoc (* in oldctx *), extended_rel_vect 0 newctx) in
            let rhs = mkApp (fst (decompose_app !evd unfw.where_term), extended_rel_vect 0 ctx) in
            let eq = mkEq env evd unfw.where_arity lhs rhs in
            it_mkProd_or_LetIn eq ctx
          in
+         (* Feedback.msg_debug (str"Where_type: " ++ Printer.pr_econstr_env env !evd ty); *)
+
          let headcst f =
            let f, _ = decompose_app !evd f in
            if isConst !evd f then fst (destConst !evd f)
