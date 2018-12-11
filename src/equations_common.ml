@@ -693,7 +693,7 @@ let deps_of_var sigma id env =
 let idset_of_list =
   List.fold_left (fun s x -> Id.Set.add x s) Id.Set.empty
 
-let pr_smart_global f = Pptactic.pr_or_by_notation pr_qualid f
+let pr_smart_global f = Pputils.pr_or_by_notation pr_qualid f
 let string_of_smart_global = function
   | {CAst.v=Constrexpr.AN ref} -> string_of_qualid ref
   | {CAst.v=Constrexpr.ByNotation (s, _)} -> s
