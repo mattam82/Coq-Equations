@@ -288,7 +288,7 @@ let solve_problem env sigma ty indsort (outer, problems) =
 	match find_split env sigma outer pbs with
 	| Some var ->
 	  (match split_var (env, evdref) var outer with
-	  | Some (k, newctx, split) -> (* outer' |- s : outer *)
+          | Some (Splitted (k, newctx, split)) -> (* outer' |- s : outer *)
 	    let branches sopt =
 	      match sopt with
 	      | None -> None
@@ -297,7 +297,7 @@ let solve_problem env sigma ty indsort (outer, problems) =
 		  Some (aux (pi1 s, problems') (compose_subst env ~sigma:!evdref s lhs))
 	    in
 	      Split (lhs, var, ty, Array.map branches split)
-	  | None -> CErrors.user_err (Pp.str"Couldn't split variable!"))
+          | _ -> CErrors.user_err (Pp.str"Couldn't split variable!"))
 	| None -> CErrors.user_err (Pp.str"No variable can be split")
   in
   let splitting = aux (outer, problems) (id_subst outer) in

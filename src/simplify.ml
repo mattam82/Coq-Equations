@@ -342,7 +342,7 @@ let check_prod sigma (ty : EConstr.types) : Names.Name.t Context.binder_annot * 
     with Constr.DestKO -> raise (CannotSimplify (str "The goal is not a product."))
   in name, ty1, ty2
 
-let check_letin sigma (ty : EConstr.types) : Names.Name.t * EConstr.types * EConstr.types * EConstr.types =
+let check_letin sigma (ty : EConstr.types) : Names.Name.t Context.binder_annot * EConstr.types * EConstr.types * EConstr.types =
   let name, na, ty1, body = try destLetIn sigma ty
     with Constr.DestKO -> raise (CannotSimplify (str "The goal is not a let-in."))
   in name, na, ty1, body

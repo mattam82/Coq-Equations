@@ -154,7 +154,7 @@ let derive_eq_dec env sigma ~polymorphic ind =
      let id = add_suffix ind.ind_name "_eqdec" in
      ignore(Obligations.add_definition id (to_constr !evdref stmt)
               (Evd.evar_universe_context !evdref)
-              ~tactic:(eqdec_tac ()) ~univ_hook [||]))
+              ~tactic:(eqdec_tac ()) ~hook:univ_hook [||]))
     indsl
 
 let () =

@@ -200,7 +200,7 @@ let define_principles flags fixprots progs =
            in
 	   ignore(Obligations.add_definition
                     ~kind:info.decl_kind
-		    ~univ_hook:(Obligations.mk_univ_hook hook_eqs) ~reduce:(fun x -> x)
+                    ~hook:(Obligations.mk_univ_hook hook_eqs) ~reduce:(fun x -> x)
                     ~implicits:p.program_impls unfold_eq_id (to_constr evd stmt)
                     ~tactic:(of82 tac)
                     (Evd.evar_universe_context evd) [||])

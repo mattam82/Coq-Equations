@@ -468,17 +468,17 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
 	in
 	ignore(Obligations.add_mutual_definitions [(i, t', ty', impls, obls)]
 		 (Evd.evar_universe_context !isevar) [] ~kind
-                 ~reduce ~univ_hook (Obligations.IsFixpoint [recarg, CStructRec]))
+                 ~reduce ~hook:univ_hook (Obligations.IsFixpoint [recarg, CStructRec]))
     | Some (Structural ids) ->
         let ty' = it_mkProd_or_LetIn ty' fixprots in
         let ty' = EConstr.to_constr !isevar ty' in
         ignore(Obligations.add_definition
-                 ~univ_hook ~kind
+                 ~hook:univ_hook ~kind
                  ~implicits:impls (add_suffix i "_functional") ~term:t' ty' ~reduce
 		 (Evd.evar_universe_context !isevar) obls)
     | _ ->
        let ty' = EConstr.to_constr !isevar ty' in
-       ignore(Obligations.add_definition ~univ_hook ~kind
+       ignore(Obligations.add_definition ~hook:univ_hook ~kind
 	       ~implicits:impls i ~term:t' ty'
 	       ~reduce (Evd.evar_universe_context !isevar) obls)
 

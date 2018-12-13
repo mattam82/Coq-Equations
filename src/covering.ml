@@ -1157,7 +1157,7 @@ let split_var (env,evars) var delta =
   | Some (newty, unify) ->
     (* Some constructor's type is not refined enough to match ty *)
     if Array.exists (fun x -> x == UnifStuck) unify then
-      Some (CannotSplit (id, before, newty))
+      Some (CannotSplit (binder_name id, before, newty))
     else
       let newdelta = after @ (make_def id b newty :: before) in
       Some (Splitted (var, do_renamings newdelta, Array.map branch unify))

@@ -356,7 +356,7 @@ let interp_pat env ?(avoid = ref Id.Set.empty) fnid p =
     anomaly (str"Building internalization environment")
   in
   let nctx =
-    List.map (fun id -> Context.Named.Declaration.LocalAssum (id, Constr.mkProp)) vars
+    List.map (fun id -> Context.Named.Declaration.LocalAssum (annot id, Constr.mkProp)) vars
   in
   let env = Environ.push_named_context nctx env in
   let gc =

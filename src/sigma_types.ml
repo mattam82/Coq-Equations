@@ -408,12 +408,12 @@ let uncurry_call env sigma fn c =
   let fnapp = it_mkLambda_or_subst fnapp sigctx in
   let projsid = Name (Id.of_string "projs") in
   let fnapp_ty = Retyping.get_type_of
-      (push_rel_context [Context.Rel.Declaration.LocalAssum (projsid, sigty)] env)
+      (push_rel_context [Context.Rel.Declaration.LocalAssum (annot projsid, sigty)] env)
       !evdref fnapp in
   (* TODO: build (packargs, fn packargs.projs) = (args, c) equality *)
   let sigma, sigmaI = get_fresh !evdref coq_sigmaI in
   let packed =
-    mkApp (sigmaI, [| sigty; mkLambda (projsid, sigty, fnapp_ty); mkRel 1; fnapp |])
+    mkApp (sigmaI, [| sigty; mkLambda (annot projsid, sigty, fnapp_ty); mkRel 1; fnapp |])
   in
   sigma, app, packed, sigty
 
