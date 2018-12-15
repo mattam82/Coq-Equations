@@ -73,7 +73,7 @@ module CMap = Map.Make(Constr)
 
 let clean_rec_calls sigma (hyps, c) =
   let open Context.Rel.Declaration in
-  (** Remove duplicate induction hypotheses under contexts *)
+  (* Remove duplicate induction hypotheses under contexts *)
   let under_context, hyps =
     CMap.partition (fun ty n -> Constr.isProd ty || Constr.isLetIn ty) hyps
   in
@@ -87,7 +87,7 @@ let clean_rec_calls sigma (hyps, c) =
         else CMap.add ty n hyps)
       under_context hyps
   in
-  (** Sort by occurrence *)
+  (* Sort by occurrence *)
   let elems = List.sort (fun x y -> Int.compare (snd x) (snd y)) (CMap.bindings hyps) in
   let (size, ctx) =
     List.fold_left (fun (n, acc) (ty, _) ->
@@ -233,7 +233,7 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
       let f', args = decompose_appvect c in
       if not (is_user_obl sigma user_obls (EConstr.of_constr f')) then
         let hyps =
-          (** TODO: use filter here *)
+          (* TODO: use filter here *)
           Array.fold_left (fun hyps arg -> let hyps', arg' = aux n env hyps arg in
                             hyps')
             hyps args
@@ -279,7 +279,7 @@ let subst_comp_proj sigma f proj c =
     mkApp (f, if Array.length args > 0 then Array.sub args 0 (Array.length args - 1) else args))
     c
 
-(** Substitute occurrences of [proj] by [f] in the splitting. *)
+(* Substitute occurrences of [proj] by [f] in the splitting. *)
 let subst_comp_proj_split sigma f proj s =
   map_split (subst_comp_proj sigma f proj) s
 
@@ -761,7 +761,7 @@ let computations env evd alias refine eqninfo =
   let rec computations env prob f alias fsubst refine = function
   | Compute (lhs, where, ty, c) ->
      let where_comp w =
-       (** Where term is in lhs *)
+       (* Where term is in lhs *)
        let term, args = decompose_app evd w.where_term in
        let alias, fsubst =
          try
@@ -872,7 +872,7 @@ let declare_funelim info env evd is_rec protos progs
     let elimty, uctx = Typeops.type_of_global_in_context (Global.env ()) elim in
     let () = evd := Evd.from_env (Global.env ()) in
     if is_polymorphic info then
-      (** We merge the contexts of the term and eliminator in which
+      (* We merge the contexts of the term and eliminator in which
          ind_stmts and all_stmts are derived, universe unification will
          take care of unifying the eliminator's fresh instance with the
          universes of the constant and the functional induction lemma. *)
@@ -975,7 +975,7 @@ let declare_funind info alias env evd is_rec protos progs
     in
     let instid = Nameops.add_prefix "FunctionalInduction_" id in
     ignore(Equations_common.declare_instance instid poly evd [] cl args);
-    (** If desired the definitions should be made transparent again. *)
+    (* If desired the definitions should be made transparent again. *)
     if !Equations_common.equations_transparent then
       (Global.set_strategy (ConstKey (fst (destConst evd f))) Conv_oracle.transparent;
        match alias with
@@ -1133,9 +1133,9 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
     in
     let ind_sort =
       if Lazy.force logic_sort == Sorts.InProp then
-        (** Define graph impredicatively *)
+        (* Define graph impredicatively *)
         mkProp
-      else (** Compute sort as max of products *)
+      else (* Compute sort as max of products *)
         let ctx = (of_tuple (Anonymous, None, arity) :: sign) in
         let signlev = level_of_context env !evd ctx Univ.type0m_univ in
         mkSort (Sorts.sort_of_univ signlev)
@@ -1213,7 +1213,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
   let () = evd := Evd.minimize_universes !evd in
   let () =
     if not poly then
-      (** Declare the universe context necessary to typecheck the following
+      (* Declare the universe context necessary to typecheck the following
           definitions once and for all. *)
       (Declare.declare_universe_context false (Evd.universe_context_set !evd);
        evd := Evd.from_env (Global.env ()))
@@ -1255,7 +1255,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
            Tactics.reflexivity]
       in
       let () =
-        (** Refresh at each equation, accumulating known constraints. *)
+        (* Refresh at each equation, accumulating known constraints. *)
         if not poly then evd := Evd.from_env (Global.env ())
         else ()
       in

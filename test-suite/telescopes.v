@@ -124,6 +124,8 @@ Ltac rewrite_change c :=
   end.
 Set Printing Universes.
 
+Arguments sigmaI {A} {B} pr1 pr2.
+
 Section pathsigmauncurried.
   Universe i.
 Equations path_sigma_uncurried {A : Type@{i}} {P : A -> Type@{i}} (u v : sigma@{i} A P)
@@ -148,7 +150,7 @@ Defined.
 Notation "p ..2" := (pr2_path p) (at level 3).
 
 Definition eta_path_sigma_uncurried@{i} {A : Type@{i}} {P : A -> Type@{i}} {u v : sigma A P}
-           (p : u = v) : path_sigma_uncurried _ _ (sigmaI@{i} _ p..1 p..2) = p.
+           (p : u = v) : path_sigma_uncurried _ _ (sigmaI@{i} p..1 p..2) = p.
   destruct p. apply eq_refl.
 Defined.
 
@@ -222,8 +224,8 @@ Module Telescopes.
   Infix "=={ Δ }" := (eq_expl Δ) : telescope.
 
   Equations refl {Δ : Tel} (t : telescope Δ) : eq Δ t t :=
-    refl (Δ:=(inj A)) a := eq_refl;
-    refl (Δ:=(ext A f)) p := &(eq_refl & refl p.2).
+    refl (Δ:=inj A) a := eq_refl;
+    refl (Δ:=ext A f) (sigmaI t ts) := &(eq_refl & refl ts).
 
   Local Open Scope telescope.
   

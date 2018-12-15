@@ -104,7 +104,7 @@ Equations expDenote {ts t} (e : exp ts t) (mls : hlist typeDenote ts) : typeDeno
 expDenote Const _ := tt;
 expDenote (Var mem) s := hget s mem;
 expDenote (App e1 e2) s with expDenote e1 s => {
-  | e := e (expDenote e2 s)
+  | e' := e' (expDenote e2 s)
 };
 expDenote (Abs e) s := fun x => expDenote e (HCons x s).
 

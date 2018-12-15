@@ -301,7 +301,7 @@ ap_compose f g id_refl := id_refl.
 
 Equations concat_A1p {A : Type} {g : A -> A} (p : forall x, g x = x) {x y : A} (q : x = y) :
   (ap g q) @ (p y) = (p x) @ q :=
-concat_A1p (g:=g) p (x:=x) 1 with p x, g x :=
+concat_A1p p 1 with p x, g x :=
   { concat_A1p p 1 1 _ := 1 }.
 
 Ltac remember_let H ::=

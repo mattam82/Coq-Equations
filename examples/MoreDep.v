@@ -221,7 +221,7 @@ Notation "{< x >}" := (sigmaI _ _ x).
 Import Sigma_Notations.
 (* No need for convoy pattern! *)
 Equations balance1 n (a : rtree n) (data : nat) c2 (b : rbtree c2 n) : &{c : color & rbtree c (S n)} :=
-balance1 (RedNode' (c2:=c0) t1 y t2) data d with t1 => {
+balance1 (RedNode' t1 y t2) data d with t1 => {
   | RedNode a x b := {<RedNode (BlackNode a x b) y (BlackNode t2 data d)>};
   | _ with t2 => {
     | RedNode b x c := {<RedNode (BlackNode t1 y b) x (BlackNode c data d)>};

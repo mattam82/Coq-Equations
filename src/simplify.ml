@@ -605,7 +605,7 @@ let pre_solution ~(dir:direction) : simplification_fun =
     else tz, tx
   in
   let rel = EConstr.destRel !evd trel in
-  (** Check dependencies in both tA and term *)
+  (* Check dependencies in both tA and term *)
   if not (Int.Set.mem rel (Covering.dependencies_of_term ~with_red:false env !evd ctx (mkApp (tA, [| term |])) rel)) then
     identity env evd (ctx, ty)
   else

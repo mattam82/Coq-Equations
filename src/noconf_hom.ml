@@ -237,7 +237,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
     let flags = { polymorphic; with_eqns = true; with_ind = true } in
     let fixprots = [s] in
     let () = Equations.define_principles flags None fixprots [proginfo, compiled_info] in
-    (** The principles are now shown, let's prove this forms an equivalence *)
+    (* The principles are now shown, let's prove this forms an equivalence *)
     Global.set_strategy (ConstKey program_cst) Conv_oracle.transparent;
     let env = Global.env () in
     let sigma = Evd.from_env env in

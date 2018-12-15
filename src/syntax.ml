@@ -27,6 +27,7 @@ type 'a with_loc = Loc.t * 'a
 type identifier = Names.Id.t
    
 type generated = bool
+
 (** User-level patterns *)
 type user_pat =
     PUVar of identifier * generated
@@ -333,7 +334,7 @@ let check_linearity env opats =
       ids pats
   in ignore (aux Id.Set.empty opats)
 
-let pattern_of_glob_constr env avoid gc =
+let pattern_of_glob_constr env avoid patname gc =
   let rec constructor ?loc c l =
     let ind, _ = c in
     let nparams = Inductiveops.inductive_nparams ind in
@@ -353,8 +354,13 @@ let pattern_of_glob_constr env avoid gc =
   and aux ?loc = function
     | GVar id -> PUVar (id, false)
     | GHole (_,_,_) ->
-      let n = next_ident_away (Id.of_string "wildcard") avoid in
-      avoid := Id.Set.add n !avoid; PUVar (n, true)
+      let id =
+        match patname with
+        | Anonymous -> Id.of_string "wildcard"
+        | Name id -> id
+      in
+      let n = next_ident_away id avoid in
+      PUVar (n, true)
     | GRef (ConstructRef cstr,_) -> constructor ?loc cstr []
     | GApp (c, l) ->
       begin match DAst.get c with
@@ -380,7 +386,7 @@ let interp_pat env ?(avoid = ref Id.Set.empty) p pat =
   let impls = List.map (fun _ -> []) vars in
   let vars, tys, impls =
     match p with
-    | Some p ->
+    | Some (p, _) ->
       let ty = program_type p in
       (p.program_id :: vars, ty :: tys, p.program_impls :: impls)
     | None -> (vars, tys, impls)
@@ -399,15 +405,21 @@ let interp_pat env ?(avoid = ref Id.Set.empty) p pat =
   in
   try
     match p with
-    | Some { program_id = id } ->
+    | Some ({ program_id = id }, patnames) ->
       DAst.with_loc_val (fun ?loc g ->
           match g with
           | GApp (fn, args) ->
             DAst.with_loc_val (fun ?loc gh ->
                 match gh with
                 | GVar fid when Id.equal fid id ->
-                  let args = List.map (pattern_of_glob_constr env avoid) args in
-                  args
+                  let rec aux args patnames =
+                    match args, patnames with
+                    | a :: args, patname :: patnames ->
+                      pattern_of_glob_constr env avoid patname a :: aux args patnames
+                    | a :: args, [] ->
+                      pattern_of_glob_constr env avoid Anonymous a :: aux args []
+                    | [], _ -> []
+                  in aux args patnames
                 | _ ->
                   user_err_loc (loc, "interp_pats",
                                 str "Expecting a pattern for " ++ Id.print id))
@@ -416,12 +428,27 @@ let interp_pat env ?(avoid = ref Id.Set.empty) p pat =
             user_err_loc (loc, "interp_pats",
                           str "Expecting a pattern for " ++ Id.print id))
         gc
-    | None -> [pattern_of_glob_constr env avoid gc]
+    | None -> [pattern_of_glob_constr env avoid Anonymous gc]
   with Not_found -> anomaly (str"While translating pattern to glob constr")
+
+let rename_away_from ids pats =
+  let rec aux ?loc pat =
+    match pat with
+    | PUVar (id, true) when Id.Set.mem id !ids ->
+      let id' = next_ident_away id ids in
+      PUVar (id', true)
+    | PUVar (id, _) -> pat
+    | PUCstr (c, n, args) -> PUCstr (c, n, List.map (DAst.map_with_loc aux) args)
+    | PUInac c -> pat
+  in
+  List.map (DAst.map_with_loc aux) pats
 
 let interp_eqn env p eqn =
   let avoid = ref Id.Set.empty in
   let whereid = ref (Nameops.add_suffix p.program_id "abs_where") in
+  let patnames =
+    List.rev_map (fun decl -> Context.Rel.Declaration.get_name decl) p.program_sign
+  in
   let interp_pat = interp_pat env ~avoid in
   let rec aux curpats (pat, rhs) =
     let loc, pats =
@@ -429,9 +456,11 @@ let interp_eqn env p eqn =
       | SignPats pat ->
         avoid := Id.Set.union !avoid (ids_of_pats (Some p.program_id) [pat]);
         let loc = Constrexpr_ops.constr_loc pat in
-        loc, interp_pat (Some p) pat
+        loc, interp_pat (Some (p, patnames)) pat
       | RefinePats pats ->
-        avoid := Id.Set.union !avoid (ids_of_pats None pats);
+        let patids = ref (ids_of_pats None pats) in
+        let curpats = rename_away_from patids curpats in
+        avoid := Id.Set.union !avoid !patids;
         let loc = Constrexpr_ops.constr_loc (List.hd pats) in
         let pats = List.map (interp_pat None) pats in
         let pats = List.map (fun x -> List.hd x) pats in

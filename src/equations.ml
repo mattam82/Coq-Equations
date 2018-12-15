@@ -53,7 +53,7 @@ let nf_program_info evm p =
 
 let program_fixdecls p fixdecls =
   match p.program_rec with
-  | Some (Structural (NestedOn None)) -> (** Actually the definition is not self-recursive *)
+  | Some (Structural (NestedOn None)) -> (* Actually the definition is not self-recursive *)
      List.filter (fun decl ->
          let na = Context.Rel.Declaration.get_name decl in
          let id = Nameops.Name.get_id na in
@@ -233,7 +233,7 @@ let define_mutual_nested flags progs =
      let mutual =
        List.filter (fun (p, prog) -> not (is_nested p)) l
      in
-     (** In the mutually recursive case, only the functionals have been defined, 
+     (* In the mutually recursive case, only the functionals have been defined,
          we build the block and its projections now *)
      let structargs = Array.map_of_list (fun (p,_) ->
                           match p.program_rec with
@@ -253,7 +253,7 @@ let define_mutual_nested flags progs =
          let fixb = (Array.make 1 idx, 0) in
          let fixna = Array.make 1 (Name p.program_id) in
          let fixty = Array.make 1 (it_mkProd_or_LetIn p.program_arity p.program_sign) in
-         (** Apply to itself *)
+         (* Apply to itself *)
          let beforeargs = rel_list (signlen + 1) before in
          let fixref = mkRel (signlen + 1) in
          let (afterargs, afterctx) =
@@ -269,7 +269,7 @@ let define_mutual_nested flags progs =
            in aux (beforeargs @ [fixref], []) 0 afterctx
          in
          let fixbody = applist (Vars.lift after fixbody, afterargs) in
-         (** Apply to its arguments *)
+         (* Apply to its arguments *)
          let fixbody = mkApp (fixbody, extended_rel_vect after p.program_sign) in
 	 let fixbody = it_mkLambda_or_LetIn fixbody afterctx in
          let fixbody = it_mkLambda_or_LetIn fixbody p.program_sign in
@@ -295,7 +295,7 @@ let define_mutual_nested flags progs =
              | _ -> fixsubst (pred i) k ((false, mkRel i) :: acc) rest)
          | [] -> List.rev acc
        in
-       (** aux1 ... auxn *)
+       (* aux1 ... auxn *)
        let nested = fixsubst (List.length mutual) 0 [] l in
        let nested, mutual = List.partition (fun (x, y) -> x) nested in
        let gns = List.fold_right (fun (_, g) acc -> applist (g, acc) :: acc) nested [] in
@@ -388,7 +388,7 @@ let define_by_eqs ~poly opts eqs nt =
   let _kind = (Decl_kinds.Global, poly, Decl_kinds.Definition) in
   let baseid =
     let p = List.hd programs in Id.to_string p.program_id in
-  (** Necessary for the definition of [i] *)
+  (* Necessary for the definition of [i] *)
   let () =
     let trs = { TransparentState.full with TransparentState.tr_cst = Cpred.complement (Cpred.singleton fix_proto_ref) } in
     Hints.create_hint_db false baseid trs true
@@ -421,7 +421,7 @@ let define_by_eqs ~poly opts eqs nt =
     in
     let fixdecls =
       match p.program_rec with
-      | Some (Structural (NestedOn None)) | None -> (** Actually the definition is not self-recursive *)
+      | Some (Structural (NestedOn None)) | None -> (* Actually the definition is not self-recursive *)
          List.filter (fun decl ->
              let na = Context.Rel.Declaration.get_name decl in
              let id = Nameops.Name.get_id na in

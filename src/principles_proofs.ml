@@ -479,7 +479,7 @@ let rec aux_ind_fun info chop unfs unfids = function
           tclTRY (autorewrite_one info.term_info.base_id);
           observe "wheretac" wheretac;
           observe "applying compute rule" (cstrtac info.term_info);
-          (** Each of the recursive calls result in an assumption. If it
+          (* Each of the recursive calls result in an assumption. If it
               is a rec call in a where clause to itself we need to
               explicitely rewrite with the unfolding lemma (as the where
               clause induction hypothesis is about the unfolding whereas

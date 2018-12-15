@@ -90,7 +90,7 @@ let term_of_tree status isevar env0 tree =
              (* FIXME push ctx too if mutual wheres *)
              let evm, c', ty' = aux env evm (Lazy.force where_splitting) in
              (* let inst = List.map get_id where_nctx in *)
-             (** In de Bruijn context *)
+             (* In de Bruijn context *)
              (* let tydb = Vars.subst_vars inst ty' in *)
              let evm, c', ty' =
                let hd, args = decompose_appvect evm where_term in

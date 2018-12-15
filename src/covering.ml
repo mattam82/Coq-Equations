@@ -642,8 +642,19 @@ let eq_context_nolet env sigma (g : rel_context) (d : rel_context) =
       (List.fold_right2 (fun decl decl' (env, acc) ->
            if acc then
              let t = get_type decl and t' = get_type decl' in
-             (push_rel decl env,
-              (eq_constr sigma t t' || is_conv env sigma t t'))
+             let res = (eq_constr sigma t t' ||
+                        (* FIXME: is_conv is not respecting some universe equalities in sigma *)
+                        let t = Evarutil.nf_evar sigma t in
+                        let t' = Evarutil.nf_evar sigma t' in
+                        is_conv env sigma t t') in
+             if res = false then
+               Printf.eprintf
+                 "While comparing contexts: %s and %s : %s\n"
+                 (Pp.string_of_ppcmds (Printer.pr_constr_env env sigma (EConstr.Unsafe.to_constr t)))
+                 (Pp.string_of_ppcmds (Printer.pr_constr_env env sigma (EConstr.Unsafe.to_constr t')))
+                 (* (Pp.string_of_ppcmds (UGraph.pr_universes Univ.Level.pr (Evd.universes sigma))); *)
+                 (Pp.string_of_ppcmds (pr_evar_map ~with_univs:true None env sigma));
+             (push_rel decl env, res)
            else env, acc) g d (env, true))
   with Invalid_argument _ (* "List.fold_right2" *) -> false
      | e ->
@@ -1501,7 +1512,7 @@ let compute_rec_data env data p clauses =
   | Some (Structural ann) ->
     let sign =
       match ann with
-      | NestedOn None -> (** Actually the definition is not self-recursive *)
+      | NestedOn None -> (* Actually the definition is not self-recursive *)
         let fixdecls =
           List.filter (fun decl ->
               let na = Context.Rel.Declaration.get_name decl in
@@ -1647,12 +1658,12 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
     in
     let check_innac (user, forced) =
       DAst.with_loc_val (fun ?loc user ->
-      if Option.is_empty loc then
-        () (** Allow patterns not written by the user to be forced innaccessible silently *)
+      (* Allow patterns not written by the user to be forced innaccessible silently *)
+      if Option.is_empty loc then ()
       else
         match user with
         | PUVar (i, true) ->
-          (** If the pattern comes from a wildcard, allow forcing innaccessibles too *)
+          (* If the pattern comes from a wildcard, allow forcing innaccessibles too *)
           ()
         | _ ->
           let ctx, envctx, liftn, subst = env_of_rhs evars ctx env s lets in
