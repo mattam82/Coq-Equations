@@ -56,3 +56,18 @@ foo5 (@e2 i e) := absw e
   where absw : expr i -> nat :=
   absw e1 := 0;
   absw (e2 e') := foo5 e'.
+
+Equations foo6 : nat :=
+  foo6 := 0.
+
+Equations(noeqns noind) foo7 : nat -> nat :=
+  foo7 0 := 0;
+  foo7 (S x) := if bla then 0 else 1 + bla' eq_refl + foo7 x
+
+  where bla : bool :=
+  { bla := true }
+
+  where bla' : bla = bla -> nat :=
+  { bla' H := 1 + if bla then 1 else 2 + x }.
+
+Next Obligation.

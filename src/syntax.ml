@@ -394,27 +394,26 @@ let interp_pat env ?(avoid = ref Id.Set.empty) p pat =
     match p with
     | Some ({ program_id = id }, patnames) ->
       DAst.with_loc_val (fun ?loc g ->
-          match g with
-          | GApp (fn, args) ->
-            DAst.with_loc_val (fun ?loc gh ->
-                match gh with
-                | GVar fid when Id.equal fid id ->
-                  let rec aux args patnames =
-                    match args, patnames with
-                    | a :: args, patname :: patnames ->
-                      pattern_of_glob_constr env avoid patname a :: aux args patnames
-                    | a :: args, [] ->
-                      pattern_of_glob_constr env avoid Anonymous a :: aux args []
-                    | [], _ -> []
-                  in aux args patnames
-                | _ ->
-                  user_err_loc (loc, "interp_pats",
-                                str "Expecting a pattern for " ++ Id.print id))
-              fn
-          | _ ->
-            user_err_loc (loc, "interp_pats",
-                          str "Expecting a pattern for " ++ Id.print id))
-        gc
+          let fn, args =
+            match g with
+            | GApp (fn, args) -> fn, args
+            | _ -> DAst.make ?loc g, []
+          in
+          DAst.with_loc_val (fun ?loc gh ->
+              match gh with
+              | GVar fid when Id.equal fid id ->
+                let rec aux args patnames =
+                  match args, patnames with
+                  | a :: args, patname :: patnames ->
+                    pattern_of_glob_constr env avoid patname a :: aux args patnames
+                  | a :: args, [] ->
+                    pattern_of_glob_constr env avoid Anonymous a :: aux args []
+                  | [], _ -> []
+                in aux args patnames
+              | _ ->
+                user_err_loc (loc, "interp_pats",
+                              str "Expecting a pattern for " ++ Id.print id))
+            fn) gc
     | None -> [pattern_of_glob_constr env avoid Anonymous gc]
   with Not_found -> anomaly (str"While translating pattern to glob constr")
 

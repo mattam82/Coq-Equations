@@ -1395,7 +1395,7 @@ let compute_fixdecls_data env evd ?data programs =
     List.map2 (fun i fixprot -> of_tuple (Name i, None, fixprot)) names fixprots in
   data, List.rev fixdecls, fixprots
 
-let interp_arity env evd ctx ~poly ~is_rec ~with_evars (((loc,i),rec_annot,l,t,by),clauses as ieqs) =
+let interp_arity env evd ~poly ~is_rec ~with_evars (((loc,i),rec_annot,l,t,by),clauses as ieqs) =
   let ienv, ((env', sign), impls) = Equations_common.evd_comb1 (interp_context_evars env) evd l in
   let (arity, impls') = Equations_common.evd_comb1 (interp_type_evars_impls env' ?impls:None) evd t in
   let impls = impls @ impls' in
@@ -1902,8 +1902,7 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
   let aux (data,lets,nlets,coverings,env)
       (((loc,id),nested,b,t,reca),clauses as eqs) =
 
-    let p = interp_arity env evars ctx ~poly:false ~is_rec:None ~with_evars:true eqs in
-    let env0 = Global.env () in (* To get the comp_proj constant *)
+    let p = interp_arity env evars ~poly:false ~is_rec:None ~with_evars:true eqs in
     let clauses = Metasyntax.with_syntax_protection (fun () ->
       List.iter (Metasyntax.set_notation_for_interpretation env data.intenv) data.notations;
       List.map (interp_eqn env p) clauses) ()
@@ -1914,8 +1913,8 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
     let pre_type = program_type p in
     let sign, extpats, clauses = compute_rec_data env data p clauses in
     let p, ctxpats =
-      let sign = sign @ ctx in
-      let extpats = pats_of_sign ctx in
+      let sign = sign @ lets in
+      let extpats = pats_of_sign lets in
       { p with program_sign = sign }, extpats
     in
     let problem = id_subst p.program_sign in
@@ -1934,7 +1933,7 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
     let ev = destEvar !evars term in
     let path = Evar (fst ev) :: path in
     let splitting = lazy (covering env0 evars p data clauses path problem (extpats @ ctxpats) p.program_arity) in
-    let termapp = mkApp (term, extended_rel_vect 0 ctx) in
+    let termapp = mkApp (term, extended_rel_vect 0 lets) in
     let decl = make_def (Name id) (Some termapp) pre_type in
     (* let nadecl = make_named_def id (Some (substl inst term)) (program_type p) in *)
     let covering =

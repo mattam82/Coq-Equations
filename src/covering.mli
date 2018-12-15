@@ -412,7 +412,7 @@ val compute_fixdecls_data :
            Equations_common.rel_declaration list * EConstr.t list
 
 val interp_arity : Environ.env ->
-  Evd.evar_map ref -> rel_context ->
+  Evd.evar_map ref ->
   poly:bool ->
   is_rec:bool option ->
   with_evars:bool ->

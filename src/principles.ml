@@ -513,7 +513,7 @@ let map_proto evd recarg f ty =
      let app =
        let args = Termops.rel_list 0 (List.length lctx) in
        let before, after =
-         if (* recarg == -1 *) true then CList.drop_last args, []
+         if recarg == -1 then CList.drop_last args, []
          else let bf, after = CList.chop (pred recarg) args in
               bf, List.tl after
        in
@@ -621,7 +621,7 @@ let subst_rec_split env evd p f path prob s split =
        let recarg, proj = match p.program_rec with
        | Some (WellFounded (_, _, r)) ->
           (match r with
-           | (recarg, id) -> (Some (-1)), mkVar id)
+           | (loc, id) -> (Some (-1)), mkVar id)
        | _ -> anomaly Pp.(str"Not looking at the right program")
        in
        (* let rest = subst_comp_proj_split !evd f proj rest in *)

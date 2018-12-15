@@ -388,9 +388,10 @@ let rec aux_ind_fun info chop unfs unfids = function
                in
                let env = Global.env () in
                let evd = Evd.empty in
-               Feedback.msg_debug (str"Unfolded where " ++ str"term: " ++ pr_econstr_env env evd w.where_term ++
-                                   str" type: " ++ pr_econstr_env env evd w.where_type ++ str" assoc " ++
-                                   pr_econstr_env env evd assoc);
+               if !Equations_common.debug then
+                 Feedback.msg_debug (str"Unfolded where " ++ str"term: " ++ pr_econstr_env env evd w.where_term ++
+                                     str" type: " ++ pr_econstr_env env evd w.where_type ++ str" assoc " ++
+                                     pr_econstr_env env evd assoc);
                let ctxlen = List.length (pi1 w.where_prob) - List.length unfctx in
                let before, after = List.chop ctxlen (pi1 w.where_prob) in
                let subst =
@@ -402,10 +403,22 @@ let rec aux_ind_fun info chop unfs unfids = function
                    anomaly (str"Mismatch between hypotheses in named context and program")
                  else List.rev_map (fun decl -> mkVar (Context.Named.Declaration.get_id decl)) hyps
                in
-               let ctx = subst_rel_context 0 subst before in
-               Feedback.msg_debug (str"Unfolded where substitution:  " ++
-                                   prlist_with_sep spc (Printer.pr_econstr_env env evd) subst);
-               ctx, substl subst w.where_term, -1 (* + List.length ctx *), unf :: unfids
+               let origwhere = substl (List.rev subst) s.where_term in
+               let args =
+                 let assochd, assocargs = decompose_app evd assoc in
+                 let orighd, origargs = decompose_app evd origwhere in
+                 let assocargs', origargs' = List.filter2 (fun a a' -> isRel evd a) assocargs origargs in
+                 origargs'
+               in
+               let newwhere = substl (List.rev args) w.where_term in
+               let ctx = subst_rel_context 0 (List.rev args) before in
+               if !Equations_common.debug then
+                 Feedback.msg_debug (str"Unfolded where substitution:  " ++
+                                     prlist_with_sep spc (Printer.pr_econstr_env env evd) subst ++
+                                     str"Substituted orig " ++ Printer.pr_econstr_env env evd origwhere ++
+                                     str"New where term" ++ Printer.pr_econstr_env env evd newwhere ++
+                                     str" context map " ++ pr_context env Evd.empty ctx);
+               ctx, newwhere, -1 (* + List.length ctx *), unf :: unfids
           in
           let chop = fstchop, snd chop in
           let wheretac =
