@@ -239,30 +239,17 @@ let pr_equation_options  _prc _prlc _prt l =
 
 type rec_type = 
   | Guarded of (Id.t * rec_annot) list (* for mutual rec *)
-  | Logical of logical_rec
-
-and logical_rec =
-  | LogicalDirect of Id.t with_loc
-  | LogicalProj of rec_info
-
-and rec_info = {
-  comp_app : Constr.t;
-  comp_proj : Constant.t;
-  comp_recarg : int;
-}
+  | Logical of Id.t with_loc
 
 let is_structural = function Some (Guarded _) -> true | _ -> false
 
-let is_rec_call sigma r f =
-  match r with
-  | LogicalProj r -> Equations_common.is_global sigma (ConstRef r.comp_proj) f
-  | LogicalDirect (loc, id) -> 
-    match EConstr.kind sigma f with
-    | Var id' -> Id.equal id id'
-    | Const (c, _) ->
-      let id' = Label.to_id (Constant.label c) in
-      Id.equal id id'
-    | _ -> false
+let is_rec_call sigma (loc, id) f =
+  match EConstr.kind sigma f with
+  | Var id' -> Id.equal id id'
+  | Const (c, _) ->
+    let id' = Label.to_id (Constant.label c) in
+    Id.equal id id'
+  | _ -> false
 
 let default_loc = Loc.make_loc (0, 0)
          
@@ -294,7 +281,7 @@ let ids_of_pats id pats =
     Id.Set.empty pats
 
 type wf_rec_info =
-  Constrexpr.constr_expr * Constrexpr.constr_expr option * logical_rec
+  Constrexpr.constr_expr * Constrexpr.constr_expr option * Id.t with_loc
 
 type program_rec_info =
   (rec_annot, wf_rec_info) by_annot
@@ -527,15 +514,8 @@ let interp_eqn env p eqn =
               List.map (fun (c, expl) -> CAst.with_loc_val (aux' ids) c, expl) args in
             let c = CApp ((None, CAst.(make ~loc (CRef (qid', ie)))), args) in
             let arg = CAst.make ~loc (CApp ((None, CAst.make ~loc c), [chole id' loc])) in
-            (match r with
-             | LogicalDirect _ -> arg
-             | LogicalProj r ->
-               let arg = [arg, None] in
-               let qidproj = Nametab.shortest_qualid_of_global
-                   ?loc:qid'.CAst.loc Id.Set.empty (ConstRef r.comp_proj) in
-               CAst.make ~loc (CApp ((None, CAst.make ?loc:qid'.CAst.loc (CRef (qidproj, None))),
-                                     args @ arg))))
-      | CHole (k, i, Some eqns) when Genarg.has_type eqns (Genarg.rawwit wit_equations_list) ->
+            arg)
+          | CHole (k, i, Some eqns) when Genarg.has_type eqns (Genarg.rawwit wit_equations_list) ->
          let eqns = Genarg.out_gen (Genarg.rawwit wit_equations_list) eqns in
          let id = !whereid in
          let () = avoid := Id.Set.add id !avoid in

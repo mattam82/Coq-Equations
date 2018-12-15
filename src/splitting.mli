@@ -29,7 +29,7 @@ val term_of_tree :
 
 (** Compilation from splitting tree to terms. *)
 
-val is_comp_obl : Evd.evar_map -> logical_rec option -> Evar_kinds.t -> bool
+val is_comp_obl : Evd.evar_map -> Id.t with_loc option -> Evar_kinds.t -> bool
 
 type term_info = {
   term_id : Names.GlobRef.t;
@@ -56,7 +56,7 @@ val define_tree :
   Evd.evar_map ref ->
   env ->
   Id.t * rel_context * types ->
-  logical_rec option ->
+  Id.t with_loc option ->
   splitting ->
   (splitting -> (Constr.t -> Constr.t) ->
    term_info ->

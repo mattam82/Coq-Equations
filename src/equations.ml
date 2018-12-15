@@ -104,11 +104,8 @@ let define_principles flags rec_info fixprots progs =
       | Some (Logical r) ->
 	 let prob = id_subst sign in
          (* let () = msg_debug (str"udpdate split" ++ spc () ++ pr_splitting env split) in *)
-         let recarg = match r with
-           | LogicalDirect _ -> Some (-1)
-           | LogicalProj r -> Some r.comp_recarg
-         in
-	 let unfold_split, where_map =
+         let recarg = Some (-1) in
+         let unfold_split, where_map =
            update_split env evd p rec_info (of_constr f)
              prob [(i, (recarg, of_constr f))] prog.program_split
          in

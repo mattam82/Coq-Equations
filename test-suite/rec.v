@@ -46,7 +46,7 @@ Section Nested.
   f (S n) := exist _ (proj1_sig (f (proj1_sig (f n)))) _.
 
   Next Obligation. 
-    unfold f_comp_proj. repeat destruct_proj1_sig.
+    repeat destruct_proj1_sig.
     revert H. destruct_proj1_sig.
     intros. omega.
   Defined.

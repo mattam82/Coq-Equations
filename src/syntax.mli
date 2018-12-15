@@ -111,17 +111,10 @@ val ppclause : clause -> unit
 
 type rec_type =
   | Guarded of (Id.t * rec_annot) list (* for mutual rec *)
-  | Logical of logical_rec
-and logical_rec =
-  | LogicalDirect of Id.t with_loc
-  | LogicalProj of rec_info
-and rec_info = {
-  comp_app : constr;
-  comp_proj : Constant.t;
-  comp_recarg : int;
-}
+  | Logical of Id.t with_loc
+
 val is_structural : rec_type option -> bool
-val is_rec_call : Evd.evar_map -> logical_rec -> EConstr.constr -> bool
+val is_rec_call : Evd.evar_map -> Id.t with_loc -> EConstr.constr -> bool
 val next_ident_away : Id.t -> Id.Set.t ref -> Id.t
 
 type equation_option = 
@@ -138,7 +131,7 @@ type equation_options = equation_option list
 val pr_equation_options : 'a -> 'b -> 'c -> 'd -> Pp.t
 
 type wf_rec_info =
-  Constrexpr.constr_expr * Constrexpr.constr_expr option * logical_rec
+  Constrexpr.constr_expr * Constrexpr.constr_expr option * Id.t with_loc
 
 type program_rec_info =
   (rec_annot, wf_rec_info) by_annot

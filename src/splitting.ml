@@ -306,9 +306,7 @@ let is_comp_obl sigma comp hole_kind =
   | None -> false
   | Some r -> 
       match hole_kind, r with 
-      | ImplicitArg (ConstRef c, (n, _), _), LogicalProj r ->
-	(* Constant.equal c r.comp_proj &&  *)n == 0
-      | ImplicitArg (ConstRef c, (n, _), _), LogicalDirect (loc, id) ->
+      | ImplicitArg (ConstRef c, (n, _), _), (loc, id) ->
         is_rec_call sigma r (mkConst c)
       | _ -> false
 

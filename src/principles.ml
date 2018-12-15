@@ -150,7 +150,6 @@ let substitute_args args ctx =
   in aux (List.rev ctx) args
 
 let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
-  let lenprotos = List.length protos in
   let proto_fs = List.map (fun ((f,args), _, _, _, _) -> f) protos in
   let find_rec_call f args =
     let fm ((f',filter), alias, idx, sign, arity) =
@@ -185,18 +184,6 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
     in
     try Some (CList.find_map fm protos)
     with Not_found -> None
-  in
-  let find_rec_call f args =
-    match find_rec_call f args with
-    | Some (i, arity, filter, args', rest) -> Some (i, arity, filter, args', rest)
-    | None ->
-        match is_rec with
-        | Some (Logical r) when is_rec_call sigma r (EConstr.of_constr f) ->
-           (match r with
-           | LogicalDirect _ -> None
-           | LogicalProj r ->
-              Some (lenprotos - 1, r.comp_app, [] (* filter *), [], (CList.drop_last args, [])))
-        | _ -> None
   in
   let occ = ref 0 in
   let rec aux n env hyps c =
@@ -634,8 +621,7 @@ let subst_rec_split env evd p f path prob s split =
        let recarg, proj = match p.program_rec with
        | Some (WellFounded (_, _, r)) ->
           (match r with
-           | LogicalDirect (recarg, id) -> (Some (-1)), mkVar id
-           | LogicalProj r -> (Some r.comp_recarg), mkConst r.comp_proj)
+           | (recarg, id) -> (Some (-1)), mkVar id)
        | _ -> anomaly Pp.(str"Not looking at the right program")
        in
        (* let rest = subst_comp_proj_split !evd f proj rest in *)

@@ -644,10 +644,7 @@ let simpl_of csts =
     Global.set_strategy (ConstKey cst) level) csts
   in opacify, transp
 
-let get_proj_eval_ref p =
-  match p with
-  | LogicalDirect (loc, id) -> EvalVarRef id
-  | LogicalProj r -> EvalConstRef r.comp_proj
+let get_proj_eval_ref (loc, id) = EvalVarRef id
 
 let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split gl =
   let depelim h = depelim_tac h in

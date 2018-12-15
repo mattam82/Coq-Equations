@@ -26,7 +26,6 @@ open EConstr
 open EConstr.Vars   
 
 open Ltac_plugin
-open Extraction_plugin
 
 (** Abstract syntax for dependent pattern-matching. *)
 
@@ -1450,40 +1449,7 @@ let interp_arity env evd ctx ~poly ~is_rec ~with_evars (((loc,i),rec_annot,l,t,b
       program_rec = Some (Structural ann);
       program_impls = impls }
   | Some (WellFounded (c, r)) ->
-    (* let wfenv = push_rel_context sign env in
-     * let evars, c = interp_constr_evars wfenv !evd c in
-     * let evars, r =
-     *   match r with
-     *   | Some r ->
-     *     (\* let ty = Retyping.get_type_of env evars c in *\)
-     *     (\* TODO use [relation ty] constraint *\)
-     *     let evars, r = interp_constr_evars env evars r in
-     *     evars, Some r
-     *   | None -> evars, None
-     * in *)
-    let projid = add_suffix i "_comp_proj" in
-    let compproj =
-      let body =
-        it_mkLambda_or_LetIn (mkRel 1)
-          (of_tuple (Name (Id.of_string "comp"), None, arity) :: sign @ ctx)
-      in
-      let _ty = e_type_of (Global.env ()) evd body in
-      let univs = Evd.const_univ_entry ~poly !evd in
-      let ce =
-        Declare.definition_entry (* ~fix_exn: FIXME needed ? *)
-          ~univs
-          (to_constr !evd body)
-      in
-      Declare.declare_constant projid
-        Entries.(DefinitionEntry ce, Decl_kinds.(IsDefinition Definition))
-    in
-    Impargs.declare_manual_implicits true (GlobRef.ConstRef compproj) [impls];
-    Table.extraction_inline true [Libnames.qualid_of_ident projid];
-      (* LogicalProj { comp_app = to_constr !evd arity;
-       *                            comp_proj = compproj; comp_recarg = succ (length (sign @ ctx)) } in *)
-    let compinfo =
-      LogicalDirect (loc, i)
-    in
+    let compinfo = (loc, i) in
     { program_loc = loc;
       program_id = i;
       program_sign = sign;
