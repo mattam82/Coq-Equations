@@ -62,16 +62,16 @@ Ltac solve_noconf_inv_equiv :=
 
 Ltac solve_noconf := simpl; intros;
     match goal with
-      [ H : @eq _ _ _ |- @eq _ _ _ ] => solve_noconf_inv_equiv
-    | [ H : @eq _ _ _ |- _ ] => solve_noconf_prf
-    | [ |- @eq _ _ _ ] => solve_noconf_inv
+      [ H : @eq _ _ _ |- @eq _ _ _ ] => try solve_noconf_inv_equiv
+    | [ H : @eq _ _ _ |- _ ] => try solve_noconf_prf
+    | [ |- @eq _ _ _ ] => try solve_noconf_inv
     end.
 
 Ltac solve_noconf_hom := simpl; intros;
     match goal with
-      [ H : @eq _ _ _ |- @eq _ _ _ ] => solve_noconf_inv_equiv
-    | [ H : @eq _ _ _ |- _ ] => solve_noconf_prf
-    | [ |- @eq _ _ _ ] => solve_noconf_inv
+      [ H : @eq _ _ _ |- @eq _ _ _ ] => try solve_noconf_inv_equiv
+    | [ H : @eq _ _ _ |- _ ] => try solve_noconf_prf
+    | [ |- @eq _ _ _ ] => try solve_noconf_inv
     end.
 
 Derive NoConfusion for unit bool nat option sum Datatypes.prod list sigT sig.

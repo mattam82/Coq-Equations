@@ -989,9 +989,10 @@ let declare_funind info alias env evd is_rec protos progs
     ignore(Obligations.add_definition
              ~univ_hook:(Obligations.mk_univ_hook hookind)
              ~kind:info.term_info.decl_kind
-             indid stmt ~tactic ctx [||])
+             indid stmt ~tactic:(Tacticals.New.tclTRY tactic) ctx [||])
   in
-  try launch_ind (ind_fun_tac is_rec f info id split unfsplit progs)
+  let tac = (ind_fun_tac is_rec f info id split unfsplit progs) in
+  try launch_ind tac
   with e ->
     Feedback.msg_warning Pp.(str "Induction principle could not be proved automatically: " ++ fnl () ++
                              CErrors.print e);
