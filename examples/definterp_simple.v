@@ -9,8 +9,7 @@ Derive Signature NoConfusion NoConfusionHom for t.
 
 Inductive Ty : Set :=
 | unit : Ty
-| arrow (t u : Ty) : Ty
-| ref : Ty -> Ty.
+| arrow (t u : Ty) : Ty.
 
 Derive NoConfusion for Ty.
 
@@ -32,10 +31,7 @@ Inductive Expr : Ctx -> Ty -> Set :=
 | tt {Γ} : Expr Γ unit
 | var {Γ} {t} : In t Γ -> Expr Γ t
 | abs {Γ} {t u} : Expr (t :: Γ) u -> Expr Γ (t ⇒ u)
-| app {Γ} {t u} : Expr Γ (t ⇒ u) -> Expr Γ t -> Expr Γ u
-| new {Γ t} : Expr Γ t -> Expr Γ (ref t)
-| deref {Γ t} : Expr Γ (ref t) -> Expr Γ t
-| assign {Γ t} : Expr Γ (ref t) -> Expr Γ t -> Expr Γ unit.
+| app {Γ} {t u} : Expr Γ (t ⇒ u) -> Expr Γ t -> Expr Γ u.
 
 Derive Signature NoConfusion NoConfusionHom for Expr.
 
@@ -54,18 +50,13 @@ Section MapAll.
   map_all (all_cons p ps) := all_cons (f _ p) (map_all ps).
 End MapAll.
 
-Definition StoreTy := list Ty.
-
-Inductive Val : StoreTy -> Ty -> Set :=
-| val_unit {Σ} : Val Σ unit
-| val_closure {Σ Γ t u} : Expr (t :: Γ) u -> All (Val Σ) Γ -> Val Σ (t ⇒ u)
-| val_loc {Σ t} : t ∈ Σ -> Val Σ (ref t).
+Inductive Val : Ty -> Set :=
+| val_unit : Val unit
+| val_closure {Γ t u} : Expr (t :: Γ) u -> All Val Γ -> Val (t ⇒ u).
 
 Derive Signature NoConfusion NoConfusionHom for Val.
 
-Definition Env (Γ : Ctx) (Σ : StoreTy) : Set := All (Val Σ) Γ.
-
-Definition Store (Σ : StoreTy) := All (Val Σ) Σ.
+Definition Env (Γ : Ctx) : Set := All Val Γ.
 
 Equations lookup : forall {A P xs} {x : A}, All P xs -> x ∈ xs -> P x :=
   lookup (all_cons p _) here := p;
@@ -75,55 +66,16 @@ Equations update : forall {A P xs} {x : A}, All P xs -> x ∈ xs -> P x -> All P
   update (all_cons p ps) here        p' := all_cons p' ps;
   update (all_cons p ps) (there ins) p' := all_cons p (update ps ins p').
 
-Equations lookup_store {Σ t} : t ∈ Σ -> Store Σ -> Val Σ t :=
-  lookup_store l σ := lookup σ l.
-
-Equations update_store {Σ t} : t ∈ Σ -> Val Σ t -> Store Σ -> Store Σ :=
-  update_store l v σ := update σ l v.
-Import Sigma_Notations.
-
-Definition store_incl (Σ Σ' : StoreTy) := &{ Σ'' : _ & Σ' = Σ ++ Σ'' }.
-Infix "⊑" := store_incl (at level 10).
-
-Section StoreIncl.
-  Context {Σ Σ' : StoreTy} (incl : Σ ⊑ Σ').
-
-  Lemma pres_in t : t ∈ Σ -> t ∈ Σ'.
-  Proof. destruct incl. subst. induction 1. econstructor; auto.
-         red in incl. destruct incl. apply List.app_inv_head in pr2. subst.
-         constructor 2. simpl.
-         apply IHIn. now exists pr0.
-  Defined.
-
-  Equations(noind) weaken_val {t} (v : Val Σ t) : Val Σ' t :=
-   weaken_val val_unit := val_unit;
-   weaken_val (val_closure b e) := val_closure b (map_all (fun t v => weaken_val v) e);
-   weaken_val (val_loc H) := val_loc (pres_in _ H).
-
-  Definition weaken_env {Γ} (v : Env Γ Σ) : Env Γ Σ' :=
-    map_all (@weaken_val) v.
-
-  Lemma trans_incl {Σ''} (incl' : Σ' ⊑ Σ'') : Σ ⊑ Σ''.
-  Proof.
-    destruct incl as [? ->], incl' as [? ->].
-    exists (pr1 ++ pr0). now rewrite app_assoc.
-  Qed.
-
-End StoreIncl.
-
-Infix "⊚" := trans_incl (at level 10).
-
-Equations M : forall (Γ : Ctx) (P : StoreTy -> Set) (Σ : StoreTy), Type :=
-  M Γ P Σ := forall (E : Env Σ Γ) (μ : Store Σ), option &{ Σ' : _ & Store Σ' * P Σ' * Σ ⊑ Σ'}.
+Equations M : Ctx -> Type -> Type :=
+  M Γ A := Env Γ -> option A.
 
 Require Import Utf8.
 
-Equations bind {Σ Γ} {P Q : StoreTy -> Type} (f : M Γ P Σ) (g : ∀ {Σ'}, P Σ' -> M Γ Q Σ') → M Γ Q Σ :=
-  bind f g E μ := match m E μ with
-                  | None => None
-                  | Some (x => f x γ
+Equations bind : ∀ {Γ A B}, M Γ A → (A → M Γ B) → M Γ B :=
+  bind m f γ := match m γ with
+              | None => None
+              | Some x => f x γ
               end.
-
 Infix ">>=" := bind (at level 20, left associativity).
 
 Equations ret : ∀ {Γ A}, A → M Γ A :=
@@ -177,6 +129,7 @@ Proof.
   specialize (H0 v0 _ _ H H1). apply H0.
   discriminate.
 
+  (* Context mismatch *)
   unfold bind in H2.
   destruct (eval k arg env) eqn:Heq.
   specialize (H _ _ Heq).
