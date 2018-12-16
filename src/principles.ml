@@ -570,9 +570,11 @@ let subst_rec_split env evd p f path prob s split =
        let islogical = List.exists (fun (id, (recarg, f)) -> Option.has_some recarg) s in
        let subst_where ({where_program; where_path; where_orig;
                          where_prob; where_arity; where_term;
-                         where_type; where_splitting} as w) =
+                         where_type; where_splitting} as w) (subst_wheres, wheres) =
+         let wcontext = where_context subst_wheres in
+         let wsubst = lift_subst env !evd subst wcontext in
          let where_arity = mapping_constr !evd subst where_arity in
-         let where_term = mapping_constr !evd subst where_term in
+         let where_term = mapping_constr !evd wsubst where_term in
          let where_type = mapping_constr !evd subst where_type in
          let cutprob = cut_problem s (pi1 where_prob) in
          let where_prob = id_subst (pi3 cutprob) in
@@ -598,11 +600,13 @@ let subst_rec_split env evd p f path prob s split =
              (applist (ev, extended_rel_list 0 (pi1 lhs')), Evar evk :: List.tl where_path)
            else (where_term, where_path)
          in
-         {where_program; where_path; where_orig; where_prob = where_prob;
-          where_arity; where_term;
-          where_type; where_splitting = Lazy.from_val where_splitting }
+         let subst_where =
+           {where_program; where_path; where_orig; where_prob = where_prob;
+            where_arity; where_term;
+            where_type; where_splitting = Lazy.from_val where_splitting }
+         in (subst_where :: subst_wheres, w :: wheres)
        in
-       let where' = List.map subst_where where in
+       let where', _ = List.fold_right subst_where where ([], []) in
        Compute (lhs', where', mapping_constr !evd substprog ty,
                 mapping_rhs !evd substprog c)
 
@@ -739,6 +743,36 @@ type alias = ((EConstr.t * int list) * Names.Id.t * Covering.splitting)
 
 let make_alias (f, id, s) = ((f, []), id, s)
 
+let smash_rel_context sigma ctx =
+  let open Context.Rel.Declaration in
+  List.fold_right
+    (fun decl (subst, pats, ctx') ->
+       match get_value decl with
+       | Some b ->
+         let b' = substl subst b in
+         (b' :: subst, List.map (lift_pat 1) pats, ctx')
+       | None -> (mkRel 1 :: List.map (lift 1) subst,
+                  PRel 1 :: List.map (lift_pat 1) pats,
+                  map_constr (Vars.substl subst) decl :: ctx'))
+    ctx ([], [], [])
+
+let _remove_let_pats sigma subst patsubst pats =
+  let remove_let pat pats =
+    match pat with
+    | PRel n ->
+      let pat = List.nth patsubst (pred n) in
+      (match pat with
+       | PInac _ -> pats
+       | p -> p :: pats)
+    | _ -> specialize sigma patsubst pat :: pats
+  in
+  List.fold_right remove_let pats []
+
+let smash_ctx_map env sigma (l, p, r as m) =
+  let subst, patsubst, r' = smash_rel_context sigma r in
+  let smashr' = (r, patsubst, r') in
+  compose_subst env ~sigma m smashr', subst
+
 let computations env evd alias refine eqninfo =
   let { equations_prob = prob;
         equations_where_map = wheremap;
@@ -746,9 +780,10 @@ let computations env evd alias refine eqninfo =
         equations_split = split } = eqninfo in
   let rec computations env prob f alias fsubst refine = function
   | Compute (lhs, where, ty, c) ->
-     let where_comp w =
-       (* Where term is in lhs *)
-       let term, args = decompose_app evd w.where_term in
+     let where_comp w (wheres, where_comps) =
+       (* Where term is in lhs + wheres *)
+       let lhsterm = substl wheres w.where_term in
+       let term, args = decompose_app evd lhsterm in
        let alias, fsubst =
          try
          let (f, id, s) = match List.hd w.where_path with
@@ -773,25 +808,26 @@ let computations env evd alias refine eqninfo =
              else hd :: aux (succ i) tl
          in aux 0 args
        in
-       let term = applist (term, args') in
-       let comps = computations env w.where_prob term None fsubst (Regular,false) (Lazy.force w.where_splitting) in
+       let subterm = applist (term, args') in
+       let wsmash, smashsubst = smash_ctx_map env evd w.where_prob in
+       let comps = computations env wsmash subterm None fsubst (Regular,false) (Lazy.force w.where_splitting) in
        let arity = (* substn_vars lift inst  *)w.where_arity in
        let termf =
          if not (Evar.Map.is_empty wheremap) then
-           term, [0]
+           subterm, [0]
          else
-           term, [List.length args']
+           subterm, [List.length args']
        in
-       (termf, alias, w.where_orig, pi1 w.where_prob, arity,
-        List.rev_map pat_constr (pi2 w.where_prob) (*?*),
-        [] (*?*), comps)
+       let where_comp =
+         (termf, alias, w.where_orig, pi1 wsmash, substl smashsubst arity,
+          List.rev_map pat_constr (pi2 wsmash) (*?*),
+          [] (*?*), comps)
+       in (lhsterm :: wheres, where_comp :: where_comps)
      in
-     let wheres = List.map where_comp where in
+     let inst, wheres = List.fold_right where_comp where ([],[]) in
      let ctx = compose_subst env ~sigma:evd lhs prob in
-     let inst = where_instance where in
-     (* msg_debug (str"where_instance: " ++ prlist_with_sep spc pr_c inst); *)
-     let ninst = List.map (fun n -> Nameops.Name.get_id (get_name n)) (pi1 ctx) in
-     let inst = List.map (fun c -> substn_vars 1 ninst c) inst in
+     if !Equations_common.debug then
+       Feedback.msg_debug Pp.(str"where_instance: " ++ prlist_with_sep spc (Printer.pr_econstr_env env evd) inst);
      let fn c =
        let c' = Reductionops.nf_beta env evd (substl inst c) in
        substitute_aliases evd fsubst c'

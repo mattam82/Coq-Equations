@@ -60,14 +60,28 @@ foo5 (@e2 i e) := absw e
 Equations foo6 : nat :=
   foo6 := 0.
 
-Equations(noeqns noind) foo7 : nat -> nat :=
-  foo7 0 := 0;
-  foo7 (S x) := if bla then 0 else 1 + bla' eq_refl + foo7 x
+Equations foo7 : nat -> nat :=
+  foo7 x := if bla then 0 else 1 + bla' eq_refl
 
   where bla : bool :=
   { bla := true }
 
   where bla' : bla = bla -> nat :=
-  { bla' H := 1 + if bla then 1 else 2 + x }.
+  { bla' H := 1 + if bla then 1 else 2 }.
 
-Next Obligation.
+Equations foo8 : nat -> nat :=
+{ foo8 0 := 0;
+  foo8 (S x) := if bla then 0 else 1 + bla' eq_refl + foo8 x
+
+  where bla : bool :=
+  { bla := true }
+
+  where bla' : bla = bla -> nat :=
+  { bla' H := 1 + if bla then 1 else 2 + foo8 x }
+
+  where bla'' : nat :=
+  { bla'' := 3 + bla' eq_refl + baz 4 } }
+
+where baz : nat -> nat :=
+baz 0 := 0;
+baz (S n) := baz n.

@@ -1402,7 +1402,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars (((loc,i),rec_annot,l,t,by),c
   let sign = nf_rel_context_evar ( !evd) sign in
   let arity = nf_evar ( !evd) arity in
   let default_recarg () =
-    let idx = List.length sign - 1 in
+    let idx = max 0 (List.length sign - 1) in
     (idx, None)
   in
   let interp_reca k i =
@@ -1587,9 +1587,9 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * bool) list) 
     match find_empty (env,evars) (pi1 prob) with
     | Some i -> Some (List.rev prev @ clauses, Compute (prob, [], ty, REmpty i))
     | None ->
-      errorlabstrm "deppat"
+      user_err_loc (Some p.program_loc, "deppat",
         (str "Non-exhaustive pattern-matching, no clause found for:" ++ fnl () ++
-         pr_problem p env !evars prob)
+         pr_problem p env !evars prob))
 
 and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
     extpats lets ty

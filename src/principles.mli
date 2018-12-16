@@ -17,6 +17,8 @@ val match_arguments : Evd.evar_map -> constr array -> constr array -> int list
 val filter_arguments : int list -> 'a list -> 'a list
 val is_applied_to_structarg : Names.Id.t -> Syntax.rec_type option -> int -> bool option
 
+val smash_ctx_map : Environ.env -> Evd.evar_map -> Covering.context_map -> Covering.context_map * EConstr.t list
+
 val abstract_rec_calls : Evd.evar_map -> Names.Id.Set.t ->
   ?do_subst:bool ->
   Syntax.rec_type option ->
