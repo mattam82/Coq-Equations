@@ -196,12 +196,48 @@ Proof. intros Σ Σ' incl. apply (weaken_env incl). Defined.
 Instance loc_weaken (t : Ty) : Weakenable (In t).
 Proof. intros Σ Σ' incl. apply (pres_in incl). Defined.
 
+Class IsIncludedOnce (Σ Σ' : StoreTy) : Type := is_included_once : Σ ⊑ Σ'.
+Hint Mode IsIncludedOnce + + : typeclass_instances.
 
-(* Equations strength {Σ Γ} {P Q : StoreTy -> Type} {w : Weakenable Q} (m : M Γ P Σ) (q : Q Σ) : M Γ (P ⊛ Q) Σ := *)
-(*   strength m q E μ := match m E μ with *)
-(*                       | None => None *)
-(*                       | Some (Σ, μ', p, ext) => Some (Σ, μ', storepred_pair p (weaken ext q), ext) *)
-(*                       end. *)
+Instance IsIncludedOnce_ext {T} Σ : IsIncludedOnce Σ (T :: Σ).
+Proof. apply store_ext_incl. Defined.
+
+Class IsIncluded (Σ Σ' : StoreTy) : Type := is_included : Σ ⊑ Σ'.
+Hint Mode IsIncluded + + : typeclass_instances.
+
+Instance IsIncluded_refl Σ : IsIncluded Σ Σ := refl_incl.
+Instance IsIncluded_trans Σ Σ' Σ'' : IsIncludedOnce Σ Σ' -> IsIncluded Σ' Σ'' -> IsIncluded Σ Σ''.
+Proof. intros H H'. exact (trans_incl H H'). Defined.
+
+Equations wk {Σ Σ' P} {W : Weakenable P} (p : P Σ) {incl : IsIncluded Σ Σ'} : P Σ' :=
+  wk p := weaken incl p.
+
+Equations bind_ext {Σ Γ} {P Q : StoreTy -> Type} (f : M Γ P Σ) (g : ∀ {Σ'} `{IsIncluded Σ Σ'}, P Σ' -> M Γ Q Σ') : M Γ Q Σ :=
+  bind_ext f g E μ with f E μ :=
+    { | None := None;
+      | Some (Σ', μ', x, ext) with g _ ext x (weaken_env ext E) μ' :=
+          { | None := None;
+            | Some (_, μ'', y, ext') := Some (_, μ'', y, ext ⊚ ext') } }.
+
+Infix ">>='" := bind_ext (at level 20, left associativity).
+
+Equations eval_ext (n : nat) {Γ Σ t} (e : Expr Γ t) : M Γ (Val t) Σ :=
+  eval_ext 0 _                := timeout;
+  eval_ext (S k) tt           := ret val_unit;
+  eval_ext (S k) true         := ret val_true;
+  eval_ext (S k) false        := ret val_false;
+  eval_ext (S k) (ite b t f)  := eval_ext k b >>=' (#{ | _ | ext | val_true => eval_ext k t;
+                                                       | _ | ext | val_false => eval_ext k f });
+
+  eval_ext (S k) (var x)      := getEnv >>=' fun {Σ ext} E => ret (lookup E x);
+  eval_ext (S k) (abs x)      := getEnv >>=' fun {Σ ext} E => ret (val_closure x E);
+  eval_ext (S k) (app (Γ:=Γ) e1 e2) :=
+      eval_ext k e1 >>=' (#{ | _ | ext | val_closure e' E =>
+      eval_ext k e2 >>=' fun {Σ' ext'} v => usingEnv (all_cons v (wk E)) (eval_ext k e')});
+  eval_ext (S k) (new e)      := eval_ext k e >>=' fun {Σ ext} v => storeM v;
+  eval_ext (S k) (deref l)    := eval_ext k l >>=' (#{ | _ | ext | val_loc l => derefM l });
+  eval_ext (S k) (assign l e) := eval_ext k l >>=' (#{ | _ | ext | val_loc l =>
+                                 eval_ext k e >>=' (#{ | _ | ext | v => updateM (wk l) (wk v) })}).
 
 Equations strength {Σ Γ} {P Q : StoreTy -> Type} {w : Weakenable Q} (m : M Γ P Σ) (q : Q Σ) : M Γ (P ⊛ Q) Σ :=
   strength m q E μ with m E μ => {
@@ -209,6 +245,8 @@ Equations strength {Σ Γ} {P Q : StoreTy -> Type} {w : Weakenable Q} (m : M Γ 
     | Some (Σ, μ', p, ext) => Some (Σ, μ', storepred_pair p (weaken ext q), ext) }.
 
 Infix "^" := strength.
+(* TODO improve pattern matching lambda to have implicit arguments implicit.
+   Hard because Coq does not keep the implicit status of bind's [g] argument. *)
 
 Equations(noind) eval (n : nat) {Γ Σ t} (e : Expr Γ t) : M Γ (Val t) Σ :=
   eval 0 _                := timeout;
@@ -228,7 +266,7 @@ Equations(noind) eval (n : nat) {Γ Σ t} (e : Expr Γ t) : M Γ (Val t) Σ :=
   eval (S k) (deref l)    := eval k l >>= (#{ | _ | val_loc l => derefM l });
   eval (S k) (assign l e) := eval k l >>= (#{ | _ | val_loc l =>
                              (eval k e ^ l) >>= (#{ | _ | storepred_pair v l =>
-                                                          updateM l v >>= fun _ _ => ret val_unit }) }).
+                                                          updateM l v }) }).
 
 Definition idu : Expr [] (unit ⇒ unit) :=
   abs (var here).
@@ -271,7 +309,6 @@ Definition letupdate : Expr [] bool :=
 
 Eval vm_compute in eval 100 letupdate all_nil all_nil.
 
-Extraction bind.
 
 
 
@@ -280,7 +317,7 @@ Extraction bind.
 
 
 
-
+(*
 Inductive eval_sem {Γ : Ctx} {env : Env Γ} : forall {t : Ty}, Expr Γ t -> Val t -> Prop :=
 | eval_tt (e : Expr Γ unit) : eval_sem e val_unit
 | eval_var t (i : t ∈ Γ) : eval_sem (var i) (lookup env i)
@@ -318,3 +355,4 @@ Proof.
   unfold usingEnv in H2. specialize (H0 v (all_cons v a) v').
   econstructor; eauto.
 Admitted.
+*)
