@@ -15,12 +15,15 @@ Equations f : nat -> nat :=
   f (S n) := f n.
 
 Equations f' (n : nat) : nat :=
-  f' n := test n (#{ | 0 => true ;
+  f' n := test n (λ{ | 0 => true ;
                      | S n => false }).
 
-Equations decideeq (b b' : bool) : (b = b') + (~ b = b') :=
-  decideeq true true := inl eq_refl;
-  decideeq false false := inl eq_refl;
-  decideeq false true := inr (#{ | x :=! x });
-  decideeq true false := inr (#{ | x :=! x }).
+Definition foo (x : nat) :=
+  f' match x with 0 => 0 | S x => 0 end.
 
+
+Equations decideeq (b b' : bool) : (b = b') + (~ b = b') :=
+  decideeq true true   => inl eq_refl;
+  decideeq false false => inl eq_refl;
+  decideeq false true  => inr (λ{ | x :=! x });
+  decideeq true false  => inr (λ{ | x :=! x }).

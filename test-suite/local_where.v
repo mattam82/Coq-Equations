@@ -27,7 +27,7 @@ foo'' (S n) := n + kont absw
 
 Equations foo3 (n : nat) : nat :=
 foo3 0 := 0;
-foo3 (S n) := n + kont (#{ | (x, y) := x }).
+foo3 (S n) := n + kont (λ{ | (x, y) := x }).
 
 Variant index : Set := i1 | i2.
 

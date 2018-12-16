@@ -345,7 +345,7 @@ open Pcoq
 open Constr
 open Syntax
 
-let _ = CLexer.add_keyword "#"
+let _ = CLexer.add_keyword "λ"
 }
 
 GRAMMAR EXTEND Gram
@@ -366,7 +366,7 @@ GRAMMAR EXTEND Gram
   ;
 
   operconstr:
-    [ "7" [ "#"; "{" ; c = LIST1 equation SEP ";"; "}" -> {
+    [ "0" [ "λ"; "{" ; c = LIST1 equation SEP ";"; "}" -> {
             CAst.make ~loc @@ CHole (None, Namegen.IntroAnonymous,
                                      Some (Genarg.in_gen (Genarg.rawwit Syntax.wit_equations_list) c)) } ] ]
   ;

@@ -226,18 +226,18 @@ Equations eval_ext (n : nat) {Γ Σ t} (e : Expr Γ t) : M Γ (Val t) Σ :=
   eval_ext (S k) tt           := ret val_unit;
   eval_ext (S k) true         := ret val_true;
   eval_ext (S k) false        := ret val_false;
-  eval_ext (S k) (ite b t f)  := eval_ext k b >>=' (#{ | _ | ext | val_true => eval_ext k t;
-                                                       | _ | ext | val_false => eval_ext k f });
+  eval_ext (S k) (ite b t f)  := eval_ext k b >>=' λ{ | _ | ext | val_true => eval_ext k t;
+                                                      | _ | ext | val_false => eval_ext k f };
 
   eval_ext (S k) (var x)      := getEnv >>=' fun {Σ ext} E => ret (lookup E x);
   eval_ext (S k) (abs x)      := getEnv >>=' fun {Σ ext} E => ret (val_closure x E);
   eval_ext (S k) (app (Γ:=Γ) e1 e2) :=
-      eval_ext k e1 >>=' (#{ | _ | ext | val_closure e' E =>
-      eval_ext k e2 >>=' fun {Σ' ext'} v => usingEnv (all_cons v (wk E)) (eval_ext k e')});
+      eval_ext k e1 >>=' λ{ | _ | ext | val_closure e' E =>
+      eval_ext k e2 >>=' fun {Σ' ext'} v => usingEnv (all_cons v (wk E)) (eval_ext k e')};
   eval_ext (S k) (new e)      := eval_ext k e >>=' fun {Σ ext} v => storeM v;
-  eval_ext (S k) (deref l)    := eval_ext k l >>=' (#{ | _ | ext | val_loc l => derefM l });
-  eval_ext (S k) (assign l e) := eval_ext k l >>=' (#{ | _ | ext | val_loc l =>
-                                 eval_ext k e >>=' (#{ | _ | ext | v => updateM (wk l) (wk v) })}).
+  eval_ext (S k) (deref l)    := eval_ext k l >>=' λ{ | _ | ext | val_loc l => derefM l };
+  eval_ext (S k) (assign l e) := eval_ext k l >>=' λ{ | _ | ext | val_loc l =>
+                                 eval_ext k e >>=' λ{ | _ | ext | v => updateM (wk l) (wk v) }}.
 
 Equations strength {Σ Γ} {P Q : StoreTy -> Type} {w : Weakenable Q} (m : M Γ P Σ) (q : Q Σ) : M Γ (P ⊛ Q) Σ :=
   strength m q E μ with m E μ => {
@@ -253,20 +253,18 @@ Equations(noind) eval (n : nat) {Γ Σ t} (e : Expr Γ t) : M Γ (Val t) Σ :=
   eval (S k) tt           := ret val_unit;
   eval (S k) true         := ret val_true;
   eval (S k) false        := ret val_false;
-  eval (S k) (ite b t f)  := eval k b >>= (#{ | _ | val_true => eval k t;
-                                              | _ | val_false => eval k f });
+  eval (S k) (ite b t f)  := eval k b >>= λ{ | _ | val_true => eval k t;
+                                             | _ | val_false => eval k f };
 
   eval (S k) (var x)      := getEnv >>= fun Σ E => ret (lookup E x);
   eval (S k) (abs x)      := getEnv >>= fun Σ E => ret (val_closure x E);
   eval (S k) (app (Γ:=Γ) e1 e2) :=
-      eval k e1 >>= (#{ | _ | val_closure e' E =>
-                              (eval k e2 ^ E) >>= fun Σ' '(storepred_pair v E) =>
-                                                    usingEnv (all_cons v E) (eval k e')});
+      eval k e1 >>= λ{ | _ | val_closure e' E =>
+                             (eval k e2 ^ E) >>= fun Σ' '(storepred_pair v E) => usingEnv (all_cons v E) (eval k e')};
   eval (S k) (new e)      := eval k e >>= fun Σ v => storeM v;
-  eval (S k) (deref l)    := eval k l >>= (#{ | _ | val_loc l => derefM l });
-  eval (S k) (assign l e) := eval k l >>= (#{ | _ | val_loc l =>
-                             (eval k e ^ l) >>= (#{ | _ | storepred_pair v l =>
-                                                          updateM l v }) }).
+  eval (S k) (deref l)    := eval k l >>= λ{ | _ | val_loc l => derefM l };
+  eval (S k) (assign l e) := eval k l >>= λ{ | _ | val_loc l =>
+                             (eval k e ^ l) >>= λ{ | _ | storepred_pair v l => updateM l v }}.
 
 Definition idu : Expr [] (unit ⇒ unit) :=
   abs (var here).
