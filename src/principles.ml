@@ -149,42 +149,43 @@ let substitute_args args ctx =
     | _, [] -> assert false
   in aux (List.rev ctx) args
 
+let find_rec_call is_rec sigma protos f args =
+  let fm ((f',filter), alias, idx, sign, arity) =
+    let f', args' = Termops.decompose_app_vect sigma f' in
+    let f' = EConstr.Unsafe.to_constr f' in
+    let args' = Array.map EConstr.Unsafe.to_constr args' in
+    let nhyps = Context.Rel.nhyps sign + Array.length args' in
+    if Constr.equal f' f then
+      let f' = fst (Constr.destConst f') in
+      match is_applied_to_structarg (Names.Label.to_id (Names.Constant.label f')) is_rec
+              (List.length args) with
+      | Some true | None ->
+        let sign, args =
+          if nhyps <= List.length args then [], CList.chop nhyps args
+          else
+            let sign = List.map EConstr.Unsafe.to_rel_decl sign in
+            let _, substargs = CList.chop (Array.length args') args in
+            let sign = substitute_args substargs sign in
+            let signlen = List.length sign in
+            sign, (List.map (lift signlen) args @ Context.Rel.to_extended_list mkRel 0 sign, [])
+        in
+        Some (idx, arity, filter, sign, args)
+      | Some false -> None
+    else
+      match alias with
+      | Some (f',argsf) ->
+        let f', args' = Termops.decompose_app_vect sigma f' in
+        let f' = EConstr.Unsafe.to_constr f' in
+        if Constr.equal (head f') f then
+          Some (idx, arity, argsf, [], (args, []))
+        else None
+      | None -> None
+  in
+  try Some (CList.find_map fm protos)
+  with Not_found -> None
+
 let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
   let proto_fs = List.map (fun ((f,args), _, _, _, _) -> f) protos in
-  let find_rec_call f args =
-    let fm ((f',filter), alias, idx, sign, arity) =
-      let f', args' = Termops.decompose_app_vect sigma f' in
-      let f' = EConstr.Unsafe.to_constr f' in
-      let args' = Array.map EConstr.Unsafe.to_constr args' in
-      let nhyps = Context.Rel.nhyps sign + Array.length args' in
-      if Constr.equal f' f then
-        let f' = fst (Constr.destConst f') in
-        match is_applied_to_structarg (Names.Label.to_id (Names.Constant.label f')) is_rec
-          (List.length args) with
-        | Some true | None ->
-           let sign, args =
-             if nhyps <= List.length args then [], CList.chop nhyps args
-             else
-               let sign = List.map EConstr.Unsafe.to_rel_decl sign in
-               let sign = substitute_args args sign in
-               let signlen = List.length sign in
-               sign, (List.map (lift signlen) args @ Context.Rel.to_extended_list mkRel 0 sign, [])
-           in
-           Some (idx, arity, filter, sign, args)
-        | Some false -> None
-      else
-        match alias with
-        | Some (f',argsf) ->
-           let f', args' = Termops.decompose_app_vect sigma f' in
-           let f' = EConstr.Unsafe.to_constr f' in
-           if Constr.equal (head f') f then
-             Some (idx, arity, argsf, [], (args, []))
-           else None
-        | None -> None
-    in
-    try Some (CList.find_map fm protos)
-    with Not_found -> None
-  in
   let occ = ref 0 in
   let rec aux n env hyps c =
     let open Constr in
@@ -226,7 +227,7 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
             hyps args
         in
         let args = Array.to_list args in
-        (match find_rec_call f' args with
+        (match find_rec_call is_rec sigma protos f' args with
          | Some (i, arity, filter, sign, (args', rest)) ->
            let fargs' = filter_arguments filter args' in
            let result = Termops.it_mkLambda_or_LetIn (mkApp (f', CArray.of_list args')) sign in
