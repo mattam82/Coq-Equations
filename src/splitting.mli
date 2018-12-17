@@ -49,6 +49,13 @@ type compiled_program_info = {
 
 val is_polymorphic : term_info -> bool
 
+val define_mutual_nested : Evd.evar_map ref ->
+                           ('a -> EConstr.t) ->
+                           (Syntax.program_info * 'a) list ->
+                           (Syntax.program_info * 'a * EConstr.t) list *
+                           (Syntax.program_info * 'a * EConstr.constr) list
+
+
 val define_tree :
   rec_type option -> rel_context -> Decl_kinds.polymorphic ->
   (Constrexpr.explicitation * (bool * bool * bool)) list ->

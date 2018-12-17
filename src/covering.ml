@@ -61,6 +61,7 @@ and where_clause =
   { where_program : program_info;
     where_path : path;
     where_orig : path;
+    where_context_length : int; (* Length of enclosing context, including fixpoint prototype if any *)
     where_prob : context_map;
     where_arity : types; (* In pi1 prob *)
     where_term : constr; (* In original context, de Bruijn only *)
@@ -1911,11 +1912,13 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
     let () = evars := sigma in
 
     let pre_type = program_type p in
-    let sign, extpats, clauses = compute_rec_data env data p clauses in
+    let fixdecls = [Context.Rel.Declaration.LocalAssum (Name id, pre_type)] in
+    let sign, extpats, clauses = compute_rec_data env {data with rec_info = compute_recinfo [p];
+                                                                 fixdecls = fixdecls} p clauses in
     let p, ctxpats =
       let sign = sign @ lets in
-      let extpats = pats_of_sign lets in
-      { p with program_sign = sign }, extpats
+      let extpats' = pats_of_sign lets in
+      { p with program_sign = sign }, extpats' @ extpats
     in
     let problem = id_subst p.program_sign in
     let intenv = Constrintern.compute_internalization_env ~impls:data.intenv
@@ -1932,7 +1935,7 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
     let () = evars := sigma in
     let ev = destEvar !evars term in
     let path = Evar (fst ev) :: path in
-    let splitting = lazy (covering env0 evars p data clauses path problem (extpats @ ctxpats) p.program_arity) in
+    let splitting = lazy (covering env0 evars p data clauses path problem ctxpats p.program_arity) in
     let termapp = mkApp (term, extended_rel_vect 0 lets) in
     let decl = make_def (Name id) (Some termapp) pre_type in
     (* let nadecl = make_named_def id (Some (substl inst term)) (program_type p) in *)
@@ -1940,6 +1943,7 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
       {where_program = p; where_path = path;
        where_orig = path;
        where_prob = problem;
+       where_context_length = List.length ctxpats;
        where_arity = p.program_arity;
        where_term = termapp;
        where_type = pre_type;

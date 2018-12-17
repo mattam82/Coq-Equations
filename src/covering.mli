@@ -118,6 +118,7 @@ and where_clause =
   { where_program : program_info;
     where_path : path;
     where_orig : path;
+    where_context_length : int; (* Length of enclosing context, including fixpoint prototype if any *)
     where_prob : context_map;
     where_arity : types; (* In pi1 prob *)
     where_term : constr; (* In original context, de Bruijn only *)

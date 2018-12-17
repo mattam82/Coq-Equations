@@ -218,107 +218,20 @@ let define_principles flags rec_info fixprots progs =
   let newsplits = List.map (fun (p, prog, f as x) -> p, prog, newsplits env fixdecls x) progs in
   principles env newsplits
 
-let is_nested p =
-  match p.program_rec with
-  | Some (Structural (NestedOn _)) -> true
-  | _ -> false
-
-let define_mutual_nested flags progs =
+let define_mutual_nested_csts flags progs =
   match progs with
   | [prog] -> progs
   | l ->
+     let env = Global.env () in
+     let evd = ref (Evd.from_env env) in
+     (* let progs = List.map (fun (p, prog) ->
+      *             let t = e_new_global evd (ConstRef prog.program_cst) in
+      *             p, (t, Retyping.get_type_of env !evd t)) in *)
+     let mutual, nested =
+       define_mutual_nested evd
+       (fun prog -> e_new_global evd (ConstRef prog.program_cst)) progs in
      let mutual =
-       List.filter (fun (p, prog) -> not (is_nested p)) l
-     in
-     (* In the mutually recursive case, only the functionals have been defined,
-         we build the block and its projections now *)
-     let structargs = Array.map_of_list (fun (p,_) ->
-                          match p.program_rec with
-                          | Some (Structural (MutualOn (lid,_))) -> lid
-                          | _ -> (List.length p.program_sign) - 1) mutual in
-     let evd = ref (Evd.from_env (Global.env ())) in
-     let mutualapp, nestedbodies =
-       let nested = List.length l - List.length mutual in
-       let one_nested before p prog afterctx idx =
-         let signlen = List.length p.program_sign in
-         let fixbody =
-           Vars.lift 1 (* lift over itself *)
-           (mkApp (mkConst prog.program_cst,
-                   rel_vect (signlen + (nested - 1)) (List.length mutual)))
-         in
-         let after = (nested - 1) - before in
-         let fixb = (Array.make 1 idx, 0) in
-         let fixna = Array.make 1 (Name p.program_id) in
-         let fixty = Array.make 1 (it_mkProd_or_LetIn p.program_arity p.program_sign) in
-         (* Apply to itself *)
-         let beforeargs = rel_list (signlen + 1) before in
-         let fixref = mkRel (signlen + 1) in
-         let (afterargs, afterctx) =
-           let rec aux (acc, ctx) n afterctx =
-             if Int.equal n after then acc, ctx
-             else
-              match afterctx with
-              | ty :: tl ->
-                let term = applist (mkRel (signlen + nested), acc) in
-                let decl = Context.Rel.Declaration.LocalDef (Name (Id.of_string "H"), term, ty) in
-                  aux (List.map (Vars.lift 1) acc @ [mkRel 1], decl :: ctx) (succ n) tl
-              | [] -> assert false
-           in aux (beforeargs @ [fixref], []) 0 afterctx
-         in
-         let fixbody = applist (Vars.lift after fixbody, afterargs) in
-         (* Apply to its arguments *)
-         let fixbody = mkApp (fixbody, extended_rel_vect after p.program_sign) in
-	 let fixbody = it_mkLambda_or_LetIn fixbody afterctx in
-         let fixbody = it_mkLambda_or_LetIn fixbody p.program_sign in
-         it_mkLambda_or_LetIn
-         (mkFix (fixb, (fixna, fixty, Array.make 1 fixbody)))
-         (List.init (nested - 1) (fun _ -> (Context.Rel.Declaration.LocalAssum (Anonymous, mkProp))))
-       in
-       let rec fixsubst i k acc l =
-         match l with
-         | (p', prog') :: rest ->
-            (match p'.program_rec with
-             | Some (Structural (NestedOn idx)) ->
-               (match idx with
-	       | Some (idx,_) ->
-		 let rest_tys = List.map (fun (p,_) -> it_mkProd_or_LetIn p.program_arity p.program_sign) rest in
-                 let term = one_nested k p' prog' rest_tys idx in
-                   fixsubst i (succ k) ((true, term) :: acc) rest
-               | None -> (* Non immediately recursive nested def *)
-                 let term =
-                   mkApp (mkConst prog'.program_cst, rel_vect 0 (List.length mutual))
-                 in
-                   fixsubst i (succ k) ((true, term) :: acc) rest)
-             | _ -> fixsubst (pred i) k ((false, mkRel i) :: acc) rest)
-         | [] -> List.rev acc
-       in
-       (* aux1 ... auxn *)
-       let nested = fixsubst (List.length mutual) 0 [] l in
-       let nested, mutual = List.partition (fun (x, y) -> x) nested in
-       let gns = List.fold_right (fun (_, g) acc -> applist (g, acc) :: acc) nested [] in
-       let nested = List.fold_left (fun acc g -> applist (g, List.rev acc) :: acc) [] gns in
-       let nested = List.rev_map (Reductionops.nf_beta (Global.env ()) !evd) nested in
-       List.map snd mutual, nested
-     in
-     let decl =
-       let blockfn (p, prog) = 
-         let na = Name p.program_id in
-         let evm, body = Evarutil.new_global !evd (ConstRef prog.program_cst) in
-         let () = evd := evm in
-         let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
-         let body = mkApp (body, Array.append (Array.of_list mutualapp) (Array.of_list nestedbodies)) in
-         let body = mkApp (Vars.lift (List.length p.program_sign) body,
-                           extended_rel_vect 0 p.program_sign) in
-         let body = it_mkLambda_or_LetIn body p.program_sign in
-         na, ty, body
-       in
-       let blockl = List.map blockfn mutual in
-       let names, tys, bodies = List.split3 blockl in
-       Array.of_list names, Array.of_list tys, Array.of_list bodies
-     in
-     let declare_fix_fns i (p,prog) =
-       if not (is_nested p) then
-         let fix = mkFix ((structargs, i), decl) in
+       List.map (fun (p, prog, fix) ->
          let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
          let kn, _ =
            declare_constant p.program_id fix (Some ty) flags.polymorphic
@@ -326,23 +239,20 @@ let define_mutual_nested flags progs =
          in
          Impargs.declare_manual_implicits true (ConstRef kn) [p.program_impls];
          let prog' = { prog with program_cst = kn } in
-         (p, prog')
-       else (p,prog)
+         (p, prog')) mutual
      in
-     let fixes = List.mapi declare_fix_fns l in
-     let nested, mutual = List.partition (fun (p,prog) -> is_nested p) fixes in
-     let declare_nested (p,prog) body =
-       let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
-       let args = List.rev_map (fun (p',prog') -> e_new_global evd (ConstRef prog'.program_cst)) mutual in
-       let body = Vars.substl args body in
+     let args = List.rev_map (fun (p',prog') -> e_new_global evd (ConstRef prog'.program_cst)) mutual in
+     let nested =
+       List.map (fun (p, prog, fix) ->
+       let ty = program_type p in
+       let body = Vars.substl args fix in
        let kn, _ = declare_constant p.program_id body (Some ty) flags.polymorphic
                                  !evd (IsDefinition Fixpoint) in
        Impargs.declare_manual_implicits true (ConstRef kn) [p.program_impls];
        let prog' = { prog with program_cst = kn } in
-       (p, prog')
-     in
-     let nested = List.map2 declare_nested nested nestedbodies in
+       (p, prog')) nested in
      mutual @ nested
+
 
 let define_by_eqs ~poly opts eqs nt =
   let with_rec, with_eqns, with_ind =
@@ -406,7 +316,7 @@ let define_by_eqs ~poly opts eqs nt =
     if CArray.for_all (fun x -> not (Option.is_empty x)) progs then
       (let fixprots = List.map (nf_evar !evd) fixprots in
        let progs = Array.map_to_list (fun x -> Option.get x) progs in
-       let progs' = define_mutual_nested flags progs in
+       let progs' = define_mutual_nested_csts flags progs in
        if flags.with_eqns || flags.with_ind then
          define_principles flags rec_info fixprots progs')
   in

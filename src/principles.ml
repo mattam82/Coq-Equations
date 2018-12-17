@@ -603,6 +603,7 @@ let subst_rec_split env evd p f path prob s split =
          in
          let subst_where =
            {where_program; where_path; where_orig; where_prob = where_prob;
+            where_context_length = List.length (pi1 cutprob) - List.length ctx;
             where_arity; where_term;
             where_type; where_splitting = Lazy.from_val where_splitting }
          in (subst_where :: subst_wheres, w :: wheres)

@@ -72,6 +72,107 @@ let map_split f split =
        Compute (lhs', where, f ty, em)
   in aux split
 
+let is_nested p =
+  match p.program_rec with
+  | Some (Structural (NestedOn _)) -> true
+  | _ -> false
+
+let define_mutual_nested evd get_prog progs =
+  let mutual =
+    List.filter (fun (p, prog) -> not (is_nested p)) progs
+  in
+  (* In the mutually recursive case, only the functionals have been defined,
+     we build the block and its projections now *)
+  let structargs = Array.map_of_list (fun (p,_) ->
+                   match p.program_rec with
+                   | Some (Structural (MutualOn (lid,_))) -> lid
+                   | _ -> (List.length p.program_sign) - 1) mutual in
+  let mutualapp, nestedbodies =
+    let nested = List.length progs - List.length mutual in
+    let one_nested before p prog afterctx idx =
+      let signlen = List.length p.program_sign in
+      let fixbody =
+        Vars.lift 1 (* lift over itself *)
+           (mkApp (get_prog prog, rel_vect (signlen + (nested - 1)) (List.length mutual)))
+         in
+         let after = (nested - 1) - before in
+         let fixb = (Array.make 1 idx, 0) in
+         let fixna = Array.make 1 (Name p.program_id) in
+         let fixty = Array.make 1 (it_mkProd_or_LetIn p.program_arity p.program_sign) in
+         (* Apply to itself *)
+         let beforeargs = Termops.rel_list (signlen + 1) before in
+         let fixref = mkRel (signlen + 1) in
+         let (afterargs, afterctx) =
+           let rec aux (acc, ctx) n afterctx =
+             if Int.equal n after then acc, ctx
+             else
+              match afterctx with
+              | ty :: tl ->
+                let term = applist (mkRel (signlen + nested), acc) in
+                let decl = Context.Rel.Declaration.LocalDef (Name (Id.of_string "H"), term, ty) in
+                  aux (List.map (Vars.lift 1) acc @ [mkRel 1], decl :: ctx) (succ n) tl
+              | [] -> assert false
+           in aux (beforeargs @ [fixref], []) 0 afterctx
+         in
+         let fixbody = applist (Vars.lift after fixbody, afterargs) in
+         (* Apply to its arguments *)
+         let fixbody = mkApp (fixbody, extended_rel_vect after p.program_sign) in
+         let fixbody = it_mkLambda_or_LetIn fixbody afterctx in
+         let fixbody = it_mkLambda_or_LetIn fixbody p.program_sign in
+         it_mkLambda_or_LetIn
+         (mkFix (fixb, (fixna, fixty, Array.make 1 fixbody)))
+         (List.init (nested - 1) (fun _ -> (Context.Rel.Declaration.LocalAssum (Anonymous, mkProp))))
+       in
+       let rec fixsubst i k acc l =
+         match l with
+         | (p', prog') :: rest ->
+            (match p'.program_rec with
+             | Some (Structural (NestedOn idx)) ->
+               (match idx with
+               | Some (idx,_) ->
+                 let rest_tys = List.map (fun (p,_) -> it_mkProd_or_LetIn p.program_arity p.program_sign) rest in
+                 let term = one_nested k p' prog' rest_tys idx in
+                   fixsubst i (succ k) ((true, term) :: acc) rest
+               | None -> (* Non immediately recursive nested def *)
+                 let term =
+                   mkApp (get_prog prog', rel_vect 0 (List.length mutual))
+                 in
+                   fixsubst i (succ k) ((true, term) :: acc) rest)
+             | _ -> fixsubst (pred i) k ((false, mkRel i) :: acc) rest)
+         | [] -> List.rev acc
+       in
+       (* aux1 ... auxn *)
+       let nested = fixsubst (List.length mutual) 0 [] progs in
+       let nested, mutual = List.partition (fun (x, y) -> x) nested in
+       let gns = List.fold_right (fun (_, g) acc -> applist (g, acc) :: acc) nested [] in
+       let nested = List.fold_left (fun acc g -> applist (g, List.rev acc) :: acc) [] gns in
+       let nested = List.rev_map (Reductionops.nf_beta (Global.env ()) !evd) nested in
+       List.map snd mutual, nested
+     in
+     let decl =
+       let blockfn (p, prog) =
+         let na = Name p.program_id in
+         let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
+         let body = mkApp (get_prog prog, Array.append (Array.of_list mutualapp) (Array.of_list nestedbodies)) in
+         let body = mkApp (Vars.lift (List.length p.program_sign) body,
+                           extended_rel_vect 0 p.program_sign) in
+         let body = it_mkLambda_or_LetIn body (lift_rel_context 1 p.program_sign) in
+         na, ty, body
+       in
+       let blockl = List.map blockfn mutual in
+       let names, tys, bodies = List.split3 blockl in
+       Array.of_list names, Array.of_list tys, Array.of_list bodies
+     in
+     let nested, mutual = List.partition (fun (p,prog) -> is_nested p) progs in
+     let declare_fix_fns i (p,prog) =
+       let fix = mkFix ((structargs, i), decl) in
+       (p, prog, fix)
+     in
+     let fixes = List.mapi declare_fix_fns mutual in
+     let declare_nested (p,prog) body = (p, prog, body) in
+     let nested = List.map2 declare_nested nested nestedbodies in
+     fixes, nested
+
 let helper_evar evm evar env typ src =
   let sign, typ', instance, _ = push_rel_context_to_named_context ~hypnaming:KeepExistingNames env evm typ in
   let evm' = evar_declare sign evar typ' ~src evm in
@@ -86,32 +187,63 @@ let term_of_tree status isevar env0 tree =
          List.fold_right 
          (fun ({where_program; where_prob; where_term; where_type; where_splitting} as w)
               (evm, ctx) ->
-             (* let env = push_rel_context ctx env0 in *)
-             (* FIXME push ctx too if mutual wheres *)
-             let evm, c', ty' = aux env evm (Lazy.force where_splitting) in
-             (* let inst = List.map get_id where_nctx in *)
-             (* In de Bruijn context *)
-             (* let tydb = Vars.subst_vars inst ty' in *)
-             let evm, c', ty' =
-               let hd, args = decompose_appvect evm where_term in
-               match kind evm hd with
-               | Evar (ev, _) ->
-                 let term' = mkLetIn (Name (Id.of_string "prog"), c', ty', lift 1 ty') in
-                 let evm, term =
-                   helper_evar evm ev env term'
-                    (dummy_loc, QuestionMark {
-                        qm_obligation=Define false;
-                        qm_name=Name (where_id w);
-                        qm_record_field=None;
-                    }) in
-                 let ev = fst (destEvar !isevar term) in
-                  oblevars := Evar.Map.add ev 0 !oblevars;
-                  helpers := (ev, 0) :: !helpers;
-                  evm, where_term, where_type
-               | _ -> assert(false)
-             in
-             (evm, (make_def (Name (where_id w)) (Some c') ty' :: ctx)))
-           where (evm,ctx)
+         (* let env = push_rel_context ctx env0 in *)
+         (* FIXME push ctx too if mutual wheres *)
+         let where_args = snd (decompose_appvect evm where_term) in
+         let evm, c', _ = aux env evm (Lazy.force where_splitting) in
+         let evd = ref evm in
+         let c' =
+           match where_program.program_rec with
+           | Some _ ->
+              let c' = mkApp (c', where_args) in
+              Feedback.msg_debug Pp.(str "Where_clause compiled to" ++ Printer.pr_econstr_env env !evd c');
+              let c' = (whd_beta !evd c')  in
+              Feedback.msg_debug Pp.(str "Where_clause compiled to" ++ Printer.pr_econstr_env env !evd c');
+              (* let _, c' = decompose_lam_n_assum !evd 1 c' in *)
+              Feedback.msg_debug Pp.(str "Where_clause compiled to" ++ Printer.pr_econstr_env env !evd c');
+              let before, after =
+                CList.chop ((CList.length where_program.program_sign) - w.where_context_length)
+                where_program.program_sign
+              in
+              let sign = subst_rel_context 0 (mkProp :: List.rev (Array.to_list where_args)) before in
+              let where_program = { where_program with program_sign = sign } in
+              (match define_mutual_nested evd (fun x -> x) [(where_program, lift 1 c')] with
+               | [(m, _, body)], _ ->
+                  Feedback.msg_debug Pp.(str "Where_clause compiled to body" ++ Printer.pr_econstr_env env !evd body);
+                  it_mkLambda_or_LetIn body (List.tl after)
+               | _, [(m, _, body)] -> it_mkLambda_or_LetIn body (List.tl after)
+               | _ -> assert false)
+           | None -> c'
+         in
+         let () =
+           Feedback.msg_debug Pp.(str "Where_clause compiled to" ++ Printer.pr_econstr_env env !evd c')
+         in
+         let c' = nf_beta env !evd c' in
+         let ty' = Retyping.get_type_of env !evd c' in
+         let () =
+           Feedback.msg_debug Pp.(str "Where_clause compiled to" ++ Printer.pr_econstr_env env !evd c' ++
+                                  str " of type " ++ Printer.pr_econstr_env env !evd ty')
+         in
+         let evm, c', ty' =
+           let hd, args = decompose_appvect evm where_term in
+           match kind evm hd with
+           | Evar (ev, _) ->
+              let term' = mkLetIn (Name (Id.of_string "prog"), c', ty', lift 1 ty') in
+              let evm, term =
+                helper_evar evm ev env term'
+                (dummy_loc, QuestionMark {
+                            qm_obligation=Define false;
+                            qm_name=Name (where_id w);
+                            qm_record_field=None;
+                }) in
+              let ev = fst (destEvar !isevar term) in
+              oblevars := Evar.Map.add ev 0 !oblevars;
+              helpers := (ev, 0) :: !helpers;
+              evm, where_term, where_type
+           | _ -> assert(false)
+         in
+         (evm, (make_def (Name (where_id w)) (Some c') ty' :: ctx)))
+         where (evm,ctx)
        in
        let body = it_mkLambda_or_LetIn rhs ctx and typ = it_mkProd_or_subst env evm ty ctx in
        evm, body, typ
