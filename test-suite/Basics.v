@@ -48,6 +48,7 @@ eq_sym x _ eq_refl := eq_refl.
 Equations eq_trans {A} (x y z : A) (p : x = y) (q : y = z) : x = z :=
 eq_trans x _ _ eq_refl eq_refl := eq_refl.
 
+Declare Scope vect_scope.
 Notation " x |:| y " := (@Vector.cons _ x _ y) (at level 20, right associativity) : vect_scope.
 Notation " x |: n :| y " := (@Vector.cons _ x n y) (at level 20, right associativity) : vect_scope.
 (* Notation " [[ x .. y ]] " := (Vector.cons x .. (Vector.cons y Vector.nil) ..) : vect_scope. *)
@@ -550,6 +551,7 @@ Extraction diag.
 Equations(struct n) diag_struct {A n} (v : vector (vector A n) n) : vector A n :=
 diag_struct (n:=O) nil := nil ;
 diag_struct (n:=(S _)) (cons (cons a v) v') := cons a (diag_struct (vmap vtail v')).
+
 Next Obligation.
   induction n. depelim v; constructor. depelim v. depelim h. simp diag_struct.
 Defined.

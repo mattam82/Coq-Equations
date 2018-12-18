@@ -31,8 +31,9 @@ Inductive at_eq {A : Set} : forall{n : nat}, Vec A n -> fin n -> A -> Set :=
 | here  : ∀ {n}     {x}   {xs : Vec A n}, at_eq (cons _ x xs) fin0 x
 | there : ∀ {n} {i : fin n} {x y} {xs : Vec A n} (H : xs [ i ]= x),
     (cons _ y xs) [ (finS i) ]= x
-
 where " x [ n ]= y " := (at_eq x n y).
+
+Derive Signature for at_eq.
 
 Definition Subset := Vec bool.
 
