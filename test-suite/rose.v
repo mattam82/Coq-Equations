@@ -45,7 +45,11 @@ Require Import List.
 (* begin hide *)
 Section RoseTree.
 (* end hide *)
-  Context {A : Type}. Inductive rose : Type := leaf (a : A) : rose | node (l : list rose) : rose.
+  Context {A : Type}.
+
+  Inductive rose : Type :=
+    | leaf (a : A) : rose
+    | node (l : list rose) : rose.
 
   (** This is a nested inductive type we can measure assuming a
       [list_size] function for measuring lists. Here we use the usual
@@ -77,6 +81,13 @@ Section RoseTree.
       Using a _nested_ [where] clause and the support of %\Equations% for
       well-founded recursion, we can define the following function
       gathering the elements in a rose tree efficiently: *)
+
+  (* Equations elements (r : rose) (acc : list A) : list A by struct r := *)
+  (* elements (leaf a) acc := a :: acc; *)
+  (* elements (node l) acc := aux l *)
+  (*   where aux x : list A := *)
+  (*   aux nil := acc; *)
+  (*   aux (cons x xs) := elements x (aux xs). *)
 
   Equations elements (r : rose) (acc : list A) : list A by rec r (MR lt size) :=
   elements (leaf a) acc := a :: acc;

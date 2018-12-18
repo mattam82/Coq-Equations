@@ -232,7 +232,7 @@ Equations eval_ext (n : nat) {Γ Σ t} (e : Expr Γ t) : M Γ (Val t) Σ :=
   eval_ext (S k) (var x)      := getEnv >>=' fun {Σ ext} E => ret (lookup E x);
   eval_ext (S k) (abs x)      := getEnv >>=' fun {Σ ext} E => ret (val_closure x E);
   eval_ext (S k) (app (Γ:=Γ) e1 e2) :=
-      eval_ext k e1 >>=' λ{ | _ | ext | val_closure e' E =>
+      eval_ext k e1 >>=' λ{ | _ | ext | val_closure e' E => 
       eval_ext k e2 >>=' fun {Σ' ext'} v => usingEnv (all_cons v (wk E)) (eval_ext k e')};
   eval_ext (S k) (new e)      := eval_ext k e >>=' fun {Σ ext} v => storeM v;
   eval_ext (S k) (deref l)    := eval_ext k l >>=' λ{ | _ | ext | val_loc l => derefM l };

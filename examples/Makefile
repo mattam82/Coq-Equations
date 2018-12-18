@@ -1,4 +1,4 @@
-vfiles := HoTT_light.v RoseTree.v graph_complete.v STLC.v polynomials.v string_matching.v nested_mut_rec.v MoreDep.v general_recursion.v Basics.v
+vfiles := HoTT_light.v RoseTree.v graph_complete.v STLC.v polynomials.v string_matching.v nested_mut_rec.v MoreDep.v general_recursion.v Basics.v definterp.v
 
 texfiles := $(vfiles:.v=.tex)
 

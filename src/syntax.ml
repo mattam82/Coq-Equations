@@ -431,7 +431,7 @@ let rename_away_from ids pats =
 
 let interp_eqn env p eqn =
   let avoid = ref Id.Set.empty in
-  let whereid = ref (Nameops.add_suffix p.program_id "abs_where") in
+  let whereid = ref (Nameops.add_suffix p.program_id "_abs_where") in
   let patnames =
     List.rev_map (fun decl -> Context.Rel.Declaration.get_name decl) p.program_sign
   in
@@ -517,11 +517,11 @@ let interp_eqn env p eqn =
           | CHole (k, i, Some eqns) when Genarg.has_type eqns (Genarg.rawwit wit_equations_list) ->
          let eqns = Genarg.out_gen (Genarg.rawwit wit_equations_list) eqns in
          let id = !whereid in
+         let () = whereid := Nameops.increment_subscript id in
          let () = avoid := Id.Set.add id !avoid in
          let eqns = List.map aux2 eqns in
          let () =
            wheres := (((loc, id), None, [], CAst.make ~loc (CHole (k, i, None)), None), eqns) :: !wheres;
-           whereid := Nameops.increment_subscript id;
          in Constrexpr_ops.mkIdentC id
       | _ -> map_constr_expr_with_binders Id.Set.add
              (fun avoid -> CAst.with_loc_val (aux' avoid)) ids (CAst.make ~loc c)
