@@ -35,6 +35,7 @@ Derive NoConfusion Subterm EqDec for term.
 
 Coercion Var : nat >-> term.
 
+Declare Scope term_scope.
 Delimit Scope term_scope with term.
 Bind Scope term_scope with term.
 
@@ -135,8 +136,6 @@ Proof. funelim (subst n n t) ; try rewrite H ; try rewrite H0; simp lift; auto.
 Qed.
 Hint Rewrite substnn : subst.
 Notation ctx := (list type).
-
-Delimit Scope lf with lf.
 
 Reserved Notation " Γ |-- t : A " (at level 70, t, A at next level).
 
@@ -379,11 +378,10 @@ Inductive atomic : type -> Prop :=
 Derive Signature for atomic.
 Hint Constructors atomic : term.
 
-Equations(nocomp) atomic_dec (t : type) : { atomic t } + { ~ atomic t } :=
+Equations atomic_dec (t : type) : { atomic t } + { ~ atomic t } :=
 atomic_dec (atom a) := left (atomic_atom a) ;
 atomic_dec _ := right _.
-
-  Solve Obligations with intros; intro H; inversion H. 
+  Solve Obligations with intros; intro H; depelim H.
 
 Inductive check : ctx -> term -> type -> Prop :=
 | abstraction_check Γ A B t :
@@ -573,7 +571,7 @@ is_lambda (pair t' _) := inr t'.
 
 Lemma is_lambda_inr {t} (h : hereditary_type t) : forall t', is_lambda h = inr t' -> fst h = t'.
 Proof.
-  destruct h. funelim (is_lambda (t0, o)); simpl; intros; try congruence.
+  let elim := constr:(fun_elim (f:=@is_lambda)) in apply elim; simpl; intros; try congruence.
 Qed.
 
 Inductive IsPair {t} : hereditary_type t -> Set :=
@@ -585,7 +583,7 @@ is_pair (pair t' _) := inr t'.
   
 Lemma is_pair_inr {t} (h : hereditary_type t) : forall t', is_pair h = inr t' -> fst h = t'.
 Proof.
-  destruct h. funelim (is_pair (t0, o)); simpl; intros; try congruence.
+  let elim := constr:(fun_elim (f:=@is_pair)) in apply elim; simpl; intros; try congruence.
 Qed.
 
 Lemma nth_extend_right {A} (a : A) n (l l' : list A) : n < length l -> 
@@ -653,8 +651,7 @@ hereditary_subst (pair (pair A a) t) k with t := {
   | Tt := (Tt, None) }.
 
 Solve Obligations with
-   unfold her_type;
-   intros; constructor 2; do 2 constructor.
+   try (unfold her_type; intros; constructor 2; do 2 constructor).
 
 Next Obligation.
   destruct prf; subst; eauto 10 with subterm_relation.
@@ -665,15 +662,14 @@ Hint Unfold her_type : subterm_relation.
 Obligation Tactic := idtac.
 
 Solve Obligations with
-  unfold her_type;
-  simpl; intros;
-  destruct prf; subst; eauto 10 with subterm_relation.
+    try (unfold her_type;
+           simpl; intros;
+             destruct prf; subst; eauto 10 with subterm_relation).
 
 Solve Obligations.
 
 Hint Unfold const : subterm_relation.
 
-Solve All Obligations.
 Ltac autoh :=
   unfold type_subterm in * ; try typeclasses eauto with hereditary_subst subterm_relation.
 Ltac simph :=
