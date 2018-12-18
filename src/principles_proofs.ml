@@ -780,11 +780,9 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
            let newctx, oldctx = List.chop len ctx in
            let lhs = mkApp (lift len assoc (* in oldctx *), extended_rel_vect 0 newctx) in
            let rhs = mkApp (fst (decompose_app !evd unfw.where_term), extended_rel_vect 0 ctx) in
-           let eq = mkEq env evd (Retyping.get_type_of (push_rel_context ctx env) !evd lhs) lhs rhs in
+           let eq = mkEq env evd unfw.where_arity lhs rhs in
            it_mkProd_or_LetIn eq ctx
          in
-         Feedback.msg_debug (str"Where_type: " ++ Printer.pr_econstr_env env !evd ty);
-
          let headcst f =
            let f, _ = decompose_app !evd f in
            if isConst !evd f then fst (destConst !evd f)
