@@ -194,35 +194,30 @@ let term_of_tree status isevar env0 tree =
          let evd = ref evm in
          let c' =
            match where_program.program_rec with
-           | Some _ ->
+           | Some (Structural _) ->
               let c' = mkApp (c', where_args) in
-              Feedback.msg_debug Pp.(str "Where_clause compiled to" ++ Printer.pr_econstr_env env !evd c');
               let c' = (whd_beta !evd c')  in
-              Feedback.msg_debug Pp.(str "Where_clause compiled to" ++ Printer.pr_econstr_env env !evd c');
-              (* let _, c' = decompose_lam_n_assum !evd 1 c' in *)
-              Feedback.msg_debug Pp.(str "Where_clause compiled to" ++ Printer.pr_econstr_env env !evd c');
               let before, after =
                 CList.chop ((CList.length where_program.program_sign) - w.where_context_length)
                 where_program.program_sign
               in
-              let sign = subst_rel_context 0 (mkProp :: List.rev (Array.to_list where_args)) before in
-              let where_program = { where_program with program_sign = sign } in
+              let subst = mkProp :: List.rev (Array.to_list where_args) in
+              let program_sign = subst_rel_context 0 subst before in
+              let program_arity = substnl subst (List.length program_sign) where_program.program_arity in
+              let where_program = { where_program with program_sign; program_arity } in
               (match define_mutual_nested evd (fun x -> x) [(where_program, lift 1 c')] with
                | [(m, _, body)], _ ->
-                  Feedback.msg_debug Pp.(str "Where_clause compiled to body" ++ Printer.pr_econstr_env env !evd body);
                   it_mkLambda_or_LetIn body (List.tl after)
                | _, [(m, _, body)] -> it_mkLambda_or_LetIn body (List.tl after)
                | _ -> assert false)
-           | None -> c'
-         in
-         let () =
-           Feedback.msg_debug Pp.(str "Where_clause compiled to" ++ Printer.pr_econstr_env env !evd c')
+           | _ -> c'
          in
          let c' = nf_beta env !evd c' in
          let ty' = Retyping.get_type_of env !evd c' in
          let () =
-           Feedback.msg_debug Pp.(str "Where_clause compiled to" ++ Printer.pr_econstr_env env !evd c' ++
-                                  str " of type " ++ Printer.pr_econstr_env env !evd ty')
+           if !Equations_common.debug then
+             Feedback.msg_debug Pp.(str "Where_clause compiled to" ++ Printer.pr_econstr_env env !evd c' ++
+                                    str " of type " ++ Printer.pr_econstr_env env !evd ty')
          in
          let evm, c', ty' =
            let hd, args = decompose_appvect evm where_term in

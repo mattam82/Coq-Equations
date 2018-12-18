@@ -574,17 +574,41 @@ let subst_rec_split env evd p f path prob s split =
                          where_type; where_splitting} as w) (subst_wheres, wheres) =
          let wcontext = where_context subst_wheres in
          let wsubst = lift_subst env !evd subst wcontext in
-         let where_arity = mapping_constr !evd subst where_arity in
          let where_term = mapping_constr !evd wsubst where_term in
          let where_type = mapping_constr !evd subst where_type in
+         let where_program', s, extpatlen =
+           (* Should be the number of extra patterns for the whole fix block *)
+           match where_program.program_rec with
+           | Some (Structural ids) ->
+             let _recarg = match ids with
+               | NestedOn None -> None
+               | NestedOn (Some (x, _)) -> Some x
+               | MutualOn (x, _) -> Some x
+             in
+             let s = ((where_program.program_id, (None,
+                 lift (List.length (pi1 where_prob) - List.length ctx) w.where_term)) :: s) in
+             let where_program = { where_program with program_rec = None } in
+             where_program, s, 0
+           | _ -> where_program, s, 0
+         in
          let cutprob = cut_problem s (pi1 where_prob) in
+         let wsubst, _ = subst_rec where_prob s where_prob in
          let where_prob = id_subst (pi3 cutprob) in
+
          (* let where_impl, args = decompose_app !evd where_term in *)
          let where_term' =
            (* Lives in where_prob *)
            (lift (List.length (pi1 cutprob) - List.length ctx) w.where_term) in
+
+         let where_arity = mapping_constr !evd wsubst where_arity in
+
+         let where_program' =
+           { where_program' with
+             program_sign = pi3 cutprob;
+             program_arity = mapping_constr !evd wsubst where_program'.program_arity }
+         in
          let where_splitting =
-           aux cutprob s where_program where_term'
+           aux cutprob s where_program' where_term'
              where_path (Lazy.force where_splitting)
          in
          let where_term, where_path =
@@ -602,8 +626,10 @@ let subst_rec_split env evd p f path prob s split =
            else (where_term, where_path)
          in
          let subst_where =
-           {where_program; where_path; where_orig; where_prob = where_prob;
-            where_context_length = List.length (pi1 cutprob) - List.length ctx;
+           {where_program = where_program';
+            where_program_orig = where_program;
+            where_path; where_orig; where_prob = where_prob;
+            where_context_length = List.length (pi1 lhs') + extpatlen;
             where_arity; where_term;
             where_type; where_splitting = Lazy.from_val where_splitting }
          in (subst_where :: subst_wheres, w :: wheres)
@@ -813,7 +839,7 @@ let computations env evd alias refine eqninfo =
        let subterm = applist (term, args') in
        let wsmash, smashsubst = smash_ctx_map env evd w.where_prob in
        let comps = computations env wsmash subterm None fsubst (Regular,false) (Lazy.force w.where_splitting) in
-       let arity = (* substn_vars lift inst  *)w.where_arity in
+       let arity = w.where_arity in
        let termf =
          if not (Evar.Map.is_empty wheremap) then
            subterm, [0]
@@ -837,7 +863,8 @@ let computations env evd alias refine eqninfo =
      let c' = map_rhs (fun c -> fn c) (fun x -> x) c in
      let patsconstrs = List.rev_map pat_constr (pi2 ctx) in
      let ty = substl inst ty in
-     [pi1 ctx, f, alias, patsconstrs, ty, f, (Where, snd refine), c', Some wheres]
+     [pi1 ctx, f, alias, patsconstrs, ty,
+      f, (Where, snd refine), c', Some wheres]
 
   | Split (_, _, _, cs) ->
     Array.fold_left (fun acc c ->
@@ -1106,7 +1133,8 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
            mkApp (coq_ImpossibleCall evd, [| ty; comp |])
       in
       let body = it_mkProd_or_LetIn b ctx in
-      (* Feedback.msg_debug Pp.(str"Typing equation " ++ Printer.pr_econstr_env env !evd body); *)
+      if !Equations_common.debug then
+        Feedback.msg_debug Pp.(str"Typing equation " ++ Printer.pr_econstr_env env !evd body);
       let _ = Equations_common.evd_comb1 (Typing.type_of env) evd body in
       body
     in

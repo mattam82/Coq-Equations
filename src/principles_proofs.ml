@@ -366,7 +366,7 @@ let rec aux_ind_fun info chop unfs unfids = function
                                         (cstrtac info.term_info)) (tclSOLVE [elimtac]);
 		   to82 (solve_ind_rec_tac info.term_info)])
 
-  | Compute ((ctx,_,_), wheres, _, c) ->
+  | Compute ((lctx,_,_), wheres, _, c) ->
     let unfctx, unfswheres =
       let unfs = map_opt_split destWheres unfs in
       match unfs with
@@ -421,10 +421,25 @@ let rec aux_ind_fun info chop unfs unfids = function
                ctx, newwhere, -1 (* + List.length ctx *), unf :: unfids
           in
           let chop = fstchop, snd chop in
+          let fixtac =
+            let open Tacticals.New in
+            match s.where_program_orig.program_rec with
+            | Some (Structural ann) ->
+              (match ann with
+               | NestedOn None -> tclIDTAC
+               | NestedOn (Some (idx, _)) | MutualOn (idx, _) ->
+                 let recid = add_suffix s.where_program.program_id "_rec" in
+                 (* The recursive argument is local to the where, shift it by the
+                    length of the enclosing context *)
+                 let newidx = match unfs with None -> idx + (List.length lctx) | Some _ -> idx in
+                 fix recid (succ newidx))
+            | _ -> tclIDTAC
+          in
           let wheretac =
             let open Tacticals.New in
             observe_new "one where"
               (tclTHENLIST [tclTRY (move_hyp coq_end_of_section_id Logic.MoveLast);
+                            fixtac;
                             intros;
                             (* if Option.is_empty unfs then tclIDTAC
                              * else autorewrite_one (info.term_info.base_id ^ "_where"); *)
@@ -765,10 +780,10 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
            let newctx, oldctx = List.chop len ctx in
            let lhs = mkApp (lift len assoc (* in oldctx *), extended_rel_vect 0 newctx) in
            let rhs = mkApp (fst (decompose_app !evd unfw.where_term), extended_rel_vect 0 ctx) in
-           let eq = mkEq env evd unfw.where_arity lhs rhs in
+           let eq = mkEq env evd (Retyping.get_type_of (push_rel_context ctx env) !evd lhs) lhs rhs in
            it_mkProd_or_LetIn eq ctx
          in
-         (* Feedback.msg_debug (str"Where_type: " ++ Printer.pr_econstr_env env !evd ty); *)
+         Feedback.msg_debug (str"Where_type: " ++ Printer.pr_econstr_env env !evd ty);
 
          let headcst f =
            let f, _ = decompose_app !evd f in

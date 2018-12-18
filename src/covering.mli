@@ -116,6 +116,7 @@ type splitting =
 
 and where_clause =
   { where_program : program_info;
+    where_program_orig : program_info;
     where_path : path;
     where_orig : path;
     where_context_length : int; (* Length of enclosing context, including fixpoint prototype if any *)
