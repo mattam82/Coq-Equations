@@ -105,12 +105,16 @@ Section StoreIncl.
          intros H. specialize (IHpr1 H). constructor 2. apply IHpr1.
   Defined.
 
-  Equations(noind) weaken_val {t} (v : Val t Σ) : Val t Σ' :=
+  Equations(noind) weaken_val {t} (v : Val t Σ) : Val t Σ' := {
    weaken_val val_unit := val_unit;
    weaken_val val_true := val_true;
    weaken_val val_false := val_false;
-   weaken_val (val_closure b e) := val_closure b (map_all (fun t v => weaken_val v) e);
-   weaken_val (val_loc H) := val_loc (pres_in _ H).
+   weaken_val (val_closure b e) := val_closure b (map_all (fun t v => weaken_val v) e); (* (weaken_vals e);  *)
+   weaken_val (val_loc H) := val_loc (pres_in _ H) }.
+  (* where weaken_vals {l} (a : All (fun t => Val t Σ) l) : All (fun t => Val t Σ') l by struct a := *)
+  (* weaken_vals all_nil := all_nil; *)
+  (* weaken_vals (all_cons p ps) := all_cons (weaken_val p) (weaken_vals ps). *)
+
 
   Definition weaken_env {Γ} (v : Env Γ Σ) : Env Γ Σ' :=
     map_all (@weaken_val) v.
@@ -248,7 +252,7 @@ Infix "^" := strength.
 (* TODO improve pattern matching lambda to have implicit arguments implicit.
    Hard because Coq does not keep the implicit status of bind's [g] argument. *)
 
-Equations(noind) eval (n : nat) {Γ Σ t} (e : Expr Γ t) : M Γ (Val t) Σ :=
+Equations eval (n : nat) {Γ Σ t} (e : Expr Γ t) : M Γ (Val t) Σ :=
   eval 0 _                := timeout;
   eval (S k) tt           := ret val_unit;
   eval (S k) true         := ret val_true;
@@ -316,24 +320,31 @@ Eval vm_compute in eval 100 letupdate all_nil all_nil.
 
 
 (*
-Inductive eval_sem {Γ : Ctx} {env : Env Γ} : forall {t : Ty}, Expr Γ t -> Val t -> Prop :=
+Inductive eval_sem {Γ : Ctx} {Σ} {env : Env Γ Σ} : forall {t : Ty}, Expr Γ t -> Val t Σ -> Prop :=
 | eval_tt (e : Expr Γ unit) : eval_sem e val_unit
 | eval_var t (i : t ∈ Γ) : eval_sem (var i) (lookup env i)
 | eval_abs {t u} (b : Expr (t :: Γ) u) : eval_sem (abs b) (val_closure b env)
 | eval_app {t u} (f : Expr Γ (t ⇒ u)) b' (a : Expr Γ t) v :
     eval_sem f (val_closure b' env) ->
     eval_sem a v ->
-    forall u, @eval_sem (t :: Γ) (all_cons v env) _ b' u ->
+    forall u, @eval_sem (t :: Γ) _ (all_cons v env) _ b' u ->
     eval_sem (app f a) u.
 
 
 
-Lemma eval_correct {n} Γ t (e : Expr Γ t) env v : eval n e env = Some v -> @eval_sem _ env _ e v.
+Lemma eval_correct {n} Γ Σ (μ : Store Σ) t (e : Expr Γ t) env v : eval n e env μ = Some v ->
+                                                                  @eval_sem _ _ (weaken v.2.2.2 env) _ e (v.2.2.1).
 Proof.
+  induction n. intros; discriminate.
+  destruct e; simp eval; try intros [= <-]; simpl; try constructor.
+  admit. admit.
+
+
+
   pose proof (fun_elim (f:=eval)).
-  specialize (H (fun n Γ t e m => forall env v, m env = Some v -> @eval_sem _ env _ e v)
-                (fun n Γ t u f a v m => forall env v',
-                     @eval_sem _ env _ f v -> m env = Some v' -> @eval_sem _ env _ (app f a) v')).
+  specialize (H (fun n Γ Σ t e m => forall env v μ, m env μ = Some v -> @eval_sem _ _ (weaken v.2.2.2 env) _ e v.2.2.1)
+                (fun n Γ Σ t u f a v m => forall env v',
+                     @eval_sem _ _ env _ f v.2.2.1 -> m env = Some v' -> @eval_sem _ env _ (app f a) v')).
   rapply H; clear; intros.
   discriminate.
   noconf H. constructor.
@@ -352,5 +363,4 @@ Proof.
   specialize (H _ _ Heq).
   unfold usingEnv in H2. specialize (H0 v (all_cons v a) v').
   econstructor; eauto.
-Admitted.
-*)
+Admitted.*)

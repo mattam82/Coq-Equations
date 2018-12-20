@@ -127,16 +127,7 @@ Derive Signature NoConfusion NoConfusionHom Subterm for mono.
 (** Our first interesting definition computes the coefficient in [Z] by which
     a monomial [m] is multiplied in a polynomial [p]. *)
 
-(* Equations get_coef {n} (m : mono n) {b} (p : poly b n) : Z *)
-(*  := get_coef m p by rec (pack m) mono_subterm := *)
-(* get_coef mono_z     poly_z       := 0%Z; *)
-(* get_coef mono_z     (poly_c z _) := z; *)
-(* get_coef (mono_l m) (poly_l p)   := get_coef m p; *)
-(* get_coef (mono_l m) (poly_s p _) := get_coef m p; *)
-(* get_coef (mono_s m) (poly_l _)   := 0%Z; *)
-(* get_coef (mono_s m) (poly_s p1 p2) := get_coef m p2. *)
-
-Equations get_coef {n} (m : mono n) {b} (p : poly b n) : Z :=
+Equations get_coef {n} (m : mono n) {b} (p : poly b n) : Z (* by rec (pack m) mono_subterm *) :=
 get_coef mono_z     poly_z       := 0%Z;
 get_coef mono_z     (poly_c z _) := z;
 get_coef (mono_l m) (poly_l p)   := get_coef m p;
@@ -146,7 +137,7 @@ get_coef (mono_s m) (poly_s p1 p2) := get_coef m p2.
 
 (** The definition can be done using either the usual structural
   recursion of [Coq] or well-founded recursion. If we use structural
-  recursion however, the guardness check will not be able to verify the
+  recursion, the guardness check might not be able to verify the
   automatically generated proof that the function respects its graph, as
   it involves too much rewriting due to dependent pattern-matching. We
   could prove it using a dependent induction instead of using the raw
@@ -369,19 +360,8 @@ Equations plus {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) : { b : bool & po
   plus (poly_s p1 q1) (poly_l p2)    := apoly (poly_s (plus p1 p2).2 q1);
 
   plus (poly_s p1 q1) (poly_s p2 q2) with plus q1 q2 => {
-       | (existT _ false q3) => apoly (poly_s (plus p1 p2).2 q3);
-       | (existT _ true _)   => apoly (poly_l (plus p1 p2).2) }.
-
-(* (** The induction principle cannot be defined using a raw fixpoint, the guard condition fails. *)
-(*     However, as deep pattern-matching is not necessary, simple (dependent) induction can be used *)
-(*     instead *) *)
-
-(*   Next Obligation. *)
-(*     depind p1; depelim p2; simp plus. *)
-(*     constructor. destruct (z + z0)%Z; simp plus. *)
-(*     constructor. auto. set (foo:=plus p1_2 p2_2). depelim foo. depelim x. *)
-(*     simp plus. simp plus. *)
-(*   Defined. *)
+       | (false ; q3) => apoly (poly_s (plus p1 p2).2 q3);
+       | (true  ; _)  => apoly (poly_l (plus p1 p2).2) }.
 
 (** The functional elimination principle can be derived all the same
     for [plus], allowing us to make quick work of the proof that it
@@ -391,7 +371,8 @@ Lemma plus_eval : forall {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) v,
     (eval p1 v + eval p2 v)%Z = eval (plus p1 p2).2 v.
 Proof with (simp plus eval; auto with zarith).
   Ltac X := (simp plus eval; auto with zarith).
-    intros until p2. funelim (plus p1 p2); intros; depelim v; X; try rewrite <- H; X.
+    intros until p2.
+    let f := constr:(fun_elim (f:=@plus)) in apply f; intros; depelim v; X; try rewrite <- H; X.
   - rewrite Heq in Hind.
     specialize (Hind (Vector.cons h v)).
     rewrite poly_z_eval in Hind. nia.
@@ -585,7 +566,7 @@ Equations eval_formula {A} (v : A -> bool) (f : @formula A) : bool :=
 Definition close_formula : @formula nat -> { n : nat & forall m, m >= n -> @formula (Fin.t m) }.
 Proof.
   intro f; depind f.
-  - apply (existT _ (S a)); intros m p; apply f_var.
+  - unshelve eapply (S a ; _); intros m p; apply f_var.
     apply @Fin.of_nat_lt with (p := a). omega.
   - exact (O ; (fun _ _ => f_const b)).
   - destruct IHf1 as [n1 e1]; destruct IHf2 as [n2 e2].

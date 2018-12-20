@@ -102,7 +102,8 @@ Module RoseTree.
     elements' (leaf a) := [a];
     elements' (node l) := fn l hidebody
 
-    where fn (x : list t) (H : list_size size x < size (node l)) : list A by rec x (MR lt (list_size size)) :=
+    where fn (x : list t) (H : list_size size x < size (node l)) : list A
+      by rec x (MR lt (list_size size)) :=
     fn nil _ := nil;
     fn (cons x xs) _ := elements' x ++ fn xs hidebody.
 

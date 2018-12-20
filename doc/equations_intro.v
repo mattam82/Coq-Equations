@@ -175,7 +175,7 @@ Check app_ind. Check @app_ind_equation_1. Check @app_ind_equation_2.
 
 Equations filter {A} (l : list A) (p : A -> bool) : list A :=
 filter nil p := nil ;
-filter (cons a l) p <= p a => {
+filter (cons a l) p with p a => {
   filter (cons a l) p true := a :: filter l p ;
   filter (cons a l) p false := filter l p }.
 
@@ -188,7 +188,7 @@ Global Transparent filter.
 
 Equations unzip {A B} (l : list (A * B)) : list A * list B :=
 unzip nil := (nil, nil) ;
-unzip (cons p l) <= unzip l => {
+unzip (cons p l) with unzip l => {
   unzip (cons (pair a b) l) (pair la lb) := (a :: la, b :: lb) }.
 
 (** The real power of with however comes when it is used with dependent types. *)
@@ -311,8 +311,8 @@ Notation Vcons := Vector.cons.
 
 Equations vmap {A B} (f : A -> B) {n} (v : vector A n) :
   vector B n :=
-vmap f {n:=?(0)} Vnil := Vnil ;
-vmap f {n:=?(S n)} (Vcons a n v) := Vcons (f a) (vmap f v).
+vmap f (n:=?(0)) Vnil := Vnil ;
+vmap f (Vcons a v) := Vcons (f a) (vmap f v).
 
 (** Here the value of the index representing the size of the vector 
    is directly determined by the constructor, hence in the case tree
@@ -328,7 +328,7 @@ vmap f {n:=?(S n)} (Vcons a n v) := Vcons (f a) (vmap f v).
  *)
 
 Equations vtail {A n} (v : vector A (S n)) : vector A n :=
-vtail (Vcons a n v') := v'.
+vtail (Vcons a v') := v'.
 
 (** The type of [v] ensures that [vtail] can only be applied to 
    non-empty vectors, moreover the patterns only need to consider 
@@ -379,8 +379,8 @@ forall (A : Type) (n : nat) (v : vector A (S n)), P A n v (vtail v) ]]
 
 
 Equations diag {A n} (v : vector (vector A n) n) : vector A n :=
-diag {n:=O} Vnil := Vnil ;
-diag {n:=(S ?(n))} (Vcons (Vcons a n v) ?(n) v') :=
+diag (n:=O) Vnil := Vnil ;
+diag (n:=S _) (Vcons (Vcons a v) v') :=
   Vcons a (diag (vmap vtail v')).
 
 (** Here in the second equation, we know that the elements of the vector
@@ -427,8 +427,7 @@ diag' (Vcons (Vcons a n v) ?(n) v') :=
 
 Require Import Equations.Subterm.
 
-Equations id (n : nat) : nat :=
-  id n by rec n lt :=
+Equations id (n : nat) : nat by rec n lt :=
   id 0 := 0;
   id (S n') := S (id n').
 
@@ -480,20 +479,19 @@ Module UnzipVect.
       must be shown smaller than a [vector A (S n)]. They are actually compared
       at the packed type [{ n : nat & vector A n}]. *)
 
-  Equations unzip {n} (v : vector (A * B) n) : vector A n * vector B n :=
-  unzip v by rec (signature_pack v) (@t_subterm (A * B)) :=
+  Equations unzip {n} (v : vector (A * B) n) : vector A n * vector B n
+    by rec (signature_pack v) (@t_subterm (A * B)) :=
   unzip Vnil := (Vnil, Vnil) ;
-  unzip (Vector.cons (pair x y) n v) with unzip v := {
+  unzip (Vector.cons (pair x y) v) with unzip v := {
     | pair xs ys := (Vector.cons x xs, Vector.cons y ys) }.
 End UnzipVect.
 
 (** For the diagonal, it is easier to give [n] as the decreasing argument
     of the function, even if the pattern-matching itself is on vectors: *)
 
-Equations diag' {A n} (v : vector (vector A n) n) : vector A n :=
-diag' {n:=n} v by rec n lt :=
+Equations diag' {A n} (v : vector (vector A n) n) : vector A n by rec n lt :=
 diag' Vnil := Vnil ;
-diag' (Vcons (Vcons a n v) ?(n) v') :=
+diag' (Vcons (Vcons a v) v') :=
   Vcons a (diag' (vmap vtail v')).
 
 (** One can check using [Extraction diag'] that the computational behavior of [diag']
@@ -517,37 +515,63 @@ Qed.
     course use this for more elaborate termination arguments. We put
     ourselves in a section to parameterize a [skip] function by a predicate: *)
 
+Fixpoint vapp {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
+  match v with
+    | Vnil => w
+    | Vcons a v' => Vcons a (vapp v' w)
+  end.
+
+Inductive Split {X : Type}{m n : nat} : vector X (m + n) -> Type :=
+  append : forall (xs : vector X m)(ys : vector X n), Split (vapp xs ys).
+
 Section Skip.
   Context {A : Type} (p : A -> bool).
-  Equations skip_first {n} (v : vector A n) : &{ n : nat & vector A n } :=
-  skip_first Vnil := &(0 & Vnil);
-  skip_first (Vcons a n v') <= p a => {
-                     | true => skip_first v';
-                     | false => &(_ & Vcons a v') }.
+  Equations pivot {n} (v : vector A n) : option (A * vector A n) by rec (S n) lt :=
+  pivot (Vcons a v') with p a => {
+                   | true => Some (a, v');
+                   | false with v' =>
+                     { | Vnil => None;
+                       | v'' with pivot v'' =>
+                       { | None => None;
+                         | Some (b, v''') => Some (b, Vcons a v''') } } }.
+
+  Next Obligation.
+    Subterm.rec_wf_eqns_rel IH 0 (signature_pack v) (@t_subterm A).
+    unfold add_pattern.
+    depelim v. simp find_first.
+    constructor.
+    destruct (p h); simp find_first.
+    constructor. depelim v. simp find_first.
+    simpl. constructor. apply IH. constructor. simpl. constructor. auto.
+    destruct (find_first (Vcons h0 v)); simp find_first.
+  Defined.
 
   (** It is relatively straitforward to show that [skip] returns a (large) subvector of its argument *)
 
-  Lemma skip_first_subterm {n} (v : vector A n) : clos_refl _ (t_subterm _) (skip_first v) &(_ & v).
-  Proof.
-    funelim (skip_first v).
-    constructor 2.
-    depelim H.
-    constructor 1.
-    eapply clos_trans_stepr. simpl.
-    apply (t_direct_subterm_1_1 _ _ _ (&(_ & t).2)). apply H.
-    rewrite <- H. constructor. eauto with subterm_relation.
-    constructor 2.
-  Qed.
+  (* Lemma skip_first_subterm {n} (v : vector A n) : clos_refl _ (t_subterm _) (skip_first v) &(_ & v). *)
+  (* Proof. *)
+  (*   funelim (skip_first v). *)
+  (*   constructor 2. *)
+  (*   depelim H. *)
+  (*   constructor 1. *)
+  (*   eapply clos_trans_stepr. simpl. *)
+  (*   apply (t_direct_subterm_1_1 _ _ _ (&(_ & t).2)). apply H. *)
+  (*   rewrite <- H. constructor. eauto with subterm_relation. *)
+  (*   constructor 2. *)
+  (* Qed. *)
   
 End Skip.
 
 (** This function takes an unsorted vector and returns a sorted vector corresponding to it
     starting from its head [a], removing all elements smaller than [a] and recursing.  *)
 
-Equations sort {n} (v : vector nat n) : &{n' : _ & vector nat n'} :=
-sort v by rec (signature_pack v) (t_subterm nat) :=
-sort Vnil := &( _ & Vnil );
-sort (Vcons a n v) := let sk := skip_first (fun x => Nat.leb x a) v in &(_ & Vcons a (sort sk.2).2).
+Equations sort {n} (v : vector nat n) : vector nat n
+  by rec n lt :=
+sort Vnil := Vnil;
+sort (Vcons a Vnil) := Vcons a Vnil;
+sort (Vcons a v) with find_first (fun x => Nat.leb x a) v => {
+                       | None => Vcons a (sort v);
+                       | Some (b, v') => Vcons b (sort (Vcons a v')) }.
 
 (** Here we prove that the recursive call is correct as skip preserves the size of its argument *)
 
