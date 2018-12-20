@@ -10,6 +10,7 @@ open Util
 open Names
 open Nameops
 open Constr
+open Context
 open Declarations
 open Globnames
 open Vars
@@ -21,15 +22,15 @@ let name_context env sigma ctx =
   let avoid, ctx =
     List.fold_right (fun decl (avoid, acc) ->
       let (n, b, t) = to_tuple decl in
-      match n with
+      match n.binder_name with
       | Name id -> let id' = Namegen.next_ident_away id avoid in
         let avoid = Id.Set.add id' avoid in
-        (avoid, make_def (Name id') b t :: acc)
+        (avoid, make_def (nameR id') b t :: acc)
       | Anonymous ->
         let id' = Namegen.id_of_name_using_hdchar
             (push_rel_context acc env) sigma t Anonymous in
         let avoid = Id.Set.add id' avoid in
-        (avoid, make_def (Name id') b t :: acc))
+        (avoid, make_def (nameR id') b t :: acc))
       ctx (Id.Set.empty, [])
   in ctx
 
@@ -126,9 +127,9 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   let sigma, fls = get_fresh sigma logic_bot in
   let ctx = name_context env sigma ctx in
   let xid = Id.of_string "x" and yid = Id.of_string "y" in
-  let xdecl = of_tuple (Name xid, None, argty) in
+  let xdecl = of_tuple (nameR xid, None, argty) in
   let binders = xdecl :: ctx in
-  let ydecl = of_tuple (Name yid, None, lift 1 argty) in
+  let ydecl = of_tuple (nameR yid, None, lift 1 argty) in
   let fullbinders = ydecl :: binders in
   let sigma, s =
     match Lazy.force logic_sort with
@@ -193,7 +194,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
       | (name, name', ty) :: eqs ->
         let ty, lhs, rhs =
           let get_type (restty, restl, restr) (na, na', ty) =
-            let codom = mkLambda (Name na, ty, restty) in
+            let codom = mkLambda (nameR na, ty, restty) in
             mkApp (sigT, [| ty; codom |]),
             mkApp (sigI, [| ty; codom; mkVar na; subst1 (mkVar na) restl |]),
             mkApp (sigI, [| ty; codom; mkVar na'; subst1 (mkVar na') restr |])

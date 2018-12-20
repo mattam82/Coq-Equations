@@ -13,6 +13,7 @@ open Util
 open Names
 open Nameops
 open Constr
+open Context
 open Termops
 open Declarations
 open Inductiveops
@@ -110,7 +111,7 @@ let dependent_pattern ?(pattern_term=true) c gl =
       Find_subterm.subst_closed_term_occ env (project gl)
         (Locus.AtOccs Locus.AllOccurrences) c ty
     in
-      mkNamedLambda id cty conclvar, evd'
+      mkNamedLambda (annotR id) cty conclvar, evd'
   in
   let subst =
     let deps = List.rev_map (fun c -> (c, varname c, pf_get_type_of gl c)) deps in
@@ -133,7 +134,7 @@ let depcase poly (mind, i as ind) =
   let indapp = mkApp (mkInd ind, extended_rel_vect 0 ctx) in
   let evd = ref (Evd.from_env (Global.env())) in
   let pred = it_mkProd_or_LetIn (evd_comb0 Evarutil.new_Type evd)
-    (make_assum Anonymous indapp :: args)
+    (make_assum anonR indapp :: args)
   in
   let nconstrs = Array.length oneind.mind_nf_lc in
   let branches =
@@ -153,10 +154,10 @@ let depcase poly (mind, i as ind) =
       in
       let body = mkRel (1 + nconstrs - i) in
       let br = it_mkProd_or_LetIn arity realargs in
-        (make_assum (Name (Id.of_string ("P" ^ string_of_int i))) br), body)
+        (make_assum (nameR (Id.of_string ("P" ^ string_of_int i))) br), body)
       oneind.mind_consnames oneind.mind_nf_lc
   in
-  let ci = make_case_info (Global.env ()) ind RegularStyle in
+  let ci = make_case_info (Global.env ()) ind Sorts.Relevant RegularStyle in
   (*   ci_ind = ind; *)
   (*   ci_npar = nparams; *)
   (*   ci_cstr_nargs = oneind.mind_consnrealargs; *)
@@ -168,7 +169,7 @@ let depcase poly (mind, i as ind) =
           (Array.append (extended_rel_vect (nargs + nconstrs + i) params)
               (extended_rel_vect 0 args)))
   in
-  let ctxpred = make_assum Anonymous (obj (2 + nargs)) :: args in
+  let ctxpred = make_assum anonR (obj (2 + nargs)) :: args in
   let app = mkApp (mkRel (nargs + nconstrs + 3),
                   (extended_rel_vect 0 ctxpred))
   in
@@ -179,9 +180,9 @@ let depcase poly (mind, i as ind) =
   let body =
     let len = 1 (* P *) + Array.length branches in
     it_mkLambda_or_LetIn case
-      (make_assum xid (lift len indapp)
+      (make_assum (annotR xid) (lift len indapp)
         :: ((List.rev (Array.to_list (Array.map fst branches)))
-            @ (make_assum (Name (Id.of_string "P")) pred :: ctx)))
+            @ (make_assum (nameR (Id.of_string "P")) pred :: ctx)))
   in
   let univs = Evd.univ_entry ~poly !evd in
   let ce = Declare.definition_entry ~univs (EConstr.to_constr !evd body) in
@@ -229,7 +230,7 @@ let pattern_call ?(pattern_term=true) c gl =
   let mklambda ty (c, id, cty) =
     let conclvar, _ = Find_subterm.subst_closed_term_occ env (project gl)
       (Locus.AtOccs Locus.AllOccurrences) c ty in
-      mkNamedLambda id cty conclvar
+      mkNamedLambda (annotR id) cty conclvar
   in
   let subst =
     let deps = List.rev_map (fun c -> (c, varname c, pf_get_type_of gl c)) deps in

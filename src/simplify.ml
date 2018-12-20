@@ -1,4 +1,5 @@
 open Pp
+open Context
 open EConstr
 (* ========== Coq references ========= *)
 (* This section should change a lot when we approach an actual solution. *)
@@ -399,12 +400,12 @@ let check_constant sigma (cst : Names.Constant.t) : EConstr.constr -> bool =
   Equations_common.is_global sigma (Globnames.ConstRef cst)
 
 (* Deconstruct the goal if it's a product. Otherwise, raise CannotSimplify. *)
-let check_prod sigma (ty : EConstr.types) : Names.Name.t * EConstr.types * EConstr.types =
+let check_prod sigma (ty : EConstr.types) : Names.Name.t binder_annot * EConstr.types * EConstr.types =
   let name, ty1, ty2 = try destProd sigma ty
     with Constr.DestKO -> raise (CannotSimplify (str "The goal is not a product."))
   in name, ty1, ty2
 
-let check_letin sigma (ty : EConstr.types) : Names.Name.t * EConstr.types * EConstr.types * EConstr.types =
+let check_letin sigma (ty : EConstr.types) : Names.Name.t binder_annot * EConstr.types * EConstr.types * EConstr.types =
   let name, na, ty1, body = try destLetIn sigma ty
     with Constr.DestKO -> raise (CannotSimplify (str "The goal is not a let-in."))
   in name, na, ty1, body
@@ -605,7 +606,7 @@ let solution ~(dir:direction) : simplification_fun =
   (* We will have to generalize everything after [x'] in the new
    * context. *)
   let after', decl', before' = Context_map.split_context (pred rel') ctx' in
-  let name' = Context.Rel.Declaration.get_name decl' in
+  let name' = Context.Rel.Declaration.get_annot decl' in
   (* let after, _, before = Context_map.split_context rel ctx in*)
   
   (* Select the correct solution lemma. *)

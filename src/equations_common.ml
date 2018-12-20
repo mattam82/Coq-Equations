@@ -649,7 +649,7 @@ open EConstr.Vars
 let mkProd_or_subst decl c =
   let open Context.Rel.Declaration in
   match get_value decl with
-    | None -> mkProd (get_name decl, get_type decl, c)
+    | None -> mkProd (get_annot decl, get_type decl, c)
     | Some b -> subst1 b c
 
 let mkProd_or_clear sigma decl c =
@@ -663,7 +663,7 @@ let it_mkProd_or_clear sigma ty ctx =
 let mkLambda_or_subst decl c =
   let open Context.Rel.Declaration in
   match get_value decl with
-    | None -> mkLambda (get_name decl, get_type decl, c)
+    | None -> mkLambda (get_annot decl, get_type decl, c)
     | Some b -> subst1 b c
 
 let mkLambda_or_subst_or_clear sigma decl c =
@@ -756,7 +756,7 @@ let deps_of_var sigma id env =
        let n, b, t = Context.Named.Declaration.to_tuple decl in
        if Option.cata (fun x -> occur_var env sigma id (of_constr x)) false b ||
             occur_var env sigma id (of_constr t) then
-        Id.Set.add n acc
+        Id.Set.add n.binder_name acc
       else acc)
     env ~init:Id.Set.empty
     
@@ -871,6 +871,7 @@ let to_context c =
 let get_type = Context.Rel.Declaration.get_type
 let get_value = Context.Rel.Declaration.get_value
 let get_name = Context.Rel.Declaration.get_name
+let get_annot = Context.Rel.Declaration.get_annot
 let get_named_type = Context.Named.Declaration.get_type
 let get_named_value = Context.Named.Declaration.get_value
 let make_assum n t = Context.Rel.Declaration.LocalAssum (n, t)
@@ -892,7 +893,7 @@ let named_of_rel_context ?(keeplets = false) default l =
       (fun decl (subst, args, ids, ctx) ->
         let decl = Context.Rel.Declaration.map_constr (substl subst) decl in
 	let id = match get_name decl with Anonymous -> default () | Name id -> id in
-	let d = Named.Declaration.of_tuple (id, get_value decl, get_type decl) in
+        let d = Named.Declaration.of_tuple (annotR id, get_value decl, get_type decl) in
 	let args = if keeplets ||Context.Rel.Declaration.is_local_assum decl then mkVar id :: args else args in
 	  (mkVar id :: subst, args, id :: ids, d :: ctx))
       l ([], [], [], [])
@@ -901,8 +902,8 @@ let named_of_rel_context ?(keeplets = false) default l =
 let rel_of_named_context ctx = 
   List.fold_right (fun decl (ctx',subst) ->
       let (n, b, t) = to_named_tuple decl in
-      let decl = make_def (Name n) (Option.map (subst_vars subst) b) (subst_vars subst t) in 
-      (decl :: ctx', n :: subst)) ctx ([],[])
+      let decl = make_def (map_annot (fun n -> Name n) n) (Option.map (subst_vars subst) b) (subst_vars subst t) in
+      (decl :: ctx', n.binder_name :: subst)) ctx ([],[])
 
 let empty_hint_info = Hints.empty_hint_info
 
@@ -948,7 +949,7 @@ let set_in_ctx (n : int) (c : constr) (ctx : EConstr.rel_context) : EConstr.rel_
     | [] -> []
     | decl :: before ->      
       if k == n then
-        (rev after) @ LocalDef (get_name decl, lift (-k) c, get_type decl) :: before
+        (rev after) @ LocalDef (get_annot decl, lift (-k) c, get_type decl) :: before
       else aux (succ k) (decl :: after) before
   in aux 1 [] ctx
 

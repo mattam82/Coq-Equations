@@ -10,6 +10,7 @@ open Util
 open Names
 open Nameops
 open Constr
+open Context
 open Declarations
 open Inductiveops
 open Globnames
@@ -35,7 +36,7 @@ let mkcase env sigma c ty constrs =
   let ctx = oneind.mind_arity_ctxt in
   let _len = List.length ctx in
   let params = mindb.mind_nparams in
-  let ci = make_case_info env (fst ind) RegularStyle in
+  let ci = make_case_info env (fst ind) Sorts.Relevant RegularStyle in
   let brs = 
     Array.map2_i (fun i id (ctx, cty) ->
       let cty = Term.it_mkProd_or_LetIn cty ctx in
@@ -87,12 +88,15 @@ let derive_no_confusion env sigma0 ~polymorphic (ind,u as indu) =
   let tru = get_efresh logic_top evd in
   let fls = get_efresh logic_bot evd in
   let xid = Id.of_string "x" and yid = Id.of_string "y" in
-  let xdecl = of_tuple (Name xid, None, argty) in
+  let xdecl = of_tuple (nameR xid, None, argty) in
   let binders = xdecl :: ctx in
-  let ydecl = of_tuple (Name yid, None, lift 1 argty) in
+  let ydecl = of_tuple (nameR yid, None, lift 1 argty) in
   let fullbinders = ydecl :: binders in
   let s = Lazy.force logic_sort in
   let s = match s with
+    | Sorts.InSProp -> mkSProp
+    | Sorts.InProp -> mkProp
+    | Sorts.InSet -> mkSet
     | Sorts.InType ->
       (* In that case the noConfusion principle lives at the level of the type. *)
       let sort = EConstr.mkSort (EConstr.ESorts.kind !evd inds) in
@@ -100,8 +104,6 @@ let derive_no_confusion env sigma0 ~polymorphic (ind,u as indu) =
         Evarsolve.refresh_universes ~status:Evd.univ_flexible ~onlyalg:true
           (Some false) env !evd sort
       in evd := sigma; s
-    | Sorts.InProp
-    | Sorts.InSet -> mkSort (Equations_common.evd_comb1 Evd.fresh_sort_in_family evd s)
   in
   let arity = it_mkProd_or_LetIn s fullbinders in
   let env = push_rel_context binders env in
@@ -116,15 +118,15 @@ let derive_no_confusion env sigma0 ~polymorphic (ind,u as indu) =
       (* In pars ; x |- fun args (x : ind pars args) => forall y, Prop *)
       let app = pack_ind_with_parlift (args + 2) in
 	it_mkLambda_or_LetIn 
-	  (mkProd_or_LetIn (of_tuple (Anonymous, None, app)) s)
-	  (of_tuple (Name xid, None, ind_with_parlift (lenindices + 1)) ::
+          (mkProd_or_LetIn (of_tuple (anonR, None, app)) s)
+          (of_tuple (nameR xid, None, ind_with_parlift (lenindices + 1)) ::
              lift_rel_context 1 argsctx)
     in
       mkcase env !evd x elim (fun ind i id nparams args arity ->
-	let ydecl = (Name yid, None, pack_ind_with_parlift (List.length args + 1)) in
+        let ydecl = (nameR yid, None, pack_ind_with_parlift (List.length args + 1)) in
         let env' = push_rel_context (of_tuple ydecl :: args) env in
         let argsctx = lift_rel_context (List.length args + 2) argsctx in
-	let elimdecl = (Name yid, None, ind_with_parlift (List.length args + lenindices + 2)) in
+        let elimdecl = (nameR yid, None, ind_with_parlift (List.length args + lenindices + 2)) in
 	  mkLambda_or_LetIn (of_tuple ydecl)
             (mkcase env' !evd x
 	        (it_mkLambda_or_LetIn s (of_tuple elimdecl :: argsctx))
