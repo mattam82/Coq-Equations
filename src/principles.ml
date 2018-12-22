@@ -1118,7 +1118,11 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
   let poly = is_polymorphic info in
   let statement i filter (ctx, fl, flalias, pats, ty, f', (refine, cut), c) =
     let hd, unf = match flalias with
-      | Some ((f', _), unf, _) -> f', Equality.rewriteLR (constr_of_ident unf)
+      | Some ((f', _), unf, _) ->
+        let tac = Proofview.tclBIND (Tacticals.New.pf_constr_of_global (Nametab.locate (Libnames.qualid_of_ident unf)))
+            Equality.rewriteLR in
+        f', tac
+
       | None -> fl,
         if eq_constr !evd fl (of_constr f) then
           Tacticals.New.tclORELSE Tactics.reflexivity (of82 (unfold_constr !evd (of_constr f)))
