@@ -33,10 +33,6 @@ Equations invertFinInv {n : nat} (x : Fin.t n) :
                                      (invFULemma (invertFin y))
                                      (f_equal _ (invertFinInv y))).
 
-Next Obligation.
-  induction n; depelim x. constructor. constructor. auto.
-Defined.
-
 Definition invFinViewType {n : nat} (x : (Fin.t n)) : Type :=
   { y : Fin.t n & x = invertFin y }.
 

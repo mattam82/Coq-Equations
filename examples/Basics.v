@@ -419,13 +419,10 @@ Section Univ.
 
 End Univ.
 
-Equations vlast {A} {n} (v : vector A (S n)) : A :=
+Equations vlast {A} {n} (v : vector A (S n)) : A by struct v :=
 vlast (@cons a O _) := a ;
 vlast (@cons a (S n) v) := vlast v.
 Transparent vlast.
-Next Obligation.
-  depind v. destruct n. constructor. simp vlast.
-Defined.
 
 (** The parity predicate embeds a divisor of n or n-1 *)
 
@@ -458,14 +455,6 @@ Equations diag {A n} (v : vector (vector A n) n) : vector A n :=
 diag (n:=O) nil := nil ;
 diag (n:=S ?(n)) (cons (@cons a n v) v') := cons a (diag (vmap vtail v')).
 Transparent diag.
-
-(** FIXME: cannot be proven by structural fixpoint *)
-Next Obligation.
-Proof.
-  induction n.
-  depelim v. constructor.
-  depelim v. depelim h. constructor. apply IHn.
-Defined.
 
 Definition mat A n m := vector (vector A m) n.
 

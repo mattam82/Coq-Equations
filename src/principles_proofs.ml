@@ -2,7 +2,6 @@ open Util
 open Names
 open Nameops
 open Constr
-open Environ
 open Globnames
 open Pp
 open List
@@ -224,6 +223,14 @@ let mutual_fix li l =
   tclEVARMAP >>= fun sigma ->
   Unsafe.tclGETGOALS >>= mfix env sigma
 
+let check_guard gls sigma =
+  let gl = Proofview.drop_state (List.hd gls) in
+  try
+    let evi = Evd.find sigma gl in
+    match evi.Evd.evar_body with
+    | Evd.Evar_defined b -> Inductiveops.control_only_guard (Evd.evar_env evi) sigma b; true
+    | Evd.Evar_empty -> true
+  with Type_errors.TypeError _ -> false
 
 let find_helper_arg info f args =
   let (ev, arg, id) = find_helper_info info f in
@@ -552,6 +559,8 @@ let observe_tac s tac =
                          | _ -> CErrors.iprint iexn));
                    Proofview.tclUNIT ())
 
+exception NotGuarded
+
 let ind_fun_tac is_rec f info fid split unfsplit progs =
   let open Tacticals.New in
   match is_rec with
@@ -590,8 +599,57 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
                          | _ -> tclUNIT ()) nested) <*>
          prove_progs nestedprogs
      in
+     let try_induction () =
+       match mutannots with
+       | [n] ->
+         (* Try using regular induction instead *)
+         let _ =
+           if !Equations_common.debug then
+             Feedback.msg_debug
+               (str "Proof of mutual induction principle is not guarded, trying induction")
+         in
+         let splits =
+           match progs with
+           | [(p, _, e)] ->
+             (match e.equations_split with
+              | Split (_, _, _, splits) ->
+                Some (CList.map_filter (fun x -> x) (Array.to_list splits))
+              | _ -> None)
+           | _ -> None
+         in
+         (match splits with
+         | Some s ->
+           observe_new "induction"
+             (tclDISPATCH
+                [tclDO n intro <*>
+                 observe_new "induction on last var"
+                   (onLastDecl (fun decl ->
+                        Equations_common.depind_tac (Context.Named.Declaration.get_id decl) <*>
+                        intros <*>
+                        specialize_mutfix_tac () <*>
+                        tclDISPATCH (List.map (fun split ->
+                            of82 (aux_ind_fun info (0, 1) None [] split)) s)))])
+         | None -> tclZERO NotGuarded)
+       | _ -> tclZERO NotGuarded
+     in
      let mutfix =
-       mutual_fix [] mutannots <*> specialize_mutfix_tac () <*> prove_progs mutprogs
+       tclORELSE
+         (tclBIND Unsafe.tclGETGOALS (fun gls ->
+              tclBIND (mutual_fix [] mutannots <*> specialize_mutfix_tac () <*> prove_progs mutprogs)
+                (fun () ->
+                   tclBIND tclEVARMAP (fun sigma ->
+                       if List.length nested > 0 || check_guard gls sigma then tclUNIT () else tclZERO NotGuarded))))
+         (fun (e, einfo) ->
+           match e with
+           | NotGuarded ->
+             tclORELSE (try_induction ()) (fun (e, einfo) ->
+                 match e with
+                 | NotGuarded ->
+                   Feedback.msg_debug (str "Proof of mutual induction principle is not guarded " ++
+                                       str" and cannot be proven by induction");
+                   tclIDTAC
+                 | _ -> tclZERO ~info:einfo e)
+           | _ -> tclZERO ~info:einfo e)
      in
      let mutlen = List.length mutprogs in
      let tac gl =

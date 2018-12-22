@@ -174,12 +174,6 @@ lookup (n:=(S _)) (cons a Γ) FO     := lift_type_by (scope_le_S scope_le_n) a;
 lookup (n:=(S _)) (cons a Γ) (FS x) := lift_type_by (scope_le_S scope_le_n) (lookup Γ x)
 .
 
-(** FIXME: not done automatically *)
-Next Obligation.
-  induction n. depelim x.
-  depelim Γ. depelim x. constructor. constructor. apply IHn.
-Defined.
-
 Lemma lookup_app : forall {n} (Γ : env O (S n)) {m} (Δ : env (S n) (S m)) x,
                      lookup (env_app Γ Δ) (lift_var_by (env_scope_le Δ) x) =
                      lift_type_by (env_scope_le Δ) (lookup Γ x).

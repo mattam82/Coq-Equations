@@ -476,13 +476,10 @@ bla baz := false.
 Lemma eq_trans_eq A x : @eq_trans A x x x eq_refl eq_refl = eq_refl.
 Proof. reflexivity. Qed.
 
-Equations vlast {A} {n} (v : vector A (S n)) : A :=
-vlast (cons a (n:=O) Vnil) := a ;
+Equations vlast {A} {n} (v : vector A (S n)) : A by struct v :=
+vlast (cons a (n:=O) nil) := a ;
 vlast (cons a (n:=S n) v) := vlast v.
 
-Next Obligation.
-  depind v. destruct n; simp vlast.
-Defined.
 Transparent vlast.
 Eval compute in (vlast (cons 2 (cons 5 (cons 4 nil)))).
 
@@ -551,10 +548,6 @@ Extraction diag.
 Equations(struct n) diag_struct {A n} (v : vector (vector A n) n) : vector A n :=
 diag_struct (n:=O) nil := nil ;
 diag_struct (n:=(S _)) (cons (cons a v) v') := cons a (diag_struct (vmap vtail v')).
-
-Next Obligation.
-  induction n. depelim v; constructor. depelim v. depelim h. simp diag_struct.
-Defined.
 
 Definition mat A n m := vector (vector A m) n.
 
