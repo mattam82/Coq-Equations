@@ -87,23 +87,23 @@ Arguments Vector.cons {A} _ {n}.
 Notation vnil := Vector.nil.
 Notation vcons := Vector.cons.
 
-Equations(nocomp) nth {A} {n} (v : Vector.t A n) (f : fin n) : A :=
+Equations nth {A} {n} (v : Vector.t A n) (f : fin n) : A :=
 nth (vcons a v) fz := a ;
 nth (vcons a v) (fs f) := nth v f.
 
-Equations(nocomp) tabulate {A} {n} (f : fin n -> A) : Vector.t A n :=
+Equations tabulate {A} {n} (f : fin n -> A) : Vector.t A n by struct n :=
 tabulate (n:=O) f := vnil ;
 tabulate (n:=(S n)) f := vcons (f fz) (tabulate (f ∘ fs)).
 
 (** [Below] recursor for [fin]. *)
 
-Equations(nocomp noind) Below_fin (P : forall n, fin n -> Type) {n} (v : fin n) : Type :=
+Equations(noind) Below_fin (P : forall n, fin n -> Type) {n} (v : fin n) : Type :=
 Below_fin P fz := unit ;
 Below_fin P (fs f) := (P _ f * Below_fin P f)%type.
 
 Hint Rewrite Below_fin_equation_2 (* Below_fin_equation_3 *) : Below.
 
-Equations(nocomp noeqns noind) below_fin (P : forall n, fin n -> Type)
+Equations(noeqns noind) below_fin (P : forall n, fin n -> Type)
   (step : forall n (v : fin n), Below_fin P v -> P n v)
   {n} (v : fin n) : Below_fin P v :=
 below_fin P step fz := tt ;

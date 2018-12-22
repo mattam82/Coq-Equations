@@ -218,9 +218,20 @@ let define_principles flags rec_info fixprots progs =
   let newsplits = List.map (fun (p, prog, f as x) -> p, prog, newsplits env fixdecls x) progs in
   principles env newsplits
 
-let define_mutual_nested_csts flags progs =
+let define_mutual_nested_csts rec_info flags progs =
   match progs with
-  | [prog] -> progs
+  | [(p, prog)] ->
+    (match rec_info, p.program_rec with
+     | Some (Guarded [id, _]), Some (Structural (MutualOn (_, None))) ->
+       (* Fix rec_info from inference of structural index *)
+       let env = Global.env () in
+       let ctx = constant_context env prog.program_cst in
+       let inst = Univ.UContext.instance (Univ.AUContext.repr ctx) in
+       let c = constant_value_in env (prog.program_cst, inst) in
+       let i = let (inds, _), _ = Constr.destFix c in inds.(0) in
+       Some (Guarded [id, MutualOn (i, None)]), progs
+     | _ -> rec_info, progs)
+
   | l ->
      let env = Global.env () in
      let evd = ref (Evd.from_env env) in
@@ -251,7 +262,7 @@ let define_mutual_nested_csts flags progs =
        Impargs.declare_manual_implicits true (ConstRef kn) [p.program_impls];
        let prog' = { prog with program_cst = kn } in
        (p, prog')) nested in
-     mutual @ nested
+     rec_info, mutual @ nested
 
 
 let define_by_eqs ~poly opts eqs nt =
@@ -316,7 +327,7 @@ let define_by_eqs ~poly opts eqs nt =
     if CArray.for_all (fun x -> not (Option.is_empty x)) progs then
       (let fixprots = List.map (nf_evar !evd) fixprots in
        let progs = Array.map_to_list (fun x -> Option.get x) progs in
-       let progs' = define_mutual_nested_csts flags progs in
+       let rec_info, progs' = define_mutual_nested_csts rec_info flags progs in
        if flags.with_eqns || flags.with_ind then
          define_principles flags rec_info fixprots progs')
   in

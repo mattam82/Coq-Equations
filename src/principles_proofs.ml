@@ -553,25 +553,8 @@ let observe_tac s tac =
                    Proofview.tclUNIT ())
 
 let ind_fun_tac is_rec f info fid split unfsplit progs =
+  let open Tacticals.New in
   match is_rec with
-  | Some (Syntax.Guarded [_]) ->
-    let c = constant_value_in (Global.env ()) (Constr.destConst f) in
-    let i = let (inds, _), _ = Constr.destFix c in inds.(0) in
-    let recid = add_suffix fid "_rec" in
-      (* tclCOMPLETE  *)
-      of82 (tclTHENLIST
-	  [to82 (set_eos_tac ()); to82 (fix recid (succ i));
-	   onLastDecl (fun decl gl ->
-             let (n,b,t) = to_named_tuple decl in
-             let fixprot pats env sigma =
-               let sigma, fixprot = get_fresh sigma coq_fix_proto in
-               let c = mkLetIn (Anonymous, fixprot, Retyping.get_type_of env sigma fixprot, t) in
-               (sigma, c)
-	     in
-	     Proofview.V82.of_tactic
-	       (change_in_hyp None fixprot (n, Locus.InHyp)) gl);
-           to82 intros; aux_ind_fun info (0, 1) None [] split])
-
   | Some (Guarded l) ->
      let open Proofview in
      let open Notations in
@@ -611,16 +594,6 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
        mutual_fix [] mutannots <*> specialize_mutfix_tac () <*> prove_progs mutprogs
      in
      let mutlen = List.length mutprogs in
-     (* let intros_conj len = *)
-     (*   if len == 1 then *)
-     (*     Tactics.intro *)
-     (*   else *)
-     (*     Tactics.intros_patterns false *)
-     (*     Proofview.Goal.enter (fun gl -> *)
-     (*         match concl_kind gl with *)
-     (*         | Prod (na, a, b) -> *)
-     (*            match kind *)
-     (* in *)
      let tac gl =
        let mutprops, nestedprops =
          let rec aux concl i =
@@ -654,8 +627,8 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
          observe_tac "after mut -> nested and mut provable" (eauto ~depth:None)
      in Proofview.Goal.enter (fun gl -> tac gl)
 
-  | _ -> of82 (tclCOMPLETE (tclTHENLIST
-      [to82 (set_eos_tac ()); to82 intros; aux_ind_fun info (0, 0) unfsplit [] split]))
+  | _ -> tclCOMPLETE (tclTHENLIST
+      [set_eos_tac (); intros; of82 (aux_ind_fun info (0, 0) unfsplit [] split)])
 
 let ind_fun_tac is_rec f info fid split unfsplit progs =
   Proofview.tclORELSE (ind_fun_tac is_rec f info fid split unfsplit progs)

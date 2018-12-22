@@ -27,6 +27,8 @@ Local Open Scope equations_scope.
 Set Warnings "-deprecated-option".
 Global Unset Shrink Obligations.
 
+Global Unset Auto Template Polymorphism.
+
 (** A marker for fixpoint prototypes in the context *)
 Definition fixproto := tt.
 

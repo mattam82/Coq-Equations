@@ -22,6 +22,8 @@ Section ilist.
 
 End ilist.
 
+Derive Signature for ilist fin.
+
 Arguments Nil [A].
 Arguments First [n].
 
@@ -48,12 +50,14 @@ Section hlist.
   Variable A : Type.
   Variable B : A -> Type.
 
+  #[universes(template)]
   Inductive hlist : list A -> Type :=
   | HNil : hlist nil
   | HCons : forall (x : A) (ls : list A), B x -> hlist ls -> hlist (x :: ls).
 
   Variable elm : A.
 
+  #[universes(template)]
   Inductive member : list A -> Type :=
   | HFirst : forall ls, member (elm :: ls)
   | HNext : forall x ls, member ls -> member (x :: ls).
