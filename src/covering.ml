@@ -15,7 +15,6 @@ open Reductionops
 open Pp
 open List
 open Evarutil
-open Evar_kinds
 open Termops
 open Equations_common
 open Syntax
@@ -26,7 +25,6 @@ open EConstr
 open EConstr.Vars   
 
 open Ltac_plugin
-
 
 type int_data = {
   rec_info : rec_type option;
@@ -608,7 +606,13 @@ let compute_fixdecls_data env evd ?data programs =
 
 let interp_arity env evd ~poly ~is_rec ~with_evars (((loc,i),rec_annot,l,t,by),clauses as ieqs) =
   let ienv, ((env', sign), impls) = Equations_common.evd_comb1 (interp_context_evars env) evd l in
-  let (arity, impls') = Equations_common.evd_comb1 (interp_type_evars_impls env' ?impls:None) evd t in
+  let (arity, impls') =
+    let ty = match t with
+      | Some ty -> ty
+      | None -> CAst.make ~loc (Constrexpr.CHole (None, Namegen.IntroAnonymous, None))
+    in
+    Equations_common.evd_comb1 (interp_type_evars_impls env' ?impls:None) evd ty
+  in
   let impls = impls @ impls' in
   let sign = nf_rel_context_evar ( !evd) sign in
   let arity = nf_evar ( !evd) arity in
@@ -1147,19 +1151,31 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
     in
     let data = { data with intenv; } in
     let relty = program_type p in
-    let src = (Some loc, QuestionMark {
+    let src = (Some loc, Evar_kinds.(QuestionMark {
         qm_obligation=Define false;
         qm_name=Name id;
         qm_record_field=None;
-      }) in
-    let sigma, term = Equations_common.new_evar env0 !evars ~src relty in
-    let () = evars := sigma in
-    let ev = destEvar !evars term in
-    let path = Evar (fst ev) :: path in
-    let splitting = lazy (covering env0 evars p data clauses path problem extpats p.program_arity) in
+      })) in
+    let path = Ident id :: path in
+    let splitting, term =
+      match t with
+      | Some ty (* non-delayed where clause, compute term right away *) ->
+        let splitting = covering env0 evars p data clauses path problem extpats p.program_arity in
+        let helpers, oblevars, term, _ = term_of_tree evars env0 splitting in
+        Lazy.from_val splitting, term
+      | None ->
+        let sigma, term = Equations_common.new_evar env0 !evars ~src relty in
+        let () = evars := sigma in
+        let ev = destEvar !evars term in
+        let cover () =
+          let splitting = covering env0 evars p data clauses path problem extpats p.program_arity in
+          let helpers, oblevars, term, _ = term_of_tree evars env0 splitting in
+          evars := Evd.define (fst ev) term sigma; splitting
+        in
+        Lazy.from_fun cover, term
+    in
     let termapp = mkApp (term, extended_rel_vect 0 lets) in
     let decl = make_def (Name id) (Some termapp) pre_type in
-    (* let nadecl = make_named_def id (Some (substl inst term)) (program_type p) in *)
     let covering =
       {where_program = p; where_program_orig = p;
        where_path = path;

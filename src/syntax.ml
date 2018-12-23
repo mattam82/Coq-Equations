@@ -79,7 +79,7 @@ and ('a,'b) rhs =
       'b list
 
 and pre_prototype =
-  identifier with_loc * user_rec_annot * Constrexpr.local_binder_expr list * Constrexpr.constr_expr *
+  identifier with_loc * user_rec_annot * Constrexpr.local_binder_expr list * Constrexpr.constr_expr option *
   (Id.t with_loc, Constrexpr.constr_expr * Constrexpr.constr_expr option) by_annot option
 
 and ('a, 'b) by_annot =
@@ -141,7 +141,7 @@ and pr_wheres env l =
 and pr_where env (sign, eqns) =
   pr_proto sign ++ str "{" ++ pr_clauses env eqns ++ str "}"
 and pr_proto ((_,id), _, l, t, ann) =
-  Id.print id ++ pr_binders l ++ str" : " ++ pr_constr_expr t ++
+  Id.print id ++ pr_binders l ++ pr_opt (fun t -> str" : " ++ pr_constr_expr t) t ++
   (match ann with
      None -> mt ()
    | Some (WellFounded (t, rel)) -> str"by rec " ++ pr_constr_expr t ++ pr_opt pr_constr_expr rel
@@ -514,15 +514,15 @@ let interp_eqn env p eqn =
             let c = CApp ((None, CAst.(make ~loc (CRef (qid', ie)))), args) in
             let arg = CAst.make ~loc (CApp ((None, CAst.make ~loc c), [chole id' loc])) in
             arg)
-          | CHole (k, i, Some eqns) when Genarg.has_type eqns (Genarg.rawwit wit_equations_list) ->
-         let eqns = Genarg.out_gen (Genarg.rawwit wit_equations_list) eqns in
-         let id = !whereid in
-         let () = whereid := Nameops.increment_subscript id in
-         let () = avoid := Id.Set.add id !avoid in
-         let eqns = List.map aux2 eqns in
-         let () =
-           wheres := (((loc, id), None, [], CAst.make ~loc (CHole (k, i, None)), None), eqns) :: !wheres;
-         in Constrexpr_ops.mkIdentC id
+      | CHole (k, i, Some eqns) when Genarg.has_type eqns (Genarg.rawwit wit_equations_list) ->
+        let eqns = Genarg.out_gen (Genarg.rawwit wit_equations_list) eqns in
+        let id = !whereid in
+        let () = whereid := Nameops.increment_subscript id in
+        let () = avoid := Id.Set.add id !avoid in
+        let eqns = List.map aux2 eqns in
+        let () =
+          wheres := (((loc, id), None, [], None, None), eqns) :: !wheres;
+        in Constrexpr_ops.mkIdentC id
       | _ -> map_constr_expr_with_binders Id.Set.add
              (fun avoid -> CAst.with_loc_val (aux' avoid)) ids (CAst.make ~loc c)
     in

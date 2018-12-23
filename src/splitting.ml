@@ -411,7 +411,7 @@ let term_of_tree isevar env0 tree =
               evm, where_term, where_type
            | Evar (ev, _) ->
              Evd.define ev c' evm, where_term, where_type
-           | _ -> assert false
+           | _ -> evm, where_term, where_type
          in
          (evm, (make_def (Name (where_id w)) (Some c') ty' :: ctx)))
          where (evm,ctx)

@@ -3,9 +3,8 @@ Require Import Equations.Equations.
 
 Equations foo (n : nat) : nat :=
 foo n := n + k 0
-
   where k (x : nat) : nat :=
-          { k 0 := 0 ; k (S n') := n }.
+  { k 0 := 0 ; k (S n') := n }.
 
 Variable f : nat -> (nat * nat).
 
@@ -85,3 +84,22 @@ Equations foo8 : nat -> nat :=
 where baz : nat -> nat :=
 baz 0 := 0;
 baz (S n) := baz n.
+
+
+
+Notation "{ x : A & y }" := (@sigma A (fun x : A => y)%type) (x at level 99) : type_scope.
+Notation "{ x & y }" := (@sigma _ (fun x : _ => y)%type) (x at level 99) : type_scope.
+
+Notation "&( x , .. , y , z )" :=
+  (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
+    (right associativity, at level 4,
+     format "&( x ,  .. ,  y  ,  z )").
+Obligation Tactic := idtac.
+
+Equations(noeqns noind) foo9 : { x: nat & x = 0 } :=
+foo9 := &(lhs, rhs)
+   where lhs : nat :=
+    { lhs := 0 }
+
+   where rhs : lhs = 0 :=
+   { rhs := eq_refl }.

@@ -414,7 +414,7 @@ GRAMMAR EXTEND Gram
   where_clause:
     [ [ r = rec_annot;
         id = lident; l = binders2; ":"; t = Constr.lconstr;
-        reca = wf_annot; ":="; eqs = sub_equations -> { ((id, r, l, t, reca), eqs) } ] ]
+        reca = wf_annot; ":="; eqs = sub_equations -> { ((id, r, l, Some t, reca), eqs) } ] ]
   ;
   where:
     [ [ "where"; l = LIST1 where_clause -> { l }

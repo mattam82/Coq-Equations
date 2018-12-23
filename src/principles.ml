@@ -816,7 +816,7 @@ let computations env evd alias refine eqninfo =
          try
          let (f, id, s) = match List.hd w.where_path with
          | Evar ev -> Evar.Map.find ev wheremap
-         | Ident _ -> assert false in
+         | Ident _ -> raise Not_found in
          let f, fargs = decompose_appvect evd f in
          let args = match_arguments evd (arguments evd w.where_term) fargs in
          let fsubst = ((f, args), term) :: fsubst in
