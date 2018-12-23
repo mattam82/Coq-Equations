@@ -21,9 +21,183 @@ open Evarutil
 open Evar_kinds
 open Equations_common
 open Syntax
-open Covering
 open EConstr
-open Vars
+open EConstr.Vars
+open Context_map
+
+(** Splitting trees *)
+
+type path_component =
+  | Evar of Evar.t
+  | Ident of Id.t
+
+type path = path_component list
+
+type splitting =
+  | Compute of context_map * where_clause list * types * splitting_rhs
+  | Split of context_map * int * types * splitting option array
+  | Valid of context_map * types * identifier list * Tacmach.tactic *
+             (Proofview.entry * Proofview.proofview) *
+             (Goal.goal * constr list * context_map * context_map option * splitting) list
+  | Mapping of context_map * splitting (* Mapping Γ |- p : Γ' and splitting Γ' |- p : Δ *)
+  | RecValid of identifier * splitting
+  | Refined of context_map * refined_node * splitting
+
+and where_clause =
+  { where_program : program_info;
+    where_program_orig : program_info;
+    where_path : path;
+    where_orig : path;
+    where_context_length : int; (* Length of enclosing context, including fixpoint prototype if any *)
+    where_prob : context_map;
+    where_arity : types; (* In pi1 prob *)
+    where_term : constr; (* In original context, de Bruijn only *)
+    where_type : types;
+    where_splitting : splitting Lazy.t }
+
+and refined_node =
+  { refined_obj : identifier * constr * types;
+    refined_rettyp : types;
+    refined_arg : int;
+    refined_path : path;
+    refined_ex : Evar.t;
+    refined_app : constr * constr list;
+    refined_revctx : context_map;
+    refined_newprob : context_map;
+    refined_newprob_to_lhs : context_map;
+    refined_newty : types }
+
+and splitting_rhs =
+  | RProgram of constr
+  | REmpty of int
+
+let rec context_map_of_splitting : splitting -> context_map = function
+  | Compute (subst, _, _, _) -> subst
+  | Split (subst, _, _, _) -> subst
+  | Valid (subst, _, _, _, _, _) -> subst
+  | Mapping (subst, _) -> subst
+  | RecValid (_, s) -> context_map_of_splitting s
+  | Refined (subst, _, _) -> subst
+
+let pr_path_component evd = function
+  | Evar ev -> Termops.pr_existential_key evd ev
+  | Ident id -> Id.print id
+
+let pr_path evd = prlist_with_sep (fun () -> str":") (pr_path_component evd)
+
+let path_component_eq x y =
+  match x, y with
+  | Evar ev, Evar ev' -> Evar.equal ev ev'
+  | Ident id, Ident id' -> Id.equal id id'
+  | _, _ -> false
+
+let eq_path path path' =
+  let rec aux path path' =
+    match path, path' with
+    | [], [] -> true
+    | hd :: tl, hd' :: tl' -> path_component_eq hd hd' && aux tl tl'
+    | _, _ -> false
+  in
+  aux path path'
+
+let where_id w = w.where_program.program_id
+
+let where_context wheres =
+  List.map (fun ({where_program; where_term;
+                 where_type; where_splitting } as w) ->
+             make_def (Name (where_id w)) (Some where_term) where_type) wheres
+
+let pr_rec_info p =
+  let open Pp in
+  Names.Id.print p.program_id ++ str " is " ++
+  match p.program_rec with
+  | Some (Structural ann) ->
+    (match ann with
+     | MutualOn (i,_) -> str "mutually recursive on " ++ int i
+     | NestedOn (Some (i,_)) -> str "nested on " ++ int i
+     | NestedOn None -> str "nested but not directly recursive")
+  | Some (WellFounded (c, r, info)) ->
+    str "wellfounded"
+  | None -> str "not recursive"
+
+let pr_splitting env sigma ?(verbose=false) split =
+  let verbose pp = if verbose then pp else mt () in
+  let pplhs env sigma lhs = pr_pats env sigma (pi2 lhs) in
+  let rec aux = function
+    | Compute (lhs, wheres, ty, c) ->
+      let env' = push_rel_context (pi1 lhs) env in
+      let ppwhere w =
+        hov 2 (str"where " ++ Id.print (where_id w) ++ str " : " ++
+               (try Printer.pr_econstr_env env'  sigma w.where_type ++
+                    hov 1 (str "(program type: " ++ Printer.pr_econstr_env env sigma (program_type w.where_program)
+                    ++ str ") ") ++ pr_rec_info w.where_program ++
+                    str "(where_term: " ++ Printer.pr_econstr_env env sigma w.where_term ++ str ")" ++
+                    str "(arity: " ++ Printer.pr_econstr_env env sigma w.where_arity ++ str ")" ++
+                    str" (where context length : " ++ int w.where_context_length ++ str ")" ++
+                    str " := " ++ Pp.fnl () ++ aux (Lazy.force w.where_splitting)
+                with e -> str "*raised an exception"))
+      in
+      let ppwheres = prlist_with_sep Pp.fnl ppwhere wheres in
+      let env'' = push_rel_context (where_context wheres) env' in
+      ((match c with
+          | RProgram c -> pplhs env' sigma lhs ++ str" := " ++
+                          Printer.pr_econstr_env env'' sigma c ++
+                          (verbose (str " : " ++ Printer.pr_econstr_env env'' sigma ty))
+          | REmpty i -> pplhs env' sigma lhs ++ str" :=! " ++
+                        pr_rel_name env'' i)
+       ++ Pp.fnl () ++ ppwheres ++
+       verbose (str " in context " ++  pr_context_map env sigma lhs))
+    | Split (lhs, var, ty, cs) ->
+      let env' = push_rel_context (pi1 lhs) env in
+      (pplhs env' sigma lhs ++ str " split: " ++ pr_rel_name env' var ++
+       Pp.fnl () ++
+       verbose (str" : " ++
+                Printer.pr_econstr_env env' sigma ty ++
+                str " in context " ++
+                pr_context_map env sigma lhs ++ spc ()) ++
+       (Array.fold_left
+          (fun acc so -> acc ++
+                         h 2 (match so with
+                             | None -> str "*impossible case*" ++ Pp.fnl ()
+                             | Some s -> aux s))
+          (mt ()) cs))
+    | Mapping (ctx, s) ->
+      hov 2 (str"Mapping " ++ pr_context_map env sigma ctx ++ Pp.fnl () ++ aux s)
+    | RecValid (id, c) ->
+      hov 2 (str "RecValid " ++ Id.print id ++ Pp.fnl () ++ aux c)
+    | Valid (lhs, ty, ids, ev, tac, cs) ->
+      let _env' = push_rel_context (pi1 lhs) env in
+      hov 2 (str "Valid " ++ str " in context " ++ pr_context_map env sigma lhs ++
+             List.fold_left
+               (fun acc (gl, cl, subst, invsubst, s) -> acc ++ aux s) (mt ()) cs)
+    | Refined (lhs, info, s) ->
+      let (id, c, cty), ty, arg, path, ev, (scf, scargs), revctx, newprob, newty =
+        info.refined_obj, info.refined_rettyp,
+        info.refined_arg, info.refined_path,
+        info.refined_ex, info.refined_app,
+        info.refined_revctx, info.refined_newprob, info.refined_newty
+      in
+      let env' = push_rel_context (pi1 lhs) env in
+      hov 2 (pplhs env' sigma lhs ++ str " refine " ++ Id.print id ++ str" " ++
+             Printer.pr_econstr_env env' sigma (mapping_constr sigma revctx c) ++
+             verbose (str " : " ++ Printer.pr_econstr_env env' sigma cty ++ str" " ++
+                      Printer.pr_econstr_env env' sigma ty ++ str" " ++
+                      str " in " ++ pr_context_map env sigma lhs ++ spc () ++
+                      str "New problem: " ++ pr_context_map env sigma newprob ++ str " for type " ++
+                      Printer.pr_econstr_env (push_rel_context (pi1 newprob) env) sigma newty ++ spc () ++
+                      spc () ++ str" eliminating " ++ pr_rel_name (push_rel_context (pi1 newprob) env) arg ++ spc () ++
+                      str "Revctx is: " ++ pr_context_map env sigma revctx ++ spc () ++
+                      str "New problem to problem substitution is: " ++
+                      pr_context_map env sigma info.refined_newprob_to_lhs ++ Pp.cut ()) ++
+             aux s)
+  in aux split
+
+let pp s = pp_with !Topfmt.deep_ft s
+
+let ppsplit s =
+  let env = Global.env () in
+  let sigma = Evd.from_env env in
+  pp (pr_splitting env sigma s)
 
 let map_where f w =
   { w with
@@ -178,7 +352,7 @@ let helper_evar evm evar env typ src =
   let evm' = evar_declare sign evar typ' ~src evm in
     evm', mkEvar (evar, Array.of_list instance)
 
-let term_of_tree status isevar env0 tree =
+let term_of_tree isevar env0 tree =
   let oblevars = ref Evar.Map.empty in
   let helpers = ref [] in
   let rec aux env evm = function
@@ -222,7 +396,7 @@ let term_of_tree status isevar env0 tree =
          let evm, c', ty' =
            let hd, args = decompose_appvect evm where_term in
            match kind evm hd with
-           | Evar (ev, _) ->
+           | Evar (ev, _) when false ->
               let term' = mkLetIn (Name (Id.of_string "prog"), c', ty', lift 1 ty') in
               let evm, term =
                 helper_evar evm ev env term'
@@ -235,7 +409,9 @@ let term_of_tree status isevar env0 tree =
               oblevars := Evar.Map.add ev 0 !oblevars;
               helpers := (ev, 0) :: !helpers;
               evm, where_term, where_type
-           | _ -> assert(false)
+           | Evar (ev, _) ->
+             Evd.define ev c' evm, where_term, where_type
+           | _ -> assert false
          in
          (evm, (make_def (Name (where_id w)) (Some c') ty' :: ctx)))
          where (evm,ctx)
@@ -337,7 +513,7 @@ let term_of_tree status isevar env0 tree =
         (* TODO This context should be the same as (pi1 csubst). We could
            * either optimize (but names in [csubst] are worse) or just insert
            * a sanity-check. *)
-        if !debug then begin
+        if !Equations_common.debug then begin
           let open Feedback in
           let ctx = cut_ctx @ new_ctx @ ctx' in
           msg_info(str"Simplifying term:");
@@ -356,8 +532,8 @@ let term_of_tree status isevar env0 tree =
             msg_info(let env = push_rel_context ctx env in
                      Printer.pr_econstr_env env !evd c);
           end;
-        let subst = Covering.compose_subst ~unsafe:true env ~sigma:!evd csubst subst in
-        let subst = Covering.compose_subst ~unsafe:true env ~sigma:!evd lsubst subst in
+        let subst = compose_subst ~unsafe:true env ~sigma:!evd csubst subst in
+        let subst = compose_subst ~unsafe:true env ~sigma:!evd lsubst subst in
         (* Now we build a term to put in the match branch. *)
         let c =
           match hole, next with
@@ -371,9 +547,9 @@ let term_of_tree status isevar env0 tree =
             let args = Equations_common.extended_rel_vect 0 next_ctx in
             let next_term = beta_appvect !isevar next_term args in
             (* We might need to permutate some rels. *)
-            let next_subst = Covering.context_map_of_splitting s in
-            let perm_subst = Covering.make_permutation ~env evm subst next_subst in
-            let next_term = Covering.mapping_constr evm perm_subst next_term in
+            let next_subst = context_map_of_splitting s in
+            let perm_subst = Context_map.make_permutation ~env evm subst next_subst in
+            let next_term = Context_map.mapping_constr evm perm_subst next_term in
             (* We know the term is a correct instantiation of the evar, we
              * just need to apply it to the correct variables. *)
             let ev_info = Evd.find_undefined evm (fst ev) in
@@ -402,11 +578,11 @@ let term_of_tree status isevar env0 tree =
         ) branches_res sp in
 
       (* Get back to the original context. *)
-      let case_ty = Covering.mapping_constr !evd rev_subst case_ty in
-      let branches = Array.map (Covering.mapping_constr !evd rev_subst) branches in
+      let case_ty = mapping_constr !evd rev_subst case_ty in
+      let branches = Array.map (mapping_constr !evd rev_subst) branches in
 
       (* Fetch the type of the variable that we want to eliminate. *)
-      let after, decl, before = Covering.split_context (pred rel) ctx in
+      let after, decl, before = split_context (pred rel) ctx in
       let rel_ty = Context.Rel.Declaration.get_type decl in
       let rel_ty = Vars.lift rel rel_ty in
       let rel_t = EConstr.mkRel rel in
@@ -465,7 +641,7 @@ let is_polymorphic info = pi2 info.decl_kind
 let define_tree is_recursive fixprots poly impls status isevar env (i, sign, arity)
                 comp split hook =
   let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
-  let helpers, oblevs, t, ty = term_of_tree status isevar env split in
+  let helpers, oblevs, t, ty = term_of_tree isevar env split in
   let () = isevar := Evd.minimize_universes !isevar in
   let split = map_split (nf_evar !isevar) split in
   let obls, (emap, cmap), t', ty' =

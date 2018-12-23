@@ -1,13 +1,14 @@
 Equations_common
 Ederive
 Syntax
-Covering
+Context_map
 Sigma_types
+Simplify
+Splitting
+Covering
 Subterm
 Eqdec
 Noconf
-Simplify
-Splitting
 Principles_proofs
 Principles
 Depelim

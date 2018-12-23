@@ -387,7 +387,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
             Tacticals.New.tclZEROMSG (str "Could not eliminate variable " ++ Id.print id)
         | Some (Covering.Splitted (_, newctx, brs)) ->
             let brs = Option.List.flatten (Array.to_list brs) in
-            let clauses_lhs = List.map Covering.context_map_to_lhs brs in
+            let clauses_lhs = List.map Context_map.context_map_to_lhs brs in
             let clauses = List.map (fun lhs -> (Some default_loc, lhs, rhs)) clauses_lhs in
               Proofview.tclUNIT clauses
         end
@@ -429,18 +429,18 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
                     program_arity = ty} in
 
     (* Initial problem. *)
-    let prob = Covering.id_subst ctx in
+    let prob = Context_map.id_subst ctx in
     let args = Context.Rel.to_extended_list mkRel 0 ctx in
 
     Refine.refine ~typecheck:true begin fun evars ->
       let evd = ref evars in
       (* Produce a splitting tree. *)
-      let split : Covering.splitting =
+      let split : Splitting.splitting =
         Covering.covering env evd p data clauses [] prob [] ty
       in
 
       let helpers, oblevs, c, ty =
-        Splitting.term_of_tree Evar_kinds.Expand evd env split
+        Splitting.term_of_tree evd env split
       in
       let c = beta_applist !evd (c, args) in
       let c = Vars.substl (List.rev rev_subst) c in

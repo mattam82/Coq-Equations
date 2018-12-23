@@ -9,8 +9,70 @@
 open Environ
 open Names
 open Syntax
-open Covering
 open EConstr
+open Equations_common
+open Context_map
+
+(** Programs and splitting trees *)
+
+(** Splitting trees *)
+
+type path_component =
+  | Evar of Evar.t
+  | Ident of Id.t
+
+type path = path_component list
+
+type splitting =
+    Compute of context_map * where_clause list * types * splitting_rhs
+  | Split of context_map * int * types * splitting option array
+  | Valid of context_map * types * identifier list *
+      Tacmach.tactic * (Proofview.entry * Proofview.proofview) *
+      (Goal.goal * constr list * context_map * context_map option * splitting) list
+  | Mapping of context_map * splitting
+  | RecValid of identifier * splitting
+  | Refined of context_map * refined_node * splitting
+
+and where_clause =
+  { where_program : program_info;
+    where_program_orig : program_info;
+    where_path : path;
+    where_orig : path;
+    where_context_length : int; (* Length of enclosing context, including fixpoint prototype if any *)
+    where_prob : context_map;
+    where_arity : types; (* In pi1 prob *)
+    where_term : constr; (* In original context, de Bruijn only *)
+    where_type : types;
+    where_splitting : splitting Lazy.t }
+
+and refined_node = {
+  refined_obj : identifier * constr * types;
+  refined_rettyp : types;
+  refined_arg : int;
+  refined_path : path;
+  refined_ex : Evar.t;
+  refined_app : constr * constr list;
+  refined_revctx : context_map;
+  refined_newprob : context_map;
+  refined_newprob_to_lhs : context_map;
+  refined_newty : types;
+}
+
+and splitting_rhs = RProgram of constr | REmpty of int
+
+val where_id : where_clause -> Id.t
+
+val pr_path : Evd.evar_map -> path -> Pp.t
+val eq_path : path -> path -> bool
+
+val pr_splitting : env -> Evd.evar_map -> ?verbose:bool -> splitting -> Pp.t
+val ppsplit : splitting -> unit
+
+val where_context : where_clause list -> rel_context
+
+val pr_rec_info : program_info -> Pp.t
+
+val context_map_of_splitting : splitting -> context_map
 
 val helper_evar :
   Evd.evar_map ->
@@ -20,7 +82,6 @@ val helper_evar :
 
 (** Compilation to Coq terms *)
 val term_of_tree :
-  Evar_kinds.obligation_definition_status ->
   Evd.evar_map ref ->
   env ->
   splitting ->

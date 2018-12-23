@@ -13,7 +13,7 @@ open Names
 open Vars
 open Equations_common
 open Syntax
-open Covering
+open Context_map
 open Splitting
 open Principles_proofs
 
@@ -493,7 +493,7 @@ let pr_where env sigma ctx ({where_prob; where_term; where_type; where_splitting
     str"where " ++ Names.Id.print (where_id w) ++ str" : " ++
     Printer.pr_econstr_env envc sigma where_type ++
     str" := " ++ fnl () ++
-    pr_context_map env sigma where_prob ++ fnl () ++
+    Context_map.pr_context_map env sigma where_prob ++ fnl () ++
     pr_splitting env sigma (Lazy.force where_splitting)
 
 let where_instance w =
@@ -505,7 +505,7 @@ let unfold_constr sigma c =
   to82 (Tactics.unfold_in_concl [(Locus.OnlyOccurrences [1], EvalConstRef (fst (destConst sigma c)))])
 
 let extend_prob_ctx delta (ctx, pats, ctx') =
-  (delta @ ctx, lift_pats (List.length delta) pats, ctx')
+  (delta @ ctx, Context_map.lift_pats (List.length delta) pats, ctx')
 
 let map_proto evd recarg f ty =
   match recarg with
@@ -541,7 +541,7 @@ let cut_problem evd s ctx' =
        (i :: pats, decl :: ctx',
         pred i, mkRel 1 :: List.map (lift 1) subs))
     ctx' ([], [], List.length ctx', [])
-  in (ctx', List.map (fun i -> PRel i) pats, cutctx')
+  in (ctx', List.map (fun i -> Context_map.PRel i) pats, cutctx')
 
 let subst_rec env evd cutprob s (ctx, p, _ as lhs) =
   let subst =
@@ -767,7 +767,7 @@ let substitute_alias evd ((f, fargs), term) c =
 let substitute_aliases evd fsubst c =
   List.fold_right (substitute_alias evd) fsubst c
 
-type alias = ((EConstr.t * int list) * Names.Id.t * Covering.splitting)
+type alias = ((EConstr.t * int list) * Names.Id.t * Splitting.splitting)
 
 let make_alias (f, id, s) = ((f, []), id, s)
 

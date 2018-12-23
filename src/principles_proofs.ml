@@ -15,14 +15,15 @@ open Ppconstr
 open Constrintern
 
 open Syntax
-open Covering
+open Context_map
 open Splitting
+open Covering
 open EConstr
 open Vars
 
 module PathOT =
   struct
-    type t = Covering.path
+    type t = Splitting.path
 
     let path_component_compare p p' =
       match p, p' with
@@ -60,8 +61,8 @@ type equations_info = {
  equations_id : Names.Id.t;
  equations_where_map : where_map;
  equations_f : Constr.constr;
- equations_prob : Covering.context_map;
- equations_split : Covering.splitting }
+ equations_prob : Context_map.context_map;
+ equations_split : Splitting.splitting }
 
 type ind_info = {
   term_info : term_info;

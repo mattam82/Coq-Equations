@@ -13,7 +13,6 @@ open Constr
 open Declarations
 open Globnames
 open Vars
-open Covering
 open Equations_common
 open EConstr
 open Vars
@@ -137,7 +136,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
     mkApp (mkIndU indu, Array.append (Array.map (lift n) paramsvect) rest) 
   in
   let _lenindices = List.length argsctx in
-  let ctxmap = id_subst fullbinders in
+  let ctxmap = Context_map.id_subst fullbinders in
   let constructors = Inductiveops.arities_of_constructors env pi in
   let sigma, sigT = get_fresh sigma coq_sigma in
   let sigma, sigI = get_fresh sigma coq_sigmaI in

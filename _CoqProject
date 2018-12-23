@@ -19,10 +19,14 @@ src/depelim.mli
 src/depelim.ml
 src/syntax.mli
 src/syntax.ml
-src/covering.mli
-src/covering.ml
+src/context_map.mli
+src/context_map.ml
+src/simplify.mli
+src/simplify.ml
 src/splitting.mli
 src/splitting.ml
+src/covering.mli
+src/covering.ml
 src/principles_proofs.mli
 src/principles_proofs.ml
 src/principles.mli
@@ -33,8 +37,6 @@ src/noconf.ml
 src/noconf.mli
 src/noconf_hom.ml
 src/noconf_hom.mli
-src/simplify.ml
-src/simplify.mli
 src/extra_tactics.ml
 src/extra_tactics.mli
 src/g_equations.mlg

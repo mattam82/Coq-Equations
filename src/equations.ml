@@ -73,7 +73,7 @@ let define_principles flags rec_info fixprots progs =
       | Some (Guarded _) ->
          let fixdecls = program_fixdecls p fixdecls in
          let cutprob, norecprob =
-	   let (ctx, pats, ctx' as ids) = id_subst sign in
+           let (ctx, pats, ctx' as ids) = Context_map.id_subst sign in
 	   (ctx @ fixdecls, pats, ctx'), ids
 	 in
 	 let split, where_map =
@@ -88,7 +88,7 @@ let define_principles flags rec_info fixprots progs =
          in
          Some eqninfo
       | None ->
-	 let prob = id_subst sign in
+         let prob = Context_map.id_subst sign in
 	 let split, where_map =
            update_split env evd p rec_info
                         (of_constr f) prob [] prog.program_split in
@@ -102,7 +102,7 @@ let define_principles flags rec_info fixprots progs =
          Some eqninfo
 
       | Some (Logical r) ->
-	 let prob = id_subst sign in
+         let prob = Context_map.id_subst sign in
          (* let () = msg_debug (str"udpdate split" ++ spc () ++ pr_splitting env split) in *)
          let recarg = Some (-1) in
          let unfold_split, where_map =

@@ -69,8 +69,8 @@ val uncurry_call : Environ.env -> Evd.evar_map -> constr -> constr ->
 val smart_case : Environ.env -> Evd.evar_map ref -> rel_context ->
   int -> types ->
   rel_context * types *
-  (types * int * Covering.context_map) array *
-  int * Covering.context_map * constr list * bool
+  (types * int * Context_map.context_map) array *
+  int * Context_map.context_map * constr list * bool
 
 module Tactics : sig
   val curry_hyp : Names.Id.t -> unit Proofview.tactic
