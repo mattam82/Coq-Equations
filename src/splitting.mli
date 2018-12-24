@@ -142,3 +142,5 @@ val map_rhs :
   (constr -> constr) ->
   (int -> int) -> splitting_rhs -> splitting_rhs
 val map_split : (constr -> constr) -> splitting -> splitting
+
+val simplify_evars : Evd.evar_map -> EConstr.t -> EConstr.t

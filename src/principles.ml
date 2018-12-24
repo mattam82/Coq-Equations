@@ -635,8 +635,9 @@ let subst_rec_split env evd p f path prob s split =
          in (subst_where :: subst_wheres, w :: wheres)
        in
        let where', _ = List.fold_right subst_where where ([], []) in
-       Compute (lhs', where', mapping_constr !evd substprog ty,
-                mapping_rhs !evd substprog c)
+       let c' = mapping_rhs !evd substprog c in
+       let c' = map_rhs (Reductionops.nf_beta env !evd) (fun i -> i) c' in
+       Compute (lhs', where', mapping_constr !evd substprog ty, c')
 
     | Split (lhs, n, ty, cs) ->
        let subst, lhs' = subst_rec cutprob s lhs in

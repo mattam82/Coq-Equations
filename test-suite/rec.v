@@ -14,11 +14,22 @@ Require Import Subterm.
 Instance wf_nat : WellFounded lt := lt_wf.
 Hint Resolve lt_n_Sn : Below.
 Module RecRel.
-  Equations id (n : nat) : nat
+  Equations? id (n : nat) : nat
   by rec n lt :=
   id O := 0 ;
   id (S n) := S (id n).
-  
+
+  Proof. intros. exact 0.
+         intros. exact true.
+         intros. simpl in H. auto with arith.
+  Defined.
+
+  Next Obligation.
+
+
+
+
+
 End RecRel.
 
 Section Nested.

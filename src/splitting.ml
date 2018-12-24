@@ -736,7 +736,7 @@ type compiled_program_info = {
 let is_polymorphic info = pi2 info.decl_kind
 
 
-let solve_equations_obligations flags i evm hook =
+let solve_equations_obligations flags i isevar split hook =
   let kind = (Decl_kinds.Local, flags.polymorphic, Decl_kinds.(DefinitionBody Definition)) in
   let _hook uctx evars locality gr = ()
     (* let l =
@@ -749,26 +749,59 @@ let solve_equations_obligations flags i evm hook =
      *                   comp_obls = Id.Set.empty; user_obls = Id.Set.empty(\* union !compobls !userobls *\) } in
      *   hook split (fun x -> x) term_info uctx *)
   in
+  let evars = Evar.Map.bindings (Evd.undefined_map !isevar) in
+  let env = Global.env () in
+  let types =
+    List.map (fun (ev, evi) ->
+        let type_ = Termops.it_mkNamedProd_or_LetIn evi.Evd.evar_concl (Evd.evar_context evi) in
+        env, ev, evi, type_) evars in
+  (* Make goals from a copy of the evars *)
+  let isevar0 = ref !isevar in
+  let tele =
+    let rec aux types evm =
+      match types with
+      | [] -> Proofview.TNil evm
+      | (evar_env, ev, evi, type_) :: tys ->
+        let evar_env = nf_env_evar !isevar0 evar_env in
+        Proofview.TCons (evar_env, evm, nf_evar !isevar0 type_,
+           (fun evm' wit ->
+             isevar0 := Evd.define ev (applist (wit, List.rev (Context.Named.to_instance mkVar (Evd.evar_context evi)))) !isevar0;
+             aux tys evm'))
+    in aux types (Evd.from_env env)
+  in
   let terminator = function
     | Proof_global.Admitted (id, gk, pe, us) ->
       user_err_loc (None, "end_obligations", str "Cannot handle admitted proof for equations")
     | Proof_global.Proved (opaque, lid, obj) ->
-      Feedback.msg_debug (str"Should define the initial evars accoding to the proofs")
+      Feedback.msg_debug (str"Should define the initial evars accoding to the proofs");
+      let open Decl_kinds in
+      let obls = ref 0 in
+      let kind = match pi3 obj.Proof_global.persistence with
+        | DefinitionBody d -> IsDefinition d
+        | Proof p -> IsProof p
+      in
+      let () =
+        List.iter2 (fun (evar_env, ev, evi, type_) entry ->
+            let id =
+              match Evd.evar_ident ev !isevar with
+              | Some id -> id
+              | None -> let n = !obls in incr obls; add_suffix i ("_obligation_" ^ string_of_int n)
+            in
+            let cst = Declare.declare_constant id (Entries.DefinitionEntry entry, kind) in
+            let newevars, app = Evarutil.new_global !isevar (ConstRef cst) in
+            isevar :=
+              Evd.define ev (applist (app, List.rev (Context.Named.to_instance mkVar (Evd.evar_context evi))))
+                newevars)
+          types obj.Proof_global.entries
+      in hook split
   in
   Feedback.msg_debug (str"Starting proof");
-  Proof_global.(start_proof evm i kind [] (make_terminator terminator));
-  Proof_global.simple_with_current_proof (fun _ p  -> Proof.V82.grab_evars p)
+  Proof_global.(start_dependent_proof i kind tele (make_terminator terminator))
+  (* Proof_global.simple_with_current_proof (fun _ p  -> Proof.V82.grab_evars p) *)
 
 
 let define_tree is_recursive fixprots flags impls status isevar env (i, sign, arity)
                 comp split hook =
-  let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
-  let () = isevar := Evd.minimize_universes !isevar in
-  let split = map_split (nf_evar !isevar) split in
-  if Evd.has_undefined !isevar then
-    solve_equations_obligations flags i !isevar hook
-  else
-  let split = define_constants flags isevar env split in
   let env = Global.env () in
   let helpers, oblevs, t, ty = term_of_tree flags isevar env split in
   let obls, (emap, cmap), t', ty' =
@@ -850,6 +883,33 @@ let define_tree is_recursive fixprots flags impls status isevar env (i, sign, ar
        ignore(Obligations.add_definition ~univ_hook ~kind
 	       ~implicits:impls i ~term:t' ty'
 	       ~reduce (Evd.evar_universe_context !isevar) obls)
+
+
+let simplify_evars evars t =
+  let rec aux t =
+    match Constr.kind (EConstr.Unsafe.to_constr t) with
+    | App (f, args) ->
+      (match Constr.kind f with
+       | Evar ev ->
+         let f' = nf_evar evars (EConstr.of_constr f) in
+         beta_applist evars (f', Array.map_to_list EConstr.of_constr args)
+       | _ -> EConstr.map evars aux t)
+    | Evar ev -> nf_evar evars t
+    | _ -> EConstr.map evars aux t
+  in aux t
+
+let define_tree is_recursive fixprots flags impls status isevar env (i, sign, arity)
+                comp split hook =
+  let hook split =
+    let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
+    let () = isevar := Evd.minimize_universes !isevar in
+    let split = map_split (simplify_evars !isevar) split in
+    let split = define_constants flags isevar env split in
+    define_tree is_recursive fixprots flags impls status isevar env (i, sign, arity) comp split hook
+  in
+  if Evd.has_undefined !isevar then
+    solve_equations_obligations flags i isevar split hook
+  else hook split
 
 let mapping_rhs sigma s = function
   | RProgram c -> RProgram (mapping_constr sigma s c)
