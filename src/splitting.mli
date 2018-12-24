@@ -23,6 +23,8 @@ type path_component =
 
 type path = path_component list
 
+val path_id : path -> Id.t
+
 type splitting =
     Compute of context_map * where_clause list * types * splitting_rhs
   | Split of context_map * int * types * splitting option array
@@ -81,12 +83,16 @@ val helper_evar :
   types -> Evar_kinds.t Loc.located -> Evd.evar_map * constr
 
 (** Compilation to Coq terms *)
-val term_of_tree :
+val term_of_tree : flags ->
   Evd.evar_map ref ->
   env ->
   splitting ->
   (Evar.t * int) list * int Evar.Map.t * constr * constr
 
+val define_constants : flags ->
+  Evd.evar_map ref ->
+  env ->
+  splitting -> splitting
 
 (** Compilation from splitting tree to terms. *)
 
@@ -118,7 +124,7 @@ val define_mutual_nested : Evd.evar_map ref ->
 
 
 val define_tree :
-  rec_type option -> rel_context -> Decl_kinds.polymorphic ->
+  rec_type option -> rel_context -> flags ->
   (Constrexpr.explicitation * (bool * bool * bool)) list ->
   Evar_kinds.obligation_definition_status ->
   Evd.evar_map ref ->

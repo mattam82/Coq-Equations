@@ -177,7 +177,7 @@ let define_principles flags rec_info fixprots progs =
                     ~tactic:(of82 tac)
                     (Evd.evar_universe_context evd) [||])
 	 in
-	 define_tree None [] flags.polymorphic p.program_impls (Define false) evd env
+         define_tree None [] flags p.program_impls (Define false) evd env
                      (unfoldi, sign, arity) None unfold_split hook_unfold;
          None
   in
@@ -297,7 +297,7 @@ let define_by_eqs ~poly opts eqs nt =
   let env = Global.env () in (* To find the comp constant *)
   let data, fixdecls, fixprots = compute_fixdecls_data env evd programs in
   let fixdecls = nf_rel_context_evar !evd fixdecls in
-  let intenv = { rec_info; fixdecls; intenv = data; notations = nt } in
+  let intenv = { rec_info; flags; fixdecls; intenv = data; notations = nt } in
   let coverings = coverings env evd intenv programs (List.map snd eqs) in
   let env = Global.env () in (* coverings has the side effect of defining comp_proj constants for now *)
   let programs, coverings = List.split coverings in
@@ -346,7 +346,7 @@ let define_by_eqs ~poly opts eqs nt =
              not (Id.equal id p.program_id)) fixdecls
       | _ -> fixdecls
     in
-    define_tree rec_info fixdecls poly p.program_impls status evd env
+    define_tree rec_info fixdecls flags p.program_impls status evd env
                 (p.program_id, p.program_sign, p.program_arity)
 		comp split (hook !idx p);
     incr idx

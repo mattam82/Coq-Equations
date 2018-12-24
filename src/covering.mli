@@ -69,6 +69,7 @@ val lets_of_ctx :
 type int_data = {
   rec_info : rec_type option;
   fixdecls : rel_context;
+  flags : flags;
   intenv : Constrintern.internalization_env;
   notations : (Names.lstring * Constrexpr.constr_expr *
                Notation_term.scope_name option) list

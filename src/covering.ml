@@ -29,6 +29,7 @@ open Ltac_plugin
 type int_data = {
   rec_info : rec_type option;
   fixdecls : rel_context;
+  flags : flags;
   intenv : Constrintern.internalization_env;
   notations : (Names.lstring * Constrexpr.constr_expr *
                Notation_term.scope_name option) list
@@ -1161,7 +1162,7 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
       match t with
       | Some ty (* non-delayed where clause, compute term right away *) ->
         let splitting = covering env0 evars p data clauses path problem extpats p.program_arity in
-        let helpers, oblevars, term, _ = term_of_tree evars env0 splitting in
+        let helpers, oblevars, term, _ = term_of_tree data.flags evars env0 splitting in
         Lazy.from_val splitting, term
       | None ->
         let sigma, term = Equations_common.new_evar env0 !evars ~src relty in
@@ -1169,8 +1170,8 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
         let ev = destEvar !evars term in
         let cover () =
           let splitting = covering env0 evars p data clauses path problem extpats p.program_arity in
-          let helpers, oblevars, term, _ = term_of_tree evars env0 splitting in
-          evars := Evd.define (fst ev) term sigma; splitting
+          let helpers, oblevars, term, _ = term_of_tree data.flags evars env0 splitting in
+          evars := Evd.define (fst ev) term !evars; splitting
         in
         Lazy.from_fun cover, term
     in

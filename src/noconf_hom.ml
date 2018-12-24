@@ -206,6 +206,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   let data =
     Covering.{
       rec_info = None;
+      flags = { polymorphic = polymorphic; with_eqns = false; with_ind = false };
       fixdecls = [];
       intenv = Constrintern.empty_internalization_env;
       notations = []
@@ -244,7 +245,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
     let indu = destInd sigma indu in
     derive_noConfusion_package (Global.env ()) sigma0 polymorphic indu indid program_cst
  in
-  Splitting.define_tree None [] polymorphic [] (Evar_kinds.Define false) evd env
+  Splitting.define_tree None [] data.Covering.flags [] (Evar_kinds.Define false) evd env
                 (id, fullbinders, s)
                 None splitting hook
 

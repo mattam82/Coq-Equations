@@ -154,18 +154,32 @@ Module sct2.
   | ty0 : ty (list nat * list nat)%type (fun _ => list nat)
   | ty1 : ty (list nat * list nat * list nat) (fun _ => list nat).
 
+  Definition type := {A &{ P &{ _ : ty A P & A }}}.
+
+  (* Equations measure (x : type) : nat := *)
+  (*   measure &(_, _, ty0, (l, l')) := length l; *)
+  (*   measure &(_, _, ty1, (l, l', l'')) := length l. *)
+
   Polymorphic Equations rel' : {A &{ P &{ _ : ty A P & A }}} -> {A & { P & {_ : ty A P & A}}} -> Prop :=
   rel' &(A', P, ta, a) &(_, Q, tb, b) =>
   match ta in ty A P, tb in ty B Q return A -> B -> Prop with
-  | ty0, ty0 => fun '(l0, l1) '(l0', l1') => length l0 < length l0'
-  | ty1, ty1 => fun '(l0, n, l1) '(l0', n', l1') => length l0 < length l0'
-  | ty0, ty1 => fun '(l0, l1) '(l0', l1', l2') => length l0 < length l0'
-  | ty1, ty0 => fun l n => True
+  | ty0, ty0 => fun '(l0, l1) '(l0', l1') => (* length l0 < length l0' *) False
+  | ty1, ty1 => fun '(l0, n, l1) '(l0', n', l1') => (* length l0 < length l0' *) False
+  | ty0, ty1 => fun '(l0, l1) '(l0', l1', l2') => length l0 <= length l0'
+  | ty1, ty0 => fun '(l0, l1, l2) '(l0', l1') => length l0 < length l0'
   end a b.
+
   Transparent rel'.
   Polymorphic Instance: WellFounded rel'.
   Proof. Admitted.
-
+    (* red. intros a. dependent elimination a as [&(A, P, ta, a)]. *)
+    (* simpl in *. constructor. intros y. *)
+    (* dependent elimination y as [&(A', P', tb, a')]; *)
+    (* simpl in *. *)
+    (* intros rel'. unfold sct2.rel' in rel'. destruct tb. destruct ta; simpl in *. *)
+    (* simpl in *. destruct a, a'. simpl in *. destruct rel'. *)
+    (* destruct a, a'. destruct p. *)
+    (* constructor. intros (A'&P'&t'&a'). *)
 
   Polymorphic Definition pack {A} {P} (t : ty A P) (x : A) :=
   (&(A, P, t, x)) : {A & {P & {_ : ty A P & A}}}.
@@ -176,7 +190,32 @@ Module sct2.
     fg ty1 (a, b, c) := 2 :: fg ty0 (a, app b c).
 
   (* TODO find order! *)
-  Next Obligation. unfold rel'. cbn. exact I. Qed.
-  Next Obligation. unfold rel'. cbn. Admitted.
+  Next Obligation. unfold rel'. cbn. auto with arith. Qed.
+  Next Obligation. unfold rel'. cbn. reflexivity. Qed.
+
+  Inductive fg_dom : forall (A : Set) (P : A -> Set), ty A P -> A -> Prop :=
+  | fg_dom_equation_1 :
+      forall l0 : list nat,
+        fg_dom (list nat * list nat) (fun _ : list nat * list nat => list nat) ty0 (nil, l0)
+  | fg_dom_equation_2 : forall (n : nat) (l l0 : list nat),
+      fg_dom (list nat * list nat * list nat)
+             (fun _ : list nat * list nat * list nat => list nat) ty1 (l, l0, n :: l) ->
+
+      fg_dom (list nat * list nat) (fun _ : list nat * list nat => list nat) ty0
+                          (n :: l, l0)
+  | fg_dom_equation_3 : forall l0 l1 l : list nat,
+                        fg_dom (list nat * list nat) (fun _ : list nat * list nat => list nat) ty0
+                          (l0, l1 ++ l) ->
+                        fg_dom (list nat * list nat * list nat)
+                          (fun _ : list nat * list nat * list nat => list nat) ty1 (l0, l1, l).
+
+  Lemma fg_ind_inh : forall A P t x, fg_dom A P t x.
+  Proof.
+    intros.
+
+
+destruct t. destruct x. destruct l. econstructor.
+    econstructor.
+
 
 End sct2.

@@ -980,7 +980,7 @@ let declare_funind info alias env evd is_rec protos progs
   in
   let app = applist (f, args) in
   let statement =
-    let stmt (i, ((f,_), alias, _, sign, ar, _, _, (nodek, cut)), _) =
+    let stmt (i, ((f,_), alias, path, sign, ar, _, _, (nodek, cut)), _) =
       if not (regular_or_nested nodek) then None else
       let f, split, unfsplit =
         match alias with
@@ -989,8 +989,8 @@ let declare_funind info alias env evd is_rec protos progs
       in
       let args = extended_rel_list 0 sign in
       let app = applist (f, args) in
-      let ind = Nameops.add_suffix (Id.of_string info.term_info.base_id)
-                                   ("_ind" ^ if i == 0 then "" else "_" ^ string_of_int i) in
+      let ind = Nameops.add_suffix (path_id path)(* Id.of_string info.term_info.base_id) *)
+                                   ("_ind" (* ^ if i == 0 then "" else "_" ^ string_of_int i *)) in
       let indt = e_new_global evd (global_reference ind) in
       Some (it_mkProd_or_subst env !evd (applist (indt, args @ [app])) sign)
     in
@@ -1119,7 +1119,8 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
   let statement i filter (ctx, fl, flalias, pats, ty, f', (refine, cut), c) =
     let hd, unf = match flalias with
       | Some ((f', _), unf, _) ->
-        let tac = Proofview.tclBIND (Tacticals.New.pf_constr_of_global (Nametab.locate (Libnames.qualid_of_ident unf)))
+        let tac = Proofview.tclBIND
+            (Tacticals.New.pf_constr_of_global (Nametab.locate (Libnames.qualid_of_ident unf)))
             Equality.rewriteLR in
         f', tac
 
@@ -1179,7 +1180,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
   let all_stmts = List.concat (List.map (fun (f, c) -> c) stmts) in
   let fnind_map = ref PathMap.empty in
   let declare_one_ind (i, (f, alias, path, sign, arity, pats, refs, refine), stmts) =
-    let indid = Nameops.add_suffix id (if i == 0 then "_ind" else ("_ind_" ^ string_of_int i)) in
+    let indid = Nameops.add_suffix (path_id path) "_ind" (* (if i == 0 then "_ind" else ("_ind_" ^ string_of_int i)) *) in
     let indapp = List.rev_map (fun x -> Constr.mkVar (Nameops.Name.get_id (get_name x))) sign in
     let () = fnind_map := PathMap.add path (indid,indapp) !fnind_map in
     let constructors = CList.map_filter (fun (_, (_, _, _, n)) -> Option.map (to_constr !evd) n) stmts in
@@ -1276,9 +1277,9 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
        evd := Evd.from_env (Global.env ()))
     else ()
   in
-  let proof (j, f, stmts) =
+  let proof (j, (_, alias, path, sign, arity, pats, refs, refine), stmts) =
     let eqns = Array.make (List.length stmts) false in
-    let id = if j != 0 then Nameops.add_suffix id ("_helper_" ^ string_of_int j) else id in
+    let id = path_id path in (* if j != 0 then Nameops.add_suffix id ("_helper_" ^ string_of_int j) else id in *)
     let proof (i, (r, unf, c, n)) =
       let ideq = Nameops.add_suffix id ("_equation_" ^ string_of_int i) in
       let hook _ _obls subst gr =

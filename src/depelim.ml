@@ -417,6 +417,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
     let data =
       Covering.{
         rec_info = None;
+        flags = { polymorphic = true; with_eqns = false; with_ind = false };
         fixdecls = [];
         intenv = Constrintern.empty_internalization_env;
         notations = []
@@ -440,7 +441,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
       in
 
       let helpers, oblevs, c, ty =
-        Splitting.term_of_tree evd env split
+        Splitting.term_of_tree data.Covering.flags evd env split
       in
       let c = beta_applist !evd (c, args) in
       let c = Vars.substl (List.rev rev_subst) c in

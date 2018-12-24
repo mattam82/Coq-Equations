@@ -96,7 +96,7 @@ Notation "&( x , .. , y , z )" :=
      format "&( x ,  .. ,  y  ,  z )").
 Obligation Tactic := idtac.
 
-Equations(noeqns noind) foo9 : { x: nat & x = 0 } :=
+Equations foo9 : { x: nat & x = 0 } :=
 foo9 := &(lhs, rhs)
    where lhs : nat :=
     { lhs := 0 }

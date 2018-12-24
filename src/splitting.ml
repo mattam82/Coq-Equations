@@ -352,72 +352,79 @@ let helper_evar evm evar env typ src =
   let evm' = evar_declare sign evar typ' ~src evm in
     evm', mkEvar (evar, Array.of_list instance)
 
-let term_of_tree isevar env0 tree =
+let path_id path =
+  match List.rev path with
+  | Ident hd :: tl ->
+    List.fold_left (fun id prefix ->
+        match prefix with
+        | Ident id' -> add_suffix (add_suffix id "_") (Id.to_string id')
+        | Evar _ -> assert false) hd tl
+  | _ -> assert false
+
+let term_of_tree flags isevar env0 tree =
   let oblevars = ref Evar.Map.empty in
   let helpers = ref [] in
   let rec aux env evm = function
-    | Compute ((ctx, _, _), where, ty, RProgram rhs) -> 
-       let evm, ctx = 
-         List.fold_right 
-         (fun ({where_program; where_prob; where_term; where_type; where_splitting} as w)
-              (evm, ctx) ->
-         (* let env = push_rel_context ctx env0 in *)
-         (* FIXME push ctx too if mutual wheres *)
-         let where_args = snd (decompose_appvect evm where_term) in
-         let evm, c', _ = aux env evm (Lazy.force where_splitting) in
-         let evd = ref evm in
-         let c' =
-           match where_program.program_rec with
-           | Some (Structural _) ->
-              let c' = mkApp (c', where_args) in
-              let c' = (whd_beta !evd c')  in
-              let before, after =
-                CList.chop ((CList.length where_program.program_sign) - w.where_context_length)
+    | Compute ((ctx, _, _), where, ty, RProgram rhs) ->
+      let compile_where ({where_program; where_prob; where_term; where_type; where_splitting} as w)
+          (env, evm, ctx) =
+        (* let env = push_rel_context ctx env0 in *)
+        (* FIXME push ctx too if mutual wheres *)
+        let where_args = snd (decompose_appvect evm where_term) in
+        let evm, c', _ = aux env evm (Lazy.force where_splitting) in
+        let evd = ref evm in
+        let c' =
+          match where_program.program_rec with
+          | Some (Structural _) ->
+            let c' = mkApp (c', where_args) in
+            let c' = (whd_beta !evd c')  in
+            let before, after =
+              CList.chop ((CList.length where_program.program_sign) - w.where_context_length)
                 where_program.program_sign
-              in
-              let subst = mkProp :: List.rev (Array.to_list where_args) in
-              let program_sign = subst_rel_context 0 subst before in
-              let program_arity = substnl subst (List.length program_sign) where_program.program_arity in
-              let where_program = { where_program with program_sign; program_arity } in
-              (match define_mutual_nested evd (fun x -> x) [(where_program, lift 1 c')] with
-               | [(m, _, body)], _ ->
-                  it_mkLambda_or_LetIn body (List.tl after)
-               | _, [(m, _, body)] -> it_mkLambda_or_LetIn body (List.tl after)
-               | _ -> assert false)
-           | _ -> c'
-         in
-         let c' = nf_beta env !evd c' in
-         let ty' = Retyping.get_type_of env !evd c' in
-         let () =
-           if !Equations_common.debug then
-             Feedback.msg_debug Pp.(str "Where_clause compiled to" ++ Printer.pr_econstr_env env !evd c' ++
-                                    str " of type " ++ Printer.pr_econstr_env env !evd ty')
-         in
-         let evm, c', ty' =
-           let hd, args = decompose_appvect evm where_term in
-           match kind evm hd with
-           | Evar (ev, _) when false ->
-              let term' = mkLetIn (Name (Id.of_string "prog"), c', ty', lift 1 ty') in
-              let evm, term =
-                helper_evar evm ev env term'
+            in
+            let subst = mkProp :: List.rev (Array.to_list where_args) in
+            let program_sign = subst_rel_context 0 subst before in
+            let program_arity = substnl subst (List.length program_sign) where_program.program_arity in
+            let where_program = { where_program with program_sign; program_arity } in
+            (match define_mutual_nested evd (fun x -> x) [(where_program, lift 1 c')] with
+             | [(m, _, body)], _ ->
+               it_mkLambda_or_LetIn body (List.tl after)
+             | _, [(m, _, body)] -> it_mkLambda_or_LetIn body (List.tl after)
+             | _ -> assert false)
+          | _ -> c'
+        in
+        let c' = nf_beta env !evd c' in
+        let ty' = Retyping.get_type_of env !evd c' in
+        let () =
+          if !Equations_common.debug then
+            Feedback.msg_debug Pp.(str "Where_clause compiled to" ++ Printer.pr_econstr_env env !evd c' ++
+                                   str " of type " ++ Printer.pr_econstr_env env !evd ty')
+        in
+        let evm, c', ty' =
+          let hd, args = decompose_appvect evm where_term in
+          match kind evm hd with
+          | Evar (ev, _) when false ->
+            let term' = mkLetIn (Name (Id.of_string "prog"), c', ty', lift 1 ty') in
+            let evm, term =
+              helper_evar evm ev env term'
                 (dummy_loc, QuestionMark {
-                            qm_obligation=Define false;
-                            qm_name=Name (where_id w);
-                            qm_record_field=None;
-                }) in
-              let ev = fst (destEvar !isevar term) in
-              oblevars := Evar.Map.add ev 0 !oblevars;
-              helpers := (ev, 0) :: !helpers;
-              evm, where_term, where_type
-           | Evar (ev, _) ->
-             Evd.define ev c' evm, where_term, where_type
-           | _ -> evm, where_term, where_type
-         in
-         (evm, (make_def (Name (where_id w)) (Some c') ty' :: ctx)))
-         where (evm,ctx)
-       in
-       let body = it_mkLambda_or_LetIn rhs ctx and typ = it_mkProd_or_subst env evm ty ctx in
-       evm, body, typ
+                    qm_obligation=Define false;
+                    qm_name=Name (where_id w);
+                    qm_record_field=None;
+                  }) in
+            let ev = fst (destEvar !isevar term) in
+            oblevars := Evar.Map.add ev 0 !oblevars;
+            helpers := (ev, 0) :: !helpers;
+            evm, where_term, where_type
+          | Evar (ev, _) when false ->
+            Evd.define ev c' evm, where_term, where_type
+          | _ -> evm, where_term, where_type
+        in
+        (env, evm, (make_def (Name (where_id w)) (Some c') ty' :: ctx))
+      in
+      let env, evm, ctx = List.fold_right compile_where where (env, evm,ctx) in
+      let body = it_mkLambda_or_LetIn rhs ctx and typ = it_mkProd_or_subst env evm ty ctx in
+      evm, body, typ
 
     | Compute ((ctx, _, _), where, ty, REmpty split) ->
        assert (List.is_empty where);
@@ -604,6 +611,96 @@ let term_of_tree isevar env0 tree =
     isevar := evm;
     !helpers, !oblevars, term, typ
 
+
+let change_lhs s (l, p, r) =
+  let open Context.Rel.Declaration in
+  let l' =
+    List.map
+      (function LocalDef (Name id, b, t) as decl ->
+         (try let b' = List.assoc id s in LocalDef (Name id, b', t)
+          with Not_found -> decl)
+              | decl -> decl) l
+  in l', p, r
+
+let change_splitting s sp =
+  let rec aux = function
+    | Compute (lhs, where, ty, r) ->
+      Compute (change_lhs s lhs, where, ty, r)
+    | Split (lhs, rel, ty, sp) ->
+      Split (change_lhs s lhs, rel, ty, Array.map (fun x -> Option.map aux x) sp)
+    | Mapping (lhs, sp) ->
+      Mapping (change_lhs s lhs, aux sp)
+    | RecValid (id, rest) -> RecValid (id, aux rest)
+    | Refined (lhs, info, rest) ->
+      Refined (change_lhs s lhs, info, aux rest)
+    | Valid (lhs, ty, substc, tac, (entry, pv), rest) ->
+      let rest' = List.map (fun (gl, x, y, z, w) ->
+          (gl, x, y, z, aux w)) rest in
+      Valid (lhs, ty, substc, tac, (entry, pv), rest')
+  in aux sp
+
+let define_constants flags isevar env0 tree =
+  let () = assert (not (Evd.has_undefined !isevar)) in
+  let helpers = ref [] in
+  let rec aux env evm = function
+    | Compute (lhs, where, ty, RProgram rhs) ->
+      let define_where ({where_program; where_prob; where_term; where_type; where_splitting; where_path} as w)
+          (env, evm, s, ctx) =
+        let where_term, where_args = decompose_appvect evm where_term in
+        let (cst, (evm, e)) =
+          Equations_common.declare_constant (path_id where_path)
+            where_term (Some (program_type where_program))
+            flags.polymorphic evm (Decl_kinds.(IsDefinition Definition))
+        in
+        let env = Global.env () in
+        let evm = Evd.update_sigma_env evm env in
+        let where_term = mkApp (e, where_args) in
+        let w' = { w with where_term; where_prob = change_lhs s where_prob;
+                          where_splitting = Lazy.from_val (change_splitting s (Lazy.force w.where_splitting)) } in
+        (env, evm, (where_id w, where_term) :: s, w' :: ctx)
+      in
+      let env, evm, _, where = List.fold_right define_where where (env, evm, [], []) in
+      evm, Compute (lhs, where, ty, RProgram rhs)
+
+    | Compute (lhs, where, ty, REmpty split) ->
+      evm, Compute (lhs, where, ty, REmpty split)
+
+    | Mapping (lhs, s) ->
+      let evm, s' = aux env evm s in
+      evm, Mapping (lhs, s')
+
+    | RecValid (id, rest) ->
+      let evm, s' = aux env evm rest in
+      evm, RecValid (id, s')
+
+    | Refined ((ctx, _, _) as lhs, info, rest) ->
+      let evm', rest' = aux env evm rest in
+      let isevar = ref evm' in
+      let _, _, t, ty = term_of_tree flags isevar env rest' in
+      let (cst, (evm, e)) =
+        Equations_common.declare_constant (pi1 info.refined_obj)
+          t (Some ty) flags.polymorphic !isevar (Decl_kinds.(IsDefinition Definition))
+      in
+      let () = helpers := (cst, info.refined_arg) :: !helpers in
+      evm, Refined (lhs, { info with refined_app = (e, snd info.refined_app) }, rest')
+
+    | Valid ((ctx, _, _) as lhs, ty, substc, tac, (entry, pv), rest) ->
+      let isevar = ref evm in
+      let rest' = List.map (fun (gl, x, y, z, w) ->
+          let evm', w' = aux env !isevar w in
+          isevar := evm'; gl, x, y, z, w') rest in
+      !isevar, Valid (lhs, ty, substc, tac, (entry, pv), rest')
+
+    | Split (lhs, rel, ty, sp) ->
+      let evm, sp' = CArray.fold_left_map (fun evm s ->
+          match s with
+          | Some s -> let evm, s' = aux env evm s in evm, Some s'
+          | None -> evm, None) evm sp
+      in evm, Split (lhs, rel, ty, sp')
+  in
+  let evm, tree = aux env0 !isevar tree in
+    isevar := evm; tree
+
 let is_comp_obl sigma comp hole_kind =
   match comp with
   | None -> false
@@ -638,12 +735,42 @@ type compiled_program_info = {
 
 let is_polymorphic info = pi2 info.decl_kind
 
-let define_tree is_recursive fixprots poly impls status isevar env (i, sign, arity)
+
+let solve_equations_obligations flags i evm hook =
+  let kind = (Decl_kinds.Local, flags.polymorphic, Decl_kinds.(DefinitionBody Definition)) in
+  let _hook uctx evars locality gr = ()
+    (* let l =
+     *   Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
+     * Extraction_plugin.Table.extraction_inline true l; *)
+    (* let kind = (locality, poly, Decl_kinds.Definition) in
+     * let baseid = Id.to_string i in
+     * let term_info = { term_id = gr; term_ustate = uctx; term_evars = evars;
+     *                   base_id = baseid; helpers_info = []; decl_kind = kind;
+     *                   comp_obls = Id.Set.empty; user_obls = Id.Set.empty(\* union !compobls !userobls *\) } in
+     *   hook split (fun x -> x) term_info uctx *)
+  in
+  let terminator = function
+    | Proof_global.Admitted (id, gk, pe, us) ->
+      user_err_loc (None, "end_obligations", str "Cannot handle admitted proof for equations")
+    | Proof_global.Proved (opaque, lid, obj) ->
+      Feedback.msg_debug (str"Should define the initial evars accoding to the proofs")
+  in
+  Feedback.msg_debug (str"Starting proof");
+  Proof_global.(start_proof evm i kind [] (make_terminator terminator));
+  Proof_global.simple_with_current_proof (fun _ p  -> Proof.V82.grab_evars p)
+
+
+let define_tree is_recursive fixprots flags impls status isevar env (i, sign, arity)
                 comp split hook =
   let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
-  let helpers, oblevs, t, ty = term_of_tree isevar env split in
   let () = isevar := Evd.minimize_universes !isevar in
   let split = map_split (nf_evar !isevar) split in
+  if Evd.has_undefined !isevar then
+    solve_equations_obligations flags i !isevar hook
+  else
+  let split = define_constants flags isevar env split in
+  let env = Global.env () in
+  let helpers, oblevs, t, ty = term_of_tree flags isevar env split in
   let obls, (emap, cmap), t', ty' =
     (* XXX: EConstr Problem upstream indeed. *)
     Obligations.eterm_obligations env i !isevar
@@ -678,7 +805,7 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
     let l =
       Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
     Extraction_plugin.Table.extraction_inline true l;
-    let kind = (locality, poly, Decl_kinds.Definition) in
+    let kind = (locality, flags.polymorphic, Decl_kinds.Definition) in
     let baseid = Id.to_string i in
     let term_info = { term_id = gr; term_ustate = uctx; term_evars = evars;
                       base_id = baseid; helpers_info = helpers; decl_kind = kind;
@@ -696,7 +823,7 @@ let define_tree is_recursive fixprots poly impls status isevar env (i, sign, ari
     (* in *)
     to_constr !isevar (clos_norm_flags flags (Global.env ()) !isevar (of_constr x))
   in
-  let kind = (Decl_kinds.Global, poly, Decl_kinds.Definition) in
+  let kind = (Decl_kinds.Global, flags.polymorphic, Decl_kinds.Definition) in
   let ty' = it_mkProd_or_LetIn arity sign in
     match is_recursive with
     | Some (Syntax.Guarded [id]) ->
