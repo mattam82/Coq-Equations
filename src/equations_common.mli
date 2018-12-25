@@ -222,7 +222,14 @@ val coq_sigma : lazy_ref
 val coq_sigmaI : lazy_ref
 val coq_pr1 : Names.Projection.t lazy_t
 val coq_pr2 : Names.Projection.t lazy_t
-			    
+
+val logic_tele_type : lazy_ref
+val logic_tele_tip : lazy_ref
+val logic_tele_ext : lazy_ref
+val logic_tele_interp : lazy_ref
+val logic_tele_measure : lazy_ref
+val logic_tele_fix : lazy_ref
+
 val coq_zero : lazy_ref
 val coq_succ : lazy_ref
 val coq_nat : lazy_ref

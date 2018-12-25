@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 Require Import Program Utf8.
-From Equations Require Import Equations DepElimDec.
+From Equations Require Import Equations Telescopes DepElimDec.
 Require Import Bvector List Relations.
 Require Import Omega Arith Wf_nat.
 Require Import Subterm.
@@ -19,7 +19,7 @@ Module RecRel.
   id O := 0 ;
   id (S n) := S (id n).
 
-  Proof. intros. exact 0.
+  Proof. intros. reflexivity. Defined.
          intros. exact true.
          intros. simpl in H. auto with arith.
   Defined.

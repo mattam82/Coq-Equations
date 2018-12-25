@@ -262,6 +262,14 @@ let logic_wellfounded = (find_global "wellfounded.type")
 let logic_relation = (find_global "relation.type")
 let logic_transitive_closure = (find_global "relation.transitive_closure")
 
+let logic_tele_type = (find_global "tele.type")
+let logic_tele_tip = (find_global "tele.tip")
+let logic_tele_ext = (find_global "tele.ext")
+let logic_tele_interp = (find_global "tele.interp")
+let logic_tele_measure = (find_global "tele.measure")
+let logic_tele_fix = (find_global "tele.fix")
+
+
 let logic_eqdec_class = (find_global "eqdec.class")
 let logic_eqdec_dec_eq = (find_global "eqdec.dec_eq")
 
@@ -549,7 +557,7 @@ let call_tac_on_ref tac c =
   let var = Names.Id.of_string "x" in
   let tac = Locus.ArgArg (dummy_loc, tac) in
   let val_reference = Geninterp.val_tag (Genarg.topwit Stdarg.wit_constr) in
-  (** This is a hack to avoid generating useless universes *)
+  (* This is a hack to avoid generating useless universes *)
   let c = Constr.mkRef (c, Univ.Instance.empty) in
   let c = Geninterp.Val.inject val_reference (EConstr.of_constr c) in
   let ist = Geninterp.{ lfun = Names.Id.Map.add var c Names.Id.Map.empty;

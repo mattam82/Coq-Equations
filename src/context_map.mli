@@ -148,6 +148,7 @@ val new_strengthen :
   rel_context -> int -> ?rels:Int.Set.t -> constr ->
   context_map * context_map
 
+val id_pats : 'a list -> pat list
 val id_subst : 'a list -> 'a list * pat list * 'a list
 val eq_context_nolet :
   env ->

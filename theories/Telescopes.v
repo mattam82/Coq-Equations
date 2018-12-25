@@ -9,6 +9,10 @@ Cumulative Inductive tele@{i} : Type :=
 | tip (A : Type@{i})
 | ext (A : Type@{i}) (B : A -> tele) : tele.
 
+Register tele as equations.tele.type.
+Register tip as equations.tele.tip.
+Register ext as equations.tele.ext.
+
 Section TeleSigma.
   Universe i.
 
@@ -32,7 +36,7 @@ Section TeleSigma.
   | tip A := A -> Prop;
   | ext A B := forall x : A, tele_pred (B x).
 
-  Equations tele_fn : tele@{i} -> Type@{j} -> Type :=
+  Equations tele_fn : tele@{i} -> Type@{i} -> Type@{i} :=
   | tip A | concl := A -> concl;
   | ext A B | concl := forall x : A, tele_fn (B x) concl.
 
@@ -110,15 +114,30 @@ Section TeleSigma.
     rewrite H. reflexivity.
   Defined.
 
-  Equations tele_MR (T : tele@{i}) (A : Type@{j}) (f : tele_fn@{i} T A) : T -> A :=
+  Equations tele_MR (T : tele@{i}) (A : Type@{j}) (f : tele_fn T A) : T -> A :=
   tele_MR (tip A)   C f := f;
   tele_MR (ext A B) C f := fun x => tele_MR (B x.1) C (f x.1) x.2.
+
+  Equations tele_measure (T : tele@{i}) (A : Type@{j}) (f : tele_fn T A) (R : A -> A -> Prop) : T -> T -> Prop :=
+  tele_measure T C f R := fun x y => R (tele_MR T C f x) (tele_MR T C f y).
+
 End TeleSigma.
+
+Register tele_sigma as equations.tele.interp.
+Register tele_measure as equations.tele.measure.
+
+
+Instance wf_tele_measure@{i j k}
+         {T : tele@{i}} (A : Type@{j}) (f : tele_fn@{i j k} T A) (R : A -> A -> Prop) :
+  WellFounded R -> WellFounded (tele_measure T A f R).
+Proof.
+  intros. apply measure_wf. apply H.
+Defined.
 
 Section Fix.
   Universe i j k.
   Context {T : tele@{i}} (R : T -> T -> Prop).
-  Context (wf : well_founded R).
+  Context (wf : WellFounded R).
   Context (P : tele_type@{i j k} T).
 
   (* (forall x : A, (forall y : A, R y x -> P y) -> P x) -> forall x : A, P x *)
@@ -137,6 +156,8 @@ Section Fix.
            (fun x H => tele_forall_pack T _ fn x (tele_forall_unpack T _ H)))).
   Defined.
 End Fix.
+
+Register tele_Fix as equations.tele.fix.
 
 (* Monomorphic Inductive Acc_tel (T : tele) (R : tele_rel_curried T) (x : T) : Prop := *)
 (*     Acc_intro : (tele_forall_uncurry T (fun y => tele_pred_fn_pack T T R y x -> Acc_tel T R y)) -> Acc_tel _ R x. *)

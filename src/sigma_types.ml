@@ -81,6 +81,18 @@ let decompose_indapp sigma f args =
 
 (* let sigT_info = lazy (make_case_info (Global.env ()) (Globnames.destIndRef (Lazy.force sigT).typ) LetStyle) *)
 
+let telescope_of_context evd ctx =
+  let rec aux = function
+    | [] -> raise (Invalid_argument "Cannot make telescope out of empty context")
+    | [decl] -> mkAppG evd (Lazy.force logic_tele_tip) [|get_type decl|]
+    | d :: tl ->
+      let ty = get_type d in
+      mkAppG evd (Lazy.force logic_tele_ext) [| ty; mkLambda (get_name d, ty, aux tl) |]
+  in
+  let tele = aux (List.rev ctx) in
+  let tele_interp = mkAppG evd (Lazy.force logic_tele_interp) [| tele |] in
+  tele, tele_interp
+
 let telescope evd = function
   | [] -> assert false
   | [d] -> let (n, _, t) = to_tuple d in t, [of_tuple (n, Some (mkRel 1), Vars.lift 1 t)],

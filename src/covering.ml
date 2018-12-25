@@ -689,7 +689,7 @@ let pats_of_sign sign =
   List.rev_map (fun decl ->
       DAst.make (PUVar (Name.get_id (Context.Rel.Declaration.get_name decl), false))) sign
 
-let compute_rec_data env data lets p clauses =
+let compute_rec_data env evars data lets p =
   match p.program_rec with
   | Some (Structural ann) ->
     let reclen, sign =
@@ -716,19 +716,76 @@ let compute_rec_data env data lets p clauses =
     let p =
       { p with program_sign = sign;
                program_arity = liftn reclen (succ (length p.program_sign)) p.program_arity }
-    in p, ctxpats, clauses
+    in
+    let finalize flags s =
+      (* let _, _, term, _ = term_of_tree flags evars env s in
+       * term *) mkProp
+    in p, id_subst p.program_sign, ctxpats, finalize
 
   | Some (WellFounded (term, rel, l)) ->
-    let pats = pats_of_sign p.program_sign in
-    let clause =
-      [None, pats, Rec (term, rel, Some (p.program_loc, p.program_id), clauses)]
+    let tele, telety = Sigma_types.telescope_of_context evars p.program_sign in
+    let envlets = push_rel_context lets env in
+    let envsign = push_rel_context p.program_sign envlets in
+    let sigma, cterm = interp_constr_evars envsign !evars term in
+    let carrier = Retyping.get_type_of envsign sigma cterm in
+    let cterm = it_mkLambda_or_LetIn cterm p.program_sign in
+    let concl = it_mkLambda_or_LetIn p.program_arity p.program_sign in
+    let sigma, crel =
+      match rel with
+      | Some rel -> interp_constr_evars env sigma rel
+      | None -> raise (Invalid_argument "unknow relation not supported yet") in
+    let () = evars := sigma in
+    let crel = mkapp env evars logic_tele_measure [| tele; carrier; cterm; crel |] in
+    let functional_type, fix =
+      let wfty = mkapp env evars logic_wellfounded_class [| telety; crel |] in
+      let sigma, wf = new_evar env !evars wfty in
+      let () = evars := sigma in
+      let fix = mkapp env evars logic_tele_fix [| tele; crel; wf; concl |] in
+      let fixty = Retyping.get_type_of env !evars fix in
+      let functional_type, concl =
+        match kind !evars fixty with
+          | Prod (na, fnty, concl) ->
+            let fnty = Reductionops.nf_all env !evars fnty in
+            let concl = subst1 mkProp concl in
+            fnty, Reductionops.nf_all env !evars concl
+          | _ -> assert false
+      in
+      let functional_type =
+        let ctx, rest = decompose_prod_n_assum !evars (Context.Rel.nhyps p.program_sign) functional_type in
+        match kind !evars rest with
+        | Prod (_, b, _) -> b
+        | _ -> assert false
+      in
+
+      (* let sigma, functional_evar = new_evar env !evars functional_type in *)
+      (* let fix = mkApp (fix, [| functional_evar |]) in *)
+      let () = evars := sigma in
+      let prc = Printer.pr_econstr_env env !evars in
+      Feedback.msg_debug (str" rec definition" ++
+                          str" fix: " ++ prc fix ++
+                          str " functional type : " ++ prc functional_type ++
+                          str " conclusion type : " ++ prc concl);
+      functional_type, fix
     in
+    let decl = make_def (Name p.program_id) None functional_type in
     let ctxpats = pats_of_sign lets in
     let p = { p with program_sign = p.program_sign @ lets } in
-    p, ctxpats, clause
+    let lhs = decl :: p.program_sign in
+    let pats = PHide 1 :: lift_pats 1 (id_pats p.program_sign) in
+    let prob = (lhs, pats, lhs) in
+    let finalize flags s =
+      let _, _, t, _ = term_of_tree flags evars env s in
+      mkApp (fix, [| t |])
+    in
+    p, prob, ctxpats, finalize
+
   | _ ->
     let p = { p with program_sign = p.program_sign @ lets } in
-    p, pats_of_sign lets, clauses
+    let finalize flags s =
+      let _, _, term, _ = term_of_tree flags evars env s in
+      term
+    in
+    p, id_subst p.program_sign, pats_of_sign lets, finalize
 
 let rec covering_aux env evars p data prev (clauses : (pre_clause * bool) list) path
     (ctx,pats,ctx' as prob) extpats lets ty =
@@ -1143,10 +1200,9 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
 
     let pre_type = program_type p in
     let fixdecls = [Context.Rel.Declaration.LocalAssum (Name id, pre_type)] in
-    let p, extpats, clauses =
-      compute_rec_data env {data with rec_info = compute_recinfo [p];
-                                      fixdecls = fixdecls} lets p clauses in
-    let problem = id_subst p.program_sign in
+    let p, problem, extpats, finalize =
+      compute_rec_data env evars {data with rec_info = compute_recinfo [p];
+                                      fixdecls = fixdecls} lets p in
     let intenv = Constrintern.compute_internalization_env ~impls:data.intenv
         env !evars Constrintern.Recursive [id] [pre_type] [p.program_impls]
     in
@@ -1215,10 +1271,13 @@ let program_covering env evd data p clauses =
   in
   let sigma, p = adjust_sign_arity env !evd p clauses in
   let () = evd := sigma in
-  let p', extpats, clauses = compute_rec_data env data [] p clauses in
-  let prob = id_subst p'.program_sign in
+  let p', prob, extpats, finalize = compute_rec_data env evd data [] p in
   let arity = nf_evar !evd p.program_arity in
-  p, covering env evd p data clauses [Ident p.program_id] prob extpats arity
+  let splitting =
+    covering env evd p data clauses [Ident p.program_id] prob extpats arity
+  in
+  let _ = finalize data.flags splitting in
+  p, splitting
 
 let coverings env evd data programs equations =
   List.map2 (program_covering env evd data) programs equations
