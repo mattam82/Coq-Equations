@@ -14,23 +14,28 @@ Require Import Subterm.
 Instance wf_nat : WellFounded lt := lt_wf.
 Hint Resolve lt_n_Sn : Below.
 Module RecRel.
-  Equations? id (n : nat) : nat
+  Set Printing Universes.
+  Equations? id (n m : nat) : nat
   by rec n lt :=
-  id O := 0 ;
-  id (S n) := S (id n).
-
+  id O m := m ;
+  id (S n) m := S (id n m).
+  Set Equations Debug.
   Proof. intros. reflexivity. Defined.
-         intros. exact true.
-         intros. simpl in H. auto with arith.
+    Import Sigma_Notations.
+
+  Axiom cheat : forall {A}, A.
+  Next Obligation.
+    unfold id.
+    pose (Telescopes.tele_Fix_unfold (T:=ext nat (fun _ => tip nat))). simpl in e.
+    specialize (e &(n & m)). simpl in e. rewrite e. destruct n. reflexivity.
+    simpl. f_equal.
   Defined.
 
-  Next Obligation.
-
-
-
-
-
+    apply cheat. Defined.
+  Next Obligation. apply cheat. Defined.
 End RecRel.
+
+Extraction RecRel.id.
 
 Section Nested.
 
@@ -42,7 +47,7 @@ Section Nested.
   (*     match x with *)
   (*     (* | context [ ` (?x') ] => destruct_proj1_sigs x' *) *)
   (*     | _ => *)
-  (*       let x' := fresh in *)
+  (*       let x' := fresh in *)q
   (*       let H' := fresh in *)
   (*         destruct x as [x' H'] ; simpl proj1_sig; destruct_proj1_sig *)
   (*   end. *)

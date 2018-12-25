@@ -25,7 +25,11 @@ val decompose_coq_sigma : Evd.evar_map -> constr -> (EInstance.t * constr * cons
 val decompose_indapp : Evd.evar_map ->
   constr -> constr array -> constr * constr array
 
+val telescope_intro : Environ.env -> Evd.evar_map -> int -> constr (* interpreted telescope *)
+  -> constr (* introduction *)
+
 val telescope_of_context :
+  Environ.env ->
   Evd.evar_map ref ->
   rel_context -> constr (* telescope *) * constr (* interp tele *)
 

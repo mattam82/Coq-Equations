@@ -229,6 +229,7 @@ val logic_tele_ext : lazy_ref
 val logic_tele_interp : lazy_ref
 val logic_tele_measure : lazy_ref
 val logic_tele_fix : lazy_ref
+val logic_tele_fix_unfold : lazy_ref
 
 val coq_zero : lazy_ref
 val coq_succ : lazy_ref

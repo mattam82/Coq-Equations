@@ -33,14 +33,16 @@ type path_component =
 
 type path = path_component list
 
+type rec_node = {
+  rec_node_term : constr;
+  rec_node_intro : int; (* number of arguments of the recursive function *)
+  rec_node_newprob : context_map }
+
 type splitting =
   | Compute of context_map * where_clause list * types * splitting_rhs
   | Split of context_map * int * types * splitting option array
-  | Valid of context_map * types * identifier list * Tacmach.tactic *
-             (Proofview.entry * Proofview.proofview) *
-             (Goal.goal * constr list * context_map * context_map option * splitting) list
   | Mapping of context_map * splitting (* Mapping Γ |- p : Γ' and splitting Γ' |- p : Δ *)
-  | RecValid of identifier * splitting
+  | RecValid of identifier * rec_node * splitting
   | Refined of context_map * refined_node * splitting
 
 and where_clause =
@@ -74,9 +76,8 @@ and splitting_rhs =
 let rec context_map_of_splitting : splitting -> context_map = function
   | Compute (subst, _, _, _) -> subst
   | Split (subst, _, _, _) -> subst
-  | Valid (subst, _, _, _, _, _) -> subst
   | Mapping (subst, _) -> subst
-  | RecValid (_, s) -> context_map_of_splitting s
+  | RecValid (_, _, s) -> context_map_of_splitting s
   | Refined (subst, _, _) -> subst
 
 let pr_path_component evd = function
@@ -163,13 +164,8 @@ let pr_splitting env sigma ?(verbose=false) split =
           (mt ()) cs))
     | Mapping (ctx, s) ->
       hov 2 (str"Mapping " ++ pr_context_map env sigma ctx ++ Pp.fnl () ++ aux s)
-    | RecValid (id, c) ->
+    | RecValid (id, fix, c) ->
       hov 2 (str "RecValid " ++ Id.print id ++ Pp.fnl () ++ aux c)
-    | Valid (lhs, ty, ids, ev, tac, cs) ->
-      let _env' = push_rel_context (pi1 lhs) env in
-      hov 2 (str "Valid " ++ str " in context " ++ pr_context_map env sigma lhs ++
-             List.fold_left
-               (fun acc (gl, cl, subst, invsubst, s) -> acc ++ aux s) (mt ()) cs)
     | Refined (lhs, info, s) ->
       let (id, c, cty), ty, arg, path, ev, (scf, scargs), revctx, newprob, newty =
         info.refined_obj, info.refined_rettyp,
@@ -224,12 +220,11 @@ let map_split f split =
     | Mapping (lhs, s) ->
        let lhs' = map_ctx_map f lhs in
        Mapping (lhs', aux s)
-    | RecValid (id, c) -> RecValid (id, aux c)
-    | Valid (lhs, y, z, w, u, cs) ->
-      let lhs' = map_ctx_map f lhs in
-	Valid (lhs', f y, z, w, u, 
-	       List.map (fun (gl, cl, subst, invsubst, s) -> 
-		 (gl, List.map f cl, map_ctx_map f subst, invsubst, aux s)) cs)
+    | RecValid (id, r, c) ->
+      let r' = { rec_node_term = f r.rec_node_term;
+                 rec_node_intro = r.rec_node_intro;
+                 rec_node_newprob = map_ctx_map f r.rec_node_newprob } in
+      RecValid (id, r', aux c)
     | Refined (lhs, info, s) ->
       let lhs' = map_ctx_map f lhs in
       let (id, c, cty) = info.refined_obj in
@@ -452,7 +447,13 @@ let term_of_tree flags isevar env0 tree =
        let ty = it_mkProd_or_subst env evm (prod_appvect evm ty args) ctx in
          evm, term, ty
 		    
-    | RecValid (id, rest) -> aux env evm rest
+    | RecValid (id, r, rest) ->
+      let evm, term, ty = aux env evm rest in
+      let term = mkApp (r.rec_node_term, [| term |]) in
+      let ty = Retyping.get_type_of env evm term in
+      let ty = nf_all env evm ty in
+      let term = nf_betaiotazeta env evm term in
+      evm, term, ty
 
     | Refined ((ctx, _, _), info, rest) ->
 	let (id, _, _), ty, rarg, path, ev, (f, args), newprob, newty =
@@ -479,19 +480,6 @@ let term_of_tree flags isevar env0 tree =
         let ty = it_mkProd_or_subst env evm ty ctx in
 	  evm, term, ty
 
-    | Valid ((ctx, _, _), ty, substc, tac, (entry, pv), rest) ->
-	let tac = Proofview.tclDISPATCH 
-          (List.map (fun (goal, args, subst, invsubst, x) ->
-            Refine.refine ~typecheck:false begin fun evm ->
-              let evm, term, ty = aux env evm x in
-              (evm, applistc term args) end) rest)
-	in
-        let tac = Proofview.tclTHEN (Proofview.Unsafe.tclEVARS evm) tac in
-	let _, pv', _, _ = Proofview.apply env tac pv in
-	let c = List.hd (Proofview.partial_proof entry pv') in
-	  Proofview.return pv', 
-	  it_mkLambda_or_LetIn (subst_vars substc c) ctx, it_mkProd_or_LetIn ty ctx
-	      
     | Split ((ctx, _, _) as subst, rel, ty, sp) ->
       (* Produce parts of a case that will be relevant. *)
       let evm, block = Equations_common.(get_fresh evm coq_block) in
@@ -630,13 +618,9 @@ let change_splitting s sp =
       Split (change_lhs s lhs, rel, ty, Array.map (fun x -> Option.map aux x) sp)
     | Mapping (lhs, sp) ->
       Mapping (change_lhs s lhs, aux sp)
-    | RecValid (id, rest) -> RecValid (id, aux rest)
+    | RecValid (id, t, rest) -> RecValid (id, t, aux rest)
     | Refined (lhs, info, rest) ->
       Refined (change_lhs s lhs, info, aux rest)
-    | Valid (lhs, ty, substc, tac, (entry, pv), rest) ->
-      let rest' = List.map (fun (gl, x, y, z, w) ->
-          (gl, x, y, z, aux w)) rest in
-      Valid (lhs, ty, substc, tac, (entry, pv), rest')
   in aux sp
 
 let define_constants flags isevar env0 tree =
@@ -669,9 +653,9 @@ let define_constants flags isevar env0 tree =
       let evm, s' = aux env evm s in
       evm, Mapping (lhs, s')
 
-    | RecValid (id, rest) ->
+    | RecValid (id, t, rest) ->
       let evm, s' = aux env evm rest in
-      evm, RecValid (id, s')
+      evm, RecValid (id, t, s')
 
     | Refined ((ctx, _, _) as lhs, info, rest) ->
       let evm', rest' = aux env evm rest in
@@ -683,13 +667,6 @@ let define_constants flags isevar env0 tree =
       in
       let () = helpers := (cst, info.refined_arg) :: !helpers in
       evm, Refined (lhs, { info with refined_app = (e, snd info.refined_app) }, rest')
-
-    | Valid ((ctx, _, _) as lhs, ty, substc, tac, (entry, pv), rest) ->
-      let isevar = ref evm in
-      let rest' = List.map (fun (gl, x, y, z, w) ->
-          let evm', w' = aux env !isevar w in
-          isevar := evm'; gl, x, y, z, w') rest in
-      !isevar, Valid (lhs, ty, substc, tac, (entry, pv), rest')
 
     | Split (lhs, rel, ty, sp) ->
       let evm, sp' = CArray.fold_left_map (fun evm s ->
@@ -782,6 +759,7 @@ let solve_equations_obligations flags i isevar split hook =
       in
       let () =
         List.iter2 (fun (evar_env, ev, evi, type_) entry ->
+            if Evd.is_defined !isevar ev then () else
             let id =
               match Evd.evar_ident ev !isevar with
               | Some id -> id
@@ -793,7 +771,9 @@ let solve_equations_obligations flags i isevar split hook =
               Evd.define ev (applist (app, List.rev (Context.Named.to_instance mkVar (Evd.evar_context evi))))
                 newevars)
           types obj.Proof_global.entries
-      in hook split
+      in
+      Feedback.msg_debug (str"Calling hook with split " ++ pr_splitting env !isevar split);
+      hook split
   in
   Feedback.msg_debug (str"Starting proof");
   Proof_global.(start_dependent_proof i kind tele (make_terminator terminator))

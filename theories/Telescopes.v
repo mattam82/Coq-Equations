@@ -65,12 +65,12 @@ Section TeleSigma.
   tele_forall_app (tip A)   P f x := f x;
   tele_forall_app (ext A B) P f x := tele_forall_app (B x.1) (P x.1) (f x.1) x.2.
 
-  Equations tele_forall_type_app (T : tele) (P : tele_type T)
+  Equations tele_forall_type_app (T : tele@{i}) (P : tele_type T)
             (fn : forall t, tele_type_app T P t) : tele_forall T P :=
   | (tip A) | P | fn := fn;
   | ext A B | P | fn := fun a : A => tele_forall_type_app (B a) (P a) (fun b => fn &(a & b)).
 
-  Lemma tele_forall_app_type (T : tele) (P : tele_type T) (f : forall t, tele_type_app T P t) :
+  Lemma tele_forall_app_type (T : tele@{i}) (P : tele_type T) (f : forall t, tele_type_app T P t) :
     forall x, tele_forall_app T P (tele_forall_type_app T P f) x = f x.
   Proof.
     induction T; simpl. reflexivity. intros [a b]. simpl.
@@ -103,7 +103,7 @@ Section TeleSigma.
   | (tip A) | P | f | t := f t;
   | ext A B | P | f | &(a & b) := tele_forall_pack (B a) (fun b => P &(a & b)) (f a) b.
 
-  Equations tele_forall_unpack (T : tele) (P : T -> Type) (f : forall (t : T), P t) : tele_forall_uncurry T P :=
+  Equations tele_forall_unpack (T : tele@{i}) (P : T -> Type@{j}) (f : forall (t : T), P t) : tele_forall_uncurry T P :=
   | (tip A) | P | f := f;
   | ext A B | P | f := fun a : A => tele_forall_unpack (B a) (fun b => P &(a & b)) (fun b => f &(a & b)).
 
@@ -125,7 +125,6 @@ End TeleSigma.
 
 Register tele_sigma as equations.tele.interp.
 Register tele_measure as equations.tele.measure.
-
 
 Instance wf_tele_measure@{i j k}
          {T : tele@{i}} (A : Type@{j}) (f : tele_fn@{i j k} T A) (R : A -> A -> Prop) :
@@ -171,42 +170,49 @@ induction T; simpl in *. intros. apply f. apply H.
 intros x. eapply X. apply f. simpl. intros. eapply H.
 Defined.
 
+Lemma poly_f_equal@{i j} : forall (A : Type@{i}) (B : Type@{j}) (f : A -> B) (x y : A), x = y -> f x = f y.
+Proof. intros. destruct H. reflexivity. Defined.
+
 Section Fix.
-  Context {T : tele} (R : T -> T -> Prop).
+  Universes i j k.
+
+  Context {T : tele@{i}} (x : T) (R : T -> T -> Prop).
   Context (wf : well_founded R).
-  Context (P : tele_type T).
+  Context (P : tele_type@{i j k} T).
 
   (* (forall x : A, (forall y : A, R y x -> P y) -> P x) -> forall x : A, P x *)
-  Context (fn : functional_type R P).
+  Context (fn : functional_type@{i j k} R P).
+Set Printing Universes.
+  Lemma tele_Fix_unfold :
+    tele_forall_app T P (tele_Fix R wf P fn) x =
+    tele_forall_pack T _ fn x
+                     (tele_forall_unpack T _ (fun y _ => tele_forall_app T P (tele_Fix R wf P fn) y)).
+  Proof.
+    intros. unfold tele_Fix, Fix.
+    rewrite tele_forall_app_type@{i j k}. destruct (wf x). simpl.
+    apply poly_f_equal@{k k}. apply poly_f_equal@{k k}. extensionality y. extensionality h.
+    rewrite tele_forall_app_type@{i j k}. apply poly_f_equal@{k k}. apply Subterm.Acc_pi.
+  Defined.
+
 
 
   Let foo x :=
     tele_forall_unpack _ _ (fun y (_ : R y x) => tele_forall_app T P (tele_Fix R wf P fn) y).
-
-  Lemma FixWf_unfold :
+  Lemma FixWf_unfold' :
     tele_Fix R wf P fn = tele_forall_uncurry' T P _ fn foo.
-  Proof.
+  Proof. clear x.
     intros. unfold tele_Fix, Fix.
     unfold tele_forall_uncurry'. simpl.
-    induction T. simpl.
+    induction T. simpl. extensionality x'.
   Admitted.
 
   (*   rewrite tele_forall_app_type. destruct (wf x). simpl. *)
   (*   f_equal. apply f_equal. extensionality y. extensionality h. *)
   (*   rewrite tele_forall_app_type. apply f_equal. apply Subterm.Acc_pi. *)
   (* Defined. *)
-
-  (* Lemma FixWf_unfold x : *)
-  (*   tele_forall_app T P (tele_Fix R wf P fn) x = *)
-  (*   tele_forall_pack T _ fn x *)
-  (*                    (tele_forall_unpack T _ (fun y _ => tele_forall_app T P (tele_Fix R wf P fn) y)). *)
-  (* Proof. *)
-  (*   intros. unfold tele_Fix, Fix. *)
-  (*   rewrite tele_forall_app_type. destruct (wf x). simpl. *)
-  (*   f_equal. apply f_equal. extensionality y. extensionality h. *)
-  (*   rewrite tele_forall_app_type. apply f_equal. apply Subterm.Acc_pi. *)
-  (* Defined. *)
 End Fix.
+
+Register tele_Fix_unfold as equations.tele.fix_unfold.
 
 Section TestFix.
 
@@ -232,7 +238,8 @@ Section TestFix.
 
   Lemma myfix_unfold_eq n m H : myfix n m H = myfix_unfold n m H.
   Proof.
-    unfold myfix. rewrite FixWf_unfold.
+    unfold myfix. rewrite FixWf_unfold'.
+
     simpl. destruct m; try reflexivity.
   Qed.
 

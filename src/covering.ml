@@ -10,7 +10,6 @@ open Util
 open Names
 open Nameops
 open Constr
-open Environ
 open Reductionops
 open Pp
 open List
@@ -23,8 +22,6 @@ open Splitting
 
 open EConstr
 open EConstr.Vars   
-
-open Ltac_plugin
 
 type int_data = {
   rec_info : rec_type option;
@@ -717,13 +714,11 @@ let compute_rec_data env evars data lets p =
       { p with program_sign = sign;
                program_arity = liftn reclen (succ (length p.program_sign)) p.program_arity }
     in
-    let finalize flags s =
-      (* let _, _, term, _ = term_of_tree flags evars env s in
-       * term *) mkProp
-    in p, id_subst p.program_sign, ctxpats, finalize
+    let finalize flags s = s in
+    p, id_subst p.program_sign, ctxpats, finalize
 
   | Some (WellFounded (term, rel, l)) ->
-    let tele, telety = Sigma_types.telescope_of_context evars p.program_sign in
+    let tele, telety = Sigma_types.telescope_of_context env evars p.program_sign in
     let envlets = push_rel_context lets env in
     let envsign = push_rel_context p.program_sign envlets in
     let sigma, cterm = interp_constr_evars envsign !evars term in
@@ -741,7 +736,8 @@ let compute_rec_data env evars data lets p =
       let sigma, wf = new_evar env !evars wfty in
       let () = evars := sigma in
       let fix = mkapp env evars logic_tele_fix [| tele; crel; wf; concl |] in
-      let fixty = Retyping.get_type_of env !evars fix in
+      let sigma, fixty = Typing.type_of env !evars fix in
+      let () = evars := sigma in
       let functional_type, concl =
         match kind !evars fixty with
           | Prod (na, fnty, concl) ->
@@ -759,7 +755,6 @@ let compute_rec_data env evars data lets p =
 
       (* let sigma, functional_evar = new_evar env !evars functional_type in *)
       (* let fix = mkApp (fix, [| functional_evar |]) in *)
-      let () = evars := sigma in
       let prc = Printer.pr_econstr_env env !evars in
       Feedback.msg_debug (str" rec definition" ++
                           str" fix: " ++ prc fix ++
@@ -774,17 +769,15 @@ let compute_rec_data env evars data lets p =
     let pats = PHide 1 :: lift_pats 1 (id_pats p.program_sign) in
     let prob = (lhs, pats, lhs) in
     let finalize flags s =
-      let _, _, t, _ = term_of_tree flags evars env s in
-      mkApp (fix, [| t |])
+      RecValid (p.program_id, { rec_node_term = fix;
+                                rec_node_intro = List.length p.program_sign;
+                                rec_node_newprob = prob }, s)
     in
     p, prob, ctxpats, finalize
 
   | _ ->
     let p = { p with program_sign = p.program_sign @ lets } in
-    let finalize flags s =
-      let _, _, term, _ = term_of_tree flags evars env s in
-      term
-    in
+    let finalize flags s = s in
     p, id_subst p.program_sign, pats_of_sign lets, finalize
 
 let rec covering_aux env evars p data prev (clauses : (pre_clause * bool) list) path
@@ -944,99 +937,6 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
   | Empty (loc,i) ->
     Some (Compute (prob, [], ty, REmpty (get_var loc i s)))
 
-  | Rec (term, rel, name, spl) ->
-    let name =
-      match name with Some (loc, id) -> id
-                    | None -> p.program_id
-    in
-    let tac = 
-      match rel with
-      | None -> rec_tac term name
-      | Some r ->
-        let _rel_check = interp_constr_evars env (!evars) r in
-        let nat = coq_nat_of_int (List.length (pi1 prob) - List.length extpats) in
-        let nat = Constrextern.extern_constr false env !evars (EConstr.of_constr nat) in
-        rec_wf_tac term nat name r
-    in
-    let rhs = By (Inl tac, spl) in
-    (match covering_aux env evars p data [] [(loc,lhs,rhs),false] (Ident name :: path) prob extpats lets ty with
-     | None -> None
-     | Some (clauses, split) -> Some (RecValid (p.program_id, split)))
-
-  | By (tac, s) ->
-    let () =
-      if !Equations_common.debug then begin
-      Feedback.msg_debug (str"solve_goal named context: " ++
-                          Printer.pr_named_context env !evars
-                          (EConstr.Unsafe.to_named_context (named_context env')));
-      Feedback.msg_debug (str"solve_goal rel context: " ++
-                          Printer.pr_rel_context_of env' !evars)
-      end
-    in
-    let sign, t', rels, _ = push_rel_context_to_named_context ~hypnaming:KeepExistingNames env' !evars ty in
-    let sign = named_context_of_val sign in
-    let () =
-      if !Equations_common.debug then
-        Feedback.msg_debug (str"solve_goal named context: " ++
-                            Printer.pr_named_context env !evars (EConstr.Unsafe.to_named_context sign))
-    in
-    let sign', secsign = split_at_eos !evars sign in
-    let ids = List.map get_id sign in
-    let ids = Names.Id.Set.of_list ids in
-    let tac = match tac with
-      | Inl tac -> 
-        Tacinterp.interp_tac_gen Names.Id.Map.empty ids Tactic_debug.DebugOff tac
-      | Inr tac -> Tacinterp.eval_tactic tac
-    in
-    let env' = reset_with_named_context (val_of_named_context sign) env in
-    let entry, proof = Proofview.init !evars [(env', t')] in
-    let _, res, _, _ = Proofview.apply env' tac proof in
-    let gls, sigma = Proofview.proofview res in
-    evars := sigma;
-    if Proofview.finished res then
-      let c = List.hd (Proofview.partial_proof entry res) in
-      Some (Compute (prob, [], ty, RProgram c))
-    else
-      let solve_goal gl =
-        let nctx = named_context_of_val (Goal.V82.hyps !evars gl) in
-        let concl = Goal.V82.concl !evars gl in
-        let nctx, secctx = split_at_eos !evars nctx in
-        let rctx, subst = rel_of_named_context nctx in
-        let ty' = subst_vars subst concl in
-        let ty', prob, subst, invsubst = match kind !evars ty' with
-          | App (f, args) -> 
-            if Equations_common.is_global !evars (Lazy.force coq_add_pattern) f then
-              let comp = args.(1) and newpattern = pat_of_constr !evars args.(2) in
-              let pats =
-                let l = pat_vars_list (List.length rctx) in
-                newpattern :: List.tl l
-              in
-              let newprob = rctx, pats, rctx in
-              let subst = (rctx, List.tl pats, List.tl rctx) in
-              comp, newprob, subst, None
-            else
-              let pats = rev_map (pat_of_constr !evars) (Array.to_list args) in
-              let newprob = rctx, pats, ctx' in
-              ty', newprob, id_subst ctx', None
-          | _ -> raise (Invalid_argument "covering_aux: unexpected output of tactic call")
-        in
-        match covering_aux env evars p data [] (List.map (fun x -> x, false) s) path prob extpats lets ty' with
-        | None ->
-          anomaly ~label:"covering"
-            (str "Unable to find a covering for the result of a by clause:" 
-             ++ fnl () ++ pr_preclause env (loc, lhs, rhs) ++
-             str" refining " ++ pr_context_map env !evars prob)
-        | Some (clauses, s) ->
-          let args = rev (List.map_filter (fun decl ->
-              if get_named_value decl == None then Some (mkVar (get_id decl)) else None) nctx)
-          in
-          let () = check_unused_clauses env clauses in
-          (gl, args, subst, invsubst, s)
-      in
-      let goals = List.map solve_goal gls in
-      Some (Valid (prob, ty, List.map get_id sign', Proofview.V82.of_tactic tac,
-                   (entry, res), goals))
-
   | Refine (c, cls) -> 
     (* The refined term and its type *)
     let cconstr, cty = interp_constr_in_rhs env ctx evars data None s lets (ConstrExpr c) in
@@ -1116,8 +1016,6 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
           in
           let newrhs = match rhs with
             | Refine (c, cls) -> Refine (c, cls' (succ n) cls)
-            | Rec (v, rel, id, s) -> Rec (v, rel, id, cls' n s)
-            | By (v, s) -> By (v, cls' n s)
             | _ -> rhs
           in
           Some (loc, rev newlhs @ nextrefs, newrhs)
@@ -1276,7 +1174,7 @@ let program_covering env evd data p clauses =
   let splitting =
     covering env evd p data clauses [Ident p.program_id] prob extpats arity
   in
-  let _ = finalize data.flags splitting in
+  let splitting = finalize data.flags splitting in
   p, splitting
 
 let coverings env evd data programs equations =

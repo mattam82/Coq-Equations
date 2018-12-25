@@ -333,15 +333,8 @@ let rec aux_ind_fun info chop unfs unfids = function
 	  | Some s ->
 	      tclTHEN (to82 (simpl_dep_elim_tac ()))
                 (aux_ind_fun info chop (unfs_splits (pred i)) unfids s)))
-	  
-  | Valid ((ctx, _, _), ty, substc, tac, valid, rest) ->
-     observe "valid"
-    (tclTHEN (to82 intros)
-      (tclTHEN_i tac (fun i -> let _, _, subst, invsubst, split = nth rest (pred i) in
-				 tclTHEN (to82 (Lazy.force unfold_add_pattern))
-				   (aux_ind_fun info chop unfs unfids split))))
 
-  | RecValid (id, cs) -> aux_ind_fun info chop unfs unfids cs
+  | RecValid (id, t, cs) -> aux_ind_fun info chop unfs unfids cs
       
   | Refined ((ctx, _, _), refinfo, s) -> 
     let unfs = map_opt_split destRefined unfs in
@@ -757,18 +750,44 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
                                                       tclTHENLIST [unfolds; simpltac;
                                                                    aux split unfsplit])))) gl
 	  | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl)
-	    
-    | Valid (_, _, _, _, _, rest), (* Valid ((ctx, _, _), ty, substc, tac, valid, unfrest) -> *) _ ->
-       (* FIXME: Valid could take a splitting with more than 1 branch *)
-       observe "valid"
-               (aux (let (_, _, _, _, split) = List.nth rest 0 in split) unfold_split)
-       (* tclTHEN_i tac (fun i -> let _, _, _, _, split = nth rest (pred i) in *)
-       (*                      (\* let _, _, _, _, unfsplit = nth unfrest (pred i) in *\) *)
-       (*  		    tclTHEN (Lazy.force unfold_add_pattern) (aux split unfold_split)) *)
 
-    | RecValid (id, cs), unfsplit ->
+    | RecValid (id, r, cs), unfsplit ->
        observe "recvalid"
-	       (tclTHEN (to82 (unfold_recursor_tac ())) (aux cs unfsplit))
+         (fun gl ->
+            let env = pf_env gl in
+            let sigma = project gl in
+            match kind sigma (pf_concl gl) with
+            | App (eq, [| ty; x; y |]) ->
+              (match kind (project gl) x with
+               | App (tele_fix, args) ->
+                 let tele, rel, wf, arity, fn, args =
+                   match Array.to_list args with
+                   | tele :: rel :: wf :: arity :: fn :: args ->
+                     tele, rel, wf, arity, fn, args
+                   | _ -> assert false
+                 in
+                 let tele_fix, u = destConst sigma tele_fix in
+                 let fixunf = mkRef (Lazy.force logic_tele_fix_unfold, u) in
+                 let teleu =
+                   let ar = Univ.Instance.to_array (EInstance.kind sigma u) in
+                   EInstance.make (Univ.Instance.of_array [| ar.(0) |])
+                 in
+                 let sigma_type =
+                   mkApp (mkRef (Lazy.force logic_tele_interp, teleu), [| tele |]) in
+                 let intro = Sigma_types.telescope_intro env sigma r.rec_node_intro sigma_type in
+                 let tele_intro = substl (List.rev args) intro in
+                 let unfapp = mkApp (fixunf, [| tele; tele_intro; rel; wf; arity; fn |]) in
+                 let unfappty = Retyping.get_type_of env sigma unfapp in
+                 let unfappty = Reductionops.whd_all env sigma unfappty in
+                 (match kind sigma unfappty with
+                  | App (eq', [| ty'; lhs; rhs |]) ->
+                    let rhs = Reductionops.whd_all env sigma rhs in
+                    tclTHENS (to82 (Tactics.transitivity rhs))
+                      [to82 (Tactics.exact_check unfapp);
+                       aux cs unfsplit] gl
+                  | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl)
+               | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl)
+            | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl)
 
     | _, Mapping (lhs, s) -> aux split s
        

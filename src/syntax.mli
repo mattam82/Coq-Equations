@@ -10,7 +10,6 @@ open Constr
 open Environ
 open Names
 open Equations_common
-open Ltac_plugin
 
 type 'a with_loc = Loc.t * 'a
 
@@ -63,11 +62,7 @@ type lhs = user_pats (* p1 ... pn *)
 and ('a,'b) rhs =
     Program of program_body * 'a where_clause list
   | Empty of identifier with_loc
-  | Rec of Constrexpr.constr_expr * Constrexpr.constr_expr option *
-             identifier with_loc option * 'b list
   | Refine of Constrexpr.constr_expr * 'b list
-  | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) Util.union *
-      'b list
 and pre_prototype =
   identifier with_loc * user_rec_annot * Constrexpr.local_binder_expr list * Constrexpr.constr_expr option *
   (Id.t with_loc, Constrexpr.constr_expr * Constrexpr.constr_expr option) by_annot option

@@ -25,14 +25,16 @@ type path = path_component list
 
 val path_id : path -> Id.t
 
+type rec_node = {
+  rec_node_term : constr;
+  rec_node_intro : int;
+  rec_node_newprob : context_map }
+
 type splitting =
     Compute of context_map * where_clause list * types * splitting_rhs
   | Split of context_map * int * types * splitting option array
-  | Valid of context_map * types * identifier list *
-      Tacmach.tactic * (Proofview.entry * Proofview.proofview) *
-      (Goal.goal * constr list * context_map * context_map option * splitting) list
   | Mapping of context_map * splitting
-  | RecValid of identifier * splitting
+  | RecValid of identifier * rec_node * splitting
   | Refined of context_map * refined_node * splitting
 
 and where_clause =

@@ -21,7 +21,6 @@ open Constrexpr
 open Evar_kinds
 open Equations_common
 open Constrintern
-open Ltac_plugin
 
 type 'a with_loc = Loc.t * 'a
 type identifier = Names.Id.t
@@ -72,11 +71,7 @@ type lhs = user_pats
 and ('a,'b) rhs =
     Program of program_body * 'a where_clause list
   | Empty of identifier with_loc
-  | Rec of Constrexpr.constr_expr * Constrexpr.constr_expr option *
-             identifier with_loc option * 'b list
   | Refine of Constrexpr.constr_expr * 'b list
-  | By of (Tacexpr.raw_tactic_expr, Tacexpr.glob_tactic_expr) Util.union *
-      'b list
 
 and pre_prototype =
   identifier with_loc * user_rec_annot * Constrexpr.local_binder_expr list * Constrexpr.constr_expr option *
@@ -118,10 +113,6 @@ let pplhs lhs = pp (pr_lhs (Global.env ()) lhs)
 
 let rec pr_rhs env = function
   | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ Id.print var
-  | Rec (t, rel, id, s) -> 
-     spc () ++ str "=>" ++ spc () ++ str"rec " ++ pr_constr_expr t ++ spc () ++
-       pr_opt (fun (_, id) -> Id.print id) id ++ spc () ++
-      hov 1 (str "{" ++ pr_clauses env s ++ str "}")
   | Program (rhs, where) -> spc () ++ str ":=" ++ spc () ++
                             (match rhs with
                              | ConstrExpr rhs -> pr_constr_expr rhs
@@ -130,10 +121,6 @@ let rec pr_rhs env = function
   | Refine (rhs, s) -> spc () ++ str "<=" ++ spc () ++ pr_constr_expr rhs ++ 
       spc () ++ str "=>" ++ spc () ++
       hov 1 (str "{" ++ pr_clauses env s ++ str "}")
-  | By (Inl tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_raw_tactic tac
-      ++ spc () ++ hov 1 (str "{" ++ pr_clauses env s ++ str "}")
-  | By (Inr tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_glob_tactic env tac
-      ++ spc () ++ hov 1 (str "{" ++ pr_clauses env s ++ str "}")
 
 and pr_wheres env l =
   if List.is_empty l then mt() else
@@ -160,10 +147,6 @@ let pr_user_lhs env lhs =
 
 let rec pr_user_rhs env = function
   | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ Id.print var
-  | Rec (t, rel, id, s) ->
-     spc () ++ str "=>" ++ spc () ++ str"rec " ++ pr_constr_expr t ++ spc () ++
-       pr_opt (fun (_, id) -> Id.print id) id ++ spc () ++
-      hov 1 (str "{" ++ pr_user_clauses env s ++ str "}")
   | Program (rhs, where) -> spc () ++ str ":=" ++ spc () ++
                             (match rhs with
                              | ConstrExpr rhs -> pr_constr_expr rhs
@@ -172,17 +155,9 @@ let rec pr_user_rhs env = function
   | Refine (rhs, s) -> spc () ++ str "<=" ++ spc () ++ pr_constr_expr rhs ++
       spc () ++ str "=>" ++ spc () ++
       hov 1 (str "{" ++ pr_user_clauses env s ++ str "}")
-  | By (Inl tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_raw_tactic tac
-      ++ spc () ++ hov 1 (str "{" ++ pr_user_clauses env s ++ str "}")
-  | By (Inr tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_glob_tactic env tac
-      ++ spc () ++ hov 1 (str "{" ++ pr_user_clauses env s ++ str "}")
 
 and pr_prerhs env = function
   | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ Id.print var
-  | Rec (t, rel, id, s) ->
-     spc () ++ str "=>" ++ spc () ++ str"rec " ++ pr_constr_expr t ++ spc () ++
-       pr_opt (fun (_, id) -> Id.print id) id ++ spc () ++
-      hov 1 (str "{" ++ pr_preclauses env s ++ str "}")
   | Program (rhs, where) -> spc () ++ str ":=" ++ spc () ++
                             (match rhs with
                              | ConstrExpr rhs -> pr_constr_expr rhs
@@ -191,10 +166,6 @@ and pr_prerhs env = function
   | Refine (rhs, s) -> spc () ++ str "<=" ++ spc () ++ pr_constr_expr rhs ++
       spc () ++ str "=>" ++ spc () ++
       hov 1 (str "{" ++ pr_preclauses env s ++ str "}")
-  | By (Inl tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_raw_tactic tac
-      ++ spc () ++ hov 1 (str "{" ++ pr_preclauses env s ++ str "}")
-  | By (Inr tac, s) -> spc () ++ str "by" ++ spc () ++ Pptactic.pr_glob_tactic env tac
-      ++ spc () ++ hov 1 (str "{" ++ pr_preclauses env s ++ str "}")
 
 and pr_user_clause env (lhs, rhs) =
   pr_user_lhs env lhs ++ pr_user_rhs env rhs
@@ -473,8 +444,6 @@ let interp_eqn env p eqn =
        in
        Program (c, List.append w' w)
     | Empty i -> Empty i
-    | Rec (fni, r, id, s) -> Rec (fni, r, id, map aux2 s)
-    | By (x, s) -> By (x, map aux2 s)
   and interp_rhs curpats = function
     | Refine (c, eqs) ->
        let wheres, c = CAst.with_loc_val interp_constr_expr c in
@@ -492,8 +461,6 @@ let interp_eqn env p eqn =
        in
        Program (c, List.append w' w)
     | Empty i -> Empty i
-    | Rec (fni, r, id, s) -> Rec (fni, r, id, map (aux curpats) s)
-    | By (x, s) -> By (x, map (aux curpats) s)
   and interp_wheres avoid w =
     let interp_where (((loc,id),nested,b,t,reca) as p,eqns) =
       Dumpglob.dump_reference ~loc "<>" (Id.to_string id) "def";
@@ -541,7 +508,6 @@ let is_recursive i : pre_equations -> bool option = fun eqs ->
     | Refine (c, eqs) ->
        if occur_var_constr_expr i c then Some false
        else occur_eqns eqs
-    | Rec _ -> Some true
     | _ -> None
   and occur_eqns eqs =
     let occurs = List.map occur_eqn eqs in

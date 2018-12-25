@@ -268,6 +268,7 @@ let logic_tele_ext = (find_global "tele.ext")
 let logic_tele_interp = (find_global "tele.interp")
 let logic_tele_measure = (find_global "tele.measure")
 let logic_tele_fix = (find_global "tele.fix")
+let logic_tele_fix_unfold = (find_global "tele.fix_unfold")
 
 
 let logic_eqdec_class = (find_global "eqdec.class")

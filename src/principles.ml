@@ -649,8 +649,9 @@ let subst_rec_split env evd p f path prob s split =
        let subst, lhs' = subst_rec cutprob s lhs in
        Mapping (lhs', aux cutprob s p f path c)
 
-    | RecValid (id, Valid (ctx, ty, args, tac, view,
-                           [goal, args', newprob, invsubst, rest])) ->
+    | RecValid (id, r, rest) ->
+(* Valid (ctx, ty, args, tac, view,
+ *                            [goal, args', newprob, invsubst, rest])) -> *)
        let recarg, proj = match p.program_rec with
        | Some (WellFounded (_, _, r)) ->
           (match r with
@@ -659,21 +660,18 @@ let subst_rec_split env evd p f path prob s split =
        in
        (* let rest = subst_comp_proj_split !evd f proj rest in *)
        let s = (id, (recarg, lift 1 f)) :: s in
-       let cutprob = (cut_problem s (pi1 newprob)) in
+       let cutprob = (cut_problem s (pi1 r.rec_node_newprob)) in
        let rest = aux cutprob s p f (Ident id :: path) rest in
-
+       rest
               (* let cutprob = (cut_problem s (pi1 subst)) in
                * let _subst, subst =
                *   try subst_rec cutprob s subst
                *   with e -> assert false in
                * (\* let invsubst = Option.map (fun x -> snd (subst_rec (cut_problem s (pi3 x)) s x)) invsubst in *\)
                *     (g, l, subst, invsubst,  *)
-       (match invsubst with
-        | Some s -> Mapping (s, rest)
-        | None -> rest)
-
-    | RecValid (id, c) ->
-       RecValid (id, aux cutprob s p f (Ident id :: path) c)
+       (* (match invsubst with
+        *  | Some s -> Mapping (s, rest)
+        *  | None -> rest) *)
 
     | Refined (lhs, info, sp) ->
        let (id, c, cty), ty, arg, ev, (fev, args), revctx, newprob, newty =
@@ -729,11 +727,6 @@ let subst_rec_split env evd p f path prob s split =
            refined_newty = mapping_constr !evd subst' newty }
        in Refined (lhs', info, aux cutnewprob s p f path' sp)
 
-    | Valid (lhs, x, y, w, u, cs) ->
-       let subst, lhs' = subst_rec cutprob s lhs in
-       Valid (lhs', x, y, w, u,
-              List.map (fun (g, l, subst, invsubst, sp) ->
-              (g, l, subst, invsubst, aux cutprob s p f path sp)) cs)
   in
   let split' = aux prob s p f path split in
   split', !where_map
@@ -878,7 +871,9 @@ let computations env evd alias refine eqninfo =
      let _newprob = compose_subst env ~sigma:evd prob lhs in
      computations env prob f alias fsubst refine c
 
-  | RecValid (id, cs) -> computations env prob f alias fsubst (fst refine, false) cs
+  | RecValid (id, r, cs) ->
+    let subst = compose_subst env ~sigma:evd r.rec_node_newprob prob in
+    computations env subst f alias fsubst (fst refine, false) cs
 
   | Refined (lhs, info, cs) ->
      let (id, c, t) = info.refined_obj in
@@ -895,10 +890,6 @@ let computations env evd alias refine eqninfo =
             [mapping_constr evd info.refined_newprob_to_lhs c, info.refined_arg],
             computations env info.refined_newprob (fst info.refined_app) None fsubst (Regular, true) cs]]
 
-  | Valid ((ctx,pats,del), _, _, _, _, cs) ->
-     List.fold_left (fun acc (_, _, subst, invsubst, c) ->
-     let subst = compose_subst env ~sigma:evd subst prob in
-     acc @ computations env subst f alias fsubst (fst refine,false) c) [] cs
   in computations env prob (of_constr f) alias [] refine split
 
 let constr_of_global_univ gr u =
