@@ -1,13 +1,6 @@
 open EConstr
 
-module PathOT :
-  sig
-    type t = Splitting.path
-    val compare : t -> t -> int
-  end
-module PathMap : CSig.MapS with type key = PathOT.t
-
-type where_map = (constr * Names.Id.t * Splitting.splitting) Evar.Map.t
+type where_map = (constr * Names.Id.t * Splitting.splitting) Splitting.PathMap.t
 
 type equations_info = {
  equations_id : Names.Id.t;
@@ -18,13 +11,13 @@ type equations_info = {
 
 type ind_info = {
  term_info : Splitting.term_info;
- pathmap : (Names.Id.t * Constr.t list) PathMap.t; (* path -> inductive name + parameters (de Bruijn) *)
+ pathmap : (Names.Id.t * Constr.t list) Splitting.PathMap.t; (* path -> inductive name + parameters (de Bruijn) *)
  wheremap : where_map;
 }
 
 val find_helper_info :
   Splitting.term_info ->
-  Constr.t -> Evar.t * int * Names.Id.t
+  Constr.t -> Names.Constant.t * int
 val below_transparent_state : unit -> TransparentState.t
 val simpl_star : Proofview.V82.tac
 val eauto_with_below :
@@ -40,7 +33,7 @@ val autorewrite_one : string -> Proofview.V82.tac
 val mutual_fix : string list -> int list -> unit Proofview.tactic
 
 val find_helper_arg :
-  Splitting.term_info -> Constr.t -> 'a array -> Evar.t * int * 'a
+  Splitting.term_info -> Constr.t -> 'a array -> Names.Constant.t * int * 'a
 val find_splitting_var : Evd.evar_map ->
   Context_map.pat list -> int -> constr list -> Names.Id.t
 val intros_reducing : Proofview.V82.tac

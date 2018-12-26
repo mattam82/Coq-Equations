@@ -206,7 +206,8 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   let data =
     Covering.{
       rec_info = None;
-      flags = { polymorphic = polymorphic; with_eqns = false; with_ind = false };
+      flags = { polymorphic = polymorphic; open_proof = false;
+                with_eqns = false; with_ind = false };
       fixdecls = [];
       intenv = Constrintern.empty_internalization_env;
       notations = []
@@ -224,7 +225,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
       ~check_unused:false (* The catch-all clause might not be needed *)
       env evd p data clauses [] ctxmap [] s in
   let hook split fn terminfo ustate =
-    let proginfo =
+    let _proginfo =
       Syntax.{ program_loc = Loc.make_loc (0,0); program_id = id;
         program_sign = fullbinders;
         program_arity = s;
@@ -232,11 +233,11 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
         program_impls = [] }
     in
     let program_cst = match terminfo.Splitting.term_id with ConstRef c -> c | _ -> assert false in
-    let compiled_info = Splitting.{ program_cst; program_split = split;
+    let _compiled_info = Splitting.{ program_cst; program_split = split;
                                     program_split_info = terminfo } in
-    let flags = { polymorphic; with_eqns = true; with_ind = true } in
-    let fixprots = [s] in
-    let () = Equations.define_principles flags None fixprots [proginfo, compiled_info] in
+    let _flags = { polymorphic; open_proof = false; with_eqns = true; with_ind = true } in
+    let _fixprots = [s] in
+    (* let () = Equations.define_principles flags None fixprots [proginfo, compiled_info] in *)
     (* The principles are now shown, let's prove this forms an equivalence *)
     Global.set_strategy (ConstKey program_cst) Conv_oracle.transparent;
     let env = Global.env () in

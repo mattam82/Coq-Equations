@@ -78,6 +78,7 @@ let _ = Goptions.declare_bool_option {
 
 type flags = {
   polymorphic : bool;
+  open_proof : bool;
   with_eqns : bool;
   with_ind : bool }  
 
@@ -268,8 +269,16 @@ let logic_tele_ext = (find_global "tele.ext")
 let logic_tele_interp = (find_global "tele.interp")
 let logic_tele_measure = (find_global "tele.measure")
 let logic_tele_fix = (find_global "tele.fix")
+let logic_tele_fix_functional_type = (find_global "tele.fix_functional_type")
 let logic_tele_fix_unfold = (find_global "tele.fix_unfold")
+let logic_tele_MR = (find_global "tele.MR")
 
+let logic_tele_type_app = (find_global "tele.type_app")
+let logic_tele_forall_type_app = (find_global "tele.forall_type_app")
+let logic_tele_forall_uncurry = (find_global "tele.forall_uncurry")
+let logic_tele_forall = (find_global "tele.forall")
+let logic_tele_forall_pack = (find_global "tele.forall_pack")
+let logic_tele_forall_unpack = (find_global "tele.forall_unpack")
 
 let logic_eqdec_class = (find_global "eqdec.class")
 let logic_eqdec_dec_eq = (find_global "eqdec.dec_eq")

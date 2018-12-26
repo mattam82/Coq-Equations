@@ -1,4 +1,4 @@
-From Equations Require Import Equations.
+From Equations Require Import Loader.
 
 (** Telescopes: allows treating variable arity fixpoints *)
 Set Universe Polymorphism.
@@ -140,23 +140,34 @@ Section Fix.
   Context (P : tele_type@{i j k} T).
 
   (* (forall x : A, (forall y : A, R y x -> P y) -> P x) -> forall x : A, P x *)
-  Definition functional_type :=
+  Definition tele_fix_functional_type :=
     tele_forall_uncurry T (fun x =>
       ((tele_forall_uncurry T (fun y =>
          R y x -> tele_type_app T P y))) ->
       tele_type_app T P x).
 
-  Context (fn : functional_type).
+  Context (fn : tele_fix_functional_type).
 
-  Lemma tele_Fix : tele_forall T P.
+  Lemma tele_fix : tele_forall T P.
   Proof.
     refine (tele_forall_type_app _ _
-     (@Fix (tele_sigma T) _ wf (tele_type_app T P)
+     (@Subterm.FixWf (tele_sigma T) _ wf (tele_type_app T P)
            (fun x H => tele_forall_pack T _ fn x (tele_forall_unpack T _ H)))).
   Defined.
 End Fix.
 
-Register tele_Fix as equations.tele.fix.
+Register tele_fix as equations.tele.fix.
+Register tele_MR as equations.tele.MR.
+Register tele_fix_functional_type as equations.tele.fix_functional_type.
+
+Register tele_type_app as equations.tele.type_app.
+Register tele_forall_type_app as equations.tele.forall_type_app.
+Register tele_forall_uncurry as equations.tele.forall_uncurry.
+Register tele_forall as equations.tele.forall.
+Register tele_forall_pack as equations.tele.forall_pack.
+Register tele_forall_unpack as equations.tele.forall_unpack.
+
+Extraction Inline tele_forall_pack tele_forall_unpack tele_forall_type_app tele_fix.
 
 (* Monomorphic Inductive Acc_tel (T : tele) (R : tele_rel_curried T) (x : T) : Prop := *)
 (*     Acc_intro : (tele_forall_uncurry T (fun y => tele_pred_fn_pack T T R y x -> Acc_tel T R y)) -> Acc_tel _ R x. *)
@@ -181,15 +192,16 @@ Section Fix.
   Context (P : tele_type@{i j k} T).
 
   (* (forall x : A, (forall y : A, R y x -> P y) -> P x) -> forall x : A, P x *)
-  Context (fn : functional_type@{i j k} R P).
-Set Printing Universes.
-  Lemma tele_Fix_unfold :
-    tele_forall_app T P (tele_Fix R wf P fn) x =
+  Context (fn : tele_fix_functional_type@{i j k} R P).
+
+  Set Printing Universes.
+  Lemma tele_fix_unfold :
+    tele_forall_app T P (tele_fix R wf P fn) x =
     tele_forall_pack T _ fn x
-                     (tele_forall_unpack T _ (fun y _ => tele_forall_app T P (tele_Fix R wf P fn) y)).
+                     (tele_forall_unpack T _ (fun y _ => tele_forall_app T P (tele_fix R wf P fn) y)).
   Proof.
-    intros. unfold tele_Fix, Fix.
-    rewrite tele_forall_app_type@{i j k}. destruct (wf x). simpl.
+    intros. unfold tele_fix, Subterm.FixWf, Fix.
+    rewrite tele_forall_app_type@{i j k}. destruct (wellfounded x). simpl.
     apply poly_f_equal@{k k}. apply poly_f_equal@{k k}. extensionality y. extensionality h.
     rewrite tele_forall_app_type@{i j k}. apply poly_f_equal@{k k}. apply Subterm.Acc_pi.
   Defined.
@@ -197,11 +209,11 @@ Set Printing Universes.
 
 
   Let foo x :=
-    tele_forall_unpack _ _ (fun y (_ : R y x) => tele_forall_app T P (tele_Fix R wf P fn) y).
+    tele_forall_unpack _ _ (fun y (_ : R y x) => tele_forall_app T P (tele_fix R wf P fn) y).
   Lemma FixWf_unfold' :
-    tele_Fix R wf P fn = tele_forall_uncurry' T P _ fn foo.
+    tele_fix R wf P fn = tele_forall_uncurry' T P _ fn foo.
   Proof. clear x.
-    intros. unfold tele_Fix, Fix.
+    intros. unfold tele_fix, Fix.
     unfold tele_forall_uncurry'. simpl.
     induction T. simpl. extensionality x'.
   Admitted.
@@ -212,7 +224,7 @@ Set Printing Universes.
   (* Defined. *)
 End Fix.
 
-Register tele_Fix_unfold as equations.tele.fix_unfold.
+Register tele_fix_unfold as equations.tele.fix_unfold.
 
 Section TestFix.
 
@@ -224,7 +236,7 @@ Section TestFix.
   Definition P : tele_type T := fun _ x H => nat.
 
   Definition myfix : tele_forall T P.
-    refine (tele_Fix _ wfR P _). unfold functional_type.
+    refine (tele_fix _ wfR P _). unfold tele_fix_functional_type.
     simpl. unfold P, R.
     intros.
     destruct x0. exact 0.
@@ -247,4 +259,3 @@ End TestFix.
 
 Definition myfix_fn := Eval compute in myfix.
 
-Extraction Inline tele_forall_pack tele_forall_unpack tele_forall_type_app tele_Fix.

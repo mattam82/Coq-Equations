@@ -559,7 +559,7 @@ let subst_rec env evd cutprob s (ctx, p, _ as lhs) =
   in subst, csubst
 
 let subst_rec_split env evd p f path prob s split =
-  let where_map = ref Evar.Map.empty in
+  let where_map = ref PathMap.empty in
   let evd = ref evd in
   let cut_problem s ctx' = cut_problem !evd s ctx' in
   let subst_rec cutprob s lhs = subst_rec env !evd cutprob s lhs in
@@ -613,16 +613,14 @@ let subst_rec_split env evd p f path prob s split =
          in
          let where_term, where_path =
            if islogical then
-             let evm, ev = (* We create an evar here for the new where implementation *)
-               Equations_common.new_evar env !evd where_type
-             in
-             let () = evd := evm in
-             let evk = fst (destEvar !evd ev) in
+             let where_term, where_ty = term_of_tree evd env where_splitting in
              let id = Nameops.add_suffix (where_id w) "_unfold_eq" in
-             let () = where_map := Evar.Map.add evk (where_term (* substituted *), id, where_splitting) !where_map in
+             let () = where_map := PathMap.add w.where_path
+                   (where_term (* substituted *), id, where_splitting) !where_map in
              (* msg_debug (str"At where in update_split, calling recursively with term" ++ *)
              (*              pr_constr w.where_term ++ str " associated to " ++ int (Evar.repr evk)); *)
-             (applist (ev, extended_rel_list 0 (pi1 lhs')), Evar evk :: List.tl where_path)
+             (applist (where_term, extended_rel_list 0 (pi1 lhs')),
+              (w.where_program.program_id, true) :: List.tl where_path)
            else (where_term, where_path)
          in
          let subst_where =
@@ -661,7 +659,7 @@ let subst_rec_split env evd p f path prob s split =
        (* let rest = subst_comp_proj_split !evd f proj rest in *)
        let s = (id, (recarg, lift 1 f)) :: s in
        let cutprob = (cut_problem s (pi1 r.rec_node_newprob)) in
-       let rest = aux cutprob s p f (Ident id :: path) rest in
+       let rest = aux cutprob s p f ((id, true) :: path) rest in
        rest
               (* let cutprob = (cut_problem s (pi1 subst)) in
                * let _subst, subst =
@@ -674,9 +672,9 @@ let subst_rec_split env evd p f path prob s split =
         *  | None -> rest) *)
 
     | Refined (lhs, info, sp) ->
-       let (id, c, cty), ty, arg, ev, (fev, args), revctx, newprob, newty =
+       let (id, c, cty), ty, arg, oterm, args, revctx, newprob, newty =
          info.refined_obj, info.refined_rettyp,
-         info.refined_arg, info.refined_ex, info.refined_app,
+         info.refined_arg, info.refined_term, info.refined_args,
          info.refined_revctx, info.refined_newprob, info.refined_newty
        in
        let subst, lhs' = subst_rec cutprob s lhs in
@@ -686,9 +684,9 @@ let subst_rec_split env evd p f path prob s split =
        let _, newprob_to_prob' =
          subst_rec (cut_problem s (pi3 info.refined_newprob_to_lhs)) s info.refined_newprob_to_lhs in
        let islogical = List.exists (fun (id, (recarg, f)) -> Option.has_some recarg) s in
-       let ev' = if islogical then new_untyped_evar () else ev in
-       let path' = Evar ev' :: path in
-       let app', arg' =
+       let path' = (id, false) :: path (* info.refined_path *)(* Evar ev' :: path *) in
+       let s' = aux cutnewprob s p f path' sp in
+       let term', args', arg' =
          if islogical then
            let refarg = ref 0 in
            let args' =
@@ -707,25 +705,29 @@ let subst_rec_split env evd p f path prob s split =
                  let id = Context.Named.Declaration.get_id decl in
                  EConstr.mkVar id) named_context
            in
-           let secvars = Array.of_list secvars in
-            (mkEvar (ev', secvars), List.rev args'), !refarg
+           let _secvars = Array.of_list secvars in
+           (* let _ = (mkEvar (ev', secvars) in *)
+           let term', _ = term_of_tree evd env s' in
+           term', List.rev (List.map (Reductionops.nf_beta env !evd) args'), !refarg
          else
            let first, last = CList.chop (List.length s) (List.map (mapping_constr !evd subst) args) in
-           (applistc (mapping_constr !evd subst fev) first, last), arg - List.length s
+           let term' = mapping_constr !evd subst oterm in
+           (applistc term' first), last, arg - List.length s
            (* FIXME , needs substituted position too *)
        in
+       let c' = Reductionops.nf_beta env !evd (mapping_constr !evd subst c) in
        let info =
-         { refined_obj = (id, mapping_constr !evd subst c, mapping_constr !evd subst cty);
+         { refined_obj = (id, c', mapping_constr !evd subst cty);
            refined_rettyp = mapping_constr !evd subst ty;
            refined_arg = arg';
            refined_path = path';
-           refined_ex = ev';
-           refined_app = app';
+           refined_term = term';
+           refined_args = args';
            refined_revctx = revctx';
            refined_newprob = newprob';
            refined_newprob_to_lhs = newprob_to_prob';
            refined_newty = mapping_constr !evd subst' newty }
-       in Refined (lhs', info, aux cutnewprob s p f path' sp)
+       in Refined (lhs', info, s')
 
   in
   let split' = aux prob s p f path split in
@@ -734,10 +736,10 @@ let subst_rec_split env evd p f path prob s split =
 let update_split env evd p is_rec f prob recs split =
   match is_rec with
   | Some (Guarded _) ->
-    subst_rec_split env !evd p f [Ident p.program_id] prob recs split
+    subst_rec_split env !evd p f [p.program_id, false] prob recs split
   | Some (Logical r) ->
     subst_rec_split env !evd p f [] prob [] split
-  | _ -> split, Evar.Map.empty
+  | _ -> split, PathMap.empty
 
 
 let subst_app sigma f fn c =
@@ -808,17 +810,15 @@ let computations env evd alias refine eqninfo =
        let term, args = decompose_app evd lhsterm in
        let alias, fsubst =
          try
-         let (f, id, s) = match List.hd w.where_path with
-         | Evar ev -> Evar.Map.find ev wheremap
-         | Ident _ -> raise Not_found in
-         let f, fargs = decompose_appvect evd f in
-         let args = match_arguments evd (arguments evd w.where_term) fargs in
-         let fsubst = ((f, args), term) :: fsubst in
-         Feedback.msg_info Pp.(str"Substituting " ++ Printer.pr_econstr_env env evd f ++
-                               spc () ++
-                            prlist_with_sep spc int args ++ str" by " ++
-                            Printer.pr_econstr_env env evd term);
-         Some ((f, args), id, s), fsubst
+           let (f, id, s) = PathMap.find w.where_path wheremap in
+           let f, fargs = decompose_appvect evd f in
+           let args = match_arguments evd (arguments evd w.where_term) fargs in
+           let fsubst = ((f, args), term) :: fsubst in
+           Feedback.msg_info Pp.(str"Substituting " ++ Printer.pr_econstr_env env evd f ++
+                                 spc () ++
+                                 prlist_with_sep spc int args ++ str" by " ++
+                                 Printer.pr_econstr_env env evd term);
+           Some ((f, args), id, s), fsubst
          with Not_found -> None, fsubst
        in
        let args' =
@@ -835,7 +835,7 @@ let computations env evd alias refine eqninfo =
        let comps = computations env wsmash subterm None fsubst (Regular,false) (Lazy.force w.where_splitting) in
        let arity = w.where_arity in
        let termf =
-         if not (Evar.Map.is_empty wheremap) then
+         if not (PathMap.is_empty wheremap) then
            subterm, [0]
          else
            subterm, [List.length args']
@@ -882,13 +882,13 @@ let computations env evd alias refine eqninfo =
      let refinedpats = List.rev_map pat_constr
                                     (pi2 (compose_subst env ~sigma:evd info.refined_newprob_to_lhs s))
      in
-     let filter = [Array.length (arguments evd (fst info.refined_app))] in
+     let filter = [Array.length (arguments evd info.refined_term)] in
      [pi1 lhs, f, alias, patsconstrs, info.refined_rettyp, f, (Refine, true),
-      RProgram (applist info.refined_app),
-      Some [(fst (info.refined_app), filter), None, info.refined_path, pi1 info.refined_newprob,
+      RProgram (applistc info.refined_term info.refined_args),
+      Some [(info.refined_term, filter), None, info.refined_path, pi1 info.refined_newprob,
             info.refined_newty, refinedpats,
             [mapping_constr evd info.refined_newprob_to_lhs c, info.refined_arg],
-            computations env info.refined_newprob (fst info.refined_app) None fsubst (Regular, true) cs]]
+            computations env info.refined_newprob info.refined_term None fsubst (Regular, true) cs]]
 
   in computations env prob (of_constr f) alias [] refine split
 
@@ -1070,7 +1070,7 @@ let all_computations env evd alias progs =
   in
   let flatten_top_comps (p, eqninfo, one_comps) acc =
     let (top, rest) = flatten_comps one_comps in
-    let topcomp = (((of_constr eqninfo.equations_f,[]), alias, [Ident p.program_id],
+    let topcomp = (((of_constr eqninfo.equations_f,[]), alias, [p.program_id,false],
                     p.program_sign, p.program_arity,
                     List.rev_map pat_constr (pi2 eqninfo.equations_prob), [],
                     (kind_of_prog p,false)), top) in
@@ -1079,6 +1079,15 @@ let all_computations env evd alias progs =
   List.fold_right flatten_top_comps comps []
 
 let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
+  let () =
+    if !Equations_common.debug then
+      let open Pp in
+      let msg = Feedback.msg_debug in
+      msg (str"Definining principles of: ");
+      List.iter (fun (p, prog, eqninfo) ->
+          msg (pr_splitting ~verbose:true env evd prog.program_split))
+        progs
+  in
   let p, prog, eqninfo = List.hd progs in
   let user_obls =
     List.fold_left (fun acc (p, prog, eqninfo) ->
@@ -1300,7 +1309,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
           [Tactics.intros;
            unf;
            (solve_equation_tac (Globnames.ConstRef cst));
-           (if Evar.Map.is_empty wheremap then Tacticals.New.tclIDTAC
+           (if PathMap.is_empty wheremap then Tacticals.New.tclIDTAC
             else tclTRY (of82 (autorewrites (info.base_id ^ "_where"))));
            Tactics.reflexivity]
       in

@@ -452,16 +452,13 @@ let classify_equations x =
 VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS SIDEFF
 | #[ poly = polymorphic ] [ "Equations" equation_options(opt) equations(eqns)
     (* decl_notation(nt) *) ] ->
-    { Equations.equations ~poly opt eqns [] }
-
-
+    { Equations.equations ~poly ~open_proof:false opt eqns [] }
 END
 
 VERNAC COMMAND EXTEND Define_equations_refine CLASSIFIED BY { classify_equations }
 | #[ poly = polymorphic ] [ "Equations?" equation_options(opt) equations(eqns)
     (* decl_notation(nt) *) ] ->
-    { Equations.equations ~poly opt eqns [] }
-
+    { Equations.equations ~poly ~open_proof:true opt eqns [] }
 END
 
 (* TACTIC EXTEND block_goal *)

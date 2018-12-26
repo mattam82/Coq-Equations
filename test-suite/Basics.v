@@ -7,7 +7,7 @@
 (**********************************************************************)
 
 Require Import Program Bvector List Relations.
-From Equations Require Import Equations Signature.
+From Equations Require Import Equations Telescopes Signature.
 Require Import Utf8.
 
 Inductive le : nat -> nat -> Set :=
@@ -23,7 +23,7 @@ congS eq_refl := eq_refl.
 
 Module TestF.
 
-  Equations(noind) f (n : nat) : nat :=
+  Equations f (n : nat) : nat :=
   f 0 := 42 ;
   f (S m)  with f m :=
   {
@@ -102,6 +102,7 @@ Hint Resolve lt_n_Sn : lt.
 Ltac solve_rec ::= simpl in * ; cbv zeta ; intros ; 
   try typeclasses eauto with subterm_relation Below lt.
 Unset Implicit Arguments.
+
 Equations testn (n : nat) : nat by rec n lt :=
 testn 0 := 0 ;
 testn (S n) with testn n => {
@@ -148,19 +149,19 @@ Defined.
 
 Definition vector_subterm A := t_subterm A.
 
-Instance well_founded_vector_direct_subterm' :
-  forall A : Type, EqDec A -> WellFounded (vector_subterm A) | 0.
-Proof.   intros. 
-  apply Transitive_Closure.wf_clos_trans.
-  intro. simp_sigmas. induction a.
-  constructor; intros.
-  simp_sigmas. simpl in *. 
-  depelim H.
-  constructor; intros.
-  simp_sigmas. depelim H. 
-  assumption.
-Defined.
-Print Assumptions well_founded_vector_direct_subterm'.
+(* Instance well_founded_vector_direct_subterm' : *)
+(*   forall A : Type, EqDec A -> WellFounded (vector_subterm A) | 0. *)
+(* Proof.   intros.  *)
+(*   apply Transitive_Closure.wf_clos_trans. *)
+(*   intro. simp_sigmas. induction a. *)
+(*   constructor; intros. *)
+(*   simp_sigmas. simpl in *.  *)
+(*   depelim H. *)
+(*   constructor; intros. *)
+(*   simp_sigmas. depelim H.  *)
+(*   assumption. *)
+(* Defined. *)
+(* Print Assumptions well_founded_vector_direct_subterm'. *)
 
 Instance eqdep_prod A B `(EqDec A) `(EqDec B) : EqDec (prod A B).
 Proof. intros. intros x y. decide equality. Defined.
@@ -179,13 +180,16 @@ Import Vector.
 (*      | pair xs ys := (cons x xs, cons y ys) }. *)
 (* End unzip_dec_def. *)
 Section foo.
-  Context {A B} `{EqDec A} `{EqDec B}.
+  Context {A B : Type}.
 
-  Equations unzip_dec {n} (v : vector (A * B) n) : vector A n * vector B n
+  Equations? unzipv {n} (v : vector (A * B) n) : vector A n * vector B n
    by rec (signature_pack v) (@vector_subterm (A * B)) :=
-  unzip_dec []v := ([]v, []v) ;
-  unzip_dec ((x, y) |:| v) with unzip_dec v := {
+  unzipv []v := ([]v, []v) ;
+  unzipv ((x, y) |:| v) with unzipv v := {
     | pair xs ys := (cons x xs, cons y ys) }.
+
+  Proof. clear. intros. constructor. constructor. Defined.
+
 End foo.
 
 Typeclasses Transparent vector_subterm.
@@ -211,12 +215,13 @@ unzip_n A B (S n) (cons (pair x y) n v) with unzip_n v := {
 (* Definition nos_with_comp (n : nat) := nat. *)
 (* Lemma nos_with (n : nat) : nos_with_comp n. *)
 (*   rec_wf_eqns nos n. *)
-
+Print Instances WellFounded.
 Equations nos_with (n : nat) : nat by rec n :=
 nos_with O := O ;
 nos_with (S m) with nos_with m := {
   | O := S O ;
   | S n' := O }.
+
 
 (* Hint Unfold noConfusion_nat : equations. *)
 

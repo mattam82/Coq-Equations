@@ -17,16 +17,23 @@ open Context_map
 
 (** Splitting trees *)
 
-type path_component =
-  | Evar of Evar.t
-  | Ident of Id.t
+type path_component = Id.t * bool
 
 type path = path_component list
 
 val path_id : path -> Id.t
 
+module PathOT :
+  sig
+    type t = path
+    val compare : t -> t -> int
+  end
+module PathMap : CSig.MapS with type key = PathOT.t
+
 type rec_node = {
   rec_node_term : constr;
+  rec_node_arg : Constrexpr.constr_expr;
+  rec_node_rel : Constrexpr.constr_expr option;
   rec_node_intro : int;
   rec_node_newprob : context_map }
 
@@ -54,8 +61,8 @@ and refined_node = {
   refined_rettyp : types;
   refined_arg : int;
   refined_path : path;
-  refined_ex : Evar.t;
-  refined_app : constr * constr list;
+  refined_term : EConstr.t;
+  refined_args : constr list;
   refined_revctx : context_map;
   refined_newprob : context_map;
   refined_newprob_to_lhs : context_map;
@@ -85,16 +92,16 @@ val helper_evar :
   types -> Evar_kinds.t Loc.located -> Evd.evar_map * constr
 
 (** Compilation to Coq terms *)
-val term_of_tree : flags ->
+val term_of_tree :
   Evd.evar_map ref ->
   env ->
   splitting ->
-  (Evar.t * int) list * int Evar.Map.t * constr * constr
+  constr * constr
 
 val define_constants : flags ->
   Evd.evar_map ref ->
   env ->
-  splitting -> splitting
+  splitting -> (Constant.t * int) list * splitting
 
 (** Compilation from splitting tree to terms. *)
 
@@ -106,7 +113,7 @@ type term_info = {
   term_evars : (Id.t * Constr.t) list;
   base_id : string;
   decl_kind : Decl_kinds.definition_kind;
-  helpers_info : (Evar.t * int * identifier) list;
+  helpers_info : (Constant.t * int) list;
   comp_obls : Id.Set.t; (** The recursive call proof obligations *)
   user_obls : Id.Set.t; (** The user proof obligations *)
 }

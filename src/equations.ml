@@ -32,7 +32,7 @@ open EConstr
 open Extraction_plugin
                 
 let inline_helpers i = 
-  let l = List.map (fun (_, _, id) -> Libnames.qualid_of_ident id) i.helpers_info in
+  let l = List.map (fun (cst, _) -> Nametab.shortest_qualid_of_global Id.Set.empty (ConstRef cst)) i.helpers_info in
   Table.extraction_inline true l
 
 let declare_wf_obligations info =
@@ -111,7 +111,7 @@ let define_principles flags rec_info fixprots progs =
          in
 	 (* We first define the unfolding and show the fixpoint equation. *)
          let unfoldi = add_suffix i "_unfold" in
-         let hook_unfold _ cmap info' ectx =
+         let hook_unfold unfold_split cmap info' ectx =
            let info =
              { info' with base_id = prog.program_split_info.base_id;
                           helpers_info = prog.program_split_info.helpers_info @ info'.helpers_info;
@@ -120,8 +120,8 @@ let define_principles flags rec_info fixprots progs =
            let funf_cst = match info'.term_id with ConstRef c -> c | _ -> assert false in
            let () = if flags.polymorphic then evd := Evd.from_ctx ectx in
            let funfc = e_new_global evd info'.term_id in
-           let cmap' x = of_constr (cmap (EConstr.to_constr ~abort_on_undefined_evars:false !evd x)) in
-           let unfold_split = map_split cmap' unfold_split in
+           (* let cmap' x = of_constr (cmap (EConstr.to_constr ~abort_on_undefined_evars:false !evd x)) in
+            * let unfold_split = map_split cmap' unfold_split in *)
 	   let unfold_eq_id = add_suffix unfoldi "_eq" in
            let hook_eqs _ _obls subst grunfold =
 	     Global.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
@@ -135,7 +135,7 @@ let define_principles flags rec_info fixprots progs =
                  Autorewrite.add_rew_rules (info.base_id ^ "_where") [CAst.make (grc, true, None)];
                  Autorewrite.add_rew_rules (info.base_id ^ "_where_rev") [CAst.make (grc, false, None)]
                in
-               Evar.Map.iter decl where_map
+               PathMap.iter decl where_map
              in
 	     let env = Global.env () in
 	     let () = if not flags.polymorphic then evd := (Evd.from_env env) in
@@ -265,7 +265,7 @@ let define_mutual_nested_csts rec_info flags progs =
      rec_info, mutual @ nested
 
 
-let define_by_eqs ~poly opts eqs nt =
+let define_by_eqs ~poly ~open_proof opts eqs nt =
   let with_rec, with_eqns, with_ind =
     let try_bool_opt opt =
       if List.mem opt opts then false
@@ -287,7 +287,7 @@ let define_by_eqs ~poly opts eqs nt =
     | _ -> assert false
   in
   let env = Global.env () in
-  let flags = { polymorphic = poly; with_eqns; with_ind } in
+  let flags = { polymorphic = poly; with_eqns; with_ind; open_proof } in
   let evd = ref (Evd.from_env env) in
   let programs = List.map (fun (((loc,i),rec_annot,l,t,by),clauses as ieqs) ->
       let is_rec = is_recursive i eqs in
@@ -352,9 +352,9 @@ let define_by_eqs ~poly opts eqs nt =
     incr idx
   in CList.iter2 define_tree programs coverings
 
-let equations ~poly opts eqs nt =
+let equations ~poly ~open_proof opts eqs nt =
   List.iter (fun (((loc, i), nested, l, t, by),eqs) -> Dumpglob.dump_definition CAst.(make ~loc i) false "def") eqs;
-  define_by_eqs ~poly opts eqs nt
+  define_by_eqs ~poly ~open_proof opts eqs nt
 
 let solve_equations_goal destruct_tac tac gl =
   let concl = pf_concl gl in

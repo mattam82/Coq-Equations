@@ -10,7 +10,7 @@ From Equations Require Import Equations Telescopes DepElimDec.
 Require Import Bvector List Relations.
 Require Import Omega Arith Wf_nat.
 Require Import Subterm.
-
+Axiom cheat : forall {A}, A.
 Instance wf_nat : WellFounded lt := lt_wf.
 Hint Resolve lt_n_Sn : Below.
 Module RecRel.
@@ -19,20 +19,8 @@ Module RecRel.
   by rec n lt :=
   id O m := m ;
   id (S n) m := S (id n m).
-  Set Equations Debug.
-  Proof. intros. reflexivity. Defined.
-    Import Sigma_Notations.
+  Proof. intros. red. reflexivity. Defined.
 
-  Axiom cheat : forall {A}, A.
-  Next Obligation.
-    unfold id.
-    pose (Telescopes.tele_Fix_unfold (T:=ext nat (fun _ => tip nat))). simpl in e.
-    specialize (e &(n & m)). simpl in e. rewrite e. destruct n. reflexivity.
-    simpl. f_equal.
-  Defined.
-
-    apply cheat. Defined.
-  Next Obligation. apply cheat. Defined.
 End RecRel.
 
 Extraction RecRel.id.
@@ -47,7 +35,7 @@ Section Nested.
   (*     match x with *)
   (*     (* | context [ ` (?x') ] => destruct_proj1_sigs x' *) *)
   (*     | _ => *)
-  (*       let x' := fresh in *)q
+  (*       let x' := fresh in *)
   (*       let H' := fresh in *)
   (*         destruct x as [x' H'] ; simpl proj1_sig; destruct_proj1_sig *)
   (*   end. *)
@@ -56,15 +44,12 @@ Section Nested.
   
   Hint Extern 3 => progress auto with arith : Below.
 
-  Equations f (n : nat) : { x : nat | x <= n }
+  Equations? f (n : nat) : { x : nat | x <= n }
    by rec n lt :=
-  f 0 := exist _ 0 _ ;
+  f 0 :=  exist _ 0 _ ;
   f (S n) := exist _ (proj1_sig (f (proj1_sig (f n)))) _.
-
-  Next Obligation. 
-    repeat destruct_proj1_sig.
-    revert H. destruct_proj1_sig.
-    intros. omega.
+  Proof. all:(simpl; intros; try typeclasses eauto with Below).
+         simpl. destruct f. simpl. destruct f. simpl. omega.
   Defined.
 
 End Nested.
@@ -128,23 +113,26 @@ Module RecMeasure.
 
   Hint Extern 0 (MR _ _ _ _) => red : Below.
 
-  Equations id (n : nat) : nat
+  Equations? id (n : nat) : nat
   by rec n (MR lt (fun n => n)) :=
   id O := 0 ;
   id (S n) := S (id n).
+  Proof. intros. red. auto with arith. Defined.
 
-  Equations f (n m : nat) : nat
+  Equations? f (n m : nat) : nat
   by rec n (MR lt (fun n => n)) :=
   f O m := m ;
   f (S n) m := S (f n m) + m.
+  Proof. intros. red. auto with arith. Defined.
 
   Arguments length [A] _.
 
-  Equations g (l : list nat) : nat
+  Equations? g (l : list nat) : nat
   by rec l (MR lt (@length nat)) :=
   g nil := 0 ;
   g (cons n l) := S (g l).
-  
+  Proof. simpl; intros. red. simpl. auto with arith. Defined.
+
   Lemma filter_length {A} p (l : list A) : length (filter p l) <= length l.
   Proof. induction l ; simpl ; auto. destruct (p a); simpl; auto with arith. Qed.
     
@@ -159,12 +147,15 @@ Module RecMeasure.
 
     Context {A : Type} (leb : A -> A -> bool) (ltb : A -> A -> bool).
 
-    Equations qs (l : list A) : list A by rec l (MR lt (@length A)) :=
+    Equations? qs (l : list A) : list A by rec l (MR lt (@length A)) :=
     qs nil := nil ;
     qs (cons a l) := 
       let lower := filter (fun x => ltb x a) l in
       let upper := filter (fun x => leb a x) l in
         qs lower ++ a :: qs upper.
+    Proof.
+      all:(intros; red; simpl; apply le_lt_n_Sm; apply @filter_length).
+    Qed.
 
     Context (le : relation A).
     Context (refl_le : forall x y, reflect (le x y) (leb x y)).
@@ -268,6 +259,6 @@ Module RecMeasure.
   
   End QuickSort.
 
-  (* Recursive Extraction qs. *)
+  Recursive Extraction qs.
 
 End RecMeasure.

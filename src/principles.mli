@@ -109,7 +109,7 @@ val subst_rec_split :
   Context_map.context_map ->
   rec_subst ->
   Splitting.splitting -> Splitting.splitting *
-                        (EConstr.constr * Names.Id.t * Splitting.splitting) Evar.Map.t
+                         (EConstr.constr * Names.Id.t * Splitting.splitting) Splitting.PathMap.t
 
 val update_split :
   Environ.env ->
@@ -120,7 +120,7 @@ val update_split :
   Context_map.context_map ->
   rec_subst ->
   Splitting.splitting -> Splitting.splitting *
-                        (EConstr.constr * Names.Id.t * Splitting.splitting) Evar.Map.t
+                        (EConstr.constr * Names.Id.t * Splitting.splitting) Splitting.PathMap.t
 
 
 type alias

@@ -23,6 +23,7 @@ val debug : bool ref
 (** Common flags *)
 type flags = {
   polymorphic : bool;
+  open_proof : bool;
   with_eqns : bool;
   with_ind : bool }  
   
@@ -229,7 +230,18 @@ val logic_tele_ext : lazy_ref
 val logic_tele_interp : lazy_ref
 val logic_tele_measure : lazy_ref
 val logic_tele_fix : lazy_ref
+val logic_tele_fix_functional_type : lazy_ref
 val logic_tele_fix_unfold : lazy_ref
+val logic_tele_MR : lazy_ref
+
+(** Constants used in the telescopic fixpoint, to be unfolded agressively *)
+val logic_tele_type_app : lazy_ref
+val logic_tele_forall_type_app : lazy_ref
+val logic_tele_forall_uncurry : lazy_ref
+val logic_tele_forall : lazy_ref
+val logic_tele_forall_pack : lazy_ref
+val logic_tele_forall_unpack : lazy_ref
+
 
 val coq_zero : lazy_ref
 val coq_succ : lazy_ref

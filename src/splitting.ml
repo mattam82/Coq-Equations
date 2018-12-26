@@ -27,14 +27,36 @@ open Context_map
 
 (** Splitting trees *)
 
-type path_component =
-  | Evar of Evar.t
-  | Ident of Id.t
+type path_component = Id.t * bool
 
 type path = path_component list
 
+module PathOT =
+  struct
+    type t = path
+
+    let path_component_compare (id, _) (id', _) =
+      Id.compare id id'
+
+    let rec compare p p' =
+      match p, p' with
+      | ev :: p, ev' :: p' ->
+         let c = path_component_compare ev ev' in
+         if c == 0 then compare p p'
+         else c
+      | _ :: _, [] -> -1
+      | [], _ :: _ -> 1
+      | [], [] -> 0
+  end
+
+module PathMap = struct
+  include Map.Make (PathOT)
+end
+
 type rec_node = {
   rec_node_term : constr;
+  rec_node_arg : constr_expr;
+  rec_node_rel : constr_expr option;
   rec_node_intro : int; (* number of arguments of the recursive function *)
   rec_node_newprob : context_map }
 
@@ -62,8 +84,8 @@ and refined_node =
     refined_rettyp : types;
     refined_arg : int;
     refined_path : path;
-    refined_ex : Evar.t;
-    refined_app : constr * constr list;
+    refined_term : EConstr.t;
+    refined_args : constr list;
     refined_revctx : context_map;
     refined_newprob : context_map;
     refined_newprob_to_lhs : context_map;
@@ -80,17 +102,12 @@ let rec context_map_of_splitting : splitting -> context_map = function
   | RecValid (_, _, s) -> context_map_of_splitting s
   | Refined (subst, _, _) -> subst
 
-let pr_path_component evd = function
-  | Evar ev -> Termops.pr_existential_key evd ev
-  | Ident id -> Id.print id
+let pr_path_component = function
+  | id, b -> Id.print id ++ (if b then str"_unfold" else mt())
 
-let pr_path evd = prlist_with_sep (fun () -> str":") (pr_path_component evd)
+let pr_path evd = prlist_with_sep (fun () -> str":") pr_path_component
 
-let path_component_eq x y =
-  match x, y with
-  | Evar ev, Evar ev' -> Evar.equal ev ev'
-  | Ident id, Ident id' -> Id.equal id id'
-  | _, _ -> false
+let path_component_eq (id, b) (id', b') = Id.equal id id'
 
 let eq_path path path' =
   let rec aux path path' =
@@ -167,18 +184,21 @@ let pr_splitting env sigma ?(verbose=false) split =
     | RecValid (id, fix, c) ->
       hov 2 (str "RecValid " ++ Id.print id ++ Pp.fnl () ++ aux c)
     | Refined (lhs, info, s) ->
-      let (id, c, cty), ty, arg, path, ev, (scf, scargs), revctx, newprob, newty =
+      let (id, c, cty), ty, arg, path, scargs, revctx, newprob, newty =
         info.refined_obj, info.refined_rettyp,
         info.refined_arg, info.refined_path,
-        info.refined_ex, info.refined_app,
+        info.refined_args,
         info.refined_revctx, info.refined_newprob, info.refined_newty
       in
       let env' = push_rel_context (pi1 lhs) env in
-      hov 2 (pplhs env' sigma lhs ++ str " refine " ++ Id.print id ++ str" " ++
-             Printer.pr_econstr_env env' sigma (mapping_constr sigma revctx c) ++
+      hov 2 (pplhs env' sigma lhs ++ str " with " ++ Id.print id ++ str" := " ++
+             Printer.pr_econstr_env env' sigma (mapping_constr sigma revctx c) ++ Pp.cut () ++
              verbose (str " : " ++ Printer.pr_econstr_env env' sigma cty ++ str" " ++
                       Printer.pr_econstr_env env' sigma ty ++ str" " ++
                       str " in " ++ pr_context_map env sigma lhs ++ spc () ++
+                      str " refine term " ++ Printer.pr_econstr_env env' sigma info.refined_term ++
+                      str " refine args " ++ prlist_with_sep spc (Printer.pr_econstr_env env' sigma)
+                        info.refined_args ++
                       str "New problem: " ++ pr_context_map env sigma newprob ++ str " for type " ++
                       Printer.pr_econstr_env (push_rel_context (pi1 newprob) env) sigma newty ++ spc () ++
                       spc () ++ str" eliminating " ++ pr_rel_name (push_rel_context (pi1 newprob) env) arg ++ spc () ++
@@ -202,18 +222,18 @@ let map_where f w =
     where_term = f w.where_term;
     where_arity = f w.where_arity;
     where_type = f w.where_type }
-    
+
 let map_split f split =
   let rec aux = function
     | Compute (lhs, where, ty, RProgram c) ->
-      let where' = 
+      let where' =
         List.map
           (fun w -> let w' = map_where f w in
                  { w' with where_splitting = Lazy.from_val (aux (Lazy.force w.where_splitting)) })
           where
       in
       let lhs' = map_ctx_map f lhs in
-	Compute (lhs', where', f ty, RProgram (f c))
+        Compute (lhs', where', f ty, RProgram (f c))
     | Split (lhs, y, z, cs) ->
       let lhs' = map_ctx_map f lhs in
       Split (lhs', y, f z, Array.map (Option.map aux) cs)
@@ -222,20 +242,23 @@ let map_split f split =
        Mapping (lhs', aux s)
     | RecValid (id, r, c) ->
       let r' = { rec_node_term = f r.rec_node_term;
+                 rec_node_arg = r.rec_node_arg;
+                 rec_node_rel = r.rec_node_rel;
                  rec_node_intro = r.rec_node_intro;
                  rec_node_newprob = map_ctx_map f r.rec_node_newprob } in
       RecValid (id, r', aux c)
     | Refined (lhs, info, s) ->
       let lhs' = map_ctx_map f lhs in
       let (id, c, cty) = info.refined_obj in
-      let (scf, scargs) = info.refined_app in
-	Refined (lhs', { info with refined_obj = (id, f c, f cty);
-	  refined_app = (f scf, List.map f scargs);
-	  refined_rettyp = f info.refined_rettyp;
-	  refined_revctx = map_ctx_map f info.refined_revctx;
-	  refined_newprob = map_ctx_map f info.refined_newprob;
-	  refined_newprob_to_lhs = map_ctx_map f info.refined_newprob_to_lhs;
-	  refined_newty = f info.refined_newty}, aux s)
+      let scargs = info.refined_args in
+        Refined (lhs', { info with refined_obj = (id, f c, f cty);
+          refined_term = f info.refined_term;
+          refined_args = List.map f scargs;
+          refined_rettyp = f info.refined_rettyp;
+          refined_revctx = map_ctx_map f info.refined_revctx;
+          refined_newprob = map_ctx_map f info.refined_newprob;
+          refined_newprob_to_lhs = map_ctx_map f info.refined_newprob_to_lhs;
+          refined_newty = f info.refined_newty}, aux s)
     | Compute (lhs, where, ty, (REmpty _ as em)) ->
        let lhs' = map_ctx_map f lhs in
        Compute (lhs', where, f ty, em)
@@ -349,16 +372,13 @@ let helper_evar evm evar env typ src =
 
 let path_id path =
   match List.rev path with
-  | Ident hd :: tl ->
-    List.fold_left (fun id prefix ->
-        match prefix with
-        | Ident id' -> add_suffix (add_suffix id "_") (Id.to_string id')
-        | Evar _ -> assert false) hd tl
+  | (hd, b) :: tl ->
+    List.fold_left (fun id (suffix, b) ->
+        add_suffix (add_suffix id "_") (Id.to_string suffix))
+      (if b then add_suffix hd "_unfold" else hd) tl
   | _ -> assert false
 
-let term_of_tree flags isevar env0 tree =
-  let oblevars = ref Evar.Map.empty in
-  let helpers = ref [] in
+let term_of_tree isevar env0 tree =
   let rec aux env evm = function
     | Compute ((ctx, _, _), where, ty, RProgram rhs) ->
       let compile_where ({where_program; where_prob; where_term; where_type; where_splitting} as w)
@@ -395,26 +415,7 @@ let term_of_tree flags isevar env0 tree =
             Feedback.msg_debug Pp.(str "Where_clause compiled to" ++ Printer.pr_econstr_env env !evd c' ++
                                    str " of type " ++ Printer.pr_econstr_env env !evd ty')
         in
-        let evm, c', ty' =
-          let hd, args = decompose_appvect evm where_term in
-          match kind evm hd with
-          | Evar (ev, _) when false ->
-            let term' = mkLetIn (Name (Id.of_string "prog"), c', ty', lift 1 ty') in
-            let evm, term =
-              helper_evar evm ev env term'
-                (dummy_loc, QuestionMark {
-                    qm_obligation=Define false;
-                    qm_name=Name (where_id w);
-                    qm_record_field=None;
-                  }) in
-            let ev = fst (destEvar !isevar term) in
-            oblevars := Evar.Map.add ev 0 !oblevars;
-            helpers := (ev, 0) :: !helpers;
-            evm, where_term, where_type
-          | Evar (ev, _) when false ->
-            Evd.define ev c' evm, where_term, where_type
-          | _ -> evm, where_term, where_type
-        in
+        let evm, c', ty' = evm, where_term, where_type in
         (env, evm, (make_def (Name (where_id w)) (Some c') ty' :: ctx))
       in
       let env, evm, ctx = List.fold_right compile_where where (env, evm,ctx) in
@@ -430,14 +431,14 @@ let term_of_tree flags isevar env0 tree =
        in
        let ty' = it_mkProd_or_LetIn ty ctx in
        let let_ty' = mkLambda_or_LetIn split (lift 1 ty') in
-       let evm, term = 
+       let evm, term =
          new_evar env evm ~src:(dummy_loc, QuestionMark {
             qm_obligation=Define false;
             qm_name=Anonymous;
             qm_record_field=None;
         }) let_ty' in
-       let ev = fst (destEvar evm term) in
-       oblevars := Evar.Map.add ev 0 !oblevars;
+       (* let ev = fst (destEvar evm term) in *)
+       (* oblevars := Evar.Map.add ev 0 !oblevars; *)
        evm, term, ty'
 
     | Mapping ((ctx, p, ctx'), s) ->
@@ -446,7 +447,7 @@ let term_of_tree flags isevar env0 tree =
        let term = it_mkLambda_or_LetIn (whd_beta evm (mkApp (term, args))) ctx in
        let ty = it_mkProd_or_subst env evm (prod_appvect evm ty args) ctx in
          evm, term, ty
-		    
+
     | RecValid (id, r, rest) ->
       let evm, term, ty = aux env evm rest in
       let term = mkApp (r.rec_node_term, [| term |]) in
@@ -456,29 +457,30 @@ let term_of_tree flags isevar env0 tree =
       evm, term, ty
 
     | Refined ((ctx, _, _), info, rest) ->
-	let (id, _, _), ty, rarg, path, ev, (f, args), newprob, newty =
-	  info.refined_obj, info.refined_rettyp,
-	  info.refined_arg, info.refined_path,
-	  info.refined_ex, info.refined_app, info.refined_newprob, info.refined_newty
-	in
-	let evm, sterm, sty = aux env evm rest in
-	let evm, term, ty = 
-          let term = mkLetIn (Name (Id.of_string "prog"), sterm, sty, lift 1 sty) in
-	  let evm, term = helper_evar evm ev (Global.env ()) term
-        (dummy_loc, QuestionMark {
-            qm_obligation=Define false;
-            qm_name=Name id;
-            qm_record_field=None;
-        })
-	  in
-	    oblevars := Evar.Map.add ev 0 !oblevars;
-	    helpers := (ev, rarg) :: !helpers;
-	    evm, term, ty
-	in
-	let term = applist (f, args) in
-	let term = it_mkLambda_or_LetIn term ctx in
-        let ty = it_mkProd_or_subst env evm ty ctx in
-	  evm, term, ty
+      let (id, _, _), ty, rarg, path, f, args, newprob, newty =
+        info.refined_obj, info.refined_rettyp,
+        info.refined_arg, info.refined_path,
+        info.refined_term,
+        info.refined_args, info.refined_newprob, info.refined_newty
+      in
+      let evm, sterm, sty = aux env evm rest in
+      (* let evm, term, ty =
+       *     let term = mkLetIn (Name (Id.of_string "prog"), sterm, sty, lift 1 sty) in
+       *     let evm, term = helper_evar evm ev (Global.env ()) term
+       *   (dummy_loc, QuestionMark {
+       *       qm_obligation=Define false;
+       *       qm_name=Name id;
+       *       qm_record_field=None;
+       *   })
+       *     in
+       *       oblevars := Evar.Map.add ev 0 !oblevars;
+       *       helpers := (ev, rarg) :: !helpers;
+       *       evm, term, ty
+       *   in *)
+      let term = applist (f, args) in
+      let term = it_mkLambda_or_LetIn term ctx in
+      let ty = it_mkProd_or_subst env evm ty ctx in
+      evm, term, ty
 
     | Split ((ctx, _, _) as subst, rel, ty, sp) ->
       (* Produce parts of a case that will be relevant. *)
@@ -597,7 +599,7 @@ let term_of_tree flags isevar env0 tree =
   in
   let evm, term, typ = aux env0 !isevar tree in
     isevar := evm;
-    !helpers, !oblevars, term, typ
+    term, typ
 
 
 let change_lhs s (l, p, r) =
@@ -660,13 +662,14 @@ let define_constants flags isevar env0 tree =
     | Refined ((ctx, _, _) as lhs, info, rest) ->
       let evm', rest' = aux env evm rest in
       let isevar = ref evm' in
-      let _, _, t, ty = term_of_tree flags isevar env rest' in
+      let env = Global.env () in
+      let t, ty = term_of_tree isevar env rest' in
       let (cst, (evm, e)) =
-        Equations_common.declare_constant (pi1 info.refined_obj)
+        Equations_common.declare_constant (path_id info.refined_path)
           t (Some ty) flags.polymorphic !isevar (Decl_kinds.(IsDefinition Definition))
       in
       let () = helpers := (cst, info.refined_arg) :: !helpers in
-      evm, Refined (lhs, { info with refined_app = (e, snd info.refined_app) }, rest')
+      evm, Refined (lhs, { info with refined_term = e }, rest')
 
     | Split (lhs, rel, ty, sp) ->
       let evm, sp' = CArray.fold_left_map (fun evm s ->
@@ -676,13 +679,13 @@ let define_constants flags isevar env0 tree =
       in evm, Split (lhs, rel, ty, sp')
   in
   let evm, tree = aux env0 !isevar tree in
-    isevar := evm; tree
+    isevar := evm; !helpers, tree
 
 let is_comp_obl sigma comp hole_kind =
   match comp with
   | None -> false
-  | Some r -> 
-      match hole_kind, r with 
+  | Some r ->
+      match hole_kind, r with
       | ImplicitArg (ConstRef c, (n, _), _), (loc, id) ->
         is_rec_call sigma r (mkConst c)
       | _ -> false
@@ -699,7 +702,7 @@ type term_info = {
   term_evars : (Id.t * Constr.t) list;
   base_id : string;
   decl_kind: Decl_kinds.definition_kind;
-  helpers_info : (Evar.t * int * identifier) list;
+  helpers_info : (Constant.t * int) list;
   comp_obls : Id.Set.t; (** The recursive call proof obligations *)
   user_obls : Id.Set.t; (** The user obligations *)
 }
@@ -708,7 +711,7 @@ type compiled_program_info = {
     program_cst : Constant.t;
     program_split : splitting;
     program_split_info : term_info }
-                  
+
 
 let is_polymorphic info = pi2 info.decl_kind
 
@@ -744,15 +747,15 @@ let solve_equations_obligations flags i isevar split hook =
            (fun evm' wit ->
              isevar0 := Evd.define ev (applist (wit, List.rev (Context.Named.to_instance mkVar (Evd.evar_context evi)))) !isevar0;
              aux tys evm'))
-    in aux types (Evd.from_env env)
+    in aux types (Evd.from_ctx (Evd.evar_universe_context !isevar))
   in
   let terminator = function
     | Proof_global.Admitted (id, gk, pe, us) ->
       user_err_loc (None, "end_obligations", str "Cannot handle admitted proof for equations")
     | Proof_global.Proved (opaque, lid, obj) ->
-      Feedback.msg_debug (str"Should define the initial evars accoding to the proofs");
+      Feedback.msg_debug (str"Defining the initial evars accoding to the proofs");
       let open Decl_kinds in
-      let obls = ref 0 in
+      let obls = ref 1 in
       let kind = match pi3 obj.Proof_global.persistence with
         | DefinitionBody d -> IsDefinition d
         | Proof p -> IsProof p
@@ -775,15 +778,31 @@ let solve_equations_obligations flags i isevar split hook =
       Feedback.msg_debug (str"Calling hook with split " ++ pr_splitting env !isevar split);
       hook split
   in
-  Feedback.msg_debug (str"Starting proof");
-  Proof_global.(start_dependent_proof i kind tele (make_terminator terminator))
-  (* Proof_global.simple_with_current_proof (fun _ p  -> Proof.V82.grab_evars p) *)
+  (* Feedback.msg_debug (str"Starting proof"); *)
+  Proof_global.(start_dependent_proof i kind tele (make_terminator terminator));
+  Proof_global.simple_with_current_proof
+    (fun _ p  ->
+       fst (Pfedit.solve (Goal_select.SelectAll) None (Tacticals.New.tclTRY !Obligations.default_tactic) p));
+  let prf = Proof_global.give_me_the_proof () in
+  if Proof.is_done prf then
+    if flags.open_proof then
+      user_err_loc (None, "define",
+                    str "Equations definition is complete and requires no further proofs. " ++
+                    str "Use the \"Equations\" command to define it.")
+    else
+      Lemmas.save_proof Vernacexpr.(Proved (Proof_global.Transparent, None))
+  else if flags.open_proof then ()
+  else
+    user_err_loc (None, "define", str"Equations definition generated subgoals that " ++
+                                  str "could not be solved automatically. Use the \"Equations?\" command to" ++
+                                  str "refine them interactively")
 
 
-let define_tree is_recursive fixprots flags impls status isevar env (i, sign, arity)
+let define_tree is_recursive helpers fixprots flags impls status isevar env (i, sign, arity)
                 comp split hook =
   let env = Global.env () in
-  let helpers, oblevs, t, ty = term_of_tree flags isevar env split in
+  let t, ty = term_of_tree isevar env split in
+  let oblevs = Evar.Map.empty in
   let obls, (emap, cmap), t', ty' =
     (* XXX: EConstr Problem upstream indeed. *)
     Obligations.eterm_obligations env i !isevar
@@ -792,28 +811,28 @@ let define_tree is_recursive fixprots flags impls status isevar env (i, sign, ar
   in
   let compobls = ref Id.Set.empty in
   let userobls = ref Id.Set.empty in
-  let obls = 
+  let obls =
     Array.map (fun (id, ty, loc, s, d, t) ->
       let assc = rev_assoc Id.equal id emap in
-      let tac = 
-	if Evar.Map.mem assc oblevs 
-	then 
+      let tac =
+        if Evar.Map.mem assc oblevs
+        then
           let intros = Evar.Map.find assc oblevs in
           Some (Tacticals.New.tclTHEN (Tacticals.New.tclDO intros intro) (equations_tac ()))
         else if is_comp_obl !isevar comp (snd loc) then
           let () = compobls := Id.Set.add id !compobls in
           let open Tacticals.New in
-	    Some (tclORELSE
-		    (tclTRY
+            Some (tclORELSE
+                    (tclTRY
                        (tclTHENLIST [zeta_red; Tactics.intros; solve_rec_tac ()]))
-		    !Obligations.default_tactic)
+                    !Obligations.default_tactic)
         else (userobls := Id.Set.add id !userobls;
               Some ((!Obligations.default_tactic)))
       in (id, ty, loc, s, d, tac)) obls
   in
-  let helpers = List.map (fun (ev, arg) ->
-    (ev, arg, List.assoc ev emap)) helpers
-  in
+  (* let helpers = List.map (fun (ev, arg) ->
+   *   (ev, arg, List.assoc ev emap)) helpers
+   * in *)
   let hook uctx evars locality gr =
     let l =
       Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
@@ -842,13 +861,13 @@ let define_tree is_recursive fixprots flags impls status isevar env (i, sign, ar
     | Some (Syntax.Guarded [id]) ->
         let ty' = it_mkProd_or_LetIn ty' [make_assum Anonymous ty'] in
         let ty' = EConstr.to_constr !isevar ty' in
-	let recarg =
-	  match snd id with
+        let recarg =
+          match snd id with
           | MutualOn (_, Some (loc, id))
-	  | NestedOn (Some (_, Some (loc, id))) -> Some (CAst.make ~loc id)
-	  | _ -> None
+          | NestedOn (Some (_, Some (loc, id))) -> Some (CAst.make ~loc id)
+          | _ -> None
         in
-	ignore(Obligations.add_mutual_definitions [(i, t', ty', impls, obls)]
+        ignore(Obligations.add_mutual_definitions [(i, t', ty', impls, obls)]
                  (Evd.evar_universe_context !isevar) [] ~kind
                  ~reduce ~univ_hook (Obligations.IsFixpoint [recarg, CStructRec]))
     | Some (Guarded ids) ->
@@ -857,12 +876,12 @@ let define_tree is_recursive fixprots flags impls status isevar env (i, sign, ar
         ignore(Obligations.add_definition
                  ~univ_hook ~kind
                  ~implicits:impls (add_suffix i "_functional") ~term:t' ty' ~reduce
-		 (Evd.evar_universe_context !isevar) obls)
+                 (Evd.evar_universe_context !isevar) obls)
     | _ ->
        let ty' = EConstr.to_constr !isevar ty' in
        ignore(Obligations.add_definition ~univ_hook ~kind
-	       ~implicits:impls i ~term:t' ty'
-	       ~reduce (Evd.evar_universe_context !isevar) obls)
+               ~implicits:impls i ~term:t' ty'
+               ~reduce (Evd.evar_universe_context !isevar) obls)
 
 
 let simplify_evars evars t =
@@ -878,18 +897,25 @@ let simplify_evars evars t =
     | _ -> EConstr.map evars aux t
   in aux t
 
+let unfold_entry cst = Hints.HintsUnfoldEntry [EvalConstRef cst]
+let add_hint local i cst =
+  Hints.add_hints ~local [Id.to_string i] (unfold_entry cst)
+
 let define_tree is_recursive fixprots flags impls status isevar env (i, sign, arity)
                 comp split hook =
   let hook split =
     let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
     let () = isevar := Evd.minimize_universes !isevar in
     let split = map_split (simplify_evars !isevar) split in
-    let split = define_constants flags isevar env split in
-    define_tree is_recursive fixprots flags impls status isevar env (i, sign, arity) comp split hook
+    let helpers, split = define_constants flags isevar env split in
+    let () = List.iter (fun (cst, _) -> add_hint true i cst) helpers in
+    define_tree is_recursive helpers fixprots flags impls status isevar env (i, sign, arity) comp split hook
   in
   if Evd.has_undefined !isevar then
     solve_equations_obligations flags i isevar split hook
-  else hook split
+  else
+    (Feedback.msg_debug (str"Calling hook with split " ++ pr_splitting env !isevar split);
+     hook split)
 
 let mapping_rhs sigma s = function
   | RProgram c -> RProgram (mapping_constr sigma s c)

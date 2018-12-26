@@ -12,7 +12,6 @@ open Tacmach
 open Equations_common
 open Printer
 open Ppconstr
-open Constrintern
 
 open Syntax
 open Context_map
@@ -21,41 +20,7 @@ open Covering
 open EConstr
 open Vars
 
-module PathOT =
-  struct
-    type t = Splitting.path
-
-    let path_component_compare p p' =
-      match p, p' with
-      | Evar ev, Evar ev' -> Evar.compare ev ev'
-      | Ident id, Ident id' -> Id.compare id id'
-      | Evar _, Ident _ -> -1
-      | Ident _, Evar _ -> 1
-
-    let rec compare p p' =
-      match p, p' with
-      | ev :: p, ev' :: p' ->
-         let c = path_component_compare ev ev' in
-         if c == 0 then compare p p'
-         else c
-      | _ :: _, [] -> -1
-      | [], _ :: _ -> 1
-      | [], [] -> 0
-  end
-
-module PathMap = struct
-
-  include Map.Make (PathOT)
-
-  (* let union f = merge (fun k l r ->
-   *                 match l, r with
-   *                 | Some l, Some r -> f k l r
-   *                 | Some _, _ -> l
-   *                 | _, Some _ -> r
-   *                 | _, _ -> l) *)
-end
-
-type where_map = (constr * Names.Id.t * splitting) Evar.Map.t
+type where_map = (constr * Names.Id.t * splitting) PathMap.t
 
 type equations_info = {
  equations_id : Names.Id.t;
@@ -71,8 +36,8 @@ type ind_info = {
 
    
 let find_helper_info info f =
-  try List.find (fun (ev', arg', id') ->
-	 GlobRef.equal (Nametab.locate (qualid_of_ident id')) (global_of_constr f))
+  try List.find (fun (cst, arg') ->
+         GlobRef.equal (ConstRef cst) (global_of_constr f))
 	info.helpers_info
   with Not_found -> anomaly (str"Helper not found while proving induction lemma.")
 
@@ -234,8 +199,8 @@ let check_guard gls sigma =
   with Type_errors.TypeError _ -> false
 
 let find_helper_arg info f args =
-  let (ev, arg, id) = find_helper_info info f in
-    ev, arg, args.(arg)
+  let (cst, arg) = find_helper_info info f in
+  cst, arg, args.(arg)
       
 let find_splitting_var sigma pats var constrs =
   let rec find_pat_var p c =
@@ -334,7 +299,31 @@ let rec aux_ind_fun info chop unfs unfids = function
 	      tclTHEN (to82 (simpl_dep_elim_tac ()))
                 (aux_ind_fun info chop (unfs_splits (pred i)) unfids s)))
 
-  | RecValid (id, t, cs) -> aux_ind_fun info chop unfs unfids cs
+  | RecValid (id, t, cs) ->
+    let refine gl =
+      let env = pf_env gl in
+      let sigma = ref (project gl) in
+      let ctx, concl =
+        decompose_prod_n_assum !sigma t.rec_node_intro (pf_concl gl)
+      in
+      to82 (Refine.refine ~typecheck:false (fun sigma ->
+          let evd = ref sigma in
+          let _functional_type, functional_type, fix =
+            Covering.wf_fix env evd ctx concl t.rec_node_arg t.rec_node_rel
+          in
+          (* TODO solve WellFounded evar *)
+          let sigma, evar = new_evar env !evd functional_type in
+          (sigma, mkApp (fix, [| evar |])))) gl
+    in
+    let revert_last =
+      Proofview.Goal.enter (fun gl ->
+          let hyp = Tacmach.New.pf_last_hyp gl in
+          revert [get_id hyp])
+    in
+    tclTHENLIST [tclDO t.rec_node_intro (to82 revert_last);
+                 observe "wf_fix"
+                   (tclTHEN refine
+                      (tclTHEN (to82 intros) (aux_ind_fun info chop unfs unfids cs)))]
       
   | Refined ((ctx, _, _), refinfo, s) -> 
     let unfs = map_opt_split destRefined unfs in
@@ -382,9 +371,7 @@ let rec aux_ind_fun info chop unfs unfids = function
             | None -> pi1 s.where_prob, s.where_term, fst chop (* + List.length ctx *), unfids
             | Some w ->
                let assoc, unf, split =
-                 try match List.hd w.where_path with
-                     | Evar ev -> Evar.Map.find ev info.wheremap
-                     | Ident _ -> assert false
+                 try PathMap.find w.where_path info.wheremap
                  with Not_found -> assert false
                in
                let env = Global.env () in
@@ -701,8 +688,7 @@ let get_proj_eval_ref (loc, id) = EvalVarRef id
 
 let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split gl =
   let depelim h = depelim_tac h in
-  let helpercsts = List.map (fun (_, _, i) -> destConstRef (global_reference i))
-			    info.helpers_info in
+  let helpercsts = List.map (fun (cst, i) -> cst) info.helpers_info in
   let opacify, transp = simpl_of ((destConstRef (Lazy.force coq_hidebody), Conv_oracle.transparent)
     :: List.map (fun x -> x, Conv_oracle.Expand) (f_cst :: funf_cst :: helpercsts)) in
   let opacified tac gl = opacify (); let res = tac gl in transp (); res in
@@ -753,60 +739,61 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
 
     | RecValid (id, r, cs), unfsplit ->
        observe "recvalid"
-         (fun gl ->
-            let env = pf_env gl in
-            let sigma = project gl in
-            match kind sigma (pf_concl gl) with
-            | App (eq, [| ty; x; y |]) ->
-              (match kind (project gl) x with
-               | App (tele_fix, args) ->
-                 let tele, rel, wf, arity, fn, args =
-                   match Array.to_list args with
-                   | tele :: rel :: wf :: arity :: fn :: args ->
-                     tele, rel, wf, arity, fn, args
-                   | _ -> assert false
-                 in
-                 let tele_fix, u = destConst sigma tele_fix in
-                 let fixunf = mkRef (Lazy.force logic_tele_fix_unfold, u) in
-                 let teleu =
-                   let ar = Univ.Instance.to_array (EInstance.kind sigma u) in
-                   EInstance.make (Univ.Instance.of_array [| ar.(0) |])
-                 in
-                 let sigma_type =
-                   mkApp (mkRef (Lazy.force logic_tele_interp, teleu), [| tele |]) in
-                 let intro = Sigma_types.telescope_intro env sigma r.rec_node_intro sigma_type in
-                 let tele_intro = substl (List.rev args) intro in
-                 let unfapp = mkApp (fixunf, [| tele; tele_intro; rel; wf; arity; fn |]) in
-                 let unfappty = Retyping.get_type_of env sigma unfapp in
-                 let unfappty = Reductionops.whd_all env sigma unfappty in
-                 (match kind sigma unfappty with
-                  | App (eq', [| ty'; lhs; rhs |]) ->
-                    let rhs = Reductionops.whd_all env sigma rhs in
-                    tclTHENS (to82 (Tactics.transitivity rhs))
-                      [to82 (Tactics.exact_check unfapp);
-                       aux cs unfsplit] gl
-                  | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl)
-               | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl)
-            | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl)
+         (tclTHEN (to82 (unfold_recursor_tac ())) (aux cs unfsplit))
+            (* let env = pf_env gl in
+             * let sigma = project gl in
+             * match kind sigma (pf_concl gl) with
+             * | App (eq, [| ty; x; y |]) ->
+             *   (match kind (project gl) x with
+             *    | App (tele_fix, args) ->
+             *      let ty, rel, wf, arity, fn, args =
+             *        match Array.to_list args with
+             *        | tele :: rel :: wf :: arity :: fn :: args ->
+             *          tele, rel, wf, arity, fn, args
+             *        | _ -> assert false
+             *      in
+             *      let tele_fix, u = destConst sigma tele_fix in
+             *      let fixunf = mkRef (Lazy.force logic_tele_fix_unfold, u) in
+             *      let teleu =
+             *        let ar = Univ.Instance.to_array (EInstance.kind sigma u) in
+             *        EInstance.make (Univ.Instance.of_array [| ar.(0) |])
+             *      in
+             *      let sigma_type =
+             *        mkApp (mkRef (Lazy.force logic_tele_interp, teleu), [| tele |]) in
+             *      let intro = Sigma_types.telescope_intro env sigma r.rec_node_intro sigma_type in
+             *      let tele_intro = substl (List.rev args) intro in
+             *      let unfapp = mkApp (fixunf, [| tele; tele_intro; rel; wf; arity; fn |]) in
+             *      let unfappty = Retyping.get_type_of env sigma unfapp in
+             *      let unfappty = Reductionops.whd_all env sigma unfappty in
+             *      (match kind sigma unfappty with
+             *       | App (eq', [| ty'; lhs; rhs |]) ->
+             *         let rhs = Reductionops.whd_all env sigma rhs in
+             *         tclTHENS (to82 (Tactics.transitivity rhs))
+             *           [to82 (Tactics.exact_check unfapp);
+             *            aux cs unfsplit] gl
+             *       | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl)
+             *    | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl)
+             * | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl) *)
 
     | _, Mapping (lhs, s) -> aux split s
        
     | Refined (_, _, s), Refined ((ctx, _, _), refinfo, unfs) ->
 	let id = pi1 refinfo.refined_obj in
-	let ev = refinfo.refined_ex in
-	let rec reftac gl = 
+        let rec reftac gl =
           match kind (project gl) (pf_concl gl) with
           | App (f, [| ty; term1; term2 |]) ->
              let sigma = project gl in
+             let cst, _ = destConst sigma (fst (decompose_app sigma refinfo.refined_term)) in
              let f1, arg1 = destApp sigma term1 and f2, arg2 = destApp sigma term2 in
              let _, posa1, a1 = find_helper_arg info (to_constr sigma f1) arg1
              and ev2, posa2, a2 = find_helper_arg info (to_constr sigma f2) arg2 in
              let id = pf_get_new_id id gl in
-             if Evar.equal ev2 ev then
+             if Constant.equal ev2 cst then
                tclTHENLIST
                [to82 (Equality.replace_by a1 a2
                                           (of82 (tclTHENLIST [solve_eq])));
-                to82 (letin_tac None (Name id) a2 None Locusops.allHypsAndConcl);
+                observe "refine after replace"
+                  (to82 (letin_tac None (Name id) a2 None Locusops.allHypsAndConcl));
                 Proofview.V82.of_tactic (clear_body [id]); unfolds; aux s unfs] gl
              else tclTHENLIST [unfolds; simpltac; reftac] gl
           | _ -> tclFAIL 0 (str"Unexpected unfolding lemma goal") gl
@@ -817,9 +804,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
     | Compute (_, wheres, _, RProgram _), Compute ((lctx, _, _), unfwheres, _, RProgram c) ->
        let wheretac acc w unfw =
          let assoc, id, _ =
-           try match List.hd unfw.where_path with
-               | Evar ev -> Evar.Map.find ev where_map
-               | Ident _ -> assert false
+           try PathMap.find unfw.where_path where_map
            with Not_found -> assert false
          in
          fun gl ->
@@ -892,6 +877,17 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
     with e -> transp (); raise e
   
 let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split gl =
+  let () =
+    if !Equations_common.debug then
+      let open Pp in
+      let msg = Feedback.msg_debug in
+      let env = pf_env gl in
+      let evd = project gl in
+      msg (str"Proving unfolding lemma of: ");
+      msg (pr_splitting ~verbose:true env evd split);
+      msg (fnl () ++ str"and of: " ++ fnl ());
+      msg (pr_splitting ~verbose:true env evd unfold_split)
+  in
   try prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split gl
   with (Nametab.GlobalizationError e) as exn ->
     raise exn

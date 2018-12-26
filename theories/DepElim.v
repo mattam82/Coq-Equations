@@ -847,7 +847,7 @@ Definition inaccessible_pattern {A : Type} (t : A) := t.
 
 Module Inaccessible_Notations.
 
-  Notation "?( t )" := (inaccessible_pattern t) : equations_scope.
+  Notation "?( t )" := (inaccessible_pattern t) (format "?( t )") : equations_scope.
 
 End Inaccessible_Notations.
 

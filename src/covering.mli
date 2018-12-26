@@ -126,7 +126,7 @@ val split_var :
   rel_context ->
   (int * rel_context * context_map option array) split_var_result option
     
-val find_empty : env * Evd.evar_map ref -> rel_context -> int option
+val find_empty : env * Evd.evar_map ref -> rel_context -> (int * rel_context * splitting option array) option
 val variables_of_pats : pat list -> (int * bool) list
 val pats_of_variables : (int * bool) list -> pat list
 val lift_rel_declaration :
@@ -194,6 +194,14 @@ val compute_fixdecls_data :
            Syntax.program_info list ->
            Constrintern.internalization_env *
            Equations_common.rel_declaration list * EConstr.t list
+
+val wf_fix :
+  Environ.env ->
+  Evd.evar_map ref ->
+  EConstr.rel_context ->
+  EConstr.t ->
+  Constrexpr.constr_expr ->
+  Constrexpr.constr_expr option -> EConstr.t * EConstr.t * EConstr.t
 
 val interp_arity : Environ.env ->
   Evd.evar_map ref ->

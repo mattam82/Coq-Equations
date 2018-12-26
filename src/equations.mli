@@ -12,7 +12,7 @@ open Equations_common
 open Syntax
 open Splitting
 
-val define_by_eqs : poly:bool ->
+val define_by_eqs : poly:bool -> open_proof:bool ->
   Syntax.equation_option list ->
   Syntax.pre_equations ->
   (Names.lstring * Constrexpr.constr_expr *
@@ -27,6 +27,7 @@ val define_principles :
   (program_info * compiled_program_info) list -> unit
 
 val equations : poly:bool ->
+  open_proof:bool ->
   Syntax.equation_option list ->
   Syntax.pre_equations ->
   (Names.lstring * Constrexpr.constr_expr *
