@@ -1135,7 +1135,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
       let b = match c with
         | RProgram c ->
             mkEq env evd ty comp (Reductionops.nf_beta env !evd c)
-        | REmpty i ->
+        | REmpty (i, _) ->
            mkApp (coq_ImpossibleCall evd, [| ty; comp |])
       in
       let body = it_mkProd_or_LetIn b ctx in
@@ -1164,7 +1164,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
                  (applistc head (lift_constrs hypslen pats @ [c']))
                  hyps) ctx
           in Some ty
-      | REmpty i -> None
+      | REmpty (i, _) -> None
     in (refine, unf, body, cstr)
   in
   let statements i ((f', alias, path, sign, arity, pats, args, refine as fs), c) =

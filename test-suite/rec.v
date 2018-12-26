@@ -14,12 +14,11 @@ Axiom cheat : forall {A}, A.
 Instance wf_nat : WellFounded lt := lt_wf.
 Hint Resolve lt_n_Sn : Below.
 Module RecRel.
-  Set Printing Universes.
-  Equations? id (n m : nat) : nat
+
+  Equations id (n m : nat) : nat
   by rec n lt :=
   id O m := m ;
   id (S n) m := S (id n m).
-  Proof. intros. red. reflexivity. Defined.
 
 End RecRel.
 
@@ -111,27 +110,25 @@ Module RecMeasure.
   Instance wf_MR {A R} `(WellFounded A R) {B} (f : B -> A) : WellFounded (MR R f).
   Proof. red. apply measure_wf. apply H. Defined.
 
+  Obligation Tactic := program_simpl; try typeclasses eauto with Below.
+
   Hint Extern 0 (MR _ _ _ _) => red : Below.
 
-  Equations? id (n : nat) : nat
+  Equations id (n : nat) : nat
   by rec n (MR lt (fun n => n)) :=
   id O := 0 ;
   id (S n) := S (id n).
-  Proof. intros. red. auto with arith. Defined.
 
-  Equations? f (n m : nat) : nat
+  Equations f (n m : nat) : nat
   by rec n (MR lt (fun n => n)) :=
   f O m := m ;
   f (S n) m := S (f n m) + m.
-  Proof. intros. red. auto with arith. Defined.
-
   Arguments length [A] _.
 
-  Equations? g (l : list nat) : nat
+  Equations g (l : list nat) : nat
   by rec l (MR lt (@length nat)) :=
   g nil := 0 ;
   g (cons n l) := S (g l).
-  Proof. simpl; intros. red. simpl. auto with arith. Defined.
 
   Lemma filter_length {A} p (l : list A) : length (filter p l) <= length l.
   Proof. induction l ; simpl ; auto. destruct (p a); simpl; auto with arith. Qed.
@@ -147,15 +144,12 @@ Module RecMeasure.
 
     Context {A : Type} (leb : A -> A -> bool) (ltb : A -> A -> bool).
 
-    Equations? qs (l : list A) : list A by rec l (MR lt (@length A)) :=
+    Equations qs (l : list A) : list A by rec l (MR lt (@length A)) :=
     qs nil := nil ;
     qs (cons a l) := 
       let lower := filter (fun x => ltb x a) l in
       let upper := filter (fun x => leb a x) l in
         qs lower ++ a :: qs upper.
-    Proof.
-      all:(intros; red; simpl; apply le_lt_n_Sm; apply @filter_length).
-    Qed.
 
     Context (le : relation A).
     Context (refl_le : forall x y, reflect (le x y) (leb x y)).

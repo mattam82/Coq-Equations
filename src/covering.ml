@@ -457,15 +457,17 @@ let split_var (env,evars) var delta =
       let newdelta = after @ (make_def id b newty :: before) in
       Some (Splitted (var, do_renamings env !evars newdelta, Array.map branch unify))
 
+let prove_empty env delta v =
+  match split_var env v delta with
+  | None -> None
+  | Some (CannotSplit _) -> None
+  | Some (Splitted (v, i, r)) ->
+    if CArray.for_all (fun x -> x == None) r then
+      Some (v, i, CArray.map (fun _ -> None) r)
+    else None
+
 let find_empty env delta =
-  let r = List.map_filter (fun v ->
-      match split_var env v delta with
-      | None -> None
-      | Some (CannotSplit _) -> None
-      | Some (Splitted (v, i, r)) ->
-        if CArray.for_all (fun x -> x == None) r then
-          Some (v, i, CArray.map (fun _ -> None) r)
-        else None)
+  let r = List.map_filter (fun v -> prove_empty env delta v)
       (CList.init (List.length delta) succ)
   in match r with x :: _ -> Some x | _ -> None
 
@@ -550,9 +552,9 @@ let rel_id ctx n =
 let push_named_context = List.fold_right push_named
 
 let check_unused_clauses env cl =
-  let unused = List.filter (fun (_, used) -> not used) cl in
+  let unused = List.filter (fun (_, _, used) -> not used) cl in
   match unused with
-  | ((loc, lhs, _) as cl, _) :: cls ->
+  | ((loc, lhs, _) as cl, _, _) :: cls ->
     user_err_loc (loc, "covering", str "Unused clause " ++ pr_preclause env cl)
   | [] -> ()
 
@@ -834,14 +836,14 @@ let compute_rec_data env evars data lets p =
     let finalize flags s = s in
     p, id_subst p.program_sign, pats_of_sign lets, finalize
 
-let rec covering_aux env evars p data prev (clauses : (pre_clause * bool) list) path
+let rec covering_aux env evars p data prev (clauses : (pre_clause * int * bool) list) path
     (ctx,pats,ctx' as prob) extpats lets ty =
   if !Equations_common.debug then
-    Feedback.msg_debug Pp.(str"Launching covering on "++ pr_preclauses env (List.map fst clauses) ++
+    Feedback.msg_debug Pp.(str"Launching covering on "++ pr_preclauses env (List.map pi1 clauses) ++
                            str " with problem " ++ pr_problem p env !evars prob ++
                            str " extpats " ++ pr_user_pats env extpats);
   match clauses with
-  | ((loc, lhs, rhs), used as clause) :: clauses' ->
+  | ((loc, lhs, rhs), idx, used as clause) :: clauses' ->
     if !Equations_common.debug then
       Feedback.msg_debug (str "Matching " ++ pr_user_pats env (extpats @ lhs) ++ str " with " ++
                           pr_problem p env !evars prob);
@@ -851,8 +853,9 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * bool) list) 
        (* let renaming = rename_prob_subst env ctx (pi1 s) in *)
        let s = (List.map (fun ((x, gen), y) -> x, y) (pi1 s), pi2 s, pi3 s) in
        (* let prob = compose_subst env ~sigma:!evars renaming prob in *)
+       let clauseid = Id.of_string ("clause_" ^ string_of_int idx) in
        let interp =
-         interp_clause env evars p data prev clauses' path prob
+         interp_clause env evars p data prev clauses' ((clauseid, false) :: path) prob
            extpats lets ty ((loc,lhs,rhs), used) s
        in
        (match interp with
@@ -860,11 +863,12 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * bool) list) 
            user_err_loc
             (dummy_loc, "split_var",
              str"Clause " ++ pr_preclause env (loc, lhs, rhs) ++ str" matched but its interpretation failed")
-        | Some s -> Some (List.rev prev @ ((loc,lhs,rhs),true) :: clauses', s))
+        | Some s -> Some (List.rev prev @ ((loc,lhs,rhs),idx,true) :: clauses', s))
 
      | UnifFailure ->
        if !Equations_common.debug then Feedback.msg_debug (str "failed");
        covering_aux env evars p data (clause :: prev) clauses' path prob extpats lets ty
+
      | UnifStuck -> 
        if !Equations_common.debug then Feedback.msg_debug (str "got stuck");
        let blocks = blockers (extpats @ lhs) prob in
@@ -920,8 +924,9 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * bool) list) 
   | [] -> (* Every clause failed for the problem, it's either uninhabited or
              the clauses are not exhaustive *)
     match find_empty (env,evars) (pi1 prob) with
-    | Some (i, ctx, s) -> Some (List.rev prev @ clauses, Split (prob, i, ty, s))
-                      (* Compute (prob, [], ty, REmpty i)) *)
+    | Some (i, ctx, s) ->
+      Some (List.rev prev @ clauses, (* Split (prob, i, ty, s)) *)
+            Compute (prob, [], ty, REmpty (i, s)))
     | None ->
       user_err_loc (Some p.program_loc, "deppat",
         (str "Non-exhaustive pattern-matching, no clause found for:" ++ fnl () ++
@@ -991,7 +996,10 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
     Some res
 
   | Empty (loc,i) ->
-    Some (Compute (prob, [], ty, REmpty (get_var loc i s)))
+    (match prove_empty (env, evars) (pi1 prob) (get_var loc i s) with
+     | None -> user_err_loc (Some loc, "covering", str"Cannot show that " ++ Id.print i ++ str"'s type is empty")
+     | Some (i, ctx, s) ->
+       Some (Compute (prob, [], ty, REmpty (i, s))))
 
   | Refine (c, cls) -> 
     (* The refined term and its type *)
@@ -1112,7 +1120,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
                     @ (lift_rel_context 1 lets)
       in specialize_rel_context !evars (pi2 cmap) newlets
     in
-    let clauses' = List.map (fun x -> x, false) cls' in
+    let clauses' = List.mapi (fun i x -> x, succ i, false) cls' in
     match covering_aux env evars p data [] clauses' path' newprob [] lets' newty with
     | None ->
       errorlabstrm "deppat"
@@ -1209,7 +1217,7 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
 
 and covering ?(check_unused=true) env evars p data (clauses : pre_clause list)
     path prob extpats ty =
-  let clauses = (List.map (fun x -> (x,false)) clauses) in
+  let clauses = (List.mapi (fun i x -> (x,succ i,false)) clauses) in
   (*TODO eta-expand clauses or type *)
   match covering_aux env evars p data [] clauses path prob extpats [] ty with
   | Some (clauses, cov) ->

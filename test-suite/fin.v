@@ -27,28 +27,30 @@ Proof.
 Defined.
 Derive Signature for le.
 
-Equations nat_to_fin {n : nat} (m : nat) (p : m < n) : fin n :=
+Set Equations Debug.
+Equations? nat_to_fin {n : nat} (m : nat) (p : m < n) : fin n :=
 nat_to_fin (n:=(S n)) 0 _ := fz;
 nat_to_fin (n:=(S n)) (S m) p := fs (nat_to_fin m _).
-
-Next Obligation. apply Lt.lt_S_n; assumption. Defined.
+Proof. apply Lt.lt_S_n; assumption. Defined.
 
 Set Program Mode.
 
-Equations fin_to_nat_bound {n : nat} (i : fin n) : {m : nat | m < n} :=
+Equations? fin_to_nat_bound {n : nat} (i : fin n) : {m : nat | m < n} :=
 fin_to_nat_bound fz := 0;
 fin_to_nat_bound (fs j) := let (m, p) := fin_to_nat_bound j in (S m).
-Next Obligation. apply Le.le_n_S; apply Le.le_0_n. Defined.
-Next Obligation. apply Lt.lt_n_S; assumption. Defined.
+Proof.
+  - apply Le.le_n_S; apply Le.le_0_n.
+  - apply Lt.lt_n_S; assumption.
+Defined.
 
 Arguments exist {A} {P} _ _.
 
-Equations nat_bound_to_fin (n : nat) (m : {m : nat | m < n}) : fin n :=
+Equations? nat_bound_to_fin (n : nat) (m : {m : nat | m < n}) : fin n :=
 nat_bound_to_fin 0 (exist _ p) :=! p;
 nat_bound_to_fin (S n') (exist 0 _) := fz;
 nat_bound_to_fin (S n') (exist (S m) p) := fs (nat_bound_to_fin _ m).
 
-Next Obligation. auto with arith || inversion p. Defined.
+Proof. auto with arith || inversion p. Defined.
 
 Lemma fin__nat : forall (n : nat) (m : nat) (p : m < n),
   fin_to_nat (nat_to_fin m p) = m.

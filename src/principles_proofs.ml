@@ -853,7 +853,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
                        observe "compute rhs" (tclTRY unfolds);
                        simpltac; solve_eq])
 
-    | Compute (_, _, _, _), Compute ((ctx,_,_), _, _, REmpty id) ->
+    | Compute (_, _, _, _), Compute ((ctx,_,_), _, _, REmpty (id, sp)) ->
 	let d = nth ctx (pred id) in
 	let id = Name.get_id (get_name d) in
 	to82 (abstract (depelim id))

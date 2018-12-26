@@ -93,7 +93,7 @@ and refined_node =
 
 and splitting_rhs =
   | RProgram of constr
-  | REmpty of int
+  | REmpty of int * splitting option array
 
 let rec context_map_of_splitting : splitting -> context_map = function
   | Compute (subst, _, _, _) -> subst
@@ -161,8 +161,8 @@ let pr_splitting env sigma ?(verbose=false) split =
           | RProgram c -> pplhs env' sigma lhs ++ str" := " ++
                           Printer.pr_econstr_env env'' sigma c ++
                           (verbose (str " : " ++ Printer.pr_econstr_env env'' sigma ty))
-          | REmpty i -> pplhs env' sigma lhs ++ str" :=! " ++
-                        pr_rel_name env'' i)
+          | REmpty (i, _) -> pplhs env' sigma lhs ++ str" :=! " ++
+                             pr_rel_name env'' i)
        ++ Pp.fnl () ++ ppwheres ++
        verbose (str " in context " ++  pr_context_map env sigma lhs))
     | Split (lhs, var, ty, cs) ->
@@ -422,24 +422,15 @@ let term_of_tree isevar env0 tree =
       let body = it_mkLambda_or_LetIn rhs ctx and typ = it_mkProd_or_subst env evm ty ctx in
       evm, body, typ
 
-    | Compute ((ctx, _, _), where, ty, REmpty split) ->
+    | Compute ((ctx, _, _) as lhs, where, ty, REmpty (split, sp)) ->
        assert (List.is_empty where);
-       let evm, coq_nat = new_global evm (Lazy.force coq_nat) in
-        let split = make_def (Name (Id.of_string "split"))
-          (Some (of_constr (coq_nat_of_int (succ (length ctx - split)))))
-          coq_nat
-       in
-       let ty' = it_mkProd_or_LetIn ty ctx in
-       let let_ty' = mkLambda_or_LetIn split (lift 1 ty') in
-       let evm, term =
-         new_evar env evm ~src:(dummy_loc, QuestionMark {
-            qm_obligation=Define false;
-            qm_name=Anonymous;
-            qm_record_field=None;
-        }) let_ty' in
-       (* let ev = fst (destEvar evm term) in *)
-       (* oblevars := Evar.Map.add ev 0 !oblevars; *)
-       evm, term, ty'
+       let evm, bot = new_global evm (Lazy.force logic_bot) in
+       let evm, prf, _ = aux env evm (Split (lhs, split, bot, sp)) in
+       let evm, case = new_global evm (Lazy.force logic_bot_case) in
+       let term = mkApp (case, [| ty; beta_appvect evm prf (extended_rel_vect 0 ctx) |]) in
+       let term = it_mkLambda_or_LetIn term ctx in
+       let ty = it_mkProd_or_subst env evm ty ctx in
+       evm, term, ty
 
     | Mapping ((ctx, p, ctx'), s) ->
        let evm, term, ty = aux env evm s in
@@ -648,8 +639,8 @@ let define_constants flags isevar env0 tree =
       let env, evm, _, where = List.fold_right define_where where (env, evm, [], []) in
       evm, Compute (lhs, where, ty, RProgram rhs)
 
-    | Compute (lhs, where, ty, REmpty split) ->
-      evm, Compute (lhs, where, ty, REmpty split)
+    | Compute (lhs, where, ty, REmpty (split, sp)) ->
+      evm, Compute (lhs, where, ty, REmpty (split, sp))
 
     | Mapping (lhs, s) ->
       let evm, s' = aux env evm s in
@@ -795,7 +786,7 @@ let solve_equations_obligations flags i isevar split hook =
   else
     user_err_loc (None, "define", str"Equations definition generated subgoals that " ++
                                   str "could not be solved automatically. Use the \"Equations?\" command to" ++
-                                  str "refine them interactively")
+                                  str " refine them interactively")
 
 
 let define_tree is_recursive helpers fixprots flags impls status isevar env (i, sign, arity)
@@ -919,12 +910,12 @@ let define_tree is_recursive fixprots flags impls status isevar env (i, sign, ar
 
 let mapping_rhs sigma s = function
   | RProgram c -> RProgram (mapping_constr sigma s c)
-  | REmpty i ->
+  | REmpty (i, sp) ->
       try match nth (pi2 s) (pred i) with
-      | PRel i' -> REmpty i'
+      | PRel i' -> REmpty (i', sp)
       | _ -> assert false
       with Not_found -> assert false
 
 let map_rhs f g = function
   | RProgram c -> RProgram (f c)
-  | REmpty i -> REmpty (g i)
+  | REmpty (i, sp) -> REmpty (g i, sp)

@@ -69,7 +69,8 @@ and refined_node = {
   refined_newty : types;
 }
 
-and splitting_rhs = RProgram of constr | REmpty of int
+and splitting_rhs = RProgram of constr | REmpty of int * splitting option array
+
 
 val where_id : where_clause -> Id.t
 
