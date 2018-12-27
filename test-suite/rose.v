@@ -12,18 +12,15 @@ Section list_size.
   Equations list_size (l : list A) : nat :=
   list_size nil := 0;
   list_size (cons x xs) := S (f x + list_size xs).
+  Transparent list_size.
 
   Context {B : Type}.
-  Equations list_map_size (l : list A)
+  Equations? list_map_size (l : list A)
            (g : forall (x : A), f x < list_size l -> B) : list B :=
   list_map_size nil _ := nil;
   list_map_size (cons x xs) g := cons (g x _) (list_map_size xs (fun x H => g x _)).
-  Next Obligation.
-    simp list_size. auto with arith.
-  Defined.    
-  Next Obligation.
-    simp list_size. omega.
-  Defined.    
+
+  Proof. auto with arith. omega. Defined.
 
   Lemma list_map_size_spec (g : A -> B) (l : list A) :
     list_map_size l (fun x _ => g x) = List.map g l.
@@ -65,7 +62,7 @@ Section RoseTree.
   (** To solve measure subgoals *)
   Hint Extern 4 (_ < _) => abstract (simpl; omega) : rec_decision.
   Hint Extern 4 (MR _ _ _ _) => abstract (repeat red; simpl in *; omega) : rec_decision.
-  Obligation Tactic := program_simpl; try abstract (simpl; omega).
+  Obligation Tactic := program_simpl; try abstract (simpl; omega); try typeclasses eauto with rec_decision.
   Definition hide {A} (a : A) := a.
   Notation "?" := (hide _).
 

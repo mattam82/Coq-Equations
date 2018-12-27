@@ -299,7 +299,7 @@ let rec aux_ind_fun info chop unfs unfids = function
 	      tclTHEN (to82 (simpl_dep_elim_tac ()))
                 (aux_ind_fun info chop (unfs_splits (pred i)) unfids s)))
 
-  | RecValid (id, t, cs) ->
+  | RecValid (ctx, id, t, cs) ->
     let refine gl =
       let env = pf_env gl in
       let sigma = ref (project gl) in
@@ -368,7 +368,7 @@ let rec aux_ind_fun info chop unfs unfids = function
         let wheretac acc s unfs =
           Proofview.Goal.enter (fun gl ->
           let ctx, where_term, fstchop, unfids = match unfs with
-            | None -> pi1 s.where_prob, s.where_term, fst chop (* + List.length ctx *), unfids
+            | None -> pi1 s.where_prob, (where_term s), fst chop (* + List.length ctx *), unfids
             | Some w ->
                let assoc, unf, split =
                  try PathMap.find w.where_path info.wheremap
@@ -377,7 +377,7 @@ let rec aux_ind_fun info chop unfs unfids = function
                let env = Global.env () in
                let evd = Evd.empty in
                if !Equations_common.debug then
-                 Feedback.msg_debug (str"Unfolded where " ++ str"term: " ++ pr_econstr_env env evd w.where_term ++
+                 Feedback.msg_debug (str"Unfolded where " ++ str"term: " ++ pr_econstr_env env evd (where_term w) ++
                                      str" type: " ++ pr_econstr_env env evd w.where_type ++ str" assoc " ++
                                      pr_econstr_env env evd assoc);
                let ctxlen = List.length (pi1 w.where_prob) - List.length unfctx in
@@ -391,14 +391,14 @@ let rec aux_ind_fun info chop unfs unfids = function
                    anomaly (str"Mismatch between hypotheses in named context and program")
                  else List.rev_map (fun decl -> mkVar (Context.Named.Declaration.get_id decl)) hyps
                in
-               let origwhere = substl (List.rev subst) s.where_term in
+               let origwhere = substl (List.rev subst) (where_term s) in
                let args =
                  let assochd, assocargs = decompose_app evd assoc in
                  let orighd, origargs = decompose_app evd origwhere in
                  let assocargs', origargs' = List.filter2 (fun a a' -> isRel evd a) assocargs origargs in
                  origargs'
                in
-               let newwhere = substl (List.rev args) w.where_term in
+               let newwhere = substl (List.rev args) (where_term w) in
                let ctx = subst_rel_context 0 (List.rev args) before in
                if !Equations_common.debug then
                  Feedback.msg_debug (str"Unfolded where substitution:  " ++
@@ -444,7 +444,7 @@ let rec aux_ind_fun info chop unfs unfids = function
              Feedback.msg_debug
              (str"Found path " ++ str (Id.to_string wherepath) ++ str" where: " ++
               pr_id (where_id s) ++ str"term: " ++
-              Printer.pr_econstr_env env Evd.empty s.where_term ++
+              Printer.pr_econstr_env env Evd.empty (Splitting.where_term s) ++
               str" instance: " ++
               prlist_with_sep spc
               (fun x -> Printer.pr_econstr_env env Evd.empty (EConstr.of_constr x)) args ++
@@ -737,7 +737,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
                                                                    aux split unfsplit])))) gl
 	  | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl)
 
-    | RecValid (id, r, cs), unfsplit ->
+    | RecValid (ctx, id, r, cs), unfsplit ->
        observe "recvalid"
          (tclTHEN (to82 (unfold_recursor_tac ())) (aux cs unfsplit))
             (* let env = pf_env gl in
@@ -810,12 +810,13 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
          fun gl ->
          let env = pf_env gl in
          let evd = ref (project gl) in
+         let () = Feedback.msg_debug (str"Unfold where problem: " ++ pr_context_map env !evd unfw.where_prob) in
          let ty =
            let ctx = pi1 unfw.where_prob in
            let len = List.length ctx - List.length lctx in
            let newctx, oldctx = List.chop len ctx in
-           let lhs = mkApp (lift len assoc (* in oldctx *), extended_rel_vect 0 newctx) in
-           let rhs = mkApp (fst (decompose_app !evd unfw.where_term), extended_rel_vect 0 ctx) in
+           let lhs = mkApp (w.where_program_term(* lift len assoc *) (* in oldctx *), extended_rel_vect 0 newctx) in
+           let rhs = mkApp (unfw.where_program_term, extended_rel_vect 0 ctx) in
            let eq = mkEq env evd unfw.where_arity lhs rhs in
            it_mkProd_or_LetIn eq ctx
          in
@@ -824,7 +825,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
            if isConst !evd f then fst (destConst !evd f)
            else assert false
          in
-         let f_cst = headcst assoc and funf_cst = headcst unfw.where_term in
+         let f_cst = headcst w.where_program_term and funf_cst = headcst unfw.where_program_term in
          let unfolds gl =
            let res = to82 (unfold_in_concl
 	     [Locus.OnlyOccurrences [1], EvalConstRef f_cst;
@@ -833,7 +834,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
          in
          let tac =
            let tac =
-             of82 (tclTHENLIST [to82 intros; unfolds;
+             of82 (tclTHENLIST [observe "where before unfold" (to82 intros); unfolds;
                                 (observe "where"
                                  (aux (Lazy.force w.where_splitting)
                                   (Lazy.force unfw.where_splitting)))])

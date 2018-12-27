@@ -27,7 +27,6 @@ Proof.
 Defined.
 Derive Signature for le.
 
-Set Equations Debug.
 Equations? nat_to_fin {n : nat} (m : nat) (p : m < n) : fin n :=
 nat_to_fin (n:=(S n)) 0 _ := fz;
 nat_to_fin (n:=(S n)) (S m) p := fs (nat_to_fin m _).
@@ -204,6 +203,8 @@ Print Assumptions fin_eqdec.
 Derive NoConfusion NoConfusionHom EqDec Subterm for fle.
 
 Print Assumptions fle_eqdec.
+
+Obligation Tactic := program_simpl; try typeclasses eauto 10 with Below subterm_relation.
 
 Equations fle_trans' {n : nat} {i j : fin n} (p : fle i j) {k} (q : fle j k) : fle i k
  by rec (Signature.signature_pack p) (@fle_subterm) :=

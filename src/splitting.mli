@@ -41,18 +41,19 @@ type splitting =
     Compute of context_map * where_clause list * types * splitting_rhs
   | Split of context_map * int * types * splitting option array
   | Mapping of context_map * splitting
-  | RecValid of identifier * rec_node * splitting
+  | RecValid of context_map * identifier * rec_node * splitting
   | Refined of context_map * refined_node * splitting
 
 and where_clause =
   { where_program : program_info;
     where_program_orig : program_info;
+    where_program_term : constr;
+    where_program_args : constr list; (* In original context, de Bruijn only *)
     where_path : path;
     where_orig : path;
     where_context_length : int; (* Length of enclosing context, including fixpoint prototype if any *)
     where_prob : context_map;
     where_arity : types; (* In pi1 prob *)
-    where_term : constr; (* In original context, de Bruijn only *)
     where_type : types;
     where_splitting : splitting Lazy.t }
 
@@ -73,6 +74,7 @@ and splitting_rhs = RProgram of constr | REmpty of int * splitting option array
 
 
 val where_id : where_clause -> Id.t
+val where_term : where_clause -> constr
 
 val pr_path : Evd.evar_map -> path -> Pp.t
 val eq_path : path -> path -> bool

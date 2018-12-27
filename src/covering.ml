@@ -822,11 +822,11 @@ let compute_rec_data env evars data lets p =
     let pats = PHide 1 :: lift_pats 1 (id_pats p.program_sign) in
     let prob = (lhs, pats, lhs) in
     let finalize flags s =
-      RecValid (p.program_id, { rec_node_term = fix;
-                                rec_node_arg = term;
-                                rec_node_rel = rel;
-                                rec_node_intro = List.length p.program_sign;
-                                rec_node_newprob = prob }, s)
+      RecValid (id_subst lets, p.program_id, { rec_node_term = fix;
+                                      rec_node_arg = term;
+                                      rec_node_rel = rel;
+                                      rec_node_intro = List.length p.program_sign;
+                                      rec_node_newprob = prob }, s)
     in
     let p = { p with program_arity = lift 1 p.program_arity } in
     p, prob, ctxpats, finalize
@@ -1182,6 +1182,7 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
       match t with
       | Some ty (* non-delayed where clause, compute term right away *) ->
         let splitting = covering env0 evars p data clauses path problem extpats p.program_arity in
+        let splitting = finalize data.flags splitting in
         let term, _ = term_of_tree evars env0 splitting in
         Lazy.from_val splitting, term
       | None ->
@@ -1190,25 +1191,26 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
         let ev = destEvar !evars term in
         let cover () =
           let splitting = covering env0 evars p data clauses path problem extpats p.program_arity in
+          let splitting = finalize data.flags splitting in
           let term, _ = term_of_tree evars env0 splitting in
           evars := Evd.define (fst ev) term !evars; splitting
         in
         Lazy.from_fun cover, term
     in
-    let termapp = mkApp (term, extended_rel_vect 0 lets) in
-    let decl = make_def (Name id) (Some termapp) pre_type in
-    let covering =
+    let w' =
       {where_program = p; where_program_orig = p;
+       where_program_term = term;
+       where_program_args = extended_rel_list 0 lets;
        where_path = path;
        where_orig = path;
        where_prob = problem;
        where_context_length = List.length extpats;
        where_arity = p.program_arity;
-       where_term = termapp;
        where_type = pre_type;
        where_splitting = splitting }
     in
-    (data, decl :: lets, succ nlets, covering :: coverings,
+    let decl = make_def (Name id) (Some (where_term w')) pre_type in
+    (data, decl :: lets, succ nlets, w' :: coverings,
      push_rel decl envctx)
   in
   let (data, lets, nlets, coverings, envctx') =

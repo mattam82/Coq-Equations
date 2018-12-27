@@ -419,13 +419,13 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
       in
       let ppath = (* The preceding P *)
         match path with
-        | [] -> assert false
-        | ev :: path ->
-           let res =
+        | _ :: _ :: path ->
+          (let res =
              list_find_map_i (fun i' (_, (_, _, path', _, _, _, _, _), _) ->
-                              if eq_path path' path then Some (idx + 1 - i')
-                              else None) 1 ind_stmts
-           in match res with None -> assert false | Some i -> i
+                 if eq_path path' path then Some (idx + 1 - i')
+                 else None) 1 ind_stmts
+           in match res with None -> assert false | Some i -> i)
+        | _ -> assert false
       in
       let papp =
         applistc (lift (succ signlen + lenargs) (mkRel ppath))
@@ -486,10 +486,10 @@ let replace_vars_context inst ctx =
       (succ k, decl' :: acc))
     ctx (1, [])
 
-let pr_where env sigma ctx ({where_prob; where_term; where_type; where_splitting} as w) =
+let pr_where env sigma ctx ({where_prob; where_type; where_splitting} as w) =
   let open Pp in
   let envc = Environ.push_rel_context ctx env in
-  Printer.pr_econstr_env envc sigma where_term ++ fnl () ++
+  Printer.pr_econstr_env envc sigma (where_term w) ++ fnl () ++
     str"where " ++ Names.Id.print (where_id w) ++ str" : " ++
     Printer.pr_econstr_env envc sigma where_type ++
     str" := " ++ fnl () ++
@@ -497,7 +497,7 @@ let pr_where env sigma ctx ({where_prob; where_term; where_type; where_splitting
     pr_splitting env sigma (Lazy.force where_splitting)
 
 let where_instance w =
-  List.map (fun w -> w.where_term) w
+  List.map (fun w -> where_term w) w
 
 let arguments sigma c = snd (Termops.decompose_app_vect sigma c)
 
@@ -570,11 +570,14 @@ let subst_rec_split env evd p f path prob s split =
        let substprog, _ = subst_rec cutprob s progctx in
        let islogical = List.exists (fun (id, (recarg, f)) -> Option.has_some recarg) s in
        let subst_where ({where_program; where_path; where_orig;
-                         where_prob; where_arity; where_term;
+                         where_prob; where_arity;
+                         where_program_term;
+                         where_program_args;
                          where_type; where_splitting} as w) (subst_wheres, wheres) =
          let wcontext = where_context subst_wheres in
          let wsubst = lift_subst env !evd subst wcontext in
-         let where_term = mapping_constr !evd wsubst where_term in
+         let where_program_term = mapping_constr !evd wsubst where_program_term in
+         let where_program_args = List.map (mapping_constr !evd wsubst) where_program_args in
          let where_type = mapping_constr !evd subst where_type in
          let where_program', s, extpatlen =
            (* Should be the number of extra patterns for the whole fix block *)
@@ -586,11 +589,17 @@ let subst_rec_split env evd p f path prob s split =
                | MutualOn (x, _) -> Some x
              in
              let s = ((where_program.program_id, (None,
-                 lift (List.length (pi1 where_prob) - List.length ctx) w.where_term)) :: s) in
+                 lift (List.length (pi1 where_prob) - List.length ctx) (where_term w))) :: s) in
              let where_program = { where_program with program_rec = None } in
              where_program, s, 0
+           (* | Some (WellFounded (_, _, (loc, id))) ->
+            *   let recarg, proj = (Some (-1)), mkVar id in
+            *   let s = (id, (recarg, lift 1 f)) :: s in
+            *   let cutprob = (cut_problem s (pi1 r.rec_node_newprob)) in
+            *   where_program, s, 0 *)
            | _ -> where_program, s, 0
          in
+
          let cutprob = cut_problem s (pi1 where_prob) in
          let wsubst, _ = subst_rec where_prob s where_prob in
          let where_prob = id_subst (pi3 cutprob) in
@@ -598,7 +607,8 @@ let subst_rec_split env evd p f path prob s split =
          (* let where_impl, args = decompose_app !evd where_term in *)
          let where_term' =
            (* Lives in where_prob *)
-           (lift (List.length (pi1 cutprob) - List.length ctx) w.where_term) in
+           (lift (List.length (pi1 where_prob) - List.length ctx)
+              (where_term w)) in
 
          let where_arity = mapping_constr !evd wsubst where_arity in
 
@@ -607,11 +617,20 @@ let subst_rec_split env evd p f path prob s split =
              program_sign = pi3 cutprob;
              program_arity = mapping_constr !evd wsubst where_program'.program_arity }
          in
+         Feedback.msg_debug Pp.(str"At where in update_split, calling recursively with term" ++
+                             Printer.pr_econstr_env env !evd where_term' ++ fnl () ++
+                                str " and splitting " ++ pr_splitting env !evd (Lazy.force where_splitting));
+         let where_path =
+           match where_path with
+           | x :: y :: r ->
+             x :: y :: path
+           | _ -> where_path
+         in
          let where_splitting =
            aux cutprob s where_program' where_term'
              where_path (Lazy.force where_splitting)
          in
-         let where_term, where_path =
+         let where_program_term, where_program_args, where_path =
            if islogical then
              let where_term, where_ty = term_of_tree evd env where_splitting in
              let id = Nameops.add_suffix (where_id w) "_unfold_eq" in
@@ -619,16 +638,19 @@ let subst_rec_split env evd p f path prob s split =
                    (where_term (* substituted *), id, where_splitting) !where_map in
              (* msg_debug (str"At where in update_split, calling recursively with term" ++ *)
              (*              pr_constr w.where_term ++ str " associated to " ++ int (Evar.repr evk)); *)
-             (applist (where_term, extended_rel_list 0 (pi1 lhs')),
+             (where_term, extended_rel_list 0 (pi1 lhs'),
               (w.where_program.program_id, true) :: List.tl where_path)
-           else (where_term, where_path)
+           else (where_program_term, where_program_args, where_path)
          in
          let subst_where =
            {where_program = where_program';
             where_program_orig = where_program;
-            where_path; where_orig; where_prob = where_prob;
+            where_program_term;
+            where_program_args;
+            where_path; where_orig;
+            where_prob = id_subst (pi3 cutprob);
             where_context_length = List.length (pi1 lhs') + extpatlen;
-            where_arity; where_term;
+            where_arity;
             where_type; where_splitting = Lazy.from_val where_splitting }
          in (subst_where :: subst_wheres, w :: wheres)
        in
@@ -647,16 +669,13 @@ let subst_rec_split env evd p f path prob s split =
        let subst, lhs' = subst_rec cutprob s lhs in
        Mapping (lhs', aux cutprob s p f path c)
 
-    | RecValid (id, r, rest) ->
-(* Valid (ctx, ty, args, tac, view,
- *                            [goal, args', newprob, invsubst, rest])) -> *)
+    | RecValid (lhs, id, r, rest) ->
        let recarg, proj = match p.program_rec with
        | Some (WellFounded (_, _, r)) ->
           (match r with
            | (loc, id) -> (Some (-1)), mkVar id)
        | _ -> anomaly Pp.(str"Not looking at the right program")
        in
-       (* let rest = subst_comp_proj_split !evd f proj rest in *)
        let s = (id, (recarg, lift 1 f)) :: s in
        let cutprob = (cut_problem s (pi1 r.rec_node_newprob)) in
        let rest = aux cutprob s p f ((id, true) :: path) rest in
@@ -684,7 +703,10 @@ let subst_rec_split env evd p f path prob s split =
        let _, newprob_to_prob' =
          subst_rec (cut_problem s (pi3 info.refined_newprob_to_lhs)) s info.refined_newprob_to_lhs in
        let islogical = List.exists (fun (id, (recarg, f)) -> Option.has_some recarg) s in
-       let path' = (id, false) :: path (* info.refined_path *)(* Evar ev' :: path *) in
+       let path' =
+         match info.refined_path with
+         | x :: y :: _ -> x :: y :: path
+         | _ -> (id, false) :: path (* info.refined_path *)(* Evar ev' :: path *) in
        let s' = aux cutnewprob s p f path' sp in
        let term', args', arg' =
          if islogical then
@@ -728,7 +750,6 @@ let subst_rec_split env evd p f path prob s split =
            refined_newprob_to_lhs = newprob_to_prob';
            refined_newty = mapping_constr !evd subst' newty }
        in Refined (lhs', info, s')
-
   in
   let split' = aux prob s p f path split in
   split', !where_map
@@ -806,13 +827,13 @@ let computations env evd alias refine eqninfo =
   | Compute (lhs, where, ty, c) ->
      let where_comp w (wheres, where_comps) =
        (* Where term is in lhs + wheres *)
-       let lhsterm = substl wheres w.where_term in
+       let lhsterm = substl wheres (where_term w) in
        let term, args = decompose_app evd lhsterm in
        let alias, fsubst =
          try
            let (f, id, s) = PathMap.find w.where_path wheremap in
            let f, fargs = decompose_appvect evd f in
-           let args = match_arguments evd (arguments evd w.where_term) fargs in
+           let args = match_arguments evd (arguments evd (where_term w)) fargs in
            let fsubst = ((f, args), term) :: fsubst in
            Feedback.msg_info Pp.(str"Substituting " ++ Printer.pr_econstr_env env evd f ++
                                  spc () ++
@@ -871,7 +892,7 @@ let computations env evd alias refine eqninfo =
      let _newprob = compose_subst env ~sigma:evd prob lhs in
      computations env prob f alias fsubst refine c
 
-  | RecValid (id, r, cs) ->
+  | RecValid (lhs, id, r, cs) ->
     let subst = compose_subst env ~sigma:evd r.rec_node_newprob prob in
     computations env subst f alias fsubst (fst refine, false) cs
 

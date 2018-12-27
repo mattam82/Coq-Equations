@@ -22,6 +22,7 @@ Ltac subst_all :=
 Hint Extern 5 => 
   unfold gcd_rel, gcd_order, MR; simpl; subst_all; omega : Below.
 
+Obligation Tactic := program_simpl; try typeclasses eauto with Below.
 
 Equations gcd (p : nat * nat) : nat by rec p gcd_rel :=
 gcd (pair 0 _) := 0 ;
@@ -40,7 +41,8 @@ gcd' (pair x y) with gt_eq_gt_dec x y := {
   | inleft (right refl) := x ;
   | inright xgty := gcd' (x - y, y) }.
 
-(* Extraction gcd. *)
+Require Import ExtrOcamlBasic.
+Extraction gcd.
 (* Extraction gcd_unfold. *)
 
 Lemma gcd_ref x : gcd (x,x) = x.

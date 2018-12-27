@@ -158,7 +158,9 @@ infer_sort ie (IApp i1 i2) <= infer_sort ie i1 => {
 (* BUG! not general enough, need to inverse the order of arguments so that ie can change 
   at recursive calls.
  *)
-Equations infer_sort (i : index)  (ie : env) : option sort
+Obligation Tactic := program_simpl; try typeclasses eauto 10 with Below subterm_relation.
+
+Equations infer_sort (i : index) (ie : env) : option sort
  by rec i (MR lt index_size) :=
 infer_sort (IBVar x) ie := None ;
 infer_sort (IFVar x) ie := get x ie;
