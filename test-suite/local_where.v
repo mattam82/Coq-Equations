@@ -85,8 +85,6 @@ where baz : nat -> nat :=
 baz 0 := 0;
 baz (S n) := baz n.
 
-
-
 Notation "{ x : A & y }" := (@sigma A (fun x : A => y)%type) (x at level 99) : type_scope.
 Notation "{ x & y }" := (@sigma _ (fun x : _ => y)%type) (x at level 99) : type_scope.
 

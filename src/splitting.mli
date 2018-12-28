@@ -45,36 +45,44 @@ type splitting =
   | Refined of context_map * refined_node * splitting
 
 and where_clause =
-  { where_program : program_info;
+  { where_program : program;
     where_program_orig : program_info;
-    where_program_term : constr;
     where_program_args : constr list; (* In original context, de Bruijn only *)
     where_path : path;
     where_orig : path;
     where_context_length : int; (* Length of enclosing context, including fixpoint prototype if any *)
-    where_prob : context_map;
-    where_arity : types; (* In pi1 prob *)
-    where_type : types;
-    where_splitting : splitting Lazy.t }
+    where_type : types }
 
-and refined_node = {
-  refined_obj : identifier * constr * types;
-  refined_rettyp : types;
-  refined_arg : int;
-  refined_path : path;
-  refined_term : EConstr.t;
-  refined_args : constr list;
-  refined_revctx : context_map;
-  refined_newprob : context_map;
-  refined_newprob_to_lhs : context_map;
-  refined_newty : types;
-}
+and refined_node =
+  { refined_obj : identifier * constr * types;
+    refined_rettyp : types;
+    refined_arg : int;
+    refined_path : path;
+    refined_term : EConstr.t;
+    refined_args : constr list;
+    refined_revctx : context_map;
+    refined_newprob : context_map;
+    refined_newprob_to_lhs : context_map;
+    refined_newty : types }
+
+and program =
+  { program_info : program_info;
+    program_prob : context_map;
+    program_splitting : splitting;
+    program_rec_node : rec_node option;
+    program_term : constr }
 
 and splitting_rhs = RProgram of constr | REmpty of int * splitting option array
 
 
 val where_id : where_clause -> Id.t
 val where_term : where_clause -> constr
+
+val program_id : program -> Id.t
+val program_type : program -> EConstr.t
+val program_sign : program -> EConstr.rel_context
+val program_impls : program -> Impargs.manual_explicitation list
+val program_rec : program -> program_rec_info option
 
 val pr_path : Evd.evar_map -> path -> Pp.t
 val eq_path : path -> path -> bool
@@ -100,6 +108,16 @@ val term_of_tree :
   env ->
   splitting ->
   constr * constr
+
+val make_program :
+  Evd.evar_map ref ->
+  env ->
+  rel_context ->
+  program_info ->
+  context_map ->
+  splitting ->
+  rec_node option ->
+  program
 
 val define_constants : flags ->
   Evd.evar_map ref ->
@@ -130,9 +148,9 @@ val is_polymorphic : term_info -> bool
 
 val define_mutual_nested : Evd.evar_map ref ->
                            ('a -> EConstr.t) ->
-                           (Syntax.program_info * 'a) list ->
-                           (Syntax.program_info * 'a * EConstr.t) list *
-                           (Syntax.program_info * 'a * EConstr.constr) list
+                           (program * 'a) list ->
+                           (program * 'a * EConstr.t) list *
+                           (program * 'a * EConstr.constr) list
 
 
 val define_tree :

@@ -68,17 +68,13 @@ type splitting =
   | Refined of context_map * refined_node * splitting
 
 and where_clause =
-  { where_program : program_info;
+  { where_program : program;
     where_program_orig : program_info;
-    where_program_term : constr;
     where_program_args : constr list; (* In original context, de Bruijn only *)
     where_path : path;
     where_orig : path;
     where_context_length : int; (* Length of enclosing context, including fixpoint prototype if any *)
-    where_prob : context_map;
-    where_arity : types; (* In pi1 prob *)
-    where_type : types;
-    where_splitting : splitting Lazy.t }
+    where_type : types }
 
 and refined_node =
   { refined_obj : identifier * constr * types;
@@ -92,12 +88,19 @@ and refined_node =
     refined_newprob_to_lhs : context_map;
     refined_newty : types }
 
+and program =
+  { program_info : program_info;
+    program_prob : context_map;
+    program_splitting : splitting;
+    program_rec_node : rec_node option;
+    program_term : constr }
+
 and splitting_rhs =
   | RProgram of constr
   | REmpty of int * splitting option array
 
 let where_term w =
-  applist (w.where_program_term, w.where_program_args)
+  applist (w.where_program.program_term, w.where_program_args)
 
 let context_map_of_splitting : splitting -> context_map = function
   | Compute (subst, _, _, _) -> subst
@@ -122,12 +125,20 @@ let eq_path path path' =
   in
   aux path path'
 
-let where_id w = w.where_program.program_id
+let program_id p = p.program_info.program_id
+let program_type p = program_type p.program_info
+let program_sign p = p.program_info.program_sign
+let program_impls p = p.program_info.program_impls
+let program_rec p = p.program_info.program_rec
+
+let where_id w = w.where_program.program_info.program_id
 
 let where_context wheres =
-  List.map (fun ({where_program;
-                 where_type; where_splitting } as w) ->
+  List.map (fun ({where_program; where_type } as w) ->
              make_def (Name (where_id w)) (Some (where_term w)) where_type) wheres
+
+let where_program_type w =
+  program_type w.where_program
 
 let pr_rec_info p =
   let open Pp in
@@ -151,12 +162,12 @@ let pr_splitting env sigma ?(verbose=false) split =
       let ppwhere w =
         hov 2 (str"where " ++ Id.print (where_id w) ++ str " : " ++
                (try Printer.pr_econstr_env env'  sigma w.where_type ++
-                    hov 1 (str "(program type: " ++ Printer.pr_econstr_env env sigma (program_type w.where_program)
-                    ++ str ") ") ++ pr_rec_info w.where_program ++
+                    hov 1 (str "(program type: " ++ Printer.pr_econstr_env env sigma (where_program_type w)
+                    ++ str ") ") ++ pr_rec_info w.where_program.program_info ++
                     str "(where_term: " ++ Printer.pr_econstr_env env sigma (where_term w) ++ str ")" ++
-                    str "(arity: " ++ Printer.pr_econstr_env env sigma w.where_arity ++ str ")" ++
+                    str "(arity: " ++ Printer.pr_econstr_env env sigma w.where_program.program_info.program_arity ++ str ")" ++
                     str" (where context length : " ++ int w.where_context_length ++ str ")" ++
-                    str " := " ++ Pp.fnl () ++ aux (Lazy.force w.where_splitting)
+                    str " := " ++ Pp.fnl () ++ aux w.where_program.program_splitting
                 with e -> str "*raised an exception"))
       in
       let ppwheres = prlist_with_sep Pp.fnl ppwhere wheres in
@@ -210,7 +221,8 @@ let pr_splitting env sigma ?(verbose=false) split =
                       str "New problem to problem substitution is: " ++
                       pr_context_map env sigma info.refined_newprob_to_lhs ++ Pp.cut ()) ++
              aux s)
-  in aux split
+  in
+  try aux split with e -> str"Error pretty-printing splitting"
 
 let pp s = pp_with !Topfmt.deep_ft s
 
@@ -219,24 +231,30 @@ let ppsplit s =
   let sigma = Evd.from_env env in
   pp (pr_splitting env sigma s)
 
-let map_where f w =
+let map_rec_node f r =
+  { rec_node_term = f r.rec_node_term;
+    rec_node_arg = r.rec_node_arg;
+    rec_node_rel = r.rec_node_rel;
+    rec_node_intro = r.rec_node_intro;
+    rec_node_newprob = map_ctx_map f r.rec_node_newprob }
+
+let rec map_program f p =
+  { program_info = map_program_info f p.program_info;
+    program_prob = map_ctx_map f p.program_prob;
+    program_splitting = map_split f p.program_splitting;
+    program_rec_node = Option.map (map_rec_node f) p.program_rec_node;
+    program_term = f p.program_term }
+
+and map_where f w =
   { w with
-    where_program = map_program_info f w.where_program;
-    where_prob = map_ctx_map f w.where_prob;
-    where_program_term = f w.where_program_term;
+    where_program = map_program f w.where_program;
     where_program_args = List.map f w.where_program_args;
-    where_arity = f w.where_arity;
     where_type = f w.where_type }
 
-let map_split f split =
+and map_split f split =
   let rec aux = function
     | Compute (lhs, where, ty, RProgram c) ->
-      let where' =
-        List.map
-          (fun w -> let w' = map_where f w in
-                 { w' with where_splitting = Lazy.from_val (aux (Lazy.force w.where_splitting)) })
-          where
-      in
+      let where' = List.map (fun w -> map_where f w) where in
       let lhs' = map_ctx_map f lhs in
         Compute (lhs', where', f ty, RProgram (f c))
     | Split (lhs, y, z, cs) ->
@@ -246,12 +264,7 @@ let map_split f split =
        let lhs' = map_ctx_map f lhs in
        Mapping (lhs', aux s)
     | RecValid (ctx, id, r, c) ->
-      let r' = { rec_node_term = f r.rec_node_term;
-                 rec_node_arg = r.rec_node_arg;
-                 rec_node_rel = r.rec_node_rel;
-                 rec_node_intro = r.rec_node_intro;
-                 rec_node_newprob = map_ctx_map f r.rec_node_newprob } in
-      RecValid (map_ctx_map f ctx, id, r', aux c)
+      RecValid (map_ctx_map f ctx, id, map_rec_node f r, aux c)
     | Refined (lhs, info, s) ->
       let lhs' = map_ctx_map f lhs in
       let (id, c, cty) = info.refined_obj in
@@ -276,26 +289,26 @@ let is_nested p =
 
 let define_mutual_nested evd get_prog progs =
   let mutual =
-    List.filter (fun (p, prog) -> not (is_nested p)) progs
+    List.filter (fun (p, prog) -> not (is_nested p.program_info)) progs
   in
   (* In the mutually recursive case, only the functionals have been defined,
      we build the block and its projections now *)
   let structargs = Array.map_of_list (fun (p,_) ->
-                   match p.program_rec with
+                   match program_rec p with
                    | Some (Structural (MutualOn (lid,_))) -> lid
-                   | _ -> (List.length p.program_sign) - 1) mutual in
+                   | _ -> (List.length (program_sign p)) - 1) mutual in
   let mutualapp, nestedbodies =
     let nested = List.length progs - List.length mutual in
     let one_nested before p prog afterctx idx =
-      let signlen = List.length p.program_sign in
+      let signlen = List.length (program_sign p) in
       let fixbody =
         Vars.lift 1 (* lift over itself *)
            (mkApp (get_prog prog, rel_vect (signlen + (nested - 1)) (List.length mutual)))
          in
          let after = (nested - 1) - before in
          let fixb = (Array.make 1 idx, 0) in
-         let fixna = Array.make 1 (Name p.program_id) in
-         let fixty = Array.make 1 (it_mkProd_or_LetIn p.program_arity p.program_sign) in
+         let fixna = Array.make 1 (Name (program_id p)) in
+         let fixty = Array.make 1 (program_type p) in
          (* Apply to itself *)
          let beforeargs = Termops.rel_list (signlen + 1) before in
          let fixref = mkRel (signlen + 1) in
@@ -313,9 +326,9 @@ let define_mutual_nested evd get_prog progs =
          in
          let fixbody = applist (Vars.lift after fixbody, afterargs) in
          (* Apply to its arguments *)
-         let fixbody = mkApp (fixbody, extended_rel_vect after p.program_sign) in
+         let fixbody = mkApp (fixbody, extended_rel_vect after (program_sign p)) in
          let fixbody = it_mkLambda_or_LetIn fixbody afterctx in
-         let fixbody = it_mkLambda_or_LetIn fixbody p.program_sign in
+         let fixbody = it_mkLambda_or_LetIn fixbody (program_sign p) in
          it_mkLambda_or_LetIn
          (mkFix (fixb, (fixna, fixty, Array.make 1 fixbody)))
          (List.init (nested - 1) (fun _ -> (Context.Rel.Declaration.LocalAssum (Anonymous, mkProp))))
@@ -323,11 +336,11 @@ let define_mutual_nested evd get_prog progs =
        let rec fixsubst i k acc l =
          match l with
          | (p', prog') :: rest ->
-            (match p'.program_rec with
+            (match p'.program_info.program_rec with
              | Some (Structural (NestedOn idx)) ->
                (match idx with
                | Some (idx,_) ->
-                 let rest_tys = List.map (fun (p,_) -> it_mkProd_or_LetIn p.program_arity p.program_sign) rest in
+                 let rest_tys = List.map (fun (p,_) -> program_type p) rest in
                  let term = one_nested k p' prog' rest_tys idx in
                    fixsubst i (succ k) ((true, term) :: acc) rest
                | None -> (* Non immediately recursive nested def *)
@@ -348,19 +361,20 @@ let define_mutual_nested evd get_prog progs =
      in
      let decl =
        let blockfn (p, prog) =
-         let na = Name p.program_id in
-         let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
+         let na = Name p.program_info.program_id in
+         let ty = program_type p in
+         let sign = program_sign p in
          let body = mkApp (get_prog prog, Array.append (Array.of_list mutualapp) (Array.of_list nestedbodies)) in
-         let body = mkApp (Vars.lift (List.length p.program_sign) body,
-                           extended_rel_vect 0 p.program_sign) in
-         let body = it_mkLambda_or_LetIn body (lift_rel_context 1 p.program_sign) in
+         let body = mkApp (Vars.lift (List.length sign) body,
+                           extended_rel_vect 0 sign) in
+         let body = it_mkLambda_or_LetIn body (lift_rel_context 1 sign) in
          na, ty, body
        in
        let blockl = List.map blockfn mutual in
        let names, tys, bodies = List.split3 blockl in
        Array.of_list names, Array.of_list tys, Array.of_list bodies
      in
-     let nested, mutual = List.partition (fun (p,prog) -> is_nested p) progs in
+     let nested, mutual = List.partition (fun (p,prog) -> is_nested p.program_info) progs in
      let declare_fix_fns i (p,prog) =
        let fix = mkFix ((structargs, i), decl) in
        (p, prog, fix)
@@ -386,7 +400,7 @@ let path_id path =
 let term_of_tree isevar env0 tree =
   let rec aux env evm = function
     | Compute ((ctx, _, _), where, ty, RProgram rhs) ->
-      let compile_where ({where_program; where_prob; where_type; where_splitting} as w)
+      let compile_where ({where_program; where_type} as w)
           (env, evm, ctx) =
         (* let env = push_rel_context ctx env0 in *)
         (* FIXME push ctx too if mutual wheres *)
@@ -598,6 +612,18 @@ let term_of_tree isevar env0 tree =
     isevar := evm;
     term, typ
 
+let make_program isevar env lets p prob s rec_node =
+  let s = match rec_node with
+    | Some r ->
+      RecValid (id_subst lets, p.program_id, r, s)
+    | None -> s
+  in
+  let term, _ = term_of_tree isevar env s in
+  { program_info = p;
+    program_prob = prob;
+    program_splitting = s;
+    program_rec_node = rec_node;
+    program_term = term }
 
 let change_lhs s (l, p, r) =
   let open Context.Rel.Declaration in
@@ -628,20 +654,24 @@ let define_constants flags isevar env0 tree =
   let helpers = ref [] in
   let rec aux env evm = function
     | Compute (lhs, where, ty, RProgram rhs) ->
-      let define_where ({where_program; where_prob;
-                         where_program_term; where_program_args;
-                         where_type; where_splitting; where_path} as w)
+      let define_where ({where_program;
+                         where_program_args;
+                         where_type; where_path} as w)
           (env, evm, s, ctx) =
         let (cst, (evm, e)) =
           Equations_common.declare_constant (path_id where_path)
-            where_program_term None(* (Some (program_type where_program)) *)
+            where_program.program_term None(* (Some (program_type where_program)) *)
             flags.polymorphic evm (Decl_kinds.(IsDefinition Definition))
         in
+        let () = helpers := (cst, 0) :: !helpers in
         let env = Global.env () in
         let evm = Evd.update_sigma_env evm env in
-        let w' = { w with where_program_term = e;
-                          where_prob = change_lhs s where_prob;
-                          where_splitting = Lazy.from_val (change_splitting s (Lazy.force w.where_splitting)) } in
+        let p = w.where_program in
+        let p' =
+          { p with program_term = e;
+                   program_prob = change_lhs s p.program_prob;
+                   program_splitting = change_splitting s p.program_splitting } in
+        let w' = { w with where_program = p' } in
         (env, evm, (where_id w, where_term w') :: s, w' :: ctx)
       in
       let env, evm, _, where = List.fold_right define_where where (env, evm, [], []) in

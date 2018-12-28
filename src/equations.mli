@@ -9,7 +9,6 @@
 open Environ
 open Names
 open Equations_common
-open Syntax
 open Splitting
 
 val define_by_eqs : poly:bool -> open_proof:bool ->
@@ -24,7 +23,7 @@ val define_principles :
   flags ->
   Syntax.rec_type option ->
   EConstr.t list ->
-  (program_info * compiled_program_info) list -> unit
+  (program * compiled_program_info) list -> unit
 
 val equations : poly:bool ->
   open_proof:bool ->

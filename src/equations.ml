@@ -66,12 +66,13 @@ let define_principles flags rec_info fixprots progs =
   let newsplits env fixdecls (p, prog, f) =
     let fixsubst = List.map (fun d -> let na, b, t = to_tuple d in
                                       (Nameops.Name.get_id na, (None, Option.get b))) fixdecls in
-    let i = p.program_id in
-    let sign = p.program_sign in
-    let arity = p.program_arity in
+    let pi = p.program_info in
+    let i = pi.program_id in
+    let sign = pi.program_sign in
+    let arity = pi.program_arity in
       match rec_info with
       | Some (Guarded _) ->
-         let fixdecls = program_fixdecls p fixdecls in
+         let fixdecls = program_fixdecls pi fixdecls in
          let cutprob, norecprob =
            let (ctx, pats, ctx' as ids) = Context_map.id_subst sign in
 	   (ctx @ fixdecls, pats, ctx'), ids
@@ -143,12 +144,12 @@ let define_principles flags rec_info fixprots progs =
                           program_split = unfold_split;
                           program_split_info = info }
              in
-             let p = { program_loc = p.program_loc;
+             let p = { program_loc = pi.program_loc;
                        program_id = i;
                        program_sign = sign;
                        program_arity = arity;
                        program_rec = None;
-                       program_impls = p.program_impls }
+                       program_impls = pi.program_impls }
              in
              let eqninfo =
                Principles_proofs.{ equations_id = i;
@@ -173,11 +174,11 @@ let define_principles flags rec_info fixprots progs =
 	   ignore(Obligations.add_definition
                     ~kind:info.decl_kind
 		    ~univ_hook:(Obligations.mk_univ_hook hook_eqs) ~reduce:(fun x -> x)
-                    ~implicits:p.program_impls unfold_eq_id (to_constr evd stmt)
+                    ~implicits:pi.program_impls unfold_eq_id (to_constr evd stmt)
                     ~tactic:(of82 tac)
                     (Evd.evar_universe_context evd) [||])
 	 in
-         define_tree None [] flags p.program_impls (Define false) evd env
+         define_tree None [] flags pi.program_impls (Define false) evd env
                      (unfoldi, sign, arity) None unfold_split hook_unfold;
          None
   in
@@ -187,13 +188,13 @@ let define_principles flags rec_info fixprots progs =
        let evm = !evd in
        (match rec_info with
         | Some (Guarded _) ->
-           build_equations flags.with_ind env evm rec_info [p, prog, eqninfo]
+           build_equations flags.with_ind env evm rec_info [p.program_info, prog, eqninfo]
         | Some (Logical _) -> ()
         | None ->
-           build_equations flags.with_ind env evm rec_info [p, prog, eqninfo])
+           build_equations flags.with_ind env evm rec_info [p.program_info, prog, eqninfo])
     | [_, _, None] -> ()
     | splits ->
-       let splits = List.map (fun (p,prog,s) -> p, prog, Option.get s) splits in
+       let splits = List.map (fun (p,prog,s) -> p.program_info, prog, Option.get s) splits in
        let evm = !evd in
        build_equations flags.with_ind env evm rec_info splits
   in
@@ -210,7 +211,7 @@ let define_principles flags rec_info fixprots progs =
           else Univ.Instance.empty
         in Constr.mkRef (gr, inst)
       in
-      (p, prog, f), of_tuple (Name p.program_id, Some (of_constr f), fixprot)
+      (p, prog, f), of_tuple (Name p.program_info.program_id, Some (of_constr f), fixprot)
     in
     let progs, fixdecls = List.split (List.map2 fn fixprots progs) in
     progs, List.rev fixdecls
@@ -221,7 +222,7 @@ let define_principles flags rec_info fixprots progs =
 let define_mutual_nested_csts rec_info flags progs =
   match progs with
   | [(p, prog)] ->
-    (match rec_info, p.program_rec with
+    (match rec_info, p.program_info.program_rec with
      | Some (Guarded [id, _]), Some (Structural (MutualOn (_, None))) ->
        (* Fix rec_info from inference of structural index *)
        let env = Global.env () in
@@ -243,12 +244,12 @@ let define_mutual_nested_csts rec_info flags progs =
        (fun prog -> e_new_global evd (ConstRef prog.program_cst)) progs in
      let mutual =
        List.map (fun (p, prog, fix) ->
-         let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
+         let ty = program_type p in
          let kn, _ =
-           declare_constant p.program_id fix (Some ty) flags.polymorphic
+           declare_constant p.program_info.program_id fix (Some ty) flags.polymorphic
                             !evd (IsDefinition Fixpoint)
          in
-         Impargs.declare_manual_implicits true (ConstRef kn) [p.program_impls];
+         Impargs.declare_manual_implicits true (ConstRef kn) [p.program_info.program_impls];
          let prog' = { prog with program_cst = kn } in
          (p, prog')) mutual
      in
@@ -257,9 +258,9 @@ let define_mutual_nested_csts rec_info flags progs =
        List.map (fun (p, prog, fix) ->
        let ty = program_type p in
        let body = Vars.substl args fix in
-       let kn, _ = declare_constant p.program_id body (Some ty) flags.polymorphic
+       let kn, _ = declare_constant p.program_info.program_id body (Some ty) flags.polymorphic
                                  !evd (IsDefinition Fixpoint) in
-       Impargs.declare_manual_implicits true (ConstRef kn) [p.program_impls];
+       Impargs.declare_manual_implicits true (ConstRef kn) [program_impls p];
        let prog' = { prog with program_cst = kn } in
        (p, prog')) nested in
      rec_info, mutual @ nested
@@ -298,14 +299,13 @@ let define_by_eqs ~poly ~open_proof opts eqs nt =
   let data, fixdecls, fixprots = compute_fixdecls_data env evd programs in
   let fixdecls = nf_rel_context_evar !evd fixdecls in
   let intenv = { rec_info; flags; fixdecls; intenv = data; notations = nt } in
-  let coverings = coverings env evd intenv programs (List.map snd eqs) in
+  let programs = coverings env evd intenv programs (List.map snd eqs) in
   let env = Global.env () in (* coverings has the side effect of defining comp_proj constants for now *)
-  let programs, coverings = List.split coverings in
   let status = Define false in
   let fix_proto_ref = destConstRef (Lazy.force coq_fix_proto) in
   let _kind = (Decl_kinds.Global, poly, Decl_kinds.Definition) in
   let baseid =
-    let p = List.hd programs in Id.to_string p.program_id in
+    let p = List.hd programs in Id.to_string p.program_info.program_id in
   (* Necessary for the definition of [i] *)
   let () =
     let trs = { TransparentState.full with TransparentState.tr_cst = Cpred.complement (Cpred.singleton fix_proto_ref) } in
@@ -319,7 +319,8 @@ let define_by_eqs ~poly ~open_proof opts eqs nt =
     let () = evd := Evd.from_ctx ectx in
     let cmap' x = of_constr (cmap (EConstr.to_constr ~abort_on_undefined_evars:false !evd x)) in
     let split = map_split cmap' split in
-    let p = nf_program_info !evd p in
+    let pi = nf_program_info !evd p.program_info in
+    let p = { p with program_info = pi } in
     let compiled_info = { program_cst = f_cst;
                           program_split = split;
                           program_split_info = info } in
@@ -332,25 +333,26 @@ let define_by_eqs ~poly ~open_proof opts eqs nt =
          define_principles flags rec_info fixprots progs')
   in
   let idx = ref 0 in
-  let define_tree p split =
-    let comp = match p.program_rec with
+  let define_tree p =
+    let pi = p.program_info in
+    let comp = match pi.program_rec with
       Some (WellFounded (_, _, l)) -> Some l
     | _ -> None
     in
     let fixdecls =
-      match p.program_rec with
+      match pi.program_rec with
       | Some (Structural (NestedOn None)) | None -> (* Actually the definition is not self-recursive *)
          List.filter (fun decl ->
              let na = Context.Rel.Declaration.get_name decl in
              let id = Nameops.Name.get_id na in
-             not (Id.equal id p.program_id)) fixdecls
+             not (Id.equal id pi.program_id)) fixdecls
       | _ -> fixdecls
     in
-    define_tree rec_info fixdecls flags p.program_impls status evd env
-                (p.program_id, p.program_sign, p.program_arity)
-		comp split (hook !idx p);
+    define_tree rec_info fixdecls flags pi.program_impls status evd env
+                (pi.program_id, pi.program_sign, pi.program_arity)
+                comp p.program_splitting (hook !idx p);
     incr idx
-  in CList.iter2 define_tree programs coverings
+  in List.iter define_tree programs
 
 let equations ~poly ~open_proof opts eqs nt =
   List.iter (fun (((loc, i), nested, l, t, by),eqs) -> Dumpglob.dump_definition CAst.(make ~loc i) false "def") eqs;

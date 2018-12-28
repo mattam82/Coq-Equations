@@ -103,7 +103,7 @@ val subst_rec :
 val subst_rec_split :
   Environ.env ->
   Evd.evar_map ->
-  Syntax.program_info ->
+  Splitting.program ->
   EConstr.t ->
   Splitting.path ->
   Context_map.context_map ->
@@ -114,7 +114,7 @@ val subst_rec_split :
 val update_split :
   Environ.env ->
   Evd.evar_map ref ->
-  Syntax.program_info ->
+  Splitting.program ->
   Syntax.rec_type option ->
   EConstr.t ->
   Context_map.context_map ->

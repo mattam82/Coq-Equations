@@ -768,6 +768,8 @@ let observe_new s (tac : unit Proofview.tactic) =
         let env = Goal.env gl in
         let sigma = Goal.sigma gl in
         Feedback.msg_debug (str"Applying " ++ str s ++ str " on " ++
+                            Printer.pr_named_context_of env sigma ++
+                            str "=================" ++
                             Printer.pr_econstr_env env sigma (Goal.concl gl));
         (Proofview.tclORELSE
          (Proofview.tclTHEN

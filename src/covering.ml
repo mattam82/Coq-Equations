@@ -809,32 +809,32 @@ let compute_rec_data env evars data lets p =
       { p with program_sign = sign;
                program_arity = liftn reclen (succ (length p.program_sign)) p.program_arity }
     in
-    let finalize flags s = s in
-    p, id_subst p.program_sign, ctxpats, finalize
+    p, id_subst p.program_sign, ctxpats, None
 
   | Some (WellFounded (term, rel, _)) ->
     let envlets = push_rel_context lets env in
     let functional_type, _full_functional_type, fix = wf_fix envlets evars p.program_sign p.program_arity term rel in
     let decl = make_def (Name p.program_id) None functional_type in
     let ctxpats = pats_of_sign lets in
+    let rec_node_intro = List.length p.program_sign in
     let p = { p with program_sign = p.program_sign @ lets } in
     let lhs = decl :: p.program_sign in
     let pats = PHide 1 :: lift_pats 1 (id_pats p.program_sign) in
     let prob = (lhs, pats, lhs) in
-    let finalize flags s =
-      RecValid (id_subst lets, p.program_id, { rec_node_term = fix;
-                                      rec_node_arg = term;
-                                      rec_node_rel = rel;
-                                      rec_node_intro = List.length p.program_sign;
-                                      rec_node_newprob = prob }, s)
+    let rec_node =
+      (* id_subst lets *)
+      { rec_node_term = fix;
+        rec_node_arg = term;
+        rec_node_rel = rel;
+        rec_node_intro = rec_node_intro;
+        rec_node_newprob = prob }
     in
     let p = { p with program_arity = lift 1 p.program_arity } in
-    p, prob, ctxpats, finalize
+    p, prob, ctxpats, Some rec_node
 
   | _ ->
     let p = { p with program_sign = p.program_sign @ lets } in
-    let finalize flags s = s in
-    p, id_subst p.program_sign, pats_of_sign lets, finalize
+    p, id_subst p.program_sign, pats_of_sign lets, None
 
 let rec covering_aux env evars p data prev (clauses : (pre_clause * int * bool) list) path
     (ctx,pats,ctx' as prob) extpats lets ty =
@@ -991,7 +991,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
         (lets, envctx, lift, subst) c (Some (Vars.lift (List.length w) ty)) in
     (* Compute the coverings using type information from the term using
        the where clauses *)
-    let () = List.iter (fun c -> ignore (Lazy.force c.where_splitting)) coverings in
+    let coverings = List.map (fun c -> Lazy.force c) coverings in
     let res = Compute (prob, coverings, ty', RProgram c') in
     Some res
 
@@ -1162,55 +1162,50 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
     let sigma, p = adjust_sign_arity env !evars p clauses in
     let () = evars := sigma in
 
-    let pre_type = program_type p in
+    let pre_type = Syntax.program_type p in
     let fixdecls = [Context.Rel.Declaration.LocalAssum (Name id, pre_type)] in
-    let p, problem, extpats, finalize =
+    let p, problem, extpats, rec_node =
       compute_rec_data env evars {data with rec_info = compute_recinfo [p];
                                       fixdecls = fixdecls} lets p in
     let intenv = Constrintern.compute_internalization_env ~impls:data.intenv
         env !evars Constrintern.Recursive [id] [pre_type] [p.program_impls]
     in
     let data = { data with intenv; } in
-    let relty = program_type p in
+    let relty = Syntax.program_type p in
     let src = (Some loc, Evar_kinds.(QuestionMark {
         qm_obligation=Define false;
         qm_name=Name id;
         qm_record_field=None;
       })) in
     let path = (id, false) :: path in
-    let splitting, term =
+    let where_args = extended_rel_list 0 lets in
+    let w' program =
+      {where_program = program; where_program_orig = p;
+       where_program_args = where_args;
+       where_path = path;
+       where_orig = path;
+       where_context_length = List.length extpats;
+       where_type = pre_type }
+    in
+    let program, term =
       match t with
       | Some ty (* non-delayed where clause, compute term right away *) ->
         let splitting = covering env0 evars p data clauses path problem extpats p.program_arity in
-        let splitting = finalize data.flags splitting in
-        let term, _ = term_of_tree evars env0 splitting in
-        Lazy.from_val splitting, term
+        let program = make_program evars env0 lets p problem splitting rec_node in
+        Lazy.from_val (w' program), program.program_term
       | None ->
         let sigma, term = Equations_common.new_evar env0 !evars ~src relty in
         let () = evars := sigma in
         let ev = destEvar !evars term in
         let cover () =
           let splitting = covering env0 evars p data clauses path problem extpats p.program_arity in
-          let splitting = finalize data.flags splitting in
-          let term, _ = term_of_tree evars env0 splitting in
-          evars := Evd.define (fst ev) term !evars; splitting
+          let program = make_program evars env0 lets p problem splitting rec_node in
+          evars := Evd.define (fst ev) program.program_term !evars; w' program
         in
         Lazy.from_fun cover, term
     in
-    let w' =
-      {where_program = p; where_program_orig = p;
-       where_program_term = term;
-       where_program_args = extended_rel_list 0 lets;
-       where_path = path;
-       where_orig = path;
-       where_prob = problem;
-       where_context_length = List.length extpats;
-       where_arity = p.program_arity;
-       where_type = pre_type;
-       where_splitting = splitting }
-    in
-    let decl = make_def (Name id) (Some (where_term w')) pre_type in
-    (data, decl :: lets, succ nlets, w' :: coverings,
+    let decl = make_def (Name id) (Some (applistc term where_args)) pre_type in
+    (data, decl :: lets, succ nlets, program :: coverings,
      push_rel decl envctx)
   in
   let (data, lets, nlets, coverings, envctx') =
@@ -1237,13 +1232,13 @@ let program_covering env evd data p clauses =
   in
   let sigma, p = adjust_sign_arity env !evd p clauses in
   let () = evd := sigma in
-  let p', prob, extpats, finalize = compute_rec_data env evd data [] p in
+  let p', prob, extpats, rec_node = compute_rec_data env evd data [] p in
   let _arity = nf_evar !evd p.program_arity in
   let splitting =
     covering env evd p data clauses [p.program_id, false] prob extpats p'.program_arity
   in
-  let splitting = finalize data.flags splitting in
-  p, splitting
+  let program = make_program evd env [] p prob splitting rec_node in
+  program
 
 let coverings env evd data programs equations =
   List.map2 (program_covering env evd data) programs equations

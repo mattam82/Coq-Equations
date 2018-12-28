@@ -217,4 +217,4 @@ val coverings :
   int_data ->
   Syntax.program_info list ->
   pre_equation list list ->
-  (Syntax.program_info * splitting) list
+  Splitting.program list

@@ -367,8 +367,9 @@ let rec aux_ind_fun info chop unfs unfids = function
       if not (List.is_empty wheres) then
         let wheretac acc s unfs =
           Proofview.Goal.enter (fun gl ->
+          let wp = s.where_program in
           let ctx, where_term, fstchop, unfids = match unfs with
-            | None -> pi1 s.where_prob, (where_term s), fst chop (* + List.length ctx *), unfids
+            | None -> pi1 wp.program_prob, (where_term s), fst chop (* + List.length ctx *), unfids
             | Some w ->
                let assoc, unf, split =
                  try PathMap.find w.where_path info.wheremap
@@ -380,8 +381,9 @@ let rec aux_ind_fun info chop unfs unfids = function
                  Feedback.msg_debug (str"Unfolded where " ++ str"term: " ++ pr_econstr_env env evd (where_term w) ++
                                      str" type: " ++ pr_econstr_env env evd w.where_type ++ str" assoc " ++
                                      pr_econstr_env env evd assoc);
-               let ctxlen = List.length (pi1 w.where_prob) - List.length unfctx in
-               let before, after = List.chop ctxlen (pi1 w.where_prob) in
+               let unfwp = w.where_program in
+               let ctxlen = List.length (pi1 unfwp.program_prob) - List.length unfctx in
+               let before, after = List.chop ctxlen (pi1 unfwp.program_prob) in
                let subst =
                  let hyps = Proofview.Goal.hyps gl in
                  let hyps, _ =
@@ -416,7 +418,7 @@ let rec aux_ind_fun info chop unfs unfids = function
               (match ann with
                | NestedOn None -> tclIDTAC
                | NestedOn (Some (idx, _)) | MutualOn (idx, _) ->
-                 let recid = add_suffix s.where_program.program_id "_rec" in
+                 let recid = add_suffix wp.program_info.program_id "_rec" in
                  (* The recursive argument is local to the where, shift it by the
                     length of the enclosing context *)
                  let newidx = match unfs with None -> idx + (List.length lctx) | Some _ -> idx in
@@ -426,13 +428,15 @@ let rec aux_ind_fun info chop unfs unfids = function
           let wheretac =
             let open Tacticals.New in
             observe_new "one where"
-              (tclTHENLIST [tclTRY (move_hyp coq_end_of_section_id Logic.MoveLast);
+              (tclTHENLIST [
+                  observe_new "moving section id" (tclTRY (move_hyp coq_end_of_section_id Logic.MoveLast));
                             fixtac;
-                            intros;
+                  observe_new "intros" intros;
+
                             (* if Option.is_empty unfs then tclIDTAC
                              * else autorewrite_one (info.term_info.base_id ^ "_where"); *)
-                            (of82 (aux_ind_fun info chop (Option.map (fun s -> Lazy.force s.where_splitting) unfs)
-                                     unfids (Lazy.force s.where_splitting)))])
+                            (of82 (aux_ind_fun info chop (Option.map (fun s -> s.where_program.program_splitting) unfs)
+                                     unfids (s.where_program.program_splitting)))])
           in
           let wherepath, args =
             try PathMap.find s.where_path info.pathmap
@@ -810,14 +814,22 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
          fun gl ->
          let env = pf_env gl in
          let evd = ref (project gl) in
-         let () = Feedback.msg_debug (str"Unfold where problem: " ++ pr_context_map env !evd unfw.where_prob) in
+         let wp = w.where_program in
+         let unfwp = unfw.where_program in
+         let () = Feedback.msg_debug (str"Unfold where assoc: " ++
+                                      Printer.pr_econstr_env env !evd assoc) in
+         let () = Feedback.msg_debug (str"Unfold where problem: " ++
+                                      pr_context_map env !evd wp.program_prob) in
+         let () = Feedback.msg_debug (str"Unfold where problem: " ++
+                                      pr_context_map env !evd unfwp.program_prob) in
          let ty =
-           let ctx = pi1 unfw.where_prob in
+
+           let ctx = pi1 unfwp.program_prob in
            let len = List.length ctx - List.length lctx in
            let newctx, oldctx = List.chop len ctx in
-           let lhs = mkApp (w.where_program_term(* lift len assoc *) (* in oldctx *), extended_rel_vect 0 newctx) in
-           let rhs = mkApp (unfw.where_program_term, extended_rel_vect 0 ctx) in
-           let eq = mkEq env evd unfw.where_arity lhs rhs in
+           let lhs = mkApp (lift len assoc, extended_rel_vect 0 newctx) in
+           let rhs = mkApp (unfwp.program_term, extended_rel_vect 0 ctx) in
+           let eq = mkEq env evd unfwp.program_info.program_arity lhs rhs in
            it_mkProd_or_LetIn eq ctx
          in
          let headcst f =
@@ -825,7 +837,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
            if isConst !evd f then fst (destConst !evd f)
            else assert false
          in
-         let f_cst = headcst w.where_program_term and funf_cst = headcst unfw.where_program_term in
+         let f_cst = headcst wp.program_term and funf_cst = headcst unfwp.program_term in
          let unfolds gl =
            let res = to82 (unfold_in_concl
 	     [Locus.OnlyOccurrences [1], EvalConstRef f_cst;
@@ -836,8 +848,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
            let tac =
              of82 (tclTHENLIST [observe "where before unfold" (to82 intros); unfolds;
                                 (observe "where"
-                                 (aux (Lazy.force w.where_splitting)
-                                  (Lazy.force unfw.where_splitting)))])
+                                 (aux wp.program_splitting unfwp.program_splitting))])
            in
            assert_by (Name id) ty (of82 (tclTHEN (to82 (keep [])) (to82 (Abstract.tclABSTRACT (Some id) tac))))
          in
