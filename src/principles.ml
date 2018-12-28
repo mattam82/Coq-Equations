@@ -611,7 +611,6 @@ let subst_rec_split env evd p f path prob s split =
 
          let cutprob = cut_problem s (pi1 program_prob) in
          let wsubst, _ = subst_rec program_prob s program_prob in
-         let where_prob = id_subst (pi3 cutprob) in
 
          let prog_info = where_program'.program_info in
 
@@ -843,10 +842,10 @@ let computations env evd alias refine eqninfo =
            let f, fargs = decompose_appvect evd f in
            let args = match_arguments evd (arguments evd (where_term w)) fargs in
            let fsubst = ((f, args), term) :: fsubst in
-           Feedback.msg_info Pp.(str"Substituting " ++ Printer.pr_econstr_env env evd f ++
-                                 spc () ++
-                                 prlist_with_sep spc int args ++ str" by " ++
-                                 Printer.pr_econstr_env env evd term);
+           (* Feedback.msg_info Pp.(str"Substituting " ++ Printer.pr_econstr_env env evd f ++
+            *                       spc () ++
+            *                       prlist_with_sep spc int args ++ str" by " ++
+            *                       Printer.pr_econstr_env env evd term); *)
            Some ((f, args), id, s), fsubst
          with Not_found -> None, fsubst
        in
