@@ -43,11 +43,11 @@ Require Import Arith.
 Polymorphic Definition pack {A} {P} (x : A) (t : ty A P) :=
   (&(A, P, x, t)) : {A & {P & {_ : A & ty A P}}}.
 
-Polymorphic Equations double_fn {A} {P} (t : ty A P) (x : A) : P x by rec (pack x t) rel :=
+Polymorphic Equations? double_fn {A} {P} (t : ty A P) (x : A) : P x by rec (pack x t) rel :=
   double_fn ty0 n := n + 0;
   double_fn ty1 nil := true;
   double_fn ty1 (x :: xs) := 0 <? length xs + double_fn ty0 (length xs).
-Next Obligation. Transparent rel. unfold rel. simp rel. cbn. auto with arith. Qed.
+Proof. Transparent rel. unfold rel. simp rel. cbn. auto with arith. Qed.
 
 Definition fn0 := double_fn ty0.
 Definition fn1 := double_fn ty1.
@@ -89,7 +89,8 @@ Qed.
 (* Admitted. *)
 
 Require Import Equations.Subterm.
-
+Obligation Tactic := program_simpl; try typeclasses eauto 10 with Below.
+(* FIXME long proof search *)
 Equations ack (m n : nat) : nat by rec (m, n) (lexprod _ _ lt lt) :=
   ack 0 0         := 1;
   ack 0 (S n)     := S (S n);
@@ -127,7 +128,6 @@ Equations sct0 (x : abc) : nat by rec (measure_abc x) lt :=
   sct0 (A x) := sct0 (B (C x)) + sct0 x;
   sct0 (B x) := sct0 x;
   sct0 (C x) := sct0 x.
-Solve Obligations with program_simpl; lia.
 
 Fixpoint measure_abc' (x : abc) :=
   match x with
@@ -137,11 +137,11 @@ Fixpoint measure_abc' (x : abc) :=
   | C x => S (measure_abc' x)
   end.
 
-Equations f1g1 (x : abc) : unit by rec (measure_abc' x) lt :=
+Equations? f1g1 (x : abc) : unit by rec (measure_abc' x) lt :=
   f1g1 (A (A x)) := f1 x _
     where f1 x' (H : measure_abc' x' < measure_abc' (A x)) : _ := { f1 x _ := f1g1 (A x) };
   f1g1 _ := tt.
-Next Obligation. auto with arith. Defined.
+Proof. auto with arith. Defined.
 
 Equations f1g1' (x : abc) : unit by rec (measure_abc' x) lt :=
   f1g1' (A (A x)) := f1g1' (A x);
@@ -184,14 +184,15 @@ Module sct2.
   Polymorphic Definition pack {A} {P} (t : ty A P) (x : A) :=
   (&(A, P, t, x)) : {A & {P & {_ : ty A P & A}}}.
 
-  Polymorphic Equations fg {A} {P} (t : ty A P) (x : A) : P x by rec (pack t x) rel' :=
+  Polymorphic Equations? fg {A} {P} (t : ty A P) (x : A) : P x by rec (pack t x) rel' :=
     fg ty0 (nil, x) := x;
     fg ty0 (cons y ys, x) := 1 :: fg ty1 (ys, x, (cons y ys));
     fg ty1 (a, b, c) := 2 :: fg ty0 (a, app b c).
 
   (* TODO find order! *)
-  Next Obligation. unfold rel'. cbn. auto with arith. Qed.
-  Next Obligation. unfold rel'. cbn. reflexivity. Qed.
+  Proof.
+    - unfold rel'. cbn. auto with arith.
+    - unfold rel'. cbn. reflexivity. Qed.
 
   Inductive fg_dom : forall (A : Set) (P : A -> Set), ty A P -> A -> Prop :=
   | fg_dom_equation_1 :
@@ -209,13 +210,8 @@ Module sct2.
                         fg_dom (list nat * list nat * list nat)
                           (fun _ : list nat * list nat * list nat => list nat) ty1 (l0, l1, l).
 
-  Lemma fg_ind_inh : forall A P t x, fg_dom A P t x.
-  Proof.
-    intros.
-
-
-destruct t. destruct x. destruct l. econstructor.
-    econstructor.
-
+  (* Lemma fg_ind_inh : forall A P t x, fg_dom A P t x. *)
+  (* Proof. *)
+  (*   intros. *)
 
 End sct2.
