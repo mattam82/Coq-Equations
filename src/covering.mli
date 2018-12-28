@@ -165,13 +165,13 @@ val covering_aux :
   env ->
   Evd.evar_map ref ->
   program_info -> int_data ->
-  (pre_clause * int * bool) list ->
-  (pre_clause * int * bool) list ->
+  (pre_clause * (int * int)) list ->
+  (pre_clause * (int * int)) list ->
   path ->
   context_map ->
   user_pats ->
   rel_context -> constr ->
-  ((pre_clause * int * bool) list * splitting) option
+  ((pre_clause * (int * int)) list * splitting) option
 
 val covering : ?check_unused:bool ->
   env ->

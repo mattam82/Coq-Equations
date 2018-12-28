@@ -552,9 +552,9 @@ let rel_id ctx n =
 let push_named_context = List.fold_right push_named
 
 let check_unused_clauses env cl =
-  let unused = List.filter (fun (_, _, used) -> not used) cl in
+  let unused = List.filter (fun (_, (_, used)) -> used = 0) cl in
   match unused with
-  | ((loc, lhs, _) as cl, _, _) :: cls ->
+  | ((loc, lhs, _) as cl, _) :: cls ->
     user_err_loc (loc, "covering", str "Unused clause " ++ pr_preclause env cl)
   | [] -> ()
 
@@ -836,14 +836,14 @@ let compute_rec_data env evars data lets p =
     let p = { p with program_sign = p.program_sign @ lets } in
     p, id_subst p.program_sign, pats_of_sign lets, None
 
-let rec covering_aux env evars p data prev (clauses : (pre_clause * int * bool) list) path
+let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int)) list) path
     (ctx,pats,ctx' as prob) extpats lets ty =
   if !Equations_common.debug then
-    Feedback.msg_debug Pp.(str"Launching covering on "++ pr_preclauses env (List.map pi1 clauses) ++
+    Feedback.msg_debug Pp.(str"Launching covering on "++ pr_preclauses env (List.map fst clauses) ++
                            str " with problem " ++ pr_problem p env !evars prob ++
                            str " extpats " ++ pr_user_pats env extpats);
   match clauses with
-  | ((loc, lhs, rhs), idx, used as clause) :: clauses' ->
+  | ((loc, lhs, rhs), (idx, cnt) as clause) :: clauses' ->
     if !Equations_common.debug then
       Feedback.msg_debug (str "Matching " ++ pr_user_pats env (extpats @ lhs) ++ str " with " ++
                           pr_problem p env !evars prob);
@@ -853,17 +853,17 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * int * bool) 
        (* let renaming = rename_prob_subst env ctx (pi1 s) in *)
        let s = (List.map (fun ((x, gen), y) -> x, y) (pi1 s), pi2 s, pi3 s) in
        (* let prob = compose_subst env ~sigma:!evars renaming prob in *)
-       let clauseid = Id.of_string ("clause_" ^ string_of_int idx) in
+       let clauseid = Id.of_string ("clause_" ^ string_of_int idx ^ (if cnt = 0 then "" else "_" ^ string_of_int cnt)) in
        let interp =
          interp_clause env evars p data prev clauses' ((clauseid, false) :: path) prob
-           extpats lets ty ((loc,lhs,rhs), used) s
+           extpats lets ty ((loc,lhs,rhs), cnt) s
        in
        (match interp with
         | None ->
            user_err_loc
             (dummy_loc, "split_var",
              str"Clause " ++ pr_preclause env (loc, lhs, rhs) ++ str" matched but its interpretation failed")
-        | Some s -> Some (List.rev prev @ ((loc,lhs,rhs),idx,true) :: clauses', s))
+        | Some s -> Some (List.rev prev @ ((loc,lhs,rhs),(idx, cnt+1)) :: clauses', s))
 
      | UnifFailure ->
        if !Equations_common.debug then Feedback.msg_debug (str "failed");
@@ -1120,7 +1120,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
                     @ (lift_rel_context 1 lets)
       in specialize_rel_context !evars (pi2 cmap) newlets
     in
-    let clauses' = List.mapi (fun i x -> x, succ i, false) cls' in
+    let clauses' = List.mapi (fun i x -> x, (succ i, 0)) cls' in
     match covering_aux env evars p data [] clauses' path' newprob [] lets' newty with
     | None ->
       errorlabstrm "deppat"
@@ -1214,7 +1214,7 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
 
 and covering ?(check_unused=true) env evars p data (clauses : pre_clause list)
     path prob extpats ty =
-  let clauses = (List.mapi (fun i x -> (x,succ i,false)) clauses) in
+  let clauses = (List.mapi (fun i x -> (x,(succ i,0))) clauses) in
   (*TODO eta-expand clauses or type *)
   match covering_aux env evars p data [] clauses path prob extpats [] ty with
   | Some (clauses, cov) ->

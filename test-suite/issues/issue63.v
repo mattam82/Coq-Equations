@@ -46,7 +46,7 @@ Fixpoint term_size
   | Comp f g => 1%nat + term_size f + term_size g
   end.
 Set Program Mode.
-Equations comp_assoc_simpl_rec {a : nat} {tys dom cod}
+Equations? comp_assoc_simpl_rec {a : nat} {tys dom cod}
           (t : @Term a tys dom cod) : {t' : @Term a tys dom cod | term_size t' <= term_size t}
   by rec (term_size t) lt :=
   comp_assoc_simpl_rec (Comp f g) with comp_assoc_simpl_rec f => {
@@ -54,6 +54,7 @@ Equations comp_assoc_simpl_rec {a : nat} {tys dom cod}
     | x => Comp x (comp_assoc_simpl_rec g)
   };
   comp_assoc_simpl_rec x := x.
-
-Solve Obligations with program_simpl; try destruct_call comp_assoc_simpl_rec; simpl in *; lia.
-Solve Obligations.
+Proof.
+  1-2,4,6:lia.
+  all:(simpl; destruct_call comp_assoc_simpl_rec; simpl in *; lia).
+Defined.

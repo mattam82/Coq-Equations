@@ -16,13 +16,13 @@ Section ilist.
   | Next : forall n, fin n -> fin (S n).
   Arguments First {n}.
 
+  Derive Signature for ilist fin.
+
   Equations get {n} (ls : ilist n) (i : fin n) : A :=
   get (Cons x _) First := x;
   get (Cons _ t) (Next j) := get t j.
 
 End ilist.
-
-Derive Signature for ilist fin.
 
 Arguments Nil [A].
 Arguments First [n].
@@ -61,6 +61,8 @@ Section hlist.
   Inductive member : list A -> Type :=
   | HFirst : forall ls, member (elm :: ls)
   | HNext : forall x ls, member ls -> member (x :: ls).
+
+  Derive Signature NoConfusion for member.
 
   Equations hget {ls} (mls : hlist ls) (i : member ls) : B elm :=
   hget (HCons x _) (HFirst _) := x;

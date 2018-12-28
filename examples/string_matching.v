@@ -114,19 +114,15 @@ Require Import Omega.
 Section Chunk.
   Context{T : Type} `{M : ChunkableMonoid T}.
   Set Program Mode.
-  Equations chunk (i: { i: nat | i > 0 }) (x: T) : list T by rec (length x) lt :=
+  Equations? chunk (i: { i: nat | i > 0 }) (x: T) : list T by rec (length x) lt :=
   chunk i x with dec (Nat.leb (length x) i) :=    
     { | left _ => [x] ;
       | right p => take i x :: chunk i (drop i x) }.
-  Next Obligation.
-    red.
-    apply leb_complete_conv in p.
-    rewrite drop_spec. omega. auto with arith.
-  Defined.
+  Proof. apply leb_complete_conv in p. rewrite drop_spec. omega. auto with arith. Qed.
 End Chunk.
 
 (** Bugs, rewrite hint db is not discharged *)
-Hint Rewrite @chunk_helper_1_equation_2 @chunk_helper_1_equation_1 @chunk_equation_1 : chunk.
+Hint Rewrite @chunk_unfold_clause_1_refine_equation_1 @chunk_unfold_clause_1_refine_equation_2 @chunk_equation_1 : chunk.
 
 Theorem if_flip_helper {B: Type} {b: bool}
         (C E: true = b -> B) (D F: false = b -> B):
@@ -236,13 +232,11 @@ Qed.
 Section pmconcat.
   Context {M : Type} `{ChunkableMonoid M}.
 
-  Equations pmconcat (I : { i : nat | i > 0 }) (x : list M) : M by rec (length x) lt :=
+  Equations? pmconcat (I : { i : nat | i > 0 }) (x : list M) : M by rec (length x) lt :=
   pmconcat i x with dec ((` i <=? 1) || (length x <=? ` i))%bool => {
     | left H => mconcat x ;
     | right Hd => pmconcat i (map mconcat (chunk i x)) }.
-
-  Next Obligation.
-    red. clear pmconcat.
+  Proof. clear pmconcat.
     rewrite map_length.
     rewrite Bool.orb_false_iff in Hd.
     destruct Hd. apply leb_complete_conv in H2. apply leb_complete_conv in H3.

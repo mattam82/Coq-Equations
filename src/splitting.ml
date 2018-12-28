@@ -732,7 +732,7 @@ type term_info = {
   base_id : string;
   decl_kind: Decl_kinds.definition_kind;
   helpers_info : (Constant.t * int) list;
-  comp_obls : Id.Set.t; (** The recursive call proof obligations *)
+  comp_obls : Constant.t list; (** The recursive call proof obligations *)
   user_obls : Id.Set.t; (** The user obligations *)
 }
 
@@ -762,7 +762,8 @@ let solve_equations_obligations flags i isevar split hook =
   let env = Global.env () in
   let types =
     List.map (fun (ev, evi) ->
-        Feedback.msg_debug (str"evar type" ++ Printer.pr_econstr_env env !isevar evi.Evd.evar_concl);
+        if !Equations_common.debug then
+          Feedback.msg_debug (str"evar type" ++ Printer.pr_econstr_env env !isevar evi.Evd.evar_concl);
         let section_length = List.length (named_context env) in
         let evcontext = Evd.evar_context evi in
         let local_context, section_context =
@@ -771,6 +772,7 @@ let solve_equations_obligations flags i isevar split hook =
         let type_ = Termops.it_mkNamedProd_or_LetIn evi.Evd.evar_concl local_context in
         env, ev, evi, local_context, type_) evars in
   (* Make goals from a copy of the evars *)
+  let initisevar = !isevar in
   let isevar0 = ref !isevar in
   let wits = ref [] in
   let tele =
@@ -800,9 +802,13 @@ let solve_equations_obligations flags i isevar split hook =
         | DefinitionBody d -> IsDefinition d
         | Proof p -> IsProof p
       in
-      let () =
-        CList.iter2 (fun (wit, (evar_env, ev, evi, local_context, type_)) entry ->
-         if Evd.is_defined !isevar ev then () else
+      let recobls =
+        CList.map2 (fun (wit, (evar_env, ev, evi, local_context, type_)) entry ->
+            let () =
+              if Evd.is_defined !isevar ev then
+                (* We backtracked, reset the isevar structure *)
+                isevar := initisevar
+            in
            let id =
              match Evd.evar_ident ev !isevar with
              | Some id -> id
@@ -816,12 +822,13 @@ let solve_equations_obligations flags i isevar split hook =
            let newevars, app = Evarutil.new_global !isevar (ConstRef cst) in
            isevar :=
              Evd.define ev (applist (app, List.rev (Context.Named.to_instance mkVar local_context)))
-               newevars)
+               newevars;
+           cst)
           (CList.combine (List.rev !wits) types) obj.Proof_global.entries
       in
       if !Equations_common.debug then
         Feedback.msg_debug (str"Calling hook with split " ++ pr_splitting env !isevar split);
-      hook split
+      hook recobls split
   in
   (* Feedback.msg_debug (str"Starting proof"); *)
   Proof_global.(start_dependent_proof i kind tele (make_terminator terminator));
@@ -843,7 +850,8 @@ let solve_equations_obligations flags i isevar split hook =
                                   str " refine them interactively")
 
 
-let define_tree is_recursive helpers fixprots flags impls status isevar env (i, sign, arity)
+let define_tree is_recursive helpers recobls
+    fixprots flags impls status isevar env (i, sign, arity)
                 comp split hook =
   let env = Global.env () in
   let t, ty = term_of_tree isevar env split in
@@ -886,7 +894,7 @@ let define_tree is_recursive helpers fixprots flags impls status isevar env (i, 
     let baseid = Id.to_string i in
     let term_info = { term_id = gr; term_ustate = uctx; term_evars = evars;
                       base_id = baseid; helpers_info = helpers; decl_kind = kind;
-                      comp_obls = !compobls; user_obls = Id.Set.union !compobls !userobls } in
+                      comp_obls = recobls; user_obls = Id.Set.union !compobls !userobls } in
     let cmap = cmap (fun id -> try List.assoc id evars
                       with Not_found -> anomaly (Pp.str"Incomplete obligation to term substitution"))
     in
@@ -948,20 +956,20 @@ let add_hint local i cst =
 
 let define_tree is_recursive fixprots flags impls status isevar env (i, sign, arity)
                 comp split hook =
-  let hook split =
+  let hook recobls split =
     let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
     let () = isevar := Evd.minimize_universes !isevar in
     let split = map_split (simplify_evars !isevar) split in
     let helpers, split = define_constants flags isevar env split in
     let () = List.iter (fun (cst, _) -> add_hint true i cst) helpers in
-    define_tree is_recursive helpers fixprots flags impls status isevar env (i, sign, arity) comp split hook
+    define_tree is_recursive helpers recobls fixprots flags impls status isevar env (i, sign, arity) comp split hook
   in
   if Evd.has_undefined !isevar then
     solve_equations_obligations flags i isevar split hook
   else
     (if !Equations_common.debug then
        Feedback.msg_debug (str"Calling hook with split " ++ pr_splitting env !isevar split);
-     hook split)
+     hook [] split)
 
 let mapping_rhs sigma s = function
   | RProgram c -> RProgram (mapping_constr sigma s c)

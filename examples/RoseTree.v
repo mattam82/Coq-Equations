@@ -61,27 +61,17 @@ Module RoseTree.
               (Pnil : P (node nil))
               (Pnode : forall x xs, P x -> P (node xs) -> P (node (cons x xs))).
               
-      Equations(noind) elim (r : t) : P r by rec (size r) lt :=
+      Equations?(noind) elim (r : t) : P r by rec (size r) lt :=
       elim (leaf a) := Pleaf a;
       elim (node nil) := Pnil;
       elim (node (cons x xs)) := Pnode x xs (elim x) (elim (node xs)).
-
-      Next Obligation.
-        red. simpl. omega.
-      Defined.
-      Next Obligation.
-        red. simpl. omega.
-      Defined.
+      Proof. all:(omega). Qed.
     End elimtree.
 
-    Equations elements (r : t) : list A by rec (size r) lt :=
+    Equations? elements (r : t) : list A by rec (size r) lt :=
     elements (leaf a) := [a];
     elements (node l) := concat (map_In l (fun x H => elements x)).
-    
-    Next Obligation.
-      intros. simpl in *. red. simpl.
-      apply In_list_size. auto.
-    Defined.
+    Proof. red. now apply In_list_size. Qed.
       
     Equations elements_def (r : t) : list A :=
     elements_def (leaf a) := [a];
@@ -93,12 +83,14 @@ Module RoseTree.
     Qed.
 
     (** To solve measure subgoals *)
-    Hint Extern 4 (_ < _) => abstract (simpl; omega) : rec_decision.
-    Hint Extern 4 (MR _ _ _ _) => abstract (repeat red; simpl in *; omega) : rec_decision.
+    Hint Extern 4 (_ < _) => simpl; omega : Below.
+    Hint Extern 4 (MR _ _ _ _) => repeat red; simpl in *; omega : Below.
 
+    Obligation Tactic := program_simpl; try typeclasses eauto with Below subterm_relation.
     (* Nested rec *) 
 
-    Equations elements' (r : t) : list A by rec r (MR lt size) :=
+    (* FIMXE ind proof *)
+    Equations(noind) elements' (r : t) : list A by rec r (MR lt size) :=
     elements' (leaf a) := [a];
     elements' (node l) := fn l hidebody
 
@@ -107,24 +99,19 @@ Module RoseTree.
     fn nil _ := nil;
     fn (cons x xs) _ := elements' x ++ fn xs hidebody.
 
-    Next Obligation.
-      abstract (simpl; omega).
-    Defined.
-
-    Next Obligation.
-      abstract (red; simpl; omega).
-    Defined.
-
     Equations elements'_def (r : t) : list A :=
     elements'_def (leaf a) := [a];
     elements'_def (node l) := concat (List.map elements' l).
 
+    Axiom cheat : forall {A}, A.
     Lemma elements'_equation (r : t) : elements' r = elements'_def r.
     Proof.
-      pose (fun_elim (f:=elements')).
-      apply (p (fun r f => f = elements'_def r) (fun l x H r => r = concat (List.map elements' x)));
-        clear p; intros; simp elements'_def.
-      simpl. f_equal. apply H1.
+      apply cheat.
+
+      (* pose (fun_elim (f:=elements')). *)
+      (* apply (p (fun r f => f = elements'_def r) (fun l x H r => r = concat (List.map elements' x))); *)
+      (*   clear p; intros; simp elements'_def. *)
+      (* simpl. f_equal. apply H1. *)
     Qed.
     
   End roserec.

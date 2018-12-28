@@ -23,14 +23,15 @@ where aux2 (l : list foo) : nat := {
 (*   aux3 [] := 1; *)
 (*   aux3 (cons hd tl) := f hd + aux3 tl }. *)
 
+(* FIXME Should be derivable automatically *)
 Next Obligation.
   assert ((forall x : foo, f_ind x (f x)) ->
-  (forall l : list foo, f_ind_1 l (aux1 l)) /\
-  (forall l : list foo, f_ind_2 l (aux2 l))).
+  (forall l : list foo, aux1_ind l (aux1 l)) /\
+  (forall l : list foo, aux2_ind l (aux2 l))).
   intros.
   split.
   fix H2 1. intros l.
-  assert(forall l : list foo, f_ind_2 l (aux2 l)).
+  assert(forall l : list foo, aux2_ind l (aux2 l)).
   fix H3 1. intros l'. destruct l'.
   constructor.
   constructor.

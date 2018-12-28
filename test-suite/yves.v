@@ -28,18 +28,12 @@ unfold size; simpl.
 unfold lt; apply Peano.le_n_S; rewrite Nat.add_comm; apply Nat.le_add_r.
 Qed.
 
-Equations redo_rev_tree {T} (t : btree T) : btree T
+Equations? redo_rev_tree {T} (t : btree T) : btree T
   by rec (size t) lt :=
    redo_rev_tree Leaf := Leaf ;
    redo_rev_tree (Node a t1 t2) := Node a (redo_rev_tree t2)
                                         (redo_rev_tree t1).
-
-  Next Obligation.
-    apply size2.
-  Qed.
-  Next Obligation.
-    apply size1.
-  Qed.
+Proof. apply size2. apply size1. Defined.
 
 Lemma redo_rev_tree_invol {T} (t : btree T) : redo_rev_tree (redo_rev_tree t) = t.
 Proof.

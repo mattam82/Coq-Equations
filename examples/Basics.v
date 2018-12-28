@@ -40,17 +40,16 @@ Module Obligations.
 
   Obligation Tactic := idtac.
 
-  (** One can use equations just like program, putting underscores [_] for
-      obligations to be filled separately. *)
-  Equations f (n : nat) : nat :=
+  (** One can use equations similarly to Program or the [refine] tactic,
+      putting underscores [_] for subgoals to be filled separately using
+      the tactic mode. *)
+  Equations? f (n : nat) : nat :=
   f 0 := 42 ;
   f (S m) with f m :=
   {
     f (S m) IH := _
   }.
-  Next Obligation.
-    intros. exact IH.
-  Defined.
+  Proof. intros. exact IH. Defined.
 
 End Obligations.
 
@@ -168,6 +167,7 @@ Derive NoConfusion NoConfusionHom for vector.
 Arguments Vector.nil {A}.
 Arguments Vector.cons {A} _ {n}.
 
+Declare Scope vect_scope.
 Notation " x |:| y " := (@Vector.cons _ x _ y) (at level 20, right associativity) : vect_scope.
 Notation " x |: n :| y " := (@Vector.cons _ x n y) (at level 20, right associativity) : vect_scope.
 Notation "[]v" := Vector.nil (at level 0) : vect_scope.
@@ -214,11 +214,14 @@ Section foo.
       must be shown smaller than a [vector A (S n)]. They are actually compared
       at the packed type [{ n : nat & vector A n}]. *)
 
-  Equations unzip {n} (v : vector (A * B) n) : vector A n * vector B n
+  Obligation Tactic := program_simpl; try typeclasses eauto with Below rec_decision Subterm.
+
+  Equations? unzip {n} (v : vector (A * B) n) : vector A n * vector B n
     by rec (signature_pack v) (@t_subterm (A * B)) :=
   unzip []v := ([]v, []v) ;
   unzip (Vector.cons (x, y) v) with unzip v := {
     | pair xs ys := (Vector.cons x xs, Vector.cons y ys) }.
+  Proof. do 2 constructor. Qed.
 End foo.
 
 (** Playing with lists and functional induction, we define a tail-recursive version

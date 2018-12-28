@@ -630,7 +630,7 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
              tclORELSE (try_induction ()) (fun (e, einfo) ->
                  match e with
                  | NotGuarded ->
-                   Feedback.msg_debug (str "Proof of mutual induction principle is not guarded " ++
+                   Feedback.msg_info (str "Proof of mutual induction principle is not guarded " ++
                                        str" and cannot be proven by induction");
                    tclIDTAC
                  | _ -> tclZERO ~info:einfo e)
@@ -816,12 +816,12 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
          let evd = ref (project gl) in
          let wp = w.where_program in
          let unfwp = unfw.where_program in
-         let () = Feedback.msg_debug (str"Unfold where assoc: " ++
-                                      Printer.pr_econstr_env env !evd assoc) in
-         let () = Feedback.msg_debug (str"Unfold where problem: " ++
-                                      pr_context_map env !evd wp.program_prob) in
-         let () = Feedback.msg_debug (str"Unfold where problem: " ++
-                                      pr_context_map env !evd unfwp.program_prob) in
+         (* let () = Feedback.msg_debug (str"Unfold where assoc: " ++
+          *                              Printer.pr_econstr_env env !evd assoc) in
+          * let () = Feedback.msg_debug (str"Unfold where problem: " ++
+          *                              pr_context_map env !evd wp.program_prob) in
+          * let () = Feedback.msg_debug (str"Unfold where problem: " ++
+          *                              pr_context_map env !evd unfwp.program_prob) in *)
          let ty =
 
            let ctx = pi1 unfwp.program_prob in

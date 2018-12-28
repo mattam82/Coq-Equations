@@ -40,9 +40,7 @@ Program Instance TupleMap_depelim n T U : DependentEliminationPackage (TupleMap 
 Next Obligation.
   revert n T U tm.
   fix IH 4.
-  intros.
-  Ltac destruct' x := destruct x.
-  on_last_hyp destruct'; [ | apply X0 ]; auto. 
+  intros. destruct tm; [ | apply X0 ]; auto.
 Defined.
 
 (* Doesn't know how to deal with the nested TupleMap  *)
@@ -127,12 +125,14 @@ myComp (tmCons _ H g) (tmCons F G f) :=
   tmCons _ _ (fun x => existT (fun y => TupleMap _ _ (_ y)) (projT1 (g (projT1 (f x))))
                            (myComp (projT2 (g (projT1 (f x)))) (projT2 (f x)))).
 
-Time Equations myComp_wf {n} {B C : TupleT n} (tm1 : TupleMap _ B C) {A : TupleT n} (tm2 : TupleMap _ A B)
+(* FIXME long unfold_eq proof *)
+Time Equations? myComp_wf {n} {B C : TupleT n} (tm1 : TupleMap _ B C) {A : TupleT n} (tm2 : TupleMap _ A B)
 : TupleMap _ A C by rec (signature_pack tm1) TupleMap_subterm :=
 myComp_wf tmNil tmNil := tmNil;
 myComp_wf (tmCons _ H g) (tmCons F G f) :=
   tmCons _ _ (fun x => existT (fun y => TupleMap _ _ (_ y)) (projT1 (g (projT1 (f x))))
                            (myComp_wf (projT2 (g (projT1 (f x)))) (projT2 (f x)))).
+Proof. constructor. simpl. constructor. Defined.
 
 Print Assumptions myComp.
 Print Assumptions myComp_wf.

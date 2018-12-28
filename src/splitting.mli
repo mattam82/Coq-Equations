@@ -135,7 +135,7 @@ type term_info = {
   base_id : string;
   decl_kind : Decl_kinds.definition_kind;
   helpers_info : (Constant.t * int) list;
-  comp_obls : Id.Set.t; (** The recursive call proof obligations *)
+  comp_obls : Constant.t list; (** The recursive call proof obligations *)
   user_obls : Id.Set.t; (** The user proof obligations *)
 }
 

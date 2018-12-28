@@ -215,7 +215,7 @@ unzip_n A B (S n) (cons (pair x y) n v) with unzip_n v := {
 (* Definition nos_with_comp (n : nat) := nat. *)
 (* Lemma nos_with (n : nat) : nos_with_comp n. *)
 (*   rec_wf_eqns nos n. *)
-Print Instances WellFounded.
+
 Equations nos_with (n : nat) : nat by rec n :=
 nos_with O := O ;
 nos_with (S m) with nos_with m := {
@@ -415,7 +415,6 @@ vmap' f (cons a v) := cons (f a) (vmap' f v).
 
 Hint Resolve lt_n_Sn : subterm_relation.
 
-Set Shrink Obligations.
 Equations vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n
   by rec n :=
 vmap f nil := nil ;
@@ -486,7 +485,7 @@ vlast (cons a (n:=O) nil) := a ;
 vlast (cons a (n:=S n) v) := vlast v.
 
 Transparent vlast.
-Eval compute in (vlast (cons 2 (cons 5 (cons 4 nil)))).
+Definition testvlast : 4 = (vlast (cons 2 (cons 5 (cons 4 nil)))) := eq_refl.
 
 Fixpoint vapp {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
   match v with
@@ -519,7 +518,6 @@ Definition cast {A B : Type} (a : A) (p : A = B) : B.
   intros. subst. exact a.
 Defined.
 
-Unset Shrink Obligations.
 Equations parity (n : nat) : Parity n :=
 parity O := even 0 ;
 parity (S n) with parity n => {
@@ -547,7 +545,7 @@ diag (cons (cons a v) v') := cons a (diag (vmap vtail v')).
     matched relevantly, not its indices, which could hence
     disappear. *)
 
-Extraction diag.
+(* Extraction diag. *)
 
 (** It can be done structurally as well but we're matching on the index now. *)
 Equations(struct n) diag_struct {A n} (v : vector (vector A n) n) : vector A n :=

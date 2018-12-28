@@ -23,9 +23,10 @@ horec_struct (lim k f) := maxf k (fun x => horec_struct (f x)).
 
 Derive Subterm for ho.
 
-Equations horec (x : ho) : nat by rec x ho_subterm :=
+Equations? horec (x : ho) : nat by rec x ho_subterm :=
 horec (base n) := n;
 horec (lim k f) := maxf k (fun x => horec (f x)).
-
+Proof. constructor. constructor. Defined.
 Transparent horec maxf lift_fin horec_struct.
-Eval compute in horec (lim 7 (fun fs => base (fog fs))).
+
+Definition horec_test : horec (lim 7 (fun fs => base (fog fs))) = 6 := eq_refl.

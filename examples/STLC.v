@@ -378,10 +378,10 @@ Inductive atomic : type -> Prop :=
 Derive Signature for atomic.
 Hint Constructors atomic : term.
 
-Equations atomic_dec (t : type) : { atomic t } + { ~ atomic t } :=
+Equations? atomic_dec (t : type) : { atomic t } + { ~ atomic t } :=
 atomic_dec (atom a) := left (atomic_atom a) ;
 atomic_dec _ := right _.
-  Solve Obligations with intros; intro H; depelim H.
+Proof. all:(intro H; depelim H). Qed.
 
 Inductive check : ctx -> term -> type -> Prop :=
 | abstraction_check Γ A B t :
@@ -616,7 +616,7 @@ Ltac apply_transitivity :=
   end.
 Hint Extern 31 (clos_trans _ _ _ _) => apply_transitivity : subterm_relation.
 
-Equations hereditary_subst (t : type * term * term) (k : nat) :
+Equations? hereditary_subst (t : type * term * term) (k : nat) :
   term * option (her_type t)
   by rec t her_order :=
 
@@ -649,25 +649,13 @@ hereditary_subst (pair (pair A a) t) k with t := {
       | inr p' := (Snd p', None) } } ;
 
   | Tt := (Tt, None) }.
+Proof.
+  all:(unfold her_type in *; simpl in *; try (constructor 2; do 2 constructor)).
 
-Solve Obligations with
-   try (unfold her_type; intros; constructor 2; do 2 constructor).
-
-Next Obligation.
-  destruct prf; subst; eauto 10 with subterm_relation.
+  all:(destruct prf; subst; eauto 10 with subterm_relation).
 Defined.
 
 Hint Unfold her_type : subterm_relation.
-
-Obligation Tactic := idtac.
-
-Solve Obligations with
-    try (unfold her_type;
-           simpl; intros;
-             destruct prf; subst; eauto 10 with subterm_relation).
-
-Solve Obligations.
-
 Hint Unfold const : subterm_relation.
 
 Ltac autoh :=
@@ -686,9 +674,11 @@ Proof.
   depelim t. depelim p. simph.
   constructor. depelim t1.
   constructor.
-  destruct (Nat.compare n k); try constructor.
+  destruct (Nat.compare n k); try constructor. auto.
 
-  simph. 
+  simph.
+
+  simph.
 
   constructor; autoh.
 
@@ -699,7 +689,7 @@ Proof.
   rewrite_strat (innermost (hints hereditary_subst)).
   constructor. autoh.
 
-  simpl in prf. apply hsubst. 
+  apply hsubst. simpl in *.
   intuition subst. autoh.
   autoh.
 
@@ -707,13 +697,14 @@ Proof.
 
   simph.
 
-  constructor. autoh. 
+  constructor. autoh. autoh.
+  constructor. autoh.
   constructor.
   destruct (is_pair (hereditary_subst (t, t0, t1) k)).
   destruct i; simph.
   simph.
 
-  constructor. autoh. 
+  constructor; autoh.
   constructor.
   destruct (is_pair (hereditary_subst (t, t0, t1) k)).
   destruct i; simph.
@@ -762,10 +753,10 @@ Proof.
   depelim H0. term.
 
   (* Var *)
-  depelim H0.
-  apply Nat.compare_eq in Heq; subst i.
+  apply Nat.compare_eq in Heq; subst.
+  depelim H1.
   rewrite !nth_length. split. term. intros.
-  noconf H1. auto.
+  noconf H2. auto.
  
   (* Lt *)
   apply Nat.compare_lt_iff in Heq. depelim H0.
@@ -780,26 +771,26 @@ Proof.
   (* App *)
   simpl in *.
   on_call (hereditary_subst (U, t1, u)) ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
-  on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
-  noconf H3. simpl in H0.
-  depelim H2.
-  specialize (H _ A H1 H2_0).
-  specialize (Hind _ (A ---> B) H1). rewrite Heq in Hind.
-  specialize (Hind H2_ _ _ eq_refl).
+  on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in * ).
+  noconf H4. simpl in H1.
+  depelim H3.
+  specialize (H _ A H2 H3_0).
+  specialize (Hind _ (A ---> B) H2). rewrite Heq in Hind.
+  specialize (Hind H3_ _ _ eq_refl).
   depelim Hind.
-  noconf H2.
-  depelim H1.
+  noconf H3.
+  depelim H2.
   destruct H.
-  specialize (H0 _ [] _ _ _ _ H H1).
+  specialize (H0 _ [] _ _ _ _ H H2).
   simplify_IH_hyps.
-  destruct H0 as [H0 H4].
+  destruct H0 as [H0 H5].
   split; auto.
   intros ty prf0 Heq'.
   noconf Heq'. auto.
 
   (* App no redex *)
   apply is_lambda_inr in Heq. revert Heq.
-  on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
+  on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in * ).
   intros. subst t2. depelim H1.
   apply application with A; eauto.
   eapply Hind; eauto.
@@ -808,33 +799,32 @@ Proof.
 
   simpl in *.
   (* Fst redex *)
-  depelim H0. specialize (Hind _ _ H H0).
+  depelim H1. specialize (Hind _ _ H0 H1).
   rewrite Heq in Hind. specialize (Hind _ _ eq_refl).
-  destruct Hind. depelim H1. intuition auto.
-  simplify_IH_hyps. noconf H1.
-  now noconf H2.
+  destruct Hind. depelim H2. intuition auto.
+  simplify_IH_hyps. noconf H2.
+  now noconf H3.
 
   (* Fst no redex *)
   apply is_pair_inr in Heq. revert Heq.
-  on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
+  on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in * ).
   simplify_IH_hyps. simpl in *. depelim H0. intros.
   specialize (Hind _ _ H H0); eauto.
   destruct Hind. subst t2. now apply pair_elim_fst with B.
 
   (* Snd redex *)
-  depelim H0. specialize (Hind _ _ H H0).
+  depelim H1. specialize (Hind _ _ H0 H1).
   rewrite Heq in Hind. specialize (Hind _ _ eq_refl).
-  destruct Hind. depelim H1. intuition auto.
-  simplify_IH_hyps. noconf H1.
-  now noconf H2.
+  destruct Hind. depelim H2. intuition auto.
+  simplify_IH_hyps. noconf H2.
+  now noconf H3.
 
   (* Snd no redex *)
   apply is_pair_inr in Heq. revert Heq.
-  on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
+  on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in * ).
   intros Ht2; subst t2. simplify_IH_hyps. simpl in *. depelim H0.
   specialize (Hind _ _ H H0); eauto. now apply pair_elim_snd with A.
 Qed.
-
 Print Assumptions hereditary_subst_type.
                                  
 Instance: subrelation eq (flip impl).
@@ -897,7 +887,7 @@ Proof.
   (* Var: eq *)
   - apply Nat.compare_eq in Heq; subst n.
     split; intros Hsyn; depelim Hsyn; rewrite ?nth_length.
-    depelim H1; rewrite !nth_length.
+    depelim H2; rewrite !nth_length.
     now split; term. split; term.
  
   (* Lt *)
@@ -932,26 +922,26 @@ Proof.
     (* Redex *)
     assert((Γ' @ (U :: Γ) |-- @( t3, u) => T → Γ' @ Γ |-- t0 <= T ∧ b = T)).
     intros Ht; depelim Ht.
-    destruct (Hind Γ (A ---> B) H1).
-    specialize (H _ A H1).
-    destruct (H4 Ht). noconf H6.
-    depelim H5. split; auto. 
+    destruct (Hind Γ (A ---> B) H2).
+    specialize (H _ A H2).
+    destruct (H5 Ht). noconf H7.
+    depelim H6. split; auto.
     
     destruct o; try destruct h; destruct H.
-    destruct (H H2). subst x.
-    specialize (H0 _ B0 H7).
+    destruct (H H3). subst x.
+    specialize (H0 _ B0 H8).
     destruct o0 as [[ty typrf]|]; destruct H0 as [Hcheck Hinf].
     now apply Hcheck. now apply Hcheck.
     
-    specialize (H0 _ B0 (H H2)).
+    specialize (H0 _ B0 (H H3)).
     destruct o0 as [[ty typrf]|]; destruct H0 as [Hcheck Hinf].
     now apply Hcheck. now apply Hcheck.
     
     split; auto.
-    depelim H5.
+    depelim H6.
     
     split; eauto.
-    intros Ht3u; apply H2.
+    intros Ht3u; apply H3.
     now depelim Ht3u.
   
   (* No redex *)
@@ -1000,7 +990,7 @@ Proof.
     intros [Hind Hind'].
     specialize (Hind' Ht). destruct Hind' as [H0 H1]. noconf H1.
     depelim H0. split; auto.
-    depelim H.
+    depelim H0.
     split; auto.
     intros H1. depelim H1. intuition.
 
@@ -1028,7 +1018,7 @@ Proof.
     noconf Heq.
     intros [Hind Hind'].
     specialize (Hind' Ht). destruct Hind' as [H0 H1]. noconf H1.
-    depelim H0. split; auto. depelim H.
+    depelim H0. split; auto. depelim H0.
     split; auto.
     intros H1. depelim H1. intuition auto with term.
 

@@ -58,15 +58,14 @@ Instance wf_total_init_compute : forall {A}, WellFounded (@total_relation A).
 Defined.
 
 (** Now we define an obviously non-terminating function. *)
-Equations nonterm (n : nat) : nat by rec n (@total_relation nat) :=
+Equations? nonterm (n : nat) : nat by rec n (@total_relation nat) :=
   nonterm 0 := 0;
   nonterm (S n) := S (nonterm (S n)).
-
-  Next Obligation.
-    (* Every pair of arguments is in the total relation: so
-       [total_relation (S n) (S n)] *)
-    constructor.
-  Defined.
+Proof.
+  (* Every pair of arguments is in the total relation: so
+     [total_relation (S n) (S n)] *)
+  constructor.
+Defined.
 
   (** The automation has a little trouble here as it assumes
       well-founded definitions implicitely.  We show the second

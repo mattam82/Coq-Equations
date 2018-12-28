@@ -285,7 +285,7 @@ Definition neg : Expr [] (bool ⇒ bool) :=
 Definition letref {t u} (v : Expr [] t) (b : Expr [ref t] u) : Expr [] u :=
   app (abs b) (new v).
 
-Equations weaken_expr {Γ Γ' t u} (e1 : Expr (Γ ++ Γ') t) : Expr (Γ ++ u :: Γ') t :=
+Equations? weaken_expr {Γ Γ' t u} (e1 : Expr (Γ ++ Γ') t) : Expr (Γ ++ u :: Γ') t :=
   weaken_expr tt             := tt;
   weaken_expr true           := true;
   weaken_expr false          := false;
@@ -296,7 +296,7 @@ Equations weaken_expr {Γ Γ' t u} (e1 : Expr (Γ ++ Γ') t) : Expr (Γ ++ u :: 
   weaken_expr (new e)        := new (weaken_expr e);
   weaken_expr (deref l)      := deref (weaken_expr l);
   weaken_expr (assign l e)   := assign (weaken_expr l) (weaken_expr e).
-Next Obligation.
+Proof.
   clear weaken_expr.
   induction Γ in Γ', u, x |- *. now apply there. simpl.
   depelim x. constructor. apply there. apply IHΓ. apply x.

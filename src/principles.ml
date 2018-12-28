@@ -620,10 +620,10 @@ let subst_rec_split env evd p f path prob s split =
              program_sign = pi3 cutprob;
              program_arity = mapping_constr !evd wsubst prog_info.program_arity }
          in
-         (try Feedback.msg_debug Pp.(str"At where in update_split, calling recursively with term" ++
-                             Printer.pr_econstr_env env !evd where_term' ++ fnl () ++
-                                str " and splitting " ++ pr_splitting env !evd wp.program_splitting);
-          with e -> ());
+         (* (try Feedback.msg_debug Pp.(str"At where in update_split, calling recursively with term" ++
+          *                     Printer.pr_econstr_env env !evd where_term' ++ fnl () ++
+          *                        str " and splitting " ++ pr_splitting env !evd wp.program_splitting);
+          *  with e -> ()); *)
          let where_path =
            match where_path with
            | x :: y :: r ->
@@ -639,9 +639,9 @@ let subst_rec_split env evd p f path prob s split =
              let where_term, where_ty = term_of_tree evd env where_splitting in
              let id = Nameops.add_suffix (where_id w) "_unfold_eq" in
              let () = where_map := PathMap.add w.where_path
-                   (applistc where_program_term where_program_args (* substituted *), id, where_splitting) !where_map in
-             (* msg_debug (str"At where in update_split, calling recursively with term" ++ *)
-             (*              pr_constr w.where_term ++ str " associated to " ++ int (Evar.repr evk)); *)
+                   (applistc where_program_term where_program_args (* substituted *), id, where_splitting)
+                   !where_map
+             in
              (where_term, extended_rel_list 0 (pi1 lhs'),
               (prog_info.program_id, true) :: List.tl where_path)
            else (where_program_term, where_program_args, where_path)

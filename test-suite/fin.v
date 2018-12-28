@@ -182,7 +182,6 @@ Derive Signature for fle.
 Equations fin0_empty (i : fin 0) : False :=
 fin0_empty i :=! i.
 
-Set Equations OCaml Splitting.
 Unset Equations WithK.
 
 Transparent NoConfusionHom_fin.

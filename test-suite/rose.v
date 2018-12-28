@@ -60,9 +60,9 @@ Section RoseTree.
   Derive NoConfusion for rose.
 
   (** To solve measure subgoals *)
-  Hint Extern 4 (_ < _) => abstract (simpl; omega) : rec_decision.
-  Hint Extern 4 (MR _ _ _ _) => abstract (repeat red; simpl in *; omega) : rec_decision.
-  Obligation Tactic := program_simpl; try abstract (simpl; omega); try typeclasses eauto with rec_decision.
+  Hint Extern 4 (_ < _) => simpl; omega : rec_decision.
+  Hint Extern 4 (MR _ _ _ _) => (repeat red; simpl in *; omega) : rec_decision.
+  Obligation Tactic := program_simpl; try (simpl; omega); try typeclasses eauto with rec_decision.
   Definition hide {A} (a : A) := a.
   Notation "?" := (hide _).
 
