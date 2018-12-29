@@ -235,9 +235,6 @@ let define_mutual_nested_csts rec_info flags progs =
   | l ->
      let env = Global.env () in
      let evd = ref (Evd.from_env env) in
-     (* let progs = List.map (fun (p, prog) ->
-      *             let t = e_new_global evd (ConstRef prog.program_cst) in
-      *             p, (t, Retyping.get_type_of env !evd t)) in *)
      let mutual, nested =
        define_mutual_nested evd
        (fun prog -> e_new_global evd (ConstRef prog.program_cst)) progs in

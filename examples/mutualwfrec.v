@@ -90,7 +90,7 @@ Qed.
 
 Require Import Equations.Subterm.
 Obligation Tactic := program_simpl; try typeclasses eauto 10 with Below.
-(* FIXME long proof search *)
+
 Equations ack (m n : nat) : nat by rec (m, n) (lexprod _ _ lt lt) :=
   ack 0 0         := 1;
   ack 0 (S n)     := S (S n);

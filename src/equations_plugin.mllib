@@ -9,9 +9,9 @@ Covering
 Subterm
 Eqdec
 Noconf
+Depelim
 Principles_proofs
 Principles
-Depelim
 Equations
 Noconf_hom
 Extra_tactics

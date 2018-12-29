@@ -267,6 +267,13 @@ let hyps_after sigma pos args =
   let args' = Array.sub args (pos + 1) (Array.length args - (pos + 1)) in
   Array.fold_right (fun c acc -> ids_of_constr ~all:true sigma acc c) args' Id.Set.empty
 
+let simpl_of csts =
+  let opacify () = List.iter (fun (cst,_) ->
+    Global.set_strategy (ConstKey cst) Conv_oracle.Opaque) csts
+  and transp () = List.iter (fun (cst, level) ->
+    Global.set_strategy (ConstKey cst) level) csts
+  in opacify, transp
+
 let rec aux_ind_fun info chop unfs unfids = function
   | Split ((ctx,pats,_), var, _, splits) ->
      let unfs_splits =
@@ -670,8 +677,17 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
          observe_tac "after mut -> nested and mut provable" (eauto ~depth:None)
      in Proofview.Goal.enter (fun gl -> tac gl)
 
-  | _ -> tclCOMPLETE (tclTHENLIST
-      [set_eos_tac (); intros; of82 (aux_ind_fun info (0, 0) unfsplit [] split)])
+  | _ ->
+    let helpercsts = List.map (fun (cst, i) -> cst) info.term_info.helpers_info in
+    let opacify, transp =
+      simpl_of (List.map (fun x -> x, Conv_oracle.Expand)
+                  (fst (Constr.destConst f) :: helpercsts))
+    in
+    opacify ();
+    Proofview.tclBIND
+      (tclCOMPLETE (tclTHENLIST
+                      [set_eos_tac (); intros; of82 (aux_ind_fun info (0, 0) unfsplit [] split)]))
+      (fun r -> transp (); Proofview.tclUNIT r)
 
 let ind_fun_tac is_rec f info fid split unfsplit progs =
   Proofview.tclORELSE (ind_fun_tac is_rec f info fid split unfsplit progs)
@@ -680,13 +696,6 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
        | Pretype_errors.PretypeError (env, evd, err) ->
          Feedback.msg_warning (Himsg.explain_pretype_error env evd err); iraise e
        | _ -> iraise e)
-
-let simpl_of csts =
-  let opacify () = List.iter (fun (cst,_) ->
-    Global.set_strategy (ConstKey cst) Conv_oracle.Opaque) csts
-  and transp () = List.iter (fun (cst, level) ->
-    Global.set_strategy (ConstKey cst) level) csts
-  in opacify, transp
 
 let get_proj_eval_ref (loc, id) = EvalVarRef id
 

@@ -1171,12 +1171,6 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
         env !evars Constrintern.Recursive [id] [pre_type] [p.program_impls]
     in
     let data = { data with intenv; } in
-    let relty = Syntax.program_type p in
-    let src = (Some loc, Evar_kinds.(QuestionMark {
-        qm_obligation=Define false;
-        qm_name=Name id;
-        qm_record_field=None;
-      })) in
     let path = (id, false) :: path in
     let where_args = extended_rel_list 0 lets in
     let w' program =
@@ -1194,6 +1188,12 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
         let program = make_program evars env0 lets p problem splitting rec_node in
         Lazy.from_val (w' program), program.program_term
       | None ->
+        let relty = Syntax.program_type p in
+        let src = (Some loc, Evar_kinds.(QuestionMark {
+            qm_obligation=Define false;
+            qm_name=Name id;
+            qm_record_field=None;
+          })) in
         let sigma, term = Equations_common.new_evar env0 !evars ~src relty in
         let () = evars := sigma in
         let ev = destEvar !evars term in
@@ -1237,8 +1237,7 @@ let program_covering env evd data p clauses =
   let splitting =
     covering env evd p data clauses [p.program_id, false] prob extpats p'.program_arity
   in
-  let program = make_program evd env [] p prob splitting rec_node in
-  program
+  make_program evd env [] p prob splitting rec_node
 
 let coverings env evd data programs equations =
   List.map2 (program_covering env evd data) programs equations

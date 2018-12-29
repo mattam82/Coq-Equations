@@ -975,6 +975,26 @@ let find_rectype env sigma ty =
   let Inductiveops.IndType (ind, args) = Inductiveops.find_rectype env sigma ty in
   ind, args
 
+let splay_prod_n_assum env sigma n =
+  let rec prodec_rec env n l c =
+    if n = 0 then (l, c)
+    else
+    let t = whd_allnolet env sigma c in
+    match EConstr.kind sigma t with
+    | Prod (x,t,c)  ->
+        prodec_rec (push_rel (LocalAssum (x,t)) env) (pred n)
+          (Context.Rel.add (LocalAssum (x,t)) l) c
+    | LetIn (x,b,t,c) ->
+        prodec_rec (push_rel (LocalDef (x,b,t)) env) (pred n)
+          (Context.Rel.add (LocalDef (x,b,t)) l) c
+    | Cast (c,_,_)    -> prodec_rec env n l c
+    | _               ->
+      let t' = whd_all env sigma t in
+        if EConstr.eq_constr sigma t t' then l,t
+        else prodec_rec env n l t'
+  in
+  prodec_rec env n Context.Rel.empty
+
 type identifier = Names.Id.t
 
 let evd_comb0 f evd =

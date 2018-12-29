@@ -433,3 +433,5 @@ type identifier = Names.Id.t
 
 val evd_comb1 : (Evd.evar_map -> 'a -> Evd.evar_map * 'b) -> Evd.evar_map ref -> 'a -> 'b
 val evd_comb0 : (Evd.evar_map -> Evd.evar_map * 'b) -> Evd.evar_map ref -> 'b
+
+val splay_prod_n_assum : env -> Evd.evar_map -> int -> types -> rel_context * types

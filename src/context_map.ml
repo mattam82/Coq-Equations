@@ -213,10 +213,8 @@ let typecheck_map env evars (ctx, subst, ctx') =
       ctx' subst (evars, [])
   in ()
 
-let check_debug = true
-
 let check_ctx_map ?(unsafe = false) env evars map =
-  if check_debug && not unsafe then
+  if !Equations_common.debug && not unsafe then
     try typecheck_map env evars map; map
     with Pretype_errors.PretypeError (env, sigma, Pretype_errors.TypingError e) ->
       errorlabstrm "equations"
@@ -600,7 +598,7 @@ let check_eq_context_nolet env sigma (_, _, g as snd) (d, _, _ as fst) =
        ++ pr_context_map env sigma snd ++ str " and " ++ pr_context_map env sigma fst)
 
 let compose_subst ?(unsafe = false) env ?(sigma=Evd.empty) ((g',p',d') as snd) ((g,p,d) as fst) =
-  if check_debug && not unsafe then check_eq_context_nolet env sigma snd fst;
+  if !Equations_common.debug && not unsafe then check_eq_context_nolet env sigma snd fst;
   mk_ctx_map ~unsafe env sigma g' (specialize_pats sigma p' p) d
 (*     (g', (specialize_pats p' p), d) *)
 
