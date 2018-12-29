@@ -510,14 +510,14 @@ let term_of_tree isevar env0 tree =
         (* We get the context from the constructor arity. *)
         let new_ctx, ty = EConstr.decompose_prod_n_assum !isevar nb ty in
         let new_ctx = Namegen.name_context env !isevar new_ctx in
+        let envnew = push_rel_context (new_ctx @ ctx') env in
+        (* Remove the cuts and append them to the context. *)
+        let cut_ctx, ty = Equations_common.splay_prod_n_assum envnew !isevar nb_cuts ty in
         let ty =
-          if simpl || nb_cuts > 0 then
-            let env = push_rel_context (new_ctx @ ctx') env in
-            Tacred.hnf_constr env !evd ty
+          if simpl then
+            Tacred.hnf_constr (push_rel_context cut_ctx envnew) !evd ty
           else ty
         in
-        (* Remove the cuts and append them to the context. *)
-        let cut_ctx, ty = EConstr.decompose_prod_n_assum !isevar nb_cuts ty in
         (* TODO This context should be the same as (pi1 csubst). We could
            * either optimize (but names in [csubst] are worse) or just insert
            * a sanity-check. *)
@@ -605,6 +605,14 @@ let term_of_tree isevar env0 tree =
       let term = EConstr.it_mkLambda_or_LetIn term ctx in
       let typ = it_mkProd_or_subst env evm ty ctx in
       let term = Evarutil.nf_evar !evd term in
+      if !debug then
+        begin
+          let open Feedback in
+          msg_debug (str"Result of splitting: ");
+          msg_info(Printer.pr_econstr_env env evm term);
+        end;
+
+
       evd := Typing.check env !evd term typ;
       !evd, term, typ
   in

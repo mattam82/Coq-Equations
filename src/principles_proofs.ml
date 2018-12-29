@@ -700,7 +700,7 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
 let get_proj_eval_ref (loc, id) = EvalVarRef id
 
 let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split gl =
-  let depelim h = depelim_tac h in
+  let depelim h = Depelim.dependent_elim_tac (fst proj, h) (* depelim_tac h *) in
   let helpercsts = List.map (fun (cst, i) -> cst) info.helpers_info in
   let opacify, transp = simpl_of ((destConstRef (Lazy.force coq_hidebody), Conv_oracle.transparent)
     :: List.map (fun x -> x, Conv_oracle.Expand) (f_cst :: funf_cst :: helpercsts)) in
@@ -727,7 +727,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
     | _ -> to82 reflexivity gl
   in
   let solve_eq = observe "solve_eq" (tclORELSE (transparent (to82 reflexivity)) solve_rec_eq) in
-  let abstract tac = Abstract.tclABSTRACT None tac in
+  let abstract tac = (* Abstract.tclABSTRACT None *) tac in
   let rec aux split unfold_split =
     match split, unfold_split with
     | Split (_, _, _, splits), Split ((ctx,pats,_), var, _, unfsplits) ->

@@ -445,6 +445,8 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
       in
       let c = beta_applist !evd (c, args) in
       let c = Vars.substl (List.rev rev_subst) c in
+      if !Equations_common.debug then
+        Feedback.msg_debug (str "refining with" ++ Printer.pr_econstr_env env !evd c);
         (!evd, c)
     end
   end

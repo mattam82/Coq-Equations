@@ -626,12 +626,16 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
   let revert_cut x =
     let rec revert_cut i = function
       | [] -> failwith "Could not revert a cut, please report."
-      | Context_map.PRel y :: _ when Int.equal x y -> EConstr.mkRel i
+      | Context_map.PRel y :: _ when Int.equal x y ->
+        (match nth cuts_ctx (pred x) with
+         | Context.Rel.Declaration.LocalAssum _ -> Some (EConstr.mkRel i)
+         | Context.Rel.Declaration.LocalDef _ -> None)
       | _ :: l -> revert_cut (succ i) l
     in revert_cut (- oib.mind_nrealargs) (pi2 subst)
   in
   let rev_cut_vars = CList.map revert_cut (CList.init nb_cuts (fun i -> succ i)) in
   let cut_vars = List.rev rev_cut_vars in
+  let cut_vars = CList.map_filter (fun x -> x) cut_vars in
 
   (* ===== EQUALITY OF TELESCOPES ===== *)
   let goal, to_apply, simpl =
