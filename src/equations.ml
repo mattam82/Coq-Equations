@@ -19,7 +19,6 @@ open Tactics
 open Tacticals
 open Tacmach
 open Evarutil
-open Evar_kinds
 open Equations_common
 open Decl_kinds
 
@@ -176,9 +175,14 @@ let define_principles flags rec_info fixprots progs =
                     ~implicits:pi.program_impls unfold_eq_id (to_constr evd stmt)
                     ~tactic:(of82 tac)
                     (Evd.evar_universe_context evd) [||])
-	 in
-         define_tree None [] flags pi.program_impls (Define false) evd env
-                     (unfoldi, sign, arity) None unfold_split hook_unfold;
+         in
+         let unfpi =
+           { pi with program_id = unfoldi;
+                     program_sign = sign;
+                     program_arity = arity }
+         in
+         let unfoldp = make_program evd env [] unfpi prob unfold_split None in
+         define_tree None [] flags evd env unfoldp hook_unfold;
          None
   in
   let principles env newsplits =
@@ -222,14 +226,14 @@ let define_mutual_nested_csts rec_info flags progs =
   match progs with
   | [(p, prog)] ->
     (match rec_info, p.program_info.program_rec with
-     | Some (Guarded [id, _]), Some (Structural (MutualOn (_, None))) ->
+     | Some (Guarded [id, _]), Some (Structural (MutualOn None)) ->
        (* Fix rec_info from inference of structural index *)
        let env = Global.env () in
        let ctx = constant_context env prog.program_cst in
        let inst = Univ.UContext.instance (Univ.AUContext.repr ctx) in
        let c = constant_value_in env (prog.program_cst, inst) in
        let i = let (inds, _), _ = Constr.destFix c in inds.(0) in
-       Some (Guarded [id, MutualOn (i, None)]), progs
+       Some (Guarded [id, MutualOn (Some (i, None))]), progs
      | _ -> rec_info, progs)
 
   | l ->
@@ -237,9 +241,10 @@ let define_mutual_nested_csts rec_info flags progs =
      let evd = ref (Evd.from_env env) in
      let mutual, nested =
        define_mutual_nested evd
-       (fun prog -> e_new_global evd (ConstRef prog.program_cst)) progs in
+       (fun (_, prog) -> e_new_global evd (ConstRef prog.program_cst))
+       (List.map (fun (p,prog) -> p.program_info, (p, prog)) progs) in
      let mutual =
-       List.map (fun (p, prog, fix) ->
+       List.map (fun (_, (p, prog), fix) ->
          let ty = program_type p in
          let kn, _ =
            declare_constant p.program_info.program_id fix (Some ty) flags.polymorphic
@@ -251,7 +256,7 @@ let define_mutual_nested_csts rec_info flags progs =
      in
      let args = List.rev_map (fun (p',prog') -> e_new_global evd (ConstRef prog'.program_cst)) mutual in
      let nested =
-       List.map (fun (p, prog, fix) ->
+       List.map (fun (_, (p, prog), fix) ->
        let ty = program_type p in
        let body = Vars.substl args fix in
        let kn, _ = declare_constant p.program_info.program_id body (Some ty) flags.polymorphic
@@ -297,7 +302,6 @@ let define_by_eqs ~poly ~open_proof opts eqs nt =
   let intenv = { rec_info; flags; fixdecls; intenv = data; notations = nt } in
   let programs = coverings env evd intenv programs (List.map snd eqs) in
   let env = Global.env () in (* coverings has the side effect of defining comp_proj constants for now *)
-  let status = Define false in
   let fix_proto_ref = destConstRef (Lazy.force coq_fix_proto) in
   let _kind = (Decl_kinds.Global, poly, Decl_kinds.Definition) in
   let baseid =
@@ -328,27 +332,7 @@ let define_by_eqs ~poly ~open_proof opts eqs nt =
        if flags.with_eqns || flags.with_ind then
          define_principles flags rec_info fixprots progs')
   in
-  let idx = ref 0 in
-  let define_tree p =
-    let pi = p.program_info in
-    let comp = match pi.program_rec with
-      Some (WellFounded (_, _, l)) -> Some l
-    | _ -> None
-    in
-    let fixdecls =
-      match pi.program_rec with
-      | Some (Structural (NestedOn None)) | None -> (* Actually the definition is not self-recursive *)
-         List.filter (fun decl ->
-             let na = Context.Rel.Declaration.get_name decl in
-             let id = Nameops.Name.get_id na in
-             not (Id.equal id pi.program_id)) fixdecls
-      | _ -> fixdecls
-    in
-    define_tree rec_info fixdecls flags pi.program_impls status evd env
-                (pi.program_id, pi.program_sign, pi.program_arity)
-                comp p.program_splitting (hook !idx p);
-    incr idx
-  in List.iter define_tree programs
+  define_trees env evd flags rec_info fixdecls programs hook
 
 let equations ~poly ~open_proof opts eqs nt =
   List.iter (fun (((loc, i), nested, l, t, by),eqs) -> Dumpglob.dump_definition CAst.(make ~loc i) false "def") eqs;

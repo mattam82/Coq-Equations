@@ -15,7 +15,6 @@ open Globnames
 open Reductionops
 open Pp
 open List
-open Constrexpr
 open Tactics
 open Evarutil
 open Evar_kinds
@@ -53,12 +52,22 @@ module PathMap = struct
   include Map.Make (PathOT)
 end
 
-type rec_node = {
-  rec_node_term : constr;
-  rec_node_arg : constr_expr;
-  rec_node_rel : constr_expr option;
-  rec_node_intro : int; (* number of arguments of the recursive function *)
-  rec_node_newprob : context_map }
+type wf_rec = {
+  wf_rec_term : constr;
+  wf_rec_arg : Constrexpr.constr_expr;
+  wf_rec_rel : Constrexpr.constr_expr option;
+  wf_rec_intro : int;(* number of arguments of the recursive function *)
+  wf_rec_newprob : context_map }
+
+type struct_rec = {
+  struct_rec_arg : Syntax.rec_annot;
+  struct_rec_intro : int;
+  struct_rec_protos : int;
+}
+
+type rec_node =
+  | WfRec of wf_rec
+  | StructRec of struct_rec
 
 type splitting =
   | Compute of context_map * where_clause list * types * splitting_rhs
@@ -146,7 +155,8 @@ let pr_rec_info p =
   match p.program_rec with
   | Some (Structural ann) ->
     (match ann with
-     | MutualOn (i,_) -> str "mutually recursive on " ++ int i
+     | MutualOn (Some (i,_)) -> str "mutually recursive on " ++ int i
+     | MutualOn None -> str "mutually recursive on ? "
      | NestedOn (Some (i,_)) -> str "nested on " ++ int i
      | NestedOn None -> str "nested but not directly recursive")
   | Some (WellFounded (c, r, info)) ->
@@ -231,12 +241,21 @@ let ppsplit s =
   let sigma = Evd.from_env env in
   pp (pr_splitting env sigma s)
 
-let map_rec_node f r =
-  { rec_node_term = f r.rec_node_term;
-    rec_node_arg = r.rec_node_arg;
-    rec_node_rel = r.rec_node_rel;
-    rec_node_intro = r.rec_node_intro;
-    rec_node_newprob = map_ctx_map f r.rec_node_newprob }
+let map_wf_rec f r =
+  { wf_rec_term = f r.wf_rec_term;
+    wf_rec_arg = r.wf_rec_arg;
+    wf_rec_rel = r.wf_rec_rel;
+    wf_rec_intro = r.wf_rec_intro;
+    wf_rec_newprob = map_ctx_map f r.wf_rec_newprob }
+
+let map_struct_rec f r =
+  { struct_rec_arg = r.struct_rec_arg;
+    struct_rec_intro = r.struct_rec_intro;
+    struct_rec_protos = r.struct_rec_protos}
+
+let map_rec_node f = function
+  | StructRec s -> StructRec (map_struct_rec f s)
+  | WfRec s -> WfRec (map_wf_rec f s)
 
 let rec map_program f p =
   { program_info = map_program_info f p.program_info;
@@ -287,28 +306,41 @@ let is_nested p =
   | Some (Structural (NestedOn _)) -> true
   | _ -> false
 
+let compute_possible_guardness_evidences sigma n fixbody fixtype =
+  match n with
+  | Some i -> [i]
+  | None ->
+      (* If recursive argument was not given by user, we try all args.
+         An earlier approach was to look only for inductive arguments,
+         but doing it properly involves delta-reduction, and it finally
+         doesn't seem to worth the effort (except for huge mutual
+         fixpoints ?) *)
+    let m = Termops.nb_prod sigma fixtype in
+    let ctx = fst (decompose_prod_n_assum sigma m fixtype) in
+    List.map_i (fun i _ -> i) 0 ctx
+
 let define_mutual_nested evd get_prog progs =
   let mutual =
-    List.filter (fun (p, prog) -> not (is_nested p.program_info)) progs
+    List.filter (fun (p, prog) -> not (is_nested p)) progs
   in
   (* In the mutually recursive case, only the functionals have been defined,
      we build the block and its projections now *)
   let structargs = Array.map_of_list (fun (p,_) ->
-                   match program_rec p with
-                   | Some (Structural (MutualOn (lid,_))) -> lid
-                   | _ -> (List.length (program_sign p)) - 1) mutual in
+                   match p.program_rec with
+                   | Some (Structural (MutualOn (Some (lid,_)))) -> Some lid
+                   | _ -> None) mutual in
   let mutualapp, nestedbodies =
     let nested = List.length progs - List.length mutual in
     let one_nested before p prog afterctx idx =
-      let signlen = List.length (program_sign p) in
+      let signlen = List.length p.program_sign in
       let fixbody =
         Vars.lift 1 (* lift over itself *)
            (mkApp (get_prog prog, rel_vect (signlen + (nested - 1)) (List.length mutual)))
          in
          let after = (nested - 1) - before in
          let fixb = (Array.make 1 idx, 0) in
-         let fixna = Array.make 1 (Name (program_id p)) in
-         let fixty = Array.make 1 (program_type p) in
+         let fixna = Array.make 1 (Name p.program_id) in
+         let fixty = Array.make 1 (Syntax.program_type p) in
          (* Apply to itself *)
          let beforeargs = Termops.rel_list (signlen + 1) before in
          let fixref = mkRel (signlen + 1) in
@@ -326,9 +358,9 @@ let define_mutual_nested evd get_prog progs =
          in
          let fixbody = applist (Vars.lift after fixbody, afterargs) in
          (* Apply to its arguments *)
-         let fixbody = mkApp (fixbody, extended_rel_vect after (program_sign p)) in
+         let fixbody = mkApp (fixbody, extended_rel_vect after p.program_sign) in
          let fixbody = it_mkLambda_or_LetIn fixbody afterctx in
-         let fixbody = it_mkLambda_or_LetIn fixbody (program_sign p) in
+         let fixbody = it_mkLambda_or_LetIn fixbody p.program_sign in
          it_mkLambda_or_LetIn
          (mkFix (fixb, (fixna, fixty, Array.make 1 fixbody)))
          (List.init (nested - 1) (fun _ -> (Context.Rel.Declaration.LocalAssum (Anonymous, mkProp))))
@@ -336,11 +368,11 @@ let define_mutual_nested evd get_prog progs =
        let rec fixsubst i k acc l =
          match l with
          | (p', prog') :: rest ->
-            (match p'.program_info.program_rec with
+            (match p'.program_rec with
              | Some (Structural (NestedOn idx)) ->
                (match idx with
                | Some (idx,_) ->
-                 let rest_tys = List.map (fun (p,_) -> program_type p) rest in
+                 let rest_tys = List.map (fun (p,_) -> Syntax.program_type p) rest in
                  let term = one_nested k p' prog' rest_tys idx in
                    fixsubst i (succ k) ((true, term) :: acc) rest
                | None -> (* Non immediately recursive nested def *)
@@ -361,12 +393,12 @@ let define_mutual_nested evd get_prog progs =
      in
      let decl =
        let blockfn (p, prog) =
-         let na = Name p.program_info.program_id in
-         let ty = program_type p in
-         let sign = program_sign p in
-         let body = mkApp (get_prog prog, Array.append (Array.of_list mutualapp) (Array.of_list nestedbodies)) in
-         let body = mkApp (Vars.lift (List.length sign) body,
-                           extended_rel_vect 0 sign) in
+         let na = Name p.program_id in
+         let ty = Syntax.program_type p in
+         let sign = p.program_sign in
+         let body = beta_appvect !evd (get_prog prog)
+             (Array.append (Array.of_list mutualapp) (Array.of_list nestedbodies)) in
+         let body = beta_appvect !evd (Vars.lift (List.length sign) body) (extended_rel_vect 0 sign) in
          let body = it_mkLambda_or_LetIn body (lift_rel_context 1 sign) in
          na, ty, body
        in
@@ -374,9 +406,19 @@ let define_mutual_nested evd get_prog progs =
        let names, tys, bodies = List.split3 blockl in
        Array.of_list names, Array.of_list tys, Array.of_list bodies
      in
-     let nested, mutual = List.partition (fun (p,prog) -> is_nested p.program_info) progs in
+     let nested, mutual = List.partition (fun (p,prog) -> is_nested p) progs in
+     let indexes =
+       let names, tys, bodies = decl in
+       let possible_indexes =
+         Array.map3 (compute_possible_guardness_evidences !evd) structargs bodies tys
+       in
+       let tys' = Array.map EConstr.Unsafe.to_constr tys in
+       let bodies' = Array.map EConstr.Unsafe.to_constr bodies in
+       Pretyping.search_guard (Global.env()) (Array.to_list possible_indexes)
+         (names, tys', bodies')
+     in
      let declare_fix_fns i (p,prog) =
-       let fix = mkFix ((structargs, i), decl) in
+       let fix = mkFix ((indexes, i), decl) in
        (p, prog, fix)
      in
      let fixes = List.mapi declare_fix_fns mutual in
@@ -458,14 +500,7 @@ let term_of_tree isevar env0 tree =
       let ty = it_mkProd_or_subst env evm (prod_appvect evm ty args) ctx in
       evm, term, ty
 
-    | RecValid (lhs, id, r, rest) ->
-      let evm, term, ty = aux env evm rest in
-      let term = mkApp (r.rec_node_term, [| mkApp (term, extended_rel_vect 0 (pi1 lhs)) |]) in
-      let term = it_mkLambda_or_LetIn term (pi1 lhs) in
-      let ty = Retyping.get_type_of env evm term in
-      let ty = nf_all env evm ty in
-      let term = nf_betaiotazeta env evm term in
-      evm, term, ty
+    | RecValid (lhs, id, r, rest) -> aux env evm rest
 
     | Refined ((ctx, _, _), info, rest) ->
       let (id, _, _), ty, rarg, path, f, args, newprob, newty =
@@ -637,13 +672,38 @@ let term_of_tree isevar env0 tree =
     isevar := evm;
     term, typ
 
-let make_program isevar env lets p prob s rec_node =
-  let s = match rec_node with
+let make_program evd env lets p prob s rec_node =
+  let p, s, term = match rec_node with
     | Some r ->
-      RecValid (id_subst lets, p.program_id, r, s)
-    | None -> s
+      let term, ty = term_of_tree evd env s in
+      let lhs = id_subst lets in
+      let p', term =
+        match r with
+        | WfRec r ->
+          let term = mkApp (r.wf_rec_term, [| beta_appvect !evd term (extended_rel_vect 0 (pi1 lhs)) |]) in
+          p, it_mkLambda_or_LetIn term (pi1 lhs)
+        | StructRec r ->
+          let args = extended_rel_vect 0 lets in
+          let term = beta_appvect !evd term args in
+          let before, after =
+            CList.chop r.struct_rec_intro p.program_sign
+          in
+          let fixdecls, after =
+            CList.chop r.struct_rec_protos after in
+          let subst = List.append (List.map (fun _ -> mkProp) fixdecls) (List.rev (Array.to_list args)) in
+          let program_sign = subst_rel_context 0 subst before in
+          let program_arity = substnl subst r.struct_rec_intro p.program_arity in
+          let p' = { p with program_sign; program_arity } in
+          (match define_mutual_nested evd (fun x -> x) [(p', lift 1 term)] with
+           | [(m, _, body)], _ -> p', it_mkLambda_or_LetIn body after
+           | _, [(m, _, body)] -> p', it_mkLambda_or_LetIn body after
+           | _ -> assert false)
+      in
+      let term = nf_betaiotazeta env !evd term in
+      let s' = RecValid (lhs, p.program_id, r, s) in
+      p', s', term
+    | None -> p, s, fst (term_of_tree evd env s)
   in
-  let term, _ = term_of_tree isevar env s in
   { program_info = p;
     program_prob = prob;
     program_splitting = s;
@@ -744,7 +804,7 @@ let is_comp_obl sigma comp hole_kind =
         is_rec_call sigma r (mkConst c)
       | _ -> false
 
-let zeta_red =
+let _zeta_red =
   let red = Tacred.cbv_norm_flags
       CClosure.(RedFlags.red_add RedFlags.no_red RedFlags.fZETA)
   in
@@ -875,55 +935,19 @@ let solve_equations_obligations flags i isevar split hook =
                                   str " refine them interactively")
 
 
-let define_tree is_recursive helpers recobls
-    fixprots flags impls status isevar env (i, sign, arity)
-                comp split hook =
-  let env = Global.env () in
-  let t, ty = term_of_tree isevar env split in
-  let oblevs = Evar.Map.empty in
-  let obls, (emap, cmap), t', ty' =
-    (* XXX: EConstr Problem upstream indeed. *)
-    Obligations.eterm_obligations env i !isevar
-      0 ~status (EConstr.to_constr ~abort_on_undefined_evars:false !isevar t)
-                (EConstr.to_constr ~abort_on_undefined_evars:false !isevar (whd_betalet !isevar ty))
-  in
-  let compobls = ref Id.Set.empty in
-  let userobls = ref Id.Set.empty in
-  let obls =
-    Array.map (fun (id, ty, loc, s, d, t) ->
-      let assc = rev_assoc Id.equal id emap in
-      let tac =
-        if Evar.Map.mem assc oblevs
-        then
-          let intros = Evar.Map.find assc oblevs in
-          Some (Tacticals.New.tclTHEN (Tacticals.New.tclDO intros intro) (equations_tac ()))
-        else if is_comp_obl !isevar comp (snd loc) then
-          let () = compobls := Id.Set.add id !compobls in
-          let open Tacticals.New in
-            Some (tclORELSE
-                    (tclTRY
-                       (tclTHENLIST [zeta_red; Tactics.intros; solve_rec_tac ()]))
-                    !Obligations.default_tactic)
-        else (userobls := Id.Set.add id !userobls;
-              Some ((!Obligations.default_tactic)))
-      in (id, ty, loc, s, d, tac)) obls
-  in
-  (* let helpers = List.map (fun (ev, arg) ->
-   *   (ev, arg, List.assoc ev emap)) helpers
-   * in *)
+let define_tree is_recursive helpers recobls fixprots flags isevar env p hook =
+  let t = p.program_term in
   let hook uctx evars locality gr =
-    let l =
-      Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
-    Extraction_plugin.Table.extraction_inline true l;
+    (* let l =
+     *   Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
+     * Extraction_plugin.Table.extraction_inline true l; *)
     let kind = (locality, flags.polymorphic, Decl_kinds.Definition) in
-    let baseid = Id.to_string i in
+    let baseid = Id.to_string (program_id p) in
     let term_info = { term_id = gr; term_ustate = uctx; term_evars = evars;
                       base_id = baseid; helpers_info = helpers; decl_kind = kind;
-                      comp_obls = recobls; user_obls = Id.Set.union !compobls !userobls } in
-    let cmap = cmap (fun id -> try List.assoc id evars
-                      with Not_found -> anomaly (Pp.str"Incomplete obligation to term substitution"))
-    in
-      hook split cmap term_info uctx
+                      comp_obls = recobls; user_obls = Id.Set.empty } in
+    let cmap = fun x -> x in
+      hook p.program_splitting cmap term_info uctx
   in
   let univ_hook = Obligations.mk_univ_hook hook in
   let reduce x =
@@ -934,32 +958,22 @@ let define_tree is_recursive helpers recobls
     to_constr !isevar (clos_norm_flags flags (Global.env ()) !isevar (of_constr x))
   in
   let kind = (Decl_kinds.Global, flags.polymorphic, Decl_kinds.Definition) in
-  let ty' = it_mkProd_or_LetIn arity sign in
+  let ty' = program_type p in
     match is_recursive with
-    | Some (Syntax.Guarded [id]) ->
-        let ty' = it_mkProd_or_LetIn ty' [make_assum Anonymous ty'] in
-        let ty' = EConstr.to_constr !isevar ty' in
-        let recarg =
-          match snd id with
-          | MutualOn (_, Some (loc, id))
-          | NestedOn (Some (_, Some (loc, id))) -> Some (CAst.make ~loc id)
-          | _ -> None
-        in
-        ignore(Obligations.add_mutual_definitions [(i, t', ty', impls, obls)]
-                 (Evd.evar_universe_context !isevar) [] ~kind
-                 ~reduce ~univ_hook (Obligations.IsFixpoint [recarg, CStructRec]))
-    | Some (Guarded ids) ->
+    | Some (Guarded (_ :: _ :: _)) ->
         let ty' = it_mkProd_or_LetIn ty' fixprots in
+        let t' = EConstr.to_constr !isevar t in
         let ty' = EConstr.to_constr !isevar ty' in
         ignore(Obligations.add_definition
                  ~univ_hook ~kind
-                 ~implicits:impls (add_suffix i "_functional") ~term:t' ty' ~reduce
-                 (Evd.evar_universe_context !isevar) obls)
+                 ~implicits:(program_impls p) (add_suffix (program_id p) "_functional") ~term:t' ty' ~reduce
+                 (Evd.evar_universe_context !isevar) [||])
     | _ ->
-       let ty' = EConstr.to_constr !isevar ty' in
-       ignore(Obligations.add_definition ~univ_hook ~kind
-               ~implicits:impls i ~term:t' ty'
-               ~reduce (Evd.evar_universe_context !isevar) obls)
+      let t' = EConstr.to_constr !isevar t in
+      let ty' = EConstr.to_constr !isevar ty' in
+      ignore(Obligations.add_definition ~univ_hook ~kind
+               ~implicits:(program_impls p) (program_id p) ~term:t' ty'
+               ~reduce (Evd.evar_universe_context !isevar) [||])
 
 
 let simplify_evars evars t =
@@ -979,22 +993,39 @@ let unfold_entry cst = Hints.HintsUnfoldEntry [EvalConstRef cst]
 let add_hint local i cst =
   Hints.add_hints ~local [Id.to_string i] (unfold_entry cst)
 
-let define_tree is_recursive fixprots flags impls status isevar env (i, sign, arity)
-                comp split hook =
+let define_tree is_recursive fixprots flags isevar env p hook =
   let hook recobls split =
     let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
     let () = isevar := Evd.minimize_universes !isevar in
     let split = map_split (simplify_evars !isevar) split in
     let helpers, split = define_constants flags isevar env split in
-    let () = List.iter (fun (cst, _) -> add_hint true i cst) helpers in
-    define_tree is_recursive helpers recobls fixprots flags impls status isevar env (i, sign, arity) comp split hook
+    let p = { p with program_splitting = split } in
+    let () = List.iter (fun (cst, _) -> add_hint true (program_id p) cst) helpers in
+    define_tree is_recursive helpers recobls fixprots flags isevar env p hook
   in
   if Evd.has_undefined !isevar then
-    solve_equations_obligations flags i isevar split hook
+    solve_equations_obligations flags (program_id p) isevar p.program_splitting hook
   else
     (if !Equations_common.debug then
-       Feedback.msg_debug (str"Calling hook with split " ++ pr_splitting env !isevar split);
-     hook [] split)
+       Feedback.msg_debug (str"Calling hook with split " ++ pr_splitting env !isevar p.program_splitting);
+     hook [] p.program_splitting)
+
+let define_trees env evd flags rec_info fixdecls programs hook =
+  let idx = ref 0 in
+  let define_tree p =
+    let pi = p.program_info in
+    let fixdecls =
+      match pi.program_rec with
+      | Some (Structural (NestedOn None)) | None -> (* Actually the definition is not self-recursive *)
+         List.filter (fun decl ->
+             let na = Context.Rel.Declaration.get_name decl in
+             let id = Nameops.Name.get_id na in
+             not (Id.equal id pi.program_id)) fixdecls
+      | _ -> fixdecls
+    in
+    define_tree rec_info fixdecls flags evd env p (hook !idx p);
+    incr idx
+  in List.iter define_tree programs
 
 let mapping_rhs sigma s = function
   | RProgram c -> RProgram (mapping_constr sigma s c)

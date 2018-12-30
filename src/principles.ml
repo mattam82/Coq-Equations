@@ -106,7 +106,8 @@ let is_applied_to_structarg f is_rec lenargs =
          CList.find_map (fun (f', k) -> if Id.equal f f' then Some k else None) ids
        in
        match kind with
-       | MutualOn (idx,_) | NestedOn (Some (idx,_)) -> Some (lenargs > idx)
+       | MutualOn (Some (idx,_)) | NestedOn (Some (idx,_)) -> Some (lenargs > idx)
+       | MutualOn None -> Some true
        | NestedOn None -> Some true
      with Not_found -> None
     end
@@ -591,21 +592,26 @@ let subst_rec_split env evd p f path prob s split =
            | Some (Structural ids), _ ->
              let _recarg = match ids with
                | NestedOn None -> None
+               | MutualOn None -> None
                | NestedOn (Some (x, _)) -> Some x
-               | MutualOn (x, _) -> Some x
+               | MutualOn (Some (x, _)) -> Some x
              in
              let s = ((wp.program_info.program_id, (None,
                  lift (List.length (pi1 wp.program_prob) - List.length ctx) (where_term w))) :: s) in
              let where_program = { wp.program_info with program_rec = None } in
-             { wp with program_info = where_program}, s, wp.program_prob, wp.program_splitting, 0
-           | Some (WellFounded (_, _, (loc, id))), Some r ->
+             let split = match wp.program_splitting with
+               | RecValid (lets, id, _, s) -> s
+               | s -> s
+             in
+             { wp with program_info = where_program}, s, wp.program_prob, split, 0
+           | Some (WellFounded (_, _, (loc, id))), Some (WfRec r) ->
              let recarg, proj = (Some (-1)), mkVar id in
              let s = (id, (recarg, where_term')) :: s in
              let split = match wp.program_splitting with
                | RecValid (lets, id, _, s) -> s
                | s -> s
              in
-             where_program, s, r.rec_node_newprob, split, 0
+             where_program, s, r.wf_rec_newprob, split, 0
            | _ -> wp, s, wp.program_prob, wp.program_splitting, 0
          in
 
@@ -677,16 +683,15 @@ let subst_rec_split env evd p f path prob s split =
        Mapping (lhs', aux cutprob s p f path c)
 
     | RecValid (lhs, id, r, rest) ->
-       let recarg, proj = match p.program_info.program_rec with
-       | Some (WellFounded (_, _, r)) ->
-          (match r with
-           | (loc, id) -> (Some (-1)), mkVar id)
-       | _ -> anomaly Pp.(str"Not looking at the right program")
-       in
-       let s = (id, (recarg, lift 1 f)) :: s in
-       let cutprob = (cut_problem s (pi1 r.rec_node_newprob)) in
-       let rest = aux cutprob s p f ((id, true) :: path) rest in
-       rest
+      (match p.program_info.program_rec with
+       | Some (WellFounded (_, _, r')) ->
+         let recarg, proj = match r' with (loc, id) -> (Some (-1)), mkVar id in
+         let newprob = match r with WfRec r -> r.wf_rec_newprob | StructRec r -> (* FIXME *) prob in
+         let s = (id, (recarg, lift 1 f)) :: s in
+         let cutprob = (cut_problem s (pi1 newprob)) in
+         let rest = aux cutprob s p f ((id, true) :: path) rest in
+         rest
+       | _ -> aux cutprob s p f path rest)
               (* let cutprob = (cut_problem s (pi1 subst)) in
                * let _subst, subst =
                *   try subst_rec cutprob s subst
@@ -901,7 +906,12 @@ let computations env evd alias refine eqninfo =
      computations env prob f alias fsubst refine c
 
   | RecValid (lhs, id, r, cs) ->
-    let subst = compose_subst env ~sigma:evd r.rec_node_newprob prob in
+    let newprob =
+      match r with
+      | WfRec r -> r.wf_rec_newprob
+      | StructRec r -> lhs (* FIXME *)
+    in
+    let subst = compose_subst env ~sigma:evd newprob prob in
     computations env subst f alias fsubst (fst refine, false) cs
 
   | Refined (lhs, info, cs) ->

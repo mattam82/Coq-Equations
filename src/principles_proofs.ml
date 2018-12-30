@@ -310,24 +310,35 @@ let rec aux_ind_fun info chop unfs unfids = function
     let refine gl =
       let env = pf_env gl in
       let sigma = ref (project gl) in
-      let ctx, concl =
-        decompose_prod_n_assum !sigma t.rec_node_intro (pf_concl gl)
-      in
-      to82 (Refine.refine ~typecheck:false (fun sigma ->
-          let evd = ref sigma in
-          let _functional_type, functional_type, fix =
-            Covering.wf_fix env evd ctx concl t.rec_node_arg t.rec_node_rel
-          in
-          (* TODO solve WellFounded evar *)
-          let sigma, evar = new_evar env !evd functional_type in
-          (sigma, mkApp (fix, [| evar |])))) gl
+      match t with
+      | WfRec r ->
+        let ctx, concl = decompose_prod_n_assum !sigma r.wf_rec_intro (pf_concl gl) in
+        to82 (Refine.refine ~typecheck:false (fun sigma ->
+            let evd = ref sigma in
+            let _functional_type, functional_type, fix =
+              Covering.wf_fix env evd ctx concl r.wf_rec_arg r.wf_rec_rel
+            in
+            (* TODO solve WellFounded evar *)
+            let sigma, evar = new_evar env !evd functional_type in
+            (sigma, mkApp (fix, [| evar |])))) gl
+      | StructRec r ->
+        let annot = match r.struct_rec_arg with
+          | MutualOn (Some (i, _)) -> Some i
+          | MutualOn None -> assert false
+          | NestedOn (Some (i, _)) -> Some i
+          | NestedOn None -> None
+        in
+        match annot with
+        | Some annot -> to82 (mutual_fix [] [annot]) gl
+        | None -> tclIDTAC gl
     in
     let revert_last =
       Proofview.Goal.enter (fun gl ->
           let hyp = Tacmach.New.pf_last_hyp gl in
           revert [get_id hyp])
     in
-    tclTHENLIST [tclDO t.rec_node_intro (to82 revert_last);
+    let nintro = match t with WfRec r -> r.wf_rec_intro | StructRec r -> r.struct_rec_intro in
+    tclTHENLIST [tclDO nintro (to82 revert_last);
                  observe "wf_fix"
                    (tclTHEN refine
                       (tclTHEN (to82 intros) (aux_ind_fun info chop unfs unfids cs)))]
@@ -424,7 +435,8 @@ let rec aux_ind_fun info chop unfs unfids = function
             | Some (Structural ann) ->
               (match ann with
                | NestedOn None -> tclIDTAC
-               | NestedOn (Some (idx, _)) | MutualOn (idx, _) ->
+               | MutualOn None -> assert false
+               | NestedOn (Some (idx, _)) | MutualOn (Some (idx, _)) ->
                  let recid = add_suffix wp.program_info.program_id "_rec" in
                  (* The recursive argument is local to the where, shift it by the
                     length of the enclosing context *)
@@ -560,7 +572,7 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
      let open Proofview in
      let open Notations in
      let mutual, nested = List.partition (function (_, MutualOn _) -> true | _ -> false) l in
-     let mutannots = List.map (function (_, MutualOn (ann, _)) -> ann + 1 | _ -> -1) mutual in
+     let mutannots = List.map (function (_, MutualOn (Some (ann, _))) -> ann + 1 | _ -> -1) mutual in
      let mutprogs, nestedprogs =
        List.partition (fun (p,_,e) -> match p.program_rec with
                                       | Some (Structural (MutualOn _)) -> true

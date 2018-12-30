@@ -57,7 +57,7 @@ type user_rec_annot = rec_annotation option
 type rec_arg = int * Id.t with_loc option
     
 type rec_annot =
-  | MutualOn of rec_arg
+  | MutualOn of rec_arg option
   | NestedOn of rec_arg option
 
 type program_body =

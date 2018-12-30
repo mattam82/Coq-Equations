@@ -30,12 +30,22 @@ module PathOT :
   end
 module PathMap : CSig.MapS with type key = PathOT.t
 
-type rec_node = {
-  rec_node_term : constr;
-  rec_node_arg : Constrexpr.constr_expr;
-  rec_node_rel : Constrexpr.constr_expr option;
-  rec_node_intro : int;
-  rec_node_newprob : context_map }
+type wf_rec = {
+  wf_rec_term : constr;
+  wf_rec_arg : Constrexpr.constr_expr;
+  wf_rec_rel : Constrexpr.constr_expr option;
+  wf_rec_intro : int;
+  wf_rec_newprob : context_map }
+
+type struct_rec = {
+  struct_rec_arg : Syntax.rec_annot;
+  struct_rec_intro : int;
+  struct_rec_protos : int;
+}
+
+type rec_node =
+  | WfRec of wf_rec
+  | StructRec of struct_rec
 
 type splitting =
     Compute of context_map * where_clause list * types * splitting_rhs
@@ -148,24 +158,33 @@ val is_polymorphic : term_info -> bool
 
 val define_mutual_nested : Evd.evar_map ref ->
                            ('a -> EConstr.t) ->
-                           (program * 'a) list ->
-                           (program * 'a * EConstr.t) list *
-                           (program * 'a * EConstr.constr) list
+                           (program_info * 'a) list ->
+                           (program_info * 'a * EConstr.t) list *
+                           (program_info * 'a * EConstr.constr) list
 
 
 val define_tree :
   rec_type option -> rel_context -> flags ->
-  (Constrexpr.explicitation * (bool * bool * bool)) list ->
-  Evar_kinds.obligation_definition_status ->
   Evd.evar_map ref ->
   env ->
-  Id.t * rel_context * types ->
-  Id.t with_loc option ->
-  splitting ->
+  program ->
   (splitting -> (Constr.t -> Constr.t) ->
    term_info ->
    UState.t -> unit) ->
   unit
+
+val define_trees :            Environ.env ->
+           Evd.evar_map ref ->
+           Equations_common.flags ->
+           Syntax.rec_type option ->
+           EConstr.rel_context ->
+           program list ->
+           (int ->
+            program ->
+            splitting ->
+            (Constr.constr -> Constr.constr) -> term_info -> UState.t -> unit) ->
+           unit
+
 
 val mapping_rhs : Evd.evar_map -> context_map -> splitting_rhs -> splitting_rhs
 val map_rhs :

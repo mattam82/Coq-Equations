@@ -213,11 +213,11 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
       notations = []
     }
   in
-  let p = Syntax.{program_loc = Obj.magic ();
-                  program_id = Names.Id.of_string "dummy";
+  let p = Syntax.{program_loc = Loc.make_loc (0,0);
+                  program_id = id;
                   program_impls = [];
                   program_rec = None;
-                  program_sign = ctx;
+                  program_sign = fullbinders;
                   program_arity = s}
   in
   let splitting =
@@ -246,9 +246,8 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
     let indu = destInd sigma indu in
     derive_noConfusion_package (Global.env ()) sigma0 polymorphic indu indid program_cst
  in
-  Splitting.define_tree None [] data.Covering.flags [] (Evar_kinds.Define false) evd env
-                (id, fullbinders, s)
-                None splitting hook
+ let prog = Splitting.make_program evd env [] p ctxmap splitting None in
+  Splitting.define_tree None [] data.Covering.flags evd env prog hook
 
 
 let () =
