@@ -209,5 +209,6 @@ Equations fle_trans' {n : nat} {i j : fin n} (p : fle i j) {k} (q : fle j k) : f
  by rec (Signature.signature_pack p) (@fle_subterm) :=
 fle_trans' flez _ := flez;
 fle_trans' (fles p') (fles q') := fles (fle_trans' p' q').
+
 Print Assumptions fle_trans'.
-Extraction fle_trans'.
+(* Extraction fle_trans'. *)

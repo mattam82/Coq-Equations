@@ -71,7 +71,7 @@ Section tree_list.
 
 End tree_list.
 
-(* Check (fun a (a_C : C a) => eq_refl : tree_list_C a_C = list_C (tree_C a_C)). *)
+Example check := (fun a (a_C : C a) => eq_refl : tree_list_C a_C = list_C (tree_C a_C)).
 
 End Works.
 
@@ -97,7 +97,7 @@ Section tree_list.
 
 End tree_list.
 
-(* Check (fun a (a_C : C a) => eq_refl : tree_list_C a_C = list_C (tree_C a_C)). *)
+Example check := (fun a (a_C : C a) => eq_refl : tree_list_C a_C = list_C (tree_C a_C)).
 
 
 
@@ -163,7 +163,7 @@ Module IdealNoSec.
   Instance tree_C {a} (a_C : C a) : C (tree a) := { P := tree_P3 }.
   Instance tree_list_C {a} (a_C : C a) : C (list (tree a)) := { P := list_P3 }.
 
-  (* Check (fun a (a_C : C a) => eq_refl : tree_list_C a_C = list_C (tree_C a_C)). *)
+  Example check0 := (fun a (a_C : C a) => eq_refl : tree_list_C a_C = list_C (tree_C a_C)).
 
   Set Firstorder Solver auto.
 

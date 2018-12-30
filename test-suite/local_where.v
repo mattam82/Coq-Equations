@@ -6,7 +6,7 @@ foo n := n + k 0
   where k (x : nat) : nat :=
   { k 0 := 0 ; k (S n') := n }.
 
-Variable f : nat -> (nat * nat).
+Parameter f : nat -> (nat * nat).
 
 Equations foo' (n : nat) : nat :=
 foo' 0 := 0;
@@ -15,7 +15,7 @@ foo' (S n) := n + k (f 0) (0, 0)
   where k (x : nat * nat) (y : nat * nat) : nat :=
   { k (x, y) (x', y') := x }.
 
-Variable kont : ((nat * nat) -> nat) -> nat.
+Parameter kont : ((nat * nat) -> nat) -> nat.
 
 Equations foo'' (n : nat) : nat :=
 foo'' 0 := 0;
@@ -38,7 +38,7 @@ Inductive expr : index -> Set :=
 
 Derive Signature NoConfusion NoConfusionHom for expr.
 
-Variable kont' : forall x : index, (expr x -> nat) -> nat.
+Parameter kont' : forall x : index, (expr x -> nat) -> nat.
 
 Equations foo4 {i} (n : expr i) : nat :=
 foo4 e1 := 0;
@@ -84,6 +84,8 @@ Equations foo8 : nat -> nat :=
 where baz : nat -> nat :=
 baz 0 := 0;
 baz (S n) := baz n.
+
+Set Warnings "-notation-overridden".
 
 Notation "{ x : A & y }" := (@sigma A (fun x : A => y)%type) (x at level 99) : type_scope.
 Notation "{ x & y }" := (@sigma _ (fun x : _ => y)%type) (x at level 99) : type_scope.

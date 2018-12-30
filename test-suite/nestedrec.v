@@ -12,4 +12,4 @@ where id_tlist (t : list term) : list term := {
   id_tlist nil := nil;
   id_tlist (cons t ts) := cons (id_term t) (id_tlist ts) }.
 
-Check eq_refl : List.map id_term = id_tlist.
+Definition check := eq_refl : List.map id_term = id_tlist.

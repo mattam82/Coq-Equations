@@ -42,7 +42,7 @@ gcd' (pair x y) with gt_eq_gt_dec x y := {
   | inright xgty := gcd' (x - y, y) }.
 
 Require Import ExtrOcamlBasic.
-Extraction gcd.
+(* Extraction gcd. *)
 (* Extraction gcd_unfold. *)
 
 Lemma gcd_ref x : gcd (x,x) = x.
