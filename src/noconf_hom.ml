@@ -224,7 +224,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
     Covering.covering
       ~check_unused:false (* The catch-all clause might not be needed *)
       env evd p data clauses [] ctxmap [] s in
-  let hook split fn terminfo ustate =
+  let hook _ p terminfo ustate =
     let _proginfo =
       Syntax.{ program_loc = Loc.make_loc (0,0); program_id = id;
         program_sign = fullbinders;
@@ -233,7 +233,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
         program_impls = [] }
     in
     let program_cst = match terminfo.Splitting.term_id with ConstRef c -> c | _ -> assert false in
-    let _compiled_info = Splitting.{ program_cst; program_split = split;
+    let _compiled_info = Splitting.{ program_cst; program_split = p.program_splitting;
                                     program_split_info = terminfo } in
     let _flags = { polymorphic; open_proof = false; with_eqns = true; with_ind = true } in
     let _fixprots = [s] in
@@ -246,8 +246,8 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
     let indu = destInd sigma indu in
     derive_noConfusion_package (Global.env ()) sigma0 polymorphic indu indid program_cst
  in
- let prog = Splitting.make_program evd env [] p ctxmap splitting None in
-  Splitting.define_tree None [] data.Covering.flags evd env prog hook
+ let prog = Splitting.make_single_program env evd [] p ctxmap splitting None in
+ Splitting.define_programs env evd None [] data.Covering.flags [prog] hook
 
 
 let () =

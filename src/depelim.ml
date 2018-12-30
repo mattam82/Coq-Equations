@@ -441,7 +441,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
       in
 
       let c, ty =
-        Splitting.term_of_tree evd env split
+        Splitting.term_of_tree env evd split
       in
       let c = beta_applist !evd (c, args) in
       let c = Vars.substl (List.rev rev_subst) c in

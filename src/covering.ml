@@ -560,10 +560,10 @@ let check_unused_clauses env cl =
 
 
 let compute_recinfo programs =
-  if List.for_all (fun p -> match p.program_rec with
+  if List.for_all (fun p -> match p.Syntax.program_rec with
       | None -> true
       | Some _ -> false) programs then None
-  else if List.for_all (fun p -> match p.program_rec with
+  else if List.for_all (fun p -> match p.Syntax.program_rec with
       | Some (Structural _)
       | None -> true
       | _ -> false) programs then
@@ -571,7 +571,7 @@ let compute_recinfo programs =
       List.map (fun p -> p.program_id,
                          match p.program_rec with
                          | Some (Structural ann) -> ann
-                         | None -> NestedOn None
+                         | None -> NestedNonRec
                          | _ -> assert false) programs
     in Some (Guarded recids)
   else begin
@@ -621,7 +621,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars (((loc,i),rec_annot,l,t,by),c
   let arity = nf_evar ( !evd) arity in
   let interp_reca k i =
     match k with
-    | None | Some Mutual -> MutualOn i
+    | None | Some Syntax.Mutual -> MutualOn i
     | Some Nested -> NestedOn i
   in
   let rec_annot =
@@ -632,7 +632,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars (((loc,i),rec_annot,l,t,by),c
        | Some false ->
          if rec_annot = Some Syntax.Nested && Option.is_empty (is_recursive i [ieqs]) then
            (* Nested but not recursive in in its own body *)
-           Some (Structural (NestedOn None))
+           Some (Structural NestedNonRec)
          else Some (Structural (interp_reca rec_annot None))
        | Some true -> assert false)
     | Some (Structural lid) ->
@@ -676,7 +676,7 @@ let recursive_patterns env progid rec_info =
   | Some (Guarded l) ->
     let addpat (id, k) =
       match k with
-      | NestedOn None when Id.equal id progid -> None
+      | NestedNonRec when Id.equal id progid -> None
       | _ -> Some (DAst.make (PUVar (id, false)))
     in
     let structpats = List.map_filter addpat l in
@@ -778,11 +778,11 @@ let wf_fix env evars sign arity term rel =
   functional_type, full_functional_type, fix
 
 let compute_rec_data env evars data lets p =
-  match p.program_rec with
+  match p.Syntax.program_rec with
   | Some (Structural ann) ->
     let reclen, sign =
       match ann with
-      | NestedOn None -> (* Actually the definition is not self-recursive *)
+      | NestedNonRec -> (* Actually the definition is not self-recursive *)
         let fixdecls =
           List.filter (fun decl ->
               let na = Context.Rel.Declaration.get_name decl in
@@ -804,40 +804,45 @@ let compute_rec_data env evars data lets p =
     let rec_node =
       let info =
         { struct_rec_arg = ann;
-          struct_rec_intro = List.length p.program_sign;
           struct_rec_protos = List.length extpats }
       in StructRec info
     in
-    let p =
-      { p with program_sign = sign;
-               program_arity = liftn reclen (succ (length p.program_sign)) p.program_arity }
+    let rec_info =
+      { rec_sign = sign;
+        rec_prob = id_subst sign;
+        rec_arity = liftn reclen (succ (length p.program_sign)) p.program_arity;
+        rec_args = List.length p.program_sign;
+        rec_node }
     in
-    p, id_subst p.program_sign, ctxpats, (Some rec_node)
+    p, rec_info.rec_prob, rec_info.rec_arity, ctxpats, (Some rec_info)
 
   | Some (WellFounded (term, rel, _)) ->
     let envlets = push_rel_context lets env in
     let functional_type, _full_functional_type, fix = wf_fix envlets evars p.program_sign p.program_arity term rel in
     let decl = make_def (Name p.program_id) None functional_type in
     let ctxpats = pats_of_sign lets in
-    let wf_rec_intro = List.length p.program_sign in
-    let p = { p with program_sign = p.program_sign @ lets } in
-    let lhs = decl :: p.program_sign in
-    let pats = PHide 1 :: lift_pats 1 (id_pats p.program_sign) in
-    let prob = (lhs, pats, lhs) in
+    let rec_args = List.length p.program_sign in
+    let rec_sign = p.program_sign @ lets in
+    let lhs = decl :: rec_sign in
+    let pats = PHide 1 :: lift_pats 1 (id_pats rec_sign) in
+    let rec_prob = (lhs, pats, lhs) in
     let rec_node =
       (* id_subst lets *)
       { wf_rec_term = fix;
         wf_rec_arg = term;
-        wf_rec_rel = rel;
-        wf_rec_intro = wf_rec_intro;
-        wf_rec_newprob = prob }
+        wf_rec_rel = rel}
     in
-    let p = { p with program_arity = lift 1 p.program_arity } in
-    p, prob, ctxpats, Some (WfRec rec_node)
+    let rec_info = { rec_sign;
+                     rec_arity = lift 1 p.program_arity;
+                     rec_prob;
+                     rec_args;
+                     rec_node = WfRec rec_node }
+    in
+    p, rec_info.rec_prob, rec_info.rec_arity, ctxpats, Some rec_info
 
   | _ ->
     let p = { p with program_sign = p.program_sign @ lets } in
-    p, id_subst p.program_sign, pats_of_sign lets, None
+    p, id_subst p.program_sign, p.program_arity, pats_of_sign lets, None
 
 let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int)) list) path
     (ctx,pats,ctx' as prob) extpats lets ty =
@@ -1132,7 +1137,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
          str "And clauses: " ++ pr_preclauses env cls')
     | Some (clauses, s) ->
       let () = check_unused_clauses env clauses in
-      let term, _ = term_of_tree evars env s in
+      let term, _ = term_of_tree env evars s in
       let info =
         { refined_obj = (idref, cconstr, cty);
           refined_rettyp = ty;
@@ -1167,7 +1172,7 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
 
     let pre_type = Syntax.program_type p in
     let fixdecls = [Context.Rel.Declaration.LocalAssum (Name id, pre_type)] in
-    let p, problem, extpats, rec_node =
+    let p, problem, arity, extpats, rec_info =
       compute_rec_data env evars {data with rec_info = compute_recinfo [p];
                                       fixdecls = fixdecls} lets p in
     let intenv = Constrintern.compute_internalization_env ~impls:data.intenv
@@ -1187,8 +1192,8 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
     let program, term =
       match t with
       | Some ty (* non-delayed where clause, compute term right away *) ->
-        let splitting = covering env0 evars p data clauses path problem extpats p.program_arity in
-        let program = make_program evars env0 lets p problem splitting rec_node in
+        let splitting = covering env0 evars p data clauses path problem extpats arity in
+        let program = make_single_program env0 evars lets p problem splitting rec_info in
         Lazy.from_val (w' program), program.program_term
       | None ->
         let relty = Syntax.program_type p in
@@ -1201,8 +1206,8 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
         let () = evars := sigma in
         let ev = destEvar !evars term in
         let cover () =
-          let splitting = covering env0 evars p data clauses path problem extpats p.program_arity in
-          let program = make_program evars env0 lets p problem splitting rec_node in
+          let splitting = covering env0 evars p data clauses path problem extpats arity in
+          let program = make_single_program env0 evars lets p problem splitting rec_info in
           evars := Evd.define (fst ev) program.program_term !evars; w' program
         in
         Lazy.from_fun cover, term
@@ -1235,12 +1240,12 @@ let program_covering env evd data p clauses =
   in
   let sigma, p = adjust_sign_arity env !evd p clauses in
   let () = evd := sigma in
-  let p', prob, extpats, rec_node = compute_rec_data env evd data [] p in
+  let p', prob, arity, extpats, rec_node = compute_rec_data env evd data [] p in
   let _arity = nf_evar !evd p.program_arity in
   let splitting =
-    covering env evd p data clauses [p.program_id, false] prob extpats p'.program_arity
-  in
-  make_program evd env [] p' prob splitting rec_node
+    covering env evd p data clauses [p.program_id, false] prob extpats arity
+  in (p', prob, splitting, rec_node)
 
 let coverings env evd data programs equations =
-  List.map2 (program_covering env evd data) programs equations
+  let splittings = List.map2 (program_covering env evd data) programs equations in
+  make_programs env evd [] splittings

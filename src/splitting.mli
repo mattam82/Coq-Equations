@@ -33,13 +33,10 @@ module PathMap : CSig.MapS with type key = PathOT.t
 type wf_rec = {
   wf_rec_term : constr;
   wf_rec_arg : Constrexpr.constr_expr;
-  wf_rec_rel : Constrexpr.constr_expr option;
-  wf_rec_intro : int;
-  wf_rec_newprob : context_map }
+  wf_rec_rel : Constrexpr.constr_expr option }
 
 type struct_rec = {
   struct_rec_arg : Syntax.rec_annot;
-  struct_rec_intro : int;
   struct_rec_protos : int;
 }
 
@@ -47,11 +44,18 @@ type rec_node =
   | WfRec of wf_rec
   | StructRec of struct_rec
 
+type rec_info =
+  { rec_prob : context_map;
+    rec_sign : rel_context;
+    rec_arity : constr;
+    rec_args : int;
+    rec_node : rec_node }
+
 type splitting =
     Compute of context_map * where_clause list * types * splitting_rhs
   | Split of context_map * int * types * splitting option array
   | Mapping of context_map * splitting
-  | RecValid of context_map * identifier * rec_node * splitting
+  | RecValid of context_map * identifier * rec_info * splitting
   | Refined of context_map * refined_node * splitting
 
 and where_clause =
@@ -78,8 +82,8 @@ and refined_node =
 and program =
   { program_info : program_info;
     program_prob : context_map;
+    program_rec : rec_info option;
     program_splitting : splitting;
-    program_rec_node : rec_node option;
     program_term : constr }
 
 and splitting_rhs = RProgram of constr | REmpty of int * splitting option array
@@ -114,25 +118,53 @@ val helper_evar :
 
 (** Compilation to Coq terms *)
 val term_of_tree :
-  Evd.evar_map ref ->
   env ->
+  Evd.evar_map ref ->
   splitting ->
   constr * constr
 
+type program_shape =
+  | Single of program_info * context_map * rec_info option * splitting * constr
+  | Mutual of program_info * context_map * rec_info * splitting * rel_context * constr
+
 val make_program :
-  Evd.evar_map ref ->
   env ->
+  Evd.evar_map ref ->
   rel_context ->
   program_info ->
   context_map ->
   splitting ->
-  rec_node option ->
+  rec_info option ->
+  program_shape
+
+val make_programs :
+  Environ.env ->
+  Evd.evar_map ref ->
+  rel_context ->
+  (Syntax.program_info * Context_map.context_map * splitting *
+   rec_info option)
+    list -> program list
+
+val make_single_program :
+  env ->
+  Evd.evar_map ref ->
+  rel_context ->
+  program_info ->
+  context_map ->
+  splitting ->
+  rec_info option ->
   program
 
-val define_constants : flags ->
-  Evd.evar_map ref ->
+val define_splitting_constants : flags ->
   env ->
+  Evd.evar_map ref ->
   splitting -> (Constant.t * int) list * splitting
+
+val define_program_constants : flags ->
+  env ->
+  Evd.evar_map ref ->
+  program list ->
+  (Constant.t * int) list * program list
 
 (** Compilation from splitting tree to terms. *)
 
@@ -163,27 +195,17 @@ val define_mutual_nested : Evd.evar_map ref ->
                            (program_info * 'a * EConstr.constr) list
 
 
-val define_tree :
-  rec_type option -> rel_context -> flags ->
+val define_programs :
+  Environ.env ->
   Evd.evar_map ref ->
-  env ->
-  program ->
-  (splitting -> (Constr.t -> Constr.t) ->
-   term_info ->
-   UState.t -> unit) ->
+  Syntax.rec_type option ->
+  EConstr.rel_context ->
+  Equations_common.flags ->
+  program list ->
+  (int ->
+   program ->
+   term_info -> UState.t -> unit) ->
   unit
-
-val define_trees :            Environ.env ->
-           Evd.evar_map ref ->
-           Equations_common.flags ->
-           Syntax.rec_type option ->
-           EConstr.rel_context ->
-           program list ->
-           (int ->
-            program ->
-            splitting ->
-            (Constr.constr -> Constr.constr) -> term_info -> UState.t -> unit) ->
-           unit
 
 
 val mapping_rhs : Evd.evar_map -> context_map -> splitting_rhs -> splitting_rhs

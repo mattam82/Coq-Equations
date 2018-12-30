@@ -311,8 +311,8 @@ let rec aux_ind_fun info chop unfs unfids = function
       let env = pf_env gl in
       let sigma = ref (project gl) in
       match t with
-      | WfRec r ->
-        let ctx, concl = decompose_prod_n_assum !sigma r.wf_rec_intro (pf_concl gl) in
+      | { rec_node = WfRec r } ->
+        let ctx, concl = decompose_prod_n_assum !sigma t.rec_args (pf_concl gl) in
         to82 (Refine.refine ~typecheck:false (fun sigma ->
             let evd = ref sigma in
             let _functional_type, functional_type, fix =
@@ -321,12 +321,12 @@ let rec aux_ind_fun info chop unfs unfids = function
             (* TODO solve WellFounded evar *)
             let sigma, evar = new_evar env !evd functional_type in
             (sigma, mkApp (fix, [| evar |])))) gl
-      | StructRec r ->
+      | { rec_node = StructRec r } ->
         let annot = match r.struct_rec_arg with
           | MutualOn (Some (i, _)) -> Some i
           | MutualOn None -> assert false
           | NestedOn (Some (i, _)) -> Some i
-          | NestedOn None -> None
+          | _ -> None
         in
         match annot with
         | Some annot -> to82 (mutual_fix [] [annot]) gl
@@ -337,8 +337,7 @@ let rec aux_ind_fun info chop unfs unfids = function
           let hyp = Tacmach.New.pf_last_hyp gl in
           revert [get_id hyp])
     in
-    let nintro = match t with WfRec r -> r.wf_rec_intro | StructRec r -> r.struct_rec_intro in
-    tclTHENLIST [tclDO nintro (to82 revert_last);
+    tclTHENLIST [tclDO t.rec_args (to82 revert_last);
                  observe "wf_fix"
                    (tclTHEN refine
                       (tclTHEN (to82 intros) (aux_ind_fun info chop unfs unfids cs)))]
@@ -434,7 +433,7 @@ let rec aux_ind_fun info chop unfs unfids = function
             match s.where_program_orig.program_rec with
             | Some (Structural ann) ->
               (match ann with
-               | NestedOn None -> tclIDTAC
+               | NestedOn None | NestedNonRec -> tclIDTAC
                | MutualOn None -> assert false
                | NestedOn (Some (idx, _)) | MutualOn (Some (idx, _)) ->
                  let recid = add_suffix wp.program_info.program_id "_rec" in
@@ -574,7 +573,7 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
      let mutual, nested = List.partition (function (_, MutualOn _) -> true | _ -> false) l in
      let mutannots = List.map (function (_, MutualOn (Some (ann, _))) -> ann + 1 | _ -> -1) mutual in
      let mutprogs, nestedprogs =
-       List.partition (fun (p,_,e) -> match p.program_rec with
+       List.partition (fun (p,_,e) -> match p.Syntax.program_rec with
                                       | Some (Structural (MutualOn _)) -> true
                                       | _ -> false) progs
      in

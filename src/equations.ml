@@ -50,8 +50,8 @@ let nf_program_info evm p =
 
 
 let program_fixdecls p fixdecls =
-  match p.program_rec with
-  | Some (Structural (NestedOn None)) -> (* Actually the definition is not self-recursive *)
+  match p.Syntax.program_rec with
+  | Some (Structural NestedNonRec) -> (* Actually the definition is not self-recursive *)
      List.filter (fun decl ->
          let na = Context.Rel.Declaration.get_name decl in
          let id = Nameops.Name.get_id na in
@@ -110,7 +110,7 @@ let define_principles flags rec_info fixprots progs =
          in
 	 (* We first define the unfolding and show the fixpoint equation. *)
          let unfoldi = add_suffix i "_unfold" in
-         let hook_unfold unfold_split cmap info' ectx =
+         let hook_unfold idx unfold_program info' ectx =
            let info =
              { info' with base_id = prog.program_split_info.base_id;
                           helpers_info = prog.program_split_info.helpers_info @ info'.helpers_info;
@@ -119,6 +119,7 @@ let define_principles flags rec_info fixprots progs =
            let funf_cst = match info'.term_id with ConstRef c -> c | _ -> assert false in
            let () = if flags.polymorphic then evd := Evd.from_ctx ectx in
            let funfc = e_new_global evd info'.term_id in
+           let unfold_split = unfold_program.program_splitting in
            (* let cmap' x = of_constr (cmap (EConstr.to_constr ~abort_on_undefined_evars:false !evd x)) in
             * let unfold_split = map_split cmap' unfold_split in *)
 	   let unfold_eq_id = add_suffix unfoldi "_eq" in
@@ -181,8 +182,8 @@ let define_principles flags rec_info fixprots progs =
                      program_sign = sign;
                      program_arity = arity }
          in
-         let unfoldp = make_program evd env [] unfpi prob unfold_split None in
-         define_tree None [] flags evd env unfoldp hook_unfold;
+         let unfoldp = make_single_program env evd [] unfpi prob unfold_split None in
+         define_programs env evd None [] flags [unfoldp] hook_unfold;
          None
   in
   let principles env newsplits =
@@ -224,18 +225,6 @@ let define_principles flags rec_info fixprots progs =
 
 let define_mutual_nested_csts rec_info flags progs =
   match progs with
-  | [(p, prog)] ->
-    (match rec_info, p.program_info.program_rec with
-     | Some (Guarded [id, _]), Some (Structural (MutualOn None)) ->
-       (* Fix rec_info from inference of structural index *)
-       let env = Global.env () in
-       let ctx = constant_context env prog.program_cst in
-       let inst = Univ.UContext.instance (Univ.AUContext.repr ctx) in
-       let c = constant_value_in env (prog.program_cst, inst) in
-       let i = let (inds, _), _ = Constr.destFix c in inds.(0) in
-       Some (Guarded [id, MutualOn (Some (i, None))]), progs
-     | _ -> rec_info, progs)
-
   | l ->
      let env = Global.env () in
      let evd = ref (Evd.from_env env) in
@@ -266,7 +255,6 @@ let define_mutual_nested_csts rec_info flags progs =
        (p, prog')) nested in
      rec_info, mutual @ nested
 
-
 let define_by_eqs ~poly ~open_proof opts eqs nt =
   let with_rec, with_eqns, with_ind =
     let try_bool_opt opt =
@@ -284,7 +272,7 @@ let define_by_eqs ~poly ~open_proof opts eqs nt =
     match eqs with
     | ((li,ra,l,t,by), eqns) :: tl ->
       (match with_rec with
-      | Some lid -> ((li, Some Mutual, l, t, Some (Syntax.Structural lid)), eqns) :: tl
+      | Some lid -> ((li, Some Syntax.Mutual, l, t, Some (Syntax.Structural lid)), eqns) :: tl
       | _ -> eqs)
     | _ -> assert false
   in
@@ -312,27 +300,28 @@ let define_by_eqs ~poly ~open_proof opts eqs nt =
     Hints.create_hint_db false baseid trs true
   in
   let progs = Array.make (List.length eqs) None in
-  let hook i p split cmap info ectx =
+  let hook i p info ectx =
     let () = inline_helpers info in
     let () = declare_wf_obligations info in
     let f_cst = match info.term_id with ConstRef c -> c | _ -> assert false in
     let () = evd := Evd.from_ctx ectx in
-    let cmap' x = of_constr (cmap (EConstr.to_constr ~abort_on_undefined_evars:false !evd x)) in
-    let split = map_split cmap' split in
+    (* let cmap' x = of_constr (cmap (EConstr.to_constr ~abort_on_undefined_evars:false !evd x)) in *)
+    (* let split = map_split cmap' split in *)
     let pi = nf_program_info !evd p.program_info in
     let p = { p with program_info = pi } in
     let compiled_info = { program_cst = f_cst;
-                          program_split = split;
+                          program_split = p.program_splitting;
                           program_split_info = info } in
     progs.(i) <- Some (p, compiled_info);
     if CArray.for_all (fun x -> not (Option.is_empty x)) progs then
       (let fixprots = List.map (nf_evar !evd) fixprots in
        let progs = Array.map_to_list (fun x -> Option.get x) progs in
-       let rec_info, progs' = define_mutual_nested_csts rec_info flags progs in
+       let rec_info = compute_recinfo (List.map (fun (x, y) -> x.program_info) progs) in
+       (* let rec_info, progs' = define_mutual_nested_csts rec_info flags progs in *)
        if flags.with_eqns || flags.with_ind then
-         define_principles flags rec_info fixprots progs')
+         define_principles flags rec_info fixprots progs)
   in
-  define_trees env evd flags rec_info fixdecls programs hook
+  define_programs env evd rec_info fixdecls flags programs hook
 
 let equations ~poly ~open_proof opts eqs nt =
   List.iter (fun (((loc, i), nested, l, t, by),eqs) -> Dumpglob.dump_definition CAst.(make ~loc i) false "def") eqs;

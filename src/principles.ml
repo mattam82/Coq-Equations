@@ -29,7 +29,7 @@ type node_kind =
   | Nested of recursive
 
 let kind_of_prog p =
-  match p.program_rec with
+  match p.Syntax.program_rec with
   | Some (Structural (NestedOn (Some _))) -> Nested true
   | Some (Structural (NestedOn None)) -> Nested false
   | _ -> Regular
@@ -107,8 +107,7 @@ let is_applied_to_structarg f is_rec lenargs =
        in
        match kind with
        | MutualOn (Some (idx,_)) | NestedOn (Some (idx,_)) -> Some (lenargs > idx)
-       | MutualOn None -> Some true
-       | NestedOn None -> Some true
+       | MutualOn None | NestedOn None | NestedNonRec -> Some true
      with Not_found -> None
     end
   | _ -> None
@@ -588,11 +587,12 @@ let subst_rec_split env evd p f path prob s split =
 
          let where_program', s, program_prob, program_splitting', extpatlen =
            (* Should be the number of extra patterns for the whole fix block *)
-           match wp.program_info.program_rec, wp.program_rec_node with
+           match wp.program_info.program_rec, wp.program_rec with
            | Some (Structural ids), _ ->
              let _recarg = match ids with
                | NestedOn None -> None
                | MutualOn None -> None
+               | NestedNonRec -> None
                | NestedOn (Some (x, _)) -> Some x
                | MutualOn (Some (x, _)) -> Some x
              in
@@ -604,14 +604,14 @@ let subst_rec_split env evd p f path prob s split =
                | s -> s
              in
              { wp with program_info = where_program}, s, wp.program_prob, split, 0
-           | Some (WellFounded (_, _, (loc, id))), Some (WfRec r) ->
+           | Some (WellFounded (_, _, (loc, id))), Some { rec_node = WfRec r; rec_prob } ->
              let recarg, proj = (Some (-1)), mkVar id in
              let s = (id, (recarg, where_term')) :: s in
              let split = match wp.program_splitting with
                | RecValid (lets, id, _, s) -> s
                | s -> s
              in
-             where_program, s, r.wf_rec_newprob, split, 0
+             where_program, s, rec_prob, split, 0
            | _ -> wp, s, wp.program_prob, wp.program_splitting, 0
          in
 
@@ -641,7 +641,7 @@ let subst_rec_split env evd p f path prob s split =
          in
          let where_program_term, where_program_args, where_path =
            if islogical then
-             let where_term, where_ty = term_of_tree evd env where_splitting in
+             let where_term, where_ty = term_of_tree env evd where_splitting in
              let id = Nameops.add_suffix (where_id w) "_unfold_eq" in
              let () = where_map := PathMap.add w.where_path
                    (applistc where_program_term where_program_args (* substituted *), id, where_splitting)
@@ -686,7 +686,7 @@ let subst_rec_split env evd p f path prob s split =
       (match p.program_info.program_rec with
        | Some (WellFounded (_, _, r')) ->
          let recarg, proj = match r' with (loc, id) -> (Some (-1)), mkVar id in
-         let newprob = match r with WfRec r -> r.wf_rec_newprob | StructRec r -> (* FIXME *) prob in
+         let newprob = r.rec_prob in
          let s = (id, (recarg, lift 1 f)) :: s in
          let cutprob = (cut_problem s (pi1 newprob)) in
          let rest = aux cutprob s p f ((id, true) :: path) rest in
@@ -741,7 +741,7 @@ let subst_rec_split env evd p f path prob s split =
            in
            let _secvars = Array.of_list secvars in
            (* let _ = (mkEvar (ev', secvars) in *)
-           let term', _ = term_of_tree evd env s' in
+           let term', _ = term_of_tree env evd s' in
            term', List.rev (List.map (Reductionops.nf_beta env !evd) args'), !refarg
          else
            let first, last = CList.chop (List.length s) (List.map (mapping_constr !evd subst) args) in
@@ -906,12 +906,7 @@ let computations env evd alias refine eqninfo =
      computations env prob f alias fsubst refine c
 
   | RecValid (lhs, id, r, cs) ->
-    let newprob =
-      match r with
-      | WfRec r -> r.wf_rec_newprob
-      | StructRec r -> lhs (* FIXME *)
-    in
-    let subst = compose_subst env ~sigma:evd newprob prob in
+    let subst = compose_subst env ~sigma:evd r.rec_prob prob in
     computations env subst f alias fsubst (fst refine, false) cs
 
   | Refined (lhs, info, cs) ->

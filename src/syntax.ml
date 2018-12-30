@@ -59,6 +59,7 @@ type rec_arg = int * Id.t with_loc option
 type rec_annot =
   | MutualOn of rec_arg option
   | NestedOn of rec_arg option
+  | NestedNonRec
 
 type program_body =
   | ConstrExpr of Constrexpr.constr_expr

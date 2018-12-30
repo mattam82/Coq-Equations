@@ -55,13 +55,10 @@ end
 type wf_rec = {
   wf_rec_term : constr;
   wf_rec_arg : Constrexpr.constr_expr;
-  wf_rec_rel : Constrexpr.constr_expr option;
-  wf_rec_intro : int;(* number of arguments of the recursive function *)
-  wf_rec_newprob : context_map }
+  wf_rec_rel : Constrexpr.constr_expr option; }
 
 type struct_rec = {
   struct_rec_arg : Syntax.rec_annot;
-  struct_rec_intro : int;
   struct_rec_protos : int;
 }
 
@@ -69,11 +66,18 @@ type rec_node =
   | WfRec of wf_rec
   | StructRec of struct_rec
 
+type rec_info =
+  { rec_prob : context_map;
+    rec_sign : rel_context;
+    rec_arity : constr;
+    rec_args : int; (* number of arguments of the recursive function *)
+    rec_node : rec_node }
+
 type splitting =
   | Compute of context_map * where_clause list * types * splitting_rhs
   | Split of context_map * int * types * splitting option array
   | Mapping of context_map * splitting (* Mapping Γ |- p : Γ' and splitting Γ' |- p : Δ *)
-  | RecValid of context_map * identifier * rec_node * splitting
+  | RecValid of context_map * identifier * rec_info * splitting
   | Refined of context_map * refined_node * splitting
 
 and where_clause =
@@ -100,8 +104,8 @@ and refined_node =
 and program =
   { program_info : program_info;
     program_prob : context_map;
+    program_rec : rec_info option;
     program_splitting : splitting;
-    program_rec_node : rec_node option;
     program_term : constr }
 
 and splitting_rhs =
@@ -158,7 +162,8 @@ let pr_rec_info p =
      | MutualOn (Some (i,_)) -> str "mutually recursive on " ++ int i
      | MutualOn None -> str "mutually recursive on ? "
      | NestedOn (Some (i,_)) -> str "nested on " ++ int i
-     | NestedOn None -> str "nested but not directly recursive")
+     | NestedOn None -> str "nested on ? "
+     | NestedNonRec -> str "nested but not directly recursive")
   | Some (WellFounded (c, r, info)) ->
     str "wellfounded"
   | None -> str "not recursive"
@@ -234,6 +239,12 @@ let pr_splitting env sigma ?(verbose=false) split =
   in
   try aux split with e -> str"Error pretty-printing splitting"
 
+let pr_program env evd p =
+  pr_splitting env evd p.program_splitting
+
+let pr_programs env evd p =
+  prlist_with_sep fnl (pr_program env evd) p
+
 let pp s = pp_with !Topfmt.deep_ft s
 
 let ppsplit s =
@@ -244,24 +255,29 @@ let ppsplit s =
 let map_wf_rec f r =
   { wf_rec_term = f r.wf_rec_term;
     wf_rec_arg = r.wf_rec_arg;
-    wf_rec_rel = r.wf_rec_rel;
-    wf_rec_intro = r.wf_rec_intro;
-    wf_rec_newprob = map_ctx_map f r.wf_rec_newprob }
+    wf_rec_rel = r.wf_rec_rel }
 
 let map_struct_rec f r =
   { struct_rec_arg = r.struct_rec_arg;
-    struct_rec_intro = r.struct_rec_intro;
     struct_rec_protos = r.struct_rec_protos}
 
 let map_rec_node f = function
   | StructRec s -> StructRec (map_struct_rec f s)
   | WfRec s -> WfRec (map_wf_rec f s)
 
+let map_rec_info f r =
+  { rec_prob = map_ctx_map f r.rec_prob;
+    rec_sign = map_rel_context f r.rec_sign;
+    rec_arity = f r.rec_arity;
+    rec_args = r.rec_args;
+    rec_node = map_rec_node f r.rec_node
+  }
+
 let rec map_program f p =
   { program_info = map_program_info f p.program_info;
     program_prob = map_ctx_map f p.program_prob;
     program_splitting = map_split f p.program_splitting;
-    program_rec_node = Option.map (map_rec_node f) p.program_rec_node;
+    program_rec = Option.map (map_rec_info f) p.program_rec;
     program_term = f p.program_term }
 
 and map_where f w =
@@ -283,7 +299,7 @@ and map_split f split =
        let lhs' = map_ctx_map f lhs in
        Mapping (lhs', aux s)
     | RecValid (ctx, id, r, c) ->
-      RecValid (map_ctx_map f ctx, id, map_rec_node f r, aux c)
+      RecValid (map_ctx_map f ctx, id, map_rec_info f r, aux c)
     | Refined (lhs, info, s) ->
       let lhs' = map_ctx_map f lhs in
       let (id, c, cty) = info.refined_obj in
@@ -302,8 +318,9 @@ and map_split f split =
   in aux split
 
 let is_nested p =
-  match p.program_rec with
+  match p.Syntax.program_rec with
   | Some (Structural (NestedOn _)) -> true
+  | Some (Structural NestedNonRec) -> true
   | _ -> false
 
 let compute_possible_guardness_evidences sigma n fixbody fixtype =
@@ -326,7 +343,7 @@ let define_mutual_nested evd get_prog progs =
   (* In the mutually recursive case, only the functionals have been defined,
      we build the block and its projections now *)
   let structargs = Array.map_of_list (fun (p,_) ->
-                   match p.program_rec with
+                   match p.Syntax.program_rec with
                    | Some (Structural (MutualOn (Some (lid,_)))) -> Some lid
                    | _ -> None) mutual in
   let mutualapp, nestedbodies =
@@ -368,18 +385,18 @@ let define_mutual_nested evd get_prog progs =
        let rec fixsubst i k acc l =
          match l with
          | (p', prog') :: rest ->
-            (match p'.program_rec with
+            (match p'.Syntax.program_rec with
              | Some (Structural (NestedOn idx)) ->
-               (match idx with
-               | Some (idx,_) ->
-                 let rest_tys = List.map (fun (p,_) -> Syntax.program_type p) rest in
-                 let term = one_nested k p' prog' rest_tys idx in
-                   fixsubst i (succ k) ((true, term) :: acc) rest
-               | None -> (* Non immediately recursive nested def *)
-                 let term =
-                   mkApp (get_prog prog', rel_vect 0 (List.length mutual))
-                 in
-                   fixsubst i (succ k) ((true, term) :: acc) rest)
+               let idx = match idx with Some (idx, _) -> idx | None -> List.length p'.program_sign in
+               let rest_tys = List.map (fun (p,_) -> Syntax.program_type p) rest in
+               let term = one_nested k p' prog' rest_tys idx in
+               fixsubst i (succ k) ((true, term) :: acc) rest
+             | Some (Structural NestedNonRec) ->
+               (* Non immediately recursive nested def *)
+               let term =
+                 mkApp (get_prog prog', rel_vect 0 (List.length mutual))
+               in
+               fixsubst i (succ k) ((true, term) :: acc) rest
              | _ -> fixsubst (pred i) k ((false, mkRel i) :: acc) rest)
          | [] -> List.rev acc
        in
@@ -418,6 +435,8 @@ let define_mutual_nested evd get_prog progs =
          (names, tys', bodies')
      in
      let declare_fix_fns i (p,prog) =
+       let newidx = indexes.(i) in
+       let p = { p with Syntax.program_rec = Some (Structural (MutualOn (Some (newidx, None)))) } in
        let fix = mkFix ((indexes, i), decl) in
        (p, prog, fix)
      in
@@ -439,7 +458,7 @@ let path_id path =
       (if b then add_suffix hd "_unfold" else hd) tl
   | _ -> assert false
 
-let term_of_tree isevar env0 tree =
+let term_of_tree env0 isevar tree =
   let rec aux env evm = function
     | Compute ((ctx, _, _), where, ty, RProgram rhs) ->
       let compile_where ({where_program; where_type} as w)
@@ -586,13 +605,6 @@ let term_of_tree isevar env0 tree =
           (* Normal case: build recursively a subterm. *)
           | Some ((next_ctx, _), ev), Some s ->
             let evm, next_term, next_ty = aux env !evd s in
-            let () =
-              if !Equations_common.debug then
-                Feedback.msg_debug (str"next term context: " ++
-                                    pr_context env evm next_ctx ++
-                                    str " and term " ++
-                                    Printer.pr_econstr_env env evm next_term)
-            in
             (* Now we need to instantiate [ev] with the term [next_term]. *)
             (* We might need to permutate some rels. *)
             let next_subst = context_map_of_splitting s in
@@ -618,15 +630,6 @@ let term_of_tree isevar env0 tree =
             let term = Vars.substl rels term in
             let _ =
               let env = Evd.evar_env ev_info in
-              let () =
-                if !Equations_common.debug then
-                  Feedback.msg_debug
-                    (str"Instantiating hole: " ++
-                     Printer.pr_named_context_of env evm ++
-                     str " |- " ++ Printer.pr_econstr_env env evm ev_info.Evd.evar_concl ++
-                     str " with term " ++
-                     Printer.pr_econstr_env env evm term)
-              in
               Typing.type_of env evm term
             in
             evd := Evd.define (fst ev) term evm;
@@ -657,14 +660,6 @@ let term_of_tree isevar env0 tree =
       let term = EConstr.it_mkLambda_or_LetIn term ctx in
       let typ = it_mkProd_or_subst env evm ty ctx in
       let term = Evarutil.nf_evar !evd term in
-      if !debug then
-        begin
-          let open Feedback in
-          msg_debug (str"Result of splitting: ");
-          msg_info(Printer.pr_econstr_env env evm term);
-        end;
-
-
       evd := Typing.check env !evd term typ;
       !evd, term, typ
   in
@@ -672,43 +667,79 @@ let term_of_tree isevar env0 tree =
     isevar := evm;
     term, typ
 
-let make_program evd env lets p prob s rec_node =
-  let p, s, term = match rec_node with
-    | Some r ->
-      let term, ty = term_of_tree evd env s in
-      let lhs = id_subst lets in
-      let p', term =
-        match r with
-        | WfRec r ->
-          let term = mkApp (r.wf_rec_term, [| beta_appvect !evd term (extended_rel_vect 0 (pi1 lhs)) |]) in
-          p, it_mkLambda_or_LetIn term (pi1 lhs)
-        | StructRec r ->
-          let args = extended_rel_vect 0 lets in
-          let term = beta_appvect !evd term args in
-          let before, after =
-            CList.chop r.struct_rec_intro p.program_sign
-          in
-          let fixdecls, after =
-            CList.chop r.struct_rec_protos after in
-          let subst = List.append (List.map (fun _ -> mkProp) fixdecls) (List.rev (Array.to_list args)) in
-          let program_sign = subst_rel_context 0 subst before in
-          let program_arity = substnl subst r.struct_rec_intro p.program_arity in
-          let p' = { p with program_sign; program_arity } in
-          (match define_mutual_nested evd (fun x -> x) [(p', lift 1 term)] with
-           | [(m, _, body)], _ -> p', it_mkLambda_or_LetIn body after
-           | _, [(m, _, body)] -> p', it_mkLambda_or_LetIn body after
-           | _ -> assert false)
-      in
+type program_shape =
+  | Single of program_info * context_map * rec_info option * splitting * constr
+  | Mutual of program_info * context_map * rec_info * splitting * rel_context * constr
+
+let make_program env evd lets p prob s rec_info =
+  match rec_info with
+  | Some r ->
+    let term, ty = term_of_tree env evd s in
+    let lhs = id_subst lets in
+    (match r.rec_node with
+     | WfRec wfr ->
+       let term = mkApp (wfr.wf_rec_term, [| beta_appvect !evd term (extended_rel_vect 0 (pi1 lhs)) |]) in
+       let s' =
+         match s with
+         | RecValid _ -> s
+         | _ -> RecValid (lhs, p.program_id, r, s)
+       in
+       Single (p, prob, rec_info, s', it_mkLambda_or_LetIn term (pi1 lhs))
+     | StructRec sr ->
+       let args = extended_rel_vect 0 lets in
+       let term = beta_appvect !evd term args in
+       let before, after =
+         CList.chop r.rec_args r.rec_sign
+       in
+       let fixdecls, after =
+         CList.chop sr.struct_rec_protos after in
+       let subst = List.append (List.map (fun _ -> mkProp) fixdecls) (List.rev (Array.to_list args)) in
+       let program_sign = subst_rel_context 0 subst before in
+       let program_arity = substnl subst r.rec_args r.rec_arity in
+       let p' = { p with program_sign; program_arity } in
+       let s' = RecValid (lhs, p.program_id, r, s) in
+       Mutual (p', prob, r, s', after, lift 1 term))
+  | None -> Single (p, prob, rec_info, s, fst (term_of_tree env evd s))
+
+let make_programs env evd lets programs =
+  let sterms = List.map (fun (p', prob, split, rec_info) ->
+      make_program env evd lets p' prob split rec_info)
+      programs in
+  match sterms with
+   [Single (p, prob, rec_info, s, term)] ->
+   let term = nf_betaiotazeta env !evd term in
+   [{ program_info = p;
+      program_prob = prob;
+      program_rec = rec_info;
+      program_splitting = s;
+      program_term = term }]
+  | _ ->
+    let terms =
+      List.map (function
+          | Mutual (p, prob, r, s', after, term) -> (p, (prob, r, s', after, lift 1 term))
+          | Single (p, _, _, _, _) -> user_err_loc (Some p.program_loc, "make_programs",
+                                             str "Cannot define " ++ Names.Id.print p.program_id ++
+                                             str " mutually with other programs "))
+        sterms
+    in
+    let mutual, nested = define_mutual_nested evd (fun (_, _, _, _, x) -> x) terms in
+    let make_prog (p, (prob, rec_info, s', after, _), b) =
+      let term = it_mkLambda_or_LetIn b after in
       let term = nf_betaiotazeta env !evd term in
-      let s' = RecValid (lhs, p.program_id, r, s) in
-      p', s', term
-    | None -> p, s, fst (term_of_tree evd env s)
-  in
-  { program_info = p;
-    program_prob = prob;
-    program_splitting = s;
-    program_rec_node = rec_node;
-    program_term = term }
+      { program_info = p;
+        program_prob = prob;
+        program_rec = Some rec_info;
+        program_splitting = s';
+        program_term = term }
+    in
+    let mutual = List.map make_prog mutual in
+    let nested = List.map make_prog nested in
+    mutual @ nested
+
+let make_single_program env evd lets p prob s rec_info =
+  match make_programs env evd lets [p, prob, s, rec_info] with
+  | [p] -> p
+  | _ -> raise (Invalid_argument "make_single_program: more than one program")
 
 let change_lhs s (l, p, r) =
   let open Context.Rel.Declaration in
@@ -734,7 +765,7 @@ let change_splitting s sp =
       Refined (change_lhs s lhs, info, aux rest)
   in aux sp
 
-let define_constants flags isevar env0 tree =
+let define_splitting_constants flags env0 isevar tree =
   let () = assert (not (Evd.has_undefined !isevar)) in
   let helpers = ref [] in
   let rec aux env evm = function
@@ -777,7 +808,7 @@ let define_constants flags isevar env0 tree =
       let evm', rest' = aux env evm rest in
       let isevar = ref evm' in
       let env = Global.env () in
-      let t, ty = term_of_tree isevar env rest' in
+      let t, ty = term_of_tree env isevar rest' in
       let (cst, (evm, e)) =
         Equations_common.declare_constant (path_id info.refined_path)
           t (Some ty) flags.polymorphic !isevar (Decl_kinds.(IsDefinition Definition))
@@ -794,6 +825,30 @@ let define_constants flags isevar env0 tree =
   in
   let evm, tree = aux env0 !isevar tree in
     isevar := evm; !helpers, tree
+
+let define_program_constants flags env evd programs =
+  let helpers, programs =
+    List.fold_left_map (fun helpers p ->
+        let helpers', split = define_splitting_constants flags env evd p.program_splitting in
+        helpers @ helpers', { p with program_splitting = split }) [] programs
+  in
+  let env = Global.env () in
+  let programs = make_programs env evd []
+      (List.map (fun p -> (p.program_info, p.program_prob, p.program_splitting, p.program_rec)) programs)
+  in
+  let programs =
+    List.map (fun p ->
+        let (cst, (evm, e)) =
+          Equations_common.declare_constant (program_id p)
+          p.program_term (Some (program_type p))
+          flags.polymorphic !evd (Decl_kinds.(IsDefinition Definition))
+        in
+        let () = Impargs.maybe_declare_manual_implicits false (ConstRef cst) p.program_info.program_impls in
+        let () = Declare.definition_message (program_id p) in
+        { p with program_term = e })
+      programs
+  in helpers, programs
+
 
 let is_comp_obl sigma comp hole_kind =
   match comp with
@@ -830,19 +885,8 @@ type compiled_program_info = {
 let is_polymorphic info = pi2 info.decl_kind
 
 
-let solve_equations_obligations flags i isevar split hook =
+let solve_equations_obligations flags i isevar hook =
   let kind = (Decl_kinds.Local, flags.polymorphic, Decl_kinds.(DefinitionBody Definition)) in
-  let _hook uctx evars locality gr = ()
-    (* let l =
-     *   Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
-     * Extraction_plugin.Table.extraction_inline true l; *)
-    (* let kind = (locality, poly, Decl_kinds.Definition) in
-     * let baseid = Id.to_string i in
-     * let term_info = { term_id = gr; term_ustate = uctx; term_evars = evars;
-     *                   base_id = baseid; helpers_info = []; decl_kind = kind;
-     *                   comp_obls = Id.Set.empty; user_obls = Id.Set.empty(\* union !compobls !userobls *\) } in
-     *   hook split (fun x -> x) term_info uctx *)
-  in
   let evars = Evar.Map.bindings (Evd.undefined_map !isevar) in
   let env = Global.env () in
   let types =
@@ -911,9 +955,7 @@ let solve_equations_obligations flags i isevar split hook =
            cst)
           (CList.combine (List.rev !wits) types) obj.Proof_global.entries
       in
-      if !Equations_common.debug then
-        Feedback.msg_debug (str"Calling hook with split " ++ pr_splitting env !isevar split);
-      hook recobls split
+      hook recobls
   in
   (* Feedback.msg_debug (str"Starting proof"); *)
   Proof_global.(start_dependent_proof i kind tele (make_terminator terminator));
@@ -935,45 +977,48 @@ let solve_equations_obligations flags i isevar split hook =
                                   str " refine them interactively")
 
 
-let define_tree is_recursive helpers recobls fixprots flags isevar env p hook =
-  let t = p.program_term in
-  let hook uctx evars locality gr =
-    (* let l =
-     *   Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
-     * Extraction_plugin.Table.extraction_inline true l; *)
-    let kind = (locality, flags.polymorphic, Decl_kinds.Definition) in
-    let baseid = Id.to_string (program_id p) in
-    let term_info = { term_id = gr; term_ustate = uctx; term_evars = evars;
-                      base_id = baseid; helpers_info = helpers; decl_kind = kind;
-                      comp_obls = recobls; user_obls = Id.Set.empty } in
-    let cmap = fun x -> x in
-      hook p.program_splitting cmap term_info uctx
-  in
-  let univ_hook = Obligations.mk_univ_hook hook in
-  let reduce x =
-    let flags = CClosure.betaiotazeta in
-    (* let flags = match comp with None -> flags *)
-    (*   | Some f -> fCONST f.comp :: fCONST f.comp_proj :: flags *)
-    (* in *)
-    to_constr !isevar (clos_norm_flags flags (Global.env ()) !isevar (of_constr x))
-  in
-  let kind = (Decl_kinds.Global, flags.polymorphic, Decl_kinds.Definition) in
-  let ty' = program_type p in
-    match is_recursive with
-    | Some (Guarded (_ :: _ :: _)) ->
-        let ty' = it_mkProd_or_LetIn ty' fixprots in
-        let t' = EConstr.to_constr !isevar t in
-        let ty' = EConstr.to_constr !isevar ty' in
-        ignore(Obligations.add_definition
-                 ~univ_hook ~kind
-                 ~implicits:(program_impls p) (add_suffix (program_id p) "_functional") ~term:t' ty' ~reduce
-                 (Evd.evar_universe_context !isevar) [||])
-    | _ ->
-      let t' = EConstr.to_constr !isevar t in
-      let ty' = EConstr.to_constr !isevar ty' in
-      ignore(Obligations.add_definition ~univ_hook ~kind
-               ~implicits:(program_impls p) (program_id p) ~term:t' ty'
-               ~reduce (Evd.evar_universe_context !isevar) [||])
+(* let define_tree is_recursive helpers recobls fixprots flags isevar env p hook =
+ *   let t = p.program_term in
+ *   let idx = ref 0 in
+ *   let hook uctx evars locality gr =
+ *     (\* let l =
+ *      *   Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
+ *      * Extraction_plugin.Table.extraction_inline true l; *\)
+ *     let kind = (locality, flags.polymorphic, Decl_kinds.Definition) in
+ *     let baseid = Id.to_string (program_id p) in
+ *     let term_info = { term_id = gr; term_ustate = uctx; term_evars = evars;
+ *                       base_id = baseid; helpers_info = helpers; decl_kind = kind;
+ *                       comp_obls = recobls; user_obls = Id.Set.empty } in
+ *     let cmap = fun x -> x in
+ *       hook idx p.program_splitting cmap term_info uctx;
+ *       incr idx
+ *
+ *   in
+ *   let univ_hook = Obligations.mk_univ_hook hook in
+ *   let reduce x =
+ *     let flags = CClosure.betaiotazeta in
+ *     (\* let flags = match comp with None -> flags *\)
+ *     (\*   | Some f -> fCONST f.comp :: fCONST f.comp_proj :: flags *\)
+ *     (\* in *\)
+ *     to_constr !isevar (clos_norm_flags flags (Global.env ()) !isevar (of_constr x))
+ *   in
+ *   let kind = (Decl_kinds.Global, flags.polymorphic, Decl_kinds.Definition) in
+ *   let ty' = program_type p in
+ *     match is_recursive with
+ *     | Some (Guarded (_ :: _ :: _)) ->
+ *         let ty' = it_mkProd_or_LetIn ty' fixprots in
+ *         let t' = EConstr.to_constr !isevar t in
+ *         let ty' = EConstr.to_constr !isevar ty' in
+ *         ignore(Obligations.add_definition
+ *                  ~univ_hook ~kind
+ *                  ~implicits:(program_impls p) (add_suffix (program_id p) "_functional") ~term:t' ty' ~reduce
+ *                  (Evd.evar_universe_context !isevar) [||])
+ *     | _ ->
+ *       let t' = EConstr.to_constr !isevar t in
+ *       let ty' = EConstr.to_constr !isevar ty' in
+ *       ignore(Obligations.add_definition ~univ_hook ~kind
+ *                ~implicits:(program_impls p) (program_id p) ~term:t' ty'
+ *                ~reduce (Evd.evar_universe_context !isevar) [||]) *)
 
 
 let simplify_evars evars t =
@@ -993,39 +1038,50 @@ let unfold_entry cst = Hints.HintsUnfoldEntry [EvalConstRef cst]
 let add_hint local i cst =
   Hints.add_hints ~local [Id.to_string i] (unfold_entry cst)
 
-let define_tree is_recursive fixprots flags isevar env p hook =
-  let hook recobls split =
-    let _ = isevar := Evarutil.nf_evar_map_undefined !isevar in
-    let () = isevar := Evd.minimize_universes !isevar in
-    let split = map_split (simplify_evars !isevar) split in
-    let helpers, split = define_constants flags isevar env split in
-    let p = { p with program_splitting = split } in
-    let () = List.iter (fun (cst, _) -> add_hint true (program_id p) cst) helpers in
-    define_tree is_recursive helpers recobls fixprots flags isevar env p hook
-  in
-  if Evd.has_undefined !isevar then
-    solve_equations_obligations flags (program_id p) isevar p.program_splitting hook
-  else
-    (if !Equations_common.debug then
-       Feedback.msg_debug (str"Calling hook with split " ++ pr_splitting env !isevar p.program_splitting);
-     hook [] p.program_splitting)
+    (* let pi = p.program_info in
+     * let fixdecls =
+     *   match pi.program_rec with
+     *   | Some (Structural NestedNonRec) | None -> (\* Actually the definition is not self-recursive *\)
+     *      List.filter (fun decl ->
+     *          let na = Context.Rel.Declaration.get_name decl in
+     *          let id = Nameops.Name.get_id na in
+     *          not (Id.equal id pi.program_id)) fixdecls
+     *   | _ -> fixdecls
+     * in *)
 
-let define_trees env evd flags rec_info fixdecls programs hook =
+
+let define_programs env evd is_recursive fixprots flags programs hook =
   let idx = ref 0 in
-  let define_tree p =
-    let pi = p.program_info in
-    let fixdecls =
-      match pi.program_rec with
-      | Some (Structural (NestedOn None)) | None -> (* Actually the definition is not self-recursive *)
-         List.filter (fun decl ->
-             let na = Context.Rel.Declaration.get_name decl in
-             let id = Nameops.Name.get_id na in
-             not (Id.equal id pi.program_id)) fixdecls
-      | _ -> fixdecls
-    in
-    define_tree rec_info fixdecls flags evd env p (hook !idx p);
+  let one_hook recobls p helpers uctx locality gr =
+    (* let l =
+     *   Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
+     * Extraction_plugin.Table.extraction_inline true l; *)
+    let kind = (locality, flags.polymorphic, Decl_kinds.Definition) in
+    let baseid = Id.to_string (program_id p) in
+    let term_info = { term_id = gr; term_ustate = uctx; term_evars = [];
+                      base_id = baseid; helpers_info = helpers; decl_kind = kind;
+                      comp_obls = recobls; user_obls = Id.Set.empty } in
+    hook !idx p term_info uctx;
     incr idx
-  in List.iter define_tree programs
+  in
+  let hook recobls =
+    let _ = evd := Evarutil.nf_evar_map_undefined !evd in
+    let () = evd := Evd.minimize_universes !evd in
+    let programs = List.map (map_program (simplify_evars !evd)) programs in
+    let () =
+      if !Equations_common.debug then
+        Feedback.msg_debug (str"Definiing programs " ++ pr_programs env !evd programs);
+    in
+    let helpers, programs = define_program_constants flags env evd programs in
+    let ustate = Evd.evar_universe_context !evd in
+    let () = List.iter (fun (cst, _) -> add_hint true (program_id (List.hd programs)) cst) helpers in
+    List.iter (fun p ->
+        let cst, _ = (destConst !evd p.program_term) in
+        one_hook recobls p helpers ustate Decl_kinds.Global (ConstRef cst)) programs
+  in
+  if Evd.has_undefined !evd then
+    solve_equations_obligations flags (program_id (List.hd programs)) evd hook
+  else hook []
 
 let mapping_rhs sigma s = function
   | RProgram c -> RProgram (mapping_constr sigma s c)
