@@ -1,6 +1,7 @@
 From Coq.Lists Require Import List.
 From Equations Require Import Equations.
 Require Import Program.
+Axiom cheat : forall {A}, A.
 
 Inductive foo: Set :=
 | Foo1 : list foo -> foo
@@ -71,6 +72,6 @@ where aux3 (l : list foo) : nat := {
   aux3 [] := 1;
   aux3 (cons hd tl) := f hd + aux3 tl }.
 
-Axiom cheat : forall {A}, A.
-Next Obligation. apply cheat. Defined.
+Obligations.
+Next Obligation of f_ind_fun. apply cheat. Defined.
 End Three.

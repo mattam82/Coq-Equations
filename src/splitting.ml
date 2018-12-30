@@ -387,10 +387,15 @@ let define_mutual_nested evd get_prog progs =
          | (p', prog') :: rest ->
             (match p'.Syntax.program_rec with
              | Some (Structural (NestedOn idx)) ->
-               let idx = match idx with Some (idx, _) -> idx | None -> List.length p'.program_sign in
+               let idx =
+                 match idx with
+                 | Some (idx, _) -> idx
+                 | None -> pred (List.length p'.program_sign)
+               in
                let rest_tys = List.map (fun (p,_) -> Syntax.program_type p) rest in
                let term = one_nested k p' prog' rest_tys idx in
                fixsubst i (succ k) ((true, term) :: acc) rest
+
              | Some (Structural NestedNonRec) ->
                (* Non immediately recursive nested def *)
                let term =
@@ -463,38 +468,6 @@ let term_of_tree env0 isevar tree =
     | Compute ((ctx, _, _), where, ty, RProgram rhs) ->
       let compile_where ({where_program; where_type} as w)
           (env, evm, ctx) =
-        (* let env = push_rel_context ctx env0 in *)
-        (* FIXME push ctx too if mutual wheres *)
-        (* let where_args = snd (decompose_appvect evm where_term) in
-         * let evm, c', _ = aux env evm (Lazy.force where_splitting) in
-         * let evd = ref evm in
-         * let c' =
-         *   match where_program.program_rec with
-         *   | Some (Structural _) ->
-         *     let c' = mkApp (c', where_args) in
-         *     let c' = (whd_beta !evd c')  in
-         *     let before, after =
-         *       CList.chop ((CList.length where_program.program_sign) - w.where_context_length)
-         *         where_program.program_sign
-         *     in
-         *     let subst = mkProp :: List.rev (Array.to_list where_args) in
-         *     let program_sign = subst_rel_context 0 subst before in
-         *     let program_arity = substnl subst (List.length program_sign) where_program.program_arity in
-         *     let where_program = { where_program with program_sign; program_arity } in
-         *     (match define_mutual_nested evd (fun x -> x) [(where_program, lift 1 c')] with
-         *      | [(m, _, body)], _ ->
-         *        it_mkLambda_or_LetIn body (List.tl after)
-         *      | _, [(m, _, body)] -> it_mkLambda_or_LetIn body (List.tl after)
-         *      | _ -> assert false)
-         *   | _ -> c'
-         * in
-         * let c' = nf_beta env !evd c' in
-         * let ty' = Retyping.get_type_of env !evd c' in
-         * let () =
-         *   if !Equations_common.debug then
-         *     Feedback.msg_debug Pp.(str "Where_clause compiled to" ++ Printer.pr_econstr_env env !evd c' ++
-         *                            str " of type " ++ Printer.pr_econstr_env env !evd ty')
-         * in *)
         let evm, c', ty' = evm, where_term w, where_type in
         (env, evm, (make_def (Name (where_id w)) (Some c') ty' :: ctx))
       in
@@ -529,19 +502,6 @@ let term_of_tree env0 isevar tree =
         info.refined_args, info.refined_newprob, info.refined_newty
       in
       let evm, sterm, sty = aux env evm rest in
-      (* let evm, term, ty =
-       *     let term = mkLetIn (Name (Id.of_string "prog"), sterm, sty, lift 1 sty) in
-       *     let evm, term = helper_evar evm ev (Global.env ()) term
-       *   (dummy_loc, QuestionMark {
-       *       qm_obligation=Define false;
-       *       qm_name=Name id;
-       *       qm_record_field=None;
-       *   })
-       *     in
-       *       oblevars := Evar.Map.add ev 0 !oblevars;
-       *       helpers := (ev, rarg) :: !helpers;
-       *       evm, term, ty
-       *   in *)
       let term = applist (f, args) in
       let term = it_mkLambda_or_LetIn term ctx in
       let ty = it_mkProd_or_subst env evm ty ctx in
@@ -667,6 +627,34 @@ let term_of_tree env0 isevar tree =
     isevar := evm;
     term, typ
 
+let define_mutual_nested_csts flags evd get_prog progs =
+  let mutual, nested =
+    define_mutual_nested evd (fun prog -> get_prog evd prog) progs
+  in
+  let mutual =
+    List.map (fun (p, prog, fix) ->
+        let ty = Syntax.program_type p in
+        let kn, (evm, term) =
+          declare_constant p.program_id fix (Some ty) flags.polymorphic
+            !evd Decl_kinds.(IsDefinition Fixpoint)
+        in
+        evd := evm;
+        Impargs.declare_manual_implicits false (ConstRef kn) [p.program_impls];
+        (p, prog, term)) mutual
+  in
+  let args = List.rev_map (fun (p', _, term) -> term) mutual in
+  let nested =
+    List.map (fun (p, prog, fix) ->
+        let ty = Syntax.program_type p in
+        let body = Vars.substl args fix in
+        let kn, (evm, e) =
+          declare_constant p.program_id body (Some ty) flags.polymorphic
+            !evd Decl_kinds.(IsDefinition Fixpoint) in
+        evd := evm;
+        Impargs.declare_manual_implicits false (ConstRef kn) [p.program_impls];
+        (p, prog, e)) nested in
+  mutual, nested
+
 type program_shape =
   | Single of program_info * context_map * rec_info option * splitting * constr
   | Mutual of program_info * context_map * rec_info * splitting * rel_context * constr
@@ -697,17 +685,50 @@ let make_program env evd lets p prob s rec_info =
        let program_sign = subst_rel_context 0 subst before in
        let program_arity = substnl subst r.rec_args r.rec_arity in
        let p' = { p with program_sign; program_arity } in
-       let s' = RecValid (lhs, p.program_id, r, s) in
-       Mutual (p', prob, r, s', after, lift 1 term))
+       let s' =
+         match s with
+         | RecValid _ -> s
+         | _ -> RecValid (lhs, p.program_id, r, s)
+       in
+       let p' =
+         match p.program_rec with
+         | Some (Structural ann) ->
+           let ann' =
+             match ann with
+             | NestedOn None ->
+               (match s' with
+                | RecValid (_, _, _, Split (ctx, var, _, _))
+                | Split (ctx, var, _, _) ->
+                  NestedOn (Some ((List.length (pi1 ctx)) - var - sr.struct_rec_protos, None))
+                | _ -> ann)
+             | _ -> ann
+           in
+           { p with program_rec = Some (Structural ann') }
+         | _ -> p'
+       in
+       Mutual (p', prob, r, s', after, (* lift 1  *)term))
   | None -> Single (p, prob, rec_info, s, fst (term_of_tree env evd s))
 
-let make_programs env evd lets programs =
+let make_programs env evd flags ?(define_constants=false) lets programs =
   let sterms = List.map (fun (p', prob, split, rec_info) ->
       make_program env evd lets p' prob split rec_info)
       programs in
   match sterms with
    [Single (p, prob, rec_info, s, term)] ->
    let term = nf_betaiotazeta env !evd term in
+   let term =
+     if define_constants then
+       let (cst, (evm, e)) =
+         Equations_common.declare_constant p.program_id
+           term (Some (Syntax.program_type p))
+           flags.polymorphic !evd (Decl_kinds.(IsDefinition Definition))
+       in
+       evd := evm;
+       let () = Impargs.declare_manual_implicits false (ConstRef cst) [p.program_impls] in
+       let () = Declare.definition_message p.program_id in
+       e
+     else term
+   in
    [{ program_info = p;
       program_prob = prob;
       program_rec = rec_info;
@@ -722,7 +743,27 @@ let make_programs env evd lets programs =
                                              str " mutually with other programs "))
         sterms
     in
-    let mutual, nested = define_mutual_nested evd (fun (_, _, _, _, x) -> x) terms in
+    let mutual, nested =
+      if define_constants then
+        if List.length terms > 1 then
+          let terms =
+            List.map (fun (p, (prob, r, s', after, term)) ->
+                let term = it_mkLambda_or_LetIn term after in
+                let kn, (evm, e) =
+                  declare_constant (Nameops.add_suffix p.program_id "_functional") term None
+                    flags.polymorphic
+                    !evd Decl_kinds.(IsDefinition Fixpoint)
+                in
+                evd := evm; (p, (prob, r, s', after, e)))
+              terms
+          in
+          define_mutual_nested_csts flags evd (fun evd (prob, r, s', after, term) ->
+              (applist (term, extended_rel_list 0 after))) terms
+        else
+          define_mutual_nested_csts flags evd (fun evd (prob, r, s', after, term) ->
+              (it_mkLambda_or_LetIn term after)) terms
+      else define_mutual_nested evd (fun (_, _, _, _, x) -> x) terms
+    in
     let make_prog (p, (prob, rec_info, s', after, _), b) =
       let term = it_mkLambda_or_LetIn b after in
       let term = nf_betaiotazeta env !evd term in
@@ -736,8 +777,8 @@ let make_programs env evd lets programs =
     let nested = List.map make_prog nested in
     mutual @ nested
 
-let make_single_program env evd lets p prob s rec_info =
-  match make_programs env evd lets [p, prob, s, rec_info] with
+let make_single_program env evd flags lets p prob s rec_info =
+  match make_programs env evd flags lets [p, prob, s, rec_info] with
   | [p] -> p
   | _ -> raise (Invalid_argument "make_single_program: more than one program")
 
@@ -833,22 +874,9 @@ let define_program_constants flags env evd programs =
         helpers @ helpers', { p with program_splitting = split }) [] programs
   in
   let env = Global.env () in
-  let programs = make_programs env evd []
+  let programs = make_programs env evd flags [] ~define_constants:true
       (List.map (fun p -> (p.program_info, p.program_prob, p.program_splitting, p.program_rec)) programs)
-  in
-  let programs =
-    List.map (fun p ->
-        let (cst, (evm, e)) =
-          Equations_common.declare_constant (program_id p)
-          p.program_term (Some (program_type p))
-          flags.polymorphic !evd (Decl_kinds.(IsDefinition Definition))
-        in
-        let () = Impargs.maybe_declare_manual_implicits false (ConstRef cst) p.program_info.program_impls in
-        let () = Declare.definition_message (program_id p) in
-        { p with program_term = e })
-      programs
   in helpers, programs
-
 
 let is_comp_obl sigma comp hole_kind =
   match comp with
@@ -1070,9 +1098,11 @@ let define_programs env evd is_recursive fixprots flags programs hook =
     let programs = List.map (map_program (simplify_evars !evd)) programs in
     let () =
       if !Equations_common.debug then
-        Feedback.msg_debug (str"Definiing programs " ++ pr_programs env !evd programs);
+        Feedback.msg_debug (str"Defining programs " ++ pr_programs env !evd programs);
     in
     let helpers, programs = define_program_constants flags env evd programs in
+    let programs = List.map (map_program (simplify_evars !evd)) programs in
+    let programs = List.map (map_program (nf_evar !evd)) programs in
     let ustate = Evd.evar_universe_context !evd in
     let () = List.iter (fun (cst, _) -> add_hint true (program_id (List.hd programs)) cst) helpers in
     List.iter (fun p ->

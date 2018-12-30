@@ -30,8 +30,8 @@ type node_kind =
 
 let kind_of_prog p =
   match p.Syntax.program_rec with
-  | Some (Structural (NestedOn (Some _))) -> Nested true
-  | Some (Structural (NestedOn None)) -> Nested false
+  | Some (Structural (NestedOn _)) -> Nested true
+  | Some (Structural NestedNonRec) -> Nested false
   | _ -> Regular
 
 let regular_or_nested = function

@@ -1193,7 +1193,7 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
       match t with
       | Some ty (* non-delayed where clause, compute term right away *) ->
         let splitting = covering env0 evars p data clauses path problem extpats arity in
-        let program = make_single_program env0 evars lets p problem splitting rec_info in
+        let program = make_single_program env0 evars data.flags lets p problem splitting rec_info in
         Lazy.from_val (w' program), program.program_term
       | None ->
         let relty = Syntax.program_type p in
@@ -1207,7 +1207,7 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
         let ev = destEvar !evars term in
         let cover () =
           let splitting = covering env0 evars p data clauses path problem extpats arity in
-          let program = make_single_program env0 evars lets p problem splitting rec_info in
+          let program = make_single_program env0 evars data.flags lets p problem splitting rec_info in
           evars := Evd.define (fst ev) program.program_term !evars; w' program
         in
         Lazy.from_fun cover, term
@@ -1248,4 +1248,4 @@ let program_covering env evd data p clauses =
 
 let coverings env evd data programs equations =
   let splittings = List.map2 (program_covering env evd data) programs equations in
-  make_programs env evd [] splittings
+  make_programs env evd data.flags [] splittings

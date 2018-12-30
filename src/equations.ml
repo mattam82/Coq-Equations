@@ -20,7 +20,6 @@ open Tacticals
 open Tacmach
 open Evarutil
 open Equations_common
-open Decl_kinds
 
 open Syntax
 open Covering
@@ -129,7 +128,8 @@ let define_principles flags rec_info fixprots progs =
                let decl _ (_, id, _) =
                  let gr =
                    try Nametab.locate_constant (qualid_of_ident id)
-                   with Not_found -> anomaly Pp.(str "Could not find where clause unfolding lemma " ++ Names.Id.print id)
+                   with Not_found -> anomaly Pp.(str "Could not find where clause unfolding lemma "
+                                                 ++ Names.Id.print id)
                  in
                  let grc = UnivGen.fresh_global_instance (Global.env()) (ConstRef gr) in
                  Autorewrite.add_rew_rules (info.base_id ^ "_where") [CAst.make (grc, true, None)];
@@ -157,7 +157,8 @@ let define_principles flags rec_info fixprots progs =
                  equations_prob = prob;
                  equations_split = unfold_split }
              in
-             build_equations flags.with_ind env !evd ~alias:(make_alias (of_constr f, unfold_eq_id, prog.program_split))
+             build_equations flags.with_ind env !evd
+               ~alias:(make_alias (of_constr f, unfold_eq_id, prog.program_split))
                rec_info [p, prog', eqninfo]
 	   in
            let () = if not flags.polymorphic then (evd := Evd.from_env (Global.env ())) in
@@ -182,7 +183,7 @@ let define_principles flags rec_info fixprots progs =
                      program_sign = sign;
                      program_arity = arity }
          in
-         let unfoldp = make_single_program env evd [] unfpi prob unfold_split None in
+         let unfoldp = make_single_program env evd flags [] unfpi prob unfold_split None in
          define_programs env evd None [] flags [unfoldp] hook_unfold;
          None
   in
@@ -222,38 +223,6 @@ let define_principles flags rec_info fixprots progs =
   in
   let newsplits = List.map (fun (p, prog, f as x) -> p, prog, newsplits env fixdecls x) progs in
   principles env newsplits
-
-let define_mutual_nested_csts rec_info flags progs =
-  match progs with
-  | l ->
-     let env = Global.env () in
-     let evd = ref (Evd.from_env env) in
-     let mutual, nested =
-       define_mutual_nested evd
-       (fun (_, prog) -> e_new_global evd (ConstRef prog.program_cst))
-       (List.map (fun (p,prog) -> p.program_info, (p, prog)) progs) in
-     let mutual =
-       List.map (fun (_, (p, prog), fix) ->
-         let ty = program_type p in
-         let kn, _ =
-           declare_constant p.program_info.program_id fix (Some ty) flags.polymorphic
-                            !evd (IsDefinition Fixpoint)
-         in
-         Impargs.declare_manual_implicits true (ConstRef kn) [p.program_info.program_impls];
-         let prog' = { prog with program_cst = kn } in
-         (p, prog')) mutual
-     in
-     let args = List.rev_map (fun (p',prog') -> e_new_global evd (ConstRef prog'.program_cst)) mutual in
-     let nested =
-       List.map (fun (_, (p, prog), fix) ->
-       let ty = program_type p in
-       let body = Vars.substl args fix in
-       let kn, _ = declare_constant p.program_info.program_id body (Some ty) flags.polymorphic
-                                 !evd (IsDefinition Fixpoint) in
-       Impargs.declare_manual_implicits true (ConstRef kn) [program_impls p];
-       let prog' = { prog with program_cst = kn } in
-       (p, prog')) nested in
-     rec_info, mutual @ nested
 
 let define_by_eqs ~poly ~open_proof opts eqs nt =
   let with_rec, with_eqns, with_ind =
@@ -306,11 +275,11 @@ let define_by_eqs ~poly ~open_proof opts eqs nt =
     let f_cst = match info.term_id with ConstRef c -> c | _ -> assert false in
     let () = evd := Evd.from_ctx ectx in
     (* let cmap' x = of_constr (cmap (EConstr.to_constr ~abort_on_undefined_evars:false !evd x)) in *)
-    (* let split = map_split cmap' split in *)
+    let split = map_split (nf_evar !evd) p.program_splitting in
     let pi = nf_program_info !evd p.program_info in
     let p = { p with program_info = pi } in
     let compiled_info = { program_cst = f_cst;
-                          program_split = p.program_splitting;
+                          program_split = split;
                           program_split_info = info } in
     progs.(i) <- Some (p, compiled_info);
     if CArray.for_all (fun x -> not (Option.is_empty x)) progs then

@@ -326,6 +326,7 @@ let rec aux_ind_fun info chop unfs unfids = function
           | MutualOn (Some (i, _)) -> Some i
           | MutualOn None -> assert false
           | NestedOn (Some (i, _)) -> Some i
+          | NestedOn None -> Some 0
           | _ -> None
         in
         match annot with
@@ -432,10 +433,16 @@ let rec aux_ind_fun info chop unfs unfids = function
             let open Tacticals.New in
             match s.where_program_orig.program_rec with
             | Some (Structural ann) ->
-              (match ann with
-               | NestedOn None | NestedNonRec -> tclIDTAC
-               | MutualOn None -> assert false
-               | NestedOn (Some (idx, _)) | MutualOn (Some (idx, _)) ->
+              (let idx =
+                 match ann with
+                 | NestedOn None -> Some 0
+                 | NestedNonRec -> None
+                 | MutualOn None -> assert false
+                 | NestedOn (Some (idx, _)) | MutualOn (Some (idx, _)) -> Some idx
+               in
+               match idx with
+               | None -> tclIDTAC
+               | Some idx ->
                  let recid = add_suffix wp.program_info.program_id "_rec" in
                  (* The recursive argument is local to the where, shift it by the
                     length of the enclosing context *)
@@ -599,6 +606,7 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
      let prove_nested =
        tclDISPATCH
          (List.map (function (id,NestedOn (Some (ann,_))) -> fix id (ann + 1)
+                           | (id,NestedOn None) -> fix id 1
                          | _ -> tclUNIT ()) nested) <*>
          prove_progs nestedprogs
      in
@@ -676,7 +684,7 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
                tclDISPATCH
                  [observe_tac "assert mut -> nest first subgoal " (* observe_tac *)
                   (*   "proving mut -> nested" *)
-                              (intro <*> observe_tac "spliting nested" (splits nestedprogs) <*> prove_nested);
+                              (intro <*> observe_tac "splitting nested" (splits nestedprogs) <*> prove_nested);
                   tclUNIT ()]
           | None -> tclUNIT ()) <*>
          assert_before Anonymous mutprops <*>

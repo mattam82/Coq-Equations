@@ -140,6 +140,8 @@ val make_program :
 val make_programs :
   Environ.env ->
   Evd.evar_map ref ->
+  flags ->
+  ?define_constants:bool ->
   rel_context ->
   (Syntax.program_info * Context_map.context_map * splitting *
    rec_info option)
@@ -148,6 +150,7 @@ val make_programs :
 val make_single_program :
   env ->
   Evd.evar_map ref ->
+  flags ->
   rel_context ->
   program_info ->
   context_map ->
@@ -194,6 +197,13 @@ val define_mutual_nested : Evd.evar_map ref ->
                            (program_info * 'a * EConstr.t) list *
                            (program_info * 'a * EConstr.constr) list
 
+val define_mutual_nested_csts :
+           Equations_common.flags ->
+           Evd.evar_map ref ->
+           (Evd.evar_map ref -> 'a -> EConstr.t) ->
+           (Syntax.program_info * 'a) list ->
+           (Syntax.program_info * 'a * EConstr.t) list *
+           (Syntax.program_info * 'a * EConstr.t) list
 
 val define_programs :
   Environ.env ->
