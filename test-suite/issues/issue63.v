@@ -25,17 +25,12 @@ Inductive Term {a} (tys : Vector.t (obj_idx * obj_idx) a)
 Arguments Ident {a tys dom}.
 Arguments Morph {a tys} f.
 Arguments Comp {a tys dom mid cod} f g.
+Import Sigma_Notations.
+Require Import Wellfounded Relations.
 
 Derive NoConfusion for positive.
 Derive EqDec for positive.
 Derive Signature NoConfusion Subterm for Term.
-Axiom cheat : forall {A}, A.
-
-Next Obligation.
-Proof.
-  apply cheat. (* FIXME *)
-  (* Subterm.solve_subterm. revert H. simplify *. noconf H. *)
-Qed.
 
 Fixpoint term_size
          {a : nat} {tys : Vector.t obj_pair a}
@@ -83,13 +78,8 @@ Lemma comp_assoc_simpl_comp {a} {tys : Vector.t obj_pair a} {dom mid cod}
   | x => fun g => Comp x (comp_assoc_simpl g) end g.
 Proof.
   unfold comp_assoc_simpl.
-  (* funelim (comp_assoc_simpl_rec (Comp f g)). *)
-  (* discriminate. simpl. discriminate. *)
-  (* unfold eq_rect. *)
-  (* revert e. *)
-  (* (* FIXME: simplify ind pack failure *) *)
-  (* Fail simplify ?. *)
-  Opaque comp_assoc_simpl_rec.
-  autorewrite with comp_assoc_simpl_rec. simpl.
-  set (f':=comp_assoc_simpl_rec f). destruct f'. depelim x; simpl; reflexivity.
+  simp comp_assoc_simpl_rec.
+  revert dom g. reverse.
+  let felim := constr:(fun_elim (f := @comp_assoc_simpl_rec)) in
+  unshelve refine_ho (felim _ _ _ _ _ _); simpl; intros; try reflexivity.
 Qed.

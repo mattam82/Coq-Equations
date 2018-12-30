@@ -688,8 +688,8 @@ let maybe_pack : simplification_fun =
     let tB = let env = push_rel_context ctx env in
       Tacred.simpl env !evd tB in
     let tG = EConstr.mkLambda (name, ty1, ty2) in
-    let args = [Some tA; Some tdec; Some tB; Some tx; Some t1; Some t2; Some tG; None] in
-      build_app_infer env evd (ctx, ty) ctx tsimplify_ind_pack args, Context_map.id_subst ctx
+    let args = [Some tA'; Some tdec; Some tB; Some tx; Some t1; Some t2; Some tG; None] in
+    build_app_infer env evd (ctx, ty) ctx tsimplify_ind_pack args, Context_map.id_subst ctx
   end
 
 let apply_noconf : simplification_fun =
