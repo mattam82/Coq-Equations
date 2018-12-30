@@ -22,7 +22,7 @@ Module RecRel.
 
 End RecRel.
 
-Extraction RecRel.id.
+(* Extraction RecRel.id. *)
 
 Section Nested.
 
@@ -253,6 +253,6 @@ Module RecMeasure.
   
   End QuickSort.
 
-  Recursive Extraction qs.
+  (* Recursive Extraction qs. *)
 
 End RecMeasure.
