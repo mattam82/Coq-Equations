@@ -537,11 +537,12 @@ let term_of_tree isevar env0 tree =
           begin
             let open Feedback in
             msg_debug (str"Finished simplifying");
-            msg_info(let env = push_rel_context ctx env in
+            msg_info(let ctx = cut_ctx @ new_ctx @ ctx' in
+                     let env = push_rel_context ctx env in
                      Printer.pr_econstr_env env !evd c);
           end;
-        let subst = compose_subst ~unsafe:true env ~sigma:!evd csubst subst in
-        let subst = compose_subst ~unsafe:true env ~sigma:!evd lsubst subst in
+        let subst = compose_subst (* ~unsafe:true *) env ~sigma:!evd csubst subst in
+        let subst = compose_subst (* ~unsafe:true *) env ~sigma:!evd lsubst subst in
         (* Now we build a term to put in the match branch. *)
         let c =
           match hole, next with
@@ -550,13 +551,20 @@ let term_of_tree isevar env0 tree =
           (* Normal case: build recursively a subterm. *)
           | Some ((next_ctx, _), ev), Some s ->
             let evm, next_term, next_ty = aux env !evd s in
+            let () =
+              if !Equations_common.debug then
+                Feedback.msg_debug (str"next term context: " ++
+                                    pr_context env evm next_ctx ++
+                                    str " and term " ++
+                                    Printer.pr_econstr_env env evm next_term)
+            in
             (* Now we need to instantiate [ev] with the term [next_term]. *)
-            (* [next_term] starts with lambdas, so we apply it to its context. *)
-            let args = Equations_common.extended_rel_vect 0 next_ctx in
-            let next_term = beta_appvect !isevar next_term args in
             (* We might need to permutate some rels. *)
             let next_subst = context_map_of_splitting s in
             let perm_subst = Context_map.make_permutation ~env evm subst next_subst in
+            (* [next_term] starts with lambdas, so we apply it to its context. *)
+            let args = Equations_common.extended_rel_vect 0 (pi3 perm_subst) in
+            let next_term = beta_appvect !evd next_term args in
             let next_term = Context_map.mapping_constr evm perm_subst next_term in
             (* We know the term is a correct instantiation of the evar, we
              * just need to apply it to the correct variables. *)
@@ -575,6 +583,15 @@ let term_of_tree isevar env0 tree =
             let term = Vars.substl rels term in
             let _ =
               let env = Evd.evar_env ev_info in
+              let () =
+                if !Equations_common.debug then
+                  Feedback.msg_debug
+                    (str"Instantiating hole: " ++
+                     Printer.pr_named_context_of env evm ++
+                     str " |- " ++ Printer.pr_econstr_env env evm ev_info.Evd.evar_concl ++
+                     str " with term " ++
+                     Printer.pr_econstr_env env evm term)
+              in
               Typing.type_of env evm term
             in
             evd := Evd.define (fst ev) term evm;

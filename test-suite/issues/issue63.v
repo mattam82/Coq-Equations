@@ -46,6 +46,7 @@ Fixpoint term_size
   | Comp f g => 1%nat + term_size f + term_size g
   end.
 Set Program Mode.
+
 Equations? comp_assoc_simpl_rec {a : nat} {tys dom cod}
           (t : @Term a tys dom cod) : {t' : @Term a tys dom cod | term_size t' <= term_size t}
   by rec (term_size t) lt :=
@@ -57,4 +58,38 @@ Equations? comp_assoc_simpl_rec {a : nat} {tys dom cod}
 Proof.
   1-2,4,6:lia.
   all:(simpl; destruct_call comp_assoc_simpl_rec; simpl in *; lia).
-Defined.
+Time Defined.
+
+Definition comp_assoc_simpl {a}
+           {tys : Vector.t obj_pair a} {dom cod} (t : Term tys dom cod) : Term tys dom cod :=
+  comp_assoc_simpl_rec t.
+
+Lemma comp_assoc_simpl_ident {a} {tys : Vector.t obj_pair a} {dom cod} (g : Term tys dom cod) :
+  comp_assoc_simpl (Comp Ident g) = Comp Ident (comp_assoc_simpl g).
+Proof.
+  unfold comp_assoc_simpl.
+  Opaque comp_assoc_simpl_rec.
+  autorewrite with comp_assoc_simpl_rec. simpl. reflexivity.
+Qed.
+
+Unset Program Mode.
+Open Scope program_scope.
+
+Lemma comp_assoc_simpl_comp {a} {tys : Vector.t obj_pair a} {dom mid cod}
+      (f : Term tys mid cod) (g : Term tys dom mid) :
+  comp_assoc_simpl (Comp f g) =
+  match comp_assoc_simpl f in Term _ mid cod return Term tys dom mid -> Term tys dom cod with
+  | Comp f f' => fun g => Comp f (comp_assoc_simpl (Comp f' g))
+  | x => fun g => Comp x (comp_assoc_simpl g) end g.
+Proof.
+  unfold comp_assoc_simpl.
+  (* funelim (comp_assoc_simpl_rec (Comp f g)). *)
+  (* discriminate. simpl. discriminate. *)
+  (* unfold eq_rect. *)
+  (* revert e. *)
+  (* (* FIXME: simplify ind pack failure *) *)
+  (* Fail simplify ?. *)
+  Opaque comp_assoc_simpl_rec.
+  autorewrite with comp_assoc_simpl_rec. simpl.
+  set (f':=comp_assoc_simpl_rec f). destruct f'. depelim x; simpl; reflexivity.
+Qed.

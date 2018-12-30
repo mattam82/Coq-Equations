@@ -19,7 +19,7 @@ Fixpoint foo_type (f:foo) : Type :=
   | Nat => nat
   | List fs => compact_prod (map foo_type fs)
   end.
-Set Equations Debug.
+
 Equations num (f:foo) : forall (val:foo_type f), nat := {
   num Nat := fun val => val;
   num (List nil) := fun val => 0;
