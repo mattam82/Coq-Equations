@@ -1,6 +1,5 @@
 From Equations Require Import Equations.
 Require Import Lia.
-Set Equations Debug.
 
 Equations? f (n : nat) : nat by rec n lt :=
   f 0 := 0;

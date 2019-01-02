@@ -594,15 +594,7 @@ let subst_rec_split env evd p f path prob s split =
         { p with program_info}, s, rec_prob, split, rec_arity, 0
       | _ -> p, s, p.program_prob, p.program_splitting, p.program_info.program_arity, 0
     in
-
-    let cutprob = cut_problem s (pi1 p.program_prob) in
-    let psubst, _ = subst_rec cutprob s p.program_prob in
-
-    let rec_cutprob = cut_problem s' (pi1 program_prob) in
-    let rec_subst, _ = subst_rec rec_cutprob s' program_prob in
-
     let prog_info = program'.program_info in
-
     let cutprob_sign = cut_problem s prog_info.program_sign in
     let cutprob_subst, _ = subst_rec cutprob_sign s (id_subst prog_info.program_sign) in
     let program_info' =
@@ -610,30 +602,31 @@ let subst_rec_split env evd p f path prob s split =
         program_sign = pi1 cutprob_subst;
         program_arity = mapping_constr !evd cutprob_subst prog_info.program_arity }
     in
-    (try Feedback.msg_debug Pp.(str"At where in update_split, calling recursively with new arity " ++ fnl () ++
-                                str"Original signature: " ++ pr_context env !evd prog_info.program_sign ++ fnl () ++
-                                str"Original arity: " ++ Printer.pr_econstr_env env !evd prog_info.program_arity ++
-                                fnl () ++
-                                str"New signature: " ++ pr_context env !evd program_info'.program_sign ++ fnl () ++
-                                str"New arity: " ++ Printer.pr_econstr_env env !evd program_info'.program_arity ++
-                                fnl () ++
-                                str" cutprobsign: " ++ pr_context_map env !evd cutprob_sign ++ fnl () ++
-                                str" cutprobsubst: " ++ pr_context_map env !evd cutprob_subst ++ fnl () ++
-                                str" cutprob: " ++ pr_context_map env !evd cutprob ++ fnl () ++
-                                str" psubst: " ++ pr_context_map env !evd psubst ++ fnl () ++
-                                str" rec subst: " ++ pr_context_map env !evd rec_subst ++ fnl ())
-     with e -> ());
+    (* (try Feedback.msg_debug Pp.(str"At where in update_split, calling recursively with new arity " ++ fnl () ++
+     *                             str"Original signature: " ++ pr_context env !evd prog_info.program_sign ++ fnl () ++
+     *                             str"Original arity: " ++ Printer.pr_econstr_env env !evd prog_info.program_arity ++
+     *                             fnl () ++
+     *                             str"New signature: " ++ pr_context env !evd program_info'.program_sign ++ fnl () ++
+     *                             str"New arity: " ++ Printer.pr_econstr_env env !evd program_info'.program_arity ++
+     *                             fnl () ++
+     *                             str" cutprobsign: " ++ pr_context_map env !evd cutprob_sign ++ fnl () ++
+     *                             str" cutprobsubst: " ++ pr_context_map env !evd cutprob_subst ++ fnl () ++
+     *                             str" cutprob: " ++ pr_context_map env !evd cutprob ++ fnl () ++
+     *                             str" psubst: " ++ pr_context_map env !evd psubst ++ fnl () ++
+     *                             str" rec subst: " ++ pr_context_map env !evd rec_subst ++ fnl ())
+     *  with e -> ()); *)
     let path' =
       match ppath with
       | x :: y :: r ->
         x :: y :: path
       | _ -> ppath
     in
+    let rec_cutprob = cut_problem s' (pi1 program_prob) in
     let splitting' = aux rec_cutprob s' program' oterm path' program_splitting' in
     let term', ty' = term_of_tree env evd splitting' in
     { p with
       program_info = program_info';
-      program_prob = id_subst (pi3 cutprob);
+      program_prob = id_subst (pi3 cutprob_sign);
       program_term = term';
       program_splitting = splitting' }
 
@@ -936,7 +929,7 @@ let computations env evd alias refine eqninfo =
             [mapping_constr evd info.refined_newprob_to_lhs c, info.refined_arg],
             computations env info.refined_newprob info.refined_term None fsubst (Regular, true) cs]]
 
-  in computations env prob (of_constr f) alias [] refine split
+  in computations env prob f alias [] refine split
 
 let constr_of_global_univ gr u =
   let open Globnames in
@@ -1116,7 +1109,7 @@ let all_computations env evd alias progs =
   in
   let flatten_top_comps (p, eqninfo, one_comps) acc =
     let (top, rest) = flatten_comps one_comps in
-    let topcomp = (((of_constr eqninfo.equations_f,[]), alias, [p.program_id],
+    let topcomp = (((eqninfo.equations_f,[]), alias, [p.program_id],
                     p.program_sign, p.program_arity,
                     List.rev_map pat_constr (pi2 eqninfo.equations_prob), [],
                     (kind_of_prog p,false)), top) in
@@ -1172,8 +1165,8 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
         f', tac
 
       | None -> fl,
-        if eq_constr !evd fl (of_constr f) then
-          Tacticals.New.tclORELSE Tactics.reflexivity (of82 (unfold_constr !evd (of_constr f)))
+        if eq_constr !evd fl f then
+          Tacticals.New.tclORELSE Tactics.reflexivity (of82 (unfold_constr !evd f))
         else Tacticals.New.tclIDTAC
     in
     let comp = applistc hd pats in
@@ -1313,7 +1306,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
     let info = { term_info = info; pathmap = !fnind_map; wheremap } in
     declare_funind info alias (Global.env ()) evd rec_info protos progs
                    ind_stmts all_stmts sign inds kn comb
-                   (of_constr f) split ind
+                   f split ind
   in
   let () = evd := Evd.minimize_universes !evd in
   let () =

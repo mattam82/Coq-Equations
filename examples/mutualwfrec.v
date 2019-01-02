@@ -184,15 +184,12 @@ Module sct2.
   Polymorphic Definition pack {A} {P} (t : ty A P) (x : A) :=
   (&(A, P, t, x)) : {A & {P & {_ : ty A P & A}}}.
 
-  Polymorphic Equations? fg {A} {P} (t : ty A P) (x : A) : P x by rec (pack t x) rel' :=
+  Obligation Tactic := program_simpl; unfold rel'; cbn; auto with arith.
+
+  Polymorphic Equations fg {A} {P} (t : ty A P) (x : A) : P x by rec (pack t x) rel' :=
     fg ty0 (nil, x) := x;
     fg ty0 (cons y ys, x) := 1 :: fg ty1 (ys, x, (cons y ys));
     fg ty1 (a, b, c) := 2 :: fg ty0 (a, app b c).
-
-  (* TODO find order! *)
-  Proof.
-    - unfold rel'. cbn. auto with arith.
-    - unfold rel'. cbn. reflexivity. Qed.
 
   Inductive fg_dom : forall (A : Set) (P : A -> Set), ty A P -> A -> Prop :=
   | fg_dom_equation_1 :

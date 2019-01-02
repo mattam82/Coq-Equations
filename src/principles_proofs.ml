@@ -25,7 +25,7 @@ type where_map = (constr * Names.Id.t * splitting) PathMap.t
 type equations_info = {
  equations_id : Names.Id.t;
  equations_where_map : where_map;
- equations_f : Constr.constr;
+ equations_f : EConstr.t;
  equations_prob : Context_map.context_map;
  equations_split : Splitting.splitting }
 

@@ -122,7 +122,7 @@ Section Chunk.
 End Chunk.
 
 (** Bugs, rewrite hint db is not discharged *)
-Hint Rewrite @chunk_unfold_clause_1_refine_equation_1 @chunk_unfold_clause_1_refine_equation_2 @chunk_equation_1 : chunk.
+Hint Rewrite @chunk_equation_1 @chunk_clause_1_refine_equation_1 @chunk_clause_1_refine_equation_2 : chunk.
 
 Theorem if_flip_helper {B: Type} {b: bool}
         (C E: true = b -> B) (D F: false = b -> B):

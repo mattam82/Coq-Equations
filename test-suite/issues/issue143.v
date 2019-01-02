@@ -71,7 +71,6 @@ Arguments forest A : clear implicits.
 Hint Constructors tail_of.
 
 Module FlattenNestedWf.
-  Set Equations Debug.
   Obligation Tactic := idtac.
 
   Equations? flatten {A} (f : forest A) : list A by rec (fweight f) lt :=

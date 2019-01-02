@@ -727,7 +727,7 @@ let make_programs env evd flags ?(define_constants=false) lets programs =
        e
      else term
    in
-   let p = { p with program_sign = p.program_sign @ lets } in
+   let p = { p with program_sign = p.program_sign @ match rec_info with Some _ -> lets | None -> [] } in
    [{ program_info = p;
       program_prob = prob;
       program_rec = rec_info;

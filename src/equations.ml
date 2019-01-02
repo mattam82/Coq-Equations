@@ -60,6 +60,12 @@ let program_fixdecls p fixdecls =
 let define_principles flags rec_info fixprots progs =
   let env = Global.env () in
   let evd = ref (Evd.from_env env) in
+  let () =
+    if flags.polymorphic then
+      let ustate = (snd (List.hd progs)).program_split_info.term_ustate in
+      let () = evd := Evd.merge_universe_context !evd ustate in ()
+    else ()
+  in
   let newsplits env fixdecls (p, prog, f) =
     let fixsubst = List.map (fun d -> let na, b, t = to_tuple d in
                                       (Nameops.Name.get_id na, (None, Option.get b))) fixdecls in
@@ -75,8 +81,7 @@ let define_principles flags rec_info fixprots progs =
 	   (ctx @ fixdecls, pats, ctx'), ids
 	 in
 	 let split, where_map =
-           update_split env evd p rec_info
-                        (of_constr f) cutprob fixsubst prog.program_split in
+           update_split env evd p rec_info f cutprob fixsubst prog.program_split in
          let eqninfo =
            Principles_proofs.{ equations_id = i;
              equations_where_map = where_map;
@@ -88,8 +93,7 @@ let define_principles flags rec_info fixprots progs =
       | None ->
          let prob = Context_map.id_subst sign in
 	 let split, where_map =
-           update_split env evd p rec_info
-                        (of_constr f) prob [] prog.program_split in
+           update_split env evd p rec_info f prob [] prog.program_split in
          let eqninfo =
            Principles_proofs.{ equations_id = i;
              equations_where_map = where_map;
@@ -104,8 +108,8 @@ let define_principles flags rec_info fixprots progs =
          (* let () = msg_debug (str"udpdate split" ++ spc () ++ pr_splitting env split) in *)
          let recarg = Some (-1) in
          let unfold_split, where_map =
-           update_split env evd p rec_info (of_constr f)
-             prob [(i, (recarg, of_constr f))] prog.program_split
+           update_split env evd p rec_info f
+             prob [(i, (recarg, f))] prog.program_split
          in
 	 (* We first define the unfolding and show the fixpoint equation. *)
          let unfoldi = add_suffix i "_unfold" in
@@ -153,17 +157,17 @@ let define_principles flags rec_info fixprots progs =
              let eqninfo =
                Principles_proofs.{ equations_id = i;
                  equations_where_map = where_map;
-                 equations_f = to_constr !evd funfc;
+                 equations_f = funfc;
                  equations_prob = prob;
                  equations_split = unfold_split }
              in
              build_equations flags.with_ind env !evd
-               ~alias:(make_alias (of_constr f, unfold_eq_id, prog.program_split))
+               ~alias:(make_alias (f, unfold_eq_id, prog.program_split))
                rec_info [p, prog', eqninfo]
 	   in
            let () = if not flags.polymorphic then (evd := Evd.from_env (Global.env ())) in
            let stmt = it_mkProd_or_LetIn
-                        (mkEq (Global.env ()) evd arity (mkApp (of_constr f, extended_rel_vect 0 sign))
+                        (mkEq (Global.env ()) evd arity (mkApp (f, extended_rel_vect 0 sign))
 		              (mkApp (funfc, extended_rel_vect 0 sign))) sign 
 	   in
            let evd, stmt = Typing.solve_evars (Global.env ()) !evd stmt in
@@ -205,18 +209,18 @@ let define_principles flags rec_info fixprots progs =
   in
   let progs, fixdecls =
     let fn fixprot (p, prog) =
-      let f =
-        let gr = ConstRef prog.program_cst in
-        let inst =
-          if flags.polymorphic then
-            let ustate = prog.program_split_info.term_ustate in
-            let inst = Univ.UContext.instance (UState.context ustate) in
-            let () = evd := Evd.merge_universe_context !evd ustate in
-            inst
-          else Univ.Instance.empty
-        in Constr.mkRef (gr, inst)
-      in
-      (p, prog, f), of_tuple (Name p.program_info.program_id, Some (of_constr f), fixprot)
+      let f = p.program_term in
+      (*   let gr = ConstRef prog.program_cst in
+       *   let inst =
+       *     if flags.polymorphic then
+       *       let ustate = prog.program_split_info.term_ustate in
+       *       let inst = Univ.UContext.instance (UState.context ustate) in
+       *       let () = evd := Evd.merge_universe_context !evd ustate in
+       *       inst
+       *     else Univ.Instance.empty
+       *   in Constr.mkRef (gr, inst)
+       * in *)
+      (p, prog, f), of_tuple (Name p.program_info.program_id, Some f, fixprot)
     in
     let progs, fixdecls = List.split (List.map2 fn fixprots progs) in
     progs, List.rev fixdecls
