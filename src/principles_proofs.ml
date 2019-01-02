@@ -878,22 +878,21 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
            | RecValid (_, _, r, s) ->
              let open Tacticals.New in
              let fixtac = match r with
-               | { rec_node = WfRec _ } -> unfold_recursor_tac ()
+               | { rec_node = WfRec _ } -> tclTHENLIST [of82 unfolds; unfold_recursor_tac ()]
                | { rec_node = StructRec sr } ->
                  match annot_of_rec sr with
                  | Some annot ->
                    tclTHENLIST [tclDO r.rec_args revert_last;
                                 observe_new "mutfix" (mutual_fix [] [annot]);
-                                tclDO r.rec_args intro]
+                                tclDO r.rec_args intro; of82 unfolds]
                  | None -> Proofview.tclUNIT ()
              in s, fixtac
-           | _ -> wp.program_splitting, Proofview.tclUNIT ()
+           | _ -> wp.program_splitting, of82 unfolds
          in
          let tac =
            let tac =
              of82 (tclTHENLIST [observe "where before unfold" (to82 intros);
                                 observe "where fixpoint" (to82 fix);
-                                unfolds;
                                 (observe "where"
                                  (aux wpsplit unfwp.program_splitting))])
            in

@@ -101,5 +101,6 @@ Module FlattenNestedStruct.
     where lflatten (fs : list (forest A)) (t : tail_of fs l) : list A by struct fs := {
       lflatten nil _ := nil;
       lflatten (cons f l') H := flatten f ++ lflatten l' (tail_of_decons H) }.
+
   End foo.
 End FlattenNestedStruct.

@@ -651,21 +651,25 @@ let subst_rec_split env evd p f path prob s split =
         let wp = where_program in
         let where_type = mapping_constr !evd subst where_type in
         let wp' = subst_program path where_path s ctx wp (where_term w) in
-        let () =
+        let wp', args' =
           if islogical then
             let id = Nameops.add_suffix (path_id where_path) "_unfold_eq" in
             let where_program_term = mapping_constr !evd wsubst0 wp.program_term in
             let where_program_args = List.map (mapping_constr !evd wsubst0) where_program_args in
             where_map := PathMap.add where_path
                 (applistc where_program_term where_program_args (* substituted *), id, wp'.program_splitting)
-                !where_map
-          else ()
+                !where_map;
+            let where_program_args = extended_rel_list 0 (pi1 lhs') in
+            wp', where_program_args
+          else
+            let where_program_term = mapping_constr !evd wsubst0 wp.program_term in
+            let where_program_args = List.map (mapping_constr !evd wsubst0) where_program_args in
+            { wp' with program_term = where_program_term }, where_program_args
         in
-        let where_program_args = extended_rel_list 0 (pi1 lhs') in
         let subst_where =
           {where_program = wp';
            where_program_orig = wp.program_info;
-           where_program_args;
+           where_program_args = args';
            where_path;
            where_orig;
            where_context_length = List.length (pi1 lhs');
@@ -775,11 +779,11 @@ let update_split env evd p is_rec f prob recs split =
   match is_rec with
   | Some (Guarded _) ->
     let split' = subst_rec_split env !evd p f [p.program_info.program_id] prob recs split in
-    check_splitting env !evd (fst split'); split'
+    (* check_splitting env !evd (fst split');  *)split'
 
   | Some (Logical r) ->
     let split' = subst_rec_split env !evd p f [] prob [] split in
-    check_splitting env !evd (fst split'); split'
+    (* check_splitting env !evd (fst split');  *)split'
   | _ -> split, PathMap.empty
 
 
