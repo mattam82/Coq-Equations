@@ -1,5 +1,5 @@
 Require Import Program.Basics Program.Tactics.
-Require Import Equations.Equations.
+From Equations Require Import Equations.
 Require Import Coq.Vectors.VectorDef.
 Require Import List.
 Import ListNotations.
@@ -54,12 +54,28 @@ Arguments all_cons {A P x xs} _ _.
 Derive Signature NoConfusion NoConfusionHom for All.
 
 Section MapAll.
-  Context  {A} {P Q : A -> Type} (f : forall x, P x -> Q x).
+  Context {A} {P Q : A -> Type} (f : forall x, P x -> Q x).
 
   Equations map_all {l : list A} : All P l -> All Q l :=
   map_all all_nil := all_nil;
   map_all (all_cons p ps) := all_cons (f _ p) (map_all ps).
 End MapAll.
+
+Section MapAll.
+  Context {A} {P Q : A -> Type}.
+
+  Equations map_all_in {l : list A} (f : forall x, x ∈ l -> P x -> Q x) : All P l -> All Q l :=
+  map_all_in f all_nil := all_nil;
+  map_all_in f (all_cons p ps) := all_cons (f _ here p) (map_all_in (fun x inl => f x (there inl)) ps).
+End MapAll.
+
+Section AllSize.
+  Context {A} (P : A -> Type) (size : forall {x : A}, P x -> nat).
+
+  Equations all_size {l : list A} : All P l -> nat :=
+  all_size all_nil := 0;
+  all_size (all_cons p ps) := size _ p + all_size ps.
+End AllSize.
 
 Definition StoreTy := list Ty.
 
@@ -107,16 +123,18 @@ Section StoreIncl.
          intros H. specialize (IHpr1 H). constructor 2. apply IHpr1.
   Defined.
 
-  Equations(noind) weaken_val {t} (v : Val t Σ) : Val t Σ' := {
-   weaken_val val_unit := val_unit;
+  Equations weaken_val {t} (v : Val t Σ) : Val t Σ' := {
+   weaken_val (@val_unit ?(Σ)) := val_unit;
    weaken_val val_true := val_true;
    weaken_val val_false := val_false;
-   weaken_val (val_closure b e) := val_closure b (map_all (fun t v => weaken_val v) e); (* (weaken_vals e);  *)
-   weaken_val (val_loc H) := val_loc (pres_in _ H) }.
-  (* where weaken_vals {l} (a : All (fun t => Val t Σ) l) : All (fun t => Val t Σ') l by struct a := *)
-  (* weaken_vals all_nil := all_nil; *)
-  (* weaken_vals (all_cons p ps) := all_cons (weaken_val p) (weaken_vals ps). *)
+   weaken_val (val_closure b e) := val_closure b (* (map_all (fun t v => weaken_val v) e);  *) (weaken_vals e);
+   weaken_val (val_loc H) := val_loc (pres_in _ H) }
+  where weaken_vals {l} (a : All (fun t => Val t Σ) l) : All (fun t => Val t Σ') l :=
+  weaken_vals all_nil := all_nil;
+  weaken_vals (all_cons p ps) := all_cons (weaken_val p) (weaken_vals ps).
 
+  Lemma weakenv_vals {l} a : @weaken_vals l a = map_all (fun t v => weaken_val v) a.
+  Proof. induction a; simpl; reflexivity. Defined.
 
   Definition weaken_env {Γ} (v : Env Γ Σ) : Env Γ Σ' :=
     map_all (@weaken_val) v.
@@ -312,13 +330,6 @@ Definition letupdate : Expr [] bool :=
   letref true (seq (assign (var here) false) (deref (var here))).
 
 Eval vm_compute in eval 100 letupdate all_nil all_nil.
-
-
-
-
-
-
-
 
 (*
 Inductive eval_sem {Γ : Ctx} {Σ} {env : Env Γ Σ} : forall {t : Ty}, Expr Γ t -> Val t Σ -> Prop :=

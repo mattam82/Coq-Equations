@@ -558,7 +558,7 @@ let subst_rec env evd cutprob s (ctx, p, _ as lhs) =
     (compose_subst env ~sigma:evd subst lhs) cutprob
   in subst, csubst
 
-let subst_rec_split env evd p f path prob s split =
+let subst_rec_split env evd p path prob s split =
   let where_map = ref PathMap.empty in
   let evd = ref evd in
   let cut_problem s ctx' = cut_problem !evd s ctx' in
@@ -765,17 +765,17 @@ let subst_rec_split env evd p f path prob s split =
            refined_newty = mapping_constr !evd subst' newty }
        in Refined (lhs', info, s')
   in
-  let split' = aux prob s p f path split in
+  let split' = aux prob s p p.program_term path split in
   split', !where_map
 
-let update_split env evd p is_rec f prob recs split =
+let update_split env evd p is_rec prob recs split =
   match is_rec with
   | Some (Guarded _) ->
-    let split' = subst_rec_split env !evd p f [p.program_info.program_id] prob recs split in
+    let split' = subst_rec_split env !evd p [p.program_info.program_id] prob recs split in
     (* check_splitting env !evd (fst split');  *)split'
 
   | Some (Logical r) ->
-    let split' = subst_rec_split env !evd p f [] prob [] split in
+    let split' = subst_rec_split env !evd p [] prob [] split in
     (* check_splitting env !evd (fst split');  *)split'
   | _ -> split, PathMap.empty
 

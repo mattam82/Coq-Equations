@@ -727,7 +727,7 @@ Ltac simplify_one_dep_elim :=
 
 Ltac simplify_dep_elim := repeat simplify_one_dep_elim.
 
-Ltac noconf H ::= blocked ltac:(noconf_ref H ; simplify_dep_elim).
+Ltac Equations.Init.noconf H ::= blocked ltac:(noconf_ref H ; simplify_dep_elim).
 
 (** Reverse and simplify. *)
 
@@ -1040,7 +1040,7 @@ Ltac do_depind tac H :=
 
 (** To dependent elimination on some hyp. *)
 
-Ltac depelim id ::= do_depelim ltac:(fun hyp => do_case hyp) id.
+Ltac Equations.Init.depelim id ::= do_depelim ltac:(fun hyp => do_case hyp) id.
 
 Ltac depelim_term c :=
   let H := fresh "term" in

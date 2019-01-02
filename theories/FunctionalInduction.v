@@ -175,10 +175,14 @@ Ltac specialize_mutual_nested :=
 
 Hint Extern 50 => specialize_mutual_nested : funelim.
 
-Ltac specialize_mutual := 
+Ltac specialize_mutual :=
   match goal with
     [ H : _ /\ _ |- _ ] => destruct H
-  | [ H : ?X -> _, H' : ?X |- _ ] => specialize (H H')
+  (* Fragile, might render later goals unprovable *)
+  | [ H : ?X -> _, H' : ?X |- _ ] =>
+    match X with
+      | forall (_ : _), _ => specialize (H H')
+    end
   | [ H : (?A /\ ?B) -> ?C |- _ ] => apply (uncurry_conj A B C) in H
   end.
 

@@ -9,7 +9,6 @@ Require Import Equations.Equations.
 (** Switches to constants in Type *)
 Require Import ConstantsType.
 
-Import Init.
 Set Warnings "-notation-overridden".
 Import Id_Notations.
 Import Sigma_Notations.

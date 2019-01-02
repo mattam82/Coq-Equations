@@ -261,7 +261,8 @@ let solve_ind_rec_tac info =
         let term = mkLetIn (Anonymous, fixprot, unit, ty) in
         let clause = Locus.{ onhyps = Some []; concl_occs = NoOccurrences } in
           (Proofview.tclTHEN (Tactics.letin_tac None Anonymous c (Some term) clause)
-             (of82 (eauto_with_below ~depth:10 [info.base_id; wf_obligations_base info])))))))
+             (observe_new "eauto with below"
+                (of82 (eauto_with_below ~depth:10 [info.base_id; wf_obligations_base info]))))))))
 
 let change_in_app f args idx arg =
   let args' = Array.copy args in
@@ -289,11 +290,12 @@ let annot_of_rec r = match r.struct_rec_arg with
 
 let rec aux_ind_fun info chop unfs unfids = function
   | Split ((ctx,pats,_), var, _, splits) ->
+     let splits = List.map_filter (fun x -> x) (Array.to_list splits) in
      let unfs_splits =
        let unfs = map_opt_split destSplit unfs in
        match unfs with
-       | None -> fun i -> None
-       | Some f -> fun i -> f.(i)
+       | None -> None
+       | Some f -> Some (List.map_filter (fun x -> x) (Array.to_list f))
      in
      observe "split"
      (tclTHEN_i
@@ -310,14 +312,13 @@ let rec aux_ind_fun info chop unfs unfids = function
               | _ -> filter (fun x -> not (hidden x)) pats, var
            in
            let id = find_splitting_var (project gl) pats var pats' in
-	      to82 (depelim_nosimpl_tac id) gl
+           let depelim h = (* Depelim.dependent_elim_tac (Loc.make_loc (0, 0), h) *) depelim_tac h in
+           to82 (depelim id) gl
 	| _ -> tclFAIL 0 (str"Unexpected goal in functional induction proof") gl)
-	(fun i -> 
-	  match splits.(pred i) with
-	  | None -> to82 (simpl_dep_elim_tac ())
-	  | Some s ->
-	      tclTHEN (to82 (simpl_dep_elim_tac ()))
-                (aux_ind_fun info chop (unfs_splits (pred i)) unfids s)))
+       (fun i ->
+          let split = nth splits (pred i) in
+          let unfsplit = Option.map (fun s -> nth s (pred i)) unfs_splits in
+          (aux_ind_fun info chop unfsplit unfids split)))
 
   | RecValid (ctx, id, t, cs) ->
     let refine gl =

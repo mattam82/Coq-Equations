@@ -553,8 +553,8 @@ let term_of_tree env0 isevar tree =
                      let env = push_rel_context ctx env in
                      Printer.pr_econstr_env env !evd c);
           end;
-        let subst = compose_subst (* ~unsafe:true *) env ~sigma:!evd csubst subst in
-        let subst = compose_subst (* ~unsafe:true *) env ~sigma:!evd lsubst subst in
+        let subst = compose_subst ~unsafe:true env ~sigma:!evd csubst subst in
+        let subst = compose_subst ~unsafe:true env ~sigma:!evd lsubst subst in
         (* Now we build a term to put in the match branch. *)
         let c =
           match hole, next with
