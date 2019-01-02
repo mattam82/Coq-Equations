@@ -87,6 +87,7 @@ Module FlattenNestedWf.
     intros. simp fweight. clear flatten lflatten. depind H. simpl. lia.
     simpl. lia.
   Defined.
+
 End FlattenNestedWf.
 
 Module FlattenNestedStruct.

@@ -863,7 +863,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
        (* let prob = compose_subst env ~sigma:!evars renaming prob in *)
        let clauseid = Id.of_string ("clause_" ^ string_of_int idx ^ (if cnt = 0 then "" else "_" ^ string_of_int cnt)) in
        let interp =
-         interp_clause env evars p data prev clauses' ((clauseid, false) :: path) prob
+         interp_clause env evars p data prev clauses' (clauseid :: path) prob
            extpats lets ty ((loc,lhs,rhs), cnt) s
        in
        (match interp with
@@ -1120,7 +1120,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
     in
     let _secvars = Array.of_list secvars in
     let _evar = new_untyped_evar () in
-    let path' = (idref, false) :: path in
+    let path' = idref :: path in
     let lets' =
       let letslen = length lets in
       let _, ctxs, _ = lets_of_ctx env ctx evars s in
@@ -1179,7 +1179,7 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
         env !evars Constrintern.Recursive [id] [pre_type] [p.program_impls]
     in
     let data = { data with intenv; } in
-    let path = (id, false) :: path in
+    let path = id :: path in
     let where_args = extended_rel_list 0 lets in
     let w' program =
       {where_program = program; where_program_orig = p;
@@ -1241,9 +1241,8 @@ let program_covering env evd data p clauses =
   let sigma, p = adjust_sign_arity env !evd p clauses in
   let () = evd := sigma in
   let p', prob, arity, extpats, rec_node = compute_rec_data env evd data [] p in
-  let _arity = nf_evar !evd p.program_arity in
   let splitting =
-    covering env evd p data clauses [p.program_id, false] prob extpats arity
+    covering env evd p data clauses [p.program_id] prob extpats arity
   in (p', prob, splitting, rec_node)
 
 let coverings env evd data programs equations =

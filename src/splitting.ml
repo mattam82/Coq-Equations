@@ -26,15 +26,23 @@ open Context_map
 
 (** Splitting trees *)
 
-type path_component = Id.t * bool
+type path_component = Id.t
 
 type path = path_component list
+
+let path_id ?(unfold=false) path =
+  match List.rev path with
+  | hd :: tl ->
+    List.fold_left (fun id suffix ->
+        add_suffix (add_suffix id "_") (Id.to_string suffix))
+      (if unfold then add_suffix hd "_unfold" else hd) tl
+  | _ -> assert false
 
 module PathOT =
   struct
     type t = path
 
-    let path_component_compare (id, _) (id', _) =
+    let path_component_compare id id' =
       Id.compare id id'
 
     let rec compare p p' =
@@ -122,12 +130,9 @@ let context_map_of_splitting : splitting -> context_map = function
   | RecValid (subst, _, _, s) -> subst
   | Refined (subst, _, _) -> subst
 
-let pr_path_component = function
-  | id, b -> Id.print id ++ (if b then str"_unfold" else mt())
+let pr_path evd = prlist_with_sep (fun () -> str":") Id.print
 
-let pr_path evd = prlist_with_sep (fun () -> str":") pr_path_component
-
-let path_component_eq (id, b) (id', b') = Id.equal id id'
+let path_component_eq id id' = Id.equal id id'
 
 let eq_path path path' =
   let rec aux path path' =
@@ -179,6 +184,7 @@ let pr_splitting env sigma ?(verbose=false) split =
                (try Printer.pr_econstr_env env'  sigma w.where_type ++
                     hov 1 (str "(program type: " ++ Printer.pr_econstr_env env sigma (where_program_type w)
                     ++ str ") ") ++ pr_rec_info w.where_program.program_info ++
+                    str "(path: " ++ Id.print (path_id w.where_path) ++ str")" ++ spc () ++
                     str "(where_term: " ++ Printer.pr_econstr_env env sigma (where_term w) ++ str ")" ++
                     str "(arity: " ++ Printer.pr_econstr_env env sigma w.where_program.program_info.program_arity ++ str ")" ++
                     str" (where context length : " ++ int w.where_context_length ++ str ")" ++
@@ -455,14 +461,6 @@ let helper_evar evm evar env typ src =
   let evm' = evar_declare sign evar typ' ~src evm in
     evm', mkEvar (evar, Array.of_list instance)
 
-let path_id path =
-  match List.rev path with
-  | (hd, b) :: tl ->
-    List.fold_left (fun id (suffix, b) ->
-        add_suffix (add_suffix id "_") (Id.to_string suffix))
-      (if b then add_suffix hd "_unfold" else hd) tl
-  | _ -> assert false
-
 let term_of_tree env0 isevar tree =
   let rec aux env evm = function
     | Compute ((ctx, _, _), where, ty, RProgram rhs) ->
@@ -703,7 +701,7 @@ let make_program env evd lets p prob s rec_info =
                 | _ -> ann)
              | _ -> ann
            in
-           { p with program_rec = Some (Structural ann') }
+           { p' with program_rec = Some (Structural ann') }
          | _ -> p'
        in
        Mutual (p', prob, r, s', after, (* lift 1  *)term))
@@ -767,6 +765,7 @@ let make_programs env evd flags ?(define_constants=false) lets programs =
     let make_prog (p, (prob, rec_info, s', after, _), b) =
       let term = it_mkLambda_or_LetIn b after in
       let term = nf_betaiotazeta env !evd term in
+      let p = { p with program_sign = p.program_sign @ after } in
       { program_info = p;
         program_prob = prob;
         program_rec = Some rec_info;
@@ -806,7 +805,73 @@ let change_splitting s sp =
       Refined (change_lhs s lhs, info, aux rest)
   in aux sp
 
-let define_splitting_constants flags env0 isevar tree =
+let check_splitting env evd sp =
+  let check_type ctx t =
+    let _evm, _ty = Typing.type_of (push_rel_context ctx env) evd t in
+    ()
+  in
+  let check_term ctx t ty =
+    let _evm = Typing.check (push_rel_context ctx env) evd t ty in
+    ()
+  in
+  let check_rhs ctx ty = function
+    | RProgram c -> check_term ctx c ty
+    | REmpty _ -> ()
+  in
+  let rec aux = function
+    | Compute (lhs, where, ty, r) ->
+      let _ = check_ctx_map env evd lhs in
+      let ctx = check_wheres lhs where in
+      let _ = check_type ctx ty in
+      let _ = check_rhs ctx ty r in
+      ()
+    | Split (lhs, rel, ty, sp) ->
+      let _ = check_ctx_map env evd lhs in
+      let _r = lookup_rel rel (push_rel_context (pi1 lhs) env) in
+      let _ = check_type (pi1 lhs) ty in
+      Array.iter (Option.iter aux) sp
+    | Mapping (lhs, sp) ->
+      let _ = check_ctx_map env evd lhs in
+      aux sp
+    | RecValid (lhs, id, t, rest) ->
+      let _ = check_ctx_map env evd lhs in
+      aux rest
+    | Refined (lhs, info, rest) ->
+      let _ = check_ctx_map env evd lhs in
+      aux rest
+  and check_wheres lhs wheres =
+    let check_where ctx w =
+      let () = check_program w.where_program in
+      let () = check_type ctx w.where_type in
+      let () = check_term ctx (applist (w.where_program.program_term, w.where_program_args)) w.where_type in
+      let () = assert(w.where_context_length = List.length ctx) in
+      let def = make_def (Name (where_id w)) (Some (where_term w)) w.where_type in
+      def :: ctx
+    in
+    let ctx = List.fold_left check_where (pi1 lhs) wheres in
+    ctx
+  and check_program p =
+    let ty = program_type p in
+    let () = check_type [] ty in
+    let _ = check_ctx_map env evd p.program_prob in
+    let _ =
+      match p.program_rec with
+      | None -> []
+      | Some r ->
+        let ty = it_mkLambda_or_LetIn r.rec_arity r.rec_sign in
+        let () = check_type [] ty in
+        match r.rec_node with
+        | WfRec wf ->
+          let () = check_type [] wf.wf_rec_term in
+          []
+        | StructRec s -> []
+    in
+    aux p.program_splitting
+  in aux sp
+
+
+
+let define_splitting_constants flags env0 isevar unfold tree =
   let () = assert (not (Evd.has_undefined !isevar)) in
   let helpers = ref [] in
   let rec aux env evm = function
@@ -816,7 +881,7 @@ let define_splitting_constants flags env0 isevar tree =
                          where_type; where_path} as w)
           (env, evm, s, ctx) =
         let (cst, (evm, e)) =
-          Equations_common.declare_constant (path_id where_path)
+          Equations_common.declare_constant (path_id ~unfold where_path)
             where_program.program_term None(* (Some (program_type where_program)) *)
             flags.polymorphic evm (Decl_kinds.(IsDefinition Definition))
         in
@@ -851,7 +916,7 @@ let define_splitting_constants flags env0 isevar tree =
       let env = Global.env () in
       let t, ty = term_of_tree env isevar rest' in
       let (cst, (evm, e)) =
-        Equations_common.declare_constant (path_id info.refined_path)
+        Equations_common.declare_constant (path_id ~unfold info.refined_path)
           t (Some ty) flags.polymorphic !isevar (Decl_kinds.(IsDefinition Definition))
       in
       let () = helpers := (cst, info.refined_arg) :: !helpers in
@@ -867,10 +932,10 @@ let define_splitting_constants flags env0 isevar tree =
   let evm, tree = aux env0 !isevar tree in
     isevar := evm; !helpers, tree
 
-let define_program_constants flags env evd programs =
+let define_program_constants flags env evd ?(unfold=false) programs =
   let helpers, programs =
     List.fold_left_map (fun helpers p ->
-        let helpers', split = define_splitting_constants flags env evd p.program_splitting in
+        let helpers', split = define_splitting_constants flags env evd unfold p.program_splitting in
         helpers @ helpers', { p with program_splitting = split }) [] programs
   in
   let env = Global.env () in
@@ -1078,7 +1143,7 @@ let add_hint local i cst =
      * in *)
 
 
-let define_programs env evd is_recursive fixprots flags programs hook =
+let define_programs env evd is_recursive fixprots flags ?(unfold=false) programs hook =
   let idx = ref 0 in
   let one_hook recobls p helpers uctx locality gr =
     (* let l =
@@ -1100,7 +1165,7 @@ let define_programs env evd is_recursive fixprots flags programs hook =
       if !Equations_common.debug then
         Feedback.msg_debug (str"Defining programs " ++ pr_programs env !evd programs);
     in
-    let helpers, programs = define_program_constants flags env evd programs in
+    let helpers, programs = define_program_constants flags env evd ~unfold programs in
     let programs = List.map (map_program (simplify_evars !evd)) programs in
     let programs = List.map (map_program (nf_evar !evd)) programs in
     let ustate = Evd.evar_universe_context !evd in

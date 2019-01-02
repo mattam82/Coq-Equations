@@ -184,7 +184,7 @@ let define_principles flags rec_info fixprots progs =
                      program_arity = arity }
          in
          let unfoldp = make_single_program env evd flags [] unfpi prob unfold_split None in
-         define_programs env evd None [] flags [unfoldp] hook_unfold;
+         define_programs env evd None [] flags ~unfold:true [unfoldp] hook_unfold;
          None
   in
   let principles env newsplits =

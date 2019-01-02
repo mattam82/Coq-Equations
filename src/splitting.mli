@@ -17,11 +17,11 @@ open Context_map
 
 (** Splitting trees *)
 
-type path_component = Id.t * bool
+type path_component = Id.t
 
 type path = path_component list
 
-val path_id : path -> Id.t
+val path_id : ?unfold:bool -> path -> Id.t
 
 module PathOT :
   sig
@@ -110,6 +110,8 @@ val pr_rec_info : program_info -> Pp.t
 
 val context_map_of_splitting : splitting -> context_map
 
+val check_splitting : env -> Evd.evar_map -> splitting -> unit
+
 val helper_evar :
   Evd.evar_map ->
   Evar.t ->
@@ -161,11 +163,13 @@ val make_single_program :
 val define_splitting_constants : flags ->
   env ->
   Evd.evar_map ref ->
+  bool ->
   splitting -> (Constant.t * int) list * splitting
 
 val define_program_constants : flags ->
   env ->
   Evd.evar_map ref ->
+  ?unfold:bool ->
   program list ->
   (Constant.t * int) list * program list
 
@@ -211,6 +215,7 @@ val define_programs :
   Syntax.rec_type option ->
   EConstr.rel_context ->
   Equations_common.flags ->
+  ?unfold:bool ->
   program list ->
   (int ->
    program ->
