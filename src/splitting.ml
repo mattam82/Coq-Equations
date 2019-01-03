@@ -513,10 +513,10 @@ let term_of_tree env0 isevar tree =
     | Split ((ctx, _, _) as subst, rel, ty, sp) ->
       (* Produce parts of a case that will be relevant. *)
       let evm, block = Equations_common.(get_fresh evm coq_block) in
-      let ty = mkLetIn (Anonymous, block, Retyping.get_type_of env evm block, lift 1 ty) in
+      let blockty = mkLetIn (Anonymous, block, Retyping.get_type_of env evm block, lift 1 ty) in
       let evd = ref evm in
       let ctx', case_ty, branches_res, nb_cuts, rev_subst, to_apply, simpl =
-        Sigma_types.smart_case env evd ctx rel ty in
+        Sigma_types.smart_case env evd ctx rel blockty in
 
       (* The next step is to use [simplify]. *)
       let simpl_step = if simpl then
