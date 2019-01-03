@@ -86,11 +86,6 @@ Section tree_list.
 
   where list_P3 (l : list (tree a)) : bool := {
   list_P3 l := existsb tree_P3 l }.
-  (* FIXME weird error *)
-  Next Obligation.
-    apply (tree_P3_ind_comb P0 P1); eauto.
-    apply tree_P3_ind_fun.
-  Defined.
 
   Global Instance tree_C : C (tree a) := { P := tree_P3 }.
   Global Instance tree_list_C : C (list (tree a)) := { P := list_P3 }.
@@ -154,11 +149,6 @@ Module IdealNoSec.
 
   where list_P3 {a} {a_C : C a} (l : list (tree a)) : bool := {
   list_P3 l := existsb tree_P3 l }.
-
-  Next Obligation.
-    apply (tree_P3_ind_comb P0 P1); eauto.
-    apply tree_P3_ind_fun.
-  Defined.
 
   Instance tree_C {a} (a_C : C a) : C (tree a) := { P := tree_P3 }.
   Instance tree_list_C {a} (a_C : C a) : C (list (tree a)) := { P := list_P3 }.

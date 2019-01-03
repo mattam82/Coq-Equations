@@ -40,7 +40,7 @@ let regular_or_nested = function
 
 let regular_or_nested_rec = function
   | Regular -> true
-  | Nested r -> r
+  | Nested r -> true
   | _ -> false
 
 let pi1 (x,_,_) = x
@@ -1075,8 +1075,13 @@ let declare_funind info alias env evd is_rec protos progs
     let env = Global.env () in (* refresh *)
     Hints.add_hints ~local:false [info.term_info.base_id]
                     (Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef indgr]);
-    let () = declare_funelim info.term_info env evd is_rec protos progs
-                             ind_stmts all_stmts sign app subst inds kn comb indgr ectx in
+    let () =
+      try declare_funelim info.term_info env evd is_rec protos progs
+            ind_stmts all_stmts sign app subst inds kn comb indgr ectx
+      with e ->
+        Feedback.msg_warning Pp.(str "Elimination principle could not be proved automatically: " ++ fnl () ++
+                                 CErrors.print e);
+    in
     let evd = Evd.from_env env in
     let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in
     let evd, f = new_global evd f_gr in
