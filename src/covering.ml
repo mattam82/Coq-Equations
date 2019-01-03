@@ -1111,16 +1111,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
                      mkRel var) sortinv
       in args, !argref
     in
-    (* Don't forget section variables. *)
-    let secvars =
-      let named_context = Environ.named_context env in
-      List.map (fun decl ->
-          let id = Context.Named.Declaration.get_id decl in
-          mkVar id) named_context
-    in
-    let _secvars = Array.of_list secvars in
-    let _evar = new_untyped_evar () in
-    let path' = idref :: path in
+    let path' = path in
     let lets' =
       let letslen = length lets in
       let _, ctxs, _ = lets_of_ctx env ctx evars s in

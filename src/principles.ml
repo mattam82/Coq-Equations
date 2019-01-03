@@ -419,7 +419,7 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
       in
       let ppath = (* The preceding P *)
         match path with
-        | _ :: _ :: path ->
+        | _ :: path ->
           (let res =
              list_find_map_i (fun i' (_, (_, _, path', _, _, _, _, _), _) ->
                  if eq_path path' path then Some (idx + 1 - i')
@@ -719,7 +719,7 @@ let subst_rec_split env evd p path prob s split =
        let islogical = List.exists (fun (id, (recarg, f)) -> Option.has_some recarg) s in
        let path' =
          match info.refined_path with
-         | x :: y :: _ -> x :: y :: path
+         | x :: _ -> x :: path
          | _ -> id :: path (* info.refined_path *)(* Evar ev' :: path *) in
        let s' = aux cutnewprob s p f path' sp in
        let term', args', arg' =
