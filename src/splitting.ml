@@ -983,20 +983,6 @@ type compiled_program_info = {
 
 let is_polymorphic info = pi2 info.decl_kind
 
-let simplify_wf_obls recids sigma =
-  let fn ev evi sigma' =
-    let is_wf_obl =
-      match evi.Evd.evar_source with
-      | (locopt, ImplicitArg (ConstRef c, (n, _), _)) ->
-        List.exists (fun id -> is_rec_call sigma id (mkConst c)) recids
-      | _ -> false
-    in
-    if is_wf_obl then
-      (Feedback.msg_debug (str"Identifying " ++ Evar.print ev ++ str" as a well-founded obligation");
-       sigma')
-    else sigma'
-  in Evd.fold_undefined fn sigma sigma
-
 let rec decompose len c t accu =
   let open Constr in
   let open Context.Rel.Declaration in
@@ -1047,7 +1033,6 @@ let shrink_entry sign const =
 
 let solve_equations_obligations flags recids i isevar hook =
   let kind = (Decl_kinds.Local, flags.polymorphic, Decl_kinds.(DefinitionBody Definition)) in
-  let () = isevar := simplify_wf_obls recids !isevar in
   let evars = Evar.Map.bindings (Evd.undefined_map !isevar) in
   let env = Global.env () in
   let types =
