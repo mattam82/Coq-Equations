@@ -29,7 +29,7 @@ Let nle (x y : tree) := ((x <> y) * nlt x y)%type.
 
 Notation  "x ¬< y " := (nlt x y) (at level 80).
 Notation  "x ¬≤ y " := (nle x y) (at level 80).
-Lemma noCycle_tree : ∀ x y : tree, x = y -> nlt x y.
+Lemma noCycle_tree : forall x y : tree, x = y -> nlt x y.
 Proof with trivial.
   intros x y <-. induction x as [|l Hl r Hr].
   * now simpl.
@@ -40,7 +40,7 @@ Proof with trivial.
 
       split... intro H; noconf H.
       split. 
-      + intro Heq; noconf Heq. subst r'1 r'2.
+      + intro Heq; noconf Heq.
         now apply (fst (fst Hr)). 
       + firstorder. }
     { change (nle (node l r) l).
@@ -49,7 +49,7 @@ Proof with trivial.
       split...
       - now intro H; noconf H.
       - split.
-        + intro Heq; noconf Heq; subst l'1 l'2.
+        + intro Heq; noconf Heq;
           firstorder.
         + firstorder. }
 Qed.
@@ -62,7 +62,7 @@ Proof. intros x. now apply noCycle_tree. Defined.
 
 Lemma noCycle_test l r : node l r <> r.
 Proof.
-  intros H; pose proof (noCycle_tree r (node l r) (eq_sym H)). 
+  intros H; pose proof (noCycle_tree r (node l r) (eq_sym H)). simpl in X.
   find_noCycle_proof X.
 Qed.
 
