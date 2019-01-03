@@ -1,6 +1,7 @@
 -I "../src"
--R "../theories" Equations
 -R . TestSuite
+-R "../theories" Equations
+INSTALLDEFAULTROOT = 1
 Basics.v
 BasicsDec.v
 rec.v
