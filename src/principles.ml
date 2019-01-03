@@ -47,6 +47,45 @@ let pi1 (x,_,_) = x
 let pi2 (_,y,_) = y
 let pi3 (_,_,z) = z
 
+(** Objects to keep information about equations *)
+
+let cache_rew_rule (base, gr) =
+  Autorewrite.add_rew_rules base
+    [CAst.make (UnivGen.fresh_global_instance (Global.env()) gr, true, None)]
+
+let subst_rew_rule (subst, (base, gr)) =
+  let gr' = Globnames.subst_global_reference subst gr in
+  (base, gr')
+
+let inRewRules =
+  let open Libobject in
+  let obj =
+    (* We allow discharging rewrite rules *)
+    superglobal_object "EQUATIONS_REWRITE_RULE"
+      ~cache:(fun (na, obj) -> cache_rew_rule obj)
+      ~subst:(Some subst_rew_rule)
+      ~discharge:(fun (_, x) -> Some x)
+  in
+  declare_object @@ obj
+
+let cache_opacity cst =
+  Global.set_strategy (ConstKey cst) Conv_oracle.Opaque
+
+let subst_opacity (subst, cst) =
+  let gr' = Mod_subst.subst_constant subst cst in
+  gr'
+
+let inOpacity =
+  let open Libobject in
+  let obj =
+    (* We allow discharging rewrite rules *)
+    superglobal_object "EQUATIONS_OPACITY"
+      ~cache:(fun (na, obj) -> cache_opacity obj)
+      ~subst:(Some subst_opacity)
+      ~discharge:(fun (_, x) -> Some x)
+  in
+  declare_object @@ obj
+
 let match_arguments sigma l l' =
   let rec aux i =
     if i < Array.length l' then
@@ -1054,6 +1093,12 @@ let declare_funind info alias env evd is_rec protos progs
        match alias with
        | None -> ()
        | Some ((f, _), _, _) -> Global.set_strategy (ConstKey (fst (destConst evd f))) Conv_oracle.transparent)
+    else
+      ((* Otherwise we turn them opaque and let that information be discharged as well *)
+        Lib.add_anonymous_leaf (inOpacity (fst (destConst evd f)));
+        match alias with
+        | None -> ()
+        | Some ((f, _), _, _) -> Lib.add_anonymous_leaf (inOpacity (fst (destConst evd f))))
   in
   (* let evm, stmt = Typing.type_of (Global.env ()) !evd statement in *)
   let stmt = to_constr !evd statement and f = to_constr !evd f in
@@ -1107,25 +1152,6 @@ let all_computations env evd alias progs =
     topcomp :: (rest @ acc)
   in
   List.fold_right flatten_top_comps comps []
-
-let cache_rew_rule (base, gr) =
-  Autorewrite.add_rew_rules base
-    [CAst.make (UnivGen.fresh_global_instance (Global.env()) gr, true, None)]
-
-let subst_rew_rule (subst, (base, gr)) =
-  let gr' = Globnames.subst_global_reference subst gr in
-  (base, gr')
-
-let inRewRules =
-  let open Libobject in
-  let obj =
-    (* We allow discharging rewrite rules *)
-    superglobal_object "EQUATIONS_REWRITE_RULE"
-      ~cache:(fun (na, obj) -> cache_rew_rule obj)
-      ~subst:(Some subst_rew_rule)
-      ~discharge:(fun (_, x) -> Some x)
-  in
-  declare_object @@ obj
 
 let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
   let () =

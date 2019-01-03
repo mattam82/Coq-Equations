@@ -110,27 +110,20 @@ expDenote (App e1 e2) s with expDenote e1 s => {
 };
 expDenote (Abs e) s := fun x => expDenote e (HCons x s).
 
-Section filist.
-  Variable A : Set.
+Equations filist (A : Set) (n : nat) : Set :=
+  filist A 0 := unit;
+  filist A (S n) := (A * filist A n)%type.
 
-  Equations filist (n : nat) : Set :=
-  filist 0 := unit;
-  filist (S n) := (A * filist n)%type.
-  Transparent filist.
+Global Transparent filist.
 
-  Equations ffin (n : nat) : Set :=
+Equations ffin (n : nat) : Set :=
   ffin 0 := Empty_set;
   ffin (S n) := option (ffin n).
-
-  Transparent ffin.
+Global Transparent ffin.
   
-  Equations fget {n} (ls : filist n) (i : ffin n) : A :=
+Equations fget {A n} (ls : filist A n) (i : ffin n) : A :=
   fget (n:=(S n)) (pair x _) None := x;
   fget (n:=(S n)) (pair _ ls) (Some i) := fget ls i.
-
-End filist.
-
-Arguments fget [A n] _ _.
 
 Section filist_map.
   Variables A B : Set.
@@ -143,9 +136,7 @@ Section filist_map.
   Theorem fget_fimap : forall n (i : ffin n) (ls : filist A n),
     fget (fimap ls) i = f (fget ls i).
   Proof.
-    intros. funelim (fimap ls); depelim i; simpl.
-      - apply H.
-      - reflexivity.
+    intros. funelim (fimap ls); depelim i; simp fget.
   Qed.
 End filist_map.
 
@@ -245,6 +236,8 @@ inc (Leaf n) := Leaf (S n);
 inc (Node f) := Node (fun i => inc (f i)).
 Import Sigma_Notations.
 
+Transparent rifoldr.
+
 Lemma sum_inc' : forall n (f1 f2 : ffin n -> nat),
   (forall i, f1 i >= f2 i) ->
   rifoldr plus 0 f1 >= rifoldr plus 0 f2.
@@ -252,7 +245,7 @@ Proof.
   intros.
   funelim (rifoldr plus 0 f1).
   - constructor.
-  - intros. simpl. apply Plus.plus_le_compat.
+  - apply Plus.plus_le_compat.
     + apply H0.
     + apply H. intros. apply H0.
 Qed.

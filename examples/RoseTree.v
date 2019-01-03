@@ -39,6 +39,7 @@ Section list_size.
     * specialize (H _ H0). intuition.
   Qed.
 End list_size.
+Transparent list_size.
 
 Module RoseTree.
 
@@ -65,7 +66,7 @@ Module RoseTree.
       elim (leaf a) := Pleaf a;
       elim (node nil) := Pnil;
       elim (node (cons x xs)) := Pnode x xs (elim x) (elim (node xs)).
-      Proof. all:(omega). Qed.
+      Proof. all:(simpl; omega). Qed.
     End elimtree.
 
     Equations? elements (r : t) : list A by rec (size r) lt :=
@@ -89,8 +90,7 @@ Module RoseTree.
     Obligation Tactic := program_simpl; try typeclasses eauto with Below subterm_relation.
     (* Nested rec *) 
 
-    (* FIMXE ind proof *)
-    Equations(noind) elements' (r : t) : list A by rec r (MR lt size) :=
+    Equations elements' (r : t) : list A by rec r (MR lt size) :=
     elements' (leaf a) := [a];
     elements' (node l) := fn l hidebody
 
@@ -103,15 +103,12 @@ Module RoseTree.
     elements'_def (leaf a) := [a];
     elements'_def (node l) := concat (List.map elements' l).
 
-    Axiom cheat : forall {A}, A.
     Lemma elements'_equation (r : t) : elements' r = elements'_def r.
     Proof.
-      apply cheat.
-
-      (* pose (fun_elim (f:=elements')). *)
-      (* apply (p (fun r f => f = elements'_def r) (fun l x H r => r = concat (List.map elements' x))); *)
-      (*   clear p; intros; simp elements'_def. *)
-      (* simpl. f_equal. apply H1. *)
+      pose (fun_elim (f:=elements')).
+      apply (p (fun r f => f = elements'_def r) (fun l x H r => r = concat (List.map elements' x)));
+        clear p; intros; simp elements'_def.
+      simpl. f_equal. apply H1.
     Qed.
     
   End roserec.

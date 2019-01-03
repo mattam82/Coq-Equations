@@ -12,7 +12,7 @@ Section list_size.
   Equations list_size (l : list A) : nat :=
   list_size nil := 0;
   list_size (cons x xs) := S (f x + list_size xs).
-  Transparent list_size.
+  Global Transparent list_size.
 
   Context {B : Type}.
   Equations? list_map_size (l : list A)
@@ -66,9 +66,6 @@ Section RoseTree.
   Definition hide {A} (a : A) := a.
   Notation "?" := (hide _).
 
-  Lemma list_size_smaller x xs l : list_size size (x :: xs) < S (list_size size l) ->
-                                   list_size size xs < S (list_size size l).
-  Proof. simpl. intros. omega. Defined.
   (* end hide *)
   (** As explained at the beginning of this section, however, if we want
       to program more complex recursions, or rearrange our terms
@@ -86,12 +83,13 @@ Section RoseTree.
   (*   aux nil := acc; *)
   (*   aux (cons x xs) := elements x (aux xs). *)
 
-  Equations elements (r : rose) (acc : list A) : list A by rec r (MR lt size) :=
+  Equations? elements (r : rose) (acc : list A) : list A by rec r (MR lt size) :=
   elements (leaf a) acc := a :: acc;
   elements (node l) acc := aux l _
     where aux x (H : list_size size x < size (node l)) : list A by rec x (MR lt (list_size size)) :=
     aux nil _ := acc;
-    aux (cons x xs) H := elements x (aux xs (list_size_smaller x xs l H)).
+    aux (cons x xs) H := elements x (aux xs _).
+  Proof. simpl in H. omega. Qed.
 
   Definition elems r := elements r nil.
 

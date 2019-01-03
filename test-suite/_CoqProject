@@ -1,5 +1,6 @@
 -I "../src"
 -R "../theories" Equations
+-R . TestSuite
 Basics.v
 BasicsDec.v
 rec.v
@@ -27,8 +28,11 @@ issues/issue77.v
 issues/issue79.v
 issues/issue81.v
 issues/issue82.v
+issues/issue83.v
 issues/issue84.v
 issues/issue85.v
+issues/issue95_1.v
+issues/issue95_2.v
 issues/issue98.v
 issues/issue100.v
 issues/issue104.v
