@@ -322,6 +322,14 @@ and lift_patns n k = List.map (lift_patn n k)
 let lift_pat n p = lift_patn n 0 p
 let lift_pats n p = lift_patns n 0 p
 
+let rec eq_pat sigma p1 p2 =
+  match p1, p2 with
+  | PRel i, PRel i' -> i = i'
+  | PHide i, PHide i' -> i = i'
+  | PCstr (c, pl), PCstr (c', pl') -> eq_constructor (fst c) (fst c') && List.for_all2 (eq_pat sigma) pl pl'
+  | PInac c, PInac c' -> EConstr.eq_constr sigma c c'
+  | _, _ -> false
+
 let make_permutation ?(env = Global.env ()) (sigma : Evd.evar_map)
     ((ctx1, pats1, _) : context_map) ((ctx2, pats2, _) : context_map) : context_map =
   let len = List.length ctx1 in
@@ -340,34 +348,34 @@ let make_permutation ?(env = Global.env ()) (sigma : Evd.evar_map)
               rel_id i2 ctx2 ++ str" in ctx2 is invertible to " ++
               rel_id k ctx1 ++ str" and " ++ rel_id i1 ctx1))
   in
-  let rec collect_rels k acc c =
-    if isRel sigma c then
-      let x = destRel sigma c in
-      if k < x && x <= len + k then x - k :: acc
-      else acc
-    else Termops.fold_constr_with_binders sigma succ collect_rels k acc c
+  let reduce env sigma c =
+    let flags = CClosure.RedFlags.red_sub CClosure.all CClosure.RedFlags.fDELTA in
+    let c' = Reductionops.clos_whd_flags flags env sigma c in
+    c'
   in
-  let merge_constrs c1 c2 =
-    let rels1 = collect_rels 0 [] c1 in
-    let rels2 = collect_rels 0 [] c2 in
-    try List.iter2 merge_rels rels1 rels2
-    with Invalid_argument _ -> failwith "Could not generate a permutation: different variables"
+  let env1 = push_rel_context ctx1 env in
+  let rec merge_pats p1 p2 =
+    match p1, p2 with
+    | _, PInac p2 -> ()
+    | PCstr (p, ps), PCstr (_, ps') -> List.iter2 (fun p1 p2 -> merge_pats p1 p2) ps ps'
+    | PHide i, _ -> merge_pats (PRel i) p2
+    | _, PHide i -> merge_pats p1 (PRel i)
+    | PRel i1, PRel i2 ->
+      if i1 <= len then
+        try merge_rels i1 i2
+        with Invalid_argument _ -> failwith "Could not generate a permutation: different variables"
+      else ()
+    | PInac c, _ ->
+      let p1' = pat_of_constr sigma (reduce env1 sigma c) in
+      if eq_pat sigma p1 p1' then
+        failwith "Could not generate a permutation: irreducible inaccessible"
+      else merge_pats p1' p2
+    | _, _ ->
+      failwith (Pp.string_of_ppcmds (str"Could not generate a permutation, patterns differ: "
+                  ++ pr_pat env sigma p1 ++ str " and " ++ pr_pat env sigma p2))
   in
   (* FIXME This function could also check that constructors are the same and
    * so on. It also need better error handling. *)
-  let env1 = push_rel_context ctx1 env in
-  let env2 = push_rel_context ctx2 env in
-  let reduce env sigma c =
-    let flags = CClosure.RedFlags.red_sub CClosure.all CClosure.RedFlags.fDELTA in
-    Reductionops.clos_norm_flags flags env sigma c
-  in
-  let merge_pats pat1 pat2 =
-    let sigma, c1 = constr_of_pat ~inacc_and_hide:false env1 sigma pat1 in
-    let sigma, c2 = constr_of_pat ~inacc_and_hide:false env2 sigma pat2 in
-    let c1 = reduce env1 sigma c1 in
-    let c2 = reduce env2 sigma c2 in
-    merge_constrs c1 c2
-  in
   List.iter2 merge_pats pats1 pats2;
   let pats = Array.map (function
       | None -> failwith "Could not generate a permutation"
