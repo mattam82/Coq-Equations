@@ -36,28 +36,21 @@ Section Tests.
     induction H; intros; subst; auto.
   Qed.
 
-  Lemma fweight_neq_0 : forall f, fweight f <> 0.
+  Lemma fweight_neq_0 : (forall f, fweight f <> 0) /\ forall l, lweight l <> 0.
   Proof.
-    intros.
-    destruct f.
-    Fail funelim (fweight (emp a)).
-
-    all:(simp fweight; lia).
+    pose (fun_elim (f:=fweight)).
+    apply (a (fun l n => n <> 0) (fun l n => n <> 0)); intros; lia.
   Qed.
 
   Lemma lweight_neq_0 : forall l, lweight l <> 0.
-  Proof.
-    intros. destruct l; simpl.
-    lia.
-    pose proof (fweight_neq_0 f). lia.
-  Qed.
+  Proof. apply fweight_neq_0. Defined.
 
   Lemma tail_of_fweight : forall l1 l2,
       tail_of l1 l2 ->
       lweight l1 <= lweight l2.
   Proof.
     induction 1; simp lweight; try lia.
-    simpl. pose proof (fweight_neq_0 x).
+    simpl. pose proof (proj1 fweight_neq_0 x).
     lia.
   Qed.
 End Tests.
@@ -66,8 +59,6 @@ Arguments forest A : clear implicits.
 Hint Constructors tail_of : core.
 
 Module FlattenNestedWf.
-  Obligation Tactic := idtac.
-
   Equations? flatten {A} (f : forest A) : list A by rec (fweight f) lt :=
   flatten (emp _) := nil;
   flatten (tree l) := lflatten l (t_refl _)
@@ -80,7 +71,7 @@ Module FlattenNestedWf.
   Proof.
     intros. simp fweight. clear flatten lflatten. depind H. simpl. lia.
     simpl. lia.
-  Defined.
+  Qed.
 
 End FlattenNestedWf.
 
