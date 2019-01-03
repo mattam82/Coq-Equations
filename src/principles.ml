@@ -1158,6 +1158,24 @@ let all_computations env evd alias progs =
   in
   List.fold_right flatten_top_comps comps []
 
+let unfold_fix =
+  let open Proofview in
+  Proofview.Goal.enter (fun gl ->
+      let sigma = Goal.sigma gl in
+      match kind sigma (Goal.concl gl) with
+      | App (eq, [| _; lhs; _ |]) ->
+        (match kind sigma lhs with
+         | App (fn, args) ->
+           (match kind sigma fn with
+            | Fix ((indexes, p), decls) ->
+              let fixarg = args.(indexes.(p)) in
+              (match kind sigma fixarg with
+               | Var id -> depelim_tac id
+               | _ -> tclUNIT ())
+            | _ -> tclUNIT ())
+         | _ -> tclUNIT ())
+      | _ -> tclUNIT ())
+
 let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
   let () =
     if !Equations_common.debug then
@@ -1207,7 +1225,8 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
 
       | None -> fl,
         if eq_constr !evd fl f then
-          Tacticals.New.tclORELSE Tactics.reflexivity (of82 (unfold_constr !evd f))
+          Tacticals.New.tclORELSE Tactics.reflexivity
+            (Tacticals.New.tclTHEN (of82 (unfold_constr !evd f)) unfold_fix)
         else Tacticals.New.tclIDTAC
     in
     let comp = applistc hd pats in
