@@ -755,9 +755,9 @@ Proof.
 
   (* Var *)
   apply Nat.compare_eq in Heq; subst.
-  depelim H1.
+  depelim H0.
   rewrite !nth_length. split. term. intros.
-  noconf H2. auto.
+  noconf H1. auto.
  
   (* Lt *)
   apply Nat.compare_lt_iff in Heq. depelim H0.
@@ -888,7 +888,7 @@ Proof.
   (* Var: eq *)
   - apply Nat.compare_eq in Heq; subst n.
     split; intros Hsyn; depelim Hsyn; rewrite ?nth_length.
-    depelim H2; rewrite !nth_length.
+    depelim H1; rewrite !nth_length.
     now split; term. split; term.
  
   (* Lt *)
