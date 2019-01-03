@@ -694,15 +694,6 @@ let subst_rec_split env evd p path prob s split =
          let rest = aux cutprob s p f (id :: path) rest in
          rest
        | _ -> aux cutprob s p f path rest)
-              (* let cutprob = (cut_problem s (pi1 subst)) in
-               * let _subst, subst =
-               *   try subst_rec cutprob s subst
-               *   with e -> assert false in
-               * (\* let invsubst = Option.map (fun x -> snd (subst_rec (cut_problem s (pi3 x)) s x)) invsubst in *\)
-               *     (g, l, subst, invsubst,  *)
-       (* (match invsubst with
-        *  | Some s -> Mapping (s, rest)
-        *  | None -> rest) *)
 
     | Refined (lhs, info, sp) ->
        let (id, c, cty), ty, arg, oterm, args, revctx, newprob, newty =
