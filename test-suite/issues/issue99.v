@@ -20,16 +20,16 @@ Equations foo_type (t : Foo) : Type :=
 
 (* Moving val nato the return type, rather than having it as an argument might be unnecessary if
    https://github.com/mattam82/Coq-Equations/issues/73 was fixed *)
-Equations (struct t) do_foo (t : Foo) : forall (val : foo_type t), nat := {
+Equations (struct t) do_foo (t : Foo) : forall (val : foo_type t), nat by struct fs := {
   do_foo (Foo1 fs) := fun val => do_foo1 fs val;
   do_foo (Foo2 fs) := fun val => do_foo2 fs val }
 
-  where (struct fs)
+  where
     do_foo1 (fs:list Foo) : forall (val : compact_prod (map foo_type fs)), nat := {
     do_foo1 _ := fun val => 0}
 
-  where (struct fs)
-    do_foo2 (fs : list Foo) : forall val : compact_prod (List.map foo_type fs), nat := {
+  where
+    do_foo2 (fs : list Foo) : forall val : compact_prod (List.map foo_type fs), nat by struct fs := {
     do_foo2 nil := fun val => 0;
     do_foo2 (cons var nil) :=
       fun val => do_foo var val;

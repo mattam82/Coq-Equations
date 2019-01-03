@@ -1308,7 +1308,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
              let id = CAst.make @@ Nameops.add_suffix ind.Entries.mind_entry_typename suff in
              (id, false, (kn, i), sort)) 0 inds)
       in
-      Indschemes.do_mutual_induction_scheme mutual;
+      Indschemes.do_mutual_induction_scheme ~force_mutual:true mutual;
       if List.length inds != 1 then
         let scheme = Nameops.add_suffix (Id.of_string info.base_id) "_ind_comb" in
         let mutual = List.map2 (fun (i, _, _, _) (_, (_, _, _, _, _, _, _, (kind, cut)), _) ->
