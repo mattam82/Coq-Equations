@@ -1117,6 +1117,25 @@ let all_computations env evd alias progs =
   in
   List.fold_right flatten_top_comps comps []
 
+let cache_rew_rule (base, gr) =
+  Autorewrite.add_rew_rules base
+    [CAst.make (UnivGen.fresh_global_instance (Global.env()) gr, true, None)]
+
+let subst_rew_rule (subst, (base, gr)) =
+  let gr' = Globnames.subst_global_reference subst gr in
+  (base, gr')
+
+let inRewRules =
+  let open Libobject in
+  let obj =
+    (* We allow discharging rewrite rules *)
+    superglobal_object "EQUATIONS_REWRITE_RULE"
+      ~cache:(fun (na, obj) -> cache_rew_rule obj)
+      ~subst:(Some subst_rew_rule)
+      ~discharge:(fun (_, x) -> Some x)
+  in
+  declare_object @@ obj
+
 let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
   let () =
     if !Equations_common.debug then
@@ -1324,8 +1343,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
       let ideq = Nameops.add_suffix id ("_equation_" ^ string_of_int i) in
       let hook _ _obls subst gr =
         if n != None then
-          Autorewrite.add_rew_rules info.base_id
-            [CAst.make (UnivGen.fresh_global_instance (Global.env()) gr, true, None)]
+          Lib.add_anonymous_leaf (inRewRules (info.base_id, gr))
         else (Typeclasses.declare_instance None true gr
               (* Hints.add_hints ~local:false [info.base_id]  *)
               (*                 (Hints.HintsExternEntry *)

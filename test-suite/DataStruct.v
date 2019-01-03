@@ -81,14 +81,10 @@ Example someValues : hlist (fun T : Set => T) someTypes :=
   HCons 5 (HCons true HNil).
 
 Goal hget someValues HFirst = 5.
-Proof. (* FIXME simp hget. *)
-  unfold someValues, someTypes. rewrite hget_equation_2. reflexivity.
-Qed.
+Proof. reflexivity. Qed.
 
 Goal hget someValues (HNext HFirst) = true.
-Proof. (* simp hget. *)
-  unfold someValues, someTypes. rewrite hget_equation_3. rewrite hget_equation_2. reflexivity.
-Qed.
+Proof. simp hget. Qed.
 
 Inductive type : Set :=
 | Unit : type

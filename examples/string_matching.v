@@ -121,9 +121,6 @@ Section Chunk.
   Proof. apply leb_complete_conv in p. rewrite drop_spec. omega. auto with arith. Qed.
 End Chunk.
 
-(** Bugs, rewrite hint db is not discharged *)
-Hint Rewrite @chunk_equation_1 @chunk_clause_1_refine_equation_1 @chunk_clause_1_refine_equation_2 : chunk.
-
 Theorem if_flip_helper {B: Type} {b: bool}
         (C E: true = b -> B) (D F: false = b -> B):
   (forall (r: true  = b), C r = E r) ->
@@ -151,8 +148,6 @@ Section mconcat.
   mconcat (cons x xs) := x ** mconcat xs.
 End mconcat.
 Transparent mconcat.
-
-Definition strong_induction := well_founded_induction lt_wf.
 
 Derive NoConfusion for N.
 

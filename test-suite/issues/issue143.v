@@ -24,7 +24,7 @@ Section Tests.
   Inductive tail_of {A} : list A -> list A -> Prop :=
   | t_refl : forall l, tail_of l l
   | t_cons : forall x l1 l2, tail_of l1 l2 -> tail_of l1 (cons x l2).
-  Hint Constructors tail_of.
+  Hint Constructors tail_of : core.
   Derive Signature for tail_of.
 
   Lemma tail_of_decons : forall {A} {x : A} {l1 l2},
@@ -42,9 +42,7 @@ Section Tests.
     destruct f.
     Fail funelim (fweight (emp a)).
 
-    Restart.
-
-    intros. destruct f; simp fweight; lia.
+    all:(simp fweight; lia).
   Qed.
 
   Lemma lweight_neq_0 : forall l, lweight l <> 0.
@@ -64,11 +62,8 @@ Section Tests.
   Qed.
 End Tests.
 
-Hint Rewrite @fweight_equation_1 @fweight_equation_2 @lweight_equation_1 @lweight_equation_2 : fweight.
-
-
 Arguments forest A : clear implicits.
-Hint Constructors tail_of.
+Hint Constructors tail_of : core.
 
 Module FlattenNestedWf.
   Obligation Tactic := idtac.

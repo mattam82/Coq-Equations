@@ -588,7 +588,7 @@ Equations ap_V {A B : Type} (f : A -> B) {x y : A} (p : x = y) :
 ap_V f eq_refl => eq_refl.
 
 Hint Rewrite @ap_pp @ap_V : ap.
-Hint Rewrite  @concat_pp_V : concat.
+Hint Rewrite @concat_pp_V : concat.
 
 Equations concat_pA1 {A : Type} {f : A -> A} (p : forall x, x = f x) {x y : A} (q : x = y) :
   (p x) @ (ap f q) = q @ (p y) :=
