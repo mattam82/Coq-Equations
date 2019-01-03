@@ -51,8 +51,8 @@ Equations? comp_assoc_simpl_rec {a : nat} {tys dom cod}
   };
   comp_assoc_simpl_rec x := x.
 Proof.
-  1-2,4,6:lia.
-  all:(simpl; destruct_call comp_assoc_simpl_rec; simpl in *; lia).
+  1-2,4:lia.
+  all:(simpl; try destruct_call comp_assoc_simpl_rec; simpl in *; lia).
 Time Defined.
 
 Definition comp_assoc_simpl {a}

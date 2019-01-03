@@ -20,6 +20,11 @@ open Evarutil
 open Evar_kinds
 open Equations_common
 open Syntax
+
+module CVars = Vars
+module RelDecl = Context.Rel.Declaration
+module NamedDecl = Context.Named.Declaration
+
 open EConstr
 open EConstr.Vars
 open Context_map
@@ -950,7 +955,7 @@ let is_comp_obl sigma comp hole_kind =
   | Some r ->
       match hole_kind, r with
       | ImplicitArg (ConstRef c, (n, _), _), (loc, id) ->
-        is_rec_call sigma r (mkConst c)
+        is_rec_call sigma (snd r) (mkConst c)
       | _ -> false
 
 let _zeta_red =
@@ -978,9 +983,71 @@ type compiled_program_info = {
 
 let is_polymorphic info = pi2 info.decl_kind
 
+let simplify_wf_obls recids sigma =
+  let fn ev evi sigma' =
+    let is_wf_obl =
+      match evi.Evd.evar_source with
+      | (locopt, ImplicitArg (ConstRef c, (n, _), _)) ->
+        List.exists (fun id -> is_rec_call sigma id (mkConst c)) recids
+      | _ -> false
+    in
+    if is_wf_obl then
+      (Feedback.msg_debug (str"Identifying " ++ Evar.print ev ++ str" as a well-founded obligation");
+       sigma')
+    else sigma'
+  in Evd.fold_undefined fn sigma sigma
 
-let solve_equations_obligations flags i isevar hook =
+let rec decompose len c t accu =
+  let open Constr in
+  let open Context.Rel.Declaration in
+  if len = 0 then (c, t, accu)
+  else match kind c, kind t with
+  | Lambda (na, u, c), Prod (_, _, t) ->
+    decompose (pred len) c t (LocalAssum (na, u) :: accu)
+  | LetIn (na, b, u, c), LetIn (_, _, _, t) ->
+    decompose (pred len) c t (LocalDef (na, b, u) :: accu)
+  | _ -> assert false
+
+let rec shrink ctx sign c t accu =
+  let open Constr in
+  let open CVars in
+  match ctx, sign with
+  | [], [] -> (c, t, accu)
+  | p :: ctx, decl :: sign ->
+      if noccurn 1 c && noccurn 1 t then
+        let c = subst1 mkProp c in
+        let t = subst1 mkProp t in
+        shrink ctx sign c t accu
+      else
+        let c = Term.mkLambda_or_LetIn p c in
+        let t = Term.mkProd_or_LetIn p t in
+        let accu = if RelDecl.is_local_assum p
+                   then mkVar (NamedDecl.get_id decl) :: accu
+                   else accu
+    in
+    shrink ctx sign c t accu
+| _ -> assert false
+
+let shrink_entry sign const =
+  let open Entries in
+  let typ = match const.const_entry_type with
+  | None -> assert false
+  | Some t -> t
+  in
+  (* The body has been forced by the call to [build_constant_by_tactic] *)
+  (* let () = assert (Future.is_over const.const_entry_body) in *)
+  let ((body, uctx), eff) = Future.force const.const_entry_body in
+  let (body, typ, ctx) = decompose (List.length sign) body typ [] in
+  let (body, typ, args) = shrink ctx sign body typ [] in
+  let const = { const with
+    const_entry_body = Future.from_val ((body, uctx), eff);
+    const_entry_type = Some typ;
+  } in
+  (const, args)
+
+let solve_equations_obligations flags recids i isevar hook =
   let kind = (Decl_kinds.Local, flags.polymorphic, Decl_kinds.(DefinitionBody Definition)) in
+  let () = isevar := simplify_wf_obls recids !isevar in
   let evars = Evar.Map.bindings (Evd.undefined_map !isevar) in
   let env = Global.env () in
   let types =
@@ -993,6 +1060,7 @@ let solve_equations_obligations flags i isevar hook =
           List.chop (List.length evcontext - section_length) evcontext
         in
         let type_ = Termops.it_mkNamedProd_or_LetIn evi.Evd.evar_concl local_context in
+        let type_ = nf_beta env !isevar type_ in
         env, ev, evi, local_context, type_) evars in
   (* Make goals from a copy of the evars *)
   let initisevar = !isevar in
@@ -1037,22 +1105,29 @@ let solve_equations_obligations flags i isevar hook =
              | Some id -> id
              | None -> let n = !obls in incr obls; add_suffix i ("_obligation_" ^ string_of_int n)
            in
-           (* let entry =
-            *   { entry with Entries.const_entry_type =
-            *                  Option.map (nf_evar wits) (EConstr.of_constr const_entry_type) }
-            * in *)
+           let entry, args = shrink_entry local_context entry in
            let cst = Declare.declare_constant id (Entries.DefinitionEntry entry, kind) in
            let newevars, app = Evarutil.new_global !isevar (ConstRef cst) in
            isevar :=
-             Evd.define ev (applist (app, List.rev (Context.Named.to_instance mkVar local_context)))
+             Evd.define ev (applist (app, List.map of_constr args)) (* List.rev (Context.Named.to_instance mkVar local_context))) *)
                newevars;
            cst)
           (CList.combine (List.rev !wits) types) obj.Proof_global.entries
       in
       hook recobls
   in
+  let do_intros =
+    (* Force introductions to be able to shrink the bodies later on. *)
+    List.map
+      (fun (env, ev, evi, ctx, _) ->
+         Tacticals.New.tclDO (List.length ctx) Tactics.intro)
+      types
+  in
   (* Feedback.msg_debug (str"Starting proof"); *)
   Proof_global.(start_dependent_proof i kind tele (make_terminator terminator));
+  Proof_global.simple_with_current_proof
+    (fun _ p  ->
+       fst (Pfedit.solve Goal_select.SelectAll None (Proofview.tclDISPATCH do_intros) p));
   Proof_global.simple_with_current_proof
     (fun _ p  ->
        fst (Pfedit.solve (Goal_select.SelectAll) None (Tacticals.New.tclTRY !Obligations.default_tactic) p));
@@ -1175,8 +1250,14 @@ let define_programs env evd is_recursive fixprots flags ?(unfold=false) programs
         let cst, _ = (destConst !evd p.program_term) in
         one_hook recobls p helpers ustate Decl_kinds.Global (ConstRef cst)) programs
   in
+  let recids =
+    match is_recursive with
+    | Some (Guarded l) -> List.map fst l
+    | Some (Logical id) -> [snd id]
+    | None -> []
+  in
   if Evd.has_undefined !evd then
-    solve_equations_obligations flags (program_id (List.hd programs)) evd hook
+    solve_equations_obligations flags recids (program_id (List.hd programs)) evd hook
   else hook []
 
 let mapping_rhs sigma s = function

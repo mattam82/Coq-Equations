@@ -737,7 +737,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
     | App (eq, [| ty; x; y |]) ->
        let sigma = project gl in
        let xf, _ = decompose_app sigma x and yf, _ = decompose_app sigma y in
-          if eq_constr sigma (mkConst f_cst) xf && is_rec_call sigma proj yf then
+          if eq_constr sigma (mkConst f_cst) xf && is_rec_call sigma (snd proj) yf then
             let proj_unf = get_proj_eval_ref proj in
 	    let unfolds = unfold_in_concl 
 	      [((Locus.OnlyOccurrences [1]), EvalConstRef f_cst); 

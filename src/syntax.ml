@@ -215,7 +215,7 @@ type rec_type =
 
 let is_structural = function Some (Guarded _) -> true | _ -> false
 
-let is_rec_call sigma (loc, id) f =
+let is_rec_call sigma id f =
   match EConstr.kind sigma f with
   | Var id' -> Id.equal id id'
   | Const (c, _) ->

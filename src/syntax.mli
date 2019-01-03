@@ -110,7 +110,7 @@ type rec_type =
   | Logical of Id.t with_loc
 
 val is_structural : rec_type option -> bool
-val is_rec_call : Evd.evar_map -> Id.t with_loc -> EConstr.constr -> bool
+val is_rec_call : Evd.evar_map -> Id.t -> EConstr.constr -> bool
 val next_ident_away : Id.t -> Id.Set.t ref -> Id.t
 
 type equation_option = 
