@@ -12,9 +12,7 @@ Set Warnings "+notation-overridden".
 
 Derive Signature for Id.
 
-
-
-Check (_ : HSet nat).
+Definition nathset := _ : HSet nat.
 
 Set Printing Universes.
 (* Equations test_k (x : nat) (r : x = x) : r = r := *)

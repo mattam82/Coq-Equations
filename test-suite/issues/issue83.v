@@ -3,7 +3,6 @@ From Equations Require Import Equations.
 Section CookingKillsOpaquenessForReduction.
 Equations id {A} (x : A) : A :=
 id x := x.
-About id.
 (* id is basically transparent but considered opaque for reduction *)
 End CookingKillsOpaquenessForReduction.
 
