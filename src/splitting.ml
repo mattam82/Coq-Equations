@@ -976,7 +976,6 @@ type term_info = {
 
 type compiled_program_info = {
     program_cst : Constant.t;
-    program_split : splitting;
     program_split_info : term_info }
 
 

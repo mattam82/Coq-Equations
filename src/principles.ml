@@ -1132,7 +1132,7 @@ let level_of_context env evd ctx acc =
 
 let all_computations env evd alias progs =
   let comps =
-    let fn p = computations env evd alias (kind_of_prog p,false) in
+    let fn p = computations env evd alias (kind_of_prog p.program_info,false) in
     List.map (fun (p, prog, eqninfo) -> p, eqninfo, fn p eqninfo) progs
   in
   let rec flatten_comp (ctx, fl, flalias, pats, ty, f, refine, c, rest) =
@@ -1150,10 +1150,11 @@ let all_computations env evd alias progs =
   in
   let flatten_top_comps (p, eqninfo, one_comps) acc =
     let (top, rest) = flatten_comps one_comps in
-    let topcomp = (((eqninfo.equations_f,[]), alias, [p.program_id],
-                    p.program_sign, p.program_arity,
+    let pi = p.program_info in
+    let topcomp = (((eqninfo.equations_f,[]), alias, [pi.program_id],
+                    pi.program_sign, pi.program_arity,
                     List.rev_map pat_constr (pi2 eqninfo.equations_prob), [],
-                    (kind_of_prog p,false)), top) in
+                    (kind_of_prog pi,false)), top) in
     topcomp :: (rest @ acc)
   in
   List.fold_right flatten_top_comps comps []
@@ -1183,7 +1184,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
       let msg = Feedback.msg_debug in
       msg (str"Definining principles of: ");
       List.iter (fun (p, prog, eqninfo) ->
-          msg (pr_splitting ~verbose:true env evd prog.program_split))
+          msg (pr_splitting ~verbose:true env evd p.program_splitting))
         progs
   in
   let p, prog, eqninfo = List.hd progs in
@@ -1197,7 +1198,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
         equations_prob = prob;
         equations_split = split } = eqninfo in
   let info = prog.program_split_info in
-  let sign = p.program_sign in
+  let sign = program_sign p in
   let cst = prog.program_cst in
   let comps = all_computations env evd alias progs in
   let protos = List.map fst comps in

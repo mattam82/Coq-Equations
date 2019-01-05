@@ -582,7 +582,7 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
      let mutual, nested = List.partition (function (_, MutualOn _) -> true | _ -> false) l in
      let mutannots = List.map (function (_, MutualOn (Some (ann, _))) -> ann + 1 | _ -> -1) mutual in
      let mutprogs, nestedprogs =
-       List.partition (fun (p,_,e) -> match p.Syntax.program_rec with
+       List.partition (fun (p,_,e) -> match p.program_info.Syntax.program_rec with
                                       | Some (Structural (MutualOn _)) -> true
                                       | _ -> false) progs
      in

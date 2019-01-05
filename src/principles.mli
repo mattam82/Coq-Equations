@@ -129,7 +129,7 @@ val build_equations :
   Evd.evar_map ->
   ?alias:alias ->
   Syntax.rec_type option ->
-  (Syntax.program_info * Splitting.compiled_program_info * Principles_proofs.equations_info) list ->
+  (Splitting.program * Splitting.compiled_program_info * Principles_proofs.equations_info) list ->
   unit
 
 
@@ -138,7 +138,7 @@ val all_computations :
   Evd.evar_map ->
   ((EConstr.constr * int list) * Names.Id.t * Splitting.splitting)
     option ->
-  (Syntax.program_info * 'a * Principles_proofs.equations_info) list ->
+  (Splitting.program * 'a * Principles_proofs.equations_info) list ->
   (((EConstr.t * int list) *
     alias option * Splitting.path * EConstr.rel_context * EConstr.t *
     EConstr.constr list * (EConstr.constr * int) list *
