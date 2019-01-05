@@ -967,7 +967,6 @@ let _zeta_red =
 type term_info = {
   term_id : Names.GlobRef.t;
   term_ustate : UState.t;
-  term_evars : (Id.t * Constr.t) list;
   base_id : string;
   decl_kind: Decl_kinds.definition_kind;
   helpers_info : (Constant.t * int) list;
@@ -1212,7 +1211,7 @@ let define_programs env evd is_recursive fixprots flags ?(unfold=false) programs
      * Extraction_plugin.Table.extraction_inline true l; *)
     let kind = (locality, flags.polymorphic, Decl_kinds.Definition) in
     let baseid = Id.to_string (program_id p) in
-    let term_info = { term_id = gr; term_ustate = uctx; term_evars = [];
+    let term_info = { term_id = gr; term_ustate = uctx;
                       base_id = baseid; helpers_info = helpers; decl_kind = kind;
                       comp_obls = recobls; user_obls = Id.Set.empty } in
     hook !idx p term_info uctx;

@@ -180,7 +180,6 @@ val is_comp_obl : Evd.evar_map -> Id.t with_loc option -> Evar_kinds.t -> bool
 type term_info = {
   term_id : Names.GlobRef.t;
   term_ustate : UState.t;
-  term_evars : (Id.t * Constr.t) list;
   base_id : string;
   decl_kind : Decl_kinds.definition_kind;
   helpers_info : (Constant.t * int) list;
