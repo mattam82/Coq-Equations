@@ -224,7 +224,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
     Covering.covering
       ~check_unused:false (* The catch-all clause might not be needed *)
       env evd p data clauses [] ctxmap [] s in
-  let hook _ p terminfo ustate =
+  let hook _ p terminfo =
     let _proginfo =
       Syntax.{ program_loc = Loc.make_loc (0,0); program_id = id;
         program_sign = fullbinders;

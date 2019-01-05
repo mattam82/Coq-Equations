@@ -597,77 +597,66 @@ let subst_rec env evd cutprob s (ctx, p, _ as lhs) =
     (compose_subst env ~sigma:evd subst lhs) cutprob
   in subst, csubst
 
-let subst_rec_split env evd p path prob s split =
+(* Not necessary? If p.id is part of the substitution but isn't in the context we ignore it *)
+let _program_fixdecls p fixdecls =
+  match p.Syntax.program_rec with
+  | Some (Structural NestedNonRec) -> (* Actually the definition is not self-recursive *)
+     List.filter (fun decl ->
+         let na = Context.Rel.Declaration.get_name decl in
+         let id = Nameops.Name.get_id na in
+         not (Id.equal id p.program_id)) fixdecls
+  | _ -> fixdecls
+
+let subst_rec_programs env evd ps =
   let where_map = ref PathMap.empty in
   let evd = ref evd in
   let cut_problem s ctx' = cut_problem !evd s ctx' in
   let subst_rec cutprob s lhs = subst_rec env !evd cutprob s lhs in
-  let rec subst_program path ppath s ctx p oterm =
-    let program', s', program_prob, program_splitting', arity', extpatlen =
-      (* Should be the number of extra patterns for the whole fix block *)
-      match p.program_info.program_rec, p.program_rec with
-      | Some (Structural ids), Some { rec_prob; rec_arity } ->
-        let _recarg = match ids with
-          | NestedOn None -> None
-          | MutualOn None -> None
-          | NestedNonRec -> None
-          | NestedOn (Some (x, _)) -> Some x
-          | MutualOn (Some (x, _)) -> Some x
-        in
-        let s = ((p.program_info.program_id,
-                  (None, lift (List.length (pi1 p.program_prob) - List.length ctx) oterm)) :: s) in
-        let program_info = { p.program_info with program_rec = None } in
-        let split = match p.program_splitting with
-          | RecValid (lets, id, _, s) -> s
-          | s -> s
-        in
-        { p with program_info}, s, rec_prob, split, rec_arity, 0
-      | Some (WellFounded (_, _, (loc, id))), Some { rec_node = WfRec r; rec_prob; rec_arity } ->
-        let recarg = Some (-1) in
-        let s = (id, (recarg, lift (List.length (pi1 p.program_prob) - List.length ctx) oterm)) :: s in
-        let split = match p.program_splitting with
-          | RecValid (lets, id, _, s) -> s
-          | s -> s
-        in
-        let program_info = { p.program_info with program_rec = None } in
-        { p with program_info}, s, rec_prob, split, rec_arity, 0
-      | _ -> p, s, p.program_prob, p.program_splitting, p.program_info.program_arity, 0
+  let rec subst_programs path s ctx progs oterms =
+    let fixsubst =
+      let fn p oterm =
+        match p.program_info.program_rec with
+        | Some r ->
+          let recarg = match r with Structural _ -> None | WellFounded _ -> Some (-1) in
+          let oterm = lift (List.length (pi1 p.program_prob) - List.length ctx) oterm in
+          Some (p.program_info.program_id, (recarg, oterm))
+        | None -> None
+      in
+      let fixdecls = List.map2 fn progs oterms in
+      List.rev fixdecls
     in
-    let prog_info = program'.program_info in
-    let cutprob_sign = cut_problem s prog_info.program_sign in
-    let cutprob_subst, _ = subst_rec cutprob_sign s (id_subst prog_info.program_sign) in
-    let program_info' =
-      { prog_info with
-        program_sign = pi1 cutprob_subst;
-        program_arity = mapping_constr !evd cutprob_subst prog_info.program_arity }
-    in
-    (* (try Feedback.msg_debug Pp.(str"At where in update_split, calling recursively with new arity " ++ fnl () ++
-     *                             str"Original signature: " ++ pr_context env !evd prog_info.program_sign ++ fnl () ++
-     *                             str"Original arity: " ++ Printer.pr_econstr_env env !evd prog_info.program_arity ++
-     *                             fnl () ++
-     *                             str"New signature: " ++ pr_context env !evd program_info'.program_sign ++ fnl () ++
-     *                             str"New arity: " ++ Printer.pr_econstr_env env !evd program_info'.program_arity ++
-     *                             fnl () ++
-     *                             str" cutprobsign: " ++ pr_context_map env !evd cutprob_sign ++ fnl () ++
-     *                             str" cutprobsubst: " ++ pr_context_map env !evd cutprob_subst ++ fnl () ++
-     *                             str" cutprob: " ++ pr_context_map env !evd cutprob ++ fnl () ++
-     *                             str" psubst: " ++ pr_context_map env !evd psubst ++ fnl () ++
-     *                             str" rec subst: " ++ pr_context_map env !evd rec_subst ++ fnl ())
-     *  with e -> ()); *)
-    let path' =
-      match ppath with
-      | x :: y :: r ->
-        x :: y :: path
-      | _ -> ppath
-    in
-    let rec_cutprob = cut_problem s' (pi1 program_prob) in
-    let splitting' = aux rec_cutprob s' program' oterm path' program_splitting' in
-    let term', ty' = term_of_tree env evd splitting' in
-    { p with
-      program_info = program_info';
-      program_prob = id_subst (pi3 cutprob_sign);
-      program_term = term';
-      program_splitting = splitting' }
+    let fixsubst = CList.map_filter (fun x -> x) fixsubst in
+    let s' = fixsubst @ s in
+    let one_program p oterm =
+      let split' = match p.program_splitting with
+        | RecValid (lets, id, _, s) -> s
+        | s -> s
+      in
+      let rec_prob, rec_arity =
+        match p.program_rec with
+        | Some { rec_prob; rec_arity } -> rec_prob, rec_arity
+        | None -> p.program_prob, p.program_info.program_arity
+      in
+      let prog_info = p.program_info in
+      let cutprob_sign = cut_problem s prog_info.program_sign in
+      let cutprob_subst, _ = subst_rec cutprob_sign s (id_subst prog_info.program_sign) in
+      let program_info' =
+        { prog_info with
+          program_rec = None;
+          program_sign = pi1 cutprob_subst;
+          program_arity = mapping_constr !evd cutprob_subst prog_info.program_arity }
+      in
+      let program' = { p with program_info = program_info' } in
+      let path' = p.program_info.program_id :: path in
+      let rec_cutprob = cut_problem s' (pi1 rec_prob) in
+      let splitting' = aux rec_cutprob s' program' oterm path' split' in
+      let term', ty' = term_of_tree env evd splitting' in
+      { program_rec = None;
+        program_info = program_info';
+        program_prob = id_subst (pi3 cutprob_sign);
+        program_term = term';
+        program_splitting = splitting' }
+    in List.map2 one_program progs oterms
 
   and aux cutprob s p f path = function
     | Compute ((ctx,pats,del as lhs), where, ty, c) ->
@@ -682,7 +671,11 @@ let subst_rec_split env evd p path prob s split =
         let wsubst0 = lift_subst env !evd subst wcontext in
         let wp = where_program in
         let where_type = mapping_constr !evd subst where_type in
-        let wp' = subst_program path where_path s ctx wp (where_term w) in
+        let wp' =
+          match subst_programs path s ctx [wp] [where_term w] with
+          | [wp'] -> wp'
+          | _ -> assert false
+        in
         let wp', args' =
           if islogical then
             let id = Nameops.add_suffix (path_id where_path) "_unfold_eq" in
@@ -795,61 +788,66 @@ let subst_rec_split env evd p path prob s split =
            refined_newty = mapping_constr !evd subst' newty }
        in Refined (lhs', info, s')
   in
-  let split' = aux prob s p p.program_term path split in
-  split', !where_map
+  let programs' = subst_programs [] [] [] ps (List.map (fun p -> p.program_term) ps) in
+  !where_map, programs'
 
-let update_split env evd p is_rec prob recs split =
-  match is_rec with
+let unfold_programs env evd flags rec_info progs =
+  match rec_info with
   | Some (Guarded _) ->
-    let split' = subst_rec_split env !evd p [p.program_info.program_id] prob recs split in
-    (* check_splitting env !evd (fst split');  *)split'
+    let where_map, progs' = subst_rec_programs env !evd (List.map fst progs) in
+    let one_program (p, prog) p' =
+      let norecprob = Context_map.id_subst (program_sign p) in
+      let eqninfo =
+        Principles_proofs.{ equations_id = p.program_info.program_id;
+                            equations_where_map = where_map;
+                            equations_f = p.program_term;
+                            equations_prob = norecprob }
+      in
+      let p = { p with program_splitting = p'.program_splitting } in
+      p, None, prog, eqninfo
+    in List.map2 one_program progs progs'
 
-  | Some (Logical r) ->
-    let split' = subst_rec_split env !evd p [] prob [] split in
-    (* check_splitting env !evd (fst split');  *)split'
-  | _ -> split, PathMap.empty
+  | Some (Logical _) ->
+    let where_map, progs' = subst_rec_programs env !evd (List.map fst progs) in
+    let one_program (p, prog) unfoldp =
+      let pi = p.program_info in
+      let i = pi.program_id in
+      let sign = pi.program_sign in
+      let arity = pi.program_arity in
+      let prob = Context_map.id_subst sign in
+      (* let () = msg_debug (str"udpdate split" ++ spc () ++ pr_splitting env split) in *)
+      (* We first define the unfolding and show the fixpoint equation. *)
+      let unfoldi = Nameops.add_suffix i "_unfold" in
+      let unfpi =
+        { pi with program_id = unfoldi;
+                  program_sign = sign;
+                  program_arity = arity }
+      in
+      let unfoldp = make_single_program env evd flags [] unfpi prob unfoldp.program_splitting None in
+      let unfoldp, term_info = define_program_immediate env evd None [] flags ~unfold:true unfoldp in
+      let eqninfo =
+        Principles_proofs.{ equations_id = i;
+                            equations_where_map = where_map;
+                            equations_f = unfoldp.program_term;
+                            equations_prob = prob }
+      in
+      let cst, _ = destConst !evd unfoldp.program_term in
+      let cpi' = { program_cst = cst;
+                   program_split_info = term_info } in
+      p, Some (unfoldp, cpi'), prog, eqninfo
+    in
+    List.map2 one_program progs progs'
 
-
-(* let program_fixdecls p fixdecls =
- *   match p.Syntax.program_rec with
- *   | Some (Structural NestedNonRec) -> (\* Actually the definition is not self-recursive *\)
- *      List.filter (fun decl ->
- *          let na = Context.Rel.Declaration.get_name decl in
- *          let id = Nameops.Name.get_id na in
- *          not (Id.equal id p.program_id)) fixdecls
- *   | _ -> fixdecls *)
-
-(* let unfold_programs env evd rec_info progs =
- *   match rec_info with
- *   | Some (Guarded _) ->
- *     let fixdecls =
- *       let fn (p, prog) =
- *         of_tuple (Name p.program_info.program_id, Some p.program_term, program_type p)
- *       in
- *       let fixdecls = List.map fn progs in
- *       List.rev fixdecls
- *     in
- *     let fixsubst = List.map (fun d -> let na, b, t = to_tuple d in
- *                                       (Nameops.Name.get_id na, (None, Option.get b))) fixdecls in
- *     let one_program (p, prog) =
- *       let fixdecls = program_fixdecls p.program_info fixdecls in
- *       let cutprob, norecprob =
- *         let (ctx, pats, ctx' as ids) = Context_map.id_subst (program_sign p) in
- *         (ctx @ fixdecls, pats, ctx'), ids
- *       in
- *       let split, where_map =
- *         update_split env evd p rec_info cutprob fixsubst p.program_splitting in
- *       let eqninfo =
- *         Principles_proofs.{ equations_id = i;
- *                             equations_where_map = where_map;
- *                             equations_f = p.program_term;
- *                             equations_prob = norecprob }
- *       in { p with program_splitting = split }, None, prog, eqninfo
- *     in List.map one_program progs
- *   | Some (Logical _) -> *)
-
-
-
+  | None ->
+    let one_program (p, prog) =
+      let where_map = PathMap.empty in
+      let eqninfo =
+        Principles_proofs.{ equations_id = p.program_info.program_id;
+                            equations_where_map = where_map;
+                            equations_f = p.program_term;
+                            equations_prob = p.program_prob }
+      in p, None, prog, eqninfo
+    in List.map one_program progs
 
 let subst_app sigma f fn c =
   let rec aux n c =
@@ -1224,11 +1222,16 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
     if !Equations_common.debug then
       let open Pp in
       let msg = Feedback.msg_debug in
-      msg (str"Definining principles of: ");
-      List.iter (fun (p, _, prog, eqninfo) ->
-          msg (pr_splitting ~verbose:true env evd p.program_splitting))
-        progs
+      msg (str"Definining principles of: " ++
+           prlist_with_sep fnl
+             (fun (p, unfp, prog, eqninfo) ->
+                pr_splitting env evd p.program_splitting ++ fnl () ++
+                (match unfp with
+                 | Some unf -> str "and " ++ pr_splitting env evd unf.program_splitting
+                 | None -> mt ()))
+             progs)
   in
+  let env = Global.env () in
   let p, unfp, prog, eqninfo = List.hd progs in
   let user_obls =
     List.fold_left (fun acc (p, unfp, prog, eqninfo) ->

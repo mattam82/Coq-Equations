@@ -153,6 +153,7 @@ let program_type p = program_type p.program_info
 let program_sign p = p.program_info.program_sign
 let program_impls p = p.program_info.program_impls
 let program_rec p = p.program_info.program_rec
+let program_arity p = p.program_info.program_arity
 
 let where_id w = w.where_program.program_info.program_id
 
@@ -1190,21 +1191,13 @@ let unfold_entry cst = Hints.HintsUnfoldEntry [EvalConstRef cst]
 let add_hint local i cst =
   Hints.add_hints ~local [Id.to_string i] (unfold_entry cst)
 
-    (* let pi = p.program_info in
-     * let fixdecls =
-     *   match pi.program_rec with
-     *   | Some (Structural NestedNonRec) | None -> (\* Actually the definition is not self-recursive *\)
-     *      List.filter (fun decl ->
-     *          let na = Context.Rel.Declaration.get_name decl in
-     *          let id = Nameops.Name.get_id na in
-     *          not (Id.equal id pi.program_id)) fixdecls
-     *   | _ -> fixdecls
-     * in *)
+type 'a hook =
+  | HookImmediate : (program -> term_info -> 'a) -> 'a hook
+  | HookLater : (int -> program -> term_info -> unit) -> unit hook
 
-
-let define_programs env evd is_recursive fixprots flags ?(unfold=false) programs hook =
-  let idx = ref 0 in
-  let one_hook recobls p helpers uctx locality gr =
+let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false) programs : a hook -> a  =
+  fun hook ->
+  let call_hook recobls p helpers uctx locality gr (hook : program -> term_info -> a) : a =
     (* let l =
      *   Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
      * Extraction_plugin.Table.extraction_inline true l; *)
@@ -1213,10 +1206,9 @@ let define_programs env evd is_recursive fixprots flags ?(unfold=false) programs
     let term_info = { term_id = gr; term_ustate = uctx;
                       base_id = baseid; helpers_info = helpers; decl_kind = kind;
                       comp_obls = recobls; user_obls = Id.Set.empty } in
-    hook !idx p term_info uctx;
-    incr idx
+    hook p term_info
   in
-  let hook recobls =
+  let all_hook hook recobls =
     let _ = evd := Evarutil.nf_evar_map_undefined !evd in
     let () = evd := Evd.minimize_universes !evd in
     let programs = List.map (map_program (simplify_evars !evd)) programs in
@@ -1229,9 +1221,7 @@ let define_programs env evd is_recursive fixprots flags ?(unfold=false) programs
     let programs = List.map (map_program (nf_evar !evd)) programs in
     let ustate = Evd.evar_universe_context !evd in
     let () = List.iter (fun (cst, _) -> add_hint true (program_id (List.hd programs)) cst) helpers in
-    List.iter (fun p ->
-        let cst, _ = (destConst !evd p.program_term) in
-        one_hook recobls p helpers ustate Decl_kinds.Global (ConstRef cst)) programs
+    hook recobls helpers ustate Decl_kinds.Global programs
   in
   let recids =
     match is_recursive with
@@ -1239,9 +1229,30 @@ let define_programs env evd is_recursive fixprots flags ?(unfold=false) programs
     | Some (Logical id) -> [snd id]
     | None -> []
   in
-  if Evd.has_undefined !evd then
-    solve_equations_obligations flags recids (program_id (List.hd programs)) evd hook
-  else hook []
+  match hook with
+  | HookImmediate f ->
+    assert(not (Evd.has_undefined !evd));
+    let hook recobls helpers ustate kind programs =
+      let p = List.hd programs in
+      let cst, _ = (destConst !evd p.program_term) in
+      call_hook recobls p helpers ustate Decl_kinds.Global (ConstRef cst) f
+    in all_hook hook []
+  | HookLater f ->
+    let hook recobls helpers ustate kind programs =
+      List.iteri (fun i p ->
+          let cst, _ = (destConst !evd p.program_term) in
+          call_hook recobls p helpers ustate Decl_kinds.Global (ConstRef cst) (f i)) programs
+    in
+    if Evd.has_undefined !evd then
+      solve_equations_obligations flags recids (program_id (List.hd programs)) evd (all_hook hook)
+    else all_hook hook []
+
+let define_program_immediate env evd is_recursive fixprots flags ?(unfold=false) program =
+  define_programs env evd is_recursive fixprots flags ~unfold [program]
+    (HookImmediate (fun x y -> (x, y)))
+
+let define_programs env evd is_recursive fixprots flags ?(unfold=false) programs hook =
+  define_programs env evd is_recursive fixprots flags ~unfold programs (HookLater hook)
 
 let mapping_rhs sigma s = function
   | RProgram c -> RProgram (mapping_constr sigma s c)

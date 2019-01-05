@@ -22,7 +22,6 @@ congS eq_refl := eq_refl.
 (* antisym (le_S n m p) (le_S ?(m) ?(n) q) := congS (antisym p q). *)
 
 Module TestF.
-
   Equations f (n : nat) : nat :=
   f 0 := 42 ;
   f (S m)  with f m :=

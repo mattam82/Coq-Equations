@@ -100,26 +100,21 @@ val subst_rec :
   Equations_common.rel_context ->
   Context_map.context_map * Context_map.context_map
 
-val subst_rec_split :
+val subst_rec_programs :
   Environ.env ->
   Evd.evar_map ->
-  Splitting.program ->
-  Splitting.path ->
-  Context_map.context_map ->
-  rec_subst ->
-  Splitting.splitting -> Splitting.splitting *
-                         (EConstr.constr * Names.Id.t * Splitting.splitting) Splitting.PathMap.t
+  Splitting.program list ->
+  (EConstr.constr * Names.Id.t * Splitting.splitting) Splitting.PathMap.t *
+  Splitting.program list
 
-val update_split :
+val unfold_programs :
   Environ.env ->
   Evd.evar_map ref ->
-  Splitting.program ->
+  Equations_common.flags ->
   Syntax.rec_type option ->
-  Context_map.context_map ->
-  rec_subst ->
-  Splitting.splitting -> Splitting.splitting *
-                        (EConstr.constr * Names.Id.t * Splitting.splitting) Splitting.PathMap.t
-
+  (Splitting.program * Splitting.compiled_program_info) list ->
+  (Splitting.program * (Splitting.program * Splitting.compiled_program_info) option *
+   Splitting.compiled_program_info * Principles_proofs.equations_info) list
 
 type alias
 

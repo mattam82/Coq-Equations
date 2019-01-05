@@ -42,14 +42,69 @@ let declare_wf_obligations info =
     make_resolve (ConstRef obl) :: acc) info.comp_obls [] in
   Hints.add_hints ~local:false [Principles_proofs.wf_obligations_base info] (Hints.HintsResolveEntry constrs)
 
-let program_fixdecls p fixdecls =
-  match p.Syntax.program_rec with
-  | Some (Structural NestedNonRec) -> (* Actually the definition is not self-recursive *)
-     List.filter (fun decl ->
-         let na = Context.Rel.Declaration.get_name decl in
-         let id = Nameops.Name.get_id na in
-         not (Id.equal id p.program_id)) fixdecls
-  | _ -> fixdecls
+let define_unfolding_eq env evd flags p unfp prog prog' r ei hook =
+  let info' = prog'.program_split_info in
+  let info =
+    { info' with base_id = prog.program_split_info.base_id;
+                 helpers_info = prog.program_split_info.helpers_info @ info'.helpers_info;
+                 user_obls = Id.Set.union prog.program_split_info.user_obls info'.user_obls } in
+  let () = inline_helpers info in
+  let funf_cst = match info'.term_id with ConstRef c -> c | _ -> assert false in
+  let () = if flags.polymorphic then evd := Evd.from_ctx info'.term_ustate in
+  let funfc = e_new_global evd info'.term_id in
+  let unfold_split = unfp.program_splitting in
+  (* let cmap' x = of_constr (cmap (EConstr.to_constr ~abort_on_undefined_evars:false !evd x)) in
+   * let unfold_split = map_split cmap' unfold_split in *)
+  let unfold_eq_id = add_suffix (program_id unfp) "_eq" in
+  let hook_eqs _ _obls subst grunfold =
+    Global.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
+    let () = (* Declare the subproofs of unfolding for where as rewrite rules *)
+      let decl _ (_, id, _) =
+        let gr =
+          try Nametab.locate_constant (qualid_of_ident id)
+          with Not_found -> anomaly Pp.(str "Could not find where clause unfolding lemma "
+                                        ++ Names.Id.print id)
+        in
+        let grc = UnivGen.fresh_global_instance (Global.env()) (ConstRef gr) in
+        Autorewrite.add_rew_rules (info.base_id ^ "_where") [CAst.make (grc, true, None)];
+        Autorewrite.add_rew_rules (info.base_id ^ "_where_rev") [CAst.make (grc, false, None)]
+      in
+      PathMap.iter decl ei.Principles_proofs.equations_where_map
+    in
+    let env = Global.env () in
+    let () = if not flags.polymorphic then evd := (Evd.from_env env) in
+    let prog' = { program_cst = funf_cst;
+                  program_split_info = info }
+    in
+    let unfp =
+      { unfp with program_info =
+                    { unfp.program_info with program_id = program_id p } }
+    in
+    let eqninfo =
+      Principles_proofs.{ equations_id = program_id p;
+                          equations_where_map = ei.equations_where_map;
+                          equations_f = funfc;
+                          equations_prob = ei.equations_prob }
+    in hook (p, Some unfp, prog', eqninfo) unfold_eq_id
+  in
+  let () = if not flags.polymorphic then (evd := Evd.from_env (Global.env ())) in
+  let sign = program_sign unfp in
+  let arity = program_arity unfp in
+  let stmt = it_mkProd_or_LetIn
+      (mkEq (Global.env ()) evd arity (mkApp (p.program_term, extended_rel_vect 0 sign))
+         (mkApp (funfc, extended_rel_vect 0 sign))) sign
+  in
+  let evd, stmt = Typing.solve_evars (Global.env ()) !evd stmt in
+  let tac =
+    Principles_proofs.(prove_unfolding_lemma info ei.equations_where_map r prog.program_cst funf_cst
+      p.program_splitting unfold_split)
+  in
+  ignore(Obligations.add_definition
+           ~kind:info.decl_kind
+           ~univ_hook:(Obligations.mk_univ_hook hook_eqs) ~reduce:(fun x -> x)
+           ~implicits:(program_impls p) unfold_eq_id (to_constr evd stmt)
+           ~tactic:(of82 tac)
+           (Evd.evar_universe_context evd) [||])
 
 let define_principles flags rec_info fixprots progs =
   let env = Global.env () in
@@ -60,153 +115,23 @@ let define_principles flags rec_info fixprots progs =
       let () = evd := Evd.merge_universe_context !evd ustate in ()
     else ()
   in
-  let newsplits env fixdecls (p, prog) =
-    let fixsubst = List.map (fun d -> let na, b, t = to_tuple d in
-                                      (Nameops.Name.get_id na, (None, Option.get b))) fixdecls in
-    let pi = p.program_info in
-    let i = pi.program_id in
-    let sign = pi.program_sign in
-    let arity = pi.program_arity in
-      match rec_info with
-      | Some (Guarded _) ->
-         let fixdecls = program_fixdecls pi fixdecls in
-         let cutprob, norecprob =
-           let (ctx, pats, ctx' as ids) = Context_map.id_subst sign in
-	   (ctx @ fixdecls, pats, ctx'), ids
-	 in
-	 let split, where_map =
-           update_split env evd p rec_info cutprob fixsubst p.program_splitting in
-         let eqninfo =
-           Principles_proofs.{ equations_id = i;
-             equations_where_map = where_map;
-             equations_f = p.program_term;
-             equations_prob = norecprob }
-         in
-         Some (split, eqninfo)
-      | None ->
-         let prob = Context_map.id_subst sign in
-	 let split, where_map =
-           update_split env evd p rec_info prob [] p.program_splitting in
-         let eqninfo =
-           Principles_proofs.{ equations_id = i;
-             equations_where_map = where_map;
-             equations_f = p.program_term;
-             equations_prob = prob }
-         in
-         Some (split, eqninfo)
-
-      | Some (Logical r) ->
-         let prob = Context_map.id_subst sign in
-         (* let () = msg_debug (str"udpdate split" ++ spc () ++ pr_splitting env split) in *)
-         let recarg = Some (-1) in
-         let unfold_split, where_map =
-           update_split env evd p rec_info prob [(i, (recarg, p.program_term))] p.program_splitting
-         in
-	 (* We first define the unfolding and show the fixpoint equation. *)
-         let unfoldi = add_suffix i "_unfold" in
-         let unfpi =
-           { pi with program_id = unfoldi;
-                     program_sign = sign;
-                     program_arity = arity }
-         in
-         let unfoldp = make_single_program env evd flags [] unfpi prob unfold_split None in
-         let hook_unfold idx unfp info' ectx =
-           let info =
-             { info' with base_id = prog.program_split_info.base_id;
-                          helpers_info = prog.program_split_info.helpers_info @ info'.helpers_info;
-                          user_obls = Id.Set.union prog.program_split_info.user_obls info'.user_obls } in
-	   let () = inline_helpers info in
-           let funf_cst = match info'.term_id with ConstRef c -> c | _ -> assert false in
-           let () = if flags.polymorphic then evd := Evd.from_ctx ectx in
-           let funfc = e_new_global evd info'.term_id in
-           let unfold_split = unfp.program_splitting in
-           (* let cmap' x = of_constr (cmap (EConstr.to_constr ~abort_on_undefined_evars:false !evd x)) in
-            * let unfold_split = map_split cmap' unfold_split in *)
-	   let unfold_eq_id = add_suffix unfoldi "_eq" in
-           let hook_eqs _ _obls subst grunfold =
-	     Global.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
-             let () = (* Declare the subproofs of unfolding for where as rewrite rules *)
-               let decl _ (_, id, _) =
-                 let gr =
-                   try Nametab.locate_constant (qualid_of_ident id)
-                   with Not_found -> anomaly Pp.(str "Could not find where clause unfolding lemma "
-                                                 ++ Names.Id.print id)
-                 in
-                 let grc = UnivGen.fresh_global_instance (Global.env()) (ConstRef gr) in
-                 Autorewrite.add_rew_rules (info.base_id ^ "_where") [CAst.make (grc, true, None)];
-                 Autorewrite.add_rew_rules (info.base_id ^ "_where_rev") [CAst.make (grc, false, None)]
-               in
-               PathMap.iter decl where_map
-             in
-	     let env = Global.env () in
-	     let () = if not flags.polymorphic then evd := (Evd.from_env env) in
-             let prog' = { program_cst = funf_cst;
-                          program_split_info = info }
-             in
-             let unfp =
-               { unfp with program_info =
-                             { unfp.program_info with program_id = i } }
-             in
-             let eqninfo =
-               Principles_proofs.{ equations_id = i;
-                 equations_where_map = where_map;
-                 equations_f = funfc;
-                 equations_prob = prob }
-             in
-             build_equations flags.with_ind env !evd
-               ~alias:(make_alias (p.program_term, unfold_eq_id, p.program_splitting))
-               rec_info [p, Some unfp, prog', eqninfo]
-	   in
-           let () = if not flags.polymorphic then (evd := Evd.from_env (Global.env ())) in
-           let stmt = it_mkProd_or_LetIn
-                        (mkEq (Global.env ()) evd arity (mkApp (p.program_term, extended_rel_vect 0 sign))
-		              (mkApp (funfc, extended_rel_vect 0 sign))) sign 
-	   in
-           let evd, stmt = Typing.solve_evars (Global.env ()) !evd stmt in
-           let tac =
-             Principles_proofs.prove_unfolding_lemma info where_map r prog.program_cst funf_cst
-                                                     p.program_splitting unfold_split
-           in
-	   ignore(Obligations.add_definition
-                    ~kind:info.decl_kind
-		    ~univ_hook:(Obligations.mk_univ_hook hook_eqs) ~reduce:(fun x -> x)
-                    ~implicits:pi.program_impls unfold_eq_id (to_constr evd stmt)
-                    ~tactic:(of82 tac)
-                    (Evd.evar_universe_context evd) [||])
-         in
-         define_programs env evd None [] flags ~unfold:true [unfoldp] hook_unfold;
-         None
-  in
-  let principles env newsplits =
-    match newsplits with
-    | [p, prog, Some (split, eqninfo)] ->
-       let evm = !evd in
-       (match rec_info with
-        | Some (Guarded _) ->
-          let p = { p with program_splitting = split } in
-           build_equations flags.with_ind env evm rec_info [p, None, prog, eqninfo]
-        | Some (Logical _) -> ()
-        | None ->
-          let p = { p with program_splitting = split } in
-           build_equations flags.with_ind env evm rec_info [p, None, prog, eqninfo])
-    | [_, _, None] -> ()
-    | splits ->
-       let splits = List.map (fun (p,prog,s) ->
-          let split, eqninfo = Option.get s in
-          let p = { p with program_splitting = split } in
-          p, None, prog, eqninfo) splits in
-       let evm = !evd in
-       build_equations flags.with_ind env evm rec_info splits
-  in
-  let fixdecls =
-    let fn fixprot (p, prog) =
-      of_tuple (Name p.program_info.program_id, Some p.program_term, fixprot)
+  let progs' = Principles.unfold_programs env evd flags rec_info progs in
+  match progs', rec_info with
+  | [p, Some (unfp, cpi'), cpi, eqi], Some (Logical r) ->
+    let hook (p, unfp, cpi, eqi) unfold_eq_id =
+      Principles.build_equations flags.with_ind env !evd
+        ~alias:(make_alias (p.program_term, unfold_eq_id, p.program_splitting))
+        rec_info [p, unfp, cpi, eqi]
     in
-    let fixdecls = List.map2 fn fixprots progs in
-    List.rev fixdecls
-  in
-  let newsplits = List.map (fun (p, prog as x) -> p, prog, newsplits env fixdecls x) progs in
-  principles env newsplits
+    define_unfolding_eq env evd flags p unfp cpi cpi' r eqi hook
+  | splits, _ ->
+    let splits = List.map (fun (p, unfp, cpi, eqi) ->
+     let unfp' = match unfp with
+       | Some (unfp, unfpi) -> Some unfp
+       | None -> None
+     in (p, unfp', cpi, eqi)) splits
+    in
+    build_equations flags.with_ind env !evd rec_info splits
 
 let define_by_eqs ~poly ~open_proof opts eqs nt =
   let with_rec, with_eqns, with_ind =
@@ -253,11 +178,11 @@ let define_by_eqs ~poly ~open_proof opts eqs nt =
     Hints.create_hint_db false baseid trs true
   in
   let progs = Array.make (List.length eqs) None in
-  let hook i p info ectx =
+  let hook i p info =
     let () = inline_helpers info in
     let () = declare_wf_obligations info in
     let f_cst = match info.term_id with ConstRef c -> c | _ -> assert false in
-    let () = evd := Evd.from_ctx ectx in
+    let () = evd := Evd.from_ctx info.term_ustate in
     let compiled_info = { program_cst = f_cst;
                           program_split_info = info } in
     progs.(i) <- Some (p, compiled_info);

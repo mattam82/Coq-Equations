@@ -95,6 +95,7 @@ val where_term : where_clause -> constr
 val program_id : program -> Id.t
 val program_type : program -> EConstr.t
 val program_sign : program -> EConstr.rel_context
+val program_arity : program -> EConstr.t
 val program_impls : program -> Impargs.manual_explicitation list
 val program_rec : program -> program_rec_info option
 
@@ -215,10 +216,17 @@ val define_programs :
   Equations_common.flags ->
   ?unfold:bool ->
   program list ->
-  (int ->
-   program ->
-   term_info -> UState.t -> unit) ->
-  unit
+  (int -> program -> term_info -> unit) -> unit
+
+val define_program_immediate :
+  Environ.env ->
+  Evd.evar_map ref ->
+  Syntax.rec_type option ->
+  EConstr.rel_context ->
+  Equations_common.flags ->
+  ?unfold:bool ->
+  program ->
+  (program * term_info)
 
 
 val mapping_rhs : Evd.evar_map -> context_map -> splitting_rhs -> splitting_rhs
