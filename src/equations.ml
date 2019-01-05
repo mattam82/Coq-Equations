@@ -80,10 +80,9 @@ let define_principles flags rec_info fixprots progs =
            Principles_proofs.{ equations_id = i;
              equations_where_map = where_map;
              equations_f = p.program_term;
-             equations_prob = norecprob;
-             equations_split = split }
+             equations_prob = norecprob }
          in
-         Some eqninfo
+         Some (split, eqninfo)
       | None ->
          let prob = Context_map.id_subst sign in
 	 let split, where_map =
@@ -92,10 +91,9 @@ let define_principles flags rec_info fixprots progs =
            Principles_proofs.{ equations_id = i;
              equations_where_map = where_map;
              equations_f = p.program_term;
-             equations_prob = prob;
-             equations_split = split }
+             equations_prob = prob }
          in
-         Some eqninfo
+         Some (split, eqninfo)
 
       | Some (Logical r) ->
          let prob = Context_map.id_subst sign in
@@ -153,12 +151,11 @@ let define_principles flags rec_info fixprots progs =
                Principles_proofs.{ equations_id = i;
                  equations_where_map = where_map;
                  equations_f = funfc;
-                 equations_prob = prob;
-                 equations_split = unfold_split }
+                 equations_prob = prob }
              in
              build_equations flags.with_ind env !evd
                ~alias:(make_alias (p.program_term, unfold_eq_id, p.program_splitting))
-               rec_info [unfp, prog', eqninfo]
+               rec_info [p, Some unfp, prog', eqninfo]
 	   in
            let () = if not flags.polymorphic then (evd := Evd.from_env (Global.env ())) in
            let stmt = it_mkProd_or_LetIn
@@ -182,17 +179,22 @@ let define_principles flags rec_info fixprots progs =
   in
   let principles env newsplits =
     match newsplits with
-    | [p, prog, Some eqninfo] ->
+    | [p, prog, Some (split, eqninfo)] ->
        let evm = !evd in
        (match rec_info with
         | Some (Guarded _) ->
-           build_equations flags.with_ind env evm rec_info [p, prog, eqninfo]
+          let p = { p with program_splitting = split } in
+           build_equations flags.with_ind env evm rec_info [p, None, prog, eqninfo]
         | Some (Logical _) -> ()
         | None ->
-           build_equations flags.with_ind env evm rec_info [p, prog, eqninfo])
+          let p = { p with program_splitting = split } in
+           build_equations flags.with_ind env evm rec_info [p, None, prog, eqninfo])
     | [_, _, None] -> ()
     | splits ->
-       let splits = List.map (fun (p,prog,s) -> p, prog, Option.get s) splits in
+       let splits = List.map (fun (p,prog,s) ->
+          let split, eqninfo = Option.get s in
+          let p = { p with program_splitting = split } in
+          p, None, prog, eqninfo) splits in
        let evm = !evd in
        build_equations flags.with_ind env evm rec_info splits
   in

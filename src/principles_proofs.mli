@@ -6,8 +6,7 @@ type equations_info = {
  equations_id : Names.Id.t;
  equations_where_map : where_map;
  equations_f : EConstr.t;
- equations_prob : Context_map.context_map;
- equations_split : Splitting.splitting }
+ equations_prob : Context_map.context_map }
 
 type ind_info = {
  term_info : Splitting.term_info;
@@ -53,8 +52,7 @@ val ind_fun_tac :
   Constr.t ->
   ind_info ->
   Names.Id.t ->
-  Splitting.splitting -> Splitting.splitting option ->
-  (Splitting.program * Splitting.compiled_program_info * equations_info) list ->
+  (Splitting.program * Splitting.program option * Splitting.compiled_program_info * equations_info) list ->
   unit Proofview.tactic
 
 val prove_unfolding_lemma :

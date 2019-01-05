@@ -810,6 +810,47 @@ let update_split env evd p is_rec prob recs split =
   | _ -> split, PathMap.empty
 
 
+(* let program_fixdecls p fixdecls =
+ *   match p.Syntax.program_rec with
+ *   | Some (Structural NestedNonRec) -> (\* Actually the definition is not self-recursive *\)
+ *      List.filter (fun decl ->
+ *          let na = Context.Rel.Declaration.get_name decl in
+ *          let id = Nameops.Name.get_id na in
+ *          not (Id.equal id p.program_id)) fixdecls
+ *   | _ -> fixdecls *)
+
+(* let unfold_programs env evd rec_info progs =
+ *   match rec_info with
+ *   | Some (Guarded _) ->
+ *     let fixdecls =
+ *       let fn (p, prog) =
+ *         of_tuple (Name p.program_info.program_id, Some p.program_term, program_type p)
+ *       in
+ *       let fixdecls = List.map fn progs in
+ *       List.rev fixdecls
+ *     in
+ *     let fixsubst = List.map (fun d -> let na, b, t = to_tuple d in
+ *                                       (Nameops.Name.get_id na, (None, Option.get b))) fixdecls in
+ *     let one_program (p, prog) =
+ *       let fixdecls = program_fixdecls p.program_info fixdecls in
+ *       let cutprob, norecprob =
+ *         let (ctx, pats, ctx' as ids) = Context_map.id_subst (program_sign p) in
+ *         (ctx @ fixdecls, pats, ctx'), ids
+ *       in
+ *       let split, where_map =
+ *         update_split env evd p rec_info cutprob fixsubst p.program_splitting in
+ *       let eqninfo =
+ *         Principles_proofs.{ equations_id = i;
+ *                             equations_where_map = where_map;
+ *                             equations_f = p.program_term;
+ *                             equations_prob = norecprob }
+ *       in { p with program_splitting = split }, None, prog, eqninfo
+ *     in List.map one_program progs
+ *   | Some (Logical _) -> *)
+
+
+
+
 let subst_app sigma f fn c =
   let rec aux n c =
     match kind sigma c with
@@ -865,11 +906,10 @@ let smash_ctx_map env sigma (l, p, r as m) =
   let smashr' = (r, patsubst, r') in
   compose_subst env ~sigma m smashr', subst
 
-let computations env evd alias refine eqninfo =
+let computations env evd alias refine p eqninfo =
   let { equations_prob = prob;
         equations_where_map = wheremap;
-        equations_f = f;
-        equations_split = split } = eqninfo in
+        equations_f = f } = eqninfo in
   let rec computations env prob f alias fsubst refine = function
   | Compute (lhs, where, ty, c) ->
      let where_comp w (wheres, where_comps) =
@@ -959,7 +999,7 @@ let computations env evd alias refine eqninfo =
             [mapping_constr evd info.refined_newprob_to_lhs c, info.refined_arg],
             computations env info.refined_newprob info.refined_term None fsubst (Regular, true) cs]]
 
-  in computations env prob f alias [] refine split
+  in computations env prob f alias [] refine p.program_splitting
 
 let constr_of_global_univ gr u =
   let open Globnames in
@@ -1033,13 +1073,6 @@ let declare_funind info alias env evd is_rec protos progs
   let poly = is_polymorphic info.term_info in
   let id = Id.of_string info.term_info.base_id in
   let indid = Nameops.add_suffix id "_ind_fun" in
-  let args = Termops.rel_list 0 (List.length sign) in
-  let f, split, unfsplit =
-    match alias with
-    | Some ((f, _), _, recsplit) -> f, recsplit, Some split
-    | None -> f, split, None
-  in
-  let app = applist (f, args) in
   let statement =
     let stmt (i, ((f,_), alias, path, sign, ar, _, _, (nodek, cut)), _) =
       if not (regular_or_nested nodek) then None else
@@ -1071,6 +1104,13 @@ let declare_funind info alias env evd is_rec protos progs
                                      | Some t -> mkConj evd t acc
                                      | None -> acc) last l
   in
+  let args = Termops.rel_list 0 (List.length sign) in
+  let f =
+    match alias with
+    | Some ((f, _), _, _) -> f
+    | None -> f
+  in
+  let app = applist (f, args) in
   let hookind ectx _obls subst indgr =
     let env = Global.env () in (* refresh *)
     Hints.add_hints ~local:false [info.term_info.base_id]
@@ -1114,7 +1154,7 @@ let declare_funind info alias env evd is_rec protos progs
              ~kind:info.term_info.decl_kind
              indid stmt ~tactic:(Tacticals.New.tclTRY tactic) ctx [||])
   in
-  let tac = (ind_fun_tac is_rec f info id split unfsplit progs) in
+  let tac = (ind_fun_tac is_rec f info id progs) in
   try launch_ind tac
   with e ->
     Feedback.msg_warning Pp.(str "Induction principle could not be proved automatically: " ++ fnl () ++
@@ -1132,8 +1172,10 @@ let level_of_context env evd ctx acc =
 
 let all_computations env evd alias progs =
   let comps =
-    let fn p = computations env evd alias (kind_of_prog p.program_info,false) in
-    List.map (fun (p, prog, eqninfo) -> p, eqninfo, fn p eqninfo) progs
+    let fn p unfp =
+      let p = Option.default p unfp in
+      computations env evd alias (kind_of_prog p.program_info,false) p in
+    List.map (fun (p, unfp, prog, eqninfo) -> p, eqninfo, fn p unfp eqninfo) progs
   in
   let rec flatten_comp (ctx, fl, flalias, pats, ty, f, refine, c, rest) =
     let rest = match rest with
@@ -1183,20 +1225,18 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
       let open Pp in
       let msg = Feedback.msg_debug in
       msg (str"Definining principles of: ");
-      List.iter (fun (p, prog, eqninfo) ->
+      List.iter (fun (p, _, prog, eqninfo) ->
           msg (pr_splitting ~verbose:true env evd p.program_splitting))
         progs
   in
-  let p, prog, eqninfo = List.hd progs in
+  let p, unfp, prog, eqninfo = List.hd progs in
   let user_obls =
-    List.fold_left (fun acc (p, prog, eqninfo) ->
+    List.fold_left (fun acc (p, unfp, prog, eqninfo) ->
       Id.Set.union prog.program_split_info.user_obls acc) Id.Set.empty progs
   in
   let { equations_id = id;
         equations_where_map = wheremap;
-        equations_f = f;
-        equations_prob = prob;
-        equations_split = split } = eqninfo in
+        equations_f = f } = eqninfo in
   let info = prog.program_split_info in
   let sign = program_sign p in
   let cst = prog.program_cst in
@@ -1367,7 +1407,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
     let info = { term_info = info; pathmap = !fnind_map; wheremap } in
     declare_funind info alias (Global.env ()) evd rec_info protos progs
                    ind_stmts all_stmts sign inds kn comb
-                   f split ind
+                   f p.program_splitting ind
   in
   let () = evd := Evd.minimize_universes !evd in
   let () =

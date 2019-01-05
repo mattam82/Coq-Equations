@@ -26,8 +26,7 @@ type equations_info = {
  equations_id : Names.Id.t;
  equations_where_map : where_map;
  equations_f : EConstr.t;
- equations_prob : Context_map.context_map;
- equations_split : Splitting.splitting }
+ equations_prob : Context_map.context_map }
 
 type ind_info = {
   term_info : term_info;
@@ -573,7 +572,7 @@ let observe_tac s tac =
 
 exception NotGuarded
 
-let ind_fun_tac is_rec f info fid split unfsplit progs =
+let ind_fun_tac is_rec f info fid progs =
   let open Tacticals.New in
   match is_rec with
   | Some (Guarded l) ->
@@ -582,7 +581,7 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
      let mutual, nested = List.partition (function (_, MutualOn _) -> true | _ -> false) l in
      let mutannots = List.map (function (_, MutualOn (Some (ann, _))) -> ann + 1 | _ -> -1) mutual in
      let mutprogs, nestedprogs =
-       List.partition (fun (p,_,e) -> match p.program_info.Syntax.program_rec with
+       List.partition (fun (p,_,_,e) -> match p.program_info.Syntax.program_rec with
                                       | Some (Structural (MutualOn _)) -> true
                                       | _ -> false) progs
      in
@@ -594,7 +593,7 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
      in
      let prove_progs progs =
        intros <*>
-       tclDISPATCH (List.map (fun (_,cpi,e) ->
+       tclDISPATCH (List.map (fun (p,_unfp,cpi,e) ->
                     (* observe_tac "proving one mutual " *)
                     let proginfo =
                       { info with term_info = { info.term_info
@@ -602,7 +601,7 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
                                                        info.term_info.helpers_info @
                                                        cpi.program_split_info.helpers_info } }
                     in
-                    (of82 (aux_ind_fun proginfo (0, List.length l) None [] e.equations_split)))
+                    (of82 (aux_ind_fun proginfo (0, List.length l) None [] p.program_splitting)))
                     progs)
      in
      let prove_nested =
@@ -623,8 +622,8 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
          in
          let splits =
            match progs with
-           | [(p, _, e)] ->
-             (match e.equations_split with
+           | [(p, _, _, e)] ->
+             (match p.program_splitting with
               | Split (_, _, _, splits) ->
                 Some (CList.map_filter (fun x -> x) (Array.to_list splits))
               | _ -> None)
@@ -704,14 +703,19 @@ let ind_fun_tac is_rec f info fid split unfsplit progs =
       simpl_of (List.map (fun x -> x, Conv_oracle.Expand)
                   (fst (Constr.destConst f) :: helpercsts))
     in
+    let split, unfsplit =
+      match progs with
+      | [p, unfp, cpi, ei] -> p.program_splitting, Option.map (fun p -> p.program_splitting) unfp
+      | _ -> assert false
+    in
     opacify ();
     Proofview.tclBIND
       (tclCOMPLETE (tclTHENLIST
                       [set_eos_tac (); intros; of82 (aux_ind_fun info (0, 0) unfsplit [] split)]))
       (fun r -> transp (); Proofview.tclUNIT r)
 
-let ind_fun_tac is_rec f info fid split unfsplit progs =
-  Proofview.tclORELSE (ind_fun_tac is_rec f info fid split unfsplit progs)
+let ind_fun_tac is_rec f info fid progs =
+  Proofview.tclORELSE (ind_fun_tac is_rec f info fid progs)
     (fun e ->
        match fst e with
        | Pretype_errors.PretypeError (env, evd, err) ->
