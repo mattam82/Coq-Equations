@@ -677,7 +677,7 @@ let subst_rec_programs env evd ps =
           | _ -> assert false
         in
         let wp', args' =
-          if islogical then
+          if islogical || (match wp.program_rec with Some { rec_node = WfRec _ } -> true | _ -> false) then
             let id = Nameops.add_suffix (path_id where_path) "_unfold_eq" in
             let where_program_term = mapping_constr !evd wsubst0 wp.program_term in
             let where_program_args = List.map (mapping_constr !evd wsubst0) where_program_args in
@@ -735,16 +735,20 @@ let subst_rec_programs env evd ps =
        in
        let subst, lhs' = subst_rec cutprob s lhs in
        let _, revctx' = subst_rec (cut_problem s (pi3 revctx)) s revctx in
-       let cutnewprob = cut_problem s (pi3 newprob) in
-       let subst', newprob' = subst_rec cutnewprob s newprob in
+
+       let s' = List.map (fun (id, (recarg, f)) ->
+           (id, (recarg, mapping_constr !evd info.refined_newprob_to_lhs f))) s
+       in
+       let cutnewprob = cut_problem s' (pi3 newprob) in
+       let subst', newprob' = subst_rec cutnewprob s' newprob in
        let _, newprob_to_prob' =
-         subst_rec (cut_problem s (pi3 info.refined_newprob_to_lhs)) s info.refined_newprob_to_lhs in
+         subst_rec (cut_problem s (pi3 info.refined_newprob_to_lhs)) s' info.refined_newprob_to_lhs in
        let islogical = List.exists (fun (id, (recarg, f)) -> Option.has_some recarg) s in
-       let path' =
-         match info.refined_path with
-         | x :: _ -> x :: path
-         | _ -> id :: path (* info.refined_path *)(* Evar ev' :: path *) in
-       let s' = aux cutnewprob s p f path' sp in
+       let path' = info.refined_path in
+         (* match info.refined_path with
+          * | x :: _ -> x :: path
+          * | _ -> id :: path (\* info.refined_path *\)(\* Evar ev' :: path *\) in *)
+       let s' = aux cutnewprob s' p f path' sp in
        let term', args', arg' =
          if islogical then
            let refarg = ref 0 in
@@ -792,9 +796,8 @@ let subst_rec_programs env evd ps =
   !where_map, programs'
 
 let unfold_programs env evd flags rec_info progs =
-  match rec_info with
-  | Some (Guarded _) | None ->
-    let where_map, progs' = subst_rec_programs env !evd (List.map fst progs) in
+  let where_map, progs' = subst_rec_programs env !evd (List.map fst progs) in
+  if PathMap.is_empty where_map && (match rec_info with Some (Logical _) -> false | _ -> true) then
     let one_program (p, prog) p' =
       let norecprob = Context_map.id_subst (program_sign p) in
       let eqninfo =
@@ -806,16 +809,14 @@ let unfold_programs env evd flags rec_info progs =
       let p = { p with program_splitting = p'.program_splitting } in
       p, None, prog, eqninfo
     in List.map2 one_program progs progs'
-
-  | Some (Logical _) ->
-    let where_map, progs' = subst_rec_programs env !evd (List.map fst progs) in
+  else
     let one_program (p, prog) unfoldp =
       let pi = p.program_info in
       let i = pi.program_id in
       let sign = pi.program_sign in
       let arity = pi.program_arity in
       let prob = Context_map.id_subst sign in
-      (* let () = msg_debug (str"udpdate split" ++ spc () ++ pr_splitting env split) in *)
+      (* let () = Feedback.msg_debug (str"defining unfolding" ++ spc () ++ pr_splitting env split) in *)
       (* We first define the unfolding and show the fixpoint equation. *)
       let unfoldi = Nameops.add_suffix i "_unfold" in
       let unfpi =
@@ -823,7 +824,7 @@ let unfold_programs env evd flags rec_info progs =
                   program_sign = sign;
                   program_arity = arity }
       in
-      let unfoldp = make_single_program env evd flags [] unfpi prob unfoldp.program_splitting None in
+      let unfoldp = make_single_program env evd flags unfpi prob unfoldp.program_splitting None in
       let unfoldp, term_info = define_program_immediate env evd None [] flags ~unfold:true unfoldp in
       let eqninfo =
         Principles_proofs.{ equations_id = i;
@@ -837,17 +838,6 @@ let unfold_programs env evd flags rec_info progs =
       p, Some (unfoldp, cpi'), prog, eqninfo
     in
     List.map2 one_program progs progs'
-
-  | None ->
-    let one_program (p, prog) =
-      let where_map = PathMap.empty in
-      let eqninfo =
-        Principles_proofs.{ equations_id = p.program_info.program_id;
-                            equations_where_map = where_map;
-                            equations_f = p.program_term;
-                            equations_prob = p.program_prob }
-      in p, None, prog, eqninfo
-    in List.map one_program progs
 
 let subst_app sigma f fn c =
   let rec aux n c =

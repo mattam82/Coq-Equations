@@ -82,11 +82,13 @@ val interp_program_body : Environ.env ->
            EConstr.types option -> Evd.evar_map * EConstr.constr
 
 val interp_constr_in_rhs_env :Environ.env ->
-           Evd.evar_map ref ->
+  Evd.evar_map ref ->
   int_data ->
-           EConstr.rel_context * Environ.env * int * EConstr.Vars.substl ->
-           Syntax.program_body ->
-           EConstr.t option -> EConstr.constr * EConstr.types
+  EConstr.rel_context * Environ.env * int * EConstr.Vars.substl ->
+  int ->
+  Syntax.program_body ->
+  EConstr.t option ->
+  EConstr.constr * EConstr.types
 
 val interp_constr_in_rhs :
   env ->
@@ -97,6 +99,7 @@ val interp_constr_in_rhs :
   (Id.t * pat) list ->
   rel_context ->
   program_body -> constr * types
+
 val unify_type :
   env ->
   Evd.evar_map ref ->
@@ -195,13 +198,38 @@ val compute_fixdecls_data :
            Constrintern.internalization_env *
            Equations_common.rel_declaration list * EConstr.t list
 
-val wf_fix :
+val wf_fix_constr :
   Environ.env ->
   Evd.evar_map ref ->
   EConstr.rel_context ->
   EConstr.t ->
+  EConstr.t ->
+  EConstr.t ->
+  EConstr.t -> EConstr.t * EConstr.t * EConstr.t
+
+val wf_fix :
+  Environ.env ->
+  Evd.evar_map ref ->
+  Vars.substl ->
+  EConstr.rel_context ->
+  EConstr.t ->
   Constrexpr.constr_expr ->
-  Constrexpr.constr_expr option -> EConstr.t * EConstr.t * EConstr.t
+  Constrexpr.constr_expr option ->
+  EConstr.t (* term *) * EConstr.t (* rel *) *
+  (EConstr.t (* functional type *) *
+   EConstr.t (* full functional type *) *
+   EConstr.t (* fixpoint combinator *))
+
+val compute_rec_data :
+  Environ.env ->
+  Evd.evar_map ref ->
+  int_data ->
+  Equations_common.rel_declaration list ->
+  EConstr.Vars.substl ->
+  Syntax.program_info ->
+  Syntax.program_info * Context_map.context_map * EConstr.constr *
+  (Syntax.user_pat, 'a) DAst.t list * Splitting.rec_info option
+
 
 val interp_arity : Environ.env ->
   Evd.evar_map ref ->

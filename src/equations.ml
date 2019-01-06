@@ -42,7 +42,7 @@ let declare_wf_obligations info =
     make_resolve (ConstRef obl) :: acc) info.comp_obls [] in
   Hints.add_hints ~local:false [Principles_proofs.wf_obligations_base info] (Hints.HintsResolveEntry constrs)
 
-let define_unfolding_eq env evd flags p unfp prog prog' r ei hook =
+let define_unfolding_eq env evd flags p unfp prog prog' ei hook =
   let info' = prog'.program_split_info in
   let info =
     { info' with base_id = prog.program_split_info.base_id;
@@ -96,7 +96,7 @@ let define_unfolding_eq env evd flags p unfp prog prog' r ei hook =
   in
   let evd, stmt = Typing.solve_evars (Global.env ()) !evd stmt in
   let tac =
-    Principles_proofs.(prove_unfolding_lemma info ei.equations_where_map r prog.program_cst funf_cst
+    Principles_proofs.(prove_unfolding_lemma info ei.equations_where_map prog.program_cst funf_cst
       p.program_splitting unfold_split)
   in
   ignore(Obligations.add_definition
@@ -116,15 +116,15 @@ let define_principles flags rec_info fixprots progs =
     else ()
   in
   let progs' = Principles.unfold_programs env evd flags rec_info progs in
-  match progs', rec_info with
-  | [p, Some (unfp, cpi'), cpi, eqi], Some (Logical r) ->
+  match progs' with
+  | [p, Some (unfp, cpi'), cpi, eqi] ->
     let hook (p, unfp, cpi, eqi) unfold_eq_id =
       Principles.build_equations flags.with_ind env !evd
         ~alias:(make_alias (p.program_term, unfold_eq_id, p.program_splitting))
         rec_info [p, unfp, cpi, eqi]
     in
-    define_unfolding_eq env evd flags p unfp cpi cpi' r eqi hook
-  | splits, _ ->
+    define_unfolding_eq env evd flags p unfp cpi cpi' eqi hook
+  | splits ->
     let splits = List.map (fun (p, unfp, cpi, eqi) ->
      let unfp' = match unfp with
        | Some (unfp, unfpi) -> Some unfp

@@ -299,11 +299,11 @@ let interp_program_body env evars ctx intenv c ty =
       *                 str ":" ++
       *                 str (Printexc.to_string e)) *)
 
-let interp_constr_in_rhs_env env evars data (ctx, envctx, liftn, subst) c ty =
+let interp_constr_in_rhs_env env evars data (ctx, envctx, liftn, subst) substlift c ty =
   match ty with
   | None ->
     let sigma, c = interp_program_body env !evars ctx data.intenv c None in
-    let c' = substnl subst 0 c in
+    let c' = substnl subst substlift c in
     let sigma = Typeclasses.resolve_typeclasses ~filter:Typeclasses.all_evars env sigma in
     let c' = nf_evar sigma c' in
     evars := sigma; c', Retyping.get_type_of envctx sigma c'
@@ -314,13 +314,13 @@ let interp_constr_in_rhs_env env evars data (ctx, envctx, liftn, subst) c ty =
     let sigma, c = interp_program_body env !evars ctx data.intenv c (Some ty') in
     evars := Typeclasses.resolve_typeclasses 
         ~filter:Typeclasses.all_evars env sigma;
-    let c' = nf_evar !evars (substnl subst 0 c) in
-    c', nf_evar !evars (substnl subst 0 ty')
+    let c' = nf_evar !evars (substnl subst substlift c) in
+    c', nf_evar !evars (substnl subst substlift ty')
 
 let interp_constr_in_rhs env ctx evars data ty s lets c =
   try
     let env' = env_of_rhs evars ctx env s lets in
-    interp_constr_in_rhs_env env evars data env' c ty
+    interp_constr_in_rhs_env env evars data env' 0 c ty
   with Evarsolve.IllTypedInstance (env, t, u) ->
     anomaly (str"Ill-typed instance in interp_constr_in_rhs")
 
@@ -687,30 +687,9 @@ let pats_of_sign sign =
   List.rev_map (fun decl ->
       DAst.make (PUVar (Name.get_id (Context.Rel.Declaration.get_name decl), false))) sign
 
-let wf_fix env evars sign arity term rel =
+let wf_fix_constr env evars sign arity carrier cterm crel =
   let tele, telety = Sigma_types.telescope_of_context env evars sign in
-  let envsign = push_rel_context sign env in
-  let sigma, cterm = interp_constr_evars envsign !evars term in
-  let carrier =
-    let ty = Retyping.get_type_of envsign sigma cterm in
-    let ty = nf_all envsign sigma ty in
-    if noccur_between sigma 1 (length sign) ty then
-      lift (- length sign) ty
-    else
-      user_err_loc (Constrexpr_ops.constr_loc term, "wf_fix",
-                    str"The carrier type of the recursion order cannot depend on the arguments")
-  in
-  let cterm = it_mkLambda_or_LetIn cterm sign in
   let concl = it_mkLambda_or_LetIn arity sign in
-  let sigma, crel =
-    let relty =
-      (mkProd (Anonymous, carrier, mkProd (Anonymous, lift 1 carrier, mkProp)))
-    in
-    match rel with
-    | Some rel -> interp_casted_constr_evars env sigma rel relty
-    | None -> new_evar env sigma relty
-  in
-  let () = evars := sigma in
   let crel = mkapp env evars logic_tele_measure [| tele; carrier; cterm; crel |] in
   let wfty = mkapp env evars logic_wellfounded_class [| telety; crel |] in
   let sigma, wf = new_evar env !evars wfty in
@@ -746,8 +725,8 @@ let wf_fix env evars sign arity term rel =
     Cbv.cbv_norm infos
   in
   let fixty = norm env fixty in
-  (* let prc = Printer.pr_econstr_env env !evars in *)
-  (* Feedback.msg_debug (str" fix ty" ++ prc fixty); *)
+  let prc = Printer.pr_econstr_env env !evars in
+  Feedback.msg_debug (str" fix ty" ++ prc fixty);
   let functional_type, concl =
     match kind !evars fixty with
     | Prod (na, fnty, concl) ->
@@ -777,7 +756,33 @@ let wf_fix env evars sign arity term rel =
    *                     str " conclusion type : " ++ prc concl); *)
   functional_type, full_functional_type, fix
 
-let compute_rec_data env evars data lets p =
+let wf_fix env evars subst sign arity term rel =
+  let envsign = push_rel_context sign env in
+  let sigma, cterm = interp_constr_evars envsign !evars term in
+  let carrier =
+    let ty = Retyping.get_type_of envsign sigma cterm in
+    let ty = nf_all envsign sigma ty in
+    if noccur_between sigma 1 (length sign) ty then
+      lift (- length sign) ty
+    else
+      user_err_loc (Constrexpr_ops.constr_loc term, "wf_fix",
+                    str"The carrier type of the recursion order cannot depend on the arguments")
+  in
+  let cterm = it_mkLambda_or_LetIn cterm sign in
+  (* let cterm = substl subst cterm in *)
+  let sigma, crel =
+    let relty =
+      (mkProd (Anonymous, carrier, mkProd (Anonymous, lift 1 carrier, mkProp)))
+    in
+    match rel with
+    | Some rel -> interp_casted_constr_evars env sigma rel relty
+    | None -> new_evar env sigma relty
+  in
+  let () = evars := sigma in
+  let res = wf_fix_constr env evars sign arity carrier cterm crel in
+  nf_evar !evars cterm, nf_evar !evars crel, res
+
+let compute_rec_data env evars data lets subst p =
   match p.Syntax.program_rec with
   | Some (Structural ann) ->
     let reclen, sign =
@@ -809,6 +814,7 @@ let compute_rec_data env evars data lets p =
     in
     let rec_info =
       { rec_sign = sign;
+        rec_lets = lets;
         rec_prob = id_subst sign;
         rec_arity = liftn reclen (succ (length p.program_sign)) p.program_arity;
         rec_args = List.length p.program_sign;
@@ -817,27 +823,28 @@ let compute_rec_data env evars data lets p =
     p, rec_info.rec_prob, rec_info.rec_arity, ctxpats, (Some rec_info)
 
   | Some (WellFounded (term, rel, _)) ->
-    let envlets = push_rel_context lets env in
-    let functional_type, _full_functional_type, fix = wf_fix envlets evars p.program_sign p.program_arity term rel in
-    let decl = make_def (Name p.program_id) None functional_type in
+    let arg, rel, (functional_type, _full_functional_type, fix) =
+      wf_fix env evars subst p.program_sign p.program_arity term rel in
     let ctxpats = pats_of_sign lets in
     let rec_args = List.length p.program_sign in
+    let decl = make_def (Name p.program_id) None functional_type in
     let rec_sign = p.program_sign @ lets in
     let lhs = decl :: rec_sign in
     let pats = PHide 1 :: lift_pats 1 (id_pats rec_sign) in
     let rec_prob = (lhs, pats, lhs) in
     let rec_node =
-      (* id_subst lets *)
       { wf_rec_term = fix;
-        wf_rec_arg = term;
+        wf_rec_arg = arg;
         wf_rec_rel = rel}
     in
     let rec_info = { rec_sign;
+                     rec_lets = lets;
                      rec_arity = lift 1 p.program_arity;
                      rec_prob;
                      rec_args;
                      rec_node = WfRec rec_node }
     in
+    let p = { p with program_sign = p.program_sign @ lets } in
     p, rec_info.rec_prob, rec_info.rec_arity, ctxpats, Some rec_info
 
   | _ ->
@@ -991,12 +998,12 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
     List.iter check_innac innacs
   in
   match rhs with
-  | Program (c,w) -> 
-    let data,envctx,lets,env',coverings,lift,subst =
-      interp_wheres env ctx evars path data s lets w in
-    let c', ty' = 
-      interp_constr_in_rhs_env env evars data
-        (lets, envctx, lift, subst) c (Some (Vars.lift (List.length w) ty)) in
+  | Program (c,w) ->
+    let (ctx, envctx, liftn, subst as letctx) = env_of_rhs evars ctx env s lets in
+    let data, envctx, lets, nwheres, env', coverings, lift, subst =
+      interp_wheres env ctx evars path data s lets letctx w in
+    let c', ty' =
+      interp_constr_in_rhs_env env evars data (lets, envctx, lift, subst) nwheres c (Some ty) in
     (* Compute the coverings using type information from the term using
        the where clauses *)
     let coverings = List.map (fun c -> Lazy.force c) coverings in
@@ -1111,6 +1118,14 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
                      mkRel var) sortinv
       in args, !argref
     in
+    let strength_app = List.map_filter (fun t ->
+        if isRel !evars t then
+          let i = destRel !evars t in
+          let decl = List.nth (pi1 prob) (pred i) in
+          if Context.Rel.Declaration.is_local_def decl then None
+          else Some t
+        else Some t) strength_app
+    in
     let path' = path in
     let lets' =
       let letslen = length lets in
@@ -1147,8 +1162,9 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
 (*     (str "Found overlapping clauses:" ++ fnl () ++ pr_clauses env (map fst prevmatch) ++ *)
 (*        spc () ++ str"refining" ++ spc () ++ pr_context_map env prob) *)
 
-and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equation list) list) =
-  let (ctx, envctx, liftn, subst) = env_of_rhs evars ctx env0 s lets in
+and interp_wheres env0 ctx evars path data s lets
+    (ctx, envctx, liftn, subst)
+    (w : (pre_prototype * pre_equation list) list) =
   let aux (data,lets,nlets,coverings,env)
       (((loc,id),nested,b,t,reca),clauses as eqs) =
 
@@ -1165,13 +1181,15 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
     let fixdecls = [Context.Rel.Declaration.LocalAssum (Name id, pre_type)] in
     let p, problem, arity, extpats, rec_info =
       compute_rec_data env evars {data with rec_info = compute_recinfo [p];
-                                      fixdecls = fixdecls} lets p in
+                                      fixdecls = fixdecls} lets subst p in
     let intenv = Constrintern.compute_internalization_env ~impls:data.intenv
         env !evars Constrintern.Recursive [id] [pre_type] [p.program_impls]
     in
     let data = { data with intenv; } in
     let path = id :: path in
+
     let where_args = extended_rel_list 0 lets in
+    let where_args = List.map (substnl subst nlets) where_args in
     let w' program =
       {where_program = program; where_program_orig = p;
        where_program_args = where_args;
@@ -1184,7 +1202,7 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
       match t with
       | Some ty (* non-delayed where clause, compute term right away *) ->
         let splitting = covering env0 evars p data clauses path problem extpats arity in
-        let program = make_single_program env0 evars data.flags lets p problem splitting rec_info in
+        let program = make_single_program env0 evars data.flags p problem splitting rec_info in
         Lazy.from_val (w' program), program.program_term
       | None ->
         let relty = Syntax.program_type p in
@@ -1198,7 +1216,7 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
         let ev = destEvar !evars term in
         let cover () =
           let splitting = covering env0 evars p data clauses path problem extpats arity in
-          let program = make_single_program env0 evars data.flags lets p problem splitting rec_info in
+          let program = make_single_program env0 evars data.flags p problem splitting rec_info in
           evars := Evd.define (fst ev) program.program_term !evars; w' program
         in
         Lazy.from_fun cover, term
@@ -1209,7 +1227,7 @@ and interp_wheres env0 ctx evars path data s lets (w : (pre_prototype * pre_equa
   in
   let (data, lets, nlets, coverings, envctx') =
     List.fold_left aux (data, ctx, 0, [], push_rel_context ctx env0) w
-  in (data, envctx, lets, push_rel_context ctx env0, coverings, liftn, subst)
+  in (data, envctx, lets, nlets, push_rel_context ctx env0, coverings, liftn, subst)
 
 and covering ?(check_unused=true) env evars p data (clauses : pre_clause list)
     path prob extpats ty =
@@ -1231,11 +1249,11 @@ let program_covering env evd data p clauses =
   in
   let sigma, p = adjust_sign_arity env !evd p clauses in
   let () = evd := sigma in
-  let p', prob, arity, extpats, rec_node = compute_rec_data env evd data [] p in
+  let p', prob, arity, extpats, rec_node = compute_rec_data env evd data [] [] p in
   let splitting =
     covering env evd p data clauses [p.program_id] prob extpats arity
   in (p', prob, splitting, rec_node)
 
 let coverings env evd data programs equations =
   let splittings = List.map2 (program_covering env evd data) programs equations in
-  make_programs env evd data.flags [] splittings
+  make_programs env evd data.flags splittings

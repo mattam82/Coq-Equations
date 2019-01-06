@@ -325,11 +325,20 @@ let rec aux_ind_fun info chop unfs unfids = function
       let sigma = ref (project gl) in
       match t with
       | { rec_node = WfRec r } ->
-        let ctx, concl = decompose_prod_n_assum !sigma t.rec_args (pf_concl gl) in
+        let inctx, concl = decompose_prod_n_assum !sigma t.rec_args (pf_concl gl) in
         to82 (Refine.refine ~typecheck:false (fun sigma ->
             let evd = ref sigma in
+            let arity, arg, rel =
+              let hd, args = decompose_app sigma concl in
+              let subst = List.firstn (List.length (pi1 ctx)) args in
+              let arg = substl subst r.wf_rec_arg in
+              let term = (applistc arg (extended_rel_list 0 inctx)) in
+              Feedback.msg_debug (str"Typing:" ++ Printer.pr_econstr_env (push_rel_context inctx env) sigma term);
+              let _, arity = Typing.type_of (push_rel_context inctx env) sigma term in
+              arity, arg, r.wf_rec_rel
+            in
             let _functional_type, functional_type, fix =
-              Covering.wf_fix env evd ctx concl r.wf_rec_arg r.wf_rec_rel
+              Covering.wf_fix_constr env evd inctx concl arity arg rel
             in
             (* TODO solve WellFounded evar *)
             let sigma, evar = new_evar env !evd functional_type in
@@ -722,10 +731,8 @@ let ind_fun_tac is_rec f info fid progs =
          Feedback.msg_warning (Himsg.explain_pretype_error env evd err); iraise e
        | _ -> iraise e)
 
-let get_proj_eval_ref (loc, id) = EvalVarRef id
-
-let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split gl =
-  let depelim h = Depelim.dependent_elim_tac (fst proj, h) (* depelim_tac h *) in
+let prove_unfolding_lemma info where_map f_cst funf_cst split unfold_split gl =
+  let depelim h = Depelim.dependent_elim_tac (Loc.make_loc (0,0), h) (* depelim_tac h *) in
   let helpercsts = List.map (fun (cst, i) -> cst) info.helpers_info in
   let opacify, transp = simpl_of ((destConstRef (Lazy.force coq_hidebody), Conv_oracle.transparent)
     :: List.map (fun x -> x, Conv_oracle.Expand) (f_cst :: funf_cst :: helpercsts)) in
@@ -736,24 +743,26 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
   let unfolds = tclTHEN (autounfold_first [info.base_id] None)
     (autounfold_first [info.base_id ^ "_unfold"] None)
   in
-  let solve_rec_eq gl =
+  let solve_rec_eq subst gl =
     match kind (project gl) (pf_concl gl) with
     | App (eq, [| ty; x; y |]) ->
        let sigma = project gl in
        let xf, _ = decompose_app sigma x and yf, _ = decompose_app sigma y in
-          if eq_constr sigma (mkConst f_cst) xf && is_rec_call sigma (snd proj) yf then
-            let proj_unf = get_proj_eval_ref proj in
-	    let unfolds = unfold_in_concl 
+       (try
+          let f_cst, funf_cst =
+            List.find (fun (f_cst, funf_cst) ->
+                is_global sigma (ConstRef f_cst) xf && is_global sigma (ConstRef funf_cst) yf) subst
+          in
+          let unfolds = unfold_in_concl
 	      [((Locus.OnlyOccurrences [1]), EvalConstRef f_cst); 
-	       ((Locus.OnlyOccurrences [1]), proj_unf)]
-	    in 
-	      tclTHENLIST [to82 unfolds; simpltac; to82 (pi_tac ())] gl
-	  else to82 reflexivity gl
+               ((Locus.OnlyOccurrences [1]), EvalConstRef funf_cst)]
+          in tclTHENLIST [to82 unfolds; simpltac; to82 (pi_tac ())] gl
+        with Not_found -> to82 reflexivity gl)
     | _ -> to82 reflexivity gl
   in
-  let solve_eq = observe "solve_eq" (tclORELSE (transparent (to82 reflexivity)) solve_rec_eq) in
+  let solve_eq subst = observe "solve_eq" (tclORELSE (transparent (to82 reflexivity)) (solve_rec_eq subst)) in
   let abstract tac = (* Abstract.tclABSTRACT None *) tac in
-  let rec aux split unfold_split =
+  let rec aux subst split unfold_split =
     match split, unfold_split with
     | Split (_, _, _, splits), Split ((ctx,pats,_), var, _, unfsplits) ->
        observe "split"
@@ -772,12 +781,12 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
 				               (fun i -> let split = nth splits (pred i) in
                                                       let unfsplit = nth unfsplits (pred i) in
                                                       tclTHENLIST [unfolds; simpltac;
-                                                                   aux split unfsplit])))) gl
+                                                                   aux subst split unfsplit])))) gl
 	  | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl)
 
     | RecValid (ctx, id, r, cs), unfsplit ->
       observe "recvalid"
-         (tclTHEN (to82 (unfold_recursor_tac ())) (aux cs unfsplit))
+         (tclTHEN (to82 (unfold_recursor_tac ())) (aux subst cs unfsplit))
             (* let env = pf_env gl in
              * let sigma = project gl in
              * match kind sigma (pf_concl gl) with
@@ -813,7 +822,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
              *    | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl)
              * | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl) *)
 
-    | _, Mapping (lhs, s) -> aux split s
+    | _, Mapping (lhs, s) -> aux subst split s
        
     | Refined (_, _, s), Refined ((ctx, _, _), refinfo, unfs) ->
 	let id = pi1 refinfo.refined_obj in
@@ -829,10 +838,10 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
              if Constant.equal ev2 cst then
                tclTHENLIST
                [to82 (Equality.replace_by a1 a2
-                                          (of82 (tclTHENLIST [solve_eq])));
+                                          (of82 (tclTHENLIST [solve_eq subst])));
                 observe "refine after replace"
                   (to82 (letin_tac None (Name id) a2 None Locusops.allHypsAndConcl));
-                Proofview.V82.of_tactic (clear_body [id]); unfolds; aux s unfs] gl
+                Proofview.V82.of_tactic (clear_body [id]); unfolds; aux subst s unfs] gl
              else tclTHENLIST [unfolds; simpltac; reftac] gl
           | _ -> tclFAIL 0 (str"Unexpected unfolding lemma goal") gl
 	in
@@ -878,7 +887,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
 	      (Locus.OnlyOccurrences [1], EvalConstRef funf_cst)]) gl in
            res
          in
-         let wpsplit, fix =
+         let wpsplit, subst, fix =
            match wp.program_splitting with
            | RecValid (_, _, r, s) ->
              let open Tacticals.New in
@@ -891,15 +900,15 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
                                 observe_new "mutfix" (mutual_fix [] [annot]);
                                 tclDO r.rec_args intro; of82 unfolds]
                  | None -> Proofview.tclUNIT ()
-             in s, fixtac
-           | _ -> wp.program_splitting, of82 unfolds
+             in s, ((f_cst, funf_cst) :: subst), fixtac
+           | _ -> wp.program_splitting, subst, of82 unfolds
          in
          let tac =
            let tac =
              of82 (tclTHENLIST [observe "where before unfold" (to82 intros);
                                 observe "where fixpoint" (to82 fix);
                                 (observe "where"
-                                 (aux wpsplit unfwp.program_splitting))])
+                                 (aux subst wpsplit unfwp.program_splitting))])
            in
            assert_by (Name id) ty (of82 (tclTHEN (to82 (keep [])) (to82 (Abstract.tclABSTRACT (Some id) tac))))
          in
@@ -914,7 +923,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
        observe "compute"
          (tclTHENLIST [to82 intros; wheretacs;
                        observe "compute rhs" (tclTRY unfolds);
-                       simpltac; solve_eq])
+                       simpltac; solve_eq subst])
 
     | Compute (_, _, _, _), Compute ((ctx,_,_), _, _, REmpty (id, sp)) ->
 	let d = nth ctx (pred id) in
@@ -935,11 +944,11 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
 	   (fun gl ->
 	     Global.set_strategy (ConstKey f_cst) Conv_oracle.Opaque;
 	     Global.set_strategy (ConstKey funf_cst) Conv_oracle.Opaque;
-	     aux split unfold_split gl)] gl
+             aux [f_cst, funf_cst] split unfold_split gl)] gl
       in transp (); res
     with e -> transp (); raise e
   
-let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split gl =
+let prove_unfolding_lemma info where_map f_cst funf_cst split unfold_split gl =
   let () =
     if !Equations_common.debug then
       let open Pp in
@@ -951,7 +960,7 @@ let prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split 
       msg (fnl () ++ str"and of: " ++ fnl ());
       msg (pr_splitting ~verbose:true env evd unfold_split)
   in
-  try prove_unfolding_lemma info where_map proj f_cst funf_cst split unfold_split gl
+  try prove_unfolding_lemma info where_map f_cst funf_cst split unfold_split gl
   with (Nametab.GlobalizationError e) as exn ->
     raise exn
 

@@ -649,6 +649,18 @@ let it_mkLambda_or_subst ty ctx =
   whd_betalet Evd.empty
     (List.fold_left (fun c d -> mkLambda_or_LetIn d c) ty ctx)
 
+let mkLambda_or_clear_LetIn sigma decl c =
+  let open Context.Rel.Declaration in
+  let (na,body,t) = to_tuple decl in
+  match body with
+  | None -> mkLambda (na, t, c)
+  | Some b ->
+    if noccurn sigma 1 c then subst1 b c
+    else mkLetIn (na, b, t, c)
+
+let it_mkLambda_or_clear_LetIn sigma ty ctx =
+  List.fold_left (fun c d -> mkLambda_or_clear_LetIn sigma d c) ty ctx
+
 let it_mkLambda_or_subst_or_clear sigma ty ctx = 
   (List.fold_left (fun c d -> mkLambda_or_subst_or_clear sigma d c) ty ctx)
 

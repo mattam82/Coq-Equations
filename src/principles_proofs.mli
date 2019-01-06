@@ -58,7 +58,6 @@ val ind_fun_tac :
 val prove_unfolding_lemma :
   Splitting.term_info ->
   where_map ->
-  Names.Id.t Syntax.with_loc ->
   Names.Constant.t ->
   Names.Constant.t ->
   Splitting.splitting -> Splitting.splitting ->

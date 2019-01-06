@@ -117,6 +117,7 @@ val it_mkLambda_or_subst :
   constr -> rel_declaration list -> constr
 val it_mkLambda_or_subst_or_clear : Evd.evar_map -> constr -> rel_context -> constr
 val it_mkProd_or_subst_or_clear : Evd.evar_map -> constr -> rel_context -> constr
+val it_mkLambda_or_clear_LetIn : Evd.evar_map -> constr -> rel_context -> constr
 
 val ids_of_constr : Evd.evar_map ->
   ?all:bool -> Id.Set.t -> constr -> Id.Set.t

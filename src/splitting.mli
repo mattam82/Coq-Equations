@@ -32,8 +32,8 @@ module PathMap : CSig.MapS with type key = PathOT.t
 
 type wf_rec = {
   wf_rec_term : constr;
-  wf_rec_arg : Constrexpr.constr_expr;
-  wf_rec_rel : Constrexpr.constr_expr option }
+  wf_rec_arg : constr;
+  wf_rec_rel : constr }
 
 type struct_rec = {
   struct_rec_arg : Syntax.rec_annot;
@@ -46,6 +46,7 @@ type rec_node =
 
 type rec_info =
   { rec_prob : context_map;
+    rec_lets : rel_context;
     rec_sign : rel_context;
     rec_arity : constr;
     rec_args : int;
@@ -133,7 +134,6 @@ type program_shape =
 val make_program :
   env ->
   Evd.evar_map ref ->
-  rel_context ->
   program_info ->
   context_map ->
   splitting ->
@@ -145,7 +145,6 @@ val make_programs :
   Evd.evar_map ref ->
   flags ->
   ?define_constants:bool ->
-  rel_context ->
   (Syntax.program_info * Context_map.context_map * splitting *
    rec_info option)
     list -> program list
@@ -154,7 +153,6 @@ val make_single_program :
   env ->
   Evd.evar_map ref ->
   flags ->
-  rel_context ->
   program_info ->
   context_map ->
   splitting ->

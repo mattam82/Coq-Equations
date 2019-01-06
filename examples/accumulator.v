@@ -1,11 +1,13 @@
 From Equations Require Import Equations.
 
 Require Import List Program.Syntax Arith Lia.
+Set Equations Debug.
+Set Printing Depth 10000.
 
-Equations foo (l : list nat) : list nat :=
+Equations foo : list nat -> list nat :=
   foo l := go [] (length l)
 
-  where go (acc : list nat) (n : nat): list nat :=
+  where go : list nat -> nat -> list nat :=
   go acc 0     := acc;
   go acc (S n) := go (n :: acc) n.
 
@@ -49,3 +51,85 @@ Proof.
     rewrite (interval_equation_1 n).
     destruct lt_dec. reflexivity. elim n0. lia.
 Qed.
+
+Section Fast_length.
+  Context {A : Type}.
+
+  Equations fast_length (l : list A) : nat :=
+  fast_length l := go 0 l
+
+    where go : nat -> list A -> nat :=
+          go n [] := n;
+          go n (_ :: l) := go (S n) l.
+End Fast_length.
+
+Lemma fast_length_length : forall {A} (l : list A), length l = fast_length l.
+Proof.
+  intros A.
+  apply (fast_length_elim (fun l n => length l = n)
+                          (fun l n l' lenl =>
+                             length l = n + length l' ->
+                             length l = lenl));
+    intros l H; simpl in *; intuition auto with arith; lia.
+Qed.
+
+Equations list_init {A} (n : nat) (a : A) : list A :=
+  list_init 0 _ := [];
+  list_init (S n) x := x :: list_init n x.
+
+Require Import NArith.
+
+Equations pos_list_init {A} (n : positive) (a : A) : list A :=
+  pos_list_init xH x := [x];
+  pos_list_init (n~1) x := let l := pos_list_init n x in x :: l ++ l;
+  pos_list_init (n~0) x := let l := pos_list_init n x in x :: l ++ l.
+(* Time Definition big_interval := Eval vm_compute in pos_list_init 20000 true. *)
+
+Extraction length.
+Extraction fast_length.
+
+(* Time Definition slow := Eval vm_compute in length big_interval. *)
+(* Time Definition fast := Eval vm_compute in fast_length big_interval. *)
+
+(* Set Equations Debug. *)
+(* Set Printing Depth 10000. *)
+Equations?(noind) isPrime (n : nat) : bool :=
+  isPrime 0 := false;
+  isPrime k := worker 2
+    where worker (n' : nat) : bool by rec (k - n') lt :=
+    worker i with ge_dec i k :=
+      { | left H := true;
+        | right H with eq_nat_dec (Nat.modulo k i) 0 :=
+            { worker i (right H) (left H') := false;
+              worker i (right H) (right H') := worker (S i) } }.
+Proof. do 4 (destruct i; try lia). Defined.
+  (* isPrime (S (S (S (S k)))) := worker 2 *)
+  (*   where worker (n : nat) : bool by rec (S (S (S (S k))) - n) lt := *)
+  (*   worker i with ge_dec i (4 + k) := *)
+  (*     { | left H := true; *)
+  (*       | right H with eq_nat_dec (Nat.modulo (4 + k) i) 0 := *)
+  (*           { worker i (right H) (left H') := false; *)
+  (*             worker i (right H) (right H') := worker (S i) } }. *)
+Proof. do 4 (destruct i; try lia). Defined.
+
+Equations? isPrime : nat -> bool :=
+  isPrime 0 := false;
+  isPrime 1 := false;
+  isPrime 2 := true;
+  isPrime 3 := true;
+  isPrime k := worker 2
+    where worker (n : nat) : bool by rec (k - n) lt :=
+    worker i with ge_dec i k :=
+      { | left H := true;
+        | right H with eq_nat_dec (Nat.modulo k i) 0 :=
+            { worker i (right H) (left H') := false;
+              worker i (right H) (right H') := worker (S i) } }.
+Proof. do 4 (destruct i; try lia). Defined.
+  (* isPrime (S (S (S (S k)))) := worker 2 *)
+  (*   where worker (n : nat) : bool by rec (S (S (S (S k))) - n) lt := *)
+  (*   worker i with ge_dec i (4 + k) := *)
+  (*     { | left H := true; *)
+  (*       | right H with eq_nat_dec (Nat.modulo (4 + k) i) 0 := *)
+  (*           { worker i (right H) (left H') := false; *)
+  (*             worker i (right H) (right H') := worker (S i) } }. *)
+Proof. do 4 (destruct i; try lia). Defined.
