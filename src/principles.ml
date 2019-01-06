@@ -793,7 +793,7 @@ let subst_rec_programs env evd ps =
 
 let unfold_programs env evd flags rec_info progs =
   match rec_info with
-  | Some (Guarded _) ->
+  | Some (Guarded _) | None ->
     let where_map, progs' = subst_rec_programs env !evd (List.map fst progs) in
     let one_program (p, prog) p' =
       let norecprob = Context_map.id_subst (program_sign p) in
