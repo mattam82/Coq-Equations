@@ -106,7 +106,7 @@ and where_clause =
 and refined_node =
   { refined_obj : identifier * constr * types;
     refined_rettyp : types;
-    refined_arg : int;
+    refined_arg : int * int; (* Index counting lets or not *)
     refined_path : path;
     refined_term : EConstr.t;
     refined_args : constr list;
@@ -244,7 +244,8 @@ let pr_splitting env sigma ?(verbose=false) split =
                         info.refined_args ++
                       str "New problem: " ++ pr_context_map env sigma newprob ++ str " for type " ++
                       Printer.pr_econstr_env (push_rel_context (pi1 newprob) env) sigma newty ++ spc () ++
-                      spc () ++ str" eliminating " ++ pr_rel_name (push_rel_context (pi1 newprob) env) arg ++ spc () ++
+                      spc () ++ str" eliminating " ++ pr_rel_name (push_rel_context (pi1 newprob) env) (snd arg)
+                      ++ spc () ++
                       str "Revctx is: " ++ pr_context_map env sigma revctx ++ spc () ++
                       str "New problem to problem substitution is: " ++
                       pr_context_map env sigma info.refined_newprob_to_lhs ++ Pp.cut ()) ++
@@ -903,7 +904,7 @@ let define_splitting_constants flags env0 isevar unfold tree =
             term' None(* (Some (program_type where_program)) *)
             flags.polymorphic !isevar (Decl_kinds.(IsDefinition Definition))
         in
-        let () = helpers := (cst, 0) :: !helpers in
+        let () = helpers := (cst, (0,0)) :: !helpers in
         let env = Global.env () in
         let evm = Evd.update_sigma_env evm env in
         let p' = { program' with program_term = e } in
@@ -977,7 +978,7 @@ type term_info = {
   term_ustate : UState.t;
   base_id : string;
   decl_kind: Decl_kinds.definition_kind;
-  helpers_info : (Constant.t * int) list;
+  helpers_info : (Constant.t * (int * int)) list;
   comp_obls : Constant.t list; (** The recursive call proof obligations *)
   user_obls : Id.Set.t; (** The user obligations *)
 }

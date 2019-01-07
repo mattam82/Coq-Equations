@@ -71,7 +71,7 @@ and where_clause =
 and refined_node =
   { refined_obj : identifier * constr * types;
     refined_rettyp : types;
-    refined_arg : int;
+    refined_arg : int * int; (* Index counting lets or not *)
     refined_path : path;
     refined_term : EConstr.t;
     refined_args : constr list;
@@ -163,14 +163,14 @@ val define_splitting_constants : flags ->
   env ->
   Evd.evar_map ref ->
   bool ->
-  splitting -> (Constant.t * int) list * splitting
+  splitting -> (Constant.t * (int * int)) list * splitting
 
 val define_program_constants : flags ->
   env ->
   Evd.evar_map ref ->
   ?unfold:bool ->
   program list ->
-  (Constant.t * int) list * program list
+  (Constant.t * (int * int)) list * program list
 
 (** Compilation from splitting tree to terms. *)
 
@@ -181,7 +181,7 @@ type term_info = {
   term_ustate : UState.t;
   base_id : string;
   decl_kind : Decl_kinds.definition_kind;
-  helpers_info : (Constant.t * int) list;
+  helpers_info : (Constant.t * (int * int)) list;
   comp_obls : Constant.t list; (** The recursive call proof obligations *)
   user_obls : Id.Set.t; (** The user proof obligations *)
 }

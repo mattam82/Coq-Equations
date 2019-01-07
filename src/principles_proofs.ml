@@ -204,7 +204,7 @@ let check_guard gls sigma =
 
 let find_helper_arg info f args =
   let (cst, arg) = find_helper_info info f in
-  cst, arg, args.(arg)
+  cst, snd arg, args.(snd arg)
       
 let find_splitting_var sigma pats var constrs =
   let rec find_pat_var p c =
@@ -342,8 +342,15 @@ let rec aux_ind_fun info chop unfs unfids = function
             let arity, arg, rel =
               let arg = substl (List.rev subst) r.wf_rec_arg in
               let term = (applistc arg (extended_rel_list 0 inctx)) in
-              Feedback.msg_debug (str"Typing:" ++ Printer.pr_econstr_env (push_rel_context inctx env) sigma term);
-              let _, arity = Typing.type_of (push_rel_context inctx env) sigma term in
+              (* Feedback.msg_debug (str"Typing:" ++ Printer.pr_econstr_env (push_rel_context inctx env) sigma term); *)
+              let envsign = push_rel_context inctx env in
+              let _, arity = Typing.type_of envsign sigma term in
+              let ty = Reductionops.nf_all envsign sigma arity in
+              let arity =
+                if noccur_between sigma 1 (length inctx) ty then
+                  lift (- length inctx) ty
+                else assert false
+              in
               arity, arg, r.wf_rec_rel
             in
             let _functional_type, functional_type, fix =

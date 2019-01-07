@@ -153,6 +153,8 @@ val rel_id : (Name.t * 'a * 'b) list -> int -> Id.t
 val push_named_context :
   named_context -> env -> env
 
+val refine_arg : int -> rel_context -> int * int
+
 val env_of_rhs :
            Evd.evar_map ref ->
            rel_context ->

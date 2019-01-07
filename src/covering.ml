@@ -171,6 +171,12 @@ let matches_user ((phi,p',g') : context_map) (p : user_pats) =
   try UnifSuccess (match_user_patterns (filter (fun x -> not (hidden x)) (rev p')) p)
   with Conflict -> UnifFailure | Stuck -> UnifStuck
 
+let refine_arg idx ctx =
+  let before, after = List.chop idx ctx in
+  let lenafter = List.length after in
+  let lets_in_ctx = List.count (fun x -> Context.Rel.Declaration.is_local_def x) after in
+  lenafter, lenafter - lets_in_ctx
+
 let adjust_sign_arity env evars p clauses =
   let max_args =
     List.fold_left (fun acc (_, lhs, rhs) ->
@@ -725,8 +731,8 @@ let wf_fix_constr env evars sign arity carrier cterm crel =
     Cbv.cbv_norm infos
   in
   let fixty = norm env fixty in
-  let prc = Printer.pr_econstr_env env !evars in
-  Feedback.msg_debug (str" fix ty" ++ prc fixty);
+  (* let prc = Printer.pr_econstr_env env !evars in
+   * Feedback.msg_debug (str" fix ty" ++ prc fixty); *)
   let functional_type, concl =
     match kind !evars fixty with
     | Prod (na, fnty, concl) ->
@@ -1003,7 +1009,8 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
     let data, envctx, lets, nwheres, env', coverings, lift, subst =
       interp_wheres env ctx evars path data s lets letctx w in
     let c', ty' =
-      interp_constr_in_rhs_env env evars data (lets, envctx, lift, subst) nwheres c (Some ty) in
+      interp_constr_in_rhs_env env evars data (lets, envctx, lift, subst)
+        nwheres c (Some (Vars.lift nwheres ty)) in
     (* Compute the coverings using type information from the term using
        the where clauses *)
     let coverings = List.map (fun c -> Lazy.force c) coverings in
@@ -1106,12 +1113,6 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
              pr_user_pats env lhs)) cls
     in
     let cls' = cls' 1 cls in
-    let refarg =
-      let before, after = List.chop idx_of_refined (pi1 cmap) in
-      let lenafter = List.length after in
-      let lets_in_ctx = List.count (fun x -> Context.Rel.Declaration.is_local_def x) after in
-      lenafter - lets_in_ctx
-    in
     let strength_app =
       let sortinv = List.sort (fun (i, _) (i', _) -> i' - i) strinv in
       let args =
@@ -1151,7 +1152,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
       let info =
         { refined_obj = (idref, cconstr, cty);
           refined_rettyp = ty;
-          refined_arg = refarg;
+          refined_arg = refine_arg idx_of_refined (pi1 cmap);
           refined_path = path';
           refined_term = term;
           refined_args = strength_app;

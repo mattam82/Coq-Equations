@@ -63,7 +63,7 @@ val compute_elim_type :
           ((EConstr.constr * int list) *
            ((EConstr.constr * int list) * Names.Id.t * Splitting.splitting)
            option * Splitting.path * EConstr.rel_context * EConstr.types *
-           EConstr.constr list * (EConstr.constr * int) list * (node_kind * bool)) *
+           EConstr.constr list * (EConstr.constr * (int * int)) list * (node_kind * bool)) *
           (int *
            (bool * unit Proofview.tactic * EConstr.t * EConstr.constr option))
           list)
@@ -137,7 +137,7 @@ val all_computations :
   (Splitting.program * Splitting.program option * 'b * Principles_proofs.equations_info) list ->
   (((EConstr.t * int list) *
     alias option * Splitting.path * EConstr.rel_context * EConstr.t *
-    EConstr.constr list * (EConstr.constr * int) list *
+    EConstr.constr list * (EConstr.constr * (int * int)) list *
     (node_kind * bool)) *
    (Equations_common.rel_context * EConstr.t *
     alias option * EConstr.constr list * EConstr.t * EConstr.t *
@@ -156,7 +156,7 @@ val computations :            Environ.env ->
              EConstr.t * (node_kind * bool) * Splitting.splitting_rhs *
              ((EConstr.t * int list) *
               alias option * Splitting.path * Equations_common.rel_context *
-              EConstr.t * EConstr.constr list * (EConstr.constr * int) list *
+              EConstr.t * EConstr.constr list * (EConstr.constr * (int * int)) list *
               'c)
              list option)
             list as 'c)

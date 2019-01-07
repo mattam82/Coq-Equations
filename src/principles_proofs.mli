@@ -16,7 +16,7 @@ type ind_info = {
 
 val find_helper_info :
   Splitting.term_info ->
-  Constr.t -> Names.Constant.t * int
+  Constr.t -> Names.Constant.t * (int * int)
 val below_transparent_state : unit -> TransparentState.t
 val simpl_star : Proofview.V82.tac
 val eauto_with_below :

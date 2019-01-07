@@ -383,7 +383,7 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
     let app =
       let argsinfo =
         CList.map_i
-          (fun i (c, arg) ->
+          (fun i (c, (arg, _argnolets)) ->
            let idx = signlen - arg + 1 in (* lift 1, over return value *)
            let ty = Vars.lift (idx (* 1 for return value *))
                          (get_type (List.nth sign (pred (pred idx))))
@@ -745,37 +745,41 @@ let subst_rec_programs env evd ps =
          subst_rec (cut_problem s (pi3 info.refined_newprob_to_lhs)) s' info.refined_newprob_to_lhs in
        let islogical = List.exists (fun (id, (recarg, f)) -> Option.has_some recarg) s in
        let path' = info.refined_path in
-         (* match info.refined_path with
-          * | x :: _ -> x :: path
-          * | _ -> id :: path (\* info.refined_path *\)(\* Evar ev' :: path *\) in *)
        let s' = aux cutnewprob s' p f path' sp in
        let term', args', arg' =
          if islogical then
-           let refarg = ref 0 in
+           let refarg = ref (0,0) in
+           let count_lets len =
+             let open Context.Rel.Declaration in
+             let ctx' = pi1 newprob' in
+             let rec aux ctx len =
+               if len = 0 then 0
+               else
+                 match ctx with
+                 | LocalAssum _ :: ctx -> succ (aux ctx (pred len))
+                 | LocalDef _ :: ctx -> succ (aux ctx len)
+                 | [] -> 0
+             in aux (List.rev ctx') len
+           in
            let args' =
              CList.fold_left_i
                (fun i acc c ->
-                 if i == arg then (refarg := List.length acc);
+                 if i == snd arg then
+                   (let len = List.length acc in
+                    refarg := (count_lets len, len));
                  if isRel !evd c then
                    let d = List.nth (pi1 lhs) (pred (destRel !evd c)) in
                    if List.mem_assoc (Nameops.Name.get_id (get_name d)) s then acc
                    else (mapping_constr !evd subst c) :: acc
                  else (mapping_constr !evd subst c) :: acc) 0 [] args
            in
-           let secvars =
-             let named_context = Environ.named_context env in
-               List.map (fun decl ->
-                 let id = Context.Named.Declaration.get_id decl in
-                 EConstr.mkVar id) named_context
-           in
-           let _secvars = Array.of_list secvars in
-           (* let _ = (mkEvar (ev', secvars) in *)
            let term', _ = term_of_tree env evd s' in
            term', List.rev (List.map (Reductionops.nf_beta env !evd) args'), !refarg
          else
            let first, last = CList.chop (List.length s) (List.map (mapping_constr !evd subst) args) in
            let term' = mapping_constr !evd subst oterm in
-           (applistc term' first), last, arg - List.length s
+           let refarg = (fst arg - List.length s, snd arg - List.length s) in
+           (applistc term' first), last, refarg
            (* FIXME , needs substituted position too *)
        in
        let c' = Reductionops.nf_beta env !evd (mapping_constr !evd subst c) in
