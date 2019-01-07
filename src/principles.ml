@@ -894,6 +894,9 @@ let smash_ctx_map env sigma (l, p, r as m) =
   let smashr' = (r, patsubst, r') in
   compose_subst env ~sigma m smashr', subst
 
+let pattern_instance ctxmap =
+  List.rev_map pat_constr (filter_def_pats ctxmap)
+
 let computations env evd alias refine p eqninfo =
   let { equations_prob = prob;
         equations_where_map = wheremap;
@@ -939,7 +942,7 @@ let computations env evd alias refine p eqninfo =
        in
        let where_comp =
          (termf, alias, w.where_orig, pi1 wsmash, substl smashsubst arity,
-          List.rev_map pat_constr (pi2 wsmash) (*?*),
+          pattern_instance wsmash,
           [] (*?*), comps)
        in (lhsterm :: wheres, where_comp :: where_comps)
      in
@@ -952,7 +955,7 @@ let computations env evd alias refine p eqninfo =
        substitute_aliases evd fsubst c'
      in
      let c' = map_rhs (fun c -> fn c) (fun x -> x) c in
-     let patsconstrs = List.rev_map pat_constr (pi2 ctx) in
+     let patsconstrs = pattern_instance ctx in
      let ty = substl inst ty in
      [pi1 ctx, f, alias, patsconstrs, ty,
       f, (Where, snd refine), c', Some wheres]
@@ -975,10 +978,9 @@ let computations env evd alias refine p eqninfo =
   | Refined (lhs, info, cs) ->
      let (id, c, t) = info.refined_obj in
      let (ctx', pats', _ as s) = compose_subst env ~sigma:evd lhs prob in
-     let patsconstrs = List.rev_map pat_constr pats' in
-     let refinedpats = List.rev_map pat_constr
-                                    (pi2 (compose_subst env ~sigma:evd info.refined_newprob_to_lhs s))
-     in
+     let patsconstrs = pattern_instance s in
+     let refineds = compose_subst env ~sigma:evd info.refined_newprob_to_lhs s in
+     let refinedpats = pattern_instance refineds in
      let filter = [Array.length (arguments evd info.refined_term)] in
      [pi1 lhs, f, alias, patsconstrs, info.refined_rettyp, f, (Refine, true),
       RProgram (applistc info.refined_term info.refined_args),

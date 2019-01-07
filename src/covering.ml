@@ -1106,17 +1106,21 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
              pr_user_pats env lhs)) cls
     in
     let cls' = cls' 1 cls in
-    let strength_app, refarg =
+    let refarg =
+      let before, after = List.chop idx_of_refined (pi1 cmap) in
+      let lenafter = List.length after in
+      let lets_in_ctx = List.count (fun x -> Context.Rel.Declaration.is_local_def x) after in
+      lenafter - lets_in_ctx
+    in
+    let strength_app =
       let sortinv = List.sort (fun (i, _) (i', _) -> i' - i) strinv in
-      let argref = ref 0 in
-      let args = 
+      let args =
         List.map (fun (i, j) (* i variable in strengthened context, 
                                 j variable in the original one *) -> 
-                   if j == 1 then (argref := (List.length strinv - i); 
-                                   cconstr)
+                   if j == 1 then (cconstr)
                    else let (var, _) = List.nth vars (pred (pred j)) in
                      mkRel var) sortinv
-      in args, !argref
+      in args
     in
     let strength_app = List.map_filter (fun t ->
         if isRel !evars t then

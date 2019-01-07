@@ -1,8 +1,6 @@
 From Equations Require Import Equations.
 
 Require Import List Program.Syntax Arith Lia.
-Set Equations Debug.
-Set Printing Depth 10000.
 
 Equations foo : list nat -> list nat :=
   foo l := go [] (length l)
@@ -91,10 +89,15 @@ Extraction fast_length.
 (* Time Definition slow := Eval vm_compute in length big_interval. *)
 (* Time Definition fast := Eval vm_compute in fast_length big_interval. *)
 
+Hint Extern 100 => progress (simpl in *) : Below.
+
 (* Set Equations Debug. *)
 (* Set Printing Depth 10000. *)
-Equations?(noind) isPrime (n : nat) : bool :=
+Equations? isPrime (n : nat) : bool :=
   isPrime 0 := false;
+  isPrime 1 := false;
+  isPrime 2 := true;
+  isPrime 3 := true;
   isPrime k := worker 2
     where worker (n' : nat) : bool by rec (k - n') lt :=
     worker i with ge_dec i k :=
@@ -102,34 +105,4 @@ Equations?(noind) isPrime (n : nat) : bool :=
         | right H with eq_nat_dec (Nat.modulo k i) 0 :=
             { worker i (right H) (left H') := false;
               worker i (right H) (right H') := worker (S i) } }.
-Proof. do 4 (destruct i; try lia). Defined.
-  (* isPrime (S (S (S (S k)))) := worker 2 *)
-  (*   where worker (n : nat) : bool by rec (S (S (S (S k))) - n) lt := *)
-  (*   worker i with ge_dec i (4 + k) := *)
-  (*     { | left H := true; *)
-  (*       | right H with eq_nat_dec (Nat.modulo (4 + k) i) 0 := *)
-  (*           { worker i (right H) (left H') := false; *)
-  (*             worker i (right H) (right H') := worker (S i) } }. *)
-Proof. do 4 (destruct i; try lia). Defined.
-
-Equations? isPrime : nat -> bool :=
-  isPrime 0 := false;
-  isPrime 1 := false;
-  isPrime 2 := true;
-  isPrime 3 := true;
-  isPrime k := worker 2
-    where worker (n : nat) : bool by rec (k - n) lt :=
-    worker i with ge_dec i k :=
-      { | left H := true;
-        | right H with eq_nat_dec (Nat.modulo k i) 0 :=
-            { worker i (right H) (left H') := false;
-              worker i (right H) (right H') := worker (S i) } }.
-Proof. do 4 (destruct i; try lia). Defined.
-  (* isPrime (S (S (S (S k)))) := worker 2 *)
-  (*   where worker (n : nat) : bool by rec (S (S (S (S k))) - n) lt := *)
-  (*   worker i with ge_dec i (4 + k) := *)
-  (*     { | left H := true; *)
-  (*       | right H with eq_nat_dec (Nat.modulo (4 + k) i) 0 := *)
-  (*           { worker i (right H) (left H') := false; *)
-  (*             worker i (right H) (right H') := worker (S i) } }. *)
 Proof. do 4 (destruct i; try lia). Defined.

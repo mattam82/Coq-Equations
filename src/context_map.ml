@@ -648,3 +648,13 @@ let single_subst ?(unsafe = false) env evd x p g =
 
 let pr_rel_name env i =
   Name.print (get_name (lookup_rel i env))
+
+let is_local_def i ctx =
+  let decl = List.nth ctx (pred i) in
+  Context.Rel.Declaration.is_local_def decl
+
+let filter_def_pats (ctx, pats, _) =
+  CList.map_filter (function
+      | PRel i when is_local_def i ctx -> None
+      | PHide i when is_local_def i ctx -> None
+      | p -> Some p) pats

@@ -176,3 +176,5 @@ val single_subst :
   Int.Set.elt ->
   pat ->
   rel_context -> context_map
+
+val filter_def_pats : context_map -> pat list

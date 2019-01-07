@@ -288,7 +288,7 @@ let annot_of_rec r = match r.struct_rec_arg with
   | _ -> None
 
 let rec aux_ind_fun info chop unfs unfids = function
-  | Split ((ctx,pats,_), var, _, splits) ->
+  | Split ((ctx,pats,_ as lhs), var, _, splits) ->
      let splits = List.map_filter (fun x -> x) (Array.to_list splits) in
      let unfs_splits =
        let unfs = map_opt_split destSplit unfs in
@@ -307,8 +307,9 @@ let rec aux_ind_fun info chop unfs unfids = function
              else snd (List.chop (fst chop) pats') in
            let pats, var =
               match unfs with
-              | Some (Split ((_, pats, _), var, _, _)) -> pats, var
-              | _ -> filter (fun x -> not (hidden x)) pats, var
+              | Some (Split (ctx, var, _, _)) -> filter_def_pats ctx, var
+              | _ ->
+                filter (fun x -> not (hidden x)) (filter_def_pats lhs), var
            in
            let id = find_splitting_var (project gl) pats var pats' in
            let depelim h = (* Depelim.dependent_elim_tac (Loc.make_loc (0, 0), h) *) depelim_tac h in
@@ -328,10 +329,18 @@ let rec aux_ind_fun info chop unfs unfids = function
         let inctx, concl = decompose_prod_n_assum !sigma t.rec_args (pf_concl gl) in
         to82 (Refine.refine ~typecheck:false (fun sigma ->
             let evd = ref sigma in
+            let hd, args = decompose_app sigma concl in
+            let subst =
+              let rec aux ty args n =
+                if n = 0 then [] else
+                  match kind sigma ty, args with
+                  | Prod (_, _, ty), a :: args -> a :: aux (subst1 a ty) args (pred n)
+                  | LetIn (_, b, _, ty), args -> b :: aux (subst1 b ty) args (pred n)
+                  | _ -> assert false
+              in aux (Retyping.get_type_of env sigma hd) args (List.length (pi1 ctx))
+            in
             let arity, arg, rel =
-              let hd, args = decompose_app sigma concl in
-              let subst = List.firstn (List.length (pi1 ctx)) args in
-              let arg = substl subst r.wf_rec_arg in
+              let arg = substl (List.rev subst) r.wf_rec_arg in
               let term = (applistc arg (extended_rel_list 0 inctx)) in
               Feedback.msg_debug (str"Typing:" ++ Printer.pr_econstr_env (push_rel_context inctx env) sigma term);
               let _, arity = Typing.type_of (push_rel_context inctx env) sigma term in
@@ -515,12 +524,12 @@ let rec aux_ind_fun info chop unfs unfids = function
         let () = assert (List.length wheres = List.length unfswheres) in
         let tac = List.fold_left2 wheretac Tacticals.New.tclIDTAC wheres unfswheres in
         tclTHENLIST [to82 tac;
-                     tclTRY (autorewrite_one info.term_info.base_id);
-                     cstrtac info.term_info;
-                     (* if Option.is_empty unfs then tclIDTAC
-                      * else observe "whererev"
-                      *              (tclTRY (autorewrite_one (info.term_info.base_id ^ "_where_rev"))); *)
-                     eauto_with_below []]
+                     tclTRY (autorewrite_one info.term_info.base_id)(* ;
+                      * observe "trying constructor on" (tclTRY (cstrtac info.term_info));
+                      * (\* if Option.is_empty unfs then tclIDTAC
+                      *  * else observe "whererev"
+                      *  *              (tclTRY (autorewrite_one (info.term_info.base_id ^ "_where_rev"))); *\)
+                      * observe "proof search" (eauto_with_below []) *)]
       else tclIDTAC
     in
     (match c with
@@ -740,8 +749,10 @@ let prove_unfolding_lemma info where_map f_cst funf_cst split unfold_split gl =
   let transparent tac gl = transp (); let res = tac gl in opacify (); res in
   let simpltac gl = opacified (to82 (simpl_equations_tac ())) gl in
   let my_simpl = opacified (to82 (simpl_in_concl)) in
-  let unfolds = tclTHEN (autounfold_first [info.base_id] None)
-    (autounfold_first [info.base_id ^ "_unfold"] None)
+  let unfolds =
+    tclTHEN (autounfold_first [info.base_id] None)
+      (tclTHEN (autounfold_first [info.base_id ^ "_unfold"] None)
+         (to82 (Tactics.reduct_in_concl ((Reductionops.clos_norm_flags CClosure.betazeta), DEFAULTcast))))
   in
   let solve_rec_eq subst gl =
     match kind (project gl) (pf_concl gl) with
