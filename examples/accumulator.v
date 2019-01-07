@@ -83,16 +83,14 @@ Equations pos_list_init {A} (n : positive) (a : A) : list A :=
   pos_list_init (n~0) x := let l := pos_list_init n x in x :: l ++ l.
 (* Time Definition big_interval := Eval vm_compute in pos_list_init 20000 true. *)
 
-Extraction length.
-Extraction fast_length.
+(* Extraction length. *)
+(* Extraction fast_length. *)
 
 (* Time Definition slow := Eval vm_compute in length big_interval. *)
 (* Time Definition fast := Eval vm_compute in fast_length big_interval. *)
 
 Hint Extern 100 => progress (simpl in *) : Below.
 
-(* Set Equations Debug. *)
-(* Set Printing Depth 10000. *)
 Equations? isPrime (n : nat) : bool :=
   isPrime 0 := false;
   isPrime 1 := false;
@@ -105,4 +103,4 @@ Equations? isPrime (n : nat) : bool :=
         | right H with eq_nat_dec (Nat.modulo k i) 0 :=
             { worker i (right H) (left H') := false;
               worker i (right H) (right H') := worker (S i) } }.
-Proof. do 4 (destruct i; try lia). Defined.
+Proof. clear worker. subst k. do 4 (destruct i; try lia). Defined.
