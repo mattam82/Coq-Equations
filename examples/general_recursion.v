@@ -41,7 +41,7 @@ Section Fueling.
 
   Equations fuel_relation_n (n : nat) (x : A) : Acc R x :=
     fuel_relation_n 0 x := p x;
-    fuel_relation_n (S n) x := Acc_intro x (fun y _ => fuel_relation_n n y).
+    fuel_relation_n (S n) x := Acc_intro x (fun y _ => Acc_intro y (fun y' _ => fuel_relation_n n y')).
 
   Definition fuel_relation (n : nat) : WellFounded R :=
     fun x => fuel_relation_n (pow n n) x.
@@ -76,7 +76,7 @@ Defined.
   Defined.
 
   (* Note this is a dangerous rewrite rule, so we should remove it from the hints *)
-  Print Rewrite HintDb nonterm.
+  (* Print Rewrite HintDb nonterm. *)
 
   (** Make nonterm transparent anyway so we can compute with it *)
   Transparent nonterm.
@@ -89,8 +89,8 @@ Fixpoint at_least_five (n : nat) : bool :=
   end.
 
 (** Indeed it unfolds enough so that [at_least_five] gives back a result. *)
-Check eq_refl : at_least_five (nonterm 10) = true.
-Check eq_refl : at_least_five (nonterm 0) = false.
+Example check_10 := eq_refl : at_least_five (nonterm 10) = true.
+Example check_0 := eq_refl : at_least_five (nonterm 0) = false.
 
 (** The elimination principle completely abstracts away from the
     termination argument as well *)

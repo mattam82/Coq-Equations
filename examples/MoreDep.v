@@ -65,14 +65,10 @@ typeDenote Nat := nat;
 typeDenote Bool := bool;
 typeDenote (Prod t1 t2) := (typeDenote t1 * typeDenote t2)%type.
 
-Set Printing Depth 10000.
 Equations expDenote t (e : exp t) : typeDenote t :=
 expDenote (NConst n) := n;
 expDenote (Plus e1 e2) := expDenote e1 + expDenote e2;
-expDenote (Eq e1 e2) with eq_nat_dec (expDenote e1) (expDenote e2) => {
-  | left _ := true;
-  | right _ := false
-}; (* := beq_nat (expDenote e1) (expDenote e2); *) 
+expDenote (Eq e1 e2) := beq_nat (expDenote e1) (expDenote e2);
 expDenote (BConst b) := b;
 expDenote (And e1 e2) := expDenote e1 && expDenote e2;
 expDenote (If e e1 e2) with expDenote e => {
@@ -108,7 +104,7 @@ Require Import Wellfounded.
 
 Ltac rec ::= Subterm.rec_wf_eqns.
 Unset Implicit Arguments.
-  (* Equations(struct e) cfold t (e : exp t) : exp t := *)
+
 Equations cfold {t} (e : exp t) : exp t :=
 (* Works with well-foundedness too: cfold e by rec (signature_pack e) exp_subterm := *)
 cfold (NConst n) => NConst n;
@@ -129,7 +125,6 @@ cfold (If e e1 e2) with cfold e => {
   | BConst true => cfold e1;
   | BConst false => cfold e2;
   | _ => If e (cfold e1) (cfold e2) }
-   (* Weakness of the syntactic check, recursive call under a solution_left. *)
 ;
 cfold (Pair e1 e2) := Pair (cfold e1) (cfold e2);
 cfold (Fst e) with cfold e => {

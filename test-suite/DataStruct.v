@@ -317,7 +317,7 @@ Section cfoldCond.
     | BConst true := bodies None;
     | BConst false := cfoldCond n (fun i => tests (Some i)) (fun i => bodies (Some i));
     | Eq e1 e2 with cfoldCond n (fun i => tests (Some i)) (fun i => bodies (Some i)) => {
-      | Cond n' _ tests' bodies' default' :=
+      | Cond n' tests' bodies' default' :=
         Cond (S n') (fun i => match i with
                               | None => tests None
                               | Some i => tests' i
@@ -374,25 +374,16 @@ Fixpoint cfold t (e : exp' t) : exp' t :=
       (fun idx => cfold (bodies idx))
   end.
 
-(* Lemma cfoldCond_correct : forall t (default : exp' t) *)
-(*   n (tests : ffin n -> exp' Bool) (bodies : ffin n -> exp' t), *)
-(*   exp'Denote (cfoldCond default tests bodies) *)
-(*   = exp'Denote (Cond n tests bodies default). *)
-(* Proof. *)
-(*   intros. funelim (cfoldCond default tests bodies). *)
-(*   all:simpl; rewrite ?H, ?Heq; simp exp'Denote. *)
-(*   unfold cond. simpl. rewrite Heq. simp exp'Denote. *)
-(*   simpl. rewrite Heq. simp cond. *)
-
-(*   induction n; crush; *)
-(*     match goal with *)
-(*       | [ IHn : forall tests bodies, _, tests : _ -> _, bodies : _ -> _ |- _ ] => *)
-(*         specialize (IHn (fun idx => tests (Some idx)) (fun idx => bodies (Some idx))) *)
-(*     end; *)
-(*     repeat (match goal with *)
-(*               | [ |- context[match ?E with NConst _ => _ | _ => _ end] ] => *)
-(*                 dep_destruct E *)
-(*               | [ |- context[if ?B then _ else _] ] => destruct B *)
-(*             end; crush). *)
-(* Qed. *)
-(* Equations *)
+Lemma cfoldCond_correct : forall t (default : exp' t)
+  n (tests : ffin n -> exp' Bool) (bodies : ffin n -> exp' t),
+  exp'Denote (cfoldCond default tests bodies)
+  = exp'Denote (Cond n tests bodies default).
+Proof.
+  unshelve refine_ho (cfoldCond_elim _ _ _ _ _ _ _ _ _ _ _ _ _ _); simpl; intros.
+  all:simpl; simp exp'Denote cond; rewrite ?H, ?Heq, ?Heq0;
+    try rewrite ?Heq in Hind;
+    simp exp'Denote cond;
+  repeat (match goal with
+          | [ |- context[cond_clause_2 _ _ ?E _] ] => destruct E; simp cond
+          end).
+Qed.
