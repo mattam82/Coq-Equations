@@ -1038,6 +1038,11 @@ let shrink_entry sign const =
   } in
   (const, args)
 
+let error_complete () =
+  user_err_loc (None, "define",
+                str "Equations definition is complete and requires no further proofs. " ++
+                str "Use the \"Equations\" command to define it.")
+
 let solve_equations_obligations flags recids i isevar hook =
   let kind = (Decl_kinds.Local, flags.polymorphic, Decl_kinds.(DefinitionBody Definition)) in
   let evars = Evar.Map.bindings (Evd.undefined_map !isevar) in
@@ -1125,10 +1130,7 @@ let solve_equations_obligations flags recids i isevar hook =
        fst (Pfedit.solve (Goal_select.SelectAll) None (Tacticals.New.tclTRY !Obligations.default_tactic) p));
   let prf = Proof_global.give_me_the_proof () in
   if Proof.is_done prf then
-    if flags.open_proof then
-      user_err_loc (None, "define",
-                    str "Equations definition is complete and requires no further proofs. " ++
-                    str "Use the \"Equations\" command to define it.")
+    if flags.open_proof then error_complete ()
     else
       Lemmas.save_proof Vernacexpr.(Proved (Proof_global.Transparent, None))
   else if flags.open_proof then ()
@@ -1253,7 +1255,9 @@ let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false)
     in
     if Evd.has_undefined !evd then
       solve_equations_obligations flags recids (program_id (List.hd programs)) evd (all_hook hook)
-    else all_hook hook []
+    else
+      if flags.open_proof then error_complete ()
+      else all_hook hook []
 
 let define_program_immediate env evd is_recursive fixprots flags ?(unfold=false) program =
   define_programs env evd is_recursive fixprots flags ~unfold [program]
