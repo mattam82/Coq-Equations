@@ -63,7 +63,7 @@ type lhs = user_pats (* p1 ... pn *)
 and ('a,'b) rhs =
     Program of program_body * 'a where_clause list
   | Empty of identifier with_loc
-  | Refine of Constrexpr.constr_expr * 'b list
+  | Refine of Constrexpr.constr_expr list * 'b list
 and pre_prototype =
   identifier with_loc * user_rec_annot * Constrexpr.local_binder_expr list * Constrexpr.constr_expr option *
   (Id.t with_loc, Constrexpr.constr_expr * Constrexpr.constr_expr option) by_annot option

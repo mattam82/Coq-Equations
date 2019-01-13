@@ -386,15 +386,7 @@ GRAMMAR EXTEND Gram
   ;
 
   refine:
-    [ [ cs = LIST1 Constr.lconstr SEP "," ->
-        { let rec build_refine acc = function
-            | [] -> assert false
-            | [c] -> fun e -> acc (Refine (c, e))
-            | c :: cs ->
-                let acc = fun e ->
-                  acc (Refine (c, [(RefinePats [CAst.make (CHole (None, Namegen.IntroAnonymous, None))], e)])) in
-                build_refine acc cs
-          in build_refine (fun e -> e) cs }
+    [ [ cs = LIST1 Constr.lconstr SEP "," -> { cs }
     ] ]
   ;
   rec_annot:
@@ -427,8 +419,8 @@ GRAMMAR EXTEND Gram
      | [":=" -> { () } |"=>" -> { () } ]; c = Constr.lconstr; w = where ->
         { Program (ConstrExpr c, w) }
 
-      | ["with" -> { () }  |"<=" -> { () } ]; ref = refine; [":=" -> { () } |"=>" -> { () } ];
-        e = sub_equations -> { ref e }
+      | ["with" -> { () } ]; refs = refine; [":=" -> { () } |"=>" -> { () } ];
+        e = sub_equations -> { Refine (refs, e) }
     ] ]
   ;
 

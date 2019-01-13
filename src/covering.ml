@@ -1023,14 +1023,20 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
      | Some (i, ctx, s) ->
        Some (Compute (prob, [], ty, REmpty (i, s))))
 
-  | Refine (c, cls) -> 
+  | Refine (cs, cls) ->
     (* The refined term and its type *)
+    let c, cs =
+      match cs with
+      | [c] -> c, []
+      | c :: cs -> c, cs
+      | [] -> assert false
+    in
     let cconstr, cty = interp_constr_in_rhs env ctx evars data None s lets (ConstrExpr c) in
 
     let vars = variables_of_pats pats in
     let newctx, pats', pats'' = instance_of_pats env !evars ctx vars in
     (* revctx is a variable substitution from a reordered context to the
-       current context. Needed for ?? *)
+       current context *)
     let revctx = check_ctx_map env !evars (newctx, pats', ctx) in
     let idref = Namegen.next_ident_away (Id.of_string "refine") (Id.Set.of_list (ids_of_rel_context newctx)) in
     let decl = make_assum (Name idref) (mapping_constr !evars revctx cty) in
@@ -1073,6 +1079,12 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
        to make them match up to the context map. *)
     let sortinv = List.sort (fun (i, _) (i', _) -> i' - i) strinv in
     let vars' = List.rev_map snd sortinv in
+    let cls =
+      match cs with
+      | [] -> cls
+      | _ :: _ ->
+        [loc, lhs @ [DAst.make ?loc (PUVar (idref, true))], Refine (cs, cls)]
+    in
     let rec cls' n cls =
       let next_unknown =
         let str = Id.of_string "unknown" in

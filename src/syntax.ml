@@ -72,7 +72,7 @@ type lhs = user_pats
 and ('a,'b) rhs =
     Program of program_body * 'a where_clause list
   | Empty of identifier with_loc
-  | Refine of Constrexpr.constr_expr * 'b list
+  | Refine of Constrexpr.constr_expr list * 'b list
 
 and pre_prototype =
   identifier with_loc * user_rec_annot * Constrexpr.local_binder_expr list * Constrexpr.constr_expr option *
@@ -119,7 +119,8 @@ let rec pr_rhs env = function
                              | ConstrExpr rhs -> pr_constr_expr rhs
                              | Constr c -> str"<constr>") ++
                             spc () ++ pr_wheres env where
-  | Refine (rhs, s) -> spc () ++ str "<=" ++ spc () ++ pr_constr_expr rhs ++ 
+  | Refine (rhs, s) -> spc () ++ str "with" ++ spc () ++
+                       prlist_with_sep (fun () -> str",") pr_constr_expr rhs ++
       spc () ++ str "=>" ++ spc () ++
       hov 1 (str "{" ++ pr_clauses env s ++ str "}")
 
@@ -153,7 +154,8 @@ let rec pr_user_rhs env = function
                              | ConstrExpr rhs -> pr_constr_expr rhs
                              | Constr c -> str"<constr>") ++
                             spc () ++ pr_prewheres env where
-  | Refine (rhs, s) -> spc () ++ str "<=" ++ spc () ++ pr_constr_expr rhs ++
+  | Refine (rhs, s) -> spc () ++ str "with" ++ spc () ++
+                       prlist_with_sep (fun () -> str ",") pr_constr_expr rhs ++
       spc () ++ str "=>" ++ spc () ++
       hov 1 (str "{" ++ pr_user_clauses env s ++ str "}")
 
@@ -164,7 +166,8 @@ and pr_prerhs env = function
                              | ConstrExpr rhs -> pr_constr_expr rhs
                              | Constr c -> str"<constr>") ++
                             spc () ++ pr_prewheres env where
-  | Refine (rhs, s) -> spc () ++ str "<=" ++ spc () ++ pr_constr_expr rhs ++
+  | Refine (rhs, s) -> spc () ++ str "with" ++ spc () ++
+                       prlist_with_sep (fun () -> str ",") pr_constr_expr rhs ++
       spc () ++ str "=>" ++ spc () ++
       hov 1 (str "{" ++ pr_preclauses env s ++ str "}")
 
@@ -414,7 +417,8 @@ let interp_eqn env p eqn =
       | SignPats pat ->
         avoid := Id.Set.union !avoid (ids_of_pats (Some p.program_id) [pat]);
         let loc = Constrexpr_ops.constr_loc pat in
-        loc, interp_pat (Some (p, patnames)) pat
+        let pats = interp_pat (Some (p, patnames)) pat in
+        loc, pats
       | RefinePats pats ->
         let patids = ref (ids_of_pats None pats) in
         let curpats = rename_away_from patids curpats in
@@ -430,10 +434,13 @@ let interp_eqn env p eqn =
     (pat, interp_rhs' rhs)
   and interp_rhs' = function
     | Refine (c, eqs) ->
-       let wheres, c = CAst.with_loc_val interp_constr_expr c in
-       if not (List.is_empty wheres) then
-         user_err_loc (Constrexpr_ops.constr_loc c, "interp_eqns", str"Pattern-matching lambdas not allowed in refine");
-       Refine (c, map aux2 eqs)
+      let interp c =
+        let wheres, c = CAst.with_loc_val interp_constr_expr c in
+        if not (List.is_empty wheres) then
+          user_err_loc (Constrexpr_ops.constr_loc c, "interp_eqns", str"Pattern-matching lambdas not allowed in refine");
+        c
+      in
+      Refine (List.map interp c, map aux2 eqs)
     | Program (c, w) ->
        let w = interp_wheres avoid w in
        let w', c =
@@ -447,10 +454,13 @@ let interp_eqn env p eqn =
     | Empty i -> Empty i
   and interp_rhs curpats = function
     | Refine (c, eqs) ->
-       let wheres, c = CAst.with_loc_val interp_constr_expr c in
-       if not (List.is_empty wheres) then
-         user_err_loc (Constrexpr_ops.constr_loc c, "interp_eqns", str"Pattern-matching lambdas not allowed in refine");
-       Refine (c, map (aux curpats) eqs)
+      let interp c =
+        let wheres, c = CAst.with_loc_val interp_constr_expr c in
+        if not (List.is_empty wheres) then
+          user_err_loc (Constrexpr_ops.constr_loc c, "interp_eqns", str"Pattern-matching lambdas not allowed in refine");
+        c
+      in
+      Refine (List.map interp c, map (aux curpats) eqs)
     | Program (c, w) ->
        let w = interp_wheres avoid w in
        let w', c =
@@ -507,7 +517,7 @@ let is_recursive i : pre_equations -> bool option = fun eqs ->
         if occur_var_constr_expr i c then Some false else occurs w
       | Constr _ -> occurs w)
     | Refine (c, eqs) ->
-       if occur_var_constr_expr i c then Some false
+       if List.exists (occur_var_constr_expr i) c then Some false
        else occur_eqns eqs
     | _ -> None
   and occur_eqns eqs =
