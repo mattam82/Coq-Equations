@@ -438,7 +438,7 @@ GRAMMAR EXTEND Gram
 {
 
 let classify_equations x =
-  Vernacextend.(VtStartProof ("Classic",Doesn'tGuaranteeOpacity,[]), VtLater)
+  Vernacextend.(VtStartProof (Doesn'tGuaranteeOpacity,[]), VtLater)
 }
 
 VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS SIDEFF
