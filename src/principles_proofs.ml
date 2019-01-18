@@ -747,6 +747,13 @@ let ind_fun_tac is_rec f info fid progs =
          Feedback.msg_warning (Himsg.explain_pretype_error env evd err); iraise e
        | _ -> iraise e)
 
+let is_primitive env evd ctx var =
+  let decl = List.nth ctx var in
+  let indf, _ = find_rectype env evd (Context.Rel.Declaration.get_type decl) in
+  let (ind,_), _ = dest_ind_family indf in
+  let mspec = Inductive.lookup_mind_specif env ind in
+  Inductive.is_primitive_record mspec
+
 let prove_unfolding_lemma info where_map f_cst funf_cst split unfold_split gl =
   let depelim h = Depelim.dependent_elim_tac (Loc.make_loc (0,0), h) (* depelim_tac h *) in
   let helpercsts = List.map (fun (cst, i) -> cst) info.helpers_info in
@@ -783,14 +790,18 @@ let prove_unfolding_lemma info where_map f_cst funf_cst split unfold_split gl =
   let rec aux subst split unfold_split =
     match split, unfold_split with
     | Split (_, _, _, splits), Split ((ctx,pats,_), var, _, unfsplits) ->
-       observe "split"
-	(fun gl ->
+      observe "split"
+        (fun gl ->
+        if is_primitive (pf_env gl) (project gl) ctx (pred var) then
+          aux subst (Option.get (Array.hd splits)) (Option.get (Array.hd unfsplits)) gl
+        else
           match kind (project gl) (pf_concl gl) with
           | App (eq, [| ty; x; y |]) ->
              let sigma = project gl in
              let f, pats' = decompose_app sigma y in
              let c, unfolds =
-               let _, _, c, _ = destCase sigma f in c, tclIDTAC
+               let _, _, c, _ = destCase sigma f in
+               c, tclIDTAC
              in
              let id = destVar sigma (fst (decompose_app sigma c)) in
 	     let splits = List.map_filter (fun x -> x) (Array.to_list splits) in
