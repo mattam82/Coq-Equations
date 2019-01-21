@@ -976,7 +976,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst split unfold_split gl =
                                 (observe "where"
                                  (aux subst wpsplit unfwp.program_splitting))])
            in
-           assert_by (Name id) ty (of82 (tclTHEN (to82 (keep [])) (to82 (Abstract.tclABSTRACT (Some id) tac))))
+           assert_by (Name id) ty (of82 (tclTHEN (to82 (keep [])) (to82 (tclABSTRACT (Some id) tac))))
          in
          tclTHENLIST [Refiner.tclEVARS !evd; to82 tac;
                       to82 (Equality.rewriteLR (mkVar id));

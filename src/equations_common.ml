@@ -154,7 +154,41 @@ let e_new_global evdref gr =
 
 type lazy_ref = Names.GlobRef.t Lazy.t
 
-let equations_lib_ref s = Coqlib.lib_ref ("equations." ^ s)
+(** Library ref registering, now in Coq master, emulate for 8.9 *)
+
+let table : GlobRef.t CString.Map.t ref =
+  let name = "coqlib_registered" in
+  Summary.ref ~name CString.Map.empty
+
+let lib_ref s =
+  try CString.Map.find s !table
+  with Not_found ->
+    CErrors.user_err Pp.(str "not found in table: " ++ str s)
+
+let add_ref s c =
+  table := CString.Map.add s c !table
+
+let cache_ref (_,(s,c)) =
+  add_ref s c
+
+let (inCoqlibRef : string * GlobRef.t -> Libobject.obj) =
+  let open Libobject in
+  declare_object { (default_object "COQLIBREF") with
+    cache_function = cache_ref;
+    load_function = (fun _ x -> cache_ref x);
+    classify_function = (fun o -> Substitute o);
+    subst_function = ident_subst_function;
+    discharge_function = fun (_, sc) -> Some sc }
+
+(** Replaces a binding ! *)
+let register_ref s c =
+  let s = Libnames.string_of_qualid s in
+  let gr = Nametab.locate c in
+  Lib.add_anonymous_leaf @@ inCoqlibRef (s,gr)
+
+
+
+let equations_lib_ref s = lib_ref ("equations." ^ s)
 
 let find_global s = lazy (equations_lib_ref s)
 
@@ -163,7 +197,7 @@ let find_constant s evd = e_new_global evd (equations_lib_ref s)
 let global_reference id =
   Smartlocate.global_of_extended_global (Nametab.locate_extended (qualid_of_ident id))
 
-let constr_of_global = UnivGen.constr_of_monomorphic_global
+let constr_of_global = UnivGen.constr_of_global
 
 let constr_of_ident id =
   EConstr.of_constr (constr_of_global (Nametab.locate (qualid_of_ident id)))
@@ -183,8 +217,8 @@ let make_definition ?opaque ?(poly=false) evm ?types b =
   let evm = Evd.minimize_universes evm in
   let evm0 = evm in
   let body = EConstr.to_constr evm b and typ = Option.map (EConstr.to_constr evm) types in
-  let used = Vars.universes_of_constr body in
-  let used' = Option.cata Vars.universes_of_constr Univ.LSet.empty typ in
+  let used = Univops.universes_of_constr body in
+  let used' = Option.cata Univops.universes_of_constr Univ.LSet.empty typ in
   let used = Univ.LSet.union used used' in
   let evm = Evd.restrict_universe_context evm used in
   let univs = Evd.const_univ_entry ~poly evm in
@@ -318,7 +352,9 @@ let dummy_loc = None
 type 'a located = 'a Loc.located
 
 let tac_of_string str args =
-  Tacinterp.interp (TacArg(CAst.(make @@ TacCall(make (Libnames.qualid_of_string str, args)))))
+  Tacinterp.interp (TacArg(dummy_loc,
+                           TacCall(dummy_loc, Libnames.(qualid_of_string str, args))))
+  (* Tacinterp.interp (TacArg(CAst.(make @@ TacCall(make (Libnames.qualid_of_string str, args))))) *)
 
 let get_class sigma c =
   let x = Typeclasses.class_of_constr sigma c in
@@ -507,26 +543,7 @@ let below_tactics_path =
   DirPath.make (List.map Id.of_string ["Below";"Equations"])
 
 let below_tac s =
-  KerName.make (MPfile below_tactics_path) (Label.make s)
-
-let tacvar_arg h =
-  let ipat = Genarg.in_gen (Genarg.rawwit Tacarg.wit_intro_pattern) 
-    (CAst.make @@ Tactypes.IntroNaming (Namegen.IntroIdentifier h)) in
-    TacGeneric ipat
-
-let rec_tac h h' = 
-  TacArg(CAst.(make @@ TacCall(
-      make
-        (qualid_of_string "Equations.Below.rec",
-         [tacvar_arg h'; ConstrMayEval (Genredexpr.ConstrTerm h)]))))
-
-let rec_wf_tac h n h' rel =
-  TacArg(CAst.(make @@ TacCall(make
-    (qualid_of_string "Equations.Subterm.rec_wf_eqns_rel",
-    [tacvar_arg h';
-     ConstrMayEval (Genredexpr.ConstrTerm n);
-     ConstrMayEval (Genredexpr.ConstrTerm h);
-     ConstrMayEval (Genredexpr.ConstrTerm rel)]))))
+  KerName.make (MPfile below_tactics_path) (DirPath.make []) (Label.make s)
 
 let unfold_recursor_tac () = tac_of_string "Equations.Subterm.unfold_recursor" []
 
@@ -552,8 +569,6 @@ let specialize_mutfix_tac () = tac_of_string "Equations.FunctionalInduction.spec
   
 open Libnames
 
-let reference_of_global c = Nametab.shortest_qualid_of_global Names.Id.Set.empty c
-
 let tacident_arg h =
   Reference (qualid_of_ident h)
 
@@ -563,38 +578,27 @@ let depelim_nosimpl_tac h = tac_of_string "Equations.DepElim.depelim_nosimpl" [t
 let simpl_dep_elim_tac () = tac_of_string "Equations.DepElim.simpl_dep_elim" []
 let depind_tac h = tac_of_string "Equations.DepElim.depind" [tacident_arg h]
 
+let mkRef (c, u) = UnivGen.constr_of_global_univ (c, u)
+
 let call_tac_on_ref tac c =
   let var = Names.Id.of_string "x" in
   let tac = Locus.ArgArg (dummy_loc, tac) in
   let val_reference = Geninterp.val_tag (Genarg.topwit Stdarg.wit_constr) in
   (* This is a hack to avoid generating useless universes *)
-  let c = Constr.mkRef (c, Univ.Instance.empty) in
+  let c = mkRef (c, Univ.Instance.empty) in
   let c = Geninterp.Val.inject val_reference (EConstr.of_constr c) in
   let ist = Geninterp.{ lfun = Names.Id.Map.add var c Names.Id.Map.empty;
                             extra = Geninterp.TacStore.empty } in
   let var = Reference (Locus.ArgVar CAst.(make var)) in
-  let tac = TacArg (CAst.(make @@ TacCall (make (tac, [var])))) in
+  let tac = TacArg (dummy_loc, TacCall (dummy_loc, (tac, [var]))) in
   ist, tac
 
 let mp = Names.MPfile (Names.DirPath.make (List.map Names.Id.of_string ["DepElim"; "Equations"]))
-let solve_equation = Names.KerName.make mp (Names.Label.make "solve_equation")
+let solve_equation = Names.KerName.make mp Names.DirPath.empty (Names.Label.make "solve_equation")
 
 let solve_equation_tac (c : Names.GlobRef.t) =
   let ist, tac = call_tac_on_ref solve_equation c in
   Tacinterp.eval_tactic_ist ist tac
-
-let impossible_call_tac c =
-  let tac = Tacintern.glob_tactic
-  (TacArg(CAst.(make @@ TacCall(make
-  (Libnames.qualid_of_string "Equations.DepElim.impossible_call",
-   [Reference (reference_of_global c)]))))) in
-  let val_tac = Genarg.glbwit Tacarg.wit_tactic in
-  Genarg.in_gen val_tac tac
-(* let impossible_call_tac c = *)
-(*   let ist, tac = call_tac_on_ref impossible_call c in *)
-(*   let val_tac = Genarg.glbwit Tacarg.wit_tactic in *)
-(*   let c = Genarg.in_gen val_tac tac in *)
-(*   c *)
 
 open EConstr.Vars
    
@@ -957,7 +961,7 @@ let hintdb_set_transparency cst b db =
 
 let is_global sigma f ec = Globnames.is_global f (to_constr sigma ec)                                  
 
-let constr_of_global_univ sigma u = of_constr (Constr.mkRef (from_peuniverses sigma u))
+let constr_of_global_univ sigma u = of_constr (mkRef (from_peuniverses sigma u))
 
 let smash_rel_context sigma ctx =
   List.map of_rel_decl (smash_rel_context (List.map (to_rel_decl sigma) ctx))

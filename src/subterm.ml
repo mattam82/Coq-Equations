@@ -145,7 +145,12 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
     let inductive =
       { mind_entry_record = None;
         mind_entry_finite = Declarations.Finite;
-        mind_entry_params = List.map (fun d -> to_rel_decl sigma (Context.Rel.Declaration.map_constr refresh_universes d)) parambinders;
+        mind_entry_params = List.map (fun decl ->
+          let (n, b, t) = to_tuple decl in
+          match b with
+          | Some b -> (Nameops.Name.get_id n, LocalDefEntry (refresh_universes (to_constr sigma b)))
+          | None -> (Nameops.Name.get_id n, LocalAssumEntry (refresh_universes (to_constr sigma t))))
+            parambinders;
         mind_entry_inds = inds;
         mind_entry_private = None;
         mind_entry_universes = uctx}
@@ -230,7 +235,7 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
     in
     let ty = it_mkProd_or_LetIn ty parambinders in
     let body = it_mkLambda_or_LetIn (Option.get body) parambinders in
-    let hook _ _ vis gr =
+    let hook vis gr _ =
       let cst = match gr with ConstRef kn -> kn | _ -> assert false in
       let inst = Typeclasses.new_instance (fst kl) empty_hint_info
                                           global (ConstRef cst) in
@@ -247,7 +252,7 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
     let ctx = Evd.evar_universe_context evm in
     Obligations.add_definition id ~term:constr typ ctx
                                ~kind:(Decl_kinds.Global,polymorphic,Decl_kinds.Instance)
-                               ~univ_hook:(Obligations.mk_univ_hook hook) ~tactic:(solve_subterm_tac ()) obls
+                               ~hook:(Lemmas.mk_hook hook) ~tactic:(solve_subterm_tac ()) obls
   in ignore(declare_ind ())
 
 let () =

@@ -11,9 +11,6 @@
 
 DECLARE PLUGIN "equations_plugin"
 
-{
-
-open Attributes
 open Constr
 open Names
 open Pp
@@ -27,127 +24,107 @@ open Ltac_plugin
 let of82 = Proofview.V82.tactic
 let wit_hyp = wit_var
 
-}
-
 TACTIC EXTEND decompose_app
-| [ "decompose_app" ident(h) ident(h') constr(c) ] -> { Extra_tactics.decompose_app h h' c }
+| [ "decompose_app" ident(h) ident(h') constr(c) ] -> [ Extra_tactics.decompose_app h h' c ]
 END
 
 TACTIC EXTEND autounfold_ref
-| [ "autounfold_ref" reference(myref) ] -> { Extra_tactics.autounfold_ref myref }
+| [ "autounfold_ref" reference(myref) ] -> [ Extra_tactics.autounfold_ref myref ]
 END
 
 (* Sigma *)
 
-{
-
 open Proofview.Goal
-
-}
 
 TACTIC EXTEND get_signature_pack
 | [ "get_signature_pack" hyp(id) ident(id') ] ->
-     { Sigma_types.Tactics.get_signature_pack id id' }
+     [ Sigma_types.Tactics.get_signature_pack id id' ]
 END
       
 TACTIC EXTEND pattern_sigma
-| [ "pattern" "sigma" hyp(id) ] -> { Sigma_types.Tactics.pattern_sigma id }
+| [ "pattern" "sigma" hyp(id) ] -> [ Sigma_types.Tactics.pattern_sigma id ]
 END
 
 TACTIC EXTEND curry
-| [ "curry" hyp(id) ] -> { Sigma_types.Tactics.curry_hyp id }
-| ["curry"] -> { Sigma_types.Tactics.curry }
+| [ "curry" hyp(id) ] -> [ Sigma_types.Tactics.curry_hyp id ]
+| ["curry"] -> [ Sigma_types.Tactics.curry ]
 END
 
 TACTIC EXTEND curry_hyps
-| [ "uncurry_hyps" ident(id) ] -> { Sigma_types.uncurry_hyps id }
+| [ "uncurry_hyps" ident(id) ] -> [ Sigma_types.uncurry_hyps id ]
 END
 
 TACTIC EXTEND uncurry_call
-| [ "uncurry_call" constr(c) constr(c') ident(id) ident(id') ] -> { Sigma_types.Tactics.uncurry_call c c' id id' }
+| [ "uncurry_call" constr(c) constr(c') ident(id) ident(id') ] -> [ Sigma_types.Tactics.uncurry_call c c' id id' ]
 END
 
 (* Depelim *)
 
 TACTIC EXTEND dependent_pattern
-| ["dependent" "pattern" constr(c) ] -> {
-    Proofview.V82.tactic (Depelim.dependent_pattern c) }
+| ["dependent" "pattern" constr(c) ] -> [
+    Proofview.V82.tactic (Depelim.dependent_pattern c) ]
 END
 
 TACTIC EXTEND dependent_pattern_from
 | ["dependent" "pattern" "from" constr(c) ] ->
-    { Proofview.V82.tactic (Depelim.dependent_pattern ~pattern_term:false c) }
+    [ Proofview.V82.tactic (Depelim.dependent_pattern ~pattern_term:false c) ]
 END
 
 TACTIC EXTEND pattern_call
-| [ "pattern_call" constr(c) ] -> { Proofview.V82.tactic (Depelim.pattern_call c) }
+| [ "pattern_call" constr(c) ] -> [ Proofview.V82.tactic (Depelim.pattern_call c) ]
 END
 
 TACTIC EXTEND needs_generalization
 | [ "needs_generalization" hyp(id) ] -> 
-    { Proofview.V82.tactic (fun gl -> 
+    [ Proofview.V82.tactic (fun gl ->
       if Depelim.needs_generalization gl id
       then tclIDTAC gl
-      else tclFAIL 0 (str"No generalization needed") gl) }
+      else tclFAIL 0 (str"No generalization needed") gl) ]
 END
 
 (* Equations *)
 
-{
-
 open Tacarg
-
-}
 
 TACTIC EXTEND solve_equations
 | [ "solve_equations" tactic(destruct) tactic(tac) ] -> 
-     { of82 (Equations.solve_equations_goal (to82 (Tacinterp.tactic_of_value ist destruct))
-                                            (to82 (Tacinterp.tactic_of_value ist tac))) }
+     [ of82 (Equations.solve_equations_goal (to82 (Tacinterp.tactic_of_value ist destruct))
+                                            (to82 (Tacinterp.tactic_of_value ist tac))) ]
 END
 
 TACTIC EXTEND simp
 | [ "simp" ne_preident_list(l) clause(c) ] -> 
-    { of82 (Principles_proofs.simp_eqns_in c l) }
+    [ of82 (Principles_proofs.simp_eqns_in c l) ]
 | [ "simpc" constr_list(l) clause(c) ] -> 
-   { of82 (Principles_proofs.simp_eqns_in
+   [ of82 (Principles_proofs.simp_eqns_in
                         c
-                        (dbs_of_constrs (List.map EConstr.Unsafe.to_constr l))) }
+                        (dbs_of_constrs (List.map EConstr.Unsafe.to_constr l))) ]
 END
-
-{
 
 open Syntax
 
 open Pcoq.Prim
 
-}
-
 ARGUMENT EXTEND equation_user_option
-PRINTED BY { pr_r_equation_user_option }
-| [ "noind" ] -> { OInd false }
-| [ "ind" ] -> { OInd true }
-| [ "eqns" ] -> { OEquations true }
-| [ "noeqns" ] -> { OEquations false }
+PRINTED BY pr_r_equation_user_option
+| [ "noind" ] -> [ OInd false ]
+| [ "ind" ] -> [ OInd true ]
+| [ "eqns" ] -> [ OEquations true ]
+| [ "noeqns" ] -> [ OEquations false ]
 END
 
 ARGUMENT EXTEND equation_options
-PRINTED BY { pr_equation_options }
-| [ "(" ne_equation_user_option_list(l) ")" ] -> { l }
-| [ ] -> { [] }
+PRINTED BY pr_equation_options
+| [ "(" ne_equation_user_option_list(l) ")" ] -> [ l ]
+| [ ] -> [ [] ]
 END
-
-{
 
 let pr_lident _ _ _ (loc, id) = Id.print id
 
-}
-
 ARGUMENT EXTEND lident
-PRINTED BY { pr_lident }
-| [ ident(i) ] -> { (loc, i) }
+PRINTED BY pr_lident
+| [ ident(i) ] -> [ (loc, i) ]
 END
-
-{
 
 
 module Vernac = Pvernac.Vernac_
@@ -261,161 +238,154 @@ open Constr
 open Syntax
 
 let _ = CLexer.add_keyword "λ"
-}
 
-GRAMMAR EXTEND Gram
+GEXTEND Gram
   GLOBAL: operconstr pattern deppat_equations deppat_elim binders2 equations lident my_preident;
 
   my_preident:
-    [ [ id = IDENT -> { id } ] ]
+    [ [ id = IDENT -> id ] ]
   ;
   binders2 : 
-     [ [ b = binders -> { b } ] ]
+     [ [ b = binders -> b ] ]
   ;
   deppat_equations:
-    [ [ l = LIST0 equation SEP ";" -> { l } ] ]
+    [ [ l = LIST0 equation SEP ";" -> l ] ]
   ;
 
   deppat_elim:
-    [ [ "["; l = LIST0 lconstr SEP "|"; "]" -> { l } ] ]
+    [ [ "["; l = LIST0 lconstr SEP "|"; "]" -> l ] ]
   ;
 
   operconstr:
-    [ "0" [ "λ"; "{" ; c = LIST0 equation SEP ";"; "}" -> {
-            CAst.make ~loc @@ CHole (None, Namegen.IntroAnonymous,
-                                     Some (Genarg.in_gen (Genarg.rawwit Syntax.wit_equations_list) c)) } ] ]
+    [ [ "λ"; "{" ; c = LIST1 equation SEP ";"; "}" ->
+            CAst.make (CHole (None, Namegen.IntroAnonymous,
+                   Some (Genarg.in_gen (Genarg.rawwit Syntax.wit_equations_list) c))) ] ]
   ;
 
     
   identloc :
-   [ [ id = ident -> { (loc, id) } ] ] ;
+   [ [ id = ident -> (!@loc, id) ] ] ;
 
   equation:
-    [ [ "|"; pats = LIST1 lconstr SEP "|"; r = rhs -> { (RefinePats pats, r) }
-      | pat = pat; r = rhs -> { (SignPats pat, r) }
-    ] ]
+    [ [ "|"; pats = LIST1 lconstr SEP "|"; r = rhs -> (RefinePats pats, r)
+      | pat = pat; r = rhs -> (SignPats pat, r) ]
+    ]
   ;
 
   pat:
-    [ [ p = lconstr -> { p } ] ]
+    [ [ p = lconstr -> p ] ]
   ;
 
   refine:
-    [ [ cs = LIST1 Constr.lconstr SEP "," -> { cs }
+    [ [ cs = LIST1 Constr.lconstr SEP "," -> cs
     ] ]
   ;
 
   wf_annot:
-    [ [ "by"; IDENT "wf"; c = constr; rel = OPT constr -> { Some (WellFounded (c, rel)) }
-      | "by"; "struct"; id = identloc -> { Some (Structural id) }
-      | -> { None }
+    [ [ "by"; IDENT "wf"; c = constr; rel = OPT constr -> Some (WellFounded (c, rel))
+      | "by"; "struct"; id = identloc -> Some (Structural id)
+      | -> None
     ] ]
   ;
 
   proto:
    [ [
    id = lident; l = binders2; ":"; t = Constr.lconstr;
-   reca = wf_annot; ":="; eqs = sub_equations -> { (fun r -> ((id, r, l, Some t, reca), eqs)) }
+   reca = wf_annot; ":="; eqs = sub_equations -> (fun r -> ((id, r, l, Some t, reca), eqs))
    ] ]
   ;
 
   where_rhs:
     [ [ ntn = ne_lstring; ":="; c = constr;
-        scopt = OPT [ ":"; sc = IDENT -> { sc } ] -> { Inr (ntn, c, scopt) }
-      | p = proto -> { Inl (p (Some Syntax.Nested)) } ] ]
+        scopt = OPT [ ":"; sc = IDENT -> sc ] -> Inr (ntn, c, scopt)
+      | p = proto -> Inl (p (Some Syntax.Nested)) ] ]
   ;
 
   where_clause:
-    [ [ "where"; w = where_rhs -> { w }
-      | "with"; p = proto -> { Inl (p (Some Syntax.Mutual)) }
-      | p = proto -> { Inl (p None) }
+    [ [ "where"; w = where_rhs -> w
+      | "with"; p = proto -> Inl (p (Some Syntax.Mutual))
+      | p = proto -> Inl (p None)
     ] ]
   ;
   wheres:
     [ [ l = LIST0 where_clause ->
-      { let rec aux = function
+      let rec aux = function
           | Inl w :: l -> let ws, ns = aux l in w :: ws, ns
           | Inr n :: l -> let ws, ns = aux l in ws, n :: ns
           | [] -> ([], [])
-        in aux l }
+        in aux l
     ] ]
   ;
 
   local_where_rhs:
     [ [ ntn = ne_lstring; ":="; c = constr;
-        scopt = OPT [ ":"; sc = IDENT -> { sc } ] -> { Inr (ntn, c, scopt) }
-      | p = proto -> { Inl (p (Some Syntax.Mutual)) } ] ]
+        scopt = OPT [ ":"; sc = IDENT -> sc ] -> Inr (ntn, c, scopt)
+      | p = proto -> Inl (p (Some Syntax.Mutual)) ] ]
   ;
   local_where:
-    [ [ "where"; w = local_where_rhs -> { w }
-      | "with"; p = proto -> { Inl (p (Some Syntax.Mutual)) }
+    [ [ "where"; w = local_where_rhs -> w
+      | "with"; p = proto -> Inl (p (Some Syntax.Mutual))
     ] ]
   ;
   local_wheres:
     [ [ l = LIST0 local_where ->
-      { let rec aux = function
-          | Inl w :: l -> let ws, ns = aux l in w :: ws, ns
-          | Inr n :: l -> let ws, ns = aux l in ws, n :: ns
-          | [] -> ([], [])
-        in aux l }
+      let rec aux = function
+        | Inl w :: l -> let ws, ns = aux l in w :: ws, ns
+        | Inr n :: l -> let ws, ns = aux l in ws, n :: ns
+        | [] -> ([], [])
+      in aux l
     ] ]
   ;
   rhs:
-    [ [ ":=!"; id = identloc -> { Empty id }
+    [ [ ":=!"; id = identloc -> Empty id
 
-     | [":=" -> { () } |"=>" -> { () } ]; c = Constr.lconstr; w = local_wheres ->
-        { Program (ConstrExpr c, w) }
+     | [":=" -> () | "=>" -> () ]; c = Constr.lconstr; w = local_wheres ->
+        Program (ConstrExpr c, w)
 
-      | ["with" -> { () } ]; refs = refine; [":=" -> { () } |"=>" -> { () } ];
-        e = sub_equations -> { Refine (refs, e) }
+     | ["with" -> [ () ] ]; refs = refine; [":=" -> [ () ] |"=>" -> [ () ] ];
+       e = sub_equations -> Refine (refs, e)
     ] ]
   ;
 
   sub_equations:
-    [ [ "{"; l = deppat_equations; "}" -> { l  }
-      | l = deppat_equations -> { l }
+    [ [ "{"; l = deppat_equations; "}" -> l
+      | l = deppat_equations -> l
     ] ]
   ;
 
   equations:
-    [ [ p = proto; l = wheres -> { let ws, nts = l in
-                                   ((p None :: ws), nts) } ] ]
+    [ [ p = proto; l = wheres -> let ws, nts = l in
+                                 ((p None :: ws), nts) ] ]
   ;
   END
 
-{
 
 let classify_equations x =
-  Vernacextend.(VtStartProof ("Classic",Doesn'tGuaranteeOpacity,[]), VtLater)
-}
+  Vernacexpr.(VtStartProof ("Classic",Doesn'tGuaranteeOpacity,[]), VtLater)
 
 VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS SIDEFF
-| #[ poly = polymorphic ] [ "Equations" equation_options(opt) equations(eqns) ] ->
-    { Equations.equations ~poly ~open_proof:false opt (fst eqns) (snd eqns) }
+| [ "Equations" equation_options(opt) equations(eqns) ] ->
+    [ Equations.equations ~poly:(Flags.is_universe_polymorphism ()) ~open_proof:false opt (fst eqns) (snd eqns) ]
 END
 
-VERNAC COMMAND EXTEND Define_equations_refine CLASSIFIED BY { classify_equations }
-| #[ poly = polymorphic ] [ "Equations?" equation_options(opt) equations(eqns) ] ->
-    { Equations.equations ~poly ~open_proof:true opt (fst eqns) (snd eqns) }
+VERNAC COMMAND EXTEND Define_equations_refine CLASSIFIED BY classify_equations
+| [ "Equations?" equation_options(opt) equations(eqns) ] ->
+    [ Equations.equations ~poly:(Flags.is_universe_polymorphism ()) ~open_proof:true opt (fst eqns) (snd eqns) ]
 END
 
 (* Dependent elimination using Equations. *)
 
-{
-
 let pr_elim_patterns _ _ _ l = mt ()
 
-}
-
 ARGUMENT EXTEND elim_patterns
-PRINTED BY { pr_elim_patterns }
-  | [ deppat_elim(l) ] -> { l }
+PRINTED BY pr_elim_patterns
+  | [ deppat_elim(l) ] -> [ l ]
 END
 
 TACTIC EXTEND dependent_elimination
-| ["dependent" "elimination" ident(id) ] -> { Depelim.dependent_elim_tac (Loc.make_loc (0, 0), id) }
+| ["dependent" "elimination" ident(id) ] -> [ Depelim.dependent_elim_tac (Loc.make_loc (0, 0), id) ]
 | ["dependent" "elimination" ident(id) "as" elim_patterns(l) ] ->
-   { Depelim.dependent_elim_tac ~patterns:l (Loc.make_loc (0, 0), id) (* FIXME *) }
+   [ Depelim.dependent_elim_tac ~patterns:l (Loc.make_loc (0, 0), id) (* FIXME *) ]
 END
 
 (* Subterm *)
@@ -423,43 +393,42 @@ END
 
 TACTIC EXTEND is_secvar
 | [ "is_secvar" constr(x) ] ->
-   { enter (fun gl ->
+   [ enter (fun gl ->
      match kind (Proofview.Goal.sigma gl) x with
      | Var id when Termops.is_section_variable id -> Proofview.tclUNIT ()
-     | _ -> Tacticals.New.tclFAIL 0 (str "Not a section variable or hypothesis")) }
+     | _ -> Tacticals.New.tclFAIL 0 (str "Not a section variable or hypothesis")) ]
 END
 
 TACTIC EXTEND refine_ho
-| [ "refine_ho" open_constr(c) ] -> { Extra_tactics.refine_ho c }
+| [ "refine_ho" open_constr(c) ] -> [ Extra_tactics.refine_ho c ]
 END
 
 TACTIC EXTEND eqns_specialize_eqs
-| [ "eqns_specialize_eqs" ident(i) ] -> {
+| [ "eqns_specialize_eqs" ident(i) ] -> [
     Proofview.V82.tactic (Depelim.specialize_eqs ~with_block:false i)
-  }
-| [ "eqns_specialize_eqs_block" ident(i) ] -> {
+  ]
+| [ "eqns_specialize_eqs_block" ident(i) ] -> [
     Proofview.V82.tactic (Depelim.specialize_eqs ~with_block:true i)
-  }
+  ]
 END
 
 TACTIC EXTEND move_after_deps
 | [ "move_after_deps" ident(i) constr(c) ] ->
-{ Equations_common.move_after_deps i c }
+ [Equations_common.move_after_deps i c ]
 END
 
 (** Deriving *)
 
 VERNAC COMMAND EXTEND Derive CLASSIFIED AS SIDEFF
-| #[ poly = polymorphic ] [ "Derive" ne_ident_list(ds) "for" global_list(c) ] -> {
+| [ "Derive" ne_ident_list(ds) "for" global_list(c) ] -> [
+    let poly = Flags.is_universe_polymorphism () in
   Ederive.derive ~poly (List.map Id.to_string ds)
     (List.map (fun x -> x.CAst.loc, Smartlocate.global_with_alias x) c)
-  }
+  ]
 END
 
 
 (* Simplify *)
-
-{
 
 type simplification_rules_argtype = Simplify.simplification_rules Genarg.uniform_genarg_type
 
@@ -480,61 +449,61 @@ let g_simplification_rules : Simplify.simplification_rules Pcoq.Entry.t =
 let _ = Pptactic.declare_extra_genarg_pprule wit_g_simplification_rules
   pr_raw_g_simplification_rules pr_glob_g_simplification_rules pr_g_simplification_rules
 
-}
-
-GRAMMAR EXTEND Gram
+GEXTEND Gram
   GLOBAL: g_simplification_rules;
 
   g_simplification_rules:
-    [ [ l = LIST1 simplification_rule_located -> { l } ] ]
+    [ [ l = LIST1 simplification_rule_located -> l ] ]
   ;
 
   simplification_rule_located:
-    [ [ r = simplification_rule -> { (Some loc, r) } ] ]
+    [ [ r = simplification_rule -> (Some !@loc, r) ] ]
   ;
 
   simplification_rule:
-    [ [ step = simplification_step -> { Simplify.Step step }
-      | "?" -> { Simplify.Infer_one }
-      | "<->" -> { Simplify.Infer_direction }
-      | "*" -> { Simplify.Infer_many }
+    [ [ step = simplification_step -> Simplify.Step step
+      | "?" -> Simplify.Infer_one
+      | "<->" -> Simplify.Infer_direction
+      | "*" -> Simplify.Infer_many
     ] ];
 
   simplification_step :
-    [ [ "-" -> { Simplify.Deletion false }
-      | "-!" -> { Simplify.Deletion true }
-      | "$" -> { Simplify.NoConfusion [] }
+    [ [ "-" -> Simplify.Deletion false
+      | "-!" -> Simplify.Deletion true
+      | "$" -> Simplify.NoConfusion []
       | "$"; "{"; rules = g_simplification_rules; "}" ->
-        { Simplify.NoConfusion rules }
-      | dir = direction -> { Simplify.Solution dir }
+        Simplify.NoConfusion rules
+      | dir = direction -> Simplify.Solution dir
     ] ];
 
   direction:
-    [ [ "->" -> { Simplify.Left }
-      | "<-" -> { Simplify.Right }
+    [ [ "->" -> Simplify.Left
+      | "<-" -> Simplify.Right
     ] ];
 END
-
-{
 
 (* We need these alias due to the limitations of parsing macros. *)
 type simplification_rules = Simplify.simplification_rules
 let pr_simplification_rules _ _ _ = Simplify.pr_simplification_rules
 
-}
-
 ARGUMENT EXTEND simplification_rules
-PRINTED BY { pr_simplification_rules }
-  | [ g_simplification_rules(l) ] -> { l }
+PRINTED BY pr_simplification_rules
+  | [ g_simplification_rules(l) ] -> [ l ]
 END
 
 TACTIC EXTEND simplify
 | [ "simplify" simplification_rules(l) ] ->
-  { Simplify.simplify_tac l }
+  [ Simplify.simplify_tac l ]
 | [ "simplify" ] ->
-  { Simplify.simplify_tac [] }
+  [ Simplify.simplify_tac [] ]
 END
 
 TACTIC EXTEND mutual_fix
-| [ "mfix" my_preident_list(li) int_list(l) ] -> { Principles_proofs.mutual_fix li l }
+| [ "mfix" my_preident_list(li) int_list(l) ] -> [ Principles_proofs.mutual_fix li l ]
+END
+
+(* Register command *)
+
+VERNAC COMMAND EXTEND Register CLASSIFIED AS SIDEFF
+[ "Register" global(g) "as" global(quid) ] -> [ Equations_common.register_ref quid g ]
 END

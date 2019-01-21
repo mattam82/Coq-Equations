@@ -298,19 +298,11 @@ val noconf_hom_tac : unit -> unit Proofview.tactic
 val eqdec_tac : unit -> unit Proofview.tactic
 val simpl_equations_tac : unit -> unit Proofview.tactic
 val solve_equation_tac : Names.GlobRef.t -> unit Proofview.tactic
-val impossible_call_tac : Names.GlobRef.t -> Genarg.glevel Genarg.generic_argument
 val depelim_tac : Names.Id.t -> unit Proofview.tactic
 val do_empty_tac : Names.Id.t -> unit Proofview.tactic
 val depelim_nosimpl_tac : Names.Id.t -> unit Proofview.tactic
 val simpl_dep_elim_tac : unit -> unit Proofview.tactic
 val depind_tac : Names.Id.t -> unit Proofview.tactic
-val rec_tac :            Genredexpr.r_trm ->
-                         Names.Id.t ->
-                         Tacexpr.r_dispatch Tacexpr.gen_tactic_expr
-
-val rec_wf_tac :            Genredexpr.r_trm -> Genredexpr.r_trm ->
-           Names.Id.t -> Genredexpr.r_trm ->
-                         Tacexpr.r_dispatch Tacexpr.gen_tactic_expr
 
 (** Unfold the first occurrence of a Constant.t declared unfoldable in db
   (with Hint Unfold) *)
@@ -436,3 +428,7 @@ val evd_comb1 : (Evd.evar_map -> 'a -> Evd.evar_map * 'b) -> Evd.evar_map ref ->
 val evd_comb0 : (Evd.evar_map -> Evd.evar_map * 'b) -> Evd.evar_map ref -> 'b
 
 val splay_prod_n_assum : env -> Evd.evar_map -> int -> types -> rel_context * types
+
+(** Already in Coq master *)
+val register_ref : Libnames.qualid -> Libnames.qualid -> unit
+val mkRef : Names.GlobRef.t * Univ.Instance.t -> Constr.constr
