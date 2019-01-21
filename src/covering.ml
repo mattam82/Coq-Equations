@@ -711,7 +711,7 @@ let wf_fix_constr env evars sign arity carrier cterm crel =
   let reds =
     let flags = CClosure.betaiotazeta in
     let csts =
-      let ts = TransparentState.empty in
+      let ts = Names.empty_transparent_state in
       let cst = Names.Cpred.add (Projection.constant (Lazy.force coq_pr1)) Names.Cpred.empty in
       let cst = Names.Cpred.add (Projection.constant (Lazy.force coq_pr2)) cst in
       let add_ts cst t = Names.Cpred.add (Globnames.destConstRef (Lazy.force t)) cst in
@@ -727,7 +727,7 @@ let wf_fix_constr env evars sign arity carrier cterm crel =
            logic_tele_forall;
            logic_tele_forall_pack;
            logic_tele_forall_unpack]
-      in { ts with TransparentState.tr_cst }
+      in (fst ts, tr_cst)
     in CClosure.RedFlags.red_add_transparent flags csts
   in
   let norm env =

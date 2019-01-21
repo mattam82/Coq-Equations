@@ -92,7 +92,7 @@ let derive_noConfusion_package env sigma polymorphic (ind,u as indu) indid cstNo
   let term = it_mkLambda_or_LetIn term ctx in
   let ty = it_mkProd_or_LetIn ty ctx in
   let sigma, _ = Typing.type_of env sigma term in
-  let hook _ectx _evars vis gr =
+  let hook vis gr _ =
     Typeclasses.add_instance
       (Typeclasses.new_instance tc empty_hint_info true gr)
   in
@@ -100,7 +100,7 @@ let derive_noConfusion_package env sigma polymorphic (ind,u as indu) indid cstNo
   let oblinfo, _, term, ty = Obligations.eterm_obligations env noid sigma 0
       (to_constr ~abort_on_undefined_evars:false sigma term)
       (to_constr sigma ty) in
-    ignore(Obligations.add_definition ~univ_hook:(Obligations.mk_univ_hook hook) packid
+    ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hook) packid
              ~kind ~term ty ~tactic:(noconf_hom_tac ())
               (Evd.evar_universe_context sigma) oblinfo)
 

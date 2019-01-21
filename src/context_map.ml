@@ -587,7 +587,7 @@ let eq_context_nolet env sigma (g : rel_context) (d : rel_context) =
                  (Pp.string_of_ppcmds (Printer.pr_constr_env env sigma (EConstr.Unsafe.to_constr t)))
                  (Pp.string_of_ppcmds (Printer.pr_constr_env env sigma (EConstr.Unsafe.to_constr t')))
                  (* (Pp.string_of_ppcmds (UGraph.pr_universes Univ.Level.pr (Evd.universes sigma))); *)
-                 (Pp.string_of_ppcmds (Termops.pr_evar_map ~with_univs:true None env sigma));
+                 (Pp.string_of_ppcmds (Termops.pr_evar_map ~with_univs:true None sigma));
              (push_rel decl env, res)
            else env, acc) g d (env, true))
   with Invalid_argument _ (* "List.fold_right2" *) -> false

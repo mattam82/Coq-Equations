@@ -52,12 +52,32 @@ let pi3 (_,_,z) = z
 (** Objects to keep information about equations *)
 
 let cache_rew_rule (base, gr) =
-  Autorewrite.add_rew_rules base
-    [CAst.make (UnivGen.fresh_global_instance (Global.env()) gr, true, None)]
+  try
+    Autorewrite.add_rew_rules base
+      [CAst.make (UnivGen.fresh_global_instance (Global.env()) gr, true, None)]
+  with Not_found -> CErrors.anomaly Pp.(str "while rebuilding rewrite rule")
 
 let subst_rew_rule (subst, (base, gr)) =
   let gr' = Globnames.subst_global_reference subst gr in
   (base, gr')
+
+let superglobal_object_nodischarge s ~cache ~subst =
+  let open Libobject in
+  { (default_object s) with
+    load_function = (fun _ x -> cache x);
+    cache_function = cache;
+    subst_function = (match subst with
+        | None -> fun _ -> CErrors.anomaly Pp.(str "The object " ++ str s ++ str " does not know how to substitute!")
+        | Some subst -> subst;
+      );
+    classify_function =
+      if Option.has_some subst then (fun o -> Substitute o) else (fun o -> Keep o);
+  }
+
+let superglobal_object s ~cache ~subst ~discharge =
+  let open Libobject in
+  { (superglobal_object_nodischarge s ~cache ~subst) with
+    discharge_function = discharge }
 
 let inRewRules =
   let open Libobject in
@@ -66,7 +86,7 @@ let inRewRules =
     superglobal_object "EQUATIONS_REWRITE_RULE"
       ~cache:(fun (na, obj) -> cache_rew_rule obj)
       ~subst:(Some subst_rew_rule)
-      ~discharge:(fun (_, x) -> Some x)
+      ~discharge:(fun (_, x) -> Some (fst x, (Lib.discharge_global (snd x))))
   in
   declare_object @@ obj
 
@@ -1017,7 +1037,7 @@ let declare_funelim info env evd is_rec protos progs
       Smartlocate.global_with_alias (Libnames.qualid_of_ident elimid)
   in
   let elimc, elimty =
-    let elimty, uctx = Typeops.type_of_global_in_context (Global.env ()) elim in
+    let elimty, uctx = Global.type_of_global_in_context (Global.env ()) elim in
     let () = evd := Evd.from_env (Global.env ()) in
     if is_polymorphic info then
       (* We merge the contexts of the term and eliminator in which
@@ -1038,7 +1058,7 @@ let declare_funelim info env evd is_rec protos progs
     compute_elim_type env evd info.user_obls is_rec protos kn leninds ind_stmts all_stmts
                       sign app elimty
   in
-  let hookelim _ _ _ elimgr =
+  let hookelim _ elimgr _ =
     let env = Global.env () in
     let evd = Evd.from_env env in
     let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in
@@ -1057,7 +1077,7 @@ let declare_funelim info env evd is_rec protos progs
   let tactic = ind_elim_tac elimc leninds (List.length progs) info indgr in
   let _ = e_type_of (Global.env ()) evd newty in
   ignore(Obligations.add_definition (Nameops.add_suffix id "_elim")
-                                    ~tactic ~univ_hook:(Obligations.mk_univ_hook hookelim) ~kind:info.decl_kind
+                                    ~tactic ~hook:(Lemmas.mk_hook hookelim) ~kind:info.decl_kind
                                     (to_constr !evd newty) (Evd.evar_universe_context !evd) [||])
 
 let mkConj evd x y =
@@ -1112,7 +1132,7 @@ let declare_funind info alias env evd is_rec protos progs
     | None -> f
   in
   let app = applist (f, args) in
-  let hookind ectx _obls subst indgr =
+  let hookind subst indgr ectx =
     let env = Global.env () in (* refresh *)
     Hints.add_hints ~local:false [info.term_info.base_id]
                     (Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef indgr]);
@@ -1151,7 +1171,7 @@ let declare_funind info alias env evd is_rec protos progs
   let ctx = Evd.evar_universe_context (if poly then !evd else Evd.from_env (Global.env ())) in
   let launch_ind tactic =
     ignore(Obligations.add_definition
-             ~univ_hook:(Obligations.mk_univ_hook hookind)
+             ~hook:(Lemmas.mk_hook hookind)
              ~kind:info.term_info.decl_kind
              indid stmt ~tactic:(Tacticals.New.tclTRY tactic) ctx [||])
   in
@@ -1395,10 +1415,10 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
     let ind =
       let open Entries in
       match uctx with
-      | Cumulative_ind_entry (_, uctx) ->
+      | Cumulative_ind_entry uctx ->
         mkIndU ((kn,0), EInstance.make (Univ.UContext.instance
                                           (Univ.CumulativityInfo.univ_context uctx)))
-      | Polymorphic_ind_entry (_, uctx) ->
+      | Polymorphic_ind_entry uctx ->
         mkIndU ((kn,0), EInstance.make (Univ.UContext.instance uctx))
       | Monomorphic_ind_entry _ -> mkInd (kn,0)
     in
@@ -1429,7 +1449,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
     let id = path_id path in (* if j != 0 then Nameops.add_suffix id ("_helper_" ^ string_of_int j) else id in *)
     let proof (i, (r, unf, c, n)) =
       let ideq = Nameops.add_suffix id ("_equation_" ^ string_of_int i) in
-      let hook _ _obls subst gr =
+      let hook subst gr _ =
         if n != None then
           Lib.add_anonymous_leaf (inRewRules (info.base_id, gr))
         else (Typeclasses.declare_instance None true gr
@@ -1466,7 +1486,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
       ignore(Obligations.add_definition
                ~kind:info.decl_kind
                ideq (to_constr !evd c)
-               ~tactic:tac ~univ_hook:(Obligations.mk_univ_hook hook)
+               ~tactic:tac ~hook:(Lemmas.mk_hook hook)
 	       (Evd.evar_universe_context !evd) [||])
     in List.iter proof stmts
   in List.iter proof ind_stmts

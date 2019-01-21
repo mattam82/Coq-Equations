@@ -81,6 +81,7 @@ let decompose_indapp sigma f args =
 
 (* let sigT_info = lazy (make_case_info (Global.env ()) (Globnames.destIndRef (Lazy.force sigT).typ) LetStyle) *)
 
+let mkRef sigma (c, u) = EConstr.of_constr (UnivGen.constr_of_global_univ (c, EConstr.EInstance.kind sigma u))
 let telescope_intro env sigma len tele =
   let rec aux n ty =
     let ty = Reductionops.whd_all env sigma ty in
@@ -94,7 +95,7 @@ let telescope_intro env sigma len tele =
                       (push_rel (Context.Rel.Declaration.LocalAssum (na, t)) env) sigma b)
         | _ -> p
       in
-      let sigmaI = mkApp (mkRef (Lazy.force coq_sigmaI, u),
+      let sigmaI = mkApp (mkRef sigma (Lazy.force coq_sigmaI, u),
                           [| a; p; mkRel n; aux (pred n) (beta_applist sigma (p, [mkRel n])) |]) in
       sigmaI
     | _ -> mkRel n
@@ -806,7 +807,7 @@ module Tactics =struct
                      gl
           | None ->
              (tclTHENFIRST (Proofview.V82.of_tactic (assert_before_replacing id typ))
-                           (Refiner.refiner ~check:false EConstr.Unsafe.(to_constr prf))) gl)
+                           (Refiner.refiner (Proof_type.Refine EConstr.Unsafe.(to_constr prf)))) gl)
       | None -> tclFAIL 0 (str"No currying to do in " ++ Id.print id) gl)
 
   let curry =

@@ -56,7 +56,7 @@ let define_unfolding_eq env evd flags p unfp prog prog' ei hook =
   (* let cmap' x = of_constr (cmap (EConstr.to_constr ~abort_on_undefined_evars:false !evd x)) in
    * let unfold_split = map_split cmap' unfold_split in *)
   let unfold_eq_id = add_suffix (program_id unfp) "_eq" in
-  let hook_eqs _ _obls subst grunfold =
+  let hook_eqs subst grunfold _ =
     Global.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
     let () = (* Declare the subproofs of unfolding for where as rewrite rules *)
       let decl _ (_, id, _) =
@@ -101,7 +101,7 @@ let define_unfolding_eq env evd flags p unfp prog prog' ei hook =
   in
   ignore(Obligations.add_definition
            ~kind:info.decl_kind
-           ~univ_hook:(Obligations.mk_univ_hook hook_eqs) ~reduce:(fun x -> x)
+           ~hook:(Lemmas.mk_hook hook_eqs) ~reduce:(fun x -> x)
            ~implicits:(program_impls p) unfold_eq_id (to_constr evd stmt)
            ~tactic:(of82 tac)
            (Evd.evar_universe_context evd) [||])
@@ -163,7 +163,7 @@ let define_by_eqs ~poly ~open_proof opts eqs nt =
     let p = List.hd programs in Id.to_string p.program_info.program_id in
   (* Necessary for the definition of [i] *)
   let () =
-    let trs = { TransparentState.full with TransparentState.tr_cst = Cpred.complement (Cpred.singleton fix_proto_ref) } in
+    let trs = (fst full_transparent_state, Cpred.complement (Cpred.singleton fix_proto_ref)) in
     Hints.create_hint_db false baseid trs true
   in
   let progs = Array.make (List.length eqs) None in
