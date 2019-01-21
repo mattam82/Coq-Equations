@@ -39,7 +39,7 @@ src/noconf_hom.ml
 src/noconf_hom.mli
 src/extra_tactics.ml
 src/extra_tactics.mli
-src/g_equations.mlg
+src/g_equations.ml4
 src/equations_plugin_mod.ml
 src/equations_plugin.mllib
 theories/Init.v
