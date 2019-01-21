@@ -30,24 +30,17 @@ Section Nested.
     match goal with 
       | [ |- context [ ` (?x) ] ] => destruct x as [?x' ?H]; simpl
     end.
-  (* with destruct_proj1_sigs x := *)
-  (*     match x with *)
-  (*     (* | context [ ` (?x') ] => destruct_proj1_sigs x' *) *)
-  (*     | _ => *)
-  (*       let x' := fresh in *)
-  (*       let H' := fresh in *)
-  (*         destruct x as [x' H'] ; simpl proj1_sig; destruct_proj1_sig *)
-  (*   end. *)
 
   Hint Extern 3 => progress destruct_proj1_sig : Below.
   
   Hint Extern 3 => progress auto with arith : Below.
-
+  Obligation Tactic := idtac.
   Equations? f (n : nat) : { x : nat | x <= n }
    by wf n lt :=
   f 0 :=  exist _ 0 _ ;
   f (S n) := exist _ (proj1_sig (f (proj1_sig (f n)))) _.
-  Proof. all:(simpl; intros; try typeclasses eauto with Below).
+  Proof. auto with arith.  auto with arith.
+         all:(simpl; intros; try typeclasses eauto with Below).
          simpl. destruct f. simpl. destruct f. simpl. omega.
   Defined.
 
