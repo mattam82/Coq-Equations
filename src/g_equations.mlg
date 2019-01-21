@@ -37,21 +37,6 @@ TACTIC EXTEND autounfold_ref
 | [ "autounfold_ref" reference(myref) ] -> { Extra_tactics.autounfold_ref myref }
 END
 
-(* TACTIC EXTEND abstract_match *)
-(* [ "abstract_match" ident(hyp) constr(c) ] -> [ *)
-(*   match kind_of_term c with *)
-(*   | Case (_, _, c, _) -> letin_tac None (Name hyp) c None allHypsAndConcl *)
-(*   | _ -> tclFAIL 0 (str"Not a case expression") *)
-(* ] *)
-(* END *)
-
-(* TACTIC EXTEND autounfold_first *)
-(* | [ "autounfold_first" hintbases(db) "in" hyp(id) ] -> *)
-(*     [ autounfold_first (match db with None -> ["core"] | Some x -> x) (Some (id, InHyp)) ] *)
-(* | [ "autounfold_first" hintbases(db) ] -> *)
-(*     [ autounfold_first (match db with None -> ["core"] | Some x -> x) None ] *)
-(* END *)
-
 (* Sigma *)
 
 {
@@ -66,14 +51,6 @@ TACTIC EXTEND get_signature_pack
 END
       
 TACTIC EXTEND pattern_sigma
-(* [ "pattern" "sigma" "left" hyp(id) ] -> [ *)
-(*   Proofview.Goal.enter (fun gl -> *)
-(*     let gl = Proofview.Goal.assume gl in *)
-(*     let env = Proofview.Goal.env gl in *)
-(*     let sigma = Proofview.Goal.sigma gl in *)
-(*     let decl = Tacmach.New.pf_get_hyp id gl in *)
-(*     let term = Option.get (Util.pi2 decl) in *)
-(*     Sigma.pattern_sigma ~assoc_right:false term id env sigma) ] *)
 | [ "pattern" "sigma" hyp(id) ] -> { Sigma_types.Tactics.pattern_sigma id }
 END
 
@@ -90,12 +67,6 @@ TACTIC EXTEND uncurry_call
 | [ "uncurry_call" constr(c) constr(c') ident(id) ident(id') ] -> { Sigma_types.Tactics.uncurry_call c c' id id' }
 END
 
-(* TACTIC EXTEND pattern_tele *)
-(* [ "pattern_tele" constr(c) ident(hyp) ] -> [ fun gl -> *)
-(*   let settac = letin_tac None (Name hyp) c None onConcl in *)
-(*     tclTHENLIST [settac; pattern_sigma c hyp] gl ] *)
-(* END *)
-
 (* Depelim *)
 
 TACTIC EXTEND dependent_pattern
@@ -111,54 +82,6 @@ END
 TACTIC EXTEND pattern_call
 | [ "pattern_call" constr(c) ] -> { Proofview.V82.tactic (Depelim.pattern_call c) }
 END
-
-(* Noconf *)
-
-(* VERNAC COMMAND EXTEND Equations_Logic CLASSIFIED AS QUERY
- * | [ "Equations" "Logic" sort_family(s) global(eq) global(eqr) global(eq_case) global(eq_elim)
- *       global(z) global(o) global(ov) global(oprod) global(opair)
- *       global(rel) global(transclos) global(wfc) global(wf)
- *   ] -> [
- *   let gr x = Lazy.from_val (Nametab.global x) in
- *   Equations_common.(set_logic { logic_eq_ty = gr eq;
- * 				logic_eq_refl = gr eqr;
- *                                 logic_eq_case = gr eq_case;
- *                                 logic_eq_elim = gr eq_elim;
- *                                 logic_sort = s;
- *                                 logic_bot = gr z;
- *                                 logic_top = gr o;
- *                                 logic_top_intro = gr ov;
- *
- *                                 logic_conj = gr oprod;
- *                                 logic_conj_intro = gr opair;
- *
- *                                 logic_unit = gr o;
- *                                 logic_unit_intro = gr ov;
- *                                 logic_product = gr oprod;
- *                                 logic_pair = gr opair;
- *                                 logic_relation = gr rel;
- *                                 logic_transitive_closure = gr transclos;
- *                                 logic_wellfounded_class = gr wfc;
- *                                 logic_wellfounded = gr wf })
- *   ]
- * END *)
-
-(* TACTIC EXTEND dependent_generalize *)
-(* | ["dependent" "generalize" hyp(id) "as" ident(id') ] ->  *)
-(*     [ fun gl -> generalize_sigma (pf_env gl) (project gl) (mkVar id) id' gl ] *)
-(* END *)
-(* TACTIC EXTEND dep_generalize_force *)
-(* | ["dependent" "generalize" "force" hyp(id) ] ->  *)
-(*     [ abstract_generalize ~generalize_vars:false ~force_dep:true id ] *)
-(* END *)
-(* TACTIC EXTEND dependent_generalize_eqs_vars *)
-(* | ["dependent" "generalize" "vars" hyp(id) ] ->  *)
-(*     [ abstract_generalize ~generalize_vars:true id ] *)
-(* END *)
-(* TACTIC EXTEND dependent_generalize_eqs_vars_force *)
-(* | ["dependent" "generalize" "force" "vars" hyp(id) ] ->  *)
-(*     [ abstract_generalize ~force_dep:true ~generalize_vars:true id ] *)
-(* END *)
 
 TACTIC EXTEND needs_generalization
 | [ "needs_generalization" hyp(id) ] -> 
@@ -190,10 +113,6 @@ TACTIC EXTEND simp
                         c
                         (dbs_of_constrs (List.map EConstr.Unsafe.to_constr l))) }
 END
-
-
-(* let wit_r_equation_user_option : equation_user_option Genarg.uniform_genarg_type = *)
-(*   Genarg.create_arg None "r_equation_user_option" *)
 
 {
 
@@ -452,35 +371,6 @@ VERNAC COMMAND EXTEND Define_equations_refine CLASSIFIED BY { classify_equations
     (* decl_notation(nt) *) ] ->
     { Equations.equations ~poly ~open_proof:true opt eqns [] }
 END
-
-(* TACTIC EXTEND block_goal *)
-(* [ "block_goal" ] -> [ of82 ( *)
-(*   (fun gl -> *)
-(*     let block = Lazy.force coq_block in *)
-(*     let concl = pf_concl gl in *)
-(*     let ty = pf_type_of gl concl in *)
-(*     let evd = project gl in *)
-(*     let newconcl = mkApp (block, [|ty; concl|]) in *)
-(*     let evd, _ty = Typing.e_type_of (pf_env gl) evd newconcl in *)
-(*       (\* msg_info (str "After e_type_of: " ++ pr_evar_map None evd); *\) *)
-(*       tclTHEN (tclEVARS evd) *)
-(* 	(convert_concl newconcl DEFAULTcast) gl)) ] *)
-(* END *)
-  
-(* TACTIC EXTEND pattern_call *)
-(* [ "pattern_call" constr(c) ] -> [ fun gl -> *)
-(*   match kind_of_term c with *)
-(*   | App (f, [| arg |]) -> *)
-(*       let concl = pf_concl gl in *)
-(*       let replcall = replace_term c (mkRel 1) concl in *)
-(*       let replarg = replace_term arg (mkRel 2) replcall in *)
-(*       let argty = pf_type_of gl arg and cty = pf_type_of gl c in *)
-(*       let rels = [(Name (Id.of_string "call"), None, replace_term arg (mkRel 1) cty); *)
-(* 		  (Name (Id.of_string "arg"), None, argty)] in *)
-(*       let newconcl = mkApp (it_mkLambda_or_LetIn replarg rels, [| arg ; c |]) in *)
-(* 	convert_concl newconcl DEFAULTcast gl  *)
-(*   | _ -> tclFAIL 0 (str "Not a recognizable call") gl ] *)
-(* END *)
 
 (* Dependent elimination using Equations. *)
 
