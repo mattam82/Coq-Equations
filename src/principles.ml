@@ -104,7 +104,7 @@ let inOpacity =
     superglobal_object "EQUATIONS_OPACITY"
       ~cache:(fun (na, obj) -> cache_opacity obj)
       ~subst:(Some subst_opacity)
-      ~discharge:(fun (_, x) -> Some x)
+      ~discharge:(fun (_, x) -> Some (Lib.discharge_con x))
   in
   declare_object @@ obj
 

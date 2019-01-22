@@ -167,7 +167,6 @@ Derive NoConfusion NoConfusionHom for vector.
 Arguments Vector.nil {A}.
 Arguments Vector.cons {A} _ {n}.
 
-Declare Scope vect_scope.
 Notation " x |:| y " := (@Vector.cons _ x _ y) (at level 20, right associativity) : vect_scope.
 Notation " x |: n :| y " := (@Vector.cons _ x n y) (at level 20, right associativity) : vect_scope.
 Notation "[]v" := Vector.nil (at level 0) : vect_scope.

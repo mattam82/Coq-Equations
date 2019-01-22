@@ -23,8 +23,6 @@ Declare ML Module "equations_plugin".
 Delimit Scope equations_scope with equations.
 Local Open Scope equations_scope.
 
-Global Unset Auto Template Polymorphism.
-
 (** A marker for fixpoint prototypes in the context *)
 Definition fixproto := tt.
 
