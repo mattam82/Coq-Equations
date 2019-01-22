@@ -37,28 +37,30 @@ Proof.
 Defined.
 
 Set Program Mode.
-Equations? f91 n : { m : nat | if le_lt_dec n 100 then m = 91 else m = n - 10 } by rec n f91_rel :=
+
+Equations f91 n : { m : nat | if le_lt_dec n 100 then m = 91 else m = n - 10 } by rec n f91_rel :=
 f91 n with le_lt_dec n 100 := {
   | left H := f91 (f91 (n + 11)) ;
   | right H := (n - 10) }.
-Proof.
-  - apply (f91_1 _ H).
-  - apply f91_2.
-  - unfold f91_2. destruct f91; cbn [proj1_sig];
-    destruct f91; cbn [proj1_sig];
-    destruct le_lt_dec; subst; simpl in y0; auto;
-    destruct le_lt_dec; subst; auto; omega.
+(* Proof. *)
+(*   - apply (f91_1 _ H). *)
+(*   - apply f91_2. *)
+(*   - unfold f91_2. destruct f91; cbn [proj1_sig]; *)
+(*     destruct f91; cbn [proj1_sig]; *)
+(*     destruct le_lt_dec; subst; simpl in y0; auto; *)
+(*     destruct le_lt_dec; subst; auto; omega. *)
+(* Defined. *)
+
+Next Obligation. red. now apply f91_1. Qed.
+Next Obligation. intros. destruct f91. simpl. do 2 red.
+  destruct_call le_lt_dec. subst. omega. subst. omega.
 Defined.
 
-(* Next Obligation. intros. destruct f91. simpl. do 2 red. *)
-(*   destruct_call le_lt_dec. subst. omega. subst. omega. *)
-(* Defined. *)
-
-(* Next Obligation. destruct_call f91; simpl. *)
-(*   destruct_call f91. simpl in *. destruct le_lt_dec. subst. simpl in y. auto. *)
-(*   subst x0. destruct le_lt_dec; auto. *)
-(*   subst x. simpl. omega. *)
-(* Defined. *)
+Next Obligation. destruct_call f91; simpl.
+  destruct_call f91. simpl in *. destruct le_lt_dec. subst. simpl in y. auto.
+  subst x0. destruct le_lt_dec; auto.
+  subst x. simpl. omega.
+Defined.
 
 (** MS: Bug, this should be derivable, but needs the user's proofs as hints (omega calls) *)
 Next Obligation.

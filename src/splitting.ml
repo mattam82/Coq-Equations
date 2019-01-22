@@ -1043,25 +1043,24 @@ let error_complete () =
                 str "Equations definition is complete and requires no further proofs. " ++
                 str "Use the \"Equations\" command to define it.")
 
-let solve_equations_obligations flags recids i isevar hook =
+let solve_equations_obligations flags recids i sigma hook =
   let kind = (Decl_kinds.Local, flags.polymorphic, Decl_kinds.(DefinitionBody Definition)) in
-  let evars = Evar.Map.bindings (Evd.undefined_map !isevar) in
+  let evars = Evar.Map.bindings (Evd.undefined_map sigma) in
   let env = Global.env () in
   let types =
     List.map (fun (ev, evi) ->
         if !Equations_common.debug then
-          Feedback.msg_debug (str"evar type" ++ Printer.pr_econstr_env env !isevar evi.Evd.evar_concl);
+          Feedback.msg_debug (str"evar type" ++ Printer.pr_econstr_env env sigma evi.Evd.evar_concl);
         let section_length = List.length (named_context env) in
         let evcontext = Evd.evar_context evi in
         let local_context, section_context =
           List.chop (List.length evcontext - section_length) evcontext
         in
         let type_ = Termops.it_mkNamedProd_or_LetIn evi.Evd.evar_concl local_context in
-        let type_ = nf_beta env !isevar type_ in
+        let type_ = nf_beta env sigma type_ in
         env, ev, evi, local_context, type_) evars in
   (* Make goals from a copy of the evars *)
-  let initisevar = !isevar in
-  let isevar0 = ref !isevar in
+  let isevar0 = ref sigma in
   let wits = ref [] in
   let tele =
     let rec aux types evm =
@@ -1076,7 +1075,7 @@ let solve_equations_obligations flags recids i isevar hook =
                  !isevar0;
              wits := wit :: !wits;
              aux tys evm'))
-    in aux types (Evd.from_ctx (Evd.evar_universe_context !isevar))
+    in aux types (Evd.from_ctx (Evd.evar_universe_context sigma))
   in
   let terminator = function
     | Proof_global.Admitted (id, gk, pe, us) ->
@@ -1090,28 +1089,22 @@ let solve_equations_obligations flags recids i isevar hook =
         | DefinitionBody d -> IsDefinition d
         | Proof p -> IsProof p
       in
+      let evd = ref sigma in
       let recobls =
         CList.map2 (fun (wit, (evar_env, ev, evi, local_context, type_)) entry ->
-            let () =
-              if Evd.is_defined !isevar ev then
-                (* We backtracked, reset the isevar structure *)
-                isevar := initisevar
-            in
-           let id =
-             match Evd.evar_ident ev !isevar with
-             | Some id -> id
-             | None -> let n = !obls in incr obls; add_suffix i ("_obligation_" ^ string_of_int n)
-           in
-           let entry, args = shrink_entry local_context entry in
-           let cst = Declare.declare_constant id (Entries.DefinitionEntry entry, kind) in
-           let newevars, app = Evarutil.new_global !isevar (ConstRef cst) in
-           isevar :=
-             Evd.define ev (applist (app, List.map of_constr args)) (* List.rev (Context.Named.to_instance mkVar local_context))) *)
-               newevars;
-           cst)
-          (CList.combine (List.rev !wits) types) obj.Proof_global.entries
+        let id =
+          match Evd.evar_ident ev sigma with
+          | Some id -> id
+          | None -> let n = !obls in incr obls; add_suffix i ("_obligation_" ^ string_of_int n)
+        in
+        let entry, args = shrink_entry local_context entry in
+        let cst = Declare.declare_constant id (Entries.DefinitionEntry entry, kind) in
+        let sigma, app = Evarutil.new_global !evd (ConstRef cst) in
+        evd := Evd.define ev (applist (app, List.map of_constr args)) sigma;
+        cst)
+        (CList.combine (List.rev !wits) types) obj.Proof_global.entries
       in
-      hook recobls
+      hook recobls !evd
   in
   let do_intros =
     (* Force introductions to be able to shrink the bodies later on. *)
@@ -1139,50 +1132,53 @@ let solve_equations_obligations flags recids i isevar hook =
                                   str "could not be solved automatically. Use the \"Equations?\" command to" ++
                                   str " refine them interactively")
 
-
-(* let define_tree is_recursive helpers recobls fixprots flags isevar env p hook =
- *   let t = p.program_term in
- *   let idx = ref 0 in
- *   let hook uctx evars locality gr =
- *     (\* let l =
- *      *   Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
- *      * Extraction_plugin.Table.extraction_inline true l; *\)
- *     let kind = (locality, flags.polymorphic, Decl_kinds.Definition) in
- *     let baseid = Id.to_string (program_id p) in
- *     let term_info = { term_id = gr; term_ustate = uctx; term_evars = evars;
- *                       base_id = baseid; helpers_info = helpers; decl_kind = kind;
- *                       comp_obls = recobls; user_obls = Id.Set.empty } in
- *     let cmap = fun x -> x in
- *       hook idx p.program_splitting cmap term_info uctx;
- *       incr idx
- *
- *   in
- *   let univ_hook = Obligations.mk_univ_hook hook in
- *   let reduce x =
- *     let flags = CClosure.betaiotazeta in
- *     (\* let flags = match comp with None -> flags *\)
- *     (\*   | Some f -> fCONST f.comp :: fCONST f.comp_proj :: flags *\)
- *     (\* in *\)
- *     to_constr !isevar (clos_norm_flags flags (Global.env ()) !isevar (of_constr x))
- *   in
- *   let kind = (Decl_kinds.Global, flags.polymorphic, Decl_kinds.Definition) in
- *   let ty' = program_type p in
- *     match is_recursive with
- *     | Some (Guarded (_ :: _ :: _)) ->
- *         let ty' = it_mkProd_or_LetIn ty' fixprots in
- *         let t' = EConstr.to_constr !isevar t in
- *         let ty' = EConstr.to_constr !isevar ty' in
- *         ignore(Obligations.add_definition
- *                  ~univ_hook ~kind
- *                  ~implicits:(program_impls p) (add_suffix (program_id p) "_functional") ~term:t' ty' ~reduce
- *                  (Evd.evar_universe_context !isevar) [||])
- *     | _ ->
- *       let t' = EConstr.to_constr !isevar t in
- *       let ty' = EConstr.to_constr !isevar ty' in
- *       ignore(Obligations.add_definition ~univ_hook ~kind
- *                ~implicits:(program_impls p) (program_id p) ~term:t' ty'
- *                ~reduce (Evd.evar_universe_context !isevar) [||]) *)
-
+let solve_equations_obligations_program flags recids i sigma hook =
+  let kind = (Decl_kinds.Local, flags.polymorphic, Decl_kinds.(Definition)) in
+  let env = Global.env () in
+  let sigma, term = get_fresh sigma (Equations_common.logic_top_intro) in
+  let sigma, ty = get_fresh sigma (Equations_common.logic_top) in
+  let sigma = Evd.minimize_universes sigma in
+  let sigma, _ = Evd.nf_univ_variables sigma in
+  let sigma = Evarutil.nf_evar_map_undefined sigma in
+  let oblsid = Nameops.add_suffix i "_obligations" in
+  let oblsinfo, (evids, cmap), term, ty =
+    Obligations.eterm_obligations env oblsid sigma 0
+    ~status:(Evar_kinds.Define false) (EConstr.to_constr sigma term) (EConstr.to_constr sigma ty)
+  in
+  let hook uctx evars locality gr =
+    (* let l =
+     *   Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
+     * Extraction_plugin.Table.extraction_inline true l; *)
+    let sigma = Evd.merge_universe_context sigma uctx in
+    let evc id = List.assoc_f Id.equal id evars in
+    let sigma =
+      Evd.fold_undefined
+      (fun ev evi sigma ->
+      let args =
+        Array.of_list (List.map (fun d -> Constr.mkVar (Context.Named.Declaration.get_id d))
+                       (Evd.evar_filtered_context evi)) in
+      let evart = Constr.mkEvar (ev, args) in
+      let evc = cmap evc evart in
+      Evd.define ev (whd_beta sigma (EConstr.of_constr evc)) sigma)
+      sigma sigma
+    in
+    let recobls =
+      List.map (fun (id, c) ->
+      (* Due to shrinking, we can get lambda abstractions first *)
+      let _, body = decompose_lam_assum sigma (EConstr.of_constr c) in
+      let hd, _ = decompose_app sigma body in
+      try fst (EConstr.destConst sigma hd)
+      with Constr.DestKO -> assert false) evars
+    in
+    hook recobls sigma
+  in
+  let univ_hook = Obligations.mk_univ_hook hook in
+  let reduce x =
+    let flags = CClosure.betaiotazeta in
+    to_constr sigma (clos_norm_flags flags (Global.env ()) sigma (of_constr x))
+  in
+  ignore (Obligations.add_definition oblsid ~term ty (Evd.evar_universe_context sigma)
+          ~kind ~reduce ~univ_hook:univ_hook ~opaque:false oblsinfo)
 
 let simplify_evars evars t =
   let rec aux t =
@@ -1218,18 +1214,20 @@ let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false)
                       comp_obls = recobls; user_obls = Id.Set.empty } in
     hook p term_info
   in
-  let all_hook hook recobls =
-    let _ = evd := Evarutil.nf_evar_map_undefined !evd in
-    let () = evd := Evd.minimize_universes !evd in
-    let programs = List.map (map_program (simplify_evars !evd)) programs in
+  let all_hook hook recobls sigma =
+    let sigma = Evd.minimize_universes sigma in
+    let sigma = Evarutil.nf_evar_map_undefined sigma in
+    let programs = List.map (map_program (simplify_evars sigma)) programs in
     let () =
       if !Equations_common.debug then
-        Feedback.msg_debug (str"Defining programs " ++ pr_programs env !evd programs);
+        Feedback.msg_debug (str"Defining programs " ++ pr_programs env sigma programs);
     in
+    let evd = ref sigma in
     let helpers, programs = define_program_constants flags env evd ~unfold programs in
-    let programs = List.map (map_program (simplify_evars !evd)) programs in
-    let programs = List.map (map_program (nf_evar !evd)) programs in
-    let ustate = Evd.evar_universe_context !evd in
+    let sigma = !evd in
+    let programs = List.map (map_program (simplify_evars sigma)) programs in
+    let programs = List.map (map_program (nf_evar sigma)) programs in
+    let ustate = Evd.evar_universe_context sigma in
     let () = List.iter (fun (cst, _) -> add_hint true (program_id (List.hd programs)) cst) helpers in
     hook recobls helpers ustate Decl_kinds.Global programs
   in
@@ -1246,7 +1244,7 @@ let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false)
       let p = List.hd programs in
       let cst, _ = (destConst !evd p.program_term) in
       call_hook recobls p helpers ustate Decl_kinds.Global (ConstRef cst) f
-    in all_hook hook []
+    in all_hook hook [] !evd
   | HookLater f ->
     let hook recobls helpers ustate kind programs =
       List.iteri (fun i p ->
@@ -1254,10 +1252,13 @@ let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false)
           call_hook recobls p helpers ustate Decl_kinds.Global (ConstRef cst) (f i)) programs
     in
     if Evd.has_undefined !evd then
-      solve_equations_obligations flags recids (program_id (List.hd programs)) evd (all_hook hook)
+      if flags.open_proof then
+        solve_equations_obligations flags recids (program_id (List.hd programs)) !evd (all_hook hook)
+      else
+        solve_equations_obligations_program flags recids (program_id (List.hd programs)) !evd (all_hook hook)
     else
       if flags.open_proof then error_complete ()
-      else all_hook hook []
+      else all_hook hook [] !evd
 
 let define_program_immediate env evd is_recursive fixprots flags ?(unfold=false) program =
   define_programs env evd is_recursive fixprots flags ~unfold [program]

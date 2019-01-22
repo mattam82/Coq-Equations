@@ -180,15 +180,13 @@ Import Vector.
 (* End unzip_dec_def. *)
 Section foo.
   Context {A B : Type}.
-
-  Equations? unzipv {n} (v : vector (A * B) n) : vector A n * vector B n
+  Equations unzipv {n} (v : vector (A * B) n) : vector A n * vector B n
    by rec (signature_pack v) (@vector_subterm (A * B)) :=
   unzipv []v := ([]v, []v) ;
   unzipv ((x, y) |:| v) with unzipv v := {
     | pair xs ys := (cons x xs, cons y ys) }.
-
-  Proof. clear. intros. constructor. constructor. Defined.
-
+  Next Obligation. clear. constructor. constructor. Defined.
+    (* Proof. clear. intros. constructor. constructor. Defined. *)
 End foo.
 
 Typeclasses Transparent vector_subterm.
@@ -221,10 +219,6 @@ nos_with (S m) with nos_with m := {
   | O := S O ;
   | S n' := O }.
 
-
-(* Hint Unfold noConfusion_nat : equations. *)
-
-Obligation Tactic := program_simpl ; auto with arith.
 
 Equations equal (n m : nat) : { n = m } + { n <> m } :=
 equal O O := in_left ;

@@ -145,7 +145,7 @@ Proof.
     - simp irev_aux iapp. rewrite convert_ilist_trans.
       rewrite <- iapp_cons.
       set (He := eq_trans _ _). clearbody He.
-      set (He' := irev_aux_obligation_1 _ _). clearbody He'.
+      set (He' := irev_aux_obligations_obligation_1 _ _). clearbody He'.
       simpl in H0. simpl in H.
 Admitted.
 
