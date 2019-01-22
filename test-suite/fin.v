@@ -84,9 +84,7 @@ Proof.
   induction n ; intros.
     - depelim l. simp isnoc nat_to_fin iget.
     - depelim l. simp isnoc nat_to_fin iget.
-      unfold nat_to_fin_obligation_1.
-      replace (Lt.lt_S_n n0 (S n0) (Lt.lt_n_Sn (S n0))) with (Lt.lt_n_Sn n0) by (apply proof_irrelevance).
-      apply IHn.
+      rewrite <- (IHn l x) at 2. f_equal. pi.
 Qed.
 
 Equations convert_ilist {A : Set} {n m : nat} (p : n = m) (l : ilist A n) : ilist A m :=

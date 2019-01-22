@@ -46,7 +46,6 @@ Definition Ctx := list Ty.
 
 Reserved Notation " x ∈ s " (at level 70, s at level 10).
 
-#[universes(template)]
 Inductive In {A} (x : A) : list A -> Type :=
 | here {xs} : x ∈ (x :: xs)
 | there {y xs} : x ∈ xs -> x ∈ (y :: xs)
@@ -75,7 +74,6 @@ Inductive Expr : Ctx -> Ty -> Set :=
     are forced arguments. *)
 Derive Signature NoConfusion NoConfusionHom for Expr.
 
-#[universes(template)]
 Inductive All {A} (P : A -> Type) : list A -> Type :=
 | all_nil : All P []
 | all_cons {x xs} : P x -> All P xs -> All P (x :: xs).

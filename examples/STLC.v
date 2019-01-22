@@ -35,7 +35,6 @@ Derive NoConfusion Subterm EqDec for term.
 
 Coercion Var : nat >-> term.
 
-Declare Scope term_scope.
 Delimit Scope term_scope with term.
 Bind Scope term_scope with term.
 

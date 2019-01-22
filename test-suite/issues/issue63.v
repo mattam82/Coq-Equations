@@ -42,7 +42,8 @@ Fixpoint term_size
   end.
 Set Program Mode.
 
-Equations? comp_assoc_simpl_rec {a : nat} {tys dom cod}
+Obligation Tactic := program_simpl; try lia.
+Equations comp_assoc_simpl_rec {a : nat} {tys dom cod}
           (t : @Term a tys dom cod) : {t' : @Term a tys dom cod | term_size t' <= term_size t}
   by wf (term_size t) lt :=
   comp_assoc_simpl_rec (Comp f g) with comp_assoc_simpl_rec f => {
@@ -50,10 +51,12 @@ Equations? comp_assoc_simpl_rec {a : nat} {tys dom cod}
     | x => Comp x (comp_assoc_simpl_rec g)
   };
   comp_assoc_simpl_rec x := x.
-Proof.
-  1-2,4:lia.
-  all:(simpl; try destruct_call comp_assoc_simpl_rec; simpl in *; lia).
-Time Defined.
+
+Solve Obligations with program_simpl; simpl; try destruct_call comp_assoc_simpl_rec; simpl in *; lia.
+(* Proof. *)
+(*   1-2,4:lia. *)
+(*   all:(simpl; try destruct_call comp_assoc_simpl_rec; simpl in *; lia). *)
+(* Time Defined. *)
 
 Definition comp_assoc_simpl {a}
            {tys : Vector.t obj_pair a} {dom cod} (t : Term tys dom cod) : Term tys dom cod :=

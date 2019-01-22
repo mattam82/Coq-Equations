@@ -878,8 +878,6 @@ let check_splitting env evd sp =
     aux p.program_splitting
   in aux sp
 
-
-
 let define_splitting_constants flags env0 isevar unfold tree =
   let () = assert (not (Evd.has_undefined !isevar)) in
   let helpers = ref [] in
@@ -1035,6 +1033,7 @@ let shrink_entry sign const =
   let const = { const with
     const_entry_body = Future.from_val ((body, uctx), eff);
     const_entry_type = Some typ;
+    const_entry_opaque = false;
   } in
   (const, args)
 
@@ -1098,6 +1097,8 @@ let solve_equations_obligations flags recids i sigma hook =
           | None -> let n = !obls in incr obls; add_suffix i ("_obligation_" ^ string_of_int n)
         in
         let entry, args = shrink_entry local_context entry in
+        (* Feedback.msg_debug (str"Defining " ++ Id.print id ++ str " := " ++ Printer.pr_constr_env env !evd
+         *                                                                    (fst (fst (Future.force entry.Entries.const_entry_body)))); *)
         let cst = Declare.declare_constant id (Entries.DefinitionEntry entry, kind) in
         let sigma, app = Evarutil.new_global !evd (ConstRef cst) in
         evd := Evd.define ev (applist (app, List.map of_constr args)) sigma;
@@ -1141,44 +1142,71 @@ let solve_equations_obligations_program flags recids i sigma hook =
   let sigma, _ = Evd.nf_univ_variables sigma in
   let sigma = Evarutil.nf_evar_map_undefined sigma in
   let oblsid = Nameops.add_suffix i "_obligations" in
+  let evars, term =
+    Evd.fold_undefined (fun ev evi (evars, term) ->
+      let ctx = Evd.evar_filtered_context evi in
+      let ctx, secctx = List.split_when (fun x -> Termops.is_section_variable (Context.Named.Declaration.get_id x)) ctx in
+      let args = List.map (fun d -> EConstr.mkVar (Context.Named.Declaration.get_id d)) ctx in
+      let evar_body = Termops.it_mkNamedLambda_or_LetIn (mkEvar (ev, Array.of_list args)) ctx in
+      let evar_type = Termops.it_mkNamedProd_or_LetIn (Evd.evar_concl evi) ctx in
+      ((ev, args) :: evars, mkLetIn (Anonymous, evar_body, evar_type, term)))
+      sigma ([], term)
+  in
   let oblsinfo, (evids, cmap), term, ty =
     Obligations.eterm_obligations env oblsid sigma 0
     ~status:(Evar_kinds.Define false) (EConstr.to_constr sigma term) (EConstr.to_constr sigma ty)
   in
-  let hook uctx evars locality gr =
+  let hook locality gr uctx =
     (* let l =
      *   Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
      * Extraction_plugin.Table.extraction_inline true l; *)
     let sigma = Evd.merge_universe_context sigma uctx in
-    let evc id = List.assoc_f Id.equal id evars in
-    let sigma =
-      Evd.fold_undefined
-      (fun ev evi sigma ->
-      let args =
-        Array.of_list (List.map (fun d -> Constr.mkVar (Context.Named.Declaration.get_id d))
-                       (Evd.evar_filtered_context evi)) in
-      let evart = Constr.mkEvar (ev, args) in
-      let evc = cmap evc evart in
-      Evd.define ev (whd_beta sigma (EConstr.of_constr evc)) sigma)
-      sigma sigma
+    let evars, sigma =
+      let def = Environ.constant_value_in (Global.env ())
+                (destConstRef gr, Univ.UContext.instance (UState.context uctx)) in
+      let rec aux sigma evars c =
+        match evars, EConstr.kind sigma c with
+        | (ev, args) :: evars, LetIn (_, b, _, rest) ->
+           let ctx, body = decompose_lam_assum sigma b in
+           let sigma =
+             Evd.define ev (whd_beta sigma (substl args body)) sigma
+           in
+           let evars, sigma = aux sigma evars rest in
+           body :: evars, sigma
+        | [], _ -> [], sigma
+        | _, _ -> assert false
+      in aux sigma evars (EConstr.of_constr def)
     in
+    (* let evc id = List.find (fun (ev, id') -> if Id.equal id id' then true else false) evids in *)
+    (* let sigma =
+     *   Evd.fold_undefined
+     *   (fun ev evi sigma ->
+     *   let args =
+     *     Array.of_list (List.map (fun d -> Constr.mkVar (Context.Named.Declaration.get_id d))
+     *                    (Evd.evar_filtered_context evi)) in
+     *   let evart = Constr.mkEvar (ev, args) in
+     *   let evc = cmap evc evart in
+     *   Evd.define ev (whd_beta sigma (EConstr.of_constr evc)) sigma)
+     *   sigma sigma
+     * in *)
     let recobls =
-      List.map (fun (id, c) ->
+      List.map (fun c ->
       (* Due to shrinking, we can get lambda abstractions first *)
-      let _, body = decompose_lam_assum sigma (EConstr.of_constr c) in
+      let hd, _ = decompose_app sigma c in
+      let _, body = decompose_lam_assum sigma hd in
       let hd, _ = decompose_app sigma body in
       try fst (EConstr.destConst sigma hd)
       with Constr.DestKO -> assert false) evars
     in
     hook recobls sigma
   in
-  let univ_hook = Obligations.mk_univ_hook hook in
+  let univ_hook = Lemmas.mk_hook hook in
   let reduce x =
     let flags = CClosure.betaiotazeta in
     to_constr sigma (clos_norm_flags flags (Global.env ()) sigma (of_constr x))
   in
   ignore (Obligations.add_definition oblsid ~term ty (Evd.evar_universe_context sigma)
-          ~kind ~reduce ~univ_hook:univ_hook ~opaque:false oblsinfo)
+          ~kind ~reduce ~hook:univ_hook ~opaque:false oblsinfo)
 
 let simplify_evars evars t =
   let rec aux t =
