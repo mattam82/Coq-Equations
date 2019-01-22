@@ -23,10 +23,6 @@ Declare Scope equations_scope.
 Delimit Scope equations_scope with equations.
 Local Open Scope equations_scope.
 
-(** For now we don't support obligation shrinking. Need to sync ML code with this. *)
-Set Warnings "-deprecated-option".
-Global Unset Shrink Obligations.
-
 Global Unset Auto Template Polymorphism.
 
 (** A marker for fixpoint prototypes in the context *)
