@@ -1,3 +1,26 @@
+(* begin hide *)
+(**********************************************************************)
+(* Equations                                                          *)
+(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(**********************************************************************)
+(* This file is distributed under the terms of the                    *)
+(* GNU Lesser General Public License Version 2.1                      *)
+(**********************************************************************)
+(* end hide *)
+(** * Definitional interpreter for STCL extended with references
+
+  This is a port of the first part of "Intrinsically-Typed Definitional
+  Interpreters for Imperative Languages", Poulsen, Rouvoet, Tolmach,
+  Krebbers and Visser. POPL'18.
+
+  It uses well-typed and well-scoped syntax and an indexed monad to
+  define an interpreter for an imperative programming language.
+
+  This showcases the use of dependent pattern-matching and pattern-matching
+  lambdas in Equations. We implement a variant where store extension is
+  resolved using type class resolution as well as the dependent-passing
+  style version. *)
+
 Require Import Program.Basics Program.Tactics.
 From Equations Require Import Equations.
 Require Import Coq.Vectors.VectorDef.
@@ -5,8 +28,10 @@ Require Import List.
 Import ListNotations.
 Set Equations Transparent.
 
+(** [t] is just [Vector.t] here. *)
 Derive Signature NoConfusion NoConfusionHom for t.
 
+(** Types include unit, bool, function types and references *)
 Inductive Ty : Set :=
 | unit : Ty
 | bool : Ty
@@ -43,6 +68,11 @@ Inductive Expr : Ctx -> Ty -> Set :=
 | deref {Γ t} : Expr Γ (ref t) -> Expr Γ t
 | assign {Γ t} : Expr Γ (ref t) -> Expr Γ t -> Expr Γ unit.
 
+(** We derive both [NoConfusion] and [NoConfusionHom] principles here, the later
+    allows to simplify pattern-matching problems on [Expr] which would otherwise
+    require K. It relies on an inversion analysis of every constructor, showing
+    that the context and type indexes in the conclusions of every constructor
+    are forced arguments. *)
 Derive Signature NoConfusion NoConfusionHom for Expr.
 
 #[universes(template)]
@@ -127,7 +157,7 @@ Section StoreIncl.
    weaken_val (@val_unit ?(Σ)) := val_unit;
    weaken_val val_true := val_true;
    weaken_val val_false := val_false;
-   weaken_val (val_closure b e) := val_closure b (* (map_all (fun t v => weaken_val v) e);  *) (weaken_vals e);
+   weaken_val (val_closure b e) := val_closure b (weaken_vals e);
    weaken_val (val_loc H) := val_loc (pres_in _ H) }
   where weaken_vals {l} (a : All (fun t => Val t Σ) l) : All (fun t => Val t Σ') l :=
   weaken_vals all_nil := all_nil;
@@ -269,7 +299,8 @@ Equations strength {Σ Γ} {P Q : StoreTy -> Type} {w : Weakenable Q} (m : M Γ 
     | Some (Σ, μ', p, ext) => Some (Σ, μ', storepred_pair p (weaken ext q), ext) }.
 
 Infix "^" := strength.
-(* TODO improve pattern matching lambda to have implicit arguments implicit.
+
+(* Issue: improve pattern matching lambda to have implicit arguments implicit.
    Hard because Coq does not keep the implicit status of bind's [g] argument. *)
 
 Equations eval (n : nat) {Γ Σ t} (e : Expr Γ t) : M Γ (Val t) Σ :=
@@ -295,6 +326,8 @@ Definition idu : Expr [] (unit ⇒ unit) :=
 
 Definition idapp : Expr [] unit := app idu tt.
 
+(** All definitions are axiom-free (and actually not even dependent on a provable UIP instance), so
+ everything computes. *)
 Eval vm_compute in eval 100 idapp all_nil all_nil.
 
 Definition neg : Expr [] (bool ⇒ bool) :=
@@ -303,17 +336,18 @@ Definition neg : Expr [] (bool ⇒ bool) :=
 Definition letref {t u} (v : Expr [] t) (b : Expr [ref t] u) : Expr [] u :=
   app (abs b) (new v).
 
+(** [Equations?] enters refinement mode, which can be used to solve the case of variables in proof mode. *)
 Equations? weaken_expr {Γ Γ' t u} (e1 : Expr (Γ ++ Γ') t) : Expr (Γ ++ u :: Γ') t :=
-  weaken_expr tt             := tt;
-  weaken_expr true           := true;
-  weaken_expr false          := false;
-  weaken_expr (ite b t f)    := ite (weaken_expr b) (weaken_expr t) (weaken_expr f);
-  weaken_expr (var x)        := var _;
-  weaken_expr (abs (t:=t) x) := abs (weaken_expr (Γ := t :: Γ) x);
-  weaken_expr (app e1 e2)    := app (weaken_expr e1) (weaken_expr e2);
-  weaken_expr (new e)        := new (weaken_expr e);
-  weaken_expr (deref l)      := deref (weaken_expr l);
-  weaken_expr (assign l e)   := assign (weaken_expr l) (weaken_expr e).
+  weaken_expr tt              := tt;
+  weaken_expr true            := true;
+  weaken_expr false           := false;
+  weaken_expr (ite b t f)     := ite (weaken_expr b) (weaken_expr t) (weaken_expr f);
+  weaken_expr (var (t:=ty) x) := var _;
+  weaken_expr (abs (t:=t) x)  := abs (weaken_expr (Γ := t :: Γ) x);
+  weaken_expr (app e1 e2)     := app (weaken_expr e1) (weaken_expr e2);
+  weaken_expr (new e)         := new (weaken_expr e);
+  weaken_expr (deref l)       := deref (weaken_expr l);
+  weaken_expr (assign l e)    := assign (weaken_expr l) (weaken_expr e).
 Proof.
   clear weaken_expr.
   induction Γ in Γ', u, x |- *. now apply there. simpl.
@@ -330,49 +364,3 @@ Definition letupdate : Expr [] bool :=
   letref true (seq (assign (var here) false) (deref (var here))).
 
 Eval vm_compute in eval 100 letupdate all_nil all_nil.
-
-(*
-Inductive eval_sem {Γ : Ctx} {Σ} {env : Env Γ Σ} : forall {t : Ty}, Expr Γ t -> Val t Σ -> Prop :=
-| eval_tt (e : Expr Γ unit) : eval_sem e val_unit
-| eval_var t (i : t ∈ Γ) : eval_sem (var i) (lookup env i)
-| eval_abs {t u} (b : Expr (t :: Γ) u) : eval_sem (abs b) (val_closure b env)
-| eval_app {t u} (f : Expr Γ (t ⇒ u)) b' (a : Expr Γ t) v :
-    eval_sem f (val_closure b' env) ->
-    eval_sem a v ->
-    forall u, @eval_sem (t :: Γ) _ (all_cons v env) _ b' u ->
-    eval_sem (app f a) u.
-
-
-
-Lemma eval_correct {n} Γ Σ (μ : Store Σ) t (e : Expr Γ t) env v : eval n e env μ = Some v ->
-                                                                  @eval_sem _ _ (weaken v.2.2.2 env) _ e (v.2.2.1).
-Proof.
-  induction n. intros; discriminate.
-  destruct e; simp eval; try intros [= <-]; simpl; try constructor.
-  admit. admit.
-
-
-
-  pose proof (fun_elim (f:=eval)).
-  specialize (H (fun n Γ Σ t e m => forall env v μ, m env μ = Some v -> @eval_sem _ _ (weaken v.2.2.2 env) _ e v.2.2.1)
-                (fun n Γ Σ t u f a v m => forall env v',
-                     @eval_sem _ _ env _ f v.2.2.1 -> m env = Some v' -> @eval_sem _ env _ (app f a) v')).
-  rapply H; clear; intros.
-  discriminate.
-  noconf H. constructor.
-  noconf H. constructor.
-
-  noconf H. constructor.
-
-  unfold bind in H1.
-  destruct (eval n e0 env) eqn:Heq.
-  specialize (H _ _ Heq).
-  specialize (H0 v0 _ _ H H1). apply H0.
-  discriminate.
-
-  unfold bind in H2.
-  destruct (eval k arg env) eqn:Heq.
-  specialize (H _ _ Heq).
-  unfold usingEnv in H2. specialize (H0 v (all_cons v a) v').
-  econstructor; eauto.
-Admitted.*)
