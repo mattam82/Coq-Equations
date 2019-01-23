@@ -78,6 +78,7 @@ type int_data = {
 val interp_program_body : Environ.env ->
            Evd.evar_map -> EConstr.rel_context ->
            Constrintern.internalization_env ->
+           Vernacexpr.decl_notation list ->
            Syntax.program_body ->
            EConstr.types option -> Evd.evar_map * EConstr.constr
 

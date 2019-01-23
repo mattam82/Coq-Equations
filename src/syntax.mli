@@ -147,11 +147,11 @@ val map_program_info : (EConstr.t -> EConstr.t) -> program_info -> program_info
 
 val ids_of_pats : Names.Id.t option -> Constrexpr.constr_expr list -> Id.Set.t
 
-val interp_pat : Environ.env -> ?avoid:Id.Set.t ref ->
+val interp_pat : Environ.env -> Vernacexpr.decl_notation list -> ?avoid:Id.Set.t ref ->
   (program_info * Names.Name.t list) option ->
   Constrexpr.constr_expr -> user_pats
 
-val interp_eqn : env -> program_info -> pre_equation -> pre_clause
+val interp_eqn : env -> Vernacexpr.decl_notation list -> program_info -> pre_equation -> pre_clause
 
 val wit_equations_list : pre_equation list Genarg.uniform_genarg_type
 

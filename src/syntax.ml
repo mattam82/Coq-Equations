@@ -340,7 +340,7 @@ let pattern_of_glob_constr env avoid patname gc =
 
 let program_type p = EConstr.it_mkProd_or_LetIn p.program_arity p.program_sign
 
-let interp_pat env ?(avoid = ref Id.Set.empty) p pat =
+let interp_pat env notations ?(avoid = ref Id.Set.empty) p pat =
   let sigma = Evd.from_env env in
   let vars = (Id.Set.elements !avoid) (* (ids_of_pats [p])) *) in
   (* let () = Feedback.msg_debug (str"Variables " ++ prlist_with_sep spc pr_id vars) in *)
@@ -358,12 +358,14 @@ let interp_pat env ?(avoid = ref Id.Set.empty) p pat =
     anomaly (str"Building internalization environment")
   in
   let nctx =
-    List.map (fun id -> Context.Named.Declaration.LocalAssum (id, Constr.mkProp)) vars
+    List.map2 (fun id ty -> Context.Named.Declaration.LocalAssum (id, EConstr.Unsafe.to_constr ty)) vars tys
   in
   let env = Environ.push_named_context nctx env in
   let gc =
-    try Constrintern.intern_gen Pretyping.WithoutTypeConstraint ~impls:ienv env sigma pat
-    with Not_found -> anomaly (str"Internalizing pattern")
+    Metasyntax.with_syntax_protection (fun () ->
+      List.iter (Metasyntax.set_notation_for_interpretation (Environ.push_named_context nctx env) ienv) notations;
+      try Constrintern.intern_gen Pretyping.WithoutTypeConstraint ~impls:ienv env sigma pat
+      with Not_found -> anomaly (str"Internalizing pattern")) ()
   in
   try
     match p with
@@ -404,13 +406,13 @@ let rename_away_from ids pats =
   in
   List.map (DAst.map_with_loc aux) pats
 
-let interp_eqn env p eqn =
+let interp_eqn env notations p eqn =
   let avoid = ref Id.Set.empty in
   let whereid = ref (Nameops.add_suffix p.program_id "_abs_where") in
   let patnames =
     List.rev_map (fun decl -> Context.Rel.Declaration.get_name decl) p.program_sign
   in
-  let interp_pat = interp_pat env ~avoid in
+  let interp_pat = interp_pat env notations ~avoid in
   let rec aux curpats (pat, rhs) =
     let loc, pats =
       match pat with

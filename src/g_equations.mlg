@@ -210,7 +210,7 @@ let deppat_elim : Constrexpr.constr_expr list Pcoq.Entry.t =
 let _ = Pptactic.declare_extra_genarg_pprule wit_deppat_elim
   pr_raw_deppat_elim pr_glob_deppat_elim pr_deppat_elim
 
-type equations_argtype = pre_equations Genarg.uniform_genarg_type
+type equations_argtype = (pre_equations * Vernacexpr.decl_notation list) Genarg.uniform_genarg_type
 
 let wit_equations : equations_argtype =
   Genarg.create_arg "equations"
@@ -220,7 +220,7 @@ let pr_raw_equations _ _ _ l = mt ()
 let pr_glob_equations _ _ _ l = mt ()
 let pr_equations _ _ _ l = mt ()
 
-let equations : pre_equation where_clause list Pcoq.Entry.t =
+let equations : (pre_equations * Vernacexpr.decl_notation list) Pcoq.Entry.t =
   Pcoq.create_generic_entry Pvernac.uvernac "equations" (Genarg.rawwit wit_equations)
 
 let _ = Pptactic.declare_extra_genarg_pprule wit_equations
@@ -327,6 +327,10 @@ GRAMMAR EXTEND Gram
         id = lident; l = binders2; ":"; t = Constr.lconstr;
         reca = wf_annot; ":="; eqs = sub_equations -> { ((id, r, l, Some t, reca), eqs) } ] ]
   ;
+  one_decl_notation:
+    [ [ ntn = ne_lstring; ":="; c = constr;
+        scopt = OPT [ ":"; sc = IDENT -> { sc } ] -> { (ntn,c,scopt) } ] ]
+  ;
   where:
     [ [ "where"; l = LIST1 where_clause -> { l }
       | -> { [] }
@@ -349,8 +353,16 @@ GRAMMAR EXTEND Gram
     ] ]
   ;
 
+  decl_sep:
+    [ [ IDENT "and" -> { () } ] ]
+  ;
+  decl_notation:
+    [ [ "notation"; l = LIST1 one_decl_notation SEP decl_sep -> { l }
+    | -> { [] } ] ]
+  ;
+
   equations:
-  [ [ l = LIST1 where_clause -> { l } ] ]
+  [ [ l = LIST1 where_clause; l' = decl_notation -> { l, l' } ] ]
   ;
   END
 
@@ -361,15 +373,13 @@ let classify_equations x =
 }
 
 VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS SIDEFF
-| #[ poly = polymorphic ] [ "Equations" equation_options(opt) equations(eqns)
-    (* decl_notation(nt) *) ] ->
-    { Equations.equations ~poly ~open_proof:false opt eqns [] }
+| #[ poly = polymorphic ] [ "Equations" equation_options(opt) equations(eqns) ] ->
+    { Equations.equations ~poly ~open_proof:false opt (fst eqns) (snd eqns) }
 END
 
 VERNAC COMMAND EXTEND Define_equations_refine CLASSIFIED BY { classify_equations }
-| #[ poly = polymorphic ] [ "Equations?" equation_options(opt) equations(eqns)
-    (* decl_notation(nt) *) ] ->
-    { Equations.equations ~poly ~open_proof:true opt eqns [] }
+| #[ poly = polymorphic ] [ "Equations?" equation_options(opt) equations(eqns) ] ->
+    { Equations.equations ~poly ~open_proof:true opt (fst eqns) (snd eqns) }
 END
 
 (* Dependent elimination using Equations. *)

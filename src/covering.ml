@@ -291,8 +291,12 @@ let interp_program_body env sigma ctx impls body ty =
     in
     sigma, c
 
-let interp_program_body env evars ctx intenv c ty =
- interp_program_body env evars ctx intenv c ty
+let interp_program_body env evars ctx intenv notations c ty =
+  Metasyntax.with_syntax_protection (fun () ->
+    let _, _, named_context = named_of_rel_context (fun _ -> Id.of_string "unnamed_rel") ctx in
+    List.iter (Metasyntax.set_notation_for_interpretation (Environ.push_named_context
+                                                           (EConstr.Unsafe.to_named_context named_context) env) intenv) notations;
+    interp_program_body env evars ctx intenv c ty) ()
   (* try  with PretypeError (env, evm, e) ->
    *   user_err_loc (dummy_loc, "interp_program_body",
    *                 str "Typechecking failed: " ++  Himsg.explain_pretype_error env evm e) *)
@@ -308,7 +312,7 @@ let interp_program_body env evars ctx intenv c ty =
 let interp_constr_in_rhs_env env evars data (ctx, envctx, liftn, subst) substlift c ty =
   match ty with
   | None ->
-    let sigma, c = interp_program_body env !evars ctx data.intenv c None in
+    let sigma, c = interp_program_body env !evars ctx data.intenv data.notations c None in
     let c' = substnl subst substlift c in
     let sigma = Typeclasses.resolve_typeclasses ~filter:Typeclasses.all_evars env sigma in
     let c' = nf_evar sigma c' in
@@ -317,7 +321,7 @@ let interp_constr_in_rhs_env env evars data (ctx, envctx, liftn, subst) substlif
   | Some ty -> 
     let ty' = lift liftn ty in
     let ty' = nf_evar !evars ty' in
-    let sigma, c = interp_program_body env !evars ctx data.intenv c (Some ty') in
+    let sigma, c = interp_program_body env !evars ctx data.intenv data.notations c (Some ty') in
     evars := Typeclasses.resolve_typeclasses 
         ~filter:Typeclasses.all_evars env sigma;
     let c' = nf_evar !evars (substnl subst substlift c) in
@@ -1187,10 +1191,7 @@ and interp_wheres env0 ctx evars path data s lets
 
     let is_rec = is_recursive id [eqs] in
     let p = interp_arity env evars ~poly:false ~is_rec ~with_evars:true eqs in
-    let clauses = Metasyntax.with_syntax_protection (fun () ->
-      List.iter (Metasyntax.set_notation_for_interpretation env data.intenv) data.notations;
-      List.map (interp_eqn env p) clauses) ()
-    in
+    let clauses = List.map (interp_eqn env data.notations p) clauses in
     let sigma, p = adjust_sign_arity env !evars p clauses in
     let () = evars := sigma in
 
@@ -1260,10 +1261,7 @@ and covering ?(check_unused=true) env evars p data (clauses : pre_clause list)
        pr_problem p env !evars prob)
 
 let program_covering env evd data p clauses =
-  let clauses = Metasyntax.with_syntax_protection (fun () ->
-      List.iter (Metasyntax.set_notation_for_interpretation env data.intenv) data.notations;
-      List.map (interp_eqn env p) clauses) ()
-  in
+  let clauses = List.map (interp_eqn env data.notations p) clauses in
   let sigma, p = adjust_sign_arity env !evd p clauses in
   let () = evd := sigma in
   let p', prob, arity, extpats, rec_node = compute_rec_data env evd data [] [] p in
