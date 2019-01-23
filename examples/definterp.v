@@ -7,7 +7,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 (* end hide *)
-(** * Definitional interpreter for STCL extended with references
+(** * Definitional interpreter for STLC extended with references
 
   This is a port of the first part of "Intrinsically-Typed Definitional
   Interpreters for Imperative Languages", Poulsen, Rouvoet, Tolmach,
