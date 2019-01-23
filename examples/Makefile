@@ -1,6 +1,6 @@
 vfiles := HoTT_light.v RoseTree.v graph_complete.v STLC.v polynomials.v string_matching.v \
 	nested_mut_rec.v MoreDep.v general_recursion.v Basics.v definterp.v \
-	ordinals.v ordinal_rec.v mutualwfrec.v accumulator.v
+	ordinals.v ordinal_rec.v mutualwfrec.v accumulator.v views.v wfrec.v
 
 texfiles := $(vfiles:.v=.tex)
 

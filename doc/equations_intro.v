@@ -235,17 +235,17 @@ equal x y := right _.
 *)
 
 Equations head {A} (l : list A) (pf : l <> nil) : A :=
-head nil pf :=! pf;
+head nil pf with pf eq_refl := { | x :=! x };
 head (cons a v) _ := a.
 
 (** We decompose the list and are faced with two cases:
 
    - In the first case, the list is empty, hence the proof [pf] of type 
-     [nil <> nil] allows us to derive a contradiction. We make use of
-     another category of right-hand sides, which we call _empty_ nodes
+     [nil <> nil] allows us to derive a contradiction by applying it to reflexivity.
+     We make use of another category of right-hand sides, which we call _empty_ nodes
      to inform the compiler that a contradiction is derivable in this case.
-     In general we cannot expect the compiler to find by himself that 
-     the context contains a contradiction, as it is undecidable 
+     In general we cannot expect the compiler to find by himself that
+     the context contains a contradiction, as it is undecidable
      %(\cite{DBLP:conf/plpv/Oury07,DBLP:conf/birthday/GoguenMM06})%.
    - In the second case, we simply return the head of the list, disregarding
      the proof.
@@ -386,17 +386,7 @@ diag (n:=S _) (Vcons (Vcons a v) v') :=
 (** Here in the second equation, we know that the elements of the vector
    are necessarily of size [S n] too, hence we can do a nested refinement
    on the first one to find the first element of the diagonal.
-
-   An issue appears here: the elimination principle can not be proved automatically
-   for [diag], as the automatic proof generates an ill-formed fixpoint definition.
-   This is because the guard checking of [Coq] is too weak to see through the
-   manipulations of equality necessary for this definition to typecheck.
-   One can however resolve this by using the induction principle of natural numbers:
   *)
-
-Next Obligation.
-  induction n. depelim v. simp diag. depelim v. depelim h. constructor. apply IHn.
-Defined.
 
 (** ** Recursion
 
@@ -407,7 +397,7 @@ Defined.
 
 Fail Equations diag' {A n} (v : vector (vector A n) n) : vector A n :=
 diag' Vnil := Vnil ;
-diag' (Vcons (Vcons a n v) ?(n) v') :=
+diag' (Vcons (Vcons a v) v') :=
   Vcons a (diag' (vmap vtail v')).
 
 (** Indeed, Coq cannot guess the decreasing argument of this fixpoint
@@ -479,11 +469,15 @@ Module UnzipVect.
       must be shown smaller than a [vector A (S n)]. They are actually compared
       at the packed type [{ n : nat & vector A n}]. *)
 
-  Equations unzip {n} (v : vector (A * B) n) : vector A n * vector B n
+  Equations? unzip {n} (v : vector (A * B) n) : vector A n * vector B n
     by rec (signature_pack v) (@t_subterm (A * B)) :=
   unzip Vnil := (Vnil, Vnil) ;
   unzip (Vector.cons (pair x y) v) with unzip v := {
-    | pair xs ys := (Vector.cons x xs, Vector.cons y ys) }.
+  | pair xs ys := (Vector.cons x xs, Vector.cons y ys) }.
+  (** One can easily show that the call is well-founded using the constructed
+      subterm relation. *)
+  Proof. do 2 constructor. Defined.
+
 End UnzipVect.
 
 (** For the diagonal, it is easier to give [n] as the decreasing argument
@@ -496,161 +490,6 @@ diag' (Vcons (Vcons a v) v') :=
 
 (** One can check using [Extraction diag'] that the computational behavior of [diag']
     is indeed not dependent on the index [n]. *)
-
-(* begin hide *)
-Require Import Relation_Operators.
-Import Sigma_Notations.
-Local Open Scope equations_scope.
-Require Import Relations.
-Lemma clos_trans_stepr_refl A (R : relation A) (x y z : A) :
-  R y z -> clos_refl _ (clos_trans A R) x y -> clos_trans A R x z.
-Proof.
-  intros Hyz Hxy.
-  destruct Hxy. eapply clos_trans_stepr; eauto.
-  now constructor.
-Qed.
-(* end hide *)
-
-(** While this was just mimicking simple structural recursion, we can of
-    course use this for more elaborate termination arguments. We put
-    ourselves in a section to parameterize a [skip] function by a predicate: *)
-
-Fixpoint vapp {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
-  match v with
-    | Vnil => w
-    | Vcons a v' => Vcons a (vapp v' w)
-  end.
-
-Inductive Split {X : Type}{m n : nat} : vector X (m + n) -> Type :=
-  append : forall (xs : vector X m)(ys : vector X n), Split (vapp xs ys).
-
-Section Skip.
-  Context {A : Type} (p : A -> bool).
-  Equations pivot {n} (v : vector A n) : option (A * vector A n) by rec (S n) lt :=
-  pivot (Vcons a v') with p a => {
-                   | true => Some (a, v');
-                   | false with v' =>
-                     { | Vnil => None;
-                       | v'' with pivot v'' =>
-                       { | None => None;
-                         | Some (b, v''') => Some (b, Vcons a v''') } } }.
-
-  Next Obligation.
-    Subterm.rec_wf_eqns_rel IH 0 (signature_pack v) (@t_subterm A).
-    unfold add_pattern.
-    depelim v. simp find_first.
-    constructor.
-    destruct (p h); simp find_first.
-    constructor. depelim v. simp find_first.
-    simpl. constructor. apply IH. constructor. simpl. constructor. auto.
-    destruct (find_first (Vcons h0 v)); simp find_first.
-  Defined.
-
-  (** It is relatively straitforward to show that [skip] returns a (large) subvector of its argument *)
-
-  (* Lemma skip_first_subterm {n} (v : vector A n) : clos_refl _ (t_subterm _) (skip_first v) &(_ & v). *)
-  (* Proof. *)
-  (*   funelim (skip_first v). *)
-  (*   constructor 2. *)
-  (*   depelim H. *)
-  (*   constructor 1. *)
-  (*   eapply clos_trans_stepr. simpl. *)
-  (*   apply (t_direct_subterm_1_1 _ _ _ (&(_ & t).2)). apply H. *)
-  (*   rewrite <- H. constructor. eauto with subterm_relation. *)
-  (*   constructor 2. *)
-  (* Qed. *)
-  
-End Skip.
-
-(** This function takes an unsorted vector and returns a sorted vector corresponding to it
-    starting from its head [a], removing all elements smaller than [a] and recursing.  *)
-
-Equations sort {n} (v : vector nat n) : vector nat n
-  by rec n lt :=
-sort Vnil := Vnil;
-sort (Vcons a Vnil) := Vcons a Vnil;
-sort (Vcons a v) with find_first (fun x => Nat.leb x a) v => {
-                       | None => Vcons a (sort v);
-                       | Some (b, v') => Vcons b (sort (Vcons a v')) }.
-
-(** Here we prove that the recursive call is correct as skip preserves the size of its argument *)
-
-Next Obligation.
-  red. simpl.
-  eapply clos_trans_stepr_refl.
-  simpl. apply (t_direct_subterm_1_1 _ _ _ (&(_ & v).2)).
-  refine (skip_first_subterm _ _).
-Qed.
-
-(** To prove it we need a few supporting lemmas, we first write a predicate on vectors
-    equivalent to [List.forall]. *)
-
-Equations forall_vect {A} (p : A -> bool) {n} (v : vector A n) : bool :=
-forall_vect _ Vnil := true;
-forall_vect p (Vcons x n v) := p x && forall_vect p v.
-
-Require Import Bool.
-
-(** By functional elimination it is easy to prove that this respects the implication
-    order on predicates *)
-
-Lemma forall_vect_impl {A} p p' {n} (v : vector A n)
-      (fp : forall x, p x = true -> p' x = true) :
-  forall_vect p v = true -> forall_vect p' v = true.
-Proof.
-  funelim (forall_vect p v). auto.
-  simp forall_vect. rewrite !andb_true_iff; intuition auto.
-Qed.
-
-(** We now define a simple-minded sorting predicate *)
-
-Inductive sorted : forall {n}, vector nat n -> Prop :=
-| sorted_nil : sorted Vnil
-| sorted_cons x n (v : vector nat n) :
-    forall_vect (fun y => Nat.leb x y) v = true ->
-    sorted v -> sorted (Vcons x v).
-
-(** Again, we show that [sort] produces a sorted vector
-    by repeated functional eliminations. *)
-
-Lemma fn_sorted n (v : vector nat n) : sorted (sort v).2.
-Proof.
-  funelim (sort v).
-  (** The first elimination just gives the two [sort] cases. *)
-  - constructor.
-  - constructor; auto.
-    (** Here we have a nested call to skip_first, for which the induction hypothesis holds: [[
-  H : sorted (sort (skip_first (fun x : nat => x <=? h) t).2).2
-  ============================
-  forall_vect (fun y : nat => h <=? y) (sort (skip_first (fun x : nat => x <=? h) t).2).2 = true
-]]
-
-   We can apply functional elimination likewise, even if the predicate argument is instantiated
-   here. *)
-
-    revert H.
-    funelim (skip_first (fun x : nat => Nat.leb x h) t);
-      simp sort forall_vect in *; simpl in *; intros H.
-
-(**  After some simplifications, we get: [[
-  Heq : (h0 <=? h) = false
-  H : sorted (Vcons h0 (sort (skip_first (fun x : nat => x <=? h0) t).2).2)
-  ============================
-  (h <=? h0) && forall_vect (fun y : nat => h <=? y) (sort (skip_first (fun x : nat => x <=? h0) t).2).2 = true
-]]
-
-    This requires inversion on the sorted predicate to find out that, by induction,
-    [h0] is smaller than all of [fn (skip_first ...)], and hence [h] is as well.
-    This is just regular reasoning. Just note how we got to this point in just
-    two invocations of [funelim]. *)
-
-    rewrite andb_true_iff. simpl.
-    enough (h <=? h0 = true). split; auto.
-    depelim H. eapply forall_vect_impl in H.
-    apply H.
-    intros x' h0x'. simpl. rewrite Nat.leb_le in *. omega.
-    rewrite Nat.leb_le, Nat.leb_nle in *. omega.
-Qed.
 
 (** *** Pattern-matching and axiom K *)
 
