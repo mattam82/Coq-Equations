@@ -169,22 +169,10 @@ Register tele_forall_unpack as equations.tele.forall_unpack.
 
 Extraction Inline tele_forall_pack tele_forall_unpack tele_forall_type_app tele_fix.
 
-(* Monomorphic Inductive Acc_tel (T : tele) (R : tele_rel_curried T) (x : T) : Prop := *)
-(*     Acc_intro : (tele_forall_uncurry T (fun y => tele_pred_fn_pack T T R y x -> Acc_tel T R y)) -> Acc_tel _ R x. *)
-Lemma tele_forall_uncurry' (T : tele) (P : tele_type T) (Q : T -> Type)
-      (f : tele_forall_uncurry T (fun x => Q x -> tele_type_app T P x))
-      (H : forall x, Q x) : tele_forall T P.
-(* | tip A | P | Q | f := f; *)
-(* | ext A | P | Q | f := f; *)
-
-induction T; simpl in *. intros. apply f. apply H.
-intros x. eapply X. apply f. simpl. intros. eapply H.
-Defined.
-
 Lemma poly_f_equal@{i j} : forall (A : Type@{i}) (B : Type@{j}) (f : A -> B) (x y : A), x = y -> f x = f y.
 Proof. intros. destruct H. reflexivity. Defined.
 
-Section Fix.
+Section FixUnfold.
   Universes i j k.
 
   Context {T : tele@{i}} (x : T) (R : T -> T -> Prop).
@@ -194,7 +182,6 @@ Section Fix.
   (* (forall x : A, (forall y : A, R y x -> P y) -> P x) -> forall x : A, P x *)
   Context (fn : tele_fix_functional_type@{i j k} R P).
 
-  Set Printing Universes.
   Lemma tele_fix_unfold :
     tele_forall_app T P (tele_fix R wf P fn) x =
     tele_forall_pack T _ fn x
@@ -206,56 +193,6 @@ Section Fix.
     rewrite tele_forall_app_type@{i j k}. apply poly_f_equal@{k k}. apply Subterm.Acc_pi.
   Defined.
 
-
-
-  Let foo x :=
-    tele_forall_unpack _ _ (fun y (_ : R y x) => tele_forall_app T P (tele_fix R wf P fn) y).
-  Lemma FixWf_unfold' :
-    tele_fix R wf P fn = tele_forall_uncurry' T P _ fn foo.
-  Proof. clear x.
-    intros. unfold tele_fix, Fix.
-    unfold tele_forall_uncurry'. simpl.
-    induction T. simpl. extensionality x'.
-  Admitted.
-
-  (*   rewrite tele_forall_app_type. destruct (wf x). simpl. *)
-  (*   f_equal. apply f_equal. extensionality y. extensionality h. *)
-  (*   rewrite tele_forall_app_type. apply f_equal. apply Subterm.Acc_pi. *)
-  (* Defined. *)
-End Fix.
+End FixUnfold.
 
 Register tele_fix_unfold as equations.tele.fix_unfold.
-
-Section TestFix.
-
-  Definition T := ext nat (fun _ => ext nat (fun x => tip (x = x))).
-  Definition R (_ : nat) (x : nat) (H : x = x) (_ : nat) (y : nat) (H' : y = y) := x < y.
-  Lemma wfR : well_founded (tele_pred_fn_pack T T R).
-    red. intros [n m]. simpl in *.
-  Admitted.
-  Definition P : tele_type T := fun _ x H => nat.
-
-  Definition myfix : tele_forall T P.
-    refine (tele_fix _ wfR P _). unfold tele_fix_functional_type.
-    simpl. unfold P, R.
-    intros.
-    destruct x0. exact 0.
-    eapply H. exact 0. reflexivity. constructor.
-  Defined.
-
-  Equations myfix_unfold (n m : nat) (H : m = m) : nat :=
-    | x | 0   | _ := 0;
-    | x | S n | _ := myfix 0 n eq_refl.
-
-
-  Lemma myfix_unfold_eq n m H : myfix n m H = myfix_unfold n m H.
-  Proof.
-    unfold myfix. rewrite FixWf_unfold'.
-
-    simpl. destruct m; try reflexivity.
-  Qed.
-
-End TestFix.
-
-Definition myfix_fn := Eval compute in myfix.
-
