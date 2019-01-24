@@ -89,10 +89,6 @@ Section MapAll.
   Equations map_all {l : list A} : All P l -> All Q l :=
   map_all all_nil := all_nil;
   map_all (all_cons p ps) := all_cons (f _ p) (map_all ps).
-End MapAll.
-
-Section MapAll.
-  Context {A} {P Q : A -> Type}.
 
   Equations map_all_in {l : list A} (f : forall x, x ∈ l -> P x -> Q x) : All P l -> All Q l :=
   map_all_in f all_nil := all_nil;
