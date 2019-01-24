@@ -21,7 +21,7 @@ Equations foo_type (t : foo) : Type :=
 (* Moving val into the return type, rather than having it as an argument
    might be unnecessary if
    https://github.com/mattam82/Coq-Equations/issues/73 was fixed *)
-Equations (struct f) do_foo (f : foo) : forall (val : foo_type f), nat := {
+Equations do_foo (f : foo) : forall (val : foo_type f), nat := {
   do_foo (Sum s) := fun val =>
     (do_foo (fst s) (fst val)) + (do_sum (snd s) (snd val)) }
 

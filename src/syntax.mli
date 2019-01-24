@@ -114,8 +114,7 @@ val is_rec_call : Evd.evar_map -> Id.t -> EConstr.constr -> bool
 val next_ident_away : Id.t -> Id.Set.t ref -> Id.t
 
 type equation_option = 
-  | OInd of bool | ORec of Id.t with_loc option 
-  | OComp of bool 
+  | OInd of bool
   | OEquations of bool
 
 type equation_user_option = equation_option

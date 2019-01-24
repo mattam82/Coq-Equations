@@ -40,7 +40,7 @@ subst_term k u (Lam t) => Lam (subst_term (S k) u t);
 subst_term k u (App t l) => App (subst_term k u t) (subst_tlist k u l);
 subst_term k u (MetaVar t l) => MetaVar t (subst_tlist k u l) }
 
-where (* (struct t) *) subst_tlist (k : nat) (u : term) (t : list term) : list term := {
+where subst_tlist (k : nat) (u : term) (t : list term) : list term := {
   subst_tlist k u nil => nil;
   subst_tlist k u (cons t ts) => cons (subst_term k u t) (subst_tlist k u ts) }.
 

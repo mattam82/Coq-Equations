@@ -200,8 +200,7 @@ let next_ident_away s ids =
   let n' = Namegen.next_ident_away s !ids in
     ids := Id.Set.add n' !ids; n'
 
-type equation_option = | OInd of bool | ORec of Id.t with_loc option
-                       | OComp of bool | OEquations of bool
+type equation_option = | OInd of bool | OEquations of bool
     
 type equation_user_option = equation_option
 

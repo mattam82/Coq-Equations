@@ -18,7 +18,7 @@ Fixpoint foo_type (f:foo) : Type :=
   | List fs => compact_prod (map foo_type fs)
   end.
 
-Equations (struct t) do_foo (t : foo) : option (foo_type t) := {
+Equations do_foo (t : foo) : option (foo_type t) := {
   do_foo (List ss) := do_list ss}
 
   where do_list (ts:list foo) : option (compact_prod (map foo_type ts)) := {

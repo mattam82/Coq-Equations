@@ -4,7 +4,7 @@ From Equations Require Import Equations.
 Inductive foo :=
 | Sum : list foo -> foo.
 
-Equations (struct t) do_foo1 (t: foo) : nat := {
+Equations do_foo1 (t: foo) : nat := {
   do_foo1 (Sum u) :=
         do_foo1_list u }
 where

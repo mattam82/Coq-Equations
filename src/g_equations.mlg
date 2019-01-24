@@ -126,10 +126,6 @@ ARGUMENT EXTEND equation_user_option
 PRINTED BY { pr_r_equation_user_option }
 | [ "noind" ] -> { OInd false }
 | [ "ind" ] -> { OInd true }
-| [ "struct" ident(i) ] -> { ORec (Some (loc, i)) }
-| [ "nostruct" ] -> { ORec None }
-| [ "comp" ] -> { OComp true }
-| [ "nocomp" ] -> { OComp false }
 | [ "eqns" ] -> { OEquations true }
 | [ "noeqns" ] -> { OEquations false }
 END

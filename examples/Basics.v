@@ -299,7 +299,7 @@ vrev (cons a v) := vector_append_one (vrev v) a.
 Definition cast_vector {A n m} (v : vector A n) (H : n = m) : vector A m.
 intros; subst; assumption. Defined.
 
-Equations(nocomp) vrev_acc {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
+Equations vrev_acc {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
 vrev_acc nil w := w;
 vrev_acc (cons a v) w := cast_vector (vrev_acc v (cons a w)) _.
 (* About vapp'. *)
@@ -314,8 +314,6 @@ Inductive Split {X : Type}{m n : nat} : vector X (m + n) -> Type :=
   append : ∀ (xs : vector X m)(ys : vector X n), Split (vapp xs ys).
 
 Arguments Split [ X ].
-
-Ltac rec ::= Subterm.rec_wf_eqns.
 
 (** We split by well-founded recursion on the index [m] here. *)
 

@@ -543,7 +543,7 @@ diag (cons (cons a v) v') := cons a (diag (vmap vtail v')).
 (* Extraction diag. *)
 
 (** It can be done structurally as well but we're matching on the index now. *)
-Equations(struct n) diag_struct {A n} (v : vector (vector A n) n) : vector A n :=
+Equations diag_struct {A n} (v : vector (vector A n) n) : vector A n :=
 diag_struct (n:=O) nil := nil ;
 diag_struct (n:=(S _)) (cons (cons a v) v') := cons a (diag_struct (vmap vtail v')).
 

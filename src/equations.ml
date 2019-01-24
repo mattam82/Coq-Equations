@@ -134,25 +134,12 @@ let define_principles flags rec_info fixprots progs =
     build_equations flags.with_ind env !evd rec_info splits
 
 let define_by_eqs ~poly ~open_proof opts eqs nt =
-  let with_rec, with_eqns, with_ind =
+  let with_eqns, with_ind =
     let try_bool_opt opt =
       if List.mem opt opts then false
       else true 
     in
-    let irec = 
-      try 
-	List.find_map (function ORec i -> Some i | _ -> None) opts 
-      with Not_found -> None
-    in
-      irec, try_bool_opt (OEquations false), try_bool_opt (OInd false)
-  in
-  let eqs =
-    match eqs with
-    | ((li,ra,l,t,by), eqns) :: tl ->
-      (match with_rec with
-      | Some lid -> ((li, Some Syntax.Mutual, l, t, Some (Syntax.Structural lid)), eqns) :: tl
-      | _ -> eqs)
-    | _ -> assert false
+    try_bool_opt (OEquations false), try_bool_opt (OInd false)
   in
   let env = Global.env () in
   let flags = { polymorphic = poly; with_eqns; with_ind; open_proof } in

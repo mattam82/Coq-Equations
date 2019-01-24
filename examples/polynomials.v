@@ -36,7 +36,7 @@ Proof.
   destruct b. destruct p, q. reflexivity.
   destruct p.
 Defined.
-Hint Resolve Is_true_irrel.
+Hint Resolve Is_true_irrel : core.
 Check Zpos.
 Check Zneg.
 Check positive.
