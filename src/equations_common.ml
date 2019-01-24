@@ -305,7 +305,7 @@ let mkapp env evdref t args =
     mkApp (c, args)
 
 let refresh_universes_strict env evd t = 
-  let evd', t' = Evarsolve.refresh_universes (Some true) env !evd t in
+  let evd', t' = Evarsolve.refresh_universes ~onlyalg:true (Some true) env !evd t in
     evd := evd'; t'
     
 let mkEq env evd t x y = 
