@@ -114,10 +114,12 @@ Arguments Vector.nil {A}.
 Arguments Vector.cons {A} _ {n}.
 
 Local Open Scope vect_scope.
+Reserved Notation "x ++v y" (at level 60).
 
-Equations  vapp' {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
-  vapp' []v w := w ;
-  vapp' (Vector.cons a v) w := Vector.cons a (vapp' v w).
+Equations vapp' {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
+{ []v ++v w := w ;
+  (Vector.cons a v) ++v w := Vector.cons a (v ++v w) }
+where "x ++v y" := (vapp' x y).
 
 (* Section vapp_def. *)
 (*   Context {A : Type}. *)

@@ -190,6 +190,7 @@ let define_by_eqs ~poly ~open_proof opts eqs nt =
       (let fixprots = List.map (nf_evar !evd) fixprots in
        let progs = Array.map_to_list (fun x -> Option.get x) progs in
        let rec_info = compute_recinfo (List.map (fun (x, y) -> x.program_info) progs) in
+       List.iter (Metasyntax.add_notation_interpretation (Global.env ())) nt;
        if flags.with_eqns || flags.with_ind then
          define_principles flags rec_info fixprots progs)
   in
