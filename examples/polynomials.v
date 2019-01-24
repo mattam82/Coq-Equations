@@ -483,9 +483,7 @@ Equations mult_s {n} {b2} (p2 : poly b2 (S n))
     poly_l_or_s (m1 _ p2).2
                 (plus (m2 _ (poly_l p2)).2 (mult_s q2 m1 m2).2).2.
 
-(** Finally, the multiplication definition. We use the (noind) option to deal with
-   a bug with the partial applications of the recursive function being passed to
-   [mult_l] and [mult_s], in the structurally recursive case. This relies on the 
+(** Finally, the multiplication definition. This relies on the
    guard condition being able to unfold the definitions of [mult_l] and [mult_s] to
    see that multiplication is well-guarded. *)
 
