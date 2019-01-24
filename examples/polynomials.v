@@ -127,13 +127,14 @@ Derive Signature NoConfusion NoConfusionHom Subterm for mono.
 (** Our first interesting definition computes the coefficient in [Z] by which
     a monomial [m] is multiplied in a polynomial [p]. *)
 
-Equations get_coef {n} (m : mono n) {b} (p : poly b n) : Z (* by rec (pack m) mono_subterm *) :=
+Equations? get_coef {n} (m : mono n) {b} (p : poly b n) : Z by rec (pack m) mono_subterm :=
 get_coef mono_z     poly_z       := 0%Z;
 get_coef mono_z     (poly_c z _) := z;
 get_coef (mono_l m) (poly_l p)   := get_coef m p;
 get_coef (mono_l m) (poly_s p _) := get_coef m p;
 get_coef (mono_s m) (poly_l _)   := 0%Z;
 get_coef (mono_s m) (poly_s p1 p2) := get_coef m p2.
+Proof. all:repeat constructor. Defined.
 
 (** The definition can be done using either the usual structural
   recursion of [Coq] or well-founded recursion. If we use structural
@@ -263,16 +264,7 @@ Equations eval {n} {b} (p : poly b n) (v : Vector.t Z n) : Z :=
   eval (poly_s p1 p2) (cons y ys) :=
     (eval p1 ys + y * eval p2 (cons y ys))%Z.
 
-(* Equations eval {n} {b} (p : poly b n) (v : Vector.t Z n) : Z *)
-(*   := eval p v by rec (pack p) poly_subterm := *)
-(*   eval poly_z         nil           := 0%Z; *)
-(*   eval (poly_c z _)   nil           := z; *)
-(*   eval (poly_l p)     (cons _ _ xs)   := eval p xs; *)
-(*   eval (poly_s p1 p2) (cons y _ ys) := *)
-(*     (eval p1 ys + y * eval p2 (cons y ys))%Z. *)
-
-(** Again we are using well-founded recursion on [p] using the subterm
-    order. It is quite clear that two equal polynomials should have the
+(** It is quite clear that two equal polynomials should have the
     same value for any valuation. To show this, we first need to prove
     that evaluating a null polynomial always computes to [0], whichever
     valuation is used. *)

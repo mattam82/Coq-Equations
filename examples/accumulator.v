@@ -46,7 +46,7 @@ Proof.
       one specifying the wrapper and another for the worker.
       For the wrapper, we give the expected final goal but for the worker
       we have to invent a kind of loop invariant: here that the result of
-      the whole [go acc l] result is equal to [rev l ++ acc]. *)
+      the whole [go acc l] call is equal to [rev l ++ acc]. *)
   apply (rev_acc_elim (fun A l revaccl => revaccl = rev l)
                       (fun A _ acc l go_res => go_res = rev l ++ acc)); intros; simpl.
   (** Functional elimination provides us with the worker property for the
@@ -126,7 +126,7 @@ Equations? interval x y : list nat by rec (y - x) lt :=
       | right nltxy => [] }.
 Proof. lia. Defined.
 
-(** We prove a simple lemmas on [inverval]: *)
+(** We prove a simple lemmas on [interval]: *)
 Lemma interval_large x y : ~ x < y -> interval x y = [].
 Proof. funelim (interval x y); clear Heq; intros; now try lia. Qed.
 
@@ -137,13 +137,12 @@ Proof. funelim (interval x y); clear Heq; intros; now try lia. Qed.
  *)
 Lemma indexes_interval l : indexes l = interval 0 (length l).
 Proof.
-  set (P := fun start (l fool : list nat) => fool = interval start (length l)).
+  set (P := fun start (l indexesl : list nat) => indexesl = interval start (length l)).
   revert l.
   apply (indexes_elim (P 0)
-          (fun l acc n fool =>
+          (fun l acc n indexesl =>
              n <= length l ->
-             acc = interval n (length l) ->
-             fool = interval 0 (length l))); subst P; simpl.
+             P n l acc -> P 0 l indexesl)); subst P; simpl.
   intros l.
   + intros H. apply H; auto. rewrite interval_large; trivial; lia.
   + intros; trivial.
