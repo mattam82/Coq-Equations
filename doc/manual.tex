@@ -167,7 +167,18 @@ Class EqDec (A : Type) :=
 
 \end{itemize}
 
+\section{\texttt{dependent elimination}}
 
+The \texttt{dependent elimination} tactic can be used to do dependent
+pattern-matching during a proof, using the same engine as Equations.
+
+Its syntax is:
+\begin{figure}[h]
+  \texttt{dependent elimination} \textit{ident} \texttt{as} [ up | .. | up ].
+\end{figure}
+
+It takes a list of patterns (see figure \ref{fig:usergram}) that should cover the type of \textit{ident}
+and generates the corresponding subgoals.
 
 %%% Local Variables: 
 %%% mode: latex
