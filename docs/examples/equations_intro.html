@@ -366,7 +366,7 @@ Of particular interest here is the inner program refining the recursive result.
 
 <br/>
 <span class="id" title="keyword">Equations</span> <span class="id" title="var">head</span> {<span class="id" title="var">A</span>} (<span class="id" title="var">l</span> : <span class="id" title="var">list</span> <span class="id" title="var">A</span>) (<span class="id" title="var">pf</span> : <span class="id" title="var">l</span> ≠ <span class="id" title="var">nil</span>) : <span class="id" title="var">A</span> :=<br/>
-<span class="id" title="var">head</span> <span class="id" title="var">nil</span> <span class="id" title="var">pf</span> :=! <span class="id" title="var">pf</span>;<br/>
+<span class="id" title="var">head</span> <span class="id" title="var">nil</span> <span class="id" title="var">pf</span> <span class="id" title="keyword">with</span> <span class="id" title="var">pf</span> <span class="id" title="var">eq_refl</span> := { | <span class="id" title="var">x</span> :=! <span class="id" title="var">x</span> };<br/>
 <span class="id" title="var">head</span> (<span class="id" title="var">cons</span> <span class="id" title="var">a</span> <span class="id" title="var">v</span>) <span class="id" title="var">_</span> := <span class="id" title="var">a</span>.<br/>
 
 <br/>
@@ -379,11 +379,11 @@ We decompose the list and are faced with two cases:
 
 <ul class="doclist">
 <li> In the first case, the list is empty, hence the proof <span class="inlinecode"><span class="id" title="var">pf</span></span> of type 
-     <span class="inlinecode"><span class="id" title="var">nil</span></span> <span class="inlinecode">≠</span> <span class="inlinecode"><span class="id" title="var">nil</span></span> allows us to derive a contradiction. We make use of
-     another category of right-hand sides, which we call <i>empty</i> nodes
+     <span class="inlinecode"><span class="id" title="var">nil</span></span> <span class="inlinecode">≠</span> <span class="inlinecode"><span class="id" title="var">nil</span></span> allows us to derive a contradiction by applying it to reflexivity.
+     We make use of another category of right-hand sides, which we call <i>empty</i> nodes
      to inform the compiler that a contradiction is derivable in this case.
-     In general we cannot expect the compiler to find by himself that 
-     the context contains a contradiction, as it is undecidable 
+     In general we cannot expect the compiler to find by himself that
+     the context contains a contradiction, as it is undecidable
      .
 
 </li>
@@ -602,27 +602,9 @@ The precise specification of these derived definitions can be found in the manua
 Here in the second equation, we know that the elements of the vector
    are necessarily of size <span class="inlinecode"><span class="id" title="var">S</span></span> <span class="inlinecode"><span class="id" title="var">n</span></span> too, hence we can do a nested refinement
    on the first one to find the first element of the diagonal.
-
+  
 <div class="paragraph"> </div>
 
-   An issue appears here: the elimination principle can not be proved automatically
-   for <span class="inlinecode"><span class="id" title="var">diag</span></span>, as the automatic proof generates an ill-formed fixpoint definition.
-   This is because the guard checking of <span class="inlinecode"><span class="id" title="var">Coq</span></span> is too weak to see through the
-   manipulations of equality necessary for this definition to typecheck.
-   One can however resolve this by using the induction principle of natural numbers:
-  
-</div>
-<div class="code">
-
-<br/>
-<span class="id" title="keyword">Next</span> <span class="id" title="keyword">Obligation</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">induction</span> <span class="id" title="var">n</span>. <span class="id" title="var">depelim</span> <span class="id" title="var">v</span>. <span class="id" title="var">simp</span> <span class="id" title="var">diag</span>. <span class="id" title="var">depelim</span> <span class="id" title="var">v</span>. <span class="id" title="var">depelim</span> <span class="id" title="var">h</span>. <span class="id" title="tactic">constructor</span>. <span class="id" title="tactic">apply</span> <span class="id" title="var">IHn</span>.<br/>
-<span class="id" title="keyword">Defined</span>.<br/>
-
-<br/>
-</div>
-
-<div class="doc">
 <a name="lab13"></a><h2 class="section">Recursion</h2>
 
 
@@ -638,7 +620,7 @@ Here in the second equation, we know that the elements of the vector
 <br/>
 <span class="id" title="var">Fail</span> <span class="id" title="keyword">Equations</span> <span class="id" title="var">diag'</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="var">vector</span> (<span class="id" title="var">vector</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) <span class="id" title="var">n</span>) : <span class="id" title="var">vector</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> :=<br/>
 <span class="id" title="var">diag'</span> <span class="id" title="var">Vnil</span> := <span class="id" title="var">Vnil</span> ;<br/>
-<span class="id" title="var">diag'</span> (<span class="id" title="var">Vcons</span> (<span class="id" title="var">Vcons</span> <span class="id" title="var">a</span> <span class="id" title="var">n</span> <span class="id" title="var">v</span>) ?(<span class="id" title="var">n</span>) <span class="id" title="var">v'</span>) :=<br/>
+<span class="id" title="var">diag'</span> (<span class="id" title="var">Vcons</span> (<span class="id" title="var">Vcons</span> <span class="id" title="var">a</span> <span class="id" title="var">v</span>) <span class="id" title="var">v'</span>) :=<br/>
 &nbsp;&nbsp;<span class="id" title="var">Vcons</span> <span class="id" title="var">a</span> (<span class="id" title="var">diag'</span> (<span class="id" title="var">vmap</span> <span class="id" title="var">vtail</span> <span class="id" title="var">v'</span>)).<br/>
 
 <br/>
@@ -756,11 +738,21 @@ We can use the packed relation to do well-founded recursion on the vector.
 <div class="code">
 
 <br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Equations</span> <span class="id" title="var">unzip</span> {<span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="var">vector</span> (<span class="id" title="var">A</span> × <span class="id" title="var">B</span>) <span class="id" title="var">n</span>) : <span class="id" title="var">vector</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> × <span class="id" title="var">vector</span> <span class="id" title="var">B</span> <span class="id" title="var">n</span><br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Equations</span>? <span class="id" title="var">unzip</span> {<span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="var">vector</span> (<span class="id" title="var">A</span> × <span class="id" title="var">B</span>) <span class="id" title="var">n</span>) : <span class="id" title="var">vector</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> × <span class="id" title="var">vector</span> <span class="id" title="var">B</span> <span class="id" title="var">n</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">by</span> <span class="id" title="keyword">rec</span> (<span class="id" title="var">signature_pack</span> <span class="id" title="var">v</span>) (@<span class="id" title="var">t_subterm</span> (<span class="id" title="var">A</span> × <span class="id" title="var">B</span>)) :=<br/>
 &nbsp;&nbsp;<span class="id" title="var">unzip</span> <span class="id" title="var">Vnil</span> := (<span class="id" title="var">Vnil</span>, <span class="id" title="var">Vnil</span>) ;<br/>
 &nbsp;&nbsp;<span class="id" title="var">unzip</span> (<span class="id" title="var">Vector.cons</span> (<span class="id" title="var">pair</span> <span class="id" title="var">x</span> <span class="id" title="var">y</span>) <span class="id" title="var">v</span>) <span class="id" title="keyword">with</span> <span class="id" title="var">unzip</span> <span class="id" title="var">v</span> := {<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">pair</span> <span class="id" title="var">xs</span> <span class="id" title="var">ys</span> := (<span class="id" title="var">Vector.cons</span> <span class="id" title="var">x</span> <span class="id" title="var">xs</span>, <span class="id" title="var">Vector.cons</span> <span class="id" title="var">y</span> <span class="id" title="var">ys</span>) }.<br/>
+&nbsp;&nbsp;| <span class="id" title="var">pair</span> <span class="id" title="var">xs</span> <span class="id" title="var">ys</span> := (<span class="id" title="var">Vector.cons</span> <span class="id" title="var">x</span> <span class="id" title="var">xs</span>, <span class="id" title="var">Vector.cons</span> <span class="id" title="var">y</span> <span class="id" title="var">ys</span>) }.<br/>
+</div>
+
+<div class="doc">
+One can easily show that the call is well-founded using the constructed
+      subterm relation. 
+</div>
+<div class="code">
+&nbsp;&nbsp;<span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">do</span> 2 <span class="id" title="tactic">constructor</span>. <span class="id" title="keyword">Defined</span>.<br/>
+
+<br/>
 <span class="id" title="keyword">End</span> <span class="id" title="var">UnzipVect</span>.<br/>
 
 <br/>
@@ -784,241 +776,8 @@ For the diagonal, it is easier to give <span class="inlinecode"><span class="id"
 <div class="doc">
 One can check using <span class="inlinecode"><span class="id" title="keyword">Extraction</span></span> <span class="inlinecode"><span class="id" title="var">diag'</span></span> that the computational behavior of <span class="inlinecode"><span class="id" title="var">diag'</span></span>
     is indeed not dependent on the index <span class="inlinecode"><span class="id" title="var">n</span></span>. 
-</div>
-<div class="code">
-
-<br/>
-
-<br/>
-</div>
-
-<div class="doc">
-While this was just mimicking simple structural recursion, we can of
-    course use this for more elaborate termination arguments. We put
-    ourselves in a section to parameterize a <span class="inlinecode"><span class="id" title="var">skip</span></span> function by a predicate: 
-</div>
-<div class="code">
-
-<br/>
-<span class="id" title="keyword">Fixpoint</span> <span class="id" title="var">vapp</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span> <span class="id" title="var">m</span>} (<span class="id" title="var">v</span> : <span class="id" title="var">vector</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) (<span class="id" title="var">w</span> : <span class="id" title="var">vector</span> <span class="id" title="var">A</span> <span class="id" title="var">m</span>) : <span class="id" title="var">vector</span> <span class="id" title="var">A</span> (<span class="id" title="var">n</span> + <span class="id" title="var">m</span>) :=<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">v</span> <span class="id" title="keyword">with</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">Vnil</span> ⇒ <span class="id" title="var">w</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">Vcons</span> <span class="id" title="var">a</span> <span class="id" title="var">v'</span> ⇒ <span class="id" title="var">Vcons</span> <span class="id" title="var">a</span> (<span class="id" title="var">vapp</span> <span class="id" title="var">v'</span> <span class="id" title="var">w</span>)<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
-
-<br/>
-<span class="id" title="keyword">Inductive</span> <span class="id" title="var">Split</span> {<span class="id" title="var">X</span> : <span class="id" title="keyword">Type</span>}{<span class="id" title="var">m</span> <span class="id" title="var">n</span> : <span class="id" title="var">nat</span>} : <span class="id" title="var">vector</span> <span class="id" title="var">X</span> (<span class="id" title="var">m</span> + <span class="id" title="var">n</span>) → <span class="id" title="keyword">Type</span> :=<br/>
-&nbsp;&nbsp;<span class="id" title="var">append</span> : <span class="id" title="keyword">∀</span> (<span class="id" title="var">xs</span> : <span class="id" title="var">vector</span> <span class="id" title="var">X</span> <span class="id" title="var">m</span>)(<span class="id" title="var">ys</span> : <span class="id" title="var">vector</span> <span class="id" title="var">X</span> <span class="id" title="var">n</span>), <span class="id" title="var">Split</span> (<span class="id" title="var">vapp</span> <span class="id" title="var">xs</span> <span class="id" title="var">ys</span>).<br/>
-
-<br/>
-<span class="id" title="keyword">Section</span> <span class="id" title="var">Skip</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Context</span> {<span class="id" title="var">A</span> : <span class="id" title="keyword">Type</span>} (<span class="id" title="var">p</span> : <span class="id" title="var">A</span> → <span class="id" title="var">bool</span>).<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Equations</span> <span class="id" title="var">pivot</span> {<span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="var">vector</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) : <span class="id" title="var">option</span> (<span class="id" title="var">A</span> × <span class="id" title="var">vector</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) <span class="id" title="tactic">by</span> <span class="id" title="keyword">rec</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>) <span class="id" title="var">lt</span> :=<br/>
-&nbsp;&nbsp;<span class="id" title="var">pivot</span> (<span class="id" title="var">Vcons</span> <span class="id" title="var">a</span> <span class="id" title="var">v'</span>) <span class="id" title="keyword">with</span> <span class="id" title="var">p</span> <span class="id" title="var">a</span> ⇒ {<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">true</span> ⇒ <span class="id" title="var">Some</span> (<span class="id" title="var">a</span>, <span class="id" title="var">v'</span>);<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">false</span> <span class="id" title="keyword">with</span> <span class="id" title="var">v'</span> ⇒<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ | <span class="id" title="var">Vnil</span> ⇒ <span class="id" title="var">None</span>;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">v''</span> <span class="id" title="keyword">with</span> <span class="id" title="var">pivot</span> <span class="id" title="var">v''</span> ⇒<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ | <span class="id" title="var">None</span> ⇒ <span class="id" title="var">None</span>;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">Some</span> (<span class="id" title="var">b</span>, <span class="id" title="var">v'''</span>) ⇒ <span class="id" title="var">Some</span> (<span class="id" title="var">b</span>, <span class="id" title="var">Vcons</span> <span class="id" title="var">a</span> <span class="id" title="var">v'''</span>) } } }.<br/>
-
-<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Next</span> <span class="id" title="keyword">Obligation</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">Subterm.rec_wf_eqns_rel</span> <span class="id" title="var">IH</span> 0 (<span class="id" title="var">signature_pack</span> <span class="id" title="var">v</span>) (@<span class="id" title="var">t_subterm</span> <span class="id" title="var">A</span>).<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <span class="id" title="var">add_pattern</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">depelim</span> <span class="id" title="var">v</span>. <span class="id" title="var">simp</span> <span class="id" title="var">find_first</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">constructor</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">p</span> <span class="id" title="var">h</span>); <span class="id" title="var">simp</span> <span class="id" title="var">find_first</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">constructor</span>. <span class="id" title="var">depelim</span> <span class="id" title="var">v</span>. <span class="id" title="var">simp</span> <span class="id" title="var">find_first</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">constructor</span>. <span class="id" title="tactic">apply</span> <span class="id" title="var">IH</span>. <span class="id" title="tactic">constructor</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">constructor</span>. <span class="id" title="tactic">auto</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">find_first</span> (<span class="id" title="var">Vcons</span> <span class="id" title="var">h0</span> <span class="id" title="var">v</span>)); <span class="id" title="var">simp</span> <span class="id" title="var">find_first</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Defined</span>.<br/>
-
-<br/>
-</div>
-
-<div class="doc">
-It is relatively straitforward to show that <span class="inlinecode"><span class="id" title="var">skip</span></span> returns a (large) subvector of its argument 
-</div>
-<div class="code">
-
-<br/>
-&nbsp;&nbsp;<span class="comment">(*&nbsp;Lemma&nbsp;skip_first_subterm&nbsp;{n}&nbsp;(v&nbsp;:&nbsp;vector&nbsp;A&nbsp;n)&nbsp;:&nbsp;clos_refl&nbsp;_&nbsp;(t_subterm&nbsp;_)&nbsp;(skip_first&nbsp;v)&nbsp;&amp;(_&nbsp;&amp;&nbsp;v).&nbsp;*)</span><br/>
-&nbsp;&nbsp;<span class="comment">(*&nbsp;Proof.&nbsp;*)</span><br/>
-&nbsp;&nbsp;<span class="comment">(*&nbsp;&nbsp;&nbsp;funelim&nbsp;(skip_first&nbsp;v).&nbsp;*)</span><br/>
-&nbsp;&nbsp;<span class="comment">(*&nbsp;&nbsp;&nbsp;constructor&nbsp;2.&nbsp;*)</span><br/>
-&nbsp;&nbsp;<span class="comment">(*&nbsp;&nbsp;&nbsp;depelim&nbsp;H.&nbsp;*)</span><br/>
-&nbsp;&nbsp;<span class="comment">(*&nbsp;&nbsp;&nbsp;constructor&nbsp;1.&nbsp;*)</span><br/>
-&nbsp;&nbsp;<span class="comment">(*&nbsp;&nbsp;&nbsp;eapply&nbsp;clos_trans_stepr.&nbsp;simpl.&nbsp;*)</span><br/>
-&nbsp;&nbsp;<span class="comment">(*&nbsp;&nbsp;&nbsp;apply&nbsp;(t_direct_subterm_1_1&nbsp;_&nbsp;_&nbsp;_&nbsp;(&amp;(_&nbsp;&amp;&nbsp;t).2)).&nbsp;apply&nbsp;H.&nbsp;*)</span><br/>
-&nbsp;&nbsp;<span class="comment">(*&nbsp;&nbsp;&nbsp;rewrite&nbsp;&lt;-&nbsp;H.&nbsp;constructor.&nbsp;eauto&nbsp;with&nbsp;subterm_relation.&nbsp;*)</span><br/>
-&nbsp;&nbsp;<span class="comment">(*&nbsp;&nbsp;&nbsp;constructor&nbsp;2.&nbsp;*)</span><br/>
-&nbsp;&nbsp;<span class="comment">(*&nbsp;Qed.&nbsp;*)</span><br/>
-
-<br/>
-<span class="id" title="keyword">End</span> <span class="id" title="var">Skip</span>.<br/>
-
-<br/>
-</div>
-
-<div class="doc">
-This function takes an unsorted vector and returns a sorted vector corresponding to it
-    starting from its head <span class="inlinecode"><span class="id" title="var">a</span></span>, removing all elements smaller than <span class="inlinecode"><span class="id" title="var">a</span></span> and recursing.  
-</div>
-<div class="code">
-
-<br/>
-<span class="id" title="keyword">Equations</span> <span class="id" title="var">sort</span> {<span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="var">vector</span> <span class="id" title="var">nat</span> <span class="id" title="var">n</span>) : <span class="id" title="var">vector</span> <span class="id" title="var">nat</span> <span class="id" title="var">n</span><br/>
-&nbsp;&nbsp;<span class="id" title="tactic">by</span> <span class="id" title="keyword">rec</span> <span class="id" title="var">n</span> <span class="id" title="var">lt</span> :=<br/>
-<span class="id" title="var">sort</span> <span class="id" title="var">Vnil</span> := <span class="id" title="var">Vnil</span>;<br/>
-<span class="id" title="var">sort</span> (<span class="id" title="var">Vcons</span> <span class="id" title="var">a</span> <span class="id" title="var">Vnil</span>) := <span class="id" title="var">Vcons</span> <span class="id" title="var">a</span> <span class="id" title="var">Vnil</span>;<br/>
-<span class="id" title="var">sort</span> (<span class="id" title="var">Vcons</span> <span class="id" title="var">a</span> <span class="id" title="var">v</span>) <span class="id" title="keyword">with</span> <span class="id" title="var">find_first</span> (<span class="id" title="keyword">fun</span> <span class="id" title="var">x</span> ⇒ <span class="id" title="var">Nat.leb</span> <span class="id" title="var">x</span> <span class="id" title="var">a</span>) <span class="id" title="var">v</span> ⇒ {<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">None</span> ⇒ <span class="id" title="var">Vcons</span> <span class="id" title="var">a</span> (<span class="id" title="var">sort</span> <span class="id" title="var">v</span>);<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">Some</span> (<span class="id" title="var">b</span>, <span class="id" title="var">v'</span>) ⇒ <span class="id" title="var">Vcons</span> <span class="id" title="var">b</span> (<span class="id" title="var">sort</span> (<span class="id" title="var">Vcons</span> <span class="id" title="var">a</span> <span class="id" title="var">v'</span>)) }.<br/>
-
-<br/>
-</div>
-
-<div class="doc">
-Here we prove that the recursive call is correct as skip preserves the size of its argument 
-</div>
-<div class="code">
-
-<br/>
-<span class="id" title="keyword">Next</span> <span class="id" title="keyword">Obligation</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">red</span>. <span class="id" title="tactic">simpl</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <span class="id" title="var">clos_trans_stepr_refl</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">apply</span> (<span class="id" title="var">t_direct_subterm_1_1</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (&amp;(<span class="id" title="var">_</span> &amp; <span class="id" title="var">v</span>).2)).<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">refine</span> (<span class="id" title="var">skip_first_subterm</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span>).<br/>
-<span class="id" title="keyword">Qed</span>.<br/>
-
-<br/>
-</div>
-
-<div class="doc">
-To prove it we need a few supporting lemmas, we first write a predicate on vectors
-    equivalent to <span class="inlinecode"><span class="id" title="var">List.forall</span></span>. 
-</div>
-<div class="code">
-
-<br/>
-<span class="id" title="keyword">Equations</span> <span class="id" title="var">forall_vect</span> {<span class="id" title="var">A</span>} (<span class="id" title="var">p</span> : <span class="id" title="var">A</span> → <span class="id" title="var">bool</span>) {<span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="var">vector</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) : <span class="id" title="var">bool</span> :=<br/>
-<span class="id" title="var">forall_vect</span> <span class="id" title="var">_</span> <span class="id" title="var">Vnil</span> := <span class="id" title="var">true</span>;<br/>
-<span class="id" title="var">forall_vect</span> <span class="id" title="var">p</span> (<span class="id" title="var">Vcons</span> <span class="id" title="var">x</span> <span class="id" title="var">n</span> <span class="id" title="var">v</span>) := <span class="id" title="var">p</span> <span class="id" title="var">x</span> &amp;&amp; <span class="id" title="var">forall_vect</span> <span class="id" title="var">p</span> <span class="id" title="var">v</span>.<br/>
-
-<br/>
-<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="var">Bool</span>.<br/>
-
-<br/>
-</div>
-
-<div class="doc">
-By functional elimination it is easy to prove that this respects the implication
-    order on predicates 
-</div>
-<div class="code">
-
-<br/>
-<span class="id" title="keyword">Lemma</span> <span class="id" title="var">forall_vect_impl</span> {<span class="id" title="var">A</span>} <span class="id" title="var">p</span> <span class="id" title="var">p'</span> {<span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="var">vector</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>)<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="var">fp</span> : <span class="id" title="keyword">∀</span> <span class="id" title="var">x</span>, <span class="id" title="var">p</span> <span class="id" title="var">x</span> = <span class="id" title="var">true</span> → <span class="id" title="var">p'</span> <span class="id" title="var">x</span> = <span class="id" title="var">true</span>) :<br/>
-&nbsp;&nbsp;<span class="id" title="var">forall_vect</span> <span class="id" title="var">p</span> <span class="id" title="var">v</span> = <span class="id" title="var">true</span> → <span class="id" title="var">forall_vect</span> <span class="id" title="var">p'</span> <span class="id" title="var">v</span> = <span class="id" title="var">true</span>.<br/>
-<span class="id" title="keyword">Proof</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="var">funelim</span> (<span class="id" title="var">forall_vect</span> <span class="id" title="var">p</span> <span class="id" title="var">v</span>). <span class="id" title="tactic">auto</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="var">simp</span> <span class="id" title="var">forall_vect</span>. <span class="id" title="tactic">rewrite</span> !<span class="id" title="var">andb_true_iff</span>; <span class="id" title="tactic">intuition</span> <span class="id" title="tactic">auto</span>.<br/>
-<span class="id" title="keyword">Qed</span>.<br/>
-
-<br/>
-</div>
-
-<div class="doc">
-We now define a simple-minded sorting predicate 
-</div>
-<div class="code">
-
-<br/>
-<span class="id" title="keyword">Inductive</span> <span class="id" title="var">sorted</span> : <span class="id" title="keyword">∀</span> {<span class="id" title="var">n</span>}, <span class="id" title="var">vector</span> <span class="id" title="var">nat</span> <span class="id" title="var">n</span> → <span class="id" title="keyword">Prop</span> :=<br/>
-| <span class="id" title="var">sorted_nil</span> : <span class="id" title="var">sorted</span> <span class="id" title="var">Vnil</span><br/>
-| <span class="id" title="var">sorted_cons</span> <span class="id" title="var">x</span> <span class="id" title="var">n</span> (<span class="id" title="var">v</span> : <span class="id" title="var">vector</span> <span class="id" title="var">nat</span> <span class="id" title="var">n</span>) :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">forall_vect</span> (<span class="id" title="keyword">fun</span> <span class="id" title="var">y</span> ⇒ <span class="id" title="var">Nat.leb</span> <span class="id" title="var">x</span> <span class="id" title="var">y</span>) <span class="id" title="var">v</span> = <span class="id" title="var">true</span> →<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">sorted</span> <span class="id" title="var">v</span> → <span class="id" title="var">sorted</span> (<span class="id" title="var">Vcons</span> <span class="id" title="var">x</span> <span class="id" title="var">v</span>).<br/>
-
-<br/>
-</div>
-
-<div class="doc">
-Again, we show that <span class="inlinecode"><span class="id" title="var">sort</span></span> produces a sorted vector
-    by repeated functional eliminations. 
-</div>
-<div class="code">
-
-<br/>
-<span class="id" title="keyword">Lemma</span> <span class="id" title="var">fn_sorted</span> <span class="id" title="var">n</span> (<span class="id" title="var">v</span> : <span class="id" title="var">vector</span> <span class="id" title="var">nat</span> <span class="id" title="var">n</span>) : <span class="id" title="var">sorted</span> (<span class="id" title="var">sort</span> <span class="id" title="var">v</span>).2.<br/>
-<span class="id" title="keyword">Proof</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="var">funelim</span> (<span class="id" title="var">sort</span> <span class="id" title="var">v</span>).<br/>
-</div>
-
-<div class="doc">
-The first elimination just gives the two <span class="inlinecode"><span class="id" title="var">sort</span></span> cases. 
-</div>
-<div class="code">
-&nbsp;&nbsp;- <span class="id" title="tactic">constructor</span>.<br/>
-&nbsp;&nbsp;- <span class="id" title="tactic">constructor</span>; <span class="id" title="tactic">auto</span>.<br/>
-</div>
-
-<div class="doc">
-Here we have a nested call to skip_first, for which the induction hypothesis holds: <br/>
-<span class="inlinecode">&nbsp;&nbsp;<span class="id" title="var">H</span> : <span class="id" title="var">sorted</span> (<span class="id" title="var">sort</span> (<span class="id" title="var">skip_first</span> (<span class="id" title="keyword">fun</span> <span class="id" title="var">x</span> : <span class="id" title="var">nat</span> ⇒ <span class="id" title="var">x</span> &lt;=? <span class="id" title="var">h</span>) <span class="id" title="var">t</span>).2).2<br/>
-&nbsp;&nbsp;============================<br/>
-&nbsp;&nbsp;<span class="id" title="var">forall_vect</span> (<span class="id" title="keyword">fun</span> <span class="id" title="var">y</span> : <span class="id" title="var">nat</span> ⇒ <span class="id" title="var">h</span> &lt;=? <span class="id" title="var">y</span>) (<span class="id" title="var">sort</span> (<span class="id" title="var">skip_first</span> (<span class="id" title="keyword">fun</span> <span class="id" title="var">x</span> : <span class="id" title="var">nat</span> ⇒ <span class="id" title="var">x</span> &lt;=? <span class="id" title="var">h</span>) <span class="id" title="var">t</span>).2).2 = <span class="id" title="var">true</span>
 <div class="paragraph"> </div>
 
-</span>
-<div class="paragraph"> </div>
-
-   We can apply functional elimination likewise, even if the predicate argument is instantiated
-   here. 
-</div>
-<div class="code">
-
-<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">revert</span> <span class="id" title="var">H</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">funelim</span> (<span class="id" title="var">skip_first</span> (<span class="id" title="keyword">fun</span> <span class="id" title="var">x</span> : <span class="id" title="var">nat</span> ⇒ <span class="id" title="var">Nat.leb</span> <span class="id" title="var">x</span> <span class="id" title="var">h</span>) <span class="id" title="var">t</span>);<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">simp</span> <span class="id" title="var">sort</span> <span class="id" title="var">forall_vect</span> <span class="id" title="tactic">in</span> *; <span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> *; <span class="id" title="tactic">intros</span> <span class="id" title="var">H</span>.<br/>
-
-<br/>
-</div>
-
-<div class="doc">
- After some simplifications, we get: <br/>
-<span class="inlinecode">&nbsp;&nbsp;<span class="id" title="var">Heq</span> : (<span class="id" title="var">h0</span> &lt;=? <span class="id" title="var">h</span>) = <span class="id" title="var">false</span><br/>
-&nbsp;&nbsp;<span class="id" title="var">H</span> : <span class="id" title="var">sorted</span> (<span class="id" title="var">Vcons</span> <span class="id" title="var">h0</span> (<span class="id" title="var">sort</span> (<span class="id" title="var">skip_first</span> (<span class="id" title="keyword">fun</span> <span class="id" title="var">x</span> : <span class="id" title="var">nat</span> ⇒ <span class="id" title="var">x</span> &lt;=? <span class="id" title="var">h0</span>) <span class="id" title="var">t</span>).2).2)<br/>
-&nbsp;&nbsp;============================<br/>
-&nbsp;&nbsp;(<span class="id" title="var">h</span> &lt;=? <span class="id" title="var">h0</span>) &amp;&amp; <span class="id" title="var">forall_vect</span> (<span class="id" title="keyword">fun</span> <span class="id" title="var">y</span> : <span class="id" title="var">nat</span> ⇒ <span class="id" title="var">h</span> &lt;=? <span class="id" title="var">y</span>) (<span class="id" title="var">sort</span> (<span class="id" title="var">skip_first</span> (<span class="id" title="keyword">fun</span> <span class="id" title="var">x</span> : <span class="id" title="var">nat</span> ⇒ <span class="id" title="var">x</span> &lt;=? <span class="id" title="var">h0</span>) <span class="id" title="var">t</span>).2).2 = <span class="id" title="var">true</span>
-<div class="paragraph"> </div>
-
-</span>
-<div class="paragraph"> </div>
-
-    This requires inversion on the sorted predicate to find out that, by induction,
-    <span class="inlinecode"><span class="id" title="var">h0</span></span> is smaller than all of <span class="inlinecode"><span class="id" title="var">fn</span></span> <span class="inlinecode">(<span class="id" title="var">skip_first</span></span> <span class="inlinecode">...)</span>, and hence <span class="inlinecode"><span class="id" title="var">h</span></span> is as well.
-    This is just regular reasoning. Just note how we got to this point in just
-    two invocations of <span class="inlinecode"><span class="id" title="var">funelim</span></span>. 
-</div>
-<div class="code">
-
-<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> <span class="id" title="var">andb_true_iff</span>. <span class="id" title="tactic">simpl</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">enough</span> (<span class="id" title="var">h</span> &lt;=? <span class="id" title="var">h0</span> = <span class="id" title="var">true</span>). <span class="id" title="tactic">split</span>; <span class="id" title="tactic">auto</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">depelim</span> <span class="id" title="var">H</span>. <span class="id" title="tactic">eapply</span> <span class="id" title="var">forall_vect_impl</span> <span class="id" title="tactic">in</span> <span class="id" title="var">H</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="var">H</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">x'</span> <span class="id" title="var">h0x'</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">rewrite</span> <span class="id" title="var">Nat.leb_le</span> <span class="id" title="tactic">in</span> ×. <span class="id" title="tactic">omega</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> <span class="id" title="var">Nat.leb_le</span>, <span class="id" title="var">Nat.leb_nle</span> <span class="id" title="tactic">in</span> ×. <span class="id" title="tactic">omega</span>.<br/>
-<span class="id" title="keyword">Qed</span>.<br/>
-
-<br/>
-</div>
-
-<div class="doc">
 <a name="lab14"></a><h3 class="section">Pattern-matching and axiom K</h3>
 
 <div class="paragraph"> </div>
