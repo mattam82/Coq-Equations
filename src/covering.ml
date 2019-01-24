@@ -293,9 +293,8 @@ let interp_program_body env sigma ctx impls body ty =
 
 let interp_program_body env evars ctx intenv notations c ty =
   Metasyntax.with_syntax_protection (fun () ->
-    let _, _, named_context = named_of_rel_context (fun _ -> Id.of_string "unnamed_rel") ctx in
-    List.iter (Metasyntax.set_notation_for_interpretation (Environ.push_named_context
-                                                           (EConstr.Unsafe.to_named_context named_context) env) intenv) notations;
+    let ctx' = List.map EConstr.Unsafe.to_rel_decl ctx in
+    List.iter (Metasyntax.set_notation_for_interpretation (Environ.push_rel_context ctx' env) intenv) notations;
     interp_program_body env evars ctx intenv c ty) ()
   (* try  with PretypeError (env, evm, e) ->
    *   user_err_loc (dummy_loc, "interp_program_body",
@@ -617,7 +616,7 @@ let compute_fixdecls_data env evd ?data programs =
     List.map2 (fun i fixprot -> of_tuple (Name i, None, fixprot)) names fixprots in
   data, List.rev fixdecls, fixprots
 
-let interp_arity env evd ~poly ~is_rec ~with_evars (((loc,i),rec_annot,l,t,by),clauses as ieqs) =
+let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot,l,t,by),clauses as ieqs) =
   let ienv, ((env', sign), impls) = Equations_common.evd_comb1 (interp_context_evars env) evd l in
   let (arity, impls') =
     let ty = match t with
@@ -637,14 +636,12 @@ let interp_arity env evd ~poly ~is_rec ~with_evars (((loc,i),rec_annot,l,t,by),c
   let rec_annot =
     match by with
     | None ->
-      (match is_rec with
-       | None -> None
-       | Some false ->
-         if rec_annot = Some Syntax.Nested && Option.is_empty (is_recursive i [ieqs]) then
+      (if is_rec then
+         if rec_annot = Some Syntax.Nested && not (is_recursive i ([ieqs], notations)) then
            (* Nested but not recursive in in its own body *)
            Some (Structural NestedNonRec)
          else Some (Structural (interp_reca rec_annot None))
-       | Some true -> assert false)
+       else None)
     | Some (Structural lid) ->
       (try
          let k, _, _ = lookup_rel_id (snd lid) sign in
@@ -1185,13 +1182,14 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
 
 and interp_wheres env0 ctx evars path data s lets
     (ctx, envctx, liftn, subst)
-    (w : (pre_prototype * pre_equation list) list) =
+    (w : (pre_prototype * pre_equation list) list * Vernacexpr.decl_notation list) =
+  let notations = snd w in
   let aux (data,lets,nlets,coverings,env)
       (((loc,id),nested,b,t,reca),clauses as eqs) =
 
-    let is_rec = is_recursive id [eqs] in
-    let p = interp_arity env evars ~poly:false ~is_rec ~with_evars:true eqs in
-    let clauses = List.map (interp_eqn env data.notations p) clauses in
+    let is_rec = is_recursive id ([eqs], notations) in
+    let p = interp_arity env evars ~poly:false ~is_rec ~with_evars:true notations eqs in
+    let clauses = List.map (interp_eqn env (data.notations @ notations) p) clauses in
     let sigma, p = adjust_sign_arity env !evars p clauses in
     let () = evars := sigma in
 
@@ -1203,7 +1201,7 @@ and interp_wheres env0 ctx evars path data s lets
     let intenv = Constrintern.compute_internalization_env ~impls:data.intenv
         env !evars Constrintern.Recursive [id] [pre_type] [p.program_impls]
     in
-    let data = { data with intenv; } in
+    let data = { data with intenv; notations = data.notations @ notations } in
     let path = id :: path in
 
     let where_args = extended_rel_list 0 lets in
@@ -1244,7 +1242,7 @@ and interp_wheres env0 ctx evars path data s lets
      push_rel decl envctx)
   in
   let (data, lets, nlets, coverings, envctx') =
-    List.fold_left aux (data, ctx, 0, [], push_rel_context ctx env0) w
+    List.fold_left aux (data, ctx, 0, [], push_rel_context ctx env0) (fst w)
   in (data, envctx, lets, nlets, push_rel_context ctx env0, coverings, liftn, subst)
 
 and covering ?(check_unused=true) env evars p data (clauses : pre_clause list)

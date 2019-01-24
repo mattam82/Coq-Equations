@@ -70,7 +70,7 @@ type program_body =
 type lhs = user_pats
 
 and ('a,'b) rhs =
-    Program of program_body * 'a where_clause list
+    Program of program_body * 'a wheres
   | Empty of identifier with_loc
   | Refine of Constrexpr.constr_expr list * 'b list
 
@@ -83,6 +83,7 @@ and ('a, 'b) by_annot =
   | WellFounded of 'b
 
 and 'a where_clause = pre_prototype * 'a list
+and 'a wheres = 'a where_clause list * Vernacexpr.decl_notation list
 
 type program = (signature * clause list) list
 and signature = identifier * rel_context * constr (* f : Π Δ. τ *)
@@ -124,7 +125,7 @@ let rec pr_rhs env = function
       spc () ++ str "=>" ++ spc () ++
       hov 1 (str "{" ++ pr_clauses env s ++ str "}")
 
-and pr_wheres env l =
+and pr_wheres env (l, nts) =
   if List.is_empty l then mt() else
   str"where" ++ spc () ++ prlist_with_sep fnl (pr_where env) l
 and pr_where env (sign, eqns) =
@@ -177,7 +178,7 @@ and pr_user_clause env (lhs, rhs) =
 and pr_user_clauses env =
   prlist_with_sep fnl (pr_user_clause env)
 
-and pr_prewheres env l =
+and pr_prewheres env (l, nts) =
   if List.is_empty l then mt() else
   str"where" ++ spc () ++ prlist_with_sep fnl (pr_prewhere env) l
 and pr_prewhere env (sign, eqns) =
@@ -412,74 +413,75 @@ let interp_eqn env notations p eqn =
   let patnames =
     List.rev_map (fun decl -> Context.Rel.Declaration.get_name decl) p.program_sign
   in
-  let interp_pat = interp_pat env notations ~avoid in
-  let rec aux curpats (pat, rhs) =
+  let interp_pat notations = interp_pat env notations ~avoid in
+  let rec aux notations curpats (pat, rhs) =
     let loc, pats =
       match pat with
       | SignPats pat ->
         avoid := Id.Set.union !avoid (ids_of_pats (Some p.program_id) [pat]);
         let loc = Constrexpr_ops.constr_loc pat in
-        let pats = interp_pat (Some (p, patnames)) pat in
+        let pats = interp_pat notations (Some (p, patnames)) pat in
         loc, pats
       | RefinePats pats ->
         let patids = ref (ids_of_pats None pats) in
         let curpats = rename_away_from patids curpats in
         avoid := Id.Set.union !avoid !patids;
         let loc = Constrexpr_ops.constr_loc (List.hd pats) in
-        let pats = List.map (interp_pat None) pats in
+        let pats = List.map (interp_pat notations None) pats in
         let pats = List.map (fun x -> List.hd x) pats in
         loc, curpats @ pats
     in
     let () = check_linearity env pats in
-    (loc, pats, interp_rhs pats rhs)
-  and aux2 (pat, rhs) =
-    (pat, interp_rhs' rhs)
-  and interp_rhs' = function
+    (loc, pats, interp_rhs notations pats rhs)
+  and aux2 notations (pat, rhs) =
+    (pat, interp_rhs' notations rhs)
+  and interp_rhs' notations = function
     | Refine (c, eqs) ->
       let interp c =
-        let wheres, c = CAst.with_loc_val interp_constr_expr c in
+        let wheres, c = CAst.with_loc_val (interp_constr_expr notations) c in
         if not (List.is_empty wheres) then
           user_err_loc (Constrexpr_ops.constr_loc c, "interp_eqns", str"Pattern-matching lambdas not allowed in refine");
         c
       in
-      Refine (List.map interp c, map aux2 eqs)
-    | Program (c, w) ->
-       let w = interp_wheres avoid w in
+      Refine (List.map interp c, map (aux2 notations) eqs)
+    | Program (c, (w, nts)) ->
+       let notations = nts @ notations in
+       let w = interp_wheres avoid w notations in
        let w', c =
          match c with
          | ConstrExpr c ->
-            let wheres, c = CAst.with_loc_val interp_constr_expr c in
+            let wheres, c = CAst.with_loc_val (interp_constr_expr notations) c in
             wheres, ConstrExpr c
          | Constr c -> [], Constr c
        in
-       Program (c, List.append w' w)
+       Program (c, (List.append w' w, nts))
     | Empty i -> Empty i
-  and interp_rhs curpats = function
+  and interp_rhs notations curpats = function
     | Refine (c, eqs) ->
       let interp c =
-        let wheres, c = CAst.with_loc_val interp_constr_expr c in
+        let wheres, c = CAst.with_loc_val (interp_constr_expr notations) c in
         if not (List.is_empty wheres) then
           user_err_loc (Constrexpr_ops.constr_loc c, "interp_eqns", str"Pattern-matching lambdas not allowed in refine");
         c
       in
-      Refine (List.map interp c, map (aux curpats) eqs)
-    | Program (c, w) ->
-       let w = interp_wheres avoid w in
+      Refine (List.map interp c, map (aux notations curpats) eqs)
+    | Program (c, (w, nts)) ->
+       let w = interp_wheres avoid w (nts @ notations) in
        let w', c =
          match c with
          | ConstrExpr c ->
-            let wheres, c = CAst.with_loc_val interp_constr_expr c in
+            let wheres, c = CAst.with_loc_val (interp_constr_expr notations) c in
             wheres, ConstrExpr c
          | Constr c -> [], Constr c
        in
-       Program (c, List.append w' w)
+       Program (c, (List.append w' w, nts))
     | Empty i -> Empty i
-  and interp_wheres avoid w =
+  and interp_wheres avoid w notations =
     let interp_where (((loc,id),nested,b,t,reca) as p,eqns) =
       Dumpglob.dump_reference ~loc "<>" (Id.to_string id) "def";
-      p, map aux2 eqns
+      p, map (aux2 notations) eqns
     in List.map interp_where w
-  and interp_constr_expr ?(loc=default_loc) c =
+  and interp_constr_expr notations ?(loc=default_loc) c =
     let wheres = ref [] in
     let rec aux' ids ?(loc=default_loc) c =
       match c with
@@ -499,7 +501,7 @@ let interp_eqn env notations p eqn =
         let id = !whereid in
         let () = whereid := Nameops.increment_subscript id in
         let () = avoid := Id.Set.add id !avoid in
-        let eqns = List.map aux2 eqns in
+        let eqns = List.map (aux2 notations) eqns in
         let () =
           wheres := (((loc, id), None, [], None, None), eqns) :: !wheres;
         in Constrexpr_ops.mkIdentC id
@@ -508,28 +510,21 @@ let interp_eqn env notations p eqn =
     in
     let c' = aux' !avoid ~loc c in
     !wheres, c'
-  in aux [] eqn
+  in aux notations [] eqn
 
-let is_recursive i : pre_equations -> bool option = fun eqs ->
+let is_recursive i : 'a wheres -> bool = fun eqs ->
   let rec occur_eqn (_, rhs) =
     match rhs with
     | Program (c,w) ->
       (match c with
-      | ConstrExpr c ->
-        if occur_var_constr_expr i c then Some false else occurs w
+      | ConstrExpr c -> occur_var_constr_expr i c || occurs w
       | Constr _ -> occurs w)
     | Refine (c, eqs) ->
-       if List.exists (occur_var_constr_expr i) c then Some false
-       else occur_eqns eqs
-    | _ -> None
-  and occur_eqns eqs =
-    let occurs = List.map occur_eqn eqs in
-    if for_all Option.is_empty occurs then None
-    else if exists (function Some true -> true | _ -> false) occurs then Some true
-    else Some false
+       List.exists (occur_var_constr_expr i) c || occur_eqns eqs
+    | _ -> false
+  and occur_eqns eqs = List.exists occur_eqn eqs
+  and occurs_notations nts =
+    List.exists (fun (_, c, _) -> occur_var_constr_expr i c) nts
   and occurs eqs =
-    let occurs = List.map (fun (_,eqs) -> occur_eqns eqs) eqs in
-      if for_all Option.is_empty occurs then None
-      else if exists (function Some true -> true | _ -> false) occurs then Some true
-      else Some false
+    List.exists (fun (_,eqs) -> occur_eqns eqs) (fst eqs) || occurs_notations (snd eqs)
   in occurs eqs

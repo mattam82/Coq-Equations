@@ -308,12 +308,6 @@ GRAMMAR EXTEND Gram
     [ [ cs = LIST1 Constr.lconstr SEP "," -> { cs }
     ] ]
   ;
-  rec_annot:
-    [ [ "where" -> { Some Syntax.Nested }
-      | "with" -> { Some Syntax.Mutual }
-      | -> { None }
-    ] ]
-  ;
 
   wf_annot:
     [ [ "by"; IDENT "rec"; c = constr; rel = OPT constr -> { Some (WellFounded (c, rel)) }
@@ -322,24 +316,58 @@ GRAMMAR EXTEND Gram
     ] ]
   ;
 
-  where_clause:
-    [ [ r = rec_annot;
-        id = lident; l = binders2; ":"; t = Constr.lconstr;
-        reca = wf_annot; ":="; eqs = sub_equations -> { ((id, r, l, Some t, reca), eqs) } ] ]
+  proto:
+   [ [
+   id = lident; l = binders2; ":"; t = Constr.lconstr;
+   reca = wf_annot; ":="; eqs = sub_equations -> { (fun r -> ((id, r, l, Some t, reca), eqs)) }
+   ] ]
   ;
-  one_decl_notation:
+
+  where_rhs:
     [ [ ntn = ne_lstring; ":="; c = constr;
-        scopt = OPT [ ":"; sc = IDENT -> { sc } ] -> { (ntn,c,scopt) } ] ]
+        scopt = OPT [ ":"; sc = IDENT -> { sc } ] -> { Inr (ntn, c, scopt) }
+      | p = proto -> { Inl (p (Some Syntax.Nested)) } ] ]
   ;
-  where:
-    [ [ "where"; l = LIST1 where_clause -> { l }
-      | -> { [] }
+
+  where_clause:
+    [ [ "where"; w = where_rhs -> { w }
+      | "with"; p = proto -> { Inl (p (Some Syntax.Mutual)) }
+      | p = proto -> { Inl (p None) }
+    ] ]
+  ;
+  wheres:
+    [ [ l = LIST0 where_clause ->
+      { let rec aux = function
+          | Inl w :: l -> let ws, ns = aux l in w :: ws, ns
+          | Inr n :: l -> let ws, ns = aux l in ws, n :: ns
+          | [] -> ([], [])
+        in aux l }
+    ] ]
+  ;
+
+  local_where_rhs:
+    [ [ ntn = ne_lstring; ":="; c = constr;
+        scopt = OPT [ ":"; sc = IDENT -> { sc } ] -> { Inr (ntn, c, scopt) }
+      | p = proto -> { Inl (p (Some Syntax.Mutual)) } ] ]
+  ;
+  local_where:
+    [ [ "where"; w = local_where_rhs -> { w }
+      | "with"; p = proto -> { Inl (p (Some Syntax.Mutual)) }
+    ] ]
+  ;
+  local_wheres:
+    [ [ l = LIST0 local_where ->
+      { let rec aux = function
+          | Inl w :: l -> let ws, ns = aux l in w :: ws, ns
+          | Inr n :: l -> let ws, ns = aux l in ws, n :: ns
+          | [] -> ([], [])
+        in aux l }
     ] ]
   ;
   rhs:
     [ [ ":=!"; id = identloc -> { Empty id }
 
-     | [":=" -> { () } |"=>" -> { () } ]; c = Constr.lconstr; w = where ->
+     | [":=" -> { () } |"=>" -> { () } ]; c = Constr.lconstr; w = local_wheres ->
         { Program (ConstrExpr c, w) }
 
       | ["with" -> { () } ]; refs = refine; [":=" -> { () } |"=>" -> { () } ];
@@ -353,16 +381,9 @@ GRAMMAR EXTEND Gram
     ] ]
   ;
 
-  decl_sep:
-    [ [ IDENT "and" -> { () } ] ]
-  ;
-  decl_notation:
-    [ [ "notation"; l = LIST1 one_decl_notation SEP decl_sep -> { l }
-    | -> { [] } ] ]
-  ;
-
   equations:
-  [ [ l = LIST1 where_clause; l' = decl_notation -> { l, l' } ] ]
+    [ [ p = proto; l = wheres -> { let ws, nts = l in
+                                   ((p None :: ws), nts) } ] ]
   ;
   END
 

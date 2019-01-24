@@ -190,13 +190,13 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
           List.fold_left get_type (ty, mkVar name, mkVar name') eqs
         in mkApp (eqT, [| ty; lhs; rhs |])
     in
-    (loc, lhs, Syntax.Program (Syntax.Constr rhs, []))
+    (loc, lhs, Syntax.Program (Syntax.Constr rhs, ([], [])))
   in
   let clauses = Array.to_list (Array.mapi mk_clause constructors) in
   let hole x = Syntax.PUVar (Id.of_string x, true) in
   let catch_all =
     let lhs = parampats @ [DAst.make (hole "x"); DAst.make (hole "y")] in
-    let rhs = Syntax.Program (Syntax.Constr fls, []) in
+    let rhs = Syntax.Program (Syntax.Constr fls, ([], [])) in
     (None, lhs, rhs)
   in
   let clauses = clauses @ [catch_all] in

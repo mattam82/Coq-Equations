@@ -158,8 +158,8 @@ let define_by_eqs ~poly ~open_proof opts eqs nt =
   let flags = { polymorphic = poly; with_eqns; with_ind; open_proof } in
   let evd = ref (Evd.from_env env) in
   let programs = List.map (fun (((loc,i),rec_annot,l,t,by),clauses as ieqs) ->
-      let is_rec = is_recursive i eqs in
-      interp_arity env evd ~poly ~is_rec ~with_evars:open_proof ieqs) eqs in
+      let is_rec = is_recursive i (eqs, nt) in
+      interp_arity env evd ~poly ~is_rec ~with_evars:open_proof nt ieqs) eqs in
   let rec_info = compute_recinfo programs in
   let () = print_recinfo programs in
   let env = Global.env () in (* To find the comp constant *)

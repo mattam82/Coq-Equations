@@ -237,8 +237,9 @@ val compute_rec_data :
 val interp_arity : Environ.env ->
   Evd.evar_map ref ->
   poly:bool ->
-  is_rec:bool option ->
+  is_rec:bool ->
   with_evars:bool ->
+  Vernacexpr.decl_notation list ->
   pre_equation Syntax.where_clause ->
   program_info
 

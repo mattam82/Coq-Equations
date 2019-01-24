@@ -61,7 +61,7 @@ type program_body =
 
 type lhs = user_pats (* p1 ... pn *)
 and ('a,'b) rhs =
-    Program of program_body * 'a where_clause list
+    Program of program_body * 'a wheres
   | Empty of identifier with_loc
   | Refine of Constrexpr.constr_expr list * 'b list
 and pre_prototype =
@@ -73,7 +73,7 @@ and ('a, 'b) by_annot =
   | WellFounded of 'b
 
 and 'a where_clause = pre_prototype * 'a list
-
+and 'a wheres = 'a where_clause list * Vernacexpr.decl_notation list
 type program = (signature * clause list) list
 and signature = identifier * rel_context * constr (* f : Π Δ. τ *)
 and clause = Loc.t option * lhs * (clause, clause) rhs (* lhs rhs *)
@@ -155,4 +155,4 @@ val interp_eqn : env -> Vernacexpr.decl_notation list -> program_info -> pre_equ
 
 val wit_equations_list : pre_equation list Genarg.uniform_genarg_type
 
-val is_recursive : Names.Id.t -> pre_equations -> bool option
+val is_recursive : Names.Id.t -> pre_equation wheres -> bool
