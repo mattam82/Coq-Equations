@@ -12,7 +12,7 @@ where foo : nat -> nat :=
 
 where "x +++ y" := (app x y).
 
-Check nil +++ nil.
+Definition foo' : list nat := nil +++ nil.
 
 Equations plus : nat -> nat -> nat :=
 { 0   + n := n;
@@ -29,11 +29,8 @@ Equations rev {A} : list A -> list A :=
        { acc ++++ [] := acc;
          acc ++++ (x :: l) := (x :: acc) ++++ l }.
 
-Print Scopes.
-
 Require Import Arith NArith.
 Local Open Scope N_scope.
-Check (_ - 0).
 
 (** Parsing works with scopes as well *)
 Equations scope_match (n : nat) : nat :=
