@@ -139,7 +139,9 @@ let define_by_eqs ~poly ~open_proof opts eqs nt =
       if List.mem opt opts then false
       else true 
     in
-    try_bool_opt (OEquations false), try_bool_opt (OInd false)
+    let with_eqns = try_bool_opt (OEquations false) in
+    if with_eqns then with_eqns, try_bool_opt (OInd false)
+    else false, false
   in
   let env = Global.env () in
   let flags = { polymorphic = poly; with_eqns; with_ind; open_proof } in
