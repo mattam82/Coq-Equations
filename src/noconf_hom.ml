@@ -98,7 +98,7 @@ let derive_noConfusion_package env sigma polymorphic (ind,u as indu) indid cstNo
   in
   let kind = Decl_kinds.(Global, polymorphic, Definition) in
   let oblinfo, _, term, ty = Obligations.eterm_obligations env noid sigma 0
-      (to_constr ~abort_on_undefined_evars:false sigma term)
+      (to_constr sigma term)
       (to_constr sigma ty) in
     ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hook) packid
              ~kind ~term ty ~tactic:(noconf_hom_tac ())
@@ -126,7 +126,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   let binders = xdecl :: ctx in
   let ydecl = of_tuple (Name yid, None, lift 1 argty) in
   let fullbinders = ydecl :: binders in
-  let sigma, s = Evd.fresh_sort_in_family sigma (Lazy.force logic_sort) in
+  let sigma, s = Evd.fresh_sort_in_family env sigma (Lazy.force logic_sort) in
   let s = mkSort s in
   let _arity = it_mkProd_or_LetIn s fullbinders in
   (* let env = push_rel_context binders env in *)

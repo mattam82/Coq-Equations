@@ -70,5 +70,5 @@ val ind_elim_tac :
   constr ->
   int -> int ->
   Splitting.term_info ->
-  Names.GlobRef.t ->
+  Globnames.global_reference ->
   unit Proofview.tactic

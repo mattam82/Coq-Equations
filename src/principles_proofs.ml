@@ -36,7 +36,7 @@ type ind_info = {
    
 let find_helper_info info f =
   try List.find (fun (cst, arg') ->
-         GlobRef.equal (ConstRef cst) (global_of_constr f))
+         eq_gr (ConstRef cst) (global_of_constr f))
 	info.helpers_info
   with Not_found -> anomaly (str"Helper not found while proving induction lemma.")
 
@@ -125,9 +125,9 @@ let mutual_fix li l =
   let open Notations in
   let mfix env sigma gls =
     let gls = List.map Proofview.drop_state gls in
-    let types = List.map (fun ev -> Evd.evar_concl (Evd.find sigma ev)) gls in
+    let types = List.map (fun ev -> EConstr.of_constr (Evd.evar_concl (Evd.find sigma ev))) gls in
     let env =
-      let ctxs = List.map (fun ev -> EConstr.Unsafe.to_named_context @@
+      let ctxs = List.map (fun ev ->
                             Evd.evar_context (Evd.find sigma ev)) gls in
       let fst, rest = List.sep_last ctxs in
       if List.for_all (fun y -> Context.Named.equal Constr.equal fst y) rest then
@@ -166,21 +166,21 @@ let mutual_fix li l =
          if try ignore (Context.Named.lookup f sign); true with Not_found -> false then
            CErrors.user_err ~hdr:"Logic.prim_refiner"
                     (str "Name " ++ pr_id f ++ str " already used in the environment");
-         mk_sign (LocalAssum (f, EConstr.to_constr sigma ar) :: sign) oth
+         mk_sign (LocalAssum (f, ar) :: sign) oth
     in
-    let sign = mk_sign (Environ.named_context env) all in
+    let sign = mk_sign (List.map EConstr.of_named_decl (Environ.named_context env)) all in
     let idx = Array.map_of_list pred l in
     let nas = Array.map_of_list (fun id -> Name id) li in
     let body = ref (fun i -> assert false) in
     let one_body =
       Refine.refine ~typecheck:false
       (fun sigma ->
-        let nenv = Environ.reset_with_named_context (Environ.val_of_named_context sign) env in
+        let nenv = Environ.reset_with_named_context (Environ.val_of_named_context (List.map EConstr.Unsafe.to_named_decl sign)) env in
         let (sigma, evs) = mk_holes nenv sigma types in
         let evs = Array.map_of_list (Vars.subst_vars (List.rev li)) evs in
         let types = Array.of_list types in
         let decl = (nas,types,evs) in
-        let () = body := (fun i -> mkFix ((idx,i),decl)) in
+        let () = body := (fun i -> mkFix ((idx,i), decl)) in
         sigma, !body 0)
     in
     let other_body i =
@@ -198,7 +198,7 @@ let check_guard gls sigma =
   try
     let evi = Evd.find sigma gl in
     match evi.Evd.evar_body with
-    | Evd.Evar_defined b -> Inductiveops.control_only_guard (Evd.evar_env evi) sigma b; true
+    | Evd.Evar_defined b -> Inductiveops.control_only_guard (Evd.evar_env evi) sigma (EConstr.of_constr b); true
     | Evd.Evar_empty -> true
   with Type_errors.TypeError _ -> false
 
@@ -310,7 +310,7 @@ let aux_ind_fun info chop nested unfs unfids split =
           let fixtac =
             match prog.program_rec with
             | Some { rec_node = StructRec sr; rec_args } ->
-              tclTHENLIST [fix prog.program_info.program_id (Option.default 1 (annot_of_rec sr));
+              tclTHENLIST [fix (Some prog.program_info.program_id) (Option.default 1 (annot_of_rec sr));
                            tclDO rec_args intro]
             | _ -> Proofview.tclUNIT ()
           in
@@ -507,14 +507,14 @@ let aux_ind_fun info chop nested unfs unfids split =
                  (* The recursive argument is local to the where, shift it by the
                     length of the enclosing context *)
                  let newidx = match unfs with None -> idx + (List.length lctx) | Some _ -> idx in
-                 fix recid (succ newidx))
+                 fix (Some recid) (succ newidx))
             | _ -> tclIDTAC
           in
           let wheretac =
             let open Tacticals.New in
             observe_new "one where"
               (tclTHENLIST [
-                  observe_new "moving section id" (tclTRY (move_hyp coq_end_of_section_id Logic.MoveLast));
+                  observe_new "moving section id" (tclTRY (move_hyp coq_end_of_section_id Misctypes.MoveLast));
                             fixtac;
                   observe_new "intros" intros;
 
@@ -651,7 +651,7 @@ let ind_fun_tac is_rec f info fid nestedinfo progs =
      let rec splits l =
        match l with
        | [] | _ :: [] -> tclUNIT ()
-       | _ :: l -> Tactics.split Tactypes.NoBindings <*> tclDISPATCH [tclUNIT (); splits l]
+       | _ :: l -> Tactics.split Misctypes.NoBindings <*> tclDISPATCH [tclUNIT (); splits l]
      in
      let prove_progs progs =
        intros <*>
@@ -668,8 +668,8 @@ let ind_fun_tac is_rec f info fid nestedinfo progs =
      in
      let prove_nested =
        tclDISPATCH
-         (List.map (function (id,NestedOn (Some (ann,_))) -> fix id (ann + 1)
-                           | (id,NestedOn None) -> fix id 1
+         (List.map (function (id,NestedOn (Some (ann,_))) -> fix (Some id) (ann + 1)
+                           | (id,NestedOn None) -> fix (Some id) 1
                          | _ -> tclUNIT ()) nested) <*>
          prove_progs nestedprogs
      in

@@ -83,10 +83,10 @@ type flags = {
   with_ind : bool }  
 
 let check_term env evd c t =
-  ignore(Typing.check env evd c t)
+  ignore(Typing.e_check env (ref evd) c t)
 
 let check_type env evd t =
-  ignore(Typing.sort_of env evd t)
+  ignore(Typing.e_sort_of env (ref evd) t)
       
 let typecheck_rel_context env evd ctx =
   let open Context.Rel.Declaration in
@@ -101,7 +101,7 @@ let typecheck_rel_context env evd ctx =
   in ()
   with e ->
     Printf.eprintf "Exception while typechecking context %s : %s\n"
-                   (Pp.string_of_ppcmds (Internal.print_rel_context (EConstr.push_rel_context ctx env)))
+                   (Pp.string_of_ppcmds (print_rel_context (EConstr.push_rel_context ctx env)))
                    (Printexc.to_string e);
     raise e
 
@@ -152,11 +152,11 @@ let e_new_global evdref gr =
   let sigma, gr = new_global !evdref gr in
   evdref := sigma; gr
 
-type lazy_ref = Names.GlobRef.t Lazy.t
+type lazy_ref = global_reference Lazy.t
 
 (** Library ref registering, now in Coq master, emulate for 8.9 *)
 
-let table : GlobRef.t CString.Map.t ref =
+let table : global_reference CString.Map.t ref =
   let name = "coqlib_registered" in
   Summary.ref ~name CString.Map.empty
 
@@ -171,7 +171,7 @@ let add_ref s c =
 let cache_ref (_,(s,c)) =
   add_ref s c
 
-let (inCoqlibRef : string * GlobRef.t -> Libobject.obj) =
+let (inCoqlibRef : string * global_reference -> Libobject.obj) =
   let open Libobject in
   declare_object { (default_object "COQLIBREF") with
     cache_function = cache_ref;
@@ -197,7 +197,7 @@ let find_constant s evd = e_new_global evd (equations_lib_ref s)
 let global_reference id =
   Smartlocate.global_of_extended_global (Nametab.locate_extended (qualid_of_ident id))
 
-let constr_of_global = UnivGen.constr_of_global
+let constr_of_global = Universes.constr_of_global
 
 let constr_of_ident id =
   EConstr.of_constr (constr_of_global (Nametab.locate (qualid_of_ident id)))
@@ -211,14 +211,15 @@ let make_definition ?opaque ?(poly=false) evm ?types b =
   let evm = match types with
     | None -> fst (Typing.type_of env evm b)
     | Some t ->
-      let evm = fst (Typing.type_of env evm t) in
-      Typing.check env evm b t
+       let evm = fst (Typing.type_of env evm t) in
+       let evd = ref evm in
+       ignore(Typing.e_check env evd b t); !evd
   in
   let evm = Evd.minimize_universes evm in
   let evm0 = evm in
   let body = EConstr.to_constr evm b and typ = Option.map (EConstr.to_constr evm) types in
-  let used = Univops.universes_of_constr body in
-  let used' = Option.cata Univops.universes_of_constr Univ.LSet.empty typ in
+  let used = Univops.universes_of_constr env body in
+  let used' = Option.cata (Univops.universes_of_constr env) Univ.LSet.empty typ in
   let used = Univ.LSet.union used used' in
   let evm = Evd.restrict_universe_context evm used in
   let univs = Evd.const_univ_entry ~poly evm in
@@ -330,7 +331,7 @@ let is_lglobal gr c = Globnames.is_global (Lazy.force gr) c
 open EConstr
 
 let fresh_logic_sort evd =
-  let evars, sort = Evd.fresh_sort_in_family !evd (Lazy.force logic_sort) in
+  let evars, sort = Evd.fresh_sort_in_family (Global.env ()) !evd (Lazy.force logic_sort) in
   evd := evars; mkSort sort
 
 let mkapp env evdref t args =
@@ -353,7 +354,7 @@ type 'a located = 'a Loc.located
 
 let tac_of_string str args =
   Tacinterp.interp (TacArg(dummy_loc,
-                           TacCall(dummy_loc, Libnames.(qualid_of_string str, args))))
+                           TacCall(dummy_loc, (CAst.make Libnames.(Qualid (qualid_of_string str)), args))))
   (* Tacinterp.interp (TacArg(CAst.(make @@ TacCall(make (Libnames.qualid_of_string str, args))))) *)
 
 let get_class sigma c =
@@ -401,8 +402,7 @@ let coq_sigmaI = (find_global "sigma.intro")
 
 let init_projection gr =
   let cst = Globnames.destConstRef gr in
-  let p = Option.get @@ Recordops.find_primitive_projection cst in
-  Projection.make p false
+  Projection.make cst false
 			
 let coq_pr1 = lazy (init_projection (Lazy.force (find_global "sigma.pr1")))
 let coq_pr2 = lazy (init_projection (Lazy.force (find_global "sigma.pr2")))
@@ -570,7 +570,7 @@ let specialize_mutfix_tac () = tac_of_string "Equations.FunctionalInduction.spec
 open Libnames
 
 let tacident_arg h =
-  Reference (qualid_of_ident h)
+  Reference (CAst.make (Ident h))
 
 let depelim_tac h = tac_of_string "Equations.Init.depelim" [tacident_arg h]
 let do_empty_tac h = tac_of_string "Equations.DepElim.do_empty" [tacident_arg h]
@@ -578,25 +578,25 @@ let depelim_nosimpl_tac h = tac_of_string "Equations.DepElim.depelim_nosimpl" [t
 let simpl_dep_elim_tac () = tac_of_string "Equations.DepElim.simpl_dep_elim" []
 let depind_tac h = tac_of_string "Equations.DepElim.depind" [tacident_arg h]
 
-let mkRef (c, u) = UnivGen.constr_of_global_univ (c, u)
+let mkRef (c, u) = Universes.constr_of_global_univ (c, u)
 
 let call_tac_on_ref tac c =
   let var = Names.Id.of_string "x" in
-  let tac = Locus.ArgArg (dummy_loc, tac) in
+  let tac = Misctypes.ArgArg (dummy_loc, tac) in
   let val_reference = Geninterp.val_tag (Genarg.topwit Stdarg.wit_constr) in
   (* This is a hack to avoid generating useless universes *)
   let c = mkRef (c, Univ.Instance.empty) in
   let c = Geninterp.Val.inject val_reference (EConstr.of_constr c) in
   let ist = Geninterp.{ lfun = Names.Id.Map.add var c Names.Id.Map.empty;
                             extra = Geninterp.TacStore.empty } in
-  let var = Reference (Locus.ArgVar CAst.(make var)) in
+  let var = Reference (Misctypes.ArgVar CAst.(make var)) in
   let tac = TacArg (dummy_loc, TacCall (dummy_loc, (tac, [var]))) in
   ist, tac
 
 let mp = Names.MPfile (Names.DirPath.make (List.map Names.Id.of_string ["DepElim"; "Equations"]))
 let solve_equation = Names.KerName.make mp Names.DirPath.empty (Names.Label.make "solve_equation")
 
-let solve_equation_tac (c : Names.GlobRef.t) =
+let solve_equation_tac (c : global_reference) =
   let ist, tac = call_tac_on_ref solve_equation c in
   Tacinterp.eval_tactic_ist ist tac
 
@@ -701,11 +701,10 @@ let decompose_indapp sigma f args =
   | _ -> f, args
 
 let e_conv env evdref t t' =
-  match Reductionops.infer_conv env !evdref ~pb:Reduction.CONV t t' with
-  | Some sigma -> (evdref := sigma; true)
-  | None -> false
-  | exception Reduction.NotConvertible -> false
-      
+  try let sigma, b = Reductionops.infer_conv env !evdref ~pb:Reduction.CONV t t' in
+      if b then (evdref := sigma; true) else b
+  with Reduction.NotConvertible -> false
+
 let deps_of_var sigma id env =
   Environ.fold_named_context
     (fun _ decl (acc : Id.Set.t) ->
@@ -719,10 +718,10 @@ let deps_of_var sigma id env =
 let idset_of_list =
   List.fold_left (fun s x -> Id.Set.add x s) Id.Set.empty
 
-let pr_smart_global f = Pputils.pr_or_by_notation pr_qualid f
+let pr_smart_global f = Pptactic.pr_or_by_notation pr_reference f
 let string_of_smart_global = function
-  | {CAst.v=Constrexpr.AN ref} -> string_of_qualid ref
-  | {CAst.v=Constrexpr.ByNotation (s, _)} -> s
+  | {CAst.v=Misctypes.AN ref} -> string_of_reference ref
+  | {CAst.v=Misctypes.ByNotation (s, _)} -> s
 
 let ident_of_smart_global x = 
   Id.of_string (string_of_smart_global x)
@@ -745,7 +744,7 @@ let move_after_deps id c =
       | [] -> user_err ~hdr:"move_before_deps"
         Pp.(str"Found no hypothesis on which " ++ Id.print id ++ str" depends")
     in
-    Tactics.move_hyp id (Logic.MoveAfter first)
+    Tactics.move_hyp id (Misctypes.MoveAfter first)
   in Proofview.Goal.enter enter
 
 let observe s tac = 
@@ -940,7 +939,7 @@ let nf_betadeltaiota = nf_all
 let anomaly ?label pp = CErrors.anomaly ?label pp
 
 let evar_declare sign ev ty ?src evm =
-  let evi = Evd.make_evar sign ty in
+  let evi = Evd.make_evar sign (EConstr.Unsafe.to_constr ty) in
   let evi = match src with Some src -> { evi with Evd.evar_source = src }
                          | None -> evi in
   Evd.add evm ev evi
@@ -956,8 +955,8 @@ let of_evar_map x = x
 let evar_absorb_arguments = Evardefine.evar_absorb_arguments
 
 let hintdb_set_transparency cst b db =
-  Hints.add_hints ~local:false [db] 
-    (Hints.HintsTransparencyEntry (Hints.HintsReferences [EvalConstRef cst], b))
+  Hints.add_hints false [db]
+    (Hints.HintsTransparencyEntry ([EvalConstRef cst], b))
 
 let is_global sigma f ec = Globnames.is_global f (to_constr sigma ec)                                  
 
@@ -982,7 +981,7 @@ let dest_ind_family fam =
   to_peuniverses ind, List.map of_constr fam
 
 (* XXX: EConstr-versions fo these functions really needed XXX *)
-let to_constr = to_constr ~abort_on_undefined_evars:false
+let to_constr = to_constr
 let prod_appvect sigma p args =
   of_constr (Term.prod_appvect (to_constr sigma p) (Array.map (to_constr sigma) args))
 let beta_appvect sigma p args =

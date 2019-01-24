@@ -54,7 +54,7 @@ let pi3 (_,_,z) = z
 let cache_rew_rule (base, gr) =
   try
     Autorewrite.add_rew_rules base
-      [CAst.make (UnivGen.fresh_global_instance (Global.env()) gr, true, None)]
+      [CAst.make (Universes.fresh_global_instance (Global.env()) gr, true, None)]
   with Not_found -> CErrors.anomaly Pp.(str "while rebuilding rewrite rule")
 
 let subst_rew_rule (subst, (base, gr)) =
@@ -1034,7 +1034,7 @@ let declare_funelim info env evd is_rec protos progs
     if leninds > 1 || Lazy.force logic_sort != Sorts.InProp then comb
     else
       let elimid = Nameops.add_suffix id "_ind_ind" in
-      Smartlocate.global_with_alias (Libnames.qualid_of_ident elimid)
+      Smartlocate.global_with_alias (CAst.make (Libnames.(Qualid (qualid_of_ident elimid))))
   in
   let elimc, elimty =
     let elimty, uctx = Global.type_of_global_in_context (Global.env ()) elim in
@@ -1134,7 +1134,7 @@ let declare_funind info alias env evd is_rec protos progs
   let app = applist (f, args) in
   let hookind subst indgr ectx =
     let env = Global.env () in (* refresh *)
-    Hints.add_hints ~local:false [info.term_info.base_id]
+    Hints.add_hints false [info.term_info.base_id]
                     (Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef indgr]);
     let () =
       try declare_funelim info.term_info env evd is_rec protos progs
@@ -1384,7 +1384,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
                 mind_entry_inds = inds }
     in
     let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] false in
-    let kn = ComInductive.declare_mutual_inductive_with_eliminations inductive UnivNames.empty_binders [] in
+    let kn = ComInductive.declare_mutual_inductive_with_eliminations inductive Universes.empty_binders [] in
     let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] true in
     let kn, comb =
       let sort = Lazy.force logic_sort in
@@ -1407,10 +1407,10 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
         let () =
           Indschemes.do_combined_scheme CAst.(make scheme)
             (CList.map_filter (fun (id, b) -> if b then Some id else None) mutual)
-        in kn, Smartlocate.global_with_alias (Libnames.qualid_of_ident scheme)
+        in kn, Smartlocate.global_with_alias (CAst.make (Libnames.(Qualid (qualid_of_ident scheme))))
       else
         let scheme = Nameops.add_suffix (Id.of_string info.base_id) ("_ind" ^ suff) in
-        kn, Smartlocate.global_with_alias (Libnames.qualid_of_ident scheme)
+        kn, Smartlocate.global_with_alias (CAst.make Libnames.(Qualid (qualid_of_ident scheme)))
     in
     let ind =
       let open Entries in
@@ -1427,7 +1427,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
         let constrs =
           CList.map_i (fun j _ -> Hints.empty_hint_info, poly, true, Hints.PathAny,
             Hints.IsGlobRef (Globnames.ConstructRef ((kn,i),j))) 1 ind.Entries.mind_entry_lc in
-          Hints.add_hints ~local:false [info.base_id] (Hints.HintsResolveEntry constrs))
+          Hints.add_hints false [info.base_id] (Hints.HintsResolveEntry constrs))
         inds
     in
     let info = { term_info = info; pathmap = !fnind_map; wheremap } in

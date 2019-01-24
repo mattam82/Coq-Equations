@@ -155,7 +155,7 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
         mind_entry_private = None;
         mind_entry_universes = uctx}
     in
-    let k = ComInductive.declare_mutual_inductive_with_eliminations inductive UnivNames.empty_binders [] in
+    let k = ComInductive.declare_mutual_inductive_with_eliminations inductive Universes.empty_binders [] in
     let () =
       let env = Global.env () in
       let sigma = Evd.from_env env in
@@ -168,7 +168,7 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
           Hints.IsGlobRef (ConstructRef ((k,i),j))) 1 entry.mind_entry_lc)
         0 inds
     in
-    let () = Hints.add_hints ~local:false [subterm_relation_base]
+    let () = Hints.add_hints false [subterm_relation_base]
                              (Hints.HintsResolveEntry (List.concat constrhints)) in
     (* Proof of Well-foundedness *)
     let relid = add_suffix (Nametab.basename_of_global (IndRef ind))
@@ -221,14 +221,14 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
         evm := evm';
         (* Impargs.declare_manual_implicits false (ConstRef cst) ~enriching:false *)
         (* 	(list_map_i (fun i _ -> ExplByPos (i, None), (true, true, true)) 1 parambinders); *)
-        Hints.add_hints ~local:false [subterm_relation_base]
+        Hints.add_hints false [subterm_relation_base]
                         (Hints.HintsUnfoldEntry [EvalConstRef kn]);
         mkApp (cst, extended_rel_vect 0 parambinders)
       in
       let env' = push_rel_context pars env in
       let evar =
         let evt = (mkApp (get_efresh logic_wellfounded evm, [| ty; relation |])) in
-        evd_comb1 (Evarutil.new_evar env') evm evt
+        evd_comb1 (fun evd x -> Evarutil.new_evar env' evd x) evm evt
       in
       let b, t = instance_constructor !evm kl [ ty; relation; evar ] in
       (pars, b, t)
@@ -246,8 +246,8 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
     let evm = Evd.minimize_universes !evm in
     let obls, _, constr, typ =
       Obligations.eterm_obligations env id evm 0
-        (to_constr ~abort_on_undefined_evars:false evm body)
-        (to_constr ~abort_on_undefined_evars:false evm ty)
+        (to_constr evm body)
+        (to_constr evm ty)
     in
     let ctx = Evd.evar_universe_context evm in
     Obligations.add_definition id ~term:constr typ ctx
@@ -272,7 +272,7 @@ let derive_below env sigma ~polymorphic (ind,univ as indu) =
   let indty = mkApp (mkIndU indu, allargsvect) in
   let ctx = of_tuple (Name (Id.of_string "c"), None, indty) :: ctx in
   let argbinders, parambinders = List.chop (succ realdecls) ctx in
-  let u = evd_comb0 (Evarutil.new_Type ~rigid:Evd.univ_rigid) evd in
+  let u = evd_comb0 (Evarutil.new_Type env ~rigid:Evd.univ_rigid) evd in
   let arity = it_mkProd_or_LetIn u argbinders in
   let aritylam = lift (succ realdecls) (it_mkLambda_or_LetIn u argbinders) in
   let paramsvect = rel_vect (succ realdecls) params in

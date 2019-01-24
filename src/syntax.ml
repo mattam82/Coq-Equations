@@ -38,7 +38,7 @@ and user_pats = user_pat_loc list
 (** AST *)
 
 type pat_expr =
-  | PEApp of qualid Constrexpr.or_by_notation with_loc * pat_expr with_loc list
+  | PEApp of qualid Misctypes.or_by_notation with_loc * pat_expr with_loc list
   | PEWildcard
   | PEInac of constr_expr
 
@@ -227,15 +227,28 @@ let is_rec_call sigma id f =
   | _ -> false
 
 let default_loc = Loc.make_loc (0, 0)
-         
+
 let is_inaccessible_qualid qid =
-  let id = qualid_basename qid in
-  Id.equal id (Id.of_string "inaccessible_pattern")
+  match qid with
+  | Ident id ->
+     Id.equal id (Id.of_string "inaccessible_pattern")
+  | Qualid id ->
+     let id = snd (repr_qualid id) in
+     Id.equal id (Id.of_string "inaccessible_pattern")
+
+let qualid_is_ident qid =
+  match qid with
+    { CAst.v = Ident _ } -> true
+  | _ -> false
+
+let qualid_basename qid =
+  match qid with
+    { CAst.v = Ident id } -> id
+  | { CAst.v = Qualid id } -> snd (repr_qualid id)
 
 let free_vars_of_constr_expr fid c =
   let rec aux bdvars l = function
-    | { CAst.v = CRef (qid, _) } when qualid_is_ident qid ->
-      let id = qualid_basename qid in
+    | { CAst.v = CRef ({ CAst.v = Ident id }, _) } ->
       if Id.List.mem id bdvars then l
       else if Option.cata (Id.equal id) false fid then l
       else
@@ -246,7 +259,7 @@ let free_vars_of_constr_expr fid c =
              else l
            | SynDef _ -> l
          with Not_found -> Id.Set.add id l)
-    | { CAst.v = CApp ((_, { CAst.v = CRef (qid, _) }), _) }
+    | { CAst.v = CApp ((_, { CAst.v = CRef ({ CAst.v = qid }, _) }), _) }
       when is_inaccessible_qualid qid -> l
     | c -> fold_constr_expr_with_binders (fun a l -> a::l) aux bdvars l c
   in aux [] Id.Set.empty c
@@ -279,7 +292,7 @@ let chole c loc =
   let kn = Lib.make_kn c in
   let cst = Names.Constant.make kn kn in
   CAst.make ~loc
-  (CHole (Some (ImplicitArg (ConstRef cst, (0,None), false)), Namegen.IntroAnonymous,None)), None
+  (CHole (Some (ImplicitArg (ConstRef cst, (0,None), false)), Misctypes.IntroAnonymous,None)), None
 
 let check_linearity env opats =
   let rec aux ids pats = 
@@ -327,7 +340,7 @@ let pattern_of_glob_constr env avoid patname gc =
     | GApp (c, l) ->
       begin match DAst.get c with
         | GRef (ConstructRef cstr,_) -> constructor ?loc cstr l
-        | GRef (ConstRef _ as c, _) when GlobRef.equal c (Lazy.force coq_inacc) ->
+        | GRef (ConstRef _ as c, _) when eq_gr c (Lazy.force coq_inacc) ->
           let inacc = List.hd (List.tl l) in
           PUInac (Constrextern.extern_glob_constr !avoid inacc)
         | _ -> user_err_loc (loc, "pattern_of_glob_constr", str "Cannot interpret " ++ pr_glob_constr_env env c ++ str " as a constructor")

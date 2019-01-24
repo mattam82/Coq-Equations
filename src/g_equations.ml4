@@ -127,7 +127,8 @@ PRINTED BY pr_lident
 END
 
 
-module Vernac = Pvernac.Vernac_
+module Gram = Pcoq.Gram
+module Vernac = Pcoq.Vernac_
 
 type binders_argtype = Constrexpr.local_binder_expr list Genarg.uniform_genarg_type
 
@@ -141,7 +142,7 @@ let pr_binders2 _ _ _ l = mt ()
 let wit_binders2 : binders_argtype =
   Genarg.create_arg "binders2"
 
-let binders2 : local_binder_expr list Pcoq.Entry.t =
+let binders2 : local_binder_expr list Gram.entry =
   Pcoq.create_generic_entry Pcoq.uconstr "binders2" (Genarg.rawwit wit_binders2)
 
 let binders2_val = Geninterp.register_val0 wit_binders2 None
@@ -160,8 +161,8 @@ let pr_raw_deppat_equations _ _ _ l = mt ()
 let pr_glob_deppat_equations _ _ _ l = mt ()
 let pr_deppat_equations _ _ _ l = mt ()
 
-let deppat_equations : Syntax.pre_equation list Pcoq.Entry.t =
-  Pcoq.create_generic_entry Pvernac.uvernac "deppat_equations" (Genarg.rawwit wit_deppat_equations)
+let deppat_equations : Syntax.pre_equation list Gram.entry =
+  Pcoq.create_generic_entry Pcoq.uvernac "deppat_equations" (Genarg.rawwit wit_deppat_equations)
 
 let _ = Pptactic.declare_extra_genarg_pprule wit_deppat_equations
   pr_raw_deppat_equations pr_glob_deppat_equations pr_deppat_equations
@@ -177,7 +178,7 @@ let pr_raw_deppat_elim _ _ _ l = mt ()
 let pr_glob_deppat_elim _ _ _ l = mt ()
 let pr_deppat_elim _ _ _ l = mt ()
 
-let deppat_elim : Constrexpr.constr_expr list Pcoq.Entry.t =
+let deppat_elim : Constrexpr.constr_expr list Gram.entry =
   Pcoq.create_generic_entry Pcoq.utactic "deppat_elim" (Genarg.rawwit wit_deppat_elim)
 
 let _ = Pptactic.declare_extra_genarg_pprule wit_deppat_elim
@@ -193,8 +194,8 @@ let pr_raw_equations _ _ _ l = mt ()
 let pr_glob_equations _ _ _ l = mt ()
 let pr_equations _ _ _ l = mt ()
 
-let equations : (pre_equations * Vernacexpr.decl_notation list) Pcoq.Entry.t =
-  Pcoq.create_generic_entry Pvernac.uvernac "equations" (Genarg.rawwit wit_equations)
+let equations : (pre_equations * Vernacexpr.decl_notation list) Gram.entry =
+  Pcoq.create_generic_entry Pcoq.uvernac "equations" (Genarg.rawwit wit_equations)
 
 let _ = Pptactic.declare_extra_genarg_pprule wit_equations
   pr_raw_equations pr_glob_equations pr_equations
@@ -229,7 +230,7 @@ let declare_uniform t =
 let () =
   declare_uniform wit_my_preident
 
-let my_preident : string Pcoq.Entry.t =
+let my_preident : string Gram.entry =
   Pcoq.create_generic_entry Pcoq.utactic "my_preident" (Genarg.rawwit wit_my_preident)
 
 open Util
@@ -258,7 +259,7 @@ GEXTEND Gram
 
   operconstr:
     [ [ "λ"; "{" ; c = LIST1 equation SEP ";"; "}" ->
-            CAst.make (CHole (None, Namegen.IntroAnonymous,
+            CAst.make (CHole (None, Misctypes.IntroAnonymous,
                    Some (Genarg.in_gen (Genarg.rawwit Syntax.wit_equations_list) c))) ] ]
   ;
 
@@ -442,7 +443,7 @@ let pr_raw_g_simplification_rules _ _ _ = Simplify.pr_simplification_rules
 let pr_glob_g_simplification_rules _ _ _ = Simplify.pr_simplification_rules
 let pr_g_simplification_rules _ _ _ = Simplify.pr_simplification_rules
 
-let g_simplification_rules : Simplify.simplification_rules Pcoq.Entry.t =
+let g_simplification_rules : Simplify.simplification_rules Gram.entry =
   Pcoq.create_generic_entry Pcoq.utactic "g_simplification_rules"
     (Genarg.rawwit wit_g_simplification_rules)
 
@@ -505,5 +506,7 @@ END
 (* Register command *)
 
 VERNAC COMMAND EXTEND Register CLASSIFIED AS SIDEFF
-[ "Register" global(g) "as" global(quid) ] -> [ Equations_common.register_ref quid g ]
+[ "Register" global(g) "as" global(quid) ] -> [
+Equations_common.register_ref (CAst.with_val id (Libnames.qualid_of_reference quid))
+ (CAst.with_val id (Libnames.qualid_of_reference g)) ]
 END

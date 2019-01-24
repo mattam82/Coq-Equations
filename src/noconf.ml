@@ -87,7 +87,7 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let binders = xdecl :: ctx in
   let ydecl = of_tuple (Name yid, None, lift 1 argty) in
   let fullbinders = ydecl :: binders in
-  let s = Equations_common.evd_comb1 Evd.fresh_sort_in_family evd (Lazy.force logic_sort) in
+  let s = Equations_common.evd_comb1 (Evd.fresh_sort_in_family env) evd (Lazy.force logic_sort) in
   let s = mkSort s in
   let arity = it_mkProd_or_LetIn s fullbinders in
   let env = push_rel_context binders env in
@@ -148,7 +148,7 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let rec term c ty =
     match kind !evd ty with
     | Prod (na, t, ty) ->
-       let arg = Equations_common.evd_comb1 (Evarutil.new_evar env) evd t in
+       let arg = Equations_common.evd_comb1 (fun evd x -> Evarutil.new_evar env evd x) evd t in
        term (mkApp (c, [|arg|])) (subst1 arg ty)
     | _ -> c, ty
   in
@@ -163,7 +163,7 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   in
   let kind = (Global, polymorphic, Definition) in
   let oblinfo, _, term, ty = Obligations.eterm_obligations env noid !evd 0
-      (to_constr ~abort_on_undefined_evars:false !evd term)
+      (to_constr !evd term)
       (to_constr !evd ty) in
     ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hook) packid
              ~kind ~term ty ~tactic:(noconf_tac ())

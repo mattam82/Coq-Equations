@@ -81,7 +81,7 @@ let decompose_indapp sigma f args =
 
 (* let sigT_info = lazy (make_case_info (Global.env ()) (Globnames.destIndRef (Lazy.force sigT).typ) LetStyle) *)
 
-let mkRef sigma (c, u) = EConstr.of_constr (UnivGen.constr_of_global_univ (c, EConstr.EInstance.kind sigma u))
+let mkRef sigma (c, u) = EConstr.of_constr (Universes.constr_of_global_univ (c, EConstr.EInstance.kind sigma u))
 let telescope_intro env sigma len tele =
   let rec aux n ty =
     let ty = Reductionops.whd_all env sigma ty in
@@ -255,9 +255,9 @@ let declare_sig_of_ind env sigma poly (ind,u) =
        mkApp (pack_fn, extended_rel_vect 0 ctx)]
   in
   Extraction_plugin.Table.extraction_inline true
-                                            [Libnames.qualid_of_ident pack_id];
+                                            [CAst.make (Libnames.Qualid (Libnames.qualid_of_ident pack_id))];
   Extraction_plugin.Table.extraction_inline true
-                                            [Libnames.qualid_of_ident signature_id];
+                                            [CAst.make Libnames.(Qualid (qualid_of_ident signature_id))];
   inst
 
 let () =
@@ -284,8 +284,8 @@ let get_signature env sigma ty =
     let sigma, pred, pars, _, valsig, ctx, _, _ =
       build_sig_of_ind env sigma (to_peuniverses pind) in
     Feedback.msg_warning (str "Automatically inlined signature for type " ++
-    Printer.pr_pinductive env sigma pind ++ str ". Use [Derive Signature for " ++
-    Printer.pr_pinductive env sigma pind ++ str ".] to avoid this.");
+    Printer.pr_pinductive env pind ++ str ". Use [Derive Signature for " ++
+    Printer.pr_pinductive env pind ++ str ".] to avoid this.");
     let indsig = pred in
     let vbinder = of_tuple (Anonymous, None, ty) in
     let pack_fn = it_mkLambda_or_LetIn valsig (vbinder :: ctx) in
@@ -464,7 +464,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
   let rel_ty = Vars.lift rel rel_ty in
   let rel_t = Constr.mkRel rel in
   (* Fetch some information about the type of the variable being eliminated. *)
-  let pind, args = Inductive.find_inductive env (to_constr ~abort_on_undefined_evars:false !evd rel_ty) in
+  let pind, args = Inductive.find_inductive env (to_constr !evd rel_ty) in
   let mib, oib = Global.lookup_pinductive pind in
   let params, indices = List.chop mib.mind_nparams args in
   (* The variable itself will be treated for all purpose as one of its indices. *)
@@ -685,8 +685,8 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
   let params = List.map (Vars.lift (-(nb_cuts + oib.mind_nrealargs + 1))) params in
   let goal = Termops.it_mkProd_or_LetIn goal cuts_ctx in
   let goal = it_mkLambda_or_LetIn goal fresh_ctx in
-  let params = List.map (to_constr ~abort_on_undefined_evars:false !evd) params in
-  let goal' = to_constr ~abort_on_undefined_evars:false !evd goal in
+  let params = List.map (to_constr !evd) params in
+  let goal' = to_constr !evd goal in
   let branches_ty = Inductive.build_branches_type pind (mib, oib) params goal' in
   (* Refresh the inductive family. *)
   let indfam = Inductiveops.make_ind_family (pind, params) in

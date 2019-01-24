@@ -31,7 +31,7 @@ open Extraction_plugin
                 
 let inline_helpers i = 
   let l = List.map (fun (cst, _) -> Nametab.shortest_qualid_of_global Id.Set.empty (ConstRef cst)) i.helpers_info in
-  Table.extraction_inline true l
+  Table.extraction_inline true (List.map (fun x -> CAst.make Libnames.(Qualid x)) l)
 
 let declare_wf_obligations info =
   let make_resolve gr =
@@ -40,7 +40,7 @@ let declare_wf_obligations info =
   in let constrs =
     List.fold_right (fun obl acc ->
     make_resolve (ConstRef obl) :: acc) info.comp_obls [] in
-  Hints.add_hints ~local:false [Principles_proofs.wf_obligations_base info] (Hints.HintsResolveEntry constrs)
+  Hints.add_hints false [Principles_proofs.wf_obligations_base info] (Hints.HintsResolveEntry constrs)
 
 let define_unfolding_eq env evd flags p unfp prog prog' ei hook =
   let info' = prog'.program_split_info in
@@ -65,7 +65,7 @@ let define_unfolding_eq env evd flags p unfp prog prog' ei hook =
           with Not_found -> anomaly Pp.(str "Could not find where clause unfolding lemma "
                                         ++ Names.Id.print id)
         in
-        let grc = UnivGen.fresh_global_instance (Global.env()) (ConstRef gr) in
+        let grc = Universes.fresh_global_instance (Global.env()) (ConstRef gr) in
         Autorewrite.add_rew_rules (info.base_id ^ "_where") [CAst.make (grc, true, None)];
         Autorewrite.add_rew_rules (info.base_id ^ "_where_rev") [CAst.make (grc, false, None)]
       in
@@ -94,7 +94,7 @@ let define_unfolding_eq env evd flags p unfp prog prog' ei hook =
       (mkEq (Global.env ()) evd arity (mkApp (p.program_term, extended_rel_vect 0 sign))
          (mkApp (funfc, extended_rel_vect 0 sign))) sign
   in
-  let evd, stmt = Typing.solve_evars (Global.env ()) !evd stmt in
+  let stmt = Typing.e_solve_evars (Global.env ()) evd stmt in
   let tac =
     Principles_proofs.(prove_unfolding_lemma info ei.equations_where_map prog.program_cst funf_cst
       p.program_splitting unfold_split)
@@ -102,9 +102,9 @@ let define_unfolding_eq env evd flags p unfp prog prog' ei hook =
   ignore(Obligations.add_definition
            ~kind:info.decl_kind
            ~hook:(Lemmas.mk_hook hook_eqs) ~reduce:(fun x -> x)
-           ~implicits:(program_impls p) unfold_eq_id (to_constr evd stmt)
+           ~implicits:(program_impls p) unfold_eq_id (to_constr !evd stmt)
            ~tactic:(of82 tac)
-           (Evd.evar_universe_context evd) [||])
+           (Evd.evar_universe_context !evd) [||])
 
 let define_principles flags rec_info fixprots progs =
   let env = Global.env () in
@@ -212,7 +212,7 @@ let solve_equations_goal destruct_tac tac gl =
   let move_tac = 
     match move with
     | None -> fun _ -> tclIDTAC
-    | Some id' -> fun id -> to82 (move_hyp id (Logic.MoveBefore id'))
+    | Some id' -> fun id -> to82 (move_hyp id (Misctypes.MoveBefore id'))
   in
   let targetn, branchesn, targ, brs, b =
     match kind (project gl) (of_constr concl) with

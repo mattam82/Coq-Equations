@@ -177,7 +177,7 @@ val define_program_constants : flags ->
 val is_comp_obl : Evd.evar_map -> Id.t with_loc option -> Evar_kinds.t -> bool
 
 type term_info = {
-  term_id : Names.GlobRef.t;
+  term_id : Globnames.global_reference;
   term_ustate : UState.t;
   base_id : string;
   decl_kind : Decl_kinds.definition_kind;

@@ -466,7 +466,7 @@ let define_mutual_nested evd get_prog progs =
   fixes, nested
 
 let helper_evar evm evar env typ src =
-  let sign, typ', instance, _ = push_rel_context_to_named_context ~hypnaming:KeepExistingNames env evm typ in
+  let sign, typ', instance, _ = push_rel_context_to_named_context (* ~hypnaming:KeepExistingNames *) env evm typ in
   let evm' = evar_declare sign evar typ' ~src evm in
     evm', mkEvar (evar, Array.of_list instance)
 
@@ -551,7 +551,7 @@ let term_of_tree env0 isevar tree =
           msg_info(str"... in context:");
           msg_info(pr_context env !evd ctx);
           msg_info(str"... named context:");
-          msg_info(Printer.pr_named_context env !evd (EConstr.Unsafe.to_named_context (named_context env)));
+          msg_info(Printer.pr_named_context env !evd (List.map EConstr.Unsafe.to_named_decl (named_context env)));
         end;
         let ((hole, c), lsubst) = simpl_step (cut_ctx @ new_ctx @ ctx', ty) in
         if !debug then
@@ -599,7 +599,7 @@ let term_of_tree env0 isevar tree =
              *   let env = Evd.evar_env ev_info in
              *   Typing.type_of env evm term
              * in *)
-            evd := Evd.define (fst ev) term evm;
+            evd := Evd.define (fst ev) (EConstr.Unsafe.to_constr term) evm;
             c
           (* This should not happen... *)
           | _ -> failwith "Should not fail here, please report."
@@ -627,7 +627,7 @@ let term_of_tree env0 isevar tree =
       let term = EConstr.it_mkLambda_or_LetIn term ctx in
       let typ = it_mkProd_or_subst env evm ty ctx in
       let term = Evarutil.nf_evar !evd term in
-      evd := Typing.check env !evd term typ;
+      Typing.e_check env evd term typ;
       !evd, term, typ
   in
   let evm, term, typ = aux env0 !isevar tree in
@@ -820,7 +820,7 @@ let check_splitting env evd sp =
     ()
   in
   let check_term ctx t ty =
-    let _evm = Typing.check (push_rel_context ctx env) evd t ty in
+    let _evm = Typing.e_check (push_rel_context ctx env) (ref evd) t ty in
     ()
   in
   let check_rhs ctx ty = function
@@ -972,7 +972,7 @@ let _zeta_red =
     reduct_in_concl (red, DEFAULTcast)
 
 type term_info = {
-  term_id : Names.GlobRef.t;
+  term_id : Globnames.global_reference;
   term_ustate : UState.t;
   base_id : string;
   decl_kind: Decl_kinds.definition_kind;
@@ -1049,13 +1049,14 @@ let solve_equations_obligations flags recids i sigma hook =
   let types =
     List.map (fun (ev, evi) ->
         if !Equations_common.debug then
-          Feedback.msg_debug (str"evar type" ++ Printer.pr_econstr_env env sigma evi.Evd.evar_concl);
+          Feedback.msg_debug (str"evar type" ++ Printer.pr_constr_env env sigma evi.Evd.evar_concl);
         let section_length = List.length (named_context env) in
         let evcontext = Evd.evar_context evi in
         let local_context, section_context =
           List.chop (List.length evcontext - section_length) evcontext
         in
-        let type_ = Termops.it_mkNamedProd_or_LetIn evi.Evd.evar_concl local_context in
+        let type_ = Termops.it_mkNamedProd_or_LetIn (EConstr.of_constr evi.Evd.evar_concl)
+                    (List.map EConstr.of_named_decl local_context) in
         let type_ = nf_beta env sigma type_ in
         env, ev, evi, local_context, type_) evars in
   (* Make goals from a copy of the evars *)
@@ -1070,7 +1071,7 @@ let solve_equations_obligations flags recids i sigma hook =
         Proofview.TCons (evar_env, evm, nf_evar !isevar0 type_,
            (fun evm' wit ->
              isevar0 :=
-               Evd.define ev (applist (wit, List.rev (Context.Named.to_instance mkVar local_context)))
+               Evd.define ev (EConstr.Unsafe.to_constr (applist (wit, List.rev (Context.Named.to_instance mkVar local_context))))
                  !isevar0;
              wits := wit :: !wits;
              aux tys evm'))
@@ -1101,7 +1102,7 @@ let solve_equations_obligations flags recids i sigma hook =
          *                                                                    (fst (fst (Future.force entry.Entries.const_entry_body)))); *)
         let cst = Declare.declare_constant id (Entries.DefinitionEntry entry, kind) in
         let sigma, app = Evarutil.new_global !evd (ConstRef cst) in
-        evd := Evd.define ev (applist (app, List.map of_constr args)) sigma;
+        evd := Evd.define ev (EConstr.Unsafe.to_constr (applist (app, List.map of_constr args))) sigma;
         cst)
         (CList.combine (List.rev !wits) types) obj.Proof_global.entries
       in
@@ -1118,15 +1119,15 @@ let solve_equations_obligations flags recids i sigma hook =
   Proof_global.(start_dependent_proof i kind tele (make_terminator terminator));
   Proof_global.simple_with_current_proof
     (fun _ p  ->
-       fst (Pfedit.solve Goal_select.SelectAll None (Proofview.tclDISPATCH do_intros) p));
+       fst (Pfedit.solve Vernacexpr.SelectAll None (Proofview.tclDISPATCH do_intros) p));
   Proof_global.simple_with_current_proof
     (fun _ p  ->
-       fst (Pfedit.solve (Goal_select.SelectAll) None (Tacticals.New.tclTRY !Obligations.default_tactic) p));
+       fst (Pfedit.solve (Vernacexpr.SelectAll) None (Tacticals.New.tclTRY !Obligations.default_tactic) p));
   let prf = Proof_global.give_me_the_proof () in
   if Proof.is_done prf then
     if flags.open_proof then error_complete ()
     else
-      Lemmas.save_proof Vernacexpr.(Proved (Proof_global.Transparent, None))
+      Lemmas.save_proof Vernacexpr.(Proved (Transparent, None))
   else if flags.open_proof then ()
   else
     user_err_loc (None, "define", str"Equations definition generated subgoals that " ++
@@ -1144,11 +1145,12 @@ let solve_equations_obligations_program flags recids i sigma hook =
   let oblsid = Nameops.add_suffix i "_obligations" in
   let evars, term =
     Evd.fold_undefined (fun ev evi (evars, term) ->
-      let ctx = Evd.evar_filtered_context evi in
+    let ctx = Evd.evar_filtered_context evi in
+    let ctx = List.map EConstr.of_named_decl ctx in
       let ctx, secctx = List.split_when (fun x -> Termops.is_section_variable (Context.Named.Declaration.get_id x)) ctx in
       let args = List.map (fun d -> EConstr.mkVar (Context.Named.Declaration.get_id d)) ctx in
       let evar_body = Termops.it_mkNamedLambda_or_LetIn (mkEvar (ev, Array.of_list args)) ctx in
-      let evar_type = Termops.it_mkNamedProd_or_LetIn (Evd.evar_concl evi) ctx in
+      let evar_type = Termops.it_mkNamedProd_or_LetIn (EConstr.of_constr (Evd.evar_concl evi)) ctx in
       ((ev, args) :: evars, mkLetIn (Anonymous, evar_body, evar_type, term)))
       sigma ([], term)
   in
@@ -1169,7 +1171,7 @@ let solve_equations_obligations_program flags recids i sigma hook =
         | (ev, args) :: evars, LetIn (_, b, _, rest) ->
            let ctx, body = decompose_lam_assum sigma b in
            let sigma =
-             Evd.define ev (whd_beta sigma (substl args body)) sigma
+             Evd.define ev (EConstr.Unsafe.to_constr (whd_beta sigma (substl args body))) sigma
            in
            let evars, sigma = aux sigma evars rest in
            body :: evars, sigma
@@ -1223,7 +1225,7 @@ let simplify_evars evars t =
 
 let unfold_entry cst = Hints.HintsUnfoldEntry [EvalConstRef cst]
 let add_hint local i cst =
-  Hints.add_hints ~local [Id.to_string i] (unfold_entry cst)
+  Hints.add_hints local [Id.to_string i] (unfold_entry cst)
 
 type 'a hook =
   | HookImmediate : (program -> term_info -> 'a) -> 'a hook

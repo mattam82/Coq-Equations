@@ -129,12 +129,12 @@ val decompose_indapp : Evd.evar_map ->
 
 val refresh_universes_strict : Environ.env -> esigma -> types -> types
 
-val new_global : Evd.evar_map -> Names.GlobRef.t -> Evd.evar_map * constr
-val e_new_global : esigma -> Names.GlobRef.t -> constr
+val new_global : Evd.evar_map -> global_reference -> Evd.evar_map * constr
+val e_new_global : esigma -> global_reference -> constr
                                                                  
 (** {6 Linking to Coq} *)
 
-val global_reference : Id.t -> Names.GlobRef.t
+val global_reference : Id.t -> global_reference
 (* Unsafe, avoid *)
 val constr_of_ident : Id.t -> constr
   
@@ -176,9 +176,9 @@ val declare_instance :
 
 (** Standard datatypes *)
 
-type lazy_ref = Names.GlobRef.t Lazy.t
+type lazy_ref = global_reference Lazy.t
 
-val equations_lib_ref : string -> Names.GlobRef.t
+val equations_lib_ref : string -> global_reference
 val find_global : string -> lazy_ref
 
 val logic_sort : Sorts.family lazy_t
@@ -270,15 +270,15 @@ val functional_elimination_class :
 val dependent_elimination_class :
   esigma -> Typeclasses.typeclass peuniverses
 
-val coq_noconfusion_class : Names.GlobRef.t lazy_t
-val coq_inacc : Names.GlobRef.t Lazy.t
-val coq_block : Names.GlobRef.t Lazy.t
-val coq_hide : Names.GlobRef.t Lazy.t
-val coq_hidebody : Names.GlobRef.t Lazy.t
-val coq_add_pattern : Names.GlobRef.t Lazy.t
+val coq_noconfusion_class : global_reference lazy_t
+val coq_inacc : global_reference Lazy.t
+val coq_block : global_reference Lazy.t
+val coq_hide : global_reference Lazy.t
+val coq_hidebody : global_reference Lazy.t
+val coq_add_pattern : global_reference Lazy.t
 val coq_end_of_section_id : Names.Id.t
-val coq_the_end_of_the_section : Names.GlobRef.t Lazy.t
-val coq_end_of_section : Names.GlobRef.t Lazy.t
+val coq_the_end_of_the_section : global_reference Lazy.t
+val coq_end_of_section : global_reference Lazy.t
 val coq_ImpossibleCall : esigma -> constr
 val unfold_add_pattern : unit Proofview.tactic lazy_t
 
@@ -297,7 +297,7 @@ val noconf_tac : unit -> unit Proofview.tactic
 val noconf_hom_tac : unit -> unit Proofview.tactic
 val eqdec_tac : unit -> unit Proofview.tactic
 val simpl_equations_tac : unit -> unit Proofview.tactic
-val solve_equation_tac : Names.GlobRef.t -> unit Proofview.tactic
+val solve_equation_tac : global_reference -> unit Proofview.tactic
 val depelim_tac : Names.Id.t -> unit Proofview.tactic
 val do_empty_tac : Names.Id.t -> unit Proofview.tactic
 val depelim_nosimpl_tac : Names.Id.t -> unit Proofview.tactic
@@ -317,11 +317,11 @@ val db_of_constr : Constr.t -> hintdb_name
 val dbs_of_constrs : Constr.t list -> hintdb_name list
 
 val pr_smart_global :
-  Libnames.qualid Constrexpr.or_by_notation -> Pp.t
+  Libnames.reference Misctypes.or_by_notation -> Pp.t
 val string_of_smart_global :
-  Libnames.qualid Constrexpr.or_by_notation -> string
+  Libnames.reference Misctypes.or_by_notation -> string
 val ident_of_smart_global :
-  Libnames.qualid Constrexpr.or_by_notation -> Id.t
+  Libnames.reference Misctypes.or_by_notation -> Id.t
 
 val pf_get_type_of : Goal.goal Evd.sigma -> constr -> types
 
@@ -390,7 +390,7 @@ val new_type_evar :            Environ.env ->
            ?src:Evar_kinds.t Loc.located -> Evd.rigid ->
            Evd.evar_map * (constr * Sorts.t)
 
-val empty_hint_info : 'a Typeclasses.hint_info_gen
+val empty_hint_info : 'a Vernacexpr.hint_info_gen
 
 val evar_absorb_arguments :
   Environ.env -> Evd.evar_map ->
@@ -405,8 +405,8 @@ val hintdb_set_transparency :
 val to_peuniverses : 'a Univ.puniverses -> 'a peuniverses
 val from_peuniverses : Evd.evar_map -> 'a peuniverses -> 'a Univ.puniverses
 
-val is_global : Evd.evar_map -> Names.GlobRef.t -> constr -> bool
-val constr_of_global_univ : Evd.evar_map -> Names.GlobRef.t peuniverses -> constr
+val is_global : Evd.evar_map -> global_reference -> constr -> bool
+val constr_of_global_univ : Evd.evar_map -> global_reference peuniverses -> constr
 val smash_rel_context : Evd.evar_map -> rel_context -> rel_context (** expand lets in context *)
 
 val rel_vect : int -> int -> constr array
@@ -431,4 +431,4 @@ val splay_prod_n_assum : env -> Evd.evar_map -> int -> types -> rel_context * ty
 
 (** Already in Coq master *)
 val register_ref : Libnames.qualid -> Libnames.qualid -> unit
-val mkRef : Names.GlobRef.t * Univ.Instance.t -> Constr.constr
+val mkRef : global_reference * Univ.Instance.t -> Constr.constr

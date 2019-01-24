@@ -33,7 +33,7 @@ and user_pats = user_pat_loc list
 
 (** Raw syntax *)
 type pat_expr =
-    PEApp of Libnames.qualid Constrexpr.or_by_notation with_loc *
+    PEApp of Libnames.qualid Misctypes.or_by_notation with_loc *
       pat_expr with_loc list
   | PEWildcard
   | PEInac of Constrexpr.constr_expr

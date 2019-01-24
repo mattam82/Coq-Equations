@@ -40,10 +40,9 @@ let refine_ho c =
     let rec aux env concl ty =
       match kind sigma concl, kind sigma ty with
       | Prod (na, b, t), Prod (na', b', t') ->
-         (match Evarconv.conv ~ts env !evd b b' with
-          | None -> error "Products do not match"
-          | Some evm -> evd := evm;
-                        aux (push_rel (of_tuple (na,None,b)) env) t t')
+         (if Evarconv.e_conv ~ts env evd b b' then
+          aux (push_rel (of_tuple (na,None,b)) env) t t'
+          else error "Products do not match")
       (* | _, LetIn (na, b, _, t') -> *)
       (*    aux env t (subst1 b t') *)
       | _, App (ev, args) when isEvar sigma ev ->

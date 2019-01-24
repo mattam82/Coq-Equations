@@ -28,7 +28,7 @@ type int_data = {
   fixdecls : rel_context;
   flags : flags;
   intenv : Constrintern.internalization_env;
-  notations : (Names.lstring * Constrexpr.constr_expr *
+  notations : (Misctypes.lstring * Constrexpr.constr_expr *
                Notation_term.scope_name option) list
 }
 
@@ -290,7 +290,7 @@ let interp_program_body env sigma ctx impls body ty =
     let sigma =
       match ty with
       | None -> fst (Typing.type_of env sigma c)
-      | Some ty -> Typing.check env sigma c ty
+      | Some ty -> let evd = ref sigma in Typing.e_check env evd c ty; !evd
     in
     sigma, c
 
@@ -624,7 +624,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot
   let (arity, impls') =
     let ty = match t with
       | Some ty -> ty
-      | None -> CAst.make ~loc (Constrexpr.CHole (None, Namegen.IntroAnonymous, None))
+      | None -> CAst.make ~loc (Constrexpr.CHole (None, Misctypes.IntroAnonymous, None))
     in
     Equations_common.evd_comb1 (interp_type_evars_impls env' ?impls:None) evd ty
   in
@@ -972,8 +972,8 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
       match t with
       | PInac t ->
         begin match Reductionops.infer_conv env' !evars userc t with
-          | Some evars' -> evars := evars'
-          | None ->
+          | evars', true -> evars := evars'
+          | _, false ->
             CErrors.user_err ?loc:(Constrexpr_ops.constr_loc user) ~hdr:"covering"
               (str "Incompatible innaccessible pattern " ++
                Printer.pr_econstr_env env' !evars userc ++
@@ -1225,18 +1225,14 @@ and interp_wheres env0 ctx evars path data s lets
         Lazy.from_val (w' program), program.program_term
       | None ->
         let relty = Syntax.program_type p in
-        let src = (Some loc, Evar_kinds.(QuestionMark {
-            qm_obligation=Define false;
-            qm_name=Name id;
-            qm_record_field=None;
-          })) in
+        let src = (Some loc, Evar_kinds.(QuestionMark (Define false,Name id))) in
         let sigma, term = Equations_common.new_evar env0 !evars ~src relty in
         let () = evars := sigma in
         let ev = destEvar !evars term in
         let cover () =
           let splitting = covering env0 evars p data clauses path problem extpats arity in
           let program = make_single_program env0 evars data.flags p problem splitting rec_info in
-          evars := Evd.define (fst ev) program.program_term !evars; w' program
+          evars := Evd.define (fst ev) (EConstr.Unsafe.to_constr program.program_term) !evars; w' program
         in
         Lazy.from_fun cover, term
     in

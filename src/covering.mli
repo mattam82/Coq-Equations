@@ -71,7 +71,7 @@ type int_data = {
   fixdecls : rel_context;
   flags : flags;
   intenv : Constrintern.internalization_env;
-  notations : (Names.lstring * Constrexpr.constr_expr *
+  notations : (Misctypes.lstring * Constrexpr.constr_expr *
                Notation_term.scope_name option) list
 }
 

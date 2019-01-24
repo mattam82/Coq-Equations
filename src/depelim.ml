@@ -132,7 +132,7 @@ let depcase poly (mind, i as ind) =
   let nargs = List.length args in
   let indapp = mkApp (mkInd ind, extended_rel_vect 0 ctx) in
   let evd = ref (Evd.from_env (Global.env())) in
-  let pred = it_mkProd_or_LetIn (evd_comb0 Evarutil.new_Type evd)
+  let pred = it_mkProd_or_LetIn (evd_comb0 (Evarutil.new_Type (Global.env ())) evd)
     (make_assum Anonymous indapp :: args)
   in
   let nconstrs = Array.length oneind.mind_nf_lc in
@@ -268,9 +268,7 @@ let specialize_eqs ~with_block id gl =
   let ty = pf_get_hyp_typ gl id in
   let evars = ref (project gl) in
   let unif env ctx evars c1 c2 =
-    match Evarconv.conv env !evars (it_mkLambda_or_subst c1 ctx) (it_mkLambda_or_subst c2 ctx) with
-    | None -> false
-    | Some evm -> evars := evm; true
+    Evarconv.e_conv env evars (it_mkLambda_or_subst c1 ctx) (it_mkLambda_or_subst c2 ctx)
   in
   let rec aux in_block in_eqs ctx subst acc ty =
     match kind !evars ty with
@@ -305,7 +303,7 @@ let specialize_eqs ~with_block id gl =
            (* aux in_block false ctx (make_def na None t :: subst) (mkApp (lift 1 acc, [| mkRel 1 |])) b *)
            acc, in_eqs, ctx, subst, ty
          else
-           let e = evd_comb1 (Evarutil.new_evar (push_rel_context ctx env))
+           let e = evd_comb1 (fun evd x -> Evarutil.new_evar (push_rel_context ctx env) evd x)
                evars (it_mkLambda_or_subst t subst) in
            aux in_block false ctx (make_def na (Some e) t :: subst) (mkApp (lift 1 acc, [| mkRel 1 |])) b)
     | t -> acc, in_eqs, ctx, subst, ty
@@ -375,7 +373,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
      * the [rel_context]. *)
     let ty = Vars.subst_vars subst concl in
     let rhs =
-      let prog = Constrexpr.CHole (None, Namegen.IntroAnonymous, None) in
+      let prog = Constrexpr.CHole (None, Misctypes.IntroAnonymous, None) in
         Syntax.Program (Syntax.ConstrExpr (CAst.make prog), ([], []))
     in
     begin match patterns with

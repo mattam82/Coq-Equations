@@ -14,7 +14,7 @@ open Splitting
 val define_by_eqs : poly:bool -> open_proof:bool ->
   Syntax.equation_option list ->
   Syntax.pre_equations ->
-  (Names.lstring * Constrexpr.constr_expr *
+  (Misctypes.lstring * Constrexpr.constr_expr *
    Notation_term.scope_name option)
   list ->
   unit
@@ -29,7 +29,7 @@ val equations : poly:bool ->
   open_proof:bool ->
   Syntax.equation_option list ->
   Syntax.pre_equations ->
-  (Names.lstring * Constrexpr.constr_expr *
+  (Misctypes.lstring * Constrexpr.constr_expr *
    Notation_term.scope_name option)
   list ->
   unit

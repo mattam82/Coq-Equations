@@ -10,7 +10,7 @@
 
 val decompose_app : Names.Id.t -> Names.Id.t -> EConstr.t -> unit Proofview.tactic
 
-val autounfold_ref : Names.GlobRef.t -> unit Proofview.tactic
+val autounfold_ref : Globnames.global_reference -> unit Proofview.tactic
 
 (** [refine_ho c]
 

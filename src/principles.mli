@@ -75,7 +75,7 @@ val replace_vars_context :
   Equations_common.rel_declaration list ->
   int * Equations_common.rel_declaration list
 val pr_where :
-  Environ.env -> Evd.evar_map -> Constr.rel_context -> Splitting.where_clause -> Pp.t
+  Environ.env -> Evd.evar_map -> Context.Rel.t -> Splitting.where_clause -> Pp.t
 val where_instance : Splitting.where_clause list -> constr list
 val arguments : Evd.evar_map -> constr -> constr array
 val unfold_constr : Evd.evar_map -> constr -> Proofview.V82.tac

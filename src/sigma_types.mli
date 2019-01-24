@@ -10,10 +10,10 @@ open EConstr
 
 val mkAppG :
   Evd.evar_map ref ->
-  Names.GlobRef.t -> constr array -> constr
+  Globnames.global_reference -> constr array -> constr
 val applistG :
   Evd.evar_map ref ->
-  Names.GlobRef.t -> constr list -> constr
+  Globnames.global_reference -> constr list -> constr
 val mkSig :
   Evd.evar_map ref -> Names.Name.t * types * constr -> constr
 val constrs_of_coq_sigma : 

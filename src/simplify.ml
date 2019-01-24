@@ -205,7 +205,7 @@ let build_term (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal)
   ((ctx', ty') : goal) (f : EConstr.constr -> EConstr.constr) : open_term =
   let tev =
     let env = push_rel_context ctx' env in
-    Equations_common.evd_comb1 (Evarutil.new_evar env) evd ty'
+    Equations_common.evd_comb1 (fun evd x -> Evarutil.new_evar env evd x) evd ty'
   in
   let c = f tev in
   let env = push_rel_context ctx env in
@@ -215,7 +215,7 @@ let build_term (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal)
 
 
 let build_app_infer (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal)
-  (ctx' : EConstr.rel_context) (f : Names.GlobRef.t)
+  (ctx' : EConstr.rel_context) (f : Globnames.global_reference)
   (args : EConstr.constr option list) : open_term =
   let tf, ty =
     match f with
@@ -256,9 +256,7 @@ let conv_fun = Evarconv.evar_conv_x Names.full_transparent_state
 let is_conv (env : Environ.env) (sigma : Evd.evar_map) (ctx : rel_context)
   (t1 : EConstr.t) (t2 : EConstr.t) : bool =
   let env = push_rel_context ctx env in
-  match Reductionops.infer_conv env sigma t1 t2 with
-  | Some _ -> true
-  | None -> false
+  snd (Reductionops.infer_conv env sigma t1 t2)
 
 (* Build an open term by substituting the second term for the hole in the
  * first term. *)
@@ -276,7 +274,7 @@ let compose_term (env : Environ.env) (evd : Evd.evar_map ref)
         EConstr.mkVar id) named_ctx1 in
       (* Finally, substitute the rels in [c2] to get a valid term for [ev1]. *)
       let c2 = Vars.substl subst_ctx1 c2 in
-      evd := Evd.define ev1 c2 !evd;
+      evd := Evd.define ev1 (EConstr.Unsafe.to_constr c2) !evd;
       evd := Evarsolve.check_evar_instance !evd ev1 c2 conv_fun;
       h2, c1
   | None -> assert false
@@ -292,7 +290,7 @@ let safe_fun (f : simplification_fun) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
   let (_, c), _ as res = f env evd (ctx, ty) in
   let env = push_rel_context ctx env in
-  evd := Typing.check env !evd c ty;
+  Typing.e_check env evd c ty;
   res
 
 (* Applies [g] to the goal, then [f]. *)
