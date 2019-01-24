@@ -7,7 +7,9 @@
 
 \def\figdefs{\begin{array}{llcl}
   \texttt{term}, \texttt{type} & t, ~τ & \Coloneqq &
-  \coqdocvar{x} `| λ \coqdocvar{x} : \tau, t `| ∀ \coqdocvar{x} : \tau, \tau' `|
+  \coqdocvar{x} `| \lambda \coqdocvar{x} : \tau, t `| ∀ \coqdocvar{x} :
+                                                     \tau, \tau' `|
+   \lambda\{\overrightarrow{\vec{up} \coloneqq t}\}
   \ldots \\
   \texttt{binding} & d & \Coloneqq & (\coqdocvar{x}~:~\tau) `|
   (\coqdocvar{x}~\coloneqq~t~:~\tau) \\
@@ -38,8 +40,12 @@ The syntax allows the definition of mutual (\kw{with}) and nested
 attach a syntax to a recursive definition, or locally inside a user
 node. In the \kw{rec} annotation, the first term should be typable in
 the program's context $\Gamma$ (and possibly the enclosing context for
-nested programs) with a \emph{closed} type $\tau$ (e.g. \coqdocind{nat}), while the
-relation must be a locally closed term of type $\tau "->" \tau "->" \kw{Prop}$.
+nested programs) with a \emph{closed} type $\tau$
+(e.g. \coqdocind{nat}), while the relation must be a locally closed term
+of type $\tau "->" \tau "->" \kw{Prop}$.  The $\lambda\{$ syntax (using
+a unicode lambda attached to a curly brace) allows to input
+pattern-matching lambdas in a term, which are elaborated to \kw{where}
+clauses.
 
 \section{Local Options}
 The \kw{Equations} command takes a few options using the syntax
@@ -50,11 +56,12 @@ The \kw{Equations} command takes a few options using the syntax
   function and the derived eliminator.
 \item \texttt{noeqns}: Do not generate the equations correponding to the
   (expanded) clauses of the program. This implies \texttt{noind}.
-\item \texttt{struct} $x$: Declare the function structurally
-  recursive on variable $x$.
 \end{itemize}
 
-The syntax of \Equations itself is described in \cite{mansoz17}.
+One can use the \kw{Equations?} syntax to use the interactive proof mode
+instead of obligations to resolve holes in the term or obligations
+comming from well-founded recursive definitions. BEWARE that the use
+of the \texttt{abstract} tactical is not well-supported in this mode.
 
 \section{Global Options}
 
