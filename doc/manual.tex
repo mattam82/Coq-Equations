@@ -3,49 +3,69 @@
 
 \subsection{Syntax of programs}
 \def\kw#1{\coqdockw{#1}}
-\def\userref#1#2{\coqdockw{with}~#1 \coloneqq \{~#2~\}}
+\def\userref#1#2{\coqdockw{with}~#1 \coloneqq #2}
+\def\vec#1{\overrightarrow{#1}}
+\def\vecplus#1{{\overrightarrow{#1}}^{+}}
 
 \def\figdefs{\begin{array}{llcl}
   \texttt{term}, \texttt{type} & t, ~τ & \Coloneqq &
   \coqdocvar{x} `| \lambda \coqdocvar{x} : \tau, t `| ∀ \coqdocvar{x} :
                                                     \tau, \tau' `|
-  \lambda\{\overrightarrow{\vec{up} \coloneqq t}\}
+  \lambda\{\vecplus{\vec{up} \coloneqq t}\}
    \ldots \\
   \texttt{binding} & d & \Coloneqq & (\coqdocvar{x}~:~\tau) `|
   (\coqdocvar{x}~\coloneqq~t~:~\tau) \\
   \texttt{context} & Γ, Δ & \Coloneqq & \vec{d} \\
-  \texttt{programs} & progs & \Coloneqq & prog~\overrightarrow{mutual} \\
-  \texttt{mutual programs} & mutual & \Coloneqq & \coqdockw{with}~p `|
-                                                  \coqdockw{where}~p `| \coqdockw{where}~not\\
+  \texttt{programs} & progs & \Coloneqq & prog~\overrightarrow{mutual}. \\
+  \texttt{mutual programs} & mutual & \Coloneqq & \coqdockw{with}~p `| where \\
+  \texttt{where clause} & where & \Coloneqq & \coqdockw{where}~p `| \coqdockw{where}~not\\
   \texttt{notation} & not & \Coloneqq & ''string'' \coloneqq term~(:~scope)?\\
-  \texttt{program} & p, prog & \Coloneqq &
-                                        \coqdoccst{f}~Γ~:~τ~(\coqdockw{by}~\textit{annot})?~\coloneqq~\vec{c} \\
+  \texttt{program} & p, prog & \Coloneqq & \coqdoccst{f}~Γ~:~τ~(\coqdockw{by}~\textit{annot})?~\coloneqq~clauses \\
   \texttt{annotation} & annot & \Coloneqq & \kw{struct}~x `| \kw{wf}~t~R \\
-  \texttt{user clause} & c & \Coloneqq & \coqdoccst{f}~\vec{up}~n \\
+  \texttt{clauses} & clauses & \Coloneqq & \vec{c} `| \{ \vec{c} \} \\
+  \texttt{user clause} & c & \Coloneqq & \coqdoccst{f}~\vec{up}~n `|
+                                         \vecplus{\texttt{|} up}~n\\
   \texttt{user pattern} & up & \Coloneqq & x
   `| \coqdocconstr{C}~\vec{up}
   `| \texttt{?}(t) `| (x := up) \\
-  \texttt{user node} & n & \Coloneqq & \userref{t}{\vec{c}}
- `|~\coloneqq~t~(\overrightarrow{progs})?
+  \texttt{user node} & n & \Coloneqq & \userref{\vecplus{t}}{clauses}
+ `|\,\coloneqq~t~\overrightarrow{where}
 \end{array}}
 
+In the grammar, $\vec{t}$ denotes a possibly empty list of $t$,
+$\vecplus{t}$ a non-empty list.
 \begin{figure}[h]
 \centering$\figdefs$
 \caption{Definitions and user clauses}
 \label{fig:usergram}
 \end{figure}
 
-The syntax allows the definition of mutual (\kw{with}) and nested
-(\kw{where}) recursive definitions. Notations can be used globally to
-attach a syntax to a recursive definition, or locally inside a user
-node. In the \kw{wf} annotation, the first term should be typable in
-the program's context $\Gamma$ (and possibly the enclosing context for
-nested programs) with a \emph{closed} type $\tau$
+The syntax allows the definition of toplevel mutual (\kw{with}) and
+nested (\kw{where}) structurally recursive definitions. Notations can be
+used globally to attach a syntax to a recursive definition, or locally
+inside a user node. In the \kw{wf} annotation, the first term should be
+typable in the program's context $\Gamma$ (and possibly the enclosing
+context for nested programs) with a \emph{closed} type $\tau$
 (e.g. \coqdocind{nat}), while the relation must be a locally closed term
 of type $\tau "->" \tau "->" \kw{Prop}$.  The $\lambda\{$ syntax (using
 a unicode lambda attached to a curly brace) allows to input
 pattern-matching lambdas in a term, which are elaborated to \kw{where}
-clauses.
+clauses. Local \kw{where} clauses can be used to define recursive
+definitions themselves or local notations. The syntax permits the use of
+curly braces around a list of clauses to allow disambiguation of the
+scope of \kw{where} and \kw{with} clauses.
+
+In user clauses, one can either give an application of the current
+program to patterns using $\coqdoccst{f}~\vec{up}$ or a list of
+refinement patterns $\vec{\texttt{|} up}$ which should match the number
+of abstraction of the enclosing program (introduced by \kw{with} or
+not).
+
+The user patterns can be made up from variables, constructors applied to
+patterns, inaccessible patterns $\texttt{?}(t)$ where $t$ is an
+arbitrary term or, in case of an application $\coqdoccst{f}~\vec{up}$
+setting an implicit argument of $\coqdoccst{f}$ using $(x := up)$.
+
 
 \subsection{Generated definitions}
 

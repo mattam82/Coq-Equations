@@ -240,16 +240,22 @@ head (cons a v) _ := a.
 
 (** We decompose the list and are faced with two cases:
 
-   - In the first case, the list is empty, hence the proof [pf] of type 
-     [nil <> nil] allows us to derive a contradiction by applying it to reflexivity.
-     We make use of another category of right-hand sides, which we call _empty_ nodes
-     to inform the compiler that a contradiction is derivable in this case.
-     In general we cannot expect the compiler to find by himself that
-     the context contains a contradiction, as it is undecidable
+   - In the first case, the list is empty, hence the proof [pf] of type
+     [nil <> nil] allows us to derive a contradiction by applying it to
+     reflexivity.  We make use of another category of right-hand sides,
+     which we call _empty_ nodes to inform the compiler that a
+     contradiction is derivable in this case.  In general we cannot
+     expect the compiler to find by himself that the context contains a
+     contradiction, as it is undecidable
      %(\cite{DBLP:conf/plpv/Oury07,DBLP:conf/birthday/GoguenMM06})%.
-   - In the second case, we simply return the head of the list, disregarding
-     the proof.
- *)
+
+     However, in this case, one could also write an empty set of clauses
+     for the [with] subprogram, as Equations applies a heuristic in case
+     of an empty set of clause: it tries to split each of the variables
+     in the context to find an empty type.
+
+   - In the second case, we simply return the head of the list,
+     disregarding the proof.  *)
 
 (** ** Inductive families
 
