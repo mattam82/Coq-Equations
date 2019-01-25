@@ -47,6 +47,52 @@ a unicode lambda attached to a curly brace) allows to input
 pattern-matching lambdas in a term, which are elaborated to \kw{where}
 clauses.
 
+\subsection{Generated definitions}
+
+Upon the completion of an \Equations definition, a few supporting lemmas
+are generated.
+
+\subsubsection{Equations}
+
+Each compiled clause of the program or one
+of its subprograms defined implicitely by \kw{with} or explicitely by
+\kw{where} nodes gives rise to an equation. Note that the clauses
+correspond to the program's splitting tree, i.e. to the expansion of
+pattern-matchings, so a single source clause catching multiple cases
+can correspond to multiple equations. All of these equations are
+registered as hints in a rewrite hint database named $\cst{f}$, which can be
+used by the \coqdoctac{simp} or \coqdoctac{autorewrite} tactic
+afterwards. The $\coqdoctac{simp}~f$ tactic is just an alias to
+$\coqdoctac{autorewrite with}~f$. The equation lemmas are named
+after the position they appear in in the program, and are of the
+form $\cst{f}\_clause\_n\_equation\_k$.
+
+In case the program is well-founded, \Equations first generates an
+unfolded definition named \cst{f\_unfold} corresponding to the
+1-unfolding of the recursive definition and shows that it is
+extensionally equal to \cst{f}. This unfolding equation is used
+to generate the equations associated to \cst{f}, which might also
+refer to the unfolded versions of subprograms. Well-founded
+recursive definitions can hence generate a set of equations that
+is not terminating as an unconditional rewrite system.
+
+\subsubsection{Elimination principle}
+
+\Equations also automatically generates a mutually-inductive relation
+corresponding to the graph of the programs, whose first inductive is named
+$\cst{f}\_ind$. It automatically shows that the functions respects their
+graphs (lemma $\cst{f}\_ind\_fun$) and derives from this proof an
+elimination principle named $\cst{f}\_elim$. This eliminator can be used
+directly using the \tac{apply} tactic to prove goals involving a call to
+the function(s). One has to provide predicates for each of the toplevel
+programs and the \kw{where} subprograms (\kw{with} subprograms's
+predicates follow from their enclosing programs).
+
+In case the program has a single predicate, one can use the
+$\tac{funelim}~call$ tactic to launch the elimination by specifying
+which call of the goal should be used as the elimination target.
+A most general predicate is inferred in this case.
+
 \section{Local Options}
 The \kw{Equations} command takes a few options using the syntax
 \[\kw{Equations}(opts)~\cst{f}~\ldots\]

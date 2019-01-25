@@ -422,20 +422,19 @@ Equations id (n : nat) : nat by wf n lt :=
   id (S n') := S (id n').
 
 (** Here [id] is defined by well-founded recursion on [lt] on the (only)
-    argument [n] using the [by wf] node.  At recursive calls of [id],
-    obligations are generated to show that the arguments effectively
-    decrease according to this relation.  Here the proof that [n' < S
-    n'] is discharged automatically.
+    argument [n] using the [by wf] annotation.  At recursive calls of
+    [id], obligations are generated to show that the arguments
+    effectively decrease according to this relation.  Here the proof
+    that [n' < S n'] is discharged automatically.
 
   Wellfounded recursion on arbitrary dependent families is not as easy
   to use, as in general the relations on families are _heterogeneous_,
-  as the must related inhabitants of potentially different instances of
+  as they must relate inhabitants of potentially different instances of
   the family.  [Equations] provides a [Derive] command to generate the
   subterm relation on any such inductive family and derive the
-  well-foundedness of its transitive closure, which is often what's
-  required. This provides course-of-values or so-called "mathematical"
-  induction on these objects, mimicking the structural recursion
-  criterion in the logic. *)
+  well-foundedness of its transitive closure. This provides
+  course-of-values or so-called "mathematical" induction on these
+  objects, reflecting the structural recursion criterion in the logic. *)
 
 Derive Subterm for vector.
 
