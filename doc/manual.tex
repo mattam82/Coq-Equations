@@ -3,37 +3,39 @@
 
 \subsection{Syntax of programs}
 \def\kw#1{\coqdockw{#1}}
-\def\userref#1#2{\coqdockw{with}~#1 \coloneqq #2}
 \def\vec#1{\overrightarrow{#1}}
 \def\vecplus#1{{\overrightarrow{#1}}^{+}}
+\def\textcoloneq{\texttt{:=}}
+\def\userref#1#2{\coqdockw{with}~#1~\textcoloneq~#2}
 
 \def\figdefs{\begin{array}{llcl}
   \texttt{term}, \texttt{type} & t, ~τ & \Coloneqq &
   \coqdocvar{x} `| \lambda \coqdocvar{x} : \tau, t `| ∀ \coqdocvar{x} :
                                                     \tau, \tau' `|
-  \lambda\{\vecplus{\vec{up} \coloneqq t}\}
-   \ldots \\
-  \texttt{binding} & d & \Coloneqq & (\coqdocvar{x}~:~\tau) `|
-  (\coqdocvar{x}~\coloneqq~t~:~\tau) \\
+  \mathbf{\lambda}\texttt{\{}\,\vecplus{\vec{up} \coloneqq t}\texttt{\}}
+   \cdots \\
+  \texttt{binding} & d & \Coloneqq & \texttt{(}\coqdocvar{x}~\texttt{:}~\tau\texttt{)} `|
+  \texttt{(}\coqdocvar{x}~\textcoloneq~t~\texttt{:}~\tau\texttt{)} \\
   \texttt{context} & Γ, Δ & \Coloneqq & \vec{d} \\
-  \texttt{programs} & progs & \Coloneqq & prog~\overrightarrow{mutual}. \\
+  \texttt{programs} & progs & \Coloneqq & prog~\overrightarrow{mutual} \texttt{.} \\
   \texttt{mutual programs} & mutual & \Coloneqq & \coqdockw{with}~p `| where \\
   \texttt{where clause} & where & \Coloneqq & \coqdockw{where}~p `| \coqdockw{where}~not\\
-  \texttt{notation} & not & \Coloneqq & ''string'' \coloneqq term~(:~scope)?\\
-  \texttt{program} & p, prog & \Coloneqq & \coqdoccst{f}~Γ~:~τ~(\coqdockw{by}~\textit{annot})?~\coloneqq~clauses \\
+  \texttt{notation} & not & \Coloneqq & \texttt{''}string\texttt{''}~\textcoloneq~term~(\texttt{:}~scope)?\\
+  \texttt{program} & p, prog & \Coloneqq & \coqdoccst{f}~Γ~\texttt{:}~τ~(\coqdockw{by}~\textit{annot})?~\textcoloneq~clauses \\
   \texttt{annotation} & annot & \Coloneqq & \kw{struct}~x `| \kw{wf}~t~R \\
-  \texttt{clauses} & clauses & \Coloneqq & \vec{c} `| \{ \vec{c} \} \\
+  \texttt{clauses} & clauses & \Coloneqq & \vec{c} `| \texttt{\{}\,\vec{c}\,\texttt{\}} \\
   \texttt{user clause} & c & \Coloneqq & \coqdoccst{f}~\vec{up}~n `|
-                                         \vecplus{\texttt{|} up}~n\\
+                                         \vecplus{\texttt{|}~up}~n\\
   \texttt{user pattern} & up & \Coloneqq & x
   `| \coqdocconstr{C}~\vec{up}
-  `| \texttt{?}(t) `| (x := up) \\
-  \texttt{user node} & n & \Coloneqq & \userref{\vecplus{t}}{clauses}
- `|\,\coloneqq~t~\overrightarrow{where}
+  `| \texttt{?(}\,t\,\texttt{)} `| \texttt{(}x~\textcoloneq~up\texttt{)} \\
+  \texttt{user node} & n & \Coloneqq & \userref{t~\vec{, t}}{clauses}
+ `|\,\textcoloneq~t~\overrightarrow{where}
 \end{array}}
 
 In the grammar, $\vec{t}$ denotes a possibly empty list of $t$,
-$\vecplus{t}$ a non-empty list.
+$\vecplus{t}$ a non-empty list. Concrete syntax is in
+\texttt{typewriter} font.
 \begin{figure}[h]
 \centering$\figdefs$
 \caption{Definitions and user clauses}
