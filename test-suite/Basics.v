@@ -102,7 +102,7 @@ Ltac solve_rec ::= simpl in * ; cbv zeta ; intros ;
   try typeclasses eauto with subterm_relation Below lt.
 Unset Implicit Arguments.
 
-Equations testn (n : nat) : nat by rec n lt :=
+Equations testn (n : nat) : nat by wf n lt :=
 testn 0 := 0 ;
 testn (S n) with testn n => {
   | 0 := S 0 ;
@@ -175,7 +175,7 @@ Import Vector.
 (*   Context {A B} `{EqDec A} `{EqDec B}. *)
 
 (*   Equations unzip_dec {n} (v : vector (A * B) n) : vector A n * vector B n := *)
-(*   unzip_dec n v by rec v (@vector_subterm (A * B)) := *)
+(*   unzip_dec n v by wf v (@vector_subterm (A * B)) := *)
 (*   unzip_dec ?(O) nil := ([]v, []v) ; *)
 (*   unzip_dec ?(S n) (cons (pair x y) n v) with unzip_dec v := { *)
 (*      | pair xs ys := (cons x xs, cons y ys) }. *)
@@ -183,7 +183,7 @@ Import Vector.
 Section foo.
   Context {A B : Type}.
   Equations unzipv {n} (v : vector (A * B) n) : vector A n * vector B n
-   by rec (signature_pack v) (@vector_subterm (A * B)) :=
+   by wf (signature_pack v) (@vector_subterm (A * B)) :=
   unzipv []v := ([]v, []v) ;
   unzipv ((x, y) |:| v) with unzipv v := {
     | pair xs ys := (cons x xs, cons y ys) }.
@@ -196,7 +196,7 @@ Typeclasses Transparent vector_subterm.
 (** Due to the packing of all arguments, can only be done in sections right now so
  that A and B are treated as parameters (better computational behavior anyway) *)
 (* Equations unzip {A B} {n} (v : vector (A * B) n) : vector A n * vector B n := *)
-(* unzip v by rec (signature_pack v) (@vector_subterm (A * B)) := *)
+(* unzip v by wf (signature_pack v) (@vector_subterm (A * B)) := *)
 (* unzip nil := (nil, nil) ; *)
 (* unzip (cons (pair x y) n v) <= unzip v => { *)
 (*   | (pair xs ys) := (cons x xs, cons y ys) }. *)
@@ -215,7 +215,7 @@ unzip_n A B (S n) (cons (pair x y) n v) with unzip_n v := {
 (* Lemma nos_with (n : nat) : nos_with_comp n. *)
 (*   rec_wf_eqns nos n. *)
 
-Equations nos_with (n : nat) : nat by rec n :=
+Equations nos_with (n : nat) : nat by wf n :=
 nos_with O := O ;
 nos_with (S m) with nos_with m := {
   | O := S O ;
@@ -366,7 +366,7 @@ Arguments Split [ X ].
 (* About nil. About vector. *)
 
 Equations split {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs
-  by rec m :=
+  by wf m :=
 split (m:=O) xs := append nil xs ;
 split (m:=(S m)) (n:=n) (cons x xs) with split xs => {
   | append xs' ys' := append (cons x xs') ys' }.
@@ -411,7 +411,7 @@ vmap' f (cons a v) := cons (f a) (vmap' f v).
 Hint Resolve lt_n_Sn : subterm_relation.
 
 Equations vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n
-  by rec n :=
+  by wf n :=
 vmap f nil := nil ;
 vmap f (cons a v) := cons (f a) (vmap f v).
 
@@ -532,7 +532,7 @@ vtail (cons a v') := v'.
     a canonical elimination principle in this nested case. *)
 
 Equations diag {A n} (v : vector (vector A n) n) : vector A n
- by rec n lt :=
+ by wf n lt :=
 diag nil := nil ;
 diag (cons (cons a v) v') := cons a (diag (vmap vtail v')).
 

@@ -31,7 +31,7 @@ Section nubBy.
 
   (** The proof that this function is well-founded uses simply the lemma [filter_length] and
       standard arithmetic reasoning. *)
-  Equations? nubBy (l : list A) : list A by rec (length l) lt :=
+  Equations? nubBy (l : list A) : list A by wf (length l) lt :=
   nubBy []        => [];
   nubBy (x :: xs) => x :: nubBy (filter (fun y => negb (eq x y)) xs).
   Proof. simpl. auto using filter_length with arith. Defined.
@@ -79,7 +79,7 @@ Qed.
 Require Import Equations.Subterm.
 Obligation Tactic := program_simpl; try typeclasses eauto 10 with Below.
 
-Equations ack (m n : nat) : nat by rec (m, n) (lexprod _ _ lt lt) :=
+Equations ack (m n : nat) : nat by wf (m, n) (lexprod _ _ lt lt) :=
   ack 0 0         := 1;
   ack 0 (S n)     := S (S n);
   ack (S m) 0     := ack m 1;

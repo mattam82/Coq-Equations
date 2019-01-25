@@ -1,11 +1,11 @@
 From Equations Require Import Equations.
 Require Import Lia.
 
-Equations? f (n : nat) : nat by rec n lt :=
+Equations? f (n : nat) : nat by wf n lt :=
   f 0 := 0;
   f (S k) := g k (le_n (S k))
 
-  where g (n' : nat) (H : n' < S k) : nat by rec n' lt :=
+  where g (n' : nat) (H : n' < S k) : nat by wf n' lt :=
   g 0 _ := 1;
   g (S n') H := f n' + g n' (PeanoNat.Nat.lt_le_incl (S n') (S k) H).
 

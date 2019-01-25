@@ -306,7 +306,7 @@ GRAMMAR EXTEND Gram
   ;
 
   wf_annot:
-    [ [ "by"; IDENT "rec"; c = constr; rel = OPT constr -> { Some (WellFounded (c, rel)) }
+    [ [ "by"; IDENT "wf"; c = constr; rel = OPT constr -> { Some (WellFounded (c, rel)) }
       | "by"; "struct"; id = identloc -> { Some (Structural id) }
       | -> { None }
     ] ]

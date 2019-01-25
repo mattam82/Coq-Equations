@@ -83,10 +83,10 @@ Section RoseTree.
   (*   aux nil := acc; *)
   (*   aux (cons x xs) := elements x (aux xs). *)
 
-  Equations? elements (r : rose) (acc : list A) : list A by rec r (MR lt size) :=
+  Equations? elements (r : rose) (acc : list A) : list A by wf r (MR lt size) :=
   elements (leaf a) acc := a :: acc;
   elements (node l) acc := aux l _
-    where aux x (H : list_size size x < size (node l)) : list A by rec x (MR lt (list_size size)) :=
+    where aux x (H : list_size size x < size (node l)) : list A by wf x (MR lt (list_size size)) :=
     aux nil _ := acc;
     aux (cons x xs) H := elements x (aux xs _).
   Proof. simpl in H. omega. Qed.

@@ -111,7 +111,7 @@ Section QuickSort.
     specialize (i x). destruct (f x); intuition.
   Defined.
 
-  Equations? qs {n} (l : vector A n) : { v : vector A n | sorted v /\ (forall x, In x l <-> In x v) } by rec n lt :=
+  Equations? qs {n} (l : vector A n) : { v : vector A n | sorted v /\ (forall x, In x l <-> In x v) } by wf n lt :=
     qs nil := nil ;
     qs (cons a v) with pivot v (fun x => leb x a) :=
                 { | &(k, l, lower & higher) =>

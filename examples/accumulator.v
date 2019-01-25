@@ -77,7 +77,7 @@ Equations? isPrime (n : nat) : bool :=
   isPrime 2 := true;
   isPrime 3 := true;
   isPrime k := worker 2
-    where worker (n' : nat) : bool by rec (k - n') lt :=
+    where worker (n' : nat) : bool by wf (k - n') lt :=
     worker n' with ge_dec n' k :=
       { | left H := true;
         | right H := if Nat.eqb (Nat.modulo k n') 0 then false else worker (S n') }.
@@ -120,7 +120,7 @@ Qed.
 (** Using well-founded recursion we can also define an [interval x y]
     function producing the interval [x..y-1] *)
 
-Equations? interval x y : list nat by rec (y - x) lt :=
+Equations? interval x y : list nat by wf (y - x) lt :=
   interval x y with lt_dec x y :=
     { | left  ltxy  => x :: interval (S x) y;
       | right nltxy => [] }.

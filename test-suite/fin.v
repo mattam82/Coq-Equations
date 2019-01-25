@@ -206,7 +206,7 @@ Print Assumptions fle_eqdec.
 Obligation Tactic := program_simpl; try typeclasses eauto 10 with Below subterm_relation.
 
 Equations fle_trans' {n : nat} {i j : fin n} (p : fle i j) {k} (q : fle j k) : fle i k
- by rec (Signature.signature_pack p) (@fle_subterm) :=
+ by wf (Signature.signature_pack p) (@fle_subterm) :=
 fle_trans' flez _ := flez;
 fle_trans' (fles p') (fles q') := fles (fle_trans' p' q').
 

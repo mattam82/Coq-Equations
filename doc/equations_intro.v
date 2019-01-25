@@ -417,12 +417,12 @@ diag' (Vcons (Vcons a v) v') :=
 
 Require Import Equations.Subterm.
 
-Equations id (n : nat) : nat by rec n lt :=
+Equations id (n : nat) : nat by wf n lt :=
   id 0 := 0;
   id (S n') := S (id n').
 
 (** Here [id] is defined by well-founded recursion on [lt] on the (only)
-    argument [n] using the [by rec] node.  At recursive calls of [id],
+    argument [n] using the [by wf] node.  At recursive calls of [id],
     obligations are generated to show that the arguments effectively
     decrease according to this relation.  Here the proof that [n' < S
     n'] is discharged automatically.
@@ -470,7 +470,7 @@ Module UnzipVect.
       at the packed type [{ n : nat & vector A n}]. *)
 
   Equations? unzip {n} (v : vector (A * B) n) : vector A n * vector B n
-    by rec (signature_pack v) (@t_subterm (A * B)) :=
+    by wf (signature_pack v) (@t_subterm (A * B)) :=
   unzip Vnil := (Vnil, Vnil) ;
   unzip (Vector.cons (pair x y) v) with unzip v := {
   | pair xs ys := (Vector.cons x xs, Vector.cons y ys) }.
@@ -483,7 +483,7 @@ End UnzipVect.
 (** For the diagonal, it is easier to give [n] as the decreasing argument
     of the function, even if the pattern-matching itself is on vectors: *)
 
-Equations diag' {A n} (v : vector (vector A n) n) : vector A n by rec n lt :=
+Equations diag' {A n} (v : vector (vector A n) n) : vector A n by wf n lt :=
 diag' Vnil := Vnil ;
 diag' (Vcons (Vcons a v) v') :=
   Vcons a (diag' (vmap vtail v')).

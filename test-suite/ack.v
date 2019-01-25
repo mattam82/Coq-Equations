@@ -4,7 +4,7 @@ Hint Resolve lt_n_Sn : rec_decision.
 Hint Constructors lexprod : rec_decision.
 
 Equations ack (p : nat * nat) : nat :=
-ack p by rec p (lexprod _ _ lt lt) :=
+ack p by wf p (lexprod _ _ lt lt) :=
 ack (pair 0 n) := S n;
 ack (pair (S m) 0) := ack (m, 1);
 ack (pair (S m) (S n)) := ack (m, ack (S m, n)).

@@ -619,7 +619,7 @@ Hint Extern 31 (clos_trans _ _ _ _) => apply_transitivity : subterm_relation.
 
 Equations? hereditary_subst (t : type * term * term) (k : nat) :
   term * option (her_type t)
-  by rec t her_order :=
+  by wf t her_order :=
 
 hereditary_subst (pair (pair A a) t) k with t := {
   | Var i with Nat.compare i k := {

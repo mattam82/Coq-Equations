@@ -21,7 +21,7 @@ Definition MR {A B} (f : A -> B) (R : relation B) : relation A :=
   fun x y => R (f x) (f y).
 
 Equations? test (n : nat) (pre : n >= 0 ) : { n' : nat | n' <= n }
- by rec n lt :=
+ by wf n lt :=
 test 0 p := exist _ 0 _;
 test (S n) p with test n _ => {
                 | exist _ 0 _ := exist _ 0 _;
@@ -32,7 +32,7 @@ Proof. all:(auto with arith; omega). Defined.
 Module Bug.
   (* FIXME: shrink obligations so that they can apply during induction principle generation *)
   Equations?(noind) test' (n : { n : nat | n >= 0 }) : { n' : nat | n' <= `n }
-  by rec n (MR (@proj1_sig nat (fun x : nat => x >= 0)) lt) :=
+  by wf n (MR (@proj1_sig nat (fun x : nat => x >= 0)) lt) :=
   test' (exist _ n p) with n := {
   | 0 := exist _ 0 _;
   | S n' with test' (exist _ n' _) => {

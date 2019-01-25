@@ -62,14 +62,14 @@ Module RoseTree.
               (Pnil : P (node nil))
               (Pnode : forall x xs, P x -> P (node xs) -> P (node (cons x xs))).
               
-      Equations?(noind) elim (r : t) : P r by rec (size r) lt :=
+      Equations?(noind) elim (r : t) : P r by wf (size r) lt :=
       elim (leaf a) := Pleaf a;
       elim (node nil) := Pnil;
       elim (node (cons x xs)) := Pnode x xs (elim x) (elim (node xs)).
       Proof. all:(simpl; omega). Qed.
     End elimtree.
 
-    Equations? elements (r : t) : list A by rec (size r) lt :=
+    Equations? elements (r : t) : list A by wf (size r) lt :=
     elements (leaf a) := [a];
     elements (node l) := concat (map_In l (fun x H => elements x)).
     Proof. red. now apply In_list_size. Qed.
@@ -90,12 +90,12 @@ Module RoseTree.
     Obligation Tactic := program_simpl; try typeclasses eauto with Below subterm_relation.
     (* Nested rec *) 
 
-    Equations elements' (r : t) : list A by rec r (MR lt size) :=
+    Equations elements' (r : t) : list A by wf r (MR lt size) :=
     elements' (leaf a) := [a];
     elements' (node l) := fn l hidebody
 
     where fn (x : list t) (H : list_size size x < size (node l)) : list A
-      by rec x (MR lt (list_size size)) :=
+      by wf x (MR lt (list_size size)) :=
     fn nil _ := nil;
     fn (cons x xs) _ := elements' x ++ fn xs hidebody.
 

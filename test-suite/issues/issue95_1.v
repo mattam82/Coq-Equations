@@ -8,7 +8,7 @@ Inductive type: Set :=
 Axiom wf : 0 < 0.
 
 Equations? transport (t: nat) (T: type): Prop
-  by rec 0 lt :=
+  by wf 0 lt :=
 
   transport t T_bool := True;
 

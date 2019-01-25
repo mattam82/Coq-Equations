@@ -106,7 +106,7 @@ Ltac rec ::= Subterm.rec_wf_eqns.
 Unset Implicit Arguments.
 
 Equations cfold {t} (e : exp t) : exp t :=
-(* Works with well-foundedness too: cfold e by rec (signature_pack e) exp_subterm := *)
+(* Works with well-foundedness too: cfold e by wf (signature_pack e) exp_subterm := *)
 cfold (NConst n) => NConst n;
 cfold (Plus e1 e2) with (cfold e1, cfold e2) => {
   | pair (NConst n1) (NConst n2) := NConst (n1 + n2);

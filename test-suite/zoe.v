@@ -137,7 +137,7 @@ Hint Resolve size_ii_open_rec_lt : Below.
 Hint Extern 3 => progress auto with arith : Below.
 (*
 Equations infer_sort (ie : env) (i : index) : option sort :=
-infer_sort ie i by rec i (MR lt index_size) := (** Need to strengthen the subst *)
+infer_sort ie i by wf i (MR lt index_size) := (** Need to strengthen the subst *)
 infer_sort ie (IBVar x) := None ;
 infer_sort ie (IFVar x) := get x ie;
 infer_sort ie Z := Some N;
@@ -161,7 +161,7 @@ infer_sort ie (IApp i1 i2) <= infer_sort ie i1 => {
 Obligation Tactic := program_simpl; try typeclasses eauto 10 with Below subterm_relation.
 
 Equations infer_sort (i : index) (ie : env) : option sort
- by rec i (MR lt index_size) :=
+ by wf i (MR lt index_size) :=
 infer_sort (IBVar x) ie := None ;
 infer_sort (IFVar x) ie := get x ie;
 infer_sort Z ie := Some N;

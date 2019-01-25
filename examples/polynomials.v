@@ -127,7 +127,7 @@ Derive Signature NoConfusion NoConfusionHom Subterm for mono.
 (** Our first interesting definition computes the coefficient in [Z] by which
     a monomial [m] is multiplied in a polynomial [p]. *)
 
-Equations? get_coef {n} (m : mono n) {b} (p : poly b n) : Z by rec (pack m) mono_subterm :=
+Equations? get_coef {n} (m : mono n) {b} (p : poly b n) : Z by wf (pack m) mono_subterm :=
 get_coef mono_z     poly_z       := 0%Z;
 get_coef mono_z     (poly_c z _) := z;
 get_coef (mono_l m) (poly_l p)   := get_coef m p;

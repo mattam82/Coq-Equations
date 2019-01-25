@@ -59,7 +59,7 @@ Arguments forest A : clear implicits.
 Hint Constructors tail_of : core.
 
 Module FlattenNestedWf.
-  Equations? flatten {A} (f : forest A) : list A by rec (fweight f) lt :=
+  Equations? flatten {A} (f : forest A) : list A by wf (fweight f) lt :=
   flatten (emp _) := nil;
   flatten (tree l) := lflatten l (t_refl _)
 

@@ -134,7 +134,7 @@ and pr_proto ((_,id), _, l, t, ann) =
   Id.print id ++ pr_binders l ++ pr_opt (fun t -> str" : " ++ pr_constr_expr t) t ++
   (match ann with
      None -> mt ()
-   | Some (WellFounded (t, rel)) -> str"by rec " ++ pr_constr_expr t ++ pr_opt pr_constr_expr rel
+   | Some (WellFounded (t, rel)) -> str"by wf " ++ pr_constr_expr t ++ pr_opt pr_constr_expr rel
    | Some (Structural id) -> str"by struct " ++ pr_id (snd id))
 
 and pr_clause env (loc, lhs, rhs) =

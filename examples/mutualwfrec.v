@@ -54,7 +54,7 @@ Definition pack {A} {P} (x : A) (t : ty A P) := (&(A, P, x, t)) : {A & {P & {_ :
     Using dependent pattern matching, the clauses for [ty0] refine the argument
     and return type to [nat] and similarly for [ty1], we can hence do pattern-matching
     as usual on each separate definition. *)
-Equations? double_fn {A} {P} (t : ty A P) (x : A) : P x by rec (pack x t) rel :=
+Equations? double_fn {A} {P} (t : ty A P) (x : A) : P x by wf (pack x t) rel :=
   double_fn ty0 n := n + 0;
   double_fn ty1 nil := true;
   double_fn ty1 (x :: xs) := 0 <? length xs + double_fn ty0 (length xs).

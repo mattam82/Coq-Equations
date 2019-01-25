@@ -6,7 +6,7 @@ Inductive type: Set :=
 
 Axiom cheat : 0 < 0.
 
-Equations? transport (t: nat) (T: type): Prop by rec 0 lt :=
+Equations? transport (t: nat) (T: type): Prop by wf 0 lt :=
 
   transport t T_bool := True;
 
