@@ -179,8 +179,7 @@ Inductive fle : forall {n}, fin n -> fin n -> Set :=
 | fles : forall {n i j}, fle i j -> @fle (S n) (fs i) (fs j).
 Derive Signature for fle.
 
-Equations fin0_empty (i : fin 0) : False :=
-fin0_empty i :=! i.
+Equations fin0_empty (i : fin 0) : False := { }.
 
 Unset Equations WithK.
 

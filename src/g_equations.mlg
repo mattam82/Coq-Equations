@@ -273,7 +273,7 @@ GRAMMAR EXTEND Gram
      [ [ b = binders -> { b } ] ]
   ;
   deppat_equations:
-    [ [ l = LIST1 equation SEP ";" -> { l } ] ]
+    [ [ l = LIST0 equation SEP ";" -> { l } ] ]
   ;
 
   deppat_elim:
@@ -281,7 +281,7 @@ GRAMMAR EXTEND Gram
   ;
 
   operconstr:
-    [ "0" [ "λ"; "{" ; c = LIST1 equation SEP ";"; "}" -> {
+    [ "0" [ "λ"; "{" ; c = LIST0 equation SEP ";"; "}" -> {
             CAst.make ~loc @@ CHole (None, Namegen.IntroAnonymous,
                                      Some (Genarg.in_gen (Genarg.rawwit Syntax.wit_equations_list) c)) } ] ]
   ;

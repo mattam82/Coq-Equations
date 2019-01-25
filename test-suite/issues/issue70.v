@@ -27,7 +27,6 @@ Equations invFLLemma (n : nat) : invertFin (FL n) = F1 :=
 
 Equations invertFinInv {n : nat} (x : Fin.t n) :
                        invertFin (invertFin x) = x :=
-  invertFinInv (n:=0)      x     :=! x;
   invertFinInv (n:=(S _))  F1    := (invFLLemma _);
   invertFinInv (n:=(S _)) (FS y) := (eq_trans
                                      (invFULemma (invertFin y))

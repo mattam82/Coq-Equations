@@ -169,7 +169,6 @@ Qed.
 Hint Rewrite @lift_type_by_app : lift_type_by.
 
 Equations lookup {n} (Γ : env O n) (x : var n) : type n :=
-lookup (n:=O)     Γ          x      :=! x;
 lookup (n:=(S _)) (cons a Γ) FO     := lift_type_by (scope_le_S scope_le_n) a;
 lookup (n:=(S _)) (cons a Γ) (FS x) := lift_type_by (scope_le_S scope_le_n) (lookup Γ x)
 .

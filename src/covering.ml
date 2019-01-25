@@ -179,9 +179,12 @@ let refine_arg idx ctx =
 
 let adjust_sign_arity env evars p clauses =
   let max_args =
-    List.fold_left (fun acc (_, lhs, rhs) ->
-        let len = List.length lhs in
-        max acc len) 0 clauses
+    match clauses with
+    | [] -> Context.Rel.nhyps p.program_sign
+    | _ ->
+      List.fold_left (fun acc (_, lhs, rhs) ->
+          let len = List.length lhs in
+          max acc len) 0 clauses
   in
   let fullty = it_mkProd_or_subst env evars p.program_arity p.program_sign in
   let evars, sign, ty =
