@@ -34,7 +34,7 @@ Require Import Bvector.
 Equations neg (b : bool) : bool :=
 neg true := false ;
 neg false := true.
-Print All.
+
 (* begin hide *)
 Check neg_ind.
 Check neg_ind_equation_1.
@@ -111,7 +111,7 @@ tail (cons a v) := v.
 
 (** Note that the argument [{A}] is declared implicit and must hence be
  omitted in the defining clauses. In each of the branches it is named
- [A]. To specify it explicitely one can use the syntax [{A:=B}],
+ [A]. To specify it explicitely one can use the syntax [(A:=B)],
  renaming that implicit argument to [B] in this particular case *)
 
 (** ** Recursive inductive types

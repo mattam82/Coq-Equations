@@ -346,16 +346,20 @@ let interp_pat env notations ?(avoid = ref Id.Set.empty) p pat =
   (* let () = Feedback.msg_debug (str"Variables " ++ prlist_with_sep spc pr_id vars) in *)
   let tys = List.map (fun _ -> EConstr.mkProp) vars in
   let impls = List.map (fun _ -> []) vars in
-  let vars, tys, impls =
+  (* let () = Feedback.msg_debug (str"Internalizing " ++ pr_constr_expr p) in *)
+  let ienv = try compute_internalization_env env sigma Variable vars tys impls with Not_found ->
+    anomaly (str"Building internalization environment")
+  in
+  let vars, tys, impls, ienv =
     match p with
     | Some (p, _) ->
       let ty = program_type p in
-      (p.program_id :: vars, ty :: tys, p.program_impls :: impls)
-    | None -> (vars, tys, impls)
-  in
-  (* let () = Feedback.msg_debug (str"Internalizing " ++ pr_constr_expr p) in *)
-  let ienv = try compute_internalization_env env sigma Recursive vars tys impls with Not_found ->
-    anomaly (str"Building internalization environment")
+      let ienv =
+        try compute_internalization_env env sigma ~impls:ienv Recursive [p.program_id] [ty] [p.program_impls]
+        with Not_found -> anomaly (str"Building internalization environment")
+      in
+      (p.program_id :: vars, ty :: tys, p.program_impls :: impls, ienv)
+    | None -> (vars, tys, impls, ienv)
   in
   let nctx =
     List.map2 (fun id ty -> Context.Named.Declaration.LocalAssum (id, EConstr.Unsafe.to_constr ty)) vars tys
