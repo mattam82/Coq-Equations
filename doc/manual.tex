@@ -29,8 +29,10 @@
   \texttt{user pattern} & up & \Coloneqq & x
   `| \coqdocconstr{C}~\vec{up}
   `| \texttt{?(}\,t\,\texttt{)} `| \texttt{(}x~\textcoloneq~up\texttt{)} \\
-  \texttt{user node} & n & \Coloneqq & \userref{t~\vec{, t}}{clauses}
- `|\,\textcoloneq~t~\overrightarrow{where}
+  \texttt{user node} & n & \Coloneqq &
+                                       \textcoloneq~t~\overrightarrow{where}
+                                       `| \texttt{:=!}~\coqdocvar{x} \\
+               & & &                                       `|\, \userref{t~\vec{, t}}{clauses}
 \end{array}}
 
 In the grammar, $\vec{t}$ denotes a possibly empty list of $t$,
