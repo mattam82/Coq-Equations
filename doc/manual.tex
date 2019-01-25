@@ -8,9 +8,9 @@
 \def\figdefs{\begin{array}{llcl}
   \texttt{term}, \texttt{type} & t, ~τ & \Coloneqq &
   \coqdocvar{x} `| \lambda \coqdocvar{x} : \tau, t `| ∀ \coqdocvar{x} :
-                                                     \tau, \tau' `|
-   \lambda\{\overrightarrow{\vec{up} \coloneqq t}\}
-  \ldots \\
+                                                    \tau, \tau' `|
+  \lambda\{\overrightarrow{\vec{up} \coloneqq t}\}
+   \ldots \\
   \texttt{binding} & d & \Coloneqq & (\coqdocvar{x}~:~\tau) `|
   (\coqdocvar{x}~\coloneqq~t~:~\tau) \\
   \texttt{context} & Γ, Δ & \Coloneqq & \vec{d} \\
@@ -20,7 +20,7 @@
   \texttt{notation} & not & \Coloneqq & ''string'' \coloneqq term~(:~scope)?\\
   \texttt{program} & p, prog & \Coloneqq &
                                         \coqdoccst{f}~Γ~:~τ~(\coqdockw{by}~\textit{annot})?~\coloneqq~\vec{c} \\
-  \texttt{annotation} & annot & \Coloneqq & \kw{struct}~\var{x} `| \kw{wf}~\var{t}~\var{R} \\
+  \texttt{annotation} & annot & \Coloneqq & \kw{struct}~x `| \kw{wf}~t~R \\
   \texttt{user clause} & c & \Coloneqq & \coqdoccst{f}~\vec{up}~n \\
   \texttt{user pattern} & up & \Coloneqq & x
   `| \coqdocconstr{C}~\vec{up}
