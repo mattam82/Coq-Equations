@@ -43,6 +43,8 @@ let regular_or_nested_rec = function
   | Nested r -> true
   | _ -> false
 
+let nested = function Nested _ -> true | _ -> false
+
 let pi1 (x,_,_) = x
 let pi2 (_,y,_) = y
 let pi3 (_,_,z) = z
@@ -1067,6 +1069,8 @@ let declare_funind info alias env evd is_rec protos progs
   let poly = is_polymorphic info.term_info in
   let id = Id.of_string info.term_info.base_id in
   let indid = Nameops.add_suffix id "_ind_fun" in
+  (* Record nested statements which can be repeated during the proof *)
+  let nested_statements = ref [] in
   let statement =
     let stmt (i, ((f,_), alias, path, sign, ar, _, _, (nodek, cut)), _) =
       if not (regular_or_nested nodek) then None else
@@ -1080,7 +1084,10 @@ let declare_funind info alias env evd is_rec protos progs
       let ind = Nameops.add_suffix (path_id path)(* Id.of_string info.term_info.base_id) *)
                                    ("_ind" (* ^ if i == 0 then "" else "_" ^ string_of_int i *)) in
       let indt = e_new_global evd (global_reference ind) in
-      Some (it_mkProd_or_subst env !evd (applist (indt, args @ [app])) sign)
+      let ty = it_mkProd_or_subst env !evd (applist (indt, args @ [app])) sign in
+      let (prog, _, _, _) = List.find (fun (p, _, _, _) -> Id.equal p.program_info.program_id (path_id path)) progs in
+      if nested nodek then nested_statements := (path_id path, ty, prog) :: !nested_statements;
+      Some ty
     in
     match ind_stmts with
     | [] -> assert false
@@ -1148,7 +1155,7 @@ let declare_funind info alias env evd is_rec protos progs
              ~kind:info.term_info.decl_kind
              indid stmt ~tactic:(Tacticals.New.tclTRY tactic) ctx [||])
   in
-  let tac = (ind_fun_tac is_rec f info id progs) in
+  let tac = (ind_fun_tac is_rec f info id !nested_statements progs) in
   try launch_ind tac
   with e ->
     Feedback.msg_warning Pp.(str "Induction principle could not be proved automatically: " ++ fnl () ++

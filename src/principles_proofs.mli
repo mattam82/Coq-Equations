@@ -45,7 +45,7 @@ val solve_ind_rec_tac : Splitting.term_info -> unit Proofview.tactic
 val aux_ind_fun :
   ind_info ->
   int * int ->
-  (Splitting.program * Splitting.program option * Splitting.compiled_program_info * equations_info) list ->
+  (Names.Id.t * EConstr.types * Splitting.program) list ->
   Splitting.splitting option ->
   Names.Id.t list -> Splitting.splitting -> Proofview.V82.tac
 val ind_fun_tac :
@@ -53,7 +53,8 @@ val ind_fun_tac :
   Constr.t ->
   ind_info ->
   Names.Id.t ->
-  (Splitting.program * Splitting.program option * Splitting.compiled_program_info * equations_info) list ->
+  (Names.Id.t * EConstr.types * Splitting.program) list ->
+  (Splitting.program * Splitting.program option * Splitting.compiled_program_info * 'b) list ->
   unit Proofview.tactic
 
 val prove_unfolding_lemma :

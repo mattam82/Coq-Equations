@@ -17,7 +17,7 @@ where aux1 (l : list foo) : nat := {
 
 where aux2 (l : list foo) : nat := {
   aux2 [] := 1;
-  aux2 (cons hd tl) := f hd + aux2 tl }.
+  aux2 (cons hd tl) := f hd + aux1 tl + aux2 tl }.
 
 Definition check := f_elim.
 Module Three.

@@ -287,7 +287,7 @@ let annot_of_rec r = match r.struct_rec_arg with
   | NestedOn None -> Some 1
   | _ -> None
 
-let aux_ind_fun info chop nestedprogs unfs unfids split =
+let aux_ind_fun info chop nested unfs unfids split =
   let rec solve_nested () =
     let open Tacticals.New in
     let open Proofview.Goal in
@@ -301,22 +301,25 @@ let aux_ind_fun info chop nestedprogs unfs unfids split =
             let hd, args = decompose_app sigma last in
             (try let fn, args = destConst sigma hd in
                let fnid = Label.to_id (Constant.label fn) in
-               List.find_opt (fun (p, _, _, _) ->
-                   Id.equal p.program_info.program_id fnid)
-                 nestedprogs
+               List.find_opt (fun (p, _, _) -> Id.equal p fnid) nested
              with DestKO -> None)
           | _ -> None
         in
         match nested_goal with
-        | Some (p, _, _, _) ->
+        | Some (p, ty, prog) ->
           let fixtac =
-            match p.program_rec with
+            match prog.program_rec with
             | Some { rec_node = StructRec sr; rec_args } ->
-              tclTHENLIST [tclDO rec_args revert_last;
-                           fix p.program_info.program_id (Option.default 1 (annot_of_rec sr));
+              tclTHENLIST [fix prog.program_info.program_id (Option.default 1 (annot_of_rec sr));
                            tclDO rec_args intro]
             | _ -> Proofview.tclUNIT ()
-          in Proofview.tclTHEN fixtac (of82 (aux chop None [] p.program_splitting))
+          in
+          let program_tac =
+            tclTHEN fixtac (of82 (aux chop None [] prog.program_splitting))
+          in
+          tclTHEN (assert_by (Name (program_id prog)) ty program_tac)
+            (of82 (observe "solving nested premises of compute rule"
+                     (to82 (solve_ind_rec_tac info.term_info))))
         | None -> Proofview.tclUNIT ())
   and aux chop unfs unfids = function
   | Split ((ctx,pats,_ as lhs), var, _, splits) ->
@@ -631,7 +634,7 @@ let observe_tac s tac =
 
 exception NotGuarded
 
-let ind_fun_tac is_rec f info fid progs =
+let ind_fun_tac is_rec f info fid nestedinfo progs =
   let open Tacticals.New in
   match is_rec with
   | Some (Guarded l) ->
@@ -660,7 +663,7 @@ let ind_fun_tac is_rec f info fid progs =
                                                        info.term_info.helpers_info @
                                                        cpi.program_split_info.helpers_info } }
                     in
-                    (of82 (aux_ind_fun proginfo (0, List.length l) nestedprogs None [] p.program_splitting)))
+                    (of82 (aux_ind_fun proginfo (0, List.length l) nestedinfo None [] p.program_splitting)))
                     progs)
      in
      let prove_nested =
@@ -699,7 +702,7 @@ let ind_fun_tac is_rec f info fid progs =
                         intros <*>
                         specialize_mutfix_tac () <*>
                         tclDISPATCH (List.map (fun split ->
-                            of82 (aux_ind_fun info (0, 1) [] None [] split)) s)))])
+                            of82 (aux_ind_fun info (0, 1) nestedinfo None [] split)) s)))])
          | None -> tclZERO NotGuarded)
        | _ -> tclZERO NotGuarded
      in
@@ -770,11 +773,11 @@ let ind_fun_tac is_rec f info fid progs =
     opacify ();
     Proofview.tclBIND
       (tclCOMPLETE (tclTHENLIST
-                      [set_eos_tac (); intros; of82 (aux_ind_fun info (0, 0) [] unfsplit [] split)]))
+                      [set_eos_tac (); intros; of82 (aux_ind_fun info (0, 0) nestedinfo unfsplit [] split)]))
       (fun r -> transp (); Proofview.tclUNIT r)
 
-let ind_fun_tac is_rec f info fid progs =
-  Proofview.tclORELSE (ind_fun_tac is_rec f info fid progs)
+let ind_fun_tac is_rec f info fid nested progs =
+  Proofview.tclORELSE (ind_fun_tac is_rec f info fid nested progs)
     (fun e ->
        match fst e with
        | Pretype_errors.PretypeError (env, evd, err) ->
