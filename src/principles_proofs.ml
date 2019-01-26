@@ -287,7 +287,38 @@ let annot_of_rec r = match r.struct_rec_arg with
   | NestedOn None -> Some 1
   | _ -> None
 
-let rec aux_ind_fun info chop unfs unfids = function
+let aux_ind_fun info chop nestedprogs unfs unfids split =
+  let rec solve_nested () =
+    let open Tacticals.New in
+    let open Proofview.Goal in
+    Proofview.Goal.enter (fun gl ->
+        let sigma = sigma gl in
+        let concl = concl gl in
+        let nested_goal =
+          match kind sigma concl with
+          | App (ind, args) ->
+            let last = Array.last args in
+            let hd, args = decompose_app sigma last in
+            (try let fn, args = destConst sigma hd in
+               let fnid = Label.to_id (Constant.label fn) in
+               List.find_opt (fun (p, _, _, _) ->
+                   Id.equal p.program_info.program_id fnid)
+                 nestedprogs
+             with DestKO -> None)
+          | _ -> None
+        in
+        match nested_goal with
+        | Some (p, _, _, _) ->
+          let fixtac =
+            match p.program_rec with
+            | Some { rec_node = StructRec sr; rec_args } ->
+              tclTHENLIST [tclDO rec_args revert_last;
+                           fix p.program_info.program_id (Option.default 1 (annot_of_rec sr));
+                           tclDO rec_args intro]
+            | _ -> Proofview.tclUNIT ()
+          in Proofview.tclTHEN fixtac (of82 (aux chop None [] p.program_splitting))
+        | None -> Proofview.tclUNIT ())
+  and aux chop unfs unfids = function
   | Split ((ctx,pats,_ as lhs), var, _, splits) ->
      let splits = List.map_filter (fun x -> x) (Array.to_list splits) in
      let unfs_splits =
@@ -318,7 +349,7 @@ let rec aux_ind_fun info chop unfs unfids = function
        (fun i ->
           let split = nth splits (pred i) in
           let unfsplit = Option.map (fun s -> nth s (pred i)) unfs_splits in
-          (aux_ind_fun info chop unfsplit unfids split)))
+          (aux chop unfsplit unfids split)))
 
   | RecValid (ctx, id, t, cs) ->
     let refine gl =
@@ -367,7 +398,7 @@ let rec aux_ind_fun info chop unfs unfids = function
     tclTHENLIST [tclDO t.rec_args (to82 revert_last);
                  observe "wf_fix"
                    (tclTHEN refine
-                      (tclTHEN (to82 intros) (aux_ind_fun info chop unfs unfids cs)))]
+                      (tclTHEN (to82 intros) (aux chop unfs unfids cs)))]
       
   | Refined ((ctx, _, _), refinfo, s) -> 
     let unfs = map_opt_split destRefined unfs in
@@ -391,7 +422,7 @@ let rec aux_ind_fun info chop unfs unfids = function
           [observe "letin" (to82 (letin_pat_tac true None (Name id) (project gl, elim) occs));
            observe "convert concl" (to82 (convert_concl_no_check newconcl DEFAULTcast));
            observe "clear body" (Proofview.V82.of_tactic (clear_body [id]));
-           aux_ind_fun info chop unfs unfids s] gl
+           aux chop unfs unfids s] gl
       | _ -> tclFAIL 0 (str"Unexpected refinement goal in functional induction proof") gl
     in
     observe "refine"
@@ -486,7 +517,7 @@ let rec aux_ind_fun info chop unfs unfids = function
 
                             (* if Option.is_empty unfs then tclIDTAC
                              * else autorewrite_one (info.term_info.base_id ^ "_where"); *)
-                            (of82 (aux_ind_fun info chop (Option.map (fun s -> s.where_program.program_splitting) unfs)
+                            (of82 (aux chop (Option.map (fun s -> s.where_program.program_splitting) unfs)
                                      unfids (s.where_program.program_splitting)))])
           in
           let wherepath, args =
@@ -560,9 +591,12 @@ let rec aux_ind_fun info chop unfs unfids = function
            *               (Tacticals.New.pf_constr_of_global
            *                     (Equations_common.global_reference i))
            *               Equality.rewriteLR))) unfids; *)
-          observe "solving premises of compute rule" (to82 (solve_ind_rec_tac info.term_info))]))
+          tclORELSE (tclCOMPLETE
+                       (observe "solving premises of compute rule" (to82 (solve_ind_rec_tac info.term_info))))
+            (observe "solving nested recursive call" (to82 (solve_nested ())))]))
 
-  | Mapping (_, s) -> aux_ind_fun info chop unfs unfids s
+  | Mapping (_, s) -> aux chop unfs unfids s
+  in aux chop unfs unfids split
 
 let observe_tac s tac =
   let open Proofview in
@@ -626,7 +660,7 @@ let ind_fun_tac is_rec f info fid progs =
                                                        info.term_info.helpers_info @
                                                        cpi.program_split_info.helpers_info } }
                     in
-                    (of82 (aux_ind_fun proginfo (0, List.length l) None [] p.program_splitting)))
+                    (of82 (aux_ind_fun proginfo (0, List.length l) nestedprogs None [] p.program_splitting)))
                     progs)
      in
      let prove_nested =
@@ -665,7 +699,7 @@ let ind_fun_tac is_rec f info fid progs =
                         intros <*>
                         specialize_mutfix_tac () <*>
                         tclDISPATCH (List.map (fun split ->
-                            of82 (aux_ind_fun info (0, 1) None [] split)) s)))])
+                            of82 (aux_ind_fun info (0, 1) [] None [] split)) s)))])
          | None -> tclZERO NotGuarded)
        | _ -> tclZERO NotGuarded
      in
@@ -736,7 +770,7 @@ let ind_fun_tac is_rec f info fid progs =
     opacify ();
     Proofview.tclBIND
       (tclCOMPLETE (tclTHENLIST
-                      [set_eos_tac (); intros; of82 (aux_ind_fun info (0, 0) unfsplit [] split)]))
+                      [set_eos_tac (); intros; of82 (aux_ind_fun info (0, 0) [] unfsplit [] split)]))
       (fun r -> transp (); Proofview.tclUNIT r)
 
 let ind_fun_tac is_rec f info fid progs =

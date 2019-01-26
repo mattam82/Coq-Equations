@@ -45,6 +45,7 @@ val solve_ind_rec_tac : Splitting.term_info -> unit Proofview.tactic
 val aux_ind_fun :
   ind_info ->
   int * int ->
+  (Splitting.program * Splitting.program option * Splitting.compiled_program_info * equations_info) list ->
   Splitting.splitting option ->
   Names.Id.t list -> Splitting.splitting -> Proofview.V82.tac
 val ind_fun_tac :
