@@ -301,8 +301,8 @@ let aux_ind_fun info chop nested unfs unfids split =
             let hd, args = decompose_app sigma last in
             (try let fn, args = destConst sigma hd in
                let fnid = Label.to_id (Constant.label fn) in
-               List.find_opt (fun (p, _, _) -> Id.equal p fnid) nested
-             with DestKO -> None)
+               Some (CList.find (fun (p, _, _) -> Id.equal p fnid) nested)
+             with DestKO | Not_found -> None)
           | _ -> None
         in
         match nested_goal with
