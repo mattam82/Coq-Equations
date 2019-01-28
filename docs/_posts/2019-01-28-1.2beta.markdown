@@ -125,7 +125,7 @@ a [reference manual][refman] with an introduction to the features of
 the plugin.  We are seeking and welcoming [feedback][issues] from you on
 the usage of these tools!
 
-[release]: https://github.com/mattam82/Coq-Equations/releases/tag/v1.2
+[release]: https://github.com/mattam82/Coq-Equations/releases/tag/v1.2-beta-8.9
 [www]: http://mattam82.github.io/Coq-Equations
 [refman]: http://github.com/mattam82/Coq-Equations/raw/master/doc/equations.pdf
 [faq]: http://mattam82.github.io/Coq-Equations/FAQ
