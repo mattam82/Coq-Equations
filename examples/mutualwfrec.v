@@ -77,8 +77,12 @@ Proof.
   unfold fn1; simp double_fn. destruct l. simp double_fn. simp double_fn.
 Qed.
 
-(** The following example uses just dependent elimination on a finite type (booleans)
-    and shows that this also applies to nested recursive definitions. *)
+(** ** Well-founded nested recursion
+
+  The following example uses just dependent elimination on a finite type (booleans)
+  and shows that this also applies to nested recursive definitions. *)
+
+(** We first define [list_size] and rose trees *)
 
 Section list_size.
   Context {A : Type} (f : A -> nat).
@@ -97,27 +101,24 @@ Section RoseMut.
   | node (l : list t) : t.
   Derive NoConfusion for t.
 
-  Fixpoint size (r : t) :=
-    match r with
-    | leaf a => 0
-    | node l => S (list_size size l)
-    end.
-
-  Definition pack_rose (b : bool) (x : if b then t else list t) : { b : bool & if b then t else list t } :=
-    &(b, x).
+  Equations size (r : t) : nat :=
+  size (leaf _) := 0;
+  size (node l) := S (list_size size l).
 
   (** An alternative way to define mutual definitions on nested types *)
   Equations mutmeasure (b : bool) (arg : if b then t else list t) : nat :=
   mutmeasure true t := size t;
   mutmeasure false lt := list_size size lt.
 
+  (** The argument and return type depend on the function label ([true] or [false] here)
+      and any well-founded recursive call is allowed. *)
   Equations? elements (b : bool) (x : if b then t else list t) : if b then list A else list A
     by wf (mutmeasure b x) lt :=
   elements true (leaf a) := [a];
   elements true (node l) := elements false l;
   elements false nil := nil;
   elements false (cons t ts) := elements true t ++ elements false ts.
-  Proof. lia. lia. Qed.
+  Proof. all:lia. Qed.
 
   (** Dependent return types are trickier but possible: *)
   Equations? elements_dep (b : bool) (x : if b then t else list t) :
@@ -127,6 +128,6 @@ Section RoseMut.
   elements_dep true (node l) := elements_dep false l;
   elements_dep false nil := nil;
   elements_dep false (cons t ts) := elements_dep true t ++ elements_dep false ts.
-  Proof. lia. lia. Qed.
+  Proof. all:lia. Qed.
 
 End RoseMut.
