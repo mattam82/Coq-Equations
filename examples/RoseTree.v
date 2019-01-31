@@ -64,11 +64,12 @@ Module RoseTree.
       
     Equations elements_def (r : t) : list A :=
     elements_def (leaf a) := [a];
-    elements_def (node l) := concat (List.map elements l).
+    elements_def (node l) := concat (List.map elements_def l).
     Lemma elements_equation (r : t) : elements r = elements_def r.
     Proof.
-      funelim (elements r); simp elements_def.
-      now rewrite map_In_spec.
+      funelim (elements r); simp elements_def. f_equal.
+      induction l; simpl; auto. simp map_In. rewrite H. rewrite IHl; auto.
+      intros. apply H. now constructor 2. now constructor.
     Qed.
 
     (** To solve measure subgoals *)
@@ -77,6 +78,25 @@ Module RoseTree.
 
     Obligation Tactic := program_simpl; try typeclasses eauto with Below subterm_relation.
     (* Nested rec *) 
+
+    Equations elements_acc (r : t) (acc : list A) : list A by wf (size r) lt :=
+    elements_acc (leaf a) acc := a :: acc;
+    elements_acc (node l) acc := aux l _
+      where aux (x : list t) (H : list_size size x < size (node l)) : list A by wf (list_size size x) lt :=
+      aux nil _ := acc;
+      aux (cons x xs) H := elements_acc x (aux xs _).
+
+    Definition elements2 (r : t) : list A := elements_acc r [].
+
+    Lemma elements2_equation r acc : elements_acc r acc = elements_def r ++ acc.
+    Proof.
+      revert r acc.
+      let t := constr:(fun_elim (f:=elements_acc)) in
+      apply (t (fun r acc res => res = elements_def r ++ acc)
+               (fun r acc x H res => res = concat (List.map elements_def x) ++ acc)); intros; simp elements.
+      rewrite H1. clear H1.
+      rewrite H0. simpl. now rewrite app_assoc.
+    Qed.
 
     Equations elements' (r : t) : list A by wf r (MR lt size) :=
     elements' (leaf a) := [a];
