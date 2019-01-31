@@ -42,8 +42,8 @@ introduces a few important changes:
 	
 	```
 	Equations gcd (x y : nat) : nat by wf (x + y) lt :=
-	gcd 0 _ := 0 ;
-	gcd _ 0 := 0 ;
+	gcd 0 x := x ;
+	gcd x 0 := x ;
 	gcd x y with gt_eq_gt_dec x y := {
 		| inleft (left ygtx) := gcd x (y - x) ;
 		| inleft (right refl) := x ;
