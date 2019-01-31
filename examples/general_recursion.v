@@ -33,19 +33,8 @@ Require Import Coq.Vectors.VectorDef.
 Require Import Relations.
 (* end hide *)
 
-(** The total relation and a function to produce fuel. *)
+(** The total relation. *)
 Definition total_relation {A : Type} : A -> A -> Prop := fun x y => True.
-
-Section Fueling.
-  Context {A : Type} {R : relation A} (p : forall x, Acc R x).
-
-  Equations fuel_relation_n (n : nat) (x : A) : Acc R x :=
-    fuel_relation_n 0 x := p x;
-    fuel_relation_n (S n) x := Acc_intro x (fun y _ => Acc_intro y (fun y' _ => fuel_relation_n n y')).
-
-  Definition fuel_relation (n : nat) : WellFounded R :=
-    fun x => fuel_relation_n (pow n n) x.
-End Fueling.
 
 (** We assume an inconsistent axiom here, one should be added function per function. *)
 Axiom wf_total_init : forall {A}, WellFounded (@total_relation A).
@@ -54,7 +43,7 @@ Remove Hints wf_total_init : typeclass_instances.
 (** We fuel it with some Acc_intro constructors so that definitions relying on it
     can unfold a fixed number of times still. *)
 Instance wf_total_init_compute : forall {A}, WellFounded (@total_relation A).
-  exact (fun A => fuel_relation wf_total_init 3).
+  exact (fun A => Acc_intro_generator 10 wf_total_init).
 Defined.
 
 (** Now we define an obviously non-terminating function. *)
