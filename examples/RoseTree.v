@@ -7,8 +7,8 @@
 (**********************************************************************)
 
 Require Import Program.
-From Equations Require Import Equations Fin.
-Require Import Omega Utf8.
+From Equations Require Import Equations.
+Require Import Omega Utf8 Lia Arith.
 
 Require Import List.
 
@@ -44,7 +44,7 @@ Transparent list_size.
 Module RoseTree.
 
   Section roserec.
-    Context {A : Set} {A_eqdec : EqDec.EqDec A}.
+    Context {A : Set}.
 
     Inductive t : Set :=
     | leaf (a : A) : t
@@ -57,18 +57,6 @@ Module RoseTree.
       | node l => S (list_size size l)
       end.
 
-    Section elimtree.
-      Context (P : t -> Type) (Pleaf : forall a, P (leaf a))
-              (Pnil : P (node nil))
-              (Pnode : forall x xs, P x -> P (node xs) -> P (node (cons x xs))).
-              
-      Equations?(noind) elim (r : t) : P r by wf (size r) lt :=
-      elim (leaf a) := Pleaf a;
-      elim (node nil) := Pnil;
-      elim (node (cons x xs)) := Pnode x xs (elim x) (elim (node xs)).
-      Proof. all:(simpl; omega). Qed.
-    End elimtree.
-
     Equations? elements (r : t) : list A by wf (size r) lt :=
     elements (leaf a) := [a];
     elements (node l) := concat (map_In l (fun x H => elements x)).
@@ -76,11 +64,12 @@ Module RoseTree.
       
     Equations elements_def (r : t) : list A :=
     elements_def (leaf a) := [a];
-    elements_def (node l) := concat (List.map elements l).
+    elements_def (node l) := concat (List.map elements_def l).
     Lemma elements_equation (r : t) : elements r = elements_def r.
     Proof.
-      funelim (elements r); simp elements_def.
-      now rewrite map_In_spec.
+      funelim (elements r); simp elements_def. f_equal.
+      induction l; simpl; auto. simp map_In. rewrite H. rewrite IHl; auto.
+      intros. apply H. now constructor 2. now constructor.
     Qed.
 
     (** To solve measure subgoals *)
@@ -89,6 +78,25 @@ Module RoseTree.
 
     Obligation Tactic := program_simpl; try typeclasses eauto with Below subterm_relation.
     (* Nested rec *) 
+
+    Equations elements_acc (r : t) (acc : list A) : list A by wf (size r) lt :=
+    elements_acc (leaf a) acc := a :: acc;
+    elements_acc (node l) acc := aux l _
+      where aux (x : list t) (H : list_size size x < size (node l)) : list A by wf (list_size size x) lt :=
+      aux nil _ := acc;
+      aux (cons x xs) H := elements_acc x (aux xs _).
+
+    Definition elements2 (r : t) : list A := elements_acc r [].
+
+    Lemma elements2_equation r acc : elements_acc r acc = elements_def r ++ acc.
+    Proof.
+      revert r acc.
+      let t := constr:(fun_elim (f:=elements_acc)) in
+      apply (t (fun r acc res => res = elements_def r ++ acc)
+               (fun r acc x H res => res = concat (List.map elements_def x) ++ acc)); intros; simp elements.
+      rewrite H1. clear H1.
+      rewrite H0. simpl. now rewrite app_assoc.
+    Qed.
 
     Equations elements' (r : t) : list A by wf r (MR lt size) :=
     elements' (leaf a) := [a];
@@ -113,6 +121,47 @@ Module RoseTree.
     
   End roserec.
   Arguments t : clear implicits.
+
+  Section AltSize.
+    Context {A : Set}.
+
+    (** Let's use an alternative size criterion allowing to make recursive calls
+        on non-strict subterms of the initial list: we just count the maximal
+        depth of [node] constructors among all forests. *)
+    Equations alt_size (r : t A) : nat :=
+    { alt_size (leaf _) => 0;
+      alt_size (node l) => S (max_size l) }
+    where max_size (l : list (t A)) : nat :=
+    { max_size nil := 0;
+      max_size (cons a t) := Nat.max (alt_size a) (max_size t) }.
+
+    (** This has the property that the maximal size of two appended lists is the maximal
+        size of the separate lists. *)
+    Lemma max_size_app l l' : max_size (l ++ l') = Nat.max (max_size l) (max_size l').
+    Proof.
+      induction l; simp max_size. reflexivity.
+      simpl. rewrite <- Nat.max_assoc. f_equal.
+      apply IHl.
+    Qed.
+
+    Context {B : Set} (f : A -> B).
+
+    (** It hence becomes possible to recurse on an arbitrary list as long as the depth
+        decreases, for example by appending the subforest to itself in the [node] case.
+        The same is possible with sized types where node has type [j < i -> list^i (t^j) -> t^(S i)].
+     *)
+    Equations? map_t (r : t A) : t B by wf (alt_size r) lt :=
+      map_t (leaf a) := leaf (f a);
+      map_t (node l) := node (map_list (l ++ l) _)
+
+      where map_list (l' : list (t A)) (H : max_size l' ≤ max_size l) : list (t B) by struct l' :=
+      map_list nil _ := nil;
+      map_list (cons a t) Hl' := cons (map_t a) (map_list t _).
+    Proof. simp alt_size. apply le_lt_n_Sm. now apply Nat.max_lub_l in Hl'.
+           now apply Nat.max_lub_r in Hl'.
+           clear map_list. rewrite max_size_app. now rewrite Nat.max_id.
+    Defined.
+  End AltSize.
 
   Section fns.
     Context {A B : Set} (f : A -> B) (g : B -> A -> B) (h : A -> B -> B).

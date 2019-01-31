@@ -51,7 +51,7 @@ Recursion
 - [Mutual well-founded recursion](examples/mutualwfrec.html):
   representing mutually recursive well-founded definitions using
   dependent pattern-matching
-  ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/accumulator.v)).
+  ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/mutualwfrec.v)).
 
 - [General recursion](examples/general_recursion.html): working with
   general recursive functions, without worrying about termination proofs
