@@ -15,7 +15,8 @@ Require Import List Wellfounded.
 
   We present a simple encoding of mutual recursion through the use of
   dependent pattern-matching on a GADT-like representation of the functions
-  prototypes. We use a simple toy measure here to justify termination,
+  prototypes or just using strong elimination on an enumerated type.
+  We use a simple toy measure here to justify termination,
   but more elaborate well-founded relations can be used as well.
  *)
 
@@ -75,3 +76,57 @@ Lemma fn1_unfold l : fn1 l = match l with nil => true | x :: xs => 0 <? length x
 Proof.
   unfold fn1; simp double_fn. destruct l. simp double_fn. simp double_fn.
 Qed.
+
+(** The following example uses just dependent elimination on a finite type (booleans)
+    and shows that this also applies to nested recursive definitions. *)
+
+Section list_size.
+  Context {A : Type} (f : A -> nat).
+  Equations list_size (l : list A) : nat :=
+  list_size nil := 0;
+  list_size (cons x xs) := S (f x + list_size xs).
+
+End list_size.
+Transparent list_size.
+
+Section RoseMut.
+  Context {A : Set}.
+
+  Inductive t : Set :=
+  | leaf (a : A) : t
+  | node (l : list t) : t.
+  Derive NoConfusion for t.
+
+  Fixpoint size (r : t) :=
+    match r with
+    | leaf a => 0
+    | node l => S (list_size size l)
+    end.
+
+  Definition pack_rose (b : bool) (x : if b then t else list t) : { b : bool & if b then t else list t } :=
+    &(b, x).
+
+  (** An alternative way to define mutual definitions on nested types *)
+  Equations mutmeasure (b : bool) (arg : if b then t else list t) : nat :=
+  mutmeasure true t := size t;
+  mutmeasure false lt := list_size size lt.
+
+  Equations? elements (b : bool) (x : if b then t else list t) : if b then list A else list A
+    by wf (mutmeasure b x) lt :=
+  elements true (leaf a) := [a];
+  elements true (node l) := elements false l;
+  elements false nil := nil;
+  elements false (cons t ts) := elements true t ++ elements false ts.
+  Proof. lia. lia. Qed.
+
+  (** Dependent return types are trickier but possible: *)
+  Equations? elements_dep (b : bool) (x : if b then t else list t) :
+    (if b as b' return (if b' then t else list t) -> Set then fun x : t => list A else fun x : list t => list A) x
+    by wf (mutmeasure b x) lt :=
+  elements_dep true (leaf a) := [a];
+  elements_dep true (node l) := elements_dep false l;
+  elements_dep false nil := nil;
+  elements_dep false (cons t ts) := elements_dep true t ++ elements_dep false ts.
+  Proof. lia. lia. Qed.
+
+End RoseMut.
