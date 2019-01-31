@@ -7,8 +7,8 @@
 (**********************************************************************)
 
 Require Import Program.
-From Equations Require Import Equations Fin.
-Require Import Omega Utf8.
+From Equations Require Import Equations.
+Require Import Omega Utf8 Lia Arith.
 
 Require Import List.
 
@@ -44,7 +44,7 @@ Transparent list_size.
 Module RoseTree.
 
   Section roserec.
-    Context {A : Set} {A_eqdec : EqDec.EqDec A}.
+    Context {A : Set}.
 
     Inductive t : Set :=
     | leaf (a : A) : t
@@ -56,18 +56,6 @@ Module RoseTree.
       | leaf a => 0
       | node l => S (list_size size l)
       end.
-
-    Section elimtree.
-      Context (P : t -> Type) (Pleaf : forall a, P (leaf a))
-              (Pnil : P (node nil))
-              (Pnode : forall x xs, P x -> P (node xs) -> P (node (cons x xs))).
-              
-      Equations?(noind) elim (r : t) : P r by wf (size r) lt :=
-      elim (leaf a) := Pleaf a;
-      elim (node nil) := Pnil;
-      elim (node (cons x xs)) := Pnode x xs (elim x) (elim (node xs)).
-      Proof. all:(simpl; omega). Qed.
-    End elimtree.
 
     Equations? elements (r : t) : list A by wf (size r) lt :=
     elements (leaf a) := [a];
@@ -113,6 +101,47 @@ Module RoseTree.
     
   End roserec.
   Arguments t : clear implicits.
+
+  Section AltSize.
+    Context {A : Set}.
+
+    (** Let's use an alternative size criterion allowing to make recursive calls
+        on non-strict subterms of the initial list: we just count the maximal
+        depth of [node] constructors among all forests. *)
+    Equations alt_size (r : t A) : nat :=
+    { alt_size (leaf _) => 0;
+      alt_size (node l) => S (max_size l) }
+    where max_size (l : list (t A)) : nat :=
+    { max_size nil := 0;
+      max_size (cons a t) := Nat.max (alt_size a) (max_size t) }.
+
+    (** This has the property that the maximal size of two appended lists is the maximal
+        size of the separate lists. *)
+    Lemma max_size_app l l' : max_size (l ++ l') = Nat.max (max_size l) (max_size l').
+    Proof.
+      induction l; simp max_size. reflexivity.
+      simpl. rewrite <- Nat.max_assoc. f_equal.
+      apply IHl.
+    Qed.
+
+    Context {B : Set} (f : A -> B).
+
+    (** It hence becomes possible to recurse on an arbitrary list as long as the depth
+        decreases, for example by appending the subforest to itself in the [node] case.
+        The same is possible with sized types where node has type [j < i -> list^i (t^j) -> t^(S i)].
+     *)
+    Equations? map_t (r : t A) : t B by wf (alt_size r) lt :=
+      map_t (leaf a) := leaf (f a);
+      map_t (node l) := node (map_list (l ++ l) _)
+
+      where map_list (l' : list (t A)) (H : max_size l' ≤ max_size l) : list (t B) by struct l' :=
+      map_list nil _ := nil;
+      map_list (cons a t) Hl' := cons (map_t a) (map_list t _).
+    Proof. simp alt_size. apply le_lt_n_Sm. now apply Nat.max_lub_l in Hl'.
+           now apply Nat.max_lub_r in Hl'.
+           clear map_list. rewrite max_size_app. now rewrite Nat.max_id.
+    Defined.
+  End AltSize.
 
   Section fns.
     Context {A B : Set} (f : A -> B) (g : B -> A -> B) (h : A -> B -> B).
