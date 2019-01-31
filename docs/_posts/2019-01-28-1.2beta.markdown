@@ -70,13 +70,13 @@ introduces a few important changes:
 	values. A notation for pattern-matching lambdas, which are elaborated 
 	to `where` clauses is also available (example: [definterp][definterp]).
 
-  - An experimental refinement mode that opens the proof mode to
-	fill the holes of an Equations program, making expected types and
-    contexts of partial definitions easier to see, and letting one
-	seamlessly switch between refinement and proof mode.
-	BEWARE: `abstract` does not work well in that case. 
-	The syntax to switch to this mode is currently `Equations?`.
-    Otherwise, the obligations are generated as for Program.
+  - An experimental refinement mode opens the proof mode to fill the
+	holes of an Equations program, making expected types and contexts of
+	partial definitions easier to see, and lets one seamlessly switch
+	between refinement and proof mode.  BEWARE: `abstract` does not work
+	well in that case.  The syntax to switch to this mode is currently
+	`Equations?`.  Otherwise, the obligations are generated as for
+	Program.
     
   - A relocatable library of support lemmas allows one to use Equations
     in the context of HoTT-Coq or to benefit from strict propositions
