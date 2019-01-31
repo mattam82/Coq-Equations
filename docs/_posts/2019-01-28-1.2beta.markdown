@@ -26,10 +26,11 @@ introduces many improvements:
   - At the syntax level, patterns on the left-hand sides of definitions
 	are now interpreted using Coq's standard term interpreter, so that
 	they naturally support implicit arguments and notations. Recursive
-	and local notations are also available, as in:
+	and local notations are also available. Finally one does not have
+    to introduce binders for arguments in the function's prototype, e.g.:
 
 	```
-	Equations plus (n m : nat) : nat :=
+	Equations plus : nat -> nat -> nat :=
 	{ 0   + m := m;
 	  S n + m := S (n + m) }
     where "x + y" := (plus x y).
@@ -48,11 +49,8 @@ introduces many improvements:
 		| inright xgty := gcd (x - y) y }.
    ```
 
-  - One does not have to introduce explicit binders for arguments in
-	function prototypes, e.g.:
-	
-	`Equations plus : nat -> nat -> nat := plus 0 n := ...`
-
+    The [reference manual][refman] defines the input syntax precisely.
+    
   - An homogeneous no-confusion principle on indexed families can be 
 	automatically derived for those families whose no-confusion property
 	does not require uniqueness of identity proofs. This includes, e.g. 
@@ -90,12 +88,12 @@ The main features of Equations include:
     inaccessible patterns, `with` and `where` clauses.  The use of the K
     axiom or a proof of K is configurable.
 	
-  - Support for mutual and nested well-founded recursion using `by rec`
+  - Support for mutual and nested well-founded recursion using `by wf`
     annotations, and automatic derivation of the subterm relation for
     inductive families. 
 	
   - Support for mutual and nested structural recursion using `with` and
-    `where` auxilliary definitions, allowing to factor multiple uses of
+    `where` auxiliary definitions, allowing to factor multiple uses of
     the same nested fixpoint definition. It proves the expected
     elimination principles for mutual and nested definitions.
   
@@ -118,12 +116,11 @@ The main features of Equations include:
     from an inductive type: its signature, no-confusion properties,
     well-founded subterm relation and decidable equality proof, if applicable.
 
-The current system is usable for developping non-toy programs and proofs
+The current system is usable for developing non-toy programs and proofs
 (see [examples][examples]), although it still has some
 [limitations][faq]. Documentation is available on the website, including
 a [reference manual][refman] with an introduction to the features of
-the plugin.  We are seeking and welcoming [feedback][issues] from you on
-the usage of these tools!
+the plugin. [Feedback][issues] is very welcome!
 
 [release]: https://github.com/mattam82/Coq-Equations/releases/tag/v1.2-beta-8.9
 [www]: http://mattam82.github.io/Coq-Equations
