@@ -117,7 +117,8 @@ Ltac funelim_sig_tac c tac :=
   block_goal;
   uncurry_call elimfn c packcall packcall_fn;
   remember_let packcall_fn; unfold_packcall packcall;
-  (refine (eq_simplification_sigma1_dep _ _ _ _ _) ||
+  (refine (eq_simplification_sigma1_nondep_dep _ _ _ _ _) ||
+   refine (eq_simplification_sigma1_dep _ _ _ _ _) ||
    refine (Id_simplification_sigma1_dep _ _ _ _ _));
   let H := fresh "eqargs" in
   let Heq := fresh "Heqcall" in intros H Heq;
@@ -132,7 +133,8 @@ Ltac funelim_sig_tac c tac :=
   unshelve refine_ho elimt; intros;
   cbv beta; simplify_dep_elim; intros_until_block;
   simplify_dep_elim;
-  cbn beta iota delta [eq_rect_dep_r Id_rect_r eq_rect Id_rect pack_sigma_eq pack_sigma_Id] in *;
+  cbn beta iota delta [eq_rect_dep_r Id_rect_r eq_rect Id_rect pack_sigma_eq pack_sigma_eq_nondep
+                                     pack_sigma_Id pack_sigma_Id_nondep] in *;
   simplify_IH_hyps'; (* intros _; *)
   unblock_goal; simplify_IH_hyps; tac c.
 

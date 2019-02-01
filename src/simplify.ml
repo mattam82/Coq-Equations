@@ -32,6 +32,7 @@ module type EQREFS = sig
   (* Simplification of dependent pairs. *)
   val simpl_sigma : Names.Constant.t Lazy.t
   val simpl_sigma_dep : Names.Constant.t Lazy.t
+  val simpl_sigma_nondep_dep : Names.Constant.t Lazy.t
   val simpl_sigma_dep_dep : Names.Constant.t Lazy.t
   val pack_sigma_eq : Names.Constant.t Lazy.t
   (* Deletion using K. *)
@@ -79,6 +80,7 @@ module EqRefs : EQREFS = struct
   let opaque_ind_pack_eq_inv = init_depelim "opaque_ind_pack_eq_inv"
   let simpl_sigma = init_depelim "simpl_sigma"
   let simpl_sigma_dep = init_depelim "simpl_sigma_dep"
+  let simpl_sigma_nondep_dep = init_depelim "simpl_sigma_nondep_dep"
   let simpl_sigma_dep_dep = init_depelim "simpl_sigma_dep_dep"
   let pack_sigma_eq = init_depelim "pack_sigma_eq"
   let simpl_K = init_depelim "simpl_K"
@@ -119,6 +121,7 @@ module type BUILDER = sig
   val simplify_ind_pack_inv : constr_gen
   val simpl_sigma : constr_gen
   val simpl_sigma_dep : constr_gen
+  val simpl_sigma_nondep_dep : constr_gen
   val simpl_sigma_dep_dep : constr_gen
   val simpl_K : constr_gen
   val simpl_K_dec : constr_gen
@@ -160,6 +163,7 @@ module BuilderGen (SigmaRefs : SIGMAREFS) (EqRefs : EQREFS) : BUILDER = struct
   let simplify_ind_pack_inv = gen_from_constant EqRefs.simplify_ind_pack_inv
   let simpl_sigma = gen_from_constant EqRefs.simpl_sigma
   let simpl_sigma_dep = gen_from_constant EqRefs.simpl_sigma_dep
+  let simpl_sigma_nondep_dep = gen_from_constant EqRefs.simpl_sigma_nondep_dep
   let simpl_sigma_dep_dep = gen_from_constant EqRefs.simpl_sigma_dep_dep
   let simpl_K = gen_from_constant EqRefs.simpl_K
   let simpl_K_dec = gen_from_constant EqRefs.simpl_K_dec
@@ -451,15 +455,28 @@ let remove_one_sigma : simplification_fun =
               let args = [Some tA; Some tP; Some tB; Some tt; Some tu;
                           Some tp; Some tq; None] in
               tsimpl_sigma, args
-        end else
-          (* We assume full dependency. We could add one more special case,
-           * but we don't for now. *)
-          let tsimpl_sigma = Globnames.ConstRef (Lazy.force EqRefs.simpl_sigma_dep_dep) in
-          let tP = tB in
-          let tB = EConstr.mkLambda (name, ty1, ty2) in
-          let args = [Some tA; Some tP; Some tt; Some tu;
-                      Some tp; Some tq; Some tB; None] in
+        end else begin
+          try
+            let name', _, tBbody = destLambda !evd tB in
+            if Vars.noccurn !evd 1 tBbody then
+              (* Dependency in the goal, but not in the pair. *)
+              let tsimpl_sigma = Globnames.ConstRef (Lazy.force EqRefs.simpl_sigma_nondep_dep) in
+              let tP = Termops.pop tBbody in
+              let tB = EConstr.mkLambda (name, ty1, ty2) in
+              let args = [Some tA; Some tP; Some tt; Some tu;
+                          Some tp; Some tq; Some tB; None] in
+                tsimpl_sigma, args
+            else raise Constr.DestKO
+          with
+          | Constr.DestKO ->
+            (* Full dependency *)
+            let tsimpl_sigma = Globnames.ConstRef (Lazy.force EqRefs.simpl_sigma_dep_dep) in
+            let tP = tB in
+            let tB = EConstr.mkLambda (name, ty1, ty2) in
+            let args = [Some tA; Some tP; Some tt; Some tu;
+                        Some tp; Some tq; Some tB; None] in
             tsimpl_sigma, args
+        end
     | _, _ -> raise (CannotSimplify (str "If you see this, please report."))
   in build_app_infer env evd (ctx, ty) ctx f args, Context_map.id_subst ctx
 let remove_sigma = while_fun remove_one_sigma

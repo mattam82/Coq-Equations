@@ -379,6 +379,44 @@ Proof.
   intros X. eapply (X id_refl). apply id_refl.
 Defined.
 
+Polymorphic Definition pack_sigma_eq_nondep@{i} {A : Type@{i}} {P : Type@{i}} {p q : A} {x : P} {y : P}
+  (e' : p = q) (e : x = y) : &(p& x) = &(q & y).
+Proof. destruct e'. simpl in e. destruct e. apply eq_refl. Defined.
+
+Polymorphic Lemma eq_simplification_sigma1_nondep_dep@{i j} {A : Type@{i}} {P : Type@{i}}
+  (p q : A) (x : P) (y : P) {B : &(p& x) = &(q & y) -> Type@{j}} :
+  (forall e' : p = q, forall e : x = y, B (pack_sigma_eq_nondep e' e)) ->
+  (forall e : sigmaI (fun _ => P) p x = sigmaI (fun _ => P) q y, B e).
+Proof.
+  intros. revert X.
+  change p with (pr1 &(p & x)).
+  change q with (pr1 &(q & y)).
+  change x with (pr2 &(p & x)) at 2 4.
+  change y with (pr2 &(q & y)) at 2 4.
+  destruct e.
+  intros X. simpl in *.
+  apply (X eq_refl eq_refl).
+Defined.
+
+Polymorphic Definition pack_sigma_Id_nondep@{i} {A : Type@{i}} {P : Type@{i}} {p q : A} {x : P} {y : P}
+  (e' : Id p q) (e : Id x y) : Id &(p& x) &(q & y).
+Proof. destruct e'. simpl in e. destruct e. apply id_refl. Defined.
+
+Polymorphic Lemma Id_simplification_sigma1_nondep_dep@{i j} {A : Type@{i}} {P : Type@{i}}
+  (p q : A) (x : P) (y : P) {B : Id &(p& x) &(q & y) -> Type@{j}} :
+  (forall e' : Id p q, forall e : Id x y, B (pack_sigma_Id_nondep e' e)) ->
+  (forall e : Id (sigmaI (fun _ => P) p x) (sigmaI (fun _ => P) q y), B e).
+Proof.
+  intros. revert X.
+  change p with (pr1 &(p & x)).
+  change q with (pr1 &(q & y)).
+  change x with (pr2 &(p & x)) at 2 4.
+  change y with (pr2 &(q & y)) at 2 4.
+  destruct e.
+  intros X. simpl in *.
+  apply (X id_refl id_refl).
+Defined.
+
 Polymorphic Definition pack_sigma_eq@{i} {A : Type@{i}} {P : A -> Type@{i}} {p q : A} {x : P p} {y : P q}
   (e' : p = q) (e : @eq_rect A p P x q e' = y) : &(p& x) = &(q & y).
 Proof. destruct e'. simpl in e. destruct e. apply eq_refl. Defined.
