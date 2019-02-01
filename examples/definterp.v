@@ -13,7 +13,7 @@
   Interpreters for Imperative Languages", Poulsen, Rouvoet, Tolmach,
   Krebbers and Visser. POPL'18.
 
-  It uses well-typed and well-scoped syntax and an monad indexed over an
+  It uses well-typed and well-scoped syntax and a monad indexed over an
   indexed set of stores to define an interpreter for an imperative
   programming language.
 
