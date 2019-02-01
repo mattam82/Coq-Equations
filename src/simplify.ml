@@ -424,7 +424,7 @@ let with_retry (f : simplification_fun) : simplification_fun =
 (* This function is not accessible by the user for now. It is used to project
  * (if needed) the first component of an equality between sigmas. It will not
  * do anything if it fails. *)
-let remove_one_sigma : simplification_fun =
+let remove_one_sigma ?(only_nondep=false) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
   let _, t1, t2 = check_equality env !evd ctx ty1 in
@@ -448,6 +448,8 @@ let remove_one_sigma : simplification_fun =
             else raise Constr.DestKO
           with
           | Constr.DestKO ->
+            if only_nondep then raise (CannotSimplify (str"Cannot simplify dependent pair"))
+            else
               (* Dependency in the pair, but not in the goal. *)
               let tsimpl_sigma = Globnames.ConstRef (Lazy.force EqRefs.simpl_sigma_dep) in
               let tP = tB in
@@ -470,12 +472,14 @@ let remove_one_sigma : simplification_fun =
           with
           | Constr.DestKO ->
             (* Full dependency *)
-            let tsimpl_sigma = Globnames.ConstRef (Lazy.force EqRefs.simpl_sigma_dep_dep) in
-            let tP = tB in
-            let tB = EConstr.mkLambda (name, ty1, ty2) in
-            let args = [Some tA; Some tP; Some tt; Some tu;
-                        Some tp; Some tq; Some tB; None] in
-            tsimpl_sigma, args
+            if only_nondep then raise (CannotSimplify (str"Cannot simplify dependent pair"))
+            else
+              let tsimpl_sigma = Globnames.ConstRef (Lazy.force EqRefs.simpl_sigma_dep_dep) in
+              let tP = tB in
+              let tB = EConstr.mkLambda (name, ty1, ty2) in
+              let args = [Some tA; Some tP; Some tt; Some tu;
+                          Some tp; Some tq; Some tB; None] in
+              tsimpl_sigma, args
         end
     | _, _ -> raise (CannotSimplify (str "If you see this, please report."))
   in build_app_infer env evd (ctx, ty) ctx f args, Context_map.id_subst ctx
@@ -994,7 +998,7 @@ and simplify_one ((loc, rule) : Loc.t option * simplification_rule) :
        try compose_fun (or_fun check_block_notprod aux)
              first env evd gl
        with Blocked -> identity env evd gl
-     in handle_error aux
+     in handle_error (or_fun aux (remove_one_sigma ~only_nondep:true))
   | Step step -> wrap_handle (fun _ _ _ -> step)
   | Infer_one -> handle_error (or_fun (with_retry apply_noConfusions)
                                  (wrap (infer_step ?loc ~isSol:false)))

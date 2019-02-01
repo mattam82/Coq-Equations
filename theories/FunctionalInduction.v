@@ -119,7 +119,8 @@ Ltac funelim_sig_tac c tac :=
   remember_let packcall_fn; unfold_packcall packcall;
   (refine (eq_simplification_sigma1_nondep_dep _ _ _ _ _) ||
    refine (eq_simplification_sigma1_dep _ _ _ _ _) ||
-   refine (Id_simplification_sigma1_dep _ _ _ _ _));
+   refine (Id_simplification_sigma1_dep _ _ _ _ _) ||
+   refine (Id_simplification_sigma1_nondep_dep _ _ _ _ _));
   let H := fresh "eqargs" in
   let Heq := fresh "Heqcall" in intros H Heq;
   try (rewrite <- Heq; clear Heq); revert_until H; revert H;
