@@ -390,13 +390,13 @@ let classify_equations x =
 }
 
 VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS SIDEFF
-| #[ poly = polymorphic ] [ "Equations" equation_options(opt) equations(eqns) ] ->
-    { Equations.equations ~poly ~open_proof:false opt (fst eqns) (snd eqns) }
+| #[ poly = polymorphic; program_mode = program ] [ "Equations" equation_options(opt) equations(eqns) ] ->
+    { Equations.equations ~poly ~program_mode ~open_proof:false opt (fst eqns) (snd eqns) }
 END
 
 VERNAC COMMAND EXTEND Define_equations_refine CLASSIFIED BY { classify_equations }
-| #[ poly = polymorphic ] [ "Equations?" equation_options(opt) equations(eqns) ] ->
-    { Equations.equations ~poly ~open_proof:true opt (fst eqns) (snd eqns) }
+| #[ poly = polymorphic; program_mode = program ] [ "Equations?" equation_options(opt) equations(eqns) ] ->
+    { Equations.equations ~poly ~program_mode ~open_proof:true opt (fst eqns) (snd eqns) }
 END
 
 (* Dependent elimination using Equations. *)

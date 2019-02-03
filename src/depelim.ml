@@ -437,7 +437,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
       let evd = ref evars in
       (* Produce a splitting tree. *)
       let split : Splitting.splitting =
-        Covering.covering env evd p data clauses [] prob [] ty
+        Covering.covering ~program_mode:false env evd p data clauses [] prob [] ty
       in
 
       let c, ty =
