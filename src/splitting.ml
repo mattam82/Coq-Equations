@@ -351,7 +351,7 @@ let compute_possible_guardness_evidences sigma n fixbody fixtype =
     let ctx = fst (decompose_prod_n_assum sigma m fixtype) in
     List.map_i (fun i _ -> i) 0 ctx
 
-let define_mutual_nested evd get_prog progs =
+let define_mutual_nested env evd get_prog progs =
   let mutual =
     List.filter (fun (p, prog) -> not (is_nested p)) progs
   in
@@ -425,7 +425,7 @@ let define_mutual_nested evd get_prog progs =
     let nested, mutual = List.partition (fun (x, y) -> x) nested in
     let gns = List.fold_right (fun (_, g) acc -> applist (g, acc) :: acc) nested [] in
     let nested = List.fold_left (fun acc g -> applist (g, List.rev acc) :: acc) [] gns in
-    let nested = List.rev_map (Reductionops.nf_beta (Global.env ()) !evd) nested in
+    let nested = List.rev_map (Reductionops.nf_beta env !evd) nested in
     List.map snd mutual, nested
   in
   let decl =
@@ -451,8 +451,9 @@ let define_mutual_nested evd get_prog progs =
     in
     let tys' = Array.map EConstr.Unsafe.to_constr tys in
     let bodies' = Array.map EConstr.Unsafe.to_constr bodies in
-    Pretyping.search_guard (Global.env()) (Array.to_list possible_indexes)
-      (names, tys', bodies')
+    try Pretyping.search_guard env (Array.to_list possible_indexes)
+          (names, tys', bodies')
+    with Not_found -> anomaly (str"Calling search_guard raised Not_found")
   in
   let declare_fix_fns i (p,prog) =
     let newidx = indexes.(i) in
@@ -634,9 +635,9 @@ let term_of_tree env0 isevar tree =
     isevar := evm;
     term, typ
 
-let define_mutual_nested_csts flags evd get_prog progs =
+let define_mutual_nested_csts flags env evd get_prog progs =
   let mutual, nested =
-    define_mutual_nested evd (fun prog -> get_prog evd prog) progs
+    define_mutual_nested env evd (fun prog -> get_prog evd prog) progs
   in
   let mutual =
     List.map (fun (p, prog, fix) ->
@@ -716,6 +717,17 @@ let make_program env evd p prob s rec_info =
        Mutual (p', prob, r, s', after, (* lift 1  *)term))
   | None -> Single (p, prob, rec_info, s, fst (term_of_tree env evd s))
 
+let update_rec_info p rec_info s =
+  match p.Syntax.program_rec, rec_info.rec_node with
+  | Some (Structural ra), StructRec sr ->
+    let rec_info = {rec_info with rec_node = StructRec { sr with struct_rec_arg = ra }} in
+    let s' =
+      match s with
+      | RecValid (lhs, id, _, s) -> RecValid (lhs, id, rec_info, s)
+      | _ -> s
+    in rec_info, s'
+  | _, _ -> rec_info, s
+
 let make_programs env evd flags ?(define_constants=false) programs =
   let sterms = List.map (fun (p', prob, split, rec_info) ->
       make_program env evd p' prob split rec_info)
@@ -764,16 +776,22 @@ let make_programs env evd flags ?(define_constants=false) programs =
                 evd := evm; (p, (prob, r, s', after, e)))
               terms
           in
-          define_mutual_nested_csts flags evd (fun evd (prob, r, s', after, term) ->
+          define_mutual_nested_csts flags env evd (fun evd (prob, r, s', after, term) ->
               (applist (term, extended_rel_list 0 after))) terms
         else
-          define_mutual_nested_csts flags evd (fun evd (prob, r, s', after, term) ->
+          define_mutual_nested_csts flags env evd (fun evd (prob, r, s', after, term) ->
               (it_mkLambda_or_LetIn term after)) terms
-      else define_mutual_nested evd (fun (_, _, _, _, x) -> x) terms
+      else
+        let env =
+          let (p, (prob, r, s, after, term)) = List.hd terms in
+          push_rel_context after env
+        in
+        define_mutual_nested env evd (fun (_, _, _, _, x) -> x) terms
     in
     let make_prog (p, (prob, rec_info, s', after, _), b) =
       let term = it_mkLambda_or_LetIn b after in
       let term = nf_betaiotazeta env !evd term in
+      let rec_info, s' = update_rec_info p rec_info s' in
       let p = { p with program_sign = p.program_sign @ after } in
       { program_info = p;
         program_prob = prob;
