@@ -1,5 +1,6 @@
 
-Require Import Equations.Equations Utf8 DepElimDec.
+Require Import Utf8 Program.
+Require Import Equations.Equations.
 
 Inductive TupleT : nat -> Type :=
 | nilT : TupleT 0
@@ -39,9 +40,7 @@ Program Instance TupleMap_depelim n T U : DependentEliminationPackage (TupleMap 
 Next Obligation.
   revert n T U tm.
   fix IH 4.
-  intros.
-  Ltac destruct' x := destruct x.
-  on_last_hyp destruct'; [ | apply X0 ]; auto. 
+  intros. destruct tm; [ | apply X0 ]; auto.
 Defined.
 
 (* Doesn't know how to deal with the nested TupleMap  *)
@@ -122,17 +121,19 @@ Hint Extern 5 => progress simpl : subterm_relation.
 Time Equations myComp {n} {B C : TupleT n} (tm1 : TupleMap _ B C) {A : TupleT n} (tm2 : TupleMap _ A B)
 : TupleMap _ A C :=
 myComp tmNil tmNil := tmNil;
-myComp (tmCons ?(G) H g) (tmCons F G f) :=
+myComp (tmCons _ H g) (tmCons F G f) :=
   tmCons _ _ (fun x => existT (fun y => TupleMap _ _ (_ y)) (projT1 (g (projT1 (f x))))
                            (myComp (projT2 (g (projT1 (f x)))) (projT2 (f x)))).
 
-Time Equations myComp_wf {n} {B C : TupleT n} (tm1 : TupleMap _ B C) {A : TupleT n} (tm2 : TupleMap _ A B)
-: TupleMap _ A C :=
-myComp_wf tm1 tm2 by rec (signature_pack tm1) TupleMap_subterm :=
+(* FIXME long unfold_eq proof *)
+
+Time Equations? myComp_wf {n} {B C : TupleT n} (tm1 : TupleMap _ B C) {A : TupleT n} (tm2 : TupleMap _ A B)
+: TupleMap _ A C by wf (signature_pack tm1) TupleMap_subterm :=
 myComp_wf tmNil tmNil := tmNil;
-myComp_wf (tmCons ?(G) H g) (tmCons F G f) :=
+myComp_wf (n:=_) (tmCons (B:=C) _ H g) (tmCons (n:=n) (A:=A) (B:=B) F G f) :=
   tmCons _ _ (fun x => existT (fun y => TupleMap _ _ (_ y)) (projT1 (g (projT1 (f x))))
                            (myComp_wf (projT2 (g (projT1 (f x)))) (projT2 (f x)))).
+Proof. constructor. simpl. constructor. Time Defined.
 
 Print Assumptions myComp.
 Print Assumptions myComp_wf.

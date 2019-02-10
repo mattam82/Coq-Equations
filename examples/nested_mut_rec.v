@@ -5,8 +5,7 @@
   Example of a term structure with two constructors taking lists of terms. *)
 
 Require Import Equations.Equations.
-Require Import Arith.
-Require Import Compare_dec.
+Require Import Program Arith Compare_dec.
 
 (** A nested recursive definition of terms with lists of terms *)
 
@@ -20,7 +19,7 @@ Inductive term : Set :=
     the case of variables. *)
 
 Equations subst_var (k : nat) (u : term) (t : nat) : term :=
-  subst_var k u n <= k ?= n =>
+  subst_var k u n with k ?= n =>
    { | Eq => u;                                                                
      | Gt => Var n;
      | Lt => Var (pred n) }.
@@ -41,7 +40,7 @@ subst_term k u (Lam t) => Lam (subst_term (S k) u t);
 subst_term k u (App t l) => App (subst_term k u t) (subst_tlist k u l);
 subst_term k u (MetaVar t l) => MetaVar t (subst_tlist k u l) }
 
-where (* (struct t) *) subst_tlist (k : nat) (u : term) (t : list term) : list term := {
+where subst_tlist (k : nat) (u : term) (t : list term) : list term := {
   subst_tlist k u nil => nil;
   subst_tlist k u (cons t ts) => cons (subst_term k u t) (subst_tlist k u ts) }.
 

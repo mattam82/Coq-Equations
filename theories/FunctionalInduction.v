@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -74,17 +74,9 @@ Ltac with_last_secvar_aux tac :=
 Ltac with_last_secvar tac orelse := 
   with_last_secvar_aux tac + (* No section variables *) orelse.
 
-
-
 Ltac get_elim c :=
   match c with
   | context [?f] => constr:(fun_elim (f:=f))
-  end.
-
-Ltac remember_let H :=
-  lazymatch goal with
-  | [ H := ?body : ?type |- _ ] =>
-    generalize (eq_refl : body = H); clearbody H
   end.
 
 Ltac clear_non_secvar := repeat
@@ -92,57 +84,62 @@ Ltac clear_non_secvar := repeat
   | [ H : _ |- _ ] => tryif is_secvar H then fail else clear H
   end.
 
-Ltac funelim_JMeq_tac c tac :=
-  let elim := get_elim c in
-  let call := fresh "call" in set(call := c) in *; 
-  with_last_secvar ltac:(fun eos => move call before eos) ltac:(move call at top) ;
-  block_goal; revert_until call; block_goal;
-  first [
-    progress (generalize_eqs_vars call);
-    match goal with
-    | call := ?c' |- _ =>
-      subst call; pattern_call c';
-      apply elim; clear_non_secvar; simplify_dep_elim;
-      simplify_IH_hyps; intros _ (* block *);
-      try on_last_hyp ltac:(fun id =>
-                              try rewrite <- id;
-                            intros_until_block);
-      unblock_goal; simplify_IH_hyps; tac elim
-    end
-    | subst call; pattern_call c; apply elim;
-      clear_non_secvar;
-      simplify_dep_elim; simplify_IH_hyps;
-      intros_until_block; intros_until_block;
-      unblock_goal; tac elim ].
+Ltac remember_let H :=
+  lazymatch goal with
+  | [ H := ?body : ?type |- _ ] => generalize (eq_refl : H = body)
+  end.
+
+Ltac unfold_packcall packcall :=
+  lazymatch goal with
+    |- ?x = ?y -> ?P =>
+    let y' := eval unfold packcall in y in
+        change (x = y' -> P)
+  end.
 
 Ltac simplify_IH_hyps' := repeat
   match goal with
-  | [ hyp : context [ block ] |- _ ] => cbv beta in hyp; eqns_specialize_eqs_block hyp; cbv zeta in hyp
+  | [ hyp : context [ block ] |- _ ] =>
+    cbn beta in hyp; eqns_specialize_eqs_block hyp;
+    cbn beta iota delta[eq_rect_r eq_rect] zeta in hyp
+  end.
+
+Ltac make_packcall packcall c :=
+  match goal with
+  | [ packcall : ?type |- _ ] => change (let _ := c in type) in (type of packcall)
   end.
 
 Ltac funelim_sig_tac c tac :=
   let elimc := get_elim c in
   let packcall := fresh "packcall" in
+  let packcall_fn := fresh "packcall_fn" in
   let elimfn := match elimc with fun_elim (f:=?f) => constr:(f) end in
   let elimn := match elimc with fun_elim (n:=?n) => constr:(n) end in
   block_goal;
-  uncurry_call elimfn c packcall;
+  uncurry_call elimfn c packcall packcall_fn;
+  remember_let packcall_fn; unfold_packcall packcall;
+  (refine (eq_simplification_sigma1_nondep_dep _ _ _ _ _) ||
+   refine (eq_simplification_sigma1_dep _ _ _ _ _) ||
+   refine (Id_simplification_sigma1_dep _ _ _ _ _) ||
+   refine (Id_simplification_sigma1_nondep_dep _ _ _ _ _));
+  let H := fresh "eqargs" in
+  let Heq := fresh "Heqcall" in intros H Heq;
+  try (rewrite <- Heq; clear Heq); revert_until H; revert H;
+  subst packcall_fn; clearbody packcall;
+  make_packcall packcall elimfn;
   with_last_secvar ltac:(fun eos => move packcall before eos)
                           ltac:(move packcall at top);
-  revert_until packcall;
-  pattern sigma packcall;
-  remember_let packcall;
-  with_last_secvar ltac:(fun eos => move packcall before eos)
-                          ltac:(move packcall at top) ;
-  revert_until packcall; block_goal; revert packcall; curry;
+  revert_until packcall; block_goal;
+  cbv zeta in packcall; revert packcall; curry;
   let elimt := make_refine elimn elimc in
   unshelve refine_ho elimt; intros;
-  cbv beta; simplify_dep_elim; intros_until_block; simplify_dep_elim;
-  simpl eq_rect_dep_r in *; simpl eq_rect in *;
-  simplify_IH_hyps'; intros _;
+  cbv beta; simplify_dep_elim; intros_until_block;
+  simplify_dep_elim;
+  cbn beta iota delta [eq_rect_dep_r Id_rect_r eq_rect Id_rect pack_sigma_eq pack_sigma_eq_nondep
+                                     pack_sigma_Id pack_sigma_Id_nondep] in *;
+  simplify_IH_hyps'; (* intros _; *)
   unblock_goal; simplify_IH_hyps; tac c.
 
-Ltac funelim c := funelim_JMeq_tac c ltac:(fun _ => idtac).
+Ltac funelim c := funelim_sig_tac c ltac:(fun _ => idtac).
 
 (** A special purpose database used to prove the elimination principle. *)
 
@@ -181,10 +178,14 @@ Ltac specialize_mutual_nested :=
 
 Hint Extern 50 => specialize_mutual_nested : funelim.
 
-Ltac specialize_mutual := 
+Ltac specialize_mutual :=
   match goal with
     [ H : _ /\ _ |- _ ] => destruct H
-  | [ H : ?X -> _, H' : ?X |- _ ] => specialize (H H')
+  (* Fragile, might render later goals unprovable *)
+  | [ H : ?X -> _, H' : ?X |- _ ] =>
+    match X with
+      | forall (_ : _), _ => specialize (H H')
+    end
   | [ H : (?A /\ ?B) -> ?C |- _ ] => apply (uncurry_conj A B C) in H
   end.
 

@@ -20,38 +20,13 @@ Equations foo_type (ft:foo) : Type :=
 Transparent foo_type.
 
 (* val was moved into the result type, rather than being an argument, to work around issues #73 and #85 *)
-Set Equations Debug.
 Equations sum (fx:foo) : forall (val:foo_type fx), nat := {
   sum (Nat f _) := fun val => sum f val;
   sum (List ff) := fun val => sum_list ff val }
 
-where(struct fs) sum_list (fs : list foo) (vval: compact_prod (map foo_type fs)) : nat := {
+where sum_list (fs : list foo) (vval: compact_prod (map foo_type fs)) : nat := {
   sum_list nil vval := 0;
   (* The "with clause" below is there to work around issue #78 *)
-  sum_list (cons hd tl) val1 <= fun val => sum_list tl val => {
+  sum_list (cons hd tl) val1 with fun val => sum_list tl val => {
     sum_list (cons hd nil) val1 _ := sum hd val1;
     sum_list (cons hd _) val1 sumtl := sum hd (fst val1) + sumtl (snd val1)}}.
-
-(* Next Obligation. *)
-(*   assert ((forall fx : foo, sum_ind fx (sum fx)) -> (forall fs vval, sum_ind_1 fs vval (sum_list fs vval))). *)
-(*   intros H. *)
-(*   fix Hsl 1. *)
-(*   intros. *)
-(*   destruct fs; constructor. *)
-(*   intros. *)
-(*   apply Hsl. *)
-(*   simp sum. *)
-(*   destruct fs. *)
-(*   econstructor. *)
-(*   apply H. *)
-(*   econstructor. *)
-(*   apply H. *)
-
-(*   assert (forall fx : foo, sum_ind fx (sum fx)). *)
-(*   fix IH 1. specialize (H IH). intros fx. destruct fx. *)
-(*   simpl. rewrite sum_equation_1. constructor. simpl. intros. apply IH. *)
-(*   autorewrite with sum. constructor. *)
-(*   simpl. intros. apply H. *)
-
-(*   intuition. *)
-(* Defined. *)

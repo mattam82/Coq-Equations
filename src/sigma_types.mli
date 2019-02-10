@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -24,6 +24,15 @@ val constrs_of_coq_sigma :
 val decompose_coq_sigma : Evd.evar_map -> constr -> (EInstance.t * constr * constr) option
 val decompose_indapp : Evd.evar_map ->
   constr -> constr array -> constr * constr array
+
+val telescope_intro : Environ.env -> Evd.evar_map -> int -> constr (* interpreted telescope *)
+  -> constr (* introduction *)
+
+val telescope_of_context :
+  Environ.env ->
+  Evd.evar_map ref ->
+  rel_context -> constr (* telescope *) * constr (* interp tele *)
+
 val telescope :
   Evd.evar_map ref ->
   rel_context ->
@@ -64,18 +73,18 @@ val curry : Evd.evar_map -> Names.Name.t -> constr ->
             rel_context * constr
 
 val uncurry_call : Environ.env -> Evd.evar_map -> constr -> constr ->
-                   Evd.evar_map * constr * types
+                   Evd.evar_map * constr * constr * types
 
 val smart_case : Environ.env -> Evd.evar_map ref -> rel_context ->
   int -> types ->
   rel_context * types *
-  (types * int * Covering.context_map) array *
-  int * Covering.context_map * constr list * bool
+  (types * int * Context_map.context_map) array *
+  int * Context_map.context_map * constr list * bool
 
 module Tactics : sig
   val curry_hyp : Names.Id.t -> unit Proofview.tactic
   val curry : unit Proofview.tactic
-  val uncurry_call : constr -> constr -> Names.Id.t -> unit Proofview.tactic
+  val uncurry_call : constr -> constr -> Names.Id.t -> Names.Id.t -> unit Proofview.tactic
 
   val pattern_sigma : Names.Id.t -> unit Proofview.tactic
   val get_signature_pack : Names.Id.t -> Names.Id.t -> unit Proofview.tactic

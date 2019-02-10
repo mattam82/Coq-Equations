@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -80,6 +80,37 @@ let decompose_indapp sigma f args =
 
 
 (* let sigT_info = lazy (make_case_info (Global.env ()) (Globnames.destIndRef (Lazy.force sigT).typ) LetStyle) *)
+
+let telescope_intro env sigma len tele =
+  let rec aux n ty =
+    let ty = Reductionops.whd_all env sigma ty in
+    match kind sigma ty with
+    | App (sigma_ty, [| a; p |]) ->
+      let sigma_ty, u = destInd sigma sigma_ty in
+      let p =
+        match kind sigma p with
+        | Lambda (na, t, b) ->
+          mkLambda (na, t, Reductionops.whd_all
+                      (push_rel (Context.Rel.Declaration.LocalAssum (na, t)) env) sigma b)
+        | _ -> p
+      in
+      let sigmaI = mkApp (mkRef (Lazy.force coq_sigmaI, u),
+                          [| a; p; mkRel n; aux (pred n) (beta_applist sigma (p, [mkRel n])) |]) in
+      sigmaI
+    | _ -> mkRel n
+  in aux len tele
+
+let telescope_of_context env evd ctx =
+  let rec aux = function
+    | [] -> raise (Invalid_argument "Cannot make telescope out of empty context")
+    | [decl] -> mkAppG evd (Lazy.force logic_tele_tip) [|get_type decl|]
+    | d :: tl ->
+      let ty = get_type d in
+      mkAppG evd (Lazy.force logic_tele_ext) [| ty; mkLambda (get_name d, ty, aux tl) |]
+  in
+  let tele = aux (List.rev ctx) in
+  let tele_interp = mkAppG evd (Lazy.force logic_tele_interp) [| tele |] in
+  tele, tele_interp
 
 let telescope evd = function
   | [] -> assert false
@@ -397,7 +428,18 @@ let uncurry_call env sigma fn c =
   (* let ctx = (Anonymous, None, concl) :: ctx in *)
   let sigty, sigctx, constr = telescope evdref ctx in
   let app = Vars.substl (List.rev args) constr in
-  !evdref, app, sigty
+  let fnapp = mkApp (hd, rel_vect 0 (List.length sigctx)) in
+  let fnapp = it_mkLambda_or_subst fnapp sigctx in
+  let projsid = Name (Id.of_string "projs") in
+  let fnapp_ty = Retyping.get_type_of
+      (push_rel_context [Context.Rel.Declaration.LocalAssum (projsid, sigty)] env)
+      !evdref fnapp in
+  (* TODO: build (packargs, fn packargs.projs) = (args, c) equality *)
+  let sigma, sigmaI = get_fresh !evdref coq_sigmaI in
+  let packed =
+    mkApp (sigmaI, [| sigty; mkLambda (projsid, sigty, fnapp_ty); mkRel 1; fnapp |])
+  in
+  sigma, app, packed, sigty
 
 (* Produce parts of a case on a variable, while introducing cuts and
  * equalities when necessary.
@@ -414,9 +456,9 @@ let uncurry_call env sigma fn c =
 let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
   (ctx : rel_context) (rel : int) (goal : EConstr.types) :
     rel_context * EConstr.types *
-    (EConstr.types * int * Covering.context_map) array *
-    int * Covering.context_map * EConstr.constr list * bool =
-  let after, rel_decl, before = Covering.split_context (pred rel) ctx in
+    (EConstr.types * int * Context_map.context_map) array *
+    int * Context_map.context_map * EConstr.constr list * bool =
+  let after, rel_decl, before = Context_map.split_context (pred rel) ctx in
   let rel_ty = Context.Rel.Declaration.get_type rel_decl in
   let rel_ty = Vars.lift rel rel_ty in
   let rel_t = Constr.mkRel rel in
@@ -520,29 +562,29 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
    * need to introduce cutx, and [arity_ctx] has been left untouched. *)
 
   (* ===== STRENGTHENING ===== *)
-  let subst = Covering.id_subst (arity_ctx @ ctx) in
-  let rev_subst = Covering.id_subst (arity_ctx @ ctx) in
+  let subst = Context_map.id_subst (arity_ctx @ ctx) in
+  let rev_subst = Context_map.id_subst (arity_ctx @ ctx) in
   let subst, rev_subst = List.fold_left (
     fun ((ctx, _, _) as subst, rev_subst) -> function
     | None -> subst, rev_subst
     | Some rel ->
-        let fresh_rel = Covering.mapping_constr !evd subst (EConstr.mkRel 1) in
+        let fresh_rel = Context_map.mapping_constr !evd subst (EConstr.mkRel 1) in
         let target_rel = EConstr.mkRel (rel + oib.mind_nrealargs + 1) in
-        let target_rel = Covering.mapping_constr !evd subst target_rel in
+        let target_rel = Context_map.mapping_constr !evd subst target_rel in
         let target_rel = EConstr.destRel !evd target_rel in
-        let lsubst, lrev_subst = Covering.new_strengthen env !evd ctx target_rel fresh_rel in
-        let res1 = Covering.compose_subst env ~sigma:!evd lsubst subst in
-        let res2 = Covering.compose_subst env ~sigma:!evd rev_subst lrev_subst in
+        let lsubst, lrev_subst = Context_map.new_strengthen env !evd ctx target_rel fresh_rel in
+        let res1 = Context_map.compose_subst env ~sigma:!evd lsubst subst in
+        let res2 = Context_map.compose_subst env ~sigma:!evd rev_subst lrev_subst in
           res1, res2
   ) (subst, rev_subst) omitted in
   let nb_cuts_omit = pred (EConstr.destRel !evd
-   (Covering.mapping_constr !evd subst (EConstr.mkRel 1))) in
+   (Context_map.mapping_constr !evd subst (EConstr.mkRel 1))) in
   (* [ctx'] is the context under which we will build the case in a first step. *)
   (* This is [ctx] where everything omitted and cut is removed. *)
   let ctx' = List.skipn (nb_cuts_omit + oib.mind_nrealargs + 1) (pi3 rev_subst) in
   let rev_subst' = List.skipn (nb_cuts_omit + oib.mind_nrealargs + 1) (pi2 rev_subst) in
-  let rev_subst' = Covering.lift_pats (-(oib.mind_nrealargs+1)) rev_subst' in
-  let rev_subst_without_cuts = Covering.mk_ctx_map env !evd ctx rev_subst' ctx' in
+  let rev_subst' = Context_map.lift_pats (-(oib.mind_nrealargs+1)) rev_subst' in
+  let rev_subst_without_cuts = Context_map.mk_ctx_map env !evd ctx rev_subst' ctx' in
   (* Now we will work under a context with [ctx'] as a prefix, so we will be
    * able to go back to [ctx] easily. *)
 
@@ -553,30 +595,30 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
     | None -> subst
     | Some rel ->
         let orig = oib.mind_nrealargs + 1 - i in
-        let fresh_rel = Covering.specialize !evd pats (Covering.PRel orig) in
+        let fresh_rel = Context_map.specialize !evd pats (Context_map.PRel orig) in
         let target_rel = EConstr.mkRel (rel + oib.mind_nrealargs + 1) in
-        let target_rel = Covering.mapping_constr !evd subst target_rel in
+        let target_rel = Context_map.mapping_constr !evd subst target_rel in
         let target_rel = EConstr.destRel !evd target_rel in
         (* We know that this call will fall in the simple case
          * of [single_subst], because we already strengthened everything. *)
         (* TODO Related to [compute_omitted_bis], we cannot actually substitute
          * the terms that were omitted simply due to the fact that nothing
          * depends on them, as it would be an ill-typed substitution. *)
-        let lsubst = Covering.single_subst ~unsafe:true env !evd target_rel fresh_rel ctx in
-          Covering.compose_subst ~unsafe:true env ~sigma:!evd lsubst subst
+        let lsubst = Context_map.single_subst ~unsafe:true env !evd target_rel fresh_rel ctx in
+          Context_map.compose_subst ~unsafe:true env ~sigma:!evd lsubst subst
   ) 0 omitted subst in
   let nb_cuts = pred (EConstr.destRel !evd
-   (Covering.mapping_constr !evd subst (EConstr.mkRel 1))) in
+   (Context_map.mapping_constr !evd subst (EConstr.mkRel 1))) in
   (* Also useful: a substitution from [ctx] to the context with cuts. *)
   let subst_to_cuts =
-    let lift_subst = Covering.mk_ctx_map env !evd (arity_ctx @ ctx)
-    (Covering.lift_pats (oib.mind_nrealargs + 1) (pi2 (Covering.id_subst ctx)))
+    let lift_subst = Context_map.mk_ctx_map env !evd (arity_ctx @ ctx)
+    (Context_map.lift_pats (oib.mind_nrealargs + 1) (pi2 (Context_map.id_subst ctx)))
     ctx in
-      Covering.compose_subst ~unsafe:true env ~sigma:!evd subst lift_subst
+      Context_map.compose_subst ~unsafe:true env ~sigma:!evd subst lift_subst
   in
 
   (* Finally, we can work on producing a return type. *)
-  let goal = Covering.mapping_constr !evd subst_to_cuts goal in
+  let goal = Context_map.mapping_constr !evd subst_to_cuts goal in
 
   (* ===== CUTS ===== *)
   let cuts_ctx, remaining = List.chop nb_cuts (pi1 subst) in
@@ -584,19 +626,23 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
   let revert_cut x =
     let rec revert_cut i = function
       | [] -> failwith "Could not revert a cut, please report."
-      | Covering.PRel y :: _ when Int.equal x y -> EConstr.mkRel i
+      | Context_map.PRel y :: _ when Int.equal x y ->
+        (match nth cuts_ctx (pred x) with
+         | Context.Rel.Declaration.LocalAssum _ -> Some (EConstr.mkRel i)
+         | Context.Rel.Declaration.LocalDef _ -> None)
       | _ :: l -> revert_cut (succ i) l
     in revert_cut (- oib.mind_nrealargs) (pi2 subst)
   in
   let rev_cut_vars = CList.map revert_cut (CList.init nb_cuts (fun i -> succ i)) in
   let cut_vars = List.rev rev_cut_vars in
+  let cut_vars = CList.map_filter (fun x -> x) cut_vars in
 
   (* ===== EQUALITY OF TELESCOPES ===== *)
   let goal, to_apply, simpl =
     if Int.equal nb 0 then goal, [], false
     else
-      let arity_ctx' = Covering.specialize_rel_context !evd (pi2 subst_to_cuts) arity_ctx in
-      let rev_indices' = List.map (Covering.mapping_constr !evd subst_to_cuts) rev_indices in
+      let arity_ctx' = Context_map.specialize_rel_context !evd (pi2 subst_to_cuts) arity_ctx in
+      let rev_indices' = List.map (Context_map.mapping_constr !evd subst_to_cuts) rev_indices in
       let _, rev_sigctx, tele_lhs, tele_rhs =
         CList.fold_left3 (
           fun (k, rev_sigctx, tele_lhs, tele_rhs) decl idx -> function
@@ -625,14 +671,14 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
       let tr_out t =
         let t = it_mkLambda_or_LetIn t cuts_ctx in
         let t = it_mkLambda_or_LetIn t fresh_ctx in
-        let t = Covering.mapping_constr !evd rev_subst_without_cuts t in
+        let t = Context_map.mapping_constr !evd rev_subst_without_cuts t in
           Reductionops.beta_applist !evd (t, indices @ cut_vars)
       in
         goal, [Equations_common.mkRefl env evd (tr_out sigty) (tr_out left_sig)], true
   in
 
   (* ===== RESOURCES FOR EACH BRANCH ===== *)
-  let params = List.map (Covering.mapping_constr !evd subst_to_cuts) params in
+  let params = List.map (Context_map.mapping_constr !evd subst_to_cuts) params in
   (* If something is wrong here, it means that one of the parameters was
    * omitted or cut, which should be wrong... *)
   let params = List.map (Vars.lift (-(nb_cuts + oib.mind_nrealargs + 1))) params in
@@ -645,14 +691,14 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
   let indfam = Inductiveops.make_ind_family (pind, params) in
   let branches_info = Inductiveops.get_constructors env indfam in
   let full_subst =
-    let (ctx', pats, ctx) = Covering.id_subst ctx in
-    let pats = Covering.lift_pats (oib.mind_nrealargs + 1) pats in
+    let (ctx', pats, ctx) = Context_map.id_subst ctx in
+    let pats = Context_map.lift_pats (oib.mind_nrealargs + 1) pats in
     let ctx' = arity_ctx @ ctx' in
-      Covering.mk_ctx_map env !evd ctx' pats ctx
+      Context_map.mk_ctx_map env !evd ctx' pats ctx
   in
-  let full_subst = Covering.compose_subst ~unsafe:true env ~sigma:!evd subst full_subst in
-  let pats_ctx' = pi2 (Covering.id_subst ctx') in
-  let pats_cuts = pi2 (Covering.id_subst cuts_ctx) in
+  let full_subst = Context_map.compose_subst ~unsafe:true env ~sigma:!evd subst full_subst in
+  let pats_ctx' = pi2 (Context_map.id_subst ctx') in
+  let pats_cuts = pi2 (Context_map.id_subst cuts_ctx) in
   let branches_subst = Array.map (fun summary ->
     (* This summary is under context [ctx']. *)
     let indices = summary.Inductiveops.cs_concl_realargs in
@@ -669,14 +715,14 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
     let args = List.map of_rel_decl args in
     (* Substitute the indices in [cuts_ctx]. *)
     let rev_indices = List.rev indices in
-    let pats_indices = List.map (Covering.pat_of_constr !evd) rev_indices in
-    let pats_ctx' = Covering.lift_pats summary.Inductiveops.cs_nargs pats_ctx' in
+    let pats_indices = List.map (Context_map.pat_of_constr !evd) rev_indices in
+    let pats_ctx' = Context_map.lift_pats summary.Inductiveops.cs_nargs pats_ctx' in
     let pats = pats_indices @ pats_ctx' in
-    let cuts_ctx = Covering.specialize_rel_context !evd pats cuts_ctx in
-    let pats = Covering.lift_pats nb_cuts pats in
+    let cuts_ctx = Context_map.specialize_rel_context !evd pats cuts_ctx in
+    let pats = Context_map.lift_pats nb_cuts pats in
     let pats = pats_cuts @ pats in
-    let csubst = Covering.mk_ctx_map env !evd (cuts_ctx @ args @ ctx') pats (pi1 subst) in
-      Covering.compose_subst ~unsafe:true env ~sigma:!evd csubst full_subst
+    let csubst = Context_map.mk_ctx_map env !evd (cuts_ctx @ args @ ctx') pats (pi1 subst) in
+      Context_map.compose_subst ~unsafe:true env ~sigma:!evd csubst full_subst
   ) branches_info in
   let branches_nb = Array.map (fun summary ->
     summary.Inductiveops.cs_nargs) branches_info in
@@ -774,23 +820,28 @@ module Tactics =struct
            (fun sigma -> curry_concl env sigma na dom codom)
       | _ -> Tacticals.New.tclFAIL 0 (str"Goal cannot be curried") end
 
-  let uncurry_call c c' id =
+  let uncurry_call c c' id id' =
     enter begin fun gl ->
           let env = env gl in
           let sigma = sigma gl in
-          let sigma, term, ty = uncurry_call env sigma c c' in
+          let sigma, term, fterm, ty = uncurry_call env sigma c c' in
           let sigma, _ = Typing.type_of env sigma term in
           Proofview.Unsafe.tclEVARS sigma <*>
-            Tactics.letin_tac None (Name id) term (Some ty) nowhere end
+            Tactics.letin_tac None (Name id) term (Some ty) nowhere <*>
+          Tactics.letin_tac None (Name id') (Vars.subst1 (mkVar id) fterm) None nowhere end
 
   let get_signature_pack id id' =
     enter begin fun gl ->
       let env = Proofview.Goal.env gl in
       let sigma = Proofview.Goal.sigma gl in
-      let sigma', sigsig, sigpack =
-        get_signature env sigma (Tacmach.New.pf_get_hyp_typ id gl) in
-      Proofview.Unsafe.tclEVARS sigma' <*>
-        letin_tac None (Name id') (mkApp (sigpack, [| mkVar id |])) None nowhere end
+      try
+        let sigma', sigsig, sigpack =
+          get_signature env sigma (Tacmach.New.pf_get_hyp_typ id gl) in
+        Proofview.Unsafe.tclEVARS sigma' <*>
+        letin_tac None (Name id') (mkApp (sigpack, [| mkVar id |])) None nowhere
+      with Not_found ->
+        Tacticals.New.tclFAIL 0 (str"No Signature instance found")
+    end
 
   let pattern_sigma id =
     enter begin fun gl ->

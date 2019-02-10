@@ -1,4 +1,4 @@
-Require Import Program Equations.Equations DepElimDec.
+Require Import Program Equations.Equations.
 
 Set Equations WithKDec.
 
@@ -27,26 +27,29 @@ Proof.
 Defined.
 Derive Signature for le.
 
-Equations nat_to_fin {n : nat} (m : nat) (p : m < n) : fin n :=
-nat_to_fin {n:=(S n)} 0 _ := fz;
-nat_to_fin {n:=(S n)} (S m) p := fs (nat_to_fin m _).
-
-Next Obligation. apply Lt.lt_S_n; assumption. Defined.
+Equations? nat_to_fin {n : nat} (m : nat) (p : m < n) : fin n :=
+nat_to_fin (n:=(S n)) 0 _ := fz;
+nat_to_fin (n:=(S n)) (S m) p := fs (nat_to_fin m _).
+Proof. apply Lt.lt_S_n; assumption. Defined.
 
 Set Program Mode.
 
-Equations fin_to_nat_bound {n : nat} (i : fin n) : {m : nat | m < n} :=
+Equations? fin_to_nat_bound {n : nat} (i : fin n) : {m : nat | m < n} :=
 fin_to_nat_bound fz := 0;
 fin_to_nat_bound (fs j) := let (m, p) := fin_to_nat_bound j in (S m).
-Next Obligation. apply Le.le_n_S; apply Le.le_0_n. Defined.
-Next Obligation. apply Lt.lt_n_S; assumption. Defined.
+Proof.
+  - apply Le.le_n_S; apply Le.le_0_n.
+  - apply Lt.lt_n_S; assumption.
+Defined.
 
-Equations nat_bound_to_fin (n : nat) (m : {m : nat | m < n}) : fin n :=
+Arguments exist {A} {P} _ _.
+
+Equations? nat_bound_to_fin (n : nat) (m : {m : nat | m < n}) : fin n :=
 nat_bound_to_fin 0 (exist _ p) :=! p;
 nat_bound_to_fin (S n') (exist 0 _) := fz;
 nat_bound_to_fin (S n') (exist (S m) p) := fs (nat_bound_to_fin _ m).
 
-Next Obligation. auto with arith || inversion p. Defined.
+Proof. auto with arith || inversion p. Defined.
 
 Lemma fin__nat : forall (n : nat) (m : nat) (p : m < n),
   fin_to_nat (nat_to_fin m p) = m.
@@ -56,21 +59,20 @@ Proof.
   simpl. now rewrite H.
 Qed.
 
-Axiom cheat : forall {A}, A.
-
 Lemma nat__fin : forall (n : nat) (i : fin n),
   nat_to_fin (fin_to_nat i) (fin_lt_n n i) = i.
 Proof.
   intros.
-  funelim (fin_to_nat i). simp fin_to_nat.
-  simp fin_to_nat. Transparent fin_to_nat. simpl.
+  funelim (fin_to_nat i).
+  simp fin_to_nat.
+  Transparent fin_to_nat. simpl.
   simp nat_to_fin. f_equal. rewrite <- H at 4. f_equal.
   apply proof_irrelevance.
 Qed.
 
 Equations iget {A : Set} {n : nat} (l : ilist A n) (i : fin n) : A :=
-iget (Cons x t) (fz n) := x;
-iget (Cons _ t) (fs n j) := iget t j.
+iget (Cons x t) fz := x;
+iget (Cons _ t) (fs j) := iget t j.
 
 Equations isnoc {A : Set} {n : nat} (l : ilist A n) (x : A) : ilist A (S n) :=
 isnoc Nil x := Cons x Nil;
@@ -89,7 +91,7 @@ Qed.
 
 Equations convert_ilist {A : Set} {n m : nat} (p : n = m) (l : ilist A n) : ilist A m :=
 convert_ilist p Nil with p => { | eq_refl := Nil };
-convert_ilist p (Cons a l) with p => | eq_refl := Cons a (convert_ilist eq_refl l).
+convert_ilist p (Cons a l) with p => { | eq_refl := Cons a (convert_ilist eq_refl l) }.
 Transparent convert_ilist.
 Lemma convert_ilist_refl {A} (n : nat) (l : ilist A n) : convert_ilist eq_refl l = l.
 Proof.
@@ -133,8 +135,6 @@ Definition rev_aux_app_stmt := forall (A : Set) (i j1 j2 : nat) (l : ilist A i)
   (acc1 : ilist A j1) (acc2 : ilist A j2) H,
   convert_ilist H (irev_aux l (iapp acc1 acc2)) = iapp (irev_aux l acc1) acc2.
 
-Ltac funelim c ::= funelim_JMeq_tac c ltac:(fun _ => idtac).
-
 Lemma rev_aux_app : rev_aux_app_stmt.
 Proof.
   unfold rev_aux_app_stmt.
@@ -145,7 +145,7 @@ Proof.
     - simp irev_aux iapp. rewrite convert_ilist_trans.
       rewrite <- iapp_cons.
       set (He := eq_trans _ _). clearbody He.
-      set (He' := irev_aux_obligation_1 _ _ _ _ _ _ _). clearbody He'.
+      set (He' := irev_aux_obligations_obligation_1 _ _). clearbody He'.
       simpl in H0. simpl in H.
 Admitted.
 
@@ -179,12 +179,8 @@ Inductive fle : forall {n}, fin n -> fin n -> Set :=
 | fles : forall {n i j}, fle i j -> @fle (S n) (fs i) (fs j).
 Derive Signature for fle.
 
-Equations fin0_empty (i : fin 0) : False :=
-fin0_empty i :=! i.
+Equations fin0_empty (i : fin 0) : False := { }.
 
-Require Import DepElimDec.
-
-Set Equations OCaml Splitting.
 Unset Equations WithK.
 
 Transparent NoConfusionHom_fin.
@@ -202,12 +198,16 @@ Derive Signature for eq.
 
 Print Assumptions fin_eqdec.
 
-Derive NoConfusion EqDec Subterm for fle.
+Derive NoConfusion NoConfusionHom EqDec Subterm for fle.
+
 Print Assumptions fle_eqdec.
 
-Equations fle_trans' {n : nat} {i j : fin n} (p : fle i j) {k} (q : fle j k) : fle i k :=
-fle_trans' p q by rec (Signature.signature_pack p) (@fle_subterm) :=
+Obligation Tactic := program_simpl; try typeclasses eauto 10 with Below subterm_relation.
+
+Equations fle_trans' {n : nat} {i j : fin n} (p : fle i j) {k} (q : fle j k) : fle i k
+ by wf (Signature.signature_pack p) (@fle_subterm) :=
 fle_trans' flez _ := flez;
 fle_trans' (fles p') (fles q') := fles (fle_trans' p' q').
+
 Print Assumptions fle_trans'.
-Extraction fle_trans'.
+(* Extraction fle_trans'. *)

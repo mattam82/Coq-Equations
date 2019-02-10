@@ -2,6 +2,8 @@ From Coq Require Import Fin.
 From Equations Require Import Equations.
 Set Equations Transparent.
 
+Derive Signature NoConfusion NoConfusionHom for t.
+
 Equations FL (n : nat) : Fin.t (S n) :=
   FL 0     := F1;
   FL (S n) := FS (FL n).
@@ -25,9 +27,8 @@ Equations invFLLemma (n : nat) : invertFin (FL n) = F1 :=
 
 Equations invertFinInv {n : nat} (x : Fin.t n) :
                        invertFin (invertFin x) = x :=
-  invertFinInv {n:=0}      x     :=! x;
-  invertFinInv {n:=(S _)}  F1    := (invFLLemma _);
-  invertFinInv {n:=(S _)} (FS y) := (eq_trans
+  invertFinInv (n:=(S _))  F1    := (invFLLemma _);
+  invertFinInv (n:=(S _)) (FS y) := (eq_trans
                                      (invFULemma (invertFin y))
                                      (f_equal _ (invertFinInv y))).
 
@@ -39,8 +40,7 @@ Definition invFinView {n : nat} (x : (Fin.t n)) : invFinViewType x :=
 
 Equations finFUOrFL {n : nat} (x : Fin.t (S n)) :
                     { y : Fin.t n & x = FU y } + ( x = FL n ) :=
-  finFUOrFL  {n:=0}     F1                     := (inr eq_refl);
-  finFUOrFL  {n:=(S _)} x <= invFinView x => {
-                          | (existT F1 eq)     := (inr eq);
-                          | (existT (FS _) eq) := (inl (existT _ (invertFin _) eq))}.
-
+  finFUOrFL  (n:=0)     F1                     := (inr eq_refl);
+  finFUOrFL  (n:=(S _)) x with invFinView x => {
+                          | (existT _ F1 eq)     := (inr eq);
+                          | (existT _ (FS _) eq) := (inl (existT _ (invertFin _) eq))}.

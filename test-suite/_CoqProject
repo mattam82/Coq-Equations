@@ -1,6 +1,9 @@
 -I "../src"
+-R . TestSuite
 -R "../theories" Equations
+INSTALLDEFAULTROOT = 1
 Basics.v
+notations.v
 BasicsDec.v
 rec.v
 f91.v
@@ -11,18 +14,30 @@ gcd.v
 DataStruct.v
 daaa.v
 nestedobls.v
+rose.v
 scope.v
+depelim.v
 issues/issue7.v
 issues/issue8.v
 issues/issue13.v
 issues/issue24.v
 issues/issue25.v
 issues/issue63.v
+issues/issue66.v
 issues/issue70.v
 issues/issue74.v
 issues/issue75.v
+issues/issue77.v
+issues/issue79.v
+issues/issue81.v
+issues/issue82.v
+issues/issue83.v
 issues/issue84.v
 issues/issue85.v
+issues/issue91.v
+issues/issue95_1.v
+issues/issue95_2.v
+issues/issue96.v
 issues/issue98.v
 issues/issue100.v
 issues/issue104.v
@@ -30,9 +45,14 @@ issues/issue105.v
 issues/issue106.v
 issues/issue107.v
 issues/issue107_2.v
+issues/issue112.v
 issues/issue113.v
 issues/issue114.v
+issues/issue117.v
 issues/issue120.v
+issues/issue124.v
+issues/issue129.v
+issues/issue143.v
 LogicType.v
 innacs.v
 mfix.v
@@ -40,3 +60,9 @@ mutrec.v
 nestedrec.v
 nestedrec2.v
 nestfixnorec.v
+agda_1408.v
+agda_1775.v
+tabareau_vec.v
+yves.v
+local_where.v
+cfold.v

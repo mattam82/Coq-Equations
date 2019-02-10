@@ -14,6 +14,9 @@ Section ilist.
   Inductive fin : nat -> Set :=
   | First : forall n, fin (S n)
   | Next : forall n, fin n -> fin (S n).
+  Arguments First {n}.
+
+  Derive Signature for ilist fin.
 
   Equations get {n} (ls : ilist n) (i : fin n) : A :=
   get (Cons x _) First := x;
@@ -47,19 +50,23 @@ Section hlist.
   Variable A : Type.
   Variable B : A -> Type.
 
+  #[universes(template)]
   Inductive hlist : list A -> Type :=
   | HNil : hlist nil
   | HCons : forall (x : A) (ls : list A), B x -> hlist ls -> hlist (x :: ls).
 
   Variable elm : A.
 
+  #[universes(template)]
   Inductive member : list A -> Type :=
   | HFirst : forall ls, member (elm :: ls)
   | HNext : forall x ls, member ls -> member (x :: ls).
 
-  Equations hget ls (mls : hlist ls) (i : member ls) : B elm :=
-  hget _ (HCons _ _ x _) (HFirst _) := x;
-  hget _ (HCons _ _ _ t) (HNext _ _ j) := hget t j.
+  Derive Signature NoConfusion for member.
+
+  Equations hget {ls} (mls : hlist ls) (i : member ls) : B elm :=
+  hget (HCons x _) (HFirst _) := x;
+  hget (HCons _ t) (HNext _ j) := hget t j.
 End hlist.
 
 Arguments HNil [A B].
@@ -74,14 +81,10 @@ Example someValues : hlist (fun T : Set => T) someTypes :=
   HCons 5 (HCons true HNil).
 
 Goal hget someValues HFirst = 5.
-Proof. (* FIXME simp hget. *)
-  unfold someValues, someTypes. rewrite hget_equation_2. reflexivity.
-Qed.
+Proof. reflexivity. Qed.
 
 Goal hget someValues (HNext HFirst) = true.
-Proof. (* simp hget. *)
-  unfold someValues, someTypes. rewrite hget_equation_3. rewrite hget_equation_2. reflexivity.
-Qed.
+Proof. simp hget. Qed.
 
 Inductive type : Set :=
 | Unit : type
@@ -99,50 +102,41 @@ Equations typeDenote (t : type): Set :=
 typeDenote Unit := unit;
 typeDenote (Arrow t1 t2) := typeDenote t1 -> typeDenote t2.
 
-Equations expDenote ts t (e : exp ts t) (mls : hlist typeDenote ts) : typeDenote t :=
-expDenote _ _ (Const _) _ := tt;
-expDenote _ _ (Var _ _ mem) s := hget s mem;
-expDenote _ _ (App _ _ _ e1 e2) s <= (expDenote e1 s) => {
-  | e := e (expDenote e2 s)
+Equations expDenote {ts t} (e : exp ts t) (mls : hlist typeDenote ts) : typeDenote t :=
+expDenote Const _ := tt;
+expDenote (Var mem) s := hget s mem;
+expDenote (App e1 e2) s with expDenote e1 s => {
+  | e' := e' (expDenote e2 s)
 };
-expDenote _ _ (Abs _ _ _ e) s := fun x => expDenote e (HCons x s).
+expDenote (Abs e) s := fun x => expDenote e (HCons x s).
 
-Section filist.
-  Variable A : Set.
+Equations filist (A : Set) (n : nat) : Set :=
+  filist A 0 := unit;
+  filist A (S n) := (A * filist A n)%type.
 
-  Equations filist (n : nat) : Set :=
-  filist 0 := unit;
-  filist (S n) := (A * filist n)%type.
-  Transparent filist.
+Global Transparent filist.
 
-  Equations ffin (n : nat) : Set :=
+Equations ffin (n : nat) : Set :=
   ffin 0 := Empty_set;
   ffin (S n) := option (ffin n).
-
-  Transparent ffin.
+Global Transparent ffin.
   
-  Equations fget {n} (ls : filist n) (i : ffin n) : A :=
-  fget {n:=(S n)} (pair x _) None := x;
-  fget {n:=(S n)} (pair _ ls) (Some i) := fget ls i.
-
-End filist.
-
-Arguments fget [A n] _ _.
+Equations fget {A n} (ls : filist A n) (i : ffin n) : A :=
+  fget (n:=(S n)) (pair x _) None := x;
+  fget (n:=(S n)) (pair _ ls) (Some i) := fget ls i.
 
 Section filist_map.
   Variables A B : Set.
   Variable f : A -> B.
 
   Equations fimap {n} (ls : filist A n) : filist B n :=
-  fimap {n:=0} tt := tt;
-  fimap {n:=(S n)} (pair x ls) := pair (f x) (fimap ls).
+  fimap (n:=0) tt := tt;
+  fimap (n:=(S n)) (pair x ls) := pair (f x) (fimap ls).
 
   Theorem fget_fimap : forall n (i : ffin n) (ls : filist A n),
     fget (fimap ls) i = f (fget ls i).
   Proof.
-    intros. funelim (fimap ls); depelim i; simpl.
-      - apply H.
-      - reflexivity.
+    intros. funelim (fimap ls); depelim i; simp fget.
   Qed.
 End filist_map.
 
@@ -235,12 +229,14 @@ Arguments rifoldr [A B] _ _ [n] _.
 
 Equations sum (t : tree nat) : nat :=
 sum (Leaf n) := n;
-sum (Node _ f) := rifoldr plus 0 (fun i => sum (f i)).
+sum (Node f) := rifoldr plus 0 (fun i => sum (f i)).
 
 Equations inc (t : tree nat) : tree nat :=
 inc (Leaf n) := Leaf (S n);
-inc (Node _ f) := Node (fun i => inc (f i)).
+inc (Node f) := Node (fun i => inc (f i)).
 Import Sigma_Notations.
+
+Transparent rifoldr.
 
 Lemma sum_inc' : forall n (f1 f2 : ffin n -> nat),
   (forall i, f1 i >= f2 i) ->
@@ -249,7 +245,7 @@ Proof.
   intros.
   funelim (rifoldr plus 0 f1).
   - constructor.
-  - intros. simpl. apply Plus.plus_le_compat.
+  - apply Plus.plus_le_compat.
     + apply H0.
     + apply H. intros. apply H0.
 Qed.
@@ -257,7 +253,7 @@ Qed.
 Theorem sum_inc : forall t, sum (inc t) >= sum t.
 Proof.
   intros t. funelim (inc t); simp sum. auto.
-  apply sum_inc'. assumption.
+  apply sum_inc'. intros; auto.
 Qed.
 
 Inductive type' : Type := Nat | Bool.
@@ -270,8 +266,7 @@ Inductive exp' : type' -> Set :=
 | BConst : bool -> exp' Bool
 | Cond : forall n t, (ffin n -> exp' Bool)
   -> (ffin n -> exp' t) -> exp' t -> exp' t.
-Derive Signature NoConfusion for exp'.
-(* Derive NoConfusionHom for exp'. *)
+Derive Signature NoConfusion NoConfusionHom for exp'.
 
 Equations type'Denote (t : type') : Set :=
 type'Denote Nat := nat;
@@ -283,7 +278,7 @@ Section cond.
 
   Equations cond (n : nat) (tests : ffin n -> bool) (bodies : ffin n -> A) : A :=
   cond 0 _ _ := default;
-  cond (S n) tests bodies <= tests None => {
+  cond (S n) tests bodies with tests None => {
     | true := bodies None;
     | false := cond n (fun i => tests (Some i)) (fun i => bodies (Some i))
   }.
@@ -291,14 +286,14 @@ End cond.
 Arguments cond [A] _ [n] _ _.
 
 Equations exp'Denote t (e : exp' t) : type'Denote t :=
-exp'Denote _ (NConst n) := n;
-exp'Denote _  (Plus e1 e2) := (exp'Denote e1) + (exp'Denote e2);
-exp'Denote _ (Eq e1 e2) (*<= eq_nat_dec*) := EqNat.beq_nat (exp'Denote e1) (exp'Denote e2) (*=> {
+exp'Denote (NConst n) := n;
+exp'Denote (Plus e1 e2) := (exp'Denote e1) + (exp'Denote e2);
+exp'Denote (Eq e1 e2) (*<= eq_nat_dec*) := EqNat.beq_nat (exp'Denote e1) (exp'Denote e2) (*=> {
   | true := true;
   | false := false
 }*);
-exp'Denote _ (BConst b) := b;
-exp'Denote _ (Cond _ _ tests bodies default) :=
+exp'Denote (BConst b) := b;
+exp'Denote (Cond _ tests bodies default) :=
   cond (exp'Denote default) (fun i => exp'Denote (tests i)) (fun i => exp'Denote (bodies i)).
 
 Definition someExp' : exp' Nat := Cond 1 (fun _ => BConst true) (fun _ => Plus (NConst 1) (NConst 2)) (NConst 0).
@@ -318,11 +313,11 @@ Section cfoldCond.
 
   Fail Equations cfoldCond (n : nat) (tests : ffin n -> exp' Bool) (bodies : ffin n -> exp' t) : exp' t :=
   cfoldCond 0 _ _ := default;
-  cfoldCond (S n) tests bodies <= tests None => {
+  cfoldCond (S n) tests bodies with tests None => {
     | BConst true := bodies None;
     | BConst false := cfoldCond n (fun i => tests (Some i)) (fun i => bodies (Some i));
-    | Eq e1 e2 <= cfoldCond n (fun i => tests (Some i)) (fun i => bodies (Some i)) => {
-      | Cond n' _ tests' bodies' default' :=
+    | Eq e1 e2 with cfoldCond n (fun i => tests (Some i)) (fun i => bodies (Some i)) => {
+      | Cond n' tests' bodies' default' :=
         Cond (S n') (fun i => match i with
                               | None => tests None
                               | Some i => tests' i
@@ -336,13 +331,13 @@ Section cfoldCond.
     | _ := default }.
 End cfoldCond.
 
-Equations cfoldCond (t : type') (default : exp' t) (n : nat) (tests : ffin n -> exp' Bool) (bodies : ffin n -> exp' t) : exp' t :=
-cfoldCond t default 0 _ _ := default;
-cfoldCond t default (S n) tests bodies <= tests None => {
+Equations cfoldCond (t : type') (default : exp' t) {n : nat} (tests : ffin n -> exp' Bool) (bodies : ffin n -> exp' t) : exp' t :=
+cfoldCond default (n:=0) _ _ := default;
+cfoldCond default (n:=(S n)) tests bodies with tests None => {
     | BConst true := bodies None;
-    | BConst false := cfoldCond default n (fun i => tests (Some i)) (fun i => bodies (Some i));
-    | _ <= cfoldCond default n (fun i => tests (Some i)) (fun i => bodies (Some i)) => {
-      | Cond n' _ tests' bodies' default' :=
+    | BConst false := cfoldCond default (fun i => tests (Some i)) (fun i => bodies (Some i));
+    | _ with cfoldCond default (fun i => tests (Some i)) (fun i => bodies (Some i)) => {
+      | Cond n' tests' bodies' default' :=
         Cond (S n') (fun i => match i with
                               | None => tests None
                               | Some i => tests' i
@@ -354,3 +349,41 @@ cfoldCond t default (S n) tests bodies <= tests None => {
              default';
       | e := Cond 1 (fun _ => tests None) (fun _ => bodies None) e }}.
 
+Fixpoint cfold t (e : exp' t) : exp' t :=
+  match e with
+    | NConst n => NConst n
+    | Plus e1 e2 =>
+      let e1' := cfold e1 in
+      let e2' := cfold e2 in
+      match e1', e2' return exp' Nat with
+        | NConst n1, NConst n2 => NConst (n1 + n2)
+        | _, _ => Plus e1' e2'
+      end
+    | Eq e1 e2 =>
+      let e1' := cfold e1 in
+      let e2' := cfold e2 in
+      match e1', e2' return exp' Bool with
+        | NConst n1, NConst n2 => BConst (if eq_nat_dec n1 n2 then true else false)
+        | _, _ => Eq e1' e2'
+      end
+
+    | BConst b => BConst b
+    | Cond n tests bodies default =>
+      cfoldCond (cfold default)
+      (fun idx => cfold (tests idx))
+      (fun idx => cfold (bodies idx))
+  end.
+
+Lemma cfoldCond_correct : forall t (default : exp' t)
+  n (tests : ffin n -> exp' Bool) (bodies : ffin n -> exp' t),
+  exp'Denote (cfoldCond default tests bodies)
+  = exp'Denote (Cond n tests bodies default).
+Proof.
+  unshelve refine_ho (cfoldCond_elim _ _ _ _ _ _ _ _ _ _ _ _ _ _); simpl; intros.
+  all:simpl; simp exp'Denote cond; rewrite ?H, ?Heq, ?Heq0;
+    try rewrite ?Heq in Hind;
+    simp exp'Denote cond;
+  repeat (match goal with
+          | [ |- context[cond_clause_2 _ _ ?E _] ] => destruct E; simp cond
+          end).
+Qed.

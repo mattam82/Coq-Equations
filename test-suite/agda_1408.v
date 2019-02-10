@@ -1,7 +1,7 @@
 From Equations Require Import Equations DepElimDec HSets.
 Unset Equations WithK.
-Parameter  I     : Set.
-Variables i1 i2 : I.
+Axiom  I     : Set.
+Axiom i1 i2 : I.
 
 Inductive D : I -> Set :=
 | d1 : D i1

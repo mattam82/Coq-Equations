@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -10,7 +10,7 @@
    [equations] when it needs applications of injectivity or discrimination
    on some equation. *)
 
-Require Import Coq.Program.Program Bvector List.
+Require Import Coq.Program.Tactics Bvector List.
 Require Import Equations.Signature Equations.EqDec Equations.Constants.
 Require Export Equations.DepElim.
 
@@ -62,16 +62,16 @@ Ltac solve_noconf_inv_equiv :=
 
 Ltac solve_noconf := simpl; intros;
     match goal with
-      [ H : @eq _ _ _ |- @eq _ _ _ ] => solve_noconf_inv_equiv
-    | [ H : @eq _ _ _ |- _ ] => solve_noconf_prf
-    | [ |- @eq _ _ _ ] => solve_noconf_inv
+      [ H : @eq _ _ _ |- @eq _ _ _ ] => try solve_noconf_inv_equiv
+    | [ H : @eq _ _ _ |- _ ] => try solve_noconf_prf
+    | [ |- @eq _ _ _ ] => try solve_noconf_inv
     end.
 
 Ltac solve_noconf_hom := simpl; intros;
     match goal with
-      [ H : @eq _ _ _ |- @eq _ _ _ ] => solve_noconf_inv_equiv
-    | [ H : @eq _ _ _ |- _ ] => solve_noconf_prf
-    | [ |- @eq _ _ _ ] => solve_noconf_inv
+      [ H : @eq _ _ _ |- @eq _ _ _ ] => try solve_noconf_inv_equiv
+    | [ H : @eq _ _ _ |- _ ] => try solve_noconf_prf
+    | [ |- @eq _ _ _ ] => try solve_noconf_inv
     end.
 
 Derive NoConfusion for unit bool nat option sum Datatypes.prod list sigT sig.

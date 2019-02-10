@@ -32,6 +32,7 @@ module type EQREFS = sig
   (* Simplification of dependent pairs. *)
   val simpl_sigma : Names.Constant.t Lazy.t
   val simpl_sigma_dep : Names.Constant.t Lazy.t
+  val simpl_sigma_nondep_dep : Names.Constant.t Lazy.t
   val simpl_sigma_dep_dep : Names.Constant.t Lazy.t
   val pack_sigma_eq : Names.Constant.t Lazy.t
   (* Deletion using K. *)
@@ -79,6 +80,7 @@ module EqRefs : EQREFS = struct
   let opaque_ind_pack_eq_inv = init_depelim "opaque_ind_pack_eq_inv"
   let simpl_sigma = init_depelim "simpl_sigma"
   let simpl_sigma_dep = init_depelim "simpl_sigma_dep"
+  let simpl_sigma_nondep_dep = init_depelim "simpl_sigma_nondep_dep"
   let simpl_sigma_dep_dep = init_depelim "simpl_sigma_dep_dep"
   let pack_sigma_eq = init_depelim "pack_sigma_eq"
   let simpl_K = init_depelim "simpl_K"
@@ -119,6 +121,7 @@ module type BUILDER = sig
   val simplify_ind_pack_inv : constr_gen
   val simpl_sigma : constr_gen
   val simpl_sigma_dep : constr_gen
+  val simpl_sigma_nondep_dep : constr_gen
   val simpl_sigma_dep_dep : constr_gen
   val simpl_K : constr_gen
   val simpl_K_dec : constr_gen
@@ -160,6 +163,7 @@ module BuilderGen (SigmaRefs : SIGMAREFS) (EqRefs : EQREFS) : BUILDER = struct
   let simplify_ind_pack_inv = gen_from_constant EqRefs.simplify_ind_pack_inv
   let simpl_sigma = gen_from_constant EqRefs.simpl_sigma
   let simpl_sigma_dep = gen_from_constant EqRefs.simpl_sigma_dep
+  let simpl_sigma_nondep_dep = gen_from_constant EqRefs.simpl_sigma_nondep_dep
   let simpl_sigma_dep_dep = gen_from_constant EqRefs.simpl_sigma_dep_dep
   let simpl_K = gen_from_constant EqRefs.simpl_K
   let simpl_K_dec = gen_from_constant EqRefs.simpl_K_dec
@@ -196,7 +200,7 @@ type open_term = (goal * EConstr.existential) option * EConstr.constr
 exception CannotSimplify of Pp.t
 
 type simplification_fun = Environ.env -> Evd.evar_map ref -> goal ->
-  open_term * Covering.context_map
+  open_term * Context_map.context_map
 
 (* Auxiliary functions. *)
 
@@ -282,10 +286,10 @@ let compose_term (env : Environ.env) (evd : Evd.evar_map ref)
   | None -> assert false
 
 let compose_res (env : Environ.env) (evd : Evd.evar_map ref)
-  ((t1, s1) : open_term * Covering.context_map)
-  ((t2, s2) : open_term * Covering.context_map) : open_term * Covering.context_map =
+  ((t1, s1) : open_term * Context_map.context_map)
+  ((t2, s2) : open_term * Context_map.context_map) : open_term * Context_map.context_map =
     let t = compose_term env evd t1 t2 in
-    let s = Covering.compose_subst env ~sigma:!evd s2 s1 in
+    let s = Context_map.compose_subst env ~sigma:!evd s2 s1 in
       t, s
 
 let safe_fun (f : simplification_fun) : simplification_fun =
@@ -308,7 +312,7 @@ let compose_fun (f : simplification_fun) (g : simplification_fun) :
 
 let identity : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) ->
-  build_term env evd gl gl (fun c -> c), Covering.id_subst (fst gl)
+  build_term env evd gl gl (fun c -> c), Context_map.id_subst (fst gl)
 
 let while_fun (f : simplification_fun) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) ->
@@ -420,7 +424,7 @@ let with_retry (f : simplification_fun) : simplification_fun =
 (* This function is not accessible by the user for now. It is used to project
  * (if needed) the first component of an equality between sigmas. It will not
  * do anything if it fails. *)
-let remove_one_sigma : simplification_fun =
+let remove_one_sigma ?(only_nondep=false) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
   let _, t1, t2 = check_equality env !evd ctx ty1 in
@@ -444,6 +448,8 @@ let remove_one_sigma : simplification_fun =
             else raise Constr.DestKO
           with
           | Constr.DestKO ->
+            if only_nondep then raise (CannotSimplify (str"Cannot simplify dependent pair"))
+            else
               (* Dependency in the pair, but not in the goal. *)
               let tsimpl_sigma = Globnames.ConstRef (Lazy.force EqRefs.simpl_sigma_dep) in
               let tP = tB in
@@ -451,24 +457,39 @@ let remove_one_sigma : simplification_fun =
               let args = [Some tA; Some tP; Some tB; Some tt; Some tu;
                           Some tp; Some tq; None] in
               tsimpl_sigma, args
-        end else
-          (* We assume full dependency. We could add one more special case,
-           * but we don't for now. *)
-          let tsimpl_sigma = Globnames.ConstRef (Lazy.force EqRefs.simpl_sigma_dep_dep) in
-          let tP = tB in
-          let tB = EConstr.mkLambda (name, ty1, ty2) in
-          let args = [Some tA; Some tP; Some tt; Some tu;
-                      Some tp; Some tq; Some tB; None] in
-            tsimpl_sigma, args
+        end else begin
+          try
+            let name', _, tBbody = destLambda !evd tB in
+            if Vars.noccurn !evd 1 tBbody then
+              (* Dependency in the goal, but not in the pair. *)
+              let tsimpl_sigma = Globnames.ConstRef (Lazy.force EqRefs.simpl_sigma_nondep_dep) in
+              let tP = Termops.pop tBbody in
+              let tB = EConstr.mkLambda (name, ty1, ty2) in
+              let args = [Some tA; Some tP; Some tt; Some tu;
+                          Some tp; Some tq; Some tB; None] in
+                tsimpl_sigma, args
+            else raise Constr.DestKO
+          with
+          | Constr.DestKO ->
+            (* Full dependency *)
+            if only_nondep then raise (CannotSimplify (str"Cannot simplify dependent pair"))
+            else
+              let tsimpl_sigma = Globnames.ConstRef (Lazy.force EqRefs.simpl_sigma_dep_dep) in
+              let tP = tB in
+              let tB = EConstr.mkLambda (name, ty1, ty2) in
+              let args = [Some tA; Some tP; Some tt; Some tu;
+                          Some tp; Some tq; Some tB; None] in
+              tsimpl_sigma, args
+        end
     | _, _ -> raise (CannotSimplify (str "If you see this, please report."))
-  in build_app_infer env evd (ctx, ty) ctx f args, Covering.id_subst ctx
+  in build_app_infer env evd (ctx, ty) ctx f args, Context_map.id_subst ctx
 let remove_sigma = while_fun remove_one_sigma
 
 let deletion ~(force:bool) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
   let tA, tx, _ = check_equality env !evd ctx ~equal_terms:true ty1 in
-  let subst = Covering.id_subst ctx in
+  let subst = Context_map.id_subst ctx in
   if Vars.noccurn !evd 1 ty2 then
     (* The goal does not depend on the equality, we can just eliminate it. *)
     build_term env evd (ctx, ty) (ctx, Termops.pop ty2)
@@ -512,21 +533,21 @@ let solution ~(dir:direction) : simplification_fun =
   in
   let rel = EConstr.destRel !evd trel in
   let () =
-    if Int.Set.mem rel (Covering.dependencies_of_term ~with_red:true env !evd ctx term rel) then
+    if Int.Set.mem rel (Context_map.dependencies_of_term ~with_red:true env !evd ctx term rel) then
       raise (CannotSimplify (str  "[solution] The variable appears on both sides of the equality."))
   in
   (* let () = Feedback.msg_debug (str "solution on " ++ Printer.pr_econstr_env (push_rel_context ctx env) !evd ty) in *)
-  let (ctx', _, _) as subst, rev_subst = Covering.new_strengthen env !evd ctx rel term in
-  let trel' = Covering.mapping_constr !evd subst trel in
+  let (ctx', _, _) as subst, rev_subst = Context_map.new_strengthen env !evd ctx rel term in
+  let trel' = Context_map.mapping_constr !evd subst trel in
   let rel' = EConstr.destRel !evd trel' in
-  let term' = Covering.mapping_constr !evd subst term in
-  let tA' = Covering.mapping_constr !evd subst tA in
-  let ty1' = Covering.mapping_constr !evd subst ty1 in
+  let term' = Context_map.mapping_constr !evd subst term in
+  let tA' = Context_map.mapping_constr !evd subst tA in
+  let ty1' = Context_map.mapping_constr !evd subst ty1 in
   (* We will have to generalize everything after [x'] in the new
    * context. *)
-  let after', decl', before' = Covering.split_context (pred rel') ctx' in
+  let after', decl', before' = Context_map.split_context (pred rel') ctx' in
   let name' = Context.Rel.Declaration.get_name decl' in
-  (* let after, _, before = Covering.split_context rel ctx in*)
+  (* let after, _, before = Context_map.split_context rel ctx in*)
   
   (* Select the correct solution lemma. *)
   let nondep = Vars.noccurn !evd 1 ty2 in
@@ -537,7 +558,7 @@ let solution ~(dir:direction) : simplification_fun =
   | true, true -> Builder.solution_left end evd
   in
   let tB', body =
-    let body = Covering.mapping_constr !evd subst ty in
+    let body = Context_map.mapping_constr !evd subst ty in
     (* Right now, [body] has an equality at the head that we want
      * to move, in some sense. *)
     let _, _, body = EConstr.destProd !evd body in
@@ -569,8 +590,8 @@ let solution ~(dir:direction) : simplification_fun =
       let teq_refl = EConstr.mkApp (Builder.eq_refl evd, [| tA'; term' |]) in
         Vars.substnl [Vars.lift (-rel') teq_refl; Vars.lift (-rel') term'] (pred rel') body
   in
-  let lsubst = Covering.single_subst env !evd rel' (Covering.pat_of_constr !evd term') ctx' in
-  let subst = Covering.compose_subst env ~sigma:!evd lsubst subst in
+  let lsubst = Context_map.single_subst env !evd rel' (Context_map.pat_of_constr !evd term') ctx' in
+  let subst = Context_map.compose_subst env ~sigma:!evd lsubst subst in
   let f = fun c ->
       (* [c] is a term in the context [ctx'']. *)
       let c = EConstr.it_mkLambda_or_LetIn c after'' in
@@ -591,7 +612,7 @@ let solution ~(dir:direction) : simplification_fun =
       (* [ty1'] is the type of the equality in [ctx']. *)
       let c = EConstr.mkLambda (name, ty1', c) in
       (* And now we recover a term in the context [ctx]. *)
-        Covering.mapping_constr !evd rev_subst c
+        Context_map.mapping_constr !evd rev_subst c
   in build_term env evd (ctx, ty) (ctx'', ty'') f, subst
 
 let pre_solution ~(dir:direction) : simplification_fun =
@@ -605,13 +626,13 @@ let pre_solution ~(dir:direction) : simplification_fun =
     else tz, tx
   in
   let rel = EConstr.destRel !evd trel in
-  (** Check dependencies in both tA and term *)
-  if not (Int.Set.mem rel (Covering.dependencies_of_term ~with_red:false env !evd ctx (mkApp (tA, [| term |])) rel)) then
+  (* Check dependencies in both tA and term *)
+  if not (Int.Set.mem rel (Context_map.dependencies_of_term ~with_red:false env !evd ctx (mkApp (tA, [| term |])) rel)) then
     identity env evd (ctx, ty)
   else
     let tA = Reductionops.whd_all (push_rel_context ctx env) !evd tA in
     let term = Reductionops.whd_all (push_rel_context ctx env) !evd term in
-    if Int.Set.mem rel (Covering.dependencies_of_term ~with_red:false env !evd ctx (mkApp (tA, [|term|])) rel) then
+    if Int.Set.mem rel (Context_map.dependencies_of_term ~with_red:false env !evd ctx (mkApp (tA, [|term|])) rel) then
       raise (CannotSimplify (str  "[solution] cannot remove dependency in the variable "))
     else
       let f c = c in
@@ -621,7 +642,7 @@ let pre_solution ~(dir:direction) : simplification_fun =
         else mkApp (eqf, [| tA; term; trel |])
       in
       let ty' = mkProd (name, ty1, ty2) in
-      build_term env evd (ctx, ty) (ctx, ty') f, Covering.id_subst ctx
+      build_term env evd (ctx, ty) (ctx, ty') f, Context_map.id_subst ctx
 
 let is_construct_sigma_2 sigma f =
   let term = match decompose_sigma sigma f with
@@ -688,8 +709,8 @@ let maybe_pack : simplification_fun =
     let tB = let env = push_rel_context ctx env in
       Tacred.simpl env !evd tB in
     let tG = EConstr.mkLambda (name, ty1, ty2) in
-    let args = [Some tA; Some tdec; Some tB; Some tx; Some t1; Some t2; Some tG; None] in
-      build_app_infer env evd (ctx, ty) ctx tsimplify_ind_pack args, Covering.id_subst ctx
+    let args = [Some tA'; Some tdec; Some tB; Some tx; Some t1; Some t2; Some tG; None] in
+    build_app_infer env evd (ctx, ty) ctx tsimplify_ind_pack args, Context_map.id_subst ctx
   end
 
 let apply_noconf : simplification_fun =
@@ -712,7 +733,7 @@ let apply_noconf : simplification_fun =
   let tapply_noconf = Globnames.ConstRef (Lazy.force EqRefs.apply_noConfusion) in
   let tB = EConstr.mkLambda (name, ty1, ty2) in
   let args = [Some tA; Some tnoconf; Some t1; Some t2; Some tB; None] in
-    build_app_infer env evd (ctx, ty) ctx tapply_noconf args, Covering.id_subst ctx
+    build_app_infer env evd (ctx, ty) ctx tapply_noconf args, Context_map.id_subst ctx
 
 let simplify_ind_pack_inv : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
@@ -754,7 +775,7 @@ let simplify_ind_pack_inv : simplification_fun =
     let tsimplify_ind_pack_inv = Globnames.ConstRef (Lazy.force EqRefs.simplify_ind_pack_inv) in
     let args = [Some tA; Some teqdec; Some tB; Some tx; Some tp; Some tG; None] in
       build_app_infer env evd (ctx, ty) ctx tsimplify_ind_pack_inv args,
-      Covering.id_subst ctx
+      Context_map.id_subst ctx
   with CannotSimplify _ -> identity env evd (ctx, ty)
 
 let noConfusion = compose_fun apply_noconf maybe_pack
@@ -769,7 +790,7 @@ let elim_true : simplification_fun =
   if not (check_inductive !evd (Lazy.force EqRefs.one) ty1) then
     raise (CannotSimplify (str
       "[elim_true] The first hypothesis is not the unit type."));
-  let subst = Covering.id_subst ctx in
+  let subst = Context_map.id_subst ctx in
   (* Check if the goal is dependent or not. *)
   if Vars.noccurn !evd 1 ty2 then
     (* Not dependent, we can just eliminate True. *)
@@ -788,7 +809,7 @@ let elim_false : simplification_fun =
   if not (check_inductive !evd (Lazy.force EqRefs.zero) ty1) then
     raise (CannotSimplify (str
       "[elim_true] The first hypothesis is not the empty type."));
-  let subst = Covering.id_subst ctx in
+  let subst = Context_map.id_subst ctx in
   let tB, tzero_ind =
   (* Check if the goal is dependent or not. *)
     if Vars.noccurn !evd 1 ty2 then
@@ -839,7 +860,7 @@ let infer_step ?(loc:Loc.t option) ~(isSol:bool)
     else begin
       let check_occur trel term =
         let rel = EConstr.destRel !evd trel in
-          not (Int.Set.mem rel (Covering.dependencies_of_term ~with_red:true env !evd ctx term rel))
+          not (Int.Set.mem rel (Context_map.dependencies_of_term ~with_red:true env !evd ctx term rel))
       in
       if EConstr.isRel !evd tu && EConstr.isRel !evd tv && check_occur tu tv then
         Solution (choose (EConstr.destRel !evd tu) (EConstr.destRel !evd tv))
@@ -891,7 +912,7 @@ let or_fun (f : simplification_fun) (g : simplification_fun) : simplification_fu
   with CannotSimplify _ ->
     evd := evd0; g env evd gl
 
-let expand_many rule env evd ((ctx, ty) : goal) : simplification_rules =
+let _expand_many rule env evd ((ctx, ty) : goal) : simplification_rules =
   (* FIXME: maybe it's too brutal/expensive? *)
   let ty = Reductionops.whd_all env !evd ty in
   let _, ty, _ = check_prod !evd ty in
@@ -977,7 +998,7 @@ and simplify_one ((loc, rule) : Loc.t option * simplification_rule) :
        try compose_fun (or_fun check_block_notprod aux)
              first env evd gl
        with Blocked -> identity env evd gl
-     in handle_error aux
+     in handle_error (or_fun aux (remove_one_sigma ~only_nondep:true))
   | Step step -> wrap_handle (fun _ _ _ -> step)
   | Infer_one -> handle_error (or_fun (with_retry apply_noConfusions)
                                  (wrap (infer_step ?loc ~isSol:false)))

@@ -114,20 +114,12 @@ Require Import Omega.
 Section Chunk.
   Context{T : Type} `{M : ChunkableMonoid T}.
   Set Program Mode.
-  Equations chunk (i: { i: nat | i > 0 }) (x: T) : list T :=
-  chunk i x by rec x (MR lt length) :=
+  Equations? chunk (i: { i: nat | i > 0 }) (x: T) : list T by wf (length x) lt :=
   chunk i x with dec (Nat.leb (length x) i) :=    
     { | left _ => [x] ;
       | right p => take i x :: chunk i (drop i x) }.
-  Next Obligation.
-    red.
-    apply leb_complete_conv in p.
-    rewrite drop_spec. omega. auto with arith.
-  Defined.
+  Proof. apply leb_complete_conv in p. rewrite drop_spec. omega. auto with arith. Qed.
 End Chunk.
-
-(** Bugs, rewrite hint db is not discharged *)
-Hint Rewrite @chunk_helper_1_equation_2 @chunk_helper_1_equation_1 @chunk_equation_1 : chunk.
 
 Theorem if_flip_helper {B: Type} {b: bool}
         (C E: true = b -> B) (D F: false = b -> B):
@@ -148,11 +140,16 @@ Eval compute in (chunk (exist _ 3 _) [0; 1; 2; 3; 4; 5; 6; 7; 8; 9]).
   : list (list nat)
  *)
 
-Equations mconcat {M: Type} `{Monoid M} (l: list M): M :=
-  mconcat [] := unit;
-  mconcat (cons x xs) := x ** mconcat xs.                  
+Section mconcat.
+  Context {M : Type} `{Monoid M}.
 
-Definition strong_induction := well_founded_induction lt_wf.
+  Equations mconcat (l: list M): M :=
+  mconcat [] := unit;
+  mconcat (cons x xs) := x ** mconcat xs.
+End mconcat.
+Transparent mconcat.
+
+Derive NoConfusion for N.
 
 Theorem morphism_distribution:
   forall {M N: Type}
@@ -217,12 +214,12 @@ Proof.
   simpl.
   specialize (H H0).
   revert H. unfold drop. simpl.
-  pose proof (drop_spec (` i) x). simpl in H.
+  pose proof (drop_spec (` I) x0). simpl in H.
   rewrite H by omega. clear H.
   simp chunk. clear Heq. destruct dec. simp chunk; simpl; intros; try omega. intros.
   feed H. 
   clear H. apply leb_complete_conv in e. 
-  pose proof (drop_spec (` i) x). rewrite H in e; try omega;
+  pose proof (drop_spec (` I) x0). rewrite H in e; try omega;
                                     unfold length in *; simpl in *; omega.
   omega.
 Qed.
@@ -230,14 +227,11 @@ Qed.
 Section pmconcat.
   Context {M : Type} `{ChunkableMonoid M}.
 
-  Equations pmconcat (I : { i : nat | i > 0 }) (x : list M) : M :=
-  pmconcat i x by rec x (MR lt (@List.length M)) :=
-    pmconcat i x <= dec ((` i <=? 1) || (length x <=? ` i))%bool => {
+  Equations? pmconcat (I : { i : nat | i > 0 }) (x : list M) : M by wf (length x) lt :=
+  pmconcat i x with dec ((` i <=? 1) || (length x <=? ` i))%bool => {
     | left H => mconcat x ;
     | right Hd => pmconcat i (map mconcat (chunk i x)) }.
-
-  Next Obligation.
-    red. clear pmconcat.
+  Proof. clear pmconcat.
     rewrite map_length.
     rewrite Bool.orb_false_iff in Hd.
     destruct Hd. apply leb_complete_conv in H2. apply leb_complete_conv in H3.
@@ -246,10 +240,11 @@ Section pmconcat.
 End pmconcat.
 
 Instance mconcat_mon T : MonoidMorphism (@mconcat (list T) _).
+
 Next Obligation.
 Proof.
-  funelim (mconcat x); simp mconcat.
-  rewrite H0. now rewrite <- app_assoc. 
+  funelim (mconcat x). reflexivity.
+  simpl. rewrite H. now rewrite <- app_assoc.
 Qed.
 
 Theorem concatEquivalence: forall {T: Type} i (x: list (list T)),

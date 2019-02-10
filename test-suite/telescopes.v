@@ -124,12 +124,14 @@ Ltac rewrite_change c :=
   end.
 Set Printing Universes.
 
+Arguments sigmaI {A} {B} pr1 pr2.
+
 Section pathsigmauncurried.
   Universe i.
 Equations path_sigma_uncurried {A : Type@{i}} {P : A -> Type@{i}} (u v : sigma@{i} A P)
   (pq : sigma@{Set} _ (fun p => subst p u.2 = v.2))
   : u = v :=
-path_sigma_uncurried (sigmaI u1 u2) (sigmaI ?(u1) ?(u2)) (sigmaI eq_refl eq_refl) :=
+path_sigma_uncurried (sigmaI _ u1 u2) (sigmaI _ ?(u1) ?(u2)) (sigmaI _ eq_refl eq_refl) :=
   eq_refl.
 End pathsigmauncurried.
 
@@ -148,7 +150,7 @@ Defined.
 Notation "p ..2" := (pr2_path p) (at level 3).
 
 Definition eta_path_sigma_uncurried@{i} {A : Type@{i}} {P : A -> Type@{i}} {u v : sigma A P}
-           (p : u = v) : path_sigma_uncurried _ _ (sigmaI@{i} _ p..1 p..2) = p.
+           (p : u = v) : path_sigma_uncurried _ _ (sigmaI@{i} p..1 p..2) = p.
   destruct p. apply eq_refl.
 Defined.
 
@@ -157,7 +159,7 @@ Section pathsigma.
   Equations path_sigma {A : Type@{i}} {P : A -> Type@{i}} {u v : sigma A P}
             (p : u.1 = v.1) (q : rew p in u.2 = v.2)
     : u = v :=
-    path_sigma {u:=(sigmaI _ _)} {v:=(sigmaI _ _)} eq_refl eq_refl := eq_refl.
+    path_sigma (u:=sigmaI _ _ _) (v:=sigmaI _ _ _) eq_refl eq_refl := eq_refl.
 End pathsigma.
 
 Definition eta_path_sigma A `{P : A -> Type} {u v : sigma A P} (p : u = v)
@@ -222,23 +224,24 @@ Module Telescopes.
   Infix "=={ Δ }" := (eq_expl Δ) : telescope.
 
   Equations refl {Δ : Tel} (t : telescope Δ) : eq Δ t t :=
-    refl {Δ:=(inj A)} a := eq_refl;
-    refl {Δ:=(ext A f)} (sigmaI t ts) := &(eq_refl & refl ts).
+    refl (Δ:=inj A) a := eq_refl;
+    refl (Δ:=ext A f) (sigmaI t ts) := &(eq_refl & refl ts).
 
   Local Open Scope telescope.
   
   Equations J {Δ : Tel} (r : Δ) (P : forall s : Δ, eq Δ r s -> Type)
             (p : P r (refl r)) (s : Δ) (e : eq _ r s) : P s e :=
-    J {Δ:=(inj A)} a P p b e := Top.J P p b e;
-    J {Δ:=(ext A f)} (sigmaI r rs) P p (sigmaI s ss) (sigmaI e es) := 
-     Top.J (x:=r)
-       (fun (s' : A) (e' : r = s') =>
-        forall (ss' : f s') (es' : eq (f s') (rewP e' at f in rs) ss'),
+    J (Δ:=inj A) a P p b e := Top.J P p b e;
+    J (Δ:=ext A f) a P p b e :=
+(* (sigmaI _ r rs) P p (sigmaI _ s ss) (sigmaI _ e es) :=                                 *)
+     Top.J (x:=a.1)
+       (fun (s' : A) (e' : a.1 = s') =>
+        forall (ss' : f s') (es' : eq (f s') (rewP e' at f in a.2) ss'),
           P &(s' & ss') &(e' & es'))
        (fun ss' es' =>
-          J _ (fun ss'' (es'' : eq (f r) rs ss'') => P &(r & ss'') &(eq_refl & es''))
+          J _ (fun ss'' (es'' : eq (f a.1) a.2 ss'') => P &(a.1 & ss'') &(eq_refl & es''))
               p ss' es')
-       s e ss es.
+       b.1 e.1 b.2 e.2.
 
   Lemma J_refl {Δ : Tel} (r : Δ) (P : forall s : Δ, eq Δ r s -> Type) 
           (p : P r (refl r)) : J r P p r (refl r) = p.
@@ -252,7 +255,7 @@ Module Telescopes.
   Proof. revert y e. refine (J _ _ _). refine (J_refl _ _ _). Defined.
 
   Equations subst {Δ : Tel} (P : Δ -> Type) {u v : Δ} (e : u =={Δ} v) (p : P u) : P v :=
-    subst P e p := J u (fun v _ => P v) p v e.
+    subst (v:=v) (u:=u) P e p := J u (fun v _ => P v) p v e.
 
   Definition cong@{i j k} {Δ : Tel@{i}} {T : Type@{j}} (f : Δ -> T) (u v : Δ) (e : u =={Δ} v) : f u = f v :=
     J@{j k i} u (fun v _ => f u = f v) (@eq_refl T (f u)) v e.
@@ -271,16 +274,16 @@ Module Telescopes.
 
   Equations dcong {Δ : Tel} {T} (f : forall x : Δ, T x) (u v : Δ) (e : u =={Δ} v) :
     f u ==_{T;e} f v :=
-    dcong f u v e := J u (fun v e => f u ==_{T;e} f v) (eq_over_refl f u) v e.
+    dcong (T:=T) f u v e := J u (fun v e => f u ==_{T;e} f v) (eq_over_refl f u) v e.
 
   Equations cong_tel {Δ : Tel} {Γ : Tel}
             (f : Δ -> Γ) {u v : Δ} (e : u =={Δ} v) : f u =={Γ} f v :=
-    cong_tel f e := J u (fun v _ => f u =={Γ} f v) (refl _) v e.
+    cong_tel (v:=v) f e := J _ (fun v _ => f _ =={_} f v) (refl _) v e.
 
   Equations dcong_tel {Δ : Tel} {T : Δ -> Tel}
             (f : forall x : Δ, T x) {u v : Δ} (e : u =={Δ} v) :
     f u =={T;e} f v :=
-    dcong_tel f e := J u (fun v e => f u =={T;e} f v) _ v e.
+    dcong_tel f e := J _ (fun v e => f _ =={_;e} f v) _ _ e.
   Next Obligation.
     clear. unfold subst. rewrite J_refl. apply refl.
   Defined.
@@ -327,7 +330,7 @@ Module Telescopes.
   Equations inj_extend_tel (Δ : t) (Γ : telescope Δ -> t) (s : Δ) (t : Γ s) :
     extend_tele Δ Γ :=
   inj_extend_tel (inj A) Γ s t := &(s & t) ;
-  inj_extend_tel (ext A f) Γ (sigmaI t ts) e := 
+  inj_extend_tel (ext A f) Γ (sigmaI _ t ts) e :=
     &(t & inj_extend_tel (f t) (fun fa => Γ &(t & fa)) ts e).
   
   Lemma reorder_tele@{i +} (Δ : t@{i}) (Γ : telescope Δ -> t@{i}) :
@@ -464,14 +467,14 @@ Module Telescopes.
           end
       end.
   
-  Lemma noconf@{i} :
+  Lemma noconf@{i +} :
     forall (A : Type@{i}) (a b : &{ index : nat & vector A index}), a = b -> NoConf@{i} A a b.
   Proof.
     intros. destruct H. destruct a. simpl. destruct pr2. simpl. exact I.
     simpl. reflexivity.
   Defined.
 
-  Lemma noconf_inv@{i} :
+  Lemma noconf_inv@{i +} :
     forall (A : Type@{i}) (a b : &{ index : nat & vector A index}), NoConf@{i} A a b -> a = b.
   Proof.
     intros. destruct a, b. destruct pr2, pr3; try constructor || contradiction.
@@ -849,6 +852,19 @@ Defined.
     rewrite inv_equiv_equiv in X. exact X.
   Defined.
 
+  Lemma apply_equiv_codom {A} {B B' : A -> Type} (e : forall x, Equiv (B x) (B' x)) :
+    (forall x : A, B x) <~> forall x : A, B' x.
+  Proof.
+    intros.
+    unshelve refine {| equiv f := fun x => e x (f x) |}.
+    unshelve refine {| equiv_inv f := fun x => (e x)^-1 (f x) |}.
+    red; intros.
+    extensionality y. apply inv_equiv_equiv.
+    intro. extensionality y. apply equiv_inv_equiv.
+    intros.
+    apply axiom_triangle.
+  Defined.
+
   Polymorphic
     Lemma equiv_switch_indep {A : Type} {B : Type} :
     (tele (_ : A) in B <~> tele (_ : B) in A).
@@ -914,7 +930,83 @@ Defined.
                                       telei (h0) (n0) in (x1)
           end
       end.
-  
+Inductive Iseq2 {A : Type} : forall x y: A, x = y -> y = x -> Type :=
+  iseq2 w : Iseq2 w w eq_refl eq_refl.
+
+
+
+Lemma invIseq2' {A} (x : A) (e : x = x) (iseq : Iseq2 x x e eq_refl) :
+  &{ H : eq_refl = e &
+         (Top.subst (P:=fun e => Iseq2 x x e eq_refl) H (iseq2 x)) = iseq }.
+  generalize_eqs_sig iseq.
+  destruct iseq.
+
+
+  intros H; symmetry in H. revert H.
+  refine (eq_simplification_sigma1_dep_dep _ _ _ _ _).
+  intros. subst iseq0.
+  revert e'.
+  intros e'.
+  set (eos := the_end_of_the_section). move eos before A.
+  uncurry_hyps pack. pattern sigma pack.
+  clearbody pack. clear.
+
+  set(vartel := tele (x : A) (e : x = x) (w : A)
+        (e : (&(w, w, eq_refl & eq_refl) = &(x, x, e & eq_refl)
+                                              :> (tele (x : A) (y : A) (e : x = y) in (y = x)))) in unit).
+
+
+  change (telescope vartel) in pack.
+  unfold vartel in pack.
+  clear vartel.
+  revert pack.
+  unshelve refine (apply_equiv_dom _ _ _).
+  shelve.
+  refine (equiv_sym _).
+  - refine (equiv_compose _ _).
+
+
+
+  set(vartel := tele (x : A) (e : x = x) in A).
+  set(eqtel' :=  (fun x : vartel =>
+                    tele (_ : &(x.2.2, x.2.2, eq_refl & eq_refl) = &(x.1, x.1, x.2.1 & eq_refl) :>
+     tele (x : A) (y : A) (e : x = y) in (y = x))  in unit)).
+
+  pose (reorder_tele vartel eqtel'). simpl in e.
+  unfold eqtel' in e. simpl in e. refine e.
+  refine (equiv_compose _ _).
+  refine (equiv_compose _ _).
+  refine (equiv_tele_r _).
+  intros x.
+  set(eqtel := (tele (x : A) (y : A) (e : x = y) in (y = x))).
+  set(vartel := tele (x : A) (e : x = x) in A).
+  set(eqtel'' :=  (fun x : vartel =>
+                     tele (_ : &(x.2.2, x.2.2, eq_refl & eq_refl) =={eqtel} &(x.1, x.1, x.2.1 & eq_refl)) in unit)).
+  refine (equiv_compose _ _).
+  refine (equiv_tele_l (B := fun _ => unit) _).
+  apply (@eq_points_equiv eqtel).
+  refine (equiv_id _).
+  cbn.
+  simpl. refine (equiv_id _).
+  refine (equiv_id _).
+  simpl.
+
+    refine (con
+
+
+
+
+  simpl.
+
+
+
+
+
+
+
+
+  simplify ?. simpl.
+
   Lemma noconf :
     forall (A : Type) (a b : &{ index : nat & vector A index}),
       a =={ext nat (fun n => inj (vector A n))} b -> NoConf A a b.
@@ -1170,19 +1262,6 @@ Defined.
     red; intros.
     apply axiom_triangle.
     red. apply noConfusion_is_equiv.
-    apply axiom_triangle.
-  Defined.
-
-  Lemma apply_equiv_codom {A} {B B' : A -> Type} (e : forall x, Equiv (B x) (B' x)) :
-    (forall x : A, B x) <~> forall x : A, B' x.
-  Proof.
-    intros.
-    unshelve refine {| equiv f := fun x => e x (f x) |}.
-    unshelve refine {| equiv_inv f := fun x => (e x)^-1 (f x) |}.
-    red; intros.
-    extensionality y. apply inv_equiv_equiv.
-    intro. extensionality y. apply equiv_inv_equiv.
-    intros.
     apply axiom_triangle.
   Defined.
 

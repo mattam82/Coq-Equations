@@ -11,7 +11,7 @@ Ltac t := intros; match goal with
 Obligation Tactic := t.
 
 Equations content (n: nat): nat := 
-content n by rec ignore_termination lt :=
+content n by wf ignore_termination lt :=
 content n := content n.
 
 Definition check := content_elim.

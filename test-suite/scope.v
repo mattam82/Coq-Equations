@@ -6,6 +6,10 @@ Require Import Equations.DepElimDec.
 Require Import Coq.Logic.Eqdep_dec.
 Require Import Coq.Classes.EquivDec.
 Require Import Program.
+
+Ltac depelim x := Equations.Init.depelim x.
+Ltac depind x := Equations.DepElim.depind x.
+
 Require Import Arith.
 Derive Signature for eq.
 Ltac simpl_exist :=
@@ -71,7 +75,7 @@ scope_le_app p (scope_le_map q) with p :=
   | (scope_le_map p') := scope_le_map (scope_le_app p' q) }.
 
 (* Equations scope_le_app {a b c} (p : scope_le a b) (q : scope_le b c) : scope_le a c := *)
-(* scope_le_app p q by rec (signature_pack q) scope_le_subterm := *)
+(* scope_le_app p q by wf (signature_pack q) scope_le_subterm := *)
 (* scope_le_app p scope_le_n := p; *)
 (* scope_le_app p (scope_le_S q) := scope_le_S (scope_le_app p q); *)
 (* scope_le_app p (scope_le_map q) with p := *)
@@ -93,12 +97,12 @@ Inductive type : scope -> Type :=
 | tarr : forall {n}, type n -> type n -> type n
 | tall : forall {n}, type n -> type (S n) -> type n
 .
-Derive Signature for type.
+Derive Signature NoConfusion for type.
 Inductive env : scope -> scope -> Set :=
 | empty : forall {n}, env n n
 | cons : forall {n m}, type m -> env n m -> env n (S m)
 .
-Derive Signature for env.
+Derive Signature NoConfusion for env.
 
 Lemma env_scope_le : forall {n m}, env n m -> scope_le n m.
 Proof. intros n m Γ; depind Γ; constructor; auto. Defined.
@@ -165,16 +169,9 @@ Qed.
 Hint Rewrite @lift_type_by_app : lift_type_by.
 
 Equations lookup {n} (Γ : env O n) (x : var n) : type n :=
-lookup {n:=O}     Γ          x      :=! x;
-lookup {n:=(S _)} (cons a Γ) FO     := lift_type_by (scope_le_S scope_le_n) a;
-lookup {n:=(S _)} (cons a Γ) (FS x) := lift_type_by (scope_le_S scope_le_n) (lookup Γ x)
+lookup (n:=(S _)) (cons a Γ) FO     := lift_type_by (scope_le_S scope_le_n) a;
+lookup (n:=(S _)) (cons a Γ) (FS x) := lift_type_by (scope_le_S scope_le_n) (lookup Γ x)
 .
-
-(** FIXME: not done automatically *)
-Next Obligation.
-  induction n. depelim x.
-  depelim Γ. depelim x. constructor. constructor. apply IHn.
-Defined.
 
 Lemma lookup_app : forall {n} (Γ : env O (S n)) {m} (Δ : env (S n) (S m)) x,
                      lookup (env_app Γ Δ) (lift_var_by (env_scope_le Δ) x) =
@@ -272,6 +269,9 @@ Proof.
   - specialize (IHΔ Γ x). forward IHΔ by intro; subst; auto.
     now rewrite (IHΔ p q).
 Qed.
+
+(* FIXME following proof relies on dep_elim' strategy *)
+Ltac Equations.DepElim.simplify_dep_elim ::= repeat simplify_one_dep_elim'.
 
 Lemma sa_narrowing : forall {s} q,
                        (forall {s'} (P : scope_le s s') (Γ : env O s') p (A : sa Γ p (lift_type_by P q))

@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -14,7 +14,6 @@ open Ltac_plugin
 type 'a peuniverses = 'a * EConstr.EInstance.t
 
 (* Options *)
-val ocaml_splitting : bool ref
 val simplify_withK : bool ref
 val simplify_withK_dec : bool ref
 val equations_transparent : bool ref
@@ -24,6 +23,7 @@ val debug : bool ref
 (** Common flags *)
 type flags = {
   polymorphic : bool;
+  open_proof : bool;
   with_eqns : bool;
   with_ind : bool }  
   
@@ -117,6 +117,7 @@ val it_mkLambda_or_subst :
   constr -> rel_declaration list -> constr
 val it_mkLambda_or_subst_or_clear : Evd.evar_map -> constr -> rel_context -> constr
 val it_mkProd_or_subst_or_clear : Evd.evar_map -> constr -> rel_context -> constr
+val it_mkLambda_or_clear_LetIn : Evd.evar_map -> constr -> rel_context -> constr
 
 val ids_of_constr : Evd.evar_map ->
   ?all:bool -> Id.Set.t -> constr -> Id.Set.t
@@ -223,15 +224,32 @@ val coq_sigma : lazy_ref
 val coq_sigmaI : lazy_ref
 val coq_pr1 : Names.Projection.t lazy_t
 val coq_pr2 : Names.Projection.t lazy_t
-			    
+
+val logic_tele_type : lazy_ref
+val logic_tele_tip : lazy_ref
+val logic_tele_ext : lazy_ref
+val logic_tele_interp : lazy_ref
+val logic_tele_measure : lazy_ref
+val logic_tele_fix : lazy_ref
+val logic_tele_fix_functional_type : lazy_ref
+val logic_tele_fix_unfold : lazy_ref
+val logic_tele_MR : lazy_ref
+
+(** Constants used in the telescopic fixpoint, to be unfolded agressively *)
+val logic_tele_type_app : lazy_ref
+val logic_tele_forall_type_app : lazy_ref
+val logic_tele_forall_uncurry : lazy_ref
+val logic_tele_forall : lazy_ref
+val logic_tele_forall_pack : lazy_ref
+val logic_tele_forall_unpack : lazy_ref
+
+
 val coq_zero : lazy_ref
 val coq_succ : lazy_ref
 val coq_nat : lazy_ref
 val coq_nat_of_int : int -> Constr.t
 val int_of_coq_nat : Constr.t -> int
 
-val coq_heq : lazy_ref
-val coq_heq_refl : lazy_ref
 val coq_fix_proto : lazy_ref
 
 val fresh_logic_sort : esigma -> constr
@@ -240,10 +258,6 @@ val mkapp : Environ.env -> esigma -> lazy_ref -> constr array -> constr
 val mkEq : Environ.env ->
   esigma -> types -> constr -> constr -> constr
 val mkRefl : Environ.env -> esigma -> types -> constr -> constr
-val mkHEq : Environ.env ->
-  esigma ->
-  types -> constr -> types -> constr -> constr
-val mkHRefl : Environ.env -> esigma -> types -> constr -> constr
 
 (** Bindings to theories/ files *)
 
@@ -269,6 +283,7 @@ val coq_ImpossibleCall : esigma -> constr
 val unfold_add_pattern : unit Proofview.tactic lazy_t
 
 val observe : string -> Proofview.V82.tac -> Proofview.V82.tac
+val observe_new : string -> unit Proofview.tactic -> unit Proofview.tactic
   
 val below_tactics_path : Names.DirPath.t
 val below_tac : string -> Names.KerName.t
@@ -289,12 +304,14 @@ val do_empty_tac : Names.Id.t -> unit Proofview.tactic
 val depelim_nosimpl_tac : Names.Id.t -> unit Proofview.tactic
 val simpl_dep_elim_tac : unit -> unit Proofview.tactic
 val depind_tac : Names.Id.t -> unit Proofview.tactic
-val rec_tac :            Tacexpr.r_trm ->
+val rec_tac :            Genredexpr.r_trm ->
                          Names.Id.t ->
                          Tacexpr.r_dispatch Tacexpr.gen_tactic_expr
-val rec_wf_tac :            Tacexpr.r_trm ->
-           Names.Id.t -> Tacexpr.r_trm ->
+
+val rec_wf_tac :            Genredexpr.r_trm -> Genredexpr.r_trm ->
+           Names.Id.t -> Genredexpr.r_trm ->
                          Tacexpr.r_dispatch Tacexpr.gen_tactic_expr
+
 (** Unfold the first occurrence of a Constant.t declared unfoldable in db
   (with Hint Unfold) *)
 val autounfold_first :
@@ -417,3 +434,5 @@ type identifier = Names.Id.t
 
 val evd_comb1 : (Evd.evar_map -> 'a -> Evd.evar_map * 'b) -> Evd.evar_map ref -> 'a -> 'b
 val evd_comb0 : (Evd.evar_map -> Evd.evar_map * 'b) -> Evd.evar_map ref -> 'b
+
+val splay_prod_n_assum : env -> Evd.evar_map -> int -> types -> rel_context * types

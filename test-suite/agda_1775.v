@@ -10,13 +10,13 @@ Open Scope equations_scope.
 Inductive fin : nat -> Set :=
 | fin0 n : fin (S n)
 | finS n : fin n -> fin (S n).
-Derive Signature for fin.
+Derive Signature NoConfusion for fin.
 
 Arguments fin0 {_}.
 Arguments finS {_} _.
 
 (* Derive NoConfusion for ℕ. *)
-Derive NoConfusion NoConfusionHom for fin.
+Derive NoConfusionHom for fin.
 
 Inductive Vec (A : Set) : nat -> Set :=
   nil  : Vec A O
@@ -31,8 +31,9 @@ Inductive at_eq {A : Set} : forall{n : nat}, Vec A n -> fin n -> A -> Set :=
 | here  : ∀ {n}     {x}   {xs : Vec A n}, at_eq (cons _ x xs) fin0 x
 | there : ∀ {n} {i : fin n} {x y} {xs : Vec A n} (H : xs [ i ]= x),
     (cons _ y xs) [ (finS i) ]= x
-
 where " x [ n ]= y " := (at_eq x n y).
+
+Derive Signature for at_eq.
 
 Definition Subset := Vec bool.
 
@@ -50,15 +51,13 @@ Inductive Dec (P : Set) : Set :=
 Arguments yes {_} _.
 Arguments no {_} _.
 
-Equations isin {n} (x : fin n) (p : Subset n) : Dec (x ∈ p) :=
+Equations? isin {n} (x : fin n) (p : Subset n) : Dec (x ∈ p) :=
 isin fin0 (cons true p) := yes here;
 isin fin0 (cons false p) := no _;
 isin (finS f) (cons s p) with isin f p :=
                              | yes H := yes (there H);
                              | no H := no (fun H' => _).
-
-Next Obligation. depelim H. Defined.
-Next Obligation. depelim H'. apply (H H'). Defined.
+Proof. depelim H. depelim H'. apply (H H'). Defined.
 Transparent isin.
 
 Print Assumptions isin.

@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -13,7 +13,6 @@ open Constr
 open Declarations
 open Globnames
 open Vars
-open Covering
 open Equations_common
 open EConstr
 open Vars
@@ -101,7 +100,7 @@ let derive_noConfusion_package env sigma polymorphic (ind,u as indu) indid cstNo
   let oblinfo, _, term, ty = Obligations.eterm_obligations env noid sigma 0
       (to_constr ~abort_on_undefined_evars:false sigma term)
       (to_constr sigma ty) in
-    ignore(Obligations.add_definition ~hook:(Obligations.mk_univ_hook hook) packid
+    ignore(Obligations.add_definition ~univ_hook:(Obligations.mk_univ_hook hook) packid
              ~kind ~term ty ~tactic:(noconf_hom_tac ())
               (Evd.evar_universe_context sigma) oblinfo)
 
@@ -137,14 +136,14 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
     mkApp (mkIndU indu, Array.append (Array.map (lift n) paramsvect) rest) 
   in
   let _lenindices = List.length argsctx in
-  let ctxmap = id_subst fullbinders in
+  let ctxmap = Context_map.id_subst fullbinders in
   let constructors = Inductiveops.arities_of_constructors env pi in
   let sigma, sigT = get_fresh sigma coq_sigma in
   let sigma, sigI = get_fresh sigma coq_sigmaI in
   let sigma, eqT = get_fresh sigma logic_eq_type in
   let parampats =
     List.rev_map (fun decl ->
-        Loc.tag (Syntax.PUVar (Name.get_id (get_name decl), true))) ctx
+        DAst.make (Syntax.PUVar (Name.get_id (get_name decl), true))) ctx
   in
   let mk_clause i ty =
     let ty = EConstr.of_constr ty in
@@ -162,6 +161,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
       let name = Namegen.next_ident_away (add_suffix id "0") avoid in
       let avoid = Id.Set.add name avoid in
       let name' = Namegen.next_ident_away (add_suffix id "1") avoid in
+      let avoid = Id.Set.add name' avoid in
       let acc =
         if forced then
           let acc' =
@@ -174,8 +174,8 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
     in
     let (avoid, eqs), user_pats = List.fold_left2_map fn (Id.Set.empty, []) args forced in
     let patl, patr = List.split user_pats in
-    let cstr ps = Syntax.PUCstr ((ind, succ i), params, List.rev_map (fun p -> Loc.tag p) ps) in
-    let lhs = parampats @ [Loc.tag (cstr patl); Loc.tag (cstr patr)] in
+    let cstr ps = Syntax.PUCstr ((ind, succ i), params, List.rev_map (fun p -> DAst.make p) ps) in
+    let lhs = parampats @ [DAst.make (cstr patl); DAst.make (cstr patr)] in
     let rhs =
       match List.rev eqs with
       | [] -> tru
@@ -190,41 +190,55 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
           List.fold_left get_type (ty, mkVar name, mkVar name') eqs
         in mkApp (eqT, [| ty; lhs; rhs |])
     in
-    (loc, lhs, Syntax.Program (Syntax.Constr rhs, []))
+    (loc, lhs, Syntax.Program (Syntax.Constr rhs, ([], [])))
   in
   let clauses = Array.to_list (Array.mapi mk_clause constructors) in
   let hole x = Syntax.PUVar (Id.of_string x, true) in
   let catch_all =
-    let lhs = parampats @ [Loc.tag (hole "x"); Loc.tag (hole "y")] in
-    let rhs = Syntax.Program (Syntax.Constr fls, []) in
+    let lhs = parampats @ [DAst.make (hole "x"); DAst.make (hole "y")] in
+    let rhs = Syntax.Program (Syntax.Constr fls, ([], [])) in
     (None, lhs, rhs)
   in
   let clauses = clauses @ [catch_all] in
   let indid = Nametab.basename_of_global (IndRef ind) in
   let id = add_prefix "NoConfusionHom_" indid in
   let evd = ref sigma in
+  let data =
+    Covering.{
+      rec_info = None;
+      flags = { polymorphic = polymorphic; open_proof = false;
+                with_eqns = false; with_ind = false };
+      fixdecls = [];
+      intenv = Constrintern.empty_internalization_env;
+      notations = []
+    }
+  in
+  let p = Syntax.{program_loc = Loc.make_loc (0,0);
+                  program_id = id;
+                  program_impls = [];
+                  program_rec = None;
+                  program_sign = fullbinders;
+                  program_arity = s}
+  in
   let splitting =
-    Covering.covering
+    Covering.covering ~program_mode:false
       ~check_unused:false (* The catch-all clause might not be needed *)
-      env evd
-      (id, false, Names.Id.Map.empty) clauses [] ctxmap s in
-  let hook split fn terminfo ustate =
-    let proginfo =
-      Splitting.{ program_id = id;
+      env evd p data clauses [] ctxmap [] s in
+  let hook _ p terminfo =
+    let _proginfo =
+      Syntax.{ program_loc = Loc.make_loc (0,0); program_id = id;
         program_sign = fullbinders;
         program_arity = s;
-        program_oarity = s;
-        program_rec_annot = None;
         program_rec = None;
         program_impls = [] }
     in
     let program_cst = match terminfo.Splitting.term_id with ConstRef c -> c | _ -> assert false in
-    let compiled_info = Splitting.{ program_cst; program_split = split;
-                                    program_split_info = terminfo } in
-    let flags = { polymorphic; with_eqns = true; with_ind = true } in
-    let fixprots = [s] in
-    let () = Equations.define_principles flags fixprots [proginfo, compiled_info] in
-    (** The principles are now shown, let's prove this forms an equivalence *)
+    (* let _compiled_info = Splitting.{ program_cst; program_split = p.program_splitting;
+     *                                 program_split_info = terminfo } in
+     * let _flags = { polymorphic; open_proof = false; with_eqns = true; with_ind = true } in
+     * let _fixprots = [s] in *)
+    (* let () = Equations.define_principles flags None fixprots [proginfo, compiled_info] in *)
+    (* The principles are now shown, let's prove this forms an equivalence *)
     Global.set_strategy (ConstKey program_cst) Conv_oracle.transparent;
     let env = Global.env () in
     let sigma = Evd.from_env env in
@@ -232,9 +246,8 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
     let indu = destInd sigma indu in
     derive_noConfusion_package (Global.env ()) sigma0 polymorphic indu indid program_cst
  in
-  Splitting.define_tree None [] polymorphic [] (Evar_kinds.Define false) evd env
-                (id, fullbinders, s)
-                None splitting hook
+ let prog = Splitting.make_single_program env evd data.Covering.flags p ctxmap splitting None in
+ Splitting.define_programs env evd None [] data.Covering.flags [prog] hook
 
 
 let () =

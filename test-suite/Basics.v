@@ -1,13 +1,13 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
 Require Import Program Bvector List Relations.
-From Equations Require Import Equations Signature.
+From Equations Require Import Equations Telescopes Signature.
 Require Import Utf8.
 
 Inductive le : nat -> nat -> Set :=
@@ -22,8 +22,7 @@ congS eq_refl := eq_refl.
 (* antisym (le_S n m p) (le_S ?(m) ?(n) q) := congS (antisym p q). *)
 
 Module TestF.
-
-  Equations(nocomp noind) f (n : nat) : nat :=
+  Equations f (n : nat) : nat :=
   f 0 := 42 ;
   f (S m)  with f m :=
   {
@@ -37,6 +36,7 @@ Instance eqsig {A} (x : A) : Signature (x = x) A :=
     signature_pack e := sigmaI _ x e }.
 
 Set Equations WithK.
+Require Import DepElimK.
 Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
 K x P p eq_refl := p.
 Unset Equations WithK.
@@ -47,6 +47,7 @@ eq_sym x _ eq_refl := eq_refl.
 Equations eq_trans {A} (x y z : A) (p : x = y) (q : y = z) : x = z :=
 eq_trans x _ _ eq_refl eq_refl := eq_refl.
 
+Declare Scope vect_scope.
 Notation " x |:| y " := (@Vector.cons _ x _ y) (at level 20, right associativity) : vect_scope.
 Notation " x |: n :| y " := (@Vector.cons _ x n y) (at level 20, right associativity) : vect_scope.
 (* Notation " [[ x .. y ]] " := (Vector.cons x .. (Vector.cons y Vector.nil) ..) : vect_scope. *)
@@ -57,7 +58,7 @@ Section FilterDef.
 
   Equations filter (l : list A) : list A :=
   filter List.nil := List.nil ;
-  filter (List.cons a l) <= p a => {
+  filter (List.cons a l) with p a => {
                          | true := a :: filter l ;
                          | false := filter l }.
 
@@ -87,6 +88,8 @@ sublist p (cons x xs) with p x := {
 Ltac rec ::= Subterm.rec_wf_eqns.
 
 (* Derive Subterm for nat.  *)
+Derive Signature for vector.
+Derive NoConfusion NoConfusionHom for vector.
 Derive Subterm for vector.
 
 Require Import Arith Wf_nat.
@@ -97,11 +100,11 @@ Hint Resolve lt_n_Sn : lt.
 
 Ltac solve_rec ::= simpl in * ; cbv zeta ; intros ; 
   try typeclasses eauto with subterm_relation Below lt.
+Unset Implicit Arguments.
 
-Equations testn (n : nat) : nat :=
-testn n by rec n lt :=
+Equations testn (n : nat) : nat by wf n lt :=
 testn 0 := 0 ;
-testn (S n) <= testn n => {
+testn (S n) with testn n => {
   | 0 := S 0 ;
   | (S n') := S n' }.
 
@@ -111,10 +114,12 @@ Arguments Vector.nil {A}.
 Arguments Vector.cons {A} _ {n}.
 
 Local Open Scope vect_scope.
+Reserved Notation "x ++v y" (at level 60).
 
-Equations  vapp' {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
-  vapp' []v w := w ;
-  vapp' (Vector.cons a n v) w := Vector.cons a (vapp' v w).
+Equations vapp' {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
+{ []v ++v w := w ;
+  (Vector.cons a v) ++v w := Vector.cons a (v ++v w) }
+where "x ++v y" := (vapp' x y).
 
 (* Section vapp_def. *)
 (*   Context {A : Type}. *)
@@ -125,18 +130,17 @@ Equations  vapp' {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m) 
 
 (* Print Assumptions vapp'. *)
 
-Derive Signature for vector.
-
 From Equations Require Import EqDec.
 
 Instance vector_eqdec {A n} `(EqDec A) : EqDec (vector A n).
-Proof. intros. intros x. induction x. left. now depelim y.
+Proof.
+  intros. intros x. induction x. left. now depelim y.
   intro y; depelim y.
   destruct (eq_dec h h0); subst. 
   destruct (IHx y). subst.
   left; reflexivity.
-  right. intro. apply n0. injection H0. simpdep. reflexivity.
-  right. intro. apply n0. injection H0. simpdep. reflexivity.
+  right. intro. noconf H0. contradiction.
+  right. intro. noconf H0. contradiction.
 Defined.
 
 (* Print Assumptions well_founded_vector_direct_subterm. *)
@@ -146,19 +150,19 @@ Defined.
 
 Definition vector_subterm A := t_subterm A.
 
-Instance well_founded_vector_direct_subterm' :
-  forall A : Type, EqDec A -> WellFounded (vector_subterm A) | 0.
-Proof.   intros. 
-  apply Transitive_Closure.wf_clos_trans.
-  intro. simp_sigmas. induction a.
-  constructor; intros.
-  simp_sigmas. simpl in *. 
-  depelim H.
-  constructor; intros.
-  simp_sigmas. depelim H. 
-  assumption.
-Defined.
-Print Assumptions well_founded_vector_direct_subterm'.
+(* Instance well_founded_vector_direct_subterm' : *)
+(*   forall A : Type, EqDec A -> WellFounded (vector_subterm A) | 0. *)
+(* Proof.   intros.  *)
+(*   apply Transitive_Closure.wf_clos_trans. *)
+(*   intro. simp_sigmas. induction a. *)
+(*   constructor; intros. *)
+(*   simp_sigmas. simpl in *.  *)
+(*   depelim H. *)
+(*   constructor; intros. *)
+(*   simp_sigmas. depelim H.  *)
+(*   assumption. *)
+(* Defined. *)
+(* Print Assumptions well_founded_vector_direct_subterm'. *)
 
 Instance eqdep_prod A B `(EqDec A) `(EqDec B) : EqDec (prod A B).
 Proof. intros. intros x y. decide equality. Defined.
@@ -171,19 +175,20 @@ Import Vector.
 (*   Context {A B} `{EqDec A} `{EqDec B}. *)
 
 (*   Equations unzip_dec {n} (v : vector (A * B) n) : vector A n * vector B n := *)
-(*   unzip_dec n v by rec v (@vector_subterm (A * B)) := *)
+(*   unzip_dec n v by wf v (@vector_subterm (A * B)) := *)
 (*   unzip_dec ?(O) nil := ([]v, []v) ; *)
 (*   unzip_dec ?(S n) (cons (pair x y) n v) with unzip_dec v := { *)
 (*      | pair xs ys := (cons x xs, cons y ys) }. *)
 (* End unzip_dec_def. *)
 Section foo.
-  Context {A B} `{EqDec A} `{EqDec B}.
-
-  Equations unzip_dec {n} (v : vector (A * B) n) : vector A n * vector B n :=
-  unzip_dec v by rec (signature_pack v) (@vector_subterm (A * B)) :=
-  unzip_dec nil := ([]v, []v) ;
-  unzip_dec (cons (pair x y) n v) with unzip_dec v := {
+  Context {A B : Type}.
+  Equations unzipv {n} (v : vector (A * B) n) : vector A n * vector B n
+   by wf (signature_pack v) (@vector_subterm (A * B)) :=
+  unzipv []v := ([]v, []v) ;
+  unzipv ((x, y) |:| v) with unzipv v := {
     | pair xs ys := (cons x xs, cons y ys) }.
+  Next Obligation. clear. constructor. constructor. Defined.
+    (* Proof. clear. intros. constructor. constructor. Defined. *)
 End foo.
 
 Typeclasses Transparent vector_subterm.
@@ -191,7 +196,7 @@ Typeclasses Transparent vector_subterm.
 (** Due to the packing of all arguments, can only be done in sections right now so
  that A and B are treated as parameters (better computational behavior anyway) *)
 (* Equations unzip {A B} {n} (v : vector (A * B) n) : vector A n * vector B n := *)
-(* unzip v by rec (signature_pack v) (@vector_subterm (A * B)) := *)
+(* unzip v by wf (signature_pack v) (@vector_subterm (A * B)) := *)
 (* unzip nil := (nil, nil) ; *)
 (* unzip (cons (pair x y) n v) <= unzip v => { *)
 (*   | (pair xs ys) := (cons x xs, cons y ys) }. *)
@@ -210,20 +215,16 @@ unzip_n A B (S n) (cons (pair x y) n v) with unzip_n v := {
 (* Lemma nos_with (n : nat) : nos_with_comp n. *)
 (*   rec_wf_eqns nos n. *)
 
-Equations nos_with (n : nat) : nat :=
-nos_with n by rec n :=
+Equations nos_with (n : nat) : nat by wf n :=
 nos_with O := O ;
 nos_with (S m) with nos_with m := {
   | O := S O ;
   | S n' := O }.
 
-(* Hint Unfold noConfusion_nat : equations. *)
-
-Obligation Tactic := program_simpl ; auto with arith.
 
 Equations equal (n m : nat) : { n = m } + { n <> m } :=
 equal O O := in_left ;
-equal (S n) (S m) <= equal n m => {
+equal (S n) (S m) with equal n m => {
   equal (S n) (S ?(n)) (left eq_refl) := left eq_refl ;
   equal (S n) (S m) (right p) := in_right } ;
 equal x y := in_right.
@@ -231,7 +232,7 @@ equal x y := in_right.
 Import List.
 Equations app_with {A} (l l' : list A) : list A :=
 app_with nil l := l ;
-app_with (cons a v) l <= app_with v l => {
+app_with (cons a v) l with app_with v l => {
   | vl := cons a vl }.
 
 (* Print Assumptions app_with. *)
@@ -287,15 +288,16 @@ rev (cons a v) := rev v +++ (cons a nil).
 
 Notation " [] " := List.nil.
 
+
 Lemma app'_nil : forall {A} (l : list A), l +++ [] = l.
 Proof.
-  intros. Opaque app'.
-  funelim (app' l []). reflexivity.
+  intros.
+  funelim (app' l []); auto.
   now rewrite H.
 Qed.
 
 Lemma app'_assoc : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l (app' l' l'').
-Proof. intros. Opaque app'. revert l''.
+Proof. intros. revert l''.
   funelim (l +++ l'); intros; simp app'. 
   rewrite H. reflexivity.
 Qed.
@@ -337,18 +339,18 @@ Import Vector.
 
 Equations vector_append_one {A n} (v : vector A n) (a : A) : vector A (S n) :=
 vector_append_one nil a := cons a nil;
-vector_append_one (cons a' n v) a := cons a' (vector_append_one v a).
+vector_append_one (cons a' v) a := cons a' (vector_append_one v a).
 
 Equations vrev {A n} (v : vector A n) : vector A n :=
 vrev nil := nil;
-vrev (cons a n v) := vector_append_one (vrev v) a.
+vrev (cons a v) := vector_append_one (vrev v) a.
 
 Definition cast_vector {A n m} (v : vector A n) (H : n = m) : vector A m.
 intros; subst; assumption. Defined.
 
 Equations vrev_acc {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
 vrev_acc nil w := w;
-vrev_acc (cons a n v) w := cast_vector (vrev_acc v (cons a w)) _.
+vrev_acc (cons a v) w := cast_vector (vrev_acc v (cons a w)) _.
 (* About vapp'. *)
 
 Record vect {A} := mkVect { vect_len : nat; vect_vector : vector A vect_len }.
@@ -363,10 +365,10 @@ Arguments Split [ X ].
 (* Eval compute in @app'. *)
 (* About nil. About vector. *)
 
-Equations split {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
-split {m:=m} xs by rec m :=
-split {m:=O} xs := append nil xs ;
-split {m:=(S m)} {n:=n} (cons x ?(m + n) xs) <= split xs => {
+Equations split {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs
+  by wf m :=
+split (m:=O) xs := append nil xs ;
+split (m:=(S m)) (n:=n) (cons x xs) with split xs => {
   | append xs' ys' := append (cons x xs') ys' }.
 
 Lemma split_vapp' : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
@@ -374,7 +376,7 @@ Lemma split_vapp' : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
     v = v' /\ w = w'.
 Proof.
   intros.
-  funelim (vapp' v w).
+  funelim (vapp' v w). simpl.
   destruct split. depelim xs; intuition.
   simp split in *. destruct split. simpl.
   intuition congruence.
@@ -385,34 +387,33 @@ Qed.
 Require Import Bvector.
 
 Equations  split_struct {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
-split_struct {m:=0} xs := append nil xs ;
-split_struct {m:=(S m)} (cons x _ xs) <= split_struct xs => {
-  split_struct {m:=(S m)} (cons x _ xs) (append xs' ys') := append (cons x xs') ys' }.
+split_struct (m:=0) xs := append nil xs ;
+split_struct (m:=(S m)) (cons x xs) with split_struct xs => {
+  split_struct (m:=(S m)) (cons x xs) (append xs' ys') := append (cons x xs') ys' }.
 
 Lemma split_struct_vapp : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
   let 'append v' w' := split_struct (vapp' v w) in
     v = v' /\ w = w'.
 Proof.
   intros. funelim (vapp' v w); simp split_struct in *. 
-  destruct (split_struct (m:=0) w). depelim xs; intuition.
-  destruct (split_struct (vapp' t0 w)); simpl.
+  destruct (split_struct (m:=0) w0). depelim xs; intuition.
+  destruct (split_struct (vapp' t0 w0)); simpl.
   intuition congruence.
 Qed.
 
 Equations vhead {A n} (v : vector A (S n)) : A := 
-vhead (cons a n v) := a.
+vhead (cons a v) := a.
 
 Equations vmap' {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
 vmap' f nil := nil ;
-vmap' f (cons a n v) := cons (f a) (vmap' f v).
+vmap' f (cons a v) := cons (f a) (vmap' f v).
 
 Hint Resolve lt_n_Sn : subterm_relation.
 
-Set Shrink Obligations.
-Equations vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
-vmap f {n:=n} v by rec n :=
-vmap f {n:=?(O)} nil := nil ;
-vmap f {n:=?(S n)} (cons a n v) := cons (f a) (vmap f v).
+Equations vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n
+  by wf n :=
+vmap f nil := nil ;
+vmap f (cons a v) := cons (f a) (vmap f v).
 
 Transparent vmap.
 
@@ -474,31 +475,12 @@ bla baz := false.
 Lemma eq_trans_eq A x : @eq_trans A x x x eq_refl eq_refl = eq_refl.
 Proof. reflexivity. Qed.
 
-(* Equations vlast {A} {n} (v : vector A (S n)) : A := *)
-(* vlast A O (cons a ?(O) Vnil) := a ; *)
-(* vlast A (S n) (cons a ?(S n) v) := vlast v. *)
+Equations vlast {A} {n} (v : vector A (S n)) : A by struct v :=
+vlast (cons a (n:=O) nil) := a ;
+vlast (cons a (n:=S n) v) := vlast v.
 
-Ltac generalize_by_eqs id ::= generalize_eqs id.
-Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars id.
-
-Equations vlast' {A} {n} (v : vector A (S n)) : A :=
-vlast' (cons a O Vnil) := a ;
-vlast' (cons a (S n) v) := vlast' v.
-
-Require Import DepElimDec.
-Ltac generalize_by_eqs id ::= generalize_eqs_sig id.
-Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars_sig id.
-
-Ltac fix_block tac :=
-  match goal with
-    [ |- ?T ] => tac ; on_last_hyp ltac:(fun id => change (fix_proto T) in id)
-  end.
-
-(* Equations  vliat {A} {n} (v : vector A (S n)) : vector A n := *)
-(* vliat A ?(O) (cons a O Vnil) := Vnil ; *)
-(* vliat A ?(S n) (cons a n v) := cons a (vliat v). *)
-
-(* Eval compute in (vliat (cons 2 (cons 5 (cons 4 Vnil)))). *)
+Transparent vlast.
+Definition testvlast : 4 = (vlast (cons 2 (cons 5 (cons 4 nil)))) := eq_refl.
 
 Fixpoint vapp {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
   match v with
@@ -506,9 +488,7 @@ Fixpoint vapp {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
     | cons a v' => cons a (vapp v' w)
   end.
 
-Lemma JMeq_cons_inj A n m a (x : vector A n) (y : vector A m) : n = m -> JMeq x y -> JMeq (cons a x) (cons a y).
-Proof. simplify_dep_elim. reflexivity. Qed.
-  
+
 (* Eval compute in (split (vapp Vnil (cons 2 Vnil))). *)
 (* Eval compute in (split (vapp (cons 3 Vnil) (cons 2 Vnil))). *)
 
@@ -533,43 +513,39 @@ Definition cast {A B : Type} (a : A) (p : A = B) : B.
   intros. subst. exact a.
 Defined.
 
-Unset Shrink Obligations.
 Equations parity (n : nat) : Parity n :=
 parity O := even 0 ;
-parity (S n) <= parity n => {
+parity (S n) with parity n => {
   parity (S ?(mult 2 k))     (even k) := odd k ;
   parity (S ?(S (mult 2 k))) (odd k)  := cast (even (S k)) _ }.
 
 Equations half (n : nat) : nat :=
-half n <= parity n => {
+half n with parity n => {
   half ?(S (mult 2 k)) (odd k) := k ;
   half ?(mult 2 k) (even k) := k }.
 
 Equations vtail {A n} (v : vector A (S n)) : vector A n :=
-vtail (cons a n v') := v'.
-
-Ltac generalize_by_eqs id ::= generalize_eqs id.
-Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars id.
+vtail (cons a v') := v'.
 
 (** Well-founded recursion: note that it's polymorphic recursion in a sense:
     the type of vectors change at each recursive call. It does not follow
     a canonical elimination principle in this nested case. *)
 
-Equations diag {A n} (v : vector (vector A n) n) : vector A n :=
-diag v by rec n lt :=
+Equations diag {A n} (v : vector (vector A n) n) : vector A n
+ by wf n lt :=
 diag nil := nil ;
-diag (cons (cons a n v) _ v') := cons a (diag (vmap vtail v')).
+diag (cons (cons a v) v') := cons a (diag (vmap vtail v')).
 
 (** The computational content is the right one here: only the vector is
     matched relevantly, not its indices, which could hence
     disappear. *)
 
-Extraction diag.
+(* Extraction diag. *)
 
 (** It can be done structurally as well but we're matching on the index now. *)
-Equations(struct n) diag_struct {A n} (v : vector (vector A n) n) : vector A n :=
-diag_struct {n:=O} nil := nil ;
-diag_struct {n:=(S ?(n))} (cons (cons a n v) _ v') := cons a (diag_struct (vmap vtail v')).
+Equations diag_struct {A n} (v : vector (vector A n) n) : vector A n :=
+diag_struct (n:=O) nil := nil ;
+diag_struct (n:=(S _)) (cons (cons a v) v') := cons a (diag_struct (vmap vtail v')).
 
 Definition mat A n m := vector (vector A m) n.
 
@@ -579,11 +555,11 @@ vmake (S n) a := cons a (vmake n a).
 
 Equations vfold_right {A : nat -> Type} {B} (f : ∀ n, B -> A n -> A (S n)) (e : A 0) {n} (v : vector B n) : A n :=
 vfold_right f e nil := e ;
-vfold_right f e (cons a n v) := f n a (vfold_right f e v).
+vfold_right f e (cons a v) := f _ a (vfold_right f e v).
 
 Equations vzip {A B C n} (f : A -> B -> C) (v : vector A n) (w : vector B n) : vector C n :=
 vzip f nil _ := nil ;
-vzip f (cons a _ v) (cons a' n v') := cons (f a a') (vzip f v v').
+vzip f (cons a v) (cons a' v') := cons (f a a') (vzip f v v').
 
 Definition transpose {A m n} : mat A m n -> mat A n m :=
   vfold_right (A:=λ m, mat A n m)
@@ -618,5 +594,5 @@ Qed.
 
 Equations assoc (x y z : nat) : x + y + z = x + (y + z) :=
 assoc 0 y z := eq_refl;
-assoc (S x) y z <= assoc x y z, x + (y + z) => {
+assoc (S x) y z with assoc x y z, x + (y + z) => {
 assoc (S x) y z eq_refl _ := eq_refl }.

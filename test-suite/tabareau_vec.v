@@ -13,7 +13,7 @@ Arguments S {_} _.
 Inductive Vec E (A : Set) : ℕ E -> Set :=
   nil  : Vec E A O
 | cons : forall {n} (x : A) (xs : Vec E A n), Vec E A (S n).
-Derive NoConfusion NoConfusionHom for Vec.
+Derive Signature NoConfusion NoConfusionHom for Vec.
 
 Arguments nil {_ _}.
 Arguments cons {_ _ _} _ _.
@@ -29,7 +29,7 @@ Equations param_vector_vcons E (A : Set) (a : A) (n : ℕ E) (v : Vec E A n)
           (X : vector_param E A (S n) (cons a v)) : vector_param E A n v :=
   param_vector_vcons E A _ _ _  (vcons_param _ _ _ X) := X.
 
-Check param_vector_vcons_elim :
+Definition foo := param_vector_vcons_elim :
   forall
     P : forall (E A : Set) (a : A) (n : ℕ E) (v : Vec E A n),
       vector_param E A (S n) (cons a v) -> vector_param E A n v -> Prop,
@@ -39,3 +39,5 @@ Check param_vector_vcons_elim :
 
     forall (E A : Set) (a : A) (n : ℕ E) (v : Vec E A n) (X : vector_param E A (S n) (cons a v)),
       P E A a n v X (param_vector_vcons E A a n v X).
+
+(* Print Assumptions param_vector_vcons. *)

@@ -1,14 +1,12 @@
 From Equations Require Import Init DepElim FunctionalInduction Classes.
+From Coq Require Import CRelationClasses Relations.
 
 (** Naturals *)
 Register Init.Datatypes.O as equations.nat.zero.
 Register Init.Datatypes.S as equations.nat.succ.
 Register Init.Datatypes.nat as equations.nat.type.
 
-(** Heterogeneous equality *)
-Register Logic.JMeq.JMeq as equations.JMeq.type.
-Register Logic.JMeq.JMeq_refl as equations.JMeq.refl.
-
+(* Sigma Types *)
 Register Equations.Init.sigma as equations.sigma.type.
 Register Equations.Init.sigmaI as equations.sigma.intro.
 Register Equations.Init.pr1 as equations.sigma.pr1.
@@ -80,6 +78,7 @@ Register Equations.DepElim.opaque_ind_pack_Id_inv as equations.depelim.opaque_in
 
 Register Equations.DepElim.Id_simplification_sigma1 as equations.depelim.simpl_sigma.
 Register Equations.DepElim.Id_simplification_sigma1_dep as equations.depelim.simpl_sigma_dep.
+Register Equations.DepElim.Id_simplification_sigma1_nondep_dep as equations.depelim.simpl_sigma_nondep_dep.
 Register Equations.DepElim.Id_simplification_sigma1_dep_dep as equations.depelim.simpl_sigma_dep_dep.
 Register Equations.DepElim.pack_sigma_Id as equations.depelim.pack_sigma_eq.
 (* Register Equations.DepElim.Id_simplification_K as equations.depelim.simpl_K. *)

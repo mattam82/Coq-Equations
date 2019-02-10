@@ -17,10 +17,10 @@
   2016-2017. If running this interactively you can ignore the printing
   and hide directives which are just used to instruct coqdoc. *)
 (* begin hide *)
+Require Import Program.Basics Program.Tactics.
 Require Import Equations.Equations.
 From Equations Require Import DepElimDec.
 Require Import ZArith.
-Require Import Program.
 Require Import Psatz.
 Require Import NPeano.
 Require Import Nat.
@@ -36,7 +36,7 @@ Proof.
   destruct b. destruct p, q. reflexivity.
   destruct p.
 Defined.
-Hint Resolve Is_true_irrel.
+Hint Resolve Is_true_irrel : core.
 Check Zpos.
 Check Zneg.
 Check positive.
@@ -127,26 +127,18 @@ Derive Signature NoConfusion NoConfusionHom Subterm for mono.
 (** Our first interesting definition computes the coefficient in [Z] by which
     a monomial [m] is multiplied in a polynomial [p]. *)
 
-(* Equations get_coef {n} (m : mono n) {b} (p : poly b n) : Z *)
-(*  := get_coef m p by rec (pack m) mono_subterm := *)
-(* get_coef mono_z     poly_z       := 0%Z; *)
-(* get_coef mono_z     (poly_c z _) := z; *)
-(* get_coef (mono_l m) (poly_l p)   := get_coef m p; *)
-(* get_coef (mono_l m) (poly_s p _) := get_coef m p; *)
-(* get_coef (mono_s m) (poly_l _)   := 0%Z; *)
-(* get_coef (mono_s m) (poly_s p1 p2) := get_coef m p2. *)
-
-Equations get_coef {n} (m : mono n) {b} (p : poly b n) : Z :=
+Equations? get_coef {n} (m : mono n) {b} (p : poly b n) : Z by wf (pack m) mono_subterm :=
 get_coef mono_z     poly_z       := 0%Z;
 get_coef mono_z     (poly_c z _) := z;
 get_coef (mono_l m) (poly_l p)   := get_coef m p;
 get_coef (mono_l m) (poly_s p _) := get_coef m p;
 get_coef (mono_s m) (poly_l _)   := 0%Z;
 get_coef (mono_s m) (poly_s p1 p2) := get_coef m p2.
+Proof. all:repeat constructor. Defined.
 
 (** The definition can be done using either the usual structural
   recursion of [Coq] or well-founded recursion. If we use structural
-  recursion however, the guardness check will not be able to verify the
+  recursion, the guardness check might not be able to verify the
   automatically generated proof that the function respects its graph, as
   it involves too much rewriting due to dependent pattern-matching. We
   could prove it using a dependent induction instead of using the raw
@@ -212,7 +204,7 @@ induction p1 as [ | z Hz | n b p1 | n b p1 IHp q1 IHq ]
 [dependent elimination p2 as [poly_z | poly_c z i] |
  dependent elimination p2 as [poly_z | poly_c z i] |
  dependent elimination p2 as
-     [poly_l n b' p2 | poly_s n b' p2 q2] ..].
+     [@poly_l n b' p2 | @poly_s n b' p2 q2] ..].
   all:(intros; try rename n0 into n; auto;
       try (specialize (Hcoef mono_z); simp get_coef in Hcoef; subst z;
            (elim i || elim Hz ||
@@ -268,20 +260,11 @@ Qed.
 Equations eval {n} {b} (p : poly b n) (v : Vector.t Z n) : Z :=
   eval poly_z         nil           := 0%Z;
   eval (poly_c z _)   nil           := z;
-  eval (poly_l p)     (cons _ _ xs)   := eval p xs;
-  eval (poly_s p1 p2) (cons y _ ys) :=
+  eval (poly_l p)     (cons _ xs)   := eval p xs;
+  eval (poly_s p1 p2) (cons y ys) :=
     (eval p1 ys + y * eval p2 (cons y ys))%Z.
 
-(* Equations eval {n} {b} (p : poly b n) (v : Vector.t Z n) : Z *)
-(*   := eval p v by rec (pack p) poly_subterm := *)
-(*   eval poly_z         nil           := 0%Z; *)
-(*   eval (poly_c z _)   nil           := z; *)
-(*   eval (poly_l p)     (cons _ _ xs)   := eval p xs; *)
-(*   eval (poly_s p1 p2) (cons y _ ys) := *)
-(*     (eval p1 ys + y * eval p2 (cons y ys))%Z. *)
-
-(** Again we are using well-founded recursion on [p] using the subterm
-    order. It is quite clear that two equal polynomials should have the
+(** It is quite clear that two equal polynomials should have the
     same value for any valuation. To show this, we first need to prove
     that evaluating a null polynomial always computes to [0], whichever
     valuation is used. *)
@@ -360,8 +343,7 @@ Equations plus {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) : { b : bool & po
   plus poly_z        poly_z          := apoly poly_z;
   plus poly_z        (poly_c y ny)   := apoly (poly_c y ny);
   plus (poly_c x nx) poly_z          := apoly (poly_c x nx);
-  plus (poly_c x nx) (poly_c y ny)
-      <= (x + y)%Z => {
+  plus (poly_c x nx) (poly_c y ny)   with (x + y)%Z => {
                  | Z0 => apoly poly_z ;
                  | Zpos z' => apoly (poly_c (Zpos z') I) ;
                  | Zneg z' => apoly (poly_c (Zneg z') I) };
@@ -369,21 +351,9 @@ Equations plus {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) : { b : bool & po
   plus (poly_l p1)    (poly_s p2 q2) := apoly (poly_s (plus p1 p2).2 q2);
   plus (poly_s p1 q1) (poly_l p2)    := apoly (poly_s (plus p1 p2).2 q1);
 
-  plus (poly_s p1 q1) (poly_s p2 q2)
-     <= plus q1 q2 => {
-       | (existT false q3) => apoly (poly_s (plus p1 p2).2 q3);
-       | (existT true _)   => apoly (poly_l (plus p1 p2).2) }.
-
-(* (** The induction principle cannot be defined using a raw fixpoint, the guard condition fails. *)
-(*     However, as deep pattern-matching is not necessary, simple (dependent) induction can be used *)
-(*     instead *) *)
-
-(*   Next Obligation. *)
-(*     depind p1; depelim p2; simp plus. *)
-(*     constructor. destruct (z + z0)%Z; simp plus. *)
-(*     constructor. auto. set (foo:=plus p1_2 p2_2). depelim foo. depelim x. *)
-(*     simp plus. simp plus. *)
-(*   Defined. *)
+  plus (poly_s p1 q1) (poly_s p2 q2) with plus q1 q2 => {
+       | (false ; q3) => apoly (poly_s (plus p1 p2).2 q3);
+       | (true  ; _)  => apoly (poly_l (plus p1 p2).2) }.
 
 (** The functional elimination principle can be derived all the same
     for [plus], allowing us to make quick work of the proof that it
@@ -393,7 +363,8 @@ Lemma plus_eval : forall {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n) v,
     (eval p1 v + eval p2 v)%Z = eval (plus p1 p2).2 v.
 Proof with (simp plus eval; auto with zarith).
   Ltac X := (simp plus eval; auto with zarith).
-    intros until p2. funelim (plus p1 p2); intros; depelim v; X; try rewrite <- H; X.
+    intros until p2.
+    let f := constr:(fun_elim (f:=@plus)) in apply f; intros; depelim v; X; try rewrite <- H; X.
   - rewrite Heq in Hind.
     specialize (Hind (Vector.cons h v)).
     rewrite poly_z_eval in Hind. nia.
@@ -482,8 +453,8 @@ Qed.
 
 Equations poly_l_or_s {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 (S n)) :
   {b : bool & poly b (S n)} :=
-poly_l_or_s p1 {b2 := true} p2 := apoly (poly_l p1);
-poly_l_or_s p1 {b2 := false} p2 := apoly (poly_s p1 p2).
+poly_l_or_s p1 (b2 := true) p2 := apoly (poly_l p1);
+poly_l_or_s p1 (b2 := false) p2 := apoly (poly_s p1 p2).
                                         
 Lemma poly_l_or_s_eval : forall {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 (S n)) h v,
     eval (poly_l_or_s p1 p2).2 (Vector.cons h v) =
@@ -512,9 +483,7 @@ Equations mult_s {n} {b2} (p2 : poly b2 (S n))
     poly_l_or_s (m1 _ p2).2
                 (plus (m2 _ (poly_l p2)).2 (mult_s q2 m1 m2).2).2.
 
-(** Finally, the multiplication definition. We use the (noind) option to deal with
-   a bug with the partial applications of the recursive function being passed to
-   [mult_l] and [mult_s], in the structurally recursive case. This relies on the 
+(** Finally, the multiplication definition. This relies on the
    guard condition being able to unfold the definitions of [mult_l] and [mult_s] to
    see that multiplication is well-guarded. *)
 
@@ -527,8 +496,8 @@ Equations mult n b1 (p1 : poly b1 n) b2 (p2 : poly b2 n) : { b : bool & poly b n
       | Zpos z' => apoly (poly_c (Zpos z') I)
       | Zneg z' => apoly (poly_c (Zneg z') I)
     end;
-    mult ?(S n) ?(b) (poly_l n b p1)    b2 q := mult_l q (mult _ _ p1);
-    mult ?(S n) ?(false) (poly_s n b p1 q1) b2 q := mult_s q (mult _ _ p1) (mult _ _ q1).
+    mult ?(S n) ?(b) (@poly_l n b p1)    b2 q := mult_l q (mult _ _ p1);
+    mult ?(S n) ?(false) (@poly_s n b p1 q1) b2 q := mult_s q (mult _ _ p1) (mult _ _ q1).
 Arguments mult {n} {b1} p1 {b2} p2.
 
 (** The proof that multiplication is a morphism for evaluation works as usual by induction,
@@ -587,7 +556,7 @@ Equations eval_formula {A} (v : A -> bool) (f : @formula A) : bool :=
 Definition close_formula : @formula nat -> { n : nat & forall m, m >= n -> @formula (Fin.t m) }.
 Proof.
   intro f; depind f.
-  - apply (existT _ (S a)); intros m p; apply f_var.
+  - unshelve eapply (S a ; _); intros m p; apply f_var.
     apply @Fin.of_nat_lt with (p := a). omega.
   - exact (O ; (fun _ _ => f_const b)).
   - destruct IHf1 as [n1 e1]; destruct IHf2 as [n2 e2].
@@ -753,11 +722,13 @@ Lemma is_reduced_ok : forall {b} {n} (p : poly b n), is_reduced (reduce p).2.
 Proof.
   depind p; try constructor; auto.
   autorewrite with reduce reduce_aux.
-  remember (reduce p2) as P2; destruct P2 as [bP2 P2]; depelim P2; simpl.
+  remember (reduce p2) as P2; destruct P2 as [bP2 P2]; depelim P2.
   destruct b0; simpl. constructor. auto. constructor; auto. depelim IHp2. auto.
-  depelim IHp2. unfold solution_left. simpl. autorewrite with reduce_aux plus. unfold apoly. simpl.
+
+  depelim IHp2. autorewrite with reduce_aux plus. unfold apoly. simpl.
   assert (R := is_reduced_compat_plus _ IHp2_1 _ IHp2_2).
-  remember (plus p q) as P3; destruct P3 as [bP3 P3].
+  remember (plus p q) as P3; destruct P3 as [bP3 P3]. simpl.
+  simpl in *.
   destruct bP3; simpl; constructor; auto.
 Qed.
 

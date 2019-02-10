@@ -1,4 +1,4 @@
-
+Require Import Program.
 From Equations Require Import Equations.
 
 Require Import Coq.Lists.List.
@@ -27,7 +27,7 @@ Definition list_P {a} (a_C : C a) : list a -> bool := existsb P.
 Definition list_C  {a} (a_C : C a) : C (list a) := {| P := list_P a_C |}.
 
 (* Note that *)
-Eval cbn in       fun a C => (P (list_C C)).
+(* Eval cbn in       fun a C => (P (list_C C)). *)
 (* evaluates to:  fun a C  => list_P C *)
 
 
@@ -47,7 +47,7 @@ Fixpoint tree_P2 {a} (a_C : C a) (t : tree a) : bool :=
 
 (* Does not work, using a globally defined record. Why not? *)
 
-Eval compute in (fun f => P (list_C f)).
+(* Eval compute in (fun f => P (list_C f)). *)
 
 Fail Fixpoint tree_P3 {a} (a_C : C a) (t : tree a) : bool :=
     let tree_C := Build_C _ (tree_P3 a_C) in
@@ -71,7 +71,7 @@ Section tree_list.
 
 End tree_list.
 
-Check (fun a (a_C : C a) => eq_refl : tree_list_C a_C = list_C (tree_C a_C)).
+Example check := (fun a (a_C : C a) => eq_refl : tree_list_C a_C = list_C (tree_C a_C)).
 
 End Works.
 
@@ -87,17 +87,12 @@ Section tree_list.
   where list_P3 (l : list (tree a)) : bool := {
   list_P3 l := existsb tree_P3 l }.
 
-  Next Obligation.
-    apply (tree_P3_ind_comb P0 P1); eauto.
-    apply tree_P3_ind_fun.
-  Defined.
-
   Global Instance tree_C : C (tree a) := { P := tree_P3 }.
   Global Instance tree_list_C : C (list (tree a)) := { P := list_P3 }.
 
 End tree_list.
 
-Check (fun a (a_C : C a) => eq_refl : tree_list_C a_C = list_C (tree_C a_C)).
+Example check := (fun a (a_C : C a) => eq_refl : tree_list_C a_C = list_C (tree_C a_C)).
 
 
 
@@ -155,15 +150,10 @@ Module IdealNoSec.
   where list_P3 {a} {a_C : C a} (l : list (tree a)) : bool := {
   list_P3 l := existsb tree_P3 l }.
 
-  Next Obligation.
-    apply (tree_P3_ind_comb P0 P1); eauto.
-    apply tree_P3_ind_fun.
-  Defined.
-
   Instance tree_C {a} (a_C : C a) : C (tree a) := { P := tree_P3 }.
   Instance tree_list_C {a} (a_C : C a) : C (list (tree a)) := { P := list_P3 }.
 
-  Check (fun a (a_C : C a) => eq_refl : tree_list_C a_C = list_C (tree_C a_C)).
+  Example check0 := (fun a (a_C : C a) => eq_refl : tree_list_C a_C = list_C (tree_C a_C)).
 
   Set Firstorder Solver auto.
 

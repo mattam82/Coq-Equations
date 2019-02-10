@@ -5,15 +5,12 @@ cache:
   apt: true
   directories:
   - $HOME/.opam
+  - $HOME/bin
 
 addons:
   apt:
     sources:
     - avsm
-    packages:
-    - opam
-    - aspcud
-    - gcc-multilib
 
 env:
   global:
@@ -25,8 +22,10 @@ env:
   - COQ_VER="dev"
 
 install:
-- opam init -n -j ${NJOBS}
-- opam switch set ${COMPILER} -y
+- curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh > install.sh
+- export PATH=$HOME/bin:$PATH
+- which opam || (rm -rf $HOME/.opam; echo $HOME/bin | sudo sh install.sh --no-backup; opam init --disable-sandboxing -j ${NJOBS} --compiler=${COMPILER} -n -y)
+- opam --version
 - opam update
 - eval $(opam config env)
 - opam config list

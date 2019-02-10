@@ -302,4 +302,3 @@ Equations param_fin_finS (n : nat) (f : fin n)
   param_fin_finS _ _ (finS_param f) := f.
 Transparent param_fin_finS.
 Print Assumptions param_fin_finS.
-Set Equations Debug.

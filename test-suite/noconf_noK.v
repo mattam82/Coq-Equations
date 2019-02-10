@@ -309,4 +309,3 @@ Equations param_vector_vcons E (A : Set) (a : A) (n : ℕ E) (v : Vec E A n)
           (X : vector_param E A (S n) (cons a v)) : vector_param E A n v :=
   param_vector_vcons E A _ _ _  (vcons_param _ _ _ X) := X.
 Transparent param_vector_vcons.
-Set Equations Debug.

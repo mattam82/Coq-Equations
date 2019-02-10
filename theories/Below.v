@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -11,7 +11,6 @@
 
 Require Import Bvector.
 Require Import Vectors.Vector.
-Require Import Coq.Program.Program.
 Require Export Equations.Init Equations.DepElim Equations.Constants.
 
 (** The [BelowPackage] class provides the definition of a [Below] predicate for some datatype,
@@ -35,8 +34,6 @@ Create HintDb Below discriminated.
    and the hypothesis. *)
 
 Hint Extern 0 (_ = _) => reflexivity : Below.
-Hint Extern 0 (_ ~= _) => reflexivity : Below.
-(* Hint Extern 3 => progress simpl : Below. *)
 
 (** Use it as well as the [equations] simplifications. *)
 
@@ -58,11 +55,8 @@ Hint Extern 2 => progress (autorewrite with Below in * ;
 
 Ltac apply_fix_proto := 
   match goal with
-    [ f : fix_proto _ |- _ ] => unfold fix_proto in f ; apply f (*  ; guarded  *)
   | [ f : let _ := fixproto in _ |- _ ] => apply f
   end.
-
-Hint Opaque fix_proto : Below.
 
 Hint Extern 100 => apply_fix_proto : Below.
 
@@ -82,10 +76,14 @@ Import Vector.
 Arguments nil {A}.
 Arguments cons {A} _ {n}.
 
-Equations(nocomp noind) Below_vector A (P : forall n, vector A n -> Type) n (v : vector A n) : Type :=
-Below_vector A P ?(0) nil := unit ;
-Below_vector A P ?(S n) (cons a n v) := 
-  ((P n v) * Below_vector A P n v)%type.
+Open Scope equations_scope.
+Import Inaccessible_Notations.
+
+Equations Below_vector A (P : forall n, vector A n -> Type) n (v : vector A n) : Type
+  by struct v :=
+Below_vector A P ?(0) [] := unit ;
+Below_vector A P _ (a :: v) :=
+  ((P _ v) * Below_vector A P _ v)%type.
 
 Hint Rewrite Below_vector_equation_2 : Below.
 
@@ -109,7 +107,7 @@ Hint Rewrite Below_vector_equation_2 : Below.
 
 (* Hint Unfold rec_nat rec_vector : Recursors. *)
 
-Hint Extern 4 => progress (unfold hide_pattern in *) : Below.
+(* Hint Extern 4 => progress (unfold hide_pattern in * ) : Below. *)
 
 Ltac add_pattern t :=
   match goal with

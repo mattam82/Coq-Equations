@@ -137,7 +137,7 @@ Hint Resolve size_ii_open_rec_lt : Below.
 Hint Extern 3 => progress auto with arith : Below.
 (*
 Equations infer_sort (ie : env) (i : index) : option sort :=
-infer_sort ie i by rec i (MR lt index_size) := (** Need to strengthen the subst *)
+infer_sort ie i by wf i (MR lt index_size) := (** Need to strengthen the subst *)
 infer_sort ie (IBVar x) := None ;
 infer_sort ie (IFVar x) := get x ie;
 infer_sort ie Z := Some N;
@@ -158,23 +158,25 @@ infer_sort ie (IApp i1 i2) <= infer_sort ie i1 => {
 (* BUG! not general enough, need to inverse the order of arguments so that ie can change 
   at recursive calls.
  *)
-Equations infer_sort (i : index)  (ie : env) : option sort :=
-infer_sort i ie by rec i (MR lt index_size) :=
+Obligation Tactic := program_simpl; try typeclasses eauto 10 with Below subterm_relation.
+
+Equations infer_sort (i : index) (ie : env) : option sort
+ by wf i (MR lt index_size) :=
 infer_sort (IBVar x) ie := None ;
 infer_sort (IFVar x) ie := get x ie;
 infer_sort Z ie := Some N;
-infer_sort (Plus1 i) ie <= infer_sort i ie => {
+infer_sort (Plus1 i) ie with infer_sort i ie => {
                      | Some N := Some N;
                      | _ := None };
-infer_sort (IAbs s i) ie <= let x := (var_gen (dom ie \u ifv i)) in 
+infer_sort (IAbs s i) ie with let x := (var_gen (dom ie \u ifv i)) in
                             infer_sort (ii_open_var i x)  ((x, s) :: ie)  => {
   infer_sort (IAbs s i) ie (Some s2) := Some (ArrowS s s2) ;
   infer_sort _ _ _ := None } ;
-infer_sort (IApp i1 i2) ie <= infer_sort i1 ie => {
-infer_sort (IApp i1 i2) ie (Some (ArrowS s1 s2)) <= infer_sort i2 ie =>
+infer_sort (IApp i1 i2) ie with infer_sort i1 ie := {
+infer_sort (IApp i1 i2) ie (Some (ArrowS s1 s2)) with infer_sort i2 ie :=
   { | None := None;
-    | Some s1' <= eq_sort_dec s1 s1' => {
-                 | (left _) := Some s2;
+    | Some s1' with eq_sort_dec s1 s1' := {
+                 | (left Heq) := Some s2;
                  | (right _) := None } };
 infer_sort (IApp i1 i2) ie _ := None }.
 
@@ -190,6 +192,6 @@ Proof.
   - now constructor.
   - specialize (Hind _ Heq). now constructor.
   - specialize (Hind _ Heq). now constructor.  
-  - pose proof (Hind _ Heq0). pose proof (Hind0 _ Heq1).
+  - pose proof (Hind _ Heq0). pose proof (Hind0 _ Heq1). subst s.
     econstructor; eauto.
 Qed.

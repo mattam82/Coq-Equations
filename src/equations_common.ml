@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -36,18 +36,9 @@ let to_peuniverses (x, u) = (x, EConstr.EInstance.make u)
 let from_peuniverses sigma (x, u) = (x, EConstr.EInstance.kind sigma u)
 
 (* Options. *)
-let ocaml_splitting = ref true
 let simplify_withK = ref false
 let simplify_withK_dec = ref false
 let equations_transparent = ref false
-
-let _ = Goptions.declare_bool_option {
-  Goptions.optdepr  = false;
-  Goptions.optname  = "splitting variables in OCaml";
-  Goptions.optkey   = ["Equations"; "OCaml"; "Splitting"];
-  Goptions.optread  = (fun () -> !ocaml_splitting);
-  Goptions.optwrite = (fun b -> ocaml_splitting := b)
-}
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = false;
@@ -87,6 +78,7 @@ let _ = Goptions.declare_bool_option {
 
 type flags = {
   polymorphic : bool;
+  open_proof : bool;
   with_eqns : bool;
   with_ind : bool }  
 
@@ -152,7 +144,9 @@ let array_filter_map f a =
   in Array.of_list l'
 
 let new_global sigma gr =
-  Evarutil.new_global sigma gr
+  try Evarutil.new_global sigma gr
+  with e ->
+    CErrors.anomaly (Pp.str"new_global")
 
 let e_new_global evdref gr =
   let sigma, gr = new_global !evdref gr in
@@ -238,10 +232,6 @@ let fresh_id_in_env avoid id env =
 let fresh_id avoid id gl =
   fresh_id_in_env avoid id (pf_env gl)
 
-
-let coq_heq = (find_global "JMeq.type")
-let coq_heq_refl = (find_global "JMeq.refl")
-
 let coq_fix_proto = (find_global "fixproto")
 
 let compute_sort_family l =
@@ -273,6 +263,23 @@ let logic_wellfounded = (find_global "wellfounded.type")
 let logic_relation = (find_global "relation.type")
 let logic_transitive_closure = (find_global "relation.transitive_closure")
 
+let logic_tele_type = (find_global "tele.type")
+let logic_tele_tip = (find_global "tele.tip")
+let logic_tele_ext = (find_global "tele.ext")
+let logic_tele_interp = (find_global "tele.interp")
+let logic_tele_measure = (find_global "tele.measure")
+let logic_tele_fix = (find_global "tele.fix")
+let logic_tele_fix_functional_type = (find_global "tele.fix_functional_type")
+let logic_tele_fix_unfold = (find_global "tele.fix_unfold")
+let logic_tele_MR = (find_global "tele.MR")
+
+let logic_tele_type_app = (find_global "tele.type_app")
+let logic_tele_forall_type_app = (find_global "tele.forall_type_app")
+let logic_tele_forall_uncurry = (find_global "tele.forall_uncurry")
+let logic_tele_forall = (find_global "tele.forall")
+let logic_tele_forall_pack = (find_global "tele.forall_pack")
+let logic_tele_forall_unpack = (find_global "tele.forall_unpack")
+
 let logic_eqdec_class = (find_global "eqdec.class")
 let logic_eqdec_dec_eq = (find_global "eqdec.dec_eq")
 
@@ -298,7 +305,7 @@ let mkapp env evdref t args =
     mkApp (c, args)
 
 let refresh_universes_strict env evd t = 
-  let evd', t' = Evarsolve.refresh_universes (Some true) env !evd t in
+  let evd', t' = Evarsolve.refresh_universes ~onlyalg:true (Some true) env !evd t in
     evd := evd'; t'
     
 let mkEq env evd t x y = 
@@ -306,13 +313,6 @@ let mkEq env evd t x y =
     
 let mkRefl env evd t x = 
   mkapp env evd logic_eq_refl [| refresh_universes_strict env evd t; x |]
-
-let mkHEq env evd t x u y =
-  mkapp env evd coq_heq [| refresh_universes_strict env evd t; x;
-                           refresh_universes_strict env evd u; y |]
-    
-let mkHRefl env evd t x =
-  mkapp env evd coq_heq_refl [| refresh_universes_strict env evd t; x |]
 
 let dummy_loc = None
 type 'a located = 'a Loc.located
@@ -520,10 +520,11 @@ let rec_tac h h' =
         (qualid_of_string "Equations.Below.rec",
          [tacvar_arg h'; ConstrMayEval (Genredexpr.ConstrTerm h)]))))
 
-let rec_wf_tac h h' rel = 
+let rec_wf_tac h n h' rel =
   TacArg(CAst.(make @@ TacCall(make
     (qualid_of_string "Equations.Subterm.rec_wf_eqns_rel",
     [tacvar_arg h';
+     ConstrMayEval (Genredexpr.ConstrTerm n);
      ConstrMayEval (Genredexpr.ConstrTerm h);
      ConstrMayEval (Genredexpr.ConstrTerm rel)]))))
 
@@ -556,11 +557,17 @@ let reference_of_global c = Nametab.shortest_qualid_of_global Names.Id.Set.empty
 let tacident_arg h =
   Reference (qualid_of_ident h)
 
+let depelim_tac h = tac_of_string "Equations.Init.depelim" [tacident_arg h]
+let do_empty_tac h = tac_of_string "Equations.DepElim.do_empty" [tacident_arg h]
+let depelim_nosimpl_tac h = tac_of_string "Equations.DepElim.depelim_nosimpl" [tacident_arg h]
+let simpl_dep_elim_tac () = tac_of_string "Equations.DepElim.simpl_dep_elim" []
+let depind_tac h = tac_of_string "Equations.DepElim.depind" [tacident_arg h]
+
 let call_tac_on_ref tac c =
   let var = Names.Id.of_string "x" in
   let tac = Locus.ArgArg (dummy_loc, tac) in
   let val_reference = Geninterp.val_tag (Genarg.topwit Stdarg.wit_constr) in
-  (** This is a hack to avoid generating useless universes *)
+  (* This is a hack to avoid generating useless universes *)
   let c = Constr.mkRef (c, Univ.Instance.empty) in
   let c = Geninterp.Val.inject val_reference (EConstr.of_constr c) in
   let ist = Geninterp.{ lfun = Names.Id.Map.add var c Names.Id.Map.empty;
@@ -588,20 +595,6 @@ let impossible_call_tac c =
 (*   let val_tac = Genarg.glbwit Tacarg.wit_tactic in *)
 (*   let c = Genarg.in_gen val_tac tac in *)
 (*   c *)
-
-let depelim_tac h = tac_of_string "Equations.DepElim.depelim"
-  [tacident_arg h]
-
-let do_empty_tac h = tac_of_string "Equations.DepElim.do_empty"
-  [tacident_arg h]
-
-let depelim_nosimpl_tac h = tac_of_string "Equations.DepElim.depelim_nosimpl"
-  [tacident_arg h]
-
-let simpl_dep_elim_tac () = tac_of_string "Equations.DepElim.simpl_dep_elim" []
-
-let depind_tac h = tac_of_string "Equations.DepElim.depind"
-  [tacident_arg h]
 
 open EConstr.Vars
    
@@ -655,6 +648,18 @@ let it_mkProd_or_clean env sigma ty ctx =
 let it_mkLambda_or_subst ty ctx = 
   whd_betalet Evd.empty
     (List.fold_left (fun c d -> mkLambda_or_LetIn d c) ty ctx)
+
+let mkLambda_or_clear_LetIn sigma decl c =
+  let open Context.Rel.Declaration in
+  let (na,body,t) = to_tuple decl in
+  match body with
+  | None -> mkLambda (na, t, c)
+  | Some b ->
+    if noccurn sigma 1 c then subst1 b c
+    else mkLetIn (na, b, t, c)
+
+let it_mkLambda_or_clear_LetIn sigma ty ctx =
+  List.fold_left (fun c d -> mkLambda_or_clear_LetIn sigma d c) ty ctx
 
 let it_mkLambda_or_subst_or_clear sigma ty ctx = 
   (List.fold_left (fun c d -> mkLambda_or_subst_or_clear sigma d c) ty ctx)
@@ -710,7 +715,7 @@ let deps_of_var sigma id env =
 let idset_of_list =
   List.fold_left (fun s x -> Id.Set.add x s) Id.Set.empty
 
-let pr_smart_global f = Pptactic.pr_or_by_notation pr_qualid f
+let pr_smart_global f = Pputils.pr_or_by_notation pr_qualid f
 let string_of_smart_global = function
   | {CAst.v=Constrexpr.AN ref} -> string_of_qualid ref
   | {CAst.v=Constrexpr.ByNotation (s, _)} -> s
@@ -750,7 +755,7 @@ let observe s tac =
          (Proofview.tclTHEN
             (of82 tac)
             (Proofview.numgoals >>= fun gls ->
-             if gls = 0 then (Feedback.msg_debug (str s ++ str "succeeded"); Proofview.tclUNIT ())
+             if gls = 0 then (Feedback.msg_debug (str s ++ str " succeeded"); Proofview.tclUNIT ())
              else
                (of82
                   (fun gls -> Feedback.msg_debug (str "Subgoal: " ++ Printer.pr_goal gls);
@@ -765,6 +770,38 @@ let observe s tac =
                                (str " Pretype error: " ++ Himsg.explain_pretype_error env sigma e)
                             | _ -> CErrors.iprint iexn));
                    Proofview.tclUNIT ())) gls
+
+let observe_new s (tac : unit Proofview.tactic) =
+  let open Proofview.Notations in
+  let open Proofview in
+  if not !debug then tac
+  else
+    Goal.enter (fun gl ->
+        let env = Goal.env gl in
+        let sigma = Goal.sigma gl in
+        Feedback.msg_debug (str"Applying " ++ str s ++ str " on " ++
+                            Printer.pr_named_context_of env sigma ++
+                            str "=================" ++
+                            Printer.pr_econstr_env env sigma (Goal.concl gl));
+        (Proofview.tclORELSE
+         (Proofview.tclTHEN
+            tac
+            (Proofview.numgoals >>= fun gls ->
+             if gls = 0 then (Feedback.msg_debug (str s ++ str " succeeded"); Proofview.tclUNIT ())
+             else
+               (of82
+                  (fun gls -> Feedback.msg_debug (str "Subgoal: " ++ Printer.pr_goal gls);
+                           Evd.{ it = [gls.it]; sigma = gls.sigma }))))
+         (fun iexn -> Feedback.msg_debug
+                        (str"Failed with: " ++
+                           (match fst iexn with
+                            | Refiner.FailError (n,expl) ->
+                               (str" Fail error " ++ int n ++ str " for " ++ str s ++ spc () ++ Lazy.force expl ++
+                                  str " on " ++ Printer.pr_econstr_env env sigma (Goal.concl gl))
+                            | Pretype_errors.PretypeError (env, sigma, e) ->
+                               (str " Pretype error: " ++ Himsg.explain_pretype_error env sigma e)
+                            | _ -> CErrors.iprint iexn));
+                   Proofview.tclUNIT ())))
 
 (** Compat definitions *)
 
@@ -949,6 +986,26 @@ let beta_appvect sigma p args =
 let find_rectype env sigma ty =
   let Inductiveops.IndType (ind, args) = Inductiveops.find_rectype env sigma ty in
   ind, args
+
+let splay_prod_n_assum env sigma n =
+  let rec prodec_rec env n l c =
+    if n = 0 then (l, c)
+    else
+    let t = whd_allnolet env sigma c in
+    match EConstr.kind sigma t with
+    | Prod (x,t,c)  ->
+        prodec_rec (push_rel (LocalAssum (x,t)) env) (pred n)
+          (Context.Rel.add (LocalAssum (x,t)) l) c
+    | LetIn (x,b,t,c) ->
+        prodec_rec (push_rel (LocalDef (x,b,t)) env) (pred n)
+          (Context.Rel.add (LocalDef (x,b,t)) l) c
+    | Cast (c,_,_)    -> prodec_rec env n l c
+    | _               ->
+      let t' = whd_all env sigma t in
+        if EConstr.eq_constr sigma t t' then l,t
+        else prodec_rec env n l t'
+  in
+  prodec_rec env n Context.Rel.empty
 
 type identifier = Names.Id.t
 

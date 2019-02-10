@@ -1,25 +1,28 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 Require Import Program Utf8.
-From Equations Require Import Equations DepElimDec.
+From Equations Require Import Equations Telescopes DepElimDec.
 Require Import Bvector List Relations.
 Require Import Omega Arith Wf_nat.
 Require Import Subterm.
-
+Axiom cheat : forall {A}, A.
 Instance wf_nat : WellFounded lt := lt_wf.
 Hint Resolve lt_n_Sn : Below.
 Module RecRel.
-  Equations id (n : nat) : nat :=
-  id n by rec n lt :=
-  id O := 0 ;
-  id (S n) := S (id n).
-  
+
+  Equations id (n m : nat) : nat
+  by wf n lt :=
+  id O m := m ;
+  id (S n) m := S (id n m).
+
 End RecRel.
+
+(* Extraction RecRel.id. *)
 
 Section Nested.
 
@@ -40,15 +43,12 @@ Section Nested.
   
   Hint Extern 3 => progress auto with arith : Below.
 
-  Equations f (n : nat) : { x : nat | x <= n } :=
-  f n by rec n lt :=
-  f 0 := exist _ 0 _ ;
+  Equations? f (n : nat) : { x : nat | x <= n }
+   by wf n lt :=
+  f 0 :=  exist _ 0 _ ;
   f (S n) := exist _ (proj1_sig (f (proj1_sig (f n)))) _.
-
-  Next Obligation. 
-    unfold f_comp_proj. repeat destruct_proj1_sig.
-    revert H. destruct_proj1_sig.
-    intros. omega.
+  Proof. all:(simpl; intros; try typeclasses eauto with Below).
+         simpl. destruct f. simpl. destruct f. simpl. omega.
   Defined.
 
 End Nested.
@@ -110,25 +110,26 @@ Module RecMeasure.
   Instance wf_MR {A R} `(WellFounded A R) {B} (f : B -> A) : WellFounded (MR R f).
   Proof. red. apply measure_wf. apply H. Defined.
 
+  Obligation Tactic := program_simpl; try typeclasses eauto with Below.
+
   Hint Extern 0 (MR _ _ _ _) => red : Below.
 
-  Equations id (n : nat) : nat :=
-  id n by rec n (MR lt (fun n => n)) :=
+  Equations id (n : nat) : nat
+  by wf n (MR lt (fun n => n)) :=
   id O := 0 ;
   id (S n) := S (id n).
 
-  Equations f (n m : nat) : nat :=
-  f n m by rec n (MR lt (fun n => n)) :=
+  Equations f (n m : nat) : nat
+  by wf n (MR lt (fun n => n)) :=
   f O m := m ;
   f (S n) m := S (f n m) + m.
-
   Arguments length [A] _.
 
-  Equations g (l : list nat) : nat :=
-  g l by rec l (MR lt (@length nat)) :=
+  Equations g (l : list nat) : nat
+  by wf l (MR lt (@length nat)) :=
   g nil := 0 ;
   g (cons n l) := S (g l).
-  
+
   Lemma filter_length {A} p (l : list A) : length (filter p l) <= length l.
   Proof. induction l ; simpl ; auto. destruct (p a); simpl; auto with arith. Qed.
     
@@ -143,8 +144,7 @@ Module RecMeasure.
 
     Context {A : Type} (leb : A -> A -> bool) (ltb : A -> A -> bool).
 
-    Equations qs (l : list A) : list A :=
-    qs l by rec l (MR lt (@length A)) :=
+    Equations qs (l : list A) : list A by wf l (MR lt (@length A)) :=
     qs nil := nil ;
     qs (cons a l) := 
       let lower := filter (fun x => ltb x a) l in
@@ -182,7 +182,7 @@ Module RecMeasure.
     Proof.
       funelim (qs l).
       - simpl. reflexivity.
-      - intros a'. rewrite in_app_iff. simpl.
+      - intros a'. simpl. rewrite in_app_iff. simpl.
         rewrite <- H, <- H0, !filter_In'. intuition auto.
         destruct (compspec a a'); intuition auto. right. right. intuition auto with arith.
         apply ltb_leb. destruct (refl_lt a a'); auto. constructor. contradiction.

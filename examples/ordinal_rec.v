@@ -1,5 +1,5 @@
 From Equations Require Import Equations Fin DepElimDec.
-Add LoadPath "examples".
+(* Add LoadPath "examples". *)
 Require Import ordinals.
 Add Search Blacklist "_obligation_".
 From Equations Require Import TransparentEquations.
@@ -7,6 +7,7 @@ From Equations Require Import TransparentEquations.
 Inductive ho : Set :=
 | base : nat -> ho
 | lim : forall n : nat, (fin n -> ho) -> ho.
+Derive NoConfusion for ho.
 
 Equations lift_fin {n : nat} (f : fin n) : fin (S n) := 
 lift_fin fz := fz;
@@ -22,11 +23,10 @@ horec_struct (lim k f) := maxf k (fun x => horec_struct (f x)).
 
 Derive Subterm for ho.
 
-Equations horec (x : ho) : nat :=
-horec x by rec x ho_subterm :=
+Equations? horec (x : ho) : nat by wf x ho_subterm :=
 horec (base n) := n;
 horec (lim k f) := maxf k (fun x => horec (f x)).
-(* FIXME eliminator too weak here *)
-
+Proof. constructor. constructor. Defined.
 Transparent horec maxf lift_fin horec_struct.
-Eval compute in horec (lim 7 (fun fs => base (fog fs))).
+
+Definition horec_test : horec (lim 7 (fun fs => base (fog fs))) = 6 := eq_refl.

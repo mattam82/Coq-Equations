@@ -18,7 +18,7 @@ From Equations Require Import Equations.
 Check @eq.
 Require Import Bvector.
 
-(* Derive DependentElimination for nat bool option sum prod list vector. *)
+(* Derive DependentElimination for nat bool option sum Datatypes.prod list *)
 (* end hide *)
 
 (** * Inductive types
@@ -34,7 +34,7 @@ Require Import Bvector.
 Equations neg (b : bool) : bool :=
 neg true := false ;
 neg false := true.
-Print All.
+
 (* begin hide *)
 Check neg_ind.
 Check neg_ind_equation_1.
@@ -111,7 +111,7 @@ tail (cons a v) := v.
 
 (** Note that the argument [{A}] is declared implicit and must hence be
  omitted in the defining clauses. In each of the branches it is named
- [A]. To specify it explicitely one can use the syntax [{A:=B}],
+ [A]. To specify it explicitely one can use the syntax [(A:=B)],
  renaming that implicit argument to [B] in this particular case *)
 
 (** ** Recursive inductive types
@@ -175,7 +175,7 @@ Check app_ind. Check @app_ind_equation_1. Check @app_ind_equation_2.
 
 Equations filter {A} (l : list A) (p : A -> bool) : list A :=
 filter nil p := nil ;
-filter (cons a l) p <= p a => {
+filter (cons a l) p with p a => {
   filter (cons a l) p true := a :: filter l p ;
   filter (cons a l) p false := filter l p }.
 
@@ -188,7 +188,7 @@ Global Transparent filter.
 
 Equations unzip {A B} (l : list (A * B)) : list A * list B :=
 unzip nil := (nil, nil) ;
-unzip (cons p l) <= unzip l => {
+unzip (cons p l) with unzip l => {
   unzip (cons (pair a b) l) (pair la lb) := (a :: la, b :: lb) }.
 
 (** The real power of with however comes when it is used with dependent types. *)
@@ -235,21 +235,27 @@ equal x y := right _.
 *)
 
 Equations head {A} (l : list A) (pf : l <> nil) : A :=
-head nil pf :=! pf;
+head nil pf with pf eq_refl := { | x :=! x };
 head (cons a v) _ := a.
 
 (** We decompose the list and are faced with two cases:
 
-   - In the first case, the list is empty, hence the proof [pf] of type 
-     [nil <> nil] allows us to derive a contradiction. We make use of
-     another category of right-hand sides, which we call _empty_ nodes
-     to inform the compiler that a contradiction is derivable in this case.
-     In general we cannot expect the compiler to find by himself that 
-     the context contains a contradiction, as it is undecidable 
+   - In the first case, the list is empty, hence the proof [pf] of type
+     [nil <> nil] allows us to derive a contradiction by applying it to
+     reflexivity.  We make use of another category of right-hand sides,
+     which we call _empty_ nodes to inform the compiler that a
+     contradiction is derivable in this case.  In general we cannot
+     expect the compiler to find by himself that the context contains a
+     contradiction, as it is undecidable
      %(\cite{DBLP:conf/plpv/Oury07,DBLP:conf/birthday/GoguenMM06})%.
-   - In the second case, we simply return the head of the list, disregarding
-     the proof.
- *)
+
+     However, in this case, one could also write an empty set of clauses
+     for the [with] subprogram, as Equations applies a heuristic in case
+     of an empty set of clause: it tries to split each of the variables
+     in the context to find an empty type.
+
+   - In the second case, we simply return the head of the list,
+     disregarding the proof.  *)
 
 (** ** Inductive families
 
@@ -311,8 +317,8 @@ Notation Vcons := Vector.cons.
 
 Equations vmap {A B} (f : A -> B) {n} (v : vector A n) :
   vector B n :=
-vmap f {n:=?(0)} Vnil := Vnil ;
-vmap f {n:=?(S n)} (Vcons a n v) := Vcons (f a) (vmap f v).
+vmap f (n:=?(0)) Vnil := Vnil ;
+vmap f (Vcons a v) := Vcons (f a) (vmap f v).
 
 (** Here the value of the index representing the size of the vector 
    is directly determined by the constructor, hence in the case tree
@@ -328,7 +334,7 @@ vmap f {n:=?(S n)} (Vcons a n v) := Vcons (f a) (vmap f v).
  *)
 
 Equations vtail {A n} (v : vector A (S n)) : vector A n :=
-vtail (Vcons a n v') := v'.
+vtail (Vcons a v') := v'.
 
 (** The type of [v] ensures that [vtail] can only be applied to 
    non-empty vectors, moreover the patterns only need to consider 
@@ -338,9 +344,32 @@ vtail (Vcons a n v') := v'.
    be considered and which are impossible. In this case the failed 
    unification of [0] and [S n] shows that the [Vnil] case is impossible.
    This powerful unification engine running under the hood permits to write
-   concise code where all uninteresting cases are handled automatically.
-   
-   Of course the equations and the induction principle are simplified in a 
+   concise code where all uninteresting cases are handled automatically. *)
+
+(** ** Derived notions, No-Confusion
+
+    For this to work smoothlty, the package requires some derived definitions
+    on each (indexed) family, which can be generated automatically using
+    the generic [Derive] command. Here we ask to generate the signature,
+    heterogeneous no-confusion and homogeneous no-confusion principles for vectors: *)
+
+Derive NoConfusion for nat.
+Derive Signature NoConfusion NoConfusionHom for vector.
+
+(** The precise specification of these derived definitions can be found in the manual
+    section %(\S \ref{manual})%. Signature is used to "pack" a value in an inductive family
+    with its index, e.g. the "total space" of every index and value of the family. This
+    can be used to derive the heterogeneous no-confusion principle for the family, which
+    allows to discriminate between objects in potentially different instances/fibers of the family,
+    or deduce injectivity of each constructor. The [NoConfusionHom] variant derives
+    the homogeneous no-confusion principle between two objects in the _same_ instance
+    of the family, e.g. to simplify equations of the form [Vnil = Vnil :> vector A 0].
+    This last principle can only be defined when pattern-matching on the inductive family
+    does not require the [K] axiom and will otherwise fail.
+
+   ** Unification and indexed datatypes
+
+   Back to our example, of course the equations and the induction principle are simplified in a
    similar way. If we encounter a call to [vtail] in a proof, we can 
    use the following elimination principle to simplify both the call and the
    argument which will be automatically substituted by an object of the form
@@ -354,25 +383,27 @@ forall (A : Type) (n : nat) (v : vector A (S n)), P A n v (vtail v) ]]
    which computes the diagonal of a square matrix of size [n * n].
 *) 
 
+
 Equations diag {A n} (v : vector (vector A n) n) : vector A n :=
-diag {n:=O} Vnil := Vnil ;
-diag {n:=(S ?(n))} (Vcons (Vcons a n v) ?(n) v') :=
+diag (n:=O) Vnil := Vnil ;
+diag (n:=S _) (Vcons (Vcons a v) v') :=
   Vcons a (diag (vmap vtail v')).
 
-(** Here in the second equation, we know that the elements of the vector 
+(** Here in the second equation, we know that the elements of the vector
    are necessarily of size [S n] too, hence we can do a nested refinement
-   on the first one to find the first element of the diagonal. *)
+   on the first one to find the first element of the diagonal.
+  *)
 
 (** ** Recursion
 
   Notice how in the [diag] example above we explicitely pattern-matched
   on the index [n], even though the [Vnil] and [Vcons] pattern matching
   would have been enough to determine these indices. This is because the
-  following definitions fails: *)
+  following definition also fails: *)
 
 Fail Equations diag' {A n} (v : vector (vector A n) n) : vector A n :=
 diag' Vnil := Vnil ;
-diag' (Vcons (Vcons a n v) n v') :=
+diag' (Vcons (Vcons a v) v') :=
   Vcons a (diag' (vmap vtail v')).
 
 (** Indeed, Coq cannot guess the decreasing argument of this fixpoint
@@ -392,28 +423,26 @@ diag' (Vcons (Vcons a n v) n v') :=
 
 Require Import Equations.Subterm.
 
-Equations id (n : nat) : nat :=
-  id n by rec n lt :=
+Equations id (n : nat) : nat by wf n lt :=
   id 0 := 0;
   id (S n') := S (id n').
 
 (** Here [id] is defined by well-founded recursion on [lt] on the (only)
-    argument [n] using the [by rec] node.  At recursive calls of [id],
-    obligations are generated to show that the arguments effectively
-    decrease according to this relation.  Here the proof that [n' < S
-    n'] is discharged automatically.
+    argument [n] using the [by wf] annotation.  At recursive calls of
+    [id], obligations are generated to show that the arguments
+    effectively decrease according to this relation.  Here the proof
+    that [n' < S n'] is discharged automatically.
 
   Wellfounded recursion on arbitrary dependent families is not as easy
   to use, as in general the relations on families are _heterogeneous_,
-  as the must related inhabitants of potentially different instances of
+  as they must relate inhabitants of potentially different instances of
   the family.  [Equations] provides a [Derive] command to generate the
   subterm relation on any such inductive family and derive the
-  well-foundedness of its transitive closure, which is often what's
-  required. This provides course-of-values or so-called "mathematical"
-  induction on these objects, mimicking the structural recursion
-  criterion in the logic. *)
+  well-foundedness of its transitive closure. This provides
+  course-of-values or so-called "mathematical" induction on these
+  objects, reflecting the structural recursion criterion in the logic. *)
 
-Derive Signature Subterm for vector.
+Derive Subterm for vector.
 
 (** For vectors for example, the relation is defined as: [[
 Inductive t_direct_subterm (A : Type) :
@@ -445,161 +474,66 @@ Module UnzipVect.
       must be shown smaller than a [vector A (S n)]. They are actually compared
       at the packed type [{ n : nat & vector A n}]. *)
 
-  Equations unzip {n} (v : vector (A * B) n) : vector A n * vector B n :=
-  unzip v by rec (signature_pack v) (@t_subterm (A * B)) :=
+  Equations? unzip {n} (v : vector (A * B) n) : vector A n * vector B n
+    by wf (signature_pack v) (@t_subterm (A * B)) :=
   unzip Vnil := (Vnil, Vnil) ;
-  unzip (Vector.cons (pair x y) n v) with unzip v := {
-    | pair xs ys := (Vector.cons x xs, Vector.cons y ys) }.
+  unzip (Vector.cons (pair x y) v) with unzip v := {
+  | pair xs ys := (Vector.cons x xs, Vector.cons y ys) }.
+  (** One can easily show that the call is well-founded using the constructed
+      subterm relation. *)
+  Proof. do 2 constructor. Defined.
+
 End UnzipVect.
 
-(* begin hide *)
-Require Import Relation_Operators.
-Import Sigma_Notations.
-Local Open Scope equations_scope.
-Require Import Relations.
-Lemma clos_trans_stepr_refl A (R : relation A) (x y z : A) :
-  R y z -> clos_refl _ (clos_trans A R) x y -> clos_trans A R x z.
-Proof.
-  intros Hyz Hxy.
-  destruct Hxy. eapply clos_trans_stepr; eauto.
-  now constructor.
-Qed.
-(* end hide *)
+(** For the diagonal, it is easier to give [n] as the decreasing argument
+    of the function, even if the pattern-matching itself is on vectors: *)
 
-(** While this was just mimicking simple structural recursion, we can of
-    course use this for more elaborate termination arguments. We put
-    ourselves in a section to parameterize a [skip] function by a predicate: *)
+Equations diag' {A n} (v : vector (vector A n) n) : vector A n by wf n lt :=
+diag' Vnil := Vnil ;
+diag' (Vcons (Vcons a v) v') :=
+  Vcons a (diag' (vmap vtail v')).
 
-Section Skip.
-  Context {A : Type} (p : A -> bool).
-  Equations skip_first {n} (v : vector A n) : &{ n : nat & vector A n } :=
-  skip_first Vnil := &(0 & Vnil);
-  skip_first (Vcons a n v') <= p a => {
-                     | true => skip_first v';
-                     | false => &(_ & Vcons a v') }.
-
-  (** It is relatively straitforward to show that [skip] returns a (large) subvector of its argument *)
-
-  Lemma skip_first_subterm {n} (v : vector A n) : clos_refl _ (t_subterm _) (skip_first v) &(_ & v).
-  Proof.
-    funelim (skip_first v).
-    constructor 2.
-    depelim H.
-    constructor 1.
-    eapply clos_trans_stepr. simpl.
-    apply (t_direct_subterm_1_1 _ _ _ (&(_ & t).2)). apply H.
-    rewrite H. constructor. eauto with subterm_relation.
-    constructor 2.
-  Qed.
-  
-End Skip.
-
-(** This function takes an unsorted vector and returns a sorted vector corresponding to it
-    starting from its head [a], removing all elements smaller than [a] and recursing.  *)
-
-Equations sort {n} (v : vector nat n) : &{n' : _ & vector nat n'} :=
-sort v by rec (signature_pack v) (t_subterm nat) :=
-sort Vnil := &( _ & Vnil );
-sort (Vcons a n v) := let sk := skip_first (fun x => Nat.leb x a) v in &(_ & Vcons a (sort sk.2).2).
-
-(** Here we prove that the recursive call is correct as skip preserves the size of its argument *)
-
-Next Obligation.
-  red. simpl.
-  eapply clos_trans_stepr_refl.
-  simpl. apply (t_direct_subterm_1_1 _ _ _ (&(_ & v).2)).
-  refine (skip_first_subterm _ _).
-Qed.
-
-(** To prove it we need a few supporting lemmas, we first write a predicate on vectors
-    equivalent to [List.forall]. *)
-
-Equations forall_vect {A} (p : A -> bool) {n} (v : vector A n) : bool :=
-forall_vect _ Vnil := true;
-forall_vect p (Vcons x n v) := p x && forall_vect p v.
-
-Require Import Bool.
-
-(** By functional elimination it is easy to prove that this respects the implication
-    order on predicates *)
-
-Lemma forall_vect_impl {A} p p' {n} (v : vector A n)
-      (fp : forall x, p x = true -> p' x = true) :
-  forall_vect p v = true -> forall_vect p' v = true.
-Proof.
-  funelim (forall_vect p v). auto.
-  simp forall_vect. rewrite !andb_true_iff; intuition auto.
-Qed.
-
-(** We now define a simple-minded sorting predicate *)
-
-Inductive sorted : forall {n}, vector nat n -> Prop :=
-| sorted_nil : sorted Vnil
-| sorted_cons x n (v : vector nat n) :
-    forall_vect (fun y => Nat.leb x y) v = true ->
-    sorted v -> sorted (Vcons x v).
-
-(** Again, we show this by repeat functional eliminations. *)
-
-Lemma fn_sorted n (v : vector nat n) : sorted (sort v).2.
-Proof.
-  funelim (sort v). (** The first elimination just gives the two [sort] cases. *)
-  - constructor.
-  - constructor; auto.
-    (** Here we have a nested call to skip_first, for which the induction hypothesis holds: [[
-  H : sorted (sort (skip_first (fun x : nat => x <=? h) t).2).2
-  ============================
-  forall_vect (fun y : nat => h <=? y) (sort (skip_first (fun x : nat => x <=? h) t).2).2 = true
-]]
-
-   We can apply functional elimination likewise, even if the predicate argument is instantiated
-   here. *)
-
-  funelim (skip_first (fun x : nat => Nat.leb x h) t); simp sort forall_vect in *; simpl in *.
-
-  (** After further simplifications, we get: [[
-  Heq : (h0 <=? h) = false
-  H : sorted (Vcons h0 (sort (skip_first (fun x : nat => x <=? h0) t).2).2)
-  ============================
-  (h <=? h0) && forall_vect (fun y : nat => h <=? y) (sort (skip_first (fun x : nat => x <=? h0) t).2).2 = true
-]]
-
-    This requires inversion on the sorted predicate to find out that, by induction,
-    [h0] is smaller than all of [fn (skip_first ...)], and hence [h] is as well.
-    This is just regular reasoning. Just note how we got to this point in just
-    two invocations of [funelim]. *)
-
-    depelim H.
-    rewrite andb_true_iff.
-    enough (h <=? h0 = true). split; auto.
-    eapply forall_vect_impl in H.
-    apply H.
-    intros x h0x. simpl. rewrite Nat.leb_le in *. omega.
-    rewrite Nat.leb_le, Nat.leb_nle in *. omega.
-Qed.
+(** One can check using [Extraction diag'] that the computational behavior of [diag']
+    is indeed not dependent on the index [n]. *)
 
 (** *** Pattern-matching and axiom K *)
 
+(** To use the K axiom with [Equations], one _must_ first require the [DepElimK] module. *)
+
+Require Import Equations.DepElimK.
+
 Module KAxiom.
 
-  (** By default we allow the K axiom, but it can be unset. *)
+  (** By default we disallow the K axiom, but it can be set. *)
+
+  Set Equations WithK.
+
+  (** In this case the following definition uses the [K] axiom just imported. *)
+
+  Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl)
+            (H : x = x) : P H :=
+    K x P p eq_refl := p.
 
   Unset Equations WithK.
 
-  (** In this case the following definition fails as [K] is not derivable on type [A]. *)
+  (** Note that the definition loses its computational content: it will
+      get stuck on an axiom. We hence do not recommend its use.
 
-  Fail Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
-    K x P p eq_refl := p.
+      Equations allows however to use constructive proofs of K for types
+      enjoying decidable equality. The following example relies on an
+      instance of the [EqDec] typeclass for natural numbers.  Note that
+      the computational behavior of this definition on open terms is not
+      to reduce to [p] but pattern-matches on the decidable equality
+      proof.  However the defining equation still holds as a
+      _propositional_ equality, and the definition of K' is axiom-free. *)
 
-  (** However, types enjoying a provable instance of the [K] axiom are fine.
-      This relies on an instance of the [EqDec] typeclass for natural numbers.
-      Note that the computational behavior of this definition on open terms
-      is not to reduce to [p] but pattern-matches on the decidable equality proof.
-      However the defining equation still holds as a _propositional_ equality. *)
+  Set Equations WithKDec.
 
-  Equations K (x : nat) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
-    K x P p eq_refl := p.
+  Equations K' (x : nat) (P : x = x -> Type) (p : P eq_refl)
+            (H : x = x) : P H :=
+    K' x P p eq_refl := p.
 
-  Print Assumptions K. (* Closed under the global context *)
+  Print Assumptions K'.
+  (* Closed under the global context *)
 
 End KAxiom.

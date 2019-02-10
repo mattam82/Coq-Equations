@@ -1,5 +1,123 @@
 \section{The \kw{Equations} Vernacular}
+\label{manual}
 
+\subsection{Syntax of programs}
+\def\kw#1{\coqdockw{#1}}
+\def\vec#1{\overrightarrow{#1}}
+\def\vecplus#1{{\overrightarrow{#1}}^{+}}
+\def\textcoloneq{\texttt{:=}}
+\def\userref#1#2{\coqdockw{with}~#1~\textcoloneq~#2}
+
+\def\figdefs{\begin{array}{llcl}
+  \texttt{term}, \texttt{type} & t, ~τ & \Coloneqq &
+  \coqdocvar{x} `| \lambda \coqdocvar{x} : \tau, t `| ∀ \coqdocvar{x} :
+                                                    \tau, \tau' `|
+  \mathbf{\lambda}\texttt{\{}\,\vecplus{\vec{up} \coloneqq t}\texttt{\}}
+   \cdots \\
+  \texttt{binding} & d & \Coloneqq & \texttt{(}\coqdocvar{x}~\texttt{:}~\tau\texttt{)} `|
+  \texttt{(}\coqdocvar{x}~\textcoloneq~t~\texttt{:}~\tau\texttt{)} \\
+  \texttt{context} & Γ, Δ & \Coloneqq & \vec{d} \\
+  \texttt{programs} & progs & \Coloneqq & prog~\overrightarrow{mutual} \texttt{.} \\
+  \texttt{mutual programs} & mutual & \Coloneqq & \coqdockw{with}~p `| where \\
+  \texttt{where clause} & where & \Coloneqq & \coqdockw{where}~p `| \coqdockw{where}~not\\
+  \texttt{notation} & not & \Coloneqq & \texttt{''}string\texttt{''}~\textcoloneq~term~(\texttt{:}~scope)?\\
+  \texttt{program} & p, prog & \Coloneqq & \coqdoccst{f}~Γ~\texttt{:}~τ~(\coqdockw{by}~\textit{annot})?~\textcoloneq~clauses \\
+  \texttt{annotation} & annot & \Coloneqq & \kw{struct}~x `| \kw{wf}~t~R \\
+  \texttt{clauses} & clauses & \Coloneqq & \vec{c} `| \texttt{\{}\,\vec{c}\,\texttt{\}} \\
+  \texttt{user clause} & c & \Coloneqq & \coqdoccst{f}~\vec{up}~n `|
+                                         \vecplus{\texttt{|}~up}~n\\
+  \texttt{user pattern} & up & \Coloneqq & x
+  `| \coqdocconstr{C}~\vec{up}
+  `| \texttt{?(}\,t\,\texttt{)} `| \texttt{(}x~\textcoloneq~up\texttt{)} \\
+  \texttt{user node} & n & \Coloneqq &
+                                       \textcoloneq~t~\overrightarrow{where}
+                                       `| \texttt{:=!}~\coqdocvar{x} \\
+               & & &                                       `|\, \userref{t~\vec{, t}}{clauses}
+\end{array}}
+
+In the grammar, $\vec{t}$ denotes a possibly empty list of $t$,
+$\vecplus{t}$ a non-empty list. Concrete syntax is in
+\texttt{typewriter} font.
+\begin{figure}[h]
+\centering$\figdefs$
+\caption{Definitions and user clauses}
+\label{fig:usergram}
+\end{figure}
+
+The syntax allows the definition of toplevel mutual (\kw{with}) and
+nested (\kw{where}) structurally recursive definitions. Notations can be
+used globally to attach a syntax to a recursive definition, or locally
+inside a user node. In the \kw{wf} annotation, the first term should be
+typable in the program's context $\Gamma$ (and possibly the enclosing
+context for nested programs) with a \emph{closed} type $\tau$
+(e.g. \coqdocind{nat}), while the relation must be a locally closed term
+of type $\tau "->" \tau "->" \kw{Prop}$.  The $\lambda\{$ syntax (using
+a unicode lambda attached to a curly brace) allows to input
+pattern-matching lambdas in a term, which are elaborated to \kw{where}
+clauses. Local \kw{where} clauses can be used to define recursive
+definitions themselves or local notations. The syntax permits the use of
+curly braces around a list of clauses to allow disambiguation of the
+scope of \kw{where} and \kw{with} clauses.
+
+In user clauses, one can either give an application of the current
+program to patterns using $\coqdoccst{f}~\vec{up}$ or a list of
+refinement patterns $\vec{\texttt{|} up}$ which should match the number
+of abstraction of the enclosing program (introduced by \kw{with} or
+not).
+
+The user patterns can be made up from variables, constructors applied to
+patterns, inaccessible patterns $\texttt{?}(t)$ where $t$ is an
+arbitrary term or, in case of an application $\coqdoccst{f}~\vec{up}$
+setting an implicit argument of $\coqdoccst{f}$ using $(x := up)$.
+
+
+\subsection{Generated definitions}
+
+Upon the completion of an \Equations definition, a few supporting lemmas
+are generated.
+
+\subsubsection{Equations}
+
+Each compiled clause of the program or one
+of its subprograms defined implicitely by \kw{with} or explicitely by
+\kw{where} nodes gives rise to an equation. Note that the clauses
+correspond to the program's splitting tree, i.e. to the expansion of
+pattern-matchings, so a single source clause catching multiple cases
+can correspond to multiple equations. All of these equations are
+registered as hints in a rewrite hint database named $\cst{f}$, which can be
+used by the \coqdoctac{simp} or \coqdoctac{autorewrite} tactic
+afterwards. The $\coqdoctac{simp}~f$ tactic is just an alias to
+$\coqdoctac{autorewrite with}~f$. The equation lemmas are named
+after the position they appear in in the program, and are of the
+form $\cst{f}\_clause\_n\_equation\_k$.
+
+In case the program is well-founded, \Equations first generates an
+unfolded definition named \cst{f\_unfold} corresponding to the
+1-unfolding of the recursive definition and shows that it is
+extensionally equal to \cst{f}. This unfolding equation is used
+to generate the equations associated to \cst{f}, which might also
+refer to the unfolded versions of subprograms. Well-founded
+recursive definitions can hence generate a set of equations that
+is not terminating as an unconditional rewrite system.
+
+\subsubsection{Elimination principle}
+
+\Equations also automatically generates a mutually-inductive relation
+corresponding to the graph of the programs, whose first inductive is named
+$\cst{f}\_ind$. It automatically shows that the functions respects their
+graphs (lemma $\cst{f}\_ind\_fun$) and derives from this proof an
+elimination principle named $\cst{f}\_elim$. This eliminator can be used
+directly using the \tac{apply} tactic to prove goals involving a call to
+the function(s). One has to provide predicates for each of the toplevel
+programs and the \kw{where} subprograms (\kw{with} subprograms's
+predicates follow from their enclosing programs).
+
+In case the program has a single predicate, one can use the
+$\tac{funelim}~call$ tactic to launch the elimination by specifying
+which call of the goal should be used as the elimination target.
+A most general predicate is inferred in this case.
+
+\subsection{Local Options}
 The \kw{Equations} command takes a few options using the syntax
 \[\kw{Equations}(opts)~\cst{f}~\ldots\]
 
@@ -8,13 +126,14 @@ The \kw{Equations} command takes a few options using the syntax
   function and the derived eliminator.
 \item \texttt{noeqns}: Do not generate the equations correponding to the
   (expanded) clauses of the program. This implies \texttt{noind}.
-\item \texttt{struct} $x$: Declare the function structurally
-  recursive on variable $x$.
 \end{itemize}
 
-The syntax of \Equations itself is described in \cite{mansoz17}.
+One can use the \kw{Equations?} syntax to use the interactive proof mode
+instead of obligations to resolve holes in the term or obligations
+comming from well-founded recursive definitions. BEWARE that the use
+of the \texttt{abstract} tactical is not well-supported in this mode.
 
-\section{Global Options}
+\subsection{Global Options}
 
 The \kw{Equations} command obeys a few global options:
 \begin{itemize}
@@ -25,11 +144,30 @@ The \kw{Equations} command obeys a few global options:
   The \texttt{simp} $\cst{c}$ tactic is favored in this case to do
   simplifications using the equations generated for $\cst{c}$.
 
+\item \texttt{Equations WithKDec}: governs the use of instances of
+  \texttt{K} derived by the user using the decidable equality class
+  \texttt{Equations.EqDec.EqDec}. By default \emph{off}. When switched
+  on, equations will look for an instance of $\ind{EqDec}\~A$ when
+  solving equalities of the form \[\forall (e : x = x :> A), P e\],
+  i.e. to apply the deletion rule to such equations, or report an error
+  if it cannot find any. Note that when this option is on, the
+  computational behavior of \Equations definitions on open terms does
+  not follow the clauses: it might block on the decidable equality
+  test. The rewriting equations and functional elimination principle can
+  still be derived though and are the prefered way to reason on the
+  definition.
+
 \item \texttt{Equations WithK}: governs the use of the \texttt{K} axiom.
-  By default on. When switched off, equations will look for a provable
-  instance of the \texttt{K} axiom on the types it needs (through
-  \texttt{EqDec} instances for example), and report an error if it
-  cannot find any.
+  By default \emph{off}.
+  Users \emph{must} require the \texttt{Equations.DepElimK} module before
+  using this option, to load the \texttt{K} axiom in the current module.
+  When switched on, equations will use the axiom if it needs to simplify
+  reflexivity proofs \[\forall (e : x = x :> A), P~e\] and no instance of
+  $\ind{EqDec}$ is available. The computational behavior of definitions
+  using the axiom changes entirely: their reduction will get stuck even
+  on closed terms. It is advised to keep such definitions opaque and use
+  the derived rewriting equations and functional elimination principle
+  to reason on such definitions.
 \end{itemize}
 
 \section{Derive}
@@ -41,7 +179,7 @@ these is:
 \[\mathtt{Derive}~\ind{C}_1 \ldots \ind{C}_n~\mathtt{for}~\ind{ind}_1 \ldots \ind{ind}_n.\]
 
 Which will try to generate an instance of type class \ind{C} on
-inductive type \ind{Ind}. We assume $\ind{ind}_i : Π Δ. s$.
+inductive type \ind{Ind}. We assume $\ind{ind}_i : \Pi \Delta. s$.
 The derivations provided by \Equations are:
 
 \begin{itemize}
@@ -60,11 +198,24 @@ The derivations provided by \Equations are:
   \texttt{Equations.Signature.Signature}.
 
 \item \ind{NoConfusion}: generate the no-confusion principle for the
-  given family, which embodies the discrimination and injectivity
-  principles for (non-propositional) inductive types.  It derives an
-  instance of the class
+  given family, as an heterogeneous relation. It embodies the
+  discrimination and injectivity principles for the
+  total space of the given inductive family: i.e.
+  $\Sigma \Delta, \ind{I}~\bar{\Gamma}~\Delta$ for a family
+  $\ind{I} : \forall \Gamma, \Delta "->" \kw{Type}$ where $\Gamma$ are
+  (uniform) parameters of the inductive and $\Delta$ its indices.
 
-  \texttt{Equations.DepElim.NoConfusionPackage}.
+  It derives an instance of the class \texttt{Equations.DepElim.NoConfusionPackage}.
+
+\item \ind{NoConfusionHom}: generate the \emph{homogeneous} no-confusion
+  principle for the given family, which embodies the discrimination and
+  injectivity principles for (non-propositional) inductive types.
+  This principle can be derived if and only if pattern-matching on the
+  inductive family does not involve the \texttt{K} axiom.
+  In case of success it generates an instance of the class
+  \texttt{Equations.DepElim.NoConfusionPackage} for the type $\ind{I}~
+  \Delta~\Gamma$ applicable to equalities of two objects in the \emph{same}
+  instance of the family $\ind{I}$.
 
 \item \ind{EqDec}
   This derives a decidable equality on $C$, assuming decidable equality 
@@ -80,13 +231,24 @@ Class EqDec (A : Type) :=
   inductive (asuming it is in \kw{Set} or \kw{Type}) as an inductive family.
   It then derives the well-foundedness of this relation and wraps it
   as an homogeneous relation on the signature of the datatype (in case
-  it is indexed). These relations can be used with the \texttt{by rec}
+  it is indexed). These relations can be used with the \texttt{by wf}
   clause of equations. It derives an instance of the class
   \texttt{Equations.Classes.WellFounded}.
 
 \end{itemize}
 
+\section{\texttt{dependent elimination}}
 
+The \texttt{dependent elimination} tactic can be used to do dependent
+pattern-matching during a proof, using the same engine as Equations.
+
+Its syntax is:
+\begin{figure}[h]
+  \texttt{dependent elimination} \textit{ident} \texttt{as} [ up | .. | up ].
+\end{figure}
+
+It takes a list of patterns (see figure \ref{fig:usergram}) that should cover the type of \textit{ident}
+and generates the corresponding subgoals.
 
 %%% Local Variables: 
 %%% mode: latex

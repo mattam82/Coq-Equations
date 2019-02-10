@@ -1,0 +1,11 @@
++ Now everything goes through simplify and uses generalization by equalities
+  of telescopes.
+
+- Move Rec into definitions of programs
+  Almost
+
++ Allow `Equations f : (x1 .. xn) := f x1 xk := ..`
+
+- Elaboration of refine (and empty?) without going through Ltac.
+
++ Finish cleaning-up DepElim.v

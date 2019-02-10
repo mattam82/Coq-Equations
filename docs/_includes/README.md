@@ -4,7 +4,7 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1117297.svg)](https://doi.org/10.5281/zenodo.1117297)
 [![Gitter](https://img.shields.io/gitter/room/nwjs/nw.js.svg)](https://gitter.im/coq/Equations)
 
-Copyright 2009-2018 Matthieu Sozeau `matthieu.sozeau@inria.fr`  
+Copyright 2009-2019 Matthieu Sozeau `matthieu.sozeau@inria.fr`  
 Copyright 2015-2018 Cyprien Mangin `cyprien.mangin@m4x.org`
 
 Distributed under the terms of the GNU Lesser General Public License
@@ -34,8 +34,7 @@ providing a definitional extension to the Coq kernel.
 Two articles describing the system are available:
 
 - [Equations Reloaded](http://www.irif.fr/~sozeau/research/publications/drafts/Equations_Reloaded.pdf), Cyprien Mangin and
-  Matthieu Sozeau (October
-  2017). Submitted.
+  Matthieu Sozeau (July 2018). In revision.
 - [Equations: A Dependent Pattern-Matching Compiler](https://link.springer.com/chapter/10.1007/978-3-642-14052-5_29) Matthieu
   Sozeau (2010) 
   In: Kaufmann M., Paulson L.C. (eds) Interactive Theorem
@@ -53,11 +52,10 @@ SystemF: A Case Study](http://www.irif.fr/~sozeau/research/publications/Equation
 
 ## Installation
 
-The current development version works with Coq 8.6 (branch
-[8.6](https://github.com/mattam82/Coq-Equations/tree/8.6), deprecated), Coq 8.7
-(branch [8.7](https://github.com/mattam82/Coq-Equations/tree/8.7)),
-Coq 8.8 (branch
-[8.8](https://github.com/mattam82/Coq-Equations/tree/8.8)),
+The current development version works with Coq 8.8 (branch
+[8.8](https://github.com/mattam82/Coq-Equations/tree/8.8)), 
+Coq 8.9 (branch
+[8.9](https://github.com/mattam82/Coq-Equations/tree/8.9))
 and the current Coq master branch (branch
 [master](https://github.com/mattam82/Coq-Equations/tree/master)).
 
@@ -66,7 +64,7 @@ sources and official releases.
 
 # Install with OPAM
 This package is available on [OPAM](http://opam.ocaml.org/).
-Activate the [Coq repository](https://github.com/coq/opam-coq-archive)
+Activate the [Coq repository](https://coq.inria.fr/opam-using.html)
 if you didn't do it yet:
 
     opam repo add coq-released https://coq.inria.fr/opam/released

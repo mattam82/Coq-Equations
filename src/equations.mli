@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -11,7 +11,7 @@ open Names
 open Equations_common
 open Splitting
 
-val define_by_eqs : poly:bool ->
+val define_by_eqs : poly:bool -> program_mode:bool -> open_proof:bool ->
   Syntax.equation_option list ->
   Syntax.pre_equations ->
   (Names.lstring * Constrexpr.constr_expr *
@@ -21,10 +21,12 @@ val define_by_eqs : poly:bool ->
 
 val define_principles :
   flags ->
+  Syntax.rec_type option ->
   EConstr.t list ->
-  (program_info * compiled_program_info) list -> unit
+  (program * compiled_program_info) list -> unit
 
-val equations : poly:bool ->
+val equations : poly:bool -> program_mode:bool ->
+  open_proof:bool ->
   Syntax.equation_option list ->
   Syntax.pre_equations ->
   (Names.lstring * Constrexpr.constr_expr *

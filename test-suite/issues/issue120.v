@@ -31,11 +31,9 @@ Instance WF_val_type_termRel: WellFounded val_type_termRel.
   apply measure_wf; apply wf_lexprod; intro; apply lt_wf.
 Qed.
 
-Equations val_type (Tn: ty * nat) : Prop :=
-  val_type Tn by rec Tn val_type_termRel :=
+Equations? val_type (Tn: ty * nat) : Prop by wf Tn val_type_termRel :=
     val_type (pair T (S n)) := val_type (pair T n);
     val_type (pair T O) := True.
-
-Next Obligation. smaller_n. Defined.
+Proof. smaller_n. Defined.
 
 Fail Next Obligation.

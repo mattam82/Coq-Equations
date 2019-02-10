@@ -3,7 +3,7 @@ Require Import Relations.
 From Equations Require Import Equations DepElimDec.
 
 Equations silly {A} (l : list A) : list A :=
-silly l by rec ((fix Ffix (x : list A) : nat :=
+silly l by wf ((fix Ffix (x : list A) : nat :=
          match x with
          | []%list => 0
          | (_ :: x1)%list => S (Ffix x1)
@@ -12,7 +12,7 @@ silly nil := nil;
 silly (cons a l) := a :: silly l.
 
 Equations silly' {A} (l : list A) : list A :=
-silly' l by rec (length l) lt :=
+silly' l by wf (length l) lt :=
 silly' nil := nil;
 silly' (cons a l) := a :: silly' l.
 

@@ -1,13 +1,14 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2016 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
 Require Import Coq.Unicode.Utf8_core.
-Require Export Coq.Program.Program.
+From Coq Require Import Extraction.
+Require Export Coq.Program.Basics Coq.Program.Tactics Coq.Program.Utils.
 
 Declare ML Module "equations_plugin".
 
@@ -22,9 +23,7 @@ Declare Scope equations_scope.
 Delimit Scope equations_scope with equations.
 Local Open Scope equations_scope.
 
-(** For now we don't support obligation shrinking. Need to sync ML code with this. *)
-Set Warnings "-deprecated-option".
-Global Unset Shrink Obligations.
+Global Unset Auto Template Polymorphism.
 
 (** A marker for fixpoint prototypes in the context *)
 Definition fixproto := tt.
@@ -119,6 +118,9 @@ End IdTheory.
 
 (** Forward reference for the NoConfusion tactic. *)
 Ltac noconf H := congruence || injection H; intros; subst.
+
+(** Forward reference for Equations' [depelim] tactic, which will be defined in [DepElim]. *)
+Ltac depelim x := fail "not defined yet".
 
 (** Such a useful tactic it should be part of the stdlib. *)
 Ltac forward_gen H tac :=

@@ -1,17 +1,19 @@
-
-Inductive TupleT : nat -> Type :=
-nilT : TupleT 0
-| consT {n} A : (A -> TupleT n) -> TupleT (S n).
-
-Require Import Utf8.
+Require Import Utf8 Program.
 Require Import Equations.Equations.
 Open Scope equations_scope.
 Set Warnings "-notation-overridden".
 Notation " '{' x : A & y } " := (@sigma A (fun x : A => y)%type) : type_scope.
 
+Inductive TupleT : nat -> Type :=
+nilT : TupleT 0
+| consT {n} A : (A -> TupleT n) -> TupleT (S n).
+Derive Signature NoConfusion NoConfusionHom for TupleT.
+
 Inductive Tuple : forall n, TupleT n -> Type :=
   nil : Tuple _ nilT
 | cons {n A} (x : A) (F : A -> TupleT n) : Tuple _ (F x) -> Tuple _ (consT A F).
+
+Derive Signature NoConfusion NoConfusionHom for Tuple.
 
 Inductive TupleMap@{i j} : forall n, TupleT n -> TupleT n -> Type@{j} :=
   tmNil : TupleMap _ nilT nilT
@@ -73,10 +75,8 @@ Ltac simpl_equations ::=
   repeat (repeat (hnf_eq; try rewrite_sigma2_refl; simpl);
           try progress autounfold with equations).
 
-Derive NoConfusion for TupleT.
-
 (** This is due to a limitation of the guard condition in 8.6 (see github PR #920) *)
-Unset Equations OCaml Splitting.
+
 Equations myComp {n} {B C : TupleT n} (tm1 : TupleMap _ B C) {A : TupleT n} (tm2 : TupleMap _ A B)
 : TupleMap _ A C :=
 myComp tmNil tmNil := tmNil;
