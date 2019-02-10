@@ -1,0 +1,7 @@
+(coqlib
+ ; This determines the -R flag
+ (name Equations)
+ (public_name equations.Equations)
+ (synopsis "Equations Plugin")
+ (libraries equations.plugin)
+ (modules :standard \ IdDec NoCycle))
