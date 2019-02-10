@@ -4,7 +4,7 @@
 (** printing rec %\coqdockw{rec}% *)
 (* begin hide *)
 From Equations Require Import Equations Fin DepElimDec.
-Require Import Omega Utf8 List.
+Require Import Lia Utf8 List.
 Import ListNotations.
 
 Section list_size.
@@ -20,7 +20,7 @@ Section list_size.
   list_map_size nil _ := nil;
   list_map_size (cons x xs) g := cons (g x _) (list_map_size xs (fun x H => g x _)).
 
-  Proof. auto with arith. omega. Defined.
+  Proof. auto with arith. lia. Defined.
 
   Lemma list_map_size_spec (g : A -> B) (l : list A) :
     list_map_size l (fun x _ => g x) = List.map g l.
@@ -38,6 +38,11 @@ Require Import List.
   way, using nested well-founded recursion instead of the guardedness check of %\Coq%.
   The [rose] trees are defined as trees whose nodes contain lists of trees,
   i.e. forests. *)
+
+(** To solve measure subgoals *)
+Hint Extern 4 (_ < _) => simpl; lia : rec_decision.
+Hint Extern 4 (MR _ _ _ _) => (repeat red; simpl in *; lia) : rec_decision.
+Obligation Tactic := program_simpl; try (simpl; lia); try typeclasses eauto with rec_decision.
 
 (* begin hide *)
 Section RoseTree.
@@ -59,13 +64,6 @@ Section RoseTree.
   Transparent size.
   Derive NoConfusion for rose.
 
-  (** To solve measure subgoals *)
-  Hint Extern 4 (_ < _) => simpl; omega : rec_decision.
-  Hint Extern 4 (MR _ _ _ _) => (repeat red; simpl in *; omega) : rec_decision.
-  Obligation Tactic := program_simpl; try (simpl; omega); try typeclasses eauto with rec_decision.
-  Definition hide {A} (a : A) := a.
-  Notation "?" := (hide _).
-
   (* end hide *)
   (** As explained at the beginning of this section, however, if we want
       to program more complex recursions, or rearrange our terms
@@ -76,20 +74,13 @@ Section RoseTree.
       well-founded recursion, we can define the following function
       gathering the elements in a rose tree efficiently: *)
 
-  (* Equations elements (r : rose) (acc : list A) : list A by struct r := *)
-  (* elements (leaf a) acc := a :: acc; *)
-  (* elements (node l) acc := aux l *)
-  (*   where aux x : list A := *)
-  (*   aux nil := acc; *)
-  (*   aux (cons x xs) := elements x (aux xs). *)
-
   Equations? elements (r : rose) (acc : list A) : list A by wf r (MR lt size) :=
   elements (leaf a) acc := a :: acc;
   elements (node l) acc := aux l _
     where aux x (H : list_size size x < size (node l)) : list A by wf x (MR lt (list_size size)) :=
     aux nil _ := acc;
     aux (cons x xs) H := elements x (aux xs _).
-  Proof. simpl in H. omega. Qed.
+  Proof. simpl in H. lia. Qed.
 
   Definition elems r := elements r nil.
 
@@ -143,3 +134,28 @@ Section RoseTree.
 (* begin hide *)
 End RoseTree.
 (* end hide *)
+Arguments rose A : clear implicits.
+
+Module FullStruct.
+  Context {A : Type}.
+
+  Equations elements (r : rose A) (acc : list A) : list A :=
+  elements (leaf a) acc := a :: acc;
+  elements (node l) acc := aux l
+    where aux (x : list (rose A)) : list A :=
+    aux nil := acc;
+    aux (cons x xs) := elements x (aux xs).
+End FullStruct.
+
+Module WfAndStruct.
+  Context {A : Type}.
+
+  Equations? elements (r : rose A) (acc : list A) : list A by wf (size r) lt :=
+  elements (leaf a) acc := a :: acc;
+  elements (node l) acc := aux l _
+    where aux (x : list (rose A)) (H : list_size size x < size (node l)) : list A by struct x :=
+    aux nil H := acc;
+    aux (cons x xs) H := elements x (aux xs _).
+  Proof. simpl in H. lia. simpl in H. lia. Defined.
+
+End WfAndStruct.

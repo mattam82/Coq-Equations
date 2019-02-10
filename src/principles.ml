@@ -681,6 +681,7 @@ let subst_rec_programs env evd ps =
         let wp', args' =
           if islogical || (match wp.program_rec with Some { rec_node = WfRec _ } -> true | _ -> false) then
             let id = Nameops.add_suffix (path_id where_path) "_unfold_eq" in
+            let id = Namegen.next_global_ident_away id Id.Set.empty in
             let where_program_term = mapping_constr !evd wsubst0 wp.program_term in
             let where_program_args = List.map (mapping_constr !evd wsubst0) where_program_args in
             where_map := PathMap.add where_path
