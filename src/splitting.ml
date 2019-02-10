@@ -451,9 +451,9 @@ let define_mutual_nested env evd get_prog progs =
     in
     let tys' = Array.map EConstr.Unsafe.to_constr tys in
     let bodies' = Array.map EConstr.Unsafe.to_constr bodies in
-    try Pretyping.search_guard env (Array.to_list possible_indexes)
+    (* try  *)Pretyping.search_guard env (Array.to_list possible_indexes)
           (names, tys', bodies')
-    with Not_found -> anomaly (str"Calling search_guard raised Not_found")
+    (* with Not_found -> anomaly (str"Calling search_guard raised Not_found") *)
   in
   let declare_fix_fns i (p,prog) =
     let newidx = indexes.(i) in
@@ -776,10 +776,10 @@ let make_programs env evd flags ?(define_constants=false) programs =
                 evd := evm; (p, (prob, r, s', after, e)))
               terms
           in
-          define_mutual_nested_csts flags env evd (fun evd (prob, r, s', after, term) ->
+          define_mutual_nested_csts flags (Global.env ()) evd (fun evd (prob, r, s', after, term) ->
               (applist (term, extended_rel_list 0 after))) terms
         else
-          define_mutual_nested_csts flags env evd (fun evd (prob, r, s', after, term) ->
+          define_mutual_nested_csts flags (Global.env ()) evd (fun evd (prob, r, s', after, term) ->
               (it_mkLambda_or_LetIn term after)) terms
       else
         let env =
