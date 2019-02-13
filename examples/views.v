@@ -55,3 +55,56 @@ Equations onthree (c : three) : three :=
   onthree c with three_viewc c :=
   onthree ?(cone) three_one := cone;
   onthree ?(c) (three_other c Hc) := c.
+
+(** A similar example discriminating [10] from the rest of natural numbers. *)
+
+Equations discr_10 (x : nat) : Prop :=
+  discr_10 10 := False;
+  discr_10 x := True.
+
+(** First alternative: using an inductive view *)
+
+Module View.
+Inductive view_discr_10 : nat -> Set :=
+| view_discr_10_10 : view_discr_10 10
+| view_discr_10_other c : discr_10 c -> view_discr_10 c.
+
+(** This view is obviously inhabited for any element in [three]. *)
+Equations discr_10_view c : view_discr_10 c :=
+discr_10_view 10 := view_discr_10_10;
+discr_10_view c := view_discr_10_other c I.
+
+Equations f (n:nat) : nat :=
+f n with discr_10_view n :=
+f ?(10) view_discr_10_10 := 0;
+f ?(n) (view_discr_10_other n Hn) := n + 1.
+
+Goal forall n, n <> 10 -> f n = n + 1.
+  intros n; apply f_elim.
+ (* 2 cases: 10 and not 10 *)
+  all:simpl; congruence.
+Qed.
+End View.
+
+(** Second alternative: using the discriminator directly.
+    This currently requires massaging the eliminator a bit *)
+Set Equations Debug.
+Equations f (n:nat) : nat :=
+{ f 10 := 0;
+  f x  := brx x (I : discr_10 x) }
+where brx (x : nat) (H : discr_10 x) : nat :=
+      brx x H := x + 1.
+
+Lemma f_elim' : forall (P : nat -> nat -> Prop),
+    P 10 0 ->
+    (forall (x : nat) (H : discr_10 x), P x (x + 1)) ->
+    (forall n : nat, P n (f n)).
+Proof.
+  intros. apply (f_elim P (fun x H r => P x r)); auto.
+Defined.
+
+Goal forall n, n <> 10 -> f n = n + 1.
+  intros n; apply f_elim'.
+ (* 2 cases: 10 and not 10 *)
+  all:simpl; congruence.
+Qed.

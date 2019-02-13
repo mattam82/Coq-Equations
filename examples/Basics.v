@@ -350,8 +350,8 @@ Lemma split_struct_vapp : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
     v = v' /\ w = w'.
 Proof.
   intros. funelim (vapp v w); simp split_struct in *.
-  destruct (split_struct (m:=0) w). depelim xs; intuition.
-  destruct (split_struct (vapp t w)); simpl.
+  destruct split_struct. depelim xs; intuition.
+  destruct (split_struct (vapp t _)); simpl.
   intuition congruence.
 Qed.
 

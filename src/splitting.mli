@@ -192,14 +192,16 @@ type compiled_program_info = {
 
 val is_polymorphic : term_info -> bool
 
-val define_mutual_nested : Evd.evar_map ref ->
-                           ('a -> EConstr.t) ->
-                           (program_info * 'a) list ->
-                           (program_info * 'a * EConstr.t) list *
-                           (program_info * 'a * EConstr.constr) list
+val define_mutual_nested : Environ.env ->
+  Evd.evar_map ref ->
+  ('a -> EConstr.t) ->
+  (program_info * 'a) list ->
+  (program_info * 'a * EConstr.t) list *
+  (program_info * 'a * EConstr.constr) list
 
 val define_mutual_nested_csts :
            Equations_common.flags ->
+           Environ.env ->
            Evd.evar_map ref ->
            (Evd.evar_map ref -> 'a -> EConstr.t) ->
            (Syntax.program_info * 'a) list ->
