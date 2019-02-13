@@ -88,8 +88,8 @@ End View.
 
 (** Second alternative: using the discriminator directly.
     This currently requires massaging the eliminator a bit *)
-Set Equations Debug.
-Equations f (n:nat) : nat :=
+
+Equations f (n:nat) : nat by struct n (* FIXME *) :=
 { f 10 := 0;
   f x  := brx x (I : discr_10 x) }
 where brx (x : nat) (H : discr_10 x) : nat :=
