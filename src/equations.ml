@@ -133,7 +133,7 @@ let define_principles flags rec_info fixprots progs =
     in
     build_equations flags.with_ind env !evd rec_info splits
 
-let define_by_eqs ~poly ~program_mode ~open_proof opts eqs nt =
+let define_by_eqs ~poly ~open_proof opts eqs nt =
   let with_eqns, with_ind =
     let try_bool_opt opt =
       if List.mem opt opts then false
@@ -155,7 +155,7 @@ let define_by_eqs ~poly ~program_mode ~open_proof opts eqs nt =
   let data, fixdecls, fixprots = compute_fixdecls_data env evd programs in
   let fixdecls = nf_rel_context_evar !evd fixdecls in
   let intenv = { rec_info; flags; fixdecls; intenv = data; notations = nt } in
-  let programs = coverings ~program_mode env evd intenv programs (List.map snd eqs) in
+  let programs = coverings env evd intenv programs (List.map snd eqs) in
   let env = Global.env () in (* coverings has the side effect of defining comp_proj constants for now *)
   let fix_proto_ref = destConstRef (Lazy.force coq_fix_proto) in
   let _kind = (Decl_kinds.Global, poly, Decl_kinds.Definition) in
@@ -185,9 +185,9 @@ let define_by_eqs ~poly ~program_mode ~open_proof opts eqs nt =
   in
   define_programs env evd rec_info fixdecls flags programs hook
 
-let equations ~poly ~program_mode ~open_proof opts eqs nt =
+let equations ~poly ~open_proof opts eqs nt =
   List.iter (fun (((loc, i), nested, l, t, by),eqs) -> Dumpglob.dump_definition CAst.(make ~loc i) false "def") eqs;
-  define_by_eqs ~poly ~program_mode ~open_proof opts eqs nt
+  define_by_eqs ~poly ~open_proof opts eqs nt
 
 let solve_equations_goal destruct_tac tac gl =
   let concl = pf_concl gl in
