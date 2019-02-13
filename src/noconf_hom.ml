@@ -221,7 +221,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
                   program_arity = s}
   in
   let splitting =
-    Covering.covering ~program_mode:false
+    Covering.covering
       ~check_unused:false (* The catch-all clause might not be needed *)
       env evd p data clauses [] ctxmap [] s in
   let hook _ p terminfo =
