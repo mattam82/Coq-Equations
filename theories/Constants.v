@@ -74,6 +74,7 @@ Register Equations.DepElim.simplify_ind_pack_inv as equations.depelim.simplify_i
 Register Equations.DepElim.opaque_ind_pack_eq_inv as equations.depelim.opaque_ind_pack_eq_inv.
 Register Equations.DepElim.eq_simplification_sigma1 as equations.depelim.simpl_sigma.
 Register Equations.DepElim.eq_simplification_sigma1_dep as equations.depelim.simpl_sigma_dep.
+Register Equations.DepElim.eq_simplification_sigma1_nondep_dep as equations.depelim.simpl_sigma_nondep_dep.
 Register Equations.DepElim.eq_simplification_sigma1_dep_dep as equations.depelim.simpl_sigma_dep_dep.
 Register Equations.DepElim.pack_sigma_eq as equations.depelim.pack_sigma_eq.
 Register Equations.DepElim.simplification_K_dec as equations.depelim.simpl_K_dec.

@@ -27,6 +27,10 @@ Dependent Pattern-Matching
   for an impure language using well-scoped, well-typed syntax
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/definterp.v)).
 
+- [Views](examples/views.html): using dependent pattern-matching with
+  views, to handle default cases in pattern-matching
+  ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/views.v)).
+
 Recursion
 =========
 

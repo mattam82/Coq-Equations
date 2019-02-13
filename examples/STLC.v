@@ -770,7 +770,7 @@ Proof.
 
   (* App *)
   simpl in *.
-  on_call (hereditary_subst (U, t1, u)) ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
+  on_call (hereditary_subst (U, u0, u)) ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in * ).
   noconf H4. simpl in H1.
   depelim H3.
@@ -910,7 +910,7 @@ Proof.
     now apply nth_pred.
 
   (* App *)
-  - on_call (hereditary_subst (U,t1,u))
+  - on_call (hereditary_subst (U,u0,u))
             ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
     specialize (H0 _ _ _ [] eq_refl).
     rewrite Heq in Hind.
@@ -947,7 +947,7 @@ Proof.
   (* No redex *)
   - intros Γ T Hu.
     assert(Γ' @ (U :: Γ) |-- @( t3, u) => T
-      → Γ' @ Γ |-- @( t2, fst (hereditary_subst (U, t1, u) (length Γ'))) => T).
+      → Γ' @ Γ |-- @( t2, fst (hereditary_subst (U, u0, u) (length Γ'))) => T).
     intros Ht; depelim Ht.
     on_call hereditary_subst
             ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
