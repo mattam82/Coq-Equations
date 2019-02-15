@@ -144,7 +144,115 @@ Section WfFromAF.
     (∀ x y, clos_trans_1n X T x y ∧ R y x → False)
     → SecureBy R p → well_founded T.
   Proof.
-    intros. intro x. eapply acc_from_af; eauto.
+    intros. intro x. eapply acc_from_af;eauto.
+  Defined.
+
+  Equations power (k : nat) (T : X -> X -> Prop) : X -> X -> Prop :=
+    power 0 T := T;
+    power (S k) T := fun x y => exists z, power k T x z /\ T z y.
+  Transparent power.
+
+  Lemma acc_incl (T T' : X -> X -> Prop) x : (forall x y, T' x y -> T x y) -> Acc T x -> Acc T' x.
+  Proof.
+    intros HT H; induction H in |- *.
+    constructor. intros. apply HT in H1. now apply H0.
+  Qed.
+  Require Import Relations Wellfounded.
+
+  Lemma power_clos_trans (T : X -> X -> Prop) k : inclusion _ (power k T) (clos_trans _ T).
+  Proof.
+    intros x y. induction k in x, y |- *. simpl. now constructor.
+    simpl. intros [z [Pxz Tzy]]. econstructor 2. apply IHk; eauto. constructor. auto.
+  Qed.
+
+  Lemma acc_power (T : X -> X -> Prop) x k : Acc T x -> Acc (power k T) x.
+  Proof.
+    intros. apply Acc_clos_trans in H. revert H.
+    apply acc_incl. intros. now apply (power_clos_trans _ k).
+  Qed.
+
+  Equations secure_power (k : nat) (p : WFT X) : WFT X :=
+    secure_power 0 p := p;
+    secure_power (S k) p := SUP (fun x => secure_power k p).
+  Transparent secure_power.
+  Lemma secure_by_power R p (H : SecureBy R p) k :
+    SecureBy R (secure_power k p).
+  Proof.
+    induction k in R, p, H |- *; trivial.
+    induction p. simpl in *. intros. apply IHk. simpl. intuition.
+    simpl. intros.
+    apply IHk. simpl. intros. simpl in H0. simpl in H.
+    specialize (H x0). eapply SecureBy_mon. 2:eauto. simpl. intuition.
+  Qed.
+
+  Lemma acc_from_power_af (p : WFT X) (T R : X → X → Prop) y k :
+    (∀ x z, clos_refl_trans _ T z y ->
+            clos_trans_1n X (power k T) x z ∧ R z x → False)
+    → SecureBy R (secure_power k p) → Acc T y.
+  Proof.
+    (* induction k in T, R, y |- *. simpl. intros. simp secure_power in H0. eapply acc_from_af; eauto. admit. *)
+    (* intros. *)
+    (* simp secure_power in H0. simpl in H0. *)
+    (* constructor. intros x Txy. *)
+    (* specialize (IHk T (sec_disj R x)). specialize (H0 x). *)
+    (* apply IHk; auto. *)
+    (* intros. destruct H1; subst. unfold sec_disj in *. *)
+    (* intuition. *)
+    (* intuition. red in H4. apply (H x z). *)
+
+
+
+
+
+    induction p as [|p IHp] in T, R, y, k |- * .
+  (*   + simpl. intros. constructor. *)
+  (*     intros z Tz. specialize (H z y). elim H. constructor 2. split; auto. *)
+  (*     constructor. auto. *)
+  (*   + intros cond secure. constructor. intros z Tzy. *)
+  (*     simpl in secure. *)
+  (*     specialize (IHp y T (fun y0 z0 => R y0 z0 \/ R y y0) z). eapply (IHp k); auto. *)
+  (*     intros x w wz. *)
+  (*     assert(wy: clos_refl_trans X (power (S k) T) w y). *)
+  (*     { econstructor 3. eauto. constructor.    now constructor. } *)
+  (*     pose proof (cond x w wy). intuition. *)
+  (*     specialize (cond w y). apply cond. constructor 2. *)
+  (*     intuition. apply clos_trans_n1_1n. eapply clos_refl_trans_right; eauto. *)
+  (* Defined. *)
+    Admitted.
+
+    (* induction k. eapply acc_from_af; eauto. *)
+    (* apply IHk. intros. eapply H. eauto. *)
+    (* constructor. intros. *)
+    (* apply IHk; auto. intros x z Hzy [Hxz Rzx]. *)
+    (* specialize (H x z). *)
+    (* specialize (H x _ H2). apply H. split; intuition. *)
+    (* induction H4. constructor. simpl. exists *)
+
+(* eapply acc_power with 0. eapply acc_from_af; eauto. intros. intuition. *)
+(*     simpl power in *. *)
+(*     apply clos_trans_1n_n1 in H3. destruct H3. *)
+(*     specialize (H x _ H1). apply H; split; auto. *)
+(*     specialize (H *)
+(*     induction p as [|p IHp] in T, R, y |- * . *)
+(*     + simpl. intros. constructor. *)
+(*       intros z Tz. specialize (H z y). elim H. constructor 2. split; auto. *)
+(*       constructor. auto. *)
+(*     + intros cond secure. constructor. intros z Tzy. *)
+(*       simpl in secure. *)
+(*       specialize (IHp y T (fun y0 z0 => R y0 z0 \/ R y y0) z). apply IHp; auto. *)
+(*       intros x w wz. *)
+(*       assert(wy: clos_refl_trans X T w y). *)
+(*       { econstructor 3. eauto. now constructor. } *)
+(*       pose proof (cond x w wy). intuition. *)
+(*       specialize (cond w y). apply cond. constructor 2. *)
+(*       intuition. apply clos_trans_n1_1n. eapply clos_refl_trans_right; eauto. *)
+(*   Defined. *)
+
+  Lemma wf_from_power_af (p : WFT X) (T R : X → X → Prop) k :
+    (∀ x y, clos_trans_1n X (power k T) x y ∧ R y x → False)
+    → SecureBy R p → well_founded T.
+  Proof.
+    intros. intro x. eapply acc_from_power_af; eauto. apply secure_by_power. apply H0.
   Defined.
 
 End WfFromAF.
@@ -159,10 +267,25 @@ Section FixAF.
   Proof. red. destruct af. eapply wf_from_af; eauto. Defined.
 End FixAF.
 
+Section PowerAf.
+  Context {X : Type}.
+  Context (T R : X -> X -> Prop).
+  Context {af : AlmostFull R}.
+  Context (k : nat).
+  Context (H : forall x y, clos_trans_1n X (power k T) x y /\ R y x -> False).
+
+  Global Instance af_power_wf : WellFounded T.
+  Proof.
+    destruct af as [p Sp].
+    eapply wf_from_power_af; eauto.
+  Defined.
+End PowerAf.
+
 Equations cofmap {X Y : Type} (f : Y -> X) (p : WFT X) : WFT Y :=
   cofmap f ZT := ZT;
   cofmap f (SUP w) := SUP (fun y => cofmap f (w (f y))).
 Transparent cofmap.
+
 Lemma cofmap_secures {X Y : Type} (f : Y -> X) (p : WFT X) (R : X -> X -> Prop) :
   SecureBy R p -> SecureBy (fun x y => R (f x) (f y)) (cofmap f p).
 Proof.
@@ -413,26 +536,334 @@ Proof.
   repeat red; intuition. rewrite <- H1. apply a; typeclasses eauto.
 Defined.
 
-Equations T (x y : nat * nat) : Prop :=
-  T (x0, x1) (y0, y1) := (x0 = y1 /\ x1 < y1) \/
-                         (x0 = y1 /\ x1 < y0).
+Definition T (x y : nat * nat) : Prop :=
+  (fst x = snd y /\ snd x < snd y) \/
+  (fst x = snd y /\ snd x < fst y).
+
+Definition T' (x y : nat * nat) : Prop :=
+  (fst x <= snd y /\ snd x <= snd y) \/
+  (fst x <= snd y /\ snd x <= fst y).
 
 Definition R := product_rel le le.
 Require Import Lia.
-Axiom cheat : forall A, A.
-Definition gnlex : (nat * nat) -> nat.
-  pose (af_wf T R).
-  forward w.
-  unfold T.
-  destruct 1. induction H. simpl in H.
-  destruct x as [x0 y0]. destruct y as [x1 y1]. simpl in H0.
-  repeat red in H0. simpl in H0. intuition.
-  destruct x as [x0 y0]. destruct y as [x1 y1].
-  destruct z as [z0 z1]. simpl in *.
-  repeat red in H0. simpl in H0; intuition.
-  unfold R, product_rel in *. simpl in *.
-  apply cheat. apply cheat.
 
+Ltac destruct_pairs := repeat
+  match goal with
+    [ x : _ * _ |- _ ] => let x0 := fresh x in let x1 := fresh x in destruct x as [x0 x1]; simpl in *
+  | [ x : exists _ : _, _ |- _ ] => destruct x
+  | [ x : _ /\ _ |- _ ] => destruct x
+end.
+
+Derive Signature for clos_trans_1n.
+(* Lemma clos_tra_prop n1 n2 n3 n4 : n1 <= n4 -> clos_trans_1n _ T (n3, n4) (n1, n2) -> n1 <= n3. *)
+
+Lemma power_T_prop y z : (power 1 T) y z -> ((* (fst y) <= (fst z) /\ *) (snd y) < (snd z)) \/
+                                                     (* (fst y) <= (fst z) /\ *) (snd y) < (fst z).
+Proof.
+  unfold T, T'; intros H. destruct H. destruct_pairs. repeat red in H; simpl in *; subst; auto; simp power in *;
+    destruct_pairs. intuition.
+Qed.
+
+Definition power_T_inv (y z : nat * nat) :=
+  ((fst y) < (snd z) /\ (snd y) < (snd z) \/ (fst y) < (fst z)). (* \/ (snd y < fst z)). *)
+
+Lemma power_T_prop2 y z : (power 1 T) y z -> power_T_inv y z.
+Proof.
+  unfold power_T_inv, T, T'; intros H. destruct H. destruct_pairs. repeat red in H; simpl in *; subst; auto; simp power in *;
+    destruct_pairs. intuition.
+Qed.
+
+Lemma clos_trans_incl {X} (R S : X -> X -> Prop) : inclusion _ R S ->
+                                                   inclusion _ (clos_trans _ R) (clos_trans _ S).
+Proof.
+  intros H x y Hxy. induction Hxy; auto. constructor. auto. econstructor 2; eauto.
+Qed.
+
+Lemma power_T_clos_prop : inclusion _ (clos_trans _ (power 1 T)) (clos_trans _ power_T_inv).
+Proof.
+  apply clos_trans_incl. red. intros. now apply power_T_prop2.
+Qed.
+
+
+(* Lemma power_T_prop3 y z : (power 1 T) y z -> (snd y) <= (snd z). *)
+(* Proof. *)
+(*   unfold T, T'; intros H. destruct H. destruct_pairs. repeat red in H; simpl in *; subst; auto; simp power in *; *)
+(*     destruct_pairs. intuition. subst. *)
+(* Qed. *)
+
+(* Lemma power_T_all_prop y z : (power 1 T) y z -> ((fst y) <= (snd z) /\ (snd y) <= (snd z)) \/ *)
+(*                                               (fst y) <= (fst z) /\ (snd y) <= (fst z). *)
+(* Proof. *)
+(*   unfold T, T'; intros H. destruct_pairs. *)
+(*   pose proof (power_T_prop _ _ H). *)
+(*   pose proof (power_T_prop2 _ _ H). *)
+(*   destruct_pairs. simpl in *. intuition. destruct H. destruct_pairs; intuition. subst. *)
+(* Qed. *)
+
+
+(* Lemma clos_trans_power_T_prop y z : clos_trans_1n _ (power 1 T) y z -> *)
+(*  ((* (fst y) <= (fst z) /\ *) (snd y) <= (snd z)) \/ *)
+(*  (* (fst y) <= (fst z) /\ *) (snd y) <= (fst z). *)
+(* Proof. *)
+(*   unfold T, T'; intros H. induction H. destruct_pairs. repeat red in H; simpl in *; subst; auto; simp power in *; *)
+(*     destruct_pairs. intuition. apply power_T_prop in H. intuition. *)
+(* Qed. *)
+
+(* subst. *)
+(*   repeat red in H. subst. *)
+(*    destruct_pairs. simpl in *. intuition. subst. *)
+(*    repeat red in H0. simpl in *; intuition. *)
+(*    destruct_pairs. simpl in *. intuition. subst. *)
+(*    repeat red in H1. simpl in *; intuition. *)
+
+Lemma T_tra_prop y z : T y z -> product_rel le le z y -> False.
+Proof.
+  intros. unfold power_T_inv, T in *. destruct_pairs. red in H0. simpl in *. intuition.
+Qed.
+
+Lemma clos_tra_prop y z : (power 1 T) y z -> product_rel le le z y -> False.
+Proof.
+  intros. apply power_T_prop2 in H. unfold power_T_inv in *. destruct_pairs. red in H0. simpl in *. intuition.
+Qed.
+
+Lemma power_T_prop3 y z : T y z -> ((snd y) < (snd z) \/ (snd y) < (fst z)).
+(* ((fst y) <= (snd z) /\ (snd y) <= (snd z)) \/ *)
+(*                                    ((fst y) <= (snd z) /\ (snd y) <= (fst z)). *)
+Proof.
+  unfold T, T'; intros H. destruct_pairs. repeat red in H; simpl in *; subst; auto; simp power in *;
+    destruct_pairs. intuition.
+Qed.
+
+Lemma power_T_prop4 y z : T y z -> (fst y <= snd z).
+Proof.
+  unfold T, T'; intros H. destruct_pairs. repeat red in H; simpl in *; subst; auto; simp power in *;
+    destruct_pairs. intuition.
+Qed.
+
+Lemma power_1_T_enough n y z : power n T y z ->
+                               (* ((fst y) <= (snd z) /\ (snd y) <= (snd z)) \/ *)
+                               (* ((fst y) <= (snd z) /\ (snd y) <= (fst z)). *)
+                               ((snd y) < (snd z) \/ (snd y) < (fst z)).
+Proof.
+  induction n in y, z |- *. apply power_T_prop3. auto. intros.
+  simp power in *. destruct_pairs; unfold T in *. simpl in *.
+  specialize (IHn _ _ H). destruct IHn. simpl in *. intuition. simpl in *. intuition.
+Qed.
+
+
+(* Lemma power_T_prop4_2 n y z : power n T y z -> (fst y <= snd z). *)
+(* Proof. *)
+(*   induction n in y, z |- *. apply power_T_prop4. auto. intros. *)
+(*   simp power in *. destruct_pairs; unfold T in *. simpl in *. *)
+(*   specialize (IHn _ _ H). *)
+(*   apply power_1_T_enough in H. simpl in *. intuition. subst. *)
+(*  destruct IHn. simpl in *. *)
+
+
+(*  intuition. simpl in *. intuition. *)
+(* Qed. *)
+
+Lemma power_1_T_enough' n y z : power n T y z -> product_rel le le z y -> False.
+Proof.
+  induction n in y, z |- *. apply T_tra_prop. auto. intros.
+  simp power in *. destruct_pairs; unfold T in *. simpl in *.
+  specialize (IHn _ _ H). destruct IHn.
+  red. red in H0. simpl in *. intuition. subst.
+  apply power_1_T_enough in H. simpl in *. intuition. subst.
+  apply power_1_T_enough in H. simpl in *. intuition. subst.
+  apply power_1_T_enough in H. simpl in *. intuition. subst.
+
+
+
+intros. inversion H.
+  destruct n. intros; firstorder.
+  intros. forward IHn. lia.
+  intros x y Rxy. simp power in *. destruct_pairs. unfold T in *. simpl in *.
+  exists (y1 , x0). simpl. intuition. subst.
+
+Definition Tle (x y : nat * nat) : Prop :=
+  (fst x <= snd y /\ snd x < snd y) \/
+  (fst x <= snd y /\ snd x < fst y).
+Lemma Tle_tra_prop y z : Tle y z -> product_rel le le z y -> False.
+Proof.
+  intros. unfold power_T_inv, Tle in *. destruct_pairs. red in H0. simpl in *. intuition.
+Qed.
+
+Lemma T_product_right x y z : Tle x y -> product_rel le le y z -> Tle x z.
+Proof.
+  intros. destruct H; unfold Tle in *; destruct_pairs; red in H0; simpl in *;
+  intuition.
+Qed.
+
+Lemma clos_tra_prop_n n y z : (power n Tle) y z -> product_rel le le z y -> False.
+Proof.
+  induction n in y, z |- *; simp power. apply Tle_tra_prop.
+  intros [z' [Tpz Tz]]. specialize (IHn _ _ Tpz).
+  intros. apply IHn. clear IHn. clear Tpz.
+  apply (T_product_right _ _ _ Tz) in H.
+  red in H.
+
+unfold product_rel, T in *. destruct_pairs.
+  simpl in *. intuition. subst.
+  intros. apply power_T_prop2 in H. unfold power_T_inv in *. destruct_pairs. red in H0. simpl in *. intuition.
+Qed.
+
+Lemma power_T_inv_prop y z : power_T_inv y z -> product_rel le le z y -> False.
+Proof.
+  intros. unfold power_T_inv in *. destruct_pairs. red in H0. simpl in *. intuition.
+Qed.
+
+Definition power_T_inv2 (y z : nat * nat) :=
+  ((fst y) < (snd z) /\ (snd y) < (snd z)
+                        \/ (fst y) < (fst z) /\ (snd y <= fst z)).
+
+Lemma clos_power_T_inv_prop y z : clos_trans_1n _ power_T_inv2 y z -> power_T_inv2 y z.
+Proof.
+  intros. unfold power_T_inv2 in *. induction H. auto.
+  destruct_pairs. simpl in *. intuition.
+Qed.
+
+Lemma power_T_inv2_powerT_inv : inclusion _ (power 2 T) power_T_inv2.
+Proof. intros x y H. unfold power_T_inv2, power_T_inv in *. simp power in *. unfold T in *.
+       destruct_pairs. intuition. subst. Qed.
+
+Lemma clos_tra_prop_clos y z : clos_trans_n1 _ (power 1 T) y z -> product_rel le le z y -> False.
+Proof.
+  intros.
+  rewrite <- clos_trans_tn1_iff in H.
+  apply power_T_clos_prop in H.
+
+  eapply clos_trans_incl in H.
+  rewrite clos_trans_t1n_iff in H.
+  eapply clos_power_T_inv_prop in H. admit. intros  ? ?.
+
+ induction H in|- *. eapply clos_tra_prop; eauto.
+  pose (clos_tra_prop' _ _ _ H H0). pose (power_T_product_right _ _ _ H H0).
+  eapply (clos_trans_inter_false (power 1 T)). 2:eapply H1. 2:constructor; eapply p.
+  intros.
+  intuition.
+Qed.
+
+
+
+
+Lemma clos_tra_prop' x y z : (power 1 T) x y -> product_rel le le y z -> product_rel le le z x -> False.
+Proof.
+  intros. simp power in H. unfold T in *. repeat red in H0, H1. repeat red. destruct_pairs.
+  intuition.
+Qed.
+
+Lemma power_T_product_right x y z : (power 1 T) x y -> product_rel le le y z -> (power 1 T) x z.
+Proof.
+  intros. destruct H. unfold T in *; destruct_pairs. red in H0. simp power. simpl in *.
+  intuition. subst. exists (z1, x2). simpl. intuition. subst.
+  exists (z1, x2); simpl; intuition.
+  exists (z1, x0); simpl; intuition.
+  exists (z1, x0); simpl; intuition.
+Qed.
+
+(* Lemma T_product_right' x y z : T x y -> product_rel le le y z -> product_rel le le x z. *)
+(* Proof. *)
+(*   intros. destruct H; unfold Tle in *; destruct_pairs; red in H0 |- *; simpl in *; *)
+(*   intuition. subst. *)
+(* Qed. *)
+
+(* Lemma power_T_product_left x y z : (power 1 T) y z -> product_rel le le x y -> (power 1 T) x z. *)
+(* Proof. *)
+(*   intros. destruct H. unfold T in *; destruct_pairs. red in H0. simp power. simpl in *. *)
+(*   intuition. subst. exists (z1, x0). simpl. intuition. subst. *)
+(*   exists (z1, x0); simpl; intuition. *)
+(*   exists (z1, x0); simpl; intuition. *)
+(*   exists (z1, x0); simpl; intuition. *)
+(* Qed. *)
+
+  (* ~(x <= y /\ z <= w)
+     <-> (~ x <= y \/ ~ (z <= w))
+     <-> (y < x \/ w < z) *)
+
+Definition antisym {X} (R : X -> X -> Prop) :=
+  forall x y, R x y -> R y x -> False.
+
+Lemma power_1_antisym : antisym (power 1 T).
+Proof.
+  intros x y. intros [] []. unfold T in *. destruct_pairs. simpl in *. intuition.
+Qed.
+
+(* Lemma clos_trans_antisym {X} (R : X -> X -> Prop) : antisym R -> antisym (clos_trans _ R). *)
+(* Proof. *)
+(*   intros. *)
+(*   intros x y. rewrite !clos_trans_tn1_iff. induction 1. induction 1. *)
+(*   eauto. *)
+(* Qed. *)
+
+Lemma clos_trans_inter_false {A} (R : A -> A -> Prop) : (* transitive _ R -> *)
+  (forall x y, R x y -> clos_trans_n1 _ R y x -> False) ->
+  (forall x y, clos_trans_n1 _ R x y -> clos_trans_n1 _ R y x -> False).
+Proof.
+  intros. induction H0; eauto. specialize (H y z). specialize (H H0).
+  apply H. apply clos_trans_tn1. econstructor 2. apply clos_trans_tn1_iff. eauto.
+  apply clos_trans_tn1_iff. eauto.
+Defined.
+
+Lemma clos_trans_inter_false' {A} (R : A -> A -> Prop) : (* transitive _ R -> *)
+  (forall x y, R x y -> clos_trans_n1 _ R y x -> False) ->
+  (forall x y, clos_trans_n1 _ R x y -> R y x -> False).
+Proof.
+  intros.
+  pose (tn1_step _ _ _ _ H1).
+  eapply clos_trans_inter_false. 2:eapply H0. 2:eauto.
+  intros. eauto.
+Qed.
+
+
+Lemma clos_tra_prop_clos y z : clos_trans_n1 _ T y z -> product_rel le le z y -> False.
+Proof.
+  intros. unfold product_rel in *.
+  induction H. unfold T in *. destruct_pairs. repeat red in H0. simpl in *. intuition.
+  unfold T in *. destruct_pairs. repeat red in H0. simpl in *. intuition.
+  subst. apply H3; intuition.
+  destruct H2.
+  unfold T in *. destruct_pairs. repeat red in H0. simpl in *. intuition.
+  unfold T in *. destruct_pairs. repeat red in H0. simpl in *. intuition. subst.
+
+
+
+
+
+
+  rewrite <- clos_trans_tn1_iff in H.
+  apply power_T_clos_prop in H.
+  unfold power_T_inv in H. unfold product_rel in *.
+  rewrite clos_trans_tn1_iff in H.
+  induction H; repeat red in H0; destruct_pairs. intuition.
+  intuition.
+
+Lemma clos_tra_prop_clos y z : clos_trans_n1 _ (power 1 T) y z -> product_rel le le z y -> False.
+Proof.
+  intros.
+  rewrite <- clos_trans_tn1_iff in H.
+  apply power_T_clos_prop in H.
+  unfold power_T_inv in H. unfold product_rel in *.
+  rewrite clos_trans_tn1_iff in H.
+  induction H; repeat red in H0; destruct_pairs. intuition.
+  intuition.
+
+
+
+
+Lemma clos_tra_prop_clos y z : clos_trans_n1 _ (power 1 T) y z -> product_rel le le z y -> False.
+Proof.
+  intros. induction H in|- *. eapply clos_tra_prop; eauto.
+  pose (clos_tra_prop' _ _ _ H H0). pose (power_T_product_right _ _ _ H H0).
+  eapply (clos_trans_inter_false (power 1 T)). 2:eapply H1. 2:constructor; eapply p.
+  intros.
+  intuition.
+Qed.
+
+Definition gnlex : (nat * nat) -> nat.
+  pose (af_power_wf T R 1).
+  forward w. unfold R. intros [] [] [Ht Hr].
+  eapply clos_tra_prop_clos; eauto. now apply clos_trans_1n_n1.
   refine (Subterm.FixWf (R:=T) (fun x => nat) _).
   refine (fun x =>
             match x as w return ((forall y, T y w -> nat) -> nat) with
@@ -442,8 +873,25 @@ Definition gnlex : (nat * nat) -> nat.
                                 frec (S y, y) _ +
                                 frec (S y, x) _
             end).
-  red. intuition lia. red. intuition lia.
+  red. simpl. intuition lia. red. simpl. intuition lia.
 Defined.
 
 Require Import ExtrOcamlBasic.
 Extraction gnlex.
+
+Lemma gnlex_0_l y : gnlex (0, y) = 1.
+Admitted.
+
+Lemma gnlex_0_r x : gnlex (x, 0) = 1.
+Admitted.
+
+
+Lemma gnlex_S x y : gnlex (S x, S y) = gnlex (S y, y) + gnlex (S y, x).
+Admitted.
+
+Lemma gnlex_S_test x y : exists foo, gnlex (S x, S y) = foo.
+  eexists. rewrite gnlex_S. destruct y. rewrite gnlex_0_r. destruct x. rewrite gnlex_0_r. reflexivity.
+  rewrite gnlex_S. rewrite gnlex_0_r. destruct x. admit. rewrite gnlex_S.
+Admitted.
+
+Eval vm_compute in fun x y => gnlex (S x, S y).
