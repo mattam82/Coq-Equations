@@ -504,10 +504,29 @@ let aux_ind_fun info chop nested unfs unfids split =
                | None -> tclIDTAC
                | Some idx ->
                  let recid = add_suffix wp.program_info.program_id "_rec" in
+                 let unftac lr =
+                   match unfs with
+                   | None -> tclIDTAC
+                   | Some _ ->
+                     (* Inside the recursive function, recursive calls are not on the original
+                        version, not the unfolded one. We hence transform the induction hypothesis. *)
+                     let tac gl =
+                       let sigma = Proofview.Goal.sigma gl in
+                       let concl = Proofview.Goal.concl gl in
+                       let ctx, concl = decompose_prod_assum sigma concl in
+                       Proofview.tclBIND (pf_constr_of_global (Nametab.locate (qualid_of_ident (List.hd unfids))))
+                         (fun unf ->
+                            tclTHENLIST [tclDO (List.length ctx) intro;
+                                         if lr then Equality.rewriteLR unf else Equality.rewriteRL unf;
+                                         tclDO (List.length ctx) revert_last])
+                     in
+                     observe_new "rewriting where recursive call from unfolded version to original version"
+                       (Proofview.Goal.enter tac)
+                 in
                  (* The recursive argument is local to the where, shift it by the
                     length of the enclosing context *)
                  let newidx = match unfs with None -> idx + (List.length lctx) | Some _ -> idx in
-                 fix recid (succ newidx))
+                 tclTHENLIST [unftac false; fix recid (succ newidx); unftac true])
             | _ -> tclIDTAC
           in
           let wheretac =
