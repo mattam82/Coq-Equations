@@ -927,7 +927,25 @@ let computations env evd alias refine p eqninfo =
            Some ((f, args), id, s), fsubst
          with Not_found -> None, fsubst
        in
-       let args' =
+       let term_ty = Retyping.get_type_of env evd term in
+       let subterm, lensubst =
+         let rec aux ty args' =
+           match kind evd ty, args' with
+           | Prod (na, b, ty), a :: args' ->
+             if EConstr.isRel evd a then (* A variable from the context that was not substituted
+                                  by a recursive prototype, we keep it *)
+               let term', len = aux ty args' in
+               mkLambda (na, b, term'), len
+             else
+               (* The argument was substituted, we keep that substitution *)
+               let term', len = aux (subst1 a ty) args' in
+               term', succ len
+           | _, [] -> lhsterm, 0
+           | _, _ :: _ -> assert false
+         in aux term_ty args
+       in
+       Feedback.msg_debug Pp.(str"where subterm: " ++ Printer.pr_econstr_env env evd subterm);
+       let _args' =
          let rec aux i a =
            match a with
            | [] -> []
@@ -936,7 +954,6 @@ let computations env evd alias refine p eqninfo =
              else hd :: aux (succ i) tl
          in aux 0 args
        in
-       let subterm = applist (term, args') in
        let wsmash, smashsubst = smash_ctx_map env evd (id_subst w.where_program.program_info.program_sign) in
        let comps = computations env wsmash subterm None fsubst (Regular,false)
            w.where_program.program_splitting in
@@ -945,7 +962,7 @@ let computations env evd alias refine p eqninfo =
          if not (PathMap.is_empty wheremap) then
            subterm, [0]
          else
-           subterm, [List.length args']
+           subterm, [lensubst]
        in
        let where_comp =
          (termf, alias, w.where_orig, pi1 wsmash, substl smashsubst arity,
