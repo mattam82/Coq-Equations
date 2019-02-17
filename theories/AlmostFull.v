@@ -1,5 +1,11 @@
 Require Import Equations.
 Require Import Relations Utf8.
+Require Import Relations Wellfounded.
+Require Import Setoid RelationClasses Morphisms.
+Require Import Lia.
+Require Import Equations.Fin Bool.
+Require Import List Arith.
+
 Set Asymmetric Patterns.
 
 Definition dec_rel {X:Type} (R : X → X → Prop) := ∀ x y, {not (R y x)} + {R y x}.
@@ -67,7 +73,6 @@ End AlmostFull.
 Class AlmostFull {X} (R : X -> X -> Prop) :=
   is_almost_full : almost_full R.
 
-Require Import Setoid RelationClasses Morphisms.
 Instance proper_af X : Proper (relation_equivalence ==> iff) (@AlmostFull X).
 Proof.
   intros R S eqRS.
@@ -83,7 +88,7 @@ Proof.
   apply Hp.
 Qed.
 
-Instance almost_full_le : AlmostFull le.
+Instance almost_full_le : AlmostFull Nat.le.
 Admitted.
 
 Arguments WFT X : clear implicits.
@@ -160,7 +165,6 @@ Section WfFromAF.
     intros HT H; induction H in |- *.
     constructor. intros. apply HT in H1. now apply H0.
   Qed.
-  Require Import Relations Wellfounded.
 
   Lemma power_clos_trans (T : X -> X -> Prop) k : inclusion _ (power k T) (clos_trans _ T).
   Proof.
@@ -544,10 +548,6 @@ Proof.
   assert (relation_equivalence (inter_rel (MR A fst) (MR B snd)) (product_rel A B)).
   repeat red; intuition. rewrite <- H1. apply a; typeclasses eauto.
 Defined.
-
-Require Import Lia.
-Require Import Equations.Fin Bool.
-Require Import List Arith.
 
 Definition T (x y : nat * nat) : Prop :=
   (fst x = snd y /\ snd x < snd y) \/
@@ -1063,29 +1063,28 @@ Section SCT.
                        { | Some y => Some y;
                          | None => find_opt xs f }.
 
-  (* (* Bug with eqns *) *)
-  (* Equations(noeqns noind) compute_transitive_closure {k} (n : nat) (gs : list (graph k)) : trans_clos_answer k by struct n := *)
-  (*   compute_transitive_closure 0 _ := OutOfFuel _; *)
-  (*   compute_transitive_closure (S n) gs := aux gs [] *)
-  (*    where aux (l : list (graph k)) (acc : list (graph k)) : trans_clos_answer k by struct l := *)
-  (*    aux nil acc := Finished _ acc; *)
-  (*    aux (g :: gs') acc := with_new_candidate new_candidate *)
-  (*      where with_new_candidate : option (graph k) -> trans_clos_answer k := *)
-  (*      { | Some newg => compute_transitive_closure n (newg :: g :: gs' ++ acc); *)
-  (*        | None => aux gs' (g :: acc) } *)
-  (*      where new_candidate : option (graph k) := *)
-  (*      new_candidate := let gs'' := g :: gs' ++ acc in *)
-  (*                       find_opt gs'' (fun g' => *)
-  (*                                        let gcomp := g' ⋅ g in *)
-  (*                                        if eqb g gcomp then None else *)
-  (*                                          if List.existsb (eqb gcomp) gs'' then *)
-  (*                                            let gcomp' := g ⋅ g' in *)
-  (*                                            if List.existsb (eqb gcomp') gs'' then None *)
-  (*                                            else Some gcomp' *)
-  (*                                          else Some gcomp). *)
-  (* Hint Extern 10 => progress simpl : Below. *)
-  (* (* FIXME bug when using with *) *)
-  (* Set Equations Debug. *)
+  Equations(noind) compute_transitive_closure {k} (n : nat) (gs : list (graph k)) : trans_clos_answer k :=
+    compute_transitive_closure 0 _ := OutOfFuel _;
+    compute_transitive_closure (S n) gs := aux gs []
+     where aux (l : list (graph k)) (acc : list (graph k)) : trans_clos_answer k by struct l :=
+     aux nil acc := Finished _ acc;
+     aux (g :: gs') acc := with_new_candidate new_candidate
+       where with_new_candidate : option (graph k) -> trans_clos_answer k :=
+       { | Some newg => compute_transitive_closure n (newg :: g :: gs' ++ acc);
+         | None => aux gs' (g :: acc) }
+       where new_candidate : option (graph k) :=
+       new_candidate := let gs'' := g :: gs' ++ acc in
+                        find_opt gs'' (fun g' =>
+                                         let gcomp := g' ⋅ g in
+                                         if eqb g gcomp then None else
+                                           if List.existsb (eqb gcomp) gs'' then
+                                             let gcomp' := g ⋅ g' in
+                                             if List.existsb (eqb gcomp') gs'' then None
+                                             else Some gcomp'
+                                           else Some gcomp).
+  Hint Extern 10 => progress simpl : Below.
+  (* FIXME bug when using with *)
+
   Equations compute_transitive_closure {k} (n : nat) (gs : list (graph k)) : trans_clos_answer k
     by wf n lt :=
     compute_transitive_closure 0 _ := OutOfFuel _;
