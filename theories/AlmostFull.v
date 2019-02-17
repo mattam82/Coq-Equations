@@ -566,6 +566,70 @@ Ltac destruct_pairs := repeat
   | [ x : _ /\ _ |- _ ] => destruct x
 end.
 
+Section Equality.
+  Class Eq (A : Type) :=
+    { eqb : A -> A -> bool;
+      eqb_spec : forall x y, reflect (x = y) (eqb x y) }.
+
+  Equations fin_eq {k} (f f' : fin k) : bool :=
+  fin_eq fz fz => true;
+  fin_eq (fs f) (fs f') => fin_eq f f';
+  fin_eq _ _ => false.
+
+  Global Instance fin_Eq k : Eq (fin k).
+  Proof.
+    exists fin_eq. intros x y. induction x; depelim y; simp fin_eq; try constructor; auto.
+    intro H; noconf H.
+    intro H; noconf H.
+    destruct (IHx y). subst x; now constructor. constructor. intro H; noconf H. now apply n.
+  Defined.
+
+  Global Instance bool_Eq : Eq bool.
+  Proof.
+    exists bool_eq. intros [] []; now constructor.
+  Defined.
+
+  Global Instance prod_eq A B : Eq A -> Eq B -> Eq (A * B).
+  Proof.
+    intros. exists (fun '(x, y) '(x', y') => eqb x x' && eqb y y').
+    intros [] []. destruct (eqb_spec a a0); subst.
+    destruct (eqb_spec b b0); subst. constructor; auto.
+    constructor; auto. intro H; noconf H. now elim n.
+    constructor; auto. simplify *. now elim n.
+  Defined.
+
+  Equations option_eq {A : Type} {E:Eq A} (o o' : option A) : bool :=
+    option_eq None None := true;
+    option_eq (Some o) (Some o') := eqb o o';
+    option_eq _ _ := false.
+
+  Global Instance option_Eq A : Eq A -> Eq (option A).
+  Proof.
+    intros A_Eq. exists option_eq. intros [] []; simp option_eq; try constructor.
+    destruct (eqb_spec a a0); subst. now constructor.
+    constructor. intro H; noconf H. now elim n.
+    simplify *. simplify *. constructor.
+  Defined.
+
+  Section EqFin_fn.
+    Context {A} `{Eq A}.
+
+    Equations eq_fin_fn {k} (f g : fin k -> A) : bool :=
+    eq_fin_fn (k:=0) f g := true;
+    eq_fin_fn (k:=S k) f g := eqb (f fz) (g fz) && eq_fin_fn (fun n => f (fs n)) (fun n => g (fs n)).
+
+    Global Instance Eq_graph k : Eq (fin k -> A).
+    Proof.
+      exists eq_fin_fn. induction k; intros; simp eq_fin_fn. constructor; auto.
+      extensionality i. depelim i.
+      destruct (eqb_spec (x fz) (y fz)). simpl. destruct (IHk (fun n => x (fs n)) (fun n => y (fs n))).
+      constructor; auto. extensionality n. depelim n. auto. eapply equal_f in e0. eauto. constructor.
+      intro H'. subst. elim n. extensionality n'. reflexivity.
+      simpl. constructor. intros H'; elim n. subst. reflexivity.
+    Defined.
+  End EqFin_fn.
+End Equality.
+
 Section SCT.
 
   Definition subgraph k k' := fin k -> option (bool * fin k').
@@ -711,49 +775,6 @@ Section SCT.
     rewrite (H x y). now exists k.
   Qed.
 
-  Class Eq (A : Type) :=
-    { eqb : A -> A -> bool;
-      eqb_spec : forall x y, reflect (x = y) (eqb x y) }.
-
-  Equations fin_eq {k} (f f' : fin k) : bool :=
-  fin_eq fz fz => true;
-  fin_eq (fs f) (fs f') => fin_eq f f';
-  fin_eq _ _ => false.
-
-  Instance fin_Eq k : Eq (fin k).
-  Proof.
-    exists fin_eq. intros x y. induction x; depelim y; simp fin_eq; try constructor; auto.
-    intro H; noconf H.
-    intro H; noconf H.
-    destruct (IHx y). subst x; now constructor. constructor. intro H; noconf H. now apply n.
-  Defined.
-
-  Instance bool_Eq : Eq bool.
-  Proof.
-    exists bool_eq. intros [] []; now constructor.
-  Defined.
-
-  Instance prod_eq A B : Eq A -> Eq B -> Eq (A * B).
-  Proof.
-    intros. exists (fun '(x, y) '(x', y') => eqb x x' && eqb y y').
-    intros [] []. destruct (eqb_spec a a0); subst.
-    destruct (eqb_spec b b0); subst. constructor; auto.
-    constructor; auto. intro H; noconf H. now elim n.
-    constructor; auto. simplify *. now elim n.
-  Defined.
-
-  Equations option_eq {A : Type} {E:Eq A} (o o' : option A) : bool :=
-    option_eq None None := true;
-    option_eq (Some o) (Some o') := eqb o o';
-    option_eq _ _ := false.
-  Instance option_Eq A : Eq A -> Eq (option A).
-  Proof.
-    intros A_Eq. exists option_eq. intros [] []; simp option_eq; try constructor.
-    destruct (eqb_spec a a0); subst. now constructor.
-    constructor. intro H; noconf H. now elim n.
-    simplify *. simplify *. constructor.
-  Defined.
-
   Equations fin_all k (p : fin k -> bool) : bool :=
     fin_all 0     _ := true;
     fin_all (S k) p := p fz && fin_all k (fun f => p (fs f)).
@@ -772,9 +793,18 @@ Section SCT.
   Definition graph_eq {k} (g g' : graph k) : bool :=
     fin_all k (fun f => eqb (g f) (g' f)).
 
-  Equations graph_compose_n {k} (n : nat) (g : graph k) : graph k :=
-    graph_compose_n 0 g := g;
-    graph_compose_n (S n) g := graph_compose_n n g ⋅ g.
+  Equations power_graph_n {k} (n : nat) (g : graph k) : graph k :=
+    power_graph_n 0 g := g;
+    power_graph_n (S n) g := power_graph_n n g ⋅ g.
+
+  Lemma approximates_power {k} (n : nat) (g : graph k) T :
+    approximates g T ->
+    approximates (power_graph_n n g) (power n T).
+  Proof.
+    induction n; simp power power_graph_n; auto.
+    intros. specialize (IHn H).
+    now apply compose_approximates.
+  Qed.
 
   Equations list_union {A} (rs : list (relation A)) : relation A :=
     list_union nil := fun _ _ => False;
@@ -829,7 +859,7 @@ Section SCT.
     firstorder.
   Qed.
 
-  Lemma list_union_compose {k} (g g' : list (graph k)) x y z :
+  Lemma graphs_relation_compose {k} (g g' : list (graph k)) x y z :
     graphs_relation g x z -> graphs_relation g' z y ->
     graphs_relation (compose_family g g') x y.
   Proof.
@@ -874,8 +904,12 @@ Section SCT.
         do 2 red in approx, gixz.
         specialize (gixz _ _ powxz).
         specialize (approx _ _ Tzy).
-        eapply list_union_compose; intuition.
+        eapply graphs_relation_compose; intuition.
   Qed.
+
+  Equations fin_list {n A} (f : fin n -> A) : list A :=
+    fin_list (n:=0) f := nil;
+    fin_list (n:=S n) f := f fz :: fin_list (fun i => f (fs i)).
 
   Lemma size_change_wf {k} (n : nat)
         (T : fin n -> relation (k_tuple_type k))
@@ -901,19 +935,12 @@ Section SCT.
     apply IHg'; auto. intros. apply Ings; intuition.
   Defined.
 
-End SCT.
-
-Print Assumptions size_change_wf.
-
-
-
-
-  Lemma size_change {k} (n : nat)
+  Lemma size_change_wf_fam {k} (n : nat)
         (T : fin n -> relation (k_tuple_type k))
         (graphs : fin n -> graph k)
         (approx : forall f, approximates (graphs f) (T f))
         (S : list (graph k))
-        (Strans : is_transitive_closure graphs S)
+        (Strans : is_transitive_closure (fin_list graphs) S)
         (R : relation (k_tuple_type k))
         (AF : AlmostFull R) :
     (forall G, In G S -> forall x y, graph_relation G x y /\ R y x -> False) ->
@@ -923,339 +950,241 @@ Print Assumptions size_change_wf.
     intros x y [Txy Ryx].
     rewrite <- clos_trans_t1n_iff in Txy.
     apply clos_trans_power in Txy as [k' Tkxy].
-    red in Strans. apply (in_transitive_closure graphs S T approx Strans) in Tkxy as [g [Ings Hg]].
-    now apply (H g Ings x y).
+    red in Strans.
+    assert(approximates_family (fin_list graphs) (fin_union T)).
+    { clear -approx. induction n. simpl. red. auto. red. simpl. auto.
+      red. intros x y Rxy. specialize (IHn (fun f => T (fs f)) (fun f => graphs (fs f)) (fun f => approx (fs f))).
+      do 2 red in IHn. specialize (IHn x y).
+      destruct Rxy. simp fin_list. simpl.
+      left. now apply approx. intuition. simp fin_list. simpl.
+      intuition. }
+    destruct (in_transitive_closure (fin_list graphs) S (fin_union T) H0 Strans k') as [g' [Ings Hg]].
+    apply Hg in Tkxy.
+    clear Hg.
+    induction g'; simpl in Tkxy. elim Tkxy.
+    destruct Tkxy. specialize (Ings a). forward Ings by constructor; auto.
+    now apply (H a Ings x y).
+    apply IHg'; auto. intros. apply Ings; intuition.
   Defined.
+
+  Equations TI_graph k : graph k :=
+    TI_graph 0 := λ{ | f :=! f } ;
+    TI_graph (S n) := fun f => Some (false, f).
+
+  Lemma TI_compose k (G : graph k) : forall f, (G ⋅ TI_graph k) f = G f.
+  Proof.
+    induction k. unfold TI_graph. do 2 red in G. intros f; depelim f.
+    intros f. depelim f. simp TI_graph graph_compose.
+    destruct (G fz) as [[weight d]|]; simpl; try easy. now rewrite orb_false_r.
+    simp TI_graph graph_compose.
+    destruct (G (fs f)) as [[weight d]|]; simpl; trivial. now rewrite orb_false_r.
+  Qed.
+
+  Definition TI k : relation (k_tuple_type k) := graph_relation (TI_graph k).
+
+  Equations intersection k : relation (k_tuple_type k) :=
+    intersection 0 := fun x y => True;
+    intersection (S n) := fun x y => Nat.le (fst x) (fst y) /\ intersection n (snd x) (snd y).
+
+  Lemma TI_intersection_equiv k : relation_equivalence (TI k) (intersection k).
+    induction k.
+    - intros x y. red. split. intros []. exact I. intros. exact I.
+    - intros [x rx] [y ry]. simpl. split.
+      + unfold TI.
+        intros Hg. pose proof Hg. rewrite graph_relation_spec in H.
+        intros. pose (H fz). simpl in y0. intuition.
+        assert (graph_relation (TI_graph k) rx ry).
+        rewrite graph_relation_spec. intros. clear y0. specialize (H (fs f)). simpl in H.
+        unfold TI_graph. destruct k. depelim f. auto.
+        do 2 red in IHk. simpl in IHk. rewrite <- IHk. apply H0.
+      + intros [Hle Hi]. unfold TI. rewrite graph_relation_spec.
+        intros. depelim f. simpl. auto. simpl.
+        do 2 red in IHk. simpl in IHk. rewrite <- IHk in Hi.
+        red in Hi. rewrite graph_relation_spec in Hi.
+        clear -Hi. induction n. depelim f.
+        specialize (Hi f). simpl in Hi. auto.
+  Qed.
+
+  Instance TI_AlmostFull k : AlmostFull (TI k).
+  Proof.
+    rewrite TI_intersection_equiv.
+    induction k. simpl. red. red. exists ZT. simpl. intros. exact I.
+    simpl. apply af_interesection.
+    apply (AlmostFull_MR Nat.le). apply almost_full_le.
+    apply (AlmostFull_MR (intersection k)). apply IHk.
+  Qed.
+
+  Lemma TI_compose' k (G : graph k) : (G ⋅ TI_graph k) = G.
+  Proof. extensionality f. apply TI_compose. Qed.
+
+  Lemma sct_power_check {k} G (T : relation (k_tuple_type k)) :
+    approximates G T ->
+    (exists n f, power_graph_n n G f = Some (true, f)) ->
+    (forall x y, T x y -> TI _ y x -> False).
+  Proof.
+    intros approx [n [f eqpow]] x y Txy TIyx.
+    assert (compose_rel T (TI k) x x). exists y; easy.
+    assert (power n (compose_rel T (TI k)) x x).
+    { clear -H. induction n; simp power; auto.
+      exists x. intuition. }
+    pose (compose_approximates G (TI_graph k) T (TI k)).
+    forward a; auto. forward a; auto. unfold TI. red. intuition.
+    rewrite TI_compose' in a.
+    apply (approximates_power n) in a.
+    specialize (a x x). specialize (a H0).
+    rewrite graph_relation_spec in a. specialize (a f).
+    rewrite eqpow in a. lia.
+  Qed.
+
+  Theorem size_change_termination {k} (n : nat)
+          (T : fin n -> relation (k_tuple_type k))
+          (graphs : fin n -> graph k)
+          (approx : forall f, approximates (graphs f) (T f))
+          (S : list (graph k))
+          (Strans : is_transitive_closure (fin_list graphs) S)
+          (haspow : forall G, In G S -> exists n f, power_graph_n n G f = Some (true, f)) :
+          well_founded (fin_union T).
+  Proof.
+    apply size_change_wf_fam with graphs S (TI k); auto.
+    - apply TI_AlmostFull.
+    - intros.
+      specialize (haspow G H). destruct Strans.
+      refine (sct_power_check G (graph_relation G) _ haspow x y _ _). red. firstorder.
+      intuition. intuition.
+  Qed.
+
+  Import ListNotations.
+
+  Inductive trans_clos_answer (k : nat) : Set :=
+    | OutOfFuel
+    | Finished (l : list (graph k)).
+
+  Equations find_opt {A} (l : list A) (f : A -> option A) : option A :=
+    find_opt [] f := None;
+    find_opt (x :: xs) f with f x :=
+                       { | Some y => Some y;
+                         | None => find_opt xs f }.
+
+  (* FIXME bug when using with *)
+  Equations(noind) compute_transitive_closure {k} (n : nat) (gs : list (graph k)) : trans_clos_answer k by struct n :=
+    compute_transitive_closure 0 _ := OutOfFuel _;
+    compute_transitive_closure (S n) gs := aux gs []
+     where aux (l : list (graph k)) (acc : list (graph k)) : trans_clos_answer k by struct l :=
+     aux nil acc := Finished _ acc;
+     aux (g :: gs') acc :=
+       let gs'' := g :: gs' ++ acc in
+       match find_opt gs'' (fun g' =>
+                              let gcomp := g' ⋅ g in
+                              if eqb g gcomp then None else
+                              if List.existsb (eqb gcomp) gs'' then
+                                let gcomp' := g ⋅ g' in
+                                if List.existsb (eqb gcomp') gs'' then None
+                                else Some gcomp'
+                              else Some gcomp) with
+         | Some newg => compute_transitive_closure n (newg :: gs'')
+         | None => aux gs' (g :: acc)
+       end.
+
+  Definition gn_set : list (graph 2) :=
+    [ T_graph_l; T_graph_r ].
+  Transparent compute_transitive_closure.
+
+  Require Import String.
+
+  Equations print_fin {k} (f : fin k) : string :=
+    print_fin fz := "0";
+    print_fin (fs fz) := "1";
+    print_fin (fs (fs fz)) := "2";
+    print_fin (fs (fs (fs fz))) := "3";
+    print_fin f := "> 3".
+
+  Equations print_nat (n : nat) : string :=
+    print_nat 0 := "0";
+    print_nat 1 := "1";
+    print_nat 2 := "2";
+    print_nat 3 := "3";
+    print_nat 4 := "4";
+    print_nat x := "5".
+
+  Equations print_node {k'} (f : nat) (data : option (bool * fin k')) : string :=
+    print_node f None := "";
+    print_node f (Some (weight, f')) := print_nat f ++ (if weight then "<" else "<=") ++ print_fin f'.
+
+  Equations print_fin_fn {k k'} (f : fin k -> option (bool * fin k')) : string :=
+    print_fin_fn (k := 0) f := "";
+    print_fin_fn (k := S k) f := print_node (k' - S k) (f fz) ++ " , " ++ print_fin_fn (fun n => f (fs n)).
+
+  Equations print_graph {k} (f : graph k) : string :=
+    print_graph (k := 0) f := "empty";
+    print_graph (k := S n) f := print_fin_fn f.
+
+  Equations print_list {A} (f : A -> string) (l : list A) : string :=
+    print_list f nil := "";
+    print_list f (cons a b) := f a ++ " ; " ++ print_list f b.
+
+  Eval compute in print_list print_graph gn_set.
+
+  Definition eq_dec_graph {k} : forall x y : graph k, { x = y } + { x <> y }.
+  Proof.
+    intros x y. destruct (Top.eqb x y) eqn:Heq.
+    left. destruct (Top.eqb_spec x y). auto. discriminate.
+    right. destruct (Top.eqb_spec x y). auto. discriminate. auto.
+  Defined.
+
+  Definition uniquize {k} (l : list (graph k)) := nodup (@eq_dec_graph k) l.
+
+  Definition T_trans_clos := match compute_transitive_closure 10 gn_set with
+                  | Finished l => l
+                  | OutOfFuel => gn_set end.
+  Eval compute in T_trans_clos.
+
+  Eval compute in match compute_transitive_closure 10 gn_set with
+                  | Finished l => print_list print_graph (uniquize l)
+                  | OutOfFuel => "outoffuel"%string end.
+
 End SCT.
 
-Definition T' (x y : nat * nat) : Prop :=
-  (fst x <= snd y /\ snd x <= snd y) \/
-  (fst x <= snd y /\ snd x <= fst y).
+Print Assumptions size_change_wf.
+Print Assumptions size_change_termination.
 
-Definition R := product_rel le le.
+
+Definition R := product_rel Nat.le Nat.le.
 Require Import Lia.
 
 Derive Signature for clos_trans_1n.
-(* Lemma clos_tra_prop n1 n2 n3 n4 : n1 <= n4 -> clos_trans_1n _ T (n3, n4) (n1, n2) -> n1 <= n3. *)
-
-Lemma power_T_prop y z : (power 1 T) y z -> ((* (fst y) <= (fst z) /\ *) (snd y) < (snd z)) \/
-                                                     (* (fst y) <= (fst z) /\ *) (snd y) < (fst z).
-Proof.
-  unfold T, T'; intros H. destruct H. destruct_pairs. repeat red in H; simpl in *; subst; auto; simp power in *;
-    destruct_pairs. intuition.
-Qed.
-
-Definition power_T_inv (y z : nat * nat) :=
-  ((fst y) < (snd z) /\ (snd y) < (snd z) \/ (fst y) < (fst z)). (* \/ (snd y < fst z)). *)
-
-Lemma power_T_prop2 y z : (power 1 T) y z -> power_T_inv y z.
-Proof.
-  unfold power_T_inv, T, T'; intros H. destruct H. destruct_pairs. repeat red in H; simpl in *; subst; auto; simp power in *;
-    destruct_pairs. intuition.
-Qed.
-
-Lemma clos_trans_incl {X} (R S : X -> X -> Prop) : inclusion _ R S ->
-                                                   inclusion _ (clos_trans _ R) (clos_trans _ S).
-Proof.
-  intros H x y Hxy. induction Hxy; auto. constructor. auto. econstructor 2; eauto.
-Qed.
-
-Lemma power_T_clos_prop : inclusion _ (clos_trans _ (power 1 T)) (clos_trans _ power_T_inv).
-Proof.
-  apply clos_trans_incl. red. intros. now apply power_T_prop2.
-Qed.
-
-
-(* Lemma power_T_prop3 y z : (power 1 T) y z -> (snd y) <= (snd z). *)
-(* Proof. *)
-(*   unfold T, T'; intros H. destruct H. destruct_pairs. repeat red in H; simpl in *; subst; auto; simp power in *; *)
-(*     destruct_pairs. intuition. subst. *)
-(* Qed. *)
-
-(* Lemma power_T_all_prop y z : (power 1 T) y z -> ((fst y) <= (snd z) /\ (snd y) <= (snd z)) \/ *)
-(*                                               (fst y) <= (fst z) /\ (snd y) <= (fst z). *)
-(* Proof. *)
-(*   unfold T, T'; intros H. destruct_pairs. *)
-(*   pose proof (power_T_prop _ _ H). *)
-(*   pose proof (power_T_prop2 _ _ H). *)
-(*   destruct_pairs. simpl in *. intuition. destruct H. destruct_pairs; intuition. subst. *)
-(* Qed. *)
-
-
-(* Lemma clos_trans_power_T_prop y z : clos_trans_1n _ (power 1 T) y z -> *)
-(*  ((* (fst y) <= (fst z) /\ *) (snd y) <= (snd z)) \/ *)
-(*  (* (fst y) <= (fst z) /\ *) (snd y) <= (fst z). *)
-(* Proof. *)
-(*   unfold T, T'; intros H. induction H. destruct_pairs. repeat red in H; simpl in *; subst; auto; simp power in *; *)
-(*     destruct_pairs. intuition. apply power_T_prop in H. intuition. *)
-(* Qed. *)
-
-(* subst. *)
-(*   repeat red in H. subst. *)
-(*    destruct_pairs. simpl in *. intuition. subst. *)
-(*    repeat red in H0. simpl in *; intuition. *)
-(*    destruct_pairs. simpl in *. intuition. subst. *)
-(*    repeat red in H1. simpl in *; intuition. *)
-
-Lemma T_tra_prop y z : T y z -> product_rel le le z y -> False.
-Proof.
-  intros. unfold power_T_inv, T in *. destruct_pairs. red in H0. simpl in *. intuition.
-Qed.
-
-Lemma clos_tra_prop y z : (power 1 T) y z -> product_rel le le z y -> False.
-Proof.
-  intros. apply power_T_prop2 in H. unfold power_T_inv in *. destruct_pairs. red in H0. simpl in *. intuition.
-Qed.
-
-Lemma power_T_prop3 y z : T y z -> ((snd y) < (snd z) \/ (snd y) < (fst z)).
-(* ((fst y) <= (snd z) /\ (snd y) <= (snd z)) \/ *)
-(*                                    ((fst y) <= (snd z) /\ (snd y) <= (fst z)). *)
-Proof.
-  unfold T, T'; intros H. destruct_pairs. repeat red in H; simpl in *; subst; auto; simp power in *;
-    destruct_pairs. intuition.
-Qed.
-
-Lemma power_T_prop4 y z : T y z -> (fst y <= snd z).
-Proof.
-  unfold T, T'; intros H. destruct_pairs. repeat red in H; simpl in *; subst; auto; simp power in *;
-    destruct_pairs. intuition.
-Qed.
-
-Lemma power_1_T_enough n y z : power n T y z ->
-                               (* ((fst y) <= (snd z) /\ (snd y) <= (snd z)) \/ *)
-                               (* ((fst y) <= (snd z) /\ (snd y) <= (fst z)). *)
-                               ((snd y) < (snd z) \/ (snd y) < (fst z)).
-Proof.
-  induction n in y, z |- *. apply power_T_prop3. auto. intros.
-  simp power in *. destruct_pairs; unfold T in *. simpl in *.
-  specialize (IHn _ _ H). destruct IHn. simpl in *. intuition. simpl in *. intuition.
-Qed.
-
-
-(* Lemma power_T_prop4_2 n y z : power n T y z -> (fst y <= snd z). *)
-(* Proof. *)
-(*   induction n in y, z |- *. apply power_T_prop4. auto. intros. *)
-(*   simp power in *. destruct_pairs; unfold T in *. simpl in *. *)
-(*   specialize (IHn _ _ H). *)
-(*   apply power_1_T_enough in H. simpl in *. intuition. subst. *)
-(*  destruct IHn. simpl in *. *)
-
-
-(*  intuition. simpl in *. intuition. *)
-(* Qed. *)
-
-Lemma power_1_T_enough' n y z : power n T y z -> product_rel le le z y -> False.
-Proof.
-  induction n in y, z |- *. apply T_tra_prop. auto. intros.
-  simp power in *. destruct_pairs; unfold T in *. simpl in *.
-  specialize (IHn _ _ H). destruct IHn.
-  red. red in H0. simpl in *. intuition. subst.
-  apply power_1_T_enough in H. simpl in *. intuition. subst.
-  apply power_1_T_enough in H. simpl in *. intuition. subst.
-  apply power_1_T_enough in H. simpl in *. intuition. subst.
-
-
-
-intros. inversion H.
-  destruct n. intros; firstorder.
-  intros. forward IHn. lia.
-  intros x y Rxy. simp power in *. destruct_pairs. unfold T in *. simpl in *.
-  exists (y1 , x0). simpl. intuition. subst.
-
-Definition Tle (x y : nat * nat) : Prop :=
-  (fst x <= snd y /\ snd x < snd y) \/
-  (fst x <= snd y /\ snd x < fst y).
-Lemma Tle_tra_prop y z : Tle y z -> product_rel le le z y -> False.
-Proof.
-  intros. unfold power_T_inv, Tle in *. destruct_pairs. red in H0. simpl in *. intuition.
-Qed.
-
-Lemma T_product_right x y z : Tle x y -> product_rel le le y z -> Tle x z.
-Proof.
-  intros. destruct H; unfold Tle in *; destruct_pairs; red in H0; simpl in *;
-  intuition.
-Qed.
-
-Lemma clos_tra_prop_n n y z : (power n Tle) y z -> product_rel le le z y -> False.
-Proof.
-  induction n in y, z |- *; simp power. apply Tle_tra_prop.
-  intros [z' [Tpz Tz]]. specialize (IHn _ _ Tpz).
-  intros. apply IHn. clear IHn. clear Tpz.
-  apply (T_product_right _ _ _ Tz) in H.
-  red in H.
-
-unfold product_rel, T in *. destruct_pairs.
-  simpl in *. intuition. subst.
-  intros. apply power_T_prop2 in H. unfold power_T_inv in *. destruct_pairs. red in H0. simpl in *. intuition.
-Qed.
-
-Lemma power_T_inv_prop y z : power_T_inv y z -> product_rel le le z y -> False.
-Proof.
-  intros. unfold power_T_inv in *. destruct_pairs. red in H0. simpl in *. intuition.
-Qed.
-
-Definition power_T_inv2 (y z : nat * nat) :=
-  ((fst y) < (snd z) /\ (snd y) < (snd z)
-                        \/ (fst y) < (fst z) /\ (snd y <= fst z)).
-
-Lemma clos_power_T_inv_prop y z : clos_trans_1n _ power_T_inv2 y z -> power_T_inv2 y z.
-Proof.
-  intros. unfold power_T_inv2 in *. induction H. auto.
-  destruct_pairs. simpl in *. intuition.
-Qed.
-
-Lemma power_T_inv2_powerT_inv : inclusion _ (power 2 T) power_T_inv2.
-Proof. intros x y H. unfold power_T_inv2, power_T_inv in *. simp power in *. unfold T in *.
-       destruct_pairs. intuition. subst. Qed.
-
-Lemma clos_tra_prop_clos y z : clos_trans_n1 _ (power 1 T) y z -> product_rel le le z y -> False.
-Proof.
-  intros.
-  rewrite <- clos_trans_tn1_iff in H.
-  apply power_T_clos_prop in H.
-
-  eapply clos_trans_incl in H.
-  rewrite clos_trans_t1n_iff in H.
-  eapply clos_power_T_inv_prop in H. admit. intros  ? ?.
-
- induction H in|- *. eapply clos_tra_prop; eauto.
-  pose (clos_tra_prop' _ _ _ H H0). pose (power_T_product_right _ _ _ H H0).
-  eapply (clos_trans_inter_false (power 1 T)). 2:eapply H1. 2:constructor; eapply p.
-  intros.
-  intuition.
-Qed.
-
-
-
-
-Lemma clos_tra_prop' x y z : (power 1 T) x y -> product_rel le le y z -> product_rel le le z x -> False.
-Proof.
-  intros. simp power in H. unfold T in *. repeat red in H0, H1. repeat red. destruct_pairs.
-  intuition.
-Qed.
-
-Lemma power_T_product_right x y z : (power 1 T) x y -> product_rel le le y z -> (power 1 T) x z.
-Proof.
-  intros. destruct H. unfold T in *; destruct_pairs. red in H0. simp power. simpl in *.
-  intuition. subst. exists (z1, x2). simpl. intuition. subst.
-  exists (z1, x2); simpl; intuition.
-  exists (z1, x0); simpl; intuition.
-  exists (z1, x0); simpl; intuition.
-Qed.
-
-(* Lemma T_product_right' x y z : T x y -> product_rel le le y z -> product_rel le le x z. *)
-(* Proof. *)
-(*   intros. destruct H; unfold Tle in *; destruct_pairs; red in H0 |- *; simpl in *; *)
-(*   intuition. subst. *)
-(* Qed. *)
-
-(* Lemma power_T_product_left x y z : (power 1 T) y z -> product_rel le le x y -> (power 1 T) x z. *)
-(* Proof. *)
-(*   intros. destruct H. unfold T in *; destruct_pairs. red in H0. simp power. simpl in *. *)
-(*   intuition. subst. exists (z1, x0). simpl. intuition. subst. *)
-(*   exists (z1, x0); simpl; intuition. *)
-(*   exists (z1, x0); simpl; intuition. *)
-(*   exists (z1, x0); simpl; intuition. *)
-(* Qed. *)
-
-  (* ~(x <= y /\ z <= w)
-     <-> (~ x <= y \/ ~ (z <= w))
-     <-> (y < x \/ w < z) *)
 
 Definition antisym {X} (R : X -> X -> Prop) :=
   forall x y, R x y -> R y x -> False.
 
-Lemma power_1_antisym : antisym (power 1 T).
-Proof.
-  intros x y. intros [] []. unfold T in *. destruct_pairs. simpl in *. intuition.
-Qed.
+Equations T_rel (f : fin 2) : relation (k_tuple_type 2) :=
+  T_rel fz := Tl;
+  T_rel (fs fz) := Tr.
 
-(* Lemma clos_trans_antisym {X} (R : X -> X -> Prop) : antisym R -> antisym (clos_trans _ R). *)
-(* Proof. *)
-(*   intros. *)
-(*   intros x y. rewrite !clos_trans_tn1_iff. induction 1. induction 1. *)
-(*   eauto. *)
-(* Qed. *)
-
-Lemma clos_trans_inter_false {A} (R : A -> A -> Prop) : (* transitive _ R -> *)
-  (forall x y, R x y -> clos_trans_n1 _ R y x -> False) ->
-  (forall x y, clos_trans_n1 _ R x y -> clos_trans_n1 _ R y x -> False).
-Proof.
-  intros. induction H0; eauto. specialize (H y z). specialize (H H0).
-  apply H. apply clos_trans_tn1. econstructor 2. apply clos_trans_tn1_iff. eauto.
-  apply clos_trans_tn1_iff. eauto.
-Defined.
-
-Lemma clos_trans_inter_false' {A} (R : A -> A -> Prop) : (* transitive _ R -> *)
-  (forall x y, R x y -> clos_trans_n1 _ R y x -> False) ->
-  (forall x y, clos_trans_n1 _ R x y -> R y x -> False).
-Proof.
-  intros.
-  pose (tn1_step _ _ _ _ H1).
-  eapply clos_trans_inter_false. 2:eapply H0. 2:eauto.
-  intros. eauto.
-Qed.
-
-
-Lemma clos_tra_prop_clos y z : clos_trans_n1 _ T y z -> product_rel le le z y -> False.
-Proof.
-  intros. unfold product_rel in *.
-  induction H. unfold T in *. destruct_pairs. repeat red in H0. simpl in *. intuition.
-  unfold T in *. destruct_pairs. repeat red in H0. simpl in *. intuition.
-  subst. apply H3; intuition.
-  destruct H2.
-  unfold T in *. destruct_pairs. repeat red in H0. simpl in *. intuition.
-  unfold T in *. destruct_pairs. repeat red in H0. simpl in *. intuition. subst.
-
-
-
-
-
-
-  rewrite <- clos_trans_tn1_iff in H.
-  apply power_T_clos_prop in H.
-  unfold power_T_inv in H. unfold product_rel in *.
-  rewrite clos_trans_tn1_iff in H.
-  induction H; repeat red in H0; destruct_pairs. intuition.
-  intuition.
-
-Lemma clos_tra_prop_clos y z : clos_trans_n1 _ (power 1 T) y z -> product_rel le le z y -> False.
-Proof.
-  intros.
-  rewrite <- clos_trans_tn1_iff in H.
-  apply power_T_clos_prop in H.
-  unfold power_T_inv in H. unfold product_rel in *.
-  rewrite clos_trans_tn1_iff in H.
-  induction H; repeat red in H0; destruct_pairs. intuition.
-  intuition.
-
-
-
-
-Lemma clos_tra_prop_clos y z : clos_trans_n1 _ (power 1 T) y z -> product_rel le le z y -> False.
-Proof.
-  intros. induction H in|- *. eapply clos_tra_prop; eauto.
-  pose (clos_tra_prop' _ _ _ H H0). pose (power_T_product_right _ _ _ H H0).
-  eapply (clos_trans_inter_false (power 1 T)). 2:eapply H1. 2:constructor; eapply p.
-  intros.
-  intuition.
-Qed.
+Equations T_graphs (f : fin 2) : graph 2 :=
+  T_graphs fz := T_graph_l;
+  T_graphs (fs fz) := T_graph_r.
 
 Definition gnlex : (nat * nat) -> nat.
-  pose (af_power_wf T R 1).
-  forward w. unfold R. intros [] [] [Ht Hr].
-  eapply clos_tra_prop_clos; eauto. now apply clos_trans_1n_n1.
-  refine (Subterm.FixWf (R:=T) (fun x => nat) _).
+  pose (size_change_termination 2 T_rel T_graphs). forward w.
+  intros f; depelim f. apply approximates_T_l. depelim f. apply approximates_T_r. depelim f.
+  specialize (w T_trans_clos). forward w. red. admit.
+  forward w.
+  intros. simpl in H. intuition; subst G;
+                        solve [exists 1; (exists fz ; reflexivity) || (exists (fs fz) ; reflexivity) ].
+  set (rel :=(MR (fin_union T_rel) (fun x => (fst x, (snd x, tt))))).
+  assert (WellFounded rel).
+  apply measure_wf. apply w.
+  refine (Subterm.FixWf (WF:=H) (fun x => nat) _).
   refine (fun x =>
-            match x as w return ((forall y, T y w -> nat) -> nat) with
+            match x as w return ((forall y, rel y w -> nat) -> nat) with
               | (0, _) => fun _ => 1
               | (_, 0) => fun _ => 1
               | (S x, S y) => fun frec =>
                                 frec (S y, y) _ +
                                 frec (S y, x) _
             end).
-  red. simpl. intuition lia. red. simpl. intuition lia.
-Defined.
+  red. simpl. red. compute. simpl. intuition lia. red. simpl. compute. intuition lia.
+Admitted.
 
 Require Import ExtrOcamlBasic.
 Extraction gnlex.
