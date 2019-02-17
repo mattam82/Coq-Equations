@@ -147,6 +147,9 @@ Section WfFromAF.
     intros. intro x. eapply acc_from_af;eauto.
   Defined.
 
+  Definition compose_rel {X} (R S : X -> X -> Prop) : relation X :=
+    fun x y => exists z, R x z /\ S z y.
+
   Equations power (k : nat) (T : X -> X -> Prop) : X -> X -> Prop :=
     power 0 T := T;
     power (S k) T := fun x y => exists z, power k T x z /\ T z y.
@@ -163,6 +166,12 @@ Section WfFromAF.
   Proof.
     intros x y. induction k in x, y |- *. simpl. now constructor.
     simpl. intros [z [Pxz Tzy]]. econstructor 2. apply IHk; eauto. constructor. auto.
+  Qed.
+
+  Lemma clos_trans_power (T : X -> X -> Prop) x y : clos_trans _ T x y -> exists k, power k T x y.
+  Proof.
+    rewrite clos_trans_tn1_iff. induction 1. exists 0; auto.
+    destruct IHclos_trans_n1 as [k pkyz]. exists (S k). simp power. now exists y.
   Qed.
 
   Lemma acc_power (T : X -> X -> Prop) x k : Acc T x -> Acc (power k T) x.
@@ -536,16 +545,19 @@ Proof.
   repeat red; intuition. rewrite <- H1. apply a; typeclasses eauto.
 Defined.
 
+Require Import Lia.
+Require Import Equations.Fin Bool.
+Require Import List Arith.
+
 Definition T (x y : nat * nat) : Prop :=
   (fst x = snd y /\ snd x < snd y) \/
   (fst x = snd y /\ snd x < fst y).
 
-Definition T' (x y : nat * nat) : Prop :=
-  (fst x <= snd y /\ snd x <= snd y) \/
-  (fst x <= snd y /\ snd x <= fst y).
+Definition Tl (x y : nat * (nat * unit)) : Prop :=
+  (fst x = fst (snd y) /\ fst (snd x) < fst (snd y)).
 
-Definition R := product_rel le le.
-Require Import Lia.
+Definition Tr (x y : nat * (nat * unit)) : Prop :=
+  (fst x = fst (snd y) /\ fst (snd x) < fst y).
 
 Ltac destruct_pairs := repeat
   match goal with
@@ -553,6 +565,436 @@ Ltac destruct_pairs := repeat
   | [ x : exists _ : _, _ |- _ ] => destruct x
   | [ x : _ /\ _ |- _ ] => destruct x
 end.
+
+Section SCT.
+
+  Definition subgraph k k' := fin k -> option (bool * fin k').
+  Definition graph k := subgraph k k.
+
+  Definition strict {k} (f : fin k) := Some (true, f).
+  Definition large {k} (f : fin k) := Some (false, f).
+
+  Declare Scope fin_scope.
+  Delimit Scope fin_scope with fin.
+  Bind Scope fin_scope with fin.
+  Notation "0" := fz : fin.
+  Notation "1" := (fs 0) : fin.
+  Open Scope fin_scope.
+  (* bug scopes not handled well *)
+  Equations T_graph_l (x : fin 2) : option (bool * fin 2) :=
+    { T_graph_l fz := large (fs fz);
+      T_graph_l (fs fz) := strict (fs fz) }.
+  Equations T_graph_r (x : fin 2) : option (bool * fin 2) :=
+    { T_graph_r fz := large (fs fz);
+      T_graph_r (fs fz) := strict fz }.
+
+  Equations graph_compose {k} (g1 g2 : graph k) : graph k :=
+    graph_compose g1 g2 arg0 with g1 arg0 :=
+      { | Some (weight, arg1) with g2 arg1 :=
+            { | Some (weight', arg2) => Some (weight || weight', arg2);
+              | None => None };
+        | None => None }.
+
+  Infix "⋅" := graph_compose (at level 90).
+
+  Eval compute in (T_graph_l ⋅ T_graph_r) fz.
+
+  Equations k_tuple_type (k : nat) : Type :=
+  k_tuple_type 0 := unit;
+  k_tuple_type (S n) := nat * k_tuple_type n.
+
+  Equations k_tuple_val {k : nat} (f : fin k) (t : k_tuple_type k) : nat :=
+    k_tuple_val fz (x, _) := x;
+    k_tuple_val (fs f) (_, t) := k_tuple_val f t.
+
+  Equations k_related (k k' : nat) (G : subgraph k k') : k_tuple_type k -> k_tuple_type k' -> Prop :=
+    k_related 0 k' g := fun _ _ => True;
+    k_related (S k) k' g with g fz :=
+      { | Some (weight, d) := fun x y =>
+                                (if weight then k_tuple_val fz x < k_tuple_val d y
+                                 else (Peano.le (k_tuple_val fz x) (k_tuple_val d y))) /\
+                                k_related k k' (fun f => g (fs f)) (snd x) y;
+        | None => fun _ _ => False }.
+
+  Definition graph_relation {k : nat} (G : graph k) : relation (k_tuple_type k) :=
+    k_related k k G.
+
+  Lemma k_related_spec {k k' : nat} (G : subgraph k k') :
+    forall x y, k_related k k' G x y <->
+                (forall f : fin k,
+                    match G f with
+                    | Some (weight, d) =>
+                      if weight then k_tuple_val f x < k_tuple_val d y
+                      else Peano.le (k_tuple_val f x) (k_tuple_val d y)
+                    | None => False
+                    end).
+    Proof.
+      eapply k_related_elim.
+      split; auto. intros []. intros f. depelim f.
+      intros n k'' g b f. intros H.
+      intros gz [x rx] y.
+      specialize (H (x, rx) y rx y). simpl.
+      rewrite H. clear H.
+      split.
+      + intros [xlt relr].
+        intros f'. depelim f'. rewrite gz. apply xlt. apply relr.
+      + intros Hf. split.
+        specialize (Hf fz). rewrite gz in Hf. apply Hf.
+        intros f'. apply Hf.
+      + intros n k'' g gf x y.
+        split. intros [].
+        intros f. specialize (f fz). now rewrite gf in f.
+    Qed.
+
+  Lemma graph_relation_spec {k : nat} (G : graph k) :
+    forall x y, graph_relation G x y <->
+                (forall f : fin k,
+                    match G f with
+                    | Some (weight, d) =>
+                      if weight then k_tuple_val f x < k_tuple_val d y
+                      else Peano.le (k_tuple_val f x) (k_tuple_val d y)
+                    | None => False
+                    end).
+    Proof.
+      unfold graph_relation. intros x y. now rewrite k_related_spec.
+    Qed.
+
+  Definition approximates {k} (G : graph k) (R : relation (k_tuple_type k)) :=
+    inclusion _ R (graph_relation G).
+
+  Eval compute in k_tuple_type 2.
+  Example approximates_T_l :
+    @approximates 2 T_graph_l Tl.
+  Proof. intros x y Tlr. red in x, y, Tlr. destruct_pairs.
+         unfold graph_relation. simp k_related T_graph_l; simpl.
+         intuition.
+  Qed.
+
+  Example approximates_T_r :
+    @approximates 2 T_graph_r Tr.
+  Proof. intros x y Tlr. red in x, y, Tlr. destruct_pairs. subst.
+         unfold graph_relation. simp k_related T_graph_l; simpl.
+         intuition.
+  Qed.
+
+  (* Lemma graph_compose_spec {k} (G0 G1 : graph k) :  *)
+  (*   forall f, (G0 ⋅ G1) f *)
+
+  Lemma compose_approximates {k} (G0 G1 : graph k) (R0 R1 : relation (k_tuple_type k)) :
+    approximates G0 R0 -> approximates G1 R1 ->
+    approximates (G0 ⋅ G1) (compose_rel R0 R1).
+  Proof.
+    unfold approximates. intros ag0 ag1.
+    intros x z [y [Hxy Hyz]]. rewrite graph_relation_spec.
+    intros f. specialize (ag0 _ _ Hxy). specialize (ag1 _ _ Hyz).
+    rewrite graph_relation_spec in ag0, ag1. specialize (ag0 f).
+    funelim (graph_compose G0 G1 f). now rewrite Heq in ag0.
+    rewrite Heq0 in ag0. specialize (ag1 f0). rewrite Heq in ag1.
+    destruct b, b0; simpl;  try lia.
+    specialize (ag1 f0). now rewrite Heq in ag1.
+  Qed.
+
+  Equations fin_union {A n} (f : fin n -> relation A) : relation A :=
+    fin_union (n:=0)   f := fun _ _ => False;
+    fin_union (n:=S n) f := fun x y => f fz x y \/ fin_union (fun f' => f (fs f')) x y.
+
+  Lemma fin_union_spec {A n} (f : fin n -> relation A) :
+    forall x y, fin_union f x y <-> exists k, f k x y.
+  Proof.
+    intros x y; funelim (fin_union f). split. intros [].
+    intros [k _]. depelim k.
+    split. intros [Hfz|Hfs].
+    now exists fz.
+    specialize (H x y x y). rewrite H in Hfs.
+    destruct Hfs. now exists (fs x0).
+    intros [k Hk]. depelim k. intuition. right.
+    rewrite (H x y). now exists k.
+  Qed.
+
+  Class Eq (A : Type) :=
+    { eqb : A -> A -> bool;
+      eqb_spec : forall x y, reflect (x = y) (eqb x y) }.
+
+  Equations fin_eq {k} (f f' : fin k) : bool :=
+  fin_eq fz fz => true;
+  fin_eq (fs f) (fs f') => fin_eq f f';
+  fin_eq _ _ => false.
+
+  Instance fin_Eq k : Eq (fin k).
+  Proof.
+    exists fin_eq. intros x y. induction x; depelim y; simp fin_eq; try constructor; auto.
+    intro H; noconf H.
+    intro H; noconf H.
+    destruct (IHx y). subst x; now constructor. constructor. intro H; noconf H. now apply n.
+  Defined.
+
+  Instance bool_Eq : Eq bool.
+  Proof.
+    exists bool_eq. intros [] []; now constructor.
+  Defined.
+
+  Instance prod_eq A B : Eq A -> Eq B -> Eq (A * B).
+  Proof.
+    intros. exists (fun '(x, y) '(x', y') => eqb x x' && eqb y y').
+    intros [] []. destruct (eqb_spec a a0); subst.
+    destruct (eqb_spec b b0); subst. constructor; auto.
+    constructor; auto. intro H; noconf H. now elim n.
+    constructor; auto. simplify *. now elim n.
+  Defined.
+
+  Equations option_eq {A : Type} {E:Eq A} (o o' : option A) : bool :=
+    option_eq None None := true;
+    option_eq (Some o) (Some o') := eqb o o';
+    option_eq _ _ := false.
+  Instance option_Eq A : Eq A -> Eq (option A).
+  Proof.
+    intros A_Eq. exists option_eq. intros [] []; simp option_eq; try constructor.
+    destruct (eqb_spec a a0); subst. now constructor.
+    constructor. intro H; noconf H. now elim n.
+    simplify *. simplify *. constructor.
+  Defined.
+
+  Equations fin_all k (p : fin k -> bool) : bool :=
+    fin_all 0     _ := true;
+    fin_all (S k) p := p fz && fin_all k (fun f => p (fs f)).
+
+  Lemma fin_all_spec k (p : fin k -> bool) :
+    reflect (forall f, p f = true) (fin_all k p).
+  Proof.
+    induction k; simp fin_all.
+    constructor. intros f; depelim f.
+    destruct (p fz) eqn:pfz. simpl. specialize (IHk (fun f => p (fs f))).
+    simpl in IHk. destruct IHk; constructor. intros f; depelim f; auto.
+    intro Hf. apply n. intros f'. apply Hf.
+    simpl. constructor. intros H. specialize (H fz). rewrite pfz in H. discriminate.
+  Qed.
+
+  Definition graph_eq {k} (g g' : graph k) : bool :=
+    fin_all k (fun f => eqb (g f) (g' f)).
+
+
+  Equations graph_compose_n {k} (n : nat) (g : graph k) : graph k :=
+    graph_compose_n 0 g := g;
+    graph_compose_n (S n) g := graph_compose_n n g ⋅ g.
+
+  Definition is_transitive_closure' {k} (g : graph k) (l : list (graph k)) : Prop :=
+    (In g l) /\ forall g g', In g l /\ In g' l -> In (g ⋅ g') l.
+
+  (* Lemma power_union {n k} i (T : fin n -> relation (k_tuple_type k)) : *)
+  (*   power i (fin_union T) <-> any_ *)
+
+  (* Lemma in_transitive_closure {k} (g : graph k) (l : list (graph k)) *)
+  (*       (T : relation (k_tuple_type k)) *)
+  (*       (approx : approximates g T) : *)
+  (*   is_transitive_closure' g l -> *)
+  (*   forall i, exists g, In g l /\ approximates g (power i T). *)
+  (* Proof. *)
+  (*   unfold is_transitive_closure'. intros. *)
+  (*   destruct H as [inS inScomp]. *)
+  (*   (* assert (exists G, approximates G (power i (fin_union T)) /\ In G l). *) *)
+  (*   induction i in |- *; simp power. *)
+  (*   unfold approximates. *)
+  (*   - exists g. intuition. *)
+  (*   - destruct IHi as [z [Hpowi Hzy]]. *)
+  (*     exists (z ⋅ g). intuition. *)
+  (*     intros x y [z' [Ingi gixz]]. eapply compose_approximates; eauto. *)
+  (*     now exists z'. *)
+  (* Qed. *)
+(* z *)
+(*       assert(exists k, T k z y) as [k' Hk'] by now apply fin_union_spec in Hzy. *)
+(*       apply approx in Hk'. exists (gi ⋅ g k'); intuition. *)
+(*       pose proof (compose_approximates gi (g k')). unfold approximates in H. *)
+(*     destruct H. intros. apply H in H0. now exists x0. *)
+  Equations list_union {A} (rs : list (relation A)) : relation A :=
+    list_union nil := fun _ _ => False;
+    list_union (cons r rs) := fun x y => r x y \/ list_union rs x y.
+
+  Definition approximates_family {k} (graphs : list (graph k)) (R : relation (k_tuple_type k)) :=
+    inclusion _ R (list_union (List.map graph_relation graphs)).
+
+  (* Equations compose_family {k n} (G0 G1 : fin n -> graph k) : fin n -> graph k := *)
+
+
+  (* Lemma compose_approximates {k n} (G0 G1 : fin n -> graph k) (R0 R1 : relation (k_tuple_type k)) : *)
+  (*   approximates_family G0 R0 -> approximates_family G1 R1 -> *)
+  (*   approximates_family (G0 ⋅ G1) (compose_rel R0 R1). *)
+  (* Proof. *)
+  (*   unfold approximates. intros ag0 ag1. *)
+  (*   intros x z [y [Hxy Hyz]]. rewrite graph_relation_spec. *)
+  (*   intros f. specialize (ag0 _ _ Hxy). specialize (ag1 _ _ Hyz). *)
+  (*   rewrite graph_relation_spec in ag0, ag1. specialize (ag0 f). *)
+  (*   funelim (graph_compose G0 G1 f). now rewrite Heq in ag0. *)
+  (*   rewrite Heq0 in ag0. specialize (ag1 f0). rewrite Heq in ag1. *)
+  (*   destruct b, b0; simpl;  try lia. *)
+  (*   specialize (ag1 f0). now rewrite Heq in ag1. *)
+  (* Qed. *)
+  Equations fin_all_compose {k n} (g : graph k) (p : fin n -> graph k) : fin n -> graph k :=
+    fin_all_compose g p f := p f ⋅ g.
+
+  Equations compose_family {k} (g : list (graph k)) (g' : list (graph k)) : list (graph k) :=
+    compose_family nil _ := nil;
+    compose_family (cons g gs) g' := app (map (fun g' => g ⋅ g') g') (compose_family gs g').
+
+  Definition is_transitive_closure {k} (gs : list (graph k)) (l : list (graph k)) : Prop :=
+    (forall g, In g gs -> In g l) /\ forall g g', In g l /\ In g' l -> In (g ⋅ g') l.
+
+  Definition graphs_relation {k} (gs : list (graph k)) : relation (k_tuple_type k) :=
+    list_union (map graph_relation gs).
+
+  Lemma list_union_app {A} (rs rs' : list (relation A)) :
+    forall x y, list_union (rs ++ rs') x y <-> list_union rs x y \/ list_union rs' x y.
+  Proof.
+    induction rs; intros; simpl; simp list_union; intuition.
+    rewrite IHrs in H0. intuition.
+  Qed.
+
+  Equations map_k_tuple k (p : k_tuple_type k) (f : fin k -> nat) : k_tuple_type k :=
+    map_k_tuple 0 p f := p;
+    map_k_tuple (S n) (x, xs) f := (f fz, map_k_tuple n xs (fun i => f (fs i))).
+
+  Lemma graph_relation_compose {k} x y (g g' : graph k) :
+    graph_relation (g ⋅ g') x y <->
+    exists z, graph_relation g x z /\ graph_relation g' z y.
+  Proof.
+    rewrite graph_relation_spec. split; intros. exists x.
+    rewrite !graph_relation_spec.
+    (* exists (map_k_tuple k y (fun f => match a f with Some (b, d) => k_tuple_val d x | None => k_tuple_val f x end)). *)
+    (* rewrite graph_relation_spec. split. intros. *)
+    (* specialize (H f). unfold graph_compose in H. destruct (a f) as [[weight d]|]. *)
+    (* simpl in H. destruct (g d) as [[weight' d']|]. simpl in H. *)
+    (* unfold graph_relation. *)
+
+
+    (* induction k. exists tt. split; exact I. *)
+    (* specialize (IHk *)
+
+    (* unfold graph_relation. rewrite k_related_spec. split; intros. *)
+
+    (* induction g; simpl. 1:firstorder. *)
+    (* split. intros [Hxy|Hxy]. *)
+    (* red in Hxy. rewrite k_related_spec in Hxy. *)
+  Admitted.
+  Lemma union_graph_relation_compose {k} x y a (g : list (graph k)) :
+    list_union (map (fun x => graph_relation (a ⋅ x)) g) x y <->
+    exists z, graph_relation a x z /\ list_union (map graph_relation g) z y.
+  Proof.
+    induction g; simpl. 1:firstorder.
+    split. intros [Hxy|Hxy].
+    rewrite graph_relation_compose in Hxy.
+    firstorder.
+    rewrite IHg in Hxy. firstorder.
+    intros [z [Hxz Hzy]].
+    destruct Hzy.
+    rewrite (graph_relation_compose x y a a0). left; firstorder.
+    firstorder.
+  Qed.
+
+
+
+
+  Lemma list_union_compose {k} (g g' : list (graph k)) x y :
+    (exists z, graphs_relation g x z /\ graphs_relation g' z y) ->
+    graphs_relation (compose_family g g') x y.
+  Proof.
+    intros [z [gxz gzy]].
+    induction g in g', x, y, z, gxz, gzy |- *; simp compose_family.
+    unfold graphs_relation in gxz.
+    simpl in gxz. destruct gxz.
+    unfold graphs_relation.
+    unfold compose_family.
+    rewrite map_app, map_map, list_union_app.
+    left.
+    fold (graphs_relation (compose_family g g') x y).
+    rewrite union_graph_relation_compose. exists z. intuition.
+    specialize (IHg g' x y z H gzy).
+    unfold graphs_relation. rewrite map_app, map_map, list_union_app.
+    right; auto.
+  Qed.
+
+  Lemma in_transitive_closure {k} (g : list (graph k)) (l : list (graph k))
+        (T : relation (k_tuple_type k))
+        (approx : approximates_family g T) :
+    is_transitive_closure g l ->
+    forall i,  exists fam : list (graph k),
+          (forall g, In g fam -> In g l) /\ approximates_family fam (power i T).
+  Proof.
+    unfold is_transitive_closure. intros.
+    destruct H as [inS inScomp].
+    (* assert (exists G, approximates G (power i (fin_union T)) /\ In G l). *)
+    induction i in |- *; simp power.
+    unfold approximates.
+    - exists g. intuition.
+    - destruct IHi as [famgi [Ingi gixz]].
+      exists (compose_family famgi g).
+      intuition.
+      + revert H. clear -inS inScomp Ingi.
+        induction famgi. simpl. intros [].
+        simpl. rewrite in_app_iff, in_map_iff.
+        intros [[x [<- Inx]]| Ing]. apply inScomp. intuition auto.
+        apply Ingi. constructor. auto.
+        apply IHfamgi; auto. intros.
+        apply Ingi; eauto with datatypes.
+      + red. intros x y [z [powxz Tzy]].
+        do 2 red in approx, gixz.
+        specialize (gixz _ _ powxz).
+        specialize (approx _ _ Tzy).
+        apply list_union_compose. exists z. intuition.
+  Qed.
+
+  Lemma size_change_wf {k} (n : nat)
+        (T : fin n -> relation (k_tuple_type k))
+        (graphs : list (graph k))
+        (approx : approximates_family graphs (fin_union T))
+        (S : list (graph k))
+        (Strans : is_transitive_closure graphs S)
+        (R : relation (k_tuple_type k))
+        (AF : AlmostFull R) :
+    (forall G, In G S -> forall x y, graph_relation G x y /\ R y x -> False) ->
+    well_founded (fin_union T).
+  Proof.
+    intros H. apply (af_wf _ R).
+    intros x y [Txy Ryx].
+    rewrite <- clos_trans_t1n_iff in Txy.
+    apply clos_trans_power in Txy as [k' Tkxy].
+    red in Strans. destruct (in_transitive_closure graphs S (fin_union T) approx Strans k') as [g' [Ings Hg]].
+    apply Hg in Tkxy.
+    clear Hg.
+    induction g'; simpl in Tkxy. elim Tkxy.
+    destruct Tkxy. specialize (Ings a). forward Ings by constructor; auto.
+    now apply (H a Ings x y).
+    apply IHg'; auto. intros. apply Ings; intuition.
+  Defined.
+End SCT.
+
+
+
+
+  Lemma size_change {k} (n : nat)
+        (T : fin n -> relation (k_tuple_type k))
+        (graphs : fin n -> graph k)
+        (approx : forall f, approximates (graphs f) (T f))
+        (S : list (graph k))
+        (Strans : is_transitive_closure graphs S)
+        (R : relation (k_tuple_type k))
+        (AF : AlmostFull R) :
+    (forall G, In G S -> forall x y, graph_relation G x y /\ R y x -> False) ->
+    well_founded (fin_union T).
+  Proof.
+    intros H. apply (af_wf _ R).
+    intros x y [Txy Ryx].
+    rewrite <- clos_trans_t1n_iff in Txy.
+    apply clos_trans_power in Txy as [k' Tkxy].
+    red in Strans. apply (in_transitive_closure graphs S T approx Strans) in Tkxy as [g [Ings Hg]].
+    now apply (H g Ings x y).
+  Defined.
+End SCT.
+
+Definition T' (x y : nat * nat) : Prop :=
+  (fst x <= snd y /\ snd x <= snd y) \/
+  (fst x <= snd y /\ snd x <= fst y).
+
+Definition R := product_rel le le.
+Require Import Lia.
 
 Derive Signature for clos_trans_1n.
 (* Lemma clos_tra_prop n1 n2 n3 n4 : n1 <= n4 -> clos_trans_1n _ T (n3, n4) (n1, n2) -> n1 <= n3. *)
