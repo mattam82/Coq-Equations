@@ -504,11 +504,11 @@ let aux_ind_fun info chop nested unfs unfids split =
                | None -> tclIDTAC
                | Some idx ->
                  let recid = add_suffix wp.program_info.program_id "_rec" in
-                 let unftac lr =
+                 let _unftac lr =
                    match unfs with
                    | None -> tclIDTAC
                    | Some _ ->
-                     (* Inside the recursive function, recursive calls are not on the original
+                     (* Inside the recursive function, recursive calls are on the original
                         version, not the unfolded one. We hence transform the induction hypothesis. *)
                      let tac gl =
                        let sigma = Proofview.Goal.sigma gl in
@@ -526,7 +526,7 @@ let aux_ind_fun info chop nested unfs unfids split =
                  (* The recursive argument is local to the where, shift it by the
                     length of the enclosing context *)
                  let newidx = match unfs with None -> idx + (List.length lctx) | Some _ -> idx in
-                 tclTHENLIST [unftac false; fix recid (succ newidx); unftac true])
+                 tclTHENLIST [(* unftac false; *) fix recid (succ newidx)(* ; unftac true *)])
             | _ -> tclIDTAC
           in
           let wheretac =
@@ -607,12 +607,13 @@ let aux_ind_fun info chop nested unfs unfids split =
               is a rec call in a where clause to itself we need to
               explicitely rewrite with the unfolding lemma (as the where
               clause induction hypothesis is about the unfolding whereas
-              the term itself mentions the original function. *)
-          (* tclMAP (fun i ->
-           * tclTRY (to82 (Proofview.tclBIND
-           *               (Tacticals.New.pf_constr_of_global
-           *                     (Equations_common.global_reference i))
-           *               Equality.rewriteLR))) unfids; *)
+              the term itself might mentions the original function. *)
+          tclTHEN (to82 Tactics.intros)
+            (tclMAP (fun i ->
+                 (tclTRY (to82 (Proofview.tclBIND
+                                  (Tacticals.New.pf_constr_of_global
+                                     (Equations_common.global_reference i))
+                                  Equality.rewriteLR)))) unfids);
           tclORELSE (tclCOMPLETE
                        (observe "solving premises of compute rule" (to82 (solve_ind_rec_tac info.term_info))))
             (observe "solving nested recursive call" (to82 (solve_nested ())))]))
@@ -653,12 +654,21 @@ let observe_tac s tac =
 
 exception NotGuarded
 
+let check_guard tac =
+  let open Proofview in
+  let open Notations in
+  Unsafe.tclGETGOALS >>= (fun gls ->
+  tac >>= (fun () ->
+  tclEVARMAP >>= (fun sigma ->
+    if check_guard gls sigma then tclUNIT ()
+    else tclZERO NotGuarded)))
+
 let ind_fun_tac is_rec f info fid nestedinfo progs =
   let open Tacticals.New in
+  let open Proofview in
+  let open Notations in
   match is_rec with
   | Some (Guarded l) ->
-     let open Proofview in
-     let open Notations in
      let mutual, nested = List.partition (function (_, MutualOn _) -> true | _ -> false) l in
      let mutannots = List.map (function (_, MutualOn (Some (ann, _))) -> ann + 1 | _ -> -1) mutual in
      let mutprogs, nestedprogs =
@@ -726,20 +736,16 @@ let ind_fun_tac is_rec f info fid nestedinfo progs =
        | _ -> tclZERO NotGuarded
      in
      let mutfix =
-       tclORELSE
-         (tclBIND Unsafe.tclGETGOALS (fun gls ->
-              tclBIND (mutual_fix [] mutannots <*> specialize_mutfix_tac () <*> prove_progs mutprogs)
-                (fun () ->
-                   tclBIND tclEVARMAP (fun sigma ->
-                       if List.length nested > 0 || check_guard gls sigma then tclUNIT () else tclZERO NotGuarded))))
+       let tac = mutual_fix [] mutannots <*> specialize_mutfix_tac () <*> prove_progs mutprogs in
+       tclORELSE (if List.length nested > 0 then tac else check_guard tac)
          (fun (e, einfo) ->
            match e with
            | NotGuarded ->
-             tclORELSE (try_induction ()) (fun (e, einfo) ->
+             tclORELSE (check_guard (try_induction ())) (fun (e, einfo) ->
                  match e with
                  | NotGuarded ->
                    Feedback.msg_info (str "Proof of mutual induction principle is not guarded " ++
-                                       str" and cannot be proven by induction");
+                                       str"and cannot be proven by induction");
                    tclIDTAC
                  | _ -> tclZERO ~info:einfo e)
            | _ -> tclZERO ~info:einfo e)
@@ -790,10 +796,20 @@ let ind_fun_tac is_rec f info fid nestedinfo progs =
       | _ -> assert false
     in
     opacify ();
-    Proofview.tclBIND
-      (tclCOMPLETE (tclTHENLIST
-                      [set_eos_tac (); intros; of82 (aux_ind_fun info (0, 0) nestedinfo unfsplit [] split)]))
-      (fun r -> transp (); Proofview.tclUNIT r)
+    let tac =
+      Proofview.tclBIND
+        (tclCOMPLETE (tclTHENLIST
+                        [set_eos_tac (); intros; of82 (aux_ind_fun info (0, 0) nestedinfo unfsplit [] split)]))
+        (fun r -> transp (); Proofview.tclUNIT r)
+    in
+    tclORELSE (check_guard tac)
+      (fun (e, einfo) ->
+         match e with
+         | NotGuarded ->
+           Feedback.msg_info (str "Proof of mutual induction principle is not guarded " ++
+                              str" and cannot be proven by induction. Consider switching to well-founded recursion.");
+           tclUNIT ()
+         | _ -> tclZERO ~info:einfo e)
 
 let ind_fun_tac is_rec f info fid nested progs =
   Proofview.tclORELSE (ind_fun_tac is_rec f info fid nested progs)
