@@ -772,39 +772,10 @@ Section SCT.
   Definition graph_eq {k} (g g' : graph k) : bool :=
     fin_all k (fun f => eqb (g f) (g' f)).
 
-
   Equations graph_compose_n {k} (n : nat) (g : graph k) : graph k :=
     graph_compose_n 0 g := g;
     graph_compose_n (S n) g := graph_compose_n n g ⋅ g.
 
-  Definition is_transitive_closure' {k} (g : graph k) (l : list (graph k)) : Prop :=
-    (In g l) /\ forall g g', In g l /\ In g' l -> In (g ⋅ g') l.
-
-  (* Lemma power_union {n k} i (T : fin n -> relation (k_tuple_type k)) : *)
-  (*   power i (fin_union T) <-> any_ *)
-
-  (* Lemma in_transitive_closure {k} (g : graph k) (l : list (graph k)) *)
-  (*       (T : relation (k_tuple_type k)) *)
-  (*       (approx : approximates g T) : *)
-  (*   is_transitive_closure' g l -> *)
-  (*   forall i, exists g, In g l /\ approximates g (power i T). *)
-  (* Proof. *)
-  (*   unfold is_transitive_closure'. intros. *)
-  (*   destruct H as [inS inScomp]. *)
-  (*   (* assert (exists G, approximates G (power i (fin_union T)) /\ In G l). *) *)
-  (*   induction i in |- *; simp power. *)
-  (*   unfold approximates. *)
-  (*   - exists g. intuition. *)
-  (*   - destruct IHi as [z [Hpowi Hzy]]. *)
-  (*     exists (z ⋅ g). intuition. *)
-  (*     intros x y [z' [Ingi gixz]]. eapply compose_approximates; eauto. *)
-  (*     now exists z'. *)
-  (* Qed. *)
-(* z *)
-(*       assert(exists k, T k z y) as [k' Hk'] by now apply fin_union_spec in Hzy. *)
-(*       apply approx in Hk'. exists (gi ⋅ g k'); intuition. *)
-(*       pose proof (compose_approximates gi (g k')). unfold approximates in H. *)
-(*     destruct H. intros. apply H in H0. now exists x0. *)
   Equations list_union {A} (rs : list (relation A)) : relation A :=
     list_union nil := fun _ _ => False;
     list_union (cons r rs) := fun x y => r x y \/ list_union rs x y.
@@ -812,22 +783,6 @@ Section SCT.
   Definition approximates_family {k} (graphs : list (graph k)) (R : relation (k_tuple_type k)) :=
     inclusion _ R (list_union (List.map graph_relation graphs)).
 
-  (* Equations compose_family {k n} (G0 G1 : fin n -> graph k) : fin n -> graph k := *)
-
-
-  (* Lemma compose_approximates {k n} (G0 G1 : fin n -> graph k) (R0 R1 : relation (k_tuple_type k)) : *)
-  (*   approximates_family G0 R0 -> approximates_family G1 R1 -> *)
-  (*   approximates_family (G0 ⋅ G1) (compose_rel R0 R1). *)
-  (* Proof. *)
-  (*   unfold approximates. intros ag0 ag1. *)
-  (*   intros x z [y [Hxy Hyz]]. rewrite graph_relation_spec. *)
-  (*   intros f. specialize (ag0 _ _ Hxy). specialize (ag1 _ _ Hyz). *)
-  (*   rewrite graph_relation_spec in ag0, ag1. specialize (ag0 f). *)
-  (*   funelim (graph_compose G0 G1 f). now rewrite Heq in ag0. *)
-  (*   rewrite Heq0 in ag0. specialize (ag1 f0). rewrite Heq in ag1. *)
-  (*   destruct b, b0; simpl;  try lia. *)
-  (*   specialize (ag1 f0). now rewrite Heq in ag1. *)
-  (* Qed. *)
   Equations fin_all_compose {k n} (g : graph k) (p : fin n -> graph k) : fin n -> graph k :=
     fin_all_compose g p f := p f ⋅ g.
 
@@ -852,51 +807,33 @@ Section SCT.
     map_k_tuple 0 p f := p;
     map_k_tuple (S n) (x, xs) f := (f fz, map_k_tuple n xs (fun i => f (fs i))).
 
-  Lemma graph_relation_compose {k} x y (g g' : graph k) :
-    graph_relation (g ⋅ g') x y <->
-    exists z, graph_relation g x z /\ graph_relation g' z y.
+  Lemma graph_relation_compose {k} x y (g g' : graph k) z :
+    graph_relation g x z -> graph_relation g' z y ->
+    graph_relation (g ⋅ g') x y.
   Proof.
-    rewrite graph_relation_spec. split; intros. exists x.
-    rewrite !graph_relation_spec.
-    (* exists (map_k_tuple k y (fun f => match a f with Some (b, d) => k_tuple_val d x | None => k_tuple_val f x end)). *)
-    (* rewrite graph_relation_spec. split. intros. *)
-    (* specialize (H f). unfold graph_compose in H. destruct (a f) as [[weight d]|]. *)
-    (* simpl in H. destruct (g d) as [[weight' d']|]. simpl in H. *)
-    (* unfold graph_relation. *)
+    intros gzx g'zy. rewrite graph_relation_spec in *. intros f.
+    specialize (gzx f). simp graph_compose. destruct (g f) as [[[] d]|];
+    simpl. specialize (g'zy d); destruct (g' d) as [[[] d']|]; simp graph_compose;
+    simpl; lia. specialize (g'zy d).
+    destruct (g' d) as [[[] d']|]; simpl in *. lia. lia. lia. lia.
+  Qed.
 
-
-    (* induction k. exists tt. split; exact I. *)
-    (* specialize (IHk *)
-
-    (* unfold graph_relation. rewrite k_related_spec. split; intros. *)
-
-    (* induction g; simpl. 1:firstorder. *)
-    (* split. intros [Hxy|Hxy]. *)
-    (* red in Hxy. rewrite k_related_spec in Hxy. *)
-  Admitted.
-  Lemma union_graph_relation_compose {k} x y a (g : list (graph k)) :
-    list_union (map (fun x => graph_relation (a ⋅ x)) g) x y <->
-    exists z, graph_relation a x z /\ list_union (map graph_relation g) z y.
+  Lemma union_graph_relation_compose {k} x y a (g : list (graph k)) z:
+    graph_relation a x z -> list_union (map graph_relation g) z y ->
+    list_union (map (fun x => graph_relation (a ⋅ x)) g) x y.
   Proof.
     induction g; simpl. 1:firstorder.
-    split. intros [Hxy|Hxy].
-    rewrite graph_relation_compose in Hxy.
-    firstorder.
-    rewrite IHg in Hxy. firstorder.
-    intros [z [Hxz Hzy]].
+    intros Hxz Hzy.
     destruct Hzy.
-    rewrite (graph_relation_compose x y a a0). left; firstorder.
+    specialize (graph_relation_compose x y a a0). left; firstorder.
     firstorder.
   Qed.
 
-
-
-
-  Lemma list_union_compose {k} (g g' : list (graph k)) x y :
-    (exists z, graphs_relation g x z /\ graphs_relation g' z y) ->
+  Lemma list_union_compose {k} (g g' : list (graph k)) x y z :
+    graphs_relation g x z -> graphs_relation g' z y ->
     graphs_relation (compose_family g g') x y.
   Proof.
-    intros [z [gxz gzy]].
+    intros gxz gzy.
     induction g in g', x, y, z, gxz, gzy |- *; simp compose_family.
     unfold graphs_relation in gxz.
     simpl in gxz. destruct gxz.
@@ -904,8 +841,7 @@ Section SCT.
     unfold compose_family.
     rewrite map_app, map_map, list_union_app.
     left.
-    fold (graphs_relation (compose_family g g') x y).
-    rewrite union_graph_relation_compose. exists z. intuition.
+    apply (union_graph_relation_compose _ _ _ _ z H gzy).
     specialize (IHg g' x y z H gzy).
     unfold graphs_relation. rewrite map_app, map_map, list_union_app.
     right; auto.
@@ -938,7 +874,7 @@ Section SCT.
         do 2 red in approx, gixz.
         specialize (gixz _ _ powxz).
         specialize (approx _ _ Tzy).
-        apply list_union_compose. exists z. intuition.
+        eapply list_union_compose; intuition.
   Qed.
 
   Lemma size_change_wf {k} (n : nat)
@@ -964,7 +900,10 @@ Section SCT.
     now apply (H a Ings x y).
     apply IHg'; auto. intros. apply Ings; intuition.
   Defined.
+
 End SCT.
+
+Print Assumptions size_change_wf.
 
 
 
