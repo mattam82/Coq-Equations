@@ -741,9 +741,6 @@ Section SCT.
          intuition.
   Qed.
 
-  (* Lemma graph_compose_spec {k} (G0 G1 : graph k) :  *)
-  (*   forall f, (G0 ⋅ G1) f *)
-
   Lemma compose_approximates {k} (G0 G1 : graph k) (R0 R1 : relation (k_tuple_type k)) :
     approximates G0 R0 -> approximates G1 R1 ->
     approximates (G0 ⋅ G1) (compose_rel R0 R1).
@@ -1058,6 +1055,7 @@ Section SCT.
   Inductive trans_clos_answer (k : nat) : Set :=
     | OutOfFuel
     | Finished (l : list (graph k)).
+  Derive NoConfusion for trans_clos_answer.
 
   Equations find_opt {A} (l : list A) (f : A -> option A) : option A :=
     find_opt [] f := None;
@@ -1065,25 +1063,110 @@ Section SCT.
                        { | Some y => Some y;
                          | None => find_opt xs f }.
 
-  (* FIXME bug when using with *)
-  Equations(noind) compute_transitive_closure {k} (n : nat) (gs : list (graph k)) : trans_clos_answer k by struct n :=
+  (* (* Bug with eqns *) *)
+  (* Equations(noeqns noind) compute_transitive_closure {k} (n : nat) (gs : list (graph k)) : trans_clos_answer k by struct n := *)
+  (*   compute_transitive_closure 0 _ := OutOfFuel _; *)
+  (*   compute_transitive_closure (S n) gs := aux gs [] *)
+  (*    where aux (l : list (graph k)) (acc : list (graph k)) : trans_clos_answer k by struct l := *)
+  (*    aux nil acc := Finished _ acc; *)
+  (*    aux (g :: gs') acc := with_new_candidate new_candidate *)
+  (*      where with_new_candidate : option (graph k) -> trans_clos_answer k := *)
+  (*      { | Some newg => compute_transitive_closure n (newg :: g :: gs' ++ acc); *)
+  (*        | None => aux gs' (g :: acc) } *)
+  (*      where new_candidate : option (graph k) := *)
+  (*      new_candidate := let gs'' := g :: gs' ++ acc in *)
+  (*                       find_opt gs'' (fun g' => *)
+  (*                                        let gcomp := g' ⋅ g in *)
+  (*                                        if eqb g gcomp then None else *)
+  (*                                          if List.existsb (eqb gcomp) gs'' then *)
+  (*                                            let gcomp' := g ⋅ g' in *)
+  (*                                            if List.existsb (eqb gcomp') gs'' then None *)
+  (*                                            else Some gcomp' *)
+  (*                                          else Some gcomp). *)
+  (* Hint Extern 10 => progress simpl : Below. *)
+  (* (* FIXME bug when using with *) *)
+  (* Set Equations Debug. *)
+  Equations compute_transitive_closure {k} (n : nat) (gs : list (graph k)) : trans_clos_answer k
+    by wf n lt :=
     compute_transitive_closure 0 _ := OutOfFuel _;
     compute_transitive_closure (S n) gs := aux gs []
      where aux (l : list (graph k)) (acc : list (graph k)) : trans_clos_answer k by struct l :=
      aux nil acc := Finished _ acc;
      aux (g :: gs') acc :=
        let gs'' := g :: gs' ++ acc in
-       match find_opt gs'' (fun g' =>
-                              let gcomp := g' ⋅ g in
-                              if eqb g gcomp then None else
+       let new_candidate :=
+           find_opt gs'' (fun g' =>
+                            let gcomp := g' ⋅ g in
+                            if eqb g gcomp then None else
                               if List.existsb (eqb gcomp) gs'' then
                                 let gcomp' := g ⋅ g' in
                                 if List.existsb (eqb gcomp') gs'' then None
                                 else Some gcomp'
-                              else Some gcomp) with
-         | Some newg => compute_transitive_closure n (newg :: gs'')
-         | None => aux gs' (g :: acc)
+                              else Some gcomp)
+       in
+       match new_candidate with
+       | Some newg => compute_transitive_closure n (newg :: gs'')
+       | None => aux gs' (g :: acc)
        end.
+
+  Definition becoming_transitive_closure {k} (acc : list (graph k)) (l : list (graph k)) : Prop :=
+    (forall g, In g acc -> In g l) /\ forall g g', In g acc -> In g' acc -> In (g ⋅ g') acc.
+
+  Lemma compute_transitive_closure_spec {k} n (gs : list (graph k)) l :
+    compute_transitive_closure n gs = Finished _ l ->
+    is_transitive_closure gs l.
+  Proof.
+    eapply (compute_transitive_closure_elim (fun k n gs r => forall l,
+                                                 r = Finished k l -> is_transitive_closure gs l)
+                                            (fun k n gs l acc res =>
+                                               forall l', res = Finished k l' ->
+                                                          incl gs (l ++ acc) ->
+                                                         becoming_transitive_closure acc l' ->
+                                                         incl (l ++ acc) l' /\
+                                                         becoming_transitive_closure l l' /\ is_transitive_closure gs l')); clear;
+      intros. all:try discriminate; eauto.
+    + specialize (H l H0). apply H. auto with datatypes.
+      red. intuition. inversion H1.
+    + noconf H.
+      split; intuition. red; intuition. inversion H.
+      red; intuition. (* rewrite app_nil_r. *)
+      (* intros x Inx. auto. *)
+      (* split. intros. now apply H0. auto. *)
+    + remember (g :: l ++ acc) as gs''.
+      match type of H1 with
+        | let x := _ in @?T x => change (T gs'') in H1; cbv beta in H1
+      end.
+      remember (find_opt _ _) as newc. simpl in *.
+      rewrite <- Heqnewc in H2.
+      rewrite compute_transitive_closure_clause_2_aux_unfold_eq in H1, H2.
+      destruct newc.
+      ++ clear H0.
+         specialize (H g0 l' H2).
+         rewrite <- Heqgs'' in H3.
+         split; [|split;[|split]].
+         +++ subst gs''. destruct H. red; intros; apply H. simpl in *; intuition auto.
+         +++ admit.
+         +++ intros x Inx. apply H. rewrite Heqgs''. simpl in *. rewrite in_app_iff in *. simpl in *.
+             intuition auto. apply H3 in Inx. rewrite Heqgs'' in Inx. simpl in Inx. rewrite in_app_iff in *.
+             intuition auto.
+         +++ intros g1 g2 [Ing1 Ing2]. apply H. auto.
+
+      ++ clear H H0. specialize (H1 _ H2). forward H1.
+         intros x Inx. apply H3 in Inx. simpl in Inx. rewrite in_app_iff in *. simpl. intuition auto.
+         assert (becoming_transitive_closure (g :: acc) l').
+         +++ simpl; auto.
+             red in H4 |- *. intuition. simpl in H4. intuition. subst g0.
+             apply H.
+  Admitted.
+         (*                rewrite in_app_iff. right; simpl; auto. *)
+         (*     destruct H1. simpl. admit. *)
+         (* +++ intros x Inx. simpl in Inx; rewrite in_app_iff in Inx; simpl in Inx. intuition. subst x. *)
+         (*     apply H. rewrite in_app_iff. right; simpl. auto. *)
+         (* +++ red in H4 |- *; intuition. *)
+         (*     simpl in H4. intuition. subst g0. *)
+         (*     apply H. simpl; rewrite in_app_iff. right; simpl; auto. *)
+         (*     destruct H1. simpl. admit. *)
+         (*     simpl in *. intuition subst. *)
 
   Definition gn_set : list (graph 2) :=
     [ T_graph_l; T_graph_r ].
