@@ -1138,23 +1138,25 @@ let solve_equations_obligations flags recids i sigma hook =
       types
   in
   (* Feedback.msg_debug (str"Starting proof"); *)
-  Proof_global.(start_dependent_proof i kind tele (make_terminator terminator));
-  Proof_global.simple_with_current_proof
+  let pstate = Proof_global.(start_dependent_proof ~ontop:None i kind tele (make_terminator terminator)) in
+  let pstate = Proof_global.simple_with_current_proof
     (fun _ p  ->
-       fst (Pfedit.solve Goal_select.SelectAll None (Proofview.tclDISPATCH do_intros) p));
-  Proof_global.simple_with_current_proof
+       fst (Pfedit.solve Goal_select.SelectAll None (Proofview.tclDISPATCH do_intros) p)) pstate in
+  let pstate = Proof_global.simple_with_current_proof
     (fun _ p  ->
-       fst (Pfedit.solve (Goal_select.SelectAll) None (Tacticals.New.tclTRY !Obligations.default_tactic) p));
-  let prf = Proof_global.give_me_the_proof () in
-  if Proof.is_done prf then
+       fst (Pfedit.solve (Goal_select.SelectAll) None (Tacticals.New.tclTRY !Obligations.default_tactic) p)) pstate in
+  let prf = Proof_global.give_me_the_proof pstate in
+  let pstate = if Proof.is_done prf then
     if flags.open_proof then error_complete ()
     else
-      Lemmas.save_proof Vernacexpr.(Proved (Proof_global.Transparent, None))
-  else if flags.open_proof then ()
+      Lemmas.save_proof_proved ?proof:None ~pstate ~opaque:Proof_global.Transparent ~idopt:None
+  else if flags.open_proof then Some pstate
   else
     user_err_loc (None, "define", str"Equations definition generated subgoals that " ++
                                   str "could not be solved automatically. Use the \"Equations?\" command to" ++
                                   str " refine them interactively")
+  in
+  pstate
 
 let solve_equations_obligations_program flags recids i sigma hook =
   let kind = (Decl_kinds.Local, flags.polymorphic, Decl_kinds.(Definition)) in
@@ -1231,7 +1233,7 @@ let rec_type_ids =
             | Some (Logical ids) -> [snd ids]
             | None -> [])
 
-let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false) programs : a hook -> a  =
+let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false) programs : a hook -> a * Proof_global.t option  =
   fun hook ->
   let call_hook recobls p helpers uctx locality gr (hook : program -> term_info -> a) : a =
     (* let l =
@@ -1273,7 +1275,8 @@ let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false)
       let p = List.hd programs in
       let cst, _ = (destConst !evd p.program_term) in
       call_hook recobls p helpers ustate Decl_kinds.Global (ConstRef cst) f
-    in all_hook hook [] !evd
+    in
+    all_hook hook [] !evd, None
   | HookLater f ->
     let hook recobls helpers ustate kind programs =
       List.iteri (fun i p ->
@@ -1282,19 +1285,19 @@ let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false)
     in
     if Evd.has_undefined !evd then
       if flags.open_proof then
-        solve_equations_obligations flags recids (program_id (List.hd programs)) !evd (all_hook hook)
+        (), solve_equations_obligations flags recids (program_id (List.hd programs)) !evd (all_hook hook)
       else
-        solve_equations_obligations_program flags recids (program_id (List.hd programs)) !evd (all_hook hook)
+        solve_equations_obligations_program flags recids (program_id (List.hd programs)) !evd (all_hook hook), None
     else
       if flags.open_proof then error_complete ()
-      else all_hook hook [] !evd
+      else all_hook hook [] !evd, None
 
 let define_program_immediate env evd is_recursive fixprots flags ?(unfold=false) program =
   define_programs env evd is_recursive fixprots flags ~unfold [program]
     (HookImmediate (fun x y -> (x, y)))
 
 let define_programs env evd is_recursive fixprots flags ?(unfold=false) programs hook =
-  define_programs env evd is_recursive fixprots flags ~unfold programs (HookLater hook)
+  snd @@ define_programs env evd is_recursive fixprots flags ~unfold programs (HookLater hook)
 
 let mapping_rhs sigma s = function
   | RProgram c -> RProgram (mapping_constr sigma s c)

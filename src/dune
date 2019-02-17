@@ -1,7 +1,7 @@
 (library
  (name equations_plugin)
  (public_name equations.plugin)
- (flags :standard -warn-error -3-9-27-32-33-50)
+ (flags :standard -w -9 -warn-error -3-9-27-32-33-50)
  (libraries coq.plugins.extraction))
 
 (rule

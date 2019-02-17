@@ -281,6 +281,8 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
 
 
 let () =
+  let derive_no_confusion_hom env sigma ~polymorphic v =
+    ignore (derive_no_confusion_hom env sigma ~polymorphic v) in
   Ederive.(register_derive
              { derive_name = "NoConfusionHom";
                derive_fn = make_derive_ind derive_no_confusion_hom })

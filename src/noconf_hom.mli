@@ -20,4 +20,5 @@ val derive_noConfusion_package :
   Names.Constant.t -> unit
 
 val derive_no_confusion_hom :
-  env -> Evd.evar_map -> polymorphic:bool -> Names.inductive * EInstance.t -> unit
+  env -> Evd.evar_map -> polymorphic:bool -> Names.inductive * EInstance.t ->
+  Proof_global.t option
