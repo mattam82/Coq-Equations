@@ -190,25 +190,34 @@ let substitute_args args ctx =
     | _, [] -> assert false
   in aux (List.rev ctx) args
 
+let drop_last_n n l =
+  let l = List.rev l in
+  let l = CList.skipn n l in
+  List.rev l
+
 let find_rec_call is_rec sigma protos f args =
-  let fm ((f',filter), alias, idx, sign, arity) =
-    let f', args' = Termops.decompose_app_vect sigma f' in
-    let f' = EConstr.Unsafe.to_constr f' in
-    let args' = Array.map EConstr.Unsafe.to_constr args' in
-    let nhyps = Context.Rel.nhyps sign + Array.length args' in
-    if Constr.equal f' f then
-      let f' = fst (Constr.destConst f') in
+  let fm (fhead,(f',filter), alias, idx, sign, arity) =
+    if Constr.equal (EConstr.Unsafe.to_constr fhead) f then
+      let f' = fst (Constr.destConst f) in
       match is_applied_to_structarg (Names.Label.to_id (Names.Constant.label f')) is_rec
               (List.length args) with
       | Some true | None ->
+        let signlen = List.length sign in
+        let indargs = filter_arguments filter args in
         let sign, args =
-          if nhyps <= List.length args then [], CList.chop nhyps args
+          if signlen <= List.length indargs then
+            (* Exact or extra application *)
+            let indargs, rest = CList.chop signlen indargs in
+            let fargs = drop_last_n (List.length rest) args in
+            [], (fargs, indargs, rest)
           else
+            (* Partial application *)
             let sign = List.map EConstr.Unsafe.to_rel_decl sign in
-            let _, substargs = CList.chop (Array.length args') args in
-            let sign = substitute_args substargs sign in
+            let sign = substitute_args indargs sign in
             let signlen = List.length sign in
-            sign, (List.map (lift signlen) args @ Context.Rel.to_extended_list mkRel 0 sign, [])
+            let indargs = List.map (lift signlen) indargs @ Context.Rel.to_extended_list mkRel 0 sign in
+            let fargs = List.map (lift signlen) args @ Context.Rel.to_extended_list mkRel 0 sign in
+            sign, (fargs, indargs, [])
         in
         Some (idx, arity, filter, sign, args)
       | Some false -> None
@@ -218,15 +227,24 @@ let find_rec_call is_rec sigma protos f args =
         let f', args' = Termops.decompose_app_vect sigma f' in
         let f' = EConstr.Unsafe.to_constr f' in
         if Constr.equal (head f') f then
-          Some (idx, arity, argsf, [], (args, []))
+          Some (idx, arity, argsf, [], (args, args, []))
         else None
       | None -> None
   in
   try Some (CList.find_map fm protos)
   with Not_found -> None
 
+let filter_arg i filter =
+  let rec aux f =
+    match f with
+    | i' :: _ when i < i' -> true
+    | i' :: _ when i = i' -> false
+    | i' :: is -> aux is
+    | [] -> false
+  in aux filter
+
 let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
-  let proto_fs = List.map (fun ((f,args), _, _, _, _) -> f) protos in
+  let proto_fs = List.map (fun (_,(f,args), _, _, _, _) -> f) protos in
   let occ = ref 0 in
   let rec aux n env hyps c =
     let open Constr in
@@ -261,20 +279,20 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
     | _ ->
       let f', args = decompose_appvect c in
       if not (is_user_obl sigma user_obls (EConstr.of_constr f')) then
-        let hyps =
-          (* TODO: use filter here *)
-          Array.fold_left (fun hyps arg -> let hyps', arg' = aux n env hyps arg in
-                            hyps')
-            hyps args
-        in
-        let args = Array.to_list args in
-        (match find_rec_call is_rec sigma protos f' args with
-         | Some (i, arity, filter, sign, (args', rest)) ->
-           let fargs' = filter_arguments filter args' in
-           let result = Termops.it_mkLambda_or_LetIn (mkApp (f', CArray.of_list args')) sign in
+        (match find_rec_call is_rec sigma protos f' (Array.to_list args) with
+         | Some (i, arity, filter, sign, (fargs', indargs', rest)) ->
+           let hyps =
+             CArray.fold_left_i
+               (fun i hyps arg ->
+                  if filter_arg i filter then hyps
+                  else let hyps', arg' = aux n env hyps arg in hyps')
+               hyps args
+           in
+           let fargs' = Constr.mkApp (f', Array.of_list fargs') in
+           let result = Termops.it_mkLambda_or_LetIn fargs' sign in
            let hyp =
              Term.it_mkProd_or_LetIn
-               (Constr.mkApp (mkApp (mkRel (i + 1 + len + n + List.length sign), Array.of_list fargs'),
+               (Constr.mkApp (mkApp (mkRel (i + 1 + len + n + List.length sign), Array.of_list indargs'),
                               [| Term.applistc (lift (List.length sign) result)
                                    (Context.Rel.to_extended_list mkRel 0 sign) |]))
                sign
@@ -282,7 +300,13 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
            let hyps = cmap_add hyp !occ hyps in
            let () = incr occ in
            hyps, Term.applist (result, rest)
-         | None -> hyps, mkApp (f', Array.of_list args))
+         | None ->
+           let hyps =
+             Array.fold_left (fun hyps arg -> let hyps', arg' = aux n env hyps arg in
+                               hyps')
+               hyps args
+           in
+           hyps, mkApp (f', args))
       else
         let c' =
           if do_subst then (EConstr.Unsafe.to_constr (EConstr.Vars.substnl proto_fs (len + n) (EConstr.of_constr c)))
@@ -934,21 +958,21 @@ let computations env evd alias refine p eqninfo =
          with Not_found -> None, fsubst
        in
        let term_ty = Retyping.get_type_of env evd term in
-       let subterm, lensubst =
-         let rec aux ty args' =
+       let subterm, filter =
+         let rec aux ty i args' =
            match kind evd ty, args' with
            | Prod (na, b, ty), a :: args' ->
              if EConstr.isRel evd a then (* A variable from the context that was not substituted
                                   by a recursive prototype, we keep it *)
-               let term', len = aux ty args' in
-               mkLambda (na, b, term'), len
+               let term', len = aux ty (succ i) args' in
+               mkLambda (na, b, term'), i :: len
              else
                (* The argument was substituted, we keep that substitution *)
-               let term', len = aux (subst1 a ty) args' in
-               term', succ len
-           | _, [] -> lhsterm, 0
+               let term', len = aux (subst1 a ty) (succ i) args' in
+               term', len
+           | _, [] -> lhsterm, []
            | _, _ :: _ -> assert false
-         in aux term_ty args
+         in aux term_ty 0 args
        in
        Feedback.msg_debug Pp.(str"where subterm: " ++ Printer.pr_econstr_env env evd subterm);
        let _args' =
@@ -968,7 +992,7 @@ let computations env evd alias refine p eqninfo =
          if not (PathMap.is_empty wheremap) then
            subterm, [0]
          else
-           subterm, [lensubst]
+           subterm, filter
        in
        let where_comp =
          (termf, alias, w.where_orig, pi1 wsmash, substl smashsubst arity,
@@ -1276,12 +1300,16 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
   let protos =
     CList.map_i (fun i ((f',filterf'), alias, path, sign, arity, pats, args, (refine, cut)) ->
       let f' = Termops.strip_outer_cast evd f' in
+      let f'hd =
+        let ctx, t = decompose_lam_assum evd f' in
+        fst (decompose_app evd t)
+      in
       let alias =
         match alias with
         | None -> None
         | Some (f, _, _) -> Some f
       in
-      ((f',filterf'), alias, lenprotos - i, sign, to_constr evd arity))
+      (f'hd, (f',filterf'), alias, lenprotos - i, sign, to_constr evd arity))
       1 protos
   in
   let evd = ref evd in
@@ -1302,11 +1330,12 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
     in
     let comp = applistc hd pats in
     let body =
+      let nf_beta = Reductionops.nf_beta (push_rel_context ctx env) !evd in
       let b = match c with
         | RProgram c ->
-            mkEq env evd ty comp (Reductionops.nf_beta env !evd c)
+            mkEq env evd ty (nf_beta comp) (nf_beta c)
         | REmpty (i, _) ->
-           mkApp (coq_ImpossibleCall evd, [| ty; comp |])
+           mkApp (coq_ImpossibleCall evd, [| ty; nf_beta comp |])
       in
       let body = it_mkProd_or_LetIn b ctx in
       if !Equations_common.debug then
@@ -1333,7 +1362,11 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
               (it_mkProd_or_clean env !evd
                  (applistc head (lift_constrs hypslen pats @ [c']))
                  hyps) ctx
-          in Some ty
+          in
+          if !Equations_common.debug then
+            Feedback.msg_debug Pp.(str"Typing constructor " ++ Printer.pr_econstr_env env !evd ty);
+
+          Some ty
       | REmpty (i, _) -> None
     in (refine, unf, body, cstr)
   in
