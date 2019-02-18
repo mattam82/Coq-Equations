@@ -463,7 +463,6 @@ let subst_term_in_context sigma t ctx =
   in newctx
 
 let strengthen ?(full=true) ?(abstract=false) env evd (ctx : rel_context) x (t : constr) =
-  let _rels = dependencies_of_term env evd ctx t x in
   let rels = Int.Set.union (if full then rels_above ctx x else Int.Set.singleton x)
       (* (Int.Set.union *) (Int.Set.union (dependencies_of_term ~with_red:true env evd ctx t x) (fix_rels evd ctx))
   (* (non_dependent ctx t)) *)

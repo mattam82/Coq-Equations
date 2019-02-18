@@ -673,6 +673,9 @@ let subst_rec_programs env evd ps =
         let wsubst0 = lift_subst env !evd subst wcontext in
         let wp = where_program in
         let where_type = mapping_constr !evd subst where_type in
+        (* The substituted prototypes must be lifted w.r.t. the new variables bound in the where. *)
+        let s = List.map (fun (id, (recarg, b)) ->
+            (id, (recarg, lift (List.length (pi1 wp.program_prob) - List.length ctx) b))) s in
         let wp' =
           match subst_programs path s ctx [wp] [where_term w] with
           | [wp'] -> wp'
@@ -692,6 +695,9 @@ let subst_rec_programs env evd ps =
           else
             let where_program_term = mapping_constr !evd wsubst0 wp.program_term in
             let where_program_args = List.map (mapping_constr !evd wsubst0) where_program_args in
+            (* where_map := PathMap.add where_path
+             *     (applistc where_program_term where_program_args (\* substituted *\), Id.of_string ""(\*FIXNE*\), wp'.program_splitting)
+             *     !where_map; *)
             { wp' with program_term = where_program_term }, where_program_args
         in
         let subst_where =

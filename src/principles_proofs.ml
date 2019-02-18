@@ -446,15 +446,38 @@ let aux_ind_fun info chop nested unfs unfids split =
         let wheretac acc s unfs =
           Proofview.Goal.enter (fun gl ->
           let wp = s.where_program in
-          let ctx, where_term, fstchop, unfids = match unfs with
-            | None -> wp.program_info.program_sign, (where_term s), fst chop (* + List.length ctx *), unfids
+          let env = Global.env () in
+          let evd = Proofview.Goal.sigma gl in
+          let concl = Proofview.Goal.concl gl in
+          let subst =
+            let hd, args = decompose_app evd concl in
+            let args = drop_last args in
+            let rec collect_vars acc c =
+              let hd, args = decompose_app evd c in
+              match kind evd hd with
+              | Var id -> if not (List.mem id acc) then id :: acc else acc
+              | Construct _ -> List.fold_left collect_vars acc args
+              | _ -> acc
+            in
+            let args_vars = List.fold_left collect_vars [] args in
+            List.map mkVar args_vars
+          in
+          let revert, ctx, where_term, fstchop, unfids = match unfs with
+            | None ->
+              let term = where_term s in
+              let hd, args = decompose_app evd term in
+              let len = List.length (List.filter (fun x -> isRel evd x) args) in
+              let sign = wp.program_info.program_sign in
+              let ctxlen = List.length sign - len in
+              let before, after = List.chop ctxlen sign in
+              let newwhere = substl subst term in
+              let ctx = subst_rel_context 0 subst before in
+              List.length after, ctx, newwhere, fst chop (* + List.length ctx *), unfids
             | Some w ->
                let assoc, unf, split =
                  try PathMap.find w.where_path info.wheremap
                  with Not_found -> assert false
                in
-               let env = Global.env () in
-               let evd = Evd.empty in
                if !Equations_common.debug then
                  Feedback.msg_debug (str"Unfolded where " ++ str"term: " ++ pr_econstr_env env evd (where_term w) ++
                                      str" type: " ++ pr_econstr_env env evd w.where_type ++ str" assoc " ++
@@ -463,30 +486,18 @@ let aux_ind_fun info chop nested unfs unfids split =
                let ctxlen = List.length unfwp.program_info.program_sign - List.length unfctx in
                let before, after = List.chop ctxlen unfwp.program_info.program_sign in
                let subst =
-                 let hyps = Proofview.Goal.hyps gl in
-                 let hyps, _ =
-                   List.split_when (fun decl -> Context.Named.Declaration.get_id decl = coq_end_of_section_id) hyps
-                 in
-                 if not (List.length hyps >= List.length after) then
+                 if not (List.length subst >= List.length after) then
                    anomaly (str"Mismatch between hypotheses in named context and program")
-                 else List.rev_map (fun decl -> mkVar (Context.Named.Declaration.get_id decl)) hyps
+                 else subst
                in
-               let origwhere = substl (List.rev subst) (where_term s) in
-               let args =
-                 let assochd, assocargs = decompose_app evd assoc in
-                 let orighd, origargs = decompose_app evd origwhere in
-                 let assocargs', origargs' = List.filter2 (fun a a' -> isRel evd a) assocargs origargs in
-                 origargs'
-               in
-               let newwhere = substl (List.rev args) (where_term w) in
-               let ctx = subst_rel_context 0 (List.rev args) before in
+               let newwhere = substl subst (where_term w) in
+               let ctx = subst_rel_context 0 subst before in
                if !Equations_common.debug then
                  Feedback.msg_debug (str"Unfolded where substitution:  " ++
                                      prlist_with_sep spc (Printer.pr_econstr_env env evd) subst ++
-                                     str"Substituted orig " ++ Printer.pr_econstr_env env evd origwhere ++
                                      str"New where term" ++ Printer.pr_econstr_env env evd newwhere ++
                                      str" context map " ++ pr_context env Evd.empty ctx);
-               ctx, newwhere, -1 (* + List.length ctx *), unf :: unfids
+               0, ctx, newwhere, -1 (* + List.length ctx *), unf :: unfids
           in
           let chop = fstchop, snd chop in
           let fixtac =
@@ -533,6 +544,7 @@ let aux_ind_fun info chop nested unfs unfids split =
             let open Tacticals.New in
             observe_new "one where"
               (tclTHENLIST [
+                  tclDO revert revert_last;
                   observe_new "moving section id" (tclTRY (move_hyp coq_end_of_section_id Logic.MoveLast));
                             fixtac;
                   observe_new "intros" intros;
@@ -542,7 +554,7 @@ let aux_ind_fun info chop nested unfs unfids split =
                             (of82 (aux chop (Option.map (fun s -> s.where_program.program_splitting) unfs)
                                      unfids (s.where_program.program_splitting)))])
           in
-          let wherepath, args =
+          let wherepath, _args =
             try PathMap.find s.where_path info.pathmap
             with Not_found ->
               error "Couldn't find associated args of where"
@@ -552,24 +564,16 @@ let aux_ind_fun info chop nested unfs unfids split =
              Feedback.msg_debug
              (str"Found path " ++ str (Id.to_string wherepath) ++ str" where: " ++
               pr_id (where_id s) ++ str"term: " ++
-              Printer.pr_econstr_env env Evd.empty (Splitting.where_term s) ++
-              str" instance: " ++
-              prlist_with_sep spc
-              (fun x -> Printer.pr_econstr_env env Evd.empty (EConstr.of_constr x)) args ++
+              Printer.pr_econstr_env env Evd.empty where_term ++
               str" context map " ++
               pr_context_map env Evd.empty (id_subst ctx)));
           let ind = Nametab.locate (qualid_of_ident wherepath) in
           let ty ind =
             let hd, args = decompose_app Evd.empty where_term in
-            let args = List.filter (fun x -> not (isRel Evd.empty x)) args in
-            let args = List.append args (extended_rel_list 0 ctx) in
-            let fnapp = applistc hd args in
-            let indargs =
-              match unfs with
-              | None -> extended_rel_list 0 ctx
-              | Some _ -> args
-            in
-            let app = applistc ind (List.append indargs [fnapp]) in
+            let indargs = List.filter (fun x -> isVar Evd.empty x) args in
+            let rels = extended_rel_list 0 ctx in
+            let indargs = List.append indargs rels in
+            let app = applistc ind (List.append indargs [applistc where_term rels]) in
             it_mkProd_or_LetIn app ctx
           in
           Tacticals.New.tclTHEN acc (Proofview.tclBIND (Tacticals.New.pf_constr_of_global ind)
