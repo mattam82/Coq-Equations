@@ -987,16 +987,6 @@ let computations env evd alias refine p eqninfo =
            | _, _ :: _ -> assert false
          in aux term_ty 0 args
        in
-       Feedback.msg_debug Pp.(str"where subterm: " ++ Printer.pr_econstr_env env evd subterm);
-       let _args' =
-         let rec aux i a =
-           match a with
-           | [] -> []
-           | hd :: tl ->
-             if isRel evd hd then []
-             else hd :: aux (succ i) tl
-         in aux 0 args
-       in
        let wsmash, smashsubst = smash_ctx_map env evd (id_subst w.where_program.program_info.program_sign) in
        let comps = computations env wsmash subterm None fsubst (Regular,false)
            w.where_program.program_splitting in
