@@ -652,7 +652,10 @@ let subst_rec_programs env evd ps =
       List.rev fixdecls
     in
     let fixsubst = CList.map_filter (fun x -> x) fixsubst in
-    let s' = fixsubst @ s in
+    (* The previous prototypes must be lifted w.r.t. the new variables bound in the where. *)
+    let lifts = List.map (fun (id, (recarg, b)) ->
+        (id, (recarg, lift (List.length fixsubst) b))) s in
+    let s' = fixsubst @ lifts in
     let one_program p oterm =
       let split' = match p.program_splitting with
         | RecValid (lets, id, _, s) -> s
@@ -766,19 +769,29 @@ let subst_rec_programs env evd ps =
          info.refined_arg, info.refined_term, info.refined_args,
          info.refined_revctx, info.refined_newprob, info.refined_newty
        in
-       let subst, lhs' = subst_rec cutprob s lhs in
-       let _, revctx' = subst_rec (cut_problem s (pi3 revctx)) s revctx in
-
-       let s' = List.map (fun (id, (recarg, f)) ->
-           (id, (recarg, mapping_constr !evd info.refined_newprob_to_lhs f))) s
+       (* let prsubst = Pp.(prlist_with_sep spc (fun (id, (recarg, f)) ->
+        *     str (Id.to_string id) ++ str" -> " ++ Printer.pr_econstr_env env !evd f))
+        * in *)
+       (* Feedback.msg_debug Pp.(str"Before map to newprob " ++ prsubst s); *)
+       let lhss = List.map (fun (id, (recarg, f)) ->
+           (id, (recarg, mapping_constr !evd lhs f))) s
        in
-       let cutnewprob = cut_problem s' (pi3 newprob) in
-       let subst', newprob' = subst_rec cutnewprob s' newprob in
+       (* Feedback.msg_debug Pp.(str"lhs subst " ++ prsubst lhss); *)
+       let newprobs = List.map (fun (id, (recarg, f)) ->
+           (id, (recarg, mapping_constr !evd info.refined_newprob_to_lhs f))) lhss
+       in
+       (* Feedback.msg_debug Pp.(str"newprob subst: " ++ prsubst newprobs);
+        * Feedback.msg_debug Pp.(str"Newprob to lhs: " ++ pr_context_map env !evd info.refined_newprob_to_lhs);
+        * Feedback.msg_debug Pp.(str"Newprob : " ++ pr_context_map env !evd newprob); *)
+       let subst, lhs' = subst_rec cutprob s lhs in
+       let _, revctx' = subst_rec (cut_problem s (pi3 revctx)) lhss revctx in
+       let cutnewprob = cut_problem newprobs (pi3 newprob) in
+       let subst', newprob' = subst_rec cutnewprob newprobs newprob in
        let _, newprob_to_prob' =
-         subst_rec (cut_problem s (pi3 info.refined_newprob_to_lhs)) s' info.refined_newprob_to_lhs in
+         subst_rec (cut_problem lhss (pi3 info.refined_newprob_to_lhs)) lhss info.refined_newprob_to_lhs in
        let islogical = List.exists (fun (id, (recarg, f)) -> Option.has_some recarg) s in
        let path' = info.refined_path in
-       let s' = aux cutnewprob s' p f path' sp in
+       let s' = aux cutnewprob newprobs p f path' sp in
        let term', args', arg' =
          if islogical then
            let refarg = ref (0,0) in
