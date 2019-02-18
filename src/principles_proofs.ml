@@ -279,6 +279,14 @@ let simpl_of csts =
     Global.set_strategy (ConstKey cst) level) csts
   in opacify, transp
 
+let gather_subst env sigma ty args len =
+  let rec aux ty args n =
+    if n = 0 then [] else
+      match kind sigma ty, args with
+      | Prod (_, _, ty), a :: args -> a :: aux (subst1 a ty) args (pred n)
+      | LetIn (_, b, _, ty), args -> b :: aux (subst1 b ty) args (pred n)
+      | _ -> assert false
+  in aux ty args len
 
 let annot_of_rec r = match r.struct_rec_arg with
   | MutualOn (Some (i, _)) -> Some (i + 1)
@@ -364,14 +372,8 @@ let aux_ind_fun info chop nested unfs unfids split =
         to82 (Refine.refine ~typecheck:false (fun sigma ->
             let evd = ref sigma in
             let hd, args = decompose_app sigma concl in
-            let subst =
-              let rec aux ty args n =
-                if n = 0 then [] else
-                  match kind sigma ty, args with
-                  | Prod (_, _, ty), a :: args -> a :: aux (subst1 a ty) args (pred n)
-                  | LetIn (_, b, _, ty), args -> b :: aux (subst1 b ty) args (pred n)
-                  | _ -> assert false
-              in aux (Retyping.get_type_of env sigma hd) args (List.length (pi1 ctx))
+            let subst = 
+              gather_subst env sigma (Retyping.get_type_of env sigma hd) args (List.length (pi1 ctx))
             in
             let arity, arg, rel =
               let arg = substl (List.rev subst) r.wf_rec_arg in
@@ -443,35 +445,21 @@ let aux_ind_fun info chop nested unfs unfids split =
     in
     let wheretac = 
       if not (List.is_empty wheres) then
-        let wheretac acc s unfs =
-          Proofview.Goal.enter (fun gl ->
+        let wheretac env evd s unfs (acc, subst) =
           let wp = s.where_program in
-          let env = Global.env () in
-          let evd = Proofview.Goal.sigma gl in
-          let concl = Proofview.Goal.concl gl in
-          let subst =
-            let hd, args = decompose_app evd concl in
-            let args = drop_last args in
-            let rec collect_vars acc c =
-              let hd, args = decompose_app evd c in
-              match kind evd hd with
-              | Var id -> if not (List.mem id acc) then id :: acc else acc
-              | Construct _ -> List.fold_left collect_vars acc args
-              | _ -> acc
-            in
-            let args_vars = List.fold_left collect_vars [] args in
-            List.map mkVar args_vars
-          in
           let revert, ctx, where_term, fstchop, unfids = match unfs with
             | None ->
               let term = where_term s in
-              let hd, args = decompose_app evd term in
-              let len = List.length (List.filter (fun x -> isRel evd x) args) in
               let sign = wp.program_info.program_sign in
-              let ctxlen = List.length sign - len in
+              let ctxlen = List.length sign - List.length subst in
               let before, after = List.chop ctxlen sign in
               let newwhere = substl subst term in
               let ctx = subst_rel_context 0 subst before in
+               if !Equations_common.debug then
+                 Feedback.msg_debug (str" where " ++ str"term: " ++ pr_econstr_env env evd (where_term s) ++
+                                     str " subst " ++ prlist_with_sep spc (Printer.pr_econstr_env env evd) subst ++
+                                     str " final term " ++ pr_econstr_env env evd newwhere ++
+                                     str "context " ++ pr_context env evd sign);
               List.length after, ctx, newwhere, fst chop (* + List.length ctx *), unfids
             | Some w ->
                let assoc, unf, split =
@@ -576,17 +564,40 @@ let aux_ind_fun info chop nested unfs unfids split =
             let app = applistc ind (List.append indargs [applistc where_term rels]) in
             it_mkProd_or_LetIn app ctx
           in
-          Tacticals.New.tclTHEN acc (Proofview.tclBIND (Tacticals.New.pf_constr_of_global ind)
-            (fun ind ->
-              if !debug then
-                (let env = Global.env () in
-                 Feedback.msg_debug
-                   (str"Type of induction principle for " ++ str (Id.to_string (where_id s)) ++ str": " ++
-                    Printer.pr_econstr_env env Evd.empty (ty ind)));
-              assert_by (Name (where_id s)) (ty ind) wheretac)))
+          let tac =
+            Tacticals.New.tclTHEN acc
+              (Proofview.tclBIND (Tacticals.New.pf_constr_of_global ind)
+                 (fun ind ->
+                    if !debug then
+                      (let env = Global.env () in
+                       Feedback.msg_debug
+                         (str"Type of induction principle for " ++ str (Id.to_string (where_id s)) ++ str": " ++
+                          Printer.pr_econstr_env env Evd.empty (ty ind)));
+                    assert_by (Name (where_id s)) (ty ind) wheretac))
+          in (tac, where_term :: subst)
         in
         let () = assert (List.length wheres = List.length unfswheres) in
-        let tac = List.fold_left2 wheretac Tacticals.New.tclIDTAC wheres unfswheres in
+        let tac =
+          Proofview.Goal.enter (fun gl ->
+              let env = Proofview.Goal.env gl in
+              let sigma = Proofview.Goal.sigma gl in
+              let subst =
+                let concl = Proofview.Goal.concl gl in
+                let hd, args = decompose_app sigma concl in
+                let args = drop_last args in
+                let rec collect_vars acc c =
+                  let hd, args = decompose_app sigma c in
+                  match kind sigma hd with
+                  | Var id -> if not (List.mem id acc) then id :: acc else acc
+                  | Construct _ -> List.fold_left collect_vars acc args
+                  | _ -> acc
+                in
+                let args_vars = List.fold_left collect_vars [] args in
+                List.map mkVar args_vars
+              in
+              let tac, _ = List.fold_right2 (wheretac env sigma) wheres unfswheres (Tacticals.New.tclIDTAC, subst) in
+              tac)
+        in
         tclTHENLIST [to82 tac;
                      tclTRY (autorewrite_one info.term_info.base_id)(* ;
                       * observe "trying constructor on" (tclTRY (cstrtac info.term_info));
