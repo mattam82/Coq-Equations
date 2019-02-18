@@ -1355,14 +1355,16 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
   in
   let declare_ind () =
     let inds = List.map declare_one_ind ind_stmts in
-    let uctx = Evd.ind_univ_entry ~poly !evd in
+    let uctx = Evd.univ_entry ~poly !evd in
     let inductive =
       Entries.{ mind_entry_record = None;
                 mind_entry_universes = uctx;
                 mind_entry_private = None;
                 mind_entry_finite = Declarations.Finite;
                 mind_entry_params = []; (* (identifier * local_entry) list; *)
-                mind_entry_inds = inds }
+                mind_entry_inds = inds;
+                mind_entry_variance = None;
+              }
     in
     let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] false in
     let kn = ComInductive.declare_mutual_inductive_with_eliminations inductive UnivNames.empty_binders [] in
@@ -1396,12 +1398,9 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
     let ind =
       let open Entries in
       match uctx with
-      | Cumulative_ind_entry (_, uctx) ->
-        mkIndU ((kn,0), EInstance.make (Univ.UContext.instance
-                                          (Univ.CumulativityInfo.univ_context uctx)))
-      | Polymorphic_ind_entry (_, uctx) ->
+      | Polymorphic_entry (_, uctx) ->
         mkIndU ((kn,0), EInstance.make (Univ.UContext.instance uctx))
-      | Monomorphic_ind_entry _ -> mkInd (kn,0)
+      | Monomorphic_entry _ -> mkInd (kn,0)
     in
     let _ =
       List.iteri (fun i ind ->
