@@ -378,7 +378,10 @@ let aux_ind_fun info chop nested unfs unfids split =
             let arity, arg, rel =
               let arg = substl (List.rev subst) r.wf_rec_arg in
               let term = (applistc arg (extended_rel_list 0 inctx)) in
-              (* Feedback.msg_debug (str"Typing:" ++ Printer.pr_econstr_env (push_rel_context inctx env) sigma term); *)
+              (* Feedback.msg_debug (str"Typing:" ++ Printer.pr_econstr_env (push_rel_context inctx env) sigma term ++
+               *                     str " in context " ++ pr_context env sigma inctx ++ str "subst " ++
+               *                     prlist_with_sep (fun () -> str " ") (Printer.pr_econstr_env env sigma) subst
+               *                    ); *)
               let envsign = push_rel_context inctx env in
               let _, arity = Typing.type_of envsign sigma term in
               let ty = Reductionops.nf_all envsign sigma arity in
