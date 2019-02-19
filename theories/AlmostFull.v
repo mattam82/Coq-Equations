@@ -7,25 +7,6 @@ Require Import Equations.Fin Bool.
 Require Import List Arith.
 
 Set Asymmetric Patterns.
-(*   Set Equations Debug. *)
-(* Import ListNotations. *)
-(* Inductive graph (k : nat) : Set :=. *)
-(* Inductive trans_clos_answer (k : nat) : Set := *)
-(* | OutOfFuel *)
-(* | Finished (l : list (graph k)). *)
-(* Derive NoConfusion for trans_clos_answer. *)
-
-(*   Equations compute_transitive_closure {k} (n : nat) (gs : list (graph k)) : trans_clos_answer k := *)
-(*     compute_transitive_closure 0 _ := OutOfFuel _; *)
-(*     compute_transitive_closure (S n) gs := aux gs [] *)
-(*      where aux (l : list (graph k)) (acc : list (graph k)) : trans_clos_answer k by struct l := *)
-(*      aux nil acc := Finished _ acc; *)
-(*      aux (g :: gs') acc := with_new_candidate new_candidate *)
-(*        where with_new_candidate : option (graph k) -> trans_clos_answer k := *)
-(*        { | Some newg => compute_transitive_closure n (newg :: g :: gs' ++ acc); *)
-(*          | None => aux gs' (g :: acc) } *)
-(*        where new_candidate : option (graph k) := *)
-(*        new_candidate := Some g. *)
 
 Definition dec_rel {X:Type} (R : X → X → Prop) := ∀ x y, {not (R y x)} + {R y x}.
 
@@ -1133,7 +1114,7 @@ Section SCT.
        { | Some newg => compute_transitive_closure n (newg :: g :: gs' ++ acc);
          | None => aux gs' (g :: acc) }
        where new_candidate : option (graph k) :=
-       new_candidate := let gs'' := g :: gs' ++ acc in
+       new_candidate := let gs'' := g :: acc in
                         find_opt gs'' (fun g' =>
                                          let gcomp := g' ⋅ g in
                                          (* if eqb g gcomp then None else *)
@@ -1235,6 +1216,15 @@ Section SCT.
     simpl in *; rewrite -> in_app_iff in *. simpl in *.
     intuition auto.
   Qed.
+  Hint Resolve incl_switch_head'.
+
+  Lemma tr_clos_incl {k} {l l' : list (graph k)} : is_transitive_closure l l' -> incl l l'.
+  Proof. unfold is_transitive_closure. intuition. Qed.
+  Hint Resolve tr_clos_incl : core.
+
+  Lemma becoming_empty {k} {l: list (graph k)} : becoming_transitive_closure [] l.
+  Proof. unfold becoming_transitive_closure. intuition. inversion H. inversion H. Qed.
+  Hint Resolve becoming_empty : core.
 
   Require Import ssreflect.
   Lemma compute_transitive_closure_spec {k} n (gs : list (graph k)) l :
@@ -1245,7 +1235,9 @@ Section SCT.
               (fun k n gs r => forall l,
                    r = Finished k l -> is_transitive_closure gs l)
               (fun k n gs l acc res =>
+                 is_transitive_closure acc acc ->
                  forall l', res = Finished k l' ->
+                            incl (l ++ acc) l' /\
                             (incl gs (l ++ acc) ->
                             incl_transitive_closure_of gs (l ++ acc) ->
                             becoming_transitive_closure acc l' ->
@@ -1253,81 +1245,88 @@ Section SCT.
                             incl_transitive_closure_of (l ++ acc) l' /\
                             (* becoming_transitive_closure l l' *) is_transitive_closure gs l'))
               (fun k n gs g l acc newc =>
-                 let gs' := (g :: l ++ acc) in
+                 let gs' := (g :: acc) in
                  match newc with
-                 | None => transitive_closure_of g gs'
+                 | None => is_transitive_closure gs' gs' /\ transitive_closure_of g gs'
                  | Some g' => ~ In g' gs' /\
                               exists a, In a gs' /\ (g' = (g ⋅ a) \/ g' = (a ⋅ g))
                  end)
               (fun k n gs g l acc newc res =>
                  forall l', res = Finished k l' ->
-                            match newc with
+                            incl (l ++ acc) l' /\
+                            (match newc with
                             | Some c =>
                               incl gs (c :: g :: l ++ acc) /\
                               incl_transitive_closure_of gs (c :: g :: l ++ acc)
                             | None =>
                               incl gs (g :: l ++ acc) /\
                               incl_transitive_closure_of gs (g :: l ++ acc) /\
-                              transitive_closure_of g (g :: l ++ acc) /\
-                              becoming_transitive_closure (g :: l ++ acc) l'
+                              transitive_closure_of g (g :: acc) /\
+                              becoming_transitive_closure (g :: acc) l'
                             end ->
-                            is_transitive_closure gs l')); clear;
-      intros. all:try discriminate; eauto.
-    + specialize (H l H0). apply H. auto with datatypes.
-      red. intuition. red in H1. red. rewrite app_nil_r. intuition.
-      red. split; intros. inversion H1. inversion H1.
-    + injection H. intros <-. noconf H. split. red. simpl; intuition.
-      intuition. simpl in *. red. intros trl Htrl. red in H1, H2. apply H1.
-      red; intuition. red; intuition.
-    + fold (new_candid k n gs g l acc) in *.
-      fold (with_new_candid k n gs g l acc) in *.
-      specialize (H0 _ H1). forward H0.
+                            is_transitive_closure gs l'))); clear.
+      all:try discriminate; eauto.
+    + intros * H l Haux.
+      forward H. red. intuition.
+      specialize (H l Haux). apply H. auto with datatypes.
+      rewrite app_nil_r. red. intuition. intuition.
+    + intros * n * tracc l' [= <-]. simpl. split. intuition.
+      intros inclgs incltrgs becacc.
+      intuition. red. intuition. red.
+      intuition.
+    + intros *. simpl.
+      fold (new_candid k n gs g l acc).
+      fold (with_new_candid k n gs g l acc).
+      intros Hcand IH tracc l' Hnewc. split. admit.
+      intros inclgs incltrgs becaccl'.
+      specialize (IH _ Hnewc). destruct IH as [incll' IH]. split. admit.
+      forward IH.
       ++ destruct new_candid.
-         destruct H as [ng [a [Ina Ha]]].
-         destruct Ha; subst.
-         +++ intuition.
-             intros trl Htrl. specialize (H3 trl Htrl).
-             intros x Inx. simpl in Inx. simpl in H3. red in H3.
-             intuition. subst x. apply Htrl. intuition.
-         +++ intuition.
-             intros trl Htrl. specialize (H3 trl Htrl).
-             intros x Inx. simpl in Inx. simpl in H3. red in H3.
-             intuition. subst x. apply Htrl. intuition.
-         +++ intuition. clear H0.
-             red. split; intros. red in H. specialize (H _ H0).
-             red in H4. red in H3. intuition.
-             simpl in H0. intuition. subst g0.
-             admit. admit. admit.
+         destruct Hcand as [ng [a [Ina Ha]]].
+         split. intuition.
+         +++ intros trl Htrl. specialize (incltrgs trl Htrl).
+             intros x Inx. destruct Inx. subst x.
+             destruct Ha as [-> | ->]; apply Htrl; intuition.
+             now apply incltrgs.
+         +++ intuition. clear H2.
+             red. split. intros x Inx. simpl in Inx. intuition. subst x.
+
+             admit. admit.
+             (* destruct Ing' as [<-|Inlacc]. red in becaccl'. *)
+
       ++ intuition.
-         clear H.
+         clear Hcand.
          eapply is_transitive_closure_incl; eauto.
-    + remember (g :: gs' ++ acc) as gs''. cbv zeta.
+    + intros.
+      remember (g :: acc) as gs''. cbv zeta.
       apply_find_opt_spec. destruct find_opt.
       ++ destruct H as [a [Inags'' Ineq]]. subst gs'0.
          destruct (existsb_spec (eqb (a ⋅ g)) gs'').
          destruct (existsb_spec (eqb (g ⋅ a)) gs''). discriminate.
-         noconf Ineq.  split.
-         +++ intros Inga. apply n0.
-             exists (g ⋅ a). intuition auto. apply eqb_refl.
+         noconf Ineq. split.
+         +++ intros Inga. apply n0. subst gs''.
+             exists (g ⋅ a). intuition auto. subst. apply eqb_refl.
          +++ exists a. intuition.
          +++ noconf Ineq. split.
              intros Inag. apply n0. exists (a ⋅ g). intuition. apply eqb_refl.
              exists a. intuition.
-      ++ red. intros.
-         specialize (H _ H0).
+      ++ split; intuition. subst gs'0. split; intros g' ?g''; auto.
+         intros [ing' ing''].
+         specialize (H g' ing').
          destruct (existsb_spec (eqb (g' ⋅ g)) gs'').
          destruct (existsb_spec (eqb (g ⋅ g')) gs'').
-         destruct e, e0; destruct_pairs. apply (eqb_eq _ x) in H4. apply (eqb_eq _ x0) in H3.
-         subst. auto.
-         discriminate. discriminate.
-    + specialize (H _ H0).
+         destruct e, e0; destruct_pairs. apply (eqb_eq _ x) in H3. apply (eqb_eq _ x0) in H2.
+         subst. admit. admit. admit. admit.
+    + intros * IH * Hf. specialize (IH _ Hf). clear Hf.
+      split. intros x Inx. destruct IH as [IH _]. intuition.
+      intros [inclgs incltrgs].
       intuition. eapply incl_transitive_closure; eauto.
-    + specialize (H _ H0). clear H0. intuition.
-      forward H. now eapply incl_switch_head' in H0.
-      forward H. red in H1 |- *. intros. specialize (H1 _ H3).
-      now apply incl_switch_head in H1.
-      forward H. red in H4 |- *; simpl. intuition.
-      intuition.
+    + intros * IH * Hf. split. admit.
+      intros [inclgs [incltrgs [trg trg']]].
+      apply IH. admit. auto.
+      red in trg. now eapply incl_switch_head' in inclgs.
+      red in incltrgs |- *. intros trl Htrl. specialize (incltrgs _ Htrl).
+      now apply incl_switch_head in incltrgs. apply trg'.
   Admitted.
 
   Definition gn_set : list (graph 2) :=
@@ -1416,7 +1415,7 @@ Equations T_graphs (f : fin 2) : graph 2 :=
 Definition gnlex : (nat * nat) -> nat.
   pose (size_change_termination 2 T_rel T_graphs). forward w.
   intros f; depelim f. apply approximates_T_l. depelim f. apply approximates_T_r. depelim f.
-  specialize (w T_trans_clos). forward w. admit.
+  specialize (w T_trans_clos). forward w. apply (compute_transitive_closure_spec 10). reflexivity.
   forward w.
   intros. simpl in H. intuition; subst G;
                         solve [exists 1; (exists fz ; reflexivity) || (exists (fs fz) ; reflexivity) ].
@@ -1433,7 +1432,7 @@ Definition gnlex : (nat * nat) -> nat.
                                 frec (S y, x) _
             end).
   red. simpl. red. compute. simpl. intuition lia. red. simpl. compute. intuition lia.
-Admitted.
+Defined.
 
 Require Import ExtrOcamlBasic.
 Extraction gnlex.
@@ -1453,4 +1452,4 @@ Lemma gnlex_S_test x y : exists foo, gnlex (S x, S y) = foo.
   rewrite gnlex_S. rewrite gnlex_0_r. destruct x. admit. rewrite gnlex_S.
 Admitted.
 
-Eval vm_compute in fun x y => gnlex (S x, S y).
+(* BUG Eval native_compute in gnlex (4, 3). *)
