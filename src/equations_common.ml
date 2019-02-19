@@ -221,7 +221,7 @@ let make_definition ?opaque ?(poly=false) evm ?types b =
   let used' = Option.cata Univops.universes_of_constr Univ.LSet.empty typ in
   let used = Univ.LSet.union used used' in
   let evm = Evd.restrict_universe_context evm used in
-  let univs = Evd.const_univ_entry ~poly evm in
+  let univs = Evd.univ_entry ~poly evm in
   evm0, evm, Declare.definition_entry ~univs ?types:typ body
 
 let declare_constant id body ty poly evd kind =
