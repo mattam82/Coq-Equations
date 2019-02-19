@@ -182,7 +182,7 @@ let depcase poly (mind, i as ind) =
         :: ((List.rev (Array.to_list (Array.map fst branches)))
             @ (make_assum (Name (Id.of_string "P")) pred :: ctx)))
   in
-  let univs = Evd.univ_entry ~poly !evd in
+  let univs = Evd.const_univ_entry ~poly !evd in
   let ce = Declare.definition_entry ~univs (EConstr.to_constr !evd body) in
   let kn =
     let id = add_suffix indid "_dep_elim" in
