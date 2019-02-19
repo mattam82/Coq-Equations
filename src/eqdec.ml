@@ -122,7 +122,7 @@ let derive_eq_dec env sigma ~polymorphic ind =
 	it_mkNamedLambda_or_LetIn 
 	  (it_mkLambda_or_LetIn (Option.get b) ind.ind_args) ctx
       in
-      let univs = Evd.const_univ_entry ~poly:polymorphic !evdref in
+      let univs = Evd.univ_entry ~poly:polymorphic !evdref in
       let ce =
         { const_entry_body = Future.from_val ((to_constr !evdref body,Univ.ContextSet.empty), Safe_typing.empty_private_constants);
           const_entry_type = Some (to_constr !evdref (it_mkNamedProd_or_LetIn
