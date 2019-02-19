@@ -139,7 +139,7 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
         mind_entry_consnames = consnames;
         mind_entry_lc = constructors }
   in
-  let uctx = Evd.univ_entry ~poly:polymorphic sigma in
+  let uctx = Evd.ind_univ_entry ~poly:polymorphic sigma in
   let declare_ind () =
     let inds = [declare_one_ind 0 indu branches] in
     let inductive =
@@ -154,7 +154,6 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
         mind_entry_inds = inds;
         mind_entry_private = None;
         mind_entry_universes = uctx;
-        mind_entry_variance = None;
       }
     in
     let k = ComInductive.declare_mutual_inductive_with_eliminations inductive UnivNames.empty_binders [] in

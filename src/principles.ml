@@ -1465,7 +1465,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
   in
   let declare_ind () =
     let inds = List.map declare_one_ind ind_stmts in
-    let uctx = Evd.univ_entry ~poly !evd in
+    let uctx = Evd.ind_univ_entry ~poly !evd in
     let inductive =
       Entries.{ mind_entry_record = None;
                 mind_entry_universes = uctx;
@@ -1473,7 +1473,6 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
                 mind_entry_finite = Declarations.Finite;
                 mind_entry_params = []; (* (identifier * local_entry) list; *)
                 mind_entry_inds = inds;
-                mind_entry_variance = None;
               }
     in
     let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] false in
@@ -1513,7 +1512,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
                                           (Univ.CumulativityInfo.univ_context uctx)))
       | Polymorphic_ind_entry uctx ->
         mkIndU ((kn,0), EInstance.make (Univ.UContext.instance uctx))
-      | Monomorphic_entry _ -> mkInd (kn,0)
+      | Monomorphic_ind_entry _ -> mkInd (kn,0)
     in
     let _ =
       List.iteri (fun i ind ->
