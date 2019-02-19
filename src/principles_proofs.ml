@@ -279,6 +279,14 @@ let simpl_of csts =
     Global.set_strategy (ConstKey cst) level) csts
   in opacify, transp
 
+let gather_subst env sigma ty args len =
+  let rec aux ty args n =
+    if n = 0 then [] else
+      match kind sigma ty, args with
+      | Prod (_, _, ty), a :: args -> a :: aux (subst1 a ty) args (pred n)
+      | LetIn (_, b, _, ty), args -> b :: aux (subst1 b ty) args (pred n)
+      | _ -> assert false
+  in aux ty args len
 
 let annot_of_rec r = match r.struct_rec_arg with
   | MutualOn (Some (i, _)) -> Some (i + 1)
@@ -364,19 +372,16 @@ let aux_ind_fun info chop nested unfs unfids split =
         to82 (Refine.refine ~typecheck:false (fun sigma ->
             let evd = ref sigma in
             let hd, args = decompose_app sigma concl in
-            let subst =
-              let rec aux ty args n =
-                if n = 0 then [] else
-                  match kind sigma ty, args with
-                  | Prod (_, _, ty), a :: args -> a :: aux (subst1 a ty) args (pred n)
-                  | LetIn (_, b, _, ty), args -> b :: aux (subst1 b ty) args (pred n)
-                  | _ -> assert false
-              in aux (Retyping.get_type_of env sigma hd) args (List.length (pi1 ctx))
+            let subst = 
+              gather_subst env sigma (Retyping.get_type_of env sigma hd) args (List.length (pi1 ctx))
             in
             let arity, arg, rel =
               let arg = substl (List.rev subst) r.wf_rec_arg in
               let term = (applistc arg (extended_rel_list 0 inctx)) in
-              (* Feedback.msg_debug (str"Typing:" ++ Printer.pr_econstr_env (push_rel_context inctx env) sigma term); *)
+              (* Feedback.msg_debug (str"Typing:" ++ Printer.pr_econstr_env (push_rel_context inctx env) sigma term ++
+               *                     str " in context " ++ pr_context env sigma inctx ++ str "subst " ++
+               *                     prlist_with_sep (fun () -> str " ") (Printer.pr_econstr_env env sigma) subst
+               *                    ); *)
               let envsign = push_rel_context inctx env in
               let _, arity = Typing.type_of envsign sigma term in
               let ty = Reductionops.nf_all envsign sigma arity in
@@ -443,18 +448,27 @@ let aux_ind_fun info chop nested unfs unfids split =
     in
     let wheretac = 
       if not (List.is_empty wheres) then
-        let wheretac acc s unfs =
-          Proofview.Goal.enter (fun gl ->
+        let wheretac env evd s unfs (acc, subst) =
           let wp = s.where_program in
-          let ctx, where_term, fstchop, unfids = match unfs with
-            | None -> wp.program_info.program_sign, (where_term s), fst chop (* + List.length ctx *), unfids
+          let revert, ctx, where_term, fstchop, unfids = match unfs with
+            | None ->
+              let term = where_term s in
+              let sign = wp.program_info.program_sign in
+              let ctxlen = List.length sign - List.length subst in
+              let before, after = List.chop ctxlen sign in
+              let newwhere = substl subst term in
+              let ctx = subst_rel_context 0 subst before in
+               if !Equations_common.debug then
+                 Feedback.msg_debug (str" where " ++ str"term: " ++ pr_econstr_env env evd (where_term s) ++
+                                     str " subst " ++ prlist_with_sep spc (Printer.pr_econstr_env env evd) subst ++
+                                     str " final term " ++ pr_econstr_env env evd newwhere ++
+                                     str "context " ++ pr_context env evd sign);
+              List.length after, ctx, newwhere, fst chop (* + List.length ctx *), unfids
             | Some w ->
                let assoc, unf, split =
                  try PathMap.find w.where_path info.wheremap
                  with Not_found -> assert false
                in
-               let env = Global.env () in
-               let evd = Evd.empty in
                if !Equations_common.debug then
                  Feedback.msg_debug (str"Unfolded where " ++ str"term: " ++ pr_econstr_env env evd (where_term w) ++
                                      str" type: " ++ pr_econstr_env env evd w.where_type ++ str" assoc " ++
@@ -463,30 +477,18 @@ let aux_ind_fun info chop nested unfs unfids split =
                let ctxlen = List.length unfwp.program_info.program_sign - List.length unfctx in
                let before, after = List.chop ctxlen unfwp.program_info.program_sign in
                let subst =
-                 let hyps = Proofview.Goal.hyps gl in
-                 let hyps, _ =
-                   List.split_when (fun decl -> Context.Named.Declaration.get_id decl = coq_end_of_section_id) hyps
-                 in
-                 if not (List.length hyps >= List.length after) then
+                 if not (List.length subst >= List.length after) then
                    anomaly (str"Mismatch between hypotheses in named context and program")
-                 else List.rev_map (fun decl -> mkVar (Context.Named.Declaration.get_id decl)) hyps
+                 else subst
                in
-               let origwhere = substl (List.rev subst) (where_term s) in
-               let args =
-                 let assochd, assocargs = decompose_app evd assoc in
-                 let orighd, origargs = decompose_app evd origwhere in
-                 let assocargs', origargs' = List.filter2 (fun a a' -> isRel evd a) assocargs origargs in
-                 origargs'
-               in
-               let newwhere = substl (List.rev args) (where_term w) in
-               let ctx = subst_rel_context 0 (List.rev args) before in
+               let newwhere = substl subst (where_term w) in
+               let ctx = subst_rel_context 0 subst before in
                if !Equations_common.debug then
                  Feedback.msg_debug (str"Unfolded where substitution:  " ++
                                      prlist_with_sep spc (Printer.pr_econstr_env env evd) subst ++
-                                     str"Substituted orig " ++ Printer.pr_econstr_env env evd origwhere ++
                                      str"New where term" ++ Printer.pr_econstr_env env evd newwhere ++
                                      str" context map " ++ pr_context env Evd.empty ctx);
-               ctx, newwhere, -1 (* + List.length ctx *), unf :: unfids
+               0, ctx, newwhere, -1 (* + List.length ctx *), unf :: unfids
           in
           let chop = fstchop, snd chop in
           let fixtac =
@@ -504,10 +506,29 @@ let aux_ind_fun info chop nested unfs unfids split =
                | None -> tclIDTAC
                | Some idx ->
                  let recid = add_suffix wp.program_info.program_id "_rec" in
+                 let _unftac lr =
+                   match unfs with
+                   | None -> tclIDTAC
+                   | Some _ ->
+                     (* Inside the recursive function, recursive calls are on the original
+                        version, not the unfolded one. We hence transform the induction hypothesis. *)
+                     let tac gl =
+                       let sigma = Proofview.Goal.sigma gl in
+                       let concl = Proofview.Goal.concl gl in
+                       let ctx, concl = decompose_prod_assum sigma concl in
+                       Proofview.tclBIND (pf_constr_of_global (Nametab.locate (qualid_of_ident (List.hd unfids))))
+                         (fun unf ->
+                            tclTHENLIST [tclDO (List.length ctx) intro;
+                                         if lr then Equality.rewriteLR unf else Equality.rewriteRL unf;
+                                         tclDO (List.length ctx) revert_last])
+                     in
+                     observe_new "rewriting where recursive call from unfolded version to original version"
+                       (Proofview.Goal.enter tac)
+                 in
                  (* The recursive argument is local to the where, shift it by the
                     length of the enclosing context *)
                  let newidx = match unfs with None -> idx + (List.length lctx) | Some _ -> idx in
-                 fix (Some recid) (succ newidx))
+                 tclTHENLIST [(* unftac false; *) fix (Some recid) (succ newidx)(* ; unftac true *)])
             | _ -> tclIDTAC
           in
           let wheretac =
@@ -515,6 +536,7 @@ let aux_ind_fun info chop nested unfs unfids split =
             observe_new "one where"
               (tclTHENLIST [
                   observe_new "moving section id" (tclTRY (move_hyp coq_end_of_section_id Misctypes.MoveLast));
+                  tclDO revert revert_last;
                             fixtac;
                   observe_new "intros" intros;
 
@@ -523,7 +545,7 @@ let aux_ind_fun info chop nested unfs unfids split =
                             (of82 (aux chop (Option.map (fun s -> s.where_program.program_splitting) unfs)
                                      unfids (s.where_program.program_splitting)))])
           in
-          let wherepath, args =
+          let wherepath, _args =
             try PathMap.find s.where_path info.pathmap
             with Not_found ->
               error "Couldn't find associated args of where"
@@ -533,37 +555,53 @@ let aux_ind_fun info chop nested unfs unfids split =
              Feedback.msg_debug
              (str"Found path " ++ str (Id.to_string wherepath) ++ str" where: " ++
               pr_id (where_id s) ++ str"term: " ++
-              Printer.pr_econstr_env env Evd.empty (Splitting.where_term s) ++
-              str" instance: " ++
-              prlist_with_sep spc
-              (fun x -> Printer.pr_econstr_env env Evd.empty (EConstr.of_constr x)) args ++
+              Printer.pr_econstr_env env Evd.empty where_term ++
               str" context map " ++
               pr_context_map env Evd.empty (id_subst ctx)));
           let ind = Nametab.locate (qualid_of_ident wherepath) in
           let ty ind =
             let hd, args = decompose_app Evd.empty where_term in
-            let args = List.filter (fun x -> not (isRel Evd.empty x)) args in
-            let args = List.append args (extended_rel_list 0 ctx) in
-            let fnapp = applistc hd args in
-            let indargs =
-              match unfs with
-              | None -> extended_rel_list 0 ctx
-              | Some _ -> args
-            in
-            let app = applistc ind (List.append indargs [fnapp]) in
+            let indargs = List.filter (fun x -> isVar Evd.empty x) args in
+            let rels = extended_rel_list 0 ctx in
+            let indargs = List.append indargs rels in
+            let app = applistc ind (List.append indargs [applistc where_term rels]) in
             it_mkProd_or_LetIn app ctx
           in
-          Tacticals.New.tclTHEN acc (Proofview.tclBIND (Tacticals.New.pf_constr_of_global ind)
-            (fun ind ->
-              if !debug then
-                (let env = Global.env () in
-                 Feedback.msg_debug
-                   (str"Type of induction principle for " ++ str (Id.to_string (where_id s)) ++ str": " ++
-                    Printer.pr_econstr_env env Evd.empty (ty ind)));
-              assert_by (Name (where_id s)) (ty ind) wheretac)))
+          let tac =
+            Tacticals.New.tclTHEN acc
+              (Proofview.tclBIND (Tacticals.New.pf_constr_of_global ind)
+                 (fun ind ->
+                    if !debug then
+                      (let env = Global.env () in
+                       Feedback.msg_debug
+                         (str"Type of induction principle for " ++ str (Id.to_string (where_id s)) ++ str": " ++
+                          Printer.pr_econstr_env env Evd.empty (ty ind)));
+                    assert_by (Name (where_id s)) (ty ind) wheretac))
+          in (tac, where_term :: subst)
         in
         let () = assert (List.length wheres = List.length unfswheres) in
-        let tac = List.fold_left2 wheretac Tacticals.New.tclIDTAC wheres unfswheres in
+        let tac =
+          Proofview.Goal.enter (fun gl ->
+              let env = Proofview.Goal.env gl in
+              let sigma = Proofview.Goal.sigma gl in
+              let subst =
+                let concl = Proofview.Goal.concl gl in
+                let hd, args = decompose_app sigma concl in
+                let args = drop_last args in
+                let rec collect_vars acc c =
+                  let hd, args = decompose_app sigma c in
+                  match kind sigma hd with
+                  | Var id -> if not (List.mem id acc) then id :: acc else acc
+                  | Construct _ -> List.fold_left collect_vars acc args
+                  | _ -> acc
+                in
+                let args_vars = List.fold_left collect_vars [] args in
+                let args_vars = List.filter (fun id -> not (Termops.is_section_variable id)) args_vars in
+                List.map mkVar args_vars
+              in
+              let tac, _ = List.fold_right2 (wheretac env sigma) wheres unfswheres (Tacticals.New.tclIDTAC, subst) in
+              tac)
+        in
         tclTHENLIST [to82 tac;
                      tclTRY (autorewrite_one info.term_info.base_id)(* ;
                       * observe "trying constructor on" (tclTRY (cstrtac info.term_info));
@@ -588,12 +626,13 @@ let aux_ind_fun info chop nested unfs unfids split =
               is a rec call in a where clause to itself we need to
               explicitely rewrite with the unfolding lemma (as the where
               clause induction hypothesis is about the unfolding whereas
-              the term itself mentions the original function. *)
-          (* tclMAP (fun i ->
-           * tclTRY (to82 (Proofview.tclBIND
-           *               (Tacticals.New.pf_constr_of_global
-           *                     (Equations_common.global_reference i))
-           *               Equality.rewriteLR))) unfids; *)
+              the term itself might mentions the original function. *)
+          tclTHEN (to82 Tactics.intros)
+            (tclMAP (fun i ->
+                 (tclTRY (to82 (Proofview.tclBIND
+                                  (Tacticals.New.pf_constr_of_global
+                                     (Equations_common.global_reference i))
+                                  Equality.rewriteLR)))) unfids);
           tclORELSE (tclCOMPLETE
                        (observe "solving premises of compute rule" (to82 (solve_ind_rec_tac info.term_info))))
             (observe "solving nested recursive call" (to82 (solve_nested ())))]))
@@ -634,12 +673,21 @@ let observe_tac s tac =
 
 exception NotGuarded
 
+let check_guard tac =
+  let open Proofview in
+  let open Notations in
+  Unsafe.tclGETGOALS >>= (fun gls ->
+  tac >>= (fun () ->
+  tclEVARMAP >>= (fun sigma ->
+    if check_guard gls sigma then tclUNIT ()
+    else tclZERO NotGuarded)))
+
 let ind_fun_tac is_rec f info fid nestedinfo progs =
   let open Tacticals.New in
+  let open Proofview in
+  let open Notations in
   match is_rec with
   | Some (Guarded l) ->
-     let open Proofview in
-     let open Notations in
      let mutual, nested = List.partition (function (_, MutualOn _) -> true | _ -> false) l in
      let mutannots = List.map (function (_, MutualOn (Some (ann, _))) -> ann + 1 | _ -> -1) mutual in
      let mutprogs, nestedprogs =
@@ -707,20 +755,16 @@ let ind_fun_tac is_rec f info fid nestedinfo progs =
        | _ -> tclZERO NotGuarded
      in
      let mutfix =
-       tclORELSE
-         (tclBIND Unsafe.tclGETGOALS (fun gls ->
-              tclBIND (mutual_fix [] mutannots <*> specialize_mutfix_tac () <*> prove_progs mutprogs)
-                (fun () ->
-                   tclBIND tclEVARMAP (fun sigma ->
-                       if List.length nested > 0 || check_guard gls sigma then tclUNIT () else tclZERO NotGuarded))))
+       let tac = mutual_fix [] mutannots <*> specialize_mutfix_tac () <*> prove_progs mutprogs in
+       tclORELSE (if List.length nested > 0 then tac else check_guard tac)
          (fun (e, einfo) ->
            match e with
            | NotGuarded ->
-             tclORELSE (try_induction ()) (fun (e, einfo) ->
+             tclORELSE (check_guard (try_induction ())) (fun (e, einfo) ->
                  match e with
                  | NotGuarded ->
                    Feedback.msg_info (str "Proof of mutual induction principle is not guarded " ++
-                                       str" and cannot be proven by induction");
+                                       str"and cannot be proven by induction");
                    tclIDTAC
                  | _ -> tclZERO ~info:einfo e)
            | _ -> tclZERO ~info:einfo e)
@@ -771,10 +815,20 @@ let ind_fun_tac is_rec f info fid nestedinfo progs =
       | _ -> assert false
     in
     opacify ();
-    Proofview.tclBIND
-      (tclCOMPLETE (tclTHENLIST
-                      [set_eos_tac (); intros; of82 (aux_ind_fun info (0, 0) nestedinfo unfsplit [] split)]))
-      (fun r -> transp (); Proofview.tclUNIT r)
+    let tac =
+      Proofview.tclBIND
+        (tclCOMPLETE (tclTHENLIST
+                        [set_eos_tac (); intros; of82 (aux_ind_fun info (0, 0) nestedinfo unfsplit [] split)]))
+        (fun r -> transp (); Proofview.tclUNIT r)
+    in
+    tclORELSE (check_guard tac)
+      (fun (e, einfo) ->
+         match e with
+         | NotGuarded ->
+           Feedback.msg_info (str "Proof of mutual induction principle is not guarded " ++
+                              str" and cannot be proven by induction. Consider switching to well-founded recursion.");
+           tclUNIT ()
+         | _ -> tclZERO ~info:einfo e)
 
 let ind_fun_tac is_rec f info fid nested progs =
   Proofview.tclORELSE (ind_fun_tac is_rec f info fid nested progs)

@@ -153,7 +153,8 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
             parambinders;
         mind_entry_inds = inds;
         mind_entry_private = None;
-        mind_entry_universes = uctx}
+        mind_entry_universes = uctx;
+      }
     in
     let k = ComInductive.declare_mutual_inductive_with_eliminations inductive Universes.empty_binders [] in
     let () =

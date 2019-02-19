@@ -210,25 +210,34 @@ let substitute_args args ctx =
     | _, [] -> assert false
   in aux (List.rev ctx) args
 
+let drop_last_n n l =
+  let l = List.rev l in
+  let l = CList.skipn n l in
+  List.rev l
+
 let find_rec_call is_rec sigma protos f args =
-  let fm ((f',filter), alias, idx, sign, arity) =
-    let f', args' = Termops.decompose_app_vect sigma f' in
-    let f' = EConstr.Unsafe.to_constr f' in
-    let args' = Array.map EConstr.Unsafe.to_constr args' in
-    let nhyps = Context.Rel.nhyps sign + Array.length args' in
-    if Constr.equal f' f then
-      let f' = fst (Constr.destConst f') in
+  let fm (fhead,(f',filter), alias, idx, sign, arity) =
+    if Constr.equal (EConstr.Unsafe.to_constr fhead) f then
+      let f' = fst (Constr.destConst f) in
       match is_applied_to_structarg (Names.Label.to_id (Names.Constant.label f')) is_rec
               (List.length args) with
       | Some true | None ->
+        let signlen = List.length sign in
+        let indargs = filter_arguments filter args in
         let sign, args =
-          if nhyps <= List.length args then [], CList.chop nhyps args
+          if signlen <= List.length indargs then
+            (* Exact or extra application *)
+            let indargs, rest = CList.chop signlen indargs in
+            let fargs = drop_last_n (List.length rest) args in
+            [], (fargs, indargs, rest)
           else
+            (* Partial application *)
             let sign = List.map EConstr.Unsafe.to_rel_decl sign in
-            let _, substargs = CList.chop (Array.length args') args in
-            let sign = substitute_args substargs sign in
+            let sign = substitute_args indargs sign in
             let signlen = List.length sign in
-            sign, (List.map (lift signlen) args @ Context.Rel.to_extended_list mkRel 0 sign, [])
+            let indargs = List.map (lift signlen) indargs @ Context.Rel.to_extended_list mkRel 0 sign in
+            let fargs = List.map (lift signlen) args @ Context.Rel.to_extended_list mkRel 0 sign in
+            sign, (fargs, indargs, [])
         in
         Some (idx, arity, filter, sign, args)
       | Some false -> None
@@ -238,15 +247,24 @@ let find_rec_call is_rec sigma protos f args =
         let f', args' = Termops.decompose_app_vect sigma f' in
         let f' = EConstr.Unsafe.to_constr f' in
         if Constr.equal (head f') f then
-          Some (idx, arity, argsf, [], (args, []))
+          Some (idx, arity, argsf, [], (args, args, []))
         else None
       | None -> None
   in
   try Some (CList.find_map fm protos)
   with Not_found -> None
 
+let filter_arg i filter =
+  let rec aux f =
+    match f with
+    | i' :: _ when i < i' -> true
+    | i' :: _ when i = i' -> false
+    | i' :: is -> aux is
+    | [] -> false
+  in aux filter
+
 let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
-  let proto_fs = List.map (fun ((f,args), _, _, _, _) -> f) protos in
+  let proto_fs = List.map (fun (_,(f,args), _, _, _, _) -> f) protos in
   let occ = ref 0 in
   let rec aux n env hyps c =
     let open Constr in
@@ -281,20 +299,20 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
     | _ ->
       let f', args = decompose_appvect c in
       if not (is_user_obl sigma user_obls (EConstr.of_constr f')) then
-        let hyps =
-          (* TODO: use filter here *)
-          Array.fold_left (fun hyps arg -> let hyps', arg' = aux n env hyps arg in
-                            hyps')
-            hyps args
-        in
-        let args = Array.to_list args in
-        (match find_rec_call is_rec sigma protos f' args with
-         | Some (i, arity, filter, sign, (args', rest)) ->
-           let fargs' = filter_arguments filter args' in
-           let result = Termops.it_mkLambda_or_LetIn (mkApp (f', CArray.of_list args')) sign in
+        (match find_rec_call is_rec sigma protos f' (Array.to_list args) with
+         | Some (i, arity, filter, sign, (fargs', indargs', rest)) ->
+           let hyps =
+             CArray.fold_left_i
+               (fun i hyps arg ->
+                  if filter_arg i filter then hyps
+                  else let hyps', arg' = aux n env hyps arg in hyps')
+               hyps args
+           in
+           let fargs' = Constr.mkApp (f', Array.of_list fargs') in
+           let result = Termops.it_mkLambda_or_LetIn fargs' sign in
            let hyp =
              Term.it_mkProd_or_LetIn
-               (Constr.mkApp (mkApp (mkRel (i + 1 + len + n + List.length sign), Array.of_list fargs'),
+               (Constr.mkApp (mkApp (mkRel (i + 1 + len + n + List.length sign), Array.of_list indargs'),
                               [| Term.applistc (lift (List.length sign) result)
                                    (Context.Rel.to_extended_list mkRel 0 sign) |]))
                sign
@@ -302,7 +320,13 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
            let hyps = cmap_add hyp !occ hyps in
            let () = incr occ in
            hyps, Term.applist (result, rest)
-         | None -> hyps, mkApp (f', Array.of_list args))
+         | None ->
+           let hyps =
+             Array.fold_left (fun hyps arg -> let hyps', arg' = aux n env hyps arg in
+                               hyps')
+               hyps args
+           in
+           hyps, mkApp (f', args))
       else
         let c' =
           if do_subst then (EConstr.Unsafe.to_constr (EConstr.Vars.substnl proto_fs (len + n) (EConstr.of_constr c)))
@@ -586,23 +610,27 @@ let map_proto evd recarg f ty =
 
 type rec_subst = (Names.Id.t * (int option * EConstr.constr)) list
 
-let cut_problem evd s ctx' =
-  let pats, cutctx', _, _ =
-    (* From Γ |- ps, prec, ps' : Δ, rec, Δ', build
-       Γ |- ps, ps' : Δ, Δ' *)
-    List.fold_right (fun d (pats, ctx', i, subs) ->
-    let (n, b, t) = to_tuple d in
-    match n with
-    | Name n when List.mem_assoc n s ->
-       let recarg, term = List.assoc n s in
-       let term = map_proto evd recarg term t in
-       (pats, ctx', pred i, term :: subs)
-    | _ ->
-       let decl = of_tuple (n, Option.map (substl subs) b, substl subs t) in
-       (i :: pats, decl :: ctx',
-        pred i, mkRel 1 :: List.map (lift 1) subs))
-    ctx' ([], [], List.length ctx', [])
-  in (ctx', List.map (fun i -> Context_map.PRel i) pats, cutctx')
+let cut_problem evd s ctx =
+  (* From Γ, x := t, D |- id_subst (G, x, D) : G, x : _, D
+     to oΓ, D[t] |- id_subst (G, D) | G[
+     ps, prec, ps' : Δ, rec, Δ',
+     and s : prec -> Γ |- t : rec
+     build
+     Γ |- ps, ps' : Δ, Δ'[prec/rec] *)
+  let rec fn s (ctxl, pats, ctxr as ctxm) =
+    match s with
+    | [] -> ctxm
+    | (id, (recarg, term)) :: s ->
+      try
+        let rel, _, ty = Termops.lookup_rel_id id ctxr in
+        let fK = map_proto evd recarg term (lift rel ty) in
+        let ctxr' = subst_in_ctx rel fK ctxr in
+        let left, right = CList.chop (pred rel) pats in
+        let right' = List.tl right in
+        let s' = List.map (fun (id, (recarg, t)) -> id, (recarg, substnl [fK] rel t)) s in
+        fn s' (ctxl, List.append left right', ctxr')
+      with Not_found -> fn s ctxm
+  in fn s (id_subst ctx)
 
 let subst_rec env evd cutprob s (ctx, p, _ as lhs) =
   let subst =
@@ -619,6 +647,9 @@ let subst_rec env evd cutprob s (ctx, p, _ as lhs) =
     (compose_subst env ~sigma:evd subst lhs) cutprob
   in subst, csubst
 
+let map_fix_subst evd ctxmap s =
+  List.map (fun (id, (recarg, f)) -> (id, (recarg, mapping_constr evd ctxmap f))) s
+
 (* Not necessary? If p.id is part of the substitution but isn't in the context we ignore it *)
 let _program_fixdecls p fixdecls =
   match p.Syntax.program_rec with
@@ -629,18 +660,33 @@ let _program_fixdecls p fixdecls =
          not (Id.equal id p.program_id)) fixdecls
   | _ -> fixdecls
 
+let push_mapping_context env sigma decl ((g,p,d), cut) =
+  let open Context.Rel.Declaration in
+  let decl' = map_rel_declaration (mapping_constr sigma cut) decl in
+  let declassum = LocalAssum (get_name decl, get_type decl) in
+  (decl :: g, (PRel 1 :: List.map (lift_pat 1) p), decl' :: d),
+  lift_subst env sigma cut [declassum]
+
+(** Assumes the declaration already live in \Gamma to produce \Gamma, decls |- ps : \Delta, decls *)
+let push_decls_map env evd (ctx : context_map) cut (g : rel_context) =
+  let map, _ = List.fold_right (fun decl acc -> push_mapping_context env evd decl acc) g (ctx, cut) in
+  check_ctx_map env evd map
+
+(* let prsubst env evd s = Pp.(prlist_with_sep spc (fun (id, (recarg, f)) ->
+ *     str (Id.to_string id) ++ str" -> " ++ Printer.pr_econstr_env env !evd f) s) *)
+
 let subst_rec_programs env evd ps =
   let where_map = ref PathMap.empty in
   let evd = ref evd in
   let cut_problem s ctx' = cut_problem !evd s ctx' in
   let subst_rec cutprob s lhs = subst_rec env !evd cutprob s lhs in
-  let rec subst_programs path s ctx progs oterms =
+  let rec subst_programs path s ctxlen progs oterms =
     let fixsubst =
       let fn p oterm =
         match p.program_info.program_rec with
         | Some r ->
           let recarg = match r with Structural _ -> None | WellFounded _ -> Some (-1) in
-          let oterm = lift (List.length (pi1 p.program_prob) - List.length ctx) oterm in
+          let oterm = lift (List.length (pi1 p.program_prob) - ctxlen) oterm in
           Some (p.program_info.program_id, (recarg, oterm))
         | None -> None
       in
@@ -648,7 +694,11 @@ let subst_rec_programs env evd ps =
       List.rev fixdecls
     in
     let fixsubst = CList.map_filter (fun x -> x) fixsubst in
-    let s' = fixsubst @ s in
+    (* The previous prototypes must be lifted w.r.t. the new variables bound in the where. *)
+    let lifts = List.map (fun (id, (recarg, b)) ->
+        (id, (recarg, lift (List.length fixsubst) b))) s in
+    let s' = fixsubst @ lifts in
+    (* Feedback.msg_debug Pp.(str"In subst_programs, pr_substs" ++ prsubst env evd s'); *)
     let one_program p oterm =
       let split' = match p.program_splitting with
         | RecValid (lets, id, _, s) -> s
@@ -661,7 +711,10 @@ let subst_rec_programs env evd ps =
       in
       let prog_info = p.program_info in
       let cutprob_sign = cut_problem s prog_info.program_sign in
+      (* Feedback.msg_debug Pp.(str"In subst_programs: " ++ pr_context env !evd prog_info.program_sign);
+       * Feedback.msg_debug Pp.(str"In subst_programs: cutprob_sign " ++ pr_context_map env !evd cutprob_sign); *)
       let cutprob_subst, _ = subst_rec cutprob_sign s (id_subst prog_info.program_sign) in
+      (* Feedback.msg_debug Pp.(str"In subst_programs: subst_rec failed " ++ pr_context env !evd prog_info.program_sign); *)
       let program_info' =
         { prog_info with
           program_rec = None;
@@ -670,6 +723,7 @@ let subst_rec_programs env evd ps =
       in
       let program' = { p with program_info = program_info' } in
       let path' = p.program_info.program_id :: path in
+      (* Feedback.msg_debug Pp.(str"In subst_programs, cut_problem s'" ++ pr_context env !evd (pi1 rec_prob)); *)
       let rec_cutprob = cut_problem s' (pi1 rec_prob) in
       let splitting' = aux rec_cutprob s' program' oterm path' split' in
       let term', ty' = term_of_tree env evd splitting' in
@@ -683,18 +737,31 @@ let subst_rec_programs env evd ps =
   and aux cutprob s p f path = function
     | Compute ((ctx,pats,del as lhs), where, ty, c) ->
       let subst, lhs' = subst_rec cutprob s lhs in
+      let lhss = map_fix_subst !evd lhs s in
       let progctx = (extend_prob_ctx (where_context where) lhs) in
       let substprog, _ = subst_rec cutprob s progctx in
       let islogical = List.exists (fun (id, (recarg, f)) -> Option.has_some recarg) s in
       let subst_where ({where_program; where_path; where_orig;
                         where_program_args;
                         where_type} as w) (subst_wheres, wheres) =
+        (* subst_wheres lives in lhs', i.e. has prototypes substituted already *)
         let wcontext = where_context subst_wheres in
-        let wsubst0 = lift_subst env !evd subst wcontext in
+        let cutprob' = cut_problem s (pi3 subst) in
+        (* Feedback.msg_debug Pp.(str"where_context in subst rec : " ++ pr_context env !evd wcontext);
+         * Feedback.msg_debug Pp.(str"lifting subst : " ++ pr_context_map env !evd subst);
+         * Feedback.msg_debug Pp.(str"cutprob : " ++ pr_context_map env !evd cutprob'); *)
+        let wsubst0 = push_decls_map env !evd subst cutprob' wcontext in
+        (* Feedback.msg_debug Pp.(str"new substitution in subst rec : " ++ pr_context_map env !evd wsubst0); *)
+        let ctxlen = List.length wcontext + List.length ctx in
         let wp = where_program in
-        let where_type = mapping_constr !evd subst where_type in
+        let where_type = mapping_constr !evd wsubst0 where_type in
+        (* The substituted prototypes must be lifted w.r.t. the new variables bound in this where and
+           preceding ones. *)
+        let s = List.map (fun (id, (recarg, b)) ->
+            (id, (recarg, lift ((* List.length subst_wheres + *)
+                                List.length (pi1 wp.program_prob) - List.length ctx) b))) lhss in
         let wp' =
-          match subst_programs path s ctx [wp] [where_term w] with
+          match subst_programs path s ctxlen [wp] [where_term w] with
           | [wp'] -> wp'
           | _ -> assert false
         in
@@ -712,6 +779,10 @@ let subst_rec_programs env evd ps =
           else
             let where_program_term = mapping_constr !evd wsubst0 wp.program_term in
             let where_program_args = List.map (mapping_constr !evd wsubst0) where_program_args in
+            (* where_map := PathMap.add where_path
+             *     (applistc where_program_term where_program_args (\* substituted *\), Id.of_string ""(\*FIXNE*\), wp'.program_splitting)
+             *     !where_map; *)
+            (* let where_program_args = extended_rel_list 0 (pi1 lhs') in *)
             { wp' with program_term = where_program_term }, where_program_args
         in
         let subst_where =
@@ -756,19 +827,22 @@ let subst_rec_programs env evd ps =
          info.refined_arg, info.refined_term, info.refined_args,
          info.refined_revctx, info.refined_newprob, info.refined_newty
        in
+       (* Feedback.msg_debug Pp.(str"Before map to newprob " ++ prsubst s); *)
+       let lhss = map_fix_subst !evd lhs s in
+       (* Feedback.msg_debug Pp.(str"lhs subst " ++ prsubst lhss); *)
+       let newprobs = map_fix_subst !evd info.refined_newprob_to_lhs lhss in
+       (* Feedback.msg_debug Pp.(str"newprob subst: " ++ prsubst newprobs);
+        * Feedback.msg_debug Pp.(str"Newprob to lhs: " ++ pr_context_map env !evd info.refined_newprob_to_lhs);
+        * Feedback.msg_debug Pp.(str"Newprob : " ++ pr_context_map env !evd newprob); *)
        let subst, lhs' = subst_rec cutprob s lhs in
-       let _, revctx' = subst_rec (cut_problem s (pi3 revctx)) s revctx in
-
-       let s' = List.map (fun (id, (recarg, f)) ->
-           (id, (recarg, mapping_constr !evd info.refined_newprob_to_lhs f))) s
-       in
-       let cutnewprob = cut_problem s' (pi3 newprob) in
-       let subst', newprob' = subst_rec cutnewprob s' newprob in
+       let _, revctx' = subst_rec (cut_problem s (pi3 revctx)) lhss revctx in
+       let cutnewprob = cut_problem newprobs (pi3 newprob) in
+       let subst', newprob' = subst_rec cutnewprob newprobs newprob in
        let _, newprob_to_prob' =
-         subst_rec (cut_problem s (pi3 info.refined_newprob_to_lhs)) s' info.refined_newprob_to_lhs in
+         subst_rec (cut_problem lhss (pi3 info.refined_newprob_to_lhs)) lhss info.refined_newprob_to_lhs in
        let islogical = List.exists (fun (id, (recarg, f)) -> Option.has_some recarg) s in
        let path' = info.refined_path in
-       let s' = aux cutnewprob s' p f path' sp in
+       let s' = aux cutnewprob newprobs p f path' sp in
        let term', args', arg' =
          if islogical then
            let refarg = ref (0,0) in
@@ -819,7 +893,7 @@ let subst_rec_programs env evd ps =
            refined_newty = mapping_constr !evd subst' newty }
        in Refined (lhs', info, s')
   in
-  let programs' = subst_programs [] [] [] ps (List.map (fun p -> p.program_term) ps) in
+  let programs' = subst_programs [] [] 0 ps (List.map (fun p -> p.program_term) ps) in
   !where_map, programs'
 
 let unfold_programs env evd flags rec_info progs =
@@ -947,16 +1021,23 @@ let computations env evd alias refine p eqninfo =
            Some ((f, args), id, s), fsubst
          with Not_found -> None, fsubst
        in
-       let args' =
-         let rec aux i a =
-           match a with
-           | [] -> []
-           | hd :: tl ->
-             if isRel evd hd then []
-             else hd :: aux (succ i) tl
-         in aux 0 args
+       let term_ty = Retyping.get_type_of env evd term in
+       let subterm, filter =
+         let rec aux ty i args' =
+           match kind evd ty, args' with
+           | Prod (na, b, ty), a :: args' ->
+             if EConstr.isRel evd a then (* A variable from the context that was not substituted
+                                  by a recursive prototype, we keep it *)
+               let term', len = aux ty (succ i) args' in
+               mkLambda (na, b, term'), i :: len
+             else
+               (* The argument was substituted, we keep that substitution *)
+               let term', len = aux (subst1 a ty) (succ i) args' in
+               term', len
+           | _, [] -> lhsterm, []
+           | _, _ :: _ -> assert false
+         in aux term_ty 0 args
        in
-       let subterm = applist (term, args') in
        let wsmash, smashsubst = smash_ctx_map env evd (id_subst w.where_program.program_info.program_sign) in
        let comps = computations env wsmash subterm None fsubst (Regular,false)
            w.where_program.program_splitting in
@@ -965,10 +1046,10 @@ let computations env evd alias refine p eqninfo =
          if not (PathMap.is_empty wheremap) then
            subterm, [0]
          else
-           subterm, [List.length args']
+           subterm, filter
        in
        let where_comp =
-         (termf, alias, w.where_orig, pi1 wsmash, substl smashsubst arity,
+         (termf, alias, w.where_orig, pi1 wsmash, (* substl smashsubst *) arity,
           pattern_instance wsmash,
           [] (*?*), comps)
        in (lhsterm :: wheres, where_comp :: where_comps)
@@ -1273,12 +1354,16 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
   let protos =
     CList.map_i (fun i ((f',filterf'), alias, path, sign, arity, pats, args, (refine, cut)) ->
       let f' = Termops.strip_outer_cast evd f' in
+      let f'hd =
+        let ctx, t = decompose_lam_assum evd f' in
+        fst (decompose_app evd t)
+      in
       let alias =
         match alias with
         | None -> None
         | Some (f, _, _) -> Some f
       in
-      ((f',filterf'), alias, lenprotos - i, sign, to_constr evd arity))
+      (f'hd, (f',filterf'), alias, lenprotos - i, sign, to_constr evd arity))
       1 protos
   in
   let evd = ref evd in
@@ -1299,11 +1384,12 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
     in
     let comp = applistc hd pats in
     let body =
+      let nf_beta = Reductionops.nf_beta (push_rel_context ctx env) !evd in
       let b = match c with
         | RProgram c ->
-            mkEq env evd ty comp (Reductionops.nf_beta env !evd c)
+            mkEq env evd ty (nf_beta comp) (nf_beta c)
         | REmpty (i, _) ->
-           mkApp (coq_ImpossibleCall evd, [| ty; comp |])
+           mkApp (coq_ImpossibleCall evd, [| ty; nf_beta comp |])
       in
       let body = it_mkProd_or_LetIn b ctx in
       if !Equations_common.debug then
@@ -1330,7 +1416,11 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
               (it_mkProd_or_clean env !evd
                  (applistc head (lift_constrs hypslen pats @ [c']))
                  hyps) ctx
-          in Some ty
+          in
+          if !Equations_common.debug then
+            Feedback.msg_debug Pp.(str"Typing constructor " ++ Printer.pr_econstr_env env !evd ty);
+
+          Some ty
       | REmpty (i, _) -> None
     in (refine, unf, body, cstr)
   in
@@ -1382,7 +1472,8 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
                 mind_entry_private = None;
                 mind_entry_finite = Declarations.Finite;
                 mind_entry_params = []; (* (identifier * local_entry) list; *)
-                mind_entry_inds = inds }
+                mind_entry_inds = inds;
+              }
     in
     let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] false in
     let kn = ComInductive.declare_mutual_inductive_with_eliminations inductive Universes.empty_binders [] in

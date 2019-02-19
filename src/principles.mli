@@ -21,21 +21,21 @@ val smash_ctx_map : Environ.env -> Evd.evar_map -> Context_map.context_map -> Co
 
 val find_rec_call : Syntax.rec_type option ->
            Evd.evar_map ->
-           ((EConstr.constr * 'a) * (EConstr.constr * 'a) option * 'b *
-            (EConstr.t, EConstr.types) Context.Rel.pt * 'c)
+  (constr * (constr * int list) * (constr * int list) option * int *
+   EConstr.rel_context * Constr.t)
            list ->
            Constr.constr ->
            Constr.constr list ->
-           ('b * 'c * 'a *
-            (Constr.constr, Constr.constr) Context.Rel.Declaration.pt list *
-            (Constr.constr list * Constr.constr list))
+           (int * Constr.t * int list *
+            Context.Rel.t *
+            (Constr.constr list * Constr.constr list * Constr.constr list))
            option
 
 val abstract_rec_calls : Evd.evar_map -> Names.Id.Set.t ->
   ?do_subst:bool ->
   Syntax.rec_type option ->
   int ->
-  ((constr * int list) * (constr * int list) option * int *
+  (constr * (constr * int list) * (constr * int list) option * int *
    EConstr.rel_context * Constr.t)
   list -> constr -> rel_context * int * constr
 val subst_app :Evd.evar_map ->
@@ -54,7 +54,7 @@ val compute_elim_type :
   Environ.env ->
   Equations_common.esigma -> Names.Id.Set.t ->
   Syntax.rec_type option ->
-  ((constr * int list) * (constr * int list) option * int *
+  (constr * (constr * int list) * (constr * int list) option * int *
    EConstr.rel_context * Constr.t)
   list ->
   Names.MutInd.t ->
