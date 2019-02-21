@@ -1001,7 +1001,8 @@ and simplify_one ((loc, rule) : Loc.t option * simplification_rule) :
      in handle_error (or_fun aux (remove_one_sigma ~only_nondep:true))
   | Step step -> wrap_handle (fun _ _ _ -> step)
   | Infer_one -> handle_error (or_fun (with_retry apply_noConfusions)
-                                 (wrap (infer_step ?loc ~isSol:false)))
+                                 (or_fun (wrap (infer_step ?loc ~isSol:false))
+                                    (remove_one_sigma ~only_nondep:true)))
   | Infer_direction -> wrap_handle (infer_step ?loc ~isSol:true)
 
 and simplify (rules : simplification_rules) : simplification_fun =
