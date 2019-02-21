@@ -8,6 +8,113 @@ Require Import List Arith.
 
 Set Asymmetric Patterns.
 
+Section Equality.
+  Class Eq (A : Type) :=
+    { eqb : A -> A -> bool;
+      eqb_spec : forall x y, reflect (x = y) (eqb x y) }.
+
+  Equations fin_eq {k} (f f' : fin k) : bool :=
+  fin_eq fz fz => true;
+  fin_eq (fs f) (fs f') => fin_eq f f';
+  fin_eq _ _ => false.
+
+  Global Instance fin_Eq k : Eq (fin k).
+  Proof.
+    exists fin_eq. intros x y. induction x; depelim y; simp fin_eq; try constructor; auto.
+    intro H; noconf H.
+    intro H; noconf H.
+    destruct (IHx y). subst x; now constructor. constructor. intro H; noconf H. now apply n.
+  Defined.
+
+  Global Instance bool_Eq : Eq bool.
+  Proof.
+    exists bool_eq. intros [] []; now constructor.
+  Defined.
+
+  Global Instance prod_eq A B : Eq A -> Eq B -> Eq (A * B).
+  Proof.
+    intros. exists (fun '(x, y) '(x', y') => eqb x x' && eqb y y').
+    intros [] []. destruct (eqb_spec a a0); subst.
+    destruct (eqb_spec b b0); subst. constructor; auto.
+    constructor; auto. intro H; noconf H. now elim n.
+    constructor; auto. simplify *. now elim n.
+  Defined.
+
+  Equations option_eq {A : Type} {E:Eq A} (o o' : option A) : bool :=
+    option_eq None None := true;
+    option_eq (Some o) (Some o') := eqb o o';
+    option_eq _ _ := false.
+
+  Global Instance option_Eq A : Eq A -> Eq (option A).
+  Proof.
+    intros A_Eq. exists option_eq. intros [] []; simp option_eq; try constructor.
+    destruct (eqb_spec a a0); subst. now constructor.
+    constructor. intro H; noconf H. now elim n.
+    simplify *. simplify *. constructor.
+  Defined.
+
+  Section EqFin_fn.
+    Context {A} `{Eq A}.
+
+    Equations eq_fin_fn {k} (f g : fin k -> A) : bool :=
+    eq_fin_fn (k:=0) f g := true;
+    eq_fin_fn (k:=S k) f g := eqb (f fz) (g fz) && eq_fin_fn (fun n => f (fs n)) (fun n => g (fs n)).
+
+    Global Instance Eq_graph k : Eq (fin k -> A).
+    Proof.
+      exists eq_fin_fn. induction k; intros; simp eq_fin_fn. constructor; auto.
+      extensionality i. depelim i.
+      destruct (eqb_spec (x fz) (y fz)). simpl. destruct (IHk (fun n => x (fs n)) (fun n => y (fs n))).
+      constructor; auto. extensionality n. depelim n. auto. eapply equal_f in e0. eauto. constructor.
+      intro H'. subst. elim n. extensionality n'. reflexivity.
+      simpl. constructor. intros H'; elim n. subst. reflexivity.
+    Defined.
+  End EqFin_fn.
+End Equality.
+
+Module btree.
+Inductive tree : Set :=
+  | lf
+  | nd : tree -> tree -> tree.
+Instance: Eq tree.
+Admitted.
+Equations subterm (t t' : tree) : bool :=
+ subterm t lf := false;
+ subterm t (nd l r) := eqb t l || eqb t r || subterm t l || subterm t r.
+End btree.
+
+Inductive tree : Set :=
+  | lf
+  | nd : (nat -> tree) -> tree.
+Instance: Eq tree.
+Admitted.
+
+Definition ex_impred {A} (B : A -> Prop) : Prop :=
+  forall X : Prop, (forall x : A, B x -> X) -> X.
+
+Equations subterm (t t' : tree) : Prop :=
+ subterm t lf := False;
+ subterm t (nd f) := ex_impred (fun x => t = f x).
+
+Lemma subterm_acc x : Acc subterm x.
+Proof.
+  induction x. constructor. intros. elim H.
+  constructor. intros. simp subterm in H0.
+  specialize (H0 (Acc subterm y)). simpl in H0.
+  refine (H0 (fun x eqtx => _)). subst y. apply H.
+Qed.
+
+Equations subterm (t t' : tree) : Prop :=
+ subterm t lf := False;
+ subterm t (nd f) := ex_impred (fun x => t = f x).
+
+
+
+Equations subterm (t t' : tree) : bool :=
+ subterm t lf := false;
+ subterm t (nd l r) := eqb t l || eqb t r || subterm t l || subterm t r.
+
+
 Definition dec_rel {X:Type} (R : X → X → Prop) := ∀ x y, {not (R y x)} + {R y x}.
 
 Section AlmostFull.
@@ -565,70 +672,6 @@ Ltac destruct_pairs := repeat
   | [ x : exists _ : _, _ |- _ ] => destruct x
   | [ x : _ /\ _ |- _ ] => destruct x
 end.
-
-Section Equality.
-  Class Eq (A : Type) :=
-    { eqb : A -> A -> bool;
-      eqb_spec : forall x y, reflect (x = y) (eqb x y) }.
-
-  Equations fin_eq {k} (f f' : fin k) : bool :=
-  fin_eq fz fz => true;
-  fin_eq (fs f) (fs f') => fin_eq f f';
-  fin_eq _ _ => false.
-
-  Global Instance fin_Eq k : Eq (fin k).
-  Proof.
-    exists fin_eq. intros x y. induction x; depelim y; simp fin_eq; try constructor; auto.
-    intro H; noconf H.
-    intro H; noconf H.
-    destruct (IHx y). subst x; now constructor. constructor. intro H; noconf H. now apply n.
-  Defined.
-
-  Global Instance bool_Eq : Eq bool.
-  Proof.
-    exists bool_eq. intros [] []; now constructor.
-  Defined.
-
-  Global Instance prod_eq A B : Eq A -> Eq B -> Eq (A * B).
-  Proof.
-    intros. exists (fun '(x, y) '(x', y') => eqb x x' && eqb y y').
-    intros [] []. destruct (eqb_spec a a0); subst.
-    destruct (eqb_spec b b0); subst. constructor; auto.
-    constructor; auto. intro H; noconf H. now elim n.
-    constructor; auto. simplify *. now elim n.
-  Defined.
-
-  Equations option_eq {A : Type} {E:Eq A} (o o' : option A) : bool :=
-    option_eq None None := true;
-    option_eq (Some o) (Some o') := eqb o o';
-    option_eq _ _ := false.
-
-  Global Instance option_Eq A : Eq A -> Eq (option A).
-  Proof.
-    intros A_Eq. exists option_eq. intros [] []; simp option_eq; try constructor.
-    destruct (eqb_spec a a0); subst. now constructor.
-    constructor. intro H; noconf H. now elim n.
-    simplify *. simplify *. constructor.
-  Defined.
-
-  Section EqFin_fn.
-    Context {A} `{Eq A}.
-
-    Equations eq_fin_fn {k} (f g : fin k -> A) : bool :=
-    eq_fin_fn (k:=0) f g := true;
-    eq_fin_fn (k:=S k) f g := eqb (f fz) (g fz) && eq_fin_fn (fun n => f (fs n)) (fun n => g (fs n)).
-
-    Global Instance Eq_graph k : Eq (fin k -> A).
-    Proof.
-      exists eq_fin_fn. induction k; intros; simp eq_fin_fn. constructor; auto.
-      extensionality i. depelim i.
-      destruct (eqb_spec (x fz) (y fz)). simpl. destruct (IHk (fun n => x (fs n)) (fun n => y (fs n))).
-      constructor; auto. extensionality n. depelim n. auto. eapply equal_f in e0. eauto. constructor.
-      intro H'. subst. elim n. extensionality n'. reflexivity.
-      simpl. constructor. intros H'; elim n. subst. reflexivity.
-    Defined.
-  End EqFin_fn.
-End Equality.
 
 Section SCT.
 
@@ -1452,4 +1495,4 @@ Lemma gnlex_S_test x y : exists foo, gnlex (S x, S y) = foo.
   rewrite gnlex_S. rewrite gnlex_0_r. destruct x. admit. rewrite gnlex_S.
 Admitted.
 
-(* BUG Eval native_compute in gnlex (4, 3). *)
+(* BUG Eval native_compute in gnlex (4, 3).
