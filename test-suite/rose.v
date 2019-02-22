@@ -74,13 +74,12 @@ Section RoseTree.
       well-founded recursion, we can define the following function
       gathering the elements in a rose tree efficiently: *)
 
-  Equations? elements (r : rose) (acc : list A) : list A by wf r (MR lt size) :=
+  Equations elements (r : rose) (acc : list A) : list A by wf r (MR lt size) :=
   elements (leaf a) acc := a :: acc;
   elements (node l) acc := aux l _
     where aux x (H : list_size size x < size (node l)) : list A by wf x (MR lt (list_size size)) :=
     aux nil _ := acc;
     aux (cons x xs) H := elements x (aux xs _).
-  Proof. simpl in H. lia. Qed.
 
   Definition elems r := elements r nil.
 
@@ -150,12 +149,11 @@ End FullStruct.
 Module WfAndStruct.
   Context {A : Type}.
 
-  Equations? elements (r : rose A) (acc : list A) : list A by wf (size r) lt :=
+  Equations elements (r : rose A) (acc : list A) : list A by wf (size r) lt :=
   elements (leaf a) acc := a :: acc;
   elements (node l) acc := aux l _
     where aux (x : list (rose A)) (H : list_size size x < size (node l)) : list A by struct x :=
     aux nil H := acc;
     aux (cons x xs) H := elements x (aux xs _).
-  Proof. simpl in H. lia. simpl in H. lia. Defined.
 
 End WfAndStruct.
