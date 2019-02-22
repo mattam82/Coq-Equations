@@ -296,7 +296,7 @@ let specialize_eqs ~with_block id gl =
            else y, x in
          let eqr = constr_of_global_univ !evars (Lazy.force logic_eq_refl, u) in
          let p = mkApp (eqr, [| eqty; c |]) in
-         if (with_block || compare_upto_variables !evars c o) &&
+         if (compare_upto_variables !evars c o) &&
             unif (push_rel_context ctx env) subst evars o c then
            aux in_block true ctx subst (mkApp (acc, [| p |])) (subst1 p b)
          else acc, in_eqs, ctx, subst, ty
