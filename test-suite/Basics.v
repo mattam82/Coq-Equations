@@ -21,13 +21,16 @@ congS eq_refl := eq_refl.
 (* Equations antisym {x y : nat} (p : le x y) (q : le y x) : x = y := *)
 (* antisym (le_S n m p) (le_S ?(m) ?(n) q) := congS (antisym p q). *)
 
+
 Module TestF.
-  Equations f (n : nat) : nat :=
+
+  Equations? f (n : nat) : nat :=
   f 0 := 42 ;
   f (S m)  with f m :=
   {
     f (S m) IH := _
   }.
+  Proof. refine IH. Defined.
 
 End TestF.
 
@@ -187,8 +190,6 @@ Section foo.
   unzipv []v := ([]v, []v) ;
   unzipv ((x, y) |:| v) with unzipv v := {
     | pair xs ys := (cons x xs, cons y ys) }.
-  Next Obligation. clear. constructor. constructor. Defined.
-    (* Proof. clear. intros. constructor. constructor. Defined. *)
 End foo.
 
 Typeclasses Transparent vector_subterm.

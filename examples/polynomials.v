@@ -127,14 +127,13 @@ Derive Signature NoConfusion NoConfusionHom Subterm for mono.
 (** Our first interesting definition computes the coefficient in [Z] by which
     a monomial [m] is multiplied in a polynomial [p]. *)
 
-Equations? get_coef {n} (m : mono n) {b} (p : poly b n) : Z by wf (pack m) mono_subterm :=
+Equations get_coef {n} (m : mono n) {b} (p : poly b n) : Z by wf (pack m) mono_subterm :=
 get_coef mono_z     poly_z       := 0%Z;
 get_coef mono_z     (poly_c z _) := z;
 get_coef (mono_l m) (poly_l p)   := get_coef m p;
 get_coef (mono_l m) (poly_s p _) := get_coef m p;
 get_coef (mono_s m) (poly_l _)   := 0%Z;
 get_coef (mono_s m) (poly_s p1 p2) := get_coef m p2.
-Proof. all:repeat constructor. Defined.
 
 (** The definition can be done using either the usual structural
   recursion of [Coq] or well-founded recursion. If we use structural

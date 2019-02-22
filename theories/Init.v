@@ -48,6 +48,15 @@ Ltac program_simplify ::=
   subst*; autoinjections ; try discriminates ;
     try (solve [ red ; intros ; destruct_conjs ; autoinjections ; discriminates ]).
 
+Ltac solve_wf :=
+  match goal with
+    |- ?R _ _ => try typeclasses eauto with subterm_relation Below rec_decision
+  end.
+
+(* program_simpl includes a [typeclasses eauto with program] which solves, e.g. [nat] goals trivially.
+   We remove it. *)
+Ltac program_simpl ::= program_simplify ; try program_solve_wf; try solve_wf.
+
 (** The sigma type used by Equations. *)
 
 Set Primitive Projections.
