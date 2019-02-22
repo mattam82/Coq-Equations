@@ -22,7 +22,7 @@
   \texttt{where clause} & where & \Coloneqq & \coqdockw{where}~p `| \coqdockw{where}~not\\
   \texttt{notation} & not & \Coloneqq & \texttt{''}string\texttt{''}~\textcoloneq~term~(\texttt{:}~scope)?\\
   \texttt{program} & p, prog & \Coloneqq & \coqdoccst{f}~Γ~\texttt{:}~τ~(\coqdockw{by}~\textit{annot})?~\textcoloneq~clauses \\
-  \texttt{annotation} & annot & \Coloneqq & \kw{struct}~x `| \kw{wf}~t~R \\
+  \texttt{annotation} & annot & \Coloneqq & \kw{struct}~x `| \kw{wf}~t~R? \\
   \texttt{clauses} & clauses & \Coloneqq & \vec{c} `| \texttt{\{}\,\vec{c}\,\texttt{\}} \\
   \texttt{user clause} & c & \Coloneqq & \coqdoccst{f}~\vec{up}~n `|
                                          \vecplus{\texttt{|}~up}~n\\
@@ -51,7 +51,9 @@ inside a user node. In the \kw{wf} annotation, the first term should be
 typable in the program's context $\Gamma$ (and possibly the enclosing
 context for nested programs) with a \emph{closed} type $\tau$
 (e.g. \coqdocind{nat}), while the relation must be a locally closed term
-of type $\tau "->" \tau "->" \kw{Prop}$.  The $\lambda\{$ syntax (using
+of type $\tau "->" \tau "->" \kw{Prop}$. In case the relation is not
+given explicitely, \Equations searches for an instance of the class
+\ind{WellFounded} on the carrier type. The $\lambda\{$ syntax (using
 a unicode lambda attached to a curly brace) allows to input
 pattern-matching lambdas in a term, which are elaborated to \kw{where}
 clauses. Local \kw{where} clauses can be used to define recursive
