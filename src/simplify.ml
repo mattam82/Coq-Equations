@@ -912,6 +912,16 @@ let or_fun (f : simplification_fun) (g : simplification_fun) : simplification_fu
   with CannotSimplify _ ->
     evd := evd0; g env evd gl
 
+let or_fun_e1 (f : simplification_fun) (g : simplification_fun) : simplification_fun =
+  fun (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) ->
+  let evd0 = !evd in
+  try f env evd gl
+  with CannotSimplify e ->
+    evd := evd0;
+    try g env evd gl
+    with CannotSimplify _ ->
+      evd := evd0; raise (CannotSimplify e)
+
 let _expand_many rule env evd ((ctx, ty) : goal) : simplification_rules =
   (* FIXME: maybe it's too brutal/expensive? *)
   let ty = Reductionops.whd_all env !evd ty in
@@ -998,10 +1008,10 @@ and simplify_one ((loc, rule) : Loc.t option * simplification_rule) :
        try compose_fun (or_fun check_block_notprod aux)
              first env evd gl
        with Blocked -> identity env evd gl
-     in handle_error (or_fun aux (remove_one_sigma ~only_nondep:true))
+     in handle_error (or_fun_e1 aux (remove_one_sigma ~only_nondep:true))
   | Step step -> wrap_handle (fun _ _ _ -> step)
   | Infer_one -> handle_error (or_fun (with_retry apply_noConfusions)
-                                 (or_fun (wrap (infer_step ?loc ~isSol:false))
+                                 (or_fun_e1 (wrap (infer_step ?loc ~isSol:false))
                                     (remove_one_sigma ~only_nondep:true)))
   | Infer_direction -> wrap_handle (infer_step ?loc ~isSol:true)
 
