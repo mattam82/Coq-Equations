@@ -11,7 +11,7 @@
    features through a handful of examples. We start our Coq primer
    session by importing the [Equations] module.  *)
 
-Require Import Arith Omega.
+Require Import Arith Omega Program.
 From Equations Require Import Equations.
 
 (* begin hide *)
@@ -421,8 +421,6 @@ diag' (Vcons (Vcons a v) v') :=
     The simplest example of this is using the [lt] order on natural numbers
     to define a recursive definition of identity: *)
 
-Require Import Equations.Subterm.
-
 Equations id (n : nat) : nat by wf n lt :=
   id 0 := 0;
   id (S n') := S (id n').
@@ -472,23 +470,23 @@ Module UnzipVect.
   (** We can use the packed relation to do well-founded recursion on the vector.
       Note that we do a recursive call on a substerm of type [vector A n] which
       must be shown smaller than a [vector A (S n)]. They are actually compared
-      at the packed type [{ n : nat & vector A n}]. *)
+      at the packed type [{ n : nat & vector A n}]. The default obligation
+      tactic defined in [Equations.Init] includes a proof-search
+      for [subterm] proofs which can resolve the recursive call obligation
+      automatically in this case. *)
 
-  Equations? unzip {n} (v : vector (A * B) n) : vector A n * vector B n
+  Equations unzip {n} (v : vector (A * B) n) : vector A n * vector B n
     by wf (signature_pack v) (@t_subterm (A * B)) :=
   unzip Vnil := (Vnil, Vnil) ;
   unzip (Vector.cons (pair x y) v) with unzip v := {
   | pair xs ys := (Vector.cons x xs, Vector.cons y ys) }.
-  (** One can easily show that the call is well-founded using the constructed
-      subterm relation. *)
-  Proof. do 2 constructor. Defined.
 
 End UnzipVect.
 
 (** For the diagonal, it is easier to give [n] as the decreasing argument
     of the function, even if the pattern-matching itself is on vectors: *)
 
-Equations diag' {A n} (v : vector (vector A n) n) : vector A n by wf n lt :=
+Equations diag' {A n} (v : vector (vector A n) n) : vector A n by wf n :=
 diag' Vnil := Vnil ;
 diag' (Vcons (Vcons a v) v') :=
   Vcons a (diag' (vmap vtail v')).

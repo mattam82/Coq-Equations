@@ -53,7 +53,9 @@ Ltac solve_wf :=
 
 (* program_simpl includes a [typeclasses eauto with program] which solves, e.g. [nat] goals trivially.
    We remove it. *)
-Ltac program_simpl ::= program_simplify ; try program_solve_wf; try solve_wf.
+Ltac equations_simpl := program_simplify ; try program_solve_wf; try solve_wf.
+
+Global Obligation Tactic := equations_simpl.
 
 (** The sigma type used by Equations. *)
 
