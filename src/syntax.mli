@@ -134,6 +134,7 @@ type program_rec_info =
 type program_info = {
   program_loc : Loc.t;
   program_id : Id.t;
+  program_orig_type : EConstr.t; (* The original type *)
   program_sign : EConstr.rel_context;
   program_arity : EConstr.t;
   program_rec : program_rec_info option;

@@ -641,7 +641,7 @@ let define_mutual_nested_csts flags env evd get_prog progs =
   in
   let mutual =
     List.map (fun (p, prog, fix) ->
-        let ty = Syntax.program_type p in
+        let ty = p.Syntax.program_orig_type in
         let kn, (evm, term) =
           declare_constant p.program_id fix (Some ty) flags.polymorphic
             !evd Decl_kinds.(IsDefinition Fixpoint)
@@ -653,7 +653,7 @@ let define_mutual_nested_csts flags env evd get_prog progs =
   let args = List.rev_map (fun (p', _, term) -> term) mutual in
   let nested =
     List.map (fun (p, prog, fix) ->
-        let ty = Syntax.program_type p in
+        let ty = p.Syntax.program_orig_type in
         let body = Vars.substl args fix in
         let kn, (evm, e) =
           declare_constant p.program_id body (Some ty) flags.polymorphic
@@ -739,7 +739,7 @@ let make_programs env evd flags ?(define_constants=false) programs =
      if define_constants then
        let (cst, (evm, e)) =
          Equations_common.declare_constant p.program_id
-           term (Some (Syntax.program_type p))
+           term (Some (p.Syntax.program_orig_type))
            flags.polymorphic !evd (Decl_kinds.(IsDefinition Definition))
        in
        evd := evm;

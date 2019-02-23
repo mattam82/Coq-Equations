@@ -424,6 +424,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
       } in
     let p = Syntax.{program_loc = default_loc;
                     program_id = Names.Id.of_string "dummy";
+                    program_orig_type = it_mkProd_or_LetIn ty ctx;
                     program_impls = [];
                     program_rec = None;
                     program_sign = ctx;

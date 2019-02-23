@@ -656,11 +656,13 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot
   in
   let body = it_mkLambda_or_LetIn arity sign in
   let _ = if not with_evars then Pretyping.check_evars env Evd.empty !evd body in
+  let program_orig_type = it_mkProd_or_LetIn arity sign in
   let () = evd := Evd.minimize_universes !evd in
   match rec_annot with
   | None ->
     { program_loc = loc;
       program_id = i;
+      program_orig_type;
       program_sign = sign;
       program_arity = arity;
       program_rec = None;
@@ -668,6 +670,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot
   | Some (Structural ann) ->
     { program_loc = loc;
       program_id = i;
+      program_orig_type;
       program_sign = sign;
       program_arity = arity;
       program_rec = Some (Structural ann);
@@ -676,6 +679,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot
     let compinfo = (loc, i) in
     { program_loc = loc;
       program_id = i;
+      program_orig_type;
       program_sign = sign;
       program_arity = arity;
       program_rec = Some (WellFounded (c, r, compinfo));
