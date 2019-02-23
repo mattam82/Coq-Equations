@@ -264,6 +264,7 @@ type program_rec_info =
 type program_info = {
   program_loc : Loc.t;
   program_id : Id.t;
+  program_orig_type : EConstr.t; (* The original type *)
   program_sign : EConstr.rel_context;
   program_arity : EConstr.t;
   program_rec : program_rec_info option;
@@ -271,7 +272,8 @@ type program_info = {
 }
 
 let map_program_info f p =
-  { p with program_sign = map_rel_context f p.program_sign;
+  { p with program_orig_type = f p.program_orig_type;
+           program_sign = map_rel_context f p.program_sign;
            program_arity = f p.program_arity }
 
 let chole c loc =

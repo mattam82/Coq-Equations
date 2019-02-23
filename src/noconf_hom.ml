@@ -217,6 +217,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
                   program_id = id;
                   program_impls = [];
                   program_rec = None;
+                  program_orig_type = it_mkProd_or_LetIn s fullbinders;
                   program_sign = fullbinders;
                   program_arity = s}
   in
@@ -227,6 +228,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   let hook _ p terminfo =
     let _proginfo =
       Syntax.{ program_loc = Loc.make_loc (0,0); program_id = id;
+               program_orig_type = it_mkProd_or_LetIn s fullbinders;
         program_sign = fullbinders;
         program_arity = s;
         program_rec = None;
