@@ -1262,7 +1262,7 @@ and covering ?(check_unused=true) env evars p data (clauses : pre_clause list)
        pr_problem p env !evars prob)
 
 let program_covering env evd data p clauses =
-  let clauses = List.map (interp_eqn env data.notations p) clauses in
+  let clauses = List.map (interp_eqn (push_rel_context data.fixdecls env) data.notations p) clauses in
   let sigma, p = adjust_sign_arity env !evd p clauses in
   let () = evd := sigma in
   let p', prob, arity, extpats, rec_node = compute_rec_data env evd data [] [] p in
