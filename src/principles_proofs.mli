@@ -49,7 +49,7 @@ val aux_ind_fun :
   Splitting.splitting option ->
   Names.Id.t list -> Splitting.splitting -> Proofview.V82.tac
 val ind_fun_tac :
-  Syntax.rec_type option ->
+  Syntax.rec_type ->
   Constr.t ->
   ind_info ->
   Names.Id.t ->

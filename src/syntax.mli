@@ -105,11 +105,14 @@ val pr_user_clause :
 
 val ppclause : clause -> unit
 
-type rec_type =
+type rec_type_item =
   | Guarded of (Id.t * rec_annot) list (* for mutual rec *)
-  | Logical of Id.t with_loc
+  | Logical of Id.t with_loc (* for nested wf rec *)
 
-val is_structural : rec_type option -> bool
+type rec_type = rec_type_item option list
+
+val is_structural : rec_type -> bool
+val has_logical : rec_type -> bool
 val is_rec_call : Evd.evar_map -> Id.t -> EConstr.constr -> bool
 val next_ident_away : Id.t -> Id.Set.t ref -> Id.t
 

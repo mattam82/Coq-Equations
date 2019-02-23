@@ -67,22 +67,25 @@ val lets_of_ctx :
 
 
 type int_data = {
-  rec_info : rec_type option;
+  rec_type : rec_type;
   fixdecls : rel_context;
   flags : flags;
+  program_mode : bool;
   intenv : Constrintern.internalization_env;
   notations : (Names.lstring * Constrexpr.constr_expr *
                Notation_term.scope_name option) list
 }
 
-val interp_program_body : program_mode:bool -> Environ.env ->
-           Evd.evar_map -> EConstr.rel_context ->
-           Constrintern.internalization_env ->
-           Vernacexpr.decl_notation list ->
-           Syntax.program_body ->
-           EConstr.types option -> Evd.evar_map * EConstr.constr
+val add_wfrec_implicits : Syntax.rec_type ->
+           Glob_term.glob_constr -> Glob_term.glob_constr
 
-val interp_constr_in_rhs_env : program_mode:bool -> Environ.env ->
+val interp_program_body : Environ.env ->
+  Evd.evar_map -> EConstr.rel_context ->
+  int_data ->
+  Syntax.program_body ->
+  EConstr.types option -> Evd.evar_map * EConstr.constr
+
+val interp_constr_in_rhs_env : Environ.env ->
   Evd.evar_map ref ->
   int_data ->
   EConstr.rel_context * Environ.env * int * EConstr.Vars.substl ->
@@ -91,7 +94,7 @@ val interp_constr_in_rhs_env : program_mode:bool -> Environ.env ->
   EConstr.t option ->
   EConstr.constr * EConstr.types
 
-val interp_constr_in_rhs : program_mode:bool ->
+val interp_constr_in_rhs :
   env ->
   rel_context ->
   Evd.evar_map ref ->
@@ -168,7 +171,6 @@ val env_of_rhs :
 (** Covering computation *)
 
 val covering_aux :
-  program_mode:bool ->
   env ->
   Evd.evar_map ref ->
   program_info -> int_data ->
@@ -180,7 +182,7 @@ val covering_aux :
   rel_context -> constr ->
   ((pre_clause * (int * int)) list * splitting) option
 
-val covering : program_mode:bool -> ?check_unused:bool ->
+val covering :  ?check_unused:bool ->
   env ->
   Evd.evar_map ref ->
   program_info -> int_data ->
@@ -192,7 +194,7 @@ val adjust_sign_arity : Environ.env ->
   Evd.evar_map -> program_info -> Syntax.pre_clause list ->
   Evd.evar_map * program_info
 
-val compute_recinfo : program_info list -> rec_type option
+val compute_rec_type : rec_type -> program_info list -> rec_type
 val print_recinfo : program_info list -> unit
 val compute_fixdecls_data :
            Environ.env ->
@@ -245,7 +247,6 @@ val interp_arity : Environ.env ->
   program_info
 
 val coverings :
-  program_mode:bool ->
   Environ.env ->
   Evd.evar_map ref ->
   int_data ->

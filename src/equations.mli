@@ -21,7 +21,7 @@ val define_by_eqs : poly:bool -> program_mode:bool -> open_proof:bool ->
 
 val define_principles :
   flags ->
-  Syntax.rec_type option ->
+  Syntax.rec_type ->
   EConstr.t list ->
   (program * compiled_program_info) list -> unit
 

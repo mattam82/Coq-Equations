@@ -1219,6 +1219,12 @@ type 'a hook =
   | HookImmediate : (program -> term_info -> 'a) -> 'a hook
   | HookLater : (int -> program -> term_info -> unit) -> unit hook
 
+let rec_type_ids =
+  CList.map_append
+    (function Some (Guarded l) -> List.map fst l
+            | Some (Logical ids) -> [snd ids]
+            | None -> [])
+
 let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false) programs : a hook -> a  =
   fun hook ->
   let call_hook recobls p helpers uctx locality gr (hook : program -> term_info -> a) : a =
@@ -1249,12 +1255,7 @@ let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false)
     let () = List.iter (fun (cst, _) -> add_hint true (program_id (List.hd programs)) cst) helpers in
     hook recobls helpers ustate Decl_kinds.Global programs
   in
-  let recids =
-    match is_recursive with
-    | Some (Guarded l) -> List.map fst l
-    | Some (Logical id) -> [snd id]
-    | None -> []
-  in
+  let recids = rec_type_ids is_recursive in
   match hook with
   | HookImmediate f ->
     assert(not (Evd.has_undefined !evd));

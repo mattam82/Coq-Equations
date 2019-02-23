@@ -139,9 +139,9 @@ let clean_rec_calls sigma (hyps, c) =
 
 let head c = fst (Constr.decompose_app c)
 
-let is_applied_to_structarg f is_rec lenargs =
+let rec is_applied_to_structarg f is_rec lenargs =
   match is_rec with
-  | Some (Guarded ids) -> begin
+  | Some (Guarded ids) :: rest -> begin
      try
        let kind =
          CList.find_map (fun (f', k) -> if Id.equal f f' then Some k else None) ids
@@ -149,9 +149,10 @@ let is_applied_to_structarg f is_rec lenargs =
        match kind with
        | MutualOn (Some (idx,_)) | NestedOn (Some (idx,_)) -> Some (lenargs > idx)
        | MutualOn None | NestedOn None | NestedNonRec -> Some true
-     with Not_found -> None
+     with Not_found -> is_applied_to_structarg f rest lenargs
     end
-  | _ -> None
+  | _ :: rest -> is_applied_to_structarg f rest lenargs
+  | [] -> None
 
 let is_user_obl sigma user_obls f =
   match EConstr.kind sigma f with
@@ -876,9 +877,9 @@ let subst_rec_programs env evd ps =
   let programs' = subst_programs [] [] 0 ps (List.map (fun p -> p.program_term) ps) in
   !where_map, programs'
 
-let unfold_programs env evd flags rec_info progs =
+let unfold_programs env evd flags rec_type progs =
   let where_map, progs' = subst_rec_programs env !evd (List.map fst progs) in
-  if PathMap.is_empty where_map && (match rec_info with Some (Logical _) -> false | _ -> true) then
+  if PathMap.is_empty where_map && not (has_logical rec_type) then
     let one_program (p, prog) p' =
       let norecprob = Context_map.id_subst (program_sign p) in
       let eqninfo =
@@ -906,7 +907,7 @@ let unfold_programs env evd flags rec_info progs =
                   program_arity = arity }
       in
       let unfoldp = make_single_program env evd flags unfpi prob unfoldp.program_splitting None in
-      let unfoldp, term_info = define_program_immediate env evd None [] flags ~unfold:true unfoldp in
+      let unfoldp, term_info = define_program_immediate env evd [None] [] flags ~unfold:true unfoldp in
       let eqninfo =
         Principles_proofs.{ equations_id = i;
                             equations_where_map = where_map;

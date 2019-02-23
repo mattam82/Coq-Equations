@@ -24,9 +24,10 @@ open EConstr
 open EConstr.Vars   
 
 type int_data = {
-  rec_info : rec_type option;
+  rec_type : rec_type;
   fixdecls : rel_context;
   flags : flags;
+  program_mode : bool;
   intenv : Constrintern.internalization_env;
   notations : (Names.lstring * Constrexpr.constr_expr *
                Notation_term.scope_name option) list
@@ -267,14 +268,50 @@ let env_of_rhs evars ctx env s lets =
  *   in
  *   (List.rev ctx', id_pats ctx, ctx) *)
 
-let interp_program_body ~program_mode env sigma ctx impls body ty =
+let is_wf_ref id rec_type =
+  List.exists (function Some (Logical (_, id')) -> Id.equal id id' | _ -> false) rec_type
+
+let add_wfrec_implicits rec_type c =
+  let open Glob_term in
+  if has_logical rec_type then
+    let rec aux c =
+      let maprec a = Glob_ops.map_glob_constr_left_to_right aux a in
+      let mapargs ts = List.map aux ts in
+      DAst.with_loc_val (fun ?loc g ->
+          match g with
+          | GApp (fn, args) ->
+            DAst.with_loc_val (fun ?loc gfn ->
+                match gfn with
+                | GVar fid when is_wf_ref fid rec_type ->
+                  let kind = Evar_kinds.{ qm_obligation = Define false;
+                                          qm_name = Anonymous;
+                                          qm_record_field = None }
+                  in
+                  let newarg = GHole (Evar_kinds.QuestionMark kind, Namegen.IntroAnonymous, None) in
+                  let newarg = DAst.make ?loc newarg in
+                  let args' = List.append (mapargs args) [newarg] in
+                  DAst.make ?loc (GApp (fn, args'))
+                | _ -> maprec c) fn
+          | _ -> maprec c) c
+    in aux c
+  else c
+
+let interp_constr_evars_impls env sigma data expected_type c =
+  let c = intern_gen expected_type ~impls:data.intenv env sigma c in
+  let c = add_wfrec_implicits data.rec_type c in
+  let imps = Implicit_quantifiers.implicits_of_glob_constr ~with_products:(expected_type == Pretyping.IsType) c in
+  let flags = Pretyping.{ all_no_fail_flags with program_mode = data.program_mode } in
+  let sigma, c = Pretyping.understand_tcc ~flags env sigma ~expected_type c in
+  sigma, (c, imps)
+
+let interp_program_body env sigma ctx data body ty =
   match body with
   | ConstrExpr c ->
     let env = push_rel_context ctx env in
     let sigma, (c, _) =
       match ty with
-      | None -> interp_constr_evars_impls ~program_mode env sigma ~impls c
-      | Some ty -> interp_casted_constr_evars_impls ~program_mode env sigma ~impls c ty
+      | None -> interp_constr_evars_impls env sigma data Pretyping.WithoutTypeConstraint c
+      | Some ty -> interp_constr_evars_impls env sigma data (Pretyping.OfType ty) c
     in
     sigma, c
   | Constr c ->
@@ -294,11 +331,12 @@ let interp_program_body ~program_mode env sigma ctx impls body ty =
     in
     sigma, c
 
-let interp_program_body ~program_mode env evars ctx intenv notations c ty =
+let interp_program_body env evars ctx data c ty =
   Metasyntax.with_syntax_protection (fun () ->
     let ctx' = List.map EConstr.Unsafe.to_rel_decl ctx in
-    List.iter (Metasyntax.set_notation_for_interpretation (Environ.push_rel_context ctx' env) intenv) notations;
-    interp_program_body ~program_mode env evars ctx intenv c ty) ()
+    List.iter (Metasyntax.set_notation_for_interpretation (Environ.push_rel_context ctx' env) data.intenv)
+      data.notations;
+    interp_program_body env evars ctx data c ty) ()
   (* try  with PretypeError (env, evm, e) ->
    *   user_err_loc (dummy_loc, "interp_program_body",
    *                 str "Typechecking failed: " ++  Himsg.explain_pretype_error env evm e) *)
@@ -311,10 +349,10 @@ let interp_program_body ~program_mode env evars ctx intenv notations c ty =
       *                 str ":" ++
       *                 str (Printexc.to_string e)) *)
 
-let interp_constr_in_rhs_env ~program_mode env evars data (ctx, envctx, liftn, subst) substlift c ty =
+let interp_constr_in_rhs_env env evars data (ctx, envctx, liftn, subst) substlift c ty =
   match ty with
   | None ->
-    let sigma, c = interp_program_body ~program_mode env !evars ctx data.intenv data.notations c None in
+    let sigma, c = interp_program_body env !evars ctx data c None in
     let c' = substnl subst substlift c in
     let sigma = Typeclasses.resolve_typeclasses ~filter:Typeclasses.all_evars env sigma in
     let c' = nf_evar sigma c' in
@@ -323,16 +361,16 @@ let interp_constr_in_rhs_env ~program_mode env evars data (ctx, envctx, liftn, s
   | Some ty -> 
     let ty' = lift liftn ty in
     let ty' = nf_evar !evars ty' in
-    let sigma, c = interp_program_body ~program_mode env !evars ctx data.intenv data.notations c (Some ty') in
-    evars := Typeclasses.resolve_typeclasses 
+    let sigma, c = interp_program_body env !evars ctx data c (Some ty') in
+    evars := Typeclasses.resolve_typeclasses
         ~filter:Typeclasses.all_evars env sigma;
     let c' = nf_evar !evars (substnl subst substlift c) in
     c', nf_evar !evars (substnl subst substlift ty')
 
-let interp_constr_in_rhs ~program_mode env ctx evars data ty s lets c =
+let interp_constr_in_rhs env ctx evars data ty s lets c =
   try
     let env' = env_of_rhs evars ctx env s lets in
-    interp_constr_in_rhs_env ~program_mode env evars data env' 0 c ty
+    interp_constr_in_rhs_env env evars data env' 0 c ty
   with Evarsolve.IllTypedInstance (env, t, u) ->
     anomaly (str"Ill-typed instance in interp_constr_in_rhs")
 
@@ -571,10 +609,10 @@ let check_unused_clauses env cl =
   | [] -> ()
 
 
-let compute_recinfo programs =
+let compute_rec_type context programs =
   if List.for_all (fun p -> match p.Syntax.program_rec with
       | None -> true
-      | Some _ -> false) programs then None
+      | Some _ -> false) programs then None :: context
   else if List.for_all (fun p -> match p.Syntax.program_rec with
       | Some (Structural _)
       | None -> true
@@ -585,13 +623,13 @@ let compute_recinfo programs =
                          | Some (Structural ann) -> ann
                          | None -> NestedNonRec
                          | _ -> assert false) programs
-    in Some (Guarded recids)
+    in Some (Guarded recids) :: context
   else begin
     if List.length programs != 1 then
       user_err_loc (None, "equations", Pp.str "Mutual well-founded definitions are not supported");
     let p = List.hd programs in
     match p.program_rec with
-    | Some (WellFounded (_, _, info)) -> Some (Logical info)
+    | Some (WellFounded (_, _, newinfo)) -> Some (Logical newinfo) :: context
     | _ -> assert false
   end
 
@@ -602,8 +640,8 @@ let print_recinfo programs =
 
 let compute_fixdecls_data env evd ?data programs =
   let protos = List.map (fun p ->
-            let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
-            (p.program_id, ty, p.program_impls)) programs
+      let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
+      (p.program_id, ty, p.program_impls)) programs
   in
   let names, tys, impls = List.split3 protos in
   let data =
@@ -687,7 +725,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot
 
 let recursive_patterns env progid rec_info =
   match rec_info with
-  | Some (Guarded l) ->
+  | Some (Guarded l) :: _ ->
     let addpat (id, k) =
       match k with
       | NestedNonRec when Id.equal id progid -> None
@@ -814,7 +852,7 @@ let compute_rec_data env evars data lets subst p =
         let len = length data.fixdecls in
         len, lift_rel_context len p.program_sign @ data.fixdecls
     in
-    let extpats = recursive_patterns env p.program_id data.rec_info in
+    let extpats = recursive_patterns env p.program_id data.rec_type in
     let sign, ctxpats =
       let sign = sign @ lets in
       let extpats' = pats_of_sign lets in
@@ -865,7 +903,7 @@ let compute_rec_data env evars data lets subst p =
     let p = { p with program_sign = p.program_sign @ lets } in
     p, id_subst p.program_sign, p.program_arity, pats_of_sign lets, None
 
-let rec covering_aux ~program_mode env evars p data prev (clauses : (pre_clause * (int * int)) list) path
+let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int)) list) path
     (ctx,pats,ctx' as prob) extpats lets ty =
   if !Equations_common.debug then
     Feedback.msg_debug Pp.(str"Launching covering on "++ pr_preclauses env (List.map fst clauses) ++
@@ -884,7 +922,7 @@ let rec covering_aux ~program_mode env evars p data prev (clauses : (pre_clause 
        (* let prob = compose_subst env ~sigma:!evars renaming prob in *)
        let clauseid = Id.of_string ("clause_" ^ string_of_int idx ^ (if cnt = 0 then "" else "_" ^ string_of_int cnt)) in
        let interp =
-         interp_clause ~program_mode env evars p data prev clauses' (clauseid :: path) prob
+         interp_clause env evars p data prev clauses' (clauseid :: path) prob
            extpats lets ty ((loc,lhs,rhs), cnt) s
        in
        (match interp with
@@ -896,7 +934,7 @@ let rec covering_aux ~program_mode env evars p data prev (clauses : (pre_clause 
 
      | UnifFailure ->
        if !Equations_common.debug then Feedback.msg_debug (str "failed");
-       covering_aux ~program_mode env evars p data (clause :: prev) clauses' path prob extpats lets ty
+       covering_aux env evars p data (clause :: prev) clauses' path prob extpats lets ty
 
      | UnifStuck -> 
        if !Equations_common.debug then Feedback.msg_debug (str "got stuck");
@@ -909,7 +947,7 @@ let rec covering_aux ~program_mode env evars p data prev (clauses : (pre_clause 
             | Some (Splitted (var, newctx, s)) ->
               let prob' = (newctx, pats, ctx') in
               let coverrec clauses s =
-                covering_aux ~program_mode env evars p data []
+                covering_aux env evars p data []
                   clauses path 
                   (compose_subst env ~sigma:!evars s prob')
                   extpats
@@ -961,7 +999,7 @@ let rec covering_aux ~program_mode env evars p data prev (clauses : (pre_clause 
         (str "Non-exhaustive pattern-matching, no clause found for:" ++ fnl () ++
          pr_problem p env !evars prob))
 
-and interp_clause ~program_mode env evars p data prev clauses' path (ctx,pats,ctx' as prob)
+and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
     extpats lets ty
     ((loc,lhs,rhs), used) (s, uinnacs, innacs) =
   let env' = push_rel_context_eos ctx env evars in
@@ -972,7 +1010,7 @@ and interp_clause ~program_mode env evars p data prev clauses' path (ctx,pats,ct
   in
   let () = (* Check innaccessibles are correct *)
     let check_uinnac (user, t) =
-      let userc, usercty = interp_constr_in_rhs ~program_mode env ctx evars data None s lets (ConstrExpr user) in
+      let userc, usercty = interp_constr_in_rhs env ctx evars data None s lets (ConstrExpr user) in
       match t with
       | PInac t ->
         begin match Reductionops.infer_conv env' !evars userc t with
@@ -1016,9 +1054,9 @@ and interp_clause ~program_mode env evars p data prev clauses' path (ctx,pats,ct
   | Program (c,w) ->
     let (ctx, envctx, liftn, subst as letctx) = env_of_rhs evars ctx env s lets in
     let data, envctx, lets, nwheres, env', coverings, lift, subst =
-      interp_wheres ~program_mode env ctx evars path data s lets letctx w in
+      interp_wheres env ctx evars path data s lets letctx w in
     let c', ty' =
-      interp_constr_in_rhs_env ~program_mode env evars data (lets, envctx, lift, subst)
+      interp_constr_in_rhs_env env evars data (lets, envctx, lift, subst)
         nwheres c (Some (Vars.lift nwheres ty)) in
     (* Compute the coverings using type information from the term using
        the where clauses *)
@@ -1040,7 +1078,7 @@ and interp_clause ~program_mode env evars p data prev clauses' path (ctx,pats,ct
       | c :: cs -> c, cs
       | [] -> assert false
     in
-    let cconstr, cty = interp_constr_in_rhs ~program_mode env ctx evars data None s lets (ConstrExpr c) in
+    let cconstr, cty = interp_constr_in_rhs env ctx evars data None s lets (ConstrExpr c) in
 
     let vars = variables_of_pats pats in
     let newctx, pats', pats'' = instance_of_pats env !evars ctx vars in
@@ -1161,7 +1199,7 @@ and interp_clause ~program_mode env evars p data prev clauses' path (ctx,pats,ct
       in specialize_rel_context !evars (pi2 cmap) newlets
     in
     let clauses' = List.mapi (fun i x -> x, (succ i, 0)) cls' in
-    match covering_aux ~program_mode env evars p data [] clauses' path' newprob [] lets' newty with
+    match covering_aux env evars p data [] clauses' path' newprob [] lets' newty with
     | None ->
       errorlabstrm "deppat"
         (str "Unable to build a covering for with subprogram:" ++ fnl () ++
@@ -1188,7 +1226,7 @@ and interp_clause ~program_mode env evars p data prev clauses' path (ctx,pats,ct
 (*     (str "Found overlapping clauses:" ++ fnl () ++ pr_clauses env (map fst prevmatch) ++ *)
 (*        spc () ++ str"refining" ++ spc () ++ pr_context_map env prob) *)
 
-and interp_wheres ~program_mode env0 ctx evars path data s lets
+and interp_wheres env0 ctx evars path data s lets
     (ctx, envctx, liftn, subst)
     (w : (pre_prototype * pre_equation list) list * Vernacexpr.decl_notation list) =
   let notations = snd w in
@@ -1203,12 +1241,14 @@ and interp_wheres ~program_mode env0 ctx evars path data s lets
 
     let pre_type = Syntax.program_type p in
     let fixdecls = [Context.Rel.Declaration.LocalAssum (Name id, pre_type)] in
+    let rec_type = compute_rec_type data.rec_type [p] in
+    let rec_data = {data with rec_type; fixdecls} in
     let p, problem, arity, extpats, rec_info =
-      compute_rec_data env evars {data with rec_info = compute_recinfo [p];
-                                      fixdecls = fixdecls} lets subst p in
+      compute_rec_data env evars rec_data lets subst p in
     let intenv = Constrintern.compute_internalization_env ~impls:data.intenv
         env !evars Constrintern.Recursive [id] [pre_type] [p.program_impls]
     in
+    let rec_data = { rec_data with intenv; notations = data.notations @ notations } in
     let data = { data with intenv; notations = data.notations @ notations } in
     let path = id :: path in
 
@@ -1225,7 +1265,7 @@ and interp_wheres ~program_mode env0 ctx evars path data s lets
     let program, term =
       match t with
       | Some ty (* non-delayed where clause, compute term right away *) ->
-        let splitting = covering ~program_mode env0 evars p data clauses path problem extpats arity in
+        let splitting = covering env0 evars p rec_data clauses path problem extpats arity in
         let program = make_single_program env0 evars data.flags p problem splitting rec_info in
         Lazy.from_val (w' program), program.program_term
       | None ->
@@ -1239,7 +1279,7 @@ and interp_wheres ~program_mode env0 ctx evars path data s lets
         let () = evars := sigma in
         let ev = destEvar !evars term in
         let cover () =
-          let splitting = covering ~program_mode env0 evars p data clauses path problem extpats arity in
+          let splitting = covering env0 evars p rec_data clauses path problem extpats arity in
           let program = make_single_program env0 evars data.flags p problem splitting rec_info in
           evars := Evd.define (fst ev) program.program_term !evars; w' program
         in
@@ -1253,11 +1293,11 @@ and interp_wheres ~program_mode env0 ctx evars path data s lets
     List.fold_left aux (data, ctx, 0, [], push_rel_context ctx env0) (fst w)
   in (data, envctx, lets, nlets, push_rel_context ctx env0, coverings, liftn, subst)
 
-and covering ~program_mode ?(check_unused=true) env evars p data (clauses : pre_clause list)
+and covering ?(check_unused=true) env evars p data (clauses : pre_clause list)
     path prob extpats ty =
   let clauses = (List.mapi (fun i x -> (x,(succ i,0))) clauses) in
   (*TODO eta-expand clauses or type *)
-  match covering_aux ~program_mode env evars p data [] clauses path prob extpats [] ty with
+  match covering_aux env evars p data [] clauses path prob extpats [] ty with
   | Some (clauses, cov) ->
     let () = if check_unused then check_unused_clauses env clauses in
     cov
@@ -1266,15 +1306,15 @@ and covering ~program_mode ?(check_unused=true) env evars p data (clauses : pre_
       (str "Unable to build a covering for:" ++ fnl () ++
        pr_problem p env !evars prob)
 
-let program_covering ~program_mode env evd data p clauses =
+let program_covering env evd data p clauses =
   let clauses = List.map (interp_eqn (push_rel_context data.fixdecls env) data.notations p) clauses in
   let sigma, p = adjust_sign_arity env !evd p clauses in
   let () = evd := sigma in
   let p', prob, arity, extpats, rec_node = compute_rec_data env evd data [] [] p in
   let splitting =
-    covering ~program_mode env evd p data clauses [p.program_id] prob extpats arity
+    covering env evd p data clauses [p.program_id] prob extpats arity
   in (p', prob, splitting, rec_node)
 
-let coverings ~program_mode env evd data programs equations =
-  let splittings = List.map2 (program_covering ~program_mode env evd data) programs equations in
+let coverings env evd data programs equations =
+  let splittings = List.map2 (program_covering env evd data) programs equations in
   make_programs env evd data.flags splittings

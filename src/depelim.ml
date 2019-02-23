@@ -416,8 +416,9 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
     (* FIXME Not very clean. *)
     let data =
       Covering.{
-        rec_info = None;
+        rec_type = [None];
         flags = { polymorphic = true; open_proof = false; with_eqns = false; with_ind = false };
+        program_mode = false;
         fixdecls = [];
         intenv = Constrintern.empty_internalization_env;
         notations = []
@@ -438,7 +439,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
       let evd = ref evars in
       (* Produce a splitting tree. *)
       let split : Splitting.splitting =
-        Covering.covering ~program_mode:false env evd p data clauses [] prob [] ty
+        Covering.covering env evd p data clauses [] prob [] ty
       in
 
       let c, ty =
