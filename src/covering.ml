@@ -998,8 +998,9 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
       if Option.is_empty loc then ()
       else
         match user with
-        | PUVar (i, true) ->
-          (* If the pattern comes from a wildcard, allow forcing innaccessibles too *)
+        | PUVar (i, _) ->
+          (* If the pattern comes from a wildcard or is a variable,
+             allow forcing innaccessibles too *)
           ()
         | _ ->
           let ctx, envctx, liftn, subst = env_of_rhs evars ctx env s lets in
