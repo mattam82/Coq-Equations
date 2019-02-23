@@ -47,11 +47,11 @@ Section TeleSigma.
 
   Equations tele_type_app (T : tele@{i}) (P : tele_type T) (x : tele_sigma T) : Type@{k} :=
   tele_type_app (tip A) P a := P a;
-  tele_type_app (ext A B) P &( a & b ) := tele_type_app (B a) (P a) b.
+  tele_type_app (ext A B) P (a, b) := tele_type_app (B a) (P a) b.
 
   Equations tele_rel_app (T U : tele) (P : tele_rel T U) (x : tele_sigma T) (y : tele_sigma U) : Type :=
   tele_rel_app (tip A) (tip A') P a a' := P a a';
-  tele_rel_app (ext A B) (ext A' B') P &( a & b ) &(a' & b') := tele_rel_app (B a) (B' a') (P a a') b b'.
+  tele_rel_app (ext A B) (ext A' B') P (a, b) (a', b') := tele_rel_app (B a) (B' a') (P a a') b b'.
 
   Equations tele_forall (T : tele@{i}) (P : tele_type T) : Type@{k} :=
   | tip A | P := forall x : A, P x;
@@ -68,7 +68,7 @@ Section TeleSigma.
   Equations tele_forall_type_app (T : tele@{i}) (P : tele_type T)
             (fn : forall t, tele_type_app T P t) : tele_forall T P :=
   | (tip A) | P | fn := fn;
-  | ext A B | P | fn := fun a : A => tele_forall_type_app (B a) (P a) (fun b => fn &(a & b)).
+  | ext A B | P | fn := fun a : A => tele_forall_type_app (B a) (P a) (fun b => fn (a, b)).
 
   Lemma tele_forall_app_type (T : tele@{i}) (P : tele_type T) (f : forall t, tele_type_app T P t) :
     forall x, tele_forall_app T P (tele_forall_type_app T P f) x = f x.
@@ -79,7 +79,7 @@ Section TeleSigma.
 
   Equations tele_forall_uncurry (T : tele@{i}) (P : T -> Type@{j}) : Type@{k} :=
   | tip A   | P := forall x : A, P x;
-  | ext A B | P := forall x : A, tele_forall_uncurry (B x) (fun y : tele_sigma (B x) => P &(x & y)).
+  | ext A B | P := forall x : A, tele_forall_uncurry (B x) (fun y : tele_sigma (B x) => P (x, y)).
 
   Equations tele_rel_pack (T U : tele) (x : tele_rel T U) : tele_sigma T -> tele_sigma U -> Prop by struct T :=
   tele_rel_pack (tip A) (tip A') P := P;
@@ -91,7 +91,7 @@ Section TeleSigma.
 
   Equations tele_type_unpack (T : tele) (P : tele_sigma T -> Type) : tele_type T :=
   tele_type_unpack (tip A) P := P;
-  tele_type_unpack (ext A B) P := fun x => tele_type_unpack (B x) (fun y => P &(x & y)).
+  tele_type_unpack (ext A B) P := fun x => tele_type_unpack (B x) (fun y => P (x, y)).
 
   Equations tele_pred_fn_pack (T U : tele) (P : tele_fn T (tele_pred U)) : tele_sigma T -> tele_sigma U -> Prop :=
   tele_pred_fn_pack (tip A) U P := fun x => tele_pred_pack U (P x);
@@ -101,11 +101,11 @@ Section TeleSigma.
 
   Equations tele_forall_pack (T : tele) (P : T -> Type) (f : tele_forall_uncurry T P) (t : T) : P t :=
   | (tip A) | P | f | t := f t;
-  | ext A B | P | f | &(a & b) := tele_forall_pack (B a) (fun b => P &(a & b)) (f a) b.
+  | ext A B | P | f | (a, b) := tele_forall_pack (B a) (fun b => P (a, b)) (f a) b.
 
   Equations tele_forall_unpack (T : tele@{i}) (P : T -> Type@{j}) (f : forall (t : T), P t) : tele_forall_uncurry T P :=
   | (tip A) | P | f := f;
-  | ext A B | P | f := fun a : A => tele_forall_unpack (B a) (fun b => P &(a & b)) (fun b => f &(a & b)).
+  | ext A B | P | f := fun a : A => tele_forall_unpack (B a) (fun b => P (a, b)) (fun b => f (a, b)).
 
   Lemma tele_forall_pack_unpack (T : tele) (P : T -> Type) (f : forall t, P t) :
     forall x, tele_forall_pack T P (tele_forall_unpack T P f) x = f x.
