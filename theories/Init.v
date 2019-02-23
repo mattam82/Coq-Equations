@@ -74,14 +74,17 @@ Set Warnings "-notation-overridden".
 
 Module Sigma_Notations.
 
-  Notation "&{ x : A & y }" := (@sigma A (fun x : A => y)%type) (x at level 99) : equations_scope.
-  Notation "&{ x : A & y }" := (@sigma A (fun x : A => y)%type) (x at level 99) : type_scope.
-  Notation "&( x , .. , y & z )" :=
-    (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
-      (right associativity, at level 4,
-       format "&( x ,  .. ,  y  &  z )") : equations_scope.
-  Notation " x .1 " := (pr1 x) (at level 3, format "x .1") : equations_scope.
-  Notation " x .2 " := (pr2 x) (at level 3, format "x .2") : equations_scope.
+Notation "'∃' x .. y , P" := (sigma _ (fun x => .. (sigma _ (fun y => P)) ..))
+  (at level 200, x binder, y binder, right associativity,
+  format "'[  ' '[  ' ∃  x  ..  y ']' ,  '/' P ']'") : type_scope.
+
+Notation "( x , .. , y , z )" :=
+  (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
+      (right associativity, at level 0,
+       format "( x ,  .. ,  y ,  z )") : equations_scope.
+
+Notation " x .1 " := (pr1 x) (at level 3, format "x .1") : equations_scope.
+Notation " x .2 " := (pr2 x) (at level 3, format "x .2") : equations_scope.
 
 End Sigma_Notations.
 

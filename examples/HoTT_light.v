@@ -56,17 +56,19 @@ Proof. exact (@eq_trans A). Defined.
 Notation " x = y " := (@Id _ x y).
 Notation " x = y " := (@Id _ x y) : type_scope.
 
-Inductive prod (A B : Type) := pair : A -> B -> prod A B.
+Import Sigma_Notations.
+Local Open Scope equations_scope.
+
+Definition prod (A B : Type) := ∃ (_ : A), B.
 
 Notation " X * Y " := (prod X Y) : type_scope.
-Notation " ( x , p ) " := (@pair _ _ x p).
 
 Equations fst {A B} (p : A * B) : A :=
-fst (pair a b) := a.
+fst (a, b) := a.
 Transparent fst.
 
 Equations snd {A B} (p : A * B) : B :=
-snd (pair a b) := b.
+snd (a, b) := b.
 Transparent snd.
 
 Definition Sect {A B : Type} (s : A -> B) (r : B -> A) :=
@@ -169,16 +171,16 @@ path_prod_eq (_, _) (_, _) 1 1 := 1.
 
 Equations eta_path_prod {A B : Type} {z z' : A * B} (p : z = z') :
   path_prod _ _ (ap fst p) (ap snd p) = p :=
-eta_path_prod (z:=(pair _ _)) id_refl := id_refl.
+eta_path_prod (z:=(_, _)) id_refl := id_refl.
 
 Definition path_prod' {A B : Type} {x x' : A} {y y' : B}
   : (x = x') -> (y = y') -> ((x,y) = (x',y'))
-  := fun p q => path_prod (pair x y) (pair x' y') p q.
+  := fun p q => path_prod (x, y) (x', y') p q.
 
 Equations ap_fst_path_prod {A B : Type} {z z' : A * B}
   (p : fst z = fst z') (q : snd z = snd z') :
   ap fst (path_prod _ _ p q) = p :=
-ap_fst_path_prod (z:=(pair _ _)) (z':=(pair _ _)) id_refl id_refl := id_refl.
+ap_fst_path_prod (z:=(_, _)) (z':=(_, _)) id_refl id_refl := id_refl.
 
 Equations ap_snd_path_prod {A B : Type} {z z' : A * B}
   (p : fst z = fst z') (q : snd z = snd z') :
@@ -439,7 +441,7 @@ Definition contr_sigma A {P : A -> Type}
   {H : Contr A} `{H0 : forall a, Contr (P a)}
   : Contr (sigma A P).
 Proof.
-  exists &(center A & center (P (center A))).
+  exists (center A, center (P (center A))).
   intros [a Ha]. unshelve refine (path_sigma _ _ _ _ _).
   simpl. apply H. simpl. apply transport_inv.
   apply (H0 (center A)).
@@ -448,7 +450,7 @@ Defined.
 Equations path_sigma_uncurried {A : Type} {P : A -> Type} (u v : sigma A P)
   (pq : sigma _ (fun p => p # u.2 = v.2))
   : u = v :=
-path_sigma_uncurried &(u1 & u2) &(_ & _) &(1 & 1) := 1.
+path_sigma_uncurried (u1, u2) (_, _) (1, 1) := 1.
 Transparent path_sigma_uncurried.
 
 Definition pr1_path {A} `{P : A -> Type} {u v : sigma A P} (p : u = v)
@@ -465,7 +467,7 @@ Defined.
 Notation "p ..2" := (pr2_path p) (at level 3).
 
 Definition eta_path_sigma_uncurried {A} `{P : A -> Type} {u v : sigma A P}
-           (p : u = v) : path_sigma_uncurried _ _ &(p..1& p..2) = p.
+           (p : u = v) : path_sigma_uncurried _ _ (p..1, p..2) = p.
   destruct p. apply id_refl.
 Defined.
 
@@ -476,7 +478,7 @@ Definition eta_path_sigma A `{P : A -> Type} {u v : sigma A P} (p : u = v)
 Definition path_sigma_equiv {A : Type} (P : A -> Type) (u v : sigma A P):
   IsEquiv (path_sigma_uncurried u v).
   unshelve refine (BuildIsEquiv _ _ _).
-  - exact (fun r => &(r..1 & r..2)).
+  - exact (fun r => (r..1, r..2)).
   - intro. apply eta_path_sigma_uncurried.
   - destruct u, v; intros [p q]; simpl in *.
     destruct p. simpl in *. destruct q.
@@ -586,6 +588,6 @@ Program Instance contr_prod A B {CA : Contr A} {CB : Contr B} : Contr (prod A B)
 Next Obligation. exact (@center _ CA, @center _ CB). Defined.
 Next Obligation. apply path_prod; apply contr. Defined.
 
-Definition hfiber {A B : Type} (f : A -> B) (y : B) := &{ x : A & f x = y }.
+Definition hfiber {A B : Type} (f : A -> B) (y : B) := ∃ (x : A), f x = y.
 
 Global Arguments hfiber {A B}%type_scope f%function_scope y.

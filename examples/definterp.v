@@ -28,7 +28,8 @@ Require Import Coq.Vectors.VectorDef.
 Require Import List.
 Import ListNotations.
 Require Import Utf8.
-Notation "( x , .. , y , z )" := (sigmaI _ x .. (sigmaI _ y z) ..) : core_scope.
+Import Sigma_Notations.
+Local Open Scope equations_scope.
 
 Set Equations Transparent.
 
@@ -49,7 +50,6 @@ Infix "⇒" := arrow (at level 80).
 Definition Ctx := list Ty.
 
 Reserved Notation " x ∈ s " (at level 70, s at level 10).
-
 Inductive In {A} (x : A) : list A -> Type :=
 | here {xs} : x ∈ (x :: xs)
 | there {y xs} : x ∈ xs -> x ∈ (y :: xs)
@@ -125,9 +125,8 @@ Equations lookup_store {Σ t} : t ∈ Σ -> Store Σ -> Val t Σ :=
 
 Equations update_store {Σ t} : t ∈ Σ -> Val t Σ -> Store Σ -> Store Σ :=
   update_store l v σ := update σ l v.
-Import Sigma_Notations.
 
-Definition store_incl (Σ Σ' : StoreTy) := &{ Σ'' : _ & Σ' = Σ'' ++ Σ }.
+Definition store_incl (Σ Σ' : StoreTy) := sigma _ (fun Σ'' => Σ' = Σ'' ++ Σ).
 Infix "⊑" := store_incl (at level 10).
 
 Equations app_assoc {A} (x y z : list A) : x ++ y ++ z = (x ++ y) ++ z :=
@@ -172,7 +171,7 @@ End StoreIncl.
 Infix "⊚" := trans_incl (at level 10).
 
 Equations M : forall (Γ : Ctx) (P : StoreTy -> Type) (Σ : StoreTy), Type :=
-  M Γ P Σ := forall (E : Env Γ Σ) (μ : Store Σ), option &{ Σ' : _ & &{ _ : Store Σ' & &{ _ : P Σ' & Σ ⊑ Σ'}}}.
+  M Γ P Σ := forall (E : Env Γ Σ) (μ : Store Σ), option (∃ Σ' (μ' : Store Σ') (_ : P Σ'), Σ ⊑ Σ').
 
 Equations bind {Σ Γ} {P Q : StoreTy -> Type} (f : M Γ P Σ) (g : ∀ {Σ'}, P Σ' -> M Γ Q Σ') : M Γ Q Σ :=
   bind f g E μ with f E μ :=
