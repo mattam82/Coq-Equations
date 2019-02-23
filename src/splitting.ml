@@ -268,8 +268,8 @@ let ppsplit s =
 
 let map_wf_rec f r =
   { wf_rec_term = f r.wf_rec_term;
-    wf_rec_arg = r.wf_rec_arg;
-    wf_rec_rel = r.wf_rec_rel }
+    wf_rec_arg = f r.wf_rec_arg;
+    wf_rec_rel = f r.wf_rec_rel }
 
 let map_struct_rec f r =
   { struct_rec_arg = r.struct_rec_arg;
