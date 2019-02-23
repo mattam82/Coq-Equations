@@ -687,7 +687,7 @@ let ind_fun_tac is_rec f info fid nestedinfo progs =
   let open Proofview in
   let open Notations in
   match is_rec with
-  | Some (Guarded l) ->
+  | Some (Guarded l) :: context ->
      let mutual, nested = List.partition (function (_, MutualOn _) -> true | _ -> false) l in
      let mutannots = List.map (function (_, MutualOn (Some (ann, _))) -> ann + 1 | _ -> -1) mutual in
      let mutprogs, nestedprogs =

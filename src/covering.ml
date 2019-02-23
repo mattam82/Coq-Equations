@@ -24,7 +24,7 @@ open EConstr
 open EConstr.Vars   
 
 type int_data = {
-  rec_info : rec_type option;
+  rec_type : rec_type;
   fixdecls : rel_context;
   flags : flags;
   intenv : Constrintern.internalization_env;
@@ -267,14 +267,49 @@ let env_of_rhs evars ctx env s lets =
  *   in
  *   (List.rev ctx', id_pats ctx, ctx) *)
 
-let interp_program_body env sigma ctx impls body ty =
+let is_wf_ref id rec_type =
+  List.exists (function Some (Logical (_, id')) -> Id.equal id id' | _ -> false) rec_type
+
+let add_wfrec_implicits rec_type c =
+  let open Glob_term in
+  if has_logical rec_type then
+    let rec aux c =
+      let maprec a = Glob_ops.map_glob_constr_left_to_right aux a in
+      let mapargs ts = List.map aux ts in
+      DAst.with_loc_val (fun ?loc g ->
+          match g with
+          | GApp (fn, args) ->
+            DAst.with_loc_val (fun ?loc gfn ->
+                match gfn with
+                | GVar fid when is_wf_ref fid rec_type ->
+                  let kind = Evar_kinds.{ qm_obligation = Define false;
+                                          qm_name = Anonymous;
+                                          qm_record_field = None }
+                  in
+                  let newarg = GHole (Evar_kinds.QuestionMark kind, Namegen.IntroAnonymous, None) in
+                  let newarg = DAst.make ?loc newarg in
+                  let args' = List.append (mapargs args) [newarg] in
+                  DAst.make ?loc (GApp (fn, args'))
+                | _ -> maprec c) fn
+          | _ -> maprec c) c
+    in aux c
+  else c
+
+let interp_constr_evars_impls env sigma data expected_type c =
+  let c = intern_gen expected_type ~impls:data.intenv env sigma c in
+  let c = add_wfrec_implicits data.rec_type c in
+  let imps = Implicit_quantifiers.implicits_of_glob_constr ~with_products:(expected_type == Pretyping.IsType) c in
+  let sigma, c = Pretyping.understand_tcc env sigma ~expected_type c in
+  sigma, (c, imps)
+
+let interp_program_body env sigma ctx data body ty =
   match body with
   | ConstrExpr c ->
     let env = push_rel_context ctx env in
     let sigma, (c, _) =
       match ty with
-      | None -> interp_constr_evars_impls env sigma ~impls c
-      | Some ty -> interp_casted_constr_evars_impls env sigma ~impls c ty
+      | None -> interp_constr_evars_impls env sigma data Pretyping.WithoutTypeConstraint c
+      | Some ty -> interp_constr_evars_impls env sigma data (Pretyping.OfType ty) c
     in
     sigma, c
   | Constr c ->
@@ -294,11 +329,12 @@ let interp_program_body env sigma ctx impls body ty =
     in
     sigma, c
 
-let interp_program_body env evars ctx intenv notations c ty =
+let interp_program_body env evars ctx data c ty =
   Metasyntax.with_syntax_protection (fun () ->
     let ctx' = List.map EConstr.Unsafe.to_rel_decl ctx in
-    List.iter (Metasyntax.set_notation_for_interpretation (Environ.push_rel_context ctx' env) intenv) notations;
-    interp_program_body env evars ctx intenv c ty) ()
+    List.iter (Metasyntax.set_notation_for_interpretation (Environ.push_rel_context ctx' env) data.intenv)
+      data.notations;
+    interp_program_body env evars ctx data c ty) ()
   (* try  with PretypeError (env, evm, e) ->
    *   user_err_loc (dummy_loc, "interp_program_body",
    *                 str "Typechecking failed: " ++  Himsg.explain_pretype_error env evm e) *)
@@ -314,7 +350,7 @@ let interp_program_body env evars ctx intenv notations c ty =
 let interp_constr_in_rhs_env env evars data (ctx, envctx, liftn, subst) substlift c ty =
   match ty with
   | None ->
-    let sigma, c = interp_program_body env !evars ctx data.intenv data.notations c None in
+    let sigma, c = interp_program_body env !evars ctx data c None in
     let c' = substnl subst substlift c in
     let sigma = Typeclasses.resolve_typeclasses ~filter:Typeclasses.all_evars env sigma in
     let c' = nf_evar sigma c' in
@@ -323,7 +359,7 @@ let interp_constr_in_rhs_env env evars data (ctx, envctx, liftn, subst) substlif
   | Some ty -> 
     let ty' = lift liftn ty in
     let ty' = nf_evar !evars ty' in
-    let sigma, c = interp_program_body env !evars ctx data.intenv data.notations c (Some ty') in
+    let sigma, c = interp_program_body env !evars ctx data c (Some ty') in
     evars := Typeclasses.resolve_typeclasses 
         ~filter:Typeclasses.all_evars env sigma;
     let c' = nf_evar !evars (substnl subst substlift c) in
@@ -571,10 +607,10 @@ let check_unused_clauses env cl =
   | [] -> ()
 
 
-let compute_recinfo programs =
+let compute_rec_type context programs =
   if List.for_all (fun p -> match p.Syntax.program_rec with
       | None -> true
-      | Some _ -> false) programs then None
+      | Some _ -> false) programs then None :: context
   else if List.for_all (fun p -> match p.Syntax.program_rec with
       | Some (Structural _)
       | None -> true
@@ -585,13 +621,13 @@ let compute_recinfo programs =
                          | Some (Structural ann) -> ann
                          | None -> NestedNonRec
                          | _ -> assert false) programs
-    in Some (Guarded recids)
+    in Some (Guarded recids) :: context
   else begin
     if List.length programs != 1 then
       user_err_loc (None, "equations", Pp.str "Mutual well-founded definitions are not supported");
     let p = List.hd programs in
     match p.program_rec with
-    | Some (WellFounded (_, _, info)) -> Some (Logical info)
+    | Some (WellFounded (_, _, newinfo)) -> Some (Logical newinfo) :: context
     | _ -> assert false
   end
 
@@ -602,8 +638,8 @@ let print_recinfo programs =
 
 let compute_fixdecls_data env evd ?data programs =
   let protos = List.map (fun p ->
-            let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
-            (p.program_id, ty, p.program_impls)) programs
+      let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
+      (p.program_id, ty, p.program_impls)) programs
   in
   let names, tys, impls = List.split3 protos in
   let data =
@@ -687,7 +723,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot
 
 let recursive_patterns env progid rec_info =
   match rec_info with
-  | Some (Guarded l) ->
+  | Some (Guarded l) :: _ ->
     let addpat (id, k) =
       match k with
       | NestedNonRec when Id.equal id progid -> None
@@ -814,7 +850,7 @@ let compute_rec_data env evars data lets subst p =
         let len = length data.fixdecls in
         len, lift_rel_context len p.program_sign @ data.fixdecls
     in
-    let extpats = recursive_patterns env p.program_id data.rec_info in
+    let extpats = recursive_patterns env p.program_id data.rec_type in
     let sign, ctxpats =
       let sign = sign @ lets in
       let extpats' = pats_of_sign lets in
@@ -1203,12 +1239,14 @@ and interp_wheres env0 ctx evars path data s lets
 
     let pre_type = Syntax.program_type p in
     let fixdecls = [Context.Rel.Declaration.LocalAssum (Name id, pre_type)] in
+    let rec_type = compute_rec_type data.rec_type [p] in
+    let rec_data = {data with rec_type; fixdecls} in
     let p, problem, arity, extpats, rec_info =
-      compute_rec_data env evars {data with rec_info = compute_recinfo [p];
-                                      fixdecls = fixdecls} lets subst p in
+      compute_rec_data env evars rec_data lets subst p in
     let intenv = Constrintern.compute_internalization_env ~impls:data.intenv
         env !evars Constrintern.Recursive [id] [pre_type] [p.program_impls]
     in
+    let rec_data = { rec_data with intenv; notations = data.notations @ notations } in
     let data = { data with intenv; notations = data.notations @ notations } in
     let path = id :: path in
 
@@ -1225,7 +1263,7 @@ and interp_wheres env0 ctx evars path data s lets
     let program, term =
       match t with
       | Some ty (* non-delayed where clause, compute term right away *) ->
-        let splitting = covering env0 evars p data clauses path problem extpats arity in
+        let splitting = covering env0 evars p rec_data clauses path problem extpats arity in
         let program = make_single_program env0 evars data.flags p problem splitting rec_info in
         Lazy.from_val (w' program), program.program_term
       | None ->
@@ -1239,7 +1277,7 @@ and interp_wheres env0 ctx evars path data s lets
         let () = evars := sigma in
         let ev = destEvar !evars term in
         let cover () =
-          let splitting = covering env0 evars p data clauses path problem extpats arity in
+          let splitting = covering env0 evars p rec_data clauses path problem extpats arity in
           let program = make_single_program env0 evars data.flags p problem splitting rec_info in
           evars := Evd.define (fst ev) program.program_term !evars; w' program
         in

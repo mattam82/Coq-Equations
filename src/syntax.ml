@@ -212,11 +212,16 @@ let pr_r_equation_user_option _prc _prlc _prt l =
 let pr_equation_options  _prc _prlc _prt l =
   mt ()
 
-type rec_type = 
+type rec_type_item =
   | Guarded of (Id.t * rec_annot) list (* for mutual rec *)
-  | Logical of Id.t with_loc
+  | Logical of Id.t with_loc (* for nested wf rec *)
 
-let is_structural = function Some (Guarded _) -> true | _ -> false
+type rec_type = rec_type_item option list
+
+let is_structural = function Some (Guarded _) :: _ -> true | _ -> false
+
+let has_logical rec_type =
+  List.exists (function Some (Logical _) -> true | _ -> false) rec_type
 
 let is_rec_call sigma id f =
   match EConstr.kind sigma f with
@@ -276,14 +281,14 @@ let map_program_info f p =
            program_sign = map_rel_context f p.program_sign;
            program_arity = f p.program_arity }
 
-let chole c loc =
+let _chole c loc =
   (* let tac = Genarg.in_gen (Genarg.rawwit Constrarg.wit_tactic) (solve_rec_tac_expr ()) in *)
   let kn = Lib.make_kn c in
   let cst = Names.Constant.make kn kn in
   CAst.make ~loc
   (CHole (Some (ImplicitArg (ConstRef cst, (0,None), false)), Namegen.IntroAnonymous,None)), None
 
-let check_linearity env opats =
+let _check_linearity env opats =
   let rec aux ids pats = 
     List.fold_left (fun ids pat ->
       DAst.with_loc_val (fun ?loc pat ->
@@ -490,17 +495,17 @@ let interp_eqn env notations p eqn =
     let wheres = ref [] in
     let rec aux' ids ?(loc=default_loc) c =
       match c with
-      | CApp ((None, { CAst.v = CRef (qid', ie) }), args)
-           when qualid_is_ident qid' && Id.equal (qualid_basename qid') p.program_id ->
-         let id' = qualid_basename qid' in
-         (match p.program_rec with
-          | None | Some (Structural _) -> CAst.make ~loc c
-          | Some (WellFounded (_, _, r)) ->
-            let args =
-              List.map (fun (c, expl) -> CAst.with_loc_val (aux' ids) c, expl) args in
-            let c = CApp ((None, CAst.(make ~loc (CRef (qid', ie)))), args) in
-            let arg = CAst.make ~loc (CApp ((None, CAst.make ~loc c), [chole id' loc])) in
-            arg)
+      (* | CApp ((None, { CAst.v = CRef (qid', ie) }), args)
+       *      when qualid_is_ident qid' && Id.equal (qualid_basename qid') p.program_id ->
+       *    let id' = qualid_basename qid' in
+       *    (match p.program_rec with
+       *     | None | Some (Structural _) -> CAst.make ~loc c
+       *     | Some (WellFounded (_, _, r)) ->
+       *       let args =
+       *         List.map (fun (c, expl) -> CAst.with_loc_val (aux' ids) c, expl) args in
+       *       let c = CApp ((None, CAst.(make ~loc (CRef (qid', ie)))), args) in
+       *       let arg = CAst.make ~loc (CApp ((None, CAst.make ~loc c), [chole id' loc])) in
+       *       arg) *)
       | CHole (k, i, Some eqns) when Genarg.has_type eqns (Genarg.rawwit wit_equations_list) ->
         let eqns = Genarg.out_gen (Genarg.rawwit wit_equations_list) eqns in
         let id = !whereid in

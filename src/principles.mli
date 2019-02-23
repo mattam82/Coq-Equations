@@ -15,11 +15,11 @@ val pi1 : 'a * 'b * 'c -> 'a
 val pi2 : 'a * 'b * 'c -> 'b
 val match_arguments : Evd.evar_map -> constr array -> constr array -> int list
 val filter_arguments : int list -> 'a list -> 'a list
-val is_applied_to_structarg : Names.Id.t -> Syntax.rec_type option -> int -> bool option
+val is_applied_to_structarg : Names.Id.t -> Syntax.rec_type -> int -> bool option
 
 val smash_ctx_map : Environ.env -> Evd.evar_map -> Context_map.context_map -> Context_map.context_map * EConstr.t list
 
-val find_rec_call : Syntax.rec_type option ->
+val find_rec_call : Syntax.rec_type ->
            Evd.evar_map ->
   (constr * (constr * int list) * (constr * int list) option * int *
    EConstr.rel_context * Constr.t)
@@ -33,7 +33,7 @@ val find_rec_call : Syntax.rec_type option ->
 
 val abstract_rec_calls : Evd.evar_map -> Names.Id.Set.t ->
   ?do_subst:bool ->
-  Syntax.rec_type option ->
+  Syntax.rec_type ->
   int ->
   (constr * (constr * int list) * (constr * int list) option * int *
    EConstr.rel_context * Constr.t)
@@ -53,7 +53,7 @@ val type_of_rel : Constr.t -> rel_context -> constr
 val compute_elim_type :
   Environ.env ->
   Equations_common.esigma -> Names.Id.Set.t ->
-  Syntax.rec_type option ->
+  Syntax.rec_type ->
   (constr * (constr * int list) * (constr * int list) option * int *
    EConstr.rel_context * Constr.t)
   list ->
@@ -111,7 +111,7 @@ val unfold_programs :
   Environ.env ->
   Evd.evar_map ref ->
   Equations_common.flags ->
-  Syntax.rec_type option ->
+  Syntax.rec_type ->
   (Splitting.program * Splitting.compiled_program_info) list ->
   (Splitting.program * (Splitting.program * Splitting.compiled_program_info) option *
    Splitting.compiled_program_info * Principles_proofs.equations_info) list
@@ -123,7 +123,7 @@ val build_equations :
   Environ.env ->
   Evd.evar_map ->
   ?alias:alias ->
-  Syntax.rec_type option ->
+  Syntax.rec_type ->
   (Splitting.program * Splitting.program option *
    Splitting.compiled_program_info * Principles_proofs.equations_info) list ->
   unit

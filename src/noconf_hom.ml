@@ -205,7 +205,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   let evd = ref sigma in
   let data =
     Covering.{
-      rec_info = None;
+      rec_type = [None];
       flags = { polymorphic = polymorphic; open_proof = false;
                 with_eqns = false; with_ind = false };
       fixdecls = [];
@@ -249,7 +249,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
     derive_noConfusion_package (Global.env ()) sigma0 polymorphic indu indid program_cst
  in
  let prog = Splitting.make_single_program env evd data.Covering.flags p ctxmap splitting None in
- Splitting.define_programs env evd None [] data.Covering.flags [prog] hook
+ Splitting.define_programs env evd [None] [] data.Covering.flags [prog] hook
 
 
 let () =

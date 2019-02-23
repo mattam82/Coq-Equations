@@ -106,7 +106,7 @@ let define_unfolding_eq env evd flags p unfp prog prog' ei hook =
            ~tactic:(of82 tac)
            (Evd.evar_universe_context evd) [||])
 
-let define_principles flags rec_info fixprots progs =
+let define_principles flags rec_type fixprots progs =
   let env = Global.env () in
   let evd = ref (Evd.from_env env) in
   let () =
@@ -115,13 +115,13 @@ let define_principles flags rec_info fixprots progs =
       let () = evd := Evd.merge_universe_context !evd ustate in ()
     else ()
   in
-  let progs' = Principles.unfold_programs env evd flags rec_info progs in
+  let progs' = Principles.unfold_programs env evd flags rec_type progs in
   match progs' with
   | [p, Some (unfp, cpi'), cpi, eqi] ->
     let hook (p, unfp, cpi, eqi) unfold_eq_id =
       Principles.build_equations flags.with_ind env !evd
         ~alias:(make_alias (p.program_term, unfold_eq_id, p.program_splitting))
-        rec_info [p, unfp, cpi, eqi]
+        rec_type [p, unfp, cpi, eqi]
     in
     define_unfolding_eq env evd flags p unfp cpi cpi' eqi hook
   | splits ->
@@ -131,7 +131,7 @@ let define_principles flags rec_info fixprots progs =
        | None -> None
      in (p, unfp', cpi, eqi)) splits
     in
-    build_equations flags.with_ind env !evd rec_info splits
+    build_equations flags.with_ind env !evd rec_type splits
 
 let define_by_eqs ~poly ~open_proof opts eqs nt =
   let with_eqns, with_ind =
@@ -149,12 +149,12 @@ let define_by_eqs ~poly ~open_proof opts eqs nt =
   let programs = List.map (fun (((loc,i),rec_annot,l,t,by),clauses as ieqs) ->
       let is_rec = is_recursive i (eqs, nt) in
       interp_arity env evd ~poly ~is_rec ~with_evars:open_proof nt ieqs) eqs in
-  let rec_info = compute_recinfo programs in
+  let rec_type = compute_rec_type [] programs in
   let () = print_recinfo programs in
   let env = Global.env () in (* To find the comp constant *)
   let data, fixdecls, fixprots = compute_fixdecls_data env evd programs in
   let fixdecls = nf_rel_context_evar !evd fixdecls in
-  let intenv = { rec_info; flags; fixdecls; intenv = data; notations = nt } in
+  let intenv = { rec_type; flags; fixdecls; intenv = data; notations = nt } in
   let programs = coverings env evd intenv programs (List.map snd eqs) in
   let env = Global.env () in (* coverings has the side effect of defining comp_proj constants for now *)
   let fix_proto_ref = destConstRef (Lazy.force coq_fix_proto) in
@@ -178,12 +178,12 @@ let define_by_eqs ~poly ~open_proof opts eqs nt =
     if CArray.for_all (fun x -> not (Option.is_empty x)) progs then
       (let fixprots = List.map (nf_evar !evd) fixprots in
        let progs = Array.map_to_list (fun x -> Option.get x) progs in
-       let rec_info = compute_recinfo (List.map (fun (x, y) -> x.program_info) progs) in
+       let rec_info = compute_rec_type [] (List.map (fun (x, y) -> x.program_info) progs) in
        List.iter (Metasyntax.add_notation_interpretation (Global.env ())) nt;
        if flags.with_eqns || flags.with_ind then
          define_principles flags rec_info fixprots progs)
   in
-  define_programs env evd rec_info fixdecls flags programs hook
+  define_programs env evd rec_type fixdecls flags programs hook
 
 let equations ~poly ~open_proof opts eqs nt =
   List.iter (fun (((loc, i), nested, l, t, by),eqs) -> Dumpglob.dump_definition CAst.(make ~loc i) false "def") eqs;

@@ -416,7 +416,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
     (* FIXME Not very clean. *)
     let data =
       Covering.{
-        rec_info = None;
+        rec_type = [None];
         flags = { polymorphic = true; open_proof = false; with_eqns = false; with_ind = false };
         fixdecls = [];
         intenv = Constrintern.empty_internalization_env;
