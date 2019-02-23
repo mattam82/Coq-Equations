@@ -139,7 +139,15 @@ Ltac funelim_sig_tac c tac :=
   simplify_IH_hyps'; (* intros _; *)
   unblock_goal; simplify_IH_hyps; tac c.
 
-Ltac funelim c := funelim_sig_tac c ltac:(fun _ => idtac).
+Ltac funelim_constr c := funelim_sig_tac c ltac:(fun _ => idtac).
+
+Tactic Notation "funelim" uconstr(p) :=
+  let call := fresh "call" in
+  set (call:=p);
+  match goal with
+    [ call := ?fp |- _ ] =>
+    subst call; funelim_constr fp
+  end.
 
 Ltac apply_args c elimc k :=
     match c with
