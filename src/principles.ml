@@ -652,8 +652,8 @@ let push_decls_map env evd (ctx : context_map) cut (g : rel_context) =
   let map, _ = List.fold_right (fun decl acc -> push_mapping_context env evd decl acc) g (ctx, cut) in
   check_ctx_map env evd map
 
-let prsubst env evd s = Pp.(prlist_with_sep spc (fun (id, (recarg, f)) ->
-    str (Id.to_string id) ++ str" -> " ++ Printer.pr_econstr_env env !evd f) s)
+(* let prsubst env evd s = Pp.(prlist_with_sep spc (fun (id, (recarg, f)) ->
+ *     str (Id.to_string id) ++ str" -> " ++ Printer.pr_econstr_env env !evd f) s) *)
 
 let subst_rec_programs env evd ps =
   let where_map = ref PathMap.empty in
