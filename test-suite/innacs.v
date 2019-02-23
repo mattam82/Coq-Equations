@@ -26,7 +26,12 @@ Equations nth {A n} (v : vector A n) (f : fin n) : A :=
 nth (cons x v) fz := x;
 nth (cons _ (n:=?(n)) v) (@fs n f) := nth v f.
 
-(** Correct innaccessible computation *)
-Fail Equations nth' {A n} (v : vector A n) (f : fin n) : A :=
+(** Correct innaccessible computation: variables do
+    not need to be innaccessible, they are just determined
+    by typing and do not determine the computational
+    behavior. They imply no conversion or splitting when
+    evaluating nth'.
+ *)
+Equations nth' {A n} (v : vector A n) (f : fin n) : A :=
 nth' (cons x v) fz := x;
 nth' (cons _ (n:=n) v) (@fs n f) := nth' v f.

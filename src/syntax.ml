@@ -436,7 +436,7 @@ let interp_eqn env notations p eqn =
         let pats = List.map (fun x -> List.hd x) pats in
         loc, curpats @ pats
     in
-    let () = check_linearity env pats in
+    (* let () = check_linearity env pats in *)
     (loc, pats, interp_rhs notations pats rhs)
   and aux2 notations (pat, rhs) =
     (pat, interp_rhs' notations rhs)

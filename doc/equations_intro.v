@@ -299,7 +299,8 @@ eqt x ?(x) ?(x) eq_refl eq_refl := eq_refl.
    _values_ of the patterns for the variables to be [x]. The [?(x)]
    notation is essentially denoting that the pattern is not a candidate
    for refinement, as it is determined by another pattern. This
-   particular patterns are called "inaccessible".
+   particular patterns are called "inaccessible". When they are variables
+   the inaccessibility annotation is optional.
 
    *** Indexed datatypes
    
