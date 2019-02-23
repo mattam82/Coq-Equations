@@ -69,7 +69,7 @@ Qed.
 
  *)
 
-Hint Extern 100 => progress (simpl in *) : Below.
+Obligation Tactic := idtac.
 
 Equations? isPrime (n : nat) : bool :=
   isPrime 0 := false;
@@ -81,7 +81,7 @@ Equations? isPrime (n : nat) : bool :=
     worker n' with ge_dec n' k :=
       { | left H := true;
         | right H := if Nat.eqb (Nat.modulo k n') 0 then false else worker (S n') }.
-Proof. subst k. do 4 (destruct n'; try lia). Defined.
+Proof. lia. Defined.
 
 (* Require Import ExtrOcamlBasic. *)
 (* Extraction isPrime. *)
