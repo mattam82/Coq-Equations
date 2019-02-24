@@ -85,7 +85,7 @@ Proof.
     - depelim l. simp isnoc nat_to_fin iget.
     - depelim l. simp isnoc nat_to_fin iget.
       unfold nat_to_fin_obligation_1.
-      replace (Lt.lt_S_n n0 (S n0) (Lt.lt_n_Sn (S n0))) with (Lt.lt_n_Sn n0) by (apply proof_irrelevance).
+      replace (Lt.lt_S_n n (S n) (Lt.lt_n_Sn (S n))) with (Lt.lt_n_Sn n) by (apply proof_irrelevance).
       apply IHn.
 Qed.
 
