@@ -424,6 +424,21 @@ let uncurry_call env sigma fn c =
   let hd = applist (hd, params) in
   let ty = Retyping.get_type_of env sigma hd in
   let ctx, concl = decompose_prod_n_assum sigma (List.length args) ty in
+  let ctx =
+    let open Context.Rel.Declaration in
+    let rec aux env ctx args =
+      match ctx, args with
+      | LocalAssum (na, t) as decl :: decls, arg :: args ->
+        if isSort sigma t then
+          let ty = Retyping.get_type_of env sigma arg in
+          LocalAssum (na, ty) :: aux env decls args
+        else decl :: aux env decls args
+      | LocalDef _ as decl :: decls, args ->
+        decl :: aux env decls args
+      | [], _ :: _ -> assert false
+      | ctx, [] -> ctx
+    in List.rev (aux env (List.rev ctx) args)
+  in
   let evdref = ref sigma in
   (* let ctx = (Anonymous, None, concl) :: ctx in *)
   let sigty, sigctx, constr = telescope evdref ctx in
@@ -438,6 +453,9 @@ let uncurry_call env sigma fn c =
   let sigma, sigmaI = get_fresh !evdref coq_sigmaI in
   let packed =
     mkApp (sigmaI, [| sigty; mkLambda (projsid, sigty, fnapp_ty); mkRel 1; fnapp |])
+  in
+  let sigma, _ =
+    Typing.type_of (push_rel_context [Context.Rel.Declaration.LocalAssum (projsid, sigty)] env) sigma packed
   in
   sigma, app, packed, sigty
 
