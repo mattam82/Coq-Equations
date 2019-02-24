@@ -189,8 +189,8 @@ Proof. intros. intros x. induction x. left. now depelim y.
   destruct (eq_dec h h0); subst. 
   destruct (IHx y). subst.
   left; reflexivity.
-  right. intro. apply n. noconf H0. constructor.
-  right. intro. apply n. noconf H0. constructor.
+  right. intro. apply n0. noconf H0. constructor.
+  right. intro. apply n0. noconf H0. constructor.
 Defined.
 Print Assumptions vector_eqdec.
 

@@ -321,7 +321,7 @@ Proof.
   - clear IHB1 IHB2.
     depelim C; [constructor|]; destruct_pairs.
     constructor; eauto. simpl in H. simpl in H0.
-    apply (H1 _ A Γ0 _ C1 _ empty _ _) in B2; autorewrite with env_app in B2; eauto.
+    apply (H1 _ A Γ _ C1 _ empty _ _) in B2; autorewrite with env_app in B2; eauto.
 Qed.
 
 (* *)

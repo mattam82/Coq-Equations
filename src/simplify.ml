@@ -627,12 +627,13 @@ let pre_solution ~(dir:direction) : simplification_fun =
   in
   let rel = EConstr.destRel !evd trel in
   (* Check dependencies in both tA and term *)
-  if not (Int.Set.mem rel (Context_map.dependencies_of_term ~with_red:false env !evd ctx (mkApp (tA, [| term |])) rel)) then
+  if not (Int.Set.mem rel
+            (Context_map.dependencies_of_term ~with_red:false env !evd ctx (mkApp (tA, [| term |])) rel)) then
     identity env evd (ctx, ty)
   else
     let tA = Reductionops.whd_all (push_rel_context ctx env) !evd tA in
     let term = Reductionops.whd_all (push_rel_context ctx env) !evd term in
-    if Int.Set.mem rel (Context_map.dependencies_of_term ~with_red:false env !evd ctx (mkApp (tA, [|term|])) rel) then
+    if Int.Set.mem rel (Context_map.dependencies_of_term ~with_red:true env !evd ctx (mkApp (tA, [|term|])) rel) then
       raise (CannotSimplify (str  "[solution] cannot remove dependency in the variable "))
     else
       let f c = c in
@@ -849,7 +850,7 @@ let infer_step ?(loc:Loc.t option) ~(isSol:bool)
        to analyze it. *)
     let tA, tu, tv = check_equality env !evd ctx ty1 in
     (* FIXME What is the correct way to do it? *)
-    let choose u v = Left (* if u < v then Left else Right *) in
+    let choose u v = if u < v then Left else Right in
     (* If the user wants a solution, we need to respect his wishes. *)
     if isSol then
       if EConstr.isRel !evd tu && EConstr.isRel !evd tv then
