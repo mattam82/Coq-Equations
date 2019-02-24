@@ -284,11 +284,8 @@ let add_wfrec_implicits rec_type c =
             DAst.with_loc_val (fun ?loc gfn ->
                 match gfn with
                 | GVar fid when is_wf_ref fid rec_type ->
-                  let kind = Evar_kinds.{ qm_obligation = Define false;
-                                          qm_name = Anonymous;
-                                          qm_record_field = None }
-                  in
-                  let newarg = GHole (Evar_kinds.QuestionMark kind, Namegen.IntroAnonymous, None) in
+                  let kind = Evar_kinds.(QuestionMark (Define false, Anonymous)) in
+                  let newarg = GHole (kind, Misctypes.IntroAnonymous, None) in
                   let newarg = DAst.make ?loc newarg in
                   let args' = List.append (mapargs args) [newarg] in
                   DAst.make ?loc (GApp (fn, args'))

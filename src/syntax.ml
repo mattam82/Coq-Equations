@@ -355,7 +355,7 @@ let pattern_of_glob_constr env avoid patname gc =
       let n = next_ident_away id avoid in
       PUVar (n, true)
     | GRef (ConstructRef cstr,_) -> constructor ?loc cstr []
-    | GRef (ConstRef _ as c, _) when GlobRef.equal c (Lazy.force coq_bang) -> PUEmpty
+    | GRef (ConstRef _ as c, _) when eq_gr c (Lazy.force coq_bang) -> PUEmpty
     | GApp (c, l) ->
       begin match DAst.get c with
         | GRef (ConstructRef cstr,_) -> constructor ?loc cstr l
