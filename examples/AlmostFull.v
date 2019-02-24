@@ -4,7 +4,7 @@ Require Import Relations Wellfounded.
 Require Import Setoid RelationClasses Morphisms.
 Require Import Lia.
 Require Import Equations.Fin Bool.
-Require Import List Arith.
+Require Import List Arith String.
 Set Equations Transparent.
 
 Set Asymmetric Patterns.
@@ -1308,9 +1308,10 @@ Section SCT.
     [ T_graph_l; T_graph_r ].
   Transparent compute_transitive_closure.
 
-  Require Import String.
+  (* I so wish we could get the scope without everything *)
+  Local Open Scope string_scope.
 
-  Equations print_fin {k} (f : fin k) : string :=
+  Equations print_fin {k} (f : fin k) : String.string :=
     print_fin fz := "0";
     print_fin (fs fz) := "1";
     print_fin (fs (fs fz)) := "2";
@@ -1325,7 +1326,6 @@ Section SCT.
     print_nat 4 := "4";
     print_nat x := "5".
 
-  Local Open Scope string_scope.
   Equations print_node {k'} (f : nat) (data : option (bool * fin k')) : string :=
     print_node f None := "";
     print_node f (Some (weight, f')) := print_nat f ++ (if weight then "<" else "<=") ++ print_fin f'.
@@ -1346,9 +1346,9 @@ Section SCT.
 
   Definition eq_dec_graph {k} : forall x y : graph k, { x = y } + { x <> y }.
   Proof.
-    intros x y. destruct (Top.eqb x y) eqn:Heq.
-    left. destruct (Top.eqb_spec x y). auto. discriminate.
-    right. destruct (Top.eqb_spec x y). auto. discriminate. auto.
+    intros x y. destruct (eqb x y) eqn:Heq.
+    left. destruct (eqb_spec x y). auto. discriminate.
+    right. destruct (eqb_spec x y). auto. discriminate. auto.
   Defined.
 
   Definition uniquize {k} (l : list (graph k)) := nodup (@eq_dec_graph k) l.
@@ -1427,4 +1427,4 @@ Lemma gnlex_S_test x y : exists foo, gnlex (S x, S y) = foo.
   rewrite gnlex_S. rewrite gnlex_0_r. destruct x. admit. rewrite gnlex_S.
 Admitted.
 
-(* BUG Eval native_compute in gnlex (4, 3).
+(* BUG Eval native_compute in gnlex (4, 3). *)
