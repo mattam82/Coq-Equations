@@ -26,6 +26,7 @@ Register Equations.Signature.signature_pack as equations.signature.pack.
 
 Register Equations.Init.fixproto as equations.fixproto.
 Register Equations.Init.hidebody as equations.internal.hidebody.
+Register Equations.Init.bang as equations.internal.bang.
 Register Equations.DepElim.inaccessible_pattern as equations.internal.inaccessible_pattern.
 Register Equations.DepElim.block as equations.internal.block.
 Register Equations.DepElim.hide_pattern as equations.internal.hide_pattern.

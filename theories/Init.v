@@ -25,6 +25,10 @@ Local Open Scope equations_scope.
 
 Global Unset Auto Template Polymorphism.
 
+Definition bang := tt.
+Opaque bang.
+Notation "!" := bang.
+
 (** A marker for fixpoint prototypes in the context *)
 Definition fixproto := tt.
 

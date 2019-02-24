@@ -103,20 +103,21 @@ let hidden = function PHide _ -> true | _ -> false
 
 let rec match_pattern p c =
   match DAst.get p, c with
-  | PUVar (i,gen), (PCstr _ | PRel _ | PHide _) -> [(i, gen), c], [], []
+  | PUVar (i,gen), (PCstr _ | PRel _ | PHide _) -> [(i, gen), c], [], [], []
   | PUCstr (c, i, pl), PCstr ((c',u), pl') -> 
     if eq_constructor c c' then
       let params, args = List.chop i pl' in
       match_patterns pl args
     else raise Conflict
   | PUInac t, t' ->
-    [], [t, t'], []
-  | _, PInac t -> [], [], [p, t]
+    [], [t, t'], [], []
+  | _, PInac t -> [], [], [p, t], []
+  | PUEmpty, _ -> [], [], [], [DAst.with_loc_val (fun ?loc _ -> (loc, c)) p]
   | _, _ -> raise Stuck
 
 and match_patterns pl l =
   match pl, l with
-  | [], [] -> [], [], []
+  | [], [] -> [], [], [], []
   | hd :: tl, hd' :: tl' -> 
     let l = 
       try Some (match_pattern hd hd')
@@ -127,7 +128,8 @@ and match_patterns pl l =
       with Stuck -> None
     in
     (match l, l' with
-     | Some (l, li, ri), Some (l', li', ri') -> l @ l', li @ li', ri @ ri'
+     | Some (l, li, ri, ei), Some (l', li', ri', ei') ->
+       l @ l', li @ li', ri @ ri', ei @ ei'
      | _, _ -> raise Stuck)
   | _ -> raise Conflict
 
@@ -915,22 +917,46 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
       Feedback.msg_debug (str "Matching " ++ pr_user_pats env (extpats @ lhs) ++ str " with " ++
                           pr_problem p env !evars prob);
     (match matches (extpats @ lhs) prob with
-     | UnifSuccess s ->
+     | UnifSuccess (s, uacc, acc, empties) ->
        if !Equations_common.debug then Feedback.msg_debug (str "succeeded");
        (* let renaming = rename_prob_subst env ctx (pi1 s) in *)
-       let s = (List.map (fun ((x, gen), y) -> x, y) (pi1 s), pi2 s, pi3 s) in
+       let s = (List.map (fun ((x, gen), y) -> x, y) s, uacc, acc) in
        (* let prob = compose_subst env ~sigma:!evars renaming prob in *)
-       let clauseid = Id.of_string ("clause_" ^ string_of_int idx ^ (if cnt = 0 then "" else "_" ^ string_of_int cnt)) in
-       let interp =
-         interp_clause env evars p data prev clauses' (clauseid :: path) prob
-           extpats lets ty ((loc,lhs,rhs), cnt) s
-       in
-       (match interp with
-        | None ->
-           user_err_loc
-            (dummy_loc, "split_var",
-             str"Clause " ++ pr_preclause env (loc, lhs, rhs) ++ str" matched but its interpretation failed")
-        | Some s -> Some (List.rev prev @ ((loc,lhs,rhs),(idx, cnt+1)) :: clauses', s))
+       let clauseid = Id.of_string ("clause_" ^ string_of_int idx ^
+                                    (if cnt = 0 then "" else "_" ^ string_of_int cnt)) in
+       (match empties, rhs with
+        | ([], None) ->
+          user_err_loc (loc, "covering",
+                        (str "Empty clauses should have at least one empty pattern."))
+        | (_ :: _, Some _) ->
+          user_err_loc (loc, "covering",
+                        (str "This clause has an empty pattern, it cannot have a right hand side."))
+        | (loc, c) :: _, None ->
+          (match c with
+          | PCstr _ | PInac _ | PHide _ ->
+             user_err_loc (loc, "covering",
+                           (str "This pattern cannot be empty, it matches value " ++ fnl () ++
+                            pr_pat env !evars c))
+          | PRel i ->
+            match prove_empty (env,evars) (pi1 prob) i with
+            | Some (i, ctx, s) ->
+              Some (List.rev prev @ (((loc, lhs, rhs),(idx, cnt+1)) :: clauses'),
+                    Compute (prob, [], ty, REmpty (i, s)))
+            | None ->
+              user_err_loc (loc, "covering",
+                            (str "This variable does not have empty type in current problem" ++ fnl () ++
+                             pr_problem p env !evars prob)))
+        | [], Some rhs ->
+          let interp =
+            interp_clause env evars p data prev clauses' (clauseid :: path) prob
+              extpats lets ty ((loc,lhs,rhs), cnt) s
+          in
+          (match interp with
+           | None ->
+             user_err_loc
+               (dummy_loc, "split_var",
+                str"Clause " ++ pr_preclause env (loc, lhs, Some rhs) ++ str" matched but its interpretation failed")
+           | Some s -> Some (List.rev prev @ ((loc,lhs,Some rhs),(idx, cnt+1)) :: clauses', s)))
 
      | UnifFailure ->
        if !Equations_common.debug then Feedback.msg_debug (str "failed");
@@ -1010,6 +1036,9 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
   in
   let () = (* Check innaccessibles are correct *)
     let check_uinnac (user, t) =
+      (* let ty =
+       *   let t = pat_constr t in
+       *   let ty = Retyping.get_type_of env !evars t in *)
       let userc, usercty = interp_constr_in_rhs env ctx evars data None s lets (ConstrExpr user) in
       match t with
       | PInac t ->
@@ -1130,7 +1159,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
       match cs with
       | [] -> cls
       | _ :: _ ->
-        [loc, lhs @ [DAst.make ?loc (PUVar (idref, true))], Refine (cs, cls)]
+        [loc, lhs @ [DAst.make ?loc (PUVar (idref, true))], Some (Refine (cs, cls))]
     in
     let rec cls' n cls =
       let next_unknown =
@@ -1160,7 +1189,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
               vars'
           in
           let newrhs = match rhs with
-            | Refine (c, cls) -> Refine (c, cls' (succ n) cls)
+            | Some (Refine (c, cls)) -> Some (Refine (c, cls' (succ n) cls))
             | _ -> rhs
           in
           Some (loc, rev newlhs @ nextrefs, newrhs)
