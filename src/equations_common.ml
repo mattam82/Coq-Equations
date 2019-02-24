@@ -380,6 +380,7 @@ let dependent_elimination_class evd =
 
 let coq_noconfusion_class = (find_global "noconfusion.class")
 
+let coq_bang = (find_global "internal.bang")
 let coq_inacc = (find_global "internal.inaccessible_pattern")
 let coq_block = (find_global "internal.block")
 let coq_hide = (find_global "internal.hide_pattern")

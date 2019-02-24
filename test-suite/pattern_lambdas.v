@@ -21,9 +21,8 @@ Equations f' (n : nat) : nat :=
 Definition foo (x : nat) :=
   f' match x with 0 => 0 | S x => 0 end.
 
-
 Equations decideeq (b b' : bool) : (b = b') + (~ b = b') :=
   decideeq true true   => inl eq_refl;
   decideeq false false => inl eq_refl;
-  decideeq false true  => inr (λ{ | x :=! x });
-  decideeq true false  => inr (λ{ | x :=! x }).
+  decideeq false true  => inr (λ{ | ! });
+  decideeq true false  => inr (λ{ | ! }).

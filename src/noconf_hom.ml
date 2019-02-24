@@ -190,14 +190,14 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
           List.fold_left get_type (ty, mkVar name, mkVar name') eqs
         in mkApp (eqT, [| ty; lhs; rhs |])
     in
-    (loc, lhs, Syntax.Program (Syntax.Constr rhs, ([], [])))
+    (loc, lhs, Some (Syntax.Program (Syntax.Constr rhs, ([], []))))
   in
   let clauses = Array.to_list (Array.mapi mk_clause constructors) in
   let hole x = Syntax.PUVar (Id.of_string x, true) in
   let catch_all =
     let lhs = parampats @ [DAst.make (hole "x"); DAst.make (hole "y")] in
     let rhs = Syntax.Program (Syntax.Constr fls, ([], [])) in
-    (None, lhs, rhs)
+    (None, lhs, Some rhs)
   in
   let clauses = clauses @ [catch_all] in
   let indid = Nametab.basename_of_global (IndRef ind) in
@@ -205,7 +205,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   let evd = ref sigma in
   let data =
     Covering.{
-      rec_info = None;
+      rec_type = [None];
       flags = { polymorphic = polymorphic; open_proof = false;
                 with_eqns = false; with_ind = false };
       fixdecls = [];
@@ -217,6 +217,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
                   program_id = id;
                   program_impls = [];
                   program_rec = None;
+                  program_orig_type = it_mkProd_or_LetIn s fullbinders;
                   program_sign = fullbinders;
                   program_arity = s}
   in
@@ -227,6 +228,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   let hook _ p terminfo =
     let _proginfo =
       Syntax.{ program_loc = Loc.make_loc (0,0); program_id = id;
+               program_orig_type = it_mkProd_or_LetIn s fullbinders;
         program_sign = fullbinders;
         program_arity = s;
         program_rec = None;
@@ -247,7 +249,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
     derive_noConfusion_package (Global.env ()) sigma0 polymorphic indu indid program_cst
  in
  let prog = Splitting.make_single_program env evd data.Covering.flags p ctxmap splitting None in
- Splitting.define_programs env evd None [] data.Covering.flags [prog] hook
+ Splitting.define_programs env evd [None] [] data.Covering.flags [prog] hook
 
 
 let () =

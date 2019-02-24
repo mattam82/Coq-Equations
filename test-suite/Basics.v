@@ -10,6 +10,13 @@ Require Import Program Bvector List Relations.
 From Equations Require Import Equations Telescopes Signature.
 Require Import Utf8.
 
+Equations neg (b : bool) : bool :=
+neg true := false ;
+neg false := true.
+
+Lemma neg_inv : forall b, neg (neg b) = b.
+Proof. intros b. funelim (neg b); auto. Qed.
+
 Inductive le : nat -> nat -> Set :=
 | le_0 n : le 0 (S n)
 | le_S n m : le n m -> le (S n) (S m).
@@ -21,13 +28,16 @@ congS eq_refl := eq_refl.
 (* Equations antisym {x y : nat} (p : le x y) (q : le y x) : x = y := *)
 (* antisym (le_S n m p) (le_S ?(m) ?(n) q) := congS (antisym p q). *)
 
+
 Module TestF.
-  Equations f (n : nat) : nat :=
+
+  Equations? f (n : nat) : nat :=
   f 0 := 42 ;
   f (S m)  with f m :=
   {
     f (S m) IH := _
   }.
+  Proof. refine IH. Defined.
 
 End TestF.
 
@@ -187,8 +197,6 @@ Section foo.
   unzipv []v := ([]v, []v) ;
   unzipv ((x, y) |:| v) with unzipv v := {
     | pair xs ys := (cons x xs, cons y ys) }.
-  Next Obligation. clear. constructor. constructor. Defined.
-    (* Proof. clear. intros. constructor. constructor. Defined. *)
 End foo.
 
 Typeclasses Transparent vector_subterm.
@@ -252,13 +260,6 @@ plus' (S n) m := S (plus' n m).
 (* Ltac generalize_by_eqs id ::= generalize_eqs id. *)
 (* Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars id. *)
 
-Equations neg (b : bool) : bool :=
-neg true := false ;
-neg false := true.
-
-Lemma neg_inv : forall b, neg (neg b) = b.
-Proof. intros b. funelim (neg b); auto. Qed.
-
 Equations head A (default : A) (l : list A) : A :=
 head A default nil := default ;
 head A default (cons a v) := a.
@@ -287,7 +288,6 @@ rev nil := nil;
 rev (cons a v) := rev v +++ (cons a nil).
 
 Notation " [] " := List.nil.
-
 
 Lemma app'_nil : forall {A} (l : list A), l +++ [] = l.
 Proof.
@@ -396,8 +396,8 @@ Lemma split_struct_vapp : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
     v = v' /\ w = w'.
 Proof.
   intros. funelim (vapp' v w); simp split_struct in *. 
-  destruct (split_struct (m:=0) w0). depelim xs; intuition.
-  destruct (split_struct (vapp' t0 w0)); simpl.
+  destruct (split_struct (m:=0) w). depelim xs; intuition.
+  destruct (split_struct (vapp' t0 w)); simpl.
   intuition congruence.
 Qed.
 

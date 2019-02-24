@@ -45,7 +45,7 @@ Defined.
 Arguments exist {A} {P} _ _.
 
 Equations? nat_bound_to_fin (n : nat) (m : {m : nat | m < n}) : fin n :=
-nat_bound_to_fin 0 (exist _ p) :=! p;
+nat_bound_to_fin 0 (exist _ !);
 nat_bound_to_fin (S n') (exist 0 _) := fz;
 nat_bound_to_fin (S n') (exist (S m) p) := fs (nat_bound_to_fin _ m).
 

@@ -65,7 +65,6 @@ Class ChunkableMonoid (T: Type) `{Monoid T} :=
     take: nat -> T -> T;
     drop_spec:
       forall i x,
-        i <= length x ->
         length (drop i x) = length x - i;
     take_spec:
       forall i x,
@@ -114,11 +113,11 @@ Require Import Omega.
 Section Chunk.
   Context{T : Type} `{M : ChunkableMonoid T}.
   Set Program Mode.
-  Equations? chunk (i: { i: nat | i > 0 }) (x: T) : list T by wf (length x) lt :=
-  chunk i x with dec (Nat.leb (length x) i) :=    
+  Equations? chunk (i: { i : nat | i > 0 }) (x : T) : list T by wf (length x) lt :=
+  chunk i x with dec (length x <=? i) :=
     { | left _ => [x] ;
       | right p => take i x :: chunk i (drop i x) }.
-  Proof. apply leb_complete_conv in p. rewrite drop_spec. omega. auto with arith. Qed.
+  Proof. apply leb_complete_conv in p. rewrite drop_spec. omega. Qed.
 End Chunk.
 
 Theorem if_flip_helper {B: Type} {b: bool}
@@ -214,12 +213,12 @@ Proof.
   simpl.
   specialize (H H0).
   revert H. unfold drop. simpl.
-  pose proof (drop_spec (` I) x0). simpl in H.
+  pose proof (drop_spec (` i) x). simpl in H.
   rewrite H by omega. clear H.
   simp chunk. clear Heq. destruct dec. simp chunk; simpl; intros; try omega. intros.
   feed H. 
   clear H. apply leb_complete_conv in e. 
-  pose proof (drop_spec (` I) x0). rewrite H in e; try omega;
+  pose proof (drop_spec (` i) x). rewrite H in e; try omega;
                                     unfold length in *; simpl in *; omega.
   omega.
 Qed.

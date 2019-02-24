@@ -338,13 +338,14 @@ GEXTEND Gram
     ] ]
   ;
   rhs:
-    [ [ ":=!"; id = identloc -> Empty id
+    [ [ ":=!"; id = identloc -> Some (Empty id)
 
      | [":=" -> () | "=>" -> () ]; c = Constr.lconstr; w = local_wheres ->
-        Program (ConstrExpr c, w)
+        Some (Program (ConstrExpr c, w))
 
      | ["with" -> [ () ] ]; refs = refine; [":=" -> [ () ] |"=>" -> [ () ] ];
-       e = sub_equations -> Refine (refs, e)
+       e = sub_equations -> Some (Refine (refs, e))
+     | -> None
     ] ]
   ;
 

@@ -294,7 +294,7 @@ let specialize_eqs ~with_block id gl =
            else y, x in
          let eqr = constr_of_global_univ !evars (Lazy.force logic_eq_refl, u) in
          let p = mkApp (eqr, [| eqty; c |]) in
-         if (with_block || compare_upto_variables !evars c o) &&
+         if (compare_upto_variables !evars c o) &&
             unif (push_rel_context ctx env) subst evars o c then
            aux in_block true ctx subst (mkApp (acc, [| p |])) (subst1 p b)
          else acc, in_eqs, ctx, subst, ty
@@ -386,7 +386,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
         | Some (Covering.Splitted (_, newctx, brs)) ->
             let brs = Option.List.flatten (Array.to_list brs) in
             let clauses_lhs = List.map Context_map.context_map_to_lhs brs in
-            let clauses = List.map (fun lhs -> (Some default_loc, lhs, rhs)) clauses_lhs in
+            let clauses = List.map (fun lhs -> (Some default_loc, lhs, Some rhs)) clauses_lhs in
               Proofview.tclUNIT clauses
         end
     | Some p ->
@@ -404,7 +404,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
                 if Names.Id.equal decl_id id then DAst.make ?loc pat
                 else DAst.make (Syntax.PUVar (decl_id, false))) loc_hyps
             in
-              (loc, lhs, rhs))
+              (loc, lhs, Some rhs))
         in Proofview.tclUNIT (List.map make_clause patterns)
     end >>= fun clauses ->
     if !debug then
@@ -414,7 +414,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
     (* FIXME Not very clean. *)
     let data =
       Covering.{
-        rec_info = None;
+        rec_type = [None];
         flags = { polymorphic = true; open_proof = false; with_eqns = false; with_ind = false };
         fixdecls = [];
         intenv = Constrintern.empty_internalization_env;
@@ -422,6 +422,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
       } in
     let p = Syntax.{program_loc = default_loc;
                     program_id = Names.Id.of_string "dummy";
+                    program_orig_type = it_mkProd_or_LetIn ty ctx;
                     program_impls = [];
                     program_rec = None;
                     program_sign = ctx;

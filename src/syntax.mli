@@ -28,6 +28,7 @@ type user_pat =
     PUVar of identifier * generated
   | PUCstr of constructor * int * user_pats
   | PUInac of Constrexpr.constr_expr
+  | PUEmpty
 and user_pat_loc = (user_pat, [ `any ]) DAst.t
 and user_pats = user_pat_loc list
 
@@ -60,10 +61,11 @@ type program_body =
                                 with the proper de Bruijn indices *)
 
 type lhs = user_pats (* p1 ... pn *)
-and ('a,'b) rhs =
+and ('a,'b) rhs_aux =
     Program of program_body * 'a wheres
   | Empty of identifier with_loc
   | Refine of Constrexpr.constr_expr list * 'b list
+and ('a,'b) rhs = ('a, 'b) rhs_aux option
 and pre_prototype =
   identifier with_loc * user_rec_annot * Constrexpr.local_binder_expr list * Constrexpr.constr_expr option *
   (Id.t with_loc, Constrexpr.constr_expr * Constrexpr.constr_expr option) by_annot option
@@ -105,11 +107,14 @@ val pr_user_clause :
 
 val ppclause : clause -> unit
 
-type rec_type =
+type rec_type_item =
   | Guarded of (Id.t * rec_annot) list (* for mutual rec *)
-  | Logical of Id.t with_loc
+  | Logical of Id.t with_loc (* for nested wf rec *)
 
-val is_structural : rec_type option -> bool
+type rec_type = rec_type_item option list
+
+val is_structural : rec_type -> bool
+val has_logical : rec_type -> bool
 val is_rec_call : Evd.evar_map -> Id.t -> EConstr.constr -> bool
 val next_ident_away : Id.t -> Id.Set.t ref -> Id.t
 
@@ -134,6 +139,7 @@ type program_rec_info =
 type program_info = {
   program_loc : Loc.t;
   program_id : Id.t;
+  program_orig_type : EConstr.t; (* The original type *)
   program_sign : EConstr.rel_context;
   program_arity : EConstr.t;
   program_rec : program_rec_info option;

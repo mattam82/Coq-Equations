@@ -35,6 +35,17 @@ Create HintDb Below discriminated.
 
 Hint Extern 0 (_ = _) => reflexivity : Below.
 
+Ltac simpl_let :=
+  match goal with
+    [ H : let _ := ?t in _ |- _ ] =>
+    match t with
+    | fixproto => fail 1
+    | _ => cbv zeta in H
+    end
+  end.
+
+Hint Extern 100 => simpl_let : Below.
+
 (** Use it as well as the [equations] simplifications. *)
 
 Ltac unfold_equations ::= repeat progress autounfold with equations Below.

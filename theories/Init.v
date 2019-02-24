@@ -23,6 +23,10 @@ Declare ML Module "equations_plugin".
 Delimit Scope equations_scope with equations.
 Local Open Scope equations_scope.
 
+Definition bang := tt.
+Opaque bang.
+Notation "!" := bang.
+
 (** A marker for fixpoint prototypes in the context *)
 Definition fixproto := tt.
 
@@ -46,6 +50,17 @@ Ltac program_simplify ::=
   subst*; autoinjections ; try discriminates ;
     try (solve [ red ; intros ; destruct_conjs ; autoinjections ; discriminates ]).
 
+Ltac solve_wf :=
+  match goal with
+    |- ?R _ _ => try typeclasses eauto with subterm_relation Below rec_decision
+  end.
+
+(* program_simpl includes a [typeclasses eauto with program] which solves, e.g. [nat] goals trivially.
+   We remove it. *)
+Ltac equations_simpl := program_simplify ; try program_solve_wf; try solve_wf.
+
+Global Obligation Tactic := equations_simpl.
+
 (** The sigma type used by Equations. *)
 
 Set Primitive Projections.
@@ -63,14 +78,17 @@ Set Warnings "-notation-overridden".
 
 Module Sigma_Notations.
 
-  Notation "&{ x : A & y }" := (@sigma A (fun x : A => y)%type) (x at level 99) : equations_scope.
-  Notation "&{ x : A & y }" := (@sigma A (fun x : A => y)%type) (x at level 99) : type_scope.
-  Notation "&( x , .. , y & z )" :=
-    (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
-      (right associativity, at level 4,
-       format "&( x ,  .. ,  y  &  z )") : equations_scope.
-  Notation " x .1 " := (pr1 x) (at level 3, format "x .1") : equations_scope.
-  Notation " x .2 " := (pr2 x) (at level 3, format "x .2") : equations_scope.
+Notation "'∃' x .. y , P" := (sigma _ (fun x => .. (sigma _ (fun y => P)) ..))
+  (at level 200, x binder, y binder, right associativity,
+  format "'[  ' '[  ' ∃  x  ..  y ']' ,  '/' P ']'") : type_scope.
+
+Notation "( x , .. , y , z )" :=
+  (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
+      (right associativity, at level 0,
+       format "( x ,  .. ,  y ,  z )") : equations_scope.
+
+Notation " x .1 " := (pr1 x) (at level 3, format "x .1") : equations_scope.
+Notation " x .2 " := (pr2 x) (at level 3, format "x .2") : equations_scope.
 
 End Sigma_Notations.
 

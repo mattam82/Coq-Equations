@@ -211,7 +211,7 @@ val define_mutual_nested_csts :
 val define_programs :
   Environ.env ->
   Evd.evar_map ref ->
-  Syntax.rec_type option ->
+  Syntax.rec_type ->
   EConstr.rel_context ->
   Equations_common.flags ->
   ?unfold:bool ->
@@ -221,7 +221,7 @@ val define_programs :
 val define_program_immediate :
   Environ.env ->
   Evd.evar_map ref ->
-  Syntax.rec_type option ->
+  Syntax.rec_type ->
   EConstr.rel_context ->
   Equations_common.flags ->
   ?unfold:bool ->

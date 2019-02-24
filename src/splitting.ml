@@ -268,8 +268,8 @@ let ppsplit s =
 
 let map_wf_rec f r =
   { wf_rec_term = f r.wf_rec_term;
-    wf_rec_arg = r.wf_rec_arg;
-    wf_rec_rel = r.wf_rec_rel }
+    wf_rec_arg = f r.wf_rec_arg;
+    wf_rec_rel = f r.wf_rec_rel }
 
 let map_struct_rec f r =
   { struct_rec_arg = r.struct_rec_arg;
@@ -641,7 +641,7 @@ let define_mutual_nested_csts flags env evd get_prog progs =
   in
   let mutual =
     List.map (fun (p, prog, fix) ->
-        let ty = Syntax.program_type p in
+        let ty = p.Syntax.program_orig_type in
         let kn, (evm, term) =
           declare_constant p.program_id fix (Some ty) flags.polymorphic
             !evd Decl_kinds.(IsDefinition Fixpoint)
@@ -653,7 +653,7 @@ let define_mutual_nested_csts flags env evd get_prog progs =
   let args = List.rev_map (fun (p', _, term) -> term) mutual in
   let nested =
     List.map (fun (p, prog, fix) ->
-        let ty = Syntax.program_type p in
+        let ty = p.Syntax.program_orig_type in
         let body = Vars.substl args fix in
         let kn, (evm, e) =
           declare_constant p.program_id body (Some ty) flags.polymorphic
@@ -739,7 +739,7 @@ let make_programs env evd flags ?(define_constants=false) programs =
      if define_constants then
        let (cst, (evm, e)) =
          Equations_common.declare_constant p.program_id
-           term (Some (Syntax.program_type p))
+           term (Some (p.Syntax.program_orig_type))
            flags.polymorphic !evd (Decl_kinds.(IsDefinition Definition))
        in
        evd := evm;
@@ -1249,6 +1249,12 @@ type 'a hook =
   | HookImmediate : (program -> term_info -> 'a) -> 'a hook
   | HookLater : (int -> program -> term_info -> unit) -> unit hook
 
+let rec_type_ids =
+  CList.map_append
+    (function Some (Guarded l) -> List.map fst l
+            | Some (Logical ids) -> [snd ids]
+            | None -> [])
+
 let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false) programs : a hook -> a  =
   fun hook ->
   let call_hook recobls p helpers uctx locality gr (hook : program -> term_info -> a) : a =
@@ -1279,12 +1285,7 @@ let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false)
     let () = List.iter (fun (cst, _) -> add_hint true (program_id (List.hd programs)) cst) helpers in
     hook recobls helpers ustate Decl_kinds.Global programs
   in
-  let recids =
-    match is_recursive with
-    | Some (Guarded l) -> List.map fst l
-    | Some (Logical id) -> [snd id]
-    | None -> []
-  in
+  let recids = rec_type_ids is_recursive in
   match hook with
   | HookImmediate f ->
     assert(not (Evd.has_undefined !evd));

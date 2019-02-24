@@ -4,9 +4,74 @@ Require Import Relations Wellfounded.
 Require Import Setoid RelationClasses Morphisms.
 Require Import Lia.
 Require Import Equations.Fin Bool.
-Require Import List Arith.
+Require Import List Arith String.
+Set Equations Transparent.
 
 Set Asymmetric Patterns.
+
+Section Equality.
+  Class Eq (A : Type) :=
+    { eqb : A -> A -> bool;
+      eqb_spec : forall x y, reflect (x = y) (eqb x y) }.
+
+  Equations fin_eq {k} (f f' : fin k) : bool :=
+  fin_eq fz fz => true;
+  fin_eq (fs f) (fs f') => fin_eq f f';
+  fin_eq _ _ => false.
+
+  Global Instance fin_Eq k : Eq (fin k).
+  Proof.
+    exists fin_eq. intros x y. induction x; depelim y; simp fin_eq; try constructor; auto.
+    intro H; noconf H.
+    intro H; noconf H.
+    destruct (IHx y). subst x; now constructor. constructor. intro H; noconf H. now apply n0.
+  Defined.
+
+  Global Instance bool_Eq : Eq bool.
+  Proof.
+    exists bool_eq. intros [] []; now constructor.
+  Defined.
+
+  Global Instance prod_eq A B : Eq A -> Eq B -> Eq (A * B).
+  Proof.
+    intros. exists (fun '(x, y) '(x', y') => eqb x x' && eqb y y').
+    intros [] []. destruct (eqb_spec a a0); subst.
+    destruct (eqb_spec b b0); subst. constructor; auto.
+    constructor; auto. intro H; noconf H. now elim n.
+    constructor; auto. simplify *. now elim n.
+  Defined.
+
+  Equations option_eq {A : Type} {E:Eq A} (o o' : option A) : bool :=
+    option_eq None None := true;
+    option_eq (Some o) (Some o') := eqb o o';
+    option_eq _ _ := false.
+
+  Global Instance option_Eq A : Eq A -> Eq (option A).
+  Proof.
+    intros A_Eq. exists option_eq. intros [] []; simp option_eq; try constructor.
+    destruct (eqb_spec a a0); subst. now constructor.
+    constructor. intro H; noconf H. now elim n.
+    simplify *. simplify *. constructor.
+  Defined.
+
+  Section EqFin_fn.
+    Context {A} `{Eq A}.
+
+    Equations eq_fin_fn {k} (f g : fin k -> A) : bool :=
+    eq_fin_fn (k:=0) f g := true;
+    eq_fin_fn (k:=S k) f g := eqb (f fz) (g fz) && eq_fin_fn (fun n => f (fs n)) (fun n => g (fs n)).
+
+    Global Instance Eq_graph k : Eq (fin k -> A).
+    Proof.
+      exists eq_fin_fn. induction k; intros; simp eq_fin_fn. constructor; auto.
+      extensionality i. depelim i.
+      destruct (eqb_spec (x fz) (y fz)). simpl. destruct (IHk (fun n => x (fs n)) (fun n => y (fs n))).
+      constructor; auto. extensionality n. depelim n. auto. eapply equal_f in e0. eauto. constructor.
+      intro H'. subst. elim n. extensionality n'. reflexivity.
+      simpl. constructor. intros H'; elim n. subst. reflexivity.
+    Defined.
+  End EqFin_fn.
+End Equality.
 
 Definition dec_rel {X:Type} (R : X → X → Prop) := ∀ x y, {not (R y x)} + {R y x}.
 
@@ -270,7 +335,6 @@ Section WfFromAF.
 
 End WfFromAF.
 
-Set Equations Transparent.
 Section FixAF.
   Context {X : Type} (T R : X -> X -> Prop).
   Context {af : AlmostFull R}.
@@ -566,70 +630,6 @@ Ltac destruct_pairs := repeat
   | [ x : _ /\ _ |- _ ] => destruct x
 end.
 
-Section Equality.
-  Class Eq (A : Type) :=
-    { eqb : A -> A -> bool;
-      eqb_spec : forall x y, reflect (x = y) (eqb x y) }.
-
-  Equations fin_eq {k} (f f' : fin k) : bool :=
-  fin_eq fz fz => true;
-  fin_eq (fs f) (fs f') => fin_eq f f';
-  fin_eq _ _ => false.
-
-  Global Instance fin_Eq k : Eq (fin k).
-  Proof.
-    exists fin_eq. intros x y. induction x; depelim y; simp fin_eq; try constructor; auto.
-    intro H; noconf H.
-    intro H; noconf H.
-    destruct (IHx y). subst x; now constructor. constructor. intro H; noconf H. now apply n.
-  Defined.
-
-  Global Instance bool_Eq : Eq bool.
-  Proof.
-    exists bool_eq. intros [] []; now constructor.
-  Defined.
-
-  Global Instance prod_eq A B : Eq A -> Eq B -> Eq (A * B).
-  Proof.
-    intros. exists (fun '(x, y) '(x', y') => eqb x x' && eqb y y').
-    intros [] []. destruct (eqb_spec a a0); subst.
-    destruct (eqb_spec b b0); subst. constructor; auto.
-    constructor; auto. intro H; noconf H. now elim n.
-    constructor; auto. simplify *. now elim n.
-  Defined.
-
-  Equations option_eq {A : Type} {E:Eq A} (o o' : option A) : bool :=
-    option_eq None None := true;
-    option_eq (Some o) (Some o') := eqb o o';
-    option_eq _ _ := false.
-
-  Global Instance option_Eq A : Eq A -> Eq (option A).
-  Proof.
-    intros A_Eq. exists option_eq. intros [] []; simp option_eq; try constructor.
-    destruct (eqb_spec a a0); subst. now constructor.
-    constructor. intro H; noconf H. now elim n.
-    simplify *. simplify *. constructor.
-  Defined.
-
-  Section EqFin_fn.
-    Context {A} `{Eq A}.
-
-    Equations eq_fin_fn {k} (f g : fin k -> A) : bool :=
-    eq_fin_fn (k:=0) f g := true;
-    eq_fin_fn (k:=S k) f g := eqb (f fz) (g fz) && eq_fin_fn (fun n => f (fs n)) (fun n => g (fs n)).
-
-    Global Instance Eq_graph k : Eq (fin k -> A).
-    Proof.
-      exists eq_fin_fn. induction k; intros; simp eq_fin_fn. constructor; auto.
-      extensionality i. depelim i.
-      destruct (eqb_spec (x fz) (y fz)). simpl. destruct (IHk (fun n => x (fs n)) (fun n => y (fs n))).
-      constructor; auto. extensionality n. depelim n. auto. eapply equal_f in e0. eauto. constructor.
-      intro H'. subst. elim n. extensionality n'. reflexivity.
-      simpl. constructor. intros H'; elim n. subst. reflexivity.
-    Defined.
-  End EqFin_fn.
-End Equality.
-
 Section SCT.
 
   Definition subgraph k k' := fin k -> option (bool * fin k').
@@ -638,7 +638,7 @@ Section SCT.
   Definition strict {k} (f : fin k) := Some (true, f).
   Definition large {k} (f : fin k) := Some (false, f).
 
-  Declare Scope fin_scope.
+  (* Declare Scope fin_scope. *)
   Delimit Scope fin_scope with fin.
   Bind Scope fin_scope with fin.
   Notation "0" := fz : fin.
@@ -762,7 +762,7 @@ Section SCT.
   Lemma fin_union_spec {A n} (f : fin n -> relation A) :
     forall x y, fin_union f x y <-> exists k, f k x y.
   Proof.
-    intros x y; funelim (fin_union f). split. intros [].
+    intros x y. funelim (fin_union f). split. intros [].
     intros [k _]. depelim k.
     split. intros [Hfz|Hfs].
     now exists fz.
@@ -965,7 +965,7 @@ Section SCT.
   Defined.
 
   Equations TI_graph k : graph k :=
-    TI_graph 0 := λ{ | f :=! f } ;
+    TI_graph 0 := λ{ | ! } ;
     TI_graph (S n) := fun f => Some (false, f).
 
   Lemma TI_compose k (G : graph k) : forall f, (G ⋅ TI_graph k) f = G f.
@@ -998,7 +998,7 @@ Section SCT.
         intros. depelim f. simpl. auto. simpl.
         do 2 red in IHk. simpl in IHk. rewrite <- IHk in Hi.
         red in Hi. rewrite graph_relation_spec in Hi.
-        clear -Hi. induction n. depelim f.
+        clear -Hi. induction k. depelim f.
         specialize (Hi f). simpl in Hi. auto.
   Qed.
 
@@ -1066,42 +1066,15 @@ Section SCT.
                          | None => find_opt xs f }.
   End find_opt.
 
-  Ltac apply_args c elimc k :=
-    match c with
-    | _ ?a ?b ?c ?d ?e ?f => k uconstr:(elimc a b c d e f)
-    | _ ?a ?b ?c ?d ?e => k uconstr:(elimc a b c d e)
-    | _ ?a ?b ?c ?d => k uconstr:(elimc a b c d)
-    | _ ?a ?b ?c => k uconstr:(elimc a b c)
-    | _ ?a ?b => k uconstr:(elimc a b)
-    | _ ?a => k uconstr:(elimc a)
-    end.
-
-  Ltac get_first_elim c :=
-    match c with
-    | ?f ?a ?b ?c ?d ?e ?f => get_elim (f a b c d e f)
-    | ?f ?a ?b ?c ?d ?e => get_elim (f a b c d e)
-    | ?f ?a ?b ?c ?d => get_elim (f a b c d)
-    | ?f ?a ?b ?c => get_elim (f a b c)
-    | ?f ?a ?b => get_elim (f a b)
-    | ?f ?a => get_elim (f a)
-    end.
-
-  Ltac apply_funelim c :=
-    let elimc := get_first_elim c in
-    let elimfn := match elimc with fun_elim (f:=?f) => constr:(f) end in
-    let elimn := match elimc with fun_elim (n:=?n) => constr:(n) end in
-    let elimt := make_refine elimn elimc in
-    apply_args c elimt ltac:(fun elimc =>
-                               unshelve refine_ho elimc; cbv beta; clear; simpl; intros).
-
   Lemma find_opt_spec {A} (l : list A) (f : A -> option A) :
     match find_opt l f with
     | Some x => exists a, In a l /\ f a = Some x
     | None => forall a, In a l -> f a = None
     end.
   Proof.
-    apply_funelim (find_opt l f). elim H.
-    exists a; eauto. destruct (find_opt l f); now firstorder subst.
+    funelim (find_opt l f); intros. elim H.
+    exists a; simpl; intuition eauto.
+    destruct (find_opt l f); now firstorder subst.
   Qed.
 
   Equations compute_transitive_closure {k} (n : nat) (gs : list (graph k)) : trans_clos_answer k :=
@@ -1205,7 +1178,7 @@ Section SCT.
 
   Lemma incl_switch_head {A} (x : A) (y l r : list A) : incl (x :: y ++ l) r -> incl (y ++ x :: l) r.
   Proof.
-    unfold incl in *. intuition. specialize (H a). apply H.
+    unfold incl in *. intuition auto. specialize (H a). apply H.
     simpl in *; rewrite -> in_app_iff in *. simpl in *.
     intuition auto.
   Qed.
@@ -1267,7 +1240,7 @@ Section SCT.
                             is_transitive_closure gs l'))); clear.
       all:try discriminate; eauto.
     + intros * H l Haux.
-      forward H. red. intuition.
+(*      forward H. red. intuition.
       specialize (H l Haux). apply H. auto with datatypes.
       rewrite app_nil_r. red. intuition. intuition.
     + intros * n * tracc l' [= <-]. simpl. split. intuition.
@@ -1302,40 +1275,43 @@ Section SCT.
       apply_find_opt_spec. destruct find_opt.
       ++ destruct H as [a [Inags'' Ineq]]. subst gs'0.
          destruct (existsb_spec (eqb (a ⋅ g)) gs'').
-         destruct (existsb_spec (eqb (g ⋅ a)) gs''). discriminate.
-         noconf Ineq. split.
-         +++ intros Inga. apply n0. subst gs''.
-             exists (g ⋅ a). intuition auto. subst. apply eqb_refl.
-         +++ exists a. intuition.
-         +++ noconf Ineq. split.
-             intros Inag. apply n0. exists (a ⋅ g). intuition. apply eqb_refl.
-             exists a. intuition.
-      ++ split; intuition. subst gs'0. split; intros g' ?g''; auto.
-         intros [ing' ing''].
-         specialize (H g' ing').
-         destruct (existsb_spec (eqb (g' ⋅ g)) gs'').
-         destruct (existsb_spec (eqb (g ⋅ g')) gs'').
-         destruct e, e0; destruct_pairs. apply (eqb_eq _ x) in H3. apply (eqb_eq _ x0) in H2.
-         subst. admit. admit. admit. admit.
-    + intros * IH * Hf. specialize (IH _ Hf). clear Hf.
-      split. intros x Inx. destruct IH as [IH _]. intuition.
-      intros [inclgs incltrgs].
-      intuition. eapply incl_transitive_closure; eauto.
-    + intros * IH * Hf. split. admit.
-      intros [inclgs [incltrgs [trg trg']]].
-      apply IH. admit. auto.
-      red in trg. now eapply incl_switch_head' in inclgs.
-      red in incltrgs |- *. intros trl Htrl. specialize (incltrgs _ Htrl).
-      now apply incl_switch_head in incltrgs. apply trg'.
+         destruct (existsb_spec (eqb (g ⋅ a)) gs'').
+         all:admit. *)
+    (*      discriminate. *)
+    (*      noconf Ineq. split. *)
+    (*      +++ intros Inga. apply n0. subst gs''. *)
+    (*          exists (g ⋅ a). intuition auto. subst. apply eqb_refl. *)
+    (*      +++ exists a. intuition. *)
+    (*      +++ noconf Ineq. split. *)
+    (*          intros Inag. apply n0. exists (a ⋅ g). intuition. apply eqb_refl. *)
+    (*          exists a. intuition. *)
+    (*   ++ split; intuition. subst gs'0. split; intros g' ?g''; auto. *)
+    (*      intros [ing' ing'']. *)
+    (*      specialize (H g' ing'). *)
+    (*      destruct (existsb_spec (eqb (g' ⋅ g)) gs''). *)
+    (*      destruct (existsb_spec (eqb (g ⋅ g')) gs''). *)
+    (*      destruct e, e0; destruct_pairs. apply (eqb_eq _ x) in H3. apply (eqb_eq _ x0) in H2. *)
+    (*      subst. admit. admit. admit. admit. *)
+    (* + intros * IH * Hf. specialize (IH _ Hf). clear Hf. *)
+    (*   split. intros x Inx. destruct IH as [IH _]. intuition. *)
+    (*   intros [inclgs incltrgs]. *)
+    (*   intuition. eapply incl_transitive_closure; eauto. *)
+    (* + intros * IH * Hf. split. admit. *)
+    (*   intros [inclgs [incltrgs [trg trg']]]. *)
+    (*   apply IH. admit. auto. *)
+    (*   red in trg. now eapply incl_switch_head' in inclgs. *)
+    (*   red in incltrgs |- *. intros trl Htrl. specialize (incltrgs _ Htrl). *)
+    (*   now apply incl_switch_head in incltrgs. apply trg'. *)
   Admitted.
 
   Definition gn_set : list (graph 2) :=
     [ T_graph_l; T_graph_r ].
   Transparent compute_transitive_closure.
 
-  Require Import String.
+  (* I so wish we could get the scope without everything *)
+  Local Open Scope string_scope.
 
-  Equations print_fin {k} (f : fin k) : string :=
+  Equations print_fin {k} (f : fin k) : String.string :=
     print_fin fz := "0";
     print_fin (fs fz) := "1";
     print_fin (fs (fs fz)) := "2";
@@ -1350,7 +1326,6 @@ Section SCT.
     print_nat 4 := "4";
     print_nat x := "5".
 
-  Local Open Scope string_scope.
   Equations print_node {k'} (f : nat) (data : option (bool * fin k')) : string :=
     print_node f None := "";
     print_node f (Some (weight, f')) := print_nat f ++ (if weight then "<" else "<=") ++ print_fin f'.
@@ -1371,9 +1346,9 @@ Section SCT.
 
   Definition eq_dec_graph {k} : forall x y : graph k, { x = y } + { x <> y }.
   Proof.
-    intros x y. destruct (Top.eqb x y) eqn:Heq.
-    left. destruct (Top.eqb_spec x y). auto. discriminate.
-    right. destruct (Top.eqb_spec x y). auto. discriminate. auto.
+    intros x y. destruct (eqb x y) eqn:Heq.
+    left. destruct (eqb_spec x y). auto. discriminate.
+    right. destruct (eqb_spec x y). auto. discriminate. auto.
   Defined.
 
   Definition uniquize {k} (l : list (graph k)) := nodup (@eq_dec_graph k) l.

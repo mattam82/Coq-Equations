@@ -625,12 +625,13 @@ let pre_solution ~(dir:direction) : simplification_fun =
   in
   let rel = EConstr.destRel !evd trel in
   (* Check dependencies in both tA and term *)
-  if not (Int.Set.mem rel (Context_map.dependencies_of_term ~with_red:false env !evd ctx (mkApp (tA, [| term |])) rel)) then
+  if not (Int.Set.mem rel
+            (Context_map.dependencies_of_term ~with_red:false env !evd ctx (mkApp (tA, [| term |])) rel)) then
     identity env evd (ctx, ty)
   else
     let tA = Reductionops.whd_all (push_rel_context ctx env) !evd tA in
     let term = Reductionops.whd_all (push_rel_context ctx env) !evd term in
-    if Int.Set.mem rel (Context_map.dependencies_of_term ~with_red:false env !evd ctx (mkApp (tA, [|term|])) rel) then
+    if Int.Set.mem rel (Context_map.dependencies_of_term ~with_red:true env !evd ctx (mkApp (tA, [|term|])) rel) then
       raise (CannotSimplify (str  "[solution] cannot remove dependency in the variable "))
     else
       let f c = c in
@@ -847,7 +848,7 @@ let infer_step ?(loc:Loc.t option) ~(isSol:bool)
        to analyze it. *)
     let tA, tu, tv = check_equality env !evd ctx ty1 in
     (* FIXME What is the correct way to do it? *)
-    let choose u v = Left (* if u < v then Left else Right *) in
+    let choose u v = if u < v then Left else Right in
     (* If the user wants a solution, we need to respect his wishes. *)
     if isSol then
       if EConstr.isRel !evd tu && EConstr.isRel !evd tv then
@@ -909,6 +910,16 @@ let or_fun (f : simplification_fun) (g : simplification_fun) : simplification_fu
   try f env evd gl
   with CannotSimplify _ ->
     evd := evd0; g env evd gl
+
+let or_fun_e1 (f : simplification_fun) (g : simplification_fun) : simplification_fun =
+  fun (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) ->
+  let evd0 = !evd in
+  try f env evd gl
+  with CannotSimplify e ->
+    evd := evd0;
+    try g env evd gl
+    with CannotSimplify _ ->
+      evd := evd0; raise (CannotSimplify e)
 
 let _expand_many rule env evd ((ctx, ty) : goal) : simplification_rules =
   (* FIXME: maybe it's too brutal/expensive? *)
@@ -996,10 +1007,11 @@ and simplify_one ((loc, rule) : Loc.t option * simplification_rule) :
        try compose_fun (or_fun check_block_notprod aux)
              first env evd gl
        with Blocked -> identity env evd gl
-     in handle_error (or_fun aux (remove_one_sigma ~only_nondep:true))
+     in handle_error (or_fun_e1 aux (remove_one_sigma ~only_nondep:true))
   | Step step -> wrap_handle (fun _ _ _ -> step)
   | Infer_one -> handle_error (or_fun (with_retry apply_noConfusions)
-                                 (wrap (infer_step ?loc ~isSol:false)))
+                                 (or_fun_e1 (wrap (infer_step ?loc ~isSol:false))
+                                    (remove_one_sigma ~only_nondep:true)))
   | Infer_direction -> wrap_handle (infer_step ?loc ~isSol:true)
 
 and simplify (rules : simplification_rules) : simplification_fun =

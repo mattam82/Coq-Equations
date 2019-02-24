@@ -41,12 +41,12 @@ val accessibles : pat list -> Int.Set.t
 val hidden : pat -> bool
 val match_pattern : user_pat_loc -> pat ->
                     ((identifier * bool) * pat) list * (Constrexpr.constr_expr * pat) list *
-                      (user_pat_loc * constr) list
+                      (user_pat_loc * constr) list * ((Loc.t option * pat) list)
 val match_patterns :
   user_pats -> pat list -> ((identifier * bool) * pat) list * (Constrexpr.constr_expr * pat) list *
-                                                   (user_pat_loc * constr) list
+                                                   (user_pat_loc * constr) list * ((Loc.t option * pat) list)
 val matches :
-  user_pats -> context_map -> (((identifier * bool) * pat) list * (Constrexpr.constr_expr * pat) list *                       (user_pat_loc * constr) list)  unif_result
+  user_pats -> context_map -> (((identifier * bool) * pat) list * (Constrexpr.constr_expr * pat) list *                       (user_pat_loc * constr) list * (Loc.t option * pat) list)  unif_result
 val match_user_pattern :
   pat -> user_pat_loc -> (int * user_pat) list * (identifier * pat) list
 val match_user_patterns :
@@ -67,7 +67,7 @@ val lets_of_ctx :
 
 
 type int_data = {
-  rec_info : rec_type option;
+  rec_type : rec_type;
   fixdecls : rel_context;
   flags : flags;
   intenv : Constrintern.internalization_env;
@@ -75,12 +75,14 @@ type int_data = {
                Notation_term.scope_name option) list
 }
 
+val add_wfrec_implicits : Syntax.rec_type ->
+           Glob_term.glob_constr -> Glob_term.glob_constr
+
 val interp_program_body : Environ.env ->
-           Evd.evar_map -> EConstr.rel_context ->
-           Constrintern.internalization_env ->
-           Vernacexpr.decl_notation list ->
-           Syntax.program_body ->
-           EConstr.types option -> Evd.evar_map * EConstr.constr
+  Evd.evar_map -> EConstr.rel_context ->
+  int_data ->
+  Syntax.program_body ->
+  EConstr.types option -> Evd.evar_map * EConstr.constr
 
 val interp_constr_in_rhs_env :Environ.env ->
   Evd.evar_map ref ->
@@ -191,7 +193,7 @@ val adjust_sign_arity : Environ.env ->
   Evd.evar_map -> program_info -> Syntax.pre_clause list ->
   Evd.evar_map * program_info
 
-val compute_recinfo : program_info list -> rec_type option
+val compute_rec_type : rec_type -> program_info list -> rec_type
 val print_recinfo : program_info list -> unit
 val compute_fixdecls_data :
            Environ.env ->

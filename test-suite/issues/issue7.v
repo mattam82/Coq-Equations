@@ -58,8 +58,8 @@ Hint Constructors TupleMap_direct_subterm : subterm_relation.
 Import Sigma_Notations.
 
 Definition TupleMap_subterm := Relation_Operators.clos_trans _
-  (λ x y : &{index : &{n : nat & sigma _ (λ _ : TupleT n, TupleT n)} &
-                   TupleMap (pr1 index) (pr1 (pr2 index)) (pr2 (pr2 index))},
+  (λ x y : ∃ index : ∃ (n : nat) (_ : TupleT n), TupleT n,
+           TupleMap (pr1 index) (pr1 (pr2 index)) (pr2 (pr2 index)),
           TupleMap_direct_subterm _ _ _ _ _ _ (pr2 x) (pr2 y)).
 Require Import DepElimDec.
 Derive Signature for TupleMap_direct_subterm.
@@ -127,13 +127,12 @@ myComp (tmCons _ H g) (tmCons F G f) :=
 
 (* FIXME long unfold_eq proof *)
 
-Time Equations? myComp_wf {n} {B C : TupleT n} (tm1 : TupleMap _ B C) {A : TupleT n} (tm2 : TupleMap _ A B)
+Time Equations myComp_wf {n} {B C : TupleT n} (tm1 : TupleMap _ B C) {A : TupleT n} (tm2 : TupleMap _ A B)
 : TupleMap _ A C by wf (signature_pack tm1) TupleMap_subterm :=
 myComp_wf tmNil tmNil := tmNil;
 myComp_wf (n:=_) (tmCons (B:=C) _ H g) (tmCons (n:=n) (A:=A) (B:=B) F G f) :=
   tmCons _ _ (fun x => existT (fun y => TupleMap _ _ (_ y)) (projT1 (g (projT1 (f x))))
                            (myComp_wf (projT2 (g (projT1 (f x)))) (projT2 (f x)))).
-Proof. constructor. simpl. constructor. Time Defined.
 
 Print Assumptions myComp.
 Print Assumptions myComp_wf.

@@ -38,8 +38,6 @@ Proof. intros b. funelim (neg b); auto. Qed.
 
 Module Obligations.
 
-  Obligation Tactic := idtac.
-
   (** One can use equations similarly to Program or the [refine] tactic,
       putting underscores [_] for subgoals to be filled separately using
       the tactic mode. *)
@@ -66,7 +64,7 @@ app_with (cons a v) l with app_with v l => {
 (** Structurally recursive function on natural numbers, with inspection of a recursive
     call result. We use [auto with arith] to discharge the obligations. *)
 
-Obligation Tactic := program_simpl ; auto with arith.
+Obligation Tactic := program_simpl ; try solve_wf ; auto with arith.
 
 Equations equal (n m : nat) : { n = m } + { n <> m } :=
 equal O O := in_left ;
@@ -190,8 +188,8 @@ Proof. intros. intros x. induction x. left. now depelim y.
   destruct (eq_dec h h0); subst. 
   destruct (IHx y). subst.
   left; reflexivity.
-  right. intro. apply n. noconf H0. constructor.
-  right. intro. apply n. noconf H0. constructor.
+  right. intro. apply n0. noconf H0. constructor.
+  right. intro. apply n0. noconf H0. constructor.
 Defined.
 Print Assumptions vector_eqdec.
 
@@ -213,14 +211,11 @@ Section foo.
       must be shown smaller than a [vector A (S n)]. They are actually compared
       at the packed type [{ n : nat & vector A n}]. *)
 
-  Obligation Tactic := program_simpl; try typeclasses eauto with Below rec_decision Subterm.
-
-  Equations? unzip {n} (v : vector (A * B) n) : vector A n * vector B n
+  Equations unzip {n} (v : vector (A * B) n) : vector A n * vector B n
     by wf (signature_pack v) (@t_subterm (A * B)) :=
   unzip []v := ([]v, []v) ;
   unzip (Vector.cons (x, y) v) with unzip v := {
     | pair xs ys := (Vector.cons x xs, Vector.cons y ys) }.
-  Proof. do 2 constructor. Qed.
 End foo.
 
 (** Playing with lists and functional induction, we define a tail-recursive version

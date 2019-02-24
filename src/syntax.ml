@@ -32,6 +32,7 @@ type user_pat =
     PUVar of identifier * generated
   | PUCstr of constructor * int * user_pats
   | PUInac of Constrexpr.constr_expr
+  | PUEmpty
 and user_pat_loc = (user_pat, [ `any ]) DAst.t
 and user_pats = user_pat_loc list
 
@@ -69,10 +70,12 @@ type program_body =
 
 type lhs = user_pats
 
-and ('a,'b) rhs =
+and ('a,'b) rhs_aux =
     Program of program_body * 'a wheres
   | Empty of identifier with_loc
   | Refine of Constrexpr.constr_expr list * 'b list
+
+and ('a,'b) rhs = ('a, 'b) rhs_aux option (* Empty patterns allow empty r.h.s. *)
 
 and pre_prototype =
   identifier with_loc * user_rec_annot * Constrexpr.local_binder_expr list * Constrexpr.constr_expr option *
@@ -103,6 +106,7 @@ let rec pr_user_loc_pat env ?loc pat =
 	if not (List.is_empty f) then str "(" ++ pc ++ spc () ++ pr_user_pats env f ++ str ")"
 	else pc
   | PUInac c -> str "?(" ++ pr_constr_expr c ++ str ")"
+  | PUEmpty -> str"!"
 
 and pr_user_pat env = DAst.with_loc_val (pr_user_loc_pat env)
 
@@ -113,7 +117,7 @@ let pr_lhs = pr_user_pats
 
 let pplhs lhs = pp (pr_lhs (Global.env ()) lhs)
 
-let rec pr_rhs env = function
+let rec pr_rhs_aux env = function
   | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ Id.print var
   | Program (rhs, where) -> spc () ++ str ":=" ++ spc () ++
                             (match rhs with
@@ -125,6 +129,9 @@ let rec pr_rhs env = function
       spc () ++ str "=>" ++ spc () ++
       hov 1 (str "{" ++ pr_clauses env s ++ str "}")
 
+and pr_rhs env = function
+  | None -> mt ()
+  | Some rhs -> pr_rhs_aux env rhs
 and pr_wheres env (l, nts) =
   if List.is_empty l then mt() else
   str"where" ++ spc () ++ prlist_with_sep fnl (pr_where env) l
@@ -148,7 +155,7 @@ let pr_user_lhs env lhs =
   | SignPats x -> pr_constr_expr x
   | RefinePats l -> prlist_with_sep (fun () -> str "|") pr_constr_expr l
 
-let rec pr_user_rhs env = function
+let rec pr_user_rhs_aux env = function
   | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ Id.print var
   | Program (rhs, where) -> spc () ++ str ":=" ++ spc () ++
                             (match rhs with
@@ -160,7 +167,7 @@ let rec pr_user_rhs env = function
       spc () ++ str "=>" ++ spc () ++
       hov 1 (str "{" ++ pr_user_clauses env s ++ str "}")
 
-and pr_prerhs env = function
+and pr_prerhs_aux env = function
   | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ Id.print var
   | Program (rhs, where) -> spc () ++ str ":=" ++ spc () ++
                             (match rhs with
@@ -171,6 +178,9 @@ and pr_prerhs env = function
                        prlist_with_sep (fun () -> str ",") pr_constr_expr rhs ++
       spc () ++ str "=>" ++ spc () ++
       hov 1 (str "{" ++ pr_preclauses env s ++ str "}")
+
+and pr_user_rhs env = pr_opt (pr_user_rhs_aux env)
+and pr_prerhs env = pr_opt (pr_prerhs_aux env)
 
 and pr_user_clause env (lhs, rhs) =
   pr_user_lhs env lhs ++ pr_user_rhs env rhs
@@ -212,11 +222,16 @@ let pr_r_equation_user_option _prc _prlc _prt l =
 let pr_equation_options  _prc _prlc _prt l =
   mt ()
 
-type rec_type = 
+type rec_type_item =
   | Guarded of (Id.t * rec_annot) list (* for mutual rec *)
-  | Logical of Id.t with_loc
+  | Logical of Id.t with_loc (* for nested wf rec *)
 
-let is_structural = function Some (Guarded _) -> true | _ -> false
+type rec_type = rec_type_item option list
+
+let is_structural = function Some (Guarded _) :: _ -> true | _ -> false
+
+let has_logical rec_type =
+  List.exists (function Some (Logical _) -> true | _ -> false) rec_type
 
 let is_rec_call sigma id f =
   match EConstr.kind sigma f with
@@ -277,6 +292,7 @@ type program_rec_info =
 type program_info = {
   program_loc : Loc.t;
   program_id : Id.t;
+  program_orig_type : EConstr.t; (* The original type *)
   program_sign : EConstr.rel_context;
   program_arity : EConstr.t;
   program_rec : program_rec_info option;
@@ -284,17 +300,18 @@ type program_info = {
 }
 
 let map_program_info f p =
-  { p with program_sign = map_rel_context f p.program_sign;
+  { p with program_orig_type = f p.program_orig_type;
+           program_sign = map_rel_context f p.program_sign;
            program_arity = f p.program_arity }
 
-let chole c loc =
+let _chole c loc =
   (* let tac = Genarg.in_gen (Genarg.rawwit Constrarg.wit_tactic) (solve_rec_tac_expr ()) in *)
   let kn = Lib.make_kn c in
   let cst = Names.Constant.make kn kn in
   CAst.make ~loc
   (CHole (Some (ImplicitArg (ConstRef cst, (0,None), false)), Misctypes.IntroAnonymous,None)), None
 
-let check_linearity env opats =
+let _check_linearity env opats =
   let rec aux ids pats = 
     List.fold_left (fun ids pat ->
       DAst.with_loc_val (fun ?loc pat ->
@@ -305,6 +322,7 @@ let check_linearity env opats =
             (str "Non-linear occurrence of variable in patterns: " ++ pr_user_pats env opats)
 	else Id.Set.add n ids
       | PUInac _ -> ids
+      | PUEmpty -> ids
       | PUCstr (_, _, pats) -> aux ids pats) pat)
       ids pats
   in ignore (aux Id.Set.empty opats)
@@ -337,6 +355,7 @@ let pattern_of_glob_constr env avoid patname gc =
       let n = next_ident_away id avoid in
       PUVar (n, true)
     | GRef (ConstructRef cstr,_) -> constructor ?loc cstr []
+    | GRef (ConstRef _ as c, _) when GlobRef.equal c (Lazy.force coq_bang) -> PUEmpty
     | GApp (c, l) ->
       begin match DAst.get c with
         | GRef (ConstructRef cstr,_) -> constructor ?loc cstr l
@@ -420,6 +439,7 @@ let rename_away_from ids pats =
     | PUVar (id, _) -> pat
     | PUCstr (c, n, args) -> PUCstr (c, n, List.map (DAst.map_with_loc aux) args)
     | PUInac c -> pat
+    | PUEmpty -> pat
   in
   List.map (DAst.map_with_loc aux) pats
 
@@ -447,10 +467,10 @@ let interp_eqn env notations p eqn =
         let pats = List.map (fun x -> List.hd x) pats in
         loc, curpats @ pats
     in
-    let () = check_linearity env pats in
-    (loc, pats, interp_rhs notations pats rhs)
+    (* let () = check_linearity env pats in *)
+    (loc, pats, Option.map (interp_rhs notations pats) rhs)
   and aux2 notations (pat, rhs) =
-    (pat, interp_rhs' notations rhs)
+    (pat, Option.map (interp_rhs' notations) rhs)
   and interp_rhs' notations = function
     | Refine (c, eqs) ->
       let interp c =
@@ -501,17 +521,17 @@ let interp_eqn env notations p eqn =
     let wheres = ref [] in
     let rec aux' ids ?(loc=default_loc) c =
       match c with
-      | CApp ((None, { CAst.v = CRef (qid', ie) }), args)
-           when qualid_is_ident qid' && Id.equal (qualid_basename qid') p.program_id ->
-         let id' = qualid_basename qid' in
-         (match p.program_rec with
-          | None | Some (Structural _) -> CAst.make ~loc c
-          | Some (WellFounded (_, _, r)) ->
-            let args =
-              List.map (fun (c, expl) -> CAst.with_loc_val (aux' ids) c, expl) args in
-            let c = CApp ((None, CAst.(make ~loc (CRef (qid', ie)))), args) in
-            let arg = CAst.make ~loc (CApp ((None, CAst.make ~loc c), [chole id' loc])) in
-            arg)
+      (* | CApp ((None, { CAst.v = CRef (qid', ie) }), args)
+       *      when qualid_is_ident qid' && Id.equal (qualid_basename qid') p.program_id ->
+       *    let id' = qualid_basename qid' in
+       *    (match p.program_rec with
+       *     | None | Some (Structural _) -> CAst.make ~loc c
+       *     | Some (WellFounded (_, _, r)) ->
+       *       let args =
+       *         List.map (fun (c, expl) -> CAst.with_loc_val (aux' ids) c, expl) args in
+       *       let c = CApp ((None, CAst.(make ~loc (CRef (qid', ie)))), args) in
+       *       let arg = CAst.make ~loc (CApp ((None, CAst.make ~loc c), [chole id' loc])) in
+       *       arg) *)
       | CHole (k, i, Some eqns) when Genarg.has_type eqns (Genarg.rawwit wit_equations_list) ->
         let eqns = Genarg.out_gen (Genarg.rawwit wit_equations_list) eqns in
         let id = !whereid in
@@ -531,11 +551,11 @@ let interp_eqn env notations p eqn =
 let is_recursive i : 'a wheres -> bool = fun eqs ->
   let rec occur_eqn (_, rhs) =
     match rhs with
-    | Program (c,w) ->
+    | Some (Program (c,w)) ->
       (match c with
       | ConstrExpr c -> occur_var_constr_expr i c || occurs w
       | Constr _ -> occurs w)
-    | Refine (c, eqs) ->
+    | Some (Refine (c, eqs)) ->
        List.exists (occur_var_constr_expr i) c || occur_eqns eqs
     | _ -> false
   and occur_eqns eqs = List.exists occur_eqn eqs

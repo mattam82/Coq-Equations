@@ -127,14 +127,13 @@ Derive Signature NoConfusion NoConfusionHom Subterm for mono.
 (** Our first interesting definition computes the coefficient in [Z] by which
     a monomial [m] is multiplied in a polynomial [p]. *)
 
-Equations? get_coef {n} (m : mono n) {b} (p : poly b n) : Z by wf (pack m) mono_subterm :=
+Equations get_coef {n} (m : mono n) {b} (p : poly b n) : Z by wf (pack m) mono_subterm :=
 get_coef mono_z     poly_z       := 0%Z;
 get_coef mono_z     (poly_c z _) := z;
 get_coef (mono_l m) (poly_l p)   := get_coef m p;
 get_coef (mono_l m) (poly_s p _) := get_coef m p;
 get_coef (mono_s m) (poly_l _)   := 0%Z;
 get_coef (mono_s m) (poly_s p1 p2) := get_coef m p2.
-Proof. all:repeat constructor. Defined.
 
 (** The definition can be done using either the usual structural
   recursion of [Coq] or well-founded recursion. If we use structural
@@ -723,11 +722,11 @@ Proof.
   depind p; try constructor; auto.
   autorewrite with reduce reduce_aux.
   remember (reduce p2) as P2; destruct P2 as [bP2 P2]; depelim P2.
-  destruct b0; simpl. constructor. auto. constructor; auto. depelim IHp2. auto.
+  destruct bP2; simpl. constructor. auto. constructor; auto. depelim IHp2. auto.
 
   depelim IHp2. autorewrite with reduce_aux plus. unfold apoly. simpl.
   assert (R := is_reduced_compat_plus _ IHp2_1 _ IHp2_2).
-  remember (plus p q) as P3; destruct P3 as [bP3 P3]. simpl.
+  remember (plus P2_1 q) as P3; destruct P3 as [bP3 P3]. simpl.
   simpl in *.
   destruct bP3; simpl; constructor; auto.
 Qed.

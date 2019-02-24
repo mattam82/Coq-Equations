@@ -271,6 +271,7 @@ val dependent_elimination_class :
   esigma -> Typeclasses.typeclass peuniverses
 
 val coq_noconfusion_class : global_reference lazy_t
+val coq_bang : global_reference Lazy.t
 val coq_inacc : global_reference Lazy.t
 val coq_block : global_reference Lazy.t
 val coq_hide : global_reference Lazy.t

@@ -139,7 +139,45 @@ Ltac funelim_sig_tac c tac :=
   simplify_IH_hyps'; (* intros _; *)
   unblock_goal; simplify_IH_hyps; tac c.
 
-Ltac funelim c := funelim_sig_tac c ltac:(fun _ => idtac).
+Ltac funelim_constr c := funelim_sig_tac c ltac:(fun _ => idtac).
+
+Tactic Notation "funelim" uconstr(p) :=
+  let call := fresh "call" in
+  set (call:=p);
+  lazymatch goal with
+    [ call := ?fp |- _ ] =>
+    subst call; funelim_constr fp
+  end.
+
+Ltac apply_args c elimc k :=
+    match c with
+    | _ ?a ?b ?c ?d ?e ?f => k uconstr:(elimc a b c d e f)
+    | _ ?a ?b ?c ?d ?e => k uconstr:(elimc a b c d e)
+    | _ ?a ?b ?c ?d => k uconstr:(elimc a b c d)
+    | _ ?a ?b ?c => k uconstr:(elimc a b c)
+    | _ ?a ?b => k uconstr:(elimc a b)
+    | _ ?a => k uconstr:(elimc a)
+    end.
+
+Ltac get_first_elim c :=
+  match c with
+  | ?f ?a ?b ?c ?d ?e ?f => get_elim (f a b c d e f)
+  | ?f ?a ?b ?c ?d ?e => get_elim (f a b c d e)
+  | ?f ?a ?b ?c ?d => get_elim (f a b c d)
+  | ?f ?a ?b ?c => get_elim (f a b c)
+  | ?f ?a ?b => get_elim (f a b)
+  | ?f ?a => get_elim (f a)
+  end.
+
+(** An alternative tactic that does not generalize over the arguments.
+    BEWARE: It might render the goal unprovable. *)
+Ltac apply_funelim c :=
+  let elimc := get_first_elim c in
+  let elimfn := match elimc with fun_elim (f:=?f) => constr:(f) end in
+  let elimn := match elimc with fun_elim (n:=?n) => constr:(n) end in
+  let elimt := make_refine elimn elimc in
+  apply_args c elimt ltac:(fun elimc =>
+                             unshelve refine_ho elimc; cbv beta).
 
 (** A special purpose database used to prove the elimination principle. *)
 
