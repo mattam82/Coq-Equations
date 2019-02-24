@@ -155,7 +155,7 @@ Section fhlist.
   Transparent fmember.
 
   Equations fhget (ls : list A) (mls : fhlist ls) (i : fmember ls) : B elm :=
-  fhget nil _ i :=! i;
+  fhget nil _ !;
   fhget _ (pair x _) (inl eq_refl) := x;
   fhget (cons _ ls) (pair _ l) (inr i) := fhget ls l i.
 

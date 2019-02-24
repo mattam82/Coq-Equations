@@ -41,12 +41,12 @@ val accessibles : pat list -> Int.Set.t
 val hidden : pat -> bool
 val match_pattern : user_pat_loc -> pat ->
                     ((identifier * bool) * pat) list * (Constrexpr.constr_expr * pat) list *
-                      (user_pat_loc * constr) list
+                      (user_pat_loc * constr) list * ((Loc.t option * pat) list)
 val match_patterns :
   user_pats -> pat list -> ((identifier * bool) * pat) list * (Constrexpr.constr_expr * pat) list *
-                                                   (user_pat_loc * constr) list
+                                                   (user_pat_loc * constr) list * ((Loc.t option * pat) list)
 val matches :
-  user_pats -> context_map -> (((identifier * bool) * pat) list * (Constrexpr.constr_expr * pat) list *                       (user_pat_loc * constr) list)  unif_result
+  user_pats -> context_map -> (((identifier * bool) * pat) list * (Constrexpr.constr_expr * pat) list *                       (user_pat_loc * constr) list * (Loc.t option * pat) list)  unif_result
 val match_user_pattern :
   pat -> user_pat_loc -> (int * user_pat) list * (identifier * pat) list
 val match_user_patterns :

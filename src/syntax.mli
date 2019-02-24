@@ -28,6 +28,7 @@ type user_pat =
     PUVar of identifier * generated
   | PUCstr of constructor * int * user_pats
   | PUInac of Constrexpr.constr_expr
+  | PUEmpty
 and user_pat_loc = (user_pat, [ `any ]) DAst.t
 and user_pats = user_pat_loc list
 
@@ -60,10 +61,11 @@ type program_body =
                                 with the proper de Bruijn indices *)
 
 type lhs = user_pats (* p1 ... pn *)
-and ('a,'b) rhs =
+and ('a,'b) rhs_aux =
     Program of program_body * 'a wheres
   | Empty of identifier with_loc
   | Refine of Constrexpr.constr_expr list * 'b list
+and ('a,'b) rhs = ('a, 'b) rhs_aux option
 and pre_prototype =
   identifier with_loc * user_rec_annot * Constrexpr.local_binder_expr list * Constrexpr.constr_expr option *
   (Id.t with_loc, Constrexpr.constr_expr * Constrexpr.constr_expr option) by_annot option

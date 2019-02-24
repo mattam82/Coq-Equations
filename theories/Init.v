@@ -23,6 +23,10 @@ Declare ML Module "equations_plugin".
 Delimit Scope equations_scope with equations.
 Local Open Scope equations_scope.
 
+Definition bang := tt.
+Opaque bang.
+Notation "!" := bang.
+
 (** A marker for fixpoint prototypes in the context *)
 Definition fixproto := tt.
 
