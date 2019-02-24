@@ -10,6 +10,13 @@ Require Import Program Bvector List Relations.
 From Equations Require Import Equations Telescopes Signature.
 Require Import Utf8.
 
+Equations neg (b : bool) : bool :=
+neg true := false ;
+neg false := true.
+
+Lemma neg_inv : forall b, neg (neg b) = b.
+Proof. intros b. funelim (neg b); auto. Qed.
+
 Inductive le : nat -> nat -> Set :=
 | le_0 n : le 0 (S n)
 | le_S n m : le n m -> le (S n) (S m).
@@ -253,13 +260,6 @@ plus' (S n) m := S (plus' n m).
 (* Ltac generalize_by_eqs id ::= generalize_eqs id. *)
 (* Ltac generalize_by_eqs_vars id ::= generalize_eqs_vars id. *)
 
-Equations neg (b : bool) : bool :=
-neg true := false ;
-neg false := true.
-
-Lemma neg_inv : forall b, neg (neg b) = b.
-Proof. intros b. funelim (neg b); auto. Qed.
-
 Equations head A (default : A) (l : list A) : A :=
 head A default nil := default ;
 head A default (cons a v) := a.
@@ -288,7 +288,6 @@ rev nil := nil;
 rev (cons a v) := rev v +++ (cons a nil).
 
 Notation " [] " := List.nil.
-
 
 Lemma app'_nil : forall {A} (l : list A), l +++ [] = l.
 Proof.
@@ -397,8 +396,8 @@ Lemma split_struct_vapp : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
     v = v' /\ w = w'.
 Proof.
   intros. funelim (vapp' v w); simp split_struct in *. 
-  destruct (split_struct (m:=0) w0). depelim xs; intuition.
-  destruct (split_struct (vapp' t0 w0)); simpl.
+  destruct (split_struct (m:=0) w). depelim xs; intuition.
+  destruct (split_struct (vapp' t0 w)); simpl.
   intuition congruence.
 Qed.
 

@@ -213,12 +213,12 @@ Proof.
   simpl.
   specialize (H H0).
   revert H. unfold drop. simpl.
-  pose proof (drop_spec (` I) x0). simpl in H.
+  pose proof (drop_spec (` i) x). simpl in H.
   rewrite H by omega. clear H.
   simp chunk. clear Heq. destruct dec. simp chunk; simpl; intros; try omega. intros.
   feed H. 
   clear H. apply leb_complete_conv in e. 
-  pose proof (drop_spec (` I) x0). rewrite H in e; try omega;
+  pose proof (drop_spec (` i) x). rewrite H in e; try omega;
                                     unfold length in *; simpl in *; omega.
   omega.
 Qed.

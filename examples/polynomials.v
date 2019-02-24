@@ -722,11 +722,11 @@ Proof.
   depind p; try constructor; auto.
   autorewrite with reduce reduce_aux.
   remember (reduce p2) as P2; destruct P2 as [bP2 P2]; depelim P2.
-  destruct b0; simpl. constructor. auto. constructor; auto. depelim IHp2. auto.
+  destruct bP2; simpl. constructor. auto. constructor; auto. depelim IHp2. auto.
 
   depelim IHp2. autorewrite with reduce_aux plus. unfold apoly. simpl.
   assert (R := is_reduced_compat_plus _ IHp2_1 _ IHp2_2).
-  remember (plus p q) as P3; destruct P3 as [bP3 P3]. simpl.
+  remember (plus P2_1 q) as P3; destruct P3 as [bP3 P3]. simpl.
   simpl in *.
   destruct bP3; simpl; constructor; auto.
 Qed.
