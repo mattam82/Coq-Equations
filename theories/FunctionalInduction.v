@@ -144,7 +144,7 @@ Ltac funelim_constr c := funelim_sig_tac c ltac:(fun _ => idtac).
 Tactic Notation "funelim" uconstr(p) :=
   let call := fresh "call" in
   set (call:=p);
-  match goal with
+  lazymatch goal with
     [ call := ?fp |- _ ] =>
     subst call; funelim_constr fp
   end.

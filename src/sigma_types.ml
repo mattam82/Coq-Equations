@@ -424,7 +424,7 @@ let uncurry_call env sigma fn c =
   let params, args = List.chop (List.length args') args in
   let hd = applist (hd, params) in
   let ty = Retyping.get_type_of env sigma hd in
-  let ctx, concl = decompose_prod_n_assum sigma (List.length args) ty in
+  let ctx, _ = Reductionops.splay_prod_assum env sigma ty in
   let ctx =
     let open Context.Rel.Declaration in
     let rec aux env ctx args =
@@ -437,7 +437,7 @@ let uncurry_call env sigma fn c =
       | LocalDef _ as decl :: decls, args ->
         decl :: aux env decls args
       | [], _ :: _ -> assert false
-      | ctx, [] -> ctx
+      | ctx, [] -> []
     in List.rev (aux env (List.rev ctx) args)
   in
   let evdref = ref sigma in
