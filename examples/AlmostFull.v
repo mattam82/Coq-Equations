@@ -1356,7 +1356,7 @@ Section SCT.
   Definition T_trans_clos := match compute_transitive_closure 10 gn_set with
                   | Finished l => l
                   | OutOfFuel => gn_set end.
-  Eval compute in T_trans_clos.
+  (* Eval compute in T_trans_clos. *)
 
   Eval compute in match compute_transitive_closure 10 gn_set with
                   | Finished l => print_list print_graph (uniquize l)
