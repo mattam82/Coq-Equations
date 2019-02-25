@@ -27,7 +27,7 @@ type identifier = Names.Id.t
 type user_pat =
     PUVar of identifier * generated
   | PUCstr of constructor * int * user_pats
-  | PUInac of Constrexpr.constr_expr
+  | PUInac of Glob_term.glob_constr
   | PUEmpty
 and user_pat_loc = (user_pat, [ `any ]) DAst.t
 and user_pats = user_pat_loc list
@@ -56,6 +56,7 @@ type rec_annot =
 
 type program_body =
   | ConstrExpr of Constrexpr.constr_expr
+  | GlobConstr of Glob_term.glob_constr
   | Constr of EConstr.constr (* We interpret a constr by substituting
                                 [Var names] of the lhs bound variables
                                 with the proper de Bruijn indices *)
