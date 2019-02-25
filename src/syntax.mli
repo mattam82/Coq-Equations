@@ -68,7 +68,7 @@ and ('a,'b) rhs_aux =
 and ('a,'b) rhs = ('a, 'b) rhs_aux option
 and pre_prototype =
   identifier with_loc * user_rec_annot * Constrexpr.local_binder_expr list * Constrexpr.constr_expr option *
-  (Id.t with_loc, Constrexpr.constr_expr * Constrexpr.constr_expr option) by_annot option
+  (Id.t with_loc option, Constrexpr.constr_expr * Constrexpr.constr_expr option) by_annot option
 
 and ('a, 'b) by_annot =
   | Structural of 'a
