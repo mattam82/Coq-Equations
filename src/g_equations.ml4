@@ -283,7 +283,7 @@ GEXTEND Gram
 
   wf_annot:
     [ [ "by"; IDENT "wf"; c = constr; rel = OPT constr -> Some (WellFounded (c, rel))
-      | "by"; "struct"; id = identloc -> Some (Structural id)
+      | "by"; "struct"; id = OPT identloc -> Some (Structural id)
       | -> None
     ] ]
   ;

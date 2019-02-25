@@ -79,7 +79,7 @@ and ('a,'b) rhs = ('a, 'b) rhs_aux option (* Empty patterns allow empty r.h.s. *
 
 and pre_prototype =
   identifier with_loc * user_rec_annot * Constrexpr.local_binder_expr list * Constrexpr.constr_expr option *
-  (Id.t with_loc, Constrexpr.constr_expr * Constrexpr.constr_expr option) by_annot option
+  (Id.t with_loc option, Constrexpr.constr_expr * Constrexpr.constr_expr option) by_annot option
 
 and ('a, 'b) by_annot =
   | Structural of 'a
@@ -142,7 +142,7 @@ and pr_proto ((_,id), _, l, t, ann) =
   (match ann with
      None -> mt ()
    | Some (WellFounded (t, rel)) -> str"by wf " ++ pr_constr_expr t ++ pr_opt pr_constr_expr rel
-   | Some (Structural id) -> str"by struct " ++ pr_id (snd id))
+   | Some (Structural id) -> str"by struct " ++ pr_opt (fun x -> pr_id (snd x)) id)
 
 and pr_clause env (loc, lhs, rhs) =
   pr_lhs env lhs ++ pr_rhs env rhs

@@ -684,12 +684,15 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot
          else Some (Structural (interp_reca rec_annot None))
        else None)
     | Some (Structural lid) ->
-      (try
-         let k, _, _ = lookup_rel_id (snd lid) sign in
-         Some (Structural (interp_reca rec_annot (Some (List.length sign - k, Some lid))))
-       with Not_found ->
-         user_err_loc (Some (fst lid), "struct_index",
-                       Pp.(str"No argument named " ++ Id.print (snd lid) ++ str" found")))
+      (match lid with
+       | Some lid ->
+         (try
+            let k, _, _ = lookup_rel_id (snd lid) sign in
+            Some (Structural (interp_reca rec_annot (Some (List.length sign - k, Some lid))))
+          with Not_found ->
+            user_err_loc (Some (fst lid), "struct_index",
+                          Pp.(str"No argument named " ++ Id.print (snd lid) ++ str" found")))
+       | None -> Some (Structural (interp_reca rec_annot None)))
     | Some (WellFounded (c, r)) -> Some (WellFounded (c, r))
   in
   let body = it_mkLambda_or_LetIn arity sign in
