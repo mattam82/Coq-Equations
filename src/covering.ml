@@ -100,6 +100,10 @@ and accessibles l =
 
 let hidden = function PHide _ -> true | _ -> false
 
+type match_subst =
+  ((identifier * bool) * pat) list * (Glob_term.glob_constr * pat) list *
+  (user_pat_loc * constr) list * ((Loc.t option * pat) list)
+
 let rec match_pattern p c =
   match DAst.get p, c with
   | PUVar (i,gen), (PCstr _ | PRel _ | PHide _) -> [(i, gen), c], [], [], []
@@ -298,22 +302,29 @@ let add_wfrec_implicits rec_type c =
   else c
 
 let interp_constr_evars_impls env sigma data expected_type c =
-  let c = intern_gen expected_type ~impls:data.intenv env sigma c in
   let c = add_wfrec_implicits data.rec_type c in
   let imps = Implicit_quantifiers.implicits_of_glob_constr ~with_products:(expected_type == Pretyping.IsType) c in
   let sigma, c = Pretyping.understand_tcc env sigma ~expected_type c in
   sigma, (c, imps)
 
+let interp_glob_constr_evars_impls env sigma ctx data expected_type c =
+  let sigma, (c, _) = interp_constr_evars_impls env sigma data expected_type c in
+  sigma, c
+
+let expected_type = function
+  | Some ty -> Pretyping.OfType ty
+  | None -> Pretyping.WithoutTypeConstraint
+
 let interp_program_body env sigma ctx data body ty =
   match body with
   | ConstrExpr c ->
     let env = push_rel_context ctx env in
-    let sigma, (c, _) =
-      match ty with
-      | None -> interp_constr_evars_impls env sigma data Pretyping.WithoutTypeConstraint c
-      | Some ty -> interp_constr_evars_impls env sigma data (Pretyping.OfType ty) c
-    in
-    sigma, c
+    let expected_type = expected_type ty in
+    let c = intern_gen expected_type ~impls:data.intenv env sigma c in
+    interp_glob_constr_evars_impls env sigma ctx data expected_type c
+  | GlobConstr c ->
+    let env = push_rel_context ctx env in
+    interp_glob_constr_evars_impls env sigma ctx data (expected_type ty) c
   | Constr c ->
     let env = Environ.reset_with_named_context (Environ.named_context_val env) env in
     let env = push_rel_context ctx env in
@@ -1040,25 +1051,27 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
       (* let ty =
        *   let t = pat_constr t in
        *   let ty = Retyping.get_type_of env !evars t in *)
-      let userc, usercty = interp_constr_in_rhs env ctx evars data None s lets (ConstrExpr user) in
+      let userc, usercty = interp_constr_in_rhs env ctx evars data None s lets (GlobConstr user) in
       match t with
       | PInac t ->
         begin match Reductionops.infer_conv env' !evars userc t with
           | Some evars' -> evars := evars'
           | None ->
-            CErrors.user_err ?loc:(Constrexpr_ops.constr_loc user) ~hdr:"covering"
-              (str "Incompatible innaccessible pattern " ++
-               Printer.pr_econstr_env env' !evars userc ++
-               spc () ++ str "should be convertible to " ++
-               Printer.pr_econstr_env env' !evars t)
+            DAst.with_loc_val (fun ?loc _ ->
+                CErrors.user_err ?loc ~hdr:"covering"
+                  (str "Incompatible innaccessible pattern " ++
+                   Printer.pr_econstr_env env' !evars userc ++
+                   spc () ++ str "should be convertible to " ++
+                   Printer.pr_econstr_env env' !evars t)) user
         end
       | _ ->
         let t = pat_constr t in
-        CErrors.user_err ?loc:(Constrexpr_ops.constr_loc user) ~hdr:"covering"
-          (str "Pattern " ++
-           Printer.pr_econstr_env env' !evars userc ++
-           spc () ++ str "is not inaccessible, but should refine pattern " ++
-           Printer.pr_econstr_env env' !evars t)
+        DAst.with_loc_val (fun ?loc _ ->
+            CErrors.user_err ?loc ~hdr:"covering"
+              (str "Pattern " ++
+               Printer.pr_econstr_env env' !evars userc ++
+               spc () ++ str "is not inaccessible, but should refine pattern " ++
+               Printer.pr_econstr_env env' !evars t)) user
     in
     let check_innac (user, forced) =
       DAst.with_loc_val (fun ?loc user ->
