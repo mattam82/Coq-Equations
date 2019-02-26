@@ -317,6 +317,9 @@ let logic_tele_forall_unpack = (find_global "tele.forall_unpack")
 let logic_eqdec_class = (find_global "eqdec.class")
 let logic_eqdec_dec_eq = (find_global "eqdec.dec_eq")
 
+let logic_uip_class = (find_global "uip.class")
+let logic_uip_uip = (find_global "uip.uip")
+
 let logic_signature_class = find_global "signature.class"
 let logic_signature_sig = find_global "signature.signature"
 let logic_signature_pack = find_global "signature.pack"

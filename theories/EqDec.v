@@ -6,21 +6,67 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Equations.Init.
+Require Import Equations.Init EqdepFacts.
 
 (** Decidable equality.
 
-   We redevelop the derivation of [K] from decidable equality on [A] making
+   We redevelop the derivation of [UIP] from decidable equality on [A] making
    everything transparent and moving to [Type] so that programs using this 
    will actually be computable inside Coq. *)
 
 Set Implicit Arguments.
+Set Universe Polymorphism.
 
 Definition dec_eq {A} (x y : A) := 
   { x = y } + { x <> y }.
 
 Class EqDec (A : Type) :=
   eq_dec : forall x y : A, { x = y } + { x <> y }.
+
+Class UIP (A : Type) := uip : forall (x y : A) (e e' : x = y), e = e'.
+
+Class EqDecPoint (A : Type) (x : A) :=
+  eq_dec_point : forall y : A, { x = y } + { x <> y }.
+
+Instance EqDec_EqDecPoint A `(EqDec A) (x : A) : EqDecPoint x := eq_dec x.
+
+(** We rederive the UIP shifting proof transparently. *)
+Theorem UIP_shift_on (X : Type) (x : X) :
+  UIP_refl_on_ X x -> forall y : x = x, UIP_refl_on_ (x = x) y.
+Proof.
+  intros UIP_refl y.
+  rewrite (UIP_refl y).
+  intros z.
+  assert (UIP:forall y' y'' : x = x, y' = y'').
+  { intros. apply eq_trans_r with (eq_refl x); apply UIP_refl. }
+  transitivity (eq_trans (eq_trans (UIP (eq_refl x) (eq_refl x)) z)
+                         (eq_sym (UIP (eq_refl x) (eq_refl x)))).
+  - destruct z. destruct (UIP _ _). reflexivity.
+  - change
+      (match eq_refl x as y' in _ = x' return y' = y' -> Prop with
+       | eq_refl => fun z => z = (eq_refl (eq_refl x))
+       end (eq_trans (eq_trans (UIP (eq_refl x) (eq_refl x)) z)
+                     (eq_sym (UIP (eq_refl x) (eq_refl x))))).
+    destruct z. destruct (UIP _ _). reflexivity.
+Defined.
+
+Theorem UIP_shift : forall U, UIP_refl_ U -> forall x:U, UIP_refl_ (x = x).
+Proof. exact (fun U UIP_refl x => @UIP_shift_on U x (UIP_refl x)). Defined.
+
+(** This is the reduction rule of UIP. *)
+Lemma uip_refl_refl {A} {E : UIP A} (x : A) : uip (x:=x) eq_refl eq_refl = eq_refl.
+Proof.
+  assert (Us:=UIP_shift).
+  specialize (Us A). compute in Us. apply Us.
+  intros. apply uip.
+Defined.
+
+Theorem UIP_K {A} {U : UIP A} (x : A) : 
+  forall P : x = x -> Type,
+    P (refl_equal x) -> forall p : x = x, P p.
+Proof.
+  intros P peq e. now elim (uip refl_equal e).
+Defined.
 
 (** Derivation of principles on sigma types whose domain is decidable. *)
 
@@ -127,12 +173,6 @@ Section EqdepDec.
 
 End EqdepDec.
 
-Class EqDecPoint (A : Type) (x : A) :=
-  eq_dec_point : forall y : A, { x = y } + { x <> y }.
-
-Instance EqDec_EqDecPoint A `(EqDec A) (x : A) : EqDecPoint x :=
-  eq_dec x.
-  
 (** Derivation of principles on sigma types whose domain is decidable. *)
 
 Section PointEqdepDec.
@@ -348,3 +388,6 @@ Proof.
   intros. red. intros.
   exact (left (eq_proofs_unicity x0 y0)).
 Defined.
+
+Instance eqdec_uip {A} (E : EqDec A) : UIP A :=
+  fun x y e e' => eq_proofs_unicity e e'.
