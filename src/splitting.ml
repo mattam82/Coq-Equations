@@ -1190,13 +1190,13 @@ let solve_equations_obligations_program flags recids i sigma hook =
     in
     hook recobls sigma
   in
-  let univ_hook = Obligations.mk_univ_hook hook in
+  let hook = Lemmas.mk_hook hook in
   let reduce x =
     let flags = CClosure.betaiotazeta in
     to_constr sigma (clos_norm_flags flags (Global.env ()) sigma (of_constr x))
   in
   ignore (Obligations.add_definition oblsid ~term ty (Evd.evar_universe_context sigma)
-          ~kind ~reduce ~univ_hook:univ_hook ~opaque:false oblsinfo)
+          ~kind ~reduce ~hook ~opaque:false oblsinfo)
 
 let simplify_evars evars t =
   let rec aux t =

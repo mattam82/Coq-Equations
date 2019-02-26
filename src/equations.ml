@@ -101,7 +101,7 @@ let define_unfolding_eq env evd flags p unfp prog prog' ei hook =
   in
   ignore(Obligations.add_definition
            ~kind:info.decl_kind
-           ~univ_hook:(Obligations.mk_univ_hook hook_eqs) ~reduce:(fun x -> x)
+           ~hook:(Lemmas.mk_hook hook_eqs) ~reduce:(fun x -> x)
            ~implicits:(program_impls p) unfold_eq_id (to_constr evd stmt)
            ~tactic:(of82 tac)
            (Evd.evar_universe_context evd) [||])
