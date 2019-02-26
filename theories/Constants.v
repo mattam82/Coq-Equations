@@ -44,6 +44,9 @@ Register Equations.DepElim.eq_rect_dep_r as equations.equality.elim.
 Register Equations.EqDec.EqDec as equations.eqdec.class.
 Register Equations.EqDec.dec_eq as equations.eqdec.dec_eq.
 
+Register Equations.EqDec.UIP as equations.uip.class.
+Register Equations.EqDec.uip as equations.uip.uip.
+
 Register Init.Logic.False as equations.bottom.type.
 Register Init.Logic.False_rect as equations.bottom.case.
 Register Equations.DepElim.False_rect_dep as equations.bottom.elim.
@@ -78,7 +81,7 @@ Register Equations.DepElim.eq_simplification_sigma1_dep as equations.depelim.sim
 Register Equations.DepElim.eq_simplification_sigma1_nondep_dep as equations.depelim.simpl_sigma_nondep_dep.
 Register Equations.DepElim.eq_simplification_sigma1_dep_dep as equations.depelim.simpl_sigma_dep_dep.
 Register Equations.DepElim.pack_sigma_eq as equations.depelim.pack_sigma_eq.
-Register Equations.DepElim.simplification_K_dec as equations.depelim.simpl_K_dec.
+Register Equations.DepElim.simplification_K_uip as equations.depelim.simpl_K_uip.
 Register Equations.DepElim.solution_left as equations.depelim.solution_left.
 Register Equations.DepElim.solution_left_dep as equations.depelim.solution_left_dep.
 Register Equations.DepElim.solution_right as equations.depelim.solution_right.

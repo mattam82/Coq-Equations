@@ -209,8 +209,11 @@ val logic_relation : lazy_ref
 val logic_wellfounded : lazy_ref
 val logic_wellfounded_class : lazy_ref
 val logic_transitive_closure : lazy_ref
+
 val logic_eqdec_class : lazy_ref
 val logic_eqdec_dec_eq : lazy_ref
+val logic_uip_class : lazy_ref
+val logic_uip_uip : lazy_ref
 
 val logic_signature_class : lazy_ref
 val logic_signature_sig : lazy_ref

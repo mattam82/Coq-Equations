@@ -39,19 +39,3 @@ Ltac rewrite_sigma2_rule_K c :=
 
 Ltac rewrite_sigma2_rule c ::=
   rewrite_sigma2_rule_noK c || rewrite_sigma2_rule_K c.
-
-
-(* Polymorphic Lemma Id_simplification_K_ax : *)
-(*   forall {A} (x : A) {B : Id x x -> Type}, B id_refl -> (forall p : Id x x, B p). *)
-(* Proof. intros. rewrite (UIP_refl A). assumption. Defined. *)
-(* Arguments simplification_K : simpl never. *)
-
-(* Lemma Id_simplification_K_refl : forall {A} (x : A) {B : x = x -> Type} *)
-(*                                     (p : B eq_refl), *)
-(*   simplification_K x p eq_refl = p. *)
-(* Proof. *)
-(*   intros. *)
-(*   unfold simplification_K. *)
-(*   rewrite UIP_refl_refl. unfold eq_rect_r. simpl. *)
-(*   reflexivity. *)
-(* Defined. *)
