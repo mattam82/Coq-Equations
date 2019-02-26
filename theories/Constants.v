@@ -81,7 +81,7 @@ Register Equations.DepElim.eq_simplification_sigma1_dep as equations.depelim.sim
 Register Equations.DepElim.eq_simplification_sigma1_nondep_dep as equations.depelim.simpl_sigma_nondep_dep.
 Register Equations.DepElim.eq_simplification_sigma1_dep_dep as equations.depelim.simpl_sigma_dep_dep.
 Register Equations.DepElim.pack_sigma_eq as equations.depelim.pack_sigma_eq.
-Register Equations.DepElim.simplification_K_uip as equations.depelim.simpl_K_uip.
+Register Equations.DepElim.simplification_K_uip as equations.depelim.simpl_uip.
 Register Equations.DepElim.solution_left as equations.depelim.solution_left.
 Register Equations.DepElim.solution_left_dep as equations.depelim.solution_left_dep.
 Register Equations.DepElim.solution_right as equations.depelim.solution_right.

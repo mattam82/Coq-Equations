@@ -10,7 +10,6 @@
 
 Require Import Program.Basics Program.Combinators.
 Require Import Equations.Equations NoConfusion Equations.DepElimDec.
-Unset Equations WithK.
 (** [fin n] is the type of naturals smaller than [n]. *)
 
 Inductive fin : nat -> Set :=

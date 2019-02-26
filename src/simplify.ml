@@ -35,9 +35,8 @@ module type EQREFS = sig
   val simpl_sigma_nondep_dep : Names.Constant.t Lazy.t
   val simpl_sigma_dep_dep : Names.Constant.t Lazy.t
   val pack_sigma_eq : Names.Constant.t Lazy.t
-  (* Deletion using K. *)
-  val simpl_K : Names.Constant.t Lazy.t
-  val simpl_K_uip : Names.Constant.t Lazy.t
+  (* Deletion using UIP. *)
+  val simpl_uip : Names.Constant.t Lazy.t
   (* Solution lemmas. *)
   val solution_left : Names.Constant.t Lazy.t
   val solution_left_dep : Names.Constant.t Lazy.t
@@ -83,8 +82,7 @@ module EqRefs : EQREFS = struct
   let simpl_sigma_nondep_dep = init_depelim "simpl_sigma_nondep_dep"
   let simpl_sigma_dep_dep = init_depelim "simpl_sigma_dep_dep"
   let pack_sigma_eq = init_depelim "pack_sigma_eq"
-  let simpl_K = init_depelim "simpl_K"
-  let simpl_K_uip = init_depelim "simpl_K_uip"
+  let simpl_uip = init_depelim "simpl_uip"
   let solution_left = init_depelim "solution_left"
   let solution_left_dep = init_depelim "solution_left_dep"
   let solution_right = init_depelim "solution_right"
@@ -123,8 +121,7 @@ module type BUILDER = sig
   val simpl_sigma_dep : constr_gen
   val simpl_sigma_nondep_dep : constr_gen
   val simpl_sigma_dep_dep : constr_gen
-  val simpl_K : constr_gen
-  val simpl_K_uip : constr_gen
+  val simpl_uip : constr_gen
   val solution_left : constr_gen
   val solution_left_dep : constr_gen
   val solution_right : constr_gen
@@ -165,8 +162,7 @@ module BuilderGen (SigmaRefs : SIGMAREFS) (EqRefs : EQREFS) : BUILDER = struct
   let simpl_sigma_dep = gen_from_constant EqRefs.simpl_sigma_dep
   let simpl_sigma_nondep_dep = gen_from_constant EqRefs.simpl_sigma_nondep_dep
   let simpl_sigma_dep_dep = gen_from_constant EqRefs.simpl_sigma_dep_dep
-  let simpl_K = gen_from_constant EqRefs.simpl_K
-  let simpl_K_uip = gen_from_constant EqRefs.simpl_K_uip
+  let simpl_uip = gen_from_constant EqRefs.simpl_uip
   let solution_left = gen_from_constant EqRefs.solution_left
   let solution_left_dep = gen_from_constant EqRefs.solution_left_dep
   let solution_right = gen_from_constant EqRefs.solution_right
@@ -498,28 +494,22 @@ let deletion ~(force:bool) : simplification_fun =
   else
     let tB = EConstr.mkLambda (name, ty1, ty2) in
     try
-      if not !Equations_common.simplify_withK_dec then raise Not_found else
-      (* We will try to find an instance of K for the type [A]. *)
-      let tsimpl_K_uip = Globnames.ConstRef (Lazy.force EqRefs.simpl_K_uip) in
-      let uip_ty = EConstr.mkApp (Builder.uip evd, [| tA |]) in
-      let tuip =
-        let env = push_rel_context ctx env in
+      if not !Equations_common.simplify_withUIP then raise Not_found else
+        (* We will try to find an instance of UIP for the type [A]. *)
+        let tsimpl_uip = Globnames.ConstRef (Lazy.force EqRefs.simpl_uip) in
+        let uip_ty = EConstr.mkApp (Builder.uip evd, [| tA |]) in
+        let tuip =
+          let env = push_rel_context ctx env in
           Equations_common.evd_comb1
             (Typeclasses.resolve_one_typeclass env) evd uip_ty
-      in
-      let args = [Some tA; Some tuip; Some tx; Some tB; None] in
-        build_app_infer env evd (ctx, ty) ctx tsimpl_K_uip args, subst
+        in
+        let args = [Some tA; Some tuip; Some tx; Some tB; None] in
+        build_app_infer env evd (ctx, ty) ctx tsimpl_uip args, subst
     with Not_found ->
-      if force || !Equations_common.simplify_withK then
-        (* We can use K as an axiom. *)
-        let tsimpl_K = Globnames.ConstRef (Lazy.force EqRefs.simpl_K) in
-        let args = [Some tA; Some tx; Some tB; None] in
-          build_app_infer env evd (ctx, ty) ctx tsimpl_K args, subst
-      else
-        let env = push_rel_context ctx env in
-        raise (CannotSimplify (str
-          "[deletion] Cannot simplify without K on type " ++
-          Printer.pr_econstr_env env !evd tA))
+      let env = push_rel_context ctx env in
+      raise (CannotSimplify (str
+                               "[deletion] Cannot simplify without K on type " ++
+                             Printer.pr_econstr_env env !evd tA))
 
 let solution ~(dir:direction) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
@@ -685,7 +675,7 @@ let maybe_pack : simplification_fun =
     let evd', tBfull, _, _, valsig, _, _, tA' = Sigma_types.build_sig_of_ind env !evd ind in
     evd := evd';
     let tA' = Vars.substl (List.rev params) tA' in
-    (* We will try to find an instance of K for the type [A]. *)
+    (* We will try to find an instance of UIP for the type [A]. *)
     let eqdec_ty = EConstr.mkApp (Builder.uip evd, [| tA' |]) in
     let tdec =
       let env = push_rel_context ctx env in
@@ -698,6 +688,12 @@ let maybe_pack : simplification_fun =
           Printer.pr_econstr_env env !evd tA' ++
           str " or NoConfusion for family " ++ Printer.pr_inductive env (fst ind)))
     in
+    if not !Equations_common.simplify_withUIP then
+      raise (CannotSimplify
+               (str
+                  "[noConfusion] Trying to use a non-definitional noConfusion rule on " ++
+                Printer.pr_econstr_env env !evd tA' ++
+                str ", enable Equations WithUIP to allow this"));
     let tx =
       let _, _, tx, _ = Option.get (decompose_sigma !evd valsig) in
         Vars.substl (CList.rev args) (Termops.pop tx)

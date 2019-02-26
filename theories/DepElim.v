@@ -422,19 +422,24 @@ Proof.
   intros X. eapply (X id_refl). apply id_refl.
 Defined.
 
-Polymorphic Lemma uip_inj_right_sigma@{i j} {A : Type@{i}}
-            {E : UIP A} (P : A -> Type@{i}) (x : A) (y y' : P x):
+Polymorphic Lemma pr2_inv_uip@{i} {A : Type@{i}}
+            {P : A -> Type@{i}} {x : A} {y y' : P x} :
+  y = y' -> sigmaI@{i} P x y = sigmaI@{i} P x y'.
+Proof. exact (solution_right (B:=fun y' => (x, y) = (x, y')) y eq_refl y'). Defined.
+
+Polymorphic Lemma pr2_uip@{i} {A : Type@{i}}
+            {E : UIP A} {P : A -> Type@{i}} {x : A} {y y' : P x} :
   sigmaI@{i} P x y = sigmaI@{i} P x y' -> y = y'.
 Proof.
-  refine (eq_simplification_sigma1_dep_dep@{i j} _ _ _ _ _).
+  refine (eq_simplification_sigma1_dep_dep@{i i} _ _ _ _ _).
   intros e'. destruct (uip eq_refl e'). intros e ; exact e.
 Defined.
 
-Polymorphic Lemma uip_inj_right_sigma_refl@{i j} {A : Type@{i}}
+Polymorphic Lemma pr2_uip_refl@{i} {A : Type@{i}}
             {E : UIP A} (P : A -> Type@{i}) (x : A) (y : P x) :
-  uip_inj_right_sigma@{i j} P x y y eq_refl = eq_refl.
+  pr2_uip@{i} (@eq_refl _ (x, y)) = eq_refl.
 Proof.
-  unfold uip_inj_right_sigma, eq_simplification_sigma1_dep_dep.
+  unfold pr2_uip, eq_simplification_sigma1_dep_dep.
   now rewrite uip_refl_refl.
 Defined.
 
@@ -445,14 +450,14 @@ Polymorphic Lemma simplification_sigma2_uip@{i j} : forall {A : Type@{i}} `{UIP 
                                                            {B : Type@{j}}
     (p : A) (x y : P p),
     (x = y -> B) -> ((p , x) = (p, y) -> B).
-Proof. intros. apply X. apply uip_inj_right_sigma@{i j} in H0. assumption. Defined.
+Proof. intros. apply X. apply pr2_uip@{i} in H0. assumption. Defined.
 
 Polymorphic Lemma simplification_sigma2_uip_refl@{i j} :
   forall {A : Type@{i}} {uip:UIP A} {P : A -> Type@{i}} {B : Type@{j}}
     (p : A) (x : P p) (G : x = x -> B),
       @simplification_sigma2_uip A uip P B p x x G eq_refl = G eq_refl.
 Proof.
-  intros. unfold simplification_sigma2_uip. now rewrite uip_inj_right_sigma_refl.
+  intros. unfold simplification_sigma2_uip. now rewrite pr2_uip_refl.
 Defined.
 
 Arguments simplification_sigma2_uip : simpl never.
@@ -517,36 +522,26 @@ Defined.
 
 Polymorphic
 Definition ind_pack_eq@{i} {A : Type@{i}} {B : A -> Type@{i}} {x : A} {p q : B x} (e : p = q) :
-  @eq (sigma A (fun x => B x)) (x, p) (x, q).
-Proof. destruct e. reflexivity. Defined.
-
-Polymorphic
-Definition ind_pack_eq_inv@{i} {A : Type@{i}} {uip : UIP A}
-           {B : A -> Type@{i}} (x : A) (p q : B x) (e : @eq (sigma A (fun x => B x)) (x, p) (x, q)) : p = q.
-Proof. revert e. apply simplification_sigma2_uip@{i i}. apply id. Defined.
-
-Polymorphic
-Definition ind_pack_eq_inv_refl@{i} {A : Type@{i}} {uip : UIP A}
-           {B : A -> Type@{i}} {x : A} (p : B x) :
-  ind_pack_eq_inv _ _ _ (@eq_refl _ (x, p)) = eq_refl.
-Proof.
-  unfold ind_pack_eq_inv. simpl. unfold simplification_sigma2_uip.
-  unfold id. unfold uip_inj_right_sigma. apply uip_inj_right_sigma_refl@{i i}.
-Defined.
+  @eq (sigma A (fun x => B x)) (x, p) (x, q) :=
+  (pr2_inv_uip e).
+(* ind_pack_eq = pr2_inv_uip *)
+(* ind pack eq_inv = pr2_uip *)
 
 Polymorphic
 Definition ind_pack_eq_inv_equiv@{i} {A : Type@{i}} {uip : UIP A}
            {B : A -> Type@{i}} {x : A} (p q : B x) (e : p = q) :
-  ind_pack_eq_inv _ _ _ (ind_pack_eq e) = e.
+  pr2_uip (pr2_inv_uip e) = e.
 Proof.
-  destruct e. apply ind_pack_eq_inv_refl. 
+  destruct e. apply pr2_uip_refl.
 Defined.
 
 Polymorphic
 Definition opaque_ind_pack_eq_inv@{i j} {A : Type@{i}} {uip : UIP A}
   {B : A -> Type@{i}} {x : A} {p q : B x} (G : p = q -> Type@{j}) (e : (x, p) = (x, q)) :=
-  let e' := @ind_pack_eq_inv A uip B x p q e in G e'.
+  G (pr2_uip@{i} e).
 Arguments opaque_ind_pack_eq_inv : simpl never.
+Arguments pr2_uip : simpl never.
+Arguments pr2_inv_uip : simpl never.
 
 Polymorphic
 Lemma simplify_ind_pack@{i j} {A : Type@{i}} {uip : UIP A}
@@ -565,8 +560,7 @@ Lemma simplify_ind_pack_inv@{i j} {A : Type@{i}} {uip : UIP A}
       (B : A -> Type@{i}) (x : A) (p : B x) (G : p = p -> Type@{j}) :
   G eq_refl -> opaque_ind_pack_eq_inv G eq_refl.
 Proof.
-  intros H. unfold opaque_ind_pack_eq_inv.
-  rewrite ind_pack_eq_inv_refl. apply H.
+  intros H. unfold opaque_ind_pack_eq_inv. destruct (pr2_uip_refl B x p). exact H.
 Defined.
 Arguments simplify_ind_pack_inv : simpl never.
 
@@ -574,7 +568,7 @@ Polymorphic
 Definition simplified_ind_pack@{i j} {A : Type@{i}} {uip : UIP A}
   (B : A -> Type@{i}) (x : A) (p : B x) (G : p = p -> Type@{j})
   (t : opaque_ind_pack_eq_inv G eq_refl) :=
-  eq_rect _ G t _ (@ind_pack_eq_inv_refl A uip B x p).
+  eq_rect _ G t _ (@pr2_uip_refl A uip B x p).
 Arguments simplified_ind_pack : simpl never.
 
 Polymorphic
@@ -592,7 +586,7 @@ Lemma simplify_ind_pack_elim@{i j} {A : Type@{i}} {uip : UIP A}
   simplified_ind_pack B x p G (simplify_ind_pack_inv B x p G t) = t.
 Proof.
   unfold simplified_ind_pack, simplify_ind_pack_inv.
-  destruct (ind_pack_eq_inv_refl p). reflexivity.
+  now destruct (pr2_uip_refl B x p).
 Qed.
 
 (** For the Id equality type *)

@@ -1,5 +1,5 @@
 From Equations Require Import Equations DepElimDec HSets.
-Unset Equations WithK.
+
 Axiom  I     : Set.
 Axiom i1 i2 : I.
 
@@ -8,7 +8,7 @@ Inductive D : I -> Set :=
 | d2 : D i2.
 Derive Signature NoConfusion for D.
 
-(** This would require K or deciding i1 = i2. *)
+(** This would require general K or deciding i1 = i2. *)
 Fail Derive NoConfusionHom for D.
 
 Inductive P : forall {i}, D i -> Set :=

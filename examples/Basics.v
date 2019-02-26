@@ -90,27 +90,31 @@ Module KAxiom.
   Fail Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
     K x P p eq_refl := p.
 
-  Set Equations WithK.
-  Require Import Equations.DepElimK.
+  Set Equations WithUIP.
+  Axiom uip : forall A, EqDec.UIP A.
+  Local Existing Instance uip.
   Equations K_ax {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
     K_ax x P p eq_refl := p.
 
   (** The definition is however using an axiom equivalent to [K], so it cannot reduce
       on closed or open terms. *)
+End KAxiom.
 
-  Unset Equations WithK.
-
+Module KDec.
   (** However, types enjoying a provable instance of the [K] principle are fine using the WithKDec
       option. Note that the following definition does *not* reduce according to its single clause
       on open terms, it instead computes using the decidable equality proof on natural numbers. *)
 
-  Set Equations WithKDec.
+  Set Equations WithUIP.
+
+  Fail Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
+    K x P p eq_refl := p.
 
   Equations K (x : nat) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
     K x P p eq_refl := p.
   Print Assumptions K. (* Closed under the global context *)
 
-End KAxiom.
+End KDec.
 
 (** The [with] construct allows to pattern-match on an intermediary computation.
     The "|" syntax provides a shortcut to repeating the previous patterns. *)

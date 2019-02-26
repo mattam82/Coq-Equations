@@ -28,6 +28,7 @@ Require Import Coq.Vectors.VectorDef.
 Require Import List.
 Import ListNotations.
 Require Import Utf8.
+Set Warnings "-notation-overridden".
 Import Sigma_Notations.
 Local Open Scope equations_scope.
 
