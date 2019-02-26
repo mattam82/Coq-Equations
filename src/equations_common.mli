@@ -14,8 +14,7 @@ open Ltac_plugin
 type 'a peuniverses = 'a * EConstr.EInstance.t
 
 (* Options *)
-val simplify_withK : bool ref
-val simplify_withK_dec : bool ref
+val simplify_withUIP : bool ref
 val equations_transparent : bool ref
 
 val debug : bool ref

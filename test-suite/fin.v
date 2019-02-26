@@ -1,7 +1,5 @@
 Require Import Program Equations.Equations.
 
-Set Equations WithKDec.
-
 Inductive fin : nat -> Set :=
 | fz : forall {n}, fin (S n)
 | fs : forall {n}, fin n -> fin (S n).
@@ -133,6 +131,8 @@ Definition rev_aux_app_stmt := forall (A : Set) (i j1 j2 : nat) (l : ilist A i)
   (acc1 : ilist A j1) (acc2 : ilist A j2) H,
   convert_ilist H (irev_aux l (iapp acc1 acc2)) = iapp (irev_aux l acc1) acc2.
 
+Set Equations WithUIP.
+
 Lemma rev_aux_app : rev_aux_app_stmt.
 Proof.
   unfold rev_aux_app_stmt.
@@ -147,6 +147,7 @@ Proof.
       simpl in H0. simpl in H.
 Admitted.
 
+Unset Equations WithUIP.
 
 Equations irev' {A : Set} {n : nat} (l : ilist A n) : ilist A n :=
 irev' Nil := Nil;
@@ -178,8 +179,6 @@ Inductive fle : forall {n}, fin n -> fin n -> Set :=
 Derive Signature for fle.
 
 Equations fin0_empty (i : fin 0) : False := { }.
-
-Unset Equations WithK.
 
 Transparent NoConfusionHom_fin.
 

@@ -36,24 +36,36 @@ let to_peuniverses (x, u) = (x, EConstr.EInstance.make u)
 let from_peuniverses sigma (x, u) = (x, EConstr.EInstance.kind sigma u)
 
 (* Options. *)
-let simplify_withK = ref false
-let simplify_withK_dec = ref false
+let simplify_withUIP = ref false
 let equations_transparent = ref false
 
 let _ = Goptions.declare_bool_option {
-  Goptions.optdepr  = false;
-  Goptions.optname  = "using axiomatic K during simplification";
+  Goptions.optdepr  = true;
+  Goptions.optname  = "using axiomatic K during simplification.";
   Goptions.optkey   = ["Equations"; "WithK"];
-  Goptions.optread  = (fun () -> !simplify_withK);
-  Goptions.optwrite = (fun b -> simplify_withK := b)
+  Goptions.optread  = (fun () -> false);
+  Goptions.optwrite = (fun b ->
+      if b then
+        CErrors.user_err (str"DEPRECATED. Use flag Equations WithUIP and introduce \
+                              an axiomn [forall A, Equations.EqDec.UIP A] \
+                              as a type class instance using [Existing Instance] instead.")
+      else simplify_withUIP := b)
+}
+
+let _ = Goptions.declare_bool_option {
+  Goptions.optdepr  = true;
+  Goptions.optname  = "using propositional K during simplification. Use flag Equations WithUIP instead.";
+  Goptions.optkey   = ["Equations"; "WithKDec"];
+  Goptions.optread  = (fun () -> !simplify_withUIP);
+  Goptions.optwrite = (fun b -> simplify_withUIP := b)
 }
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = false;
-  Goptions.optname  = "using propositional K during simplification";
-  Goptions.optkey   = ["Equations"; "WithKDec"];
-  Goptions.optread  = (fun () -> !simplify_withK_dec);
-  Goptions.optwrite = (fun b -> simplify_withK_dec := b)
+  Goptions.optname  = "using propositional UIP during simplification";
+  Goptions.optkey   = ["Equations"; "WithUIP"];
+  Goptions.optread  = (fun () -> !simplify_withUIP);
+  Goptions.optwrite = (fun b -> simplify_withUIP := b)
 }
 
 let _ = Goptions.declare_bool_option {

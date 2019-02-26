@@ -45,11 +45,15 @@ Instance eqsig {A} (x : A) : Signature (x = x) A :=
   { signature a := x = a ;
     signature_pack e := sigmaI _ x e }.
 
-Set Equations WithK.
-Require Import DepElimK.
+Module WithUIP.
+Set Equations WithUIP.
+Polymorphic Axiom uip : forall A, EqDec.UIP A.
+Local Existing Instance uip.
+
 Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
 K x P p eq_refl := p.
-Unset Equations WithK.
+End WithUIP.
+(* Test Equations WithUIP. should be off, setting is local to the module *)
 
 Equations eq_sym {A} (x y : A) (H : x = y) : y = x :=
 eq_sym x _ eq_refl := eq_refl.

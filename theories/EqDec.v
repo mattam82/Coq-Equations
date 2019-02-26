@@ -391,3 +391,11 @@ Defined.
 
 Instance eqdec_uip {A} (E : EqDec A) : UIP A :=
   fun x y e e' => eq_proofs_unicity e e'.
+
+Instance eq_uip {A} (E : UIP A) : forall x : A, UIP (x = x).
+Proof.
+  intros y e e'. intros e'' ->.
+  assert (Us := @UIP_shift A). compute in Us. forward Us.
+  intros; apply E.
+  intros. apply Us.
+Qed.
