@@ -46,7 +46,7 @@ Instance eqsig {A} (x : A) : Signature (x = x) A :=
     signature_pack e := sigmaI _ x e }.
 
 Module WithUIP.
-Set Equations WithUIP.
+Set Equations With UIP.
 Polymorphic Axiom uip : forall A, EqDec.UIP A.
 Local Existing Instance uip.
 

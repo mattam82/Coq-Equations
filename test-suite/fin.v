@@ -133,7 +133,7 @@ Definition rev_aux_app_stmt := forall (A : Set) (i j1 j2 : nat) (l : ilist A i)
   (acc1 : ilist A j1) (acc2 : ilist A j2) H,
   convert_ilist H (irev_aux l (iapp acc1 acc2)) = iapp (irev_aux l acc1) acc2.
 
-Set Equations WithUIP.
+Set Equations With UIP.
 
 Lemma rev_aux_app : rev_aux_app_stmt.
 Proof.
@@ -149,7 +149,7 @@ Proof.
       simpl in H0. simpl in H.
 Admitted.
 
-Unset Equations WithUIP.
+Unset Equations With UIP.
 
 Equations irev' {A : Set} {n : nat} (l : ilist A n) : ilist A n :=
 irev' Nil := Nil;

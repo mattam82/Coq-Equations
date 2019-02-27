@@ -55,6 +55,7 @@ Inductive TupleMap_direct_subterm
   TupleMap_direct_subterm _ _ (G (projT1 (H _))) _ _ _ (projT2 (H x)) (tmCons _ _ H).
 Hint Constructors TupleMap_direct_subterm : subterm_relation.
 
+Set Warnings "-notation-overridden".
 Import Sigma_Notations.
 
 Definition TupleMap_subterm := Relation_Operators.clos_trans _

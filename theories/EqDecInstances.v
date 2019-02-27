@@ -65,7 +65,7 @@ Proof. eqdec_proof. Defined.
 Instance list_eqdec {A} `(EqDec A) : EqDec (list A). 
 Proof. eqdec_proof. Defined.
 
-Local Set Equations WithUIP.
+Local Set Equations With UIP.
 
 Instance sigma_uip {A B} `(UIP A) `(forall x, UIP (B x)) : UIP {x : A & B x}.
 Proof.

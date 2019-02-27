@@ -12,14 +12,6 @@ Ltac depind x := Equations.DepElim.depind x.
 
 Require Import Arith.
 Derive Signature for eq.
-Ltac simpl_exist :=
-  repeat (
-      repeat match goal with
-               | [ H : existT ?a ?b _ = existT ?a ?b _ |- _] =>
-                 apply inj_pair2 in H
-             end;
-      subst; clear_dups
-    ).
 
 Definition scope := nat.
 Inductive var : scope -> Set :=
@@ -35,6 +27,8 @@ Proof.
   intros H H'. depelim H'. apply IHm. rewrite H at 2. constructor.
 Defined.
 
+Set Equations With UIP.
+
 Lemma var_dec_eq : forall {n} (x y : var n), {x = y} + {x <> y}.
 Proof.
   depind x; depelim y.
@@ -43,24 +37,17 @@ Proof.
   - right; intro H; inversion H.
   - destruct (IHx y); subst.
     + left; reflexivity.
-    + right; intro H; inversion H. noconf H. contradiction.
+    + right; intro H; depelim H. apply n0. contradiction.
 Qed.
-
-Set Equations WithKDec.
 
 Inductive scope_le : scope -> scope -> Set :=
 | scope_le_n : forall {n}, scope_le n n
 | scope_le_S : forall {n m}, scope_le n m -> scope_le n (S m)
-| scope_le_map : forall {n m}, scope_le n m -> scope_le (S n) (S m)
-.
+| scope_le_map : forall {n m}, scope_le n m -> scope_le (S n) (S m).
 
 Derive Signature NoConfusion NoConfusionHom for scope_le.
-
-Next Obligation.
-  destruct b. simpl. simpl_equation_impl. simpl.
-  simpl_equation_impl. simpl. reflexivity.
-  reflexivity. reflexivity.
-Defined.
+Next Obligation. depelim a; depelim b; depelim e; now simpl_equations. Qed.
+Next Obligation. depelim b; now simpl_equations. Qed.
 
 Derive Subterm for scope_le.
 
@@ -97,12 +84,15 @@ Inductive type : scope -> Type :=
 | tarr : forall {n}, type n -> type n -> type n
 | tall : forall {n}, type n -> type (S n) -> type n
 .
-Derive Signature NoConfusion for type.
+Derive Signature NoConfusion NoConfusionHom for type.
 Inductive env : scope -> scope -> Set :=
 | empty : forall {n}, env n n
 | cons : forall {n m}, type m -> env n m -> env n (S m)
 .
-Derive Signature NoConfusion for env.
+Derive Signature NoConfusion NoConfusionHom for env.
+
+Next Obligation. depelim a; depelim b; depelim e; now simpl_equations. Qed.
+Next Obligation. depelim b; now simpl_equations. Qed.
 
 Lemma env_scope_le : forall {n m}, env n m -> scope_le n m.
 Proof. intros n m Γ; depind Γ; constructor; auto. Defined.
@@ -270,9 +260,6 @@ Proof.
     now rewrite (IHΔ p q).
 Qed.
 
-(* FIXME following proof relies on dep_elim' strategy *)
-Ltac Equations.DepElim.simplify_dep_elim ::= repeat simplify_one_dep_elim'.
-
 Lemma sa_narrowing : forall {s} q,
                        (forall {s'} (P : scope_le s s') (Γ : env O s') p (A : sa Γ p (lift_type_by P q))
                           s'' (Δ : env (S s') s'')
@@ -286,31 +273,38 @@ Proof.
   match goal with
     | [ |- _ /\ ?Q ] => 
       assert (PLOP:Q);
-        [ intros s' A Γ p B; depind B; intros r C;
-          autorewrite with lift_type_by lift_var_by in *; simpl_exist;
+        [ intros s' A Γ p B; depind B; subst; intros r C;
+          autorewrite with lift_type_by lift_var_by in *; try noconf H; 
           try (constructor; auto; fail);
           try (constructor; eapply IHB; autorewrite with lift_type_by; auto; fail);
-          try (depelim C; constructor; destruct_pairs; eauto; fail);
-          try (specialize (IHB _ _ _ IHq1 IHq2 A); destruct_pairs; constructor; eauto; fail) | split;
-          [ intros s' P Γ p A; depind A;
-            intros s'' Δ a b B; destruct_pairs; remember (env_app (cons _ Γ) Δ) as PPP; depind B;
+          try (depelim C; subst; constructor; destruct_pairs; try noconf H; eauto; fail);
+          try (specialize (IHB _ _ _ IHq1 IHq2 A); destruct_pairs; try noconf H; constructor; eauto; fail); auto
+        | split;
+          [ intros s' P Γ p A; depind A; subst;
+            intros s'' Δ a b B; destruct_pairs;
+            remember (env_app (cons _ Γ) Δ) as PPP; depind B;
             try (subst; constructor; auto; autorewrite with core; auto; fail);
             clear B; constructor; specialize (IHB _ HeqPPP); subst *;
+            try (noconf H; auto);
             match goal with
               | [ IHB : sa _ (lookup (env_app (cons ?a _) _) ?x) _
                   |- sa _ (lookup (env_app (cons ?b _) _) _) _ ] =>
-                destruct (var_dec_eq x (lift_var_by (env_scope_le Δ) FO)) ;
-                  [ subst; autorewrite with lookup lift_type_by lift_var_by in *;
-                    simpl_exist; autorewrite with lookup lift_type_by lift_var_by scope_le_app in *;
-                    try (auto; depelim IHB; auto; constructor; auto; fail);
-                    try ((apply sa_var_trans in A || assert (A := sa_arr A1 A2) || assert (A := sa_all A1 A2));
+                destruct (var_dec_eq x (lift_var_by (env_scope_le Δ) FO)) as [Heq|Hneq] ;
+                  [ subst;
+                    autorewrite with lookup lift_type_by lift_var_by in *;
+                    try (noconf H; auto);
+                    autorewrite with lookup lift_type_by lift_var_by scope_le_app in *;
+                    try solve [auto; depelim IHB;
+                               autorewrite with lookup lift_type_by lift_var_by scope_le_app in *;
+                               auto; constructor; auto; fail];
+                    try solve [(apply sa_var_trans in A || assert (A := sa_arr A1 A2) || assert (A := sa_all A1 A2));
                          match goal with
                            | [ A : sa _ ?p _ |- _ ] =>
                              (apply sa_weakening_app with (Δ0:=cons p empty) in A;
                               apply sa_weakening_app with (Δ0:=Δ) in A;
-                              autorewrite with env_app lift_type_by lift_var_by scope_le_app in *; simpl in *;
+                              autorewrite with lookup env_app lift_var_by lift_type_by in *; simpl in *;
                               eapply PLOP; [exact A | exact IHB])
-                         end; fail)
+                         end; fail]
                   | rewrite sa_toname with (p:=b) (q:=a); auto
                   ]
             end
@@ -318,10 +312,12 @@ Proof.
           ]
         ]
   end.
+  all:try (noconf H; auto).
   - clear IHB1 IHB2.
     depelim C; [constructor|]; destruct_pairs.
-    constructor; eauto. simpl in H. simpl in H0.
+    constructor; eauto.
+    simpl in H. simpl in H0.
     apply (H1 _ A Γ _ C1 _ empty _ _) in B2; autorewrite with env_app in B2; eauto.
 Qed.
 
-(* *)
+Print Assumptions sa_toname.

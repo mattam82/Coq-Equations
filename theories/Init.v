@@ -81,7 +81,6 @@ Global Obligation Tactic := equations_simpl.
 
 Set Primitive Projections.
 Global Unset Printing Primitive Projection Parameters.
-Global Unset Printing Primitive Projection Compatibility.
 Polymorphic Cumulative Record sigma@{i} {A : Type@{i}} {B : A -> Type@{i}} : Type@{i} :=
   sigmaI { pr1 : A; pr2 : B pr1 }.
 Unset Primitive Projections.
