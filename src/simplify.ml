@@ -651,7 +651,7 @@ let maybe_pack : simplification_fun =
   if not (is_construct_sigma_2 !evd t1 && is_construct_sigma_2 !evd t2) then
     raise (CannotSimplify (str "This is not an equality between constructors."));
   let indty =
-    try Inductiveops.find_rectype env !evd tA
+    try Inductiveops.find_rectype (push_rel_context ctx env) !evd tA
     with Not_found ->
       raise (CannotSimplify (str "This is not an equality between constructors."));
   in
@@ -689,11 +689,15 @@ let maybe_pack : simplification_fun =
           str " or NoConfusion for family " ++ Printer.pr_inductive env (fst ind)))
     in
     if not !Equations_common.simplify_withUIP then
-      raise (CannotSimplify
-               (str
-                  "[noConfusion] Trying to use a non-definitional noConfusion rule on " ++
-                Printer.pr_econstr_env env !evd tA' ++
-                str ", enable Equations WithUIP to allow this"));
+      (let env = push_rel_context ctx env in
+       raise (CannotSimplify
+                (str "[noConfusion] Trying to use a non-definitional noConfusion rule on " ++
+                 Printer.pr_econstr_env env !evd tA ++
+                 str ", which does not have a [NoConfusionHom] instance." ++ spc () ++
+                 str "Either [Derive NoConfusionHom for " ++ Printer.pr_inductive env (fst ind) ++
+                 str "], or [Derive NoConfusion for " ++ Printer.pr_inductive env (fst ind) ++
+                 str "] if it requires uniqueness of identity proofs and" ++
+                 str " enable [Equations With UIP] to allow this")));
     let tx =
       let _, _, tx, _ = Option.get (decompose_sigma !evd valsig) in
         Vars.substl (CList.rev args) (Termops.pop tx)
