@@ -50,6 +50,11 @@ Ltac solve_noconf_inv := intros;
                    destruct a ; depelim b; simpl in * |-;
                  on_last_hyp ltac:(fun id => hnf in id; destruct_tele_eq id || destruct id);
                  solve [constructor]
+  | |- ?f ?a ?b _ = _ =>
+    destruct_sigma a; destruct_sigma b;
+    destruct a ; depelim b; simpl in * |-;
+    on_last_hyp ltac:(fun id => hnf in id; destruct_tele_eq id || destruct id);
+    solve [constructor]
   end.
 
 Ltac solve_noconf_inv_equiv :=

@@ -19,17 +19,18 @@ Class WellFounded {A : Type} (R : relation A) :=
 
 Class NoConfusionPackage (A : Type) := {
   NoConfusion : A -> A -> Prop;
-  noConfusion : forall {a b}, a = b -> NoConfusion a b;
-  noConfusion_inv : forall {a b}, NoConfusion a b -> a = b;
-  noConfusion_is_equiv : forall {a b} (e : a = b), noConfusion_inv (noConfusion e) = e;
+  noConfusion : forall {a b}, NoConfusion a b -> a = b;
+  noConfusion_inv : forall {a b}, a = b -> NoConfusion a b;
+  noConfusion_sect : forall {a b} (e : NoConfusion a b), noConfusion_inv (noConfusion e) = e;
+  noConfusion_retr : forall {a b} (e : a = b), noConfusion (noConfusion_inv e) = e;
 }.
 
 (** This lemma explains how to apply it during simplification. *)
 Lemma apply_noConfusion {A} {noconf : NoConfusionPackage A}
       (p q : A) {B : p = q -> Type} :
-  (forall H : NoConfusion p q, B (noConfusion_inv H)) -> (forall H : p = q, B H).
+  (forall H : NoConfusion p q, B (noConfusion H)) -> (forall H : p = q, B H).
 Proof.
-  intros. generalize (noConfusion_is_equiv H).
+  intros. generalize (noConfusion_retr H).
   intros e. destruct e. apply X.
 Defined.
 Extraction Inline apply_noConfusion.
@@ -38,17 +39,18 @@ Extraction Inline apply_noConfusion.
 
 Polymorphic Class NoConfusionIdPackage (A : Type) := {
   NoConfusionId : A -> A -> Type;
-  noConfusionId : forall {a b}, Id a b -> NoConfusionId a b;
-  noConfusionId_inv : forall {a b}, NoConfusionId a b -> Id a b;
-  noConfusionId_is_equiv : forall {a b} (e : Id a b), Id (noConfusionId_inv (noConfusionId e)) e;
+  noConfusionId : forall {a b}, NoConfusionId a b -> Id a b;
+  noConfusionId_inv : forall {a b}, Id a b -> NoConfusionId a b;
+  noConfusionId_sect : forall {a b} (e : NoConfusionId a b), Id (noConfusionId_inv (noConfusionId e)) e;
+  noConfusionId_retr : forall {a b} (e : Id a b), Id (noConfusionId (noConfusionId_inv e)) e;
 }.
 
 Polymorphic
 Lemma apply_noConfusionId {A} {noconf : NoConfusionIdPackage A}
       (p q : A) {B : Id p q -> Type} :
-  (forall e : NoConfusionId p q, B (noConfusionId_inv e)) -> (forall e : Id p q, B e).
+  (forall e : NoConfusionId p q, B (noConfusionId e)) -> (forall e : Id p q, B e).
 Proof.
-  intros. generalize (noConfusionId_is_equiv e). destruct e.
+  intros. generalize (noConfusionId_retr e). destruct e.
   intros <-. apply X.
 Defined.
 Extraction Inline apply_noConfusionId.
@@ -58,7 +60,7 @@ Extraction Inline apply_noConfusionId.
 Ltac noconf_ref H :=
   match type of H with
     @eq ?A ?X ?Y =>
-      let H' := fresh in assert (H':=noConfusion (A:=A) (a:=X) (b:=Y) H) ;
+      let H' := fresh in assert (H':=noConfusion_inv (A:=A) (a:=X) (b:=Y) H) ;
       clear H; hnf in H';
       match type of H' with
       | True => clear H'

@@ -91,7 +91,7 @@ Equations apd {A} {B : A -> Type} (f : forall x : A, B x) {x y : A} (p : x = y) 
   p # f x = f y :=
 apd f id_refl := id_refl.
 
-(** A typeclass that includes the data making [f] into an adjoin equivalence*)
+(** A typeclass that includes the data making [f] into an adjoint equivalence*)
 
 Class IsEquiv {A B : Type} (f : A -> B) := BuildIsEquiv {
   equiv_inv : B -> A ;
@@ -191,7 +191,7 @@ Instance isequiv_path_prod {A B : Type} {z z' : A * B}
 Proof.
   unshelve refine (BuildIsEquiv _ _ _).
   - exact (fun r => (ap fst r, ap snd r)).
-  - intro ; apply eta_path_prod.
+  - intro. ; apply eta_path_prod.
   - intros [p q]. exact (path_prod'
                           (ap_fst_path_prod p q)
                           (ap_snd_path_prod p q)). 
