@@ -26,15 +26,11 @@ type 'a with_loc = Loc.t * 'a
 type identifier = Names.Id.t
    
 type generated = bool
+type allow_refinement = bool
 
 (** User-level patterns *)
-type user_pat =
-    PUVar of identifier * generated
-  | PUCstr of constructor * int * user_pats
-  | PUInac of Glob_term.glob_constr
-  | PUEmpty
-and user_pat_loc = (user_pat, [ `any ]) DAst.t
-and user_pats = user_pat_loc list
+type user_pat = Glob_term.glob_constr * allow_refinement
+and user_pats = user_pat list
 
 (** AST *)
 
@@ -99,19 +95,10 @@ type pre_clause = Loc.t option * lhs * (pre_equation, pre_clause) rhs
 
 type pre_equations = pre_equation where_clause list
 
-let rec pr_user_loc_pat env ?loc pat =
-  match pat with
-  | PUVar (i, gen) -> Id.print i ++ if gen then str "#" else mt ()
-  | PUCstr (c, i, f) -> 
-      let pc = pr_constructor env c in
-	if not (List.is_empty f) then str "(" ++ pc ++ spc () ++ pr_user_pats env f ++ str ")"
-	else pc
-  | PUInac c -> str "?(" ++ pr_glob_constr_env env c ++ str ")"
-  | PUEmpty -> str"!"
+let pr_user_pat env (p, allow_refinement) =
+  pr_glob_constr_env env p ++ (if allow_refinement then str"?" else mt())
 
-and pr_user_pat env = DAst.with_loc_val (pr_user_loc_pat env)
-
-and pr_user_pats env pats =
+let pr_user_pats env pats =
   prlist_with_sep spc (pr_user_pat env) pats
 
 let pr_lhs = pr_user_pats
@@ -292,22 +279,22 @@ let _chole c loc =
   CAst.make ~loc
   (CHole (Some (ImplicitArg (ConstRef cst, (0,None), false)), Namegen.IntroAnonymous,None)), None
 
-let _check_linearity env opats =
-  let rec aux ids pats = 
-    List.fold_left (fun ids pat ->
-      DAst.with_loc_val (fun ?loc pat ->
-      match pat with
-      | PUVar (n, _) ->
-	if Id.Set.mem n ids then
-	  CErrors.user_err ?loc ~hdr:"ids_of_pats"
-            (str "Non-linear occurrence of variable in patterns: " ++ pr_user_pats env opats)
-	else Id.Set.add n ids
-      | PUInac _ -> ids
-      | PUEmpty -> ids
-      | PUCstr (_, _, pats) -> aux ids pats) pat)
-      ids pats
-  in ignore (aux Id.Set.empty opats)
-
+(* let _check_linearity env opats =
+ *   let rec aux ids pats =
+ *     List.fold_left (fun ids pat ->
+ *       DAst.with_loc_val (fun ?loc pat ->
+ *       match pat with
+ *       | PUVar (n, _) ->
+ * 	if Id.Set.mem n ids then
+ * 	  CErrors.user_err ?loc ~hdr:"ids_of_pats"
+ *             (str "Non-linear occurrence of variable in patterns: " ++ pr_user_pats env opats)
+ * 	else Id.Set.add n ids
+ *       | PUInac _ -> ids
+ *       | PUEmpty -> ids
+ *       | PUCstr (_, _, pats) -> aux ids pats) pat)
+ *       ids pats
+ *   in ignore (aux Id.Set.empty opats) *)
+(*
 let pattern_of_glob_constr env avoid patname gc =
   let rec constructor ?loc c l =
     let ind, _ = c in
@@ -330,7 +317,7 @@ let pattern_of_glob_constr env avoid patname gc =
     | GHole (_,_,_) ->
       let id =
         match patname with
-        | Anonymous -> Id.of_string "wildcard"
+        | Anonymous -> Id.of_string "_wildcard"
         | Name id -> id
       in
       let n = next_ident_away id avoid in
@@ -350,7 +337,7 @@ let pattern_of_glob_constr env avoid patname gc =
    *    DAst.get (cases_pattern_of_glob_constr na' b) *)
     | _ -> user_err_loc (loc, "pattern_of_glob_constr", str ("Cannot interpret globalized term as a pattern"))
   in DAst.map_with_loc aux gc
-
+*)
 let program_type p = EConstr.it_mkProd_or_LetIn p.program_arity p.program_sign
 
 let interp_pat env notations ?(avoid = ref Id.Set.empty) p pat =
@@ -399,30 +386,29 @@ let interp_pat env notations ?(avoid = ref Id.Set.empty) p pat =
                 let rec aux args patnames =
                   match args, patnames with
                   | a :: args, patname :: patnames ->
-                    pattern_of_glob_constr env avoid patname a :: aux args patnames
-                  | a :: args, [] ->
-                    pattern_of_glob_constr env avoid Anonymous a :: aux args []
+                    (a, false) :: aux args patnames
+                  | a :: args, [] -> (a, false) :: aux args []
                   | [], _ -> []
                 in aux args patnames
               | _ ->
                 user_err_loc (loc, "interp_pats",
                               str "Expecting a pattern for " ++ Id.print id))
             fn) gc
-    | None -> [pattern_of_glob_constr env avoid Anonymous gc]
+    | None -> [gc, true]
   with Not_found -> anomaly (str"While translating pattern to glob constr")
 
-let rename_away_from ids pats =
-  let rec aux ?loc pat =
-    match pat with
-    | PUVar (id, true) when Id.Set.mem id !ids ->
-      let id' = next_ident_away id ids in
-      PUVar (id', true)
-    | PUVar (id, _) -> pat
-    | PUCstr (c, n, args) -> PUCstr (c, n, List.map (DAst.map_with_loc aux) args)
-    | PUInac c -> pat
-    | PUEmpty -> pat
-  in
-  List.map (DAst.map_with_loc aux) pats
+(* let rename_away_from ids pats =
+ *   let rec aux ?loc pat =
+ *     match pat with
+ *     | PUVar (id, true) when Id.Set.mem id !ids ->
+ *       let id' = next_ident_away id ids in
+ *       PUVar (id', true)
+ *     | PUVar (id, _) -> pat
+ *     | PUCstr (c, n, args) -> PUCstr (c, n, List.map (DAst.map_with_loc aux) args)
+ *     | PUInac c -> pat
+ *     | PUEmpty -> pat
+ *   in
+ *   List.map (DAst.map_with_loc aux) pats *)
 
 let interp_eqn env notations p eqn =
   let avoid = ref Id.Set.empty in
@@ -441,7 +427,7 @@ let interp_eqn env notations p eqn =
         loc, pats
       | RefinePats pats ->
         let patids = ref (ids_of_pats None pats) in
-        let curpats = rename_away_from patids curpats in
+        (* let curpats = rename_away_from patids curpats in *)
         avoid := Id.Set.union !avoid !patids;
         let loc = Constrexpr_ops.constr_loc (List.hd pats) in
         let pats = List.map (interp_pat notations None) pats in

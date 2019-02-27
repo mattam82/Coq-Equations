@@ -44,7 +44,7 @@ val specialize_eqs : with_block:bool -> Names.Id.t -> Proofview.V82.tac
 
 val compare_upto_variables : Evd.evar_map -> constr -> constr -> bool
 
-val dependent_elim_tac : ?patterns:Syntax.user_pat_loc list -> Names.Id.t Syntax.with_loc ->
+val dependent_elim_tac : ?patterns:Syntax.user_pats -> Names.Id.t Syntax.with_loc ->
   unit Proofview.tactic
 
 val dependent_elim_tac_expr : ?patterns:Constrexpr.constr_expr list -> Names.Id.t Syntax.with_loc ->

@@ -115,9 +115,9 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   let params = mindb.mind_nparams in
   let args = oneind.mind_nrealargs in
   let argsvect = rel_vect 0 len in
-  let paramsvect, rest = Array.chop params argsvect in
-  let argty, x, ctx, argsctx =
-    mkApp (mkIndU indu, argsvect), mkRel 1, ctx, []
+  let argsctx, paramsctx = List.chop (List.length ctx - params) ctx in
+  let argty, x, ctx =
+    mkApp (mkIndU indu, argsvect), mkRel 1, ctx
   in
   let sigma, tru = get_fresh sigma0 logic_top in
   let sigma, fls = get_fresh sigma logic_bot in
@@ -131,21 +131,15 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   let s = mkSort s in
   let _arity = it_mkProd_or_LetIn s fullbinders in
   (* let env = push_rel_context binders env in *)
-  let paramsvect = Context.Rel.to_extended_vect mkRel 0 ctx in
-  let _pack_ind_with_parlift n = lift n argty in
-  let _ind_with_parlift n =
-    mkApp (mkIndU indu, Array.append (Array.map (lift n) paramsvect) rest) 
-  in
-  let _lenindices = List.length argsctx in
   let ctxmap = Context_map.id_subst fullbinders in
   let constructors = Inductiveops.arities_of_constructors env pi in
   let sigma, sigT = get_fresh sigma coq_sigma in
   let sigma, sigI = get_fresh sigma coq_sigmaI in
   let sigma, eqT = get_fresh sigma logic_eq_type in
   let parampats =
-    List.rev_map (fun decl ->
-        DAst.make (Syntax.PUVar (Name.get_id (get_name decl), true))) ctx
+    List.rev_map (fun decl -> glob_var (Name.get_id (get_name decl))) paramsctx
   in
+  let idxpats = List.rev_map (fun decl -> glob_inacc glob_hole) argsctx in
   let mk_clause i ty =
     let ty = EConstr.of_constr ty in
     let paramsctx, concl = decompose_prod_n_assum sigma params ty in
@@ -167,16 +161,28 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
         if forced then
           let acc' =
             List.fold_left_i
-              (fun i acc (na,na',decl) -> (na, na', Vars.substnl [mkVar name'] i decl) :: acc)
+              (fun i acc (na,na',decl) -> (na, na', Vars.substnl [mkVar name] i decl) :: acc)
               0 [] acc
           in List.rev acc'
-        else ((name, name', get_type decl) :: acc) in
-      (avoid, acc), (Syntax.PUVar (name, true), Syntax.PUVar (name', true))
+        else ((name, name', get_type decl) :: acc)
+      in
+      let pat = glob_var name in
+      let first =
+        if forced then glob_inacc pat
+        else pat
+      in
+      let second =
+        if forced then pat
+        else glob_var name'
+      in
+      (avoid, acc), (first, second)
     in
     let (avoid, eqs), user_pats = List.fold_left2_map fn (Id.Set.empty, []) args forced in
     let patl, patr = List.split user_pats in
-    let cstr ps = Syntax.PUCstr ((ind, succ i), params, List.rev_map (fun p -> DAst.make p) ps) in
-    let lhs = parampats @ [DAst.make (cstr patl); DAst.make (cstr patr)] in
+    let cstr ps = glob_construct (ind, succ i) (parampats @ List.rev ps) in
+    let lhs = parampats @ idxpats @ [cstr patl; cstr patr] in
+    (* Allow everything to be refined *)
+    let lhs = List.map (fun p -> p, true) lhs in
     let rhs =
       match List.rev eqs with
       | [] -> tru
@@ -194,9 +200,10 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
     (loc, lhs, Some (Syntax.Program (Syntax.Constr rhs, ([], []))))
   in
   let clauses = Array.to_list (Array.mapi mk_clause constructors) in
-  let hole x = Syntax.PUVar (Id.of_string x, true) in
   let catch_all =
-    let lhs = parampats @ [DAst.make (hole "x"); DAst.make (hole "y")] in
+    let lhs = parampats @ idxpats @ [glob_hole; glob_hole] in
+    (* Allow everything to be refined *)
+    let lhs = List.map (fun p -> p, true) lhs in
     let rhs = Syntax.Program (Syntax.Constr fls, ([], [])) in
     (None, lhs, Some rhs)
   in

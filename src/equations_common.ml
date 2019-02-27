@@ -1032,3 +1032,24 @@ let evd_comb0 f evd =
 let evd_comb1 f evd x =
   let evm, r = f !evd x in
   evd := evm; r
+
+(** Glob terms *)
+
+let glob_implicit_hole n r =
+  let evk = Evar_kinds.ImplicitArg (r, (n, None), false) in
+  DAst.make (Glob_term.GHole (evk, Namegen.IntroAnonymous, None))
+
+let glob_inacc ?loc x =
+  let inacc = Lazy.force coq_inacc in
+  DAst.make ?loc (Glob_term.GApp (DAst.make ?loc
+                                    (Glob_term.GRef (inacc, None)),
+                                  [glob_implicit_hole 0 inacc; x]))
+
+let glob_hole =
+  let evk = Evar_kinds.InternalHole in
+  DAst.make (Glob_term.GHole (evk, Namegen.IntroAnonymous, None))
+
+let glob_var ?loc id = DAst.make ?loc (Glob_term.GVar id)
+
+let glob_construct c l =
+  DAst.make (Glob_term.GApp (DAst.make (Glob_term.GRef (GlobRef.ConstructRef c, None)), l))

@@ -33,6 +33,279 @@ type int_data = {
                Notation_term.scope_name option) list
 }
 
+type typed_user_pat =
+    PUVar of identifier * generated
+  | PUCstr of constructor * int * typed_user_pats
+  | PUInac of Glob_term.glob_constr
+  | PUEmpty
+and typed_user_pat_loc = typed_user_pat CAst.t
+and typed_user_pats = typed_user_pat_loc list
+
+let rec pr_typed_user_pat_loc env sigma ?loc pat =
+  match pat with
+  | PUVar (i, gen) -> Id.print i ++ if gen then str "#" else mt ()
+  | PUCstr (c, i, f) ->
+      let pc = Printer.pr_constructor env c in
+        if not (List.is_empty f) then str "(" ++ pc ++ spc () ++
+                                      pr_typed_user_pats env sigma f ++ str ")"
+        else pc
+  | PUInac c -> str "?(" ++ Printer.pr_glob_constr_env env c ++ str ")"
+  | PUEmpty -> str"!"
+and pr_typed_user_pat env sigma = CAst.with_loc_val (pr_typed_user_pat_loc env sigma)
+and pr_typed_user_pats env sigma l =
+  prlist_with_sep spc (pr_typed_user_pat env sigma) l
+
+let is_inacc_ref =
+  DAst.with_val (fun f ->
+      match f with
+      | Glob_term.GRef (f, u) -> GlobRef.equal f (Lazy.force coq_inacc)
+      | _ -> false)
+
+let rec free_glob_vars bound free gc =
+  match DAst.get gc with
+  | Glob_term.GVar id ->
+    if not (Id.Set.mem id bound) && not (List.mem_f Id.equal id free)
+    then id :: free else free
+  | Glob_term.GApp (g, l) when is_inacc_ref g -> free
+  | _ ->
+    Glob_ops.fold_glob_constr_with_binders
+      (fun id bound -> Id.Set.add id bound)
+      free_glob_vars bound free gc
+
+let replace_free_vars free gc =
+  let rec aux gc =
+  match DAst.get gc with
+  | Glob_term.GVar id ->
+    if (* not (Id.Set.mem id ctx) && FIXME captures *)List.mem_f Id.equal id free
+    then
+      let kind = Evar_kinds.{ qm_obligation = Define false;
+                              qm_name = Name id;
+                              qm_record_field = None }
+      in
+      let newarg = Glob_term.GHole (Evar_kinds.QuestionMark kind, Namegen.IntroAnonymous, None) in
+      let newarg = DAst.with_loc_val (fun ?loc c -> DAst.make ?loc newarg) gc in
+      newarg
+    else gc
+  | _ -> Glob_ops.map_glob_constr_left_to_right aux gc
+  in aux gc
+
+let is_inacc oc =
+  let open Glob_term in
+  match oc with
+  | GApp (f, l) -> is_inacc_ref f
+  | _ -> false
+
+let is_hole oc =
+  let open Glob_term in
+  match oc with
+  | GHole _ -> true
+  | _ -> false
+
+let is_glob_var oc =
+  let open Glob_term in
+  match oc with
+  | GVar id -> Some id
+  | _ -> None
+
+let strip_inacc sigma c =
+  let f, args = decompose_app_vect sigma c in
+  match kind sigma f with
+  | Const (cst, u) when GlobRef.equal (GlobRef.ConstRef cst) (Lazy.force coq_inacc) -> args.(1)
+  | _ -> c
+
+let interp_constr_pats env sigma avoid cpats =
+  let avoid = ref avoid in
+  let vars = ref Evar.Map.empty in
+  let next_anon na =
+    match na with
+    | Name id ->
+      let n = next_ident_away id avoid in
+      (n, not (Id.equal n id))
+    | Anonymous ->
+      let id = Id.of_string "wildcard" in
+      let n = next_ident_away id avoid in
+      (n, true)
+  in
+  let _error_cannot_interpret loc c =
+    user_err_loc (loc, "covering",
+                  str "Cannot interpret " ++
+                  Printer.pr_econstr_env env sigma c ++ str " as a pattern")
+  in
+  let assoc_evar ev na loc =
+    try Evar.Map.find ev !vars
+    with Not_found ->
+      (* This is a pattern variable *)
+      let evi = Evd.find sigma ev in
+      let loc, k = evi.Evd.evar_source in
+      let id, gen = match k with
+        | Evar_kinds.QuestionMark k ->
+          (match k.Evar_kinds.qm_name with
+           | Anonymous -> next_anon na
+           | Name i -> (i, false))
+        | _ -> next_anon na
+      in
+      vars := Evar.Map.add ev (id, gen) !vars;
+      (id, gen)
+  in
+  let rec replace_vars c =
+    match kind sigma c with
+    | Evar (ev, _) ->
+      let (id, b) = assoc_evar ev Anonymous None in
+      mkVar id
+    | _ -> EConstr.map sigma replace_vars c
+  in
+  let inacc ~allowref c ?loc oc =
+    let c = strip_inacc sigma c in
+    if is_inacc oc || is_hole oc then
+      let c' = Detyping.(detype Now true !avoid env sigma c) in
+      CAst.make ?loc (PUInac c')
+    else
+      let c = strip_inacc sigma c in
+      match oc with
+      | Glob_term.GVar id when isVarId sigma id c || allowref -> CAst.make ?loc (PUVar (id, false))
+      | _ ->
+        user_err_loc (loc, "covering",
+                      str "Pattern " ++ Printer.pr_glob_constr_env env (DAst.make ?loc oc) ++
+                      str " should be inaccessible and convertible to " ++
+                      Printer.pr_econstr_env env sigma c)
+  in
+  let constructor c cstr u loc oc l =
+    match is_glob_var oc with
+    | Some id -> PUVar (id, false)
+    | None ->
+      let ind, _ = cstr in
+      let nparams = Inductiveops.inductive_nparams ind in
+      let params, args = List.chop nparams l in
+      PUCstr (cstr, nparams, args)
+  in
+  let rec aux_loc na ~allowref c ?loc oc =
+    match kind sigma c, oc with
+    | Evar (ev, args), _ ->
+      let (id, gen) = assoc_evar ev na loc in
+      CAst.make ?loc (PUVar (id, gen))
+    | Construct (cstr, u), _ ->
+      CAst.make ?loc (constructor c cstr u loc oc [])
+    | App (f, l), Glob_term.GApp (c', l') ->
+      (match kind sigma f with
+       | Construct (cstr, u) ->
+         let al = Array.to_list l in
+         CAst.make ?loc (constructor c cstr u loc oc (List.map2 (aux Anonymous ~allowref) al l'))
+       | Const (cst, u) when GlobRef.equal (GlobRef.ConstRef cst) (Lazy.force coq_inacc) ->
+         let c' = Detyping.(detype Now true !avoid env sigma (replace_vars l.(1))) in
+         CAst.make ?loc (PUInac c')
+       | _ -> inacc ~allowref (replace_vars c) ?loc oc)
+    | Var id, _ -> CAst.make ?loc (PUVar (id, false))
+    | Const (cst, u), _ when GlobRef.equal (GlobRef.ConstRef cst) (Lazy.force coq_bang) ->
+      CAst.make ?loc PUEmpty
+    | _ -> inacc ~allowref (replace_vars c) ?loc oc
+  and aux na ~allowref c oc = DAst.with_loc_val (aux_loc na ~allowref c) oc in
+  let interp_pat na ~allowref c oc =
+    match oc with
+    | None -> (* Hidden pattern *)
+      let i = destRel sigma c in
+      let decl = lookup_rel i env in
+      let id = Name.get_id (get_name decl) in
+      CAst.make (PUVar (id, false))
+    | Some opat -> aux na ~allowref c opat
+  in
+  List.rev_map (fun (na, cpat, allowref, opat) -> interp_pat na ~allowref cpat opat) cpats
+
+let rec pat_to_user_pat env sigma ?(avoid = ref Id.Set.empty) ?loc ctx = function
+  | PRel i ->
+    let decl = List.nth ctx (pred i) in
+    let name = Context.Rel.Declaration.get_name decl in
+    let id = Namegen.next_name_away name !avoid in
+    avoid := Id.Set.add id !avoid;
+    let gvar = DAst.make ?loc (Glob_term.GVar id) in
+    if Context.Rel.Declaration.is_local_def decl then
+      Some (glob_inacc ?loc gvar)
+    else Some gvar
+  | PCstr (((ind, _ as cstr), _), pats) -> (* TODO Univs? *)
+    Some (DAst.make ?loc (Glob_term.GApp
+                            (DAst.make ?loc (Glob_term.GRef (GlobRef.ConstructRef cstr, None)),
+                             pats_to_lhs env sigma ~avoid ?loc ctx pats)))
+  | PInac c ->
+    let gc = Detyping.(detype Now true !avoid (push_rel_context ctx env) sigma c) in
+    Some (glob_inacc ?loc gc)
+  | PHide i -> None
+and pats_to_lhs env sigma ?(avoid = ref Id.Set.empty) ?loc ctx pats =
+  List.map_filter (pat_to_user_pat env sigma ~avoid ?loc ctx) pats
+
+let context_map_to_lhs env sigma ?(avoid = Id.Set.empty) ?loc (ctx, pats, _) =
+  let avoid = ref avoid in
+  (* When translating back to user terms, we have an exact match: patterns
+     cannot be refined further. *)
+  List.rev_map (fun pats -> pats, false) (pats_to_lhs env sigma ~avoid ?loc ctx pats)
+
+let rec user_pat_of_typed_user_pat_loc ?loc c =
+  match c with
+  | PUVar (id, gen) -> glob_var ?loc id
+  | PUCstr (cstr, npars, args)  ->
+    let gr = GlobRef.ConstructRef cstr in
+    DAst.make ?loc (Glob_term.GApp
+                      (DAst.make ?loc (Glob_term.GRef (gr, None)),
+                       List.init npars (fun i -> glob_implicit_hole (succ i) gr) @
+                       user_pats_of_typed_user_pats args))
+  | PUInac gc -> glob_inacc ?loc gc
+  | PUEmpty -> DAst.make ?loc (Glob_term.GRef (Lazy.force coq_bang, None))
+
+and user_pat_of_typed_user_pat c =
+  CAst.with_loc_val user_pat_of_typed_user_pat_loc c
+and user_pats_of_typed_user_pats cs =
+  List.map user_pat_of_typed_user_pat cs
+
+let user_pats_of_typed_user_pats cs =
+  List.map (fun p -> p, false) (user_pats_of_typed_user_pats cs)
+
+let interp_user_pats env sigma probpats ctx loc (pats : Syntax.user_pats) : typed_user_pats =
+  let flags = Pretyping.all_no_fail_flags in
+  let ctx = List.rev ctx in
+  let probpats = List.rev probpats in
+  let bound = Id.Set.empty in
+  let hole_pats =
+    let free = List.fold_left (fun free (x, _) -> free_glob_vars bound free x) [] pats in
+    List.map (fun (pat, allowref) -> pat, allowref, replace_free_vars free pat) pats
+  in
+  (* pat' has holes instead of the variables now *)
+  let rec aux env (sigma : Evd.evar_map) bound free ctx probpats pats
+      (cpats : (Name.t * EConstr.t * bool * Glob_term.glob_constr option) list) : typed_user_pats =
+    let open Context.Rel.Declaration in
+    match ctx, probpats, pats with
+    | (LocalAssum (na, _) | LocalDef (na, _, _) as decl) :: ctx, PHide i :: probpats, pats ->
+      let lift_cpats = List.map (fun (na, cpat, allowref, opat) -> (na, lift 1 cpat, allowref, opat)) cpats in
+      aux (push_rel decl env) sigma bound free ctx probpats pats ((na, mkRel 1, true, None) :: lift_cpats)
+
+    | LocalDef (na, body, t) :: ctx, _ :: probpats, (opat, allowref, pat_holes) :: pats ->
+      let ctx = subst_telescope body ctx in
+      let subst_cpats =
+        List.map (fun (na, cpat, allowref, opat) -> (na, subst1 body cpat, allowref, opat)) cpats
+      in
+      aux env sigma bound free ctx probpats pats ((na, body, allowref, Some opat) :: subst_cpats)
+
+    | LocalAssum (na, t) :: ctx, _, [] ->
+      user_err_loc (loc, "covering", str "This clause requires an extra pattern of type " ++
+                                     Printer.pr_econstr_env env sigma t)
+
+    | LocalAssum (na, t) :: ctx, _ :: probpats, (opat, allowref, pat_holes) :: pats ->
+      let sigma, pat =
+        Pretyping.understand_tcc ~flags env sigma ~expected_type:(Pretyping.OfType t) pat_holes in
+      let ctx = subst_telescope pat ctx in
+      aux env sigma bound free ctx probpats pats ((na, pat, allowref, Some opat) :: cpats)
+
+    | [], _, (_ :: _) ->
+      user_err_loc (loc, "covering",
+                    (if List.length pats > 1 then
+                       str"These patterns "
+                     else str"This pattern ") ++
+                    str "cannot apply, the context is exhausted " ++
+                    Syntax.pr_user_pats env (List.map (fun (x, b, _) -> (x,b)) pats))
+    | (_ :: _), _, _ -> assert false (* Ill formed problem *)
+    | [], _, [] ->
+      (* We finished typechecking all patterns *)
+      let sigma = Evarconv.solve_unif_constraints_with_heuristics env sigma in
+      interp_constr_pats env sigma bound cpats
+  in aux env sigma bound [] ctx probpats hole_pats []
+
 exception Conflict
 exception Stuck
 
@@ -102,22 +375,23 @@ and accessibles l =
 let hidden = function PHide _ -> true | _ -> false
 
 type match_subst =
-  ((identifier * bool) * pat) list * (Glob_term.glob_constr * pat) list *
-  (user_pat_loc * constr) list * ((Loc.t option * pat) list)
+  (Loc.t option * (identifier * bool) * pat) list * (Glob_term.glob_constr CAst.t * pat) list *
+  (typed_user_pat_loc * constr) list * ((Loc.t option * pat) list)
 
-let rec match_pattern p c =
-  match DAst.get p, c with
-  | PUVar (i,gen), (PCstr _ | PRel _ | PHide _) -> [(i, gen), c], [], [], []
+let rec match_pattern_loc ?loc p c =
+  match p, c with
+  | PUVar (i,gen), (PCstr _ | PRel _ | PHide _) -> [loc, (i, gen), c], [], [], []
   | PUCstr (c, i, pl), PCstr ((c',u), pl') -> 
     if eq_constructor c c' then
       let params, args = List.chop i pl' in
       match_patterns pl args
     else raise Conflict
-  | PUInac t, t' ->
-    [], [t, t'], [], []
-  | _, PInac t -> [], [], [p, t], []
-  | PUEmpty, _ -> [], [], [], [DAst.with_loc_val (fun ?loc _ -> (loc, c)) p]
+  | PUInac t, t' ->  [], [CAst.make ?loc t, t'], [], []
+  | _, PInac t -> [], [], [CAst.make ?loc p, t], []
+  | PUEmpty, _ -> [], [], [], [(loc, c)]
   | _, _ -> raise Stuck
+
+and match_pattern p c = CAst.with_loc_val (fun ?loc p -> match_pattern_loc ?loc p c) p
 
 and match_patterns pl l =
   match pl, l with
@@ -139,26 +413,32 @@ and match_patterns pl l =
 
 open Constrintern
 
-let matches (p : user_pats) ((phi,p',g') : context_map) = 
+let matches (p : typed_user_pats) ((phi,p',g') : context_map) =
   try
-    let p' = filter (fun x -> not (hidden x)) (rev p') in
+    let p' = rev p' in
     UnifSuccess (match_patterns p p')
   with Conflict -> UnifFailure | Stuck -> UnifStuck
 
-let rec match_user_pattern p c =
-  match p, DAst.get c with
-  | PRel i, t -> [i, t], []
-  | PCstr ((c',_), pl'), PUCstr (c, i, pl) -> 
+let rec match_user_pattern_loc ?loc up cp =
+  match up, cp with
+  | _, PRel i -> [i, CAst.make ?loc up], []
+  | PUCstr (c, i, pl), PCstr ((c',_), pl') ->
     if eq_constructor c c' then
-      let params, args = List.chop i pl' in
-      match_user_patterns args pl
+      let params', args' = List.chop i pl' in
+      (* Parameters match by typing *)
+      match_user_patterns pl args'
     else raise Conflict
-  | PCstr _, PUVar (n,gen) -> [], [n, p]
-  | PInac _, _ -> [], []
+  | PUVar (n,gen), PCstr _ -> [], [n, cp]
+  | _, PInac _ -> [], []
+  | PUInac _, _ -> [], []
+  | _, PHide i -> [], []
   | _, _ -> raise Stuck
 
-and match_user_patterns pl l =
-  match pl, l with
+and match_user_pattern p c =
+  CAst.with_loc_val match_user_pattern_loc p c
+
+and match_user_patterns ul cl =
+  match ul, cl with
   | [], [] -> [], []
   | hd :: tl, hd' :: tl' -> 
     let l = 
@@ -174,8 +454,8 @@ and match_user_patterns pl l =
      | _, _ -> raise Stuck)
   | _ -> raise Conflict
 
-let matches_user ((phi,p',g') : context_map) (p : user_pats) = 
-  try UnifSuccess (match_user_patterns (filter (fun x -> not (hidden x)) (rev p')) p)
+let matches_user ((phi,p',g') : context_map) (p : typed_user_pats) =
+  try UnifSuccess (match_user_patterns p (rev p'))
   with Conflict -> UnifFailure | Stuck -> UnifStuck
 
 let refine_arg idx ctx =
@@ -252,27 +532,19 @@ let env_of_rhs evars ctx env s lets =
   let pats = List.map (lift (-letslen)) pats @ patslets in
   ctx, envctx, len + letslen, pats
 
-(* let _rename_prob_subst env ctx s =
- *   let _avoid = List.fold_left (fun avoid decl ->
- *       match get_name decl with
- *       | Anonymous -> avoid
- *       | Name id -> Id.Set.add id avoid) Id.Set.empty ctx
+(* let rename_prob_subst env ctx s =
+ *   let avoid = List.fold_left (fun avoid (loc, (id, gen), pat) ->
+ *       Id.Set.add id avoid) Id.Set.empty s
  *   in
- *   let varsubst, rest =
- *     fold_left (fun (varsubst, rest) ((id, gen), pat) ->
- *         match pat with
- *         | PRel i when gen = false -> ((i, id) :: varsubst, rest)
- *         | _ -> (varsubst, (id, pat) :: rest))
- *       ([], []) s
- *   in
- *   let ctx' =
- *     List.fold_left_i (fun i acc decl ->
- *         try let id = List.assoc i varsubst in
- *           Context.Rel.Declaration.set_name (Name id) decl :: acc
- *         with Not_found -> decl :: acc)
- *       1 [] ctx
- *   in
- *   (List.rev ctx', id_pats ctx, ctx) *)
+ *   List.map (fun ((id, gen), pat) ->
+ *       if gen then
+ *         (match pat with
+ *          | PRel i ->
+ *            (match get_name (List.nth ctx (pred i)) with
+ *             | Anonymous -> (id, pat)
+ *             | Name id' -> if Id.Set.mem id avoid then (id, pat) else (id', pat))
+ *          | _ -> (id, pat))
+ *       else (id, pat)) s *)
 
 let is_wf_ref id rec_type =
   List.exists (function Some (Logical (_, id')) -> Id.equal id id' | _ -> false) rec_type
@@ -450,8 +722,8 @@ let unify_type env evars before id ty after =
     None
 
 let blockers curpats ((_, patcs, _) : context_map) =
-  let rec pattern_blockers p c =
-    match DAst.get p, c with
+  let rec pattern_blockers_loc ?loc p c =
+    match p, c with
     | PUVar (i, _), t -> []
     | PUCstr (c, i, pl), PCstr ((c',_), pl') -> 
       if eq_constructor c c' then patterns_blockers pl (snd (List.chop i pl'))
@@ -459,12 +731,12 @@ let blockers curpats ((_, patcs, _) : context_map) =
     | PUInac _, _ -> []
     | _, PRel i -> [i]
     | _, _ -> []
-
+  and pattern_blockers p c =
+    CAst.with_loc_val pattern_blockers_loc p c
   and patterns_blockers pl l =
     match pl, l with
     | [], [] -> []
-    | hd :: tl, PHide _ :: tl' -> patterns_blockers pl tl'
-    | hd :: tl, hd' :: tl' -> 
+    | hd :: tl, hd' :: tl' ->
       (pattern_blockers hd hd') @ (patterns_blockers tl tl')
     | _ -> []
 
@@ -745,7 +1017,7 @@ let recursive_patterns env progid rec_info =
     let addpat (id, k) =
       match k with
       | NestedNonRec when Id.equal id progid -> None
-      | _ -> Some (DAst.make (PUVar (id, false)))
+      | _ -> Some (CAst.make (PUVar (id, false)))
     in
     let structpats = List.map_filter addpat l in
     structpats
@@ -753,7 +1025,7 @@ let recursive_patterns env progid rec_info =
 
 let pats_of_sign sign =
   List.rev_map (fun decl ->
-      DAst.make (PUVar (Name.get_id (Context.Rel.Declaration.get_name decl), false))) sign
+      CAst.make (PUVar (Name.get_id (Context.Rel.Declaration.get_name decl), false))) sign
 
 let wf_fix_constr env evars sign arity carrier cterm crel =
   let tele, telety = Sigma_types.telescope_of_context env evars sign in
@@ -850,29 +1122,36 @@ let wf_fix env evars subst sign arity term rel =
   let res = wf_fix_constr env evars sign arity carrier cterm crel in
   nf_evar !evars cterm, nf_evar !evars crel, res
 
+let hidden_vars_of_tele tele =
+  let len = List.length tele in
+  CList.init len (fun c -> PHide (len - c))
+
+let hidden_prob ctx =
+  let pats = hidden_vars_of_tele ctx in
+  (ctx, pats, ctx)
+
 let compute_rec_data env evars data lets subst p =
   match p.Syntax.program_rec with
   | Some (Structural ann) ->
-    let reclen, sign =
-      match ann with
-      | NestedNonRec -> (* Actually the definition is not self-recursive *)
-        let fixdecls =
+    let reclen, rec_prob =
+      let fixdecls =
+        match ann with
+        | NestedNonRec -> (* Actually the definition is not self-recursive *)
           List.filter (fun decl ->
               let na = Context.Rel.Declaration.get_name decl in
               let id = Nameops.Name.get_id na in
               not (Id.equal id p.program_id)) data.fixdecls
-        in
-        let len = length fixdecls in
-        len, lift_rel_context len p.program_sign @ fixdecls
-      | _ ->
-        let len = length data.fixdecls in
-        len, lift_rel_context len p.program_sign @ data.fixdecls
+        | _ -> data.fixdecls
+      in
+      let len = length fixdecls in
+      let prob = hidden_prob (fixdecls @ lets) in
+      let prob = lift_subst env !evars prob (lift_rel_context len p.program_sign) in
+      len, prob
     in
     let extpats = recursive_patterns env p.program_id data.rec_type in
-    let sign, ctxpats =
-      let sign = sign @ lets in
+    let ctxpats =
       let extpats' = pats_of_sign lets in
-      sign, extpats' @ extpats
+      extpats' @ extpats
     in
     let rec_node =
       let info =
@@ -881,9 +1160,9 @@ let compute_rec_data env evars data lets subst p =
       in StructRec info
     in
     let rec_info =
-      { rec_sign = sign;
+      { rec_sign = pi1 rec_prob;
         rec_lets = lets;
-        rec_prob = id_subst sign;
+        rec_prob;
         rec_arity = liftn reclen (succ (length p.program_sign)) p.program_arity;
         rec_args = List.length p.program_sign;
         rec_node }
@@ -924,17 +1203,21 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
   if !Equations_common.debug then
     Feedback.msg_debug Pp.(str"Launching covering on "++ pr_preclauses env (List.map fst clauses) ++
                            str " with problem " ++ pr_problem p env !evars prob ++
-                           str " extpats " ++ pr_user_pats env extpats);
+                           str " extpats " ++ pr_typed_user_pats env !evars extpats);
   match clauses with
-  | ((loc, lhs, rhs), (idx, cnt) as clause) :: clauses' ->
+  | ((loc, pre_lhs, rhs), (idx, cnt) as clause) :: clauses' ->
     if !Equations_common.debug then
-      Feedback.msg_debug (str "Matching " ++ pr_user_pats env (extpats @ lhs) ++ str " with " ++
+      Feedback.msg_debug (str "Interpreting " ++ pr_user_pats env pre_lhs ++ str " with " ++
                           pr_problem p env !evars prob);
-    (match matches (extpats @ lhs) prob with
+    let lhs = interp_user_pats env !evars pats ctx' loc pre_lhs in
+    if !Equations_common.debug then
+      Feedback.msg_debug (str "Matching " ++ pr_typed_user_pats env !evars lhs ++ str " with " ++
+                          pr_problem p env !evars prob);
+    (match matches lhs prob with
      | UnifSuccess (s, uacc, acc, empties) ->
        if !Equations_common.debug then Feedback.msg_debug (str "succeeded");
-       (* let renaming = rename_prob_subst env ctx (pi1 s) in *)
-       let s = (List.map (fun ((x, gen), y) -> x, y) s, uacc, acc) in
+       (* let s = rename_prob_subst env ctx s in *)
+       let s = (List.map (fun (loc, (x, gen), y) -> x, y) s, uacc, acc) in
        (* let prob = compose_subst env ~sigma:!evars renaming prob in *)
        let clauseid = Id.of_string ("clause_" ^ string_of_int idx ^
                                     (if cnt = 0 then "" else "_" ^ string_of_int cnt)) in
@@ -954,7 +1237,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
           | PRel i ->
             match prove_empty (env,evars) (pi1 prob) i with
             | Some (i, ctx, s) ->
-              Some (List.rev prev @ (((loc, lhs, rhs),(idx, cnt+1)) :: clauses'),
+              Some (List.rev prev @ (((loc, pre_lhs, rhs),(idx, cnt+1)) :: clauses'),
                     Compute (prob, [], ty, REmpty (i, s)))
             | None ->
               user_err_loc (loc, "covering",
@@ -963,14 +1246,14 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
         | [], Some rhs ->
           let interp =
             interp_clause env evars p data prev clauses' (clauseid :: path) prob
-              extpats lets ty ((loc,lhs,rhs), cnt) s
+              extpats lets ty pre_lhs ((loc,lhs,rhs), cnt) s
           in
           (match interp with
            | None ->
              user_err_loc
                (dummy_loc, "split_var",
-                str"Clause " ++ pr_preclause env (loc, lhs, Some rhs) ++ str" matched but its interpretation failed")
-           | Some s -> Some (List.rev prev @ ((loc,lhs,Some rhs),(idx, cnt+1)) :: clauses', s)))
+                str"Clause " ++ pr_preclause env (loc, pre_lhs, Some rhs) ++ str" matched but its interpretation failed")
+           | Some s -> Some (List.rev prev @ ((loc,pre_lhs,Some rhs),(idx, cnt+1)) :: clauses', s)))
 
      | UnifFailure ->
        if !Equations_common.debug then Feedback.msg_debug (str "failed");
@@ -978,7 +1261,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
 
      | UnifStuck -> 
        if !Equations_common.debug then Feedback.msg_debug (str "got stuck");
-       let blocks = blockers (extpats @ lhs) prob in
+       let blocks = blockers lhs prob in
        let try_split acc var =
          match acc with
          | None
@@ -1023,11 +1306,11 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
              str"Unable to split variable " ++ Name.print id ++ str" of (reduced) type " ++
              Printer.pr_econstr_env (push_rel_context before env) !evars newty ++ str" to match a user pattern."
              ++ fnl () ++ str "Maybe unification is stuck as it cannot refine a context/section variable.")
-       | None -> None))
-           (* user_err_loc
-            *  (loc, "split_var",
-            *   str"Unable to split any variable to match the user patterns: " ++ pr_preclause env (loc, lhs, rhs) ++
-            *   fnl () ++ str "Maybe unification is stuck as it cannot refine a context/section variable."))) *)
+       | None ->
+           user_err_loc
+            (loc, "split_var",
+             str"Unable to split any variable to match the user patterns: " ++ pr_preclause env (loc, pre_lhs, rhs) ++
+             fnl () ++ str "Maybe unification is stuck as it cannot refine a context/section variable.")))
   | [] -> (* Every clause failed for the problem, it's either uninhabited or
              the clauses are not exhaustive *)
     match find_empty (env,evars) (pi1 prob) with
@@ -1040,57 +1323,45 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
          pr_problem p env !evars prob))
 
 and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
-    extpats lets ty
-    ((loc,lhs,rhs), used) (s, uinnacs, innacs) =
-  let env' = push_rel_context_eos ctx env evars in
+    extpats lets ty pre_lhs ((loc,lhs,rhs), used) (s, uinnacs, innacs) =
+  let _env' = push_rel_context_eos ctx env evars in
   let get_var loc i s =
     match assoc i s with
     | PRel i -> i
     | _ -> user_err_loc (Some loc, "equations", str"Unbound variable " ++ Id.print i)
   in
   let () = (* Check innaccessibles are correct *)
-    let check_uinnac (user, t) =
-      (* let ty =
-       *   let t = pat_constr t in
-       *   let ty = Retyping.get_type_of env !evars t in *)
-      let userc, usercty = interp_constr_in_rhs env ctx evars data None s lets (GlobConstr user) in
-      match t with
-      | PInac t ->
-        begin match Evarconv.conv env' !evars userc t with
-          | Some evars' -> evars := evars'
-          | None ->
-            DAst.with_loc_val (fun ?loc _ ->
-                CErrors.user_err ?loc ~hdr:"covering"
-                  (str "Incompatible innaccessible pattern " ++
-                   Printer.pr_econstr_env env' !evars userc ++
-                   spc () ++ str "should be unifiable with " ++
-                   Printer.pr_econstr_env env' !evars t)) user
-        end
-      | _ ->
-        let t = pat_constr t in
-        DAst.with_loc_val (fun ?loc _ ->
-            CErrors.user_err ?loc ~hdr:"covering"
-              (str "Pattern " ++
-               Printer.pr_econstr_env env' !evars userc ++
-               spc () ++ str "is not inaccessible, but should refine pattern " ++
-               Printer.pr_econstr_env env' !evars t)) user
+    let check_uinnac (user, t) = ()
+      (* let loc, user = CAst.with_loc_val (fun ?loc v -> (loc, v)) user in
+       * match t with
+       * | PInac _ -> ()
+       * | _ -> () *)
+        (* match user with
+         * | PVar _ -> ()
+         * |
+         * let t = pat_constr t in
+         * CErrors.user_err ?loc ~hdr:"covering"
+         *   (str "Pattern " ++
+         *    Printer.pr_glob_constr_env env' user ++
+         *    spc () ++ str "is not inaccessible, but should refine pattern " ++
+         *    Printer.pr_econstr_env env' !evars t) *)
     in
     let check_innac (user, forced) =
-      DAst.with_loc_val (fun ?loc user ->
       (* Allow patterns not written by the user to be forced innaccessible silently *)
-      if Option.is_empty loc then ()
-      else
-        match user with
-        | PUVar (i, _) ->
-          (* If the pattern comes from a wildcard or is a variable,
-             allow forcing innaccessibles too *)
-          ()
-        | _ ->
-          let ctx, envctx, liftn, subst = env_of_rhs evars ctx env s lets in
-          let forcedsubst = substnl subst 0 forced in
-          CErrors.user_err ?loc ~hdr:"covering"
-            (str "This pattern must be innaccessible and equal to " ++
-             Printer.pr_econstr_env (push_rel_context ctx env) !evars forcedsubst)) user
+      CAst.with_loc_val (fun ?loc user ->
+          if Option.is_empty loc then ()
+          else
+            match user with
+            | PUVar (i, _) ->
+              (* If the pattern comes from a wildcard or is a variable,
+                 allow forcing innaccessibles too *)
+              ()
+            | _ ->
+              let ctx, envctx, liftn, subst = env_of_rhs evars ctx env s lets in
+              let forcedsubst = substnl subst 0 forced in
+              CErrors.user_err ?loc ~hdr:"covering"
+                (str "This pattern must be innaccessible and equal to " ++
+                 Printer.pr_econstr_env (push_rel_context ctx env) !evars forcedsubst)) user
     in
     List.iter check_uinnac uinnacs;
     List.iter check_innac innacs
@@ -1130,7 +1401,8 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
     (* revctx is a variable substitution from a reordered context to the
        current context *)
     let revctx = check_ctx_map env !evars (newctx, pats', ctx) in
-    let idref = Namegen.next_ident_away (Id.of_string "refine") (Id.Set.of_list (ids_of_rel_context newctx)) in
+    let avoid = Id.Set.of_list (ids_of_rel_context newctx) in
+    let idref = Namegen.next_ident_away (Id.of_string "refine") avoid in
     let decl = make_assum (Name idref) (mapping_constr !evars revctx cty) in
     let extnewctx = decl :: newctx in
     (* cmap : Δ -> ctx, cty,
@@ -1175,7 +1447,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
       match cs with
       | [] -> cls
       | _ :: _ ->
-        [loc, lhs @ [DAst.make ?loc (PUVar (idref, true))], Some (Refine (cs, cls))]
+        [loc, pre_lhs @ [DAst.make ?loc (Glob_term.GVar idref), true], Some (Refine (cs, cls))]
     in
     let rec cls' n cls =
       let next_unknown =
@@ -1183,12 +1455,13 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
         let i = ref (-1) in fun () ->
           incr i; add_suffix str (string_of_int !i)
       in
-      List.map_filter (fun (loc, lhs, rhs) ->
-        let oldpats, newpats = List.chop (List.length lhs - n) lhs in
+      List.map_filter (fun (loc, pre_lhs, rhs) ->
+        let oldpats, newpats = List.chop (List.length pre_lhs - n) pre_lhs in
         let newref, nextrefs =
           match newpats with hd :: tl -> hd, tl | [] -> assert false
         in
-        match matches_user prob (extpats @ oldpats) with
+        let oldpats = interp_user_pats env !evars pats ctx' loc oldpats in
+        match matches_user prob oldpats with
         | UnifSuccess (s, alias) ->
           (* A substitution from the problem variables to user patterns and
              from user pattern variables to patterns instantiating problem variables. *)
@@ -1199,9 +1472,9 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
                  else
                  if List.exists (fun (i', b) -> i' == pred i && b) vars then None
                  else
-                   try Some (DAst.make (List.assoc (pred i) s))
-                   with Not_found -> (* The problem is more refined than the user vars*)
-                     Some (DAst.make (PUVar (next_unknown (), true))))
+                   try Some (user_pat_of_typed_user_pat (List.assoc (pred i) s), true)
+                   with Not_found -> (* The problem is more refined than the user vars *)
+                     Some (glob_hole, true))
               vars'
           in
           let newrhs = match rhs with
@@ -1214,7 +1487,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
             (str "Non-matching clause in with subprogram:" ++ fnl () ++ int n ++
              str"Problem is " ++ spc () ++ pr_context_map env !evars prob ++ fnl () ++
              str"And the user patterns are: " ++ spc () ++
-             pr_user_pats env lhs)) cls
+             pr_user_pats env pre_lhs)) cls
     in
     let cls' = cls' 1 cls in
     let strength_app =

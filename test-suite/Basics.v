@@ -106,6 +106,17 @@ Derive Signature for vector.
 Derive NoConfusion NoConfusionHom for vector.
 Derive Subterm for vector.
 
+Require Import Vectors.Vector.
+
+Local Open Scope vect_scope.
+
+Arguments Vector.nil {A}.
+Arguments Vector.cons {A} _ {n}.
+
+Equations vlast {A} {n} (v : vector A (S n)) : A by struct v :=
+vlast (cons a (n:=O) nil) := a ;
+vlast (cons a (n:=S n) v) := vlast v.
+
 Require Import Arith Wf_nat.
 
 Instance wf_nat : WellFounded lt := lt_wf.
@@ -122,12 +133,6 @@ testn (S n) with testn n => {
   | 0 := S 0 ;
   | (S n') := S n' }.
 
-Require Import Vectors.Vector.
-
-Arguments Vector.nil {A}.
-Arguments Vector.cons {A} _ {n}.
-
-Local Open Scope vect_scope.
 Reserved Notation "x ++v y" (at level 60).
 
 Equations vapp' {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=

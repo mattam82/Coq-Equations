@@ -11,7 +11,8 @@ Derive Signature for eq.
 Goal forall (U V : Type), Some U = Some V -> U = V.
 Proof. intros. depelim H. reflexivity. Qed.
 
-Derive Signature NoConfusionHom for vector.
+Derive Signature for vector.
+Derive NoConfusionHom for vector.
 
 Unset Printing All.
 

@@ -439,3 +439,9 @@ val evd_comb1 : (Evd.evar_map -> 'a -> Evd.evar_map * 'b) -> Evd.evar_map ref ->
 val evd_comb0 : (Evd.evar_map -> Evd.evar_map * 'b) -> Evd.evar_map ref -> 'b
 
 val splay_prod_n_assum : env -> Evd.evar_map -> int -> types -> rel_context * types
+
+val glob_implicit_hole : int -> GlobRef.t -> Glob_term.glob_constr
+val glob_inacc : ?loc:Loc.t -> Glob_term.glob_constr -> Glob_term.glob_constr
+val glob_hole : Glob_term.glob_constr
+val glob_var : ?loc:Loc.t -> identifier -> Glob_term.glob_constr
+val glob_construct : Names.constructor -> Glob_term.glob_constr list -> Glob_term.glob_constr

@@ -387,21 +387,22 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
             Tacticals.New.tclZEROMSG (str "Could not eliminate variable " ++ Id.print id)
         | Some (Covering.Splitted (_, newctx, brs)) ->
             let brs = Option.List.flatten (Array.to_list brs) in
-            let clauses_lhs = List.map Context_map.context_map_to_lhs brs in
+            let clauses_lhs = List.map (Covering.context_map_to_lhs env !evd) brs in
             let clauses = List.map (fun lhs -> (Some default_loc, lhs, Some rhs)) clauses_lhs in
               Proofview.tclUNIT clauses
         end
     | Some patterns ->
         (* For each pattern, produce a clause. *)
-        let make_clause : (Syntax.user_pat_loc) -> Syntax.pre_clause =
+        let make_clause : Syntax.user_pat -> Syntax.pre_clause =
+          fun (g, allowref) ->
           DAst.with_loc_val (fun ?loc pat ->
             let lhs =
               List.rev_map (fun decl ->
                 let decl_id = Context.Named.Declaration.get_id decl in
-                if Names.Id.equal decl_id id then DAst.make ?loc pat
-                else DAst.make (Syntax.PUVar (decl_id, false))) loc_hyps
+                if Names.Id.equal decl_id id then DAst.make ?loc pat, allowref
+                else DAst.make (Glob_term.GVar decl_id), true) loc_hyps
             in
-              (loc, lhs, Some rhs))
+              (loc, lhs, Some rhs)) g
         in Proofview.tclUNIT (List.map make_clause patterns)
     end >>= fun clauses ->
     if !debug then

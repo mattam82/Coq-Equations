@@ -17,7 +17,8 @@ Inductive fin : nat -> Set :=
 | fs : forall {n}, fin n -> fin (S n).
 Derive Signature for fin.
 (** NoConfusion For [fin]. *)
-Derive NoConfusion NoConfusionHom for fin.
+Derive NoConfusion for fin.
+Derive NoConfusionHom for fin.
 
 (** We can inject it into [nat]. *)
 Equations fog {n} (f : fin n) : nat :=

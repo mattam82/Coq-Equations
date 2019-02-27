@@ -16,6 +16,25 @@ open Splitting
 
 (* Unification *)
 
+type typed_user_pat =
+    PUVar of identifier * generated
+  | PUCstr of constructor * int * typed_user_pats
+  | PUInac of Glob_term.glob_constr
+  | PUEmpty
+and typed_user_pat_loc = typed_user_pat CAst.t
+and typed_user_pats = typed_user_pat_loc list
+
+(** Translating back to user patterns. *)
+val context_map_to_lhs : env -> Evd.evar_map -> ?avoid:Id.Set.t -> ?loc:Loc.t -> context_map -> Syntax.lhs
+
+val user_pats_of_typed_user_pats : typed_user_pats -> user_pats
+
+val interp_constr_pats : env -> Evd.evar_map -> Names.Id.Set.t ->
+  (Name.t * EConstr.t * allow_refinement * Glob_term.glob_constr option) list -> typed_user_pat CAst.t list
+
+val interp_user_pats : env -> Evd.evar_map -> Context_map.pat list -> rel_context -> Loc.t option ->
+  Syntax.user_pats -> typed_user_pats
+
 exception Conflict
 exception Stuck
 type 'a unif_result = UnifSuccess of 'a | UnifFailure | UnifStuck
@@ -41,21 +60,20 @@ val accessibles : pat list -> Int.Set.t
 val hidden : pat -> bool
 
 type match_subst =
-  ((identifier * bool) * pat) list * (Glob_term.glob_constr * pat) list *
-  (user_pat_loc * constr) list * ((Loc.t option * pat) list)
+  (Loc.t option * (identifier * bool) * pat) list * (Glob_term.glob_constr CAst.t * pat) list *
+  (typed_user_pat_loc * constr) list * ((Loc.t option * pat) list)
 
-val match_pattern : user_pat_loc -> pat -> match_subst
-val match_patterns : user_pats -> pat list -> match_subst
-val matches : user_pats -> context_map -> match_subst unif_result
-val match_user_pattern :
-  pat -> user_pat_loc -> (int * user_pat) list * (identifier * pat) list
+val match_pattern : typed_user_pat_loc -> pat -> match_subst
+val match_patterns : typed_user_pats -> pat list -> match_subst
+val matches : typed_user_pats -> context_map -> match_subst unif_result
+val match_user_pattern : typed_user_pat_loc -> pat -> (int * typed_user_pat_loc) list *
+                                                      (identifier * pat) list
+
 val match_user_patterns :
-  pat list ->
-  user_pats -> (int * user_pat) list * (identifier * pat) list
-val matches_user :
-  context_map ->
-  user_pats ->
-  ((int * user_pat) list * (identifier * pat) list) unif_result
+  typed_user_pats -> pat list -> (int * typed_user_pat_loc) list * (identifier * pat) list
+val matches_user : context_map -> typed_user_pats ->
+  ((int * typed_user_pat_loc) list * (identifier * pat) list) unif_result
+
 val lets_of_ctx :
   env ->
   rel_context ->
@@ -117,7 +135,7 @@ val unify_type :
    unif_result array)
   option
 
-val blockers : user_pats -> context_map -> int list
+val blockers : typed_user_pats -> context_map -> int list
 
 val subst_matches_constr : Evd.evar_map ->
   int -> (int * constr) list -> constr -> constr
@@ -178,7 +196,7 @@ val covering_aux :
   (pre_clause * (int * int)) list ->
   path ->
   context_map ->
-  user_pats ->
+  typed_user_pats ->
   rel_context -> constr ->
   ((pre_clause * (int * int)) list * splitting) option
 
@@ -187,7 +205,7 @@ val covering :  ?check_unused:bool ->
   Evd.evar_map ref ->
   program_info -> int_data ->
   pre_clause list -> path ->
-  context_map -> user_pats ->
+  context_map -> typed_user_pats ->
   constr -> splitting
 
 val adjust_sign_arity : Environ.env ->
@@ -234,7 +252,7 @@ val compute_rec_data :
   EConstr.Vars.substl ->
   Syntax.program_info ->
   Syntax.program_info * Context_map.context_map * EConstr.constr *
-  (Syntax.user_pat, 'a) DAst.t list * Splitting.rec_info option
+  typed_user_pats * Splitting.rec_info option
 
 
 val interp_arity : Environ.env ->
