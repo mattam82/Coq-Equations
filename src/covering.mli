@@ -16,6 +16,14 @@ open Splitting
 
 (* Unification *)
 
+type typed_user_pat =
+    PUVar of identifier * generated
+  | PUCstr of constructor * int * user_pats
+  | PUInac of Glob_term.glob_constr
+  | PUEmpty
+
+and typed_user_pat_loc = (typed_user_pat, [ `any ]) DAst.t
+
 exception Conflict
 exception Stuck
 type 'a unif_result = UnifSuccess of 'a | UnifFailure | UnifStuck
@@ -42,13 +50,13 @@ val hidden : pat -> bool
 
 type match_subst =
   ((identifier * bool) * pat) list * (Glob_term.glob_constr * pat) list *
-  (user_pat_loc * constr) list * ((Loc.t option * pat) list)
+  (typed_user_pat_loc * constr) list * ((Loc.t option * pat) list)
 
-val match_pattern : user_pat_loc -> pat -> match_subst
+val match_pattern : typed_user_pat_loc -> pat -> match_subst
 val match_patterns : user_pats -> pat list -> match_subst
 val matches : user_pats -> context_map -> match_subst unif_result
 val match_user_pattern :
-  pat -> user_pat_loc -> (int * user_pat) list * (identifier * pat) list
+  pat -> typed_user_pat_loc -> (int * user_pat) list * (identifier * pat) list
 val match_user_patterns :
   pat list ->
   user_pats -> (int * user_pat) list * (identifier * pat) list

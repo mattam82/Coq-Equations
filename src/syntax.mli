@@ -24,13 +24,12 @@ type user_rec_annot = rec_annotation option
 
 type identifier = Names.Id.t
 
-type user_pat =
-    PUVar of identifier * generated
-  | PUCstr of constructor * int * user_pats
-  | PUInac of Glob_term.glob_constr
-  | PUEmpty
-and user_pat_loc = (user_pat, [ `any ]) DAst.t
-and user_pats = user_pat_loc list
+type user_pat = Glob_term.glob_constr
+  (*   PUVar of identifier * generated
+   * | PUCstr of constructor * int * user_pats
+   * | PUInac of Glob_term.glob_constr
+   * | PUEmpty *)
+type user_pats = user_pat list
 
 (** Raw syntax *)
 type pat_expr =
@@ -153,12 +152,12 @@ val map_program_info : (EConstr.t -> EConstr.t) -> program_info -> program_info
 
 val ids_of_pats : Names.Id.t option -> Constrexpr.constr_expr list -> Id.Set.t
 
-val pattern_of_glob_constr :
-  Environ.env ->
-  Names.Id.Set.t ref ->
-  Names.Name.t ->
-  Glob_term.glob_constr ->
-  (user_pat, [ `any] ) DAst.t
+(* val pattern_of_glob_constr :
+ *   Environ.env ->
+ *   Names.Id.Set.t ref ->
+ *   Names.Name.t ->
+ *   Glob_term.glob_constr ->
+ *   (user_pat, [ `any] ) DAst.t *)
 
 
 val interp_pat : Environ.env -> Vernacexpr.decl_notation list -> ?avoid:Id.Set.t ref ->

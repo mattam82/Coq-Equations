@@ -33,6 +33,108 @@ type int_data = {
                Notation_term.scope_name option) list
 }
 
+type typed_user_pat =
+    PUVar of identifier * generated
+  | PUCstr of constructor * int * user_pats
+  | PUInac of Glob_term.glob_constr
+  | PUEmpty
+
+and typed_user_pat_loc = (typed_user_pat, [ `any ]) DAst.t
+
+let rec pr_user_loc_pat env ?loc pat =
+  match pat with
+  | PUVar (i, gen) -> Id.print i ++ if gen then str "#" else mt ()
+  | PUCstr (c, i, f) ->
+      let pc = Printer.pr_constructor env c in
+        if not (List.is_empty f) then str "(" ++ pc ++ spc () ++ pr_user_pats env f ++ str ")"
+        else pc
+  | PUInac c -> str "?(" ++ Printer.pr_glob_constr_env env c ++ str ")"
+  | PUEmpty -> str"!"
+
+and pr_typed_user_pat env = DAst.with_loc_val (pr_user_loc_pat env)
+
+let rec free_glob_vars gc ctx free =
+  match DAst.get gc with
+  | Glob_term.GVar id -> if not (Id.Set.mem id ctx) then id :: free else free
+  | _ ->
+    Glob_ops.fold_glob_constr_with_binders
+      (fun id bound -> Id.Set.add id bound)
+      (fun ctx acc gc -> free_glob_vars gc ctx free)
+      ctx free gc
+
+let free_glob_vars bound pat = free_glob_vars pat bound []
+
+let interp_user_pats env sigma ctx extpats loc pats =
+  let flags = Pretyping.all_no_fail_flags in
+  let ctx, extctx = List.chop (List.length extpats) (List.rev ctx) in
+  let bound = Id.Set.empty in
+  let rec aux env sigma bound ctx pats cpats =
+    let open Context.Rel.Declaration in
+    match ctx, pats with
+    | LocalDef (na, b, t) as decl :: ctx, _ -> aux (push_rel decl env) ctx pats
+    | LocalAssum (na, t) :: ctx, [] ->
+      user_err_loc (loc, "covering", str "This clause requires an extra pattern of type " ++
+                                     Printer.pr_econstr_env env sigma t)
+    | LocalAssum (na, t) as decl :: ctx, pat :: pats ->
+      let free = free_glob_vars bound pat in
+      let sigma, freectx =
+        List.fold_right (fun id (sigma, ctx) ->
+            let sigma, (ev, s) = Evarutil.new_type_evar (push_rel_context ctx env) sigma Evd.univ_flexible in
+            (sigma, LocalAssum (id, ev) :: ctx)
+              free (sigma, ctx)
+      in
+      let sigma, pat = Pretyping.understand_tcc ~flags env sigma ~expected_type:(OfType t) pat in
+      let ctx' = subst_telescope pat ctx in
+      let newpat =
+      aux env sigma (bound
+  in aux env bound ctx pats
+
+
+(*
+let pattern_of_glob_constr env avoid patname gc =
+  let rec constructor ?loc c l =
+    let ind, _ = c in
+    let nparams = Inductiveops.inductive_nparams ind in
+    let nargs = Inductiveops.constructor_nrealargs c in
+    let l =
+      if List.length l < nargs then
+        user_err_loc (loc, "pattern_of_glob_constr", str "Constructor is applied to too few arguments")
+      else
+        if List.length l = nparams + nargs then
+          List.skipn nparams l
+        else if List.length l = nargs then l
+        else
+          user_err_loc (loc, "pattern_of_glob_constr", str "Constructor is applied to too many arguments");
+    in
+    Dumpglob.add_glob ?loc (ConstructRef c);
+    PUCstr (c, nparams, List.map (DAst.map_with_loc aux) l)
+  and aux ?loc = function
+    | GVar id -> PUVar (id, false)
+    | GHole (_,_,_) ->
+      let id =
+        match patname with
+        | Anonymous -> Id.of_string "_wildcard"
+        | Name id -> id
+      in
+      let n = next_ident_away id avoid in
+      PUVar (n, true)
+    | GRef (ConstructRef cstr,_) -> constructor ?loc cstr []
+    | GRef (ConstRef _ as c, _) when GlobRef.equal c (Lazy.force coq_bang) -> PUEmpty
+    | GApp (c, l) ->
+      begin match DAst.get c with
+        | GRef (ConstructRef cstr,_) -> constructor ?loc cstr l
+        | GRef (ConstRef _ as c, _) when GlobRef.equal c (Lazy.force coq_inacc) ->
+          let inacc = List.hd (List.tl l) in
+          PUInac inacc
+        | _ -> user_err_loc (loc, "pattern_of_glob_constr", str "Cannot interpret " ++ pr_glob_constr_env env c ++ str " as a constructor")
+      end
+  (* | GLetIn (Name id as na',b,None,e) when is_gvar id e && na = Anonymous ->
+   *    (\* A canonical encoding of aliases *\)
+   *    DAst.get (cases_pattern_of_glob_constr na' b) *)
+    | _ -> user_err_loc (loc, "pattern_of_glob_constr", str ("Cannot interpret globalized term as a pattern"))
+  in DAst.map_with_loc aux gc
+*)
+
 exception Conflict
 exception Stuck
 
@@ -103,7 +205,7 @@ let hidden = function PHide _ -> true | _ -> false
 
 type match_subst =
   ((identifier * bool) * pat) list * (Glob_term.glob_constr * pat) list *
-  (user_pat_loc * constr) list * ((Loc.t option * pat) list)
+  (typed_user_pat_loc * constr) list * ((Loc.t option * pat) list)
 
 let rec match_pattern p c =
   match DAst.get p, c with
@@ -252,27 +354,19 @@ let env_of_rhs evars ctx env s lets =
   let pats = List.map (lift (-letslen)) pats @ patslets in
   ctx, envctx, len + letslen, pats
 
-(* let _rename_prob_subst env ctx s =
- *   let _avoid = List.fold_left (fun avoid decl ->
- *       match get_name decl with
- *       | Anonymous -> avoid
- *       | Name id -> Id.Set.add id avoid) Id.Set.empty ctx
- *   in
- *   let varsubst, rest =
- *     fold_left (fun (varsubst, rest) ((id, gen), pat) ->
- *         match pat with
- *         | PRel i when gen = false -> ((i, id) :: varsubst, rest)
- *         | _ -> (varsubst, (id, pat) :: rest))
- *       ([], []) s
- *   in
- *   let ctx' =
- *     List.fold_left_i (fun i acc decl ->
- *         try let id = List.assoc i varsubst in
- *           Context.Rel.Declaration.set_name (Name id) decl :: acc
- *         with Not_found -> decl :: acc)
- *       1 [] ctx
- *   in
- *   (List.rev ctx', id_pats ctx, ctx) *)
+let rename_prob_subst env ctx s =
+  let avoid = List.fold_left (fun avoid ((id, gen), pat) ->
+      Id.Set.add id avoid) Id.Set.empty s
+  in
+  List.map (fun ((id, gen), pat) ->
+      if gen then
+        (match pat with
+         | PRel i ->
+           (match get_name (List.nth ctx (pred i)) with
+            | Anonymous -> (id, pat)
+            | Name id' -> if Id.Set.mem id avoid then (id, pat) else (id', pat))
+         | _ -> (id, pat))
+      else (id, pat)) s
 
 let is_wf_ref id rec_type =
   List.exists (function Some (Logical (_, id')) -> Id.equal id id' | _ -> false) rec_type
@@ -930,11 +1024,12 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
     if !Equations_common.debug then
       Feedback.msg_debug (str "Matching " ++ pr_user_pats env (extpats @ lhs) ++ str " with " ++
                           pr_problem p env !evars prob);
+    let lhs = interp_user_pats env !evars ctx' extpats lhs in
     (match matches (extpats @ lhs) prob with
      | UnifSuccess (s, uacc, acc, empties) ->
        if !Equations_common.debug then Feedback.msg_debug (str "succeeded");
-       (* let renaming = rename_prob_subst env ctx (pi1 s) in *)
-       let s = (List.map (fun ((x, gen), y) -> x, y) s, uacc, acc) in
+       let s = rename_prob_subst env ctx s in
+       let s = ((* List.map (fun ((x, gen), y) -> x, y)  *)s, uacc, acc) in
        (* let prob = compose_subst env ~sigma:!evars renaming prob in *)
        let clauseid = Id.of_string ("clause_" ^ string_of_int idx ^
                                     (if cnt = 0 then "" else "_" ^ string_of_int cnt)) in

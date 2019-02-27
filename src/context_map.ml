@@ -110,29 +110,37 @@ and pat_of_constr sigma c =
   | Construct f -> PCstr (f, [])
   | _ -> PInac c
 
+let glob_hole n r =
+  let evk = Evar_kinds.ImplicitArg (r, (n, None), false) in
+  DAst.make (Glob_term.GHole (evk, Namegen.IntroAnonymous, None))
 
-let rec pat_to_user_pat ?(avoid = ref Id.Set.empty) ?loc ctx = function
+let glob_innac ?loc x =
+  let inacc = Lazy.force coq_inacc in
+  DAst.make ?loc (Glob_term.GApp (DAst.make ?loc
+                                    (Glob_term.GRef (inacc, None)),
+                                  [glob_hole 0 inacc; x]))
+
+let rec pat_to_user_pat env sigma ?(avoid = ref Id.Set.empty) ?loc ctx = function
   | PRel i ->
     let decl = List.nth ctx (pred i) in
     let name = Context.Rel.Declaration.get_name decl in
     let id = Namegen.next_name_away name !avoid in
     avoid := Id.Set.add id !avoid;
-    Some (DAst.make ?loc (Syntax.PUVar (id, false)))
-  | PCstr (((ind, _ as cstr), _), pats) ->
-    let n = Inductiveops.inductive_nparams ind in
-    let _, pats = List.chop n pats in
-    Some (DAst.make ?loc (Syntax.PUCstr (cstr, n, pats_to_lhs ~avoid ?loc ctx pats)))
+    Some (DAst.make ?loc (Glob_term.GVar id))
+  | PCstr (((ind, _ as cstr), _), pats) -> (* TODO Univs? *)
+    Some (DAst.make ?loc (Glob_term.GApp
+                            (DAst.make ?loc (Glob_term.GRef (GlobRef.ConstructRef cstr, None)),
+                             pats_to_lhs env sigma ~avoid ?loc ctx pats)))
   | PInac c ->
-    let id = Namegen.next_ident_away (Id.of_string "wildcard") !avoid in
-    avoid := Id.Set.add id !avoid;
-    Some (DAst.make ?loc (Syntax.PUVar (id, true)))
+    let gc = Detyping.(detype Now true !avoid env sigma c) in
+    Some (glob_innac ?loc gc)
   | PHide i -> None
-and pats_to_lhs ?(avoid = ref Id.Set.empty) ?loc ctx pats =
-  List.map_filter (pat_to_user_pat ~avoid ?loc ctx) pats
+and pats_to_lhs env sigma ?(avoid = ref Id.Set.empty) ?loc ctx pats =
+  List.map_filter (pat_to_user_pat env sigma ~avoid ?loc ctx) pats
 
-let context_map_to_lhs ?(avoid = Id.Set.empty) ?loc (ctx, pats, _) =
+let context_map_to_lhs env sigma ?(avoid = Id.Set.empty) ?loc (ctx, pats, _) =
   let avoid = ref avoid in
-  List.rev (pats_to_lhs ~avoid ?loc ctx pats)
+  List.rev (pats_to_lhs env sigma ~avoid ?loc ctx pats)
 
 let do_renamings env sigma ctx =
   let avoid, ctx' =

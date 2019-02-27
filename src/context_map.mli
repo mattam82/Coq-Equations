@@ -48,7 +48,7 @@ val pats_of_constrs : Evd.evar_map -> constr list -> pat list
 val pat_of_constr : Evd.evar_map -> constr -> pat
 
 (** Translating back to user patterns. *)
-val context_map_to_lhs : ?avoid:Id.Set.t -> ?loc:Loc.t -> context_map -> Syntax.lhs
+val context_map_to_lhs : env -> Evd.evar_map -> ?avoid:Id.Set.t -> ?loc:Loc.t -> context_map -> Syntax.lhs
 
 (** Pretty-printing *)
 val pr_constr_pat : env -> Evd.evar_map -> constr -> Pp.t

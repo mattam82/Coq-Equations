@@ -1,1 +1,4 @@
 + In HoTT_light and everywhere, use dependent elimination as -> shorten to depelim as
+  Requires some magic with Ltac and arguments
+
++ Use typing of patterns to infer names.
