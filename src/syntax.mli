@@ -153,6 +153,14 @@ val map_program_info : (EConstr.t -> EConstr.t) -> program_info -> program_info
 
 val ids_of_pats : Names.Id.t option -> Constrexpr.constr_expr list -> Id.Set.t
 
+val pattern_of_glob_constr :
+  Environ.env ->
+  Names.Id.Set.t ref ->
+  Names.Name.t ->
+  Glob_term.glob_constr ->
+  (user_pat, [ `any] ) DAst.t
+
+
 val interp_pat : Environ.env -> Vernacexpr.decl_notation list -> ?avoid:Id.Set.t ref ->
   (program_info * Names.Name.t list) option ->
   Constrexpr.constr_expr -> user_pats

@@ -404,18 +404,73 @@ END
 
 {
 
-let pr_elim_patterns _ _ _ l = mt ()
+type raw_elim_patterns = constr_expr list
+type glob_elim_patterns = Genintern.glob_constr_and_expr list
+type elim_patterns = user_pats
+
+let interp_elim_pattern env avoid s =
+  Syntax.pattern_of_glob_constr env avoid Anonymous (* Should be id *) (fst s)
+
+let interp_elim_patterns ist gl s =
+  let sigma = project gl in
+  let env = Goal.V82.env sigma gl.Evd.it in
+  let avoid = ref (Names.Id.Map.domain ist.Geninterp.lfun) in
+  sigma, List.map (interp_elim_pattern env avoid) s
+
+let glob_elim_patterns ist s = List.map (Tacintern.intern_constr ist) s
+let subst_elim_patterns s str = str
+
+let pr_elim_patterns _ _ _ (s : elim_patterns) = Syntax.pr_user_pats (Global.env ()) (*FIXME*) s
+let pr_raw_elim_patterns prc prlc _ (s : raw_elim_patterns) =
+  Pp.prlist_with_sep (fun _ -> str "|") prc s
+let pr_glob_elim_patterns prc prlc env (s : glob_elim_patterns) =
+  Pp.prlist_with_sep (fun _ -> str "|") (fun x -> prc x) s
+
+type elim_patterns_argtype = (raw_elim_patterns, glob_elim_patterns, elim_patterns) Genarg.genarg_type
+
+(* let interp_elim_patterns ist gl l =
+ *   match l with
+ *     | ArgArg x -> x
+ *     | ArgVar ({ CAst.v = id } as locid) ->
+ *         (try int_list_of_VList (Id.Map.find id ist.lfun)
+ *           with Not_found | CannotCoerceTo _ -> [interp_int ist locid])
+ *
+ * let interp_elim_patterns ist gl l =
+ *   Tacmach.project gl , interp_occs ist gl l
+ *
+ * let wit_g_elim_patterns : elim_patterns_argtype =
+ *   Genarg.create_arg "g_elim_patterns"
+ *
+ * let val_g_elim_patterns =
+ *   Geninterp.register_val0 wit_g_elim_patterns None
+ *
+ * (\* let pr_raw_g_elim_patterns _ _ _ = Simplify.pr_elim_patterns
+ *  * let pr_glob_g_elim_patterns _ _ _ = Simplify.pr_elim_patterns
+ *  * let pr_g_elim_patterns _ _ _ = Simplify.pr_elim_patterns *\)
+ *
+ * let g_elim_patterns : raw_elim_patterns Pcoq.Entry.t =
+ *   Pcoq.create_generic_entry Pcoq.utactic "g_elim_patterns"
+ *     (Genarg.rawwit wit_g_elim_patterns)
+ *
+ * let _ = Pptactic.declare_extra_genarg_pprule wit_g_elim_patterns
+ *   pr_raw_elim_patterns pr_glob_elim_patterns pr_elim_patterns *)
 
 }
 
 ARGUMENT EXTEND elim_patterns
-PRINTED BY { pr_elim_patterns }
+  PRINTED BY { pr_elim_patterns }
+  INTERPRETED BY { interp_elim_patterns }
+  GLOBALIZED BY { glob_elim_patterns }
+  SUBSTITUTED BY { subst_elim_patterns }
+  RAW_PRINTED BY { pr_raw_elim_patterns }
+  GLOB_PRINTED BY { pr_glob_elim_patterns }
+
   | [ deppat_elim(l) ] -> { l }
 END
 
 TACTIC EXTEND dependent_elimination
-| ["dependent" "elimination" ident(id) ] -> { Depelim.dependent_elim_tac (Loc.make_loc (0, 0), id) }
-| ["dependent" "elimination" ident(id) "as" elim_patterns(l) ] ->
+| [ "dependent" "elimination" ident(id) ] -> { Depelim.dependent_elim_tac (Loc.make_loc (0, 0), id) }
+| [ "dependent" "elimination" ident(id) "as" elim_patterns(l) ] ->
    { Depelim.dependent_elim_tac ~patterns:l (Loc.make_loc (0, 0), id) (* FIXME *) }
 END
 
