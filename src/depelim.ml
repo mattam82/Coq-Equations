@@ -391,12 +391,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
             let clauses = List.map (fun lhs -> (Some default_loc, lhs, Some rhs)) clauses_lhs in
               Proofview.tclUNIT clauses
         end
-    | Some p ->
-        (* Interpret each pattern to then produce clauses. *)
-        let patterns : (Syntax.user_pat_loc) list =
-          let avoid = ref (Syntax.ids_of_pats None p) in
-          List.map (fun x -> List.hd (Syntax.interp_pat env [] ~avoid None x)) p
-        in
+    | Some patterns ->
         (* For each pattern, produce a clause. *)
         let make_clause : (Syntax.user_pat_loc) -> Syntax.pre_clause =
           DAst.with_loc_val (fun ?loc pat ->
@@ -450,4 +445,17 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
         Feedback.msg_debug (str "refining with" ++ Printer.pr_econstr_env env !evd c);
         (!evd, c)
     end
+  end
+
+let dependent_elim_tac_expr ?patterns id : unit Proofview.tactic =
+  Proofview.Goal.enter begin fun gl ->
+    let env = Proofview.Goal.env gl in
+    (* Interpret each pattern to then produce clauses. *)
+    let patterns =
+      match patterns with
+      | None -> None
+      | Some p ->
+        let avoid = ref (Syntax.ids_of_pats None p) in
+        Some (List.map (fun x -> List.hd (Syntax.interp_pat env [] ~avoid None x)) p)
+    in dependent_elim_tac ?patterns id
   end

@@ -90,7 +90,8 @@ Module KAxiom.
   Fail Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
     K x P p eq_refl := p.
 
-  Set Equations WithUIP.
+  Set Equations With UIP.
+
   Axiom uip : forall A, EqDec.UIP A.
   Local Existing Instance uip.
   Equations K_ax {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
@@ -105,7 +106,7 @@ Module KDec.
       option. Note that the following definition does *not* reduce according to its single clause
       on open terms, it instead computes using the decidable equality proof on natural numbers. *)
 
-  Set Equations WithUIP.
+  Set Equations With UIP.
 
   Fail Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
     K x P p eq_refl := p.

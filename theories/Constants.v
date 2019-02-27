@@ -1,4 +1,4 @@
-From Equations Require Import Init DepElim FunctionalInduction Classes.
+From Equations Require Import Init Classes DepElim FunctionalInduction.
 From Coq Require Import Relations.
 
 (** Naturals *)
@@ -16,7 +16,7 @@ Register Equations.Init.pr2 as equations.sigma.pr2.
 Register Equations.FunctionalInduction.FunctionalInduction as equations.funind.class.
 Register Equations.FunctionalInduction.FunctionalElimination as equations.funelim.class.
 Register Equations.DepElim.DependentEliminationPackage as equations.depelim.class.
-Register Equations.DepElim.ImpossibleCall as equations.impossiblecall.class.
+Register Equations.Classes.ImpossibleCall as equations.impossiblecall.class.
 
 Register Equations.Signature.Signature as equations.signature.class.
 Register Equations.Signature.signature as equations.signature.signature.
@@ -27,7 +27,7 @@ Register Equations.Signature.signature_pack as equations.signature.pack.
 Register Equations.Init.fixproto as equations.fixproto.
 Register Equations.Init.hidebody as equations.internal.hidebody.
 Register Equations.Init.bang as equations.internal.bang.
-Register Equations.DepElim.inaccessible_pattern as equations.internal.inaccessible_pattern.
+Register Equations.Init.inaccessible_pattern as equations.internal.inaccessible_pattern.
 Register Equations.DepElim.block as equations.internal.block.
 Register Equations.DepElim.hide_pattern as equations.internal.hide_pattern.
 Register Equations.DepElim.add_pattern as equations.internal.add_pattern.
@@ -70,10 +70,10 @@ Register Relations.Relation_Definitions.relation as equations.relation.type.
 Register Relations.Relation_Operators.clos_trans as equations.relation.transitive_closure.
 
 (* Dependent elimination constants *)
-Register Equations.DepElim.NoConfusionPackage as equations.noconfusion.class.
-Register Equations.DepElim.apply_noConfusion as equations.depelim.apply_noConfusion.
-Register Equations.DepElim.simplify_ind_pack as equations.depelim.simplify_ind_pack.
+Register Equations.Classes.NoConfusionPackage as equations.noconfusion.class.
+Register Equations.Classes.apply_noConfusion as equations.depelim.apply_noConfusion.
 
+Register Equations.DepElim.simplify_ind_pack as equations.depelim.simplify_ind_pack.
 Register Equations.DepElim.simplify_ind_pack_inv as equations.depelim.simplify_ind_pack_inv.
 Register Equations.DepElim.opaque_ind_pack_eq_inv as equations.depelim.opaque_ind_pack_eq_inv.
 Register Equations.DepElim.eq_simplification_sigma1 as equations.depelim.simpl_sigma.

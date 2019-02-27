@@ -46,7 +46,7 @@ let _ = Goptions.declare_bool_option {
   Goptions.optread  = (fun () -> false);
   Goptions.optwrite = (fun b ->
       if b then
-        CErrors.user_err (str"DEPRECATED. Use flag Equations WithUIP and introduce \
+        CErrors.user_err (str"DEPRECATED. Use flag [Equations With UIP] and introduce \
                               an axiomn [forall A, Equations.EqDec.UIP A] \
                               as a type class instance using [Existing Instance] instead.")
       else simplify_withUIP := b)
@@ -54,7 +54,7 @@ let _ = Goptions.declare_bool_option {
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = true;
-  Goptions.optname  = "using propositional K during simplification. Use flag Equations WithUIP instead.";
+  Goptions.optname  = "using propositional K during simplification. Use flag Equations With UIP instead.";
   Goptions.optkey   = ["Equations"; "WithKDec"];
   Goptions.optread  = (fun () -> !simplify_withUIP);
   Goptions.optwrite = (fun b -> simplify_withUIP := b)
@@ -62,8 +62,8 @@ let _ = Goptions.declare_bool_option {
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = false;
-  Goptions.optname  = "using propositional UIP during simplification";
-  Goptions.optkey   = ["Equations"; "WithUIP"];
+  Goptions.optname  = "allow using propositional UIP during simplification";
+  Goptions.optkey   = ["Equations"; "With"; "UIP"];
   Goptions.optread  = (fun () -> !simplify_withUIP);
   Goptions.optwrite = (fun b -> simplify_withUIP := b)
 }
