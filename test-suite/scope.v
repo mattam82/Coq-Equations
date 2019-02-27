@@ -46,9 +46,6 @@ Inductive scope_le : scope -> scope -> Set :=
 | scope_le_map : forall {n m}, scope_le n m -> scope_le (S n) (S m).
 
 Derive Signature NoConfusion NoConfusionHom for scope_le.
-Next Obligation. depelim a; depelim b; depelim e; now simpl_equations. Qed.
-Next Obligation. depelim b; now simpl_equations. Qed.
-
 Derive Subterm for scope_le.
 
 Ltac rec ::= Subterm.rec_wf_eqns.
@@ -90,9 +87,6 @@ Inductive env : scope -> scope -> Set :=
 | cons : forall {n m}, type m -> env n m -> env n (S m)
 .
 Derive Signature NoConfusion NoConfusionHom for env.
-
-Next Obligation. depelim a; depelim b; depelim e; now simpl_equations. Qed.
-Next Obligation. depelim b; now simpl_equations. Qed.
 
 Lemma env_scope_le : forall {n m}, env n m -> scope_le n m.
 Proof. intros n m Γ; depind Γ; constructor; auto. Defined.
@@ -312,7 +306,6 @@ Proof.
           ]
         ]
   end.
-  all:try (noconf H; auto).
   - clear IHB1 IHB2.
     depelim C; [constructor|]; destruct_pairs.
     constructor; eauto.

@@ -72,13 +72,37 @@ Ltac solve_noconf := simpl; intros;
     | [ |- @eq _ _ _ ] => try solve_noconf_inv
     end.
 
+Ltac solve_noconf_hom_inv := intros;
+  match goal with
+  | |- ?f ?a ?b _ = _ =>
+    destruct_sigma a; destruct_sigma b;
+    destruct a ; depelim b; simpl in * |-;
+    on_last_hyp ltac:(fun id => hnf in id; destruct_tele_eq id || depelim id);
+    solve [constructor || simpl_equations; constructor]
+  | |- ?R ?a ?b =>
+    destruct_sigma a; destruct_sigma b;
+    destruct a ; depelim b; simpl in * |-;
+    on_last_hyp ltac:(fun id => hnf in id; destruct_tele_eq id || depelim id);
+    solve [constructor || simpl_equations; constructor]
+  end.
+
+Ltac solve_noconf_hom_inv_equiv :=
+  intros;
+  (* Subtitute a = b *)
+  on_last_hyp ltac:(fun id => destruct id) ;
+  (* Destruct the inductive object a using dependent elimination
+     to handle UIP cases. *)
+  on_last_hyp ltac:(fun id => destruct_sigma id; depelim id) ;
+  simpl; simpl_equations; constructor.
+
 Ltac solve_noconf_hom := simpl; intros;
     match goal with
-      [ H : @eq _ _ _ |- @eq _ _ _ ] => try solve_noconf_inv_equiv
+      [ H : @eq _ _ _ |- @eq _ _ _ ] => try solve_noconf_hom_inv_equiv
     | [ H : @eq _ _ _ |- _ ] => try solve_noconf_prf
-    | [ |- @eq _ _ _ ] => try solve_noconf_inv
+    | [ |- @eq _ _ _ ] => try solve_noconf_hom_inv
     end.
 
+(** Simple of parameterized inductive types just need NoConfusion. *)
 Derive NoConfusion for unit bool nat option sum Datatypes.prod list sigT sig.
 
 (* FIXME should be done by the derive command *)

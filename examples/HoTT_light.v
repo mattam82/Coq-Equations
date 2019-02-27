@@ -89,7 +89,7 @@ Notation "p ^" := (eq_sym p%equations) : equations_scope.
 
 Equations apd {A} {B : A -> Type} (f : forall x : A, B x) {x y : A} (p : x = y) :
   p # f x = f y :=
-apd f id_refl := id_refl.
+apd f 1 := 1.
 
 (** A typeclass that includes the data making [f] into an adjoint equivalence*)
 
@@ -131,11 +131,10 @@ Hint Unfold pointwise_paths : typeclass_instances.
 
 Notation "f == g" := (pointwise_paths f g) (at level 70, no associativity) : type_scope.
 
-
 (* This definition has slightly changed: the match on the Id is external
    to the function. *)
 Equations apD10 {A} {B : A -> Type} {f g : forall x, B x} (h : f = g) : f == g :=
-apD10 id_refl := fun h => id_refl.
+apD10 1 := fun h => 1.
 
 Class Funext :=
   { isequiv_apD10 :> forall (A : Type) (P : A -> Type) f g, IsEquiv (@apD10 A P f g) }.
@@ -154,9 +153,8 @@ Unset Implicit Arguments.
 Arguments sigmaI {A} {B}.
 
 Equations path_sigma {A : Type} (P : A -> Type) (u v : sigma A P)
-  (p : u.1 = v.1) (q : p # u.2 = v.2)
-: u = v :=
-path_sigma _ (sigmaI _ _) (sigmaI _ _) 1 1 := 1.
+  (p : u.1 = v.1) (q : p # u.2 = v.2) : u = v :=
+path_sigma _ (_, _) (_, _) 1 1 := 1.
 
 Equations path_prod_uncurried {A B : Type} (z z' : A * B)
            (pq : (fst z = fst z') * (snd z = snd z')): z = z' :=
@@ -170,7 +168,7 @@ path_prod_eq (_, _) (_, _) 1 1 := 1.
 
 Equations eta_path_prod {A B : Type} {z z' : A * B} (p : z = z') :
   path_prod _ _ (ap fst p) (ap snd p) = p :=
-eta_path_prod (z:=(_, _)) id_refl := id_refl.
+eta_path_prod (z:=(_, _)) 1 := 1.
 
 Definition path_prod' {A B : Type} {x x' : A} {y y' : B}
   : (x = x') -> (y = y') -> ((x,y) = (x',y'))
@@ -179,25 +177,25 @@ Definition path_prod' {A B : Type} {x x' : A} {y y' : B}
 Equations ap_fst_path_prod {A B : Type} {z z' : A * B}
   (p : fst z = fst z') (q : snd z = snd z') :
   ap fst (path_prod _ _ p q) = p :=
-ap_fst_path_prod (z:=(_, _)) (z':=(_, _)) id_refl id_refl := id_refl.
+ap_fst_path_prod (z:=(_, _)) (z':=(_, _)) 1 1 := 1.
 
 Equations ap_snd_path_prod {A B : Type} {z z' : A * B}
   (p : fst z = fst z') (q : snd z = snd z') :
   ap snd (path_prod _ _ p q) = q :=
-ap_snd_path_prod (z:=(_, _)) (z':=(_, _)) id_refl id_refl := id_refl.
+ap_snd_path_prod (z:=(_, _)) (z':=(_, _)) 1 1 := 1.
 
 Instance isequiv_path_prod {A B : Type} {z z' : A * B}
 : IsEquiv (path_prod_uncurried z z').
 Proof.
   unshelve refine (BuildIsEquiv _ _ _).
   - exact (fun r => (ap fst r, ap snd r)).
-  - intro. ; apply eta_path_prod.
+  - intro. apply eta_path_prod.
   - intros [p q]. exact (path_prod'
                           (ap_fst_path_prod p q)
                           (ap_snd_path_prod p q)). 
   - destruct z as [x y], z' as [x' y'].
     intros [p q]; simpl in p, q.
-    destruct p, q; apply id_refl.
+    destruct p, q; apply 1.
 Defined.
 
 Class Contr (A : Type) := BuildContr {
@@ -214,7 +212,7 @@ Proof.
 Defined.
 
 Equations concat {A} {x y z : A} (e : x = y) (e' : y = z) : x = z :=
-concat id_refl q := q.
+concat 1 q := q.
 Notation "p @ q" := (concat p q).
 
 Definition moveR_E A B (f:A -> B) {H : IsEquiv f} (x : A) (y : B) (p : x = f^^-1 y)
@@ -231,23 +229,23 @@ Proof.
 Qed.
 
 Equations concat_1p {A : Type} {x y : A} (p : x = y) :
-  id_refl @ p = p :=
-concat_1p id_refl := id_refl.
+  1 @ p = p :=
+concat_1p 1 := 1.
 
 Equations concat_p1 {A : Type} {x y : A} (p : x = y) :
-  p @ id_refl  = p :=
-concat_p1 id_refl := id_refl.
+  p @ 1  = p :=
+concat_p1 1 := 1.
 
 Equations concat_Vp {A : Type} {x y : A} (p : x = y) :
-  eq_sym p @ p = id_refl :=
-concat_Vp id_refl := id_refl.
+  eq_sym p @ p = 1 :=
+concat_Vp 1 := 1.
 
-Equations concat_pV {A : Type} {x y : A} (p : x = y) : p @ eq_sym p = id_refl :=
-concat_pV id_refl := id_refl.
+Equations concat_pV {A : Type} {x y : A} (p : x = y) : p @ eq_sym p = 1 :=
+concat_pV 1 := 1.
 
 Equations concat_p_pp {A : Type} {x y z t : A} (p : x = y) (q : y = z) (r : z = t) :
   p @ (q @ r) = (p @ q) @ r :=
-concat_p_pp id_refl _ _ := id_refl.
+concat_p_pp 1 _ _ := 1.
 
 Hint Rewrite @concat_p1 @concat_Vp @concat_pV : concat.
 
@@ -270,47 +268,108 @@ Equations concat_pp_A1 {A : Type} {g : A -> A} (p : forall x, x = g x)
   {w : A} (r : w = x)
   :
     (r @ p x) @ ap g q = (r @ q) @ p y :=
-concat_pp_A1 _ id_refl id_refl := concat_p1 _.
+concat_pp_A1 _ 1 1 := concat_p1 _.
 
 Equations whiskerL {A : Type} {x y z : A} (p : x = y)
            {q r : y = z} (h : q = r) : p @ q = p @ r :=
-whiskerL _ id_refl := id_refl.
+whiskerL _ 1 := 1.
 
 Equations whiskerR {A : Type} {x y z : A} {p q : x = y}
            (h : p = q) (r : y = z) : p @ r = q @ r :=
-whiskerR id_refl _ := id_refl.
+whiskerR 1 _ := 1.
 
 Equations moveL_M1 {A : Type} {x y : A} (p q : x = y) :
-  eq_sym q @ p = id_refl -> p = q :=
-moveL_M1 _ id_refl := fun e => e.
+  eq_sym q @ p = 1 -> p = q :=
+moveL_M1 _ 1 := fun e => e.
 
 Definition inverse2 {A : Type} {x y : A} {p q : x = y} (h : p = q)
 : eq_sym p = eq_sym q := ap (@eq_sym _ _ _) h.
 
 Equations ap02 {A B : Type} (f:A->B) {x y:A} {p q:x=y} (r:p=q) : ap f p = ap f q :=
-ap02 f id_refl := id_refl.
+ap02 f 1 := 1.
 
 Equations ap_p_pp {A B : Type} (f : A -> B) {w : B} {x y z : A}
   (r : w = f x) (p : x = y) (q : y = z) :
   r @ (ap f (p @ q)) = (r @ ap f p) @ (ap f q) :=
-ap_p_pp f _ id_refl _ := concat_p_pp _ id_refl _.
+ap_p_pp f _ 1 _ := concat_p_pp _ 1 _.
 
 Equations ap_compose {A B C : Type} (f : A -> B) (g : B -> C) {x y : A} (p : x = y) :
   ap (fun x => g (f x)) p = ap g (ap f p) :=
-ap_compose f g id_refl := id_refl.
+ap_compose f g 1 := 1.
 
 Equations concat_A1p {A : Type} {g : A -> A} (p : forall x, g x = x) {x y : A} (q : x = y) :
   (ap g q) @ (p y) = (p x) @ q :=
 concat_A1p p 1 with p x, g x :=
   { concat_A1p p 1 1 _ := 1 }.
 
-Ltac remember_let H ::=
-  lazymatch goal with
-  | [ H := ?body : ?type |- _ ] => generalize (id_refl : H = body)
-  end.
+Instance contr_unit : Contr unit | 0 := let x := {|
+  center := tt;
+  contr := fun t : unit => match t with tt => 1 end
+|} in x.
 
+Definition path_contr {A} {H:Contr A} (x y : A) : x = y
+  := concat (eq_sym (@contr _ H x)) (@contr _ H y).
+
+Definition path2_contr {A} {H:Contr A} {x y : A} (p q : x = y) : p = q.
+  assert (K : forall (r : x = y), r = path_contr x y).
+  intro r; destruct r; symmetry; now apply concat_Vp.
+  apply (transitivity (y:=path_contr x y)).
+  - apply K.
+  - symmetry; apply K.
+Defined.
+
+Instance contr_paths_contr A {H:Contr A} (x y : A) : Contr (x = y) | 10000 := let c := {|
+  center := concat (eq_sym (contr x)) (contr y);
+  contr := path2_contr (concat (eq_sym (contr x)) (contr y))
+|} in c.
+
+Program Instance contr_prod A B {CA : Contr A} {CB : Contr B} : Contr (prod A B).
+Next Obligation. exact (@center _ CA, @center _ CB). Defined.
+Next Obligation. apply path_prod; apply contr. Defined.
+
+Equations singletons_contr {A : Type} (x : A) : Contr (∃ y : A, x = y) :=
+  singletons_contr x := {| center := (x, 1); contr := contr |}
+    where contr : forall y : (∃ y : A, x = y), (x, 1) = y :=
+          contr (y, 1) := 1.
+Existing Instance singletons_contr.
 Notation " 'rew' H 'in' c " := (@Id_rect_r _ _ _ c _ H) (at level 20).
 Notation " 'rewd' H 'in' c " := (@Id_rect_dep_r _ _ _ c _ H) (at level 20).
+
+(** Singletons are contractible!
+    The (heterogeneous) NoConfusion principle for equality, i.e.
+    [NoConfusiom (Σ y, x = y)] is equivalent to the proof that singletons
+    are contractible, i.e that this type has a definitional equivalence with [unit].  *)
+
+Equations NoConfusion_Id {A} (x : A) (p q : ∃ y : A, x = y) : Type :=
+ NoConfusion_Id x p q => unit.
+
+Equations noConfusion_Id {A} (x : A) (p q : ∃ y : A, x = y) : NoConfusion_Id x p q -> p = q :=
+ noConfusion_Id x (x, 1) (y, 1) tt => 1.
+
+Equations noConfusion_Id_inv {A} (x : A) (p q : ∃ y : A, x = y) : p = q -> NoConfusion_Id x p q :=
+ noConfusion_Id_inv x (x, 1) ?((x, 1)) 1 => tt.
+
+Definition NoConfusionIdPackage_Id {A} (x : A) : NoConfusionIdPackage (∃ y : A, x = y).
+Proof.
+  refine {| NoConfusionId := NoConfusion_Id x;
+            noConfusionId := noConfusion_Id x;
+            noConfusionId_inv := noConfusion_Id_inv x |}.
+  - intros a b e. (* also, this is an equality in the unit type... *)
+    dependent elimination a as [(a, 1)].
+    dependent elimination b as [(a, 1)].
+    hnf in e. destruct e. reflexivity.
+  - intros a b e. (*  apply path2_contr. *)
+    dependent elimination e as [1].
+    dependent elimination a as [(a, 1)].
+    reflexivity.
+Defined.
+
+Existing Instance NoConfusionIdPackage_Id.
+
+Ltac remember_let H ::=
+  lazymatch goal with
+  | [ H := ?body : ?type |- _ ] => generalize (1 : H = body)
+  end.
 
 Ltac unfold_packcall packcall ::=
   lazymatch goal with
@@ -319,59 +378,40 @@ Ltac unfold_packcall packcall ::=
         change (x = y' -> P)
   end.
 
-(** Singletons are contractible! *)
-Derive NoConfusion for Id.
-
-Next Obligation.
-  destruct X. destruct a0. destruct pr2. reflexivity.
-Defined.
-
-Next Obligation.
-  destruct a0, b. destruct pr2. destruct pr3. reflexivity.
-Defined.
-
-Next Obligation.
-  destruct a0, b. destruct pr2.
-  revert e. simplify ?. simpl.
-  simplify ?. simpl. reflexivity.
-Defined.
-
+(** Test using singletons are contractible in noConfusion *)
 Lemma concat_A1p_lemma {A} (f : A -> A) (p : forall x, f x = x) {x y : A} (q : x = y) :
   (concat_A1p p q) = (concat_A1p p q).
 Proof.
-  funelim (concat_A1p p q). simpl in *.
-  simpl in *.
+  apply_funelim (concat_A1p p q). clear; intros.
   elim Heq0 using Id_rect_dep_r. simpl. reflexivity.
-  (* Fail dependent rewrite Heq0. (* bug *) *)
-  (* elim Heq using Id_rect_dep_r. simpl. reflexivity. *)
 Qed.
 
 Equations ap_pp {A B : Type} (f : A -> B) {x y z : A} (p : x = y) (q : y = z) :
   ap f (p @ q) = (ap f p) @ (ap f q) :=
-ap_pp _ id_refl id_refl => id_refl.
+ap_pp _ 1 1 => 1.
 
 Equations concat_pp_V {A : Type} {x y z : A} (p : x = y) (q : y = z) :
   (p @ q) @ eq_sym q = p :=
-concat_pp_V id_refl id_refl => id_refl.
+concat_pp_V 1 1 => 1.
 
 Equations ap_V {A B : Type} (f : A -> B) {x y : A} (p : x = y) :
   ap f (eq_sym p) = eq_sym (ap f p) :=
-ap_V f id_refl => id_refl.  
+ap_V f 1 => 1.
 
 Hint Rewrite @ap_pp @ap_V : ap.
-Hint Rewrite  @concat_pp_V : concat.
+Hint Rewrite @concat_pp_V : concat.
 
 Equations concat_pA1 {A : Type} {f : A -> A} (p : forall x, x = f x) {x y : A} (q : x = y) :
   (p x) @ (ap f q) = q @ (p y) :=
-concat_pA1 p id_refl := concat_p1 (p _).
+concat_pA1 p 1 := concat_p1 (p _).
 
 Equations concat_p_Vp {A : Type} {x y z : A} (p : x = y) (q : x = z) :
   p @ (eq_sym p @ q) = q :=
-concat_p_Vp id_refl id_refl := id_refl.
+concat_p_Vp 1 1 := 1.
 
 Equations concat_pV_p {A : Type} {x y z : A} (p : x = z) (q : y = z) :
   (p @ eq_sym q) @ q = p :=
-concat_pV_p id_refl id_refl := id_refl.
+concat_pV_p 1 1 := 1.
 Hint Rewrite @concat_pA1 @concat_p_Vp @concat_pV_p : concat.
 Transparent concat.
 Definition concat_pA1_p {A : Type} {f : A -> A} (p : forall x, f x = x)
@@ -386,7 +426,7 @@ Defined.
 
 Equations ap_p {A B : Type} (f : A -> B) {x y : A} (p q: x = y) (e : p = q) :
   ap f p = ap f q :=
-ap_p f p _ id_refl := id_refl.
+ap_p f p _ 1 := 1.
 
 Instance ap_morphism (A : Type) (B : Type) x y f :
   Proper (@Id (@Id A x y) ==> @Id (@Id B (f x) (f y))) (@ap A B f x y).
@@ -428,9 +468,6 @@ Proof.
   rewrite concat_pV_p; apply concat_Vp.
 Defined.
 
-Definition path_contr {A} {H:Contr A} (x y : A) : x = y
-  := concat (eq_sym (@contr _ H x)) (@contr _ H y).
-
 Definition transport_inv A {P : A -> Type} (x y :A) (e : x = y) (u:P x) v:
   u = eq_sym e # v -> e # u = v.
   destruct e. exact id. 
@@ -460,14 +497,14 @@ Notation "p ..1" := (pr1_path p) (at level 3).
 
 Definition pr2_path {A} `{P : A -> Type} {u v : sigma A P} (p : u = v)
 : p..1 # u.2 = v.2.
-  destruct p. apply id_refl.
+  destruct p. apply 1.
 Defined.
 
 Notation "p ..2" := (pr2_path p) (at level 3).
 
 Definition eta_path_sigma_uncurried {A} `{P : A -> Type} {u v : sigma A P}
            (p : u = v) : path_sigma_uncurried _ _ (p..1, p..2) = p.
-  destruct p. apply id_refl.
+  destruct p. apply 1.
 Defined.
 
 Definition eta_path_sigma A `{P : A -> Type} {u v : sigma A P} (p : u = v)
@@ -484,7 +521,7 @@ Definition path_sigma_equiv {A : Type} (P : A -> Type) (u v : sigma A P):
     reflexivity.
   - destruct u, v; intros [p q]; simpl in *;
     destruct p. simpl in *. destruct q; simpl in *.
-    apply id_refl.
+    apply 1.
 Defined.
 
 Definition moveR_M1 {A : Type} {x y : A} (p q : x = y) :
@@ -539,7 +576,7 @@ Arguments equiv_adjointify {A B}%type_scope (f g)%function_scope isretr issect.
 
 Definition concat2 {A} {x y z : A} {p p' : x = y} {q q' : y = z} (h : p = p') (h' : q = q')
   : p @ q = p' @ q'
-:= match h, h' with id_refl, id_refl => 1 end.
+:= match h, h' with 1, 1 => 1 end.
 
 Reserved Notation "p @@ q" (at level 20).
 Notation "p @@ q" := (concat2 p q)%equations : equations_scope.
@@ -563,29 +600,6 @@ Global Instance isequiv_ap {A B} f `{IsEquiv A B f} (x y : A)
     @ concat_pA1_p (eissect f) _ _
     @ whiskerR (concat_Vp _) _
     @ concat_1p _).
-
-Instance contr_unit : Contr unit | 0 := let x := {|
-  center := tt;
-  contr := fun t : unit => match t with tt => id_refl end
-|} in x.
-
-
-Definition path2_contr {A} {H:Contr A} {x y : A} (p q : x = y) : p = q.
-  assert (K : forall (r : x = y), r = path_contr x y).
-  intro r; destruct r; symmetry; now apply concat_Vp.
-  apply (transitivity (y:=path_contr x y)).
-  - apply K.
-  - symmetry; apply K.
-Defined.
-
-Instance contr_paths_contr A {H:Contr A} (x y : A) : Contr (x = y) | 10000 := let c := {|
-  center := concat (eq_sym (contr x)) (contr y);
-  contr := path2_contr (concat (eq_sym (contr x)) (contr y))
-|} in c.
-
-Program Instance contr_prod A B {CA : Contr A} {CB : Contr B} : Contr (prod A B).
-Next Obligation. exact (@center _ CA, @center _ CB). Defined.
-Next Obligation. apply path_prod; apply contr. Defined.
 
 Definition hfiber {A B : Type} (f : A -> B) (y : B) := ∃ (x : A), f x = y.
 
