@@ -15,7 +15,6 @@ Import Sigma_Notations.
 Set Warnings "-deprecated-option".
 Set Universe Polymorphism.
 Set Primitive Projections.
-
 (** We want our definitions to stay transparent. *)
 Set Equations Transparent.
 

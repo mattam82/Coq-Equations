@@ -18,18 +18,20 @@ Register Equations.FunctionalInduction.FunctionalElimination as equations.funeli
 Register Equations.DepElim.DependentEliminationPackage as equations.depelim.class.
 
 (* FIXME not polymorphic *)
-Register Equations.DepElim.ImpossibleCall as equations.impossiblecall.class.
+Register Equations.Classes.ImpossibleCall as equations.impossiblecall.class.
 
 Register Equations.Signature.Signature as equations.signature.class.
 Register Equations.Signature.signature as equations.signature.signature.
 Register Equations.Signature.signature_pack as equations.signature.pack.
 
-(** Internally used constants. FIXME not polymorphic *)
+(** Internally used constants. *)
 
 Register Equations.Init.fixproto as equations.fixproto.
 Register Equations.Init.hidebody as equations.internal.hidebody.
 Register Equations.Init.bang as equations.internal.bang.
-Register Equations.DepElim.inaccessible_pattern as equations.internal.inaccessible_pattern.
+Register Equations.Init.inaccessible_pattern as equations.internal.inaccessible_pattern.
+
+(** Internally uses constants for dependent elimination. FIXME not polymorphic *)
 Register Equations.DepElim.block as equations.internal.block.
 Register Equations.DepElim.hide_pattern as equations.internal.hide_pattern.
 Register Equations.DepElim.add_pattern as equations.internal.add_pattern.
@@ -70,8 +72,8 @@ Register Coq.Classes.CRelationClasses.crelation as equations.relation.type.
 Register Relations.Relation_Operators.clos_trans as equations.relation.transitive_closure.
 
 (* Dependent elimination constants *)
-Register Equations.DepElim.NoConfusionIdPackage as equations.noconfusion.class.
-Register Equations.DepElim.apply_noConfusionId as equations.depelim.apply_noConfusion.
+Register Equations.Classes.NoConfusionIdPackage as equations.noconfusion.class.
+Register Equations.Classes.apply_noConfusionId as equations.depelim.apply_noConfusion.
 
 Register Equations.DepElim.Id_simplify_ind_pack as equations.depelim.simplify_ind_pack.
 Register Equations.DepElim.Id_simplify_ind_pack_inv as equations.depelim.simplify_ind_pack_inv.

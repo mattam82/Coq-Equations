@@ -11,6 +11,7 @@
 Require Import Coq.Program.Tactics.
 Require Export Equations.Init.
 Require Import Equations.Signature.
+Require Import Equations.Classes.
 Require Import Equations.EqDec.
 Require Equations.HSets.
 
@@ -64,65 +65,6 @@ Ltac simplify_IH_hyps := repeat
    [Equations] command relative to dependent pattern-matching.
    It is inspired from the "Eliminating Dependent Pattern-Matching" paper by
    Goguen, McBride and McKinna. *)
-
-
-(** The NoConfusionPackage class provides a method for making progress on proving a property
-   [P] implied by an equality on an inductive type [I]. The type of [noConfusion] for a given
-   [P] should be of the form [ Π Δ, (x y : I Δ) (x = y) -> NoConfusion P x y ], where
-   [NoConfusion P x y] for constructor-headed [x] and [y] will give a formula ending in [P].
-   This gives a general method for simplifying by discrimination or injectivity of constructors.
-
-   Some actual instances are defined later in the file using the more primitive [discriminate] and
-   [injection] tactics on which we can always fall back.
-   *)
-
-Class NoConfusionPackage (A : Type) := {
-  NoConfusion : A -> A -> Prop;
-  noConfusion : forall {a b}, a = b -> NoConfusion a b;
-  noConfusion_inv : forall {a b}, NoConfusion a b -> a = b;
-  noConfusion_is_equiv : forall {a b} (e : a = b), noConfusion_inv (noConfusion e) = e;
-}.
-
-Polymorphic Class NoConfusionIdPackage (A : Type) := {
-  NoConfusionId : A -> A -> Type;
-  noConfusionId : forall {a b}, Id a b -> NoConfusionId a b;
-  noConfusionId_inv : forall {a b}, NoConfusionId a b -> Id a b;
-  noConfusionId_is_equiv : forall {a b} (e : Id a b), Id (noConfusionId_inv (noConfusionId e)) e;
-}.
-
-Lemma apply_noConfusion {A} {noconf : NoConfusionPackage A}
-      (p q : A) {B : p = q -> Type} :
-  (forall H : NoConfusion p q, B (noConfusion_inv H)) -> (forall H : p = q, B H).
-Proof.
-  intros. generalize (noConfusion_is_equiv H).
-  intros e. destruct e. apply X.
-Defined.
-Extraction Inline apply_noConfusion.
-
-Polymorphic
-Lemma apply_noConfusionId {A} {noconf : NoConfusionIdPackage A}
-      (p q : A) {B : Id p q -> Type} :
-  (forall e : NoConfusionId p q, B (noConfusionId_inv e)) -> (forall e : Id p q, B e).
-Proof.
-  intros. generalize (noConfusionId_is_equiv e). destruct e.
-  intros <-. apply X.
-Defined.
-Extraction Inline apply_noConfusionId.
-
-(** Apply [noConfusion] on a given hypothsis. *)
-
-Ltac noconf_ref H :=
-  match type of H with
-    @eq ?A ?X ?Y =>
-      let H' := fresh in assert (H':=noConfusion (A:=A) (a:=X) (b:=Y) H) ;
-      clear H; hnf in H'; 
-      match type of H' with
-      | True => clear H'
-      | False => elim H'
-      | @eq _ _ _ => revert dependent H'
-      | _ => fail
-      end
-  end.
 
 Lemma False_rect_dep (P : False -> Type) : forall e : False, P e.
 Proof. intros e. destruct e. Defined.
@@ -890,18 +832,6 @@ Ltac destruct_last :=
 
 (** The rest is support tactics for the [Equations] command. *)
 
-(** Notation for inaccessible patterns. *)
-
-Definition inaccessible_pattern {A : Type} (t : A) := t.
-
-Module Inaccessible_Notations.
-
-  Notation "?( t )" := (inaccessible_pattern t) (format "?( t )") : equations_scope.
-
-End Inaccessible_Notations.
-
-Import Inaccessible_Notations.
-
 Definition hide_pattern {A : Type} (t : A) := t.
 
 Definition add_pattern {B} (A : Type) (b : B) := A.
@@ -1143,21 +1073,6 @@ Tactic Notation "dependent" "induction" ident(H) "generalizing" ne_hyp_list(l) :
 
 Tactic Notation "dependent" "induction" ident(H) "generalizing" ne_hyp_list(l) "using" constr(c) := 
   do_depelim' ltac:(fun hyp => generalize l ; clear l ; induction hyp using c) H.
-
-(** For treating impossible cases. Equations corresponding to impossible
-   calls form instances of [ImpossibleCall (f args)]. *)
-
-Class ImpossibleCall {A : Type} (a : A) : Type :=
-  is_impossible_call : False.
-
-(** We have a trivial elimination operator for impossible calls. *)
-
-Definition elim_impossible_call {A} (a : A) {imp : ImpossibleCall a} (P : A -> Type) : P a :=
-  match is_impossible_call with end.
-
-(** The tactic tries to find a call of [f] and eliminate it. *)
-
-Ltac impossible_call f := on_call f ltac:(fun t => apply (elim_impossible_call t)).
 
 (** [solve_equation] is used to prove the equation lemmas for an existing definition.  *)
 

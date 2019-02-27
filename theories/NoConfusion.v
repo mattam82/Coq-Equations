@@ -11,7 +11,7 @@
    on some equation. *)
 
 Require Import Coq.Program.Tactics Bvector List.
-Require Import Equations.Signature Equations.EqDec Equations.Constants.
+Require Import Equations.Init Equations.Signature Equations.Classes Equations.EqDec Equations.Constants.
 Require Export Equations.DepElim.
 
 Ltac noconf H ::=

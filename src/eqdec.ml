@@ -124,7 +124,8 @@ let derive_eq_dec env sigma ~polymorphic ind =
       in
       let univs = Evd.univ_entry ~poly:polymorphic !evdref in
       let ce =
-        { const_entry_body = Future.from_val ((to_constr !evdref body,Univ.ContextSet.empty), Safe_typing.empty_private_constants);
+        { const_entry_body = Future.from_val ((to_constr !evdref body,Univ.ContextSet.empty),
+                                              Safe_typing.empty_private_constants);
           const_entry_type = Some (to_constr !evdref (it_mkNamedProd_or_LetIn
                                      (it_mkProd_or_LetIn ty ind.ind_args) ctx));
   	  const_entry_opaque = false; const_entry_secctx = None;
