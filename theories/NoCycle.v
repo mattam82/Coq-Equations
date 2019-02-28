@@ -24,7 +24,7 @@ Derive NoConfusion for tree.
 Derive DependentElimination for tree.
 Derive Below for tree.
 
-Let nlt x y := Below_tree (fun y => x <> y) y. 
+Let nlt x y := Below_tree (fun y => x <> y) y.
 Let nle (x y : tree) := ((x <> y) * nlt x y)%type.
 
 Notation  "x ¬< y " := (nlt x y) (at level 80).
@@ -78,7 +78,7 @@ Proof.
   find_noCycle_proof X.
 Qed.
 
-Equations(nocomp) build_tree (l r : tree) (n : nat) : tree := 
+Equations build_tree (l r : tree) (n : nat) : tree :=
 build_tree l r 0 := node r r;
 build_tree l r (S n) := node l (build_tree l r n).
 Transparent build_tree.

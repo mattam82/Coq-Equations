@@ -73,6 +73,10 @@ Register Relations.Relation_Operators.clos_trans as equations.relation.transitiv
 Register Equations.Classes.NoConfusionPackage as equations.noconfusion.class.
 Register Equations.Classes.apply_noConfusion as equations.depelim.apply_noConfusion.
 
+Register Equations.Classes.NoCyclePackage as equations.nocycle.class.
+Register Equations.Classes.apply_noCycle_left as equations.depelim.apply_noCycle_left.
+Register Equations.Classes.apply_noCycle_right as equations.depelim.apply_noCycle_right.
+
 Register Equations.DepElim.simplify_ind_pack as equations.depelim.simplify_ind_pack.
 Register Equations.DepElim.simplify_ind_pack_inv as equations.depelim.simplify_ind_pack_inv.
 Register Equations.DepElim.opaque_ind_pack_eq_inv as equations.depelim.opaque_ind_pack_eq_inv.

@@ -275,6 +275,7 @@ val dependent_elimination_class :
   esigma -> Typeclasses.typeclass peuniverses
 
 val coq_noconfusion_class : Names.GlobRef.t lazy_t
+val coq_nocycle_class : Names.GlobRef.t lazy_t
 val coq_bang : Names.GlobRef.t Lazy.t
 val coq_inacc : Names.GlobRef.t Lazy.t
 val coq_block : Names.GlobRef.t Lazy.t

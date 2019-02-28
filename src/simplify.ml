@@ -26,6 +26,11 @@ module type EQREFS = sig
   (* NoConfusion. *)
   val noConfusion : Names.inductive Lazy.t
   val apply_noConfusion : Names.Constant.t Lazy.t
+  (* NoCycle *)
+  val noCycle : Names.inductive Lazy.t
+  val apply_noCycle_left : Names.Constant.t Lazy.t
+  val apply_noCycle_right : Names.Constant.t Lazy.t
+
   val simplify_ind_pack : Names.Constant.t Lazy.t
   val simplify_ind_pack_inv : Names.Constant.t Lazy.t
   val opaque_ind_pack_eq_inv : Names.Constant.t Lazy.t
@@ -70,10 +75,13 @@ module EqRefs : EQREFS = struct
   let zero_ind_dep = init_constant logic_bot_elim
 
   let noConfusion = init_inductive coq_noconfusion_class
+  let noCycle = init_inductive coq_nocycle_class
 
   let init_depelim s = init_constant (find_global ("depelim." ^ s))
 
   let apply_noConfusion = init_depelim "apply_noConfusion"
+  let apply_noCycle_left = init_depelim "apply_noCycle_left"
+  let apply_noCycle_right = init_depelim "apply_noCycle_right"
   let simplify_ind_pack = init_depelim "simplify_ind_pack"
   let simplify_ind_pack_inv = init_depelim "simplify_ind_pack_inv"
   let opaque_ind_pack_eq_inv = init_depelim "opaque_ind_pack_eq_inv"
@@ -115,6 +123,9 @@ module type BUILDER = sig
   val zero_ind_dep : constr_gen
   val noConfusion : constr_gen
   val apply_noConfusion : constr_gen
+  val noCycle : constr_gen
+  val apply_noCycle_left : constr_gen
+  val apply_noCycle_right : constr_gen
   val simplify_ind_pack : constr_gen
   val simplify_ind_pack_inv : constr_gen
   val simpl_sigma : constr_gen
@@ -156,6 +167,9 @@ module BuilderGen (SigmaRefs : SIGMAREFS) (EqRefs : EQREFS) : BUILDER = struct
   let zero_ind_dep = gen_from_constant EqRefs.zero_ind_dep
   let noConfusion = gen_from_inductive EqRefs.noConfusion
   let apply_noConfusion = gen_from_constant EqRefs.apply_noConfusion
+  let noCycle = gen_from_inductive EqRefs.noCycle
+  let apply_noCycle_left = gen_from_constant EqRefs.apply_noCycle_left
+  let apply_noCycle_right = gen_from_constant EqRefs.apply_noCycle_right
   let simplify_ind_pack = gen_from_constant EqRefs.simplify_ind_pack
   let simplify_ind_pack_inv = gen_from_constant EqRefs.simplify_ind_pack_inv
   let simpl_sigma = gen_from_constant EqRefs.simpl_sigma
@@ -213,10 +227,9 @@ let build_term (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal)
   let ev = EConstr.destEvar !evd tev in
     Some ((ctx', ty'), ev), c
 
-
-let build_app_infer (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal)
+let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal)
   (ctx' : EConstr.rel_context) (f : Names.GlobRef.t)
-  (args : EConstr.constr option list) : open_term =
+  (args : EConstr.constr option list) =
   let tf, ty =
     match f with
     | Globnames.VarRef var -> assert false
@@ -248,9 +261,16 @@ let build_app_infer (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : go
   let ty = of_constr ty in
   let ty' = aux ty args in
   let ty' = Reductionops.whd_beta !evd ty' in
-    build_term env evd (ctx, ty) (ctx', ty') begin fun c ->
-      let targs = Array.of_list (CList.map (Option.default c) args) in
-        EConstr.mkApp (tf, targs) end
+  let cont = fun c ->
+    let targs = Array.of_list (CList.map (Option.default c) args) in
+    EConstr.mkApp (tf, targs)
+  in cont, ty'
+
+let build_app_infer (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal)
+  (ctx' : EConstr.rel_context) (f : Names.GlobRef.t)
+  (args : EConstr.constr option list) : open_term =
+  let cont, ty' = build_app_infer_concl env evd (ctx, ty) ctx' f args in
+  build_term env evd (ctx, ty) (ctx', ty') cont
 
 let conv_fun = Evarconv.evar_conv_x TransparentState.full
 let is_conv (env : Environ.env) (sigma : Evd.evar_map) (ctx : rel_context)
@@ -783,7 +803,40 @@ let noConfusion = compose_fun apply_noconf maybe_pack
 
 let noCycle : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
-  failwith "[noCycle] is not implemented!"
+  let name, ty1, ty2 = check_prod !evd ty in
+  let tA, t1, t2 = check_equality env !evd ctx ty1 in
+  let isct1 = is_construct_sigma_2 !evd t1 in
+  let isct2 = is_construct_sigma_2 !evd t2 in
+  if not (isct1  || isct2) then
+    raise (CannotSimplify (str "This is not an equality between constructors."));
+  let nocycle_ty = EConstr.mkApp (Builder.noCycle evd, [| tA |]) in
+  let tnocycle =
+    let env = push_rel_context ctx env in
+    try
+      Equations_common.evd_comb1
+        (Typeclasses.resolve_one_typeclass env) evd nocycle_ty
+    with Not_found ->
+      raise (CannotSimplify (str
+        "[noConfusion] Cannot find an instance of NoCycle for type " ++
+        Printer.pr_econstr_env env !evd tA))
+  in
+  let tapply_nocycle =
+    if isct1 then
+      Globnames.ConstRef (Lazy.force EqRefs.apply_noCycle_right)
+    else Globnames.ConstRef (Lazy.force EqRefs.apply_noCycle_left)
+  in
+  let tB = EConstr.mkLambda (name, ty1, ty2) in
+  let args = [Some tA; Some tnocycle; Some t1; Some t2; Some tB; None] in
+  let cont, nocycle = build_app_infer_concl env evd (ctx, ty) ctx tapply_nocycle args in
+  let subst = Context_map.id_subst ctx in
+  try
+    let env = push_rel_context ctx env in
+    let prf = Equations_common.evd_comb1
+        (Typeclasses.resolve_one_typeclass env) evd nocycle in
+    (None, cont prf), subst
+  with Not_found -> (* We leave the evar for the user to solve *)
+    let term = build_term env evd (ctx, ty) (ctx, nocycle) cont in
+    term, subst
 
 let elim_true : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->

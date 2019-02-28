@@ -6,6 +6,38 @@ From Coq Require Import Extraction Relation_Definitions.
 Class WellFounded {A : Type} (R : relation A) :=
   wellfounded : well_founded R.
 
+(** This class contains no-cyclicity proofs.
+    They can be derived from well-foundedness proofs for example.
+ *)
+
+(** The proofs of [NoCycle] can be arbitrarily large, it doesn't
+    actually matter in the sense that they are used to prove
+    absurdity. *)
+
+Class NoCyclePackage (A : Type) :=
+  { NoCycle : A -> A -> Prop;
+    noCycle : forall {a b}, NoCycle a b -> (a = b -> False) }.
+
+(** These lemmas explains how to apply it during simplification. *)
+
+(** We always generate a goal of the form [NoCycle x C[x]], using either
+    the left or right versions of the following lemma. *)
+
+Lemma apply_noCycle_left {A} {noconf : NoCyclePackage A}
+      (p q : A) {B : p = q -> Type} :
+  NoCycle p q -> (forall H : p = q, B H).
+Proof.
+  intros. destruct (noCycle H H0).
+Defined.
+
+Lemma apply_noCycle_right {A} {noconf : NoCyclePackage A}
+      (p q : A) {B : p = q -> Type} :
+  NoCycle q p -> (forall H : p = q, B H).
+Proof.
+  intros. destruct (noCycle H (eq_sym H0)).
+Defined.
+Extraction Inline apply_noCycle_left apply_noCycle_right.
+
 (** The NoConfusionPackage class provides a method for solving injectivity and discrimination
     of constructors, represented by an equality on an inductive type [I]. The type of [noConfusion]
     should be of the form [ Π Δ, (x y : I Δ) (x = y) -> NoConfusion x y ], where

@@ -364,6 +364,7 @@ let dependent_elimination_class evd =
   get_class !evd (find_constant "depelim.class" evd)
 
 let coq_noconfusion_class = (find_global "noconfusion.class")
+let coq_nocycle_class = (find_global "nocycle.class")
 
 let coq_bang = (find_global "internal.bang")
 let coq_inacc = (find_global "internal.inaccessible_pattern")
