@@ -88,6 +88,13 @@ let _ = Goptions.declare_bool_option {
   Goptions.optwrite = (fun b -> debug := b)
 }
 
+let pp   x = Pp.pp_with !Topfmt.std_ft x
+
+let ppenv_sigma f =
+  fun x ->
+    let env = Global.env () in
+    pp (f env (Evd.from_env env) x)
+
 type flags = {
   polymorphic : bool;
   open_proof : bool;
