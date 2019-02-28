@@ -484,10 +484,6 @@ bla baz := false.
 Lemma eq_trans_eq A x : @eq_trans A x x x eq_refl eq_refl = eq_refl.
 Proof. reflexivity. Qed.
 
-Equations vlast {A} {n} (v : vector A (S n)) : A by struct v :=
-vlast (cons a (n:=O) nil) := a ;
-vlast (cons a (n:=S n) v) := vlast v.
-
 Transparent vlast.
 Definition testvlast : 4 = (vlast (cons 2 (cons 5 (cons 4 nil)))) := eq_refl.
 

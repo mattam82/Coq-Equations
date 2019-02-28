@@ -340,6 +340,11 @@ let pattern_of_glob_constr env avoid patname gc =
 *)
 let program_type p = EConstr.it_mkProd_or_LetIn p.program_arity p.program_sign
 
+let is_hole = DAst.with_val (fun v ->
+    match v with
+    | GHole _ -> true
+    | _ -> false)
+
 let interp_pat env notations ?(avoid = ref Id.Set.empty) p pat =
   let sigma = Evd.from_env env in
   let vars = (Id.Set.elements !avoid) (* (ids_of_pats [p])) *) in
@@ -386,8 +391,8 @@ let interp_pat env notations ?(avoid = ref Id.Set.empty) p pat =
                 let rec aux args patnames =
                   match args, patnames with
                   | a :: args, patname :: patnames ->
-                    (a, false) :: aux args patnames
-                  | a :: args, [] -> (a, false) :: aux args []
+                    (a, is_hole a) :: aux args patnames
+                  | a :: args, [] -> (a, is_hole a) :: aux args []
                   | [], _ -> []
                 in aux args patnames
               | _ ->

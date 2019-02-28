@@ -24,6 +24,12 @@ type typed_user_pat =
 and typed_user_pat_loc = typed_user_pat CAst.t
 and typed_user_pats = typed_user_pat_loc list
 
+type typed_clause = Loc.t option * lhs * typed_user_pats * (pre_equation, pre_clause) rhs
+
+val pr_typed_clause : env -> typed_clause -> Pp.t
+val pptyped_clause : typed_clause -> unit
+val pptyped_user_pats : typed_user_pats -> unit
+
 (** Translating back to user patterns. *)
 val context_map_to_lhs : env -> Evd.evar_map -> ?avoid:Id.Set.t -> ?loc:Loc.t -> context_map -> Syntax.lhs
 
@@ -192,13 +198,13 @@ val covering_aux :
   env ->
   Evd.evar_map ref ->
   program_info -> int_data ->
-  (pre_clause * (int * int)) list ->
-  (pre_clause * (int * int)) list ->
+  (typed_clause * (int * int)) list ->
+  (typed_clause * (int * int)) list ->
   path ->
   context_map ->
   typed_user_pats ->
   rel_context -> constr ->
-  ((pre_clause * (int * int)) list * splitting) option
+  ((typed_clause * (int * int)) list * splitting) option
 
 val covering :  ?check_unused:bool ->
   env ->

@@ -95,6 +95,7 @@ val pr_clause :
 val pr_clauses :
   env -> clause list -> Pp.t
 
+val pr_prerhs : env -> (pre_equation, pre_clause) rhs -> Pp.t
 val pr_preclause :
   env -> pre_clause -> Pp.t
 val pr_preclauses :
