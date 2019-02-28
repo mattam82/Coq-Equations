@@ -37,7 +37,8 @@ let mkcase env sigma c ty constrs =
   let params = mindb.mind_nparams in
   let ci = make_case_info env (fst ind) RegularStyle in
   let brs = 
-    Array.map2_i (fun i id cty ->
+    Array.map2_i (fun i id (ctx, cty) ->
+      let cty = Term.it_mkProd_or_LetIn cty ctx in
       let (args, arity) = decompose_prod_assum sigma (substl inds (of_constr cty)) in
       let realargs, pars = List.chop (List.length args - params) args in
       let args = substl (List.rev origparams) (it_mkProd_or_LetIn arity realargs) in
