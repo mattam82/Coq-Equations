@@ -23,6 +23,10 @@ open Splitting
 open EConstr
 open EConstr.Vars   
 
+let equations_debug s =
+  if !Equations_common.debug then
+    Feedback.msg_debug (s ())
+
 type int_data = {
   rec_type : rec_type;
   fixdecls : rel_context;
@@ -1269,8 +1273,9 @@ let rec covering_aux env evars p data prev (clauses : (typed_clause * (int * int
            | None ->
              user_err_loc
                (dummy_loc, "split_var",
-                str"Clause " ++ pr_preclause env (loc, pre_lhs, Some rhs) ++ str" matched but its interpretation failed")
-           | Some s -> Some (List.rev prev @ ((loc,pre_lhs,Some rhs),(idx, cnt+1)) :: clauses', s)))
+                str"Clause " ++ pr_preclause env (loc, pre_lhs, Some rhs) ++
+                str" matched but its interpretation failed")
+           | Some s -> Some (List.rev prev @ ((loc,pre_lhs,lhs,Some rhs),(idx, cnt+1)) :: clauses', s)))
 
      | UnifFailure ->
        if !Equations_common.debug then Feedback.msg_debug (str "failed");
@@ -1279,55 +1284,72 @@ let rec covering_aux env evars p data prev (clauses : (typed_clause * (int * int
      | UnifStuck -> 
        if !Equations_common.debug then Feedback.msg_debug (str "got stuck");
        let blocks = blockers lhs prob in
-       let try_split acc var =
-         match acc with
-         | None
-         | Some (CannotSplit _) ->
-           (match split_var (env,evars) var (pi1 prob) with
-            | Some (Splitted (var, newctx, s)) ->
-              let prob' = (newctx, pats, ctx') in
-              let coverrec clauses s =
-                covering_aux env evars p data []
-                  clauses path 
-                  (compose_subst env ~sigma:!evars s prob')
-                  extpats
-                  (specialize_rel_context !evars (pi2 s) lets)
-                  (specialize_constr !evars (pi2 s) ty)
-              in
-              (try
-                 let rec_call clauses x =
-                   match x with
-                   | Some s ->
-                     (match coverrec clauses s with
-                      | None -> raise Not_found
-                      | Some (clauses, s) -> clauses, Some s)
-                   | None -> clauses, None
-                 in
-                 let clauses, rest = Array.fold_left_map rec_call (List.rev prev @ clauses) s in
-                 Some (Splitted (clauses, Split (prob', var, ty, rest)))
-               with Not_found -> acc)
-            | Some (CannotSplit _) as x ->
-              begin match acc with
-                | None -> x
-                | _ -> acc
-              end
-            | None -> None)
-         | _ -> acc
+       equations_debug (fun () ->
+           str "blockers are: " ++
+           prlist_with_sep spc (pr_rel_name (push_rel_context (pi1 prob) env)) blocks);
+       let rec try_split acc vars =
+         match vars with
+         | [] -> None
+         | var :: vars ->
+           equations_debug (fun () -> str "trying next blocker " ++
+                                      pr_rel_name (push_rel_context (pi1 prob) env) var);
+           match split_var (env,evars) var (pi1 prob) with
+           | Some (Splitted (var, newctx, s)) ->
+             equations_debug (fun () ->
+                 str "splitting succeded for " ++
+                 pr_rel_name (push_rel_context (pi1 prob) env) var);
+             let prob' = (newctx, pats, ctx') in
+             let coverrec clauses s =
+               covering_aux env evars p data []
+                 clauses path
+                 (compose_subst env ~sigma:!evars s prob')
+                 extpats
+                 (specialize_rel_context !evars (pi2 s) lets)
+                 (specialize_constr !evars (pi2 s) ty)
+             in
+             (try
+                let rec_call clauses x =
+                  match x with (* Succesful split on this blocker *)
+                  | Some s ->
+                    (match coverrec clauses s with
+                     | None -> raise Not_found
+                     | Some (clauses, s) ->
+                       equations_debug (fun _ -> str "covering succeeded");
+                       clauses, Some s)
+                  | None -> clauses, None
+                in
+                let clauses, rest = Array.fold_left_map rec_call (List.rev prev @ clauses) s in
+                Some (Splitted (clauses, Split (prob', var, ty, rest)))
+              with
+              | Not_found ->
+                equations_debug
+                  (fun _ -> str "covering failed to produce a splitting in one of the branches,\
+                                 trying the next one");
+                try_split acc vars
+              | UnfaithfulSplit (loc, pp) ->
+                equations_debug
+                  (fun _ -> str "covering is not faithful to user clauses, trying the next one");
+                try_split acc vars)
+           | Some (CannotSplit _) as x ->
+             equations_debug (fun () ->
+                 str "splitting failed for " ++
+                 pr_rel_name (push_rel_context (pi1 prob) env) var);
+             let acc = match acc with
+               | None -> x
+               | _ -> acc
+             in try_split acc vars
+           | None -> (* Not inductive *) try_split acc vars
        in
-       let result = fold_left try_split None blocks in
+       let result = try_split None blocks in
        (match result with
-       | Some (Splitted (clauses, s)) -> Some (clauses, s)
-       | Some (CannotSplit (id, before, newty)) ->
-           user_err_loc
+        | Some (Splitted (clauses, s)) -> Some (clauses, s)
+        | Some (CannotSplit (id, before, newty)) ->
+          user_err_loc
             (loc, "split_var",
              str"Unable to split variable " ++ Name.print id ++ str" of (reduced) type " ++
              Printer.pr_econstr_env (push_rel_context before env) !evars newty ++ str" to match a user pattern."
              ++ fnl () ++ str "Maybe unification is stuck as it cannot refine a context/section variable.")
-       | None ->
-           user_err_loc
-            (loc, "split_var",
-             str"Unable to split any variable to match the user patterns: " ++ pr_preclause env (loc, pre_lhs, rhs) ++
-             fnl () ++ str "Maybe unification is stuck as it cannot refine a context/section variable.")))
+        | None -> None))
   | [] -> (* Every clause failed for the problem, it's either uninhabited or
              the clauses are not exhaustive *)
     match find_empty (env,evars) (pi1 prob) with

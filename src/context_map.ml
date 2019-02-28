@@ -139,39 +139,33 @@ let pr_pat env sigma c =
   let sigma, patc = constr_of_pat env sigma c in
   pr_constr_pat env sigma patc
 
-let pr_context env sigma c =
-  let pr_decl env decl =
-    let (id,b,t) = to_tuple decl in
-    let bstr = match b with Some b ->
-      str ":=" ++ spc () ++ Printer.pr_econstr_env env sigma b | None -> mt() in
-    let idstr = match id with Name id -> Id.print id | Anonymous -> str"_" in
-    idstr ++ bstr ++ str " : " ++ Printer.pr_econstr_env env sigma t
-  in
-  let (_, pp) =
-    match List.rev c with
-    | decl :: decls ->
-      List.fold_left (fun (env, pp) decl ->
-          (push_rel decl env, pp ++ str "; " ++ pr_decl env decl))
-        (push_rel decl env, pr_decl env decl) decls
-    | [] -> env, mt ()
-  in pp
-
-let ppcontext env sigma c = pp (pr_context env sigma c)
-
 let pr_pats env sigma patcs = prlist_with_sep (fun _ -> str " ") (pr_pat env sigma) (List.rev patcs)
+
+let pr_context env sigma ctx =
+  let _, pp =
+    Context.Rel.fold_outside
+      (fun d (env, pps) ->
+         (push_rel d env,
+          pps ++ ws 2 ++
+              Printer.pr_rel_decl env sigma (EConstr.Unsafe.to_rel_decl d)))
+           ctx ~init:(env, mt ())
+  in hv 0 pp
+
+let ppcontext = ppenv_sigma pr_context
 
 let pr_context_map env sigma (delta, patcs, gamma) =
   let env' = push_rel_context delta env in
   let ctx = pr_context env sigma delta in
   let ctx' = pr_context env sigma gamma in
-  (if List.is_empty delta then ctx else ctx ++ str" ") ++ str "|-" ++ str" "
-  ++ pr_pats env' sigma patcs ++ str " : "  ++ ctx'
+  v 0 (v 0 ((if List.is_empty delta then ctx else ctx) ++ cut () ++
+            str "============================" ++ cut ()  ++
+            pr_pats env' sigma patcs) ++ cut () ++
+       str "============================" ++ cut ()  ++
+       ctx')
 
 let ppcontext_map env sigma context_map = pp (pr_context_map env sigma context_map)
 
-let ppcontext_map_empty context_map =
-  let env = Global.env () in
-  ppcontext_map env (Evd.from_env env) context_map
+let ppcontext_map_empty = ppenv_sigma pr_context_map
 
 (** Debugging functions *)
 

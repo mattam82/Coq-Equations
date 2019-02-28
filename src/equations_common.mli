@@ -19,7 +19,9 @@ val equations_transparent : bool ref
 
 val debug : bool ref
 
-(** Common flags *)
+val ppenv_sigma : (Environ.env -> Evd.evar_map -> 'a -> Pp.t) -> 'a -> unit
+
+(* Common flags *)
 type flags = {
   polymorphic : bool;
   open_proof : bool;
