@@ -47,7 +47,7 @@ Instance eqsig {A} (x : A) : Signature (x = x) A :=
 
 Module WithUIP.
 Set Equations With UIP.
-Polymorphic Axiom uip : forall A, EqDec.UIP A.
+Polymorphic Axiom uip : forall A, UIP A.
 Local Existing Instance uip.
 
 Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
@@ -150,7 +150,7 @@ Instance vector_eqdec {A n} `(EqDec A) : EqDec (vector A n).
 Proof.
   intros. intros x. induction x. left. now depelim y.
   intro y; depelim y.
-  destruct (eq_dec h h0); subst. 
+  destruct (Classes.eq_dec h h0); subst.
   destruct (IHx y). subst.
   left; reflexivity.
   right. intro. noconf H0. contradiction.

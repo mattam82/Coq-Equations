@@ -92,7 +92,7 @@ Module KAxiom.
 
   Set Equations With UIP.
 
-  Axiom uip : forall A, EqDec.UIP A.
+  Axiom uip : forall A, UIP A.
   Local Existing Instance uip.
   Equations K_ax {A} (x : A) (P : x = x -> Type) (p : P eq_refl) (H : x = x) : P H :=
     K_ax x P p eq_refl := p.

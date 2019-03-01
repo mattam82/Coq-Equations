@@ -41,11 +41,11 @@ Register Init.Logic.eq_refl as equations.equality.refl.
 Register Init.Logic.eq_rect_r as equations.equality.case.
 Register Equations.DepElim.eq_rect_dep_r as equations.equality.elim.
 
-Register Equations.EqDec.EqDec as equations.eqdec.class.
+Register Equations.Classes.EqDec as equations.eqdec.class.
 Register Equations.EqDec.dec_eq as equations.eqdec.dec_eq.
 
-Register Equations.EqDec.UIP as equations.uip.class.
-Register Equations.EqDec.uip as equations.uip.uip.
+Register Equations.Classes.UIP as equations.uip.class.
+Register Equations.Classes.uip as equations.uip.uip.
 
 Register Init.Logic.False as equations.bottom.type.
 Register Init.Logic.False_rect as equations.bottom.case.
@@ -72,6 +72,10 @@ Register Relations.Relation_Operators.clos_trans as equations.relation.transitiv
 (* Dependent elimination constants *)
 Register Equations.Classes.NoConfusionPackage as equations.noconfusion.class.
 Register Equations.Classes.apply_noConfusion as equations.depelim.apply_noConfusion.
+
+Register Equations.Classes.NoCyclePackage as equations.nocycle.class.
+Register Equations.Classes.apply_noCycle_left as equations.depelim.apply_noCycle_left.
+Register Equations.Classes.apply_noCycle_right as equations.depelim.apply_noCycle_right.
 
 Register Equations.DepElim.simplify_ind_pack as equations.depelim.simplify_ind_pack.
 Register Equations.DepElim.simplify_ind_pack_inv as equations.depelim.simplify_ind_pack_inv.

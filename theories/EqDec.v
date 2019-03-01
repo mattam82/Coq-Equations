@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Equations.Init EqdepFacts.
+Require Import Equations.Init Equations.Classes EqdepFacts.
 
 (** Decidable equality.
 
@@ -19,16 +19,6 @@ Set Universe Polymorphism.
 
 Definition dec_eq {A} (x y : A) := 
   { x = y } + { x <> y }.
-
-Class EqDec (A : Type) :=
-  eq_dec : forall x y : A, { x = y } + { x <> y }.
-
-Class UIP (A : Type) := uip : forall (x y : A) (e e' : x = y), e = e'.
-
-Class EqDecPoint (A : Type) (x : A) :=
-  eq_dec_point : forall y : A, { x = y } + { x <> y }.
-
-Instance EqDec_EqDecPoint A `(EqDec A) (x : A) : EqDecPoint x := eq_dec x.
 
 (** We rederive the UIP shifting proof transparently. *)
 Theorem UIP_shift_on (X : Type) (x : X) :

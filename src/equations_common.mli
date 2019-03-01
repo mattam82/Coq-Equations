@@ -19,7 +19,9 @@ val equations_transparent : bool ref
 
 val debug : bool ref
 
-(** Common flags *)
+val ppenv_sigma : (Environ.env -> Evd.evar_map -> 'a -> Pp.t) -> 'a -> unit
+
+(* Common flags *)
 type flags = {
   polymorphic : bool;
   open_proof : bool;
@@ -273,6 +275,7 @@ val dependent_elimination_class :
   esigma -> Typeclasses.typeclass peuniverses
 
 val coq_noconfusion_class : Names.GlobRef.t lazy_t
+val coq_nocycle_class : Names.GlobRef.t lazy_t
 val coq_bang : Names.GlobRef.t Lazy.t
 val coq_inacc : Names.GlobRef.t Lazy.t
 val coq_block : Names.GlobRef.t Lazy.t

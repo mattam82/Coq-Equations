@@ -47,7 +47,7 @@ let _ = Goptions.declare_bool_option {
   Goptions.optwrite = (fun b ->
       if b then
         CErrors.user_err (str"DEPRECATED. Use flag [Equations With UIP] and introduce \
-                              an axiomn [forall A, Equations.EqDec.UIP A] \
+                              an axiomn [forall A, Equations.Classes.UIP A] \
                               as a type class instance using [Existing Instance] instead.")
       else simplify_withUIP := b)
 }
@@ -87,6 +87,13 @@ let _ = Goptions.declare_bool_option {
   Goptions.optread  = (fun () -> !debug);
   Goptions.optwrite = (fun b -> debug := b)
 }
+
+let pp   x = Pp.pp_with !Topfmt.std_ft x
+
+let ppenv_sigma f =
+  fun x ->
+    let env = Global.env () in
+    pp (f env (Evd.from_env env) x)
 
 type flags = {
   polymorphic : bool;
@@ -393,6 +400,7 @@ let dependent_elimination_class evd =
   get_class !evd (find_constant "depelim.class" evd)
 
 let coq_noconfusion_class = (find_global "noconfusion.class")
+let coq_nocycle_class = (find_global "nocycle.class")
 
 let coq_bang = (find_global "internal.bang")
 let coq_inacc = (find_global "internal.inaccessible_pattern")

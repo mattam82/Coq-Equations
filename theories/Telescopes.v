@@ -1,4 +1,5 @@
 From Equations Require Import Loader.
+Require Import FunctionalExtensionality.
 
 (** Telescopes: allows treating variable arity fixpoints *)
 Set Universe Polymorphism.

@@ -6,6 +6,7 @@ Require Import Lia.
 Require Import Equations.Fin Bool.
 Require Import List Arith String.
 Set Equations Transparent.
+Require Import FunctionalExtensionality.
 
 Set Asymmetric Patterns.
 

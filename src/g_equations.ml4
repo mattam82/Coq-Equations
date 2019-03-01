@@ -525,6 +525,7 @@ GEXTEND Gram
   simplification_step :
     [ [ "-" -> Simplify.Deletion false
       | "-!" -> Simplify.Deletion true
+      | "<>" -> Simplify.NoCycle
       | "$" -> Simplify.NoConfusion []
       | "$"; "{"; rules = g_simplification_rules; "}" ->
         Simplify.NoConfusion rules

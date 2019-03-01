@@ -7,7 +7,7 @@
 (**********************************************************************)
 
 Require Import Wf_nat Arith.Lt Bvector Relations.
-Require Export Program.Wf FunctionalExtensionality ProofIrrelevance (* FIXME Program.Wf doesn't need it *).
+Require Export Program.Wf FunctionalExtensionality. (* ProofIrrelevance (* FIXME Program.Wf doesn't need it *). *)
 From Equations Require Import Init Classes Below Signature EqDec NoConfusion.
 
 Generalizable Variables A R S B.
@@ -71,7 +71,6 @@ Extraction Inline FixWf Fix Fix_F.
    *)
 
 Create HintDb subterm_relation discriminated.
-Create HintDb Recursors discriminated.
 Create HintDb rec_decision discriminated.
 
 (** We can automatically use the well-foundedness of a relation to get
@@ -88,8 +87,12 @@ Proof. apply wf_clos_trans. apply WF. Defined.
 Hint Extern 4 (WellFounded (clos_trans _ _)) => 
   apply @WellFounded_trans_clos : typeclass_instances.
 
-Instance wf_MR {A R} `(WellFounded A R) {B} (f : B -> A) : WellFounded (MR R f).
+Lemma wf_MR {A R} `(WellFounded A R) {B} (f : B -> A) : WellFounded (MR R f).
 Proof. red. apply measure_wf. apply H. Defined.
+
+(* Do not apply [wf_MR] agressively, as Coq's unification could "invent" an [f] otherwise
+   to unify. *)
+Hint Extern 0 (WellFounded (MR _ _)) => apply @wf_MR : typeclass_instances.
 
 Hint Extern 0 (MR _ _ _ _) => red : Below.
 
@@ -205,7 +208,7 @@ Ltac rec_wf_rel recname x rel :=
 (** The [pi] tactic solves an equality between applications of the same function,
    possibly using proof irrelevance to discharge equality of proofs. *)
 
-Ltac pi := repeat progress (f_equal || reflexivity) ; apply proof_irrelevance.
+Ltac pi := repeat progress (f_equal || reflexivity).
 (** Define non-dependent lexicographic products *)
 
 Require Import Wellfounded Relation_Definitions.
@@ -256,3 +259,25 @@ Instance wellfounded_lexprod A B R S `(wfR : WellFounded A R, wfS : WellFounded 
   WellFounded (lexprod A B R S) := wf_lexprod A B R S wfR wfS.
 
 Hint Constructors lexprod : Below.
+
+(* NoCycle from well-foundedness. *)
+
+Lemma well_founded_irreflexive {A} {R : relation A}{wfR : WellFounded R} :
+  forall x y : A, R x y -> x = y -> False.
+Proof.
+  intros x y Ryy ->. red in wfR.
+  induction (wfR y) as [y accy IHy].
+  apply (IHy _ Ryy Ryy).
+Qed.
+
+Definition NoCycle_WellFounded {A} (R : relation A) (wfR : WellFounded R) : NoCyclePackage A :=
+  {| NoCycle := R;
+     noCycle := well_founded_irreflexive |}.
+Existing Instance NoCycle_WellFounded.
+
+(** We use the fact that constructor is a multigoal *)
+Ltac constructors := constructor ; constructors.
+
+
+Hint Extern 30 (@NoCycle ?A (NoCycle_WellFounded ?R ?wfr) _ _) =>
+  solve [constructor] : typeclass_instances.
