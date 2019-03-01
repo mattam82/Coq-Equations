@@ -102,6 +102,18 @@ Ltac noconf_ref H :=
       end
   end.
 
+(** Classes for types with UIP or decidable equality.  *)
+
+Polymorphic Class UIP (A : Type) := uip : forall {x y : A} (e e' : x = y), e = e'.
+
+Polymorphic Class EqDec (A : Type) :=
+  eq_dec : forall x y : A, { x = y } + { x <> y }.
+
+Polymorphic Class EqDecPoint (A : Type) (x : A) :=
+  eq_dec_point : forall y : A, { x = y } + { x <> y }.
+
+Polymorphic Instance EqDec_EqDecPoint A `(EqDec A) (x : A) : EqDecPoint A x := eq_dec x.
+
 (** For treating impossible cases. Equations corresponding to impossible
    calls form instances of [ImpossibleCall (f args)]. *)
 

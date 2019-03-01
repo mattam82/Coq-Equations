@@ -44,7 +44,7 @@ Notation " 'λ' t " := (Lambda (t%term)) (at level 0).
 Notation " << t , u >> " := (Pair (t%term) (u%term)).
 
 Parameter atomic_type : Set.
-Parameter atomic_type_eqdec : EqDec.EqDec atomic_type.
+Parameter atomic_type_eqdec : Equations.Classes.EqDec atomic_type.
 Existing Instance atomic_type_eqdec.
 
 Inductive type :=

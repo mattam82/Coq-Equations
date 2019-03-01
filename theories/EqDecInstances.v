@@ -1,4 +1,4 @@
-From Equations Require Import EqDec DepElim NoConfusion.
+From Equations Require Import Classes EqDec DepElim NoConfusion.
 
 (** Tactic to solve EqDec goals, destructing recursive calls for the recursive 
   structure of the type and calling instances of eq_dec on other types. *)

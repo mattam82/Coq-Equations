@@ -47,7 +47,7 @@ let _ = Goptions.declare_bool_option {
   Goptions.optwrite = (fun b ->
       if b then
         CErrors.user_err (str"DEPRECATED. Use flag [Equations With UIP] and introduce \
-                              an axiomn [forall A, Equations.EqDec.UIP A] \
+                              an axiomn [forall A, Equations.Classes.UIP A] \
                               as a type class instance using [Existing Instance] instead.")
       else simplify_withUIP := b)
 }

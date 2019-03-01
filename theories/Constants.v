@@ -41,11 +41,11 @@ Register Init.Logic.eq_refl as equations.equality.refl.
 Register Init.Logic.eq_rect_r as equations.equality.case.
 Register Equations.DepElim.eq_rect_dep_r as equations.equality.elim.
 
-Register Equations.EqDec.EqDec as equations.eqdec.class.
+Register Equations.Classes.EqDec as equations.eqdec.class.
 Register Equations.EqDec.dec_eq as equations.eqdec.dec_eq.
 
-Register Equations.EqDec.UIP as equations.uip.class.
-Register Equations.EqDec.uip as equations.uip.uip.
+Register Equations.Classes.UIP as equations.uip.class.
+Register Equations.Classes.uip as equations.uip.uip.
 
 Register Init.Logic.False as equations.bottom.type.
 Register Init.Logic.False_rect as equations.bottom.case.
