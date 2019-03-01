@@ -125,6 +125,7 @@ Require Import Subterm.
 Derive Signature for term.
 Derive NoConfusionHom for term.
 (* FIXME subterm and non-uniform indices and universe issue... *)
+(*
 Derive Subterm for term.
 
 Lemma wft : WellFounded term_subterm.
@@ -147,3 +148,5 @@ Proof.
   refine (simplify_ind_pack (A:=Σ ctx : list type, type) (fun x => term x.1 x.2) (ctx, τ) _ _ (fun _ => False) _).
   simplify <>.
 Defined.
+
+*)
