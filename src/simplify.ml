@@ -528,7 +528,7 @@ let deletion ~(force:bool) : simplification_fun =
     with Not_found ->
       let env = push_rel_context ctx env in
       raise (CannotSimplify (str
-                               "[deletion] Cannot simplify without K on type " ++
+                               "[deletion] Cannot simplify without UIP on type " ++
                              Printer.pr_econstr_env env !evd tA))
 
 let solution ~(dir:direction) : simplification_fun =
@@ -704,7 +704,7 @@ let maybe_pack : simplification_fun =
           (Typeclasses.resolve_one_typeclass env) evd eqdec_ty
       with Not_found ->
         raise (CannotSimplify (str
-          "[noConfusion] Cannot simplify without K on type " ++
+          "[noConfusion] Cannot simplify without UIP on type " ++
           Printer.pr_econstr_env env !evd tA' ++
           str " or NoConfusion for family " ++ Printer.pr_inductive env (fst ind)))
     in
@@ -807,7 +807,7 @@ let noCycle : simplification_fun =
   let tA, t1, t2 = check_equality env !evd ctx ty1 in
   let isct1 = is_construct_sigma_2 !evd t1 in
   let isct2 = is_construct_sigma_2 !evd t2 in
-  if not (isct1  || isct2) then
+  if not (isct1 || isct2) then
     raise (CannotSimplify (str "This is not an equality between constructors."));
   let nocycle_ty = EConstr.mkApp (Builder.noCycle evd, [| tA |]) in
   let tnocycle =
@@ -1044,8 +1044,8 @@ and simplify_one ((loc, rule) : Loc.t option * simplification_rule) :
       let step = get_step env evd gl in
         execute_step step env evd gl
     in
-    let f = compose_fun f remove_sigma in
-    with_retry f
+    let fr = compose_fun f remove_sigma in
+    with_retry (or_fun f fr)
   in
   let wrap_handle get_step =
     let f = wrap get_step in
