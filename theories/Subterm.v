@@ -87,12 +87,12 @@ Proof. apply wf_clos_trans. apply WF. Defined.
 Hint Extern 4 (WellFounded (clos_trans _ _)) => 
   apply @WellFounded_trans_clos : typeclass_instances.
 
-Lemma wf_MR {A R} `(WellFounded A R) {B} (f : B -> A) : WellFounded (MR R f).
+Instance wf_MR {A R} `(WellFounded A R) {B} (f : B -> A) : WellFounded (MR R f).
 Proof. red. apply measure_wf. apply H. Defined.
 
 (* Do not apply [wf_MR] agressively, as Coq's unification could "invent" an [f] otherwise
    to unify. *)
-Hint Extern 0 (WellFounded (MR _ _)) => apply @wf_MR : typeclass_instances.
+(* Hint Extern 0 (WellFounded (MR _ _)) => apply @wf_MR : typeclass_instances. *)
 
 Hint Extern 0 (MR _ _ _ _) => red : Below.
 
