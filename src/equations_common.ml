@@ -317,9 +317,12 @@ let is_lglobal gr c = Globnames.is_global (Lazy.force gr) c
 
 open EConstr
 
-let fresh_logic_sort evd =
-  let evars, sort = Evd.fresh_sort_in_family !evd (Lazy.force logic_sort) in
+let fresh_sort_in_family evd s =
+  let evars, sort = Evd.fresh_sort_in_family !evd s in
   evd := evars; mkSort sort
+
+let fresh_logic_sort evd =
+  fresh_sort_in_family evd (Lazy.force logic_sort)
 
 let mkapp env evdref t args =
   let evd, c = fresh_global env !evdref (Lazy.force t) in

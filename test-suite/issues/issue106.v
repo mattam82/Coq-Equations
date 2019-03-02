@@ -18,6 +18,7 @@ Equations foo_type (t : Foo) : Type :=
 
 (* Moving val into the return type, rather than having it as an argument might be unnecessary if
    https://github.com/mattam82/Coq-Equations/issues/73 was fixed *)
+
 Equations lookup (t:Foo) : forall (val: foo_type t) (what: list nat), option nat := {
   lookup (Prod ss) := fun val what =>
     match what with nil=> None | cons hd tail => lookup_prod ss val hd tail end}

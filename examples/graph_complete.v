@@ -12,24 +12,25 @@ Derive Signature for Id.
 Equations neg (b : bool) : bool :=
   neg true := false; neg false := true.
 
-Scheme neg_ind_rec := Minimality for neg_ind Sort Set.
-Scheme neg_ind_rect_dep := Induction for neg_ind Sort Type.
+Definition neg_fib (x : bool) := Σ a : bool, neg_graph a x.
+Hint Resolve neg_graph_correct : core.
+Definition neg_graph_rec := neg_graph_rect.
 
-Definition neg_fib (x : bool) := Σ a : bool, neg_ind a x.
+Scheme neg_graph_rect_dep := Induction for neg_graph Sort Type.
 
 Lemma hfiber_graph : (Σ x : bool, hfiber neg x) <~> Σ x : bool, neg_fib x.
 Proof.
   unshelve refine {| equiv_fun := fun h => (h.1, _) |}.
   red. destruct h as [res [arg Heq]].
-  exists arg. simpl. rewrite <- Heq. apply neg_ind_fun.
+  exists arg. simpl. destruct Heq. auto.
   simpl.
   unshelve refine {| equiv_inv h := (h.1, _) |}.
   red. destruct h as [res [arg Heq]].
-  exists arg. simpl. induction Heq. reflexivity. reflexivity.
+  exists arg. simpl. induction Heq; reflexivity.
   red.
 
   - intros [x [res Hind]]. simpl.
-    induction Hind using neg_ind_rect_dep; simpl; reflexivity.
+    induction Hind using neg_graph_rect_dep; simpl; reflexivity.
 
   - intros [res [arg Heq]]. simpl.
     destruct Heq; simpl.

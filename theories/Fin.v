@@ -40,8 +40,8 @@ gof O := fz ;
 gof (S n) := fs (gof n).
 
 Lemma fog_gof n : fog (gof n) = n.
-Proof with auto with arith. intros.
-  funind (gof n) gofn; simp fog gof...
+Proof with auto with arith.
+  intros. funelim (gof n)... simp fog; congruence.
 Qed.
 
 Equations fin_inj_one {n} (f : fin n) : fin (S n) :=

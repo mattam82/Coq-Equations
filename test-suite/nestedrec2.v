@@ -26,6 +26,6 @@ where subst_tlist (k : nat) (u : term) (t : list term) : list term := {
 Lemma subst_subst k u t : subst_term k u t = subst_term k u t.
 Proof.
   revert k u t.
-  refine (proj1 (subst_term_elim (fun k u t c => c = c) (fun k u l c => c = c) _ _ _ _ _));
+  refine (fst (subst_term_elim (fun k u t c => c = c) (fun k u l c => c = c) _ _ _ _ _));
   trivial.
 Qed.
