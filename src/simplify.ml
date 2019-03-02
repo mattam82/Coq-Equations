@@ -834,9 +834,10 @@ let noCycle : simplification_fun =
     let prf = Equations_common.evd_comb1
         (Typeclasses.resolve_one_typeclass env) evd nocycle in
     (None, cont prf), subst
-  with Not_found -> (* We leave the evar for the user to solve *)
-    let term = build_term env evd (ctx, ty) (ctx, nocycle) cont in
-    term, subst
+  with Not_found -> (* We inform the user of what is missing *)
+    raise (CannotSimplify (str
+        "[noCycle] Cannot infer a proof of " ++
+        Printer.pr_econstr_env (push_rel_context ctx env) !evd nocycle))
 
 let elim_true : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
