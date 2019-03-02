@@ -7,10 +7,10 @@
 \def\vecplus#1{{\overrightarrow{#1}}^{+}}
 \def\textcoloneq{\texttt{:=}}
 \def\userref#1#2{\coqdockw{with}~#1~\textcoloneq~#2}
-
+\def\var#1{\coqdocvar{#1}}
 \def\figdefs{\begin{array}{llcl}
   \texttt{term}, \texttt{type} & t, ~τ & \Coloneqq &
-  \coqdocvar{x} `| \lambda \coqdocvar{x} : \tau, t `| ∀ \coqdocvar{x} :
+  \coqdocvar{x} `| \lambda \coqdocvar{x} : \tau, t, R `| ∀ \coqdocvar{x} :
                                                     \tau, \tau' `|
   \mathbf{\lambda}\texttt{\{}\,\vecplus{\vec{up} \coloneqq t}\texttt{\}}
    \cdots \\
@@ -20,19 +20,18 @@
   \texttt{programs} & progs & \Coloneqq & prog~\overrightarrow{mutual} \texttt{.} \\
   \texttt{mutual programs} & mutual & \Coloneqq & \coqdockw{with}~p `| where \\
   \texttt{where clause} & where & \Coloneqq & \coqdockw{where}~p `| \coqdockw{where}~not\\
-  \texttt{notation} & not & \Coloneqq & \texttt{''}string\texttt{''}~\textcoloneq~term~(\texttt{:}~scope)?\\
+  \texttt{notation} & not & \Coloneqq & \texttt{''}string\texttt{''}~\textcoloneq~t~(\texttt{:}~scope)?\\
   \texttt{program} & p, prog & \Coloneqq & \coqdoccst{f}~Γ~\texttt{:}~τ~(\coqdockw{by}~\textit{annot})?~\textcoloneq~clauses \\
-  \texttt{annotation} & annot & \Coloneqq & \kw{struct}~x `| \kw{wf}~t~R? \\
-  \texttt{clauses} & clauses & \Coloneqq & \vec{c} `| \texttt{\{}\,\vec{c}\,\texttt{\}} \\
-  \texttt{user clause} & c & \Coloneqq & \coqdoccst{f}~\vec{up}~n `|
-                                         \vecplus{\texttt{|}~up}~n\\
-  \texttt{user pattern} & up & \Coloneqq & x
+  \texttt{annotation} & annot & \Coloneqq & \kw{struct}~\var{x}? `| \kw{wf}~t~R? \\
+  \texttt{user clauses} & clauses & \Coloneqq & \vecplus{cl} `| \texttt{\{}\,\vec{cl}\,\texttt{\}} \\
+  \texttt{user clause} & cl & \Coloneqq & \coqdoccst{f}~\vec{up}~n?~\texttt{;} `|
+                                         \vecplus{\texttt{|}~up}~n?
+                                         ~\texttt{;} \\
+  \texttt{user pattern} & up & \Coloneqq & x `| \_
   `| \coqdocconstr{C}~\vec{up}
-  `| \texttt{?(}\,t\,\texttt{)} `| \texttt{(}x~\textcoloneq~up\texttt{)} \\
+  `| \texttt{?(}\,t\,\texttt{)} `| \texttt{!} \\
   \texttt{user node} & n & \Coloneqq &
-                                       \textcoloneq~t~\overrightarrow{where}
-                                       `| \texttt{:=!}~\coqdocvar{x} \\
-               & & &                                       `|\, \userref{t~\vec{, t}}{clauses}
+   \textcoloneq~t~\overrightarrow{where} `|\, \userref{t~\vec{, t}}{clauses}
 \end{array}}
 
 In the grammar, $\vec{t}$ denotes a possibly empty list of $t$,
@@ -43,35 +42,43 @@ $\vecplus{t}$ a non-empty list. Concrete syntax is in
 \caption{Definitions and user clauses}
 \label{fig:usergram}
 \end{figure}
-
 The syntax allows the definition of toplevel mutual (\kw{with}) and
 nested (\kw{where}) structurally recursive definitions. Notations can be
 used globally to attach a syntax to a recursive definition, or locally
-inside a user node. In the \kw{wf} annotation, the first term should be
-typable in the program's context $\Gamma$ (and possibly the enclosing
-context for nested programs) with a \emph{closed} type $\tau$
-(e.g. \coqdocind{nat}), while the relation must be a locally closed term
-of type $\tau "->" \tau "->" \kw{Prop}$. In case the relation is not
-given explicitely, \Equations searches for an instance of the class
-\ind{WellFounded} on the carrier type. The $\lambda\{$ syntax (using
-a unicode lambda attached to a curly brace) allows to input
-pattern-matching lambdas in a term, which are elaborated to \kw{where}
-clauses. Local \kw{where} clauses can be used to define recursive
-definitions themselves or local notations. The syntax permits the use of
-curly braces around a list of clauses to allow disambiguation of the
-scope of \kw{where} and \kw{with} clauses.
+inside a user node. A single program is given as a tuple of a (globally
+fresh) identifier, a signature and a list of user clauses (order
+matters), along with an optional recursion annotation (see next
+section). The signature is simply a list of bindings and a result
+type. The expected type of the function \cst{f} is then $∀~Γ, τ$.
+An empty set of clauses denotes that one of the variables has an empty type.
 
-In user clauses, one can either give an application of the current
-program to patterns using $\coqdoccst{f}~\vec{up}$ or a list of
-refinement patterns $\vec{\texttt{|} up}$ which should match the number
-of abstraction of the enclosing program (introduced by \kw{with} or
-not).
+Each user clause comprises a list of patterns that will match the
+bindings $Γ$ and an optional right hand side. Patterns can be named or
+anonymous variables, constructors applied to patterns, the inaccessible
+pattern \texttt{?(}t\texttt{)} (a.k.a. "dot" pattern in \Agda) or the
+empty pattern \texttt{!} indicating a variable has empty type (in this
+case only, the right hand side must be absent). Patterns are parsed
+using \Coq's regular term parser, so any term with implicit arguments
+and notations which desugars to this syntax is also allowed.
 
-The user patterns can be made up from variables, constructors applied to
-patterns, inaccessible patterns $\texttt{?}(t)$ where $t$ is an
-arbitrary term or, in case of an application $\coqdoccst{f}~\vec{up}$
-setting an implicit argument of $\coqdoccst{f}$ using $(x := up)$.
-
+A right hand side can either be a program node returning a term $t$
+potentially relying on auxiliary definitions through local \kw{where}
+clauses, or a \kw{with} node.  Local \kw{where} clauses can be used to
+define nested programs, as in \Haskell or \Agda, or local
+notations. They depend on the lexical scope of the enclosing program. As
+programs, they can be recursive definitions themselves and depend on
+previous \kw{where} clauses as well: they will be elaborated to
+dependent let bindings. The syntax permits the use of curly braces
+around a list of clauses to allow disambiguation of the scope of
+\kw{where} and \kw{with} clauses. The $\lambda\{$ syntax (using a
+unicode lambda attached to a curly brace) extends \Coq's term syntax
+with pattern-matching lambdas, which are elaborated to local \kw{where}
+clauses. A local \kw{with}~$t$ node essentialy desugars to a program
+node with a local \kw{where} clause taking all the enclosing context as
+arguments plus a new argument for the term $t$, and whose clauses are
+the clauses of the \kw{with}. The \kw{with} construct can be nested also
+by giving multiple terms, in which case the clauses should refine a new
+problem with as many new patterns.
 
 \subsection{Generated definitions}
 
@@ -146,30 +153,30 @@ The \kw{Equations} command obeys a few global options:
   The \texttt{simp} $\cst{c}$ tactic is favored in this case to do
   simplifications using the equations generated for $\cst{c}$.
 
-\item \texttt{Equations WithKDec}: governs the use of instances of
-  \texttt{K} derived by the user using the decidable equality class
-  \texttt{Equations.EqDec.EqDec}. By default \emph{off}. When switched
-  on, equations will look for an instance of $\ind{EqDec}\~A$ when
-  solving equalities of the form \[\forall (e : x = x :> A), P e\],
-  i.e. to apply the deletion rule to such equations, or report an error
-  if it cannot find any. Note that when this option is on, the
-  computational behavior of \Equations definitions on open terms does
-  not follow the clauses: it might block on the decidable equality
-  test. The rewriting equations and functional elimination principle can
-  still be derived though and are the prefered way to reason on the
+\item \texttt{Equations With UIP}: governs the use of instances of
+  \texttt{Equations.Classes.UIP} derived by the user, or automatically
+  from instances of the decidable equality class
+  \texttt{Equations.Classes.EqDec}. By default \emph{off}. When switched
+  on, equations will look for an instance of $\ind{UIP}\~A$ when solving
+  equalities of the form \[\forall (e : x = x :> A), P e\], i.e. to
+  apply the deletion rule to such equations, or to unify indices of
+  constructors for inductive families without a \ind{NoConfusionHom}
+  instance. It will report an error if it cannot find any. Note that
+  when this option is on, the computational behavior of \Equations
+  definitions on open terms does not follow the clauses: it might block
+  on the uip proof (for example if it is a decidable equality test).
+  The rewriting equations and functional elimination principle can still
+  be derived though and are the prefered way to reason on the
   definition.
 
-\item \texttt{Equations WithK}: governs the use of the \texttt{K} axiom.
-  By default \emph{off}.
-  Users \emph{must} require the \texttt{Equations.DepElimK} module before
-  using this option, to load the \texttt{K} axiom in the current module.
-  When switched on, equations will use the axiom if it needs to simplify
-  reflexivity proofs \[\forall (e : x = x :> A), P~e\] and no instance of
-  $\ind{EqDec}$ is available. The computational behavior of definitions
-  using the axiom changes entirely: their reduction will get stuck even
+\item \texttt{Equations WithK} DEPRECATED. Use \texttt{With UIP} and
+  declare your own version of the \cst{UIP} axiom as a typeclass
+  instance. governs the use of the \texttt{K} axiom.
+  By default \emph{off}. The computational behavior of definitions
+  using axioms changes entirely: their reduction will get stuck even
   on closed terms. It is advised to keep such definitions opaque and use
   the derived rewriting equations and functional elimination principle
-  to reason on such definitions.
+  to reason on them.
 \end{itemize}
 
 \section{Derive}
@@ -212,9 +219,9 @@ The derivations provided by \Equations are:
 \item \ind{NoConfusionHom}: generate the \emph{homogeneous} no-confusion
   principle for the given family, which embodies the discrimination and
   injectivity principles for (non-propositional) inductive types.
-  This principle can be derived if and only if pattern-matching on the
-  inductive family does not involve the \texttt{K} axiom.
-  In case of success it generates an instance of the class
+  This principle can be derived if and only if the no-confusion property
+  on the inductive family instance reduces to equality of the non-forced
+  arguments of the constructors. In case of success it generates an instance of the class
   \texttt{Equations.DepElim.NoConfusionPackage} for the type $\ind{I}~
   \Delta~\Gamma$ applicable to equalities of two objects in the \emph{same}
   instance of the family $\ind{I}$.
@@ -223,7 +230,7 @@ The derivations provided by \Equations are:
   This derives a decidable equality on $C$, assuming decidable equality 
   instances for the parameters and supposing any primitive inductive
   type used in the definition also has decidable equality. If
-  successful it generates an instance of the class (in \texttt{Equations.EqDec}):
+  successful it generates an instance of the class (in \texttt{Equations.Classes.EqDec}):
 \begin{verbatim}
 Class EqDec (A : Type) :=
   eq_dec : forall x y : A, { x = y } + { x <> y }.
