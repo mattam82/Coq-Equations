@@ -1534,7 +1534,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
         let mutual = List.map2 (fun (i, _, _, _) (_, (_, _, _, _, _, _, _, (kind, cut)), _) ->
                          i, regular_or_nested_rec kind) mutual ind_stmts in
         let () =
-          Indschemes.do_combined_scheme CAst.(make scheme)
+          Combined_scheme.do_combined_scheme CAst.(make scheme)
             (CList.map_filter (fun (id, b) -> if b then Some id else None) mutual)
         in kn, Smartlocate.global_with_alias (Libnames.qualid_of_ident scheme)
     in
