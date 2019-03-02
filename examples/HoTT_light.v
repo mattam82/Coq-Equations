@@ -58,7 +58,7 @@ Notation " x = y " := (@Id _ x y) : type_scope.
 Import Sigma_Notations.
 Local Open Scope equations_scope.
 
-Definition prod (A B : Type) := ∃ (_ : A), B.
+Definition prod (A B : Type) := Σ (_ : A), B.
 
 Notation " X * Y " := (prod X Y) : type_scope.
 
@@ -157,30 +157,30 @@ Equations path_sigma {A : Type} (P : A -> Type) (u v : sigma A P)
 path_sigma _ (_, _) (_, _) 1 1 := 1.
 
 Equations path_prod_uncurried {A B : Type} (z z' : A * B)
-           (pq : (fst z = fst z') * (snd z = snd z')): z = z' :=
+           (pq : (z.1 = z'.1) * (z.2 = z'.2)): z = z' :=
 path_prod_uncurried (_, _) (_, _) (1, 1) := 1.
 
-Definition path_prod {A B : Type} (z z' : A * B) (e : fst z = fst z') (f : snd z = snd z') : z = z' :=
+Definition path_prod {A B : Type} (z z' : A * B) (e : z.1 = z'.1) (f : z.2 = z'.2) : z = z' :=
   path_prod_uncurried _ _ (e, f).
 
-Equations path_prod_eq {A B : Type} (z z' : A * B) (e : fst z = fst z') (f : snd z = snd z') : z = z' :=
+Equations path_prod_eq {A B : Type} (z z' : A * B) (e : z.1 = z'.1) (f : z.2 = z'.2) : z = z' :=
 path_prod_eq (_, _) (_, _) 1 1 := 1.
 
 Equations eta_path_prod {A B : Type} {z z' : A * B} (p : z = z') :
-  path_prod _ _ (ap fst p) (ap snd p) = p :=
-eta_path_prod (z:=(_, _)) 1 := 1.
+  path_prod _ _ (ap pr1 p) (ap (fun x : A * B => pr2 x) p) = p :=
+eta_path_prod 1 := 1.
 
 Definition path_prod' {A B : Type} {x x' : A} {y y' : B}
   : (x = x') -> (y = y') -> ((x,y) = (x',y'))
   := fun p q => path_prod (x, y) (x', y') p q.
 
 Equations ap_fst_path_prod {A B : Type} {z z' : A * B}
-  (p : fst z = fst z') (q : snd z = snd z') :
+  (p : z.1 = z'.1) (q : z.2 = z'.2) :
   ap fst (path_prod _ _ p q) = p :=
 ap_fst_path_prod (z:=(_, _)) (z':=(_, _)) 1 1 := 1.
 
 Equations ap_snd_path_prod {A B : Type} {z z' : A * B}
-  (p : fst z = fst z') (q : snd z = snd z') :
+  (p : z.1 = z'.1) (q : z.2 = z'.2) :
   ap snd (path_prod _ _ p q) = q :=
 ap_snd_path_prod (z:=(_, _)) (z':=(_, _)) 1 1 := 1.
 
@@ -327,9 +327,9 @@ Program Instance contr_prod A B {CA : Contr A} {CB : Contr B} : Contr (prod A B)
 Next Obligation. exact (@center _ CA, @center _ CB). Defined.
 Next Obligation. apply path_prod; apply contr. Defined.
 
-Equations singletons_contr {A : Type} (x : A) : Contr (∃ y : A, x = y) :=
+Equations singletons_contr {A : Type} (x : A) : Contr (Σ y : A, x = y) :=
   singletons_contr x := {| center := (x, 1); contr := contr |}
-    where contr : forall y : (∃ y : A, x = y), (x, 1) = y :=
+    where contr : forall y : (Σ y : A, x = y), (x, 1) = y :=
           contr (y, 1) := 1.
 Existing Instance singletons_contr.
 Notation " 'rew' H 'in' c " := (@Id_rect_r _ _ _ c _ H) (at level 20).
@@ -340,16 +340,16 @@ Notation " 'rewd' H 'in' c " := (@Id_rect_dep_r _ _ _ c _ H) (at level 20).
     [NoConfusiom (Σ y, x = y)] is equivalent to the proof that singletons
     are contractible, i.e that this type has a definitional equivalence with [unit].  *)
 
-Equations NoConfusion_Id {A} (x : A) (p q : ∃ y : A, x = y) : Type :=
+Equations NoConfusion_Id {A} (x : A) (p q : Σ y : A, x = y) : Type :=
  NoConfusion_Id x p q => unit.
 
-Equations noConfusion_Id {A} (x : A) (p q : ∃ y : A, x = y) : NoConfusion_Id x p q -> p = q :=
+Equations noConfusion_Id {A} (x : A) (p q : Σ y : A, x = y) : NoConfusion_Id x p q -> p = q :=
  noConfusion_Id x (x, 1) (y, 1) tt => 1.
 
-Equations noConfusion_Id_inv {A} (x : A) (p q : ∃ y : A, x = y) : p = q -> NoConfusion_Id x p q :=
+Equations noConfusion_Id_inv {A} (x : A) (p q : Σ y : A, x = y) : p = q -> NoConfusion_Id x p q :=
  noConfusion_Id_inv x (x, 1) ?((x, 1)) 1 => tt.
 
-Definition NoConfusionIdPackage_Id {A} (x : A) : NoConfusionIdPackage (∃ y : A, x = y).
+Definition NoConfusionIdPackage_Id {A} (x : A) : NoConfusionIdPackage (Σ y : A, x = y).
 Proof.
   refine {| NoConfusionId := NoConfusion_Id x;
             noConfusionId := noConfusion_Id x;
@@ -378,7 +378,6 @@ Ltac unfold_packcall packcall ::=
         change (x = y' -> P)
   end.
 
-(** Test using singletons are contractible in noConfusion *)
 Lemma concat_A1p_lemma {A} (f : A -> A) (p : forall x, f x = x) {x y : A} (q : x = y) :
   (concat_A1p p q) = (concat_A1p p q).
 Proof.
@@ -601,6 +600,6 @@ Global Instance isequiv_ap {A B} f `{IsEquiv A B f} (x y : A)
     @ whiskerR (concat_Vp _) _
     @ concat_1p _).
 
-Definition hfiber {A B : Type} (f : A -> B) (y : B) := ∃ (x : A), f x = y.
+Definition hfiber {A B : Type} (f : A -> B) (y : B) := Σ (x : A), f x = y.
 
 Global Arguments hfiber {A B}%type_scope f%function_scope y.

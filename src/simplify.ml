@@ -839,9 +839,6 @@ let noCycle : simplification_fun =
         "[noCycle] Cannot infer a proof of " ++
         Printer.pr_econstr_env (push_rel_context ctx env) !evd nocycle))
 
-    (* let term = build_term env evd (ctx, ty) (ctx, nocycle) cont in
-     * term, subst *)
-
 let elim_true : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in

@@ -3,8 +3,7 @@ Require Import Coq.PArith.PArith.
 Require Import Lia.
 Require Import Equations.Equations.
 Require Import Equations.EqDec.
-Unset Equations WithK.
-Set Equations WithKDec.
+Set Equations With UIP.
 Generalizable All Variables.
 
 Definition obj_idx : Type := positive.

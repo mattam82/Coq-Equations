@@ -102,7 +102,7 @@ Module KAxiom.
 End KAxiom.
 
 Module KDec.
-  (** However, types enjoying a provable instance of the [K] principle are fine using the WithKDec
+  (** However, types enjoying a provable instance of the [K] principle are fine using the [With UIP]
       option. Note that the following definition does *not* reduce according to its single clause
       on open terms, it instead computes using the decidable equality proof on natural numbers. *)
 

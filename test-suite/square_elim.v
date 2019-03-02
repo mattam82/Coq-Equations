@@ -14,7 +14,7 @@ Import Sigma_Notations.
 Set Equations Transparent.
 
 Obligation Tactic := idtac.
-Lemma singleton_eq {A} (x : A) (p q : &{ y : A & x = y }) : p = q.
+Lemma singleton_eq {A} (x : A) (p q : { y : A & x = y }) : p = q.
 Proof.
   destruct p, q. destruct pr2. destruct pr3. reflexivity.
 Defined.

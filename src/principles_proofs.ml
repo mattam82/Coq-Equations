@@ -1110,22 +1110,22 @@ let ind_elim_tac indid inds mutinds info ind_fun =
     let sigma = Goal.sigma gl in
     match leninds, kind sigma (Goal.concl gl) with
     | 0, _ ->
+      let app = applistc indid (List.rev args) in
+      let sigma, ty = Typing.type_of env sigma app in
        if mutinds == 1 then
-         tclTHENLIST [Tactics.simpl_in_concl; Tactics.intros;
-                      prove_methods (Reductionops.nf_beta env sigma
-                                                          (applistc indid (List.rev args)))]
+         tclTHENLIST [Proofview.Unsafe.tclEVARS sigma;
+                      Tactics.simpl_in_concl; Tactics.intros;
+                      prove_methods (Reductionops.nf_beta env sigma app)]
        else
-         let app = applistc indid (List.rev args) in
-         let sigma, ty = Typing.type_of env sigma app in
          let ctx, concl = decompose_prod_assum sigma ty in
+         Proofview.Unsafe.tclEVARS sigma <*>
          Tactics.simpl_in_concl <*> Tactics.intros <*>
-           Tactics.cut concl <*>
-           tclDISPATCH
-             [tclONCE (Tactics.intro <*>
-                         (pf_constr_of_global ind_fun >>= Tactics.pose_proof Anonymous <*>
-                            eauto ~depth:None));
-              tclONCE (Tactics.apply app <*> Tactics.simpl_in_concl <*> eauto ~depth:None)]
-
+         Tactics.cut concl <*>
+         tclDISPATCH
+           [tclONCE (Tactics.intro <*>
+                     (pf_constr_of_global ind_fun >>= Tactics.pose_proof Anonymous <*>
+                                                      eauto ~depth:None));
+            tclONCE (Tactics.apply app <*> Tactics.simpl_in_concl <*> eauto ~depth:None)]
 
     | _, LetIn (_, b, _, t') ->
        tclTHENLIST [Tactics.convert_concl_no_check (subst1 b t') DEFAULTcast;

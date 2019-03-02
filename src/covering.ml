@@ -48,13 +48,15 @@ let rec unify env evd flex g x y =
   else
     match kind evd x with
     | Rel i -> 
-      if Int.Set.mem i flex then
+      if not (isRel evd y) && not (noccurn evd i y) then raise Conflict (* Occur check *)
+      else if Int.Set.mem i flex then
         single_subst env evd i (PInac y) g
       else raise Stuck
     | _ ->
       match kind evd y with
       | Rel i ->
-        if Int.Set.mem i flex then
+        if (* not (isRel evd x) &&  *)not (noccurn evd i x) then raise Conflict (* Occur check *)
+        else if Int.Set.mem i flex then
           single_subst env evd i (PInac x) g
         else raise Stuck
       | _ ->

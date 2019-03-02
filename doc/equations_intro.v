@@ -497,36 +497,41 @@ diag' (Vcons (Vcons a v) v') :=
 
 (** *** Pattern-matching and axiom K *)
 
-(** To use the K axiom with [Equations], one _must_ first require the [DepElimK] module. *)
-
-Require Import Equations.DepElimK.
+(** To use the K axiom or UIP with [Equations], one _must_ first set an option
+    allowing its use during dependenet pattern-matching compilation. *)
 
 Module KAxiom.
 
-  (** By default we disallow the K axiom, but it can be set. *)
+  (** By default we disallow the user of UIP, but it can be set. *)
 
-  Set Equations WithK.
+  Set Equations With UIP.
 
-  (** In this case the following definition uses the [K] axiom just imported. *)
+  Module WithAx.
 
-  Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl)
-            (H : x = x) : P H :=
-    K x P p eq_refl := p.
+    (** The user must declare this axiom itself, as an instance of the [UIP] class. *)
 
-  Unset Equations WithK.
+    Axiom uipa : forall A, UIP A.
+    Local Existing Instance uipa.
+
+    (** In this case the following definition uses the [UIP] axiom just declared. *)
+
+    Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl)
+              (H : x = x) : P H :=
+      K x P p eq_refl := p.
+
+  End WithAx.
 
   (** Note that the definition loses its computational content: it will
       get stuck on an axiom. We hence do not recommend its use.
 
-      Equations allows however to use constructive proofs of K for types
+      Equations allows however to use constructive proofs of UIP for types
       enjoying decidable equality. The following example relies on an
-      instance of the [EqDec] typeclass for natural numbers.  Note that
+      instance of the [EqDec] typeclass for natural numbers, from which
+      we can automatically derive a [UIP nat] instance.  Note that
       the computational behavior of this definition on open terms is not
       to reduce to [p] but pattern-matches on the decidable equality
       proof.  However the defining equation still holds as a
       _propositional_ equality, and the definition of K' is axiom-free. *)
-
-  Set Equations WithKDec.
 
   Equations K' (x : nat) (P : x = x -> Type) (p : P eq_refl)
             (H : x = x) : P H :=

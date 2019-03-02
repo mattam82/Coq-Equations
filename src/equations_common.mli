@@ -256,6 +256,7 @@ val int_of_coq_nat : Constr.t -> int
 
 val coq_fix_proto : lazy_ref
 
+val fresh_sort_in_family : esigma -> Sorts.family -> constr
 val fresh_logic_sort : esigma -> constr
 val mkapp : Environ.env -> esigma -> lazy_ref -> constr array -> constr
 

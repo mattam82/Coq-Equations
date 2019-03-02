@@ -275,9 +275,5 @@ Definition NoCycle_WellFounded {A} (R : relation A) (wfR : WellFounded R) : NoCy
      noCycle := well_founded_irreflexive |}.
 Existing Instance NoCycle_WellFounded.
 
-(** We use the fact that constructor is a multigoal *)
-Ltac constructors := constructor ; constructors.
-
-
 Hint Extern 30 (@NoCycle ?A (NoCycle_WellFounded ?R ?wfr) _ _) =>
-  solve [constructor] : typeclass_instances.
+  hnf; typeclasses eauto with subterm_relation : typeclass_instances.

@@ -57,8 +57,8 @@ Qed.
     a [map]-like elimination principle. *)
 
 Check subst_term_elim
-  : forall (P : nat -> term -> term -> term -> Prop)
-           (P0 : nat -> term -> list term -> list term -> Prop),
+  : forall (P : nat -> term -> term -> term -> Type)
+           (P0 : nat -> term -> list term -> list term -> Type),
     (forall (k : nat) (u : term) (n : nat), P k u (Var n) (subst_var k u n)) ->
     (forall (k : nat) (u t : term),
         P (S k) u t (subst_term (S k) u t) -> P k u (Lam t) (Lam (subst_term (S k) u t))) ->
@@ -74,7 +74,7 @@ Check subst_term_elim
         P0 k u l (subst_tlist k u l) ->
         P0 k u (t :: l)%list (subst_term k u t :: subst_tlist k u l)%list) ->
 
-    (forall (k : nat) (u t : term), P k u t (subst_term k u t)) /\
+    (forall (k : nat) (u t : term), P k u t (subst_term k u t)) *
     (forall (k : nat) (u : term) (t : list term), P0 k u t (subst_tlist k u t)).
 
 (** One can experiment to see that this provides the right induction hypotheses for App and MetaVar *)
@@ -82,6 +82,6 @@ Check subst_term_elim
 Lemma subst_subst k u t : subst_term k u t = subst_term k u t.
 Proof.
   revert k u t.
-  refine (proj1 (subst_term_elim (fun k u t c => c = c) (fun k u l c => c = c) _ _ _ _ _ _));
+  refine (fst (subst_term_elim (fun k u t c => c = c) (fun k u l c => c = c) _ _ _ _ _ _));
   trivial.
 Qed.
