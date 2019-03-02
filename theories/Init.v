@@ -93,9 +93,9 @@ Set Warnings "-notation-overridden".
 
 Module Sigma_Notations.
 
-Notation "'∃' x .. y , P" := (sigma _ (fun x => .. (sigma _ (fun y => P)) ..))
+Notation "'Σ' x .. y , P" := (sigma _ (fun x => .. (sigma _ (fun y => P)) ..))
   (at level 200, x binder, y binder, right associativity,
-  format "'[  ' '[  ' ∃  x  ..  y ']' ,  '/' P ']'") : type_scope.
+  format "'[  ' '[  ' Σ  x  ..  y ']' ,  '/' P ']'") : type_scope.
 
 Notation "( x , .. , y , z )" :=
   (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)

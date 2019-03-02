@@ -29,7 +29,22 @@ Require Import List.
 Import ListNotations.
 Require Import Utf8.
 Set Warnings "-notation-overridden".
-Import Sigma_Notations.
+(** The Σ notation of equations clashes with the Σ's used below,
+    so we derine the Σ using ∃ instead.
+ *)
+
+Notation "'∃' x .. y , P" := (sigma _ (fun x => .. (sigma _ (fun y => P)) ..))
+  (at level 200, x binder, y binder, right associativity,
+  format "'[  ' '[  ' ∃  x  ..  y ']' ,  '/' P ']'") : type_scope.
+
+Notation "( x , .. , y , z )" :=
+  (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
+      (right associativity, at level 0,
+       format "( x ,  .. ,  y ,  z )") : equations_scope.
+
+Notation " x .1 " := (pr1 x) (at level 3, format "x .1") : equations_scope.
+Notation " x .2 " := (pr2 x) (at level 3, format "x .2") : equations_scope.
+
 Local Open Scope equations_scope.
 
 Set Equations Transparent.

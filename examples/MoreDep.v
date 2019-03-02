@@ -216,7 +216,7 @@ End present.
 Notation "{< x >}" := (sigmaI _ _ x).
 Import Sigma_Notations.
 (* No need for convoy pattern! *)
-Equations balance1 n (a : rtree n) (data : nat) c2 (b : rbtree c2 n) : ∃ c, rbtree c (S n) :=
+Equations balance1 n (a : rtree n) (data : nat) c2 (b : rbtree c2 n) : Σ c, rbtree c (S n) :=
 balance1 (RedNode' t1 y t2) data d with t1 => {
   | RedNode a x b := {<RedNode (BlackNode a x b) y (BlackNode t2 data d)>};
   | _ with t2 => {
@@ -225,7 +225,7 @@ balance1 (RedNode' t1 y t2) data d with t1 => {
   }
 }.
 
-Equations balance2 n (a : rtree n) (data : nat) c2 (b : rbtree c2 n) : ∃ c, rbtree c (S n) :=
+Equations balance2 n (a : rtree n) (data : nat) c2 (b : rbtree c2 n) : Σ c, rbtree c (S n) :=
 balance2 (RedNode' (c2:=c0) t1 z t2) data a with t1 => {
   | RedNode b y c := {<RedNode (BlackNode a data b) y (BlackNode c z t2)>};
   | _ with t2 => {
@@ -239,7 +239,7 @@ Section insert.
 
   Equations insResult (c : color) (n : nat) : Set :=
   insResult Red n := rtree n;
-  insResult Black n := ∃ c', rbtree c' n.
+  insResult Black n := Σ c', rbtree c' n.
   Transparent insResult.
   
   Equations ins {c n} (t : rbtree c n) : insResult c n :=
@@ -261,7 +261,7 @@ Section insert.
 
   Equations insertResult (c : color) (n : nat) : Set :=
   insertResult Red n := rbtree Black (S n);
-  insertResult Black n := ∃ c', rbtree c' n.
+  insertResult Black n := Σ c', rbtree c' n.
   Transparent insertResult.
   
   Equations makeRbtree c n (r : insResult c n) : insertResult c n :=

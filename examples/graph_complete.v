@@ -15,9 +15,9 @@ Equations neg (b : bool) : bool :=
 Scheme neg_ind_rec := Minimality for neg_ind Sort Set.
 Scheme neg_ind_rect_dep := Induction for neg_ind Sort Type.
 
-Definition neg_fib (x : bool) := ∃ a : bool, neg_ind a x.
+Definition neg_fib (x : bool) := Σ a : bool, neg_ind a x.
 
-Lemma hfiber_graph : (∃ x : bool, hfiber neg x) <~> ∃ x : bool, neg_fib x.
+Lemma hfiber_graph : (Σ x : bool, hfiber neg x) <~> Σ x : bool, neg_fib x.
 Proof.
   unshelve refine {| equiv_fun := fun h => (h.1, _) |}.
   red. destruct h as [res [arg Heq]].

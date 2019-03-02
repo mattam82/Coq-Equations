@@ -59,7 +59,7 @@ Set Warnings "-notation-overridden".
 Import Sigma_Notations.
 
 Definition TupleMap_subterm := Relation_Operators.clos_trans _
-  (λ x y : ∃ index : ∃ (n : nat) (_ : TupleT n), TupleT n,
+  (λ x y : Σ index : Σ (n : nat) (_ : TupleT n), TupleT n,
            TupleMap (pr1 index) (pr1 (pr2 index)) (pr2 (pr2 index)),
           TupleMap_direct_subterm _ _ _ _ _ _ (pr2 x) (pr2 y)).
 Require Import DepElimDec.
