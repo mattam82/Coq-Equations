@@ -56,23 +56,23 @@ Proof. eqdec_proof. Defined.
 Instance nat_eqdec : EqDec nat.
 Proof. eqdec_proof. Defined.
 
-Instance prod_eqdec {A B} `(EqDec A) `(EqDec B) : EqDec (prod A B).
+Polymorphic Instance prod_eqdec {A B} `(EqDec A) `(EqDec B) : EqDec (prod A B).
 Proof. eqdec_proof. Defined.
 
-Instance sum_eqdec {A B} `(EqDec A) `(EqDec B) : EqDec (A + B).
+Polymorphic Instance sum_eqdec {A B} `(EqDec A) `(EqDec B) : EqDec (A + B).
 Proof. eqdec_proof. Defined.
 
-Instance list_eqdec {A} `(EqDec A) : EqDec (list A). 
+Polymorphic Instance list_eqdec {A} `(EqDec A) : EqDec (list A).
 Proof. eqdec_proof. Defined.
 
 Local Set Equations With UIP.
 
-Instance sigma_uip {A B} `(UIP A) `(forall x, UIP (B x)) : UIP {x : A & B x}.
+Polymorphic Instance sigma_uip {A B} `(UIP A) `(forall x, UIP (B x)) : UIP {x : A & B x}.
 Proof.
   red. intros [x p] [y q]. repeat (simplify * || intro). reflexivity.
 Defined.
 
-Instance sigma_eqdec {A B} `(EqDec A) `(forall x, EqDec (B x)) : EqDec {x : A & B x}.
+Polymorphic Instance sigma_eqdec {A B} `(EqDec A) `(forall x, EqDec (B x)) : EqDec {x : A & B x}.
 Proof.
   eqdec_proof.
 Defined.

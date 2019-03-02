@@ -69,7 +69,7 @@ Extraction Inline apply_noConfusion.
 
 (** We also provide a variant for equality in [Type]. *)
 
-Polymorphic Class NoConfusionIdPackage (A : Type) := {
+Polymorphic Cumulative Class NoConfusionIdPackage (A : Type) := {
   NoConfusionId : A -> A -> Type;
   noConfusionId : forall {a b}, NoConfusionId a b -> Id a b;
   noConfusionId_inv : forall {a b}, Id a b -> NoConfusionId a b;
@@ -104,12 +104,15 @@ Ltac noconf_ref H :=
 
 (** Classes for types with UIP or decidable equality.  *)
 
-Polymorphic Class UIP (A : Type) := uip : forall {x y : A} (e e' : x = y), e = e'.
+Polymorphic Cumulative
+Class UIP (A : Type) := uip : forall {x y : A} (e e' : x = y), e = e'.
 
-Polymorphic Class EqDec (A : Type) :=
+Polymorphic Cumulative
+Class EqDec (A : Type) :=
   eq_dec : forall x y : A, { x = y } + { x <> y }.
 
-Polymorphic Class EqDecPoint (A : Type) (x : A) :=
+Polymorphic Cumulative
+Class EqDecPoint (A : Type) (x : A) :=
   eq_dec_point : forall y : A, { x = y } + { x <> y }.
 
 Polymorphic Instance EqDec_EqDecPoint A `(EqDec A) (x : A) : EqDecPoint A x := eq_dec x.
