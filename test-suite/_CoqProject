@@ -16,6 +16,7 @@ daaa.v
 nestedobls.v
 rose.v
 scope.v
+scope_nouip.v
 depelim.v
 issues/issue7.v
 issues/issue8.v
@@ -67,3 +68,5 @@ yves.v
 local_where.v
 cfold.v
 nestedwhererec.v
+nocycle.v
+wfnocycle.v

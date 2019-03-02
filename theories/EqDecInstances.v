@@ -1,4 +1,4 @@
-From Equations Require Import EqDec DepElim NoConfusion.
+From Equations Require Import Classes EqDec DepElim NoConfusion.
 
 (** Tactic to solve EqDec goals, destructing recursive calls for the recursive 
   structure of the type and calling instances of eq_dec on other types. *)
@@ -56,18 +56,23 @@ Proof. eqdec_proof. Defined.
 Instance nat_eqdec : EqDec nat.
 Proof. eqdec_proof. Defined.
 
-Instance prod_eqdec {A B} `(EqDec A) `(EqDec B) : EqDec (prod A B).
+Polymorphic Instance prod_eqdec {A B} `(EqDec A) `(EqDec B) : EqDec (prod A B).
 Proof. eqdec_proof. Defined.
 
-Instance sum_eqdec {A B} `(EqDec A) `(EqDec B) : EqDec (A + B).
+Polymorphic Instance sum_eqdec {A B} `(EqDec A) `(EqDec B) : EqDec (A + B).
 Proof. eqdec_proof. Defined.
 
-Instance list_eqdec {A} `(EqDec A) : EqDec (list A). 
+Polymorphic Instance list_eqdec {A} `(EqDec A) : EqDec (list A).
 Proof. eqdec_proof. Defined.
 
-Local Set Equations WithKDec.
+Local Set Equations With UIP.
 
-Instance sigma_eqdec {A B} `(EqDec A) `(forall x, EqDec (B x)) : EqDec {x : A & B x}.
+Polymorphic Instance sigma_uip {A B} `(UIP A) `(forall x, UIP (B x)) : UIP {x : A & B x}.
+Proof.
+  red. intros [x p] [y q]. repeat (simplify * || intro). reflexivity.
+Defined.
+
+Polymorphic Instance sigma_eqdec {A B} `(EqDec A) `(forall x, EqDec (B x)) : EqDec {x : A & B x}.
 Proof.
   eqdec_proof.
 Defined.
@@ -78,9 +83,21 @@ Polymorphic Definition eqdec_sig@{i} {A : Type@{i}} {B : A -> Type@{i}}
 Proof.
   intros. intros [x0 x1] [y0 y1].
   case (eq_dec x0 y0). intros ->. case (eq_dec x1 y1). intros ->. left. reflexivity.
-  intros. right. red. apply simplification_sigma2_dec@{i Set}. apply n.
+  intros. right. red. apply simplification_sigma2_uip@{i Set}. apply n.
   intros. right. red. apply simplification_sigma1@{i Set}.
   intros e _; revert e. apply n.
 Defined.
 
 Existing Instance eqdec_sig.
+
+Polymorphic Definition uip_sig@{i} {A : Type@{i}} {B : A -> Type@{i}}
+            `(UIP A) `(forall a, UIP (B a)) :
+  UIP@{i} (sigma@{i} A B).
+Proof.
+  intros. intros x y <-. destruct x.
+  refine (eq_simplification_sigma1_dep_dep@{i Set} _ _ _ _ _).
+  intros e'. destruct (uip eq_refl e'). simpl.
+  intros e'. destruct (uip eq_refl e'). constructor.
+Defined.
+
+Existing Instance uip_sig.

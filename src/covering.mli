@@ -39,14 +39,14 @@ val flexible : pat list -> 'a list -> Int.Set.t
 val accessible : pat -> Int.Set.t
 val accessibles : pat list -> Int.Set.t
 val hidden : pat -> bool
-val match_pattern : user_pat_loc -> pat ->
-                    ((identifier * bool) * pat) list * (Constrexpr.constr_expr * pat) list *
-                      (user_pat_loc * constr) list * ((Loc.t option * pat) list)
-val match_patterns :
-  user_pats -> pat list -> ((identifier * bool) * pat) list * (Constrexpr.constr_expr * pat) list *
-                                                   (user_pat_loc * constr) list * ((Loc.t option * pat) list)
-val matches :
-  user_pats -> context_map -> (((identifier * bool) * pat) list * (Constrexpr.constr_expr * pat) list *                       (user_pat_loc * constr) list * (Loc.t option * pat) list)  unif_result
+
+type match_subst =
+  ((identifier * bool) * pat) list * (Glob_term.glob_constr * pat) list *
+  (user_pat_loc * constr) list * ((Loc.t option * pat) list)
+
+val match_pattern : user_pat_loc -> pat -> match_subst
+val match_patterns : user_pats -> pat list -> match_subst
+val matches : user_pats -> context_map -> match_subst unif_result
 val match_user_pattern :
   pat -> user_pat_loc -> (int * user_pat) list * (identifier * pat) list
 val match_user_patterns :

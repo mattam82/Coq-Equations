@@ -23,6 +23,10 @@ open Splitting
 open EConstr
 open EConstr.Vars   
 
+let equations_debug s =
+  if !Equations_common.debug then
+    Feedback.msg_debug (s ())
+
 type int_data = {
   rec_type : rec_type;
   fixdecls : rel_context;
@@ -44,13 +48,15 @@ let rec unify env evd flex g x y =
   else
     match kind evd x with
     | Rel i -> 
-      if Int.Set.mem i flex then
+      if not (isRel evd y) && not (noccurn evd i y) then raise Conflict (* Occur check *)
+      else if Int.Set.mem i flex then
         single_subst env evd i (PInac y) g
       else raise Stuck
     | _ ->
       match kind evd y with
       | Rel i ->
-        if Int.Set.mem i flex then
+        if (* not (isRel evd x) &&  *)not (noccurn evd i x) then raise Conflict (* Occur check *)
+        else if Int.Set.mem i flex then
           single_subst env evd i (PInac x) g
         else raise Stuck
       | _ ->
@@ -99,6 +105,10 @@ and accessibles l =
     Int.Set.empty l
 
 let hidden = function PHide _ -> true | _ -> false
+
+type match_subst =
+  ((identifier * bool) * pat) list * (Glob_term.glob_constr * pat) list *
+  (user_pat_loc * constr) list * ((Loc.t option * pat) list)
 
 let rec match_pattern p c =
   match DAst.get p, c with
@@ -295,22 +305,29 @@ let add_wfrec_implicits rec_type c =
   else c
 
 let interp_constr_evars_impls env sigma data expected_type c =
-  let c = intern_gen expected_type ~impls:data.intenv env sigma c in
   let c = add_wfrec_implicits data.rec_type c in
   let imps = Implicit_quantifiers.implicits_of_glob_constr ~with_products:(expected_type == Pretyping.IsType) c in
   let sigma, c = Pretyping.understand_tcc env sigma ~expected_type c in
   sigma, (c, imps)
 
+let interp_glob_constr_evars_impls env sigma ctx data expected_type c =
+  let sigma, (c, _) = interp_constr_evars_impls env sigma data expected_type c in
+  sigma, c
+
+let expected_type = function
+  | Some ty -> Pretyping.OfType ty
+  | None -> Pretyping.WithoutTypeConstraint
+
 let interp_program_body env sigma ctx data body ty =
   match body with
   | ConstrExpr c ->
     let env = push_rel_context ctx env in
-    let sigma, (c, _) =
-      match ty with
-      | None -> interp_constr_evars_impls env sigma data Pretyping.WithoutTypeConstraint c
-      | Some ty -> interp_constr_evars_impls env sigma data (Pretyping.OfType ty) c
-    in
-    sigma, c
+    let expected_type = expected_type ty in
+    let c = intern_gen expected_type ~impls:data.intenv env sigma c in
+    interp_glob_constr_evars_impls env sigma ctx data expected_type c
+  | GlobConstr c ->
+    let env = push_rel_context ctx env in
+    interp_glob_constr_evars_impls env sigma ctx data (expected_type ty) c
   | Constr c ->
     let env = Environ.reset_with_named_context (Environ.named_context_val env) env in
     let env = push_rel_context ctx env in
@@ -681,12 +698,15 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot
          else Some (Structural (interp_reca rec_annot None))
        else None)
     | Some (Structural lid) ->
-      (try
-         let k, _, _ = lookup_rel_id (snd lid) sign in
-         Some (Structural (interp_reca rec_annot (Some (List.length sign - k, Some lid))))
-       with Not_found ->
-         user_err_loc (Some (fst lid), "struct_index",
-                       Pp.(str"No argument named " ++ Id.print (snd lid) ++ str" found")))
+      (match lid with
+       | Some lid ->
+         (try
+            let k, _, _ = lookup_rel_id (snd lid) sign in
+            Some (Structural (interp_reca rec_annot (Some (List.length sign - k, Some lid))))
+          with Not_found ->
+            user_err_loc (Some (fst lid), "struct_index",
+                          Pp.(str"No argument named " ++ Id.print (snd lid) ++ str" found")))
+       | None -> Some (Structural (interp_reca rec_annot None)))
     | Some (WellFounded (c, r)) -> Some (WellFounded (c, r))
   in
   let body = it_mkLambda_or_LetIn arity sign in
@@ -900,6 +920,8 @@ let compute_rec_data env evars data lets subst p =
     let p = { p with program_sign = p.program_sign @ lets } in
     p, id_subst p.program_sign, p.program_arity, pats_of_sign lets, None
 
+exception UnfaithfulSplit of (Loc.t option * Pp.t)
+
 let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int)) list) path
     (ctx,pats,ctx' as prob) extpats lets ty =
   if !Equations_common.debug then
@@ -950,7 +972,8 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
            | None ->
              user_err_loc
                (dummy_loc, "split_var",
-                str"Clause " ++ pr_preclause env (loc, lhs, Some rhs) ++ str" matched but its interpretation failed")
+                str"Clause " ++ pr_preclause env (loc, lhs, Some rhs) ++
+                str" matched but its interpretation failed")
            | Some s -> Some (List.rev prev @ ((loc,lhs,Some rhs),(idx, cnt+1)) :: clauses', s)))
 
      | UnifFailure ->
@@ -960,55 +983,72 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
      | UnifStuck -> 
        if !Equations_common.debug then Feedback.msg_debug (str "got stuck");
        let blocks = blockers (extpats @ lhs) prob in
-       let try_split acc var =
-         match acc with
-         | None
-         | Some (CannotSplit _) ->
-           (match split_var (env,evars) var (pi1 prob) with
-            | Some (Splitted (var, newctx, s)) ->
-              let prob' = (newctx, pats, ctx') in
-              let coverrec clauses s =
-                covering_aux env evars p data []
-                  clauses path 
-                  (compose_subst env ~sigma:!evars s prob')
-                  extpats
-                  (specialize_rel_context !evars (pi2 s) lets)
-                  (specialize_constr !evars (pi2 s) ty)
-              in
-              (try
-                 let rec_call clauses x =
-                   match x with
-                   | Some s ->
-                     (match coverrec clauses s with
-                      | None -> raise Not_found
-                      | Some (clauses, s) -> clauses, Some s)
-                   | None -> clauses, None
-                 in
-                 let clauses, rest = Array.fold_left_map rec_call (List.rev prev @ clauses) s in
-                 Some (Splitted (clauses, Split (prob', var, ty, rest)))
-               with Not_found -> acc)
-            | Some (CannotSplit _) as x ->
-              begin match acc with
-                | None -> x
-                | _ -> acc
-              end
-            | None -> None)
-         | _ -> acc
+       equations_debug (fun () ->
+           str "blockers are: " ++
+           prlist_with_sep spc (pr_rel_name (push_rel_context (pi1 prob) env)) blocks);
+       let rec try_split acc vars =
+         match vars with
+         | [] -> None
+         | var :: vars ->
+           equations_debug (fun () -> str "trying next blocker " ++
+                                      pr_rel_name (push_rel_context (pi1 prob) env) var);
+           match split_var (env,evars) var (pi1 prob) with
+           | Some (Splitted (var, newctx, s)) ->
+             equations_debug (fun () ->
+                 str "splitting succeded for " ++
+                 pr_rel_name (push_rel_context (pi1 prob) env) var);
+             let prob' = (newctx, pats, ctx') in
+             let coverrec clauses s =
+               covering_aux env evars p data []
+                 clauses path
+                 (compose_subst env ~sigma:!evars s prob')
+                 extpats
+                 (specialize_rel_context !evars (pi2 s) lets)
+                 (specialize_constr !evars (pi2 s) ty)
+             in
+             (try
+                let rec_call clauses x =
+                  match x with (* Succesful split on this blocker *)
+                  | Some s ->
+                    (match coverrec clauses s with
+                     | None -> raise Not_found
+                     | Some (clauses, s) ->
+                       equations_debug (fun _ -> str "covering succeeded");
+                       clauses, Some s)
+                  | None -> clauses, None
+                in
+                let clauses, rest = Array.fold_left_map rec_call (List.rev prev @ clauses) s in
+                Some (Splitted (clauses, Split (prob', var, ty, rest)))
+              with
+              | Not_found ->
+                equations_debug
+                  (fun _ -> str "covering failed to produce a splitting in one of the branches,\
+                                 trying the next one");
+                try_split acc vars
+              | UnfaithfulSplit (loc, pp) ->
+                equations_debug
+                  (fun _ -> str "covering is not faithful to user clauses, trying the next one");
+                try_split acc vars)
+           | Some (CannotSplit _) as x ->
+             equations_debug (fun () ->
+                 str "splitting failed for " ++
+                 pr_rel_name (push_rel_context (pi1 prob) env) var);
+             let acc = match acc with
+               | None -> x
+               | _ -> acc
+             in try_split acc vars
+           | None -> (* Not inductive *) try_split acc vars
        in
-       let result = fold_left try_split None blocks in
+       let result = try_split None blocks in
        (match result with
-       | Some (Splitted (clauses, s)) -> Some (clauses, s)
-       | Some (CannotSplit (id, before, newty)) ->
-           user_err_loc
+        | Some (Splitted (clauses, s)) -> Some (clauses, s)
+        | Some (CannotSplit (id, before, newty)) ->
+          user_err_loc
             (loc, "split_var",
              str"Unable to split variable " ++ Name.print id ++ str" of (reduced) type " ++
              Printer.pr_econstr_env (push_rel_context before env) !evars newty ++ str" to match a user pattern."
              ++ fnl () ++ str "Maybe unification is stuck as it cannot refine a context/section variable.")
        | None -> None))
-           (* user_err_loc
-            *  (loc, "split_var",
-            *   str"Unable to split any variable to match the user patterns: " ++ pr_preclause env (loc, lhs, rhs) ++
-            *   fnl () ++ str "Maybe unification is stuck as it cannot refine a context/section variable."))) *)
   | [] -> (* Every clause failed for the problem, it's either uninhabited or
              the clauses are not exhaustive *)
     match find_empty (env,evars) (pi1 prob) with
@@ -1034,13 +1074,13 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
       (* let ty =
        *   let t = pat_constr t in
        *   let ty = Retyping.get_type_of env !evars t in *)
-      let userc, usercty = interp_constr_in_rhs env ctx evars data None s lets (ConstrExpr user) in
+      let userc, usercty = interp_constr_in_rhs env ctx evars data None s lets (GlobConstr user) in
       match t with
       | PInac t ->
-        begin match Reductionops.infer_conv env' !evars userc t with
-          | evars', true -> evars := evars'
-          | _, false ->
-            CErrors.user_err ?loc:(Constrexpr_ops.constr_loc user) ~hdr:"covering"
+        begin match Evarconv.e_conv env' evars userc t with
+          | true -> ()
+          | false ->
+            CErrors.user_err ?loc:(Glob_ops.loc_of_glob_constr user) ~hdr:"covering"
               (str "Incompatible innaccessible pattern " ++
                Printer.pr_econstr_env env' !evars userc ++
                spc () ++ str "should be convertible to " ++
@@ -1048,11 +1088,12 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
         end
       | _ ->
         let t = pat_constr t in
-        CErrors.user_err ?loc:(Constrexpr_ops.constr_loc user) ~hdr:"covering"
-          (str "Pattern " ++
-           Printer.pr_econstr_env env' !evars userc ++
-           spc () ++ str "is not inaccessible, but should refine pattern " ++
-           Printer.pr_econstr_env env' !evars t)
+        let msg =
+          str "Pattern " ++
+          Printer.pr_econstr_env env' !evars userc ++
+          spc () ++ str "is not inaccessible, but should refine pattern " ++
+          Printer.pr_econstr_env env' !evars t
+        in DAst.with_loc_val (fun ?loc _ -> raise (UnfaithfulSplit (loc, msg))) user
     in
     let check_innac (user, forced) =
       DAst.with_loc_val (fun ?loc user ->

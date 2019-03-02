@@ -11,14 +11,11 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Require Import Arith.
 Require Import Omega.
-From Equations Require Import Equations.
+From Equations Require Import Equations Telescopes.
 Require Import Wellfounded Relation_Definitions.
 Require Import Relation_Operators Lexicographic_Product Wf_nat.
 Unset Implicit Arguments.
 Require Import Program.
-
-Definition MR {A B} (f : A -> B) (R : relation B) : relation A :=
-  fun x y => R (f x) (f y).
 
 Equations? test (n : nat) (pre : n >= 0 ) : { n' : nat | n' <= n }
  by wf n lt :=
@@ -32,7 +29,7 @@ Proof. all:(auto with arith; omega). Defined.
 Module Bug.
   (* FIXME: shrink obligations so that they can apply during induction principle generation *)
   Equations?(noind) test' (n : { n : nat | n >= 0 }) : { n' : nat | n' <= `n }
-  by wf n (MR (@proj1_sig nat (fun x : nat => x >= 0)) lt) :=
+  by wf n (MR lt (@proj1_sig nat (fun x : nat => x >= 0))) :=
   test' (exist _ n p) with n := {
   | 0 := exist _ 0 _;
   | S n' with test' (exist _ n' _) => {

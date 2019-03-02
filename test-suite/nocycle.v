@@ -16,7 +16,7 @@ Proof.
     (* Disjointness of constructors. *)
     + intros H'; noconf H'.
     (* No subterm in a non-recursive constructor. *)
-    + exact I.
+    + simpl. exact tt.
   (* Recursive case. *)
   - split.
     (* Injectivity of constructors. *)
@@ -31,7 +31,7 @@ Proof.
   induction y.
 
   (* Non-recursive case. *)
-  - exact I.
+  - exact tt.
   (* Recursive case. *)
   - apply step_S; apply IHy.
 Qed.
@@ -59,7 +59,7 @@ Module NoCycle_ord.
       (* Disjointness of constructors. *)
       + intros H'; noconf H'.
       (* No subterm in a non-recursive constructor. *)
-      + exact I.
+      + exact tt.
     (* Recursive and interesting case. *)
     - split.
       (* Injectivity of constructors. *)
@@ -82,7 +82,7 @@ Module NoCycle_ord.
       (* Disjointness of constructors. *)
       + intros H'; noconf H'.
       (* No subterm in a non-recursive constructor. *)
-      + exact I.
+      + exact tt.
     (* Recursive and non-interesting case. *)
     - split.
       (* Disjointness of constructors. *)
@@ -102,7 +102,7 @@ Module NoCycle_ord.
     intros ->.
     induction y.
     (* Non-recursive case. *)
-    - exact I.
+    - exact tt.
     (* Recursive case. *)
     - apply step_succ; apply IHy.
     (* Recursive case. *)
@@ -128,7 +128,7 @@ Module NoCycle_tree.
     induction b; intros H.
     - split.
       + intros H'; noconf H'.
-      + exact I.
+      + constructor.
     - split.
       + intros H'; noconf H'.
         apply (fst (snd H)); reflexivity.
@@ -142,7 +142,7 @@ Module NoCycle_tree.
     induction b; intros H.
     - split.
       + intros H'; noconf H'.
-      + exact I.
+      + constructor.
     - split.
       + intros H'; noconf H'.
         apply (fst (fst H)); reflexivity.
@@ -155,7 +155,7 @@ Module NoCycle_tree.
   Proof.
     intros ->.
     induction y.
-    - exact I.
+    - constructor.
     - split.
       + apply step_N2. apply IHy2.
       + apply step_N1. apply IHy1.
@@ -334,7 +334,7 @@ Module NoCycle_dep.
       induction b; intros H.
       - split.
         + exact I.
-        + exact I.
+        + constructor.
       - split.
         + pose proof (fst H). unfold cond_neq in H0.
           destruct (nat_dec n n0).
@@ -355,7 +355,7 @@ Module NoCycle_dep.
       intros ->.
       induction y.
 
-      - exact I.
+      - constructor.
       - apply step_cons; apply IHy.
     Qed.
 

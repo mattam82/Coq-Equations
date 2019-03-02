@@ -27,6 +27,8 @@ src/splitting.mli
 src/splitting.ml
 src/covering.mli
 src/covering.ml
+src/combined_scheme.mli
+src/combined_scheme.ml
 src/principles_proofs.mli
 src/principles_proofs.ml
 src/principles.mli

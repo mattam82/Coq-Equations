@@ -55,7 +55,7 @@ val pr_constr_pat : env -> Evd.evar_map -> constr -> Pp.t
 val pr_pat : env -> Evd.evar_map -> pat -> Pp.t
 val pr_pats : env -> Evd.evar_map -> pat list -> Pp.t
 val pr_context : env -> Evd.evar_map -> rel_context -> Pp.t
-val ppcontext : env -> Evd.evar_map -> rel_context -> unit
+val ppcontext : rel_context -> unit
 val pr_context_map : env -> Evd.evar_map -> context_map -> Pp.t
 val ppcontext_map : env -> Evd.evar_map -> context_map -> unit
 val ppcontext_map_empty : context_map -> unit

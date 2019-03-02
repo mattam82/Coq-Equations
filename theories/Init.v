@@ -23,9 +23,23 @@ Declare ML Module "equations_plugin".
 Delimit Scope equations_scope with equations.
 Local Open Scope equations_scope.
 
+(** Notation for empty patterns. *)
+
 Definition bang := tt.
 Opaque bang.
 Notation "!" := bang.
+
+(** Notation for inaccessible patterns. *)
+
+Definition inaccessible_pattern {A : Type} (t : A) := t.
+
+Module Inaccessible_Notations.
+
+  Notation "?( t )" := (inaccessible_pattern t) (format "?( t )") : equations_scope.
+
+End Inaccessible_Notations.
+
+Import Inaccessible_Notations.
 
 (** A marker for fixpoint prototypes in the context *)
 Definition fixproto := tt.
@@ -65,7 +79,6 @@ Global Obligation Tactic := equations_simpl.
 
 Set Primitive Projections.
 Global Unset Printing Primitive Projection Parameters.
-Global Unset Printing Primitive Projection Compatibility.
 Polymorphic Cumulative Record sigma@{i} {A : Type@{i}} {B : A -> Type@{i}} : Type@{i} :=
   sigmaI { pr1 : A; pr2 : B pr1 }.
 Unset Primitive Projections.
@@ -78,9 +91,9 @@ Set Warnings "-notation-overridden".
 
 Module Sigma_Notations.
 
-Notation "'∃' x .. y , P" := (sigma _ (fun x => .. (sigma _ (fun y => P)) ..))
+Notation "'Σ' x .. y , P" := (sigma _ (fun x => .. (sigma _ (fun y => P)) ..))
   (at level 200, x binder, y binder, right associativity,
-  format "'[  ' '[  ' ∃  x  ..  y ']' ,  '/' P ']'") : type_scope.
+  format "'[  ' '[  ' Σ  x  ..  y ']' ,  '/' P ']'") : type_scope.
 
 Notation "( x , .. , y , z )" :=
   (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
@@ -94,7 +107,7 @@ End Sigma_Notations.
 
 Import Sigma_Notations.
 
-(** The polymorphic equality type used by Equations. *)
+(** The polymorphic equality type used by Equations when working with equality in Type. *)
 
 Set Universe Polymorphism.
 

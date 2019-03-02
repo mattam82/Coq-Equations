@@ -11,6 +11,7 @@
 Require Import Coq.Program.Tactics.
 Require Export Equations.Init.
 Require Import Equations.Signature.
+Require Import Equations.Classes.
 Require Import Equations.EqDec.
 Require Equations.HSets.
 
@@ -64,65 +65,6 @@ Ltac simplify_IH_hyps := repeat
    [Equations] command relative to dependent pattern-matching.
    It is inspired from the "Eliminating Dependent Pattern-Matching" paper by
    Goguen, McBride and McKinna. *)
-
-
-(** The NoConfusionPackage class provides a method for making progress on proving a property
-   [P] implied by an equality on an inductive type [I]. The type of [noConfusion] for a given
-   [P] should be of the form [ Π Δ, (x y : I Δ) (x = y) -> NoConfusion P x y ], where
-   [NoConfusion P x y] for constructor-headed [x] and [y] will give a formula ending in [P].
-   This gives a general method for simplifying by discrimination or injectivity of constructors.
-
-   Some actual instances are defined later in the file using the more primitive [discriminate] and
-   [injection] tactics on which we can always fall back.
-   *)
-
-Class NoConfusionPackage (A : Type) := {
-  NoConfusion : A -> A -> Prop;
-  noConfusion : forall {a b}, a = b -> NoConfusion a b;
-  noConfusion_inv : forall {a b}, NoConfusion a b -> a = b;
-  noConfusion_is_equiv : forall {a b} (e : a = b), noConfusion_inv (noConfusion e) = e;
-}.
-
-Polymorphic Class NoConfusionIdPackage (A : Type) := {
-  NoConfusionId : A -> A -> Type;
-  noConfusionId : forall {a b}, Id a b -> NoConfusionId a b;
-  noConfusionId_inv : forall {a b}, NoConfusionId a b -> Id a b;
-  noConfusionId_is_equiv : forall {a b} (e : Id a b), Id (noConfusionId_inv (noConfusionId e)) e;
-}.
-
-Lemma apply_noConfusion {A} {noconf : NoConfusionPackage A}
-      (p q : A) {B : p = q -> Type} :
-  (forall H : NoConfusion p q, B (noConfusion_inv H)) -> (forall H : p = q, B H).
-Proof.
-  intros. generalize (noConfusion_is_equiv H).
-  intros e. destruct e. apply X.
-Defined.
-Extraction Inline apply_noConfusion.
-
-Polymorphic
-Lemma apply_noConfusionId {A} {noconf : NoConfusionIdPackage A}
-      (p q : A) {B : Id p q -> Type} :
-  (forall e : NoConfusionId p q, B (noConfusionId_inv e)) -> (forall e : Id p q, B e).
-Proof.
-  intros. generalize (noConfusionId_is_equiv e). destruct e.
-  intros <-. apply X.
-Defined.
-Extraction Inline apply_noConfusionId.
-
-(** Apply [noConfusion] on a given hypothsis. *)
-
-Ltac noconf_ref H :=
-  match type of H with
-    @eq ?A ?X ?Y =>
-      let H' := fresh in assert (H':=noConfusion (A:=A) (a:=X) (b:=Y) H) ;
-      clear H; hnf in H'; 
-      match type of H' with
-      | True => clear H'
-      | False => elim H'
-      | @eq _ _ _ => revert dependent H'
-      | _ => fail
-      end
-  end.
 
 Lemma False_rect_dep (P : False -> Type) : forall e : False, P e.
 Proof. intros e. destruct e. Defined.
@@ -246,55 +188,6 @@ Polymorphic
 Lemma Id_deletion : forall {A B} (t : A), B -> (Id t t -> B).
 Proof. intros; assumption. Defined.
 
-(** If we have decidable equality on [A] we use this version which is 
-   axiom-free! *)
-
-Polymorphic Lemma simplification_sigma2_dec@{i j} : forall {A : Type@{i}} `{EqDec A} {P : A -> Type@{i}}
-                                                           {B : Type@{j}}
-    (p : A) (x y : P p),
-    (x = y -> B) -> ((p , x) = (p, y) -> B).
-Proof. intros. apply X. apply inj_right_sigma in H0. assumption. Defined.
-
-Polymorphic Lemma simplification_sigma2_dec_refl@{i j} :
-  forall {A : Type@{i}} {eqdec:EqDec A} {P : A -> Type@{i}} {B : Type@{j}}
-    (p : A) (x : P p) (G : x = x -> B),
-      @simplification_sigma2_dec A eqdec P B p x x G eq_refl = G eq_refl.
-Proof.
-  intros. unfold simplification_sigma2_dec.
-  rewrite inj_right_sigma_refl. reflexivity.
-Defined.
-Arguments simplification_sigma2_dec : simpl never.
-
-Polymorphic Lemma simplification_sigma2_dec_point :
-  forall {A : Type} (p : A) `{EqDecPoint A p} {P : A -> Type} {B : Type}
-    (x y : P p),
-    (x = y -> B) -> ((p, x) = (p, y) -> B).
-Proof. intros. apply X. apply inj_right_sigma_point in H0. assumption. Defined.
-
-Polymorphic Lemma simplification_sigma2_dec_point_refl@{i +} :
-  forall {A} (p : A) `{eqdec:EqDecPoint A p} {P : A -> Type} {B}
-    (x : P p) (G : x = x -> B),
-      @simplification_sigma2_dec_point A p eqdec P B x x G eq_refl = G eq_refl.
-Proof.
-  intros. unfold simplification_sigma2_dec_point.
-  rewrite inj_right_sigma_refl_point. reflexivity.
-Defined.
-Arguments simplification_sigma2_dec_point : simpl never.
-
-Polymorphic Lemma Id_simplification_sigma2@{i j} :
-  forall {A : Type@{i}} `{HSets.HSet A} {P : A -> Type@{i}} {B : Type@{j}}
-         (p : A) (x y : P p),
-  (Id x y -> B) -> (Id (p, x) (p, y) -> B).
-Proof. intros. apply X. apply HSets.inj_sigma_r. exact X0. Defined.
-
-Polymorphic
-Lemma Id_simplification_sigma2_refl {A} `{HSets.HSet A} {P : A -> Type} {B}
-(p : A) (x : P p) (e : Id x x -> B) :
-  Id_simplification_sigma2 p x x e id_refl = e id_refl.
-Proof.
-  intros. unfold Id_simplification_sigma2.
-  now rewrite HSets.inj_sigma_r_refl.
-Defined.
 
 Lemma simplification_existT1 : forall {A} {P : A -> Type} {B} (p q : A) (x : P p) (y : P q),
   (p = q -> existT P p x = existT P q y -> B) -> (existT P p x = existT P q y -> B).
@@ -436,7 +329,7 @@ Proof.
   change y with (pr2 (q, y)) at 4 6.
   destruct e.
   intros X. simpl in *.
-  apply (X eq_refl eq_refl). 
+  apply (X eq_refl eq_refl).
 Defined.
 
 Polymorphic Definition pack_sigma_Id {A} {P : A -> Type} {p q : A} {x : P p} {y : P q}
@@ -471,20 +364,88 @@ Proof.
   intros X. eapply (X id_refl). apply id_refl.
 Defined.
 
-Lemma simplification_K_dec : forall {A} `{EqDec A} (x : A) {B : x = x -> Type},
-  B eq_refl -> (forall p : x = x, B p).
-Proof. intros. apply K_dec. assumption. Defined.
-Arguments simplification_K_dec : simpl never.
+Polymorphic Lemma pr2_inv_uip@{i} {A : Type@{i}}
+            {P : A -> Type@{i}} {x : A} {y y' : P x} :
+  y = y' -> sigmaI@{i} P x y = sigmaI@{i} P x y'.
+Proof. exact (solution_right (B:=fun y' => (x, y) = (x, y')) y eq_refl y'). Defined.
 
-Lemma simplification_K_dec_refl : forall {A} `{EqDec A} (x : A) {B : x = x -> Type}
+Polymorphic Lemma pr2_uip@{i} {A : Type@{i}}
+            {E : UIP A} {P : A -> Type@{i}} {x : A} {y y' : P x} :
+  sigmaI@{i} P x y = sigmaI@{i} P x y' -> y = y'.
+Proof.
+  refine (eq_simplification_sigma1_dep_dep@{i i} _ _ _ _ _).
+  intros e'. destruct (uip eq_refl e'). intros e ; exact e.
+Defined.
+
+Polymorphic Lemma pr2_uip_refl@{i} {A : Type@{i}}
+            {E : UIP A} (P : A -> Type@{i}) (x : A) (y : P x) :
+  pr2_uip@{i} (@eq_refl _ (x, y)) = eq_refl.
+Proof.
+  unfold pr2_uip, eq_simplification_sigma1_dep_dep.
+  now rewrite uip_refl_refl.
+Defined.
+
+(** If we have decidable equality on [A] we use this version which is 
+   axiom-free! *)
+Set Printing Universes.
+Polymorphic Lemma simplification_sigma2_uip@{i j} : forall {A : Type@{i}} `{UIP A} {P : A -> Type@{i}}
+                                                           {B : Type@{j}}
+    (p : A) (x y : P p),
+    (x = y -> B) -> ((p , x) = (p, y) -> B).
+Proof. intros. apply X. apply pr2_uip@{i} in H0. assumption. Defined.
+
+Polymorphic Lemma simplification_sigma2_uip_refl@{i j} :
+  forall {A : Type@{i}} {uip:UIP A} {P : A -> Type@{i}} {B : Type@{j}}
+    (p : A) (x : P p) (G : x = x -> B),
+      @simplification_sigma2_uip A uip P B p x x G eq_refl = G eq_refl.
+Proof.
+  intros. unfold simplification_sigma2_uip. now rewrite pr2_uip_refl.
+Defined.
+
+Arguments simplification_sigma2_uip : simpl never.
+
+Polymorphic Lemma simplification_sigma2_dec_point :
+  forall {A : Type} (p : A) `{EqDecPoint A p} {P : A -> Type} {B : Type}
+    (x y : P p),
+    (x = y -> B) -> ((p, x) = (p, y) -> B).
+Proof. intros. apply X. apply inj_right_sigma_point in H0. assumption. Defined.
+
+Polymorphic Lemma simplification_sigma2_dec_point_refl@{i +} :
+  forall {A} (p : A) `{eqdec:EqDecPoint A p} {P : A -> Type} {B}
+    (x : P p) (G : x = x -> B),
+      @simplification_sigma2_dec_point A p eqdec P B x x G eq_refl = G eq_refl.
+Proof.
+  intros. unfold simplification_sigma2_dec_point.
+  rewrite inj_right_sigma_refl_point. reflexivity.
+Defined.
+Arguments simplification_sigma2_dec_point : simpl never.
+
+Polymorphic Lemma Id_simplification_sigma2@{i j} :
+  forall {A : Type@{i}} `{HSets.HSet A} {P : A -> Type@{i}} {B : Type@{j}}
+         (p : A) (x y : P p),
+  (Id x y -> B) -> (Id (p, x) (p, y) -> B).
+Proof. intros. apply X. apply HSets.inj_sigma_r. exact X0. Defined.
+
+Polymorphic
+Lemma Id_simplification_sigma2_refl {A} `{HSets.HSet A} {P : A -> Type} {B}
+(p : A) (x : P p) (e : Id x x -> B) :
+  Id_simplification_sigma2 p x x e id_refl = e id_refl.
+Proof.
+  intros. unfold Id_simplification_sigma2.
+  now rewrite HSets.inj_sigma_r_refl.
+Defined.
+
+Polymorphic Lemma simplification_K_uip {A} `{UIP A} (x : A) {B : x = x -> Type} :
+  B eq_refl -> (forall p : x = x, B p).
+Proof. apply UIP_K. Defined.
+Arguments simplification_K_uip : simpl never.
+
+Lemma simplification_K_uip_refl : forall {A} `{UIP A} (x : A) {B : x = x -> Type}
                                     (p : B eq_refl),
-  simplification_K_dec x p eq_refl = p.
+  simplification_K_uip x p eq_refl = p.
 Proof.
   intros.
-  unfold simplification_K_dec, K_dec.
-  set (pf := eq_proofs_unicity eq_refl eq_refl).
-  destruct (eq_proofs_unicity eq_refl pf).
-  reflexivity.
+  unfold simplification_K_uip, UIP_K. now rewrite uip_refl_refl.
 Defined.
 
 Polymorphic
@@ -503,39 +464,29 @@ Defined.
 
 Polymorphic
 Definition ind_pack_eq@{i} {A : Type@{i}} {B : A -> Type@{i}} {x : A} {p q : B x} (e : p = q) :
-  @eq (sigma A (fun x => B x)) (x, p) (x, q).
-Proof. destruct e. reflexivity. Defined.
+  @eq (sigma A (fun x => B x)) (x, p) (x, q) :=
+  (pr2_inv_uip e).
+(* ind_pack_eq = pr2_inv_uip *)
+(* ind pack eq_inv = pr2_uip *)
 
 Polymorphic
-Definition ind_pack_eq_inv@{i} {A : Type@{i}} {eqdec : EqDec A}
-           {B : A -> Type@{i}} (x : A) (p q : B x) (e : @eq (sigma A (fun x => B x)) (x, p) (x, q)) : p = q.
-Proof. revert e. apply simplification_sigma2_dec@{i i}. apply id. Defined.
-
-Polymorphic
-Definition ind_pack_eq_inv_refl@{i} {A : Type@{i}} {eqdec : EqDec A}
-           {B : A -> Type@{i}} {x : A} (p : B x) :
-  ind_pack_eq_inv _ _ _ (@eq_refl _ (x, p)) = eq_refl.
-Proof.
-  unfold ind_pack_eq_inv. simpl. unfold simplification_sigma2_dec.
-  unfold id. apply inj_right_sigma_refl.
-Defined.
-
-Polymorphic
-Definition ind_pack_eq_inv_equiv@{i} {A : Type@{i}} {eqdec : EqDec A}
+Definition ind_pack_eq_inv_equiv@{i} {A : Type@{i}} {uip : UIP A}
            {B : A -> Type@{i}} {x : A} (p q : B x) (e : p = q) :
-  ind_pack_eq_inv _ _ _ (ind_pack_eq e) = e.
+  pr2_uip (pr2_inv_uip e) = e.
 Proof.
-  destruct e. apply ind_pack_eq_inv_refl. 
+  destruct e. apply pr2_uip_refl.
 Defined.
 
 Polymorphic
-Definition opaque_ind_pack_eq_inv@{i j} {A : Type@{i}} {eqdec : EqDec A}
+Definition opaque_ind_pack_eq_inv@{i j} {A : Type@{i}} {uip : UIP A}
   {B : A -> Type@{i}} {x : A} {p q : B x} (G : p = q -> Type@{j}) (e : (x, p) = (x, q)) :=
-  let e' := @ind_pack_eq_inv A eqdec B x p q e in G e'.
+  G (pr2_uip@{i} e).
 Arguments opaque_ind_pack_eq_inv : simpl never.
+Arguments pr2_uip : simpl never.
+Arguments pr2_inv_uip : simpl never.
 
 Polymorphic
-Lemma simplify_ind_pack@{i j} {A : Type@{i}} {eqdec : EqDec A}
+Lemma simplify_ind_pack@{i j} {A : Type@{i}} {uip : UIP A}
       (B : A -> Type@{i}) (x : A) (p q : B x) (G : p = q -> Type@{j}) :
       (forall e : (x, p) = (x, q), opaque_ind_pack_eq_inv G e) ->
   (forall e : p = q, G e).
@@ -547,24 +498,23 @@ Defined.
 Arguments simplify_ind_pack : simpl never.
 
 Polymorphic
-Lemma simplify_ind_pack_inv@{i j} {A : Type@{i}} {eqdec : EqDec A}
+Lemma simplify_ind_pack_inv@{i j} {A : Type@{i}} {uip : UIP A}
       (B : A -> Type@{i}) (x : A) (p : B x) (G : p = p -> Type@{j}) :
   G eq_refl -> opaque_ind_pack_eq_inv G eq_refl.
 Proof.
-  intros H. unfold opaque_ind_pack_eq_inv.
-  rewrite ind_pack_eq_inv_refl. apply H.
+  intros H. unfold opaque_ind_pack_eq_inv. destruct (pr2_uip_refl B x p). exact H.
 Defined.
 Arguments simplify_ind_pack_inv : simpl never.
 
 Polymorphic
-Definition simplified_ind_pack@{i j} {A : Type@{i}} {eqdec : EqDec A}
+Definition simplified_ind_pack@{i j} {A : Type@{i}} {uip : UIP A}
   (B : A -> Type@{i}) (x : A) (p : B x) (G : p = p -> Type@{j})
   (t : opaque_ind_pack_eq_inv G eq_refl) :=
-  eq_rect _ G t _ (@ind_pack_eq_inv_refl A eqdec B x p).
+  eq_rect _ G t _ (@pr2_uip_refl A uip B x p).
 Arguments simplified_ind_pack : simpl never.
 
 Polymorphic
-Lemma simplify_ind_pack_refl@{i j} {A : Type@{i}} {eqdec : EqDec A}
+Lemma simplify_ind_pack_refl@{i j} {A : Type@{i}} {uip : UIP A}
 (B : A -> Type@{i}) (x : A) (p : B x) (G : p = p -> Type@{j})
 (t : forall (e : (x, p) = (x, p)), opaque_ind_pack_eq_inv G e) :
   simplify_ind_pack B x p p G t eq_refl =
@@ -572,13 +522,13 @@ Lemma simplify_ind_pack_refl@{i j} {A : Type@{i}} {eqdec : EqDec A}
 Proof. reflexivity. Qed.
 
 Polymorphic
-Lemma simplify_ind_pack_elim@{i j} {A : Type@{i}} {eqdec : EqDec A}
+Lemma simplify_ind_pack_elim@{i j} {A : Type@{i}} {uip : UIP A}
   (B : A -> Type@{i}) (x : A) (p : B x) (G : p = p -> Type@{j})
   (t : G eq_refl) :
   simplified_ind_pack B x p G (simplify_ind_pack_inv B x p G t) = t.
 Proof.
   unfold simplified_ind_pack, simplify_ind_pack_inv.
-  destruct (ind_pack_eq_inv_refl p). reflexivity.
+  now destruct (pr2_uip_refl B x p).
 Qed.
 
 (** For the Id equality type *)
@@ -589,12 +539,12 @@ Definition ind_pack_Id {A : Type} {B : A -> Type} {x : A} {p q : B x} (e : Id p 
 Proof. destruct e. reflexivity. Defined.
 
 Polymorphic
-Definition ind_pack_Id_inv {A : Type} {eqdec : HSets.HSet A}
+Definition ind_pack_Id_inv {A : Type} {uip : HSets.HSet A}
            {B : A -> Type} (x : A) (p q : B x) (e : @Id (sigma A (fun x => B x)) (x, p) (x, q)) : Id p q.
 Proof. revert e. apply Id_simplification_sigma2. apply id. Defined.
 
 Polymorphic
-Definition ind_pack_Id_inv_refl  {A : Type} {eqdec : HSets.HSet A}
+Definition ind_pack_Id_inv_refl  {A : Type} {uip : HSets.HSet A}
            {B : A -> Type} {x : A} (p : B x) :
   Id (ind_pack_Id_inv _ _ _ (@id_refl _ (x, p))) id_refl.
 Proof.
@@ -603,7 +553,7 @@ Proof.
 Defined.
 
 Polymorphic
-Definition ind_pack_Id_inv_equiv {A : Type} {eqdec : HSets.HSet A}
+Definition ind_pack_Id_inv_equiv {A : Type} {uip : HSets.HSet A}
            {B : A -> Type} {x : A} (p q : B x) (e : Id p q) :
   Id (ind_pack_Id_inv _ _ _ (ind_pack_Id e)) e.
 Proof.
@@ -611,13 +561,13 @@ Proof.
 Defined.
 
 Polymorphic
-Definition opaque_ind_pack_Id_inv {A : Type} {eqdec : HSets.HSet A}
+Definition opaque_ind_pack_Id_inv {A : Type} {uip : HSets.HSet A}
   {B : A -> Type} {x : A} {p q : B x} (G : Id p q -> Type) (e : Id (x, p) (x, q)) :=
-  let e' := @ind_pack_Id_inv A eqdec B x p q e in G e'.
+  let e' := @ind_pack_Id_inv A uip B x p q e in G e'.
 Arguments opaque_ind_pack_Id_inv : simpl never.
 
 Polymorphic
-Lemma Id_simplify_ind_pack {A : Type} {eqdec : HSets.HSet A}
+Lemma Id_simplify_ind_pack {A : Type} {uip : HSets.HSet A}
       (B : A -> Type) (x : A) (p q : B x) (G : Id p q -> Type) :
       (forall e : Id (x, p) (x, q), opaque_ind_pack_Id_inv G e) ->
   (forall e : Id p q, G e).
@@ -629,7 +579,7 @@ Defined.
 Arguments Id_simplify_ind_pack : simpl never.
 
 Polymorphic
-Lemma Id_simplify_ind_pack_inv {A : Type} {eqdec : HSets.HSet A}
+Lemma Id_simplify_ind_pack_inv {A : Type} {uip : HSets.HSet A}
       (B : A -> Type) (x : A) (p : B x) (G : Id p p -> Type) :
   G id_refl -> opaque_ind_pack_Id_inv G id_refl.
 Proof.
@@ -643,9 +593,9 @@ Arguments Id_simplify_ind_pack_inv : simpl never.
   when proving lemmas about definitions. To actually compute with these
   inside Coq, one has to make them transparent again. *)
 
-Global Opaque simplification_sigma2_dec
+Global Opaque simplification_sigma2_uip
        simplification_sigma2_dec_point
-       simplification_K_dec
+       simplification_K_uip
        simplify_ind_pack simplified_ind_pack Id_simplification_sigma2.
 Global Opaque opaque_ind_pack_eq_inv.
 
@@ -657,14 +607,14 @@ Ltac rewrite_sigma2_refl_noK :=
   | |- context [@Id_simplification_sigma2 ?A ?H ?P ?B ?p ?x ?y ?X id_refl] =>
     rewrite (@Id_simplification_sigma2_refl A H P B p x X); simpl
 
-  | |- context [@simplification_sigma2_dec ?A ?H ?P ?B ?p ?x ?y ?X eq_refl] =>
-    rewrite (@simplification_sigma2_dec_refl A H P B p x X); simpl
+  | |- context [@simplification_sigma2_uip ?A ?H ?P ?B ?p ?x ?y ?X eq_refl] =>
+    rewrite (@simplification_sigma2_uip_refl A H P B p x X); simpl
 
   | |- context [@simplification_sigma2_dec_point ?A ?p ?H ?P ?B ?x ?y ?X eq_refl] =>
     rewrite (@simplification_sigma2_dec_point_refl A p H P B x X); simpl
 
-  | |- context [@simplification_K_dec ?A ?dec ?x ?B ?p eq_refl] =>
-    rewrite (@simplification_K_dec_refl A dec x B p); simpl eq_rect
+  | |- context [@simplification_K_uip ?A ?dec ?x ?B ?p eq_refl] =>
+    rewrite (@simplification_K_uip_refl A dec x B p); simpl eq_rect
 
   | |- context [@Id_simplification_K ?A ?dec ?x ?B ?p id_refl] =>
     rewrite (@Id_simplification_K_refl A dec x B p); simpl Id_rect
@@ -672,12 +622,12 @@ Ltac rewrite_sigma2_refl_noK :=
   | |- context [@HSets.inj_sigma_r ?A ?H ?P ?x ?y ?y' _] =>
     rewrite (@HSets.inj_sigma_r_refl A H P x y)
 
-  | |- context [@simplify_ind_pack ?A ?eqdec ?B ?x ?p _ ?G _ eq_refl] =>
-    rewrite (@simplify_ind_pack_refl A eqdec B x p G _)
+  | |- context [@simplify_ind_pack ?A ?uip ?B ?x ?p _ ?G _ eq_refl] =>
+    rewrite (@simplify_ind_pack_refl A uip B x p G _)
 
-  | |- context [@simplified_ind_pack ?A ?eqdec ?B ?x ?p ?G
+  | |- context [@simplified_ind_pack ?A ?uip ?B ?x ?p ?G
         (simplify_ind_pack_inv _ _ _ _ ?t)] =>
-    rewrite (@simplify_ind_pack_elim A eqdec B x p G t)
+    rewrite (@simplify_ind_pack_elim A uip B x p G t)
   end.
 
 Ltac rewrite_sigma2_refl := rewrite_sigma2_refl_noK.
@@ -703,8 +653,8 @@ Extraction Inline solution_right_dep solution_right solution_left solution_left_
 Extraction Inline eq_sym_invol eq_symmetry_dep.
 Extraction Inline solution_right_let solution_left_let deletion.
 Extraction Inline simplification_existT1.
-Extraction Inline simplification_sigma1 simplification_sigma2_dec.
-Extraction Inline simplification_K_dec.
+Extraction Inline simplification_sigma1 simplification_sigma2_uip.
+Extraction Inline simplification_K_uip.
 Extraction Inline Id_solution_right_dep Id_solution_right Id_solution_left Id_solution_left_dep.
 Extraction Inline Id_solution_right_let Id_solution_left_let Id_deletion.
 Extraction Inline eq_simplification_sigma1 eq_simplification_sigma1_dep.
@@ -753,8 +703,8 @@ Ltac simplify_one_dep_elim :=
     | [ |- context [@eq_rect_dep_r _ _ _ _ _ eq_refl]] => simpl eq_rect_dep_r
     | [ |- context [@Id_rect_dep_r _ _ _ _ _ id_refl]] => simpl Id_rect_dep_r
     | [ |- context [noConfusion_inv _]] => simpl noConfusion_inv
-    | [ |- @opaque_ind_pack_eq_inv ?A ?eqdec ?B ?x ?p _ ?G eq_refl] =>
-            apply (@simplify_ind_pack_inv A eqdec B x p G)
+    | [ |- @opaque_ind_pack_eq_inv ?A ?uip ?B ?x ?p _ ?G eq_refl] =>
+            apply (@simplify_ind_pack_inv A uip B x p G)
     | [ |- let _ := block in _ ] => fail 1
     | [ |- _ ] => (simplify * || simplify ?); cbv beta
     | [ |- _ -> ?B ] => let ty := type of B in (* Works only with non-dependent products *)
@@ -881,18 +831,6 @@ Ltac destruct_last :=
   on_last_hyp ltac:(fun id => simpl in id ; generalize_by_eqs id ; destruct id).
 
 (** The rest is support tactics for the [Equations] command. *)
-
-(** Notation for inaccessible patterns. *)
-
-Definition inaccessible_pattern {A : Type} (t : A) := t.
-
-Module Inaccessible_Notations.
-
-  Notation "?( t )" := (inaccessible_pattern t) (format "?( t )") : equations_scope.
-
-End Inaccessible_Notations.
-
-Import Inaccessible_Notations.
 
 Definition hide_pattern {A : Type} (t : A) := t.
 
@@ -1136,21 +1074,6 @@ Tactic Notation "dependent" "induction" ident(H) "generalizing" ne_hyp_list(l) :
 Tactic Notation "dependent" "induction" ident(H) "generalizing" ne_hyp_list(l) "using" constr(c) := 
   do_depelim' ltac:(fun hyp => generalize l ; clear l ; induction hyp using c) H.
 
-(** For treating impossible cases. Equations corresponding to impossible
-   calls form instances of [ImpossibleCall (f args)]. *)
-
-Class ImpossibleCall {A : Type} (a : A) : Type :=
-  is_impossible_call : False.
-
-(** We have a trivial elimination operator for impossible calls. *)
-
-Definition elim_impossible_call {A} (a : A) {imp : ImpossibleCall a} (P : A -> Type) : P a :=
-  match is_impossible_call with end.
-
-(** The tactic tries to find a call of [f] and eliminate it. *)
-
-Ltac impossible_call f := on_call f ltac:(fun t => apply (elim_impossible_call t)).
-
 (** [solve_equation] is used to prove the equation lemmas for an existing definition.  *)
 
 Ltac find_empty := simpl in * ; elimtype False ;
@@ -1214,16 +1137,16 @@ Ltac rewrite_sigma2_rule_noK c :=
   match c with
   | @inj_right_sigma ?A ?H ?x ?P ?y ?y' _ =>
     rewrite (@inj_right_sigma_refl A H x P y)
-  | @simplify_ind_pack ?A ?eqdec ?B ?x ?p _ ?G _ eq_refl=>
-    rewrite (@simplify_ind_pack_refl A eqdec B x p G _)
+  | @simplify_ind_pack ?A ?uip ?B ?x ?p _ ?G _ eq_refl=>
+    rewrite (@simplify_ind_pack_refl A uip B x p G _)
   | @Id_simplification_sigma2 ?A ?H ?P ?B ?p ?x ?y ?X id_refl=>
     rewrite (@Id_simplification_sigma2_refl A H P B p x X); simpl
-  | @simplification_sigma2_dec ?A ?H ?P ?B ?p ?x ?y ?X eq_refl=>
-    rewrite (@simplification_sigma2_dec_refl A H P B p x X); simpl
+  | @simplification_sigma2_uip ?A ?H ?P ?B ?p ?x ?y ?X eq_refl=>
+    rewrite (@simplification_sigma2_uip_refl A H P B p x X); simpl
   | @simplification_sigma2_dec_point ?A ?p ?H ?P ?B ?x ?y ?X eq_refl=>
     rewrite (@simplification_sigma2_dec_point_refl A p H P B x X); simpl
-  | @simplification_K_dec ?A ?dec ?x ?B ?p eq_refl=>
-    rewrite (@simplification_K_dec_refl A dec x B p); simpl eq_rect
+  | @simplification_K_uip ?A ?dec ?x ?B ?p eq_refl=>
+    rewrite (@simplification_K_uip_refl A dec x B p); simpl eq_rect
   | @HSets.inj_sigma_r ?A ?H ?P ?x ?y ?y' _=>
     rewrite (@HSets.inj_sigma_r_refl A H P x y)
   end.

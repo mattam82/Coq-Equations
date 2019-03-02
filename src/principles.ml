@@ -419,7 +419,7 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
   in
   let newctx' = clear_ind_assums !evd k newctx in
   if leninds == 1 then List.length newctx', it_mkProd_or_LetIn newarity newctx' else
-  let sort = fresh_logic_sort evd in
+  let sort = fresh_sort_in_family evd Sorts.InType in
   let methods, preds = CList.chop (List.length newctx - leninds) newctx' in
   let ppred, preds = CList.sep_last preds in
   let newpredfn i d (idx, (f', alias, path, sign, arity, pats, args, (refine, cut)), _) =
@@ -1110,15 +1110,10 @@ let constr_of_global_univ gr u =
 
 let declare_funelim info env evd is_rec protos progs
                     ind_stmts all_stmts sign app subst inds kn comb
-                    indgr ectx =
+                    sort indgr ectx =
   let id = Id.of_string info.base_id in
   let leninds = List.length inds in
-  let elim =
-    if leninds > 1 || Lazy.force logic_sort != Sorts.InProp then comb
-    else
-      let elimid = Nameops.add_suffix id "_ind_ind" in
-      Smartlocate.global_with_alias (CAst.make (Libnames.(Qualid (qualid_of_ident elimid))))
-  in
+  let elim = comb in
   let elimc, elimty =
     let elimty, uctx = Global.type_of_global_in_context (Global.env ()) elim in
     let () = evd := Evd.from_env (Global.env ()) in
@@ -1158,20 +1153,26 @@ let declare_funelim info env evd is_rec protos progs
     ignore(Equations_common.declare_instance instid poly evd [] cl args)
   in
   let tactic = ind_elim_tac elimc leninds (List.length progs) info indgr in
-  let _ = e_type_of (Global.env ()) evd newty in
+  let _ =
+    try e_type_of (Global.env ()) evd newty
+    with Type_errors.TypeError (env, tyerr) ->
+      CErrors.user_err Pp.(str"Error while typechecking elimination principle type: " ++
+                           Himsg.explain_pretype_error env !evd
+                             (Pretype_errors.TypingError (Himsg.map_ptype_error EConstr.of_constr tyerr)))
+  in
   ignore(Obligations.add_definition (Nameops.add_suffix id "_elim")
                                     ~tactic ~hook:(Lemmas.mk_hook hookelim) ~kind:info.decl_kind
                                     (to_constr !evd newty) (Evd.evar_universe_context !evd) [||])
 
-let mkConj evd x y =
-  let prod = get_efresh logic_conj evd in
+let mkConj evd sort x y =
+  let prod = get_efresh logic_product evd in
     mkApp (prod, [| x; y |])
 
 let declare_funind info alias env evd is_rec protos progs
-                   ind_stmts all_stmts sign inds kn comb f split ind =
+                   ind_stmts all_stmts sign inds kn comb sort f split ind =
   let poly = is_polymorphic info.term_info in
   let id = Id.of_string info.term_info.base_id in
-  let indid = Nameops.add_suffix id "_ind_fun" in
+  let indid = Nameops.add_suffix id "_graph_correct" in
   (* Record nested statements which can be repeated during the proof *)
   let nested_statements = ref [] in
   let statement =
@@ -1185,7 +1186,7 @@ let declare_funind info alias env evd is_rec protos progs
       let args = extended_rel_list 0 sign in
       let app = applist (f, args) in
       let ind = Nameops.add_suffix (path_id path)(* Id.of_string info.term_info.base_id) *)
-                                   ("_ind" (* ^ if i == 0 then "" else "_" ^ string_of_int i *)) in
+                                   ("_graph" (* ^ if i == 0 then "" else "_" ^ string_of_int i *)) in
       let indt = e_new_global evd (global_reference ind) in
       let ty = it_mkProd_or_subst env !evd (applist (indt, args @ [app])) sign in
       let (prog, _, _, _) = List.find (fun (p, _, _, _) -> Id.equal p.program_info.program_id (path_id path)) progs in
@@ -1205,7 +1206,7 @@ let declare_funind info alias env evd is_rec protos progs
          in aux ind_stmts
        in
        List.fold_right (fun x acc -> match stmt x with
-                                     | Some t -> mkConj evd t acc
+                                     | Some t -> mkConj evd sort t acc
                                      | None -> acc) last l
   in
   let args = Termops.rel_list 0 (List.length sign) in
@@ -1221,10 +1222,13 @@ let declare_funind info alias env evd is_rec protos progs
                     (Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef indgr]);
     let () =
       try declare_funelim info.term_info env evd is_rec protos progs
-            ind_stmts all_stmts sign app subst inds kn comb indgr ectx
-      with e ->
-        Feedback.msg_warning Pp.(str "Elimination principle could not be proved automatically: " ++ fnl () ++
-                                 CErrors.print e);
+            ind_stmts all_stmts sign app subst inds kn comb sort indgr ectx
+      with Type_errors.TypeError (env, tyerr) ->
+        CErrors.user_err Pp.(str"Elimination principle could not be proved automatically: " ++
+                             Himsg.explain_pretype_error env !evd
+                               (Pretype_errors.TypingError (Himsg.map_ptype_error EConstr.of_constr tyerr)))
+         | e -> Feedback.msg_warning Pp.(str "Elimination principle could not be proved automatically: " ++ fnl () ++
+                                         CErrors.print e);
     in
     let evd = Evd.from_env env in
     let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in
@@ -1438,8 +1442,8 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
   in
   let all_stmts = List.concat (List.map (fun (f, c) -> c) stmts) in
   let fnind_map = ref PathMap.empty in
-  let declare_one_ind (i, (f, alias, path, sign, arity, pats, refs, refine), stmts) =
-    let indid = Nameops.add_suffix (path_id path) "_ind" (* (if i == 0 then "_ind" else ("_ind_" ^ string_of_int i)) *) in
+  let declare_one_ind (inds, sorts) (i, (f, alias, path, sign, arity, pats, refs, refine), stmts) =
+    let indid = Nameops.add_suffix (path_id path) "_graph" (* (if i == 0 then "_ind" else ("_ind_" ^ string_of_int i)) *) in
     let indapp = List.rev_map (fun x -> Constr.mkVar (Nameops.Name.get_id (get_name x))) sign in
     let () = fnind_map := PathMap.add path (indid,indapp) !fnind_map in
     let constructors = CList.map_filter (fun (_, (_, _, _, n)) -> Option.map (to_constr !evd) n) stmts in
@@ -1449,23 +1453,29 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
           Nameops.add_suffix indid suff) n) stmts
     in
     let ind_sort =
-      if Lazy.force logic_sort == Sorts.InProp then
-        (* Define graph impredicatively *)
-        mkProp
-      else (* Compute sort as max of products *)
-        let ctx = (of_tuple (Anonymous, None, arity) :: sign) in
-        let signlev = level_of_context env !evd ctx Univ.type0m_univ in
-        mkSort (Sorts.sort_of_univ signlev)
+      let ctx = (of_tuple (Anonymous, None, arity) :: sign) in
+      let signlev = level_of_context env !evd ctx sorts in
+      signlev
     in
-    (* let fullsign, arity = Reductionops.splay_prod_assum (push_rel_context sign env) !evd arity in *)
+    let entry =
       Entries.{ mind_entry_typename = indid;
-        mind_entry_arity = to_constr !evd (it_mkProd_or_LetIn (mkProd (Anonymous, arity, ind_sort)) (sign));
-        mind_entry_consnames = consnames;
-        mind_entry_lc = constructors;
-        mind_entry_template = false }
+                mind_entry_arity = to_constr !evd (it_mkProd_or_LetIn (mkProd (Anonymous, arity,
+                                                                               mkSort (Sorts.sort_of_univ ind_sort))) sign);
+                mind_entry_consnames = consnames;
+                mind_entry_lc = constructors;
+                mind_entry_template = false }
+    in ((entry, sign, arity) :: inds, Univ.sup ind_sort sorts)
   in
   let declare_ind () =
-    let inds = List.map declare_one_ind ind_stmts in
+    let inds, sort = List.fold_left declare_one_ind ([], Univ.type0m_univ) ind_stmts in
+    let inds =
+      List.rev_map (fun (entry, sign, arity) ->
+          Entries.{ entry with
+                    mind_entry_arity =
+                      to_constr !evd (it_mkProd_or_LetIn (mkProd (Anonymous, arity,
+                                                                  mkSort (Sorts.sort_of_univ sort))) sign) })
+        inds
+    in
     let uctx = Evd.ind_univ_entry ~poly !evd in
     let inductive =
       Entries.{ mind_entry_record = None;
@@ -1479,31 +1489,54 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
     let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] false in
     let kn = ComInductive.declare_mutual_inductive_with_eliminations inductive Universes.empty_binders [] in
     let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] true in
+    let sort = (* Find out in which maximal sort the inductive can be eliminated *)
+      let open Sorts in
+      let mib, oib = Global.lookup_inductive (kn, 0) in
+      let kelim = oib.Declarations.mind_kelim in
+      let compare_sorts_families s1 s2 =
+        match s1, s2 with
+        | InProp, InProp -> 0
+        | InProp, _ -> -1
+        | InSet, InProp -> 1
+        | InSet, InSet -> 0
+        | InSet, _ -> -1
+        | InType, InType -> 0
+        | InType, _ -> 1
+      in
+      let sorts = CList.sort compare_sorts_families kelim in
+      CList.last sorts
+    in
+    let sort_suff = match sort with
+      | Sorts.InProp -> "_ind"
+      | Sorts.InSet ->  "_rec"
+      | Sorts.InType -> "_rect"
+    in
     let kn, comb =
-      let sort = Lazy.force logic_sort in
-      let suff = match sort with
-        | Sorts.InProp -> "_ind"
-        | Sorts.InSet ->  "_rec"
-        | Sorts.InType -> "_rect"
-      in
-      let mutual =
-        (CList.map_i (fun i ind ->
-             let suff = if List.length inds != 1 then "_mut" else suff in
-             let id = CAst.make @@ Nameops.add_suffix ind.Entries.mind_entry_typename suff in
-             (id, false, (kn, i), sort)) 0 inds)
-      in
-      Indschemes.do_mutual_induction_scheme ~force_mutual:true mutual;
-      if List.length inds != 1 then
-        let scheme = Nameops.add_suffix (Id.of_string info.base_id) "_ind_comb" in
+      match inds with
+      | [ind] ->
+        let scheme = Nameops.add_suffix ind.Entries.mind_entry_typename sort_suff in
+        let mutual =
+          (CList.map_i (fun i ind ->
+               let id = CAst.make @@ scheme in
+               (id, false, (kn, i), sort)) 0 inds)
+        in
+        Indschemes.do_mutual_induction_scheme ~force_mutual:true mutual;
+        kn, Smartlocate.global_with_alias (CAst.make (Libnames.Qualid (Libnames.qualid_of_ident scheme)))
+      | _ ->
+        let mutual =
+          (CList.map_i (fun i ind ->
+               let suff = "_mut" in
+               let id = CAst.make @@ Nameops.add_suffix ind.Entries.mind_entry_typename suff in
+               (id, false, (kn, i), sort)) 0 inds)
+        in
+        Indschemes.do_mutual_induction_scheme ~force_mutual:true mutual;
+        let scheme = Nameops.add_suffix (Id.of_string info.base_id) ("_graph" ^ sort_suff) in
         let mutual = List.map2 (fun (i, _, _, _) (_, (_, _, _, _, _, _, _, (kind, cut)), _) ->
                          i, regular_or_nested_rec kind) mutual ind_stmts in
         let () =
-          Indschemes.do_combined_scheme CAst.(make scheme)
+          Combined_scheme.do_combined_scheme CAst.(make scheme)
             (CList.map_filter (fun (id, b) -> if b then Some id else None) mutual)
-        in kn, Smartlocate.global_with_alias (CAst.make (Libnames.(Qualid (qualid_of_ident scheme))))
-      else
-        let scheme = Nameops.add_suffix (Id.of_string info.base_id) ("_ind" ^ suff) in
-        kn, Smartlocate.global_with_alias (CAst.make Libnames.(Qualid (qualid_of_ident scheme)))
+        in kn, Smartlocate.global_with_alias (CAst.make (Libnames.Qualid ((Libnames.qualid_of_ident scheme))))
     in
     let ind =
       let open Entries in
@@ -1525,7 +1558,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
     in
     let info = { term_info = info; pathmap = !fnind_map; wheremap } in
     declare_funind info alias (Global.env ()) evd rec_info protos progs
-                   ind_stmts all_stmts sign inds kn comb
+                   ind_stmts all_stmts sign inds kn comb sort
                    f p.program_splitting ind
   in
   let () = evd := Evd.minimize_universes !evd in

@@ -14,13 +14,14 @@ open Ltac_plugin
 type 'a peuniverses = 'a * EConstr.EInstance.t
 
 (* Options *)
-val simplify_withK : bool ref
-val simplify_withK_dec : bool ref
+val simplify_withUIP : bool ref
 val equations_transparent : bool ref
 
 val debug : bool ref
 
-(** Common flags *)
+val ppenv_sigma : (Environ.env -> Evd.evar_map -> 'a -> Pp.t) -> 'a -> unit
+
+(* Common flags *)
 type flags = {
   polymorphic : bool;
   open_proof : bool;
@@ -209,8 +210,11 @@ val logic_relation : lazy_ref
 val logic_wellfounded : lazy_ref
 val logic_wellfounded_class : lazy_ref
 val logic_transitive_closure : lazy_ref
+
 val logic_eqdec_class : lazy_ref
 val logic_eqdec_dec_eq : lazy_ref
+val logic_uip_class : lazy_ref
+val logic_uip_uip : lazy_ref
 
 val logic_signature_class : lazy_ref
 val logic_signature_sig : lazy_ref
@@ -252,6 +256,7 @@ val int_of_coq_nat : Constr.t -> int
 
 val coq_fix_proto : lazy_ref
 
+val fresh_sort_in_family : esigma -> Sorts.family -> constr
 val fresh_logic_sort : esigma -> constr
 val mkapp : Environ.env -> esigma -> lazy_ref -> constr array -> constr
 
@@ -271,12 +276,14 @@ val dependent_elimination_class :
   esigma -> Typeclasses.typeclass peuniverses
 
 val coq_noconfusion_class : global_reference lazy_t
+val coq_nocycle_class : global_reference Lazy.t
 val coq_bang : global_reference Lazy.t
 val coq_inacc : global_reference Lazy.t
 val coq_block : global_reference Lazy.t
 val coq_hide : global_reference Lazy.t
 val coq_hidebody : global_reference Lazy.t
 val coq_add_pattern : global_reference Lazy.t
+
 val coq_end_of_section_id : Names.Id.t
 val coq_the_end_of_the_section : global_reference Lazy.t
 val coq_end_of_section : global_reference Lazy.t

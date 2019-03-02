@@ -36,10 +36,13 @@ Section Tests.
     induction H; intros; subst; auto.
   Qed.
 
+  Lemma prod_conj : forall (A B : Prop), A * B -> A /\ B.
+  Proof. intuition. Defined.
+
   Lemma fweight_neq_0 : (forall f, fweight f <> 0) /\ forall l, lweight l <> 0.
   Proof.
-    pose (fun_elim (f:=fweight)).
-    apply (a (fun l n => n <> 0) (fun l n => n <> 0)); intros; lia.
+    assert (fe:=fun_elim (f:=fweight)). apply prod_conj.
+    apply (fe (fun l n => n <> 0) (fun l n => n <> 0)); intros; lia.
   Qed.
 
   Lemma lweight_neq_0 : forall l, lweight l <> 0.

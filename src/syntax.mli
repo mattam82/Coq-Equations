@@ -27,7 +27,7 @@ type identifier = Names.Id.t
 type user_pat =
     PUVar of identifier * generated
   | PUCstr of constructor * int * user_pats
-  | PUInac of Constrexpr.constr_expr
+  | PUInac of Glob_term.glob_constr
   | PUEmpty
 and user_pat_loc = (user_pat, [ `any ]) DAst.t
 and user_pats = user_pat_loc list
@@ -56,6 +56,7 @@ type rec_annot =
 
 type program_body =
   | ConstrExpr of Constrexpr.constr_expr
+  | GlobConstr of Glob_term.glob_constr
   | Constr of EConstr.constr (* We interpret a constr by substituting
                                 [Var names] of the lhs bound variables
                                 with the proper de Bruijn indices *)
@@ -68,7 +69,7 @@ and ('a,'b) rhs_aux =
 and ('a,'b) rhs = ('a, 'b) rhs_aux option
 and pre_prototype =
   identifier with_loc * user_rec_annot * Constrexpr.local_binder_expr list * Constrexpr.constr_expr option *
-  (Id.t with_loc, Constrexpr.constr_expr * Constrexpr.constr_expr option) by_annot option
+  (Id.t with_loc option, Constrexpr.constr_expr * Constrexpr.constr_expr option) by_annot option
 
 and ('a, 'b) by_annot =
   | Structural of 'a
@@ -151,6 +152,14 @@ val program_type : program_info -> EConstr.t
 val map_program_info : (EConstr.t -> EConstr.t) -> program_info -> program_info
 
 val ids_of_pats : Names.Id.t option -> Constrexpr.constr_expr list -> Id.Set.t
+
+val pattern_of_glob_constr :
+  Environ.env ->
+  Names.Id.Set.t ref ->
+  Names.Name.t ->
+  Glob_term.glob_constr ->
+  (user_pat, [ `any] ) DAst.t
+
 
 val interp_pat : Environ.env -> Vernacexpr.decl_notation list -> ?avoid:Id.Set.t ref ->
   (program_info * Names.Name.t list) option ->

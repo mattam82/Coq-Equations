@@ -203,8 +203,13 @@ Hint Extern 100 => specialize_hyps : funelim.
    This tactic allows to close functional induction proofs involving
    multiple nested and/or mutual recursive definitions. *)
 
+(** TODO: make it generic, won't work with another logic *)
+
 Lemma uncurry_conj (A B C : Prop) : (A /\ B -> C) -> (A -> B -> C).
 Proof. intros H a b. exact (H (conj a b)). Defined.
+
+Lemma uncurry_prod (A B C : Type) : (A * B -> C) -> (A -> B -> C).
+Proof. intros H a b. exact (H (pair a b)). Defined.
 
 Ltac specialize_mutual_nested := 
   match goal with
@@ -219,6 +224,7 @@ Hint Extern 50 => specialize_mutual_nested : funelim.
 Ltac specialize_mutual :=
   match goal with
     [ H : _ /\ _ |- _ ] => destruct H
+  | [ H : _ * _ |- _ ] => destruct H
   (* Fragile, might render later goals unprovable *)
   | [ H : ?X -> _, H' : ?X |- _ ] =>
     match X with

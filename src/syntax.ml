@@ -31,7 +31,7 @@ type generated = bool
 type user_pat =
     PUVar of identifier * generated
   | PUCstr of constructor * int * user_pats
-  | PUInac of Constrexpr.constr_expr
+  | PUInac of Glob_term.glob_constr
   | PUEmpty
 and user_pat_loc = (user_pat, [ `any ]) DAst.t
 and user_pats = user_pat_loc list
@@ -64,6 +64,7 @@ type rec_annot =
 
 type program_body =
   | ConstrExpr of Constrexpr.constr_expr
+  | GlobConstr of Glob_term.glob_constr
   | Constr of EConstr.constr (* We interpret a constr by substituting
                                 [Var names] of the lhs bound variables
                                 with the proper de Bruijn indices *)
@@ -79,7 +80,7 @@ and ('a,'b) rhs = ('a, 'b) rhs_aux option (* Empty patterns allow empty r.h.s. *
 
 and pre_prototype =
   identifier with_loc * user_rec_annot * Constrexpr.local_binder_expr list * Constrexpr.constr_expr option *
-  (Id.t with_loc, Constrexpr.constr_expr * Constrexpr.constr_expr option) by_annot option
+  (Id.t with_loc option, Constrexpr.constr_expr * Constrexpr.constr_expr option) by_annot option
 
 and ('a, 'b) by_annot =
   | Structural of 'a
@@ -105,7 +106,7 @@ let rec pr_user_loc_pat env ?loc pat =
       let pc = pr_constructor env c in
 	if not (List.is_empty f) then str "(" ++ pc ++ spc () ++ pr_user_pats env f ++ str ")"
 	else pc
-  | PUInac c -> str "?(" ++ pr_constr_expr c ++ str ")"
+  | PUInac c -> str "?(" ++ pr_glob_constr_env env c ++ str ")"
   | PUEmpty -> str"!"
 
 and pr_user_pat env = DAst.with_loc_val (pr_user_loc_pat env)
@@ -117,12 +118,14 @@ let pr_lhs = pr_user_pats
 
 let pplhs lhs = pp (pr_lhs (Global.env ()) lhs)
 
+let pr_body env = function
+  | ConstrExpr rhs -> pr_constr_expr rhs
+  | GlobConstr rhs -> pr_glob_constr_env env rhs
+  | Constr c -> str"<constr>"
+
 let rec pr_rhs_aux env = function
   | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ Id.print var
-  | Program (rhs, where) -> spc () ++ str ":=" ++ spc () ++
-                            (match rhs with
-                             | ConstrExpr rhs -> pr_constr_expr rhs
-                             | Constr c -> str"<constr>") ++
+  | Program (rhs, where) -> spc () ++ str ":=" ++ spc () ++ pr_body env rhs ++
                             spc () ++ pr_wheres env where
   | Refine (rhs, s) -> spc () ++ str "with" ++ spc () ++
                        prlist_with_sep (fun () -> str",") pr_constr_expr rhs ++
@@ -142,7 +145,7 @@ and pr_proto ((_,id), _, l, t, ann) =
   (match ann with
      None -> mt ()
    | Some (WellFounded (t, rel)) -> str"by wf " ++ pr_constr_expr t ++ pr_opt pr_constr_expr rel
-   | Some (Structural id) -> str"by struct " ++ pr_id (snd id))
+   | Some (Structural id) -> str"by struct " ++ pr_opt (fun x -> pr_id (snd x)) id)
 
 and pr_clause env (loc, lhs, rhs) =
   pr_lhs env lhs ++ pr_rhs env rhs
@@ -158,9 +161,7 @@ let pr_user_lhs env lhs =
 let rec pr_user_rhs_aux env = function
   | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ Id.print var
   | Program (rhs, where) -> spc () ++ str ":=" ++ spc () ++
-                            (match rhs with
-                             | ConstrExpr rhs -> pr_constr_expr rhs
-                             | Constr c -> str"<constr>") ++
+                            pr_body env rhs ++
                             spc () ++ pr_prewheres env where
   | Refine (rhs, s) -> spc () ++ str "with" ++ spc () ++
                        prlist_with_sep (fun () -> str ",") pr_constr_expr rhs ++
@@ -170,9 +171,7 @@ let rec pr_user_rhs_aux env = function
 and pr_prerhs_aux env = function
   | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ Id.print var
   | Program (rhs, where) -> spc () ++ str ":=" ++ spc () ++
-                            (match rhs with
-                             | ConstrExpr rhs -> pr_constr_expr rhs
-                             | Constr c -> str"<constr>") ++
+                            pr_body env rhs ++
                             spc () ++ pr_prewheres env where
   | Refine (rhs, s) -> spc () ++ str "with" ++ spc () ++
                        prlist_with_sep (fun () -> str ",") pr_constr_expr rhs ++
@@ -243,24 +242,6 @@ let is_rec_call sigma id f =
 
 let default_loc = Loc.make_loc (0, 0)
 
-let is_inaccessible_qualid qid =
-  match qid with
-  | Ident id ->
-     Id.equal id (Id.of_string "inaccessible_pattern")
-  | Qualid id ->
-     let id = snd (repr_qualid id) in
-     Id.equal id (Id.of_string "inaccessible_pattern")
-
-let qualid_is_ident qid =
-  match qid with
-    { CAst.v = Ident _ } -> true
-  | _ -> false
-
-let qualid_basename qid =
-  match qid with
-    { CAst.v = Ident id } -> id
-  | { CAst.v = Qualid id } -> snd (repr_qualid id)
-
 let free_vars_of_constr_expr fid c =
   let rec aux bdvars l = function
     | { CAst.v = CRef ({ CAst.v = Ident id }, _) } ->
@@ -274,8 +255,7 @@ let free_vars_of_constr_expr fid c =
              else l
            | SynDef _ -> l
          with Not_found -> Id.Set.add id l)
-    | { CAst.v = CApp ((_, { CAst.v = CRef ({ CAst.v = qid }, _) }), _) }
-      when is_inaccessible_qualid qid -> l
+    | { CAst.v = CNotation ("?( _ )", _) } -> l
     | c -> fold_constr_expr_with_binders (fun a l -> a::l) aux bdvars l c
   in aux [] Id.Set.empty c
 
@@ -361,7 +341,7 @@ let pattern_of_glob_constr env avoid patname gc =
         | GRef (ConstructRef cstr,_) -> constructor ?loc cstr l
         | GRef (ConstRef _ as c, _) when eq_gr c (Lazy.force coq_inacc) ->
           let inacc = List.hd (List.tl l) in
-          PUInac (Constrextern.extern_glob_constr !avoid inacc)
+          PUInac inacc
         | _ -> user_err_loc (loc, "pattern_of_glob_constr", str "Cannot interpret " ++ pr_glob_constr_env env c ++ str " as a constructor")
       end
   (* | GLetIn (Name id as na',b,None,e) when is_gvar id e && na = Anonymous ->
@@ -488,6 +468,7 @@ let interp_eqn env notations p eqn =
          | ConstrExpr c ->
             let wheres, c = CAst.with_loc_val (interp_constr_expr notations) c in
             wheres, ConstrExpr c
+         | GlobConstr c -> [], GlobConstr c
          | Constr c -> [], Constr c
        in
        Program (c, (List.append w' w, nts))
@@ -508,6 +489,7 @@ let interp_eqn env notations p eqn =
          | ConstrExpr c ->
             let wheres, c = CAst.with_loc_val (interp_constr_expr notations) c in
             wheres, ConstrExpr c
+         | GlobConstr c -> [], GlobConstr c
          | Constr c -> [], Constr c
        in
        Program (c, (List.append w' w, nts))
@@ -554,6 +536,7 @@ let is_recursive i : 'a wheres -> bool = fun eqs ->
     | Some (Program (c,w)) ->
       (match c with
       | ConstrExpr c -> occur_var_constr_expr i c || occurs w
+      | GlobConstr c -> occurs w
       | Constr _ -> occurs w)
     | Some (Refine (c, eqs)) ->
        List.exists (occur_var_constr_expr i) c || occur_eqns eqs

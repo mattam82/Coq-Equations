@@ -36,24 +36,36 @@ let to_peuniverses (x, u) = (x, EConstr.EInstance.make u)
 let from_peuniverses sigma (x, u) = (x, EConstr.EInstance.kind sigma u)
 
 (* Options. *)
-let simplify_withK = ref false
-let simplify_withK_dec = ref false
+let simplify_withUIP = ref false
 let equations_transparent = ref false
 
 let _ = Goptions.declare_bool_option {
-  Goptions.optdepr  = false;
-  Goptions.optname  = "using axiomatic K during simplification";
+  Goptions.optdepr  = true;
+  Goptions.optname  = "using axiomatic K during simplification.";
   Goptions.optkey   = ["Equations"; "WithK"];
-  Goptions.optread  = (fun () -> !simplify_withK);
-  Goptions.optwrite = (fun b -> simplify_withK := b)
+  Goptions.optread  = (fun () -> false);
+  Goptions.optwrite = (fun b ->
+      if b then
+        CErrors.user_err (str"DEPRECATED. Use flag [Equations With UIP] and introduce \
+                              an axiomn [forall A, Equations.Classes.UIP A] \
+                              as a type class instance using [Existing Instance] instead.")
+      else simplify_withUIP := b)
+}
+
+let _ = Goptions.declare_bool_option {
+  Goptions.optdepr  = true;
+  Goptions.optname  = "using propositional K during simplification. Use flag Equations With UIP instead.";
+  Goptions.optkey   = ["Equations"; "WithKDec"];
+  Goptions.optread  = (fun () -> !simplify_withUIP);
+  Goptions.optwrite = (fun b -> simplify_withUIP := b)
 }
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = false;
-  Goptions.optname  = "using propositional K during simplification";
-  Goptions.optkey   = ["Equations"; "WithKDec"];
-  Goptions.optread  = (fun () -> !simplify_withK_dec);
-  Goptions.optwrite = (fun b -> simplify_withK_dec := b)
+  Goptions.optname  = "allow using propositional UIP during simplification";
+  Goptions.optkey   = ["Equations"; "With"; "UIP"];
+  Goptions.optread  = (fun () -> !simplify_withUIP);
+  Goptions.optwrite = (fun b -> simplify_withUIP := b)
 }
 
 let _ = Goptions.declare_bool_option {
@@ -75,6 +87,13 @@ let _ = Goptions.declare_bool_option {
   Goptions.optread  = (fun () -> !debug);
   Goptions.optwrite = (fun b -> debug := b)
 }
+
+let pp   x = Pp.pp_with !Topfmt.std_ft x
+
+let ppenv_sigma f =
+  fun x ->
+    let env = Global.env () in
+    pp (f env (Evd.from_env env) x)
 
 type flags = {
   polymorphic : bool;
@@ -318,6 +337,9 @@ let logic_tele_forall_unpack = (find_global "tele.forall_unpack")
 let logic_eqdec_class = (find_global "eqdec.class")
 let logic_eqdec_dec_eq = (find_global "eqdec.dec_eq")
 
+let logic_uip_class = (find_global "uip.class")
+let logic_uip_uip = (find_global "uip.uip")
+
 let logic_signature_class = find_global "signature.class"
 let logic_signature_sig = find_global "signature.signature"
 let logic_signature_pack = find_global "signature.pack"
@@ -330,9 +352,12 @@ let is_lglobal gr c = Globnames.is_global (Lazy.force gr) c
 
 open EConstr
 
-let fresh_logic_sort evd =
-  let evars, sort = Evd.fresh_sort_in_family (Global.env ()) !evd (Lazy.force logic_sort) in
+let fresh_sort_in_family evd s =
+  let evars, sort = Evd.fresh_sort_in_family (Global.env ()) !evd s in
   evd := evars; mkSort sort
+
+let fresh_logic_sort evd =
+  fresh_sort_in_family evd (Lazy.force logic_sort)
 
 let mkapp env evdref t args =
   let evd, c = fresh_global env !evdref (Lazy.force t) in
@@ -379,6 +404,7 @@ let dependent_elimination_class evd =
   get_class !evd (find_constant "depelim.class" evd)
 
 let coq_noconfusion_class = (find_global "noconfusion.class")
+let coq_nocycle_class = (find_global "nocycle.class")
 
 let coq_bang = (find_global "internal.bang")
 let coq_inacc = (find_global "internal.inaccessible_pattern")

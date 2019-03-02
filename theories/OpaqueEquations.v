@@ -12,7 +12,7 @@
 
 From Equations Require Import DepElim.
 
-Global Opaque simplification_sigma2_dec
+Global Opaque simplification_sigma2_uip
        simplification_sigma2_dec_point
-       simplification_K_dec
+       simplification_K_uip
        simplify_ind_pack simplified_ind_pack Id_simplification_sigma2.
