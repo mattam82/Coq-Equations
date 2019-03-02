@@ -74,7 +74,7 @@ Section Equality.
   End EqFin_fn.
 End Equality.
 
-Definition dec_rel {X:Type} (R : X → X → Prop) := ∀ x y, {not (R y x)} + {R y x}.
+Definition dec_rel {X:Type} (R : X → X → Prop) := ∀ x y, {R x y} + {not (R x y)}.
 
 Section AlmostFull.
   Context {X : Type}.
@@ -109,9 +109,9 @@ Section AlmostFull.
   Fixpoint af_tree_iter {x : X} (accX : Acc R x) :=
     match accX with
     | Acc_intro f => SUP (fun y =>
-                            match decR x y with
-                            | left _ => ZT
-                            | right Ry => af_tree_iter (f y Ry)
+                            match decR y x with
+                            | left Ry => af_tree_iter (f y Ry)
+                            | right _ => ZT
                             end)
     end.
 
@@ -125,10 +125,9 @@ Section AlmostFull.
   Proof.
     intro x. unfold af_tree. generalize (wfR x).
     induction a using Acc_ind_dep. simpl.
-    intros y. destruct (decR x y). simpl.
-    intuition. specialize (H y r).
+    intros y. destruct (decR y x). simpl.
     eapply SecureBy_mon; eauto. simpl; intros.
-    intuition.
+    intuition. simpl. intros. intuition auto.
   Defined.
 
   Corollary af_from_wf : almost_full (fun x y => not (R y x)).
@@ -153,9 +152,15 @@ Proof.
   apply (H x _ (fun y z => S y z \/ S x y)). repeat red; intuition.
   apply Hp.
 Qed.
+Arguments WFT _ : clear implicits.
 
-Instance almost_full_le : AlmostFull Nat.le.
-Admitted.
+Instance almost_full_le : AlmostFull Peano.le.
+Proof.
+  assert (relation_equivalence Peano.le (fun x y => ~ (y < x))) as ->.
+  { cbn. intros x y. intuition auto. red in H0. lia. lia. }
+  red. eapply af_from_wf. 2:apply lt_wf.
+  intros x y. apply lt_dec.
+Defined.
 
 Arguments WFT X : clear implicits.
 
@@ -406,25 +411,16 @@ Qed.
 Section OplusUnary.
   Context {X : Type}.
 
-(*   Equations oplus_unary (p : WFT X) (q : WFT X) : WFT X by struct p := *)
-(*   oplus_unary ZT q := q; *)
-(*   oplus_unary (SUP f) g := SUP (fun x => oplus_unary_right g x) *)
+  (* Nested version is harder to work with *)
+  (* Equations oplus_unary (p : WFT X) (q : WFT X) : WFT X by struct p := *)
+  (* oplus_unary ZT q := q; *)
+  (* oplus_unary (SUP f) g := SUP (fun x => oplus_unary_right g x) *)
 
-(*     where oplus_unary_right (q : WFT X) (x : X) : WFT X by struct q := *)
-(*     { oplus_unary_right ZT x := f x; *)
-(*       oplus_unary_right (SUP g) x := *)
-(*         oplus_nullary (oplus_unary (f x) (SUP g)) *)
-(*                       (oplus_unary_right (g x) x) }. *)
-(*   Next Obligation. *)
-(*   Proof. revert p q. fix auxp 1. destruct p. intros. clear auxp; simp oplus_unary. *)
-(*          destruct q. constructor. constructor. intros. *)
-(*          intros. constructor. generalize (SUP w0) at 2 4. *)
-(*          fix auxq 1. intros. destruct w1. clear auxp auxq. simp oplus_unary. *)
-(*          Transparent oplus_unary. simpl. constructor. intros. apply auxp. *)
-(*          intros. apply auxq. *)
-(*   Defined. *)
-(* End OplusUnary. *)
-(* FIXME bug*)
+  (*   where oplus_unary_right (q : WFT X) (x : X) : WFT X by struct q := *)
+  (*   { oplus_unary_right ZT x := f x; *)
+  (*     oplus_unary_right (SUP g) x := *)
+  (*       oplus_nullary (oplus_unary (f x) (SUP g)) *)
+  (*                     (oplus_unary_right (g x) x) }. *)
 
   Equations? oplus_unary (p : WFT X) (q : WFT X) : WFT X
     by wf (p, q) (Subterm.lexprod _ _ WFT_subterm WFT_subterm) :=
@@ -449,28 +445,34 @@ Section OplusUnary.
   Defined.
 
 End OplusUnary.
-(* FIXME bug *)
-
-(*   Equations oplus_unary (p : WFT X) : WFT X -> WFT X by struct p := *)
-(*   oplus_unary ZT := fun q => q; *)
-(*   oplus_unary (SUP f) := oplus_unary_right *)
-
-(*     where oplus_unary_right (q : WFT X) : WFT X by struct q := *)
-(*     { oplus_unary_right ZT := SUP f; *)
-(*       oplus_unary_right (SUP g) := *)
-(*         SUP (fun x => oplus_nullary (oplus_unary (f x) (SUP g)) *)
-(*                                     (oplus_unary_right (g x))) }. *)
-(*   Next Obligation. *)
-(*   Proof. revert p. fix auxp 1. destruct p. intros. clear auxp; simp oplus_unary. *)
-(*          intros. constructor. *)
-(*          fix auxq 1. intros. destruct q. clear auxp auxq. simp oplus_unary. *)
-(*          Transparent oplus_unary. simpl. constructor. intros; apply auxp. *)
-(*          intros. apply auxq. *)
-(*   Defined. *)
-(* End OplusUnary. *)
-(* (* FIXME bug *) *)
 
 Set Firstorder Solver auto.
+
+(* Lemma oplus_unary_sec_intersection {X} (p q : WFT X) *)
+(*       (C : X -> X -> Prop) (A B : X -> Prop) : *)
+(*   SecureBy (fun y z => C y z \/ A y) p -> *)
+(*   SecureBy (fun y z => C y z \/ B y) q -> *)
+(*   SecureBy (fun y z => C y z \/ (A y /\ B y)) (oplus_unary p q). *)
+(* Proof. *)
+(*   intros. *)
+(*   revert H H0. revert q C. induction p. *)
+(*   intros. simp oplus_unary. eapply SecureBy_mon; [|eapply H0]. firstorder. *)
+(*   simpl. induction q. simpl. intros. *)
+(*   eapply SecureBy_mon; [|eapply H0]. simpl. firstorder auto. *)
+(*   intros. *)
+(*   simp oplus_unary. simpl. intros x. *)
+(*   eapply SecureBy_mon; [|eapply (oplus_nullary_sec_intersection _ _ _ (A x) (B x))]. simpl. *)
+(*   intros. destruct H3; [|intuition]. rewrite <- or_assoc. left. eapply H3. *)
+(*   - simpl. simpl in H2. *)
+(*     eapply SecureBy_mon; [|eapply (H _ _ (fun y z => C y z \/ C x y \/ A x))]; auto. simpl; intros. *)
+(*     intuition auto. *)
+(*     eapply SecureBy_mon; [|eapply H1]; simpl. intros. intuition auto. *)
+(*     simpl. intros. *)
+(*     eapply SecureBy_mon; [|eapply H2]; simpl. intros. intuition auto. *)
+(*   - simpl. eapply SecureBy_mon; [|eapply (H0 _ (fun y z => C y z \/ C x y \/ B x))]; simpl. intuition auto. *)
+(*     intuition. simpl in H2. eapply SecureBy_mon; [|eapply H1]; simpl. intuition auto. *)
+(*     eapply SecureBy_mon; [|eapply H2]; simpl. intros. intuition auto. *)
+(* Defined. *)
 
 Lemma oplus_unary_sec_intersection {X} (p q : WFT X)
       (C : X -> X -> Prop) (A B : X -> Prop) :
@@ -478,46 +480,20 @@ Lemma oplus_unary_sec_intersection {X} (p q : WFT X)
   SecureBy (fun y z => C y z \/ B y) q ->
   SecureBy (fun y z => C y z \/ (A y /\ B y)) (oplus_unary p q).
 Proof.
-  intros.
-  revert H H0. revert q C. induction p.
-  intros. simp oplus_unary. eapply SecureBy_mon; [|eapply H0]. firstorder.
-  simpl. induction q. simpl. intros.
-  eapply SecureBy_mon; [|eapply H0]. simpl. firstorder auto.
-  intros.
-  simp oplus_unary. simpl. intros x.
-  eapply SecureBy_mon; [|eapply (oplus_nullary_sec_intersection _ _ _ (A x) (B x))]. simpl.
-  intros. destruct H3; [|intuition]. rewrite <- or_assoc. left. eapply H3.
-  - simpl. simpl in H2.
-    eapply SecureBy_mon; [|eapply (H _ _ (fun y z => C y z \/ C x y \/ A x))]; auto. simpl; intros.
-    intuition auto.
-    eapply SecureBy_mon; [|eapply H1]; simpl. intros. intuition auto.
-    simpl. intros.
-    eapply SecureBy_mon; [|eapply H2]; simpl. intros. intuition auto.
-  - simpl. eapply SecureBy_mon; [|eapply (H0 _ (fun y z => C y z \/ C x y \/ B x))]; simpl. intuition auto.
-    intuition. simpl in H2. eapply SecureBy_mon; [|eapply H1]; simpl. intuition auto.
-    eapply SecureBy_mon; [|eapply H2]; simpl. intros. intuition auto.
-Defined.
-
-Lemma oplus_unary_sec_intersection' {X} (p q : WFT X)
-      (C : X -> X -> Prop) (A B : X -> Prop) :
-  SecureBy (fun y z => C y z \/ A y) p ->
-  SecureBy (fun y z => C y z \/ B y) q ->
-  SecureBy (fun y z => C y z \/ (A y /\ B y)) (oplus_unary p q).
-Proof.
-  revert p q C A B; intros p q. funelim (oplus_unary p q); simpl; intros.
-  eapply SecureBy_mon. 2:eapply H0. simpl. firstorder.
-  eapply SecureBy_mon; [|eapply H]. simpl; firstorder.
-  eapply SecureBy_mon. 2:eapply (oplus_nullary_sec_intersection _ _ _ (A x) (B x)). simpl.
-  intros. destruct H3; [|intuition auto]. rewrite <- or_assoc. left. eapply H3.
-  - simpl.
-    eapply SecureBy_mon; [|eapply (H _ (fun y z => C y z \/ C x y \/ A x) A B)]. simpl.
-    intuition auto.
-    eapply SecureBy_mon; [|eapply H1]; simpl. intros. intuition auto.
-    simpl. intros.
-    eapply SecureBy_mon; [|eapply H2]; simpl. intros. intuition auto.
-  - simpl. specialize (H0 x (SUP w) (w0 x)). simplify_IH_hyps. eapply SecureBy_mon; [|eapply (H0 (fun y z => C y z \/ C x y \/ B x) A B)]; simpl. intuition auto.
-    intuition. simpl in H2. eapply SecureBy_mon; [|eapply H1]; simpl. intuition auto.
-    eapply SecureBy_mon; [|eapply H2]; simpl. intros. intuition auto.
+  funelim (oplus_unary p q); simpl; intros.
+  - eapply SecureBy_mon; [|eapply H0]; simpl; firstorder.
+  - eapply SecureBy_mon; [|eapply H]. simpl; firstorder.
+  - eapply SecureBy_mon. 2:eapply (oplus_nullary_sec_intersection _ _ _ (A x) (B x)). simpl.
+    intros. destruct H3; [|intuition auto]. rewrite <- or_assoc. left. eapply H3.
+    -- simpl.
+       eapply SecureBy_mon; [|eapply (H _ (fun y z => C y z \/ C x y \/ A x) A B)]. simpl.
+       intuition auto.
+       eapply SecureBy_mon; [|eapply H1]; simpl. intros. intuition auto.
+       simpl. intros.
+       eapply SecureBy_mon; [|eapply H2]; simpl. intros. intuition auto.
+    -- simpl. specialize (H0 x (SUP w) (w0 x)). simplify_IH_hyps. eapply SecureBy_mon; [|eapply (H0 (fun y z => C y z \/ C x y \/ B x) A B)]; simpl. intuition auto.
+       intuition. simpl in H2. eapply SecureBy_mon; [|eapply H1]; simpl. intuition auto.
+       eapply SecureBy_mon; [|eapply H2]; simpl. intros. intuition auto.
 Qed.
 
 Lemma oplus_binary_sec_intersection' {X} (p q : WFT X)
@@ -526,7 +502,7 @@ Lemma oplus_binary_sec_intersection' {X} (p q : WFT X)
   SecureBy (fun y z => C y z \/ B y z) q ->
   SecureBy (fun y z => C y z \/ (A y z /\ B y z)) (oplus_binary p q).
 Proof.
-  revert p q C A B; intros p q. funelim (oplus_binary p q); simpl; intros.
+  funelim (oplus_binary p q); simpl; intros.
   eapply SecureBy_mon. 2:eapply H0. simpl. firstorder.
   eapply SecureBy_mon; [|eapply H]. simpl; firstorder.
   eapply SecureBy_mon. 2:eapply (oplus_unary_sec_intersection _ _ _ (A x) (B x)). simpl.
@@ -1389,15 +1365,15 @@ Equations T_graphs (f : fin 2) : graph 2 :=
   T_graphs (fs fz) := T_graph_r.
 
 Definition gnlex : (nat * nat) -> nat.
-  pose (size_change_termination 2 T_rel T_graphs). forward w.
+  assert (sct:=size_change_termination 2 T_rel T_graphs). forward sct.
   intros f; depelim f. apply approximates_T_l. depelim f. apply approximates_T_r. depelim f.
-  specialize (w T_trans_clos). forward w. apply (compute_transitive_closure_spec 10). reflexivity.
-  forward w.
+  specialize (sct T_trans_clos). forward sct. apply (compute_transitive_closure_spec 10). reflexivity.
+  forward sct.
   intros. simpl in H. intuition; subst G;
                         solve [exists 1; (exists fz ; reflexivity) || (exists (fs fz) ; reflexivity) ].
   set (rel :=(MR (fin_union T_rel) (fun x => (fst x, (snd x, tt))))).
   assert (WellFounded rel).
-  apply measure_wf. apply w.
+  apply measure_wf. apply sct.
   refine (Subterm.FixWf (WF:=H) (fun x => nat) _).
   refine (fun x =>
             match x as w return ((forall y, rel y w -> nat) -> nat) with
@@ -1412,6 +1388,9 @@ Defined.
 
 Require Import ExtrOcamlBasic.
 Extraction gnlex.
+Print Assumptions gnlex.
+
+Eval native_compute in gnlex (4, 3).
 
 Lemma gnlex_0_l y : gnlex (0, y) = 1.
 Admitted.
@@ -1424,8 +1403,8 @@ Lemma gnlex_S x y : gnlex (S x, S y) = gnlex (S y, y) + gnlex (S y, x).
 Admitted.
 
 Lemma gnlex_S_test x y : exists foo, gnlex (S x, S y) = foo.
-  eexists. rewrite gnlex_S. destruct y. rewrite gnlex_0_r. destruct x. rewrite gnlex_0_r. reflexivity.
+  eexists. rewrite gnlex_S. destruct y. rewrite gnlex_0_r.
+  destruct x. rewrite gnlex_0_r. reflexivity.
   rewrite gnlex_S. rewrite gnlex_0_r. destruct x. admit. rewrite gnlex_S.
 Admitted.
 
-(* BUG Eval native_compute in gnlex (4, 3). *)
