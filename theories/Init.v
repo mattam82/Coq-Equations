@@ -87,6 +87,8 @@ Unset Primitive Projections.
 Arguments sigma A B : clear implicits.
 Arguments sigmaI {A} B pr1 pr2.
 
+Extract Inductive sigma => "( * )" ["(,)"].
+
 Polymorphic Definition prod (A : Type) (B : Type) := sigma A (fun _ => B).
 
 Set Warnings "-notation-overridden".
