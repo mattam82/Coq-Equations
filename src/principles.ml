@@ -628,6 +628,57 @@ let subst_rec env evd cutprob s (ctx, p, _ as lhs) =
     (compose_subst env ~sigma:evd subst lhs) cutprob
   in subst, csubst
 
+let subst_protos s gr =
+  let open Context.Rel.Declaration in
+  let modified = ref false in
+  let env = Global.env () in
+  let sigma = Evd.from_env env in
+  let sigma, cst = EConstr.fresh_global env sigma gr in
+  let ty = Retyping.get_type_of env sigma cst in
+  let rec aux env sigma args ty =
+    match kind sigma ty with
+    | Prod (na, b, ty) ->
+      begin try match na with
+        | Name id ->
+          let cst = List.find (fun s -> Id.equal (Label.to_id (Constant.label s)) id) s in
+          let ctx, concl = decompose_prod_assum sigma b in
+          let lctx = List.tl ctx in
+          let sigma, cstref = EConstr.fresh_global env sigma (GlobRef.ConstRef cst) in
+          let appl = it_mkLambda_or_LetIn (mkApp (cstref, extended_rel_vect 1 lctx)) ctx in
+          equations_debug Pp.(fun () -> str"Replacing variable with " ++ Printer.pr_econstr_env env sigma appl);
+          modified := true;
+          aux env sigma (appl :: args) (subst1 appl ty)
+        | Anonymous -> raise Not_found
+        with Not_found ->
+          let sigma, term = aux (push_rel (LocalAssum (na, b)) env)
+              sigma (mkRel 1 :: List.map (lift 1) args) ty in
+          sigma, mkLambda (na, b, term) end
+    | LetIn (na, b, t, ty) ->
+      let sigma, term = aux (push_rel (LocalDef (na, b, t)) env) sigma (List.map (lift 1) args) ty in
+      sigma, mkLetIn (na, b, t, term)
+    | _ -> let term = mkApp (cst, CArray.rev_of_list args) in
+      sigma, term
+  in
+  let sigma, term = aux env sigma [] ty in
+  if !modified then
+    (* let ty = Reductionops.nf_beta env sigma ty in *)
+    (equations_debug Pp.(fun () -> str"Fixed hint " ++ Printer.pr_econstr_env env sigma term);
+     let sigma, _ = Typing.type_of env sigma term in
+     let sigma = Evd.minimize_universes sigma in
+    Hints.IsConstr (term, Evd.universe_context_set sigma))
+  else Hints.IsGlobRef gr
+
+let declare_wf_obligations s info =
+  let make_resolve gr =
+    equations_debug Pp.(fun () -> str"Declaring wf obligation " ++ Printer.pr_global gr);
+    (Hints.empty_hint_info, is_polymorphic info, true,
+     Hints.PathAny, subst_protos s gr)
+  in
+  let constrs =
+    List.fold_right (fun obl acc ->
+    make_resolve (GlobRef.ConstRef obl) :: acc) info.comp_obls [] in
+  Hints.add_hints ~local:false [Principles_proofs.wf_obligations_base info] (Hints.HintsResolveEntry constrs)
+
 let map_fix_subst evd ctxmap s =
   List.map (fun (id, (recarg, f)) -> (id, (recarg, mapping_constr evd ctxmap f))) s
 
@@ -1336,6 +1387,22 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
   let comps = all_computations env evd alias progs in
   let protos = List.map fst comps in
   let lenprotos = List.length protos in
+  let subst_obls =
+    CList.map_filter (fun ((f',filter), alias, _, sign, _, _, _, _) ->
+        match alias with
+        | Some ((f, filter'), id, _) ->
+          equations_debug Pp.(fun () -> str"Prototype " ++ Printer.pr_econstr_env env evd f' ++
+                                        str"alias: " ++  Printer.pr_econstr_env env evd f);
+          Some (fst (destConst evd (fst (decompose_app evd f))))
+        | None ->
+          equations_debug Pp.(fun () -> str"Prototype " ++ Printer.pr_econstr_env env evd f' ++
+                                        str" no alias ");
+          None)
+      protos
+  in
+  let () = List.iter (fun (_, _, prog, _) ->
+      declare_wf_obligations subst_obls prog.program_split_info) progs
+  in
   let protos =
     CList.map_i (fun i ((f',filterf'), alias, path, sign, arity, pats, args, (refine, cut)) ->
       let f' = Termops.strip_outer_cast evd f' in

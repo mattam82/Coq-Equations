@@ -17,16 +17,14 @@ Qed.
 (* Do not [simpl] the (101 - n) call *)
 Arguments minus : simpl never.
 
-(* Set Equations Debug. *)
-(* FIXME not properly registering wf obligations of subprograms *)
-Equations?(noind) f91_exists n : Σ r, f91_graph n r by wf (101 - n) lt :=
+Equations? f91_exists n : Σ r, f91_graph n r by wf (101 - n) lt :=
 f91_exists n with le_lt_dec n 100 := {
   | left H := ((f91_exists (f91_exists (n + 11)).1).1, _) ;
   | right H := (n - 10, _) }.
 Proof.
   all:hnf. 2-3:edestruct f91_exists; cbn.
-  3:destruct f91_exists.
-  lia. apply f91_spec in pr2. destruct le_lt_dec; subst. lia. lia.
+  3:destruct f91_exists. lia.
+  apply f91_spec in pr2. destruct le_lt_dec; subst; lia.
   econstructor 2; eauto. constructor. lia.
 Defined.
 
@@ -37,8 +35,6 @@ Proof.
 Qed.
 
 Extraction f91_exists.
-
-Ltac hide_proof := unshelve refine Equations.Init.hidebody.
 
 Inductive f91_dom : nat -> Prop :=
 | f91_dom_gt n : n > 100 -> f91_dom n

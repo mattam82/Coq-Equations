@@ -33,15 +33,6 @@ let inline_helpers i =
   let l = List.map (fun (cst, _) -> Nametab.shortest_qualid_of_global Id.Set.empty (ConstRef cst)) i.helpers_info in
   Table.extraction_inline true l
 
-let declare_wf_obligations info =
-  let make_resolve gr =
-    (Hints.empty_hint_info, is_polymorphic info, true,
-     Hints.PathAny, Hints.IsGlobRef gr)
-  in let constrs =
-    List.fold_right (fun obl acc ->
-    make_resolve (ConstRef obl) :: acc) info.comp_obls [] in
-  Hints.add_hints ~local:false [Principles_proofs.wf_obligations_base info] (Hints.HintsResolveEntry constrs)
-
 let define_unfolding_eq env evd flags p unfp prog prog' ei hook =
   let info' = prog'.program_split_info in
   let info =
@@ -118,10 +109,14 @@ let define_principles flags rec_type fixprots progs =
   let progs' = Principles.unfold_programs env evd flags rec_type progs in
   match progs' with
   | [p, Some (unfp, cpi'), cpi, eqi] ->
-    let hook (p, unfp, cpi, eqi) unfold_eq_id =
+    let hook (p, unfp, cpi', eqi) unfold_eq_id =
+      let cpi' = { cpi' with
+                   program_split_info =
+                     { cpi'.program_split_info with
+                       comp_obls = cpi'.program_split_info.comp_obls @ cpi.program_split_info.comp_obls } } in
       Principles.build_equations flags.with_ind env !evd
         ~alias:(make_alias (p.program_term, unfold_eq_id, p.program_splitting))
-        rec_type [p, unfp, cpi, eqi]
+        rec_type [p, unfp, cpi', eqi]
     in
     define_unfolding_eq env evd flags p unfp cpi cpi' eqi hook
   | splits ->
@@ -169,7 +164,6 @@ let define_by_eqs ~poly ~program_mode ~open_proof opts eqs nt =
   let progs = Array.make (List.length eqs) None in
   let hook i p info =
     let () = inline_helpers info in
-    let () = declare_wf_obligations info in
     let f_cst = match info.term_id with ConstRef c -> c | _ -> assert false in
     let () = evd := Evd.from_ctx info.term_ustate in
     let compiled_info = { program_cst = f_cst;
