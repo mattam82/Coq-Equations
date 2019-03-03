@@ -1433,9 +1433,15 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
           Nameops.add_suffix indid suff) n) stmts
     in
     let ind_sort =
-      let ctx = (of_tuple (Anonymous, None, arity) :: sign) in
-      let signlev = level_of_context env !evd ctx sorts in
-      signlev
+      match Retyping.get_sort_family_of env !evd (it_mkProd_or_LetIn arity sign) with
+      | Sorts.InProp ->
+        (* If the program is producing a proof, then we cannot hope to have its
+           graph in Type. *)
+        Univ.type0m_univ
+      | _ ->
+        let ctx = (of_tuple (Anonymous, None, arity) :: sign) in
+        let signlev = level_of_context env !evd ctx sorts in
+        signlev
     in
     let entry =
       Entries.{ mind_entry_typename = indid;
