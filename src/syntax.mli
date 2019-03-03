@@ -145,6 +145,7 @@ type program_info = {
   program_arity : EConstr.t;
   program_rec : program_rec_info option;
   program_impls : Impargs.manual_explicitation list;
+  program_implicits : Impargs.implicit_status list;
 }
 
 val program_type : program_info -> EConstr.t

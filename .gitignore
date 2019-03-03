@@ -45,3 +45,4 @@ docs/_site
 .merlin
 _build
 *.install
+/test-suite/*.agdai

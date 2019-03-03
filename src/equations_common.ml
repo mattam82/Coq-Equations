@@ -88,6 +88,10 @@ let _ = Goptions.declare_bool_option {
   Goptions.optwrite = (fun b -> debug := b)
 }
 
+let equations_debug s =
+  if !debug then
+    Feedback.msg_debug (s ())
+
 let pp   x = Pp.pp_with !Topfmt.std_ft x
 
 let ppenv_sigma f =
