@@ -217,7 +217,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   in
   let p = Syntax.{program_loc = Loc.make_loc (0,0);
                   program_id = id;
-                  program_impls = [];
+                  program_impls = []; program_implicits = [];
                   program_rec = None;
                   program_orig_type = it_mkProd_or_LetIn s fullbinders;
                   program_sign = fullbinders;
@@ -233,7 +233,8 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
         program_sign = fullbinders;
         program_arity = s;
         program_rec = None;
-        program_impls = [] }
+        program_impls = [];
+             program_implicits = []}
     in
     let program_cst = match terminfo.Splitting.term_id with ConstRef c -> c | _ -> assert false in
     (* let _compiled_info = Splitting.{ program_cst; program_split = p.program_splitting;
