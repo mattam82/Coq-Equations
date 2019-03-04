@@ -718,7 +718,16 @@ Ltac simplify_one_dep_elim :=
 
 Ltac simplify_dep_elim := repeat simplify_one_dep_elim.
 
-Ltac Equations.Init.noconf H ::= blocked ltac:(noconf_ref H ; simplify_dep_elim).
+(** Apply [noConfusion] on a given hypothsis. *)
+
+Ltac noconf_ref H :=
+  block_goal; revert_until H; block_goal;
+  on_last_hyp ltac:(fun H' => revert H');
+  simplify_dep_elim;
+  intros_until_block;
+  intros_until_block.
+
+Ltac Equations.Init.noconf H ::= noconf_ref H.
 
 (** Reverse and simplify. *)
 
@@ -1078,7 +1087,7 @@ Tactic Notation "dependent" "induction" ident(H) "generalizing" ne_hyp_list(l) "
 
 Ltac find_empty := simpl in * ; elimtype False ;
   match goal with
-    | [ H : _ |- _ ] => solve [ clear_except H ; depelim H | eqns_specialize_eqs H ; assumption ]
+    | [ H : _ |- _ ] => solve [ clear_except H ; dependent elimination H | eqns_specialize_eqs H ; assumption ]
     | [ H : _ <> _ |- _ ] => solve [ red in H ; eqns_specialize_eqs H ; assumption ]
   end.
 
@@ -1205,6 +1214,6 @@ Ltac simplify_equation c :=
 Ltac solve_equation c :=
   intros ; try simplify_equation c ; try
     (match goal with 
-       | [ |- ImpossibleCall _ ] => elimtype False ; find_empty 
+       | [ |- ImpossibleCall _ ] => find_empty
        | _ => try red; try (reflexivity || discriminates)
      end).

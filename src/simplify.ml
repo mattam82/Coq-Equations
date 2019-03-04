@@ -933,12 +933,11 @@ let infer_step ?(loc:Loc.t option) ~(isSol:bool)
         let f = Tacred.hnf_constr env !evd f in
           EConstr.isConstruct !evd f
       in
-      (* FIXME What is the correct order here? Should we first check if we
-       * have K directly? *)
+      if check_ind tA && check_construct tu && check_construct tv then
+        NoConfusion [loc, Infer_many]
+      else
       if is_conv env !evd ctx tu tv then
         Deletion false (* Never force K. *)
-      else if check_ind tA && check_construct tu && check_construct tv then
-        NoConfusion [loc, Infer_many]
       else
       (* Check if [u] occurs in [t] under only constructors. *)
       (* For now we don't care about the type of these constructors. *)
@@ -997,9 +996,17 @@ let _expand_many rule env evd ((ctx, ty) : goal) : simplification_rules =
 exception Blocked
 
 let check_block : simplification_fun =
+  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty as gl) : goal) ->
+  let _na, b, _ty, _b' = check_letin !evd ty in
+  if EConstr.is_global !evd (Lazy.force Equations_common.coq_block) b then
+    raise Blocked
+  else identity env evd gl
+
+let remove_block : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
-  let _na, _b, _ty, _b' = check_letin !evd ty in
-  raise Blocked
+  let _na, b, _ty, b' = check_letin !evd ty in
+  build_term env evd (ctx, ty) (ctx, Vars.subst1 b b') (fun c -> c), Context_map.id_subst ctx
+
 
 let check_block_notprod : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty as gl) : goal) ->
@@ -1062,7 +1069,7 @@ and simplify_one ((loc, rule) : Loc.t option * simplification_rule) :
        in
        try compose_fun (or_fun check_block_notprod aux)
              first env evd gl
-       with Blocked -> identity env evd gl
+       with Blocked -> remove_block env evd gl
      in handle_error (or_fun_e1 aux (remove_one_sigma ~only_nondep:true))
   | Step step -> wrap_handle (fun _ _ _ -> step)
   | Infer_one -> handle_error (or_fun (with_retry apply_noConfusions)

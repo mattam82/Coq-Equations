@@ -29,7 +29,7 @@ Proof. all:(auto with arith; omega). Defined.
 Module Bug.
   (* FIXME: shrink obligations so that they can apply during induction principle generation *)
   Equations?(noind) test' (n : { n : nat | n >= 0 }) : { n' : nat | n' <= `n }
-  by wf n (MR lt (@proj1_sig nat (fun x : nat => x >= 0))) :=
+  by wf (proj1_sig n) lt :=
   test' (exist _ n p) with n := {
   | 0 := exist _ 0 _;
   | S n' with test' (exist _ n' _) => {

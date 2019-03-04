@@ -14,7 +14,7 @@ Fail Derive NoConfusionHom for D.
 Inductive P : forall {i}, D i -> Set :=
   p1 : P d1
 | p2 : P d2.
-Derive Signature NoConfusion for P.
+Derive Signature for P.
 Derive NoConfusionHom for P.
 
 Equations Foo (p : P d1) : Set :=

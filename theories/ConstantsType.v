@@ -40,6 +40,8 @@ Register Equations.DepElim.end_of_section as equations.internal.end_of_section.
 
 (** Logic parameterization *)
 
+Derive Signature for Id.
+
 Register Equations.Init.Id as equations.equality.type.
 Register Equations.Init.id_refl as equations.equality.refl.
 Register Equations.DepElim.Id_rect_r as equations.equality.case.
