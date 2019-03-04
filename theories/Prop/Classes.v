@@ -67,40 +67,17 @@ Proof.
 Defined.
 Extraction Inline apply_noConfusion.
 
-(** We also provide a variant for equality in [Type]. *)
-
-Polymorphic Cumulative Class NoConfusionIdPackage (A : Type) := {
-  NoConfusionId : A -> A -> Type;
-  noConfusionId : forall {a b}, NoConfusionId a b -> Id a b;
-  noConfusionId_inv : forall {a b}, Id a b -> NoConfusionId a b;
-  noConfusionId_sect : forall {a b} (e : NoConfusionId a b), Id (noConfusionId_inv (noConfusionId e)) e;
-  noConfusionId_retr : forall {a b} (e : Id a b), Id (noConfusionId (noConfusionId_inv e)) e;
-}.
-
-Polymorphic
-Lemma apply_noConfusionId {A} {noconf : NoConfusionIdPackage A}
-      (p q : A) {B : Id p q -> Type} :
-  (forall e : NoConfusionId p q, B (noConfusionId e)) -> (forall e : Id p q, B e).
-Proof.
-  intros. generalize (noConfusionId_retr e). destruct e.
-  intros <-. apply X.
-Defined.
-Extraction Inline apply_noConfusionId.
-
 (** Classes for types with UIP or decidable equality.  *)
 
-Polymorphic Cumulative
 Class UIP (A : Type) := uip : forall {x y : A} (e e' : x = y), e = e'.
 
-Polymorphic Cumulative
 Class EqDec (A : Type) :=
   eq_dec : forall x y : A, { x = y } + { x <> y }.
 
-Polymorphic Cumulative
 Class EqDecPoint (A : Type) (x : A) :=
   eq_dec_point : forall y : A, { x = y } + { x <> y }.
 
-Polymorphic Instance EqDec_EqDecPoint A `(EqDec A) (x : A) : EqDecPoint A x := eq_dec x.
+Instance EqDec_EqDecPoint A `(EqDec A) (x : A) : EqDecPoint A x := eq_dec x.
 
 (** For treating impossible cases. Equations corresponding to impossible
    calls form instances of [ImpossibleCall (f args)]. *)

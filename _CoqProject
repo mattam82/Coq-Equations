@@ -43,9 +43,12 @@ src/g_equations.mlg
 src/equations_plugin_mod.ml
 src/equations_plugin.mllib
 theories/Init.v
-theories/Classes.v
 theories/Signature.v
-theories/EqDec.v
+theories/Prop/Classes.v
+theories/Prop/EqDec.v
+theories/Prop/EqDecInstances.v
+theories/Type/Classes.v
+theories/Type/EqDec.v
 theories/HSets.v
 theories/HSetInstances.v
 theories/DepElim.v
@@ -55,7 +58,6 @@ theories/NoConfusion.v
 theories/FunctionalInduction.v
 theories/Constants.v
 theories/ConstantsType.v
-theories/EqDecInstances.v
 theories/Below.v
 theories/Subterm.v
 theories/Loader.v

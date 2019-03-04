@@ -11,7 +11,7 @@
    A signature for [A] is a sigma-type in which any [A] 
    can be packed. *)
 
-From Equations Require Import Init EqDec.
+From Equations Require Import Init.
 
 (** For right associated sigmas *)
 Ltac destruct_right_sigma H :=
@@ -34,7 +34,7 @@ Ltac destruct_one_sigma :=
 
 Ltac simp_sigmas := repeat destruct_one_sigma.
 
-Polymorphic Class Signature (fam : Type) (signature_index : Type) : Type := {
+Polymorphic Cumulative Class Signature (fam : Type) (signature_index : Type) : Type := {
   signature : signature_index -> Type ;
   signature_pack : fam -> sigma _ signature
 }.

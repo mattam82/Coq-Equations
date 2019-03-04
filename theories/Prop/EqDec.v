@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Equations.Init Equations.Classes EqdepFacts.
+Require Import Equations.Init Equations.Prop.Classes EqdepFacts.
 
 (** Decidable equality.
 
@@ -15,7 +15,6 @@ Require Import Equations.Init Equations.Classes EqdepFacts.
    will actually be computable inside Coq. *)
 
 Set Implicit Arguments.
-Set Universe Polymorphism.
 
 Definition dec_eq {A} (x y : A) := 
   { x = y } + { x <> y }.
@@ -166,8 +165,6 @@ End EqdepDec.
 (** Derivation of principles on sigma types whose domain is decidable. *)
 
 Section PointEqdepDec.
-  Set Universe Polymorphism.
-  
   Context {A : Type} {x : A} `{EqDecPoint A x}.
   
   Let comp (x y y':A) (eq1:x = y) (eq2:x = y') : y = y' :=
@@ -268,8 +265,6 @@ Section PointEqdepDec.
 End PointEqdepDec.
 
 Section PEqdepDec.
-  Set Universe Polymorphism.
-    
   Context {A : Type} `{EqDec A}.
 
   Let comp (x y y':A) (eq1:x = y) (eq2:x = y') : y = y' :=
