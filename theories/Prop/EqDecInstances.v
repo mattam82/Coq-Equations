@@ -1,4 +1,4 @@
-From Equations.Prop Require Import Classes EqDec DepElim NoConfusion.
+Require Import Equations.Prop.Classes Equations.Prop.EqDec Equations.Prop.DepElim Equations.Prop.NoConfusion.
 
 (** Tactic to solve EqDec goals, destructing recursive calls for the recursive 
   structure of the type and calling instances of eq_dec on other types. *)
@@ -79,7 +79,7 @@ Defined.
 
 Polymorphic Definition eqdec_sig@{i} {A : Type@{i}} {B : A -> Type@{i}}
             `(EqDec A) `(forall a, EqDec (B a)) :
-  EqDec (sigma A B).
+  EqDec (sigma B).
 Proof.
   intros. intros [x0 x1] [y0 y1].
   case (eq_dec x0 y0). intros ->. case (eq_dec x1 y1). intros ->. left. reflexivity.
@@ -92,7 +92,7 @@ Existing Instance eqdec_sig.
 
 Polymorphic Definition uip_sig@{i} {A : Type@{i}} {B : A -> Type@{i}}
             `(UIP A) `(forall a, UIP (B a)) :
-  UIP@{i} (sigma@{i} A B).
+  UIP (sigma@{i} B).
 Proof.
   intros. intros x y <-. destruct x.
   refine (eq_simplification_sigma1_dep_dep@{i Set} _ _ _ _ _).

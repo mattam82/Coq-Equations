@@ -85,8 +85,8 @@ Section Properties.
     Defined.
 
     Lemma clos_rt_t : forall x y z,
-      clos_refl_trans R x y -> clos_trans R y z ->
-      clos_trans R x z.
+      clos_refl_trans R x y -> trans_clos R y z ->
+      trans_clos R x z.
     Proof.
       induction 1 as [b d H1|b|a b d H1 H2 IH1 IH2]; auto.
       intro H. apply t_trans with (y:=d); auto.
@@ -125,7 +125,7 @@ Section Properties.
 
     (** Direct transitive closure vs left-step extension *)
 
-    Lemma clos_t1n_trans : forall x y, clos_trans_1n R x y -> clos_trans R x y.
+    Lemma clos_t1n_trans : forall x y, trans_clos_1n R x y -> trans_clos R x y.
     Proof.
      induction 1.
      - left; assumption.
@@ -133,7 +133,7 @@ Section Properties.
        left; auto.
     Defined.
 
-    Lemma clos_trans_t1n : forall x y, clos_trans R x y -> clos_trans_1n R x y.
+    Lemma trans_clos_t1n : forall x y, trans_clos R x y -> trans_clos_1n R x y.
     Proof.
       induction 1.
       - left; assumption.
@@ -144,17 +144,17 @@ Section Properties.
            apply clos_t1n_trans; auto.
     Defined.
 
-    Lemma clos_trans_t1n_iff : forall x y,
-        clos_trans R x y <-> clos_trans_1n R x y.
+    Lemma trans_clos_t1n_iff : forall x y,
+        trans_clos R x y <-> trans_clos_1n R x y.
     Proof.
       intros x y.
-      exists (clos_trans_t1n x y).
+      exists (trans_clos_t1n x y).
       apply (clos_t1n_trans x y).
     Defined.
 
     (** Direct transitive closure vs right-step extension *)
 
-    Lemma clos_tn1_trans : forall x y, clos_trans_n1 R x y -> clos_trans R x y.
+    Lemma clos_tn1_trans : forall x y, trans_clos_n1 R x y -> trans_clos R x y.
     Proof.
       induction 1.
       - left; assumption.
@@ -162,7 +162,7 @@ Section Properties.
         left; assumption.
     Defined.
 
-    Lemma clos_trans_tn1 :  forall x y, clos_trans R x y -> clos_trans_n1 R x y.
+    Lemma trans_clos_tn1 :  forall x y, trans_clos R x y -> trans_clos_n1 R x y.
     Proof.
       induction 1.
       - left; assumption.
@@ -171,11 +171,11 @@ Section Properties.
         -- intros. right with y0; auto.
     Defined.
 
-    Lemma clos_trans_tn1_iff : forall x y,
-        clos_trans R x y <-> clos_trans_n1 R x y.
+    Lemma trans_clos_tn1_iff : forall x y,
+        trans_clos R x y <-> trans_clos_n1 R x y.
     Proof.
       split.
-      - apply clos_trans_tn1.
+      - apply trans_clos_tn1.
       - apply clos_tn1_trans.
     Defined.
 
@@ -398,8 +398,8 @@ Section Properties.
 
   End Equivalences.
 
-  Lemma clos_trans_transp_permute : forall x y,
-    transp (clos_trans R) x y <-> clos_trans (transp R) x y.
+  Lemma trans_clos_transp_permute : forall x y,
+    transp (trans_clos R) x y <-> trans_clos (transp R) x y.
   Proof.
     split; induction 1;
     (apply t_step; assumption) || eapply t_trans; eassumption.

@@ -52,6 +52,7 @@ theories/Prop/EqDec.v
 theories/Prop/EqDecInstances.v
 theories/Prop/Subterm.v
 theories/Prop/DepElim.v
+theories/Prop/Tactics.v
 theories/Prop/Constants.v
 theories/Prop/NoConfusion.v
 
@@ -62,6 +63,7 @@ theories/Type/WellFounded.v
 theories/Type/Classes.v
 theories/Type/EqDec.v
 theories/Type/DepElim.v
+theories/Type/Tactics.v
 theories/Type/Constants.v
 
 theories/FunctionalInduction.v

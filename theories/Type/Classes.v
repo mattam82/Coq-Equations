@@ -46,6 +46,16 @@ Proof.
 Defined.
 Extraction Inline apply_noCycle_left apply_noCycle_right.
 
+(** NoCycle can be decided using the well-founded subterm relation. *)
+
+Definition NoCycle_WellFounded {A} (R : relation A) (wfR : WellFounded R) : NoCyclePackage A :=
+  {| NoCycle := R;
+     noCycle := WellFounded.well_founded_irreflexive |}.
+Existing Instance NoCycle_WellFounded.
+
+Hint Extern 30 (@NoCycle ?A (NoCycle_WellFounded ?R ?wfr) _ _) =>
+  hnf; typeclasses eauto with subterm_relation : typeclass_instances.
+
 (** The NoConfusionPackage class provides a method for solving injectivity and discrimination
     of constructors, represented by an equality on an inductive type [I]. The type of [noConfusion]
     should be of the form [ Π Δ, (x y : I Δ) (x = y) -> NoConfusion x y ], where

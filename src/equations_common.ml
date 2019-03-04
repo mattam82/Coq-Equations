@@ -578,6 +578,8 @@ let eqdec_tac () = tac_of_string "Equations.EqDecInstances.eqdec_proof" []
 
 let simpl_equations_tac () = tac_of_string "Equations.Init.simpl_equations" []
 
+let solve_subterm_tac () = tac_of_string "Equations.Init.solve_subterm" []
+
 let specialize_mutfix_tac () = tac_of_string "Equations.FunctionalInduction.specialize_mutfix" []
   
 open Libnames
@@ -599,6 +601,7 @@ let find_depelim_prefix () =
   let modpath = Lazy.force depelim_module in
   let mp = ModPath.to_string modpath in
   mp
+
 
 let depelim_prefix = Lazy.from_fun find_depelim_prefix
 

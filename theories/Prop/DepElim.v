@@ -418,14 +418,12 @@ Ltac simplify_dep_elim := repeat simplify_one_dep_elim.
 
 (** Apply [noConfusion] on a given hypothsis. *)
 
-Ltac noconf_ref H :=
+Ltac noconf H :=
   block_goal; revert_until H; block_goal;
   on_last_hyp ltac:(fun H' => revert H');
   simplify_dep_elim;
   intros_until_block;
   intros_until_block.
-
-Ltac Equations.Init.noconf H ::= noconf_ref H.
 
 (** Reverse and simplify. *)
 
@@ -639,7 +637,7 @@ Ltac do_depind tac H :=
 
 (** To dependent elimination on some hyp. *)
 
-Ltac Equations.Init.depelim id ::= do_depelim ltac:(fun hyp => do_case hyp) id.
+Ltac depelim id := do_depelim ltac:(fun hyp => do_case hyp) id.
 
 Ltac depelim_term c :=
   let H := fresh "term" in
@@ -741,7 +739,6 @@ Ltac red_gl :=
       in reduce x
   end.
 
-
 Ltac rewrite_sigma2_rule_noK c :=
   match c with
   | @inj_right_sigma ?A ?H ?x ?P ?y ?y' _ =>
@@ -792,7 +789,7 @@ Ltac rewrite_sigma2_refl_goal :=
 (*   repeat (try autounfoldify c; *)
 (*           try (red_gl || rewrite_sigma2_refl_goal || autorewrite with refl_id) ; simpl). *)
 
-Ltac Equations.Init.simpl_equations ::=
+Ltac simpl_equations :=
   repeat (repeat (simpl; hnf_eq; rewrite_refl_id);
           try progress autounfold with equations).
 

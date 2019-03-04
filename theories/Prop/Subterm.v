@@ -11,8 +11,10 @@ From Coq Require Import Wellfounded Relation_Definitions.
 From Coq Require Import Relation_Operators Lexicographic_Product Wf_nat.
 From Coq Require Export Program.Wf FunctionalExtensionality.
 
-From Equations Require Import Init Signature (* Below *).
-From Equations.Prop Require Import Classes EqDec NoConfusion.
+From Equations Require Import Init Signature.
+Require Import Equations.Tactics.
+Require Import Equations.Prop.Classes Equations.Prop.EqDec
+        Equations.Prop.DepElim Equations.Prop.Constants.
 
 Generalizable Variables A R S B.
 
@@ -198,12 +200,6 @@ Ltac rec_wf_rel_aux recname n t rel kont :=
       rec_wf_fix recname kont
     end.
 
-Ltac rec_wf_eqns_rel recname n x rel :=
-  rec_wf_rel_aux recname n x rel
-                         ltac:(fun rechyp =>
-                                 unfold MR in rechyp; simpl in rechyp;
-                                 add_pattern (hide_pattern rechyp)).
-
 Ltac rec_wf_rel recname x rel :=
   rec_wf_rel_aux recname 0 x rel ltac:(fun rechyp => idtac).
 
@@ -236,8 +232,10 @@ Section Lexicographic_Product.
     destruct y as [x2 y1]; intro H6.
     simple inversion H6; intro.
     injection H1. injection H3. intros. subst. clear H1 H3.
-    apply IHAcc; auto with sets. 
-    noconf H3; noconf H1. 
+    apply IHAcc; auto with sets.
+    injection H1. intros; subst.
+    injection H3. intros; subst.
+    auto.
   Defined.
 
   Theorem wf_lexprod :

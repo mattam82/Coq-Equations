@@ -7,7 +7,7 @@
 (**********************************************************************)
 
 Require Import Equations.Init.
-From Equations.Prop Require Import Classes.
+Require Import Equations.Prop.Classes.
 
 (** Decidable equality.
 

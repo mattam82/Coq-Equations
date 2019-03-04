@@ -1,4 +1,4 @@
-Require Import Equations.Equations Equations.DepElimDec Bvector.
+Require Import Equations.Equations Bvector.
   
 Inductive bar1 (A : Type) : A -> Prop := .
 Inductive bar2 (A : Type) : (A -> A) -> Prop := .
@@ -11,7 +11,9 @@ Derive Signature for eq.
 Goal forall (U V : Type), Some U = Some V -> U = V.
 Proof. intros. depelim H. reflexivity. Qed.
 
-Derive Signature NoConfusionHom for vector.
+Notation vector := Vector.t.
+
+Derive Signature NoConfusionHom for Vector.t.
 
 Unset Printing All.
 
@@ -19,8 +21,6 @@ Inductive foo (A : Type)
             : forall H H0 : nat, vector A H -> vector A H0 -> Prop :=.
 
 Derive Signature for foo.
-
-Require Import Equations.EqDec.
 
 Instance vector_eqdec {A n} `(EqDec A) : EqDec (vector A n).
 Proof. intros. intros x. induction x. left. now depelim y.
@@ -30,10 +30,11 @@ Proof. intros. intros x. induction x. left. now depelim y.
   left; reflexivity.
   right. intro H0. apply neqy. injection H0. revert H0.
   repeat simplify ?. simpl. reflexivity.
-  right. intro H0. apply neq. simpdep. reflexivity.
+  right. intro H0. apply neq. now noconf H0.
 Defined.
 
 Derive Subterm for vector.
+
 Print Assumptions well_founded_t_subterm.
 
 (** A closed proof of well-foundedness relying on the decidability

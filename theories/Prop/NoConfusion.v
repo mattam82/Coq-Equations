@@ -11,9 +11,10 @@
    on some equation. *)
 
 Require Import Coq.Program.Tactics Bvector List.
-From Equations Require Import Init Signature Tactics.
-From Equations.Prop Require Import Classes EqDec Constants.
-Require Export Equations.Prop.DepElim.
+From Equations Require Import Init Signature.
+Require Import Equations.Tactics.
+Require Import Equations.Prop.Classes Equations.Prop.EqDec Equations.Prop.Constants.
+Require Import Equations.Prop.DepElim Equations.Prop.Tactics.
 
 (** Simple of parameterized inductive types just need NoConfusion. *)
 Derive NoConfusion for unit bool nat option sum Datatypes.prod list sigT sig.

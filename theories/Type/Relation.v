@@ -29,21 +29,21 @@ Section Transitive_Closure.
 
   (** Definition by direct transitive closure *)
 
-  Inductive clos_trans (x: A) : A -> Type :=
-    | t_step (y:A) : R x y -> clos_trans x y
-    | t_trans (y z:A) : clos_trans x y -> clos_trans y z -> clos_trans x z.
+  Inductive trans_clos (x: A) : A -> Type :=
+    | t_step (y:A) : R x y -> trans_clos x y
+    | t_trans (y z:A) : trans_clos x y -> trans_clos y z -> trans_clos x z.
 
   (** Alternative definition by transitive extension on the left *)
 
-  Inductive clos_trans_1n (x: A) : A -> Type :=
-    | t1n_step (y:A) : R x y -> clos_trans_1n x y
-    | t1n_trans (y z:A) : R x y -> clos_trans_1n y z -> clos_trans_1n x z.
+  Inductive trans_clos_1n (x: A) : A -> Type :=
+    | t1n_step (y:A) : R x y -> trans_clos_1n x y
+    | t1n_trans (y z:A) : R x y -> trans_clos_1n y z -> trans_clos_1n x z.
 
   (** Alternative definition by transitive extension on the right *)
 
-  Inductive clos_trans_n1 (x: A) : A -> Type :=
-    | tn1_step (y:A) : R x y -> clos_trans_n1 x y
-    | tn1_trans (y z:A) : R y z -> clos_trans_n1 x y -> clos_trans_n1 x z.
+  Inductive trans_clos_n1 (x: A) : A -> Type :=
+    | tn1_step (y:A) : R x y -> trans_clos_n1 x y
+    | tn1_trans (y z:A) : R y z -> trans_clos_n1 x y -> trans_clos_n1 x z.
 
 End Transitive_Closure.
 

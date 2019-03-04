@@ -13,11 +13,13 @@ Require Import Extraction.
 (** This exports tactics *)
 Declare ML Module "equations_plugin".
 
-From Equations Require Import Init Signature.
+From Equations Require Export Init Signature.
+Require Import Equations.Tactics.
 Require Export Equations.Prop.Classes.
-Require Import Equations.Prop.DepElim Equations.Prop.Constants.
+Require Import Equations.Prop.DepElim Equations.Prop.EqDec Equations.Prop.Constants.
 Require Import FunctionalInduction Below.
-From Equations Require Export EqDecInstances HSetInstances.
-From Equations.Prop Require Import NoConfusion Subterm (* DepElimDec *).
+Require Export Equations.Prop.EqDecInstances.
+Require Import Equations.Prop.NoConfusion Equations.Prop.Subterm.
+Require Export Equations.Prop.Tactics.
 
 Export Inaccessible_Notations.

@@ -11,7 +11,9 @@
 
 Require Import Bvector.
 Require Import Vectors.Vector.
-Require Export Equations.Init Equations.Tactics Equations.Prop.DepElim Equations.Prop.Constants.
+Require Import Equations.Init Equations.Tactics Equations.Prop.DepElim Equations.Prop.Tactics
+        Equations.Prop.Constants.
+Require Import FunctionalInduction.
 
 (** The [BelowPackage] class provides the definition of a [Below] predicate for some datatype,
    allowing to talk about course-of-value recursion on it. *)
@@ -24,11 +26,6 @@ Class BelowPackage (A : Type) := {
 
 Class Recursor (A : Type) :=
   { rec_type : forall x : A, Type ; rec : forall x : A, rec_type x }.
-
-(** A hintdb for transparency information of definitions related to [Below] and
-   for solving goals related to [Below] instances. *)
-
-Create HintDb Below discriminated.
 
 (** Support simplification of unification constraints appearing in the goal
    and the hypothesis. *)
@@ -119,11 +116,6 @@ Hint Rewrite Below_vector_equation_2 : Below.
 (* Hint Unfold rec_nat rec_vector : Recursors. *)
 
 (* Hint Extern 4 => progress (unfold hide_pattern in * ) : Below. *)
-
-Ltac add_pattern t :=
-  match goal with
-    |- ?T => change (add_pattern T t)
-  end.
 
 Ltac rec_fast v recname := intro_block v ; move v at top ;
   generalize_by_eqs_vars v ; (intros until v || revert_until v) ;

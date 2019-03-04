@@ -122,12 +122,17 @@ Import Sigma_Notations.
 Ltac noconf H := congruence || injection H; intros; subst.
 
 (** Forward reference for simplification of equations internal constants *)
-Ltac simpl_equations := fail "not defined yet".
+Ltac simpl_equations := fail "Equations.Init.simpl_equations has not been bound yet".
 
 (** Forward reference for Equations' [depelim] tactic, which will be defined in [DepElim]. *)
-Ltac depelim x := fail "not defined yet".
+Ltac depelim x := fail "Equations.Init.depelim has not been bound yet".
 
+(** Forward reference for Equations' [depind] tactic, which will be defined in [DepElim]. *)
+Ltac depind x := fail "Equations.Init.depind has not been bound yet".
 
+(** Forward reference for Equations' [solve_subterm] tactic, which will be defined in [Subterm].
+    It is used to derive the well-foundedness of the subterm relation. *)
+Ltac solve_subterm := fail "Equations.Init.solve_subterm has not been bound yet".
 
 (** Such a useful tactic it should be part of the stdlib. *)
 Ltac forward_gen H tac :=
@@ -137,3 +142,8 @@ Ltac forward_gen H tac :=
 
 Tactic Notation "forward" constr(H) := forward_gen H ltac:(idtac).
 Tactic Notation "forward" constr(H) "by" tactic(tac) := forward_gen H tac.
+
+(** A hintdb for transparency information of definitions related to [Below] and
+   for solving goals related to [Below] instances. *)
+
+Create HintDb Below discriminated.

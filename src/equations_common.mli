@@ -300,6 +300,7 @@ val equations_tac : unit -> unit Proofview.tactic
 val set_eos_tac : unit -> unit Proofview.tactic
 val solve_rec_tac : unit -> unit Proofview.tactic
 val find_empty_tac : unit -> unit Proofview.tactic
+val solve_subterm_tac : unit -> unit Proofview.tactic
 val pi_tac : unit -> unit Proofview.tactic
 val noconf_tac : unit -> unit Proofview.tactic
 val noconf_hom_tac : unit -> unit Proofview.tactic

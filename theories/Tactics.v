@@ -57,6 +57,11 @@ Definition hide_pattern {A : Type} (t : A) := t.
 
 Definition add_pattern {B} (A : Type) (b : B) := A.
 
+Ltac add_pattern t :=
+  match goal with
+    |- ?T => change (add_pattern T t)
+  end.
+
 (** To handle sections, we need to separate the context in two parts:
    variables introduced by the section and the rest. We introduce a dummy variable
    between them to indicate that. *)
@@ -173,9 +178,9 @@ Ltac solve_noconf_inv_equiv :=
 
 Ltac solve_noconf := simpl; intros;
     match goal with
-      [ H : ?Id _ _ _ |- ?Id _ _ _ ] => try solve_noconf_inv_equiv
-    | [ H : ?Id _ _ _ |- _ ] => try solve_noconf_prf
-    | [ |- ?Id _ _ _ ] => try solve_noconf_inv
+      [ H : @eq _ _ _ |- @eq _ _ _ ] => try solve_noconf_inv_equiv
+    | [ H : @eq _ _ _ |- _ ] => try solve_noconf_prf
+    | [ |- @eq _ _ _ ] => try solve_noconf_inv
     end.
 
 Ltac solve_noconf_hom_inv_eq a b :=
@@ -186,7 +191,7 @@ Ltac solve_noconf_hom_inv_eq a b :=
 
 Ltac solve_noconf_hom_inv := intros;
   match goal with
-  | |- ?Id _ (?f ?a ?b _) _ => solve_noconf_hom_inv_eq a b
+  | |- @eq _ (?f ?a ?b _) _ => solve_noconf_hom_inv_eq a b
   | |- ?R ?a ?b =>
     destruct_sigma a; destruct_sigma b;
     destruct a ; depelim b; simpl in * |-;
@@ -205,7 +210,7 @@ Ltac solve_noconf_hom_inv_equiv :=
 
 Ltac solve_noconf_hom := simpl; intros;
     match goal with
-      [ H : ?Id _ _ _ |- ?Id _ _ _ ] => try solve_noconf_hom_inv_equiv
-    | [ H : ?Id _ _ _ |- _ ] => try solve_noconf_prf
-    | [ |- ?Id _ _ _ ] => try solve_noconf_hom_inv
+      [ H : @eq _ _ _ |- @eq _ _ _ ] => try solve_noconf_hom_inv_equiv
+    | [ H : @eq _ _ _ |- _ ] => try solve_noconf_prf
+    | [ |- @eq _ _ _ ] => try solve_noconf_hom_inv
     end.
