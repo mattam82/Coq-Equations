@@ -7,6 +7,7 @@
 (**********************************************************************)
 
 Require Import Equations.Init.
+(* Require Import Coq.Program.Equality. *)
 
 (** Decidable equality.
 
@@ -108,8 +109,8 @@ Section EqdepDec.
 
   Let nu (y:A) (u:x = y) : x = y :=
     match eq_dec x y with
-      | inl _ eqxy => eqxy
-      | inr _ neqxy => Empty_rect (fun _ => _) (neqxy u)
+      | inl eqxy => eqxy
+      | inr neqxy => Empty_rect (fun _ => _) (neqxy u)
     end.
 
   Let nu_constant : forall (y:A) (u v:x = y), nu u = nu v.
@@ -158,9 +159,9 @@ Section EqdepDec.
   
   Let projs (P:A -> Type@{i}) (exP:sigma A P) (def:P x) : P x :=
     match exP with
-      | sigmaI _ x' prf =>
+      | sigmaI x' prf =>
         match eq_dec x' x with
-          | inl _ eqprf => Id_rect _ x' (fun x _ => P x) prf x eqprf
+          | inl eqprf => Id_rect _ x' (fun x _ => P x) prf x eqprf
           | _ => def
         end
     end.

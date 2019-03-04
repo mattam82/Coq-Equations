@@ -7,8 +7,9 @@
 (**********************************************************************)
 
 Require Import Coq.Unicode.Utf8_core.
-From Coq Require Import Extraction.
-Require Export Coq.Program.Basics Coq.Program.Tactics Coq.Program.Utils.
+Require Export HoTT.Basics.Overture.
+Require Export Coq.extraction.Extraction.
+Require Export Coq.Program.Tactics.
 
 Declare ML Module "equations_plugin".
 
@@ -42,6 +43,13 @@ Module Inaccessible_Notations.
 End Inaccessible_Notations.
 
 Import Inaccessible_Notations.
+
+(** Path induction referenced in equations_common.ml *)
+Local Definition eq_rect_r {A : Type} (x : A) (P : A -> Type) (b : P x) (y : A) (H : y = x) : P y :=
+  paths_rew_r A y x P b H.
+
+(** Identity function referenced in equations_common.ml *)
+Local Definition id {A : Type} (x : A) := x.
 
 (** A marker for fixpoint prototypes in the context *)
 Definition fixproto := tt.
@@ -145,12 +153,12 @@ Section IdTheory.
   Proof. destruct 1. apply 1. Defined.
 
   Lemma id_trans {x y z : A} : x = y -> y = z -> x = z.
-  Proof. destruct 1. apply id. Defined.
+  Proof. destruct 1. apply (fun a => a). Defined.
 
 End IdTheory.
 
 (** Forward reference for the NoConfusion tactic. *)
-Ltac noconf H := congruence || injection H; intros; subst.
+Ltac noconf H := (* FIXME congruence || *) injection H; intros; subst.
 
 (** Forward reference for Equations' [depelim] tactic, which will be defined in [DepElim]. *)
 Ltac depelim x := fail "not defined yet".

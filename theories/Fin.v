@@ -8,16 +8,20 @@
 
 (** An example development of the [fin] datatype using [equations]. *)
 
-Require Import Program.Basics Program.Combinators.
-Require Import Equations.Equations NoConfusion Equations.DepElimDec.
-(** [fin n] is the type of naturals smaller than [n]. *)
+Require Import HoTT.Basics.Overture.
+Require Import HoTT.Spaces.Nat.
+Require Import HoTT.DProp.
+Require Import Equations.Equations.
 
-Inductive fin : nat -> Set :=
-| fz : forall {n}, fin (S n)
-| fs : forall {n}, fin n -> fin (S n).
 Derive Signature for fin.
 (** NoConfusion For [fin]. *)
 Derive NoConfusion NoConfusionHom for fin.
+
+(** [fin n] is the type of naturals smaller than [n]. *)
+
+Inductive fin : nat -> Set :=
+| fz : forall {n : nat}, fin (S n)
+| fs : forall {n : nat}, fin n -> fin (S n).
 
 (** We can inject it into [nat]. *)
 Equations fog {n} (f : fin n) : nat :=
@@ -27,10 +31,9 @@ fog (fs f) := S (fog f).
 (** The injection preserves the number: *)
 Require Import FunctionalInduction.
 
-
 Lemma fog_inj {n} (f : fin n) : fog f < n.
-Proof with auto with arith. intros.
-  depind f; simp fog...
+Proof. intros.
+  depind f; simp fog; constructor.
 Qed.
 
 (** Of course it has an inverse. *)
@@ -69,16 +72,18 @@ fin_inj (fs f) (le_S p) := fs (fin_inj f p).
 (* Next Obligation. destruct n; try constructor. *)
 (** Won't pass the guardness check which diverges anyway. *)
 
-Inductive finle : forall (n : nat) (x : fin n) (y : fin n), Prop :=
+Inductive finle : forall (n : nat) (x : fin n) (y : fin n), Type :=
 | leqz : forall {n j}, finle (S n) fz j
 | leqs : forall {n i j}, finle n i j -> finle (S n) (fs i) (fs j).
 
-Scheme finle_ind_dep := Induction for finle Sort Prop.
+Scheme finle_ind_dep := Induction for finle Sort Type.
 
 Instance finle_ind_pack n x y : DependentEliminationPackage (finle n x y) :=
   { elim_type := _ ; elim := finle_ind_dep }.
 
 Arguments finle {n}.
+
+(* FIXME Missing Vector.
 
 Require Vectors.Vector.
 Arguments Vector.nil {A}.
@@ -121,3 +126,5 @@ Import Equations.Below.
 Instance fin_Recursor n : Recursor (fin n) :=
   { rec_type := fun v => forall (P : forall n, fin n -> Type) step, P n v;
     rec := fun v P step => rec_fin P v step }.
+
+*)

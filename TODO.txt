@@ -1,0 +1,15 @@
+Problems:
+  1. Fin.v: Lemma fog_gof: It seems that Ltac funind is not working.
+  2. Fin.v: Missing Vector, FIXME.
+  3. noconf.ml: Commented out noconf_tac to obtain same behaviour with interactive mode and make, FIXME.
+  4. NoConfusion.v: solve_noconf not working with Derive NoConfusion for sig prod, FIXME.
+  5. EqDecInstances.v: Problem with eqdec_proof (missing inversion), FIXME.
+  6. Init.v: missing congruence, FIXME.
+  7. ProgramEquality.v: Missing inversion tactic (eqdec_proof), FIXME.
+  8. HSetInstances.v: Missing inversion tactic (eqdec_proof), FIXME.
+  9. Subterm.v: Missing rest of file (missing Wf_nat.v), TODO.
+ 10. There are a few more files using inversion (which is not working).
+ 11. noconf.v: make_definition fails when using ~types:arity, FIXME.
+ 12. HSetInstances.v: Proofs should use eqdec_proof, TODO.
+ 13. DepElim.v: Proofs should use eqdec_proof, TODO.
+ 14. Below.v: Missing Vector, FIXME.

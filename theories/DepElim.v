@@ -47,7 +47,6 @@ Ltac unblock_goal := unfold block in *; cbv zeta.
 
 (** Notation for the single element of [x = x]. *)
 
-Arguments eq_refl {A} {x}.
 
 (** FIXME should not polute users *)
 Global Set Keyed Unification.
@@ -105,9 +104,9 @@ Polymorphic
 Lemma Id_solution_left : forall {A} {B : A -> Type} (t : A), B t -> (forall x, Id x t -> B x).
 Proof. intros A B t H x eq. destruct eq. apply H. Defined.
 
-Scheme eq_rect_dep := Induction for eq Sort Type.
+Scheme eq_rect_dep := Induction for paths Sort Type.
 
-Lemma eq_rect_dep_r {A} (x : A) (P : forall a, a = x -> Type) (p : P x eq_refl)
+Lemma eq_rect_dep_r {A} (x : A) (P : forall a, a = x -> Type) (p : P x idpath)
       (y : A) (e : y = x) : P y e.
 Proof. destruct e. apply p. Defined.
 
@@ -141,6 +140,8 @@ Proof.
   intros A t B H x eq. apply eq_symmetry_dep. clear eq. intros.
   destruct eq. exact H.
 Defined.
+    B t idpath -> (forall x (Heq : x = t), B x Heq).
+Proof. intros A t B H x eq. destruct eq. apply H. Defined.
 
 Polymorphic
 Lemma Id_solution_left_dep : forall {A} (t : A) {B : forall (x : A), (Id x t -> Type)},
@@ -155,7 +156,7 @@ Lemma Id_solution_right : forall {A} {B : A -> Type} (t : A), B t -> (forall x, 
 Proof. intros A B t H x eq. destruct eq. apply H. Defined.
 
 Lemma solution_right_dep : forall {A} (t : A) {B : forall (x : A), (t = x -> Type)},
-    B t eq_refl -> (forall x (Heq : t = x), B x Heq).
+    B t idpath -> (forall x (Heq : t = x), B x Heq).
 Proof. intros A t B H x eq. destruct eq. apply H. Defined.
 
 Polymorphic
@@ -192,7 +193,7 @@ Proof. intros; assumption. Defined.
 Lemma simplification_existT1 : forall {A} {P : A -> Type} {B} (p q : A) (x : P p) (y : P q),
   (p = q -> existT P p x = existT P q y -> B) -> (existT P p x = existT P q y -> B).
 Proof.
-  intros. refine (X _ H).
+  intros A P B p q x y X H. refine (X _ H).
   change (projT1 (existT P p x) = projT1 (existT P q y)).
   now destruct H.
  Defined.
@@ -230,7 +231,7 @@ Proof.
   change x with (pr2 (p, x)) at 2.
   change y with (pr2 (q, y)) at 2.
   destruct H.
-  intros X. eapply (X eq_refl). apply eq_refl.
+  intros X. eapply (X idpath). apply idpath.
 Defined.
 
 Polymorphic Lemma Id_simplification_sigma1_nondep {A} {P : Type} {B}
@@ -258,7 +259,7 @@ Proof.
   change x with (pr2 (p, x)) at 3.
   change y with (pr2 (q, y)) at 4.
   destruct H.
-  intros X. eapply (X eq_refl). apply eq_refl.
+  intros X. eapply (X idpath). apply idpath.
 Defined.
 
 Polymorphic Lemma Id_simplification_sigma1_dep {A} {P : A -> Type} {B}
@@ -610,7 +611,7 @@ Ltac rewrite_sigma2_refl_noK :=
   | |- context [@simplification_sigma2_uip ?A ?H ?P ?B ?p ?x ?y ?X eq_refl] =>
     rewrite (@simplification_sigma2_uip_refl A H P B p x X); simpl
 
-  | |- context [@simplification_sigma2_dec_point ?A ?p ?H ?P ?B ?x ?y ?X eq_refl] =>
+  | |- context [@simplification_sigma2_dec_point ?A ?p ?H ?P ?B ?x ?y ?X idpath] =>
     rewrite (@simplification_sigma2_dec_point_refl A p H P B x X); simpl
 
   | |- context [@simplification_K_uip ?A ?dec ?x ?B ?p eq_refl] =>
@@ -678,7 +679,7 @@ Ltac simplify_equations_in e :=
 
 Ltac block_equality id :=
   match type of id with
-    | @eq ?A ?t ?u => change (let _ := block in (@eq A t u)) in id
+    | @paths ?A ?t ?u => change (let _ := block in (@paths A t u)) in id
     | _ => idtac
   end.
 
@@ -1093,7 +1094,7 @@ Ltac find_empty := simpl in * ; elimtype False ;
 
 Ltac make_simplify_goal :=
   match goal with 
-    [ |- @eq ?A ?T ?U ] => let eqP := fresh "eqP" in 
+    [ |- @paths ?A ?T ?U ] => let eqP := fresh "eqP" in 
       set (eqP := fun x : A => x = U) ; change (eqP T)
   | [ |- @Id ?A ?T ?U ] => let eqP := fresh "eqP" in 
       set (eqP := fun x : A => @Id A x U) ; change (eqP T)

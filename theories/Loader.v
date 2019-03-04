@@ -8,12 +8,12 @@
 
 (** The set of libraries required to run Equations with all features. *)
 
-Require Import Extraction.
+Require Import Coq.extraction.Extraction.
 
 (** This exports tactics *)
 Declare ML Module "equations_plugin".
 
-From Coq Require Export Program.Utils Program.Wf.
+(* From Coq Require Export Program.Utils Program.Wf. *)
 From Equations Require Import Init.
 From Equations Require Export Classes Signature DepElim FunctionalInduction Below Constants.
 From Equations Require Export EqDecInstances HSetInstances.

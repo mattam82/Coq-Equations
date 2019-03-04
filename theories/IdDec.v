@@ -18,7 +18,8 @@ Set Implicit Arguments.
 
 Set Universe Polymorphism.
 
-Import IdNotations.
+Import Id_Notations.
+Open Scope equations.
 
 Inductive sum@{i j} (A : Type@{i}) (B : Type@{i}) :=
 | inl : A -> sum A B
@@ -109,7 +110,7 @@ Section EqdepDec.
     forall P:x = x -> Type, P 1 -> forall p:x = x, P p.
   Proof.
     intros.
-    elim eq_proofs_unicity with x (id_refl _ x) p.
+    elim eq_proofs_unicity with x (@id_refl _ x) p.
     trivial.
   Defined.
 
@@ -124,7 +125,7 @@ Section EqdepDec.
 
   Let proj (P:A -> Type) (exP:sigT P) (def:P x) : P x :=
     match exP with
-      | existT _ x' prf =>
+      | existT x' prf =>
         match eq_dec x' x with
           | inl eqprf => Id_rect _ x' (fun x _ => P x) prf x eqprf
           | _ => def
@@ -138,6 +139,7 @@ Section EqdepDec.
     intros.
     cut (proj (existT P x y) y = proj (existT P x y') y).
     simpl in |- *.
+    unfold proj.
     case (eq_dec x x).
     intro e.
     elim e using K_dec; trivial.
@@ -156,7 +158,7 @@ Section EqdepDec.
     unfold K_dec. simpl.
     unfold eq_proofs_unicity. subst proj. 
     simpl. unfold nu_inv, comp, nu. simpl. 
-    unfold eq_ind, nu_left_inv, trans_sym_eq, eq_rect, nu_constant.
+    unfold paths_ind, nu_left_inv, trans_sym_eq, nu_constant.
     rewrite eq_dec_refl. reflexivity.
   Defined.
 
@@ -164,7 +166,7 @@ Section EqdepDec.
   
   Let projs (P:A -> Type) (exP:sigma A P) (def:P x) : P x :=
     match exP with
-      | sigmaI _ x' prf =>
+      | sigmaI x' prf =>
         match eq_dec x' x with
           | inl eqprf => Id_rect _ x' (fun x _ => P x) prf x eqprf
           | _ => def
@@ -178,6 +180,7 @@ Section EqdepDec.
     intros.
     cut (projs (sigmaI P x y) y = projs (sigmaI P x y') y).
     unfold projs. 
+    unfold proj.
     case (eq_dec x x).
     intro e.
     elim e using K_dec. trivial.
@@ -196,7 +199,7 @@ Section EqdepDec.
     unfold K_dec. simpl.
     unfold eq_proofs_unicity. subst projs.
     simpl. unfold nu_inv, comp, nu. simpl.
-    unfold eq_ind, nu_left_inv, trans_sym_eq, Id_rect, nu_constant.
+    unfold paths_ind, nu_left_inv, trans_sym_eq, Id_rect, nu_constant.
     rewrite eq_dec_refl. reflexivity.
   Defined.
 

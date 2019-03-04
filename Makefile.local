@@ -1,3 +1,7 @@
+COQC := "hoqc"
+COQTOP := "hoqtop"
+COQDEP := "hoqdep"
+
 makefiles: test-suite/Makefile
 
 test-suite/Makefile: test-suite/_CoqProject

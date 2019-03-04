@@ -9,9 +9,7 @@
 (** Instances of [Below] for the standard datatypes. To be used by 
    [equations] when it needs to do recursion on a type. *)
 
-Require Import Bvector.
-Require Import Vectors.Vector.
-Require Export Equations.Init Equations.DepElim Equations.Constants.
+Require Export Equations.Init Equations.DepElim Equations.HoTTConstants.
 
 (** The [BelowPackage] class provides the definition of a [Below] predicate for some datatype,
    allowing to talk about course-of-value recursion on it. *)
@@ -71,6 +69,7 @@ Ltac apply_fix_proto :=
 
 Hint Extern 100 => apply_fix_proto : Below.
 
+
 (** We now derive standard Below instances. *)
 
 Derive Below for nat.
@@ -82,6 +81,7 @@ Instance nat_Recursor : Recursor nat :=
   { rec_type := fun n => forall P step, P n ;
     rec := fun n P step => rec_nat P n step }.
 
+(* FIXME - Missing Vector
 Notation vector := Vector.t.
 Import Vector.
 Arguments nil {A}.
@@ -97,6 +97,8 @@ Below_vector A P _ (a :: v) :=
   ((P _ v) * Below_vector A P _ v)%type.
 
 Hint Rewrite Below_vector_equation_2 : Below.
+
+end of fixme. *)
 
 (* Equations(nocomp noeqns noind) below_vector A (P : ∀ n, vector A n -> Type) *)
 (*   (step : ∀ n (v : vector A n), Below_vector A P n v -> P n v) *)
@@ -117,8 +119,6 @@ Hint Rewrite Below_vector_equation_2 : Below.
 (*     rec := λ v P step, rec_vector A P n v step }. *)
 
 (* Hint Unfold rec_nat rec_vector : Recursors. *)
-
-(* Hint Extern 4 => progress (unfold hide_pattern in * ) : Below. *)
 
 Ltac add_pattern t :=
   match goal with

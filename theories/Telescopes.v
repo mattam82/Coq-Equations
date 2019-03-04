@@ -1,5 +1,5 @@
 From Equations Require Import Loader.
-Require Import FunctionalExtensionality.
+Require Import HoTT.Basics.Overture.
 
 (** Telescopes: allows treating variable arity fixpoints *)
 Set Universe Polymorphism.

@@ -1,5 +1,8 @@
 From Equations Require Import Init.
-From Coq Require Import Extraction Relation_Definitions.
+From Coq Require Import Extraction.
+Require Import HoTT.Basics.Overture.
+Require Import Coq.Init.Wf.
+
 (** A class for well foundedness proofs.
    Instances can be derived automatically using [Derive Subterm for ind]. *)
 
@@ -34,7 +37,7 @@ Lemma apply_noCycle_right {A} {noconf : NoCyclePackage A}
       (p q : A) {B : p = q -> Type} :
   NoCycle q p -> (forall H : p = q, B H).
 Proof.
-  intros. destruct (noCycle H (eq_sym H0)).
+  intros. destruct (noCycle H (inverse H0)).
 Defined.
 Extraction Inline apply_noCycle_left apply_noCycle_right.
 
@@ -71,7 +74,7 @@ Extraction Inline apply_noConfusion.
 
 Polymorphic Cumulative Class NoConfusionIdPackage (A : Type) := {
   NoConfusionId : A -> A -> Type;
-  noConfusionId : forall {a b}, NoConfusionId a b -> Id a b;
+  noConfusionId : forall {a b}, NoConfusionId a b -> paths a b;
   noConfusionId_inv : forall {a b}, Id a b -> NoConfusionId a b;
   noConfusionId_sect : forall {a b} (e : NoConfusionId a b), Id (noConfusionId_inv (noConfusionId e)) e;
   noConfusionId_retr : forall {a b} (e : Id a b), Id (noConfusionId (noConfusionId_inv e)) e;

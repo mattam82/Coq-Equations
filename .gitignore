@@ -46,3 +46,4 @@ docs/_site
 _build
 *.install
 /test-suite/*.agdai
+/custom-HoTT/
