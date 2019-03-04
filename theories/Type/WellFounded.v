@@ -1,8 +1,10 @@
+Set Warnings "-notation-overridden".
 From Coq Require Import Extraction CRelationClasses.
-From Equations Require Import Init.
+Require Import Equations.Init Equations.Tactics.
 Require Import Equations.Type.Logic
         Equations.Type.Relation Equations.Type.Relation_Properties.
 
+Set Universe Polymorphism.
 Import Id_Notations.
 Import Sigma_Notations.
 
@@ -59,7 +61,7 @@ End Wf_Transitive_Closure.
 Lemma well_founded_irreflexive {A} {R : relation A} {wfR : well_founded R} :
   forall x y : A, R x y -> x = y -> Empty.
 Proof.
-  intros x y Ryy ->. red in wfR.
-  induction (wfR y) as [y accy IHy].
+  intros x y Ryy. intros e. destruct e. red in wfR.
+  induction (wfR x) as [y accy IHy].
   apply (IHy _ Ryy Ryy).
 Qed.

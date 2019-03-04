@@ -13,27 +13,6 @@
 
 From Equations Require Import Init.
 
-(** For right associated sigmas *)
-Ltac destruct_right_sigma H :=
-  match type of H with
-  | @sigma _ (fun x => unit) => 
-    let ph := fresh in
-    destruct H as [x ph];
-      cbn [pr1 pr2] in * |- *; try clear ph
-  | @sigma _ (fun x => _) => 
-    destruct H as [x H]; destruct_right_sigma H
-  | @sigma _ _ => destruct H as [x H]; 
-      destruct_right_sigma H
-  | _ => idtac
-  end.
-
-Ltac destruct_one_sigma :=
-  match goal with
-  | [ H : @sigma _ _ |- _ ] => destruct_right_sigma H
-  end.
-
-Ltac simp_sigmas := repeat destruct_one_sigma.
-
 Polymorphic Cumulative Class Signature (fam : Type) (signature_index : Type) : Type := {
   signature : signature_index -> Type ;
   signature_pack : fam -> sigma signature
@@ -44,3 +23,25 @@ Register Equations.Signature.signature as equations.signature.signature.
 Register Equations.Signature.signature_pack as equations.signature.pack.
 
 Extraction Inline signature signature_pack.
+
+(* For right associated sigmas *)
+
+Ltac destruct_right_sigma H :=
+  match type of H with
+  | @sigma _ (fun x => unit) =>
+    let ph := fresh in
+    destruct H as [x ph];
+      cbn [pr1 pr2] in * |- *; try clear ph
+  | @sigma _ (fun x => _) =>
+    destruct H as [x H]; destruct_right_sigma H
+  | @sigma _ _ => destruct H as [x H];
+      destruct_right_sigma H
+  | _ => idtac
+  end.
+
+Ltac destruct_one_sigma :=
+  match goal with
+  | [ H : @sigma _ _ |- _ ] => destruct_right_sigma H
+  end.
+
+Ltac simp_sigmas := repeat destruct_one_sigma.

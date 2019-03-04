@@ -54,7 +54,7 @@ Register Equations.Init.sigmaI as equations.product.intro.
 Register Classes.WellFounded as equations.wellfounded.class.
 Register WellFounded.well_founded as equations.wellfounded.type.
 Register Relation.relation as equations.relation.type.
-Register Relation.clos_trans as equations.relation.transitive_closure.
+Register Relation.trans_clos as equations.relation.transitive_closure.
 
 (* Dependent elimination constants *)
 

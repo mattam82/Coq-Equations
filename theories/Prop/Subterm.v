@@ -116,13 +116,6 @@ Hint Resolve clos_trans_stepr : subterm_relation.
 
 (** The default tactic to build proofs of well foundedness of subterm relations. *)
 
-Ltac simp_sigmas := repeat destruct_one_sigma ; simpl in *.
-
-Ltac eapply_hyp :=
-  match goal with 
-    [ H : _ |- _ ] => eapply H
-  end.
-
 Create HintDb solve_subterm discriminated.
 
 Hint Extern 4 (_ = _) => reflexivity : solve_subterm.

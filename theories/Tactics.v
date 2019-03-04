@@ -138,6 +138,13 @@ Ltac destruct_sigma id :=
   | _ => idtac
   end.
 
+Ltac simp_sigmas := repeat destruct_one_sigma ; simpl in *.
+
+Ltac eapply_hyp :=
+  match goal with
+    [ H : _ |- _ ] => eapply H
+  end.
+
 Ltac solve_noconf_prf := intros;
   on_last_hyp ltac:(fun id => destruct id) ; (* Subtitute a = b *)
   on_last_hyp ltac:(fun id =>
