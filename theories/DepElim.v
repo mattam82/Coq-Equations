@@ -721,13 +721,13 @@ Ltac simplify_dep_elim := repeat simplify_one_dep_elim.
 (** Apply [noConfusion] on a given hypothsis. *)
 
 Ltac noconf_ref H :=
-  match type of H with
-  | ?R ?A ?X ?Y =>
-    blocked ltac:(revert_until H; block_goal; revert H; simplify_dep_elim;
-                  intros_until_block)
-  end.
+  block_goal; revert_until H; block_goal;
+  on_last_hyp ltac:(fun H' => revert H');
+  simplify_dep_elim;
+  intros_until_block;
+  intros_until_block.
 
-Ltac Equations.Init.noconf H ::= blocked ltac:(noconf_ref H ; simplify_dep_elim).
+Ltac Equations.Init.noconf H ::= noconf_ref H.
 
 (** Reverse and simplify. *)
 
