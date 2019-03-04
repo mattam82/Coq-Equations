@@ -136,7 +136,7 @@ End RoseTree.
 Arguments rose A : clear implicits.
 
 Module FullStruct.
-  Context {A : Type}.
+  Parameter (A : Type).
 
   Equations elements (r : rose A) (acc : list A) : list A :=
   elements (leaf a) acc := a :: acc;
@@ -147,7 +147,7 @@ Module FullStruct.
 End FullStruct.
 
 Module WfAndStruct.
-  Context {A : Type}.
+  Parameter (A : Type).
 
   Equations elements (r : rose A) (acc : list A) : list A by wf (size r) lt :=
   elements (leaf a) acc := a :: acc;
