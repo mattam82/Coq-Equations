@@ -11,7 +11,7 @@
 
 Require Import Bvector.
 Require Import Vectors.Vector.
-Require Export Equations.Init Equations.DepElim Equations.Constants.
+Require Export Equations.Init Equations.Tactics Equations.Prop.DepElim Equations.Prop.Constants.
 
 (** The [BelowPackage] class provides the definition of a [Below] predicate for some datatype,
    allowing to talk about course-of-value recursion on it. *)

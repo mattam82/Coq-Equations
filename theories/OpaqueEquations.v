@@ -10,9 +10,9 @@
   that computation is not possible inside Coq, the tactics need this
   to solve obligations. *)
 
-From Equations Require Import DepElim.
+Require Import Equations.Prop.DepElim.
 
 Global Opaque simplification_sigma2_uip
        simplification_sigma2_dec_point
        simplification_K_uip
-       simplify_ind_pack simplified_ind_pack Id_simplification_sigma2.
+       simplify_ind_pack simplified_ind_pack.

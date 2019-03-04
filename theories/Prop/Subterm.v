@@ -6,9 +6,13 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Wf_nat Arith.Lt Bvector Relations.
-Require Export Program.Wf FunctionalExtensionality. (* ProofIrrelevance (* FIXME Program.Wf doesn't need it *). *)
-From Equations Require Import Init Classes Below Signature EqDec NoConfusion.
+From Coq Require Import Wf_nat Arith.Lt Bvector Relations.
+From Coq Require Import Wellfounded Relation_Definitions.
+From Coq Require Import Relation_Operators Lexicographic_Product Wf_nat.
+From Coq Require Export Program.Wf FunctionalExtensionality.
+
+From Equations Require Import Init Signature (* Below *).
+From Equations.Prop Require Import Classes EqDec NoConfusion.
 
 Generalizable Variables A R S B.
 
@@ -42,7 +46,7 @@ Qed.
 Hint Rewrite @FixWf_unfold : Recursors.
 
 Lemma FixWf_unfold_step : 
-  forall (A : Type) (R : Relation_Definitions.relation A) (WF : WellFounded R) (P : A -> Type)
+  forall (A : Type) (R : relation A) (WF : WellFounded R) (P : A -> Type)
     (step : forall x : A, (forall y : A, R y x -> P y) -> P x) (x : A)
     (step' : forall y : A, R y x -> P y),
     step' = (fun (y : A) (_ : R y x) => FixWf P step y) ->
@@ -78,8 +82,6 @@ Create HintDb rec_decision discriminated.
    Note that this definition is transparent as well as [wf_clos_trans],
    to allow computations with functions defined by well-founded recursion.
    *)
-
-Require Import Wellfounded.Transitive_Closure.
 
 Lemma WellFounded_trans_clos `(WF : WellFounded A R) : WellFounded (clos_trans A R).
 Proof. apply wf_clos_trans. apply WF. Defined.
@@ -205,14 +207,8 @@ Ltac rec_wf_eqns_rel recname n x rel :=
 Ltac rec_wf_rel recname x rel :=
   rec_wf_rel_aux recname 0 x rel ltac:(fun rechyp => idtac).
 
-(** The [pi] tactic solves an equality between applications of the same function,
-   possibly using proof irrelevance to discharge equality of proofs. *)
-
-Ltac pi := repeat progress (f_equal || reflexivity).
 (** Define non-dependent lexicographic products *)
 
-Require Import Wellfounded Relation_Definitions.
-Require Import Relation_Operators Lexicographic_Product Wf_nat.
 Arguments lexprod [A] [B] _ _.
 
 Section Lexicographic_Product.

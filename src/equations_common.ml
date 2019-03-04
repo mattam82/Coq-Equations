@@ -346,8 +346,11 @@ let mkRefl env evd t x =
 let dummy_loc = None
 type 'a located = 'a Loc.located
 
-let tac_of_string str args =
-  Tacinterp.interp (TacArg(CAst.(make @@ TacCall(make (Libnames.qualid_of_string str, args)))))
+let tac_of_string tac args =
+  try
+    Tacinterp.interp (TacArg(CAst.(make @@ TacCall(make (Libnames.qualid_of_string tac, args)))))
+  with Not_found ->
+    CErrors.anomaly Pp.(str"Cannot find tactic " ++ str tac)
 
 let get_class sigma c =
   let x = Typeclasses.class_of_constr sigma c in
@@ -561,23 +564,19 @@ let rec_wf_tac h n h' rel =
 
 let unfold_recursor_tac () = tac_of_string "Equations.Subterm.unfold_recursor" []
 
-let equations_tac () = tac_of_string "Equations.DepElim.equations" []
-
-let set_eos_tac () = tac_of_string "Equations.DepElim.set_eos" []
-    
 let solve_rec_tac () = tac_of_string "Equations.Equations.solve_rec" []
 
-let find_empty_tac () = tac_of_string "Equations.DepElim.find_empty" []
+let pi_tac () = tac_of_string "Equations.Tactics.pi" []
 
-let pi_tac () = tac_of_string "Equations.Subterm.pi" []
+let set_eos_tac () = tac_of_string "Equations.Tactics.set_eos" []
 
-let noconf_tac () = tac_of_string "Equations.NoConfusion.solve_noconf" []
+let noconf_tac () = tac_of_string "Equations.Tactics.solve_noconf" []
 
-let noconf_hom_tac () = tac_of_string "Equations.NoConfusion.solve_noconf_hom" []
+let noconf_hom_tac () = tac_of_string "Equations.Tactics.solve_noconf_hom" []
 
 let eqdec_tac () = tac_of_string "Equations.EqDecInstances.eqdec_proof" []
 
-let simpl_equations_tac () = tac_of_string "Equations.DepElim.simpl_equations" []
+let simpl_equations_tac () = tac_of_string "Equations.Init.simpl_equations" []
 
 let specialize_mutfix_tac () = tac_of_string "Equations.FunctionalInduction.specialize_mutfix" []
   
@@ -588,11 +587,32 @@ let reference_of_global c = Nametab.shortest_qualid_of_global Names.Id.Set.empty
 let tacident_arg h =
   Reference (qualid_of_ident h)
 
+let find_depelim_module () =
+  let gr = Coqlib.lib_ref "equations.depelim.module" in
+  match gr with
+  | GlobRef.ConstRef c -> Names.Constant.modpath c
+  | _ -> CErrors.anomaly (str"equations.depelim.module is not defined")
+
+let depelim_module = Lazy.from_fun find_depelim_module
+
+let find_depelim_prefix () =
+  let modpath = Lazy.force depelim_module in
+  let mp = ModPath.to_string modpath in
+  mp
+
+let depelim_prefix = Lazy.from_fun find_depelim_prefix
+
+let depelim_tactic s =
+  Lazy.force depelim_prefix ^ "." ^ s
+
 let depelim_tac h = tac_of_string "Equations.Init.depelim" [tacident_arg h]
-let do_empty_tac h = tac_of_string "Equations.DepElim.do_empty" [tacident_arg h]
-let depelim_nosimpl_tac h = tac_of_string "Equations.DepElim.depelim_nosimpl" [tacident_arg h]
-let simpl_dep_elim_tac () = tac_of_string "Equations.DepElim.simpl_dep_elim" []
-let depind_tac h = tac_of_string "Equations.DepElim.depind" [tacident_arg h]
+
+let do_empty_tac h = tac_of_string (depelim_tactic "do_empty") [tacident_arg h]
+let depelim_nosimpl_tac h = tac_of_string (depelim_tactic "depelim_nosimpl") [tacident_arg h]
+let simpl_dep_elim_tac () = tac_of_string (depelim_tactic "simpl_dep_elim") []
+let depind_tac h = tac_of_string (depelim_tactic "depind") [tacident_arg h]
+let equations_tac () = tac_of_string (depelim_tactic "equations") []
+let find_empty_tac () = tac_of_string (depelim_tactic "find_empty") []
 
 let call_tac_on_ref tac c =
   let var = Names.Id.of_string "x" in
@@ -607,17 +627,17 @@ let call_tac_on_ref tac c =
   let tac = TacArg (CAst.(make @@ TacCall (make (tac, [var])))) in
   ist, tac
 
-let mp = Names.MPfile (Names.DirPath.make (List.map Names.Id.of_string ["DepElim"; "Equations"]))
-let solve_equation = Names.KerName.make mp (Names.Label.make "solve_equation")
+let solve_equation () =
+  Names.KerName.make (Lazy.force depelim_module) (Names.Label.make "solve_equation")
 
 let solve_equation_tac (c : Names.GlobRef.t) =
-  let ist, tac = call_tac_on_ref solve_equation c in
+  let ist, tac = call_tac_on_ref (solve_equation ()) c in
   Tacinterp.eval_tactic_ist ist tac
 
 let impossible_call_tac c =
   let tac = Tacintern.glob_tactic
   (TacArg(CAst.(make @@ TacCall(make
-  (Libnames.qualid_of_string "Equations.DepElim.impossible_call",
+  (Libnames.qualid_of_string (depelim_tactic "impossible_call"),
    [Reference (reference_of_global c)]))))) in
   let val_tac = Genarg.glbwit Tacarg.wit_tactic in
   Genarg.in_gen val_tac tac

@@ -6,7 +6,11 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
+Set Warnings "-notation-overridden".
+
 Require Import Equations.Init.
+Require Import Equations.Type.Logic.
+Require Import Equations.Type.Classes.
 
 (** Decidable equality.
 
@@ -14,30 +18,63 @@ Require Import Equations.Init.
    everything transparent and moving to [Type] so that programs using this 
    will actually be computable inside Coq. *)
 
-Set Implicit Arguments.
-
 Set Universe Polymorphism.
 
-Class HProp A := is_hprop : forall x y : A, Id x y.
-
-Class HSet A := is_hset : forall {x y : A}, HProp (Id x y).
-
-Cumulative Inductive sum@{i} (A : Type@{i}) (B : Type@{i}) := inl : A -> sum A B | inr : B -> sum A B.
-
-Set Warnings "-notation-overridden".
 Import Id_Notations.
 Import Sigma_Notations.
 Local Open Scope equations_scope.
 
-Definition ap {A : Type} {B : Type} (f : A -> B) {x y : A} (p : x = y) : f x = f y :=
-  match p with id_refl => id_refl end.
+(** We rederive the UIP shifting proof transparently, and on type.
+    Taken from Coq's stdlib.
+ *)
 
-Definition Id_rew (A : Type) (a : A) (P : A -> Type) (p : P a) (y : A) (e : a = y) : P y :=
-  match e with id_refl => p end.
-                             
-Definition dec_eq@{i} {A : Type@{i}} (x y : A) := sum (x = y) (x = y -> Empty@{i}).
+Definition UIP_refl_on_ X (x : X) := forall p : x = x, p = 1.
+Definition UIP_refl_ X := forall (x : X) (p : x = x), p = 1.
 
-Class EqDec@{i} (A : Type@{i}) := eq_dec : forall x y : A, sum (x = y) (x = y -> Empty@{i}).
+Lemma Id_trans_r {A} (x y z : A) : x = y -> z = y -> x = z.
+Proof.
+  destruct 1. destruct 1. exact 1.
+Defined.
+
+(** We rederive the UIP shifting proof transparently. *)
+Theorem UIP_shift_on@{i} (X : Type@{i}) (x : X) :
+  UIP_refl_on_ X x -> forall y : x = x, UIP_refl_on_ (x = x) y.
+Proof.
+  intros UIP_refl y.
+  rewrite (UIP_refl y).
+  intros z.
+  assert (UIP:forall y' y'' : x = x, y' = y'').
+  { intros. apply Id_trans_r with 1; apply UIP_refl. }
+  transitivity (id_trans (id_trans (UIP 1 1) z)
+                         (id_sym (UIP 1 1))).
+  - destruct z. destruct (UIP _ _). reflexivity.
+  - change
+      (match 1 as y' in _ = x' return y' = y' -> Type@{i} with
+       | 1 => fun z => z = 1
+       end (id_trans (id_trans (UIP 1 1) z)
+                     (id_sym (UIP (1) (1))))).
+    destruct z. destruct (UIP _ _). reflexivity.
+Defined.
+
+Theorem UIP_shift@{i} : forall {U : Type@{i}}, UIP_refl_@{i} U -> forall x:U, UIP_refl_@{i} (x = x).
+Proof. exact (fun U UIP_refl x => @UIP_shift_on U x (UIP_refl x)). Defined.
+
+(** This is the reduction rule of UIP. *)
+Lemma uip_refl_refl@{i} {A : Type@{i}} {E : UIP@{i} A} (x : A) : uip (x:=x) 1 1 = 1.
+Proof.
+  apply UIP_shift@{i}.
+  intros y e. apply uip@{i}.
+Defined.
+
+Theorem UIP_K@{i j} {A : Type@{i}} {U : UIP A} (x : A) :
+  forall P : x = x -> Type@{j},
+    P 1 -> forall p : x = x, P p.
+Proof.
+  intros P peq e. now elim (uip 1 e).
+Defined.
+
+Definition Id_rew@{i j} (A : Type@{i}) (a : A) (P : A -> Type@{j}) (p : P a) (y : A) (e : a = y) : P y :=
+  match e with 1 => p end.
 
 (** Tactic to solve EqDec goals, destructing recursive calls for the recursive 
   structure of the type and calling instances of eq_dec on other types. *)
@@ -68,8 +105,6 @@ Ltac eqdec_loop t u :=
     in
     (* idtac "here" x y; *)
     match goal with
-      [ H : forall z, dec_eq x z |- _ ] =>
-      case (H y); [good|contrad]
     | [ H : forall z, sum (Id _ z) _ |- _ ] =>
       case (H y); [good|contrad]
     | _ => case (eq_dec x y); [good|contrad]
@@ -77,11 +112,6 @@ Ltac eqdec_loop t u :=
 
 Ltac eqdec_proof := try red; intros;
   match goal with
-    |- dec_eq ?x ?y =>
-    revert y; induction x; intros until y; depelim y;
-    match goal with
-      |- dec_eq ?x ?y => eqdec_loop x y
-    end
    | |- sum (Id ?x ?y) _ =>
     revert y; induction x; intros until y; depelim y;
     match goal with
@@ -95,7 +125,7 @@ Section EqdepDec.
   Universe  i.
   Context {A : Type@{i}} `{EqDec A}.
 
-  Let comp (x y y':A) (eq1:x = y) (eq2:x = y') : y = y' :=
+  Let comp {x y y':A} (eq1:x = y) (eq2:x = y') : y = y' :=
     Id_rect _ _ (fun a _ => a = y') eq2 _ eq1.
 
   Remark trans_sym_eq : forall (x y:A) (u:x = y), comp u u = id_refl y.
@@ -106,10 +136,10 @@ Section EqdepDec.
 
   Variable x : A.
 
-  Let nu (y:A) (u:x = y) : x = y :=
+  Let nu {y:A} (u:x = y) : x = y :=
     match eq_dec x y with
-      | inl _ eqxy => eqxy
-      | inr _ neqxy => Empty_rect (fun _ => _) (neqxy u)
+      | inl eqxy => eqxy
+      | inr neqxy => Empty_rect (fun _ => _) (neqxy u)
     end.
 
   Let nu_constant : forall (y:A) (u v:x = y), nu u = nu v.
@@ -121,7 +151,7 @@ Section EqdepDec.
     case e; trivial.
   Defined.
 
-  Let nu_inv (y:A) (v:x = y) : x = y := comp (nu (id_refl x)) v.
+  Let nu_inv {y:A} (v:x = y) : x = y := comp (nu (id_refl x)) v.
 
   Remark nu_left_inv : forall (y:A) (u:x = y), nu_inv (nu u) = u.
   Proof.
@@ -147,7 +177,7 @@ Section EqdepDec.
     trivial.
   Defined.
 
-  Lemma eq_dec_refl : eq_dec x x = inl _ (id_refl x).
+  Lemma eq_dec_refl : eq_dec x x = inl (id_refl x).
   Proof.
     case eq_dec; intros. apply ap. apply eq_proofs_unicity. 
     elim e. apply id_refl.
@@ -156,21 +186,20 @@ Section EqdepDec.
   (** The corollary *)
   (* On [sigma] *)
   
-  Let projs (P:A -> Type@{i}) (exP:sigma A P) (def:P x) : P x :=
+  Let projs {P:A -> Type@{i}} (exP:sigma P) (def:P x) : P x :=
     match exP with
       | sigmaI _ x' prf =>
         match eq_dec x' x with
-          | inl _ eqprf => Id_rect _ x' (fun x _ => P x) prf x eqprf
+          | inl eqprf => Id_rect _ x' (fun x _ => P x) prf x eqprf
           | _ => def
         end
     end.
 
-  Theorem inj_right_sigma :
-    forall (P:A -> Type@{i}) (y y':P x),
-      sigmaI P x y = sigmaI P x y' -> y = y'.
+  Theorem inj_right_sigma {P : A -> Type@{i}} {y y':P x} :
+      (x, y) = (x, y') -> y = y'.
   Proof.
     intros.
-    cut (projs (sigmaI P x y) y = projs (sigmaI P x y') y).
+    cut (projs (x, y) y = projs (sigmaI P x y') y).
     unfold projs. 
     case (eq_dec x x).
     intro e.
@@ -183,7 +212,7 @@ Section EqdepDec.
   Defined.
 
   Lemma inj_right_sigma_refl (P : A -> Type@{i}) (y : P x) :
-    inj_right_sigma (y:=y) (y':=y) (id_refl _) = (id_refl _).
+    inj_right_sigma (y:=y) (y':=y) 1 = (id_refl _).
   Proof.
     unfold inj_right_sigma. intros.
     unfold eq_rect. unfold projs.
@@ -200,7 +229,7 @@ End EqdepDec.
 Definition transport {A : Type} {P : A -> Type} {x y : A} (p : x = y) : P x -> P y :=
   match p with id_refl => fun h => h end.
 
-Lemma sigma_eq@{i} (A : Type@{i}) (P : A -> Type@{i}) (x y : sigma A P) :
+Lemma sigma_eq@{i} (A : Type@{i}) (P : A -> Type@{i}) (x y : sigma P) :
   x = y -> Σ p : (x.1 = y.1), transport p x.2 = y.2.
 Proof.
   intros H; destruct H.
@@ -208,11 +237,10 @@ Proof.
   refine (id_refl, id_refl).
 Defined.  
 
-Theorem inj_sigma_r@{i} {A : Type@{i}} `{H : HSet A} :
-  forall (P:A -> Type@{i}) {x} {y y':P x},
+Theorem inj_sigma_r@{i} {A : Type@{i}} `{H : HSet A} {P : A -> Type@{i}} {x} {y y':P x} :
     sigmaI P x y = sigmaI P x y' -> y = y'.
 Proof.
-  intros P x y y' [H' H'']%sigma_eq. cbn in *.
+  intros [H' H'']%sigma_eq. cbn in *.
   pose (is_hset H' id_refl).
   apply (transport (P:=fun h => transport h y = y') i H'').
 Defined.
@@ -227,7 +255,7 @@ Proof. now destruct p, q. Defined.
 
 Lemma id_trans_sym {A} (x y z : A) (p : x = y) (q : y = z) (r : x = z) :
   id_trans p q = r -> q = id_trans (id_sym p) r.
-Proof. now destruct p, q. Defined.
+Proof. destruct p, q. destruct 1. exact 1. Defined.
 
 Lemma hprop_hset {A} (h : HProp A) : HSet A.
 Proof.
@@ -237,7 +265,7 @@ Proof.
   assert (forall y z (p : y = z), p = id_trans (id_sym (g y)) (g z)).
   intros. apply id_trans_sym. destruct (apd_eq p (g y0)). apply apd.
   rewrite X. now rewrite (X _ _ z).
-Qed.
+Defined.
 
 (** Proof that equality proofs in 0-truncated types are connected *)
 Lemma hset_pi {A} `{HSet A} (x y : A) (p q : x = y) (r : p = q) : is_hset p q = r.
@@ -253,14 +281,14 @@ Proof.
 Defined.  
 
 Lemma inj_sigma_r_refl@{i} (A : Type@{i}) (H : HSet A) (P : A -> Type@{i}) x (y : P x) :
-  inj_sigma_r (y:=y) (y':=y) (id_refl _) = (id_refl _).
+  inj_sigma_r (y:=y) (y':=y) 1 = (id_refl _).
 Proof.
   unfold inj_sigma_r. intros.
   simpl. now rewrite is_hset_refl.
 Defined.
 
-Theorem K {A} `{HSet A} (x : A) :
-  forall P:x = x -> Type, P (id_refl x) -> forall p:x = x, P p.
+Theorem K {A} `{HSet A} (x : A) (P : x = x -> Type) :
+  P (id_refl x) -> forall p : x = x, P p.
 Proof.
   intros. exact (transport (is_hset id_refl p) X).
 Defined.

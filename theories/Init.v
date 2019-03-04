@@ -31,6 +31,8 @@ Definition bang := tt.
 Opaque bang.
 Notation "!" := bang.
 
+Register bang as equations.internal.bang.
+
 (** Notation for inaccessible patterns. *)
 
 Definition inaccessible_pattern {A : Type} (t : A) := t.
@@ -41,14 +43,20 @@ Module Inaccessible_Notations.
 
 End Inaccessible_Notations.
 
+Register inaccessible_pattern as equations.internal.inaccessible_pattern.
+
 Import Inaccessible_Notations.
 
 (** A marker for fixpoint prototypes in the context *)
 Definition fixproto := tt.
 
+Register fixproto as equations.fixproto.
+
 (** A constant to avoid displaying large let-defined terms
     in the context. *)
 Definition hidebody {A : Type} {a : A} := a.
+
+Register hidebody as equations.internal.hidebody.
 
 Ltac hidebody H :=
   match goal with
@@ -84,18 +92,16 @@ Global Unset Printing Primitive Projection Parameters.
 Polymorphic Cumulative Record sigma@{i} {A : Type@{i}} {B : A -> Type@{i}} : Type@{i} :=
   sigmaI { pr1 : A; pr2 : B pr1 }.
 Unset Primitive Projections.
-Arguments sigma A B : clear implicits.
+Arguments sigma {A} B.
 Arguments sigmaI {A} B pr1 pr2.
 
 Extract Inductive sigma => "( * )" ["(,)"].
-
-Polymorphic Definition prod (A : Type) (B : Type) := sigma A (fun _ => B).
 
 Set Warnings "-notation-overridden".
 
 Module Sigma_Notations.
 
-Notation "'Σ' x .. y , P" := (sigma _ (fun x => .. (sigma _ (fun y => P)) ..))
+Notation "'Σ' x .. y , P" := (sigma (fun x => .. (sigma (fun y => P)) ..))
   (at level 200, x binder, y binder, right associativity,
   format "'[  ' '[  ' Σ  x  ..  y ']' ,  '/' P ']'") : type_scope.
 
@@ -111,49 +117,17 @@ End Sigma_Notations.
 
 Import Sigma_Notations.
 
-(** The polymorphic equality type used by Equations when working with equality in Type. *)
-
-Set Universe Polymorphism.
-
-Inductive Empty@{i} : Type@{i} :=.
-
-Scheme Empty_case := Minimality for Empty Sort Type.
-
-Cumulative Inductive Id@{i} {A : Type@{i}} (a : A) : A -> Type@{i} :=
-  id_refl : Id a a.
-Arguments id_refl {A a}, [A] a.
-
-Module Id_Notations.
-
-  Notation " x = y " := (@Id _ x y) : equations_scope.
-  Notation " x = y " := (@Id _ x y) : type_scope.
-  Notation " x <> y " := (@Id _ x y -> Empty) : equations_scope.
-  Notation " x <> y " := (@Id _ x y -> Empty) : type_scope.
-  Notation " 1 " := (@id_refl _ _) : equations_scope.
-
-End Id_Notations.
-
-Import Id_Notations.
-
-Section IdTheory.
-  Universe i.
-  Context {A : Type@{i}}.
-
-  Import Id_Notations.
-
-  Lemma id_sym {x y : A} : x = y -> y = x.
-  Proof. destruct 1. apply 1. Defined.
-
-  Lemma id_trans {x y z : A} : x = y -> y = z -> x = z.
-  Proof. destruct 1. apply id. Defined.
-
-End IdTheory.
 
 (** Forward reference for the NoConfusion tactic. *)
 Ltac noconf H := congruence || injection H; intros; subst.
 
+(** Forward reference for simplification of equations internal constants *)
+Ltac simpl_equations := fail "not defined yet".
+
 (** Forward reference for Equations' [depelim] tactic, which will be defined in [DepElim]. *)
 Ltac depelim x := fail "not defined yet".
+
+
 
 (** Such a useful tactic it should be part of the stdlib. *)
 Ltac forward_gen H tac :=

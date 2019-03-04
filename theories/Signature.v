@@ -36,7 +36,11 @@ Ltac simp_sigmas := repeat destruct_one_sigma.
 
 Polymorphic Cumulative Class Signature (fam : Type) (signature_index : Type) : Type := {
   signature : signature_index -> Type ;
-  signature_pack : fam -> sigma _ signature
+  signature_pack : fam -> sigma signature
 }.
+
+Register Equations.Signature.Signature as equations.signature.class.
+Register Equations.Signature.signature as equations.signature.signature.
+Register Equations.Signature.signature_pack as equations.signature.pack.
 
 Extraction Inline signature signature_pack.

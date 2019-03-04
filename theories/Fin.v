@@ -9,7 +9,7 @@
 (** An example development of the [fin] datatype using [equations]. *)
 
 Require Import Program.Basics Program.Combinators.
-Require Import Equations.Equations NoConfusion Equations.DepElimDec.
+Require Import Equations.Equations Prop.NoConfusion Equations.DepElimDec.
 (** [fin n] is the type of naturals smaller than [n]. *)
 
 Inductive fin : nat -> Set :=

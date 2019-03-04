@@ -6,7 +6,8 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-From Equations Require Import EqDec DepElim.
+Require Import Equations.Tactics.
+Require Import Equations.Prop.EqDec Equations.Prop.DepElim.
 
 (** The [FunctionalInduction f] typeclass is meant to register functional induction
    principles associated to a function [f]. Such principles are automatically 
@@ -15,6 +16,8 @@ From Equations Require Import EqDec DepElim.
 Polymorphic
 Class FunctionalInduction {A : Type} (f : A) :=
   { fun_ind_prf_ty : Type; fun_ind_prf : fun_ind_prf_ty }.
+
+Register FunctionalInduction as equations.funind.class.
 
 (** The tactic [funind c Hc] applies functional induction on the application 
    [c] which must be of the form [f args] where [f] has a [FunctionalInduction]
@@ -51,6 +54,8 @@ Ltac funind_call f H :=
 Polymorphic
 Class FunctionalElimination {A : Type} (f : A) (fun_elim_ty : Type) (n : nat) :=
   fun_elim : fun_elim_ty.
+
+Register FunctionalElimination as equations.funelim.class.
 
 Ltac make_refine n c :=
   match constr:(n) with
@@ -118,9 +123,9 @@ Ltac funelim_sig_tac c tac :=
   uncurry_call elimfn c packcall packcall_fn;
   remember_let packcall_fn; unfold_packcall packcall;
   (refine (eq_simplification_sigma1_nondep_dep _ _ _ _ _) ||
-   refine (eq_simplification_sigma1_dep _ _ _ _ _) ||
-   refine (Id_simplification_sigma1_dep _ _ _ _ _) ||
-   refine (Id_simplification_sigma1_nondep_dep _ _ _ _ _));
+   refine (eq_simplification_sigma1_dep _ _ _ _ _));
+   (* refine (Id_simplification_sigma1_dep _ _ _ _ _) || *)
+   (* refine (Id_simplification_sigma1_nondep_dep _ _ _ _ _)); *)
   let H := fresh "eqargs" in
   let Heq := fresh "Heqcall" in intros H Heq;
   try (rewrite <- Heq; clear Heq); revert_until H; revert H;
@@ -134,8 +139,8 @@ Ltac funelim_sig_tac c tac :=
   unshelve refine_ho elimt; intros;
   cbv beta; simplify_dep_elim; intros_until_block;
   simplify_dep_elim;
-  cbn beta iota delta [eq_rect_dep_r Id_rect_r eq_rect Id_rect pack_sigma_eq pack_sigma_eq_nondep
-                                     pack_sigma_Id pack_sigma_Id_nondep] in *;
+  cbn beta iota delta [eq_rect_dep_r (* Id_rect_r *) eq_rect (* Id_rect *) pack_sigma_eq pack_sigma_eq_nondep
+                                     (* pack_sigma_Id *) (* pack_sigma_Id_nondep *)] in *;
   simplify_IH_hyps'; (* intros _; *)
   unblock_goal; simplify_IH_hyps; tac c.
 
@@ -193,8 +198,8 @@ Ltac specialize_hyps :=
   match goal with
     [ H : forall _ : ?x = ?x, _ |- _ ] => 
     specialize (H (@eq_refl _ x)); unfold eq_rect_r, eq_rect in H ; simpl in H
-  | [ H : forall _ : @Id _ ?x ?x, _ |- _ ] =>
-    specialize (H (@id_refl _ x)); unfold Id_rect_dep_r, Id_rect_r, Id_rect in H ; simpl in H
+  (* | [ H : forall _ : @Id _ ?x ?x, _ |- _ ] => *)
+  (*   specialize (H (@id_refl _ x)); unfold Id_rect_dep_r, Id_rect_r, Id_rect in H ; simpl in H *)
   end.
 
 Hint Extern 100 => specialize_hyps : funelim.
