@@ -933,12 +933,11 @@ let infer_step ?(loc:Loc.t option) ~(isSol:bool)
         let f = Tacred.hnf_constr env !evd f in
           EConstr.isConstruct !evd f
       in
-      (* FIXME What is the correct order here? Should we first check if we
-       * have K directly? *)
+      if check_ind tA && check_construct tu && check_construct tv then
+        NoConfusion [loc, Infer_many]
+      else
       if is_conv env !evd ctx tu tv then
         Deletion false (* Never force K. *)
-      else if check_ind tA && check_construct tu && check_construct tv then
-        NoConfusion [loc, Infer_many]
       else
       (* Check if [u] occurs in [t] under only constructors. *)
       (* For now we don't care about the type of these constructors. *)

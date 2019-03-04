@@ -1284,7 +1284,8 @@ let declare_funind info alias env evd is_rec protos progs
         | None -> ()
         | Some ((f, _), _, _) -> Lib.add_anonymous_leaf (inOpacity (fst (destConst evd f))))
   in
-  (* let evm, stmt = Typing.type_of (Global.env ()) !evd statement in *)
+  let evm, stmtt = Typing.type_of (Global.env ()) !evd statement in
+  let () = evd := evm in
   let stmt = to_constr !evd statement and f = to_constr !evd f in
   let ctx = Evd.evar_universe_context (if poly then !evd else Evd.from_env (Global.env ())) in
   let launch_ind tactic =
@@ -1295,10 +1296,14 @@ let declare_funind info alias env evd is_rec protos progs
   in
   let tac = (ind_fun_tac is_rec f info id !nested_statements progs) in
   try launch_ind tac
-  with e ->
-    Feedback.msg_warning Pp.(str "Induction principle could not be proved automatically: " ++ fnl () ++
-                             CErrors.print e);
-    launch_ind (Proofview.tclUNIT ())
+  with Type_errors.TypeError (env, tyerr) ->
+    CErrors.user_err Pp.(str"Elimination principle could not be proved automatically: " ++
+                         Himsg.explain_pretype_error env !evd
+                           (Pretype_errors.TypingError (Type_errors.map_ptype_error EConstr.of_constr tyerr)))
+     | e ->
+       Feedback.msg_warning Pp.(str "Induction principle could not be proved automatically: " ++ fnl () ++
+                                CErrors.print e);
+       launch_ind (Proofview.tclUNIT ())
 
 
 let level_of_context env evd ctx acc =
