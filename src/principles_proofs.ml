@@ -248,29 +248,17 @@ let map_opt_split f s =
   | Some s -> f s
 
 let solve_ind_rec_tac info =
-  let open Proofview in
-    tclBIND (Tacticals.New.pf_constr_of_global info.term_id)
-    (fun c ->
-    tclBIND (Tacticals.New.pf_constr_of_global (Lazy.force coq_fix_proto))
-    (fun fixprot ->
-    tclBIND (Tacticals.New.pf_constr_of_global (Lazy.force logic_unit))
-    (fun unit ->
-      Goal.enter (fun gl ->
-        let ty = Tacmach.New.pf_get_type_of gl c in
-        let term = mkLetIn (Anonymous, fixprot, unit, ty) in
-        let clause = Locus.{ onhyps = Some []; concl_occs = NoOccurrences } in
-          (Proofview.tclTHEN (Tactics.letin_tac None Anonymous c (Some term) clause)
-             (observe_new "eauto with below"
-                (of82 (eauto_with_below ~depth:10 [info.base_id; wf_obligations_base info]))))))))
+  observe_new "eauto with below"
+    (of82 (eauto_with_below ~depth:20 [info.base_id; wf_obligations_base info]))
 
 let change_in_app f args idx arg =
   let args' = Array.copy args in
   args'.(idx) <- arg;
   mkApp (f, args')
 
-let hyps_after sigma pos args =
-  let args' = Array.sub args (pos + 1) (Array.length args - (pos + 1)) in
-  Array.fold_right (fun c acc -> ids_of_constr ~all:true sigma acc c) args' Id.Set.empty
+let hyps_after sigma env pos args =
+  let open Context.Named.Declaration in
+  List.fold_left (fun acc d -> Id.Set.add (get_id d) acc) Id.Set.empty env
 
 let simpl_of csts =
   let opacify () = List.iter (fun (cst,_) ->
@@ -412,13 +400,15 @@ let aux_ind_fun info chop nested unfs unfids split =
     let unfs = map_opt_split destRefined unfs in
     let id = pi1 refinfo.refined_obj in
     let elimtac gl =
-      match kind (project gl) (pf_concl gl) with
+      let open Proofview.Goal in
+      let sigma = sigma gl in
+      match kind sigma (concl gl) with
       | App (ind, args) ->
          let before, last_arg = CArray.chop (Array.length args - 1) args in
-         let f, fargs = destApp (project gl) last_arg.(0) in
-         let _, pos, elim = find_helper_arg info.term_info (EConstr.to_constr (project gl) f) fargs in
-         let id = pf_get_new_id id gl in
-         let hyps = Id.Set.elements (hyps_after (project gl) (pos - snd chop) before) in
+         let f, fargs = destApp sigma last_arg.(0) in
+         let _, pos, elim = find_helper_arg info.term_info (EConstr.to_constr sigma f) fargs in
+         let id = Tacmach.New.pf_get_new_id id gl in
+         let hyps = Id.Set.elements (hyps_after sigma (hyps gl) (pos + 1 - snd chop) before) in
          let occs = Some (List.map (fun h -> (Locus.AllOccurrences, h), Locus.InHyp) hyps) in
          let occs = Locus.{ onhyps = occs; concl_occs = NoOccurrences } in
          let newconcl =
@@ -426,18 +416,21 @@ let aux_ind_fun info chop nested unfs unfids split =
            let indapp = change_in_app ind before (pos - snd chop) (mkVar id) in
            mkApp (indapp, [| fnapp |])
          in
-         tclTHENLIST
-          [observe "letin" (to82 (letin_pat_tac true None (Name id) (project gl, elim) occs));
-           observe "convert concl" (to82 (convert_concl_no_check newconcl DEFAULTcast));
-           observe "clear body" (Proofview.V82.of_tactic (clear_body [id]));
-           aux chop unfs unfids s] gl
-      | _ -> tclFAIL 0 (str"Unexpected refinement goal in functional induction proof") gl
+         Tacticals.New.tclTHENLIST
+          [observe_new "letin" (letin_pat_tac true None (Name id) (sigma, elim) occs);
+           observe_new "convert concl" (convert_concl_no_check newconcl DEFAULTcast);
+           observe_new "clear body" (clear_body [id]);
+           of82 (aux chop unfs unfids s)]
+      | _ ->
+        Tacticals.New.tclFAIL 0 (str"Unexpected refinement goal in functional induction proof")
     in
-    observe "refine"
-    (tclTHENLIST [ to82 intros;
-                   tclTHENLAST (tclTHEN (tclTRY (autorewrite_one info.term_info.base_id))
-                                        (cstrtac info.term_info)) (tclSOLVE [elimtac]);
-		   to82 (solve_ind_rec_tac info.term_info)])
+    let open Tacticals.New in
+    to82 (observe_new "refine"
+            (tclTHENLIST [ intros;
+                           tclTHENLAST (tclTHEN (tclTRY (of82 (autorewrite_one info.term_info.base_id)))
+                                          (of82 (cstrtac info.term_info)))
+                             (tclSOLVE [Proofview.Goal.enter elimtac]);
+                           (solve_ind_rec_tac info.term_info)]))
 
   | Compute ((lctx,_,_), wheres, _, c) ->
     let unfctx, unfswheres =

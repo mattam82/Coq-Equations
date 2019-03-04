@@ -44,7 +44,7 @@ Ltac simpl_let :=
     end
   end.
 
-Hint Extern 100 => simpl_let : Below.
+Hint Extern 40 => progress (cbv beta in * || simpl_let) : Below.
 
 (** Use it as well as the [equations] simplifications. *)
 

@@ -277,6 +277,7 @@ type program_info = {
   program_arity : EConstr.t;
   program_rec : program_rec_info option;
   program_impls : Impargs.manual_explicitation list;
+  program_implicits : Impargs.implicit_status list;
 }
 
 let map_program_info f p =
@@ -423,11 +424,25 @@ let rename_away_from ids pats =
   in
   List.map (DAst.map_with_loc aux) pats
 
+let interleave_implicits impls pats =
+  let rec aux impls pats =
+    match impls, pats with
+    | Some id :: impls, pats -> DAst.make (PUVar (id, false)) :: aux impls pats
+    | None :: impls, pat :: pats -> pat :: aux impls pats
+    | None :: _, [] -> []
+    | [], pats -> pats
+  in aux impls pats
+
 let interp_eqn env notations p eqn =
   let avoid = ref Id.Set.empty in
   let whereid = ref (Nameops.add_suffix p.program_id "_abs_where") in
   let patnames =
     List.rev_map (fun decl -> Context.Rel.Declaration.get_name decl) p.program_sign
+  in
+  let impls =
+    List.map (fun a ->
+        if Impargs.is_status_implicit a then Some (Impargs.name_of_implicit a) else None)
+      p.program_implicits
   in
   let interp_pat notations = interp_pat env notations ~avoid in
   let rec aux notations curpats (pat, rhs) =
@@ -445,7 +460,12 @@ let interp_eqn env notations p eqn =
         let loc = Constrexpr_ops.constr_loc (List.hd pats) in
         let pats = List.map (interp_pat notations None) pats in
         let pats = List.map (fun x -> List.hd x) pats in
-        loc, curpats @ pats
+        let pats =
+          (* At the toplevel only, interleave using the implicit
+             status of the function arguments *)
+          if curpats = [] then interleave_implicits impls pats
+          else curpats @ pats in
+        loc, pats
     in
     (* let () = check_linearity env pats in *)
     (loc, pats, Option.map (interp_rhs notations pats) rhs)
@@ -456,7 +476,8 @@ let interp_eqn env notations p eqn =
       let interp c =
         let wheres, c = CAst.with_loc_val (interp_constr_expr notations) c in
         if not (List.is_empty wheres) then
-          user_err_loc (Constrexpr_ops.constr_loc c, "interp_eqns", str"Pattern-matching lambdas not allowed in refine");
+          user_err_loc (Constrexpr_ops.constr_loc c, "interp_eqns",
+                        str"Pattern-matching lambdas not allowed in refine");
         c
       in
       Refine (List.map interp c, map (aux2 notations) eqs)
@@ -478,7 +499,8 @@ let interp_eqn env notations p eqn =
       let interp c =
         let wheres, c = CAst.with_loc_val (interp_constr_expr notations) c in
         if not (List.is_empty wheres) then
-          user_err_loc (Constrexpr_ops.constr_loc c, "interp_eqns", str"Pattern-matching lambdas not allowed in refine");
+          user_err_loc (Constrexpr_ops.constr_loc c, "interp_eqns",
+                        str"Pattern-matching lambdas not allowed in refine");
         c
       in
       Refine (List.map interp c, map (aux notations curpats) eqs)

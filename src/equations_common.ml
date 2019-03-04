@@ -88,6 +88,10 @@ let _ = Goptions.declare_bool_option {
   Goptions.optwrite = (fun b -> debug := b)
 }
 
+let equations_debug s =
+  if !debug then
+    Feedback.msg_debug (s ())
+
 let pp   x = Pp.pp_with !Topfmt.std_ft x
 
 let ppenv_sigma f =
@@ -985,7 +989,8 @@ let hintdb_set_transparency cst b db =
   Hints.add_hints false [db]
     (Hints.HintsTransparencyEntry ([EvalConstRef cst], b))
 
-let is_global sigma f ec = Globnames.is_global f (to_constr sigma ec)                                  
+(* Call the really unsafe is_global test, we use this on evar-open terms too *)
+let is_global sigma f ec = Globnames.is_global f (EConstr.Unsafe.to_constr ec)
 
 let constr_of_global_univ sigma u = of_constr (mkRef (from_peuniverses sigma u))
 

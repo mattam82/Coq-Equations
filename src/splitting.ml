@@ -15,7 +15,6 @@ open Globnames
 open Reductionops
 open Pp
 open List
-open Tactics
 open Evarutil
 open Evar_kinds
 open Equations_common
@@ -612,6 +611,16 @@ let term_of_tree env0 isevar tree =
       let case_ty = mapping_constr !evd rev_subst case_ty in
       let branches = Array.map (mapping_constr !evd rev_subst) branches in
 
+      (* Remove the block lets *)
+      let rec clean_block c =
+        match kind !evd c with
+        | LetIn (_, b, _, b') when Equations_common.is_global !evd (Lazy.force coq_block) b ->
+          clean_block (subst1 b b')
+        | _ -> EConstr.map !evd clean_block c
+      in
+      let case_ty = clean_block case_ty in
+      let branches = Array.map clean_block branches in
+
       (* Fetch the type of the variable that we want to eliminate. *)
       let after, decl, before = split_context (pred rel) ctx in
       let rel_ty = Context.Rel.Declaration.get_type decl in
@@ -734,7 +743,7 @@ let make_programs env evd flags ?(define_constants=false) programs =
       programs in
   match sterms with
    [Single (p, prob, rec_info, s, term)] ->
-   let term = nf_betaiotazeta env !evd term in
+   let term = nf_beta env !evd term in
    let term =
      if define_constants then
        let (cst, (evm, e)) =
@@ -790,7 +799,7 @@ let make_programs env evd flags ?(define_constants=false) programs =
     in
     let make_prog (p, (prob, rec_info, s', after, _), b) =
       let term = it_mkLambda_or_LetIn b after in
-      let term = nf_betaiotazeta env !evd term in
+      let term = nf_beta env !evd term in
       let rec_info, s' = update_rec_info p rec_info s' in
       let p = { p with program_sign = p.program_sign @ after } in
       { program_info = p;
@@ -982,12 +991,6 @@ let is_comp_obl sigma comp hole_kind =
       | ImplicitArg (ConstRef c, (n, _), _), (loc, id) ->
         is_rec_call sigma (snd r) (mkConst c)
       | _ -> false
-
-let _zeta_red =
-  let red = Tacred.cbv_norm_flags
-      CClosure.(RedFlags.red_add RedFlags.no_red RedFlags.fZETA)
-  in
-    reduct_in_concl (red, DEFAULTcast)
 
 type term_info = {
   term_id : Globnames.global_reference;
@@ -1222,7 +1225,7 @@ let solve_equations_obligations_program flags recids i sigma hook =
   in
   let univ_hook = Lemmas.mk_hook hook in
   let reduce x =
-    let flags = CClosure.betaiotazeta in
+    let flags = CClosure.beta in
     to_constr sigma (clos_norm_flags flags (Global.env ()) sigma (of_constr x))
   in
   ignore (Obligations.add_definition oblsid ~term ty (Evd.evar_universe_context sigma)
@@ -1271,6 +1274,10 @@ let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false)
   let all_hook hook recobls sigma =
     let sigma = Evd.minimize_universes sigma in
     let sigma = Evarutil.nf_evar_map_undefined sigma in
+    let () =
+      if !Equations_common.debug then
+        Feedback.msg_debug (str"Defining programs, before simplify_evars " ++ pr_programs env sigma programs);
+    in
     let programs = List.map (map_program (simplify_evars sigma)) programs in
     let () =
       if !Equations_common.debug then

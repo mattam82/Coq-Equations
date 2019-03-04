@@ -44,17 +44,20 @@ Ltac destruct_tele_eq H :=
     destruct H; simpl
   end.
 
+Ltac solve_noconf_inv_eq a b :=
+  destruct_sigma a; destruct_sigma b;
+  destruct a ; depelim b; simpl in * |-;
+  on_last_hyp ltac:(fun id => hnf in id; destruct_tele_eq id || destruct id);
+  solve [constructor].
+
 Ltac solve_noconf_inv := intros;
   match goal with
     |- ?R ?a ?b => destruct_sigma a; destruct_sigma b; 
                    destruct a ; depelim b; simpl in * |-;
                  on_last_hyp ltac:(fun id => hnf in id; destruct_tele_eq id || destruct id);
                  solve [constructor]
-  | |- ?f ?a ?b _ = _ =>
-    destruct_sigma a; destruct_sigma b;
-    destruct a ; depelim b; simpl in * |-;
-    on_last_hyp ltac:(fun id => hnf in id; destruct_tele_eq id || destruct id);
-    solve [constructor]
+  | |- @eq _ (?f ?a ?b _) _ => solve_noconf_inv_eq a b
+  | |- @Id _ (?f ?a ?b _) _ => solve_noconf_inv_eq a b
   end.
 
 Ltac solve_noconf_inv_equiv :=
@@ -70,15 +73,21 @@ Ltac solve_noconf := simpl; intros;
       [ H : @eq _ _ _ |- @eq _ _ _ ] => try solve_noconf_inv_equiv
     | [ H : @eq _ _ _ |- _ ] => try solve_noconf_prf
     | [ |- @eq _ _ _ ] => try solve_noconf_inv
+    | [ H : @Id _ _ _ |- @Id _ _ _ ] => try solve_noconf_inv_equiv
+    | [ H : @Id _ _ _ |- _ ] => try solve_noconf_prf
+    | [ |- @Id _ _ _ ] => try solve_noconf_inv
     end.
+
+Ltac solve_noconf_hom_inv_eq a b :=
+  destruct_sigma a; destruct_sigma b;
+  destruct a ; depelim b; simpl in * |-;
+  on_last_hyp ltac:(fun id => hnf in id; destruct_tele_eq id || depelim id);
+  solve [constructor || simpl_equations; constructor].
 
 Ltac solve_noconf_hom_inv := intros;
   match goal with
-  | |- ?f ?a ?b _ = _ =>
-    destruct_sigma a; destruct_sigma b;
-    destruct a ; depelim b; simpl in * |-;
-    on_last_hyp ltac:(fun id => hnf in id; destruct_tele_eq id || depelim id);
-    solve [constructor || simpl_equations; constructor]
+  | |- @eq _ (?f ?a ?b _) _ => solve_noconf_hom_inv_eq a b
+  | |- @Id _ (?f ?a ?b _) _ => solve_noconf_hom_inv_eq a b
   | |- ?R ?a ?b =>
     destruct_sigma a; destruct_sigma b;
     destruct a ; depelim b; simpl in * |-;
@@ -100,6 +109,9 @@ Ltac solve_noconf_hom := simpl; intros;
       [ H : @eq _ _ _ |- @eq _ _ _ ] => try solve_noconf_hom_inv_equiv
     | [ H : @eq _ _ _ |- _ ] => try solve_noconf_prf
     | [ |- @eq _ _ _ ] => try solve_noconf_hom_inv
+    | [ H : @Id _ _ _ |- @Id _ _ _ ] => try solve_noconf_hom_inv_equiv
+    | [ H : @Id _ _ _ |- _ ] => try solve_noconf_prf
+    | [ |- @Id _ _ _ ] => try solve_noconf_hom_inv
     end.
 
 (** Simple of parameterized inductive types just need NoConfusion. *)

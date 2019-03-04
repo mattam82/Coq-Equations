@@ -87,21 +87,6 @@ Proof.
 Defined.
 Extraction Inline apply_noConfusionId.
 
-(** Apply [noConfusion] on a given hypothsis. *)
-
-Ltac noconf_ref H :=
-  match type of H with
-    @eq ?A ?X ?Y =>
-      let H' := fresh in assert (H':=noConfusion_inv (A:=A) (a:=X) (b:=Y) H) ;
-      clear H; hnf in H';
-      match type of H' with
-      | True => clear H'
-      | False => elim H'
-      | @eq _ _ _ => revert dependent H'
-      | _ => fail
-      end
-  end.
-
 (** Classes for types with UIP or decidable equality.  *)
 
 Polymorphic Cumulative

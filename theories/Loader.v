@@ -14,8 +14,9 @@ Require Import Extraction.
 Declare ML Module "equations_plugin".
 
 From Coq Require Export Program.Utils Program.Wf.
+From Equations Require Import Init.
 From Equations Require Export Classes Signature DepElim FunctionalInduction Below Constants.
 From Equations Require Export EqDecInstances HSetInstances.
-From Equations Require Import Init NoConfusion Subterm DepElimDec.
+From Equations Require Import NoConfusion Subterm DepElimDec.
 
 Export Inaccessible_Notations.
