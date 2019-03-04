@@ -1319,7 +1319,7 @@ let declare_funind info alias env evd is_rec protos progs
   with Type_errors.TypeError (env, tyerr) ->
     CErrors.user_err Pp.(str"Elimination principle could not be proved automatically: " ++
                          Himsg.explain_pretype_error env !evd
-                           (Pretype_errors.TypingError (Type_errors.map_ptype_error EConstr.of_constr tyerr)))
+                           (Pretype_errors.TypingError (Himsg.map_ptype_error EConstr.of_constr tyerr)))
      | e ->
        Feedback.msg_warning Pp.(str "Induction principle could not be proved automatically: " ++ fnl () ++
                                 CErrors.print e);
