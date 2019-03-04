@@ -986,7 +986,8 @@ let hintdb_set_transparency cst b db =
   Hints.add_hints ~local:false [db] 
     (Hints.HintsTransparencyEntry (Hints.HintsReferences [EvalConstRef cst], b))
 
-let is_global sigma f ec = Globnames.is_global f (to_constr sigma ec)                                  
+(* Call the really unsafe is_global test, we use this on evar-open terms too *)
+let is_global sigma f ec = Globnames.is_global f (EConstr.Unsafe.to_constr ec)
 
 let constr_of_global_univ sigma u = of_constr (Constr.mkRef (from_peuniverses sigma u))
 

@@ -997,9 +997,17 @@ let _expand_many rule env evd ((ctx, ty) : goal) : simplification_rules =
 exception Blocked
 
 let check_block : simplification_fun =
+  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty as gl) : goal) ->
+  let _na, b, _ty, _b' = check_letin !evd ty in
+  if EConstr.is_global !evd (Lazy.force Equations_common.coq_block) b then
+    raise Blocked
+  else identity env evd gl
+
+let remove_block : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
-  let _na, _b, _ty, _b' = check_letin !evd ty in
-  raise Blocked
+  let _na, b, _ty, b' = check_letin !evd ty in
+  build_term env evd (ctx, ty) (ctx, Vars.subst1 b b') (fun c -> c), Context_map.id_subst ctx
+
 
 let check_block_notprod : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty as gl) : goal) ->
@@ -1062,7 +1070,7 @@ and simplify_one ((loc, rule) : Loc.t option * simplification_rule) :
        in
        try compose_fun (or_fun check_block_notprod aux)
              first env evd gl
-       with Blocked -> identity env evd gl
+       with Blocked -> remove_block env evd gl
      in handle_error (or_fun_e1 aux (remove_one_sigma ~only_nondep:true))
   | Step step -> wrap_handle (fun _ _ _ -> step)
   | Infer_one -> handle_error (or_fun (with_retry apply_noConfusions)

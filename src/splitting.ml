@@ -612,6 +612,16 @@ let term_of_tree env0 isevar tree =
       let case_ty = mapping_constr !evd rev_subst case_ty in
       let branches = Array.map (mapping_constr !evd rev_subst) branches in
 
+      (* Remove the block lets *)
+      let rec clean_block c =
+        match kind !evd c with
+        | LetIn (_, b, _, b') when Equations_common.is_global !evd (Lazy.force coq_block) b ->
+          clean_block (subst1 b b')
+        | _ -> EConstr.map !evd clean_block c
+      in
+      let case_ty = clean_block case_ty in
+      let branches = Array.map clean_block branches in
+
       (* Fetch the type of the variable that we want to eliminate. *)
       let after, decl, before = split_context (pred rel) ctx in
       let rel_ty = Context.Rel.Declaration.get_type decl in
