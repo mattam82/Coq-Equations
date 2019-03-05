@@ -1,8 +1,10 @@
 *~
 *.d
 *.vo
-/Makefile
-/Makefile.conf
+/Makefile.coq
+/Makefile.coq.conf
+/Makefile.hott
+/Makefile.hott.conf
 *.bak
 *.cm*
 *.o
@@ -46,3 +48,8 @@ docs/_site
 _build
 *.install
 /test-suite/*.agdai
+/custom-HoTT/
+/examples/Makefile
+/examples/Makefile.conf
+/Makefile.conf
+/Makefile
