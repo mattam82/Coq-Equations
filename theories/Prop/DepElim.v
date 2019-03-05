@@ -56,9 +56,13 @@ Proof. intros A B t H x eq. symmetry in eq. destruct eq. apply H. Defined.
 
 Scheme eq_rect_dep := Induction for eq Sort Type.
 
+Notation "p # t" := (eq_rect _ _ t _ p) (right associativity, at level 65) : equations_scope.
+
 Lemma eq_rect_dep_r {A} (x : A) (P : forall a, a = x -> Type) (p : P x eq_refl)
       (y : A) (e : y = x) : P y e.
 Proof. destruct e. apply p. Defined.
+
+Notation "p [ P ] # t" := (eq_rect_dep_r _ P t _ p) (right associativity, at level 65) : equations_scope.
 
 Lemma eq_sym_invol {A} (x y : A) (e : x = y) : eq_sym (eq_sym e) = e.
 Proof. destruct e. reflexivity. Defined.
