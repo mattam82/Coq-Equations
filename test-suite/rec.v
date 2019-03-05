@@ -6,17 +6,17 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 Require Import Program Utf8.
-From Equations Require Import Equations Telescopes DepElimDec.
+From Equations Require Import Equations Telescopes.
 Require Import Bvector List Relations.
 Require Import Omega Arith Wf_nat.
 Require Import Subterm.
 Axiom cheat : forall {A}, A.
 Instance wf_nat : WellFounded lt := lt_wf.
 Hint Resolve lt_n_Sn : Below.
+Require Import Lia.
 Module RecRel.
 
-  Equations id (n m : nat) : nat
-  by wf n lt :=
+  Equations id (n m : nat) : nat by wf n lt :=
   id O m := m ;
   id (S n) m := S (id n m).
 
@@ -225,8 +225,8 @@ Module RecMeasure.
       rewrite <- qs_same, filter_In' in H1, H2.
       intuition auto with arith. subst. pose (r:=refl_le x y); apply ltb_leb in H4; now depelim r.
       apply ltb_leb in H4.
-      pose (r:=refl_le x a); pose (r':=refl_le a y); depelim r; depelim r'; reverse; simplify_dep_elim; auto. 
-      transitivity a; auto.
+      pose (r:=refl_le x a); pose (r':=refl_le a y);
+      depelim r; depelim r'; reverse; DepElim.simplify_dep_elim; eauto.
     Qed.
 
     Lemma qs_perm l : Permutation l (qs l).

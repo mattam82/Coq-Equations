@@ -15,11 +15,9 @@
   beta-short eta-long normal forms, typable in a bidirectional type system. *)
 
 Require Import Program.
-Require Equations.Equations.
-Import DepElim FunctionalInduction.
+Require Import Equations.Equations.
 Require Import Omega.
 Require Import List Utf8.
-From Equations Require Import EqDec.
 
 Derive Signature for le CompareSpec.
 
@@ -44,7 +42,7 @@ Notation " 'λ' t " := (Lambda (t%term)) (at level 0).
 Notation " << t , u >> " := (Pair (t%term) (u%term)).
 
 Parameter atomic_type : Set.
-Parameter atomic_type_eqdec : Equations.Classes.EqDec atomic_type.
+Parameter atomic_type_eqdec : EqDec atomic_type.
 Existing Instance atomic_type_eqdec.
 
 Inductive type :=
@@ -378,9 +376,10 @@ Inductive atomic : type -> Prop :=
 Derive Signature for atomic.
 Hint Constructors atomic : term.
 
+(* FIXME bug *)
 Equations? atomic_dec (t : type) : { atomic t } + { ~ atomic t } :=
 atomic_dec (atom a) := left (atomic_atom a) ;
-atomic_dec _ := right _.
+atomic_dec t := right _.
 Proof. all:(intro H; depelim H). Qed.
 
 Inductive check : ctx -> term -> type -> Prop :=
@@ -700,7 +699,7 @@ Proof.
   invert_term. simpl in *. simplify_IH_hyps. apply abstraction.
   specialize (H Γ (A :: Γ')). simpl in H. simplify_IH_hyps.
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
-  simplify_IH_hyps.
+  specialize (H _ _ _ _ H0 H1 _ _ eq_refl eq_refl).
   apply H; auto.
 
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
@@ -728,9 +727,9 @@ Proof.
   simpl in *.
   on_call (hereditary_subst (t0, t1, u)) ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in * ).
-  noconf H3.
+  noconf H1.
   dependent elimination H2 as [application _ T U fn arg tyfn tyu].
-  specialize (H _ _ H1 tyu).
+  specialize (H _ _ H3 tyu). simplify_IH_hyps.
   specialize (Hind _ _ H1 tyfn).
   rewrite Heq in Hind.
   specialize (Hind _ _ eq_refl). destruct Hind as [Ht' Ht''].

@@ -1,7 +1,7 @@
 (* http://adam.chlipala.net/cpdt/html/DataStruct.html *)
 
 Require Import Arith List.
-Require Import Program Equations.Equations DepElimDec.
+Require Import Program Equations.Equations.
 Set Implicit Arguments.
 
 Section ilist.

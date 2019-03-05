@@ -190,7 +190,6 @@ fle_trans (fles p') (fles q') := fles (fle_trans p' q').
 
 Hint Unfold NoConfusion.noConfusion_nat_obligation_1 : equations.
 
-Require Import EqDec EqDecInstances DepElimDec.
 Derive DependentElimination EqDec for fin.
 
 Derive Signature for eq.

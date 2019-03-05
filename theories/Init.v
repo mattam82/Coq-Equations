@@ -130,9 +130,21 @@ Ltac depelim x := fail "Equations.Init.depelim has not been bound yet".
 (** Forward reference for Equations' [depind] tactic, which will be defined in [DepElim]. *)
 Ltac depind x := fail "Equations.Init.depind has not been bound yet".
 
+(** Forward reference for Equations' [solve_eqdec] tactic, which will be defined later in [EqDec].
+    It is used to derive decidable equality on an inductive family. *)
+Ltac solve_eqdec := fail "Equations.Init.solve_eqdec has not been bound yet".
+
 (** Forward reference for Equations' [solve_subterm] tactic, which will be defined in [Subterm].
     It is used to derive the well-foundedness of the subterm relation. *)
 Ltac solve_subterm := fail "Equations.Init.solve_subterm has not been bound yet".
+
+(** Forward reference for Equations' [solve_noconf] tactic, which will be defined later.
+    It is used to derive the heterogeneous no-confusion property of an inductive family. *)
+Ltac solve_noconf := fail "Equations.Init.solve_noconf has not been bound yet".
+
+(** Forward reference for Equations' [solve_noconf_hom] tactic, which will be defined later.
+    It is used to derive the homogeneous no-confusion property of an inductive family. *)
+Ltac solve_noconf_hom := fail "Equations.Init.solve_noconf_hom has not been bound yet".
 
 (** Such a useful tactic it should be part of the stdlib. *)
 Ltac forward_gen H tac :=
@@ -147,3 +159,6 @@ Tactic Notation "forward" constr(H) "by" tactic(tac) := forward_gen H tac.
    for solving goals related to [Below] instances. *)
 
 Create HintDb Below discriminated.
+
+(** Forward reference to an internal tactic to unfold well-founded fixpoints *)
+Ltac unfold_recursor := fail "Equations.Init.unfold_recursor has not been bound yet".

@@ -1,6 +1,6 @@
 Require Import Program Bvector List.
 Require Import Relations.
-From Equations Require Import Equations DepElimDec.
+From Equations Require Import Equations.
 
 Module TestF.
 

@@ -1,8 +1,9 @@
-Require Import Equations.Tactics Equations.Type.DepElim Equations.Type.WellFounded.
+Set Warnings "-notation-overridden".
+Require Import Equations.Tactics Equations.Type.Logic Equations.Type.DepElim Equations.Type.WellFounded.
 
 Ltac Equations.Init.simpl_equations ::= Equations.Type.DepElim.simpl_equations.
 
-Ltac Equations.Init.depelim H ::= Equations.Type.DepElim.depelim H.
+Ltac Equations.Init.depelim H ::= dependent elimination H.
 Ltac Equations.Init.depind H ::= Equations.Type.DepElim.depind H.
 
 Ltac Equations.Init.noconf H ::= Equations.Type.DepElim.noconf H.
@@ -19,3 +20,76 @@ Ltac solve_subterm := intros;
   simplify_dep_elim; try typeclasses eauto with solve_subterm.
 
 Ltac Equations.Init.solve_subterm ::= solve_subterm.
+
+
+Ltac solve_noconf_prf := intros;
+  on_last_hyp ltac:(fun id => destruct id) ; (* Subtitute a = b *)
+  on_last_hyp ltac:(fun id =>
+                      destruct_sigma id;
+                      elim id) ; (* Destruct the inductive object a *)
+  constructor.
+
+Ltac solve_noconf_inv_eq a b :=
+  destruct_sigma a; destruct_sigma b;
+  destruct a ; depelim b; simpl in * |-;
+  on_last_hyp ltac:(fun id => hnf in id; destruct_tele_eq id || destruct id);
+  solve [constructor].
+
+Ltac solve_noconf_inv := intros;
+  match goal with
+    |- ?R ?a ?b => destruct_sigma a; destruct_sigma b;
+                   destruct a ; depelim b; simpl in * |-;
+                 on_last_hyp ltac:(fun id => hnf in id; destruct_tele_eq id || destruct id);
+                 solve [constructor]
+  | |- @Id _ (?f ?a ?b _) _ => solve_noconf_inv_eq a b
+  end.
+
+Ltac solve_noconf_inv_equiv :=
+  intros;
+  (* Subtitute a = b *)
+  on_last_hyp ltac:(fun id => destruct id) ;
+  (* Destruct the inductive object a *)
+  on_last_hyp ltac:(fun id => destruct_sigma id; elim id) ;
+  simpl; constructor.
+
+Ltac solve_noconf := simpl; intros;
+    match goal with
+      [ H : @Id _ _ _ |- @Id _ _ _ ] => try solve_noconf_inv_equiv
+    | [ H : @Id _ _ _ |- _ ] => try solve_noconf_prf
+    | [ |- @Id _ _ _ ] => try solve_noconf_inv
+    end.
+
+Ltac solve_noconf_hom_inv_eq a b :=
+  destruct_sigma a; destruct_sigma b;
+  destruct a ; depelim b; simpl in * |-;
+  on_last_hyp ltac:(fun id => hnf in id; destruct_tele_eq id || depelim id);
+  solve [constructor || simpl_equations; constructor].
+
+Ltac solve_noconf_hom_inv := intros;
+  match goal with
+  | |- @Id _ (?f ?a ?b _) _ => solve_noconf_hom_inv_eq a b
+  | |- ?R ?a ?b =>
+    destruct_sigma a; destruct_sigma b;
+    destruct a ; depelim b; simpl in * |-;
+    on_last_hyp ltac:(fun id => hnf in id; destruct_tele_eq id || depelim id);
+    solve [constructor || simpl_equations; constructor]
+  end.
+
+Ltac solve_noconf_hom_inv_equiv :=
+  intros;
+  (* Subtitute a = b *)
+  on_last_hyp ltac:(fun id => destruct id) ;
+  (* Destruct the inductive object a using dependent elimination
+     to handle UIP cases. *)
+  on_last_hyp ltac:(fun id => destruct_sigma id; depelim id) ;
+  simpl; simpl_equations; constructor.
+
+Ltac solve_noconf_hom := simpl; intros;
+    match goal with
+      [ H : @Id _ _ _ |- @Id _ _ _ ] => try solve_noconf_hom_inv_equiv
+    | [ H : @Id _ _ _ |- _ ] => try solve_noconf_prf
+    | [ |- @Id _ _ _ ] => try solve_noconf_hom_inv
+    end.
+
+Ltac Equations.Init.solve_noconf ::= solve_noconf.
+Ltac Equations.Init.solve_noconf_hom ::= solve_noconf_hom.

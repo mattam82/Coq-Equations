@@ -122,9 +122,9 @@ Proof.
   exact (eq 1 1).
 Defined.
 
- Lemma simplification_sigma1_dep {A} {P : A -> Type} {B}
+ Lemma simplification_sigma1_dep@{i j} {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}}
   (p q : A) (x : P p) (y : P q) :
-  (forall e : Id p q, Id (@Id_rect A p P x q e) y -> B) ->
+  (forall e : Id@{j} p q, Id (@Id_rect@{i j} A p P x q e) y -> B) ->
   (Id ((p, x)) ((q, y)) -> B).
 Proof.
   intros. revert X.

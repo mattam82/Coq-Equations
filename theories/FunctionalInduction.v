@@ -122,7 +122,8 @@ Ltac funelim_sig_tac c tac :=
   block_goal;
   uncurry_call elimfn c packcall packcall_fn;
   remember_let packcall_fn; unfold_packcall packcall;
-  (refine (eq_simplification_sigma1_nondep_dep _ _ _ _ _) ||
+  (refine (eq_simplification_sigma1 _ _ _ _ _) ||
+   refine (eq_simplification_sigma1_nondep_dep _ _ _ _ _) ||
    refine (eq_simplification_sigma1_dep _ _ _ _ _));
    (* refine (Id_simplification_sigma1_dep _ _ _ _ _) || *)
    (* refine (Id_simplification_sigma1_nondep_dep _ _ _ _ _)); *)

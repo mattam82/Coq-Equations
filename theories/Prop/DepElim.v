@@ -202,7 +202,7 @@ Defined.
 
 (** If we have decidable equality on [A] we use this version which is 
    axiom-free! *)
-Set Printing Universes.
+
 Polymorphic Lemma simplification_sigma2_uip@{i j} :
   forall {A : Type@{i}} `{UIP A} {P : A -> Type@{i}} {B : Type@{j}}
     (p : A) (x y : P p),

@@ -145,13 +145,6 @@ Ltac eapply_hyp :=
     [ H : _ |- _ ] => eapply H
   end.
 
-Ltac solve_noconf_prf := intros;
-  on_last_hyp ltac:(fun id => destruct id) ; (* Subtitute a = b *)
-  on_last_hyp ltac:(fun id =>
-                      destruct_sigma id;
-                      elim id) ; (* Destruct the inductive object a *)
-  constructor.
-
 Ltac destruct_tele_eq H :=
   match type of H with
     ?x = ?y =>
@@ -160,64 +153,3 @@ Ltac destruct_tele_eq H :=
     destruct H; simpl
   end.
 
-Ltac solve_noconf_inv_eq a b :=
-  destruct_sigma a; destruct_sigma b;
-  destruct a ; depelim b; simpl in * |-;
-  on_last_hyp ltac:(fun id => hnf in id; destruct_tele_eq id || destruct id);
-  solve [constructor].
-
-Ltac solve_noconf_inv := intros;
-  match goal with
-    |- ?R ?a ?b => destruct_sigma a; destruct_sigma b;
-                   destruct a ; depelim b; simpl in * |-;
-                 on_last_hyp ltac:(fun id => hnf in id; destruct_tele_eq id || destruct id);
-                 solve [constructor]
-  | |- @eq _ (?f ?a ?b _) _ => solve_noconf_inv_eq a b
-  end.
-
-Ltac solve_noconf_inv_equiv :=
-  intros;
-  (* Subtitute a = b *)
-  on_last_hyp ltac:(fun id => destruct id) ;
-  (* Destruct the inductive object a *)
-  on_last_hyp ltac:(fun id => destruct_sigma id; elim id) ;
-  simpl; constructor.
-
-Ltac solve_noconf := simpl; intros;
-    match goal with
-      [ H : @eq _ _ _ |- @eq _ _ _ ] => try solve_noconf_inv_equiv
-    | [ H : @eq _ _ _ |- _ ] => try solve_noconf_prf
-    | [ |- @eq _ _ _ ] => try solve_noconf_inv
-    end.
-
-Ltac solve_noconf_hom_inv_eq a b :=
-  destruct_sigma a; destruct_sigma b;
-  destruct a ; depelim b; simpl in * |-;
-  on_last_hyp ltac:(fun id => hnf in id; destruct_tele_eq id || depelim id);
-  solve [constructor || simpl_equations; constructor].
-
-Ltac solve_noconf_hom_inv := intros;
-  match goal with
-  | |- @eq _ (?f ?a ?b _) _ => solve_noconf_hom_inv_eq a b
-  | |- ?R ?a ?b =>
-    destruct_sigma a; destruct_sigma b;
-    destruct a ; depelim b; simpl in * |-;
-    on_last_hyp ltac:(fun id => hnf in id; destruct_tele_eq id || depelim id);
-    solve [constructor || simpl_equations; constructor]
-  end.
-
-Ltac solve_noconf_hom_inv_equiv :=
-  intros;
-  (* Subtitute a = b *)
-  on_last_hyp ltac:(fun id => destruct id) ;
-  (* Destruct the inductive object a using dependent elimination
-     to handle UIP cases. *)
-  on_last_hyp ltac:(fun id => destruct_sigma id; depelim id) ;
-  simpl; simpl_equations; constructor.
-
-Ltac solve_noconf_hom := simpl; intros;
-    match goal with
-      [ H : @eq _ _ _ |- @eq _ _ _ ] => try solve_noconf_hom_inv_equiv
-    | [ H : @eq _ _ _ |- _ ] => try solve_noconf_prf
-    | [ |- @eq _ _ _ ] => try solve_noconf_hom_inv
-    end.

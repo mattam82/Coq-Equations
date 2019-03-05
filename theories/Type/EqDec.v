@@ -216,12 +216,12 @@ Section EqdepDec.
   Proof.
     unfold inj_right_sigma. intros.
     unfold eq_rect. unfold projs.
-    destruct (id_sym@{i} eq_dec_refl@{i}).
+    destruct (id_sym@{i} eq_dec_refl).
     unfold K_dec. simpl.
     unfold eq_proofs_unicity. subst projs.
     simpl. unfold nu_inv, comp, nu. simpl.
     unfold eq_ind, nu_left_inv, trans_sym_eq, eq_rect, nu_constant.
-    destruct (id_sym@{i} eq_dec_refl@{i}). reflexivity.
+    destruct (id_sym@{i} eq_dec_refl). reflexivity.
   Defined.
 
 End EqdepDec.

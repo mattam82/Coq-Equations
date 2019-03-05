@@ -169,7 +169,7 @@ let array_filter_map f a =
 let new_global sigma gr =
   try Evarutil.new_global sigma gr
   with e ->
-    CErrors.anomaly (Pp.str"new_global")
+    CErrors.anomaly Pp.(str"new_global raised an error on:" ++ Printer.pr_global gr)
 
 let e_new_global evdref gr =
   let sigma, gr = new_global !evdref gr in
@@ -562,7 +562,7 @@ let rec_wf_tac h n h' rel =
      ConstrMayEval (Genredexpr.ConstrTerm h);
      ConstrMayEval (Genredexpr.ConstrTerm rel)]))))
 
-let unfold_recursor_tac () = tac_of_string "Equations.Subterm.unfold_recursor" []
+let unfold_recursor_tac () = tac_of_string "Equations.Init.unfold_recursor" []
 
 let solve_rec_tac () = tac_of_string "Equations.Equations.solve_rec" []
 
@@ -570,14 +570,11 @@ let pi_tac () = tac_of_string "Equations.Tactics.pi" []
 
 let set_eos_tac () = tac_of_string "Equations.Tactics.set_eos" []
 
-let noconf_tac () = tac_of_string "Equations.Tactics.solve_noconf" []
-
-let noconf_hom_tac () = tac_of_string "Equations.Tactics.solve_noconf_hom" []
-
-let eqdec_tac () = tac_of_string "Equations.EqDecInstances.eqdec_proof" []
-
+(* Thos are forward references in Init, that get redefined later *)
+let noconf_tac () = tac_of_string "Equations.Init.solve_noconf" []
+let noconf_hom_tac () = tac_of_string "Equations.Init.solve_noconf_hom" []
+let eqdec_tac () = tac_of_string "Equations.Init.solve_eqdec" []
 let simpl_equations_tac () = tac_of_string "Equations.Init.simpl_equations" []
-
 let solve_subterm_tac () = tac_of_string "Equations.Init.solve_subterm" []
 
 let specialize_mutfix_tac () = tac_of_string "Equations.FunctionalInduction.specialize_mutfix" []

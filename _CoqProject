@@ -65,6 +65,8 @@ theories/Type/EqDec.v
 theories/Type/DepElim.v
 theories/Type/Tactics.v
 theories/Type/Constants.v
+theories/Type/EqDecInstances.v
+theories/Type/All.v
 
 theories/FunctionalInduction.v
 theories/Below.v

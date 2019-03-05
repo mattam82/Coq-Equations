@@ -17,9 +17,10 @@ From Equations Require Export Init Signature.
 Require Import Equations.Tactics.
 Require Export Equations.Prop.Classes.
 Require Import Equations.Prop.DepElim Equations.Prop.EqDec Equations.Prop.Constants.
-Require Import FunctionalInduction Below.
+Require Import Below.
 Require Export Equations.Prop.EqDecInstances.
 Require Import Equations.Prop.NoConfusion Equations.Prop.Subterm.
 Require Export Equations.Prop.Tactics.
+Require Export FunctionalInduction. (* funelim tactic *)
 
 Export Inaccessible_Notations.

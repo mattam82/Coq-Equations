@@ -1,5 +1,4 @@
 From Equations Require Import Equations.
-Require Import Equations.Subterm.
 Require Import Lia.
 
 Section Tests.

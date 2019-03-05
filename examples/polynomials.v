@@ -19,13 +19,13 @@
 (* begin hide *)
 Require Import Program.Basics Program.Tactics.
 Require Import Equations.Equations.
-From Equations Require Import DepElimDec.
 Require Import ZArith.
 Require Import Psatz.
 Require Import NPeano.
 Require Import Nat.
 Require Import Coq.Vectors.VectorDef.
 
+Notation vector := Vector.t.
 Derive Signature for vector eq.
 Coercion Bool.Is_true : bool >-> Sortclass.
 

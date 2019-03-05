@@ -1,4 +1,4 @@
-From Equations Require Import Equations DepElimDec HSets.
+From Equations Require Import Equations.
 
 Axiom  I     : Set.
 Axiom i1 i2 : I.

@@ -7,7 +7,8 @@ Set Warnings "-notation-overridden".
 
 Set Universe Polymorphism.
 
-Inductive Empty@{i} : Type@{i} :=.
+(* Let's leave empty at Set, it can live in any higher universe. *)
+Inductive Empty : Set :=.
 
 Scheme Empty_case := Minimality for Empty Sort Type.
 

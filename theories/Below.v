@@ -95,28 +95,6 @@ Below_vector A P _ (a :: v) :=
 
 Hint Rewrite Below_vector_equation_2 : Below.
 
-(* Equations(nocomp noeqns noind) below_vector A (P : ∀ n, vector A n -> Type) *)
-(*   (step : ∀ n (v : vector A n), Below_vector A P n v -> P n v) *)
-(*   n (v : vector A n) : Below_vector A P n v := *)
-(* below_vector A P _ ?(0) Vnil := tt ; *)
-(* below_vector A P step ?(S n) (Vcons a n v) :=  *)
-(*   let rest := below_vector A P step n v in *)
-(*     (step n v rest, rest). *)
-
-(* Global Opaque Below_vector. *)
-
-(* Definition rec_vector A (P : ∀ n, vector A n -> Type) n v *)
-(*   (step : ∀ n (v : vector A n), Below_vector A P n v -> P n v) : P n v := *)
-(*   step n v (below_vector A P step n v). *)
-
-(* Instance vect_Recursor A n : Recursor (vector A n) := *)
-(*   { rec_type := λ v, ∀ (P : ∀ n, vector A n -> Type) step, P n v; *)
-(*     rec := λ v P step, rec_vector A P n v step }. *)
-
-(* Hint Unfold rec_nat rec_vector : Recursors. *)
-
-(* Hint Extern 4 => progress (unfold hide_pattern in * ) : Below. *)
-
 Ltac rec_fast v recname := intro_block v ; move v at top ;
   generalize_by_eqs_vars v ; (intros until v || revert_until v) ;
     let recv := eval simpl in (rec v) in

@@ -1,6 +1,7 @@
 Require Import Equations.
 Require Import Vector.
 From Equations Require Import Fin.
+Notation vector := Vector.t.
 
 Fail Equations nth {A n} (v : vector A n) (f : fin n) : A :=
 nth (cons x v) ?(fz) := x;

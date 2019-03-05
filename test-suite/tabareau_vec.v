@@ -1,4 +1,4 @@
-From Equations Require Import Equations DepElimDec HSets.
+From Equations Require Import Equations.
 Set Universe Polymorphism.
 
 Inductive ℕ (E:Set) : Set :=

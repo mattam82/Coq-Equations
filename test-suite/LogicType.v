@@ -1,14 +1,11 @@
-From Equations Require Import Equations DepElimDec HSets.
-(* Unset Equations OCaml Splitting. *)
+Set Warnings "-notation-overridden".
+
 Set Universe Polymorphism.
 Require Import Relations.
-
 (** Switch to an equality in Type *)
-Require Import ConstantsType.
-
-Set Warnings "-notation-overridden".
-Import Id_Notations.
-Set Warnings "+notation-overridden".
+Require Import Equations.Init.
+Require Import Equations.FunctionalInduction.
+Require Import Equations.Type.All.
 
 Derive Signature for Id.
 
@@ -21,3 +18,17 @@ Set Printing Universes.
 
 Equations foo (A : Type) (x : A) : A :=
 foo A x := x.
+
+
+Inductive fin : nat -> Set :=
+| fz : forall {n}, fin (S n)
+| fs : forall {n}, fin n -> fin (S n).
+Derive Signature for fin.
+
+Derive NoConfusion for nat.
+
+Set Universe Minimization ToSet.
+
+Equations finp {n} (f : fin (S n)) : unit + fin n :=
+  finp fz := inl tt;
+  finp (fs f) := inr f.

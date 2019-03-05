@@ -96,7 +96,7 @@ Instance UIP_hSet (A : Type) (H : HSet A) : UIP A := H.
 
 Definition dec_eq {A} (x y : A) : Type := (x = y) + (x <> y).
 
-Class EqDec@{i} (A : Type@{i}) := eq_dec : forall x y : A, (x = y) + (x = y -> Empty@{i}).
+Class EqDec@{i} (A : Type@{i}) := eq_dec : forall x y : A, sum@{i} (x = y) (x = y -> Empty).
 
 Cumulative
 Class EqDecPoint (A : Type) (x : A) := eq_dec_point : forall y : A, (x = y) + (x <> y).
