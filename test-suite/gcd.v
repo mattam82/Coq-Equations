@@ -8,7 +8,7 @@ Ltac subst_lets :=
   end.
 
 Hint Extern 5 => 
-  unfold MR; simpl; subst_lets; omega : Below.
+  simpl; subst_lets; omega : Below.
 
 Obligation Tactic := program_simpl; try typeclasses eauto with Below.
 

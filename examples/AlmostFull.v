@@ -378,7 +378,7 @@ Proof.
   apply H. apply H0.
 Defined.
 
-Instance AlmostFull_MR {X Y} R (f : Y -> X) : AlmostFull R -> AlmostFull (MR R f).
+Instance AlmostFull_MR {X Y} R (f : Y -> X) : AlmostFull R -> AlmostFull (Wf.MR R f).
 Proof. intros [p sec]. exists (cofmap f p). apply (cofmap_secures f p _ sec). Defined.
 
 Fixpoint oplus_nullary {X:Type} (p:WFT X) (q:WFT X) :=
@@ -585,8 +585,8 @@ Definition product_rel {X Y : Type} (A : X -> X -> Prop) (B : Y -> Y -> Prop) :=
 Instance af_product {X Y : Type} (A : X -> X -> Prop) (B : Y -> Y -> Prop) :
   AlmostFull A -> AlmostFull B -> AlmostFull (product_rel A B).
 Proof.
-  intros. pose (af_interesection (MR A fst) (MR B snd)).
-  assert (relation_equivalence (inter_rel (MR A fst) (MR B snd)) (product_rel A B)).
+  intros. pose (af_interesection (Wf.MR A fst) (Wf.MR B snd)).
+  assert (relation_equivalence (inter_rel (Wf.MR A fst) (Wf.MR B snd)) (product_rel A B)).
   repeat red; intuition. rewrite <- H1. apply a; typeclasses eauto.
 Defined.
 
@@ -1166,7 +1166,7 @@ Section SCT.
     simpl in *; rewrite -> in_app_iff in *. simpl in *.
     intuition auto.
   Qed.
-  Hint Resolve incl_switch_head'.
+  Hint Resolve incl_switch_head' : core.
 
   Lemma tr_clos_incl {k} {l l' : list (graph k)} : is_transitive_closure l l' -> incl l l'.
   Proof. unfold is_transitive_closure. intuition. Qed.
@@ -1369,11 +1369,12 @@ Definition gnlex : (nat * nat) -> nat.
   intros f; depelim f. apply approximates_T_l. depelim f. apply approximates_T_r. depelim f.
   specialize (sct T_trans_clos). forward sct. apply (compute_transitive_closure_spec 10). reflexivity.
   forward sct.
-  intros. simpl in H. intuition; subst G;
-                        solve [exists 1; (exists fz ; reflexivity) || (exists (fs fz) ; reflexivity) ].
-  set (rel :=(MR (fin_union T_rel) (fun x => (fst x, (snd x, tt))))).
+  intros. simpl in H.
+  intuition; subst G;
+    solve [exists 1; (exists fz ; reflexivity) || (exists (fs fz) ; reflexivity) ].
+  set (rel :=(Wf.MR (fin_union T_rel) (fun x => (fst x, (snd x, tt))))).
   assert (WellFounded rel).
-  apply measure_wf. apply sct.
+  apply Wf.measure_wf. apply sct.
   refine (Subterm.FixWf (WF:=H) (fun x => nat) _).
   refine (fun x =>
             match x as w return ((forall y, rel y w -> nat) -> nat) with
@@ -1407,4 +1408,3 @@ Lemma gnlex_S_test x y : exists foo, gnlex (S x, S y) = foo.
   destruct x. rewrite gnlex_0_r. reflexivity.
   rewrite gnlex_S. rewrite gnlex_0_r. destruct x. admit. rewrite gnlex_S.
 Admitted.
-

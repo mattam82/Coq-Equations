@@ -1,5 +1,5 @@
 Set Warnings "-notation-overridden".
-From Equations Require Import Equations Fin DepElimDec.
+From Equations Require Import Equations Fin.
 Require Import Omega Utf8 Arith Compare_dec List Lia.
 Require Import Relation_Operators.
 Arguments clos_trans [A].

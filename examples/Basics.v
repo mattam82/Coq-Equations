@@ -25,7 +25,6 @@
 Require Import Program Bvector List Relations.
 From Equations Require Import Equations Signature.
 Require Import Utf8.
-Require Import DepElimDec.
 
 (** Just pattern-matching *)
 Equations neg (b : bool) : bool :=
@@ -80,6 +79,7 @@ eq_sym x _ eq_refl := eq_refl.
 Equations eq_trans {A} (x y z : A) (p : x = y) (q : y = z) : x = z :=
 eq_trans x _ _ eq_refl eq_refl := eq_refl.
 
+Notation vector := Vector.t.
 Derive Signature for eq vector.
 
 Module KAxiom.
@@ -182,8 +182,6 @@ Equations vapp {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
   vapp (Vector.cons a v) w := a |:| vapp v w.
 
 (** We can also support well-founded recursion on indexed datatypes. *)
-
-From Equations Require Import EqDec.
 
 (** We show that decidable equality of the elements type implied decidable equality of vectors. *)
 

@@ -6,15 +6,8 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-From Equations Require Import EqDec DepElim.
-
-(** The [FunctionalInduction f] typeclass is meant to register functional induction
-   principles associated to a function [f]. Such principles are automatically 
-   generated for definitions made using [Equations]. *)
-
-Polymorphic
-Class FunctionalInduction {A : Type} (f : A) :=
-  { fun_ind_prf_ty : Type; fun_ind_prf : fun_ind_prf_ty }.
+Require Import Equations.Tactics.
+Require Import Equations.Prop.Classes Equations.Prop.EqDec Equations.Prop.DepElim.
 
 (** The tactic [funind c Hc] applies functional induction on the application 
    [c] which must be of the form [f args] where [f] has a [FunctionalInduction]
@@ -40,17 +33,6 @@ Ltac funind c Hcall :=
 
 Ltac funind_call f H :=
   on_call f ltac:(fun call => funind call H).
-
-(** The [FunctionalElimination f] class declares elimination principles produced
-   from the functional induction principle for [f] to be used directly to eliminate
-   a call to [f]. This is the preferred method of proving results about a function. 
-   [n] is the number of binders for parameters, predicates and methods of the 
-   eliminator.
-   *)
-
-Polymorphic
-Class FunctionalElimination {A : Type} (f : A) (fun_elim_ty : Type) (n : nat) :=
-  fun_elim : fun_elim_ty.
 
 Ltac make_refine n c :=
   match constr:(n) with
@@ -117,10 +99,11 @@ Ltac funelim_sig_tac c tac :=
   block_goal;
   uncurry_call elimfn c packcall packcall_fn;
   remember_let packcall_fn; unfold_packcall packcall;
-  (refine (eq_simplification_sigma1_nondep_dep _ _ _ _ _) ||
-   refine (eq_simplification_sigma1_dep _ _ _ _ _) ||
-   refine (Id_simplification_sigma1_dep _ _ _ _ _) ||
-   refine (Id_simplification_sigma1_nondep_dep _ _ _ _ _));
+  (refine (eq_simplification_sigma1 _ _ _ _ _) ||
+   refine (eq_simplification_sigma1_nondep_dep _ _ _ _ _) ||
+   refine (eq_simplification_sigma1_dep _ _ _ _ _));
+   (* refine (Id_simplification_sigma1_dep _ _ _ _ _) || *)
+   (* refine (Id_simplification_sigma1_nondep_dep _ _ _ _ _)); *)
   let H := fresh "eqargs" in
   let Heq := fresh "Heqcall" in intros H Heq;
   try (rewrite <- Heq; clear Heq); revert_until H; revert H;
@@ -134,39 +117,28 @@ Ltac funelim_sig_tac c tac :=
   unshelve refine_ho elimt; intros;
   cbv beta; simplify_dep_elim; intros_until_block;
   simplify_dep_elim;
-  cbn beta iota delta [eq_rect_dep_r Id_rect_r eq_rect Id_rect pack_sigma_eq pack_sigma_eq_nondep
-                                     pack_sigma_Id pack_sigma_Id_nondep] in *;
+  cbn beta iota delta [eq_rect_dep_r (* Id_rect_r *) eq_rect (* Id_rect *) pack_sigma_eq pack_sigma_eq_nondep
+                                     (* pack_sigma_Id *) (* pack_sigma_Id_nondep *)] in *;
   simplify_IH_hyps'; (* intros _; *)
   unblock_goal; simplify_IH_hyps; tac c.
 
 Ltac funelim_constr c := funelim_sig_tac c ltac:(fun _ => idtac).
 
-Tactic Notation "funelim" uconstr(p) :=
-  let call := fresh "call" in
-  set (call:=p);
-  lazymatch goal with
-    [ call := ?fp |- _ ] =>
-    subst call; funelim_constr fp
-  end.
-
-Ltac apply_args c elimc k :=
-    match c with
-    | _ ?a ?b ?c ?d ?e ?f => k uconstr:(elimc a b c d e f)
-    | _ ?a ?b ?c ?d ?e => k uconstr:(elimc a b c d e)
-    | _ ?a ?b ?c ?d => k uconstr:(elimc a b c d)
-    | _ ?a ?b ?c => k uconstr:(elimc a b c)
-    | _ ?a ?b => k uconstr:(elimc a b)
-    | _ ?a => k uconstr:(elimc a)
-    end.
-
 Ltac get_first_elim c :=
   match c with
-  | ?f ?a ?b ?c ?d ?e ?f => get_elim (f a b c d e f)
-  | ?f ?a ?b ?c ?d ?e => get_elim (f a b c d e)
-  | ?f ?a ?b ?c ?d => get_elim (f a b c d)
-  | ?f ?a ?b ?c => get_elim (f a b c)
-  | ?f ?a ?b => get_elim (f a b)
-  | ?f ?a => get_elim (f a)
+  | ?x ?a ?b ?c ?d ?e ?f ?g ?h ?i ?j ?k ?l ?m => get_elim (x a b c d e f g h i j k l m)
+  | ?x ?a ?b ?c ?d ?e ?f ?g ?h ?i ?j ?k ?l => get_elim (x a b c d e f g h i j k l)
+  | ?x ?a ?b ?c ?d ?e ?f ?g ?h ?i ?j ?k => get_elim (x a b c d e f g h i j k)
+  | ?x ?a ?b ?c ?d ?e ?f ?g ?h ?i ?j => get_elim (x a b c d e f g h i j)
+  | ?x ?a ?b ?c ?d ?e ?f ?g ?h ?i => get_elim (x a b c d e f g h i)
+  | ?x ?a ?b ?c ?d ?e ?f ?g ?h => get_elim (x a b c d e f g h)
+  | ?x ?a ?b ?c ?d ?e ?f ?g => get_elim (x a b c d e f g)
+  | ?x ?a ?b ?c ?d ?e ?f => get_elim (x a b c d e f)
+  | ?x ?a ?b ?c ?d ?e => get_elim (x a b c d e)
+  | ?x ?a ?b ?c ?d => get_elim (x a b c d)
+  | ?x ?a ?b ?c => get_elim (x a b c)
+  | ?x ?a ?b => get_elim (x a b)
+  | ?x ?a => get_elim (x a)
   end.
 
 (** An alternative tactic that does not generalize over the arguments.
@@ -193,8 +165,8 @@ Ltac specialize_hyps :=
   match goal with
     [ H : forall _ : ?x = ?x, _ |- _ ] => 
     specialize (H (@eq_refl _ x)); unfold eq_rect_r, eq_rect in H ; simpl in H
-  | [ H : forall _ : @Id _ ?x ?x, _ |- _ ] =>
-    specialize (H (@id_refl _ x)); unfold Id_rect_dep_r, Id_rect_r, Id_rect in H ; simpl in H
+  (* | [ H : forall _ : @Id _ ?x ?x, _ |- _ ] => *)
+  (*   specialize (H (@id_refl _ x)); unfold Id_rect_dep_r, Id_rect_r, Id_rect in H ; simpl in H *)
   end.
 
 Hint Extern 100 => specialize_hyps : funelim.
@@ -233,7 +205,7 @@ Ltac specialize_mutual :=
   | [ H : (?A /\ ?B) -> ?C |- _ ] => apply (uncurry_conj A B C) in H
   end.
 
-Ltac specialize_mutfix := repeat specialize_mutual.
+Ltac Equations.Init.specialize_mutfix ::= repeat specialize_mutual.
 
 (** Destruct existentials, including [existsT]'s. *)
 

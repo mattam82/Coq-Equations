@@ -1,7 +1,6 @@
 -I src
 -I test-suite
 -R theories Equations
--I theories
 -I examples
 CAMLDEBUG = "-bin-annot -g -for-pack Equations -w -58"
 COQDOCFLAGS = "-parse-comments -utf8 -interpolate"
@@ -44,22 +43,36 @@ src/extra_tactics.mli
 src/g_equations.ml4
 src/equations_plugin_mod.ml
 src/equations_plugin.mllib
+
 theories/Init.v
-theories/Classes.v
 theories/Signature.v
-theories/EqDec.v
-theories/HSets.v
-theories/HSetInstances.v
-theories/DepElim.v
-theories/DepElimDec.v
-theories/DepElimK.v
-theories/NoConfusion.v
-theories/FunctionalInduction.v
-theories/Constants.v
-theories/ConstantsType.v
-theories/EqDecInstances.v
+theories/Tactics.v
+
+theories/Prop/Logic.v
+theories/Prop/Classes.v
+theories/Prop/EqDec.v
+theories/Prop/EqDecInstances.v
+theories/Prop/Subterm.v
+theories/Prop/DepElim.v
+theories/Prop/Tactics.v
+theories/Prop/Constants.v
+theories/Prop/NoConfusion.v
+theories/Prop/FunctionalInduction.v
+
+theories/Type/Logic.v
+theories/Type/Relation.v
+theories/Type/Relation_Properties.v
+theories/Type/WellFounded.v
+theories/Type/Classes.v
+theories/Type/EqDec.v
+theories/Type/DepElim.v
+theories/Type/Tactics.v
+theories/Type/Constants.v
+theories/Type/EqDecInstances.v
+theories/Type/FunctionalInduction.v
+theories/Type/All.v
+
 theories/Below.v
-theories/Subterm.v
 theories/Loader.v
 theories/Telescopes.v
 theories/Equations.v

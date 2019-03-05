@@ -1,4 +1,4 @@
-From Equations Require Import Equations DepElimDec HSets.
+From Equations Require Import Equations.
 Require Import Utf8.
 (* Set Universe Polymorphism. *)
 (** Can we define NoConfusion in SProp (squashing equalities of arguments)?

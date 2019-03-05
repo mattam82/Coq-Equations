@@ -9,7 +9,6 @@
 Require Import Program. 
 Require Import Equations Bvector List.
 Require Import Relations.
-Require Import DepElimDec.
 Require Import Subterm.
 Require Import Lia.
 Require Import Arith Wf_nat.

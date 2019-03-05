@@ -6,9 +6,15 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Wf_nat Arith.Lt Bvector Relations.
-Require Export Program.Wf FunctionalExtensionality. (* ProofIrrelevance (* FIXME Program.Wf doesn't need it *). *)
-From Equations Require Import Init Classes Below Signature EqDec NoConfusion.
+From Coq Require Import Wf_nat Arith.Lt Bvector Relations.
+From Coq Require Import Wellfounded Relation_Definitions.
+From Coq Require Import Relation_Operators Lexicographic_Product Wf_nat.
+From Coq Require Export Program.Wf FunctionalExtensionality.
+
+From Equations Require Import Init Signature.
+Require Import Equations.Tactics.
+Require Import Equations.Prop.Classes Equations.Prop.EqDec
+        Equations.Prop.DepElim Equations.Prop.Constants.
 
 Generalizable Variables A R S B.
 
@@ -42,7 +48,7 @@ Qed.
 Hint Rewrite @FixWf_unfold : Recursors.
 
 Lemma FixWf_unfold_step : 
-  forall (A : Type) (R : Relation_Definitions.relation A) (WF : WellFounded R) (P : A -> Type)
+  forall (A : Type) (R : relation A) (WF : WellFounded R) (P : A -> Type)
     (step : forall x : A, (forall y : A, R y x -> P y) -> P x) (x : A)
     (step' : forall y : A, R y x -> P y),
     step' = (fun (y : A) (_ : R y x) => FixWf P step y) ->
@@ -79,8 +85,6 @@ Create HintDb rec_decision discriminated.
    to allow computations with functions defined by well-founded recursion.
    *)
 
-Require Import Wellfounded.Transitive_Closure.
-
 Lemma WellFounded_trans_clos `(WF : WellFounded A R) : WellFounded (clos_trans A R).
 Proof. apply wf_clos_trans. apply WF. Defined.
 
@@ -111,13 +115,6 @@ Proof. intros Hyz Hxy. exact (t_trans _ _ x y z Hxy (t_step _ _ _ _ Hyz)). Defin
 Hint Resolve clos_trans_stepr : subterm_relation.
 
 (** The default tactic to build proofs of well foundedness of subterm relations. *)
-
-Ltac simp_sigmas := repeat destruct_one_sigma ; simpl in *.
-
-Ltac eapply_hyp :=
-  match goal with 
-    [ H : _ |- _ ] => eapply H
-  end.
 
 Create HintDb solve_subterm discriminated.
 
@@ -196,23 +193,11 @@ Ltac rec_wf_rel_aux recname n t rel kont :=
       rec_wf_fix recname kont
     end.
 
-Ltac rec_wf_eqns_rel recname n x rel :=
-  rec_wf_rel_aux recname n x rel
-                         ltac:(fun rechyp =>
-                                 unfold MR in rechyp; simpl in rechyp;
-                                 add_pattern (hide_pattern rechyp)).
-
 Ltac rec_wf_rel recname x rel :=
   rec_wf_rel_aux recname 0 x rel ltac:(fun rechyp => idtac).
 
-(** The [pi] tactic solves an equality between applications of the same function,
-   possibly using proof irrelevance to discharge equality of proofs. *)
-
-Ltac pi := repeat progress (f_equal || reflexivity).
 (** Define non-dependent lexicographic products *)
 
-Require Import Wellfounded Relation_Definitions.
-Require Import Relation_Operators Lexicographic_Product Wf_nat.
 Arguments lexprod [A] [B] _ _.
 
 Section Lexicographic_Product.
@@ -240,8 +225,10 @@ Section Lexicographic_Product.
     destruct y as [x2 y1]; intro H6.
     simple inversion H6; intro.
     injection H1. injection H3. intros. subst. clear H1 H3.
-    apply IHAcc; auto with sets. 
-    noconf H3; noconf H1. 
+    apply IHAcc; auto with sets.
+    injection H1. intros; subst.
+    injection H3. intros; subst.
+    auto.
   Defined.
 
   Theorem wf_lexprod :

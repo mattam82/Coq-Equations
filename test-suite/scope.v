@@ -1,14 +1,10 @@
 (** Example by Rafaël Bocquet: POPLmark part 1A with inductive definition of scope 
   and well-scoped variables (and terms, types and environments). *)
 
+Require Import Program.
 Require Import Equations.Equations.
-Require Import Equations.DepElimDec.
 Require Import Coq.Logic.Eqdep_dec.
 Require Import Coq.Classes.EquivDec.
-Require Import Program.
-
-Ltac depelim x := Equations.Init.depelim x.
-Ltac depind x := Equations.DepElim.depind x.
 
 Require Import Arith.
 Derive Signature for eq.
@@ -47,8 +43,6 @@ Inductive scope_le : scope -> scope -> Set :=
 
 Derive Signature NoConfusion NoConfusionHom for scope_le.
 Derive Subterm for scope_le.
-
-Ltac rec ::= Subterm.rec_wf_eqns.
 
 Equations scope_le_app {a b c} (p : scope_le a b) (q : scope_le b c) : scope_le a c :=
 scope_le_app p scope_le_n := p;

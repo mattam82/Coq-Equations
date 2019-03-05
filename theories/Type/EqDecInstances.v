@@ -5,8 +5,12 @@
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
-
-From Equations Require Import Init DepElim HSets.
+Set Warnings "-notation-overridden".
+From Equations Require Import Init.
+Require Import Equations.Type.Logic Equations.Type.Classes Equations.Type.DepElim
+        Equations.Type.Tactics Equations.Type.EqDec.
+Local Open Scope equations_scope.
+Import Id_Notations Sigma_Notations.
 
 Set Universe Polymorphism.
 
@@ -38,15 +42,15 @@ Proof. eqdec_proof. Defined.
 (** Any signature made up entirely of decidable types is decidable. *)
 
 Polymorphic Definition eqdec_sig_Id@{i} {A : Type@{i}} {B : A -> Type@{i}}
-            `(HSets.EqDec A) `(forall a, HSets.EqDec (B a)) :
-  HSets.EqDec@{i} (sigma A B).
+            `(EqDec A) `(forall a, EqDec (B a)) :
+  EqDec@{i} (sigma B).
 Proof.
   Set Printing Universes.
   intros. intros [xa xb] [ya yb].
-  case (HSets.eq_dec xa ya). intros Hxya. destruct Hxya. case (HSets.eq_dec xb yb).
+  case (eq_dec xa ya). intros Hxya. destruct Hxya. case (eq_dec xb yb).
   + intros He; destruct He. left. reflexivity.
-  + intros. right. apply Id_simplification_sigma2@{i i}. apply e.
-  + intros. right. apply Id_simplification_sigma1@{i i}.
+  + intros. right. apply simplification_sigma2_uip@{i i}. apply e.
+  + intros. right. refine (simplification_sigma1_dep@{i i} _ _ _ _ _).
     intros He _; revert He. apply e.
 Defined.
 

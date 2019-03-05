@@ -42,11 +42,11 @@ Equations measure : {A &{ P &{ _ : A & ty A P }}} -> nat :=
   measure &(_, _, a, ty0) => a;
   measure &(_, _, a, ty1) => length a.
 
-Definition rel := MR lt measure.
+Definition rel := Program.Wf.MR lt measure.
 
 Instance: WellFounded rel.
 Proof.
-  red. apply measure_wf. apply Wf_nat.lt_wf.
+  red. apply Wf.measure_wf. apply Wf_nat.lt_wf.
 Defined.
 
 Definition pack {A} {P} (x : A) (t : ty A P) := (&(A, P, x, t)) : {A & {P & {_ : A & ty A P}}}.

@@ -5,14 +5,8 @@
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
-
-(** This module sets the set constants of Equations to opaque mode so
-  that computation is not possible inside Coq, the tactics need this
-  to solve obligations. *)
-
-Require Import Equations.Prop.DepElim.
-
-Global Opaque simplification_sigma2_uip
-       simplification_sigma2_dec_point
-       simplification_K_uip
-       simplify_ind_pack simplified_ind_pack.
+Set Warnings "-notation-overridden".
+Require Export Equations.Type.Logic Equations.Type.Classes Equations.Type.Constants.
+Require Import Equations.Tactics Equations.Type.DepElim
+        Equations.Type.EqDecInstances Equations.Type.WellFounded
+        Equations.Type.FunctionalInduction.

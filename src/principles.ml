@@ -8,9 +8,7 @@
 
 (** Principles derived from equation definitions. *)
 
-open Constr
 open Names
-open Vars
 open Equations_common
 open Syntax
 open Context_map
@@ -142,8 +140,8 @@ let clean_rec_calls sigma (hyps, c) =
     CMap.fold (fun ty n hyps ->
       let ctx, concl = Term.decompose_prod_assum ty in
       let len = List.length ctx in
-      if noccur_between 1 len concl then
-          if CMap.mem (lift (-len) concl) hyps then hyps
+      if Vars.noccur_between 1 len concl then
+          if CMap.mem (Vars.lift (-len) concl) hyps then hyps
           else CMap.add ty n hyps
         else CMap.add ty n hyps)
       under_context hyps
@@ -176,7 +174,7 @@ let rec is_applied_to_structarg f is_rec lenargs =
 
 let is_user_obl sigma user_obls f =
   match EConstr.kind sigma f with
-  | Const (c, u) -> Id.Set.mem (Label.to_id (Constant.label c)) user_obls
+  | Constr.Const (c, u) -> Id.Set.mem (Label.to_id (Constant.label c)) user_obls
   | _ -> false
 
 let cmap_map f c =
@@ -197,7 +195,7 @@ let cmap_add ty n h =
 let subst_telescope cstr ctx =
   let (_, ctx') = List.fold_left
     (fun (k, ctx') decl ->
-      (succ k, (Context.Rel.Declaration.map_constr (substnl [cstr] k) decl) :: ctx'))
+      (succ k, (Context.Rel.Declaration.map_constr (Vars.substnl [cstr] k) decl) :: ctx'))
     (0, []) ctx
   in List.rev ctx'
 
@@ -236,8 +234,8 @@ let find_rec_call is_rec sigma protos f args =
             let sign = List.map EConstr.Unsafe.to_rel_decl sign in
             let sign = substitute_args indargs sign in
             let signlen = List.length sign in
-            let indargs = List.map (lift signlen) indargs @ Context.Rel.to_extended_list mkRel 0 sign in
-            let fargs = List.map (lift signlen) args @ Context.Rel.to_extended_list mkRel 0 sign in
+            let indargs = List.map (Vars.lift signlen) indargs @ Context.Rel.to_extended_list Constr.mkRel 0 sign in
+            let fargs = List.map (Vars.lift signlen) args @ Context.Rel.to_extended_list Constr.mkRel 0 sign in
             sign, (fargs, indargs, [])
         in
         Some (idx, arity, filter, sign, args)
@@ -282,10 +280,10 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
       let hyps'',body' = aux (succ n) ((na,Some b,t) :: env) CMap.empty body in
         cmap_union hyps' (cmap_map (fun ty -> Constr.mkLetIn (na,b,t,ty)) hyps''), c
 
-    | Prod (na, d, c) when noccurn 1 c  ->
+    | Prod (na, d, c) when Vars.noccurn 1 c  ->
       let hyps',d' = aux n env hyps d in
-      let hyps'',c' = aux n env hyps' (subst1 mkProp c) in
-        hyps'', mkProd (na, d', lift 1 c')
+      let hyps'',c' = aux n env hyps' (Vars.subst1 mkProp c) in
+        hyps'', mkProd (na, d', Vars.lift 1 c')
 
     | Case (ci, p, c, brs) ->
       let hyps', c' = aux n env hyps c in
@@ -314,7 +312,7 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
            let hyp =
              Term.it_mkProd_or_LetIn
                (Constr.mkApp (mkApp (mkRel (i + 1 + len + n + List.length sign), Array.of_list indargs'),
-                              [| Term.applistc (lift (List.length sign) result)
+                              [| Term.applistc (Vars.lift (List.length sign) result)
                                    (Context.Rel.to_extended_list mkRel 0 sign) |]))
                sign
            in
@@ -340,10 +338,10 @@ open EConstr
 let subst_app sigma f fn c =
   let rec aux n c =
     match kind sigma c with
-    | App (f', args) when eq_constr sigma f f' ->
+    | Constr.App (f', args) when eq_constr sigma f f' ->
       let args' = Array.map (map_with_binders sigma succ aux n) args in
       fn n f' args'
-    | Var _ when eq_constr sigma f c ->
+    | Constr.Var _ when eq_constr sigma f c ->
        fn n c [||]
     | _ -> map_with_binders sigma succ aux n c
   in aux 0 c
@@ -368,19 +366,19 @@ let is_ind_assum sigma ind b =
 let clear_ind_assums sigma ind ctx =
   let rec clear_assums c =
     match kind sigma c with
-    | Prod (na, b, c) ->
+    | Constr.Prod (na, b, c) ->
        if is_ind_assum sigma ind b then
          (assert(not (Termops.dependent sigma (mkRel 1) c));
           clear_assums (Vars.subst1 mkProp c))
        else mkProd (na, b, clear_assums c)
-    | LetIn (na, b, t, c) ->
+    | Constr.LetIn (na, b, t, c) ->
         mkLetIn (na, b, t, clear_assums c)
     | _ -> c
   in map_rel_context clear_assums ctx
 
 let type_of_rel t ctx =
   match Constr.kind t with
-  | Rel k -> Vars.lift k (get_type (List.nth ctx (pred k)))
+  | Constr.Rel k -> Vars.lift k (get_type (List.nth ctx (pred k)))
   | c -> mkProp
 
 open Vars
@@ -409,7 +407,7 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
         match kind !evd arity, ind_stmts with
         | _, (i, ((fn, _), _, _, sign, ar, _, _, ((Where | Refine), cut)), _) :: stmts ->
            aux arity stmts
-        | App (conj, [| arity; rest |]),
+        | Constr.App (conj, [| arity; rest |]),
           (i, ((fn, _), _, _, sign, ar, _, _, (refine, cut)), _) :: stmts ->
            mkApp (conj, [| clean_one arity sign fn ; aux rest stmts |])
         | _, (i, ((fn, _), _, _, sign, ar, _, _, _), _) :: stmts ->
@@ -657,7 +655,7 @@ let subst_protos s gr =
   let ty = Retyping.get_type_of env sigma cst in
   let rec aux env sigma args ty =
     match kind sigma ty with
-    | Prod (na, b, ty) ->
+    | Constr.Prod (na, b, ty) ->
       begin try match na with
         | Name id ->
           let cst = List.find (fun s -> Id.equal (Label.to_id (Constant.label s)) id) s in
@@ -673,7 +671,7 @@ let subst_protos s gr =
           let sigma, term = aux (push_rel (LocalAssum (na, b)) env)
               sigma (mkRel 1 :: List.map (lift 1) args) ty in
           sigma, mkLambda (na, b, term) end
-    | LetIn (na, b, t, ty) ->
+    | Constr.LetIn (na, b, t, ty) ->
       let sigma, term = aux (push_rel (LocalDef (na, b, t)) env) sigma (List.map (lift 1) args) ty in
       sigma, mkLetIn (na, b, t, term)
     | _ -> let term = mkApp (cst, CArray.rev_of_list args) in
@@ -995,10 +993,10 @@ let unfold_programs env evd flags rec_type progs =
 let subst_app sigma f fn c =
   let rec aux n c =
     match kind sigma c with
-    | App (f', args) when eq_constr sigma f f' ->
+    | Constr.App (f', args) when eq_constr sigma f f' ->
       let args' = Array.map (map_with_binders sigma succ aux n) args in
       fn n f' args'
-    | Var _ when eq_constr sigma f c ->
+    | Constr.Var _ when eq_constr sigma f c ->
        fn n c [||]
     | _ -> map_with_binders sigma succ aux n c
   in aux 0 c
@@ -1077,7 +1075,7 @@ let computations env evd alias refine p eqninfo =
        let subterm, filter =
          let rec aux ty i args' =
            match kind evd ty, args' with
-           | Prod (na, b, ty), a :: args' ->
+           | Constr.Prod (na, b, ty), a :: args' ->
              if EConstr.isRel evd a then (* A variable from the context that was not substituted
                                   by a recursive prototype, we keep it *)
                let term', len = aux ty (succ i) args' in
@@ -1370,14 +1368,14 @@ let unfold_fix =
   Proofview.Goal.enter (fun gl ->
       let sigma = Goal.sigma gl in
       match kind sigma (Goal.concl gl) with
-      | App (eq, [| _; lhs; _ |]) ->
+      | Constr.App (eq, [| _; lhs; _ |]) ->
         (match kind sigma lhs with
-         | App (fn, args) ->
+         | Constr.App (fn, args) ->
            (match kind sigma fn with
-            | Fix ((indexes, p), decls) ->
+            | Constr.Fix ((indexes, p), decls) ->
               let fixarg = args.(indexes.(p)) in
               (match kind sigma fixarg with
-               | Var id -> depelim_tac id
+               | Constr.Var id -> depelim_tac id
                | _ -> tclUNIT ())
             | _ -> tclUNIT ())
          | _ -> tclUNIT ())
@@ -1514,7 +1512,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
   in
   let all_stmts = List.concat (List.map (fun (f, c) -> c) stmts) in
   let fnind_map = ref PathMap.empty in
-  let declare_one_ind (inds, sorts) (i, (f, alias, path, sign, arity, pats, refs, refine), stmts) =
+  let declare_one_ind (inds, univs, sorts) (i, (f, alias, path, sign, arity, pats, refs, refine), stmts) =
     let indid = Nameops.add_suffix (path_id path) "_graph" (* (if i == 0 then "_ind" else ("_ind_" ^ string_of_int i)) *) in
     let indapp = List.rev_map (fun x -> Constr.mkVar (Nameops.Name.get_id (get_name x))) sign in
     let () = fnind_map := PathMap.add path (indid,indapp) !fnind_map in
@@ -1524,11 +1522,14 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
         let suff = (if r != Refine then "_equation_" else "_refinement_") ^ string_of_int i in
           Nameops.add_suffix indid suff) n) stmts
     in
+    let univs =
+      List.fold_left (fun univs c -> Univ.LSet.union (universes_of_constr env !evd (EConstr.of_constr c)) univs)
+        univs constructors in
     let ind_sort =
       match Retyping.get_sort_family_of env !evd (it_mkProd_or_LetIn arity sign) with
       | Sorts.InProp ->
         (* If the program is producing a proof, then we cannot hope to have its
-           graph in Type. *)
+           graph in Type in general (it might be case-splitting on non-strict propositions). *)
         Univ.type0m_univ
       | _ ->
         let ctx = (of_tuple (Anonymous, None, arity) :: sign) in
@@ -1542,19 +1543,21 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
                 mind_entry_consnames = consnames;
                 mind_entry_lc = constructors;
                 mind_entry_template = false }
-    in ((entry, sign, arity) :: inds, Univ.sup ind_sort sorts)
+    in ((entry, sign, arity) :: inds, univs, Univ.sup ind_sort sorts)
   in
   let declare_ind () =
-    let inds, sort = List.fold_left declare_one_ind ([], Univ.type0m_univ) ind_stmts in
+    let inds, univs, sort = List.fold_left declare_one_ind ([], Univ.LSet.empty, Univ.type0m_univ) ind_stmts in
+    let sigma = Evd.restrict_universe_context !evd univs in
+    let sigma = Evd.minimize_universes sigma in
     let inds =
       List.rev_map (fun (entry, sign, arity) ->
           Entries.{ entry with
                     mind_entry_arity =
-                      to_constr !evd (it_mkProd_or_LetIn (mkProd (Anonymous, arity,
+                      to_constr sigma (it_mkProd_or_LetIn (mkProd (Anonymous, arity,
                                                                   mkSort (Sorts.sort_of_univ sort))) sign) })
         inds
     in
-    let uctx = Evd.ind_univ_entry ~poly !evd in
+    let uctx = Evd.ind_univ_entry ~poly sigma in
     let inductive =
       Entries.{ mind_entry_record = None;
                 mind_entry_universes = uctx;

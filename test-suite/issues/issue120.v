@@ -23,12 +23,13 @@ Fixpoint tsize_flat(T: ty) :=
     | TSel _ U => 1 + tsize_flat U
   end.
 
-Definition val_type_termRel := MR (lexprod lt (fun _ => lt)) (fun p => let '(T, n) := p in (existT (fun _ => nat) n (tsize_flat T))).
+Definition val_type_termRel :=
+  Program.Wf.MR (lexprod lt (fun _ => lt)) (fun p => let '(T, n) := p in (existT (fun _ => nat) n (tsize_flat T))).
 
 Ltac smaller_n := autounfold; apply left_lex; omega.
 
 Instance WF_val_type_termRel: WellFounded val_type_termRel.
-  apply measure_wf; apply wf_lexprod; intro; apply lt_wf.
+  apply Wf.measure_wf; apply wf_lexprod; intro; apply lt_wf.
 Qed.
 
 Equations? val_type (Tn: ty * nat) : Prop by wf Tn val_type_termRel :=

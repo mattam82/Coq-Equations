@@ -29,6 +29,8 @@ Definition bang := tt.
 Opaque bang.
 Notation "!" := bang.
 
+Register bang as equations.internal.bang.
+
 (** Notation for inaccessible patterns. *)
 
 Definition inaccessible_pattern {A : Type} (t : A) := t.
@@ -39,14 +41,20 @@ Module Inaccessible_Notations.
 
 End Inaccessible_Notations.
 
+Register inaccessible_pattern as equations.internal.inaccessible_pattern.
+
 Import Inaccessible_Notations.
 
 (** A marker for fixpoint prototypes in the context *)
 Definition fixproto := tt.
 
+Register fixproto as equations.fixproto.
+
 (** A constant to avoid displaying large let-defined terms
     in the context. *)
 Definition hidebody {A : Type} {a : A} := a.
+
+Register hidebody as equations.internal.hidebody.
 
 Ltac hidebody H :=
   match goal with
@@ -82,18 +90,16 @@ Global Unset Printing Primitive Projection Parameters.
 Polymorphic Cumulative Record sigma@{i} {A : Type@{i}} {B : A -> Type@{i}} : Type@{i} :=
   sigmaI { pr1 : A; pr2 : B pr1 }.
 Unset Primitive Projections.
-Arguments sigma A B : clear implicits.
+Arguments sigma {A} B.
 Arguments sigmaI {A} B pr1 pr2.
 
 Extract Inductive sigma => "( * )" ["(,)"].
-
-Polymorphic Definition prod (A : Type) (B : Type) := sigma A (fun _ => B).
 
 Set Warnings "-notation-overridden".
 
 Module Sigma_Notations.
 
-Notation "'Σ' x .. y , P" := (sigma _ (fun x => .. (sigma _ (fun y => P)) ..))
+Notation "'Σ' x .. y , P" := (sigma (fun x => .. (sigma (fun y => P)) ..))
   (at level 200, x binder, y binder, right associativity,
   format "'[  ' '[  ' Σ  x  ..  y ']' ,  '/' P ']'") : type_scope.
 
@@ -109,49 +115,59 @@ End Sigma_Notations.
 
 Import Sigma_Notations.
 
-(** The polymorphic equality type used by Equations when working with equality in Type. *)
-
-Set Universe Polymorphism.
-
-Inductive Empty@{i} : Type@{i} :=.
-
-Scheme Empty_case := Minimality for Empty Sort Type.
-
-Cumulative Inductive Id@{i} {A : Type@{i}} (a : A) : A -> Type@{i} :=
-  id_refl : Id a a.
-Arguments id_refl {A a}, [A] a.
-
-Module Id_Notations.
-
-  Notation " x = y " := (@Id _ x y) : equations_scope.
-  Notation " x = y " := (@Id _ x y) : type_scope.
-  Notation " x <> y " := (@Id _ x y -> Empty) : equations_scope.
-  Notation " x <> y " := (@Id _ x y -> Empty) : type_scope.
-  Notation " 1 " := (@id_refl _ _) : equations_scope.
-
-End Id_Notations.
-
-Import Id_Notations.
-
-Section IdTheory.
-  Universe i.
-  Context {A : Type@{i}}.
-
-  Import Id_Notations.
-
-  Lemma id_sym {x y : A} : x = y -> y = x.
-  Proof. destruct 1. apply 1. Defined.
-
-  Lemma id_trans {x y z : A} : x = y -> y = z -> x = z.
-  Proof. destruct 1. apply id. Defined.
-
-End IdTheory.
 
 (** Forward reference for the NoConfusion tactic. *)
 Ltac noconf H := congruence || injection H; intros; subst.
 
+(** Forward reference for simplification of equations internal constants *)
+Ltac simpl_equations := fail "Equations.Init.simpl_equations has not been bound yet".
+
 (** Forward reference for Equations' [depelim] tactic, which will be defined in [DepElim]. *)
-Ltac depelim x := fail "not defined yet".
+Ltac depelim x := fail "Equations.Init.depelim has not been bound yet".
+
+(** Forward reference for Equations' [depind] tactic, which will be defined in [DepElim]. *)
+Ltac depind x := fail "Equations.Init.depind has not been bound yet".
+
+(** Forward reference for Equations' [funelim] tactic, which will be defined in [FunctionalInduction]. *)
+Ltac funelim_constr x := fail "Equations.Init.funelim_constr has not been bound yet".
+
+(* We allow patterns, using the following trick. *)
+Tactic Notation "funelim" uconstr(p) :=
+  let call := fresh "call" in
+  set (call:=p);
+  lazymatch goal with
+    [ call := ?fp |- _ ] =>
+    subst call; funelim_constr fp
+  end.
+
+(** Forward reference for [apply_funelim]. A simpler minded variant that
+    does no generalization by equalities. Use it if you want to do the
+    induction loading by yourself. *)
+Ltac apply_funelim x := fail "Equations.Init.funelim has not been bound yet".
+
+(** A tactic that tries to remove trivial equality guards in induction hypotheses coming
+   from [dependent induction]/[generalize_eqs] invocations. *)
+
+Ltac simplify_IH_hyps := repeat
+  match goal with
+    | [ hyp : _ |- _ ] => simpl in hyp; eqns_specialize_eqs hyp; simpl in hyp
+  end.
+
+(** Forward reference for Equations' [solve_eqdec] tactic, which will be defined later in [EqDec].
+    It is used to derive decidable equality on an inductive family. *)
+Ltac solve_eqdec := fail "Equations.Init.solve_eqdec has not been bound yet".
+
+(** Forward reference for Equations' [solve_subterm] tactic, which will be defined in [Subterm].
+    It is used to derive the well-foundedness of the subterm relation. *)
+Ltac solve_subterm := fail "Equations.Init.solve_subterm has not been bound yet".
+
+(** Forward reference for Equations' [solve_noconf] tactic, which will be defined later.
+    It is used to derive the heterogeneous no-confusion property of an inductive family. *)
+Ltac solve_noconf := fail "Equations.Init.solve_noconf has not been bound yet".
+
+(** Forward reference for Equations' [solve_noconf_hom] tactic, which will be defined later.
+    It is used to derive the homogeneous no-confusion property of an inductive family. *)
+Ltac solve_noconf_hom := fail "Equations.Init.solve_noconf_hom has not been bound yet".
 
 (** Such a useful tactic it should be part of the stdlib. *)
 Ltac forward_gen H tac :=
@@ -161,3 +177,14 @@ Ltac forward_gen H tac :=
 
 Tactic Notation "forward" constr(H) := forward_gen H ltac:(idtac).
 Tactic Notation "forward" constr(H) "by" tactic(tac) := forward_gen H tac.
+
+(** A hintdb for transparency information of definitions related to [Below] and
+   for solving goals related to [Below] instances. *)
+
+Create HintDb Below discriminated.
+
+(** Forward reference to an internal tactic to unfold well-founded fixpoints *)
+Ltac unfold_recursor := fail "Equations.Init.unfold_recursor has not been bound yet".
+
+(** Forward reference to an internal tactic to combine eliminators for mutual and nested definitions *)
+Ltac specialize_mutfix := fail "Equations.Init.specialize_mutfix has not been bound yet".
