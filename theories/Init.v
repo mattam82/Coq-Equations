@@ -130,6 +130,14 @@ Ltac depelim x := fail "Equations.Init.depelim has not been bound yet".
 (** Forward reference for Equations' [depind] tactic, which will be defined in [DepElim]. *)
 Ltac depind x := fail "Equations.Init.depind has not been bound yet".
 
+(** Forward reference for Equations' [funelim] tactic, which will be defined in [FunctionalInduction]. *)
+Ltac funelim x := fail "Equations.Init.funelim has not been bound yet".
+
+(** Forward reference for [apply_funelim]. A simpler minded variant that
+    does no generalization by equalities. Use it if you want to do the
+    induction loading by yourself. *)
+Ltac apply_funelim x := fail "Equations.Init.funelim has not been bound yet".
+
 (** A tactic that tries to remove trivial equality guards in induction hypotheses coming
    from [dependent induction]/[generalize_eqs] invocations. *)
 
@@ -170,3 +178,6 @@ Create HintDb Below discriminated.
 
 (** Forward reference to an internal tactic to unfold well-founded fixpoints *)
 Ltac unfold_recursor := fail "Equations.Init.unfold_recursor has not been bound yet".
+
+(** Forward reference to an internal tactic to combine eliminators for mutual and nested definitions *)
+Ltac specialize_mutfix := fail "Equations.Init.specialize_mutfix has not been bound yet".

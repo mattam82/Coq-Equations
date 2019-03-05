@@ -1,3 +1,11 @@
+(**********************************************************************)
+(* Equations                                                          *)
+(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(**********************************************************************)
+(* This file is distributed under the terms of the                    *)
+(* GNU Lesser General Public License Version 2.1                      *)
+(**********************************************************************)
+
 From Equations Require Import Init.
 From Coq Require Import Extraction Relation_Definitions.
 Require Import Equations.Prop.Logic.
@@ -97,3 +105,27 @@ Definition elim_impossible_call {A} (a : A) {imp : ImpossibleCall a} (P : A -> T
 (** The tactic tries to find a call of [f] and eliminate it. *)
 
 Ltac impossible_call f := on_call f ltac:(fun t => apply (elim_impossible_call t)).
+
+
+(** The [FunctionalInduction f] typeclass is meant to register functional induction
+   principles associated to a function [f]. Such principles are automatically
+   generated for definitions made using [Equations]. *)
+
+Polymorphic
+Class FunctionalInduction {A : Type} (f : A) :=
+  { fun_ind_prf_ty : Type; fun_ind_prf : fun_ind_prf_ty }.
+
+Register FunctionalInduction as equations.funind.class.
+
+(** The [FunctionalElimination f] class declares elimination principles produced
+   from the functional induction principle for [f] to be used directly to eliminate
+   a call to [f]. This is the preferred method of proving results about a function.
+   [n] is the number of binders for parameters, predicates and methods of the
+   eliminator.
+   *)
+
+Polymorphic
+Class FunctionalElimination {A : Type} (f : A) (fun_elim_ty : Type) (n : nat) :=
+  fun_elim : fun_elim_ty.
+
+Register FunctionalElimination as equations.funelim.class.

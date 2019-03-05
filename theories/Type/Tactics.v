@@ -1,10 +1,21 @@
+(**********************************************************************)
+(* Equations                                                          *)
+(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(**********************************************************************)
+(* This file is distributed under the terms of the                    *)
+(* GNU Lesser General Public License Version 2.1                      *)
+(**********************************************************************)
+
 Set Warnings "-notation-overridden".
-Require Import Equations.Tactics Equations.Type.Logic Equations.Type.DepElim Equations.Type.WellFounded.
+Require Import Equations.Tactics Equations.Type.Logic Equations.Type.DepElim
+        Equations.Type.WellFounded Equations.Type.FunctionalInduction.
 
 Ltac Equations.Init.simpl_equations ::= Equations.Type.DepElim.simpl_equations.
 
 Ltac Equations.Init.depelim H ::= dependent elimination H; cbn in *.
 Ltac Equations.Init.depind H ::= Equations.Type.DepElim.depind H.
+Ltac Equations.Init.funelim H ::= funelim H.
+Ltac Equations.Init.apply_funelim H ::= Equations.Type.FunctionalInduction.apply_funelim H.
 
 Ltac Equations.Init.noconf H ::= Equations.Type.DepElim.noconf H.
 

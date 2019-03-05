@@ -4,7 +4,6 @@ Set Universe Polymorphism.
 Require Import Relations.
 (** Switch to an equality in Type *)
 Require Import Equations.Init.
-Require Import Equations.FunctionalInduction.
 Require Import Equations.Type.All.
 
 Derive Signature for Id.

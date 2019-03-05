@@ -562,7 +562,6 @@ let rec_wf_tac h n h' rel =
      ConstrMayEval (Genredexpr.ConstrTerm h);
      ConstrMayEval (Genredexpr.ConstrTerm rel)]))))
 
-let unfold_recursor_tac () = tac_of_string "Equations.Init.unfold_recursor" []
 
 let solve_rec_tac () = tac_of_string "Equations.Equations.solve_rec" []
 
@@ -576,8 +575,8 @@ let noconf_hom_tac () = tac_of_string "Equations.Init.solve_noconf_hom" []
 let eqdec_tac () = tac_of_string "Equations.Init.solve_eqdec" []
 let simpl_equations_tac () = tac_of_string "Equations.Init.simpl_equations" []
 let solve_subterm_tac () = tac_of_string "Equations.Init.solve_subterm" []
-
-let specialize_mutfix_tac () = tac_of_string "Equations.FunctionalInduction.specialize_mutfix" []
+let specialize_mutfix_tac () = tac_of_string "Equations.Init.specialize_mutfix" []
+let unfold_recursor_tac () = tac_of_string "Equations.Init.unfold_recursor" []
   
 open Libnames
 

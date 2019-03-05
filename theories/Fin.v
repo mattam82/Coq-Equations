@@ -26,9 +26,6 @@ fog (n:=?(S n)) (@fz n) := 0 ;
 fog (fs f) := S (fog f).
 
 (** The injection preserves the number: *)
-Require Import FunctionalInduction.
-
-
 Lemma fog_inj {n} (f : fin n) : fog f < n.
 Proof with auto with arith. intros.
   depind f; simp fog...

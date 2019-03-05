@@ -1,3 +1,10 @@
+(**********************************************************************)
+(* Equations                                                          *)
+(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(**********************************************************************)
+(* This file is distributed under the terms of the                    *)
+(* GNU Lesser General Public License Version 2.1                      *)
+(**********************************************************************)
 (** * HoTT-light
  ** A lightweight version of the Homotopy Type Theory library prelude. *)
 Set Warnings "-notation-overridden".
@@ -5,15 +12,13 @@ Set Warnings "-notation-overridden".
 Require Export Unicode.Utf8.
 Require Import Coq.Program.Tactics Setoid.
 Require Import Relations.
-Require Import Equations.Equations.
-Require Import Equations.Init.
-Require Import Equations.FunctionalInduction.
 (** Switches to constants in Type *)
+Require Import Equations.Init.
 Require Import Equations.Type.All.
-
 
 Import Id_Notations.
 Import Sigma_Notations.
+Local Open Scope equations_scope.
 Set Warnings "-deprecated-option".
 Set Universe Polymorphism.
 Set Primitive Projections.
@@ -56,9 +61,6 @@ Proof. exact (@eq_trans A). Defined.
 
 Notation " x = y " := (@Id _ x y).
 Notation " x = y " := (@Id _ x y) : type_scope.
-
-Import Sigma_Notations.
-Local Open Scope equations_scope.
 
 Definition prod (A B : Type) := Σ (_ : A), B.
 
@@ -151,13 +153,9 @@ Definition path_forall `{Funext} {A : Type} {P : A -> Type} (f g : forall x : A,
 
 Open Scope equations_scope.
 
-Unset Implicit Arguments.
-Arguments sigmaI {A} {B}.
-
-(* Set Equations Debug. *)
 Equations path_sigma {A : Type} (P : A -> Type) (u v : sigma P)
   (p : u.1 = v.1) (q : p # u.2 = v.2) : u = v :=
-path_sigma _ (_, _) (_, _) 1 1 := 1.
+path_sigma (_, _) (_, _) 1 1 := 1.
 
 Equations path_prod_uncurried {A B : Type} (z z' : A * B)
            (pq : (z.1 = z'.1) * (z.2 = z'.2)): z = z' :=
@@ -298,16 +296,14 @@ Equations ap_compose {A B C : Type} (f : A -> B) (g : B -> C) {x y : A} (p : x =
   ap (fun x => g (f x)) p = ap g (ap f p) :=
 ap_compose f g 1 := 1.
 
-Set Equations Debug.
 Equations concat_A1p {A : Type} {g : A -> A} (p : forall x, g x = x) {x y : A} (q : x = y) :
   (ap g q) @ (p y) = (p x) @ q :=
 concat_A1p p 1 with p x, g x :=
   { concat_A1p p 1 1 _ := 1 }.
 
-Instance contr_unit : Contr unit | 0 := let x := {|
+Instance contr_unit : Contr unit | 0 := {|
   center := tt;
-  contr := fun t : unit => match t with tt => 1 end
-|} in x.
+  contr := fun t : unit => match t with tt => 1 end |}.
 
 Definition path_contr {A} {H:Contr A} (x y : A) : x = y
   := concat (eq_sym (@contr _ H x)) (@contr _ H y).
@@ -334,57 +330,47 @@ Equations singletons_contr {A : Type} (x : A) : Contr (Σ y : A, x = y) :=
     where contr : forall y : (Σ y : A, x = y), (x, 1) = y :=
           contr (y, 1) := 1.
 Existing Instance singletons_contr.
-Notation " 'rew' H 'in' c " := (@Id_rect_r _ _ _ c _ H) (at level 20).
-Notation " 'rewd' H 'in' c " := (@Id_rect_dep_r _ _ _ c _ H) (at level 20).
+
+Notation " 'rew' H 'in' c " := (@DepElim.Id_rect_r _ _ _ c _ H) (at level 20).
+Notation " 'rewd' H 'in' c " := (@DepElim.Id_rect_dep_r _ _ _ c _ H) (at level 20).
 
 (** Singletons are contractible!
     The (heterogeneous) NoConfusion principle for equality, i.e.
     [NoConfusiom (Σ y, x = y)] is equivalent to the proof that singletons
     are contractible, i.e that this type has a definitional equivalence with [unit].  *)
+Unset Implicit Arguments.
 
-Equations NoConfusion_Id {A} (x : A) (p q : Σ y : A, x = y) : Type :=
- NoConfusion_Id x p q => unit.
+(* Equations NoConfusion_Id {A : Type} (x : A) (p q : Σ y : A, x = y) : Type := *)
+(*  NoConfusion_Id x p q => unit. *)
 
-Equations noConfusion_Id {A} (x : A) (p q : Σ y : A, x = y) : NoConfusion_Id x p q -> p = q :=
- noConfusion_Id x (x, 1) (y, 1) tt => 1.
+(* Equations noConfusion_Id {A} (x : A) (p q : Σ y : A, x = y) : NoConfusion_Id x p q -> p = q := *)
+(*  noConfusion_Id x (x, 1) (y, 1) tt => 1. *)
 
-Equations noConfusion_Id_inv {A} (x : A) (p q : Σ y : A, x = y) : p = q -> NoConfusion_Id x p q :=
- noConfusion_Id_inv x (x, 1) ?((x, 1)) 1 => tt.
+(* Equations noConfusion_Id_inv {A} (x : A) (p q : Σ y : A, x = y) : p = q -> NoConfusion_Id x p q := *)
+(*  noConfusion_Id_inv x (x, 1) ?((x, 1)) 1 => tt. *)
 
-Definition NoConfusionIdPackage_Id {A} (x : A) : NoConfusionIdPackage (Σ y : A, x = y).
-Proof.
-  refine {| NoConfusionId := NoConfusion_Id x;
-            noConfusionId := noConfusion_Id x;
-            noConfusionId_inv := noConfusion_Id_inv x |}.
-  - intros a b e. (* also, this is an equality in the unit type... *)
-    dependent elimination a as [(a, 1)].
-    dependent elimination b as [(a, 1)].
-    hnf in e. destruct e. reflexivity.
-  - intros a b e. (*  apply path2_contr. *)
-    dependent elimination e as [1].
-    dependent elimination a as [(a, 1)].
-    reflexivity.
-Defined.
+(* Definition NoConfusionIdPackage_Id {A} (x : A) : NoConfusionIdPackage (Σ y : A, x = y). *)
+(* Proof. *)
+(*   refine {| NoConfusionId := NoConfusion_Id x; *)
+(*             noConfusionId := noConfusion_Id x; *)
+(*             noConfusionId_inv := noConfusion_Id_inv x |}. *)
+(*   - intros a b e. (* also, this is an equality in the unit type... *) *)
+(*     dependent elimination a as [(a, 1)]. *)
+(*     dependent elimination b as [(a, 1)]. *)
+(*     hnf in e. destruct e. reflexivity. *)
+(*   - intros a b e. (*  apply path2_contr. *) *)
+(*     dependent elimination e as [1]. *)
+(*     dependent elimination a as [(a, 1)]. *)
+(*     reflexivity. *)
+(* Defined. *)
 
-Existing Instance NoConfusionIdPackage_Id.
-
-Ltac remember_let H ::=
-  lazymatch goal with
-  | [ H := ?body : ?type |- _ ] => generalize (1 : H = body)
-  end.
-
-Ltac unfold_packcall packcall ::=
-  lazymatch goal with
-    |- ?x = ?y -> ?P =>
-    let y' := eval unfold packcall in y in
-        change (x = y' -> P)
-  end.
+(* Existing Instance NoConfusionIdPackage_Id. *)
 
 Lemma concat_A1p_lemma {A} (f : A -> A) (p : forall x, f x = x) {x y : A} (q : x = y) :
   (concat_A1p p q) = (concat_A1p p q).
 Proof.
-  apply_funelim (concat_A1p p q). clear; intros.
-  elim Heq0 using Id_rect_dep_r. simpl. reflexivity.
+  apply_funelim (concat_A1p p q). clear; intros. simpl.
+  elim Heq0 using DepElim.Id_rect_dep_r. simpl. reflexivity.
 Qed.
 
 Equations ap_pp {A B : Type} (f : A -> B) {x y z : A} (p : x = y) (q : y = z) :
@@ -476,43 +462,43 @@ Defined.
 
 Definition contr_sigma A {P : A -> Type}
   {H : Contr A} `{H0 : forall a, Contr (P a)}
-  : Contr (sigma A P).
+  : Contr (sigma P).
 Proof.
   exists (center A, center (P (center A))).
-  intros [a Ha]. unshelve refine (path_sigma _ _ _ _ _).
+  intros [a Ha]. unshelve refine (path_sigma _ _ _ _).
   simpl. apply H. simpl. apply transport_inv.
   apply (H0 (center A)).
 Defined.
 
-Equations path_sigma_uncurried {A : Type} {P : A -> Type} (u v : sigma A P)
-  (pq : sigma _ (fun p => p # u.2 = v.2))
+Equations path_sigma_uncurried {A : Type} {P : A -> Type} (u v : sigma P)
+  (pq : Σ p, p # u.2 = v.2)
   : u = v :=
 path_sigma_uncurried (u1, u2) (_, _) (1, 1) := 1.
 Transparent path_sigma_uncurried.
 
-Definition pr1_path {A} `{P : A -> Type} {u v : sigma A P} (p : u = v)
+Definition pr1_path {A} {P : A -> Type} {u v : sigma P} (p : u = v)
 : u.1 = v.1
   := ap (@pr1 _ _) p.
 
 Notation "p ..1" := (pr1_path p) (at level 3).
 
-Definition pr2_path {A} `{P : A -> Type} {u v : sigma A P} (p : u = v)
+Definition pr2_path {A} `{P : A -> Type} {u v : sigma P} (p : u = v)
 : p..1 # u.2 = v.2.
   destruct p. apply 1.
 Defined.
 
 Notation "p ..2" := (pr2_path p) (at level 3).
 
-Definition eta_path_sigma_uncurried {A} `{P : A -> Type} {u v : sigma A P}
+Definition eta_path_sigma_uncurried {A} `{P : A -> Type} {u v : sigma P}
            (p : u = v) : path_sigma_uncurried _ _ (p..1, p..2) = p.
   destruct p. apply 1.
 Defined.
 
-Definition eta_path_sigma A `{P : A -> Type} {u v : sigma A P} (p : u = v)
-: path_sigma _ _ _ (p..1) (p..2) = p
+Definition eta_path_sigma A `{P : A -> Type} {u v : sigma P} (p : u = v)
+: path_sigma _ _ (p..1) (p..2) = p
   := eta_path_sigma_uncurried p.
 
-Definition path_sigma_equiv {A : Type} (P : A -> Type) (u v : sigma A P):
+Definition path_sigma_equiv {A : Type} (P : A -> Type) (u v : sigma P):
   IsEquiv (path_sigma_uncurried u v).
   unshelve refine (BuildIsEquiv _ _ _).
   - exact (fun r => (r..1, r..2)).

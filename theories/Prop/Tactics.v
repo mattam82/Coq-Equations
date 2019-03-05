@@ -1,9 +1,19 @@
-Require Import Equations.Tactics Equations.Prop.Classes Equations.Prop.DepElim Equations.Prop.Subterm.
+(**********************************************************************)
+(* Equations                                                          *)
+(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(**********************************************************************)
+(* This file is distributed under the terms of the                    *)
+(* GNU Lesser General Public License Version 2.1                      *)
+(**********************************************************************)
+Require Import Equations.Tactics Equations.Prop.Classes Equations.Prop.DepElim
+        Equations.Prop.Subterm Equations.Prop.FunctionalInduction.
 
 Ltac Equations.Init.simpl_equations ::= Equations.Prop.DepElim.simpl_equations.
 Ltac Equations.Init.depelim H ::= Equations.Prop.DepElim.depelim H.
 Ltac Equations.Init.depind H ::= Equations.Prop.DepElim.depind H.
 Ltac Equations.Init.noconf H ::= Equations.Prop.DepElim.noconf H.
+Ltac Equations.Init.funelim H ::= funelim H.
+Ltac Equations.Init.apply_funelim H ::= Equations.Prop.FunctionalInduction.apply_funelim H.
 
 (** Tactic to solve EqDec goals, destructing recursive calls for the recursive
   structure of the type and calling instances of eq_dec on other types. *)

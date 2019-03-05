@@ -47,7 +47,6 @@ Section IdTheory.
 
   Lemma id_trans {x y z : A} : x = y -> y = z -> x = z.
   Proof. destruct 1. destruct 1. apply 1. Defined.
-
 End IdTheory.
 
 Class HProp A := is_hprop : forall x y : A, x = y.

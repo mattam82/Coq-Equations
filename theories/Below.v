@@ -13,7 +13,7 @@ Require Import Bvector.
 Require Import Vectors.Vector.
 Require Import Equations.Init Equations.Tactics Equations.Prop.DepElim Equations.Prop.Tactics
         Equations.Prop.Constants.
-Require Import FunctionalInduction.
+Require Import Equations.Prop.FunctionalInduction.
 
 (** The [BelowPackage] class provides the definition of a [Below] predicate for some datatype,
    allowing to talk about course-of-value recursion on it. *)

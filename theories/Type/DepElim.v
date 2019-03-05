@@ -72,6 +72,9 @@ Lemma Id_rect_dep_r {A} (x : A) (P : forall a, Id a x -> Type) (p : P x id_refl)
       (y : A) (e : Id y x) : P y e.
 Proof. destruct e. apply p. Defined.
 
+Notation " e # t " := (Id_rect_r _ _ t _ e) (right associativity, at level 65) : equations_scope.
+Notation " e # [ P ] t " := (Id_rect_dep_r _ P t _ e) (right associativity, at level 65) : equations_scope.
+
 Lemma Id_sym_invol {A} (x y : A) (e : x = y) : id_sym (id_sym e) = e.
 Proof. destruct e. reflexivity. Defined.
 
@@ -109,7 +112,7 @@ Proof. intros A B b t H x eq. subst x. destruct eq. apply H. reflexivity. Define
 Lemma deletion : forall {A B} (t : A), B -> (t = t -> B).
 Proof. intros; assumption. Defined.
 
- Lemma simplification_sigma1@{i j} {A : Type@{i}} {P : Type@{i}} {B : Type@{j}}
+Lemma simplification_sigma1@{i j} {A : Type@{i}} {P : Type@{i}} {B : Type@{j}}
   (p q : A) (x : P) (y : P) :
   (p = q -> x = y -> B) -> ((p, x) = (q, y) -> B).
 Proof.
@@ -122,7 +125,7 @@ Proof.
   exact (eq 1 1).
 Defined.
 
- Lemma simplification_sigma1_dep@{i j} {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}}
+Lemma simplification_sigma1_dep@{i j} {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}}
   (p q : A) (x : P p) (y : P q) :
   (forall e : Id@{j} p q, Id (@Id_rect@{i j} A p P x q e) y -> B) ->
   (Id ((p, x)) ((q, y)) -> B).

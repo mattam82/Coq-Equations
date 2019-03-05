@@ -6,18 +6,12 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
+Set Warnings "-notation-overridden".
 Require Import Equations.Tactics.
-Require Import Equations.Prop.EqDec Equations.Prop.DepElim.
+Require Import Equations.Type.Logic Equations.Type.Classes Equations.Type.EqDec Equations.Type.DepElim.
 
-(** The [FunctionalInduction f] typeclass is meant to register functional induction
-   principles associated to a function [f]. Such principles are automatically 
-   generated for definitions made using [Equations]. *)
-
-Polymorphic
-Class FunctionalInduction {A : Type} (f : A) :=
-  { fun_ind_prf_ty : Type; fun_ind_prf : fun_ind_prf_ty }.
-
-Register FunctionalInduction as equations.funind.class.
+Local Open Scope equations_scope.
+Import Sigma_Notations.
 
 (** The tactic [funind c Hc] applies functional induction on the application 
    [c] which must be of the form [f args] where [f] has a [FunctionalInduction]
@@ -33,7 +27,7 @@ Ltac funind c Hcall :=
          let call := fresh in
            assert(prf:=p) ;
            (* Abstract the call *)
-           set(call:=c) in *; generalize (refl_equal : call = c); clearbody call ; intro Hcall ;
+           set(call:=c) in *; generalize (@id_refl _ call : call = c); clearbody call ; intro Hcall ;
            (* Now do dependent elimination and simplifications *)
            dependent induction prf ; simplify_IH_hyps ; 
            (* Use the simplifiers for the constant to get a nicer goal. *)
@@ -43,19 +37,6 @@ Ltac funind c Hcall :=
 
 Ltac funind_call f H :=
   on_call f ltac:(fun call => funind call H).
-
-(** The [FunctionalElimination f] class declares elimination principles produced
-   from the functional induction principle for [f] to be used directly to eliminate
-   a call to [f]. This is the preferred method of proving results about a function. 
-   [n] is the number of binders for parameters, predicates and methods of the 
-   eliminator.
-   *)
-
-Polymorphic
-Class FunctionalElimination {A : Type} (f : A) (fun_elim_ty : Type) (n : nat) :=
-  fun_elim : fun_elim_ty.
-
-Register FunctionalElimination as equations.funelim.class.
 
 Ltac make_refine n c :=
   match constr:(n) with
@@ -91,7 +72,7 @@ Ltac clear_non_secvar := repeat
 
 Ltac remember_let H :=
   lazymatch goal with
-  | [ H := ?body : ?type |- _ ] => generalize (eq_refl : H = body)
+  | [ H := ?body : ?type |- _ ] => generalize (1 : H = body)
   end.
 
 Ltac unfold_packcall packcall :=
@@ -105,7 +86,7 @@ Ltac simplify_IH_hyps' := repeat
   match goal with
   | [ hyp : context [ block ] |- _ ] =>
     cbn beta in hyp; eqns_specialize_eqs_block hyp;
-    cbn beta iota delta[eq_rect_r eq_rect] zeta in hyp
+    cbn beta iota delta[Id_rect_r Id_rect] zeta in hyp
   end.
 
 Ltac make_packcall packcall c :=
@@ -122,11 +103,9 @@ Ltac funelim_sig_tac c tac :=
   block_goal;
   uncurry_call elimfn c packcall packcall_fn;
   remember_let packcall_fn; unfold_packcall packcall;
-  (refine (eq_simplification_sigma1 _ _ _ _ _) ||
-   refine (eq_simplification_sigma1_nondep_dep _ _ _ _ _) ||
-   refine (eq_simplification_sigma1_dep _ _ _ _ _));
-   (* refine (Id_simplification_sigma1_dep _ _ _ _ _) || *)
-   (* refine (Id_simplification_sigma1_nondep_dep _ _ _ _ _)); *)
+  (refine (simplification_sigma1 _ _ _ _ _) ||
+   refine (simplification_sigma1_nondep_dep _ _ _ _ _) ||
+   refine (simplification_sigma1_dep _ _ _ _ _));
   let H := fresh "eqargs" in
   let Heq := fresh "Heqcall" in intros H Heq;
   try (rewrite <- Heq; clear Heq); revert_until H; revert H;
@@ -140,8 +119,7 @@ Ltac funelim_sig_tac c tac :=
   unshelve refine_ho elimt; intros;
   cbv beta; simplify_dep_elim; intros_until_block;
   simplify_dep_elim;
-  cbn beta iota delta [eq_rect_dep_r (* Id_rect_r *) eq_rect (* Id_rect *) pack_sigma_eq pack_sigma_eq_nondep
-                                     (* pack_sigma_Id *) (* pack_sigma_Id_nondep *)] in *;
+  cbn beta iota delta [Id_rect_r Id_rect pack_sigma pack_sigma_nondep] in *;
   simplify_IH_hyps'; (* intros _; *)
   unblock_goal; simplify_IH_hyps; tac c.
 
@@ -155,35 +133,17 @@ Tactic Notation "funelim" uconstr(p) :=
     subst call; funelim_constr fp
   end.
 
-Ltac apply_args c elimc k :=
-    match c with
-    | _ ?a ?b ?c ?d ?e ?f => k uconstr:(elimc a b c d e f)
-    | _ ?a ?b ?c ?d ?e => k uconstr:(elimc a b c d e)
-    | _ ?a ?b ?c ?d => k uconstr:(elimc a b c d)
-    | _ ?a ?b ?c => k uconstr:(elimc a b c)
-    | _ ?a ?b => k uconstr:(elimc a b)
-    | _ ?a => k uconstr:(elimc a)
-    end.
-
-Ltac get_first_elim c :=
-  match c with
-  | ?f ?a ?b ?c ?d ?e ?f => get_elim (f a b c d e f)
-  | ?f ?a ?b ?c ?d ?e => get_elim (f a b c d e)
-  | ?f ?a ?b ?c ?d => get_elim (f a b c d)
-  | ?f ?a ?b ?c => get_elim (f a b c)
-  | ?f ?a ?b => get_elim (f a b)
-  | ?f ?a => get_elim (f a)
-  end.
-
 (** An alternative tactic that does not generalize over the arguments.
     BEWARE: It might render the goal unprovable. *)
+
 Ltac apply_funelim c :=
-  let elimc := get_first_elim c in
+  get_first_elim c ltac:(fun elimc =>
+                           let elimc := get_elim elimc in
   let elimfn := match elimc with fun_elim (f:=?f) => constr:(f) end in
   let elimn := match elimc with fun_elim (n:=?n) => constr:(n) end in
   let elimt := make_refine elimn elimc in
   apply_args c elimt ltac:(fun elimc =>
-                             unshelve refine_ho elimc; cbv beta).
+                             unshelve refine_ho elimc; cbv beta)).
 
 (** A special purpose database used to prove the elimination principle. *)
 
@@ -197,10 +157,8 @@ Hint Extern 0 (_ = _) => reflexivity : funelim.
 
 Ltac specialize_hyps :=
   match goal with
-    [ H : forall _ : ?x = ?x, _ |- _ ] => 
-    specialize (H (@eq_refl _ x)); unfold eq_rect_r, eq_rect in H ; simpl in H
-  (* | [ H : forall _ : @Id _ ?x ?x, _ |- _ ] => *)
-  (*   specialize (H (@id_refl _ x)); unfold Id_rect_dep_r, Id_rect_r, Id_rect in H ; simpl in H *)
+  | [ H : forall _ : @Id _ ?x ?x, _ |- _ ] =>
+    specialize (H (@id_refl _ x)); unfold Id_rect_dep_r, Id_rect_r, Id_rect in H ; simpl in H
   end.
 
 Hint Extern 100 => specialize_hyps : funelim.
@@ -211,16 +169,11 @@ Hint Extern 100 => specialize_hyps : funelim.
 
 (** TODO: make it generic, won't work with another logic *)
 
-Lemma uncurry_conj (A B C : Prop) : (A /\ B -> C) -> (A -> B -> C).
-Proof. intros H a b. exact (H (conj a b)). Defined.
-
 Lemma uncurry_prod (A B C : Type) : (A * B -> C) -> (A -> B -> C).
-Proof. intros H a b. exact (H (pair a b)). Defined.
+Proof. intros H a b. exact (H (a, b)). Defined.
 
 Ltac specialize_mutual_nested := 
   match goal with
-    [ H : _ /\ _ |- _ ] => destruct H
-  | [ |- _ /\ _ ] => split
   | [ H : _ * _ |- _ ] => destruct H
   | [ |- _ * _ ] => split
   end.
@@ -229,18 +182,13 @@ Hint Extern 50 => specialize_mutual_nested : funelim.
 
 Ltac specialize_mutual :=
   match goal with
-    [ H : _ /\ _ |- _ ] => destruct H
-  | [ H : _ * _ |- _ ] => destruct H
+    [ H : _ * _ |- _ ] => destruct H
   (* Fragile, might render later goals unprovable *)
   | [ H : ?X -> _, H' : ?X |- _ ] =>
     match X with
       | forall (_ : _), _ => specialize (H H')
     end
-  | [ H : (?A /\ ?B) -> ?C |- _ ] => apply (uncurry_conj A B C) in H
+  | [ H : (?A * ?B) -> ?C |- _ ] => apply (uncurry_prod A B C) in H
   end.
 
-Ltac specialize_mutfix := repeat specialize_mutual.
-
-(** Destruct existentials, including [existsT]'s. *)
-
-(* Hint Extern 101 => progress (destruct_exists; try (is_ground_goal; simplify_eqs)) : funelim. *)
+Ltac Equations.Init.specialize_mutfix ::= repeat specialize_mutual.
