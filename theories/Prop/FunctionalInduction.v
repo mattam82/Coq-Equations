@@ -124,23 +124,32 @@ Ltac funelim_sig_tac c tac :=
 
 Ltac funelim_constr c := funelim_sig_tac c ltac:(fun _ => idtac).
 
-Tactic Notation "funelim" uconstr(p) :=
-  let call := fresh "call" in
-  set (call:=p);
-  lazymatch goal with
-    [ call := ?fp |- _ ] =>
-    subst call; funelim_constr fp
+Ltac get_first_elim c :=
+  match c with
+  | ?x ?a ?b ?c ?d ?e ?f ?g ?h ?i ?j ?k ?l ?m => get_elim (x a b c d e f g h i j k l m)
+  | ?x ?a ?b ?c ?d ?e ?f ?g ?h ?i ?j ?k ?l => get_elim (x a b c d e f g h i j k l)
+  | ?x ?a ?b ?c ?d ?e ?f ?g ?h ?i ?j ?k => get_elim (x a b c d e f g h i j k)
+  | ?x ?a ?b ?c ?d ?e ?f ?g ?h ?i ?j => get_elim (x a b c d e f g h i j)
+  | ?x ?a ?b ?c ?d ?e ?f ?g ?h ?i => get_elim (x a b c d e f g h i)
+  | ?x ?a ?b ?c ?d ?e ?f ?g ?h => get_elim (x a b c d e f g h)
+  | ?x ?a ?b ?c ?d ?e ?f ?g => get_elim (x a b c d e f g)
+  | ?x ?a ?b ?c ?d ?e ?f => get_elim (x a b c d e f)
+  | ?x ?a ?b ?c ?d ?e => get_elim (x a b c d e)
+  | ?x ?a ?b ?c ?d => get_elim (x a b c d)
+  | ?x ?a ?b ?c => get_elim (x a b c)
+  | ?x ?a ?b => get_elim (x a b)
+  | ?x ?a => get_elim (x a)
   end.
 
 (** An alternative tactic that does not generalize over the arguments.
     BEWARE: It might render the goal unprovable. *)
 Ltac apply_funelim c :=
-  get_first_elim c ltac:(fun elimc =>
+  let elimc := get_first_elim c in
   let elimfn := match elimc with fun_elim (f:=?f) => constr:(f) end in
   let elimn := match elimc with fun_elim (n:=?n) => constr:(n) end in
   let elimt := make_refine elimn elimc in
   apply_args c elimt ltac:(fun elimc =>
-                             unshelve refine_ho elimc; cbv beta)).
+                             unshelve refine_ho elimc; cbv beta).
 
 (** A special purpose database used to prove the elimination principle. *)
 

@@ -183,8 +183,6 @@ Equations vapp {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
 
 (** We can also support well-founded recursion on indexed datatypes. *)
 
-From Equations Require Import EqDec.
-
 (** We show that decidable equality of the elements type implied decidable equality of vectors. *)
 
 Instance vector_eqdec {A n} `(EqDec A) : EqDec (vector A n).
