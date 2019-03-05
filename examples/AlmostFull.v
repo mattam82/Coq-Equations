@@ -615,7 +615,7 @@ Section SCT.
   Definition strict {k} (f : fin k) := Some (true, f).
   Definition large {k} (f : fin k) := Some (false, f).
 
-  Declare Scope fin_scope.
+  (* Declare Scope fin_scope. *)
   Delimit Scope fin_scope with fin.
   Bind Scope fin_scope with fin.
   Notation "0" := fz : fin.
