@@ -549,8 +549,6 @@ Hint Constructors Subterm.lexprod : subterm_relation.
 Derive Signature for Acc.
 Notation lexicographic R S := (Subterm.lexprod _ _ R S).
 
-From Equations Require Import EqDec.
-
 Definition her_order : relation (type * term * term) :=
   lexicographic (lexicographic type_subterm term_subterm) term_subterm.  
 
