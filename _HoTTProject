@@ -1,0 +1,74 @@
+-I src
+-I test-suite
+-Q theories Equations
+-I theories
+-I examples
+
+COQC = "hoqc"
+COQTOP = "hoqtop"
+COQDEP = "hoqdep"
+
+CAMLDEBUG = "-bin-annot -g -for-pack Equations -w -58"
+COQDOCFLAGS = "-parse-comments -utf8 -interpolate"
+
+src/equations_common.mli
+src/equations_common.ml
+src/ederive.ml
+src/ederive.mli
+src/sigma_types.mli
+src/sigma_types.ml
+src/subterm.mli
+src/subterm.ml
+src/eqdec.mli
+src/eqdec.ml
+src/depelim.mli
+src/depelim.ml
+src/syntax.mli
+src/syntax.ml
+src/context_map.mli
+src/context_map.ml
+src/simplify.mli
+src/simplify.ml
+src/splitting.mli
+src/splitting.ml
+src/covering.mli
+src/covering.ml
+src/principles_proofs.mli
+src/principles_proofs.ml
+src/principles.mli
+src/principles.ml
+src/equations.mli
+src/equations.ml
+src/noconf.ml
+src/noconf.mli
+src/noconf_hom.ml
+src/noconf_hom.mli
+src/extra_tactics.ml
+src/extra_tactics.mli
+src/g_equations.mlg
+src/equations_plugin_mod.ml
+src/equations_plugin.mllib
+
+theories/Init.v
+theories/Signature.v
+theories/Tactics.v
+
+# HoTT-specific files needing the HoTT library.
+
+theories/HoTT/Logic.v
+theories/HoTT/Relation.v
+theories/HoTT/Relation_Properties.v
+theories/HoTT/WellFounded.v
+theories/HoTT/Classes.v
+theories/HoTT/EqDec.v
+theories/HoTT/DepElim.v
+theories/HoTT/FunctionalInduction.v
+theories/HoTT/Constants.v
+theories/HoTT/Tactics.v
+theories/HoTT/Subterm.v
+theories/HoTT/NoConfusion.v
+theories/HoTT/EqDecInstances.v
+theories/HoTT/Loader.v
+theories/HoTT/Telescopes.v
+theories/HoTT/WellFoundedInstances.v
+theories/HoTT/All.v
