@@ -76,10 +76,9 @@ Proof.
   auto.
 Qed.
 
-Require Import Equations.Subterm.
 Obligation Tactic := program_simpl; try typeclasses eauto 10 with Below.
 
-Equations ack (m n : nat) : nat by wf (m, n) (lexprod _ _ lt lt) :=
+Equations ack (m n : nat) : nat by wf (m, n) (Equations.Prop.Subterm.lexprod _ _ lt lt) :=
   ack 0 0         := 1;
   ack 0 (S n)     := S (S n);
   ack (S m) 0     := ack m 1;

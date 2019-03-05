@@ -44,15 +44,6 @@ Ltac unblock_goal := unfold block in *; cbv zeta.
 
 Ltac blocked t := block_goal ; t ; unblock_goal.
 
-(** A tactic that tries to remove trivial equality guards in induction hypotheses coming
-   from [dependent induction]/[generalize_eqs] invocations. *)
-
-Ltac simplify_IH_hyps := repeat
-  match goal with
-    | [ hyp : _ |- _ ] => simpl in hyp; eqns_specialize_eqs hyp; simpl in hyp
-  end.
-
-
 Definition hide_pattern {A : Type} (t : A) := t.
 
 Definition add_pattern {B} (A : Type) (b : B) := A.

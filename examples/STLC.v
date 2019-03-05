@@ -14,10 +14,12 @@
   well-founded order on typable terms and conclude with a normalizer building
   beta-short eta-long normal forms, typable in a bidirectional type system. *)
 
-Require Import Program.
+Require Program.
 Require Import Equations.Equations.
 Require Import Omega.
 Require Import List Utf8.
+
+Import ListNotations.
 
 Derive Signature for le CompareSpec.
 
@@ -687,19 +689,21 @@ Ltac invert_term :=
 
 Set Regular Subst Tactic.
 
+Notation "e # p" := (@eq_rect _ _ _ p _ e) (at level 20).
+
 Lemma hereditary_subst_type Γ Γ' t T u U : Γ |-- u : U -> Γ' @ (U :: Γ) |-- t : T ->
-  forall t' o, hereditary_subst (U, u, t) (length Γ') = (t', o) ->
+  let (t', o) := hereditary_subst (U, u, t) (length Γ') in
     (Γ' @ Γ |-- t' : T /\ (forall ty prf, o = Some (exist ty prf) -> ty = T)).
 Proof.
-  intros. revert H1.
+  intros.
   funelim (hereditary_subst (U, u, t) (length Γ'));
-    simpl_dep_elim; subst;
+    DepElim.simpl_dep_elim; subst;
     try (split; [ (intros; try discriminate) | solve [ intros; discriminate ] ]).
 
   invert_term. simpl in *. simplify_IH_hyps. apply abstraction.
   specialize (H Γ (A :: Γ')). simpl in H. simplify_IH_hyps.
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
-  specialize (H _ _ _ _ H0 H1 _ _ eq_refl eq_refl).
+  specialize (H _ H0 H1).
   apply H; auto.
 
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
@@ -707,7 +711,7 @@ Proof.
   depelim H2. constructor. now apply H. now apply H0.
   depelim H0. term.
 
-  (* Var *)
+  (* Var *) simpl.
   apply Nat.compare_eq in Heq; subst.
   depelim H0.
   rewrite !nth_length. split. term. intros.
@@ -727,17 +731,14 @@ Proof.
   simpl in *.
   on_call (hereditary_subst (t0, t1, u)) ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in * ).
-  noconf H1.
   dependent elimination H2 as [application _ T U fn arg tyfn tyu].
-  specialize (H _ _ H3 tyu). simplify_IH_hyps.
+  specialize (H _ _ H1 tyu).
   specialize (Hind _ _ H1 tyfn).
-  rewrite Heq in Hind.
-  specialize (Hind _ _ eq_refl). destruct Hind as [Ht' Ht''].
+  rewrite Heq in Hind. destruct Hind as [Ht' Ht''].
   dependent elimination Ht' as [abstraction _ T U abs tyabs].
-  simplify_IH_hyps.
+  simplify_IH_hyps. noconf Ht''.
   destruct H as [Ht tty].
-  noconf Ht''.
-  specialize (H0 _ [] _ _ _ _ Ht tyabs). simplify_IH_hyps.
+  specialize (H0 _ [] _ _ _ _ Ht tyabs eq_refl).
   destruct H0 as [H0 H5].
   split; auto.
   intros ty prf0 Heq'.
@@ -752,10 +753,10 @@ Proof.
   destruct_call hereditary_subst.
   eapply H; eauto.
 
-  simpl in *.
   (* Fst redex *)
+  simpl in *.
   depelim H0. specialize (Hind _ _ H H0).
-  rewrite Heq in Hind. specialize (Hind _ _ eq_refl).
+  rewrite Heq in Hind.
   destruct Hind. depelim H1. intuition auto.
   simplify_IH_hyps. noconf H2.
   now noconf H1.
@@ -763,13 +764,13 @@ Proof.
   (* Fst no redex *)
   apply is_pair_inr in Heq. revert Heq.
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in * ).
-  simplify_IH_hyps. simpl in *. depelim H0. intros.
+  depelim H0. intros <-.
   specialize (Hind _ _ H H0); eauto.
-  destruct Hind. subst t2. now apply pair_elim_fst with B.
+  destruct Hind. now apply pair_elim_fst with B.
 
   (* Snd redex *)
-  depelim H0. specialize (Hind _ _ H H0).
-  rewrite Heq in Hind. specialize (Hind _ _ eq_refl).
+  simpl. depelim H0. specialize (Hind _ _ H H0).
+  rewrite Heq in Hind.
   destruct Hind. depelim H1. intuition auto.
   simplify_IH_hyps. noconf H2.
   now noconf H1.

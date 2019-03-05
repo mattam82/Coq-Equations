@@ -3,7 +3,7 @@ Require Import Equations.Tactics Equations.Type.Logic Equations.Type.DepElim Equ
 
 Ltac Equations.Init.simpl_equations ::= Equations.Type.DepElim.simpl_equations.
 
-Ltac Equations.Init.depelim H ::= dependent elimination H.
+Ltac Equations.Init.depelim H ::= dependent elimination H; cbn in *.
 Ltac Equations.Init.depind H ::= Equations.Type.DepElim.depind H.
 
 Ltac Equations.Init.noconf H ::= Equations.Type.DepElim.noconf H.

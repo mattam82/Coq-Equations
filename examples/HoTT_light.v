@@ -1,15 +1,17 @@
 (** * HoTT-light
  ** A lightweight version of the Homotopy Type Theory library prelude. *)
+Set Warnings "-notation-overridden".
 
 Require Export Unicode.Utf8.
 Require Import Coq.Program.Tactics Setoid.
 Require Import Relations.
 Require Import Equations.Equations.
-
+Require Import Equations.Init.
+Require Import Equations.FunctionalInduction.
 (** Switches to constants in Type *)
-Require Import ConstantsType.
+Require Import Equations.Type.All.
 
-Set Warnings "-notation-overridden".
+
 Import Id_Notations.
 Import Sigma_Notations.
 Set Warnings "-deprecated-option".
@@ -152,7 +154,8 @@ Open Scope equations_scope.
 Unset Implicit Arguments.
 Arguments sigmaI {A} {B}.
 
-Equations path_sigma {A : Type} (P : A -> Type) (u v : sigma A P)
+(* Set Equations Debug. *)
+Equations path_sigma {A : Type} (P : A -> Type) (u v : sigma P)
   (p : u.1 = v.1) (q : p # u.2 = v.2) : u = v :=
 path_sigma _ (_, _) (_, _) 1 1 := 1.
 
@@ -230,18 +233,16 @@ Qed.
 
 Equations concat_1p {A : Type} {x y : A} (p : x = y) :
   1 @ p = p :=
-concat_1p 1 := 1.
+| 1 := 1.
 
-Equations concat_p1 {A : Type} {x y : A} (p : x = y) :
-  p @ 1  = p :=
-concat_p1 1 := 1.
+Equations concat_p1 {A : Type} {x y : A}
+ (p : x = y) : p @ 1  = p :=
+| 1 := 1.
 
 Equations concat_Vp {A : Type} {x y : A} (p : x = y) :
-  eq_sym p @ p = 1 :=
-concat_Vp 1 := 1.
+  eq_sym p @ p = 1 := | 1 := 1.
 
-Equations concat_pV {A : Type} {x y : A} (p : x = y) : p @ eq_sym p = 1 :=
-concat_pV 1 := 1.
+Equations concat_pV {A : Type} {x y : A} (p : x = y) : p @ eq_sym p = 1 := | 1 := 1.
 
 Equations concat_p_pp {A : Type} {x y z t : A} (p : x = y) (q : y = z) (r : z = t) :
   p @ (q @ r) = (p @ q) @ r :=
@@ -297,6 +298,7 @@ Equations ap_compose {A B C : Type} (f : A -> B) (g : B -> C) {x y : A} (p : x =
   ap (fun x => g (f x)) p = ap g (ap f p) :=
 ap_compose f g 1 := 1.
 
+Set Equations Debug.
 Equations concat_A1p {A : Type} {g : A -> A} (p : forall x, g x = x) {x y : A} (q : x = y) :
   (ap g q) @ (p y) = (p x) @ q :=
 concat_A1p p 1 with p x, g x :=
