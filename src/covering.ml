@@ -1188,6 +1188,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
     in
     let newty =
       let env' = push_rel_context extnewctx env in
+      let refterm  = Tacred.simpl env' !evars refterm in
       subst_term !evars refterm
         (Tacred.simpl env'
            !evars (lift 1 (mapping_constr !evars revctx ty)))

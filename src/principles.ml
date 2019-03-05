@@ -431,7 +431,6 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
         | (i, ty, c, rel) :: [] ->
            List.fold_right
            (fun t (pargs, subst) ->
-            let _idx = i + 2 * lenargs in
             let rel = lift lenargs rel in
             let tty = lift (lenargs+1) (type_of_rel (to_constr !evd t) sign) in
             if Termops.dependent !evd rel tty then
@@ -463,19 +462,35 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
              mkEq env evd (lift (lenargs+1) ty) (mkRel 1)
                   (lift (lenargs+1) rel)
            in
-           let pred' =
-             List.fold_left
-               (fun acc (t, tr) -> Termops.replace_term !evd t tr acc)
-               (lift 1 (Termops.replace_term !evd (mkRel idx) (mkRel 1) pred))
-               subst
+           let replace_term t tr acc =
+             equations_debug Pp.(fun () -> str"Replacing term "  ++ Printer.pr_econstr_env env !evd t ++
+                                str" by " ++ Printer.pr_econstr_env env !evd tr ++ str " in " ++
+                                Printer.pr_econstr_env env !evd acc);
+             Termops.replace_term !evd t tr acc
            in
-           let transportd = get_efresh logic_eq_elim evd in
+           let pred' =
+             let pred = lift 1 pred in
+             let absterm = Termops.replace_term !evd (mkRel (idx + 1)) (mkRel 2) pred in
+             equations_debug Pp.(fun () -> str"Abstracted term "  ++ Printer.pr_econstr_env env !evd absterm);
+             List.fold_left
+               (fun acc (t, tr) -> replace_term (lift 1 t) tr acc)
+               absterm subst
+           in
            let app =
-             mkApp (transportd,
-                    [| lift lenargs ty; lift lenargs rel;
-                       mkLambda (Name (Id.of_string "refine"), lift lenargs ty,
-                                 mkLambda (Name (Id.of_string "refine_eq"), eqty, pred'));
-                       acc; (lift lenargs c); mkRel 1 (* equality *) |])
+             if noccurn !evd 1 pred' then
+               let transport = get_efresh logic_eq_case evd in
+               mkApp (transport,
+                      [| lift lenargs ty; lift lenargs rel;
+                         mkLambda (Name (Id.of_string "refine"), lift lenargs ty, subst1 mkProp pred');
+                         acc; (lift lenargs c); mkRel 1 (* equality *) |])
+
+             else
+               let transportd = get_efresh logic_eq_elim evd in
+               mkApp (transportd,
+                      [| lift lenargs ty; lift lenargs rel;
+                         mkLambda (Name (Id.of_string "refine"), lift lenargs ty,
+                                   mkLambda (Name (Id.of_string "refine_eq"), eqty, pred'));
+                         acc; (lift lenargs c); mkRel 1 (* equality *) |])
            in (app, subst1 c pred)
          else (acc, subst1 c pred))
         (mkRel (succ lenargs), lift (succ (lenargs * 2)) arity)
@@ -1183,7 +1198,11 @@ let declare_funelim info env evd is_rec protos progs
   in
   let tactic = ind_elim_tac elimc leninds (List.length progs) info indgr in
   let _ =
-    try e_type_of (Global.env ()) evd newty
+    try
+      equations_debug Pp.(fun () -> str"Type-checking elimination principle: " ++ fnl () ++
+                                    Printer.pr_econstr_env env !evd newty);
+      ignore (e_type_of (Global.env ()) evd newty);
+      equations_debug (fun () -> Pp.str"Functional elimination principle type-checked");
     with Type_errors.TypeError (env, tyerr) ->
       CErrors.user_err Pp.(str"Error while typechecking elimination principle type: " ++
                            Himsg.explain_pretype_error env !evd
@@ -1253,11 +1272,14 @@ let declare_funind info alias env evd is_rec protos progs
       try declare_funelim info.term_info env evd is_rec protos progs
             ind_stmts all_stmts sign app subst inds kn comb sort indgr ectx
       with Type_errors.TypeError (env, tyerr) ->
-        CErrors.user_err Pp.(str"Elimination principle could not be proved automatically: " ++
+        CErrors.user_err Pp.(str"Functional elimination principle could not be proved automatically: " ++
                              Himsg.explain_pretype_error env !evd
                                (Pretype_errors.TypingError (Type_errors.map_ptype_error EConstr.of_constr tyerr)))
-         | e -> Feedback.msg_warning Pp.(str "Elimination principle could not be proved automatically: " ++ fnl () ++
-                                         CErrors.print e);
+         | Pretype_errors.PretypeError (env, sigma, tyerr) ->
+           CErrors.user_err Pp.(str"Functional elimination principle could not be proved automatically: " ++
+                                Himsg.explain_pretype_error env sigma tyerr)
+         | e -> Feedback.msg_warning Pp.(str "Functional elimination principle could not be proved automatically: "
+                                         ++ fnl () ++ CErrors.print e);
     in
     let evd = Evd.from_env env in
     let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in
@@ -1295,11 +1317,11 @@ let declare_funind info alias env evd is_rec protos progs
   let tac = (ind_fun_tac is_rec f info id !nested_statements progs) in
   try launch_ind tac
   with Type_errors.TypeError (env, tyerr) ->
-    CErrors.user_err Pp.(str"Elimination principle could not be proved automatically: " ++
+    CErrors.user_err Pp.(str"Functional induction principle could not be proved automatically: " ++
                          Himsg.explain_pretype_error env !evd
                            (Pretype_errors.TypingError (Type_errors.map_ptype_error EConstr.of_constr tyerr)))
      | e ->
-       Feedback.msg_warning Pp.(str "Induction principle could not be proved automatically: " ++ fnl () ++
+       Feedback.msg_warning Pp.(str "Functional induction principle could not be proved automatically: " ++ fnl () ++
                                 CErrors.print e);
        launch_ind (Proofview.tclUNIT ())
 
