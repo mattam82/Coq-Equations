@@ -101,14 +101,23 @@ Lemma convert_ilist_trans : forall {A : Set} {n m o : nat} (p : n = m) (r : m = 
 Proof. intros. simplify_eqs. now rewrite !convert_ilist_refl. Qed.
 
 Hint Rewrite @convert_ilist_refl @convert_ilist_trans : convert_ilist.
+Set Equations Transparent.
+Import PeanoNat.Nat.
 
 Equations irev_aux {A : Set} {i j : nat} (l : ilist A i) (acc : ilist A j) : ilist A (i + j) :=
 irev_aux Nil acc := acc;
-irev_aux (Cons x t) acc := convert_ilist _ (irev_aux t (Cons x acc)).
+irev_aux (Cons x t) acc with eq_sym (add_succ_comm l j), (S l + j) :=
+                      { | refl_equal | ?(l + S j) := irev_aux t (Cons x acc) }.
 
-Definition irev {A : Set} {n : nat} (l : ilist A n) : ilist A n :=
-  convert_ilist _ (irev_aux l Nil).
+Obligation Tactic := idtac.
 
+Equations? irev {A : Set} {n : nat} (l : ilist A n) : ilist A n :=
+  irev l := irev_aux l Nil.
+(* FIXME bug with 3 refines *)
+    (* { | rec with eq_sym (add_0_r n) := *)
+    (*       { | Heq := _ } }. *)
+apply add_0_r.
+Defined.
 Ltac match_refl :=
 match goal with
 | [ |- context[ match ?P with _ => _ end ] ] => rewrite UIP_refl with (p := P)
@@ -117,39 +126,44 @@ end.
 Example rev_ex : forall (A : Set) (x y : A), irev (Cons x (Cons y Nil)) = Cons y (Cons x Nil).
 Proof.
   intros.
-  unfold irev; simp irev_aux.
-  compute; repeat match_refl; reflexivity.
+  unfold irev. simp irev_aux.
+  compute. repeat (match_refl; compute; simp irev_aux).
 Qed.
 
 Equations iapp {A : Set} {n m : nat} (l1 : ilist A n) (l2 : ilist A m) : ilist A (n + m) :=
 iapp Nil l := l;
 iapp (Cons x t) l := Cons x (iapp t l).
 
+Import Sigma_Notations.
+Lemma iapp_eq {A : Set} (l1 l1' l2 l2' : Σ n, ilist A n) :
+  l1 = l1' -> l2 = l2' ->
+  (_, iapp l1.2 l2.2) = (_, iapp l1'.2 l2'.2).
+Proof. now simplify *. Defined.
+
 Lemma iapp_cons : forall (A : Set) (i j : nat) (l1 : ilist A i) (l2 : ilist A j) (x : A),
   iapp (Cons x l1) l2 = Cons x (iapp l1 l2).
 Proof. simp iapp. Qed.
 
-Definition rev_aux_app_stmt := forall (A : Set) (i j1 j2 : nat) (l : ilist A i)
-  (acc1 : ilist A j1) (acc2 : ilist A j2) H,
-  convert_ilist H (irev_aux l (iapp acc1 acc2)) = iapp (irev_aux l acc1) acc2.
+Notation "p # t" := (eq_rect _ _ t _ p) (right associativity, at level 65) : equations_scope.
 
 Set Equations With UIP.
-
-Lemma rev_aux_app : rev_aux_app_stmt.
+Local Open Scope equations_scope.
+Lemma rev_aux_app : forall (A : Set) (i j1 j2 : nat) (l : ilist A i)
+  (acc1 : ilist A j1) (acc2 : ilist A j2),
+    (_, irev_aux l (iapp acc1 acc2)) = (_, iapp (irev_aux l acc1) acc2).
 Proof.
-  unfold rev_aux_app_stmt.
   intros.
-  (* FIXME *)
   funelim (irev_aux l acc1).
-    - simp irev_aux iapp. simpl in H. depelim H; simp convert_ilist. 
-    - simp irev_aux iapp. rewrite convert_ilist_trans.
-      rewrite <- iapp_cons.
-      set (He := eq_trans _ _). clearbody He.
-      set (He' := irev_aux_obligations_obligation_1 _ _). clearbody He'.
-      simpl in H0. simpl in H.
-Admitted.
-
-Unset Equations With UIP.
+    - simpl. simp irev_aux iapp.
+    - simp irev_aux.
+      destruct (eq_sym (add_succ_comm n (j + j2))).
+      simpl. autounfold with equations. specialize (H _ acc2). rewrite H. clear H.
+      change (S (n + j + j2)) with ((S n) + j + j2).
+      refine (iapp_eq (n + S j, (irev_aux i0 (Cons a acc)))
+                      (S n + j, _) (_, acc2) (_, acc2) _ _); try constructor.
+      clear Heq0.
+      unshelve refine (DepElim.pack_sigma_eq _ _). exact (eq_sym Heq). reflexivity.
+Defined.
 
 Equations irev' {A : Set} {n : nat} (l : ilist A n) : ilist A n :=
 irev' Nil := Nil;
@@ -157,8 +171,9 @@ irev' (Cons x t) := isnoc (irev' t) x.
 
 Lemma isnoc_irev A n a (l : ilist A n) : isnoc (irev l) a = irev (Cons a l).
 Proof.
-  unfold irev. symmetry. 
+(* Exercise ! *)
 Admitted.
+
 
 Lemma rev__rev' : forall (A : Set) (i : nat) (l : ilist A i), irev l = irev' l.
 Proof.
@@ -192,7 +207,7 @@ Hint Unfold NoConfusion.noConfusion_nat_obligation_1 : equations.
 
 Derive DependentElimination EqDec for fin.
 
-Derive Signature for eq.
+Derive Signature for Logic.eq.
 
 Print Assumptions fin_eqdec.
 
