@@ -1,9 +1,11 @@
 From Equations Require Import Loader.
 Require Import FunctionalExtensionality.
-
+Require Import Equations.Prop.DepElim.
 (** Telescopes: allows treating variable arity fixpoints *)
 Set Universe Polymorphism.
 Import Sigma_Notations.
+Local Open Scope equations_scope.
+
 Set Equations Transparent.
 
 Cumulative Inductive tele@{i} : Type :=
@@ -74,8 +76,7 @@ Section TeleSigma.
   Lemma tele_forall_app_type (T : tele@{i}) (P : tele_type T) (f : forall t, tele_type_app T P t) :
     forall x, tele_forall_app T P (tele_forall_type_app T P f) x = f x.
   Proof.
-    induction T; simpl. reflexivity. intros [a b]. simpl.
-    rewrite H. reflexivity.
+    induction T; simpl. reflexivity. cbn. intros [a b]. simpl. rewrite H. reflexivity.
   Defined.
 
   Equations tele_forall_uncurry (T : tele@{i}) (P : T -> Type@{j}) : Type@{k} :=
@@ -131,7 +132,7 @@ Instance wf_tele_measure@{i j k}
          {T : tele@{i}} (A : Type@{j}) (f : tele_fn@{i j k} T A) (R : A -> A -> Prop) :
   WellFounded R -> WellFounded (tele_measure T A f R).
 Proof.
-  intros. apply measure_wf. apply H.
+  intros. apply Program.Wf.measure_wf. apply H.
 Defined.
 
 Section Fix.

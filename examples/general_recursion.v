@@ -23,7 +23,6 @@
 (** printing Subterm %\coqdocclass{Subterm}% *)
 (** printing NoConfusion %\coqdocclass{NoConfusion}% *)
 Require Import Equations.Equations.
-From Equations Require Import DepElimDec.
 Require Import ZArith.
 Require Import Program.
 Require Import Psatz.

@@ -9,10 +9,9 @@
 (** This module sets the set constants of Equations to transparent mode so
   that computation is possible inside Coq. *)
 
-From Equations Require Import DepElim.
+Require Import Equations.Prop.DepElim.
 
 Global Transparent
        simplification_sigma2_uip
-       simplification_sigma2_dec_point
        simplification_K_uip
-       simplify_ind_pack simplified_ind_pack Id_simplification_sigma2.
+       simplify_ind_pack simplified_ind_pack.

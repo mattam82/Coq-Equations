@@ -98,9 +98,7 @@ sublist p (cons x xs) with p x := {
   | false := skip (sublist p xs) }.
 
 (* Print Assumptions sublist. *)
-
-Ltac rec ::= Subterm.rec_wf_eqns.
-
+Notation vector := Vector.t.
 (* Derive Subterm for nat.  *)
 Derive Signature for vector.
 Derive NoConfusion NoConfusionHom for vector.
@@ -143,8 +141,6 @@ where "x ++v y" := (vapp' x y).
 (* End vapp_def. *)
 
 (* Print Assumptions vapp'. *)
-
-From Equations Require Import EqDec.
 
 Instance vector_eqdec {A n} `(EqDec A) : EqDec (vector A n).
 Proof.

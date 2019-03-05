@@ -11,8 +11,9 @@
    on some equation. *)
 
 Require Import Coq.Program.Tactics Bvector List.
-Require Import Equations.Init Equations.Signature Equations.Classes Equations.EqDec Equations.Constants.
-Require Export Equations.DepElim.
+From Equations Require Import Init Signature Tactics.
+From Equations.Prop Require Import Classes EqDec Constants.
+Require Export Equations.Prop.DepElim.
 
 Ltac noconf H ::=
   blocked ltac:(noconf_ref H; simplify_dep_elim) ; auto 3.

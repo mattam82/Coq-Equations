@@ -9,7 +9,8 @@
 (** An example development of the [fin] datatype using [equations]. *)
 
 Require Import Program.Basics Program.Combinators.
-Require Import Equations.Equations NoConfusion Equations.DepElimDec.
+Require Import Equations.Equations.
+Open Scope equations_scope.
 (** [fin n] is the type of naturals smaller than [n]. *)
 
 Inductive fin : nat -> Set :=
@@ -25,9 +26,6 @@ fog (n:=?(S n)) (@fz n) := 0 ;
 fog (fs f) := S (fog f).
 
 (** The injection preserves the number: *)
-Require Import FunctionalInduction.
-
-
 Lemma fog_inj {n} (f : fin n) : fog f < n.
 Proof with auto with arith. intros.
   depind f; simp fog...
@@ -75,7 +73,7 @@ Inductive finle : forall (n : nat) (x : fin n) (y : fin n), Prop :=
 
 Scheme finle_ind_dep := Induction for finle Sort Prop.
 
-Instance finle_ind_pack n x y : DependentEliminationPackage (finle n x y) :=
+Instance finle_ind_pack n x y : DepElim.DependentEliminationPackage (finle n x y) :=
   { elim_type := _ ; elim := finle_ind_dep }.
 
 Arguments finle {n}.
@@ -96,7 +94,7 @@ tabulate (n:=(S n)) f := vcons (f fz) (tabulate (f ∘ fs)).
 
 (** [Below] recursor for [fin]. *)
 
-Equations(noind) Below_fin (P : forall n, fin n -> Type) {n} (v : fin n) : Type :=
+Equations Below_fin (P : forall n, fin n -> Type) {n} (v : fin n) : Type :=
 Below_fin P fz := unit ;
 Below_fin P (fs f) := (P _ f * Below_fin P f)%type.
 

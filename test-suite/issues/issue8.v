@@ -61,7 +61,7 @@ Inductive TupleMap_direct_subterm
   TupleMap_direct_subterm _ _ (G (projT1 (H _))) _ _ _ (projT2 (H x)) (tmCons _ _ H).
 
 Definition TupleMap_subterm := 
-λ x y : {index : {n : nat & sigma _ (λ _ : TupleT n, TupleT n)} &
+λ x y : {index : {n : nat & sigma (λ _ : TupleT n, TupleT n)} &
      TupleMap (pr1 index) (pr1 (pr2 index)) (pr2 (pr2 index))},
 TupleMap_direct_subterm (pr1 (pr1 x)) (pr1 (pr2 (pr1 x)))
   (pr2 (pr2 (pr1 x))) (pr1 (pr1 y))
@@ -71,14 +71,10 @@ TupleMap_direct_subterm (pr1 (pr1 x)) (pr1 (pr2 (pr1 x)))
 (* Program Instance WellFounded_TupleMap_subterm : WellFounded TupleMap_subterm. *)
 (* Solve All Obligations with wf_subterm. *)
 
-Ltac simpl_equations ::= 
-  repeat (repeat (hnf_eq; try rewrite_sigma2_refl; simpl);
-          try progress autounfold with equations).
-
-(** This is due to a limitation of the guard condition in 8.6 (see github PR #920) *)
-
 Equations myComp {n} {B C : TupleT n} (tm1 : TupleMap _ B C) {A : TupleT n} (tm2 : TupleMap _ A B)
 : TupleMap _ A C :=
 myComp tmNil tmNil := tmNil;
-myComp (tmCons ?(G) H g) (tmCons F G f)
-:= tmCons _ _ (fun x => existT (fun y => TupleMap _ _ (_ y)) (projT1 (g (projT1 (f x)))) (myComp (projT2 (g (projT1 (f x)))) (projT2 (f x)))).
+myComp (tmCons ?(G) H g) (tmCons F G f) :=
+  tmCons _ _ (fun x => existT (fun y => TupleMap _ _ (_ y))
+                              (projT1 (g (projT1 (f x))))
+                              (myComp (projT2 (g (projT1 (f x)))) (projT2 (f x)))).

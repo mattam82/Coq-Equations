@@ -13,10 +13,14 @@ Require Import Extraction.
 (** This exports tactics *)
 Declare ML Module "equations_plugin".
 
-From Coq Require Export Program.Utils Program.Wf.
-From Equations Require Import Init.
-From Equations Require Export Classes Signature DepElim FunctionalInduction Below Constants.
-From Equations Require Export EqDecInstances HSetInstances.
-From Equations Require Import NoConfusion Subterm DepElimDec.
+From Equations Require Export Init Signature.
+Require Import Equations.Tactics.
+Require Export Equations.Prop.Classes.
+Require Import Equations.Prop.DepElim Equations.Prop.EqDec Equations.Prop.Constants.
+Require Import Below.
+Require Export Equations.Prop.EqDecInstances.
+Require Import Equations.Prop.NoConfusion Equations.Prop.Subterm.
+Require Export Equations.Prop.Tactics.
+Require Export Equations.Prop.FunctionalInduction. (* funelim tactic *)
 
 Export Inaccessible_Notations.

@@ -2,7 +2,6 @@ Require Import Coq.Vectors.Vector.
 Require Import Coq.PArith.PArith.
 Require Import Lia.
 Require Import Equations.Equations.
-Require Import Equations.EqDec.
 Set Equations With UIP.
 Generalizable All Variables.
 

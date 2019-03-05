@@ -22,8 +22,6 @@ open Globnames
 open Equations_common
 open Sigma_types
 
-let solve_subterm_tac () = tac_of_string "Equations.Subterm.solve_subterm" []
-
 let refresh_universes t = t (* MS: FIXME *)
 
 let derive_subterm env sigma ~polymorphic (ind, u as indu) =

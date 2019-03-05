@@ -6,19 +6,24 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Equations.Init Equations.Classes EqdepFacts.
+Require Import Equations.Init.
+Require Import Equations.Prop.Classes.
 
 (** Decidable equality.
 
    We redevelop the derivation of [UIP] from decidable equality on [A] making
-   everything transparent and moving to [Type] so that programs using this 
-   will actually be computable inside Coq. *)
+   everything transparent so that programs using this will actually be
+   computable inside Coq. *)
+
+Definition UIP_refl_on_ X (x : X) := forall p : x = x, p = eq_refl.
+Definition UIP_refl_ X := forall (x : X) (p : x = x), p = eq_refl.
 
 Set Implicit Arguments.
-Set Universe Polymorphism.
 
-Definition dec_eq {A} (x y : A) := 
-  { x = y } + { x <> y }.
+Lemma Id_trans_r {A} (x y z : A) : x = y -> z = y -> x = z.
+Proof.
+  destruct 1. destruct 1. exact eq_refl.
+Defined.
 
 (** We rederive the UIP shifting proof transparently. *)
 Theorem UIP_shift_on (X : Type) (x : X) :
@@ -28,15 +33,15 @@ Proof.
   rewrite (UIP_refl y).
   intros z.
   assert (UIP:forall y' y'' : x = x, y' = y'').
-  { intros. apply eq_trans with (eq_refl x). apply UIP_refl. symmetry; apply UIP_refl. }
-  transitivity (eq_trans (eq_trans (UIP (eq_refl x) (eq_refl x)) z)
-                         (eq_sym (UIP (eq_refl x) (eq_refl x)))).
+  { intros. apply eq_trans with eq_refl. apply UIP_refl. symmetry; apply UIP_refl. }
+  transitivity (eq_trans (eq_trans (UIP eq_refl eq_refl) z)
+                         (eq_sym (UIP eq_refl eq_refl))).
   - destruct z. destruct (UIP _ _). reflexivity.
   - change
-      (match eq_refl x as y' in _ = x' return y' = y' -> Prop with
-       | eq_refl => fun z => z = (eq_refl (eq_refl x))
-       end (eq_trans (eq_trans (UIP (eq_refl x) (eq_refl x)) z)
-                     (eq_sym (UIP (eq_refl x) (eq_refl x))))).
+      (match eq_refl as y' in _ = x' return y' = y' -> Prop with
+       | eq_refl => fun z => z = eq_refl
+       end (eq_trans (eq_trans (UIP (eq_refl) (eq_refl)) z)
+                     (eq_sym (UIP (eq_refl) (eq_refl))))).
     destruct z. destruct (UIP _ _). reflexivity.
 Defined.
 
@@ -53,7 +58,7 @@ Defined.
 
 Theorem UIP_K {A} {U : UIP A} (x : A) : 
   forall P : x = x -> Type,
-    P (refl_equal x) -> forall p : x = x, P p.
+    P eq_refl -> forall p : x = x, P p.
 Proof.
   intros P peq e. now elim (uip refl_equal e).
 Defined.
@@ -67,7 +72,7 @@ Section EqdepDec.
   Let comp (x y y':A) (eq1:x = y) (eq2:x = y') : y = y' :=
     eq_ind _ (fun a => a = y') eq2 _ eq1.
 
-  Remark trans_sym_eq : forall (x y:A) (u:x = y), comp u u = refl_equal y.
+  Remark trans_sym_eq : forall (x y:A) (u:x = y), comp u u = refl_equal.
   Proof.
     intros.
     case u; trivial.
@@ -90,7 +95,7 @@ Section EqdepDec.
     case n; trivial.
   Defined.
 
-  Let nu_inv (y:A) (v:x = y) : x = y := comp (nu (refl_equal x)) v.
+  Let nu_inv (y:A) (v:x = y) : x = y := comp (nu refl_equal) v.
 
   Remark nu_left_inv : forall (y:A) (u:x = y), nu_inv (nu u) = u.
   Proof.
@@ -109,14 +114,14 @@ Section EqdepDec.
   Defined.
 
   Theorem K_dec :
-    forall P:x = x -> Type, P (refl_equal x) -> forall p:x = x, P p.
+    forall P:x = x -> Type, P refl_equal -> forall p:x = x, P p.
   Proof.
     intros.
-    elim eq_proofs_unicity with x (refl_equal x) p.
+    elim eq_proofs_unicity with x refl_equal p.
     trivial.
   Defined.
 
-  Lemma eq_dec_refl : eq_dec x x = left _ (eq_refl x).
+  Lemma eq_dec_refl : eq_dec x x = left _ eq_refl.
   Proof. case eq_dec. intros. f_equal. apply eq_proofs_unicity. 
     intro. congruence.
   Defined.
@@ -151,7 +156,7 @@ Section EqdepDec.
   Defined.
 
   Lemma inj_right_pair_refl (P : A -> Type) (y : P x) :
-    inj_right_pair (y:=y) (y':=y) (eq_refl _) = (eq_refl _).
+    inj_right_pair (y:=y) (y':=y) eq_refl = eq_refl.
   Proof. unfold inj_right_pair. intros. 
     unfold eq_rect. unfold proj. rewrite eq_dec_refl. 
     unfold K_dec. simpl.
@@ -166,14 +171,12 @@ End EqdepDec.
 (** Derivation of principles on sigma types whose domain is decidable. *)
 
 Section PointEqdepDec.
-  Set Universe Polymorphism.
-  
   Context {A : Type} {x : A} `{EqDecPoint A x}.
   
   Let comp (x y y':A) (eq1:x = y) (eq2:x = y') : y = y' :=
     eq_ind _ (fun a => a = y') eq2 _ eq1.
 
-  Remark point_trans_sym_eq : forall (x y:A) (u:x = y), comp u u = refl_equal y.
+  Remark point_trans_sym_eq : forall (x y:A) (u:x = y), comp u u = refl_equal.
   Proof.
     intros.
     case u; trivial.
@@ -194,7 +197,7 @@ Section PointEqdepDec.
     case n; trivial.
   Defined.
 
-  Let nu_inv (y:A) (v:x = y) : x = y := comp (nu (refl_equal x)) v.
+  Let nu_inv (y:A) (v:x = y) : x = y := comp (nu refl_equal) v.
 
   Remark nu_left_inv_point : forall (y:A) (u:x = y), nu_inv (nu u) = u.
   Proof.
@@ -213,21 +216,21 @@ Section PointEqdepDec.
   Defined.
 
   Theorem K_dec_point :
-    forall P:x = x -> Type, P (refl_equal x) -> forall p:x = x, P p.
+    forall P:x = x -> Type, P refl_equal -> forall p:x = x, P p.
   Proof.
     intros.
-    elim eq_proofs_unicity_point with x (refl_equal x) p.
+    elim eq_proofs_unicity_point with x refl_equal p.
     trivial.
   Defined.
 
-  Lemma eq_dec_refl_point : eq_dec_point x = left _ (eq_refl x).
+  Lemma eq_dec_refl_point : eq_dec_point x = left _ eq_refl.
   Proof. case eq_dec_point. intros. f_equal. apply eq_proofs_unicity_point. 
     intro. congruence.
   Defined.
 
   (** The corollary *)
 
-  Let proj (P:A -> Type) (exP:sigma _ P) (def:P x) : P x :=
+  Let proj (P:A -> Type) (exP:sigma P) (def:P x) : P x :=
     match exP with
       | sigmaI _ x' prf =>
         match eq_dec_point x' with
@@ -255,7 +258,7 @@ Section PointEqdepDec.
   Defined.
 
   Lemma inj_right_sigma_refl_point (P : A -> Type) (y : P x) :
-    inj_right_sigma_point (y:=y) (y':=y) (eq_refl _) = (eq_refl _).
+    inj_right_sigma_point (y:=y) (y':=y) eq_refl = eq_refl.
   Proof. unfold inj_right_sigma_point. intros. 
     unfold eq_rect. unfold proj. rewrite eq_dec_refl_point. 
     unfold K_dec_point. simpl.
@@ -268,14 +271,12 @@ Section PointEqdepDec.
 End PointEqdepDec.
 
 Section PEqdepDec.
-  Set Universe Polymorphism.
-    
   Context {A : Type} `{EqDec A}.
 
   Let comp (x y y':A) (eq1:x = y) (eq2:x = y') : y = y' :=
     eq_ind _ (fun a => a = y') eq2 _ eq1.
 
-  Remark ptrans_sym_eq : forall (x y:A) (u:x = y), comp u u = refl_equal y.
+  Remark ptrans_sym_eq : forall (x y:A) (u:x = y), comp u u = refl_equal.
   Proof.
     intros.
     case u; trivial.
@@ -298,7 +299,7 @@ Section PEqdepDec.
     case n; trivial.
   Defined.
 
-  Let nu_inv (y:A) (v:x = y) : x = y := comp (nu (refl_equal x)) v.
+  Let nu_inv (y:A) (v:x = y) : x = y := comp (nu refl_equal) v.
 
   Remark pnu_left_inv : forall (y:A) (u:x = y), nu_inv (nu u) = u.
   Proof.
@@ -317,21 +318,21 @@ Section PEqdepDec.
   Defined.
 
   Theorem pK_dec :
-    forall P:x = x -> Prop, P (refl_equal x) -> forall p:x = x, P p.
+    forall P:x = x -> Prop, P refl_equal -> forall p:x = x, P p.
   Proof.
     intros.
-    elim peq_proofs_unicity with x (refl_equal x) p.
+    elim peq_proofs_unicity with x refl_equal p.
     trivial.
   Defined.
 
-  Lemma peq_dec_refl : eq_dec x x = left _ (eq_refl x).
+  Lemma peq_dec_refl : eq_dec x x = left _ eq_refl.
   Proof. case eq_dec. intros. f_equal. apply peq_proofs_unicity. 
     intro. congruence.
   Defined.
 
   (* On [sigma] *)
   
-  Let projs (P:A -> Type) (exP:sigma A P) (def:P x) : P x :=
+  Let projs (P:A -> Type) (exP:sigma P) (def:P x) : P x :=
     match exP with
       | sigmaI _ x' prf =>
         match eq_dec x' x with
@@ -359,7 +360,7 @@ Section PEqdepDec.
   Defined.
 
   Lemma inj_right_sigma_refl (P : A -> Type) (y : P x) :
-    inj_right_sigma (y:=y) (y':=y) (eq_refl _) = (eq_refl _).
+    inj_right_sigma (y:=y) (y':=y) eq_refl = eq_refl.
   Proof. unfold inj_right_sigma. intros. 
     unfold eq_rect. unfold projs. rewrite peq_dec_refl. 
     unfold pK_dec. simpl.

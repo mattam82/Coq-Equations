@@ -33,7 +33,7 @@ Set Warnings "-notation-overridden".
     so we derine the Σ using ∃ instead.
  *)
 
-Notation "'∃' x .. y , P" := (sigma _ (fun x => .. (sigma _ (fun y => P)) ..))
+Notation "'∃' x .. y , P" := (sigma (fun x => .. (sigma (fun y => P)) ..))
   (at level 200, x binder, y binder, right associativity,
   format "'[  ' '[  ' ∃  x  ..  y ']' ,  '/' P ']'") : type_scope.
 
@@ -142,7 +142,7 @@ Equations lookup_store {Σ t} : t ∈ Σ -> Store Σ -> Val t Σ :=
 Equations update_store {Σ t} : t ∈ Σ -> Val t Σ -> Store Σ -> Store Σ :=
   update_store l v σ := update σ l v.
 
-Definition store_incl (Σ Σ' : StoreTy) := sigma _ (fun Σ'' => Σ' = Σ'' ++ Σ).
+Definition store_incl (Σ Σ' : StoreTy) := sigma (fun Σ'' => Σ' = Σ'' ++ Σ).
 Infix "⊑" := store_incl (at level 10).
 
 Equations app_assoc {A} (x y z : list A) : x ++ y ++ z = (x ++ y) ++ z :=

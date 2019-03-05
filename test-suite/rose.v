@@ -3,7 +3,7 @@
 (** printing by %\coqdockw{by}% *)
 (** printing rec %\coqdockw{rec}% *)
 (* begin hide *)
-From Equations Require Import Equations Fin DepElimDec.
+From Equations Require Import Equations Fin.
 Require Import Lia Utf8 List.
 Import ListNotations.
 
@@ -41,7 +41,6 @@ Require Import List.
 
 (** To solve measure subgoals *)
 Hint Extern 4 (_ < _) => simpl; lia : rec_decision.
-Hint Extern 4 (MR _ _ _ _) => (repeat red; simpl in *; lia) : rec_decision.
 Obligation Tactic := program_simpl; try (simpl; lia); try typeclasses eauto with rec_decision.
 
 (* begin hide *)
@@ -74,10 +73,10 @@ Section RoseTree.
       well-founded recursion, we can define the following function
       gathering the elements in a rose tree efficiently: *)
 
-  Equations elements (r : rose) (acc : list A) : list A by wf r (MR lt size) :=
+  Equations elements (r : rose) (acc : list A) : list A by wf (size r) lt :=
   elements (leaf a) acc := a :: acc;
   elements (node l) acc := aux l _
-    where aux x (H : list_size size x < size (node l)) : list A by wf x (MR lt (list_size size)) :=
+    where aux x (H : list_size size x < size (node l)) : list A by wf (list_size size x) lt :=
     aux nil _ := acc;
     aux (cons x xs) H := elements x (aux xs _).
 

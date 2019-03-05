@@ -1,5 +1,15 @@
+(**********************************************************************)
+(* Equations                                                          *)
+(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(**********************************************************************)
+(* This file is distributed under the terms of the                    *)
+(* GNU Lesser General Public License Version 2.1                      *)
+(**********************************************************************)
+
 From Equations Require Import Init.
 From Coq Require Import Extraction Relation_Definitions.
+Require Import Equations.Prop.Logic.
+
 (** A class for well foundedness proofs.
    Instances can be derived automatically using [Derive Subterm for ind]. *)
 
@@ -67,40 +77,19 @@ Proof.
 Defined.
 Extraction Inline apply_noConfusion.
 
-(** We also provide a variant for equality in [Type]. *)
-
-Polymorphic Cumulative Class NoConfusionIdPackage (A : Type) := {
-  NoConfusionId : A -> A -> Type;
-  noConfusionId : forall {a b}, NoConfusionId a b -> Id a b;
-  noConfusionId_inv : forall {a b}, Id a b -> NoConfusionId a b;
-  noConfusionId_sect : forall {a b} (e : NoConfusionId a b), Id (noConfusionId_inv (noConfusionId e)) e;
-  noConfusionId_retr : forall {a b} (e : Id a b), Id (noConfusionId (noConfusionId_inv e)) e;
-}.
-
-Polymorphic
-Lemma apply_noConfusionId {A} {noconf : NoConfusionIdPackage A}
-      (p q : A) {B : Id p q -> Type} :
-  (forall e : NoConfusionId p q, B (noConfusionId e)) -> (forall e : Id p q, B e).
-Proof.
-  intros. generalize (noConfusionId_retr e). destruct e.
-  intros <-. apply X.
-Defined.
-Extraction Inline apply_noConfusionId.
-
 (** Classes for types with UIP or decidable equality.  *)
 
-Polymorphic Cumulative
 Class UIP (A : Type) := uip : forall {x y : A} (e e' : x = y), e = e'.
 
-Polymorphic Cumulative
+Definition dec_eq {A} (x y : A) := { x = y } + { x <> y }.
+
 Class EqDec (A : Type) :=
   eq_dec : forall x y : A, { x = y } + { x <> y }.
 
-Polymorphic Cumulative
 Class EqDecPoint (A : Type) (x : A) :=
   eq_dec_point : forall y : A, { x = y } + { x <> y }.
 
-Polymorphic Instance EqDec_EqDecPoint A `(EqDec A) (x : A) : EqDecPoint A x := eq_dec x.
+Instance EqDec_EqDecPoint A `(EqDec A) (x : A) : EqDecPoint A x := eq_dec x.
 
 (** For treating impossible cases. Equations corresponding to impossible
    calls form instances of [ImpossibleCall (f args)]. *)
@@ -116,3 +105,27 @@ Definition elim_impossible_call {A} (a : A) {imp : ImpossibleCall a} (P : A -> T
 (** The tactic tries to find a call of [f] and eliminate it. *)
 
 Ltac impossible_call f := on_call f ltac:(fun t => apply (elim_impossible_call t)).
+
+
+(** The [FunctionalInduction f] typeclass is meant to register functional induction
+   principles associated to a function [f]. Such principles are automatically
+   generated for definitions made using [Equations]. *)
+
+Polymorphic
+Class FunctionalInduction {A : Type} (f : A) :=
+  { fun_ind_prf_ty : Type; fun_ind_prf : fun_ind_prf_ty }.
+
+Register FunctionalInduction as equations.funind.class.
+
+(** The [FunctionalElimination f] class declares elimination principles produced
+   from the functional induction principle for [f] to be used directly to eliminate
+   a call to [f]. This is the preferred method of proving results about a function.
+   [n] is the number of binders for parameters, predicates and methods of the
+   eliminator.
+   *)
+
+Polymorphic
+Class FunctionalElimination {A : Type} (f : A) (fun_elim_ty : Type) (n : nat) :=
+  fun_elim : fun_elim_ty.
+
+Register FunctionalElimination as equations.funelim.class.

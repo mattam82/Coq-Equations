@@ -1,7 +1,9 @@
-From Equations Require Import Equations EqDec DepElimK.
+From Equations Require Import Equations.
 Import Sigma_Notations.
 
 (** This noConfusion instance corresponds to the rule for simplifying injectivity with UIP. *)
+
+Set Equations With UIP.
 
 Section NoConfusionUIP.
   Context {A} (B : A -> Type) `(E : UIP A).
@@ -12,9 +14,11 @@ Section NoConfusionUIP.
   Proof.
     intros.
     unshelve refine ({| NoConfusion := NoConfusion_UIP x |}).
-    intros a b. simplify ?. constructor.
-    intros a b H. red in H. apply (pr2_uip H).
-    simpl. intros a b. simplify ?. simpl solution_right.
-    apply pr2_uip_refl.
+    intros a b. simplify ?. simpl. trivial.
+    intros a b. simplify *. constructor.
+    intros a b. simpl. unfold NoConfusion_UIP. simplify *. simpl.
+    rewrite DepElim.simplification_K_uip_refl. reflexivity.
+    intros. simpl. destruct e. simpl. 
+    now rewrite DepElim.simplification_K_uip_refl.
   Defined.
 End NoConfusionUIP.

@@ -101,10 +101,6 @@ Set Printing Depth 1000000.
 
 Require Import Wellfounded.
 
-
-Ltac rec ::= Subterm.rec_wf_eqns.
-Unset Implicit Arguments.
-
 Equations cfold {t} (e : exp t) : exp t :=
 (* Works with well-foundedness too: cfold e by wf (signature_pack e) exp_subterm := *)
 cfold (NConst n) => NConst n;
@@ -139,8 +135,6 @@ cfold (Snd e) with cfold e => {
     | None := Snd e'
   }
 }.
-
-Set Implicit Arguments.
 
 Inductive color : Set := Red | Black.
 Derive NoConfusion for color.

@@ -1,7 +1,7 @@
 From Equations Require Import Equations.
 Require Vector.
-
-Derive Signature for vector.
+Notation vector := Vector.t.
+Derive Signature for Vector.t.
 Fail Equations test {X n} (v : vector X (S n)) : vector X 0 :=
     {
       test Vector.cons := Vector.nil
