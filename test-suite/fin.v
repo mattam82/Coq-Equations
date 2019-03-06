@@ -1,4 +1,7 @@
 Require Import Program Equations.Equations.
+Import Sigma_Notations.
+Local Open Scope equations_scope.
+Set Equations Transparent.
 
 Inductive fin : nat -> Set :=
 | fz : forall {n}, fin (S n)
@@ -90,6 +93,7 @@ Qed.
 Equations convert_ilist {A : Set} {n m : nat} (p : n = m) (l : ilist A n) : ilist A m :=
 convert_ilist p Nil with p => { | eq_refl := Nil };
 convert_ilist p (Cons a l) with p => { | eq_refl := Cons a (convert_ilist eq_refl l) }.
+
 Transparent convert_ilist.
 Lemma convert_ilist_refl {A} (n : nat) (l : ilist A n) : convert_ilist eq_refl l = l.
 Proof.
@@ -101,7 +105,6 @@ Lemma convert_ilist_trans : forall {A : Set} {n m o : nat} (p : n = m) (r : m = 
 Proof. intros. simplify_eqs. now rewrite !convert_ilist_refl. Qed.
 
 Hint Rewrite @convert_ilist_refl @convert_ilist_trans : convert_ilist.
-Set Equations Transparent.
 Import PeanoNat.Nat.
 
 Equations irev_aux {A : Set} {i j : nat} (l : ilist A i) (acc : ilist A j) : ilist A (i + j) :=
@@ -134,7 +137,6 @@ Equations iapp {A : Set} {n m : nat} (l1 : ilist A n) (l2 : ilist A m) : ilist A
 iapp Nil l := l;
 iapp (Cons x t) l := Cons x (iapp t l).
 
-Import Sigma_Notations.
 Lemma iapp_eq {A : Set} (l1 l1' l2 l2' : Σ n, ilist A n) :
   l1 = l1' -> l2 = l2' ->
   (_, iapp l1.2 l2.2) = (_, iapp l1'.2 l2'.2).
@@ -146,8 +148,6 @@ Proof. simp iapp. Qed.
 
 Notation "p # t" := (eq_rect _ _ t _ p) (right associativity, at level 65) : equations_scope.
 
-Set Equations With UIP.
-Local Open Scope equations_scope.
 Lemma rev_aux_app : forall (A : Set) (i j1 j2 : nat) (l : ilist A i)
   (acc1 : ilist A j1) (acc2 : ilist A j2),
     (_, irev_aux l (iapp acc1 acc2)) = (_, iapp (irev_aux l acc1) acc2).
