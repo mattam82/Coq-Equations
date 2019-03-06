@@ -401,10 +401,10 @@ Ltac try_injection H := injection H.
 
 Ltac simplify_one_dep_elim :=
   match goal with
-    | [ |- context [eq_rect_r _ _ eq_refl]] => simpl eq_rect_r
-    | [ |- context [eq_rect _ _ _ _ eq_refl]] => simpl eq_rect
-    | [ |- context [@eq_rect_dep_r _ _ _ _ _ eq_refl]] => simpl eq_rect_dep_r
-    | [ |- context [noConfusion_inv _]] => simpl noConfusion_inv
+    | [ |- context [eq_rect_r _ _ eq_refl]] => progress simpl eq_rect_r
+    | [ |- context [eq_rect _ _ _ _ eq_refl]] => progress simpl eq_rect
+    | [ |- context [@eq_rect_dep_r _ _ _ _ _ eq_refl]] => progress simpl eq_rect_dep_r
+    | [ |- context [noConfusion_inv _]] => progress simpl noConfusion_inv
     | [ |- @opaque_ind_pack_eq_inv ?A ?uip ?B ?x ?p _ ?G eq_refl] =>
             apply (@simplify_ind_pack_inv A uip B x p G)
     | [ |- let _ := block in _ ] => fail 1

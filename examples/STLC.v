@@ -687,8 +687,6 @@ Ltac invert_term :=
 
 Set Regular Subst Tactic.
 
-Notation "e # p" := (@eq_rect _ _ _ p _ e) (at level 20).
-
 Lemma hereditary_subst_type Γ Γ' t T u U : Γ |-- u : U -> Γ' @ (U :: Γ) |-- t : T ->
   let (t', o) := hereditary_subst (U, u, t) (length Γ') in
     (Γ' @ Γ |-- t' : T /\ (forall ty prf, o = Some (exist ty prf) -> ty = T)).
@@ -696,7 +694,8 @@ Proof.
   intros.
   funelim (hereditary_subst (U, u, t) (length Γ'));
     DepElim.simpl_dep_elim; subst;
-    try (split; [ (intros; try discriminate) | solve [ intros; discriminate ] ]).
+    try (split; [ (intros; try discriminate) | solve [ intros; discriminate ] ]);
+    DepElim.simplify_dep_elim.
 
   invert_term. simpl in *. simplify_IH_hyps. apply abstraction.
   specialize (H Γ (A :: Γ')). simpl in H. simplify_IH_hyps.
