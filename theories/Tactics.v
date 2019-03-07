@@ -49,7 +49,7 @@ Ltac add_pattern t :=
    variables introduced by the section and the rest. We introduce a dummy variable
    between them to indicate that. *)
 
-CoInductive end_of_section := the_end_of_the_section.
+Variant end_of_section := the_end_of_the_section.
 
 Ltac set_eos := let eos := fresh "eos" in
   assert (eos:=the_end_of_the_section).

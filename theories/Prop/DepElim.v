@@ -507,62 +507,12 @@ Ltac destruct_last :=
 
 (** The rest is support tactics for the [Equations] command. *)
 
-(** Do as much as possible to apply a method, trying to get the arguments right.
-   !!Unsafe!! We use [auto] for the [_nocomp] variant of [Equations], in which case some
-   non-dependent arguments of the method can remain after [apply]. *)
-
-Ltac simpl_intros m := ((apply m || refine m) ; auto) || (intro ; simpl_intros m).
-
-(** Hopefully the first branch suffices. *)
-
-Ltac try_intros m :=
-  solve [ (intros_until_block ; refine m || (unfold block ; apply m)) ; auto ] ||
-  solve [ unfold block ; simpl_intros m ] ||
-  solve [ unfold block ; intros ; rapply m ; eauto ].
-
 (** To solve a goal by inversion on a particular target. *)
 
 Ltac do_empty id :=
   elimtype False ; simpl in id ;
   solve [ generalize_by_eqs id ; destruct id ; simplify_dep_elim
     | apply id ; eauto with Below ].
-
-Ltac solve_empty target :=
-  do_nat target intro ; on_last_hyp ltac:(do_empty).
-
-Ltac simplify_method tac := repeat (tac || simplify_one_dep_elim) ; reverse_local.
-
-Ltac clear_fix_protos n tac :=
-  match goal with
-    | [ |- (let _ := fixproto in _) -> _ ] => intros _ ; 
-      match n with
-        | O => fail 2 "clear_fix_proto: tactic would apply on prototype"
-        | S ?n => clear_fix_protos n tac
-      end
-    | [ |- let _ := block in _ ] => reverse_local ; tac n
-    | _ => reverse_local ; tac n
-  end.
-
-(** Solving a method call: we can solve it by splitting on an empty family member
-   or we must refine the goal until the body can be applied. *)
-
-Ltac solve_method rec :=
-  match goal with
-    | [ H := ?body : nat |- _ ] => subst H ; clear ; clear_fix_protos body
-      ltac:(fun n => abstract (simplify_method idtac ; solve_empty n))
-    | [ H := ?body : ?T |- _ ] => 
-      (revert_until H; clear H);
-      simplify_method ltac:(exact body) ; rec ; 
-      try (exact (body : T)) ; try_intros (body:T)
-  end.
-
-(** Impossible cases, by splitting on a given target. *)
-
-Ltac solve_split :=
-  match goal with 
-    | [ |- let split := ?x in _ ] => intros _ ;
-      clear_fix_protos x ltac:(fun n => clear ; abstract (solve_empty n))
-  end.
 
 (** If defining recursive functions, the prototypes come first. *)
 
@@ -574,27 +524,6 @@ Ltac introduce p := first [
 
 Ltac do_case p := introduce p ; (elim_case p || destruct p || (case p ; clear p)).
 Ltac do_ind p := introduce p ; (elim_ind p || induction p).
-
-Ltac case_last := block_goal ;
-  on_last_hyp ltac:(fun p => simpl in p ; try simplify_equations_in p ; generalize_by_eqs p ; do_case p).
-
-Ltac nonrec_equations :=
-  solve [solve_equations (case_last) (solve_method idtac)] || solve [ solve_split ]
-    || fail "Unnexpected equations goal".
-
-Ltac recursive_equations :=
-  solve [solve_equations (case_last) (solve_method ltac:(intro))] || solve [ solve_split ]
-    || fail "Unnexpected recursive equations goal".
-
-(** The [equations] tactic is the toplevel tactic for solving goals generated
-   by [Equations]. *)
-
-Ltac equations := set_eos ;
-  match goal with
-    | [ |- forall x : _, _ ] => intro ; recursive_equations
-    | [ |- let x := _ in ?T ] => intro x ; exact x
-    | _ => nonrec_equations
-  end.
 
 (** The following tactics allow to do induction on an already instantiated inductive predicate
    by first generalizing it and adding the proper equalities to the context, in a maner similar to
