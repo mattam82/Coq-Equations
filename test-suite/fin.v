@@ -148,7 +148,7 @@ Proof. simp iapp. Qed.
 
 Notation "p # t" := (eq_rect _ _ t _ p) (right associativity, at level 65) : equations_scope.
 
-Lemma rev_aux_app : forall (A : Set) (i j1 j2 : nat) (l : ilist A i)
+Lemma rev_aux_app_hetero : forall (A : Set) (i j1 j2 : nat) (l : ilist A i)
   (acc1 : ilist A j1) (acc2 : ilist A j2),
     (_, irev_aux l (iapp acc1 acc2)) = (_, iapp (irev_aux l acc1) acc2).
 Proof.
@@ -157,13 +157,77 @@ Proof.
     - simpl. simp irev_aux iapp.
     - simp irev_aux.
       destruct (eq_sym (add_succ_comm n (j + j2))).
-      simpl. autounfold with equations. specialize (H _ acc2). rewrite H. clear H.
-      change (S (n + j + j2)) with ((S n) + j + j2).
-      refine (iapp_eq (n + S j, (irev_aux i0 (Cons a acc)))
-                      (S n + j, _) (_, acc2) (_, acc2) _ _); try constructor.
+      simpl. specialize (H _ acc2). rewrite H. clear H.
+      refine (iapp_eq (n + S j, _)
+                      (S n + j, _) (_, _) (_, _) _ _); try constructor.
       clear Heq0.
       unshelve refine (DepElim.pack_sigma_eq _ _). exact (eq_sym Heq). reflexivity.
 Defined.
+
+Equations hetero_veq {A} {n m : nat} (v : ilist A n) (w : ilist A m) : Type :=
+  hetero_veq v w := Σ (e : n = m), e # v = w.
+Notation "x ~=~ y" := (hetero_veq x y) (at level 90).
+
+Section hetero_veq.
+  Context {A : Set}.
+  Context {n m : nat}.
+
+  Lemma hetero_veq_refl (v : ilist A n) : hetero_veq v v.
+  Proof. red. exists refl_equal. constructor. Defined.
+
+  Lemma hetero_veq_sym (v : ilist A n) (w : ilist A m) : hetero_veq v w -> hetero_veq w v.
+  Proof. red. intros [eq Heq]. destruct eq. destruct Heq.  exists refl_equal. constructor. Defined.
+
+  Lemma hetero_veq_trans {k} (v : ilist A n) (w : ilist A m) (x : ilist A k) :
+    hetero_veq v w -> hetero_veq w x -> hetero_veq v x.
+  Proof. red. intros [eq Heq]. destruct eq. destruct Heq.
+         intros [eq Heq]. destruct eq, Heq.
+         exists refl_equal. constructor.
+  Defined.
+  Set Equations With UIP.
+  Lemma iapp_hetero_cong {n' m'} (v : ilist A n) (v' : ilist A n') (w : ilist A m) (w' : ilist A m') :
+    hetero_veq v v' -> hetero_veq w w' -> hetero_veq (iapp v w) (iapp v' w').
+  Proof. red. intros [eq Heq].
+         depelim eq. destruct Heq.
+         intros [eq Heq]. depelim eq. destruct Heq.
+         exists refl_equal. constructor.
+  Defined.
+End hetero_veq.
+Hint Resolve hetero_veq_refl hetero_veq_sym hetero_veq_trans : hetero_veq.
+Unset Program Mode.
+Lemma hetero_veq_transport_right {A} {n m} (v : ilist A n) (w : ilist A m) (eq : m = n) :
+        hetero_veq v w -> hetero_veq v (eq # w).
+Proof.
+  destruct eq. simpl. trivial.
+Qed.
+
+Lemma hetero_veq_transport_right' {A} {n m} (v : ilist A n) (eq : n = m) :
+  hetero_veq v (eq # v).
+Proof.
+  destruct eq. simpl. apply hetero_veq_refl.
+Qed.
+
+Lemma hetero_veq_transport_left {A} {n m} (v : ilist A n) (w : ilist A m) (eq : n = m) :
+        hetero_veq v w -> hetero_veq (eq # v) w.
+Proof.
+  destruct eq. simpl. trivial.
+Qed.
+
+Hint Resolve hetero_veq_transport_left hetero_veq_transport_right : hetero_veq.
+
+Lemma rev_aux_app_hetero_eq : forall (A : Set) (i j1 j2 : nat) (l : ilist A i)
+  (acc1 : ilist A j1) (acc2 : ilist A j2),
+    (irev_aux l (iapp acc1 acc2)) ~=~ iapp (irev_aux l acc1) acc2.
+Proof.
+  intros.
+  funelim (irev_aux l acc1).
+    - simpl. apply hetero_veq_refl.
+    - simp irev_aux.
+      destruct (eq_sym (add_succ_comm n (j + j2))).
+      simpl. specialize (X _ acc2). simp iapp in X. eapply hetero_veq_trans. eapply X.
+      apply (iapp_hetero_cong (n:=n + S j) (n' := S n + j)); auto with hetero_veq.
+      apply hetero_veq_transport_right'.
+Qed.
 
 Equations irev' {A : Set} {n : nat} (l : ilist A n) : ilist A n :=
 irev' Nil := Nil;
@@ -224,3 +288,23 @@ fle_trans' (fles p') (fles q') := fles (fle_trans' p' q').
 
 Print Assumptions fle_trans'.
 (* Extraction fle_trans'. *)
+
+Equations lookup {A n} (f : fin n) (v : ilist A n) : A :=
+  lookup fz (Cons x xs) := x;
+  lookup (fs f) (Cons _ xs) := lookup f xs.
+
+Inductive vforall {A : Set}(P : A -> Type) : forall {n}, ilist A n -> Type :=
+| VFNil  : vforall P Nil
+| VFCons : forall {n} x (xs : ilist A n),
+      P x -> vforall P xs -> vforall P (Cons x xs).
+Derive Signature for vforall.
+
+Equations vforall_lookup
+            {n}
+            {A : Set}
+            {P : A -> Type}
+            {xs : ilist A n}
+            (idx : fin n) :
+            vforall P xs -> P (lookup idx xs) :=
+    vforall_lookup fz (VFCons _ pf _) := pf ;
+    vforall_lookup (fs ix) (VFCons _ _ ps) := vforall_lookup ix ps.
