@@ -24,9 +24,13 @@ Local Open Scope equations_scope.
 
 Global Unset Auto Template Polymorphism.
 
+(** We use this inductive internally *)
+
+Variant equations_tag := the_equations_tag.
+
 (** Notation for empty patterns. *)
 
-Definition bang := tt.
+Definition bang := the_equations_tag.
 Opaque bang.
 Notation "!" := bang.
 
@@ -47,7 +51,8 @@ Register inaccessible_pattern as equations.internal.inaccessible_pattern.
 Import Inaccessible_Notations.
 
 (** A marker for fixpoint prototypes in the context *)
-Definition fixproto := tt.
+
+Definition fixproto := the_equations_tag.
 
 Register fixproto as equations.fixproto.
 
