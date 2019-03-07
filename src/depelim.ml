@@ -137,7 +137,8 @@ let depcase poly (mind, i as ind) =
   in
   let nconstrs = Array.length oneind.mind_nf_lc in
   let branches =
-    Array.map2_i (fun i id cty ->
+    Array.map2_i (fun i id (ctx, cty) ->
+      let cty = Term.it_mkProd_or_LetIn cty ctx in
       let substcty = substl inds (of_constr cty) in
       let (args, arity) = decompose_prod_assum !evd substcty in
       let _, indices = decompose_app !evd arity in
