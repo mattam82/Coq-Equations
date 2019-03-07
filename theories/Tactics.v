@@ -8,7 +8,6 @@
 
 (** Tactics supporting equations *)
 
-Require Import Coq.Program.Tactics.
 Require Export Equations.Init.
 Require Import Equations.Signature.
 
@@ -79,6 +78,19 @@ Ltac clear_nonsection :=
     end
   end.
 
+(** Do something on the last hypothesis, or fail *)
+
+Ltac on_last_hyp tac :=
+  lazymatch goal with [ H : _ |- _ ] => tac H end.
+
+(** Reverse everything up to hypothesis id (not included). *)
+
+Ltac revert_until id :=
+  on_last_hyp ltac:(fun id' =>
+    match id' with
+      | id => idtac
+      | _ => revert id' ; revert_until id
+    end).
 
 (** We have a specialized [reverse_local] tactic to reverse the goal until the begining of the
    section variables *)
@@ -101,6 +113,14 @@ Ltac clear_local :=
         | _ => clear H ; clear_local
       end
     | _ => idtac
+  end.
+
+(** The [do] tactic but using a Coq-side nat. *)
+
+Ltac do_nat n tac :=
+  match n with
+    | 0 => idtac
+    | S ?n' => tac ; do_nat n' tac
   end.
 
 (** The [pi] tactic solves an equality between applications of the same function *)
@@ -162,3 +182,69 @@ Ltac apply_args c elimc k :=
     | _ ?a ?b => k uconstr:(elimc a b)
     | _ ?a => k uconstr:(elimc a)
     end.
+
+(** Used to destruct recurive calls in obligations, simplifying them. *)
+
+Ltac on_application f tac T :=
+  match T with
+    | context [f ?x ?y ?z ?w ?v ?u ?a ?b ?c] => tac (f x y z w v u a b c)
+    | context [f ?x ?y ?z ?w ?v ?u ?a ?b] => tac (f x y z w v u a b)
+    | context [f ?x ?y ?z ?w ?v ?u ?a] => tac (f x y z w v u a)
+    | context [f ?x ?y ?z ?w ?v ?u] => tac (f x y z w v u)
+    | context [f ?x ?y ?z ?w ?v] => tac (f x y z w v)
+    | context [f ?x ?y ?z ?w] => tac (f x y z w)
+    | context [f ?x ?y ?z] => tac (f x y z)
+    | context [f ?x ?y] => tac (f x y)
+    | context [f ?x] => tac (f x)
+  end.
+
+(** Tactical [on_call f tac] applies [tac] on any application of [f] in the hypothesis or goal. *)
+
+Ltac on_call f tac :=
+  match goal with
+    | |- ?T  => on_application f tac T
+    | H : ?T |- _  => on_application f tac T
+  end.
+
+(* Destructs calls to f in hypothesis or conclusion, useful if f creates a subset object. *)
+
+Ltac destruct_call f :=
+  let tac t := (destruct t) in on_call f tac.
+
+Ltac destruct_calls f := repeat destruct_call f.
+
+Ltac destruct_rec_calls :=
+  match goal with
+    | [ H : let _ := fixproto in _ |- _ ] => red in H; destruct_calls H ; clear H
+  end.
+
+Ltac destruct_all_rec_calls :=
+  repeat destruct_rec_calls.
+
+(** Revert the last hypothesis. *)
+
+Ltac revert_last :=
+  match goal with
+    [ H : _ |- _ ] => revert H
+  end.
+
+(** Repeatedly reverse the last hypothesis, putting everything in the goal. *)
+
+Ltac reverse := repeat revert_last.
+
+(* Redefine to use simplification *)
+
+Ltac equations_simplify :=
+  intros; destruct_all_rec_calls; simpl in *; try progress (reverse; simplify_equalities).
+
+Ltac solve_wf :=
+  match goal with
+    |- ?R _ _ => try typeclasses eauto with subterm_relation Below rec_decision
+  end.
+
+(* program_simpl includes a [typeclasses eauto with program] which solves, e.g. [nat] goals trivially.
+   We remove it. *)
+
+Ltac equations_simpl := equations_simplify ; try solve_wf.
+
+Global Obligation Tactic := equations_simpl.

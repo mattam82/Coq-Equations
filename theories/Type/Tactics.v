@@ -11,6 +11,7 @@ Require Import Equations.Tactics Equations.Type.Logic Equations.Type.DepElim
         Equations.Type.WellFounded Equations.Type.FunctionalInduction.
 
 Ltac Equations.Init.simpl_equations ::= Equations.Type.DepElim.simpl_equations.
+Ltac Equations.Init.simplify_equalities ::= Equations.Type.DepElim.simplify_dep_elim.
 
 Ltac Equations.Init.depelim H ::= dependent elimination H; cbn in *.
 Ltac Equations.Init.depind H ::= Equations.Type.DepElim.depind H.

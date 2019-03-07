@@ -21,7 +21,7 @@ Ltac destruct_lt_dec :=
     [ H : le_lt_dec _ _ = _ |- _ ] => destruct H
   end.
 
-Equations? f91 n : { m : nat | if le_lt_dec n 100 then m = 91 else m = n - 10 } by wf (101 - n) lt :=
+Equations? f91 (n : nat) : { m : nat | if le_lt_dec n 100 then m = 91 else m = n - 10 } by wf (101 - n) lt :=
 f91 n with le_lt_dec n 100 := {
   | left H := f91 (f91 (n + 11)) ;
   | right H := (n - 10) }.

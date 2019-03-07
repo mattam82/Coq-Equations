@@ -223,7 +223,7 @@ val logic_signature_pack : lazy_ref
 
 val get_fresh : Evd.evar_map -> lazy_ref -> Evd.evar_map * constr
 val get_efresh : lazy_ref -> esigma -> constr
-val is_lglobal : lazy_ref -> Constr.constr -> bool
+val is_lglobal : Evd.evar_map -> lazy_ref -> EConstr.constr -> bool
 
 val coq_sigma : lazy_ref
 val coq_sigmaI : lazy_ref

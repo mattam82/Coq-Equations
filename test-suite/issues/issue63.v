@@ -39,7 +39,7 @@ Fixpoint term_size
   | Comp f g => 1%nat + term_size f + term_size g
   end.
 Set Program Mode.
-
+Show Obligation Tactic.
 Equations? comp_assoc_simpl_rec {a : nat} {tys dom cod}
           (t : @Term a tys dom cod) : {t' : @Term a tys dom cod | term_size t' <= term_size t}
   by wf (term_size t) lt :=
@@ -50,7 +50,7 @@ Equations? comp_assoc_simpl_rec {a : nat} {tys dom cod}
   comp_assoc_simpl_rec x := x.
 Proof.
   1-2,4:lia.
-  all:(simpl; try destruct_call comp_assoc_simpl_rec; simpl in *; lia).
+  all:(simpl; try Program.Tactics.destruct_call comp_assoc_simpl_rec; simpl in *; try lia).
 Time Defined.
 
 Definition comp_assoc_simpl {a}
@@ -77,7 +77,7 @@ Lemma comp_assoc_simpl_comp {a} {tys : Vector.t obj_pair a} {dom mid cod}
 Proof.
   unfold comp_assoc_simpl.
   simp comp_assoc_simpl_rec.
-  revert dom g. reverse.
+  revert dom g. Tactics.reverse.
   let felim := constr:(fun_elim (f := @comp_assoc_simpl_rec)) in
   unshelve refine_ho (felim _ _ _ _ _ _); simpl; intros; try reflexivity.
 Qed.

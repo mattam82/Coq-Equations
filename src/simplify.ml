@@ -348,13 +348,13 @@ let while_fun (f : simplification_fun) : simplification_fun =
 
 (* Check if a type is a given inductive. *)
 let check_inductive sigma (ind : Names.inductive) : EConstr.types -> bool =
-  is_global sigma (Globnames.IndRef ind)
+  Equations_common.is_global sigma (Globnames.IndRef ind)
 (* Check if a term is a given constructor. *)
 let check_construct sigma (constr : Names.constructor) : EConstr.constr -> bool =
-  is_global sigma (Globnames.ConstructRef constr)
+  Equations_common.is_global sigma (Globnames.ConstructRef constr)
 (* Check if a term is a given constant. *)
 let check_constant sigma (cst : Names.Constant.t) : EConstr.constr -> bool =
-  is_global sigma (Globnames.ConstRef cst)
+  Equations_common.is_global sigma (Globnames.ConstRef cst)
 
 (* Deconstruct the goal if it's a product. Otherwise, raise CannotSimplify. *)
 let check_prod sigma (ty : EConstr.types) : Names.Name.t * EConstr.types * EConstr.types =
@@ -924,7 +924,7 @@ let infer_step ?(loc:Loc.t option) ~(isSol:bool)
       else
       let check_ind t =
         let f, _ = EConstr.decompose_app !evd t in
-        try ignore (Inductive.find_rectype env (to_constr !evd f)); true
+        try ignore (Inductive.find_rectype env (to_constr ~abort_on_undefined_evars:false !evd f)); true
         with Not_found -> false
       in
       let check_construct t =
@@ -998,7 +998,7 @@ exception Blocked
 let check_block : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty as gl) : goal) ->
   let _na, b, _ty, _b' = check_letin !evd ty in
-  if EConstr.is_global !evd (Lazy.force Equations_common.coq_block) b then
+  if Equations_common.is_global !evd (Lazy.force Equations_common.coq_block) b then
     raise Blocked
   else identity env evd gl
 

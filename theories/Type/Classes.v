@@ -7,7 +7,7 @@
 (**********************************************************************)
 
 From Coq Require Import Extraction CRelationClasses.
-From Equations Require Import Init.
+Require Import Equations.Init Equations.Tactics.
 Set Warnings "-notation-overridden".
 Require Import Equations.Type.Logic Equations.Type.Relation
         Equations.Type.Relation_Properties Equations.Type.WellFounded.

@@ -317,7 +317,7 @@ let get_fresh sigma r = new_global sigma (Lazy.force r)
 
 let get_efresh r evd = e_new_global evd (Lazy.force r)
 
-let is_lglobal gr c = Globnames.is_global (Lazy.force gr) c
+let is_lglobal sigma gr c = EConstr.is_global sigma (Lazy.force gr) c
 
 open EConstr
 
@@ -1011,7 +1011,7 @@ let is_global sigma f ec = Globnames.is_global f (EConstr.Unsafe.to_constr ec)
 let constr_of_global_univ sigma u = of_constr (Constr.mkRef (from_peuniverses sigma u))
 
 let smash_rel_context sigma ctx =
-  List.map of_rel_decl (smash_rel_context (List.map (to_rel_decl sigma) ctx))
+  List.map of_rel_decl (smash_rel_context (List.map (EConstr.Unsafe.to_rel_decl) ctx))
 let rel_vect n m = Array.map of_constr (rel_vect n m)
 
 let applistc c a = applist (c, a)

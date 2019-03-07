@@ -540,7 +540,6 @@ Proof. intros. now apply eta_expand in H0; term. Qed.
 
 (** Going to use the subterm order *)
 
-Ltac Below.rec ::= Subterm.rec_wf_eqns.
 Require Import Arith Wf_nat.
 Instance wf_nat : Classes.WellFounded lt := lt_wf.
 
@@ -554,6 +553,7 @@ Definition her_order : relation (type * term * term) :=
 
 Hint Unfold her_order : subterm_relation.
 
+Import Program.Tactics.
 Obligation Tactic := program_simpl.
 
 Arguments exist [A] [P].
@@ -654,11 +654,11 @@ Proof.
                        unfold her_type in *; simpl in *; try (clear; constructor 2; do 2 constructor)
        end).
   1:(destruct prf; subst; eauto 10 with subterm_relation).
-  all:(clear -prf; destruct prf; subst; eauto 10 with subterm_relation).
+  all:(clear -prf; simpl in *; destruct prf; subst; eauto 5 with subterm_relation).
 Defined.
 
 Hint Unfold her_type : subterm_relation.
-Hint Unfold const : subterm_relation.
+Hint Unfold Program.Basics.const : subterm_relation.
 
 Ltac autoh :=
   unfold type_subterm in * ; try typeclasses eauto with hereditary_subst subterm_relation.
@@ -779,7 +779,7 @@ Proof.
   specialize (Hind _ _ H H0); eauto. now apply pair_elim_snd with A.
 Qed.
 Print Assumptions hereditary_subst_type.
-                                 
+Import Program.Basics.
 Instance: subrelation eq (flip impl).
 Proof. reduce. subst; auto. Qed.
 

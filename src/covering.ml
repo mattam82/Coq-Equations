@@ -602,7 +602,7 @@ let push_rel_context_eos ctx env evars =
 
 let split_at_eos sigma ctx =
   List.split_when (fun decl ->
-      is_lglobal coq_end_of_section (to_constr sigma (get_named_type decl))) ctx
+      is_lglobal sigma coq_end_of_section (get_named_type decl)) ctx
 
 let pr_problem p env sigma (delta, patcs, _) =
   let env' = push_rel_context delta env in

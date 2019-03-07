@@ -351,7 +351,6 @@ intros; subst; assumption. Defined.
 Equations vrev_acc {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
 vrev_acc nil w := w;
 vrev_acc (cons a v) w := cast_vector (vrev_acc v (cons a w)) _.
-(* About vapp'. *)
 
 Record vect {A} := mkVect { vect_len : nat; vect_vector : vector A vect_len }.
 Coercion mkVect : vector >-> vect.
