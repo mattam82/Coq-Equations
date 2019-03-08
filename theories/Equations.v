@@ -8,8 +8,8 @@
 
 (** The set of libraries required to run Equations with all features. *)
 
-From Equations Require Export Loader.
-From Equations Require Import Telescopes.
+Require Export Equations.Prop.Loader.
+Require Import Equations.Telescopes.
 
 Require Import Program.Tactics.
 

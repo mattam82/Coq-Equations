@@ -1,4 +1,4 @@
-From Equations Require Import Loader.
+Require Import Equations.Prop.Loader.
 Require Import FunctionalExtensionality.
 Require Import Equations.Prop.DepElim.
 (** Telescopes: allows treating variable arity fixpoints *)

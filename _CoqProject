@@ -56,6 +56,7 @@ theories/Prop/Tactics.v
 theories/Prop/Constants.v
 theories/Prop/NoConfusion.v
 theories/Prop/FunctionalInduction.v
+theories/Prop/Loader.v
 
 theories/Type/Logic.v
 theories/Type/Relation.v
@@ -67,11 +68,10 @@ theories/Type/DepElim.v
 theories/Type/Tactics.v
 theories/Type/Constants.v
 theories/Type/EqDecInstances.v
+theories/Type/NoConfusion.v
 theories/Type/FunctionalInduction.v
-theories/Type/All.v
+theories/Type/Loader.v
 
-# theories/Below.v
-theories/Loader.v
 theories/Telescopes.v
 theories/Equations.v
 theories/TransparentEquations.v
