@@ -79,6 +79,19 @@ Extraction Inline FixWf Fix Fix_F.
 Create HintDb subterm_relation discriminated.
 Create HintDb rec_decision discriminated.
 
+(** This is used to simplify the proof-search for recursive call obligations. *)
+
+Ltac simpl_let :=
+  match goal with
+    [ H : let _ := ?t in _ |- _ ] =>
+    match t with
+    | fixproto => fail 1
+    | _ => cbv zeta in H
+    end
+  end.
+
+Hint Extern 40 => progress (cbv beta in * || simpl_let) : Below.
+
 (** We can automatically use the well-foundedness of a relation to get
    the well-foundedness of its transitive closure.
    Note that this definition is transparent as well as [wf_clos_trans],

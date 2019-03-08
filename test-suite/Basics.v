@@ -65,7 +65,7 @@ Declare Scope vect_scope.
 Notation " x |:| y " := (@Vector.cons _ x _ y) (at level 20, right associativity) : vect_scope.
 Notation " x |: n :| y " := (@Vector.cons _ x n y) (at level 20, right associativity) : vect_scope.
 (* Notation " [[ x .. y ]] " := (Vector.cons x .. (Vector.cons y Vector.nil) ..) : vect_scope. *)
-Notation "[]v" := Vector.nil (at level 0) : vect_scope.
+Notation "[]v" := (@Vector.nil _) (at level 0) : vect_scope.
 
 Section FilterDef.
   Context {A} (p : A -> bool).
@@ -298,8 +298,8 @@ Qed.
 
 Lemma app'_assoc : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l (app' l' l'').
 Proof. intros. revert l''.
-  funelim (l +++ l'); intros; simp app'. 
-  rewrite H. reflexivity.
+  funelim (l +++ l'); intros; simp app'; trivial.
+  now rewrite H.
 Qed.
 
 Lemma rev_rev_acc : forall {A} (l : list A), rev_acc l [] = rev l.
@@ -314,14 +314,14 @@ Hint Rewrite @rev_rev_acc : rev_acc.
 Lemma app'_funind : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l (app' l' l'').
 Proof.
   intros.
-  funelim (l +++ l'); simp app'.
+  funelim (l +++ l'); simp app'; trivial.
   rewrite H. reflexivity. 
 Qed.
 
 Hint Rewrite @app'_nil @app'_assoc : app'.
 
 Lemma rev_app' : forall {A} (l l' : list A), rev (l +++ l') = rev l' +++ rev l.
-Proof. intros. funelim (l +++ l'); simp rev app'.
+Proof. intros. funelim (l +++ l'); simp rev app'; trivial.
   now (rewrite H, <- app'_assoc).
 Qed.
 Equations zip' {A} (f : A -> A -> A) (l l' : list A) : list A :=
@@ -576,10 +576,10 @@ Generalizable All Variables.
 Opaque vmap. Opaque vtail. Opaque nth.
 
 Lemma nth_vmap `(v : vector A n) `(fn : A -> B) (f : fin n) : nth (vmap fn v) f = fn (nth v f).
-Proof. revert B fn. funelim (nth v f); intros; simp nth vmap. Qed.
+Proof. revert B fn. funelim (nth v f); intros; now simp nth vmap. Qed.
 
 Lemma nth_vtail `(v : vector A (S n)) (f : fin n) : nth (vtail v) f = nth v (fs f).
-Proof. funelim (vtail v); intros; simp nth. Qed.
+Proof. funelim (vtail v); intros; now simp nth. Qed.
 
 Hint Rewrite @nth_vmap @nth_vtail : nth.
   
@@ -587,8 +587,8 @@ Lemma diag_nth `(v : vector (vector A n) n) (f : fin n) : nth (diag v) f = nth (
 Proof. revert f. funelim (diag v); intros f.
   depelim f.
 
-  depelim f; simp nth.
-  rewrite H. simp nth.
+  depelim f; simp nth; trivial.
+  rewrite H. now simp nth.
 Qed.
 
 Equations assoc (x y z : nat) : x + y + z = x + (y + z) :=

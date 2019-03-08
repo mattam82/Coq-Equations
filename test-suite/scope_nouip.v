@@ -55,7 +55,7 @@ Hint Unfold NoConfusion.noConfusion_nat_obligation_1 : equations.
 
 Lemma scope_le_app_len n m (q : scope_le n m) : scope_le_app (scope_le_n eq_refl) q = q.
 Proof.
-  depind q; simp scope_le_app. destruct e; reflexivity. now rewrite IHq.
+  depind q; simp scope_le_app; trivial. destruct e; reflexivity. now rewrite IHq.
 Qed.
 Hint Rewrite scope_le_app_len : scope_le_app.
 

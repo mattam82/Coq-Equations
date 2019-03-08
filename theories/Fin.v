@@ -114,8 +114,8 @@ Definition rec_fin (P : forall n, fin n -> Type) {n} v
   (step : forall n (v : fin n), Below_fin P v -> P n v) : P n v :=
   step n v (below_fin P step v).
 
-Import Equations.Below.
+(* Import Equations.Below. *)
 
-Instance fin_Recursor n : Recursor (fin n) :=
-  { rec_type := fun v => forall (P : forall n, fin n -> Type) step, P n v;
-    rec := fun v P step => rec_fin P v step }.
+(* Instance fin_Recursor n : Recursor (fin n) := *)
+(*   { rec_type := fun v => forall (P : forall n, fin n -> Type) step, P n v; *)
+(*     rec := fun v P step => rec_fin P v step }. *)

@@ -67,7 +67,7 @@ Module RoseTree.
     elements_def (node l) := concat (List.map elements_def l).
     Lemma elements_equation (r : t) : elements r = elements_def r.
     Proof.
-      funelim (elements r); simp elements_def. f_equal.
+      funelim (elements r); simp elements_def; trivial. f_equal.
       induction l; simpl; auto. simp map_In. rewrite H. rewrite IHl; auto.
       intros. apply H. now constructor 2. now constructor.
     Qed.
@@ -93,7 +93,8 @@ Module RoseTree.
       revert r acc.
       let t := constr:(fun_elim (f:=elements_acc)) in
       apply (t (fun r acc res => res = elements_def r ++ acc)
-               (fun r acc x H res => res = concat (List.map elements_def x) ++ acc)); intros; simp elements.
+               (fun r acc x H res => res = concat (List.map elements_def x) ++ acc));
+        intros; simp elements; trivial.
       rewrite H1. clear H1.
       rewrite H0. simpl. now rewrite app_assoc.
     Qed.
@@ -115,7 +116,7 @@ Module RoseTree.
     Proof.
       pose (fun_elim (f:=elements')).
       apply (p (fun r f => f = elements'_def r) (fun l x H r => r = concat (List.map elements' x)));
-        clear p; intros; simp elements'_def.
+        clear p; intros; simp elements'_def; trivial.
       simpl. f_equal. apply H1.
     Qed.
     

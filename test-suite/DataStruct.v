@@ -84,7 +84,7 @@ Goal hget someValues HFirst = 5.
 Proof. reflexivity. Qed.
 
 Goal hget someValues (HNext HFirst) = true.
-Proof. simp hget. Qed.
+Proof. now simp hget. Qed.
 
 Inductive type : Set :=
 | Unit : type
@@ -136,7 +136,7 @@ Section filist_map.
   Theorem fget_fimap : forall n (i : ffin n) (ls : filist A n),
     fget (fimap ls) i = f (fget ls i).
   Proof.
-    intros. funelim (fimap ls); depelim i; simp fget.
+    intros. funelim (fimap ls); depelim i; now simp fget.
   Qed.
 End filist_map.
 
@@ -299,10 +299,10 @@ exp'Denote (Cond _ tests bodies default) :=
 Definition someExp' : exp' Nat := Cond 1 (fun _ => BConst true) (fun _ => Plus (NConst 1) (NConst 2)) (NConst 0).
 
 Goal exp'Denote someExp' = 3.
-Proof. simp exp'Denote. Qed.
+Proof. now simp exp'Denote. Qed.
 
 Goal exp'Denote (Eq someExp' (NConst 3)) = true.
-Proof. simp exp'Denote. Qed.
+Proof. now simp exp'Denote. Qed.
 
 Section cfoldCond.
   (* A weakness? of Equations: we cannot refine section variables:
@@ -382,7 +382,7 @@ Proof.
   unshelve refine_ho (cfoldCond_elim _ _ _ _ _ _ _ _ _ _ _ _ _ _); simpl; intros.
   all:simpl; simp exp'Denote cond; rewrite ?H, ?Heq, ?Heq0;
     try rewrite ?Heq in Hind;
-    simp exp'Denote cond;
+    simp exp'Denote cond; now
   repeat (match goal with
           | [ |- context[cond_clause_2 _ _ ?E _] ] => destruct E; simp cond
           end).

@@ -1,5 +1,5 @@
 Require Import Equations.Equations.
-Require Import Equations.Below.
+Require Import Below.
 Module NoCycle_nat.
 
 Definition noSubterm x y :=

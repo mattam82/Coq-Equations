@@ -20,13 +20,55 @@ Equations fin_to_nat {n : nat} (i : fin n) : nat :=
 fin_to_nat fz := 0;
 fin_to_nat (fs j) := S (fin_to_nat j).
 
+Derive Signature for le.
+Scheme le_dep := Induction for le Sort Prop.
+
+Set Equations With UIP.
+Instance le_uip m n : UIP (m <= n).
+Proof.
+  intros x. induction x using le_dep; simplify_dep_elim; reflexivity.
+Defined.
+Derive Subterm for nat.
+
+Lemma le_subterm m n : m <= n -> (m = n \/ nat_subterm m n).
+Proof.
+  induction 1.
+  - left; reflexivity.
+  - intuition subst. right; constructor. constructor.
+    right. eapply Subterm.clos_trans_stepr; eauto. constructor.
+Qed.
+
+Lemma well_founded_antisym {A} {R : A -> A -> Prop}{wfR : WellFounded R} :
+  forall x y : A, R x y -> R y x -> False.
+Proof.
+  intros x y Rxy Ryx. red in wfR.
+  induction (wfR y) as [y accy IHy] in x, Rxy, Ryx.
+  specialize (IHy _ Rxy). apply (IHy _ Ryx Rxy).
+Qed.
+
+Lemma le_Sn_n n : S n <= n -> False.
+Proof.
+  intros. apply le_subterm in H as [Heq|Hlt].
+  depelim Heq.
+  apply well_founded_antisym in Hlt. auto.
+  repeat constructor.
+Qed.
+
+Lemma le_hprop m n : forall e e' : m <= n, e = e'.
+Proof.
+  induction e using le_dep. intros e'. depelim e'. constructor.
+  elimtype False; now apply le_Sn_n in e'.
+  intros. depelim e'.
+  elimtype False; clear IHe; now apply le_Sn_n in e.
+  now rewrite (IHe e').
+Qed.
+
 Lemma fin_lt_n : forall (n : nat) (i : fin n), fin_to_nat i < n.
 Proof.
   intros. funelim (fin_to_nat i).
     - apply Le.le_n_S; apply Le.le_0_n.
     - apply Lt.lt_n_S; assumption.
 Defined.
-Derive Signature for le.
 
 Equations? nat_to_fin {n : nat} (m : nat) (p : m < n) : fin n :=
 nat_to_fin (n:=(S n)) 0 _ := fz;
@@ -56,7 +98,7 @@ Lemma fin__nat : forall (n : nat) (m : nat) (p : m < n),
   fin_to_nat (nat_to_fin m p) = m.
 Proof.
   intros.
-  funelim (nat_to_fin m p); simp fin_to_nat.
+  funelim (nat_to_fin m p); simp fin_to_nat. reflexivity.
   simpl. now rewrite H.
 Qed.
 
@@ -64,11 +106,9 @@ Lemma nat__fin : forall (n : nat) (i : fin n),
   nat_to_fin (fin_to_nat i) (fin_lt_n n i) = i.
 Proof.
   intros.
-  funelim (fin_to_nat i).
-  simp fin_to_nat.
-  Transparent fin_to_nat. simpl.
-  simp nat_to_fin. f_equal. rewrite <- H at 4. f_equal.
-  apply proof_irrelevance.
+  funelim (fin_to_nat i); simpl. reflexivity.
+   f_equal. rewrite <- H at 4. f_equal.
+   apply le_hprop.
 Qed.
 
 Equations iget {A : Set} {n : nat} (l : ilist A n) (i : fin n) : A :=
@@ -83,10 +123,10 @@ Lemma append_get : forall (A : Set) (n : nat) (l : ilist A n) (x : A),
   iget (isnoc l x) (nat_to_fin n (Lt.lt_n_Sn n)) = x.
 Proof.
   induction n ; intros.
-    - depelim l. simp isnoc nat_to_fin iget.
+    - depelim l. now simp isnoc nat_to_fin iget.
     - depelim l. simp isnoc nat_to_fin iget.
       unfold nat_to_fin_obligation_1.
-      replace (Lt.lt_S_n n (S n) (Lt.lt_n_Sn (S n))) with (Lt.lt_n_Sn n) by (apply proof_irrelevance).
+      replace (Lt.lt_S_n n (S n) (Lt.lt_n_Sn (S n))) with (Lt.lt_n_Sn n) by (apply le_hprop).
       apply IHn.
 Qed.
 
@@ -130,7 +170,7 @@ Example rev_ex : forall (A : Set) (x y : A), irev (Cons x (Cons y Nil)) = Cons y
 Proof.
   intros.
   unfold irev. simp irev_aux.
-  compute. repeat (match_refl; compute; simp irev_aux).
+  compute. now repeat (match_refl; compute; simp irev_aux).
 Qed.
 
 Equations iapp {A : Set} {n m : nat} (l1 : ilist A n) (l2 : ilist A m) : ilist A (n + m) :=
@@ -144,7 +184,7 @@ Proof. now simplify *. Defined.
 
 Lemma iapp_cons : forall (A : Set) (i j : nat) (l1 : ilist A i) (l2 : ilist A j) (x : A),
   iapp (Cons x l1) l2 = Cons x (iapp l1 l2).
-Proof. simp iapp. Qed.
+Proof. now simp iapp. Qed.
 
 Notation "p # t" := (eq_rect _ _ t _ p) (right associativity, at level 65) : equations_scope.
 
@@ -154,7 +194,7 @@ Lemma rev_aux_app_hetero : forall (A : Set) (i j1 j2 : nat) (l : ilist A i)
 Proof.
   intros.
   funelim (irev_aux l acc1).
-    - simpl. simp irev_aux iapp.
+    - simpl. now simp irev_aux iapp.
     - simp irev_aux.
       destruct (eq_sym (add_succ_comm n (j + j2))).
       simpl. specialize (H _ acc2). rewrite H. clear H.
