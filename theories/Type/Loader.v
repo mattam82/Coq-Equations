@@ -24,4 +24,11 @@ Require Import Equations.Type.NoConfusion.
 Require Export Equations.Type.Tactics.
 Require Export Equations.Type.FunctionalInduction. (* funelim tactic *)
 
+Global Obligation Tactic := Equations.Tactics.equations_simpl.
+
+(** Tactic to solve well-founded proof obligations by default *)
+
+Ltac solve_rec := simpl in * ; cbv zeta ; intros ;
+  try typeclasses eauto with subterm_relation Below rec_decision.
+
 Export Inaccessible_Notations.
