@@ -1,9 +1,8 @@
 Set Warnings "-notation-overridden".
-Require Import Equations.
+Require Import Equations.Type.Loader.
 Require Import HoTT_light.
 Set Universe Polymorphism.
 Require Import Relations.
-Require Import Equations.Type.All.
 
 Import Id_Notations.
 Import Sigma_Notations.

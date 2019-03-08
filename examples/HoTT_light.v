@@ -13,8 +13,7 @@ Require Export Unicode.Utf8.
 Require Import Coq.Program.Tactics Setoid.
 Require Import Relations.
 (** Switches to constants in Type *)
-Require Import Equations.Init.
-Require Import Equations.Type.All.
+Require Import Equations.Type.Loader.
 
 Import Id_Notations.
 Import Sigma_Notations.
