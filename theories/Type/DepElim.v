@@ -57,23 +57,11 @@ Ltac elim_ind p := elim_tac ltac:(fun p el => induction p using el) p.
 
 (** Lemmas used by the simplifier, mainly rephrasings of [eq_rect], [eq_ind]. *)
 
-Scheme Id_rew := Minimality for Id Sort Type.
-
 Lemma solution_left : forall {A} {B : A -> Type} (t : A), B t -> (forall x, Id x t -> B x).
 Proof. intros A B t H x eq. destruct eq. apply H. Defined.
 
-Definition Id_rect {A : Type} (x : A) (P : A -> Type) : P x -> forall y : A, Id x y -> P y.
-Proof. intros Px y e. destruct e. exact Px. Defined.
-
-Definition Id_rect_r {A : Type} (x : A) (P : A -> Type) : P x -> forall y : A, Id y x -> P y.
-Proof. intros Px y e. eapply (Id_rect x _ Px y (id_sym e)). Defined.
-
-Lemma Id_rect_dep_r {A} (x : A) (P : forall a, Id a x -> Type) (p : P x id_refl)
-      (y : A) (e : Id y x) : P y e.
-Proof. destruct e. apply p. Defined.
-
-Notation " e # t " := (Id_rect_r _ _ t _ e) (right associativity, at level 65) : equations_scope.
-Notation " e # [ P ] t " := (Id_rect_dep_r _ P t _ e) (right associativity, at level 65) : equations_scope.
+Notation " e # t " := (Id_case _ _ t _ e) (right associativity, at level 65) : equations_scope.
+Notation " e # [ P ] t " := (Id_rect_r _ P t _ e) (right associativity, at level 65) : equations_scope.
 
 Lemma Id_sym_invol {A} (x y : A) (e : x = y) : id_sym (id_sym e) = e.
 Proof. destruct e. reflexivity. Defined.
@@ -127,7 +115,7 @@ Defined.
 
 Lemma simplification_sigma1_dep@{i j} {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}}
   (p q : A) (x : P p) (y : P q) :
-  (forall e : Id@{j} p q, Id (@Id_rect@{i j} A p P x q e) y -> B) ->
+  (forall e : Id@{j} p q, Id (@Id_rew@{i j} A p P x q e) y -> B) ->
   (Id ((p, x)) ((q, y)) -> B).
 Proof.
   intros. revert X.
@@ -159,12 +147,12 @@ Proof.
 Defined.
 
  Definition pack_sigma {A} {P : A -> Type} {p q : A} {x : P p} {y : P q}
-  (e' : Id p q) (e : Id (@Id_rect A p P x q e') y) : Id (p, x) (q, y).
+  (e' : Id p q) (e : Id (@Id_rew A p P x q e') y) : Id (p, x) (q, y).
 Proof. destruct e'. simpl in e. destruct e. apply id_refl. Defined.
 
  Lemma simplification_sigma1_dep_dep@{i j} {A : Type@{i}} {P : A -> Type@{i}}
   (p q : A) (x : P p) (y : P q) {B : Id (p, x) (q, y) -> Type@{j}} :
-  (forall e' : Id p q, forall e : Id (@Id_rect A p P x q e') y, B (pack_sigma e' e)) ->
+  (forall e' : Id p q, forall e : Id (@Id_rew A p P x q e') y, B (pack_sigma e' e)) ->
   (forall e : Id ((p, x)) ((q, y)), B e).
 Proof.
   intros. revert X.
@@ -284,7 +272,7 @@ Arguments simplify_ind_pack_inv : simpl never.
 Definition simplified_ind_pack@{i j} {A : Type@{i}} {uip : UIP A}
   (B : A -> Type@{i}) (x : A) (p : B x) (G : p = p -> Type@{j})
   (t : opaque_ind_pack_inv G 1) :=
-  Id_rect _ G t _ (@pr2_uip_refl A uip B x p).
+  Id_rew _ G t _ (@pr2_uip_refl A uip B x p).
 Arguments simplified_ind_pack : simpl never.
 
 
@@ -349,7 +337,7 @@ Hint Unfold solution_left solution_right
   simplification_sigma1
   simplification_sigma1_dep
   apply_noConfusion
-  Id_rect_r Id_rec Id_ind Id_rew : equations.
+  Id_rect_r Id_rec Id_ind Id_rew Id_rew_r Id_case : equations.
 
 (** Makes these definitions disappear at extraction time *)
 Extraction Inline solution_right_dep solution_right solution_left solution_left_dep.
@@ -398,9 +386,10 @@ Ltac try_injection H := injection H.
 
 Ltac simplify_one_dep_elim :=
   match goal with
-    | [ |- context [eq_rect_r _ _ 1]] => simpl eq_rect_r
-    | [ |- context [eq_rect _ _ _ _ 1]] => simpl eq_rect
-    | [ |- context [@Id_rect_dep_r _ _ _ _ _ id_refl]] => simpl Id_rect_dep_r
+    | [ |- context [Id_rect _ _ _ _ _ 1]] => simpl Id_rect
+    | [ |- context [Id_rew _ _ _ _ 1]] => simpl Id_rew
+    | [ |- context [Id_rew_r _ _ _ _ 1]] => simpl Id_rew_r
+    | [ |- context [@Id_rect_r _ _ _ _ _ id_refl]] => simpl Id_rect_r
     | [ |- context [noConfusion_inv _]] => simpl noConfusion_inv
     | [ |- @opaque_ind_pack_inv ?A ?uip ?B ?x ?p _ ?G 1] =>
             apply (@simplify_ind_pack_inv A uip B x p G)

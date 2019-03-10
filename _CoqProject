@@ -57,8 +57,13 @@ theories/Prop/Constants.v
 theories/Prop/NoConfusion.v
 theories/Prop/FunctionalInduction.v
 theories/Prop/Loader.v
+theories/Prop/Telescopes.v
+theories/Prop/TransparentEquations.v
+theories/Prop/OpaqueEquations.v
+theories/Prop/Equations.v
 
 theories/Type/Logic.v
+theories/Type/FunctionalExtensionality.v
 theories/Type/Relation.v
 theories/Type/Relation_Properties.v
 theories/Type/WellFounded.v
@@ -66,14 +71,12 @@ theories/Type/Classes.v
 theories/Type/EqDec.v
 theories/Type/DepElim.v
 theories/Type/Tactics.v
+theories/Type/Subterm.v
 theories/Type/Constants.v
 theories/Type/EqDecInstances.v
 theories/Type/NoConfusion.v
 theories/Type/FunctionalInduction.v
 theories/Type/Loader.v
-
-theories/Telescopes.v
-theories/Equations.v
-theories/TransparentEquations.v
-theories/OpaqueEquations.v
-theories/Fin.v
+theories/Type/Telescopes.v
+theories/Type/WellFoundedInstances.v
+theories/Type/All.v

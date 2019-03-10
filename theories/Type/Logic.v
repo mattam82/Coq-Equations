@@ -47,6 +47,22 @@ Section IdTheory.
 
   Lemma id_trans {x y z : A} : x = y -> y = z -> x = z.
   Proof. destruct 1. destruct 1. apply 1. Defined.
+
+  Definition transport (x : A) (P : A -> Type) : P x -> forall y : A, Id x y -> P y.
+  Proof. intros Px y e. destruct e. exact Px. Defined.
+
+  Definition Id_rew := transport.
+
+  Definition Id_case (x : A) (P : A -> Type) : P x -> forall y : A, Id y x -> P y.
+  Proof. intros Px y e. eapply (transport x _ Px y (id_sym e)). Defined.
+
+  Definition Id_rew_r (x y : A) (P : A -> Type) : P y -> Id x y -> P x.
+  Proof. intros Px e. eapply (transport y _ Px x (id_sym e)). Defined.
+
+  Lemma Id_rect_r (x : A) (P : forall a, Id a x -> Type) (p : P x id_refl)
+        (y : A) (e : Id y x) : P y e.
+  Proof. destruct e. apply p. Defined.
+
 End IdTheory.
 
 Class HProp A := is_hprop : forall x y : A, x = y.

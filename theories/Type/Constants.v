@@ -27,8 +27,8 @@ Derive Signature for Id.
 
 Register Logic.Id as equations.equality.type.
 Register Logic.id_refl as equations.equality.refl.
-Register DepElim.Id_rect_r as equations.equality.case.
-Register DepElim.Id_rect_dep_r as equations.equality.elim.
+Register Logic.Id_case as equations.equality.case.
+Register Logic.Id_rect_r as equations.equality.elim.
 
 Register Classes.EqDec as equations.eqdec.class.
 Register Classes.dec_eq as equations.eqdec.dec_eq.

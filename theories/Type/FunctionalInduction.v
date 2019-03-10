@@ -165,7 +165,7 @@ Hint Extern 0 (_ = _) => reflexivity : funelim.
 Ltac specialize_hyps :=
   match goal with
   | [ H : forall _ : @Id _ ?x ?x, _ |- _ ] =>
-    specialize (H (@id_refl _ x)); unfold Id_rect_dep_r, Id_rect_r, Id_rect in H ; simpl in H
+    specialize (H (@id_refl _ x)); unfold Id_rew_r, Id_rect_r, Id_rect in H ; simpl in H
   end.
 
 Hint Extern 100 => specialize_hyps : funelim.

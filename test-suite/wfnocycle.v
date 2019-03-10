@@ -29,6 +29,8 @@ Hint Extern 30 (@NoCycle ?A (NoCycle_WellFounded ?R ?wfr) _ _) =>
   hnf ; typeclasses eauto with subterm_relation : typeclass_instances.
 
 
+
+
 Lemma nocycle_nat x : S x = x -> False.
   simplify ?.
 Qed.

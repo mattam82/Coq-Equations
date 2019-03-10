@@ -6,43 +6,36 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-From Coq Require Import Wf_nat Relations.
-From Coq Require Import Wellfounded Relation_Definitions.
-From Coq Require Import Relation_Operators Lexicographic_Product Wf_nat.
-From Coq Require Export Program.Wf FunctionalExtensionality.
+Set Warnings "-notation-overridden".
 
 From Equations Require Import Init Signature.
 Require Import Equations.Tactics.
-Require Import Equations.Prop.Classes Equations.Prop.EqDec
-        Equations.Prop.DepElim Equations.Prop.Constants.
+Require Import Equations.Type.Logic
+        Equations.Type.Classes Equations.Type.EqDec
+        Equations.Type.Relation
+        Equations.Type.FunctionalExtensionality
+        Equations.Type.WellFounded
+        Equations.Type.DepElim Equations.Type.Constants.
 
+Set Universe Polymorphism.
+
+Import Id_Notations.
 Generalizable Variables A R S B.
 
-Scheme Acc_dep := Induction for Acc Sort Prop.
-
 (** The fixpoint combinator associated to a well-founded relation,
-   just reusing the [Wf.Fix] combinator. *)
+   just reusing the [WellFounded.Fix] combinator. *)
 
 Definition FixWf `{WF:WellFounded A R} (P : A -> Type)
   (step : forall x : A, (forall y : A, R y x -> P y) -> P x) : forall x : A, P x :=
   Fix wellfounded P step.
-
-Lemma Acc_pi (A : Type) (R : relation A) i (x y : Acc R i) : x = y.
-Proof.
-  revert y.
-  induction x using Acc_dep.
-  intros. destruct y.
-  f_equal.
-  extensionality y. extensionality H'. apply H.
-Qed.
 
 Lemma FixWf_unfold `{WF : WellFounded A R} (P : A -> Type)
   (step : forall x : A, (forall y : A, R y x -> P y) -> P x) (x : A) :
   FixWf P step x = step x (fun y _ => FixWf P step y).
 Proof.
   intros. unfold FixWf, Fix. destruct wellfounded.
-  simpl. f_equal. extensionality y. extensionality h.
-  f_equal. apply Acc_pi.
+  simpl. apply ap. apply funext. intros y.
+  apply funext; intros h. apply ap. apply Acc_prop.
 Qed.
 
 Hint Rewrite @FixWf_unfold : Recursors.
@@ -53,7 +46,7 @@ Lemma FixWf_unfold_step :
     (step' : forall y : A, R y x -> P y),
     step' = (fun (y : A) (_ : R y x) => FixWf P step y) ->
     FixWf P step x = step x step'.
-Proof. intros. rewrite FixWf_unfold, H. reflexivity. Qed.
+Proof. intros * eq. rewrite FixWf_unfold. destruct eq. reflexivity. Qed.
 
 Hint Rewrite @FixWf_unfold_step : Recursors.
 
@@ -98,34 +91,32 @@ Hint Extern 40 => progress (cbv beta in * || simpl_let) : Below.
    to allow computations with functions defined by well-founded recursion.
    *)
 
-Lemma WellFounded_trans_clos `(WF : WellFounded A R) : WellFounded (clos_trans A R).
-Proof. apply wf_clos_trans. apply WF. Defined.
+Lemma WellFounded_trans_clos `(WF : WellFounded A R) : WellFounded (trans_clos R).
+Proof. apply wf_trans_clos. apply WF. Defined.
 
-Hint Extern 4 (WellFounded (clos_trans _ _)) => 
+Hint Extern 4 (WellFounded (trans_clos _)) =>
   apply @WellFounded_trans_clos : typeclass_instances.
 
-Lemma wf_MR {A R} `(WellFounded A R) {B} (f : B -> A) : WellFounded (MR R f).
-Proof. red. apply measure_wf. apply H. Defined.
+Instance wf_inverse_image {A R} `(WellFounded A R) {B} (f : B -> A) : WellFounded (inverse_image R f).
+Proof. red. apply wf_inverse_image. apply H. Defined.
 
-(* Do not apply [wf_MR] agressively, as Coq's unification could "invent" an [f] otherwise
-   to unify. *)
-Hint Extern 0 (WellFounded (MR _ _)) => apply @wf_MR : typeclass_instances.
+(* (* Do not apply [wf_MR] agressively, as Coq's unification could "invent" an [f] otherwise *)
+(*    to unify. *) *)
 
-Hint Extern 0 (MR _ _ _ _) => red : Below.
+(* Hint Extern 0 (WellFounded (inverse_image _ _)) => apply @wf_inverse_image : typeclass_instances. *)
 
-Instance lt_wf : WellFounded lt := lt_wf.
-Hint Resolve Arith.Lt.lt_n_Sn : Below.
+Hint Extern 0 (inverse_image _ _ _ _) => red : Below.
 
 (** We also add hints for transitive closure, not using [t_trans] but forcing to 
    build the proof by successive applications of the inner relation. *)
 
-Hint Resolve t_step : subterm_relation.
+Hint Resolve @t_step : subterm_relation.
 
-Lemma clos_trans_stepr A (R : relation A) (x y z : A) :
-  R y z -> clos_trans A R x y -> clos_trans A R x z.
-Proof. intros Hyz Hxy. exact (t_trans _ _ x y z Hxy (t_step _ _ _ _ Hyz)). Defined.
+Lemma trans_clos_stepr A (R : relation A) (x y z : A) :
+  R y z -> trans_clos R x y -> trans_clos R x z.
+Proof. intros Hyz Hxy. exact (t_trans _ x y z Hxy (t_step _ _ _ Hyz)). Defined.
 
-Hint Resolve clos_trans_stepr : subterm_relation.
+Hint Resolve @trans_clos_stepr : subterm_relation.
 
 (** The default tactic to build proofs of well foundedness of subterm relations. *)
 
@@ -135,7 +126,7 @@ Hint Extern 4 (_ = _) => reflexivity : solve_subterm.
 Hint Extern 10 => eapply_hyp : solve_subterm.
 
 Ltac solve_subterm := intros;
-  apply Transitive_Closure.wf_clos_trans;
+  apply WellFounded_trans_clos;
   red; intros; simp_sigmas; on_last_hyp ltac:(fun H => depind H); constructor;
   intros; simp_sigmas; on_last_hyp ltac:(fun HR => depind HR);
   simplify_dep_elim; try typeclasses eauto with solve_subterm.
@@ -145,7 +136,7 @@ Ltac solve_subterm := intros;
 Ltac rec_wf_fix recname kont :=
   let hyps := fresh in intros hyps;
   intro; on_last_hyp ltac:(fun x => rename x into recname;
-                           unfold MR at 1 in recname) ;
+                           unfold inverse_image at 1 in recname) ;
   destruct_right_sigma hyps; try curry recname; simpl in recname;
   kont recname.
 
@@ -157,7 +148,6 @@ Ltac rec_wf_fix recname kont :=
 (*   move recname at bottom ; try curry recname ; simpl in recname. *)
 
 (** Generalize an object [x], packing it in a sigma type if necessary. *)
-
 
 Ltac sigma_pack n t :=
   let packhyps := fresh "hypspack" in
@@ -185,7 +175,7 @@ Ltac rec_wf recname t kont :=
     match goal with
       [ |- forall (s : ?T) (s0 := @?b s), @?P s ] => 
       let fn := constr:(fun s : T => b s) in
-      let c := constr:(wellfounded (R:=MR _ fn)) in
+      let c := constr:(wellfounded (R:=inverse_image _ fn)) in
       let wf := constr:(FixWf (WF:=c)) in
       intros s _; revert s; refine (wf P _); simpl ;
       rec_wf_fix recname kont
@@ -200,7 +190,7 @@ Ltac rec_wf_rel_aux recname n t rel kont :=
     match goal with
       [ |- forall (s : ?T) (s0 := @?b s), @?P s ] => 
       let fn := constr:(fun s : T => b s) in
-      let c := constr:(wellfounded (R:=MR rel fn)) in
+      let c := constr:(wellfounded (R:=inverse_image rel fn)) in
       let wf := constr:(FixWf (WF:=c)) in
       intros s _; revert s; refine (wf P _); simpl ;
       rec_wf_fix recname kont
@@ -209,70 +199,11 @@ Ltac rec_wf_rel_aux recname n t rel kont :=
 Ltac rec_wf_rel recname x rel :=
   rec_wf_rel_aux recname 0 x rel ltac:(fun rechyp => idtac).
 
-(** Define non-dependent lexicographic products *)
-
-Arguments lexprod [A] [B] _ _.
-
-Section Lexicographic_Product.
-
-  Variable A : Type.
-  Variable B : Type.
-  Variable leA : A -> A -> Prop.
-  Variable leB : B -> B -> Prop.
-
-  Inductive lexprod : A * B -> A * B -> Prop :=
-    | left_lex :
-      forall (x x':A) (y:B) (y':B),
-        leA x x' -> lexprod (x, y) (x', y')
-    | right_lex :
-      forall (x:A) (y y':B),
-        leB y y' -> lexprod (x, y) (x, y').
-
-  Lemma acc_A_B_lexprod :
-    forall x:A, Acc leA x -> (well_founded leB) ->
-                forall y:B, Acc leB y -> Acc lexprod (x, y).
-  Proof.
-    induction 1 as [x _ IHAcc]; intros H2 y.
-    induction 1 as [x0 H IHAcc0]; intros.
-    apply Acc_intro.
-    destruct y as [x2 y1]; intro H6.
-    simple inversion H6; intro.
-    injection H1. injection H3. intros. subst. clear H1 H3.
-    apply IHAcc; auto with sets.
-    injection H1. intros; subst.
-    injection H3. intros; subst.
-    auto.
-  Defined.
-
-  Theorem wf_lexprod :
-    well_founded leA ->
-    well_founded leB -> well_founded lexprod.
-  Proof.
-    intros wfA wfB; unfold well_founded.
-    destruct a. 
-    apply acc_A_B_lexprod; auto with sets; intros.
-  Defined.
-
-End Lexicographic_Product.
-
-Instance wellfounded_lexprod A B R S `(wfR : WellFounded A R, wfS : WellFounded B S) : 
-  WellFounded (lexprod A B R S) := wf_lexprod A B R S wfR wfS.
-
-Hint Constructors lexprod : Below.
-
 (* NoCycle from well-foundedness. *)
-
-Lemma well_founded_irreflexive {A} {R : relation A}{wfR : WellFounded R} :
-  forall x y : A, R x y -> x = y -> False.
-Proof.
-  intros x y Ryy ->. red in wfR.
-  induction (wfR y) as [y accy IHy].
-  apply (IHy _ Ryy Ryy).
-Qed.
 
 Definition NoCycle_WellFounded {A} (R : relation A) (wfR : WellFounded R) : NoCyclePackage A :=
   {| NoCycle := R;
-     noCycle := well_founded_irreflexive |}.
+     noCycle := well_founded_irreflexive (wfR:=wfR) |}.
 Existing Instance NoCycle_WellFounded.
 
 Hint Extern 30 (@NoCycle ?A (NoCycle_WellFounded ?R ?wfr) _ _) =>

@@ -91,7 +91,7 @@ Lemma apply_noConfusion {A} {noconf : NoConfusionPackage A}
   (forall e : NoConfusion p q, B (noConfusion e)) -> (forall e : Id p q, B e).
 Proof.
   intros. generalize (noConfusion_retr e). destruct e.
-  intros <-. apply X.
+  intros eq. destruct eq. apply X.
 Defined.
 Extraction Inline apply_noConfusion.
 
