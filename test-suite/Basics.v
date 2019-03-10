@@ -7,7 +7,7 @@
 (**********************************************************************)
 
 Require Import Program Bvector List Relations.
-From Equations Require Import Equations Telescopes Signature.
+Require Import Equations.Equations.
 Require Import Utf8.
 
 Equations neg (b : bool) : bool :=

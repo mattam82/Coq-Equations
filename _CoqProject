@@ -60,7 +60,7 @@ theories/Prop/Loader.v
 theories/Prop/Telescopes.v
 theories/Prop/TransparentEquations.v
 theories/Prop/OpaqueEquations.v
-theories/Prop/Equations.v
+theories/Equations.v
 
 theories/Type/Logic.v
 theories/Type/FunctionalExtensionality.v

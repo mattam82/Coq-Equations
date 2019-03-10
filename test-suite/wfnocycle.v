@@ -1,14 +1,13 @@
 Set Warnings "-notation-overridden".
-From Equations Require Import Equations Fin.
+From Equations Require Import Equations.
 Require Import Omega Utf8 Arith Compare_dec List Lia.
 Require Import Relation_Operators.
 Arguments clos_trans [A].
 Import Sigma_Notations.
-Notation "'Σ' x .. y , P" := (sigma _ (fun x => .. (sigma _ (fun y => P)) ..))
-  (at level 200, x binder, y binder, right associativity,
-  format "'[  ' '[  ' Σ  x  ..  y ']' ,  '/' P ']'") : type_scope.
 Set Equations Transparent.
 Import Inaccessible_Notations.
+Require Import fin.
+
 Equations lift_fin {n} (k : nat) (f : fin n) : fin (S n) :=
   lift_fin 0 f := fs f;
   lift_fin (S k) fz := fz;
@@ -21,15 +20,12 @@ Local Open Scope equations_scope.
 Arguments map {A B}.
 (* end hide *)
 
-Require Import Subterm.
+Require Import Equations.Prop.Subterm.
 
 Derive Subterm for nat.
 
-Hint Extern 30 (@NoCycle ?A (NoCycle_WellFounded ?R ?wfr) _ _) =>
-  hnf ; typeclasses eauto with subterm_relation : typeclass_instances.
-
-
-
+(* Hint Extern 30 (@NoCycle ?A (NoCycle_WellFounded ?R ?wfr) _ _) => *)
+(*   hnf ; typeclasses eauto with subterm_relation : typeclass_instances. *)
 
 Lemma nocycle_nat x : S x = x -> False.
   simplify ?.
@@ -122,10 +118,10 @@ Inductive term : forall (ctx : list type), type -> Set :=
 | tvar {ctx} {τ} (x : τ ∈ ctx) : term ctx τ
 | tapp {ctx} {τ τ'} (f : term ctx (tarrow τ τ')) (a : term ctx τ) : term ctx τ
 | tlam {ctx} {τ τ'} (abs : term (τ :: ctx) τ') : term ctx (tarrow τ τ').
-Require Import Subterm.
 
 Derive Signature for term.
 Derive NoConfusionHom for term.
+
 (* FIXME subterm and non-uniform indices and universe issue... *)
 (*
 Derive Subterm for term.

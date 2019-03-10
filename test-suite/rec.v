@@ -6,14 +6,11 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 Require Import Program Utf8.
-From Equations Require Import Equations Telescopes.
+Require Import Equations.Equations.
 Require Import Bvector List Relations.
 Require Import Omega Arith Wf_nat.
-Require Import Subterm.
-Axiom cheat : forall {A}, A.
-Instance wf_nat : WellFounded lt := lt_wf.
-Hint Resolve lt_n_Sn : Below.
 Require Import Lia.
+
 Module RecRel.
 
   Equations id (n m : nat) : nat by wf n lt :=

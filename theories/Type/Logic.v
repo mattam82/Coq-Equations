@@ -53,14 +53,14 @@ Section IdTheory.
 
   Definition Id_rew := transport.
 
-  Definition Id_case (x : A) (P : A -> Type) : P x -> forall y : A, Id y x -> P y.
+  Definition Id_case {x : A} (P : A -> Type) : P x -> forall {y : A}, Id y x -> P y.
   Proof. intros Px y e. eapply (transport x _ Px y (id_sym e)). Defined.
 
-  Definition Id_rew_r (x y : A) (P : A -> Type) : P y -> Id x y -> P x.
+  Definition Id_rew_r {x y : A} (P : A -> Type) : P y -> Id x y -> P x.
   Proof. intros Px e. eapply (transport y _ Px x (id_sym e)). Defined.
 
-  Lemma Id_rect_r (x : A) (P : forall a, Id a x -> Type) (p : P x id_refl)
-        (y : A) (e : Id y x) : P y e.
+  Lemma Id_rect_r {x : A} (P : forall a, Id a x -> Type) (p : P x id_refl)
+        {y : A} (e : Id y x) : P y e.
   Proof. destruct e. apply p. Defined.
 
 End IdTheory.
