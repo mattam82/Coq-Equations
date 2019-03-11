@@ -100,8 +100,8 @@ End Sigma_Notations.
 Import Sigma_Notations.
 
 
-(** Forward reference for the NoConfusion tactic. *)
-Ltac noconf H := congruence || injection H; intros; subst.
+(** Forward reference for the no-confusion tactic. *)
+Ltac noconf H := fail "Equations.Init.noconf has not been bound yet".
 
 (** Forward reference for the simplifier of equalities *)
 Ltac simplify_equalities := fail "Equations.Init.simplify_equalities has not been bound yet".
