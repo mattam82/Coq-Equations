@@ -72,7 +72,7 @@ Ltac clear_non_secvar := repeat
 
 Ltac remember_let H :=
   lazymatch goal with
-  | [ H := ?body : ?type |- _ ] => generalize (1 : H = body)
+  | [ H := ?body : ?type |- _ ] => generalize (1%path : H = body)
   end.
 
 Ltac unfold_packcall packcall :=
@@ -165,7 +165,7 @@ Hint Extern 0 (_ = _) => reflexivity : funelim.
 Ltac specialize_hyps :=
   match goal with
   | [ H : forall _ : ?x = ?x, _ |- _ ] =>
-    specialize (H 1); unfold paths_rect, paths_rec, transport, paths_ind in H ; simpl in H
+    specialize (H 1%path); unfold paths_rect, paths_rec, transport, paths_ind in H ; simpl in H
   end.
 
 Hint Extern 100 => specialize_hyps : funelim.

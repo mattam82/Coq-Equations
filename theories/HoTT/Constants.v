@@ -26,8 +26,8 @@ Derive Signature for paths.
 
 Register Basics.Overture.paths as equations.equality.type.
 Register Basics.Overture.idpath as equations.equality.refl.
-Register Basics.Overture.paths_rec as equations.equality.case.
-Register Basics.Overture.paths_ind as equations.equality.elim.
+Register Equations.HoTT.Logic.transport_r as equations.equality.case.
+Register Equations.HoTT.Logic.paths_elim_r as equations.equality.elim.
 
 Register Classes.EqDec as equations.eqdec.class.
 Register Classes.dec_eq as equations.eqdec.dec_eq.
@@ -42,6 +42,12 @@ Register Empty_ind as equations.bottom.elim.
 Register Basics.Overture.Unit as equations.top.type.
 Register Basics.Overture.tt as equations.top.intro.
 Register Basics.Overture.Unit_ind as equations.top.elim.
+
+(* Should be in HoTT? *)
+Register Init.Datatypes.prod as core.prod.type.
+Register Init.Datatypes.pair as core.prod.intro.
+Register Init.Datatypes.fst as core.prod.proj1.
+Register Init.Datatypes.snd as core.prod.proj2.
 
 Register Init.Datatypes.prod as equations.conj.type.
 Register Init.Datatypes.pair as equations.conj.intro.
