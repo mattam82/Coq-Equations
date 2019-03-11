@@ -208,6 +208,8 @@ Equations hetero_veq {A} {n m : nat} (v : ilist A n) (w : ilist A m) : Type :=
   hetero_veq v w := Σ (e : n = m), e # v = w.
 Notation "x ~=~ y" := (hetero_veq x y) (at level 90).
 
+Notation "p # e" := (Logic.transport _ p e).
+
 Section hetero_veq.
   Context {A : Set}.
   Context {n m : nat}.

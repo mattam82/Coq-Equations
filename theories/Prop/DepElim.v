@@ -12,6 +12,7 @@ Require Import Coq.Program.Tactics.
 Require Export Equations.Init.
 Require Import Equations.Tactics.
 Require Import Equations.Signature.
+Require Import Equations.Prop.Logic.
 Require Import Equations.Prop.Classes.
 Require Import Equations.Prop.EqDec.
 
@@ -51,18 +52,10 @@ Ltac elim_ind p := elim_tac ltac:(fun p el => induction p using el) p.
 
 (** Lemmas used by the simplifier, mainly rephrasings of [eq_rect], [eq_ind]. *)
 
-Lemma solution_left : forall {A} {B : A -> Type} (t : A), B t -> (forall x, x = t -> B x).
-Proof. intros A B t H x eq. symmetry in eq. destruct eq. apply H. Defined.
+Notation "p # t" := (transport _ p t) (right associativity, at level 65) : equations_scope.
 
-Scheme eq_rect_dep := Induction for eq Sort Type.
-
-Notation "p # t" := (eq_rect _ _ t _ p) (right associativity, at level 65) : equations_scope.
-
-Lemma eq_rect_dep_r {A} (x : A) (P : forall a, a = x -> Type) (p : P x eq_refl)
-      (y : A) (e : y = x) : P y e.
-Proof. destruct e. apply p. Defined.
-
-Notation "p [ P ] # t" := (eq_rect_dep_r _ P t _ p) (right associativity, at level 65) : equations_scope.
+Definition solution_left {A} {B : A -> Type} (t : A) (p : B t) (x : A) (e : x = t) : B x :=
+  eq_sym e # p.
 
 Lemma eq_sym_invol {A} (x y : A) (e : x = y) : eq_sym (eq_sym e) = e.
 Proof. destruct e. reflexivity. Defined.
@@ -82,8 +75,8 @@ Proof.
   destruct eq. exact H.
 Defined.
 
-Lemma solution_right : forall {A} {B : A -> Type} (t : A), B t -> (forall x, t = x -> B x).
-Proof. intros A B t H x eq. destruct eq. apply H. Defined.
+Definition solution_right {A} {P : A -> Type} (t : A) (p : P t) x (e : t = x) : P x :=
+  transport P e p.
 
 Lemma solution_right_dep : forall {A} (t : A) {B : forall (x : A), (t = x -> Type)},
     B t eq_refl -> (forall x (Heq : t = x), B x Heq).
@@ -186,7 +179,7 @@ Defined.
 Polymorphic Lemma pr2_inv_uip@{i} {A : Type@{i}}
             {P : A -> Type@{i}} {x : A} {y y' : P x} :
   y = y' -> sigmaI@{i} P x y = sigmaI@{i} P x y'.
-Proof. exact (solution_right (B:=fun y' => (x, y) = (x, y')) y eq_refl y'). Defined.
+Proof. exact (solution_right (P:=fun y' => (x, y) = (x, y')) y eq_refl y'). Defined.
 
 Polymorphic Lemma pr2_uip@{i} {A : Type@{i}}
             {E : UIP A} {P : A -> Type@{i}} {x : A} {y y' : P x} :
@@ -403,7 +396,9 @@ Ltac simplify_one_dep_elim :=
   match goal with
     | [ |- context [eq_rect_r _ _ eq_refl]] => progress simpl eq_rect_r
     | [ |- context [eq_rect _ _ _ _ eq_refl]] => progress simpl eq_rect
-    | [ |- context [@eq_rect_dep_r _ _ _ _ _ eq_refl]] => progress simpl eq_rect_dep_r
+    | [ |- context [transport _ eq_refl _]] => progress simpl transport
+    | [ |- context [@eq_elim _ _ _ _ _ eq_refl]] => progress simpl eq_rect
+    | [ |- context [@eq_elim_r _ _ _ _ _ eq_refl]] => progress simpl eq_elim_r
     | [ |- context [noConfusion_inv _]] => progress simpl noConfusion_inv
     | [ |- @opaque_ind_pack_eq_inv ?A ?uip ?B ?x ?p _ ?G eq_refl] =>
             apply (@simplify_ind_pack_inv A uip B x p G)

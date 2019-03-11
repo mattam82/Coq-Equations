@@ -12,8 +12,6 @@ module type EQREFS = sig
   (* Equality type. *)
   val eq : Names.inductive Lazy.t
   val eq_refl : Names.constructor Lazy.t
-  val eq_rect : Names.Constant.t Lazy.t
-  val eq_rect_r : Names.Constant.t Lazy.t
   (* Decidable equality typeclass. *)
   val uip : Names.Constant.t Lazy.t
   (* Logic types. *)
@@ -64,8 +62,6 @@ module EqRefs : EQREFS = struct
 
   let eq = init_inductive logic_eq_type
   let eq_refl = init_constructor logic_eq_refl
-  let eq_rect = init_constant logic_eq_case
-  let eq_rect_r = init_constant logic_eq_elim
   let uip = init_constant logic_uip_class
   let zero = init_inductive logic_bot
   let one = init_inductive logic_top

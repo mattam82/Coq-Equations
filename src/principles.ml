@@ -417,10 +417,10 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
       let transport = get_efresh logic_eq_case evd in
       let transport ty x y eq c cty =
         mkApp (transport,
-               [| ty; x;
+               [| ty;
                   mkLambda (Name (Id.of_string "abs"), ty,
                             Termops.replace_term !evd (Vars.lift 1 x) (mkRel 1) (Vars.lift 1 cty));
-                  c; y; eq (* equality *) |])
+                  x; y; eq; (* equality *) c |])
       in
       let lenargs, pargs, subst =
         match argsinfo with
@@ -495,9 +495,9 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
               if noccurn !evd 1 pred' then
                 let transport = get_efresh logic_eq_case evd in
                 mkApp (transport,
-                       [| lift lenargs ty; lift lenargs rel;
+                       [| lift lenargs ty;
                           mkLambda (Name (Id.of_string "refine"), lift lenargs ty, subst1 mkProp pred');
-                          acc; (lift lenargs c); mkRel 1 (* equality *) |])
+                          lift lenargs rel; lift lenargs c; mkRel 1 (* equality *); acc |])
 
               else
                 let transportd = get_efresh logic_eq_elim evd in
