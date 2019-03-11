@@ -1,7 +1,11 @@
 Require Import Equations.
 Require Import Vector.
-From Equations Require Import Fin.
+Require Import fin.
 Notation vector := Vector.t.
+Arguments Vector.nil {A}.
+Arguments Vector.cons {A} _ {n}.
+Notation vnil := Vector.nil.
+Notation vcons := Vector.cons.
 
 Fail Equations nth {A n} (v : vector A n) (f : fin n) : A :=
 nth (cons x v) ?(fz) := x;

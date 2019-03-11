@@ -1,7 +1,10 @@
-makefiles: test-suite/Makefile
+makefiles: test-suite/Makefile examples/Makefile
 
 test-suite/Makefile: test-suite/_CoqProject
-		     cd test-suite && coq_makefile -f _CoqProject -o Makefile
+	cd test-suite && coq_makefile -f _CoqProject -o Makefile
+
+examples/Makefile: examples/_CoqProject
+	cd examples && coq_makefile -f _CoqProject -o Makefile
 
 pre-all:: makefiles
 

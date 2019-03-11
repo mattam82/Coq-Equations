@@ -1,3 +1,4 @@
+(* begin hide *)
 (**********************************************************************)
 (* Equations                                                          *)
 (* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
@@ -5,6 +6,7 @@
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
+(* end hide *)
 (** * HoTT-light
  ** A lightweight version of the Homotopy Type Theory library prelude. *)
 Set Warnings "-notation-overridden".

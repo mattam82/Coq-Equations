@@ -473,7 +473,7 @@ Definition transpose {A m n} : mat A m n -> mat A n m :=
   (λ m', vzip (λ a, cons a))
   (vmake n nil).
 
-Require Import Equations.Fin.
+Require Import Examples.Fin.
 
 Generalizable All Variables.
 

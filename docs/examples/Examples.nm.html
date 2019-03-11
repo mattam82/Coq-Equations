@@ -1,0 +1,148 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link href="coqdoc.css" rel="stylesheet" type="text/css" />
+<title>Examples.nm</title>
+</head>
+
+<body>
+
+<div id="page">
+
+<div id="header">
+</div>
+
+<div id="main">
+
+<div class="code">
+</div>
+
+<div class="doc">
+Proving Termination of Normalization Functions for Conditional Expressions, L. Paulson 
+</div>
+<div class="code">
+<span class="id" title="keyword">From</span> <span class="id" title="keyword">Equations</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="keyword">Equations</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="var">List</span> <span class="id" title="var">Program.Syntax</span> <span class="id" title="var">Arith</span> <span class="id" title="var">Lia</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Inductive</span> <span class="id" title="var">exp</span> := <span class="id" title="var">At</span> | <span class="id" title="var">If</span> : <span class="id" title="var">exp</span> → <span class="id" title="var">exp</span> → <span class="id" title="var">exp</span> → <span class="id" title="var">exp</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">exp_size</span> : <span class="id" title="var">exp</span> → <span class="id" title="var">nat</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="var">exp_size</span> <span class="id" title="var">At</span> := 1;<br/>
+&nbsp;&nbsp;<span class="id" title="var">exp_size</span> (<span class="id" title="var">If</span> <span class="id" title="var">e1</span> <span class="id" title="var">e2</span> <span class="id" title="var">e3</span>) := <span class="id" title="var">exp_size</span> <span class="id" title="var">e1</span> × (1 + <span class="id" title="var">exp_size</span> <span class="id" title="var">e2</span> + <span class="id" title="var">exp_size</span> <span class="id" title="var">e3</span>).<br/>
+<span class="id" title="keyword">Transparent</span> <span class="id" title="var">exp_size</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="var">Omega</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">exp_size_pos</span> (<span class="id" title="var">x</span> : <span class="id" title="var">exp</span>) : (0 &lt; <span class="id" title="var">exp_size</span> <span class="id" title="var">x</span>)%<span class="id" title="var">nat</span>.<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="var">funelim</span> (<span class="id" title="var">exp_size</span> <span class="id" title="var">x</span>); <span class="id" title="tactic">auto</span>; <span class="id" title="tactic">try</span> <span class="id" title="var">lia</span>. <span class="id" title="tactic">apply</span> <span class="id" title="var">Nat.mul_pos_pos</span>; <span class="id" title="tactic">auto</span>. <span class="id" title="var">lia</span>. <span class="id" title="keyword">Qed</span>.<br/>
+<span class="id" title="keyword">Hint Resolve</span> <span class="id" title="var">exp_size_pos</span> : <span class="id" title="var">core</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Set</span> <span class="id" title="var">Program</span> <span class="id" title="var">Mode</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">size_1</span>:<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span> : <span class="id" title="var">exp</span>, <span class="id" title="var">exp_size</span> <span class="id" title="var">y</span> &lt; <span class="id" title="var">S</span> (<span class="id" title="var">exp_size</span> <span class="id" title="var">y</span> + <span class="id" title="var">exp_size</span> <span class="id" title="var">z</span> + 0).<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span>. <span class="id" title="var">lia</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">size_2</span>:<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span> : <span class="id" title="var">exp</span>, <span class="id" title="var">exp_size</span> <span class="id" title="var">z</span> &lt; <span class="id" title="var">S</span> (<span class="id" title="var">exp_size</span> <span class="id" title="var">y</span> + <span class="id" title="var">exp_size</span> <span class="id" title="var">z</span> + 0).<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span>. <span class="id" title="var">lia</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">size_3</span> <span class="id" title="var">u</span> <span class="id" title="var">v</span> <span class="id" title="var">w</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span> : <span class="id" title="var">exp_size</span> (<span class="id" title="var">If</span> <span class="id" title="var">v</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span>) &lt; <span class="id" title="var">exp_size</span> (<span class="id" title="var">If</span> (<span class="id" title="var">If</span> <span class="id" title="var">u</span> <span class="id" title="var">v</span> <span class="id" title="var">w</span>) <span class="id" title="var">y</span> <span class="id" title="var">z</span>).<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">simp</span> <span class="id" title="var">exp_size</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (1 + <span class="id" title="var">exp_size</span> <span class="id" title="var">y</span> + <span class="id" title="var">exp_size</span> <span class="id" title="var">z</span> &gt; 0) <span class="id" title="tactic">by</span> <span class="id" title="var">lia</span>. <span class="id" title="var">revert</span> <span class="id" title="var">H</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">generalize</span> (1 + <span class="id" title="var">exp_size</span> <span class="id" title="var">y</span> + <span class="id" title="var">exp_size</span> <span class="id" title="var">z</span>). <span class="id" title="tactic">intros</span> <span class="id" title="var">n</span> <span class="id" title="var">Hn</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">generalize</span> (<span class="id" title="var">exp_size_pos</span> <span class="id" title="var">u</span>). <span class="id" title="tactic">intros</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> 2 <span class="id" title="var">Nat.mul_add_distr_l</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">nia</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">size_4</span> <span class="id" title="var">u</span> <span class="id" title="var">v</span> <span class="id" title="var">w</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span> : <span class="id" title="var">exp_size</span> (<span class="id" title="var">If</span> <span class="id" title="var">w</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span>) &lt; <span class="id" title="var">exp_size</span> (<span class="id" title="var">If</span> (<span class="id" title="var">If</span> <span class="id" title="var">u</span> <span class="id" title="var">v</span> <span class="id" title="var">w</span>) <span class="id" title="var">y</span> <span class="id" title="var">z</span>).<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">simp</span> <span class="id" title="var">exp_size</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (1 + <span class="id" title="var">exp_size</span> <span class="id" title="var">y</span> + <span class="id" title="var">exp_size</span> <span class="id" title="var">z</span> &gt; 0) <span class="id" title="tactic">by</span> <span class="id" title="var">lia</span>. <span class="id" title="var">revert</span> <span class="id" title="var">H</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">generalize</span> (1 + <span class="id" title="var">exp_size</span> <span class="id" title="var">y</span> + <span class="id" title="var">exp_size</span> <span class="id" title="var">z</span>). <span class="id" title="tactic">intros</span> <span class="id" title="var">n</span> <span class="id" title="var">Hn</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">generalize</span> (<span class="id" title="var">exp_size_pos</span> <span class="id" title="var">u</span>). <span class="id" title="tactic">intros</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> 2 <span class="id" title="var">Nat.mul_add_distr_l</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">nia</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">size_5</span>:<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <span class="id" title="var">u</span> <span class="id" title="var">v</span> <span class="id" title="var">w</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span> <span class="id" title="var">x</span> : <span class="id" title="var">exp</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">exp_size</span> <span class="id" title="var">x</span> ≤ <span class="id" title="var">exp_size</span> (<span class="id" title="var">If</span> <span class="id" title="var">v</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span>) →<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <span class="id" title="var">x0</span> : <span class="id" title="var">exp</span>, <span class="id" title="var">exp_size</span> <span class="id" title="var">x0</span> ≤ <span class="id" title="var">exp_size</span> (<span class="id" title="var">If</span> <span class="id" title="var">w</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span>) → <span class="id" title="var">exp_size</span> (<span class="id" title="var">If</span> <span class="id" title="var">u</span> <span class="id" title="var">x</span> <span class="id" title="var">x0</span>) &lt; <span class="id" title="var">exp_size</span> (<span class="id" title="var">If</span> (<span class="id" title="var">If</span> <span class="id" title="var">u</span> <span class="id" title="var">v</span> <span class="id" title="var">w</span>) <span class="id" title="var">y</span> <span class="id" title="var">z</span>).<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">u</span> <span class="id" title="var">v</span> <span class="id" title="var">w</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span> <span class="id" title="var">x</span> <span class="id" title="var">l</span> <span class="id" title="var">x0</span> <span class="id" title="var">l0</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">simp</span> <span class="id" title="var">exp_size</span>. <span class="id" title="tactic">rewrite</span> &lt;- <span class="id" title="var">Nat.mul_assoc</span>. <span class="id" title="tactic">apply</span> <span class="id" title="var">mult_lt_compat_l</span>; <span class="id" title="tactic">auto</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <span class="id" title="var">Nat.le_lt_trans</span> <span class="id" title="keyword">with</span> (1 + <span class="id" title="var">exp_size</span> (<span class="id" title="var">If</span> <span class="id" title="var">v</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span>) + <span class="id" title="var">exp_size</span> (<span class="id" title="var">If</span> <span class="id" title="var">w</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span>)). <span class="id" title="var">lia</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">simp</span> <span class="id" title="var">exp_size</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">rewrite</span> <span class="id" title="var">Nat.mul_add_distr_r</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">generalize</span> (<span class="id" title="var">exp_size_pos</span> <span class="id" title="var">y</span>). <span class="id" title="var">lia</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">size_6</span>:<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <span class="id" title="var">u</span> <span class="id" title="var">v</span> <span class="id" title="var">w</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span> <span class="id" title="var">x</span> : <span class="id" title="var">exp</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">exp_size</span> <span class="id" title="var">x</span> ≤ <span class="id" title="var">exp_size</span> (<span class="id" title="var">If</span> <span class="id" title="var">v</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span>) →<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <span class="id" title="var">x0</span> : <span class="id" title="var">exp</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">exp_size</span> <span class="id" title="var">x0</span> ≤ <span class="id" title="var">exp_size</span> (<span class="id" title="var">If</span> <span class="id" title="var">w</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span>) →<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <span class="id" title="var">x1</span> : <span class="id" title="var">exp</span>, <span class="id" title="var">exp_size</span> <span class="id" title="var">x1</span> ≤ <span class="id" title="var">exp_size</span> (<span class="id" title="var">If</span> <span class="id" title="var">u</span> <span class="id" title="var">x</span> <span class="id" title="var">x0</span>) → <span class="id" title="var">exp_size</span> <span class="id" title="var">x1</span> ≤ <span class="id" title="var">exp_size</span> (<span class="id" title="var">If</span> (<span class="id" title="var">If</span> <span class="id" title="var">u</span> <span class="id" title="var">v</span> <span class="id" title="var">w</span>) <span class="id" title="var">y</span> <span class="id" title="var">z</span>).<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">u</span> <span class="id" title="var">v</span> <span class="id" title="var">w</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span> <span class="id" title="var">x</span> <span class="id" title="var">l</span> <span class="id" title="var">x0</span> <span class="id" title="var">l0</span> <span class="id" title="var">x1</span> <span class="id" title="var">l1</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">simp</span> <span class="id" title="var">exp_size</span>. <span class="id" title="tactic">transitivity</span> (<span class="id" title="var">exp_size</span> (<span class="id" title="var">If</span> <span class="id" title="var">u</span> <span class="id" title="var">x</span> <span class="id" title="var">x0</span>)); <span class="id" title="tactic">auto</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">simp</span> <span class="id" title="var">exp_size</span>. <span class="id" title="var">simp</span> <span class="id" title="var">exp_size</span> <span class="id" title="tactic">in</span> ×. <span class="id" title="tactic">rewrite</span> &lt;- <span class="id" title="var">Nat.mul_assoc</span>. <span class="id" title="tactic">apply</span> <span class="id" title="var">mult_le_compat_l</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">transitivity</span> (1 + (<span class="id" title="var">exp_size</span> <span class="id" title="var">v</span> × (1 + <span class="id" title="var">exp_size</span> <span class="id" title="var">y</span> + <span class="id" title="var">exp_size</span> <span class="id" title="var">z</span>)) + (<span class="id" title="var">exp_size</span> <span class="id" title="var">w</span> × (1 + <span class="id" title="var">exp_size</span> <span class="id" title="var">y</span> + <span class="id" title="var">exp_size</span> <span class="id" title="var">z</span>))).<br/>
+&nbsp;&nbsp;<span class="id" title="var">lia</span>. <span class="id" title="var">lia</span>.<br/>
+<span class="id" title="keyword">Defined</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Equations</span>? <span class="id" title="var">nm_dep</span> (<span class="id" title="var">e</span> : <span class="id" title="var">exp</span>) : { <span class="id" title="var">e'</span> : <span class="id" title="var">exp</span> | <span class="id" title="var">exp_size</span> <span class="id" title="var">e'</span> ≤ <span class="id" title="var">exp_size</span> <span class="id" title="var">e</span> } <span class="id" title="tactic">by</span> <span class="id" title="keyword">wf</span> (<span class="id" title="var">exp_size</span> <span class="id" title="var">e</span>) <span class="id" title="var">lt</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="var">nm_dep</span> <span class="id" title="var">At</span> := <span class="id" title="var">At</span>;<br/>
+&nbsp;&nbsp;<span class="id" title="var">nm_dep</span> (<span class="id" title="var">If</span> <span class="id" title="var">At</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span>) := <span class="id" title="var">If</span> <span class="id" title="var">At</span> (<span class="id" title="var">nm_dep</span> <span class="id" title="var">y</span>) (<span class="id" title="var">nm_dep</span> <span class="id" title="var">z</span>);<br/>
+&nbsp;&nbsp;<span class="id" title="var">nm_dep</span> (<span class="id" title="var">If</span> (<span class="id" title="var">If</span> <span class="id" title="var">u</span> <span class="id" title="var">v</span> <span class="id" title="var">w</span>) <span class="id" title="var">y</span> <span class="id" title="var">z</span>) <span class="id" title="keyword">with</span> <span class="id" title="var">nm_dep</span> (<span class="id" title="var">If</span> <span class="id" title="var">v</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span>), <span class="id" title="var">nm_dep</span> (<span class="id" title="var">If</span> <span class="id" title="var">w</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span>) :=<br/>
+&nbsp;&nbsp;{ | <span class="id" title="var">exist</span> <span class="id" title="var">_</span> <span class="id" title="var">t</span> <span class="id" title="var">Ht</span> | <span class="id" title="var">exist</span> <span class="id" title="var">_</span> <span class="id" title="var">e</span> <span class="id" title="var">He</span> := <span class="id" title="var">nm_dep</span> (<span class="id" title="var">If</span> <span class="id" title="var">u</span> <span class="id" title="var">t</span> <span class="id" title="var">e</span>) }.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="var">size_1</span>. <span class="id" title="tactic">apply</span> <span class="id" title="var">size_2</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">all</span>:<span class="id" title="tactic">repeat</span> <span class="id" title="tactic">destruct</span> <span class="id" title="var">nm_dep</span>; <span class="id" title="tactic">simpl</span>; <span class="id" title="tactic">try</span> <span class="id" title="tactic">solve</span> [<span class="id" title="var">simp</span> <span class="id" title="var">exp_size</span>; <span class="id" title="tactic">simpl</span>; <span class="id" title="tactic">try</span> <span class="id" title="var">lia</span>].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="var">size_3</span>. <span class="id" title="tactic">apply</span> <span class="id" title="var">size_4</span>. <span class="id" title="tactic">apply</span> <span class="id" title="var">size_5</span>; <span class="id" title="tactic">auto</span>. <span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> ×. <span class="id" title="tactic">eapply</span> <span class="id" title="var">size_6</span>; <span class="id" title="tactic">eauto</span>.<br/>
+<span class="id" title="keyword">Defined</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">nm</span> (<span class="id" title="var">e</span> : <span class="id" title="var">exp</span>) : <span class="id" title="var">exp</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="var">nm</span> <span class="id" title="var">At</span> := <span class="id" title="var">At</span>;<br/>
+&nbsp;&nbsp;<span class="id" title="var">nm</span> (<span class="id" title="var">If</span> <span class="id" title="var">At</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span>) := <span class="id" title="var">If</span> <span class="id" title="var">At</span> (<span class="id" title="var">nm_dep</span> <span class="id" title="var">y</span>) (<span class="id" title="var">nm_dep</span> <span class="id" title="var">z</span>);<br/>
+&nbsp;&nbsp;<span class="id" title="var">nm</span> (<span class="id" title="var">If</span> (<span class="id" title="var">If</span> <span class="id" title="var">u</span> <span class="id" title="var">v</span> <span class="id" title="var">w</span>) <span class="id" title="var">y</span> <span class="id" title="var">z</span>) := <span class="id" title="var">nm_dep</span> (<span class="id" title="var">If</span> <span class="id" title="var">u</span> (<span class="id" title="var">nm_dep</span> (<span class="id" title="var">If</span> <span class="id" title="var">v</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span>)) (<span class="id" title="var">nm_dep</span> (<span class="id" title="var">If</span> <span class="id" title="var">w</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span>))).<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">nm_eq</span> <span class="id" title="var">e</span> : <span class="id" title="var">nm</span> <span class="id" title="var">e</span> = <span class="id" title="var">nm_dep</span> <span class="id" title="var">e</span>.<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="var">funelim</span> (<span class="id" title="var">nm_dep</span> <span class="id" title="var">e</span>); <span class="id" title="var">simp</span> <span class="id" title="var">nm</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">rewrite</span> <span class="id" title="var">Heq</span>, <span class="id" title="var">Heq0</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">reflexivity</span>. <span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Extraction</span> <span class="id" title="var">nm_dep</span>.<br/>
+<span class="id" title="keyword">Transparent</span> <span class="id" title="var">nm</span>.<br/>
+<span class="id" title="keyword">Eval</span> <span class="id" title="keyword">vm_compute</span> <span class="id" title="tactic">in</span> <span class="id" title="var">nm</span> (<span class="id" title="var">If</span> (<span class="id" title="var">If</span> <span class="id" title="var">At</span> <span class="id" title="var">At</span> <span class="id" title="var">At</span>) <span class="id" title="var">At</span> <span class="id" title="var">At</span>).<br/>
+</div>
+<hr/>This page has been generated by <a href="http://coq.inria.fr/">coqdoc</a>
+</div>
+
+</div>
+
+</body>
+</html>

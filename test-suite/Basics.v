@@ -569,13 +569,23 @@ Definition transpose {A m n} : mat A m n -> mat A n m :=
 (*   (e : vector (vector A 0) n) v : vfold_right f (vmake n Vnil) v =  *)
 (* Typeclasses eauto :=. *)
 
-Require Import Equations.Fin.
+Require Import fin.
 
 Generalizable All Variables.
 
 Opaque vmap. Opaque vtail. Opaque nth.
 
-Lemma nth_vmap `(v : vector A n) `(fn : A -> B) (f : fin n) : nth (vmap fn v) f = fn (nth v f).
+Require Vectors.Vector.
+Arguments Vector.nil {A}.
+Arguments Vector.cons {A} _ {n}.
+Notation vnil := Vector.nil.
+Notation vcons := Vector.cons.
+
+Equations nth {A} {n} (v : Vector.t A n) (f : fin n) : A :=
+nth (vcons a v) fz := a ;
+nth (vcons a v) (fs f) := nth v f.
+
+Lemma nth_vmap {A B n} (v : vector A n) (fn : A -> B) (f : fin n) : nth (vmap fn v) f = fn (nth v f).
 Proof. revert B fn. funelim (nth v f); intros; now simp nth vmap. Qed.
 
 Lemma nth_vtail `(v : vector A (S n)) (f : fin n) : nth (vtail v) f = nth v (fs f).
