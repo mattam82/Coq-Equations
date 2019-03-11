@@ -844,9 +844,10 @@ let wf_fix env evars subst sign arity term rel =
   in
   let cterm = it_mkLambda_or_LetIn cterm sign in
   (* let cterm = substl subst cterm in *)
+  let sigma, sort = Evd.fresh_sort_in_family sigma (Lazy.force Equations_common.logic_sort) in
   let sigma, crel =
     let relty =
-      (mkProd (Anonymous, carrier, mkProd (Anonymous, lift 1 carrier, mkProp)))
+      (mkProd (Anonymous, carrier, mkProd (Anonymous, lift 1 carrier, mkSort sort)))
     in
     match rel with
     | Some rel -> interp_casted_constr_evars env sigma rel relty
