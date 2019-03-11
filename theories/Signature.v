@@ -28,10 +28,6 @@ Extraction Inline signature signature_pack.
 
 Ltac destruct_right_sigma H :=
   match type of H with
-  | @sigma _ (fun x => unit) =>
-    let ph := fresh in
-    destruct H as [x ph];
-      cbn [pr1 pr2] in * |- *; try clear ph
   | @sigma _ (fun x => _) =>
     destruct H as [x H]; destruct_right_sigma H
   | @sigma _ _ => destruct H as [x H];
