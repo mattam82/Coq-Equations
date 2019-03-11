@@ -529,7 +529,10 @@ let deletion ~(force:bool) : simplification_fun =
       let env = push_rel_context ctx env in
       raise (CannotSimplify (str
                                "[deletion] Cannot simplify without UIP on type " ++
-                             Printer.pr_econstr_env env !evd tA))
+                             Printer.pr_econstr_env env !evd tA ++
+                             (if not !Equations_common.simplify_withUIP then
+                                str " and the 'Equations With UIP' flag is off"
+                              else mt())))
 
 let solution ~(dir:direction) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
