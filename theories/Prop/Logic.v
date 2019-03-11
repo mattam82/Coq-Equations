@@ -1,6 +1,10 @@
 From Equations Require Import Init.
 From Coq Require Import Extraction Relation_Definitions.
 
+(** Extract sigma to a (non-dependent) pair in OCaml *)
+
+Extract Inductive sigma => "( * )" ["(,)"].
+
 (** Notation for the single element of [x = x]. *)
 
 Arguments eq_refl {A} {x}.

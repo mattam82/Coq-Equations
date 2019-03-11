@@ -7,8 +7,8 @@
 (**********************************************************************)
 
 Require Import Coq.Unicode.Utf8_core.
-From Coq Require Import Extraction.
 
+Declare ML Module "extraction_plugin".
 Declare ML Module "equations_plugin".
 
 (** A notation scope for equations declarations.
@@ -76,8 +76,6 @@ Polymorphic Cumulative Record sigma@{i} {A : Type@{i}} {B : A -> Type@{i}} : Typ
 Unset Primitive Projections.
 Arguments sigma {A} B.
 Arguments sigmaI {A} B pr1 pr2.
-
-Extract Inductive sigma => "( * )" ["(,)"].
 
 Set Warnings "-notation-overridden".
 
