@@ -116,10 +116,6 @@ Ltac do_nat n tac :=
     | S ?n' => tac ; do_nat n' tac
   end.
 
-(** The [pi] tactic solves an equality between applications of the same function *)
-
-Ltac pi := repeat progress (f_equal || reflexivity).
-
 (** Internally used constants *)
 
 Register block as equations.internal.block.
