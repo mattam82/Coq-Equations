@@ -7,8 +7,8 @@
 (**********************************************************************)
 
 Set Warnings "-notation-overridden".
-Require Import Equations.Tactics Equations.Type.Logic Equations.Type.DepElim
-        Equations.Type.WellFounded Equations.Type.FunctionalInduction.
+Require Import Equations.Tactics Equations.Type.Logic Equations.Type.DepElim Equations.Type.EqDec
+        Equations.Type.Subterm Equations.Type.WellFounded Equations.Type.FunctionalInduction.
 
 Ltac Equations.Init.simpl_equations ::= Equations.Type.DepElim.simpl_equations.
 Ltac Equations.Init.simplify_equalities ::= Equations.Type.DepElim.simplify_dep_elim.
@@ -32,7 +32,8 @@ Ltac solve_subterm := intros;
   simplify_dep_elim; try typeclasses eauto with solve_subterm.
 
 Ltac Equations.Init.solve_subterm ::= solve_subterm.
-
+Ltac Equations.Init.solve_eqdec ::= eqdec_proof.
+Ltac Equations.Init.unfold_recursor ::= Equations.Type.Subterm.unfold_recursor.
 
 Ltac solve_noconf_prf := intros;
   on_last_hyp ltac:(fun id => destruct id) ; (* Subtitute a = b *)
