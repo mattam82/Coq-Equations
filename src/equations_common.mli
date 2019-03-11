@@ -137,9 +137,7 @@ val e_new_global : esigma -> Names.GlobRef.t -> constr
 (** {6 Linking to Coq} *)
 
 val global_reference : Id.t -> Names.GlobRef.t
-(* Unsafe, avoid *)
-val constr_of_ident : Id.t -> constr
-  
+
 val get_class : Evd.evar_map -> constr -> Typeclasses.typeclass * EConstr.EInstance.t
 
 val make_definition :
@@ -252,7 +250,7 @@ val logic_tele_forall_unpack : lazy_ref
 val coq_zero : lazy_ref
 val coq_succ : lazy_ref
 val coq_nat : lazy_ref
-val coq_nat_of_int : int -> Constr.t
+val coq_nat_of_int : Evd.evar_map -> int -> Evd.evar_map * EConstr.t
 val int_of_coq_nat : Constr.t -> int
 
 val coq_fix_proto : lazy_ref

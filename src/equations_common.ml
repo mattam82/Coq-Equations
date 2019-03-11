@@ -186,11 +186,6 @@ let find_constant s evd = e_new_global evd (equations_lib_ref s)
 let global_reference id =
   Smartlocate.global_of_extended_global (Nametab.locate_extended (qualid_of_ident id))
 
-let constr_of_global = UnivGen.constr_of_monomorphic_global
-
-let constr_of_ident id =
-  EConstr.of_constr (constr_of_global (Nametab.locate (qualid_of_ident id)))
-
 let e_type_of env evd t =
   let evm, t = Typing.type_of ~refresh:false env !evd t in
   evd := evm; t
@@ -240,9 +235,12 @@ let coq_zero = (find_global "nat.zero")
 let coq_succ = (find_global "nat.succ")
 let coq_nat = (find_global "nat.type")
 
-let rec coq_nat_of_int = function
-  | 0 -> constr_of_global (Lazy.force coq_zero)
-  | n -> mkApp (constr_of_global (Lazy.force coq_succ), [| coq_nat_of_int (pred n) |])
+let rec coq_nat_of_int sigma = function
+  | 0 -> Evarutil.new_global sigma (Lazy.force coq_zero)
+  | n ->
+    let sigma, succ = Evarutil.new_global sigma (Lazy.force coq_succ) in
+    let sigma, n' = coq_nat_of_int sigma (pred n) in
+    sigma, EConstr.mkApp (succ, [| n' |])
 
 let rec int_of_coq_nat c = 
   match Constr.kind c with

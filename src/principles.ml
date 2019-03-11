@@ -1200,10 +1200,10 @@ let declare_funelim info env evd is_rec protos progs
     let evd, f = new_global evd f_gr in
     let evd, elimcgr = new_global evd elimgr in
     let evd, cl = functional_elimination_class evd in
-    let args_of_elim = coq_nat_of_int nargs in
+    let evd, args_of_elim = coq_nat_of_int evd nargs in
     let args = [Retyping.get_type_of env evd f; f;
                 Retyping.get_type_of env evd elimcgr;
-                of_constr args_of_elim; elimcgr]
+                args_of_elim; elimcgr]
     in
     let instid = Nameops.add_prefix "FunctionalElimination_" id in
     let poly = is_polymorphic info in
