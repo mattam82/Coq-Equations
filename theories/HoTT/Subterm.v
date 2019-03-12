@@ -53,7 +53,8 @@ Ltac unfold_FixWf :=
     |- context [ @FixWf ?A ?R ?WF ?P ?f ?x ] =>
     let step := fresh in
     set(step := fun y (_ : R y x) => @FixWf A R WF P f y) in *;
-    rewrite (@FixWf_unfold_step _ A R WF P f x step); [hidebody step|reflexivity]
+    eapply concat;
+    [ exact (@FixWf_unfold_step _ A R WF P f x step idpath) | hidebody step]
   end.
 
 Ltac unfold_recursor := unfold_FixWf.

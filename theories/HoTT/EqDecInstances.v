@@ -61,6 +61,8 @@ Ltac eqdec_proof := try red; intros;
     end
   end.
 
+Ltac Equations.Init.solve_eqdec ::= eqdec_proof.
+
 (** Standard instances. *)
 
 Instance unit_eqdec : EqDec Unit.

@@ -27,7 +27,7 @@ Derive Signature for paths.
 Register Basics.Overture.paths as equations.equality.type.
 Register Basics.Overture.idpath as equations.equality.refl.
 Register Equations.HoTT.Logic.transport_r as equations.equality.case.
-Register Equations.HoTT.Logic.paths_elim_r as equations.equality.elim.
+Register Equations.HoTT.Logic.paths_rect_r as equations.equality.elim.
 
 Register Classes.EqDec as equations.eqdec.class.
 Register Classes.dec_eq as equations.eqdec.dec_eq.

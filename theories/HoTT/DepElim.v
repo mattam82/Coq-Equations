@@ -667,20 +667,20 @@ Ltac hnf_gl :=
 
 Ltac hnf_eq :=
   match goal with
-  | |- ?x = ?y =>
+  | |- ?R ?x ?y =>
     let x' := eval hnf in x in
     let y' := eval hnf in y in
-        convert_concl_no_check (paths x' y')
+        convert_concl_no_check (R x' y')
   end.
 
 
 Ltac red_eq :=
   match goal with
-    |- ?x = ?y =>
+    |- ?R ?x ?y =>
     let rec reduce_eq x y :=
       let x' := eval red in x in
       let y' := eval red in y in
-          reduce_eq x' y' || convert_concl_no_check (x' = y')
+          reduce_eq x' y' || convert_concl_no_check (R x' y')
       in reduce_eq x y
   end.
 

@@ -8,6 +8,7 @@
 
 Set Warnings "-notation-overridden".
 Require Import Equations.Tactics Equations.HoTT.Logic Equations.HoTT.DepElim
+        Equations.HoTT.Subterm Equations.HoTT.EqDec
         Equations.HoTT.WellFounded Equations.HoTT.FunctionalInduction.
 
 Ltac Equations.Init.simpl_equations ::= Equations.HoTT.DepElim.simpl_equations.
@@ -32,6 +33,7 @@ Ltac solve_subterm := intros;
   simplify_dep_elim; try typeclasses eauto with solve_subterm.
 
 Ltac Equations.Init.solve_subterm ::= solve_subterm.
+Ltac Equations.Init.unfold_recursor ::= Equations.HoTT.Subterm.unfold_recursor.
 
 Ltac solve_noconf_inv_eq a b :=
   destruct_sigma a; destruct_sigma b;
@@ -64,7 +66,7 @@ Ltac solve_noconf := simpl; intros;
 
 Ltac solve_noconf_hom_inv_eq a b :=
   destruct_sigma a; destruct_sigma b;
-  do_case a ; depelim b; simpl in * |-;
+  do_case a; intros; depelim b; simpl in * |-;
   on_last_hyp ltac:(fun id => hnf in id; destruct_tele_eq id || depelim id);
   solve [constructor || simpl_equations; constructor].
 
@@ -73,7 +75,7 @@ Ltac solve_noconf_hom_inv := intros;
   | |- (?f ?a ?b _) = _ => solve_noconf_hom_inv_eq a b
   | |- ?R ?a ?b =>
     destruct_sigma a; destruct_sigma b;
-    do_case a ; depelim b; simpl in * |-;
+    do_case a ; intros; depelim b; simpl in * |-;
     on_last_hyp ltac:(fun id => hnf in id; destruct_tele_eq id || depelim id);
     solve [constructor || simpl_equations; constructor]
   end.
@@ -81,7 +83,7 @@ Ltac solve_noconf_hom_inv := intros;
 Ltac solve_noconf_hom_inv_equiv :=
   intros;
   (* Subtitute a = b *)
-  on_last_hyp ltac:(fun id => destruct id) ;
+  on_last_hyp ltac:(fun id => do_case id) ;
   (* Destruct the inductive object a using dependent elimination
      to handle UIP cases. *)
   on_last_hyp ltac:(fun id => destruct_sigma id; depelim id) ;
