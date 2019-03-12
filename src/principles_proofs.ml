@@ -838,6 +838,23 @@ let is_primitive env evd ctx var =
   let mspec = Inductive.lookup_mind_specif env ind in
   Inductive.is_primitive_record mspec
 
+let myreplace_by a1 a2 tac =
+  let open Proofview.Notations in
+  Proofview.Goal.enter (fun gl ->
+      let env = Proofview.Goal.env gl in
+      let sigma = Proofview.Goal.sigma gl in
+      if eq_constr sigma a1 a2 then Proofview.tclUNIT () else
+        let ty = Retyping.get_type_of env sigma a1 in
+        let sigma, eq = get_fresh sigma logic_eq_type in
+        let eqty = mkApp (eq, [| ty; a1; a2 |]) in
+        let sigma, _ = Typing.type_of env sigma eqty in
+        let na = Tacmach.New.pf_get_new_id (Id.of_string "Heq") gl in
+        Proofview.Unsafe.tclEVARS sigma <*>
+        Tactics.assert_by (Name na) eqty tac <*>
+        Equality.rewriteLR (mkVar na) <*>
+        Tactics.clear [na])
+
+
 let prove_unfolding_lemma info where_map f_cst funf_cst split unfold_split gl =
   let depelim h = Depelim.dependent_elim_tac (Loc.make_loc (0,0), h) (* depelim_tac h *) in
   let helpercsts = List.map (fun (cst, i) -> cst) info.helpers_info in
@@ -950,8 +967,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst split unfold_split gl =
              let id = pf_get_new_id id gl in
              if Constant.equal ev2 cst then
                tclTHENLIST
-               [to82 (Equality.replace_by a1 a2
-                                          (of82 (tclTHENLIST [solve_eq subst])));
+               [to82 (myreplace_by a1 a2 (of82 (tclTHENLIST [solve_eq subst])));
                 observe "refine after replace"
                   (to82 (letin_tac None (Name id) a2 None Locusops.allHypsAndConcl));
                 Proofview.V82.of_tactic (clear_body [id]); unfolds; aux subst s unfs] gl
