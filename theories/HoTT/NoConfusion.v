@@ -19,10 +19,12 @@ Require Import Equations.HoTT.DepElim Equations.HoTT.Tactics.
 
 (** Parameterized inductive types just need NoConfusion. *)
 
-Instance Bool_depelim : DependentEliminationPackage Bool.Bool :=
-  { elim := @Bool.Bool_ind }.
+Local Set Universe Minimization ToSet.
 
 Derive NoConfusion for Unit Bool.Bool nat option sum Datatypes.prod list sigT.
+
+Instance Bool_depelim : DependentEliminationPackage Bool.Bool :=
+  { elim := @Bool.Bool_ind }.
 
 (* FIXME should be done by the derive command *)
 Extraction Inline noConfusion NoConfusionPackage_nat.

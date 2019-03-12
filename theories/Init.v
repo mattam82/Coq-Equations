@@ -26,7 +26,7 @@ Global Unset Auto Template Polymorphism.
 
 (** We use this inductive internally *)
 
-Variant equations_tag := the_equations_tag.
+Variant equations_tag@{} : Set := the_equations_tag.
 
 (** Notation for empty patterns. *)
 
