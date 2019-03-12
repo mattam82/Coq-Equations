@@ -29,7 +29,7 @@ Hint Extern 10 => eapply_hyp : solve_subterm.
 Ltac solve_subterm := intros;
   apply WellFounded.wf_trans_clos;
   red; intros; simp_sigmas; on_last_hyp ltac:(fun H => depind H); constructor;
-  intros; simp_sigmas; on_last_hyp ltac:(fun HR => depind HR);
+  intros; simp_sigmas; on_last_hyp ltac:(fun HR => Equations.Init.depelim HR);
   simplify_dep_elim; try typeclasses eauto with solve_subterm.
 
 Ltac Equations.Init.solve_subterm ::= solve_subterm.
