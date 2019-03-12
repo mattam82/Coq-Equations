@@ -73,8 +73,8 @@ Hint Extern 30 (@NoCycle ?A (NoCycle_WellFounded ?R ?wfr) _ _) =>
    [injection] tactics on which we can always fall back.
    *)
 
-Cumulative Class NoConfusionPackage (A : Type) := {
-  NoConfusion : A -> A -> Type;
+Cumulative Class NoConfusionPackage@{i} (A : Type@{i}) := {
+  NoConfusion : A -> A -> Type@{i};
   noConfusion : forall {a b}, NoConfusion a b -> a = b;
   noConfusion_inv : forall {a b}, a = b -> NoConfusion a b;
   noConfusion_sect : forall {a b} (e : NoConfusion a b), noConfusion_inv (noConfusion e) = e;
