@@ -59,6 +59,7 @@ let mk_eq env evd args args' =
 let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let evd = ref evd in
   let mindb, oneind = Global.lookup_inductive ind in
+  let indsf = Inductive.inductive_sort_family oneind in
   let ctx = subst_instance_context (EInstance.kind !evd u) oneind.mind_arity_ctxt in
   let ctx = List.map of_rel_decl ctx in
   let ctx = smash_rel_context !evd ctx in
@@ -88,7 +89,14 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let binders = xdecl :: ctx in
   let ydecl = of_tuple (Name yid, None, lift 1 argty) in
   let fullbinders = ydecl :: binders in
-  let s = Equations_common.evd_comb1 Evd.fresh_sort_in_family evd (Lazy.force logic_sort) in
+  let s = Lazy.force logic_sort in
+  let s = match s with
+    | Sorts.InType ->
+      (* In that case the noConfusion principle lives at the level of the type. *)
+      Equations_common.evd_comb1 Evd.fresh_sort_in_family evd indsf
+    | Sorts.InProp
+    | Sorts.InSet -> Equations_common.evd_comb1 Evd.fresh_sort_in_family evd s
+  in
   let s = mkSort s in
   let arity = it_mkProd_or_LetIn s fullbinders in
   let env = push_rel_context binders env in
