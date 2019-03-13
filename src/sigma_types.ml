@@ -112,22 +112,37 @@ let telescope_of_context env evd ctx =
   let tele_interp = mkAppG evd (Lazy.force logic_tele_interp) [| tele |] in
   tele, tele_interp
 
-let telescope evd = function
+let telescope env evd = function
   | [] -> assert false
   | [d] -> let (n, _, t) = to_tuple d in t, [of_tuple (n, Some (mkRel 1), Vars.lift 1 t)],
                                         mkRel 1
   | d :: tl ->
       let (n, _, t) = to_tuple d in
       let len = succ (List.length tl) in
+      let ts = Retyping.get_sort_of (push_rel_context tl env) !evd t in
+      let tuniv = Sorts.univ_of_sort ts in
       let ty, tys =
-	List.fold_left
-	  (fun (ty, tys) d ->
+        let rec aux (ty, tyuniv, tys) ds =
+          match ds with
+          | [] -> (ty, tys)
+          | d :: ds ->
             let (n, b, t) = to_tuple d in
-	    let pred = mkLambda (n, t, ty) in
-	    let sigty = mkAppG evd (Lazy.force coq_sigma) [|t; pred|] in
+            let pred = mkLambda (n, t, ty) in
+            let sigty = mkAppG evd (Lazy.force coq_sigma) [|t; pred|] in
             let _, u = destInd !evd (fst (destApp !evd sigty)) in
-	      (sigty, (u, pred) :: tys))
-	  (t, []) tl
+            let ua = Univ.Instance.to_array (EInstance.kind !evd u) in
+            let l = Univ.Universe.make ua.(0) in
+            let env = push_rel_context ds env in
+            (* Ensure that the universe of the sigma is only >= those of t and pred *)
+            let enforce_leq env sigma t cstr =
+              let ts = Retyping.get_sort_of env sigma t in
+              let su = Sorts.univ_of_sort ts in
+              Univ.enforce_leq su l cstr
+            in
+            let cstrs = enforce_leq env !evd t (Univ.enforce_leq tyuniv l Univ.Constraint.empty) in
+            let () = evd := Evd.add_constraints !evd cstrs in
+            aux (sigty, l, (u, pred) :: tys) ds
+        in aux (t, tuniv, []) tl
       in
       let constr, _ = 
 	List.fold_right (fun (u, pred) (intro, k) ->
@@ -153,7 +168,7 @@ let sigmaize ?(liftty=0) env0 evd pars f =
   let ty = Retyping.get_type_of env !evd f in
   let ctx, concl = splay_prod_assum env !evd ty in
   let ctx = smash_rel_context !evd ctx in
-  let argtyp, letbinders, make = telescope evd ctx in
+  let argtyp, letbinders, make = telescope env evd ctx in
     (* Everyting is in env, move to index :: letbinders :: env *) 
   let lenb = List.length letbinders in
   let pred =
@@ -441,7 +456,7 @@ let uncurry_call env sigma fn c =
   in
   let evdref = ref sigma in
   (* let ctx = (Anonymous, None, concl) :: ctx in *)
-  let sigty, sigctx, constr = telescope evdref ctx in
+  let sigty, sigctx, constr = telescope env evdref ctx in
   let app = Vars.substl (List.rev args) constr in
   let fnapp = mkApp (hd, rel_vect 0 (List.length sigctx)) in
   let fnapp = it_mkLambda_or_subst fnapp sigctx in
@@ -675,7 +690,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
         ) (succ nb_cuts, [], [], []) arity_ctx' rev_indices' omitted
       in
       let sigctx = List.rev rev_sigctx in
-      let sigty, _, sigconstr = telescope evd sigctx in
+      let sigty, _, sigconstr = telescope (push_rel_context (pi1 subst) env) evd sigctx in
 
       (* Build a goal with an equality of telescopes at the front. *)
       let left_sig = Vars.substl (List.rev tele_lhs) sigconstr in

@@ -49,10 +49,11 @@ let mkcase env sigma c ty constrs =
   in
     make_case_or_project env sigma indf ci ty c brs
 
-let mk_eq env evd args args' =
-  let _, _, make = Sigma_types.telescope evd args in
-  let _, _, make' = Sigma_types.telescope evd args' in
+let mk_eq env env' evd args args' =
+  let _, _, make = Sigma_types.telescope env evd args in
+  let _, _, make' = Sigma_types.telescope env' evd args' in
   let make = lift (List.length args + 1) make in
+  let env = push_rel_context args' env' in
   let ty = Retyping.get_type_of env !evd make in
   mkEq env evd ty make make'
 
@@ -126,7 +127,7 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
 	        (fun _ i' id' nparams args' arity' ->
 	          if i = i' then
 	            if List.length args = 0 then tru
-	            else mk_eq (push_rel_context args' env') evd args args'
+                    else mk_eq env env' evd args args'
 	          else fls)))
   in
   let app = it_mkLambda_or_LetIn pred binders in
