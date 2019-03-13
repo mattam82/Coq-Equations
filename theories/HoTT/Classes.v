@@ -28,8 +28,9 @@ Class WellFounded {A : Type} (R : relation A) :=
     actually matter in the sense that they are used to prove
     absurdity. *)
 
-Class NoCyclePackage (A : Type) :=
-  { NoCycle : A -> A -> Type;
+(* Cumulative *)
+Class NoCyclePackage@{i|} (A : Type@{i}) :=
+  { NoCycle : A -> A -> Type@{i};
     noCycle : forall {a b}, NoCycle a b -> (a = b -> Empty) }.
 
 (** These lemmas explains how to apply it during simplification. *)
@@ -37,15 +38,15 @@ Class NoCyclePackage (A : Type) :=
 (** We always generate a goal of the form [NoCycle x C[x]], using either
     the left or right versions of the following lemma. *)
 
-Lemma apply_noCycle_left {A} {noconf : NoCyclePackage A}
-      (p q : A) {B : p = q -> Type} :
-  NoCycle p q -> (forall H : p = q, B H).
+Lemma apply_noCycle_left@{i j|} {A : Type@{i}} {noconf : NoCyclePackage A}
+      (p q : A) {B : p = q -> Type@{j}} :
+  NoCycle@{i} p q -> (forall H : p = q, B H).
 Proof.
   intros noc eq. destruct (noCycle noc eq).
 Defined.
 
-Lemma apply_noCycle_right {A} {noconf : NoCyclePackage A}
-      (p q : A) {B : p = q -> Type} :
+Lemma apply_noCycle_right@{i j|} {A : Type@{i}} {noconf : NoCyclePackage A}
+      (p q : A) {B : p = q -> Type@{j}} :
   NoCycle q p -> (forall H : p = q, B H).
 Proof.
   intros noc eq. destruct (noCycle noc (inverse eq)).
@@ -83,9 +84,8 @@ Cumulative Class NoConfusionPackage@{i} (A : Type@{i}) := {
 
 (** This lemma explains how to apply it during simplification. *)
 
-Polymorphic
-Lemma apply_noConfusion {A} {noconf : NoConfusionPackage A}
-      (p q : A) {B : p = q -> Type} :
+Lemma apply_noConfusion@{i j|} {A : Type@{i}} {noconf : NoConfusionPackage A}
+      (p q : A) {B : p = q -> Type@{j}} :
   (forall e : NoConfusion p q, B (noConfusion e)) -> (forall e : p = q, B e).
 Proof.
   intros. generalize (noConfusion_retr e). destruct e.
@@ -95,8 +95,7 @@ Defined.
 
 (** Classes for types with UIP or decidable equality.  *)
 
-Cumulative
-Class UIP (A : Type) := uip : forall {x y : A} (e e' : x = y), e = e'.
+Cumulative Class UIP@{i|} (A : Type@{i}) := uip : forall {x y : A} (e e' : x = y), e = e'.
 
 Instance IsHSet_UIP (A : Type) (H : IsHSet A) : UIP A.
 Proof.
