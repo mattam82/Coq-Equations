@@ -41,9 +41,7 @@ Module TestF.
 
 End TestF.
 
-Instance eqsig {A} (x : A) : Signature (x = x) A :=
-  { signature a := x = a ;
-    signature_pack e := sigmaI _ x e }.
+Instance eqsig {A} (x : A) : Signature (x = x) A (fun a => x = a) := sigmaI _ x.
 
 Module WithUIP.
 Set Equations With UIP.

@@ -13,10 +13,12 @@
 
 From Equations Require Import Init.
 
-Polymorphic Cumulative Class Signature (fam : Type) (signature_index : Type) : Type := {
-  signature : signature_index -> Type ;
-  signature_pack : fam -> sigma signature
-}.
+Polymorphic Class Signature@{i} (fam : Type@{i}) (signature_index : Type@{i})
+            (signature : signature_index -> Type@{i}) : Type@{i} :=
+  signature_pack : fam -> sigma signature.
+Hint Mode Signature ! - - : typeclass_instances.
+
+Polymorphic Definition signature {fam index sig} `{S : @Signature fam index sig} := sig.
 
 Register Equations.Signature.Signature as equations.signature.class.
 Register Equations.Signature.signature as equations.signature.signature.

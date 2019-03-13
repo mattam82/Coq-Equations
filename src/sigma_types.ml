@@ -30,9 +30,6 @@ let mkConstructG c u =
 let mkIndG c u =
   mkIndU (destIndRef (Lazy.force c), u)
 
-let mkConstG c u =
-  mkConstU (destConstRef (Lazy.force c), u)
-
 let mkAppG evd gr args = 
   let c = e_new_global evd gr in
     mkApp (c, args)
@@ -280,23 +277,30 @@ let () =
             { derive_name = "Signature";
               derive_fn = make_derive_ind fn })
 
-let get_signature env sigma ty =
+let get_signature env sigma0 ty =
   try
-    let sigma', (idx, _) = 
+    let sigma, (idx, _) =
+      new_type_evar env sigma0 Evd.univ_flexible
+                    ~src:(dummy_loc, Evar_kinds.InternalHole) in
+    let sigma, (signaturety, _) =
       new_type_evar env sigma Evd.univ_flexible
                     ~src:(dummy_loc, Evar_kinds.InternalHole) in
-    let _idxev = fst (destEvar sigma idx) in
-    let sigma', cl = get_fresh sigma' logic_signature_class in
-    let inst = mkApp (cl, [| ty; idx |]) in
+    let sigma, signature =
+      new_evar env sigma (mkProd (Anonymous, idx, Vars.lift 1 signaturety))
+    in
+    let sigma', cl = get_fresh sigma logic_signature_class in
+    let inst = mkApp (cl, [| ty; idx; signature |]) in
     let sigma', tc = Typeclasses.resolve_one_typeclass env sigma' inst in
-    let _, u = destInd sigma (fst (destApp sigma inst)) in
-    let ssig = mkApp (mkConstG logic_signature_sig u, [| ty; idx; tc |]) in
-    let spack = mkApp (mkConstG logic_signature_pack u, [| ty; idx; tc |]) in
-      (sigma', nf_evar sigma' ssig, nf_evar sigma' spack)
+    (* let _, u = destConst sigma (fst (destApp sigma inst)) in *)
+    (* let ssig = mkApp (mkConstG logic_signature_sig u, [| ty; idx; tc |]) in *)
+    let ssig = signature in
+    (* let spack = mkApp (mkConstG logic_signature_pack u, [| ty; idx; tc |]) in *)
+    let spack = Reductionops.whd_all env sigma' tc in
+      (sigma0, nf_evar sigma' ssig, nf_evar sigma' spack)
   with Not_found ->
-    let pind, args = Inductive.find_rectype env (to_constr sigma ty) in
+    let pind, args = Inductive.find_rectype env (to_constr sigma0 ty) in
     let sigma, pred, pars, _, valsig, ctx, _, _ =
-      build_sig_of_ind env sigma (to_peuniverses pind) in
+      build_sig_of_ind env sigma0 (to_peuniverses pind) in
     Feedback.msg_warning (str "Automatically inlined signature for type " ++
     Printer.pr_pinductive env sigma pind ++ str ". Use [Derive Signature for " ++
     Printer.pr_pinductive env sigma pind ++ str ".] to avoid this.");
@@ -697,6 +701,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
       let right_sig = Vars.substl (List.rev tele_rhs) sigconstr in
       (* TODO Swap left_sig and right_sig... *)
       let eq = Equations_common.mkEq env evd sigty right_sig left_sig in
+      let _, equ = EConstr.destInd !evd (fst (destApp !evd eq)) in
       let goal = Vars.lift 1 goal in
       let goal = EConstr.mkProd (Anonymous, eq, goal) in
 
@@ -707,7 +712,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
         let t = Context_map.mapping_constr !evd rev_subst_without_cuts t in
           Reductionops.beta_applist !evd (t, indices @ cut_vars)
       in
-        goal, [Equations_common.mkRefl env evd (tr_out sigty) (tr_out left_sig)], true
+        goal, [Equations_common.mkRefl ~inst:equ env evd (tr_out sigty) (tr_out left_sig)], true
   in
 
   (* ===== RESOURCES FOR EACH BRANCH ===== *)
@@ -871,7 +876,7 @@ module Tactics =struct
         let sigma', sigsig, sigpack =
           get_signature env sigma (Tacmach.New.pf_get_hyp_typ id gl) in
         Proofview.Unsafe.tclEVARS sigma' <*>
-        letin_tac None (Name id') (mkApp (sigpack, [| mkVar id |])) None nowhere
+        letin_tac None (Name id') (beta_applist sigma (sigpack, [mkVar id])) None nowhere
       with Not_found ->
         Tacticals.New.tclFAIL 0 (str"No Signature instance found")
     end

@@ -261,7 +261,7 @@ val mkapp : Environ.env -> esigma -> lazy_ref -> constr array -> constr
 
 val mkEq : Environ.env ->
   esigma -> types -> constr -> constr -> constr
-val mkRefl : Environ.env -> esigma -> types -> constr -> constr
+val mkRefl : Environ.env -> esigma -> ?inst:EConstr.EInstance.t -> types -> constr -> constr
 
 (** Bindings to theories/ files *)
 

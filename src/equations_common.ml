@@ -338,8 +338,12 @@ let refresh_universes_strict env evd t =
 let mkEq env evd t x y = 
   mkapp env evd logic_eq_type [| refresh_universes_strict env evd t; x; y |]
     
-let mkRefl env evd t x = 
-  mkapp env evd logic_eq_refl [| refresh_universes_strict env evd t; x |]
+let mkRefl env evd ?inst t x =
+  match inst with
+  | Some inst ->
+    EConstr.mkApp (EConstr.mkRef (Lazy.force logic_eq_refl, inst), [| refresh_universes_strict env evd t; x |])
+  | None ->
+    mkapp env evd logic_eq_refl [| refresh_universes_strict env evd t; x |]
 
 let dummy_loc = None
 type 'a located = 'a Loc.located
