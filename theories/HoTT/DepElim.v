@@ -98,7 +98,7 @@ Proof. intros A B b t H x eq. subst x. destruct eq. apply H. reflexivity. Define
 Lemma deletion : forall {A B} (t : A), B -> (t = t -> B).
 Proof. intros; assumption. Defined.
 
-Lemma simplification_sigma1@{i j} {A : Type@{i}} {P : Type@{i}} {B : Type@{j}}
+Lemma simplification_sigma1@{i j |} {A : Type@{i}} {P : Type@{i}} {B : Type@{j}}
   (p q : A) (x : P) (y : P) :
   (p = q -> x = y -> B) -> ((p, x) = (q, y) -> B).
 Proof.
@@ -111,9 +111,9 @@ Proof.
   exact (eq 1 1).
 Defined.
 
-Lemma simplification_sigma1_dep@{i j} {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}}
+Lemma simplification_sigma1_dep@{i j |} {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}}
   (p q : A) (x : P p) (y : P q) :
-  (forall e : paths@{j} p q, paths (transport@{i j} P e x) y -> B) ->
+  (forall e : paths@{i} p q, paths (transport@{i i} P e x) y -> B) ->
   ((p, x) = (q, y) -> B).
 Proof.
   intros. revert X.
@@ -129,7 +129,7 @@ Definition pack_sigma_nondep@{i} {A : Type@{i}} {P : Type@{i}} {p q : A} {x : P}
   (e' : p = q) (e : x = y) : (p, x) = (q, y).
 Proof. destruct e'. simpl in e. destruct e. apply 1. Defined.
 
- Lemma simplification_sigma1_nondep_dep@{i j} {A : Type@{i}} {P : Type@{i}}
+Lemma simplification_sigma1_nondep_dep@{i j |} {A : Type@{i}} {P : Type@{i}}
   (p q : A) (x : P) (y : P) {B : (p, x) = (q, y) -> Type@{j}} :
   (forall e' : p = q, forall e : x = y, B (pack_sigma_nondep e' e)) ->
   (forall e : (p, x) = (q, y), B e).
@@ -144,11 +144,11 @@ Proof.
   apply (X 1 1).
 Defined.
 
- Definition pack_sigma {A} {P : A -> Type} {p q : A} {x : P p} {y : P q}
+Definition pack_sigma {A} {P : A -> Type} {p q : A} {x : P p} {y : P q}
   (e' : p = q) (e : e' # x = y) : (p, x) = (q, y).
 Proof. destruct e'. simpl in e. destruct e. apply 1. Defined.
 
- Lemma simplification_sigma1_dep_dep@{i j} {A : Type@{i}} {P : A -> Type@{i}}
+Lemma simplification_sigma1_dep_dep@{i j | } {A : Type@{i}} {P : A -> Type@{i}}
   (p q : A) (x : P p) (y : P q) {B : (p, x) = (q, y) -> Type@{j}} :
   (forall e' : p = q, forall e : (e' # x) = y, B (pack_sigma e' e)) ->
   (forall e : (p, x) = (q, y), B e).
