@@ -102,7 +102,9 @@ Proof.
   now destruct H.
 Defined.
 
-Polymorphic Lemma simplification_sigma1@{i j} : forall {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}} (p q : A) (x : P p) (y : P q),
+Polymorphic Lemma simplification_sigma1@{i j | i <= eq.u0} :
+  forall {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}}
+         (p q : A) (x : P p) (y : P q),
   (p = q -> (p, x) = (q, y) -> B) -> ((p, x) = (q, y) -> B).
 Proof.
   intros. refine (X _ H).
@@ -110,7 +112,7 @@ Proof.
   now destruct H.
 Defined.
 
-Polymorphic Lemma eq_simplification_sigma1@{i j} {A : Type@{i}} {P : Type@{i}} {B : Type@{j}}
+Polymorphic Lemma eq_simplification_sigma1@{i j | i <= eq.u0} {A : Type@{i}} {P : Type@{i}} {B : Type@{j}}
   (p q : A) (x : P) (y : P) :
   (p = q -> x = y -> B) ->
   ((p, x) = (q, y) -> B).
@@ -124,7 +126,7 @@ Proof.
   intros X. eapply (X eq_refl). apply eq_refl.
 Defined.
 
-Polymorphic Lemma eq_simplification_sigma1_dep@{i j} {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}}
+Polymorphic Lemma eq_simplification_sigma1_dep@{i j | i <= eq.u0 +} {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}}
   (p q : A) (x : P p) (y : P q) :
   (forall e : p = q, (@eq_rect A p P x q e) = y -> B) ->
   ((p, x) = (q, y) -> B).
@@ -142,7 +144,7 @@ Polymorphic Definition pack_sigma_eq_nondep@{i} {A : Type@{i}} {P : Type@{i}} {p
   (e' : p = q) (e : x = y) : (p, x) = (q, y).
 Proof. destruct e'. simpl in e. destruct e. apply eq_refl. Defined.
 
-Polymorphic Lemma eq_simplification_sigma1_nondep_dep@{i j} {A : Type@{i}} {P : Type@{i}}
+Polymorphic Lemma eq_simplification_sigma1_nondep_dep@{i j | i <= eq.u0} {A : Type@{i}} {P : Type@{i}}
   (p q : A) (x : P) (y : P) {B : (p, x) = (q, y) -> Type@{j}} :
   (forall e' : p = q, forall e : x = y, B (pack_sigma_eq_nondep e' e)) ->
   (forall e : sigmaI (fun _ => P) p x = sigmaI (fun _ => P) q y, B e).
@@ -161,7 +163,7 @@ Polymorphic Definition pack_sigma_eq@{i} {A : Type@{i}} {P : A -> Type@{i}} {p q
   (e' : p = q) (e : @eq_rect A p P x q e' = y) : (p, x) = (q, y).
 Proof. destruct e'. simpl in e. destruct e. apply eq_refl. Defined.
 
-Polymorphic Lemma eq_simplification_sigma1_dep_dep@{i j} {A : Type@{i}} {P : A -> Type@{i}}
+Polymorphic Lemma eq_simplification_sigma1_dep_dep@{i j | i <= eq.u0 +} {A : Type@{i}} {P : A -> Type@{i}}
   (p q : A) (x : P p) (y : P q) {B : (p, x) = (q, y) -> Type@{j}} :
   (forall e' : p = q, forall e : @eq_rect A p P x q e' = y, B (pack_sigma_eq e' e)) ->
   (forall e : (p, x) = (q, y), B e).
