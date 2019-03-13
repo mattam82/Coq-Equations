@@ -24,8 +24,8 @@ Section ilist.
 
 End ilist.
 
-Arguments Nil [A].
-Arguments First [n].
+Arguments Nil {A}.
+Arguments First {n}.
 
 Section ilist_map.
   Variables A B : Set.
@@ -69,11 +69,11 @@ Section hlist.
   hget (HCons _ t) (HNext _ j) := hget t j.
 End hlist.
 
-Arguments HNil [A B].
-Arguments HCons [A B x ls] _ _.
+Arguments HNil {A B}.
+Arguments HCons {A B x ls} _ _.
 
-Arguments HFirst [A elm ls].
-Arguments HNext [A elm x ls] _.
+Arguments HFirst {A elm ls}.
+Arguments HNext {A elm x ls} _.
 
 Definition someTypes : list Set := nat :: bool :: nil.
 
@@ -96,7 +96,7 @@ Inductive exp : list type -> type -> Set :=
 | App : forall ts dom ran, exp ts (Arrow dom ran) -> exp ts dom -> exp ts ran
 | Abs : forall ts dom ran, exp (dom :: ts) ran -> exp ts (Arrow dom ran).
 
-Arguments Const [ts].
+Arguments Const {ts}.
 
 Equations typeDenote (t : type): Set :=
 typeDenote Unit := unit;
@@ -162,7 +162,7 @@ Section fhlist.
   fhget (cons _ ls) (pair _ l) (inr i) := fhget ls l i.
 
 End fhlist.
-Arguments fhget [A B elm ls] _ _.
+Arguments fhget {A B elm ls} _ _.
 
 (*
 Section tree.
@@ -214,7 +214,7 @@ Section tree.
   | Leaf : A -> tree
   | Node : forall n, (ffin n -> tree) -> tree.
 End tree.
-Arguments Node [A n] _.
+Arguments Node {A n} _.
 
 Section rifoldr.
   Variables A B : Set.
@@ -225,7 +225,7 @@ Section rifoldr.
   rifoldr 0 _ := i;
   rifoldr (S n) get := f (get None) (rifoldr n (fun i => get (Some i))).
 End rifoldr.
-Arguments rifoldr [A B] _ _ [n] _.
+Arguments rifoldr {A B} _ _ {n} _.
 
 Equations sum (t : tree nat) : nat :=
 sum (Leaf n) := n;
@@ -283,7 +283,7 @@ Section cond.
     | false := cond n (fun i => tests (Some i)) (fun i => bodies (Some i))
   }.
 End cond.
-Arguments cond [A] _ [n] _ _.
+Arguments cond {A} _ {n} _ _.
 
 Equations exp'Denote t (e : exp' t) : type'Denote t :=
 exp'Denote (NConst n) := n;

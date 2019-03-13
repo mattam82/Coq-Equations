@@ -11,8 +11,8 @@ Derive Signature NoConfusion NoConfusionHom for fin.
 Inductive ilist (A : Set) : nat -> Set :=
 | Nil : ilist A 0
 | Cons : forall {n}, A -> ilist A n -> ilist A (S n).
-Arguments Nil [A].
-Arguments Cons [A n] _ _.
+Arguments Nil {A}.
+Arguments Cons {A n} _ _.
 
 Derive Signature NoConfusion for ilist.
 

@@ -47,7 +47,7 @@ Section TypeEq.
 End TypeEq.
 
 Arguments Id {A} _ _.
-Arguments id_refl {A} [a].
+Arguments id_refl {A} {a}.
 
 Require Import CRelationClasses CMorphisms.
 
