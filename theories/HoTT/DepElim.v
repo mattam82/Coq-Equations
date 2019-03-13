@@ -654,8 +654,8 @@ Ltac find_empty := simpl in * ; elimtype False ;
 
 Ltac make_simplify_goal :=
   match goal with 
-  | [ |- @paths ?A ?T ?U ] => let eqP := fresh "eqP" in
-      set (eqP := fun x : A => @paths A x U) ; change (eqP T)
+  | [ |- ?R ?A ?T ?U ] => let eqP := fresh "eqP" in
+      set (eqP := fun x : A => R A x U) ; change (eqP T)
   end.
 
 Ltac hnf_gl :=
