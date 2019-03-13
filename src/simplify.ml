@@ -543,9 +543,8 @@ let deletion ~(force:bool) : simplification_fun =
                                 str " and the 'Equations With UIP' flag is off"
                               else mt())))
 
-let univ_of_codom env evd ctx na dom codom =
-  let decl = Context.Rel.Declaration.LocalAssum (na, dom) in
-  let s = Retyping.get_sort_of (push_rel_context (decl :: ctx) env) !evd codom in
+let univ_of_goal env evd ctx ty =
+  let s = Retyping.get_sort_of (push_rel_context ctx env) !evd ty in
   let u = Sorts.univ_of_sort s in
   match Univ.Universe.level u with
   | Some l -> l
@@ -587,11 +586,11 @@ let solution ~(dir:direction) : simplification_fun =
     (* If the equality is not polymorphic, the lemmas will be monomorphic as well *)
     if EConstr.EInstance.is_empty equ then equ
     else
-      let codomu = univ_of_codom env evd ctx name ty1 ty2 in
+      let goalu = univ_of_goal env evd ctx ty in
       let equ = EConstr.EInstance.kind !evd equ in
       let equarray = Univ.Instance.to_array equ in
       assert (Int.equal (Array.length equarray) 1);
-      EConstr.EInstance.make (Univ.Instance.of_array [| equarray.(0); codomu |])
+      EConstr.EInstance.make (Univ.Instance.of_array [| equarray.(0); goalu |])
   in
   let tsolution = begin match var_left, nondep with
   | false, false -> Builder.solution_right_dep
