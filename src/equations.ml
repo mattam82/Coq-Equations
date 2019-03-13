@@ -145,7 +145,7 @@ let define_by_eqs ~poly ~program_mode ~open_proof opts eqs nt =
       let is_rec = is_recursive i (eqs, nt) in
       interp_arity env evd ~poly ~is_rec ~with_evars:open_proof nt ieqs) eqs in
   let rec_type = compute_rec_type [] programs in
-  let () = print_recinfo programs in
+  let () = print_program_info env !evd programs in
   let env = Global.env () in (* To find the comp constant *)
   let data, fixdecls, fixprots = compute_fixdecls_data env evd programs in
   let fixdecls = nf_rel_context_evar !evd fixdecls in

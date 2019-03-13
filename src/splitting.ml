@@ -164,20 +164,23 @@ let where_context wheres =
 let where_program_type w =
   program_type w.where_program
 
-let pr_rec_info p =
+let pr_program_info env sigma p =
   let open Pp in
-  Names.Id.print p.program_id ++ str " is " ++
-  match p.program_rec with
-  | Some (Structural ann) ->
+  Names.Id.print p.program_id ++ str " : " ++
+  Printer.pr_econstr_env env sigma (Syntax.program_type p) ++ str " : " ++
+  Printer.pr_econstr_env env sigma (mkSort (Sorts.Type p.program_sort)) ++
+  str " ( " ++
+  (match p.program_rec with
+   | Some (Structural ann) ->
     (match ann with
-     | MutualOn (Some (i,_)) -> str "mutually recursive on " ++ int i
-     | MutualOn None -> str "mutually recursive on ? "
-     | NestedOn (Some (i,_)) -> str "nested on " ++ int i
-     | NestedOn None -> str "nested on ? "
-     | NestedNonRec -> str "nested but not directly recursive")
-  | Some (WellFounded (c, r, info)) ->
+    | MutualOn (Some (i,_)) -> str "mutually recursive on " ++ int i
+    | MutualOn None -> str "mutually recursive on ? "
+    | NestedOn (Some (i,_)) -> str "nested on " ++ int i
+    | NestedOn None -> str "nested on ? "
+    | NestedNonRec -> str "nested but not directly recursive")
+   | Some (WellFounded (c, r, info)) ->
     str "wellfounded"
-  | None -> str "not recursive"
+   | None -> str "not recursive") ++ str")"
 
 let pr_splitting env sigma ?(verbose=false) split =
   let verbose pp = if verbose then pp else mt () in
@@ -189,7 +192,7 @@ let pr_splitting env sigma ?(verbose=false) split =
         hov 2 (str"where " ++ Id.print (where_id w) ++ str " : " ++
                (try Printer.pr_econstr_env env'  sigma w.where_type ++
                     hov 1 (str "(program type: " ++ Printer.pr_econstr_env env sigma (where_program_type w)
-                    ++ str ") ") ++ pr_rec_info w.where_program.program_info ++
+                    ++ str ") ") ++ pr_program_info env sigma w.where_program.program_info ++
                     str "(path: " ++ Id.print (path_id w.where_path) ++ str")" ++ spc () ++
                     str "(where_term: " ++ Printer.pr_econstr_env env sigma (where_term w) ++ str ")" ++
                     str "(arity: " ++ Printer.pr_econstr_env env sigma w.where_program.program_info.program_arity ++ str ")" ++
@@ -253,6 +256,7 @@ let pr_splitting env sigma ?(verbose=false) split =
   try aux split with e -> str"Error pretty-printing splitting"
 
 let pr_program env evd p =
+  pr_program_info env evd p.program_info ++ fnl () ++
   pr_splitting env evd p.program_splitting
 
 let pr_programs env evd p =
@@ -296,6 +300,7 @@ let rec map_program f p =
 
 and map_where f w =
   { w with
+    where_program_orig = map_program_info f w.where_program_orig;
     where_program = map_program f w.where_program;
     where_program_args = List.map f w.where_program_args;
     where_type = f w.where_type }

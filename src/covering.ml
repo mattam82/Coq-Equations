@@ -648,10 +648,10 @@ let compute_rec_type context programs =
     | _ -> assert false
   end
 
-let print_recinfo programs =
+let print_program_info env sigma programs =
   let open Pp in
   if !Equations_common.debug then
-    Feedback.msg_debug (str "Programs: " ++ prlist_with_sep fnl pr_rec_info programs)
+    Feedback.msg_debug (str "Programs: " ++ prlist_with_sep fnl (pr_program_info env sigma) programs)
 
 let compute_fixdecls_data env evd ?data programs =
   let protos = List.map (fun p ->

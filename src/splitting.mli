@@ -108,7 +108,7 @@ val ppsplit : splitting -> unit
 
 val where_context : where_clause list -> rel_context
 
-val pr_rec_info : program_info -> Pp.t
+val pr_program_info : env -> Evd.evar_map -> program_info -> Pp.t
 
 val context_map_of_splitting : splitting -> context_map
 

@@ -195,7 +195,7 @@ val adjust_sign_arity : Environ.env ->
   Evd.evar_map * program_info
 
 val compute_rec_type : rec_type -> program_info list -> rec_type
-val print_recinfo : program_info list -> unit
+val print_program_info : env -> Evd.evar_map -> program_info list -> unit
 val compute_fixdecls_data :
            Environ.env ->
            Evd.evar_map ref ->
