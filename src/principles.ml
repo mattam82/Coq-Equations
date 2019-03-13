@@ -785,7 +785,7 @@ let subst_rec_programs env evd ps =
       (* Feedback.msg_debug Pp.(str"In subst_programs, cut_problem s'" ++ pr_context env !evd (pi1 rec_prob)); *)
       let rec_cutprob = cut_problem s' (pi1 rec_prob) in
       let splitting' = aux rec_cutprob s' program' oterm path' split' in
-      let term', ty' = term_of_tree env evd splitting' in
+      let term', ty' = term_of_tree env evd prog_info.program_sort splitting' in
       { program_rec = None;
         program_info = program_info';
         program_prob = id_subst (pi3 cutprob_sign);
@@ -929,7 +929,7 @@ let subst_rec_programs env evd ps =
                    else (mapping_constr !evd subst c) :: acc
                  else (mapping_constr !evd subst c) :: acc) 0 [] args
            in
-           let term', _ = term_of_tree env evd s' in
+           let term', _ = term_of_tree env evd p.program_info.program_sort s' in
            term', List.rev (List.map (Reductionops.nf_beta env !evd) args'), !refarg
          else
            let first, last = CList.chop (List.length s) (List.map (mapping_constr !evd subst) args) in

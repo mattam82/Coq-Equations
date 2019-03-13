@@ -713,6 +713,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot
   let body = it_mkLambda_or_LetIn arity sign in
   let _ = if not with_evars then Pretyping.check_evars env Evd.empty !evd body in
   let program_orig_type = it_mkProd_or_LetIn arity sign in
+  let program_sort = Sorts.univ_of_sort (Retyping.get_sort_of env !evd program_orig_type) in
   let program_implicits = Impargs.compute_implicits_with_manual env !evd program_orig_type false impls in
   let () = evd := Evd.minimize_universes !evd in
   match rec_annot with
@@ -720,6 +721,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot
     { program_loc = loc;
       program_id = i;
       program_orig_type;
+      program_sort;
       program_sign = sign;
       program_arity = arity;
       program_rec = None;
@@ -729,6 +731,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot
     { program_loc = loc;
       program_id = i;
       program_orig_type;
+      program_sort;
       program_sign = sign;
       program_arity = arity;
       program_rec = Some (Structural ann);
@@ -739,6 +742,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot
     { program_loc = loc;
       program_id = i;
       program_orig_type;
+      program_sort;
       program_sign = sign;
       program_arity = arity;
       program_rec = Some (WellFounded (c, r, compinfo));
@@ -1282,7 +1286,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
          str "And clauses: " ++ pr_preclauses env cls')
     | Some (clauses, s) ->
       let () = check_unused_clauses env clauses in
-      let term, _ = term_of_tree env evars s in
+      let term, _ = term_of_tree env evars p.program_sort s in
       let info =
         { refined_obj = (idref, cconstr, cty);
           refined_rettyp = ty;

@@ -470,8 +470,8 @@ let helper_evar evm evar env typ src =
   let evm' = evar_declare sign evar typ' ~src evm in
     evm', mkEvar (evar, Array.of_list instance)
 
-let term_of_tree env0 isevar tree =
-  let rec aux env evm = function
+let term_of_tree env0 isevar sort tree =
+  let rec aux env evm sort = function
     | Compute ((ctx, _, _), where, ty, RProgram rhs) ->
       let compile_where ({where_program; where_type} as w)
           (env, evm, ctx) =
@@ -485,7 +485,7 @@ let term_of_tree env0 isevar tree =
     | Compute ((ctx, _, _) as lhs, where, ty, REmpty (split, sp)) ->
        assert (List.is_empty where);
        let evm, bot = new_global evm (Lazy.force logic_bot) in
-       let evm, prf, _ = aux env evm (Split (lhs, split, bot, sp)) in
+       let evm, prf, _ = aux env evm sort (Split (lhs, split, bot, sp)) in
        let evm, case = new_global evm (Lazy.force logic_bot_case) in
        let term = mkApp (case, [| ty; beta_appvect evm prf (extended_rel_vect 0 ctx) |]) in
        let term = it_mkLambda_or_LetIn term ctx in
@@ -493,13 +493,13 @@ let term_of_tree env0 isevar tree =
        evm, term, ty
 
     | Mapping ((ctx, p, ctx'), s) ->
-      let evm, term, ty = aux env evm s in
+      let evm, term, ty = aux env evm sort s in
       let args = Array.rev_of_list (snd (constrs_of_pats ~inacc_and_hide:false env evm p)) in
       let term = it_mkLambda_or_LetIn (whd_beta evm (mkApp (term, args))) ctx in
       let ty = it_mkProd_or_subst env evm (prod_appvect evm ty args) ctx in
       evm, term, ty
 
-    | RecValid (lhs, id, r, rest) -> aux env evm rest
+    | RecValid (lhs, id, r, rest) -> aux env evm sort rest
 
     | Refined ((ctx, _, _), info, rest) ->
       let (id, _, _), ty, rarg, path, f, args, newprob, newty =
@@ -508,7 +508,7 @@ let term_of_tree env0 isevar tree =
         info.refined_term,
         info.refined_args, info.refined_newprob, info.refined_newty
       in
-      let evm, sterm, sty = aux env evm rest in
+      let evm, sterm, sty = aux env evm sort rest in
       let term = applist (f, args) in
       let term = it_mkLambda_or_LetIn term ctx in
       let ty = it_mkProd_or_subst env evm ty ctx in
@@ -553,7 +553,7 @@ let term_of_tree env0 isevar tree =
           msg_info(str"... named context:");
           msg_info(Printer.pr_named_context env !evd (EConstr.Unsafe.to_named_context (named_context env)));
         end;
-        let ((hole, c), lsubst) = simpl_step (cut_ctx @ new_ctx @ ctx', ty) in
+        let ((hole, c), lsubst) = simpl_step (cut_ctx @ new_ctx @ ctx', ty, sort) in
         if !debug then
           begin
             let open Feedback in
@@ -570,8 +570,8 @@ let term_of_tree env0 isevar tree =
           (* Dead code: we should have found a proof of False. *)
           | None, None -> c
           (* Normal case: build recursively a subterm. *)
-          | Some ((next_ctx, _), ev), Some s ->
-            let evm, next_term, next_ty = aux env !evd s in
+          | Some ((next_ctx, _, glu), ev), Some s ->
+            let evm, next_term, next_ty = aux env !evd glu s in
             (* Now we need to instantiate [ev] with the term [next_term]. *)
             (* We might need to permutate some rels. *)
             let next_subst = context_map_of_splitting s in
@@ -640,7 +640,7 @@ let term_of_tree env0 isevar tree =
       evd := Typing.check env !evd term typ;
       !evd, term, typ
   in
-  let evm, term, typ = aux env0 !isevar tree in
+  let evm, term, typ = aux env0 !isevar sort tree in
     isevar := evm;
     term, typ
 
@@ -679,7 +679,8 @@ type program_shape =
 let make_program env evd p prob s rec_info =
   match rec_info with
   | Some r ->
-    let term, ty = term_of_tree env evd s in
+    let sort = p.program_sort in
+    let term, ty = term_of_tree env evd sort s in
     let lhs = id_subst r.rec_lets in
     (match r.rec_node with
      | WfRec wfr ->
@@ -724,7 +725,8 @@ let make_program env evd p prob s rec_info =
          | _ -> p'
        in
        Mutual (p', prob, r, s', after, (* lift 1  *)term))
-  | None -> Single (p, prob, rec_info, s, fst (term_of_tree env evd s))
+  | None ->
+    Single (p, prob, rec_info, s, fst (term_of_tree env evd p.program_sort s))
 
 let update_rec_info p rec_info s =
   match p.Syntax.program_rec, rec_info.rec_node with
@@ -956,7 +958,9 @@ let define_splitting_constants flags env0 isevar unfold tree =
       let evm', rest' = aux env evm rest in
       let isevar = ref evm' in
       let env = Global.env () in
-      let t, ty = term_of_tree env isevar rest' in
+      let sort = Sorts.univ_of_sort
+          (Retyping.get_sort_of (push_rel_context (pi1 lhs) env) !isevar info.refined_rettyp) in
+      let t, ty = term_of_tree env isevar sort rest' in
       let (cst, (evm, e)) =
         Equations_common.declare_constant (path_id ~unfold info.refined_path)
           t (Some ty) flags.polymorphic !isevar (Decl_kinds.(IsDefinition Definition))

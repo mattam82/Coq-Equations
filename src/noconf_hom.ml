@@ -210,6 +210,8 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   let clauses = clauses @ [catch_all] in
   let indid = Nametab.basename_of_global (IndRef ind) in
   let id = add_prefix "NoConfusionHom_" indid in
+  let program_orig_type = it_mkProd_or_LetIn s fullbinders in
+  let program_sort = Sorts.univ_of_sort (Retyping.get_sort_of env sigma program_orig_type) in
   let evd = ref sigma in
   let data =
     Covering.{
@@ -226,7 +228,8 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
                   program_id = id;
                   program_impls = []; program_implicits = [];
                   program_rec = None;
-                  program_orig_type = it_mkProd_or_LetIn s fullbinders;
+                  program_orig_type;
+                  program_sort;
                   program_sign = fullbinders;
                   program_arity = s}
   in
@@ -234,15 +237,15 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
     Covering.covering ~check_unused:false (* The catch-all clause might not be needed *)
       env evd p data clauses [] ctxmap [] s in
   let hook _ p terminfo =
-    let _proginfo =
-      Syntax.{ program_loc = Loc.make_loc (0,0); program_id = id;
-               program_orig_type = it_mkProd_or_LetIn s fullbinders;
-        program_sign = fullbinders;
-        program_arity = s;
-        program_rec = None;
-        program_impls = [];
-             program_implicits = []}
-    in
+    (* let _proginfo =
+     *   Syntax.{ program_loc = Loc.make_loc (0,0); program_id = id;
+     *            program_orig_type; program_sort;
+     *            program_sign = fullbinders;
+     *            program_arity = s;
+     *            program_rec = None;
+     *            program_impls = [];
+     *            program_implicits = []}
+     * in *)
     let program_cst = match terminfo.Splitting.term_id with ConstRef c -> c | _ -> assert false in
     (* let _compiled_info = Splitting.{ program_cst; program_split = p.program_splitting;
      *                                 program_split_info = terminfo } in

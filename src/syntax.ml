@@ -274,6 +274,7 @@ type program_info = {
   program_loc : Loc.t;
   program_id : Id.t;
   program_orig_type : EConstr.t; (* The original type *)
+  program_sort : Univ.Universe.t; (* The sort of this type *)
   program_sign : EConstr.rel_context;
   program_arity : EConstr.t;
   program_rec : program_rec_info option;
@@ -281,10 +282,18 @@ type program_info = {
   program_implicits : Impargs.implicit_status list;
 }
 
+let map_universe f u =
+  let u' = f (EConstr.mkSort (Sorts.sort_of_univ u)) in
+  match Constr.kind (EConstr.Unsafe.to_constr u') with
+  | Sort s -> Sorts.univ_of_sort s
+  | _ -> assert false
+
 let map_program_info f p =
-  { p with program_orig_type = f p.program_orig_type;
-           program_sign = map_rel_context f p.program_sign;
-           program_arity = f p.program_arity }
+  { p with
+    program_orig_type = f p.program_orig_type;
+    program_sort = map_universe f p.program_sort;
+    program_sign = map_rel_context f p.program_sign;
+    program_arity = f p.program_arity }
 
 let _chole c loc =
   (* let tac = Genarg.in_gen (Genarg.rawwit Constrarg.wit_tactic) (solve_rec_tac_expr ()) in *)
