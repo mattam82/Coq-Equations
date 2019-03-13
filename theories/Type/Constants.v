@@ -39,7 +39,7 @@ Register Logic.Empty_rect as equations.bottom.elim.
 
 Register Coq.Init.Datatypes.unit as equations.top.type.
 Register Coq.Init.Datatypes.tt as equations.top.intro.
-Register Coq.Init.Datatypes.unit_rect as equations.top.elim.
+Register Equations.Type.Logic.unit_rect as equations.top.elim.
 
 Register Logic.prod as equations.conj.type.
 Register Equations.Init.sigmaI as equations.conj.intro.

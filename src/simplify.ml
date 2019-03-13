@@ -117,11 +117,11 @@ module type BUILDER = sig
   val zero : constr_gen
   val one : constr_gen
   val one_val : constr_gen
-  val one_ind_dep : constr_gen
-  val zero_ind : constr_gen
-  val zero_ind_dep : constr_gen
+  val one_ind_dep : constr_univ_gen
+  val zero_ind : constr_univ_gen
+  val zero_ind_dep : constr_univ_gen
   val noConfusion : constr_gen
-  val apply_noConfusion : constr_gen
+  val apply_noConfusion : constr_univ_gen
   val noCycle : constr_gen
   val apply_noCycle_left : constr_gen
   val apply_noCycle_right : constr_gen
@@ -169,11 +169,11 @@ module BuilderGen (SigmaRefs : SIGMAREFS) (EqRefs : EQREFS) : BUILDER = struct
   let zero = gen_from_inductive EqRefs.zero
   let one = gen_from_inductive EqRefs.one
   let one_val = gen_from_constructor EqRefs.one_val
-  let one_ind_dep = gen_from_constant EqRefs.one_ind_dep
-  let zero_ind = gen_from_constant EqRefs.zero_ind
-  let zero_ind_dep = gen_from_constant EqRefs.zero_ind_dep
+  let one_ind_dep = gen_from_constant_univ EqRefs.one_ind_dep
+  let zero_ind = gen_from_constant_univ EqRefs.zero_ind
+  let zero_ind_dep = gen_from_constant_univ EqRefs.zero_ind_dep
   let noConfusion = gen_from_inductive EqRefs.noConfusion
-  let apply_noConfusion = gen_from_constant EqRefs.apply_noConfusion
+  let apply_noConfusion = gen_from_constant_univ EqRefs.apply_noConfusion
   let noCycle = gen_from_inductive EqRefs.noCycle
   let apply_noCycle_left = gen_from_constant EqRefs.apply_noCycle_left
   let apply_noCycle_right = gen_from_constant EqRefs.apply_noCycle_right
@@ -229,7 +229,7 @@ let univ_of_goalu env evd u =
     let () = evd := sigma in
     l, Univ.Universe.make l
 
-let instance_of env evd equ goalu =
+let instance_of env evd ?argu goalu =
   let goall, goalu = univ_of_goalu env evd goalu in
   let goall =
     if Univ.Level.is_prop goall then
@@ -240,10 +240,15 @@ let instance_of env evd equ goalu =
         evd := Evd.make_nonalgebraic_variable !evd goall; goall
       | _ -> goall
   in
-  let equ = EConstr.EInstance.kind !evd equ in
-  let equarray = Univ.Instance.to_array equ in
-  assert (Int.equal (Array.length equarray) 1);
-  let inst = EConstr.EInstance.make (Univ.Instance.of_array [| equarray.(0); goall |]) in
+  let inst =
+    match argu with
+    | Some equ ->
+      let equ = EConstr.EInstance.kind !evd equ in
+      let equarray = Univ.Instance.to_array equ in
+      assert (Int.equal (Array.length equarray) 1);
+      EConstr.EInstance.make (Univ.Instance.of_array [| equarray.(0); goall |])
+    | None -> EConstr.EInstance.make (Univ.Instance.of_array [| goall |])
+  in
   inst, goalu
 
 (* Build a term with an evar out of [constr -> constr] function. *)
@@ -538,7 +543,7 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
         end
     | _, _ -> raise (CannotSimplify (str "If you see this, please report."))
   in
-  let inst, glu = instance_of env evd sigu glu in
+  let inst, glu = instance_of env evd ~argu:sigu glu in
   build_app_infer env evd (ctx, ty, glu) ctx f ~inst args, Context_map.id_subst ctx
 let remove_sigma = while_fun remove_one_sigma
 
@@ -608,7 +613,7 @@ let solution ~(dir:direction) : simplification_fun =
   let uinst, glu' =
     (* If the equality is not polymorphic, the lemmas will be monomorphic as well *)
     if EConstr.EInstance.is_empty equ then equ, glu
-    else instance_of env evd equ glu
+    else instance_of env evd ~argu:equ glu
   in
   let tsolution = begin match var_left, nondep with
   | false, false -> Builder.solution_right_dep
@@ -803,7 +808,13 @@ let apply_noconf : simplification_fun =
   let tapply_noconf = Globnames.ConstRef (Lazy.force EqRefs.apply_noConfusion) in
   let tB = EConstr.mkLambda (name, ty1, ty2) in
   let args = [Some tA; Some tnoconf; Some t1; Some t2; Some tB; None] in
-    build_app_infer env evd (ctx, ty, glu) ctx tapply_noconf args, Context_map.id_subst ctx
+  let inst, glu' =
+    (* If the equality is not polymorphic, the lemmas will be monomorphic as well *)
+    if EConstr.EInstance.is_empty equ then equ, glu
+    else instance_of env evd ~argu:equ glu
+  in
+    build_app_infer env evd (ctx, ty, glu') ctx tapply_noconf ~inst args,
+    Context_map.id_subst ctx
 
 let simplify_ind_pack_inv : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
@@ -876,7 +887,12 @@ let noCycle : simplification_fun =
   in
   let tB = EConstr.mkLambda (name, ty1, ty2) in
   let args = [Some tA; Some tnocycle; Some t1; Some t2; Some tB; None] in
-  let cont, nocycle, glu' = build_app_infer_concl env evd (ctx, ty, glu) ctx tapply_nocycle args in
+  let inst, glu' =
+    (* If the equality is not polymorphic, the lemmas will be monomorphic as well *)
+    if EConstr.EInstance.is_empty equ then equ, glu
+    else instance_of env evd ~argu:equ glu
+  in
+  let cont, nocycle, glu' = build_app_infer_concl env evd (ctx, ty, glu) ctx tapply_nocycle ~inst args in
   let subst = Context_map.id_subst ctx in
   try
     let env = push_rel_context ctx env in
@@ -904,8 +920,13 @@ let elim_true : simplification_fun =
     (* Apply the dependent induction principle for True. *)
     let tB = EConstr.mkLambda (name, ty1, ty2) in
     let tone_ind = Globnames.ConstRef (Lazy.force EqRefs.one_ind_dep) in
+    let inst, glu' =
+      (* If the equality is not polymorphic, the lemmas will be monomorphic as well *)
+      if not (Global.is_polymorphic tone_ind) then EConstr.EInstance.empty, glu
+      else instance_of env evd glu
+    in
     let args = [Some tB; None] in
-      build_app_infer env evd (ctx, ty, glu) ctx tone_ind args, subst
+      build_app_infer env evd (ctx, ty, glu') ctx tone_ind ~inst args, subst
 
 let elim_false : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
@@ -918,14 +939,19 @@ let elim_false : simplification_fun =
   (* Check if the goal is dependent or not. *)
     if Vars.noccurn !evd 1 ty2 then
       let tB = Termops.pop ty2 in
-      let tzero_ind = Builder.zero_ind evd in
+      let tzero_ind = Globnames.ConstRef (Lazy.force EqRefs.zero_ind) in
         tB, tzero_ind
     else
       let tB = EConstr.mkLambda (name, ty1, ty2) in
-      let tzero_ind = Builder.zero_ind_dep evd in
+      let tzero_ind = Globnames.ConstRef (Lazy.force EqRefs.zero_ind_dep) in
         tB, tzero_ind
   in
-  let c = EConstr.mkApp (tzero_ind, [| tB |]) in
+  let inst, glu' =
+    (* If the equality is not polymorphic, the lemmas will be monomorphic as well *)
+    if not (Global.is_polymorphic tzero_ind) then EConstr.EInstance.empty, glu
+    else instance_of env evd glu
+    in
+  let c = EConstr.mkApp (EConstr.mkRef (tzero_ind, inst), [| tB |]) in
   (* We need to type the term in order to solve eventual universes
    * constraints. *)
   let _ = let env = push_rel_context ctx env in

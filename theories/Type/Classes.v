@@ -30,8 +30,8 @@ Class WellFounded {A : Type} (R : relation A) :=
     actually matter in the sense that they are used to prove
     absurdity. *)
 
-Class NoCyclePackage (A : Type) :=
-  { NoCycle : A -> A -> Type;
+Class NoCyclePackage@{i|} (A : Type@{i}) :=
+  { NoCycle : A -> A -> Type@{i};
     noCycle : forall {a b}, NoCycle a b -> (a = b -> Empty) }.
 
 (** These lemmas explains how to apply it during simplification. *)
@@ -39,15 +39,15 @@ Class NoCyclePackage (A : Type) :=
 (** We always generate a goal of the form [NoCycle x C[x]], using either
     the left or right versions of the following lemma. *)
 
-Lemma apply_noCycle_left {A} {noconf : NoCyclePackage A}
-      (p q : A) {B : p = q -> Type} :
-  NoCycle p q -> (forall H : p = q, B H).
+Lemma apply_noCycle_left@{i j|} {A : Type@{i}} {noconf : NoCyclePackage A}
+      (p q : A) {B : p = q -> Type@{j}} :
+  NoCycle@{i} p q -> (forall H : p = q, B H).
 Proof.
   intros noc eq. destruct (noCycle noc eq).
 Defined.
 
-Lemma apply_noCycle_right {A} {noconf : NoCyclePackage A}
-      (p q : A) {B : p = q -> Type} :
+Lemma apply_noCycle_right@{i j|} {A : Type@{i}} {noconf : NoCyclePackage A}
+      (p q : A) {B : p = q -> Type@{j}} :
   NoCycle q p -> (forall H : p = q, B H).
 Proof.
   intros noc eq. destruct (noCycle noc (id_sym eq)).
@@ -75,8 +75,8 @@ Hint Extern 30 (@NoCycle ?A (NoCycle_WellFounded ?R ?wfr) _ _) =>
    [injection] tactics on which we can always fall back.
    *)
 
-Cumulative Class NoConfusionPackage (A : Type) := {
-  NoConfusion : A -> A -> Type;
+Cumulative Class NoConfusionPackage@{i|} (A : Type@{i}) := {
+  NoConfusion : A -> A -> Type@{i};
   noConfusion : forall {a b}, NoConfusion a b -> Id a b;
   noConfusion_inv : forall {a b}, Id a b -> NoConfusion a b;
   noConfusion_sect : forall {a b} (e : NoConfusion a b), Id (noConfusion_inv (noConfusion e)) e;
@@ -86,8 +86,8 @@ Cumulative Class NoConfusionPackage (A : Type) := {
 (** This lemma explains how to apply it during simplification. *)
 
 Polymorphic
-Lemma apply_noConfusion {A} {noconf : NoConfusionPackage A}
-      (p q : A) {B : Id p q -> Type} :
+Lemma apply_noConfusion@{i j|} {A : Type@{i}} {noconf : NoConfusionPackage A}
+      (p q : A) {B : Id p q -> Type@{j}} :
   (forall e : NoConfusion p q, B (noConfusion e)) -> (forall e : Id p q, B e).
 Proof.
   intros. generalize (noConfusion_retr e). destruct e.
@@ -98,13 +98,13 @@ Extraction Inline apply_noConfusion.
 (** Classes for types with UIP or decidable equality.  *)
 
 Cumulative
-Class UIP (A : Type) := uip : forall {x y : A} (e e' : x = y), e = e'.
+Class UIP@{i|} (A : Type@{i}) := uip : forall {x y : A} (e e' : x = y), e = e'.
 
 Instance UIP_hSet (A : Type) (H : HSet A) : UIP A := H.
 
 Definition dec_eq {A} (x y : A) : Type := (x = y) + (x <> y).
 
-Class EqDec@{i} (A : Type@{i}) := eq_dec : forall x y : A, sum@{i} (x = y) (x = y -> Empty).
+Class EqDec@{i|} (A : Type@{i}) := eq_dec : forall x y : A, sum@{i} (x = y) (x = y -> Empty).
 
 Cumulative
 Class EqDecPoint (A : Type) (x : A) := eq_dec_point : forall y : A, (x = y) + (x <> y).
@@ -114,7 +114,7 @@ Instance EqDec_EqDecPoint A `(EqDec A) (x : A) : EqDecPoint A x := eq_dec x.
 (** For treating impossible cases. Equations corresponding to impossible
    calls form instances of [ImpossibleCall (f args)]. *)
 
-Class ImpossibleCall {A : Type} (a : A) : Type :=
+Class ImpossibleCall@{i} {A : Type@{i}} (a : A) : Type@{i} :=
   is_impossible_call : False.
 
 (** We have a trivial elimination operator for impossible calls. *)

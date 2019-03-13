@@ -12,6 +12,9 @@ Inductive Empty : Set :=.
 
 Scheme Empty_case := Minimality for Empty Sort Type.
 
+Definition unit_rect@{i} (P : unit -> Type@{i}) (p : P tt) (u : unit) : P u :=
+  match u with tt => p end.
+
 Definition prod (A : Type) (B : Type) := sigma (fun _ : A => B).
 
 Notation " A * B " := (prod A B) : type_scope.
