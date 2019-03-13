@@ -60,7 +60,8 @@ let mk_eq env env' evd args args' =
 let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let evd = ref evd in
   let mindb, oneind = Global.lookup_inductive ind in
-  let indsf = Inductive.inductive_sort_family oneind in
+  let pi = (fst indu, EConstr.EInstance.kind !evd (snd indu)) in
+  let _, inds = destArity !evd (EConstr.of_constr (Inductiveops.type_of_inductive env pi)) in
   let ctx = subst_instance_context (EInstance.kind !evd u) oneind.mind_arity_ctxt in
   let ctx = List.map of_rel_decl ctx in
   let ctx = smash_rel_context !evd ctx in
@@ -94,11 +95,14 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let s = match s with
     | Sorts.InType ->
       (* In that case the noConfusion principle lives at the level of the type. *)
-      Equations_common.evd_comb1 Evd.fresh_sort_in_family evd indsf
+      let sort = EConstr.mkSort (EConstr.ESorts.kind !evd inds) in
+      let sigma, s =
+        Evarsolve.refresh_universes ~status:Evd.univ_flexible ~onlyalg:true
+          (Some false) env !evd sort
+      in evd := sigma; s
     | Sorts.InProp
-    | Sorts.InSet -> Equations_common.evd_comb1 Evd.fresh_sort_in_family evd s
+    | Sorts.InSet -> mkSort (Equations_common.evd_comb1 Evd.fresh_sort_in_family evd s)
   in
-  let s = mkSort s in
   let arity = it_mkProd_or_LetIn s fullbinders in
   let env = push_rel_context binders env in
   let paramsvect = Context.Rel.to_extended_vect mkRel 0 ctx in

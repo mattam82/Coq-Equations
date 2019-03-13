@@ -108,7 +108,7 @@ let derive_noConfusion_package env sigma polymorphic (ind,u as indu) indid cstNo
 let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   let mindb, oneind = Global.lookup_inductive ind in
   let pi = (fst indu, EConstr.EInstance.kind sigma0 (snd indu)) in
-  let indsf = Inductive.inductive_sort_family oneind in
+  let _, inds = destArity sigma0 (EConstr.of_constr (Inductiveops.type_of_inductive env pi)) in
   let ctx = subst_instance_context (snd pi) oneind.mind_arity_ctxt in
   let ctx = List.map of_rel_decl ctx in
   let ctx = smash_rel_context sigma0 ctx in
@@ -128,14 +128,15 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   let binders = xdecl :: ctx in
   let ydecl = of_tuple (Name yid, None, lift 1 argty) in
   let fullbinders = ydecl :: binders in
-  let s =
+  let sigma, s =
     match Lazy.force logic_sort with
     | Sorts.InType | Sorts.InSet -> (* In that case noConfusion lives at the level of the inductive family *)
-      indsf
-    | s -> s
+      let sort = EConstr.mkSort (EConstr.ESorts.kind sigma inds) in
+      Evarsolve.refresh_universes ~status:Evd.univ_flexible ~onlyalg:true
+        (Some false) env sigma sort
+    | s -> let sigma, s = Evd.fresh_sort_in_family sigma s in
+      sigma, mkSort s
   in
-  let sigma, s = Evd.fresh_sort_in_family sigma s in
-  let s = mkSort s in
   let _arity = it_mkProd_or_LetIn s fullbinders in
   (* let env = push_rel_context binders env in *)
   let paramsvect = Context.Rel.to_extended_vect mkRel 0 ctx in
