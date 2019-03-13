@@ -57,7 +57,7 @@ Ltac elim_ind p := elim_tac ltac:(fun p el => induction p using el) p.
 
 (** Lemmas used by the simplifier, mainly rephrasings of [eq_rect], [eq_ind]. *)
 
-Lemma solution_left : forall {A} {B : A -> Type} (t : A), B t -> (forall x, Id x t -> B x).
+Lemma solution_left@{i j|} : forall {A : Type@{i}} {B : A -> Type@{j}} (t : A), B t -> (forall x, Id x t -> B x).
 Proof. intros A B t H x eq. destruct eq. apply H. Defined.
 
 Notation " e # t " := (Id_case _ _ t _ e) (right associativity, at level 65) : equations_scope.
@@ -75,29 +75,29 @@ Proof.
 Defined.
 
 (* Carefully crafted to avoid introducing commutative cuts. *)
-Lemma solution_left_dep : forall {A} (t : A) {B : forall (x : A), (x = t -> Type)},
+Lemma solution_left_dep@{i j|} : forall {A : Type@{i}} (t : A) {B : forall (x : A), (x = t -> Type@{j})},
     B t 1 -> (forall x (Heq : x = t), B x Heq).
 Proof.
   intros A t B H x eq. apply Id_symmetry_dep. clear eq. intros.
   destruct eq. exact H.
 Defined.
 
-Lemma solution_right : forall {A} {B : A -> Type} (t : A), B t -> (forall x, t = x -> B x).
+Lemma solution_right@{i j|} : forall {A : Type@{i}} {B : A -> Type@{j}} (t : A), B t -> (forall x, t = x -> B x).
 Proof. intros A B t H x eq. destruct eq. apply H. Defined.
 
-Lemma solution_right_dep : forall {A} (t : A) {B : forall (x : A), (t = x -> Type)},
+Lemma solution_right_dep@{i j|} : forall {A : Type@{i}} (t : A) {B : forall (x : A), (t = x -> Type@{j})},
     B t 1 -> (forall x (Heq : t = x), B x Heq).
 Proof. intros A t B H x eq. destruct eq. apply H. Defined.
 
-Lemma solution_left_let : forall {A} {B : A -> Type} (b : A) (t : A),
+Lemma solution_left_let@{i j|} : forall {A : Type@{i}} {B : A -> Type@{j}} (b : A) (t : A),
   (b = t -> B t) -> (let x := b in x = t -> B x).
 Proof. intros A B b t H x eq. subst x. destruct eq. apply H. reflexivity. Defined.
 
-Lemma solution_right_let : forall {A} {B : A -> Type} (b t : A),
+Lemma solution_right_let@{i j|} : forall {A : Type@{i}} {B : A -> Type@{j}} (b t : A),
   (t = b -> B t) -> (let x := b in t = x -> B x).
 Proof. intros A B b t H x eq. subst x. destruct eq. apply H. reflexivity. Defined.
 
-Lemma deletion : forall {A B} (t : A), B -> (t = t -> B).
+Lemma deletion@{i j|} : forall {A : Type@{i}} {B : Type@{j}} (t : A), B -> (t = t -> B).
 Proof. intros; assumption. Defined.
 
 Lemma simplification_sigma1@{i j} {A : Type@{i}} {P : Type@{i}} {B : Type@{j}}
@@ -216,14 +216,15 @@ Defined.
 
 Arguments simplification_sigma2_uip : simpl never.
 
- Lemma simplification_K_uip {A} `{UIP A} (x : A) {B : x = x -> Type} :
+ Lemma simplification_K_uip@{i j|} {A : Type@{i}} `{UIP A} (x : A) {B : x = x -> Type@{j}} :
   B 1 -> (forall p : x = x, B p).
 Proof. apply UIP_K. Defined.
 
 Arguments simplification_K_uip : simpl never.
 
-Lemma simplification_K_uip_refl : forall {A} `{UIP A} (x : A) {B : x = x -> Type}
-                                    (p : B 1),
+Lemma simplification_K_uip_refl@{i j|} :
+  forall {A : Type@{i}} `{UIP A} (x : A) {B : x = x -> Type@{j}}
+         (p : B 1),
   simplification_K_uip x p 1 = p.
 Proof.
   intros.

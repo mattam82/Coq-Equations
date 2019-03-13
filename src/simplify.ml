@@ -105,10 +105,13 @@ end
 
 type constr_gen = Evd.evar_map ref -> EConstr.constr
 
+type constr_univ_gen = EConstr.EInstance.t -> EConstr.constr
+
 module type BUILDER = sig
   val sigma : constr_gen
   val sigmaI : constr_gen
   val eq : constr_gen
+  val equ : constr_univ_gen
   val eq_refl : constr_gen
   val uip : constr_gen
   val zero : constr_gen
@@ -129,19 +132,25 @@ module type BUILDER = sig
   val simpl_sigma_nondep_dep : constr_gen
   val simpl_sigma_dep_dep : constr_gen
   val simpl_uip : constr_gen
-  val solution_left : constr_gen
-  val solution_left_dep : constr_gen
-  val solution_right : constr_gen
-  val solution_right_dep : constr_gen
+  val solution_left : constr_univ_gen
+  val solution_left_dep : constr_univ_gen
+  val solution_right : constr_univ_gen
+  val solution_right_dep : constr_univ_gen
 end
 
 module BuilderHelper = struct
   let gen_from_inductive ind = fun evd ->
     let glob = Globnames.IndRef (Lazy.force ind) in
     Equations_common.e_new_global evd glob
+  let gen_from_inductive_univ ind u =
+    let glob = Globnames.IndRef (Lazy.force ind) in
+    EConstr.mkRef (glob, u)
   let gen_from_constant cst = fun evd ->
     let glob = Globnames.ConstRef (Lazy.force cst) in
     Equations_common.e_new_global evd glob
+  let gen_from_constant_univ cst u =
+    let glob = Globnames.ConstRef (Lazy.force cst) in
+    EConstr.mkRef (glob, u)
   let gen_from_constructor constr = fun evd ->
     let glob = Globnames.ConstructRef (Lazy.force constr) in
     Equations_common.e_new_global evd glob
@@ -153,6 +162,8 @@ module BuilderGen (SigmaRefs : SIGMAREFS) (EqRefs : EQREFS) : BUILDER = struct
   let sigma = gen_from_inductive SigmaRefs.sigma
   let sigmaI = gen_from_constructor SigmaRefs.sigmaI
   let eq = gen_from_inductive EqRefs.eq
+  let equ u = gen_from_inductive_univ EqRefs.eq u
+
   let eq_refl = gen_from_constructor EqRefs.eq_refl
   let uip = gen_from_constant EqRefs.uip
   let zero = gen_from_inductive EqRefs.zero
@@ -173,10 +184,10 @@ module BuilderGen (SigmaRefs : SIGMAREFS) (EqRefs : EQREFS) : BUILDER = struct
   let simpl_sigma_nondep_dep = gen_from_constant EqRefs.simpl_sigma_nondep_dep
   let simpl_sigma_dep_dep = gen_from_constant EqRefs.simpl_sigma_dep_dep
   let simpl_uip = gen_from_constant EqRefs.simpl_uip
-  let solution_left = gen_from_constant EqRefs.solution_left
-  let solution_left_dep = gen_from_constant EqRefs.solution_left_dep
-  let solution_right = gen_from_constant EqRefs.solution_right
-  let solution_right_dep = gen_from_constant EqRefs.solution_right_dep
+  let solution_left = gen_from_constant_univ EqRefs.solution_left
+  let solution_left_dep = gen_from_constant_univ EqRefs.solution_left_dep
+  let solution_right = gen_from_constant_univ EqRefs.solution_right
+  let solution_right_dep = gen_from_constant_univ EqRefs.solution_right_dep
 end
 
 module Builder : BUILDER = BuilderGen(SigmaRefs)(EqRefs)
@@ -369,11 +380,12 @@ let check_letin sigma (ty : EConstr.types) : Names.Name.t * EConstr.types * ECon
  * the case. Otherwise, return its arguments *)
 let check_equality env sigma ctx ?(equal_terms : bool = false)
   ?(var_left : bool = false) ?(var_right : bool = false) (ty : EConstr.types) :
-    EConstr.types * EConstr.constr * EConstr.constr =
+  EConstr.EInstance.t * EConstr.types * EConstr.constr * EConstr.constr =
   let f, args = Equations_common.decompose_appvect sigma ty in
   if not (check_inductive sigma (Lazy.force EqRefs.eq) f) then
     raise (CannotSimplify (str
       "The first hypothesis in the goal is not an equality."));
+  let _, u = EConstr.destInd sigma f in
   let tA = args.(0) in
   let tx, ty = args.(1), args.(2) in
   if equal_terms && not (is_conv env sigma ctx tx ty) then
@@ -388,7 +400,7 @@ let check_equality env sigma ctx ?(equal_terms : bool = false)
     raise (CannotSimplify (str
       "The right-hand side of the first hypothesis in the goal is \
        not a variable."));
-  tA, tx, ty
+  u, tA, tx, ty
 
 let decompose_sigma sigma (t : EConstr.constr) :
   (EConstr.types * EConstr.constr * EConstr.constr * EConstr.constr) option =
@@ -420,10 +432,10 @@ let with_retry (f : simplification_fun) : simplification_fun =
       (* If the head is an equality, reduce it. *)
       try
         let name, ty1, ty2 = check_prod !evd ty in
-        let tA, t1, t2 = check_equality env !evd ctx ty1 in
+        let u, tA, t1, t2 = check_equality env !evd ctx ty1 in
         let t1 = reduce t1 in
         let t2 = reduce t2 in
-        let ty1 = EConstr.mkApp (Builder.eq evd, [| tA; t1; t2 |]) in
+        let ty1 = EConstr.mkApp (Builder.equ u, [| tA; t1; t2 |]) in
           EConstr.mkProd (name, ty1, ty2)
       with CannotSimplify _ -> ty
       with Constr.DestKO -> ty
@@ -440,7 +452,7 @@ let with_retry (f : simplification_fun) : simplification_fun =
 let remove_one_sigma ?(only_nondep=false) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
-  let _, t1, t2 = check_equality env !evd ctx ty1 in
+  let u, _, t1, t2 = check_equality env !evd ctx ty1 in
   let f, args =
     match decompose_sigma !evd t1, decompose_sigma !evd t2 with
     | Some (tA, tB, tt, tp), Some (_, _, tu, tq) ->
@@ -501,7 +513,7 @@ let remove_sigma = while_fun remove_one_sigma
 let deletion ~(force:bool) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
-  let tA, tx, _ = check_equality env !evd ctx ~equal_terms:true ty1 in
+  let u, tA, tx, _ = check_equality env !evd ctx ~equal_terms:true ty1 in
   let subst = Context_map.id_subst ctx in
   if Vars.noccurn !evd 1 ty2 then
     (* The goal does not depend on the equality, we can just eliminate it. *)
@@ -531,12 +543,22 @@ let deletion ~(force:bool) : simplification_fun =
                                 str " and the 'Equations With UIP' flag is off"
                               else mt())))
 
+let univ_of_codom env evd ctx na dom codom =
+  let decl = Context.Rel.Declaration.LocalAssum (na, dom) in
+  let s = Retyping.get_sort_of (push_rel_context (decl :: ctx) env) !evd codom in
+  let u = Sorts.univ_of_sort s in
+  match Univ.Universe.level u with
+  | Some l -> l
+  | None ->
+    let evd', l = Evd.new_univ_level_variable Evd.univ_flexible !evd in
+    evd := evd'; l
+
 let solution ~(dir:direction) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
   let var_left = match dir with Left -> true | Right -> false in
   let var_right = not var_left in
   let name, ty1, ty2 = check_prod !evd ty in
-  let tA, tx, tz = check_equality env !evd ctx ~var_left ~var_right ty1 in
+  let equ, tA, tx, tz = check_equality env !evd ctx ~var_left ~var_right ty1 in
   let trel, term =
     if var_left then tx, tz
     else tz, tx
@@ -561,11 +583,21 @@ let solution ~(dir:direction) : simplification_fun =
   
   (* Select the correct solution lemma. *)
   let nondep = Vars.noccurn !evd 1 ty2 in
+  let uinst =
+    (* If the equality is not polymorphic, the lemmas will be monomorphic as well *)
+    if EConstr.EInstance.is_empty equ then equ
+    else
+      let codomu = univ_of_codom env evd ctx name ty1 ty2 in
+      let equ = EConstr.EInstance.kind !evd equ in
+      let equarray = Univ.Instance.to_array equ in
+      assert (Int.equal (Array.length equarray) 1);
+      EConstr.EInstance.make (Univ.Instance.of_array [| equarray.(0); codomu |])
+  in
   let tsolution = begin match var_left, nondep with
   | false, false -> Builder.solution_right_dep
   | false, true -> Builder.solution_right
   | true, false -> Builder.solution_left_dep
-  | true, true -> Builder.solution_left end evd
+  | true, true -> Builder.solution_left end uinst
   in
   let tB', body =
     let body = Context_map.mapping_constr !evd subst ty in
@@ -630,7 +662,7 @@ let pre_solution ~(dir:direction) : simplification_fun =
   let var_left = match dir with Left -> true | Right -> false in
   let var_right = not var_left in
   let name, ty1, ty2 = check_prod !evd ty in
-  let tA, tx, tz = check_equality env !evd ctx ~var_left ~var_right ty1 in
+  let _equ, tA, tx, tz = check_equality env !evd ctx ~var_left ~var_right ty1 in
   let trel, term =
     if var_left then tx, tz
     else tz, tx
@@ -667,7 +699,7 @@ let is_construct_sigma_2 sigma f =
 let maybe_pack : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
-  let tA, t1, t2 = check_equality env !evd ctx ty1 in
+  let equ, tA, t1, t2 = check_equality env !evd ctx ty1 in
   if not (is_construct_sigma_2 !evd t1 && is_construct_sigma_2 !evd t2) then
     raise (CannotSimplify (str "This is not an equality between constructors."));
   let indty =
@@ -737,7 +769,7 @@ let maybe_pack : simplification_fun =
 let apply_noconf : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
-  let tA, t1, t2 = check_equality env !evd ctx ty1 in
+  let equ, tA, t1, t2 = check_equality env !evd ctx ty1 in
   if not (is_construct_sigma_2 !evd t1 && is_construct_sigma_2 !evd t2) then
     raise (CannotSimplify (str "This is not an equality between constructors."));
   let noconf_ty = EConstr.mkApp (Builder.noConfusion evd, [| tA |]) in
@@ -804,7 +836,7 @@ let noConfusion = compose_fun apply_noconf maybe_pack
 let noCycle : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
-  let tA, t1, t2 = check_equality env !evd ctx ty1 in
+  let equ, tA, t1, t2 = check_equality env !evd ctx ty1 in
   let isct1 = is_construct_sigma_2 !evd t1 in
   let isct2 = is_construct_sigma_2 !evd t2 in
   if not (isct1 || isct2) then
@@ -902,7 +934,7 @@ let infer_step ?(loc:Loc.t option) ~(isSol:bool)
     else
     (* We need to destruct the equality at the head
        to analyze it. *)
-    let tA, tu, tv = check_equality env !evd ctx ty1 in
+    let equ, tA, tu, tv = check_equality env !evd ctx ty1 in
     (* FIXME What is the correct way to do it? *)
     let choose u v = if u < v then Left else Right in
     (* If the user wants a solution, we need to respect his wishes. *)
@@ -982,7 +1014,7 @@ let _expand_many rule env evd ((ctx, ty) : goal) : simplification_rules =
   let _, ty, _ = check_prod !evd ty in
   try
     let ty = Reductionops.whd_all env !evd ty in
-    let ty, _, _ = check_equality env !evd ctx ty in
+    let equ, ty, _, _ = check_equality env !evd ctx ty in
     let rec aux ty acc =
       let ty = Reductionops.whd_betaiotazeta !evd ty in
       let f, args = Equations_common.decompose_appvect !evd ty in
