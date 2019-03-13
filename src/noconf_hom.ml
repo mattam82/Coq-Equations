@@ -133,9 +133,13 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   let sigma, s =
     match Lazy.force logic_sort with
     | Sorts.InType | Sorts.InSet -> (* In that case noConfusion lives at the level of the inductive family *)
-      let sort = EConstr.mkSort (EConstr.ESorts.kind sigma inds) in
-      Evarsolve.refresh_universes ~status:Evd.univ_flexible ~onlyalg:true
-        (Some false) env sigma sort
+      let csort = EConstr.ESorts.kind sigma inds in
+      let sort = EConstr.mkSort csort in
+      let usort = Sorts.univ_of_sort csort in
+      if Univ.Universe.is_level usort then sigma, sort
+      else
+        Evarsolve.refresh_universes ~status:Evd.univ_flexible ~onlyalg:true
+          (Some false) env sigma sort
     | s -> let sigma, s = Evd.fresh_sort_in_family sigma s in
       sigma, mkSort s
   in
