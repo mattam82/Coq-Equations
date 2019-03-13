@@ -56,7 +56,7 @@ Ltac elim_ind p := elim_tac ltac:(fun p el => induction p using el) p.
 
 (** Lemmas used by the simplifier, mainly rephrasings of [eq_rect], [eq_ind]. *)
 
-Lemma solution_left : forall {A} {B : A -> Type} (t : A), B t -> (forall x, x = t -> B x).
+Lemma solution_left@{i j |} : forall {A : Type@{i}} {B : A -> Type@{j}} (t : A), B t -> (forall x, x = t -> B x).
 Proof. intros A B t H x eq. destruct eq. apply H. Defined.
 
 Lemma eq_sym_invol {A} (x y : A) (e : x = y) : e^^ = e.
@@ -73,29 +73,29 @@ Defined.
 Local Open Scope path_scope.
 
 (* Carefully crafted to avoid introducing commutative cuts. *)
-Lemma solution_left_dep : forall {A} (t : A) {B : forall (x : A), (x = t -> Type)},
+Lemma solution_left_dep@{i j|} : forall {A : Type@{i}} (t : A) {B : forall (x : A), (x = t -> Type@{j})},
     B t 1 -> (forall x (Heq : x = t), B x Heq).
 Proof.
   intros A t B H x eq. apply eq_symmetry_dep. clear eq. intros.
   destruct eq. exact H.
 Defined.
 
-Lemma solution_right : forall {A} {B : A -> Type} (t : A), B t -> (forall x, t = x -> B x).
+Lemma solution_right@{i j|} : forall {A : Type@{i}} {B : A -> Type@{j}} (t : A), B t -> (forall x, t = x -> B x).
 Proof. intros A B t H x eq. destruct eq. apply H. Defined.
 
-Lemma solution_right_dep : forall {A} (t : A) {B : forall (x : A), (t = x -> Type)},
+Lemma solution_right_dep@{i j|} : forall {A : Type@{i}} (t : A) {B : forall (x : A), (t = x -> Type@{j})},
     B t 1 -> (forall x (Heq : t = x), B x Heq).
 Proof. intros A t B H x eq. destruct eq. apply H. Defined.
 
-Lemma solution_left_let : forall {A} {B : A -> Type} (b : A) (t : A),
+Lemma solution_left_let@{i j|} : forall {A : Type@{i}} {B : A -> Type@{j}} (b : A) (t : A),
   (b = t -> B t) -> (let x := b in x = t -> B x).
 Proof. intros A B b t H x eq. subst x. destruct eq. apply H. reflexivity. Defined.
 
-Lemma solution_right_let : forall {A} {B : A -> Type} (b t : A),
+Lemma solution_right_let@{i j|} : forall {A : Type@{i}} {B : A -> Type@{j}} (b t : A),
   (t = b -> B t) -> (let x := b in t = x -> B x).
 Proof. intros A B b t H x eq. subst x. destruct eq. apply H. reflexivity. Defined.
 
-Lemma deletion : forall {A B} (t : A), B -> (t = t -> B).
+Lemma deletion@{i j|} : forall {A : Type@{i}} {B : Type@{j}} (t : A), B -> (t = t -> B).
 Proof. intros; assumption. Defined.
 
 Lemma simplification_sigma1@{i j |} {A : Type@{i}} {P : Type@{i}} {B : Type@{j}}
@@ -176,12 +176,12 @@ Defined.
 (*   intros X. eapply (X id_refl). apply id_refl. *)
 (* Defined. *)
 
-Lemma pr2_inv_uip@{i} {A : Type@{i}}
+Lemma pr2_inv_uip@{i|} {A : Type@{i}}
             {P : A -> Type@{i}} {x : A} {y y' : P x} :
   y = y' -> sigmaI@{i} P x y = sigmaI@{i} P x y'.
 Proof. exact (solution_right (B:=fun y' => (x, y) = (x, y')) y 1 y'). Defined.
 
-Lemma pr2_uip@{i} {A : Type@{i}}
+Lemma pr2_uip@{i|} {A : Type@{i}}
             {E : UIP A} {P : A -> Type@{i}} {x : A} {y y' : P x} :
   sigmaI@{i} P x y = sigmaI@{i} P x y' -> y = y'.
 Proof.
@@ -189,7 +189,7 @@ Proof.
   intros e'. destruct (uip 1 e'). intros e ; exact e.
 Defined.
 
-Lemma pr2_uip_refl@{i} {A : Type@{i}}
+Lemma pr2_uip_refl@{i| } {A : Type@{i}}
       {E : UIP A} (P : A -> Type@{i}) (x : A) (y : P x) :
   pr2_uip@{i} (@idpath _ (x, y)) = 1.
 Proof.
@@ -199,12 +199,12 @@ Defined.
 
 (** If we have decidable equality on [A] we use this version which is 
    axiom-free! *)
-Lemma simplification_sigma2_uip@{i j} {A : Type@{i}} {uip : UIP A} {P : A -> Type@{i}}
+Lemma simplification_sigma2_uip@{i j|} {A : Type@{i}} {uip : UIP A} {P : A -> Type@{i}}
       {B : Type@{j}} (p : A) (x y : P p) :
   (x = y -> B) -> ((p , x) = (p, y) -> B).
 Proof. intros t e. apply t. exact (pr2_uip@{i} e). Defined.
 
- Lemma simplification_sigma2_uip_refl@{i j} :
+ Lemma simplification_sigma2_uip_refl@{i j|} :
   forall {A : Type@{i}} {uip:UIP A} {P : A -> Type@{i}} {B : Type@{j}}
     (p : A) (x : P p) (G : x = x -> B),
       @simplification_sigma2_uip A uip P B p x x G 1 = G 1.
@@ -214,13 +214,13 @@ Defined.
 
 Arguments simplification_sigma2_uip : simpl never.
 
- Lemma simplification_K_uip {A} `{UIP A} (x : A) {B : x = x -> Type} :
+ Lemma simplification_K_uip@{i j|} {A : Type@{i}} `{UIP A} (x : A) {B : x = x -> Type@{j}} :
   B 1 -> (forall p : x = x, B p).
 Proof. apply UIP_K. Defined.
 
 Arguments simplification_K_uip : simpl never.
 
-Lemma simplification_K_uip_refl : forall {A} `{UIP A} (x : A) {B : x = x -> Type}
+Lemma simplification_K_uip_refl@{i j|} : forall {A : Type@{i}} `{UIP A} (x : A) {B : x = x -> Type@{j}}
                                     (p : B 1),
   simplification_K_uip x p 1 = p.
 Proof.
@@ -293,7 +293,6 @@ Qed.
 (** All the simplification rules involving UIP are treated as opaque
   when proving lemmas about definitions. To actually compute with these
   inside Coq, one has to make them transparent again. *)
-
 
 Global Opaque simplification_sigma2_uip
        (* simplification_sigma2_dec_point *)
