@@ -100,7 +100,7 @@ Proof. intros A B b t H x eq. subst x. destruct eq. apply H. reflexivity. Define
 Lemma deletion@{i j|} : forall {A : Type@{i}} {B : Type@{j}} (t : A), B -> (t = t -> B).
 Proof. intros; assumption. Defined.
 
-Lemma simplification_sigma1@{i j|} {A : Type@{i}} {P : Type@{i}} {B : Type@{j}}
+Lemma simplification_sigma1@{i j} {A : Type@{i}} {P : Type@{i}} {B : Type@{j}}
   (p q : A) (x : P) (y : P) :
   (p = q -> x = y -> B) -> ((p, x) = (q, y) -> B).
 Proof.
@@ -113,9 +113,9 @@ Proof.
   exact (eq 1 1).
 Defined.
 
-Lemma simplification_sigma1_dep@{i j|} {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}}
+Lemma simplification_sigma1_dep@{i j} {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}}
   (p q : A) (x : P p) (y : P q) :
-  (forall e : Id@{i} p q, Id (@Id_rew@{i i} A p P x q e) y -> B) ->
+  (forall e : Id@{j} p q, Id (@Id_rew@{i j} A p P x q e) y -> B) ->
   (Id ((p, x)) ((q, y)) -> B).
 Proof.
   intros. revert X.
@@ -131,7 +131,7 @@ Definition pack_sigma_nondep@{i} {A : Type@{i}} {P : Type@{i}} {p q : A} {x : P}
   (e' : Id p q) (e : Id x y) : Id (p, x) (q, y).
 Proof. destruct e'. simpl in e. destruct e. apply id_refl. Defined.
 
- Lemma simplification_sigma1_nondep_dep@{i j|} {A : Type@{i}} {P : Type@{i}}
+ Lemma simplification_sigma1_nondep_dep@{i j} {A : Type@{i}} {P : Type@{i}}
   (p q : A) (x : P) (y : P) {B : Id (p, x) (q, y) -> Type@{j}} :
   (forall e' : Id p q, forall e : Id x y, B (pack_sigma_nondep e' e)) ->
   (forall e : Id (sigmaI (fun _ => P) p x) (sigmaI (fun _ => P) q y), B e).
@@ -150,7 +150,7 @@ Defined.
   (e' : Id p q) (e : Id (@Id_rew A p P x q e') y) : Id (p, x) (q, y).
 Proof. destruct e'. simpl in e. destruct e. apply id_refl. Defined.
 
- Lemma simplification_sigma1_dep_dep@{i j|} {A : Type@{i}} {P : A -> Type@{i}}
+ Lemma simplification_sigma1_dep_dep@{i j} {A : Type@{i}} {P : A -> Type@{i}}
   (p q : A) (x : P p) (y : P q) {B : Id (p, x) (q, y) -> Type@{j}} :
   (forall e' : Id p q, forall e : Id (@Id_rew A p P x q e') y, B (pack_sigma e' e)) ->
   (forall e : Id ((p, x)) ((q, y)), B e).
