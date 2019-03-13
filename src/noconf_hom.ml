@@ -54,18 +54,20 @@ let get_forced_positions sigma args concl =
   in
   List.rev (List.fold_left_i is_forced 1 [] args)
 
-let derive_noConfusion_package env sigma polymorphic (ind,u as indu) indid cstNoConf =
+let derive_noConfusion_package env sigma polymorphic (ind,u as indu) indid ~prefix ~tactic cstNoConf =
   let mindb, oneind = Global.lookup_inductive ind in
   let pi = (fst indu, EConstr.EInstance.kind sigma (snd indu)) in
   let ctx = subst_instance_context (snd pi) oneind.mind_arity_ctxt in
   let ctx = List.map of_rel_decl ctx in
   let ctx = smash_rel_context sigma ctx in
-  let len = List.length ctx in
+  let len =
+    if prefix = "" then mindb.mind_nparams
+    else List.length ctx in
   let argsvect = rel_vect 0 len in
-  let noid = add_prefix "noConfusionHom_" indid
-  and packid = add_prefix "NoConfusionHomPackage_" indid in
+  let noid = add_prefix "noConfusion" (add_prefix prefix (add_prefix "_" indid))
+  and packid = add_prefix "NoConfusion" (add_prefix prefix (add_prefix "Package_" indid)) in
   let tc = Typeclasses.class_info (Lazy.force coq_noconfusion_class) in
-  let sigma, noconf = new_global sigma (ConstRef cstNoConf) in
+  let sigma, noconf = Evd.fresh_global ~rigid:Evd.univ_rigid env sigma (ConstRef cstNoConf) in
   let sigma, noconfcl = new_global sigma tc.Typeclasses.cl_impl in
   let inst, u = destInd sigma noconfcl in
   let noconfterm = mkApp (noconf, argsvect) in
@@ -102,7 +104,7 @@ let derive_noConfusion_package env sigma polymorphic (ind,u as indu) indid cstNo
       (to_constr ~abort_on_undefined_evars:false sigma term)
       (to_constr sigma ty) in
     ignore(Obligations.add_definition ~hook packid
-             ~kind ~term ty ~tactic:(noconf_hom_tac ())
+             ~kind ~term ty ~tactic
               (Evd.evar_universe_context sigma) oblinfo)
 
 let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
@@ -265,7 +267,8 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
         ~rigid:Evd.univ_rigid (* Universe levels of the inductive family should not be tampered with. *)
         env sigma (IndRef ind) in
     let indu = destInd sigma indu in
-    derive_noConfusion_package (Global.env ()) sigma0 polymorphic indu indid program_cst
+    derive_noConfusion_package (Global.env ()) sigma polymorphic indu indid
+      ~prefix:"Hom" ~tactic:(noconf_hom_tac ()) program_cst
  in
  let prog = Splitting.make_single_program env evd data.Covering.flags p ctxmap splitting None in
  Splitting.define_programs env evd [None] [] data.Covering.flags [prog] hook

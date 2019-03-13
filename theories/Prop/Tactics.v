@@ -69,7 +69,7 @@ Ltac solve_noconf_prf := intros;
   on_last_hyp ltac:(fun id => destruct id) ; (* Subtitute a = b *)
   on_last_hyp ltac:(fun id =>
                       destruct_sigma id;
-                      elim id) ; (* Destruct the inductive object a *)
+                      destruct id) ; (* Destruct the inductive object a *)
   constructor.
 
 Ltac solve_noconf_inv_eq a b :=
@@ -92,7 +92,7 @@ Ltac solve_noconf_inv_equiv :=
   (* Subtitute a = b *)
   on_last_hyp ltac:(fun id => destruct id) ;
   (* Destruct the inductive object a *)
-  on_last_hyp ltac:(fun id => destruct_sigma id; elim id) ;
+  on_last_hyp ltac:(fun id => destruct_sigma id; destruct id) ;
   simpl; constructor.
 
 Ltac solve_noconf := simpl; intros;

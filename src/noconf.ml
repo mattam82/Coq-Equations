@@ -57,8 +57,8 @@ let mk_eq env env' evd args args' =
   let ty = Retyping.get_type_of env !evd make in
   mkEq env evd ty make make'
 
-let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
-  let evd = ref evd in
+let derive_no_confusion env sigma0 ~polymorphic (ind,u as indu) =
+  let evd = ref sigma0 in
   let mindb, oneind = Global.lookup_inductive ind in
   let pi = (fst indu, EConstr.EInstance.kind !evd (snd indu)) in
   let _, inds = destArity !evd (EConstr.of_constr (Inductiveops.type_of_inductive env pi)) in
@@ -137,51 +137,16 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let app = it_mkLambda_or_LetIn pred binders in
   let _, ce = make_definition ~poly:polymorphic !evd ~types:arity app in
   let indid = Nametab.basename_of_global (IndRef ind) in
-  let id = add_prefix "NoConfusion_" indid
-  and noid = add_prefix "noConfusion_" indid
-  and packid = add_prefix "NoConfusionPackage_" indid in
+  let id = add_prefix "NoConfusion_" indid in
   let cstNoConf = Declare.declare_constant id (DefinitionEntry ce, IsDefinition Definition) in
   let env = Global.env () in
-  let evd = ref (Evd.from_env env) in
-  let tc = Typeclasses.class_info (Lazy.force coq_noconfusion_class) in
-  let noconf = e_new_global evd (ConstRef cstNoConf) in
-  let noconfcl = e_new_global evd tc.Typeclasses.cl_impl in
-  let inst, u = destInd !evd noconfcl in
-  let noconfterm = mkApp (noconf, paramsvect) in
-  let ctx, argty =
-    let ty = Retyping.get_type_of env !evd noconf in
-    let ctx, ty = EConstr.decompose_prod_n_assum !evd params ty in
-    match kind !evd ty with
-    | Prod (_, b, _) -> ctx, b
-    | _ -> assert false
-  in
-  let b, ty = 
-    Equations_common.instance_constructor !evd (tc,u) [argty; noconfterm]
-  in
-  let env = push_rel_context ctx (Global.env ()) in
-  let rec term c ty =
-    match kind !evd ty with
-    | Prod (na, t, ty) ->
-       let arg = Equations_common.evd_comb1 (Evarutil.new_evar env) evd t in
-       term (mkApp (c, [|arg|])) (subst1 arg ty)
-    | _ -> c, ty
-  in
-  let cty = Retyping.get_type_of env !evd (Option.get b) in
-  let term, ty = term (Option.get b) cty in
-  let term = it_mkLambda_or_LetIn term ctx in
-  let ty = it_mkProd_or_LetIn ty ctx in
-  let _ = Equations_common.evd_comb1 (Typing.type_of env) evd term in
-  let hook _ectx _evars vis gr =
-    Typeclasses.add_instance
-      (Typeclasses.new_instance tc empty_hint_info true gr)
-  in
-  let kind = (Global, polymorphic, Definition) in
-  let oblinfo, _, term, ty = Obligations.eterm_obligations env noid !evd 0
-      (to_constr ~abort_on_undefined_evars:false !evd term)
-      (to_constr !evd ty) in
-    ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hook) packid
-             ~kind ~term ty ~tactic:(noconf_tac ())
-	      (Evd.evar_universe_context !evd) oblinfo)
+  let sigma = Evd.from_env env in
+  let sigma, indu = Evd.fresh_global
+      ~rigid:Evd.univ_rigid (* Universe levels of the inductive family should not be tampered with. *)
+      env sigma (IndRef ind) in
+  let indu = destInd sigma indu in
+  Noconf_hom.derive_noConfusion_package env sigma polymorphic indu indid
+    ~prefix:"" ~tactic:(noconf_tac ()) cstNoConf
 
 let () =
   Ederive.(register_derive
