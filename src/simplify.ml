@@ -221,6 +221,27 @@ type simplification_fun = Environ.env -> Evd.evar_map ref -> goal ->
 
 (* Auxiliary functions. *)
 
+let univ_of_goalu env evd u =
+  match Univ.Universe.level u with
+  | Some l -> l, u
+  | None ->
+    let sigma, l = Evd.new_univ_level_variable Evd.univ_flexible !evd in
+    let () = evd := sigma in
+    l, Univ.Universe.make l
+
+let instance_of env evd equ goalu =
+  let goall, goalu = univ_of_goalu env evd goalu in
+  let goall =
+    if Univ.Level.is_prop goall then
+      Univ.Level.set
+    else goall
+  in
+  let equ = EConstr.EInstance.kind !evd equ in
+  let equarray = Univ.Instance.to_array equ in
+  assert (Int.equal (Array.length equarray) 1);
+  let inst = EConstr.EInstance.make (Univ.Instance.of_array [| equarray.(0); goall |]) in
+  inst, goalu
+
 (* Build a term with an evar out of [constr -> constr] function. *)
 let build_term (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal)
   ((ctx', ty', u') : goal) (f : EConstr.constr -> EConstr.constr) : open_term =
@@ -235,26 +256,32 @@ let build_term (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal
     Some ((ctx', ty', u'), ev), c
 
 let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal)
-  (ctx' : EConstr.rel_context) (f : Names.GlobRef.t)
+  (ctx' : EConstr.rel_context) (f : Names.GlobRef.t) ?(inst:EInstance.t option)
   (args : EConstr.constr option list) =
   let tf, ty =
-    match f with
-    | Globnames.VarRef var -> assert false
-    | Globnames.ConstRef cst ->
+    match inst with
+    | Some u ->
+      let tf = EConstr.mkRef (f, u) in
+      let ty = Retyping.get_type_of env !evd tf in
+      tf, ty
+    | None ->
+      match f with
+      | Globnames.VarRef var -> assert false
+      | Globnames.ConstRef cst ->
         let pcst = Equations_common.evd_comb1 (Evd.fresh_constant_instance env) evd cst in
         let tf = Constr.mkConstU pcst in
         let ty = Typeops.type_of_constant_in env pcst in
-          tf, ty
-    | Globnames.IndRef ind ->
+        of_constr tf, of_constr ty
+      | Globnames.IndRef ind ->
         let pind = Equations_common.evd_comb1 (Evd.fresh_inductive_instance env) evd ind in
         let tf = Constr.mkIndU pind in
         let ty = Inductiveops.type_of_inductive env pind in
-          tf, ty
-    | Globnames.ConstructRef cstr ->
+        of_constr tf, of_constr ty
+      | Globnames.ConstructRef cstr ->
         let pcstr = Equations_common.evd_comb1 (Evd.fresh_constructor_instance env) evd cstr in
         let tf = Constr.mkConstructU pcstr in
         let ty = Inductiveops.type_of_constructor env pcstr in
-          tf, ty
+        of_constr tf, of_constr ty
   in
   let rec aux ty args =
     match kind !evd ty, args with
@@ -264,8 +291,6 @@ let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty
     | Constr.Cast (c, _, _), args -> aux c args
     | _, _ -> failwith "Unexpected mismatch."
   in
-  let tf = of_constr tf in
-  let ty = of_constr ty in
   let ty' = aux ty args in
   let ty' = Reductionops.whd_beta !evd ty' in
   let cont = fun c ->
@@ -274,9 +299,9 @@ let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty
   in cont, ty', u
 
 let build_app_infer (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal)
-  (ctx' : EConstr.rel_context) (f : Names.GlobRef.t)
+  (ctx' : EConstr.rel_context) (f : Names.GlobRef.t) ?(inst:EInstance.t option)
   (args : EConstr.constr option list) : open_term =
-  let cont, ty', u' = build_app_infer_concl env evd (ctx, ty, u) ctx' f args in
+  let cont, ty', u' = build_app_infer_concl env evd (ctx, ty, u) ctx' f ?inst args in
   build_term env evd (ctx, ty, u) (ctx', ty', u') cont
 
 let unif_flags = Evarconv.default_flags_of TransparentState.full
@@ -403,10 +428,11 @@ let check_equality env sigma ctx ?(equal_terms : bool = false)
   u, tA, tx, ty
 
 let decompose_sigma sigma (t : EConstr.constr) :
-  (EConstr.types * EConstr.constr * EConstr.constr * EConstr.constr) option =
+  (EInstance.t * EConstr.types * EConstr.constr * EConstr.constr * EConstr.constr) option =
   let f, args = Equations_common.decompose_appvect sigma t in
   if check_construct sigma (Lazy.force SigmaRefs.sigmaI) f then
-    Some (args.(0), args.(1), args.(2), args.(3))
+    let _, u = EConstr.destConstruct sigma f in
+    Some (u, args.(0), args.(1), args.(2), args.(3))
   else None
 
 let with_retry (f : simplification_fun) : simplification_fun =
@@ -452,10 +478,10 @@ let with_retry (f : simplification_fun) : simplification_fun =
 let remove_one_sigma ?(only_nondep=false) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
-  let u, _, t1, t2 = check_equality env !evd ctx ty1 in
-  let f, args =
+  let equ, _, t1, t2 = check_equality env !evd ctx ty1 in
+  let sigu, f, args =
     match decompose_sigma !evd t1, decompose_sigma !evd t2 with
-    | Some (tA, tB, tt, tp), Some (_, _, tu, tq) ->
+    | Some (sigu, tA, tB, tt, tp), Some (_, _, _, tu, tq) ->
         (* Determine the degree of dependency. *)
         if Vars.noccurn !evd 1 ty2 then begin
           (* No dependency in the goal, but maybe there is a dependency in
@@ -469,7 +495,7 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
               let tB = Termops.pop ty2 in
               let args = [Some tA; Some tP; Some tB; Some tt; Some tu;
                           Some tp; Some tq; None] in
-                tsimpl_sigma, args
+                sigu, tsimpl_sigma, args
             else raise Constr.DestKO
           with
           | Constr.DestKO ->
@@ -481,7 +507,7 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
               let tB = Termops.pop ty2 in
               let args = [Some tA; Some tP; Some tB; Some tt; Some tu;
                           Some tp; Some tq; None] in
-              tsimpl_sigma, args
+              sigu, tsimpl_sigma, args
         end else begin
           try
             let name', _, tBbody = destLambda !evd tB in
@@ -492,7 +518,7 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
               let tB = EConstr.mkLambda (name, ty1, ty2) in
               let args = [Some tA; Some tP; Some tt; Some tu;
                           Some tp; Some tq; Some tB; None] in
-                tsimpl_sigma, args
+              sigu, tsimpl_sigma, args
             else raise Constr.DestKO
           with
           | Constr.DestKO ->
@@ -504,10 +530,12 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
               let tB = EConstr.mkLambda (name, ty1, ty2) in
               let args = [Some tA; Some tP; Some tt; Some tu;
                           Some tp; Some tq; Some tB; None] in
-              tsimpl_sigma, args
+              sigu, tsimpl_sigma, args
         end
     | _, _ -> raise (CannotSimplify (str "If you see this, please report."))
-  in build_app_infer env evd (ctx, ty, glu) ctx f args, Context_map.id_subst ctx
+  in
+  let inst, glu = instance_of env evd sigu glu in
+  build_app_infer env evd (ctx, ty, glu) ctx f ~inst args, Context_map.id_subst ctx
 let remove_sigma = while_fun remove_one_sigma
 
 let deletion ~(force:bool) : simplification_fun =
@@ -543,11 +571,6 @@ let deletion ~(force:bool) : simplification_fun =
                                 str " and the 'Equations With UIP' flag is off"
                               else mt())))
 
-let univ_of_goalu env sigma u =
-  match Univ.Universe.level u with
-  | Some l -> sigma, l
-  | None -> Evd.new_univ_level_variable Evd.univ_flexible sigma
-
 let solution ~(dir:direction) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   let var_left = match dir with Left -> true | Right -> false in
@@ -581,14 +604,7 @@ let solution ~(dir:direction) : simplification_fun =
   let uinst, glu' =
     (* If the equality is not polymorphic, the lemmas will be monomorphic as well *)
     if EConstr.EInstance.is_empty equ then equ, glu
-    else
-      let sigma, goalu = univ_of_goalu env !evd glu in
-      let () = evd := sigma in
-      let equ = EConstr.EInstance.kind !evd equ in
-      let equarray = Univ.Instance.to_array equ in
-      assert (Int.equal (Array.length equarray) 1);
-      let inst = EConstr.EInstance.make (Univ.Instance.of_array [| equarray.(0); goalu |]) in
-      inst, Univ.Universe.make goalu
+    else instance_of env evd equ glu
   in
   let tsolution = begin match var_left, nondep with
   | false, false -> Builder.solution_right_dep
@@ -686,7 +702,7 @@ let pre_solution ~(dir:direction) : simplification_fun =
 
 let is_construct_sigma_2 sigma f =
   let term = match decompose_sigma sigma f with
-    | Some (_, _, _, t) -> t
+    | Some (_, _, _, _, t) -> t
     | None -> f
   in
   let head, _ = EConstr.decompose_app sigma term in
@@ -748,7 +764,7 @@ let maybe_pack : simplification_fun =
                  str "] if it requires uniqueness of identity proofs and" ++
                  str " enable [Equations With UIP] to allow this")));
     let tx =
-      let _, _, tx, _ = Option.get (decompose_sigma !evd valsig) in
+      let _, _, _, tx, _ = Option.get (decompose_sigma !evd valsig) in
         Vars.substl (CList.rev args) (Termops.pop tx)
     in
     let tsimplify_ind_pack = Globnames.ConstRef (Lazy.force EqRefs.simplify_ind_pack) in
