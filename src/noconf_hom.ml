@@ -54,12 +54,12 @@ let get_forced_positions sigma args concl =
   in
   List.rev (List.fold_left_i is_forced 1 [] args)
 
-let derive_noConfusion_package env sigma polymorphic (ind,u as indu) indid ~prefix ~tactic cstNoConf =
+let derive_noConfusion_package env sigma0 polymorphic (ind,u as indu) indid ~prefix ~tactic cstNoConf =
   let mindb, oneind = Global.lookup_inductive ind in
-  let pi = (fst indu, EConstr.EInstance.kind sigma (snd indu)) in
+  let pi = (fst indu, EConstr.EInstance.kind sigma0 (snd indu)) in
   let ctx = subst_instance_context (snd pi) oneind.mind_arity_ctxt in
   let ctx = List.map of_rel_decl ctx in
-  let ctx = smash_rel_context sigma ctx in
+  let ctx = smash_rel_context sigma0 ctx in
   let len =
     if prefix = "" then mindb.mind_nparams
     else List.length ctx in
@@ -67,6 +67,7 @@ let derive_noConfusion_package env sigma polymorphic (ind,u as indu) indid ~pref
   let noid = add_prefix "noConfusion" (add_prefix prefix (add_prefix "_" indid))
   and packid = add_prefix "NoConfusion" (add_prefix prefix (add_prefix "Package_" indid)) in
   let tc = Typeclasses.class_info (Lazy.force coq_noconfusion_class) in
+  let sigma = Evd.from_env env in
   let sigma, noconf = Evd.fresh_global ~rigid:Evd.univ_rigid env sigma (ConstRef cstNoConf) in
   let sigma, noconfcl = new_global sigma tc.Typeclasses.cl_impl in
   let inst, u = destInd sigma noconfcl in
