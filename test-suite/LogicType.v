@@ -30,3 +30,16 @@ Set Universe Minimization ToSet.
 Equations finp {n} (f : fin (S n)) : unit + fin n :=
   finp fz := inl tt;
   finp (fs f) := inr f.
+
+
+Inductive vector@{i | Set <= i} (A : Type@{i}) : nat -> Type@{i} :=
+| vnil : vector A 0
+| vcons {n} : A -> vector A n -> vector A (S n).
+Arguments vector A%type_scope n%nat_scope.
+Arguments vnil {A}.
+Arguments vcons {A%type_scope} {n%nat_scope} a v.
+Derive Signature for vector.
+Require Import Equations.Tactics Equations.Type.Tactics.
+
+Set Universe Minimization ToSet.
+Derive NoConfusionHom for vector.

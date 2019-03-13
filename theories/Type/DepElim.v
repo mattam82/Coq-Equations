@@ -660,10 +660,8 @@ Ltac find_empty := simpl in * ; elimtype False ;
 
 Ltac make_simplify_goal :=
   match goal with 
-    [ |- @eq ?A ?T ?U ] => let eqP := fresh "eqP" in 
-      set (eqP := fun x : A => x = U) ; change (eqP T)
-  | [ |- @Id ?A ?T ?U ] => let eqP := fresh "eqP" in 
-      set (eqP := fun x : A => @Id A x U) ; change (eqP T)
+  | [ |- ?R ?A ?T ?U ] => let eqP := fresh "eqP" in
+      set (eqP := fun x : A => R A x U) ; change (eqP T)
   end.
 
 Ltac hnf_gl :=
@@ -674,29 +672,20 @@ Ltac hnf_gl :=
 
 Ltac hnf_eq :=
   match goal with
-    |- ?x = ?y =>
-      let x' := eval hnf in x in
-      let y' := eval hnf in y in
-        convert_concl_no_check (x' = y')
-  | |- Id ?x ?y =>
+  | |- ?R ?x ?y =>
     let x' := eval hnf in x in
     let y' := eval hnf in y in
-        convert_concl_no_check (Id x' y')
+        convert_concl_no_check (R x' y')
   end.
-
 
 Ltac red_eq :=
   match goal with
-    |- ?x = ?y =>
+    |- ?R ?x ?y =>
     let rec reduce_eq x y :=
       let x' := eval red in x in
       let y' := eval red in y in
-          reduce_eq x' y' || convert_concl_no_check (x' = y')
+          reduce_eq x' y' || convert_concl_no_check (R x' y')
       in reduce_eq x y
-  | |- Id ?x ?y =>
-    let x' := eval hnf in x in
-    let y' := eval hnf in y in
-        convert_concl_no_check (Id x' y')
   end.
 
 Ltac red_gl :=
