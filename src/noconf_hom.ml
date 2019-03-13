@@ -211,7 +211,11 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   let indid = Nametab.basename_of_global (IndRef ind) in
   let id = add_prefix "NoConfusionHom_" indid in
   let program_orig_type = it_mkProd_or_LetIn s fullbinders in
-  let program_sort = Sorts.univ_of_sort (Retyping.get_sort_of env sigma program_orig_type) in
+  let program_sort = Retyping.get_sort_of env sigma program_orig_type in
+  let sigma, program_sort =
+    Evarsolve.refresh_universes ~status:Evd.univ_flexible ~onlyalg:true
+      (Some false) env sigma (mkSort program_sort) in
+  let program_sort = Sorts.univ_of_sort (EConstr.ESorts.kind sigma (EConstr.destSort sigma program_sort)) in
   let evd = ref sigma in
   let data =
     Covering.{
