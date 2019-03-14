@@ -55,3 +55,8 @@ Proof.
        --- right. simplify *. now apply H.
     -- right; simplify *. now apply Ha. Show Proof.
 Defined.
+
+Record vect {A} := mkVect { vect_len : nat; vect_vector : vector A vect_len }.
+Coercion mkVect : vector >-> vect.
+
+Derive NoConfusion for vect.
