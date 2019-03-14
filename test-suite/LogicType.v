@@ -9,7 +9,6 @@ Derive Signature for Id.
 
 Definition nathset := _ : HSet nat.
 
-Set Printing Universes.
 (* Equations test_k (x : nat) (r : x = x) : r = r := *)
 (*   test_k x id_refl := id_refl. *)
 
@@ -25,14 +24,12 @@ Derive Signature for fin.
 
 Derive NoConfusion for nat.
 
-Set Universe Minimization ToSet.
-
 Equations finp {n} (f : fin (S n)) : unit + fin n :=
   finp fz := inl tt;
   finp (fs f) := inr f.
 
-
-Inductive vector@{i | Set <= i} (A : Type@{i}) : nat -> Type@{i} :=
+Unset Universe Minimization ToSet.
+Inductive vector@{i} (A : Type@{i}) : nat -> Type@{i} :=
 | vnil : vector A 0
 | vcons {n} : A -> vector A n -> vector A (S n).
 Arguments vector A%type_scope n%nat_scope.
@@ -43,3 +40,18 @@ Require Import Equations.Tactics Equations.Type.Tactics.
 
 Set Universe Minimization ToSet.
 Derive NoConfusionHom for vector.
+Unset Universe Minimization ToSet.
+
+Instance vector_eqdec@{i +|+} {A : Type@{i}} {n} `(EqDec@{i} A) : EqDec (vector A n).
+Proof.
+  intros. intros x. intros y. induction x.
+  - left. now depelim y.
+  - depelim y. Show Universes. Show Proof.
+    pose proof (Classes.eq_dec a a0).
+    dependent elimination X as [inl id_refl|inr Ha].
+    -- specialize (IHx v).
+       dependent elimination IHx as [inl id_refl|inr H].
+       --- left; reflexivity.
+       --- right. simplify *. now apply H.
+    -- right; simplify *. now apply Ha. Show Proof.
+Defined.

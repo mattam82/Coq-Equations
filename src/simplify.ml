@@ -112,7 +112,7 @@ module type BUILDER = sig
   val sigmaI : constr_gen
   val eq : constr_gen
   val equ : constr_univ_gen
-  val eq_refl : constr_gen
+  val eq_refl : constr_univ_gen
   val uip : constr_gen
   val zero : constr_gen
   val one : constr_gen
@@ -154,6 +154,9 @@ module BuilderHelper = struct
   let gen_from_constructor constr = fun evd ->
     let glob = Globnames.ConstructRef (Lazy.force constr) in
     Equations_common.e_new_global evd glob
+  let gen_from_constructor_univ constr = fun u ->
+    let glob = Globnames.ConstructRef (Lazy.force constr) in
+    EConstr.mkRef (glob, u)
 end
 
 module BuilderGen (SigmaRefs : SIGMAREFS) (EqRefs : EQREFS) : BUILDER = struct
@@ -164,7 +167,7 @@ module BuilderGen (SigmaRefs : SIGMAREFS) (EqRefs : EQREFS) : BUILDER = struct
   let eq = gen_from_inductive EqRefs.eq
   let equ u = gen_from_inductive_univ EqRefs.eq u
 
-  let eq_refl = gen_from_constructor EqRefs.eq_refl
+  let eq_refl = gen_from_constructor_univ EqRefs.eq_refl
   let uip = gen_from_constant EqRefs.uip
   let zero = gen_from_inductive EqRefs.zero
   let one = gen_from_inductive EqRefs.one
@@ -651,7 +654,7 @@ let solution ~(dir:direction) : simplification_fun =
     if nondep then
       Vars.substnl [Vars.lift (-rel') term'] (pred rel') body
     else
-      let teq_refl = EConstr.mkApp (Builder.eq_refl evd, [| tA'; term' |]) in
+      let teq_refl = EConstr.mkApp (Builder.eq_refl equ, [| tA'; term' |]) in
         Vars.substnl [Vars.lift (-rel') teq_refl; Vars.lift (-rel') term'] (pred rel') body
   in
   let lsubst = Context_map.single_subst env !evd rel' (Context_map.pat_of_constr !evd term') ctx' in
@@ -846,13 +849,10 @@ let simplify_ind_pack_inv : simplification_fun =
     let tG = args.(6) in
     let teq = args.(7) in
     (* Check that [teq] is [eq_refl]. *)
-    let tsigma = EConstr.mkApp (Builder.sigma evd, [| tA; tB |]) in
-    let tsigmaI = EConstr.mkApp (Builder.sigmaI evd, [| tA; tB; tx; tp |]) in
-    let teq_refl = EConstr.mkApp (Builder.eq_refl evd, [| tsigma; tsigmaI |]) in
-    if not (is_conv env !evd ctx teq teq_refl) then
-      (* FIXME Horrible error message... *)
+    let head, _ = decompose_app !evd teq in
+    if not (EConstr.is_global !evd (Names.GlobRef.ConstructRef (Lazy.force EqRefs.eq_refl)) head) then
       raise (CannotSimplify (str
-        "[opaque_ind_pack_eq_inv] should be applied to [eq_refl]."));
+        "[opaque_ind_pack_eq_inv] Anomaly: should be applied to a reflexivity proof."));
     let tsimplify_ind_pack_inv = Globnames.ConstRef (Lazy.force EqRefs.simplify_ind_pack_inv) in
     let args = [Some tA; Some teqdec; Some tB; Some tx; Some tp; Some tG; None] in
       build_app_infer env evd (ctx, ty, glu) ctx tsimplify_ind_pack_inv args,
