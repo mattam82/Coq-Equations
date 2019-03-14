@@ -86,7 +86,7 @@ Ltac simplify_IH_hyps' := repeat
   match goal with
   | [ hyp : context [ block ] |- _ ] =>
     cbn beta in hyp; eqns_specialize_eqs_block hyp;
-    cbn beta iota delta[paths_rect paths_rec paths_ind] zeta in hyp
+    cbn beta iota delta[transport paths_rect paths_rec paths_ind] zeta in hyp
   end.
 
 Ltac make_packcall packcall c :=
@@ -119,7 +119,7 @@ Ltac funelim_sig_tac c tac :=
   unshelve refine_ho elimt; intros;
   cbv beta; simplify_dep_elim; intros_until_block;
   simplify_dep_elim;
-  cbn beta iota delta [paths_rec paths_rect paths_ind pack_sigma pack_sigma_nondep] in *;
+  cbn beta iota delta [transport paths_rec paths_rect paths_ind pack_sigma pack_sigma_nondep] in *;
   simplify_IH_hyps'; (* intros _; *)
   unblock_goal; simplify_IH_hyps; tac c.
 
