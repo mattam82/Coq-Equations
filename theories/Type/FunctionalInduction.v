@@ -79,9 +79,9 @@ Ltac remember_let H :=
 
 Ltac unfold_packcall packcall :=
   lazymatch goal with
-    |- ?x = ?y -> ?P =>
+    |- ?R ?x ?y -> ?P =>
     let y' := eval unfold packcall in y in
-        change (x = y' -> P)
+        change (R x y' -> P)
   end.
 
 Ltac simplify_IH_hyps' := repeat
@@ -160,7 +160,7 @@ Create HintDb funelim.
 
 (** Solve reflexivity goals. *)
 
-Hint Extern 0 (_ = _) => reflexivity : funelim.
+Hint Extern 0 (Id _ _) => constructor : funelim.
 
 (** Specialize hypotheses begining with equalities. *)
 

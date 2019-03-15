@@ -66,27 +66,9 @@ Hint Unfold vector_subterm : subterm_relation.
 Import Sigma_Notations.
 Section foo.
   Context {A B : Type}.
-  (* Obligation Tactic := idtac. (* FIXME universe bug *) *)
-  Set Equations Debug.
   Equations unzipv {n} (v : vector (A * B) n) : vector A n * vector B n
    by wf (signature_pack v) (@vector_subterm (A * B)) :=
   unzipv vnil := (vnil, vnil) ;
   unzipv (vcons (x, y) v) with unzipv v := {
     | (xs, ys) := (vcons x xs, vcons y ys) }.
-
-(*     IsConstr
-      ((fun (v0 : nat) (x : A) (y : B) (v : vector (A * B) v0) =>
-        unzipv_obligations_obligation_1 v0 x y v
-          (fun (x0 : nat) (x1 : vector (A * B) x0)
-             (_ : vector_subterm (A * B) (signature_pack x1) (signature_pack (vcons (x, y) v))) =>
-           unzipv x1)),
-      {Top.1188 Top.1187 Top.1186 Top.1185 Top.1184 Top.1182} |= Top.1187 < Top.1185
-                                                                 Top.695 <= Top.1187
-                                                                 Top.696 <= Top.1187))]
-*)
-  Next Obligation.
-    apply (unzipv_graph_mut P P0); auto.
-    intros. apply X0. reflexivity. apply X.
-    apply unzipv_graph_correct.
-  Defined.
 End foo.

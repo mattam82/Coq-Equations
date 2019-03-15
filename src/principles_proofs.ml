@@ -1109,10 +1109,11 @@ let ind_elim_tac indid inds mutinds info ind_fun =
   let prove_methods c =
     Proofview.Goal.enter (fun gl ->
         let sigma, _ = Typing.type_of (Goal.env gl) (Goal.sigma gl) c in
+        observe_new "prove_methods" (
         tclTHENLIST [Proofview.Unsafe.tclEVARS sigma;
-                     Tactics.apply c;
+                     observe_new "apply eliminator" (Tactics.apply c);
                      Tactics.simpl_in_concl;
-                     eauto ~depth:None])
+                     observe_new "solve methods" (eauto ~depth:None)]))
   in
   let rec applyind leninds args =
     Proofview.Goal.enter (fun gl ->
@@ -1145,5 +1146,5 @@ let ind_elim_tac indid inds mutinds info ind_fun =
                      onLastHypId (fun id -> applyind (pred leninds) (mkVar id :: args))]
     | _, _ -> assert false)
   in
-  try applyind inds []
+  try observe_new "applyind" (applyind inds [])
   with e -> tclFAIL 0 (Pp.str"exception")
