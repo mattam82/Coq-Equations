@@ -693,7 +693,7 @@ let subst_protos s gr =
     (equations_debug Pp.(fun () -> str"Fixed hint " ++ Printer.pr_econstr_env env sigma term);
      let sigma, _ = Typing.type_of env sigma term in
      let sigma = Evd.minimize_universes sigma in
-    Hints.IsConstr (term, Evd.universe_context_set sigma))
+    Hints.IsConstr (Evarutil.nf_evar sigma term, Evd.universe_context_set sigma))
   else Hints.IsGlobRef gr
 
 let declare_wf_obligations s info =
