@@ -9,6 +9,7 @@
 (** Principles derived from equation definitions. *)
 
 open Names
+open Context
 open Equations_common
 open Syntax
 open Context_map
@@ -130,7 +131,7 @@ let clean_rec_calls sigma (hyps, c) =
   let elems = List.sort (fun x y -> Int.compare (snd x) (snd y)) (CMap.bindings hyps) in
   let (size, ctx) =
     List.fold_left (fun (n, acc) (ty, _) ->
-    (succ n, LocalAssum (Name (Id.of_string "Hind"), EConstr.Vars.lift n (EConstr.of_constr ty)) :: acc))
+    (succ n, LocalAssum (nameR (Id.of_string "Hind"), EConstr.Vars.lift n (EConstr.of_constr ty)) :: acc))
     (0, []) elems
   in
   (ctx, size, EConstr.Vars.lift size (EConstr.of_constr c))
@@ -402,7 +403,7 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
     if refine != Refine then d else
     let (n, b, t) = to_tuple d in
     let signlen = List.length sign in
-    let ctx = of_tuple (Anonymous, None, arity) :: sign in
+    let ctx = of_tuple (anonR, None, arity) :: sign in
     let app =
       let argsinfo =
         match args with
@@ -418,7 +419,7 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
       let transport ty x y eq c cty =
         mkApp (transport,
                [| ty;
-                  mkLambda (Name (Id.of_string "abs"), ty,
+                  mkLambda (nameR (Id.of_string "abs"), ty,
                             Termops.replace_term !evd (Vars.lift 1 x) (mkRel 1) (Vars.lift 1 cty));
                   x; y; eq; (* equality *) c |])
       in
@@ -496,15 +497,15 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
                 let transport = get_efresh logic_eq_case evd in
                 mkApp (transport,
                        [| lift lenargs ty;
-                          mkLambda (Name (Id.of_string "refine"), lift lenargs ty, subst1 mkProp pred');
+                          mkLambda (nameR (Id.of_string "refine"), lift lenargs ty, subst1 mkProp pred');
                           lift lenargs rel; lift lenargs c; mkRel 1 (* equality *); acc |])
 
               else
                 let transportd = get_efresh logic_eq_elim evd in
                 mkApp (transportd,
                        [| lift lenargs ty; lift lenargs rel;
-                          mkLambda (Name (Id.of_string "refine"), lift lenargs ty,
-                                    mkLambda (Name (Id.of_string "refine_eq"), eqty, pred'));
+                          mkLambda (nameR (Id.of_string "refine"), lift lenargs ty,
+                                    mkLambda (nameR (Id.of_string "refine_eq"), eqty, pred'));
                           acc; (lift lenargs c); mkRel 1 (* equality *) |])
             in app
           else mkRel 2
@@ -527,7 +528,7 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
       let refeqs = Option.map (fun (i, ty, c, rel) -> mkEq env evd ty c rel) argsinfo in
       let app c =
         match refeqs with
-        | Some eqty -> mkProd (Name (Id.of_string "Heq"), eqty, c)
+        | Some eqty -> mkProd (nameR (Id.of_string "Heq"), eqty, c)
         | None -> c
       in
       let indhyps =
@@ -665,7 +666,7 @@ let subst_protos s gr =
   let rec aux env sigma args ty =
     match kind sigma ty with
     | Constr.Prod (na, b, ty) ->
-      begin try match na with
+      begin try match na.binder_name with
         | Name id ->
           let cst = List.find (fun s -> Id.equal (Label.to_id (Constant.label s)) id) s in
           let ctx, concl = decompose_prod_assum sigma b in
@@ -722,7 +723,7 @@ let _program_fixdecls p fixdecls =
 let push_mapping_context env sigma decl ((g,p,d), cut) =
   let open Context.Rel.Declaration in
   let decl' = map_rel_declaration (mapping_constr sigma cut) decl in
-  let declassum = LocalAssum (get_name decl, get_type decl) in
+  let declassum = LocalAssum (get_annot decl, get_type decl) in
   (decl :: g, (PRel 1 :: List.map (lift_pat 1) p), decl' :: d),
   lift_subst env sigma cut [declassum]
 
@@ -1547,13 +1548,13 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
            graph in Type in general (it might be case-splitting on non-strict propositions). *)
         Univ.type0m_univ
       | _ ->
-        let ctx = (of_tuple (Anonymous, None, arity) :: sign) in
+        let ctx = (of_tuple (anonR, None, arity) :: sign) in
         let signlev = level_of_context env !evd ctx sorts in
         signlev
     in
     let entry =
       Entries.{ mind_entry_typename = indid;
-                mind_entry_arity = to_constr !evd (it_mkProd_or_LetIn (mkProd (Anonymous, arity,
+                mind_entry_arity = to_constr !evd (it_mkProd_or_LetIn (mkProd (anonR, arity,
                                                                                mkSort (Sorts.sort_of_univ ind_sort))) sign);
                 mind_entry_consnames = consnames;
                 mind_entry_lc = constructors;
@@ -1568,7 +1569,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
       List.rev_map (fun (entry, sign, arity) ->
           Entries.{ entry with
                     mind_entry_arity =
-                      to_constr sigma (it_mkProd_or_LetIn (mkProd (Anonymous, arity,
+                      to_constr sigma (it_mkProd_or_LetIn (mkProd (anonR, arity,
                                                                   mkSort (Sorts.sort_of_univ sort))) sign) })
         inds
     in
@@ -1587,27 +1588,12 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
     let kn = ComInductive.declare_mutual_inductive_with_eliminations inductive UnivNames.empty_binders [] in
     let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] true in
     let sort = (* Find out in which maximal sort the inductive can be eliminated *)
-      let open Sorts in
       let mib, oib = Global.lookup_inductive (kn, 0) in
       let kelim = oib.Declarations.mind_kelim in
-      let compare_sorts_families s1 s2 =
-        match s1, s2 with
-        | InProp, InProp -> 0
-        | InProp, _ -> -1
-        | InSet, InProp -> 1
-        | InSet, InSet -> 0
-        | InSet, _ -> -1
-        | InType, InType -> 0
-        | InType, _ -> 1
-      in
-      let sorts = CList.sort compare_sorts_families kelim in
+      let sorts = CList.sort Sorts.family_compare kelim in
       CList.last sorts
     in
-    let sort_suff = match sort with
-      | Sorts.InProp -> "_ind"
-      | Sorts.InSet ->  "_rec"
-      | Sorts.InType -> "_rect"
-    in
+    let sort_suff = Indrec.elimination_suffix sort in
     let kn, comb =
       match inds with
       | [ind] ->
