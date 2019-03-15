@@ -118,89 +118,91 @@ let pr_lhs = pr_user_pats
 
 let pplhs lhs = pp (pr_lhs (Global.env ()) lhs)
 
-let pr_body env = function
-  | ConstrExpr rhs -> pr_constr_expr rhs
+let pr_body env sigma = function
+  | ConstrExpr rhs -> pr_constr_expr env sigma rhs
   | GlobConstr rhs -> pr_glob_constr_env env rhs
   | Constr c -> str"<constr>"
 
-let rec pr_rhs_aux env = function
+let rec pr_rhs_aux env sigma = function
   | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ Id.print var
-  | Program (rhs, where) -> spc () ++ str ":=" ++ spc () ++ pr_body env rhs ++
-                            spc () ++ pr_wheres env where
+  | Program (rhs, where) -> spc () ++ str ":=" ++ spc () ++ pr_body env sigma rhs ++
+                            spc () ++ pr_wheres env sigma where
   | Refine (rhs, s) -> spc () ++ str "with" ++ spc () ++
-                       prlist_with_sep (fun () -> str",") pr_constr_expr rhs ++
+                       prlist_with_sep (fun () -> str",") (pr_constr_expr env sigma) rhs ++
       spc () ++ str "=>" ++ spc () ++
-      hov 1 (str "{" ++ pr_clauses env s ++ str "}")
+      hov 1 (str "{" ++ pr_clauses env sigma s ++ str "}")
 
-and pr_rhs env = function
+and pr_rhs env sigma = function
   | None -> mt ()
-  | Some rhs -> pr_rhs_aux env rhs
-and pr_wheres env (l, nts) =
+  | Some rhs -> pr_rhs_aux env sigma rhs
+and pr_wheres env sigma (l, nts) =
   if List.is_empty l then mt() else
-  str"where" ++ spc () ++ prlist_with_sep fnl (pr_where env) l
-and pr_where env (sign, eqns) =
-  pr_proto sign ++ str "{" ++ pr_clauses env eqns ++ str "}"
-and pr_proto ((_,id), _, l, t, ann) =
-  Id.print id ++ pr_binders l ++ pr_opt (fun t -> str" : " ++ pr_constr_expr t) t ++
+  str"where" ++ spc () ++ prlist_with_sep fnl (pr_where env sigma) l
+and pr_where env sigma (sign, eqns) =
+  pr_proto env sigma sign ++ str "{" ++ pr_clauses env sigma eqns ++ str "}"
+and pr_proto env sigma ((_,id), _, l, t, ann) =
+  Id.print id ++ pr_binders env sigma l ++ pr_opt (fun t -> str" : " ++ pr_constr_expr env sigma t) t ++
   (match ann with
      None -> mt ()
-   | Some (WellFounded (t, rel)) -> str"by wf " ++ pr_constr_expr t ++ pr_opt pr_constr_expr rel
+   | Some (WellFounded (t, rel)) -> str"by wf " ++ pr_constr_expr env sigma t ++ pr_opt (pr_constr_expr env sigma) rel
    | Some (Structural id) -> str"by struct " ++ pr_opt (fun x -> pr_id (snd x)) id)
 
-and pr_clause env (loc, lhs, rhs) =
-  pr_lhs env lhs ++ pr_rhs env rhs
+and pr_clause env sigma (loc, lhs, rhs) =
+  pr_lhs env lhs ++ pr_rhs env sigma rhs
 
-and pr_clauses env =
-  prlist_with_sep fnl (pr_clause env)
+and pr_clauses env sigma =
+  prlist_with_sep fnl (pr_clause env sigma)
 
-let pr_user_lhs env lhs =
+let pr_user_lhs env sigma lhs =
   match lhs with
-  | SignPats x -> pr_constr_expr x
-  | RefinePats l -> prlist_with_sep (fun () -> str "|") pr_constr_expr l
+  | SignPats x -> pr_constr_expr env sigma x
+  | RefinePats l -> prlist_with_sep (fun () -> str "|") (pr_constr_expr env sigma) l
 
-let rec pr_user_rhs_aux env = function
+let rec pr_user_rhs_aux env sigma = function
   | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ Id.print var
   | Program (rhs, where) -> spc () ++ str ":=" ++ spc () ++
-                            pr_body env rhs ++
-                            spc () ++ pr_prewheres env where
+                            pr_body env sigma rhs ++
+                            spc () ++ pr_prewheres env sigma where
   | Refine (rhs, s) -> spc () ++ str "with" ++ spc () ++
-                       prlist_with_sep (fun () -> str ",") pr_constr_expr rhs ++
+                       prlist_with_sep (fun () -> str ",") (pr_constr_expr env sigma) rhs ++
       spc () ++ str "=>" ++ spc () ++
-      hov 1 (str "{" ++ pr_user_clauses env s ++ str "}")
+      hov 1 (str "{" ++ pr_user_clauses env sigma s ++ str "}")
 
-and pr_prerhs_aux env = function
+and pr_prerhs_aux env sigma = function
   | Empty (loc, var) -> spc () ++ str ":=!" ++ spc () ++ Id.print var
   | Program (rhs, where) -> spc () ++ str ":=" ++ spc () ++
-                            pr_body env rhs ++
-                            spc () ++ pr_prewheres env where
+                            pr_body env sigma rhs ++
+                            spc () ++ pr_prewheres env sigma where
   | Refine (rhs, s) -> spc () ++ str "with" ++ spc () ++
-                       prlist_with_sep (fun () -> str ",") pr_constr_expr rhs ++
+                       prlist_with_sep (fun () -> str ",") (pr_constr_expr env sigma) rhs ++
       spc () ++ str "=>" ++ spc () ++
-      hov 1 (str "{" ++ pr_preclauses env s ++ str "}")
+      hov 1 (str "{" ++ pr_preclauses env sigma s ++ str "}")
 
-and pr_user_rhs env = pr_opt (pr_user_rhs_aux env)
-and pr_prerhs env = pr_opt (pr_prerhs_aux env)
+and pr_user_rhs env sigma = pr_opt (pr_user_rhs_aux env sigma)
+and pr_prerhs env sigma = pr_opt (pr_prerhs_aux env sigma)
 
-and pr_user_clause env (lhs, rhs) =
-  pr_user_lhs env lhs ++ pr_user_rhs env rhs
+and pr_user_clause env sigma (lhs, rhs) =
+  pr_user_lhs env sigma lhs ++ pr_user_rhs env sigma rhs
 
-and pr_user_clauses env =
-  prlist_with_sep fnl (pr_user_clause env)
+and pr_user_clauses env sigma =
+  prlist_with_sep fnl (pr_user_clause env sigma)
 
-and pr_prewheres env (l, nts) =
+and pr_prewheres env sigma (l, nts) =
   if List.is_empty l then mt() else
-  str"where" ++ spc () ++ prlist_with_sep fnl (pr_prewhere env) l
-and pr_prewhere env (sign, eqns) =
-  pr_proto sign ++ str "{" ++ pr_user_clauses env eqns ++ str "}"
+  str"where" ++ spc () ++ prlist_with_sep fnl (pr_prewhere env sigma) l
+and pr_prewhere env sigma (sign, eqns) =
+  pr_proto env sigma sign ++ str "{" ++ pr_user_clauses env sigma eqns ++ str "}"
 
-and pr_preclause env (loc, lhs, rhs) =
-  pr_lhs env lhs ++ pr_prerhs env rhs
+and pr_preclause env sigma (loc, lhs, rhs) =
+  pr_lhs env lhs ++ pr_prerhs env sigma rhs
 
-and pr_preclauses env =
-  prlist_with_sep fnl (pr_preclause env)
+and pr_preclauses env sigma =
+  prlist_with_sep fnl (pr_preclause env sigma)
 
 let ppclause clause =
-  pp(pr_clause (Global.env ()) clause)
+  let env = Global.env () in
+  let sigma = Evd.from_env env in
+  pp(pr_clause env sigma clause)
 
 let wit_equations_list : pre_equation list Genarg.uniform_genarg_type =
   Genarg.create_arg "equations_list"

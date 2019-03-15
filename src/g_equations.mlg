@@ -154,9 +154,9 @@ module Vernac = Pvernac.Vernac_
 
 type binders_argtype = Constrexpr.local_binder_expr list Genarg.uniform_genarg_type
 
-let pr_raw_binders2 _ _ _ l = mt ()
-let pr_glob_binders2 _ _ _ l = mt ()
-let pr_binders2 _ _ _ l = mt ()
+let pr_raw_binders2 _env _sigma _ _ _ l = mt ()
+let pr_glob_binders2 _env _sigma _ _ _ l = mt ()
+let pr_binders2 _env _sigma _ _ _ l = mt ()
 
 (* let wit_binders_let2 : binders_let2_argtype = *)
 (*   Genarg.create_arg "binders_let2" *)
@@ -179,9 +179,9 @@ let wit_deppat_equations : deppat_equations_argtype =
 
 let deppat_equations_val = Geninterp.register_val0 wit_deppat_equations None
 
-let pr_raw_deppat_equations _ _ _ l = mt ()
-let pr_glob_deppat_equations _ _ _ l = mt ()
-let pr_deppat_equations _ _ _ l = mt ()
+let pr_raw_deppat_equations _env _sigma _ _ _ l = mt ()
+let pr_glob_deppat_equations _env _sigma _ _ _ l = mt ()
+let pr_deppat_equations _env _sigma _ _ _ l = mt ()
 
 let deppat_equations : Syntax.pre_equation list Pcoq.Entry.t =
   Pcoq.create_generic_entry Pvernac.uvernac "deppat_equations" (Genarg.rawwit wit_deppat_equations)
@@ -196,9 +196,9 @@ let wit_deppat_elim : deppat_elim_argtype =
 
 let deppat_elim_val = Geninterp.register_val0 wit_deppat_elim None
 
-let pr_raw_deppat_elim _ _ _ l = mt ()
-let pr_glob_deppat_elim _ _ _ l = mt ()
-let pr_deppat_elim _ _ _ l = mt ()
+let pr_raw_deppat_elim _env _sigma _ _ _ l = mt ()
+let pr_glob_deppat_elim _env _sigma _ _ _ l = mt ()
+let pr_deppat_elim _env _sigma _ _ _ l = mt ()
 
 let deppat_elim : Constrexpr.constr_expr list Pcoq.Entry.t =
   Pcoq.create_generic_entry Pcoq.utactic "deppat_elim" (Genarg.rawwit wit_deppat_elim)
@@ -212,9 +212,9 @@ let wit_equations : equations_argtype =
   Genarg.create_arg "equations"
 let val_equations = Geninterp.register_val0 wit_equations None
 
-let pr_raw_equations _ _ _ l = mt ()
-let pr_glob_equations _ _ _ l = mt ()
-let pr_equations _ _ _ l = mt ()
+let pr_raw_equations _env _sigma _ _ _ l = mt ()
+let pr_glob_equations _env _sigma _ _ _ l = mt ()
+let pr_equations _env _sigma _ _ _ l = mt ()
 
 let equations : (pre_equations * Vernacexpr.decl_notation list) Pcoq.Entry.t =
   Pcoq.create_generic_entry Pvernac.uvernac "equations" (Genarg.rawwit wit_equations)
@@ -421,10 +421,10 @@ let glob_elim_patterns ist s = List.map (Tacintern.intern_constr ist) s
 let subst_elim_patterns s str = str
 
 let pr_elim_patterns _ _ _ (s : elim_patterns) = Syntax.pr_user_pats (Global.env ()) (*FIXME*) s
-let pr_raw_elim_patterns prc prlc _ (s : raw_elim_patterns) =
-  Pp.prlist_with_sep (fun _ -> str "|") prc s
-let pr_glob_elim_patterns prc prlc env (s : glob_elim_patterns) =
-  Pp.prlist_with_sep (fun _ -> str "|") (fun x -> prc x) s
+let pr_raw_elim_patterns env sigma prc prlc _ (s : raw_elim_patterns) =
+  Pp.prlist_with_sep (fun _ -> str "|") (prc env sigma) s
+let pr_glob_elim_patterns env sigma prc prlc _ (s : glob_elim_patterns) =
+  Pp.prlist_with_sep (fun _ -> str "|") (fun x -> prc env sigma x) s
 
 type elim_patterns_argtype = (raw_elim_patterns, glob_elim_patterns, elim_patterns) Genarg.genarg_type
 
@@ -462,8 +462,8 @@ ARGUMENT EXTEND elim_patterns
   INTERPRETED BY { interp_elim_patterns }
   GLOBALIZED BY { glob_elim_patterns }
   SUBSTITUTED BY { subst_elim_patterns }
-  RAW_PRINTED BY { pr_raw_elim_patterns }
-  GLOB_PRINTED BY { pr_glob_elim_patterns }
+  RAW_PRINTED BY { pr_raw_elim_patterns env sigma }
+  GLOB_PRINTED BY { pr_glob_elim_patterns env sigma }
 
   | [ deppat_elim(l) ] -> { l }
 END
@@ -525,9 +525,9 @@ let wit_g_simplification_rules : simplification_rules_argtype =
 let val_g_simplification_rules =
   Geninterp.register_val0 wit_g_simplification_rules None
 
-let pr_raw_g_simplification_rules _ _ _ = Simplify.pr_simplification_rules
-let pr_glob_g_simplification_rules _ _ _ = Simplify.pr_simplification_rules
-let pr_g_simplification_rules _ _ _ = Simplify.pr_simplification_rules
+let pr_raw_g_simplification_rules _env _sigma _ _ _ = Simplify.pr_simplification_rules
+let pr_glob_g_simplification_rules _env _sigma _ _ _ = Simplify.pr_simplification_rules
+let pr_g_simplification_rules _env _sigma _ _ _ = Simplify.pr_simplification_rules
 
 let g_simplification_rules : Simplify.simplification_rules Pcoq.Entry.t =
   Pcoq.create_generic_entry Pcoq.utactic "g_simplification_rules"

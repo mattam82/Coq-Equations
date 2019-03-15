@@ -8,6 +8,7 @@
 
 open Constr
 open Environ
+open Evd
 open Names
 open Equations_common
 
@@ -92,19 +93,20 @@ val pr_user_pats : env -> user_pats -> Pp.t
 
 val pr_lhs : env -> user_pats -> Pp.t
 val pplhs : user_pats -> unit
-val pr_rhs : env -> (clause,clause) rhs -> Pp.t
+val pr_rhs : env -> evar_map -> (clause,clause) rhs -> Pp.t
 val pr_clause :
-  env -> clause -> Pp.t
+  env -> evar_map -> clause -> Pp.t
 val pr_clauses :
-  env -> clause list -> Pp.t
+  env -> evar_map -> clause list -> Pp.t
 
 val pr_preclause :
-  env -> pre_clause -> Pp.t
+  env -> evar_map -> pre_clause -> Pp.t
 val pr_preclauses :
-  env -> pre_clause list -> Pp.t
+  env -> evar_map -> pre_clause list -> Pp.t
+
 
 val pr_user_clause :
-  env -> pre_equation -> Pp.t
+  env -> evar_map -> pre_equation -> Pp.t
 
 val ppclause : clause -> unit
 
