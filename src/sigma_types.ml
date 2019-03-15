@@ -287,7 +287,7 @@ let get_signature env sigma0 ty =
       new_type_evar env sigma Evd.univ_flexible
                     ~src:(dummy_loc, Evar_kinds.InternalHole) in
     let sigma, signature =
-      new_evar env sigma (mkProd (Anonymous, idx, Vars.lift 1 signaturety))
+      new_evar env sigma (mkProd (anonR, idx, Vars.lift 1 signaturety))
     in
     let sigma', cl = get_fresh sigma logic_signature_class in
     let inst = mkApp (cl, [| ty; idx; signature |]) in
