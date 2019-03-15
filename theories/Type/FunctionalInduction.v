@@ -10,6 +10,8 @@ Set Warnings "-notation-overridden".
 Require Import Equations.Tactics.
 Require Import Equations.Type.Logic Equations.Type.Classes Equations.Type.EqDec Equations.Type.DepElim.
 
+Set Universe Polymorphism.
+
 Local Open Scope equations_scope.
 Import Sigma_Notations.
 

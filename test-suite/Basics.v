@@ -378,6 +378,54 @@ Proof.
   simp split in *. destruct split. simpl.
   intuition congruence.
 Qed.
+Transparent vapp'.
+Definition eta_vector {A} (P : forall n, vector A n -> Type) :
+  forall n v,
+    match v with
+    | nil => P 0 nil
+    | cons a v => P _ (cons a v)
+    end = P n v.
+Proof.
+  now destruct v.
+Defined.
+Import Sigma_Notations.
+
+Axiom cheat : forall {A}, A.
+Lemma split' {X : Type} : forall {m n} (xs : vector X (Peano.plus m n)), Split m n xs.
+Proof.
+  fix IH 3. intros m n xs.
+  eassert ?[ty].
+  refine (match xs as xs' in @t _ k return
+                (match xs' as xs'' in vector _ n' return Type with
+                 | nil => ((0, nil) = (Peano.plus m n, xs)) -> Split m n xs
+                 | @cons _ x' n' xs'' =>
+                   (S n', cons x' xs'') = (Peano.plus m n, xs) -> Split m n xs
+                 end)
+          with
+          | nil => _
+          | cons x xs => _
+          end).
+(* FIXME: simplify not agressive enough to find whd *)
+  simpl. (* apply cheat. apply cheat. *)
+  destruct m as [|m'].
+  + simpl. simplify *.
+    simpl. apply (append nil nil).
+  + simpl. simplify *.
+  + destruct m as [|m']; simpl.
+    simplify *. simpl. apply (append nil (x |: _ :| xs)).
+    simplify *. simpl.
+    specialize (IH _ _ xs).
+    destruct IH.
+    refine (append (cons x xs) ys).
+  + rewrite (eta_vector (fun nv v => (nv, v) = (Peano.plus m n, xs) -> Split m n xs)) in X0.
+    apply (X0 eq_refl).
+Defined.
+Eval cbv delta[split' eq_rect noConfusion NoConfusion.NoConfusionPackage_nat
+                      NoConfusion.noConfusion_nat_obligation_1
+              ] beta zeta iota in split'.
+Extraction Inline Logic.transport.
+Extraction split'.
+Extraction split.
 
 (* Eval compute in @zip''. *)
 
@@ -387,7 +435,7 @@ Equations  split_struct {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs 
 split_struct (m:=0) xs := append nil xs ;
 split_struct (m:=(S m)) (cons x xs) with split_struct xs => {
   split_struct (m:=(S m)) (cons x xs) (append xs' ys') := append (cons x xs') ys' }.
-
+Extraction split_struct.
 Lemma split_struct_vapp : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
   let 'append v' w' := split_struct (vapp' v w) in
     v = v' /\ w = w'.
