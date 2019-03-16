@@ -34,8 +34,13 @@ install:
 - opam upgrade -y coq.${COQ_VER}
 - opam list
 
+matrix:
+  include:
+    - env: TARGET=coq
+    - env: TARGET=HoTT
+
 script:
- - ./configure.sh HoTT
+ - ./configure.sh ${TARGET}
  - make ci
 
 notifications:
