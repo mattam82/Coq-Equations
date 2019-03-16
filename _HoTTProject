@@ -4,9 +4,9 @@
 -I theories
 -I examples
 
-COQC = "hoqc"
-COQTOP = "hoqtop"
-COQDEP = "hoqdep"
+COQC = "Equations-HoTT/hoqc"
+COQTOP = "Equations-HoTT/hoqtop"
+COQDEP = "Equations-HoTT/hoqdep"
 
 CAMLDEBUG = "-bin-annot -g -for-pack Equations -w -58"
 COQDOCFLAGS = "-parse-comments -utf8 -interpolate"
