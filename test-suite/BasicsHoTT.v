@@ -122,12 +122,12 @@ Reserved Notation "x ++v y" (at level 60).
 Require Import HoTT.Classes.implementations.peano_naturals.
 Require Import HoTT.Classes.interfaces.canonical_names.
 
-Equations vapp' {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m)%nat :=
+Equations vapp {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m)%nat :=
 { []v ++v w := w ;
   (cons a v) ++v w := cons a (v ++v w) }
-where "x ++v y" := (vapp' x y).
+where "x ++v y" := (vapp x y).
 
-(* Print Assumptions vapp'. *)
+(* Print Assumptions vapp. *)
 Require Import Equations.Tactics Equations.HoTT.Tactics.
 (* Ltac Equations.Init.solve_noconf_hom ::= idtac. *)
 Set Universe Minimization ToSet.
@@ -294,7 +294,7 @@ Coercion mkVect : vector >-> vect.
 Derive NoConfusion for vect.
 
 Inductive Split {X : Type}{m n : nat} : vector X (m + n) -> Type :=
-  append : ∀ (xs : vector X m)(ys : vector X n), Split (vapp' xs ys).
+  append : ∀ (xs : vector X m)(ys : vector X n), Split (vapp xs ys).
 
 Arguments Split [ X ].
 
@@ -302,7 +302,7 @@ Arguments Split [ X ].
 (* About nil. About vector. *)
 (* Set Equations Debug. *)
 
-Equations split {X : Type} {m n} (xs : vector X (Peano.plus m n)) : Split m n xs by wf m :=
+Equations split {X : Type} {m n : nat} (xs : vector X (Peano.plus m n)) : Split m n xs by wf m :=
 split (m:=0) xs := append nil xs;
 split (m:=m .+1) (cons x xs) with split xs => {
   | append xs' ys' := append (cons x xs') ys' }.
@@ -358,12 +358,12 @@ Defined.
 Extraction Inline apply_noConfusion Empty_ind.
 Extraction split'.
 
-Lemma split_vapp' : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
-  let 'append v' w' := split (vapp' v w) in
+Lemma split_vapp : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
+  let 'append v' w' := split (vapp v w) in
     v = v' /\ w = w'.
 Proof.
   intros.
-  funelim (vapp' v w); simp split; trivial; auto.
+  funelim (vapp v w); simp split; trivial; auto.
   destruct split; simp split.
   dependent elimination X as [pair idpath idpath].
   split; constructor.
@@ -377,10 +377,10 @@ split_struct (m:=(S m)) (cons x xs) with split_struct xs => {
   split_struct (m:=(S m)) (cons x xs) (append xs' ys') := append (cons x xs') ys' }.
 Transparent split_struct.
 Lemma split_struct_vapp : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
-  let 'append v' w' := split_struct (vapp' v w) in
+  let 'append v' w' := split_struct (vapp v w) in
     v = v' /\ w = w'.
 Proof.
-  intros. funelim (vapp' v w); simp split_struct in *; try easy.
+  intros. funelim (vapp v w); simp split_struct in *; try easy.
   destruct (split_struct (v ++v w)); simpl.
   dependent elimination X as [pair idpath idpath]; easy.
 Qed.
