@@ -98,17 +98,20 @@ let telescope_intro env sigma len tele =
     | _ -> mkRel n
   in aux len tele
 
-let telescope_of_context env evd ctx =
+let telescope_of_context env sigma ctx =
+  let sigma, teleinterp = new_global sigma (Lazy.force logic_tele_interp) in
+  let _, u = destConst sigma teleinterp in
   let rec aux = function
     | [] -> raise (Invalid_argument "Cannot make telescope out of empty context")
-    | [decl] -> mkAppG evd (Lazy.force logic_tele_tip) [|get_type decl|]
+    | [decl] ->
+      mkApp (mkRef (Lazy.force logic_tele_tip, u), [|get_type decl|])
     | d :: tl ->
       let ty = get_type d in
-      mkAppG evd (Lazy.force logic_tele_ext) [| ty; mkLambda (get_annot d, ty, aux tl) |]
+      mkApp (mkRef (Lazy.force logic_tele_ext, u), [| ty; mkLambda (get_annot d, ty, aux tl) |])
   in
   let tele = aux (List.rev ctx) in
-  let tele_interp = mkAppG evd (Lazy.force logic_tele_interp) [| tele |] in
-  tele, tele_interp
+  let tele_interp = mkApp (teleinterp, [| tele |]) in
+  sigma, tele, tele_interp
 
 let telescope env evd = function
   | [] -> assert false

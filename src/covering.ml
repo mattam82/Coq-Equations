@@ -767,7 +767,8 @@ let pats_of_sign sign =
       DAst.make (PUVar (Name.get_id (Context.Rel.Declaration.get_name decl), false))) sign
 
 let wf_fix_constr env evars sign arity carrier cterm crel =
-  let tele, telety = Sigma_types.telescope_of_context env evars sign in
+  let sigma, tele, telety = Sigma_types.telescope_of_context env !evars sign in
+  let () = evars := sigma in
   let concl = it_mkLambda_or_LetIn arity sign in
   let crel = mkapp env evars logic_tele_measure [| tele; carrier; cterm; crel |] in
   let wfty = mkapp env evars logic_wellfounded_class [| telety; crel |] in
