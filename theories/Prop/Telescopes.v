@@ -33,13 +33,11 @@ Section TeleSigma.
   | tip A | concl := A -> concl;
   | ext A B | concl := forall x : A, tele_fn (B x) concl.
 
-  Universe j.
-
-  Equations tele_MR (T : tele@{i}) (A : Type@{j}) (f : tele_fn T A) : T -> A :=
+  Equations tele_MR (T : tele@{i}) (A : Type@{i}) (f : tele_fn T A) : T -> A :=
   tele_MR (tip A)   C f := f;
   tele_MR (ext A B) C f := fun x => tele_MR (B x.1) C (f x.1) x.2.
 
-  Equations tele_measure (T : tele@{i}) (A : Type@{j}) (f : tele_fn T A) (R : A -> A -> Prop) : T -> T -> Prop :=
+  Equations tele_measure (T : tele@{i}) (A : Type@{i}) (f : tele_fn T A) (R : A -> A -> Prop) : T -> T -> Prop :=
   tele_measure T C f R := fun x y => R (tele_MR T C f x) (tele_MR T C f y).
 
   Equations tele_pred : tele -> Type :=
@@ -55,7 +53,7 @@ Section TeleSigma.
   tele_rel_app (tip A) (tip A') P a a' := P a a';
   tele_rel_app (ext A B) (ext A' B') P (a, b) (a', b') := tele_rel_app (B a) (B' a') (P a a') b b'.
 
-  Universe k.
+  Universes j k.
 
   Equations tele_type : tele@{i} -> Type@{k} :=
   | tip A := A -> Type@{j};
@@ -130,9 +128,9 @@ End TeleSigma.
 Register tele_sigma as equations.tele.interp.
 Register tele_measure as equations.tele.measure.
 
-Instance wf_tele_measure@{i j}
-         {T : tele@{i}} (A : Type@{j}) (f : tele_fn@{i} T A) (R : A -> A -> Prop) :
-  WellFounded R -> WellFounded (tele_measure@{i j} T A f R).
+Instance wf_tele_measure@{i}
+         {T : tele@{i}} (A : Type@{i}) (f : tele_fn@{i} T A) (R : A -> A -> Prop) :
+  WellFounded R -> WellFounded (tele_measure@{i} T A f R).
 Proof.
   intros. apply Program.Wf.measure_wf. apply H.
 Defined.
