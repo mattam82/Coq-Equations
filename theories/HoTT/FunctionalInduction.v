@@ -77,9 +77,9 @@ Ltac remember_let H :=
 
 Ltac unfold_packcall packcall :=
   lazymatch goal with
-    |- ?x = ?y -> ?P =>
+    |- ?R ?x ?y -> ?P =>
     let y' := eval unfold packcall in y in
-        change (x = y' -> P)
+        change (R x y' -> P)
   end.
 
 Ltac simplify_IH_hyps' := repeat
@@ -158,13 +158,13 @@ Create HintDb funelim.
 
 (** Solve reflexivity goals. *)
 
-Hint Extern 0 (_ = _) => reflexivity : funelim.
+Hint Extern 0 (_ = _) => constructor : funelim.
 
 (** Specialize hypotheses begining with equalities. *)
 
 Ltac specialize_hyps :=
   match goal with
-  | [ H : forall _ : ?x = ?x, _ |- _ ] =>
+  | [ H : forall _ : paths ?x ?x, _ |- _ ] =>
     specialize (H 1%path); unfold paths_rect, paths_rec, transport, paths_ind in H ; simpl in H
   end.
 
@@ -173,8 +173,6 @@ Hint Extern 100 => specialize_hyps : funelim.
 (** Destruct conjunctions everywhere, starting with the hypotheses.
    This tactic allows to close functional induction proofs involving
    multiple nested and/or mutual recursive definitions. *)
-
-(** TODO: make it generic, won't work with another logic *)
 
 Lemma uncurry_prod (A B C : Type) : (A * B -> C) -> (A -> B -> C).
 Proof. intros H a b. exact (H (pair a b)). Defined.
