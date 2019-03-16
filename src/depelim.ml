@@ -13,6 +13,7 @@ open Util
 open Names
 open Nameops
 open Constr
+open Context
 open Termops
 open Declarations
 open Inductiveops
@@ -110,7 +111,7 @@ let dependent_pattern ?(pattern_term=true) c gl =
       Find_subterm.subst_closed_term_occ env (project gl)
         (Locus.AtOccs Locus.AllOccurrences) c ty
     in
-      mkNamedLambda id cty conclvar, evd'
+      mkNamedLambda (annotR id) cty conclvar, evd'
   in
   let subst =
     let deps = List.rev_map (fun c -> (c, varname c, pf_get_type_of gl c)) deps in
@@ -133,11 +134,12 @@ let depcase poly (mind, i as ind) =
   let indapp = mkApp (mkInd ind, extended_rel_vect 0 ctx) in
   let evd = ref (Evd.from_env (Global.env())) in
   let pred = it_mkProd_or_LetIn (evd_comb0 Evarutil.new_Type evd)
-    (make_assum Anonymous indapp :: args)
+    (make_assum anonR indapp :: args)
   in
   let nconstrs = Array.length oneind.mind_nf_lc in
   let branches =
-    Array.map2_i (fun i id cty ->
+    Array.map2_i (fun i id (ctx, cty) ->
+      let cty = Term.it_mkProd_or_LetIn cty ctx in
       let substcty = substl inds (of_constr cty) in
       let (args, arity) = decompose_prod_assum !evd substcty in
       let _, indices = decompose_app !evd arity in
@@ -152,10 +154,10 @@ let depcase poly (mind, i as ind) =
       in
       let body = mkRel (1 + nconstrs - i) in
       let br = it_mkProd_or_LetIn arity realargs in
-        (make_assum (Name (Id.of_string ("P" ^ string_of_int i))) br), body)
+        (make_assum (nameR (Id.of_string ("P" ^ string_of_int i))) br), body)
       oneind.mind_consnames oneind.mind_nf_lc
   in
-  let ci = make_case_info (Global.env ()) ind RegularStyle in
+  let ci = make_case_info (Global.env ()) ind Sorts.Relevant RegularStyle in
   (*   ci_ind = ind; *)
   (*   ci_npar = nparams; *)
   (*   ci_cstr_nargs = oneind.mind_consnrealargs; *)
@@ -167,7 +169,7 @@ let depcase poly (mind, i as ind) =
           (Array.append (extended_rel_vect (nargs + nconstrs + i) params)
               (extended_rel_vect 0 args)))
   in
-  let ctxpred = make_assum Anonymous (obj (2 + nargs)) :: args in
+  let ctxpred = make_assum anonR (obj (2 + nargs)) :: args in
   let app = mkApp (mkRel (nargs + nconstrs + 3),
                   (extended_rel_vect 0 ctxpred))
   in
@@ -178,9 +180,9 @@ let depcase poly (mind, i as ind) =
   let body =
     let len = 1 (* P *) + Array.length branches in
     it_mkLambda_or_LetIn case
-      (make_assum xid (lift len indapp)
+      (make_assum (annotR xid) (lift len indapp)
         :: ((List.rev (Array.to_list (Array.map fst branches)))
-            @ (make_assum (Name (Id.of_string "P")) pred :: ctx)))
+            @ (make_assum (nameR (Id.of_string "P")) pred :: ctx)))
   in
   let univs = Evd.const_univ_entry ~poly !evd in
   let ce = Declare.definition_entry ~univs (EConstr.to_constr !evd body) in
@@ -228,7 +230,7 @@ let pattern_call ?(pattern_term=true) c gl =
   let mklambda ty (c, id, cty) =
     let conclvar, _ = Find_subterm.subst_closed_term_occ env (project gl)
       (Locus.AtOccs Locus.AllOccurrences) c ty in
-      mkNamedLambda id cty conclvar
+      mkNamedLambda (annotR id) cty conclvar
   in
   let subst =
     let deps = List.rev_map (fun c -> (c, varname c, pf_get_type_of gl c)) deps in
@@ -268,9 +270,9 @@ let specialize_eqs ~with_block id gl =
   let ty = pf_get_hyp_typ gl id in
   let evars = ref (project gl) in
   let unif env ctx evars c1 c2 =
-    match Evarconv.conv env !evars (it_mkLambda_or_subst c1 ctx) (it_mkLambda_or_subst c2 ctx) with
-    | None -> false
-    | Some evm -> evars := evm; true
+    match Evarconv.unify_delay env !evars (it_mkLambda_or_subst c1 ctx) (it_mkLambda_or_subst c2 ctx) with
+    | exception Evarconv.UnableToUnify _ -> false
+    | evm -> evars := evm; true
   in
   let rec aux in_block in_eqs ctx subst acc ty =
     match kind !evars ty with
@@ -343,7 +345,11 @@ let specialize_eqs ~with_block id gl =
 let dependent_elim_tac ?patterns id : unit Proofview.tactic =
   let open Proofview.Notations in
   Proofview.Goal.enter begin fun gl ->
-    let env = Environ.reset_context (Proofview.Goal.env gl) in
+    let env = Proofview.Goal.env gl in
+    let concl = Proofview.Goal.concl gl in
+    let sigma = Proofview.Goal.sigma gl in
+    let sort = Sorts.univ_of_sort (Retyping.get_sort_of env sigma concl) in
+    let env = Environ.reset_context env in
     let hyps = Proofview.Goal.hyps gl in
     let default_loc, id = id in
     (* Keep aside the section variables. *)
@@ -369,8 +375,6 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
     let _, rev_subst, _ =
       let err () = assert false in
       Equations_common.named_of_rel_context ~keeplets:true err ctx in
-    let concl = Proofview.Goal.concl gl in
-    let sigma = Proofview.Goal.sigma gl in
     (* We also need to convert the goal for it to be well-typed in
      * the [rel_context]. *)
     let ty = Vars.subst_vars subst concl in
@@ -417,9 +421,10 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
         intenv = Constrintern.empty_internalization_env;
         notations = []
       } in
+    let program_orig_type = it_mkProd_or_LetIn ty ctx in
     let p = Syntax.{program_loc = default_loc;
                     program_id = Names.Id.of_string "dummy";
-                    program_orig_type = it_mkProd_or_LetIn ty ctx;
+                    program_orig_type; program_sort = sort;
                     program_impls = [];
                     program_implicits = [];
                     program_rec = None;
@@ -438,7 +443,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
       in
 
       let c, ty =
-        Splitting.term_of_tree env evd split
+        Splitting.term_of_tree env evd sort split
       in
       let c = beta_applist !evd (c, args) in
       let c = Vars.substl (List.rev rev_subst) c in

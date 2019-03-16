@@ -1,0 +1,86 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link href="coqdoc.css" rel="stylesheet" type="text/css" />
+<title>Examples.iter_rec</title>
+</head>
+
+<body>
+
+<div id="page">
+
+<div id="header">
+</div>
+
+<div id="main">
+
+<div class="code">
+<span class="id" title="keyword">From</span> <span class="id" title="keyword">Equations</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="keyword">Equations</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="var">List</span> <span class="id" title="var">Program.Syntax</span> <span class="id" title="var">Arith</span> <span class="id" title="var">Lia</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">div2</span> (<span class="id" title="var">n</span> : <span class="id" title="var">nat</span>) : <span class="id" title="var">nat</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="var">div2</span> 0 := 0;<br/>
+&nbsp;&nbsp;<span class="id" title="var">div2</span> 1 := 0;<br/>
+&nbsp;&nbsp;<span class="id" title="var">div2</span> (<span class="id" title="var">S</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) := <span class="id" title="var">S</span> (<span class="id" title="var">div2</span> <span class="id" title="var">n</span>).<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">div2_le</span> : <span class="id" title="keyword">∀</span> <span class="id" title="var">x</span>, <span class="id" title="var">div2</span> <span class="id" title="var">x</span> ≤ <span class="id" title="var">x</span>.<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">intros</span> <span class="id" title="var">x</span>. <span class="id" title="var">funelim</span> (<span class="id" title="var">div2</span> <span class="id" title="var">x</span>); <span class="id" title="tactic">auto</span> <span class="id" title="keyword">with</span> <span class="id" title="var">arith</span>. <span class="id" title="keyword">Defined</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Transparent</span> <span class="id" title="var">div2</span>.<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">log_iter</span> (<span class="id" title="var">fn</span> : <span class="id" title="var">nat</span> → <span class="id" title="var">nat</span>) (<span class="id" title="var">n</span> : <span class="id" title="var">nat</span>) : <span class="id" title="var">nat</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="var">log_iter</span> <span class="id" title="var">fn</span> 0 := 0;<br/>
+&nbsp;&nbsp;<span class="id" title="var">log_iter</span> <span class="id" title="var">fn</span> 1 := 0;<br/>
+&nbsp;&nbsp;<span class="id" title="var">log_iter</span> <span class="id" title="var">fn</span> <span class="id" title="var">n</span> := <span class="id" title="var">S</span> (<span class="id" title="var">fn</span> (<span class="id" title="var">div2</span> <span class="id" title="var">n</span>)).<br/>
+<span class="id" title="keyword">Transparent</span> <span class="id" title="var">log_iter</span>.<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">iter</span> {<span class="id" title="var">A</span>} (<span class="id" title="var">n</span> : <span class="id" title="var">nat</span>) (<span class="id" title="var">f</span> : <span class="id" title="var">A</span> → <span class="id" title="var">A</span>) : <span class="id" title="var">A</span> → <span class="id" title="var">A</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="var">iter</span> 0 <span class="id" title="var">f</span> <span class="id" title="var">x</span> := <span class="id" title="var">x</span>;<br/>
+&nbsp;&nbsp;<span class="id" title="var">iter</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>) <span class="id" title="var">f</span> <span class="id" title="var">x</span> := <span class="id" title="var">f</span> (<span class="id" title="var">iter</span> <span class="id" title="var">n</span> <span class="id" title="var">f</span> <span class="id" title="var">x</span>).<br/>
+<span class="id" title="keyword">Transparent</span> <span class="id" title="var">iter</span>.<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">f_terminates</span> {<span class="id" title="var">A</span>} {<span class="id" title="var">B</span> : <span class="id" title="var">A</span> → <span class="id" title="keyword">Type</span>} (<span class="id" title="var">fn</span> : (<span class="id" title="keyword">∀</span> <span class="id" title="var">x</span> : <span class="id" title="var">A</span>, <span class="id" title="var">B</span> <span class="id" title="var">x</span>) → (<span class="id" title="keyword">∀</span> <span class="id" title="var">x</span> : <span class="id" title="var">A</span>, <span class="id" title="var">B</span> <span class="id" title="var">x</span>)) :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <span class="id" title="var">x</span> : <span class="id" title="var">A</span>, { <span class="id" title="var">y</span> : <span class="id" title="var">B</span> <span class="id" title="var">x</span> | (<span class="id" title="tactic">∃</span> <span class="id" title="var">p</span>, <span class="id" title="keyword">∀</span> <span class="id" title="var">k</span>, <span class="id" title="var">p</span> &lt; <span class="id" title="var">k</span> → <span class="id" title="keyword">∀</span> <span class="id" title="var">g</span> : <span class="id" title="keyword">∀</span> <span class="id" title="var">x</span> : <span class="id" title="var">A</span>, <span class="id" title="var">B</span> <span class="id" title="var">x</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">iter</span> <span class="id" title="var">k</span> <span class="id" title="var">fn</span> <span class="id" title="var">g</span> <span class="id" title="var">x</span> = <span class="id" title="var">y</span>) }.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">log_terminates</span> : <span class="id" title="var">f_terminates</span> <span class="id" title="var">log_iter</span>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intro</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">Subterm.rec_wf_rel</span> <span class="id" title="var">IH</span> <span class="id" title="var">x</span> <span class="id" title="var">lt</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">x</span>. <span class="id" title="tactic">∃</span> 0. <span class="id" title="tactic">∃</span> 0. <span class="id" title="tactic">intros</span>. <span class="id" title="tactic">inversion</span> <span class="id" title="var">H</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">reflexivity</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">reflexivity</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">x</span>. <span class="id" title="tactic">∃</span> 0. <span class="id" title="tactic">∃</span> 0. <span class="id" title="tactic">intros</span>. <span class="id" title="tactic">inversion</span> <span class="id" title="var">H</span>; <span class="id" title="tactic">simpl</span>; <span class="id" title="tactic">reflexivity</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">specialize</span> (<span class="id" title="var">IH</span> (<span class="id" title="var">div2</span> (<span class="id" title="var">S</span> (<span class="id" title="var">S</span> <span class="id" title="var">x</span>)))). <span class="id" title="var">forward</span> <span class="id" title="var">IH</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">auto</span> <span class="id" title="keyword">using</span> <span class="id" title="var">div2_le</span> <span class="id" title="keyword">with</span> <span class="id" title="var">arith</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">IH</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">y</span> <span class="id" title="var">Hy</span>].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">∃</span> (<span class="id" title="var">S</span> <span class="id" title="var">y</span>). <span class="id" title="tactic">destruct</span> <span class="id" title="var">Hy</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">p</span> <span class="id" title="var">Hp</span>]. <span class="id" title="tactic">∃</span> (<span class="id" title="var">S</span> <span class="id" title="var">p</span>). <span class="id" title="tactic">intros</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">k</span>. <span class="id" title="tactic">inversion</span> <span class="id" title="var">H</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">rewrite</span> <span class="id" title="var">Hp</span>. <span class="id" title="tactic">auto</span>. <span class="id" title="tactic">auto</span> <span class="id" title="keyword">with</span> <span class="id" title="var">arith</span>.<br/>
+<span class="id" title="keyword">Defined</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <span class="id" title="var">log</span> <span class="id" title="var">x</span> := <span class="id" title="var">proj1_sig</span> (<span class="id" title="var">log_terminates</span> <span class="id" title="var">x</span>).<br/>
+
+<br/>
+<span class="id" title="keyword">Eval</span> <span class="id" title="tactic">compute</span> <span class="id" title="tactic">in</span> <span class="id" title="var">log</span> 109.<br/>
+
+<br/>
+<span class="id" title="keyword">Equations</span>? <span class="id" title="var">log'</span> (<span class="id" title="var">n</span> : <span class="id" title="var">nat</span>) : <span class="id" title="var">nat</span> <span class="id" title="tactic">by</span> <span class="id" title="keyword">wf</span> <span class="id" title="var">n</span> <span class="id" title="var">lt</span> :=<br/>
+&nbsp;<span class="id" title="var">log'</span> 0 := 0;<br/>
+&nbsp;<span class="id" title="var">log'</span> 1 := 0;<br/>
+&nbsp;<span class="id" title="var">log'</span> <span class="id" title="var">n</span> := <span class="id" title="var">S</span> (<span class="id" title="var">log'</span> (<span class="id" title="var">div2</span> <span class="id" title="var">n</span>)).<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">subst</span> <span class="id" title="var">n</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">auto</span> <span class="id" title="keyword">using</span> <span class="id" title="var">div2_le</span> <span class="id" title="keyword">with</span> <span class="id" title="var">arith</span>. <span class="id" title="keyword">Defined</span>.<br/>
+
+<br/>
+</div>
+<hr/>This page has been generated by <a href="http://coq.inria.fr/">coqdoc</a>
+</div>
+
+</div>
+
+</body>
+</html>

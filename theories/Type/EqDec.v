@@ -73,9 +73,6 @@ Proof.
   intros P peq e. now elim (uip 1 e).
 Defined.
 
-Definition Id_rew@{i j} (A : Type@{i}) (a : A) (P : A -> Type@{j}) (p : P a) (y : A) (e : a = y) : P y :=
-  match e with 1 => p end.
-
 (** Tactic to solve EqDec goals, destructing recursive calls for the recursive 
   structure of the type and calling instances of eq_dec on other types. *)
 

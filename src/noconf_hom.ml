@@ -10,6 +10,7 @@ open Util
 open Names
 open Nameops
 open Constr
+open Context
 open Declarations
 open Globnames
 open Vars
@@ -21,15 +22,15 @@ let name_context env sigma ctx =
   let avoid, ctx =
     List.fold_right (fun decl (avoid, acc) ->
       let (n, b, t) = to_tuple decl in
-      match n with
+      match n.binder_name with
       | Name id -> let id' = Namegen.next_ident_away id avoid in
         let avoid = Id.Set.add id' avoid in
-        (avoid, make_def (Name id') b t :: acc)
+        (avoid, make_def (nameR id') b t :: acc)
       | Anonymous ->
         let id' = Namegen.id_of_name_using_hdchar
             (push_rel_context acc env) sigma t Anonymous in
         let avoid = Id.Set.add id' avoid in
-        (avoid, make_def (Name id') b t :: acc))
+        (avoid, make_def (nameR id') b t :: acc))
       ctx (Id.Set.empty, [])
   in ctx
 
@@ -54,18 +55,21 @@ let get_forced_positions sigma args concl =
   in
   List.rev (List.fold_left_i is_forced 1 [] args)
 
-let derive_noConfusion_package env sigma polymorphic (ind,u as indu) indid cstNoConf =
+let derive_noConfusion_package env sigma0 polymorphic (ind,u as indu) indid ~prefix ~tactic cstNoConf =
   let mindb, oneind = Global.lookup_inductive ind in
-  let pi = (fst indu, EConstr.EInstance.kind sigma (snd indu)) in
+  let pi = (fst indu, EConstr.EInstance.kind sigma0 (snd indu)) in
   let ctx = subst_instance_context (snd pi) oneind.mind_arity_ctxt in
   let ctx = List.map of_rel_decl ctx in
-  let ctx = smash_rel_context sigma ctx in
-  let len = List.length ctx in
+  let ctx = smash_rel_context sigma0 ctx in
+  let len =
+    if prefix = "" then mindb.mind_nparams
+    else List.length ctx in
   let argsvect = rel_vect 0 len in
-  let noid = add_prefix "noConfusionHom_" indid
-  and packid = add_prefix "NoConfusionHomPackage_" indid in
+  let noid = add_prefix "noConfusion" (add_prefix prefix (add_prefix "_" indid))
+  and packid = add_prefix "NoConfusion" (add_prefix prefix (add_prefix "Package_" indid)) in
   let tc = Typeclasses.class_info (Lazy.force coq_noconfusion_class) in
-  let sigma, noconf = new_global sigma (ConstRef cstNoConf) in
+  let sigma = Evd.from_env env in
+  let sigma, noconf = Evd.fresh_global ~rigid:Evd.univ_rigid env sigma (ConstRef cstNoConf) in
   let sigma, noconfcl = new_global sigma tc.Typeclasses.cl_impl in
   let inst, u = destInd sigma noconfcl in
   let noconfterm = mkApp (noconf, argsvect) in
@@ -101,12 +105,13 @@ let derive_noConfusion_package env sigma polymorphic (ind,u as indu) indid cstNo
       (to_constr ~abort_on_undefined_evars:false sigma term)
       (to_constr sigma ty) in
     ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hook) packid
-             ~kind ~term ty ~tactic:(noconf_hom_tac ())
+             ~kind ~term ty ~tactic
               (Evd.evar_universe_context sigma) oblinfo)
 
 let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   let mindb, oneind = Global.lookup_inductive ind in
   let pi = (fst indu, EConstr.EInstance.kind sigma0 (snd indu)) in
+  let _, inds = destArity sigma0 (EConstr.of_constr (Inductiveops.type_of_inductive env pi)) in
   let ctx = subst_instance_context (snd pi) oneind.mind_arity_ctxt in
   let ctx = List.map of_rel_decl ctx in
   let ctx = smash_rel_context sigma0 ctx in
@@ -122,12 +127,23 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   let sigma, fls = get_fresh sigma logic_bot in
   let ctx = name_context env sigma ctx in
   let xid = Id.of_string "x" and yid = Id.of_string "y" in
-  let xdecl = of_tuple (Name xid, None, argty) in
+  let xdecl = of_tuple (nameR xid, None, argty) in
   let binders = xdecl :: ctx in
-  let ydecl = of_tuple (Name yid, None, lift 1 argty) in
+  let ydecl = of_tuple (nameR yid, None, lift 1 argty) in
   let fullbinders = ydecl :: binders in
-  let sigma, s = Evd.fresh_sort_in_family sigma (Lazy.force logic_sort) in
-  let s = mkSort s in
+  let sigma, s =
+    match Lazy.force logic_sort with
+    | Sorts.InType | Sorts.InSet -> (* In that case noConfusion lives at the level of the inductive family *)
+      let csort = EConstr.ESorts.kind sigma inds in
+      let sort = EConstr.mkSort csort in
+      let usort = Sorts.univ_of_sort csort in
+      if Univ.Universe.is_level usort then sigma, sort
+      else
+        Evarsolve.refresh_universes ~status:Evd.univ_flexible ~onlyalg:true
+          (Some false) env sigma sort
+    | s -> let sigma, s = Evd.fresh_sort_in_family sigma s in
+      sigma, mkSort s
+  in
   let _arity = it_mkProd_or_LetIn s fullbinders in
   (* let env = push_rel_context binders env in *)
   let paramsvect = Context.Rel.to_extended_vect mkRel 0 ctx in
@@ -182,7 +198,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
       | (name, name', ty) :: eqs ->
         let ty, lhs, rhs =
           let get_type (restty, restl, restr) (na, na', ty) =
-            let codom = mkLambda (Name na, ty, restty) in
+            let codom = mkLambda (nameR na, ty, restty) in
             mkApp (sigT, [| ty; codom |]),
             mkApp (sigI, [| ty; codom; mkVar na; subst1 (mkVar na) restl |]),
             mkApp (sigI, [| ty; codom; mkVar na'; subst1 (mkVar na') restr |])
@@ -202,6 +218,12 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
   let clauses = clauses @ [catch_all] in
   let indid = Nametab.basename_of_global (IndRef ind) in
   let id = add_prefix "NoConfusionHom_" indid in
+  let program_orig_type = it_mkProd_or_LetIn s fullbinders in
+  let program_sort = Retyping.get_sort_of env sigma program_orig_type in
+  let sigma, program_sort =
+    Evarsolve.refresh_universes ~status:Evd.univ_flexible ~onlyalg:true
+      (Some false) env sigma (mkSort program_sort) in
+  let program_sort = Sorts.univ_of_sort (EConstr.ESorts.kind sigma (EConstr.destSort sigma program_sort)) in
   let evd = ref sigma in
   let data =
     Covering.{
@@ -217,7 +239,8 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
                   program_id = id;
                   program_impls = []; program_implicits = [];
                   program_rec = None;
-                  program_orig_type = it_mkProd_or_LetIn s fullbinders;
+                  program_orig_type;
+                  program_sort;
                   program_sign = fullbinders;
                   program_arity = s}
   in
@@ -226,15 +249,15 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
       ~check_unused:false (* The catch-all clause might not be needed *)
       env evd p data clauses [] ctxmap [] s in
   let hook _ p terminfo =
-    let _proginfo =
-      Syntax.{ program_loc = Loc.make_loc (0,0); program_id = id;
-               program_orig_type = it_mkProd_or_LetIn s fullbinders;
-        program_sign = fullbinders;
-        program_arity = s;
-        program_rec = None;
-        program_impls = [];
-             program_implicits = []}
-    in
+    (* let _proginfo =
+     *   Syntax.{ program_loc = Loc.make_loc (0,0); program_id = id;
+     *            program_orig_type; program_sort;
+     *            program_sign = fullbinders;
+     *            program_arity = s;
+     *            program_rec = None;
+     *            program_impls = [];
+     *            program_implicits = []}
+     * in *)
     let program_cst = match terminfo.Splitting.term_id with ConstRef c -> c | _ -> assert false in
     (* let _compiled_info = Splitting.{ program_cst; program_split = p.program_splitting;
      *                                 program_split_info = terminfo } in
@@ -245,9 +268,12 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
     Global.set_strategy (ConstKey program_cst) Conv_oracle.transparent;
     let env = Global.env () in
     let sigma = Evd.from_env env in
-    let sigma, indu = Evarutil.new_global sigma (IndRef ind) in
+    let sigma, indu = Evd.fresh_global
+        ~rigid:Evd.univ_rigid (* Universe levels of the inductive family should not be tampered with. *)
+        env sigma (IndRef ind) in
     let indu = destInd sigma indu in
-    derive_noConfusion_package (Global.env ()) sigma0 polymorphic indu indid program_cst
+    derive_noConfusion_package (Global.env ()) sigma polymorphic indu indid
+      ~prefix:"Hom" ~tactic:(noconf_hom_tac ()) program_cst
  in
  let prog = Splitting.make_single_program env evd data.Covering.flags p ctxmap splitting None in
  Splitting.define_programs env evd [None] [] data.Covering.flags [prog] hook

@@ -10,6 +10,7 @@ open Util
 open Names
 open Nameops
 open Constr
+open Context
 open Inductiveops
 open Globnames
 open Reductionops
@@ -159,25 +160,28 @@ let where_id w = w.where_program.program_info.program_id
 
 let where_context wheres =
   List.map (fun ({where_program; where_type } as w) ->
-             make_def (Name (where_id w)) (Some (where_term w)) where_type) wheres
+             make_def (Context.nameR (where_id w)) (Some (where_term w)) where_type) wheres
 
 let where_program_type w =
   program_type w.where_program
 
-let pr_rec_info p =
+let pr_program_info env sigma p =
   let open Pp in
-  Names.Id.print p.program_id ++ str " is " ++
-  match p.program_rec with
-  | Some (Structural ann) ->
+  Names.Id.print p.program_id ++ str " : " ++
+  Printer.pr_econstr_env env sigma (Syntax.program_type p) ++ str " : " ++
+  Printer.pr_econstr_env env sigma (mkType p.program_sort) ++
+  str " ( " ++
+  (match p.program_rec with
+   | Some (Structural ann) ->
     (match ann with
-     | MutualOn (Some (i,_)) -> str "mutually recursive on " ++ int i
-     | MutualOn None -> str "mutually recursive on ? "
-     | NestedOn (Some (i,_)) -> str "nested on " ++ int i
-     | NestedOn None -> str "nested on ? "
-     | NestedNonRec -> str "nested but not directly recursive")
-  | Some (WellFounded (c, r, info)) ->
+    | MutualOn (Some (i,_)) -> str "mutually recursive on " ++ int i
+    | MutualOn None -> str "mutually recursive on ? "
+    | NestedOn (Some (i,_)) -> str "nested on " ++ int i
+    | NestedOn None -> str "nested on ? "
+    | NestedNonRec -> str "nested but not directly recursive")
+   | Some (WellFounded (c, r, info)) ->
     str "wellfounded"
-  | None -> str "not recursive"
+   | None -> str "not recursive") ++ str")"
 
 let pr_splitting env sigma ?(verbose=false) split =
   let verbose pp = if verbose then pp else mt () in
@@ -189,7 +193,7 @@ let pr_splitting env sigma ?(verbose=false) split =
         hov 2 (str"where " ++ Id.print (where_id w) ++ str " : " ++
                (try Printer.pr_econstr_env env'  sigma w.where_type ++
                     hov 1 (str "(program type: " ++ Printer.pr_econstr_env env sigma (where_program_type w)
-                    ++ str ") ") ++ pr_rec_info w.where_program.program_info ++
+                    ++ str ") ") ++ pr_program_info env sigma w.where_program.program_info ++
                     str "(path: " ++ Id.print (path_id w.where_path) ++ str")" ++ spc () ++
                     str "(where_term: " ++ Printer.pr_econstr_env env sigma (where_term w) ++ str ")" ++
                     str "(arity: " ++ Printer.pr_econstr_env env sigma w.where_program.program_info.program_arity ++ str ")" ++
@@ -253,6 +257,7 @@ let pr_splitting env sigma ?(verbose=false) split =
   try aux split with e -> str"Error pretty-printing splitting"
 
 let pr_program env evd p =
+  pr_program_info env evd p.program_info ++ fnl () ++
   pr_splitting env evd p.program_splitting
 
 let pr_programs env evd p =
@@ -296,6 +301,7 @@ let rec map_program f p =
 
 and map_where f w =
   { w with
+    where_program_orig = map_program_info f w.where_program_orig;
     where_program = map_program f w.where_program;
     where_program_args = List.map f w.where_program_args;
     where_type = f w.where_type }
@@ -370,7 +376,7 @@ let define_mutual_nested env evd get_prog progs =
       in
       let after = (nested - 1) - before in
       let fixb = (Array.make 1 idx, 0) in
-      let fixna = Array.make 1 (Name p.program_id) in
+      let fixna = Array.make 1 (nameR p.program_id) in
       let fixty = Array.make 1 (Syntax.program_type p) in
       (* Apply to itself *)
       let beforeargs = Termops.rel_list (signlen + 1) before in
@@ -382,7 +388,7 @@ let define_mutual_nested env evd get_prog progs =
             match afterctx with
             | ty :: tl ->
               let term = applist (mkRel (signlen + nested), acc) in
-              let decl = Context.Rel.Declaration.LocalDef (Name (Id.of_string "H"), term, ty) in
+              let decl = Context.Rel.Declaration.LocalDef (nameR (Id.of_string "H"), term, ty) in
               aux (List.map (Vars.lift 1) acc @ [mkRel 1], decl :: ctx) (succ n) tl
             | [] -> assert false
         in aux (beforeargs @ [fixref], []) 0 afterctx
@@ -394,7 +400,7 @@ let define_mutual_nested env evd get_prog progs =
       let fixbody = it_mkLambda_or_LetIn fixbody p.program_sign in
       it_mkLambda_or_LetIn
         (mkFix (fixb, (fixna, fixty, Array.make 1 fixbody)))
-        (List.init (nested - 1) (fun _ -> (Context.Rel.Declaration.LocalAssum (Anonymous, mkProp))))
+        (List.init (nested - 1) (fun _ -> (Context.Rel.Declaration.LocalAssum (anonR, mkProp))))
     in
     let rec fixsubst i k acc l =
       match l with
@@ -429,7 +435,7 @@ let define_mutual_nested env evd get_prog progs =
   in
   let decl =
     let blockfn (p, prog) =
-      let na = Name p.program_id in
+      let na = nameR p.program_id in
       let ty = Syntax.program_type p in
       let sign = p.program_sign in
       let body = beta_appvect !evd (get_prog prog)
@@ -470,13 +476,13 @@ let helper_evar evm evar env typ src =
   let evm' = evar_declare sign evar typ' ~src evm in
     evm', mkEvar (evar, Array.of_list instance)
 
-let term_of_tree env0 isevar tree =
-  let rec aux env evm = function
+let term_of_tree env0 isevar sort tree =
+  let rec aux env evm sort = function
     | Compute ((ctx, _, _), where, ty, RProgram rhs) ->
       let compile_where ({where_program; where_type} as w)
           (env, evm, ctx) =
         let evm, c', ty' = evm, where_term w, where_type in
-        (env, evm, (make_def (Name (where_id w)) (Some c') ty' :: ctx))
+        (env, evm, (make_def (nameR (where_id w)) (Some c') ty' :: ctx))
       in
       let env, evm, ctx = List.fold_right compile_where where (env, evm,ctx) in
       let body = it_mkLambda_or_LetIn rhs ctx and typ = it_mkProd_or_subst env evm ty ctx in
@@ -485,7 +491,7 @@ let term_of_tree env0 isevar tree =
     | Compute ((ctx, _, _) as lhs, where, ty, REmpty (split, sp)) ->
        assert (List.is_empty where);
        let evm, bot = new_global evm (Lazy.force logic_bot) in
-       let evm, prf, _ = aux env evm (Split (lhs, split, bot, sp)) in
+       let evm, prf, _ = aux env evm sort (Split (lhs, split, bot, sp)) in
        let evm, case = new_global evm (Lazy.force logic_bot_case) in
        let term = mkApp (case, [| ty; beta_appvect evm prf (extended_rel_vect 0 ctx) |]) in
        let term = it_mkLambda_or_LetIn term ctx in
@@ -493,13 +499,13 @@ let term_of_tree env0 isevar tree =
        evm, term, ty
 
     | Mapping ((ctx, p, ctx'), s) ->
-      let evm, term, ty = aux env evm s in
+      let evm, term, ty = aux env evm sort s in
       let args = Array.rev_of_list (snd (constrs_of_pats ~inacc_and_hide:false env evm p)) in
       let term = it_mkLambda_or_LetIn (whd_beta evm (mkApp (term, args))) ctx in
       let ty = it_mkProd_or_subst env evm (prod_appvect evm ty args) ctx in
       evm, term, ty
 
-    | RecValid (lhs, id, r, rest) -> aux env evm rest
+    | RecValid (lhs, id, r, rest) -> aux env evm sort rest
 
     | Refined ((ctx, _, _), info, rest) ->
       let (id, _, _), ty, rarg, path, f, args, newprob, newty =
@@ -508,7 +514,7 @@ let term_of_tree env0 isevar tree =
         info.refined_term,
         info.refined_args, info.refined_newprob, info.refined_newty
       in
-      let evm, sterm, sty = aux env evm rest in
+      let evm, sterm, sty = aux env evm sort rest in
       let term = applist (f, args) in
       let term = it_mkLambda_or_LetIn term ctx in
       let ty = it_mkProd_or_subst env evm ty ctx in
@@ -517,7 +523,7 @@ let term_of_tree env0 isevar tree =
     | Split ((ctx, _, _) as subst, rel, ty, sp) ->
       (* Produce parts of a case that will be relevant. *)
       let evm, block = Equations_common.(get_fresh evm coq_block) in
-      let blockty = mkLetIn (Anonymous, block, Retyping.get_type_of env evm block, lift 1 ty) in
+      let blockty = mkLetIn (anonR, block, Retyping.get_type_of env evm block, lift 1 ty) in
       let evd = ref evm in
       let ctx', case_ty, branches_res, nb_cuts, rev_subst, to_apply, simpl =
         Sigma_types.smart_case env evd ctx rel blockty in
@@ -553,7 +559,7 @@ let term_of_tree env0 isevar tree =
           msg_info(str"... named context:");
           msg_info(Printer.pr_named_context env !evd (EConstr.Unsafe.to_named_context (named_context env)));
         end;
-        let ((hole, c), lsubst) = simpl_step (cut_ctx @ new_ctx @ ctx', ty) in
+        let ((hole, c), lsubst) = simpl_step (cut_ctx @ new_ctx @ ctx', ty, sort) in
         if !debug then
           begin
             let open Feedback in
@@ -570,8 +576,8 @@ let term_of_tree env0 isevar tree =
           (* Dead code: we should have found a proof of False. *)
           | None, None -> c
           (* Normal case: build recursively a subterm. *)
-          | Some ((next_ctx, _), ev), Some s ->
-            let evm, next_term, next_ty = aux env !evd s in
+          | Some ((next_ctx, _, glu), ev), Some s ->
+            let evm, next_term, next_ty = aux env !evd glu s in
             (* Now we need to instantiate [ev] with the term [next_term]. *)
             (* We might need to permutate some rels. *)
             let next_subst = context_map_of_splitting s in
@@ -629,7 +635,7 @@ let term_of_tree env0 isevar tree =
       let pind, args = find_inductive env !evd rel_ty in
 
       (* Build the case. *)
-      let case_info = Inductiveops.make_case_info env (fst pind) Constr.RegularStyle in
+      let case_info = Inductiveops.make_case_info env (fst pind) Sorts.Relevant Constr.RegularStyle in
       let indfam = Inductiveops.make_ind_family (from_peuniverses !evd pind, args) in
       let case = Inductiveops.make_case_or_project env !evd indfam case_info
           case_ty rel_t branches in
@@ -640,7 +646,7 @@ let term_of_tree env0 isevar tree =
       evd := Typing.check env !evd term typ;
       !evd, term, typ
   in
-  let evm, term, typ = aux env0 !isevar tree in
+  let evm, term, typ = aux env0 !isevar sort tree in
     isevar := evm;
     term, typ
 
@@ -656,7 +662,7 @@ let define_mutual_nested_csts flags env evd get_prog progs =
             !evd Decl_kinds.(IsDefinition Fixpoint)
         in
         evd := evm;
-        Impargs.declare_manual_implicits false (ConstRef kn) [p.program_impls];
+        Impargs.declare_manual_implicits false (ConstRef kn) p.program_impls;
         (p, prog, term)) mutual
   in
   let args = List.rev_map (fun (p', _, term) -> term) mutual in
@@ -668,7 +674,7 @@ let define_mutual_nested_csts flags env evd get_prog progs =
           declare_constant p.program_id body (Some ty) flags.polymorphic
             !evd Decl_kinds.(IsDefinition Fixpoint) in
         evd := evm;
-        Impargs.declare_manual_implicits false (ConstRef kn) [p.program_impls];
+        Impargs.declare_manual_implicits false (ConstRef kn) p.program_impls;
         (p, prog, e)) nested in
   mutual, nested
 
@@ -679,7 +685,8 @@ type program_shape =
 let make_program env evd p prob s rec_info =
   match rec_info with
   | Some r ->
-    let term, ty = term_of_tree env evd s in
+    let sort = p.program_sort in
+    let term, ty = term_of_tree env evd sort s in
     let lhs = id_subst r.rec_lets in
     (match r.rec_node with
      | WfRec wfr ->
@@ -724,7 +731,8 @@ let make_program env evd p prob s rec_info =
          | _ -> p'
        in
        Mutual (p', prob, r, s', after, (* lift 1  *)term))
-  | None -> Single (p, prob, rec_info, s, fst (term_of_tree env evd s))
+  | None ->
+    Single (p, prob, rec_info, s, fst (term_of_tree env evd p.program_sort s))
 
 let update_rec_info p rec_info s =
   match p.Syntax.program_rec, rec_info.rec_node with
@@ -752,7 +760,7 @@ let make_programs env evd flags ?(define_constants=false) programs =
            flags.polymorphic !evd (Decl_kinds.(IsDefinition Definition))
        in
        evd := evm;
-       let () = Impargs.declare_manual_implicits false (ConstRef cst) [p.program_impls] in
+       let () = Impargs.declare_manual_implicits false (ConstRef cst) p.program_impls in
        let () = Declare.definition_message p.program_id in
        e
      else term
@@ -821,8 +829,8 @@ let change_lhs s (l, p, r) =
   let open Context.Rel.Declaration in
   let l' =
     List.map
-      (function LocalDef (Name id, b, t) as decl ->
-         (try let b' = List.assoc id s in LocalDef (Name id, b', t)
+      (function LocalDef ({binder_name=Name id}, b, t) as decl ->
+         (try let b' = List.assoc id s in LocalDef (nameR id, b', t)
           with Not_found -> decl)
               | decl -> decl) l
   in l', p, r
@@ -881,7 +889,7 @@ let check_splitting env evd sp =
       let () = check_type ctx w.where_type in
       let () = check_term ctx (applist (w.where_program.program_term, w.where_program_args)) w.where_type in
       let () = assert(w.where_context_length = List.length ctx) in
-      let def = make_def (Name (where_id w)) (Some (where_term w)) w.where_type in
+      let def = make_def (nameR (where_id w)) (Some (where_term w)) w.where_type in
       def :: ctx
     in
     let ctx = List.fold_left check_where (pi1 lhs) wheres in
@@ -954,7 +962,9 @@ let define_splitting_constants flags env0 isevar unfold tree =
       let evm', rest' = aux env evm rest in
       let isevar = ref evm' in
       let env = Global.env () in
-      let t, ty = term_of_tree env isevar rest' in
+      let sort = Sorts.univ_of_sort
+          (Retyping.get_sort_of (push_rel_context (pi1 lhs) env) !isevar info.refined_rettyp) in
+      let t, ty = term_of_tree env isevar sort rest' in
       let (cst, (evm, e)) =
         Equations_common.declare_constant (path_id ~unfold info.refined_path)
           t (Some ty) flags.polymorphic !isevar (Decl_kinds.(IsDefinition Definition))

@@ -13,10 +13,12 @@
 
 From Equations Require Import Init.
 
-Polymorphic Cumulative Class Signature (fam : Type) (signature_index : Type) : Type := {
-  signature : signature_index -> Type ;
-  signature_pack : fam -> sigma signature
-}.
+Polymorphic Class Signature@{i} (fam : Type@{i}) (signature_index : Type@{i})
+            (signature : signature_index -> Type@{i}) : Type@{i} :=
+  signature_pack : fam -> sigma signature.
+Hint Mode Signature ! - - : typeclass_instances.
+
+Polymorphic Definition signature {fam index sig} `{S : @Signature fam index sig} := sig.
 
 Register Equations.Signature.Signature as equations.signature.class.
 Register Equations.Signature.signature as equations.signature.signature.
@@ -28,10 +30,6 @@ Extraction Inline signature signature_pack.
 
 Ltac destruct_right_sigma H :=
   match type of H with
-  | @sigma _ (fun x => unit) =>
-    let ph := fresh in
-    destruct H as [x ph];
-      cbn [pr1 pr2] in * |- *; try clear ph
   | @sigma _ (fun x => _) =>
     destruct H as [x H]; destruct_right_sigma H
   | @sigma _ _ => destruct H as [x H];

@@ -137,9 +137,7 @@ val e_new_global : esigma -> Names.GlobRef.t -> constr
 (** {6 Linking to Coq} *)
 
 val global_reference : Id.t -> Names.GlobRef.t
-(* Unsafe, avoid *)
-val constr_of_ident : Id.t -> constr
-  
+
 val get_class : Evd.evar_map -> constr -> Typeclasses.typeclass * EConstr.EInstance.t
 
 val make_definition :
@@ -223,7 +221,7 @@ val logic_signature_pack : lazy_ref
 
 val get_fresh : Evd.evar_map -> lazy_ref -> Evd.evar_map * constr
 val get_efresh : lazy_ref -> esigma -> constr
-val is_lglobal : lazy_ref -> Constr.constr -> bool
+val is_lglobal : Evd.evar_map -> lazy_ref -> EConstr.constr -> bool
 
 val coq_sigma : lazy_ref
 val coq_sigmaI : lazy_ref
@@ -252,7 +250,7 @@ val logic_tele_forall_unpack : lazy_ref
 val coq_zero : lazy_ref
 val coq_succ : lazy_ref
 val coq_nat : lazy_ref
-val coq_nat_of_int : int -> Constr.t
+val coq_nat_of_int : Evd.evar_map -> int -> Evd.evar_map * EConstr.t
 val int_of_coq_nat : Constr.t -> int
 
 val coq_fix_proto : lazy_ref
@@ -263,7 +261,7 @@ val mkapp : Environ.env -> esigma -> lazy_ref -> constr array -> constr
 
 val mkEq : Environ.env ->
   esigma -> types -> constr -> constr -> constr
-val mkRefl : Environ.env -> esigma -> types -> constr -> constr
+val mkRefl : Environ.env -> esigma -> ?inst:EConstr.EInstance.t -> types -> constr -> constr
 
 (** Bindings to theories/ files *)
 
@@ -338,18 +336,19 @@ val move_after_deps : Names.Id.t -> constr -> unit Proofview.tactic
 
 val extended_rel_vect : int -> rel_context -> constr array
 val extended_rel_list : int -> rel_context -> constr list
-val to_tuple : rel_declaration -> Names.Name.t * constr option * constr
-val to_named_tuple : named_declaration -> Names.Id.t * constr option * constr
-val of_tuple : Names.Name.t * constr option * constr -> rel_declaration
-val of_named_tuple : Names.Id.t * constr option * constr -> named_declaration
+val to_tuple : rel_declaration -> Names.Name.t Context.binder_annot * constr option * constr
+val to_named_tuple : named_declaration -> Names.Id.t Context.binder_annot * constr option * constr
+val of_tuple : Names.Name.t Context.binder_annot * constr option * constr -> rel_declaration
+val of_named_tuple : Names.Id.t Context.binder_annot * constr option * constr -> named_declaration
 
 val get_type : rel_declaration -> constr
 val get_name : rel_declaration -> Names.Name.t
+val get_annot : rel_declaration -> Names.Name.t Context.binder_annot
 val get_value : rel_declaration -> constr option
-val make_assum : Names.Name.t -> constr -> rel_declaration
-val make_def : Names.Name.t -> constr option -> constr -> rel_declaration
-val make_named_def : Names.Id.t -> constr option -> constr -> named_declaration
-val to_context : (Names.Name.t * constr option * constr) list -> rel_context
+val make_assum : Names.Name.t Context.binder_annot -> constr -> rel_declaration
+val make_def : Names.Name.t Context.binder_annot -> constr option -> constr -> rel_declaration
+val make_named_def : Names.Id.t Context.binder_annot -> constr option -> constr -> named_declaration
+val to_context : (Names.Name.t Context.binder_annot * constr option * constr) list -> rel_context
 
 val named_of_rel_context : ?keeplets:bool -> (unit -> Names.Id.t) -> rel_context -> EConstr.t list * constr list * named_context
 val rel_of_named_context : named_context -> rel_context * Names.Id.t list
@@ -441,3 +440,12 @@ val splay_prod_n_assum : env -> Evd.evar_map -> int -> types -> rel_context * ty
 (** Already in Coq master *)
 val register_ref : Libnames.qualid -> Libnames.qualid -> unit
 val mkRef : Names.GlobRef.t * Univ.Instance.t -> Constr.constr
+
+(* Universes *)
+val univ_of_goalu : Environ.env -> Evd.evar_map -> Univ.Universe.t -> Evd.evar_map * Univ.Level.t * Univ.Universe.t
+val instance_of :
+  Environ.env ->
+  Evd.evar_map ->
+  ?argu:EConstr.EInstance.t ->
+  Univ.Universe.t ->
+  Evd.evar_map * EConstr.EInstance.t * Univ.Universe.t

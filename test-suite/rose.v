@@ -3,7 +3,7 @@
 (** printing by %\coqdockw{by}% *)
 (** printing rec %\coqdockw{rec}% *)
 (* begin hide *)
-From Equations Require Import Equations Fin.
+From Equations Require Import Equations.
 Require Import Lia Utf8 List.
 Import ListNotations.
 
@@ -41,7 +41,7 @@ Require Import List.
 
 (** To solve measure subgoals *)
 Hint Extern 4 (_ < _) => simpl; lia : rec_decision.
-Obligation Tactic := program_simpl; try (simpl; lia); try typeclasses eauto with rec_decision.
+Obligation Tactic := Tactics.equations_simpl; try (simpl; lia); try typeclasses eauto with rec_decision.
 
 (* begin hide *)
 Section RoseTree.
@@ -112,7 +112,7 @@ Section RoseTree.
   Proof.
     apply (elements_elim (fun r acc f => f = elements_spec r ++ acc)
              (fun l acc x H r => r = concat (List.map elements_spec x) ++ acc));
-      intros; simp elements_spec; simpl. now rewrite H1, H0, app_assoc. Qed.
+      intros; simp elements_spec; simpl; trivial. now rewrite H1, H0, app_assoc. Qed.
 
   (** We apply the eliminator providing the predicate for the nested
       recursive call and simplify using the [simp elements_spec] tactic

@@ -10,6 +10,8 @@ Set Warnings "-notation-overridden".
 Require Import Equations.Tactics.
 Require Import Equations.Type.Logic Equations.Type.Classes Equations.Type.EqDec Equations.Type.DepElim.
 
+Set Universe Polymorphism.
+
 Local Open Scope equations_scope.
 Import Sigma_Notations.
 
@@ -77,9 +79,9 @@ Ltac remember_let H :=
 
 Ltac unfold_packcall packcall :=
   lazymatch goal with
-    |- ?x = ?y -> ?P =>
+    |- ?R ?x ?y -> ?P =>
     let y' := eval unfold packcall in y in
-        change (x = y' -> P)
+        change (R x y' -> P)
   end.
 
 Ltac simplify_IH_hyps' := repeat
@@ -158,14 +160,14 @@ Create HintDb funelim.
 
 (** Solve reflexivity goals. *)
 
-Hint Extern 0 (_ = _) => reflexivity : funelim.
+Hint Extern 0 (Id _ _) => constructor : funelim.
 
 (** Specialize hypotheses begining with equalities. *)
 
 Ltac specialize_hyps :=
   match goal with
   | [ H : forall _ : @Id _ ?x ?x, _ |- _ ] =>
-    specialize (H (@id_refl _ x)); unfold Id_rect_dep_r, Id_rect_r, Id_rect in H ; simpl in H
+    specialize (H (@id_refl _ x)); unfold Id_rew_r, Id_rect_r, Id_rect in H ; simpl in H
   end.
 
 Hint Extern 100 => specialize_hyps : funelim.

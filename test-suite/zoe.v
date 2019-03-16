@@ -187,7 +187,7 @@ Lemma infer_sort_sound:
 Proof.
   intros i ie.
   funelim (infer_sort i ie); intros s' Heqs; 
-  try (noconf Heqs || (rewrite Heq in Heqs; noconf Heqs)).
+  try (noconf Heqs || (rewrite Heq in *; noconf Heqs)).
   - now constructor. 
   - now constructor.
   - specialize (Hind _ Heq). now constructor.

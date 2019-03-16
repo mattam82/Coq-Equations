@@ -10,6 +10,7 @@ open Util
 open Names
 open Nameops
 open Constr
+open Context
 open Declarations
 open Inductiveops
 open Globnames
@@ -33,11 +34,15 @@ let mkcase env sigma c ty constrs =
                                       (fun i oib ->
                                       mkIndU ((mind, i),snd ind)) mindb.mind_packets)) in
   let ctx = oneind.mind_arity_ctxt in
+  let ui = EConstr.EInstance.kind sigma (snd ind) in
+  let ctx = subst_instance_context ui ctx in
   let _len = List.length ctx in
   let params = mindb.mind_nparams in
-  let ci = make_case_info env (fst ind) RegularStyle in
+  let ci = make_case_info env (fst ind) Sorts.Relevant RegularStyle in
   let brs = 
-    Array.map2_i (fun i id cty ->
+    Array.map2_i (fun i id (ctx, cty) ->
+      let cty = Term.it_mkProd_or_LetIn cty ctx in
+      let cty = subst_instance_constr ui cty in
       let (args, arity) = decompose_prod_assum sigma (substl inds (of_constr cty)) in
       let realargs, pars = List.chop (List.length args - params) args in
       let args = substl (List.rev origparams) (it_mkProd_or_LetIn arity realargs) in
@@ -48,16 +53,19 @@ let mkcase env sigma c ty constrs =
   in
     make_case_or_project env sigma indf ci ty c brs
 
-let mk_eq env evd args args' =
-  let _, _, make = Sigma_types.telescope evd args in
-  let _, _, make' = Sigma_types.telescope evd args' in
+let mk_eq env env' evd args args' =
+  let _, _, make = Sigma_types.telescope env evd args in
+  let _, _, make' = Sigma_types.telescope env' evd args' in
   let make = lift (List.length args + 1) make in
+  let env = push_rel_context args' env' in
   let ty = Retyping.get_type_of env !evd make in
   mkEq env evd ty make make'
 
-let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
-  let evd = ref evd in
+let derive_no_confusion env sigma0 ~polymorphic (ind,u as indu) =
+  let evd = ref sigma0 in
   let mindb, oneind = Global.lookup_inductive ind in
+  let pi = (fst indu, EConstr.EInstance.kind !evd (snd indu)) in
+  let _, inds = destArity !evd (EConstr.of_constr (Inductiveops.type_of_inductive env pi)) in
   let ctx = subst_instance_context (EInstance.kind !evd u) oneind.mind_arity_ctxt in
   let ctx = List.map of_rel_decl ctx in
   let ctx = smash_rel_context !evd ctx in
@@ -83,12 +91,23 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
   let tru = get_efresh logic_top evd in
   let fls = get_efresh logic_bot evd in
   let xid = Id.of_string "x" and yid = Id.of_string "y" in
-  let xdecl = of_tuple (Name xid, None, argty) in
+  let xdecl = of_tuple (nameR xid, None, argty) in
   let binders = xdecl :: ctx in
-  let ydecl = of_tuple (Name yid, None, lift 1 argty) in
+  let ydecl = of_tuple (nameR yid, None, lift 1 argty) in
   let fullbinders = ydecl :: binders in
-  let s = Equations_common.evd_comb1 Evd.fresh_sort_in_family evd (Lazy.force logic_sort) in
-  let s = mkSort s in
+  let s = Lazy.force logic_sort in
+  let s = match s with
+    | Sorts.InSProp -> mkSProp
+    | Sorts.InProp -> mkProp
+    | Sorts.InSet -> mkSet
+    | Sorts.InType ->
+      (* In that case the noConfusion principle lives at the level of the type. *)
+      let sort = EConstr.mkSort (EConstr.ESorts.kind !evd inds) in
+      let sigma, s =
+        Evarsolve.refresh_universes ~status:Evd.univ_flexible ~onlyalg:true
+          (Some false) env !evd sort
+      in evd := sigma; s
+  in
   let arity = it_mkProd_or_LetIn s fullbinders in
   let env = push_rel_context binders env in
   let paramsvect = Context.Rel.to_extended_vect mkRel 0 ctx in
@@ -102,72 +121,37 @@ let derive_no_confusion env evd ~polymorphic (ind,u as indu) =
       (* In pars ; x |- fun args (x : ind pars args) => forall y, Prop *)
       let app = pack_ind_with_parlift (args + 2) in
 	it_mkLambda_or_LetIn 
-	  (mkProd_or_LetIn (of_tuple (Anonymous, None, app)) s)
-	  (of_tuple (Name xid, None, ind_with_parlift (lenindices + 1)) ::
+          (mkProd_or_LetIn (of_tuple (anonR, None, app)) s)
+          (of_tuple (nameR xid, None, ind_with_parlift (lenindices + 1)) ::
              lift_rel_context 1 argsctx)
     in
       mkcase env !evd x elim (fun ind i id nparams args arity ->
-	let ydecl = (Name yid, None, pack_ind_with_parlift (List.length args + 1)) in
+        let ydecl = (nameR yid, None, pack_ind_with_parlift (List.length args + 1)) in
         let env' = push_rel_context (of_tuple ydecl :: args) env in
         let argsctx = lift_rel_context (List.length args + 2) argsctx in
-	let elimdecl = (Name yid, None, ind_with_parlift (List.length args + lenindices + 2)) in
+        let elimdecl = (nameR yid, None, ind_with_parlift (List.length args + lenindices + 2)) in
 	  mkLambda_or_LetIn (of_tuple ydecl)
             (mkcase env' !evd x
 	        (it_mkLambda_or_LetIn s (of_tuple elimdecl :: argsctx))
 	        (fun _ i' id' nparams args' arity' ->
 	          if i = i' then
 	            if List.length args = 0 then tru
-	            else mk_eq (push_rel_context args' env') evd args args'
+                    else mk_eq env env' evd args args'
 	          else fls)))
   in
   let app = it_mkLambda_or_LetIn pred binders in
   let _, ce = make_definition ~poly:polymorphic !evd ~types:arity app in
   let indid = Nametab.basename_of_global (IndRef ind) in
-  let id = add_prefix "NoConfusion_" indid
-  and noid = add_prefix "noConfusion_" indid
-  and packid = add_prefix "NoConfusionPackage_" indid in
+  let id = add_prefix "NoConfusion_" indid in
   let cstNoConf = Declare.declare_constant id (DefinitionEntry ce, IsDefinition Definition) in
   let env = Global.env () in
-  let evd = ref (Evd.from_env env) in
-  let tc = Typeclasses.class_info (Lazy.force coq_noconfusion_class) in
-  let noconf = e_new_global evd (ConstRef cstNoConf) in
-  let noconfcl = e_new_global evd tc.Typeclasses.cl_impl in
-  let inst, u = destInd !evd noconfcl in
-  let noconfterm = mkApp (noconf, paramsvect) in
-  let ctx, argty =
-    let ty = Retyping.get_type_of env !evd noconf in
-    let ctx, ty = EConstr.decompose_prod_n_assum !evd params ty in
-    match kind !evd ty with
-    | Prod (_, b, _) -> ctx, b
-    | _ -> assert false
-  in
-  let b, ty = 
-    Equations_common.instance_constructor !evd (tc,u) [argty; noconfterm]
-  in
-  let env = push_rel_context ctx (Global.env ()) in
-  let rec term c ty =
-    match kind !evd ty with
-    | Prod (na, t, ty) ->
-       let arg = Equations_common.evd_comb1 (Evarutil.new_evar env) evd t in
-       term (mkApp (c, [|arg|])) (subst1 arg ty)
-    | _ -> c, ty
-  in
-  let cty = Retyping.get_type_of env !evd (Option.get b) in
-  let term, ty = term (Option.get b) cty in
-  let term = it_mkLambda_or_LetIn term ctx in
-  let ty = it_mkProd_or_LetIn ty ctx in
-  let _ = Equations_common.evd_comb1 (Typing.type_of env) evd term in
-  let hook vis gr _ectx =
-    Typeclasses.add_instance
-      (Typeclasses.new_instance tc empty_hint_info true gr)
-  in
-  let kind = (Global, polymorphic, Definition) in
-  let oblinfo, _, term, ty = Obligations.eterm_obligations env noid !evd 0
-      (to_constr ~abort_on_undefined_evars:false !evd term)
-      (to_constr !evd ty) in
-    ignore(Obligations.add_definition ~hook:(Lemmas.mk_hook hook) packid
-             ~kind ~term ty ~tactic:(noconf_tac ())
-	      (Evd.evar_universe_context !evd) oblinfo)
+  let sigma = Evd.from_env env in
+  let sigma, indu = Evd.fresh_global
+      ~rigid:Evd.univ_rigid (* Universe levels of the inductive family should not be tampered with. *)
+      env sigma (IndRef ind) in
+  let indu = destInd sigma indu in
+  Noconf_hom.derive_noConfusion_package env sigma polymorphic indu indid
+    ~prefix:"" ~tactic:(noconf_tac ()) cstNoConf
 
 let () =
   Ederive.(register_derive

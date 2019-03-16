@@ -7,9 +7,8 @@
 (**********************************************************************)
 
 Require Import Coq.Unicode.Utf8_core.
-From Coq Require Import Extraction.
-Require Export Coq.Program.Basics Coq.Program.Tactics Coq.Program.Utils.
 
+Declare ML Module "extraction_plugin".
 Declare ML Module "equations_plugin".
 
 (** A notation scope for equations declarations.
@@ -23,9 +22,13 @@ Declare ML Module "equations_plugin".
 Delimit Scope equations_scope with equations.
 Local Open Scope equations_scope.
 
+(** We use this inductive internally *)
+
+Variant equations_tag := the_equations_tag.
+
 (** Notation for empty patterns. *)
 
-Definition bang := tt.
+Definition bang := the_equations_tag.
 Opaque bang.
 Notation "!" := bang.
 
@@ -46,7 +49,8 @@ Register inaccessible_pattern as equations.internal.inaccessible_pattern.
 Import Inaccessible_Notations.
 
 (** A marker for fixpoint prototypes in the context *)
-Definition fixproto := tt.
+
+Definition fixproto := the_equations_tag.
 
 Register fixproto as equations.fixproto.
 
@@ -61,28 +65,6 @@ Ltac hidebody H :=
     [ H := ?b |- _ ] => change (@hidebody _ b) in (value of H)
   end.
 
-Ltac destruct_rec_calls ::=
-  match goal with
-    | [ H : let _ := fixproto in _ |- _ ] => red in H; destruct_calls H ; clear H
-  end.
-
-(* Redefine to avoid the [simpl] tactic before clearing fixpoint prototypes *)
-Ltac program_simplify ::=
-  intros; destruct_all_rec_calls; simpl in *; repeat (destruct_conjs; simpl proj1_sig in * );
-  subst*; autoinjections ; try discriminates ;
-    try (solve [ red ; intros ; destruct_conjs ; autoinjections ; discriminates ]).
-
-Ltac solve_wf :=
-  match goal with
-    |- ?R _ _ => try typeclasses eauto with subterm_relation Below rec_decision
-  end.
-
-(* program_simpl includes a [typeclasses eauto with program] which solves, e.g. [nat] goals trivially.
-   We remove it. *)
-Ltac equations_simpl := program_simplify ; try program_solve_wf; try solve_wf.
-
-Global Obligation Tactic := equations_simpl.
-
 (** The sigma type used by Equations. *)
 
 Set Primitive Projections.
@@ -92,8 +74,6 @@ Polymorphic Cumulative Record sigma@{i} {A : Type@{i}} {B : A -> Type@{i}} : Typ
 Unset Primitive Projections.
 Arguments sigma {A} B.
 Arguments sigmaI {A} B pr1 pr2.
-
-Extract Inductive sigma => "( * )" ["(,)"].
 
 Set Warnings "-notation-overridden".
 
@@ -116,8 +96,11 @@ End Sigma_Notations.
 Import Sigma_Notations.
 
 
-(** Forward reference for the NoConfusion tactic. *)
-Ltac noconf H := congruence || injection H; intros; subst.
+(** Forward reference for the no-confusion tactic. *)
+Ltac noconf H := fail "Equations.Init.noconf has not been bound yet".
+
+(** Forward reference for the simplifier of equalities *)
+Ltac simplify_equalities := fail "Equations.Init.simplify_equalities has not been bound yet".
 
 (** Forward reference for simplification of equations internal constants *)
 Ltac simpl_equations := fail "Equations.Init.simpl_equations has not been bound yet".

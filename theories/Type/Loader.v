@@ -13,14 +13,23 @@ Require Import Extraction.
 (** This exports tactics *)
 Declare ML Module "equations_plugin".
 
+Set Warnings "-notation-overridden".
 From Equations Require Export Init Signature.
 Require Import Equations.Tactics.
-Require Export Equations.Prop.Classes.
-Require Import Equations.Prop.DepElim Equations.Prop.EqDec Equations.Prop.Constants.
-Require Import Below.
-Require Export Equations.Prop.EqDecInstances.
-Require Import Equations.Prop.NoConfusion Equations.Prop.Subterm.
-Require Export Equations.Prop.Tactics.
-Require Export Equations.Prop.FunctionalInduction. (* funelim tactic *)
+Require Export Equations.Type.Logic Equations.Type.Classes.
+Require Import Equations.Type.WellFounded.
+Require Import Equations.Type.DepElim Equations.Type.EqDec Equations.Type.Constants.
+Require Export Equations.Type.EqDecInstances.
+Require Import Equations.Type.NoConfusion.
+Require Import Equations.Type.Subterm.
+Require Export Equations.Type.Tactics.
+Require Export Equations.Type.FunctionalInduction. (* funelim tactic *)
+
+Global Obligation Tactic := Equations.Tactics.equations_simpl.
+
+(** Tactic to solve well-founded proof obligations by default *)
+
+Ltac solve_rec := simpl in * ; cbv zeta ; intros ;
+  try typeclasses eauto with subterm_relation Below rec_decision.
 
 Export Inaccessible_Notations.

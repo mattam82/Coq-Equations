@@ -23,8 +23,8 @@ Register Classes.ImpossibleCall as equations.impossiblecall.class.
 
 Register Init.Logic.eq as equations.equality.type.
 Register Init.Logic.eq_refl as equations.equality.refl.
-Register Init.Logic.eq_rect_r as equations.equality.case.
-Register DepElim.eq_rect_dep_r as equations.equality.elim.
+Register Equations.Prop.Logic.transport_r as equations.equality.case.
+Register Equations.Prop.Logic.eq_elim_r as equations.equality.elim.
 
 Register Classes.EqDec as equations.eqdec.class.
 Register Classes.dec_eq as equations.eqdec.dec_eq.

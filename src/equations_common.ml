@@ -220,11 +220,6 @@ let find_constant s evd = e_new_global evd (equations_lib_ref s)
 let global_reference id =
   Smartlocate.global_of_extended_global (Nametab.locate_extended (qualid_of_ident id))
 
-let constr_of_global = UnivGen.constr_of_global
-
-let constr_of_ident id =
-  EConstr.of_constr (constr_of_global (Nametab.locate (qualid_of_ident id)))
-
 let e_type_of env evd t =
   let evm, t = Typing.type_of ~refresh:false env !evd t in
   evd := evm; t
@@ -274,9 +269,12 @@ let coq_zero = (find_global "nat.zero")
 let coq_succ = (find_global "nat.succ")
 let coq_nat = (find_global "nat.type")
 
-let rec coq_nat_of_int = function
-  | 0 -> constr_of_global (Lazy.force coq_zero)
-  | n -> mkApp (constr_of_global (Lazy.force coq_succ), [| coq_nat_of_int (pred n) |])
+let rec coq_nat_of_int sigma = function
+  | 0 -> Evarutil.new_global sigma (Lazy.force coq_zero)
+  | n ->
+    let sigma, succ = Evarutil.new_global sigma (Lazy.force coq_succ) in
+    let sigma, n' = coq_nat_of_int sigma (pred n) in
+    sigma, EConstr.mkApp (succ, [| n' |])
 
 let rec int_of_coq_nat c = 
   match Constr.kind c with
@@ -351,7 +349,7 @@ let get_fresh sigma r = new_global sigma (Lazy.force r)
 
 let get_efresh r evd = e_new_global evd (Lazy.force r)
 
-let is_lglobal gr c = Globnames.is_global (Lazy.force gr) c
+let is_lglobal sigma gr c = EConstr.is_global sigma (Lazy.force gr) c
 
 open EConstr
 
@@ -374,8 +372,12 @@ let refresh_universes_strict env evd t =
 let mkEq env evd t x y = 
   mkapp env evd logic_eq_type [| refresh_universes_strict env evd t; x; y |]
     
-let mkRefl env evd t x = 
-  mkapp env evd logic_eq_refl [| refresh_universes_strict env evd t; x |]
+let mkRefl env evd ?inst t x =
+  match inst with
+  | Some inst ->
+    EConstr.mkApp (EConstr.mkRef (Lazy.force logic_eq_refl, inst), [| refresh_universes_strict env evd t; x |])
+  | None ->
+    mkapp env evd logic_eq_refl [| refresh_universes_strict env evd t; x |]
 
 let dummy_loc = None
 type 'a located = 'a Loc.located
@@ -654,7 +656,7 @@ open EConstr.Vars
 let mkProd_or_subst decl c =
   let open Context.Rel.Declaration in
   match get_value decl with
-    | None -> mkProd (get_name decl, get_type decl, c)
+    | None -> mkProd (get_annot decl, get_type decl, c)
     | Some b -> subst1 b c
 
 let mkProd_or_clear sigma decl c =
@@ -668,7 +670,7 @@ let it_mkProd_or_clear sigma ty ctx =
 let mkLambda_or_subst decl c =
   let open Context.Rel.Declaration in
   match get_value decl with
-    | None -> mkLambda (get_name decl, get_type decl, c)
+    | None -> mkLambda (get_annot decl, get_type decl, c)
     | Some b -> subst1 b c
 
 let mkLambda_or_subst_or_clear sigma decl c =
@@ -761,7 +763,7 @@ let deps_of_var sigma id env =
        let n, b, t = Context.Named.Declaration.to_tuple decl in
        if Option.cata (fun x -> occur_var env sigma id (of_constr x)) false b ||
             occur_var env sigma id (of_constr t) then
-        Id.Set.add n acc
+        Id.Set.add n.binder_name acc
       else acc)
     env ~init:Id.Set.empty
     
@@ -876,6 +878,7 @@ let to_context c =
 let get_type = Context.Rel.Declaration.get_type
 let get_value = Context.Rel.Declaration.get_value
 let get_name = Context.Rel.Declaration.get_name
+let get_annot = Context.Rel.Declaration.get_annot
 let get_named_type = Context.Named.Declaration.get_type
 let get_named_value = Context.Named.Declaration.get_value
 let make_assum n t = Context.Rel.Declaration.LocalAssum (n, t)
@@ -897,7 +900,7 @@ let named_of_rel_context ?(keeplets = false) default l =
       (fun decl (subst, args, ids, ctx) ->
         let decl = Context.Rel.Declaration.map_constr (substl subst) decl in
 	let id = match get_name decl with Anonymous -> default () | Name id -> id in
-	let d = Named.Declaration.of_tuple (id, get_value decl, get_type decl) in
+        let d = Named.Declaration.of_tuple (annotR id, get_value decl, get_type decl) in
 	let args = if keeplets ||Context.Rel.Declaration.is_local_assum decl then mkVar id :: args else args in
 	  (mkVar id :: subst, args, id :: ids, d :: ctx))
       l ([], [], [], [])
@@ -906,8 +909,8 @@ let named_of_rel_context ?(keeplets = false) default l =
 let rel_of_named_context ctx = 
   List.fold_right (fun decl (ctx',subst) ->
       let (n, b, t) = to_named_tuple decl in
-      let decl = make_def (Name n) (Option.map (subst_vars subst) b) (subst_vars subst t) in 
-      (decl :: ctx', n :: subst)) ctx ([],[])
+      let decl = make_def (map_annot (fun n -> Name n) n) (Option.map (subst_vars subst) b) (subst_vars subst t) in
+      (decl :: ctx', n.binder_name :: subst)) ctx ([],[])
 
 let empty_hint_info = Hints.empty_hint_info
 
@@ -953,7 +956,7 @@ let set_in_ctx (n : int) (c : constr) (ctx : EConstr.rel_context) : EConstr.rel_
     | [] -> []
     | decl :: before ->      
       if k == n then
-        (rev after) @ LocalDef (get_name decl, lift (-k) c, get_type decl) :: before
+        (rev after) @ LocalDef (get_annot decl, lift (-k) c, get_type decl) :: before
       else aux (succ k) (decl :: after) before
   in aux 1 [] ctx
 
@@ -1014,7 +1017,7 @@ let is_global sigma f ec = Globnames.is_global f (EConstr.Unsafe.to_constr ec)
 let constr_of_global_univ sigma u = of_constr (mkRef (from_peuniverses sigma u))
 
 let smash_rel_context sigma ctx =
-  List.map of_rel_decl (smash_rel_context (List.map (to_rel_decl sigma) ctx))
+  List.map of_rel_decl (smash_rel_context (List.map (EConstr.Unsafe.to_rel_decl) ctx))
 let rel_vect n m = Array.map of_constr (rel_vect n m)
 
 let applistc c a = applist (c, a)
@@ -1070,3 +1073,33 @@ let evd_comb0 f evd =
 let evd_comb1 f evd x =
   let evm, r = f !evd x in
   evd := evm; r
+
+(* Universe related functions *)
+
+let univ_of_goalu env sigma u =
+  match Univ.Universe.level u with
+  | Some l -> sigma, l, u
+  | None ->
+    let sigma, l = Evd.new_univ_level_variable Evd.univ_flexible sigma in
+    sigma, l, Univ.Universe.make l
+
+let instance_of env sigma ?argu goalu =
+  let sigma, goall, goalu = univ_of_goalu env sigma goalu in
+  let sigma, goall =
+    if Univ.Level.is_prop goall then
+      sigma, Univ.Level.set
+    else
+      match Evd.universe_rigidity sigma goall with
+      | Evd.UnivFlexible true ->
+        Evd.make_nonalgebraic_variable sigma goall, goall
+      | _ -> sigma, goall
+  in
+  let inst =
+    match argu with
+    | Some equ ->
+      let equ = EConstr.EInstance.kind sigma equ in
+      let equarray = Univ.Instance.to_array equ in
+      EConstr.EInstance.make (Univ.Instance.of_array (Array.append equarray [| goall |]))
+    | None -> EConstr.EInstance.make (Univ.Instance.of_array [| goall |])
+  in
+  sigma, inst, goalu

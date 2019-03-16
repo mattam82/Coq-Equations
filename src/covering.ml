@@ -9,6 +9,7 @@
 open Util
 open Names
 open Nameops
+open Context
 open Constr
 open Reductionops
 open Pp
@@ -202,7 +203,7 @@ let adjust_sign_arity env evars p clauses =
       | n ->
         match EConstr.kind evars (whd_all env evars ty) with
         | Prod (na, t, b) -> aux evars (n - 1) (Context.Rel.Declaration.LocalAssum (na, t) :: sign) b
-        | Evar e -> let evars', t = Evardefine.define_evar_as_product evars e in
+        | Evar e -> let evars', t = Evardefine.define_evar_as_product env evars e in
           aux evars' args sign t
         | _ ->
           user_err_loc (None, "covering", str "Too many patterns in clauses for this type")
@@ -225,16 +226,16 @@ let lets_of_ctx env ctx evars s =
         | PRel i -> (ctx', cs, (i, id) :: varsubst, k, Id.Set.add id ids)
         | _ -> 
           let ty = e_type_of envctx evars c in
-          (make_def (Name id) (Some (lift k c)) (lift k ty) :: ctx', (c :: cs),
+          (make_def (Context.nameR id) (Some (lift k c)) (lift k ty) :: ctx', (c :: cs),
            varsubst, succ k, Id.Set.add id ids))
       ([],[],[],0,Id.Set.empty) s
   in
   let _, _, ctx' = List.fold_right (fun decl (ids, i, ctx') ->
       let (n, b, t) = to_tuple decl in
-      try ids, pred i, (make_def (Name (List.assoc i varsubst)) b t :: ctx')
+      try ids, pred i, (make_def (Context.nameR (List.assoc i varsubst)) b t :: ctx')
       with Not_found -> 
-        let id' = Namegen.next_name_away n ids in
-        Id.Set.add id' ids, pred i, (make_def (Name id') b t :: ctx')) ctx (ids, List.length ctx, [])
+        let id' = Namegen.next_name_away n.Context.binder_name ids in
+        Id.Set.add id' ids, pred i, (make_def (Context.nameR id') b t :: ctx')) ctx (ids, List.length ctx, [])
   in pats, ctxs, ctx'
 
 let env_of_rhs evars ctx env s lets = 
@@ -414,14 +415,14 @@ let unify_type env evars before id ty after =
           let ctx = 
             fold_right (fun decl acc ->
                 let (n, b, t) = to_tuple decl in
-                match n with
+                match n.binder_name with
                 | Name id -> let id' = next_ident_away id in
-                  (make_def (Name id') b t :: acc)
+                  (make_def (nameR id') b t :: acc)
                 | Anonymous ->
                   let x = Namegen.id_of_name_using_hdchar
                       (push_rel_context acc envb) !evars t Anonymous in
                   let id = next_ident_away x in
-                  (make_def (Name id) b t :: acc))
+                  (make_def (nameR id) b t :: acc))
               ctx []
           in
           let env' = push_rel_context ctx env in
@@ -470,7 +471,7 @@ let blockers curpats ((_, patcs, _) : context_map) =
 
   in patterns_blockers curpats (rev patcs)
 
-let subst_matches_constr sigma k s c = 
+let subst_matches_constr sigma k s c =
   let rec aux depth c =
     match kind sigma c with
     | Rel n -> 
@@ -515,7 +516,7 @@ let split_var (env,evars) var delta =
   | Some (newty, unify) ->
     (* Some constructor's type is not refined enough to match ty *)
     if Array.exists (fun x -> x == UnifStuck) unify then
-      Some (CannotSplit (id, before, newty))
+      Some (CannotSplit (id.binder_name, before, newty))
     else
       let newdelta = after @ (make_def id b newty :: before) in
       Some (Splitted (var, do_renamings env !evars newdelta, Array.map branch unify))
@@ -582,7 +583,7 @@ let instance_of_pats env evars (ctx : rel_context) (pats : (int * bool) list) =
   let pats'' =
     List.map_i (fun i decl ->
         let (id, b, t) = to_named_tuple decl in
-        let i', _ = lookup_named_i id nctx in
+        let i', _ = lookup_named_i id.binder_name nctx in
         CList.find_map (fun (i'', hide) ->
             if i'' == i' then Some (if hide then PHide i else PRel i)
             else None) pats)
@@ -592,7 +593,7 @@ let instance_of_pats env evars (ctx : rel_context) (pats : (int * bool) list) =
 let push_rel_context_eos ctx env evars =
   if named_context env <> [] then
     let env' =
-      push_named (make_named_def coq_end_of_section_id
+      push_named (make_named_def (annotR coq_end_of_section_id)
                     (Some (get_efresh coq_the_end_of_the_section evars))
                     (get_efresh coq_end_of_section evars)) env
     in push_rel_context ctx env'
@@ -600,7 +601,7 @@ let push_rel_context_eos ctx env evars =
 
 let split_at_eos sigma ctx =
   List.split_when (fun decl ->
-      is_lglobal coq_end_of_section (to_constr sigma (get_named_type decl))) ctx
+      is_lglobal sigma coq_end_of_section (get_named_type decl)) ctx
 
 let pr_problem p env sigma (delta, patcs, _) =
   let env' = push_rel_context delta env in
@@ -646,10 +647,10 @@ let compute_rec_type context programs =
     | _ -> assert false
   end
 
-let print_recinfo programs =
+let print_program_info env sigma programs =
   let open Pp in
   if !Equations_common.debug then
-    Feedback.msg_debug (str "Programs: " ++ prlist_with_sep fnl pr_rec_info programs)
+    Feedback.msg_debug (str "Programs: " ++ prlist_with_sep fnl (pr_program_info env sigma) programs)
 
 let compute_fixdecls_data env evd ?data programs =
   let protos = List.map (fun p ->
@@ -664,10 +665,10 @@ let compute_fixdecls_data env evd ?data programs =
   let fixprots =
     List.map (fun ty ->
         let fixproto = get_efresh coq_fix_proto evd in
-        mkLetIn (Anonymous, fixproto,
+        mkLetIn (anonR, fixproto,
                  Retyping.get_type_of env !evd fixproto, ty)) tys in
   let fixdecls =
-    List.map2 (fun i fixprot -> of_tuple (Name i, None, fixprot)) names fixprots in
+    List.map2 (fun i fixprot -> of_tuple (nameR i, None, fixprot)) names fixprots in
   data, List.rev fixdecls, fixprots
 
 let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot,l,t,by),clauses as ieqs) =
@@ -711,6 +712,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot
   let body = it_mkLambda_or_LetIn arity sign in
   let _ = if not with_evars then Pretyping.check_evars env Evd.empty !evd body in
   let program_orig_type = it_mkProd_or_LetIn arity sign in
+  let program_sort = Sorts.univ_of_sort (Retyping.get_sort_of env !evd program_orig_type) in
   let program_implicits = Impargs.compute_implicits_with_manual env !evd program_orig_type false impls in
   let () = evd := Evd.minimize_universes !evd in
   match rec_annot with
@@ -718,6 +720,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot
     { program_loc = loc;
       program_id = i;
       program_orig_type;
+      program_sort;
       program_sign = sign;
       program_arity = arity;
       program_rec = None;
@@ -727,6 +730,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot
     { program_loc = loc;
       program_id = i;
       program_orig_type;
+      program_sort;
       program_sign = sign;
       program_arity = arity;
       program_rec = Some (Structural ann);
@@ -737,6 +741,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot
     { program_loc = loc;
       program_id = i;
       program_orig_type;
+      program_sort;
       program_sign = sign;
       program_arity = arity;
       program_rec = Some (WellFounded (c, r, compinfo));
@@ -759,15 +764,24 @@ let pats_of_sign sign =
   List.rev_map (fun decl ->
       DAst.make (PUVar (Name.get_id (Context.Rel.Declaration.get_name decl), false))) sign
 
-let wf_fix_constr env evars sign arity carrier cterm crel =
-  let tele, telety = Sigma_types.telescope_of_context env evars sign in
+let wf_fix_constr env evars sign arity sort carrier cterm crel =
+  let sigma, tele, telety = Sigma_types.telescope_of_context env !evars sign in
+  let () = evars := sigma in
   let concl = it_mkLambda_or_LetIn arity sign in
   let crel = mkapp env evars logic_tele_measure [| tele; carrier; cterm; crel |] in
   let wfty = mkapp env evars logic_wellfounded_class [| telety; crel |] in
   let sigma, wf = new_evar env !evars wfty in
   let sigma = Typeclasses.resolve_typeclasses env sigma in
   let () = evars := sigma in
-  let fix = mkapp env evars logic_tele_fix [| tele; crel; wf; concl |] in
+  let fix =
+    (* let _, tyrelu = destConst sigma (fst (decompose_app sigma wfty)) in *)
+    (* if not (EInstance.is_empty tyrelu) then
+     *   let sigma, inst, glu = Equations_common.instance_of env !evars ~argu:tyrelu sort in
+     *   let () = evars := sigma in
+     *   mkApp (EConstr.mkRef (Lazy.force logic_tele_fix, inst), [| tele; crel; wf; concl|])
+     * else *)
+    mkapp env evars logic_tele_fix [| tele; crel; wf; concl|]
+  in
   let sigma, fixty = Typing.type_of env !evars fix in
   let () = evars := sigma in
   let reds =
@@ -828,7 +842,7 @@ let wf_fix_constr env evars sign arity carrier cterm crel =
    *                     str " conclusion type : " ++ prc concl); *)
   functional_type, full_functional_type, fix
 
-let wf_fix env evars subst sign arity term rel =
+let wf_fix env evars subst sign arity sort term rel =
   let envsign = push_rel_context sign env in
   let sigma, cterm = interp_constr_evars envsign !evars term in
   let carrier =
@@ -842,16 +856,17 @@ let wf_fix env evars subst sign arity term rel =
   in
   let cterm = it_mkLambda_or_LetIn cterm sign in
   (* let cterm = substl subst cterm in *)
+  let sigma, rsort = Evd.fresh_sort_in_family sigma (Lazy.force Equations_common.logic_sort) in
   let sigma, crel =
     let relty =
-      (mkProd (Anonymous, carrier, mkProd (Anonymous, lift 1 carrier, mkProp)))
+      (mkProd (anonR, carrier, mkProd (anonR, lift 1 carrier, mkSort rsort)))
     in
     match rel with
     | Some rel -> interp_casted_constr_evars env sigma rel relty
     | None -> new_evar env sigma relty
   in
   let () = evars := sigma in
-  let res = wf_fix_constr env evars sign arity carrier cterm crel in
+  let res = wf_fix_constr env evars sign arity sort carrier cterm crel in
   nf_evar !evars cterm, nf_evar !evars crel, res
 
 let compute_rec_data env evars data lets subst p =
@@ -896,10 +911,10 @@ let compute_rec_data env evars data lets subst p =
 
   | Some (WellFounded (term, rel, _)) ->
     let arg, rel, (functional_type, _full_functional_type, fix) =
-      wf_fix env evars subst p.program_sign p.program_arity term rel in
+      wf_fix env evars subst p.program_sign p.program_arity p.program_sort term rel in
     let ctxpats = pats_of_sign lets in
     let rec_args = List.length p.program_sign in
-    let decl = make_def (Name p.program_id) None functional_type in
+    let decl = make_def (nameR p.program_id) None functional_type in
     let rec_sign = p.program_sign @ lets in
     let lhs = decl :: rec_sign in
     let pats = PHide 1 :: lift_pats 1 (id_pats rec_sign) in
@@ -1080,15 +1095,17 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
       let userc, usercty = interp_constr_in_rhs env ctx evars data None s lets (GlobConstr user) in
       match t with
       | PInac t ->
-        begin match Evarconv.conv env' !evars userc t with
-          | Some evars' -> evars := evars'
-          | None ->
+        begin match Evarconv.unify env' !evars Reduction.CONV userc t with
+          | evars' -> evars := evars'
+          | exception Pretype_errors.PretypeError (env, sigma, e) ->
             DAst.with_loc_val (fun ?loc _ ->
                 CErrors.user_err ?loc ~hdr:"covering"
-                  (str "Incompatible innaccessible pattern " ++
-                   Printer.pr_econstr_env env' !evars userc ++
-                   spc () ++ str "should be unifiable with " ++
-                   Printer.pr_econstr_env env' !evars t)) user
+                  (hov 0 (str "Incompatible innaccessible pattern " ++
+                          Printer.pr_econstr_env env' !evars userc ++ cut () ++
+                          spc () ++ str "should be unifiable with " ++
+                          Printer.pr_econstr_env env' !evars t ++ cut () ++
+                          str"Unification failed with " ++
+                          Himsg.explain_pretype_error env sigma e))) user
         end
       | _ ->
         let t = pat_constr t in
@@ -1155,7 +1172,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
        current context *)
     let revctx = check_ctx_map env !evars (newctx, pats', ctx) in
     let idref = Namegen.next_ident_away (Id.of_string "refine") (Id.Set.of_list (ids_of_rel_context newctx)) in
-    let decl = make_assum (Name idref) (mapping_constr !evars revctx cty) in
+    let decl = make_assum (nameR idref) (mapping_constr !evars revctx cty) in
     let extnewctx = decl :: newctx in
     (* cmap : Δ -> ctx, cty,
        strinv associates to indexes in the strenghtened context to
@@ -1186,6 +1203,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
     in
     let newty =
       let env' = push_rel_context extnewctx env in
+      let refterm  = Tacred.simpl env' !evars refterm in
       subst_term !evars refterm
         (Tacred.simpl env'
            !evars (lift 1 (mapping_constr !evars revctx ty)))
@@ -1276,7 +1294,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
          str "And clauses: " ++ pr_preclauses env cls')
     | Some (clauses, s) ->
       let () = check_unused_clauses env clauses in
-      let term, _ = term_of_tree env evars s in
+      let term, _ = term_of_tree env evars p.program_sort s in
       let info =
         { refined_obj = (idref, cconstr, cty);
           refined_rettyp = ty;
@@ -1309,7 +1327,7 @@ and interp_wheres env0 ctx evars path data s lets
     let () = evars := sigma in
 
     let pre_type = Syntax.program_type p in
-    let fixdecls = [Context.Rel.Declaration.LocalAssum (Name id, pre_type)] in
+    let fixdecls = [Context.Rel.Declaration.LocalAssum (nameR id, pre_type)] in
     let rec_type = compute_rec_type data.rec_type [p] in
     let rec_data = {data with rec_type; fixdecls} in
     let p, problem, arity, extpats, rec_info =
@@ -1354,7 +1372,7 @@ and interp_wheres env0 ctx evars path data s lets
         in
         Lazy.from_fun cover, term
     in
-    let decl = make_def (Name id) (Some (applistc term where_args)) pre_type in
+    let decl = make_def (nameR id) (Some (applistc term where_args)) pre_type in
     (data, decl :: lets, succ nlets, program :: coverings,
      push_rel decl envctx)
   in

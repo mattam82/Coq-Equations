@@ -1,5 +1,7 @@
 From Coq Require Import Vector.
 From Equations Require Import Equations.
+Arguments Vector.nil {A}.
+Arguments Vector.cons {A} _ {n}.
 
 Equations silly_replicate {A} (n : nat) (x : A) : Vector.t A n :=
 silly_replicate O _ := nil;

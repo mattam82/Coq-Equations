@@ -11,52 +11,52 @@ title: Gallery of programs
 Dependent Pattern-Matching
 ==========================
 
-- [Polynomials](examples/polynomials.html): a reflexive tactic for
+- [Polynomials](examples/Examples.polynomials.html): a reflexive tactic for
   solving boolean tautologies
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/polynomials.v)).
 
-- [HoTT_light](examples/HoTT_light.html): basics of the HoTT library
+- [HoTT_light](examples/Examples.HoTT_light.html): basics of the HoTT library
   implemented using a logic in `Type`
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/HoTT_light.v)).
 
-- [MoreDep](examples/MoreDep.html): part of chapter 8 of Adam
+- [MoreDep](examples/Examples.MoreDep.html): part of chapter 8 of Adam
   Chlipala's [CPDT](http://adam.chlipala.net/cpdt/html/toc.html)
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/MoreDep.v)).
 
-- [Definitional interpreter](examples/definterp.html): definitional interpreter
+- [Definitional interpreter](examples/Examples.definterp.html): definitional interpreter
   for an impure language using well-scoped, well-typed syntax
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/definterp.v)).
 
-- [Views](examples/views.html): using dependent pattern-matching with
+- [Views](examples/Examples.views.html): using dependent pattern-matching with
   views, to handle default cases in pattern-matching
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/views.v)).
 
 Recursion
 =========
 
-- [STLC](examples/STLC.html): strong normalization of simply-typed
+- [STLC](examples/Examples.STLC.html): strong normalization of simply-typed
   lambda-calculus with products using hereditary substitutions
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/STLC.v)).
 
-- [String Matching](examples/string_matching.html): beginning of example
+- [String Matching](examples/Examples.string_matching.html): beginning of example
   by Nicky Vazou on string matching, uses well-founded recursion
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/string_matching.v)).
 
-- [Rose Trees](examples/RoseTree.html): nested well-founded recursion
+- [Rose Trees](examples/Examples.RoseTree.html): nested well-founded recursion
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/RoseTree.v)).
 
-- [Nested mutual recursion](examples/nested_mut_rec.html): structural mutual and nested recursion
+- [Nested mutual recursion](examples/Examples.nested_mut_rec.html): structural mutual and nested recursion
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/nested_mut_rec.v)).
 
-- [Accumulators](examples/accumulator.html): defining and proving
+- [Accumulators](examples/Examples.accumulator.html): defining and proving
   programs using accumulators, with well-founded recursion
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/accumulator.v)).
 
-- [Mutual well-founded recursion](examples/mutualwfrec.html):
+- [Mutual well-founded recursion](examples/Examples.mutualwfrec.html):
   representing mutually recursive well-founded definitions using
   dependent pattern-matching
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/mutualwfrec.v)).
 
-- [General recursion](examples/general_recursion.html): working with
+- [General recursion](examples/Examples.general_recursion.html): working with
   general recursive functions, without worrying about termination proofs
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/general_recursion.v)).

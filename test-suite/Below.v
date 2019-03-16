@@ -99,20 +99,20 @@ Ltac rec_fast v recname := intro_block v ; move v at top ;
   generalize_by_eqs_vars v ; (intros until v || revert_until v) ;
     let recv := eval simpl in (rec v) in
     (eapply recv || (dependent pattern v ; refine (recv _ _))) ;
-    clear_except recname ;
+    clear -recname ;
     intros until 1 ; on_last_hyp ltac:(fun x => rename x into recname) ;
       simpl in * ; simplify_dep_elim ; intros ; unblock_goal ; intros ;
         (try move recname at bottom) ;
         add_pattern (hide_pattern recname).
 
-Ltac rec_debug v recname := intro_block v ; move v at top ;
-  generalize_by_eqs_vars v ; (intros until v || revert_until v) ;
-    let recv := eval simpl in (rec v) in show_goal ; 
-    (eapply recv || (dependent pattern v ; refine (recv _ _))) ; show_hyps ; idtac "before clear";
-    clear_except recname ; 
-    intros until 1 ; on_last_hyp ltac:(fun x => rename x into recname) ;
-    idtac "after clear";
-    show_hyps ; show_goal ; simpl in * ; simplify_dep_elim ; intros ; unblock_goal ; intros ;
-      add_pattern (hide_pattern recname).
+(* Ltac rec_debug v recname := intro_block v ; move v at top ; *)
+(*   generalize_by_eqs_vars v ; (intros until v || revert_until v) ; *)
+(*     let recv := eval simpl in (rec v) in show_goal ;  *)
+(*     (eapply recv || (dependent pattern v ; refine (recv _ _))) ; show_hyps ; idtac "before clear"; *)
+(*     clear_except recname ;  *)
+(*     intros until 1 ; on_last_hyp ltac:(fun x => rename x into recname) ; *)
+(*     idtac "after clear"; *)
+(*     show_hyps ; show_goal ; simpl in * ; simplify_dep_elim ; intros ; unblock_goal ; intros ; *)
+(*       add_pattern (hide_pattern recname). *)
 
 Ltac rec recname v := rec_fast v recname.

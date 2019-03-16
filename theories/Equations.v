@@ -8,10 +8,18 @@
 
 (** The set of libraries required to run Equations with all features. *)
 
-From Equations Require Export Loader.
-From Equations Require Import Telescopes.
+Require Export Equations.Prop.Loader.
+Require Import Equations.Prop.Telescopes.
+
+Require Import Program.Tactics.
+
+(* program_solve_wf launches auto on well-founded and propositional (i.e. in Prop) goals *)
+
+Global Obligation Tactic := program_simplify; Equations.Tactics.equations_simpl;
+                              try program_solve_wf.
 
 (** Tactic to solve well-founded proof obligations by default *)
+
 Ltac solve_rec := simpl in * ; cbv zeta ; intros ;
   try typeclasses eauto with subterm_relation Below rec_decision.
 

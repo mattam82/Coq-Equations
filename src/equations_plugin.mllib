@@ -8,13 +8,13 @@ Splitting
 Covering
 Subterm
 Eqdec
-Noconf
 Depelim
 Combined_scheme
 Principles_proofs
 Principles
 Equations
 Noconf_hom
+Noconf
 Extra_tactics
 G_equations
 Equations_plugin_mod

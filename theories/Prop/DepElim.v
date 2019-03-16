@@ -12,6 +12,7 @@ Require Import Coq.Program.Tactics.
 Require Export Equations.Init.
 Require Import Equations.Tactics.
 Require Import Equations.Signature.
+Require Import Equations.Prop.Logic.
 Require Import Equations.Prop.Classes.
 Require Import Equations.Prop.EqDec.
 
@@ -51,14 +52,10 @@ Ltac elim_ind p := elim_tac ltac:(fun p el => induction p using el) p.
 
 (** Lemmas used by the simplifier, mainly rephrasings of [eq_rect], [eq_ind]. *)
 
-Lemma solution_left : forall {A} {B : A -> Type} (t : A), B t -> (forall x, x = t -> B x).
-Proof. intros A B t H x eq. symmetry in eq. destruct eq. apply H. Defined.
+Notation "p # t" := (transport _ p t) (right associativity, at level 65) : equations_scope.
 
-Scheme eq_rect_dep := Induction for eq Sort Type.
-
-Lemma eq_rect_dep_r {A} (x : A) (P : forall a, a = x -> Type) (p : P x eq_refl)
-      (y : A) (e : y = x) : P y e.
-Proof. destruct e. apply p. Defined.
+Definition solution_left {A} {B : A -> Type} (t : A) (p : B t) (x : A) (e : x = t) : B x :=
+  eq_sym e # p.
 
 Lemma eq_sym_invol {A} (x y : A) (e : x = y) : eq_sym (eq_sym e) = e.
 Proof. destruct e. reflexivity. Defined.
@@ -78,8 +75,8 @@ Proof.
   destruct eq. exact H.
 Defined.
 
-Lemma solution_right : forall {A} {B : A -> Type} (t : A), B t -> (forall x, t = x -> B x).
-Proof. intros A B t H x eq. destruct eq. apply H. Defined.
+Definition solution_right {A} {P : A -> Type} (t : A) (p : P t) x (e : t = x) : P x :=
+  transport P e p.
 
 Lemma solution_right_dep : forall {A} (t : A) {B : forall (x : A), (t = x -> Type)},
     B t eq_refl -> (forall x (Heq : t = x), B x Heq).
@@ -105,7 +102,9 @@ Proof.
   now destruct H.
 Defined.
 
-Polymorphic Lemma simplification_sigma1@{i j} : forall {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}} (p q : A) (x : P p) (y : P q),
+Polymorphic Lemma simplification_sigma1@{i j | i <= eq.u0} :
+  forall {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}}
+         (p q : A) (x : P p) (y : P q),
   (p = q -> (p, x) = (q, y) -> B) -> ((p, x) = (q, y) -> B).
 Proof.
   intros. refine (X _ H).
@@ -113,7 +112,7 @@ Proof.
   now destruct H.
 Defined.
 
-Polymorphic Lemma eq_simplification_sigma1@{i j} {A : Type@{i}} {P : Type@{i}} {B : Type@{j}}
+Polymorphic Lemma eq_simplification_sigma1@{i j | i <= eq.u0} {A : Type@{i}} {P : Type@{i}} {B : Type@{j}}
   (p q : A) (x : P) (y : P) :
   (p = q -> x = y -> B) ->
   ((p, x) = (q, y) -> B).
@@ -127,7 +126,7 @@ Proof.
   intros X. eapply (X eq_refl). apply eq_refl.
 Defined.
 
-Polymorphic Lemma eq_simplification_sigma1_dep@{i j} {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}}
+Polymorphic Lemma eq_simplification_sigma1_dep@{i j | i <= eq.u0 +} {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}}
   (p q : A) (x : P p) (y : P q) :
   (forall e : p = q, (@eq_rect A p P x q e) = y -> B) ->
   ((p, x) = (q, y) -> B).
@@ -141,11 +140,11 @@ Proof.
   intros X. eapply (X eq_refl). apply eq_refl.
 Defined.
 
-Polymorphic Definition pack_sigma_eq_nondep@{i} {A : Type@{i}} {P : Type@{i}} {p q : A} {x : P} {y : P}
+Polymorphic Definition pack_sigma_eq_nondep@{i | i <= eq.u0} {A : Type@{i}} {P : Type@{i}} {p q : A} {x : P} {y : P}
   (e' : p = q) (e : x = y) : (p, x) = (q, y).
 Proof. destruct e'. simpl in e. destruct e. apply eq_refl. Defined.
 
-Polymorphic Lemma eq_simplification_sigma1_nondep_dep@{i j} {A : Type@{i}} {P : Type@{i}}
+Polymorphic Lemma eq_simplification_sigma1_nondep_dep@{i j | i <= eq.u0} {A : Type@{i}} {P : Type@{i}}
   (p q : A) (x : P) (y : P) {B : (p, x) = (q, y) -> Type@{j}} :
   (forall e' : p = q, forall e : x = y, B (pack_sigma_eq_nondep e' e)) ->
   (forall e : sigmaI (fun _ => P) p x = sigmaI (fun _ => P) q y, B e).
@@ -160,11 +159,11 @@ Proof.
   apply (X eq_refl eq_refl).
 Defined.
 
-Polymorphic Definition pack_sigma_eq@{i} {A : Type@{i}} {P : A -> Type@{i}} {p q : A} {x : P p} {y : P q}
+Polymorphic Definition pack_sigma_eq@{i | +} {A : Type@{i}} {P : A -> Type@{i}} {p q : A} {x : P p} {y : P q}
   (e' : p = q) (e : @eq_rect A p P x q e' = y) : (p, x) = (q, y).
 Proof. destruct e'. simpl in e. destruct e. apply eq_refl. Defined.
 
-Polymorphic Lemma eq_simplification_sigma1_dep_dep@{i j} {A : Type@{i}} {P : A -> Type@{i}}
+Polymorphic Lemma eq_simplification_sigma1_dep_dep@{i j | i <= eq.u0 +} {A : Type@{i}} {P : A -> Type@{i}}
   (p q : A) (x : P p) (y : P q) {B : (p, x) = (q, y) -> Type@{j}} :
   (forall e' : p = q, forall e : @eq_rect A p P x q e' = y, B (pack_sigma_eq e' e)) ->
   (forall e : (p, x) = (q, y), B e).
@@ -178,13 +177,13 @@ Proof.
   intros X. simpl in *.
   apply (X eq_refl eq_refl).
 Defined.
-
-Polymorphic Lemma pr2_inv_uip@{i} {A : Type@{i}}
+Set Printing Universes.
+Polymorphic Lemma pr2_inv_uip@{i| i <= eq.u0 +} {A : Type@{i}}
             {P : A -> Type@{i}} {x : A} {y y' : P x} :
   y = y' -> sigmaI@{i} P x y = sigmaI@{i} P x y'.
-Proof. exact (solution_right (B:=fun y' => (x, y) = (x, y')) y eq_refl y'). Defined.
+Proof. exact (solution_right (P:=fun y' => (x, y) = (x, y')) y eq_refl y'). Defined.
 
-Polymorphic Lemma pr2_uip@{i} {A : Type@{i}}
+Polymorphic Lemma pr2_uip@{i | +} {A : Type@{i}}
             {E : UIP A} {P : A -> Type@{i}} {x : A} {y y' : P x} :
   sigmaI@{i} P x y = sigmaI@{i} P x y' -> y = y'.
 Proof.
@@ -192,7 +191,7 @@ Proof.
   intros e'. destruct (uip eq_refl e'). intros e ; exact e.
 Defined.
 
-Polymorphic Lemma pr2_uip_refl@{i} {A : Type@{i}}
+Polymorphic Lemma pr2_uip_refl@{i | +} {A : Type@{i}}
             {E : UIP A} (P : A -> Type@{i}) (x : A) (y : P x) :
   pr2_uip@{i} (@eq_refl _ (x, y)) = eq_refl.
 Proof.
@@ -203,13 +202,13 @@ Defined.
 (** If we have decidable equality on [A] we use this version which is 
    axiom-free! *)
 
-Polymorphic Lemma simplification_sigma2_uip@{i j} :
+Polymorphic Lemma simplification_sigma2_uip@{i j |+} :
   forall {A : Type@{i}} `{UIP A} {P : A -> Type@{i}} {B : Type@{j}}
     (p : A) (x y : P p),
     (x = y -> B) -> ((p , x) = (p, y) -> B).
 Proof. intros. apply X. apply pr2_uip@{i} in H0. assumption. Defined.
 
-Polymorphic Lemma simplification_sigma2_uip_refl@{i j} :
+Polymorphic Lemma simplification_sigma2_uip_refl@{i j | +} :
   forall {A : Type@{i}} {uip:UIP A} {P : A -> Type@{i}} {B : Type@{j}}
     (p : A) (x : P p) (G : x = x -> B),
       @simplification_sigma2_uip A uip P B p x x G eq_refl = G eq_refl.
@@ -235,12 +234,12 @@ Proof.
 Defined.
 Arguments simplification_sigma2_dec_point : simpl never.
 
-Polymorphic Lemma simplification_K_uip {A} `{UIP A} (x : A) {B : x = x -> Type} :
+Polymorphic Lemma simplification_K_uip@{i j| i <= eq.u0 +} {A : Type@{i}} `{UIP A} (x : A) {B : x = x -> Type@{j}} :
   B eq_refl -> (forall p : x = x, B p).
 Proof. apply UIP_K. Defined.
 Arguments simplification_K_uip : simpl never.
 
-Lemma simplification_K_uip_refl :
+Polymorphic Lemma simplification_K_uip_refl :
   forall {A} `{UIP A} (x : A) {B : x = x -> Type} (p : B eq_refl),
   simplification_K_uip x p eq_refl = p.
 Proof.
@@ -249,7 +248,7 @@ Proof.
 Defined.
 
 Polymorphic
-Definition ind_pack_eq@{i} {A : Type@{i}} {B : A -> Type@{i}} {x : A} {p q : B x} (e : p = q) :
+Definition ind_pack_eq@{i | +} {A : Type@{i}} {B : A -> Type@{i}} {x : A} {p q : B x} (e : p = q) :
   @eq (sigma (fun x => B x)) (x, p) (x, q) :=
   (pr2_inv_uip e).
 
@@ -270,7 +269,7 @@ Arguments pr2_uip : simpl never.
 Arguments pr2_inv_uip : simpl never.
 
 Polymorphic
-Lemma simplify_ind_pack@{i j} {A : Type@{i}} {uip : UIP A}
+Lemma simplify_ind_pack@{i j | +} {A : Type@{i}} {uip : UIP A}
       (B : A -> Type@{i}) (x : A) (p q : B x) (G : p = q -> Type@{j}) :
       (forall e : (x, p) = (x, q), opaque_ind_pack_eq_inv G e) ->
   (forall e : p = q, G e).
@@ -282,7 +281,7 @@ Defined.
 Arguments simplify_ind_pack : simpl never.
 
 Polymorphic
-Lemma simplify_ind_pack_inv@{i j} {A : Type@{i}} {uip : UIP A}
+Lemma simplify_ind_pack_inv@{i j | +} {A : Type@{i}} {uip : UIP A}
       (B : A -> Type@{i}) (x : A) (p : B x) (G : p = p -> Type@{j}) :
   G eq_refl -> opaque_ind_pack_eq_inv G eq_refl.
 Proof.
@@ -291,14 +290,14 @@ Defined.
 Arguments simplify_ind_pack_inv : simpl never.
 
 Polymorphic
-Definition simplified_ind_pack@{i j} {A : Type@{i}} {uip : UIP A}
+Definition simplified_ind_pack@{i j | +} {A : Type@{i}} {uip : UIP A}
   (B : A -> Type@{i}) (x : A) (p : B x) (G : p = p -> Type@{j})
   (t : opaque_ind_pack_eq_inv G eq_refl) :=
   eq_rect _ G t _ (@pr2_uip_refl A uip B x p).
 Arguments simplified_ind_pack : simpl never.
 
 Polymorphic
-Lemma simplify_ind_pack_refl@{i j} {A : Type@{i}} {uip : UIP A}
+Lemma simplify_ind_pack_refl@{i j | +} {A : Type@{i}} {uip : UIP A}
 (B : A -> Type@{i}) (x : A) (p : B x) (G : p = p -> Type@{j})
 (t : forall (e : (x, p) = (x, p)), opaque_ind_pack_eq_inv G e) :
   simplify_ind_pack B x p p G t eq_refl =
@@ -306,7 +305,7 @@ Lemma simplify_ind_pack_refl@{i j} {A : Type@{i}} {uip : UIP A}
 Proof. reflexivity. Qed.
 
 Polymorphic
-Lemma simplify_ind_pack_elim@{i j} {A : Type@{i}} {uip : UIP A}
+Lemma simplify_ind_pack_elim@{i j | +} {A : Type@{i}} {uip : UIP A}
   (B : A -> Type@{i}) (x : A) (p : B x) (G : p = p -> Type@{j})
   (t : G eq_refl) :
   simplified_ind_pack B x p G (simplify_ind_pack_inv B x p G t) = t.
@@ -397,10 +396,12 @@ Ltac try_injection H := injection H.
 
 Ltac simplify_one_dep_elim :=
   match goal with
-    | [ |- context [eq_rect_r _ _ eq_refl]] => simpl eq_rect_r
-    | [ |- context [eq_rect _ _ _ _ eq_refl]] => simpl eq_rect
-    | [ |- context [@eq_rect_dep_r _ _ _ _ _ eq_refl]] => simpl eq_rect_dep_r
-    | [ |- context [noConfusion_inv _]] => simpl noConfusion_inv
+    | [ |- context [eq_rect_r _ _ eq_refl]] => progress simpl eq_rect_r
+    | [ |- context [eq_rect _ _ _ _ eq_refl]] => progress simpl eq_rect
+    | [ |- context [transport _ eq_refl _]] => progress simpl transport
+    | [ |- context [@eq_elim _ _ _ _ _ eq_refl]] => progress simpl eq_rect
+    | [ |- context [@eq_elim_r _ _ _ _ _ eq_refl]] => progress simpl eq_elim_r
+    | [ |- context [noConfusion_inv _]] => progress simpl noConfusion_inv
     | [ |- @opaque_ind_pack_eq_inv ?A ?uip ?B ?x ?p _ ?G eq_refl] =>
             apply (@simplify_ind_pack_inv A uip B x p G)
     | [ |- let _ := block in _ ] => fail 1
@@ -503,62 +504,12 @@ Ltac destruct_last :=
 
 (** The rest is support tactics for the [Equations] command. *)
 
-(** Do as much as possible to apply a method, trying to get the arguments right.
-   !!Unsafe!! We use [auto] for the [_nocomp] variant of [Equations], in which case some
-   non-dependent arguments of the method can remain after [apply]. *)
-
-Ltac simpl_intros m := ((apply m || refine m) ; auto) || (intro ; simpl_intros m).
-
-(** Hopefully the first branch suffices. *)
-
-Ltac try_intros m :=
-  solve [ (intros_until_block ; refine m || (unfold block ; apply m)) ; auto ] ||
-  solve [ unfold block ; simpl_intros m ] ||
-  solve [ unfold block ; intros ; rapply m ; eauto ].
-
 (** To solve a goal by inversion on a particular target. *)
 
 Ltac do_empty id :=
   elimtype False ; simpl in id ;
   solve [ generalize_by_eqs id ; destruct id ; simplify_dep_elim
     | apply id ; eauto with Below ].
-
-Ltac solve_empty target :=
-  do_nat target intro ; on_last_hyp ltac:(do_empty).
-
-Ltac simplify_method tac := repeat (tac || simplify_one_dep_elim) ; reverse_local.
-
-Ltac clear_fix_protos n tac :=
-  match goal with
-    | [ |- (let _ := fixproto in _) -> _ ] => intros _ ; 
-      match n with
-        | O => fail 2 "clear_fix_proto: tactic would apply on prototype"
-        | S ?n => clear_fix_protos n tac
-      end
-    | [ |- let _ := block in _ ] => reverse_local ; tac n
-    | _ => reverse_local ; tac n
-  end.
-
-(** Solving a method call: we can solve it by splitting on an empty family member
-   or we must refine the goal until the body can be applied. *)
-
-Ltac solve_method rec :=
-  match goal with
-    | [ H := ?body : nat |- _ ] => subst H ; clear ; clear_fix_protos body
-      ltac:(fun n => abstract (simplify_method idtac ; solve_empty n))
-    | [ H := ?body : ?T |- _ ] => 
-      (revert_until H; clear H);
-      simplify_method ltac:(exact body) ; rec ; 
-      try (exact (body : T)) ; try_intros (body:T)
-  end.
-
-(** Impossible cases, by splitting on a given target. *)
-
-Ltac solve_split :=
-  match goal with 
-    | [ |- let split := ?x in _ ] => intros _ ;
-      clear_fix_protos x ltac:(fun n => clear ; abstract (solve_empty n))
-  end.
 
 (** If defining recursive functions, the prototypes come first. *)
 
@@ -570,27 +521,6 @@ Ltac introduce p := first [
 
 Ltac do_case p := introduce p ; (elim_case p || destruct p || (case p ; clear p)).
 Ltac do_ind p := introduce p ; (elim_ind p || induction p).
-
-Ltac case_last := block_goal ;
-  on_last_hyp ltac:(fun p => simpl in p ; try simplify_equations_in p ; generalize_by_eqs p ; do_case p).
-
-Ltac nonrec_equations :=
-  solve [solve_equations (case_last) (solve_method idtac)] || solve [ solve_split ]
-    || fail "Unnexpected equations goal".
-
-Ltac recursive_equations :=
-  solve [solve_equations (case_last) (solve_method ltac:(intro))] || solve [ solve_split ]
-    || fail "Unnexpected recursive equations goal".
-
-(** The [equations] tactic is the toplevel tactic for solving goals generated
-   by [Equations]. *)
-
-Ltac equations := set_eos ;
-  match goal with
-    | [ |- forall x : _, _ ] => intro ; recursive_equations
-    | [ |- let x := _ in ?T ] => intro x ; exact x
-    | _ => nonrec_equations
-  end.
 
 (** The following tactics allow to do induction on an already instantiated inductive predicate
    by first generalizing it and adding the proper equalities to the context, in a maner similar to

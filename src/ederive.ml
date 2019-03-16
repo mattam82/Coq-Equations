@@ -17,7 +17,7 @@ type derive_record =
 let make_derive fn ~polymorphic s =
   let env = Global.env () in
   let sigma = Evd.from_env env in
-  let sigma, c = Evarutil.new_global sigma s in
+  let sigma, c = Evd.fresh_global ~rigid:Evd.univ_rigid env sigma s in
   fn env sigma ~polymorphic c
 
 let make_derive_ind fn ~polymorphic s =

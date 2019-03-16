@@ -1,5 +1,5 @@
 Require Import Equations.Equations.
-Require Import Equations.Below.
+Require Import Below.
 Module NoCycle_nat.
 
 Definition noSubterm x y :=
@@ -308,8 +308,8 @@ Module NoCycle_dep.
   Inductive vect (A : Type) : nat -> Type :=
   | nil : vect A O
   | cons : forall n, A -> vect A n -> vect A (S n).
-  Arguments nil [A].
-  Arguments cons [A n] _ _.
+  Arguments nil {A}.
+  Arguments cons {A n} _ _.
 
   Derive Below for vect.
   Derive NoConfusion for vect.

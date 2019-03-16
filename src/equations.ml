@@ -10,6 +10,7 @@ open Util
 open Names
 open Nameops
 open Constr
+open Context
 open Termops
 open Environ
 open Globnames
@@ -145,7 +146,7 @@ let define_by_eqs ~poly ~open_proof opts eqs nt =
       let is_rec = is_recursive i (eqs, nt) in
       interp_arity env evd ~poly ~is_rec ~with_evars:open_proof nt ieqs) eqs in
   let rec_type = compute_rec_type [] programs in
-  let () = print_recinfo programs in
+  let () = print_program_info env !evd programs in
   let env = Global.env () in (* To find the comp constant *)
   let data, fixdecls, fixprots = compute_fixdecls_data env evd programs in
   let fixdecls = nf_rel_context_evar !evd fixdecls in
@@ -188,11 +189,11 @@ let solve_equations_goal destruct_tac tac gl =
   let intros, move, concl =
     let rec intros goal move = 
       match Constr.kind goal with
-      | Prod (Name id, _, t) -> 
+      | Prod ({binder_name=Name id}, _, t) ->
          let id = fresh_id_in_env Id.Set.empty id (pf_env gl) in
          let tac, move, goal = intros (subst1 (Constr.mkVar id) t) (Some id) in
          tclTHEN (to82 intro) tac, move, goal
-      | LetIn (Name id, c, _, t) -> 
+      | LetIn ({binder_name=Name id}, c, _, t) ->
          if String.equal (Id.to_string id) "target" then 
            tclIDTAC, move, goal
          else 
@@ -210,9 +211,9 @@ let solve_equations_goal destruct_tac tac gl =
   in
   let targetn, branchesn, targ, brs, b =
     match kind (project gl) (of_constr concl) with
-    | LetIn (Name target, targ, _, b) ->
+    | LetIn ({binder_name=Name target}, targ, _, b) ->
         (match kind (project gl) b with
-	| LetIn (Name branches, brs, _, b) ->
+        | LetIn ({binder_name=Name branches}, brs, _, b) ->
            target, branches, int_of_coq_nat (to_constr (project gl) targ),
            int_of_coq_nat (to_constr (project gl) brs), b
 	| _ -> error "Unnexpected goal")
@@ -222,7 +223,7 @@ let solve_equations_goal destruct_tac tac gl =
     let rec aux n c =
       if n == 0 then [], c
       else match kind (project gl) c with
-      | LetIn (Name id, br, brt, b) ->
+      | LetIn ({binder_name=Name id}, br, brt, b) ->
 	  let rest, b = aux (pred n) b in
 	    (id, br, brt) :: rest, b
       | _ -> error "Unnexpected goal"

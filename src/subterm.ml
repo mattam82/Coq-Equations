@@ -9,6 +9,7 @@
 open Names
 open Nameops
 open Constr
+open Context
 open Termops
 open Declarations
 open Inductiveops
@@ -30,6 +31,7 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
   let ctx = subst_instance_context (EInstance.kind sigma u) oneind.mind_arity_ctxt in
   let sort =
     match Lazy.force logic_sort with
+    | Sorts.InSProp -> failwith "not implemented"
     | Sorts.InProp -> mkProp
     | Sorts.InSet -> mkSet
     | Sorts.InType ->
@@ -81,9 +83,9 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
     let liftargbinders = lift_rel_context lenargs argbinders in
     let liftargbinders' = lift_rel_context lenargs liftargbinders in
     let indapp n = (mkApp (lift (3 * lenargs + n) indapp, extended_rel_vect (n + (2 - n) * lenargs) argbinders)) in
-    let terms = [(Name (Id.of_string "z"), None, indapp 2);
-                 (Name (Id.of_string "y"), None, indapp 1);
-                 (Name (Id.of_string "x"), None, indapp 0)]
+    let terms = [(nameR (Id.of_string "z"), None, indapp 2);
+                 (nameR (Id.of_string "y"), None, indapp 1);
+                 (nameR (Id.of_string "x"), None, indapp 0)]
     in
     let binders = to_context terms @ liftargbinders' @ liftargbinders @ argbinders in
     let lenbinders = 3 * succ lenargs in
@@ -110,7 +112,7 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
                    [mkRel 3; mkRel 1])))
     in
       (0, 0,
-       it_mkProd_or_LetIn (mkProd (Anonymous, xy, mkProd (Anonymous, lift 1 yz, lift 2 xz))) binders)
+       it_mkProd_or_LetIn (mkProd (annotR Anonymous, xy, mkProd (annotR Anonymous, lift 1 yz, lift 2 xz))) binders)
   in
   let branches = (* trans_branch ::  *)branches in
   let declare_one_ind i ind branches =
@@ -126,8 +128,8 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
     let binders = liftedbinders @ argbinders in
     let appparams = mkApp (mkIndU ind, extended_rel_vect (2 * lenargs) parambinders) in
     let arity = it_mkProd_or_LetIn
-      (mkProd (Anonymous, mkApp (appparams, extended_rel_vect lenargs argbinders),
-              mkProd (Anonymous, lift 1 (mkApp (appparams, extended_rel_vect 0 argbinders)),
+      (mkProd (annotR Anonymous, mkApp (appparams, extended_rel_vect lenargs argbinders),
+              mkProd (annotR Anonymous, lift 1 (mkApp (appparams, extended_rel_vect 0 argbinders)),
                       sort)))
       binders
     in
@@ -197,8 +199,8 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
                                  (xindices @ yindices @
                                     [mkProj (valproj, mkRel 2); mkProj (valproj, mkRel 1)]))
             in
-            mkLambda (Name (Id.of_string "x"), typesig,
-                      mkLambda (Name (Id.of_string "y"), lift 1 typesig,
+            mkLambda (nameR (Id.of_string "x"), typesig,
+                      mkLambda (nameR (Id.of_string "y"), lift 1 typesig,
                                 apprel))
           in
           let typesig = Tacred.simpl env' !evm typesig in
@@ -269,7 +271,7 @@ let derive_below env sigma ~polymorphic (ind,univ as indu) =
   let ctx = List.map of_rel_decl ctx in
   let allargsvect = extended_rel_vect 0 ctx in
   let indty = mkApp (mkIndU indu, allargsvect) in
-  let ctx = of_tuple (Name (Id.of_string "c"), None, indty) :: ctx in
+  let ctx = of_tuple (nameR (Id.of_string "c"), None, indty) :: ctx in
   let argbinders, parambinders = List.chop (succ realdecls) ctx in
   let u = evd_comb0 (Evarutil.new_Type ~rigid:Evd.univ_rigid) evd in
   let arity = it_mkProd_or_LetIn u argbinders in
@@ -277,7 +279,7 @@ let derive_below env sigma ~polymorphic (ind,univ as indu) =
   let paramsvect = rel_vect (succ realdecls) params in
   let argsvect = extended_rel_vect 0 (CList.firstn (succ realdecls) ctx) in
   let pid = Id.of_string "P" in
-  let pdecl = make_assum (Name pid) arity in
+  let pdecl = make_assum (nameR pid) arity in
   let arity = lift 1 arity in
   let stepid = Id.of_string "step" in
   let recid = Id.of_string "rec" in
@@ -287,7 +289,8 @@ let derive_below env sigma ~polymorphic (ind,univ as indu) =
   let arityb = lift 2 (it_mkProd_or_LetIn tyb argbinders) in
   let aritylamb = lift (succ realdecls) (it_mkLambda_or_LetIn tyb argbinders) in
   let termB, termb = 
-    let branches = Array.mapi (fun i ty ->
+    let branches = Array.mapi (fun i (ctx, ty) ->
+      let ty = Term.it_mkProd_or_LetIn ty ctx in
       let ty = of_constr ty in
       let nargs = constructor_nrealargs (ind, succ i) in
       let recarg = mkVar recid in
@@ -355,24 +358,24 @@ let derive_below env sigma ~polymorphic (ind,univ as indu) =
         (nargs, bodyB, bodyb)) oneind.mind_nf_lc
     in
     let caseB =
-      mkCase (make_case_info env ind RegularStyle, aritylam, mkRel 1, Array.map pi2 branches)
+      mkCase (make_case_info env ind Sorts.Relevant RegularStyle, aritylam, mkRel 1, Array.map pi2 branches)
     and caseb =
-      mkCase (make_case_info env ind RegularStyle, aritylamb, mkRel 1, Array.map pi3 branches)
+      mkCase (make_case_info env ind Sorts.Relevant RegularStyle, aritylamb, mkRel 1, Array.map pi3 branches)
     in 
       lift 2 (it_mkLambda_or_LetIn caseB argbinders), lift 3 (it_mkLambda_or_LetIn caseb argbinders)
   in
-  let fixB = mkFix (([| realargs |], 0), ([| Name recid |], [| arity |],
+  let fixB = mkFix (([| realargs |], 0), ([| nameR recid |], [| arity |],
 				     [| subst_vars [recid; pid] termB |])) in
   let bodyB = it_mkLambda_or_LetIn fixB (pdecl :: parambinders) in
   let id = add_prefix "Below_" (Nametab.basename_of_global (IndRef ind)) in
   let _, (evd, belowB) = declare_constant id bodyB None polymorphic !evd
     (Decl_kinds.IsDefinition Decl_kinds.Definition) in
-  let fixb = mkFix (([| realargs |], 0), ([| Name recid |], [| arityb |],
+  let fixb = mkFix (([| realargs |], 0), ([| nameR recid |], [| arityb |],
 				    [| subst_vars [recid; stepid] termb |])) in
   let stepdecl =
-    let stepty = mkProd (Anonymous, mkApp (belowB, paramspargs),
+    let stepty = mkProd (anonR, mkApp (belowB, paramspargs),
                         mkApp (mkVar pid, Array.map (lift 1) argsvect))
-    in make_assum (Name stepid) (lift 1 (it_mkProd_or_LetIn stepty argbinders))
+    in make_assum (nameR stepid) (lift 1 (it_mkProd_or_LetIn stepty argbinders))
   in
   let bodyb = 
     it_mkLambda_or_LetIn

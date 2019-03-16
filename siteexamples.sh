@@ -1,7 +1,14 @@
 #/bin/sh
-for i in examples/*.v doc/*.v
+
+cd examples
+
+for i in *.v
 do
-  coqdoc -s --no-lib-name -parse-comments --no-index -utf8 -interpolate -html -R theories Equations -d docs/examples $i
+  coqdoc -s --no-lib-name -parse-comments --no-index -utf8 -interpolate -html \
+      -external http://github.com/mattam82/Coq-Equations/tree/master Equations \
+      -Q ../theories Equations -R . Examples -d ../docs/examples $i
 done
+
+cd ..
 
 git checkout docs/examples/coqdoc.css
