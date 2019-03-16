@@ -1568,6 +1568,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
     let inds =
       List.rev_map (fun (entry, sign, arity) ->
           Entries.{ entry with
+                    mind_entry_lc = List.map (to_constr sigma) (List.map of_constr entry.mind_entry_lc);
                     mind_entry_arity =
                       to_constr sigma (it_mkProd_or_LetIn (mkProd (anonR, arity,
                                                                   mkSort (Sorts.sort_of_univ sort))) sign) })
