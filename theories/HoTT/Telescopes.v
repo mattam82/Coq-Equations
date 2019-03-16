@@ -33,20 +33,6 @@ Section TeleSigma.
   | tip_val {A} (a : A) : tele_val (tip A)
   | ext_val {A B} (a : A) (b : tele_val (B a)) : tele_val (ext A B).
 
-  Equations tele_fn : tele@{i} -> Type@{i} -> Type@{i} :=
-  | tip A | concl := A -> concl;
-  | ext A B | concl := forall x : A, tele_fn (B x) concl.
-
-  Equations tele_MR (T : tele@{i}) (A : Type@{i}) (f : tele_fn T A) : T -> A :=
-  tele_MR (tip A)   C f := f;
-  tele_MR (ext A B) C f := fun x => tele_MR (B x.1) C (f x.1) x.2.
-
-  Universe j.
-
-  Equations tele_measure (T : tele@{i}) (A : Type@{i}) (f : tele_fn T A) (R : A -> A -> Type@{j}) :
-    T -> T -> Type@{j} :=
-  tele_measure T C f R := fun x y => R (tele_MR T C f x) (tele_MR T C f y).
-
   Equations tele_pred : tele -> Type :=
   | tip A := A -> Type;
   | ext A B := forall x : A, tele_pred (B x).
@@ -60,7 +46,19 @@ Section TeleSigma.
   tele_rel_app (tip A) (tip A') P a a' := P a a';
   tele_rel_app (ext A B) (ext A' B') P (a, b) (a', b') := tele_rel_app (B a) (B' a') (P a a') b b'.
 
-  Universe k.
+  Universes j k.
+
+  Equations tele_fn : tele@{i} -> Type@{j} -> Type@{k} :=
+  | tip A | concl := A -> concl;
+  | ext A B | concl := forall x : A, tele_fn (B x) concl.
+
+  Equations tele_MR (T : tele@{i}) (A : Type@{j}) (f : tele_fn T A) : T -> A :=
+  tele_MR (tip A)   C f := f;
+  tele_MR (ext A B) C f := fun x => tele_MR (B x.1) C (f x.1) x.2.
+
+  Equations tele_measure (T : tele@{i}) (A : Type@{j}) (f : tele_fn T A) (R : A -> A -> Type@{k}) :
+    T -> T -> Type@{k} :=
+  tele_measure T C f R := fun x y => R (tele_MR T C f x) (tele_MR T C f y).
 
   Equations tele_type : tele@{i} -> Type@{k} :=
   | tip A := A -> Type@{j};
@@ -136,11 +134,12 @@ Register tele_sigma as equations.tele.interp.
 Register tele_measure as equations.tele.measure.
 
 (* We allow the relation to be at a higher universe level. *)
-Instance wf_tele_measure@{i j|i <= j}
-         {T : tele@{i}} (A : Type@{i}) (f : tele_fn@{i} T A) (R : A -> A -> Type@{j}) :
-  WellFounded R -> WellFounded (tele_measure@{i j} T A f R).
+
+Instance wf_tele_measure@{i j k| i <= k, j <= k}
+         {T : tele@{i}} (A : Type@{j}) (f : tele_fn@{i j k} T A) (R : A -> A -> Type@{k}) :
+  WellFounded R -> WellFounded (tele_measure T A f R).
 Proof.
-  intros. apply wf_inverse_image@{i i j j}. apply X.
+  intros. apply wf_inverse_image@{i j k k}. apply X.
 Defined.
 
 Section Fix.
