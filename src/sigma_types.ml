@@ -111,6 +111,8 @@ let telescope_of_context env sigma ctx =
   in
   let tele = aux (List.rev ctx) in
   let tele_interp = mkApp (teleinterp, [| tele |]) in
+  (* Infer universe constraints *)
+  let sigma, _ = Typing.type_of env sigma tele_interp in
   sigma, tele, tele_interp
 
 let telescope env evd = function
