@@ -336,19 +336,18 @@ val move_after_deps : Names.Id.t -> constr -> unit Proofview.tactic
 
 val extended_rel_vect : int -> rel_context -> constr array
 val extended_rel_list : int -> rel_context -> constr list
-val to_tuple : rel_declaration -> Names.Name.t Context.binder_annot * constr option * constr
-val to_named_tuple : named_declaration -> Names.Id.t Context.binder_annot * constr option * constr
-val of_tuple : Names.Name.t Context.binder_annot * constr option * constr -> rel_declaration
-val of_named_tuple : Names.Id.t Context.binder_annot * constr option * constr -> named_declaration
+val to_tuple : rel_declaration -> Names.Name.t * constr option * constr
+val to_named_tuple : named_declaration -> Names.Id.t * constr option * constr
+val of_tuple : Names.Name.t * constr option * constr -> rel_declaration
+val of_named_tuple : Names.Id.t * constr option * constr -> named_declaration
 
 val get_type : rel_declaration -> constr
 val get_name : rel_declaration -> Names.Name.t
-val get_annot : rel_declaration -> Names.Name.t Context.binder_annot
 val get_value : rel_declaration -> constr option
-val make_assum : Names.Name.t Context.binder_annot -> constr -> rel_declaration
-val make_def : Names.Name.t Context.binder_annot -> constr option -> constr -> rel_declaration
-val make_named_def : Names.Id.t Context.binder_annot -> constr option -> constr -> named_declaration
-val to_context : (Names.Name.t Context.binder_annot * constr option * constr) list -> rel_context
+val make_assum : Names.Name.t -> constr -> rel_declaration
+val make_def : Names.Name.t -> constr option -> constr -> rel_declaration
+val make_named_def : Names.Id.t -> constr option -> constr -> named_declaration
+val to_context : (Names.Name.t * constr option * constr) list -> rel_context
 
 val named_of_rel_context : ?keeplets:bool -> (unit -> Names.Id.t) -> rel_context -> EConstr.t list * constr list * named_context
 val rel_of_named_context : named_context -> rel_context * Names.Id.t list

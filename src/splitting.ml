@@ -10,7 +10,6 @@ open Util
 open Names
 open Nameops
 open Constr
-open Context
 open Inductiveops
 open Globnames
 open Reductionops
@@ -160,7 +159,7 @@ let where_id w = w.where_program.program_info.program_id
 
 let where_context wheres =
   List.map (fun ({where_program; where_type } as w) ->
-             make_def (Context.nameR (where_id w)) (Some (where_term w)) where_type) wheres
+             make_def (Name (where_id w)) (Some (where_term w)) where_type) wheres
 
 let where_program_type w =
   program_type w.where_program
@@ -169,7 +168,7 @@ let pr_program_info env sigma p =
   let open Pp in
   Names.Id.print p.program_id ++ str " : " ++
   Printer.pr_econstr_env env sigma (Syntax.program_type p) ++ str " : " ++
-  Printer.pr_econstr_env env sigma (mkType p.program_sort) ++
+  Printer.pr_econstr_env env sigma (mkSort (Sorts.Type p.program_sort)) ++
   str " ( " ++
   (match p.program_rec with
    | Some (Structural ann) ->
@@ -376,7 +375,7 @@ let define_mutual_nested env evd get_prog progs =
       in
       let after = (nested - 1) - before in
       let fixb = (Array.make 1 idx, 0) in
-      let fixna = Array.make 1 (nameR p.program_id) in
+      let fixna = Array.make 1 (Name p.program_id) in
       let fixty = Array.make 1 (Syntax.program_type p) in
       (* Apply to itself *)
       let beforeargs = Termops.rel_list (signlen + 1) before in
@@ -388,7 +387,7 @@ let define_mutual_nested env evd get_prog progs =
             match afterctx with
             | ty :: tl ->
               let term = applist (mkRel (signlen + nested), acc) in
-              let decl = Context.Rel.Declaration.LocalDef (nameR (Id.of_string "H"), term, ty) in
+              let decl = Context.Rel.Declaration.LocalDef (Name (Id.of_string "H"), term, ty) in
               aux (List.map (Vars.lift 1) acc @ [mkRel 1], decl :: ctx) (succ n) tl
             | [] -> assert false
         in aux (beforeargs @ [fixref], []) 0 afterctx
@@ -400,7 +399,7 @@ let define_mutual_nested env evd get_prog progs =
       let fixbody = it_mkLambda_or_LetIn fixbody p.program_sign in
       it_mkLambda_or_LetIn
         (mkFix (fixb, (fixna, fixty, Array.make 1 fixbody)))
-        (List.init (nested - 1) (fun _ -> (Context.Rel.Declaration.LocalAssum (anonR, mkProp))))
+        (List.init (nested - 1) (fun _ -> (Context.Rel.Declaration.LocalAssum (Anonymous, mkProp))))
     in
     let rec fixsubst i k acc l =
       match l with
@@ -435,7 +434,7 @@ let define_mutual_nested env evd get_prog progs =
   in
   let decl =
     let blockfn (p, prog) =
-      let na = nameR p.program_id in
+      let na = Name p.program_id in
       let ty = Syntax.program_type p in
       let sign = p.program_sign in
       let body = beta_appvect !evd (get_prog prog)
@@ -482,7 +481,7 @@ let term_of_tree env0 isevar sort tree =
       let compile_where ({where_program; where_type} as w)
           (env, evm, ctx) =
         let evm, c', ty' = evm, where_term w, where_type in
-        (env, evm, (make_def (nameR (where_id w)) (Some c') ty' :: ctx))
+        (env, evm, (make_def (Name (where_id w)) (Some c') ty' :: ctx))
       in
       let env, evm, ctx = List.fold_right compile_where where (env, evm,ctx) in
       let body = it_mkLambda_or_LetIn rhs ctx and typ = it_mkProd_or_subst env evm ty ctx in
@@ -523,7 +522,7 @@ let term_of_tree env0 isevar sort tree =
     | Split ((ctx, _, _) as subst, rel, ty, sp) ->
       (* Produce parts of a case that will be relevant. *)
       let evm, block = Equations_common.(get_fresh evm coq_block) in
-      let blockty = mkLetIn (anonR, block, Retyping.get_type_of env evm block, lift 1 ty) in
+      let blockty = mkLetIn (Anonymous, block, Retyping.get_type_of env evm block, lift 1 ty) in
       let evd = ref evm in
       let ctx', case_ty, branches_res, nb_cuts, rev_subst, to_apply, simpl =
         Sigma_types.smart_case env evd ctx rel blockty in
@@ -635,7 +634,7 @@ let term_of_tree env0 isevar sort tree =
       let pind, args = find_inductive env !evd rel_ty in
 
       (* Build the case. *)
-      let case_info = Inductiveops.make_case_info env (fst pind) Sorts.Relevant Constr.RegularStyle in
+      let case_info = Inductiveops.make_case_info env (fst pind) Constr.RegularStyle in
       let indfam = Inductiveops.make_ind_family (from_peuniverses !evd pind, args) in
       let case = Inductiveops.make_case_or_project env !evd indfam case_info
           case_ty rel_t branches in
@@ -829,8 +828,8 @@ let change_lhs s (l, p, r) =
   let open Context.Rel.Declaration in
   let l' =
     List.map
-      (function LocalDef ({binder_name=Name id}, b, t) as decl ->
-         (try let b' = List.assoc id s in LocalDef (nameR id, b', t)
+      (function LocalDef (Name id, b, t) as decl ->
+         (try let b' = List.assoc id s in LocalDef (Name id, b', t)
           with Not_found -> decl)
               | decl -> decl) l
   in l', p, r
@@ -889,7 +888,7 @@ let check_splitting env evd sp =
       let () = check_type ctx w.where_type in
       let () = check_term ctx (applist (w.where_program.program_term, w.where_program_args)) w.where_type in
       let () = assert(w.where_context_length = List.length ctx) in
-      let def = make_def (nameR (where_id w)) (Some (where_term w)) w.where_type in
+      let def = make_def (Name (where_id w)) (Some (where_term w)) w.where_type in
       def :: ctx
     in
     let ctx = List.fold_left check_where (pi1 lhs) wheres in

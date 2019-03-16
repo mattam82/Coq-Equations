@@ -1,7 +1,6 @@
 open Util
 open Names
 open Nameops
-open Context
 open Constr
 open Globnames
 open Pp
@@ -167,11 +166,11 @@ let mutual_fix li l =
          if try ignore (Context.Named.lookup f sign); true with Not_found -> false then
            CErrors.user_err ~hdr:"Logic.prim_refiner"
                     (str "Name " ++ pr_id f ++ str " already used in the environment");
-         mk_sign (LocalAssum (annotR f, EConstr.to_constr sigma ar) :: sign) oth
+         mk_sign (LocalAssum (f, EConstr.to_constr sigma ar) :: sign) oth
     in
     let sign = mk_sign (Environ.named_context env) all in
     let idx = Array.map_of_list pred l in
-    let nas = Array.map_of_list nameR li in
+    let nas = Array.map_of_list (fun id -> Name id) li in
     let body = ref (fun i -> assert false) in
     let one_body =
       Refine.refine ~typecheck:false
@@ -782,7 +781,7 @@ let ind_fun_tac is_rec f info fid nestedinfo progs =
        set_eos_tac () <*>
          (match nestedprops with
           | Some p ->
-             assert_before Anonymous (mkProd (anonR, mutprops, p)) <*>
+             assert_before Anonymous (mkProd (Anonymous, mutprops, p)) <*>
                tclDISPATCH
                  [observe_tac "assert mut -> nest first subgoal " (* observe_tac *)
                   (*   "proving mut -> nested" *)

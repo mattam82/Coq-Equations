@@ -10,7 +10,6 @@ open Util
 open Names
 open Nameops
 open Constr
-open Context
 open Reductionops
 open Pp
 open List
@@ -139,15 +138,15 @@ let do_renamings env sigma ctx =
   let avoid, ctx' =
     List.fold_right (fun decl (ids, acc) ->
         let (n, b, t) = to_tuple decl in
-        match n.binder_name with
+        match n with
         | Name id ->
           let id' = Namegen.next_ident_away id ids in
-          let decl' = make_def {n with binder_name = Name id'} b t in
+          let decl' = make_def (Name id') b t in
           (Id.Set.add id' ids, decl' :: acc)
         | Anonymous ->
-          let id' = Namegen.id_of_name_using_hdchar (push_rel_context acc env) sigma t Anonymous in
+          let id' = Namegen.id_of_name_using_hdchar (push_rel_context acc env) sigma t n in
           let id' = Namegen.next_ident_away id' ids in
-          let decl' = make_def {n with binder_name = Name id'} b t in
+          let decl' = make_def (Name id') b t in
           (Id.Set.add id' ids, decl' :: acc))
       ctx (Id.Set.empty, [])
   in ctx'

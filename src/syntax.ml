@@ -385,7 +385,7 @@ let interp_pat env notations ?(avoid = ref Id.Set.empty) p pat =
     | None -> (vars, tys, impls, ienv)
   in
   let nctx =
-    List.map2 (fun id ty -> Context.Named.Declaration.LocalAssum (Context.annotR id, EConstr.Unsafe.to_constr ty)) vars tys
+    List.map2 (fun id ty -> Context.Named.Declaration.LocalAssum (id, EConstr.Unsafe.to_constr ty)) vars tys
   in
   let env = Environ.push_named_context nctx env in
   let gc =
