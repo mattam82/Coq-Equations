@@ -95,7 +95,7 @@ Defined.
 
 (** Classes for types with UIP or decidable equality.  *)
 
-Cumulative Class UIP@{i|} (A : Type@{i}) := uip : forall {x y : A} (e e' : x = y), e = e'.
+Class UIP@{i|} (A : Type@{i}) := uip : forall {x y : A} (e e' : x = y), e = e'.
 
 Instance IsHSet_UIP (A : Type) (H : IsHSet A) : UIP A.
 Proof.
@@ -111,7 +111,6 @@ Definition dec_eq {A} (x y : A) : Type := (x = y) + (x <> y).
 
 Class EqDec@{i} (A : Type@{i}) := eq_dec : forall x y : A, sum@{i i} (x = y) (x = y -> Empty).
 
-Cumulative
 Class EqDecPoint (A : Type) (x : A) := eq_dec_point : forall y : A, (x = y) + (x <> y).
 
 Instance EqDec_EqDecPoint A `(EqDec A) (x : A) : EqDecPoint A x := eq_dec x.
