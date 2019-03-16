@@ -444,3 +444,12 @@ val evd_comb1 : (Evd.evar_map -> 'a -> Evd.evar_map * 'b) -> Evd.evar_map ref ->
 val evd_comb0 : (Evd.evar_map -> Evd.evar_map * 'b) -> Evd.evar_map ref -> 'b
 
 val splay_prod_n_assum : env -> Evd.evar_map -> int -> types -> rel_context * types
+
+(* Universes *)
+val univ_of_goalu : Environ.env -> Evd.evar_map -> Univ.Universe.t -> Evd.evar_map * Univ.Level.t * Univ.Universe.t
+val instance_of :
+  Environ.env ->
+  Evd.evar_map ->
+  ?argu:EConstr.EInstance.t ->
+  Univ.Universe.t ->
+  Evd.evar_map * EConstr.EInstance.t * Univ.Universe.t

@@ -360,6 +360,7 @@ let aux_ind_fun info chop nested unfs unfids split =
         let inctx, concl = decompose_prod_n_assum !sigma t.rec_args (pf_concl gl) in
         to82 (Refine.refine ~typecheck:false (fun sigma ->
             let evd = ref sigma in
+            let sort = Sorts.univ_of_sort (Retyping.get_sort_of env sigma concl) in
             let hd, args = decompose_app sigma concl in
             let subst = 
               gather_subst env sigma (Retyping.get_type_of env sigma hd) args (List.length (pi1 ctx))
@@ -372,7 +373,7 @@ let aux_ind_fun info chop nested unfs unfids split =
                *                     prlist_with_sep (fun () -> str " ") (Printer.pr_econstr_env env sigma) subst
                *                    ); *)
               let envsign = push_rel_context inctx env in
-              let _, arity = Typing.type_of envsign sigma term in
+              let sigma, arity = Typing.type_of envsign sigma term in
               let ty = Reductionops.nf_all envsign sigma arity in
               let arity =
                 if noccur_between sigma 1 (length inctx) ty then
@@ -382,7 +383,7 @@ let aux_ind_fun info chop nested unfs unfids split =
               arity, arg, r.wf_rec_rel
             in
             let _functional_type, functional_type, fix =
-              Covering.wf_fix_constr env evd inctx concl arity arg rel
+              Covering.wf_fix_constr env evd inctx concl sort arity arg rel
             in
             (* TODO solve WellFounded evar *)
             let sigma, evar = new_evar env !evd functional_type in

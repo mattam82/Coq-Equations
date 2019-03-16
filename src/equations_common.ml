@@ -1070,3 +1070,33 @@ let evd_comb0 f evd =
 let evd_comb1 f evd x =
   let evm, r = f !evd x in
   evd := evm; r
+
+(* Universe related functions *)
+
+let univ_of_goalu env sigma u =
+  match Univ.Universe.level u with
+  | Some l -> sigma, l, u
+  | None ->
+    let sigma, l = Evd.new_univ_level_variable Evd.univ_flexible sigma in
+    sigma, l, Univ.Universe.make l
+
+let instance_of env sigma ?argu goalu =
+  let sigma, goall, goalu = univ_of_goalu env sigma goalu in
+  let sigma, goall =
+    if Univ.Level.is_prop goall then
+      sigma, Univ.Level.set
+    else
+      match Evd.universe_rigidity sigma goall with
+      | Evd.UnivFlexible true ->
+        Evd.make_nonalgebraic_variable sigma goall, goall
+      | _ -> sigma, goall
+  in
+  let inst =
+    match argu with
+    | Some equ ->
+      let equ = EConstr.EInstance.kind sigma equ in
+      let equarray = Univ.Instance.to_array equ in
+      EConstr.EInstance.make (Univ.Instance.of_array (Array.append equarray [| goall |]))
+    | None -> EConstr.EInstance.make (Univ.Instance.of_array [| goall |])
+  in
+  sigma, inst, goalu

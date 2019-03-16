@@ -225,36 +225,6 @@ type simplification_fun = Environ.env -> Evd.evar_map ref -> goal ->
 
 (* Auxiliary functions. *)
 
-let univ_of_goalu env evd u =
-  match Univ.Universe.level u with
-  | Some l -> l, u
-  | None ->
-    let sigma, l = Evd.new_univ_level_variable Evd.univ_flexible !evd in
-    let () = evd := sigma in
-    l, Univ.Universe.make l
-
-let instance_of env evd ?argu goalu =
-  let goall, goalu = univ_of_goalu env evd goalu in
-  let goall =
-    if Univ.Level.is_prop goall then
-      Univ.Level.set
-    else
-      match Evd.universe_rigidity !evd goall with
-      | Evd.UnivFlexible true ->
-        evd := Evd.make_nonalgebraic_variable !evd goall; goall
-      | _ -> goall
-  in
-  let inst =
-    match argu with
-    | Some equ ->
-      let equ = EConstr.EInstance.kind !evd equ in
-      let equarray = Univ.Instance.to_array equ in
-      assert (Int.equal (Array.length equarray) 1);
-      EConstr.EInstance.make (Univ.Instance.of_array [| equarray.(0); goall |])
-    | None -> EConstr.EInstance.make (Univ.Instance.of_array [| goall |])
-  in
-  inst, goalu
-
 (* Build a term with an evar out of [constr -> constr] function. *)
 let build_term (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal)
   ((ctx', ty', u') : goal) (f : EConstr.constr -> EConstr.constr) : open_term =
@@ -547,7 +517,8 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
         end
     | _, _ -> raise (CannotSimplify (str "If you see this, please report."))
   in
-  let inst, glu = instance_of env evd ~argu:sigu glu in
+  let sigma, inst, glu = Equations_common.instance_of env !evd ~argu:sigu glu in
+  evd := sigma;
   build_app_infer env evd (ctx, ty, glu) ctx f ~inst args, Context_map.id_subst ctx
 let remove_sigma = while_fun remove_one_sigma
 
@@ -617,7 +588,8 @@ let solution ~(dir:direction) : simplification_fun =
   let uinst, glu' =
     (* If the equality is not polymorphic, the lemmas will be monomorphic as well *)
     if EConstr.EInstance.is_empty equ then equ, glu
-    else instance_of env evd ~argu:equ glu
+    else let sigma, equ, glu = Equations_common.instance_of env !evd ~argu:equ glu in
+      evd := sigma; equ, glu
   in
   let tsolution = begin match var_left, nondep with
   | false, false -> Builder.solution_right_dep
@@ -815,7 +787,8 @@ let apply_noconf : simplification_fun =
   let inst, glu' =
     (* If the equality is not polymorphic, the lemmas will be monomorphic as well *)
     if EConstr.EInstance.is_empty equ then equ, glu
-    else instance_of env evd ~argu:equ glu
+    else let sigma, equ, glu = Equations_common.instance_of env !evd ~argu:equ glu in
+      evd := sigma; equ, glu
   in
     build_app_infer env evd (ctx, ty, glu') ctx tapply_noconf ~inst args,
     Context_map.id_subst ctx
@@ -891,7 +864,8 @@ let noCycle : simplification_fun =
   let inst, glu' =
     (* If the equality is not polymorphic, the lemmas will be monomorphic as well *)
     if EConstr.EInstance.is_empty equ then equ, glu
-    else instance_of env evd ~argu:equ glu
+    else let sigma, equ, glu = Equations_common.instance_of env !evd ~argu:equ glu in
+      evd := sigma; equ, glu
   in
   let cont, nocycle, glu' = build_app_infer_concl env evd (ctx, ty, glu) ctx tapply_nocycle ~inst args in
   let subst = Context_map.id_subst ctx in
@@ -924,7 +898,8 @@ let elim_true : simplification_fun =
     let inst, glu' =
       (* If the equality is not polymorphic, the lemmas will be monomorphic as well *)
       if not (Global.is_polymorphic tone_ind) then EConstr.EInstance.empty, glu
-      else instance_of env evd glu
+      else let sigma, equ, glu = Equations_common.instance_of env !evd glu in
+        evd := sigma; equ, glu
     in
     let args = [Some tB; None] in
       build_app_infer env evd (ctx, ty, glu') ctx tone_ind ~inst args, subst
@@ -950,7 +925,8 @@ let elim_false : simplification_fun =
   let inst, glu' =
     (* If the equality is not polymorphic, the lemmas will be monomorphic as well *)
     if not (Global.is_polymorphic tzero_ind) then EConstr.EInstance.empty, glu
-    else instance_of env evd glu
+    else let sigma, equ, glu = Equations_common.instance_of env !evd glu in
+      evd := sigma; equ, glu
     in
   let c = EConstr.mkApp (EConstr.mkRef (tzero_ind, inst), [| tB |]) in
   (* We need to type the term in order to solve eventual universes

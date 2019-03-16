@@ -209,6 +209,7 @@ val wf_fix_constr :
   Evd.evar_map ref ->
   EConstr.rel_context ->
   EConstr.t ->
+  Univ.Universe.t ->
   EConstr.t ->
   EConstr.t ->
   EConstr.t -> EConstr.t * EConstr.t * EConstr.t
@@ -219,6 +220,7 @@ val wf_fix :
   Vars.substl ->
   EConstr.rel_context ->
   EConstr.t ->
+  Univ.Universe.t ->
   Constrexpr.constr_expr ->
   Constrexpr.constr_expr option ->
   EConstr.t (* term *) * EConstr.t (* rel *) *

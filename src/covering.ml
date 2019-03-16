@@ -766,7 +766,7 @@ let pats_of_sign sign =
   List.rev_map (fun decl ->
       DAst.make (PUVar (Name.get_id (Context.Rel.Declaration.get_name decl), false))) sign
 
-let wf_fix_constr env evars sign arity carrier cterm crel =
+let wf_fix_constr env evars sign arity sort carrier cterm crel =
   let sigma, tele, telety = Sigma_types.telescope_of_context env !evars sign in
   let () = evars := sigma in
   let concl = it_mkLambda_or_LetIn arity sign in
@@ -775,7 +775,15 @@ let wf_fix_constr env evars sign arity carrier cterm crel =
   let sigma, wf = new_evar env !evars wfty in
   let sigma = Typeclasses.resolve_typeclasses env sigma in
   let () = evars := sigma in
-  let fix = mkapp env evars logic_tele_fix [| tele; crel; wf; concl |] in
+  let fix =
+    let _, tyrelu = destConst sigma (fst (decompose_app sigma wfty)) in
+    if not (EInstance.is_empty tyrelu) then
+      let sigma, inst, glu = Equations_common.instance_of env !evars ~argu:tyrelu sort in
+      let () = evars := sigma in
+      mkApp (EConstr.mkRef (Lazy.force logic_tele_fix, inst), [| tele; crel; wf; concl|])
+    else
+      mkapp env evars logic_tele_fix [| tele; crel; wf; concl|]
+  in
   let sigma, fixty = Typing.type_of env !evars fix in
   let () = evars := sigma in
   let reds =
@@ -836,7 +844,7 @@ let wf_fix_constr env evars sign arity carrier cterm crel =
    *                     str " conclusion type : " ++ prc concl); *)
   functional_type, full_functional_type, fix
 
-let wf_fix env evars subst sign arity term rel =
+let wf_fix env evars subst sign arity sort term rel =
   let envsign = push_rel_context sign env in
   let sigma, cterm = interp_constr_evars envsign !evars term in
   let carrier =
@@ -850,17 +858,17 @@ let wf_fix env evars subst sign arity term rel =
   in
   let cterm = it_mkLambda_or_LetIn cterm sign in
   (* let cterm = substl subst cterm in *)
-  let sigma, sort = Evd.fresh_sort_in_family sigma (Lazy.force Equations_common.logic_sort) in
+  let sigma, rsort = Evd.fresh_sort_in_family sigma (Lazy.force Equations_common.logic_sort) in
   let sigma, crel =
     let relty =
-      (mkProd (anonR, carrier, mkProd (anonR, lift 1 carrier, mkSort sort)))
+      (mkProd (anonR, carrier, mkProd (anonR, lift 1 carrier, mkSort rsort)))
     in
     match rel with
     | Some rel -> interp_casted_constr_evars env sigma rel relty
     | None -> new_evar env sigma relty
   in
   let () = evars := sigma in
-  let res = wf_fix_constr env evars sign arity carrier cterm crel in
+  let res = wf_fix_constr env evars sign arity sort carrier cterm crel in
   nf_evar !evars cterm, nf_evar !evars crel, res
 
 let compute_rec_data env evars data lets subst p =
@@ -905,7 +913,7 @@ let compute_rec_data env evars data lets subst p =
 
   | Some (WellFounded (term, rel, _)) ->
     let arg, rel, (functional_type, _full_functional_type, fix) =
-      wf_fix env evars subst p.program_sign p.program_arity term rel in
+      wf_fix env evars subst p.program_sign p.program_arity p.program_sort term rel in
     let ctxpats = pats_of_sign lets in
     let rec_args = List.length p.program_sign in
     let decl = make_def (nameR p.program_id) None functional_type in
