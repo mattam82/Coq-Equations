@@ -72,3 +72,11 @@ Section foo.
   unzipv (vcons (x, y) v) with unzipv v := {
     | (xs, ys) := (vcons x xs, vcons y ys) }.
 End foo.
+
+
+Section vlast.
+  Context {A : Type}.
+  Equations vlast {n} (v : vector A (S n)) : A by wf (signature_pack v) (@vector_subterm A) :=
+  vlast (vcons (n:=O) a vnil) := a ;
+  vlast (vcons (n:=S n') a v) := vlast v.
+End vlast.
