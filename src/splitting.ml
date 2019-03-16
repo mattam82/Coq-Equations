@@ -661,7 +661,7 @@ let define_mutual_nested_csts flags env evd get_prog progs =
             !evd Decl_kinds.(IsDefinition Fixpoint)
         in
         evd := evm;
-        Impargs.declare_manual_implicits false (ConstRef kn) p.program_impls;
+        Impargs.declare_manual_implicits false (ConstRef kn) [p.program_impls];
         (p, prog, term)) mutual
   in
   let args = List.rev_map (fun (p', _, term) -> term) mutual in
@@ -673,7 +673,7 @@ let define_mutual_nested_csts flags env evd get_prog progs =
           declare_constant p.program_id body (Some ty) flags.polymorphic
             !evd Decl_kinds.(IsDefinition Fixpoint) in
         evd := evm;
-        Impargs.declare_manual_implicits false (ConstRef kn) p.program_impls;
+        Impargs.declare_manual_implicits false (ConstRef kn) [p.program_impls];
         (p, prog, e)) nested in
   mutual, nested
 
@@ -759,7 +759,7 @@ let make_programs env evd flags ?(define_constants=false) programs =
            flags.polymorphic !evd (Decl_kinds.(IsDefinition Definition))
        in
        evd := evm;
-       let () = Impargs.declare_manual_implicits false (ConstRef cst) p.program_impls in
+       let () = Impargs.declare_manual_implicits false (ConstRef cst) [p.program_impls] in
        let () = Declare.definition_message p.program_id in
        e
      else term
