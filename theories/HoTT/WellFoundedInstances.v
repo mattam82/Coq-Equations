@@ -22,7 +22,7 @@ Section Lt.
       + right; now constructor.
   Defined.
 
-  Global Instance lt_wf : WellFounded lt.
+  Theorem lt_wf : WellFounded lt.
   Proof.
     intros x. induction x.
     - constructor. intros y Hy. depelim Hy.
@@ -40,6 +40,9 @@ Section Lt.
     induction n; now constructor.
   Defined.
 End Lt.
+
+(* Use refine to ensure proper treatment of cumulativity. *)
+Hint Extern 0 (@WellFounded nat _) => refine lt_wf : typeclass_instances.
 
 Hint Resolve lt_n_Sn : Below.
 

@@ -142,16 +142,18 @@ Proof.
   intros. apply wf_inverse_image@{i j k k}. apply X.
 Defined.
 
+Set Strict Universe Declaration.
+
 Section Fix.
-  Universe i j k l m.
-  Context {T : tele@{i}} (R : T -> T -> Type@{l}).
+  Universe i j k.
+  Context {T : tele@{i}} (R : T -> T -> Type@{j}).
   Context (wf : WellFounded R).
   Context (P : tele_type@{i j k} T).
 
   (* (forall x : A, (forall y : A, R y x -> P y) -> P x) -> forall x : A, P x *)
   Definition tele_fix_functional_type :=
     tele_forall_uncurry T (fun x =>
-      ((tele_forall_uncurry@{i m m} T (fun y =>
+      ((tele_forall_uncurry@{i k k} T (fun y =>
          R y x -> tele_type_app T P y))) ->
       tele_type_app T P x).
 
@@ -177,14 +179,14 @@ Register tele_forall_unpack as equations.tele.forall_unpack.
 Extraction Inline tele_forall_pack tele_forall_unpack tele_forall_type_app tele_fix.
 
 Section FixUnfold.
-  Universes i j k l m.
+  Universes i j k.
   Context `{Funext}.
-  Context {T : tele@{i}} (x : T) (R : T -> T -> Type@{l}).
+  Context {T : tele@{i}} (x : T) (R : T -> T -> Type@{j}).
   Context (wf : well_founded R).
   Context (P : tele_type@{i j k} T).
 
   (* (forall x : A, (forall y : A, R y x -> P y) -> P x) -> forall x : A, P x *)
-  Context (fn : tele_fix_functional_type@{i j k l m} R P).
+  Context (fn : tele_fix_functional_type@{i j k} R P).
 
   Lemma tele_fix_unfold :
     tele_forall_app T P (tele_fix R wf P fn) x =
