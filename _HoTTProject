@@ -72,3 +72,5 @@ theories/HoTT/Loader.v
 theories/HoTT/Telescopes.v
 theories/HoTT/WellFoundedInstances.v
 theories/HoTT/All.v
+
+test-suite/BasicsHoTT.v
