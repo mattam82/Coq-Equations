@@ -303,9 +303,9 @@ Arguments Split [ X ].
 (* Set Equations Debug. *)
 
 Equations split {X : Type} {m n : nat} (xs : vector X (Peano.plus m n)) : Split m n xs by wf m :=
-split (m:=0) xs := append nil xs;
-split (m:=m .+1) (cons x xs) with split xs => {
-  | append xs' ys' := append (cons x xs') ys' }.
+  split (m:=0) xs := append nil xs;
+  split (m:=m .+1) (cons x xs) with split xs => {
+    | append xs' ys' := append (cons x xs') ys' }.
 
 Notation "( x , .. , y , z )" :=
   (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)

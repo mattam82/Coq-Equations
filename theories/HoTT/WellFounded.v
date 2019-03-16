@@ -9,9 +9,10 @@ Import Sigma_Notations.
 (** Well-founded relations in Type *)
 
 Section Acc.
-  Context {A} (R : relation A).
+  Universes i j.
+  Context {A : Type@{i}} (R : relation@{i j} A).
 
-  Inductive Acc (x : A) : Type :=
+  Cumulative Inductive Acc (x : A) : Type :=
   | Acc_intro : (forall y, R y x -> Acc y) -> Acc x.
 
   Definition Acc_inv {x} (H : Acc x) : forall y, R y x -> Acc y.
