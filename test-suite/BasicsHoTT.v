@@ -393,9 +393,8 @@ vmap' f nil := nil ;
 vmap' f (cons a v) := cons (f a) (vmap' f v).
 
 Hint Resolve lt_n_Sn : subterm_relation.
-Set Universe Minimization ToSet.
-Equations vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n
-  by wf n :=
+
+Equations vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n by wf n :=
 vmap f nil := nil ;
 vmap f (cons a v) := cons (f a) (vmap f v).
 
