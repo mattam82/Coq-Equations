@@ -30,6 +30,7 @@ Class WellFounded {A : Type} (R : relation A) :=
     actually matter in the sense that they are used to prove
     absurdity. *)
 
+Cumulative
 Class NoCyclePackage@{i|} (A : Type@{i}) :=
   { NoCycle : A -> A -> Type@{i};
     noCycle : forall {a b}, NoCycle a b -> (a = b -> Empty) }.
@@ -97,7 +98,6 @@ Extraction Inline apply_noConfusion.
 
 (** Classes for types with UIP or decidable equality.  *)
 
-Cumulative
 Class UIP@{i|} (A : Type@{i}) := uip : forall {x y : A} (e e' : x = y), e = e'.
 
 Instance UIP_hSet (A : Type) (H : HSet A) : UIP A := H.
@@ -106,7 +106,6 @@ Definition dec_eq {A} (x y : A) : Type := (x = y) + (x <> y).
 
 Class EqDec@{i|} (A : Type@{i}) := eq_dec : forall x y : A, sum@{i} (x = y) (x = y -> Empty).
 
-Cumulative
 Class EqDecPoint (A : Type) (x : A) := eq_dec_point : forall y : A, (x = y) + (x <> y).
 
 Instance EqDec_EqDecPoint A `(EqDec A) (x : A) : EqDecPoint A x := eq_dec x.

@@ -30,11 +30,11 @@ Equations finp {n} (f : fin (S n)) : unit + fin n :=
 
 Unset Universe Minimization ToSet.
 Inductive vector@{i} (A : Type@{i}) : nat -> Type@{i} :=
-| vnil : vector A 0
-| vcons {n} : A -> vector A n -> vector A (S n).
+| nil : vector A 0
+| cons {n} : A -> vector A n -> vector A (S n).
 Arguments vector A%type_scope n%nat_scope.
-Arguments vnil {A}.
-Arguments vcons {A%type_scope} {n%nat_scope} a v.
+Arguments nil {A}.
+Arguments cons {A%type_scope} {n%nat_scope} a v.
 Derive Signature for vector.
 Require Import Equations.Tactics Equations.Type.Tactics.
 
@@ -46,20 +46,43 @@ Instance vector_eqdec@{i +|+} {A : Type@{i}} {n} `(EqDec@{i} A) : EqDec (vector 
 Proof.
   intros. intros x. intros y. induction x.
   - left. now depelim y.
-  - depelim y. Show Universes. Show Proof.
+  - depelim y.
     pose proof (Classes.eq_dec a a0).
     dependent elimination X as [inl id_refl|inr Ha].
     -- specialize (IHx v).
        dependent elimination IHx as [inl id_refl|inr H].
        --- left; reflexivity.
        --- right. simplify *. now apply H.
-    -- right; simplify *. now apply Ha. Show Proof.
+    -- right; simplify *. now apply Ha.
 Defined.
 
 Record vect {A} := mkVect { vect_len : nat; vect_vector : vector A vect_len }.
 Coercion mkVect : vector >-> vect.
 
 Derive NoConfusion for vect.
+Reserved Notation "x ++v y" (at level 60).
+
+Equations vapp {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m)%nat :=
+{ nil ++v w := w ;
+  (cons a v) ++v w := cons a (v ++v w) }
+where "x ++v y" := (vapp x y).
+
+Inductive Split {X : Type}{m n : nat} : vector X (m + n) -> Type :=
+  append : forall (xs : vector X m)(ys : vector X n), Split (vapp xs ys).
+
+Arguments Split [ X ].
+
+(* Eval compute in @app'. *)
+(* About nil. About vector. *)
+(* Set Typeclasses Debug Verbosity 2. *)
+(* Set Typeclasses Filtered Unification. *)
+
+Hint Extern 0 (WellFounded _) => refine WellFoundedInstances.lt_wf : typeclass_instances.
+
+Equations split {X : Type} {m n : nat} (xs : vector X (Peano.plus m n)) : Split m n xs by wf m :=
+split (m:=0) xs := append nil xs;
+split (m:=S m) (cons x xs) with split xs => {
+  | append xs' ys' := append (cons x xs') ys' }.
 
 Derive Subterm for vector.
 Hint Unfold vector_subterm : subterm_relation.
@@ -68,15 +91,15 @@ Section foo.
   Context {A B : Type}.
   Equations unzipv {n} (v : vector (A * B) n) : vector A n * vector B n
    by wf (signature_pack v) (@vector_subterm (A * B)) :=
-  unzipv vnil := (vnil, vnil) ;
-  unzipv (vcons (x, y) v) with unzipv v := {
-    | (xs, ys) := (vcons x xs, vcons y ys) }.
+  unzipv nil := (nil, nil) ;
+  unzipv (cons (x, y) v) with unzipv v := {
+    | (xs, ys) := (cons x xs, cons y ys) }.
 End foo.
 
 
 Section vlast.
   Context {A : Type}.
   Equations vlast {n} (v : vector A (S n)) : A by wf (signature_pack v) (@vector_subterm A) :=
-  vlast (vcons (n:=O) a vnil) := a ;
-  vlast (vcons (n:=S n') a v) := vlast v.
+  vlast (cons (n:=O) a nil) := a ;
+  vlast (cons (n:=S n') a v) := vlast v.
 End vlast.

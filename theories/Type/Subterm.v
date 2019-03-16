@@ -97,7 +97,8 @@ Proof. apply wf_trans_clos. apply WF. Defined.
 Hint Extern 4 (WellFounded (trans_clos _)) =>
   apply @WellFounded_trans_clos : typeclass_instances.
 
-Instance wf_inverse_image {A R} `(WellFounded A R) {B} (f : B -> A) : WellFounded (inverse_image R f).
+Instance wf_inverse_image {A R} `(WellFounded A R) {B} (f : B -> A) :
+  WellFounded (inverse_image R f) | (WellFounded (inverse_image _ _)).
 Proof. red. apply wf_inverse_image. apply H. Defined.
 
 (* (* Do not apply [wf_MR] agressively, as Coq's unification could "invent" an [f] otherwise *)
