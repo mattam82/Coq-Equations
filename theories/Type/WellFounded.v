@@ -58,7 +58,7 @@ Proof.
   apply (IHy _ Ryy Ryy).
 Qed.
 
-Lemma well_founded_antisym@{i j} {A : Type@{i}} {R : relation@{i j} A}{wfR : well_founded R} :
+Lemma well_founded_antisym@{i j +} {A : Type@{i}} {R : relation@{i j} A}{wfR : well_founded R} :
   forall x y : A, R x y -> R y x -> Empty.
 Proof.
   intros x y Rxy Ryx. red in wfR.

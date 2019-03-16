@@ -371,11 +371,13 @@ let refresh_universes_strict env evd t =
     
 let mkEq env evd t x y = 
   mkapp env evd logic_eq_type [| refresh_universes_strict env evd t; x; y |]
+
+let mkRef (f, i) = EConstr.of_constr (UnivGen.constr_of_global_univ (f, EConstr.Unsafe.to_instance i))
     
 let mkRefl env evd ?inst t x =
   match inst with
   | Some inst ->
-    EConstr.mkApp (EConstr.mkRef (Lazy.force logic_eq_refl, inst), [| refresh_universes_strict env evd t; x |])
+    EConstr.mkApp (mkRef (Lazy.force logic_eq_refl, inst), [| refresh_universes_strict env evd t; x |])
   | None ->
     mkapp env evd logic_eq_refl [| refresh_universes_strict env evd t; x |]
 
@@ -629,14 +631,14 @@ let depind_tac h = tac_of_string (depelim_tactic "depind") [tacident_arg h]
 let equations_tac () = tac_of_string (depelim_tactic "equations") []
 let find_empty_tac () = tac_of_string (depelim_tactic "find_empty") []
 
-let mkRef (c, u) = UnivGen.constr_of_global_univ (c, u)
+let mkCRef (c, u) = UnivGen.constr_of_global_univ (c, u)
 
 let call_tac_on_ref tac c =
   let var = Names.Id.of_string "x" in
   let tac = Locus.ArgArg (dummy_loc, tac) in
   let val_reference = Geninterp.val_tag (Genarg.topwit Stdarg.wit_constr) in
   (* This is a hack to avoid generating useless universes *)
-  let c = mkRef (c, Univ.Instance.empty) in
+  let c = mkCRef (c, Univ.Instance.empty) in
   let c = Geninterp.Val.inject val_reference (EConstr.of_constr c) in
   let ist = Geninterp.{ lfun = Names.Id.Map.add var c Names.Id.Map.empty;
                             extra = Geninterp.TacStore.empty } in
@@ -1013,8 +1015,6 @@ let hintdb_set_transparency cst b db =
 (* Call the really unsafe is_global test, we use this on evar-open terms too *)
 let is_global sigma f ec = Globnames.is_global f (EConstr.Unsafe.to_constr ec)
 
-let constr_of_global_univ sigma u = of_constr (mkRef (from_peuniverses sigma u))
-
 let smash_rel_context sigma ctx =
   List.map of_rel_decl (smash_rel_context (List.map (EConstr.Unsafe.to_rel_decl) ctx))
 let rel_vect n m = Array.map of_constr (rel_vect n m)
@@ -1090,7 +1090,7 @@ let instance_of env sigma ?argu goalu =
     else
       match Evd.universe_rigidity sigma goall with
       | Evd.UnivFlexible true ->
-        Evd.make_nonalgebraic_variable sigma goall, goall
+        Evd.make_flexible_variable sigma ~algebraic:false goall, goall
       | _ -> sigma, goall
   in
   let inst =

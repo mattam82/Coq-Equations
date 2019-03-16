@@ -294,7 +294,7 @@ let specialize_eqs ~with_block id gl =
          let _, u = destPolyRef !evars eq in
          let c, o = if noccur_between !evars 1 (List.length subst) x then x, y
            else y, x in
-         let eqr = constr_of_global_univ !evars (Lazy.force logic_eq_refl, u) in
+         let eqr = mkRef (Lazy.force logic_eq_refl, u) in
          let p = mkApp (eqr, [| eqty; c |]) in
          if (compare_upto_variables !evars c o) &&
             unif (push_rel_context ctx env) subst evars o c then

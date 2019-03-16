@@ -144,19 +144,19 @@ module BuilderHelper = struct
     Equations_common.e_new_global evd glob
   let gen_from_inductive_univ ind u =
     let glob = Globnames.IndRef (Lazy.force ind) in
-    EConstr.mkRef (glob, u)
+    Equations_common.mkRef (glob, u)
   let gen_from_constant cst = fun evd ->
     let glob = Globnames.ConstRef (Lazy.force cst) in
     Equations_common.e_new_global evd glob
   let gen_from_constant_univ cst u =
     let glob = Globnames.ConstRef (Lazy.force cst) in
-    EConstr.mkRef (glob, u)
+    Equations_common.mkRef (glob, u)
   let gen_from_constructor constr = fun evd ->
     let glob = Globnames.ConstructRef (Lazy.force constr) in
     Equations_common.e_new_global evd glob
   let gen_from_constructor_univ constr = fun u ->
     let glob = Globnames.ConstructRef (Lazy.force constr) in
-    EConstr.mkRef (glob, u)
+    Equations_common.mkRef (glob, u)
 end
 
 module BuilderGen (SigmaRefs : SIGMAREFS) (EqRefs : EQREFS) : BUILDER = struct
@@ -243,7 +243,7 @@ let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty
   let tf, ty =
     match inst with
     | Some u ->
-      let tf = EConstr.mkRef (f, u) in
+      let tf = Equations_common.mkRef (f, u) in
       let ty = Retyping.get_type_of env !evd tf in
       tf, ty
     | None ->
@@ -785,11 +785,11 @@ let apply_noconf : simplification_fun =
   let args = [Some tA; Some tnoconf; Some t1; Some t2; Some tB; None] in
   let inst, glu' =
     (* If the equality is not polymorphic, the lemmas will be monomorphic as well *)
-    if EConstr.EInstance.is_empty equ then equ, glu
+    if EConstr.EInstance.is_empty equ then None, glu
     else let sigma, equ, glu = Equations_common.instance_of env !evd ~argu:equ glu in
-      evd := sigma; equ, glu
+      evd := sigma; Some equ, glu
   in
-    build_app_infer env evd (ctx, ty, glu') ctx tapply_noconf ~inst args,
+    build_app_infer env evd (ctx, ty, glu') ctx tapply_noconf ?inst args,
     Context_map.id_subst ctx
 
 let simplify_ind_pack_inv : simplification_fun =
@@ -927,7 +927,7 @@ let elim_false : simplification_fun =
     else let sigma, equ, glu = Equations_common.instance_of env !evd glu in
       evd := sigma; equ, glu
     in
-  let c = EConstr.mkApp (EConstr.mkRef (tzero_ind, inst), [| tB |]) in
+  let c = EConstr.mkApp (Equations_common.mkRef (tzero_ind, inst), [| tB |]) in
   (* We need to type the term in order to solve eventual universes
    * constraints. *)
   let _ = let env = push_rel_context ctx env in

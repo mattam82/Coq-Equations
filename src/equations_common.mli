@@ -413,7 +413,6 @@ val to_peuniverses : 'a Univ.puniverses -> 'a peuniverses
 val from_peuniverses : Evd.evar_map -> 'a peuniverses -> 'a Univ.puniverses
 
 val is_global : Evd.evar_map -> Names.GlobRef.t -> constr -> bool
-val constr_of_global_univ : Evd.evar_map -> Names.GlobRef.t peuniverses -> constr
 val smash_rel_context : Evd.evar_map -> rel_context -> rel_context (** expand lets in context *)
 
 val rel_vect : int -> int -> constr array
@@ -438,7 +437,8 @@ val splay_prod_n_assum : env -> Evd.evar_map -> int -> types -> rel_context * ty
 
 (** Already in Coq master *)
 val register_ref : Libnames.qualid -> Libnames.qualid -> unit
-val mkRef : Names.GlobRef.t * Univ.Instance.t -> Constr.constr
+val mkCRef : Names.GlobRef.t * Univ.Instance.t -> Constr.constr
+val mkRef : Names.GlobRef.t * EConstr.EInstance.t -> EConstr.constr
 
 (* Universes *)
 val univ_of_goalu : Environ.env -> Evd.evar_map -> Univ.Universe.t -> Evd.evar_map * Univ.Level.t * Univ.Universe.t

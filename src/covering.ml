@@ -1094,17 +1094,15 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
       let userc, usercty = interp_constr_in_rhs env ctx evars data None s lets (GlobConstr user) in
       match t with
       | PInac t ->
-        begin match Evarconv.unify env' !evars Reduction.CONV userc t with
-          | evars' -> evars := evars'
-          | exception Pretype_errors.PretypeError (env, sigma, e) ->
+        begin match Evarconv.conv env' !evars userc t with
+          | Some evars' -> evars := evars'
+          | None ->
             DAst.with_loc_val (fun ?loc _ ->
                 CErrors.user_err ?loc ~hdr:"covering"
                   (hov 0 (str "Incompatible innaccessible pattern " ++
                           Printer.pr_econstr_env env' !evars userc ++ cut () ++
                           spc () ++ str "should be unifiable with " ++
-                          Printer.pr_econstr_env env' !evars t ++ cut () ++
-                          str"Unification failed with " ++
-                          Himsg.explain_pretype_error env sigma e))) user
+                          Printer.pr_econstr_env env' !evars t))) user
         end
       | _ ->
         let t = pat_constr t in

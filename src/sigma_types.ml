@@ -78,7 +78,6 @@ let decompose_indapp sigma f args =
 
 (* let sigT_info = lazy (make_case_info (Global.env ()) (Globnames.destIndRef (Lazy.force sigT).typ) LetStyle) *)
 
-let mkRef sigma (c, u) = EConstr.of_constr (UnivGen.constr_of_global_univ (c, EConstr.EInstance.kind sigma u))
 let telescope_intro env sigma len tele =
   let rec aux n ty =
     let ty = Reductionops.whd_all env sigma ty in
@@ -92,7 +91,7 @@ let telescope_intro env sigma len tele =
                       (push_rel (Context.Rel.Declaration.LocalAssum (na, t)) env) sigma b)
         | _ -> p
       in
-      let sigmaI = mkApp (mkRef sigma (Lazy.force coq_sigmaI, u),
+      let sigmaI = mkApp (mkRef (Lazy.force coq_sigmaI, u),
                           [| a; p; mkRel n; aux (pred n) (beta_applist sigma (p, [mkRel n])) |]) in
       sigmaI
     | _ -> mkRel n
@@ -152,7 +151,7 @@ let telescope env evd = function
 	  let pred = Vars.lift k pred in
 	  let (n, dom, codom) = destLambda !evd pred in
 	  let intro =
-            mkApp (constr_of_global_univ !evd (Lazy.force coq_sigmaI, u),
+            mkApp (mkRef (Lazy.force coq_sigmaI, u),
                    [| dom; pred; mkRel k; intro|]) in
 	    (intro, succ k))
 	  tys (mkRel 1, 2)
@@ -397,7 +396,7 @@ let curry sigma na c =
     | None -> 
        if is_global sigma (Lazy.force logic_unit) t then
          let _, u = destInd sigma t in
-         [], constr_of_global_univ sigma (Lazy.force logic_unit_intro, u)
+         [], mkRef (Lazy.force logic_unit_intro, u)
        else [of_tuple (na,None,t)], mkRel 1
     | Some (u, ty, pred) ->
        let na, _, codom =
