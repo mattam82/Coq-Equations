@@ -306,6 +306,29 @@ Equations split {X : Type} {m n : nat} (xs : vector X (Peano.plus m n)) : Split 
   split (m:=0) xs := append nil xs;
   split (m:=m .+1) (cons x xs) with split xs => {
     | append xs' ys' := append (cons x xs') ys' }.
+(* Minimization could do a bit better here *)
+Check split@{_ _ _ _ _}.
+
+Definition split_lightu@{u0 u1 u2 | u0 < u1, u1 < u2} := @split@{u0 u1 u2 u0 u1}.
+
+(* 2 universes: Set < i (type of splitset) < j (universe of the type) *)
+Equations splitSet {X : Set} {m n : nat} (xs : vector X (Peano.plus m n)) : Split m n xs by wf m :=
+  splitSet (m:=0) xs := append nil xs;
+  splitSet (m:=m .+1) (cons x xs) with splitSet xs => {
+    | append xs' ys' := append (cons x xs') ys' }.
+Check splitSet@{_ _}.
+
+Section SplitSetParam.
+  Context {X : Set}.
+  Obligation Tactic := idtac.
+  (* Here, just 1 universe for the universe of Set. *)
+  Equations? splitSetParam {m n : nat} (xs : vector X (Peano.plus m n)) : Split m n xs by wf m :=
+  splitSetParam (m:=0) xs := append nil xs;
+  splitSetParam (m:=m .+1) (cons x xs) with splitSetParam xs => {
+    | append xs' ys' := append (cons x xs') ys' }.
+  Proof. solve_rec. Defined.
+End SplitSetParam.
+Check splitSetParam@{_}.
 
 Notation "( x , .. , y , z )" :=
   (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
