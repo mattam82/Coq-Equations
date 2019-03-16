@@ -2,6 +2,9 @@ Set Warnings "-notation-overridden".
 Require Import Equations.HoTT.Loader Equations.HoTT.Relation Equations.HoTT.WellFounded.
 
 Section Lt.
+  (* These are just natural numbers, allow minimizing to Set. *)
+  Local Set Universe Minimization ToSet.
+
   Inductive le : nat -> nat -> Set :=
     | le_0 x : le 0 x
     | le_S {x y} : le x y -> le (S x) (S y).
