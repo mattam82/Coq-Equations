@@ -776,13 +776,13 @@ let wf_fix_constr env evars sign arity sort carrier cterm crel =
   let sigma = Typeclasses.resolve_typeclasses env sigma in
   let () = evars := sigma in
   let fix =
-    let _, tyrelu = destConst sigma (fst (decompose_app sigma wfty)) in
-    if not (EInstance.is_empty tyrelu) then
-      let sigma, inst, glu = Equations_common.instance_of env !evars ~argu:tyrelu sort in
-      let () = evars := sigma in
-      mkApp (EConstr.mkRef (Lazy.force logic_tele_fix, inst), [| tele; crel; wf; concl|])
-    else
-      mkapp env evars logic_tele_fix [| tele; crel; wf; concl|]
+    (* let _, tyrelu = destConst sigma (fst (decompose_app sigma wfty)) in *)
+    (* if not (EInstance.is_empty tyrelu) then
+     *   let sigma, inst, glu = Equations_common.instance_of env !evars ~argu:tyrelu sort in
+     *   let () = evars := sigma in
+     *   mkApp (EConstr.mkRef (Lazy.force logic_tele_fix, inst), [| tele; crel; wf; concl|])
+     * else *)
+    mkapp env evars logic_tele_fix [| tele; crel; wf; concl|]
   in
   let sigma, fixty = Typing.type_of env !evars fix in
   let () = evars := sigma in
