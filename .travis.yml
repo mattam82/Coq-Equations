@@ -35,8 +35,8 @@ install:
 - opam list
 
 script:
- - coq_makefile -f _CoqProject -o Makefile && make all examples
- - cd test-suite && coq_makefile -f _CoqProject -o Makefile && make
+ - ./configure.sh HoTT
+ - make ci
 
 notifications:
   webhooks:
