@@ -42,12 +42,17 @@ val destRefined : Splitting.splitting -> Splitting.splitting option
 val destWheres : Splitting.splitting -> (Context_map.context_map * Splitting.where_clause list) option
 val map_opt_split : ('a -> 'b option) -> 'a option -> 'b option
 val solve_ind_rec_tac : Splitting.term_info -> unit Proofview.tactic
+
+val gather_subst :            'a ->
+           Evd.evar_map ->
+           EConstr.t -> EConstr.t list -> int -> EConstr.t list
+
 val aux_ind_fun :
   ind_info ->
   int * int ->
   (Names.Id.t * EConstr.types * Splitting.program) list ->
-  Splitting.splitting option ->
-  Names.Id.t list -> Splitting.splitting -> Proofview.V82.tac
+  Splitting.program option ->
+  Names.Id.t list -> Splitting.program -> Proofview.V82.tac
 val ind_fun_tac :
   Syntax.rec_type ->
   Constr.t ->
@@ -62,7 +67,7 @@ val prove_unfolding_lemma :
   where_map ->
   Names.Constant.t ->
   Names.Constant.t ->
-  Splitting.splitting -> Splitting.splitting ->
+  Splitting.program -> Splitting.program ->
   Goal.goal Evd.sigma ->
   Goal.goal list Evd.sigma
   

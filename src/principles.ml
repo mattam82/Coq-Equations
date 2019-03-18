@@ -760,10 +760,6 @@ let subst_rec_programs env evd ps =
     let s' = fixsubst @ lifts in
     (* Feedback.msg_debug Pp.(str"In subst_programs, pr_substs" ++ prsubst env evd s'); *)
     let one_program p oterm =
-      let split' = match p.program_splitting with
-        | RecValid (lets, id, _, s) -> s
-        | s -> s
-      in
       let rec_prob, rec_arity =
         match p.program_rec with
         | Some { rec_prob; rec_arity } -> rec_prob, rec_arity
@@ -785,7 +781,9 @@ let subst_rec_programs env evd ps =
       let path' = p.program_info.program_id :: path in
       (* Feedback.msg_debug Pp.(str"In subst_programs, cut_problem s'" ++ pr_context env !evd (pi1 rec_prob)); *)
       let rec_cutprob = cut_problem s' (pi1 rec_prob) in
-      let splitting' = aux rec_cutprob s' program' oterm path' split' in
+      let splitting' =
+          aux rec_cutprob s' program' oterm path' p.program_splitting
+      in
       let term', ty' = term_of_tree env evd prog_info.program_sort splitting' in
       { program_rec = None;
         program_info = program_info';
@@ -869,17 +867,6 @@ let subst_rec_programs env evd ps =
     | Mapping (lhs, c) ->
        let subst, lhs' = subst_rec cutprob s lhs in
        Mapping (lhs', aux cutprob s p f path c)
-
-    | RecValid (lhs, id, r, rest) ->
-      (match p.program_info.program_rec with
-       | Some (WellFounded (_, _, r')) ->
-         let recarg = Some (-1) in
-         let newprob = r.rec_prob in
-         let s = (id, (recarg, lift 1 f)) :: s in
-         let cutprob = (cut_problem s (pi1 newprob)) in
-         let rest = aux cutprob s p f (id :: path) rest in
-         rest
-       | _ -> aux cutprob s p f path rest)
 
     | Refined (lhs, info, sp) ->
        let (id, c, cty), ty, arg, oterm, args, revctx, newprob, newty =
@@ -1062,7 +1049,9 @@ let computations env evd alias refine p eqninfo =
   let { equations_prob = prob;
         equations_where_map = wheremap;
         equations_f = f } = eqninfo in
-  let rec computations env prob f alias fsubst refine = function
+  let rec program_computations env prob f alias fsubst refine p =
+    computations env prob f alias fsubst (fst refine, false) p.program_splitting
+  and computations env prob f alias fsubst refine = function
   | Compute (lhs, where, ty, c) ->
      let where_comp w (wheres, where_comps) =
        (* Where term is in lhs + wheres *)
@@ -1099,8 +1088,9 @@ let computations env evd alias refine p eqninfo =
          in aux term_ty 0 args
        in
        let wsmash, smashsubst = smash_ctx_map env evd (id_subst w.where_program.program_info.program_sign) in
-       let comps = computations env wsmash subterm None fsubst (Regular,false)
-           w.where_program.program_splitting in
+       let comps =
+         program_computations env wsmash subterm None fsubst (Regular,false) w.where_program
+       in
        let arity = w.where_program.program_info.program_arity in
        let termf =
          if not (PathMap.is_empty wheremap) then
@@ -1138,10 +1128,6 @@ let computations env evd alias refine p eqninfo =
      let _newprob = compose_subst env ~sigma:evd prob lhs in
      computations env prob f alias fsubst refine c
 
-  | RecValid (lhs, id, r, cs) ->
-    let subst = compose_subst env ~sigma:evd r.rec_prob prob in
-    computations env subst f alias fsubst (fst refine, false) cs
-
   | Refined (lhs, info, cs) ->
      let (id, c, t) = info.refined_obj in
      let (ctx', pats', _ as s) = compose_subst env ~sigma:evd lhs prob in
@@ -1156,7 +1142,7 @@ let computations env evd alias refine p eqninfo =
             Some (mapping_constr evd info.refined_newprob_to_lhs c, info.refined_arg),
             computations env info.refined_newprob info.refined_term None fsubst (Regular, true) cs]]
 
-  in computations env prob f alias [] refine p.program_splitting
+  in program_computations env prob f alias [] refine p
 
 let constr_of_global_univ gr u =
   let open Globnames in

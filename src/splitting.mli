@@ -56,7 +56,6 @@ type splitting =
     Compute of context_map * where_clause list * types * splitting_rhs
   | Split of context_map * int * types * splitting option array
   | Mapping of context_map * splitting
-  | RecValid of context_map * identifier * rec_info * splitting
   | Refined of context_map * refined_node * splitting
 
 and where_clause =
