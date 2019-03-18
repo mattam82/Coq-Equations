@@ -597,7 +597,7 @@ let push_rel_context_eos ctx env evars =
 
 let split_at_eos sigma ctx =
   List.split_when (fun decl ->
-      is_lglobal coq_end_of_section (to_constr sigma (get_named_type decl))) ctx
+      is_lglobal sigma coq_end_of_section (get_named_type decl)) ctx
 
 let pr_problem p env sigma (delta, patcs, _) =
   let env' = push_rel_context delta env in
@@ -643,10 +643,10 @@ let compute_rec_type context programs =
     | _ -> assert false
   end
 
-let print_recinfo programs =
+let print_program_info env sigma programs =
   let open Pp in
   if !Equations_common.debug then
-    Feedback.msg_debug (str "Programs: " ++ prlist_with_sep fnl pr_rec_info programs)
+    Feedback.msg_debug (str "Programs: " ++ prlist_with_sep fnl (pr_program_info env sigma) programs)
 
 let compute_fixdecls_data env evd ?data programs =
   let protos = List.map (fun p ->
@@ -708,6 +708,11 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot
   let body = it_mkLambda_or_LetIn arity sign in
   let _ = if not with_evars then Pretyping.check_evars env Evd.empty !evd body in
   let program_orig_type = it_mkProd_or_LetIn arity sign in
+  let program_sort =
+    let u = Sorts.univ_of_sort (Retyping.get_sort_of env !evd program_orig_type) in
+    let sigma, sortl, sortu = nonalgebraic_universe_level_of_universe env !evd u in
+    evd := sigma; sortu
+  in
   let program_implicits = Impargs.compute_implicits_with_manual env !evd program_orig_type false impls in
   let () = evd := Evd.minimize_universes !evd in
   match rec_annot with
@@ -715,6 +720,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot
     { program_loc = loc;
       program_id = i;
       program_orig_type;
+      program_sort;
       program_sign = sign;
       program_arity = arity;
       program_rec = None;
@@ -724,6 +730,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot
     { program_loc = loc;
       program_id = i;
       program_orig_type;
+      program_sort;
       program_sign = sign;
       program_arity = arity;
       program_rec = Some (Structural ann);
@@ -734,6 +741,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot
     { program_loc = loc;
       program_id = i;
       program_orig_type;
+      program_sort;
       program_sign = sign;
       program_arity = arity;
       program_rec = Some (WellFounded (c, r, compinfo));
@@ -756,15 +764,24 @@ let pats_of_sign sign =
   List.rev_map (fun decl ->
       DAst.make (PUVar (Name.get_id (Context.Rel.Declaration.get_name decl), false))) sign
 
-let wf_fix_constr env evars sign arity carrier cterm crel =
-  let tele, telety = Sigma_types.telescope_of_context env evars sign in
+let wf_fix_constr env evars sign arity sort carrier cterm crel =
+  let sigma, tele, telety = Sigma_types.telescope_of_context env !evars sign in
+  let () = evars := sigma in
   let concl = it_mkLambda_or_LetIn arity sign in
   let crel = mkapp env evars logic_tele_measure [| tele; carrier; cterm; crel |] in
   let wfty = mkapp env evars logic_wellfounded_class [| telety; crel |] in
   let sigma, wf = new_evar env !evars wfty in
   let sigma = Typeclasses.resolve_typeclasses env sigma in
   let () = evars := sigma in
-  let fix = mkapp env evars logic_tele_fix [| tele; crel; wf; concl |] in
+  let fix =
+    (* let _, tyrelu = destConst sigma (fst (decompose_app sigma wfty)) in *)
+    (* if not (EInstance.is_empty tyrelu) then
+     *   let sigma, inst, glu = Equations_common.instance_of env !evars ~argu:tyrelu sort in
+     *   let () = evars := sigma in
+     *   mkApp (EConstr.mkRef (Lazy.force logic_tele_fix, inst), [| tele; crel; wf; concl|])
+     * else *)
+    mkapp env evars logic_tele_fix [| tele; crel; wf; concl|]
+  in
   let sigma, fixty = Typing.type_of env !evars fix in
   let () = evars := sigma in
   let reds =
@@ -825,7 +842,7 @@ let wf_fix_constr env evars sign arity carrier cterm crel =
    *                     str " conclusion type : " ++ prc concl); *)
   functional_type, full_functional_type, fix
 
-let wf_fix env evars subst sign arity term rel =
+let wf_fix env evars subst sign arity sort term rel =
   let envsign = push_rel_context sign env in
   let sigma, cterm = interp_constr_evars envsign !evars term in
   let carrier =
@@ -839,16 +856,17 @@ let wf_fix env evars subst sign arity term rel =
   in
   let cterm = it_mkLambda_or_LetIn cterm sign in
   (* let cterm = substl subst cterm in *)
+  let sigma, rsort = Evd.fresh_sort_in_family env sigma (Lazy.force Equations_common.logic_sort) in
   let sigma, crel =
     let relty =
-      (mkProd (Anonymous, carrier, mkProd (Anonymous, lift 1 carrier, mkProp)))
+      (mkProd (Anonymous, carrier, mkProd (Anonymous, lift 1 carrier, mkSort rsort)))
     in
     match rel with
     | Some rel -> interp_casted_constr_evars env sigma rel relty
     | None -> new_evar env sigma relty
   in
   let () = evars := sigma in
-  let res = wf_fix_constr env evars sign arity carrier cterm crel in
+  let res = wf_fix_constr env evars sign arity sort carrier cterm crel in
   nf_evar !evars cterm, nf_evar !evars crel, res
 
 let compute_rec_data env evars data lets subst p =
@@ -893,7 +911,7 @@ let compute_rec_data env evars data lets subst p =
 
   | Some (WellFounded (term, rel, _)) ->
     let arg, rel, (functional_type, _full_functional_type, fix) =
-      wf_fix env evars subst p.program_sign p.program_arity term rel in
+      wf_fix env evars subst p.program_sign p.program_arity p.program_sort term rel in
     let ctxpats = pats_of_sign lets in
     let rec_args = List.length p.program_sign in
     let decl = make_def (Name p.program_id) None functional_type in
@@ -1182,6 +1200,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
     in
     let newty =
       let env' = push_rel_context extnewctx env in
+      let refterm  = Tacred.simpl env' !evars refterm in
       subst_term !evars refterm
         (Tacred.simpl env'
            !evars (lift 1 (mapping_constr !evars revctx ty)))
@@ -1272,7 +1291,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
          str "And clauses: " ++ pr_preclauses env cls')
     | Some (clauses, s) ->
       let () = check_unused_clauses env clauses in
-      let term, _ = term_of_tree env evars s in
+      let term, _ = term_of_tree env evars p.program_sort s in
       let info =
         { refined_obj = (idref, cconstr, cty);
           refined_rettyp = ty;

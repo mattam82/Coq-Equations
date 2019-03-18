@@ -63,7 +63,7 @@ app_with (cons a v) l with app_with v l => {
 (** Structurally recursive function on natural numbers, with inspection of a recursive
     call result. We use [auto with arith] to discharge the obligations. *)
 
-Obligation Tactic := program_simpl ; try solve_wf ; auto with arith.
+Obligation Tactic := program_simpl ; try Tactics.solve_wf ; auto with arith.
 
 Equations equal (n m : nat) : { n = m } + { n <> m } :=
 equal O O := in_left ;
@@ -249,7 +249,7 @@ Qed.
 
 Lemma app_assoc : forall {A} (l l' l'' : list A), (l ++ l') ++ l'' = l ++ (l' ++ l'').
 Proof. intros. revert l''.
-  funelim (l ++ l'); intros; simp app.
+  funelim (l ++ l'); intros; simp app; trivial.
   now rewrite H.
 Qed.
 
@@ -259,14 +259,14 @@ Proof.
   replace (rev l) with (rev l ++ []) by apply app_nil.
   generalize (@nil A). 
   funelim (rev l). reflexivity.
-  intros l'. simp rev_acc. rewrite H. 
+  intros l'. simp rev_acc; trivial. rewrite H.
   rewrite app_assoc. reflexivity.
 Qed.
 Hint Rewrite @rev_rev_acc : rev_acc.
 Hint Rewrite @app_nil @app_assoc : app.
 
 Lemma rev_app : forall {A} (l l' : list A), rev (l ++ l') = rev l' ++ rev l.
-Proof. intros. funelim (l ++ l'); simp rev app.
+Proof. intros. funelim (l ++ l'); simp rev app; trivial.
   now (rewrite H, <- app_assoc).
 Qed.
 
@@ -473,17 +473,17 @@ Definition transpose {A m n} : mat A m n -> mat A n m :=
   (λ m', vzip (λ a, cons a))
   (vmake n nil).
 
-Require Import Equations.Fin.
+Require Import Examples.Fin.
 
 Generalizable All Variables.
 
 Opaque vmap. Opaque vtail. Opaque nth.
 
 Lemma nth_vmap `(v : vector A n) `(fn : A -> B) (f : fin n) : nth (vmap fn v) f = fn (nth v f).
-Proof. revert B fn. funelim (nth v f); intros; simp nth vmap. Qed.
+Proof. revert B fn. funelim (nth v f); intros; now simp nth vmap. Qed.
 
 Lemma nth_vtail `(v : vector A (S n)) (f : fin n) : nth (vtail v) f = nth v (fs f).
-Proof. funelim (vtail v); intros; simp nth. Qed.
+Proof. funelim (vtail v); intros; now simp nth. Qed.
 
 Hint Rewrite @nth_vmap @nth_vtail : nth.
   
@@ -491,8 +491,8 @@ Lemma diag_nth `(v : vector (vector A n) n) (f : fin n) : nth (diag v) f = nth (
 Proof. revert f. funelim (diag v); intros f.
   depelim f.
 
-  depelim f; simp nth.
-  rewrite H. simp nth.
+  depelim f; simp nth; trivial.
+  rewrite H. now simp nth.
 Qed.
 
 Equations assoc (x y z : nat) : x + y + z = x + (y + z) :=

@@ -1,12 +1,13 @@
 Require Import Equations.
+Require Import Examples.Fin.
 Require Import Relations Utf8.
 Require Import Relations Wellfounded.
 Require Import Setoid RelationClasses Morphisms.
 Require Import Lia.
-Require Import Equations.Fin Bool.
+Require Import Bool.
 Require Import List Arith String.
 Set Equations Transparent.
-Require Import FunctionalExtensionality.
+From Coq Require Import FunctionalExtensionality.
 
 Set Asymmetric Patterns.
 

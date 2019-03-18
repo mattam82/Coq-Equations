@@ -30,10 +30,11 @@ val telescope_intro : Environ.env -> Evd.evar_map -> int -> constr (* interprete
 
 val telescope_of_context :
   Environ.env ->
-  Evd.evar_map ref ->
-  rel_context -> constr (* telescope *) * constr (* interp tele *)
+  Evd.evar_map ->
+  rel_context ->
+  Evd.evar_map * constr (* telescope *) * constr (* interp tele *)
 
-val telescope :
+val telescope : Environ.env ->
   Evd.evar_map ref ->
   rel_context ->
   constr * rel_context * constr

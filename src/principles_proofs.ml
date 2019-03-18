@@ -359,6 +359,7 @@ let aux_ind_fun info chop nested unfs unfids split =
         let inctx, concl = decompose_prod_n_assum !sigma t.rec_args (pf_concl gl) in
         to82 (Refine.refine ~typecheck:false (fun sigma ->
             let evd = ref sigma in
+            let sort = Sorts.univ_of_sort (Retyping.get_sort_of env sigma concl) in
             let hd, args = decompose_app sigma concl in
             let subst = 
               gather_subst env sigma (Retyping.get_type_of env sigma hd) args (List.length (pi1 ctx))
@@ -371,7 +372,7 @@ let aux_ind_fun info chop nested unfs unfids split =
                *                     prlist_with_sep (fun () -> str " ") (Printer.pr_econstr_env env sigma) subst
                *                    ); *)
               let envsign = push_rel_context inctx env in
-              let _, arity = Typing.type_of envsign sigma term in
+              let sigma, arity = Typing.type_of envsign sigma term in
               let ty = Reductionops.nf_all envsign sigma arity in
               let arity =
                 if noccur_between sigma 1 (length inctx) ty then
@@ -381,7 +382,7 @@ let aux_ind_fun info chop nested unfs unfids split =
               arity, arg, r.wf_rec_rel
             in
             let _functional_type, functional_type, fix =
-              Covering.wf_fix_constr env evd inctx concl arity arg rel
+              Covering.wf_fix_constr env evd inctx concl sort arity arg rel
             in
             (* TODO solve WellFounded evar *)
             let sigma, evar = new_evar env !evd functional_type in
@@ -838,6 +839,23 @@ let is_primitive env evd ctx var =
   let mspec = Inductive.lookup_mind_specif env ind in
   Inductive.is_primitive_record mspec
 
+let myreplace_by a1 a2 tac =
+  let open Proofview.Notations in
+  Proofview.Goal.enter (fun gl ->
+      let env = Proofview.Goal.env gl in
+      let sigma = Proofview.Goal.sigma gl in
+      if eq_constr sigma a1 a2 then Proofview.tclUNIT () else
+        let ty = Retyping.get_type_of env sigma a1 in
+        let sigma, eq = get_fresh sigma logic_eq_type in
+        let eqty = mkApp (eq, [| ty; a1; a2 |]) in
+        let sigma, _ = Typing.type_of env sigma eqty in
+        let na = Tacmach.New.pf_get_new_id (Id.of_string "Heq") gl in
+        Proofview.Unsafe.tclEVARS sigma <*>
+        Tactics.assert_by (Name na) eqty tac <*>
+        Equality.rewriteLR (mkVar na) <*>
+        Tactics.clear [na])
+
+
 let prove_unfolding_lemma info where_map f_cst funf_cst split unfold_split gl =
   let depelim h = Depelim.dependent_elim_tac (Loc.make_loc (0,0), h) (* depelim_tac h *) in
   let helpercsts = List.map (fun (cst, i) -> cst) info.helpers_info in
@@ -950,8 +968,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst split unfold_split gl =
              let id = pf_get_new_id id gl in
              if Constant.equal ev2 cst then
                tclTHENLIST
-               [to82 (Equality.replace_by a1 a2
-                                          (of82 (tclTHENLIST [solve_eq subst])));
+               [to82 (myreplace_by a1 a2 (of82 (tclTHENLIST [solve_eq subst])));
                 observe "refine after replace"
                   (to82 (letin_tac None (Name id) a2 None Locusops.allHypsAndConcl));
                 Proofview.V82.of_tactic (clear_body [id]); unfolds; aux subst s unfs] gl
@@ -1092,10 +1109,11 @@ let ind_elim_tac indid inds mutinds info ind_fun =
   let prove_methods c =
     Proofview.Goal.enter (fun gl ->
         let sigma, _ = Typing.type_of (Goal.env gl) (Goal.sigma gl) c in
+        observe_new "prove_methods" (
         tclTHENLIST [Proofview.Unsafe.tclEVARS sigma;
-                     Tactics.apply c;
+                     observe_new "apply eliminator" (Tactics.apply c);
                      Tactics.simpl_in_concl;
-                     eauto ~depth:None])
+                     observe_new "solve methods" (eauto ~depth:None)]))
   in
   let rec applyind leninds args =
     Proofview.Goal.enter (fun gl ->
@@ -1128,5 +1146,5 @@ let ind_elim_tac indid inds mutinds info ind_fun =
                      onLastHypId (fun id -> applyind (pred leninds) (mkVar id :: args))]
     | _, _ -> assert false)
   in
-  try applyind inds []
+  try observe_new "applyind" (applyind inds [])
   with e -> tclFAIL 0 (Pp.str"exception")

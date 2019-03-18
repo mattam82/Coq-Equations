@@ -14,7 +14,7 @@ where list_elements {a} (l : list (tree a)) : list a :=
 
 Lemma list_elements_spec {A} (l : list (tree A)) : list_elements l = List.concat (List.map elements l).
 Proof.
-  induction l; simp elements. rewrite IHl. simpl. auto.
+  induction l; simp elements; trivial. rewrite IHl. simpl. auto.
 Qed.
 Hint Rewrite @list_elements_spec : elements.
 

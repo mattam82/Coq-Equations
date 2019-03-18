@@ -24,8 +24,8 @@ Section ilist.
 
 End ilist.
 
-Arguments Nil [A].
-Arguments First [n].
+Arguments Nil {A}.
+Arguments First {n}.
 
 Section ilist_map.
   Variables A B : Set.
@@ -67,11 +67,11 @@ Section hlist.
   hget (HCons _ t) (HNext _ j) := hget t j.
 End hlist.
 
-Arguments HNil [A B].
-Arguments HCons [A B x ls] _ _.
+Arguments HNil {A B}.
+Arguments HCons {A B x ls} _ _.
 
-Arguments HFirst [A elm ls].
-Arguments HNext [A elm x ls] _.
+Arguments HFirst {A elm ls}.
+Arguments HNext {A elm x ls} _.
 
 Definition someTypes : list Set := nat :: bool :: nil.
 
@@ -82,7 +82,7 @@ Goal hget someValues HFirst = 5.
 Proof. reflexivity. Qed.
 
 Goal hget someValues (HNext HFirst) = true.
-Proof. simp hget. Qed.
+Proof. now simp hget. Qed.
 
 Inductive type : Set :=
 | Unit : type
@@ -94,7 +94,7 @@ Inductive exp : list type -> type -> Set :=
 | App : forall ts dom ran, exp ts (Arrow dom ran) -> exp ts dom -> exp ts ran
 | Abs : forall ts dom ran, exp (dom :: ts) ran -> exp ts (Arrow dom ran).
 
-Arguments Const [ts].
+Arguments Const {ts}.
 
 Equations typeDenote (t : type): Set :=
 typeDenote Unit := unit;
@@ -134,7 +134,7 @@ Section filist_map.
   Theorem fget_fimap : forall n (i : ffin n) (ls : filist A n),
     fget (fimap ls) i = f (fget ls i).
   Proof.
-    intros. funelim (fimap ls); depelim i; simp fget.
+    intros. funelim (fimap ls); depelim i; now simp fget.
   Qed.
 End filist_map.
 
@@ -160,7 +160,7 @@ Section fhlist.
   fhget (cons _ ls) (pair _ l) (inr i) := fhget ls l i.
 
 End fhlist.
-Arguments fhget [A B elm ls] _ _.
+Arguments fhget {A B elm ls} _ _.
 
 (*
 Section tree.
@@ -212,7 +212,7 @@ Section tree.
   | Leaf : A -> tree
   | Node : forall n, (ffin n -> tree) -> tree.
 End tree.
-Arguments Node [A n] _.
+Arguments Node {A n} _.
 
 Section rifoldr.
   Variables A B : Set.
@@ -223,7 +223,7 @@ Section rifoldr.
   rifoldr 0 _ := i;
   rifoldr (S n) get := f (get None) (rifoldr n (fun i => get (Some i))).
 End rifoldr.
-Arguments rifoldr [A B] _ _ [n] _.
+Arguments rifoldr {A B} _ _ {n} _.
 
 Equations sum (t : tree nat) : nat :=
 sum (Leaf n) := n;
@@ -281,7 +281,7 @@ Section cond.
     | false := cond n (fun i => tests (Some i)) (fun i => bodies (Some i))
   }.
 End cond.
-Arguments cond [A] _ [n] _ _.
+Arguments cond {A} _ {n} _ _.
 
 Equations exp'Denote t (e : exp' t) : type'Denote t :=
 exp'Denote (NConst n) := n;
@@ -297,10 +297,10 @@ exp'Denote (Cond _ tests bodies default) :=
 Definition someExp' : exp' Nat := Cond 1 (fun _ => BConst true) (fun _ => Plus (NConst 1) (NConst 2)) (NConst 0).
 
 Goal exp'Denote someExp' = 3.
-Proof. simp exp'Denote. Qed.
+Proof. now simp exp'Denote. Qed.
 
 Goal exp'Denote (Eq someExp' (NConst 3)) = true.
-Proof. simp exp'Denote. Qed.
+Proof. now simp exp'Denote. Qed.
 
 Section cfoldCond.
   (* A weakness? of Equations: we cannot refine section variables:
@@ -380,7 +380,7 @@ Proof.
   unshelve refine_ho (cfoldCond_elim _ _ _ _ _ _ _ _ _ _ _ _ _ _); simpl; intros.
   all:simpl; simp exp'Denote cond; rewrite ?H, ?Heq, ?Heq0;
     try rewrite ?Heq in Hind;
-    simp exp'Denote cond;
+    simp exp'Denote cond; now
   repeat (match goal with
           | [ |- context[cond_clause_2 _ _ ?E _] ] => destruct E; simp cond
           end).

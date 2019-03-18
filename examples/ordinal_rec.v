@@ -1,8 +1,9 @@
-From Equations Require Import Equations Fin.
+From Equations Require Import Equations.
+Require Import Examples.Fin.
 (* Add LoadPath "examples". *)
-Require Import ordinals.
+Require Import Examples.ordinals.
 Add Search Blacklist "_obligation_".
-From Equations Require Import TransparentEquations.
+Require Import Equations.Prop.TransparentEquations.
 
 Inductive ho : Set :=
 | base : nat -> ho

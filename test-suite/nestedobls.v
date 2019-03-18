@@ -11,7 +11,7 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Require Import Arith.
 Require Import Omega.
-From Equations Require Import Equations Telescopes.
+From Equations Require Import Equations.
 Require Import Wellfounded Relation_Definitions.
 Require Import Relation_Operators Lexicographic_Product Wf_nat.
 Unset Implicit Arguments.

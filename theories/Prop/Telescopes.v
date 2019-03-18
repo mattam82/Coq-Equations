@@ -1,5 +1,5 @@
-From Equations Require Import Loader.
-Require Import FunctionalExtensionality.
+Require Import Equations.Prop.Loader.
+From Coq Require Import FunctionalExtensionality.
 Require Import Equations.Prop.DepElim.
 (** Telescopes: allows treating variable arity fixpoints *)
 Set Universe Polymorphism.
@@ -29,32 +29,39 @@ Section TeleSigma.
   | tip_val {A} (a : A) : tele_val (tip A)
   | ext_val {A B} (a : A) (b : tele_val (B a)) : tele_val (ext A B).
 
-  Universes j k.
-
-  Equations tele_type : tele@{i} -> Type@{k} :=
-  | tip A := A -> Type@{j};
-  | ext A B := forall x : A, tele_type (B x).
-
   Equations tele_pred : tele -> Type :=
   | tip A := A -> Prop;
   | ext A B := forall x : A, tele_pred (B x).
-
-  Equations tele_fn : tele@{i} -> Type@{i} -> Type@{i} :=
-  | tip A | concl := A -> concl;
-  | ext A B | concl := forall x : A, tele_fn (B x) concl.
 
   Equations tele_rel : tele -> tele -> Type :=
   | tip A | tip B := A -> B -> Prop;
   | ext A B | ext A' B' := forall (x : A) (y : A'), tele_rel (B x) (B' y);
   | _ | _ := False.
 
-  Equations tele_type_app (T : tele@{i}) (P : tele_type T) (x : tele_sigma T) : Type@{k} :=
-  tele_type_app (tip A) P a := P a;
-  tele_type_app (ext A B) P (a, b) := tele_type_app (B a) (P a) b.
-
   Equations tele_rel_app (T U : tele) (P : tele_rel T U) (x : tele_sigma T) (y : tele_sigma U) : Type :=
   tele_rel_app (tip A) (tip A') P a a' := P a a';
   tele_rel_app (ext A B) (ext A' B') P (a, b) (a', b') := tele_rel_app (B a) (B' a') (P a a') b b'.
+
+  Universes j k.
+
+  Equations tele_fn : tele@{i} -> Type@{j} -> Type@{k} :=
+  | tip A | concl := A -> concl;
+  | ext A B | concl := forall x : A, tele_fn (B x) concl.
+
+  Equations tele_MR (T : tele@{i}) (A : Type@{j}) (f : tele_fn T A) : T -> A :=
+  tele_MR (tip A)   C f := f;
+  tele_MR (ext A B) C f := fun x => tele_MR (B x.1) C (f x.1) x.2.
+
+  Equations tele_measure (T : tele@{i}) (A : Type@{i}) (f : tele_fn T A) (R : A -> A -> Prop) : T -> T -> Prop :=
+  tele_measure T C f R := fun x y => R (tele_MR T C f x) (tele_MR T C f y).
+
+  Equations tele_type : tele@{i} -> Type@{k} :=
+  | tip A := A -> Type@{j};
+  | ext A B := forall x : A, tele_type (B x).
+
+  Equations tele_type_app (T : tele@{i}) (P : tele_type T) (x : tele_sigma T) : Type@{k} :=
+  tele_type_app (tip A) P a := P a;
+  tele_type_app (ext A B) P (a, b) := tele_type_app (B a) (P a) b.
 
   Equations tele_forall (T : tele@{i}) (P : tele_type T) : Type@{k} :=
   | tip A | P := forall x : A, P x;
@@ -116,13 +123,6 @@ Section TeleSigma.
     rewrite H. reflexivity.
   Defined.
 
-  Equations tele_MR (T : tele@{i}) (A : Type@{j}) (f : tele_fn T A) : T -> A :=
-  tele_MR (tip A)   C f := f;
-  tele_MR (ext A B) C f := fun x => tele_MR (B x.1) C (f x.1) x.2.
-
-  Equations tele_measure (T : tele@{i}) (A : Type@{j}) (f : tele_fn T A) (R : A -> A -> Prop) : T -> T -> Prop :=
-  tele_measure T C f R := fun x y => R (tele_MR T C f x) (tele_MR T C f y).
-
 End TeleSigma.
 
 Register tele_sigma as equations.tele.interp.
@@ -130,7 +130,7 @@ Register tele_measure as equations.tele.measure.
 
 Instance wf_tele_measure@{i j k}
          {T : tele@{i}} (A : Type@{j}) (f : tele_fn@{i j k} T A) (R : A -> A -> Prop) :
-  WellFounded R -> WellFounded (tele_measure T A f R).
+  WellFounded R -> WellFounded (tele_measure@{i j k} T A f R).
 Proof.
   intros. apply Program.Wf.measure_wf. apply H.
 Defined.

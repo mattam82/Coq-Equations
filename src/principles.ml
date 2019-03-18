@@ -376,10 +376,8 @@ let clear_ind_assums sigma ind ctx =
     | _ -> c
   in map_rel_context clear_assums ctx
 
-let type_of_rel t ctx =
-  match Constr.kind t with
-  | Constr.Rel k -> Vars.lift k (get_type (List.nth ctx (pred k)))
-  | c -> mkProp
+let type_of_rel k ctx =
+  Vars.lift k (get_type (List.nth ctx (pred k)))
 
 open Vars
 
@@ -427,79 +425,109 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
     let ctx = of_tuple (Anonymous, None, arity) :: sign in
     let app =
       let argsinfo =
-        CList.map_i
-          (fun i (c, (arg, _argnolets)) ->
-           let idx = signlen - arg + 1 in (* lift 1, over return value *)
-           let ty = Vars.lift (idx (* 1 for return value *))
-                         (get_type (List.nth sign (pred (pred idx))))
-           in
-           (idx, ty, lift 1 c, mkRel idx))
-          0 args
+        match args with
+        | Some (c, (arg, _argnolets)) ->
+          let idx = signlen - arg + 1 in (* lift 1, over return value *)
+          let ty = Vars.lift (idx (* 1 for return value *))
+              (get_type (List.nth sign (pred (pred idx))))
+          in
+          Some (idx, ty, lift 1 c, mkRel idx)
+        | None -> None
       in
-      let lenargs = List.length argsinfo in
       let transport = get_efresh logic_eq_case evd in
       let transport ty x y eq c cty =
         mkApp (transport,
-               [| ty; x;
+               [| ty;
                   mkLambda (Name (Id.of_string "abs"), ty,
                             Termops.replace_term !evd (Vars.lift 1 x) (mkRel 1) (Vars.lift 1 cty));
-                  c; y; eq (* equality *) |])
+                  x; y; eq; (* equality *) c |])
       in
-      let pargs, subst =
+      let lenargs, pargs, subst =
         match argsinfo with
-        | [] -> List.map (lift (lenargs+1)) pats, []
-        | (i, ty, c, rel) :: [] ->
-           List.fold_right
-           (fun t (pargs, subst) ->
-            let _idx = i + 2 * lenargs in
+        | None -> 0, List.map (lift 1) pats, []
+        | Some (i, ty, c, rel) ->
+          let lenargs = 1 in
+          let pargs, subst =
+            List.fold_right
+              (fun t (pargs, subst) ->
             let rel = lift lenargs rel in
-            let tty = lift (lenargs+1) (type_of_rel (to_constr !evd t) sign) in
-            if Termops.dependent !evd rel tty then
-              let tr =
-                if isRel !evd c then lift (lenargs+1) t
-                else
-                  transport (lift lenargs ty) rel (lift lenargs c)
-                            (mkRel 1) (lift (lenargs+1) (t)) tty
-              in
-              let t' =
-                if isRel !evd c then lift (lenargs+3) (t)
-                else transport (lift (lenargs+2) ty)
-                               (lift 2 rel)
-                               (mkRel 2)
-                               (mkRel 1) (lift (lenargs+3) (t)) (lift 2 tty)
-              in (tr :: pargs, (rel, t') :: subst)
-            else (* for equalities + return value *)
+            let default () =
+              (* for equalities + return value *)
               let t' = lift (lenargs+1) (t) in
               let t' = Termops.replace_term !evd (lift (lenargs) c) rel t' in
-              (t' :: pargs, subst)) pats ([], [])
-        | _ -> assert false
+              (t' :: pargs, subst)
+            in
+            match EConstr.kind !evd t with
+            | Constr.Rel k ->
+              let tty = lift (lenargs+1) (type_of_rel k sign) in
+              if Termops.dependent !evd rel tty then
+                let tr =
+                  if isRel !evd c then lift (lenargs+1) t
+                  else
+                    transport (lift lenargs ty) rel (lift lenargs c)
+                      (mkRel 1) (lift (lenargs+1) (t)) tty
+                in
+                let t' =
+                  if isRel !evd c then lift (lenargs+3) (t)
+                  else transport (lift (lenargs+2) ty)
+                      (lift 2 rel)
+                      (mkRel 2)
+                      (mkRel 1) (lift (lenargs+3) (t)) (lift 2 tty)
+                in (tr :: pargs, (k, t') :: subst)
+              else default ()
+            | _ -> default ()) pats ([], [])
+          in lenargs, pargs, subst
       in
-      let result, _ =
-        List.fold_left
-        (fun (acc, pred) (i, ty, c, rel) ->
-         let idx = i + 2 * lenargs in
-         if Termops.dependent !evd (mkRel idx) pred then
-           let eqty =
-             mkEq env evd (lift (lenargs+1) ty) (mkRel 1)
-                  (lift (lenargs+1) rel)
-           in
-           let pred' =
-             List.fold_left
-               (fun acc (t, tr) -> Termops.replace_term !evd t tr acc)
-               (lift 1 (Termops.replace_term !evd (mkRel idx) (mkRel 1) pred))
-               subst
-           in
-           let transportd = get_efresh logic_eq_elim evd in
-           let app =
-             mkApp (transportd,
-                    [| lift lenargs ty; lift lenargs rel;
-                       mkLambda (Name (Id.of_string "refine"), lift lenargs ty,
-                                 mkLambda (Name (Id.of_string "refine_eq"), eqty, pred'));
-                       acc; (lift lenargs c); mkRel 1 (* equality *) |])
-           in (app, subst1 c pred)
-         else (acc, subst1 c pred))
-        (mkRel (succ lenargs), lift (succ (lenargs * 2)) arity)
-        argsinfo
+      let result =
+        match argsinfo with
+        | None -> mkRel 1
+        | Some (i, ty, c, rel) ->
+          (* Lift over equality *)
+          let arity = lift 1 arity in
+          (* equations_debug Pp.(fun () -> str"Testing dependency of "  ++ Printer.pr_econstr_env env !evd arity ++
+           *                               str" in " ++ int i); *)
+          let replace_term t tr acc =
+            (* equations_debug Pp.(fun () -> str"Replacing term "  ++ Printer.pr_econstr_env env !evd t ++
+             *                               str" by " ++ Printer.pr_econstr_env env !evd tr ++ str " in " ++
+             *                               Printer.pr_econstr_env env !evd acc); *)
+            Termops.replace_term !evd t tr acc
+          in
+          if Termops.dependent !evd (mkRel i) arity then
+            let acc = mkRel 2 in (* Under refine equality, reference to inner result of refine *)
+            let pred = lift 3 arity in (* Under result binding,
+                                          refine equality, and transport by it: abstracted endpoint and eq *)
+            (* equations_debug Pp.(fun () -> str"Refined constrs "  ++
+             *                               prlist_with_sep spc (fun (rel, t) ->
+             *                                   Printer.pr_econstr_env env !evd (mkRel rel) ++ str " -> " ++
+             *                                   Printer.pr_econstr_env env !evd t) subst); *)
+            (* The predicate is dependent on the refined variable. *)
+            let eqty =
+              mkEq env evd (lift 2 ty) (mkRel 1) (lift 2 rel)
+            in
+            let pred' =
+              let absterm = replace_term (mkRel (i + 3)) (mkRel 2) pred in
+              (* equations_debug Pp.(fun () -> str"Abstracted term "  ++ Printer.pr_econstr_env env !evd absterm); *)
+              List.fold_left
+                (fun acc (t, tr) -> replace_term (mkRel (t + 4)) tr acc)
+                absterm subst
+            in
+            let app =
+              if noccurn !evd 1 pred' then
+                let transport = get_efresh logic_eq_case evd in
+                mkApp (transport,
+                       [| lift lenargs ty;
+                          mkLambda (Name (Id.of_string "refine"), lift lenargs ty, subst1 mkProp pred');
+                          lift lenargs rel; lift lenargs c; mkRel 1 (* equality *); acc |])
+
+              else
+                let transportd = get_efresh logic_eq_elim evd in
+                mkApp (transportd,
+                       [| lift lenargs ty; lift lenargs rel;
+                          mkLambda (Name (Id.of_string "refine"), lift lenargs ty,
+                                    mkLambda (Name (Id.of_string "refine_eq"), eqty, pred'));
+                          acc; (lift lenargs c); mkRel 1 (* equality *) |])
+            in app
+          else mkRel 2
       in
       let ppath = (* The preceding P *)
         match path with
@@ -516,21 +544,22 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
                  pargs
       in
       let papp = applistc papp [result] in
-      let refeqs = List.map (fun (i, ty, c, rel) -> mkEq env evd ty c rel) argsinfo in
-      let app c = List.fold_right
-                  (fun c acc ->
-                   mkProd (Name (Id.of_string "Heq"), c, acc))
-                  refeqs c
+      let refeqs = Option.map (fun (i, ty, c, rel) -> mkEq env evd ty c rel) argsinfo in
+      let app c =
+        match refeqs with
+        | Some eqty -> mkProd (Name (Id.of_string "Heq"), eqty, c)
+        | None -> c
       in
       let indhyps =
-        List.concat
-        (List.map (fun (c, _) ->
-              let hyps, hypslen, c' =
-                abstract_rec_calls !evd user_obls ~do_subst:false
-                   is_rec signlen protos (Reductionops.nf_beta env !evd (lift 1 c))
-              in
-              let lifthyps = lift_rel_contextn (signlen + 2) (- (pred i)) hyps in
-                lifthyps) args)
+        match args with
+        | Some (c, _) ->
+          let hyps, hypslen, c' =
+            abstract_rec_calls !evd user_obls ~do_subst:false
+              is_rec signlen protos (Reductionops.nf_beta env !evd (lift 1 c))
+          in
+          let lifthyps = lift_rel_contextn (signlen + 2) (- (pred i)) hyps in
+          lifthyps
+        | None -> []
       in
         it_mkLambda_or_LetIn
           (app (it_mkProd_or_clean env !evd (lift (List.length indhyps) papp)
@@ -683,7 +712,7 @@ let subst_protos s gr =
     (equations_debug Pp.(fun () -> str"Fixed hint " ++ Printer.pr_econstr_env env sigma term);
      let sigma, _ = Typing.type_of env sigma term in
      let sigma = Evd.minimize_universes sigma in
-    Hints.IsConstr (term, Evd.universe_context_set sigma))
+    Hints.IsConstr (Evarutil.nf_evar sigma term, Evd.universe_context_set sigma))
   else Hints.IsGlobRef gr
 
 let declare_wf_obligations s info =
@@ -776,7 +805,7 @@ let subst_rec_programs env evd ps =
       (* Feedback.msg_debug Pp.(str"In subst_programs, cut_problem s'" ++ pr_context env !evd (pi1 rec_prob)); *)
       let rec_cutprob = cut_problem s' (pi1 rec_prob) in
       let splitting' = aux rec_cutprob s' program' oterm path' split' in
-      let term', ty' = term_of_tree env evd splitting' in
+      let term', ty' = term_of_tree env evd prog_info.program_sort splitting' in
       { program_rec = None;
         program_info = program_info';
         program_prob = id_subst (pi3 cutprob_sign);
@@ -920,7 +949,7 @@ let subst_rec_programs env evd ps =
                    else (mapping_constr !evd subst c) :: acc
                  else (mapping_constr !evd subst c) :: acc) 0 [] args
            in
-           let term', _ = term_of_tree env evd s' in
+           let term', _ = term_of_tree env evd p.program_info.program_sort s' in
            term', List.rev (List.map (Reductionops.nf_beta env !evd) args'), !refarg
          else
            let first, last = CList.chop (List.length s) (List.map (mapping_constr !evd subst) args) in
@@ -1100,8 +1129,7 @@ let computations env evd alias refine p eqninfo =
        in
        let where_comp =
          (termf, alias, w.where_orig, pi1 wsmash, (* substl smashsubst *) arity,
-          pattern_instance wsmash,
-          [] (*?*), comps)
+          pattern_instance wsmash, None (* no refinement *), comps)
        in (lhsterm :: wheres, where_comp :: where_comps)
      in
      let inst, wheres = List.fold_right where_comp where ([],[]) in
@@ -1144,7 +1172,7 @@ let computations env evd alias refine p eqninfo =
       RProgram (applistc info.refined_term info.refined_args),
       Some [(info.refined_term, filter), None, info.refined_path, pi1 info.refined_newprob,
             info.refined_newty, refinedpats,
-            [mapping_constr evd info.refined_newprob_to_lhs c, info.refined_arg],
+            Some (mapping_constr evd info.refined_newprob_to_lhs c, info.refined_arg),
             computations env info.refined_newprob info.refined_term None fsubst (Regular, true) cs]]
 
   in computations env prob f alias [] refine p.program_splitting
@@ -1192,10 +1220,10 @@ let declare_funelim info env evd is_rec protos progs
     let evd, f = new_global evd f_gr in
     let evd, elimcgr = new_global evd elimgr in
     let evd, cl = functional_elimination_class evd in
-    let args_of_elim = coq_nat_of_int nargs in
+    let evd, args_of_elim = coq_nat_of_int evd nargs in
     let args = [Retyping.get_type_of env evd f; f;
                 Retyping.get_type_of env evd elimcgr;
-                of_constr args_of_elim; elimcgr]
+                args_of_elim; elimcgr]
     in
     let instid = Nameops.add_prefix "FunctionalElimination_" id in
     let poly = is_polymorphic info in
@@ -1203,7 +1231,11 @@ let declare_funelim info env evd is_rec protos progs
   in
   let tactic = ind_elim_tac elimc leninds (List.length progs) info indgr in
   let _ =
-    try e_type_of (Global.env ()) evd newty
+    try
+      equations_debug Pp.(fun () -> str"Type-checking elimination principle: " ++ fnl () ++
+                                    Printer.pr_econstr_env env !evd newty);
+      ignore (e_type_of (Global.env ()) evd newty);
+      equations_debug (fun () -> Pp.str"Functional elimination principle type-checked");
     with Type_errors.TypeError (env, tyerr) ->
       CErrors.user_err Pp.(str"Error while typechecking elimination principle type: " ++
                            Himsg.explain_pretype_error env !evd
@@ -1273,11 +1305,14 @@ let declare_funind info alias env evd is_rec protos progs
       try declare_funelim info.term_info env evd is_rec protos progs
             ind_stmts all_stmts sign app subst inds kn comb sort indgr ectx
       with Type_errors.TypeError (env, tyerr) ->
-        CErrors.user_err Pp.(str"Elimination principle could not be proved automatically: " ++
+        CErrors.user_err Pp.(str"Functional elimination principle could not be proved automatically: " ++
                              Himsg.explain_pretype_error env !evd
                                (Pretype_errors.TypingError (Himsg.map_ptype_error EConstr.of_constr tyerr)))
+         | Pretype_errors.PretypeError (env, sigma, tyerr) ->
+           CErrors.user_err Pp.(str"Functional elimination principle could not be proved automatically: " ++
+                                Himsg.explain_pretype_error env sigma tyerr)
          | e -> Feedback.msg_warning Pp.(str "Elimination principle could not be proved automatically: " ++ fnl () ++
-                                         CErrors.print e);
+                                         CErrors.print e)
     in
     let evd = Evd.from_env env in
     let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in
@@ -1315,11 +1350,11 @@ let declare_funind info alias env evd is_rec protos progs
   let tac = (ind_fun_tac is_rec f info id !nested_statements progs) in
   try launch_ind tac
   with Type_errors.TypeError (env, tyerr) ->
-    CErrors.user_err Pp.(str"Elimination principle could not be proved automatically: " ++
+    CErrors.user_err Pp.(str"Functional induction principle could not be proved automatically: " ++
                          Himsg.explain_pretype_error env !evd
                            (Pretype_errors.TypingError (Himsg.map_ptype_error EConstr.of_constr tyerr)))
      | e ->
-       Feedback.msg_warning Pp.(str "Induction principle could not be proved automatically: " ++ fnl () ++
+       Feedback.msg_warning Pp.(str "Functional induction principle could not be proved automatically: " ++ fnl () ++
                                 CErrors.print e);
        launch_ind (Proofview.tclUNIT ())
 
@@ -1357,7 +1392,7 @@ let all_computations env evd alias progs =
     let pi = p.program_info in
     let topcomp = (((eqninfo.equations_f,[]), alias, [pi.program_id],
                     pi.program_sign, pi.program_arity,
-                    List.rev_map pat_constr (pi2 eqninfo.equations_prob), [],
+                    List.rev_map pat_constr (pi2 eqninfo.equations_prob), None,
                     (kind_of_prog pi,false)), top) in
     topcomp :: (rest @ acc)
   in
@@ -1552,6 +1587,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
     let inds =
       List.rev_map (fun (entry, sign, arity) ->
           Entries.{ entry with
+                    mind_entry_lc = List.map (to_constr sigma) (List.map of_constr entry.mind_entry_lc);
                     mind_entry_arity =
                       to_constr sigma (it_mkProd_or_LetIn (mkProd (Anonymous, arity,
                                                                   mkSort (Sorts.sort_of_univ sort))) sign) })

@@ -1,0 +1,143 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link href="coqdoc.css" rel="stylesheet" type="text/css" />
+<title>Examples.bove_capretta</title>
+</head>
+
+<body>
+
+<div id="page">
+
+<div id="header">
+</div>
+
+<div id="main">
+
+<div class="code">
+<span class="id" title="keyword">From</span> <span class="id" title="keyword">Equations</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="var">DepElim</span> <span class="id" title="keyword">Equations</span>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="var">Arith</span> <span class="id" title="var">Lia</span> <span class="id" title="var">Relations</span> <span class="id" title="var">Utf8</span>.<br/>
+<span class="id" title="keyword">Import</span> <span class="id" title="var">Sigma_Notations</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Inductive</span> <span class="id" title="var">f91_graph</span> : <span class="id" title="var">nat</span> → <span class="id" title="var">nat</span> → <span class="id" title="keyword">Prop</span> :=<br/>
+| <span class="id" title="var">f91_gt</span> <span class="id" title="var">n</span> : <span class="id" title="var">n</span> &gt; 100 → <span class="id" title="var">f91_graph</span> <span class="id" title="var">n</span> (<span class="id" title="var">n</span> - 10)<br/>
+| <span class="id" title="var">f91_le</span> <span class="id" title="var">n</span> <span class="id" title="var">nest</span> <span class="id" title="var">res</span> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">n</span> ≤ 100 → <span class="id" title="var">f91_graph</span> (<span class="id" title="var">n</span> + 11) <span class="id" title="var">nest</span> →<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">f91_graph</span> <span class="id" title="var">nest</span> <span class="id" title="var">res</span> →<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">f91_graph</span> <span class="id" title="var">n</span> <span class="id" title="var">res</span>.<br/>
+<span class="id" title="var">Derive</span> <span class="id" title="var">Signature</span> <span class="id" title="keyword">for</span> <span class="id" title="var">f91_graph</span>.<br/>
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">f91_spec</span> <span class="id" title="var">n</span> <span class="id" title="var">m</span> : <span class="id" title="var">f91_graph</span> <span class="id" title="var">n</span> <span class="id" title="var">m</span> → <span class="id" title="keyword">if</span> <span class="id" title="var">le_lt_dec</span> <span class="id" title="var">n</span> 100 <span class="id" title="keyword">then</span> <span class="id" title="var">m</span> = 91 <span class="id" title="keyword">else</span> <span class="id" title="var">m</span> = <span class="id" title="var">n</span> - 10.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">induction</span> 1; <span class="id" title="tactic">repeat</span> <span class="id" title="tactic">destruct</span> <span class="id" title="var">le_lt_dec</span>; <span class="id" title="tactic">try</span> <span class="id" title="var">lia</span>; <span class="id" title="tactic">auto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="comment">(*&nbsp;Do&nbsp;not&nbsp;<span class="inlinecode"><span class="id" title="tactic">simpl</span></span>&nbsp;the&nbsp;(101&nbsp;-&nbsp;n)&nbsp;call&nbsp;*)</span><br/>
+<span class="id" title="var">Arguments</span> <span class="id" title="var">minus</span> : <span class="id" title="tactic">simpl</span> <span class="id" title="var">never</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Equations</span>? <span class="id" title="var">f91_exists</span> <span class="id" title="var">n</span> : <span class="id" title="var">Σ</span> <span class="id" title="var">r</span>, <span class="id" title="var">f91_graph</span> <span class="id" title="var">n</span> <span class="id" title="var">r</span> <span class="id" title="tactic">by</span> <span class="id" title="keyword">wf</span> (101 - <span class="id" title="var">n</span>) <span class="id" title="var">lt</span> :=<br/>
+<span class="id" title="var">f91_exists</span> <span class="id" title="var">n</span> <span class="id" title="keyword">with</span> <span class="id" title="var">le_lt_dec</span> <span class="id" title="var">n</span> 100 := {<br/>
+&nbsp;&nbsp;| <span class="id" title="tactic">left</span> <span class="id" title="var">H</span> := ((<span class="id" title="var">f91_exists</span> (<span class="id" title="var">f91_exists</span> (<span class="id" title="var">n</span> + 11)).1).1, <span class="id" title="var">_</span>) ;<br/>
+&nbsp;&nbsp;| <span class="id" title="tactic">right</span> <span class="id" title="var">H</span> := (<span class="id" title="var">n</span> - 10, <span class="id" title="var">_</span>) }.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">all</span>:<span class="id" title="tactic">hnf</span>. 2-3:<span class="id" title="var">edestruct</span> <span class="id" title="var">f91_exists</span>; <span class="id" title="var">cbn</span>.<br/>
+&nbsp;&nbsp;3:<span class="id" title="tactic">destruct</span> <span class="id" title="var">f91_exists</span>. <span class="id" title="var">lia</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="var">f91_spec</span> <span class="id" title="tactic">in</span> <span class="id" title="var">pr2</span>. <span class="id" title="tactic">destruct</span> <span class="id" title="var">le_lt_dec</span>; <span class="id" title="tactic">subst</span>; <span class="id" title="var">lia</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">econstructor</span> 2; <span class="id" title="tactic">eauto</span>. <span class="id" title="tactic">constructor</span>. <span class="id" title="var">lia</span>.<br/>
+<span class="id" title="keyword">Defined</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">f91</span> <span class="id" title="var">n</span> : (<span class="id" title="var">f91_exists</span> <span class="id" title="var">n</span>).1 = <span class="id" title="keyword">if</span> <span class="id" title="var">le_lt_dec</span> <span class="id" title="var">n</span> 100 <span class="id" title="keyword">then</span> 91 <span class="id" title="keyword">else</span> <span class="id" title="var">n</span> - 10.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">f91_exists</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">generalize</span> (<span class="id" title="var">f91_spec</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">pr2</span>).<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">le_lt_dec</span>; <span class="id" title="tactic">auto</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Extraction</span> <span class="id" title="var">f91_exists</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Inductive</span> <span class="id" title="var">f91_dom</span> : <span class="id" title="var">nat</span> → <span class="id" title="keyword">Prop</span> :=<br/>
+| <span class="id" title="var">f91_dom_gt</span> <span class="id" title="var">n</span> : <span class="id" title="var">n</span> &gt; 100 → <span class="id" title="var">f91_dom</span> <span class="id" title="var">n</span><br/>
+| <span class="id" title="var">f91_dom_le</span> <span class="id" title="var">n</span> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">n</span> ≤ 100 → <span class="id" title="var">f91_dom</span> (<span class="id" title="var">n</span> + 11) →<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="keyword">∀</span> <span class="id" title="var">n'</span>, <span class="id" title="var">f91_graph</span> (<span class="id" title="var">n</span> + 11) <span class="id" title="var">n'</span> → <span class="id" title="var">f91_dom</span> <span class="id" title="var">n'</span>) →<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">f91_dom</span> <span class="id" title="var">n</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">le_nle</span> <span class="id" title="var">n</span> : <span class="id" title="var">n</span> ≤ 100 → 100 &lt; <span class="id" title="var">n</span> → <span class="id" title="var">False</span>.<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="var">lia</span>. <span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">f91_dom_le_inv_l</span> {<span class="id" title="var">n</span>} (<span class="id" title="var">prf</span> : <span class="id" title="var">f91_dom</span> <span class="id" title="var">n</span>) (<span class="id" title="var">Hle</span> : <span class="id" title="var">n</span> ≤ 100) : <span class="id" title="var">f91_dom</span> (<span class="id" title="var">n</span> + 11) :=<br/>
+| <span class="id" title="var">f91_dom_gt</span> <span class="id" title="var">n</span> <span class="id" title="var">H</span> | <span class="id" title="var">Hle</span> := <span class="id" title="keyword">ltac</span>:(<span class="id" title="tactic">elimtype</span> <span class="id" title="var">False</span>; <span class="id" title="tactic">eauto</span> <span class="id" title="keyword">using</span> <span class="id" title="var">le_nle</span>);<br/>
+| <span class="id" title="var">f91_dom_le</span> <span class="id" title="var">n</span> <span class="id" title="var">H</span> <span class="id" title="var">Hd</span> <span class="id" title="var">Hg</span> | <span class="id" title="var">Hle</span> := <span class="id" title="var">Hd</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">f91_dom_le_inv_r</span> {<span class="id" title="var">n</span>} (<span class="id" title="var">prf</span> : <span class="id" title="var">f91_dom</span> <span class="id" title="var">n</span>) (<span class="id" title="var">Hle</span> : <span class="id" title="var">n</span> ≤ 100) : (<span class="id" title="keyword">∀</span> <span class="id" title="var">n'</span>, <span class="id" title="var">f91_graph</span> (<span class="id" title="var">n</span> + 11) <span class="id" title="var">n'</span> → <span class="id" title="var">f91_dom</span> <span class="id" title="var">n'</span>) :=<br/>
+| <span class="id" title="var">f91_dom_gt</span> <span class="id" title="var">n</span> <span class="id" title="var">H</span> | <span class="id" title="var">Hle</span> := <span class="id" title="keyword">ltac</span>:(<span class="id" title="tactic">elimtype</span> <span class="id" title="var">False</span>; <span class="id" title="tactic">eauto</span> <span class="id" title="keyword">using</span> <span class="id" title="var">le_nle</span>);<br/>
+| <span class="id" title="var">f91_dom_le</span> <span class="id" title="var">n</span> <span class="id" title="var">H</span> <span class="id" title="var">Hd</span> <span class="id" title="var">Hg</span> | <span class="id" title="var">Hle</span> := <span class="id" title="var">Hg</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Module</span> <span class="id" title="var">WithSigma</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Equations</span>? <span class="id" title="var">f91_ongraph</span> <span class="id" title="var">n</span> (<span class="id" title="var">prf</span> : <span class="id" title="var">f91_dom</span> <span class="id" title="var">n</span>) : <span class="id" title="var">Σ</span> <span class="id" title="var">r</span>, <span class="id" title="var">f91_graph</span> <span class="id" title="var">n</span> <span class="id" title="var">r</span> <span class="id" title="tactic">by</span> <span class="id" title="keyword">struct</span> <span class="id" title="var">prf</span> :=<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">f91_ongraph</span> <span class="id" title="var">n</span> <span class="id" title="var">prf</span> <span class="id" title="keyword">with</span> <span class="id" title="var">le_lt_dec</span> <span class="id" title="var">n</span> 100 :=<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ | <span class="id" title="tactic">left</span> <span class="id" title="var">H</span> ⇒ ((<span class="id" title="var">f91_ongraph</span> (<span class="id" title="var">f91_ongraph</span> (<span class="id" title="var">n</span> + 11) <span class="id" title="var">_</span>).1 <span class="id" title="var">_</span>).1, <span class="id" title="var">_</span>);<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">right</span> <span class="id" title="var">H</span> ⇒ (<span class="id" title="var">n</span> - 10, <span class="id" title="var">_</span>) }.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">clear</span> <span class="id" title="var">f91_ongraph</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">prf</span>. <span class="id" title="tactic">elimtype</span> <span class="id" title="var">False</span>; <span class="id" title="var">lia</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="var">prf</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">f91_ongraph</span>. <span class="id" title="tactic">clear</span> <span class="id" title="var">f91_ongraph</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">eapply</span> <span class="id" title="var">f91_dom_le_inv_r</span> <span class="id" title="tactic">in</span> <span class="id" title="var">prf</span>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">f91_ongraph</span>. <span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> ×.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">f91_ongraph</span>. <span class="id" title="tactic">clear</span> <span class="id" title="var">f91_ongraph</span>. <span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> ×.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">econstructor</span> 2; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">constructor</span>. <span class="id" title="var">lia</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Defined</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Extraction</span> <span class="id" title="var">f91_ongraph</span>.<br/>
+<span class="id" title="keyword">End</span> <span class="id" title="var">WithSigma</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Module</span> <span class="id" title="var">WithSubset</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Set</span> <span class="id" title="var">Program</span> <span class="id" title="var">Mode</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Equations</span>? <span class="id" title="var">f91_ongraph</span> <span class="id" title="var">n</span> (<span class="id" title="var">prf</span> : <span class="id" title="var">f91_dom</span> <span class="id" title="var">n</span>) : { <span class="id" title="var">r</span> | <span class="id" title="var">f91_graph</span> <span class="id" title="var">n</span> <span class="id" title="var">r</span> } <span class="id" title="tactic">by</span> <span class="id" title="keyword">struct</span> <span class="id" title="var">prf</span> :=<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">f91_ongraph</span> <span class="id" title="var">n</span> <span class="id" title="var">prf</span> <span class="id" title="keyword">with</span> <span class="id" title="var">le_lt_dec</span> <span class="id" title="var">n</span> 100 :=<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ | <span class="id" title="tactic">left</span> <span class="id" title="var">H</span> ⇒ <span class="id" title="var">f91_ongraph</span> (<span class="id" title="var">f91_ongraph</span> (<span class="id" title="var">n</span> + 11) <span class="id" title="var">_</span>) <span class="id" title="var">_</span>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">right</span> <span class="id" title="var">H</span> ⇒ <span class="id" title="var">n</span> - 10 }.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">clear</span> <span class="id" title="var">f91_ongraph</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">prf</span>. <span class="id" title="tactic">elimtype</span> <span class="id" title="var">False</span>; <span class="id" title="var">lia</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="var">prf</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">f91_ongraph</span>. <span class="id" title="tactic">clear</span> <span class="id" title="var">f91_ongraph</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">eapply</span> <span class="id" title="var">f91_dom_le_inv_r</span> <span class="id" title="tactic">in</span> <span class="id" title="var">prf</span>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">f91_ongraph</span>. <span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> ×.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">f91_ongraph</span>. <span class="id" title="tactic">clear</span> <span class="id" title="var">f91_ongraph</span>. <span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> ×.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">econstructor</span> 2; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">constructor</span>. <span class="id" title="var">lia</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Defined</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">f91_ongraph_spec</span> <span class="id" title="var">n</span> <span class="id" title="var">dom</span> : (<span class="id" title="var">f91_ongraph</span> <span class="id" title="var">n</span> <span class="id" title="var">dom</span> :&gt;) = <span class="id" title="keyword">if</span> <span class="id" title="var">le_lt_dec</span> <span class="id" title="var">n</span> 100 <span class="id" title="keyword">then</span> 91 <span class="id" title="keyword">else</span> <span class="id" title="var">n</span> - 10.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">f91_ongraph</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">generalize</span> (<span class="id" title="var">f91_spec</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">f</span>).<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">le_lt_dec</span>; <span class="id" title="tactic">auto</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Extraction</span> <span class="id" title="var">f91_ongraph</span>.<br/>
+<span class="id" title="keyword">End</span> <span class="id" title="var">WithSubset</span>.<br/>
+</div>
+<hr/>This page has been generated by <a href="http://coq.inria.fr/">coqdoc</a>
+</div>
+
+</div>
+
+</body>
+</html>

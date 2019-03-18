@@ -9,6 +9,7 @@ Require Import Equations.Tactics Equations.Prop.Classes Equations.Prop.DepElim
         Equations.Prop.Subterm Equations.Prop.FunctionalInduction.
 
 Ltac Equations.Init.simpl_equations ::= Equations.Prop.DepElim.simpl_equations.
+Ltac Equations.Init.simplify_equalities ::= Equations.Prop.DepElim.simplify_dep_elim.
 Ltac Equations.Init.depelim H ::= Equations.Prop.DepElim.depelim H.
 Ltac Equations.Init.depind H ::= Equations.Prop.DepElim.depind H.
 Ltac Equations.Init.noconf H ::= Equations.Prop.DepElim.noconf H.
@@ -68,7 +69,7 @@ Ltac solve_noconf_prf := intros;
   on_last_hyp ltac:(fun id => destruct id) ; (* Subtitute a = b *)
   on_last_hyp ltac:(fun id =>
                       destruct_sigma id;
-                      elim id) ; (* Destruct the inductive object a *)
+                      destruct id) ; (* Destruct the inductive object a *)
   constructor.
 
 Ltac solve_noconf_inv_eq a b :=
@@ -91,7 +92,7 @@ Ltac solve_noconf_inv_equiv :=
   (* Subtitute a = b *)
   on_last_hyp ltac:(fun id => destruct id) ;
   (* Destruct the inductive object a *)
-  on_last_hyp ltac:(fun id => destruct_sigma id; elim id) ;
+  on_last_hyp ltac:(fun id => destruct_sigma id; destruct id) ;
   simpl; constructor.
 
 Ltac solve_noconf := simpl; intros;

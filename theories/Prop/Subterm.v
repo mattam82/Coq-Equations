@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-From Coq Require Import Wf_nat Arith.Lt Bvector Relations.
+From Coq Require Import Wf_nat Relations.
 From Coq Require Import Wellfounded Relation_Definitions.
 From Coq Require Import Relation_Operators Lexicographic_Product Wf_nat.
 From Coq Require Export Program.Wf FunctionalExtensionality.
@@ -79,6 +79,19 @@ Extraction Inline FixWf Fix Fix_F.
 Create HintDb subterm_relation discriminated.
 Create HintDb rec_decision discriminated.
 
+(** This is used to simplify the proof-search for recursive call obligations. *)
+
+Ltac simpl_let :=
+  match goal with
+    [ H : let _ := ?t in _ |- _ ] =>
+    match t with
+    | fixproto => fail 1
+    | _ => cbv zeta in H
+    end
+  end.
+
+Hint Extern 40 => progress (cbv beta in * || simpl_let) : Below.
+
 (** We can automatically use the well-foundedness of a relation to get
    the well-foundedness of its transitive closure.
    Note that this definition is transparent as well as [wf_clos_trans],
@@ -101,7 +114,7 @@ Proof. red. apply measure_wf. apply H. Defined.
 Hint Extern 0 (MR _ _ _ _) => red : Below.
 
 Instance lt_wf : WellFounded lt := lt_wf.
-Hint Resolve lt_n_Sn : Below.
+Hint Resolve Arith.Lt.lt_n_Sn : Below.
 
 (** We also add hints for transitive closure, not using [t_trans] but forcing to 
    build the proof by successive applications of the inner relation. *)

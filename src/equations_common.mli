@@ -137,9 +137,7 @@ val e_new_global : esigma -> global_reference -> constr
 (** {6 Linking to Coq} *)
 
 val global_reference : Id.t -> global_reference
-(* Unsafe, avoid *)
-val constr_of_ident : Id.t -> constr
-  
+
 val get_class : Evd.evar_map -> constr -> Typeclasses.typeclass * EConstr.EInstance.t
 
 val make_definition :
@@ -223,7 +221,7 @@ val logic_signature_pack : lazy_ref
 
 val get_fresh : Evd.evar_map -> lazy_ref -> Evd.evar_map * constr
 val get_efresh : lazy_ref -> esigma -> constr
-val is_lglobal : lazy_ref -> Constr.constr -> bool
+val is_lglobal : Evd.evar_map -> lazy_ref -> EConstr.constr -> bool
 
 val coq_sigma : lazy_ref
 val coq_sigmaI : lazy_ref
@@ -252,7 +250,7 @@ val logic_tele_forall_unpack : lazy_ref
 val coq_zero : lazy_ref
 val coq_succ : lazy_ref
 val coq_nat : lazy_ref
-val coq_nat_of_int : int -> Constr.t
+val coq_nat_of_int : Evd.evar_map -> int -> Evd.evar_map * EConstr.t
 val int_of_coq_nat : Constr.t -> int
 
 val coq_fix_proto : lazy_ref
@@ -263,7 +261,7 @@ val mkapp : Environ.env -> esigma -> lazy_ref -> constr array -> constr
 
 val mkEq : Environ.env ->
   esigma -> types -> constr -> constr -> constr
-val mkRefl : Environ.env -> esigma -> types -> constr -> constr
+val mkRefl : Environ.env -> esigma -> ?inst:EConstr.EInstance.t -> types -> constr -> constr
 
 (** Bindings to theories/ files *)
 
@@ -416,7 +414,7 @@ val to_peuniverses : 'a Univ.puniverses -> 'a peuniverses
 val from_peuniverses : Evd.evar_map -> 'a peuniverses -> 'a Univ.puniverses
 
 val is_global : Evd.evar_map -> global_reference -> constr -> bool
-val constr_of_global_univ : Evd.evar_map -> global_reference peuniverses -> constr
+
 val smash_rel_context : Evd.evar_map -> rel_context -> rel_context (** expand lets in context *)
 
 val rel_vect : int -> int -> constr array
@@ -441,4 +439,14 @@ val splay_prod_n_assum : env -> Evd.evar_map -> int -> types -> rel_context * ty
 
 (** Already in Coq master *)
 val register_ref : Libnames.qualid -> Libnames.qualid -> unit
-val mkRef : global_reference * Univ.Instance.t -> Constr.constr
+val mkRef : global_reference * EConstr.EInstance.t -> EConstr.constr
+
+(* Universes *)
+val nonalgebraic_universe_level_of_universe :
+  Environ.env -> Evd.evar_map -> Univ.Universe.t -> Evd.evar_map * Univ.Level.t * Univ.Universe.t
+val instance_of :
+  Environ.env ->
+  Evd.evar_map ->
+  ?argu:EConstr.EInstance.t ->
+  Univ.Universe.t ->
+  Evd.evar_map * EConstr.EInstance.t * Univ.Universe.t

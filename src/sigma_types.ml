@@ -30,9 +30,6 @@ let mkConstructG c u =
 let mkIndG c u =
   mkIndU (destIndRef (Lazy.force c), u)
 
-let mkConstG c u =
-  mkConstU (destConstRef (Lazy.force c), u)
-
 let mkAppG evd gr args = 
   let c = e_new_global evd gr in
     mkApp (c, args)
@@ -81,7 +78,6 @@ let decompose_indapp sigma f args =
 
 (* let sigT_info = lazy (make_case_info (Global.env ()) (Globnames.destIndRef (Lazy.force sigT).typ) LetStyle) *)
 
-let mkRef sigma (c, u) = EConstr.of_constr (Universes.constr_of_global_univ (c, EConstr.EInstance.kind sigma u))
 let telescope_intro env sigma len tele =
   let rec aux n ty =
     let ty = Reductionops.whd_all env sigma ty in
@@ -95,47 +91,67 @@ let telescope_intro env sigma len tele =
                       (push_rel (Context.Rel.Declaration.LocalAssum (na, t)) env) sigma b)
         | _ -> p
       in
-      let sigmaI = mkApp (mkRef sigma (Lazy.force coq_sigmaI, u),
+      let sigmaI = mkApp (mkRef (Lazy.force coq_sigmaI, u),
                           [| a; p; mkRel n; aux (pred n) (beta_applist sigma (p, [mkRel n])) |]) in
       sigmaI
     | _ -> mkRel n
   in aux len tele
 
-let telescope_of_context env evd ctx =
+let telescope_of_context env sigma ctx =
+  let sigma, teleinterp = new_global sigma (Lazy.force logic_tele_interp) in
+  let _, u = destConst sigma teleinterp in
   let rec aux = function
     | [] -> raise (Invalid_argument "Cannot make telescope out of empty context")
-    | [decl] -> mkAppG evd (Lazy.force logic_tele_tip) [|get_type decl|]
+    | [decl] ->
+      mkApp (mkRef (Lazy.force logic_tele_tip, u), [|get_type decl|])
     | d :: tl ->
       let ty = get_type d in
-      mkAppG evd (Lazy.force logic_tele_ext) [| ty; mkLambda (get_name d, ty, aux tl) |]
+      mkApp (mkRef (Lazy.force logic_tele_ext, u), [| ty; mkLambda (get_name d, ty, aux tl) |])
   in
   let tele = aux (List.rev ctx) in
-  let tele_interp = mkAppG evd (Lazy.force logic_tele_interp) [| tele |] in
-  tele, tele_interp
+  let tele_interp = mkApp (teleinterp, [| tele |]) in
+  (* Infer universe constraints *)
+  let sigma, _ = Typing.type_of env sigma tele_interp in
+  sigma, tele, tele_interp
 
-let telescope evd = function
+let telescope env evd = function
   | [] -> assert false
   | [d] -> let (n, _, t) = to_tuple d in t, [of_tuple (n, Some (mkRel 1), Vars.lift 1 t)],
                                         mkRel 1
   | d :: tl ->
       let (n, _, t) = to_tuple d in
       let len = succ (List.length tl) in
+      let ts = Retyping.get_sort_of (push_rel_context tl env) !evd t in
+      let tuniv = Sorts.univ_of_sort ts in
       let ty, tys =
-	List.fold_left
-	  (fun (ty, tys) d ->
+        let rec aux (ty, tyuniv, tys) ds =
+          match ds with
+          | [] -> (ty, tys)
+          | d :: ds ->
             let (n, b, t) = to_tuple d in
-	    let pred = mkLambda (n, t, ty) in
-	    let sigty = mkAppG evd (Lazy.force coq_sigma) [|t; pred|] in
+            let pred = mkLambda (n, t, ty) in
+            let sigty = mkAppG evd (Lazy.force coq_sigma) [|t; pred|] in
             let _, u = destInd !evd (fst (destApp !evd sigty)) in
-	      (sigty, (u, pred) :: tys))
-	  (t, []) tl
+            let ua = Univ.Instance.to_array (EInstance.kind !evd u) in
+            let l = Univ.Universe.make ua.(0) in
+            let env = push_rel_context ds env in
+            (* Ensure that the universe of the sigma is only >= those of t and pred *)
+            let enforce_leq env sigma t cstr =
+              let ts = Retyping.get_sort_of env sigma t in
+              let su = Sorts.univ_of_sort ts in
+              Univ.enforce_leq su l cstr
+            in
+            let cstrs = enforce_leq env !evd t (Univ.enforce_leq tyuniv l Univ.Constraint.empty) in
+            let () = evd := Evd.add_constraints !evd cstrs in
+            aux (sigty, l, (u, pred) :: tys) ds
+        in aux (t, tuniv, []) tl
       in
       let constr, _ = 
 	List.fold_right (fun (u, pred) (intro, k) ->
 	  let pred = Vars.lift k pred in
 	  let (n, dom, codom) = destLambda !evd pred in
 	  let intro =
-            mkApp (constr_of_global_univ !evd (Lazy.force coq_sigmaI, u),
+            mkApp (mkRef (Lazy.force coq_sigmaI, u),
                    [| dom; pred; mkRel k; intro|]) in
 	    (intro, succ k))
 	  tys (mkRel 1, 2)
@@ -154,7 +170,7 @@ let sigmaize ?(liftty=0) env0 evd pars f =
   let ty = Retyping.get_type_of env !evd f in
   let ctx, concl = splay_prod_assum env !evd ty in
   let ctx = smash_rel_context !evd ctx in
-  let argtyp, letbinders, make = telescope evd ctx in
+  let argtyp, letbinders, make = telescope env evd ctx in
     (* Everyting is in env, move to index :: letbinders :: env *) 
   let lenb = List.length letbinders in
   let pred =
@@ -266,23 +282,30 @@ let () =
             { derive_name = "Signature";
               derive_fn = make_derive_ind fn })
 
-let get_signature env sigma ty =
+let get_signature env sigma0 ty =
   try
-    let sigma', (idx, _) = 
+    let sigma, (idx, _) =
+      new_type_evar env sigma0 Evd.univ_flexible
+                    ~src:(dummy_loc, Evar_kinds.InternalHole) in
+    let sigma, (signaturety, _) =
       new_type_evar env sigma Evd.univ_flexible
                     ~src:(dummy_loc, Evar_kinds.InternalHole) in
-    let _idxev = fst (destEvar sigma idx) in
-    let sigma', cl = get_fresh sigma' logic_signature_class in
-    let inst = mkApp (cl, [| ty; idx |]) in
+    let sigma, signature =
+      new_evar env sigma (mkProd (Anonymous, idx, Vars.lift 1 signaturety))
+    in
+    let sigma', cl = get_fresh sigma logic_signature_class in
+    let inst = mkApp (cl, [| ty; idx; signature |]) in
     let sigma', tc = Typeclasses.resolve_one_typeclass env sigma' inst in
-    let _, u = destInd sigma (fst (destApp sigma inst)) in
-    let ssig = mkApp (mkConstG logic_signature_sig u, [| ty; idx; tc |]) in
-    let spack = mkApp (mkConstG logic_signature_pack u, [| ty; idx; tc |]) in
-      (sigma', nf_evar sigma' ssig, nf_evar sigma' spack)
+    (* let _, u = destConst sigma (fst (destApp sigma inst)) in *)
+    (* let ssig = mkApp (mkConstG logic_signature_sig u, [| ty; idx; tc |]) in *)
+    let ssig = signature in
+    (* let spack = mkApp (mkConstG logic_signature_pack u, [| ty; idx; tc |]) in *)
+    let spack = Reductionops.whd_all env sigma' tc in
+      (sigma0, nf_evar sigma' ssig, nf_evar sigma' spack)
   with Not_found ->
-    let pind, args = Inductive.find_rectype env (to_constr sigma ty) in
+    let pind, args = Inductive.find_rectype env (to_constr sigma0 ty) in
     let sigma, pred, pars, _, valsig, ctx, _, _ =
-      build_sig_of_ind env sigma (to_peuniverses pind) in
+      build_sig_of_ind env sigma0 (to_peuniverses pind) in
     Feedback.msg_warning (str "Automatically inlined signature for type " ++
     Printer.pr_pinductive env pind ++ str ". Use [Derive Signature for " ++
     Printer.pr_pinductive env pind ++ str ".] to avoid this.");
@@ -373,7 +396,7 @@ let curry sigma na c =
     | None -> 
        if is_global sigma (Lazy.force logic_unit) t then
          let _, u = destInd sigma t in
-         [], constr_of_global_univ sigma (Lazy.force logic_unit_intro, u)
+         [], mkRef (Lazy.force logic_unit_intro, u)
        else [of_tuple (na,None,t)], mkRel 1
     | Some (u, ty, pred) ->
        let na, _, codom =
@@ -442,7 +465,7 @@ let uncurry_call env sigma fn c =
   in
   let evdref = ref sigma in
   (* let ctx = (Anonymous, None, concl) :: ctx in *)
-  let sigty, sigctx, constr = telescope evdref ctx in
+  let sigty, sigctx, constr = telescope env evdref ctx in
   let app = Vars.substl (List.rev args) constr in
   let fnapp = mkApp (hd, rel_vect 0 (List.length sigctx)) in
   let fnapp = it_mkLambda_or_subst fnapp sigctx in
@@ -676,13 +699,14 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
         ) (succ nb_cuts, [], [], []) arity_ctx' rev_indices' omitted
       in
       let sigctx = List.rev rev_sigctx in
-      let sigty, _, sigconstr = telescope evd sigctx in
+      let sigty, _, sigconstr = telescope (push_rel_context (pi1 subst) env) evd sigctx in
 
       (* Build a goal with an equality of telescopes at the front. *)
       let left_sig = Vars.substl (List.rev tele_lhs) sigconstr in
       let right_sig = Vars.substl (List.rev tele_rhs) sigconstr in
       (* TODO Swap left_sig and right_sig... *)
       let eq = Equations_common.mkEq env evd sigty right_sig left_sig in
+      let _, equ = EConstr.destInd !evd (fst (destApp !evd eq)) in
       let goal = Vars.lift 1 goal in
       let goal = EConstr.mkProd (Anonymous, eq, goal) in
 
@@ -693,7 +717,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
         let t = Context_map.mapping_constr !evd rev_subst_without_cuts t in
           Reductionops.beta_applist !evd (t, indices @ cut_vars)
       in
-        goal, [Equations_common.mkRefl env evd (tr_out sigty) (tr_out left_sig)], true
+        goal, [Equations_common.mkRefl ~inst:equ env evd (tr_out sigty) (tr_out left_sig)], true
   in
 
   (* ===== RESOURCES FOR EACH BRANCH ===== *)
@@ -857,7 +881,7 @@ module Tactics =struct
         let sigma', sigsig, sigpack =
           get_signature env sigma (Tacmach.New.pf_get_hyp_typ id gl) in
         Proofview.Unsafe.tclEVARS sigma' <*>
-        letin_tac None (Name id') (mkApp (sigpack, [| mkVar id |])) None nowhere
+        letin_tac None (Name id') (beta_applist sigma (sigpack, [mkVar id])) None nowhere
       with Not_found ->
         Tacticals.New.tclFAIL 0 (str"No Signature instance found")
     end

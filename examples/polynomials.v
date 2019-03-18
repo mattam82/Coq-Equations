@@ -26,6 +26,9 @@ Require Import Nat.
 Require Import Coq.Vectors.VectorDef.
 
 Notation vector := Vector.t.
+Arguments nil {A}.
+Arguments cons {A} _ {n}.
+
 Derive Signature for vector eq.
 Coercion Bool.Is_true : bool >-> Sortclass.
 
@@ -460,7 +463,7 @@ Lemma poly_l_or_s_eval : forall {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 (S 
     (eval p1 v + h * eval p2 (Vector.cons h v))%Z.
 Proof.
   intros.
-  funelim (poly_l_or_s p1 p2); simp eval. rewrite poly_z_eval. nia.
+  funelim (poly_l_or_s p1 p2); simp eval; trivial. rewrite poly_z_eval. nia.
 Qed.
 Hint Rewrite @poly_l_or_s_eval : eval.
 

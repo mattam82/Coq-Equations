@@ -22,13 +22,7 @@ Require Import List Wellfounded.
 
 Set Equations Transparent.
 
-(** Use nice notations for sigma types *)
-Notation "{ x : A & y }" := (@sigma A (fun x : A => y)%type) (x at level 99) : type_scope.
-Notation "{ x & y }" := (@sigma _ (fun x : _ => y)%type) (x at level 99) : type_scope.
-Notation "&( x , .. , y , z )" :=
-  (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
-    (right associativity, at level 4,
-     format "&( x ,  .. ,  y  ,  z )").
+Import Sigma_Notations.
 
 (** We first declare the prototypes ouf our mutual definitions. *)
 Set Universe Polymorphism.
@@ -38,9 +32,9 @@ Inductive ty : forall (A : Type) (P : A -> Type), Set :=
 Derive Signature NoConfusion for ty.
 
 (** Our measure is simple, just the natural number or length of the list argument. *)
-Equations measure : {A &{ P &{ _ : A & ty A P }}} -> nat :=
-  measure &(_, _, a, ty0) => a;
-  measure &(_, _, a, ty1) => length a.
+Equations measure : (Σ A P (_ : A), ty A P) -> nat :=
+  measure (_, _, a, ty0) => a;
+  measure (_, _, a, ty1) => length a.
 
 Definition rel := Program.Wf.MR lt measure.
 
@@ -49,7 +43,7 @@ Proof.
   red. apply Wf.measure_wf. apply Wf_nat.lt_wf.
 Defined.
 
-Definition pack {A} {P} (x : A) (t : ty A P) := (&(A, P, x, t)) : {A & {P & {_ : A & ty A P}}}.
+Definition pack {A} {P} (x : A) (t : ty A P) := (A, P, x, t) : (Σ A P (_ : A), ty A P).
 
 (** We define the function by recursion on the abstract packed argument.
     Using dependent pattern matching, the clauses for [ty0] refine the argument
@@ -69,12 +63,12 @@ Definition fn1 := double_fn ty1.
 
 Lemma fn0_unfold n : fn0 n = n + 0.
 Proof.
-  unfold fn0. simp double_fn.
+  unfold fn0. now simp double_fn.
 Qed.
 
 Lemma fn1_unfold l : fn1 l = match l with nil => true | x :: xs => 0 <? length xs + fn0 (length xs) end.
 Proof.
-  unfold fn1; simp double_fn. destruct l. simp double_fn. simp double_fn.
+  unfold fn1; simp double_fn. destruct l; now simp double_fn.
 Qed.
 
 (** ** Well-founded nested recursion

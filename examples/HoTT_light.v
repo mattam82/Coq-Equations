@@ -1,3 +1,4 @@
+(* begin hide *)
 (**********************************************************************)
 (* Equations                                                          *)
 (* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
@@ -5,6 +6,7 @@
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
+(* end hide *)
 (** * HoTT-light
  ** A lightweight version of the Homotopy Type Theory library prelude. *)
 Set Warnings "-notation-overridden".
@@ -13,7 +15,6 @@ Require Export Unicode.Utf8.
 Require Import Coq.Program.Tactics Setoid.
 Require Import Relations.
 (** Switches to constants in Type *)
-Require Import Equations.Init.
 Require Import Equations.Type.All.
 
 Import Id_Notations.
@@ -46,7 +47,7 @@ Section TypeEq.
 End TypeEq.
 
 Arguments Id {A} _ _.
-Arguments id_refl {A} [a].
+Arguments id_refl {A} {a}.
 
 Require Import CRelationClasses CMorphisms.
 
@@ -331,8 +332,8 @@ Equations singletons_contr {A : Type} (x : A) : Contr (Σ y : A, x = y) :=
           contr (y, 1) := 1.
 Existing Instance singletons_contr.
 
-Notation " 'rew' H 'in' c " := (@DepElim.Id_rect_r _ _ _ c _ H) (at level 20).
-Notation " 'rewd' H 'in' c " := (@DepElim.Id_rect_dep_r _ _ _ c _ H) (at level 20).
+Notation " 'rew' H 'in' c " := (@Logic.Id_rew_r _ _ _ c _ H) (at level 20).
+Notation " 'rewd' H 'in' c " := (@Logic.Id_rect_r _ _ _ c _ H) (at level 20).
 
 (** Singletons are contractible!
     The (heterogeneous) NoConfusion principle for equality, i.e.
@@ -370,7 +371,7 @@ Lemma concat_A1p_lemma {A} (f : A -> A) (p : forall x, f x = x) {x y : A} (q : x
   (concat_A1p p q) = (concat_A1p p q).
 Proof.
   apply_funelim (concat_A1p p q). clear; intros. simpl.
-  elim Heq0 using DepElim.Id_rect_dep_r. simpl. reflexivity.
+  elim Heq0 using Logic.Id_rect_r. simpl. reflexivity.
 Qed.
 
 Equations ap_pp {A B : Type} (f : A -> B) {x y z : A} (p : x = y) (q : y = z) :

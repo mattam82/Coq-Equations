@@ -220,11 +220,6 @@ let find_constant s evd = e_new_global evd (equations_lib_ref s)
 let global_reference id =
   Smartlocate.global_of_extended_global (Nametab.locate_extended (qualid_of_ident id))
 
-let constr_of_global = Universes.constr_of_global
-
-let constr_of_ident id =
-  EConstr.of_constr (constr_of_global (Nametab.locate (qualid_of_ident id)))
-
 let e_type_of env evd t =
   let evm, t = Typing.type_of ~refresh:false env !evd t in
   evd := evm; t
@@ -275,9 +270,12 @@ let coq_zero = (find_global "nat.zero")
 let coq_succ = (find_global "nat.succ")
 let coq_nat = (find_global "nat.type")
 
-let rec coq_nat_of_int = function
-  | 0 -> constr_of_global (Lazy.force coq_zero)
-  | n -> mkApp (constr_of_global (Lazy.force coq_succ), [| coq_nat_of_int (pred n) |])
+let rec coq_nat_of_int sigma = function
+  | 0 -> Evarutil.new_global sigma (Lazy.force coq_zero)
+  | n ->
+    let sigma, succ = Evarutil.new_global sigma (Lazy.force coq_succ) in
+    let sigma, n' = coq_nat_of_int sigma (pred n) in
+    sigma, EConstr.mkApp (succ, [| n' |])
 
 let rec int_of_coq_nat c = 
   match Constr.kind c with
@@ -352,7 +350,7 @@ let get_fresh sigma r = new_global sigma (Lazy.force r)
 
 let get_efresh r evd = e_new_global evd (Lazy.force r)
 
-let is_lglobal gr c = Globnames.is_global (Lazy.force gr) c
+let is_lglobal sigma gr c = EConstr.is_global sigma (Lazy.force gr) c
 
 open EConstr
 
@@ -374,9 +372,15 @@ let refresh_universes_strict env evd t =
     
 let mkEq env evd t x y = 
   mkapp env evd logic_eq_type [| refresh_universes_strict env evd t; x; y |]
+
+let mkRef (f, i) = EConstr.of_constr (Universes.constr_of_global_univ (f, EConstr.Unsafe.to_instance i))
     
-let mkRefl env evd t x = 
-  mkapp env evd logic_eq_refl [| refresh_universes_strict env evd t; x |]
+let mkRefl env evd ?inst t x =
+  match inst with
+  | Some inst ->
+    EConstr.mkApp (mkRef (Lazy.force logic_eq_refl, inst), [| refresh_universes_strict env evd t; x |])
+  | None ->
+    mkapp env evd logic_eq_refl [| refresh_universes_strict env evd t; x |]
 
 let dummy_loc = None
 type 'a located = 'a Loc.located
@@ -624,14 +628,14 @@ let depind_tac h = tac_of_string (depelim_tactic "depind") [tacident_arg h]
 let equations_tac () = tac_of_string (depelim_tactic "equations") []
 let find_empty_tac () = tac_of_string (depelim_tactic "find_empty") []
 
-let mkRef (c, u) = Universes.constr_of_global_univ (c, u)
+let mkCRef (c, u) = Universes.constr_of_global_univ (c, u)
 
 let call_tac_on_ref tac c =
   let var = Names.Id.of_string "x" in
   let tac = Misctypes.ArgArg (dummy_loc, tac) in
   let val_reference = Geninterp.val_tag (Genarg.topwit Stdarg.wit_constr) in
   (* This is a hack to avoid generating useless universes *)
-  let c = mkRef (c, Univ.Instance.empty) in
+  let c = mkCRef (c, Univ.Instance.empty) in
   let c = Geninterp.Val.inject val_reference (EConstr.of_constr c) in
   let ist = Geninterp.{ lfun = Names.Id.Map.add var c Names.Id.Map.empty;
                             extra = Geninterp.TacStore.empty } in
@@ -1007,10 +1011,8 @@ let hintdb_set_transparency cst b db =
 (* Call the really unsafe is_global test, we use this on evar-open terms too *)
 let is_global sigma f ec = Globnames.is_global f (EConstr.Unsafe.to_constr ec)
 
-let constr_of_global_univ sigma u = of_constr (mkRef (from_peuniverses sigma u))
-
 let smash_rel_context sigma ctx =
-  List.map of_rel_decl (smash_rel_context (List.map (to_rel_decl sigma) ctx))
+  List.map of_rel_decl (smash_rel_context (List.map (EConstr.Unsafe.to_rel_decl) ctx))
 let rel_vect n m = Array.map of_constr (rel_vect n m)
 
 let applistc c a = applist (c, a)
@@ -1066,3 +1068,42 @@ let evd_comb0 f evd =
 let evd_comb1 f evd x =
   let evm, r = f !evd x in
   evd := evm; r
+
+(* Universe related functions *)
+
+let nonalgebraic_universe_level_of_universe env sigma u =
+  match Univ.Universe.level u with
+  | Some l ->
+    if Univ.Level.is_small l then sigma, l, u
+    else
+      (match Evd.universe_rigidity sigma l with
+      | Evd.UnivFlexible true ->
+        (* In 8.9, no way to turn a flexible algebraic into a flexible non-algebraic,
+           hack by generating a new one *)
+        let sigma, l' = Evd.new_univ_level_variable Evd.univ_flexible sigma in
+        let ul' = Univ.Universe.make l' in
+        let sigma = Evd.set_leq_level sigma l' l  in
+        sigma, l', ul'
+      | _ -> sigma, l, u)
+  | _ ->
+    let sigma, l = Evd.new_univ_level_variable Evd.univ_flexible sigma in
+    let ul = Univ.Universe.make l in
+    let sigma = Evd.set_leq_sort env sigma (Sorts.sort_of_univ u) (Sorts.sort_of_univ ul) in
+    sigma, l, ul
+
+let instance_of env sigma ?argu goalu =
+  let sigma, goall, goalu = nonalgebraic_universe_level_of_universe env sigma goalu in
+  let sigma, goall, goalu =
+    if Univ.Level.is_prop goall then
+      sigma, Univ.Level.set, Univ.Universe.make Univ.Level.set
+    else sigma, goall, goalu
+  in
+  let inst =
+    match argu with
+    | Some equ ->
+      let equ = EConstr.EInstance.kind sigma equ in
+      let equarray = Univ.Instance.to_array equ in
+      EConstr.EInstance.make (Univ.Instance.of_array (Array.append equarray [| goall |]))
+    | None -> EConstr.EInstance.make (Univ.Instance.of_array [| goall |])
+  in
+  sigma, inst, goalu

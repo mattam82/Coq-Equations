@@ -1,0 +1,81 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link href="coqdoc.css" rel="stylesheet" type="text/css" />
+<title>Examples.graph_complete</title>
+</head>
+
+<body>
+
+<div id="page">
+
+<div id="header">
+</div>
+
+<div id="main">
+
+<div class="code">
+<span class="id" title="keyword">Set</span> <span class="id" title="var">Warnings</span> "-notation-overridden".<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/master/Equations.Type.All.html#"><span class="id" title="library">Equations.Type.All</span></a>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">Examples.HoTT_light</span>.<br/>
+<span class="id" title="keyword">Set</span> <span class="id" title="var">Universe</span> <span class="id" title="var">Polymorphism</span>.<br/>
+<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="http://coq.inria.fr/distrib/V8.10+alpha/stdlib//Coq.Relations.Relations.html#"><span class="id" title="library">Relations</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Import</span> <span class="id" title="var">Id_Notations</span>.<br/>
+<span class="id" title="keyword">Import</span> <span class="id" title="var">Sigma_Notations</span>.<br/>
+
+<br/>
+<span class="id" title="var">Derive</span> <span class="id" title="var">Signature</span> <span class="id" title="keyword">for</span> <a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/master/Equations.Type.Logic.html#Id"><span class="id" title="inductive">Id</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Equations</span> <a name="neg"><span class="id" title="definition">neg</span></a> (<span class="id" title="var">b</span> : <a class="idref" href="http://coq.inria.fr/distrib/V8.10+alpha/stdlib//Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a>) : <a class="idref" href="http://coq.inria.fr/distrib/V8.10+alpha/stdlib//Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> :=<br/>
+&nbsp;&nbsp;<a class="idref" href="Examples.graph_complete.html#neg"><span class="id" title="definition">neg</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.10+alpha/stdlib//Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a> := <a class="idref" href="http://coq.inria.fr/distrib/V8.10+alpha/stdlib//Coq.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a>; <a class="idref" href="Examples.graph_complete.html#neg"><span class="id" title="definition">neg</span></a> <a class="idref" href="http://coq.inria.fr/distrib/V8.10+alpha/stdlib//Coq.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a> := <a class="idref" href="http://coq.inria.fr/distrib/V8.10+alpha/stdlib//Coq.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <a name="neg_fib"><span class="id" title="definition">neg_fib</span></a> (<span class="id" title="var">x</span> : <a class="idref" href="http://coq.inria.fr/distrib/V8.10+alpha/stdlib//Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a>) := <a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/master/Equations.Init.html#c258a3404d757689ea61946112522c3b"><span class="id" title="notation">Σ</span></a> <span class="id" title="var">a</span> : <a class="idref" href="http://coq.inria.fr/distrib/V8.10+alpha/stdlib//Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/master/Equations.Init.html#c258a3404d757689ea61946112522c3b"><span class="id" title="notation">,</span></a> <a class="idref" href="Examples.graph_complete.html#neg_graph"><span class="id" title="inductive">neg_graph</span></a> <a class="idref" href="Examples.graph_complete.html#a"><span class="id" title="variable">a</span></a> <a class="idref" href="Examples.graph_complete.html#x"><span class="id" title="variable">x</span></a>.<br/>
+<span class="id" title="keyword">Hint Resolve</span> <span class="id" title="var">neg_graph_correct</span> : <span class="id" title="var">core</span>.<br/>
+<span class="id" title="keyword">Definition</span> <a name="neg_graph_rec"><span class="id" title="definition">neg_graph_rec</span></a> := <a class="idref" href="Examples.graph_complete.html#neg_graph_rect"><span class="id" title="definition">neg_graph_rect</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Scheme</span> <a name="neg_graph_rect_dep"><span class="id" title="definition">neg_graph_rect_dep</span></a> := <span class="id" title="keyword">Induction</span> <span class="id" title="keyword">for</span> <a class="idref" href="Examples.graph_complete.html#neg_graph"><span class="id" title="inductive">neg_graph</span></a> <span class="id" title="keyword">Sort</span> <span class="id" title="keyword">Type</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <a name="hfiber_graph"><span class="id" title="lemma">hfiber_graph</span></a> : <span class="id" title="notation">(</span><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/master/Equations.Init.html#c258a3404d757689ea61946112522c3b"><span class="id" title="notation">Σ</span></a> <span class="id" title="var">x</span> : <a class="idref" href="http://coq.inria.fr/distrib/V8.10+alpha/stdlib//Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/master/Equations.Init.html#c258a3404d757689ea61946112522c3b"><span class="id" title="notation">,</span></a> <span class="id" title="definition">hfiber</span> <a class="idref" href="Examples.graph_complete.html#neg"><span class="id" title="definition">neg</span></a> <a class="idref" href="Examples.graph_complete.html#x"><span class="id" title="variable">x</span></a><span class="id" title="notation">)</span> <span class="id" title="notation">&lt;~&gt;</span> <a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/master/Equations.Init.html#c258a3404d757689ea61946112522c3b"><span class="id" title="notation">Σ</span></a> <span class="id" title="var">x</span> : <a class="idref" href="http://coq.inria.fr/distrib/V8.10+alpha/stdlib//Coq.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/master/Equations.Init.html#c258a3404d757689ea61946112522c3b"><span class="id" title="notation">,</span></a> <a class="idref" href="Examples.graph_complete.html#neg_fib"><span class="id" title="definition">neg_fib</span></a> <a class="idref" href="Examples.graph_complete.html#x"><span class="id" title="variable">x</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">unshelve</span> <span class="id" title="tactic">refine</span> {| <span class="id" title="constructor">equiv_fun</span> <span class="id" title="constructor">:=</span> <span class="id" title="constructor">fun</span> <span class="id" title="constructor">h</span> <span class="id" title="constructor">⇒</span> <span class="id" title="constructor">(</span><span class="id" title="constructor">h</span><span class="id" title="constructor">.1,</span> <span class="id" title="constructor">_</span><span class="id" title="constructor">)</span> |}.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">red</span>. <span class="id" title="tactic">destruct</span> <span class="id" title="var">h</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">res</span> [<span class="id" title="var">arg</span> <span class="id" title="var">Heq</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">∃</span> <span class="id" title="var">arg</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">destruct</span> <span class="id" title="var">Heq</span>. <span class="id" title="tactic">auto</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">simpl</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">unshelve</span> <span class="id" title="tactic">refine</span> {| <span class="id" title="constructor">equiv_inv</span> <span class="id" title="constructor">h</span> <span class="id" title="constructor">:=</span> <span class="id" title="constructor">(</span><span class="id" title="constructor">h</span><span class="id" title="constructor">.1,</span> <span class="id" title="constructor">_</span><span class="id" title="constructor">)</span> |}.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">red</span>. <span class="id" title="tactic">destruct</span> <span class="id" title="var">h</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">res</span> [<span class="id" title="var">arg</span> <span class="id" title="var">Heq</span>]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">∃</span> <span class="id" title="var">arg</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">induction</span> <span class="id" title="var">Heq</span>; <span class="id" title="tactic">reflexivity</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">red</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">intros</span> [<span class="id" title="var">x</span> [<span class="id" title="var">res</span> <span class="id" title="var">Hind</span>]]. <span class="id" title="tactic">simpl</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">induction</span> <span class="id" title="var">Hind</span> <span class="id" title="keyword">using</span> <a class="idref" href="Examples.graph_complete.html#neg_graph_rect_dep"><span class="id" title="definition">neg_graph_rect_dep</span></a>; <span class="id" title="tactic">simpl</span>; <span class="id" title="tactic">reflexivity</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">intros</span> [<span class="id" title="var">res</span> [<span class="id" title="var">arg</span> <span class="id" title="var">Heq</span>]]. <span class="id" title="tactic">simpl</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">Heq</span>; <span class="id" title="tactic">simpl</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="definition">path_sigma_uncurried</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">∃</span> <a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/master/Equations.Type.Logic.html#id_refl"><span class="id" title="constructor">id_refl</span></a>. <span class="id" title="tactic">simpl</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> <span class="id" title="definition">path_sigma_uncurried</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">∃</span> <a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/master/Equations.Type.Logic.html#id_refl"><span class="id" title="constructor">id_refl</span></a>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">destruct</span> <span class="id" title="var">arg</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">reflexivity</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">reflexivity</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">simpl</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">intros</span> [<span class="id" title="var">res</span> [<span class="id" title="var">arg</span> <span class="id" title="var">Heq</span>]]. <span class="id" title="tactic">destruct</span> <span class="id" title="var">Heq</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">arg</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">reflexivity</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">reflexivity</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+</div>
+<hr/>This page has been generated by <a href="http://coq.inria.fr/">coqdoc</a>
+</div>
+
+</div>
+
+</body>
+</html>

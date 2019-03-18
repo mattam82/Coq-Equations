@@ -7,7 +7,7 @@
 (**********************************************************************)
 
 Require Import Program Bvector List Relations.
-From Equations Require Import Equations Telescopes Signature.
+Require Import Equations.Equations.
 Require Import Utf8.
 
 Equations neg (b : bool) : bool :=
@@ -41,9 +41,7 @@ Module TestF.
 
 End TestF.
 
-Instance eqsig {A} (x : A) : Signature (x = x) A :=
-  { signature a := x = a ;
-    signature_pack e := sigmaI _ x e }.
+Instance eqsig {A} (x : A) : Signature (x = x) A (fun a => x = a) := sigmaI _ x.
 
 Module WithUIP.
 Set Equations With UIP.
@@ -65,7 +63,7 @@ eq_trans x _ _ eq_refl eq_refl := eq_refl.
 Notation " x |:| y " := (@Vector.cons _ x _ y) (at level 20, right associativity) : vect_scope.
 Notation " x |: n :| y " := (@Vector.cons _ x n y) (at level 20, right associativity) : vect_scope.
 (* Notation " [[ x .. y ]] " := (Vector.cons x .. (Vector.cons y Vector.nil) ..) : vect_scope. *)
-Notation "[]v" := Vector.nil (at level 0) : vect_scope.
+Notation "[]v" := (@Vector.nil _) (at level 0) : vect_scope.
 
 Section FilterDef.
   Context {A} (p : A -> bool).
@@ -298,8 +296,8 @@ Qed.
 
 Lemma app'_assoc : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l (app' l' l'').
 Proof. intros. revert l''.
-  funelim (l +++ l'); intros; simp app'. 
-  rewrite H. reflexivity.
+  funelim (l +++ l'); intros; simp app'; trivial.
+  now rewrite H.
 Qed.
 
 Lemma rev_rev_acc : forall {A} (l : list A), rev_acc l [] = rev l.
@@ -314,14 +312,14 @@ Hint Rewrite @rev_rev_acc : rev_acc.
 Lemma app'_funind : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l (app' l' l'').
 Proof.
   intros.
-  funelim (l +++ l'); simp app'.
+  funelim (l +++ l'); simp app'; trivial.
   rewrite H. reflexivity. 
 Qed.
 
 Hint Rewrite @app'_nil @app'_assoc : app'.
 
 Lemma rev_app' : forall {A} (l l' : list A), rev (l +++ l') = rev l' +++ rev l.
-Proof. intros. funelim (l +++ l'); simp rev app'.
+Proof. intros. funelim (l +++ l'); simp rev app'; trivial.
   now (rewrite H, <- app'_assoc).
 Qed.
 Equations zip' {A} (f : A -> A -> A) (l l' : list A) : list A :=
@@ -351,7 +349,6 @@ intros; subst; assumption. Defined.
 Equations vrev_acc {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
 vrev_acc nil w := w;
 vrev_acc (cons a v) w := cast_vector (vrev_acc v (cons a w)) _.
-(* About vapp'. *)
 
 Record vect {A} := mkVect { vect_len : nat; vect_vector : vector A vect_len }.
 Coercion mkVect : vector >-> vect.
@@ -381,6 +378,54 @@ Proof.
   simp split in *. destruct split. simpl.
   intuition congruence.
 Qed.
+Transparent vapp'.
+Definition eta_vector {A} (P : forall n, vector A n -> Type) :
+  forall n v,
+    match v with
+    | nil => P 0 nil
+    | cons a v => P _ (cons a v)
+    end = P n v.
+Proof.
+  now destruct v.
+Defined.
+Import Sigma_Notations.
+
+Axiom cheat : forall {A}, A.
+Lemma split' {X : Type} : forall {m n} (xs : vector X (Peano.plus m n)), Split m n xs.
+Proof.
+  fix IH 3. intros m n xs.
+  eassert ?[ty].
+  refine (match xs as xs' in @t _ k return
+                (match xs' as xs'' in vector _ n' return Type with
+                 | nil => ((0, nil) = (Peano.plus m n, xs)) -> Split m n xs
+                 | @cons _ x' n' xs'' =>
+                   (S n', cons x' xs'') = (Peano.plus m n, xs) -> Split m n xs
+                 end)
+          with
+          | nil => _
+          | cons x xs => _
+          end).
+(* FIXME: simplify not agressive enough to find whd *)
+  simpl. (* apply cheat. apply cheat. *)
+  destruct m as [|m'].
+  + simpl. simplify *.
+    simpl. apply (append nil nil).
+  + simpl. simplify *.
+  + destruct m as [|m']; simpl.
+    simplify *. simpl. apply (append nil (x |: _ :| xs)).
+    simplify *. simpl.
+    specialize (IH _ _ xs).
+    destruct IH.
+    refine (append (cons x xs) ys).
+  + rewrite (eta_vector (fun nv v => (nv, v) = (Peano.plus m n, xs) -> Split m n xs)) in X0.
+    apply (X0 eq_refl).
+Defined.
+Eval cbv delta[split' eq_rect noConfusion NoConfusion.NoConfusionPackage_nat
+                      NoConfusion.noConfusion_nat_obligation_1
+              ] beta zeta iota in split'.
+Extraction Inline Logic.transport.
+Extraction split'.
+Extraction split.
 
 (* Eval compute in @zip''. *)
 
@@ -390,7 +435,7 @@ Equations  split_struct {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs 
 split_struct (m:=0) xs := append nil xs ;
 split_struct (m:=(S m)) (cons x xs) with split_struct xs => {
   split_struct (m:=(S m)) (cons x xs) (append xs' ys') := append (cons x xs') ys' }.
-
+Extraction split_struct.
 Lemma split_struct_vapp : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
   let 'append v' w' := split_struct (vapp' v w) in
     v = v' /\ w = w'.
@@ -570,17 +615,27 @@ Definition transpose {A m n} : mat A m n -> mat A n m :=
 (*   (e : vector (vector A 0) n) v : vfold_right f (vmake n Vnil) v =  *)
 (* Typeclasses eauto :=. *)
 
-Require Import Equations.Fin.
+Require Import fin.
 
 Generalizable All Variables.
 
 Opaque vmap. Opaque vtail. Opaque nth.
 
-Lemma nth_vmap `(v : vector A n) `(fn : A -> B) (f : fin n) : nth (vmap fn v) f = fn (nth v f).
-Proof. revert B fn. funelim (nth v f); intros; simp nth vmap. Qed.
+Require Vectors.Vector.
+Arguments Vector.nil {A}.
+Arguments Vector.cons {A} _ {n}.
+Notation vnil := Vector.nil.
+Notation vcons := Vector.cons.
+
+Equations nth {A} {n} (v : Vector.t A n) (f : fin n) : A :=
+nth (vcons a v) fz := a ;
+nth (vcons a v) (fs f) := nth v f.
+
+Lemma nth_vmap {A B n} (v : vector A n) (fn : A -> B) (f : fin n) : nth (vmap fn v) f = fn (nth v f).
+Proof. revert B fn. funelim (nth v f); intros; now simp nth vmap. Qed.
 
 Lemma nth_vtail `(v : vector A (S n)) (f : fin n) : nth (vtail v) f = nth v (fs f).
-Proof. funelim (vtail v); intros; simp nth. Qed.
+Proof. funelim (vtail v); intros; now simp nth. Qed.
 
 Hint Rewrite @nth_vmap @nth_vtail : nth.
   
@@ -588,8 +643,8 @@ Lemma diag_nth `(v : vector (vector A n) n) (f : fin n) : nth (diag v) f = nth (
 Proof. revert f. funelim (diag v); intros f.
   depelim f.
 
-  depelim f; simp nth.
-  rewrite H. simp nth.
+  depelim f; simp nth; trivial.
+  rewrite H. now simp nth.
 Qed.
 
 Equations assoc (x y z : nat) : x + y + z = x + (y + z) :=

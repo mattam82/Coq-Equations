@@ -292,7 +292,7 @@ let specialize_eqs ~with_block id gl =
          let _, u = destPolyRef !evars eq in
          let c, o = if noccur_between !evars 1 (List.length subst) x then x, y
            else y, x in
-         let eqr = constr_of_global_univ !evars (Lazy.force logic_eq_refl, u) in
+         let eqr = mkRef (Lazy.force logic_eq_refl, u) in
          let p = mkApp (eqr, [| eqty; c |]) in
          if (compare_upto_variables !evars c o) &&
             unif (push_rel_context ctx env) subst evars o c then
@@ -341,7 +341,11 @@ let specialize_eqs ~with_block id gl =
 let dependent_elim_tac ?patterns id : unit Proofview.tactic =
   let open Proofview.Notations in
   Proofview.Goal.enter begin fun gl ->
-    let env = Environ.reset_context (Proofview.Goal.env gl) in
+    let env = Proofview.Goal.env gl in
+    let concl = Proofview.Goal.concl gl in
+    let sigma = Proofview.Goal.sigma gl in
+    let sort = Sorts.univ_of_sort (Retyping.get_sort_of env sigma concl) in
+    let env = Environ.reset_context env in
     let hyps = Proofview.Goal.hyps gl in
     let default_loc, id = id in
     (* Keep aside the section variables. *)
@@ -367,8 +371,6 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
     let _, rev_subst, _ =
       let err () = assert false in
       Equations_common.named_of_rel_context ~keeplets:true err ctx in
-    let concl = Proofview.Goal.concl gl in
-    let sigma = Proofview.Goal.sigma gl in
     (* We also need to convert the goal for it to be well-typed in
      * the [rel_context]. *)
     let ty = Vars.subst_vars subst concl in
@@ -415,9 +417,10 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
         intenv = Constrintern.empty_internalization_env;
         notations = []
       } in
+    let program_orig_type = it_mkProd_or_LetIn ty ctx in
     let p = Syntax.{program_loc = default_loc;
                     program_id = Names.Id.of_string "dummy";
-                    program_orig_type = it_mkProd_or_LetIn ty ctx;
+                    program_orig_type; program_sort = sort;
                     program_impls = [];
                     program_implicits = [];
                     program_rec = None;
@@ -436,7 +439,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
       in
 
       let c, ty =
-        Splitting.term_of_tree env evd split
+        Splitting.term_of_tree env evd sort split
       in
       let c = beta_applist !evd (c, args) in
       let c = Vars.substl (List.rev rev_subst) c in
