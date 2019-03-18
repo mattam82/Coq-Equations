@@ -714,7 +714,11 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot
   let body = it_mkLambda_or_LetIn arity sign in
   let _ = if not with_evars then Pretyping.check_evars env Evd.empty !evd body in
   let program_orig_type = it_mkProd_or_LetIn arity sign in
-  let program_sort = Sorts.univ_of_sort (Retyping.get_sort_of env !evd program_orig_type) in
+  let program_sort =
+    let u = Sorts.univ_of_sort (Retyping.get_sort_of env !evd program_orig_type) in
+    let sigma, sortl, sortu = nonalgebraic_universe_level_of_universe env !evd u in
+    evd := sigma; sortu
+  in
   let program_implicits = Impargs.compute_implicits_with_manual env !evd program_orig_type false impls in
   let () = evd := Evd.minimize_universes !evd in
   match rec_annot with
