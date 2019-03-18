@@ -1,7 +1,6 @@
 Set Warnings "-notation-overridden".
 
 Set Universe Polymorphism.
-Require Import Relations.
 (** Switch to an equality in Type *)
 Require Import Equations.Type.All.
 
@@ -31,7 +30,7 @@ Equations finp {n} (f : fin (S n)) : unit + fin n :=
 Unset Universe Minimization ToSet.
 Inductive vector@{i} (A : Type@{i}) : nat -> Type@{i} :=
 | nil : vector A 0
-| cons {n} : A -> vector A n -> vector A (S n).
+| cons {n : nat} : A -> vector A n -> vector A (S n).
 Arguments vector A%type_scope n%nat_scope.
 Arguments nil {A}.
 Arguments cons {A%type_scope} {n%nat_scope} a v.

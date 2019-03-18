@@ -1075,23 +1075,32 @@ let evd_comb1 f evd x =
 
 (* Universe related functions *)
 
-let univ_of_goalu env sigma u =
+let nonalgebraic_universe_level_of_universe env sigma u =
   match Univ.Universe.level u with
-  | Some l -> sigma, l, u
-  | None ->
+  | Some l ->
+    if Univ.Level.is_small l then sigma, l, u
+    else
+      (match Evd.universe_rigidity sigma l with
+      | Evd.UnivFlexible true ->
+        (* In 8.9, no way to turn a flexible algebraic into a flexible non-algebraic,
+           hack by generating a new one *)
+        let sigma, l' = Evd.new_univ_level_variable Evd.univ_flexible sigma in
+        let ul' = Univ.Universe.make l' in
+        let sigma = Evd.set_leq_level sigma l' l  in
+        sigma, l', ul'
+      | _ -> sigma, l, u)
+  | _ ->
     let sigma, l = Evd.new_univ_level_variable Evd.univ_flexible sigma in
-    sigma, l, Univ.Universe.make l
+    let ul = Univ.Universe.make l in
+    let sigma = Evd.set_leq_sort env sigma (Sorts.sort_of_univ u) (Sorts.sort_of_univ ul) in
+    sigma, l, ul
 
 let instance_of env sigma ?argu goalu =
-  let sigma, goall, goalu = univ_of_goalu env sigma goalu in
-  let sigma, goall =
+  let sigma, goall, goalu = nonalgebraic_universe_level_of_universe env sigma goalu in
+  let sigma, goall, goalu =
     if Univ.Level.is_prop goall then
-      sigma, Univ.Level.set
-    else
-      match Evd.universe_rigidity sigma goall with
-      | Evd.UnivFlexible true ->
-        Evd.make_flexible_variable sigma ~algebraic:false goall, goall
-      | _ -> sigma, goall
+      sigma, Univ.Level.set, Univ.Universe.make Univ.Level.set
+    else sigma, goall, goalu
   in
   let inst =
     match argu with

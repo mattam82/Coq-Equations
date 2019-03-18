@@ -244,8 +244,11 @@ let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty
     match inst with
     | Some u ->
       let tf = Equations_common.mkRef (f, u) in
-      let ty = Retyping.get_type_of env !evd tf in
-      tf, ty
+      let auctx = Global.universes_of_global f in
+      let univs = Univ.AUContext.instantiate (EConstr.EInstance.kind !evd u) auctx in
+      let sigma = Evd.add_constraints !evd univs in
+      let ty = Retyping.get_type_of env sigma tf in
+      evd := sigma; tf, ty
     | None ->
       match f with
       | Globnames.VarRef var -> assert false

@@ -441,7 +441,8 @@ val mkCRef : Names.GlobRef.t * Univ.Instance.t -> Constr.constr
 val mkRef : Names.GlobRef.t * EConstr.EInstance.t -> EConstr.constr
 
 (* Universes *)
-val univ_of_goalu : Environ.env -> Evd.evar_map -> Univ.Universe.t -> Evd.evar_map * Univ.Level.t * Univ.Universe.t
+val nonalgebraic_universe_level_of_universe :
+  Environ.env -> Evd.evar_map -> Univ.Universe.t -> Evd.evar_map * Univ.Level.t * Univ.Universe.t
 val instance_of :
   Environ.env ->
   Evd.evar_map ->
