@@ -786,11 +786,11 @@ let apply_noconf : simplification_fun =
   let args = [Some tA; Some tnoconf; Some t1; Some t2; Some tB; None] in
   let inst, glu' =
     (* If the equality is not polymorphic, the lemmas will be monomorphic as well *)
-    if EConstr.EInstance.is_empty equ then equ, glu
+    if EConstr.EInstance.is_empty equ then None, glu
     else let sigma, equ, glu = Equations_common.instance_of env !evd ~argu:equ glu in
-      evd := sigma; equ, glu
+      evd := sigma; Some equ, glu
   in
-    build_app_infer env evd (ctx, ty, glu') ctx tapply_noconf ~inst args,
+    build_app_infer env evd (ctx, ty, glu') ctx tapply_noconf ?inst args,
     Context_map.id_subst ctx
 
 let simplify_ind_pack_inv : simplification_fun =
