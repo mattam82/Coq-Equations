@@ -2,6 +2,7 @@
 -R . TestSuite
 -R "../theories" Equations
 INSTALLDEFAULTROOT = 1
+fin.v
 Basics.v
 notations.v
 BasicsDec.v
@@ -9,7 +10,6 @@ rec.v
 f91.v
 Noconfinv.v
 zoe.v
-fin.v
 gcd.v
 DataStruct.v
 daaa.v
