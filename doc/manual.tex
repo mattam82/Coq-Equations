@@ -153,6 +153,15 @@ The \kw{Equations} command obeys a few global options:
   The \texttt{simp} $\cst{c}$ tactic is favored in this case to do
   simplifications using the equations generated for $\cst{c}$.
 
+\item \texttt{Equations With Funext}: governs the use of the functional
+  extensionality axiom to prove the unfolding lemma of well-founded
+  definitions, which requires extensionality of the functional. By
+  default \emph{on}. When this flag is off, the unfolding lemmas of
+  well-founded definitions might fail to be proven automatically and be
+  left to the user as an obligation. To prove this obligation, the user
+  is encouraged to use the \texttt{Equations.Init.unfold_recursor}
+  tactic to help solve goals of the form \[\cst{FixWf} x f = \cst{f\_unfold} x\].
+
 \item \texttt{Equations With UIP}: governs the use of instances of
   \texttt{Equations.Classes.UIP} derived by the user, or automatically
   from instances of the decidable equality class
@@ -171,7 +180,7 @@ The \kw{Equations} command obeys a few global options:
 
 \item \texttt{Equations WithK} DEPRECATED. Use \texttt{With UIP} and
   declare your own version of the \cst{UIP} axiom as a typeclass
-  instance. governs the use of the \texttt{K} axiom.
+  instance. Governs the use of the \texttt{K} axiom.
   By default \emph{off}. The computational behavior of definitions
   using axioms changes entirely: their reduction will get stuck even
   on closed terms. It is advised to keep such definitions opaque and use
