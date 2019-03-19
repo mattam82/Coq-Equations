@@ -3,7 +3,6 @@
 
 Require Import Program.
 Require Import Equations.Equations.
-Require Import Coq.Logic.Eqdep_dec.
 Require Import Coq.Classes.EquivDec.
 
 Require Import Arith.
