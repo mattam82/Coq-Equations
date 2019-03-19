@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Equations 1.2-beta2 is released!"
+title:  "Equations 1.2beta2 is released!"
 date:   2019-03-18 08:00:00 +0100
 categories: equations
 ---
