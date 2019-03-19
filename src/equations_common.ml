@@ -39,6 +39,8 @@ let from_peuniverses sigma (x, u) = (x, EConstr.EInstance.kind sigma u)
 let simplify_withUIP = ref false
 let equations_with_funext = ref true
 let equations_transparent = ref false
+let equations_derive_equations = ref true
+let equations_derive_eliminator = ref true
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = true;
@@ -83,6 +85,22 @@ let _ = Goptions.declare_bool_option {
   Goptions.optkey   = ["Equations"; "With"; "Funext"];
   Goptions.optread  = (fun () -> !equations_with_funext);
   Goptions.optwrite = (fun b -> equations_with_funext := b)
+}
+
+let _ = Goptions.declare_bool_option {
+  Goptions.optdepr  = false;
+  Goptions.optname  = "generate propositional equations for each definition";
+  Goptions.optkey   = ["Equations"; "Derive"; "Equations"];
+  Goptions.optread  = (fun () -> !equations_derive_equations);
+  Goptions.optwrite = (fun b -> equations_derive_equations := b)
+}
+
+let _ = Goptions.declare_bool_option {
+  Goptions.optdepr  = false;
+  Goptions.optname  = "generate eliminators for each definition";
+  Goptions.optkey   = ["Equations"; "Derive"; "Eliminator"];
+  Goptions.optread  = (fun () -> !equations_derive_eliminator);
+  Goptions.optwrite = (fun b -> equations_derive_eliminator := b)
 }
 
 (* Debugging infrastructure. *)

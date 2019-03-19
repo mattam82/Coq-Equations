@@ -120,14 +120,14 @@ val is_rec_call : Evd.evar_map -> Id.t -> EConstr.constr -> bool
 val next_ident_away : Id.t -> Id.Set.t ref -> Id.t
 
 type equation_option = 
-  | OInd of bool
-  | OEquations of bool
+  | OInd
+  | OEquations
 
-type equation_user_option = equation_option
+type equation_user_option = equation_option * bool
 
 val pr_r_equation_user_option : 'a -> 'b -> 'c -> 'd -> Pp.t
 
-type equation_options = equation_option list
+type equation_options = equation_user_option list
 
 val pr_equation_options : 'a -> 'b -> 'c -> 'd -> Pp.t
 

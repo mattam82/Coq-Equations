@@ -127,12 +127,13 @@ let define_principles flags rec_type fixprots progs =
 
 let define_by_eqs ~poly ~open_proof opts eqs nt =
   let with_eqns, with_ind =
-    let try_bool_opt opt =
-      if List.mem opt opts then false
-      else true 
+    let try_bool_opt opt default =
+      try List.assoc opt opts
+      with Not_found -> default
     in
-    let with_eqns = try_bool_opt (OEquations false) in
-    if with_eqns then with_eqns, try_bool_opt (OInd false)
+    let with_eqns = try_bool_opt OEquations !Equations_common.equations_derive_equations in
+    if with_eqns then
+      with_eqns, try_bool_opt OInd !Equations_common.equations_derive_eliminator
     else false, false
   in
   let env = Global.env () in
