@@ -64,6 +64,7 @@ Ltac eqdec_proof := try red; intros;
 Ltac Equations.Init.solve_eqdec ::= eqdec_proof.
 Ltac Equations.Init.solve_subterm ::= Equations.Prop.Subterm.solve_subterm.
 Ltac Equations.Init.unfold_recursor ::= Equations.Prop.Subterm.unfold_recursor.
+Ltac Equations.Init.unfold_recursor_ext ::= Equations.Prop.Subterm.unfold_recursor_ext.
 
 Ltac solve_noconf_prf := intros;
   on_last_hyp ltac:(fun id => destruct id) ; (* Subtitute a = b *)

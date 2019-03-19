@@ -31,9 +31,12 @@ Extraction Inline signature signature_pack.
 Ltac destruct_right_sigma H :=
   match type of H with
   | @sigma _ (fun x => _) =>
-    destruct H as [x H]; destruct_right_sigma H
-  | @sigma _ _ => destruct H as [x H];
-      destruct_right_sigma H
+    let H' := fresh H in
+    destruct H as [? H']; destruct_right_sigma H'
+  | @sigma _ _ =>
+    let H' := fresh H in
+    destruct H as [? H'];
+      destruct_right_sigma H'
   | _ => idtac
   end.
 

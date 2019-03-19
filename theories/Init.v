@@ -169,5 +169,8 @@ Create HintDb Below discriminated.
 (** Forward reference to an internal tactic to unfold well-founded fixpoints *)
 Ltac unfold_recursor := fail "Equations.Init.unfold_recursor has not been bound yet".
 
+(** Forward reference to an internal tactic to unfold well-founded fixpoints using funext *)
+Ltac unfold_recursor_ext := fail "Equations.Init.unfold_recursor_ext has not been bound yet".
+
 (** Forward reference to an internal tactic to combine eliminators for mutual and nested definitions *)
 Ltac specialize_mutfix := fail "Equations.Init.specialize_mutfix has not been bound yet".

@@ -1055,7 +1055,7 @@ Section SCT.
     destruct (find_opt l f); now firstorder subst.
   Qed.
 
-  Equations compute_transitive_closure {k} (n : nat) (gs : list (graph k)) : trans_clos_answer k :=
+  Equations compute_transitive_closure {k} (n : nat) (gs : list (graph k)) : trans_clos_answer k by struct n :=
     compute_transitive_closure 0 _ := OutOfFuel _;
     compute_transitive_closure (S n) gs := aux gs []
      where aux (l : list (graph k)) (acc : list (graph k)) : trans_clos_answer k by struct l :=
@@ -1074,7 +1074,7 @@ Section SCT.
                                              if List.existsb (eqb gcomp') gs'' then None
                                              else Some gcomp'
                                            else Some gcomp).
-  Hint Extern 10 => progress simpl : Below.
+  (* Hint Extern 10 => progress simpl : Below. *)
   (* FIXME bug when using with *)
 
   (* Equations compute_transitive_closure {k} (n : nat) (gs : list (graph k)) : trans_clos_answer k *)

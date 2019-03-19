@@ -66,6 +66,7 @@ end
 
 type wf_rec = {
   wf_rec_term : constr;
+  wf_rec_functional : constr option;
   wf_rec_arg : constr;
   wf_rec_rel : constr }
 
@@ -90,7 +91,6 @@ type splitting =
   | Compute of context_map * where_clause list * types * splitting_rhs
   | Split of context_map * int * types * splitting option array
   | Mapping of context_map * splitting (* Mapping Γ |- p : Γ' and splitting Γ' |- p : Δ *)
-  | RecValid of context_map * identifier * rec_info * splitting
   | Refined of context_map * refined_node * splitting
 
 and where_clause =
@@ -132,7 +132,6 @@ let context_map_of_splitting : splitting -> context_map = function
   | Compute (subst, _, _, _) -> subst
   | Split (subst, _, _, _) -> subst
   | Mapping (subst, _) -> subst
-  | RecValid (subst, _, _, s) -> subst
   | Refined (subst, _, _) -> subst
 
 let pr_path evd = prlist_with_sep (fun () -> str":") Id.print
@@ -226,8 +225,6 @@ let pr_splitting env sigma ?(verbose=false) split =
           (mt ()) cs))
     | Mapping (ctx, s) ->
       hov 2 (str"Mapping " ++ pr_context_map env sigma ctx ++ Pp.fnl () ++ aux s)
-    | RecValid (ctx, id, fix, c) ->
-      hov 2 (str "RecValid " ++ Id.print id ++ Pp.fnl () ++ aux c)
     | Refined (lhs, info, s) ->
       let (id, c, cty), ty, arg, path, scargs, revctx, newprob, newty =
         info.refined_obj, info.refined_rettyp,
@@ -271,6 +268,7 @@ let ppsplit s =
 
 let map_wf_rec f r =
   { wf_rec_term = f r.wf_rec_term;
+    wf_rec_functional = Option.map f r.wf_rec_functional;
     wf_rec_arg = f r.wf_rec_arg;
     wf_rec_rel = f r.wf_rec_rel }
 
@@ -317,8 +315,6 @@ and map_split f split =
     | Mapping (lhs, s) ->
        let lhs' = map_ctx_map f lhs in
        Mapping (lhs', aux s)
-    | RecValid (ctx, id, r, c) ->
-      RecValid (map_ctx_map f ctx, id, map_rec_info f r, aux c)
     | Refined (lhs, info, s) ->
       let lhs' = map_ctx_map f lhs in
       let (id, c, cty) = info.refined_obj in
@@ -504,8 +500,6 @@ let term_of_tree env0 isevar sort tree =
       let ty = it_mkProd_or_subst env evm (prod_appvect evm ty args) ctx in
       evm, term, ty
 
-    | RecValid (lhs, id, r, rest) -> aux env evm sort rest
-
     | Refined ((ctx, _, _), info, rest) ->
       let (id, _, _), ty, rarg, path, f, args, newprob, newty =
         info.refined_obj, info.refined_rettyp,
@@ -685,18 +679,19 @@ let make_program env evd p prob s rec_info =
   match rec_info with
   | Some r ->
     let sort = p.program_sort in
-    let term, ty = term_of_tree env evd sort s in
     let lhs = id_subst r.rec_lets in
     (match r.rec_node with
      | WfRec wfr ->
-       let term = mkApp (wfr.wf_rec_term, [| beta_appvect !evd term (extended_rel_vect 0 (pi1 lhs)) |]) in
-       let s' =
-         match s with
-         | RecValid _ -> s
-         | _ -> RecValid (lhs, p.program_id, r, s)
+       let fn =
+         match wfr.wf_rec_functional with
+         | None -> let term, ty = term_of_tree env evd sort s in term
+         | Some t -> t
        in
-       Single (p, prob, rec_info, s', it_mkLambda_or_LetIn term (pi1 lhs))
+       let term = beta_appvect !evd wfr.wf_rec_term
+           [| beta_appvect !evd fn (extended_rel_vect 0 (pi1 lhs)) |] in
+       Single (p, prob, rec_info, s, it_mkLambda_or_LetIn term (pi1 lhs))
      | StructRec sr ->
+       let term, ty = term_of_tree env evd sort s in
        let args = extended_rel_vect 0 r.rec_lets in
        let term = beta_appvect !evd term args in
        let before, after =
@@ -708,19 +703,13 @@ let make_program env evd p prob s rec_info =
        let program_sign = subst_rel_context 0 subst before in
        let program_arity = substnl subst r.rec_args r.rec_arity in
        let p' = { p with program_sign; program_arity } in
-       let s' =
-         match s with
-         | RecValid _ -> s
-         | _ -> RecValid (lhs, p.program_id, r, s)
-       in
        let p' =
          match p.program_rec with
          | Some (Structural ann) ->
            let ann' =
              match ann with
              | NestedOn None ->
-               (match s' with
-                | RecValid (_, _, _, Split (ctx, var, _, _))
+               (match s with
                 | Split (ctx, var, _, _) ->
                   NestedOn (Some ((List.length (pi1 ctx)) - var - sr.struct_rec_protos, None))
                 | _ -> ann)
@@ -729,20 +718,15 @@ let make_program env evd p prob s rec_info =
            { p' with program_rec = Some (Structural ann') }
          | _ -> p'
        in
-       Mutual (p', prob, r, s', after, (* lift 1  *)term))
+       Mutual (p', prob, r, s, after, (* lift 1  *)term))
   | None ->
     Single (p, prob, rec_info, s, fst (term_of_tree env evd p.program_sort s))
 
-let update_rec_info p rec_info s =
+let update_rec_info p rec_info =
   match p.Syntax.program_rec, rec_info.rec_node with
   | Some (Structural ra), StructRec sr ->
-    let rec_info = {rec_info with rec_node = StructRec { sr with struct_rec_arg = ra }} in
-    let s' =
-      match s with
-      | RecValid (lhs, id, _, s) -> RecValid (lhs, id, rec_info, s)
-      | _ -> s
-    in rec_info, s'
-  | _, _ -> rec_info, s
+    {rec_info with rec_node = StructRec { sr with struct_rec_arg = ra }}
+  | _, _ -> rec_info
 
 let make_programs env evd flags ?(define_constants=false) programs =
   let sterms = List.map (fun (p', prob, split, rec_info) ->
@@ -807,7 +791,7 @@ let make_programs env evd flags ?(define_constants=false) programs =
     let make_prog (p, (prob, rec_info, s', after, _), b) =
       let term = it_mkLambda_or_LetIn b after in
       let term = nf_beta env !evd term in
-      let rec_info, s' = update_rec_info p rec_info s' in
+      let rec_info = update_rec_info p rec_info in
       let p = { p with program_sign = p.program_sign @ after } in
       { program_info = p;
         program_prob = prob;
@@ -842,8 +826,6 @@ let change_splitting s sp =
       Split (change_lhs s lhs, rel, ty, Array.map (fun x -> Option.map aux x) sp)
     | Mapping (lhs, sp) ->
       Mapping (change_lhs s lhs, aux sp)
-    | RecValid (lhs, id, t, rest) ->
-      RecValid (change_lhs s lhs, id, t, aux rest)
     | Refined (lhs, info, rest) ->
       Refined (change_lhs s lhs, info, aux rest)
   in aux sp
@@ -876,9 +858,6 @@ let check_splitting env evd sp =
     | Mapping (lhs, sp) ->
       let _ = check_ctx_map env evd lhs in
       aux sp
-    | RecValid (lhs, id, t, rest) ->
-      let _ = check_ctx_map env evd lhs in
-      aux rest
     | Refined (lhs, info, rest) ->
       let _ = check_ctx_map env evd lhs in
       aux rest
@@ -912,10 +891,30 @@ let check_splitting env evd sp =
     aux p.program_splitting
   in aux sp
 
-let define_splitting_constants flags env0 isevar unfold tree =
+let define_one_program_constants flags env0 isevar unfold p =
   let () = assert (not (Evd.has_undefined !isevar)) in
   let helpers = ref [] in
-  let rec aux env evm = function
+  let rec aux_program env evm p path =
+    match p.program_rec with
+    | Some ({ rec_node = WfRec r } as wfr) ->
+      let evm, s' = aux env evm p.program_splitting in
+      let isevar = ref evm in
+      let env = Global.env () in
+      let term, ty = term_of_tree env isevar p.program_info.program_sort s' in
+      let (cst, (evm, e)) =
+        Equations_common.declare_constant (path_id (Id.of_string "functional" :: path))
+          term (Some ty)
+          flags.polymorphic !isevar (Decl_kinds.(IsDefinition Definition))
+      in
+      let () = helpers := (cst, (0,0)) :: !helpers in
+      let env = Global.env () in
+      let evm = Evd.update_sigma_env evm env in
+      evm, { p with program_splitting = s';
+                    program_rec = Some { wfr with rec_node = WfRec { r with wf_rec_functional = Some e } } }
+
+    | _ -> let evm, s = aux env evm p.program_splitting in
+      evm, { p with program_splitting = s }
+  and aux env evm = function
     | Compute (lhs, where, ty, RProgram rhs) ->
       let define_where ({where_program;
                          where_program_args;
@@ -924,12 +923,12 @@ let define_splitting_constants flags env0 isevar unfold tree =
         let p = where_program in
         let program_prob = change_lhs s p.program_prob in
         let program_splitting = change_splitting s p.program_splitting in
-        let evm, split = aux env evm program_splitting in
+        let evm, p' = aux_program env evm { p with program_splitting } where_path in
         let env = Global.env () in
         let evm = Evd.update_sigma_env evm env in
         let isevar = ref evm in
         let program' = make_single_program env isevar flags where_program.program_info
-            program_prob split where_program.program_rec in
+            program_prob p'.program_splitting p'.program_rec in
         let term' = program'.program_term in
         let (cst, (evm, e)) =
           Equations_common.declare_constant (path_id ~unfold where_path)
@@ -953,10 +952,6 @@ let define_splitting_constants flags env0 isevar unfold tree =
       let evm, s' = aux env evm s in
       evm, Mapping (lhs, s')
 
-    | RecValid (ctx, id, t, rest) ->
-      let evm, s' = aux env evm rest in
-      evm, RecValid (ctx, id, t, s')
-
     | Refined ((ctx, _, _) as lhs, info, rest) ->
       let evm', rest' = aux env evm rest in
       let isevar = ref evm' in
@@ -978,14 +973,14 @@ let define_splitting_constants flags env0 isevar unfold tree =
           | None -> evm, None) evm sp
       in evm, Split (lhs, rel, ty, sp')
   in
-  let evm, tree = aux env0 !isevar tree in
+  let evm, tree = aux_program env0 !isevar p [p.program_info.program_id] in
     isevar := evm; !helpers, tree
 
 let define_program_constants flags env evd ?(unfold=false) programs =
   let helpers, programs =
     List.fold_left_map (fun helpers p ->
-        let helpers', split = define_splitting_constants flags env evd unfold p.program_splitting in
-        helpers @ helpers', { p with program_splitting = split }) [] programs
+        let helpers', p = define_one_program_constants flags env evd unfold p in
+        helpers @ helpers', p) [] programs
   in
   let env = Global.env () in
   let programs = make_programs env evd flags ~define_constants:true

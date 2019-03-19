@@ -15,6 +15,7 @@ type 'a peuniverses = 'a * EConstr.EInstance.t
 
 (* Options *)
 val simplify_withUIP : bool ref
+val equations_with_funext : bool ref
 val equations_transparent : bool ref
 
 val debug : bool ref
@@ -295,6 +296,7 @@ val observe_new : string -> unit Proofview.tactic -> unit Proofview.tactic
 val below_tactics_path : Names.DirPath.t
 val below_tac : string -> Names.KerName.t
 val unfold_recursor_tac : unit -> unit Proofview.tactic
+val unfold_recursor_ext_tac : unit -> unit Proofview.tactic
 val equations_tac : unit -> unit Proofview.tactic
 val set_eos_tac : unit -> unit Proofview.tactic
 val solve_rec_tac : unit -> unit Proofview.tactic
