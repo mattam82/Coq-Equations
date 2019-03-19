@@ -32,7 +32,7 @@ Section Nested.
   Hint Extern 3 => progress destruct_proj1_sig : Below.
   Hint Extern 3 => progress auto with arith : Below.
 
-  Equations? f (n : nat) : { x : nat | x <= n }
+  Equations f (n : nat) : { x : nat | x <= n }
    by wf n lt :=
   f 0 :=  exist _ 0 _ ;
   f (S n) := exist _ (proj1_sig (f (proj1_sig (f n)))) _.
