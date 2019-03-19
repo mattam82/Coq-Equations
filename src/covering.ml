@@ -202,7 +202,7 @@ let adjust_sign_arity env evars p clauses =
       match args with
       | 0 -> evars, sign, ty
       | n ->
-        match EConstr.kind evars (whd_all env evars ty) with
+        match EConstr.kind evars (whd_all (push_rel_context sign env) evars ty) with
         | Prod (na, t, b) -> aux evars (n - 1) (Context.Rel.Declaration.LocalAssum (na, t) :: sign) b
         | Evar e -> let evars', t = Evardefine.define_evar_as_product env evars e in
           aux evars' args sign t
