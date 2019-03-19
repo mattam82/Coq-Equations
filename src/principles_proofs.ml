@@ -21,6 +21,8 @@ open Covering
 open EConstr
 open Vars
 
+open Cc_plugin.Cctac
+
 type where_map = (constr * Names.Id.t * splitting) PathMap.t
 
 type equations_info = {
@@ -900,7 +902,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
 	      [((Locus.OnlyOccurrences [1]), EvalConstRef f_cst); 
                ((Locus.OnlyOccurrences [1]), EvalConstRef funf_cst)]
           in tclTHENLIST [to82 unfolds; simpltac; to82 (pi_tac ())] gl
-        with Not_found -> to82 reflexivity gl)
+        with Not_found -> to82 (Tacticals.New.tclORELSE reflexivity (congruence_tac 10 [])) gl)
     | _ -> to82 reflexivity gl
   in
   let solve_eq subst = observe "solve_eq" (tclORELSE (transparent (to82 reflexivity)) (solve_rec_eq subst)) in
@@ -917,29 +919,42 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
                       (Locus.OnlyOccurrences [1], EvalConstRef funf_cst)]);
              my_simpl]
         in
-        let subst, fix =
+        let set_opaque () =
+          Global.set_strategy (ConstKey f_cst) Conv_oracle.Opaque;
+          Global.set_strategy (ConstKey funf_cst) Conv_oracle.Opaque;
+        in
+        let subst, fixtac, extgl =
           match p.program_rec with
           | Some r ->
             let open Tacticals.New in
-            let fixtac = match r with
-              | { rec_node = WfRec _ } -> tclTHENLIST [of82 unfolds; unfold_recursor_tac ()]
+            let fixtac, extgl = match r with
+              | { rec_node = WfRec _ } ->
+                if !Equations_common.equations_with_funext then
+                  tclTHENLIST [of82 unfolds; unfold_recursor_ext_tac ()], false
+                else
+                  tclTHENLIST [of82 unfolds; unfold_recursor_tac ()], true
               | { rec_node = StructRec sr } ->
                 match annot_of_rec sr with
                 | Some annot ->
                   tclTHENLIST [tclDO r.rec_args revert_last;
                                observe_new "mutfix" (mutual_fix [] [annot]);
-                               tclDO r.rec_args intro; of82 unfolds]
-                | None -> Proofview.tclUNIT ()
-            in ((f_cst, funf_cst) :: subst), fixtac
-          | _ -> subst, of82 unfolds
+                               tclDO r.rec_args intro; of82 unfolds], false
+                | None -> Proofview.tclUNIT (), false
+            in ((f_cst, funf_cst) :: subst), fixtac, extgl
+          | _ -> subst, of82 unfolds, false
         in
         of82 (tclTHENLIST [observe "program before unfold" (to82 intros);
-                           observe "program fixpoint" (to82 fix);
-                           (fun gl ->
-                              Global.set_strategy (ConstKey f_cst) Conv_oracle.Opaque;
-                              Global.set_strategy (ConstKey funf_cst) Conv_oracle.Opaque;
-                              (observe "program"
-                                 (aux subst p.program_splitting unfp.program_splitting)) gl)]))
+                           observe "program fixpoint"
+                             (if extgl then
+                                (tclTHENFIRST (to82 fixtac)
+                                   (fun gl -> set_opaque ();
+                                     observe "extensionality proof"
+                                       (aux subst p.program_splitting p.program_splitting) gl))
+                              else to82 fixtac);
+                           (fun gl -> set_opaque ();
+                             (observe "program"
+                                (aux subst p.program_splitting unfp.program_splitting)) gl)]))
+
   and aux subst split unfold_split =
     match split, unfold_split with
     | Split (_, _, _, splits), Split ((ctx,pats,_), var, _, unfsplits) ->

@@ -37,6 +37,7 @@ let from_peuniverses sigma (x, u) = (x, EConstr.EInstance.kind sigma u)
 
 (* Options. *)
 let simplify_withUIP = ref false
+let equations_with_funext = ref true
 let equations_transparent = ref false
 
 let _ = Goptions.declare_bool_option {
@@ -74,6 +75,14 @@ let _ = Goptions.declare_bool_option {
   Goptions.optkey   = ["Equations"; "Transparent"];
   Goptions.optread  = (fun () -> !equations_transparent);
   Goptions.optwrite = (fun b -> equations_transparent := b)
+}
+
+let _ = Goptions.declare_bool_option {
+  Goptions.optdepr  = false;
+  Goptions.optname  = "use functional extensionality to prove unfolding lemmas";
+  Goptions.optkey   = ["Equations"; "With"; "Funext"];
+  Goptions.optread  = (fun () -> !equations_with_funext);
+  Goptions.optwrite = (fun b -> equations_with_funext := b)
 }
 
 (* Debugging infrastructure. *)
@@ -579,6 +588,7 @@ let simpl_equations_tac () = tac_of_string "Equations.Init.simpl_equations" []
 let solve_subterm_tac () = tac_of_string "Equations.Init.solve_subterm" []
 let specialize_mutfix_tac () = tac_of_string "Equations.Init.specialize_mutfix" []
 let unfold_recursor_tac () = tac_of_string "Equations.Init.unfold_recursor" []
+let unfold_recursor_ext_tac () = tac_of_string "Equations.Init.unfold_recursor_ext" []
   
 open Libnames
 

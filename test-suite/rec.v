@@ -12,6 +12,7 @@ Require Import Omega Arith Wf_nat.
 Require Import Lia.
 
 Module RecRel.
+  Unset Equations With Funext.
 
   Equations id (n m : nat) : nat by wf n lt :=
   id O m := m ;
@@ -40,6 +41,7 @@ Section Nested.
   
   Hint Extern 3 => progress auto with arith : Below.
 
+
   Equations? f (n : nat) : { x : nat | x <= n }
    by wf n lt :=
   f 0 :=  exist _ 0 _ ;
@@ -47,6 +49,14 @@ Section Nested.
   Proof. all:(simpl; intros; try typeclasses eauto with Below).
          simpl. destruct f. simpl. destruct f. simpl. omega.
   Defined.
+
+  Lemma exist_eq {A} (P : A -> Prop) (x y : A) (p : P x) (q : P y) :
+    { e : x = y & eq_rect _ P p _ e = q } ->
+    exist _ x p = exist _ y q.
+  Proof.
+    intros [He Hp]. destruct He. simpl in Hp. destruct Hp. reflexivity.
+  Defined.
+
 
 End Nested.
 
