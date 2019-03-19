@@ -1,9 +1,7 @@
+(** * Higher-order recursion, an example with finite branching trees *)
+
 From Equations Require Import Equations.
 Require Import Examples.Fin.
-(* Add LoadPath "examples". *)
-Require Import Examples.ordinals.
-Add Search Blacklist "_obligation_".
-Require Import Equations.Prop.TransparentEquations.
 
 Inductive ho : Set :=
 | base : nat -> ho
@@ -27,6 +25,5 @@ Derive Subterm for ho.
 Equations horec (x : ho) : nat by wf x ho_subterm :=
 horec (base n) := n;
 horec (lim k f) := maxf k (fun x => horec (f x)).
-Transparent horec maxf lift_fin horec_struct.
 
 Definition horec_test : horec (lim 7 (fun fs => base (fog fs))) = 6 := eq_refl.

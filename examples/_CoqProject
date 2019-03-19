@@ -13,10 +13,11 @@ general_recursion.v
 Basics.v
 definterp.v
 ordinals.v
-ordinal_rec.v
+ho_finite_branching.v
 mutualwfrec.v
 accumulator.v
 views.v
 wfrec.v
 AlmostFull.v
 POPLMark1a.v
+bove_capretta.v

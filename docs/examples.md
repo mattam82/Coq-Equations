@@ -69,3 +69,13 @@ Recursion
 - [General recursion](examples/Examples.general_recursion.html): working with
   general recursive functions, without worrying about termination proofs
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/general_recursion.v)).
+
+- [Higher-order recursion](examples/Examples.ho_finite_branching.html):
+  working with higher-order recursion using structural or well-founded
+  recursion, here on finitely branching trees as functions from `fin n`.
+  ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/ho_finite_branching.v)).
+
+- [Bove Capretta](examples/Examples.bove_capretta.html): using the
+  improved Bove-Cappreta method (not requiring induction-recursion) to
+  prove termination of McCarthy's f91.
+  ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/bove_capretta.v)).
