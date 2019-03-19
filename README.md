@@ -34,7 +34,7 @@ providing a definitional extension to the Coq kernel.
 Two articles describing the system are available:
 
 - [Equations Reloaded](http://www.irif.fr/~sozeau/research/publications/drafts/Equations_Reloaded.pdf), Cyprien Mangin and
-  Matthieu Sozeau (July 2018). In revision.
+  Matthieu Sozeau (March 2019). Submitted.
 - [Equations: A Dependent Pattern-Matching Compiler](https://link.springer.com/chapter/10.1007/978-3-642-14052-5_29) Matthieu
   Sozeau (2010) 
   In: Kaufmann M., Paulson L.C. (eds) Interactive Theorem

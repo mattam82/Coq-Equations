@@ -1,6 +1,7 @@
 From Equations Require Import Equations.
 
 Require Import Vector.
+Notation vector := t.
 Derive NoConfusion NoConfusionHom for vector.
 
 Arguments Vector.nil {A}.
@@ -67,6 +68,9 @@ Proof.
   split. intros; depelim H0; simp In in *; intuition. simp In in *. intuition.
   apply H in H1. intuition.
 Qed.
+Require Import Sumbool.
+
+Notation dec x := (sumbool_of_bool x).
 
 Section QuickSort.
   Context {A : Type} (leb : A -> A -> bool).
@@ -75,11 +79,11 @@ Section QuickSort.
   Set Program Mode.
 
   Equations? filter {n} (v : vector A n) (f : A -> bool) :
-    &{ k : nat & { v : vector A k | k <= n /\ All (fun x => f x = true) v } } :=
-    filter nil        f := &(0 & nil);
+    Σ (k : nat), { v : vector A k | k <= n /\ All (fun x => f x = true) v } :=
+    filter nil        f := (0, nil);
     filter (cons a v') f with dec (f a) :=
-           { | left H => &(_ & cons a (filter v' f).2);
-             | right H => &(_ & (filter v' f).2) }.
+           { | left H => (_, cons a (filter v' f).2);
+             | right H => (_, (filter v' f).2) }.
   Proof.
     split; auto. constructor.
     destruct filter as [n' [v'' [Hn' Hv']]]. simpl.
@@ -89,18 +93,17 @@ Section QuickSort.
   Defined.
 
   Equations? pivot {n} (v : vector A n) (f : A -> bool) :
-    &{ k : nat & &{ l : nat & &{ v' : vector A k &
-    { w : vector A l
+    Σ (k : nat) (l : nat) (v' : vector A k), { w : vector A l
     | (k + l = n)%nat
       /\ forall x, In x v <->
                    (if f x then In x v'
-                    else In x w) } } } } :=
+                    else In x w) } :=
                    (*   All (fun x => In x v /\ f x = true) v' *)
                    (* /\ All (fun x => In x v /\ f x = false) w } } } } := *)
-    pivot nil        f := &(0 , 0 , nil & nil);
+    pivot nil        f := (0 , 0 , nil, nil);
     pivot (cons a v') f with dec (f a), pivot v' f :=
-           { | left H | &(k, l, v & w) => &(_ , _, cons a v & w);
-             | right H | &(k, l, v & w) => &(_ , _, v & cons a w) }.
+           { | left H | (k, l, v, w) => (_ , _, cons a v, w);
+             | right H | (k, l, v, w) => (_ , _, v, cons a w) }.
   Proof.
     split; intros; simp In; auto. intuition. destruct (f x); auto. simpl.
     split; auto with arith. intros x. simp In. split; intros Hx.
@@ -114,7 +117,7 @@ Section QuickSort.
   Equations? qs {n} (l : vector A n) : { v : vector A n | sorted v /\ (forall x, In x l <-> In x v) } by wf n lt :=
     qs nil := nil ;
     qs (cons a v) with pivot v (fun x => leb x a) :=
-                { | &(k, l, lower & higher) =>
+                { | (k, l, lower, higher) =>
                     app (qs lower) (a |:| qs higher) }.
   Proof.
     all:simpl. all:repeat (destruct qs; simpl).
@@ -122,7 +125,7 @@ Section QuickSort.
     simpl. destruct (eq_sym (plus_n_Sm k l)). simpl.
     intuition.
     apply Sorted_app; auto. constructor.
-    apply In_All. intros x1 Inx1. apply H2 in Inx1. eapply leb_inverse. specialize (
+    apply In_All. intros x1 Inx1. apply H2 in Inx1. eapply leb_inverse.
 
     eapply All_In_All; eauto. eapply All_impl; eauto. simpl. intros x1 [inx1 lebx1].
     apply leb_inverse; assumption. intuition.
