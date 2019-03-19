@@ -43,9 +43,6 @@ let define_unfolding_eq env evd flags p unfp prog prog' ei hook =
   let funf_cst = match info'.term_id with ConstRef c -> c | _ -> assert false in
   let () = if flags.polymorphic then evd := Evd.from_ctx info'.term_ustate in
   let funfc = e_new_global evd info'.term_id in
-  let unfold_split = unfp.program_splitting in
-  (* let cmap' x = of_constr (cmap (EConstr.to_constr ~abort_on_undefined_evars:false !evd x)) in
-   * let unfold_split = map_split cmap' unfold_split in *)
   let unfold_eq_id = add_suffix (program_id unfp) "_eq" in
   let hook_eqs subst grunfold _ =
     Global.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
@@ -88,7 +85,7 @@ let define_unfolding_eq env evd flags p unfp prog prog' ei hook =
   let evd, stmt = Typing.solve_evars (Global.env ()) !evd stmt in
   let tac =
     Principles_proofs.(prove_unfolding_lemma info ei.equations_where_map prog.program_cst funf_cst
-      p.program_splitting unfold_split)
+      p unfp)
   in
   ignore(Obligations.add_definition
            ~kind:info.decl_kind

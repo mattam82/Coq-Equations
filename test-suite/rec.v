@@ -12,6 +12,7 @@ Require Import Omega Arith Wf_nat.
 Require Import Lia.
 
 Module RecRel.
+  Unset Equations With Funext.
 
   Equations id (n m : nat) : nat by wf n lt :=
   id O m := m ;
@@ -31,9 +32,7 @@ Section Nested.
   Hint Extern 3 => progress destruct_proj1_sig : Below.
   Hint Extern 3 => progress auto with arith : Below.
 
-  Obligation Tactic := program_simpl; try typeclasses eauto with Below.
-
-  Equations f (n : nat) : { x : nat | x <= n }
+  Equations? f (n : nat) : { x : nat | x <= n }
    by wf n lt :=
   f 0 :=  exist _ 0 _ ;
   f (S n) := exist _ (proj1_sig (f (proj1_sig (f n)))) _.
@@ -41,11 +40,6 @@ Section Nested.
     simpl. destruct_proj1_sig. revert H; destruct_proj1_sig.
     intros; omega.
   Defined.
-
-  (* Proof. auto with arith.  auto with arith. *)
-  (*        all:(simpl; intros; try typeclasses eauto with Below). *)
-  (*        simpl. destruct f. simpl. destruct f. simpl. omega. *)
-  (* Defined. *)
 
 End Nested.
 

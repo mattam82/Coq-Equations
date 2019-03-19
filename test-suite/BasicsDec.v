@@ -45,9 +45,9 @@ Lemma well_founded_vector_direct_subterm' :
 Proof. intros.
   apply Transitive_Closure.wf_clos_trans.
   intro. simp_sigmas.
-  induction a; constructor; intros;
+  induction a0; constructor; intros;
   simp_sigmas. simpl in *.
   depelim H. 
-  depelim H. apply IHa.
+  depelim H. apply IHa0.
 Defined.
 Print Assumptions well_founded_vector_direct_subterm'.

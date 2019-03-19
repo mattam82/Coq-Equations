@@ -924,6 +924,7 @@ let compute_rec_data env evars data lets subst p =
     let rec_prob = (lhs, pats, lhs) in
     let rec_node =
       { wf_rec_term = fix;
+        wf_rec_functional = None;
         wf_rec_arg = arg;
         wf_rec_rel = rel}
     in
