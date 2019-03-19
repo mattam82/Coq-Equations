@@ -17,6 +17,8 @@ type 'a peuniverses = 'a * EConstr.EInstance.t
 val simplify_withUIP : bool ref
 val equations_with_funext : bool ref
 val equations_transparent : bool ref
+val equations_derive_equations : bool ref
+val equations_derive_eliminator : bool ref
 
 val debug : bool ref
 val equations_debug : (unit -> Pp.t) -> unit

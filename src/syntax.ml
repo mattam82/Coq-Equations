@@ -209,11 +209,11 @@ let next_ident_away s ids =
   let n' = Namegen.next_ident_away s !ids in
     ids := Id.Set.add n' !ids; n'
 
-type equation_option = | OInd of bool | OEquations of bool
+type equation_option = OInd | OEquations
     
-type equation_user_option = equation_option
+type equation_user_option = equation_option * bool
 
-type equation_options = equation_option list
+type equation_options = equation_user_option list
 
 let pr_r_equation_user_option _prc _prlc _prt l =
   mt ()

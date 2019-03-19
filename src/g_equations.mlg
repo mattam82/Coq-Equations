@@ -124,10 +124,10 @@ open Pcoq.Prim
 
 ARGUMENT EXTEND equation_user_option
 PRINTED BY { pr_r_equation_user_option }
-| [ "noind" ] -> { OInd false }
-| [ "ind" ] -> { OInd true }
-| [ "eqns" ] -> { OEquations true }
-| [ "noeqns" ] -> { OEquations false }
+| [ "noind" ] -> { OInd, false }
+| [ "ind" ] -> { OInd, true }
+| [ "eqns" ] -> { OEquations, true }
+| [ "noeqns" ] -> { OEquations, false }
 END
 
 ARGUMENT EXTEND equation_options
