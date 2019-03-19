@@ -67,6 +67,7 @@ end
 
 type wf_rec = {
   wf_rec_term : constr;
+  wf_rec_functional : constr option;
   wf_rec_arg : constr;
   wf_rec_rel : constr }
 
@@ -268,6 +269,7 @@ let ppsplit s =
 
 let map_wf_rec f r =
   { wf_rec_term = f r.wf_rec_term;
+    wf_rec_functional = Option.map f r.wf_rec_functional;
     wf_rec_arg = f r.wf_rec_arg;
     wf_rec_rel = f r.wf_rec_rel }
 
@@ -678,13 +680,19 @@ let make_program env evd p prob s rec_info =
   match rec_info with
   | Some r ->
     let sort = p.program_sort in
-    let term, ty = term_of_tree env evd sort s in
     let lhs = id_subst r.rec_lets in
     (match r.rec_node with
      | WfRec wfr ->
-       let term = mkApp (wfr.wf_rec_term, [| beta_appvect !evd term (extended_rel_vect 0 (pi1 lhs)) |]) in
+       let fn =
+         match wfr.wf_rec_functional with
+         | None -> let term, ty = term_of_tree env evd sort s in term
+         | Some t -> t
+       in
+       let term = beta_appvect !evd wfr.wf_rec_term
+           [| beta_appvect !evd fn (extended_rel_vect 0 (pi1 lhs)) |] in
        Single (p, prob, rec_info, s, it_mkLambda_or_LetIn term (pi1 lhs))
      | StructRec sr ->
+       let term, ty = term_of_tree env evd sort s in
        let args = extended_rel_vect 0 r.rec_lets in
        let term = beta_appvect !evd term args in
        let before, after =
@@ -884,12 +892,30 @@ let check_splitting env evd sp =
     aux p.program_splitting
   in aux sp
 
-
-
-let define_splitting_constants flags env0 isevar unfold tree =
+let define_one_program_constants flags env0 isevar unfold p =
   let () = assert (not (Evd.has_undefined !isevar)) in
   let helpers = ref [] in
-  let rec aux env evm = function
+  let rec aux_program env evm p path =
+    match p.program_rec with
+    | Some ({ rec_node = WfRec r } as wfr) ->
+      let evm, s' = aux env evm p.program_splitting in
+      let isevar = ref evm in
+      let env = Global.env () in
+      let term, ty = term_of_tree env isevar p.program_info.program_sort s' in
+      let (cst, (evm, e)) =
+        Equations_common.declare_constant (path_id (Id.of_string "functional" :: path))
+          term (Some ty)
+          flags.polymorphic !isevar (Decl_kinds.(IsDefinition Definition))
+      in
+      let () = helpers := (cst, (0,0)) :: !helpers in
+      let env = Global.env () in
+      let evm = Evd.update_sigma_env evm env in
+      evm, { p with program_splitting = s';
+                    program_rec = Some { wfr with rec_node = WfRec { r with wf_rec_functional = Some e } } }
+
+    | _ -> let evm, s = aux env evm p.program_splitting in
+      evm, { p with program_splitting = s }
+  and aux env evm = function
     | Compute (lhs, where, ty, RProgram rhs) ->
       let define_where ({where_program;
                          where_program_args;
@@ -898,12 +924,12 @@ let define_splitting_constants flags env0 isevar unfold tree =
         let p = where_program in
         let program_prob = change_lhs s p.program_prob in
         let program_splitting = change_splitting s p.program_splitting in
-        let evm, split = aux env evm program_splitting in
+        let evm, p' = aux_program env evm { p with program_splitting } where_path in
         let env = Global.env () in
         let evm = Evd.update_sigma_env evm env in
         let isevar = ref evm in
         let program' = make_single_program env isevar flags where_program.program_info
-            program_prob split where_program.program_rec in
+            program_prob p'.program_splitting p'.program_rec in
         let term' = program'.program_term in
         let (cst, (evm, e)) =
           Equations_common.declare_constant (path_id ~unfold where_path)
@@ -948,14 +974,14 @@ let define_splitting_constants flags env0 isevar unfold tree =
           | None -> evm, None) evm sp
       in evm, Split (lhs, rel, ty, sp')
   in
-  let evm, tree = aux env0 !isevar tree in
+  let evm, tree = aux_program env0 !isevar p [p.program_info.program_id] in
     isevar := evm; !helpers, tree
 
 let define_program_constants flags env evd ?(unfold=false) programs =
   let helpers, programs =
     List.fold_left_map (fun helpers p ->
-        let helpers', split = define_splitting_constants flags env evd unfold p.program_splitting in
-        helpers @ helpers', { p with program_splitting = split }) [] programs
+        let helpers', p = define_one_program_constants flags env evd unfold p in
+        helpers @ helpers', p) [] programs
   in
   let env = Global.env () in
   let programs = make_programs env evd flags ~define_constants:true

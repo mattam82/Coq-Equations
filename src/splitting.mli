@@ -32,6 +32,7 @@ module PathMap : CSig.MapS with type key = PathOT.t
 
 type wf_rec = {
   wf_rec_term : constr;
+  wf_rec_functional : constr option;
   wf_rec_arg : constr;
   wf_rec_rel : constr }
 
@@ -158,11 +159,11 @@ val make_single_program :
   rec_info option ->
   program
 
-val define_splitting_constants : flags ->
+val define_one_program_constants : flags ->
   env ->
   Evd.evar_map ref ->
   bool ->
-  splitting -> (Constant.t * (int * int)) list * splitting
+  program -> (Constant.t * (int * int)) list * program
 
 val define_program_constants : flags ->
   env ->

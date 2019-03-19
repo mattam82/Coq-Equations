@@ -650,6 +650,13 @@ Ltac hnf_eq :=
         convert_concl_no_check (x' = y')
   end.
 
+Ltac red_eq_lhs :=
+  match goal with
+    |- ?R ?x ?y =>
+      let x' := eval red in x in
+      convert_concl_no_check (R x' y)
+  end.
+
 Ltac red_eq :=
   match goal with
     |- ?x = ?y =>

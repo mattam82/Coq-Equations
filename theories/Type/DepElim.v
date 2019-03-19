@@ -686,6 +686,13 @@ Ltac red_eq :=
       in reduce_eq x y
   end.
 
+Ltac red_eq_lhs :=
+  match goal with
+    |- ?R ?x ?y =>
+      let x' := eval red in x in
+      convert_concl_no_check (R x' y)
+  end.
+
 Ltac red_gl :=
   match goal with
     |- ?P ?x =>
