@@ -1,5 +1,8 @@
-(** Example by Rafaël Bocquet: POPLmark part 1A with inductive definition of scope 
-  and well-scoped variables (and terms, types and environments). *)
+(** ** POPLMark 1a solution
+
+  Original development by Rafaël Bocquet: POPLmark part 1A with
+  inductive definition of scope and well-scoped variables (and terms,
+  types and environments). *)
 
 Require Import Program.
 Require Import Equations.Equations.
@@ -14,26 +17,9 @@ Inductive var : scope -> Set :=
 | FS : forall {n}, var n -> var (S n)
 .
 Derive Signature NoConfusion NoConfusionHom for var.
-Derive Subterm for nat.
-
-Definition noCycle_nat (n m : nat) : n = m -> ~ nat_direct_subterm n m.
-Proof.
-  induction m in n |- *. intros. intro H'. depelim H'.
-  intros H H'. depelim H'. apply IHm. rewrite H at 2. constructor.
-Defined.
-
-Lemma var_dec_eq : forall {n} (x y : var n), {x = y} + {x <> y}.
-Proof.
-  depind x; depelim y.
-  - left; reflexivity.
-  - right; intro H; inversion H.
-  - right; intro H; inversion H.
-  - destruct (IHx y); subst.
-    + left; reflexivity.
-    + right; intro H; inversion H. noconf H. contradiction.
-Qed.
 
 Inductive scope_le : scope -> scope -> Set :=
+(* We use an equality in the constructor here to avoid requiring UIP on [nat]. *)
 | scope_le_n : forall {n m}, n = m -> scope_le n m
 | scope_le_S : forall {n m}, scope_le n m -> scope_le n (S m)
 | scope_le_map : forall {n m}, scope_le n m -> scope_le (S n) (S m).
@@ -49,8 +35,6 @@ scope_le_app p (scope_le_map q) with p :=
   | scope_le_S p' := scope_le_S (scope_le_app p' q);
   | (scope_le_map p') := scope_le_map (scope_le_app p' q) }.
 (* Proof. all:repeat constructor. Defined. *)
-
-Hint Unfold NoConfusion.noConfusion_nat_obligation_1 : equations.
 
 Lemma scope_le_app_len n m (q : scope_le n m) : scope_le_app (scope_le_n eq_refl) q = q.
 Proof.
@@ -90,7 +74,8 @@ map_var f (FS x) := FS (f x).
 Lemma map_var_a : forall {n m o} f g a, @map_var n o (fun t => f (g t)) a = @map_var m o f (@map_var n m g a).
 Proof. depind a; autorewrite with map_var; auto. Qed.
 
-Lemma map_var_b : forall {n m} (f g : var n -> var m), (forall x, f x = g x) -> forall a, map_var f a = map_var g a.
+Lemma map_var_b : forall {n m} (f g : var n -> var m), (forall x, f x = g x) ->
+   forall a, map_var f a = map_var g a.
 Proof. depind a; autorewrite with map_var; try f_equal; auto. Qed.
 
 Equations lift_var_by {n m} (p : scope_le n m) :  var n -> var m :=
@@ -142,14 +127,16 @@ lookup (n:=(S _)) (cons a Γ) FO     := lift_type_by (scope_le_S (scope_le_n eq_
 lookup (n:=(S _)) (cons a Γ) (FS x) := lift_type_by (scope_le_S (scope_le_n eq_refl)) (lookup Γ x)
 .
 
-Lemma lookup_app : forall {n} (Γ : env O (S n)) {m} (Δ : env (S n) (S m)) x,
-                     lookup (env_app Γ Δ) (lift_var_by (env_scope_le Δ) x) =
-                     lift_type_by (env_scope_le Δ) (lookup Γ x).
+Lemma lookup_app {n} (Γ : env O (S n)) {m} (Δ : env (S n) (S m)) x :
+  lookup (env_app Γ Δ) (lift_var_by (env_scope_le Δ) x) =
+  lift_type_by (env_scope_le Δ) (lookup Γ x).
 Proof with autorewrite with lookup scope_le_app env_app lift_var_by lift_type_by; auto.
-  intros n Γ m Δ; induction Δ; subst; intros x; simpl...
+  induction Δ; subst; simpl...
   rewrite IHΔ... 
 Qed.
 Hint Rewrite @lookup_app : lookup.
+
+(** The subtyping judgment *)
 
 Inductive sa : forall {n}, env O n -> type n -> type n -> Prop :=
 | sa_top : forall {n} (Γ : env O n) s, sa Γ s ttop
@@ -191,24 +178,24 @@ Inductive env_extend : forall {b c}, env O b -> env O c -> scope_le b c -> Prop 
 .
 Derive Signature for env_extend.
 
-Lemma env_app_extend : forall {b c} (Γ : env O b) (Δ : env b c), env_extend Γ (env_app Γ Δ) (env_scope_le Δ).
+Lemma env_app_extend {b c} (Γ : env O b) (Δ : env b c) : env_extend Γ (env_app Γ Δ) (env_scope_le Δ).
 Proof.
   depind Δ; subst; intros; autorewrite with env_app scope_le_app in *; simpl;
   constructor; auto.
 Qed.
 
-Lemma env_extend_lookup : forall {b c} (Γ : env O b) (Δ : env O c) P,
-                            env_extend Γ Δ P -> forall x, lift_type_by P (lookup Γ x) = lookup Δ (lift_var_by P x).
+Lemma env_extend_lookup {b c} (Γ : env O b) (Δ : env O c) P :
+  env_extend Γ Δ P -> forall x, lift_type_by P (lookup Γ x) = lookup Δ (lift_var_by P x).
 Proof with autorewrite with lift_type_by lift_var_by map_var lookup scope_le_app; auto.
-  intros b c Γ Δ P A; depind A; intros x; depelim x...
+  intros A; depind A; intros x; depelim x...
   all:rewrite <- IHA...
 Qed.
 
-Lemma sa_weakening : forall {b} (Γ : env O b) p q (A : sa Γ p q)
-                       {c P} (Δ : env O c) (B : env_extend Γ Δ P),
-                       sa Δ (lift_type_by P p) (lift_type_by P q).
+Lemma sa_weakening {b} (Γ : env O b) p q (A : sa Γ p q) :
+  forall {c P} (Δ : env O c) (B : env_extend Γ Δ P),
+    sa Δ (lift_type_by P p) (lift_type_by P q).
 Proof.
-  intros b Γ p q A; induction A; intros c P Δ B;
+  induction A; intros c P Δ B;
   autorewrite with lift_type_by in *;
   try (auto; constructor; auto; fail).
   - depelim c; [depelim B|].
@@ -217,21 +204,19 @@ Proof.
     eapply IHA2. constructor. auto.
 Qed.
 
-Lemma sa_weakening_app : forall {b} (Γ : env O b) p q (A : sa Γ p q)
-                           {c} (Δ : env b c),
-                           sa (env_app Γ Δ) (lift_type_by (env_scope_le Δ) p) (lift_type_by (env_scope_le Δ) q).
+Lemma sa_weakening_app {b} (Γ : env O b) p q (A : sa Γ p q) {c} (Δ : env b c) :
+  sa (env_app Γ Δ) (lift_type_by (env_scope_le Δ) p) (lift_type_by (env_scope_le Δ) q).
 Proof.
   intros; eapply sa_weakening.
   exact A.
   auto using env_app_extend.  
 Qed.
 
-Lemma sa_toname : forall {n m} Γ (Δ : env (S n) m) x,
-                    x <> lift_var_by (env_scope_le Δ) FO ->
-                    forall p q, lookup (env_app (cons p Γ) Δ) x = lookup (env_app (cons q Γ) Δ) x.
+Lemma sa_toname {n m} Γ (Δ : env (S n) m) x :
+  x <> lift_var_by (env_scope_le Δ) FO ->
+  forall p q, lookup (env_app (cons p Γ) Δ) x = lookup (env_app (cons q Γ) Δ) x.
 Proof.
-  intros n m Γ Δ.
-  depind Δ; subst; intros x A p q;
+  depind Δ; subst; intros A p q;
   depelim x; simpl in *;
   autorewrite with env_app lookup lift_var_by in *; auto.
   - exfalso; auto.
@@ -239,16 +224,27 @@ Proof.
     now rewrite (IHΔ p q).
 Qed.
 
-Lemma sa_narrowing : forall {s} q,
-                       (forall {s'} (P : scope_le s s') (Γ : env O s') p (A : sa Γ p (lift_type_by P q))
-                          s'' (Δ : env (S s') s'')
-                          a b (B : sa (env_app (cons (lift_type_by P q) Γ) Δ) a b),
-                          sa (env_app (cons p Γ) Δ) a b) /\
-                       (forall {s'} (A : scope_le s s') (Γ : env O s') p (B : sa Γ p (lift_type_by A q))
-                          r (C : sa Γ (lift_type_by A q) r),
-                          sa Γ p r).
+Lemma var_dec_eq : forall {n} (x y : var n), {x = y} + {x <> y}.
 Proof.
-  intros s q; induction q;
+  depind x; depelim y.
+  - left; reflexivity.
+  - right; intro H; inversion H.
+  - right; intro H; inversion H.
+  - destruct (IHx y); subst.
+    + left; reflexivity.
+    + right; intro H; inversion H. noconf H. contradiction.
+Qed.
+
+Lemma sa_narrowing {s} q :
+  (forall {s'} (P : scope_le s s') (Γ : env O s') p (A : sa Γ p (lift_type_by P q))
+          s'' (Δ : env (S s') s'')
+          a b (B : sa (env_app (cons (lift_type_by P q) Γ) Δ) a b),
+      sa (env_app (cons p Γ) Δ) a b) /\
+  (forall {s'} (A : scope_le s s') (Γ : env O s') p (B : sa Γ p (lift_type_by A q))
+          r (C : sa Γ (lift_type_by A q) r),
+      sa Γ p r).
+Proof.
+  induction q;
   match goal with
     | [ |- _ /\ ?Q ] => 
       assert (PLOP:Q);
@@ -299,3 +295,4 @@ Proof.
 Qed.
 
 Print Assumptions sa_narrowing.
+(* Closed under the global context *)

@@ -28,7 +28,8 @@ Dependent Pattern-Matching
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/definterp.v)).
 
 - [POPLMark 1a](examples/Examples.POPLMark1a.html): a solution to
-  POPLMark 1a using well-scoped, well-typed syntax by Rafaël Bocquet.
+  POPLMark 1a using well-scoped, well-typed syntax by Rafaël Bocquet,
+  adapted to avoid UIP using equalities in constructors by Matthieu Sozeau.
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/POPLMark1a.v)).
 
 - [Views](examples/Examples.views.html): using dependent pattern-matching with
