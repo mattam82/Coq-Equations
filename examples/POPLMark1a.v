@@ -7,9 +7,7 @@
 Require Import Program.
 Require Import Equations.Equations.
 Require Import Coq.Classes.EquivDec.
-
 Require Import Arith.
-Derive Signature for eq.
 
 Definition scope := nat.
 Inductive var : scope -> Set :=
@@ -228,11 +226,11 @@ Lemma var_dec_eq : forall {n} (x y : var n), {x = y} + {x <> y}.
 Proof.
   depind x; depelim y.
   - left; reflexivity.
-  - right; intro H; inversion H.
-  - right; intro H; inversion H.
+  - right; intro H; depelim H.
+  - right; intro H; depelim H.
   - destruct (IHx y); subst.
     + left; reflexivity.
-    + right; intro H; inversion H. noconf H. contradiction.
+    + right; intro H; depelim H. contradiction.
 Qed.
 
 Lemma sa_narrowing {s} q :

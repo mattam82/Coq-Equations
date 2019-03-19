@@ -30,7 +30,7 @@ Import ListNotations.
 Require Import Utf8.
 Set Warnings "-notation-overridden".
 (** The Σ notation of equations clashes with the Σ's used below,
-    so we derine the Σ using ∃ instead.
+    so we redefine the Σ notation using ∃ instead.
  *)
 
 Notation "'∃' x .. y , P" := (sigma (fun x => .. (sigma (fun y => P)) ..))
@@ -366,3 +366,8 @@ Definition letupdate : Expr [] bool :=
   letref true (seq (assign (var here) false) (deref (var here))).
 
 Eval vm_compute in eval 100 letupdate all_nil all_nil.
+(** [[
+   = Some ([bool], all_cons val_false all_nil, val_false, [bool], eq_refl)
+   : option (∃ (Σ' : StoreTy) (_ : Store Σ') (_ : Val bool Σ'), [] ⊑ Σ')
+   ]]
+*)
