@@ -409,7 +409,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
         in Proofview.tclUNIT (List.map make_clause patterns)
     end >>= fun clauses ->
     if !debug then
-    Feedback.msg_info (str "Generated clauses: " ++ fnl() ++ Syntax.pr_preclauses env clauses);
+    Feedback.msg_info (str "Generated clauses: " ++ fnl() ++ Syntax.pr_preclauses env sigma clauses);
 
     (* Produce dummy data for covering. *)
     (* FIXME Not very clean. *)

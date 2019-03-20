@@ -617,11 +617,11 @@ let rel_id ctx n =
 
 let push_named_context = List.fold_right push_named
 
-let check_unused_clauses env cl =
+let check_unused_clauses env sigma cl =
   let unused = List.filter (fun (_, (_, used)) -> used = 0) cl in
   match unused with
   | ((loc, lhs, _) as cl, _) :: cls ->
-    user_err_loc (loc, "covering", str "Unused clause " ++ pr_preclause env cl)
+    user_err_loc (loc, "covering", str "Unused clause " ++ pr_preclause env sigma cl)
   | [] -> ()
 
 
@@ -950,7 +950,7 @@ exception UnfaithfulSplit of (Loc.t option * Pp.t)
 let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int)) list) path
     (ctx,pats,ctx' as prob) extpats lets ty =
   if !Equations_common.debug then
-    Feedback.msg_debug Pp.(str"Launching covering on "++ pr_preclauses env (List.map fst clauses) ++
+    Feedback.msg_debug Pp.(str"Launching covering on "++ pr_preclauses env !evars (List.map fst clauses) ++
                            str " with problem " ++ pr_problem p env !evars prob ++
                            str " extpats " ++ pr_user_pats env extpats);
   match clauses with
@@ -997,7 +997,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
            | None ->
              user_err_loc
                (dummy_loc, "split_var",
-                str"Clause " ++ pr_preclause env (loc, lhs, Some rhs) ++
+                str"Clause " ++ pr_preclause env !evars (loc, lhs, Some rhs) ++
                 str" matched but its interpretation failed")
            | Some s -> Some (List.rev prev @ ((loc,lhs,Some rhs),(idx, cnt+1)) :: clauses', s)))
 
@@ -1298,9 +1298,9 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
       errorlabstrm "deppat"
         (str "Unable to build a covering for with subprogram:" ++ fnl () ++
          pr_problem p env !evars newprob ++ fnl () ++
-         str "And clauses: " ++ pr_preclauses env cls')
+         str "And clauses: " ++ pr_preclauses env !evars cls')
     | Some (clauses, s) ->
-      let () = check_unused_clauses env clauses in
+      let () = check_unused_clauses env !evars clauses in
       let term, _ = term_of_tree env evars p.program_sort s in
       let info =
         { refined_obj = (idref, cconstr, cty);
@@ -1393,7 +1393,7 @@ and covering ?(check_unused=true) env evars p data (clauses : pre_clause list)
   (*TODO eta-expand clauses or type *)
   match covering_aux env evars p data [] clauses path prob extpats [] ty with
   | Some (clauses, cov) ->
-    let () = if check_unused then check_unused_clauses env clauses in
+    let () = if check_unused then check_unused_clauses env !evars clauses in
     cov
   | None ->
     errorlabstrm "deppat"
