@@ -173,8 +173,10 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
     let relid = add_suffix (Nametab.basename_of_global (IndRef ind))
                            "_subterm" in
     let id = add_prefix "well_founded_" relid in
-    let evm = ref sigma in
+    (* Catch the new signature universe *)
     let env = Global.env () in
+    let sigma = Evd.update_sigma_env sigma env in
+    let evm = ref sigma in
     let kl = get_efresh logic_wellfounded_class evm in
     let kl = get_class sigma kl in
     let parambinders, body, ty =
