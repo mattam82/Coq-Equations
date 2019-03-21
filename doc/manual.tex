@@ -291,6 +291,22 @@ Its syntax is:
 It takes a list of patterns (see figure \ref{fig:usergram}) that should cover the type of \textit{ident}
 and generates the corresponding subgoals.
 
+
+\section{\texttt{simp}}
+
+The $\tac{simp}~\cst{f}_1 \ldots \cst{f}_n$ tactic is an alias to
+\[\begin{array}{l}
+  \tac{autorewrite}~\tac{with}~\cst{f}_1 \ldots \cst{f}_n ; \\
+  \tac{try typeclasses eauto with Below subterm\_relation }\cst{f}_1
+  \ldots \cst{f}_n
+\end{array}\]
+
+It can be used to simplify goals involving equations definitions
+$\cst{f}_1 \ldots \cst{f}_n$, by rewriting with the equations declared
+for the constants in the associated rewrite hint database and trying to
+solve the goal using the hints declared in the associated ``auto'' hint
+database, both named $\cst{f}$.
+
 \section{Functional elimination}
 
 The $\tac{funelim}~t$ tactic can be used to launch a functional
