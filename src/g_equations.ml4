@@ -364,14 +364,14 @@ GEXTEND Gram
 let classify_equations x =
   Vernacexpr.(VtStartProof ("Classic",Doesn'tGuaranteeOpacity,[]), VtLater)
 
+VERNAC COMMAND EXTEND Define_equations_refine CLASSIFIED BY classify_equations
+| [ "Equations" "?" equation_options(opt) equations(eqns) ] ->
+    [ Equations.equations ~poly:(Flags.is_universe_polymorphism ()) ~open_proof:true opt (fst eqns) (snd eqns) ]
+END
+
 VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS SIDEFF
 | [ "Equations" equation_options(opt) equations(eqns) ] ->
     [ Equations.equations ~poly:(Flags.is_universe_polymorphism ()) ~open_proof:false opt (fst eqns) (snd eqns) ]
-END
-
-VERNAC COMMAND EXTEND Define_equations_refine CLASSIFIED BY classify_equations
-| [ "Equations?" equation_options(opt) equations(eqns) ] ->
-    [ Equations.equations ~poly:(Flags.is_universe_polymorphism ()) ~open_proof:true opt (fst eqns) (snd eqns) ]
 END
 
 (* Dependent elimination using Equations. *)
