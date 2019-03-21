@@ -1254,7 +1254,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
               vars'
           in
           let newrhs = match rhs with
-            | Some (Refine (c, cls)) -> Some (Refine (c, cls' (succ n) cls))
+            | Some (Refine (cs', cls)) -> Some (Refine (cs', cls' (List.length cs' + n) cls))
             | _ -> rhs
           in
           Some (loc, rev newlhs @ nextrefs, newrhs)
