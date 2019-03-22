@@ -49,7 +49,7 @@ Fixpoint tree_P2 {a} (a_C : C a) (t : tree a) : bool :=
 
 (* Eval compute in (fun f => P (list_C f)). *)
 
-Fail Fixpoint tree_P3 {a} (a_C : C a) (t : tree a) : bool :=
+Fixpoint tree_P3 {a} (a_C : C a) (t : tree a) : bool :=
     let tree_C := Build_C _ (tree_P3 a_C) in
     match t with Node _ x ts => orb (P x) (P (C:=list_C tree_C) ts) end.
 
