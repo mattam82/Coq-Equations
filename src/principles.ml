@@ -702,10 +702,14 @@ let declare_wf_obligations s info =
     (Hints.empty_hint_info, is_polymorphic info, true,
      Hints.PathAny, subst_protos s gr)
   in
-  let constrs =
-    List.fold_right (fun obl acc ->
-    make_resolve (GlobRef.ConstRef obl) :: acc) info.comp_obls [] in
-  Hints.add_hints ~local:false [Principles_proofs.wf_obligations_base info] (Hints.HintsResolveEntry constrs)
+  List.iter (fun obl ->
+      let hint = make_resolve (GlobRef.ConstRef obl) in
+      try Hints.add_hints ~local:false
+            [Principles_proofs.wf_obligations_base info]
+            (Hints.HintsResolveEntry [hint])
+      with CErrors.UserError (s, msg) (* Cannot be used as a hint *) ->
+        Feedback.msg_warning msg)
+    info.comp_obls
 
 let map_fix_subst evd ctxmap s =
   List.map (fun (id, (recarg, f)) -> (id, (recarg, mapping_constr evd ctxmap f))) s
