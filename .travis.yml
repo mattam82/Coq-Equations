@@ -41,6 +41,7 @@ matrix:
   include:
     - env: TARGET=coq
     - env: TARGET=HoTT
+    - env: TARGET=dune
 
 script:
  - ./configure.sh ${TARGET}

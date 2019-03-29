@@ -151,7 +151,7 @@ let derive_subterm env sigma ~poly (ind, u as indu) =
         mind_entry_cumulative = false;
       }
     in
-    let k = ComInductive.declare_mutual_inductive_with_eliminations inductive UnivNames.empty_binders [] in
+    let k = DeclareInd.declare_mutual_inductive_with_eliminations inductive UnivNames.empty_binders [] in
     let () =
       let env = Global.env () in
       let sigma = Evd.from_env env in
