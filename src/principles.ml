@@ -977,7 +977,7 @@ let unfold_programs env evd flags rec_type progs =
                   program_arity = arity }
       in
       let unfoldp = make_single_program env evd flags unfpi prob unfoldp.program_splitting None in
-      let unfoldp, term_info = define_program_immediate env evd [None] [] flags ~unfold:true unfoldp in
+      let (unfoldp, term_info), _pstate = define_program_immediate env evd [None] [] flags ~unfold:true unfoldp in
       let eqninfo =
         Principles_proofs.{ equations_id = i;
                             equations_where_map = where_map;

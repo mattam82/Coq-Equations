@@ -11,13 +11,15 @@ open Names
 open Equations_common
 open Splitting
 
-val define_by_eqs : poly:bool -> program_mode:bool -> open_proof:bool ->
-  Syntax.equation_options ->
-  Syntax.pre_equations ->
-  (Names.lstring * Constrexpr.constr_expr *
-   Notation_term.scope_name option)
-  list ->
-  unit
+val define_by_eqs
+  :  poly:bool
+  -> program_mode:bool
+  -> open_proof:bool
+  -> Syntax.equation_options
+  -> Syntax.pre_equations
+  -> (Names.lstring * Constrexpr.constr_expr *
+      Notation_term.scope_name option) list
+  -> Proof_global.t option
 
 val define_principles :
   flags ->
@@ -32,7 +34,7 @@ val equations : poly:bool -> program_mode:bool ->
   (Names.lstring * Constrexpr.constr_expr *
    Notation_term.scope_name option)
   list ->
-  unit
+  Proof_global.t option
 
 val solve_equations_goal :
   Proofview.V82.tac ->
