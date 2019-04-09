@@ -323,8 +323,8 @@ let _check_linearity env opats =
 let pattern_of_glob_constr env avoid patname gc =
   let rec constructor ?loc c l =
     let ind, _ = c in
-    let nparams = Inductiveops.inductive_nparams ind in
-    let nargs = Inductiveops.constructor_nrealargs c in
+    let nparams = Inductiveops.inductive_nparams env ind in
+    let nargs = Inductiveops.constructor_nrealargs env c in
     let l =
       if List.length l < nargs then
         user_err_loc (loc, "pattern_of_glob_constr", str "Constructor is applied to too few arguments")

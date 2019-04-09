@@ -83,7 +83,7 @@ let inductive_info sigma ((mind, _ as ind),u) =
       mutind_inds = inds }
     
 let eq_dec_class evd =
-  Option.get (Typeclasses.class_of_constr !evd (get_efresh logic_eqdec_class evd))
+  Option.get (Typeclasses.class_of_constr (Global.env()) !evd (get_efresh logic_eqdec_class evd))
 
 let dec_eq evd = get_efresh logic_eqdec_dec_eq evd
 
@@ -146,8 +146,8 @@ let derive_eq_dec env sigma ~polymorphic ind =
         let entry = (DefinitionEntry ce, IsDefinition Instance) in
 	let inst = Declare.declare_constant (add_suffix ind.ind_name "_EqDec") entry in
         let inst =
-          Typeclasses.new_instance (fst cl) Hints.empty_hint_info true (Globnames.ConstRef inst)
-	in Typeclasses.add_instance inst)
+          Classes.mk_instance (fst cl) Hints.empty_hint_info true (Globnames.ConstRef inst)
+	in Classes.add_instance inst)
     indsl
   in
   let hook = Lemmas.mk_hook hook in
