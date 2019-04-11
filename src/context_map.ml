@@ -104,7 +104,7 @@ and pat_of_constr sigma c =
     PHide (destRel sigma c)
   | App (f, args) when isConstruct sigma f ->
     let ((ind,_),_ as cstr) = destConstruct sigma f in
-    let nparams = Inductiveops.inductive_nparams ind in
+    let nparams = Inductiveops.inductive_nparams (Global.env()) ind in
     let params, args = Array.chop nparams args in
     PCstr (cstr, inaccs_of_constrs (Array.to_list params) @
                  pats_of_constrs sigma (Array.to_list args))
@@ -120,7 +120,7 @@ let rec pat_to_user_pat ?(avoid = ref Id.Set.empty) ?loc ctx = function
     avoid := Id.Set.add id !avoid;
     Some (DAst.make ?loc (Syntax.PUVar (id, false)))
   | PCstr (((ind, _ as cstr), _), pats) ->
-    let n = Inductiveops.inductive_nparams ind in
+    let n = Inductiveops.inductive_nparams (Global.env()) ind in
     let _, pats = List.chop n pats in
     Some (DAst.make ?loc (Syntax.PUCstr (cstr, n, pats_to_lhs ~avoid ?loc ctx pats)))
   | PInac c ->

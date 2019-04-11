@@ -236,9 +236,9 @@ let derive_subterm env sigma ~polymorphic (ind, u as indu) =
     let body = it_mkLambda_or_LetIn (Option.get body) parambinders in
     let hook _ _ vis gr =
       let cst = match gr with ConstRef kn -> kn | _ -> assert false in
-      let inst = Typeclasses.new_instance (fst kl) empty_hint_info
+      let inst = Classes.mk_instance (fst kl) empty_hint_info
                                           global (ConstRef cst) in
-      Typeclasses.add_instance inst
+      Classes.add_instance inst
     in
     let _bodyty = e_type_of (Global.env ()) evm body in
     let _ty' = e_type_of (Global.env ()) evm ty in
@@ -290,7 +290,7 @@ let derive_below env sigma ~polymorphic (ind,univ as indu) =
     let branches = Array.mapi (fun i (ctx, ty) ->
       let ty = Term.it_mkProd_or_LetIn ty ctx in
       let ty = of_constr ty in
-      let nargs = constructor_nrealargs (ind, succ i) in
+      let nargs = constructor_nrealargs env (ind, succ i) in
       let recarg = mkVar recid in
       let sbst = Inductive.ind_subst (fst ind) mind (EInstance.kind !evd univ) in
       let sbst = List.map of_constr sbst in

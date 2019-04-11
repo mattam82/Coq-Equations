@@ -255,8 +255,8 @@ let declare_instance id poly evm ctx cl args =
   let term = it_mkLambda_or_LetIn (Option.get c) ctx in
   let typ = EConstr.it_mkProd_or_LetIn t ctx in
   let cst, ecst = declare_constant id term (Some typ) poly evm (IsDefinition Instance) in
-  let inst = new_instance (fst cl) Hints.empty_hint_info true (Globnames.ConstRef cst) in
-    add_instance inst; cst, ecst
+  let inst = Classes.mk_instance (fst cl) Hints.empty_hint_info true (Globnames.ConstRef cst) in
+    Classes.add_instance inst; cst, ecst
 
 let coq_zero = (find_global "nat.zero")
 let coq_succ = (find_global "nat.succ")
@@ -382,7 +382,7 @@ let tac_of_string tac args =
     CErrors.anomaly Pp.(str"Cannot find tactic " ++ str tac)
 
 let get_class sigma c =
-  let x = Typeclasses.class_of_constr sigma c in
+  let x = Typeclasses.class_of_constr (Global.env()) sigma c in
     fst (snd (Option.get x))
 
 type esigma = Evd.evar_map ref
