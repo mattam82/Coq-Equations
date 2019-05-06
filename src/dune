@@ -2,7 +2,7 @@
  (name equations_plugin)
  (public_name equations.plugin)
  (flags :standard -w -9 -warn-error -3-9-27-32-33-50)
- (libraries coq.plugins.extraction))
+ (libraries coq.plugins.cc coq.plugins.extraction))
 
 (rule
  (targets g_equations.ml)

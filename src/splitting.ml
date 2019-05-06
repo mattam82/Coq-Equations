@@ -1138,18 +1138,18 @@ let solve_equations_obligations flags recids i sigma hook =
       types
   in
   (* Feedback.msg_debug (str"Starting proof"); *)
-  let pstate = Proof_global.(start_dependent_proof ~ontop:None i kind tele (make_terminator terminator)) in
-  let pstate = Proof_global.simple_with_current_proof
-    (fun _ p  ->
+  let pstate = Proof_global.(start_dependent_proof i kind tele (make_terminator terminator)) in
+  let pstate = Proof_global.modify_proof
+    (fun p  ->
        fst (Pfedit.solve Goal_select.SelectAll None (Proofview.tclDISPATCH do_intros) p)) pstate in
-  let pstate = Proof_global.simple_with_current_proof
-    (fun _ p  ->
+  let pstate = Proof_global.modify_proof
+    (fun p  ->
        fst (Pfedit.solve (Goal_select.SelectAll) None (Tacticals.New.tclTRY !Obligations.default_tactic) p)) pstate in
   let prf = Proof_global.give_me_the_proof pstate in
   let pstate = if Proof.is_done prf then
     if flags.open_proof then error_complete ()
     else
-      Lemmas.save_proof_proved ?proof:None ~pstate ~opaque:Proof_global.Transparent ~idopt:None
+      (Lemmas.save_pstate_proved ~pstate ~opaque:Proof_global.Transparent ~idopt:None; None)
   else if flags.open_proof then Some pstate
   else
     user_err_loc (None, "define", str"Equations definition generated subgoals that " ++
