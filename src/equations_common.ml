@@ -551,8 +551,8 @@ let autounfold_first db cl gl =
   in
     if did then
       match cl with
-      | Some hyp -> Proofview.V82.of_tactic (change_in_hyp None (make_change_arg c') hyp) gl
-      | None -> Proofview.V82.of_tactic (convert_concl_no_check c' DEFAULTcast) gl
+      | Some hyp -> Proofview.V82.of_tactic (change_in_hyp ~check:true None (make_change_arg c') hyp) gl
+      | None -> Proofview.V82.of_tactic (convert_concl ~check:false c' DEFAULTcast) gl
     else tclFAIL 0 (str "Nothing to unfold") gl
 
 type hintdb_name = string

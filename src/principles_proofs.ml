@@ -475,7 +475,7 @@ let aux_ind_fun info chop nested unfp unfids p =
           in
           Tacticals.New.tclTHENLIST
             [observe_new "letin" (letin_pat_tac true None (Name id) (sigma, elim) occs);
-             observe_new "convert concl" (convert_concl_no_check newconcl DEFAULTcast);
+             observe_new "convert concl" (convert_concl ~check:false newconcl DEFAULTcast);
              observe_new "clear body" (clear_body [id]);
              of82 (aux chop unfs unfids s)]
         | _ ->
@@ -886,7 +886,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
   let unfolds =
     tclTHEN (autounfold_first [info.base_id] None)
       (tclTHEN (autounfold_first [info.base_id ^ "_unfold"] None)
-         (to82 (Tactics.reduct_in_concl ((Reductionops.clos_norm_flags CClosure.betazeta), DEFAULTcast))))
+         (to82 (Tactics.reduct_in_concl ~check:false ((Reductionops.clos_norm_flags CClosure.betazeta), DEFAULTcast))))
   in
   let solve_rec_eq subst gl =
     match kind (project gl) (pf_concl gl) with
@@ -1128,7 +1128,7 @@ let ind_elim_tac indid inds mutinds info ind_fun =
             tclONCE (Tactics.apply app <*> Tactics.simpl_in_concl <*> eauto ~depth:None)]
 
     | _, LetIn (_, b, _, t') ->
-       tclTHENLIST [Tactics.convert_concl_no_check (subst1 b t') DEFAULTcast;
+       tclTHENLIST [Tactics.convert_concl ~check:false (subst1 b t') DEFAULTcast;
                     applyind (pred leninds) (b :: args)]
     | _, Prod (_, _, t') ->
         tclTHENLIST [Tactics.intro;

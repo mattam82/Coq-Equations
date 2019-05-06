@@ -349,7 +349,7 @@ let pattern_sigma ~assoc_right c hyp env sigma =
   let projs = List.map (fun (x, t, p, rest) -> (pat t, make_change_arg p)) terms in
   let projabs =
     tclTHENLIST ((if assoc_right then rev_map
-                  else List.map) (fun (t, p) -> to82 (change (Some t) p Locusops.onConcl))
+                  else List.map) (fun (t, p) -> to82 (change ~check:true (Some t) p Locusops.onConcl))
                             projs) in
     Proofview.V82.tactic (tclTHEN (Refiner.tclEVARS !evd) projabs)
 			 

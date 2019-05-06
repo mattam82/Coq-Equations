@@ -120,7 +120,7 @@ let dependent_pattern ?(pattern_term=true) c gl =
   in
   let concllda, evd = List.fold_left mklambda (pf_concl gl, project gl) subst in
   let conclapp = applistc concllda (List.rev_map pi1 subst) in
-    Proofview.V82.of_tactic (convert_concl_no_check conclapp DEFAULTcast) gl
+    Proofview.V82.of_tactic (convert_concl ~check:false conclapp DEFAULTcast) gl
 
 let depcase poly (mind, i as ind) =
   let indid = Nametab.basename_of_global (IndRef ind) in
@@ -239,7 +239,7 @@ let pattern_call ?(pattern_term=true) c gl =
   in
   let concllda = List.fold_left mklambda (pf_concl gl) subst in
   let conclapp = applistc concllda (List.rev_map pi1 subst) in
-    Proofview.V82.of_tactic (convert_concl_no_check conclapp DEFAULTcast) gl
+    Proofview.V82.of_tactic (convert_concl ~check:false conclapp DEFAULTcast) gl
 
 let destPolyRef sigma c =
   match kind sigma c with
