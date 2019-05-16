@@ -1649,7 +1649,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
       let hook _ _obls subst gr =
         if n != None then
           Lib.add_anonymous_leaf (inRewRules (info.base_id, gr))
-        else (Classes.declare_instance (Global.env()) !evd None true gr
+        else (Typeclasses.declare_instance None true gr
               (* Hints.add_hints ~local:false [info.base_id]  *)
               (*                 (Hints.HintsExternEntry *)
               (*                  (Vernacexpr.{hint_priority = Some 0; hint_pattern = None}, *)

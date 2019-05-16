@@ -213,11 +213,11 @@ let ind_name ind = Nametab.basename_of_global (Globnames.IndRef ind)
 
 let signature_class evd =
   let evd, c = get_fresh evd logic_signature_class in
-    evd, fst (snd (Option.get (Typeclasses.class_of_constr (Global.env()) evd c)))
+    evd, fst (snd (Option.get (Typeclasses.class_of_constr evd c)))
 
 let build_sig_of_ind env sigma (ind,u as indu) =
-  let (mib, oib as _mind) = Inductive.lookup_mind_specif env ind in
-  let ctx = inductive_alldecls env (from_peuniverses sigma indu) in
+  let (mib, oib as _mind) = Global.lookup_inductive ind in
+  let ctx = inductive_alldecls (from_peuniverses sigma indu) in
   let ctx = List.map of_rel_decl ctx in
   let ctx = smash_rel_context sigma ctx in
   let lenpars = mib.mind_nparams_rec in

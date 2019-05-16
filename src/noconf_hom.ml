@@ -67,7 +67,7 @@ let derive_noConfusion_package env sigma0 polymorphic (ind,u as indu) indid ~pre
   let argsvect = rel_vect 0 len in
   let noid = add_prefix "noConfusion" (add_prefix prefix (add_prefix "_" indid))
   and packid = add_prefix "NoConfusion" (add_prefix prefix (add_prefix "Package_" indid)) in
-  let tc = Typeclasses.class_info env sigma0 (Lazy.force coq_noconfusion_class) in
+  let tc = Typeclasses.class_info (Lazy.force coq_noconfusion_class) in
   let sigma = Evd.from_env env in
   let sigma, noconf = Evd.fresh_global ~rigid:Evd.univ_rigid env sigma (ConstRef cstNoConf) in
   let sigma, noconfcl = new_global sigma tc.Typeclasses.cl_impl in
@@ -97,8 +97,8 @@ let derive_noConfusion_package env sigma0 polymorphic (ind,u as indu) indid ~pre
   let ty = it_mkProd_or_LetIn ty ctx in
   let sigma, _ = Typing.type_of env sigma term in
   let hook _ectx _evars vis gr =
-    Classes.add_instance
-      (Classes.mk_instance tc empty_hint_info true gr)
+    Typeclasses.add_instance
+      (Typeclasses.new_instance tc empty_hint_info true gr)
   in
   let hook = Lemmas.mk_hook hook in
   let kind = Decl_kinds.(Global, polymorphic, Definition) in

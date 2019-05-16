@@ -256,7 +256,7 @@ let rec compare_upto_variables sigma t v =
     | App (cnstr, args), App (cnstr', args') when eq_constr_nounivs sigma cnstr cnstr' &&
                                                   isConstruct sigma cnstr ->
        let cnstr, _u = destConstruct sigma cnstr in
-       let real = constructor_nrealargs (Global.env()) cnstr in
+       let real = constructor_nrealargs cnstr in
        if real <= Array.length args && real <= Array.length args' then
          let args = CArray.sub args (Array.length args - real) real in
          let args' = CArray.sub args' (Array.length args' - real) real in
