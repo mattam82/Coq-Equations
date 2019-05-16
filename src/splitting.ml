@@ -1169,21 +1169,21 @@ let solve_equations_obligations_program flags recids i sigma hook =
   let oblsid = Nameops.add_suffix i "_obligations" in
   let oblsinfo, (evids, cmap), term, ty =
     Obligations.eterm_obligations env oblsid sigma 0
-    ~status:(Evar_kinds.Define false) term ty
+    ~status:(Evar_kinds.Define false) (EConstr.to_constr sigma term) (EConstr.to_constr sigma ty)
   in
   let hook uctx evars locality gr =
     (* let l =
      *   Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
      * Extraction_plugin.Table.extraction_inline true l; *)
     let sigma = Evd.merge_universe_context sigma uctx in
-    let evc id = EConstr.of_constr (List.assoc_f Id.equal id evars) in
+    let evc id = List.assoc_f Id.equal id evars in
     let sigma =
       Evd.fold_undefined
       (fun ev evi sigma ->
       let args =
-        Array.of_list (List.map (fun d -> EConstr.mkVar (Context.Named.Declaration.get_id d))
+        Array.of_list (List.map (fun d -> Constr.mkVar (Context.Named.Declaration.get_id d))
                        (Evd.evar_filtered_context evi)) in
-      let evart = EConstr.mkEvar (ev, args) in
+      let evart = Constr.mkEvar (ev, args) in
       let evc = cmap evc evart in
       Evd.define ev (whd_beta sigma (EConstr.of_constr evc)) sigma)
       sigma sigma

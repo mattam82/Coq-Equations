@@ -102,7 +102,9 @@ let derive_noConfusion_package env sigma0 polymorphic (ind,u as indu) indid ~pre
   in
   let hook = Lemmas.mk_hook hook in
   let kind = Decl_kinds.(Global, polymorphic, Definition) in
-  let oblinfo, _, term, ty = Obligations.eterm_obligations env noid sigma 0 term ty in
+  let oblinfo, _, term, ty = Obligations.eterm_obligations env noid sigma 0
+      (to_constr ~abort_on_undefined_evars:false sigma term)
+      (to_constr sigma ty) in
     ignore(Obligations.add_definition ~hook packid
              ~kind ~term ty ~tactic
               (Evd.evar_universe_context sigma) oblinfo)
