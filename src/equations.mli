@@ -12,7 +12,7 @@ open Equations_common
 open Splitting
 
 val define_by_eqs : poly:bool -> open_proof:bool ->
-  Syntax.equation_option list ->
+  Syntax.equation_options ->
   Syntax.pre_equations ->
   (Misctypes.lstring * Constrexpr.constr_expr *
    Notation_term.scope_name option)
@@ -27,7 +27,7 @@ val define_principles :
 
 val equations : poly:bool ->
   open_proof:bool ->
-  Syntax.equation_option list ->
+  Syntax.equation_options ->
   Syntax.pre_equations ->
   (Misctypes.lstring * Constrexpr.constr_expr *
    Notation_term.scope_name option)

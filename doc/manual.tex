@@ -167,7 +167,7 @@ The \kw{Equations} command obeys a few global options:
   The \texttt{simp} $\cst{c}$ tactic is favored in this case to do
   simplifications using the equations generated for $\cst{c}$.
 
-\item \texttt{Equations With Funext}: governs the use of the functional
+\item \texttt{Equations With Funext} (since v1.2): governs the use of the functional
   extensionality axiom to prove the unfolding lemma of well-founded
   definitions, which requires extensionality of the functional. By
   default \emph{on}. When this flag is off, the unfolding lemmas of
@@ -176,7 +176,7 @@ The \kw{Equations} command obeys a few global options:
   is encouraged to use the \tac{Equations.Init.unfold\_recursor}
   tactic to help solve goals of the form \[\cst{FixWf}~x~f = \cst{f\_unfold}~x\].
 
-\item \texttt{Equations With UIP}: governs the use of instances of
+\item \texttt{Equations With UIP} (since v1.2): governs the use of instances of
   \texttt{Classes.UIP} derived by the user, or automatically
   from instances of the decidable equality class
   \texttt{Classes.EqDec}. By default \emph{off}. When switched
@@ -200,6 +200,15 @@ The \kw{Equations} command obeys a few global options:
   on closed terms. It is advised to keep such definitions opaque and use
   the derived rewriting equations and functional elimination principle
   to reason on them.
+
+\item \texttt{Equations Derive Equations} (since v1.2) This sets the default for
+  the generation of equations, governed by the local
+  \texttt{eqns}/\texttt{noeqns} flags.
+
+\item \texttt{Equations Derive Eliminator} (since v1.2) This sets the default for the
+  generation of the graph and functional elimination principle
+  associated to a definition, governed locally by the
+  \texttt{ind}/\texttt{noind} flags.
 \end{itemize}
 
 \section{Derive}
@@ -281,6 +290,22 @@ Its syntax is:
 
 It takes a list of patterns (see figure \ref{fig:usergram}) that should cover the type of \textit{ident}
 and generates the corresponding subgoals.
+
+
+\section{\texttt{simp}}
+
+The $\tac{simp}~\cst{f}_1 \ldots \cst{f}_n$ tactic is an alias to
+\[\begin{array}{l}
+  \tac{autorewrite}~\tac{with}~\cst{f}_1 \ldots \cst{f}_n ; \\
+  \tac{try typeclasses eauto with Below subterm\_relation }\cst{f}_1
+  \ldots \cst{f}_n
+\end{array}\]
+
+It can be used to simplify goals involving equations definitions
+$\cst{f}_1 \ldots \cst{f}_n$, by rewriting with the equations declared
+for the constants in the associated rewrite hint database and trying to
+solve the goal using the hints declared in the associated ``auto'' hint
+database, both named $\cst{f}$.
 
 \section{Functional elimination}
 

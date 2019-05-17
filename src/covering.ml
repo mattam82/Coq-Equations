@@ -200,7 +200,7 @@ let adjust_sign_arity env evars p clauses =
       match args with
       | 0 -> evars, sign, ty
       | n ->
-        match EConstr.kind evars (whd_all env evars ty) with
+        match EConstr.kind evars (whd_all (push_rel_context sign env) evars ty) with
         | Prod (na, t, b) -> aux evars (n - 1) (Context.Rel.Declaration.LocalAssum (na, t) :: sign) b
         | Evar e -> let evars', t = Evardefine.define_evar_as_product evars e in
           aux evars' args sign t
@@ -1245,7 +1245,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
               vars'
           in
           let newrhs = match rhs with
-            | Some (Refine (c, cls)) -> Some (Refine (c, cls' (succ n) cls))
+            | Some (Refine (cs', cls)) -> Some (Refine (cs', cls' (List.length cs' + n) cls))
             | _ -> rhs
           in
           Some (loc, rev newlhs @ nextrefs, newrhs)
