@@ -21,11 +21,20 @@ definitional extension to the Coq kernel. At the core of the system is
 a new simplifier for dependent equalities based on an original handling
 of the no-confusion property of constructors.
 
+Sources
+-------
+
+The following [archive](assets/equations-reloaded.tgz) contains
+all examples included in the paper, in full, along with a version of the
+proof of normalization for Predicative System F and a reflexive tactic
+for solving polynomial equations (1.8MB, MD5 hash:
+`3b555d9328c04e622c446a82af64bdca`).
+
 Virtual Machine
 ---------------
 
-All the examples from the article are available to play with running the
-following virtual machine in Virtual Box, setup with Ubuntu-64, Coq
-8.9.0 and Equations-1.2:
+All the examples from the article are also available to play with
+running the following virtual machine in Virtual Box, setup with
+Ubuntu-64, Coq 8.9.0 and Equations-1.2:
 [VM](https://drive.google.com/open?id=1wsJOWHYLE33rxov0T9do29VnTD_EwHHl)
 (5GB, MD5 hash: `7c473d6bc5f16af05407413886f3f34e`)
