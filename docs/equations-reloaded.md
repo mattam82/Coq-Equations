@@ -24,6 +24,8 @@ of the no-confusion property of constructors.
 Virtual Machine
 ---------------
 
-All the examples from the article are available to play with running the 
-following virtual machine in Virtual Box, setup with Coq 8.9.0 and Equations-1.2:
-[VM](https://www.irif.fr/~sozeau/research/publications/artifacts/equations-reloaded.vbox)
+All the examples from the article are available to play with running the
+following virtual machine in Virtual Box, setup with Ubuntu-64, Coq
+8.9.0 and Equations-1.2:
+[VM](https://drive.google.com/open?id=1wsJOWHYLE33rxov0T9do29VnTD_EwHHl)
+(5GB, MD5 hash: `7c473d6bc5f16af05407413886f3f34e`)
