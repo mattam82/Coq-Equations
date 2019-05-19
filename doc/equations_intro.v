@@ -11,7 +11,7 @@
    features through a handful of examples. We start our Coq primer
    session by importing the [Equations] module.  *)
 
-Require Import Arith Omega Program.
+From Coq Require Import Arith Omega Program.
 From Equations Require Import Equations.
 
 (* begin hide *)
