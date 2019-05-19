@@ -36,12 +36,12 @@ neg true := false ;
 neg false := true.
 
 (* begin hide *)
-Check neg_ind.
-Check neg_ind_equation_1.
-Check neg_ind_equation_2.
+Check neg_graph.
+Check neg_graph_equation_1.
+Check neg_graph_equation_2.
 
 Lemma neg_inv : forall b, neg (neg b) = b.
-Proof. intros b. funelim (neg b); simp neg. Defined.
+Proof. intros b. funelim (neg b); now simp neg. Defined.
 (* end hide *)
 (** [Equations] declarations are formed by a signature definition and a set of _clauses_ 
    that must form a _covering_ of this signature. The compiler is then expected to
@@ -144,7 +144,7 @@ app (cons a l) l' := cons a (app l l').
  *)
 
 (* begin hide *)
-Check app_ind. Check @app_ind_equation_1. Check @app_ind_equation_2.
+Check app_graph. Check @app_graph_equation_1. Check @app_graph_equation_2.
 (* end hide *)
 
 (** ** Moving to the left
@@ -313,6 +313,10 @@ eqt x ?(x) ?(x) eq_refl eq_refl := eq_refl.
    The empty vector [Vnil] has size [O] while the cons operation
    increments the size by one. Now let us define the usual map on
    vectors: *)
+Arguments Vector.nil {A}.
+Arguments Vector.cons {A} a {n} v : rename.
+
+Notation vector := Vector.t.
 Notation Vnil := Vector.nil.
 Notation Vcons := Vector.cons.
 
