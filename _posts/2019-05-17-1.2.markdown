@@ -6,8 +6,9 @@ categories: equations
 ---
 
 Release [1.2][release] of Equations is available, as source and
-through `opam` (packages `coq-equations.1.2+8.8` and
-`coq-equations.1.2+8.9` for Coq 8.8 and Coq 8.9).
+through `opam` packages `coq-equations.1.2+8.8`,
+`coq-equations.1.2+8.9`, `coq-equations.1.2+8.10` for Coq 8.8 and Coq
+8.9 and Coq 8.10beta1 (the later in the `extra-dev` repository).
 
   I am pleased to announce release 1.2 of the [Equations][www]
 package. Equations is a function definition plugin for Coq, that supports
