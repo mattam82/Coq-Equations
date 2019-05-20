@@ -1,0 +1,11 @@
+{
+  "desc": "flocq",
+  "deps": [ "coq-reals" ],
+  "pkgs": [
+    { "pkg_id": [ "Flocq", "Core" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "Flocq", "Appli" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "Flocq", "Calc" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "Flocq", "Translate" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "Flocq", "Prop" ], "vo_files": [], "cma_files": [] }
+  ]
+}

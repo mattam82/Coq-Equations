@@ -1,0 +1,5 @@
+{
+  "desc": "lf",
+  "deps": [ "coq-reals" ],
+  "pkgs": [ { "pkg_id": [ "LF" ], "vo_files": [], "cma_files": [] } ]
+}

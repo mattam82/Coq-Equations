@@ -1,0 +1,217 @@
+{
+  "desc": "coq-arith",
+  "deps": [ "coq-base", "coq-collections" ],
+  "pkgs": [
+    {
+      "pkg_id": [ "Coq", "Numbers", "Natural", "Peano" ],
+      "vo_files": [ [ "NPeano.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ] ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Numbers", "Integer", "Abstract" ],
+      "vo_files": [
+        [ "ZProperties.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZLcm.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZMul.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZMulOrder.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZParity.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZBits.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZAdd.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZMaxMin.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZBase.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZDivFloor.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZAddOrder.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZPow.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZLt.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZDivTrunc.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZAxioms.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZDivEucl.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZSgnAbs.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZGcd.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Numbers", "Cyclic", "Abstract" ],
+      "vo_files": [
+        [ "CyclicAxioms.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "DoubleType.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NZCyclic.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Numbers", "Cyclic", "Int31" ],
+      "vo_files": [
+        [ "Cyclic31.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Int31.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ring31.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Numbers", "Cyclic", "Int63" ],
+      "vo_files": [
+        [ "Int63.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ring63.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Cyclic63.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Numbers", "Cyclic", "ZModulo" ],
+      "vo_files": [ [ "ZModulo.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ] ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "setoid_ring" ],
+      "vo_files": [
+        [ "Cring.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ring_tac.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Field.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ncring_tac.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rings_R.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Integral_domain.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ncring.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ring_base.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ncring_polynom.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Algebra_syntax.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ring_polynom.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZArithRing.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Field_tac.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "RealField.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "BinList.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "InitialRing.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NArithRing.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rings_Q.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ArithRing.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rings_Z.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ring_theory.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ncring_initial.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Field_theory.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ring.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": [
+        [ "newring_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ]
+    },
+    {
+      "pkg_id": [ "Coq", "Arith" ],
+      "vo_files": [
+        [ "Max.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Mult.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Even.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Div2.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Arith_base.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Min.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Factorial.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Euclid.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Arith.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Between.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Peano_dec.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "EqNat.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Compare.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Bool_nat.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "NArith" ],
+      "vo_files": [
+        [ "Ndiv_def.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Nsqrt_def.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "BinNatDef.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ndec.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "BinNat.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Nnat.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ndigits.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ndist.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ngcd_def.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NArith.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "PArith" ],
+      "vo_files": [
+        [ "BinPos.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Pnat.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "BinPosDef.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "PArith.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "POrderedType.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "ZArith" ],
+      "vo_files": [
+        [ "Zwf.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zquot.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Wf_Z.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Znumtheory.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zorder.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zmin.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZArith_dec.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zbool.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zcomplements.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zpow_def.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZArith_base.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zeven.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zpow_alt.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zmisc.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "BinIntDef.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zlogarithm.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zpower.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zdiv.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zpow_facts.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zdigits.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zhints.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zmax.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zeuclid.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZArith.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zminmax.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Znat.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zsqrt_compat.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zabs.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zcompare.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zgcd_alt.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "BinInt.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Int.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "auxiliary.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "QArith" ],
+      "vo_files": [
+        [ "Qreals.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Qfield.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "QArith_base.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "QOrderedType.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Qcanon.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Qreduction.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Qabs.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Qring.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Qcabs.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Qround.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "QArith.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Qminmax.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Qpower.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "omega" ],
+      "vo_files": [
+        [ "OmegaLemmas.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Omega.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "OmegaPlugin.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "OmegaTactic.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "PreOmega.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": [
+        [ "omega_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ]
+    }
+  ]
+}

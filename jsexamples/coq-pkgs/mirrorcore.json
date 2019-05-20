@@ -1,0 +1,21 @@
+{
+  "desc": "mirrorcore",
+  "deps": [ "plugin-utils", "extlib" ],
+  "pkgs": [
+    { "pkg_id": [ "MirrorCore" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "MirrorCore", "Lambda" ], "vo_files": [], "cma_files": [] },
+    {
+      "pkg_id": [ "MirrorCore", "Lambda", "Rewrite" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    { "pkg_id": [ "MirrorCore", "MTypes" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "MirrorCore", "Reify" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "MirrorCore", "RTac" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "MirrorCore", "Subst" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "MirrorCore", "syms" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "MirrorCore", "Util" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "MirrorCore", "Views" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "McExamples", "Cancel" ], "vo_files": [], "cma_files": [] }
+  ]
+}

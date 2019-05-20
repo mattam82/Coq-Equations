@@ -1,0 +1,39 @@
+{
+  "desc": "equations-reloaded",
+  "deps": [ "coq-reals", "equations" ],
+  "pkgs": [
+    {
+      "pkg_id": [ "EquationsReloaded" ],
+      "vo_files": [
+        [ "Sized.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "mutrec.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "sized_mutualwfrec.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "mutualwfrec.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "nub.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "fle_trans.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "polynomials.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "nth.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "telescopes.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "leK.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "equality.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "accumulator.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "nestedrec.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "nth_defs_elim.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "nondep_K.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "rose.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "JMeq.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "filter.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "nth_defs_eqns.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "smart_example.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "HoTT_light.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "noconf_hom.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "noconf.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "acc.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "param_vec.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Fin.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "sized_rec.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    }
+  ]
+}

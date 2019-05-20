@@ -1,0 +1,149 @@
+{
+  "desc": "init",
+  "deps": [],
+  "pkgs": [
+    {
+      "pkg_id": [ "Coq", "ltac" ],
+      "vo_files": [ [ "Ltac.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ] ],
+      "cma_files": [
+        [ "tauto_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ltac_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ]
+    },
+    {
+      "pkg_id": [ "Coq", "syntax" ],
+      "vo_files": [],
+      "cma_files": [
+        [ "int63_syntax_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "r_syntax_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "numeral_notation_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "string_notation_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ]
+    },
+    {
+      "pkg_id": [ "Coq", "cc" ],
+      "vo_files": [],
+      "cma_files": [
+        [ "cc_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ]
+    },
+    {
+      "pkg_id": [ "Coq", "firstorder" ],
+      "vo_files": [],
+      "cma_files": [
+        [ "ground_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ]
+    },
+    {
+      "pkg_id": [ "Coq", "extraction" ],
+      "vo_files": [
+        [ "ExtrOcamlString.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ExtrHaskellZInt.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ExtrOcamlBigIntConv.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ExtrOcamlZBigInt.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ExtrHaskellNatNum.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ExtrHaskellBasic.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ExtrOcamlZInt.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ExtrHaskellString.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Extraction.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ExtrHaskellNatInt.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ExtrOcamlBasic.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ExtrHaskellZNum.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ExtrOcamlIntConv.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ExtrOcamlNatInt.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ExtrOcamlNatBigInt.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ExtrHaskellNatInteger.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ExtrHaskellZInteger.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": [
+        [ "extraction_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ]
+    },
+    {
+      "pkg_id": [ "Coq", "funind" ],
+      "vo_files": [
+        [ "Recdef.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FunInd.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": [
+        [ "recdef_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ]
+    },
+    {
+      "pkg_id": [ "Coq", "btauto" ],
+      "vo_files": [
+        [ "Btauto.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Algebra.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Reflect.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": [
+        [ "btauto_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ]
+    },
+    {
+      "pkg_id": [ "Coq", "Init" ],
+      "vo_files": [
+        [ "Tactics.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Specif.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Notations.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Wf.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Peano.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Logic.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Nat.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Decimal.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Datatypes.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Prelude.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Logic_Type.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Tauto.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Byte.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Bool" ],
+      "vo_files": [
+        [ "Bvector.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Bool.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Sumbool.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zerob.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "IfProp.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "BoolEq.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "DecBool.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Unicode" ],
+      "vo_files": [
+        [ "Utf8.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Utf8_core.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "ssrmatching" ],
+      "vo_files": [
+        [ "ssrmatching.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": [
+        [ "ssrmatching_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ]
+    },
+    {
+      "pkg_id": [ "Coq", "ssr" ],
+      "vo_files": [
+        [ "ssreflect.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ssrfun.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ssrbool.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": [
+        [ "ssreflect_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ]
+    },
+    {
+      "pkg_id": [ "mathcomp", "ssreflect" ],
+      "vo_files": [],
+      "cma_files": []
+    }
+  ]
+}

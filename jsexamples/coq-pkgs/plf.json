@@ -1,0 +1,5 @@
+{
+  "desc": "plf",
+  "deps": [ "lf" ],
+  "pkgs": [ { "pkg_id": [ "PLF" ], "vo_files": [], "cma_files": [] } ]
+}

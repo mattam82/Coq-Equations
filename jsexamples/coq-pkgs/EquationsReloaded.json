@@ -1,0 +1,40 @@
+{
+  "desc": "EquationsReloaded",
+  "deps": [],
+  "pkgs": [
+    {
+      "pkg_id": [ "EquationsReloaded" ],
+      "vo_files": [
+        [ "Fin.vo", "" ],
+        [ "equality.vo", "" ],
+        [ "nth.vo", "" ],
+        [ "nth_defs_eqns.vo", "" ],
+        [ "nth_defs_elim.vo", "" ],
+        [ "acc.vo", "" ],
+        [ "rose.vo", "" ],
+        [ "fle_trans.vo", "" ],
+        [ "nub.vo", "" ],
+        [ "mutrec.vo", "" ],
+        [ "nestedrec.vo", "" ],
+        [ "JMeq.vo", "" ],
+        [ "filter.vo", "" ],
+        [ "nondep_K.vo", "" ],
+        [ "smart_example.vo", "" ],
+        [ "accumulator.vo", "" ],
+        [ "noconf.vo", "" ],
+        [ "noconf_hom.vo", "" ],
+        [ "Sized.vo", "" ],
+        [ "sized_rec.vo", "" ],
+        [ "mutualwfrec.vo", "" ],
+        [ "sized_mutualwfrec.vo", "" ],
+        [ "param_vec.vo", "" ],
+        [ "leK.vo", "" ],
+        [ "HoTT_light.vo", "" ],
+        [ "polynomials.vo", "" ],
+        [ "telescopes.vo", "" ]
+      ],
+      "cma_files": []
+    }
+  ],
+  "archive": "EquationsReloaded.coq-pkg"
+}

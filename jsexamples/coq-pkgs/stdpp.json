@@ -1,0 +1,5 @@
+{
+  "desc": "stdpp",
+  "deps": [ "coq-reals" ],
+  "pkgs": [ { "pkg_id": [ "stdpp" ], "vo_files": [], "cma_files": [] } ]
+}

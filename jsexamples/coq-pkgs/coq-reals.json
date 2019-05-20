@@ -1,0 +1,116 @@
+{
+  "desc": "coq-reals",
+  "deps": [ "coq-arith" ],
+  "pkgs": [
+    {
+      "pkg_id": [ "Coq", "fourier" ],
+      "vo_files": [],
+      "cma_files": [
+        [ "fourier_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ]
+    },
+    {
+      "pkg_id": [ "Coq", "micromega" ],
+      "vo_files": [
+        [ "OrderedRing.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "MExtraction.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Lqa.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Env.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Lra.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZMicromega.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Fourier_util.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Refl.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "EnvRing.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "DeclConstant.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "QMicromega.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "RingMicromega.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ZCoeff.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "VarMap.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Tauto.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Psatz.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Lia.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Fourier.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "RMicromega.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": [
+        [ "micromega_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ]
+    },
+    {
+      "pkg_id": [ "Coq", "nsatz" ],
+      "vo_files": [ [ "Nsatz.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ] ],
+      "cma_files": [
+        [ "nsatz_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ]
+    },
+    {
+      "pkg_id": [ "Coq", "Reals" ],
+      "vo_files": [
+        [ "Rsqrt_def.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Cauchy_prod.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rtrigo_def.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "PartSum.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "SeqProp.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rbasic_fun.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Exp_prop.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "RIneq.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ArithProp.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Reals.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Alembert.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rlogic.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Runcountable.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rderiv.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rtrigo_alt.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rsigma.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rtrigo_calc.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rlimit.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rtrigo1.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "DiscrR.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "RList.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ROrderedType.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rgeom.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ranalysis5.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ranalysis.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Raxioms.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "AltSeries.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Machin.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ranalysis1.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rminmax.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "PSeries_reg.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ranalysis4.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rfunctions.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rtrigo_fun.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "R_sqrt.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "MVT.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ranalysis3.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ranalysis_reg.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "SeqSeries.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rdefinitions.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Integration.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NewtonInt.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Cos_plus.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rseries.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ranalysis2.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rpower.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Sqrt_reg.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rtrigo.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rpow_def.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rtrigo_reg.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "SplitAbsolu.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "R_sqr.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "SplitRmult.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rtopology.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "RiemannInt_SF.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rcomplete.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rprod.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "R_Ifp.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Binomial.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "RiemannInt.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Cos_rel.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Rbase.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ratan.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    }
+  ]
+}

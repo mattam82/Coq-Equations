@@ -1,0 +1,231 @@
+{
+  "desc": "coq-base",
+  "deps": [],
+  "pkgs": [
+    {
+      "pkg_id": [ "Coq", "Logic" ],
+      "vo_files": [
+        [ "Eqdep_dec.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "StrictProp.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ProofIrrelevanceFacts.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "SetIsType.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Epsilon.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FunctionalExtensionality.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "PropExtensionality.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Description.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "EqdepFacts.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ClassicalEpsilon.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Decidable.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [
+          "ExtensionalFunctionRepresentative.vo",
+          "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~"
+        ],
+        [ "ClassicalFacts.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ClassicalUniqueChoice.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ClassicalDescription.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Berardi.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "PropFacts.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Hurkens.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Classical.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Eqdep.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ExtensionalityFacts.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ProofIrrelevance.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "JMeq.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Diaconescu.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "WKL.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "WeakFan.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ChoiceFacts.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "PropExtensionalityFacts.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "RelationalChoice.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Classical_Pred_Type.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Classical_Prop.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ClassicalChoice.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "SetoidChoice.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FinFun.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "IndefiniteDescription.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ConstructiveEpsilon.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Program" ],
+      "vo_files": [
+        [ "Tactics.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Wf.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Combinators.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Subset.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Utils.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Equality.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Basics.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Syntax.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Program.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Classes" ],
+      "vo_files": [
+        [ "Morphisms_Relations.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "CMorphisms.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "CRelationClasses.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "SetoidDec.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "DecidableClass.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "SetoidClass.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "EquivDec.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "CEquivalence.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Morphisms.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "SetoidTactics.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Morphisms_Prop.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Equivalence.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Init.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "RelationPairs.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "RelationClasses.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Structures" ],
+      "vo_files": [
+        [ "DecidableTypeEx.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "OrdersEx.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "GenericMinMax.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "OrdersAlt.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Equalities.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Orders.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "EqualitiesFacts.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "OrderedTypeAlt.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "OrderedType.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "OrdersFacts.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "OrdersLists.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "OrderedTypeEx.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "OrdersTac.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "DecidableType.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Relations" ],
+      "vo_files": [
+        [ "Relation_Operators.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Relations.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Operators_Properties.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Relation_Definitions.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Setoids" ],
+      "vo_files": [ [ "Setoid.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ] ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Wellfounded" ],
+      "vo_files": [
+        [ "Inverse_Image.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Well_Ordering.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [
+          "Lexicographic_Exponentiation.vo",
+          "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~"
+        ],
+        [ "Transitive_Closure.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Disjoint_Union.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Wellfounded.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Union.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Lexicographic_Product.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Inclusion.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Strings" ],
+      "vo_files": [
+        [ "ByteVector.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ascii.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "BinaryString.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "HexString.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "OctalString.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "String.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Byte.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Numbers" ],
+      "vo_files": [
+        [ "NumPrelude.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NaryFunctions.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "DecimalPos.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "DecimalZ.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "BinNums.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "DecimalFacts.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "DecimalNat.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "DecimalN.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "DecimalString.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "AltBinNotations.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Numbers", "NatInt" ],
+      "vo_files": [
+        [ "NZSqrt.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NZDomain.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NZParity.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NZMulOrder.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NZBits.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NZMul.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NZOrder.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NZAxioms.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NZGcd.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NZAddOrder.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NZBase.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NZPow.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NZAdd.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NZProperties.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NZDiv.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NZLog.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Numbers", "Natural", "Abstract" ],
+      "vo_files": [
+        [ "NPow.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NOrder.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NDiv.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NLog.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NAdd.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NGcd.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NProperties.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NMulOrder.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NSqrt.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NParity.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NBits.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NLcm.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NBase.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NDefOps.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NSub.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NMaxMin.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NAddOrder.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NAxioms.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NIso.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NStrongRec.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Arith" ],
+      "vo_files": [
+        [ "Wf_nat.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Minus.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Le.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Plus.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Gt.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Lt.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "PeanoNat.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Compare_dec.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    }
+  ]
+}

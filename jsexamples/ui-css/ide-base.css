@@ -1,0 +1,106 @@
+body {
+  margin : 0;
+  padding: 0;
+  font-family: Helvetica,Geneva,Swiss,Arial,SunSans-Regular,sans-serif;
+}
+
+a, a:link, a:visited, a:active {
+  text-decoration: none;
+}
+
+#ide {
+  height: 100vh;
+}
+
+#left-panel {
+  position:absolute;
+  left:0;
+  width: calc(55% - 3px);
+  height: 100%;
+}
+
+#right-panel {
+  width: calc(45% - 3px);
+  height: 100%;
+  position:absolute;
+  right: 0;
+}
+
+#script-panel {
+  height: calc(100% - 37px);
+}
+
+#script-panel textarea {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border: none;
+  resize: none;
+}
+
+#goal-panel, #message-panel {
+  width: 100%;
+  overflow: hidden;
+}
+
+#goal-panel {
+  top:0;
+  height: 78%;
+}
+
+#message-panel {
+  height: calc(22% - 6px);
+  margin-top: 6px;
+}
+
+#vsep, #hsep {
+  position:absolute;
+  z-index: 3;
+}
+
+#vsep {
+  left: calc(55% - 3px);
+  width: 6px;
+  height: 100%;
+}
+
+#hsep {
+  width: 100%;
+  height: 6px;
+}
+
+#toolsbar {
+  border-bottom: 1px solid #ddd;
+  height: 36px;
+}
+
+#toolsbar .exits {
+  white-space: nowrap;
+  display: table-cell;
+  vertical-align: top;
+}
+
+#buttons {
+  display: none;
+  opacity: 0;
+  text-align: center;
+  width:100%;
+  transition: opacity 500ms ease;
+  vertical-align: middle;
+}
+
+#buttons img {
+  margin: 0 2px;
+  cursor: pointer;
+}
+
+.msg-area span {
+  display: block;
+  padding: 3px;
+  white-space: pre;
+}
+
+/* overloads */
+.CodeMirror {
+  height: 100%;
+}

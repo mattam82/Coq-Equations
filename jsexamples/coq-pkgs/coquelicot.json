@@ -1,0 +1,5 @@
+{
+  "desc": "coquelicot",
+  "deps": [ "coq-reals" ],
+  "pkgs": [ { "pkg_id": [ "Coquelicot" ], "vo_files": [], "cma_files": [] } ]
+}

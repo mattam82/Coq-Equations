@@ -1,0 +1,5 @@
+{
+  "desc": "ltac2",
+  "deps": [],
+  "pkgs": [ { "pkg_id": [ "Ltac2" ], "vo_files": [], "cma_files": [] } ]
+}

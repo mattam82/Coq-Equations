@@ -1,0 +1,40 @@
+{
+  "desc": "extlib",
+  "deps": [ "coq-reals" ],
+  "pkgs": [
+    { "pkg_id": [ "ExtLib" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "ExtLib", "Core" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "ExtLib", "Data" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "ExtLib", "Data", "Eq" ], "vo_files": [], "cma_files": [] },
+    {
+      "pkg_id": [ "ExtLib", "Data", "Graph" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "ExtLib", "Data", "Map" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "ExtLib", "Data", "Monads" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "ExtLib", "Data", "Set" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    { "pkg_id": [ "ExtLib", "Generic" ], "vo_files": [], "cma_files": [] },
+    {
+      "pkg_id": [ "ExtLib", "Programming" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    { "pkg_id": [ "ExtLib", "Recur" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "ExtLib", "Relations" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "ExtLib", "Structures" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "ExtLib", "Tactics" ], "vo_files": [], "cma_files": [] }
+  ]
+}

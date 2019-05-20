@@ -1,0 +1,71 @@
+<!doctype html>
+
+<title>CodeMirror: Markdown mode</title>
+<meta charset="utf-8"/>
+<link rel=stylesheet href="../doc/docs.css">
+
+<link rel="stylesheet" href="../lib/codemirror.css">
+<link rel="stylesheet" href="../addon/hint/show-hint.css">
+
+<script src="../lib/codemirror.js"></script>
+<script src="../mode/markdown/markdown.js"></script>
+<script src="../addon/hint/show-hint.js"></script>
+<script src="../addon/hint/tex-input-hint.js"></script>
+
+<style type="text/css">
+      .CodeMirror {border-top: 1px solid black; border-bottom: 1px solid black;}
+      .cm-s-default .cm-trailing-space-a:before,
+      .cm-s-default .cm-trailing-space-b:before {position: absolute; content: "\00B7"; color: #777;}
+      .cm-s-default .cm-trailing-space-new-line:before {position: absolute; content: "\21B5"; color: #777;}
+    </style>
+<div id=nav>
+  <a href="http://codemirror.net"><h1>CodeMirror</h1><img id=logo src="../doc/logo.png"></a>
+
+  <ul>
+    <li><a href="../index.html">Home</a>
+    <li><a href="../doc/manual.html">Manual</a>
+    <li><a href="https://github.com/codemirror/codemirror">Code</a>
+  </ul>
+  <ul>
+    <li><a href="../index.html">Language modes</a>
+    <li><a class=active href="#">Markdown</a>
+  </ul>
+</div>
+
+<article>
+<h2>Markdown mode</h2>
+<form><textarea id="code" name="code">
+*Using TeX-style Symbols*
+------------------------------------------------
+
+_TeX_-style symbols are names prefixed by a `\`.
+
+You can try to input symbols in this buffer by pressing `\`,
+
+Typing `\alpha` should input α.
+
+You can try more. This completion should work anywhere on the text,
+but beware is experimental.
+
+## Some more symbols:
+
+- \Gamma : Γ
+- \lnot: ¬
+
+</textarea></form>
+
+  <p>Press <strong>\</strong> to activate autocompletion. Built
+  on top of the <a href="../doc/manual.html#addon_show-hint"><code>show-hint</code></a>
+  and <a href="../doc/manual.html#addon_tex-input-hint"><code>TeX-input-hint</code></a>
+  addons.</p>
+
+    <script>
+      var editor = CodeMirror.fromTextArea(document.getElementById("code"), {
+        mode: 'markdown',
+        lineNumbers: true,
+        theme: "default",
+        extraKeys: {"Enter": "newlineAndIndentContinueMarkdownList"}
+      });
+    </script>
+
+  </article>

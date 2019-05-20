@@ -1,0 +1,5 @@
+{
+  "desc": "mtac",
+  "deps": [ "coq-arith" ],
+  "pkgs": [ { "pkg_id": [ "Mtac" ], "vo_files": [], "cma_files": [] } ]
+}

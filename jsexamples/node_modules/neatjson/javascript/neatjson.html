@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html><head>
+	<meta charset="utf-8">
+	<title>NeatJSON Online</title>
+	<style type="text/css">
+		h1 { background:#444; color:#ccc; text-align:center; margin:0; padding:0; margin-bottom:1em; font-size:24px; padding:6px 20px; font-family:sans-serif }
+		#content { position:absolute; top:40px; bottom:0; left:0; right:0; padding:1em; }
+		p { margin:0; padding:0; }
+		#description { padding-right:60px }
+		html, body { height:100%; min-height:100%; padding:0; margin:0; background:#eee; }
+		#input, #output { display:block; width:90%; margin:1em auto; min-height:35%; background:#fff; }
+		#code { display:block; width:90%; margin:1em auto }
+		#output { border:1px solid green; background:rgba(100,255,0,0.5); color:#080; overflow:auto; }
+		label { padding-right:0.6em }
+		#options { width:90%; margin:1em auto }
+		.option { display:inline-block; margin-right:2em; user-select:none; -webkit-user-select:none; }
+		input[type="range"] { width:5em }
+		b { background:yellow }
+		i { opacity:0.4; font-style:normal }
+		#input, #output { tab-size:4 }
+	</style>
+</head><body>
+<h1>NeatJSON Online</h1>
+<div id="content">
+<p id="description">NeatJSON provides <a href="https://rubygems.org/gems/neatjson">Ruby</a> and JavaScript libraries for formatting <a href="http://json.org/">JSON</a> strings. To test it out, paste your JSON (formatted however) into the top box below, adjust the formatting options, and see the results at the bottom.</p>
+<div id="options">
+	<div class="option-row">
+		<span class="option">
+			<label title="Limit the number of decimals displayed?"><input type="checkbox" id="useDecimals"> Format Decimals?</label>
+			<input type="text" id="decimals" value="3" size="3" min="0" max="10" style="display:none">
+		</span>
+		<span class="option" title="Use alphabetical ordering for object keys?"><label><input type="checkbox" id="sorted"> Sort Keys?</label></span>
+		<span class="option">
+			<label title="Force line wrapping?"><input type="checkbox" id="wrap" checked> Wrap?</label>
+			<label id="wrapopts1" title="Column width to wrap at (without breaking values).">width <input type="text" id="wrapSize" value="40" size="3"></label>
+			<label id="wrapopts3" title="Line up colons on multi-line objects?"><input type="checkbox" id="aligned" checked> Align Values?</label>
+			<label id="wrapopts2" title="Put opening/closing brackets on the same line as data?"><input type="checkbox" id="short" checked> Short?</label>
+			<span class="option" id="wrapopts4">
+				<label title="Use tabs instead of spaces at the start of lines?"><input type="checkbox" id="tabs"> Use Tabs?</label>
+				<label title="Number of tabs/spaces to use">Indent <input type="range" id="indent" value="2" min="0" max="7" step="1"></label>
+			</span>
+			<label id="wrapopts5" title="Indent the closing bracket/brace for arrays and objects?"><input type="checkbox" id="indentlast"> Indent Last?</label>
+		</span>
+	</div><div class="option-row">
+		<span class="option" title="Number of spaces inside array brackets on a single line."><label>Array Padding  <input type="range" id="arrayPadding"  value="1" min="0" max="5" step="1"></label></span>
+		<span class="option" title="Number of spaces inside object braces on a single line." ><label>Object Padding <input type="range" id="objectPadding" value="1" min="0" max="5" step="1"></label></span>
+		<span class="option" title="Number of spaces before commas (for single-line arrays and objects)."><label>Before Comma <input type="range" id="beforeComma" value="0" min="0" max="5" step="1"></label></span>
+		<span class="option" title="Number of spaces after commas (for single-line arrays and objects)." ><label>After Comma  <input type="range" id="afterComma"  value="1" min="0" max="5" step="1"></label></span>
+	</div><div class="option-row">
+		<span class="option" title="Number of spaces before colon for single-line objects."><label>Before Colon 1 <input type="range" id="beforeColon1" value="0" min="0" max="5" step="1"></label></span>
+		<span class="option" title="Number of spaces after colon for single-line objects." ><label>After Colon 1  <input type="range" id="afterColon1"  value="0" min="0" max="5" step="1"></label></span>
+		<span class="option" title="Number of spaces before colon for multi-line objects." ><label>Before Colon N <input type="range" id="beforeColonN" value="1" min="0" max="5" step="1"></label></span>
+		<span class="option" title="Number of spaces after colon for multi-line objects."  ><label>After Colon N  <input type="range" id="afterColonN"  value="1" min="0" max="5" step="1"></label></span>
+	</div>
+</div>
+
+<textarea id="input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">["foo","bar",{"dogs":42,"piggies":0,"cats":7},{"jimmy":[1,2,3,4,5],"jammy":3.14159265358979,"hot":"pajammy"}]</textarea>
+<pre id="code"></pre>
+<textarea id="output" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+<div id="copyright">NeatJSON is copyright ©2015-2016 Gavin Kistner. Available under the <a href="https://raw.githubusercontent.com/Phrogz/NeatJSON/master/LICENSE.txt">MIT License</a>. For feature requests and bug reports please use the <a href="https://github.com/Phrogz/NeatJSON/issues">GitHub Issues</a> page.</div>
+<script type="text/javascript" src="neatjson.js"></script>
+<script type="text/javascript">
+	document.querySelector('h1').innerHTML += " v"+neatJSON.version;
+	var opts = document.querySelectorAll('input');
+	[].forEach.call(opts,function(opt){
+		opt.addEventListener('input',neaten,false);
+		opt.addEventListener('change',neaten,false);
+		opt.addEventListener('click',neaten,false);
+	})
+
+	var inp = document.querySelector('#input'),
+	    cde = document.querySelector('#code'),
+	    out = document.querySelector('#output');
+	var opts;
+
+	var wrap  = document.querySelector('#wrap'),
+	    wdth  = document.querySelector('#wrapSize'),
+	    shrt  = document.querySelector('#short'),
+	    dec0  = document.querySelector('#useDecimals'),
+	    decN  = document.querySelector('#decimals'),
+	    sort  = document.querySelector('#sorted'),
+	    algn  = document.querySelector('#aligned'),
+	    tabs  = document.querySelector('#tabs'),
+	    indN  = document.querySelector('#indent'),
+	    indL  = document.querySelector('#indentlast'),
+	    arrayPadding  = document.querySelector('#arrayPadding'),
+	    objectPadding = document.querySelector('#objectPadding'),
+	    beforeComma   = document.querySelector('#beforeComma'),
+	    afterComma    = document.querySelector('#afterComma'),
+	    beforeColon1  = document.querySelector('#beforeColon1'),
+	    afterColon1   = document.querySelector('#afterColon1'),
+	    beforeColonN  = document.querySelector('#beforeColonN'),
+	    afterColonN   = document.querySelector('#afterColonN');
+
+	window.onload = neaten;
+	inp.addEventListener('input',neaten,false);
+
+	var lastInput,lastCommand,commandText;
+	function neaten(){
+		changeOptions();
+		if (isEmpty(opts)) commandText = "neatJSON(obj)";
+		else{
+			var parts=[];
+			for (var k in opts) parts.push('<b>'+k+'<\/b>:'+JSON.stringify(opts[k]));
+			commandText = "neatJSON(obj,{ "+parts.join(', ')+" })";
+		}
+		if (commandText==lastCommand && inp.value==lastInput) return;
+		lastCommand = commandText;
+		lastInput   = inp.value;
+
+		var error;
+		try {
+			var obj = JSON.parse(inp.value);
+		} catch(e1){
+			error=e1;
+			if (e1 instanceof SyntaxError){
+				try {
+					eval("var obj = "+inp.value);
+				} catch(e2){
+					obj = undefined;
+				}
+			}
+		}
+		if (obj===undefined){
+			out.innerHTML = error;
+		}else{
+			var start = new Date;
+			out.innerHTML = neatJSON(obj,opts).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+			var elapsed = new Date-start;
+			console.log(commandText.replace(/<\/?b>/g,'')+" took "+elapsed+"ms");
+			code.innerHTML = "var json = "+commandText+"; <i>// took ~"+elapsed+"ms<\/i>";
+		}
+	}
+
+	function changeOptions() {
+		opts = {};
+		if (!wrap.checked || wdth.value!=80) opts.wrap = wrap.checked ? (wdth.value=='' ? true : wdth.value*1) : false;
+		if (wrap.checked && shrt.checked) opts.short = true;
+		document.querySelector('#wrapopts1').style.visibility = wrap.checked ? '' : 'hidden';
+		document.querySelector('#wrapopts2').style.visibility = wrap.checked ? '' : 'hidden';
+		document.querySelector('#wrapopts3').style.visibility = wrap.checked ? '' : 'hidden';
+		document.querySelector('#wrapopts4').style.visibility = wrap.checked ? (shrt.checked ? 'hidden' : '') : 'hidden';
+		document.querySelector('#wrapopts5').style.visibility = wrap.checked ? (shrt.checked ? 'hidden' : '') : 'hidden';
+
+		if ((indN.value!=2 || tabs.checked) && (wrap.checked && !shrt.checked)) opts.indent = repeat(tabs.checked ? '\t' : ' ',indN.value*1);
+		if (indL.checked && wrap.checked && !shrt.checked) opts.indentLast = true;
+
+		if (dec0.checked){
+			opts.decimals = decN.value*1;
+			decN.style.display = '';
+		}else{
+			decN.style.display = 'none';
+		}
+
+		if (sort.checked) opts.sort = true;
+		if (wrap.checked && algn.checked) opts.aligned = true;
+
+		if (arrayPadding.value!=0 && objectPadding.value==arrayPadding.value){
+			opts.padding = arrayPadding.value*1;
+		}else{
+			if (arrayPadding.value!=0) opts.arrayPadding = arrayPadding.value*1;
+			if (objectPadding.value!=0) opts.objectPadding = objectPadding.value*1;
+		}
+		if (beforeComma.value!=0 && beforeComma.value==afterComma.value){
+			opts.aroundComma = beforeComma.value*1;
+		}else{
+			if (beforeComma.value!=0) opts.beforeComma = beforeComma.value*1;
+			if (afterComma.value!=0) opts.afterComma = afterComma.value*1;
+		}
+		if (beforeColon1.value!=0 && afterColon1.value!=0 && beforeColonN.value!=0 && afterColonN.value==beforeColonN.value && beforeColon1.value==afterColon1.value && beforeColon1.value==beforeColonN.value){
+			opts.aroundColon = beforeColon1.value*1;
+		}else{
+			if (beforeColon1.value!=0 && beforeColon1.value==afterColon1.value){
+				opts.aroundColon1 = beforeColon1.value*1;
+			}else{
+				if (beforeColon1.value!=0) opts.beforeColon1 = beforeColon1.value*1;
+				if (afterColon1.value!=0)  opts.afterColon1  = afterColon1.value*1;
+			}
+			if (beforeColonN.value!=0 && beforeColonN.value==afterColonN.value){
+				opts.aroundColonN = beforeColonN.value*1;
+			}else{
+				if (beforeColonN.value!=0) opts.beforeColonN = beforeColonN.value*1;
+				if (afterColonN.value!=0)  opts.afterColonN  = afterColonN.value*1;
+			}
+		}
+	}
+
+	function repeat(str,times){ // http://stackoverflow.com/a/17800645/405017
+		var result = '';
+		while(true){
+			if (times & 1) result += str;
+			times >>= 1;
+			if (times) str += str;
+			else break;
+		}
+		return result;
+	}
+
+	function isEmpty(obj){
+		for (var k in obj) return false;
+		return true;
+	}
+</script>
+</div>
+<a href="https://github.com/Phrogz/NeatJSON"><img style="position:absolute;top:0;right:0;border:0" src="https://camo.githubusercontent.com/652c5b9acfaddf3a9c326fa6bde407b87f7be0f4/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f6f72616e67655f6666373630302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_right_orange_ff7600.png"></a>
+</body></html>

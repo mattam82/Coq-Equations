@@ -1,0 +1,29 @@
+{
+  "desc": "iris",
+  "deps": [ "stdpp" ],
+  "pkgs": [
+    { "pkg_id": [ "iris" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "iris", "algebra" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "iris", "base_logic" ], "vo_files": [], "cma_files": [] },
+    {
+      "pkg_id": [ "iris", "base_logic", "lib" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    { "pkg_id": [ "iris", "heap_lang" ], "vo_files": [], "cma_files": [] },
+    {
+      "pkg_id": [ "iris", "base_lang", "lib" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    { "pkg_id": [ "iris", "bi" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "iris", "bi", "lib" ], "vo_files": [], "cma_files": [] },
+    {
+      "pkg_id": [ "iris", "program_logic" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    { "pkg_id": [ "iris", "proofmode" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "iris", "tests" ], "vo_files": [], "cma_files": [] }
+  ]
+}

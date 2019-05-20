@@ -1,0 +1,56 @@
+{
+  "desc": "unimath",
+  "deps": [],
+  "pkgs": [
+    { "pkg_id": [ "UniMath" ], "vo_files": [], "cma_files": [] },
+    {
+      "pkg_id": [ "UniMath", "CategoryTheory" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "UniMath", "CategoryTheory", "limits" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "UniMath", "CategoryTheory", "colimits" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    { "pkg_id": [ "UniMath", "PAdics" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "UniMath", "Ktheory" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "UniMath", "Tactics" ], "vo_files": [], "cma_files": [] },
+    {
+      "pkg_id": [ "UniMath", "SubstitutionSystems" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "UniMath", "Foundations" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "UniMath", "Foundations", "Basics" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "UniMath", "Foundations", "Combinatorics" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "UniMath", "Foundations", "Algebra" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "UniMath", "Foundations", "NumberSystems" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    { "pkg_id": [ "UniMath", "Dedekind" ], "vo_files": [], "cma_files": [] }
+  ]
+}

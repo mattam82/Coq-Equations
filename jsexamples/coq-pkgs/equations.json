@@ -1,0 +1,38 @@
+{
+  "desc": "equations",
+  "deps": [ "coq-reals" ],
+  "pkgs": [
+    {
+      "pkg_id": [ "Equations" ],
+      "vo_files": [
+        [ "Tactics.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Init.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Signature.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Equations.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": [
+        [ "equations_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ]
+    },
+    {
+      "pkg_id": [ "Equations", "Prop" ],
+      "vo_files": [
+        [ "OpaqueEquations.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Tactics.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FunctionalInduction.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Subterm.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "EqDecInstances.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "NoConfusion.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Constants.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Logic.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Telescopes.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "DepElim.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Loader.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "TransparentEquations.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Classes.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "EqDec.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    }
+  ]
+}

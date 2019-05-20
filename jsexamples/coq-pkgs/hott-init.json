@@ -1,0 +1,71 @@
+{
+  "desc": "hott-init",
+  "deps": [],
+  "pkgs": [
+    {
+      "pkg_id": [ "Coq", "syntax" ],
+      "vo_files": [],
+      "cma_files": [
+        [ "int63_syntax_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "r_syntax_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "numeral_notation_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "string_notation_plugin.cma", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ]
+    },
+    {
+      "pkg_id": [ "Coq", "Init" ],
+      "vo_files": [
+        [ "Tactics.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Specif.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Notations.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Wf.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Peano.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Logic.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Nat.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Decimal.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Datatypes.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Prelude.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Logic_Type.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Tauto.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Byte.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Bool" ],
+      "vo_files": [
+        [ "Bvector.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Bool.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Sumbool.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Zerob.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "IfProp.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "BoolEq.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "DecBool.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Program" ],
+      "vo_files": [
+        [ "Tactics.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Wf.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Combinators.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Subset.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Utils.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Equality.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Basics.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Syntax.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Program.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Unicode" ],
+      "vo_files": [
+        [ "Utf8.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Utf8_core.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    }
+  ]
+}

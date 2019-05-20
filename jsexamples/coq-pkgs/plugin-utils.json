@@ -1,0 +1,7 @@
+{
+  "desc": "plugin-utils",
+  "deps": [],
+  "pkgs": [
+    { "pkg_id": [ "PluginUtils" ], "vo_files": [], "cma_files": [] }
+  ]
+}

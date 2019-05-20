@@ -1,0 +1,200 @@
+{
+  "desc": "hott",
+  "deps": [ "hott-init" ],
+  "pkgs": [
+    { "pkg_id": [ "HoTT" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "HoTT", "Algebra" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "HoTT", "Basics" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "HoTT", "categories" ], "vo_files": [], "cma_files": [] },
+    {
+      "pkg_id": [ "HoTT", "categories", "Adjoint" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "Adjoint", "Composition" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "Adjoint", "Functorial" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "Adjoint", "UniversalMorphisms" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "Cat" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "Category" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "Category", "Sigma" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "Category", "Subcategory" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "CategoryOfSections" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "Comma" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "ExponentialLaws" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "ExponentialLaws", "Law1" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "ExponentialLaws", "Law2" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "ExponentialLaws", "Law3" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "ExponentialLaws", "Law4" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "Functor" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "Functor", "Composition" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [
+        "HoTT", "categories", "Functor", "Composition", "Functorial"
+      ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "Functor", "Prod" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "Functor", "Pointwise" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "FunctorCategory" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "Grothendieck" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "Grothendieck", "ToSet" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "GroupoidCategory" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "InitialTerminalCategory" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "KanExtensions" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "LaxComma" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "Limits" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "NaturalTransformation" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [
+        "HoTT", "categories", "NaturalTransformation", "Composition"
+      ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "Profunctor" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "Pseudofunctor" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "PseudonaturalTransformation" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "SetCategory" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "SetCategory", "Functors" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "HoTT", "categories", "Structure" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    { "pkg_id": [ "HoTT", "Comodalities" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "HoTT", "HIT" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "HoTT", "Modalities" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "HoTT", "Spaces" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "HoTT", "Tactics" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "HoTT", "Types" ], "vo_files": [], "cma_files": [] }
+  ]
+}

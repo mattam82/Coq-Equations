@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+    <meta name="description" content="An Online IDE for the Coq Theorem Prover" />
+
+    <link rel="stylesheet" type="text/css" href="node_modules/bootstrap/dist/css/bootstrap.min.css">
+
+    <title>Use Coq in Your Browser: The Js Coq Theorem Prover Online IDE!</title>
+  </head>
+
+<body>
+  <div id="ide-wrapper" class="toggled">
+  <div id="code-wrapper">
+  <div id="document">
+  <div>
+    <h3>Welcome to the JsCoq Interactive Online System!</h3>
+    <p>
+      Welcome to the JsCoq technology demo! JsCoq is an interactive,
+      web-based environment for the Coq Theorem prover, developed at
+      the <a href="https://www.cri.ensmp.fr/">Centre de Recherche en Informatique</a> of <a href="http://www.mines-paristech.fr/">MINES ParisTech</a> (former École de Mines de Paris).
+    </p>
+    <h4>Instructions:</h4>
+    <p>
+      JsCoq is open source. If you find any problem or want to make
+      any contribution you are extremely welcome! We await your
+      feedback at <a href="https://github.com/ejgallego/jscoq">github</a>.
+    </p>
+    <h5>Saving your own proof scripts:</h5>
+    <p>
+      Please go to <a href="https://x80.org/collacoq/">CollaCoq</a> if
+      you want a page with Save/Load capabilities.
+    </h4>
+
+    <h5>Key bindings:</h5>
+    <p>
+      <strong>Alt-Enter</strong> (Cmd should work in Macs too) goes to
+      the current point; <strong>Alt-N/P</strong> or <strong>Alt-Down/Up</strong> will
+      move through the proof; <strong>F8</strong> or the power icon toggles
+      the goal panel.
+    </p>
+    <h4>A First Example: The Infinitude of Primes</h4>
+    <p>
+      We don't provide a Coq tutorial (yet), but as a showcase, we
+      display a proof of the infinitude of primes in Coq.  The proof relies
+      in the Mathematical Components library by the
+      <a href="http://ssr.msr-inria.inria.fr/">MSR/Inria</a> team led
+      by Georges Gonthier, so our first step will be to load it and
+      set a few Coq options:
+    </p>
+  </div>
+  <div>
+    <textarea id="addnC" >
+From Coq Require Import Init.Prelude Unicode.Utf8.
+From Coq Require Import ssreflect ssrfun ssrbool.
+From Equations Require Import Equations.
+From EquationsReloaded Require Import Fin.
+From mathcomp Require Import eqtype ssrnat div prime.
+
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive. </textarea>
+  </div>
+  <div>
+    <h4>Ready to do Proofs!</h4>
+    <p>
+      Once the basic environment has been set up, we can proceed to
+      the proof:
+    </p>
+  </div> <!-- panel-heading -->
+  <div>
+    <textarea id="prime_above1" >
+(* A nice proof of the infinitude of primes, by Georges Gonthier *)
+Lemma prime_above m : {p | m < p & prime p}.
+Proof. </textarea>
+    <p>
+      The lemma states that given a number m, there is a primer number
+      larger than m.
+
+      Coq is a <em>constructive system</em>, which among other things
+      implies that to show the existence of an object, we need to
+      actually provide an algorithm that will construct it.
+
+      In this case, we need to find a prime number `p` greater than
+      `m`. What would be a suitable `p`?
+
+      Choosing as `p` the first prime divisor of `m! + 1` works.  As
+      we will shortly see, properties of divisibility will imply that
+      `p` is greater than `m`.
+      </p>
+      <textarea id="prime_above2" >
+have /pdivP[p pr_p p_dv_m1]: 1 < m`! + 1 by rewrite addn1 ltnS fact_gt0.</textarea>
+      <p>
+        Our first step is thus to use the library-provided lemma
+        `pdivP`, which states that every number is divided by a
+        prime. Thus, we obtain a number `p` and the corresponding
+        hypotheses `pr_p : prime p` and `p_dv_m1` "p divides m! +
+        1". The ssreflect tactic `have` provides a convenient way to
+        instantiate this lemma and discard the side proof obligation
+        `1 < m! + 1`.
+      </p>
+    <textarea id="prime_above3" >
+exists p => //; rewrite ltnNge; apply: contraL p_dv_m1 => p_le_m.</textarea>
+    <p>
+      It remains to prove that `p` is greater than `m`. We reason by
+      contraposition with the divisibility hypothesis, which gives us
+      the goal "if `p <= m` then `p` is not a prime divisor of `m! +
+      1`".
+    </p>
+    <textarea id="prime_above4" >
+by rewrite dvdn_addr ?dvdn_fact ?prime_gt0 // gtnNdvd ?prime_gt1.
+Qed.</textarea>
+    <p>
+      The goal follows from basic properties of divisibility, plus
+      from the fact that if `p < m`, then `p` divides `m!`, but `p`
+      prime cannot divide 1, a necessary condition for `p` to divide
+      `m! + 1`.
+  </p>
+  <p>
+    jsCoq provides many other packages, including Coq's standard
+    library and the mathematical components library. Feel free to
+    experiment, and bear with the alpha status of this demo.
+  </p>
+  <p>
+    JsCoq's homepage is at github <a href="https://github.com/ejgallego/jscoq">
+    https://github.com/ejgallego/jscoq</a> ¡Salut!
+  </p>
+  </div> <!-- /#panel body -->
+  </div> <!-- /#document -->
+  </div> <!-- /#code-wrapper -->
+  </div> <!-- /#ide-wrapper -->
+
+  <script src="ui-js/jscoq-loader.js" type="text/javascript"></script>
+  <script type="text/javascript">
+
+    var jscoq_ids  = ['addnC', 'prime_above1', 'prime_above2', 'prime_above3', 'prime_above4' ];
+    var jscoq_opts = {
+        prelude:   false,
+        implicit_libs: false,
+        base_path: './',
+        editor: { mode: { 'company-coq': true }, keyMap: 'default' },
+        init_pkgs: ['init'],
+        all_pkgs:  ['init', 'math-comp', 'iris', 'elpi', 'equations',
+                    'equations-reloaded', 'ltac2', 'stdpp',
+                    'coq-base', 'coq-collections', 'coq-arith', 'coq-reals', 'lf', 'plf', 'cpdt']
+    };
+
+    /* Global reference */
+    var coq;
+
+    loadJsCoq(jscoq_opts.base_path)
+        .then( () => coq = new CoqManager(jscoq_ids, jscoq_opts) );
+  </script>
+</body>
+</html>

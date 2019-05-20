@@ -1,0 +1,118 @@
+{
+  "desc": "coq-collections",
+  "deps": [ "coq-base" ],
+  "pkgs": [
+    {
+      "pkg_id": [ "Coq", "Lists" ],
+      "vo_files": [
+        [ "Streams.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ListSet.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "SetoidPermutation.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "List.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "SetoidList.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ListTactics.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "StreamMemo.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "ListDec.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Vectors" ],
+      "vo_files": [
+        [ "Vector.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "VectorEq.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "VectorDef.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "VectorSpec.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Fin.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Sets" ],
+      "vo_files": [
+        [ "Uniset.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Infinite_sets.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Ensembles.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Classical_sets.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Powerset_Classical_facts.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Relations_1.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Integers.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Partial_Order.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Permut.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Relations_2_facts.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Relations_3_facts.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Powerset_facts.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Finite_sets.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Cpo.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Relations_3.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Relations_2.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Finite_sets_facts.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Powerset.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Constructive_sets.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Relations_1_facts.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Multiset.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Image.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "FSets" ],
+      "vo_files": [
+        [ "FSetDecide.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FMaps.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FMapFacts.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FSetList.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FSetFacts.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FMapFullAVL.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FSetProperties.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FSetInterface.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FSetWeakList.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FMapList.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FSetPositive.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FSetToFiniteSet.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FMapInterface.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FMapWeakList.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FSetCompat.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FMapPositive.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FSetEqProperties.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FSets.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FMapAVL.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FSetBridge.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "FSetAVL.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "MSets" ],
+      "vo_files": [
+        [ "MSets.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "MSetEqProperties.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "MSetPositive.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "MSetWeakList.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "MSetList.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "MSetInterface.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "MSetToFiniteSet.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "MSetRBT.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "MSetGenTree.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "MSetDecide.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "MSetProperties.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "MSetAVL.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "MSetFacts.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "Coq", "Sorting" ],
+      "vo_files": [
+        [ "PermutEq.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Heap.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Sorting.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "PermutSetoid.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Permutation.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Sorted.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ],
+        [ "Mergesort.vo", "ﾔ\u001d雇十u0000ｲ\u0004騾\t們~" ]
+      ],
+      "cma_files": []
+    }
+  ]
+}

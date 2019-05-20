@@ -1,0 +1,7 @@
+{
+  "desc": "relalg",
+  "deps": [ "coq-arith" ],
+  "pkgs": [
+    { "pkg_id": [ "RelationAlgebra" ], "vo_files": [], "cma_files": [] }
+  ]
+}

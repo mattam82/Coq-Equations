@@ -1,0 +1,173 @@
+{
+  "desc": "color",
+  "deps": [ "coq-reals" ],
+  "pkgs": [
+    { "pkg_id": [ "CoLoR", "Filter" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "CoLoR", "RPO" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "CoLoR", "Coccinelle" ], "vo_files": [], "cma_files": [] },
+    {
+      "pkg_id": [ "CoLoR", "Coccinelle", "list_extensions" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Coccinelle", "term_orderings" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Coccinelle", "basis" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Coccinelle", "examples" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Coccinelle", "examples", "cime_trace" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Coccinelle", "ac_matching" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Coccinelle", "term_algebra" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Coccinelle", "unification" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    { "pkg_id": [ "CoLoR", "NonTermin" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "CoLoR", "Term" ], "vo_files": [], "cma_files": [] },
+    {
+      "pkg_id": [ "CoLoR", "Term", "Lambda" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Term", "SimpleType" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Term", "String" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Term", "Varyadic" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Term", "WithArity" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    { "pkg_id": [ "CoLoR", "HORPO" ], "vo_files": [], "cma_files": [] },
+    {
+      "pkg_id": [ "CoLoR", "ProofChecker" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    { "pkg_id": [ "CoLoR", "MatrixInt" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "CoLoR", "SemLab" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "CoLoR", "Conversion" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "CoLoR", "DP" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "CoLoR", "Util" ], "vo_files": [], "cma_files": [] },
+    {
+      "pkg_id": [ "CoLoR", "Util", "Multiset" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Util", "Vector" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Util", "Pair" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Util", "FSet" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Util", "Integer" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Util", "FMap" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Util", "Matrix" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Util", "Logic" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Util", "Polynom" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Util", "Option" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Util", "FGraph" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Util", "Function" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Util", "List" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Util", "Relation" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    {
+      "pkg_id": [ "CoLoR", "Util", "Bool" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    { "pkg_id": [ "CoLoR", "Util", "Nat" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "CoLoR", "Util", "Set" ], "vo_files": [], "cma_files": [] },
+    {
+      "pkg_id": [ "CoLoR", "Util", "Algebra" ],
+      "vo_files": [],
+      "cma_files": []
+    },
+    { "pkg_id": [ "CoLoR", "PolyInt" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "CoLoR", "SubtermCrit" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "CoLoR", "MPO" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "CoLoR", "MannaNess" ], "vo_files": [], "cma_files": [] }
+  ]
+}

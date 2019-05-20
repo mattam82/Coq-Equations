@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+
+    <link rel="stylesheet" href="../node_modules/bootstrap/dist/css/bootstrap.min.css" />
+
+    <title>Use Coq in Your Browser: The Js Coq Theorem Prover Online IDE!</title>
+  </head>
+
+<body>
+  <div id="ide-wrapper" class="toggled">
+  <div id="code-wrapper">
+  <div id="document">
+
+<div><textarea id='coq-ta-1'>
+</textarea></div>
+<div><p>
+printing now   printing simp   printing by   printing rec  </div>
+<div><textarea id='coq-ta-2'>
+
+Require Import Program.
+From Equations Require Import Equations.
+Require Import Omega Utf8 Lia Arith.
+
+Section list_size.
+  Context {A : Type} (f : A -> nat).
+  Equations list_size (l : list A) : nat :=
+  list_size nil := 0;
+  list_size (cons x xs) := S (f x + list_size xs).
+
+  Context {B : Type}.
+  Equations list_map_size (l : list A)
+           (g : forall (x : A), f x < list_size l -> B) : list B :=
+  list_map_size nil _ := nil;
+  list_map_size (cons x xs) g := cons (g x _) (list_map_size xs (fun x H => g x _)).
+  Next Obligation.
+    simp list_size. auto with arith.
+  Defined.
+  Next Obligation.
+    simp list_size. omega.
+  Defined.
+
+  Lemma list_map_size_spec (g : A -> B) (l : list A) :
+    list_map_size l (fun x _ => g x) = List.map g l.
+  Proof.
+    funelim (list_map_size l (λ (x : A) (_ : f x < list_size l), g x)); simpl; trivial.
+    now rewrite H.
+  Qed.
+End list_size.
+
+Require Import List.
+
+</textarea></div>
+<div><p>
+To demonstrate nested well-founded recursive definitions, we take a
+  well-known example from the literature: rose trees.  We will define a
+  recursive function gathering the elements in a <tt>rose</tt> tree in an efficient
+  way, using nested well-founded recursion instead of the guardness check of .
+  The <tt>rose</tt> trees are defined as trees whose nodes contain lists of trees,
+  i.e. forests. </div>
+<div><textarea id='coq-ta-3'>
+
+  Context {A : Type}. Inductive rose : Type := leaf (a : A) : rose | node (l : list rose) : rose.
+
+</textarea></div>
+<div><p>
+This is a nested inductive type we can measure assuming a
+      <tt>list_size</tt> function for measurings lists. Here we use the usual
+      guardness check of  that is able to unfold the
+      definition of <tt>list_size</tt> to check that this definition is terminating. </div>
+<div><textarea id='coq-ta-4'>
+
+  Equations size (r : rose) : nat := size (leaf _) := 0; size (node l) := S (list_size size l).
+
+</textarea></div>
+<div><p>
+As explained at the beginning of this section, however, if we want
+      to program more complex recursions, or rearrange our terms
+      slightly and freely perform dependent pattern-matching, the
+      limited syntactic guardness check will quickly get in our way.
+<p>
+      Using a <em>nested</em> <tt>where</tt> clause and the support of  for
+      well-founded recursion, we can define the following function
+      gathering the elements in a rose tree efficiently: </div>
+<div><textarea id='coq-ta-5'>
+
+  Equations elements (r : rose) (acc : list A) : list A by wf r (MR lt size) :=
+  elements (leaf a) acc := a :: acc;
+  elements (node l) acc := aux l _
+    where aux x (H : list_size size x < size (node l)) : list A by wf x (MR lt (list_size size)) :=
+    aux nil _ := acc;
+    aux (cons x xs) H := elements x (aux xs (list_size_smaller x xs l H)).
+
+  Definition elems r := elements r nil.
+
+</textarea></div>
+<div><p>
+    The function is nesting a well-founded recursion inside
+    another one, based on the measure of <tt>rose</tt> trees and lists (<tt>MR R
+    f</tt> is a combinator for <tt>λ x y, R (f x) (f y)</tt>).  The termination
+    of this definition is ensured solely by logical means, it does not
+    require any syntactic check. Note that the auxilliary definition's
+    type mentions the variable <tt>l</tt> bound by the enclosing
+    pattern-matching, to pass around information on the size of
+    arguments. Local <tt>where</tt> clauses allow just that.
+    This kind of nested pattern-matching and well-founded recursion was not
+    supported by previous definition packages for  like
+     or , and due to the required
+    dependencies it is not supported by 's
+     package either (see  for
+    a survey of the treatment of recursion in type-theory based tools). <p>
+ We can show that <tt>elems</tt> is actually computing the same thing as
+      the naïve algorithm concatenating elements of each tree in each forest. </div>
+<div><textarea id='coq-ta-6'>
+
+  Equations elements_spec (r : rose) : list A :=
+    elements_spec (leaf a) := [a]; elements_spec (node l) := concat (List.map elements_spec l).
+
+</textarea></div>
+<div><p>
+As <tt>elements</tt> takes an accumulator, we first have to prove a generalized
+      lemma, typical of tail-recursive functions: </div>
+<div><textarea id='coq-ta-7'>
+
+  Lemma elements_correct (r : rose) acc : elements r acc = elements_spec r ++ acc.
+  Proof.
+    let elim := constr:(fun_elim (f:=elements)) in
+    apply (elim (fun r acc f => f = elements_spec r ++ acc)
+             (fun l acc x H r => r = concat (List.map elements_spec x) ++ acc));
+      intros; simp elements_spec; simpl; auto. now rewrite H1, H0, app_assoc. Qed.
+
+</textarea></div>
+<div><p>
+We apply the eliminator providing the predicate for the nested
+      recursive call and simplify using the <tt>simp elements_spec</tt> tactic
+      which is rewriting with the defining equations of <tt>elements_spec</tt>.
+      The induction hypotheses and associativity of concatenation are
+      enough to solve the remaining goal which involves the two
+      recursive calls to <tt>elements</tt> and <tt>aux</tt>. The above proof is very
+      quick as the eliminator frees us from redoing all the nested
+      recursive reasoning and the proofs that the induction hypotheses
+      can be applied. It is now trivial to prove the correctness of our
+      fast implementation: </div>
+<div><textarea id='coq-ta-8'>
+
+  Lemma elems_correct (r : rose) : elems r = elements_spec r.
+</textarea></div>
+<script type="text/javascript">
+ var coqdoc_ids = ['coq-ta-1',  'coq-ta-2',  'coq-ta-3',  'coq-ta-4', 
+                  'coq-ta-5',  'coq-ta-6',  'coq-ta-7',  'coq-ta-8'];
+</script>
+  </div> <!-- /#document -->
+  </div> <!-- /#code-wrapper -->
+  </div> <!-- /#ide-wrapper -->
+
+  <script src="ui-js/jscoq-loader.js" type="text/javascript"></script>
+  <script type="text/javascript">
+
+    var jscoq_opts = {
+        prelude:   true,
+        implicit_libs: false,
+        base_path: './',
+        editor: { mode: { 'company-coq': true }, keyMap: 'default' },
+        init_pkgs: ['init', 'coq-base', 'equations', 'equations-reloaded'],
+        all_pkgs:  ['init', 'math-comp', 'iris', 'elpi', 'equations',
+                    'equations-reloaded', 'ltac2', 'stdpp',
+                    'coq-base', 'coq-collections', 'coq-arith', 'coq-reals', 'lf', 'plf', 'cpdt']
+    };
+
+    /* Global reference */
+    var coq;
+
+    loadJsCoq(jscoq_opts.base_path)
+              .then(loadJs("../node_modules/codemirror/addon/runmode/runmode"))
+              .then(loadJs("../node_modules/codemirror/addon/runmode/colorize"))
+              .then( function () {
+                  var coqInline = document.getElementsByClassName("inline-coq");
+                  CodeMirror.colorize(coqInline); })
+              .then( function () { coq = new CoqManager (coqdoc_ids, jscoq_opts);
+              });
+  </script>
+
+  <!-- <script src="./jscoq/ui-js/jscoq-loader.js" type="text/javascript"></script> -->
+  <!-- <script type="text/javascript"> -->
+  <!--   var coq; -->
+
+  <!--   loadJsCoq('./jscoq/') -->
+  <!--             .then(loadJs("./jscoq/ui-external/CodeMirror/addon/runmode/runmode")) -->
+  <!--             .then(loadJs("./jscoq/ui-external/CodeMirror/addon/runmode/colorize")) -->
+  <!--             .then( function () { -->
+  <!--                 var coqInline = document.getElementsByClassName("inline-coq"); -->
+  <!--                 CodeMirror.colorize(coqInline); }) -->
+  <!--             .then( function () { -->
+  <!--                 coq = new CoqManager (coqdoc_ids, -->
+  <!--                                      { base_path: './jscoq/', init_pkgs: ['init'] } -->
+  <!--                 ); -->
+  <!--             }); -->
+  <!-- </script> -->
+</body>
+</html>
+

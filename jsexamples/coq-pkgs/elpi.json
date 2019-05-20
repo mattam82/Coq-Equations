@@ -1,0 +1,11 @@
+{
+  "desc": "elpi",
+  "deps": [],
+  "pkgs": [
+    { "pkg_id": [ "elpi" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "elpi", "ltac" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "elpi", "test" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "elpi", "tutorial" ], "vo_files": [], "cma_files": [] },
+    { "pkg_id": [ "elpi", "derive" ], "vo_files": [], "cma_files": [] }
+  ]
+}
