@@ -3,7 +3,7 @@
   <head>
     <meta http-equiv="content-type" content="text/html;charset=utf-8" />
 
-    <link rel="stylesheet" href="../node_modules/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.min.css" />
 
     <title>Use Coq in Your Browser: The Js Coq Theorem Prover Online IDE!</title>
   </head>
@@ -15,15 +15,14 @@
 
 <div><textarea id='coq-ta-1'>
 </textarea></div>
-<div><p>
-printing funelim   printing Derive   printing Signature   printing NoConfusion   printing simp   printing <=   printing <=?  <p>
+<div>  <p>
  <tt>Equations</tt> is a plugin for  that comes with a few support modules defining
    classes and tactics for running it. We will introduce its main
    features through a handful of examples. We start our Coq primer
    session by importing the <tt>Equations</tt> module.  </div>
 <div><textarea id='coq-ta-2'>
 
-Require Import Arith Omega Program.
+From Coq Require Import Arith Omega Program.
 From Equations Require Import Equations.
 
 
@@ -46,6 +45,7 @@ Equations neg (b : bool) : bool :=
 neg true := false ;
 neg false := true.
 
+Print All.
 </textarea></div>
 <div><p>
 <tt>Equations</tt> declarations are formed by a signature definition and a set of <em>clauses</em> 
@@ -594,10 +594,11 @@ For the diagonal, it is easier to give <tt>n</tt> as the decreasing argument
     of the function, even if the pattern-matching itself is on vectors: </div>
 <div><textarea id='coq-ta-24'>
 
-Equations diag' {A n} (v : vector (vector A n) n) : vector A n by wf n :=
+Equations(noeqns noind) diag' {A n} (v : vector (vector A n) n) : vector A n by wf n :=
 diag' Vnil := Vnil ;
 diag' (Vcons (Vcons a v) v') :=
   Vcons a (diag' (vmap vtail v')).
+(* noeqns and noind, otherwise call stack exhaustion under JsCoq *)
 
 </textarea></div>
 <div><p>
@@ -679,15 +680,15 @@ End KAxiom.
   </div> <!-- /#code-wrapper -->
   </div> <!-- /#ide-wrapper  -->
 
-  <script src="../ui-js/jscoq-loader.js" type="text/javascript"></script>
+  <script src="ui-js/jscoq-loader.js" type="text/javascript"></script>
   <script type="text/javascript">
     var coq;
 
-    var jscoq_opts = { base_path: '../', init_pkgs: ['init', 'equations'] };
+    var jscoq_opts = { base_path: './', init_pkgs: ['init', 'equations'] };
 
     loadJsCoq(jscoq_opts.base_path)
-              .then(loadJs("../node_modules/codemirror/addon/runmode/runmode"))
-              .then(loadJs("../node_modules/codemirror/addon/runmode/colorize"))
+              .then(loadJs("node_modules/codemirror/addon/runmode/runmode"))
+              .then(loadJs("node_modules/codemirror/addon/runmode/colorize"))
               .then( function () {
                   var coqInline = document.getElementsByClassName("inline-coq");
                   CodeMirror.colorize(coqInline); })

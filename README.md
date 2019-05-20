@@ -19,6 +19,10 @@ in [Coq](http://coq.inria.fr). It compiles everything down to
 eliminators for inductive types, equality and accessibility,
 providing a definitional extension to the Coq kernel.
 
+## Live demo
+
+Try it now in your browser with [JSCoq](jsexamples/equations_intro.html)!
+
 ## Documentation
 
 - The [reference manual](http://github.com/mattam82/Coq-Equations/raw/master/doc/equations.pdf)

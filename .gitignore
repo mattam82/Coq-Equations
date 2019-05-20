@@ -46,4 +46,3 @@ docs/_site
 _build
 *.install
 /test-suite/*.agdai
-_site
