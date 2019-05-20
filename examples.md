@@ -4,7 +4,7 @@ permalink: /examples/
 title: Gallery of programs and proofs
 ---
 
-- [Intro](examples/equations_intro.html): introduction to Equations, demonstrating
+- [Intro](equations_intro.html): introduction to Equations, demonstrating
   its features
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/doc/equations_intro.v)).
 
