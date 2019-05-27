@@ -280,7 +280,7 @@ type program_info = {
   program_sign : EConstr.rel_context;
   program_arity : EConstr.t;
   program_rec : program_rec_info option;
-  program_impls : Impargs.manual_explicitation list;
+  program_impls : Impargs.manual_implicits;
   program_implicits : Impargs.implicit_status list;
 }
 
