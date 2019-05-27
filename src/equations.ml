@@ -178,9 +178,22 @@ let define_by_eqs ~poly ~program_mode ~open_proof opts eqs nt =
   in
   define_programs env evd rec_type fixdecls flags programs hook
 
-let equations ~poly ~program_mode ~open_proof opts eqs nt =
+let equations ~poly ~program_mode opts eqs nt =
   List.iter (fun (((loc, i), nested, l, t, by),eqs) -> Dumpglob.dump_definition CAst.(make ~loc i) false "def") eqs;
-  define_by_eqs ~poly ~program_mode ~open_proof opts eqs nt
+  let pstate =
+    define_by_eqs ~poly ~program_mode ~open_proof:false opts eqs nt in
+  match pstate with
+  | None -> ()
+  | Some _ ->
+      CErrors.anomaly Pp.(str"Equation.equations leaving a proof open")
+
+let equations_interactive ~poly ~program_mode opts eqs nt =
+  List.iter (fun (((loc, i), nested, l, t, by),eqs) -> Dumpglob.dump_definition CAst.(make ~loc i) false "def") eqs;
+  let pstate = define_by_eqs ~poly ~program_mode ~open_proof:true opts eqs nt in
+  match pstate with
+  | None ->
+    CErrors.anomaly Pp.(str"Equation.equations_interactive not opening a proof")
+  | Some p -> p
 
 let solve_equations_goal destruct_tac tac gl =
   let concl = pf_concl gl in

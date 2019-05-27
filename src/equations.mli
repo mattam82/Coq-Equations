@@ -28,13 +28,20 @@ val define_principles :
   (program * compiled_program_info) list -> unit
 
 val equations : poly:bool -> program_mode:bool ->
-  open_proof:bool ->
   Syntax.equation_options ->
   Syntax.pre_equations ->
   (Names.lstring * Constrexpr.constr_expr *
    Notation_term.scope_name option)
   list ->
-  Proof_global.t option
+  unit
+
+val equations_interactive : poly:bool -> program_mode:bool ->
+  Syntax.equation_options ->
+  Syntax.pre_equations ->
+  (Names.lstring * Constrexpr.constr_expr *
+   Notation_term.scope_name option)
+  list ->
+  Proof_global.t
 
 val solve_equations_goal :
   Proofview.V82.tac ->
