@@ -1578,12 +1578,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
     let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] false in
     let kn = ComInductive.declare_mutual_inductive_with_eliminations inductive UnivNames.empty_binders [] in
     let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] true in
-    let sort = (* Find out in which maximal sort the inductive can be eliminated *)
-      let mib, oib = Global.lookup_inductive (kn, 0) in
-      let kelim = oib.Declarations.mind_kelim in
-      let sorts = CList.sort Sorts.family_compare kelim in
-      CList.last sorts
-    in
+    let sort = Inductiveops.top_allowed_sort (Global.env()) (kn,0) in
     let sort_suff = Indrec.elimination_suffix sort in
     let kn, comb =
       match inds with
