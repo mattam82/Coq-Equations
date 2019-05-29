@@ -46,6 +46,11 @@ Section ilist_map.
   Qed.
 End ilist_map.
 
+#[universes(template)]
+Inductive member (A : Type) (elm : A) : list A -> Type :=
+| HFirst : forall ls, member elm (elm :: ls)
+| HNext : forall x ls, member elm ls -> member elm (x :: ls).
+
 Section hlist.
   Variable A : Type.
   Variable B : A -> Type.
@@ -57,15 +62,10 @@ Section hlist.
 
   Variable elm : A.
 
-  #[universes(template)]
-  Inductive member : list A -> Type :=
-  | HFirst : forall ls, member (elm :: ls)
-  | HNext : forall x ls, member ls -> member (x :: ls).
-
   Derive Signature NoConfusion for member.
 
-  Equations hget {ls} (mls : hlist ls) (i : member ls) : B elm :=
-  hget (HCons x _) (HFirst _) := x;
+  Equations hget {ls} (mls : hlist ls) (i : member elm ls) : B elm :=
+  hget (HCons x _) (HFirst _ _) := x;
   hget (HCons _ t) (HNext _ j) := hget t j.
 End hlist.
 
