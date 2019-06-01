@@ -44,6 +44,34 @@ Section FixWf.
 
   Definition Fix (x : A) : P x :=
     Fix_F R P step x (WF x).
+
+  Lemma Fix_F_eq :
+   forall (x:A) (r:Acc R x),
+     step _ (fun (y:A) (p:R y x) => Fix_F R P step y (Acc_inv R r _ p)) = Fix_F R P step x r.
+  Proof.
+    destruct r; reflexivity.
+  Defined.
+
+  Hypothesis
+    step_ext :
+      forall (x:A) (f g:forall y:A, R y x -> P y),
+        (forall (y:A) (p:R y x), f y p = g y p) -> step _ f = step _ g.
+
+  Lemma Fix_step_inv : forall (x:A) (r s:Acc R x), Fix_F R P step _ r = Fix_F R P step _ s.
+  Proof.
+   intro x; induction (WF x); intros.
+   rewrite <- (Fix_F_eq _ r); rewrite <- (Fix_F_eq _ s); intros.
+   apply step_ext; auto.
+  Defined.
+
+  Lemma Fix_eq : forall x:A, Fix x = step _ (fun (y:A) (p:R y x) => Fix y).
+  Proof.
+   intro x; unfold Fix.
+   rewrite <- Fix_F_eq.
+   apply step_ext; intros.
+   apply Fix_step_inv.
+  Defined.
+
 End FixWf.
 
 Lemma well_founded_irreflexive {A} {R : relation A} {wfR : well_founded R} :

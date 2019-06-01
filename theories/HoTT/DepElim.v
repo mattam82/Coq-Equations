@@ -658,7 +658,7 @@ Ltac make_simplify_goal :=
 Ltac hnf_gl :=
   match goal with 
     [ |- ?P ?T ] => let T' := eval hnf in T in
-      convert_concl_no_check (P T')
+      change_no_check (P T')
   end.
 
 Ltac hnf_eq :=
@@ -666,9 +666,15 @@ Ltac hnf_eq :=
   | |- ?R ?x ?y =>
     let x' := eval hnf in x in
     let y' := eval hnf in y in
-        convert_concl_no_check (R x' y')
+        change_no_check (R x' y')
   end.
 
+Ltac red_eq_lhs :=
+  match goal with
+    |- ?R ?x ?y =>
+      let x' := eval red in x in
+      change_no_check (R x' y)
+  end.
 
 Ltac red_eq :=
   match goal with
@@ -676,7 +682,7 @@ Ltac red_eq :=
     let rec reduce_eq x y :=
       let x' := eval red in x in
       let y' := eval red in y in
-          reduce_eq x' y' || convert_concl_no_check (R x' y')
+      (reduce_eq x' y' || change_no_check (R x' y'))
       in reduce_eq x y
   end.
 
@@ -685,7 +691,7 @@ Ltac red_gl :=
     |- ?P ?x =>
     let rec reduce x :=
       let x' := eval red in x in
-        reduce x' || convert_concl_no_check (P x')
+      (reduce x' || change_no_check (P x'))
       in reduce x
   end.
 
