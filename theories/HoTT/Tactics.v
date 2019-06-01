@@ -34,6 +34,7 @@ Ltac solve_subterm := intros;
 
 Ltac Equations.Init.solve_subterm ::= solve_subterm.
 Ltac Equations.Init.unfold_recursor ::= Equations.HoTT.Subterm.unfold_recursor.
+Ltac Equations.Init.unfold_recursor_ext ::= Equations.HoTT.Subterm.unfold_recursor_ext.
 
 Ltac solve_noconf_inv_eq a b :=
   destruct_sigma a; destruct_sigma b;

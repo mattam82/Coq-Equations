@@ -27,37 +27,83 @@ Definition FixWf `{WF:WellFounded A R} (P : A -> Type)
   (step : forall x : A, (forall y : A, R y x -> P y) -> P x) : forall x : A, P x :=
   Fix wellfounded P step.
 
-Lemma FixWf_unfold `{Funext} `{WF : WellFounded A R} (P : A -> Type)
-  (step : forall x : A, (forall y : A, R y x -> P y) -> P x) (x : A) :
+
+Definition step_fn_ext {A} {R} (P : A -> Type) :=
+  fun step : forall x : A, (forall y : A, R y x -> P y) -> P x =>
+    forall x (f g : forall y (H : R y x), P y),
+      (forall y H, f y H = g y H) ->
+      step x f = step x g.
+
+Lemma FixWf_unfold `{WF : WellFounded A R} (P : A -> Type)
+      (step : forall x : A, (forall y : A, R y x -> P y) -> P x)
+      (step_ext : step_fn_ext P step) (x : A) :
   FixWf P step x = step x (fun y _ => FixWf P step y).
 Proof.
-  intros. unfold FixWf, Fix. destruct wellfounded.
-  simpl. apply ap. funext y. funext h. apply ap.
-  apply Acc_prop.
-Qed.
+  intros.
+  unfold FixWf.
+  rewrite WellFounded.Fix_eq.
+  - apply step_ext. intros. reflexivity.
+  - intros x' f g H. apply step_ext. apply H.
+Defined.
 
-Hint Rewrite @FixWf_unfold : Recursors.
-
-Lemma FixWf_unfold_step `{Funext} :
+Lemma FixWf_unfold_step :
   forall (A : Type) (R : relation A) (WF : WellFounded R) (P : A -> Type)
     (step : forall x : A, (forall y : A, R y x -> P y) -> P x) (x : A)
+    (step_ext : step_fn_ext P step)
     (step' : forall y : A, R y x -> P y),
     step' = (fun (y : A) (_ : R y x) => FixWf P step y) ->
     FixWf P step x = step x step'.
-Proof. intros * eq. rewrite FixWf_unfold. destruct eq. reflexivity. Qed.
-
-Hint Rewrite @FixWf_unfold_step : Recursors.
+Proof.
+  intros. rewrite FixWf_unfold, X.
+  - reflexivity.
+  - apply step_ext.
+Defined.
 
 Ltac unfold_FixWf :=
   match goal with
     |- context [ @FixWf ?A ?R ?WF ?P ?f ?x ] =>
     let step := fresh in
     set(step := fun y (_ : R y x) => @FixWf A R WF P f y) in *;
-    eapply concat;
-    [ exact (@FixWf_unfold_step _ A R WF P f x step idpath) | hidebody step]
+     unshelve erewrite (@FixWf_unfold_step A R WF P f x _ step idpath);
+     [red; intros; simp_sigmas; red_eq (* Extensionality proof *)
+     |hidebody step; try red_eq_lhs (* Unfold the functional *)]
   end.
 
 Ltac unfold_recursor := unfold_FixWf.
+
+Lemma FixWf_unfold_ext `{Funext} `{WF : WellFounded A R} (P : A -> Type)
+  (step : forall x : A, (forall y : A, R y x -> P y) -> P x) (x : A) :
+  FixWf P step x = step x (fun y _ => FixWf P step y).
+Proof.
+  intros. unfold FixWf, Fix. destruct wellfounded.
+  simpl. apply ap. funext y h. apply ap. apply Acc_prop.
+Defined.
+
+Hint Rewrite @FixWf_unfold_ext : Recursors.
+
+Lemma FixWf_unfold_ext_step `{Funext} :
+  forall (A : Type) (R : relation A) (WF : WellFounded R) (P : A -> Type)
+    (step : forall x : A, (forall y : A, R y x -> P y) -> P x) (x : A)
+    (step' : forall y : A, R y x -> P y),
+    step' = (fun (y : A) (_ : R y x) => FixWf P step y) ->
+    FixWf P step x = step x step'.
+Proof. intros. rewrite FixWf_unfold_ext, X. reflexivity. Defined.
+
+Hint Rewrite @FixWf_unfold_ext_step : Recursors.
+
+Ltac unfold_FixWf_ext :=
+  match goal with
+    |- context [ @FixWf ?A ?R ?WF ?P ?f ?x ] =>
+    let step := fresh in
+    set(step := fun y (_ : R y x) => @FixWf A R WF P f y) in *;
+    eapply concat;
+    [exact (@FixWf_unfold_ext_step (_ : Funext) A R WF P f x step idpath) |
+     hidebody step; try red_eq_lhs (* Unfold the functional *)]
+  end.
+
+Ltac unfold_recursor_ext := unfold_FixWf_ext.
+
+Hint Rewrite @FixWf_unfold : Recursors.
 
 (** Inline so that we get back a term using general recursion. *)
 

@@ -236,7 +236,7 @@ Proof.
   generalize (@Datatypes.nil A).
   funelim (rev l).
   - intros. reflexivity.
-  - intros l'. simp rev_acc. rewrite X.
+  - intros l'. autorewrite with rev_acc. rewrite X.
     rewrite app'_assoc. reflexivity.
 Qed.
 Hint Rewrite @rev_rev_acc : rev_acc.
@@ -309,7 +309,7 @@ Equations split {X : Type} {m n : nat} (xs : vector X (Peano.plus m n)) : Split 
 (* Minimization could do a bit better here *)
 Check split@{_ _ _ _ _}.
 
-Definition split_lightu@{u0 u1 u2 | u0 < u1, u1 < u2} := @split@{u0 u1 u2 u0 u1}.
+Definition split_lightu@{u0 u1 u2 | u0 < u1, u1 < u2} := @split@{u0 u1 u1 u2 u1}.
 
 (* 2 universes: Set < i (type of splitset) < j (universe of the type) *)
 Equations splitSet {X : Set} {m n : nat} (xs : vector X (Peano.plus m n)) : Split m n xs by wf m :=
@@ -598,7 +598,7 @@ Lemma nth_vmap {A B n} (v : vector A n) (fn : A -> B) (f : fin n) : nth (vmap fn
 Proof. revert B fn. funelim (nth v f); intros; now simp nth vmap. Qed.
 
 Lemma nth_vtail `(v : vector A (S n)) (f : fin n) : nth (vtail v) f = nth v (fs f).
-Proof. funelim (vtail v); intros; now simp nth. Qed.
+Proof. funelim (vtail v). intros; (* FIXME universe bug with [now simp nth] *) now autorewrite with nth. Qed.
 
 Hint Rewrite @nth_vmap @nth_vtail : nth.
   

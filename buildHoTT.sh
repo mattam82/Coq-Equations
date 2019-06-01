@@ -6,7 +6,7 @@ then
 else
     git clone -b cumulative-paths http://github.com/mattam82/HoTT Equations-HoTT
     cd Equations-HoTT
-    rm -rf .git
+    rm -f .gitmodules
     ./autogen.sh
     ./configure
     make
