@@ -4,9 +4,6 @@ rm -f Makefile.coq Makefile.HoTT
 
 if [ "$1" == "HoTT" ]
 then
-    echo "Building HoTT version"
-    sh buildHoTT.sh
-    export PATH="Equations-HoTT:$PATH"
     if command -v hoqc >/dev/null 2>&1
     then coq_makefile -f _HoTTProject -o Makefile.HoTT
     else echo "Error: hoqc not found in path"
