@@ -20,6 +20,7 @@ env:
   - FINDLIB_VER="1.8.0"
   - NATIVE_COMP="yes"
   - COQ_VER="dev"
+  - HOTT_VER="dev"
 
 install:
 - curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh > install.sh
@@ -30,8 +31,9 @@ install:
 - eval $(opam config env)
 - opam config list
 - opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev || echo "coq-core-dev registered"
-- opam install -j ${NJOBS} -y camlp5.${CAMLP5_VER} ocamlfind.${FINDLIB_VER} coq.${COQ_VER}
-- opam upgrade -y coq.${COQ_VER}
+- opam repo add coq-extra-dev https://coq.inria.fr/opam/extra-dev || echo "coq-extra-dev registered"
+- opam install -j ${NJOBS} -y camlp5.${CAMLP5_VER} ocamlfind.${FINDLIB_VER} coq.${COQ_VER} coq-hott.${HOTT_VER}
+- opam upgrade -y coq.${COQ_VER} coq-hott.${HOTT_VER}
 - opam list
 
 matrix:
