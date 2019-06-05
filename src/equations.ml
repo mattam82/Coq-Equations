@@ -189,8 +189,8 @@ let equations ~poly ~program_mode opts eqs nt =
 
 let equations_interactive ~poly ~program_mode opts eqs nt =
   List.iter (fun (((loc, i), nested, l, t, by),eqs) -> Dumpglob.dump_definition CAst.(make ~loc i) false "def") eqs;
-  let pstate = define_by_eqs ~poly ~program_mode ~open_proof:true opts eqs nt in
-  match pstate with
+  let lemma = define_by_eqs ~poly ~program_mode ~open_proof:true opts eqs nt in
+  match lemma with
   | None ->
     CErrors.anomaly Pp.(str"Equation.equations_interactive not opening a proof")
   | Some p -> p

@@ -217,7 +217,7 @@ val define_programs :
   ?unfold:bool ->
   program list ->
   (int -> program -> term_info -> unit) ->
-  Proof_global.t option
+  Lemmas.t option
 
 val define_program_immediate :
   Environ.env ->
@@ -227,7 +227,7 @@ val define_program_immediate :
   Equations_common.flags ->
   ?unfold:bool ->
   program ->
-  (program * term_info) * Proof_global.t option
+  (program * term_info) * Lemmas.t option
 
 val mapping_rhs : Evd.evar_map -> context_map -> splitting_rhs -> splitting_rhs
 val map_rhs :
