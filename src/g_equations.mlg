@@ -387,7 +387,7 @@ GRAMMAR EXTEND Gram
 {
 
 let classify_equations x =
-  Vernacextend.(VtStartProof (Doesn'tGuaranteeOpacity,[]), VtLater)
+  Vernacextend.(VtStartProof (Doesn'tGuaranteeOpacity,[]))
 }
 
 VERNAC COMMAND EXTEND Define_equations_refine CLASSIFIED BY { classify_equations }
