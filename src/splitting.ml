@@ -21,10 +21,6 @@ open Evar_kinds
 open Equations_common
 open Syntax
 
-module CVars = Vars
-module RelDecl = Context.Rel.Declaration
-module NamedDecl = Context.Named.Declaration
-
 open EConstr
 open EConstr.Vars
 open Context_map
@@ -1014,54 +1010,6 @@ type compiled_program_info = {
 
 let is_polymorphic info = pi2 info.decl_kind
 
-let rec decompose len c t accu =
-  let open Constr in
-  let open Context.Rel.Declaration in
-  if len = 0 then (c, t, accu)
-  else match kind c, kind t with
-  | Lambda (na, u, c), Prod (_, _, t) ->
-    decompose (pred len) c t (LocalAssum (na, u) :: accu)
-  | LetIn (na, b, u, c), LetIn (_, _, _, t) ->
-    decompose (pred len) c t (LocalDef (na, b, u) :: accu)
-  | _ -> assert false
-
-let rec shrink ctx sign c t accu =
-  let open Constr in
-  let open CVars in
-  match ctx, sign with
-  | [], [] -> (c, t, accu)
-  | p :: ctx, decl :: sign ->
-      if noccurn 1 c && noccurn 1 t then
-        let c = subst1 mkProp c in
-        let t = subst1 mkProp t in
-        shrink ctx sign c t accu
-      else
-        let c = Term.mkLambda_or_LetIn p c in
-        let t = Term.mkProd_or_LetIn p t in
-        let accu = if RelDecl.is_local_assum p
-                   then mkVar (NamedDecl.get_id decl) :: accu
-                   else accu
-    in
-    shrink ctx sign c t accu
-| _ -> assert false
-
-let shrink_entry sign const =
-  let open Entries in
-  let typ = match const.const_entry_type with
-  | None -> assert false
-  | Some t -> t
-  in
-  (* The body has been forced by the call to [build_constant_by_tactic] *)
-  (* let () = assert (Future.is_over const.const_entry_body) in *)
-  let ((body, uctx), eff) = Future.force const.const_entry_body in
-  let (body, typ, ctx) = decompose (List.length sign) body typ [] in
-  let (body, typ, args) = shrink ctx sign body typ [] in
-  let const = { const with
-    const_entry_body = Future.from_val ((body, uctx), eff);
-    const_entry_type = Some typ;
-  } in
-  (const, args)
-
 let error_complete () =
   user_err_loc (None, "define",
                 str "Equations definition is complete and requires no further proofs. " ++
@@ -1101,35 +1049,6 @@ let solve_equations_obligations flags recids i sigma hook =
              aux tys evm'))
     in aux types (Evd.from_ctx (Evd.evar_universe_context sigma))
   in
-  let terminator = function
-    | Lemmas.Admitted (id, gk, pe, us) ->
-      user_err_loc (None, "end_obligations", str "Cannot handle admitted proof for equations")
-    | Lemmas.Proved (opaque, lid, obj) ->
-      if !Equations_common.debug then
-        Feedback.msg_debug (str"Defining the initial evars accoding to the proofs");
-      let open Decl_kinds in
-      let obls = ref 1 in
-      let kind = match pi3 obj.Proof_global.persistence with
-        | DefinitionBody d -> IsDefinition d
-        | Proof p -> IsProof p
-      in
-      let evd = ref sigma in
-      let recobls =
-        CList.map2 (fun (wit, (evar_env, ev, evi, local_context, type_)) entry ->
-        let id =
-          match Evd.evar_ident ev sigma with
-          | Some id -> id
-          | None -> let n = !obls in incr obls; add_suffix i ("_obligation_" ^ string_of_int n)
-        in
-        let entry, args = shrink_entry local_context entry in
-        let cst = Declare.declare_constant id (Entries.DefinitionEntry entry, kind) in
-        let sigma, app = Evarutil.new_global !evd (ConstRef cst) in
-        evd := Evd.define ev (applist (app, List.map of_constr args)) sigma;
-        cst)
-        (CList.combine (List.rev !wits) types) obj.Proof_global.entries
-      in
-      hook recobls !evd
-  in
   let do_intros =
     (* Force introductions to be able to shrink the bodies later on. *)
     List.map
@@ -1138,7 +1057,8 @@ let solve_equations_obligations flags recids i sigma hook =
       types
   in
   (* Feedback.msg_debug (str"Starting proof"); *)
-  let lemma = Lemmas.start_dependent_lemma i kind tele ~terminator:(fun ?hook:_ _ -> Lemmas.Internal.make_terminator terminator) in
+  let proof_ending = Lemmas.Proof_ending.(End_equations { hook ; i; types; wits; sigma }) in
+  let lemma = Lemmas.start_dependent_lemma i kind tele ~proof_ending in
   (* Should this use Lemmas.by *)
   let lemma = Lemmas.pf_map (Proof_global.map_proof
     (fun p  ->
@@ -1199,7 +1119,7 @@ let solve_equations_obligations_program flags recids i sigma hook =
     in
     hook recobls sigma
   in
-  let hook = Lemmas.mk_hook hook in
+  let hook = DeclareDef.Hook.make hook in
   let reduce x =
     let flags = CClosure.beta in
     to_constr sigma (clos_norm_flags flags (Global.env ()) sigma (of_constr x))
