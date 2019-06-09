@@ -60,7 +60,7 @@ let mk_eq env env' evd args args' =
   let ty = Retyping.get_type_of env !evd make in
   mkEq env evd ty make make'
 
-let derive_no_confusion env sigma0 ~polymorphic (ind,u as indu) =
+let derive_no_confusion env sigma0 ~poly (ind,u as indu) =
   let evd = ref sigma0 in
   let mindb, oneind = Global.lookup_inductive ind in
   let pi = (fst indu, EConstr.EInstance.kind !evd (snd indu)) in
@@ -139,7 +139,7 @@ let derive_no_confusion env sigma0 ~polymorphic (ind,u as indu) =
 	          else fls)))
   in
   let app = it_mkLambda_or_LetIn pred binders in
-  let _, ce = make_definition ~poly:polymorphic !evd ~types:arity app in
+  let _, ce = make_definition ~poly !evd ~types:arity app in
   let indid = Nametab.basename_of_global (IndRef ind) in
   let id = add_prefix "NoConfusion_" indid in
   let cstNoConf = Declare.declare_constant id (Declare.DefinitionEntry ce, IsDefinition Definition) in
@@ -149,7 +149,7 @@ let derive_no_confusion env sigma0 ~polymorphic (ind,u as indu) =
       ~rigid:Evd.univ_rigid (* Universe levels of the inductive family should not be tampered with. *)
       env sigma (IndRef ind) in
   let indu = destInd sigma indu in
-  Noconf_hom.derive_noConfusion_package env sigma polymorphic indu indid
+  Noconf_hom.derive_noConfusion_package env sigma ~poly indu indid
     ~prefix:"" ~tactic:(noconf_tac ()) cstNoConf
 
 let () =

@@ -20,4 +20,4 @@ val mkcase :
   constr
 
 val derive_no_confusion :
-  env -> Evd.evar_map -> polymorphic:bool -> Names.inductive * EInstance.t -> unit
+  env -> Evd.evar_map -> poly:bool -> Names.inductive * EInstance.t -> unit

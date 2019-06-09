@@ -145,7 +145,7 @@ val get_class : Evd.evar_map -> constr -> Typeclasses.typeclass * EConstr.EInsta
 
 val make_definition :
   ?opaque:'a ->
-  ?poly:Decl_kinds.polymorphic ->
+  ?poly:bool ->
   Evd.evar_map ->
   ?types:constr -> constr -> Evd.evar_map * Evd.side_effects Proof_global.proof_entry
 
@@ -166,13 +166,13 @@ val declare_constant :
   Id.t ->
   constr ->
   constr option ->
-  Decl_kinds.polymorphic ->
+  poly:bool ->
   Evd.evar_map -> Decl_kinds.logical_kind ->
   Constant.t * (Evd.evar_map * EConstr.t)
 
 val declare_instance :
   Names.Id.t ->
-  Decl_kinds.polymorphic ->
+  poly:bool ->
   Evd.evar_map ->
   rel_context ->
   Typeclasses.typeclass peuniverses -> constr list -> Constant.t * (Evd.evar_map * EConstr.t)

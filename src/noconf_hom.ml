@@ -55,7 +55,7 @@ let get_forced_positions sigma args concl =
   in
   List.rev (List.fold_left_i is_forced 1 [] args)
 
-let derive_noConfusion_package env sigma0 polymorphic (ind,u as indu) indid ~prefix ~tactic cstNoConf =
+let derive_noConfusion_package env sigma0 ~poly (ind,u as indu) indid ~prefix ~tactic cstNoConf =
   let mindb, oneind = Global.lookup_inductive ind in
   let pi = (fst indu, EConstr.EInstance.kind sigma0 (snd indu)) in
   let ctx = subst_instance_context (snd pi) oneind.mind_arity_ctxt in
@@ -101,13 +101,14 @@ let derive_noConfusion_package env sigma0 polymorphic (ind,u as indu) indid ~pre
       (Classes.mk_instance tc empty_hint_info true gr)
   in
   let hook = DeclareDef.Hook.make hook in
-  let kind = Decl_kinds.(Global ImportDefaultBehavior, polymorphic, Definition) in
+  let scope = DeclareDef.Global Declare.ImportDefaultBehavior in
+  let kind = Decl_kinds.Definition in
   let oblinfo, _, term, ty = Obligations.eterm_obligations env noid sigma 0 term ty in
-    ignore(Obligations.add_definition ~hook packid
-             ~kind ~term ty ~tactic
+    ignore(Obligations.add_definition ~hook ~name:packid
+             ~poly ~scope ~kind ~term ty ~tactic
               (Evd.evar_universe_context sigma) oblinfo)
 
-let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
+let derive_no_confusion_hom env sigma0 ~poly (ind,u as indu) =
   let mindb, oneind = Global.lookup_inductive ind in
   let pi = (fst indu, EConstr.EInstance.kind sigma0 (snd indu)) in
   let _, inds = destArity sigma0 (EConstr.of_constr (Inductiveops.type_of_inductive env pi)) in
@@ -228,7 +229,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
     Covering.{
       program_mode = false;
       rec_type = [None];
-      flags = { polymorphic = polymorphic; open_proof = false;
+      flags = { polymorphic = poly; open_proof = false;
                 with_eqns = false; with_ind = false };
       fixdecls = [];
       intenv = Constrintern.empty_internalization_env;
@@ -271,7 +272,7 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
         ~rigid:Evd.univ_rigid (* Universe levels of the inductive family should not be tampered with. *)
         env sigma (IndRef ind) in
     let indu = destInd sigma indu in
-    derive_noConfusion_package (Global.env ()) sigma polymorphic indu indid
+    derive_noConfusion_package (Global.env ()) sigma ~poly indu indid
       ~prefix:"Hom" ~tactic:(noconf_hom_tac ()) program_cst
  in
  let prog = Splitting.make_single_program env evd data.Covering.flags p ctxmap splitting None in
@@ -279,8 +280,8 @@ let derive_no_confusion_hom env sigma0 ~polymorphic (ind,u as indu) =
 
 
 let () =
-  let derive_no_confusion_hom env sigma ~polymorphic v =
-    ignore (derive_no_confusion_hom env sigma ~polymorphic v) in
+  let derive_no_confusion_hom env sigma ~poly v =
+    ignore (derive_no_confusion_hom env sigma ~poly v) in
   Ederive.(register_derive
              { derive_name = "NoConfusionHom";
                derive_fn = make_derive_ind derive_no_confusion_hom })

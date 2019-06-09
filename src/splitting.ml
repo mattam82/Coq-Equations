@@ -648,7 +648,7 @@ let define_mutual_nested_csts flags env evd get_prog progs =
     List.map (fun (p, prog, fix) ->
         let ty = p.Syntax.program_orig_type in
         let kn, (evm, term) =
-          declare_constant p.program_id fix (Some ty) flags.polymorphic
+          declare_constant p.program_id fix (Some ty) ~poly:flags.polymorphic
             !evd Decl_kinds.(IsDefinition Fixpoint)
         in
         evd := evm;
@@ -661,7 +661,7 @@ let define_mutual_nested_csts flags env evd get_prog progs =
         let ty = p.Syntax.program_orig_type in
         let body = Vars.substl args fix in
         let kn, (evm, e) =
-          declare_constant p.program_id body (Some ty) flags.polymorphic
+          declare_constant p.program_id body (Some ty) ~poly:flags.polymorphic
             !evd Decl_kinds.(IsDefinition Fixpoint) in
         evd := evm;
         Impargs.declare_manual_implicits false (ConstRef kn) p.program_impls;
@@ -737,7 +737,7 @@ let make_programs env evd flags ?(define_constants=false) programs =
        let (cst, (evm, e)) =
          Equations_common.declare_constant p.program_id
            term (Some (p.Syntax.program_orig_type))
-           flags.polymorphic !evd (Decl_kinds.(IsDefinition Definition))
+           ~poly:flags.polymorphic !evd (Decl_kinds.(IsDefinition Definition))
        in
        evd := evm;
        let () = Impargs.declare_manual_implicits false (ConstRef cst) p.program_impls in
@@ -767,7 +767,7 @@ let make_programs env evd flags ?(define_constants=false) programs =
                 let term = it_mkLambda_or_LetIn term after in
                 let kn, (evm, e) =
                   declare_constant (Nameops.add_suffix p.program_id "_functional") term None
-                    flags.polymorphic
+                    ~poly:flags.polymorphic
                     !evd Decl_kinds.(IsDefinition Fixpoint)
                 in
                 evd := evm; (p, (prob, r, s', after, e)))
@@ -901,7 +901,7 @@ let define_one_program_constants flags env0 isevar unfold p =
       let (cst, (evm, e)) =
         Equations_common.declare_constant (path_id (Id.of_string "functional" :: path))
           term (Some ty)
-          flags.polymorphic !isevar (Decl_kinds.(IsDefinition Definition))
+          ~poly:flags.polymorphic !isevar (Decl_kinds.(IsDefinition Definition))
       in
       let () = helpers := (cst, (0,0)) :: !helpers in
       let env = Global.env () in
@@ -930,7 +930,7 @@ let define_one_program_constants flags env0 isevar unfold p =
         let (cst, (evm, e)) =
           Equations_common.declare_constant (path_id ~unfold where_path)
             term' None(* (Some (program_type where_program)) *)
-            flags.polymorphic !isevar (Decl_kinds.(IsDefinition Definition))
+            ~poly:flags.polymorphic !isevar (Decl_kinds.(IsDefinition Definition))
         in
         let () = helpers := (cst, (0,0)) :: !helpers in
         let env = Global.env () in
@@ -958,7 +958,7 @@ let define_one_program_constants flags env0 isevar unfold p =
       let t, ty = term_of_tree env isevar sort rest' in
       let (cst, (evm, e)) =
         Equations_common.declare_constant (path_id ~unfold info.refined_path)
-          t (Some ty) flags.polymorphic !isevar (Decl_kinds.(IsDefinition Definition))
+          t (Some ty) ~poly:flags.polymorphic !isevar (Decl_kinds.(IsDefinition Definition))
       in
       let () = helpers := (cst, info.refined_arg) :: !helpers in
       evm, Refined (lhs, { info with refined_term = e }, rest')
@@ -997,7 +997,9 @@ type term_info = {
   term_id : Names.GlobRef.t;
   term_ustate : UState.t;
   base_id : string;
-  decl_kind: Decl_kinds.definition_kind;
+  poly : bool;
+  scope : DeclareDef.locality;
+  decl_kind : Decl_kinds.definition_object_kind;
   helpers_info : (Constant.t * (int * int)) list;
   comp_obls : Constant.t list; (** The recursive call proof obligations *)
   user_obls : Id.Set.t; (** The user obligations *)
@@ -1008,7 +1010,7 @@ type compiled_program_info = {
     program_split_info : term_info }
 
 
-let is_polymorphic info = pi2 info.decl_kind
+let is_polymorphic info = info.poly
 
 let error_complete () =
   user_err_loc (None, "define",
@@ -1016,7 +1018,8 @@ let error_complete () =
                 str "Use the \"Equations\" command to define it.")
 
 let solve_equations_obligations flags recids i sigma hook =
-  let kind = (Decl_kinds.Global Decl_kinds.ImportNeedQualified, flags.polymorphic, Decl_kinds.(DefinitionBody Definition)) in
+  let scope = DeclareDef.Global Declare.ImportNeedQualified in
+  let kind = Decl_kinds.(DefinitionBody Definition) in
   let evars = Evar.Map.bindings (Evd.undefined_map sigma) in
   let env = Global.env () in
   let types =
@@ -1058,7 +1061,8 @@ let solve_equations_obligations flags recids i sigma hook =
   in
   (* Feedback.msg_debug (str"Starting proof"); *)
   let proof_ending = Lemmas.Proof_ending.(End_equations { hook ; i; types; wits; sigma }) in
-  let lemma = Lemmas.start_dependent_lemma i kind tele ~proof_ending in
+  let info = Lemmas.Info.make ~proof_ending ~kind ~scope () in
+  let lemma = Lemmas.start_dependent_lemma ~name:i ~poly:flags.polymorphic ~info tele in
   (* Should this use Lemmas.by *)
   let lemma = Lemmas.pf_map (Proof_global.map_proof
     (fun p  ->
@@ -1080,7 +1084,9 @@ let solve_equations_obligations flags recids i sigma hook =
   lemma
 
 let solve_equations_obligations_program flags recids i sigma hook =
-  let kind = (Decl_kinds.Global Decl_kinds.ImportNeedQualified, flags.polymorphic, Decl_kinds.(Definition)) in
+  let poly = flags.polymorphic in
+  let scope = DeclareDef.Global Declare.ImportNeedQualified in
+  let kind = Decl_kinds.Definition in
   let env = Global.env () in
   let sigma, term = get_fresh sigma (Equations_common.logic_top_intro) in
   let sigma, ty = get_fresh sigma (Equations_common.logic_top) in
@@ -1124,8 +1130,8 @@ let solve_equations_obligations_program flags recids i sigma hook =
     let flags = CClosure.beta in
     to_constr sigma (clos_norm_flags flags (Global.env ()) sigma (of_constr x))
   in
-  ignore (Obligations.add_definition oblsid ~term ty (Evd.evar_universe_context sigma)
-          ~kind ~reduce ~hook ~opaque:false oblsinfo)
+  ignore (Obligations.add_definition ~name:oblsid ~term ty (Evd.evar_universe_context sigma)
+            ~poly ~scope ~kind ~reduce ~hook ~opaque:false oblsinfo)
 
 let simplify_evars evars t =
   let rec aux t =
@@ -1156,14 +1162,14 @@ let rec_type_ids =
 
 let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false) programs : a hook -> a * Lemmas.t option  =
   fun hook ->
-  let call_hook recobls p helpers uctx locality gr (hook : program -> term_info -> a) : a =
+  let call_hook recobls p helpers uctx scope gr (hook : program -> term_info -> a) : a =
     (* let l =
      *   Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
      * Extraction_plugin.Table.extraction_inline true l; *)
-    let kind = (locality, flags.polymorphic, Decl_kinds.Definition) in
+    let kind = Decl_kinds.Definition in
     let baseid = Id.to_string (program_id p) in
     let term_info = { term_id = gr; term_ustate = uctx;
-                      base_id = baseid; helpers_info = helpers; decl_kind = kind;
+                      base_id = baseid; helpers_info = helpers; poly = flags.polymorphic; scope; decl_kind = kind;
                       comp_obls = recobls; user_obls = Id.Set.empty } in
     hook p term_info
   in
@@ -1186,7 +1192,7 @@ let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false)
     let programs = List.map (map_program (nf_evar sigma)) programs in
     let ustate = Evd.evar_universe_context sigma in
     let () = List.iter (fun (cst, _) -> add_hint true (program_id (List.hd programs)) cst) helpers in
-    hook recobls helpers ustate (Decl_kinds.Global Decl_kinds.ImportDefaultBehavior) programs
+    hook recobls helpers ustate (DeclareDef.Global Declare.ImportDefaultBehavior) programs
   in
   let recids = rec_type_ids is_recursive in
   match hook with
@@ -1195,14 +1201,14 @@ let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false)
     let hook recobls helpers ustate kind programs =
       let p = List.hd programs in
       let cst, _ = (destConst !evd p.program_term) in
-      call_hook recobls p helpers ustate (Decl_kinds.Global Decl_kinds.ImportDefaultBehavior) (ConstRef cst) f
+      call_hook recobls p helpers ustate (DeclareDef.Global Declare.ImportDefaultBehavior) (ConstRef cst) f
     in
     all_hook hook [] !evd, None
   | HookLater f ->
     let hook recobls helpers ustate kind programs =
       List.iteri (fun i p ->
           let cst, _ = (destConst !evd p.program_term) in
-          call_hook recobls p helpers ustate (Decl_kinds.Global Decl_kinds.ImportDefaultBehavior) (ConstRef cst) (f i)) programs
+          call_hook recobls p helpers ustate (DeclareDef.Global Declare.ImportDefaultBehavior) (ConstRef cst) (f i)) programs
     in
     if Evd.has_undefined !evd then
       if flags.open_proof then

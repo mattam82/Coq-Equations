@@ -92,7 +92,7 @@ let vars_of_pars pars =
 
 open EConstr.Vars  
 
-let derive_eq_dec env sigma ~polymorphic ind =
+let derive_eq_dec env sigma ~poly ind =
   let info = inductive_info sigma ind in
   let ctx = info.mutind_params in
   let evdref = ref sigma in
@@ -122,7 +122,7 @@ let derive_eq_dec env sigma ~polymorphic ind =
 	it_mkNamedLambda_or_LetIn 
 	  (it_mkLambda_or_LetIn (Option.get b) ind.ind_args) ctx
       in
-      let univs = Evd.univ_entry ~poly:polymorphic !evdref in
+      let univs = Evd.univ_entry ~poly !evdref in
       let ce =
         { Proof_global.proof_entry_body = Future.from_val ((to_constr !evdref body,Univ.ContextSet.empty),
                                               Evd.empty_side_effects);
@@ -153,7 +153,7 @@ let derive_eq_dec env sigma ~polymorphic ind =
   List.iter
     (fun (ind, (stmt, tc)) ->
      let id = add_suffix ind.ind_name "_eqdec" in
-     ignore(Obligations.add_definition id (to_constr !evdref stmt)
+     ignore(Obligations.add_definition ~name:id (to_constr !evdref stmt) ~poly
               (Evd.evar_universe_context !evdref)
               ~tactic:(eqdec_tac ()) ~hook [||]))
     indsl

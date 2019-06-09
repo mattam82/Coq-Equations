@@ -121,7 +121,7 @@ let dependent_pattern ?(pattern_term=true) c gl =
   let conclapp = applistc concllda (List.rev_map pi1 subst) in
     Proofview.V82.of_tactic (convert_concl ~check:false conclapp DEFAULTcast) gl
 
-let depcase poly (mind, i as ind) =
+let depcase ~poly (mind, i as ind) =
   let indid = Nametab.basename_of_global (IndRef ind) in
   let mindb, oneind = Global.lookup_inductive ind in
   let inds = List.rev (Array.to_list (Array.mapi (fun i oib -> mkInd (mind, i)) mindb.mind_packets)) in
@@ -193,8 +193,8 @@ let depcase poly (mind, i as ind) =
   let env = (Global.env ()) in (* Refresh after declare constant *)
   env, Evd.from_env env, ctx, indapp, kn
 
-let derive_dep_elimination env sigma ~polymorphic (i,u) =
-  let env, evd, ctx, ty, gref = depcase polymorphic i in
+let derive_dep_elimination env sigma ~poly (i,u) =
+  let env, evd, ctx, ty, gref = depcase ~poly i in
   let indid = Nametab.basename_of_global (IndRef i) in
   let id = add_prefix "DependentElimination_" indid in
   let evdref = ref evd in
@@ -202,11 +202,11 @@ let derive_dep_elimination env sigma ~polymorphic (i,u) =
   let caseterm = e_new_global evdref gref in
   let casety = Retyping.get_type_of env !evdref caseterm in
   let args = extended_rel_vect 0 ctx in
-    Equations_common.declare_instance id polymorphic !evdref ctx cl [ty; prod_appvect sigma casety args;
+    Equations_common.declare_instance id ~poly !evdref ctx cl [ty; prod_appvect sigma casety args;
                                 mkApp (caseterm, args)]
 
 let () =
-  let fn env sigma ~polymorphic c = ignore (derive_dep_elimination env sigma ~polymorphic c) in
+  let fn env sigma ~poly c = ignore (derive_dep_elimination env sigma ~poly c) in
   Ederive.(register_derive
             { derive_name = "DependentElimination";
               derive_fn = make_derive_ind fn })

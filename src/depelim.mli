@@ -28,13 +28,17 @@ val dependent_pattern :
   constr -> Goal.goal Evd.sigma -> Evar.t list Evd.sigma
 
 
-val depcase : Decl_kinds.polymorphic ->
-  MutInd.t * int ->
-  Environ.env * Evd.evar_map * rel_context * constr * Names.GlobRef.t
-val derive_dep_elimination :
-  Environ.env -> Evd.evar_map -> polymorphic:Decl_kinds.polymorphic -> pinductive ->
-  Constant.t * (Evd.evar_map * constr)
+val depcase
+  :  poly:bool
+  -> MutInd.t * int
+  -> Environ.env * Evd.evar_map * rel_context * constr * Names.GlobRef.t
 
+val derive_dep_elimination
+  :  Environ.env
+  -> Evd.evar_map
+  -> poly:bool
+  -> pinductive
+  -> Constant.t * (Evd.evar_map * constr)
 
 val pattern_call :
   ?pattern_term:bool ->

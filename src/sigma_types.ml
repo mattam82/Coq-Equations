@@ -237,7 +237,7 @@ let build_sig_of_ind env sigma (ind,u as indu) =
 
 let nf_econstr sigma c = Evarutil.nf_evar sigma c
 
-let declare_sig_of_ind env sigma poly (ind,u) =
+let declare_sig_of_ind env sigma ~poly (ind,u) =
   let sigma, pred, pars, fullapp, valsig, ctx, lenargs, idx =
     build_sig_of_ind env sigma (ind, u) in
   let indid = ind_name ind in
@@ -248,7 +248,7 @@ let declare_sig_of_ind env sigma poly (ind,u) =
   let _, (sigma, indsig) =
     let indsigid = add_suffix indid "_sig" in
     declare_constant indsigid pred
-        None poly sigma (IsDefinition Definition)
+        None ~poly sigma (IsDefinition Definition)
   in
   let pack_id = add_suffix indid "_sig_pack" in
   let _, (sigma, pack_fn) =
@@ -258,7 +258,7 @@ let declare_sig_of_ind env sigma poly (ind,u) =
     (* let rettype = mkApp (mkConst indsig, extended_rel_vect (succ lenargs) pars) in *)
       declare_constant pack_id (simpl term)
 	None (* (Some (it_mkProd_or_LetIn rettype (vbinder :: ctx))) *)
-        poly sigma
+        ~poly sigma
 	(IsDefinition Definition)
   in
   let sigma = if not poly then Evd.from_env (Global.env ()) else sigma in
@@ -266,7 +266,7 @@ let declare_sig_of_ind env sigma poly (ind,u) =
   let signature_id = add_suffix indid "_Signature" in
   let inst = 
     declare_instance signature_id
-      poly sigma ctx c
+      ~poly sigma ctx c
       [fullapp; Vars.lift lenargs idx;
        mkApp (indsig, extended_rel_vect lenargs pars);
        mkApp (pack_fn, extended_rel_vect 0 ctx)]
@@ -278,7 +278,7 @@ let declare_sig_of_ind env sigma poly (ind,u) =
   inst
 
 let () =
-  let fn env sigma ~polymorphic c = ignore (declare_sig_of_ind env sigma polymorphic c) in
+  let fn env sigma ~poly c = ignore (declare_sig_of_ind env sigma ~poly c) in
   Ederive.(register_derive
             { derive_name = "Signature";
               derive_fn = make_derive_ind fn })

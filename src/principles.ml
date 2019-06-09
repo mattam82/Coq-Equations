@@ -1198,7 +1198,7 @@ let declare_funelim info env evd is_rec protos progs
     in
     let instid = Nameops.add_prefix "FunctionalElimination_" id in
     let poly = is_polymorphic info in
-    ignore(Equations_common.declare_instance instid poly evd [] cl args)
+    ignore(Equations_common.declare_instance instid ~poly evd [] cl args)
   in
   let tactic = ind_elim_tac elimc leninds (List.length progs) info indgr in
   let _ =
@@ -1212,7 +1212,7 @@ let declare_funelim info env evd is_rec protos progs
                            Himsg.explain_pretype_error env !evd
                              (Pretype_errors.TypingError (Type_errors.map_ptype_error EConstr.of_constr tyerr)))
   in
-  ignore(Obligations.add_definition (Nameops.add_suffix id "_elim")
+  ignore(Obligations.add_definition ~name:(Nameops.add_suffix id "_elim") ~poly:info.poly ~scope:info.scope
                                     ~tactic ~hook:(DeclareDef.Hook.make hookelim) ~kind:info.decl_kind
                                     (to_constr !evd newty) (Evd.evar_universe_context !evd) [||])
 
@@ -1294,7 +1294,7 @@ let declare_funind info alias env evd is_rec protos progs
                 Retyping.get_type_of env evd indcgr; indcgr]
     in
     let instid = Nameops.add_prefix "FunctionalInduction_" id in
-    ignore(Equations_common.declare_instance instid poly evd [] cl args);
+    ignore(Equations_common.declare_instance instid ~poly evd [] cl args);
     (* If desired the definitions should be made transparent again. *)
     if !Equations_common.equations_transparent then
       (Global.set_strategy (ConstKey (fst (destConst evd f))) Conv_oracle.transparent;
@@ -1315,8 +1315,8 @@ let declare_funind info alias env evd is_rec protos progs
   let launch_ind tactic =
     ignore(Obligations.add_definition
              ~hook:(DeclareDef.Hook.make hookind)
-             ~kind:info.term_info.decl_kind
-             indid stmt ~tactic:(Tacticals.New.tclTRY tactic) ctx [||])
+             ~kind:info.term_info.decl_kind ~poly
+             ~name:indid stmt ~tactic:(Tacticals.New.tclTRY tactic) ctx [||])
   in
   let tac = (ind_fun_tac is_rec f info id !nested_statements progs) in
   try launch_ind tac
@@ -1636,7 +1636,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
     if not poly then
       (* Declare the universe context necessary to typecheck the following
           definitions once and for all. *)
-      (Declare.declare_universe_context false (Evd.universe_context_set !evd);
+      (Declare.declare_universe_context ~poly:false (Evd.universe_context_set !evd);
        evd := Evd.from_env (Global.env ()))
     else ()
   in
@@ -1680,8 +1680,8 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
         else ()
       in
       ignore(Obligations.add_definition
-               ~kind:info.decl_kind
-               ideq (to_constr !evd c)
+               ~kind:info.decl_kind ~poly
+               ~name:ideq (to_constr !evd c)
                ~tactic:tac ~hook:(DeclareDef.Hook.make hook)
 	       (Evd.evar_universe_context !evd) [||])
     in List.iter proof stmts

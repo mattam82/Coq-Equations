@@ -12,7 +12,7 @@ open EConstr
 val derive_noConfusion_package :
   Environ.env ->
   Evd.evar_map ->
-  Decl_kinds.polymorphic ->
+  poly:bool ->
   Names.inductive * EConstr.EInstance.t ->
   Names.Id.t ->
   prefix:string ->
@@ -20,5 +20,5 @@ val derive_noConfusion_package :
   Names.Constant.t -> unit
 
 val derive_no_confusion_hom :
-  env -> Evd.evar_map -> polymorphic:bool -> Names.inductive * EInstance.t ->
+  env -> Evd.evar_map -> poly:bool -> Names.inductive * EInstance.t ->
   Lemmas.t option
