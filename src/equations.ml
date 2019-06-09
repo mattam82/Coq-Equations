@@ -152,7 +152,7 @@ let define_by_eqs ~poly ~program_mode ~open_proof opts eqs nt =
   let programs = coverings env evd intenv programs (List.map snd eqs) in
   let env = Global.env () in (* coverings has the side effect of defining comp_proj constants for now *)
   let fix_proto_ref = destConstRef (Lazy.force coq_fix_proto) in
-  let _kind = (Decl_kinds.Global, poly, Decl_kinds.Definition) in
+  let _kind = (Decl_kinds.Global Decl_kinds.ImportDefaultBehavior, poly, Decl_kinds.Definition) in
   let baseid =
     let p = List.hd programs in Id.to_string p.program_info.program_id in
   (* Necessary for the definition of [i] *)

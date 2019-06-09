@@ -1068,7 +1068,7 @@ let error_complete () =
                 str "Use the \"Equations\" command to define it.")
 
 let solve_equations_obligations flags recids i sigma hook =
-  let kind = (Decl_kinds.Local, flags.polymorphic, Decl_kinds.(DefinitionBody Definition)) in
+  let kind = (Decl_kinds.Global Decl_kinds.ImportNeedQualified, flags.polymorphic, Decl_kinds.(DefinitionBody Definition)) in
   let evars = Evar.Map.bindings (Evd.undefined_map sigma) in
   let env = Global.env () in
   let types =
@@ -1159,7 +1159,7 @@ let solve_equations_obligations flags recids i sigma hook =
   pstate
 
 let solve_equations_obligations_program flags recids i sigma hook =
-  let kind = (Decl_kinds.Local, flags.polymorphic, Decl_kinds.(Definition)) in
+  let kind = (Decl_kinds.Global Decl_kinds.ImportNeedQualified, flags.polymorphic, Decl_kinds.(Definition)) in
   let env = Global.env () in
   let sigma, term = get_fresh sigma (Equations_common.logic_top_intro) in
   let sigma, ty = get_fresh sigma (Equations_common.logic_top) in
@@ -1265,7 +1265,7 @@ let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false)
     let programs = List.map (map_program (nf_evar sigma)) programs in
     let ustate = Evd.evar_universe_context sigma in
     let () = List.iter (fun (cst, _) -> add_hint true (program_id (List.hd programs)) cst) helpers in
-    hook recobls helpers ustate Decl_kinds.Global programs
+    hook recobls helpers ustate (Decl_kinds.Global Decl_kinds.ImportDefaultBehavior) programs
   in
   let recids = rec_type_ids is_recursive in
   match hook with
@@ -1274,14 +1274,14 @@ let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false)
     let hook recobls helpers ustate kind programs =
       let p = List.hd programs in
       let cst, _ = (destConst !evd p.program_term) in
-      call_hook recobls p helpers ustate Decl_kinds.Global (ConstRef cst) f
+      call_hook recobls p helpers ustate (Decl_kinds.Global Decl_kinds.ImportDefaultBehavior) (ConstRef cst) f
     in
     all_hook hook [] !evd, None
   | HookLater f ->
     let hook recobls helpers ustate kind programs =
       List.iteri (fun i p ->
           let cst, _ = (destConst !evd p.program_term) in
-          call_hook recobls p helpers ustate Decl_kinds.Global (ConstRef cst) (f i)) programs
+          call_hook recobls p helpers ustate (Decl_kinds.Global Decl_kinds.ImportDefaultBehavior) (ConstRef cst) (f i)) programs
     in
     if Evd.has_undefined !evd then
       if flags.open_proof then
