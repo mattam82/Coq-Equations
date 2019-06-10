@@ -1102,9 +1102,9 @@ let solve_equations_obligations flags recids i sigma hook =
     in aux types (Evd.from_ctx (Evd.evar_universe_context sigma))
   in
   let terminator = function
-    | Proof_global.Admitted (id, gk, pe, us) ->
+    | Lemmas.Admitted (id, gk, pe, us) ->
       user_err_loc (None, "end_obligations", str "Cannot handle admitted proof for equations")
-    | Proof_global.Proved (opaque, lid, obj) ->
+    | Lemmas.Proved (opaque, lid, obj) ->
       if !Equations_common.debug then
         Feedback.msg_debug (str"Defining the initial evars accoding to the proofs");
       let open Decl_kinds in
@@ -1138,25 +1138,26 @@ let solve_equations_obligations flags recids i sigma hook =
       types
   in
   (* Feedback.msg_debug (str"Starting proof"); *)
-  let pstate = Proof_global.(start_dependent_proof i kind tele (make_terminator terminator)) in
-  let pstate = Proof_global.modify_proof
+  let lemma = Lemmas.start_dependent_lemma i kind tele ~terminator:(fun ?hook:_ _ -> Lemmas.Internal.make_terminator terminator) in
+  (* Should this use Lemmas.by *)
+  let lemma = Lemmas.pf_map (Proof_global.map_proof
     (fun p  ->
-       fst (Pfedit.solve Goal_select.SelectAll None (Proofview.tclDISPATCH do_intros) p)) pstate in
-  let pstate = Proof_global.modify_proof
+       fst (Pfedit.solve Goal_select.SelectAll None (Proofview.tclDISPATCH do_intros) p))) lemma  in
+  let lemma = Lemmas.pf_map (Proof_global.map_proof
     (fun p  ->
-       fst (Pfedit.solve (Goal_select.SelectAll) None (Tacticals.New.tclTRY !Obligations.default_tactic) p)) pstate in
-  let prf = Proof_global.give_me_the_proof pstate in
-  let pstate = if Proof.is_done prf then
+       fst (Pfedit.solve (Goal_select.SelectAll) None (Tacticals.New.tclTRY !Obligations.default_tactic) p))) lemma in
+  let prf = Lemmas.pf_fold Proof_global.get_proof lemma in
+  let lemma = if Proof.is_done prf then
     if flags.open_proof then error_complete ()
     else
-      (Lemmas.save_pstate_proved ~pstate ~opaque:Proof_global.Transparent ~idopt:None; None)
-  else if flags.open_proof then Some pstate
+      (Lemmas.save_lemma_proved ?proof:None ~lemma ~opaque:Proof_global.Transparent ~idopt:None; None)
+  else if flags.open_proof then Some lemma
   else
     user_err_loc (None, "define", str"Equations definition generated subgoals that " ++
                                   str "could not be solved automatically. Use the \"Equations?\" command to" ++
                                   str " refine them interactively")
   in
-  pstate
+  lemma
 
 let solve_equations_obligations_program flags recids i sigma hook =
   let kind = (Decl_kinds.Global Decl_kinds.ImportNeedQualified, flags.polymorphic, Decl_kinds.(Definition)) in
@@ -1233,7 +1234,7 @@ let rec_type_ids =
             | Some (Logical ids) -> [snd ids]
             | None -> [])
 
-let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false) programs : a hook -> a * Proof_global.t option  =
+let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false) programs : a hook -> a * Lemmas.t option  =
   fun hook ->
   let call_hook recobls p helpers uctx locality gr (hook : program -> term_info -> a) : a =
     (* let l =

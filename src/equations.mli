@@ -19,7 +19,7 @@ val define_by_eqs
   -> Syntax.pre_equations
   -> (Names.lstring * Constrexpr.constr_expr *
       Notation_term.scope_name option) list
-  -> Proof_global.t option
+  -> Lemmas.t option
 
 val define_principles :
   flags ->
@@ -41,7 +41,7 @@ val equations_interactive : poly:bool -> program_mode:bool ->
   (Names.lstring * Constrexpr.constr_expr *
    Notation_term.scope_name option)
   list ->
-  Proof_global.t
+  Lemmas.t
 
 val solve_equations_goal :
   Proofview.V82.tac ->
