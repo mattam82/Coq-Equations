@@ -97,7 +97,7 @@ val program_id : program -> Id.t
 val program_type : program -> EConstr.t
 val program_sign : program -> EConstr.rel_context
 val program_arity : program -> EConstr.t
-val program_impls : program -> Impargs.manual_explicitation list
+val program_impls : program -> Impargs.manual_implicits
 val program_rec : program -> program_rec_info option
 
 val pr_path : Evd.evar_map -> path -> Pp.t
