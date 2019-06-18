@@ -266,10 +266,10 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
       let hyps'',c' = aux n env hyps' (Vars.subst1 mkProp c) in
         hyps'', mkProd (na, d', lift 1 c')
 
-    | Case (ci, p, c, brs) ->
+    | Case (ci, p, iv, c, brs) ->
       let hyps', c' = aux n env hyps c in
       let hyps' = Array.fold_left (fun hyps br -> fst (aux n env hyps br)) hyps' brs in
-      let case' = mkCase (ci, p, c', brs) in
+      let case' = mkCase (ci, p, iv, c', brs) in
         hyps', EConstr.Unsafe.to_constr (EConstr.Vars.substnl proto_fs (succ len) (EConstr.of_constr case'))
 
     | Proj (p, c) ->

@@ -174,7 +174,7 @@ let depcase ~poly (mind, i as ind) =
                   (extended_rel_vect 0 ctxpred))
   in
   let ty = it_mkLambda_or_LetIn app ctxpred in
-  let case = mkCase (ci, ty, mkRel 1, Array.map snd branches) in
+  let case = mkCase (ci, ty, NoInvert, mkRel 1, Array.map snd branches) in
   let xty = obj 1 in
   let xid = Namegen.named_hd (Global.env ()) !evd xty Anonymous in
   let body =

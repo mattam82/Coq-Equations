@@ -971,7 +971,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
              let sigma = project gl in
              let f, pats' = decompose_app sigma y in
              let c, unfolds =
-               let _, _, c, _ = destCase sigma f in
+               let _, _, _, c, _ = destCase sigma f in
                c, tclIDTAC
              in
              let id = destVar sigma (fst (decompose_app sigma c)) in
