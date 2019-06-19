@@ -1528,6 +1528,10 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
         let suff = (if r != Refine then "_equation_" else "_refinement_") ^ string_of_int i in
           Nameops.add_suffix indid suff) n) stmts
     in
+    let merge_universes_of_constr c =
+      Univ.LSet.union (EConstr.universes_of_constr !evd c) in
+    let univs = Univ.LSet.union (universes_of_constr !evd arity) univs in
+    let univs = Context.Rel.(fold_outside (Declaration.fold_constr merge_universes_of_constr) sign ~init:univs) in
     let univs =
       List.fold_left (fun univs c -> Univ.LSet.union (universes_of_constr !evd (EConstr.of_constr c)) univs)
         univs constructors in
