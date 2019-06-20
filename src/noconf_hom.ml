@@ -100,7 +100,7 @@ let derive_noConfusion_package env sigma0 polymorphic (ind,u as indu) indid ~pre
     Classes.add_instance
       (Classes.mk_instance tc empty_hint_info true gr)
   in
-  let hook = Lemmas.mk_hook hook in
+  let hook = DeclareDef.Hook.make hook in
   let kind = Decl_kinds.(Global ImportDefaultBehavior, polymorphic, Definition) in
   let oblinfo, _, term, ty = Obligations.eterm_obligations env noid sigma 0 term ty in
     ignore(Obligations.add_definition ~hook packid

@@ -150,7 +150,7 @@ let derive_eq_dec env sigma ~polymorphic ind =
 	in Classes.add_instance inst)
     indsl
   in
-  let hook = Lemmas.mk_hook hook in
+  let hook = DeclareDef.Hook.make hook in
   List.iter
     (fun (ind, (stmt, tc)) ->
      let id = add_suffix ind.ind_name "_eqdec" in

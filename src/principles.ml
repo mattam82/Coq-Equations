@@ -1213,7 +1213,7 @@ let declare_funelim info env evd is_rec protos progs
                              (Pretype_errors.TypingError (Type_errors.map_ptype_error EConstr.of_constr tyerr)))
   in
   ignore(Obligations.add_definition (Nameops.add_suffix id "_elim")
-                                    ~tactic ~hook:(Lemmas.mk_hook hookelim) ~kind:info.decl_kind
+                                    ~tactic ~hook:(DeclareDef.Hook.make hookelim) ~kind:info.decl_kind
                                     (to_constr !evd newty) (Evd.evar_universe_context !evd) [||])
 
 let mkConj evd sort x y =
@@ -1314,7 +1314,7 @@ let declare_funind info alias env evd is_rec protos progs
   let ctx = Evd.evar_universe_context (if poly then !evd else Evd.from_env (Global.env ())) in
   let launch_ind tactic =
     ignore(Obligations.add_definition
-             ~hook:(Lemmas.mk_hook hookind)
+             ~hook:(DeclareDef.Hook.make hookind)
              ~kind:info.term_info.decl_kind
              indid stmt ~tactic:(Tacticals.New.tclTRY tactic) ctx [||])
   in
@@ -1682,7 +1682,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
       ignore(Obligations.add_definition
                ~kind:info.decl_kind
                ideq (to_constr !evd c)
-               ~tactic:tac ~hook:(Lemmas.mk_hook hook)
+               ~tactic:tac ~hook:(DeclareDef.Hook.make hook)
 	       (Evd.evar_universe_context !evd) [||])
     in List.iter proof stmts
   in List.iter proof ind_stmts
