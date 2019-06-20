@@ -91,48 +91,49 @@ Equations timeout : ∀ {Γ A}, M Γ A :=
   timeout _ := None.
 
 Equations eval : ∀ (n : nat) {Γ t} (e : Expr Γ t), M Γ (Val t) :=
-  eval 0 _             := timeout;
-  eval (S k) tt        := ret val_unit;
-  eval (S k) (var x)   := getEnv >>= fun E => ret (lookup E x);
-  eval (S k) (abs x)   := getEnv >>= fun E => ret (val_closure x E);
-  eval (S k) (app (Γ:=Γ) f arg) := eval k f >>= (#{ | val_closure e' E =>
-                                               eval k arg >>= fun a' => usingEnv (all_cons a' E) (eval k e')}).
+  eval 0 _               := timeout;
+  eval (S k) tt          := ret val_unit;
+  eval (S k) (var x)     := getEnv >>= fun E => ret (lookup E x);
+  eval (S k) (abs be)    := getEnv >>= fun E => ret (val_closure be E);
+  eval (S k) (app fe xe) :=
+    eval k fe >>= λ{ | val_closure be E =>
+    eval k xe >>= fun xv =>
+   usingEnv (all_cons xv E) (eval k be)}.
 
 Inductive eval_sem {Γ : Ctx} {env : Env Γ} : forall {t : Ty}, Expr Γ t -> Val t -> Prop :=
 | eval_tt (e : Expr Γ unit) : eval_sem e val_unit
 | eval_var t (i : t ∈ Γ) : eval_sem (var i) (lookup env i)
 | eval_abs {t u} (b : Expr (t :: Γ) u) : eval_sem (abs b) (val_closure b env)
-| eval_app {t u} (f : Expr Γ (t ⇒ u)) b' (a : Expr Γ t) v :
-    eval_sem f (val_closure b' env) ->
-    eval_sem a v ->
-    forall u, @eval_sem (t :: Γ) (all_cons v env) _ b' u ->
-    eval_sem (app f a) u.
-
-
+| eval_app
+    {xt bt Γ' env'}
+    (fe : Expr Γ (xt ⇒ bt))
+    (be : Expr (xt :: Γ') bt) bv
+    (xe : Expr Γ xt) xv :
+    eval_sem fe (val_closure be env') ->
+    eval_sem xe xv ->
+    @eval_sem (xt :: Γ') (all_cons xv env') _ be bv ->
+    eval_sem (app fe xe) bv.
 
 Lemma eval_correct {n} Γ t (e : Expr Γ t) env v : eval n e env = Some v -> @eval_sem _ env _ e v.
 Proof.
-  pose proof (fun_elim (f:=eval)).
+  pose proof (fun_elim (f:=eval)) as H.
   specialize (H (fun n Γ t e m => forall env v, m env = Some v -> @eval_sem _ env _ e v)
                 (fun n Γ t u f a v m => forall env v',
                      @eval_sem _ env _ f v -> m env = Some v' -> @eval_sem _ env _ (app f a) v')).
-  rapply H; clear; intros.
-  discriminate.
-  noconf H. constructor.
-  noconf H. constructor.
-
-  noconf H. constructor.
-
-  unfold bind in H1.
-  destruct (eval n e0 env) eqn:Heq.
-  specialize (H _ _ Heq).
-  specialize (H0 v0 _ _ H H1). apply H0.
-  discriminate.
-
-  (* Context mismatch *)
-  unfold bind in H2.
-  destruct (eval k arg env) eqn:Heq.
-  specialize (H _ _ Heq).
-  unfold usingEnv in H2. specialize (H0 v (all_cons v a) v').
-  econstructor; eauto.
-Admitted.
+  - rapply H; clear; intros.
+  + discriminate.
+  + noconf H; constructor.
+  + noconf H; constructor.
+  + noconf H; constructor.
+  + unfold bind in H1.
+    destruct (eval n e0 env) eqn:Heq; try discriminate.
+    specialize (H _ _ Heq).
+    specialize (H0 v0 _ _ H H1).
+    apply H0.
+  + unfold bind in H2.
+    destruct (eval k xe env) eqn:Heq; try discriminate.
+    unfold usingEnv in H2.
+    specialize (H _ _ Heq).
+    specialize (H0 v (all_cons v a) v').
+    econstructor; eauto.
+Qed.
