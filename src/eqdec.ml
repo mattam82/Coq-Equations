@@ -23,7 +23,6 @@ open Termops
 open Declarations
 open Inductiveops
 open Vars
-open Entries
 
 open EConstr   
 
@@ -125,15 +124,15 @@ let derive_eq_dec env sigma ~polymorphic ind =
       in
       let univs = Evd.univ_entry ~poly:polymorphic !evdref in
       let ce =
-        { const_entry_body = Future.from_val ((to_constr !evdref body,Univ.ContextSet.empty),
+        { Proof_global.proof_entry_body = Future.from_val ((to_constr !evdref body,Univ.ContextSet.empty),
                                               Evd.empty_side_effects);
-          const_entry_type = Some (to_constr !evdref (it_mkNamedProd_or_LetIn
+          proof_entry_type = Some (to_constr !evdref (it_mkNamedProd_or_LetIn
                                      (it_mkProd_or_LetIn ty ind.ind_args) ctx));
-  	  const_entry_opaque = false; const_entry_secctx = None;
-	  const_entry_feedback = None;
-          (* const_entry_polymorphic = polymorphic; *)
-          const_entry_universes = univs;
-	  const_entry_inline_code = false;
+  	  proof_entry_opaque = false; proof_entry_secctx = None;
+	  proof_entry_feedback = None;
+          (* proof_entry_polymorphic = polymorphic; *)
+          proof_entry_universes = univs;
+	  proof_entry_inline_code = false;
 	}
       in ce
     in full, tc
@@ -143,7 +142,7 @@ let derive_eq_dec env sigma ~polymorphic ind =
   let hook _ _ _ gr =
     List.iter (fun (ind, (stmt, tc)) -> 
 	let ce = tc gr in
-        let entry = (DefinitionEntry ce, IsDefinition Instance) in
+        let entry = (Declare.DefinitionEntry ce, IsDefinition Instance) in
 	let inst = Declare.declare_constant (add_suffix ind.ind_name "_EqDec") entry in
         let inst =
           Classes.mk_instance (fst cl) Hints.empty_hint_info true (Globnames.ConstRef inst)

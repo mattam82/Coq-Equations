@@ -19,7 +19,6 @@ open Context
 open Evarutil
 open List
 open Libnames
-open Entries
 open Tacmach
 open Tactics
 open Tacticals
@@ -237,7 +236,7 @@ let make_definition ?opaque ?(poly=false) evm ?types b =
 
 let declare_constant id body ty poly evd kind =
   let evm0, evm, ce = make_definition ~opaque:false ~poly evd ?types:ty body in
-  let cst = Declare.declare_constant id (DefinitionEntry ce, kind) in
+  let cst = Declare.declare_constant id (Declare.DefinitionEntry ce, kind) in
   Flags.if_verbose Feedback.msg_info (str((Id.to_string id) ^ " is defined"));
   if poly then
     let cstr = EConstr.(mkConstU (cst, EInstance.make (Univ.UContext.instance (Evd.to_universe_context evm)))) in

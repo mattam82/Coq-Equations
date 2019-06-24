@@ -15,7 +15,6 @@ open Declarations
 open Inductiveops
 open Globnames
 open Reductionops
-open Entries
 open Vars
 open Decl_kinds
 
@@ -143,7 +142,7 @@ let derive_no_confusion env sigma0 ~polymorphic (ind,u as indu) =
   let _, ce = make_definition ~poly:polymorphic !evd ~types:arity app in
   let indid = Nametab.basename_of_global (IndRef ind) in
   let id = add_prefix "NoConfusion_" indid in
-  let cstNoConf = Declare.declare_constant id (DefinitionEntry ce, IsDefinition Definition) in
+  let cstNoConf = Declare.declare_constant id (Declare.DefinitionEntry ce, IsDefinition Definition) in
   let env = Global.env () in
   let sigma = Evd.from_env env in
   let sigma, indu = Evd.fresh_global

@@ -20,7 +20,6 @@ open Inductiveops
 open Reductionops
 open Pp
 open Decl_kinds
-open Entries
 
 open Globnames
 open Evarutil
@@ -189,7 +188,7 @@ let depcase poly (mind, i as ind) =
   let kn =
     let id = add_suffix indid "_dep_elim" in
       ConstRef (Declare.declare_constant id
-                  (DefinitionEntry ce, IsDefinition Scheme))
+                  (Declare.DefinitionEntry ce, IsDefinition Scheme))
   in
   let env = (Global.env ()) in (* Refresh after declare constant *)
   env, Evd.from_env env, ctx, indapp, kn

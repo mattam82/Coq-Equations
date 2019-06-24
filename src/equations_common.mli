@@ -147,7 +147,7 @@ val make_definition :
   ?opaque:'a ->
   ?poly:Decl_kinds.polymorphic ->
   Evd.evar_map ->
-  ?types:constr -> constr -> Evd.evar_map * Evd.side_effects Entries.definition_entry
+  ?types:constr -> constr -> Evd.evar_map * Evd.side_effects Proof_global.proof_entry
 
 (** Declares a constant relative to an evar_map.
 
