@@ -1098,12 +1098,13 @@ let solve_equations_obligations_program flags recids i sigma hook =
     Obligations.eterm_obligations env oblsid sigma 0
     ~status:(Evar_kinds.Define false) term ty
   in
-  let hook uctx evars locality gr =
+  let hook { DeclareDef.Hook.S.uctx; obls; _ } =
+  (* let hook uctx evars locality gr = *)
     (* let l =
      *   Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
      * Extraction_plugin.Table.extraction_inline true l; *)
     let sigma = Evd.merge_universe_context sigma uctx in
-    let evc id = EConstr.of_constr (List.assoc_f Id.equal id evars) in
+    let evc id = EConstr.of_constr (List.assoc_f Id.equal id obls) in
     let sigma =
       Evd.fold_undefined
       (fun ev evi sigma ->
@@ -1121,7 +1122,7 @@ let solve_equations_obligations_program flags recids i sigma hook =
       let _, body = decompose_lam_assum sigma (EConstr.of_constr c) in
       let hd, _ = decompose_app sigma body in
       try fst (EConstr.destConst sigma hd)
-      with Constr.DestKO -> assert false) evars
+      with Constr.DestKO -> assert false) obls
     in
     hook recobls sigma
   in
