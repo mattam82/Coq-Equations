@@ -48,7 +48,7 @@ val sigmaize :
   constr * constr * rel_context * constr list * Names.Projection.t *
   Names.Projection.t * constr * constr
 val ind_name : Names.inductive -> Names.Id.t
-val declare_sig_of_ind : Environ.env -> Evd.evar_map -> bool -> Names.inductive * EConstr.EInstance.t ->
+val declare_sig_of_ind : Environ.env -> Evd.evar_map -> poly:bool -> Names.inductive * EConstr.EInstance.t ->
   Names.Constant.t * (Evd.evar_map * EConstr.t)
 val get_signature :
   Environ.env -> Evd.evar_map -> constr -> Evd.evar_map * constr * constr

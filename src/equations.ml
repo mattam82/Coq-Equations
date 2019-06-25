@@ -89,9 +89,11 @@ let define_unfolding_eq env evd flags p unfp prog prog' ei hook =
       p unfp)
   in
   ignore(Obligations.add_definition
+           ~poly:info.poly
+           ~scope:info.scope
            ~kind:info.decl_kind
            ~hook:(DeclareDef.Hook.make hook_eqs) ~reduce:(fun x -> x)
-           ~implicits:(program_impls p) unfold_eq_id (to_constr evd stmt)
+           ~implicits:(program_impls p) ~name:unfold_eq_id (to_constr evd stmt)
            ~tactic:(of82 tac)
            (Evd.evar_universe_context evd) [||])
 
@@ -152,7 +154,7 @@ let define_by_eqs ~poly ~program_mode ~open_proof opts eqs nt =
   let programs = coverings env evd intenv programs (List.map snd eqs) in
   let env = Global.env () in (* coverings has the side effect of defining comp_proj constants for now *)
   let fix_proto_ref = destConstRef (Lazy.force coq_fix_proto) in
-  let _kind = (Decl_kinds.Global Decl_kinds.ImportDefaultBehavior, poly, Decl_kinds.Definition) in
+  (* let _kind = (Decl_kinds.Global Decl_kinds.ImportDefaultBehavior, poly, Decl_kinds.Definition) in *)
   let baseid =
     let p = List.hd programs in Id.to_string p.program_info.program_id in
   (* Necessary for the definition of [i] *)

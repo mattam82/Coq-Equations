@@ -33,5 +33,5 @@ val dec_eq : esigma -> constr
 
 val vars_of_pars : named_context -> constr array
 
-val derive_eq_dec : Environ.env -> Evd.evar_map -> polymorphic:bool ->
+val derive_eq_dec : Environ.env -> Evd.evar_map -> poly:bool ->
                     Names.inductive * EInstance.t -> unit

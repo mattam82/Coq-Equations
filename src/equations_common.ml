@@ -234,7 +234,7 @@ let make_definition ?opaque ?(poly=false) evm ?types b =
   let univs = Evd.univ_entry ~poly evm in
   evm0, evm, Declare.definition_entry ~univs ?types:typ body
 
-let declare_constant id body ty poly evd kind =
+let declare_constant id body ty ~poly evd kind =
   let evm0, evm, ce = make_definition ~opaque:false ~poly evd ?types:ty body in
   let cst = Declare.declare_constant id (Declare.DefinitionEntry ce, kind) in
   Flags.if_verbose Feedback.msg_info (str((Id.to_string id) ^ " is defined"));
@@ -247,13 +247,13 @@ let make_definition ?opaque ?(poly=false) evm ?types b =
   let evm', _, t = make_definition ?opaque ~poly evm ?types b in
   evm', t
 
-let declare_instance id poly evm ctx cl args =
+let declare_instance id ~poly evm ctx cl args =
   let open Typeclasses in
   let open EConstr in
   let c, t = instance_constructor cl args in
   let term = it_mkLambda_or_LetIn (Option.get c) ctx in
   let typ = EConstr.it_mkProd_or_LetIn t ctx in
-  let cst, ecst = declare_constant id term (Some typ) poly evm (IsDefinition Instance) in
+  let cst, ecst = declare_constant id term (Some typ) ~poly evm (IsDefinition Instance) in
   let inst = Classes.mk_instance (fst cl) Hints.empty_hint_info true (Globnames.ConstRef cst) in
     Classes.add_instance inst; cst, ecst
 

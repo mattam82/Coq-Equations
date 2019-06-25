@@ -8,17 +8,17 @@
 
 type derive_record =
   { derive_name : string;
-    derive_fn : polymorphic:Decl_kinds.polymorphic -> Names.GlobRef.t -> unit }
+    derive_fn : poly:bool -> Names.GlobRef.t -> unit }
 
 (** When the Derive expects a constr. *)                                 
 val make_derive :
-  (Environ.env -> Evd.evar_map -> polymorphic:Decl_kinds.polymorphic -> EConstr.constr -> unit) ->
-  polymorphic:bool -> Names.GlobRef.t -> unit
+  (Environ.env -> Evd.evar_map -> poly:bool -> EConstr.constr -> unit) ->
+  poly:bool -> Names.GlobRef.t -> unit
 
 (** When the Derive works on inductive types only. *)                                 
 val make_derive_ind :
-  (Environ.env -> Evd.evar_map -> polymorphic:Decl_kinds.polymorphic -> Names.inductive * EConstr.EInstance.t -> unit) ->
-  polymorphic:bool -> Names.GlobRef.t -> unit
+  (Environ.env -> Evd.evar_map -> poly:bool -> Names.inductive * EConstr.EInstance.t -> unit) ->
+  poly:bool -> Names.GlobRef.t -> unit
     
 val register_derive : derive_record -> unit
 
