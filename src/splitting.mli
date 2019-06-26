@@ -182,7 +182,7 @@ type term_info = {
   base_id : string;
   poly : bool;
   scope : DeclareDef.locality;
-  decl_kind : Decl_kinds.definition_object_kind;
+  decl_kind : Decls.definition_object_kind;
   helpers_info : (Constant.t * (int * int)) list;
   comp_obls : Constant.t list; (** The recursive call proof obligations *)
   user_obls : Id.Set.t; (** The user proof obligations *)
