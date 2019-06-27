@@ -1074,7 +1074,7 @@ let solve_equations_obligations flags recids i sigma hook =
   let lemma = if Proof.is_done prf then
     if flags.open_proof then error_complete ()
     else
-      (Lemmas.save_lemma_proved ?proof:None ~lemma ~opaque:Proof_global.Transparent ~idopt:None; None)
+      (Lemmas.save_lemma_proved ~lemma ~opaque:Proof_global.Transparent ~idopt:None; None)
   else if flags.open_proof then Some lemma
   else
     user_err_loc (None, "define", str"Equations definition generated subgoals that " ++
