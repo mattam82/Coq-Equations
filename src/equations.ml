@@ -45,7 +45,7 @@ let define_unfolding_eq env evd flags p unfp prog prog' ei hook =
   let () = if flags.polymorphic then evd := Evd.from_ctx info'.term_ustate in
   let funfc = e_new_global evd info'.term_id in
   let unfold_eq_id = add_suffix (program_id unfp) "_eq" in
-  let hook_eqs _ _obls subst grunfold =
+  let hook_eqs _ =
     Global.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
     let () = (* Declare the subproofs of unfolding for where as rewrite rules *)
       let decl _ (_, id, _) =

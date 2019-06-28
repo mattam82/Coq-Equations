@@ -1184,12 +1184,12 @@ let declare_funelim info env evd is_rec protos progs
     compute_elim_type env evd info.user_obls is_rec protos kn leninds ind_stmts all_stmts
                       sign app elimty
   in
-  let hookelim _ _ _ elimgr =
+  let hookelim { DeclareDef.Hook.S.dref; _ } =
     let env = Global.env () in
     let evd = Evd.from_env env in
     let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in
     let evd, f = new_global evd f_gr in
-    let evd, elimcgr = new_global evd elimgr in
+    let evd, elimcgr = new_global evd dref in
     let evd, cl = functional_elimination_class evd in
     let evd, args_of_elim = coq_nat_of_int evd nargs in
     let args = [Retyping.get_type_of env evd f; f;
@@ -1268,13 +1268,13 @@ let declare_funind info alias env evd is_rec protos progs
     | None -> f
   in
   let app = applist (f, args) in
-  let hookind ectx _obls subst indgr =
+  let hookind { DeclareDef.Hook.S.uctx; scope; dref; _ } =
     let env = Global.env () in (* refresh *)
     Hints.add_hints ~local:false [info.term_info.base_id]
-                    (Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef indgr]);
+                    (Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef dref]);
     let () =
       try declare_funelim info.term_info env evd is_rec protos progs
-            ind_stmts all_stmts sign app subst inds kn comb sort indgr ectx
+            ind_stmts all_stmts sign app scope inds kn comb sort dref uctx
       with Type_errors.TypeError (env, tyerr) ->
         CErrors.user_err Pp.(str"Functional elimination principle could not be proved automatically: " ++
                              Himsg.explain_pretype_error env !evd
@@ -1288,7 +1288,7 @@ let declare_funind info alias env evd is_rec protos progs
     let evd = Evd.from_env env in
     let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in
     let evd, f = new_global evd f_gr in
-    let evd, indcgr = new_global evd indgr in
+    let evd, indcgr = new_global evd dref in
     let evd, cl = functional_induction_class evd in
     let args = [Retyping.get_type_of env evd f; f;
                 Retyping.get_type_of env evd indcgr; indcgr]
@@ -1645,10 +1645,10 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
     let id = path_id path in (* if j != 0 then Nameops.add_suffix id ("_helper_" ^ string_of_int j) else id in *)
     let proof (i, (r, unf, c, n)) =
       let ideq = Nameops.add_suffix id ("_equation_" ^ string_of_int i) in
-      let hook _ _obls subst gr =
+      let hook { DeclareDef.Hook.S.dref; _ } =
         if n != None then
-          Lib.add_anonymous_leaf (inRewRules (info.base_id, gr))
-        else (Classes.declare_instance (Global.env()) !evd None true gr
+          Lib.add_anonymous_leaf (inRewRules (info.base_id, dref))
+        else (Classes.declare_instance (Global.env()) !evd None true dref
               (* Hints.add_hints ~local:false [info.base_id]  *)
               (*                 (Hints.HintsExternEntry *)
               (*                  (Vernacexpr.{hint_priority = Some 0; hint_pattern = None}, *)
