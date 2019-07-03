@@ -216,7 +216,7 @@ let derive_subterm env sigma ~poly (ind, u as indu) =
         in
         let kn, (evm', cst) =
           declare_constant relid def (Some ty) ~poly !evm
-            (Decl_kinds.IsDefinition Decl_kinds.Definition) in
+            ~kind:Decls.(IsDefinition Definition) in
         evm := evm';
         (* Impargs.declare_manual_implicits false (ConstRef cst) ~enriching:false *)
         (* 	(list_map_i (fun i _ -> ExplByPos (i, None), (true, true, true)) 1 parambinders); *)
@@ -246,7 +246,7 @@ let derive_subterm env sigma ~poly (ind, u as indu) =
     let obls, _, constr, typ = Obligations.eterm_obligations env id evm 0 body ty in
     let ctx = Evd.evar_universe_context evm in
     Obligations.add_definition ~name:id ~term:constr typ ctx
-                               ~poly ~scope:(DeclareDef.Global Declare.ImportDefaultBehavior) ~kind:(Decl_kinds.Instance)
+                               ~poly ~scope:(DeclareDef.Global Declare.ImportDefaultBehavior) ~kind:(Decls.Instance)
                                ~hook:(DeclareDef.Hook.make hook) ~tactic:(solve_subterm_tac ()) obls
   in ignore(declare_ind ())
 
@@ -363,7 +363,7 @@ let derive_below env sigma ~poly (ind,univ as indu) =
   let bodyB = it_mkLambda_or_LetIn fixB (pdecl :: parambinders) in
   let id = add_prefix "Below_" (Nametab.basename_of_global (IndRef ind)) in
   let _, (evd, belowB) = declare_constant id bodyB None ~poly !evd
-    (Decl_kinds.IsDefinition Decl_kinds.Definition) in
+      ~kind:Decls.(IsDefinition Definition) in
   let fixb = mkFix (([| realargs |], 0), ([| nameR recid |], [| arityb |],
 				    [| subst_vars [recid; stepid] termb |])) in
   let stepdecl =
@@ -380,8 +380,8 @@ let derive_below env sigma ~poly (ind,univ as indu) =
   let id = add_prefix "below_" (Nametab.basename_of_global (IndRef ind)) in
   let evd = if poly then evd else Evd.from_env (Global.env ()) in
     ignore(declare_constant id bodyb None ~poly evd
-	     (Decl_kinds.IsDefinition Decl_kinds.Definition))
-    
+	     ~kind:Decls.(IsDefinition Definition))
+
 let () =
   Ederive.(register_derive
             { derive_name = "Below";

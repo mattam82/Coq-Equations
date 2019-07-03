@@ -19,7 +19,6 @@ open Declarations
 open Inductiveops
 open Reductionops
 open Pp
-open Decl_kinds
 
 open Globnames
 open Evarutil
@@ -187,8 +186,8 @@ let depcase ~poly (mind, i as ind) =
   let ce = Declare.definition_entry ~univs (EConstr.to_constr !evd body) in
   let kn =
     let id = add_suffix indid "_dep_elim" in
-      ConstRef (Declare.declare_constant id
-                  (Declare.DefinitionEntry ce, IsDefinition Scheme))
+      ConstRef (Declare.declare_constant ~name:id
+                  (Declare.DefinitionEntry ce) ~kind:Decls.(IsDefinition Scheme))
   in
   let env = (Global.env ()) in (* Refresh after declare constant *)
   env, Evd.from_env env, ctx, indapp, kn

@@ -21,7 +21,6 @@ open List
 open Globnames
 open Tactics
 open Tacticals
-open Decl_kinds
 open Equations_common
 open EConstr
 
@@ -248,7 +247,7 @@ let declare_sig_of_ind env sigma ~poly (ind,u) =
   let _, (sigma, indsig) =
     let indsigid = add_suffix indid "_sig" in
     declare_constant indsigid pred
-        None ~poly sigma (IsDefinition Definition)
+        None ~poly sigma ~kind:Decls.(IsDefinition Definition)
   in
   let pack_id = add_suffix indid "_sig_pack" in
   let _, (sigma, pack_fn) =
@@ -259,7 +258,7 @@ let declare_sig_of_ind env sigma ~poly (ind,u) =
       declare_constant pack_id (simpl term)
 	None (* (Some (it_mkProd_or_LetIn rettype (vbinder :: ctx))) *)
         ~poly sigma
-	(IsDefinition Definition)
+	~kind:Decls.(IsDefinition Definition)
   in
   let sigma = if not poly then Evd.from_env (Global.env ()) else sigma in
   let sigma, c = signature_class sigma in

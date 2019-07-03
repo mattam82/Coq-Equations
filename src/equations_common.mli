@@ -167,7 +167,8 @@ val declare_constant :
   constr ->
   constr option ->
   poly:bool ->
-  Evd.evar_map -> Decl_kinds.logical_kind ->
+  kind:Decls.logical_kind ->
+  Evd.evar_map ->
   Constant.t * (Evd.evar_map * EConstr.t)
 
 val declare_instance :

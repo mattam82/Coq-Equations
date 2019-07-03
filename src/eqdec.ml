@@ -86,7 +86,6 @@ let eq_dec_class evd =
 
 let dec_eq evd = get_efresh logic_eqdec_dec_eq evd
 
-open Decl_kinds
 let vars_of_pars pars = 
   Array.of_list (List.map (fun x -> mkVar (get_id x)) pars)
 
@@ -140,10 +139,11 @@ let derive_eq_dec env sigma ~poly ind =
   let indsl = Array.to_list info.mutind_inds in
   let indsl = List.map (fun ind -> ind, info_of ind) indsl in
   let hook { DeclareDef.Hook.S.dref; _ } =
-    List.iter (fun (ind, (stmt, tc)) -> 
+    List.iter (fun (ind, (stmt, tc)) ->
 	let ce = tc dref in
-        let entry = (Declare.DefinitionEntry ce, IsDefinition Instance) in
-	let inst = Declare.declare_constant (add_suffix ind.ind_name "_EqDec") entry in
+        let kind = Decls.(IsDefinition Instance) in
+        let entry = Declare.DefinitionEntry ce in
+	let inst = Declare.declare_constant ~name:(add_suffix ind.ind_name "_EqDec") ~kind entry in
         let inst =
           Classes.mk_instance (fst cl) Hints.empty_hint_info true (Globnames.ConstRef inst)
 	in Classes.add_instance inst)
