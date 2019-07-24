@@ -1,6 +1,8 @@
 Require Import Equations.Prop.Loader.
 From Coq Require Import FunctionalExtensionality.
 Require Import Equations.Prop.DepElim.
+Require Import Equations.Prop.Tactics.
+Require Import Equations.Prop.FunctionalInduction.
 (** Telescopes: allows treating variable arity fixpoints *)
 Set Universe Polymorphism.
 Import Sigma_Notations.
