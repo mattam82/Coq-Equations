@@ -5,6 +5,8 @@ Require Import Equations.Type.FunctionalExtensionality.
 Require Import Equations.Type.WellFounded.
 Require Import Equations.Type.DepElim.
 Require Import Equations.Type.Subterm.
+Require Import Equations.Type.Tactics.
+Require Import Equations.Type.FunctionalInduction.
 
 (** Telescopes: allows treating variable arity fixpoints *)
 Set Universe Polymorphism.
