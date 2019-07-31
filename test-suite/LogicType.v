@@ -36,6 +36,8 @@ Arguments nil {A}.
 Arguments cons {A%type_scope} {n%nat_scope} a v.
 Derive Signature for vector.
 Require Import Equations.Tactics Equations.Type.Tactics.
+Require Import Equations.Type.Tactics.
+Require Import Equations.Type.FunctionalInduction.
 
 Set Universe Minimization ToSet.
 Derive NoConfusionHom for vector.
