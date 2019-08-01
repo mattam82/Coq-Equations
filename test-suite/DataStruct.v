@@ -50,7 +50,6 @@ Section hlist.
   Variable A : Type.
   Variable B : A -> Type.
 
-  #[universes(template)]
   Inductive hlist : list A -> Type :=
   | HNil : hlist nil
   | HCons : forall (x : A) (ls : list A), B x -> hlist ls -> hlist (x :: ls).
