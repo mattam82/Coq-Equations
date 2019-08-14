@@ -8,7 +8,7 @@ Copyright 2009-2019 Matthieu Sozeau `matthieu.sozeau@inria.fr`
 Copyright 2015-2018 Cyprien Mangin `cyprien.mangin@m4x.org`
 
 Distributed under the terms of the GNU Lesser General Public License
-Version 2.1
+Version 2.1 or later
 (see
 [LICENSE](http://github.com/mattam82/Coq-Equations/raw/master/LICENSE)
 for details).
