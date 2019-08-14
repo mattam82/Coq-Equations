@@ -25,6 +25,8 @@ Require Import NPeano.
 Require Import Nat.
 Require Import Coq.Vectors.VectorDef.
 
+Set Keyed Unification.
+
 Notation vector := Vector.t.
 Arguments nil {A}.
 Arguments cons {A} _ {n}.

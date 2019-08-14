@@ -12,6 +12,8 @@ Require Import Omega Utf8 Lia Arith.
 
 Require Import List.
 
+Set Keyed Unification.
+
 Equations map_In {A B : Type}
      (l : list A) (f : forall (x : A), In x l -> B) : list B :=
   map_In nil _ := nil;

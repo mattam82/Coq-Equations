@@ -2,6 +2,7 @@ Require Import Program Equations.Equations.
 Import Sigma_Notations.
 Local Open Scope equations_scope.
 Set Equations Transparent.
+Set Keyed Unification.
 
 Inductive fin : nat -> Set :=
 | fz : forall {n}, fin (S n)

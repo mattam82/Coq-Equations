@@ -6,9 +6,10 @@ Require Import Setoid RelationClasses Morphisms.
 Require Import Lia.
 Require Import Bool.
 Require Import List Arith String.
-Set Equations Transparent.
 From Coq Require Import FunctionalExtensionality.
 
+Set Equations Transparent.
+Set Keyed Unification.
 Set Asymmetric Patterns.
 
 Section Equality.

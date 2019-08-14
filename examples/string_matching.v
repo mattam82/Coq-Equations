@@ -11,6 +11,8 @@ Require Import Equations.
 
 Import ListNotations.
 
+Set Keyed Unification.
+
 Class Associative {T: Type} (op: T -> T -> T) :=
   {
     associativity: forall x y z, op x (op y z) = op (op x y) z;
