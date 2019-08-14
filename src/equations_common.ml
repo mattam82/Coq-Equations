@@ -253,7 +253,7 @@ let declare_instance id ~poly evm ctx cl args =
   let term = it_mkLambda_or_LetIn (Option.get c) ctx in
   let typ = EConstr.it_mkProd_or_LetIn t ctx in
   let cst, ecst = declare_constant id term (Some typ) ~poly evm ~kind:Decls.(IsDefinition Instance) in
-  let inst = Classes.mk_instance (fst cl) Hints.empty_hint_info true (Globnames.ConstRef cst) in
+  let inst = Classes.mk_instance (fst cl) Hints.empty_hint_info true (GlobRef.ConstRef cst) in
     Classes.add_instance inst; cst, ecst
 
 let coq_zero = (find_global "nat.zero")

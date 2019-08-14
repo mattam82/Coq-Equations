@@ -18,7 +18,6 @@ open Entries
 open Vars
 open EConstr
 open Vars
-open Globnames
 
 open Equations_common
 open Sigma_types
@@ -116,7 +115,7 @@ let derive_subterm env sigma ~poly (ind, u as indu) =
   in
   let branches = (* trans_branch ::  *)branches in
   let declare_one_ind i ind branches =
-    let indid = Nametab.basename_of_global (Globnames.IndRef (fst ind)) in
+    let indid = Nametab.basename_of_global (Names.GlobRef.IndRef (fst ind)) in
     let subtermid = add_suffix indid "_direct_subterm" in
     let constructors = List.map (fun (i, j, constr) -> EConstr.to_constr sigma constr) branches in
     let consnames = List.map (fun (i, j, _) ->
@@ -162,13 +161,13 @@ let derive_subterm env sigma ~poly (ind, u as indu) =
     let constrhints =
       List.map_i (fun i entry ->
         List.map_i (fun j _ -> empty_hint_info, poly, true, Hints.PathAny,
-          Hints.IsGlobRef (ConstructRef ((k,i),j))) 1 entry.mind_entry_lc)
+          Hints.IsGlobRef (GlobRef.ConstructRef ((k,i),j))) 1 entry.mind_entry_lc)
         0 inds
     in
     let () = Hints.add_hints ~local:false [subterm_relation_base]
                              (Hints.HintsResolveEntry (List.concat constrhints)) in
     (* Proof of Well-foundedness *)
-    let relid = add_suffix (Nametab.basename_of_global (IndRef ind))
+    let relid = add_suffix (Nametab.basename_of_global (GlobRef.IndRef ind))
                            "_subterm" in
     let id = add_prefix "well_founded_" relid in
     (* Catch the new signature universe *)
@@ -235,9 +234,9 @@ let derive_subterm env sigma ~poly (ind, u as indu) =
     let ty = it_mkProd_or_LetIn ty parambinders in
     let body = it_mkLambda_or_LetIn (Option.get body) parambinders in
     let hook { DeclareDef.Hook.S.dref; _ } =
-      let cst = match dref with ConstRef kn -> kn | _ -> assert false in
+      let cst = match dref with GlobRef.ConstRef kn -> kn | _ -> assert false in
       let inst = Classes.mk_instance (fst kl) empty_hint_info
-                                          global (ConstRef cst) in
+                                          global (GlobRef.ConstRef cst) in
       Classes.add_instance inst
     in
     let _bodyty = e_type_of (Global.env ()) evm body in
@@ -361,7 +360,7 @@ let derive_below env sigma ~poly (ind,univ as indu) =
   let fixB = mkFix (([| realargs |], 0), ([| nameR recid |], [| arity |],
 				     [| subst_vars [recid; pid] termB |])) in
   let bodyB = it_mkLambda_or_LetIn fixB (pdecl :: parambinders) in
-  let id = add_prefix "Below_" (Nametab.basename_of_global (IndRef ind)) in
+  let id = add_prefix "Below_" (Nametab.basename_of_global (GlobRef.IndRef ind)) in
   let _, (evd, belowB) = declare_constant id bodyB None ~poly !evd
       ~kind:Decls.(IsDefinition Definition) in
   let fixb = mkFix (([| realargs |], 0), ([| nameR recid |], [| arityb |],
@@ -377,7 +376,7 @@ let derive_below env sigma ~poly (ind,univ as indu) =
       (pdecl :: parambinders)
   in
   let bodyb = replace_vars [belowid, belowB] bodyb in
-  let id = add_prefix "below_" (Nametab.basename_of_global (IndRef ind)) in
+  let id = add_prefix "below_" (Nametab.basename_of_global (GlobRef.IndRef ind)) in
   let evd = if poly then evd else Evd.from_env (Global.env ()) in
     ignore(declare_constant id bodyb None ~poly evd
 	     ~kind:Decls.(IsDefinition Definition))

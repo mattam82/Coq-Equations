@@ -1149,7 +1149,7 @@ let computations env evd alias refine p eqninfo =
   in program_computations env prob f alias [] refine p
 
 let constr_of_global_univ gr u =
-  let open Globnames in
+  let open Names.GlobRef in
   match gr with
   | ConstRef c -> mkConstU (c, u)
   | IndRef i -> mkIndU (i, u)
@@ -1622,7 +1622,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
       List.iteri (fun i ind ->
         let constrs =
           CList.map_i (fun j _ -> Hints.empty_hint_info, poly, true, Hints.PathAny,
-            Hints.IsGlobRef (Globnames.ConstructRef ((kn,i),j))) 1 ind.Entries.mind_entry_lc in
+            Hints.IsGlobRef (GlobRef.ConstructRef ((kn,i),j))) 1 ind.Entries.mind_entry_lc in
           Hints.add_hints ~local:false [info.base_id] (Hints.HintsResolveEntry constrs))
         inds
     in
@@ -1652,7 +1652,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
               (* Hints.add_hints ~local:false [info.base_id]  *)
               (*                 (Hints.HintsExternEntry *)
               (*                  (Vernacexpr.{hint_priority = Some 0; hint_pattern = None}, *)
-              (*                   impossible_call_tac (Globnames.ConstRef cst))) *));
+              (*                   impossible_call_tac (GlobRef.ConstRef cst))) *));
         eqns.(pred i) <- true;
         if CArray.for_all (fun x -> x) eqns then (
           (* From now on, we don't need the reduction behavior of the constant anymore *)
@@ -1669,7 +1669,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
         tclTHENLIST
           [Tactics.intros;
            unf;
-           (solve_equation_tac (Globnames.ConstRef cst));
+           (solve_equation_tac (GlobRef.ConstRef cst));
            (if PathMap.is_empty wheremap then Tacticals.New.tclIDTAC
             else tclTRY (of82 (autorewrites (info.base_id ^ "_where"))));
            Tactics.reflexivity]

@@ -39,7 +39,7 @@ type ind_info = {
    
 let find_helper_info info f =
   try List.find (fun (cst, arg') ->
-         GlobRef.equal (ConstRef cst) (global_of_constr f))
+         GlobRef.equal (GlobRef.ConstRef cst) (global_of_constr f))
 	info.helpers_info
   with Not_found -> anomaly (str"Helper not found while proving induction lemma.")
 
@@ -896,7 +896,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
        (try
           let f_cst, funf_cst =
             List.find (fun (f_cst, funf_cst) ->
-                is_global sigma (ConstRef f_cst) xf && is_global sigma (ConstRef funf_cst) yf) subst
+                is_global sigma (GlobRef.ConstRef f_cst) xf && is_global sigma (GlobRef.ConstRef funf_cst) yf) subst
           in
           let unfolds = unfold_in_concl
 	      [((Locus.OnlyOccurrences [1]), EvalConstRef f_cst); 

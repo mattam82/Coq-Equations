@@ -11,7 +11,6 @@ open Ppconstr
 open Util
 open Names
 open Constr
-open Globnames
 open Pp
 open Glob_term
 open List
@@ -253,10 +252,10 @@ let free_vars_of_constr_expr fid c =
       else
         (try
            match Nametab.locate_extended (Libnames.qualid_of_ident id) with
-           | TrueGlobal gr ->
-             if not (isConstructRef gr) then Id.Set.add id l
+           | Globnames.TrueGlobal gr ->
+             if not (Globnames.isConstructRef gr) then Id.Set.add id l
              else l
-           | SynDef _ -> l
+           | Globnames.SynDef _ -> l
          with Not_found -> Id.Set.add id l)
     | { CAst.v = CNotation ((InConstrEntrySomeLevel, "?( _ )"), _) } -> l
     | c -> fold_constr_expr_with_binders (fun a l -> a::l) aux bdvars l c
@@ -302,7 +301,7 @@ let _chole c loc =
   let kn = Lib.make_kn c in
   let cst = Names.Constant.make kn kn in
   CAst.make ~loc
-  (CHole (Some (ImplicitArg (ConstRef cst, (0,None), false)), Namegen.IntroAnonymous,None)), None
+  (CHole (Some (ImplicitArg (GlobRef.ConstRef cst, (0,None), false)), Namegen.IntroAnonymous,None)), None
 
 let _check_linearity env opats =
   let rec aux ids pats = 
@@ -335,7 +334,7 @@ let pattern_of_glob_constr env avoid patname gc =
         else
           user_err_loc (loc, "pattern_of_glob_constr", str "Constructor is applied to too many arguments");
     in
-    Dumpglob.add_glob ?loc (ConstructRef c);
+    Dumpglob.add_glob ?loc (GlobRef.ConstructRef c);
     PUCstr (c, nparams, List.map (DAst.map_with_loc aux) l)
   and aux ?loc = function
     | GVar id -> PUVar (id, false)
@@ -347,12 +346,12 @@ let pattern_of_glob_constr env avoid patname gc =
       in
       let n = next_ident_away id avoid in
       PUVar (n, true)
-    | GRef (ConstructRef cstr,_) -> constructor ?loc cstr []
-    | GRef (ConstRef _ as c, _) when GlobRef.equal c (Lazy.force coq_bang) -> PUEmpty
+    | GRef (GlobRef.ConstructRef cstr,_) -> constructor ?loc cstr []
+    | GRef (GlobRef.ConstRef _ as c, _) when GlobRef.equal c (Lazy.force coq_bang) -> PUEmpty
     | GApp (c, l) ->
       begin match DAst.get c with
-        | GRef (ConstructRef cstr,_) -> constructor ?loc cstr l
-        | GRef (ConstRef _ as c, _) when GlobRef.equal c (Lazy.force coq_inacc) ->
+        | GRef (GlobRef.ConstructRef cstr,_) -> constructor ?loc cstr l
+        | GRef (GlobRef.ConstRef _ as c, _) when GlobRef.equal c (Lazy.force coq_inacc) ->
           let inacc = List.hd (List.tl l) in
           PUInac inacc
         | _ -> user_err_loc (loc, "pattern_of_glob_constr", str "Cannot interpret " ++ pr_glob_constr_env env c ++ str " as a constructor")

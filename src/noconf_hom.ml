@@ -12,7 +12,6 @@ open Nameops
 open Constr
 open Context
 open Declarations
-open Globnames
 open Vars
 open Equations_common
 open EConstr
@@ -69,7 +68,7 @@ let derive_noConfusion_package env sigma0 ~poly (ind,u as indu) indid ~prefix ~t
   and packid = add_prefix "NoConfusion" (add_prefix prefix (add_prefix "Package_" indid)) in
   let tc = Typeclasses.class_info env sigma0 (Lazy.force coq_noconfusion_class) in
   let sigma = Evd.from_env env in
-  let sigma, noconf = Evd.fresh_global ~rigid:Evd.univ_rigid env sigma (ConstRef cstNoConf) in
+  let sigma, noconf = Evd.fresh_global ~rigid:Evd.univ_rigid env sigma (GlobRef.ConstRef cstNoConf) in
   let sigma, noconfcl = new_global sigma tc.Typeclasses.cl_impl in
   let inst, u = destInd sigma noconfcl in
   let noconfterm = mkApp (noconf, argsvect) in
@@ -216,7 +215,7 @@ let derive_no_confusion_hom env sigma0 ~poly (ind,u as indu) =
     (None, lhs, Some rhs)
   in
   let clauses = clauses @ [catch_all] in
-  let indid = Nametab.basename_of_global (IndRef ind) in
+  let indid = Nametab.basename_of_global (GlobRef.IndRef ind) in
   let id = add_prefix "NoConfusionHom_" indid in
   let program_orig_type = it_mkProd_or_LetIn s fullbinders in
   let program_sort = Retyping.get_sort_of env sigma program_orig_type in
@@ -258,7 +257,7 @@ let derive_no_confusion_hom env sigma0 ~poly (ind,u as indu) =
      *            program_impls = [];
      *            program_implicits = []}
      * in *)
-    let program_cst = match terminfo.Splitting.term_id with ConstRef c -> c | _ -> assert false in
+    let program_cst = match terminfo.Splitting.term_id with GlobRef.ConstRef c -> c | _ -> assert false in
     (* let _compiled_info = Splitting.{ program_cst; program_split = p.program_splitting;
      *                                 program_split_info = terminfo } in
      * let _flags = { polymorphic; open_proof = false; with_eqns = true; with_ind = true } in
@@ -270,7 +269,7 @@ let derive_no_confusion_hom env sigma0 ~poly (ind,u as indu) =
     let sigma = Evd.from_env env in
     let sigma, indu = Evd.fresh_global
         ~rigid:Evd.univ_rigid (* Universe levels of the inductive family should not be tampered with. *)
-        env sigma (IndRef ind) in
+        env sigma (GlobRef.IndRef ind) in
     let indu = destInd sigma indu in
     derive_noConfusion_package (Global.env ()) sigma ~poly indu indid
       ~prefix:"Hom" ~tactic:(noconf_hom_tac ()) program_cst

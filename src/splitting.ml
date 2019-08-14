@@ -12,7 +12,6 @@ open Nameops
 open Constr
 open Context
 open Inductiveops
-open Globnames
 open Reductionops
 open Pp
 open List
@@ -652,7 +651,7 @@ let define_mutual_nested_csts flags env evd get_prog progs =
             !evd ~kind:Decls.(IsDefinition Fixpoint)
         in
         evd := evm;
-        Impargs.declare_manual_implicits false (ConstRef kn) p.program_impls;
+        Impargs.declare_manual_implicits false (GlobRef.ConstRef kn) p.program_impls;
         (p, prog, term)) mutual
   in
   let args = List.rev_map (fun (p', _, term) -> term) mutual in
@@ -664,7 +663,7 @@ let define_mutual_nested_csts flags env evd get_prog progs =
           declare_constant p.program_id body (Some ty) ~poly:flags.polymorphic
             !evd ~kind:Decls.(IsDefinition Fixpoint) in
         evd := evm;
-        Impargs.declare_manual_implicits false (ConstRef kn) p.program_impls;
+        Impargs.declare_manual_implicits false (GlobRef.ConstRef kn) p.program_impls;
         (p, prog, e)) nested in
   mutual, nested
 
@@ -740,7 +739,7 @@ let make_programs env evd flags ?(define_constants=false) programs =
            ~poly:flags.polymorphic !evd ~kind:Decls.(IsDefinition Definition)
        in
        evd := evm;
-       let () = Impargs.declare_manual_implicits false (ConstRef cst) p.program_impls in
+       let () = Impargs.declare_manual_implicits false (GlobRef.ConstRef cst) p.program_impls in
        let () = Declare.definition_message p.program_id in
        e
      else term
@@ -989,7 +988,7 @@ let is_comp_obl sigma comp hole_kind =
   | None -> false
   | Some r ->
       match hole_kind, r with
-      | ImplicitArg (ConstRef c, (n, _), _), (loc, id) ->
+      | ImplicitArg (GlobRef.ConstRef c, (n, _), _), (loc, id) ->
         is_rec_call sigma (snd r) (mkConst c)
       | _ -> false
 
@@ -1202,14 +1201,14 @@ let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false)
     let hook recobls helpers ustate kind programs =
       let p = List.hd programs in
       let cst, _ = (destConst !evd p.program_term) in
-      call_hook recobls p helpers ustate (DeclareDef.Global Declare.ImportDefaultBehavior) (ConstRef cst) f
+      call_hook recobls p helpers ustate (DeclareDef.Global Declare.ImportDefaultBehavior) (GlobRef.ConstRef cst) f
     in
     all_hook hook [] !evd, None
   | HookLater f ->
     let hook recobls helpers ustate kind programs =
       List.iteri (fun i p ->
           let cst, _ = (destConst !evd p.program_term) in
-          call_hook recobls p helpers ustate (DeclareDef.Global Declare.ImportDefaultBehavior) (ConstRef cst) (f i)) programs
+          call_hook recobls p helpers ustate (DeclareDef.Global Declare.ImportDefaultBehavior) (GlobRef.ConstRef cst) (f i)) programs
     in
     if Evd.has_undefined !evd then
       if flags.open_proof then

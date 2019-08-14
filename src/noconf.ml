@@ -13,7 +13,6 @@ open Constr
 open Context
 open Declarations
 open Inductiveops
-open Globnames
 open Reductionops
 open Vars
 open Equations_common
@@ -138,14 +137,14 @@ let derive_no_confusion env sigma0 ~poly (ind,u as indu) =
   in
   let app = it_mkLambda_or_LetIn pred binders in
   let _, ce = make_definition ~poly !evd ~types:arity app in
-  let indid = Nametab.basename_of_global (IndRef ind) in
+  let indid = Nametab.basename_of_global (GlobRef.IndRef ind) in
   let id = add_prefix "NoConfusion_" indid in
   let cstNoConf = Declare.declare_constant ~name:id (Declare.DefinitionEntry ce) ~kind:Decls.(IsDefinition Definition) in
   let env = Global.env () in
   let sigma = Evd.from_env env in
   let sigma, indu = Evd.fresh_global
       ~rigid:Evd.univ_rigid (* Universe levels of the inductive family should not be tampered with. *)
-      env sigma (IndRef ind) in
+      env sigma (GlobRef.IndRef ind) in
   let indu = destInd sigma indu in
   Noconf_hom.derive_noConfusion_package env sigma ~poly indu indid
     ~prefix:"" ~tactic:(noconf_tac ()) cstNoConf

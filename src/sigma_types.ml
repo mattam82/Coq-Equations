@@ -207,7 +207,7 @@ let sigmaize ?(liftty=0) env0 evd pars f =
     (argtyp, pred, pars, indices,
      indexproj, valproj, valsig, tysig)
 
-let ind_name ind = Nametab.basename_of_global (Globnames.IndRef ind)
+let ind_name ind = Nametab.basename_of_global (GlobRef.IndRef ind)
 
 
 let signature_class evd =

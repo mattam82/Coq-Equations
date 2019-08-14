@@ -13,7 +13,6 @@ open Constr
 open Context
 open Termops
 open Environ
-open Globnames
 open Libnames
 open Vars
 open Tactics
@@ -31,7 +30,7 @@ open EConstr
 open Extraction_plugin
                 
 let inline_helpers i = 
-  let l = List.map (fun (cst, _) -> Nametab.shortest_qualid_of_global Id.Set.empty (ConstRef cst)) i.helpers_info in
+  let l = List.map (fun (cst, _) -> Nametab.shortest_qualid_of_global Id.Set.empty (GlobRef.ConstRef cst)) i.helpers_info in
   Table.extraction_inline true l
 
 let define_unfolding_eq env evd flags p unfp prog prog' ei hook =
@@ -41,7 +40,7 @@ let define_unfolding_eq env evd flags p unfp prog prog' ei hook =
                  helpers_info = prog.program_split_info.helpers_info @ info'.helpers_info;
                  user_obls = Id.Set.union prog.program_split_info.user_obls info'.user_obls } in
   let () = inline_helpers info in
-  let funf_cst = match info'.term_id with ConstRef c -> c | _ -> assert false in
+  let funf_cst = match info'.term_id with GlobRef.ConstRef c -> c | _ -> assert false in
   let () = if flags.polymorphic then evd := Evd.from_ctx info'.term_ustate in
   let funfc = e_new_global evd info'.term_id in
   let unfold_eq_id = add_suffix (program_id unfp) "_eq" in
@@ -54,7 +53,7 @@ let define_unfolding_eq env evd flags p unfp prog prog' ei hook =
           with Not_found -> anomaly Pp.(str "Could not find where clause unfolding lemma "
                                         ++ Names.Id.print id)
         in
-        let grc = UnivGen.fresh_global_instance (Global.env()) (ConstRef gr) in
+        let grc = UnivGen.fresh_global_instance (Global.env()) (GlobRef.ConstRef gr) in
         Autorewrite.add_rew_rules (info.base_id ^ "_where") [CAst.make (grc, true, None)];
         Autorewrite.add_rew_rules (info.base_id ^ "_where_rev") [CAst.make (grc, false, None)]
       in
@@ -153,7 +152,7 @@ let define_by_eqs ~poly ~program_mode ~open_proof opts eqs nt =
   let intenv = { rec_type; flags; fixdecls; intenv = data; notations = nt; program_mode } in
   let programs = coverings env evd intenv programs (List.map snd eqs) in
   let env = Global.env () in (* coverings has the side effect of defining comp_proj constants for now *)
-  let fix_proto_ref = destConstRef (Lazy.force coq_fix_proto) in
+  let fix_proto_ref = Globnames.destConstRef (Lazy.force coq_fix_proto) in
   (* let _kind = (Decl_kinds.Global Decl_kinds.ImportDefaultBehavior, poly, Decl_kinds.Definition) in *)
   let baseid =
     let p = List.hd programs in Id.to_string p.program_info.program_id in
@@ -165,7 +164,7 @@ let define_by_eqs ~poly ~program_mode ~open_proof opts eqs nt =
   let progs = Array.make (List.length eqs) None in
   let hook i p info =
     let () = inline_helpers info in
-    let f_cst = match info.term_id with ConstRef c -> c | _ -> assert false in
+    let f_cst = match info.term_id with GlobRef.ConstRef c -> c | _ -> assert false in
     let () = evd := Evd.from_ctx info.term_ustate in
     let compiled_info = { program_cst = f_cst;
                           program_split_info = info } in

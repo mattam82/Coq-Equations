@@ -141,22 +141,22 @@ end
 
 module BuilderHelper = struct
   let gen_from_inductive ind = fun evd ->
-    let glob = Globnames.IndRef (Lazy.force ind) in
+    let glob = Names.GlobRef.IndRef (Lazy.force ind) in
     Equations_common.e_new_global evd glob
   let gen_from_inductive_univ ind u =
-    let glob = Globnames.IndRef (Lazy.force ind) in
+    let glob = Names.GlobRef.IndRef (Lazy.force ind) in
     EConstr.mkRef (glob, u)
   let gen_from_constant cst = fun evd ->
-    let glob = Globnames.ConstRef (Lazy.force cst) in
+    let glob = Names.GlobRef.ConstRef (Lazy.force cst) in
     Equations_common.e_new_global evd glob
   let gen_from_constant_univ cst u =
-    let glob = Globnames.ConstRef (Lazy.force cst) in
+    let glob = Names.GlobRef.ConstRef (Lazy.force cst) in
     EConstr.mkRef (glob, u)
   let gen_from_constructor constr = fun evd ->
-    let glob = Globnames.ConstructRef (Lazy.force constr) in
+    let glob = Names.GlobRef.ConstructRef (Lazy.force constr) in
     Equations_common.e_new_global evd glob
   let gen_from_constructor_univ constr = fun u ->
-    let glob = Globnames.ConstructRef (Lazy.force constr) in
+    let glob = Names.GlobRef.ConstructRef (Lazy.force constr) in
     EConstr.mkRef (glob, u)
 end
 
@@ -252,18 +252,18 @@ let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty
       evd := sigma; tf, ty
     | None ->
       match f with
-      | Globnames.VarRef var -> assert false
-      | Globnames.ConstRef cst ->
+      | Names.GlobRef.VarRef var -> assert false
+      | Names.GlobRef.ConstRef cst ->
         let pcst = Equations_common.evd_comb1 (Evd.fresh_constant_instance env) evd cst in
         let tf = Constr.mkConstU pcst in
         let ty = Typeops.type_of_constant_in env pcst in
         of_constr tf, of_constr ty
-      | Globnames.IndRef ind ->
+      | Names.GlobRef.IndRef ind ->
         let pind = Equations_common.evd_comb1 (Evd.fresh_inductive_instance env) evd ind in
         let tf = Constr.mkIndU pind in
         let ty = Inductiveops.type_of_inductive env pind in
         of_constr tf, of_constr ty
-      | Globnames.ConstructRef cstr ->
+      | Names.GlobRef.ConstructRef cstr ->
         let pcstr = Equations_common.evd_comb1 (Evd.fresh_constructor_instance env) evd cstr in
         let tf = Constr.mkConstructU pcstr in
         let ty = Inductiveops.type_of_constructor env pcstr in
@@ -367,13 +367,13 @@ let while_fun (f : simplification_fun) : simplification_fun =
 
 (* Check if a type is a given inductive. *)
 let check_inductive sigma (ind : Names.inductive) : EConstr.types -> bool =
-  Equations_common.is_global sigma (Globnames.IndRef ind)
+  Equations_common.is_global sigma (Names.GlobRef.IndRef ind)
 (* Check if a term is a given constructor. *)
 let check_construct sigma (constr : Names.constructor) : EConstr.constr -> bool =
-  Equations_common.is_global sigma (Globnames.ConstructRef constr)
+  Equations_common.is_global sigma (Names.GlobRef.ConstructRef constr)
 (* Check if a term is a given constant. *)
 let check_constant sigma (cst : Names.Constant.t) : EConstr.constr -> bool =
-  Equations_common.is_global sigma (Globnames.ConstRef cst)
+  Equations_common.is_global sigma (Names.GlobRef.ConstRef cst)
 
 (* Deconstruct the goal if it's a product. Otherwise, raise CannotSimplify. *)
 let check_prod sigma (ty : EConstr.types) : Names.Name.t binder_annot * EConstr.types * EConstr.types =
@@ -476,7 +476,7 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
             let name', _, tBbody = destLambda !evd tB in
             if Vars.noccurn !evd 1 tBbody then
               (* No dependency whatsoever. *)
-              let tsimpl_sigma = Globnames.ConstRef (Lazy.force EqRefs.simpl_sigma) in
+              let tsimpl_sigma = Names.GlobRef.ConstRef (Lazy.force EqRefs.simpl_sigma) in
               let tP = Termops.pop tBbody in
               let tB = Termops.pop ty2 in
               let args = [Some tA; Some tP; Some tB; Some tt; Some tu;
@@ -488,7 +488,7 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
             if only_nondep then raise (CannotSimplify (str"Cannot simplify dependent pair"))
             else
               (* Dependency in the pair, but not in the goal. *)
-              let tsimpl_sigma = Globnames.ConstRef (Lazy.force EqRefs.simpl_sigma_dep) in
+              let tsimpl_sigma = Names.GlobRef.ConstRef (Lazy.force EqRefs.simpl_sigma_dep) in
               let tP = tB in
               let tB = Termops.pop ty2 in
               let args = [Some tA; Some tP; Some tB; Some tt; Some tu;
@@ -499,7 +499,7 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
             let name', _, tBbody = destLambda !evd tB in
             if Vars.noccurn !evd 1 tBbody then
               (* Dependency in the goal, but not in the pair. *)
-              let tsimpl_sigma = Globnames.ConstRef (Lazy.force EqRefs.simpl_sigma_nondep_dep) in
+              let tsimpl_sigma = Names.GlobRef.ConstRef (Lazy.force EqRefs.simpl_sigma_nondep_dep) in
               let tP = Termops.pop tBbody in
               let tB = EConstr.mkLambda (name, ty1, ty2) in
               let args = [Some tA; Some tP; Some tt; Some tu;
@@ -511,7 +511,7 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
             (* Full dependency *)
             if only_nondep then raise (CannotSimplify (str"Cannot simplify dependent pair"))
             else
-              let tsimpl_sigma = Globnames.ConstRef (Lazy.force EqRefs.simpl_sigma_dep_dep) in
+              let tsimpl_sigma = Names.GlobRef.ConstRef (Lazy.force EqRefs.simpl_sigma_dep_dep) in
               let tP = tB in
               let tB = EConstr.mkLambda (name, ty1, ty2) in
               let args = [Some tA; Some tP; Some tt; Some tu;
@@ -540,7 +540,7 @@ let deletion ~(force:bool) : simplification_fun =
     try
       if not !Equations_common.simplify_withUIP then raise Not_found else
         (* We will try to find an instance of UIP for the type [A]. *)
-        let tsimpl_uip = Globnames.ConstRef (Lazy.force EqRefs.simpl_uip) in
+        let tsimpl_uip = Names.GlobRef.ConstRef (Lazy.force EqRefs.simpl_uip) in
         let uip_ty = EConstr.mkApp (Builder.uip evd, [| tA |]) in
         let tuip =
           let env = push_rel_context ctx env in
@@ -755,7 +755,7 @@ let maybe_pack : simplification_fun =
       let _, _, _, tx, _ = Option.get (decompose_sigma !evd valsig) in
         Vars.substl (CList.rev args) (Termops.pop tx)
     in
-    let tsimplify_ind_pack = Globnames.ConstRef (Lazy.force EqRefs.simplify_ind_pack) in
+    let tsimplify_ind_pack = Names.GlobRef.ConstRef (Lazy.force EqRefs.simplify_ind_pack) in
     let tB = Reductionops.beta_applist !evd (tBfull, params) in
     (* FIXME Inserted this to simplify tB when it has the shape:
                {index & let H := index in foo H}
@@ -784,7 +784,7 @@ let apply_noconf : simplification_fun =
         "[noConfusion] Cannot find an instance of NoConfusion for type " ++
         Printer.pr_econstr_env env !evd tA))
   in
-  let tapply_noconf = Globnames.ConstRef (Lazy.force EqRefs.apply_noConfusion) in
+  let tapply_noconf = Names.GlobRef.ConstRef (Lazy.force EqRefs.apply_noConfusion) in
   let tB = EConstr.mkLambda (name, ty1, ty2) in
   let args = [Some tA; Some tnoconf; Some t1; Some t2; Some tB; None] in
   let inst, glu' =
@@ -830,7 +830,7 @@ let simplify_ind_pack_inv : simplification_fun =
     if not (EConstr.is_global !evd (Names.GlobRef.ConstructRef (Lazy.force EqRefs.eq_refl)) head) then
       raise (CannotSimplify (str
         "[opaque_ind_pack_eq_inv] Anomaly: should be applied to a reflexivity proof."));
-    let tsimplify_ind_pack_inv = Globnames.ConstRef (Lazy.force EqRefs.simplify_ind_pack_inv) in
+    let tsimplify_ind_pack_inv = Names.GlobRef.ConstRef (Lazy.force EqRefs.simplify_ind_pack_inv) in
     let args = [Some tA; Some teqdec; Some tB; Some tx; Some tp; Some tG; None] in
       build_app_infer env evd (ctx, ty, glu) ctx tsimplify_ind_pack_inv args,
       Context_map.id_subst ctx
@@ -859,8 +859,8 @@ let noCycle : simplification_fun =
   in
   let tapply_nocycle =
     if isct1 then
-      Globnames.ConstRef (Lazy.force EqRefs.apply_noCycle_right)
-    else Globnames.ConstRef (Lazy.force EqRefs.apply_noCycle_left)
+      Names.GlobRef.ConstRef (Lazy.force EqRefs.apply_noCycle_right)
+    else Names.GlobRef.ConstRef (Lazy.force EqRefs.apply_noCycle_left)
   in
   let tB = EConstr.mkLambda (name, ty1, ty2) in
   let args = [Some tA; Some tnocycle; Some t1; Some t2; Some tB; None] in
@@ -897,7 +897,7 @@ let elim_true : simplification_fun =
   else
     (* Apply the dependent induction principle for True. *)
     let tB = EConstr.mkLambda (name, ty1, ty2) in
-    let tone_ind = Globnames.ConstRef (Lazy.force EqRefs.one_ind_dep) in
+    let tone_ind = Names.GlobRef.ConstRef (Lazy.force EqRefs.one_ind_dep) in
     let inst, glu' =
       (* If the equality is not polymorphic, the lemmas will be monomorphic as well *)
       if not (Global.is_polymorphic tone_ind) then EConstr.EInstance.empty, glu
@@ -918,11 +918,11 @@ let elim_false : simplification_fun =
   (* Check if the goal is dependent or not. *)
     if Vars.noccurn !evd 1 ty2 then
       let tB = Termops.pop ty2 in
-      let tzero_ind = Globnames.ConstRef (Lazy.force EqRefs.zero_ind) in
+      let tzero_ind = Names.GlobRef.ConstRef (Lazy.force EqRefs.zero_ind) in
         tB, tzero_ind
     else
       let tB = EConstr.mkLambda (name, ty1, ty2) in
-      let tzero_ind = Globnames.ConstRef (Lazy.force EqRefs.zero_ind_dep) in
+      let tzero_ind = Names.GlobRef.ConstRef (Lazy.force EqRefs.zero_ind_dep) in
         tB, tzero_ind
   in
   let inst, glu' =

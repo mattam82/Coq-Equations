@@ -57,7 +57,7 @@ let inductive_info sigma ((mind, _ as ind),u) =
     let args, _ = List.chop ind.mind_nrealargs ctx in
     let args' = subst_rel_context 0 subst (erel_context args) in
     let induct = ((mind, i),u) in
-    let indname = Nametab.basename_of_global (Globnames.IndRef (mind,i)) in
+    let indname = Nametab.basename_of_global (GlobRef.IndRef (mind,i)) in
     let indapp = applist (mkIndU induct, paramargs) in
     let arities = arities_of_constructors env (from_peuniverses sigma induct) in
      let constrs =
@@ -145,7 +145,7 @@ let derive_eq_dec env sigma ~poly ind =
         let entry = Declare.DefinitionEntry ce in
 	let inst = Declare.declare_constant ~name:(add_suffix ind.ind_name "_EqDec") ~kind entry in
         let inst =
-          Classes.mk_instance (fst cl) Hints.empty_hint_info true (Globnames.ConstRef inst)
+          Classes.mk_instance (fst cl) Hints.empty_hint_info true (GlobRef.ConstRef inst)
 	in Classes.add_instance inst)
     indsl
   in

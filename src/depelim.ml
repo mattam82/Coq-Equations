@@ -20,7 +20,6 @@ open Inductiveops
 open Reductionops
 open Pp
 
-open Globnames
 open Evarutil
 open Tacmach
 open Namegen
@@ -121,7 +120,7 @@ let dependent_pattern ?(pattern_term=true) c gl =
     Proofview.V82.of_tactic (convert_concl ~check:false conclapp DEFAULTcast) gl
 
 let depcase ~poly (mind, i as ind) =
-  let indid = Nametab.basename_of_global (IndRef ind) in
+  let indid = Nametab.basename_of_global (GlobRef.IndRef ind) in
   let mindb, oneind = Global.lookup_inductive ind in
   let inds = List.rev (Array.to_list (Array.mapi (fun i oib -> mkInd (mind, i)) mindb.mind_packets)) in
   let ctx = oneind.mind_arity_ctxt in
@@ -186,7 +185,7 @@ let depcase ~poly (mind, i as ind) =
   let ce = Declare.definition_entry ~univs (EConstr.to_constr !evd body) in
   let kn =
     let id = add_suffix indid "_dep_elim" in
-      ConstRef (Declare.declare_constant ~name:id
+      GlobRef.ConstRef (Declare.declare_constant ~name:id
                   (Declare.DefinitionEntry ce) ~kind:Decls.(IsDefinition Scheme))
   in
   let env = (Global.env ()) in (* Refresh after declare constant *)
@@ -194,7 +193,7 @@ let depcase ~poly (mind, i as ind) =
 
 let derive_dep_elimination env sigma ~poly (i,u) =
   let env, evd, ctx, ty, gref = depcase ~poly i in
-  let indid = Nametab.basename_of_global (IndRef i) in
+  let indid = Nametab.basename_of_global (GlobRef.IndRef i) in
   let id = add_prefix "DependentElimination_" indid in
   let evdref = ref evd in
   let cl = dependent_elimination_class evdref in
@@ -240,6 +239,7 @@ let pattern_call ?(pattern_term=true) c gl =
     Proofview.V82.of_tactic (convert_concl ~check:false conclapp DEFAULTcast) gl
 
 let destPolyRef sigma c =
+  let open GlobRef in
   match kind sigma c with
   | Ind (ind, u) -> IndRef ind, u
   | Const (c, u) -> ConstRef c, u
