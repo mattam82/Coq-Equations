@@ -3,6 +3,7 @@
 Require Import Arith List.
 Require Import Program Equations.Equations.
 Set Implicit Arguments.
+Set Keyed Unification.
 
 Section ilist.
   Variable A : Set.

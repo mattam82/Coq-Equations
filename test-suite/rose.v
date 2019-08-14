@@ -6,6 +6,7 @@
 From Equations Require Import Equations.
 Require Import Lia Utf8 List.
 Import ListNotations.
+Set Keyed Unification.
 
 Section list_size.
   Context {A : Type} (f : A -> nat).

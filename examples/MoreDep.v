@@ -7,6 +7,8 @@ Require Import Bool Arith List Program.
 From Equations Require Import Equations.
 Set Equations Transparent.
 
+Set Keyed Unification.
+
 Set Implicit Arguments.
 
 Section ilist.
