@@ -6,9 +6,9 @@ Require Import Arith Omega.
 From Equations Require Import Equations.
 Require Import Coq.Bool.Bool.
 
+Set Keyed Unification.
 Set Implicit Arguments.
 Set Asymmetric Patterns.
-
 
 Inductive type : Set :=
 | Nat : type
