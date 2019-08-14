@@ -1,6 +1,7 @@
 From Equations Require Import Equations.
 Require Import Relations.
 Require Import Omega.
+Set Keyed Unification.
 
 Ltac subst_lets :=
   repeat match goal with

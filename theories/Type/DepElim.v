@@ -23,8 +23,7 @@ Import Sigma_Notations.
 Import Id_Notations.
 Local Open Scope equations_scope.
 
-(** FIXME should not polute users *)
-Global Set Keyed Unification.
+Local Set Keyed Unification.
 
 (** Support for the [Equations] command.
    These tactics implement the necessary machinery to solve goals produced by the

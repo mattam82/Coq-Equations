@@ -21,6 +21,8 @@ Require Import List Utf8.
 
 Import ListNotations.
 
+Set Keyed Unification.
+
 Derive Signature for le CompareSpec.
 
 Inductive term := 

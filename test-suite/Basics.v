@@ -9,6 +9,7 @@
 Require Import Program Bvector List Relations.
 Require Import Equations.Equations.
 Require Import Utf8.
+Set Keyed Unification.
 
 Equations neg (b : bool) : bool :=
 neg true := false ;
