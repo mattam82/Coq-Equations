@@ -30,6 +30,8 @@ Require Import NPeano.
 Require Import Nat.
 Require Import Coq.Vectors.VectorDef.
 Require Import Relations.
+
+Set Keyed Unification.
 Set Equations Transparent.
 (* end hide *)
 

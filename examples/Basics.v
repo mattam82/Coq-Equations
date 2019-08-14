@@ -26,6 +26,8 @@ Require Import Program Bvector List Relations.
 From Equations Require Import Equations Signature.
 Require Import Utf8.
 
+Set Keyed Unification.
+
 (** Just pattern-matching *)
 Equations neg (b : bool) : bool :=
 neg true := false ;
