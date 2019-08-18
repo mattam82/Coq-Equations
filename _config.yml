@@ -34,6 +34,4 @@ theme: minima
 exclude:
    - Gemfile
    - Gemfile.lock
-
-keep_files:
-  - jsexamples
+   - jsexamples/*.md
