@@ -21,7 +21,7 @@ providing a definitional extension to the Coq kernel.
 
 ## Live demo
 
-Try it now in your browser with [JSCoq](jsexamples/equations_intro.html)!
+Try it now in your browser with [JSCoq](assets/jsexamples/equations_intro.html)!
 
 ## Documentation
 
