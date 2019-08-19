@@ -35,5 +35,3 @@ exclude:
    - Gemfile
    - Gemfile.lock
    - assets/jsexamples/*.md
-
-keep_files: [jsexamples]
