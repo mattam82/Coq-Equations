@@ -131,7 +131,8 @@ let depcase ~poly (mind, i as ind) =
   let indapp = mkApp (mkInd ind, extended_rel_vect 0 ctx) in
   let evd = ref (Evd.from_env (Global.env())) in
   let pred = it_mkProd_or_LetIn (evd_comb0 Evarutil.new_Type evd)
-    (make_assum anonR indapp :: args)
+    (make_assum anonR (mkApp (mkApp (mkInd ind, extended_rel_vect nargs params),
+                             extended_rel_vect 0 args)) :: args)
   in
   let nconstrs = Array.length oneind.mind_nf_lc in
   let branches =
@@ -149,7 +150,7 @@ let depcase ~poly (mind, i as ind) =
                           Array.append (extended_rel_vect (ncargs + i + 1) params)
                             (extended_rel_vect 0 realargs))])
       in
-      let body = mkRel (1 + nconstrs - i) in
+      let body = mkRel (1 + nargs + nconstrs - i) in
       let br = it_mkProd_or_LetIn arity realargs in
         (make_assum (nameR (Id.of_string ("P" ^ string_of_int i))) br), body)
       oneind.mind_consnames oneind.mind_nf_lc
@@ -167,7 +168,7 @@ let depcase ~poly (mind, i as ind) =
               (extended_rel_vect 0 args)))
   in
   let ctxpred = make_assum anonR (obj (2 + nargs)) :: args in
-  let app = mkApp (mkRel (nargs + nconstrs + 3),
+  let app = mkApp (mkRel (nargs * 2 + nconstrs + 3),
                   (extended_rel_vect 0 ctxpred))
   in
   let ty = it_mkLambda_or_LetIn app ctxpred in
@@ -177,9 +178,10 @@ let depcase ~poly (mind, i as ind) =
   let body =
     let len = 1 (* P *) + Array.length branches in
     it_mkLambda_or_LetIn case
-      (make_assum (annotR xid) (lift len indapp)
-        :: ((List.rev (Array.to_list (Array.map fst branches)))
-            @ (make_assum (nameR (Id.of_string "P")) pred :: ctx)))
+      (make_assum (annotR xid) (mkApp (mkApp (mkInd ind, extended_rel_vect (nargs + len) params),
+                                       extended_rel_vect 0 args))
+         :: args @ (List.rev (Array.to_list (Array.map fst branches)))
+         @ (make_assum (nameR (Id.of_string "P")) pred :: params))
   in
   let univs = Evd.univ_entry ~poly !evd in
   let ce = Declare.definition_entry ~univs (EConstr.to_constr !evd body) in
