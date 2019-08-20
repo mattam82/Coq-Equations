@@ -123,7 +123,7 @@ let derive_eq_dec env sigma ~poly ind =
       in
       let univs = Evd.univ_entry ~poly !evdref in
       let ce =
-        { Proof_global.proof_entry_body = Future.from_val ((to_constr !evdref body,Univ.ContextSet.empty),
+        { Declare.proof_entry_body = Future.from_val ((to_constr !evdref body,Univ.ContextSet.empty),
                                               Evd.empty_side_effects);
           proof_entry_type = Some (to_constr !evdref (it_mkNamedProd_or_LetIn
                                      (it_mkProd_or_LetIn ty ind.ind_args) ctx));
