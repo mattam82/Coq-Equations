@@ -3,6 +3,8 @@ Require Import Equations.HoTT.Loader.
 Require Import Equations.HoTT.Logic.
 Require Import Equations.HoTT.WellFounded.
 Require Import Equations.HoTT.DepElim.
+Require Import Equations.HoTT.Tactics.
+Require Import Equations.HoTT.FunctionalInduction.
 Require Import Equations.HoTT.Subterm.
 
 (** Telescopes: allows treating variable arity fixpoints *)
