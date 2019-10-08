@@ -12,6 +12,7 @@
 Set Warnings "-notation-overridden".
 
 Require Export Equations.HoTT.Loader.
+Require Export Equations.HoTT.Tactics.
 Require Import Equations.HoTT.Telescopes.
 Require Import Equations.HoTT.WellFoundedInstances.
 
