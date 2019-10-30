@@ -122,18 +122,9 @@ let derive_eq_dec env sigma ~poly ind =
 	  (it_mkLambda_or_LetIn (Option.get b) ind.ind_args) ctx
       in
       let univs = Evd.univ_entry ~poly !evdref in
-      let ce =
-        { Declare.proof_entry_body = Future.from_val ((to_constr !evdref body,Univ.ContextSet.empty),
-                                              Evd.empty_side_effects);
-          proof_entry_type = Some (to_constr !evdref (it_mkNamedProd_or_LetIn
-                                     (it_mkProd_or_LetIn ty ind.ind_args) ctx));
-  	  proof_entry_opaque = false; proof_entry_secctx = None;
-	  proof_entry_feedback = None;
-          (* proof_entry_polymorphic = polymorphic; *)
-          proof_entry_universes = univs;
-	  proof_entry_inline_code = false;
-	}
-      in ce
+      let types = to_constr !evdref (it_mkNamedProd_or_LetIn (it_mkProd_or_LetIn ty ind.ind_args) ctx) in
+      let ce = Declare.definition_entry ~univs ~types (to_constr !evdref body) in
+      ce
     in full, tc
   in
   let indsl = Array.to_list info.mutind_inds in
