@@ -148,7 +148,7 @@ let derive_subterm env sigma ~poly (ind, u as indu) =
         mind_entry_inds = inds;
         mind_entry_private = None;
         mind_entry_universes = uctx;
-        mind_entry_variance = None;
+        mind_entry_cumulative = false;
       }
     in
     let k = ComInductive.declare_mutual_inductive_with_eliminations inductive UnivNames.empty_binders [] in

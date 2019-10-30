@@ -1576,11 +1576,11 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
                 mind_entry_finite = Declarations.Finite;
                 mind_entry_params = []; (* (identifier * local_entry) list; *)
                 mind_entry_inds = inds;
-                mind_entry_variance = None;
+                mind_entry_cumulative = false;
               }
     in
     let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] false in
-    let kn = ComInductive.declare_mutual_inductive_with_eliminations inductive UnivNames.empty_binders [] in
+    let kn = DeclareInd.declare_mutual_inductive_with_eliminations inductive UnivNames.empty_binders [] in
     let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] true in
     let sort = Inductiveops.top_allowed_sort (Global.env()) (kn,0) in
     let sort_suff = Indrec.elimination_suffix sort in
