@@ -33,6 +33,7 @@ install:
 - opam install -j ${NJOBS} -y camlp5.${CAMLP5_VER} ocamlfind.${FINDLIB_VER} coq.${COQ_VER}
 - opam upgrade -y coq.${COQ_VER}
 - opam list
+- coqc --version
 
 script:
  - coq_makefile -f _CoqProject -o Makefile && make all examples
