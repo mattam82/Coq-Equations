@@ -710,7 +710,7 @@ Section SCT.
     @approximates 2 T_graph_l Tl.
   Proof. intros x y Tlr. red in x, y, Tlr. destruct_pairs.
          unfold graph_relation. simp k_related T_graph_l; simpl.
-         intuition.
+         lia.
   Qed.
 
   Example approximates_T_r :
