@@ -1,3 +1,4 @@
+.*.cache
 *~
 *.d
 *.vo
@@ -48,4 +49,6 @@ _build
 /test-suite/*.agdai
 examples/.lia.cache
 examples/Makefile
-examples/Makefile.conf
+Makefile.conf
+Equations-HoTT
+_opam
