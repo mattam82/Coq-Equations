@@ -1,3 +1,4 @@
+.*.cache
 *~
 *.d
 *.vo
@@ -52,3 +53,5 @@ _build
 /examples/Makefile
 /examples/Makefile.conf
 /Makefile.conf
+Equations-HoTT
+_opam
