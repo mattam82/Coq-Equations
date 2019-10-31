@@ -8,6 +8,7 @@
 
 Require Import Coq.Unicode.Utf8_core.
 
+Declare ML Module "cc_plugin".
 Declare ML Module "extraction_plugin".
 Declare ML Module "equations_plugin".
 
@@ -26,7 +27,7 @@ Global Unset Auto Template Polymorphism.
 
 (** We use this inductive internally *)
 
-Variant equations_tag := the_equations_tag.
+Variant equations_tag@{} : Set := the_equations_tag.
 
 (** Notation for empty patterns. *)
 

@@ -1,9 +1,12 @@
 -I src
 -I test-suite
--R theories Equations
+-Q theories Equations
+-I theories
 -I examples
+
 CAMLDEBUG = "-bin-annot -g -for-pack Equations -w -58"
 COQDOCFLAGS = "-parse-comments -utf8 -interpolate"
+
 src/equations_common.mli
 src/equations_common.ml
 src/ederive.ml

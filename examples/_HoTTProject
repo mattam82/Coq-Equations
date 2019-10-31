@@ -1,0 +1,26 @@
+-I ../src -R ../theories Equations -Q . Examples
+INSTALLDEFAULTROOT = Equations
+COQC = hoqc
+COQTOP = hoqtop
+
+Fin.v
+HoTT_light.v
+RoseTree.v
+graph_complete.v
+STLC.v
+polynomials.v
+string_matching.v
+nested_mut_rec.v
+MoreDep.v
+general_recursion.v
+Basics.v
+definterp.v
+ordinals.v
+ho_finite_branching.v
+mutualwfrec.v
+accumulator.v
+views.v
+wfrec.v
+AlmostFull.v
+POPLMark1a.v
+bove_capretta.v
