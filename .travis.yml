@@ -35,6 +35,7 @@ install:
 - opam install -j ${NJOBS} -y camlp5.${CAMLP5_VER} ocamlfind.${FINDLIB_VER} coq.${COQ_VER} coq-hott.${HOTT_VER}
 - opam upgrade -y coq.${COQ_VER} coq-hott.${HOTT_VER}
 - opam list
+- coqc --version
 
 matrix:
   include:
