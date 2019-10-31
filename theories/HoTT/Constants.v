@@ -61,7 +61,7 @@ Register Init.Datatypes.pair as equations.product.intro.
 (* FIXME not polymorphic *)
 Register Classes.WellFounded as equations.wellfounded.class.
 Register WellFounded.well_founded as equations.wellfounded.type.
-Register Basics.Overture.relation as equations.relation.type.
+Register Basics.Overture.Relation as equations.relation.type.
 Register Relation.trans_clos as equations.relation.transitive_closure.
 
 (* Dependent elimination constants *)

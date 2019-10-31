@@ -24,22 +24,22 @@ Import Sigma_Notations.
 
 (** Synonyms *)
 
-Definition subrelation {A} (R S : relation A) :=
+Definition subrelation {A} (R S : Relation A) :=
   forall x y, R x y -> S x y.
 
-Class Equivalence {A} (R : relation A) :=
+Class Equivalence {A} (R : Relation A) :=
   { Equivalence_Reflexive : Reflexive R | 2 ;
     Equivalence_Symmetric : Symmetric R | 2 ;
     Equivalence_Transitive : Transitive R | 2 }.
 
 Notation inclusion R R' := (subrelation R R').
 
-Hint Constructors sum : relations.
+Hint Constructors sum : Relations.
 
 Section Properties.
 
   Context{A : Type}.
-  Variable R : relation A.
+  Variable R : Relation A.
 
   Section Clos_Refl_Trans.
 
@@ -60,9 +60,9 @@ Section Properties.
     Lemma clos_rt_idempotent : subrelation (R*)* R*.
     Proof.
       red.
-      induction 1; auto with relations.
+      induction 1; auto with Relations.
       intros.
-      apply rt_trans with y; auto with relations.
+      apply rt_trans with y; auto with Relations.
     Defined.
 
   End Clos_Refl_Trans.
@@ -76,8 +76,8 @@ Section Properties.
       subrelation (clos_refl_trans R) (clos_refl_sym_trans R).
     Proof.
       red.
-      induction 1; auto with relations.
-      apply rst_trans with y; auto with relations.
+      induction 1; auto with Relations.
+      apply rst_trans with y; auto with Relations.
     Defined.
 
     (** Reflexive closure is included in the
@@ -117,8 +117,8 @@ Section Properties.
       (clos_refl_sym_trans R).
     Proof.
       red.
-      induction 1; auto with relations.
-      apply rst_trans with y; auto with relations.
+      induction 1; auto with Relations.
+      apply rst_trans with y; auto with Relations.
     Defined.
 
   End Clos_Refl_Sym_Trans.
@@ -272,13 +272,13 @@ Section Properties.
     Proof.
       intros.
       revert X X0.
-      induction X1; intros; auto with relations.
-      { apply X0 with x; auto with relations. }
+      induction X1; intros; auto with Relations.
+      { apply X0 with x; auto with Relations. }
       apply IHX1_2.
-      { apply IHX1_1; auto with relations. }
+      { apply IHX1_1; auto with Relations. }
       intros.
-      apply X0 with y0; auto with relations.
-      apply rt_trans with y; auto with relations.
+      apply X0 with y0; auto with Relations.
+      apply rt_trans with y; auto with Relations.
     Defined.
 
     (** Induction on the right transitive step *)
@@ -337,7 +337,7 @@ Section Properties.
     Lemma clos_rst_rst1n  : forall x y,
       clos_refl_sym_trans R x y -> clos_refl_sym_trans_1n R x y.
       induction 1.
-      - constructor 2 with y; auto with relations.
+      - constructor 2 with y; auto with Relations.
         constructor 1.
       - constructor 1.
       - apply clos_rst1n_sym; auto.
@@ -381,7 +381,7 @@ Section Properties.
       - constructor 1.
       - intros y0 z D H0 H1. apply clos_rstn1_trans with y0; auto.
         right with z.
-        + destruct D; auto with relations.
+        + destruct D; auto with Relations.
         + left.
     Defined.
 
@@ -389,7 +389,7 @@ Section Properties.
       clos_refl_sym_trans R x y -> clos_refl_sym_trans_n1 R x y.
     Proof.
       induction 1.
-      - constructor 2 with x; auto with relations.
+      - constructor 2 with x; auto with Relations.
         constructor 1.
       - constructor 1.
       - apply clos_rstn1_sym; auto.

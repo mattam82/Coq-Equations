@@ -47,7 +47,7 @@ Proof.
 Defined.
 
 Lemma FixWf_unfold_step :
-  forall (A : Type) (R : relation A) (WF : WellFounded R) (P : A -> Type)
+  forall (A : Type) (R : Relation A) (WF : WellFounded R) (P : A -> Type)
     (step : forall x : A, (forall y : A, R y x -> P y) -> P x) (x : A)
     (step_ext : step_fn_ext P step)
     (step' : forall y : A, R y x -> P y),
@@ -82,7 +82,7 @@ Defined.
 Hint Rewrite @FixWf_unfold_ext : Recursors.
 
 Lemma FixWf_unfold_ext_step `{Funext} :
-  forall (A : Type) (R : relation A) (WF : WellFounded R) (P : A -> Type)
+  forall (A : Type) (R : Relation A) (WF : WellFounded R) (P : A -> Type)
     (step : forall x : A, (forall y : A, R y x -> P y) -> P x) (x : A)
     (step' : forall y : A, R y x -> P y),
     step' = (fun (y : A) (_ : R y x) => FixWf P step y) ->
@@ -157,7 +157,7 @@ Hint Extern 0 (inverse_image _ _ _ _) => red : Below.
 
 Hint Resolve @t_step : subterm_relation.
 
-Lemma trans_clos_stepr A (R : relation A) (x y z : A) :
+Lemma trans_clos_stepr A (R : Relation A) (x y z : A) :
   R y z -> trans_clos R x y -> trans_clos R x z.
 Proof. intros Hyz Hxy. exact (t_trans _ x y z Hxy (t_step _ _ _ Hyz)). Defined.
 
@@ -246,7 +246,7 @@ Ltac rec_wf_rel recname x rel :=
 
 (* NoCycle from well-foundedness. *)
 
-Definition NoCycle_WellFounded {A} (R : relation A) (wfR : WellFounded R) : NoCyclePackage A :=
+Definition NoCycle_WellFounded {A} (R : Relation A) (wfR : WellFounded R) : NoCyclePackage A :=
   {| NoCycle := R;
      noCycle := well_founded_irreflexive (wfR:=wfR) |}.
 Existing Instance NoCycle_WellFounded.

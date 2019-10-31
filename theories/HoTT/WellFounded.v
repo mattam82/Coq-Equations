@@ -10,7 +10,7 @@ Import Sigma_Notations.
 
 Section Acc.
   Universes i j.
-  Context {A : Type@{i}} (R : relation@{i j} A).
+  Context {A : Type@{i}} (R : Relation@{i j} A).
 
   Cumulative Inductive Acc (x : A) : Type :=
   | Acc_intro : (forall y, R y x -> Acc y) -> Acc x.
@@ -28,7 +28,7 @@ Section Acc.
 
 End Acc.
 
-Lemma Acc_prop `{Funext} {A} (R : relation A) i (x y : Acc R i) : x = y.
+Lemma Acc_prop `{Funext} {A} (R : Relation A) i (x y : Acc R i) : x = y.
 Proof.
   revert y.
   induction x as [y Accy IHy].
@@ -74,7 +74,7 @@ Section FixWf.
 
 End FixWf.
 
-Lemma well_founded_irreflexive {A} {R : relation A} {wfR : well_founded R} :
+Lemma well_founded_irreflexive {A} {R : Relation A} {wfR : well_founded R} :
   forall x y : A, R x y -> x = y -> Empty.
 Proof.
   intros x y Ryy. intros e. destruct e. red in wfR.
@@ -82,7 +82,7 @@ Proof.
   apply (IHy _ Ryy Ryy).
 Qed.
 
-Lemma well_founded_antisym@{i j} {A : Type@{i}} {R : relation@{i j} A}{wfR : well_founded R} :
+Lemma well_founded_antisym@{i j} {A : Type@{i}} {R : Relation@{i j} A}{wfR : well_founded R} :
   forall x y : A, R x y -> R y x -> Empty.
 Proof.
   intros x y Rxy Ryx. red in wfR.
@@ -93,33 +93,33 @@ Qed.
 Section Wf_Transitive_Closure.
 
   (** Original author: Bruno Barras, adapted to Type *)
-  Context {A : Type} (R : relation A).
+  Context {A : Type} (R : Relation A).
 
   Notation trans_clos := (trans_clos R).
 
   Lemma incl_trans_clos : inclusion R trans_clos.
-    red; auto with relations.
+    red; auto with Relations.
   Defined.
 
   Lemma Acc_trans_clos : forall x:A, Acc R x -> Acc trans_clos x.
     induction 1 as [x0 _ H1].
     apply Acc_intro.
     intros y H2.
-    induction H2; auto with relations.
-    apply Acc_inv with y; auto with relations.
+    induction H2; auto with Relations.
+    apply Acc_inv with y; auto with Relations.
   Defined.
 
   Hint Resolve Acc_trans_clos : core.
 
   Lemma Acc_inv_trans : forall x y:A, trans_clos y x -> Acc R x -> Acc R y.
   Proof.
-    induction 1 as [| x y]; auto with relations.
+    induction 1 as [| x y]; auto with Relations.
     intro; apply Acc_inv with y; assumption.
   Defined.
 
   Theorem wf_trans_clos : well_founded R -> well_founded trans_clos.
   Proof.
-    unfold well_founded; auto with relations.
+    unfold well_founded; auto with Relations.
   Defined.
 
 End Wf_Transitive_Closure.
@@ -128,7 +128,7 @@ End Wf_Transitive_Closure.
 
 Section Inverse_Image.
 
-  Context {A B : Type} (R : relation B) (f : A -> B).
+  Context {A B : Type} (R : Relation B) (f : A -> B).
 
   Definition inverse_image := fun x y => R (f x) (f y).
 

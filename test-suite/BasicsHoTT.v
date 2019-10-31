@@ -6,7 +6,6 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Equations.HoTT.Logic.
 Require Import Equations.HoTT.All.
 Require Import Coq.Unicode.Utf8.
 Require HoTT.Basics.Overture.
@@ -74,7 +73,7 @@ Section FilterDef.
 
 End FilterDef.
 
-Inductive incl {A} : relation (list A) :=
+Inductive incl {A} : Relation (list A) :=
   stop : incl nil nil 
 | keep {x : A} {xs ys : list A} : incl xs ys -> incl (x :: xs)%list (x :: ys)%list
 | skip {x : A} {xs ys : list A} : incl xs ys -> incl (xs) (x :: ys)%list.
@@ -128,13 +127,13 @@ Equations vapp {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m)%na
 where "x ++v y" := (vapp x y).
 
 (* Print Assumptions vapp. *)
-Require Import Equations.Tactics Equations.HoTT.Tactics.
 (* Ltac Equations.Init.solve_noconf_hom ::= idtac. *)
 Set Universe Minimization ToSet.
 Derive NoConfusionHom for vector.
 Unset Universe Minimization ToSet.
 Test Universe Minimization ToSet.
-Require Import Equations.HoTT.Tactics Equations.HoTT.DepElim.
+Require Import Equations.HoTT.Tactics.
+
 
 Instance vector_eqdec@{i +|+} {A : Type@{i}} {n} `(EqDec@{i} A) : EqDec (vector A n).
 Proof.
@@ -143,7 +142,7 @@ Proof.
   - depelim y.
     pose proof (Classes.eq_dec a a0).
     dependent elimination X as [inl idpath|inr Ha].
-    -- specialize (IHx y).
+    -- specialize (IHx v).
        dependent elimination IHx as [inl idpath|inr H].
        --- left; reflexivity.
        --- right. simplify *. now apply H.

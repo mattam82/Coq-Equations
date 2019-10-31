@@ -55,8 +55,8 @@ Section Lexicographic_Product.
 
   Variable A : Type.
   Variable B : Type.
-  Variable leA : relation A.
-  Variable leB : relation B.
+  Variable leA : Relation A.
+  Variable leB : Relation B.
 
   Inductive lexprod : A * B -> A * B -> Type :=
     | left_lex :
@@ -75,7 +75,7 @@ Section Lexicographic_Product.
     apply Acc_intro.
     destruct y as [x2 y1]; intro Hlex.
     depelim Hlex.
-    - apply IHAcc; auto with relations.
+    - apply IHAcc; auto with Relations.
     - now apply IHAcc0.
   Defined.
 
@@ -85,7 +85,7 @@ Section Lexicographic_Product.
   Proof.
     intros wfA wfB; unfold well_founded.
     destruct x.
-    apply acc_A_B_lexprod; auto with relations; intros.
+    apply acc_A_B_lexprod; auto with Relations; intros.
   Defined.
 
 End Lexicographic_Product.

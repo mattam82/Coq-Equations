@@ -22,7 +22,7 @@ Set Universe Polymorphism.
 (** ** Transitive closure *)
 
 Section Transitive_Closure.
-  Context {A : Type} (R : relation A).
+  Context {A : Type} (R : Relation A).
 
   (** Definition by direct transitive closure *)
 
@@ -47,7 +47,7 @@ End Transitive_Closure.
 (** ** Reflexive closure *)
 
 Section Reflexive_Closure.
-  Context {A : Type} (R : relation A).
+  Context {A : Type} (R : Relation A).
 
   (** Definition by direct transitive closure *)
 
@@ -60,7 +60,7 @@ End Reflexive_Closure.
 (** ** Reflexive-transitive closure *)
 
 Section Reflexive_Transitive_Closure.
-  Context {A : Type} (R : relation A).
+  Context {A : Type} (R : Relation A).
 
   (** Definition by direct reflexive-transitive closure *)
 
@@ -89,11 +89,11 @@ End Reflexive_Transitive_Closure.
 (** ** Reflexive-symmetric-transitive closure *)
 
 Section Reflexive_Symmetric_Transitive_Closure.
-  Context {A : Type} (R : relation A).
+  Context {A : Type} (R : Relation A).
 
   (** Definition by direct reflexive-symmetric-transitive closure *)
 
-  Inductive clos_refl_sym_trans : relation A :=
+  Inductive clos_refl_sym_trans : Relation A :=
     | rst_step (x y:A) : R x y -> clos_refl_sym_trans x y
     | rst_refl (x:A) : clos_refl_sym_trans x x
     | rst_sym (x y:A) : clos_refl_sym_trans x y -> clos_refl_sym_trans y x
@@ -117,23 +117,23 @@ Section Reflexive_Symmetric_Transitive_Closure.
 
 End Reflexive_Symmetric_Transitive_Closure.
 
-(** ** Converse of a relation *)
+(** ** Converse of a Relation *)
 
 Section Converse.
-  Context {A : Type} (R : relation A).
+  Context {A : Type} (R : Relation A).
 
   Definition transp (x y:A) := R y x.
 End Converse.
 
-(** ** Union of relations *)
+(** ** Union of Relations *)
 
 Section Union.
-  Context {A : Type} (R1 R2 : relation A).
+  Context {A : Type} (R1 R2 : Relation A).
 
   Definition union (x y:A) := (R1 x y + R2 x y)%type.
 End Union.
 
-(** ** Disjoint union of relations *)
+(** ** Disjoint union of Relations *)
 
 Section Disjoint_Union.
   Context {A B : Type}.
@@ -164,7 +164,7 @@ Section Lexicographic_Product.
 
 End Lexicographic_Product.
 
-(** ** Product of relations *)
+(** ** Product of Relations *)
 
 Section Symmetric_Product.
   Variable A : Type.
@@ -180,7 +180,7 @@ Section Symmetric_Product.
 
 End Symmetric_Product.
 
-(** ** Multiset of two relations *)
+(** ** Multiset of two Relations *)
 
 Section Swap.
   Variable A : Type.
@@ -217,6 +217,6 @@ Section Lexicographic_Exponentiation.
 
 End Lexicographic_Exponentiation.
 
-Hint Unfold transp union: relations.
-Hint Resolve t_step rt_step rt_refl rst_step rst_refl: relations.
-Hint Immediate rst_sym: relations.
+Hint Unfold transp union: Relations.
+Hint Resolve t_step rt_step rt_refl rst_step rst_refl: Relations.
+Hint Immediate rst_sym: Relations.

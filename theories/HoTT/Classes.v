@@ -17,7 +17,7 @@ Set Universe Polymorphism.
 (** A class for well foundedness proofs.
    Instances can be derived automatically using [Derive Subterm for ind]. *)
 
-Class WellFounded {A : Type} (R : relation A) :=
+Class WellFounded {A : Type} (R : Relation A) :=
   wellfounded : well_founded R.
 
 (** This class contains no-cyclicity proofs.
@@ -55,7 +55,7 @@ Defined.
 
 (** NoCycle can be decided using the well-founded subterm relation. *)
 
-Definition NoCycle_WellFounded {A} (R : relation A) (wfR : WellFounded R) : NoCyclePackage A :=
+Definition NoCycle_WellFounded {A} (R : Relation A) (wfR : WellFounded R) : NoCyclePackage A :=
   {| NoCycle := R;
      noCycle := WellFounded.well_founded_irreflexive (wfR:=wfR) |}.
 Existing Instance NoCycle_WellFounded.
