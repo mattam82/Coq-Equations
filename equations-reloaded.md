@@ -1,5 +1,6 @@
 ---
 layout: page
+permalink: /equations-reloaded
 title: Equations Reloaded
 ---
 
