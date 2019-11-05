@@ -1,0 +1,21 @@
+  </div> <!-- /#document     -->
+  </div> <!-- /#code-wrapper -->
+  </div> <!-- /#ide-wrapper  -->
+
+  <script src="ui-js/jscoq-loader.js" type="text/javascript"></script>
+  <script type="text/javascript">
+    var coq;
+
+    var jscoq_opts = { base_path: './', init_pkgs: ['init', 'equations'] };
+
+    loadJsCoq(jscoq_opts.base_path)
+              .then(loadJs("node_modules/codemirror/addon/runmode/runmode"))
+              .then(loadJs("node_modules/codemirror/addon/runmode/colorize"))
+              .then( function () {
+                  var coqInline = document.getElementsByClassName("inline-coq");
+                  CodeMirror.colorize(coqInline); })
+              .then( function () { coq = new CoqManager (coqdoc_ids, jscoq_opts);
+              });
+  </script>
+</body>
+</html>
