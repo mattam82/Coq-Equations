@@ -22,12 +22,12 @@ clean-examples:
 clean-test-suite: makefiles
 	cd test-suite && $(MAKE) clean
 
-test-suite: makefiles
+test-suite: makefiles all
 	cd test-suite && $(MAKE)
 
 .PHONY: test-suite
 
-examples: examples/Makefile
+examples: examples/Makefile all
 	cd examples && $(MAKE)
 
 .PHONY: examples
