@@ -134,6 +134,10 @@ Then you can follow the standard instructions:
     make all install
 
 Note that only one of the HoTT variant or the standard variant can be installed
-at any given time. To import the plugin in Coq, use:
+at any given time. To use `hoqtop` or `hoqc`, one needs to pass the following options:
 
-    Require Import Equations.HoTT.All.
+    hoqtop/hoqc -I `coqc -where`/user-contrib/Equations -Q `coqc -where`/user-contrib ""
+
+Then, one can import the plugin in Coq, using:
+
+    From Equations Require Import HoTT.All.

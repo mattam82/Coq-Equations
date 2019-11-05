@@ -12,12 +12,20 @@ for Coq 8.9 and Coq 8.10.
   The 8.10 version (only) includes support for the HoTT library (currently available
 in Coq's `extra-dev` repository only as `coq-hott-8.10.dev`). Install `coq-hott` before
 Equations to get a version that uses the HoTT library. 
+Note that only one of the HoTT variant or the standard variant can be installed
+at any given time. Using `hoqtop` or `hoqc`, one needs to pass the following additional
+options:
 
-Use `Require Import Equations.HoTT.All` to load the plugin.
+    hoqtop/hoqc -I `coqc -where`/user-contrib/Equations -Q `coqc -where`/user-contrib ""
+
+Then, one can import the plugin in Coq, using:
+
+    From Equations Require Import HoTT.All.
+
 See the [Reference Manual][refman] for an introduction to Equations,
 or the [ICFP paper][equations-reloaded].
 
-[release]: https://github.com/mattam82/Coq-Equations/releases/tag/v1.2.1-8.10
+[release]: https://github.com/mattam82/Coq-Equations/releases/tag/v1.2.1-8.10-2
 [www]: http://mattam82.github.io/Coq-Equations
 [refman]: http://github.com/mattam82/Coq-Equations/raw/master/doc/equations.pdf
 [issues]: http://github.com/mattam82/Coq-Equations/issues
