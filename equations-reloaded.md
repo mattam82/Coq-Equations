@@ -3,9 +3,11 @@ layout: page
 title: Equations Reloaded
 ---
 
-This
-[article](https://www.irif.fr/~sozeau/research/publications/drafts/Equations_Reloaded.pdf)
-presents the foundations of version 1.2 of the Equations package.
+[Equations Reloaded](https://www.irif.fr/~sozeau//research/publications/Equations_Reloaded-ICFP19.pdf): 
+High-Level Dependently-Typed Functional Programming and Proving in Coq. Matthieu Sozeau and Cyprien Mangin. 2019. 
+Proc. ACM Program. Lang. 3, ICFP, Article 86 (August 2019), 29 pages. [DOI](https://doi.org/10.1145/3341690)
+
+This article presents the foundations of version 1.2 of the Equations package.
 
 Abstract
 --------

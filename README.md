@@ -37,8 +37,11 @@ Try it now in your browser with [JSCoq](assets/jsexamples/equations_intro.html)!
 
 Two articles describing the system are available:
 
-- [Equations Reloaded](http://www.irif.fr/~sozeau/research/publications/drafts/Equations_Reloaded.pdf), Cyprien Mangin and
-  Matthieu Sozeau (March 2019). Submitted.
+- [Equations Reloaded](https://www.irif.fr/~sozeau//research/publications/Equations_Reloaded-ICFP19.pdf): 
+  High-Level Dependently-Typed Functional Programming and Proving in Coq. Matthieu Sozeau and Cyprien Mangin. 2019. 
+  Proc. ACM Program. Lang. 3, ICFP, Article 86 (August 2019), 29 pages. [DOI](https://doi.org/10.1145/3341690).
+  See [Equations Reloaded](equations-reloaded) for associated material, including a VM to run the examples.
+
 - [Equations: A Dependent Pattern-Matching Compiler](https://link.springer.com/chapter/10.1007/978-3-642-14052-5_29) Matthieu
   Sozeau (2010) 
   In: Kaufmann M., Paulson L.C. (eds) Interactive Theorem
