@@ -1,0 +1,775 @@
+\coqlibrary{equations intro}{Library }{equations\_intro}
+
+\begin{coqdoccode}
+\coqdocemptyline
+\end{coqdoccode}
+\coqdockw{Equations} is a plugin for \cite{Coq} that comes with a few support modules defining
+   classes and tactics for running it. We will introduce its main
+   features through a handful of examples. We start our Coq primer
+   session by importing the \coqdockw{Equations} module.  \begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Require} \coqdockw{Import} \coqexternalref{}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Arith.Arith}{\coqdoclibrary{Arith}} \coqexternalref{}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.omega.Omega}{\coqdoclibrary{Omega}} \coqexternalref{}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Program.Program}{\coqdoclibrary{Program}}.\coqdoceol
+\coqdocnoindent
+\coqdockw{From} \coqdockw{Equations} \coqdockw{Require} \coqdockw{Import} \coqdoclibrary{Equations}.\coqdoceol
+\coqdocemptyline
+\coqdocemptyline
+\end{coqdoccode}
+\section{Inductive types}
+
+
+
+
+   In its simplest form, \coqdockw{Equations} allows to define functions on inductive datatypes.
+   Take for example the booleans defined as an inductive type with two constructors \coqexternalref{true}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{true}} and \coqexternalref{false}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{false}}:
+   \coqdoceol
+\coqdocemptyline
+\coqdocindent{1.50em}
+\coqdockw{Inductive} \coqexternalref{bool}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{bool}} : \coqdockw{Set} := \coqexternalref{true}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{true}} : \coqexternalref{bool}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{bool}} \ensuremath{|} \coqexternalref{false}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{false}} : \coqexternalref{bool}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{bool}} 
+
+\coqdocemptyline
+
+
+   We can define the boolean negation as follows: \begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Equations} \coqdef{equations intro.neg}{neg}{\coqdocdefinition{neg}} (\coqdocvar{b} : \coqexternalref{bool}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{bool}}) : \coqexternalref{bool}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{bool}} :=\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.neg}{\coqdocdefinition{neg}} \coqexternalref{true}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{true}} := \coqexternalref{false}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{false}} ;\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.neg}{\coqdocdefinition{neg}} \coqexternalref{false}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{false}} := \coqexternalref{true}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{true}}.\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+\coqdockw{Equations} declarations are formed by a signature definition and a set of \textit{clauses} 
+   that must form a \textit{covering} of this signature. The compiler is then expected to
+   automatically find a corresponding case-splitting tree that implements the function.
+   In this case, it simply needs to split on the single variable \coqdocvariable{b} to
+   produce two new \textit{programming problems} \coqref{equations intro.neg}{\coqdocdefinition{neg}} \coqexternalref{true}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{true}} and \coqref{equations intro.neg}{\coqdocdefinition{neg}} \coqexternalref{false}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{false}} that are directly 
+   handled by the user clauses. We will see in more complex examples that this search
+   for a splitting tree may be non-trivial. 
+
+\section{Reasoning principles}
+
+
+
+
+   In the setting of a proof assistant like Coq, we need not only the ability 
+   to define complex functions but also get good reasoning support for them.
+   Practically, this translates to the ability to simplify applications of functions 
+   appearing in the goal and to give strong enough proof principles for (recursive)
+   definitions.
+
+
+   \coqdockw{Equations} provides this through an automatic generation of proofs related to
+   the function. Namely, each defining equation gives rise to a lemma stating the 
+   equality between the left and right hand sides. These equations can be used as 
+   rewrite rules for simplification during proofs, without having to rely on the
+   fragile simplifications implemented by raw reduction. We can also generate the
+   inductive graph of any \coqdockw{Equations} definition, giving the strongest elimination
+   principle on the function. 
+
+
+   I.e., for \coqref{equations intro.neg}{\coqdocdefinition{neg}} the inductive graph is defined as: \coqdoceol
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Inductive} \coqref{equations intro.neg graph}{\coqdocinductive{neg\_graph}} : \coqexternalref{bool}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{bool}} \ensuremath{\rightarrow} \coqexternalref{bool}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{bool}} \ensuremath{\rightarrow} \coqdockw{Prop} :=\coqdoceol
+\coqdocnoindent
+\ensuremath{|} \coqref{equations intro.neg graph equation 1}{\coqdocconstructor{neg\_graph\_equation\_1}} : \coqref{equations intro.neg graph}{\coqdocinductive{neg\_graph}} \coqexternalref{true}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{true}} \coqexternalref{false}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{false}}\coqdoceol
+\coqdocnoindent
+\ensuremath{|} \coqref{equations intro.neg graph equation 2}{\coqdocconstructor{neg\_graph\_equation\_2}} : \coqref{equations intro.neg graph}{\coqdocinductive{neg\_graph}} \coqexternalref{false}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{false}} \coqexternalref{true}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{true}} 
+
+\coqdocemptyline
+
+
+   Along with a proof of \coqdocvar{\ensuremath{\Pi}} \coqdocvariable{b}, \coqref{equations intro.neg graph}{\coqdocinductive{neg\_graph}} \coqdocvariable{b} (\coqref{equations intro.neg}{\coqdocdefinition{neg}} \coqdocvariable{b}), we can eliminate any call
+   to \coqref{equations intro.neg}{\coqdocdefinition{neg}} specializing its argument and result in a single command. 
+   Suppose we want to show that \coqref{equations intro.neg}{\coqdocdefinition{neg}} is involutive for example, our goal will 
+   look like: \coqdoceol
+\coqdocemptyline
+\coqdocindent{1.00em}
+\coqdocvariable{b} : \coqexternalref{bool}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{bool}}\coqdoceol
+\coqdocindent{1.00em}
+============================\coqdoceol
+\coqdocindent{1.50em}
+\coqref{equations intro.neg}{\coqdocdefinition{neg}} (\coqref{equations intro.neg}{\coqdocdefinition{neg}} \coqdocvariable{b}) = \coqdocvariable{b} 
+
+\coqdocemptyline
+   An application of the tactic \coqdocvar{\coqdoctac{funelim}} (\coqref{equations intro.neg}{\coqdocdefinition{neg}} \coqdocvariable{b}) will produce two goals corresponding to 
+   the splitting done in \coqref{equations intro.neg}{\coqdocdefinition{neg}}: \coqref{equations intro.neg}{\coqdocdefinition{neg}} \coqexternalref{false}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{false}} = \coqexternalref{true}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{true}} and \coqref{equations intro.neg}{\coqdocdefinition{neg}} \coqexternalref{true}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{true}} = \coqexternalref{false}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{false}}.
+   These correspond exactly to the rewriting lemmas generated for \coqref{equations intro.neg}{\coqdocdefinition{neg}}.
+
+
+   In the following sections we will show how these ideas generalize to more complex 
+   types and definitions involving dependencies, overlapping clauses and recursion.
+
+
+\section{Building up}
+
+
+
+
+\subsection{Polymorphism}
+
+
+
+
+   Coq's inductive types can be parameterized by types, giving polymorphic datatypes.
+   For example the list datatype is defined as:
+   \begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Inductive} \coqdef{equations intro.list}{list}{\coqdocinductive{list}} \{\coqdocvar{A}\} : \coqdockw{Type} := \coqdef{equations intro.nil}{nil}{\coqdocconstructor{nil}} : \coqref{equations intro.list}{\coqdocinductive{list}} \ensuremath{|} \coqdef{equations intro.cons}{cons}{\coqdocconstructor{cons}} : \coqdocvariable{A} \coqexternalref{::type scope:x '->' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocnotation{\ensuremath{\rightarrow}}} \coqref{equations intro.list}{\coqdocinductive{list}} \coqexternalref{::type scope:x '->' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocnotation{\ensuremath{\rightarrow}}} \coqref{equations intro.list}{\coqdocinductive{list}}.\coqdoceol
+\coqdocemptyline
+\coqdocnoindent
+\coqdocvar{Arguments} \coqref{equations intro.list}{\coqdocinductive{list}} : \coqdoctac{clear} \coqdocvar{implicits}.\coqdoceol
+\coqdocnoindent
+\coqdockw{Notation} \coqdef{equations intro.:::x '::' x}{"}{"}x :: l" := (\coqref{equations intro.cons}{\coqdocconstructor{cons}} \coqdocvar{x} \coqdocvar{l}).\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+No special support for polymorphism is needed, as type arguments are treated 
+   like regular arguments in dependent type theories. Note however that one cannot
+   match on type arguments, there is no intensional type analysis.
+   We can write the polymorphic \coqref{equations intro.tail}{\coqdocdefinition{tail}} function as follows:
+\begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Equations} \coqdef{equations intro.tail}{tail}{\coqdocdefinition{tail}} \{\coqdocvar{A}\} (\coqdocvar{l} : \coqref{equations intro.list}{\coqdocinductive{list}} \coqdocvariable{A}) : \coqref{equations intro.list}{\coqdocinductive{list}} \coqdocvar{A} :=\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.tail}{\coqdocdefinition{tail}} \coqref{equations intro.nil}{\coqdocconstructor{nil}} := \coqref{equations intro.nil}{\coqdocconstructor{nil}} ;\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.tail}{\coqdocdefinition{tail}} (\coqref{equations intro.cons}{\coqdocconstructor{cons}} \coqdocvariable{a} \coqdocvariable{v}) := \coqdocvar{v}.\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+Note that the argument \{\coqdocvariable{A}\} is declared implicit and must hence be
+ omitted in the defining clauses. In each of the branches it is named
+ \coqdocvariable{A}. To specify it explicitely one can use the syntax (\coqdocvariable{A}:=\coqdocvariable{B}),
+ renaming that implicit argument to \coqdocvariable{B} in this particular case 
+
+\subsection{Recursive inductive types}
+
+
+
+
+   Of course with inductive types comes recursion. Coq accepts a subset
+   of the structurally recursive definitions by default (it is
+   incomplete due to its syntactic nature). We will use this as a first
+   step towards a more robust treatment of recursion via well-founded
+   relations. A classical example is list concatenation: \begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Equations} \coqdef{equations intro.app}{app}{\coqdocdefinition{app}} \{\coqdocvar{A}\} (\coqdocvar{l} \coqdocvar{l'} : \coqref{equations intro.list}{\coqdocinductive{list}} \coqdocvariable{A}) : \coqref{equations intro.list}{\coqdocinductive{list}} \coqdocvar{A} :=\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.app}{\coqdocdefinition{app}} \coqref{equations intro.nil}{\coqdocconstructor{nil}} \coqdocvariable{l'} := \coqdocvar{l'} ;\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.app}{\coqdocdefinition{app}} (\coqref{equations intro.cons}{\coqdocconstructor{cons}} \coqdocvariable{a} \coqdocvariable{l}) \coqdocvariable{l'} := \coqref{equations intro.cons}{\coqdocconstructor{cons}} \coqdocvar{a} (\coqref{equations intro.app}{\coqdocdefinition{app}} \coqdocvar{l} \coqdocvar{l'}).\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+Recursive definitions like \coqref{equations intro.app}{\coqdocdefinition{app}} can be unfolded easily so proving the 
+   equations as rewrite rules is direct. The induction principle associated 
+   to this definition is more interesting however. We can derive from it the 
+   following \textit{elimination} principle for calls to \coqref{equations intro.app}{\coqdocdefinition{app}}: \coqdoceol
+\coqdocemptyline
+\coqdocindent{1.50em}
+\coqdocvar{app\_elim} :\coqdoceol
+\coqdocindent{1.50em}
+\coqdockw{\ensuremath{\forall}} \coqdocvariable{P} : \coqdockw{\ensuremath{\forall}} (\coqdocvariable{A} : \coqdockw{Type}) (\coqdocvariable{l} \coqdocvariable{l'} : \coqref{equations intro.list}{\coqdocinductive{list}} \coqdocvariable{A}), \coqref{equations intro.list}{\coqdocinductive{list}} \coqdocvariable{A} \ensuremath{\rightarrow} \coqdockw{Prop},\coqdoceol
+\coqdocindent{1.50em}
+(\coqdockw{\ensuremath{\forall}} (\coqdocvariable{A} : \coqdockw{Type}) (\coqdocvariable{l'} : \coqref{equations intro.list}{\coqdocinductive{list}} \coqdocvariable{A}), \coqdocvariable{P} \coqdocvariable{A} \coqref{equations intro.nil}{\coqdocconstructor{nil}} \coqdocvariable{l'} \coqdocvariable{l'}) \ensuremath{\rightarrow}\coqdoceol
+\coqdocindent{1.50em}
+(\coqdockw{\ensuremath{\forall}} (\coqdocvariable{A} : \coqdockw{Type}) (\coqdocvariable{a} : \coqdocvariable{A}) (\coqdocvariable{l} \coqdocvariable{l'} : \coqref{equations intro.list}{\coqdocinductive{list}} \coqdocvariable{A}),\coqdoceol
+\coqdocindent{1.50em}
+\coqdocvariable{P} \coqdocvariable{A} \coqdocvariable{l} \coqdocvariable{l'} (\coqref{equations intro.app}{\coqdocdefinition{app}} \coqdocvariable{l} \coqdocvariable{l'}) \ensuremath{\rightarrow} \coqdocvariable{P} \coqdocvariable{A} (\coqdocvariable{a} :: \coqdocvariable{l}) \coqdocvariable{l'} (\coqdocvariable{a} :: \coqref{equations intro.app}{\coqdocdefinition{app}} \coqdocvariable{l} \coqdocvariable{l'})) \ensuremath{\rightarrow}\coqdoceol
+\coqdocindent{1.50em}
+\coqdockw{\ensuremath{\forall}} (\coqdocvariable{A} : \coqdockw{Type}) (\coqdocvariable{l} \coqdocvariable{l'} : \coqref{equations intro.list}{\coqdocinductive{list}} \coqdocvariable{A}), \coqdocvariable{P} \coqdocvariable{A} \coqdocvariable{l} \coqdocvariable{l'} (\coqref{equations intro.app}{\coqdocdefinition{app}} \coqdocvariable{l} \coqdocvariable{l'}) 
+
+\coqdocemptyline
+  Using this eliminator, we can write proofs exactly following the 
+  structure of the function definition, instead of redoing the splitting 
+  by hand. This idea is already present in the \coqdockw{Function} package 
+  \cite{Barthe:2006gp} that derives induction principles from
+  function definitions.
+ \begin{coqdoccode}
+\coqdocemptyline
+\coqdocemptyline
+\end{coqdoccode}
+\subsection{Moving to the left}
+
+
+
+
+   The structure of real programs is richer than a simple case tree on
+   the original arguments in general. In the course of a computation, we
+   might want to scrutinize intermediate results (e.g. coming from
+   function calls) to produce an answer. This literally means adding a
+   new pattern to the left of our equations made available for further
+   refinement. This concept is know as with clauses in the Agda
+   \cite{norell:thesis} community and was first presented and
+   implemented in the Epigram language
+   \cite{DBLP:journals/jfp/McBrideM04}.
+
+
+   The compilation of with clauses and its treatment for generating
+   equations and the induction principle are quite involved in the
+   presence of dependencies, but the basic idea is to add a new case
+   analysis to the program. To compute the type of the new subprogram,
+   we actually abstract the discriminee term from the expected type of
+   the clause, so that the type can get refined in the subprogram. In
+   the non-dependent case this does not change anything though.
+
+
+   Each \coqdockw{with} node generates an auxiliary definition from the clauses
+   in the curly brackets, taking the additional object as argument. The
+   equation for the with node will simply be an indirection to the
+   auxiliary definition and simplification will continue as usual with
+   the auxiliary definition's rewrite rules.  \begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Equations} \coqdef{equations intro.filter}{filter}{\coqdocdefinition{filter}} \{\coqdocvar{A}\} (\coqdocvar{l} : \coqref{equations intro.list}{\coqdocinductive{list}} \coqdocvariable{A}) (\coqdocvar{p} : \coqdocvariable{A} \coqexternalref{::type scope:x '->' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocnotation{\ensuremath{\rightarrow}}} \coqexternalref{bool}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{bool}}) : \coqref{equations intro.list}{\coqdocinductive{list}} \coqdocvar{A} :=\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.filter}{\coqdocdefinition{filter}} \coqref{equations intro.nil}{\coqdocconstructor{nil}} \coqdocvariable{p} := \coqref{equations intro.nil}{\coqdocconstructor{nil}} ;\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.filter}{\coqdocdefinition{filter}} (\coqref{equations intro.cons}{\coqdocconstructor{cons}} \coqdocvariable{a} \coqdocvariable{l}) \coqdocvariable{p} \coqdockw{with} \coqdocvar{p} \coqdocvar{a} \ensuremath{\Rightarrow} \{\coqdoceol
+\coqdocindent{1.00em}
+\coqref{equations intro.filter}{\coqdocdefinition{filter}} (\coqref{equations intro.cons}{\coqdocconstructor{cons}} \coqdocvariable{a} \coqdocvariable{l}) \coqdocvariable{p} \coqexternalref{true}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{true}} := \coqdocvar{a} \coqref{equations intro.:::x '::' x}{\coqdocnotation{::}} \coqref{equations intro.filter}{\coqdocdefinition{filter}} \coqdocvar{l} \coqdocvar{p} ;\coqdoceol
+\coqdocindent{1.00em}
+\coqref{equations intro.filter}{\coqdocdefinition{filter}} (\coqref{equations intro.cons}{\coqdocconstructor{cons}} \coqdocvariable{a} \coqdocvariable{l}) \coqdocvariable{p} \coqexternalref{false}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{false}} := \coqref{equations intro.filter}{\coqdocdefinition{filter}} \coqdocvar{l} \coqdocvar{p} \}.\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+By default, equations makes definitions opaque after definition,
+    to avoid spurious unfoldings, but this can be reverted on a case by case
+    basis, or using the global \coqdockw{Set} \coqdockw{Equations} \coqdockw{Transparent} option. \begin{coqdoccode}
+\coqdocnoindent
+\coqdockw{Global Transparent} \coqref{equations intro.filter}{\coqdocdefinition{filter}}.\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+A common use of with clauses is to scrutinize recursive results like the following: \begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Equations} \coqdef{equations intro.unzip}{unzip}{\coqdocdefinition{unzip}} \{\coqdocvar{A} \coqdocvar{B}\} (\coqdocvar{l} : \coqref{equations intro.list}{\coqdocinductive{list}} (\coqdocvariable{A} \coqexternalref{::type scope:x '*' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocnotation{\ensuremath{\times}}} \coqdocvariable{B})) : \coqref{equations intro.list}{\coqdocinductive{list}} \coqdocvar{A} \coqexternalref{::type scope:x '*' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocnotation{\ensuremath{\times}}} \coqref{equations intro.list}{\coqdocinductive{list}} \coqdocvar{B} :=\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.unzip}{\coqdocdefinition{unzip}} \coqref{equations intro.nil}{\coqdocconstructor{nil}} := \coqexternalref{::core scope:'(' x ',' x ',' '..' ',' x ')'}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocnotation{(}}\coqref{equations intro.nil}{\coqdocconstructor{nil}}\coqexternalref{::core scope:'(' x ',' x ',' '..' ',' x ')'}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocnotation{,}} \coqref{equations intro.nil}{\coqdocconstructor{nil}}\coqexternalref{::core scope:'(' x ',' x ',' '..' ',' x ')'}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocnotation{)}} ;\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.unzip}{\coqdocdefinition{unzip}} (\coqref{equations intro.cons}{\coqdocconstructor{cons}} \coqdocvariable{p} \coqdocvariable{l}) \coqdockw{with} \coqref{equations intro.unzip}{\coqdocdefinition{unzip}} \coqdocvar{l} \ensuremath{\Rightarrow} \{\coqdoceol
+\coqdocindent{1.00em}
+\coqref{equations intro.unzip}{\coqdocdefinition{unzip}} (\coqref{equations intro.cons}{\coqdocconstructor{cons}} \coqref{equations intro.cons}{\coqdocconstructor{(}}\coqexternalref{pair}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{pair}} \coqdocvariable{a} \coqdocvariable{b}\coqref{equations intro.cons}{\coqdocconstructor{)}} \coqdocvariable{l}) (\coqexternalref{pair}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{pair}} \coqdocvariable{la} \coqdocvariable{lb}) := \coqexternalref{::core scope:'(' x ',' x ',' '..' ',' x ')'}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocnotation{(}}\coqdocvar{a} \coqref{equations intro.:::x '::' x}{\coqdocnotation{::}} \coqdocvar{la}\coqexternalref{::core scope:'(' x ',' x ',' '..' ',' x ')'}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocnotation{,}} \coqdocvar{b} \coqref{equations intro.:::x '::' x}{\coqdocnotation{::}} \coqdocvar{lb}\coqexternalref{::core scope:'(' x ',' x ',' '..' ',' x ')'}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocnotation{)}} \}.\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+The real power of with however comes when it is used with dependent types. 
+
+\section{Dependent types}
+
+
+
+
+   Coq supports writing dependent functions, in other words, it gives the ability to
+   make the results \textit{type} depend on actual \textit{values}, like the arguments of the function.
+   A simple example is given below of a function which decides the equality of two 
+   natural numbers, returning a sum type carrying proofs of the equality or disequality 
+   of the arguments. The sum type \{ \coqdocvariable{A} \} + \{ \coqdocvariable{B} \} is a constructive variant of disjunction 
+   that can be used in programs to give at the same time a boolean algorithmic information 
+   (are we in branch \coqdocvariable{A} or \coqdocvariable{B}) and a \textit{logical} information (a proof witness of \coqdocvariable{A} or \coqdocvariable{B}).
+   Hence its constructors \coqdoctac{left} and \coqdoctac{right} take proofs as arguments. The \coqexternalref{eq refl}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocconstructor{eq\_refl}} proof 
+   term is the single proof of \coqdocvariable{x} = \coqdocvariable{x} (the \coqdocvariable{x} is generaly infered automatically).
+\begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Equations} \coqdef{equations intro.equal}{equal}{\coqdocdefinition{equal}} (\coqdocvar{n} \coqdocvar{m} : \coqexternalref{nat}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{nat}}) : \coqexternalref{::type scope:'x7B' x 'x7D' '+' 'x7B' x 'x7D'}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Specif}{\coqdocnotation{\{}} \coqdocvar{n} \coqexternalref{::type scope:x '=' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocnotation{=}} \coqdocvar{m} \coqexternalref{::type scope:'x7B' x 'x7D' '+' 'x7B' x 'x7D'}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Specif}{\coqdocnotation{\}}} \coqexternalref{::type scope:'x7B' x 'x7D' '+' 'x7B' x 'x7D'}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Specif}{\coqdocnotation{+}} \coqexternalref{::type scope:'x7B' x 'x7D' '+' 'x7B' x 'x7D'}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Specif}{\coqdocnotation{\{}} \coqdocvar{n} \coqexternalref{::type scope:x '<>' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocnotation{\ensuremath{\not=}}} \coqdocvar{m} \coqexternalref{::type scope:'x7B' x 'x7D' '+' 'x7B' x 'x7D'}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Specif}{\coqdocnotation{\}}} :=\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.equal}{\coqdocdefinition{equal}} \coqexternalref{O}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{O}} \coqexternalref{O}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{O}} := \coqexternalref{left}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Specif}{\coqdocconstructor{left}} \coqexternalref{eq refl}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocconstructor{eq\_refl}} ;\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.equal}{\coqdocdefinition{equal}} (\coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} \coqdocvariable{n}) (\coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} \coqdocvariable{m}) \coqdockw{with} \coqref{equations intro.equal}{\coqdocdefinition{equal}} \coqdocvar{n} \coqdocvar{m} := \{\coqdoceol
+\coqdocindent{1.00em}
+\coqref{equations intro.equal}{\coqdocdefinition{equal}} (\coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} \coqdocvariable{n}) (\coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} \coqdocnotation{?(}\coqdocvariable{n}\coqdocnotation{)}) (\coqexternalref{left}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Specif}{\coqdocconstructor{left}} \coqexternalref{eq refl}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocconstructor{eq\_refl}}) := \coqexternalref{left}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Specif}{\coqdocconstructor{left}} \coqexternalref{eq refl}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocconstructor{eq\_refl}} ;\coqdoceol
+\coqdocindent{1.00em}
+\coqref{equations intro.equal}{\coqdocdefinition{equal}} (\coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} \coqdocvariable{n}) (\coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} \coqdocvariable{m}) (\coqexternalref{right}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Specif}{\coqdocconstructor{right}} \coqdocvariable{p}) := \coqexternalref{right}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Specif}{\coqdocconstructor{right}} \coqdocvar{\_} \} ;\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.equal}{\coqdocdefinition{equal}} \coqdocvariable{x} \coqdocvariable{y} := \coqexternalref{right}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Specif}{\coqdocconstructor{right}} \coqdocvar{\_}.\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+Of particular interest here is the inner program refining the recursive result.
+   As \coqref{equations intro.equal}{\coqdocdefinition{equal}} \coqdocvariable{n} \coqdocvariable{m} is of type \{ \coqdocvariable{n} = \coqdocvariable{m} \} + \{ \coqdocvariable{n} \ensuremath{\not=} \coqdocvariable{m} \} we have two cases to consider:
+
+
+
+\begin{itemize}
+\item  Either we are in the \coqdoctac{left} \coqdocvariable{p} case, and we know that \coqdocvariable{p} is a proof of \coqdocvariable{n} = \coqdocvariable{m},
+     in which case we can do a nested match on \coqdocvariable{p}. The result of matching this equality
+     proof is to unify \coqdocvariable{n} and \coqdocvariable{m}, hence the left hand side patterns become \coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} \coqdocvariable{n} and
+     \coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} ?(\coqdocvariable{n}) and the return type of this branch is refined to \{ \coqdocvariable{n} = \coqdocvariable{n} \} + \{ \coqdocvariable{n} \ensuremath{\not=} \coqdocvariable{n} \}.
+     We can easily provide a proof for the left case. 
+
+
+
+\item  In the right case, we mark the proof unfilled with an underscore. This will
+     generate an obligation for the hole, that can be filled automatically by a 
+     predefined tactic or interactively by the user in proof mode (this uses the
+     same obligation mechanism as the Program extension
+     \cite{sozeau.Coq/FingerTrees/article}). In this case the automatic tactic 
+     is able to derive by itself that \coqdocvariable{n} \ensuremath{\not=} \coqdocvariable{m} \ensuremath{\rightarrow} \coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} \coqdocvariable{n} \ensuremath{\not=} \coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} \coqdocvariable{m}.
+
+\end{itemize}
+
+
+   Dependent types are also useful to turn partial functions into total functions by
+   restricting their domain. Typically, we can force the list passed to \coqref{equations intro.head}{\coqdocdefinition{head}} 
+   to be non-empty using the specification:
+\begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Equations} \coqdef{equations intro.head}{head}{\coqdocdefinition{head}} \{\coqdocvar{A}\} (\coqdocvar{l} : \coqref{equations intro.list}{\coqdocinductive{list}} \coqdocvariable{A}) (\coqdocvar{pf} : \coqdocvariable{l} \coqexternalref{::type scope:x '<>' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocnotation{\ensuremath{\not=}}} \coqref{equations intro.nil}{\coqdocconstructor{nil}}) : \coqdocvar{A} :=\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.head}{\coqdocdefinition{head}} \coqref{equations intro.nil}{\coqdocconstructor{nil}} \coqdocvariable{pf} \coqdockw{with} \coqdocvar{pf} \coqexternalref{eq refl}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocconstructor{eq\_refl}} := \{ \ensuremath{|} \coqdocvariable{x} :=! \coqdocvar{x} \};\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.head}{\coqdocdefinition{head}} (\coqref{equations intro.cons}{\coqdocconstructor{cons}} \coqdocvariable{a} \coqdocvariable{v}) \coqdocvar{\_} := \coqdocvar{a}.\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+We decompose the list and are faced with two cases:
+
+
+
+\begin{itemize}
+\item  In the first case, the list is empty, hence the proof \coqdocvariable{pf} of type
+     \coqref{equations intro.nil}{\coqdocconstructor{nil}} \ensuremath{\not=} \coqref{equations intro.nil}{\coqdocconstructor{nil}} allows us to derive a contradiction by applying it to
+     reflexivity.  We make use of another category of right-hand sides,
+     which we call \textit{empty} nodes to inform the compiler that a
+     contradiction is derivable in this case.  In general we cannot
+     expect the compiler to find by himself that the context contains a
+     contradiction, as it is undecidable
+     (\cite{DBLP:conf/plpv/Oury07,DBLP:conf/birthday/GoguenMM06}).
+
+
+     However, in this case, one could also write an empty set of clauses
+     for the \coqdockw{with} subprogram, as Equations applies a heuristic in case
+     of an empty set of clause: it tries to split each of the variables
+     in the context to find an empty type.
+
+
+
+\item  In the second case, we simply return the head of the list,
+     disregarding the proof.  
+\end{itemize}
+
+
+\subsection{Inductive families}
+
+
+
+
+   The next step is to make constraints such as non-emptiness part of the 
+   datatype itself. This capability is provided through inductive families in
+   Coq \cite{paulin93tlca}, which are a similar concept to the generalization 
+   of algebraic datatypes to GADTs in functional languages like Haskell 
+   \cite{GADTcomplete}. Families provide a way to associate to each constructor 
+   a different type, making it possible to give specific information about a value 
+   in its type. 
+
+
+\subsubsection{Equality}
+
+
+   The alma mater of inductive families is the propositional equality 
+   \coqexternalref{eq}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocinductive{eq}} defined as: \coqdoceol
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Inductive} \coqexternalref{eq}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocinductive{eq}} (\coqdocvariable{A} : \coqdockw{Type}) (\coqdocvariable{x} : \coqdocvariable{A}) : \coqdocvariable{A} \ensuremath{\rightarrow} \coqdockw{Prop} := \coqdoceol
+\coqdocindent{0.50em}
+\coqexternalref{eq refl}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocconstructor{eq\_refl}} : \coqexternalref{eq}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocinductive{eq}} \coqdocvariable{A} \coqdocvariable{x} \coqdocvariable{x}. 
+
+\coqdocemptyline
+
+
+   Equality is a polymorphic relation on \coqdocvariable{A}. (The \coqdockw{Prop} sort (or kind) categorizes
+   propositions, while the \coqdockw{Set} sort, equivalent to $\star$ in Haskell categorizes 
+   computational types.) Equality is \textit{parameterized} by a value \coqdocvariable{x} of type \coqdocvariable{A} and 
+   \textit{indexed} by another value of type \coqdocvariable{A}. Its single constructor states that 
+   equality is reflexive, so the only way to build an object of \coqexternalref{eq}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocinductive{eq}} \coqdocvariable{x} \coqdocvariable{y} is if 
+   \coqdocvariable{x} \~{}= \coqdocvariable{y}, that is if \coqdocvariable{x} is definitionaly equal to \coqdocvariable{y}. 
+
+
+   Now what is the elimination principle associated to this inductive family?
+   It is the good old Leibniz substitution principle: \coqdoceol
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{\ensuremath{\forall}} (\coqdocvariable{A} : \coqdockw{Type}) (\coqdocvariable{x} : \coqdocvariable{A}) (\coqdocvariable{P} : \coqdocvariable{A} \ensuremath{\rightarrow} \coqdockw{Type}), \coqdocvariable{P} \coqdocvariable{x} \ensuremath{\rightarrow} \coqdockw{\ensuremath{\forall}} \coqdocvariable{y} : \coqdocvariable{A}, \coqdocvariable{x} = \coqdocvariable{y} \ensuremath{\rightarrow} \coqdocvariable{P} \coqdocvariable{y} 
+
+\coqdocemptyline
+
+
+   Provided a proof that \coqdocvariable{x} = \coqdocvariable{y}, we can create on object of type \coqdocvariable{P} \coqdocvariable{y} from an 
+   existing object of type \coqdocvariable{P} \coqdocvariable{x}. This substitution principle is enough to show
+   that equality is symmetric and transitive. For example we can use 
+   pattern-matching on equality proofs to show:
+ \begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Equations} \coqdef{equations intro.eqt}{eqt}{\coqdocdefinition{eqt}} \{\coqdocvar{A}\} (\coqdocvar{x} \coqdocvar{y} \coqdocvar{z} : \coqdocvariable{A}) (\coqdocvar{p} : \coqdocvariable{x} \coqexternalref{::type scope:x '=' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocnotation{=}} \coqdocvariable{y}) (\coqdocvar{q} : \coqdocvariable{y} \coqexternalref{::type scope:x '=' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocnotation{=}} \coqdocvariable{z}) : \coqdocvar{x} \coqexternalref{::type scope:x '=' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocnotation{=}} \coqdocvar{z} :=\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.eqt}{\coqdocdefinition{eqt}} \coqdocvariable{x} \coqdocnotation{?(}\coqdocvariable{x}\coqdocnotation{)} \coqdocnotation{?(}\coqdocvariable{x}\coqdocnotation{)} \coqexternalref{eq refl}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocconstructor{eq\_refl}} \coqexternalref{eq refl}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocconstructor{eq\_refl}} := \coqexternalref{eq refl}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocconstructor{eq\_refl}}.\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+Let us explain the meaning of the non-linear patterns here that we
+   slipped through in the \coqref{equations intro.equal}{\coqdocdefinition{equal}} example. By pattern-matching on the
+   equalities, we have unified \coqdocvariable{x}, \coqdocvariable{y} and \coqdocvariable{z}, hence we determined the
+   \textit{values} of the patterns for the variables to be \coqdocvariable{x}. The ?(\coqdocvariable{x})
+   notation is essentially denoting that the pattern is not a candidate
+   for refinement, as it is determined by another pattern. This
+   particular patterns are called ``inaccessible''. When they are variables
+   the inaccessibility annotation is optional.
+
+
+\subsubsection{Indexed datatypes}
+
+
+
+
+   Functions on \coqref{equations intro.vector}{\coqdocinductive{vector}}s provide more stricking examples of this
+   situation.  The \coqref{equations intro.vector}{\coqdocinductive{vector}} family is indexed by a natural number
+   representing the size of the vector: [ \coqdockw{Inductive} \coqref{equations intro.vector}{\coqdocinductive{vector}} (\coqdocvariable{A} : \coqdockw{Type}) :
+   \coqexternalref{nat}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{nat}} \ensuremath{\rightarrow} \coqdockw{Type} := \ensuremath{|} \coqref{equations intro.Vnil}{\coqdocconstructor{Vnil}} : \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} \coqexternalref{O}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{O}} \ensuremath{|} \coqref{equations intro.Vcons}{\coqdocconstructor{Vcons}} : \coqdocvariable{A} \ensuremath{\rightarrow} \coqdockw{\ensuremath{\forall}} \coqdocvariable{n} : \coqexternalref{nat}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{nat}},
+   \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} \coqdocvariable{n} \ensuremath{\rightarrow} \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} (\coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} \coqdocvariable{n}) ]
+
+
+   The empty vector \coqref{equations intro.Vnil}{\coqdocconstructor{Vnil}} has size \coqexternalref{O}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{O}} while the cons operation
+   increments the size by one. Now let us define the usual map on
+   vectors: \begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Inductive} \coqdef{equations intro.vector}{vector}{\coqdocinductive{vector}} (\coqdocvar{A} : \coqdockw{Type}) : \coqexternalref{nat}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{nat}} \coqexternalref{::type scope:x '->' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocnotation{\ensuremath{\rightarrow}}} \coqdockw{Type} :=\coqdoceol
+\coqdocnoindent
+\ensuremath{|} \coqdef{equations intro.Vnil}{Vnil}{\coqdocconstructor{Vnil}} : \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} 0\coqdoceol
+\coqdocnoindent
+\ensuremath{|} \coqdef{equations intro.Vcons}{Vcons}{\coqdocconstructor{Vcons}} \{\coqdocvar{n}\} : \coqdocvariable{A} \coqexternalref{::type scope:x '->' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocnotation{\ensuremath{\rightarrow}}} \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} \coqdocvariable{n} \coqexternalref{::type scope:x '->' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocnotation{\ensuremath{\rightarrow}}} \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} (\coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} \coqdocvariable{n}).\coqdoceol
+\coqdocnoindent
+\coqdocvar{Arguments} \coqref{equations intro.Vnil}{\coqdocconstructor{Vnil}} \{\coqdocvar{A}\}.\coqdoceol
+\coqdocnoindent
+\coqdocvar{Arguments} \coqref{equations intro.Vcons}{\coqdocconstructor{Vcons}} \{\coqdocvar{A} \coqdocvar{n}\}.\coqdoceol
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Equations} \coqdef{equations intro.vmap}{vmap}{\coqdocdefinition{vmap}} \{\coqdocvar{A} \coqdocvar{B}\} (\coqdocvar{f} : \coqdocvariable{A} \coqexternalref{::type scope:x '->' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocnotation{\ensuremath{\rightarrow}}} \coqdocvariable{B}) \{\coqdocvar{n}\} (\coqdocvar{v} : \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} \coqdocvariable{n}) :\coqdoceol
+\coqdocindent{1.00em}
+\coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvar{B} \coqdocvar{n} :=\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.vmap}{\coqdocdefinition{vmap}} \coqdocvariable{f} (\coqdocvar{n}:=\coqdocnotation{?(}0\coqdocnotation{)}) \coqref{equations intro.Vnil}{\coqdocconstructor{Vnil}} := \coqref{equations intro.Vnil}{\coqdocconstructor{Vnil}} ;\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.vmap}{\coqdocdefinition{vmap}} \coqdocvariable{f} (\coqref{equations intro.Vcons}{\coqdocconstructor{Vcons}} \coqdocvariable{a} \coqdocvariable{v}) := \coqref{equations intro.Vcons}{\coqdocconstructor{Vcons}} (\coqdocvar{f} \coqdocvar{a}) (\coqref{equations intro.vmap}{\coqdocdefinition{vmap}} \coqdocvar{f} \coqdocvar{v}).\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+Here the value of the index representing the size of the vector 
+   is directly determined by the constructor, hence in the case tree
+   we have no need to eliminate \coqdocvariable{n}. This means in particular that 
+   the function \coqref{equations intro.vmap}{\coqdocdefinition{vmap}} does not do any computation with \coqdocvariable{n}, and 
+   the argument could be eliminated in the extracted code.
+   In other words, it provides only \textit{logical} information about 
+   the shape of \coqdocvariable{v} but no computational information.
+
+
+   The \coqref{equations intro.vmap}{\coqdocdefinition{vmap}} function works on every member of the \coqref{equations intro.vector}{\coqdocinductive{vector}} family,
+   but some functions may work only for some subfamilies, for example
+   \coqref{equations intro.vtail}{\coqdocdefinition{vtail}}:
+ \begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Equations} \coqdef{equations intro.vtail}{vtail}{\coqdocdefinition{vtail}} \{\coqdocvar{A} \coqdocvar{n}\} (\coqdocvar{v} : \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} (\coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} \coqdocvariable{n})) : \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvar{A} \coqdocvar{n} :=\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.vtail}{\coqdocdefinition{vtail}} (\coqref{equations intro.Vcons}{\coqdocconstructor{Vcons}} \coqdocvariable{a} \coqdocvariable{v'}) := \coqdocvar{v'}.\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+The type of \coqdocvariable{v} ensures that \coqref{equations intro.vtail}{\coqdocdefinition{vtail}} can only be applied to 
+   non-empty vectors, moreover the patterns only need to consider 
+   constructors that can produce objects in the subfamily \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} (\coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} \coqdocvariable{n}),
+   excluding \coqref{equations intro.Vnil}{\coqdocconstructor{Vnil}}. The pattern-matching compiler uses unification 
+   with the theory of constructors to discover which cases need to 
+   be considered and which are impossible. In this case the failed 
+   unification of 0 and \coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} \coqdocvariable{n} shows that the \coqref{equations intro.Vnil}{\coqdocconstructor{Vnil}} case is impossible.
+   This powerful unification engine running under the hood permits to write
+   concise code where all uninteresting cases are handled automatically. 
+
+\subsection{Derived notions, No-Confusion}
+
+
+
+
+    For this to work smoothlty, the package requires some derived definitions
+    on each (indexed) family, which can be generated automatically using
+    the generic \coqdocvar{\coqdockw{Derive}} command. Here we ask to generate the signature,
+    heterogeneous no-confusion and homogeneous no-confusion principles for vectors: \begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdocvar{\coqdockw{Derive}} \coqdocvar{\coqdocind{NoConfusion}} \coqdockw{for} \coqexternalref{nat}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{nat}}.\coqdoceol
+\coqdocnoindent
+\coqdocvar{\coqdockw{Derive}} \coqdocvar{\coqdocind{Signature}} \coqdocvar{\coqdocind{NoConfusion}} \coqdocvar{NoConfusionHom} \coqdockw{for} \coqref{equations intro.vector}{\coqdocinductive{vector}}.\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+The precise specification of these derived definitions can be found in the manual
+    section (\S \ref{manual}). Signature is used to ``pack'' a value in an inductive family
+    with its index, e.g. the ``total space'' of every index and value of the family. This
+    can be used to derive the heterogeneous no-confusion principle for the family, which
+    allows to discriminate between objects in potentially different instances/fibers of the family,
+    or deduce injectivity of each constructor. The \coqdocvar{NoConfusionHom} variant derives
+    the homogeneous no-confusion principle between two objects in the \textit{same} instance
+    of the family, e.g. to simplify equations of the form \coqref{equations intro.Vnil}{\coqdocconstructor{Vnil}} = \coqref{equations intro.Vnil}{\coqdocconstructor{Vnil}} :> \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} 0.
+    This last principle can only be defined when pattern-matching on the inductive family
+    does not require the \coqref{equations intro.KAxiom.WithAx.K}{\coqdocdefinition{K}} axiom and will otherwise fail.
+
+
+\subsection{Unification and indexed datatypes}
+
+
+
+
+   Back to our example, of course the equations and the induction principle are simplified in a
+   similar way. If we encounter a call to \coqref{equations intro.vtail}{\coqdocdefinition{vtail}} in a proof, we can 
+   use the following elimination principle to simplify both the call and the
+   argument which will be automatically substituted by an object of the form
+   \coqref{equations intro.Vcons}{\coqdocconstructor{Vcons}} \coqdocvar{\_} \coqdocvar{\_} \coqdocvar{\_}:\coqdoceol
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{\ensuremath{\forall}} \coqdocvariable{P} : \coqdockw{\ensuremath{\forall}} (\coqdocvariable{A} : \coqdockw{Type}) (\coqdocvariable{n} : \coqexternalref{nat}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{nat}}), \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} (\coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} \coqdocvariable{n}) \ensuremath{\rightarrow} \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} \coqdocvariable{n} \ensuremath{\rightarrow} \coqdockw{Prop},\coqdoceol
+\coqdocnoindent
+(\coqdockw{\ensuremath{\forall}} (\coqdocvariable{A} : \coqdockw{Type}) (\coqdocvariable{n} : \coqexternalref{nat}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{nat}}) (\coqdocvariable{a} : \coqdocvariable{A}) (\coqdocvariable{v} : \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} \coqdocvariable{n}), \coqdoceol
+\coqdocindent{1.00em}
+\coqdocvariable{P} \coqdocvariable{A} \coqdocvariable{n} (\coqref{equations intro.Vcons}{\coqdocconstructor{Vcons}} \coqdocvariable{a} \coqdocvariable{v}) \coqdocvariable{v}) \ensuremath{\rightarrow}\coqdoceol
+\coqdocnoindent
+\coqdockw{\ensuremath{\forall}} (\coqdocvariable{A} : \coqdockw{Type}) (\coqdocvariable{n} : \coqexternalref{nat}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{nat}}) (\coqdocvariable{v} : \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} (\coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} \coqdocvariable{n})), \coqdocvariable{P} \coqdocvariable{A} \coqdocvariable{n} \coqdocvariable{v} (\coqref{equations intro.vtail}{\coqdocdefinition{vtail}} \coqdocvariable{v}) 
+
+\coqdocemptyline
+
+
+   As a witness of the power of the unification, consider the following function 
+   which computes the diagonal of a square matrix of size \coqdocvariable{n} \ensuremath{\times} \coqdocvariable{n}.
+\begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Equations} \coqdef{equations intro.diag}{diag}{\coqdocdefinition{diag}} \{\coqdocvar{A} \coqdocvar{n}\} (\coqdocvar{v} : \coqref{equations intro.vector}{\coqdocinductive{vector}} (\coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} \coqdocvariable{n}) \coqdocvariable{n}) : \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvar{A} \coqdocvar{n} :=\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.diag}{\coqdocdefinition{diag}} (\coqdocvar{n}:=\coqexternalref{O}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{O}}) \coqref{equations intro.Vnil}{\coqdocconstructor{Vnil}} := \coqref{equations intro.Vnil}{\coqdocconstructor{Vnil}} ;\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.diag}{\coqdocdefinition{diag}} (\coqdocvar{n}:=\coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} \coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{\_}}) (\coqref{equations intro.Vcons}{\coqdocconstructor{Vcons}} \coqref{equations intro.Vcons}{\coqdocconstructor{(}}\coqref{equations intro.Vcons}{\coqdocconstructor{Vcons}} \coqdocvariable{a} \coqdocvariable{v}\coqref{equations intro.Vcons}{\coqdocconstructor{)}} \coqdocvariable{v'}) :=\coqdoceol
+\coqdocindent{1.00em}
+\coqref{equations intro.Vcons}{\coqdocconstructor{Vcons}} \coqdocvar{a} (\coqref{equations intro.diag}{\coqdocdefinition{diag}} (\coqref{equations intro.vmap}{\coqdocdefinition{vmap}} \coqref{equations intro.vtail}{\coqdocdefinition{vtail}} \coqdocvar{v'})).\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+Here in the second equation, we know that the elements of the vector
+   are necessarily of size \coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} \coqdocvariable{n} too, hence we can do a nested refinement
+   on the first one to find the first element of the diagonal.
+  
+
+\subsection{Recursion}
+
+
+
+
+  Notice how in the \coqref{equations intro.diag}{\coqdocdefinition{diag}} example above we explicitely pattern-matched
+  on the index \coqdocvariable{n}, even though the \coqref{equations intro.Vnil}{\coqdocconstructor{Vnil}} and \coqref{equations intro.Vcons}{\coqdocconstructor{Vcons}} pattern matching
+  would have been enough to determine these indices. This is because the
+  following definition also fails: \begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdocvar{Fail} \coqdockw{Equations} \coqdef{equations intro.diag'}{diag'}{\coqdocdefinition{diag'}} \{\coqdocvar{A} \coqdocvar{n}\} (\coqdocvar{v} : \coqref{equations intro.vector}{\coqdocinductive{vector}} (\coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} \coqdocvariable{n}) \coqdocvariable{n}) : \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvar{A} \coqdocvar{n} :=\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.diag'}{\coqdocdefinition{diag'}} \coqref{equations intro.Vnil}{\coqdocconstructor{Vnil}} := \coqref{equations intro.Vnil}{\coqdocconstructor{Vnil}} ;\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.diag'}{\coqdocdefinition{diag'}} (\coqref{equations intro.Vcons}{\coqdocconstructor{Vcons}} \coqref{equations intro.Vcons}{\coqdocconstructor{(}}\coqref{equations intro.Vcons}{\coqdocconstructor{Vcons}} \coqdocvariable{a} \coqdocvariable{v}\coqref{equations intro.Vcons}{\coqdocconstructor{)}} \coqdocvariable{v'}) :=\coqdoceol
+\coqdocindent{1.00em}
+\coqref{equations intro.Vcons}{\coqdocconstructor{Vcons}} \coqdocvar{a} (\coqref{equations intro.diag'}{\coqdocdefinition{diag'}} (\coqref{equations intro.vmap}{\coqdocdefinition{vmap}} \coqref{equations intro.vtail}{\coqdocdefinition{vtail}} \coqdocvar{v'})).\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+Indeed, Coq cannot guess the decreasing argument of this fixpoint
+    using its limited syntactic guard criterion: \coqref{equations intro.vmap}{\coqdocdefinition{vmap}} \coqref{equations intro.vtail}{\coqdocdefinition{vtail}} \coqdocvariable{v'} cannot
+    be seen to be a (large) subterm of \coqdocvariable{v'} using this criterion, even
+    if it is clearly ``smaller''. In general, it can also be the case that
+    the compilation algorithm introduces decorations to the proof term
+    that prevent the syntactic guard check from seeing that the
+    definition is structurally recursive.
+
+
+    To aleviate this problem, \coqdockw{Equations} provides support for
+    \textit{well-founded} recursive definitions which do not rely on syntactic
+    checks.
+
+
+    The simplest example of this is using the \coqexternalref{lt}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Peano}{\coqdocdefinition{lt}} order on natural numbers
+    to define a recursive definition of identity: \begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Equations} \coqdef{equations intro.id}{id}{\coqdocdefinition{id}} (\coqdocvar{n} : \coqexternalref{nat}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{nat}}) : \coqexternalref{nat}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{nat}} \coqdoctac{by} \coqdockw{wf} \coqdocvar{n} \coqexternalref{lt}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Peano}{\coqdocdefinition{lt}} :=\coqdoceol
+\coqdocindent{1.00em}
+\coqref{equations intro.id}{\coqdocdefinition{id}} \coqexternalref{O}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{0}} := 0;\coqdoceol
+\coqdocindent{1.00em}
+\coqref{equations intro.id}{\coqdocdefinition{id}} (\coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} \coqdocvariable{n'}) := \coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} (\coqref{equations intro.id}{\coqdocdefinition{id}} \coqdocvar{n'}).\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+Here \coqref{equations intro.id}{\coqdocdefinition{id}} is defined by well-founded recursion on \coqexternalref{lt}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Peano}{\coqdocdefinition{lt}} on the (only)
+    argument \coqdocvariable{n} using the \coqdoctac{by} \coqdockw{wf} annotation.  At recursive calls of
+    \coqref{equations intro.id}{\coqdocdefinition{id}}, obligations are generated to show that the arguments
+    effectively decrease according to this relation.  Here the proof
+    that \coqdocvariable{n'} < \coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} \coqdocvariable{n'} is discharged automatically.
+
+
+  Wellfounded recursion on arbitrary dependent families is not as easy
+  to use, as in general the relations on families are \textit{heterogeneous},
+  as they must relate inhabitants of potentially different instances of
+  the family.  \coqdockw{Equations} provides a \coqdocvar{\coqdockw{Derive}} command to generate the
+  subterm relation on any such inductive family and derive the
+  well-foundedness of its transitive closure. This provides
+  course-of-values or so-called ``mathematical'' induction on these
+  objects, reflecting the structural recursion criterion in the logic. \begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdocvar{\coqdockw{Derive}} \coqdocvar{Subterm} \coqdockw{for} \coqref{equations intro.vector}{\coqdocinductive{vector}}.\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+For vectors for example, the relation is defined as: \coqdoceol
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Inductive} \coqdocvar{vector\_direct\_subterm} (\coqdocvariable{A} : \coqdockw{Type}) :\coqdoceol
+\coqdocindent{1.00em}
+\coqdockw{\ensuremath{\forall}} \coqdocvariable{n} \coqdocvar{n0} : \coqexternalref{nat}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{nat}}, \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} \coqdocvariable{n} \ensuremath{\rightarrow} \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} \coqdocvar{n0} \ensuremath{\rightarrow} \coqdockw{Prop} :=\coqdoceol
+\coqdocindent{2.00em}
+\coqdocvar{vector\_direct\_subterm\_1\_1} : \coqdockw{\ensuremath{\forall}} (\coqdocvar{h} : \coqdocvariable{A}) (\coqdocvariable{n} : \coqexternalref{nat}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{nat}}) (\coqdocvar{H} : \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} \coqdocvariable{n}),\coqdoceol
+\coqdocindent{3.00em}
+\coqdocvar{vector\_direct\_subterm} \coqdocvariable{A} \coqdocvariable{n} (\coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} \coqdocvariable{n}) \coqdocvar{H} (\coqref{equations intro.Vcons}{\coqdocconstructor{Vcons}} \coqdocvar{h} \coqdocvar{H}) 
+
+\coqdocemptyline
+
+
+  That is, there is only one recursive subterm, for the subvector
+  in the \coqref{equations intro.Vcons}{\coqdocconstructor{Vcons}} constructor. We also get a proof of:
+ \begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Check} \coqref{equations intro.well founded vector subterm}{\coqdocinstance{well\_founded\_vector\_subterm}} : \coqdockw{\ensuremath{\forall}} \coqdocvar{A}, \coqdocclass{WellFounded} (\coqref{equations intro.vector subterm}{\coqdocdefinition{vector\_subterm}} \coqdocvariable{A}).\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+The relation is actually called \coqdocvar{t\_subterm} as \coqref{equations intro.vector}{\coqdocinductive{vector}} is just
+    a notation for \coqdocvar{Vector.t}.
+    \coqdocvar{t\_subterm} itself is the transitive closure of the relation seen as
+    an homogeneous one by packing the indices of the family with the
+    object itself. Once this is derived, we can use it to define
+    recursive definitions on vectors that the guard condition couldn't
+    handle. The signature provides a \coqdocdefinition{signature\_pack} function to pack a
+    vector with its index. The well-founded relation is defined on the
+    packed vector type. \begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Module} \coqdef{equations intro.UnzipVect}{UnzipVect}{\coqdocmodule{UnzipVect}}.\coqdoceol
+\coqdocindent{1.00em}
+\coqdockw{Context} \{\coqdocvar{A} \coqdocvar{B} : \coqdockw{Type}\}.\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+We can use the packed relation to do well-founded recursion on the vector.
+      Note that we do a recursive call on a substerm of type \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} \coqdocvariable{n} which
+      must be shown smaller than a \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} (\coqexternalref{S}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{S}} \coqdocvariable{n}). They are actually compared
+      at the packed type \{ \coqdocvariable{n} : \coqexternalref{nat}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{nat}} \& \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} \coqdocvariable{n}\}. The default obligation
+      tactic defined in \coqdoclibrary{Equations.Init} includes a proof-search
+      for \coqdocvar{subterm} proofs which can resolve the recursive call obligation
+      automatically in this case. \begin{coqdoccode}
+\coqdocemptyline
+\coqdocindent{1.00em}
+\coqdockw{Equations} \coqdef{equations intro.UnzipVect.unzip}{unzip}{\coqdocdefinition{unzip}} \{\coqdocvar{n}\} (\coqdocvar{v} : \coqref{equations intro.vector}{\coqdocinductive{vector}} (\coqref{equations intro.UnzipVect.A}{\coqdocaxiom{A}} \coqexternalref{::type scope:x '*' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocnotation{\ensuremath{\times}}} \coqref{equations intro.UnzipVect.B}{\coqdocaxiom{B}}) \coqdocvariable{n}) : \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqref{equations intro.UnzipVect.A}{\coqdocaxiom{A}} \coqdocvar{n} \coqexternalref{::type scope:x '*' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocnotation{\ensuremath{\times}}} \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqref{equations intro.UnzipVect.B}{\coqdocaxiom{B}} \coqdocvar{n}\coqdoceol
+\coqdocindent{2.00em}
+\coqdoctac{by} \coqdockw{wf} (\coqdocdefinition{signature\_pack} \coqdocvar{v}) (@\coqref{equations intro.vector subterm}{\coqdocdefinition{vector\_subterm}} (\coqref{equations intro.UnzipVect.A}{\coqdocaxiom{A}} \coqexternalref{::type scope:x '*' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocnotation{\ensuremath{\times}}} \coqref{equations intro.UnzipVect.B}{\coqdocaxiom{B}})) :=\coqdoceol
+\coqdocindent{1.00em}
+\coqref{equations intro.unzip}{\coqdocdefinition{unzip}} \coqref{equations intro.Vnil}{\coqdocconstructor{Vnil}} := \coqexternalref{::core scope:'(' x ',' x ',' '..' ',' x ')'}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocnotation{(}}\coqref{equations intro.Vnil}{\coqdocconstructor{Vnil}}\coqexternalref{::core scope:'(' x ',' x ',' '..' ',' x ')'}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocnotation{,}} \coqref{equations intro.Vnil}{\coqdocconstructor{Vnil}}\coqexternalref{::core scope:'(' x ',' x ',' '..' ',' x ')'}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocnotation{)}} ;\coqdoceol
+\coqdocindent{1.00em}
+\coqref{equations intro.unzip}{\coqdocdefinition{unzip}} (\coqref{equations intro.Vcons}{\coqdocconstructor{Vcons}} \coqref{equations intro.Vcons}{\coqdocconstructor{(}}\coqexternalref{pair}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{pair}} \coqdocvariable{x} \coqdocvariable{y}\coqref{equations intro.Vcons}{\coqdocconstructor{)}} \coqdocvariable{v}) \coqdockw{with} \coqref{equations intro.unzip}{\coqdocdefinition{unzip}} \coqdocvar{v} := \{\coqdoceol
+\coqdocindent{1.00em}
+\ensuremath{|} \coqexternalref{pair}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocconstructor{pair}} \coqdocvariable{xs} \coqdocvariable{ys} := \coqexternalref{::core scope:'(' x ',' x ',' '..' ',' x ')'}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocnotation{(}}\coqref{equations intro.Vcons}{\coqdocconstructor{Vcons}} \coqdocvar{x} \coqdocvar{xs}\coqexternalref{::core scope:'(' x ',' x ',' '..' ',' x ')'}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocnotation{,}} \coqref{equations intro.Vcons}{\coqdocconstructor{Vcons}} \coqdocvar{y} \coqdocvar{ys}\coqexternalref{::core scope:'(' x ',' x ',' '..' ',' x ')'}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocnotation{)}} \}.\coqdoceol
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{End} \coqref{equations intro.UnzipVect}{\coqdocmodule{UnzipVect}}.\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+For the diagonal, it is easier to give \coqdocvariable{n} as the decreasing argument
+    of the function, even if the pattern-matching itself is on vectors: \begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Equations} \coqdef{equations intro.diag'}{diag'}{\coqdocdefinition{diag'}} \{\coqdocvar{A} \coqdocvar{n}\} (\coqdocvar{v} : \coqref{equations intro.vector}{\coqdocinductive{vector}} (\coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvariable{A} \coqdocvariable{n}) \coqdocvariable{n}) : \coqref{equations intro.vector}{\coqdocinductive{vector}} \coqdocvar{A} \coqdocvar{n} \coqdoctac{by} \coqdockw{wf} \coqdocvar{n} :=\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.diag'}{\coqdocdefinition{diag'}} \coqref{equations intro.Vnil}{\coqdocconstructor{Vnil}} := \coqref{equations intro.Vnil}{\coqdocconstructor{Vnil}} ;\coqdoceol
+\coqdocnoindent
+\coqref{equations intro.diag'}{\coqdocdefinition{diag'}} (\coqref{equations intro.Vcons}{\coqdocconstructor{Vcons}} \coqref{equations intro.Vcons}{\coqdocconstructor{(}}\coqref{equations intro.Vcons}{\coqdocconstructor{Vcons}} \coqdocvariable{a} \coqdocvariable{v}\coqref{equations intro.Vcons}{\coqdocconstructor{)}} \coqdocvariable{v'}) :=\coqdoceol
+\coqdocindent{1.00em}
+\coqref{equations intro.Vcons}{\coqdocconstructor{Vcons}} \coqdocvar{a} (\coqref{equations intro.diag'}{\coqdocdefinition{diag'}} (\coqref{equations intro.vmap}{\coqdocdefinition{vmap}} \coqref{equations intro.vtail}{\coqdocdefinition{vtail}} \coqdocvar{v'})).\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+One can check using \coqdockw{Extraction} \coqref{equations intro.diag'}{\coqdocdefinition{diag'}} that the computational behavior of \coqref{equations intro.diag'}{\coqdocdefinition{diag'}}
+    is indeed not dependent on the index \coqdocvariable{n}. 
+
+\subsubsection{Pattern-matching and axiom K}
+
+
+
+ To use the K axiom or UIP with \coqdockw{Equations}, one \textit{must} first set an option
+    allowing its use during dependenet pattern-matching compilation. \begin{coqdoccode}
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{Module} \coqdef{equations intro.KAxiom}{KAxiom}{\coqdocmodule{KAxiom}}.\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+By default we disallow the user of UIP, but it can be set. \begin{coqdoccode}
+\coqdocemptyline
+\coqdocindent{1.00em}
+\coqdockw{Set} \coqdockw{Equations} \coqdocvar{With} \coqdocvar{UIP}.\coqdoceol
+\coqdocemptyline
+\coqdocindent{1.00em}
+\coqdockw{Module} \coqdef{equations intro.KAxiom.WithAx}{WithAx}{\coqdocmodule{WithAx}}.\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+The user must declare this axiom itself, as an instance of the \coqdocclass{UIP} class. \begin{coqdoccode}
+\coqdocemptyline
+\coqdocindent{2.00em}
+\coqdockw{Axiom} \coqdef{equations intro.KAxiom.WithAx.uipa}{uipa}{\coqdocaxiom{uipa}} : \coqdockw{\ensuremath{\forall}} \coqdocvar{A}, \coqdocclass{UIP} \coqdocvariable{A}.\coqdoceol
+\coqdocindent{2.00em}
+\coqdockw{Local} \coqdocvar{Existing} \coqdockw{Instance} \coqdocvar{uipa}.\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+In this case the following definition uses the \coqdocclass{UIP} axiom just declared. \begin{coqdoccode}
+\coqdocemptyline
+\coqdocindent{2.00em}
+\coqdockw{Equations} \coqdef{equations intro.KAxiom.WithAx.K}{K}{\coqdocdefinition{K}} \{\coqdocvar{A}\} (\coqdocvar{x} : \coqdocvariable{A}) (\coqdocvar{P} : \coqdocvariable{x} \coqexternalref{::type scope:x '=' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocnotation{=}} \coqdocvariable{x} \coqexternalref{::type scope:x '->' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocnotation{\ensuremath{\rightarrow}}} \coqdockw{Type}) (\coqdocvar{p} : \coqdocvariable{P} \coqexternalref{eq refl}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocconstructor{eq\_refl}})\coqdoceol
+\coqdocindent{7.00em}
+(\coqdocvar{H} : \coqdocvariable{x} \coqexternalref{::type scope:x '=' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocnotation{=}} \coqdocvariable{x}) : \coqdocvar{P} \coqdocvar{H} :=\coqdoceol
+\coqdocindent{3.00em}
+\coqref{equations intro.K}{\coqdocdefinition{K}} \coqdocvariable{x} \coqdocvariable{P} \coqdocvariable{p} \coqexternalref{eq refl}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocconstructor{eq\_refl}} := \coqdocvar{p}.\coqdoceol
+\coqdocemptyline
+\coqdocindent{1.00em}
+\coqdockw{End} \coqref{equations intro.KAxiom.WithAx}{\coqdocmodule{WithAx}}.\coqdoceol
+\coqdocemptyline
+\end{coqdoccode}
+Note that the definition loses its computational content: it will
+      get stuck on an axiom. We hence do not recommend its use.
+
+
+      Equations allows however to use constructive proofs of UIP for types
+      enjoying decidable equality. The following example relies on an
+      instance of the \coqdocvar{EqDec} typeclass for natural numbers, from which
+      we can automatically derive a \coqdocclass{UIP} \coqexternalref{nat}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{nat}} instance.  Note that
+      the computational behavior of this definition on open terms is not
+      to reduce to \coqdocvariable{p} but pattern-matches on the decidable equality
+      proof.  However the defining equation still holds as a
+      \textit{propositional} equality, and the definition of K' is axiom-free. \begin{coqdoccode}
+\coqdocemptyline
+\coqdocindent{1.00em}
+\coqdockw{Equations} \coqdef{equations intro.KAxiom.K'}{K'}{\coqdocdefinition{K'}} (\coqdocvar{x} : \coqexternalref{nat}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Datatypes}{\coqdocinductive{nat}}) (\coqdocvar{P} : \coqdocvariable{x} \coqexternalref{::type scope:x '=' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocnotation{=}} \coqdocvariable{x} \coqexternalref{::type scope:x '->' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocnotation{\ensuremath{\rightarrow}}} \coqdockw{Type}) (\coqdocvar{p} : \coqdocvariable{P} \coqexternalref{eq refl}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocconstructor{eq\_refl}})\coqdoceol
+\coqdocindent{6.00em}
+(\coqdocvar{H} : \coqdocvariable{x} \coqexternalref{::type scope:x '=' x}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocnotation{=}} \coqdocvariable{x}) : \coqdocvar{P} \coqdocvar{H} :=\coqdoceol
+\coqdocindent{2.00em}
+\coqref{equations intro.K'}{\coqdocdefinition{K'}} \coqdocvariable{x} \coqdocvariable{P} \coqdocvariable{p} \coqexternalref{eq refl}{http://coq.inria.fr/distrib/V8.10.1/stdlib//Coq.Init.Logic}{\coqdocconstructor{eq\_refl}} := \coqdocvar{p}.\coqdoceol
+\coqdocemptyline
+\coqdocindent{1.00em}
+\coqdockw{Print} \coqdockw{Assumptions} \coqref{equations intro.KAxiom.K'}{\coqdocdefinition{K'}}.\coqdoceol
+\coqdocindent{1.00em}
+\begin{coqdoccomment}
+\coqdocindent{0.50em}
+Closed\coqdocindent{0.50em}
+under\coqdocindent{0.50em}
+the\coqdocindent{0.50em}
+global\coqdocindent{0.50em}
+context\coqdocindent{0.50em}
+\end{coqdoccomment}
+\coqdoceol
+\coqdocemptyline
+\coqdocnoindent
+\coqdockw{End} \coqref{equations intro.KAxiom}{\coqdocmodule{KAxiom}}.\coqdoceol
+\end{coqdoccode}

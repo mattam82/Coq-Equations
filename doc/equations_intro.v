@@ -36,12 +36,12 @@ neg true := false ;
 neg false := true.
 
 (* begin hide *)
-Check neg_ind.
-Check neg_ind_equation_1.
-Check neg_ind_equation_2.
+Check neg_graph.
+Check neg_graph_equation_1.
+Check neg_graph_equation_2.
 
 Lemma neg_inv : forall b, neg (neg b) = b.
-Proof. intros b. funelim (neg b); simp neg. Defined.
+Proof. intros b. funelim (neg b); now simp neg. Defined.
 (* end hide *)
 (** [Equations] declarations are formed by a signature definition and a set of _clauses_ 
    that must form a _covering_ of this signature. The compiler is then expected to
@@ -68,11 +68,11 @@ Proof. intros b. funelim (neg b); simp neg. Defined.
    principle on the function. 
 
    I.e., for [neg] the inductive graph is defined as: [[
-Inductive neg_ind : bool -> bool -> Prop :=
-| neg_ind_equation_1 : neg_ind true false
-| neg_ind_equation_2 : neg_ind false true ]]
+Inductive neg_graph : bool -> bool -> Prop :=
+| neg_graph_equation_1 : neg_graph true false
+| neg_graph_equation_2 : neg_graph false true ]]
 
-   Along with a proof of [Π b, neg_ind b (neg b)], we can eliminate any call
+   Along with a proof of [Π b, neg_graph b (neg b)], we can eliminate any call
    to [neg] specializing its argument and result in a single command. 
    Suppose we want to show that [neg] is involutive for example, our goal will 
    look like: [[
@@ -144,7 +144,7 @@ app (cons a l) l' := cons a (app l l').
  *)
 
 (* begin hide *)
-Check app_ind. Check @app_ind_equation_1. Check @app_ind_equation_2.
+Check app_graph. Check @app_graph_equation_1. Check @app_graph_equation_2.
 (* end hide *)
 
 (** ** Moving to the left
@@ -313,8 +313,12 @@ eqt x ?(x) ?(x) eq_refl eq_refl := eq_refl.
    The empty vector [Vnil] has size [O] while the cons operation
    increments the size by one. Now let us define the usual map on
    vectors: *)
-Notation Vnil := Vector.nil.
-Notation Vcons := Vector.cons.
+
+Inductive vector (A : Type) : nat -> Type :=
+| Vnil : vector A 0
+| Vcons {n} : A -> vector A n -> vector A (S n).
+Arguments Vnil {A}.
+Arguments Vcons {A n}.
 
 Equations vmap {A B} (f : A -> B) {n} (v : vector A n) :
   vector B n :=
@@ -444,16 +448,16 @@ Equations id (n : nat) : nat by wf n lt :=
 Derive Subterm for vector.
 
 (** For vectors for example, the relation is defined as: [[
-Inductive t_direct_subterm (A : Type) :
+Inductive vector_direct_subterm (A : Type) :
   forall n n0 : nat, vector A n -> vector A n0 -> Prop :=
-    t_direct_subterm_1_1 : forall (h : A) (n : nat) (H : vector A n),
-      t_direct_subterm A n (S n) H (Vcons h H) ]]
+    vector_direct_subterm_1_1 : forall (h : A) (n : nat) (H : vector A n),
+      vector_direct_subterm A n (S n) H (Vcons h H) ]]
 
   That is, there is only one recursive subterm, for the subvector
   in the [Vcons] constructor. We also get a proof of:
  *)
 
-Check well_founded_t_subterm : forall A, WellFounded (t_subterm A).
+Check well_founded_vector_subterm : forall A, WellFounded (vector_subterm A).
 
 (** The relation is actually called [t_subterm] as [vector] is just
     a notation for [Vector.t].
@@ -477,10 +481,10 @@ Module UnzipVect.
       automatically in this case. *)
 
   Equations unzip {n} (v : vector (A * B) n) : vector A n * vector B n
-    by wf (signature_pack v) (@t_subterm (A * B)) :=
+    by wf (signature_pack v) (@vector_subterm (A * B)) :=
   unzip Vnil := (Vnil, Vnil) ;
-  unzip (Vector.cons (pair x y) v) with unzip v := {
-  | pair xs ys := (Vector.cons x xs, Vector.cons y ys) }.
+  unzip (Vcons (pair x y) v) with unzip v := {
+  | pair xs ys := (Vcons x xs, Vcons y ys) }.
 
 End UnzipVect.
 
@@ -530,7 +534,7 @@ Module KAxiom.
       we can automatically derive a [UIP nat] instance.  Note that
       the computational behavior of this definition on open terms is not
       to reduce to [p] but pattern-matches on the decidable equality
-      proof.  However the defining equation still holds as a
+      proof.  However t/he defining equation still holds as a
       _propositional_ equality, and the definition of K' is axiom-free. *)
 
   Equations K' (x : nat) (P : x = x -> Type) (p : P eq_refl)

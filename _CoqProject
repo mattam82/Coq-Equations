@@ -1,5 +1,6 @@
 -I src
 -I test-suite
+-Q src Equations
 -Q theories Equations
 -I theories
 -I examples
