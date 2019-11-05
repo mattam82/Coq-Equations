@@ -8,7 +8,7 @@ Copyright 2009-2019 Matthieu Sozeau `matthieu.sozeau@inria.fr`
 Copyright 2015-2018 Cyprien Mangin `cyprien.mangin@m4x.org`
 
 Distributed under the terms of the GNU Lesser General Public License
-Version 2.1
+Version 2.1 or later
 (see
 [LICENSE](http://github.com/mattam82/Coq-Equations/raw/master/LICENSE)
 for details).
@@ -72,6 +72,7 @@ See [releases](https://github.com/mattam82/Coq-Equations/releases) for
 sources and official releases.
 
 # Install with OPAM
+
 This package is available on [OPAM](http://opam.ocaml.org/).
 Activate the [Coq repository](https://coq.inria.fr/opam-using.html)
 if you didn't do it yet:
@@ -91,12 +92,17 @@ To get the development version of Equations, activate the repository:
     opam repo add coq-extra-dev https://coq.inria.fr/opam/extra-dev
 
 # Install from source
+
 Alternatively, to compile Equations, simply run:
 
-    coq_makefile -f _CoqProject -o Makefile
+    ./configure.sh
     make
 
 in the toplevel directory, with `coqc` and `ocamlc` in your path.
+
+Optionally, one can build the test-suite or examples:
+
+    make examples test-suite
 
 Then add the paths to your `.coqrc`:
 
@@ -112,3 +118,14 @@ if the version of Coq you are using is installed system-wide, rather than
 in your own directory. E.g. on Ubuntu, you would prefix the command with
 `sudo` and then enter your user account password when prompted.
 
+## HoTT Variant
+
+The HoTT variant of Equations currently requires a version of Coq master
+and a modification of the HoTT library which can be built using:
+
+    ./configure.sh HoTT
+
+This will clone a branch of HoTT and build it in Equations-HoTT, then
+one can make Equations and its library using:
+
+    make
