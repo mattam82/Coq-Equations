@@ -46,3 +46,6 @@ docs/_site
 _build
 *.install
 /test-suite/*.agdai
+examples/.lia.cache
+examples/Makefile
+examples/Makefile.conf
