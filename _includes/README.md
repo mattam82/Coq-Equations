@@ -18,6 +18,12 @@ pattern-matching and (well-founded) recursion
 in [Coq](http://coq.inria.fr). It compiles everything down to
 eliminators for inductive types, equality and accessibility,
 providing a definitional extension to the Coq kernel.
+The plugin can be used with Coq's standard logic in `Prop`
+for a proof-irrelevant, erasable interpretation of pattern-matching,
+or with a polymorphic logic in `Type` or re-using the prelude  
+of the [HoTT/Coq](http://github.com/HoTT/HoTT) library for a 
+proof-relevant interpretation. In all cases, the resulting 
+definitions are axiom-free.
 
 ## Live demo
 
@@ -59,9 +65,7 @@ SystemF: A Case Study](http://www.irif.fr/~sozeau/research/publications/Equation
 
 ## Installation
 
-The current development version works with Coq 8.8 (branch
-[8.8](https://github.com/mattam82/Coq-Equations/tree/8.8)), 
-Coq 8.9 (branch
+The current version works with Coq 8.9 (branch
 [8.9](https://github.com/mattam82/Coq-Equations/tree/8.9)),
 Coq 8.10 (branch
 [8.10](https://github.com/mattam82/Coq-Equations/tree/8.10)),
@@ -120,12 +124,16 @@ in your own directory. E.g. on Ubuntu, you would prefix the command with
 
 ## HoTT Variant
 
-The HoTT variant of Equations currently requires a version of Coq master
-and a modification of the HoTT library which can be built using:
+The HoTT variant of Equations works with Coq 8.10 and coq-hott 8.10 an up.
+To install the plugin in an environment where `hoqc` is available, simply run:
 
     ./configure.sh HoTT
 
-This will clone a branch of HoTT and build it in Equations-HoTT, then
-one can make Equations and its library using:
+Then you can follow the standard instructions:
 
-    make
+    make all install
+
+Note that only one of the HoTT variant or the standard variant can be installed
+at any given time. To import the plugin in Coq, use:
+
+    Require Import Equations.HoTT.All.
