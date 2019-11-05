@@ -1,7 +1,7 @@
 ### **Equations** - a function definition plugin.
 
 [![Build Status](https://travis-ci.org/mattam82/Coq-Equations.svg?branch=master)](https://travis-ci.org/mattam82/Coq-Equations/branches)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1117297.svg)](https://doi.org/10.5281/zenodo.1117297)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3012649.svg)](https://zenodo.org/record/3012649#.XcEydZNKjOQ)
 [![Gitter](https://img.shields.io/gitter/room/nwjs/nw.js.svg)](https://gitter.im/coq/Equations)
 
 Copyright 2009-2019 Matthieu Sozeau `matthieu.sozeau@inria.fr`  
@@ -19,6 +19,10 @@ in [Coq](http://coq.inria.fr). It compiles everything down to
 eliminators for inductive types, equality and accessibility,
 providing a definitional extension to the Coq kernel.
 
+## Live demo
+
+Try it now in your browser with [JSCoq](assets/jsexamples/equations_intro.html)!
+
 ## Documentation
 
 - The [reference manual](http://github.com/mattam82/Coq-Equations/raw/master/doc/equations.pdf)
@@ -33,8 +37,11 @@ providing a definitional extension to the Coq kernel.
 
 Two articles describing the system are available:
 
-- [Equations Reloaded](http://www.irif.fr/~sozeau/research/publications/drafts/Equations_Reloaded.pdf), Cyprien Mangin and
-  Matthieu Sozeau (March 2019). Submitted.
+- [Equations Reloaded](https://www.irif.fr/~sozeau//research/publications/Equations_Reloaded-ICFP19.pdf): 
+  High-Level Dependently-Typed Functional Programming and Proving in Coq. Matthieu Sozeau and Cyprien Mangin. 2019. 
+  Proc. ACM Program. Lang. 3, ICFP, Article 86 (August 2019), 29 pages. [DOI](https://doi.org/10.1145/3341690).
+  See [Equations Reloaded](equations-reloaded) for associated material, including a VM to run the examples.
+
 - [Equations: A Dependent Pattern-Matching Compiler](https://link.springer.com/chapter/10.1007/978-3-642-14052-5_29) Matthieu
   Sozeau (2010) 
   In: Kaufmann M., Paulson L.C. (eds) Interactive Theorem
@@ -55,7 +62,9 @@ SystemF: A Case Study](http://www.irif.fr/~sozeau/research/publications/Equation
 The current development version works with Coq 8.8 (branch
 [8.8](https://github.com/mattam82/Coq-Equations/tree/8.8)), 
 Coq 8.9 (branch
-[8.9](https://github.com/mattam82/Coq-Equations/tree/8.9))
+[8.9](https://github.com/mattam82/Coq-Equations/tree/8.9)),
+Coq 8.10 (branch
+[8.10](https://github.com/mattam82/Coq-Equations/tree/8.10)),
 and the current Coq master branch (branch
 [master](https://github.com/mattam82/Coq-Equations/tree/master)).
 
