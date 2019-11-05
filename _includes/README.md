@@ -20,7 +20,7 @@ eliminators for inductive types, equality and accessibility,
 providing a definitional extension to the Coq kernel.
 The plugin can be used with Coq's standard logic in `Prop`
 for a proof-irrelevant, erasable interpretation of pattern-matching,
-or with a polymorphic logic in `Type` or re-using the prelude  
+or with a polymorphic logic in `Type` or re-using the prelude
 of the [HoTT/Coq](http://github.com/HoTT/HoTT) library for a 
 proof-relevant interpretation. In all cases, the resulting 
 definitions are axiom-free.
