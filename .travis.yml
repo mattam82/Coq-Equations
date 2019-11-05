@@ -36,8 +36,8 @@ install:
 - coqc --version
 
 script:
- - coq_makefile -f _CoqProject -o Makefile && make all examples
- - cd test-suite && coq_makefile -f _CoqProject -o Makefile && make
+ - ./configure.sh
+ - make ci
 
 notifications:
   webhooks:
