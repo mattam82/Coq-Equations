@@ -2,8 +2,8 @@
 *~
 *.d
 *.vo
-/Makefile
-/Makefile.conf
+/Makefile.coq
+/Makefile.coq.conf
 *.bak
 *.cm*
 *.o

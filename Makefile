@@ -1,7 +1,4 @@
-# One of these two files will have been generated
-
 -include Makefile.coq
--include Makefile.HoTT
 
 makefiles: test-suite/Makefile examples/Makefile
 
