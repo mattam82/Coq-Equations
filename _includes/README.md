@@ -1,4 +1,4 @@
-### **Equations** - a function definition plugin.
+# **Equations** - a function definition plugin.
 
 [![Build Status](https://travis-ci.org/mattam82/Coq-Equations.svg?branch=master)](https://travis-ci.org/mattam82/Coq-Equations/branches)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3012649.svg)](https://zenodo.org/record/3012649#.XcEydZNKjOQ)
@@ -24,6 +24,14 @@ or with a polymorphic logic in `Type` or re-using the prelude
 of the [HoTT/Coq](http://github.com/HoTT/HoTT) library for a 
 proof-relevant interpretation. In all cases, the resulting 
 definitions are axiom-free.
+
+***Table of Contents***
+ 
+- [Documentation](#documentation)
+- [Papers](#papers)
+- [Gallery](examples)
+- [Installation](#installation)
+- [HoTT Variant](#hott-variant)
 
 ## Live demo
 
@@ -83,7 +91,7 @@ and the current Coq master branch (branch
 See [releases](https://github.com/mattam82/Coq-Equations/releases) for
 sources and official releases.
 
-# Install with OPAM
+### Install with OPAM
 
 This package is available on [OPAM](http://opam.ocaml.org/).
 Activate the [Coq repository](https://coq.inria.fr/opam-using.html)
@@ -103,7 +111,7 @@ To get the development version of Equations, activate the repository:
 
     opam repo add coq-extra-dev https://coq.inria.fr/opam/extra-dev
 
-# Install from source
+### Install from source
 
 Alternatively, to compile Equations, simply run:
 
