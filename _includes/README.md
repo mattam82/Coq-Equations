@@ -39,14 +39,29 @@ Try it now in your browser with [JSCoq](assets/jsexamples/equations_intro.html)!
 - A gallery of [examples](examples) provides more consequent
   developments using Equations.
 
-## Papers
+## Papers and presentations
 
-Two articles describing the system are available:
-
-- [Equations Reloaded](https://www.irif.fr/~sozeau//research/publications/Equations_Reloaded-ICFP19.pdf): 
-  High-Level Dependently-Typed Functional Programming and Proving in Coq. Matthieu Sozeau and Cyprien Mangin. 2019. 
-  Proc. ACM Program. Lang. 3, ICFP, Article 86 (August 2019), 29 pages. [DOI](https://doi.org/10.1145/3341690).
+- [Equations Reloaded: High-Level Dependently-Typed Functional Programming and Proving in Coq](https://www.irif.fr/~sozeau//research/publications/Equations_Reloaded-ICFP19.pdf): . Matthieu Sozeau and Cyprien Mangin. 2019. 
+  Proc. ACM Program. Lang. 3, ICFP, Article 86 (August 2019), 29 pages. [DOI](https://doi.org/10.1145/3341690),
+  [slides](http://www.irif.fr/~sozeau/research/publications/Equations_Reloaded-ICFP19-190819.pdf).
+  
+  This presents version 1.2 and above of the package. 
   See [Equations Reloaded](equations-reloaded) for associated material, including a VM to run the examples.
+
+- [Equations for HoTT](http://www.irif.fr/~sozeau/research/publications/Equations_for_HoTT-HoTT19-130819.pdf).
+  Matthieu Sozeau, Talk given at the [Homotopy Type Theory 2019](https://hott.github.io/HoTT-2019//programme/#sozeau) 
+  Conference in Pittsburgh, PA, August 2019.
+  
+  This explains the no-confusion principle and strong equivalences
+  used by Equations and Jesper Cockx's version of dependent pattern-matching in Agda
+  in terms of HoTT.
+
+- [Equations for Hereditary Substitution in Leivant's Predicative System F: A Case Study](http://www.irif.fr/~sozeau/research/publications/Equations_for_Hereditary_Substitution_in_Leivants_Predicative_System_F:_a_case_study.pdf).
+  Cyprien Mangin and Matthieu Sozeau. 
+  In: Proceedings Tenth International Workshop on Logical Frameworks and Meta Languages: Theory and Practice. 
+  Volume 185 of EPTCS. May 2015 - LFMTP'15. 
+  
+  This is a case study on a proof of normalization for an hereditary substitution procedure on a variant of System F.
 
 - [Equations: A Dependent Pattern-Matching Compiler](https://link.springer.com/chapter/10.1007/978-3-642-14052-5_29) Matthieu
   Sozeau (2010) 
@@ -54,14 +69,7 @@ Two articles describing the system are available:
   Proving. ITP 2010. Lecture Notes in Computer Science,
   vol 6172. Springer, Berlin, Heidelberg.
 
-We did a case study on a proof of normalization for an hereditary substitution
-procedure:
-
-- [Equations for Hereditary Substitution in Leivant's Predicative
-SystemF: A Case Study](http://www.irif.fr/~sozeau/research/publications/Equations_for_Hereditary_Substitution_in_Leivants_Predicative_System_F:_a_case_study.pdf)
-  Cyprien Mangin and Matthieu Sozeau. 
-  In: Proceedings Tenth International Workshop on Logical Frameworks and Meta Languages: Theory and Practice. 
-  Volume 185 of EPTCS. May 2015 - LFMTP'15. 
+  This presents an earlier version of the package.
 
 ## Installation
 
