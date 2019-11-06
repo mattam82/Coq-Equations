@@ -41,8 +41,8 @@ Try it now in your browser with [JSCoq](assets/jsexamples/equations_intro.html)!
 
 ## Papers and presentations
 
-- [Equations Reloaded: High-Level Dependently-Typed Functional Programming and Proving in Coq](https://www.irif.fr/~sozeau//research/publications/Equations_Reloaded-ICFP19.pdf): . Matthieu Sozeau and Cyprien Mangin. 2019. 
-  Proc. ACM Program. Lang. 3, ICFP, Article 86 (August 2019), 29 pages. [DOI](https://doi.org/10.1145/3341690),
+- [Equations Reloaded: High-Level Dependently-Typed Functional Programming and Proving in Coq](https://www.irif.fr/~sozeau//research/publications/Equations_Reloaded-ICFP19.pdf). Matthieu Sozeau and Cyprien Mangin.
+  In: Proc. ACM Program. Lang. 3, ICFP, Article 86 (August 2019), 29 pages. [DOI](https://doi.org/10.1145/3341690),
   [slides](http://www.irif.fr/~sozeau/research/publications/Equations_Reloaded-ICFP19-190819.pdf).
   
   This presents version 1.2 and above of the package. 
