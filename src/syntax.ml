@@ -257,7 +257,7 @@ let free_vars_of_constr_expr fid c =
              else l
            | Globnames.SynDef _ -> l
          with Not_found -> Id.Set.add id l)
-    | { CAst.v = CNotation ((InConstrEntrySomeLevel, "?( _ )"), _) } -> l
+    | { CAst.v = CNotation (_,(InConstrEntrySomeLevel, "?( _ )"), _) } -> l
     | c -> fold_constr_expr_with_binders (fun a l -> a::l) aux bdvars l c
   in aux [] Id.Set.empty c
 
