@@ -21,7 +21,7 @@ providing a definitional extension to the Coq kernel.
 
 ## Live demo
 
-Try it now in your browser with [JSCoq](assets/jsexamples/equations_intro.html)!
+Try it now in your browser with [JSCoq](http://mattam82.github.io/Coq-Equations/assets/jsexamples/equations_intro.html)!
 
 ## Documentation
 
@@ -30,7 +30,7 @@ Try it now in your browser with [JSCoq](assets/jsexamples/equations_intro.html)!
   This introduction can also be followed interactively with Equations installed:
   [equations_intro.v](http://github.com/mattam82/Coq-Equations/raw/master/doc/equations_intro.v)
 
-- A gallery of [examples](examples) provides more consequent
+- A gallery of [examples](http://mattam82.github.io/Coq-Equations/examples) provides more consequent
   developments using Equations.
 
 ## Papers
@@ -40,7 +40,7 @@ Two articles describing the system are available:
 - [Equations Reloaded](https://www.irif.fr/~sozeau//research/publications/Equations_Reloaded-ICFP19.pdf): 
   High-Level Dependently-Typed Functional Programming and Proving in Coq. Matthieu Sozeau and Cyprien Mangin. 2019. 
   Proc. ACM Program. Lang. 3, ICFP, Article 86 (August 2019), 29 pages. [DOI](https://doi.org/10.1145/3341690).
-  See [Equations Reloaded](equations-reloaded) for associated material, including a VM to run the examples.
+  See [Equations Reloaded](http://mattam82.github.io/Coq-Equations/equations-reloaded) for associated material, including a VM to run the examples.
 
 - [Equations: A Dependent Pattern-Matching Compiler](https://link.springer.com/chapter/10.1007/978-3-642-14052-5_29) Matthieu
   Sozeau (2010) 
