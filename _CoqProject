@@ -3,6 +3,7 @@
 -Q theories Equations
 -I theories
 -I examples
+-Q src Equations
 
 CAMLDEBUG = "-bin-annot -g -for-pack Equations -w -58"
 COQDOCFLAGS = "-parse-comments -utf8 -interpolate"
