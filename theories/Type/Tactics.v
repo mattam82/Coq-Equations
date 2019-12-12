@@ -7,7 +7,7 @@
 (**********************************************************************)
 
 Set Warnings "-notation-overridden".
-Require Import Equations.Tactics Equations.Type.Logic Equations.Type.DepElim Equations.Type.EqDec
+Require Import Equations.CoreTactics Equations.Type.Logic Equations.Type.DepElim Equations.Type.EqDec
         Equations.Type.Subterm Equations.Type.WellFounded Equations.Type.FunctionalInduction.
 
 Ltac Equations.Init.simpl_equations ::= Equations.Type.DepElim.simpl_equations.

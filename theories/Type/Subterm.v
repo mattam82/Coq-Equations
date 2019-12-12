@@ -9,7 +9,7 @@
 Set Warnings "-notation-overridden".
 
 From Equations Require Import Init Signature.
-Require Import Equations.Tactics.
+Require Import Equations.CoreTactics.
 Require Import Equations.Type.Logic
         Equations.Type.Classes Equations.Type.EqDec
         Equations.Type.Relation

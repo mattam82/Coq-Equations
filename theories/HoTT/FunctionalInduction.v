@@ -7,7 +7,7 @@
 (**********************************************************************)
 
 Set Warnings "-notation-overridden".
-Require Import Equations.Tactics.
+Require Import Equations.CoreTactics.
 Require Import Equations.HoTT.Logic Equations.HoTT.Classes Equations.HoTT.EqDec Equations.HoTT.DepElim.
 
 Local Open Scope equations_scope.

@@ -15,7 +15,7 @@ Require Export Equations.Type.Loader.
 Require Import Equations.Type.Telescopes.
 Require Import Equations.Type.WellFoundedInstances.
 
-Global Obligation Tactic := Equations.Tactics.equations_simpl.
+Global Obligation Tactic := Equations.CoreTactics.equations_simpl.
 
 (** Tactic to solve well-founded proof obligations by default *)
 

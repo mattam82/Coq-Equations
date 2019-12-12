@@ -11,7 +11,7 @@ Ltac subst_lets :=
 Hint Extern 5 => 
   simpl; subst_lets; omega : Below.
 
-Obligation Tactic := Tactics.equations_simpl; try typeclasses eauto with Below.
+Obligation Tactic := Equations.CoreTactics.equations_simpl; try typeclasses eauto with Below.
 
 Equations gcd (x y : nat) : nat by wf (x + y) lt :=
 gcd 0 x := x ;

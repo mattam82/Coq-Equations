@@ -16,7 +16,7 @@ Require Export Equations.HoTT.Tactics.
 Require Import Equations.HoTT.Telescopes.
 Require Import Equations.HoTT.WellFoundedInstances.
 
-Global Obligation Tactic := Equations.Tactics.equations_simpl.
+Global Obligation Tactic := Equations.CoreTactics.equations_simpl.
 
 (** Tactic to solve well-founded proof obligations by default *)
 

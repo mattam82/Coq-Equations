@@ -11,7 +11,7 @@
    on some equation. *)
 
 From Equations Require Import Init Signature.
-Require Import Equations.Tactics.
+Require Import Equations.CoreTactics.
 Require Import Equations.Type.Classes Equations.Type.EqDec Equations.Type.Constants.
 Require Import Equations.Type.DepElim Equations.Type.Tactics.
 

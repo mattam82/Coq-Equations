@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Equations.Tactics.
+Require Import Equations.CoreTactics.
 Require Import Equations.Prop.Logic
         Equations.Prop.Classes Equations.Prop.EqDec Equations.Prop.DepElim.
 

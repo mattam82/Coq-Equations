@@ -14,7 +14,7 @@ Require Import Extraction.
 Declare ML Module "equations_plugin".
 
 From Equations Require Export Init Signature.
-Require Import Equations.Tactics.
+Require Import Equations.CoreTactics.
 Require Export Equations.Prop.Classes.
 Require Import Equations.Prop.DepElim Equations.Prop.EqDec Equations.Prop.Constants.
 Require Export Equations.Prop.EqDecInstances.

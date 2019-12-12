@@ -15,7 +15,7 @@ Require Import Program.Tactics.
 
 (* program_solve_wf launches auto on well-founded and propositional (i.e. in Prop) goals *)
 
-Global Obligation Tactic := program_simplify; Equations.Tactics.equations_simpl;
+Global Obligation Tactic := program_simplify; Equations.CoreTactics.equations_simpl;
                               try program_solve_wf.
 
 (** Tactic to solve well-founded proof obligations by default *)

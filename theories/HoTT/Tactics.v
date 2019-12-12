@@ -7,7 +7,7 @@
 (**********************************************************************)
 
 Set Warnings "-notation-overridden".
-Require Import Equations.Tactics Equations.HoTT.Logic Equations.HoTT.DepElim
+Require Import Equations.CoreTactics Equations.HoTT.Logic Equations.HoTT.DepElim
         Equations.HoTT.Subterm Equations.HoTT.EqDec
         Equations.HoTT.WellFounded Equations.HoTT.FunctionalInduction.
 

@@ -10,7 +10,7 @@
 
 Require Import Coq.Program.Tactics.
 Require Export Equations.Init.
-Require Import Equations.Tactics.
+Require Import Equations.CoreTactics.
 Require Import Equations.Signature.
 Require Import Equations.Prop.Logic.
 Require Import Equations.Prop.Classes.

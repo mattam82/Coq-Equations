@@ -15,7 +15,7 @@ Declare ML Module "equations_plugin".
 
 Set Warnings "-notation-overridden".
 From Equations Require Export Init Signature.
-Require Import Equations.Tactics.
+Require Import Equations.CoreTactics.
 Require Export Equations.Type.Logic Equations.Type.Classes.
 Require Import Equations.Type.WellFounded.
 Require Import Equations.Type.DepElim Equations.Type.EqDec Equations.Type.Constants.
@@ -25,7 +25,7 @@ Require Import Equations.Type.Subterm.
 Require Export Equations.Type.Tactics.
 Require Export Equations.Type.FunctionalInduction. (* funelim tactic *)
 
-Global Obligation Tactic := Equations.Tactics.equations_simpl.
+Global Obligation Tactic := Equations.CoreTactics.equations_simpl.
 
 (** Tactic to solve well-founded proof obligations by default *)
 

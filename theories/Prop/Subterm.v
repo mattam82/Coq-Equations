@@ -12,7 +12,7 @@ From Coq Require Import Relation_Operators Lexicographic_Product Wf_nat.
 From Coq Require Export Program.Wf FunctionalExtensionality.
 
 From Equations Require Import Init Signature.
-Require Import Equations.Tactics.
+Require Import Equations.CoreTactics.
 Require Import Equations.Prop.Classes Equations.Prop.EqDec
         Equations.Prop.DepElim Equations.Prop.Constants.
 

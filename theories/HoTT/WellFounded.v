@@ -1,5 +1,5 @@
 Set Warnings "-notation-overridden".
-Require Import Equations.Init Equations.Tactics.
+Require Import Equations.Init Equations.CoreTactics.
 Require Import Equations.HoTT.Logic
         Equations.HoTT.Relation Equations.HoTT.Relation_Properties.
 

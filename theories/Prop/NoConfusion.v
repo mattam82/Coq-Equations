@@ -12,7 +12,7 @@
 
 Require Import Coq.Program.Tactics Bvector List.
 From Equations Require Import Init Signature.
-Require Import Equations.Tactics.
+Require Import Equations.CoreTactics.
 Require Import Equations.Prop.Classes Equations.Prop.EqDec Equations.Prop.Constants.
 Require Import Equations.Prop.DepElim Equations.Prop.Tactics.
 

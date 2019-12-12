@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Equations.Init Equations.Tactics.
+Require Import Equations.Init Equations.CoreTactics.
 Set Warnings "-notation-overridden".
 Require Import HoTT.HSet.
 Require Import Equations.HoTT.Logic Equations.HoTT.Relation

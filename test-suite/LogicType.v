@@ -35,7 +35,7 @@ Arguments vector A%type_scope n%nat_scope.
 Arguments nil {A}.
 Arguments cons {A%type_scope} {n%nat_scope} a v.
 Derive Signature for vector.
-Require Import Equations.Tactics Equations.Type.Tactics.
+Require Import Equations.CoreTactics Equations.Type.Tactics.
 Require Import Equations.Type.Tactics.
 Require Import Equations.Type.FunctionalInduction.
 

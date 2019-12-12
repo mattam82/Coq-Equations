@@ -12,7 +12,7 @@
 
 Set Warnings "-notation-overridden".
 From Equations Require Export Init Signature.
-Require Import Equations.Tactics.
+Require Import Equations.CoreTactics.
 Require Export Equations.HoTT.Logic Equations.HoTT.Classes.
 Require Import Equations.HoTT.WellFounded.
 Require Import Equations.HoTT.DepElim Equations.HoTT.EqDec Equations.HoTT.Constants.
@@ -22,7 +22,7 @@ Require Import Equations.HoTT.Subterm.
 Require Export Equations.HoTT.Tactics.
 Require Export Equations.HoTT.FunctionalInduction. (* funelim tactic *)
 
-Global Obligation Tactic := Equations.Tactics.equations_simpl.
+Global Obligation Tactic := Equations.CoreTactics.equations_simpl.
 
 (** Tactic to solve well-founded proof obligations by default *)
 

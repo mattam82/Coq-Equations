@@ -12,7 +12,7 @@ Set Warnings "-notation-overridden".
 
 Require Import Coq.Program.Tactics.
 Require Export Equations.Init.
-Require Import Equations.Signature Equations.Tactics.
+Require Import Equations.Signature Equations.CoreTactics.
 Require Import Equations.Type.Logic.
 Require Import Equations.Type.Classes.
 Require Import Equations.Type.EqDec.

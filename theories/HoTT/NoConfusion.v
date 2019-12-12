@@ -13,7 +13,7 @@
 Set Warnings "-notation-overridden".
 
 From Equations Require Import Init Signature.
-Require Import Equations.Tactics.
+Require Import Equations.CoreTactics.
 Require Import Equations.HoTT.Logic Equations.HoTT.Classes Equations.HoTT.EqDec Equations.HoTT.Constants.
 Require Import Equations.HoTT.DepElim Equations.HoTT.Tactics.
 

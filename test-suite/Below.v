@@ -11,7 +11,7 @@
 
 Require Import Bvector.
 Require Import Vectors.Vector.
-Require Import Equations.Init Equations.Tactics Equations.Prop.DepElim Equations.Prop.Tactics
+Require Import Equations.Init Equations.CoreTactics Equations.Prop.DepElim Equations.Prop.Tactics
         Equations.Prop.Constants.
 Require Import Equations.Prop.FunctionalInduction.
 

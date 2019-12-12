@@ -592,9 +592,9 @@ let rec_wf_tac h n h' rel =
 
 let solve_rec_tac () = tac_of_string "Equations.Equations.solve_rec" []
 
-let pi_tac () = tac_of_string "Equations.Tactics.pi" []
+let pi_tac () = tac_of_string "Equations.CoreTactics.pi" []
 
-let set_eos_tac () = tac_of_string "Equations.Tactics.set_eos" []
+let set_eos_tac () = tac_of_string "Equations.CoreTactics.set_eos" []
 
 (* Thos are forward references in Init, that get redefined later *)
 let noconf_tac () = tac_of_string "Equations.Init.solve_noconf" []

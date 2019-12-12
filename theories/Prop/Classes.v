@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Equations.Init Equations.Tactics.
+Require Import Equations.Init Equations.CoreTactics.
 From Coq Require Import Extraction Relation_Definitions.
 Require Import Equations.Prop.Logic.
 
