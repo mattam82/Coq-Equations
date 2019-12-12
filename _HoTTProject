@@ -52,7 +52,7 @@ src/equations_plugin.mllib
 
 theories/Init.v
 theories/Signature.v
-theories/Tactics.v
+theories/CoreTactics.v
 
 # HoTT-specific files needing the HoTT library.
 
