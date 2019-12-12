@@ -5,6 +5,9 @@
 
 makefiles: test-suite/Makefile examples/Makefile
 
+clean-makefiles:
+	rm -f test-suite/Makefile examples/Makefile
+
 test-suite/Makefile: test-suite/_CoqProject
 	cd test-suite && coq_makefile -f _CoqProject -o Makefile
 
@@ -16,7 +19,7 @@ pre-all:: makefiles
 # Ensure we make the bytecode version as well
 post-all:: bytefiles
 
-clean-examples:
+clean-examples: makefiles
 	cd examples && $(MAKE) clean
 
 clean-test-suite: makefiles
@@ -32,7 +35,7 @@ examples: examples/Makefile all
 
 .PHONY: examples
 
-clean:: makefiles clean-examples clean-test-suite
+clean:: clean-makefiles makefiles clean-examples clean-test-suite
 
 siteexamples: examples/*.glob
 	sh siteexamples.sh
