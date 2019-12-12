@@ -65,7 +65,7 @@ app_with (cons a v) l with app_with v l => {
 (** Structurally recursive function on natural numbers, with inspection of a recursive
     call result. We use [auto with arith] to discharge the obligations. *)
 
-Obligation Tactic := program_simpl ; try Tactics.solve_wf ; auto with arith.
+Obligation Tactic := program_simpl ; try CoreTactics.solve_wf ; auto with arith.
 
 Equations equal (n m : nat) : { n = m } + { n <> m } :=
 equal O O := in_left ;

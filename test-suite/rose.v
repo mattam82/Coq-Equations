@@ -42,7 +42,7 @@ Require Import List.
 
 (** To solve measure subgoals *)
 Hint Extern 4 (_ < _) => simpl; lia : rec_decision.
-Obligation Tactic := Tactics.equations_simpl; try (simpl; lia); try typeclasses eauto with rec_decision.
+Obligation Tactic := CoreTactics.equations_simpl; try (simpl; lia); try typeclasses eauto with rec_decision.
 
 (* begin hide *)
 Section RoseTree.
