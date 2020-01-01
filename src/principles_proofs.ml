@@ -196,12 +196,12 @@ let mutual_fix li l =
   tclEVARMAP >>= fun sigma ->
   Unsafe.tclGETGOALS >>= mfix env sigma
 
-let check_guard gls sigma =
+let check_guard gls env sigma =
   let gl = Proofview.drop_state (List.hd gls) in
   try
     let evi = Evd.find sigma gl in
     match evi.Evd.evar_body with
-    | Evd.Evar_defined b -> Inductiveops.control_only_guard (Evd.evar_env evi) sigma b; true
+    | Evd.Evar_defined b -> Inductiveops.control_only_guard (Evd.evar_env env evi) sigma b; true
     | Evd.Evar_empty -> true
   with Type_errors.TypeError _ -> false
 
@@ -683,8 +683,9 @@ let check_guard tac =
   let open Notations in
   Unsafe.tclGETGOALS >>= (fun gls ->
   tac >>= (fun () ->
+  tclENV >>= fun env ->
   tclEVARMAP >>= (fun sigma ->
-    if check_guard gls sigma then tclUNIT ()
+    if check_guard gls env sigma then tclUNIT ()
     else tclZERO NotGuarded)))
 
 let ind_fun_tac is_rec f info fid nestedinfo progs =
