@@ -783,7 +783,7 @@ Inductive btree (A:Set) : Set :=
   Empty : (btree A)
 | Node : (btree A) -> A -> (btree A) -> (btree A).
 
-Arguments  Empty [A].
+Arguments  Empty {A}.
 Arguments Node [A] _ _ _.
 
 Fixpoint btree_size (A:Set) (bt:btree A) :=
