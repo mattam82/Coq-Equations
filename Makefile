@@ -50,3 +50,6 @@ toplevel: src/equations_plugin.cma bytefiles
 	"$(OCAMLFIND)" ocamlc -linkpkg -linkall -g $(CAMLDEBUG) $(CAMLFLAGS) $(CAMLPKGS) \
 		-package coq.toplevel,coq.plugins.extraction \
 	  $< $(COQLIB)/toplevel/coqtop_bin.ml -o coqtop_equations
+
+dune:
+	dune build

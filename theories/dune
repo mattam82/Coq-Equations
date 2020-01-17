@@ -1,0 +1,9 @@
+(coq.theory
+ ; This determines the -R flag
+ (name Equations)
+ (public_name equations.Equations)
+ (synopsis "Equations Plugin")
+ (libraries coq.plugins.extraction equations.plugin)
+ (modules :standard \ IdDec NoCycle))
+
+(include_subdirs qualified)
