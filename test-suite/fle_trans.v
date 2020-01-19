@@ -9,7 +9,7 @@ Set Implicit Arguments.
 Inductive fin : nat -> Set :=
 | fz : forall n, fin (S n)
 | fs : forall n, fin n -> fin (S n).
-Arguments fz [_].
+Arguments fz {_}.
 (* end hide *)
 (** We define $\le$ by $\cstr{fz} \le i$ and $i \le j "->" \cstr{fs}\ i \le \cstr{fs}\ j$. *)
 
