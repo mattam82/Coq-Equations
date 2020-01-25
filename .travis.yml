@@ -19,7 +19,7 @@ env:
   - CAMLP5_VER="7.06"
   - FINDLIB_VER="1.8.0"
   - NATIVE_COMP="yes"
-  - COQ_VER="dev"
+  - COQ_VER="8.11"
   - HOTT_VER="dev"
 
 install:
@@ -40,7 +40,7 @@ install:
 matrix:
   include:
     - env: TARGET=coq
-    - env: TARGET=HoTT
+#    - env: TARGET=HoTT
 
 script:
  - ./configure.sh ${TARGET}
