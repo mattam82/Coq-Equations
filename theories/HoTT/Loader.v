@@ -17,7 +17,7 @@ Require Export Equations.HoTT.Logic Equations.HoTT.Classes.
 Require Import Equations.HoTT.WellFounded.
 Require Import Equations.HoTT.DepElim Equations.HoTT.EqDec Equations.HoTT.Constants.
 Require Export Equations.HoTT.EqDecInstances.
-Require Import Equations.HoTT.NoConfusion.
+Require Export Equations.HoTT.NoConfusion.
 Require Import Equations.HoTT.Subterm.
 Require Export Equations.HoTT.Tactics.
 Require Export Equations.HoTT.FunctionalInduction. (* funelim tactic *)

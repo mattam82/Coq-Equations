@@ -103,12 +103,12 @@ Notation "[]v" := (@nil _) (at level 0) : vect_scope.
 Derive Signature NoConfusion for vector.
 
 Show Obligation Tactic.
-Require Import Equations.HoTT.WellFoundedInstances.
 
 Derive Subterm for vector.
 
 Axiom F : Funext.
 Existing Instance F.
+
 Equations testn (n : nat) : nat by wf n lt :=
 testn 0 := 0 ;
 testn (S n) with testn n => {
@@ -134,7 +134,6 @@ Unset Universe Minimization ToSet.
 Test Universe Minimization ToSet.
 Require Import Equations.HoTT.Tactics.
 
-
 Instance vector_eqdec@{i +|+} {A : Type@{i}} {n} `(EqDec@{i} A) : EqDec (vector A n).
 Proof.
   intros. intros x. intros y. induction x.
@@ -148,8 +147,6 @@ Proof.
        --- right. simplify *. now apply H.
     -- right; simplify *. now apply Ha.
 Defined.
-
-Hint Unfold vector_subterm : subterm_relation.
 
 Section foo.
   Context {A B : Type}.
@@ -217,6 +214,7 @@ Lemma app'_nil : forall {A : Type} (l : list A), l +++ [] = l.
 Proof.
   intros.
   funelim (app' l []); auto.
+  now rewrite X.
 Qed.
 
 Lemma app'_assoc : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l (app' l' l'').
@@ -378,6 +376,9 @@ Proof.
     apply (X0 idpath).
 Defined.
 Extraction Inline apply_noConfusion Empty_ind.
+
+Register sigma as core.sig.type.
+
 Extraction split'.
 
 Lemma split_vapp : ∀ (X : Type) m n (v : vector X m) (w : vector X n),

@@ -13,8 +13,9 @@ Set Warnings "-notation-overridden".
 
 Require Export Equations.HoTT.Loader.
 Require Export Equations.HoTT.Tactics.
-Require Import Equations.HoTT.Telescopes.
-Require Import Equations.HoTT.WellFoundedInstances.
+Require Export Equations.HoTT.Telescopes.
+Require Export Equations.HoTT.Subterm.
+Require Export Equations.HoTT.WellFoundedInstances.
 
 Global Obligation Tactic := Equations.CoreTactics.equations_simpl.
 

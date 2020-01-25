@@ -8,7 +8,7 @@
 
 Require Import Equations.Init Equations.CoreTactics.
 Set Warnings "-notation-overridden".
-Require Import HoTT.HSet.
+Require Import HoTT.Basics.Trunc HoTT.HSet.
 Require Import Equations.HoTT.Logic Equations.HoTT.Relation
         Equations.HoTT.Relation_Properties Equations.HoTT.WellFounded.
 
