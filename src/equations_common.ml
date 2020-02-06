@@ -42,7 +42,6 @@ let equations_derive_eliminator = ref true
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = true;
-  Goptions.optname  = "using axiomatic K during simplification.";
   Goptions.optkey   = ["Equations"; "WithK"];
   Goptions.optread  = (fun () -> false);
   Goptions.optwrite = (fun b ->
@@ -55,7 +54,6 @@ let _ = Goptions.declare_bool_option {
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = true;
-  Goptions.optname  = "using propositional K during simplification. Use flag Equations With UIP instead.";
   Goptions.optkey   = ["Equations"; "WithKDec"];
   Goptions.optread  = (fun () -> !simplify_withUIP);
   Goptions.optwrite = (fun b -> simplify_withUIP := b)
@@ -63,7 +61,6 @@ let _ = Goptions.declare_bool_option {
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = false;
-  Goptions.optname  = "allow using propositional UIP during simplification";
   Goptions.optkey   = ["Equations"; "With"; "UIP"];
   Goptions.optread  = (fun () -> !simplify_withUIP);
   Goptions.optwrite = (fun b -> simplify_withUIP := b)
@@ -71,7 +68,6 @@ let _ = Goptions.declare_bool_option {
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = false;
-  Goptions.optname  = "leave definitions transparent";
   Goptions.optkey   = ["Equations"; "Transparent"];
   Goptions.optread  = (fun () -> !equations_transparent);
   Goptions.optwrite = (fun b -> equations_transparent := b)
@@ -79,7 +75,6 @@ let _ = Goptions.declare_bool_option {
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = false;
-  Goptions.optname  = "use functional extensionality to prove unfolding lemmas";
   Goptions.optkey   = ["Equations"; "With"; "Funext"];
   Goptions.optread  = (fun () -> !equations_with_funext);
   Goptions.optwrite = (fun b -> equations_with_funext := b)
@@ -87,7 +82,6 @@ let _ = Goptions.declare_bool_option {
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = false;
-  Goptions.optname  = "generate propositional equations for each definition";
   Goptions.optkey   = ["Equations"; "Derive"; "Equations"];
   Goptions.optread  = (fun () -> !equations_derive_equations);
   Goptions.optwrite = (fun b -> equations_derive_equations := b)
@@ -95,7 +89,6 @@ let _ = Goptions.declare_bool_option {
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = false;
-  Goptions.optname  = "generate eliminators for each definition";
   Goptions.optkey   = ["Equations"; "Derive"; "Eliminator"];
   Goptions.optread  = (fun () -> !equations_derive_eliminator);
   Goptions.optwrite = (fun b -> equations_derive_eliminator := b)
@@ -107,7 +100,6 @@ let debug = ref false
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = false;
-  Goptions.optname  = "Equations debug output";
   Goptions.optkey   = ["Equations"; "Debug"];
   Goptions.optread  = (fun () -> !debug);
   Goptions.optwrite = (fun b -> debug := b)
