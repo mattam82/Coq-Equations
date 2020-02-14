@@ -34,7 +34,7 @@ let derive_subterm env sigma ~poly (ind, u as indu) =
     | Sorts.InProp -> mkProp
     | Sorts.InSet -> mkSet
     | Sorts.InType ->
-      let indty = Inductive.type_of_inductive env (ms, EInstance.kind sigma u) in
+      let indty = Inductive.type_of_inductive (ms, EInstance.kind sigma u) in
       EConstr.mkSort (snd (Term.destArity indty))
   in
   let len = List.length ctx in
