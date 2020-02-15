@@ -576,7 +576,7 @@ let is_recursive i : 'a wheres -> bool = fun eqs ->
     | _ -> false
   and occur_eqns eqs = List.exists occur_eqn eqs
   and occurs_notations nts =
-    List.exists (fun (_, c, _) -> occur_var_constr_expr i c) nts
+    List.exists (fun nt -> occur_var_constr_expr i nt.Vernacexpr.decl_ntn_interp) nts
   and occurs eqs =
     List.exists (fun (_,eqs) -> occur_eqns eqs) (fst eqs) || occurs_notations (snd eqs)
   in occurs eqs

@@ -17,8 +17,7 @@ val define_by_eqs
   -> open_proof:bool
   -> Syntax.equation_options
   -> Syntax.pre_equations
-  -> (Names.lstring * Constrexpr.constr_expr *
-      Notation_term.scope_name option) list
+  -> Vernacexpr.decl_notation list
   -> Lemmas.t option
 
 val define_principles :
@@ -30,17 +29,13 @@ val define_principles :
 val equations : poly:bool -> program_mode:bool ->
   Syntax.equation_options ->
   Syntax.pre_equations ->
-  (Names.lstring * Constrexpr.constr_expr *
-   Notation_term.scope_name option)
-  list ->
+  Vernacexpr.decl_notation list ->
   unit
 
 val equations_interactive : poly:bool -> program_mode:bool ->
   Syntax.equation_options ->
   Syntax.pre_equations ->
-  (Names.lstring * Constrexpr.constr_expr *
-   Notation_term.scope_name option)
-  list ->
+  Vernacexpr.decl_notation list ->
   Lemmas.t
 
 val solve_equations_goal :
