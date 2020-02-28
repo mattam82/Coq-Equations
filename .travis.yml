@@ -15,11 +15,10 @@ addons:
 env:
   global:
   - NJOBS=2
-  - COMPILER="4.06.0"
-  - CAMLP5_VER="7.06"
+  - COMPILER="4.07.1"
   - FINDLIB_VER="1.8.0"
   - NATIVE_COMP="yes"
-  - COQ_VER="8.11+beta1"
+  - COQ_VER="8.11.0"
   - HOTT_VER="dev"
 
 install:
@@ -32,8 +31,8 @@ install:
 - opam config list
 - opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev || echo "coq-core-dev registered"
 - opam repo add coq-extra-dev https://coq.inria.fr/opam/extra-dev || echo "coq-extra-dev registered"
-- opam install -j ${NJOBS} -y camlp5.${CAMLP5_VER} ocamlfind.${FINDLIB_VER} coq.${COQ_VER} coq-hott.${HOTT_VER}
-- opam upgrade -y coq.${COQ_VER} coq-hott.${HOTT_VER}
+- opam install -j ${NJOBS} -y ocamlfind.${FINDLIB_VER} coq.${COQ_VER} # coq-hott.${HOTT_VER}
+- opam upgrade -y coq.${COQ_VER} # coq-hott.${HOTT_VER}
 - opam list
 - coqc --version
 
