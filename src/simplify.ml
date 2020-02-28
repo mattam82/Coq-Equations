@@ -1,6 +1,8 @@
 open Pp
 open Context
 open EConstr
+open Equations_common
+
 (* ========== Coq references ========= *)
 (* This section should change a lot when we approach an actual solution. *)
 
@@ -827,7 +829,7 @@ let simplify_ind_pack_inv : simplification_fun =
     let teq = args.(7) in
     (* Check that [teq] is [eq_refl]. *)
     let head, _ = decompose_app !evd teq in
-    if not (EConstr.is_global !evd (Names.GlobRef.ConstructRef (Lazy.force EqRefs.eq_refl)) head) then
+    if not (is_global !evd (Names.GlobRef.ConstructRef (Lazy.force EqRefs.eq_refl)) head) then
       raise (CannotSimplify (str
         "[opaque_ind_pack_eq_inv] Anomaly: should be applied to a reflexivity proof."));
     let tsimplify_ind_pack_inv = Names.GlobRef.ConstRef (Lazy.force EqRefs.simplify_ind_pack_inv) in

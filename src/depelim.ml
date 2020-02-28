@@ -27,8 +27,8 @@ open Tacticals
 open Tactics
 open Evd
 
-open Equations_common
 open EConstr
+open Equations_common
 open Vars
 
 let hyps_of_vars env sigma sign nogen hyps =

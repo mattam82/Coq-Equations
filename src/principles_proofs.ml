@@ -10,6 +10,7 @@ open Libnames
 open Tactics
 open Tacticals
 open Tacmach
+open EConstr
 open Equations_common
 open Printer
 open Ppconstr
@@ -18,7 +19,6 @@ open Syntax
 open Context_map
 open Splitting
 open Covering
-open EConstr
 open Vars
 
 open Cc_plugin.Cctac
@@ -37,9 +37,10 @@ type ind_info = {
   wheremap : where_map }
 
    
-let find_helper_info info f =
+let find_helper_info sigma info f =
   try List.find (fun (cst, arg') ->
-         GlobRef.equal (GlobRef.ConstRef cst) (global_of_constr f))
+         try Names.Constant.equal cst (fst (destConst sigma f))
+         with DestKO -> false)
 	info.helpers_info
   with Not_found -> anomaly (str"Helper not found while proving induction lemma.")
 
@@ -77,7 +78,7 @@ let autorewrite_one b =
     match rules with
     | [] -> Tacticals.New.tclFAIL 0 (str"Couldn't rewrite")
     | r :: rules ->
-       let global = global_of_constr r.Autorewrite.rew_lemma in
+       let global, _univs = Constr.destRef r.Autorewrite.rew_lemma in
        let tac =
          Proofview.tclBIND
          (Tacticals.New.pf_constr_of_global global)
@@ -205,8 +206,8 @@ let check_guard gls env sigma =
     | Evd.Evar_empty -> true
   with Type_errors.TypeError _ -> false
 
-let find_helper_arg info f args =
-  let (cst, arg) = find_helper_info info f in
+let find_helper_arg sigma info f args =
+  let (cst, arg) = find_helper_info sigma info f in
   cst, snd arg, args.(snd arg)
       
 let find_splitting_var sigma pats var constrs =
@@ -463,7 +464,7 @@ let aux_ind_fun info chop nested unfp unfids p =
         | App (ind, args) ->
           let before, last_arg = CArray.chop (Array.length args - 1) args in
           let f, fargs = destApp sigma last_arg.(0) in
-          let _, pos, elim = find_helper_arg info.term_info (EConstr.to_constr sigma f) fargs in
+          let _, pos, elim = find_helper_arg sigma info.term_info f fargs in
           let id = Tacmach.New.pf_get_new_id id gl in
           let hyps = Id.Set.elements (hyps_after sigma (hyps gl) (pos + 1 - snd chop) before) in
           let occs = Some (List.map (fun h -> (Locus.AllOccurrences, h), Locus.InHyp) hyps) in
@@ -992,8 +993,8 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
              let sigma = project gl in
              let cst, _ = destConst sigma (fst (decompose_app sigma refinfo.refined_term)) in
              let f1, arg1 = destApp sigma term1 and f2, arg2 = destApp sigma term2 in
-             let _, posa1, a1 = find_helper_arg info (to_constr sigma f1) arg1
-             and ev2, posa2, a2 = find_helper_arg info (to_constr sigma f2) arg2 in
+             let _, posa1, a1 = find_helper_arg sigma info f1 arg1
+             and ev2, posa2, a2 = find_helper_arg sigma info f2 arg2 in
              let id = pf_get_new_id id gl in
              if Constant.equal ev2 cst then
                tclTHENLIST

@@ -21,8 +21,8 @@ open List
 open Globnames
 open Tactics
 open Tacticals
-open Equations_common
 open EConstr
+open Equations_common
 
 let mkConstructG c u =
   mkConstructU (destConstructRef (Lazy.force c), u)

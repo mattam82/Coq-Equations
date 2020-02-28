@@ -14,9 +14,9 @@ type ind_info = {
  wheremap : where_map;
 }
 
-val find_helper_info :
+val find_helper_info : Evd.evar_map ->
   Splitting.term_info ->
-  Constr.t -> Names.Constant.t * (int * int)
+  EConstr.t -> Names.Constant.t * (int * int)
 val below_transparent_state : unit -> TransparentState.t
 val simpl_star : Proofview.V82.tac
 val eauto_with_below :
@@ -32,7 +32,8 @@ val autorewrite_one : string -> Proofview.V82.tac
 val mutual_fix : string list -> int list -> unit Proofview.tactic
 
 val find_helper_arg :
-  Splitting.term_info -> Constr.t -> 'a array -> Names.Constant.t * int * 'a
+  Evd.evar_map ->
+  Splitting.term_info -> EConstr.t -> 'a array -> Names.Constant.t * int * 'a
 val find_splitting_var : Evd.evar_map ->
   Context_map.pat list -> int -> constr list -> Names.Id.t
 val intros_reducing : Proofview.V82.tac

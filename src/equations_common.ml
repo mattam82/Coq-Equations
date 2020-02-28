@@ -332,7 +332,7 @@ let get_fresh sigma r = new_global sigma (Lazy.force r)
 
 let get_efresh r evd = e_new_global evd (Lazy.force r)
 
-let is_lglobal sigma gr c = EConstr.is_global sigma (Lazy.force gr) c
+let is_lglobal sigma gr c = EConstr.isRefX sigma (Lazy.force gr) c
 
 open EConstr
 
@@ -1027,7 +1027,7 @@ let hintdb_set_transparency cst b db =
     (Hints.HintsTransparencyEntry (Hints.HintsReferences [EvalConstRef cst], b))
 
 (* Call the really unsafe is_global test, we use this on evar-open terms too *)
-let is_global sigma f ec = Globnames.is_global f (EConstr.Unsafe.to_constr ec)
+let is_global sigma f ec = EConstr.isRefX sigma f ec
 
 let constr_of_global_univ sigma u = of_constr (Constr.mkRef (from_peuniverses sigma u))
 
