@@ -1082,6 +1082,19 @@ let solve_equations_obligations flags recids i sigma hook =
   in
   lemma
 
+let gather_fresh_context sigma u octx =
+  let ctx = Evd.universe_context_set sigma in
+  let univs = Univ.ContextSet.levels ctx in
+  let arr = Univ.Instance.to_array u in
+  let levels =
+    Array.fold_left (fun ctx' l ->
+        if not (Univ.LSet.mem l univs) then Univ.LSet.add l ctx'
+        else ctx')
+      Univ.LSet.empty arr
+  in
+  let ctx = Univ.ContextSet.of_set levels in
+  Univ.ContextSet.add_constraints (Univ.AUContext.instantiate u octx) ctx
+
 let solve_equations_obligations_program flags recids i sigma hook =
   let poly = flags.polymorphic in
   let scope = DeclareDef.Global Declare.ImportNeedQualified in
@@ -1102,19 +1115,34 @@ let solve_equations_obligations_program flags recids i sigma hook =
     (* let l =
      *   Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
      * Extraction_plugin.Table.extraction_inline true l; *)
-    let sigma = Evd.merge_universe_context sigma uctx in
-    let evc id = EConstr.of_constr (List.assoc_f Id.equal id obls) in
-    let sigma =
+    (* Problem is restrict in defineObl.define_program gets rid of universes in the obligations now... *)
+    let evd = ref sigma in
+    let evc id =
+      let t = EConstr.of_constr (List.assoc_f Id.equal id obls) in
+      let hd, args = decompose_app !evd t in
+      if EConstr.isRef !evd hd then
+        (if !Equations_common.debug then
+           Feedback.msg_debug (str"mapping obligation to " ++ Printer.pr_econstr_env env !evd t ++
+                               Prettyp.print_name env !evd (CAst.make (Constrexpr.AN (Libnames.qualid_of_ident id))) None);
+         let cst, i = EConstr.destConst !evd hd in
+         let ctx = Environ.constant_context (Global.env ()) cst in
+         let ctx = gather_fresh_context !evd (EConstr.EInstance.kind sigma i) ctx in
+         evd := Evd.merge_context_set Evd.univ_flexible !evd ctx;
+         t)
+      else t
+    in
+    let () =
       Evd.fold_undefined
-      (fun ev evi sigma ->
+      (fun ev evi () ->
       let args =
         Array.of_list (List.map (fun d -> EConstr.mkVar (Context.Named.Declaration.get_id d))
                        (Evd.evar_filtered_context evi)) in
       let evart = EConstr.mkEvar (ev, args) in
       let evc = cmap evc evart in
-      Evd.define ev (whd_beta sigma (EConstr.of_constr evc)) sigma)
-      sigma sigma
+      evd := Evd.define ev (whd_beta !evd (EConstr.of_constr evc)) !evd)
+      sigma ()
     in
+    let sigma = !evd in
     let recobls =
       List.map (fun (id, c) ->
       (* Due to shrinking, we can get lambda abstractions first *)
