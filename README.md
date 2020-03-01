@@ -1,10 +1,10 @@
 ### **Equations** - a function definition plugin.
 
-[![Build Status](https://travis-ci.org/mattam82/Coq-Equations.svg?branch=master)](https://travis-ci.org/mattam82/Coq-Equations/branches)
+[![Build Status](https://travis-ci.org/mattam82/Coq-Equations.svg?branch=8.11)](https://travis-ci.org/mattam82/Coq-Equations/branches)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3012649.svg)](https://zenodo.org/record/3012649#.XcEydZNKjOQ)
 [![Gitter](https://img.shields.io/gitter/room/nwjs/nw.js.svg)](https://gitter.im/coq/Equations)
 
-Copyright 2009-2019 Matthieu Sozeau `matthieu.sozeau@inria.fr`  
+Copyright 2009-2020 Matthieu Sozeau `matthieu.sozeau@inria.fr`  
 Copyright 2015-2018 Cyprien Mangin `cyprien.mangin@m4x.org`
 
 Distributed under the terms of the GNU Lesser General Public License
@@ -59,12 +59,12 @@ SystemF: A Case Study](http://www.irif.fr/~sozeau/research/publications/Equation
 
 ## Installation
 
-The current development version works with Coq 8.8 (branch
-[8.8](https://github.com/mattam82/Coq-Equations/tree/8.8)), 
-Coq 8.9 (branch
+The current development version works with Coq 8.9 (branch
 [8.9](https://github.com/mattam82/Coq-Equations/tree/8.9)),
 Coq 8.10 (branch
 [8.10](https://github.com/mattam82/Coq-Equations/tree/8.10)),
+Coq 8.11 (branch
+[8.11](https://github.com/mattam82/Coq-Equations/tree/8.11)),
 and the current Coq master branch (branch
 [master](https://github.com/mattam82/Coq-Equations/tree/master)).
 
