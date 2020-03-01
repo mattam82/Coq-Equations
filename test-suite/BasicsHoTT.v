@@ -304,16 +304,16 @@ Equations split {X : Type} {m n : nat} (xs : vector X (Peano.plus m n)) : Split 
   split (m:=m .+1) (cons x xs) with split xs => {
     | append xs' ys' := append (cons x xs') ys' }.
 (* Minimization could do a bit better here *)
-Check split@{_ _ _ _ _}.
+(* Check split@{_ _ _ _ _}. Pending on Coq#11723 *)
 
-Definition split_lightu@{u0 u1 u2 | u0 < u1, u1 < u2} := @split@{u0 u1 u1 u2 u1}.
+(* Definition split_lightu@{u0 u1 u2 | u0 < u1, u1 < u2} := @split@{u0 u1 u1 u2 u1}.*)
 
 (* 2 universes: Set < i (type of splitset) < j (universe of the type) *)
 Equations splitSet {X : Set} {m n : nat} (xs : vector X (Peano.plus m n)) : Split m n xs by wf m :=
   splitSet (m:=0) xs := append nil xs;
   splitSet (m:=m .+1) (cons x xs) with splitSet xs => {
     | append xs' ys' := append (cons x xs') ys' }.
-Check splitSet@{_ _}.
+(* Check splitSet@{_ _}. Coq#11723 *)
 
 Section SplitSetParam.
   Context {X : Set}.
@@ -325,7 +325,7 @@ Section SplitSetParam.
     | append xs' ys' := append (cons x xs') ys' }.
   Proof. solve_rec. Defined.
 End SplitSetParam.
-Check splitSetParam@{_}.
+(* Check splitSetParam@{_}. *)
 
 Notation "( x , .. , y , z )" :=
   (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
