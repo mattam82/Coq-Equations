@@ -145,7 +145,7 @@ let derive_eq_dec env sigma ~poly ind =
     (fun (ind, (stmt, tc)) ->
      let id = add_suffix ind.ind_name "_eqdec" in
      ignore(Obligations.add_definition ~name:id (to_constr !evdref stmt) ~poly
-              (Evd.evar_universe_context !evdref)
+              ~uctx:(Evd.evar_universe_context !evdref)
               ~tactic:(eqdec_tac ()) ~hook [||]))
     indsl
 
