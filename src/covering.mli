@@ -72,8 +72,7 @@ type int_data = {
   flags : flags;
   program_mode : bool;
   intenv : Constrintern.internalization_env;
-  notations : (Names.lstring * Constrexpr.constr_expr *
-               Notation_term.scope_name option) list
+  notations : Vernacexpr.decl_notation list
 }
 
 val add_wfrec_implicits : Syntax.rec_type ->
