@@ -1552,7 +1552,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
                                                                                mkSort (Sorts.sort_of_univ ind_sort))) sign);
                 mind_entry_consnames = consnames;
                 mind_entry_lc = constructors;
-                mind_entry_template = false }
+              }
     in ((entry, sign, arity) :: inds, univs, Univ.sup ind_sort sorts)
   in
   let declare_ind () =
@@ -1572,6 +1572,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
     let inductive =
       Entries.{ mind_entry_record = None;
                 mind_entry_universes = uctx;
+                mind_entry_template = false;
                 mind_entry_private = None;
                 mind_entry_finite = Declarations.Finite;
                 mind_entry_params = []; (* (identifier * local_entry) list; *)

@@ -132,8 +132,7 @@ let derive_subterm env sigma ~poly (ind, u as indu) =
                       sort)))
       binders
     in
-      { mind_entry_template = false;
-        mind_entry_typename = subtermid;
+      { mind_entry_typename = subtermid;
         mind_entry_arity = EConstr.to_constr sigma arity;
         mind_entry_consnames = consnames;
         mind_entry_lc = constructors }
@@ -148,6 +147,7 @@ let derive_subterm env sigma ~poly (ind, u as indu) =
         mind_entry_inds = inds;
         mind_entry_private = None;
         mind_entry_universes = uctx;
+        mind_entry_template = false;
         mind_entry_cumulative = false;
       }
     in
