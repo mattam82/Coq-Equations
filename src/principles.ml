@@ -704,7 +704,7 @@ let declare_wf_obligations s info =
   in
   List.iter (fun obl ->
       let hint = make_resolve (GlobRef.ConstRef obl) in
-      try Hints.add_hints ~local:false
+      try Hints.add_hints ~locality:Goptions.OptGlobal
             [Principles_proofs.wf_obligations_base info]
             (Hints.HintsResolveEntry [hint])
       with CErrors.UserError (s, msg) (* Cannot be used as a hint *) ->
@@ -1270,7 +1270,7 @@ let declare_funind info alias env evd is_rec protos progs
   let app = applist (f, args) in
   let hookind { DeclareDef.Hook.S.uctx; scope; dref; _ } =
     let env = Global.env () in (* refresh *)
-    Hints.add_hints ~local:false [info.term_info.base_id]
+    Hints.add_hints ~locality:Goptions.OptGlobal [info.term_info.base_id]
                     (Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef dref]);
     let () =
       try declare_funelim info.term_info env evd is_rec protos progs
@@ -1624,7 +1624,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
         let constrs =
           CList.map_i (fun j _ -> Hints.empty_hint_info, poly, true, Hints.PathAny,
             Hints.IsGlobRef (GlobRef.ConstructRef ((kn,i),j))) 1 ind.Entries.mind_entry_lc in
-          Hints.add_hints ~local:false [info.base_id] (Hints.HintsResolveEntry constrs))
+          Hints.add_hints ~locality:Goptions.OptGlobal [info.base_id] (Hints.HintsResolveEntry constrs))
         inds
     in
     let info = { term_info = info; pathmap = !fnind_map; wheremap } in
@@ -1657,7 +1657,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
         eqns.(pred i) <- true;
         if CArray.for_all (fun x -> x) eqns then (
           (* From now on, we don't need the reduction behavior of the constant anymore *)
-          Typeclasses.set_typeclass_transparency (EvalConstRef cst) false false;
+          Classes.set_typeclass_transparency (EvalConstRef cst) false false;
           (match alias with
            | Some ((f, _), _, _) ->
               Global.set_strategy (ConstKey (fst (destConst !evd f))) Conv_oracle.Opaque
