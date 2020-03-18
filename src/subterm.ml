@@ -164,7 +164,7 @@ let derive_subterm env sigma ~poly (ind, u as indu) =
           Hints.IsGlobRef (GlobRef.ConstructRef ((k,i),j))) 1 entry.mind_entry_lc)
         0 inds
     in
-    let () = Hints.add_hints ~local:false [subterm_relation_base]
+    let () = Hints.add_hints ~locality:Goptions.OptGlobal [subterm_relation_base]
                              (Hints.HintsResolveEntry (List.concat constrhints)) in
     (* Proof of Well-foundedness *)
     let relid = add_suffix (Nametab.basename_of_global (GlobRef.IndRef ind))
@@ -219,7 +219,7 @@ let derive_subterm env sigma ~poly (ind, u as indu) =
         evm := evm';
         (* Impargs.declare_manual_implicits false (ConstRef cst) ~enriching:false *)
         (* 	(list_map_i (fun i _ -> ExplByPos (i, None), (true, true, true)) 1 parambinders); *)
-        Hints.add_hints ~local:false [subterm_relation_base]
+        Hints.add_hints ~locality:Goptions.OptGlobal [subterm_relation_base]
                         (Hints.HintsUnfoldEntry [EvalConstRef kn]);
         mkApp (cst, extended_rel_vect 0 parambinders)
       in

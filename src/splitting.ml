@@ -1176,7 +1176,8 @@ let simplify_evars evars t =
 
 let unfold_entry cst = Hints.HintsUnfoldEntry [EvalConstRef cst]
 let add_hint local i cst =
-  Hints.add_hints ~local [Id.to_string i] (unfold_entry cst)
+  let locality = if local then Goptions.OptLocal else Goptions.OptGlobal in
+  Hints.add_hints ~locality [Id.to_string i] (unfold_entry cst)
 
 type 'a hook =
   | HookImmediate : (program -> term_info -> 'a) -> 'a hook
