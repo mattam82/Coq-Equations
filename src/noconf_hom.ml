@@ -105,7 +105,7 @@ let derive_noConfusion_package env sigma0 ~poly (ind,u as indu) indid ~prefix ~t
   let oblinfo, _, term, ty = Obligations.eterm_obligations env noid sigma 0 term ty in
     ignore(Obligations.add_definition ~hook ~name:packid
              ~poly ~scope ~kind ~term ty ~tactic
-              (Evd.evar_universe_context sigma) oblinfo)
+             ~uctx:(Evd.evar_universe_context sigma) oblinfo)
 
 let derive_no_confusion_hom env sigma0 ~poly (ind,u as indu) =
   let mindb, oneind = Global.lookup_inductive ind in

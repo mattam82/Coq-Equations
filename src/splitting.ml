@@ -1158,7 +1158,7 @@ let solve_equations_obligations_program flags recids i sigma hook =
     let flags = CClosure.beta in
     to_constr sigma (clos_norm_flags flags (Global.env ()) sigma (of_constr x))
   in
-  ignore (Obligations.add_definition ~name:oblsid ~term ty (Evd.evar_universe_context sigma)
+  ignore (Obligations.add_definition ~name:oblsid ~term ty ~uctx:(Evd.evar_universe_context sigma)
             ~poly ~scope ~kind ~reduce ~hook ~opaque:false oblsinfo)
 
 let simplify_evars evars t =

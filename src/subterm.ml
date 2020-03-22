@@ -243,8 +243,8 @@ let derive_subterm env sigma ~poly (ind, u as indu) =
     let _ty' = e_type_of (Global.env ()) evm ty in
     let evm = Evd.minimize_universes !evm in
     let obls, _, constr, typ = Obligations.eterm_obligations env id evm 0 body ty in
-    let ctx = Evd.evar_universe_context evm in
-    Obligations.add_definition ~name:id ~term:constr typ ctx
+    let uctx = Evd.evar_universe_context evm in
+    Obligations.add_definition ~name:id ~term:constr typ ~uctx
                                ~poly ~scope:(DeclareDef.Global Declare.ImportDefaultBehavior) ~kind:(Decls.Instance)
                                ~hook:(DeclareDef.Hook.make hook) ~tactic:(solve_subterm_tac ()) obls
   in ignore(declare_ind ())

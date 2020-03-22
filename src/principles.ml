@@ -1214,7 +1214,7 @@ let declare_funelim info env evd is_rec protos progs
   in
   ignore(Obligations.add_definition ~name:(Nameops.add_suffix id "_elim") ~poly:info.poly ~scope:info.scope
                                     ~tactic ~hook:(DeclareDef.Hook.make hookelim) ~kind:info.decl_kind
-                                    (to_constr !evd newty) (Evd.evar_universe_context !evd) [||])
+                                    (to_constr !evd newty) ~uctx:(Evd.evar_universe_context !evd) [||])
 
 let mkConj evd sort x y =
   let prod = get_efresh logic_product evd in
@@ -1311,12 +1311,12 @@ let declare_funind info alias env evd is_rec protos progs
   let evm, stmtt = Typing.type_of (Global.env ()) !evd statement in
   let () = evd := evm in
   let stmt = to_constr !evd statement and f = to_constr !evd f in
-  let ctx = Evd.evar_universe_context (if poly then !evd else Evd.from_env (Global.env ())) in
+  let uctx = Evd.evar_universe_context (if poly then !evd else Evd.from_env (Global.env ())) in
   let launch_ind tactic =
     ignore(Obligations.add_definition
              ~hook:(DeclareDef.Hook.make hookind)
              ~kind:info.term_info.decl_kind ~poly
-             ~name:indid stmt ~tactic:(Tacticals.New.tclTRY tactic) ctx [||])
+             ~name:indid stmt ~tactic:(Tacticals.New.tclTRY tactic) ~uctx [||])
   in
   let tac = (ind_fun_tac is_rec f info id !nested_statements progs) in
   try launch_ind tac
@@ -1684,6 +1684,6 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
                ~kind:info.decl_kind ~poly
                ~name:ideq (to_constr !evd c)
                ~tactic:tac ~hook:(DeclareDef.Hook.make hook)
-	       (Evd.evar_universe_context !evd) [||])
+	       ~uctx:(Evd.evar_universe_context !evd) [||])
     in List.iter proof stmts
   in List.iter proof ind_stmts
