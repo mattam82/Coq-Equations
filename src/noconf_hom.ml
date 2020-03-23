@@ -102,7 +102,7 @@ let derive_noConfusion_package env sigma0 ~poly (ind,u as indu) indid ~prefix ~t
   let hook = DeclareDef.Hook.make hook in
   let scope = DeclareDef.Global Declare.ImportDefaultBehavior in
   let kind = Decls.Definition in
-  let oblinfo, _, term, ty = Obligations.eterm_obligations env noid sigma 0 term ty in
+  let oblinfo, _, term, ty = RetrieveObl.retrieve_obligations env noid sigma 0 term ty in
     ignore(Obligations.add_definition ~hook ~name:packid
              ~poly ~scope ~kind ~term ty ~tactic
              ~uctx:(Evd.evar_universe_context sigma) oblinfo)

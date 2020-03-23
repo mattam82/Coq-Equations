@@ -1059,7 +1059,7 @@ let solve_equations_obligations flags recids i sigma hook =
       types
   in
   (* Feedback.msg_debug (str"Starting proof"); *)
-  let proof_ending = Lemmas.Proof_ending.(End_equations { hook ; i; types; wits; sigma }) in
+  let proof_ending = Lemmas.Proof_ending.(End_equations { hook ; i; types; sigma }) in
   let info = Lemmas.Info.make ~proof_ending ~kind ~scope () in
   let lemma = Lemmas.start_dependent_lemma ~name:i ~poly:flags.polymorphic ~info tele in
   (* Should this use Lemmas.by *)
@@ -1107,7 +1107,7 @@ let solve_equations_obligations_program flags recids i sigma hook =
   let sigma = Evarutil.nf_evar_map_undefined sigma in
   let oblsid = Nameops.add_suffix i "_obligations" in
   let oblsinfo, (evids, cmap), term, ty =
-    Obligations.eterm_obligations env oblsid sigma 0
+    RetrieveObl.retrieve_obligations env oblsid sigma 0
     ~status:(Evar_kinds.Define false) term ty
   in
   let hook { DeclareDef.Hook.S.uctx; obls; _ } =
