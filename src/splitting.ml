@@ -465,7 +465,7 @@ let define_mutual_nested env evd get_prog progs =
 let helper_evar evm evar env typ src =
   let sign, typ', instance, _ = push_rel_context_to_named_context ~hypnaming:KeepExistingNames env evm typ in
   let evm' = evar_declare sign evar typ' ~src evm in
-    evm', mkEvar (evar, Array.of_list instance)
+    evm', mkEvar (evar, instance)
 
 let term_of_tree env0 isevar sort tree =
   let rec aux env evm sort = function
@@ -1135,7 +1135,7 @@ let solve_equations_obligations_program flags recids i sigma hook =
       Evd.fold_undefined
       (fun ev evi () ->
       let args =
-        Array.of_list (List.map (fun d -> EConstr.mkVar (Context.Named.Declaration.get_id d))
+        (List.map (fun d -> EConstr.mkVar (Context.Named.Declaration.get_id d))
                        (Evd.evar_filtered_context evi)) in
       let evart = EConstr.mkEvar (ev, args) in
       let evc = cmap evc evart in
