@@ -119,7 +119,7 @@ val mkProd_or_subst_or_clear : Evd.evar_map -> rel_declaration ->
 val it_mkProd_or_subst : Environ.env -> Evd.evar_map -> types -> rel_declaration list -> constr
 val it_mkProd_or_clean : Environ.env -> Evd.evar_map -> constr -> rel_context -> constr
 val it_mkLambda_or_subst :
-  constr -> rel_declaration list -> constr
+  Environ.env -> constr -> rel_declaration list -> constr
 val it_mkLambda_or_subst_or_clear : Evd.evar_map -> constr -> rel_context -> constr
 val it_mkProd_or_subst_or_clear : Evd.evar_map -> constr -> rel_context -> constr
 val it_mkLambda_or_clear_LetIn : Evd.evar_map -> constr -> rel_context -> constr

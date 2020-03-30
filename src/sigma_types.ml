@@ -468,7 +468,7 @@ let uncurry_call env sigma fn c =
   let sigty, sigctx, constr = telescope env evdref ctx in
   let app = Vars.substl (List.rev args) constr in
   let fnapp = mkApp (hd, rel_vect 0 (List.length sigctx)) in
-  let fnapp = it_mkLambda_or_subst fnapp sigctx in
+  let fnapp = it_mkLambda_or_subst env fnapp sigctx in
   let projsid = nameR (Id.of_string "projs") in
   let fnapp_ty = Retyping.get_type_of
       (push_rel_context [Context.Rel.Declaration.LocalAssum (projsid, sigty)] env)

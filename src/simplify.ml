@@ -280,7 +280,7 @@ let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty
     | _, _ -> failwith "Unexpected mismatch."
   in
   let ty' = aux ty args in
-  let ty' = Reductionops.whd_beta !evd ty' in
+  let ty' = Reductionops.whd_beta env !evd ty' in
   let cont = fun c ->
     let targs = Array.of_list (CList.map (Option.default c) args) in
     EConstr.mkApp (tf, targs)
@@ -1041,7 +1041,7 @@ let _expand_many rule env evd ((ctx, ty, glu) : goal) : simplification_rules =
     let ty = Reductionops.whd_all env !evd ty in
     let equ, ty, _, _ = check_equality env !evd ctx ty in
     let rec aux ty acc =
-      let ty = Reductionops.whd_betaiotazeta !evd ty in
+      let ty = Reductionops.whd_betaiotazeta env !evd ty in
       let f, args = Equations_common.decompose_appvect !evd ty in
       if check_inductive !evd (Lazy.force SigmaRefs.sigma) f then
         let next_ty = Reductionops.beta_applist !evd (args.(1), [EConstr.mkRel 1]) in

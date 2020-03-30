@@ -504,7 +504,7 @@ let unfold_head env sigma (ids, csts) c =
 	true, of_constr (Environ.constant_value_in env (cst, EInstance.kind sigma u))
     | App (f, args) ->
 	(match aux f with
-	| true, f' -> true, Reductionops.whd_betaiota Evd.empty (mkApp (f', args))
+	| true, f' -> true, Reductionops.whd_betaiota env Evd.empty (mkApp (f', args))
 	| false, _ -> 
 	    let done_, args' = 
 	      Array.fold_left_i (fun i (done_, acc) arg -> 
@@ -706,17 +706,17 @@ let mkProd_or_subst_or_clear sigma decl c =
 
 let it_mkProd_or_subst env sigma ty ctx =
   nf_beta env sigma (List.fold_left
-                       (fun c d -> whd_betalet sigma (mkProd_or_LetIn d c)) ty ctx)
+                       (fun c d -> whd_betalet env sigma (mkProd_or_LetIn d c)) ty ctx)
 
 let it_mkProd_or_clean env sigma ty ctx =
   let open Context.Rel.Declaration in
   nf_beta env sigma (List.fold_left
-                       (fun c d -> whd_betalet sigma
+                       (fun c d -> whd_betalet env sigma
 			 (if (get_name d) == Anonymous then subst1 mkProp c
                           else mkProd_or_LetIn d c)) ty ctx)
 
-let it_mkLambda_or_subst ty ctx = 
-  whd_betalet Evd.empty
+let it_mkLambda_or_subst env ty ctx = 
+  whd_betalet env Evd.empty
     (List.fold_left (fun c d -> mkLambda_or_LetIn d c) ty ctx)
 
 let mkLambda_or_clear_LetIn sigma decl c =
