@@ -1,6 +1,6 @@
 From Coq.Lists Require Import List.
 From Equations Require Import Equations.
-Require Import Program.
+Import ListNotations.
 
 Inductive foo: Set :=
 | Foo1 : list foo -> foo

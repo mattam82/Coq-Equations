@@ -1,5 +1,6 @@
 From Equations Require Import Equations.
-Require Import Program.
+Require Import List.
+Import ListNotations.
 
 Equations foo (f: option (nat -> nat)) (l: list nat) : list nat :=
   foo None _ := [];

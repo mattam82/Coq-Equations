@@ -1,5 +1,6 @@
 From Equations Require Import Equations.
-Require Import List Program.Syntax Arith Lia.
+Require Import List Arith Lia.
+Import ListNotations.
 
 Set Keyed Unification.
 Set Equations Transparent.

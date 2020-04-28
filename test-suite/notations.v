@@ -1,6 +1,6 @@
 From Equations Require Import Equations.
 Require Import List.
-Require Import Program.
+Import ListNotations.
 Reserved Notation "x +++ y" (at level 50).
 
 Equations app {A} (l : list A) : list A -> list A :=
