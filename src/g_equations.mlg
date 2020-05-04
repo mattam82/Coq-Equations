@@ -394,11 +394,11 @@ let classify_equations x =
 }
 
 VERNAC COMMAND EXTEND Define_equations_refine CLASSIFIED BY { classify_equations }
-| #[ poly = polymorphic; program_mode = program ] ![open_proof] [ "Equations" "?" equation_options(opt) equations(eqns) ] ->
+| #[ poly = polymorphic; program_mode = program ] ![program_interactive] [ "Equations" "?" equation_options(opt) equations(eqns) ] ->
     { Equations.equations_interactive ~poly ~program_mode opt (fst eqns) (snd eqns) }
 END
 
-VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS SIDEFF
+VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS SIDEFF STATE program
 | #[ poly = polymorphic; program_mode = program ] [ "Equations" equation_options(opt) equations(eqns) ] ->
     { Equations.equations ~poly ~program_mode opt (fst eqns) (snd eqns) }
 END
@@ -508,13 +508,12 @@ END
 
 (** Deriving *)
 
-VERNAC COMMAND EXTEND Derive CLASSIFIED AS SIDEFF
+VERNAC COMMAND EXTEND Derive CLASSIFIED AS SIDEFF STATE program
 | #[ poly = polymorphic ] [ "Derive" ne_ident_list(ds) "for" global_list(c) ] -> {
   Ederive.derive ~poly (List.map Id.to_string ds)
     (List.map (fun x -> x.CAst.loc, Smartlocate.global_with_alias x) c)
   }
 END
-
 
 (* Simplify *)
 

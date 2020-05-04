@@ -109,17 +109,20 @@ val subst_rec_programs :
   Splitting.program list
 
 val unfold_programs :
+  pm:Declare.OblState.t ->
   Environ.env ->
   Evd.evar_map ref ->
   Equations_common.flags ->
   Syntax.rec_type ->
   (Splitting.program * Splitting.compiled_program_info) list ->
+  Declare.OblState.t *
   (Splitting.program * (Splitting.program * Splitting.compiled_program_info) option *
    Splitting.compiled_program_info * Principles_proofs.equations_info) list
 
 type alias
 
 val build_equations :
+  pm:Declare.OblState.t ->
   bool ->
   Environ.env ->
   Evd.evar_map ->
@@ -127,8 +130,7 @@ val build_equations :
   Syntax.rec_type ->
   (Splitting.program * Splitting.program option *
    Splitting.compiled_program_info * Principles_proofs.equations_info) list ->
-  unit
-
+  Declare.OblState.t
 
 val all_computations :
   Environ.env ->

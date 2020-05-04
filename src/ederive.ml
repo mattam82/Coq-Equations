@@ -8,27 +8,27 @@
 
 open Constr
 
-type derive_fn_ty = poly:bool -> Names.GlobRef.t -> unit
+type derive_fn_ty = pm:Declare.OblState.t -> poly:bool -> Names.GlobRef.t -> Declare.OblState.t
 
 type derive_record =
   { derive_name : string;
-    derive_fn : poly:bool -> Names.GlobRef.t -> unit }
+    derive_fn : derive_fn_ty }
 
-let make_derive fn ~poly s =
+let make_derive fn ~pm ~poly s =
   let env = Global.env () in
   let sigma = Evd.from_env env in
   let sigma, c = Evd.fresh_global ~rigid:Evd.univ_rigid env sigma s in
-  fn env sigma ~poly c
+  fn ~pm env sigma ~poly c
 
-let make_derive_ind fn ~poly s =
-  let fn env sigma ~poly c =
+let make_derive_ind fn ~pm ~poly s =
+  let fn ~pm env sigma ~poly c =
     match EConstr.kind sigma c with
-    | Ind (i,u) -> fn env sigma ~poly (i,u)
+    | Ind (i,u) -> fn ~pm env sigma ~poly (i,u)
     | _ -> CErrors.user_err (Pp.str"Expected an inductive type")
-  in make_derive fn ~poly s
-                 
+  in make_derive fn ~pm ~poly s
+
 let table = ref (CString.Map.empty : derive_fn_ty CString.Map.t)
-    
+
 let register_derive d =
   table := CString.Map.add d.derive_name d.derive_fn !table
 
@@ -78,11 +78,14 @@ let check_derive s gr =
     let grds = Names.GlobRef.Map.find gr !derived_instances in
     StringSet.mem s grds
   with Not_found -> false
-  
-let derive_one poly d grs =
-  let fn = get_derive d in
-  List.iter (fun x -> fn ~poly x; register_instance (d, x)) grs
 
-let derive ~poly ds grs =
+let derive_one ~pm poly d grs =
+  let fn = get_derive d in
+  List.fold_left (fun pm x ->
+      let pm = fn ~pm ~poly x in
+      register_instance (d, x);
+      pm) pm grs
+
+let derive ~pm ~poly ds grs =
   let grs = List.map (fun (loc, gr) -> Dumpglob.add_glob ?loc gr; gr) grs in
-  List.iter (fun d -> derive_one poly d grs) ds
+  List.fold_left (fun pm d -> derive_one ~pm poly d grs) pm ds

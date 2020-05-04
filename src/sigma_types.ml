@@ -277,7 +277,10 @@ let declare_sig_of_ind env sigma ~poly (ind,u) =
   inst
 
 let () =
-  let fn env sigma ~poly c = ignore (declare_sig_of_ind env sigma ~poly c) in
+  let fn ~pm env sigma ~poly c =
+    let _ = declare_sig_of_ind env sigma ~poly c in
+    pm
+  in
   Ederive.(register_derive
             { derive_name = "Signature";
               derive_fn = make_derive_ind fn })

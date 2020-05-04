@@ -54,7 +54,7 @@ let get_forced_positions sigma args concl =
   in
   List.rev (List.fold_left_i is_forced 1 [] args)
 
-let derive_noConfusion_package env sigma0 ~poly (ind,u as indu) indid ~prefix ~tactic cstNoConf =
+let derive_noConfusion_package ~pm env sigma0 ~poly (ind,u as indu) indid ~prefix ~tactic cstNoConf =
   let mindb, oneind = Global.lookup_inductive ind in
   let pi = (fst indu, EConstr.EInstance.kind sigma0 (snd indu)) in
   let ctx = subst_instance_context (snd pi) oneind.mind_arity_ctxt in
@@ -105,10 +105,11 @@ let derive_noConfusion_package env sigma0 ~poly (ind,u as indu) indid ~prefix ~t
   let oblinfo, _, term, ty = RetrieveObl.retrieve_obligations env noid sigma 0 term ty in
   let cinfo = Declare.CInfo.make ~name:packid ~typ:ty () in
   let info = Declare.Info.make ~hook ~poly ~scope ~kind () in
-  ignore(Declare.Obls.add_definition ~cinfo ~info
-             ~term ~tactic ~uctx:(Evd.evar_universe_context sigma) oblinfo)
+  let pm, _ = Declare.Obls.add_definition ~pm ~cinfo ~info
+             ~term ~tactic ~uctx:(Evd.evar_universe_context sigma) oblinfo in
+  pm
 
-let derive_no_confusion_hom env sigma0 ~poly (ind,u as indu) =
+let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
   let mindb, oneind = Global.lookup_inductive ind in
   let pi = (fst indu, EConstr.EInstance.kind sigma0 (snd indu)) in
   let _, inds = destArity sigma0 (EConstr.of_constr (Inductiveops.type_of_inductive env pi)) in
@@ -248,7 +249,7 @@ let derive_no_confusion_hom env sigma0 ~poly (ind,u as indu) =
   let splitting =
     Covering.covering ~check_unused:false (* The catch-all clause might not be needed *)
       env evd p data clauses [] ctxmap [] s in
-  let hook _ p terminfo =
+  let hook ~pm _ p terminfo =
     (* let _proginfo =
      *   Syntax.{ program_loc = Loc.make_loc (0,0); program_id = id;
      *            program_orig_type; program_sort;
@@ -272,16 +273,16 @@ let derive_no_confusion_hom env sigma0 ~poly (ind,u as indu) =
         ~rigid:Evd.univ_rigid (* Universe levels of the inductive family should not be tampered with. *)
         env sigma (GlobRef.IndRef ind) in
     let indu = destInd sigma indu in
-    derive_noConfusion_package (Global.env ()) sigma ~poly indu indid
+    (), derive_noConfusion_package ~pm (Global.env ()) sigma ~poly indu indid
       ~prefix:"Hom" ~tactic:(noconf_hom_tac ()) program_cst
  in
  let prog = Splitting.make_single_program env evd data.Covering.flags p ctxmap splitting None in
- Splitting.define_programs env evd [None] [] data.Covering.flags [prog] hook
-
+ Splitting.define_programs ~pm env evd [None] [] data.Covering.flags [prog] hook
 
 let () =
-  let derive_no_confusion_hom env sigma ~poly v =
-    ignore (derive_no_confusion_hom env sigma ~poly v) in
+  let derive_no_confusion_hom ~pm env sigma ~poly v =
+    derive_no_confusion_hom ~pm env sigma ~poly v |> fst
+  in
   Ederive.(register_derive
              { derive_name = "NoConfusionHom";
                derive_fn = make_derive_ind derive_no_confusion_hom })

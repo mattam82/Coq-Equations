@@ -24,7 +24,7 @@ open Sigma_types
 
 let refresh_universes t = t (* MS: FIXME *)
 
-let derive_subterm env sigma ~poly (ind, u as indu) =
+let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
   let global = true in
   let () = 
     if Ederive.check_derive "NoConfusion" (Names.GlobRef.IndRef ind) 
@@ -149,7 +149,7 @@ let derive_subterm env sigma ~poly (ind, u as indu) =
         mind_entry_lc = constructors }
   in
   let uctx = Evd.univ_entry ~poly sigma in
-  let declare_ind () =
+  let declare_ind ~pm =
     let inds = [declare_one_ind 0 indu branches] in
     let inductive =
       { mind_entry_record = None;
@@ -258,15 +258,17 @@ let derive_subterm env sigma ~poly (ind, u as indu) =
     let cinfo = Declare.CInfo.make ~name:id ~typ () in
     let info = Declare.Info.make ~poly ~scope:Locality.(Global ImportDefaultBehavior)
         ~kind:Decls.(IsDefinition Instance) ~hook:(Declare.Hook.make hook) () in
-    Declare.Obls.add_definition ~cinfo ~info ~term:constr ~uctx
-                                ~tactic:(solve_subterm_tac ()) obls
-  in ignore(declare_ind ())
+    let pm, _ = Declare.Obls.add_definition ~pm ~cinfo ~info ~term:constr ~uctx
+                                ~tactic:(solve_subterm_tac ()) obls in
+    pm
+  in
+  declare_ind ~pm
 
 let () =
   Ederive.(register_derive
             { derive_name = "Subterm";
               derive_fn = make_derive_ind derive_subterm })
-    
+
 let derive_below env sigma ~poly (ind,univ as indu) =
   let evd = ref sigma in
   let mind, oneind = Global.lookup_inductive ind in
@@ -391,10 +393,13 @@ let derive_below env sigma ~poly (ind,univ as indu) =
   let bodyb = replace_vars [belowid, belowB] bodyb in
   let id = add_prefix "below_" (Nametab.basename_of_global (GlobRef.IndRef ind)) in
   let evd = if poly then evd else Evd.from_env (Global.env ()) in
-    ignore(declare_constant id bodyb None ~poly evd
-	     ~kind:Decls.(IsDefinition Definition))
+  ignore(declare_constant id bodyb None ~poly evd
+	   ~kind:Decls.(IsDefinition Definition))
 
 let () =
+  let derive_below ~pm env sigma ~poly indu =
+    let () = derive_below env sigma ~poly indu in pm
+  in
   Ederive.(register_derive
             { derive_name = "Below";
               derive_fn = make_derive_ind derive_below })

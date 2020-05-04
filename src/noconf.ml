@@ -57,7 +57,7 @@ let mk_eq env env' evd args args' =
   let ty = Retyping.get_type_of env !evd make in
   mkEq env evd ty make make'
 
-let derive_no_confusion env sigma0 ~poly (ind,u as indu) =
+let derive_no_confusion ~pm env sigma0 ~poly (ind,u as indu) =
   let evd = ref sigma0 in
   let mindb, oneind = Global.lookup_inductive ind in
   let pi = (fst indu, EConstr.EInstance.kind !evd (snd indu)) in
@@ -146,7 +146,7 @@ let derive_no_confusion env sigma0 ~poly (ind,u as indu) =
       ~rigid:Evd.univ_rigid (* Universe levels of the inductive family should not be tampered with. *)
       env sigma (GlobRef.IndRef ind) in
   let indu = destInd sigma indu in
-  Noconf_hom.derive_noConfusion_package env sigma ~poly indu indid
+  Noconf_hom.derive_noConfusion_package ~pm env sigma ~poly indu indid
     ~prefix:"" ~tactic:(noconf_tac ()) cstNoConf
 
 let () =
