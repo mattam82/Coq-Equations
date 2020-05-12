@@ -10,6 +10,7 @@
 From Equations Require Import Equations.
 From Coq Require Import List Program.Syntax Arith Lia.
 Require Import List.
+Import ListNotations.
 (* end hide *)
 (** * Well-founded recursion
 

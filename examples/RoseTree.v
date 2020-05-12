@@ -11,6 +11,7 @@ From Equations Require Import Equations.
 Require Import Omega Utf8 Lia Arith.
 
 Require Import List.
+Import ListNotations.
 
 Set Keyed Unification.
 

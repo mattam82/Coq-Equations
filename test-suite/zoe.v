@@ -1,5 +1,6 @@
 From Equations Require Import Equations.
 Require Import Arith List ListSet Omega Program.
+Import ListNotations.
 Set Keyed Unification.
  
 Definition fvar : Type := nat. 

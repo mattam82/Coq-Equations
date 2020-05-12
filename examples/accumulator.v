@@ -17,6 +17,7 @@
 
 From Equations Require Import Equations.
 From Coq Require Import List Program.Syntax Arith Lia.
+Import ListNotations.
 
 (** ** Worker/wrapper
 
