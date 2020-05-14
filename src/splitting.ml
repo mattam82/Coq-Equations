@@ -492,7 +492,7 @@ let term_of_tree env0 isevar sort tree =
     | Mapping ((ctx, p, ctx'), s) ->
       let evm, term, ty = aux env evm sort s in
       let args = Array.rev_of_list (snd (constrs_of_pats ~inacc_and_hide:false env evm p)) in
-      let term = it_mkLambda_or_LetIn (whd_beta evm (mkApp (term, args))) ctx in
+      let term = it_mkLambda_or_LetIn (whd_beta env evm (mkApp (term, args))) ctx in
       let ty = it_mkProd_or_subst env evm (prod_appvect evm ty args) ctx in
       evm, term, ty
 
@@ -1139,7 +1139,7 @@ let solve_equations_obligations_program flags recids i sigma hook =
                        (Evd.evar_filtered_context evi)) in
       let evart = EConstr.mkEvar (ev, args) in
       let evc = cmap evc evart in
-      evd := Evd.define ev (whd_beta !evd (EConstr.of_constr evc)) !evd)
+      evd := Evd.define ev (whd_beta env !evd (EConstr.of_constr evc)) !evd)
       sigma ()
     in
     let sigma = !evd in

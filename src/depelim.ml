@@ -268,7 +268,7 @@ let specialize_eqs ~with_block id gl =
   let ty = pf_get_hyp_typ gl id in
   let evars = ref (project gl) in
   let unif env ctx evars c1 c2 =
-    match Evarconv.unify env !evars Reduction.CONV (it_mkLambda_or_subst c1 ctx) (it_mkLambda_or_subst c2 ctx) with
+    match Evarconv.unify env !evars Reduction.CONV (it_mkLambda_or_subst env c1 ctx) (it_mkLambda_or_subst env c2 ctx) with
     | exception Evarconv.UnableToUnify _ -> false
     | evm -> evars := evm; true
   in
@@ -306,7 +306,7 @@ let specialize_eqs ~with_block id gl =
            acc, in_eqs, ctx, subst, ty
          else
            let e = evd_comb1 (Evarutil.new_evar (push_rel_context ctx env))
-               evars (it_mkLambda_or_subst t subst) in
+               evars (it_mkLambda_or_subst env t subst) in
            aux in_block false ctx (make_def na (Some e) t :: subst) (mkApp (lift 1 acc, [| mkRel 1 |])) b)
     | t -> acc, in_eqs, ctx, subst, ty
   in
