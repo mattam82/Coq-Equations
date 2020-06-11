@@ -130,6 +130,18 @@ Ltac simpl_let :=
 
 Hint Extern 40 => progress (cbv beta in * || simpl_let) : Below.
 
+(* This expands lets in the context to simplify proof search for recursive call
+  obligations, as [eauto] does not do matching up-to unfolding of let-bound variables.
+*)
+
+Hint Extern 10 => 
+  match goal with
+  [ x := _ |- _ ] => 
+    lazymatch goal with
+    |- context [ x ] => subst x 
+    end
+  end : Below.
+
 (** We can automatically use the well-foundedness of a relation to get
    the well-foundedness of its transitive closure.
    Note that this definition is transparent as well as [wf_clos_trans],
