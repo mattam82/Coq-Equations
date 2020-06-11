@@ -152,13 +152,13 @@ Hint Extern 0 (inverse_image _ _ _ _) => red : Below.
 (** We also add hints for transitive closure, not using [t_trans] but forcing to 
    build the proof by successive applications of the inner relation. *)
 
-Hint Resolve @t_step : subterm_relation.
+Hint Resolve t_step : subterm_relation.
 
 Lemma trans_clos_stepr A (R : relation A) (x y z : A) :
   R y z -> trans_clos R x y -> trans_clos R x z.
 Proof. intros Hyz Hxy. exact (t_trans _ x y z Hxy (t_step _ _ _ Hyz)). Defined.
 
-Hint Resolve @trans_clos_stepr : subterm_relation.
+Hint Resolve trans_clos_stepr : subterm_relation.
 
 (** The default tactic to build proofs of well foundedness of subterm relations. *)
 
