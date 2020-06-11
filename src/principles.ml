@@ -1313,10 +1313,18 @@ let declare_funind info alias env evd is_rec protos progs
   let stmt = to_constr !evd statement and f = to_constr !evd f in
   let ctx = Evd.evar_universe_context (if poly then !evd else Evd.from_env (Global.env ())) in
   let launch_ind tactic =
-    ignore(Obligations.add_definition
+    let res =
+       Obligations.add_definition
              ~hook:(DeclareDef.Hook.make hookind)
              ~kind:info.term_info.decl_kind ~poly
-             ~name:indid stmt ~tactic:(Tacticals.New.tclTRY tactic) ctx [||])
+             ~name:indid stmt ~tactic:(tactic) ctx [||]
+    in
+    match res with
+    | DeclareObl.Defined gr -> ()
+    | DeclareObl.Remain _  -> 
+      Feedback.msg_warning Pp.(str "Functional induction principle could not be proved automatically, it \
+        is left as an obligation.")
+    | DeclareObl.Dependent -> (* Only 1 obligation *) assert false
   in
   let tac = (ind_fun_tac is_rec f info id !nested_statements progs) in
   try launch_ind tac
@@ -1640,8 +1648,8 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
        evd := Evd.from_env (Global.env ()))
     else ()
   in
+  let eqns = CArray.map_of_list (fun (_, _, stmts) -> Array.make (List.length stmts) false) ind_stmts in
   let proof (j, (_, alias, path, sign, arity, pats, refs, refine), stmts) =
-    let eqns = Array.make (List.length stmts) false in
     let id = path_id path in (* if j != 0 then Nameops.add_suffix id ("_helper_" ^ string_of_int j) else id in *)
     let proof (i, (r, unf, c, n)) =
       let ideq = Nameops.add_suffix id ("_equation_" ^ string_of_int i) in
@@ -1653,8 +1661,8 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
               (*                 (Hints.HintsExternEntry *)
               (*                  (Vernacexpr.{hint_priority = Some 0; hint_pattern = None}, *)
               (*                   impossible_call_tac (GlobRef.ConstRef cst))) *));
-        eqns.(pred i) <- true;
-        if CArray.for_all (fun x -> x) eqns then (
+        eqns.(j).(pred i) <- true;
+        if CArray.for_all (CArray.for_all (fun x -> x)) eqns then (
           (* From now on, we don't need the reduction behavior of the constant anymore *)
           Typeclasses.set_typeclass_transparency (EvalConstRef cst) false false;
           (match alias with
@@ -1662,7 +1670,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
               Global.set_strategy (ConstKey (fst (destConst !evd f))) Conv_oracle.Opaque
            | None -> ());
           Global.set_strategy (ConstKey cst) Conv_oracle.Opaque;
-          if with_ind && succ j == List.length ind_stmts then declare_ind ())
+          if with_ind then declare_ind ())
       in
       let tac =
         let open Tacticals.New in
