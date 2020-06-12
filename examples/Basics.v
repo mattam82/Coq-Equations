@@ -501,3 +501,44 @@ Equations assoc (x y z : nat) : x + y + z = x + (y + z) :=
 assoc 0 y z := eq_refl;
 assoc (S x) y z with assoc x y z, x + (y + z) => {
 assoc (S x) y z eq_refl _ := eq_refl }.
+
+Section well_founded_recursion_and_auxiliary_function.
+
+(* When recursive calls are made on results pattern-matching
+   the output of auxiliary functions, you need enough information
+   to prove that the argument of recursive calls are smaller.
+   This is usually granted by the specification of the auxiliary
+   function (see function pivot in the quicksort example).
+   When the type of the recursive function is not informative
+   enough, we can use an inspect pattern as illustrated
+   in the following example. *)
+
+Context {A : Type} (f : A -> option A) {lt : A -> A -> Prop}
+ `{WellFounded A lt}.
+
+Hypothesis decr_f : forall n p, f n = Some p -> lt p n.
+
+(* The f_inspect function is used to pack the value of f with a proof
+  of an equality that expresses that this value is the result of calling f
+  on this argument. *)
+Definition f_inspect (n : A) : {p' | f n = p'} :=
+  exist _ (f n) eq_refl.
+
+(* if one uses f instead of f_inspect in the following definition,
+   patterns should be patterns for the option type, but then there
+   is an unprovable obligation that is generated. *)
+Equations f_sequence (n : A) : list A by wf n lt :=
+  f_sequence n with f_inspect n := {
+    | exist _ (Some p) eq1 => p :: f_sequence p;
+    | exist _ None  _ => List.nil
+    }.
+
+(* The following is an illustration of a theorem on f_sequence. *)
+Lemma in_seq_image (n p : A) : List.In p (f_sequence n) ->
+   exists k, f k = Some p.
+Proof.
+funelim (f_sequence n);[ | now intros abs; elim abs].
+now simpl; intros [p_is_a | p_in_seq];[rewrite <- p_is_a; exists n | auto].
+Qed.
+
+End well_founded_recursion_and_auxiliary_function.
