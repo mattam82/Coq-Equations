@@ -421,6 +421,10 @@ let decompose_sigma sigma (t : EConstr.constr) :
     Some (u, args.(0), args.(1), args.(2), args.(3))
   else None
 
+(** All simplifications are wrapped in with_retry so that their 
+  preconditions can be satisfied up-to head-normalization of the goal's
+  head type. *)
+
 let with_retry (f : simplification_fun) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal) ->
   try
@@ -430,26 +434,24 @@ let with_retry (f : simplification_fun) : simplification_fun =
     evd := !evd'; res
   with CannotSimplify _ ->
     (*msg_info (str "Reduce!");*)
-    let reduce c =
-      let env = push_rel_context ctx env in
-        Tacred.hnf_constr env !evd c
-    in
+    let glenv = push_rel_context ctx env in
+    let reduce c = Tacred.hnf_constr glenv !evd c in
     (* Try to head-reduce the goal and reapply f. *)
     let ty = reduce ty in
     (* We try to reduce further when the goal is a product. *)
-    let ty = try
-      let name, ty1, ty2 = destProd !evd ty in
-      let ty1 = reduce ty1 in
-      let ty = mkProd (name, ty1, ty2) in
-      (* If the head is an equality, reduce it. *)
+    let ty =
       try
-        let name, ty1, ty2 = check_prod !evd ty in
-        let equ, tA, t1, t2 = check_equality env !evd ctx ty1 in
-        let t1 = reduce t1 in
-        let t2 = reduce t2 in
-        let ty1 = EConstr.mkApp (Builder.equ equ, [| tA; t1; t2 |]) in
+        let name, ty1, ty2 = destProd !evd ty in
+        let ty1 = reduce ty1 in
+        let ty = mkProd (name, ty1, ty2) in
+        (* If the head is an equality, reduce it. *)
+        try
+          let equ, tA, t1, t2 = check_equality env !evd ctx ty1 in
+          let t1 = reduce t1 in
+          let t2 = reduce t2 in
+          let ty1 = EConstr.mkApp (Builder.equ equ, [| tA; t1; t2 |]) in
           EConstr.mkProd (name, ty1, ty2)
-      with CannotSimplify _ -> ty
+        with CannotSimplify _ -> ty
       with Constr.DestKO -> ty
     in
       f env evd (ctx, ty, u)
@@ -523,7 +525,8 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
   let sigma, inst, glu = Equations_common.instance_of env !evd ~argu:sigu glu in
   evd := sigma;
   build_app_infer env evd (ctx, ty, glu) ctx f ~inst args, Context_map.id_subst ctx
-let remove_sigma = while_fun remove_one_sigma
+
+let remove_sigma = while_fun (with_retry remove_one_sigma)
 
 let deletion ~(force:bool) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
@@ -557,6 +560,8 @@ let deletion ~(force:bool) : simplification_fun =
                              (if not !Equations_common.simplify_withUIP then
                                 str " and the 'Equations With UIP' flag is off"
                               else mt())))
+
+let deletion ~(force:bool) = with_retry (deletion ~force)
 
 let solution ~(dir:direction) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
@@ -688,6 +693,8 @@ let pre_solution ~(dir:direction) : simplification_fun =
       let ty' = mkProd (name, ty1, ty2) in
       build_term env evd (ctx, ty, glu) (ctx, ty', glu) f, Context_map.id_subst ctx
 
+let pre_solution ~(dir:direction) = with_retry (pre_solution ~dir)
+
 let is_construct_sigma_2 sigma f =
   let term = match decompose_sigma sigma f with
     | Some (_, _, _, _, t) -> t
@@ -767,6 +774,8 @@ let maybe_pack : simplification_fun =
     build_app_infer env evd (ctx, ty, glu) ctx tsimplify_ind_pack args, Context_map.id_subst ctx
   end
 
+let maybe_pack = with_retry maybe_pack
+
 let apply_noconf : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
@@ -795,6 +804,8 @@ let apply_noconf : simplification_fun =
   in
     build_app_infer env evd (ctx, ty, glu') ctx tapply_noconf ?inst args,
     Context_map.id_subst ctx
+
+let noConfusion = compose_fun apply_noconf maybe_pack
 
 let simplify_ind_pack_inv : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
@@ -835,8 +846,6 @@ let simplify_ind_pack_inv : simplification_fun =
       build_app_infer env evd (ctx, ty, glu) ctx tsimplify_ind_pack_inv args,
       Context_map.id_subst ctx
   with CannotSimplify _ -> identity env evd (ctx, ty, glu)
-
-let noConfusion = compose_fun apply_noconf maybe_pack
 
 let noCycle : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
@@ -882,6 +891,8 @@ let noCycle : simplification_fun =
         "[noCycle] Cannot infer a proof of " ++
         Printer.pr_econstr_env (push_rel_context ctx env) !evd nocycle))
 
+let noCycle = with_retry noCycle
+
 let elim_true : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
@@ -906,6 +917,8 @@ let elim_true : simplification_fun =
     in
     let args = [Some tB; None] in
       build_app_infer env evd (ctx, ty, glu') ctx tone_ind ~inst args, subst
+
+let elim_true = with_retry elim_true
 
 let elim_false : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
@@ -938,6 +951,7 @@ let elim_false : simplification_fun =
           Equations_common.evd_comb1 (Typing.type_of env) evd c in
     (None, c), subst
 
+let elim_false = with_retry elim_false
 
 (* Inference mechanism. *)
 
@@ -983,10 +997,10 @@ let infer_step ?(loc:Loc.t option) ~(isSol:bool)
         with Not_found -> false
       in
       let check_construct t =
-        let f, _ = EConstr.decompose_app !evd t in
         let env = push_rel_context ctx env in
-        let f = Tacred.hnf_constr env !evd f in
-          EConstr.isConstruct !evd f
+        let t = Tacred.hnf_constr env !evd t in
+        let f, _ = EConstr.decompose_app !evd t in
+        EConstr.isConstruct !evd f
       in
       if check_ind tA && check_construct tu && check_construct tv then
         NoConfusion [loc, Infer_many]
@@ -1085,10 +1099,8 @@ let rec apply_noConfusions =
 let rec execute_step : simplification_step -> simplification_fun = function
   | Deletion force -> deletion ~force
   | Solution dir -> compose_fun (solution ~dir:dir) (pre_solution ~dir:dir)
-  (* FIXME Not enough retries? *)
   | NoConfusion rules ->
-      let noconf_out = (*with_retry*) simplify_ind_pack_inv in
-        compose_fun noconf_out (compose_fun (simplify rules) noConfusion)
+     compose_fun simplify_ind_pack_inv (compose_fun (simplify rules) noConfusion)
   | NoConfusionOut -> simplify_ind_pack_inv
   | NoCycle -> noCycle
   | ElimTrue -> elim_true
@@ -1119,15 +1131,16 @@ and simplify_one ((loc, rule) : Loc.t option * simplification_rule) :
      let rec aux env evd gl =
        let first =
          or_fun check_block
-           (or_fun (with_retry apply_noConfusions)
-              (wrap (infer_step ?loc ~isSol:false)))
+           (or_fun apply_noConfusions
+              (or_fun_e1 ((wrap (infer_step ?loc ~isSol:false)))
+                (remove_one_sigma ~only_nondep:true)))
        in
        try compose_fun (or_fun check_block_notprod aux)
              first env evd gl
        with Blocked -> remove_block env evd gl
-     in handle_error (or_fun_e1 aux (remove_one_sigma ~only_nondep:true))
+     in handle_error aux
   | Step step -> wrap_handle (fun _ _ _ -> step)
-  | Infer_one -> handle_error (or_fun (with_retry apply_noConfusions)
+  | Infer_one -> handle_error (or_fun apply_noConfusions
                                  (or_fun_e1 (wrap (infer_step ?loc ~isSol:false))
                                     (remove_one_sigma ~only_nondep:true)))
   | Infer_direction -> wrap_handle (infer_step ?loc ~isSol:true)
