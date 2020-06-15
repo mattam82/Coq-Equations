@@ -90,7 +90,7 @@ let needs_generalization gl id =
 
 let dependent_pattern ?(pattern_term=true) c gl =
   let sigma = gl.sigma in
-  let cty = pf_hnf_type_of gl c in
+  let cty = Retyping.get_type_of (pf_env gl) sigma c in
   let deps =
     match kind sigma cty with
     | App (f, args) ->
@@ -263,6 +263,12 @@ let rec compare_upto_variables sigma t v =
          compare_constr sigma (compare_upto_variables sigma) t v
     | _, _ -> compare_constr sigma (compare_upto_variables sigma) t v
 
+let whd_head env sigma t =
+  match kind sigma t with
+  | App (eq, args) -> 
+    mkApp (eq, Array.map (Tacred.whd_simpl env sigma) args)
+  | _ -> t
+
 let specialize_eqs ~with_block id gl =
   let env = pf_env gl in
   let ty = pf_get_hyp_typ gl id in
@@ -286,7 +292,14 @@ let specialize_eqs ~with_block id gl =
     | Prod (na, t, b) when not in_block ->
       aux false in_eqs (make_def na None t :: ctx) subst (mkApp (lift 1 acc, [| mkRel 1 |])) b
     | Prod (na, t, b) ->
-      (match kind !evars t with
+      let env' = push_rel_context ctx env in
+      let env' = push_rel_context subst env' in
+      (* Feedback.msg_debug (str"Reducing" ++ Printer.pr_econstr_env env' !evars t ++ 
+        str " in env " ++ Printer.pr_rel_context_of env' !evars); *)
+      let t' = whd_head env' !evars t in
+      (* Feedback.msg_debug (str"Reduced" ++ Printer.pr_econstr_env env' !evars t ++ 
+        str " to " ++ Printer.pr_econstr_env env' !evars t'); *)
+      (match kind !evars t' with
        | App (eq, [| eqty; x; y |]) when
            (is_global !evars (Lazy.force logic_eq_type) eq &&
             (noccur_between !evars 1 (List.length subst) x ||

@@ -2,6 +2,7 @@
   and well-scoped variables (and terms, types and environments). *)
 
 Require Import Program.
+Require Import Equations.Prop.DepElim.
 Require Import Equations.Equations.
 Require Import Coq.Logic.Eqdep_dec.
 Require Import Coq.Classes.EquivDec.
@@ -20,7 +21,7 @@ Derive Subterm for nat.
 Definition noCycle_nat (n m : nat) : n = m -> ~ nat_direct_subterm n m.
 Proof.
   induction m in n |- *. intros. intro H'. depelim H'.
-  intros H H'. depelim H'. apply IHm. rewrite H at 2. constructor.
+  intros H H'. depelim H'. apply (IHm n eq_refl). rewrite H at 2. constructor.
 Defined.
 
 Set Equations With UIP.
@@ -239,7 +240,7 @@ Lemma sa_toname : forall {n m} Γ (Δ : env (S n) m) x,
                     x <> lift_var_by (env_scope_le Δ) FO ->
                     forall p q, lookup (env_app (cons p Γ) Δ) x = lookup (env_app (cons q Γ) Δ) x.
 Proof.
-  intros n m Γ Δ.
+  intros n m Γ Δ. 
   depind Δ; intros x A p q;
   depelim x; simpl in *;
   autorewrite with env_app lookup lift_var_by in *; auto.

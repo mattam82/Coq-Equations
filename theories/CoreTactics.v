@@ -210,6 +210,16 @@ Ltac destruct_rec_calls :=
 Ltac destruct_all_rec_calls :=
   repeat destruct_rec_calls.
 
+(** A tactic that tries to remove trivial equality guards in induction hypotheses coming
+   from [dependent induction]/[generalize_eqs] invocations. *)
+
+Ltac simplify_IH_hyps := repeat
+match goal with
+  | [ hyp : context [ block ] |- _ ] => 
+  cbn beta in hyp; eqns_specialize_eqs_block hyp; 
+  cbn beta iota delta[eq_rect_r eq_rect] zeta in hyp
+end.
+
 (** Revert the last hypothesis. *)
 
 Ltac revert_last :=

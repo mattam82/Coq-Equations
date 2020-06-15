@@ -699,8 +699,9 @@ Proof.
     try (split; [ (intros; try discriminate) | solve [ intros; discriminate ] ]);
     DepElim.simplify_dep_elim.
 
-  invert_term. simpl in *. simplify_IH_hyps. apply abstraction.
-  specialize (H Γ (A :: Γ')). simpl in H. simplify_IH_hyps.
+  invert_term. simpl in *. apply abstraction.
+  specialize (H Γ (A :: Γ')). simpl in H. eqns_specialize_eqs H.
+  simpl in H.
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in *).
   specialize (H _ H0 H1).
   apply H; auto.
@@ -735,7 +736,7 @@ Proof.
   specialize (Hind _ _ H1 tyfn).
   rewrite Heq in Hind. destruct Hind as [Ht' Ht''].
   dependent elimination Ht' as [abstraction _ T U abs tyabs].
-  simplify_IH_hyps. noconf Ht''.
+  eqns_specialize_eqs Ht''. noconf Ht''.
   destruct H as [Ht tty].
   specialize (H0 _ [] _ _ _ _ Ht tyabs eq_refl).
   destruct H0 as [H0 H5].
@@ -757,7 +758,7 @@ Proof.
   depelim H0. specialize (Hind _ _ H H0).
   rewrite Heq in Hind.
   destruct Hind. depelim H1. intuition auto.
-  simplify_IH_hyps. noconf H2.
+  eqns_specialize_eqs H2. noconf H2.
   now noconf H1.
 
   (* Fst no redex *)
@@ -771,13 +772,13 @@ Proof.
   simpl. depelim H0. specialize (Hind _ _ H H0).
   rewrite Heq in Hind.
   destruct Hind. depelim H1. intuition auto.
-  simplify_IH_hyps. noconf H2.
+  eqns_specialize_eqs H2. noconf H2.
   now noconf H1.
 
   (* Snd no redex *)
   apply is_pair_inr in Heq. revert Heq.
   on_call hereditary_subst ltac:(fun c => remember c as hsubst; destruct hsubst; simpl in * ).
-  intros Ht2; subst t2. simplify_IH_hyps. simpl in *. depelim H0.
+  intros Ht2; subst t2. simpl in *. depelim H0.
   specialize (Hind _ _ H H0); eauto. now apply pair_elim_snd with A.
 Qed.
 Print Assumptions hereditary_subst_type.
