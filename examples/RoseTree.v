@@ -22,8 +22,7 @@ Equations map_In {A B : Type}
 Lemma map_In_spec {A B : Type} (f : A -> B) (l : list A) :
   map_In l (fun (x : A) (_ : In x l) => f x) = List.map f l.
 Proof.
-  remember (fun (x : A) (_ : In x l) => f x) as g.
-  funelim (map_In l g); rewrite ?H; trivial.
+  funelim (map_In l _); rewrite ?H; trivial.
 Qed.
   
 Section list_size.
@@ -37,7 +36,7 @@ Section list_size.
   Proof.
     intros. funelim (list_size xs); simpl in *. destruct H.
     destruct H0.
-    * subst; omega.
+    * subst; lia.
     * specialize (H _ H0). intuition.
   Qed.
 End list_size.

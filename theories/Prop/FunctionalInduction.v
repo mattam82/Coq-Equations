@@ -79,13 +79,6 @@ Ltac unfold_packcall packcall :=
         change (x = y' -> P)
   end.
 
-Ltac simplify_IH_hyps' := repeat
-  match goal with
-  | [ hyp : context [ block ] |- _ ] =>
-    cbn beta in hyp; eqns_specialize_eqs_block hyp;
-    cbn beta iota delta[eq_rect_r eq_rect] zeta in hyp
-  end.
-
 Ltac make_packcall packcall c :=
   match goal with
   | [ packcall : ?type |- _ ] => change (let _ := c in type) in (type of packcall)
@@ -117,7 +110,7 @@ Ltac funelim_sig_tac c tac :=
   cbv beta; simplify_dep_elim; intros_until_block;
   simplify_dep_elim;
   cbn beta iota delta [transport eq_elim eq_elim_r eq_rect pack_sigma_eq pack_sigma_eq_nondep] in *;
-  simplify_IH_hyps'; (* intros _; *)
+  simplify_IH_hyps; (* intros _; *)
   unblock_goal; simplify_IH_hyps; tac c.
 
 Ltac funelim_constr c := funelim_sig_tac c ltac:(fun _ => idtac).

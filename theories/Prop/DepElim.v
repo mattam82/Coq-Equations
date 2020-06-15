@@ -562,7 +562,11 @@ Ltac do_depelim tac H := do_depelim_nosimpl tac H ; simpl_dep_elim; unblock_goal
 
 Ltac do_depind tac H := 
   (try intros until H) ; intro_block H ; (try simpl in H ; simplify_equations_in H) ;
-  generalize_by_eqs_vars H ; tac H ; simpl_dep_elim; unblock_goal.
+  generalize_by_eqs_vars H ; 
+  block_goal ;
+  tac H ; 
+  intros_until_block; 
+  simpl_dep_elim; unblock_goal.
 
 (** To dependent elimination on some hyp. *)
 
