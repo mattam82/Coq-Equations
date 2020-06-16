@@ -425,6 +425,37 @@ let decompose_sigma sigma (t : EConstr.constr) :
   preconditions can be satisfied up-to head-normalization of the goal's
   head type. *)
 
+let hnf_goal ~(reduce_equality:bool) =
+  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal) ->
+  let glenv = push_rel_context ctx env in
+  let reduce c = Tacred.hnf_constr glenv !evd c in
+  (* Head-reduce the goal *)
+  let ty = reduce ty in
+  (* We try to reduce further when the goal is a product. *)
+  let ty =
+    try
+      let name, ty1, ty2 = destProd !evd ty in
+      let ty1 = reduce ty1 in
+      let ty = mkProd (name, ty1, ty2) in
+      (* If the head is an equality, reduce it. *)
+      if reduce_equality then 
+        try
+          let equ, tA, t1, t2 = check_equality env !evd ctx ty1 in
+          let t1 = reduce t1 in
+          let t2 = reduce t2 in
+          let ty1 = EConstr.mkApp (Builder.equ equ, [| tA; t1; t2 |]) in
+          EConstr.mkProd (name, ty1, ty2)
+        with CannotSimplify _ -> ty
+      else ty
+    with Constr.DestKO -> ty
+  in
+  (ctx, ty, u)
+
+let hnf ~reduce_equality : simplification_fun =
+  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u as gl) : goal) ->
+  let gl' = hnf_goal ~reduce_equality env evd gl in
+  build_term env evd gl gl' (fun c -> c), Context_map.id_subst ctx
+
 let with_retry (f : simplification_fun) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal) ->
   try
@@ -434,27 +465,7 @@ let with_retry (f : simplification_fun) : simplification_fun =
     evd := !evd'; res
   with CannotSimplify _ ->
     (*msg_info (str "Reduce!");*)
-    let glenv = push_rel_context ctx env in
-    let reduce c = Tacred.hnf_constr glenv !evd c in
-    (* Try to head-reduce the goal and reapply f. *)
-    let ty = reduce ty in
-    (* We try to reduce further when the goal is a product. *)
-    let ty =
-      try
-        let name, ty1, ty2 = destProd !evd ty in
-        let ty1 = reduce ty1 in
-        let ty = mkProd (name, ty1, ty2) in
-        (* If the head is an equality, reduce it. *)
-        try
-          let equ, tA, t1, t2 = check_equality env !evd ctx ty1 in
-          let t1 = reduce t1 in
-          let t2 = reduce t2 in
-          let ty1 = EConstr.mkApp (Builder.equ equ, [| tA; t1; t2 |]) in
-          EConstr.mkProd (name, ty1, ty2)
-        with CannotSimplify _ -> ty
-      with Constr.DestKO -> ty
-    in
-      f env evd (ctx, ty, u)
+    f env evd (hnf_goal ~reduce_equality:true env evd (ctx, ty, u))
 
 (* Simplification functions to handle each step. *)
 (* Any of these can throw a CannotSimplify exception which explains why the
@@ -805,7 +816,7 @@ let apply_noconf : simplification_fun =
     build_app_infer env evd (ctx, ty, glu') ctx tapply_noconf ?inst args,
     Context_map.id_subst ctx
 
-let noConfusion = compose_fun apply_noconf maybe_pack
+let noConfusion = compose_fun (compose_fun (hnf ~reduce_equality:false) apply_noconf) maybe_pack
 
 let simplify_ind_pack_inv : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
