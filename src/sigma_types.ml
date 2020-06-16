@@ -285,23 +285,23 @@ let () =
 let get_signature env sigma0 ty =
   try
     let sigma, (idx, _) =
-      new_type_evar env sigma0 Evd.univ_flexible
-                    ~src:(dummy_loc, Evar_kinds.InternalHole) in
+       new_type_evar env sigma0 Evd.univ_flexible
+        ~src:(dummy_loc, Evar_kinds.InternalHole) in
     let sigma, (signaturety, _) =
-      new_type_evar env sigma Evd.univ_flexible
-                    ~src:(dummy_loc, Evar_kinds.InternalHole) in
+       new_type_evar env sigma Evd.univ_flexible
+        ~src:(dummy_loc, Evar_kinds.InternalHole) in
     let sigma, signature =
       new_evar env sigma (mkProd (anonR, idx, Vars.lift 1 signaturety))
     in
-    let sigma', cl = get_fresh sigma logic_signature_class in
+    let sigma, cl = get_fresh sigma logic_signature_class in
     let inst = mkApp (cl, [| ty; idx; signature |]) in
-    let sigma', tc = Typeclasses.resolve_one_typeclass env sigma' inst in
+    let sigma, tc = Typeclasses.resolve_one_typeclass env sigma inst in
     (* let _, u = destConst sigma (fst (destApp sigma inst)) in *)
     (* let ssig = mkApp (mkConstG logic_signature_sig u, [| ty; idx; tc |]) in *)
     let ssig = signature in
     (* let spack = mkApp (mkConstG logic_signature_pack u, [| ty; idx; tc |]) in *)
-    let spack = Reductionops.whd_all env sigma' tc in
-      (sigma0, nf_evar sigma' ssig, nf_evar sigma' spack)
+    let spack = Reductionops.whd_all env sigma tc in
+      (sigma, nf_evar sigma ssig, nf_evar sigma spack)
   with Not_found ->
     let pind, args = Inductive.find_rectype env (to_constr sigma0 ty) in
     let sigma, pred, pars, _, valsig, ctx, _, _ =
