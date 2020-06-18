@@ -98,8 +98,11 @@ val make_permutation : ?env:Environ.env -> Evd.evar_map ->
   context_map -> context_map -> context_map
 
 val specialize_mapping_constr : Evd.evar_map -> context_map -> constr -> constr
-val rels_of_tele : 'a list -> constr list
-val patvars_of_tele : 'a list -> pat list
+val rels_of_ctx : ?with_lets:bool -> ('a,'b) Context.Rel.pt -> constr list
+
+val patvars_of_ctx : ?with_lets:bool -> ('a,'b) Context.Rel.pt -> pat list
+(** Includes lets by default *)
+
 val pat_vars_list : int -> pat list
 val intset_of_list : Int.Set.elt list -> Int.Set.t
 val split_context : int -> 'a list -> 'a list * 'a * 'a list
@@ -148,8 +151,8 @@ val new_strengthen :
   rel_context -> int -> ?rels:Int.Set.t -> constr ->
   context_map * context_map
 
-val id_pats : 'a list -> pat list
-val id_subst : 'a list -> 'a list * pat list * 'a list
+val id_pats : ('a, 'b) Context.Rel.pt -> pat list
+val id_subst : ('a, 'b) Context.Rel.pt -> ('a, 'b) Context.Rel.pt * pat list * ('a,'b) Context.Rel.pt
 val eq_context_nolet :
   env ->
   Evd.evar_map -> rel_context -> rel_context -> bool
