@@ -19,7 +19,7 @@ env:
   - CAMLP5_VER="7.06"
   - FINDLIB_VER="1.8.0"
   - NATIVE_COMP="yes"
-  - COQ_VER="dev"
+  - COQ_VER="8.12+beta1"
   - HOTT_VER="dev"
 
 install:
@@ -32,15 +32,15 @@ install:
 - opam config list
 - opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev || echo "coq-core-dev registered"
 - opam repo add coq-extra-dev https://coq.inria.fr/opam/extra-dev || echo "coq-extra-dev registered"
-- opam install -j ${NJOBS} -y camlp5.${CAMLP5_VER} ocamlfind.${FINDLIB_VER} coq.${COQ_VER} coq-hott.${HOTT_VER}
-- opam upgrade -y coq.${COQ_VER} coq-hott.${HOTT_VER}
+- opam install -j ${NJOBS} -y camlp5.${CAMLP5_VER} ocamlfind.${FINDLIB_VER} coq.${COQ_VER} # coq-hott.${HOTT_VER}
+- opam upgrade -y coq.${COQ_VER} # coq-hott.${HOTT_VER}
 - opam list
 - coqc --version
 
 matrix:
   include:
     - env: TARGET=coq
-    - env: TARGET=HoTT
+#    - env: TARGET=HoTT
     - env: TARGET=dune
 
 script:
