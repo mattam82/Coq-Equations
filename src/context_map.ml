@@ -326,7 +326,7 @@ let rec eq_pat sigma p1 p2 =
   | _, _ -> false
 
 let make_permutation ?(env = Global.env ()) (sigma : Evd.evar_map)
-    ((ctx1, pats1, _) : context_map) ((ctx2, pats2, _) : context_map) : context_map =
+    ((ctx1, pats1, _ as map1) : context_map) ((ctx2, pats2, _ as map2) : context_map) : context_map =
   let len = List.length ctx1 in
   let perm = Array.make len None in
   let merge_rels i1 i2 =
@@ -372,21 +372,49 @@ let make_permutation ?(env = Global.env ()) (sigma : Evd.evar_map)
   (* FIXME This function could also check that constructors are the same and
    * so on. It also need better error handling. *)
   List.iter2 merge_pats pats1 pats2;
-  let pats = Array.map (function
-      | None -> failwith "Could not generate a permutation"
-      | Some i -> PRel i) perm in
-  let pats = Array.to_list pats in
-  mk_ctx_map env sigma ctx1 pats ctx2
+  let pats =    
+   let rec aux k pats =
+      if k = 0 then pats
+      else
+        match perm.(pred k) with
+        | None -> 
+          let decl = try lookup_rel k ctx2 with Not_found -> assert false in
+          (match Context.Rel.Declaration.get_value decl with
+          | Some body ->
+            (* body lives in cxt2|k, pats is a substitution for it into ctx1. *)          
+           aux (pred k) (PInac (specialize_constr sigma pats body) :: pats)
+          | None -> failwith "Could not generate a permutation")
+        | Some i -> aux (pred k) (PRel i :: pats)
+    in aux len []
+  in
+  let ctxmap = mk_ctx_map env sigma ctx1 pats ctx2 in
+  if !debug then Feedback.msg_debug Pp.(str"Permutation ctxmap: " ++ pr_context_map env sigma ctxmap ++
+    str" of " ++ pr_context_map env sigma map1 ++ str " and " ++ pr_context_map env sigma map2);
+  ctxmap
 
-
+  
 let specialize_mapping_constr sigma (m : context_map) c =
   specialize_constr sigma (pi2 m) c
 
-let rels_of_tele tele = Termops.rel_list 0 (List.length tele)
+let rels_of_ctx ?(with_lets=true) ctx = 
+  let len = List.length ctx in
+  if with_lets then Termops.rel_list 0 len  (* len first *)
+  else 
+    List.rev 
+      (CList.map_filter_i (fun i d ->
+        if Context.Rel.Declaration.is_local_assum d then
+          Some (mkRel (succ i))
+        else None) ctx)
 
-let patvars_of_tele tele =
-  let len = List.length tele in
-  CList.init len (fun c -> PRel (len - c))
+let patvars_of_ctx ?(with_lets=true) ctx =
+  let len = List.length ctx in
+  if with_lets then
+    CList.init len (fun i -> PRel (len - i))
+  else 
+    CList.rev (CList.map_filter_i (fun i d ->
+      if Context.Rel.Declaration.is_local_assum d then
+        Some (PRel (succ i))
+      else None) ctx)
 
 let pat_vars_list n = CList.init n (fun i -> PRel (succ i))
 
@@ -561,7 +589,7 @@ let new_strengthen (env : Environ.env) (evd : Evd.evar_map) (ctx : rel_context)
   s, rev_s
 
 
-let id_pats g = List.rev (patvars_of_tele g)
+let id_pats g = List.rev (patvars_of_ctx g)
 let id_subst g = (g, id_pats g, g)
 
 let eq_context_nolet env sigma (g : rel_context) (d : rel_context) =

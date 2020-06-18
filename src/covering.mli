@@ -35,7 +35,7 @@ val unify_constrs :
   rel_context ->
   constr list ->
   constr list -> context_map
-val flexible : pat list -> 'a list -> Int.Set.t
+val flexible : pat list -> ('a,'b) Context.Rel.pt -> Int.Set.t
 val accessible : pat -> Int.Set.t
 val accessibles : pat list -> Int.Set.t
 val hidden : pat -> bool
