@@ -28,17 +28,21 @@ let derive_subterm env sigma ~poly (ind, u as indu) =
   let global = true in
   let (mind, oneind as ms) = Global.lookup_inductive ind in
   let ctx = subst_instance_context (EInstance.kind sigma u) oneind.mind_arity_ctxt in
+  let indsort = 
+    let indty = Inductive.type_of_inductive env (ms, EInstance.kind sigma u) in
+    (snd (Term.destArity indty))
+  in
+  if Sorts.is_prop indsort || Sorts.is_sprop indsort then
+    user_err_loc (None, "derive_subterm", Pp.str("Cannot define a well-founded subterm relation on a propositional inductive type."));
   let sort =
     match Lazy.force logic_sort with
     | Sorts.InSProp -> failwith "not implemented"
     | Sorts.InProp -> mkProp
     | Sorts.InSet -> mkSet
-    | Sorts.InType ->
-      let indty = Inductive.type_of_inductive env (ms, EInstance.kind sigma u) in
-      EConstr.mkSort (snd (Term.destArity indty))
+    | Sorts.InType -> EConstr.mkSort indsort
   in
   let len = List.length ctx in
-  let params = mind.mind_nparams in
+  let params = mind.mind_nparams_rec in
   (* let ctx = map_rel_context refresh_universes ctx in FIXME *)
   let lenargs = len - params in
   let argbinders, parambinders = List.chop lenargs (List.map of_rel_decl ctx) in
@@ -151,7 +155,7 @@ let derive_subterm env sigma ~poly (ind, u as indu) =
         mind_entry_variance = None;
       }
     in
-    let k = ComInductive.declare_mutual_inductive_with_eliminations inductive UnivNames.empty_binders [] in
+    let k = DeclareInd.declare_mutual_inductive_with_eliminations inductive UnivNames.empty_binders [] in
     let () =
       let env = Global.env () in
       let sigma = Evd.from_env env in
