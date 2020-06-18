@@ -26,6 +26,13 @@ let refresh_universes t = t (* MS: FIXME *)
 
 let derive_subterm env sigma ~poly (ind, u as indu) =
   let global = true in
+  let () = 
+    if Ederive.check_derive "NoConfusion" (Names.GlobRef.IndRef ind) 
+      || Ederive.check_derive "NoConfusionHom" (Names.GlobRef.IndRef ind) then ()
+    else 
+    user_err_loc (None, "check_noconf", Pp.(str "[Derive Subterm] requires a [NoConfusion] " ++
+      str"or a [NoConfusionHom] instance for type " ++ Printer.pr_inductive env ind ++ str " to be derived first."))
+  in
   let (mind, oneind as ms) = Global.lookup_inductive ind in
   let ctx = subst_instance_context (EInstance.kind sigma u) oneind.mind_arity_ctxt in
   let indsort = 
