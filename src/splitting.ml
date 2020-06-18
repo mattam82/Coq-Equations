@@ -997,7 +997,7 @@ type term_info = {
   term_ustate : UState.t;
   base_id : string;
   poly : bool;
-  scope : DeclareDef.locality;
+  scope : Declare.locality;
   decl_kind : Decls.definition_object_kind;
   helpers_info : (Constant.t * (int * int)) list;
   comp_obls : Constant.t list; (** The recursive call proof obligations *)
@@ -1017,7 +1017,7 @@ let error_complete () =
                 str "Use the \"Equations\" command to define it.")
 
 let solve_equations_obligations flags recids i sigma hook =
-  let scope = DeclareDef.Global Declare.ImportNeedQualified in
+  let scope = Declare.Global Declare.ImportNeedQualified in
   let kind = Decls.(IsDefinition Definition) in
   let evars = Evar.Map.bindings (Evd.undefined_map sigma) in
   let env = Global.env () in
@@ -1073,7 +1073,7 @@ let solve_equations_obligations flags recids i sigma hook =
   let lemma = if Proof.is_done prf then
     if flags.open_proof then error_complete ()
     else
-      (Lemmas.save_lemma_proved ~lemma ~opaque:Proof_global.Transparent ~idopt:None; None)
+      (Lemmas.save_lemma_proved ~lemma ~opaque:Declare.Transparent ~idopt:None; None)
   else if flags.open_proof then Some lemma
   else
     user_err_loc (None, "define", str"Equations definition generated subgoals that " ++
@@ -1097,7 +1097,7 @@ let gather_fresh_context sigma u octx =
 
 let solve_equations_obligations_program flags recids i sigma hook =
   let poly = flags.polymorphic in
-  let scope = DeclareDef.Global Declare.ImportNeedQualified in
+  let scope = Declare.Global Declare.ImportNeedQualified in
   let kind = Decls.Definition in
   let env = Global.env () in
   let sigma, term = get_fresh sigma (Equations_common.logic_top_intro) in
@@ -1110,7 +1110,7 @@ let solve_equations_obligations_program flags recids i sigma hook =
     RetrieveObl.retrieve_obligations env oblsid sigma 0
     ~status:(Evar_kinds.Define false) term ty
   in
-  let hook { DeclareDef.Hook.S.uctx; obls; _ } =
+  let hook { Declare.Hook.S.uctx; obls; _ } =
   (* let hook uctx evars locality gr = *)
     (* let l =
      *   Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
@@ -1153,7 +1153,7 @@ let solve_equations_obligations_program flags recids i sigma hook =
     in
     hook recobls sigma
   in
-  let hook = DeclareDef.Hook.make hook in
+  let hook = Declare.Hook.make hook in
   let reduce x =
     let flags = CClosure.beta in
     to_constr sigma (clos_norm_flags flags (Global.env ()) sigma (of_constr x))
@@ -1221,7 +1221,7 @@ let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false)
     let programs = List.map (map_program (nf_evar sigma)) programs in
     let ustate = Evd.evar_universe_context sigma in
     let () = List.iter (fun (cst, _) -> add_hint true (program_id (List.hd programs)) cst) helpers in
-    hook recobls helpers ustate (DeclareDef.Global Declare.ImportDefaultBehavior) programs
+    hook recobls helpers ustate (Declare.Global Declare.ImportDefaultBehavior) programs
   in
   let recids = rec_type_ids is_recursive in
   match hook with
@@ -1230,14 +1230,14 @@ let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false)
     let hook recobls helpers ustate kind programs =
       let p = List.hd programs in
       let cst, _ = (destConst !evd p.program_term) in
-      call_hook recobls p helpers ustate (DeclareDef.Global Declare.ImportDefaultBehavior) (GlobRef.ConstRef cst) f
+      call_hook recobls p helpers ustate (Declare.Global Declare.ImportDefaultBehavior) (GlobRef.ConstRef cst) f
     in
     all_hook hook [] !evd, None
   | HookLater f ->
     let hook recobls helpers ustate kind programs =
       List.iteri (fun i p ->
           let cst, _ = (destConst !evd p.program_term) in
-          call_hook recobls p helpers ustate (DeclareDef.Global Declare.ImportDefaultBehavior) (GlobRef.ConstRef cst) (f i)) programs
+          call_hook recobls p helpers ustate (Declare.Global Declare.ImportDefaultBehavior) (GlobRef.ConstRef cst) (f i)) programs
     in
     if Evd.has_undefined !evd then
       if flags.open_proof then

@@ -329,6 +329,7 @@ let get_signature env sigma0 ty =
 (*     tclTHENLIST [setvar; geneq; clear; movetop] *)
 
 let pattern_sigma ~assoc_right c hyp env sigma =
+  let open Tacticals.New in
   let evd = ref sigma in
   let terms = constrs_of_coq_sigma env evd c (mkVar hyp) in
   let terms =
@@ -347,10 +348,10 @@ let pattern_sigma ~assoc_right c hyp env sigma =
   in
   let projs = List.map (fun (x, t, p, rest) -> (pat t, make_change_arg p)) terms in
   let projabs =
-    tclTHENLIST ((if assoc_right then rev_map
-                  else List.map) (fun (t, p) -> to82 (change ~check:true (Some t) p Locusops.onConcl))
-                            projs) in
-    Proofview.V82.tactic (tclTHEN (Refiner.tclEVARS !evd) projabs)
+    tclTHENLIST 
+      ((if assoc_right then rev_map
+        else List.map) (fun (t, p) -> (change ~check:true (Some t) p Locusops.onConcl)) projs) in
+    tclTHEN (Proofview.Unsafe.tclEVARS !evd) projabs
 			 
 let curry_left_hyp env sigma c t =
   let aux c t na u ty pred concl =

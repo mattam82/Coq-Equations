@@ -129,7 +129,7 @@ let derive_eq_dec env sigma ~poly ind =
   in
   let indsl = Array.to_list info.mutind_inds in
   let indsl = List.map (fun ind -> ind, info_of ind) indsl in
-  let hook { DeclareDef.Hook.S.dref; _ } =
+  let hook { Declare.Hook.S.dref; _ } =
     List.iter (fun (ind, (stmt, tc)) ->
 	let ce = tc dref in
         let kind = Decls.(IsDefinition Instance) in
@@ -140,7 +140,7 @@ let derive_eq_dec env sigma ~poly ind =
 	in Classes.add_instance inst)
     indsl
   in
-  let hook = DeclareDef.Hook.make hook in
+  let hook = Declare.Hook.make hook in
   List.iter
     (fun (ind, (stmt, tc)) ->
      let id = add_suffix ind.ind_name "_eqdec" in

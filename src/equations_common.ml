@@ -793,8 +793,6 @@ let string_of_smart_global = function
 let ident_of_smart_global x = 
   Id.of_string (string_of_smart_global x)
 
-let pf_get_type_of               = pf_reduce Retyping.get_type_of
-  
 let move_after_deps id c =
   let open Context.Named.Declaration in
   let enter gl =

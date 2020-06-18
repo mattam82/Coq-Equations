@@ -70,25 +70,24 @@ END
 (* Depelim *)
 
 TACTIC EXTEND dependent_pattern
-| ["dependent" "pattern" constr(c) ] -> {
-    Proofview.V82.tactic (Depelim.dependent_pattern c) }
+| ["dependent" "pattern" constr(c) ] -> { Depelim.dependent_pattern c }
 END
 
 TACTIC EXTEND dependent_pattern_from
-| ["dependent" "pattern" "from" constr(c) ] ->
-    { Proofview.V82.tactic (Depelim.dependent_pattern ~pattern_term:false c) }
+| ["dependent" "pattern" "from" constr(c) ] -> { Depelim.dependent_pattern ~pattern_term:false c }
 END
 
 TACTIC EXTEND pattern_call
-| [ "pattern_call" constr(c) ] -> { Proofview.V82.tactic (Depelim.pattern_call c) }
+| [ "pattern_call" constr(c) ] -> { Depelim.pattern_call c }
 END
 
 TACTIC EXTEND needs_generalization
 | [ "needs_generalization" hyp(id) ] -> 
-    { Proofview.V82.tactic (fun gl -> 
+    { let open Tacticals.New in 
+      Proofview.Goal.enter (fun gl -> 
       if Depelim.needs_generalization gl id
-      then tclIDTAC gl
-      else tclFAIL 0 (str"No generalization needed") gl) }
+      then tclIDTAC
+      else tclFAIL 0 (str"No generalization needed")) }
 END
 
 (* Equations *)

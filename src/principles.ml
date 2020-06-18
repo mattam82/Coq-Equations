@@ -693,8 +693,9 @@ let subst_protos s gr =
     (equations_debug Pp.(fun () -> str"Fixed hint " ++ Printer.pr_econstr_env env sigma term);
      let sigma, _ = Typing.type_of env sigma term in
      let sigma = Evd.minimize_universes sigma in
-    Hints.IsConstr (Evarutil.nf_evar sigma term, Evd.universe_context_set sigma))
+     Hints.IsConstr (Evarutil.nf_evar sigma term, Evd.universe_context_set sigma))
   else Hints.IsGlobRef gr
+  [@@ocaml.warning "-3"]
 
 let declare_wf_obligations s info =
   let make_resolve gr =
@@ -1184,7 +1185,7 @@ let declare_funelim info env evd is_rec protos progs
     compute_elim_type env evd info.user_obls is_rec protos kn leninds ind_stmts all_stmts
                       sign app elimty
   in
-  let hookelim { DeclareDef.Hook.S.dref; _ } =
+  let hookelim { Declare.Hook.S.dref; _ } =
     let env = Global.env () in
     let evd = Evd.from_env env in
     let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in
@@ -1213,7 +1214,7 @@ let declare_funelim info env evd is_rec protos progs
                              (Pretype_errors.TypingError (Type_errors.map_ptype_error EConstr.of_constr tyerr)))
   in
   ignore(Obligations.add_definition ~name:(Nameops.add_suffix id "_elim") ~poly:info.poly ~scope:info.scope
-                                    ~tactic ~hook:(DeclareDef.Hook.make hookelim) ~kind:info.decl_kind
+                                    ~tactic ~hook:(Declare.Hook.make hookelim) ~kind:info.decl_kind
                                     (to_constr !evd newty) ~uctx:(Evd.evar_universe_context !evd) [||])
 
 let mkConj evd sort x y =
@@ -1268,7 +1269,7 @@ let declare_funind info alias env evd is_rec protos progs
     | None -> f
   in
   let app = applist (f, args) in
-  let hookind { DeclareDef.Hook.S.uctx; scope; dref; _ } =
+  let hookind { Declare.Hook.S.uctx; scope; dref; _ } =
     let env = Global.env () in (* refresh *)
     Hints.add_hints ~locality:Goptions.OptGlobal [info.term_info.base_id]
                     (Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef dref]);
@@ -1315,7 +1316,7 @@ let declare_funind info alias env evd is_rec protos progs
   let launch_ind tactic =
     let res =
        Obligations.add_definition
-             ~hook:(DeclareDef.Hook.make hookind)
+             ~hook:(Declare.Hook.make hookind)
              ~kind:info.term_info.decl_kind ~poly
              ~name:indid stmt ~tactic:(Tacticals.New.tclTRY tactic) ~uctx [||]
     in
@@ -1645,7 +1646,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
     if not poly then
       (* Declare the universe context necessary to typecheck the following
           definitions once and for all. *)
-      (Declare.declare_universe_context ~poly:false (Evd.universe_context_set !evd);
+      (DeclareUctx.declare_universe_context ~poly:false (Evd.universe_context_set !evd);
        evd := Evd.from_env (Global.env ()))
     else ()
   in
@@ -1654,7 +1655,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
     let id = path_id path in (* if j != 0 then Nameops.add_suffix id ("_helper_" ^ string_of_int j) else id in *)
     let proof (i, (r, unf, c, n)) =
       let ideq = Nameops.add_suffix id ("_equation_" ^ string_of_int i) in
-      let hook { DeclareDef.Hook.S.dref; _ } =
+      let hook { Declare.Hook.S.dref; _ } =
         if n != None then
           Lib.add_anonymous_leaf (inRewRules (info.base_id, dref))
         else (Classes.declare_instance (Global.env()) !evd None true dref
@@ -1691,7 +1692,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
       ignore(Obligations.add_definition
                ~kind:info.decl_kind ~poly
                ~name:ideq (to_constr !evd c)
-               ~tactic:tac ~hook:(DeclareDef.Hook.make hook)
+               ~tactic:tac ~hook:(Declare.Hook.make hook)
 	       ~uctx:(Evd.evar_universe_context !evd) [||])
     in List.iter proof stmts
   in List.iter proof ind_stmts
