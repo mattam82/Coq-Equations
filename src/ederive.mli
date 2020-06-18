@@ -22,4 +22,8 @@ val make_derive_ind :
     
 val register_derive : derive_record -> unit
 
+(** Check if a given notion has been derived already for a given global reference. *)
+
+val check_derive : string -> Names.GlobRef.t -> bool
+
 val derive : poly:bool -> string list -> Names.GlobRef.t Loc.located list -> unit
