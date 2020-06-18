@@ -1321,11 +1321,11 @@ let declare_funind info alias env evd is_rec protos progs
              ~name:indid stmt ~tactic:(Tacticals.New.tclTRY tactic) ~uctx [||]
     in
     match res with
-    | Declare.Obls.Defined gr -> ()
-    | Declare.Obls.Remain _  -> 
+    | DeclareObl.Defined gr -> ()
+    | DeclareObl.Remain _  -> 
       Feedback.msg_warning Pp.(str "Functional induction principle could not be proved automatically, it \
         is left as an obligation.")
-    | Declare.Obls.Dependent -> (* Only 1 obligation *) assert false
+    | DeclareObl.Dependent -> (* Only 1 obligation *) assert false
   in
   let tac = (ind_fun_tac is_rec f info id !nested_statements progs) in
   try launch_ind tac
