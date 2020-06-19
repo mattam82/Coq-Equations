@@ -147,7 +147,7 @@ Inductive rbtree : color -> nat -> Set :=
 | BlackNode : forall c1 c2 n, rbtree c1 n -> nat -> rbtree c2 n -> rbtree Black (S n).
 Derive Signature NoConfusion for rbtree.
 
-Require Import Max Min Omega.
+Require Import Max Min Lia.
 
 Section depth.
   Variable f : nat -> nat -> nat.
@@ -165,7 +165,7 @@ Proof.
   match goal with
   | [ |- context[min ?X ?Y] ] =>
       let H := fresh in destruct (min_dec X Y) as [H|H]; rewrite H
-  end; omega.
+  end; lia.
 Qed.
 
 Lemma depth_max' : forall c n (t : rbtree c n), match c with
@@ -181,17 +181,17 @@ Proof.
   repeat match goal with
   | [ H : context[match ?C with Red => _ | Black => _ end] |- _ ] =>
       destruct C
-  end; omega.
+  end; lia.
 Qed.
 
 Theorem depth_max : forall c n (t : rbtree c n), depth max t <= 2 * n + 1.
 Proof.
-  intros; generalize (depth_max' t); destruct c; omega.
+  intros; generalize (depth_max' t); destruct c; lia.
 Qed.
 
 Theorem balanced : forall c n (t : rbtree c n), 2 * depth min t + 1 >= depth max t.
 Proof.
-  intros; generalize (depth_min t); generalize (depth_max t); omega.
+  intros; generalize (depth_min t); generalize (depth_max t); lia.
 Qed.
 
 Inductive rtree : nat -> Set :=

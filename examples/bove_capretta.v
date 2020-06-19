@@ -51,7 +51,7 @@ Proof.
 Qed.
 
 (** This extracts to [f91]. *)
-Extraction f91_exists.
+(* Extraction f91_exists. *)
 
 (** An alternative is to use the domain of [f91] instead,
     which for nested recursive calls requires a quantification
@@ -104,7 +104,7 @@ Module WithSigma.
       But the polymorphic sigma type makes it leave a dummy unit value
       on the side.
    *)
-  Extraction f91_ongraph.
+  (* Extraction f91_ongraph. *)
 End WithSigma.
 
 Module WithSubset.
@@ -138,5 +138,5 @@ Module WithSubset.
       the "real" [f91] implementation.
    *)
 
-  Extraction f91_ongraph.
+  (* Extraction f91_ongraph. *)
 End WithSubset.

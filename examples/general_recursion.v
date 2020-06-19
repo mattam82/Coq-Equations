@@ -23,7 +23,7 @@
 (** printing Subterm %\coqdocclass{Subterm}% *)
 (** printing NoConfusion %\coqdocclass{NoConfusion}% *)
 Require Import Equations.Equations.
-Require Import ZArith.
+Require Import ZArith Lia.
 Require Import Program.
 Require Import Psatz.
 Require Import NPeano.
@@ -73,7 +73,7 @@ Defined.
   Transparent nonterm.
 
 (** We can compute with it (for closed natural numbers) *)
-Fixpoint at_least_five (n : nat) : bool :=
+Definition at_least_five (n : nat) : bool :=
   match n with
   | S (S (S (S (S x)))) => true
   | _ => false
@@ -92,7 +92,7 @@ Lemma nonterm_ge n : n <= nonterm n.
 Proof.
   funelim (nonterm n).
   reflexivity.
-  omega.
+  lia.
 Defined.
 
 (** We can go as far as defining the (call-by-name) Y combinator and computing with it. *)
