@@ -369,11 +369,10 @@ Hint Resolve lt_n_Sn : subterm_relation.
 Transparent vmap'.
 
 (** The same, using well-founded recursion on [n]. *)
-Set Shrink Obligations.
 Equations vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n by wf n :=
 vmap f (n:=?(O)) nil := nil ;
 vmap f (cons a v) := cons (f a) (vmap f v).
-Unset Shrink Obligations.
+
 Transparent vmap.
 Eval compute in (vmap' id (@nil nat)).
 Eval compute in (vmap' id (@cons nat 2 _ nil)).
