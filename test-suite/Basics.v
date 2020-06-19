@@ -421,12 +421,12 @@ Proof.
   + rewrite (eta_vector (fun nv v => (nv, v) = (Peano.plus m n, xs) -> Split m n xs)) in X0.
     apply (X0 eq_refl).
 Defined.
-Eval cbv delta[split' eq_rect noConfusion NoConfusion.NoConfusionPackage_nat
+(* Eval cbv delta[split' eq_rect noConfusion NoConfusion.NoConfusionPackage_nat
                       NoConfusion.noConfusion_nat_obligation_1
-              ] beta zeta iota in split'.
+              ] beta zeta iota in split'. *)
 Extraction Inline Logic.transport.
-Extraction split'.
-Extraction split.
+(* Extraction split'.
+Extraction split. *)
 
 (* Eval compute in @zip''. *)
 
@@ -436,7 +436,7 @@ Equations  split_struct {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs 
 split_struct (m:=0) xs := append nil xs ;
 split_struct (m:=(S m)) (cons x xs) with split_struct xs => {
   split_struct (m:=(S m)) (cons x xs) (append xs' ys') := append (cons x xs') ys' }.
-Extraction split_struct.
+(* Extraction split_struct. *)
 Lemma split_struct_vapp : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
   let 'append v' w' := split_struct (vapp' v w) in
     v = v' /\ w = w'.

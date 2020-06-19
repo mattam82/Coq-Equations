@@ -378,7 +378,7 @@ let make_permutation ?(env = Global.env ()) (sigma : Evd.evar_map)
       else
         match perm.(pred k) with
         | None -> 
-          let decl = try lookup_rel k ctx2 with Not_found -> assert false in
+          let decl = try Equations_common.lookup_rel k ctx2 with Not_found -> assert false in
           (match Context.Rel.Declaration.get_value decl with
           | Some body ->
             (* body lives in cxt2|k, pats is a substitution for it into ctx1. *)          

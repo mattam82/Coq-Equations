@@ -8,7 +8,7 @@
 Require Import Program Utf8.
 Require Import Equations.Equations.
 Require Import Bvector List Relations.
-Require Import Omega Arith Wf_nat.
+Require Import Arith Wf_nat.
 Require Import Lia.
 
 Module RecRel.
@@ -47,7 +47,7 @@ Section Nested.
   f 0 :=  exist _ 0 _ ;
   f (S n) := exist _ (proj1_sig (f (proj1_sig (f n)))) _.
   Proof. all:(simpl; intros; try typeclasses eauto with Below).
-         simpl. destruct f. simpl. destruct f. simpl. omega.
+         simpl. destruct f. simpl. destruct f. simpl. lia.
   Defined.
 
   Lemma exist_eq {A} (P : A -> Prop) (x y : A) (p : P x) (q : P y) :
@@ -140,12 +140,12 @@ Module RecMeasure.
   Lemma filter_length {A} p (l : list A) : length (filter p l) <= length l.
   Proof. induction l ; simpl ; auto. destruct (p a); simpl; auto with arith. Qed.
     
-  Hint Resolve @filter_length : datatypes.
+  Hint Resolve filter_length : datatypes.
   
   Section QuickSort.
     
     Hint Immediate gt_le_S : Below.
-    Hint Resolve @filter_length : Below.
+    Hint Resolve filter_length : Below.
     Hint Unfold lt gt : Below.
     Hint Resolve le_lt_n_Sm : Below.
 

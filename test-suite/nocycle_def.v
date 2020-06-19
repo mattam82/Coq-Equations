@@ -1,5 +1,5 @@
 From Equations Require Import Equations.
-From Equations.Prop Require Import Subterm.
+Require Import Equations.Prop.Subterm.
 
 Derive Subterm for nat.
 
