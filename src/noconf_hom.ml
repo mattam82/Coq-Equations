@@ -95,12 +95,12 @@ let derive_noConfusion_package env sigma0 ~poly (ind,u as indu) indid ~prefix ~t
   let term = it_mkLambda_or_LetIn term ctx in
   let ty = it_mkProd_or_LetIn ty ctx in
   let sigma, _ = Typing.type_of env sigma term in
-  let hook { DeclareDef.Hook.S.dref; _ } =
+  let hook { Declare.Hook.S.dref; _ } =
     Classes.add_instance
       (Classes.mk_instance tc empty_hint_info true dref)
   in
-  let hook = DeclareDef.Hook.make hook in
-  let scope = DeclareDef.Global Declare.ImportDefaultBehavior in
+  let hook = Declare.Hook.make hook in
+  let scope = Declare.Global Declare.ImportDefaultBehavior in
   let kind = Decls.Definition in
   let oblinfo, _, term, ty = RetrieveObl.retrieve_obligations env noid sigma 0 term ty in
     ignore(Obligations.add_definition ~hook ~name:packid

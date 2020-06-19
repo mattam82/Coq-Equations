@@ -244,7 +244,7 @@ let derive_subterm env sigma ~poly (ind, u as indu) =
     in
     let ty = it_mkProd_or_LetIn ty parambinders in
     let body = it_mkLambda_or_LetIn (Option.get body) parambinders in
-    let hook { DeclareDef.Hook.S.dref; _ } =
+    let hook { Declare.Hook.S.dref; _ } =
       let cst = match dref with GlobRef.ConstRef kn -> kn | _ -> assert false in
       let inst = Classes.mk_instance (fst kl) empty_hint_info
                                           global (GlobRef.ConstRef cst) in
@@ -256,8 +256,8 @@ let derive_subterm env sigma ~poly (ind, u as indu) =
     let obls, _, constr, typ = RetrieveObl.retrieve_obligations env id evm 0 body ty in
     let uctx = Evd.evar_universe_context evm in
     Obligations.add_definition ~name:id ~term:constr typ ~uctx
-                               ~poly ~scope:(DeclareDef.Global Declare.ImportDefaultBehavior) ~kind:(Decls.Instance)
-                               ~hook:(DeclareDef.Hook.make hook) ~tactic:(solve_subterm_tac ()) obls
+                               ~poly ~scope:(Declare.Global Declare.ImportDefaultBehavior) ~kind:(Decls.Instance)
+                               ~hook:(Declare.Hook.make hook) ~tactic:(solve_subterm_tac ()) obls
   in ignore(declare_ind ())
 
 let () =

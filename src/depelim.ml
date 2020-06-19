@@ -25,7 +25,6 @@ open Tacmach
 open Namegen
 open Tacticals
 open Tactics
-open Evd
 
 open EConstr
 open Equations_common
@@ -68,10 +67,12 @@ let linear sigma vars args =
 
 
 let needs_generalization gl id =
-  let sigma = gl.sigma in
+  let open Tacmach.New in
+  let open Proofview.Goal in
+  let sigma = sigma gl in
   let f, args, def, id, oldid =
     let oldid = pf_get_new_id id gl in
-    let (_, b, t) = to_named_tuple (pf_get_hyp gl id) in
+    let (_, b, t) = to_named_tuple (pf_get_hyp id gl) in
       match b with
       | None -> let f, args = decompose_app sigma t in
                   f, args, false, id, oldid
@@ -88,8 +89,10 @@ let needs_generalization gl id =
         else Array.exists (fun x -> not (isVar sigma x) || is_section_variable (destVar sigma x)) args'
 
 
-let dependent_pattern ?(pattern_term=true) c gl =
-  let sigma = gl.sigma in
+let dependent_pattern ?(pattern_term=true) c =
+  let open Tacmach.New in
+  Proofview.Goal.enter (fun gl ->
+  let sigma = Proofview.Goal.sigma gl in
   let cty = Retyping.get_type_of (pf_env gl) sigma c in
   let deps =
     match kind sigma cty with
@@ -103,12 +106,12 @@ let dependent_pattern ?(pattern_term=true) c gl =
     | _ -> pf_get_new_id (Id.of_string (hdchar (pf_env gl) (project gl) c)) gl
   in
   let env = pf_env gl in
-  let mklambda (ty, evd) (c, id, cty) =
-    let conclvar, evd' =
-      Find_subterm.subst_closed_term_occ env (project gl)
+  let mklambda (ty, sigma) (c, id, cty) =
+    let conclvar, sigma =
+      Find_subterm.subst_closed_term_occ env sigma
         (Locus.AtOccs Locus.AllOccurrences) c ty
     in
-      mkNamedLambda (annotR id) cty conclvar, evd'
+      mkNamedLambda (annotR id) cty conclvar, sigma
   in
   let subst =
     let deps = List.rev_map (fun c -> (c, varname c, pf_get_type_of gl c)) deps in
@@ -117,7 +120,7 @@ let dependent_pattern ?(pattern_term=true) c gl =
   in
   let concllda, evd = List.fold_left mklambda (pf_concl gl, project gl) subst in
   let conclapp = applistc concllda (List.rev_map pi1 subst) in
-    Proofview.V82.of_tactic (convert_concl ~check:false conclapp DEFAULTcast) gl
+    convert_concl ~check:false conclapp DEFAULTcast)
 
 let depcase ~poly (mind, i as ind) =
   let indid = Nametab.basename_of_global (GlobRef.IndRef ind) in
@@ -209,11 +212,13 @@ let () =
             { derive_name = "DependentElimination";
               derive_fn = make_derive_ind fn })
 
-let pattern_call ?(pattern_term=true) c gl =
+let pattern_call ?(pattern_term=true) c =
+  let open Tacmach.New in
+  Proofview.Goal.enter (fun gl ->
   let env = pf_env gl in
   let sigma = project gl in
   let cty = pf_get_type_of gl c in
-  let ids = Id.Set.of_list (ids_of_named_context (pf_hyps gl)) in
+  let ids = Id.Set.of_list (ids_of_named_context (Proofview.Goal.hyps gl)) in
   let deps =
     match kind sigma c with
     | App (f, args) -> Array.to_list args
@@ -236,7 +241,7 @@ let pattern_call ?(pattern_term=true) c gl =
   in
   let concllda = List.fold_left mklambda (pf_concl gl) subst in
   let conclapp = applistc concllda (List.rev_map pi1 subst) in
-    Proofview.V82.of_tactic (convert_concl ~check:false conclapp DEFAULTcast) gl
+    (convert_concl ~check:false conclapp DEFAULTcast))
 
 let destPolyRef sigma c =
   let open GlobRef in

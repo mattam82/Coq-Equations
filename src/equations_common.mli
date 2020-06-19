@@ -343,8 +343,6 @@ val string_of_smart_global :
 val ident_of_smart_global :
   Libnames.qualid Constrexpr.or_by_notation -> Id.t
 
-val pf_get_type_of : Goal.goal Evd.sigma -> constr -> types
-
 val move_after_deps : Names.Id.t -> constr -> unit Proofview.tactic
 
 val extended_rel_vect : int -> rel_context -> constr array

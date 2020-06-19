@@ -845,8 +845,9 @@ let ind_fun_tac is_rec f info fid nested progs =
     (fun e ->
        match fst e with
        | Pretype_errors.PretypeError (env, evd, err) ->
-         Feedback.msg_warning (Himsg.explain_pretype_error env evd err); iraise e
-       | _ -> iraise e)
+         Feedback.msg_warning (Himsg.explain_pretype_error env evd err); 
+        Exninfo.iraise e
+       | _ -> Exninfo.iraise e)
 
 let is_primitive env evd ctx var =
   let decl = List.nth ctx var in
@@ -1009,12 +1010,14 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
 	  to82 (abstract (of82 (tclTHENLIST [to82 intros; simpltac; reftac])))
 	    
     | Compute (_, wheres, _, RProgram _), Compute ((lctx, _, _), unfwheres, _, RProgram c) ->
+      let open Tacticals.New in
+      let open Tacmach.New in
        let wheretac acc w unfw =
          let assoc, id, _ =
            try PathMap.find unfw.where_path where_map
            with Not_found -> assert false
          in
-         fun gl ->
+        Proofview.Goal.enter (fun gl ->
          let env = pf_env gl in
          let evd = ref (project gl) in
          let wp = w.where_program in
@@ -1038,21 +1041,21 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
          let progtac = aux_program subst wp unfwp in
          let tac =
            assert_by (Name id) ty
-             (of82 (tclTHEN (to82 (keep []))
-                      (to82 (Abstract.tclABSTRACT (Some id) progtac))))
+             (tclTHEN (keep [])
+                      (Abstract.tclABSTRACT (Some id) progtac))
          in
-         tclTHENLIST [Refiner.tclEVARS !evd; to82 tac;
-                      to82 (Equality.rewriteLR (mkVar id));
-                      acc] gl
+         tclTHENLIST [Proofview.Unsafe.tclEVARS !evd; tac;
+                      Equality.rewriteLR (mkVar id);
+                      acc])
        in
        let wheretacs =
          assert(List.length wheres = List.length unfwheres);
          List.fold_left2 wheretac tclIDTAC wheres unfwheres
        in
-       observe "compute"
-         (tclTHENLIST [to82 intros; wheretacs;
-                       observe "compute rhs" (tclTRY unfolds);
-                       simpltac; solve_eq subst])
+       to82 (observe_new "compute"
+         (tclTHENLIST [intros; wheretacs;
+                       observe_new "compute rhs" (tclTRY (of82 unfolds));
+                       of82 simpltac; of82 (solve_eq subst)]))
 
     | Compute (_, _, _, _), Compute ((ctx,_,_), _, _, REmpty (id, sp)) ->
 	let d = nth ctx (pred id) in

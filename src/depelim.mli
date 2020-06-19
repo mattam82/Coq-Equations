@@ -21,11 +21,10 @@ exception Seen
 val linear : Evd.evar_map -> Id.Set.t -> constr array -> bool
 
 val needs_generalization :
-  Goal.goal Evd.sigma -> Id.t -> bool
+  Proofview.Goal.t -> Id.t -> bool
 
 val dependent_pattern :
-  ?pattern_term:bool ->
-  constr -> Goal.goal Evd.sigma -> Evar.t list Evd.sigma
+  ?pattern_term:bool -> constr -> unit Proofview.tactic
 
 
 val depcase
@@ -41,8 +40,7 @@ val derive_dep_elimination
   -> Constant.t * (Evd.evar_map * constr)
 
 val pattern_call :
-  ?pattern_term:bool ->
-  constr -> Goal.goal Evd.sigma -> Evar.t list Evd.sigma
+  ?pattern_term:bool -> constr -> unit Proofview.tactic
 
 val specialize_eqs : with_block:bool -> Names.Id.t -> Proofview.V82.tac
 
