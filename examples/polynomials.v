@@ -19,7 +19,7 @@
 (* begin hide *)
 Require Import Program.Basics Program.Tactics.
 Require Import Equations.Equations.
-Require Import ZArith.
+Require Import ZArith Lia.
 Require Import Psatz.
 Require Import NPeano.
 Require Import Nat.
@@ -561,7 +561,7 @@ Definition close_formula : @formula nat -> { n : nat & forall m, m >= n -> @form
 Proof.
   intro f; depind f.
   - unshelve eapply (S a ; _); intros m p; apply f_var.
-    apply @Fin.of_nat_lt with (p := a). omega.
+    apply @Fin.of_nat_lt with (p := a). lia.
   - exact (O ; (fun _ _ => f_const b)).
   - destruct IHf1 as [n1 e1]; destruct IHf2 as [n2 e2].
     apply (existT _ (max n1 n2)); intros m p; apply f_and; [apply e1|apply e2]; nia.

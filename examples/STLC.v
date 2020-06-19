@@ -1,7 +1,7 @@
 (* begin hide *)
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2020 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -16,7 +16,7 @@
 
 Require Program.
 Require Import Equations.Equations.
-Require Import Omega.
+Require Import Lia.
 Require Import List Utf8.
 
 Import ListNotations.
@@ -78,12 +78,12 @@ Tactic Notation "absurd"  tactic(tac) := elimtype False; tac.
 
 Ltac term_eq := 
   match goal with
-    | |- Var _ = Var _ => f_equal ; omega
-    | |- @eq nat _ _ => omega || absurd omega
-    | |- lt _ _ => omega || absurd omega
-    | |- le _ _ => omega || absurd omega
-    | |- gt _ _ => omega || absurd omega
-    | |- ge _ _ => omega || absurd omega
+    | |- Var _ = Var _ => f_equal ; lia
+    | |- @eq nat _ _ => lia || absurd lia
+    | |- lt _ _ => lia || absurd lia
+    | |- le _ _ => lia || absurd lia
+    | |- gt _ _ => lia || absurd lia
+    | |- ge _ _ => lia || absurd lia
   end.
 
 Hint Extern 4 => term_eq : term.
@@ -103,7 +103,7 @@ Proof.
   funelim (lift k 0 t); term || rewrite ?H; crush.
 Qed.
 Hint Rewrite lift0 : lift.
-Require Import Omega.
+Require Import Lia.
 
 Lemma lift_k_lift_k k n m t : lift k n (lift k m t) = lift k (n + m) t.
 Proof.
@@ -133,8 +133,8 @@ subst k Tt _ := Tt.
 
 Lemma substnn n t : subst n n t = lift 0 n t.
 Proof. funelim (subst n n t) ; try rewrite H ; try rewrite H0; simp lift; auto.
-  rewrite Nat.compare_lt_iff in Heq; absurd omega.
-  rewrite Nat.compare_gt_iff in Heq; absurd omega.
+  rewrite Nat.compare_lt_iff in Heq; absurd lia.
+  rewrite Nat.compare_gt_iff in Heq; absurd lia.
 Qed.
 Hint Rewrite substnn : subst.
 Notation ctx := (list type).
@@ -186,14 +186,14 @@ Proof. induction l'; auto. Qed.
 Lemma nth_app_l {A} (a : A) {n} (l l' : list A) : n < length l -> nth n (l @ l') a = nth n l a.
 Proof.
   revert l l' n; induction l; intros; auto. depelim H. destruct n; trivial.
-  simpl. eapply IHl. simpl in H. omega.
+  simpl. eapply IHl. simpl in H. lia.
 Qed.
 
 Lemma nth_app_r {A} (a : A) {n} (l l' : list A) : length l <= n -> 
   nth n (l @ l') a = nth (n - length l) l' a.
 Proof.
   revert l l' n; induction l; intros; auto. simpl in H. depelim H; auto.
-  destruct n; simpl in H. depelim H. simpl; apply IHl; omega.
+  destruct n; simpl in H. depelim H. simpl; apply IHl; lia.
 Qed.
 
 Lemma nth_extend_middle {A} (a : A) n (l l' l'' : list A) : 
@@ -210,7 +210,7 @@ Proof.
   now rewrite <- nth_extend_left.
 
   clear H0. now rewrite !nth_app_l by trivial.
-  clear H0. rewrite !nth_app_r by omega. f_equal. omega.
+  clear H0. rewrite !nth_app_r by lia. f_equal. lia.
 Qed.
   
 Hint Rewrite <- app_assoc in_app_iff in_inv : list.
@@ -223,7 +223,7 @@ Proof.
 
   generalize (nth_extend_middle unit i Γ0 Γ' Γ'').
   destruct Nat.compare; intros H'; rewrite H'; simp lift;
-    apply axiom; autorewrite with list in H |- *; omega.
+    apply axiom; autorewrite with list in H |- *; lia.
   
   apply abstraction. rewrite app_comm_cons. now apply IHtypes. 
 Qed.
@@ -256,18 +256,18 @@ Proof with term.
 
   (* Eq *)
   generalize (type_lift Γ0 u U [] H0 Γ'); simpl; intros.
-  rewrite app_cons_snoc_app, app_nth1, app_nth2; try (simpl; omega).
+  rewrite app_cons_snoc_app, app_nth1, app_nth2; try (simpl; lia).
   now rewrite <- minus_n_n. term.
 
   (* Lt *) 
-  rewrite app_nth1 by omega. rewrite <- (app_nth1 _ Γ0); term.
+  rewrite app_nth1 by lia. rewrite <- (app_nth1 _ Γ0); term.
 
   (* Gt *)
   rewrite app_nth2; term.
   change (U :: Γ0) with ((cons U nil) @ Γ0). rewrite app_nth2; term.
   simpl. rewrite (nth_extend_left unit _ Γ0 Γ').
   replace (length Γ' + (i - length Γ' - 1)) with (pred i); term.
-  apply axiom. autorewrite with list in H |- *. simpl in H. omega.
+  apply axiom. autorewrite with list in H |- *. simpl in H. lia.
 
   (* Abstraction *)
   intros. apply abstraction. now eapply (IHtypes _ _ _ (A :: Γ')).
@@ -479,7 +479,7 @@ Proof.
   destruct H; intros; simp lift; try solve [econstructor; term].
   clear check_lift_gen synthetize_lift_gen. subst.
   generalize (nth_extend_middle unit i Γ0 Γ' Γ'').
-  destruct Nat.compare; intros H'; rewrite H'; simp lift; apply axiom_synth; autorewrite with list in H |- *; omega.
+  destruct Nat.compare; intros H'; rewrite H'; simp lift; apply axiom_synth; autorewrite with list in H |- *; lia.
 Qed.
 
 Definition check_lift Γ t T Γ' (H : Γ' @ Γ |-- t <= T) : 
@@ -494,14 +494,14 @@ Proof. intros. apply (check_lift Γ t T [] H [A]). Qed.
 
 Lemma synth_lift1 {Γ t T A} : Γ |-- t => T -> A :: Γ |-- lift 0 1 t => T.
 Proof. intros. apply (synthetize_lift Γ t T [] H [A]). Qed.
-Hint Resolve @check_lift1 @synth_lift1 : term.
+Hint Resolve check_lift1 synth_lift1 : term.
 
 Lemma check_lift_ctx {Γ t T Γ'} : Γ |-- t <= T -> Γ' @ Γ |-- lift 0 (length Γ') t <= T.
 Proof. intros. apply (check_lift Γ t T [] H Γ'). Qed.
 
 Lemma synth_lift_ctx {Γ t T Γ'} : Γ |-- t => T -> Γ' @ Γ |-- lift 0 (length Γ') t => T.
 Proof. intros. apply (synthetize_lift Γ t T [] H Γ'). Qed.
-Hint Resolve @check_lift_ctx @synth_lift_ctx : term.
+Hint Resolve check_lift_ctx synth_lift_ctx : term.
 
 Equations η (a : type) (t : term) : term :=
 η (atom _) t := t ;
@@ -521,18 +521,18 @@ Proof. destruct 1; simp lift; constructor; term.
   destruct 1; simp lift; try (constructor; term).
   destruct Nat.compare; term.
 Qed.
-Hint Resolve @normal_lift @neutral_lift : term.
+Hint Resolve normal_lift neutral_lift : term.
 
 
 Lemma check_normal {Γ t T} : Γ |-- t <= T -> normal t
  with synth_neutral {Γ t T} : Γ |-- t => T -> neutral t.
 Proof. destruct 1; constructor; term. destruct 1; constructor; term. Qed.
-Hint Resolve @check_normal @synth_neutral : term.
+Hint Resolve check_normal synth_neutral : term.
 
 Lemma eta_expand Γ t A : neutral t → Γ |-- t => A -> Γ |-- η A t <= A.
 Proof. revert Γ t; induction A; intros; simp η; constructor; term.
 
-  assert(0 < length (A1 :: Γ)) by (simpl; omega).
+  assert(0 < length (A1 :: Γ)) by (simpl; lia).
   specialize (IHA1 (A1 :: Γ) 0 (neutral_var _) (axiom_synth (A1 :: Γ) 0 H1)).
   apply (IHA2 (A1 :: Γ) @(lift 0 1 t, η A1 0)); term.
 Qed.
@@ -793,7 +793,7 @@ Proof.
   destruct n; auto. depelim H.
   destruct n; auto. simpl pred. simpl.
   rewrite <- IHΓ'. destruct n; auto. simpl in H. depelim H. depelim H.
-  simpl in *; omega.
+  simpl in *; lia.
 Qed.
 
 Lemma hereditary_subst_subst U u t Γ' :
@@ -850,7 +850,7 @@ Proof.
   - apply Nat.compare_lt_iff in Heq.
     split; intros Hsyn; depelim Hsyn;
     [depelim H1;constructor;auto|];
-    (rewrite nth_app_l by omega; rewrite <- nth_app_l with (l':=Γ) by omega;
+    (rewrite nth_app_l by lia; rewrite <- nth_app_l with (l':=Γ) by lia;
      constructor; rewrite app_length; auto with arith). 
   
   (* Gt *)
@@ -858,11 +858,11 @@ Proof.
     split; intros Hsyn; depelim Hsyn.
     depelim H1. constructor. auto.
     replace (nth n (Γ' @ (t0 :: Γ)) unit) with (nth (pred n) (Γ' @ Γ) unit).
-    constructor. rewrite app_length in *. simpl in H1. omega.
+    constructor. rewrite app_length in *. simpl in H1. lia.
     now apply nth_pred.
 
     replace (nth _ (Γ' @ (_ :: _)) unit) with (nth (pred n) (Γ' @ Γ) unit).
-    constructor. rewrite app_length in *. simpl in H0. omega.
+    constructor. rewrite app_length in *. simpl in H0. lia.
     now apply nth_pred.
 
   (* App *)
@@ -1003,7 +1003,7 @@ Proof. intros. apply (check_lift Γ t T [] H Γ'). Qed.
 
 Lemma synth_liftn {Γ Γ' t T} : Γ |-- t => T -> Γ' @ Γ |-- lift 0 (length Γ') t => T.
 Proof. intros. apply (synthetize_lift Γ t T [] H Γ'). Qed.
-Hint Resolve @check_liftn @synth_liftn : term.
+Hint Resolve check_liftn synth_liftn : term.
 
 (* Write normalization function *)
 Lemma types_normalizes Γ t T : Γ |-- t : T → ∃ u, Γ |-- u <= T.

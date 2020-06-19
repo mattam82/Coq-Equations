@@ -1,5 +1,5 @@
 From Equations Require Import Equations.
-Require Import Arith List ListSet Omega Program.
+Require Import Arith List ListSet Lia Program.
 Import ListNotations.
 Set Keyed Unification.
  
@@ -69,7 +69,7 @@ Proof.
       unfold var_gen in *; simpl in *; try (now exfalso; auto).
     destruct H; subst;
     rewrite Max.succ_max_distr, Nat.max_lt_iff; auto. }
-  intros contra. apply Hlt in contra. omega.
+  intros contra. apply Hlt in contra. lia.
 Qed.
  
 Fixpoint ii_open_rec (k : nat) (i : index) (x : fvar) : index :=
@@ -122,7 +122,7 @@ Proof.
     (match goal with
        | [ H : forall (_ : nat), _ = _ |- _ ] => 
          rewrite H
-     end); try omega.
+     end); try lia.
   now destruct (eq_nat_dec _ _).
 Qed.
 

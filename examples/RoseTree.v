@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2020 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -8,7 +8,7 @@
 
 Require Import Program.
 From Equations Require Import Equations.
-Require Import Omega Utf8 Lia Arith.
+Require Import Utf8 Lia Arith.
 
 Require Import List.
 Import ListNotations.
@@ -38,7 +38,7 @@ Section list_size.
     intros. funelim (list_size xs); simpl in *. destruct H.
     destruct H0.
     * subst; lia.
-    * specialize (H _ H0). intuition.
+    * specialize (H _ H0). intuition. lia.
   Qed.
 End list_size.
 Transparent list_size.
@@ -75,8 +75,8 @@ Module RoseTree.
     Qed.
 
     (** To solve measure subgoals *)
-    Hint Extern 4 (_ < _) => simpl; omega : Below.
-    Hint Extern 4 (MR _ _ _ _) => repeat red; simpl in *; omega : Below.
+    Hint Extern 4 (_ < _) => simpl; lia : Below.
+    Hint Extern 4 (MR _ _ _ _) => repeat red; simpl in *; lia : Below.
 
     Obligation Tactic := program_simpl; try typeclasses eauto with Below subterm_relation.
     (* Nested rec *) 

@@ -1,4 +1,4 @@
-Require Export Omega.
+Require Export Lia.
 Require Import Coq.Relations.Relation_Operators.
 Require Import Coq.Wellfounded.Lexicographic_Product.
 From Equations Require Import Equations.
@@ -26,10 +26,10 @@ Fixpoint tsize_flat(T: ty) :=
 Definition val_type_termRel :=
   Program.Wf.MR (lexprod lt (fun _ => lt)) (fun p => let '(T, n) := p in (existT (fun _ => nat) n (tsize_flat T))).
 
-Ltac smaller_n := autounfold; apply left_lex; omega.
+Ltac smaller_n := autounfold; apply left_lex; lia.
 
 Instance WF_val_type_termRel: WellFounded val_type_termRel.
-  apply Wf.measure_wf; apply wf_lexprod; intro; apply lt_wf.
+  apply Wf.measure_wf; apply wf_lexprod; intro; apply Wf_nat.lt_wf.
 Qed.
 
 Equations? val_type (Tn: ty * nat) : Prop by wf Tn val_type_termRel :=
