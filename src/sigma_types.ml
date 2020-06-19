@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2020 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -752,7 +752,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
     let term = EConstr.mkConstructU (to_peuniverses summary.Inductiveops.cs_cstr) in
     let term = EConstr.mkApp (term, params) in
     let term = Vars.lift (summary.Inductiveops.cs_nargs) term in
-    let term = EConstr.mkApp (term, rel_vect 0 summary.Inductiveops.cs_nargs) in
+    let term = EConstr.mkApp (term, Context.Rel.to_extended_vect EConstr.mkRel 0 summary.Inductiveops.cs_args) in
     (* Indices are typed under [args @ ctx'] *)
     let indices = (Array.to_list indices) @ [term] in
     let args = summary.Inductiveops.cs_args in

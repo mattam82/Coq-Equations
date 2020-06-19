@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2020 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -35,7 +35,7 @@ val unify_constrs :
   rel_context ->
   constr list ->
   constr list -> context_map
-val flexible : pat list -> 'a list -> Int.Set.t
+val flexible : pat list -> ('a,'b) Context.Rel.pt -> Int.Set.t
 val accessible : pat -> Int.Set.t
 val accessibles : pat list -> Int.Set.t
 val hidden : pat -> bool
