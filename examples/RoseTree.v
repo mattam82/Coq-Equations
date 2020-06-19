@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2020 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -8,7 +8,7 @@
 
 Require Import Program.
 From Equations Require Import Equations.
-Require Import Omega Utf8 Lia Arith.
+Require Import Utf8 Lia Arith.
 
 Require Import List.
 
@@ -22,8 +22,7 @@ Equations map_In {A B : Type}
 Lemma map_In_spec {A B : Type} (f : A -> B) (l : list A) :
   map_In l (fun (x : A) (_ : In x l) => f x) = List.map f l.
 Proof.
-  remember (fun (x : A) (_ : In x l) => f x) as g.
-  funelim (map_In l g); rewrite ?H; trivial.
+  funelim (map_In l _); rewrite ?H; trivial.
 Qed.
   
 Section list_size.
@@ -37,8 +36,8 @@ Section list_size.
   Proof.
     intros. funelim (list_size xs); simpl in *. destruct H.
     destruct H0.
-    * subst; omega.
-    * specialize (H _ H0). intuition.
+    * subst; lia.
+    * specialize (H _ H0). intuition. lia.
   Qed.
 End list_size.
 Transparent list_size.
@@ -75,8 +74,8 @@ Module RoseTree.
     Qed.
 
     (** To solve measure subgoals *)
-    Hint Extern 4 (_ < _) => simpl; omega : Below.
-    Hint Extern 4 (MR _ _ _ _) => repeat red; simpl in *; omega : Below.
+    Hint Extern 4 (_ < _) => simpl; lia : Below.
+    Hint Extern 4 (MR _ _ _ _) => repeat red; simpl in *; lia : Below.
 
     Obligation Tactic := program_simpl; try typeclasses eauto with Below subterm_relation.
     (* Nested rec *) 

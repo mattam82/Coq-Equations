@@ -1,58 +1,12 @@
-(* begin hide *)
-(**********************************************************************)
-(* Equations                                                          *)
-(* Copyright (c) 2009-2020 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
-(**********************************************************************)
-(* This file is distributed under the terms of the                    *)
-(* GNU Lesser General Public License Version 2.1                      *)
-(**********************************************************************)
-(* end hide *)
-(** * Definitional interpreter for STLC extended with references
-
-  This is a port of the first part of "Intrinsically-Typed Definitional
-  Interpreters for Imperative Languages", Poulsen, Rouvoet, Tolmach,
-  Krebbers and Visser. POPL'18.
-
-  It uses well-typed and well-scoped syntax and a monad indexed over an
-  indexed set of stores to define an interpreter for an imperative
-  programming language.
-
-  This showcases the use of dependent pattern-matching and
-  pattern-matching lambdas in Equations. We implement a variant where
-  store extension is resolved using type class resolution as well as the
-  dependent-passing style version. *)
-
 Require Import Program.Basics Program.Tactics.
-From Equations Require Import Equations.
+Require Import Equations.Equations.
 Require Import Coq.Vectors.VectorDef.
 Require Import List.
 Import ListNotations.
-Require Import Utf8.
-Set Warnings "-notation-overridden".
-(** The Σ notation of equations clashes with the Σ's used below,
-    so we redefine the Σ notation using ∃ instead.
- *)
-
-Notation "'∃' x .. y , P" := (sigma (fun x => .. (sigma (fun y => P)) ..))
-  (at level 200, x binder, y binder, right associativity,
-  format "'[  ' '[  ' ∃  x  ..  y ']' ,  '/' P ']'") : type_scope.
-
-Notation "( x , .. , y , z )" :=
-  (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
-      (right associativity, at level 0,
-       format "( x ,  .. ,  y ,  z )") : equations_scope.
-
-Notation " x .1 " := (pr1 x) (at level 3, format "x .1") : equations_scope.
-Notation " x .2 " := (pr2 x) (at level 3, format "x .2") : equations_scope.
-
-Local Open Scope equations_scope.
-
 Set Equations Transparent.
 
-(** [t] is just [Vector.t] here. *)
 Derive Signature NoConfusion NoConfusionHom for t.
 
-(** Types include unit, bool, function types and references *)
 Inductive Ty : Set :=
 | unit : Ty
 | bool : Ty
@@ -63,7 +17,6 @@ Derive NoConfusion for Ty.
 
 Infix "⇒" := arrow (at level 80).
 
-Definition Ctx := list Ty.
 
 Reserved Notation " x ∈ s " (at level 70, s at level 10).
 
@@ -73,27 +26,54 @@ Inductive In {A} (x : A) : list A -> Type :=
 | there {y xs} : x ∈ xs -> x ∈ (y :: xs)
 where " x ∈ s " := (In x s).
 Derive Signature NoConfusion for In.
-
 Arguments here {A x xs}.
 Arguments there {A x y xs} _.
 
-Inductive Expr : Ctx -> Ty -> Set :=
-| tt {Γ} : Expr Γ unit
-| true {Γ} : Expr Γ bool
-| false {Γ} : Expr Γ bool
-| ite {Γ t} : Expr Γ bool -> Expr Γ t -> Expr Γ t -> Expr Γ t
-| var {Γ} {t} : In t Γ -> Expr Γ t
-| abs {Γ} {t u} : Expr (t :: Γ) u -> Expr Γ (t ⇒ u)
-| app {Γ} {t u} : Expr Γ (t ⇒ u) -> Expr Γ t -> Expr Γ u
-| new {Γ t} : Expr Γ t -> Expr Γ (ref t)
-| deref {Γ t} : Expr Γ (ref t) -> Expr Γ t
-| assign {Γ t} : Expr Γ (ref t) -> Expr Γ t -> Expr Γ unit.
+From Equations Require Import Fin.
 
-(** We derive both [NoConfusion] and [NoConfusionHom] principles here, the later
-    allows to simplify pattern-matching problems on [Expr] which would otherwise
-    require K. It relies on an inversion analysis of every constructor, showing
-    that the context and type indexes in the conclusions of every constructor
-    are forced arguments. *)
+Section ScopeGraphs.
+  Context (k : nat).
+
+  Definition Scope := fin k.
+
+  Definition Graph := Scope -> (list Ty * list Scope).
+
+  Context (g : Graph).
+
+  Definition declsOf (s : Scope) := fst (g s).
+  Definition edgesOf (s : Scope) := snd (g s).
+
+  Inductive sedge (s : Scope) : Scope -> Set :=
+  | nilp : sedge s s
+  | consp {s' s''} : s' ∈ edgesOf s -> sedge s' s'' -> sedge s s''.
+
+  Notation "s ⟶ s'" := (sedge s s') (at level 20).
+
+  Inductive resolve (s : Scope) (t : Ty) :=
+  | path {s'} : s ⟶ s' -> t ∈ declsOf s' -> resolve s t.
+
+  Notation "s ↦ t" := (resolve s t) (at level 20).
+End ScopeGraphs.
+
+Arguments resolve {k g}.
+Notation "s ↦ t" := (resolve s t) (at level 20).
+
+Section Expr.
+  Context (k : nat).
+  Context (g : Graph k).
+
+  Inductive Expr (Γ : Scope k) : Ty -> Set :=
+  | tt : Expr Γ unit
+  | true : Expr Γ bool
+  | false : Expr Γ bool
+  | ite {t} : Expr Γ bool -> Expr Γ t -> Expr Γ t -> Expr Γ t
+  | var {t} : Γ ↦ t -> Expr Γ t
+  | abs {t u} : Expr (t :: Γ) u -> Expr Γ (t ⇒ u)
+  | app {t u} : Expr Γ (t ⇒ u) -> Expr Γ t -> Expr Γ u
+  | new {t} : Expr Γ t -> Expr Γ (ref t)
+  | deref {t} : Expr Γ (ref t) -> Expr Γ t
+  | assign {t} : Expr Γ (ref t) -> Expr Γ t -> Expr Γ unit.
+
 Derive Signature NoConfusion NoConfusionHom for Expr.
 
 #[universes(template)]
@@ -105,15 +85,11 @@ Arguments all_cons {A P x xs} _ _.
 Derive Signature NoConfusion NoConfusionHom for All.
 
 Section MapAll.
-  Context {A} {P Q : A -> Type} (f : forall x, P x -> Q x).
+  Context  {A} {P Q : A -> Type} (f : forall x, P x -> Q x).
 
   Equations map_all {l : list A} : All P l -> All Q l :=
   map_all all_nil := all_nil;
   map_all (all_cons p ps) := all_cons (f _ p) (map_all ps).
-
-  Equations map_all_in {l : list A} (f : forall x, x ∈ l -> P x -> Q x) : All P l -> All Q l :=
-  map_all_in f all_nil := all_nil;
-  map_all_in f (all_cons p ps) := all_cons (f _ here p) (map_all_in (fun x inl => f x (there inl)) ps).
 End MapAll.
 
 Definition StoreTy := list Ty.
@@ -144,53 +120,59 @@ Equations lookup_store {Σ t} : t ∈ Σ -> Store Σ -> Val t Σ :=
 
 Equations update_store {Σ t} : t ∈ Σ -> Val t Σ -> Store Σ -> Store Σ :=
   update_store l v σ := update σ l v.
+Import Sigma_Notations.
 
-Definition store_incl (Σ Σ' : StoreTy) := sigma (fun Σ'' => Σ' = Σ'' ++ Σ).
+Definition store_incl (Σ Σ' : StoreTy) := &{ Σ'' : _ & Σ' = Σ'' ++ Σ }.
 Infix "⊑" := store_incl (at level 10).
 
-Equations app_assoc {A} (x y z : list A) : x ++ y ++ z = (x ++ y) ++ z :=
-  app_assoc nil y z := eq_refl;
-  app_assoc (cons x xs) y z := f_equal (cons x) (app_assoc xs y z).
+Lemma app_assoc {A} (x y z : list A) : x ++ y ++ z = (x ++ y) ++ z.
+Proof. induction x; simpl; auto.
+       now rewrite IHx.
+Defined.
 
 Section StoreIncl.
-  Equations pres_in {Σ Σ'} (incl : Σ ⊑ Σ') t (p : t ∈ Σ) : t ∈ Σ' :=
-    pres_in (Σ'', eq_refl) t p := aux Σ''
-       where aux Σ'' : t ∈ (Σ'' ++ Σ) :=
-       aux nil := p;
-       aux (cons ty tys) := there (aux tys).
+  Context {Σ Σ' : StoreTy} (incl : Σ ⊑ Σ').
 
-  Equations refl_incl {Σ} : Σ ⊑ Σ := refl_incl := ([], eq_refl).
+  Lemma pres_in t : t ∈ Σ -> t ∈ Σ'.
+  Proof. destruct incl. subst. clear. induction pr1. intros. exact H.
+         intros H. specialize (IHpr1 H). constructor 2. apply IHpr1.
+  Defined.
 
-  Equations trans_incl {Σ Σ' Σ''} (incl : Σ ⊑ Σ') (incl' : Σ' ⊑ Σ'') : Σ ⊑ Σ'' :=
-    trans_incl (p, eq_refl) (q, eq_refl) := (q ++ p, app_assoc _ _ _).
-
-  Equations store_ext_incl {Σ t} : Σ ⊑ (t :: Σ) :=
-    store_ext_incl := ([t], eq_refl).
-
-  Context {Σ Σ'} (incl : Σ ⊑ Σ').
-
-  Equations weaken_val {t} (v : Val t Σ) : Val t Σ' := {
-   weaken_val (@val_unit ?(Σ)) := val_unit;
+  Equations(noind) weaken_val {t} (v : Val t Σ) : Val t Σ' := {
+   weaken_val val_unit := val_unit;
    weaken_val val_true := val_true;
    weaken_val val_false := val_false;
-   weaken_val (val_closure b e) := val_closure b (weaken_vals e);
-   weaken_val (val_loc H) := val_loc (pres_in incl _ H) }
-  where weaken_vals {l} (a : All (fun t => Val t Σ) l) : All (fun t => Val t Σ') l :=
-  weaken_vals all_nil := all_nil;
-  weaken_vals (all_cons p ps) := all_cons (weaken_val p) (weaken_vals ps).
+   weaken_val (val_closure b e) := val_closure b (map_all (fun t v => weaken_val v) e); (* (weaken_vals e);  *)
+   weaken_val (val_loc H) := val_loc (pres_in _ H) }.
+  (* where weaken_vals {l} (a : All (fun t => Val t Σ) l) : All (fun t => Val t Σ') l by struct a := *)
+  (* weaken_vals all_nil := all_nil; *)
+  (* weaken_vals (all_cons p ps) := all_cons (weaken_val p) (weaken_vals ps). *)
 
-  Equations weakenv_vals {l} a : @weaken_vals l a = map_all (fun t v => weaken_val v) a :=
-    weakenv_vals all_nil := eq_refl;
-    weakenv_vals (all_cons p ps) := f_equal (all_cons (weaken_val p)) (weakenv_vals ps).
 
-  Definition weaken_env {Γ} (v : Env Γ Σ) : Env Γ Σ' := map_all (@weaken_val) v.
+  Definition weaken_env {Γ} (v : Env Γ Σ) : Env Γ Σ' :=
+    map_all (@weaken_val) v.
+
+  Lemma refl_incl : Σ ⊑ Σ.
+  Proof. exists []. reflexivity. Defined.
+
+  Lemma trans_incl {Σ''} (incl' : Σ' ⊑ Σ'') : Σ ⊑ Σ''.
+  Proof.
+    destruct incl as [? ->], incl' as [? ->].
+    exists (pr0 ++ pr1). now rewrite app_assoc.
+  Defined.
+
+  Lemma store_ext_incl {t} : Σ ⊑ (t :: Σ).
+  Proof. now exists [t]. Defined.
 
 End StoreIncl.
 
 Infix "⊚" := trans_incl (at level 10).
 
 Equations M : forall (Γ : Ctx) (P : StoreTy -> Type) (Σ : StoreTy), Type :=
-  M Γ P Σ := forall (E : Env Γ Σ) (μ : Store Σ), option (∃ Σ' (μ' : Store Σ') (_ : P Σ'), Σ ⊑ Σ').
+  M Γ P Σ := forall (E : Env Γ Σ) (μ : Store Σ), option &{ Σ' : _ & &{ _ : Store Σ' & &{ _ : P Σ' & Σ ⊑ Σ'}}}.
+
+Require Import Utf8.
+Notation "( x , .. , y , z )" := (sigmaI _ x .. (sigmaI _ y z) ..) : core_scope.
 
 Equations bind {Σ Γ} {P Q : StoreTy -> Type} (f : M Γ P Σ) (g : ∀ {Σ'}, P Σ' -> M Γ Q Σ') : M Γ Q Σ :=
   bind f g E μ with f E μ :=
@@ -242,21 +224,27 @@ Arguments storepred_pair {P Q Σ}.
 Class Weakenable (P : StoreTy -> Type) : Type :=
   weaken : forall {Σ Σ'}, Σ ⊑ Σ' -> P Σ -> P Σ'.
 
-Instance val_weaken {t} : Weakenable (Val t) := fun Σ Σ' incl => weaken_val incl.
-Instance env_weaken {Γ} : Weakenable (Env Γ) := fun Σ Σ' incl => weaken_env incl.
-Instance loc_weaken (t : Ty) : Weakenable (In t) := fun Σ Σ' incl => pres_in incl t.
+Instance val_weaken {t} : Weakenable (Val t).
+Proof. intros Σ Σ' incl. apply (weaken_val incl). Defined.
+
+Instance env_weaken {Γ} : Weakenable (Env Γ).
+Proof. intros Σ Σ' incl. apply (weaken_env incl). Defined.
+
+Instance loc_weaken (t : Ty) : Weakenable (In t).
+Proof. intros Σ Σ' incl. apply (pres_in incl). Defined.
 
 Class IsIncludedOnce (Σ Σ' : StoreTy) : Type := is_included_once : Σ ⊑ Σ'.
 Hint Mode IsIncludedOnce + + : typeclass_instances.
 
-Instance IsIncludedOnce_ext {T} Σ : IsIncludedOnce Σ (T :: Σ) := store_ext_incl.
+Instance IsIncludedOnce_ext {T} Σ : IsIncludedOnce Σ (T :: Σ).
+Proof. apply store_ext_incl. Defined.
 
 Class IsIncluded (Σ Σ' : StoreTy) : Type := is_included : Σ ⊑ Σ'.
 Hint Mode IsIncluded + + : typeclass_instances.
 
 Instance IsIncluded_refl Σ : IsIncluded Σ Σ := refl_incl.
-Instance IsIncluded_trans Σ Σ' Σ'' : IsIncludedOnce Σ Σ' -> IsIncluded Σ' Σ'' -> IsIncluded Σ Σ'' :=
-  fun H H' => trans_incl H H'.
+Instance IsIncluded_trans Σ Σ' Σ'' : IsIncludedOnce Σ Σ' -> IsIncluded Σ' Σ'' -> IsIncluded Σ Σ''.
+Proof. intros H H'. exact (trans_incl H H'). Defined.
 
 Equations wk {Σ Σ' P} {W : Weakenable P} (p : P Σ) {incl : IsIncluded Σ Σ'} : P Σ' :=
   wk p := weaken incl p.
@@ -280,9 +268,9 @@ Equations eval_ext (n : nat) {Γ Σ t} (e : Expr Γ t) : M Γ (Val t) Σ :=
 
   eval_ext (S k) (var x)      := getEnv >>=' fun {Σ ext} E => ret (lookup E x);
   eval_ext (S k) (abs x)      := getEnv >>=' fun {Σ ext} E => ret (val_closure x E);
-  eval_ext (S k) (@app Γ t u e1 e2) :=
-      eval_ext k e1 >>=' λ{ | _ | ext | val_closure e' E =>
-      eval_ext k e2 >>=' fun {Σ' ext'} v => usingEnv (all_cons v (wk (P:=Env _) E)) (eval_ext k e')};
+  eval_ext (S k) (app (Γ:=Γ) e1 e2) :=
+      eval_ext k e1 >>=' λ{ | _ | ext | val_closure e' E => 
+      eval_ext k e2 >>=' fun {Σ' ext'} v => usingEnv (all_cons v (wk E)) (eval_ext k e')};
   eval_ext (S k) (new e)      := eval_ext k e >>=' fun {Σ ext} v => storeM v;
   eval_ext (S k) (deref l)    := eval_ext k l >>=' λ{ | _ | ext | val_loc l => derefM l };
   eval_ext (S k) (assign l e) := eval_ext k l >>=' λ{ | _ | ext | val_loc l =>
@@ -294,8 +282,7 @@ Equations strength {Σ Γ} {P Q : StoreTy -> Type} {w : Weakenable Q} (m : M Γ 
     | Some (Σ, μ', p, ext) => Some (Σ, μ', storepred_pair p (weaken ext q), ext) }.
 
 Infix "^" := strength.
-
-(* Issue: improve pattern matching lambda to have implicit arguments implicit.
+(* TODO improve pattern matching lambda to have implicit arguments implicit.
    Hard because Coq does not keep the implicit status of bind's [g] argument. *)
 
 Equations eval (n : nat) {Γ Σ t} (e : Expr Γ t) : M Γ (Val t) Σ :=
@@ -308,7 +295,7 @@ Equations eval (n : nat) {Γ Σ t} (e : Expr Γ t) : M Γ (Val t) Σ :=
 
   eval (S k) (var x)      := getEnv >>= fun Σ E => ret (lookup E x);
   eval (S k) (abs x)      := getEnv >>= fun Σ E => ret (val_closure x E);
-  eval (S k) (app e1 e2) :=
+  eval (S k) (app (Γ:=Γ) e1 e2) :=
       eval k e1 >>= λ{ | _ | val_closure e' E =>
                              (eval k e2 ^ E) >>= fun Σ' '(storepred_pair v E) => usingEnv (all_cons v E) (eval k e')};
   eval (S k) (new e)      := eval k e >>= fun Σ v => storeM v;
@@ -321,8 +308,6 @@ Definition idu : Expr [] (unit ⇒ unit) :=
 
 Definition idapp : Expr [] unit := app idu tt.
 
-(** All definitions are axiom-free (and actually not even dependent on a provable UIP instance), so
- everything computes. *)
 Eval vm_compute in eval 100 idapp all_nil all_nil.
 
 Definition neg : Expr [] (bool ⇒ bool) :=
@@ -330,30 +315,22 @@ Definition neg : Expr [] (bool ⇒ bool) :=
 
 Definition letref {t u} (v : Expr [] t) (b : Expr [ref t] u) : Expr [] u :=
   app (abs b) (new v).
-Obligation Tactic := idtac.
 
-Equations in_app_weaken {Σ Σ' Σ'' : StoreTy} {t} (p : t ∈ (Σ ++ Σ'')) : t ∈ (Σ ++ Σ' ++ Σ'') by struct Σ :=
-  in_app_weaken (Σ:=nil) p := pres_in (Σ', eq_refl) t p;
-  in_app_weaken (Σ:=cons _ tys) here := here;
-  in_app_weaken (Σ:=cons _ tys) (there p) := there (in_app_weaken p).
-
-Equations pres_in_prefix {Σ Σ' Σ''} (incl : Σ' ⊑ Σ'') {t} (p : t ∈ (Σ ++ Σ')) : t ∈ (Σ ++ Σ'') :=
-  pres_in_prefix (Σ'', eq_refl) p := in_app_weaken p.
-
-(** [Equations?] enters refinement mode, which can be used to solve the case of variables in proof mode. *)
-Equations? weaken_expr {Γ Γ' t u} (e1 : Expr (Γ ++ Γ') t) : Expr (Γ ++ u :: Γ') t :=
-  weaken_expr tt              := tt;
-  weaken_expr true            := true;
-  weaken_expr false           := false;
-  weaken_expr (ite b t f)     := ite (weaken_expr b) (weaken_expr t) (weaken_expr f);
-  weaken_expr (var (t:=ty) x) := var _;
-  weaken_expr (abs (t:=t) x)  := abs (weaken_expr (Γ := t :: Γ) x);
-  weaken_expr (app e1 e2)     := app (weaken_expr e1) (weaken_expr e2);
-  weaken_expr (new e)         := new (weaken_expr e);
-  weaken_expr (deref l)       := deref (weaken_expr l);
-  weaken_expr (assign l e)    := assign (weaken_expr l) (weaken_expr e).
-Proof.
-  clear weaken_expr. apply (pres_in_prefix (Σ' := Γ') ([u], eq_refl) x).
+Equations weaken_expr {Γ Γ' t u} (e1 : Expr (Γ ++ Γ') t) : Expr (Γ ++ u :: Γ') t :=
+  weaken_expr tt             := tt;
+  weaken_expr true           := true;
+  weaken_expr false          := false;
+  weaken_expr (ite b t f)    := ite (weaken_expr b) (weaken_expr t) (weaken_expr f);
+  weaken_expr (var x)        := var _;
+  weaken_expr (abs (t:=t) x) := abs (weaken_expr (Γ := t :: Γ) x);
+  weaken_expr (app e1 e2)    := app (weaken_expr e1) (weaken_expr e2);
+  weaken_expr (new e)        := new (weaken_expr e);
+  weaken_expr (deref l)      := deref (weaken_expr l);
+  weaken_expr (assign l e)   := assign (weaken_expr l) (weaken_expr e).
+Next Obligation.
+  clear weaken_expr.
+  induction Γ in Γ', u, x |- *. now apply there. simpl.
+  depelim x. constructor. apply there. apply IHΓ. apply x.
 Defined.
 
 Definition seq {Γ u} (e1 : Expr Γ unit) (e2 : Expr Γ u) : Expr Γ u :=
@@ -366,8 +343,56 @@ Definition letupdate : Expr [] bool :=
   letref true (seq (assign (var here) false) (deref (var here))).
 
 Eval vm_compute in eval 100 letupdate all_nil all_nil.
-(** [[
-   = Some ([bool], all_cons val_false all_nil, val_false, [bool], eq_refl)
-   : option (∃ (Σ' : StoreTy) (_ : Store Σ') (_ : Val bool Σ'), [] ⊑ Σ')
-   ]]
-*)
+
+
+
+
+
+
+
+
+(*
+Inductive eval_sem {Γ : Ctx} {Σ} {env : Env Γ Σ} : forall {t : Ty}, Expr Γ t -> Val t Σ -> Prop :=
+| eval_tt (e : Expr Γ unit) : eval_sem e val_unit
+| eval_var t (i : t ∈ Γ) : eval_sem (var i) (lookup env i)
+| eval_abs {t u} (b : Expr (t :: Γ) u) : eval_sem (abs b) (val_closure b env)
+| eval_app {t u} (f : Expr Γ (t ⇒ u)) b' (a : Expr Γ t) v :
+    eval_sem f (val_closure b' env) ->
+    eval_sem a v ->
+    forall u, @eval_sem (t :: Γ) _ (all_cons v env) _ b' u ->
+    eval_sem (app f a) u.
+
+
+
+Lemma eval_correct {n} Γ Σ (μ : Store Σ) t (e : Expr Γ t) env v : eval n e env μ = Some v ->
+                                                                  @eval_sem _ _ (weaken v.2.2.2 env) _ e (v.2.2.1).
+Proof.
+  induction n. intros; discriminate.
+  destruct e; simp eval; try intros [= <-]; simpl; try constructor.
+  admit. admit.
+
+
+
+  pose proof (fun_elim (f:=eval)).
+  specialize (H (fun n Γ Σ t e m => forall env v μ, m env μ = Some v -> @eval_sem _ _ (weaken v.2.2.2 env) _ e v.2.2.1)
+                (fun n Γ Σ t u f a v m => forall env v',
+                     @eval_sem _ _ env _ f v.2.2.1 -> m env = Some v' -> @eval_sem _ env _ (app f a) v')).
+  rapply H; clear; intros.
+  discriminate.
+  noconf H. constructor.
+  noconf H. constructor.
+
+  noconf H. constructor.
+
+  unfold bind in H1.
+  destruct (eval n e0 env) eqn:Heq.
+  specialize (H _ _ Heq).
+  specialize (H0 v0 _ _ H H1). apply H0.
+  discriminate.
+
+  unfold bind in H2.
+  destruct (eval k arg env) eqn:Heq.
+  specialize (H _ _ Heq).
+  unfold usingEnv in H2. specialize (H0 v (all_cons v a) v').
+  econstructor; eauto.
+Admitted.*)

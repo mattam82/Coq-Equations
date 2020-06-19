@@ -3,7 +3,7 @@
 Require Import Arith.
 Require Import Coq.Classes.DecidableClass.
 Require Import Coq.Program.Wf.
-Require Import List.
+Require Import List Lia.
 Require Import PeanoNat.
 Require Import Program.
 Require Import Wf.
@@ -111,7 +111,7 @@ Proof.
     reflexivity.
   }
 Defined.
-Require Import Omega.
+
 Section Chunk.
   Context{T : Type} `{M : ChunkableMonoid T}.
   Set Program Mode.
@@ -119,7 +119,7 @@ Section Chunk.
   chunk i x with dec (length x <=? i) :=
     { | left _ => [x] ;
       | right p => take i x :: chunk i (drop i x) }.
-  Proof. apply leb_complete_conv in p. rewrite drop_spec. omega. Qed.
+  Proof. apply leb_complete_conv in p. rewrite drop_spec. lia. Qed.
 End Chunk.
 
 Theorem if_flip_helper {B: Type} {b: bool}
@@ -135,7 +135,8 @@ Proof.
   apply H0.
 Qed.
 
-Eval compute in (chunk (exist _ 3 _) [0; 1; 2; 3; 4; 5; 6; 7; 8; 9]).
+(* Transparent chunk.
+Eval compute in (chunk (exist _ 3 _) [0; 1; 2; 3; 4; 5; 6; 7; 8; 9]). *)
 (*
   = [[0; 1; 2]; [3; 4; 5]; [6; 7; 8]; [9]]
   : list (list nat)
@@ -149,8 +150,6 @@ Section mconcat.
   mconcat (cons x xs) := x ** mconcat xs.
 End mconcat.
 Transparent mconcat.
-
-Derive NoConfusion for N.
 
 Theorem morphism_distribution:
   forall {M N: Type}
@@ -211,18 +210,18 @@ Lemma length_chunk_lt:
 Proof.
   intros; subst i.
   funelim (chunk I x).
-  simpl. omega.
+  simpl. lia.
   simpl.
   specialize (H H0).
   revert H. unfold drop. simpl.
   pose proof (drop_spec (` i) x). simpl in H.
-  rewrite H by omega. clear H.
-  simp chunk. clear Heq. destruct dec. simp chunk; simpl; intros; try omega. intros.
+  rewrite H by lia. clear H.
+  simp chunk. clear Heq. destruct dec. simp chunk; simpl; intros; try lia. intros.
   feed H. 
   clear H. apply leb_complete_conv in e. 
-  pose proof (drop_spec (` i) x). rewrite H in e; try omega;
-                                    unfold length in *; simpl in *; omega.
-  omega.
+  pose proof (drop_spec (` i) x). rewrite H in e; try lia;
+                                    unfold length in *; simpl in *; lia.
+  lia.
 Qed.
 
 Section pmconcat.
@@ -237,7 +236,7 @@ Section pmconcat.
     rewrite Bool.orb_false_iff in Hd.
     destruct Hd. apply leb_complete_conv in H2. apply leb_complete_conv in H3.
     apply length_chunk_lt; simpl; auto.
-  Time Qed. (* 0.264s from 1.571s *)
+  Qed. (* 0.264s from 1.571s *)
 End pmconcat.
 
 Instance mconcat_mon T : MonoidMorphism (@mconcat (list T) _).

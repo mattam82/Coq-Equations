@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2020 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -285,23 +285,23 @@ let () =
 let get_signature env sigma0 ty =
   try
     let sigma, (idx, _) =
-      new_type_evar env sigma0 Evd.univ_flexible
-                    ~src:(dummy_loc, Evar_kinds.InternalHole) in
+       new_type_evar env sigma0 Evd.univ_flexible
+        ~src:(dummy_loc, Evar_kinds.InternalHole) in
     let sigma, (signaturety, _) =
-      new_type_evar env sigma Evd.univ_flexible
-                    ~src:(dummy_loc, Evar_kinds.InternalHole) in
+       new_type_evar env sigma Evd.univ_flexible
+        ~src:(dummy_loc, Evar_kinds.InternalHole) in
     let sigma, signature =
       new_evar env sigma (mkProd (anonR, idx, Vars.lift 1 signaturety))
     in
-    let sigma', cl = get_fresh sigma logic_signature_class in
+    let sigma, cl = get_fresh sigma logic_signature_class in
     let inst = mkApp (cl, [| ty; idx; signature |]) in
-    let sigma', tc = Typeclasses.resolve_one_typeclass env sigma' inst in
+    let sigma, tc = Typeclasses.resolve_one_typeclass env sigma inst in
     (* let _, u = destConst sigma (fst (destApp sigma inst)) in *)
     (* let ssig = mkApp (mkConstG logic_signature_sig u, [| ty; idx; tc |]) in *)
     let ssig = signature in
     (* let spack = mkApp (mkConstG logic_signature_pack u, [| ty; idx; tc |]) in *)
-    let spack = Reductionops.whd_all env sigma' tc in
-      (sigma0, nf_evar sigma' ssig, nf_evar sigma' spack)
+    let spack = Reductionops.whd_all env sigma tc in
+      (sigma, nf_evar sigma ssig, nf_evar sigma spack)
   with Not_found ->
     let pind, args = Inductive.find_rectype env (to_constr sigma0 ty) in
     let sigma, pred, pars, _, valsig, ctx, _, _ =
@@ -751,7 +751,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
     let term = EConstr.mkConstructU (to_peuniverses summary.Inductiveops.cs_cstr) in
     let term = EConstr.mkApp (term, params) in
     let term = Vars.lift (summary.Inductiveops.cs_nargs) term in
-    let term = EConstr.mkApp (term, rel_vect 0 summary.Inductiveops.cs_nargs) in
+    let term = EConstr.mkApp (term, Context.Rel.to_extended_vect EConstr.mkRel 0 summary.Inductiveops.cs_args) in
     (* Indices are typed under [args @ ctx'] *)
     let indices = (Array.to_list indices) @ [term] in
     let args = summary.Inductiveops.cs_args in

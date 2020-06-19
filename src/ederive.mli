@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2020 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -21,5 +21,9 @@ val make_derive_ind :
   poly:bool -> Names.GlobRef.t -> unit
     
 val register_derive : derive_record -> unit
+
+(** Check if a given notion has been derived already for a given global reference. *)
+
+val check_derive : string -> Names.GlobRef.t -> bool
 
 val derive : poly:bool -> string list -> Names.GlobRef.t Loc.located list -> unit

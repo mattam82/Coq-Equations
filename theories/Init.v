@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2020 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -130,14 +130,6 @@ Tactic Notation "funelim" uconstr(p) :=
     does no generalization by equalities. Use it if you want to do the
     induction loading by yourself. *)
 Ltac apply_funelim x := fail "Equations.Init.funelim has not been bound yet".
-
-(** A tactic that tries to remove trivial equality guards in induction hypotheses coming
-   from [dependent induction]/[generalize_eqs] invocations. *)
-
-Ltac simplify_IH_hyps := repeat
-  match goal with
-    | [ hyp : _ |- _ ] => simpl in hyp; eqns_specialize_eqs hyp; simpl in hyp
-  end.
 
 (** Forward reference for Equations' [solve_eqdec] tactic, which will be defined later in [EqDec].
     It is used to derive decidable equality on an inductive family. *)

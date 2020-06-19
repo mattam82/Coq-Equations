@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2020 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -132,6 +132,18 @@ Ltac simpl_let :=
   end.
 
 Hint Extern 40 => progress (cbv beta in * || simpl_let) : Below.
+
+(* This expands lets in the context to simplify proof search for recursive call
+  obligations, as [eauto] does not do matching up-to unfolding of let-bound variables.
+*)
+
+Hint Extern 10 => 
+  match goal with
+  [ x := _ |- _ ] => 
+    lazymatch goal with
+    |- context [ x ] => subst x 
+    end
+  end : Below.
 
 (** We can automatically use the well-foundedness of a relation to get
    the well-foundedness of its transitive closure.

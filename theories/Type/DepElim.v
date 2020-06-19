@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2020 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -575,6 +575,16 @@ Ltac unblock_dep_elim :=
       end
     | _ => unblock_goal
   end.
+
+(** A tactic that tries to remove trivial equality guards in induction hypotheses coming
+   from [dependent induction]/[generalize_eqs] invocations. *)
+
+  Ltac simplify_IH_hyps := repeat
+   match goal with
+     | [ hyp : context [ block ] |- _ ] => 
+     cbn beta in hyp; eqns_specialize_eqs_block hyp; 
+     cbn beta iota delta[eq_rect_r eq_rect] zeta in hyp
+   end.
 
 Ltac simpl_dep_elim := simplify_dep_elim ; simplify_IH_hyps ; unblock_dep_elim.
 

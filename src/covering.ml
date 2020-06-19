@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2020 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -85,13 +85,16 @@ and unify_constrs env evd flex g l l' =
   | _, _ -> raise Conflict
 
 let flexible pats gamma =
-  let (_, flex) =
-    fold_left2 (fun (k,flex) pat decl ->
-        match pat with
-        | PInac _ -> (succ k, Int.Set.add k flex)
-        | p -> (succ k, flex))
-      (1, Int.Set.empty) pats gamma
-  in flex
+  let rec aux (k,flex) pats decls = 
+    match decls, pats with
+    | Context.Rel.Declaration.LocalAssum _ :: decls, pat :: pats ->
+        (match pat with
+        | PInac _ -> aux (succ k, Int.Set.add k flex) pats decls
+        | p -> aux (succ k, flex) pats decls)
+    | _ :: decls,  pats -> aux (succ k, flex) pats decls
+    | [], [] -> flex
+    | _ -> assert false
+  in aux (1, Int.Set.empty) pats gamma
 
 let rec accessible = function
   | PRel i -> Int.Set.singleton i
@@ -430,10 +433,11 @@ let unify_type env evars before id ty after =
           let env' = push_rel_context ctx env in
           let (indf, args) = find_rectype env' !evars ty in
           let ind, params = dest_ind_family indf in
-          let constr = applist (mkConstructUi (ind, succ i), params @ rels_of_tele ctx) in
-          let q = inaccs_of_constrs (rels_of_tele ctx) in	
+          let realargs = rels_of_ctx ~with_lets:false ctx in
+          let constr = applist (mkConstructUi (ind, succ i), params @ realargs) in
+          let q = inaccs_of_constrs realargs in	
           let constrpat = PCstr (((fst ind, succ i), snd ind), 
-                                 inaccs_of_constrs params @ patvars_of_tele ctx) in
+                                 inaccs_of_constrs params @ patvars_of_ctx ~with_lets:false ctx) in
           env', ctx, constr, constrpat, q, args)
         cstrs
     in
@@ -443,7 +447,7 @@ let unify_type env evars before id ty after =
           let fullctx = ctxc @ before in
           try
             let vs' = List.map (lift ctxclen) vs in
-            let p1 = lift_pats ctxclen (inaccs_of_constrs (rels_of_tele before)) in
+            let p1 = lift_pats ctxclen (inaccs_of_constrs (rels_of_ctx ~with_lets:false before)) in
             let flex = flexible (p1 @ q) fullctx in
             let s = unify_constrs env !evars flex fullctx vs' us in
             UnifSuccess (s, ctxclen, c, cpat)
@@ -503,6 +507,7 @@ let split_var (env,evars) var delta =
     | UnifSuccess ((ctx',s,ctx), ctxlen, cstr, cstrpat) ->
       (* ctx' |- s : before ; ctxc *)
       (* ctx' |- cpat : ty *)
+      if !debug then Feedback.msg_debug Pp.(str"cpat: " ++ pr_pat env !evars cstrpat);
       let cpat = specialize !evars s cstrpat in
       let ctx' = do_renamings env !evars ctx' in
       (* ctx' |- spat : before ; id *)
@@ -1205,7 +1210,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
             if List.exists (function PHide idx' -> idx == idx' | _ -> false)
                 (pi2 newprob_to_lhs) then
               PHide idx
-            else PRel idx) (rels_of_tele ctx) in
+            else PRel idx) (rels_of_ctx ctx) in
       (ctx, pats, ctx)
     in
     let newty =

@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2019 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2020 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -126,6 +126,18 @@ Ltac simpl_let :=
 
 Hint Extern 40 => progress (cbv beta in * || simpl_let) : Below.
 
+(* This expands lets in the context to simplify proof search for recursive call
+  obligations, as [eauto] does not do matching up-to unfolding of let-bound variables.
+*)
+
+Hint Extern 10 => 
+  match goal with
+  [ x := _ |- _ ] => 
+    lazymatch goal with
+    |- context [ x ] => subst x 
+    end
+  end : Below.
+
 (** We can automatically use the well-foundedness of a relation to get
    the well-foundedness of its transitive closure.
    Note that this definition is transparent as well as [wf_clos_trans],
@@ -152,13 +164,13 @@ Hint Extern 0 (inverse_image _ _ _ _) => red : Below.
 (** We also add hints for transitive closure, not using [t_trans] but forcing to 
    build the proof by successive applications of the inner relation. *)
 
-Hint Resolve @t_step : subterm_relation.
+Hint Resolve t_step : subterm_relation.
 
 Lemma trans_clos_stepr A (R : relation A) (x y z : A) :
   R y z -> trans_clos R x y -> trans_clos R x z.
 Proof. intros Hyz Hxy. exact (t_trans _ x y z Hxy (t_step _ _ _ Hyz)). Defined.
 
-Hint Resolve @trans_clos_stepr : subterm_relation.
+Hint Resolve trans_clos_stepr : subterm_relation.
 
 (** The default tactic to build proofs of well foundedness of subterm relations. *)
 
