@@ -1,6 +1,6 @@
 From Equations Require Import Equations.
 Require Import Relations.
-Require Import Omega.
+Require Import Arith Lia.
 Set Keyed Unification.
 
 Ltac subst_lets :=
@@ -9,7 +9,7 @@ Ltac subst_lets :=
   end.
 
 Hint Extern 5 => 
-  simpl; subst_lets; omega : Below.
+  simpl; subst_lets; lia : Below.
 
 Obligation Tactic := Equations.CoreTactics.equations_simpl; try typeclasses eauto with Below.
 
@@ -29,7 +29,7 @@ Require Import ExtrOcamlBasic.
 
 Lemma gcd_same x : gcd x x = x.
 Proof.
-  funelim (gcd x x); now (try (exfalso; omega)).
+  funelim (gcd x x); now (try (exfalso; lia)).
 Qed.
 
 Lemma gcd_spec0 a : gcd a 0 = a.
@@ -41,7 +41,7 @@ Hint Rewrite gcd_spec0 : gcd.
 Lemma mod_minus a b : b <> 0 -> b < a -> (a - b) mod b = a mod b.
 Proof.
   intros.
-  replace a with ((a - b) + b) at 2 by omega.
+  replace a with ((a - b) + b) at 2 by lia.
   rewrite <- Nat.add_mod_idemp_r; auto.
   rewrite Nat.mod_same; auto.
 Qed.

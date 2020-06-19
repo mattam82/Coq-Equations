@@ -10,7 +10,7 @@ Set Asymmetric Patterns.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Require Import Arith.
-Require Import Omega.
+Require Import Lia.
 From Equations Require Import Equations.
 Require Import Wellfounded Relation_Definitions.
 Require Import Relation_Operators Lexicographic_Product Wf_nat.
@@ -24,7 +24,7 @@ test (S n) p with test n _ => {
                 | exist _ 0 _ := exist _ 0 _;
                 | exist _ (S n') p' with test n' _ := {
                                                   | exist _ k p'' := exist _ k _ } }.
-Proof. all:(auto with arith; omega). Defined.
+Proof. all:(auto with arith; lia). Defined.
 
 Module Bug.
   (* FIXME: shrink obligations so that they can apply during induction principle generation *)
@@ -36,6 +36,6 @@ Module Bug.
                   | exist _ 0 _ := exist _ 0 _;
                   | exist _ (S n'') p' with test' (exist _ n'' _) := {
                       | exist _ k p'' := exist _ k _ } } }.
-  Proof. all:(clear test'; unfold MR; simpl; auto with arith). omega. Defined.
+  Proof. all:(clear test'; unfold MR; simpl; auto with arith). lia. Defined.
 
 End Bug.
