@@ -59,12 +59,10 @@ SystemF: A Case Study](http://www.irif.fr/~sozeau/research/publications/Equation
 
 ## Installation
 
-The current development version works with Coq 8.8 (branch
-[8.8](https://github.com/mattam82/Coq-Equations/tree/8.8)), 
-Coq 8.9 (branch
-[8.9](https://github.com/mattam82/Coq-Equations/tree/8.9)),
-Coq 8.10 (branch
-[8.10](https://github.com/mattam82/Coq-Equations/tree/8.10)),
+The current development version works with Coq 8.11 (branch
+[8.11](https://github.com/mattam82/Coq-Equations/tree/8.11)),
+Coq 8.12 (branch
+[8.12](https://github.com/mattam82/Coq-Equations/tree/8.12))
 and the current Coq master branch (branch
 [master](https://github.com/mattam82/Coq-Equations/tree/master)).
 
