@@ -81,12 +81,10 @@ Try it now in your browser with [JSCoq](assets/jsexamples/equations_intro.html)!
 
 ## Installation
 
-The current version works with Coq 8.9 (branch
-[8.9](https://github.com/mattam82/Coq-Equations/tree/8.9)),
-Coq 8.10 (branch
-[8.10](https://github.com/mattam82/Coq-Equations/tree/8.10)),
-Coq 8.11 (branch
+The latest version works with Coq 8.11 (branch
 [8.11](https://github.com/mattam82/Coq-Equations/tree/8.11)),
+Coq 8.12 (branch
+[8.12](https://github.com/mattam82/Coq-Equations/tree/8.12)),
 and the current Coq master branch (branch
 [master](https://github.com/mattam82/Coq-Equations/tree/master)).
 
@@ -142,7 +140,7 @@ in your own directory. E.g. on Ubuntu, you would prefix the command with
 
 ## HoTT Variant
 
-The HoTT variant of Equations works with Coq 8.10 and coq-hott 8.10 and up.
+The HoTT variant of Equations works with the coq-hott library for Coq 8.10 and up.
 To install the plugin in an environment where `hoqc` is available, simply run:
 
     ./configure.sh HoTT
