@@ -1,4 +1,4 @@
-Require Import Equations.
+From Equations Require Import Equations.
 Require Import Examples.Fin.
 Require Import Relations Utf8.
 Require Import Relations Wellfounded.
@@ -609,6 +609,8 @@ Ltac destruct_pairs := repeat
   | [ x : _ /\ _ |- _ ] => destruct x
 end.
 
+Require Import ssreflect.
+
 Section SCT.
 
   Definition subgraph k k' := fin k -> option (bool * fin k').
@@ -620,8 +622,8 @@ Section SCT.
   Declare Scope fin_scope.
   Delimit Scope fin_scope with fin.
   Bind Scope fin_scope with fin.
-  Notation "0" := fz : fin.
-  Notation "1" := (fs 0) : fin.
+  Notation "0" := fz : fin_scope.
+  Notation "1" := (fs 0) : fin_scope.
   Open Scope fin_scope.
   (* bug scopes not handled well *)
   Equations T_graph_l (x : fin 2) : option (bool * fin 2) :=
@@ -727,7 +729,7 @@ Section SCT.
     unfold approximates. intros ag0 ag1.
     intros x z [y [Hxy Hyz]]. rewrite graph_relation_spec.
     intros f. specialize (ag0 _ _ Hxy). specialize (ag1 _ _ Hyz).
-    rewrite graph_relation_spec in ag0, ag1. specialize (ag0 f).
+    rewrite -> graph_relation_spec in ag0, ag1. specialize (ag0 f).
     funelim (graph_compose G0 G1 f). now rewrite Heq in ag0.
     rewrite Heq0 in ag0. specialize (ag1 f0). rewrite Heq in ag1.
     destruct b, b0; simpl;  try lia.
@@ -746,7 +748,7 @@ Section SCT.
     eqns_specialize_eqs H. simpl in H.
     split. intros [Hfz|Hfs].
     now exists fz.
-    specialize (H x y x y). rewrite H in Hfs.
+    specialize (H x y x y). rewrite -> H in Hfs.
     destruct Hfs. now exists (fs x0).
     intros [k Hk]. depelim k. intuition. right.
     rewrite (H x y). now exists k.
@@ -807,7 +809,7 @@ Section SCT.
     forall x y, list_union (rs ++ rs') x y <-> list_union rs x y \/ list_union rs' x y.
   Proof.
     induction rs; intros; simpl; simp list_union; intuition.
-    rewrite IHrs in H0. intuition.
+    rewrite -> IHrs in H0. intuition.
   Qed.
 
   Equations map_k_tuple k (p : k_tuple_type k) (f : fin k -> nat) : k_tuple_type k :=
@@ -818,7 +820,7 @@ Section SCT.
     graph_relation g x z -> graph_relation g' z y ->
     graph_relation (g ⋅ g') x y.
   Proof.
-    intros gzx g'zy. rewrite graph_relation_spec in *. intros f.
+    intros gzx g'zy. rewrite -> graph_relation_spec in gzx, g'zy |- *. intros f.
     specialize (gzx f). simp graph_compose. destruct (g f) as [[[] d]|];
     simpl. specialize (g'zy d); destruct (g' d) as [[[] d']|]; simp graph_compose;
     simpl; lia. specialize (g'zy d).
@@ -846,11 +848,11 @@ Section SCT.
     simpl in gxz. destruct gxz.
     unfold graphs_relation.
     unfold compose_family.
-    rewrite map_app, map_map, list_union_app.
+    rewrite -> map_app, map_map, list_union_app.
     left.
     apply (union_graph_relation_compose _ _ _ _ z H gzy).
     specialize (IHg g' x y z H gzy).
-    unfold graphs_relation. rewrite map_app, map_map, list_union_app.
+    unfold graphs_relation. rewrite -> map_app, map_map, list_union_app.
     right; auto.
   Qed.
 
@@ -872,7 +874,7 @@ Section SCT.
       intuition.
       + revert H. clear -inS inScomp Ingi.
         induction famgi. simpl. intros [].
-        simpl. rewrite in_app_iff, in_map_iff.
+        simpl. rewrite in_app_iff in_map_iff.
         intros [[x [<- Inx]]| Ing]. apply inScomp. intuition auto.
         apply Ingi. constructor. auto.
         apply IHfamgi; auto. intros.
@@ -968,7 +970,7 @@ Section SCT.
     - intros x y. red. split. intros []. exact I. intros. exact I.
     - intros [x rx] [y ry]. simpl. split.
       + unfold TI.
-        intros Hg. pose proof Hg. rewrite graph_relation_spec in H.
+        intros Hg. pose proof Hg. rewrite -> graph_relation_spec in H.
         intros. pose (H fz). simpl in y0. intuition.
         assert (graph_relation (TI_graph k) rx ry).
         rewrite graph_relation_spec. intros. clear y0. specialize (H (fs f)). simpl in H.
@@ -977,7 +979,7 @@ Section SCT.
       + intros [Hle Hi]. unfold TI. rewrite graph_relation_spec.
         intros. depelim f. simpl. auto. simpl.
         do 2 red in IHk. simpl in IHk. rewrite <- IHk in Hi.
-        red in Hi. rewrite graph_relation_spec in Hi.
+        red in Hi. rewrite -> graph_relation_spec in Hi.
         clear -Hi. induction k. depelim f.
         specialize (Hi f). simpl in Hi. auto.
   Qed.
@@ -1009,7 +1011,7 @@ Section SCT.
     rewrite TI_compose' in a.
     apply (approximates_power n) in a.
     specialize (a x x). specialize (a H0).
-    rewrite graph_relation_spec in a. specialize (a f).
+    rewrite -> graph_relation_spec in a. specialize (a f).
     rewrite eqpow in a. lia.
   Qed.
 
@@ -1179,7 +1181,6 @@ Section SCT.
   Proof. unfold becoming_transitive_closure. intuition. inversion H. inversion H. Qed.
   Hint Resolve becoming_empty : core.
 
-  Require Import ssreflect.
   Lemma compute_transitive_closure_spec {k} n (gs : list (graph k)) l :
     compute_transitive_closure n gs = Finished _ l ->
     is_transitive_closure gs l.
@@ -1391,8 +1392,8 @@ Definition gnlex : (nat * nat) -> nat.
 Defined.
 
 Require Import ExtrOcamlBasic.
-Extraction gnlex.
-Print Assumptions gnlex.
+(* Extraction gnlex.
+Print Assumptions gnlex. *)
 
 (* Eval native_compute in gnlex (4, 3). *)
 
