@@ -61,6 +61,7 @@ issues/issue246.v
 issues/issue249.v
 issues/issue258.v
 issues/issue286.v
+eqdec_error.v
 noconf_simplify.v
 le.v
 LogicType.v
