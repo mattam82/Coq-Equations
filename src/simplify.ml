@@ -685,6 +685,12 @@ let pre_solution ~(dir:direction) : simplification_fun =
     else tz, tx
   in
   let rel = EConstr.destRel !evd trel in
+  let () = 
+    try let decl = lookup_rel rel ctx in
+      if Context.Rel.Declaration.is_local_assum decl then ()
+      else raise (CannotSimplify (str "[solution] cannot apply to a let-bound variable"))
+    with Not_found -> assert false
+  in
   (* Check dependencies in both tA and term *)
   if not (Int.Set.mem rel
             (Context_map.dependencies_of_term ~with_red:false env !evd ctx (mkApp (tA, [| term |])) rel)) then
