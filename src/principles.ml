@@ -1213,9 +1213,10 @@ let declare_funelim info env evd is_rec protos progs
                            Himsg.explain_pretype_error env !evd
                              (Pretype_errors.TypingError (Type_errors.map_ptype_error EConstr.of_constr tyerr)))
   in
-  ignore(Obligations.add_definition ~name:(Nameops.add_suffix id "_elim") ~poly:info.poly ~scope:info.scope
-                                    ~tactic ~hook:(Declare.Hook.make hookelim) ~kind:info.decl_kind
-                                    (to_constr !evd newty) ~uctx:(Evd.evar_universe_context !evd) [||])
+  let cinfo = Declare.CInfo.make ~name:(Nameops.add_suffix id "_elim") ~typ:(to_constr !evd newty) () in
+  let info = Declare.Info.make ~poly:info.poly ~scope:info.scope ~hook:(Declare.Hook.make hookelim) ~kind:(Decls.IsDefinition info.decl_kind) () in
+  ignore(Declare.Obls.add_definition ~cinfo ~info ~tactic
+                                     ~uctx:(Evd.evar_universe_context !evd) [||])
 
 let mkConj evd sort x y =
   let prod = get_efresh logic_product evd in
@@ -1315,10 +1316,12 @@ let declare_funind info alias env evd is_rec protos progs
   let uctx = Evd.evar_universe_context (if poly then !evd else Evd.from_env (Global.env ())) in
   let launch_ind tactic =
     let res =
-       Obligations.add_definition
-             ~hook:(Declare.Hook.make hookind)
-             ~kind:info.term_info.decl_kind ~poly
-             ~name:indid stmt ~tactic:(Tacticals.New.tclTRY tactic) ~uctx [||]
+      let cinfo = Declare.CInfo.make ~name:indid ~typ:stmt () in
+      let info = Declare.Info.make ~poly
+          ~kind:(Decls.IsDefinition info.term_info.decl_kind)
+          ~hook:(Declare.Hook.make hookind) () in
+      Declare.Obls.add_definition ~cinfo ~info
+        ~tactic:(Tacticals.New.tclTRY tactic) ~uctx [||]
     in
     match res with
     | Declare.Obls.Defined gr -> ()
@@ -1689,10 +1692,10 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
         if not poly then evd := Evd.from_env (Global.env ())
         else ()
       in
-      ignore(Obligations.add_definition
-               ~kind:info.decl_kind ~poly
-               ~name:ideq (to_constr !evd c)
-               ~tactic:tac ~hook:(Declare.Hook.make hook)
-	       ~uctx:(Evd.evar_universe_context !evd) [||])
+      let cinfo = Declare.CInfo.make ~name:ideq ~typ:(to_constr !evd c) () in
+      let info = Declare.Info.make ~kind:(Decls.IsDefinition info.decl_kind) ~poly
+          ~hook:(Declare.Hook.make hook) () in
+      ignore(Declare.Obls.add_definition ~cinfo ~info
+               ~tactic:tac ~uctx:(Evd.evar_universe_context !evd) [||])
     in List.iter proof stmts
   in List.iter proof ind_stmts

@@ -87,12 +87,13 @@ let define_unfolding_eq env evd flags p unfp prog prog' ei hook =
     Principles_proofs.(prove_unfolding_lemma info ei.equations_where_map prog.program_cst funf_cst
       p unfp)
   in
-  ignore(Obligations.add_definition
-           ~poly:info.poly
-           ~scope:info.scope
-           ~kind:info.decl_kind
-           ~hook:(Declare.Hook.make hook_eqs) ~reduce:(fun x -> x)
-           ~impargs:(program_impls p) ~name:unfold_eq_id (to_constr evd stmt)
+  let cinfo = Declare.CInfo.make ~name:unfold_eq_id ~typ:(to_constr evd stmt) ~impargs:(program_impls p) () in
+  let info = Declare.Info.make ~poly:info.poly
+      ~scope:info.scope
+      ~kind:(Decls.IsDefinition info.decl_kind)
+      ~hook:(Declare.Hook.make hook_eqs) ()
+  in
+  ignore(Declare.Obls.add_definition ~cinfo ~info ~reduce:(fun x -> x)
            ~tactic:(of82 tac)
            ~uctx:(Evd.evar_universe_context evd) [||])
 

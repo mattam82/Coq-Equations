@@ -181,7 +181,7 @@ type term_info = {
   term_ustate : UState.t;
   base_id : string;
   poly : bool;
-  scope : Declare.locality;
+  scope : Locality.locality;
   decl_kind : Decls.definition_object_kind;
   helpers_info : (Constant.t * (int * int)) list;
   comp_obls : Constant.t list; (** The recursive call proof obligations *)
@@ -219,7 +219,7 @@ val define_programs :
   ?unfold:bool ->
   program list ->
   (int -> program -> term_info -> unit) ->
-  Lemmas.t option
+  Declare.Proof.t option
 
 val define_program_immediate :
   Environ.env ->
@@ -229,7 +229,7 @@ val define_program_immediate :
   Equations_common.flags ->
   ?unfold:bool ->
   program ->
-  (program * term_info) * Lemmas.t option
+  (program * term_info) * Declare.Proof.t option
 
 val mapping_rhs : Evd.evar_map -> context_map -> splitting_rhs -> splitting_rhs
 val map_rhs :

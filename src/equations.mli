@@ -18,7 +18,7 @@ val define_by_eqs
   -> Syntax.equation_options
   -> Syntax.pre_equations
   -> Vernacexpr.decl_notation list
-  -> Lemmas.t option
+  -> Declare.Proof.t option
 
 val define_principles :
   flags ->
@@ -36,7 +36,7 @@ val equations_interactive : poly:bool -> program_mode:bool ->
   Syntax.equation_options ->
   Syntax.pre_equations ->
   Vernacexpr.decl_notation list ->
-  Lemmas.t
+  Declare.Proof.t
 
 val solve_equations_goal :
   Proofview.V82.tac ->
