@@ -669,7 +669,7 @@ let observe_tac s tac =
       (fun iexn -> Feedback.msg_debug
                      (str"Failed with: " ++
                         (match fst iexn with
-                         | Refiner.FailError (n,expl) ->
+                         | Tacticals.FailError (n,expl) ->
                             (str" Fail error " ++ int n ++ str " for " ++ str s ++
                                spc () ++ Lazy.force expl ++
                                str " on " ++
