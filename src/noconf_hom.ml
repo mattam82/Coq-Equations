@@ -100,12 +100,13 @@ let derive_noConfusion_package env sigma0 ~poly (ind,u as indu) indid ~prefix ~t
       (Classes.mk_instance tc empty_hint_info true dref)
   in
   let hook = Declare.Hook.make hook in
-  let scope = Declare.Global Declare.ImportDefaultBehavior in
-  let kind = Decls.Definition in
+  let scope = Locality.(Global ImportDefaultBehavior) in
+  let kind = Decls.(IsDefinition Definition) in
   let oblinfo, _, term, ty = RetrieveObl.retrieve_obligations env noid sigma 0 term ty in
-    ignore(Obligations.add_definition ~hook ~name:packid
-             ~poly ~scope ~kind ~term ty ~tactic
-             ~uctx:(Evd.evar_universe_context sigma) oblinfo)
+  let cinfo = Declare.CInfo.make ~name:packid ~typ:ty () in
+  let info = Declare.Info.make ~hook ~poly ~scope ~kind () in
+  ignore(Declare.Obls.add_definition ~cinfo ~info
+             ~term ~tactic ~uctx:(Evd.evar_universe_context sigma) oblinfo)
 
 let derive_no_confusion_hom env sigma0 ~poly (ind,u as indu) =
   let mindb, oneind = Global.lookup_inductive ind in

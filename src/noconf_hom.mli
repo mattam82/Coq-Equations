@@ -21,4 +21,4 @@ val derive_noConfusion_package :
 
 val derive_no_confusion_hom :
   env -> Evd.evar_map -> poly:bool -> Names.inductive * EInstance.t ->
-  Lemmas.t option
+  Declare.Proof.t option
