@@ -17,7 +17,6 @@ open Attributes
 open Constr
 open Names
 open Pp
-open Refiner
 open Constrexpr
 open Stdarg
 open Equations_common
@@ -414,7 +413,7 @@ let interp_elim_pattern env avoid s =
   Syntax.pattern_of_glob_constr env avoid Anonymous (* Should be id *) (fst s)
 
 let interp_elim_patterns ist gl s =
-  let sigma = project gl in
+  let sigma = Tacmach.project gl in
   let env = Goal.V82.env sigma gl.Evd.it in
   let avoid = ref (Names.Id.Map.domain ist.Geninterp.lfun) in
   sigma, List.map (interp_elim_pattern env avoid) s
