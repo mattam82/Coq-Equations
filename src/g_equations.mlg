@@ -319,10 +319,11 @@ GRAMMAR EXTEND Gram
   ;
 
   where_rhs:
-    [ [ ntn = ne_lstring; ":="; c = constr; b = G_vernac.only_parsing;
+    [ [ ntn = ne_lstring; ":="; c = constr;
+        modl = G_vernac.syntax_modifiers;
         scopt = OPT [ ":"; sc = IDENT -> { sc } ] -> {
         Inr { Vernacexpr.decl_ntn_string = ntn; decl_ntn_interp = c;
-              decl_ntn_only_parsing = b; decl_ntn_scope = scopt } }
+              decl_ntn_modifiers = modl; decl_ntn_scope = scopt } }
       | p = proto -> { Inl (p (Some Syntax.Nested)) } ] ]
   ;
 
@@ -343,10 +344,11 @@ GRAMMAR EXTEND Gram
   ;
 
   local_where_rhs:
-    [ [ ntn = ne_lstring; ":="; c = constr; b = G_vernac.only_parsing;
+    [ [ ntn = ne_lstring; ":="; c = constr;
+        modl = G_vernac.syntax_modifiers;
         scopt = OPT [ ":"; sc = IDENT -> { sc } ] -> {
         Inr { Vernacexpr.decl_ntn_string = ntn; decl_ntn_interp = c;
-              decl_ntn_only_parsing = b; decl_ntn_scope = scopt } }
+              decl_ntn_modifiers = modl; decl_ntn_scope = scopt } }
       | p = proto -> { Inl (p (Some Syntax.Mutual)) } ] ]
   ;
   local_where:
