@@ -21,7 +21,7 @@ open Vars
 
 let mkcase env sigma c ty constrs =
   let cty = Retyping.get_type_of env sigma c in
-  let indf, origargs = find_rectype env sigma cty in
+  let IndType (indf, _) as indty = Inductiveops.find_rectype env sigma cty in
   let mind, ind, origparams = match dest_ind_family indf with
     | (((mu, n),_ as i), pars) -> mu, i, pars
   in
@@ -47,7 +47,7 @@ let mkcase env sigma c ty constrs =
       it_mkLambda_or_LetIn res args)
       oneind.mind_consnames oneind.mind_nf_lc
   in
-    make_case_or_project env sigma indf ci ty c brs
+    make_case_or_project env sigma indty ci ty c brs
 
 let mk_eq env env' evd args args' =
   let _, _, make = Sigma_types.telescope env evd args in

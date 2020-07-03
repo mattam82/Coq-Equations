@@ -69,7 +69,7 @@ let inductive_info sigma ((mind, _ as ind),u) =
     in
     let case c pred brs =
       let ci = make_case_info (Global.env ()) (mind,i) Sorts.Relevant Constr.RegularStyle in
-      mkCase (ci, pred, c, brs)
+      mkCase (ci, pred, Constr.NoInvert, c, brs)
       (* TODO relevance / case inversion *)
     in
       { ind_name = indname;
