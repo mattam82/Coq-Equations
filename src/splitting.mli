@@ -211,6 +211,7 @@ val define_mutual_nested_csts :
            (Syntax.program_info * 'a * EConstr.t) list
 
 val define_programs :
+  pm:Declare.OblState.t ->
   Environ.env ->
   Evd.evar_map ref ->
   Syntax.rec_type ->
@@ -218,10 +219,11 @@ val define_programs :
   Equations_common.flags ->
   ?unfold:bool ->
   program list ->
-  (int -> program -> term_info -> unit) ->
-  Declare.Proof.t option
+  (pm:Declare.OblState.t -> int -> program -> term_info -> unit * Declare.OblState.t) ->
+  Declare.OblState.t * Declare.Proof.t option
 
 val define_program_immediate :
+  pm:Declare.OblState.t ->
   Environ.env ->
   Evd.evar_map ref ->
   Syntax.rec_type ->
@@ -229,7 +231,7 @@ val define_program_immediate :
   Equations_common.flags ->
   ?unfold:bool ->
   program ->
-  (program * term_info) * Declare.Proof.t option
+  (program * term_info) * Declare.OblState.t * Declare.Proof.t option
 
 val mapping_rhs : Evd.evar_map -> context_map -> splitting_rhs -> splitting_rhs
 val map_rhs :

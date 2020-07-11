@@ -10,6 +10,7 @@ open Environ
 open EConstr
 
 val derive_noConfusion_package :
+  pm:Declare.OblState.t ->
   Environ.env ->
   Evd.evar_map ->
   poly:bool ->
@@ -17,8 +18,10 @@ val derive_noConfusion_package :
   Names.Id.t ->
   prefix:string ->
   tactic:unit Proofview.tactic ->
-  Names.Constant.t -> unit
+  Names.Constant.t ->
+  Declare.OblState.t
 
 val derive_no_confusion_hom :
+  pm:Declare.OblState.t ->
   env -> Evd.evar_map -> poly:bool -> Names.inductive * EInstance.t ->
-  Declare.Proof.t option
+  Declare.OblState.t * Declare.Proof.t option

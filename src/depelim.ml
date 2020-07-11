@@ -203,14 +203,18 @@ let derive_dep_elimination env sigma ~poly (i,u) =
   let caseterm = e_new_global evdref gref in
   let casety = Retyping.get_type_of env !evdref caseterm in
   let args = extended_rel_vect 0 ctx in
-    Equations_common.declare_instance id ~poly !evdref ctx cl [ty; prod_appvect sigma casety args;
-                                mkApp (caseterm, args)]
+  Equations_common.declare_instance id ~poly !evdref ctx cl
+    [ty; prod_appvect sigma casety args;
+     mkApp (caseterm, args)]
 
 let () =
-  let fn env sigma ~poly c = ignore (derive_dep_elimination env sigma ~poly c) in
+  let fn ~pm env sigma ~poly c =
+    let _ = derive_dep_elimination env sigma ~poly c in
+    pm
+  in
   Ederive.(register_derive
-            { derive_name = "DependentElimination";
-              derive_fn = make_derive_ind fn })
+             { derive_name = "DependentElimination"
+             ; derive_fn = make_derive_ind fn })
 
 let pattern_call ?(pattern_term=true) c =
   let open Tacmach.New in

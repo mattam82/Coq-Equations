@@ -948,7 +948,7 @@ let subst_rec_programs env evd ps =
   let programs' = subst_programs [] [] 0 ps (List.map (fun p -> p.program_term) ps) in
   !where_map, programs'
 
-let unfold_programs env evd flags rec_type progs =
+let unfold_programs ~pm env evd flags rec_type progs =
   let where_map, progs' = subst_rec_programs env !evd (List.map fst progs) in
   if PathMap.is_empty where_map && not (has_logical rec_type) then
     let one_program (p, prog) p' =
@@ -961,9 +961,9 @@ let unfold_programs env evd flags rec_type progs =
       in
       let p = { p with program_splitting = p'.program_splitting } in
       p, None, prog, eqninfo
-    in List.map2 one_program progs progs'
+    in pm, List.map2 one_program progs progs'
   else
-    let one_program (p, prog) unfoldp =
+    let one_program pm (p, prog) unfoldp =
       let pi = p.program_info in
       let i = pi.program_id in
       let sign = pi.program_sign in
@@ -978,7 +978,7 @@ let unfold_programs env evd flags rec_type progs =
                   program_arity = arity }
       in
       let unfoldp = make_single_program env evd flags unfpi prob unfoldp.program_splitting None in
-      let (unfoldp, term_info), _pstate = define_program_immediate env evd [None] [] flags ~unfold:true unfoldp in
+      let (unfoldp, term_info), pm, _pstate = define_program_immediate ~pm env evd [None] [] flags ~unfold:true unfoldp in
       let eqninfo =
         Principles_proofs.{ equations_id = i;
                             equations_where_map = where_map;
@@ -988,9 +988,9 @@ let unfold_programs env evd flags rec_type progs =
       let cst, _ = destConst !evd unfoldp.program_term in
       let cpi' = { program_cst = cst;
                    program_split_info = term_info } in
-      p, Some (unfoldp, cpi'), prog, eqninfo
+      pm, (p, Some (unfoldp, cpi'), prog, eqninfo)
     in
-    List.map2 one_program progs progs'
+    CList.fold_left2_map one_program pm progs progs'
 
 let subst_app sigma f fn c =
   let rec aux n c =
@@ -1157,7 +1157,7 @@ let constr_of_global_univ gr u =
   | ConstructRef c -> mkConstructU (c, u)
   | VarRef id -> mkVar id
 
-let declare_funelim info env evd is_rec protos progs
+let declare_funelim ~pm info env evd is_rec protos progs
                     ind_stmts all_stmts sign app subst inds kn comb
                     sort indgr ectx =
   let id = Id.of_string info.base_id in
@@ -1215,14 +1215,15 @@ let declare_funelim info env evd is_rec protos progs
   in
   let cinfo = Declare.CInfo.make ~name:(Nameops.add_suffix id "_elim") ~typ:(to_constr !evd newty) () in
   let info = Declare.Info.make ~poly:info.poly ~scope:info.scope ~hook:(Declare.Hook.make hookelim) ~kind:(Decls.IsDefinition info.decl_kind) () in
-  ignore(Declare.Obls.add_definition ~cinfo ~info ~tactic
-                                     ~uctx:(Evd.evar_universe_context !evd) [||])
+  let pm, _ = Declare.Obls.add_definition ~pm ~cinfo ~info ~tactic
+      ~uctx:(Evd.evar_universe_context !evd) [||] in
+  pm
 
 let mkConj evd sort x y =
   let prod = get_efresh logic_product evd in
     mkApp (prod, [| x; y |])
 
-let declare_funind info alias env evd is_rec protos progs
+let declare_funind ~pm info alias env evd is_rec protos progs
                    ind_stmts all_stmts sign inds kn comb sort f split ind =
   let poly = is_polymorphic info.term_info in
   let id = Id.of_string info.term_info.base_id in
@@ -1270,22 +1271,25 @@ let declare_funind info alias env evd is_rec protos progs
     | None -> f
   in
   let app = applist (f, args) in
-  let hookind { Declare.Hook.S.uctx; scope; dref; _ } =
+  let hookind { Declare.Hook.S.uctx; scope; dref; _ } pm =
     let env = Global.env () in (* refresh *)
     Hints.add_hints ~locality:Goptions.OptGlobal [info.term_info.base_id]
                     (Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef dref]);
-    let () =
-      try declare_funelim info.term_info env evd is_rec protos progs
+    let pm =
+      try declare_funelim ~pm info.term_info env evd is_rec protos progs
             ind_stmts all_stmts sign app scope inds kn comb sort dref uctx
-      with Type_errors.TypeError (env, tyerr) ->
+      with
+      | Type_errors.TypeError (env, tyerr) ->
         CErrors.user_err Pp.(str"Functional elimination principle could not be proved automatically: " ++
                              Himsg.explain_pretype_error env !evd
                                (Pretype_errors.TypingError (Type_errors.map_ptype_error EConstr.of_constr tyerr)))
-         | Pretype_errors.PretypeError (env, sigma, tyerr) ->
-           CErrors.user_err Pp.(str"Functional elimination principle could not be proved automatically: " ++
-                                Himsg.explain_pretype_error env sigma tyerr)
-         | e -> Feedback.msg_warning Pp.(str "Functional elimination principle could not be proved automatically: "
-                                         ++ fnl () ++ CErrors.print e);
+      | Pretype_errors.PretypeError (env, sigma, tyerr) ->
+        CErrors.user_err Pp.(str"Functional elimination principle could not be proved automatically: " ++
+                             Himsg.explain_pretype_error env sigma tyerr)
+      | e ->
+        Feedback.msg_warning Pp.(str "Functional elimination principle could not be proved automatically: "
+                                 ++ fnl () ++ CErrors.print e);
+        pm
     in
     let evd = Evd.from_env env in
     let f_gr = Nametab.locate (Libnames.qualid_of_ident id) in
@@ -1298,6 +1302,7 @@ let declare_funind info alias env evd is_rec protos progs
     let instid = Nameops.add_prefix "FunctionalInduction_" id in
     ignore(Equations_common.declare_instance instid ~poly evd [] cl args);
     (* If desired the definitions should be made transparent again. *)
+    begin
     if !Equations_common.equations_transparent then
       (Global.set_strategy (ConstKey (fst (destConst evd f))) Conv_oracle.transparent;
        match alias with
@@ -1309,29 +1314,32 @@ let declare_funind info alias env evd is_rec protos progs
         match alias with
         | None -> ()
         | Some ((f, _), _, _) -> Lib.add_anonymous_leaf (inOpacity (fst (destConst evd f))))
+    end;
+    pm
   in
   let evm, stmtt = Typing.type_of (Global.env ()) !evd statement in
   let () = evd := evm in
   let stmt = to_constr !evd statement and f = to_constr !evd f in
   let uctx = Evd.evar_universe_context (if poly then !evd else Evd.from_env (Global.env ())) in
-  let launch_ind tactic =
-    let res =
+  let launch_ind ~pm tactic =
+    let pm, res =
       let cinfo = Declare.CInfo.make ~name:indid ~typ:stmt () in
       let info = Declare.Info.make ~poly
           ~kind:(Decls.IsDefinition info.term_info.decl_kind)
-          ~hook:(Declare.Hook.make hookind) () in
-      Declare.Obls.add_definition ~cinfo ~info
+          () in
+      let obl_hook = Declare.Hook.make_g hookind in
+      Declare.Obls.add_definition ~pm ~cinfo ~info ~obl_hook
         ~tactic:(Tacticals.New.tclTRY tactic) ~uctx [||]
     in
     match res with
     | Declare.Obls.Defined gr -> ()
-    | Declare.Obls.Remain _  -> 
+    | Declare.Obls.Remain _  ->
       Feedback.msg_warning Pp.(str "Functional induction principle could not be proved automatically, it \
         is left as an obligation.")
     | Declare.Obls.Dependent -> (* Only 1 obligation *) assert false
   in
   let tac = (ind_fun_tac is_rec f info id !nested_statements progs) in
-  try launch_ind tac
+  try launch_ind ~pm tac
   with Type_errors.TypeError (env, tyerr) ->
     CErrors.user_err Pp.(str"Functional induction principle could not be proved automatically: " ++
                          Himsg.explain_pretype_error env !evd
@@ -1339,8 +1347,7 @@ let declare_funind info alias env evd is_rec protos progs
      | e ->
        Feedback.msg_warning Pp.(str "Functional induction principle could not be proved automatically: " ++ fnl () ++
                                 CErrors.print e);
-       launch_ind (Proofview.tclUNIT ())
-
+       launch_ind ~pm (Proofview.tclUNIT ())
 
 let level_of_context env evd ctx acc =
   let _, lev =
@@ -1399,7 +1406,7 @@ let unfold_fix =
          | _ -> tclUNIT ())
       | _ -> tclUNIT ())
 
-let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
+let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
   let () =
     if !Equations_common.debug then
       let open Pp in
@@ -1640,7 +1647,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
         inds
     in
     let info = { term_info = info; pathmap = !fnind_map; wheremap } in
-    declare_funind info alias (Global.env ()) evd rec_info protos progs
+    declare_funind ~pm info alias (Global.env ()) evd rec_info protos progs
                    ind_stmts all_stmts sign inds kn comb sort
                    f p.program_splitting ind
   in
@@ -1654,11 +1661,11 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
     else ()
   in
   let eqns = CArray.map_of_list (fun (_, _, stmts) -> Array.make (List.length stmts) false) ind_stmts in
-  let proof (j, (_, alias, path, sign, arity, pats, refs, refine), stmts) =
+  let proof pm (j, (_, alias, path, sign, arity, pats, refs, refine), stmts) =
     let id = path_id path in (* if j != 0 then Nameops.add_suffix id ("_helper_" ^ string_of_int j) else id in *)
-    let proof (i, (r, unf, c, n)) =
+    let proof (pm : Declare.OblState.t) (i, (r, unf, c, n)) =
       let ideq = Nameops.add_suffix id ("_equation_" ^ string_of_int i) in
-      let hook { Declare.Hook.S.dref; _ } =
+      let hook { Declare.Hook.S.dref; _ } pm =
         if n != None then
           Lib.add_anonymous_leaf (inRewRules (info.base_id, dref))
         else (Classes.declare_instance (Global.env()) !evd None true dref
@@ -1675,7 +1682,8 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
               Global.set_strategy (ConstKey (fst (destConst !evd f))) Conv_oracle.Opaque
            | None -> ());
           Global.set_strategy (ConstKey cst) Conv_oracle.Opaque;
-          if with_ind then declare_ind ())
+          if with_ind then (declare_ind (); pm) else pm)
+        else pm
       in
       let tac =
         let open Tacticals.New in
@@ -1693,9 +1701,10 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
         else ()
       in
       let cinfo = Declare.CInfo.make ~name:ideq ~typ:(to_constr !evd c) () in
-      let info = Declare.Info.make ~kind:(Decls.IsDefinition info.decl_kind) ~poly
-          ~hook:(Declare.Hook.make hook) () in
-      ignore(Declare.Obls.add_definition ~cinfo ~info
-               ~tactic:tac ~uctx:(Evd.evar_universe_context !evd) [||])
-    in List.iter proof stmts
-  in List.iter proof ind_stmts
+      let info = Declare.Info.make ~kind:(Decls.IsDefinition info.decl_kind) ~poly () in
+      let obl_hook = Declare.Hook.make_g hook in
+      let pm, _ = Declare.Obls.add_definition ~pm ~cinfo ~info ~obl_hook
+               ~tactic:tac ~uctx:(Evd.evar_universe_context !evd) [||] in
+      pm
+    in List.fold_left proof pm stmts
+  in List.fold_left proof pm ind_stmts

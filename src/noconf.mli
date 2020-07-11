@@ -20,4 +20,6 @@ val mkcase :
   constr
 
 val derive_no_confusion :
-  env -> Evd.evar_map -> poly:bool -> Names.inductive * EInstance.t -> unit
+  pm:Declare.OblState.t
+  -> env -> Evd.evar_map -> poly:bool -> Names.inductive * EInstance.t ->
+  Declare.OblState.t

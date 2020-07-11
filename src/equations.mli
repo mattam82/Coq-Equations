@@ -12,31 +12,37 @@ open Equations_common
 open Splitting
 
 val define_by_eqs
-  :  poly:bool
+  :  pm:Declare.OblState.t
+  -> poly:bool
   -> program_mode:bool
   -> open_proof:bool
   -> Syntax.equation_options
   -> Syntax.pre_equations
   -> Vernacexpr.decl_notation list
-  -> Declare.Proof.t option
+  -> Declare.OblState.t * Declare.Proof.t option
 
 val define_principles :
+  pm:Declare.OblState.t ->
   flags ->
   Syntax.rec_type ->
   EConstr.t list ->
-  (program * compiled_program_info) list -> unit
+  (program * compiled_program_info) list -> Declare.OblState.t
 
-val equations : poly:bool -> program_mode:bool ->
+val equations :
+  pm:Declare.OblState.t ->
+  poly:bool -> program_mode:bool ->
   Syntax.equation_options ->
   Syntax.pre_equations ->
   Vernacexpr.decl_notation list ->
-  unit
+  Declare.OblState.t
 
-val equations_interactive : poly:bool -> program_mode:bool ->
+val equations_interactive :
+  pm:Declare.OblState.t ->
+  poly:bool -> program_mode:bool ->
   Syntax.equation_options ->
   Syntax.pre_equations ->
   Vernacexpr.decl_notation list ->
-  Declare.Proof.t
+  Declare.OblState.t * Declare.Proof.t
 
 val solve_equations_goal :
   Proofview.V82.tac ->

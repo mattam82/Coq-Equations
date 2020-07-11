@@ -33,7 +33,7 @@ let inline_helpers i =
   let l = List.map (fun (cst, _) -> Nametab.shortest_qualid_of_global Id.Set.empty (GlobRef.ConstRef cst)) i.helpers_info in
   Table.extraction_inline true l
 
-let define_unfolding_eq env evd flags p unfp prog prog' ei hook =
+let define_unfolding_eq ~pm env evd flags p unfp prog prog' ei hook =
   let info' = prog'.program_split_info in
   let info =
     { info' with base_id = prog.program_split_info.base_id;
@@ -44,7 +44,7 @@ let define_unfolding_eq env evd flags p unfp prog prog' ei hook =
   let () = if flags.polymorphic then evd := Evd.from_ctx info'.term_ustate in
   let funfc = e_new_global evd info'.term_id in
   let unfold_eq_id = add_suffix (program_id unfp) "_eq" in
-  let hook_eqs _ =
+  let hook_eqs _ pm =
     Global.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
     let () = (* Declare the subproofs of unfolding for where as rewrite rules *)
       let decl _ (_, id, _) =
@@ -73,7 +73,7 @@ let define_unfolding_eq env evd flags p unfp prog prog' ei hook =
                           equations_where_map = ei.equations_where_map;
                           equations_f = funfc;
                           equations_prob = ei.equations_prob }
-    in hook (p, Some unfp, prog', eqninfo) unfold_eq_id
+    in hook ~pm (p, Some unfp, prog', eqninfo) unfold_eq_id
   in
   let () = if not flags.polymorphic then (evd := Evd.from_env (Global.env ())) in
   let sign = program_sign unfp in
@@ -91,13 +91,16 @@ let define_unfolding_eq env evd flags p unfp prog prog' ei hook =
   let info = Declare.Info.make ~poly:info.poly
       ~scope:info.scope
       ~kind:(Decls.IsDefinition info.decl_kind)
-      ~hook:(Declare.Hook.make hook_eqs) ()
+      ()
   in
-  ignore(Declare.Obls.add_definition ~cinfo ~info ~reduce:(fun x -> x)
-           ~tactic:(of82 tac)
-           ~uctx:(Evd.evar_universe_context evd) [||])
+  let obl_hook = Declare.Hook.make_g hook_eqs in
+  let pm, _ =
+    Declare.Obls.add_definition ~pm ~cinfo ~info ~reduce:(fun x -> x)
+      ~tactic:(of82 tac) ~obl_hook
+      ~uctx:(Evd.evar_universe_context evd) [||]
+  in pm
 
-let define_principles flags rec_type fixprots progs =
+let define_principles ~pm flags rec_type fixprots progs =
   let env = Global.env () in
   let evd = ref (Evd.from_env env) in
   let () =
@@ -106,19 +109,19 @@ let define_principles flags rec_type fixprots progs =
       let () = evd := Evd.merge_universe_context !evd ustate in ()
     else ()
   in
-  let progs' = Principles.unfold_programs env evd flags rec_type progs in
+  let pm, progs' = Principles.unfold_programs ~pm env evd flags rec_type progs in
   match progs' with
   | [p, Some (unfp, cpi'), cpi, eqi] ->
-    let hook (p, unfp, cpi', eqi) unfold_eq_id =
+    let hook ~pm (p, unfp, cpi', eqi) unfold_eq_id =
       let cpi' = { cpi' with
                    program_split_info =
                      { cpi'.program_split_info with
                        comp_obls = cpi'.program_split_info.comp_obls @ cpi.program_split_info.comp_obls } } in
-      Principles.build_equations flags.with_ind env !evd
+      Principles.build_equations ~pm flags.with_ind env !evd
         ~alias:(make_alias (p.program_term, unfold_eq_id, p.program_splitting))
         rec_type [p, unfp, cpi', eqi]
     in
-    define_unfolding_eq env evd flags p unfp cpi cpi' eqi hook
+    define_unfolding_eq ~pm env evd flags p unfp cpi cpi' eqi hook
   | splits ->
     let splits = List.map (fun (p, unfp, cpi, eqi) ->
      let unfp' = match unfp with
@@ -126,9 +129,9 @@ let define_principles flags rec_type fixprots progs =
        | None -> None
      in (p, unfp', cpi, eqi)) splits
     in
-    build_equations flags.with_ind env !evd rec_type splits
+    build_equations ~pm flags.with_ind env !evd rec_type splits
 
-let define_by_eqs ~poly ~program_mode ~open_proof opts eqs nt =
+let define_by_eqs ~pm ~poly ~program_mode ~open_proof opts eqs nt =
   let with_eqns, with_ind =
     let try_bool_opt opt default =
       try List.assoc opt opts
@@ -163,7 +166,7 @@ let define_by_eqs ~poly ~program_mode ~open_proof opts eqs nt =
     Hints.create_hint_db false baseid trs true
   in
   let progs = Array.make (List.length eqs) None in
-  let hook i p info =
+  let hook ~pm i p info =
     let () = inline_helpers info in
     let f_cst = match info.term_id with GlobRef.ConstRef c -> c | _ -> assert false in
     let () = evd := Evd.from_ctx info.term_ustate in
@@ -176,26 +179,29 @@ let define_by_eqs ~poly ~program_mode ~open_proof opts eqs nt =
        let rec_info = compute_rec_type [] (List.map (fun (x, y) -> x.program_info) progs) in
        List.iter (Metasyntax.add_notation_interpretation (Global.env ())) nt;
        if flags.with_eqns || flags.with_ind then
-         define_principles flags rec_info fixprots progs)
+         define_principles ~pm flags rec_info fixprots progs
+       else pm)
+    else pm
   in
-  define_programs env evd rec_type fixdecls flags programs hook
+  let hook ~pm i p info = (), hook ~pm i p info in
+  define_programs ~pm env evd rec_type fixdecls flags programs hook
 
-let equations ~poly ~program_mode opts eqs nt =
+let equations ~pm ~poly ~program_mode opts eqs nt =
   List.iter (fun (((loc, i), nested, l, t, by),eqs) -> Dumpglob.dump_definition CAst.(make ~loc i) false "def") eqs;
-  let pstate =
-    define_by_eqs ~poly ~program_mode ~open_proof:false opts eqs nt in
+  let pm, pstate =
+    define_by_eqs ~pm ~poly ~program_mode ~open_proof:false opts eqs nt in
   match pstate with
-  | None -> ()
+  | None -> pm
   | Some _ ->
-      CErrors.anomaly Pp.(str"Equation.equations leaving a proof open")
+    CErrors.anomaly Pp.(str"Equation.equations leaving a proof open")
 
-let equations_interactive ~poly ~program_mode opts eqs nt =
+let equations_interactive ~pm ~poly ~program_mode opts eqs nt =
   List.iter (fun (((loc, i), nested, l, t, by),eqs) -> Dumpglob.dump_definition CAst.(make ~loc i) false "def") eqs;
-  let lemma = define_by_eqs ~poly ~program_mode ~open_proof:true opts eqs nt in
+  let pm, lemma = define_by_eqs ~pm ~poly ~program_mode ~open_proof:true opts eqs nt in
   match lemma with
   | None ->
     CErrors.anomaly Pp.(str"Equation.equations_interactive not opening a proof")
-  | Some p -> p
+  | Some p -> pm, p
 
 let solve_equations_goal destruct_tac tac gl =
   let concl = pf_concl gl in

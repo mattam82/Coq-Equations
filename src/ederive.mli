@@ -8,22 +8,29 @@
 
 type derive_record =
   { derive_name : string;
-    derive_fn : poly:bool -> Names.GlobRef.t -> unit }
+    derive_fn : pm:Declare.OblState.t -> poly:bool -> Names.GlobRef.t -> Declare.OblState.t }
 
-(** When the Derive expects a constr. *)                                 
+(** When the Derive expects a constr. *)
 val make_derive :
-  (Environ.env -> Evd.evar_map -> poly:bool -> EConstr.constr -> unit) ->
-  poly:bool -> Names.GlobRef.t -> unit
+  (pm:Declare.OblState.t -> Environ.env -> Evd.evar_map -> poly:bool -> EConstr.constr -> Declare.OblState.t) ->
+  pm:Declare.OblState.t ->
+  poly:bool -> Names.GlobRef.t -> Declare.OblState.t
 
-(** When the Derive works on inductive types only. *)                                 
+(** When the Derive works on inductive types only. *)
 val make_derive_ind :
-  (Environ.env -> Evd.evar_map -> poly:bool -> Names.inductive * EConstr.EInstance.t -> unit) ->
-  poly:bool -> Names.GlobRef.t -> unit
-    
+  (pm:Declare.OblState.t -> Environ.env -> Evd.evar_map -> poly:bool -> Names.inductive * EConstr.EInstance.t -> Declare.OblState.t) ->
+  pm:Declare.OblState.t ->
+  poly:bool -> Names.GlobRef.t -> Declare.OblState.t
+
 val register_derive : derive_record -> unit
 
 (** Check if a given notion has been derived already for a given global reference. *)
 
 val check_derive : string -> Names.GlobRef.t -> bool
 
-val derive : poly:bool -> string list -> Names.GlobRef.t Loc.located list -> unit
+val derive :
+  pm:Declare.OblState.t
+  -> poly:bool
+  -> string list
+  -> Names.GlobRef.t Loc.located list
+  -> Declare.OblState.t

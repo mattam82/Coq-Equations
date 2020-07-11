@@ -91,7 +91,7 @@ let vars_of_pars pars =
 
 open EConstr.Vars  
 
-let derive_eq_dec env sigma ~poly ind =
+let derive_eq_dec ~pm env sigma ~poly ind =
   let info = inductive_info sigma ind in
   let () = 
     if Ederive.check_derive "NoConfusion" (Names.GlobRef.IndRef (fst ind)) 
@@ -148,15 +148,16 @@ let derive_eq_dec env sigma ~poly ind =
     indsl
   in
   let hook = Declare.Hook.make hook in
-  List.iter
-    (fun (ind, (stmt, tc)) ->
+  List.fold_left
+    (fun pm (ind, (stmt, tc)) ->
      let id = add_suffix ind.ind_name "_eqdec" in
      let cinfo = Declare.CInfo.make ~name:id ~typ:(to_constr !evdref stmt) () in
      let info = Declare.Info.make ~poly ~hook () in
-     ignore(Declare.Obls.add_definition ~cinfo ~info
+     let pm = Declare.Obls.add_definition ~pm ~cinfo ~info
               ~uctx:(Evd.evar_universe_context !evdref)
-              ~tactic:(eqdec_tac ()) [||]))
-    indsl
+              ~tactic:(eqdec_tac ()) [||]
+     in fst pm)
+    pm indsl
 
 let () =
   Ederive.(register_derive

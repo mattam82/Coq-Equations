@@ -1016,7 +1016,7 @@ let error_complete () =
                 str "Equations definition is complete and requires no further proofs. " ++
                 str "Use the \"Equations\" command to define it.")
 
-let solve_equations_obligations flags recids i sigma hook =
+let solve_equations_obligations ~pm flags recids i sigma hook =
   let scope = Locality.(Global ImportNeedQualified) in
   let kind = Decls.(IsDefinition Definition) in
   let evars = Evar.Map.bindings (Evd.undefined_map sigma) in
@@ -1067,18 +1067,18 @@ let solve_equations_obligations flags recids i sigma hook =
   let lemma = Declare.Proof.map lemma ~f:(fun p  ->
       fst (Proof.solve (Goal_select.SelectAll) None (Tacticals.New.tclTRY !Declare.Obls.default_tactic) p)) in
   let prf = Declare.Proof. get lemma in
-  let lemma = if Proof.is_done prf then
+  let pm, lemma = if Proof.is_done prf then
     if flags.open_proof then error_complete ()
     else
-      (let _ : _ list = Declare.Proof.save ~proof:lemma ~opaque:Vernacexpr.Transparent ~idopt:None in
-       None)
-  else if flags.open_proof then Some lemma
+      (let pm, _ = Declare.Proof.save ~pm ~proof:lemma ~opaque:Vernacexpr.Transparent ~idopt:None in
+       pm, None)
+  else if flags.open_proof then pm, Some lemma
   else
     user_err_loc (None, "define", str"Equations definition generated subgoals that " ++
                                   str "could not be solved automatically. Use the \"Equations?\" command to" ++
                                   str " refine them interactively")
   in
-  lemma
+  pm, lemma
 
 let gather_fresh_context sigma u octx =
   let ctx = Evd.universe_context_set sigma in
@@ -1093,7 +1093,7 @@ let gather_fresh_context sigma u octx =
   let ctx = Univ.ContextSet.of_set levels in
   Univ.ContextSet.add_constraints (Univ.AUContext.instantiate u octx) ctx
 
-let solve_equations_obligations_program flags recids i sigma hook =
+let solve_equations_obligations_program ~pm flags recids i sigma hook =
   let poly = flags.polymorphic in
   let scope = Locality.(Global ImportNeedQualified) in
   let kind = Decls.(IsDefinition Definition) in
@@ -1108,7 +1108,7 @@ let solve_equations_obligations_program flags recids i sigma hook =
     RetrieveObl.retrieve_obligations env oblsid sigma 0
     ~status:(Evar_kinds.Define false) term ty
   in
-  let hook { Declare.Hook.S.uctx; obls; _ } =
+  let hook { Declare.Hook.S.uctx; obls; _ } pm =
   (* let hook uctx evars locality gr = *)
     (* let l =
      *   Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
@@ -1149,17 +1149,19 @@ let solve_equations_obligations_program flags recids i sigma hook =
       try fst (EConstr.destConst sigma hd)
       with Constr.DestKO -> assert false) obls
     in
-    hook recobls sigma
+    hook ~pm recobls sigma
   in
-  let hook = Declare.Hook.make hook in
+  let obl_hook = Declare.Hook.make_g hook in
   let reduce x =
     let flags = CClosure.beta in
     to_constr sigma (clos_norm_flags flags (Global.env ()) sigma (of_constr x))
   in
   let cinfo = Declare.CInfo.make ~name:oblsid ~typ:ty () in
-  let info = Declare.Info.make ~poly ~scope ~kind ~hook () in
-  ignore (Declare.Obls.add_definition ~cinfo ~info ~term ~uctx:(Evd.evar_universe_context sigma)
-            ~reduce ~opaque:false oblsinfo)
+  let info = Declare.Info.make ~poly ~scope ~kind () in
+  let pm, _ =
+    Declare.Obls.add_definition ~pm ~cinfo ~info ~obl_hook ~term ~uctx:(Evd.evar_universe_context sigma)
+      ~reduce ~opaque:false oblsinfo in
+  pm
 
 let simplify_evars evars t =
   let rec aux t =
@@ -1180,8 +1182,8 @@ let add_hint local i cst =
   Hints.add_hints ~locality [Id.to_string i] (unfold_entry cst)
 
 type 'a hook =
-  | HookImmediate : (program -> term_info -> 'a) -> 'a hook
-  | HookLater : (int -> program -> term_info -> unit) -> unit hook
+  | HookImmediate : (pm:Declare.OblState.t -> program -> term_info -> 'a * Declare.OblState.t) -> 'a hook
+  | HookLater : (pm:Declare.OblState.t -> int -> program -> term_info -> unit * Declare.OblState.t) -> unit hook
 
 let rec_type_ids =
   CList.map_append
@@ -1189,9 +1191,9 @@ let rec_type_ids =
             | Some (Logical ids) -> [snd ids]
             | None -> [])
 
-let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false) programs : a hook -> a * Declare.Proof.t option  =
+let define_programs (type a) ~pm env evd is_recursive fixprots flags ?(unfold=false) programs : a hook -> a * Declare.OblState.t * Declare.Proof.t option  =
   fun hook ->
-  let call_hook recobls p helpers uctx scope gr (hook : program -> term_info -> a) : a =
+  let call_hook ~pm recobls p helpers uctx scope gr (hook : pm:Declare.OblState.t -> program -> term_info -> a * Declare.OblState.t) : a * Declare.OblState.t =
     (* let l =
      *   Array.map_to_list (fun (id, ty, loc, s, d, tac) -> Libnames.qualid_of_ident id) obls in
      * Extraction_plugin.Table.extraction_inline true l; *)
@@ -1200,9 +1202,9 @@ let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false)
     let term_info = { term_id = gr; term_ustate = uctx;
                       base_id = baseid; helpers_info = helpers; poly = flags.polymorphic; scope; decl_kind = kind;
                       comp_obls = recobls; user_obls = Id.Set.empty } in
-    hook p term_info
+    hook ~pm p term_info
   in
-  let all_hook hook recobls sigma =
+  let all_hook ~pm hook recobls sigma =
     let sigma = Evd.minimize_universes sigma in
     let sigma = Evarutil.nf_evar_map_undefined sigma in
     let () =
@@ -1221,39 +1223,49 @@ let define_programs (type a) env evd is_recursive fixprots flags ?(unfold=false)
     let programs = List.map (map_program (nf_evar sigma)) programs in
     let ustate = Evd.evar_universe_context sigma in
     let () = List.iter (fun (cst, _) -> add_hint true (program_id (List.hd programs)) cst) helpers in
-    hook recobls helpers ustate Locality.(Global ImportDefaultBehavior) programs
+    hook ~pm recobls helpers ustate Locality.(Global ImportDefaultBehavior) programs
   in
   let recids = rec_type_ids is_recursive in
   match hook with
   | HookImmediate f ->
     assert(not (Evd.has_undefined !evd));
-    let hook recobls helpers ustate kind programs =
+    let hook ~pm recobls helpers ustate kind programs =
       let p = List.hd programs in
       let cst, _ = (destConst !evd p.program_term) in
-      call_hook recobls p helpers ustate Locality.(Global ImportDefaultBehavior) (GlobRef.ConstRef cst) f
+      call_hook ~pm recobls p helpers ustate Locality.(Global ImportDefaultBehavior) (GlobRef.ConstRef cst) f
     in
-    all_hook hook [] !evd, None
+    let res, pm = all_hook ~pm hook [] !evd in
+    res, pm, None
   | HookLater f ->
-    let hook recobls helpers ustate kind programs =
-      List.iteri (fun i p ->
+    let hook ~pm recobls helpers ustate kind programs =
+      CList.fold_left_i (fun i pm p ->
           let cst, _ = (destConst !evd p.program_term) in
-          call_hook recobls p helpers ustate Locality.(Global ImportDefaultBehavior) (GlobRef.ConstRef cst) (f i)) programs
+          call_hook ~pm recobls p helpers ustate Locality.(Global ImportDefaultBehavior) (GlobRef.ConstRef cst) (f i) |> snd)
+        0 pm programs
     in
     if Evd.has_undefined !evd then
       if flags.open_proof then
-        (), solve_equations_obligations flags recids (program_id (List.hd programs)) !evd (all_hook hook)
+        let pm, lemma =
+          solve_equations_obligations ~pm flags recids (program_id (List.hd programs)) !evd (all_hook hook) in
+        (), pm, lemma
       else
-        solve_equations_obligations_program flags recids (program_id (List.hd programs)) !evd (all_hook hook), None
+        let pm =
+          solve_equations_obligations_program ~pm flags recids (program_id (List.hd programs)) !evd (all_hook hook) in
+        (), pm, None
     else
       if flags.open_proof then error_complete ()
-      else all_hook hook [] !evd, None
+      else
+        let pm = all_hook ~pm hook [] !evd in
+        (), pm, None
 
-let define_program_immediate env evd is_recursive fixprots flags ?(unfold=false) program =
-  define_programs env evd is_recursive fixprots flags ~unfold [program]
-    (HookImmediate (fun x y -> (x, y)))
+let define_program_immediate ~pm env evd is_recursive fixprots flags ?(unfold=false) program =
+  define_programs ~pm env evd is_recursive fixprots flags ~unfold [program]
+    (HookImmediate (fun ~pm x y -> (x, y), pm))
 
-let define_programs env evd is_recursive fixprots flags ?(unfold=false) programs hook =
-  snd @@ define_programs env evd is_recursive fixprots flags ~unfold programs (HookLater hook)
+let define_programs ~pm env evd is_recursive fixprots flags ?(unfold=false) programs hook =
+  let _, lemma, pm =
+    define_programs ~pm env evd is_recursive fixprots flags ~unfold programs (HookLater hook) in
+  lemma, pm
 
 let mapping_rhs sigma s = function
   | RProgram c -> RProgram (mapping_constr sigma s c)
