@@ -1,6 +1,8 @@
 \section{The \kw{Equations} Vernacular}
 \label{manual}
 
+\def\cst#1{\coqdoccst{#1}}
+
 \subsection{Syntax of programs}
 \def\kw#1{\coqdockw{#1}}
 \def\vec#1{\overrightarrow{#1}}
@@ -131,24 +133,28 @@ A most general predicate is inferred in this case.
 \Equations comes with two possible instances of its library,
 one where equality is \Coq's standard equality \ind{eq} in \Prop and
 another where equality is proof-relevant and defined in \kw{Type}.
-The first can be used simply by requiring \texttt{Equations.Equations},
-while the later can be used by requiring \texttt{Equations.Type.All}
-instead. The two libraries are qualified by the \texttt{Equations.Prop} and
-\texttt{Equations.Type} prefixes. When refering to classes in the
+The first can be used simply by requiring \cst{Equations.Equations},
+while the later can be used by requiring \cst{Equations.Type.All}
+instead. The libraries are qualified respectively by the 
+\cst{Equations.Prop} and
+\cst{Equations.Type} prefixes. When referring to classes in the
 following, one can find their definition in the respective prefix. In
 other words,
-\cst{Classes.EqDec} might refer to \cst{Equations.Prop.Classes.EqDEc}
-or \cst{Equations.Type.Classes.EqDEc} depending on the logic used.
+\cst{Classes.EqDec} might refer to \cst{Equations.Prop.Classes.EqDec}
+or \coqdoccst{Equations.Type.Classes.EqDec} depending on the logic used.
 
 \subsection{Local Options}
 The \kw{Equations} command takes a few options using the syntax
-\[\kw{Equations}(opts)~\cst{f}~\ldots\]
+\[\kw{Equations}(opts)~progs~\ldots\]
+
+$opts$ is a list of flags among:
 
 \begin{itemize}
-\item \texttt{noind}: Do not generate the inductive graph of the
-  function and the derived eliminator.
-\item \texttt{noeqns}: Do not generate the equations correponding to the
-  (expanded) clauses of the program. This implies \texttt{noind}.
+\item $\texttt{ind} `| \texttt{noind}$: Generate or do not generate 
+  the inductive graph of the function and the derived eliminator.
+\item $\texttt{eqns} `| \texttt{noeqns}$: Generate or do not generate 
+  the equations correponding to the (expanded) clauses of the program.
+  \texttt{noeqns} implies \texttt{noind}.
 \end{itemize}
 
 One can use the \kw{Equations?} syntax to use the interactive proof mode
@@ -189,7 +195,7 @@ The \kw{Equations} command obeys a few global options:
   definitions on open terms does not follow the clauses: it might block
   on the uip proof (for example if it is a decidable equality test).
   The rewriting equations and functional elimination principle can still
-  be derived though and are the prefered way to reason on the
+  be derived though and are the preferred way to reason on the
   definition.
 
 \item \texttt{Equations WithK} DEPRECATED. Use \texttt{With UIP} and

@@ -353,7 +353,6 @@ GRAMMAR EXTEND Gram
   ;
   local_where:
     [ [ "where"; w = local_where_rhs -> { w }
-      | "with"; p = proto -> { Inl (p (Some Syntax.Mutual)) }
     ] ]
   ;
   local_wheres:
