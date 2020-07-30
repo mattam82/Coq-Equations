@@ -686,7 +686,7 @@ let pre_solution ~(dir:direction) : simplification_fun =
   in
   let rel = EConstr.destRel !evd trel in
   let () = 
-    try let decl = lookup_rel rel ctx in
+    try let decl = Equations_common.lookup_rel rel ctx in
       if Context.Rel.Declaration.is_local_assum decl then ()
       else raise (CannotSimplify (str "[solution] cannot apply to a let-bound variable"))
     with Not_found -> assert false
