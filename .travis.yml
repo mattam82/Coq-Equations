@@ -19,7 +19,7 @@ env:
   - CAMLP5_VER="7.06"
   - FINDLIB_VER="1.8.0"
   - NATIVE_COMP="yes"
-  - COQ_VER="8.12.dev"
+  - COQ_VER="8.12.0"
   - HOTT_VER="dev"
 
 install:
