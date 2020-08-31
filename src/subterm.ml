@@ -183,7 +183,7 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
     let id = add_prefix "well_founded_" relid in
     (* Catch the new signature universe *)
     let env = Global.env () in
-    let sigma = Evd.update_sigma_env sigma env in
+    let sigma = Evd.update_sigma_univs (Environ.universes env) sigma in
     let evm = ref sigma in
     let kl = get_efresh logic_wellfounded_class evm in
     let kl = get_class sigma kl in
