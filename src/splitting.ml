@@ -904,7 +904,7 @@ let define_one_program_constants flags env0 isevar unfold p =
       in
       let () = helpers := (cst, (0,0)) :: !helpers in
       let env = Global.env () in
-      let evm = Evd.update_sigma_env evm env in
+      let evm = Evd.update_sigma_univs (Environ.universes env) evm in
       evm, { p with program_splitting = s';
                     program_rec = Some { wfr with rec_node = WfRec { r with wf_rec_functional = Some e } } }
 
@@ -921,7 +921,7 @@ let define_one_program_constants flags env0 isevar unfold p =
         let program_splitting = change_splitting s p.program_splitting in
         let evm, p' = aux_program env evm { p with program_splitting } where_path in
         let env = Global.env () in
-        let evm = Evd.update_sigma_env evm env in
+        let evm = Evd.update_sigma_univs (Environ.universes env) evm in
         let isevar = ref evm in
         let program' = make_single_program env isevar flags where_program.program_info
             program_prob p'.program_splitting p'.program_rec in
@@ -933,7 +933,7 @@ let define_one_program_constants flags env0 isevar unfold p =
         in
         let () = helpers := (cst, (0,0)) :: !helpers in
         let env = Global.env () in
-        let evm = Evd.update_sigma_env evm env in
+        let evm = Evd.update_sigma_univs (Environ.universes env) evm in
         let p' = { program' with program_term = e } in
         let w' = { w with where_program = p' } in
         (env, evm, (where_id w, where_term w') :: s, w' :: ctx)
