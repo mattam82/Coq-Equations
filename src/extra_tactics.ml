@@ -51,7 +51,7 @@ let refine_ho c =
          let (evk, subst as ev) = destEvar sigma ev in
          let sigma = !evd in
          let sigma,ev = evar_absorb_arguments env sigma ev (Array.to_list args) in
-         let argtest = Evarconv.default_occurrence_test ~frozen_evars:Evar.Set.empty ts in
+         let argtest = Evarconv.default_occurrence_test ~allowed_evars:Evarsolve.AllowedEvars.all ts in
          let argoccs = List.map
              (fun _ -> Evarconv.Unspecified Evd.Abstraction.Abstract) (snd ev) in
          let sigma, b = Evarconv.second_order_matching flags env sigma ev (argtest,argoccs) concl in
