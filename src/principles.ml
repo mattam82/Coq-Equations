@@ -693,14 +693,14 @@ let subst_protos s gr =
     (equations_debug Pp.(fun () -> str"Fixed hint " ++ Printer.pr_econstr_env env sigma term);
      let sigma, _ = Typing.type_of env sigma term in
      let sigma = Evd.minimize_universes sigma in
-     Hints.IsConstr (Evarutil.nf_evar sigma term, Evd.universe_context_set sigma))
+     Hints.IsConstr (Evarutil.nf_evar sigma term, Some (Evd.universe_context_set sigma)))
   else Hints.IsGlobRef gr
   [@@ocaml.warning "-3"]
 
 let declare_wf_obligations s info =
   let make_resolve gr =
     equations_debug Pp.(fun () -> str"Declaring wf obligation " ++ Printer.pr_global gr);
-    (Hints.empty_hint_info, is_polymorphic info, true,
+    (Hints.empty_hint_info, true,
      Hints.PathAny, subst_protos s gr)
   in
   List.iter (fun obl ->
@@ -1274,7 +1274,7 @@ let declare_funind ~pm info alias env evd is_rec protos progs
   let hookind { Declare.Hook.S.uctx; scope; dref; _ } pm =
     let env = Global.env () in (* refresh *)
     Hints.add_hints ~locality:Goptions.OptGlobal [info.term_info.base_id]
-                    (Hints.HintsImmediateEntry [Hints.PathAny, poly, Hints.IsGlobRef dref]);
+                    (Hints.HintsImmediateEntry [Hints.PathAny, Hints.IsGlobRef dref]);
     let pm =
       try declare_funelim ~pm info.term_info env evd is_rec protos progs
             ind_stmts all_stmts sign app scope inds kn comb sort dref uctx
@@ -1641,7 +1641,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     let _ =
       List.iteri (fun i ind ->
         let constrs =
-          CList.map_i (fun j _ -> Hints.empty_hint_info, poly, true, Hints.PathAny,
+          CList.map_i (fun j _ -> Hints.empty_hint_info, true, Hints.PathAny,
             Hints.IsGlobRef (GlobRef.ConstructRef ((kn,i),j))) 1 ind.Entries.mind_entry_lc in
           Hints.add_hints ~locality:Goptions.OptGlobal [info.base_id] (Hints.HintsResolveEntry constrs))
         inds
