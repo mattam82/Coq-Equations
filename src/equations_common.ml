@@ -565,7 +565,7 @@ let below_tac s =
 let tacvar_arg h =
   let ipat = Genarg.in_gen (Genarg.rawwit Tacarg.wit_intro_pattern) 
     (CAst.make @@ Tactypes.IntroNaming (Namegen.IntroIdentifier h)) in
-    TacGeneric ipat
+    TacGeneric (None, ipat)
 
 let rec_tac h h' = 
   TacArg(CAst.(make @@ TacCall(
