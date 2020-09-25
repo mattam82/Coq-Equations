@@ -573,18 +573,22 @@ Ltac do_depelim_nosimpl tac H := do_intros H ; generalize_by_eqs H ; tac H.
 
 Ltac do_depelim tac H := do_depelim_nosimpl tac H ; simpl_dep_elim; unblock_goal.
 
-Ltac do_depind_maybe_intro should_intro tac H := 
+Ltac with_scoped_ctx tac :=
+  let stop := fresh "stop" in
+  pose proof (stop := tt) ;
+  tac ;
+  revert_until stop ;
+  clear stop.
+
+Ltac do_depind_maybe_intro should_intro tac H :=
   (try intros until H) ; intro_block H ; (try simpl in H ; simplify_equations_in H) ;
-  generalize_by_eqs_vars H ; 
+  generalize_by_eqs_vars H ;
   block_goal ;
-  tac H ;
+  let t := ltac:(tac H ; intros_until_block ; simpl_dep_elim) in
   match should_intro with
-  | true => intros_until_block ; simpl_dep_elim
-  | _ =>
-    let stop := fresh "stop" in
-    pose (stop := tt) ;
-    simpl_dep_elim ;
-    revert_until stop ; clear stop end;
+  | true => t
+  | _ => with_scoped_ctx t
+  end;
   unblock_goal.
 
 Ltac do_depind tac H :=
@@ -608,7 +612,7 @@ Ltac depind id := do_depind ltac:(fun hyp => do_ind hyp) id.
 
 (** To dependent induction on some hyp. *)
 
-Ltac dep_elim id := do_depind_maybe_intro false ltac:(fun hyp => do_elim hyp) id.
+Ltac dep_elim id := do_depind_maybe_intro false ltac:(fun hyp => do_ind hyp) id.
 
 (** A variant where generalized variables should be given by the user. *)
 

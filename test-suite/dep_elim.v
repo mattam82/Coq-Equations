@@ -9,7 +9,7 @@ Proof.
   intros.
   dep_elim x.
   exact eq_refl.
-  intro n ; exact eq_refl.
+  intros n IH ; exact eq_refl.
 Defined.
 
 Inductive le : nat -> nat -> Prop :=
@@ -21,5 +21,5 @@ Proof.
   intros.
   dep_elim i.
   - intro n ; exact eq_refl.
-  - intros n m lenm; exact eq_refl.
+  - intros n m lenm IH ; exact eq_refl.
 Defined.
