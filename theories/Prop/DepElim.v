@@ -569,13 +569,6 @@ Ltac do_intros H :=
   (try intros until H) ; (intro_block_id H || intro_block H) ;
   (try simpl in H ; simplify_equations_in H).
 
-Ltac with_scoped_ctx tac :=
-  let stop := fresh "__stop" in
-  pose proof (stop := tt) ;
-  tac ;
-  revert_until stop ;
-  clear stop.
-
 Ltac do_depelim_nosimpl tac H := do_intros H ; generalize_by_eqs H ; tac H.
 
 Ltac do_depelim tac H := do_depelim_nosimpl tac H ; simpl_dep_elim; unblock_goal.

@@ -15,7 +15,9 @@ Ltac Equations.Init.simpl_equations ::= Equations.HoTT.DepElim.simpl_equations.
 Ltac Equations.Init.simplify_equalities ::= Equations.HoTT.DepElim.simplify_dep_elim.
 
 Ltac Equations.Init.depelim H ::= dependent elimination H; cbn in *.
+Ltac Equations.Init.depcase H ::= Equations.HoTT.DepElim.depcase H.
 Ltac Equations.Init.depind H ::= Equations.HoTT.DepElim.depind H.
+Ltac Equations.Init.dep_elim H ::= Equations.HoTT.DepElim.dep_elim H.
 Ltac Equations.Init.funelim_constr H ::= funelim_constr H.
 Ltac Equations.Init.apply_funelim H ::= Equations.HoTT.FunctionalInduction.apply_funelim H.
 
