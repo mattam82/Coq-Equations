@@ -114,6 +114,9 @@ Ltac depelim x := fail "Equations.Init.depelim has not been bound yet".
 (** Forward reference for Equations' [depind] tactic, which will be defined in [DepElim]. *)
 Ltac depind x := fail "Equations.Init.depind has not been bound yet".
 
+(** Forward reference for Equations' [dep_elim] tactic, which will be defined in [DepElim]. *)
+Ltac dep_elim x := fail "Equations.Init.depind has not been bound yet".
+
 (** Forward reference for Equations' [funelim] tactic, which will be defined in [FunctionalInduction]. *)
 Ltac funelim_constr x := fail "Equations.Init.funelim_constr has not been bound yet".
 
