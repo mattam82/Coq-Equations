@@ -11,6 +11,7 @@ Require Import Equations.CoreTactics Equations.Prop.Classes Equations.Prop.DepEl
 Ltac Equations.Init.simpl_equations ::= Equations.Prop.DepElim.simpl_equations.
 Ltac Equations.Init.simplify_equalities ::= Equations.Prop.DepElim.simplify_dep_elim.
 Ltac Equations.Init.depelim H ::= Equations.Prop.DepElim.depelim H.
+Ltac Equations.Init.depcase H ::= Equations.Prop.DepElim.depcase H.
 Ltac Equations.Init.depind H ::= Equations.Prop.DepElim.depind H.
 Ltac Equations.Init.dep_elim H ::= Equations.Prop.DepElim.dep_elim H.
 Ltac Equations.Init.noconf H ::= Equations.Prop.DepElim.noconf H.

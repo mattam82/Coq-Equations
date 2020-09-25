@@ -569,16 +569,20 @@ Ltac do_intros H :=
   (try intros until H) ; (intro_block_id H || intro_block H) ;
   (try simpl in H ; simplify_equations_in H).
 
-Ltac do_depelim_nosimpl tac H := do_intros H ; generalize_by_eqs H ; tac H.
-
-Ltac do_depelim tac H := do_depelim_nosimpl tac H ; simpl_dep_elim; unblock_goal.
-
 Ltac with_scoped_ctx tac :=
-  let stop := fresh "stop" in
+  let stop := fresh "__stop" in
   pose proof (stop := tt) ;
   tac ;
   revert_until stop ;
   clear stop.
+
+Ltac do_depelim_nosimpl tac H := do_intros H ; generalize_by_eqs H ; tac H.
+
+Ltac do_depelim tac H := do_depelim_nosimpl tac H ; simpl_dep_elim; unblock_goal.
+Ltac do_depelim_nointro tac H :=
+  do_intros H;
+  with_scoped_ctx ltac:(generalize_by_eqs H ; tac H ; simpl_dep_elim) ;
+  unblock_goal.
 
 Ltac do_depind_maybe_intro should_intro tac H :=
   (try intros until H) ; intro_block H ; (try simpl in H ; simplify_equations_in H) ;
@@ -597,6 +601,11 @@ Ltac do_depind tac H :=
 (** To dependent elimination on some hyp. *)
 
 Ltac depelim id := do_depelim ltac:(fun hyp => do_case hyp) id.
+
+(** To dependent elimination on some hyp. *)
+
+Ltac depcase id := do_depelim_nointro ltac:(fun hyp => do_case hyp) id.
+
 
 Ltac depelim_term c :=
   let H := fresh "term" in
