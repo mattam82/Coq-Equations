@@ -215,7 +215,7 @@ let pr_splitting env sigma ?(verbose=false) split =
                 pr_context_map env sigma lhs ++ spc ()) ++
        (Array.fold_left
           (fun acc so -> acc ++
-                         h 2 (match so with
+                         hov 2 (match so with
                              | None -> str "*impossible case*" ++ Pp.fnl ()
                              | Some s -> aux s))
           (mt ()) cs))
