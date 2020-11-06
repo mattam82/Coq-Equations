@@ -172,7 +172,7 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
     let constrhints =
       List.map_i (fun i entry ->
         List.map_i (fun j _ -> empty_hint_info, true, Hints.PathAny,
-          Hints.IsGlobRef (GlobRef.ConstructRef ((k,i),j))) 1 entry.mind_entry_lc)
+          Hints.hint_globref (GlobRef.ConstructRef ((k,i),j))) 1 entry.mind_entry_lc)
         0 inds
     in
     let () = Hints.add_hints ~locality:Goptions.OptGlobal [subterm_relation_base]
