@@ -745,7 +745,6 @@ Section SCT.
   Proof.
     intros x y. funelim (fin_union f). split. intros [].
     intros [k _]. depelim k.
-    eqns_specialize_eqs H. simpl in H.
     split. intros [Hfz|Hfs].
     now exists fz.
     specialize (H x y x y). rewrite -> H in Hfs.
