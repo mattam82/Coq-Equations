@@ -235,7 +235,7 @@ equal x y := right _.
 *)
 
 Equations head {A} (l : list A) (pf : l <> nil) : A :=
-head nil pf with pf eq_refl := { | x :=! x };
+head nil pf with pf eq_refl := { | ! };
 head (cons a v) _ := a.
 
 (** We decompose the list and are faced with two cases:
