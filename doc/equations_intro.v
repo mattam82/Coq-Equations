@@ -235,16 +235,16 @@ equal x y := right _.
 *)
 
 Equations head {A} (l : list A) (pf : l <> nil) : A :=
-head nil pf with pf eq_refl := { | x :=! x };
+head nil pf with pf eq_refl := { | ! };
 head (cons a v) _ := a.
 
 (** We decompose the list and are faced with two cases:
 
    - In the first case, the list is empty, hence the proof [pf] of type
      [nil <> nil] allows us to derive a contradiction by applying it to
-     reflexivity.  We make use of another category of right-hand sides,
-     which we call _empty_ nodes to inform the compiler that a
-     contradiction is derivable in this case.  In general we cannot
+     reflexivity.  We make use of another category of left-hand sides,
+     which we call _empty_ patterns, denoted with [!] to inform the compiler 
+     that the type of the variable is empty in this case.  In general we cannot
      expect the compiler to find by himself that the context contains a
      contradiction, as it is undecidable
      %(\cite{DBLP:conf/plpv/Oury07,DBLP:conf/birthday/GoguenMM06})%.
