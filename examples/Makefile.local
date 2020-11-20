@@ -1,4 +1,4 @@
-COQFLAGS += -w "-notation-overridden"
+COQEXTRAFLAGS += -w "-notation-overridden"
 
 # post-all::
 # 	$(MAKE) -f $(SELF) $(TEXFILES)
