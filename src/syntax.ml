@@ -98,28 +98,31 @@ type pre_clause = Loc.t option * lhs * (pre_equation, pre_clause) rhs
 
 type pre_equations = pre_equation where_clause list
 
-let rec pr_user_loc_pat env ?loc pat =
+let rec pr_user_loc_pat env sigma ?loc pat =
   match pat with
   | PUVar (i, gen) -> Id.print i ++ if gen then str "#" else mt ()
   | PUCstr (c, i, f) -> 
       let pc = pr_constructor env c in
-	if not (List.is_empty f) then str "(" ++ pc ++ spc () ++ pr_user_pats env f ++ str ")"
+        if not (List.is_empty f) then str "(" ++ pc ++ spc () ++ pr_user_pats env sigma f ++ str ")"
 	else pc
-  | PUInac c -> str "?(" ++ pr_glob_constr_env env c ++ str ")"
+  | PUInac c -> str "?(" ++ pr_glob_constr_env env sigma c ++ str ")"
   | PUEmpty -> str"!"
 
-and pr_user_pat env = DAst.with_loc_val (pr_user_loc_pat env)
+and pr_user_pat env sigma = DAst.with_loc_val (pr_user_loc_pat env sigma)
 
-and pr_user_pats env pats =
-  prlist_with_sep spc (pr_user_pat env) pats
+and pr_user_pats env sigma pats =
+  prlist_with_sep spc (pr_user_pat env sigma) pats
 
 let pr_lhs = pr_user_pats
 
-let pplhs lhs = pp (pr_lhs (Global.env ()) lhs)
+let pplhs lhs =
+  let env = Global.env () in
+  let sigma = Evd.from_env env in
+  pp (pr_lhs env sigma lhs)
 
 let pr_body env sigma = function
   | ConstrExpr rhs -> pr_constr_expr env sigma rhs
-  | GlobConstr rhs -> pr_glob_constr_env env rhs
+  | GlobConstr rhs -> pr_glob_constr_env env sigma rhs
   | Constr c -> str"<constr>"
 
 let rec pr_rhs_aux env sigma = function
@@ -147,7 +150,7 @@ and pr_proto env sigma ((_,id), _, l, t, ann) =
    | Some (Structural id) -> str"by struct " ++ pr_opt (fun x -> pr_id (snd x)) id)
 
 and pr_clause env sigma (loc, lhs, rhs) =
-  pr_lhs env lhs ++ pr_rhs env sigma rhs
+  pr_lhs env sigma lhs ++ pr_rhs env sigma rhs
 
 and pr_clauses env sigma =
   prlist_with_sep fnl (pr_clause env sigma)
@@ -193,7 +196,7 @@ and pr_prewhere env sigma (sign, eqns) =
   pr_proto env sigma sign ++ str "{" ++ pr_user_clauses env sigma eqns ++ str "}"
 
 and pr_preclause env sigma (loc, lhs, rhs) =
-  pr_lhs env lhs ++ pr_prerhs env sigma rhs
+  pr_lhs env sigma lhs ++ pr_prerhs env sigma rhs
 
 and pr_preclauses env sigma =
   prlist_with_sep fnl (pr_preclause env sigma)
@@ -303,7 +306,7 @@ let _chole c loc =
   CAst.make ~loc
   (CHole (Some (ImplicitArg (GlobRef.ConstRef cst, (0,None), false)), Namegen.IntroAnonymous,None)), None
 
-let _check_linearity env opats =
+let _check_linearity env sigma opats =
   let rec aux ids pats = 
     List.fold_left (fun ids pat ->
       DAst.with_loc_val (fun ?loc pat ->
@@ -311,7 +314,7 @@ let _check_linearity env opats =
       | PUVar (n, _) ->
 	if Id.Set.mem n ids then
 	  CErrors.user_err ?loc ~hdr:"ids_of_pats"
-            (str "Non-linear occurrence of variable in patterns: " ++ pr_user_pats env opats)
+            (str "Non-linear occurrence of variable in patterns: " ++ pr_user_pats env sigma opats)
 	else Id.Set.add n ids
       | PUInac _ -> ids
       | PUEmpty -> ids
@@ -319,7 +322,7 @@ let _check_linearity env opats =
       ids pats
   in ignore (aux Id.Set.empty opats)
 
-let pattern_of_glob_constr env avoid patname gc =
+let pattern_of_glob_constr env sigma avoid patname gc =
   let rec constructor ?loc c l =
     let ind, _ = c in
     let nparams = Inductiveops.inductive_nparams env ind in
@@ -354,7 +357,10 @@ let pattern_of_glob_constr env avoid patname gc =
         | GRef (GlobRef.ConstRef _ as c, _) when GlobRef.equal c (Lazy.force coq_inacc) ->
           let inacc = List.hd (List.tl l) in
           PUInac inacc
-        | _ -> user_err_loc (loc, "pattern_of_glob_constr", str "Cannot interpret " ++ pr_glob_constr_env env c ++ str " as a constructor")
+        | _ ->
+          user_err_loc
+            (loc, "pattern_of_glob_constr",
+             str "Cannot interpret " ++ pr_glob_constr_env env sigma c ++ str " as a constructor")
       end
   (* | GLetIn (Name id as na',b,None,e) when is_gvar id e && na = Anonymous ->
    *    (\* A canonical encoding of aliases *\)
@@ -410,16 +416,16 @@ let interp_pat env notations ?(avoid = ref Id.Set.empty) p pat =
                 let rec aux args patnames =
                   match args, patnames with
                   | a :: args, patname :: patnames ->
-                    pattern_of_glob_constr env avoid patname a :: aux args patnames
+                    pattern_of_glob_constr env sigma avoid patname a :: aux args patnames
                   | a :: args, [] ->
-                    pattern_of_glob_constr env avoid Anonymous a :: aux args []
+                    pattern_of_glob_constr env sigma avoid Anonymous a :: aux args []
                   | [], _ -> []
                 in aux args patnames
               | _ ->
                 user_err_loc (loc, "interp_pats",
                               str "Expecting a pattern for " ++ Id.print id))
             fn) gc
-    | None -> [pattern_of_glob_constr env avoid Anonymous gc]
+    | None -> [pattern_of_glob_constr env sigma avoid Anonymous gc]
   with Not_found -> anomaly (str"While translating pattern to glob constr")
 
 let rename_away_from ids pats =

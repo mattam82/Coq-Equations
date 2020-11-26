@@ -956,11 +956,11 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
   if !Equations_common.debug then
     Feedback.msg_debug Pp.(str"Launching covering on "++ pr_preclauses env !evars (List.map fst clauses) ++
                            str " with problem " ++ pr_problem p env !evars prob ++
-                           str " extpats " ++ pr_user_pats env extpats);
+                           str " extpats " ++ pr_user_pats env !evars extpats);
   match clauses with
   | ((loc, lhs, rhs), (idx, cnt) as clause) :: clauses' ->
     if !Equations_common.debug then
-      Feedback.msg_debug (str "Matching " ++ pr_user_pats env (extpats @ lhs) ++ str " with " ++
+      Feedback.msg_debug (str "Matching " ++ pr_user_pats env !evars (extpats @ lhs) ++ str " with " ++
                           pr_problem p env !evars prob);
     (match matches (extpats @ lhs) prob with
      | UnifSuccess (s, uacc, acc, empties) ->
@@ -1267,7 +1267,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
             (str "Non-matching clause in with subprogram:" ++ fnl () ++ int n ++
              str"Problem is " ++ spc () ++ pr_context_map env !evars prob ++ fnl () ++
              str"And the user patterns are: " ++ spc () ++
-             pr_user_pats env lhs)) cls
+             pr_user_pats env !evars lhs)) cls
     in
     let cls' = cls' 1 cls in
     let strength_app =

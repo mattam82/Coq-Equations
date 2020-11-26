@@ -89,9 +89,9 @@ type pre_clause = Loc.t option * lhs * (pre_equation, pre_clause) rhs
 type pre_equations = pre_equation where_clause list
 
 (* val pr_user_pat : env -> user_pat -> Pp.t *)
-val pr_user_pats : env -> user_pats -> Pp.t
+val pr_user_pats : env -> evar_map -> user_pats -> Pp.t
 
-val pr_lhs : env -> user_pats -> Pp.t
+val pr_lhs : env -> evar_map -> user_pats -> Pp.t
 val pplhs : user_pats -> unit
 val pr_rhs : env -> evar_map -> (clause,clause) rhs -> Pp.t
 val pr_clause :
@@ -159,6 +159,7 @@ val ids_of_pats : Names.Id.t option -> Constrexpr.constr_expr list -> Id.Set.t
 
 val pattern_of_glob_constr :
   Environ.env ->
+  evar_map ->
   Names.Id.Set.t ref ->
   Names.Name.t ->
   Glob_term.glob_constr ->

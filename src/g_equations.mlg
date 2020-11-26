@@ -411,19 +411,22 @@ type raw_elim_patterns = constr_expr list
 type glob_elim_patterns = Genintern.glob_constr_and_expr list
 type elim_patterns = user_pats
 
-let interp_elim_pattern env avoid s =
-  Syntax.pattern_of_glob_constr env avoid Anonymous (* Should be id *) (fst s)
+let interp_elim_pattern env sigma avoid s =
+  Syntax.pattern_of_glob_constr env sigma avoid Anonymous (* Should be id *) (fst s)
 
 let interp_elim_patterns ist gl s =
   let sigma = Tacmach.project gl in
   let env = Goal.V82.env sigma gl.Evd.it in
   let avoid = ref (Names.Id.Map.domain ist.Geninterp.lfun) in
-  sigma, List.map (interp_elim_pattern env avoid) s
+  sigma, List.map (interp_elim_pattern env sigma avoid) s
 
 let glob_elim_patterns ist s = List.map (Tacintern.intern_constr ist) s
 let subst_elim_patterns s str = str
 
-let pr_elim_patterns _ _ _ (s : elim_patterns) = Syntax.pr_user_pats (Global.env ()) (*FIXME*) s
+let pr_elim_patterns _ _ _ (s : elim_patterns) =
+  let env = Global.env() in
+  let sigma = Evd.from_env env in
+  Syntax.pr_user_pats env sigma s
 let pr_raw_elim_patterns env sigma prc prlc _ (s : raw_elim_patterns) =
   Pp.prlist_with_sep (fun _ -> str "|") (prc env sigma) s
 let pr_glob_elim_patterns env sigma prc prlc _ (s : glob_elim_patterns) =
