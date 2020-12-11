@@ -122,6 +122,9 @@ let dependent_pattern ?(pattern_term=true) c =
   let conclapp = applistc concllda (List.rev_map pi1 subst) in
     convert_concl ~check:false conclapp DEFAULTcast)
 
+let annot_of_context ctx =
+  Array.map_of_list Context.Rel.Declaration.get_annot (List.rev ctx)
+
 let depcase ~poly (mind, i as ind) =
   let indid = Nametab.basename_of_global (GlobRef.IndRef ind) in
   let mindb, oneind = Global.lookup_inductive ind in
@@ -137,6 +140,11 @@ let depcase ~poly (mind, i as ind) =
     (make_assum anonR indapp :: args)
   in
   let nconstrs = Array.length oneind.mind_nf_lc in
+  let mkbody i (ctx, ty) =
+    let args = Context.Rel.to_extended_vect mkRel 0 ctx in
+    annot_of_context ctx, mkApp (mkRel (1 + nconstrs + List.length ctx - i), args)
+  in
+  let bodies = Array.mapi mkbody oneind.mind_nf_lc in
   let branches =
     Array.map2_i (fun i id (ctx, cty) ->
       let cty = Term.it_mkProd_or_LetIn cty ctx in
@@ -152,9 +160,8 @@ let depcase ~poly (mind, i as ind) =
                           Array.append (extended_rel_vect (ncargs + i + 1) params)
                             (extended_rel_vect 0 realargs))])
       in
-      let body = mkRel (1 + nconstrs - i) in
       let br = it_mkProd_or_LetIn arity realargs in
-        (make_assum (nameR (Id.of_string ("P" ^ string_of_int i))) br), body)
+        (make_assum (nameR (Id.of_string ("P" ^ string_of_int i))) br))
       oneind.mind_consnames oneind.mind_nf_lc
   in
   let ci = make_case_info (Global.env ()) ind Sorts.Relevant RegularStyle in
@@ -173,15 +180,16 @@ let depcase ~poly (mind, i as ind) =
   let app = mkApp (mkRel (nargs + nconstrs + 3),
                   (extended_rel_vect 0 ctxpred))
   in
-  let ty = it_mkLambda_or_LetIn app ctxpred in
-  let case = mkCase (ci, ty, NoInvert, mkRel 1, Array.map snd branches) in
+  let paramsinst = extended_rel_vect (2 + nargs + nconstrs) params in
+  let ty = (annot_of_context ctxpred, app) in
+  let case = mkCase (ci, EInstance.empty, paramsinst, ty, NoInvert, mkRel 1, bodies) in
   let xty = obj 1 in
   let xid = Namegen.named_hd (Global.env ()) !evd xty Anonymous in
   let body =
     let len = 1 (* P *) + Array.length branches in
     it_mkLambda_or_LetIn case
       (make_assum (annotR xid) (lift len indapp)
-        :: ((List.rev (Array.to_list (Array.map fst branches)))
+        :: ((Array.rev_to_list branches)
             @ (make_assum (nameR (Id.of_string "P")) pred :: ctx)))
   in
   let univs = Evd.univ_entry ~poly !evd in
