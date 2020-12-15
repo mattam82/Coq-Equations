@@ -173,6 +173,7 @@ let define_by_eqs ~pm ~poly ~program_mode ~tactic ~open_proof opts eqs nt =
     Hints.create_hint_db false baseid trs true
   in
   let progs = Array.make (List.length eqs) None in
+  let nt = List.map Metasyntax.prepare_where_notation nt in
   let hook ~pm i p info =
     let () = inline_helpers info in
     let f_cst = match info.term_id with GlobRef.ConstRef c -> c | _ -> assert false in
@@ -185,7 +186,7 @@ let define_by_eqs ~pm ~poly ~program_mode ~tactic ~open_proof opts eqs nt =
        let progs = Array.map_to_list (fun x -> Option.get x) progs in
        let relevant = List.for_all (fun (rel, x) -> rel == Sorts.Relevant) fixprots in
        let rec_info = compute_rec_type [] (List.map (fun (x, y) -> x.program_info) progs) in
-       List.iter (Metasyntax.add_notation_interpretation (Global.env ())) nt;
+       List.iter (Metasyntax.add_notation_interpretation ~local:false (Global.env ())) nt;
        if (flags.with_eqns || flags.with_ind) && relevant then
          define_principles ~pm flags rec_info fixprots progs
        else pm)
