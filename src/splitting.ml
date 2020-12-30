@@ -1176,7 +1176,7 @@ let simplify_evars evars t =
     | _ -> EConstr.map evars aux t
   in aux t
 
-let unfold_entry cst = Hints.HintsUnfoldEntry [EvalConstRef cst]
+let unfold_entry cst = Hints.HintsUnfoldEntry [Tacred.EvalConstRef cst]
 let add_hint local i cst =
   let locality = if local then Goptions.OptLocal else Goptions.OptGlobal in
   Hints.add_hints ~locality [Id.to_string i] (unfold_entry cst)

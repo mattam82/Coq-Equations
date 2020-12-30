@@ -409,7 +409,7 @@ let coq_ImpossibleCall evd = find_constant "impossiblecall.class" evd
 
 let unfold_add_pattern =
   lazy (Tactics.unfold_in_concl [(Locus.AllOccurrences,
-			     EvalConstRef (Globnames.destConstRef (Lazy.force coq_add_pattern)))])
+			     Tacred.EvalConstRef (Globnames.destConstRef (Lazy.force coq_add_pattern)))])
 
 let subterm_relation_base = "subterm_relation"
 
@@ -1022,7 +1022,7 @@ let evar_absorb_arguments = Evardefine.evar_absorb_arguments
 
 let hintdb_set_transparency cst b db =
   Hints.add_hints ~locality:Goptions.OptGlobal [db] 
-    (Hints.HintsTransparencyEntry (Hints.HintsReferences [EvalConstRef cst], b))
+    (Hints.HintsTransparencyEntry (Hints.HintsReferences [Tacred.EvalConstRef cst], b))
 
 (* Call the really unsafe is_global test, we use this on evar-open terms too *)
 let is_global sigma f ec = EConstr.isRefX sigma f ec
