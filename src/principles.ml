@@ -50,24 +50,23 @@ let pi3 (_,_,z) = z
 
 (** Objects to keep information about equations *)
 
-let cache_rew_rule (base, gr) =
-  Autorewrite.add_rew_rules base
+let cache_rew_rule (base, gr, l2r) =
+  Autorewrite.add_rew_rules
+    ~locality:Goptions.(if Global.sections_are_opened() then OptLocal else OptGlobal)
+    base
     [CAst.make (UnivGen.fresh_global_instance (Global.env()) gr, true, None)]
 
-let subst_rew_rule (subst, (base, gr)) =
-  let gr' = Globnames.subst_global_reference subst gr in
-  (base, gr')
-
-let inRewRules =
+let inRewRule =
   let open Libobject in
-  let obj =
-    (* We allow discharging rewrite rules *)
-    superglobal_object "EQUATIONS_REWRITE_RULE"
-      ~cache:(fun (na, obj) -> cache_rew_rule obj)
-      ~subst:(Some subst_rew_rule)
-      ~discharge:(fun (_, x) -> Some x)
-  in
-  declare_object @@ obj
+  (* Object just to provide discharge *)
+  declare_object
+    { (default_object "EQUATIONS_REWRITE_RULE") with
+      cache_function = (fun (_,obj) -> cache_rew_rule obj);
+      discharge_function = (fun (_,x) -> Some x);
+      classify_function = (fun _ -> Dispose)
+    }
+
+let add_rew_rule ~l2r ~base ref = Lib.add_anonymous_leaf (inRewRule (base,ref,l2r))
 
 let cache_opacity cst =
   Global.set_strategy (ConstKey cst) Conv_oracle.Opaque
@@ -1667,8 +1666,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     let proof (pm : Declare.OblState.t) (i, (r, unf, c, n)) =
       let ideq = Nameops.add_suffix id ("_equation_" ^ string_of_int i) in
       let hook { Declare.Hook.S.dref; _ } pm =
-        if n != None then
-          Lib.add_anonymous_leaf (inRewRules (info.base_id, dref))
+        if n != None then add_rew_rule ~l2r:true ~base:info.base_id dref
         else (Classes.declare_instance (Global.env()) !evd None true dref
               (* Hints.add_hints ~local:false [info.base_id]  *)
               (*                 (Hints.HintsExternEntry *)
