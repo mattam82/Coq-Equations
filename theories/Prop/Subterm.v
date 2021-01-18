@@ -59,7 +59,7 @@ Ltac unfold_FixWf :=
     let step := fresh in
     set(step := fun y (_ : R y x) => @FixWf A R WF P f y) in *;
      unshelve erewrite (@FixWf_unfold_step A R WF P f x _ step);
-     [red; intros; simp_sigmas; red_eq (* Extensionality proof *)
+     [red; intros; simp_sigmas; red_one_eq (* Extensionality proof *)
      |hidebody step; red_eq_lhs (* Unfold the functional *)
      |reflexivity]
   end.
