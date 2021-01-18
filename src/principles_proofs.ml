@@ -463,7 +463,9 @@ let aux_ind_fun info chop nested unfp unfids p =
         | App (ind, args) ->
           let before, last_arg = CArray.chop (Array.length args - 1) args in
           let f, fargs = destApp sigma last_arg.(0) in
-          let _, pos, elim = find_helper_arg info.term_info (EConstr.to_constr sigma f) fargs in
+          let _, pos, elim = 
+            find_helper_arg info.term_info (EConstr.to_constr sigma f) fargs 
+          in
           let id = Tacmach.New.pf_get_new_id id gl in
           let hyps = Id.Set.elements (hyps_after sigma (hyps gl) (pos + 1 - snd chop) before) in
           let occs = Some (List.map (fun h -> (Locus.AllOccurrences, h), Locus.InHyp) hyps) in
@@ -943,17 +945,22 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
             in ((f_cst, funf_cst) :: subst), fixtac, extgl
           | _ -> subst, of82 unfolds, false
         in
-        of82 (tclTHENLIST [observe "program before unfold" (to82 intros);
-                           observe "program fixpoint"
-                             (if extgl then
-                                (tclTHENFIRST (to82 fixtac)
-                                   (fun gl -> set_opaque ();
-                                     observe "extensionality proof"
-                                       (aux subst p.program_splitting p.program_splitting) gl))
-                              else to82 fixtac);
-                           (fun gl -> set_opaque ();
-                             (observe "program"
-                                (aux subst p.program_splitting unfp.program_splitting)) gl)]))
+        Tacticals.New.tclTHENLIST 
+          [observe_new "program before unfold"  intros;
+           if extgl then
+            (Tacticals.New.tclTHENFIRST 
+              (observe_new "program fixpoint" fixtac)
+              (Tacticals.New.tclORELSE 
+                (Tacticals.New.tclSOLVE
+                  [of82 (fun gl -> set_opaque ();
+                    observe "extensionality proof"
+                    (aux subst p.program_splitting p.program_splitting) gl)])
+                (Tacticals.New.tclFAIL 0 
+                  (Pp.str "Could not prove extensionality automatically"))))
+            else observe_new "program fixpoint" fixtac;
+            (of82 (fun gl -> set_opaque ();
+              (observe "program"
+                (aux subst p.program_splitting unfp.program_splitting)) gl))])
 
   and aux subst split unfold_split =
     match split, unfold_split with
@@ -1053,9 +1060,9 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
                        simpltac; solve_eq subst])
 
     | Compute (_, _, _, _), Compute ((ctx,_,_), _, _, REmpty (id, sp)) ->
-	let d = nth ctx (pred id) in
-	let id = Name.get_id (get_name d) in
-	to82 (abstract (depelim id))
+      let d = nth ctx (pred id) in
+      let id = Name.get_id (get_name d) in
+      to82 (abstract (depelim id))
 
     | _, _ -> assert false
   in
