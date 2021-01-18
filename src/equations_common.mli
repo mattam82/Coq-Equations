@@ -324,9 +324,12 @@ val rec_wf_tac :            Genredexpr.r_trm -> Genredexpr.r_trm ->
            Names.Id.t -> Genredexpr.r_trm ->
                          Tacexpr.r_dispatch Tacexpr.gen_tactic_expr
 
-(** Unfold the first occurrence of a Constant.t declared unfoldable in db
-  (with Hint Unfold) *)
-val autounfold_first :
+(** [autounfold_first db db' loc gl] 
+  Unfolds the two first occurrences in respectively t and t' of 
+  Constant.t's declared unfoldable in db and db'
+  (with Hint Unfold) if the goal is of the shape (@eq _ t t'), or fail. *)
+val autounfold_heads :
+  Hints.hint_db_name list ->
   Hints.hint_db_name list ->
   Locus.hyp_location option ->
   Goal.goal Evd.sigma -> Goal.goal list Evd.sigma

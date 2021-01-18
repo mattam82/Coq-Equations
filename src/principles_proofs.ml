@@ -888,10 +888,9 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
   let transparent tac gl = transp (); let res = tac gl in opacify (); res in
   let simpltac gl = opacified (to82 (simpl_equations_tac ())) gl in
   let my_simpl = opacified (to82 (simpl_in_concl)) in
-  let unfolds =
-    tclTHEN (autounfold_first [info.base_id] None)
-      (tclTHEN (autounfold_first [info.base_id ^ "_unfold"] None)
-         (to82 (Tactics.reduct_in_concl ~check:false ((Reductionops.clos_norm_flags CClosure.betazeta), DEFAULTcast))))
+  let unfolds base base' =
+    tclTHEN (autounfold_heads [base] [base'] None)
+    (to82 (Tactics.reduct_in_concl ~check:false ((Reductionops.clos_norm_flags CClosure.betazeta), DEFAULTcast)))
   in
   let solve_rec_eq subst gl =
     match kind (project gl) (pf_concl gl) with
@@ -957,41 +956,41 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
                 (Tacticals.New.tclSOLVE
                   [of82 (fun gl -> set_opaque ();
                     observe "extensionality proof"
-                    (aux subst p.program_splitting p.program_splitting) gl)])
+                    (aux subst info.base_id info.base_id p.program_splitting p.program_splitting) gl)])
                 (Tacticals.New.tclFAIL 0 
                   (Pp.str "Could not prove extensionality automatically"))))
             else observe_new "program fixpoint" fixtac;
             (of82 (fun gl -> set_opaque ();
               (observe "program"
-                (aux subst p.program_splitting unfp.program_splitting)) gl))])
+                (aux subst info.base_id (info.base_id ^ "_unfold") p.program_splitting unfp.program_splitting)) gl))])
 
-  and aux subst split unfold_split =
+  and aux subst base unfold_base split unfold_split =
     match split, unfold_split with
     | Split (_, _, _, splits), Split ((ctx,pats,_), var, _, unfsplits) ->
       observe "split"
         (fun gl ->
         if is_primitive (pf_env gl) (project gl) ctx (pred var) then
-          aux subst (Option.get (Array.hd splits)) (Option.get (Array.hd unfsplits)) gl
+          aux subst base unfold_base (Option.get (Array.hd splits)) (Option.get (Array.hd unfsplits)) gl
         else
           match kind (project gl) (pf_concl gl) with
           | App (eq, [| ty; x; y |]) ->
-             let sigma = project gl in
-             let f, pats' = decompose_app sigma y in
-             let c, unfolds =
-               let _, _, c, _ = destCase sigma f in
-               c, tclIDTAC
-             in
-             let id = destVar sigma (fst (decompose_app sigma c)) in
-	     let splits = List.map_filter (fun x -> x) (Array.to_list splits) in
-	     let unfsplits = List.map_filter (fun x -> x) (Array.to_list unfsplits) in
-	       to82 (abstract (of82 (tclTHEN_i (to82 (depelim id))
+            let sigma = project gl in
+            let f, pats' = decompose_app sigma y in
+            let c, unfolds =
+              let _, _, _, _, _, c, _ = destCase sigma f in
+              c, tclIDTAC
+            in
+            let id = destVar sigma (fst (decompose_app sigma c)) in
+            let splits = List.map_filter (fun x -> x) (Array.to_list splits) in
+            let unfsplits = List.map_filter (fun x -> x) (Array.to_list unfsplits) in
+	            to82 (abstract (of82 (tclTHEN_i (to82 (depelim id))
 				               (fun i -> let split = nth splits (pred i) in
-                                                      let unfsplit = nth unfsplits (pred i) in
-                                                      tclTHENLIST [unfolds; simpltac;
-                                                                   aux subst split unfsplit])))) gl
+                                 let unfsplit = nth unfsplits (pred i) in
+                                 tclTHENLIST [unfolds; simpltac;
+                                    aux subst base unfold_base split unfsplit])))) gl
 	  | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl)
 
-    | _, Mapping (lhs, s) -> aux subst split s
+    | _, Mapping (lhs, s) -> aux subst base unfold_base split s
        
     | Refined (_, _, s), Refined ((ctx, _, _), refinfo, unfs) ->
 	let id = pi1 refinfo.refined_obj in
@@ -1009,12 +1008,14 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
                [to82 (myreplace_by a1 a2 (of82 (tclTHENLIST [solve_eq subst])));
                 observe "refine after replace"
                   (to82 (letin_tac None (Name id) a2 None Locusops.allHypsAndConcl));
-                Proofview.V82.of_tactic (clear_body [id]); unfolds; aux subst s unfs] gl
-             else tclTHENLIST [unfolds; simpltac; reftac] gl
+                Proofview.V82.of_tactic (clear_body [id]); 
+                observe "unfoldings" (unfolds base unfold_base); 
+                aux subst base unfold_base s unfs] gl
+             else tclTHENLIST [unfolds base unfold_base; simpltac; reftac] gl
           | _ -> tclFAIL 0 (str"Unexpected unfolding lemma goal") gl
-	in
-        let reftac = observe "refined" reftac in
-	  to82 (abstract (of82 (tclTHENLIST [to82 intros; simpltac; reftac])))
+    	in
+      let reftac = observe "refined" reftac in
+	      to82 (abstract (of82 (tclTHENLIST [to82 intros; simpltac; reftac])))
 	    
     | Compute (_, wheres, _, RProgram _), Compute ((lctx, _, _), unfwheres, _, RProgram c) ->
       let open Tacticals.New in
@@ -1061,7 +1062,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
        in
        to82 (observe_new "compute"
          (tclTHENLIST [intros; wheretacs;
-                       observe_new "compute rhs" (tclTRY (of82 unfolds));
+                       observe_new "compute rhs" (tclTRY (of82 (unfolds base unfold_base)));
                        of82 simpltac; of82 (solve_eq subst)]))
 
     | Compute (_, _, _, _), Compute ((ctx,_,_), _, _, REmpty (id, sp)) ->

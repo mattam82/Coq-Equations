@@ -491,53 +491,62 @@ let lift_list l = List.map (Vars.lift 1) l
 (*     | _ -> pars *)
 (*   in aux init n c *)
 
-
-
 let unfold_head env sigma (ids, csts) c = 
   let rec aux c = 
     match kind sigma c with
     | Var id when Id.Set.mem id ids ->
-	(match Environ.named_body id env with
-	| Some b -> true, of_constr b
-	| None -> false, c)
+      (match Environ.named_body id env with
+      | Some b -> true, of_constr b
+      | None -> false, c)
     | Const (cst,u) when Cset.mem cst csts ->
-	true, of_constr (Environ.constant_value_in env (cst, EInstance.kind sigma u))
+	    true, of_constr (Environ.constant_value_in env (cst, EInstance.kind sigma u))
     | App (f, args) ->
-	(match aux f with
-	| true, f' -> true, Reductionops.whd_betaiota env Evd.empty (mkApp (f', args))
-	| false, _ -> 
-	    let done_, args' = 
-	      Array.fold_left_i (fun i (done_, acc) arg -> 
-		if done_ then done_, arg :: acc 
-		else match aux arg with
-		| true, arg' -> true, arg' :: acc
-		| false, arg' -> false, arg :: acc)
-		(false, []) args
-	    in 
-	      if done_ then true, mkApp (f, Array.of_list (List.rev args'))
-	      else false, c)
+      (match aux f with
+      | true, f' -> true, Reductionops.whd_betaiota env Evd.empty (mkApp (f', args))
+      | false, _ -> 
+          let done_, args' = 
+            Array.fold_left_i (fun i (done_, acc) arg -> 
+        if done_ then done_, arg :: acc 
+        else match aux arg with
+        | true, arg' -> true, arg' :: acc
+        | false, arg' -> false, arg :: acc)
+        (false, []) args
+          in 
+            if done_ then true, mkApp (f, Array.of_list (List.rev args'))
+            else false, c)
     | _ -> 
-	let done_ = ref false in
-	let c' = EConstr.map sigma (fun c -> 
-	  if !done_ then c else 
-	    let x, c' = aux c in
-	      done_ := x; c') c
-	in !done_, c'
+      let done_ = ref false in
+      let c' = EConstr.map sigma (fun c -> 
+        if !done_ then c else 
+          let x, c' = aux c in
+            done_ := x; c') c
+      in !done_, c'
   in aux c
 
 open CErrors
 
-let autounfold_first db cl gl =
+let unfold_head db gl t =
   let st =
     List.fold_left (fun (i,c) dbname -> 
       let db = try Hints.searchtable_map dbname 
-	with Not_found -> user_err ~hdr:"autounfold" (str "Unknown database " ++ str dbname)
+        with Not_found -> user_err ~hdr:"autounfold" (str "Unknown database " ++ str dbname)
       in
       let (ids, csts) = Hints.Hint_db.unfolds db in
         (Id.Set.union ids i, Cset.union csts c)) (Id.Set.empty, Cset.empty) db
   in
-  let did, c' = unfold_head (pf_env gl) (project gl) st
+  unfold_head (pf_env gl) (project gl) st t
+
+let autounfold_heads db db' cl gl =
+  let eq = 
     (match cl with Some (id, _) -> pf_get_hyp_typ gl id | None -> pf_concl gl) 
+  in
+  let did, c' = 
+    match kind (project gl) eq with
+    | App (f, [| ty ; x ; y |]) when EConstr.isRefX (project gl) (Lazy.force logic_eq_type) f ->
+      let did, x' = unfold_head db gl x in
+      let did', y' = unfold_head db' gl y in
+      did && did', EConstr.mkApp (f, [| ty ; x' ; y' |])
+    | _ -> false, eq
   in
     if did then
       match cl with
