@@ -53,9 +53,9 @@ let define_unfolding_eq ~pm env evd flags p unfp prog prog' ei hook =
           with Not_found -> anomaly Pp.(str "Could not find where clause unfolding lemma "
                                         ++ Names.Id.print id)
         in
-        let grc = UnivGen.fresh_global_instance (Global.env()) (GlobRef.ConstRef gr) in
-        Autorewrite.add_rew_rules (info.base_id ^ "_where") [CAst.make (grc, true, None)];
-        Autorewrite.add_rew_rules (info.base_id ^ "_where_rev") [CAst.make (grc, false, None)]
+        let gr = GlobRef.ConstRef gr in
+        Principles.add_rew_rule ~l2r:true ~base:(info.base_id ^ "_where") gr;
+        Principles.add_rew_rule ~l2r:false ~base:(info.base_id ^ "_where_rev") gr
       in
       PathMap.iter decl ei.Principles_proofs.equations_where_map
     in
