@@ -112,7 +112,7 @@ let derive_noConfusion_package ~pm env sigma0 ~poly (ind,u as indu) indid ~prefi
 let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
   let mindb, oneind = Global.lookup_inductive ind in
   let pi = (fst indu, EConstr.EInstance.kind sigma0 (snd indu)) in
-  let _, inds = destArity sigma0 (EConstr.of_constr (Inductiveops.type_of_inductive env pi)) in
+  let _, inds = Reduction.dest_arity env (Inductiveops.type_of_inductive env pi) in
   let ctx = subst_instance_context (snd pi) oneind.mind_arity_ctxt in
   let ctx = List.map of_rel_decl ctx in
   let ctx = smash_rel_context sigma0 ctx in
@@ -135,9 +135,8 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
   let sigma, s =
     match Lazy.force logic_sort with
     | Sorts.InType | Sorts.InSet -> (* In that case noConfusion lives at the level of the inductive family *)
-      let csort = EConstr.ESorts.kind sigma inds in
-      let sort = EConstr.mkSort csort in
-      let usort = Sorts.univ_of_sort csort in
+      let sort = EConstr.mkSort inds in
+      let usort = Sorts.univ_of_sort inds in
       if Univ.Universe.is_level usort then sigma, sort
       else
         Evarsolve.refresh_universes ~status:Evd.univ_flexible ~onlyalg:true
