@@ -856,7 +856,7 @@ let observe s tac =
                             | Pretype_errors.PretypeError (env, sigma, e) ->
                                (str " Pretype error: " ++ Himsg.explain_pretype_error env sigma e)
                             | _ -> CErrors.iprint iexn));
-                   Proofview.tclUNIT ())) gls
+                   Proofview.tclZERO ~info:(snd iexn) (fst iexn))) gls
 
 let observe_new s (tac : unit Proofview.tactic) =
   let open Proofview.Notations in
@@ -888,7 +888,7 @@ let observe_new s (tac : unit Proofview.tactic) =
                             | Pretype_errors.PretypeError (env, sigma, e) ->
                                (str " Pretype error: " ++ Himsg.explain_pretype_error env sigma e)
                             | _ -> CErrors.iprint iexn));
-                   Proofview.tclUNIT ())))
+                Proofview.tclZERO ~info:(snd iexn) (fst iexn))))
 
 (** Compat definitions *)
 
