@@ -37,7 +37,7 @@ let derive_subterm env sigma ~poly (ind, u as indu) =
   let ctx = subst_instance_context (EInstance.kind sigma u) oneind.mind_arity_ctxt in
   let indsort = 
     let indty = Inductive.type_of_inductive (ms, EInstance.kind sigma u) in
-    (snd (Term.destArity indty))
+    (snd (Reduction.dest_arity env indty))
   in
   if Sorts.is_prop indsort || Sorts.is_sprop indsort then
     user_err_loc (None, "derive_subterm", Pp.str("Cannot define a well-founded subterm relation on a propositional inductive type."));

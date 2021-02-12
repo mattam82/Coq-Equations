@@ -276,8 +276,9 @@ let compute_sort_family l =
   let env = Global.env () in
   let evd = Evd.from_env env in
   let evd, c = Evarutil.new_global evd (Lazy.force l) in
-  let _, s = EConstr.destArity evd (Retyping.get_type_of env evd c) in
-  Sorts.family (EConstr.ESorts.kind evd s)
+  let _, s = Reduction.dest_arity env
+    (EConstr.to_constr ~abort_on_undefined_evars:false evd (Retyping.get_type_of env evd c)) in
+  Sorts.family s
 
 let logic_eq_type = (find_global "equality.type")
 let logic_eq_refl = (find_global "equality.refl")

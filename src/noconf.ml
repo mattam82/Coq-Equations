@@ -61,7 +61,7 @@ let derive_no_confusion env sigma0 ~poly (ind,u as indu) =
   let evd = ref sigma0 in
   let mindb, oneind = Global.lookup_inductive ind in
   let pi = (fst indu, EConstr.EInstance.kind !evd (snd indu)) in
-  let _, inds = destArity !evd (EConstr.of_constr (Inductiveops.type_of_inductive env pi)) in
+  let _, inds = Reduction.dest_arity env (Inductiveops.type_of_inductive env pi) in
   let ctx = subst_instance_context (EInstance.kind !evd u) oneind.mind_arity_ctxt in
   let ctx = List.map of_rel_decl ctx in
   let ctx = smash_rel_context !evd ctx in
@@ -98,7 +98,7 @@ let derive_no_confusion env sigma0 ~poly (ind,u as indu) =
     | Sorts.InSet -> mkSet
     | Sorts.InType ->
       (* In that case the noConfusion principle lives at the level of the type. *)
-      let sort = EConstr.mkSort (EConstr.ESorts.kind !evd inds) in
+      let sort = EConstr.mkSort inds in
       let sigma, s =
         Evarsolve.refresh_universes ~status:Evd.univ_flexible ~onlyalg:true
           (Some false) env !evd sort
@@ -116,7 +116,7 @@ let derive_no_confusion env sigma0 ~poly (ind,u as indu) =
     let elim =
       (* In pars ; x |- fun args (x : ind pars args) => forall y, Prop *)
       let app = pack_ind_with_parlift (args + 2) in
-	it_mkLambda_or_LetIn 
+	      it_mkLambda_or_LetIn 
           (mkProd_or_LetIn (of_tuple (anonR, None, app)) s)
           (of_tuple (nameR xid, None, ind_with_parlift (lenindices + 1)) ::
              lift_rel_context 1 argsctx)
@@ -126,7 +126,7 @@ let derive_no_confusion env sigma0 ~poly (ind,u as indu) =
         let env' = push_rel_context (of_tuple ydecl :: args) env in
         let argsctx = lift_rel_context (List.length args + 2) argsctx in
         let elimdecl = (nameR yid, None, ind_with_parlift (List.length args + lenindices + 2)) in
-	  mkLambda_or_LetIn (of_tuple ydecl)
+	        mkLambda_or_LetIn (of_tuple ydecl)
             (mkcase env' !evd x
 	        (it_mkLambda_or_LetIn s (of_tuple elimdecl :: argsctx))
 	        (fun _ i' id' nparams args' arity' ->
