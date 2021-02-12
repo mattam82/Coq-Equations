@@ -761,7 +761,8 @@ let ind_fun_tac is_rec f info fid nestedinfo progs =
                         specialize_mutfix_tac () <*>
                         tclDISPATCH (List.map (fun split ->
                             of82 (aux_ind_fun info (0, 1) nestedinfo None []
-                                    { p with program_splitting = split })) s)))])
+                                    { p with program_rec = None;
+                                        program_splitting = split })) s)))])
          | None -> tclZERO NotGuarded)
        | _ -> tclZERO NotGuarded
      in
