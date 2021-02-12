@@ -57,12 +57,14 @@ issues/issue172.v
 issues/issue190.v
 issues/issue191.v
 issues/issue193.v
+issues/issue228.v
 issues/issue246.v
 issues/issue249.v
 issues/issue258.v
 issues/issue286.v
 issues/issue297.v
 issues/issue306.v
+issues/issue338.v
 eqdec_error.v
 noconf_simplify.v
 le.v

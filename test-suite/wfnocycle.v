@@ -5,7 +5,7 @@ Require Import Relation_Operators.
 Arguments clos_trans [A].
 Import Sigma_Notations.
 Set Equations Transparent.
-Import Inaccessible_Notations.
+
 Require Import fin.
 
 Equations lift_fin {n} (k : nat) (f : fin n) : fin (S n) :=
