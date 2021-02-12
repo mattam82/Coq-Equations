@@ -22,4 +22,4 @@ Require Import Equations.Prop.NoConfusion Equations.Prop.Subterm.
 Require Export Equations.Prop.Tactics.
 Require Export Equations.Prop.FunctionalInduction. (* funelim tactic *)
 
-Export Inaccessible_Notations.
+Export EquationsNotations.
