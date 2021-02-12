@@ -71,6 +71,24 @@ let simp_eqns_in clause l =
 let autorewrites b = 
   tclREPEAT (Proofview.V82.of_tactic (Autorewrite.autorewrite Tacticals.New.tclIDTAC [b]))
 
+exception RewriteSucceeded of EConstr.t
+
+let rewrite_try_change tac = 
+  Proofview.Goal.enter (fun gl ->
+    let concl = Proofview.Goal.concl gl in
+    Proofview.tclORELSE 
+      (Proofview.tclTHEN tac 
+      (Proofview.Goal.enter (fun gl ->
+          let env = Proofview.Goal.env gl in
+          let sigma = Proofview.Goal.sigma gl in
+          let concl' = Proofview.Goal.concl gl in
+          match Reductionops.infer_conv ~pb:Reduction.CONV env sigma concl concl' with
+          | Some _ -> Proofview.tclZERO (RewriteSucceeded concl')
+          | None -> Proofview.tclUNIT ())))
+    (function
+      | (RewriteSucceeded concl', _) -> convert_concl ~check:false concl' REVERTcast
+      | (exn, info) -> Proofview.tclZERO ~info exn))
+
 let autorewrite_one b =
   let rew_rules = Autorewrite.find_rewrites b in
   let rec aux rules =
@@ -86,10 +104,11 @@ let autorewrite_one b =
        Proofview.tclOR
          (if !debug then
             (Proofview.Goal.enter
-               begin fun gl -> let concl = Proofview.Goal.concl gl in
-                                 Feedback.msg_debug (str"Trying " ++ pr_global global ++ str " on " ++
-                                                       Printer.pr_econstr_env (Proofview.Goal.env gl) (Proofview.Goal.sigma gl) concl);
-                                 tac end)
+               begin fun gl -> 
+                let concl = Proofview.Goal.concl gl in
+                Feedback.msg_debug (str"Trying " ++ pr_global global ++ str " on " ++
+                Printer.pr_econstr_env (Proofview.Goal.env gl) (Proofview.Goal.sigma gl) concl);
+                rewrite_try_change tac end)
           else tac)
          (fun e -> if !debug then Feedback.msg_debug (str"failed"); aux rules)
   in Proofview.V82.of_tactic (aux rew_rules)
