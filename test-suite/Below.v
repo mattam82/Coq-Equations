@@ -85,7 +85,8 @@ Arguments nil {A}.
 Arguments cons {A} _ {n}.
 
 Open Scope equations_scope.
-Import Inaccessible_Notations.
+
+Import EquationsNotations.
 
 Equations Below_vector A (P : forall n, vector A n -> Type) n (v : vector A n) : Type
   by struct v :=

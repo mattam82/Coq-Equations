@@ -64,6 +64,7 @@ issues/issue258.v
 issues/issue286.v
 issues/issue297.v
 issues/issue306.v
+issues/issue338.v
 eqdec_error.v
 noconf_simplify.v
 le.v
