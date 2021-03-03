@@ -596,9 +596,20 @@ Ltac do_depelim_nosimpl tac H := do_intros H ; generalize_by_eqs H ; tac H.
 
 Ltac do_depelim tac H := do_depelim_nosimpl tac H ; simpl_dep_elim; unblock_goal.
 
+Ltac do_depelim_nointro tac H :=
+  do_intros H;
+  with_scoped_ctx ltac:(generalize_by_eqs H ; tac H ; simpl_dep_elim) ;
+  unblock_goal.
+
 Ltac do_depind tac H := 
   (try intros until H) ; intro_block H ; (try simpl in H ; simplify_equations_in H) ;
   generalize_by_eqs_vars H ; tac H ; simpl_dep_elim; unblock_goal.
+
+Ltac do_depind_nointro tac H :=
+  (try intros until H) ; intro_block H ; (try simpl in H ; simplify_equations_in H) ;
+  generalize_by_eqs_vars H ;
+  with_scoped_ctx ltac:(tac H ; simpl_dep_elim);
+  unblock_goal.
 
 (** To dependent elimination on some hyp. *)
 
@@ -612,9 +623,17 @@ Ltac depelim_term c :=
 
 Ltac depelim_nosimpl id := do_depelim_nosimpl ltac:(fun hyp => do_case hyp) id.
 
+(** To dependent elimination on some hyp leaving hypothesis on goal. *)
+
+Ltac depcase id := do_depelim_nointro ltac:(fun hyp => do_case hyp) id.
+
 (** To dependent induction on some hyp. *)
 
 Ltac depind id := do_depind ltac:(fun hyp => do_ind hyp) id.
+
+(** To dependent induction on some hyp leaving hypothesis on goal. *)
+
+Ltac dep_elim id := do_depelim_nointro ltac:(fun hyp => do_ind hyp) id.
 
 (** A variant where generalized variables should be given by the user. *)
 

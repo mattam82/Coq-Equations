@@ -108,6 +108,18 @@ Ltac clear_local :=
     | _ => idtac
   end.
 
+(** Provide a local zone in the context that is reverted
+    into the goal upon ternmination *)
+
+Inductive scope_delimiter := MkScopeMark.
+
+Ltac with_scoped_ctx tac :=
+  let stop := fresh "__stop" in
+  pose proof (stop := MkScopeMark) ;
+  tac ;
+  revert_until stop ;
+  clear stop.
+
 (** The [do] tactic but using a Coq-side nat. *)
 
 Ltac do_nat n tac :=

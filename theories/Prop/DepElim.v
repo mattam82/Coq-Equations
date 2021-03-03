@@ -48,6 +48,7 @@ Ltac elim_tac tac p :=
 
 Ltac elim_case p := elim_tac ltac:(fun p el => destruct p using el) p.
 Ltac elim_ind p := elim_tac ltac:(fun p el => induction p using el) p.
+Ltac elim_elim p := elim_tac ltac:(fun p el => elim p using el) p.
 
 (** Lemmas used by the simplifier, mainly rephrasings of [eq_rect], [eq_ind]. *)
 
@@ -520,6 +521,7 @@ Ltac introduce p := first [
 
 Ltac do_case p := introduce p ; (elim_case p || destruct p || (case p ; clear p)).
 Ltac do_ind p := introduce p ; (elim_ind p || induction p).
+Ltac do_elim p := introduce p ; (elim_elim p || elim p).
 
 (** The following tactics allow to do induction on an already instantiated inductive predicate
    by first generalizing it and adding the proper equalities to the context, in a maner similar to
@@ -570,18 +572,33 @@ Ltac do_intros H :=
 Ltac do_depelim_nosimpl tac H := do_intros H ; generalize_by_eqs H ; tac H.
 
 Ltac do_depelim tac H := do_depelim_nosimpl tac H ; simpl_dep_elim; unblock_goal.
+Ltac do_depelim_nointro tac H :=
+  do_intros H;
+  with_scoped_ctx ltac:(generalize_by_eqs H ; tac H ; simpl_dep_elim) ;
+  unblock_goal.
 
-Ltac do_depind tac H := 
+Ltac do_depind_maybe_intro should_intro tac H :=
   (try intros until H) ; intro_block H ; (try simpl in H ; simplify_equations_in H) ;
-  generalize_by_eqs_vars H ; 
+  generalize_by_eqs_vars H ;
   block_goal ;
-  tac H ; 
-  intros_until_block; 
-  simpl_dep_elim; unblock_goal.
+  let t := ltac:(tac H ; intros_until_block ; simpl_dep_elim) in
+  match should_intro with
+  | true => t
+  | _ => with_scoped_ctx t
+  end;
+  unblock_goal.
+
+Ltac do_depind tac H :=
+  do_depind_maybe_intro true tac H.
 
 (** To dependent elimination on some hyp. *)
 
 Ltac depelim id := do_depelim ltac:(fun hyp => do_case hyp) id.
+
+(** To dependent elimination on some hyp. *)
+
+Ltac depcase id := do_depelim_nointro ltac:(fun hyp => do_case hyp) id.
+
 
 Ltac depelim_term c :=
   let H := fresh "term" in
@@ -594,6 +611,10 @@ Ltac depelim_nosimpl id := do_depelim_nosimpl ltac:(fun hyp => do_case hyp) id.
 (** To dependent induction on some hyp. *)
 
 Ltac depind id := do_depind ltac:(fun hyp => do_ind hyp) id.
+
+(** To dependent induction on some hyp. *)
+
+Ltac dep_elim id := do_depind_maybe_intro false ltac:(fun hyp => do_ind hyp) id.
 
 (** A variant where generalized variables should be given by the user. *)
 
