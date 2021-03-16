@@ -336,19 +336,19 @@ let subst_comp_proj sigma f proj c =
 let subst_comp_proj_split sigma f proj s =
   map_split (subst_comp_proj sigma f proj) s
 
-let is_ind_assum sigma ind b =
+let is_ind_assum env sigma ind b =
   let _, concl = decompose_prod_assum sigma b in
   let t, _ = decompose_app sigma concl in
   if isInd sigma t then
     let (ind', _), _ = destInd sigma t in
-    MutInd.equal ind' ind
+    Environ.QMutInd.equal env ind' ind
   else false
 
-let clear_ind_assums sigma ind ctx =
+let clear_ind_assums env sigma ind ctx =
   let rec clear_assums c =
     match kind sigma c with
     | Constr.Prod (na, b, c) ->
-       if is_ind_assum sigma ind b then
+       if is_ind_assum env sigma ind b then
          (assert(not (Termops.dependent sigma (mkRel 1) c));
           clear_assums (Vars.subst1 mkProp c))
        else mkProd (na, b, clear_assums c)
@@ -394,7 +394,7 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
         | _, [] -> arity
       in aux arity ind_stmts
   in
-  let newctx' = clear_ind_assums !evd k newctx in
+  let newctx' = clear_ind_assums env !evd k newctx in
   if leninds == 1 then List.length newctx', it_mkProd_or_LetIn newarity newctx' else
   let sort = fresh_sort_in_family evd Sorts.InType in
   let methods, preds = CList.chop (List.length newctx - leninds) newctx' in
@@ -1681,7 +1681,7 @@ let build_equations with_ind env evd ?(alias:alias option) rec_info progs =
            unf;
            (solve_equation_tac (GlobRef.ConstRef cst));
            (if PathMap.is_empty wheremap then Tacticals.New.tclIDTAC
-            else tclTRY (of82 (autorewrites (info.base_id ^ "_where"))));
+            else tclTRY (autorewrites (info.base_id ^ "_where")));
            Tactics.reflexivity]
       in
       let () =
