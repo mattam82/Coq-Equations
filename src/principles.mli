@@ -165,5 +165,3 @@ val computations :            Environ.env ->
             list as 'c)
 
 val make_alias : (EConstr.t * Names.Id.t * Splitting.splitting) -> alias
-
-val add_rew_rule : l2r:bool -> base:string -> Names.GlobRef.t -> unit
