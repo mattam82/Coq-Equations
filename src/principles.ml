@@ -702,10 +702,12 @@ let declare_wf_obligations s info =
     (Hints.empty_hint_info, is_polymorphic info, true,
      Hints.PathAny, subst_protos s gr)
   in
+  let dbname = Principles_proofs.wf_obligations_base info in
+  Hints.create_hint_db false dbname TransparentState.full false;
   List.iter (fun obl ->
       let hint = make_resolve (GlobRef.ConstRef obl) in
       try Hints.add_hints ~local:false
-            [Principles_proofs.wf_obligations_base info]
+            [dbname]
             (Hints.HintsResolveEntry [hint])
       with CErrors.UserError (s, msg) (* Cannot be used as a hint *) ->
         Feedback.msg_warning msg)
