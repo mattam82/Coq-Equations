@@ -107,11 +107,9 @@ END
 
 TACTIC EXTEND simp
 | [ "simp" ne_preident_list(l) clause(c) ] -> 
-    { of82 (Principles_proofs.simp_eqns_in c l) }
+  { Principles_proofs.simp_eqns_in c l }
 | [ "simpc" constr_list(l) clause(c) ] -> 
-   { of82 (Principles_proofs.simp_eqns_in
-                        c
-                        (dbs_of_constrs (List.map EConstr.Unsafe.to_constr l))) }
+   { Principles_proofs.simp_eqns_in c (dbs_of_constrs (List.map EConstr.Unsafe.to_constr l)) }
 END
 
 {
