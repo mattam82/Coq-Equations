@@ -84,7 +84,6 @@ Proof.
   f_equal. apply Acc_pi.
 Qed.
 
-#[global]
 Hint Rewrite @FixWf_unfold_ext : Recursors.
 
 Lemma FixWf_unfold_ext_step :
@@ -95,7 +94,6 @@ Lemma FixWf_unfold_ext_step :
     FixWf P step x = step x step'.
 Proof. intros. rewrite FixWf_unfold_ext, H. reflexivity. Qed.
 
-#[global]
 Hint Rewrite @FixWf_unfold_ext_step : Recursors.
 
 Ltac unfold_FixWf_ext :=

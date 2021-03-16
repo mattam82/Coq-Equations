@@ -264,8 +264,8 @@ Proof.
   intros l'. simp rev_acc; trivial. rewrite H.
   rewrite app_assoc. reflexivity.
 Qed.
-#[local] Hint Rewrite @rev_rev_acc : rev_acc.
-#[local] Hint Rewrite @app_nil @app_assoc : app.
+Hint Rewrite @rev_rev_acc : rev_acc.
+Hint Rewrite @app_nil @app_assoc : app.
 
 Lemma rev_app : forall {A} (l l' : list A), rev (l ++ l') = rev l' ++ rev l.
 Proof. intros. funelim (l ++ l'); simp rev app; trivial.
@@ -486,7 +486,7 @@ Proof. revert B fn. funelim (nth v f); intros; now simp nth vmap. Qed.
 Lemma nth_vtail `(v : vector A (S n)) (f : fin n) : nth (vtail v) f = nth v (fs f).
 Proof. funelim (vtail v); intros; now simp nth. Qed.
 
-#[local] Hint Rewrite @nth_vmap @nth_vtail : nth.
+Hint Rewrite @nth_vmap @nth_vtail : nth.
   
 Lemma diag_nth `(v : vector (vector A n) n) (f : fin n) : nth (diag v) f = nth (nth v f) f.
 Proof. revert f. funelim (diag v); intros f.

@@ -24,7 +24,7 @@ Equations invFULemma {n : nat} (x : Fin.t n) :
 Equations invFLLemma (n : nat) : invertFin (FL n) = F1 :=
   invFLLemma 0     := eq_refl;
   invFLLemma (S n) := (f_equal _ (invFLLemma n)).
-#[local] Hint Rewrite @invFULemma invFLLemma : invertFin.
+Hint Rewrite @invFULemma invFLLemma : invertFin.
 
 Lemma invertFinInv' {n : nat} (x : Fin.t n) :
                        invertFin (invertFin x) = x.

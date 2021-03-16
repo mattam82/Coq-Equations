@@ -94,7 +94,7 @@ Below_vector A P ?(0) [] := unit ;
 Below_vector A P _ (a :: v) :=
   ((P _ v) * Below_vector A P _ v)%type.
 
-#[local] Hint Rewrite Below_vector_equation_2 : Below.
+Hint Rewrite Below_vector_equation_2 : Below.
 
 Ltac rec_fast v recname := intro_block v ; move v at top ;
   generalize_by_eqs_vars v ; (intros until v || revert_until v) ;

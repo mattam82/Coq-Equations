@@ -36,7 +36,7 @@ Lemma gcd_spec0 a : gcd a 0 = a.
 Proof.
   funelim (gcd a 0); reflexivity.
 Qed.
-#[local] Hint Rewrite gcd_spec0 : gcd.
+Hint Rewrite gcd_spec0 : gcd.
 
 Lemma mod_minus a b : b <> 0 -> b < a -> (a - b) mod b = a mod b.
 Proof.

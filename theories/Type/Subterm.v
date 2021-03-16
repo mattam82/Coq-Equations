@@ -78,7 +78,6 @@ Proof.
   apply funext; intros h. apply ap. apply Acc_prop.
 Qed.
 
-#[global]
 Hint Rewrite @FixWf_unfold_ext : Recursors.
 
 Lemma FixWf_unfold_ext_step :
@@ -89,7 +88,6 @@ Lemma FixWf_unfold_ext_step :
     FixWf P step x = step x step'.
 Proof. intros * eq. rewrite FixWf_unfold_ext. destruct eq. reflexivity. Qed.
 
-#[global]
 Hint Rewrite @FixWf_unfold_ext_step : Recursors.
 
 Ltac unfold_FixWf_ext :=

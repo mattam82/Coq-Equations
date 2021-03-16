@@ -145,7 +145,7 @@ Lemma convert_ilist_trans : forall {A : Set} {n m o : nat} (p : n = m) (r : m = 
   convert_ilist r (convert_ilist p l) = convert_ilist (eq_trans p r) l.
 Proof. intros. simplify_eqs. now rewrite !convert_ilist_refl. Qed.
 
-#[export] Hint Rewrite @convert_ilist_refl @convert_ilist_trans : convert_ilist.
+Hint Rewrite @convert_ilist_refl @convert_ilist_trans : convert_ilist.
 Import PeanoNat.Nat.
 
 Equations irev_aux {A : Set} {i j : nat} (l : ilist A i) (acc : ilist A j) : ilist A (i + j) :=

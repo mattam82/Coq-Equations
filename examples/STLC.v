@@ -102,7 +102,7 @@ Lemma lift0 k t : lift k 0 t = t.
 Proof.
   funelim (lift k 0 t); term || rewrite ?H; crush.
 Qed.
-#[local] Hint Rewrite lift0 : lift.
+Hint Rewrite lift0 : lift.
 Require Import Lia.
 
 Lemma lift_k_lift_k k n m t : lift k n (lift k m t) = lift k (n + m) t.
@@ -117,7 +117,7 @@ Proof.
   rewrite Heq. rewrite Nat.compare_gt_iff in Heq. simp lift.
   destruct (Nat.compare_spec (n0 + n) k); try discriminate; simp lift; term.
 Qed.
-#[local] Hint Rewrite lift_k_lift_k : lift.
+Hint Rewrite lift_k_lift_k : lift.
 
 Equations subst (k : nat) (t : term) (u : term) : term :=
 subst k (Var i) u with Nat.compare i k := {
@@ -136,7 +136,7 @@ Proof. funelim (subst n n t) ; try rewrite H ; try rewrite H0; simp lift; auto.
   rewrite Nat.compare_lt_iff in Heq; absurd lia.
   rewrite Nat.compare_gt_iff in Heq; absurd lia.
 Qed.
-#[local] Hint Rewrite substnn : subst.
+Hint Rewrite substnn : subst.
 Notation ctx := (list type).
 
 Reserved Notation " Γ |-- t : A " (at level 70, t, A at next level).
@@ -213,7 +213,7 @@ Proof.
   clear H0. rewrite !nth_app_r by lia. f_equal. lia.
 Qed.
   
-#[local] Hint Rewrite <- app_assoc in_app_iff in_inv : list.
+Hint Rewrite <- app_assoc in_app_iff in_inv : list.
 
 Lemma type_lift Γ t T Γ' : Γ' @ Γ |-- t : T -> 
   forall Γ'', Γ' @ Γ'' @ Γ |-- lift (length Γ') (length Γ'') t : T.

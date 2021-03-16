@@ -258,7 +258,7 @@ Equations concat_p_pp {A : Type} {x y z t : A} (p : x = y) (q : y = z) (r : z = 
   p @ (q @ r) = (p @ q) @ r :=
 concat_p_pp 1 _ _ := 1.
 
-#[export] Hint Rewrite @concat_p1 @concat_Vp @concat_pV : concat.
+Hint Rewrite @concat_p1 @concat_Vp @concat_pV : concat.
 
 Instance Id_equiv A : Equivalence (@Id A) := {}.
 
@@ -336,8 +336,8 @@ Equations ap_V {A B : Type} (f : A -> B) {x y : A} (p : x = y) :
   ap f (id_sym p) = id_sym (ap f p) :=
 ap_V f 1 => 1.
 
-#[export] Hint Rewrite @ap_pp @ap_V : ap.
-#[export] Hint Rewrite @concat_pp_V : concat.
+Hint Rewrite @ap_pp @ap_V : ap.
+Hint Rewrite @concat_pp_V : concat.
 
 Equations concat_pA1 {A : Type} {f : A -> A} (p : forall x, x = f x) {x y : A} (q : x = y) :
   (p x) @ (ap f q) = q @ (p y) :=
@@ -350,7 +350,7 @@ concat_p_Vp 1 1 := 1.
 Equations concat_pV_p {A : Type} {x y z : A} (p : x = z) (q : y = z) :
   (p @ id_sym q) @ q = p :=
 concat_pV_p 1 1 := 1.
-#[export] Hint Rewrite @concat_pA1 @concat_p_Vp @concat_pV_p : concat.
+Hint Rewrite @concat_pA1 @concat_p_Vp @concat_pV_p : concat.
 Definition concat_pA1_p {A : Type} {f : A -> A} (p : forall x, f x = x)
   {x y : A} (q : x = y)
   {w : A} (r : w = f x)

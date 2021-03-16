@@ -68,7 +68,7 @@ Lemma scope_le_app_len n m (q : scope_le n m) : scope_le_app scope_le_n q = q.
 Proof.
   depind q; simp scope_le_app; trivial. now rewrite IHq.
 Qed.
-#[local] Hint Rewrite scope_le_app_len : scope_le_app.
+Hint Rewrite scope_le_app_len : scope_le_app.
 
 Inductive type : scope -> Type :=
 | tvar : forall {n}, var n -> type n
@@ -92,7 +92,7 @@ env_app Γ (cons t Δ) := cons t (env_app Γ Δ).
 
 Lemma cons_app : forall {a b c} (Γ : env a b) (Δ : env b c) t, cons t (env_app Γ Δ) = env_app Γ (cons t Δ).
 Proof. intros. autorewrite with env_app. reflexivity. Qed.
-#[local] Hint Rewrite @cons_app.
+Hint Rewrite @cons_app.
 
 Equations map_var {n m} (f : var n -> var m) (t : var (S n)) : var (S m) :=
 map_var f FO     := FO;
@@ -126,7 +126,7 @@ Proof with autorewrite with lift_var_by map_var scope_le_app in *; auto.
     rewrite (map_var_b (lift_var_by (scope_le_app q p)) (fun t => lift_var_by p (lift_var_by q t))); eauto.
     rewrite <- map_var_a; auto.
 Qed.
-#[local] Hint Rewrite @lift_var_by_app : lift_var_by.
+Hint Rewrite @lift_var_by_app : lift_var_by.
 
 Lemma lift_type_by_id : forall {n} (t : type n) P, (forall x, lift_var_by P x = x) -> lift_type_by P t = t.
 Proof.
@@ -136,7 +136,7 @@ Qed.
 
 Lemma lift_type_by_n : forall {n} (t : type n), lift_type_by scope_le_n t = t.
 Proof. intros; eapply lift_type_by_id; intros; autorewrite with lift_var_by; auto. Qed.
-#[local] Hint Rewrite @lift_type_by_n : lift_type_by.
+Hint Rewrite @lift_type_by_n : lift_type_by.
 
 Lemma lift_type_by_app : forall {a} t {b c} (p : scope_le b c) (q : scope_le a b),
                            lift_type_by p (lift_type_by q t) = lift_type_by (scope_le_app q p) t.
@@ -145,7 +145,7 @@ Proof.
   repeat (autorewrite with scope_le_app lift_var_by lift_type_by;
           rewrite ?IHt1, ?IHt2; auto).
 Qed.
-#[local] Hint Rewrite @lift_type_by_app : lift_type_by.
+Hint Rewrite @lift_type_by_app : lift_type_by.
 
 Equations lookup {n} (Γ : env O n) (x : var n) : type n :=
 lookup (n:=(S _)) (cons a Γ) FO     := lift_type_by (scope_le_S scope_le_n) a;
@@ -159,7 +159,7 @@ Proof with autorewrite with lookup scope_le_app env_app lift_var_by lift_type_by
   intros n Γ m Δ; induction Δ; intros x; simpl...
   rewrite IHΔ... 
 Qed.
-#[local] Hint Rewrite @lookup_app : lookup.
+Hint Rewrite @lookup_app : lookup.
 
 Inductive sa : forall {n}, env O n -> type n -> type n -> Prop :=
 | sa_top : forall {n} (Γ : env O n) s, sa Γ s ttop

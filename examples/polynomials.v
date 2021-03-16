@@ -41,7 +41,7 @@ Proof.
   destruct b. destruct p, q. reflexivity.
   destruct p.
 Defined.
-#[local] Hint Resolve Is_true_irrel : core.
+Hint Resolve Is_true_irrel : core.
 Check Zpos.
 Check Zneg.
 Check positive.
@@ -374,7 +374,7 @@ Proof with (simp plus eval; auto with zarith).
     rewrite poly_z_eval in Hind. nia.
   - rewrite Heq in Hind. rewrite <- Hind. nia.
 Qed.
-#[local] Hint Rewrite <- @plus_eval : eval.
+Hint Rewrite <- @plus_eval : eval.
 
 (** We skip the rest of the operations definition, [poly_mult], [poly_neg] and
     [poly_substract]. *)
@@ -393,7 +393,7 @@ Proof.
   depind p1; depelim v; XX. destruct z; depelim i; XX.
   rewrite <- IHp1_1; rewrite <- IHp1_2; nia.
 Qed.
-#[local] Hint Rewrite <- @neg_eval : eval.
+Hint Rewrite <- @neg_eval : eval.
 
 (** Equality can be decided using the difference of polynoms *)
 Lemma poly_diff_z_eq : forall {n} {b1} (p1 : poly b1 n) {b2} (p2 : poly b2 n),
@@ -467,7 +467,7 @@ Proof.
   intros.
   funelim (poly_l_or_s p1 p2); simp eval; trivial. rewrite poly_z_eval. nia.
 Qed.
-#[local] Hint Rewrite @poly_l_or_s_eval : eval.
+Hint Rewrite @poly_l_or_s_eval : eval.
 
 (* [mult (poly_l p) q = mult_l q (mult p)] *)
 
@@ -530,7 +530,7 @@ Proof with (autorewrite with mult mult_l mult_s eval; auto with zarith).
       rewrite <- IHp1_1. rewrite IHq2, <- IHp1_2; auto; Y; nia.
     + intros; depelim v; Y; simpl; Y; rewrite mult_s_eval...
 Qed.
-#[local] Hint Rewrite <- @mult_eval : eval.
+Hint Rewrite <- @mult_eval : eval.
 (** ** Boolean formulas
 
   Armed with these definitions, we can define a reflexive tactic that
@@ -588,7 +588,7 @@ Fixpoint poly_zero {n} : poly true n :=
   end.
 Lemma zero_eval : forall n v, 0%Z = eval (@poly_zero n) v.
 Proof. intros; rewrite poly_z_eval; auto. Qed.
-#[local] Hint Rewrite <- @zero_eval : eval.
+Hint Rewrite <- @zero_eval : eval.
 
 Fixpoint poly_one {n} : poly false n :=
   match n with
@@ -597,7 +597,7 @@ Fixpoint poly_one {n} : poly false n :=
   end.
 Lemma one_eval : forall n v, 1%Z = eval (@poly_one n) v.
 Proof. depind n; depelim v; intros; simpl; autorewrite with eval; auto. Qed.  
-#[local] Hint Rewrite <- @one_eval : eval.
+Hint Rewrite <- @one_eval : eval.
 
 (** We define an injection of variables represented as indices in [Fin.t n] into
     non-null polynoms of [n] variables: *)
@@ -613,7 +613,7 @@ Lemma var_eval : forall n f v, Vector.nth v f = eval (@poly_var n f) v.
 Proof with autorewrite with poly_var eval in *; simpl; auto with zarith.
   induction f; depelim v; intros...
 Qed.
-#[local] Hint Rewrite <- @var_eval : eval.
+Hint Rewrite <- @var_eval : eval.
 
 (** Finally, we explain our interpretation of formulas as polynomials: *)
 
