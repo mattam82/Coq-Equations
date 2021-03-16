@@ -14,7 +14,7 @@ type ind_info = {
  wheremap : where_map;
 }
 
-val find_helper_info : Evd.evar_map ->
+val find_helper_info : Environ.env -> Evd.evar_map ->
   Splitting.term_info ->
   EConstr.t -> Names.Constant.t * (int * int)
 val below_transparent_state : unit -> TransparentState.t
@@ -32,7 +32,7 @@ val autorewrite_one : string -> unit Proofview.tactic
 val mutual_fix : string list -> int list -> unit Proofview.tactic
 
 val find_helper_arg :
-  Evd.evar_map ->
+  Environ.env -> Evd.evar_map ->
   Splitting.term_info -> EConstr.t -> 'a array -> Names.Constant.t * int * 'a
 val find_splitting_var : Evd.evar_map ->
   Context_map.pat list -> int -> constr list -> Names.Id.t

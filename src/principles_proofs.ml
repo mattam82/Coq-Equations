@@ -37,9 +37,9 @@ type ind_info = {
   wheremap : where_map }
 
    
-let find_helper_info sigma info f =
+let find_helper_info env sigma info f =
   try List.find (fun (cst, arg') ->
-         try Names.Constant.equal cst (fst (destConst sigma f))
+         try Environ.QConstant.equal env cst (fst (destConst sigma f))
          with DestKO -> false)
 	info.helpers_info
   with Not_found -> anomaly (str"Helper not found while proving induction lemma.")
@@ -51,14 +51,9 @@ let simpl_star =
   tclTHEN (to82 simpl_in_concl) (onAllHyps (fun id -> to82 (simpl_in_hyp (id, Locus.InHyp))))
 
 let eauto_with_below ?depth l =
-  let () = if !debug then Class_tactics.set_typeclasses_debug true else () in
-  Proofview.tclORELSE 
-    (Class_tactics.typeclasses_eauto ~depth
-      ~st:(below_transparent_state ()) (l@["subterm_relation"; "Below"; "rec_decision"]))
-    (fun (exn, info) -> 
-        let () = if !debug then Class_tactics.set_typeclasses_debug false else () in
-        Proofview.tclZERO ~info exn)
-
+  Class_tactics.typeclasses_eauto ~depth ~st:(below_transparent_state ()) 
+      (l@["subterm_relation"; "Below"; "rec_decision"])
+    
 let wf_obligations_base info =
   info.base_id ^ "_wf_obligations"
 
@@ -189,7 +184,7 @@ let mutual_fix li l =
       | [] -> sign
       | (f, n, ar) :: oth ->
          let (sp', u')  = check_mutind env sigma n ar in
-         if not (MutInd.equal sp sp') then
+         if not (Environ.QMutInd.equal env sp sp') then
            error "Fixpoints should be on the same mutual inductive declaration.";
          if try ignore (Context.Named.lookup f sign); true with Not_found -> false then
            CErrors.user_err ~hdr:"Logic.prim_refiner"
@@ -230,8 +225,8 @@ let check_guard gls env sigma =
     | Evd.Evar_empty -> true
   with Type_errors.TypeError _ -> false
 
-let find_helper_arg sigma info f args =
-  let (cst, arg) = find_helper_info sigma info f in
+let find_helper_arg env sigma info f args =
+  let (cst, arg) = find_helper_info env sigma info f in
   cst, snd arg, args.(snd arg)
       
 let find_splitting_var sigma pats var constrs =
@@ -491,7 +486,7 @@ let aux_ind_fun info chop nested unfp unfids p =
           let before, last_arg = CArray.chop (Array.length args - 1) args in
           let f, fargs = destApp sigma last_arg.(0) in
           let _, pos, elim = 
-            find_helper_arg sigma info.term_info f fargs 
+            find_helper_arg (env gl) sigma info.term_info f fargs 
           in
           let id = Tacmach.New.pf_get_new_id id gl in
           let hyps = Id.Set.elements (hyps_after sigma (hyps gl) (pos + 1 - snd chop) before) in
@@ -1021,8 +1016,8 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
              let sigma = project gl in
              let cst, _ = destConst sigma (fst (decompose_app sigma refinfo.refined_term)) in
              let f1, arg1 = destApp sigma term1 and f2, arg2 = destApp sigma term2 in
-             let _, posa1, a1 = find_helper_arg sigma info f1 arg1
-             and ev2, posa2, a2 = find_helper_arg sigma info f2 arg2 in
+             let _, posa1, a1 = find_helper_arg (pf_env gl) sigma info f1 arg1
+             and ev2, posa2, a2 = find_helper_arg (pf_env gl) sigma info f2 arg2 in
              let id = pf_get_new_id id gl in
              if Environ.QConstant.equal (pf_env gl) ev2 cst then
                tclTHENLIST
