@@ -341,7 +341,7 @@ let is_ind_assum env sigma ind b =
   let t, _ = decompose_app sigma concl in
   if isInd sigma t then
     let (ind', _), _ = destInd sigma t in
-    Environ.QMutInd.equal env ind' ind
+    MutInd.equal ind' ind
   else false
 
 let clear_ind_assums env sigma ind ctx =

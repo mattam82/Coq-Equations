@@ -998,7 +998,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
             let sigma = project gl in
             let f, pats' = decompose_app sigma y in
             let c, unfolds =
-              let _, _, _, _, _, c, _ = destCase sigma f in
+              let _, _, c, _ = destCase sigma f in
               c, tclIDTAC
             in
             let id = destVar sigma (fst (decompose_app sigma c)) in
@@ -1024,7 +1024,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
              let _, posa1, a1 = find_helper_arg sigma info f1 arg1
              and ev2, posa2, a2 = find_helper_arg sigma info f2 arg2 in
              let id = pf_get_new_id id gl in
-             if Environ.QConstant.equal (pf_env gl) ev2 cst then
+             if Constant.equal ev2 cst then
                tclTHENLIST
                [to82 (myreplace_by a1 a2 (of82 (tclTHENLIST [solve_eq subst])));
                 observe "refine after replace"
