@@ -366,9 +366,9 @@ let derive_below env sigma ~poly (ind,univ as indu) =
         (nargs, bodyB, bodyb)) oneind.mind_nf_lc
     in
     let caseB =
-      mkCase (EConstr.contract_case env !evd (make_case_info env ind Sorts.Relevant RegularStyle, aritylam, NoInvert, mkRel 1, Array.map pi2 branches))
+      mkCase (make_case_info env ind Sorts.Relevant RegularStyle, aritylam, NoInvert, mkRel 1, Array.map pi2 branches)
     and caseb =
-      mkCase (EConstr.contract_case env !evd (make_case_info env ind Sorts.Relevant RegularStyle, aritylamb, NoInvert, mkRel 1, Array.map pi3 branches))
+      mkCase (make_case_info env ind Sorts.Relevant RegularStyle, aritylamb, NoInvert, mkRel 1, Array.map pi3 branches)
     in 
       lift 2 (it_mkLambda_or_LetIn caseB argbinders), lift 3 (it_mkLambda_or_LetIn caseb argbinders)
   in

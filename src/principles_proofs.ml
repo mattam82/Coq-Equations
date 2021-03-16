@@ -990,16 +990,16 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
         else
           match kind (project gl) (pf_concl gl) with
           | App (eq, [| ty; x; y |]) ->
-            let sigma = project gl in
-            let f, pats' = decompose_app sigma y in
-            let c, unfolds =
-              let _, _, _, _, _, c, _ = destCase sigma f in
-              c, tclIDTAC
-            in
-            let id = destVar sigma (fst (decompose_app sigma c)) in
-            let splits = List.map_filter (fun x -> x) (Array.to_list splits) in
-            let unfsplits = List.map_filter (fun x -> x) (Array.to_list unfsplits) in
-	            to82 (abstract (of82 (tclTHEN_i (to82 (depelim id))
+             let sigma = project gl in
+             let f, pats' = decompose_app sigma y in
+             let c, unfolds =
+               let _, _, _, c, _ = destCase sigma f in
+               c, tclIDTAC
+             in
+             let id = destVar sigma (fst (decompose_app sigma c)) in
+	           let splits = List.map_filter (fun x -> x) (Array.to_list splits) in
+             let unfsplits = List.map_filter (fun x -> x) (Array.to_list unfsplits) in
+      	       to82 (abstract (of82 (tclTHEN_i (to82 (depelim id))
 				               (fun i -> let split = nth splits (pred i) in
                                  let unfsplit = nth unfsplits (pred i) in
                                  tclTHENLIST [unfolds; simpltac;
