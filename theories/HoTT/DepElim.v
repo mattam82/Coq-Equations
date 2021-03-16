@@ -685,6 +685,14 @@ Ltac red_eq_lhs :=
       let x' := eval red in x in
       change_no_check (R x' y)
   end.
+  
+Ltac red_one_eq :=
+  match goal with
+  |- ?R ?x ?y =>
+    let x' := eval red in x in
+    let y' := eval red in y in
+    change_no_check (R x' y')
+  end.
 
 Ltac red_eq :=
   match goal with

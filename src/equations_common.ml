@@ -284,8 +284,9 @@ let compute_sort_family l =
   let env = Global.env () in
   let evd = Evd.from_env env in
   let evd, c = Evarutil.new_global evd (Lazy.force l) in
-  let _, s = EConstr.destArity evd (Retyping.get_type_of env evd c) in
-  Sorts.family (EConstr.ESorts.kind evd s)
+  let _, s = Reduction.dest_arity env
+    (EConstr.to_constr ~abort_on_undefined_evars:false evd (Retyping.get_type_of env evd c)) in
+  Sorts.family s
 
 let logic_eq_type = (find_global "equality.type")
 let logic_eq_refl = (find_global "equality.refl")
@@ -499,17 +500,15 @@ let lift_list l = List.map (Vars.lift 1) l
 (*     | _ -> pars *)
 (*   in aux init n c *)
 
-
-
 let unfold_head env sigma (ids, csts) c = 
   let rec aux c = 
     match kind sigma c with
     | Var id when Id.Set.mem id ids ->
-	(match Environ.named_body id env with
-	| Some b -> true, of_constr b
-	| None -> false, c)
+      (match Environ.named_body id env with
+      | Some b -> true, of_constr b
+      | None -> false, c)
     | Const (cst,u) when Cset.mem cst csts ->
-	true, of_constr (Environ.constant_value_in env (cst, EInstance.kind sigma u))
+	    true, of_constr (Environ.constant_value_in env (cst, EInstance.kind sigma u))
     | App (f, args) ->
 	(match aux f with
 	| true, f' -> true, Reductionops.whd_betaiota Evd.empty (mkApp (f', args))
@@ -525,27 +524,38 @@ let unfold_head env sigma (ids, csts) c =
 	      if done_ then true, mkApp (f, Array.of_list (List.rev args'))
 	      else false, c)
     | _ -> 
-	let done_ = ref false in
-	let c' = EConstr.map sigma (fun c -> 
-	  if !done_ then c else 
-	    let x, c' = aux c in
-	      done_ := x; c') c
-	in !done_, c'
+      let done_ = ref false in
+      let c' = EConstr.map sigma (fun c -> 
+        if !done_ then c else 
+          let x, c' = aux c in
+            done_ := x; c') c
+      in !done_, c'
   in aux c
 
 open CErrors
 
-let autounfold_first db cl gl =
+let unfold_head db gl t =
   let st =
     List.fold_left (fun (i,c) dbname -> 
       let db = try Hints.searchtable_map dbname 
-	with Not_found -> user_err ~hdr:"autounfold" (str "Unknown database " ++ str dbname)
+        with Not_found -> user_err ~hdr:"autounfold" (str "Unknown database " ++ str dbname)
       in
       let (ids, csts) = Hints.Hint_db.unfolds db in
         (Id.Set.union ids i, Cset.union csts c)) (Id.Set.empty, Cset.empty) db
   in
-  let did, c' = unfold_head (pf_env gl) (project gl) st
+  unfold_head (pf_env gl) (project gl) st t
+
+let autounfold_heads db db' cl gl =
+  let eq = 
     (match cl with Some (id, _) -> pf_get_hyp_typ gl id | None -> pf_concl gl) 
+  in
+  let did, c' = 
+    match kind (project gl) eq with
+    | App (f, [| ty ; x ; y |]) when EConstr.is_global (project gl) (Lazy.force logic_eq_type) f ->
+      let did, x' = unfold_head db gl x in
+      let did', y' = unfold_head db' gl y in
+      did && did', EConstr.mkApp (f, [| ty ; x' ; y' |])
+    | _ -> false, eq
   in
     if did then
       match cl with
@@ -847,7 +857,7 @@ let observe s tac =
                             | Pretype_errors.PretypeError (env, sigma, e) ->
                                (str " Pretype error: " ++ Himsg.explain_pretype_error env sigma e)
                             | _ -> CErrors.iprint iexn));
-                   Proofview.tclUNIT ())) gls
+                   Proofview.tclZERO ~info:(snd iexn) (fst iexn))) gls
 
 let observe_new s (tac : unit Proofview.tactic) =
   let open Proofview.Notations in
@@ -879,7 +889,7 @@ let observe_new s (tac : unit Proofview.tactic) =
                             | Pretype_errors.PretypeError (env, sigma, e) ->
                                (str " Pretype error: " ++ Himsg.explain_pretype_error env sigma e)
                             | _ -> CErrors.iprint iexn));
-                   Proofview.tclUNIT ())))
+                Proofview.tclZERO ~info:(snd iexn) (fst iexn))))
 
 (** Compat definitions *)
 

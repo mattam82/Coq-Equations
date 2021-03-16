@@ -29,4 +29,4 @@ Global Obligation Tactic := Equations.CoreTactics.equations_simpl.
 Ltac solve_rec := simpl in * ; cbv zeta ; intros ;
   try typeclasses eauto with subterm_relation Below rec_decision.
 
-Export Inaccessible_Notations.
+Export EquationsNotations.

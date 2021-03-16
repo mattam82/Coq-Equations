@@ -33,23 +33,19 @@ Variant equations_tag@{} : Set := the_equations_tag.
 
 Definition bang := the_equations_tag.
 Opaque bang.
-Notation "!" := bang.
-
 Register bang as equations.internal.bang.
 
 (** Notation for inaccessible patterns. *)
 
 Definition inaccessible_pattern {A : Type} (t : A) := t.
 
-Module Inaccessible_Notations.
+Module EquationsNotations.
+  Notation "!" := bang : equations_scope.
 
   Notation "?( t )" := (inaccessible_pattern t) (format "?( t )") : equations_scope.
-
-End Inaccessible_Notations.
+End EquationsNotations.
 
 Register inaccessible_pattern as equations.internal.inaccessible_pattern.
-
-Import Inaccessible_Notations.
 
 (** A marker for fixpoint prototypes in the context *)
 
