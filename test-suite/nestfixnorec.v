@@ -17,7 +17,7 @@ Lemma list_elements_spec {A} (l : list (tree A)) : list_elements l = List.concat
 Proof.
   induction l; simp elements; trivial. rewrite IHl. simpl. auto.
 Qed.
-Hint Rewrite @list_elements_spec : elements.
+#[local] Hint Rewrite @list_elements_spec : elements.
 
 Class C a := {  P : a -> bool }.
 
@@ -183,7 +183,7 @@ Module IdealNoSec.
 
   Section P3_proof.
     Context {a} {a_C : C a}.
-    Hint Rewrite in_app_iff : In.
+    #[local] Hint Rewrite in_app_iff : In.
     Lemma P3_test (t : tree a) : tree_P3 t = true ->
                                  exists x, In x (elements t) /\ P x = true.
     Proof.

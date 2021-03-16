@@ -145,7 +145,7 @@ Lemma convert_ilist_trans : forall {A : Set} {n m o : nat} (p : n = m) (r : m = 
   convert_ilist r (convert_ilist p l) = convert_ilist (eq_trans p r) l.
 Proof. intros. simplify_eqs. now rewrite !convert_ilist_refl. Qed.
 
-Hint Rewrite @convert_ilist_refl @convert_ilist_trans : convert_ilist.
+#[export] Hint Rewrite @convert_ilist_refl @convert_ilist_trans : convert_ilist.
 Import PeanoNat.Nat.
 
 Equations irev_aux {A : Set} {i j : nat} (l : ilist A i) (acc : ilist A j) : ilist A (i + j) :=
@@ -236,7 +236,7 @@ Section hetero_veq.
          exists refl_equal. constructor.
   Defined.
 End hetero_veq.
-Hint Resolve hetero_veq_refl hetero_veq_sym hetero_veq_trans : hetero_veq.
+#[export] Hint Resolve hetero_veq_refl hetero_veq_sym hetero_veq_trans : hetero_veq.
 Unset Program Mode.
 Lemma hetero_veq_transport_right {A} {n m} (v : ilist A n) (w : ilist A m) (eq : m = n) :
         hetero_veq v w -> hetero_veq v (eq # w).
@@ -256,7 +256,7 @@ Proof.
   destruct eq. simpl. trivial.
 Qed.
 
-Hint Resolve hetero_veq_transport_left hetero_veq_transport_right : hetero_veq.
+#[export] Hint Resolve hetero_veq_transport_left hetero_veq_transport_right : hetero_veq.
 
 Lemma rev_aux_app_hetero_eq : forall (A : Set) (i j1 j2 : nat) (l : ilist A i)
   (acc1 : ilist A j1) (acc2 : ilist A j2),
@@ -310,7 +310,7 @@ Equations fle_trans {n : nat} {i j k : fin n} (p : fle i j) (q : fle j k) : fle 
 fle_trans flez _ := flez;
 fle_trans (fles p') (fles q') := fles (fle_trans p' q').
 
-Hint Unfold NoConfusion.noConfusion_nat_obligation_1 : equations.
+#[export] Hint Unfold NoConfusion.noConfusion_nat_obligation_1 : equations.
 
 Derive DependentElimination EqDec for fin.
 

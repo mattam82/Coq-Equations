@@ -78,7 +78,7 @@ Arguments Split [ X ].
 (* Set Typeclasses Debug Verbosity 2. *)
 (* Set Typeclasses Filtered Unification. *)
 
-Hint Extern 0 (WellFounded _) => refine WellFoundedInstances.lt_wf : typeclass_instances.
+#[local] Hint Extern 0 (WellFounded _) => refine WellFoundedInstances.lt_wf : typeclass_instances.
 
 Equations split {X : Type} {m n : nat} (xs : vector X (Peano.plus m n)) : Split m n xs by wf m :=
 split (m:=0) xs := append nil xs;
@@ -86,7 +86,7 @@ split (m:=S m) (cons x xs) with split xs => {
   | append xs' ys' := append (cons x xs') ys' }.
 
 Derive Subterm for vector.
-Hint Unfold vector_subterm : subterm_relation.
+#[local] Hint Unfold vector_subterm : subterm_relation.
 Import Sigma_Notations.
 Section foo.
   Context {A B : Type}.

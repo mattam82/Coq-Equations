@@ -156,7 +156,7 @@ Require Import Arith Wf_nat.
 
 (** One can declare new well-founded relations using instances of the [WellFounded] typeclass. *)
 Instance wf_nat : WellFounded lt := lt_wf.
-Hint Resolve lt_n_Sn : lt.
+#[local] Hint Resolve lt_n_Sn : lt.
 
 (** The [by wf n lt] annotation indicates the kind of well-founded recursion we want. *)
 Equations testn (n : nat) : nat by wf n lt :=
@@ -264,8 +264,8 @@ Proof.
   intros l'. simp rev_acc; trivial. rewrite H.
   rewrite app_assoc. reflexivity.
 Qed.
-Hint Rewrite @rev_rev_acc : rev_acc.
-Hint Rewrite @app_nil @app_assoc : app.
+#[local] Hint Rewrite @rev_rev_acc : rev_acc.
+#[local] Hint Rewrite @app_nil @app_assoc : app.
 
 Lemma rev_app : forall {A} (l l' : list A), rev (l ++ l') = rev l' ++ rev l.
 Proof. intros. funelim (l ++ l'); simp rev app; trivial.
@@ -365,7 +365,7 @@ vhead (cons a v) := a.
 Equations vmap' {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
 vmap' f nil := nil ;
 vmap' f (cons a v) := cons (f a) (vmap' f v).
-Hint Resolve lt_n_Sn : subterm_relation.
+#[local] Hint Resolve lt_n_Sn : subterm_relation.
 Transparent vmap'.
 
 (** The same, using well-founded recursion on [n]. *)
@@ -486,7 +486,7 @@ Proof. revert B fn. funelim (nth v f); intros; now simp nth vmap. Qed.
 Lemma nth_vtail `(v : vector A (S n)) (f : fin n) : nth (vtail v) f = nth v (fs f).
 Proof. funelim (vtail v); intros; now simp nth. Qed.
 
-Hint Rewrite @nth_vmap @nth_vtail : nth.
+#[local] Hint Rewrite @nth_vmap @nth_vtail : nth.
   
 Lemma diag_nth `(v : vector (vector A n) n) (f : fin n) : nth (diag v) f = nth (nth v f) f.
 Proof. revert f. funelim (diag v); intros f.

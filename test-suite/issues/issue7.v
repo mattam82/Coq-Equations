@@ -55,7 +55,7 @@ Inductive TupleMap_direct_subterm
   (H : forall x, sigT (TupleMap _ (F x) ∘ G)) (x : A),
   TupleMap_direct_subterm _ _ (G (projT1 (H _))) _ _ _ (projT2 (H x)) (tmCons _ _ H).
 Derive Signature for TupleMap_direct_subterm.
-Hint Constructors TupleMap_direct_subterm : subterm_relation.
+#[local] Hint Constructors TupleMap_direct_subterm : subterm_relation.
 
 Import Sigma_Notations.
 
@@ -63,7 +63,7 @@ Definition TupleMap_subterm := Relation_Operators.clos_trans _
   (λ x y : Σ index : Σ (n : nat) (_ : TupleT n), TupleT n,
            TupleMap (pr1 index) (pr1 (pr2 index)) (pr2 (pr2 index)),
           TupleMap_direct_subterm _ _ _ _ _ _ (pr2 x) (pr2 y)).
-Hint Unfold TupleMap_subterm : subterm_relation.
+#[local] Hint Unfold TupleMap_subterm : subterm_relation.
 
 Program Instance WellFounded_TupleMap_subterm : WellFounded TupleMap_subterm.
 
@@ -94,7 +94,7 @@ Defined.
 
 Derive NoConfusion for Tuple.
 
-Hint Extern 100 => progress simpl : Below.
+#[local] Hint Extern 100 => progress simpl : Below.
 
 Time Equations myComp {n} {B C : TupleT n} (tm1 : TupleMap _ B C) {A : TupleT n} (tm2 : TupleMap _ A B)
 : TupleMap _ A C :=

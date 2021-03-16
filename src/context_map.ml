@@ -317,11 +317,11 @@ and lift_patns n k = List.map (lift_patn n k)
 let lift_pat n p = lift_patn n 0 p
 let lift_pats n p = lift_patns n 0 p
 
-let rec eq_pat sigma p1 p2 =
+let rec eq_pat env sigma p1 p2 =
   match p1, p2 with
   | PRel i, PRel i' -> i = i'
   | PHide i, PHide i' -> i = i'
-  | PCstr (c, pl), PCstr (c', pl') -> eq_constructor (fst c) (fst c') && List.for_all2 (eq_pat sigma) pl pl'
+  | PCstr (c, pl), PCstr (c', pl') -> Environ.QConstruct.equal env (fst c) (fst c') && List.for_all2 (eq_pat env sigma) pl pl'
   | PInac c, PInac c' -> EConstr.eq_constr sigma c c'
   | _, _ -> false
 
@@ -362,7 +362,7 @@ let make_permutation ?(env = Global.env ()) (sigma : Evd.evar_map)
       else ()
     | PInac c, _ ->
       let p1' = pat_of_constr sigma (reduce env1 sigma c) in
-      if eq_pat sigma p1 p1' then
+      if eq_pat env sigma p1 p1' then
         failwith "Could not generate a permutation: irreducible inaccessible"
       else merge_pats p1' p2
     | _, _ ->

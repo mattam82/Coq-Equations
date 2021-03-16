@@ -44,15 +44,18 @@ type match_subst =
   ((identifier * bool) * pat) list * (Glob_term.glob_constr * pat) list *
   (user_pat_loc * constr) list * ((Loc.t option * pat) list)
 
-val match_pattern : user_pat_loc -> pat -> match_subst
-val match_patterns : user_pats -> pat list -> match_subst
-val matches : user_pats -> context_map -> match_subst unif_result
+val match_pattern : Environ.env -> user_pat_loc -> pat -> match_subst
+val match_patterns : Environ.env -> user_pats -> pat list -> match_subst
+val matches : Environ.env -> user_pats -> context_map -> match_subst unif_result
 val match_user_pattern :
+  Environ.env -> 
   pat -> user_pat_loc -> (int * user_pat) list * (identifier * pat) list
 val match_user_patterns :
+  Environ.env -> 
   pat list ->
   user_pats -> (int * user_pat) list * (identifier * pat) list
 val matches_user :
+  Environ.env -> 
   context_map ->
   user_pats ->
   ((int * user_pat) list * (identifier * pat) list) unif_result
@@ -116,7 +119,7 @@ val unify_type :
    unif_result array)
   option
 
-val blockers : user_pats -> context_map -> int list
+val blockers : Environ.env -> user_pats -> context_map -> int list
 
 val subst_matches_constr : Evd.evar_map ->
   int -> (int * constr) list -> constr -> constr

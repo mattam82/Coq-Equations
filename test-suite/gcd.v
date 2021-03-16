@@ -8,7 +8,7 @@ Ltac subst_lets :=
   | id := _ |- _ => subst id
   end.
 
-Hint Extern 5 => 
+#[local] Hint Extern 5 => 
   simpl; subst_lets; lia : Below.
 
 Obligation Tactic := Equations.CoreTactics.equations_simpl; try typeclasses eauto with Below.
@@ -36,7 +36,7 @@ Lemma gcd_spec0 a : gcd a 0 = a.
 Proof.
   funelim (gcd a 0); reflexivity.
 Qed.
-Hint Rewrite gcd_spec0 : gcd.
+#[local] Hint Rewrite gcd_spec0 : gcd.
 
 Lemma mod_minus a b : b <> 0 -> b < a -> (a - b) mod b = a mod b.
 Proof.

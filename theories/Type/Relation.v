@@ -220,6 +220,9 @@ Section Lexicographic_Exponentiation.
 
 End Lexicographic_Exponentiation.
 
+#[export]
 Hint Unfold transp union: relations.
+#[export]
 Hint Resolve t_step rt_step rt_refl rst_step rst_refl: relations.
+#[export]
 Hint Immediate rst_sym: relations.

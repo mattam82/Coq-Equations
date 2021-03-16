@@ -22,7 +22,9 @@ Ltac Equations.Init.noconf H ::= Equations.Type.DepElim.noconf H.
 
 Create HintDb solve_subterm discriminated.
 
+#[global]
 Hint Extern 4 (_ = _) => reflexivity : solve_subterm.
+#[global]
 Hint Extern 10 => eapply_hyp : solve_subterm.
 
 Ltac solve_subterm := intros;

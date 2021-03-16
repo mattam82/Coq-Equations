@@ -27,6 +27,7 @@ Import Id_Notations.
 (** Synonyms *)
 Notation inclusion R R' := (subrelation R R').
 
+#[export]
 Hint Constructors sum : relations.
 
 Section Properties.

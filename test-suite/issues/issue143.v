@@ -23,7 +23,7 @@ Section Tests.
   Inductive tail_of {A} : list A -> list A -> Prop :=
   | t_refl : forall l, tail_of l l
   | t_cons : forall x l1 l2, tail_of l1 l2 -> tail_of l1 (cons x l2).
-  Hint Constructors tail_of : core.
+  #[local] Hint Constructors tail_of : core.
   Derive Signature for tail_of.
 
   Lemma tail_of_decons : forall {A} {x : A} {l1 l2},
@@ -58,7 +58,7 @@ Section Tests.
 End Tests.
 
 Arguments forest A : clear implicits.
-Hint Constructors tail_of : core.
+#[local] Hint Constructors tail_of : core.
 
 Module FlattenNestedWf.
   Equations? flatten {A} (f : forest A) : list A by wf (fweight f) lt :=

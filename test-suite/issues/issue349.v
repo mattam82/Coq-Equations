@@ -43,7 +43,7 @@ Definition 𝒯 : Set := { T : raw_tree_type | is_tree_type T }.
 
 Program Definition 𝒯__f : Type := { '(T, dom) : 𝒯 * list (list index) | has_domain T dom }.
 
-Let inspect (X Y : Type) (f : X -> Y) (x : X) : {y | f x = y} :=
+Local Definition inspect (X Y : Type) (f : X -> Y) (x : X) : {y | f x = y} :=
   exist _ (f x) eq_refl.
 
 Inductive finite_tree_grammar : Type :=

@@ -84,6 +84,7 @@ Proof.
   f_equal. apply Acc_pi.
 Qed.
 
+#[global]
 Hint Rewrite @FixWf_unfold_ext : Recursors.
 
 Lemma FixWf_unfold_ext_step :
@@ -94,6 +95,7 @@ Lemma FixWf_unfold_ext_step :
     FixWf P step x = step x step'.
 Proof. intros. rewrite FixWf_unfold_ext, H. reflexivity. Qed.
 
+#[global]
 Hint Rewrite @FixWf_unfold_ext_step : Recursors.
 
 Ltac unfold_FixWf_ext :=
@@ -131,12 +133,14 @@ Ltac simpl_let :=
     end
   end.
 
+#[global]
 Hint Extern 40 => progress (cbv beta in * || simpl_let) : Below.
 
 (* This expands lets in the context to simplify proof search for recursive call
   obligations, as [eauto] does not do matching up-to unfolding of let-bound variables.
 *)
 
+#[global]
 Hint Extern 10 => 
   match goal with
   [ x := _ |- _ ] => 
@@ -154,6 +158,7 @@ Hint Extern 10 =>
 Lemma WellFounded_trans_clos `(WF : WellFounded A R) : WellFounded (clos_trans A R).
 Proof. apply wf_clos_trans. apply WF. Defined.
 
+#[global]
 Hint Extern 4 (WellFounded (clos_trans _ _)) => 
   apply @WellFounded_trans_clos : typeclass_instances.
 
@@ -162,29 +167,37 @@ Proof. red. apply measure_wf. apply H. Defined.
 
 (* Do not apply [wf_MR] agressively, as Coq's unification could "invent" an [f] otherwise
    to unify. *)
+#[global]
 Hint Extern 0 (WellFounded (MR _ _)) => apply @wf_MR : typeclass_instances.
 
+#[global]
 Hint Extern 0 (MR _ _ _ _) => red : Below.
 
 Instance lt_wf : WellFounded lt := lt_wf.
+
+#[global]
 Hint Resolve Arith.Lt.lt_n_Sn : Below.
 
 (** We also add hints for transitive closure, not using [t_trans] but forcing to 
    build the proof by successive applications of the inner relation. *)
 
+#[global]
 Hint Resolve t_step : subterm_relation.
 
 Lemma clos_trans_stepr A (R : relation A) (x y z : A) :
   R y z -> clos_trans A R x y -> clos_trans A R x z.
 Proof. intros Hyz Hxy. exact (t_trans _ _ x y z Hxy (t_step _ _ _ _ Hyz)). Defined.
 
+#[global]
 Hint Resolve clos_trans_stepr : subterm_relation.
 
 (** The default tactic to build proofs of well foundedness of subterm relations. *)
 
 Create HintDb solve_subterm discriminated.
 
+#[global]
 Hint Extern 4 (_ = _) => reflexivity : solve_subterm.
+#[global]
 Hint Extern 10 => eapply_hyp : solve_subterm.
 
 Ltac solve_subterm := intros;
@@ -311,6 +324,7 @@ End Lexicographic_Product.
 Instance wellfounded_lexprod A B R S `(wfR : WellFounded A R, wfS : WellFounded B S) : 
   WellFounded (lexprod A B R S) := wf_lexprod A B R S wfR wfS.
 
+#[global]
 Hint Constructors lexprod : Below.
 
 (* NoCycle from well-foundedness. *)
@@ -328,5 +342,6 @@ Definition NoCycle_WellFounded {A} (R : relation A) (wfR : WellFounded R) : NoCy
      noCycle := well_founded_irreflexive |}.
 Existing Instance NoCycle_WellFounded.
 
+#[global]
 Hint Extern 30 (@NoCycle ?A (NoCycle_WellFounded ?R ?wfr) _ _) =>
   hnf; typeclasses eauto with subterm_relation : typeclass_instances.

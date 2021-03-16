@@ -24,7 +24,6 @@ open EConstr
 open Ltac_plugin
 
 let of82 = Proofview.V82.tactic
-let wit_hyp = wit_var
 
 }
 
@@ -161,7 +160,7 @@ let wit_binders2 : binders_argtype =
   Genarg.create_arg "binders2"
 
 let binders2 : local_binder_expr list Pcoq.Entry.t =
-  Pcoq.create_generic_entry Pcoq.uconstr "binders2" (Genarg.rawwit wit_binders2)
+  Pcoq.create_generic_entry2 "binders2" (Genarg.rawwit wit_binders2)
 
 let binders2_val = Geninterp.register_val0 wit_binders2 None
 
@@ -180,7 +179,7 @@ let pr_glob_deppat_equations _env _sigma _ _ _ l = mt ()
 let pr_deppat_equations _env _sigma _ _ _ l = mt ()
 
 let deppat_equations : Syntax.pre_equation list Pcoq.Entry.t =
-  Pcoq.create_generic_entry Pvernac.uvernac "deppat_equations" (Genarg.rawwit wit_deppat_equations)
+  Pcoq.create_generic_entry2 "deppat_equations" (Genarg.rawwit wit_deppat_equations)
 
 let _ = Pptactic.declare_extra_genarg_pprule wit_deppat_equations
   pr_raw_deppat_equations pr_glob_deppat_equations pr_deppat_equations
@@ -197,7 +196,7 @@ let pr_glob_deppat_elim _env _sigma _ _ _ l = mt ()
 let pr_deppat_elim _env _sigma _ _ _ l = mt ()
 
 let deppat_elim : Constrexpr.constr_expr list Pcoq.Entry.t =
-  Pcoq.create_generic_entry Pcoq.utactic "deppat_elim" (Genarg.rawwit wit_deppat_elim)
+  Pcoq.create_generic_entry2 "deppat_elim" (Genarg.rawwit wit_deppat_elim)
 
 let _ = Pptactic.declare_extra_genarg_pprule wit_deppat_elim
   pr_raw_deppat_elim pr_glob_deppat_elim pr_deppat_elim
@@ -213,7 +212,7 @@ let pr_glob_equations _env _sigma _ _ _ l = mt ()
 let pr_equations _env _sigma _ _ _ l = mt ()
 
 let equations : (pre_equations * Vernacexpr.decl_notation list) Pcoq.Entry.t =
-  Pcoq.create_generic_entry Pvernac.uvernac "equations" (Genarg.rawwit wit_equations)
+  Pcoq.create_generic_entry2 "equations" (Genarg.rawwit wit_equations)
 
 let _ = Pptactic.declare_extra_genarg_pprule wit_equations
   pr_raw_equations pr_glob_equations pr_equations
@@ -249,7 +248,7 @@ let () =
   declare_uniform wit_my_preident
 
 let my_preident : string Pcoq.Entry.t =
-  Pcoq.create_generic_entry Pcoq.utactic "my_preident" (Genarg.rawwit wit_my_preident)
+  Pcoq.create_generic_entry2 "my_preident" (Genarg.rawwit wit_my_preident)
 
 open Util
 open Pcoq
@@ -453,7 +452,7 @@ type elim_patterns_argtype = (raw_elim_patterns, glob_elim_patterns, elim_patter
  *  * let pr_g_elim_patterns _ _ _ = Simplify.pr_elim_patterns *\)
  *
  * let g_elim_patterns : raw_elim_patterns Pcoq.Entry.t =
- *   Pcoq.create_generic_entry Pcoq.utactic "g_elim_patterns"
+ *   Pcoq.create_generic_entry2 "g_elim_patterns"
  *     (Genarg.rawwit wit_g_elim_patterns)
  *
  * let _ = Pptactic.declare_extra_genarg_pprule wit_g_elim_patterns
@@ -533,7 +532,7 @@ let pr_glob_g_simplification_rules _env _sigma _ _ _ = Simplify.pr_simplificatio
 let pr_g_simplification_rules _env _sigma _ _ _ = Simplify.pr_simplification_rules
 
 let g_simplification_rules : Simplify.simplification_rules Pcoq.Entry.t =
-  Pcoq.create_generic_entry Pcoq.utactic "g_simplification_rules"
+  Pcoq.create_generic_entry2 "g_simplification_rules"
     (Genarg.rawwit wit_g_simplification_rules)
 
 let _ = Pptactic.declare_extra_genarg_pprule wit_g_simplification_rules

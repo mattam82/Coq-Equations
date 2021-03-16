@@ -247,12 +247,12 @@ Instance env_weaken {Γ} : Weakenable (Env Γ) := fun Σ Σ' incl => weaken_env 
 Instance loc_weaken (t : Ty) : Weakenable (In t) := fun Σ Σ' incl => pres_in incl t.
 
 Class IsIncludedOnce (Σ Σ' : StoreTy) : Type := is_included_once : Σ ⊑ Σ'.
-Hint Mode IsIncludedOnce + + : typeclass_instances.
+#[local] Hint Mode IsIncludedOnce + + : typeclass_instances.
 
 Instance IsIncludedOnce_ext {T} Σ : IsIncludedOnce Σ (T :: Σ) := store_ext_incl.
 
 Class IsIncluded (Σ Σ' : StoreTy) : Type := is_included : Σ ⊑ Σ'.
-Hint Mode IsIncluded + + : typeclass_instances.
+#[local] Hint Mode IsIncluded + + : typeclass_instances.
 
 Instance IsIncluded_refl Σ : IsIncluded Σ Σ := refl_incl.
 Instance IsIncluded_trans Σ Σ' Σ'' : IsIncludedOnce Σ Σ' -> IsIncluded Σ' Σ'' -> IsIncluded Σ Σ'' :=
