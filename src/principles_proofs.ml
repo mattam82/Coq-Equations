@@ -919,8 +919,8 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
                 is_global sigma (GlobRef.ConstRef f_cst) xf && is_global sigma (GlobRef.ConstRef funf_cst) yf) subst
           in
           let unfolds = unfold_in_concl
-	      [((Locus.OnlyOccurrences [1]), Tacred.EvalConstRef f_cst); 
-               ((Locus.OnlyOccurrences [1]), Tacred.EvalConstRef funf_cst)]
+	      [((Locus.OnlyOccurrences [1]), EvalConstRef f_cst); 
+               ((Locus.OnlyOccurrences [1]), EvalConstRef funf_cst)]
           in tclTHENLIST [to82 unfolds; simpltac; to82 (pi_tac ())] gl
         with Not_found -> to82 (Tacticals.New.tclORELSE reflexivity (congruence_tac 10 [])) gl)
     | _ -> to82 reflexivity gl
@@ -935,8 +935,8 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
         let unfolds =
           tclTHENLIST
             [to82 (unfold_in_concl
-                     [Locus.OnlyOccurrences [1], Tacred.EvalConstRef f_cst;
-                      (Locus.OnlyOccurrences [1], Tacred.EvalConstRef funf_cst)]);
+                     [Locus.OnlyOccurrences [1], EvalConstRef f_cst;
+                      (Locus.OnlyOccurrences [1], EvalConstRef funf_cst)]);
              my_simpl]
         in
         let set_opaque () =

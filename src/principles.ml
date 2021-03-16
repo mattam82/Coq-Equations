@@ -596,7 +596,7 @@ let where_instance w =
 let arguments sigma c = snd (Termops.decompose_app_vect sigma c)
 
 let unfold_constr sigma c =
-  to82 (Tactics.unfold_in_concl [(Locus.OnlyOccurrences [1], Tacred.EvalConstRef (fst (destConst sigma c)))])
+  to82 (Tactics.unfold_in_concl [(Locus.OnlyOccurrences [1], EvalConstRef (fst (destConst sigma c)))])
 
 let extend_prob_ctx delta (ctx, pats, ctx') =
   (delta @ ctx, Context_map.lift_pats (List.length delta) pats, ctx')
@@ -1677,7 +1677,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
         eqns.(j).(pred i) <- true;
         if CArray.for_all (CArray.for_all (fun x -> x)) eqns then (
           (* From now on, we don't need the reduction behavior of the constant anymore *)
-          Classes.set_typeclass_transparency (Tacred.EvalConstRef cst) false false;
+          Classes.set_typeclass_transparency (EvalConstRef cst) false false;
           (match alias with
            | Some ((f, _), _, _) ->
               Global.set_strategy (ConstKey (fst (destConst !evd f))) Conv_oracle.Opaque

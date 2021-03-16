@@ -231,7 +231,7 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
         (* Impargs.declare_manual_implicits false (ConstRef cst) ~enriching:false *)
         (* 	(list_map_i (fun i _ -> ExplByPos (i, None), (true, true, true)) 1 parambinders); *)
         Hints.add_hints ~locality:Goptions.OptGlobal [subterm_relation_base]
-                        (Hints.HintsUnfoldEntry [Tacred.EvalConstRef kn]);
+                        (Hints.HintsUnfoldEntry [EvalConstRef kn]);
         mkApp (cst, extended_rel_vect 0 parambinders)
       in
       let env' = push_rel_context pars env in
