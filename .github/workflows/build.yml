@@ -8,7 +8,7 @@ jobs:
 
     strategy:
       matrix:
-        target: [ local, HoTT, dune ]
+        target: [ local ] # dune, HoTT
 
     steps:
 
@@ -34,8 +34,8 @@ jobs:
       - run: opam repo add coq-released https://coq.inria.fr/opam/released
       - run: opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev
       - run: opam repo add coq-extra-dev https://coq.inria.fr/opam/extra-dev
-      - run: opam install -j 2 -y coq.dev coq-hott.dev
-      - run: opam upgrade -y coq.dev coq-hott.dev
+      - run: opam install -j 2 -y coq.8.13.1
+      - run: opam upgrade -y coq.8.13.1
       - run: opam list
       - run: opam exec -- coqc --version
       - run: opam exec -- ./configure.sh ${{matrix.target}}
