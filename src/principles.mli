@@ -48,7 +48,7 @@ val subst_comp_proj : Evd.evar_map ->
   constr -> constr -> constr -> constr
 val subst_comp_proj_split : Evd.evar_map ->
   constr -> constr -> Splitting.splitting -> Splitting.splitting
-val clear_ind_assums : Evd.evar_map ->
+val clear_ind_assums : Environ.env -> Evd.evar_map ->
   Names.MutInd.t ->
   Equations_common.rel_context -> Equations_common.rel_context
 val compute_elim_type :

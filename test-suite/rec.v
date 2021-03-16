@@ -37,9 +37,9 @@ Section Nested.
   (*         destruct x as [x' H'] ; simpl proj1_sig; destruct_proj1_sig *)
   (*   end. *)
 
-  Hint Extern 3 => progress destruct_proj1_sig : Below.
+  #[local] Hint Extern 3 => progress destruct_proj1_sig : Below.
   
-  Hint Extern 3 => progress auto with arith : Below.
+  #[local] Hint Extern 3 => progress auto with arith : Below.
 
 
   Equations? f (n : nat) : { x : nat | x <= n }
@@ -119,7 +119,7 @@ Module RecMeasure.
 
   Obligation Tactic := program_simpl; try typeclasses eauto with Below.
 
-  Hint Extern 0 (MR _ _ _ _) => red : Below.
+  #[local] Hint Extern 0 (MR _ _ _ _) => red : Below.
 
   Equations id (n : nat) : nat
   by wf n (MR lt (fun n => n)) :=
@@ -140,14 +140,14 @@ Module RecMeasure.
   Lemma filter_length {A} p (l : list A) : length (filter p l) <= length l.
   Proof. induction l ; simpl ; auto. destruct (p a); simpl; auto with arith. Qed.
     
-  Hint Resolve filter_length : datatypes.
+  #[local] Hint Resolve filter_length : datatypes.
   
   Section QuickSort.
     
-    Hint Immediate gt_le_S : Below.
-    Hint Resolve filter_length : Below.
-    Hint Unfold lt gt : Below.
-    Hint Resolve le_lt_n_Sm : Below.
+    #[local] Hint Immediate gt_le_S : Below.
+    #[local] Hint Resolve filter_length : Below.
+    #[local] Hint Unfold lt gt : Below.
+    #[local] Hint Resolve le_lt_n_Sm : Below.
 
     Context {A : Type} (leb : A -> A -> bool) (ltb : A -> A -> bool).
 

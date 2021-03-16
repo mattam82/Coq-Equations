@@ -18,6 +18,7 @@ Ltac Equations.Init.apply_funelim H ::= Equations.Prop.FunctionalInduction.apply
 
 (** Tactic to solve EqDec goals, destructing recursive calls for the recursive
   structure of the type and calling instances of eq_dec on other types. *)
+#[global]
 Hint Extern 2 (@EqDecPoint ?A ?x) =>
   lazymatch goal with
   | [ H : forall y, { x = _ } + { _ <> _ } |- _ ] => exact H

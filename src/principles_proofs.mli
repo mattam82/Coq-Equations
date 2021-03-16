@@ -14,30 +14,30 @@ type ind_info = {
  wheremap : where_map;
 }
 
-val find_helper_info : Evd.evar_map ->
+val find_helper_info : Environ.env -> Evd.evar_map ->
   Splitting.term_info ->
   EConstr.t -> Names.Constant.t * (int * int)
 val below_transparent_state : unit -> TransparentState.t
 val simpl_star : Proofview.V82.tac
 val eauto_with_below :
-  ?depth:Int.t -> Hints.hint_db_name list -> Proofview.V82.tac
+  ?depth:Int.t -> Hints.hint_db_name list -> unit Proofview.tactic
 val wf_obligations_base : Splitting.term_info -> string
-val simp_eqns : Hints.hint_db_name list -> Proofview.V82.tac
+val simp_eqns : Hints.hint_db_name list -> unit Proofview.tactic
 val simp_eqns_in :
-  Locus.clause -> Hints.hint_db_name list -> Proofview.V82.tac
-val autorewrites : string -> Proofview.V82.tac
-val autorewrite_one : string -> Proofview.V82.tac
+  Locus.clause -> Hints.hint_db_name list -> unit Proofview.tactic
+val autorewrites : string -> unit Proofview.tactic
+val autorewrite_one : string -> unit Proofview.tactic
 
 (** The multigoal fix tactic *)
 val mutual_fix : string list -> int list -> unit Proofview.tactic
 
 val find_helper_arg :
-  Evd.evar_map ->
+  Environ.env -> Evd.evar_map ->
   Splitting.term_info -> EConstr.t -> 'a array -> Names.Constant.t * int * 'a
 val find_splitting_var : Evd.evar_map ->
   Context_map.pat list -> int -> constr list -> Names.Id.t
-val intros_reducing : Proofview.V82.tac
-val cstrtac : 'a -> Proofview.V82.tac
+val intros_reducing : unit -> unit Proofview.tactic
+val cstrtac : unit Proofview.tactic
 val destSplit : Splitting.splitting -> Splitting.splitting option array option
 val destRefined : Splitting.splitting -> Splitting.splitting option
 val destWheres : Splitting.splitting -> (Context_map.context_map * Splitting.where_clause list) option
@@ -53,7 +53,7 @@ val aux_ind_fun :
   int * int ->
   (Names.Id.t * EConstr.types * Splitting.program) list ->
   Splitting.program option ->
-  Names.Id.t list -> Splitting.program -> Proofview.V82.tac
+  Names.Id.t list -> Splitting.program -> unit Proofview.tactic
 val ind_fun_tac :
   Syntax.rec_type ->
   Constr.t ->

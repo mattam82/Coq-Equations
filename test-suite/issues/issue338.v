@@ -1,7 +1,7 @@
 (* success *)
 From Coq Require Import ssreflect.
 From Equations Require Import Equations.
-Print Grammar constr.
+
 Import EquationsNotations.
 Open Scope equations_scope.
 

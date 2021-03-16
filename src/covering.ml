@@ -110,13 +110,13 @@ type match_subst =
   ((identifier * bool) * pat) list * (Glob_term.glob_constr * pat) list *
   (user_pat_loc * constr) list * ((Loc.t option * pat) list)
 
-let rec match_pattern p c =
+let rec match_pattern env p c =
   match DAst.get p, c with
   | PUVar (i,gen), (PCstr _ | PRel _ | PHide _) -> [(i, gen), c], [], [], []
   | PUCstr (c, i, pl), PCstr ((c',u), pl') -> 
-    if eq_constructor c c' then
+    if Environ.QConstruct.equal env c c' then
       let params, args = List.chop i pl' in
-      match_patterns pl args
+      match_patterns env pl args
     else raise Conflict
   | PUInac t, t' ->
     [], [t, t'], [], []
@@ -124,16 +124,16 @@ let rec match_pattern p c =
   | PUEmpty, _ -> [], [], [], [DAst.with_loc_val (fun ?loc _ -> (loc, c)) p]
   | _, _ -> raise Stuck
 
-and match_patterns pl l =
+and match_patterns env pl l =
   match pl, l with
   | [], [] -> [], [], [], []
   | hd :: tl, hd' :: tl' -> 
     let l = 
-      try Some (match_pattern hd hd')
+      try Some (match_pattern env hd hd')
       with Stuck -> None
     in
     let l' = 
-      try Some (match_patterns tl tl')
+      try Some (match_patterns env tl tl')
       with Stuck -> None
     in
     (match l, l' with
@@ -144,34 +144,34 @@ and match_patterns pl l =
 
 open Constrintern
 
-let matches (p : user_pats) ((phi,p',g') : context_map) = 
+let matches env (p : user_pats) ((phi,p',g') : context_map) = 
   try
     let p' = filter (fun x -> not (hidden x)) (rev p') in
-    UnifSuccess (match_patterns p p')
+    UnifSuccess (match_patterns env p p')
   with Conflict -> UnifFailure | Stuck -> UnifStuck
 
-let rec match_user_pattern p c =
+let rec match_user_pattern env p c =
   match p, DAst.get c with
   | PRel i, t -> [i, t], []
   | PCstr ((c',_), pl'), PUCstr (c, i, pl) -> 
-    if eq_constructor c c' then
+    if Environ.QConstruct.equal env c c' then
       let params, args = List.chop i pl' in
-      match_user_patterns args pl
+      match_user_patterns env args pl
     else raise Conflict
   | PCstr _, PUVar (n,gen) -> [], [n, p]
   | PInac _, _ -> [], []
   | _, _ -> raise Stuck
 
-and match_user_patterns pl l =
+and match_user_patterns env pl l =
   match pl, l with
   | [], [] -> [], []
   | hd :: tl, hd' :: tl' -> 
     let l = 
-      try Some (match_user_pattern hd hd')
+      try Some (match_user_pattern env hd hd')
       with Stuck -> None
     in
     let l' = 
-      try Some (match_user_patterns tl tl')
+      try Some (match_user_patterns env tl tl')
       with Stuck -> None
     in
     (match l, l' with
@@ -179,8 +179,8 @@ and match_user_patterns pl l =
      | _, _ -> raise Stuck)
   | _ -> raise Conflict
 
-let matches_user ((phi,p',g') : context_map) (p : user_pats) = 
-  try UnifSuccess (match_user_patterns (filter (fun x -> not (hidden x)) (rev p')) p)
+let matches_user env ((phi,p',g') : context_map) (p : user_pats) = 
+  try UnifSuccess (match_user_patterns env (filter (fun x -> not (hidden x)) (rev p')) p)
   with Conflict -> UnifFailure | Stuck -> UnifStuck
 
 let refine_arg idx ctx =
@@ -455,12 +455,12 @@ let unify_type env evars before id ty after =
   with Not_found -> (* not an inductive type *)
     None
 
-let blockers curpats ((_, patcs, _) : context_map) =
+let blockers env curpats ((_, patcs, _) : context_map) =
   let rec pattern_blockers p c =
     match DAst.get p, c with
     | PUVar (i, _), t -> []
     | PUCstr (c, i, pl), PCstr ((c',_), pl') -> 
-      if eq_constructor c c' then patterns_blockers pl (snd (List.chop i pl'))
+      if Environ.QConstruct.equal env c c' then patterns_blockers pl (snd (List.chop i pl'))
       else []
     | PUInac _, _ -> []
     | _, PRel i -> [i]
@@ -962,7 +962,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
     if !Equations_common.debug then
       Feedback.msg_debug (str "Matching " ++ pr_user_pats env !evars (extpats @ lhs) ++ str " with " ++
                           pr_problem p env !evars prob);
-    (match matches (extpats @ lhs) prob with
+    (match matches env (extpats @ lhs) prob with
      | UnifSuccess (s, uacc, acc, empties) ->
        if !Equations_common.debug then Feedback.msg_debug (str "succeeded");
        (* let renaming = rename_prob_subst env ctx (pi1 s) in *)
@@ -1011,7 +1011,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
 
      | UnifStuck -> 
        if !Equations_common.debug then Feedback.msg_debug (str "got stuck");
-       let blocks = blockers (extpats @ lhs) prob in
+       let blocks = blockers env (extpats @ lhs) prob in
        equations_debug (fun () ->
            str "blockers are: " ++
            prlist_with_sep spc (pr_rel_name (push_rel_context (pi1 prob) env)) blocks);
@@ -1241,7 +1241,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
         let newref, nextrefs =
           match newpats with hd :: tl -> hd, tl | [] -> assert false
         in
-        match matches_user prob (extpats @ oldpats) with
+        match matches_user env prob (extpats @ oldpats) with
         | UnifSuccess (s, alias) ->
           (* A substitution from the problem variables to user patterns and
              from user pattern variables to patterns instantiating problem variables. *)

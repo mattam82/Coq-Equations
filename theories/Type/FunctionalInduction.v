@@ -160,6 +160,7 @@ Create HintDb funelim.
 
 (** Solve reflexivity goals. *)
 
+#[global]
 Hint Extern 0 (Id _ _) => constructor : funelim.
 
 (** Specialize hypotheses begining with equalities. *)
@@ -170,6 +171,7 @@ Ltac specialize_hyps :=
     specialize (H (@id_refl _ x)); unfold Id_rew_r, Id_rect_r, Id_rect in H ; simpl in H
   end.
 
+#[global]
 Hint Extern 100 => specialize_hyps : funelim.
 
 (** Destruct conjunctions everywhere, starting with the hypotheses.
@@ -187,6 +189,7 @@ Ltac specialize_mutual_nested :=
   | [ |- _ * _ ] => split
   end.
 
+#[global]
 Hint Extern 50 => specialize_mutual_nested : funelim.
 
 Ltac specialize_mutual :=

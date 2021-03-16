@@ -86,7 +86,7 @@ Ltac term_eq :=
     | |- ge _ _ => lia || absurd lia
   end.
 
-Hint Extern 4 => term_eq : term.
+#[local] Hint Extern 4 => term_eq : term.
 
 Ltac term := typeclasses eauto with term core arith.
 
@@ -102,7 +102,7 @@ Lemma lift0 k t : lift k 0 t = t.
 Proof.
   funelim (lift k 0 t); term || rewrite ?H; crush.
 Qed.
-Hint Rewrite lift0 : lift.
+#[local] Hint Rewrite lift0 : lift.
 Require Import Lia.
 
 Lemma lift_k_lift_k k n m t : lift k n (lift k m t) = lift k (n + m) t.
@@ -117,7 +117,7 @@ Proof.
   rewrite Heq. rewrite Nat.compare_gt_iff in Heq. simp lift.
   destruct (Nat.compare_spec (n0 + n) k); try discriminate; simp lift; term.
 Qed.
-Hint Rewrite lift_k_lift_k : lift.
+#[local] Hint Rewrite lift_k_lift_k : lift.
 
 Equations subst (k : nat) (t : term) (u : term) : term :=
 subst k (Var i) u with Nat.compare i k := {
@@ -136,7 +136,7 @@ Proof. funelim (subst n n t) ; try rewrite H ; try rewrite H0; simp lift; auto.
   rewrite Nat.compare_lt_iff in Heq; absurd lia.
   rewrite Nat.compare_gt_iff in Heq; absurd lia.
 Qed.
-Hint Rewrite substnn : subst.
+#[local] Hint Rewrite substnn : subst.
 Notation ctx := (list type).
 
 Reserved Notation " Γ |-- t : A " (at level 70, t, A at next level).
@@ -171,7 +171,7 @@ Notation " x @ y " := (app x y) (at level 30, right associativity).
 Lemma nth_length {A} x t (l l' : list A) : nth (length l) (l @ (t :: l')) x = t.
 Proof. induction l; simpl; auto. Qed.
 
-Hint Constructors types : term.
+#[local] Hint Constructors types : term.
 
 Lemma nat_compare_elim (P : nat -> nat -> comparison -> Prop)
   (PEq : forall i, P i i Eq)
@@ -213,7 +213,7 @@ Proof.
   clear H0. rewrite !nth_app_r by lia. f_equal. lia.
 Qed.
   
-Hint Rewrite <- app_assoc in_app_iff in_inv : list.
+#[local] Hint Rewrite <- app_assoc in_app_iff in_inv : list.
 
 Lemma type_lift Γ t T Γ' : Γ' @ Γ |-- t : T -> 
   forall Γ'', Γ' @ Γ'' @ Γ |-- lift (length Γ') (length Γ'') t : T.
@@ -233,14 +233,14 @@ Proof. intros. apply (type_lift Γ t T [] H [A]). Qed.
 
 Lemma type_liftn Γ Γ' t T : Γ |-- t : T -> Γ' @ Γ |-- lift 0 (length Γ') t : T.
 Proof. intros. apply (type_lift Γ t T [] H Γ'). Qed.
-Hint Resolve type_lift1 type_lift type_liftn : term.
+#[local] Hint Resolve type_lift1 type_lift type_liftn : term.
 
 Ltac crush ::= do_rewrites; simpl; do_rewrites; auto; try term.
 
 Lemma app_cons_snoc_app {A} l (a : A) l' : l ++ (a :: l') = (l ++ a :: nil) ++ l'.
 Proof. induction l; crush. Qed.
 
-Hint Extern 5 => progress (simpl ; autorewrite with list) : term.
+#[local] Hint Extern 5 => progress (simpl ; autorewrite with list) : term.
 Ltac term ::= simp lift subst; try typeclasses eauto with core term.
 
 Lemma substitutive Γ t T Γ' u U : 
@@ -306,7 +306,7 @@ Inductive value : term -> Prop :=
 | val_lambda t : value λ t.
 Derive Signature for value.
 
-Hint Constructors value : term.
+#[local] Hint Constructors value : term.
 
 Inductive reduce_congr : relation term :=
 | reduce1 t u : reduce t u -> reduce_congr t u
@@ -347,7 +347,7 @@ Qed.
 
 Lemma subject_reduction Γ t τ : Γ |-- t : τ → forall u, t -->* u → Γ |-- u : τ.
 Proof. induction 2; eauto using preserves_red1. Qed.
-Hint Constructors reduce reduce_congr : term.
+#[local] Hint Constructors reduce reduce_congr : term.
 Lemma progress_ t τ : nil |-- t : τ → (exists t', reduce_congr t t') \/ value t.
 Proof.
   intros H; depind H; auto with term.
@@ -378,7 +378,7 @@ Inductive atomic : type -> Prop :=
 | atomic_atom a : atomic (atom a).
 
 Derive Signature for atomic.
-Hint Constructors atomic : term.
+#[local] Hint Constructors atomic : term.
 
 (* FIXME bug *)
 Equations? atomic_dec (t : type) : { atomic t } + { ~ atomic t } :=
@@ -415,7 +415,7 @@ where "Γ |-- i => A " := (synthetize Γ i A)
 and  "Γ |-- i <= A " := (check Γ i A).
 Derive Signature for check synthetize.
 
-Hint Constructors synthetize check : term.
+#[local] Hint Constructors synthetize check : term.
 
 Scheme check_mut_ind := Elimination for check Sort Prop
   with synthetize_mut_ind := Elimination for synthetize Sort Prop.
@@ -431,7 +431,7 @@ Proof. intros A H. depelim H. Qed.
 Lemma synth_unit {Γ T} : forall A : Prop, Γ |-- Tt => T -> A.
 Proof. intros A H. depelim H. Qed.
 
-Hint Extern 3 => 
+#[local] Hint Extern 3 => 
   match goal with
     | H : ?Γ |-- ?t => ?T |- _ => apply (synth_arrow _ H) || apply (synth_pair _ H) || apply (synth_unit _ H)
   end : term.
@@ -442,7 +442,7 @@ Proof. intros. destruct H; try econstructor; term.
   intros. destruct H; try solve [ econstructor; term ].
 Qed.
 
-Hint Resolve check_types synthetizes_types : term.
+#[local] Hint Resolve check_types synthetizes_types : term.
 
 Inductive normal : term -> Prop :=
 | normal_unit : normal Tt
@@ -457,7 +457,7 @@ with neutral : term -> Prop :=
 | neutral_app t n : neutral t -> normal n -> neutral (@(t, n)).
 
 Derive Signature for normal neutral.
-Hint Constructors normal neutral : term.
+#[local] Hint Constructors normal neutral : term.
 
 Lemma check_lift_gen Δ t T (H : Δ |-- t <= T) : forall Γ Γ', Δ = Γ' @ Γ ->
   forall Γ'', Γ' @ Γ'' @ Γ |-- lift (length Γ') (length Γ'') t <= T
@@ -494,14 +494,14 @@ Proof. intros. apply (check_lift Γ t T [] H [A]). Qed.
 
 Lemma synth_lift1 {Γ t T A} : Γ |-- t => T -> A :: Γ |-- lift 0 1 t => T.
 Proof. intros. apply (synthetize_lift Γ t T [] H [A]). Qed.
-Hint Resolve check_lift1 synth_lift1 : term.
+#[local] Hint Resolve check_lift1 synth_lift1 : term.
 
 Lemma check_lift_ctx {Γ t T Γ'} : Γ |-- t <= T -> Γ' @ Γ |-- lift 0 (length Γ') t <= T.
 Proof. intros. apply (check_lift Γ t T [] H Γ'). Qed.
 
 Lemma synth_lift_ctx {Γ t T Γ'} : Γ |-- t => T -> Γ' @ Γ |-- lift 0 (length Γ') t => T.
 Proof. intros. apply (synthetize_lift Γ t T [] H Γ'). Qed.
-Hint Resolve check_lift_ctx synth_lift_ctx : term.
+#[local] Hint Resolve check_lift_ctx synth_lift_ctx : term.
 
 Equations η (a : type) (t : term) : term :=
 η (atom _) t := t ;
@@ -521,13 +521,13 @@ Proof. destruct 1; simp lift; constructor; term.
   destruct 1; simp lift; try (constructor; term).
   destruct Nat.compare; term.
 Qed.
-Hint Resolve normal_lift neutral_lift : term.
+#[local] Hint Resolve normal_lift neutral_lift : term.
 
 
 Lemma check_normal {Γ t T} : Γ |-- t <= T -> normal t
  with synth_neutral {Γ t T} : Γ |-- t => T -> neutral t.
 Proof. destruct 1; constructor; term. destruct 1; constructor; term. Qed.
-Hint Resolve check_normal synth_neutral : term.
+#[local] Hint Resolve check_normal synth_neutral : term.
 
 Lemma eta_expand Γ t A : neutral t → Γ |-- t => A -> Γ |-- η A t <= A.
 Proof. revert Γ t; induction A; intros; simp η; constructor; term.
@@ -545,7 +545,7 @@ Proof. intros. now apply eta_expand in H0; term. Qed.
 Require Import Arith Wf_nat.
 Instance wf_nat : Classes.WellFounded lt := lt_wf.
 
-Hint Constructors Subterm.lexprod : subterm_relation.
+#[local] Hint Constructors Subterm.lexprod : subterm_relation.
 
 Derive Signature for Acc.
 Notation lexicographic R S := (Subterm.lexprod _ _ R S).
@@ -553,7 +553,7 @@ Notation lexicographic R S := (Subterm.lexprod _ _ R S).
 Definition her_order : relation (type * term * term) :=
   lexicographic (lexicographic type_subterm term_subterm) term_subterm.  
 
-Hint Unfold her_order : subterm_relation.
+#[local] Hint Unfold her_order : subterm_relation.
 
 Import Program.Tactics.
 Obligation Tactic := program_simpl.
@@ -598,14 +598,14 @@ Definition her_type (t : type * term * term) :=
   let u' := fst (fst t) in
    { u : type | u = u' \/ type_subterm u u' }.
 
-Remove Hints t_step : subterm_relation.
-Remove Hints Subterm.clos_trans_stepr : subterm_relation.
+#[local] Remove Hints t_step : subterm_relation.
+#[local] Remove Hints Subterm.clos_trans_stepr : subterm_relation.
 
 Ltac apply_step :=
   match goal with
     |- clos_trans ?A ?R ?x ?y => not_evar y; eapply t_step
   end.
-Hint Extern 30 (clos_trans _ _ _ _) => apply_step : subterm_relation.
+#[local] Hint Extern 30 (clos_trans _ _ _ _) => apply_step : subterm_relation.
 
 Lemma clos_trans_inv {A} R (x y z : A) :
   clos_trans A R y z → clos_trans A R x y → clos_trans A R x z.
@@ -616,7 +616,7 @@ Ltac apply_transitivity :=
     |- clos_trans ?A ?R ?x ?y =>
     not_evar x; not_evar y; eapply clos_trans_inv
   end.
-Hint Extern 31 (clos_trans _ _ _ _) => apply_transitivity : subterm_relation.
+#[local] Hint Extern 31 (clos_trans _ _ _ _) => apply_transitivity : subterm_relation.
 
 Equations? hereditary_subst (t : type * term * term) (k : nat) :
   term * option (her_type t)
@@ -659,8 +659,8 @@ Proof.
   all:(clear -prf; simpl in *; destruct prf; subst; eauto 5 with subterm_relation).
 Defined.
 
-Hint Unfold her_type : subterm_relation.
-Hint Unfold Program.Basics.const : subterm_relation.
+#[local] Hint Unfold her_type : subterm_relation.
+#[local] Hint Unfold Program.Basics.const : subterm_relation.
 
 Ltac autoh :=
   unfold type_subterm in * ; try typeclasses eauto with hereditary_subst subterm_relation.
@@ -668,7 +668,7 @@ Ltac simph :=
   try (rewrite_strat (innermost (hints hereditary_subst)));
   autoh.
 
-Hint Transparent type_subterm : subterm_relation.
+#[local] Hint Transparent type_subterm : subterm_relation.
 
 Ltac invert_term := 
   match goal with
@@ -1003,7 +1003,7 @@ Proof. intros. apply (check_lift Γ t T [] H Γ'). Qed.
 
 Lemma synth_liftn {Γ Γ' t T} : Γ |-- t => T -> Γ' @ Γ |-- lift 0 (length Γ') t => T.
 Proof. intros. apply (synthetize_lift Γ t T [] H Γ'). Qed.
-Hint Resolve check_liftn synth_liftn : term.
+#[local] Hint Resolve check_liftn synth_liftn : term.
 
 (* Write normalization function *)
 Lemma types_normalizes Γ t T : Γ |-- t : T → ∃ u, Γ |-- u <= T.

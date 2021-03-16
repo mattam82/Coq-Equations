@@ -249,7 +249,7 @@ let solve_equations_goal destruct_tac tac gl =
     in aux brs b
   in
   let ids = targetn :: branchesn :: List.map pi1 branches in
-  let cleantac = tclTHEN (to82 (intros_using ids)) (to82 (clear ids)) in
+  let cleantac = to82 (intros_using_then ids clear) in
   let dotac = tclDO (succ targ) (to82 intro) in
   let letintac (id, br, brt) = 
     tclTHEN (to82 (letin_tac None (Name id) br (Some brt) nowhere))

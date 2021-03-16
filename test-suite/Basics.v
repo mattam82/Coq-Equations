@@ -107,7 +107,7 @@ Require Import Arith Wf_nat.
 
 Instance wf_nat : WellFounded lt := lt_wf.
 
-Hint Resolve lt_n_Sn : lt.
+#[local] Hint Resolve lt_n_Sn : lt.
 
 Ltac solve_rec ::= simpl in * ; cbv zeta ; intros ; 
   try typeclasses eauto with subterm_relation Below lt.
@@ -176,7 +176,7 @@ Definition vector_subterm A := t_subterm A.
 Instance eqdep_prod A B `(EqDec A) `(EqDec B) : EqDec (prod A B).
 Proof. intros. intros x y. decide equality. Defined.
 
-Hint Unfold vector_subterm : subterm_relation.
+#[local] Hint Unfold vector_subterm : subterm_relation.
 (* Typeclasses Opaque vector_subterm. *)
 Import Vector.
 
@@ -308,7 +308,7 @@ Proof. intros. replace (rev l) with (rev l +++ []) by apply app'_nil.
   intros l'. simp rev_acc. rewrite H. 
   rewrite app'_assoc. reflexivity.
 Qed.
-Hint Rewrite @rev_rev_acc : rev_acc.
+#[local] Hint Rewrite @rev_rev_acc : rev_acc.
 
 Lemma app'_funind : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l (app' l' l'').
 Proof.
@@ -317,7 +317,7 @@ Proof.
   rewrite H. reflexivity. 
 Qed.
 
-Hint Rewrite @app'_nil @app'_assoc : app'.
+#[local] Hint Rewrite @app'_nil @app'_assoc : app'.
 
 Lemma rev_app' : forall {A} (l l' : list A), rev (l +++ l') = rev l' +++ rev l.
 Proof. intros. funelim (l +++ l'); simp rev app'; trivial.
@@ -454,7 +454,7 @@ Equations vmap' {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
 vmap' f nil := nil ;
 vmap' f (cons a v) := cons (f a) (vmap' f v).
 
-Hint Resolve lt_n_Sn : subterm_relation.
+#[local] Hint Resolve lt_n_Sn : subterm_relation.
 
 Equations vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n
   by wf n :=
@@ -638,7 +638,7 @@ Proof. revert B fn. funelim (nth v f); intros; now simp nth vmap. Qed.
 Lemma nth_vtail `(v : vector A (S n)) (f : fin n) : nth (vtail v) f = nth v (fs f).
 Proof. funelim (vtail v); intros; now simp nth. Qed.
 
-Hint Rewrite @nth_vmap @nth_vtail : nth.
+#[local] Hint Rewrite @nth_vmap @nth_vtail : nth.
   
 Lemma diag_nth `(v : vector (vector A n) n) (f : fin n) : nth (diag v) f = nth (nth v f) f.
 Proof. revert f. funelim (diag v); intros f.

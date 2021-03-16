@@ -65,7 +65,7 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
         let (n, _, t) = to_tuple decl in
         let ctx, ar = decompose_prod_assum sigma t in
           match kind sigma (fst (decompose_app sigma ar)) with
-          | Ind (ind',_) when eq_ind ind' ind ->
+          | Ind (ind',_) when Environ.QInd.equal env ind' ind ->
               Some (ctx, i, mkRel (succ i), getargs (lift (succ i) ar))
           | _ -> None) args'
       in

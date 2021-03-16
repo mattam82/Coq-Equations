@@ -14,7 +14,7 @@ Equations lift_fin {n} (k : nat) (f : fin n) : fin (S n) :=
   lift_fin (S k) (fs f) := fs (lift_fin k f).
 Open Scope list_scope.
 Derive Signature for Forall2.
-Hint Constructors Forall2 : core.
+#[local] Hint Constructors Forall2 : core.
 Local Open Scope program_scope.
 Local Open Scope equations_scope.
 Arguments map {A B}.

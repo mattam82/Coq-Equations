@@ -134,9 +134,9 @@ Proof.
 Defined.
 
 (** Hints for automatically solving recursive call obligations *)
-Hint Extern 3 => progress cbn : Below.
-Hint Resolve size_ii_open_rec_lt : Below.
-Hint Extern 3 => progress auto with arith : Below.
+#[local] Hint Extern 3 => progress cbn : Below.
+#[local] Hint Resolve size_ii_open_rec_lt : Below.
+#[local] Hint Extern 3 => progress auto with arith : Below.
 (*
 Equations infer_sort (ie : env) (i : index) : option sort :=
 infer_sort ie i by wf i (MR lt index_size) := (** Need to strengthen the subst *)
