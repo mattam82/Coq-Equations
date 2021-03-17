@@ -4,7 +4,7 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3012649.svg)](https://zenodo.org/record/3012649#.XcEydZNKjOQ)
 [![Gitter](https://img.shields.io/gitter/room/nwjs/nw.js.svg)](https://gitter.im/coq/Equations)
 
-Copyright 2009-2020 Matthieu Sozeau `matthieu.sozeau@inria.fr`  
+Copyright 2009-2021 Matthieu Sozeau `matthieu.sozeau@inria.fr`  
 Copyright 2015-2018 Cyprien Mangin `cyprien.mangin@m4x.org`
 
 Distributed under the terms of the GNU Lesser General Public License
@@ -85,6 +85,8 @@ The latest version works with Coq 8.11 (branch
 [8.11](https://github.com/mattam82/Coq-Equations/tree/8.11)),
 Coq 8.12 (branch
 [8.12](https://github.com/mattam82/Coq-Equations/tree/8.12)),
+Coq 8.13 (branch
+[8.13](https://github.com/mattam82/Coq-Equations/tree/8.13)),
 and the current Coq master branch (branch
 [master](https://github.com/mattam82/Coq-Equations/tree/master)).
 
