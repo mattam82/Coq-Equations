@@ -201,7 +201,11 @@ let find_global s = lazy (equations_lib_ref s)
 let find_constant s evd = e_new_global evd (equations_lib_ref s)
 
 let global_reference id =
-  Smartlocate.global_of_extended_global (Nametab.locate_extended (qualid_of_ident id))
+  match Smartlocate.global_of_extended_global (Nametab.locate_extended (qualid_of_ident id))
+  with
+  | Some x -> x
+  | None ->
+      CErrors.anomaly Pp.(str"global_reference called on non existing " ++ Names.Id.print id)
 
 let e_type_of env evd t =
   let evm, t = Typing.type_of ~refresh:false env !evd t in
