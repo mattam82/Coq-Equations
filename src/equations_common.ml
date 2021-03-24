@@ -419,7 +419,7 @@ let coq_sigmaI = (find_global "sigma.intro")
 
 let init_projection gr =
   let cst = Globnames.destConstRef gr in
-  let p = Option.get @@ Recordops.find_primitive_projection cst in
+  let p = Option.get @@ Structures.PrimitiveProjections.find_opt cst in
   Projection.make p false
 			
 let coq_pr1 = lazy (init_projection (Lazy.force (find_global "sigma.pr1")))
