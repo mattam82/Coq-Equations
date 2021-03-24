@@ -1,5 +1,4 @@
 From Equations Require Import Equations Fin DepElimDec.
-Require Import Omega.
 
 Inductive term :=
 | Var : nat -> term
