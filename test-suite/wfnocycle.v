@@ -1,6 +1,6 @@
 Set Warnings "-notation-overridden".
 From Equations Require Import Equations.
-Require Import Omega Utf8 Arith Compare_dec List Lia.
+Require Import Utf8 Arith Compare_dec List Lia.
 Require Import Relation_Operators.
 Arguments clos_trans [A].
 Import Sigma_Notations.

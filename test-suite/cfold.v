@@ -2,7 +2,7 @@
    Proof size is now constant instead of quadratic.,
    but program is as straightforward as in Agda. *)
 
-Require Import Arith Omega.
+Require Import Arith.
 From Equations Require Import Equations.
 Require Import Coq.Bool.Bool.
 
