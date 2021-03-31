@@ -17,6 +17,4 @@ Equations? fromList (l : list A) : length l > 0 -> nonEmpty A :=
 Proof.
   - exfalso. abstract omega.
   - abstract omega.
-Defined.
-(* Error: <in exception printer>:<original exception:Anomaly "Uncaught exception Not_found." *)
-(* Please report at http://coq.inria.fr/bugs/. *)
+Fail Defined.
