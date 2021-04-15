@@ -32,7 +32,7 @@ Require Import Bvector.
    We can define the boolean negation as follows: *)
 
 Equations neg (b : bool) : bool :=
-neg true := false ;
+neg true := false;
 neg false := true.
 
 (* begin hide *)
@@ -98,6 +98,7 @@ Inductive list {A} : Type := nil : list | cons : A -> list -> list.
 
 Arguments list : clear implicits.
 Notation "x :: l" := (cons x l). 
+Notation "[]" := nil.
 
 (** No special support for polymorphism is needed, as type arguments are treated 
    like regular arguments in dependent type theories. Note however that one cannot
@@ -183,6 +184,18 @@ filter (cons a l) p with p a => {
     to avoid spurious unfoldings, but this can be reverted on a case by case
     basis, or using the global [Set Equations Transparent] option. *)
 Global Transparent filter.
+
+(** A more compact syntax can be used to avoid repeating the same patterns in multiple clauses and 
+  focus on the patterns that matter. When a clause starts with `|`, a list of patterns separated by "," or "|" 
+  can be provided in open syntax, without parentheses. They should match the explicit arguments of the 
+  current problem. Under a `with` node, they should match the variable(s) introduced by the `with` construct.
+  When using "|", the ";" at the end of a clause becomes optional. *)
+
+Equations filter' {A} (l : list A) (p : A -> bool) : list A :=
+ | [], p => []
+ | a :: l, p with p a => {
+  | true  => a :: filter' l p
+  | false => filter' l p }.
 
 (** A common use of with clauses is to scrutinize recursive results like the following: *)
 
