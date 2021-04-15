@@ -17,8 +17,8 @@ Set Keyed Unification.
 
 Equations map_In {A B : Type}
      (l : list A) (f : forall (x : A), In x l -> B) : list B :=
-  map_In nil _ := nil;
-  map_In (cons x xs) f := cons (f x _) (map_In xs (fun x H => f x _)).
+  | nil, _ := nil
+  | cons x xs, f := cons (f x _) (map_In xs (fun x H => f x _)).
 
 Lemma map_In_spec {A B : Type} (f : A -> B) (l : list A) :
   map_In l (fun (x : A) (_ : In x l) => f x) = List.map f l.
@@ -29,8 +29,8 @@ Qed.
 Section list_size.
   Context {A : Type} (f : A -> nat).
   Equations list_size (l : list A) : nat :=
-  list_size nil := 0;
-  list_size (cons x xs) := S (f x + list_size xs).
+   | nil := 0
+   | x :: xs := S (f x + list_size xs).
   
   Lemma In_list_size:
     forall x xs, In x xs -> f x < S (list_size xs).
@@ -102,13 +102,13 @@ Module RoseTree.
     Qed.
 
     Equations elements' (r : t) : list A by wf r (MR lt size) :=
-    elements' (leaf a) := [a];
-    elements' (node l) := fn l hidebody
+     | leaf a := [a]
+     | node l := fn l hidebody
 
     where fn (x : list t) (H : list_size size x < size (node l)) : list A
       by wf x (MR lt (list_size size)) :=
-    fn nil _ := nil;
-    fn (cons x xs) _ := elements' x ++ fn xs hidebody.
+     | nil, _ := nil;
+      | cons x xs, _ := elements' x ++ fn xs hidebody.
 
     Equations elements'_def (r : t) : list A :=
     elements'_def (leaf a) := [a];
@@ -170,8 +170,8 @@ Module RoseTree.
     Context {A B : Set} (f : A -> B) (g : B -> A -> B) (h : A -> B -> B).
     
     Equations map (r : t A) : t B :=
-    map (leaf a) := leaf (f a);
-    map (node l) := node (List.map map l).
+      | leaf a := leaf (f a)
+      | node l := node (List.map map l).
 
     Equations fold (acc : B) (r : t A) : B :=
     fold acc (leaf a) := g acc a;
