@@ -8,7 +8,8 @@ jobs:
 
     strategy:
       matrix:
-        target: [ local, HoTT, dune ]
+        target: [ local, dune ]
+  # HoTT forget about HoTT for now
 
     steps:
 
