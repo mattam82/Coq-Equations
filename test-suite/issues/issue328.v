@@ -18,3 +18,4 @@ Proof.
   - exfalso. abstract lia.
   - abstract lia.
 Fail Defined.
+Abort.

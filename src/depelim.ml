@@ -128,6 +128,8 @@ let annot_of_context ctx =
 let depcase ~poly (mind, i as ind) =
   let indid = Nametab.basename_of_global (GlobRef.IndRef ind) in
   let mindb, oneind = Global.lookup_inductive ind in
+  let relevance = oneind.mind_relevance in
+  let annotR x = make_annot x relevance in
   let inds = List.rev (Array.to_list (Array.mapi (fun i oib -> mkInd (mind, i)) mindb.mind_packets)) in
   let ctx = oneind.mind_arity_ctxt in
   let nparams = mindb.mind_nparams in
@@ -164,19 +166,13 @@ let depcase ~poly (mind, i as ind) =
         (make_assum (nameR (Id.of_string ("P" ^ string_of_int i))) br))
       oneind.mind_consnames oneind.mind_nf_lc
   in
-  let ci = make_case_info (Global.env ()) ind Sorts.Relevant RegularStyle in
-  (*   ci_ind = ind; *)
-  (*   ci_npar = nparams; *)
-  (*   ci_cstr_nargs = oneind.mind_consnrealargs; *)
-  (*   ci_cstr_ndecls = oneind.mind_consnrealdecls; *)
-  (*   ci_pp_info = { ind_tags = []; cstr_tags = [||]; style = RegularStyle; } } *)
-  (* in *)
+  let ci = make_case_info (Global.env ()) ind relevance RegularStyle in
   let obj i =
     mkApp (mkInd ind,
           (Array.append (extended_rel_vect (nargs + nconstrs + i) params)
               (extended_rel_vect 0 args)))
   in
-  let ctxpred = make_assum anonR (obj (2 + nargs)) :: args in
+  let ctxpred = make_assum (annotR Anonymous) (obj (2 + nargs)) :: args in
   let app = mkApp (mkRel (nargs + nconstrs + 3),
                   (extended_rel_vect 0 ctxpred))
   in

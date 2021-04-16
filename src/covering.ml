@@ -670,11 +670,12 @@ let compute_fixdecls_data env evd ?data programs =
   in
   let fixprots =
     List.map (fun ty ->
-        let fixproto = get_efresh coq_fix_proto evd in
-        mkLetIn (anonR, fixproto,
+      let relevance = Retyping.relevance_of_type env !evd ty in
+      let fixproto = get_efresh coq_fix_proto evd in
+        relevance, mkLetIn (anonR, fixproto,
                  Retyping.get_type_of env !evd fixproto, ty)) tys in
   let fixdecls =
-    List.map2 (fun i fixprot -> of_tuple (nameR i, None, fixprot)) names fixprots in
+    List.map2 (fun i (relevance, fixprot) -> of_tuple (make_annot (Name i) relevance, None, fixprot)) names fixprots in
   data, List.rev fixdecls, fixprots
 
 let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),rec_annot,l,t,by),clauses as ieqs) =
