@@ -174,11 +174,12 @@ let define_by_eqs ~pm ~poly ~program_mode ~open_proof opts eqs nt =
                           program_split_info = info } in
     progs.(i) <- Some (p, compiled_info);
     if CArray.for_all (fun x -> not (Option.is_empty x)) progs then
-      (let fixprots = List.map (nf_evar !evd) fixprots in
+      (let fixprots = List.map (fun (rel, x) -> (rel, nf_evar !evd x)) fixprots in
        let progs = Array.map_to_list (fun x -> Option.get x) progs in
+       let relevant = List.for_all (fun (rel, x) -> rel == Sorts.Relevant) fixprots in
        let rec_info = compute_rec_type [] (List.map (fun (x, y) -> x.program_info) progs) in
        List.iter (Metasyntax.add_notation_interpretation (Global.env ())) nt;
-       if flags.with_eqns || flags.with_ind then
+       if (flags.with_eqns || flags.with_ind) && relevant then
          define_principles ~pm flags rec_info fixprots progs
        else pm)
     else pm

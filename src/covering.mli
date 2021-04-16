@@ -204,7 +204,7 @@ val compute_fixdecls_data :
            ?data:Constrintern.internalization_env ->
            Syntax.program_info list ->
            Constrintern.internalization_env *
-           Equations_common.rel_declaration list * EConstr.t list
+           Equations_common.rel_declaration list * (Sorts.relevance * EConstr.t) list
 
 val wf_fix_constr :
   Environ.env ->

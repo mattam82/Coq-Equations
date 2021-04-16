@@ -519,6 +519,7 @@ let term_of_tree env0 isevar sort tree =
       let evm, block = Equations_common.(get_fresh evm coq_block) in
       let blockty = mkLetIn (anonR, block, Retyping.get_type_of env evm block, lift 1 ty) in
       let evd = ref evm in
+      let elim_relevance = Retyping.relevance_of_type (push_rel_context ctx env) evm ty in
       let ctx', case_ty, branches_res, nb_cuts, rev_subst, to_apply, simpl =
         Sigma_types.smart_case env evd ctx rel blockty in
 
@@ -629,7 +630,7 @@ let term_of_tree env0 isevar sort tree =
       let pind, args = find_inductive env !evd rel_ty in
 
       (* Build the case. *)
-      let case_info = Inductiveops.make_case_info env (fst pind) Sorts.Relevant Constr.RegularStyle in
+      let case_info = Inductiveops.make_case_info env (fst pind) elim_relevance Constr.RegularStyle in
       let indty = Inductiveops.find_rectype env !evd (mkApp (mkIndU pind, Array.map_of_list EConstr.of_constr args)) in
       let case = Inductiveops.make_case_or_project env !evd indty case_info
           case_ty rel_t branches in
