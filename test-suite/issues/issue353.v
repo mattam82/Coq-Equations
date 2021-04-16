@@ -27,8 +27,6 @@ Defined.
 (** Does not generate the induction principle *)
  
 Module Alt.
-Set Equations Debug.
-Set Typeclasses Debug Verbosity 2.
 Equations Ack (p : nat * nat) : nat by wf p lex_nat :=
 Ack (0, n) := S n ;
 Ack (S m, 0) := Ack (m, 1);
@@ -36,9 +34,6 @@ Ack (S m, S n) := Ack (m, Ack (S m, n)).
 End Alt.
 
 Module Alt2.
-Set Equations Debug.
-Set Typeclasses Debug Verbosity 2.
-
 Equations Ack2 (p : nat * nat) : nat by wf p lex_nat :=
 Ack2 (0, n) := S n ;
 Ack2 (S m, 0) := Ack2 (m, 1);
