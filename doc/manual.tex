@@ -27,8 +27,7 @@
   \texttt{annotation} & annot & \Coloneqq & \kw{struct}~\var{x}? `| \kw{wf}~t~R? \\
   \texttt{user clauses} & clauses & \Coloneqq & \vecplus{cl} `| \texttt{\{}\,\vec{cl}\,\texttt{\}} \\
   \texttt{user clause} & cl & \Coloneqq & \coqdoccst{f}~\vec{up}~n?~\texttt{;} `|
-                                         \vecplus{\texttt{|}~up}~n?
-                                         ~\texttt{;} \\
+      \texttt{|} up~\vec{(\texttt{,} `| \texttt{|})~up}~n?~\texttt{;}? \\
   \texttt{user pattern} & up & \Coloneqq & x `| \_
   `| \coqdocconstr{C}~\vec{up}
   `| \texttt{?(}\,t\,\texttt{)} `| \texttt{!} \\
