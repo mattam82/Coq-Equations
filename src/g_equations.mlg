@@ -265,7 +265,7 @@ let check_eqns_ident =
 }
 
 GRAMMAR EXTEND Gram
-  GLOBAL: operconstr pattern deppat_equations deppat_elim binders2 equations lident my_preident;
+  GLOBAL: term pattern deppat_equations deppat_elim binders2 equations lident my_preident;
 
   my_preident:
     [ [ id = IDENT -> { id } ] ]
@@ -287,7 +287,7 @@ GRAMMAR EXTEND Gram
     [ [ "["; l = LIST0 lconstr SEP "|"; "]" -> { l } ] ]
   ;
 
-  operconstr:
+  term:
     [ "0" [ "λ"; "{" ; c = LIST0 equation SEP ";"; "}" -> {
             CAst.make ~loc @@ CHole (None, Namegen.IntroAnonymous,
                                      Some (Genarg.in_gen (Genarg.rawwit Syntax.wit_equations_list) c)) } ] ]
@@ -526,6 +526,10 @@ END
 
 VERNAC COMMAND EXTEND Derive CLASSIFIED AS SIDEFF STATE program
 | #[ poly = polymorphic ] [ "Derive" ne_ident_list(ds) "for" global_list(c) ] -> {
+  Ederive.derive ~poly (List.map Id.to_string ds)
+    (List.map (fun x -> x.CAst.loc, Smartlocate.global_with_alias x) c)
+  }
+| #[ poly = polymorphic ] [ "Equations" "Derive" ne_ident_list(ds) "for" global_list(c) ] -> {
   Ederive.derive ~poly (List.map Id.to_string ds)
     (List.map (fun x -> x.CAst.loc, Smartlocate.global_with_alias x) c)
   }
