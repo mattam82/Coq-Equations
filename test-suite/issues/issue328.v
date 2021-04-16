@@ -1,3 +1,4 @@
+From Coq Require Import Lia.
 Set Implicit Arguments.
 From Equations Require Import Equations.
 
@@ -16,6 +17,4 @@ Equations? fromList (l : list A) : length l > 0 -> nonEmpty A :=
 Proof.
   - exfalso. abstract lia.
   - abstract lia.
-Defined.
-(* Error: <in exception printer>:<original exception:Anomaly "Uncaught exception Not_found." *)
-(* Please report at http://coq.inria.fr/bugs/. *)
+Fail Defined.
