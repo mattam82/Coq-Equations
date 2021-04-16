@@ -668,7 +668,7 @@ let subst_protos s gr =
     | Constr.Prod (na, b, ty) ->
       begin try match na.binder_name with
         | Name id ->
-          let cst = List.find (fun s -> Id.equal (Label.to_id (Constant.label s)) id) s in
+          let cst = List.find (fun s -> CString.is_prefix (Id.to_string (Label.to_id (Constant.label s))) (Id.to_string id)) s in
           let ctx, concl = decompose_prod_assum sigma b in
           let lctx = List.tl ctx in
           let sigma, cstref = EConstr.fresh_global env sigma (GlobRef.ConstRef cst) in
