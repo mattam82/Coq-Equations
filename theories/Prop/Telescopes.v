@@ -22,7 +22,7 @@ Section TeleSigma.
   Universe i.
 
   Equations tele_sigma (t : tele@{i}) : Type@{i} :=
-  tele_sigma (tip A) := A;
+  tele_sigma (tip A) := A ; 
   tele_sigma (ext A B) := @sigma A (fun x => tele_sigma (B x)).
 
   Coercion tele_sigma : tele >-> Sortclass.

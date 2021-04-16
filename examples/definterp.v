@@ -108,12 +108,12 @@ Section MapAll.
   Context {A} {P Q : A -> Type} (f : forall x, P x -> Q x).
 
   Equations map_all {l : list A} : All P l -> All Q l :=
-  map_all all_nil := all_nil;
-  map_all (all_cons p ps) := all_cons (f _ p) (map_all ps).
+   | all_nil := all_nil
+   | all_cons p ps := all_cons (f _ p) (map_all ps).
 
   Equations map_all_in {l : list A} (f : forall x, x ∈ l -> P x -> Q x) : All P l -> All Q l :=
-  map_all_in f all_nil := all_nil;
-  map_all_in f (all_cons p ps) := all_cons (f _ here p) (map_all_in (fun x inl => f x (there inl)) ps).
+    | f, all_nil := all_nil
+    | f,  all_cons p ps := all_cons (f _ here p) (map_all_in (fun x inl => f x (there inl)) ps).
 End MapAll.
 
 Definition StoreTy := list Ty.
@@ -194,10 +194,10 @@ Equations M : forall (Γ : Ctx) (P : StoreTy -> Type) (Σ : StoreTy), Type :=
 
 Equations bind {Σ Γ} {P Q : StoreTy -> Type} (f : M Γ P Σ) (g : ∀ {Σ'}, P Σ' -> M Γ Q Σ') : M Γ Q Σ :=
   bind f g E μ with f E μ :=
-    { | None := None;
-      | Some (Σ', μ', x, ext) with g _ x (weaken_env ext E) μ' :=
-          { | None := None;
-            | Some (_, μ'', y, ext') := Some (_, μ'', y, ext ⊚ ext') } }.
+     | None := None
+     | Some (Σ', μ', x, ext) with g _ x (weaken_env ext E) μ' :=
+          | None := None;
+          | Some (_, μ'', y, ext') := Some (_, μ'', y, ext ⊚ ext').
 
 Infix ">>=" := bind (at level 20, left associativity).
 
@@ -271,26 +271,26 @@ Equations bind_ext {Σ Γ} {P Q : StoreTy -> Type} (f : M Γ P Σ) (g : ∀ {Σ'
 Infix ">>='" := bind_ext (at level 20, left associativity).
 
 Equations eval_ext (n : nat) {Γ Σ t} (e : Expr Γ t) : M Γ (Val t) Σ :=
-  eval_ext 0 _                := timeout;
-  eval_ext (S k) tt           := ret val_unit;
-  eval_ext (S k) true         := ret val_true;
-  eval_ext (S k) false        := ret val_false;
-  eval_ext (S k) (ite b t f)  := eval_ext k b >>=' λ{ | _ | ext | val_true => eval_ext k t;
-                                                      | _ | ext | val_false => eval_ext k f };
+  | 0, _                := timeout
+  | S k, tt           := ret val_unit
+  | S k, true         := ret val_true
+  | S k, false        := ret val_false
+  | S k, ite b t f    := eval_ext k b >>=' λ{ | _ | ext | val_true => eval_ext k t;
+                                                      | _ | ext | val_false => eval_ext k f }
 
-  eval_ext (S k) (var x)      := getEnv >>=' fun {Σ ext} E => ret (lookup E x);
-  eval_ext (S k) (abs x)      := getEnv >>=' fun {Σ ext} E => ret (val_closure x E);
-  eval_ext (S k) (@app Γ t u e1 e2) :=
+  | S k, var x        := getEnv >>=' fun {Σ ext} E => ret (lookup E x)
+  | S k, abs x        := getEnv >>=' fun {Σ ext} E => ret (val_closure x E)
+  | S k, @app Γ t u e1 e2 :=
       eval_ext k e1 >>=' λ{ | _ | ext | val_closure e' E =>
-      eval_ext k e2 >>=' fun {Σ' ext'} v => usingEnv (all_cons v (wk (P:=Env _) E)) (eval_ext k e')};
-  eval_ext (S k) (new e)      := eval_ext k e >>=' fun {Σ ext} v => storeM v;
-  eval_ext (S k) (deref l)    := eval_ext k l >>=' λ{ | _ | ext | val_loc l => derefM l };
-  eval_ext (S k) (assign l e) := eval_ext k l >>=' λ{ | _ | ext | val_loc l =>
-                                 eval_ext k e >>=' λ{ | _ | ext | v => updateM (wk l) (wk v) }}.
+      eval_ext k e2 >>=' fun {Σ' ext'} v => usingEnv (all_cons v (wk (P:=Env _) E)) (eval_ext k e')}
+  | S k, new e      := eval_ext k e >>=' fun {Σ ext} v => storeM v
+  | S k, deref l    := eval_ext k l >>=' λ{ | _ | ext | val_loc l => derefM l }
+  | S k, assign l e := eval_ext k l >>=' λ{ | _ | ext | val_loc l =>
+                                eval_ext k e >>=' λ{ | _ | ext | v => updateM (wk l) (wk v) }}.
 
 Equations strength {Σ Γ} {P Q : StoreTy -> Type} {w : Weakenable Q} (m : M Γ P Σ) (q : Q Σ) : M Γ (P ⊛ Q) Σ :=
   strength m q E μ with m E μ => {
-    | None => None;
+    | None => None
     | Some (Σ, μ', p, ext) => Some (Σ, μ', storepred_pair p (weaken ext q), ext) }.
 
 Infix "^" := strength.
