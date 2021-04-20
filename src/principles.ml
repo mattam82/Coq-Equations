@@ -645,10 +645,14 @@ let subst_rec env evd cutprob s (ctx, p, _ as lhs) =
   let subst =
     List.fold_left (fun (ctx, pats, ctx' as lhs') (id, (recarg, b)) ->
     try let rel, _, ty = Termops.lookup_rel_id id ctx in
+       (* Feedback.msg_debug Pp.(str"lhs': " ++ pr_context_map env evd lhs');       *)
         let fK = map_proto evd recarg (mapping_constr evd lhs b) (lift rel ty) in
-        let substf = single_subst env evd rel (PInac fK) ctx
-        (* ctx[n := f] |- _ : ctx *) in
-        compose_subst env ~sigma:evd substf lhs'
+        (* Feedback.msg_debug Pp.(str"fk: " ++ Printer.pr_econstr_env (push_rel_context ctx env) evd fK); *)
+        let substf = single_subst env evd rel (PInac fK) ctx in
+        (* ctx[n := f] |- _ : ctx *)
+        let substctx = compose_subst env ~sigma:evd substf lhs' in
+        (* Feedback.msg_debug Pp.(str"substituted context: " ++ pr_context_map env evd substctx);  *)
+        substctx
     with Not_found (* lookup *) -> lhs') (id_subst ctx) s
   in
   let csubst =
@@ -739,8 +743,8 @@ let push_decls_map env evd (ctx : context_map) cut (g : rel_context) =
   let map, _ = List.fold_right (fun decl acc -> push_mapping_context env evd decl acc) g (ctx, cut) in
   check_ctx_map env evd map
 
-(* let prsubst env evd s = Pp.(prlist_with_sep spc (fun (id, (recarg, f)) ->
- *     str (Id.to_string id) ++ str" -> " ++ Printer.pr_econstr_env env !evd f) s) *)
+let _prsubst env evd s = Pp.(prlist_with_sep spc (fun (id, (recarg, f)) ->
+     str (Id.to_string id) ++ str" -> " ++ Printer.pr_econstr_env env !evd f) s)
 
 let subst_rec_programs env evd ps =
   let where_map = ref PathMap.empty in
@@ -866,92 +870,106 @@ let subst_rec_programs env evd ps =
       Compute (lhs', where', mapping_constr !evd substprog ty, c')
 
     | Split (lhs, n, ty, cs) ->
-       let subst, lhs' = subst_rec cutprob s lhs in
-       let n' = destRel !evd (mapping_constr !evd subst (mkRel n)) in
-       Split (lhs', n', mapping_constr !evd subst ty,
-              Array.map (Option.map (aux cutprob s p f path)) cs)
+      let subst, lhs' = subst_rec cutprob s lhs in
+      let n' = destRel !evd (mapping_constr !evd subst (mkRel n)) in
+      Split (lhs', n', mapping_constr !evd subst ty,
+        Array.map (Option.map (aux cutprob s p f path)) cs)
 
     | Mapping (lhs, c) ->
-       let subst, lhs' = subst_rec cutprob s lhs in
-       Mapping (lhs', aux cutprob s p f path c)
+      let subst, lhs' = subst_rec cutprob s lhs in
+      Mapping (lhs', aux cutprob s p f path c)
 
     | Refined (lhs, info, sp) ->
-       let (id, c, cty), ty, arg, oterm, args, revctx, newprob, newty =
-         info.refined_obj, info.refined_rettyp,
-         info.refined_arg, info.refined_term, info.refined_args,
-         info.refined_revctx, info.refined_newprob, info.refined_newty
-       in
-       (* Feedback.msg_debug Pp.(str"Before map to newprob " ++ prsubst s); *)
-       let lhss = map_fix_subst !evd lhs s in
-       (* Feedback.msg_debug Pp.(str"lhs subst " ++ prsubst lhss); *)
-       let newprobs = map_fix_subst !evd info.refined_newprob_to_lhs lhss in
-       (* Feedback.msg_debug Pp.(str"newprob subst: " ++ prsubst newprobs);
-        * Feedback.msg_debug Pp.(str"Newprob to lhs: " ++ pr_context_map env !evd info.refined_newprob_to_lhs);
-        * Feedback.msg_debug Pp.(str"Newprob : " ++ pr_context_map env !evd newprob); *)
-       let subst, lhs' = subst_rec cutprob s lhs in
-       let _, revctx' = subst_rec (cut_problem s (pi3 revctx)) lhss revctx in
-       let cutnewprob = cut_problem newprobs (pi3 newprob) in
-       let subst', newprob' = subst_rec cutnewprob newprobs newprob in
-       let _, newprob_to_prob' =
-         subst_rec (cut_problem lhss (pi3 info.refined_newprob_to_lhs)) lhss info.refined_newprob_to_lhs in
-       let islogical = List.exists (fun (id, (recarg, f)) -> Option.has_some recarg) s in
-       let path' = info.refined_path in
-       let s' = aux cutnewprob newprobs p f path' sp in
-       let term', args', arg' =
-         if islogical then
-           let refarg = ref (0,0) in
-           let count_lets len =
-             let open Context.Rel.Declaration in
-             let ctx' = pi1 newprob' in
-             let rec aux ctx len =
-               if len = 0 then 0
-               else
-                 match ctx with
-                 | LocalAssum _ :: ctx -> succ (aux ctx (pred len))
-                 | LocalDef _ :: ctx -> succ (aux ctx len)
-                 | [] -> 0
-             in aux (List.rev ctx') len
-           in
-           let args' =
-             CList.fold_left_i
-               (fun i acc c ->
-                 if i == snd arg then
-                   (let len = List.length acc in
-                    refarg := (count_lets len, len));
-                 if isRel !evd c then
-                   let d = List.nth (pi1 lhs) (pred (destRel !evd c)) in
-                   if List.mem_assoc (Nameops.Name.get_id (get_name d)) s then acc
-                   else (mapping_constr !evd subst c) :: acc
-                 else (mapping_constr !evd subst c) :: acc) 0 [] args
-           in
-           let term', _ = term_of_tree env evd p.program_info.program_sort s' in
-           term', List.rev (List.map (Reductionops.nf_beta env !evd) args'), !refarg
-         else
-           let first, last = CList.chop (List.length s) (List.map (mapping_constr !evd subst) args) in
-           let term' = mapping_constr !evd subst oterm in
-           let refarg = (fst arg - List.length s, snd arg - List.length s) in
-           (applistc term' first), last, refarg
-           (* FIXME , needs substituted position too *)
-       in
-       let c' = Reductionops.nf_beta env !evd (mapping_constr !evd subst c) in
-       let info =
-         { refined_obj = (id, c', mapping_constr !evd subst cty);
-           refined_rettyp = mapping_constr !evd subst ty;
-           refined_arg = arg';
-           refined_path = path';
-           refined_term = term';
-           refined_args = args';
-           refined_revctx = revctx';
-           refined_newprob = newprob';
-           refined_newprob_to_lhs = newprob_to_prob';
-           refined_newty = mapping_constr !evd subst' newty }
-       in Refined (lhs', info, s')
+      let (id, c, cty), ty, arg, oterm, args, revctx, newprob, newty =
+        info.refined_obj, info.refined_rettyp,
+        info.refined_arg, info.refined_term, info.refined_args,
+        info.refined_revctx, info.refined_newprob, info.refined_newty
+      in
+      (* Feedback.msg_debug Pp.(str"Before map to newprob " ++ prsubst env evd s); *)
+      let lhss = map_fix_subst !evd lhs s in
+      (* Feedback.msg_debug Pp.(str"lhs subst " ++ prsubst env evd lhss); *)
+      let newprobs = map_fix_subst !evd info.refined_newprob_to_lhs lhss in
+      (* Feedback.msg_debug Pp.(str"newprob subst: " ++ prsubst env evd newprobs);
+      Feedback.msg_debug Pp.(str"Newprob to lhs: " ++ pr_context_map env !evd info.refined_newprob_to_lhs);
+      Feedback.msg_debug Pp.(str"Newprob : " ++ pr_context_map env !evd newprob); *)
+      let cutnewprob = cut_problem newprobs (pi3 newprob) in
+      (* Feedback.msg_debug Pp.(str"cutnewprob : " ++ pr_context_map env !evd cutnewprob); *)
+      let subst', newprob' = subst_rec cutnewprob newprobs newprob in
+      (* Feedback.msg_debug Pp.(str"subst' : " ++ pr_context_map env !evd subst'); *)
+      let subst, lhs' = subst_rec cutprob s lhs in
+      (* Feedback.msg_debug Pp.(str"subst = " ++ pr_context_map env !evd subst); *)
+      let _, revctx' = subst_rec (cut_problem s (pi3 revctx)) lhss revctx in
+      let _, newprob_to_prob' =
+        subst_rec (cut_problem lhss (pi3 info.refined_newprob_to_lhs)) lhss info.refined_newprob_to_lhs in
+      let islogical = List.exists (fun (id, (recarg, f)) -> Option.has_some recarg) s in
+      let path' = info.refined_path in
+      let s' = aux cutnewprob newprobs p f path' sp in
+      let count_lets len =
+        let open Context.Rel.Declaration in
+        let ctx' = pi1 newprob' in
+        let rec aux ctx len =
+          if len = 0 then 0
+          else
+            match ctx with
+            | LocalAssum _ :: ctx -> succ (aux ctx (pred len))
+            | LocalDef _ :: ctx -> succ (aux ctx len)
+            | [] -> 0
+          in aux (List.rev ctx') len
+      in
+      let refarg = ref (0,0) in
+      let refhead =
+        if islogical then
+          let term', _ = term_of_tree env evd p.program_info.program_sort s' in
+          term'
+         else mapping_constr !evd subst oterm
+      in
+      let args', filter =
+        CList.fold_left_i
+          (fun i (acc, filter) c ->
+            if i == snd arg then
+              (let len = List.length acc in
+              refarg := (count_lets len, len));
+            if isRel !evd c then
+              let d = List.nth (pi1 lhs) (pred (destRel !evd c)) in
+              if List.mem_assoc (Nameops.Name.get_id (get_name d)) s then acc, filter
+              else mapping_constr !evd subst c :: acc, i :: filter
+            else mapping_constr !evd subst c :: acc, i :: filter)
+          0 ([], []) args
+      in 
+      let args' = List.rev_map (Reductionops.nf_beta env !evd) args' in
+      equations_debug Pp.(fun () -> str"Chopped args: " ++ prlist_with_sep spc (Printer.pr_econstr_env (push_rel_context (pi1 subst) env) !evd) args');
+      let term', args', arg', filter =
+        if islogical then
+          refhead, args', !refarg, None
+        else
+          (let sigma, refargs = constrs_of_pats ~inacc_and_hide:false env !evd (pi2 subst') in
+           let refterm = it_mkLambda_or_LetIn (applistc refhead (List.rev refargs)) (pi1 subst') in
+           equations_debug Pp.(fun () -> str"refterm: " ++
+              (Printer.pr_econstr_env  env !evd refterm));
+          let refarg = (fst arg - List.length s, snd arg - List.length s) in
+          (refterm, args', refarg, Some (List.rev filter)))
+      in
+      let c' = Reductionops.nf_beta env !evd (mapping_constr !evd subst c) in
+      let info =
+        { refined_obj = (id, c', mapping_constr !evd subst cty);
+          refined_rettyp = mapping_constr !evd subst ty;
+          refined_arg = arg';
+          refined_path = path';
+          refined_term = term';
+          refined_filter = filter;
+          refined_args = args';
+          refined_revctx = revctx';
+          refined_newprob = newprob';
+          refined_newprob_to_lhs = newprob_to_prob';
+          refined_newty = mapping_constr !evd subst' newty }
+      in Refined (lhs', info, s')
   in
   let programs' = subst_programs [] [] 0 ps (List.map (fun p -> p.program_term) ps) in
   !where_map, programs'
 
 let unfold_programs ~pm env evd flags rec_type progs =
   let where_map, progs' = subst_rec_programs env !evd (List.map fst progs) in
+  equations_debug (fun () -> Pp.str"subst_rec finished");
   if PathMap.is_empty where_map && not (has_logical rec_type) then
     let one_program (p, prog) p' =
       let norecprob = Context_map.id_subst (program_sign p) in
@@ -1070,10 +1088,10 @@ let computations env evd alias refine p eqninfo =
            let f, fargs = decompose_appvect evd f in
            let args = match_arguments evd (arguments evd (where_term w)) fargs in
            let fsubst = ((f, args), term) :: fsubst in
-           (* Feedback.msg_info Pp.(str"Substituting " ++ Printer.pr_econstr_env env evd f ++
-            *                       spc () ++
-            *                       prlist_with_sep spc int args ++ str" by " ++
-            *                       Printer.pr_econstr_env env evd term); *)
+           (* Feedback.msg_debug Pp.(str"Substituting " ++ Printer.pr_econstr_env env evd f ++
+                                  spc () ++
+                                  prlist_with_sep spc int args ++ str" by " ++
+                                  Printer.pr_econstr_env env evd term); *)
            Some ((f, args), id, s), fsubst
          with Not_found -> None, fsubst
        in
@@ -1114,11 +1132,18 @@ let computations env evd alias refine p eqninfo =
      let ctx = compose_subst env ~sigma:evd lhs prob in
      if !Equations_common.debug then
        Feedback.msg_debug Pp.(str"where_instance: " ++ prlist_with_sep spc (Printer.pr_econstr_env env evd) inst);
+     let envlhs = (push_rel_context (pi1 lhs) env) in 
+     let envwhere = push_rel_context (where_context where) envlhs in
      let fn c =
+      (* Feedback.msg_debug Pp.(str"substituting in c= " ++ Printer.pr_econstr_env envwhere evd c); *)
        let c' = Reductionops.nf_beta env evd (substl inst c) in
+       (* Feedback.msg_debug Pp.(str"after where instance substitution: " ++ Printer.pr_econstr_env envlhs evd c'); *)
        substitute_aliases evd fsubst c'
      in
      let c' = map_rhs (fun c -> fn c) (fun x -> x) c in
+     if !Equations_common.debug then
+      (Feedback.msg_debug Pp.(str"substituting in: " ++ pr_splitting_rhs ~verbose:true envlhs envwhere evd lhs c ty);
+      Feedback.msg_debug Pp.(str"substituted: " ++ pr_splitting_rhs ~verbose:true envlhs envlhs evd lhs c' ty));
      let patsconstrs = pattern_instance ctx in
      let ty = substl inst ty in
      [pi1 ctx, f, alias, patsconstrs, ty,
@@ -1141,13 +1166,20 @@ let computations env evd alias refine p eqninfo =
      let patsconstrs = pattern_instance s in
      let refineds = compose_subst env ~sigma:evd info.refined_newprob_to_lhs s in
      let refinedpats = pattern_instance refineds in
-     let filter = [Array.length (arguments evd info.refined_term)] in
+     let progterm = applistc info.refined_term info.refined_args in
+     let filter = Option.default [Array.length (arguments evd info.refined_term)] info.refined_filter in
+     (* Feedback.msg_debug Pp.(str"At refine node: " ++ pr_context_map env evd info.refined_newprob);
+     Feedback.msg_debug Pp.(str"At refine node: " ++ pr_context_map env evd info.refined_revctx);
+     Feedback.msg_debug Pp.(str"At refine node, refined term: " ++ Printer.pr_econstr_env 
+      (push_rel_context (pi1 lhs) env) evd info.refined_term);
+     Feedback.msg_debug Pp.(str"At refine node, program term: " ++ Printer.pr_econstr_env 
+      (push_rel_context (pi1 lhs) env) evd progterm); *)
      [pi1 lhs, f, alias, patsconstrs, info.refined_rettyp, f, (Refine, true),
-      RProgram (applistc info.refined_term info.refined_args),
+      RProgram progterm,
       Some [(info.refined_term, filter), None, info.refined_path, pi1 info.refined_newprob,
             info.refined_newty, refinedpats,
             Some (mapping_constr evd info.refined_newprob_to_lhs c, info.refined_arg),
-            computations env info.refined_newprob info.refined_term None fsubst (Regular, true) cs]]
+            computations env info.refined_newprob (lift 1 info.refined_term) None fsubst (Regular, true) cs]]
 
   in program_computations env prob f alias [] refine p
 
@@ -1416,7 +1448,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
       msg (str"Definining principles of: " ++
            prlist_with_sep fnl
              (fun (p, unfp, prog, eqninfo) ->
-                pr_splitting env evd p.program_splitting ++ fnl () ++
+                pr_splitting ~verbose:true env evd p.program_splitting ++ fnl () ++
                 (match unfp with
                  | Some unf -> str "and " ++ pr_splitting env evd unf.program_splitting
                  | None -> mt ()))
