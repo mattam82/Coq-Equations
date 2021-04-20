@@ -1,7 +1,14 @@
 # One of these two files will have been generated
 
--include Makefile.coq
--include Makefile.HoTT
+.PHONY: all default
+
+all: Makefile.coq
+	$(MAKE) -f Makefile.coq
+	test -f Makefile.hott && $(MAKE) -f Makefile.hott || true
+
+install: Makefile.coq
+	$(MAKE) -f Makefile.coq install
+	test -f Makefile.hott && $(MAKE) -f Makefile.hott install || true
 
 makefiles: test-suite/Makefile examples/Makefile
 
@@ -53,3 +60,8 @@ toplevel: src/equations_plugin.cma bytefiles
 
 dune:
 	dune build
+
+ci:
+	test -f Makefile.hott && $(MAKE) -f Makefile.hott install || \
+		$(MAKE) -f Makefile.coq install test-suite examples
+	

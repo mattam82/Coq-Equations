@@ -1,5 +1,6 @@
 Set Warnings "-notation-overridden".
 Require Import Equations.HoTT.Loader Equations.HoTT.Relation Equations.HoTT.WellFounded.
+From HoTT Require Import Spaces.Nat.
 
 Section Lt.
   (* These are just natural numbers, allow minimizing to Set. *)
@@ -42,8 +43,10 @@ Section Lt.
 End Lt.
 
 (* Use refine to ensure proper treatment of cumulativity. *)
+#[export]
 Hint Extern 0 (@WellFounded nat _) => refine lt_wf : typeclass_instances.
 
+#[export]
 Hint Resolve lt_n_Sn : Below.
 
 (** Define non-dependent lexicographic products *)
@@ -93,4 +96,5 @@ End Lexicographic_Product.
 Instance wellfounded_lexprod A B R S `(wfR : WellFounded A R, wfS : WellFounded B S) :
   WellFounded (lexprod A B R S) := wf_lexprod A B R S wfR wfS.
 
+#[export]
 Hint Constructors lexprod : Below.

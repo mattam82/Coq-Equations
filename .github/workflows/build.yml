@@ -8,8 +8,7 @@ jobs:
 
     strategy:
       matrix:
-        target: [ local, dune ]
-  # HoTT forget about HoTT for now
+        target: [ local, hott, dune ]
 
     steps:
 
@@ -39,5 +38,5 @@ jobs:
       - run: opam upgrade -y coq.dev coq-hott.dev
       - run: opam list
       - run: opam exec -- coqc --version
-      - run: opam exec -- ./configure.sh ${{matrix.target}}
+      - run: opam exec -- ./configure.sh --enable-${{matrix.target}}
       - run: opam exec -- make -j 2 ci

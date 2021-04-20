@@ -15,6 +15,7 @@ Require Import Equations.HoTT.Logic
         Equations.HoTT.Relation
         Equations.HoTT.WellFounded
         Equations.HoTT.DepElim Equations.HoTT.Constants.
+From HoTT Require Import Basics.Tactics Spaces.Nat.
 
 Set Universe Polymorphism.
 
