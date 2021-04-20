@@ -140,7 +140,7 @@ val strengthen :
   rel_context ->
   Int.Set.elt ->
   constr ->
-  context_map * (int * int) list
+  context_map * context_map
 
 (* Return a substitution and its inverse. *)
 (* For more flexibility, [rels] is a set of indices which are to be

@@ -172,7 +172,8 @@ let pr_context env sigma ctx =
       (fun d (env, pps) ->
          (push_rel d env,
           pps ++ ws 2 ++
-              Printer.pr_rel_decl env sigma (EConstr.Unsafe.to_rel_decl d)))
+              try Printer.pr_rel_decl env sigma (EConstr.Unsafe.to_rel_decl d)
+              with e -> str"<printer raised an exception>"))
            ctx ~init:(env, mt ())
   in hv 0 pp
 
@@ -486,9 +487,10 @@ let subst_term_in_context sigma t ctx =
   in newctx
 
 let strengthen ?(full=true) ?(abstract=false) env evd (ctx : rel_context) x (t : constr) =
-  let rels = Int.Set.union (if full then rels_above ctx x else Int.Set.singleton x)
-      (* (Int.Set.union *) (Int.Set.union (dependencies_of_term ~with_red:true env evd ctx t x) (fix_rels evd ctx))
-  (* (non_dependent ctx t)) *)
+  let rels = 
+      Int.Set.union (if full then rels_above ctx x else Int.Set.singleton x)
+      (Int.Set.union (dependencies_of_term ~with_red:true env evd ctx t x) 
+      (Int.Set.remove x (fix_rels evd ctx)))
   in
   (* For each variable that we need to push under x, we check
      if its type or body mentions x syntactically. If it does, we normalize
@@ -523,7 +525,8 @@ let strengthen ?(full=true) ?(abstract=false) env evd (ctx : rel_context) x (t :
       subst_term_in_context evd (lift (-lenrest) (specialize_constr evd subst t)) rest @ min
     else rest @ min
   in
-  (ctx', subst, ctx), reorder
+  mk_ctx_map env evd ctx' subst ctx, 
+  mk_ctx_map env evd ctx (List.map (fun (i, j) -> PRel i) reorder) ctx'
 
 (* TODO Merge both strengthening functions. Bottom one might be better. *)
 (* Return a substitution (and its inverse) which is just a permutation
@@ -531,9 +534,10 @@ let strengthen ?(full=true) ?(abstract=false) env evd (ctx : rel_context) x (t :
  * all variables in [t] (and their own dependencies) are now declared
  * before [x] in the context. *)
 let new_strengthen (env : Environ.env) (evd : Evd.evar_map) (ctx : rel_context)
-    (x : int) ?(rels : Int.Set.t = rels_above ctx x) (t : constr) :
+    (x : int) ?(rels = rels_above ctx x) (t : constr) :
   context_map * context_map =
-  let rels = Int.Set.union rels (dependencies_of_term ~with_red:true env evd ctx t x) in
+  let rels = Int.Set.union rels
+    (Int.Set.union (dependencies_of_term ~with_red:true env evd ctx t x) (fix_rels evd ctx)) in
   let maybe_reduce k t =
     if Int.Set.mem k (Termops.free_rels evd t) then
       Equations_common.nf_betadeltaiota env evd t
@@ -658,7 +662,7 @@ let single_subst ?(unsafe = false) env evd x p g =
         (* 	(List.length g) *)
     in mk_ctx_map ~unsafe env evd substctx pats g
   else
-    let (ctx, s, g), _ = strengthen env evd g x t in
+    let (ctx, s, g), invstr = new_strengthen env evd g x t in
     let x' = match nth s (pred x) with PRel i -> i | _ -> error "Occurs check singleton subst"
     and t' = specialize_constr evd s t in
     (* t' is in ctx. Do the substitution of [x'] by [t] now

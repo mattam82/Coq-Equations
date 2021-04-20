@@ -74,6 +74,7 @@ and refined_node =
     refined_arg : int * int; (* Index counting lets or not *)
     refined_path : path;
     refined_term : EConstr.t;
+    refined_filter : int list option;
     refined_args : constr list;
     refined_revctx : context_map;
     refined_newprob : context_map;
@@ -102,6 +103,9 @@ val program_rec : program -> program_rec_info option
 
 val pr_path : Evd.evar_map -> path -> Pp.t
 val eq_path : path -> path -> bool
+
+val pr_splitting_rhs : ?verbose:bool -> env -> env (* With wheres *) -> Evd.evar_map -> context_map -> splitting_rhs -> 
+    EConstr.t -> Pp.t
 
 val pr_splitting : env -> Evd.evar_map -> ?verbose:bool -> splitting -> Pp.t
 val ppsplit : splitting -> unit

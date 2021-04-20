@@ -658,6 +658,11 @@ let print_program_info env sigma programs =
   if !Equations_common.debug then
     Feedback.msg_debug (str "Programs: " ++ prlist_with_sep fnl (pr_program_info env sigma) programs)
 
+let make_fix_proto env sigma ty =
+  let relevance = Retyping.relevance_of_type env sigma ty in
+  let _, fixproto = get_fresh sigma coq_fix_proto in
+    relevance, mkLetIn (anonR, fixproto, Retyping.get_type_of env sigma fixproto, lift 1 ty)
+
 let compute_fixdecls_data env evd ?data programs =
   let protos = List.map (fun p ->
       let ty = it_mkProd_or_LetIn p.program_arity p.program_sign in
@@ -668,12 +673,7 @@ let compute_fixdecls_data env evd ?data programs =
     Constrintern.compute_internalization_env ?impls:data
     env !evd Constrintern.Recursive names tys impls
   in
-  let fixprots =
-    List.map (fun ty ->
-      let relevance = Retyping.relevance_of_type env !evd ty in
-      let fixproto = get_efresh coq_fix_proto evd in
-        relevance, mkLetIn (anonR, fixproto,
-                 Retyping.get_type_of env !evd fixproto, ty)) tys in
+  let fixprots = List.map (fun ty -> make_fix_proto env !evd ty) tys in
   let fixdecls =
     List.map2 (fun i (relevance, fixprot) -> of_tuple (make_annot (Name i) relevance, None, fixprot)) names fixprots in
   data, List.rev fixdecls, fixprots
@@ -771,9 +771,16 @@ let recursive_patterns env progid rec_info =
     structpats
   | _ -> []
 
+let destPRel = function PRel i -> i | _ -> assert false
+
 let pats_of_sign sign =
   List.rev_map (fun decl ->
       DAst.make (PUVar (Name.get_id (Context.Rel.Declaration.get_name decl), false))) sign
+
+let abstract_term_in_context env evars idx t (g, p, d) =
+  let before, after = CList.chop (pred idx) g in
+  let before' = subst_term_in_context evars (lift (- pred idx) t) before in
+  (before' @ after, p, d)
 
 let wf_fix_constr env evars sign arity sort carrier cterm crel =
   let sigma, tele, telety = Sigma_types.telescope_of_context env !evars sign in
@@ -1184,22 +1191,58 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
        current context *)
     let revctx = check_ctx_map env !evars (newctx, pats', ctx) in
     let idref = Namegen.next_ident_away (Id.of_string "refine") (Id.Set.of_list (ids_of_rel_context newctx)) in
-    let decl = make_assum (nameR idref) (mapping_constr !evars revctx cty) in
+    let refterm (* in newctx *) = mapping_constr !evars revctx cconstr in
+    let refty = mapping_constr !evars revctx cty in
+    let decl = make_assum (nameR idref) refty in
     let extnewctx = decl :: newctx in
     (* cmap : Δ -> ctx, cty,
        strinv associates to indexes in the strenghtened context to
        variables in the original context.
     *)
-    let refterm = lift 1 (mapping_constr !evars revctx cconstr) in
-    let cmap, strinv = strengthen ~full:false ~abstract:true env !evars extnewctx 1 refterm in
-    let (idx_of_refined, _) = List.find (fun (i, j) -> j = 1) strinv in
+    let ty_min_fv = 
+      let fvs = Int.Set.union (free_rels !evars refty) (free_rels !evars refterm) in
+      match Int.Set.min_elt_opt fvs with
+      | None -> 1
+      | Some m -> m
+      (* Forces to declare the refined variable below its type and term dependencies for well-formedness *)
+    in
+    (* equations_debug Pp.(fun () -> str"Moving refine variable decl to: " ++ int ty_min_fv); *)
+    let tytop, tytopinv = 
+      let before, after = List.chop (pred ty_min_fv) newctx in
+      let newdecl' = make_assum (nameR idref) (lift (- (pred ty_min_fv)) refty) in
+      let newctx = lift_rel_context 1 before @ newdecl' :: after in
+      mk_ctx_map env !evars newctx 
+        (PRel ty_min_fv :: List.rev (patvars_of_ctx before) @ List.rev (lift_pats ty_min_fv (patvars_of_ctx after)))
+        extnewctx,
+      mk_ctx_map env !evars extnewctx
+        (lift_pats 1 (List.rev (patvars_of_ctx before)) @ (PRel 1 :: List.rev (lift_pats ty_min_fv (patvars_of_ctx after))))
+        newctx
+    in
+    let refterm (* in extnewctx *) = lift 1 refterm in
+    equations_debug Pp.(fun () -> str" Strenghtening variable decl: " ++ pr_context_map env !evars tytop);
+    equations_debug Pp.(fun () -> str" Strenghtening variable decl inv: " ++ pr_context_map env !evars tytopinv);
+    let cmap, strinv = new_strengthen env !evars (pi1 tytop) 1 refterm in
+    let cmap = compose_subst env ~sigma:!evars cmap tytop in
+    let strinv = compose_subst env ~sigma:!evars tytopinv strinv in
+    let strinv_map = List.map_i (fun i -> function (PRel j) -> i, j | _ -> assert false) 1 (pi2 strinv) in
+    equations_debug Pp.(fun () -> str" Strenghtening: " ++ pr_context_map env !evars cmap);
+    equations_debug Pp.(fun () -> str" Strenghtening inverse: " ++ pr_context_map env !evars strinv);
+    let idx_of_refined = destPRel (CList.hd (pi2 cmap)) in
+    equations_debug Pp.(fun () -> str" idx_of_refined: " ++ int idx_of_refined);
+    let cmap =
+      abstract_term_in_context env !evars idx_of_refined (mapping_constr !evars cmap refterm) cmap
+    in
+    equations_debug Pp.(fun () -> str" Strenghtening + abstraction: " ++ pr_context_map env !evars cmap);
     let newprob_to_lhs =
       let inst_refctx = set_in_ctx idx_of_refined (mapping_constr !evars cmap refterm) (pi1 cmap) in
       let str_to_new =
         inst_refctx, (specialize_pats !evars (pi2 cmap) (lift_pats 1 pats')), newctx
       in
+      equations_debug Pp.(fun () -> str" Strenghtening + abstraction + instantiation: " ++ pr_context_map env !evars str_to_new);
       compose_subst env ~sigma:!evars str_to_new revctx
     in	
+    equations_debug Pp.(fun () -> str" Strenghtening + abstraction + instantiation: " ++ pr_context_map env !evars newprob_to_lhs);
+
     let newprob = 
       let ctx = pi1 cmap in
       let pats = 
@@ -1223,7 +1266,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
     let newty = mapping_constr !evars cmap newty in
     (* The new problem forces a reordering of patterns under the refinement
        to make them match up to the context map. *)
-    let sortinv = List.sort (fun (i, _) (i', _) -> i' - i) strinv in
+    let sortinv = List.sort (fun (i, _) (i', _) -> i' - i) strinv_map in
     let vars' = List.rev_map snd sortinv in
     let cls =
       match cs with
@@ -1272,7 +1315,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
     in
     let cls' = cls' 1 cls in
     let strength_app =
-      let sortinv = List.sort (fun (i, _) (i', _) -> i' - i) strinv in
+      let sortinv = List.sort (fun (i, _) (i', _) -> i' - i) strinv_map in
       let args =
         List.map (fun (i, j) (* i variable in strengthened context, 
                                 j variable in the original one *) -> 
@@ -1313,6 +1356,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
           refined_arg = refine_arg idx_of_refined (pi1 cmap);
           refined_path = path';
           refined_term = term;
+          refined_filter = None;
           refined_args = strength_app;
           (* refined_args = (mkEvar (evar, secvars), strength_app); *)
           refined_revctx = revctx;
@@ -1339,7 +1383,10 @@ and interp_wheres env0 ctx evars path data s lets
     let () = evars := sigma in
 
     let pre_type = Syntax.program_type p in
-    let fixdecls = [Context.Rel.Declaration.LocalAssum (nameR id, pre_type)] in
+    let rel, fixp = 
+      if is_rec then make_fix_proto env !evars pre_type 
+      else Retyping.relevance_of_type env !evars pre_type, pre_type in
+    let fixdecls = [Context.Rel.Declaration.LocalAssum (make_annot (Name id) rel, fixp)] in
     let rec_type = compute_rec_type data.rec_type [p] in
     let rec_data = {data with rec_type; fixdecls} in
     let p, problem, arity, extpats, rec_info =

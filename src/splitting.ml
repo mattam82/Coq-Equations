@@ -104,6 +104,7 @@ and refined_node =
     refined_arg : int * int; (* Index counting lets or not *)
     refined_path : path;
     refined_term : EConstr.t;
+    refined_filter : int list option;
     refined_args : constr list;
     refined_revctx : context_map;
     refined_newprob : context_map;
@@ -158,6 +159,17 @@ let where_context wheres =
 
 let where_program_type w =
   program_type w.where_program
+  
+let pplhs env sigma lhs = pr_pats env sigma (pi2 lhs)
+  
+let pr_splitting_rhs ?(verbose=false) env' env'' sigma lhs rhs ty =
+  let verbose pp = if verbose then pp else mt () in
+  match rhs with
+  | RProgram c -> pplhs env' sigma lhs ++ str" := " ++
+          Printer.pr_econstr_env env'' sigma c ++
+          (verbose (str " : " ++ Printer.pr_econstr_env env'' sigma ty))
+  | REmpty (i, _) -> pplhs env' sigma lhs ++ str" :=! " ++
+        pr_rel_name env'' i
 
 let pr_program_info env sigma p =
   let open Pp in
@@ -178,8 +190,7 @@ let pr_program_info env sigma p =
    | None -> str "not recursive") ++ str")"
 
 let pr_splitting env sigma ?(verbose=false) split =
-  let verbose pp = if verbose then pp else mt () in
-  let pplhs env sigma lhs = pr_pats env sigma (pi2 lhs) in
+  let verb pp = if verbose then pp else mt () in
   let rec aux = function
     | Compute (lhs, wheres, ty, c) ->
       let env' = push_rel_context (pi1 lhs) env in
@@ -197,22 +208,16 @@ let pr_splitting env sigma ?(verbose=false) split =
       in
       let ppwheres = prlist_with_sep Pp.fnl ppwhere wheres in
       let env'' = push_rel_context (where_context wheres) env' in
-      ((match c with
-          | RProgram c -> pplhs env' sigma lhs ++ str" := " ++
-                          Printer.pr_econstr_env env'' sigma c ++
-                          (verbose (str " : " ++ Printer.pr_econstr_env env'' sigma ty))
-          | REmpty (i, _) -> pplhs env' sigma lhs ++ str" :=! " ++
-                             pr_rel_name env'' i)
-       ++ Pp.fnl () ++ ppwheres ++
-       verbose (str " in context " ++  pr_context_map env sigma lhs))
+      (pr_splitting_rhs ~verbose env' env'' sigma lhs c ty ++ Pp.fnl () ++ ppwheres ++
+       verb (hov 2 (fnl () ++ str "(in context: " ++ spc () ++ pr_context_map env sigma lhs ++ str")" ++ fnl ())))
     | Split (lhs, var, ty, cs) ->
       let env' = push_rel_context (pi1 lhs) env in
       (pplhs env' sigma lhs ++ str " split: " ++ pr_rel_name env' var ++
        Pp.fnl () ++
-       verbose (str" : " ++
-                Printer.pr_econstr_env env' sigma ty ++
-                str " in context " ++
-                pr_context_map env sigma lhs ++ spc ()) ++
+       verb (hov 2 (str" : " ++
+                Printer.pr_econstr_env env' sigma ty ++ spc () ++
+                str " (in context " ++ spc () ++
+                pr_context_map env sigma lhs ++ str ")" ++ fnl ())) ++
        (Array.fold_left
           (fun acc so -> acc ++
                          hov 2 (match so with
@@ -229,22 +234,20 @@ let pr_splitting env sigma ?(verbose=false) split =
         info.refined_revctx, info.refined_newprob, info.refined_newty
       in
       let env' = push_rel_context (pi1 lhs) env in
-      hov 2 (pplhs env' sigma lhs ++ str " with " ++ Id.print id ++ str" := " ++
-             Printer.pr_econstr_env env' sigma (mapping_constr sigma revctx c) ++ Pp.cut () ++
-             verbose (str " : " ++ Printer.pr_econstr_env env' sigma cty ++ str" " ++
+      hov 0 (pplhs env' sigma lhs ++ str " with " ++ Id.print id ++ str" := " ++
+             Printer.pr_econstr_env env' sigma (mapping_constr sigma revctx c) ++ Pp.fnl () ++
+             verb (hov 2 (str " : " ++ Printer.pr_econstr_env env' sigma cty ++ str" " ++
                       Printer.pr_econstr_env env' sigma ty ++ str" " ++
-                      str " in " ++ pr_context_map env sigma lhs ++ spc () ++
-                      str " refine term " ++ Printer.pr_econstr_env env' sigma info.refined_term ++
-                      str " refine args " ++ prlist_with_sep spc (Printer.pr_econstr_env env' sigma)
-                        info.refined_args ++
-                      str "New problem: " ++ pr_context_map env sigma newprob ++ str " for type " ++
-                      Printer.pr_econstr_env (push_rel_context (pi1 newprob) env) sigma newty ++ spc () ++
-                      spc () ++ str" eliminating " ++ pr_rel_name (push_rel_context (pi1 newprob) env) (snd arg)
-                      ++ spc () ++
-                      str "Revctx is: " ++ pr_context_map env sigma revctx ++ spc () ++
-                      str "New problem to problem substitution is: " ++
-                      pr_context_map env sigma info.refined_newprob_to_lhs ++ Pp.cut ()) ++
-             aux s)
+                      hov 2 (str "in" ++ pr_context_map env sigma lhs) ++ spc () ++
+                      hov 2 (str "refine term (in lhs): " ++ Printer.pr_econstr_env env' sigma info.refined_term) ++
+                      hov 2 (str "refine args: " ++ prlist_with_sep spc (Printer.pr_econstr_env env' sigma)
+                        info.refined_args) ++
+                      hov 2 (str "New problem: " ++ pr_context_map env sigma newprob) ++ 
+                      hov 2 (str "For type: " ++ Printer.pr_econstr_env (push_rel_context (pi1 newprob) env) sigma newty) ++
+                      hov 2 (str"Eliminating:" ++ pr_rel_name (push_rel_context (pi1 newprob) env) (snd arg) ++ spc ()) ++
+                      hov 2 (str "Revctx is: " ++ pr_context_map env sigma revctx) ++
+                      hov 2 (str "New problem to problem substitution is: " ++ pr_context_map env sigma info.refined_newprob_to_lhs ++ Pp.fnl ()))) ++
+             hov 0 (aux s))
   in
   try aux split with e -> str"Error pretty-printing splitting"
 
