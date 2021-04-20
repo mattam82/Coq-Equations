@@ -34,9 +34,9 @@ jobs:
       - run: opam repo add coq-released https://coq.inria.fr/opam/released
       - run: opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev
       - run: opam repo add coq-extra-dev https://coq.inria.fr/opam/extra-dev
-      - run: opam install -j 2 -y coq.dev coq-hott.dev
-      - run: opam upgrade -y coq.dev coq-hott.dev
+      - run: opam install -j 2 -y coq.dev coq-hott.8.13 --ignore-constraints-on=coq
+      - run: opam upgrade -y coq.dev coq-hott.8.13 --ignore-constraints-on=coq
       - run: opam list
       - run: opam exec -- coqc --version
       - run: opam exec -- ./configure.sh --enable-${{matrix.target}}
-      - run: opam exec -- make -j 2 ci
+      - run: opam exec -- make -j 2 ci-$${matrix.target}}

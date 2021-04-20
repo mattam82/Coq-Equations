@@ -61,7 +61,12 @@ toplevel: src/equations_plugin.cma bytefiles
 dune:
 	dune build
 
-ci:
-	test -f Makefile.hott && $(MAKE) -f Makefile.hott install || \
-		$(MAKE) -f Makefile.coq install test-suite examples
+ci-dune:dune
+
+ci-hott:
+	test -f Makefile.hott && $(MAKE) -f Makefile.hott all install
 	
+ci-local:
+	$(MAKE) -f Makefile.coq all install test-suite examples
+	
+.PHONY: ci-dune ci-hott ci-local
