@@ -39,4 +39,4 @@ jobs:
       - run: opam list
       - run: opam exec -- coqc --version
       - run: opam exec -- ./configure.sh --enable-${{matrix.target}}
-      - run: opam exec -- make -j 2 ci-$${matrix.target}}
+      - run: opam exec -- make -j 2 ci-${{matrix.target}}
