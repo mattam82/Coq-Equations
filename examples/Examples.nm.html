@@ -38,9 +38,6 @@ Proving Termination of Normalization Functions for Conditional Expressions, L. P
 <span class="id" title="keyword">Transparent</span> <span class="id" title="var">exp_size</span>.<br/>
 
 <br/>
-<span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="var">Omega</span>.<br/>
-
-<br/>
 <span class="id" title="keyword">Lemma</span> <span class="id" title="var">exp_size_pos</span> (<span class="id" title="var">x</span> : <span class="id" title="var">exp</span>) : (0 &lt; <span class="id" title="var">exp_size</span> <span class="id" title="var">x</span>)%<span class="id" title="var">nat</span>.<br/>
 <span class="id" title="keyword">Proof</span>. <span class="id" title="var">funelim</span> (<span class="id" title="var">exp_size</span> <span class="id" title="var">x</span>); <span class="id" title="tactic">auto</span>; <span class="id" title="tactic">try</span> <span class="id" title="var">lia</span>. <span class="id" title="tactic">apply</span> <span class="id" title="var">Nat.mul_pos_pos</span>; <span class="id" title="tactic">auto</span>. <span class="id" title="var">lia</span>. <span class="id" title="keyword">Qed</span>.<br/>
 <span class="id" title="keyword">Hint Resolve</span> <span class="id" title="var">exp_size_pos</span> : <span class="id" title="var">core</span>.<br/>
