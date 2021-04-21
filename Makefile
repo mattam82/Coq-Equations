@@ -80,4 +80,6 @@ ci-local:
 	$(MAKE) -f Makefile.coq install
 	$(MAKE) -f Makefile.coq uninstall
 	
+ci: ci-local
+
 .PHONY: ci-dune ci-hott ci-local
