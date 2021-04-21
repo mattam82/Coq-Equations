@@ -179,7 +179,6 @@ This will become an error in the future [solve_obligation_error,tactics]coqtop
 
 *)
 
-Set Equations Debug.
 Set Equations Transparent.
 Inductive exp :=
   | If : list exp -> exp -> exp.
@@ -201,7 +200,6 @@ where c_exps (zs: list exp) : nat by struct zs :=
     let res1 := c_exp_notc x in
     res1 + res2 }.
     Transparent c_exp_tc c_exp_notc c_exps.
-Inspect 5.
   Obligation Tactic := idtac.
   Equations? (noind) gc_exp_tc (z: exp) : c_exp_tc_graph z (c_exp_tc z) :=
     { gc_exp_tc (If xs y) :=
@@ -222,7 +220,6 @@ Inspect 5.
     all:autorewrite with c_exp_tc; simpl; constructor; try assumption.
     apply gc_exps.
   Defined.
-  Inspect 5.
   
 
 
@@ -280,9 +277,6 @@ Fixpoint c_exps (zs : list exp) : c_exps_graph zs (issue_mutual.c_exps zs) :=
                 end in
            c_exp_notc e)
    end.
-
-
-Set Equations Debug.
 
 
 Equations c_exp_tc (z: exp) : nat by struct z :=

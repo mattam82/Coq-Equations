@@ -18,7 +18,6 @@ Equations f (t2: T2): T2
 .
 
 Axiom  admit : forall{A}, A.
-Set Equations Debug.
 Next Obligation. Admitted.
 Print HintDb f_wf_obligations.
 Next Obligation. apply admit. Defined.  Print   f_elim.
