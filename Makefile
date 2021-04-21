@@ -1,6 +1,6 @@
 # One of these two files will have been generated
 
-.PHONY: all default
+.PHONY: all default makefiles clean-makefiles
 
 all: Makefile.coq
 	$(MAKE) -f Makefile.coq
@@ -42,7 +42,10 @@ examples: examples/Makefile all
 
 .PHONY: examples
 
-clean:: clean-makefiles makefiles clean-examples clean-test-suite
+clean: clean-makefiles makefiles
+	$(MAKE) -f Makefile.coq clean
+	test -f Makefile.hott && make -f Makefile.hott clean || true
+	$(MAKE) clean-examples clean-test-suite
 
 siteexamples: examples/*.glob
 	sh siteexamples.sh

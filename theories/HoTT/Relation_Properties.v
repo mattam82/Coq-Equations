@@ -34,8 +34,7 @@ Class Equivalence {A} (R : Relation A) :=
 
 Notation inclusion R R' := (subrelation R R').
 
-#[export]
-Hint Constructors sum : Relations.
+#[export] Hint Constructors sum : Relations.
 
 Section Properties.
 

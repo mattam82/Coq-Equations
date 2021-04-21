@@ -12,6 +12,7 @@
    can be packed. *)
 
 From Equations Require Import Init.
+From HoTT Require Import Basics.
 
 Polymorphic Class Signature@{i} (fam : Type@{i}) (signature_index : Type@{i})
             (signature : signature_index -> Type@{i}) : Type@{i} :=

@@ -103,7 +103,7 @@ Notation "[]v" := (@nil _) (at level 0) : vect_scope.
 (* Derive Subterm for nat.  *)
 Derive Signature NoConfusion for vector.
 
-Show Obligation Tactic.
+(*Show Obligation Tactic.*)
 
 Derive Subterm for vector.
 
@@ -134,7 +134,6 @@ where "x ++v y" := (vapp x y).
 Set Universe Minimization ToSet.
 Derive NoConfusionHom for vector.
 Unset Universe Minimization ToSet.
-Test Universe Minimization ToSet.
 Require Import Equations.HoTT.Tactics.
 
 Instance vector_eqdec@{i +|+} {A : Type@{i}} {n} `(EqDec@{i} A) : EqDec (vector A n).
@@ -310,7 +309,7 @@ Equations split {X : Type} {m n : nat} (xs : vector X (plus m n)) : Split m n xs
   split (m:=m .+1) (cons x xs) with split xs => {
     | append xs' ys' := append (cons x xs') ys' }.
 (* Minimization could do a bit better here *)
-Check split@{_ _ _ _ _}.
+Example test_split' := @split@{_ _ _ _ _}.
 
 (* Definition split_lightu@{u0 u1 u2 | u0 < u1, u1 < u2} := @split@{u0 u1 u1 u2 u1}.*)
 
@@ -319,7 +318,7 @@ Equations splitSet {X : Set} {m n : nat} (xs : vector X (plus m n)) : Split m n 
   splitSet (m:=0) xs := append nil xs;
   splitSet (m:=m .+1) (cons x xs) with splitSet xs => {
     | append xs' ys' := append (cons x xs') ys' }.
-Check splitSet@{_ _}.
+Definition test_splitSet := @splitSet@{_ _}.
 
 Section SplitSetParam.
   Context {X : Set}.
@@ -331,7 +330,7 @@ Section SplitSetParam.
     | append xs' ys' := append (cons x xs') ys' }.
   Proof. solve_rec. Defined.
 End SplitSetParam.
-Check splitSetParam@{_}.
+Definition test_splitSetParam := @splitSetParam@{_}.
 
 Notation "( x , .. , y , z )" :=
   (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
@@ -385,7 +384,7 @@ Extraction Inline apply_noConfusion Empty_ind.
 
 Register sigma as core.sig.type.
 
-Extraction split'.
+(* Extraction split'. *)
 
 Lemma split_vapp : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
   let 'append v' w' := split (vapp v w) in
@@ -622,4 +621,4 @@ assoc 0 y z := idpath;
 assoc (S x) y z with assoc x y z, x + (y + z) => {
 assoc (S x) y z idpath _ := idpath }.
 
-About assoc_elim.
+(*About assoc_elim.*)
