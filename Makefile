@@ -62,12 +62,10 @@ toplevel: src/equations_plugin.cma bytefiles
 	  $< $(COQLIB)/toplevel/coqtop_bin.ml -o coqtop_equations
 
 dune:
-	rm -rf theories/HoTT
 	dune build
 
 ci-dune:
 	opam install dune
-	rm -rf theories/HoTT
 	dune build
 
 ci-hott:
