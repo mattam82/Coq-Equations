@@ -4,10 +4,10 @@ on:
   push: # On any push on a "stable" branch
     branches:
       - master
-      - v8.14
-      - v8.13
-      - v8.12
-      - v8.11
+      - 8.14
+      - 8.13
+      - 8.12
+      - 8.11
 
   pull_request: # On all pull-request changes
   release: # At release time
