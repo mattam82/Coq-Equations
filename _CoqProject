@@ -59,12 +59,14 @@ theories/Prop/DepElim.v
 theories/Prop/Tactics.v
 theories/Prop/Constants.v
 theories/Prop/NoConfusion.v
+theories/Prop/NoConfusion_UIP.v
 theories/Prop/FunctionalInduction.v
 theories/Prop/Loader.v
 theories/Prop/Telescopes.v
 theories/Prop/TransparentEquations.v
 theories/Prop/OpaqueEquations.v
-theories/Equations.v
+theories/Prop/NoCycle.v
+theories/Prop/Equations.v
 
 theories/Type/Logic.v
 theories/Type/FunctionalExtensionality.v

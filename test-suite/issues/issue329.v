@@ -1,5 +1,5 @@
 Require Import List ssreflect.
-Require Import Equations.Equations.
+Require Import Equations.Prop.Equations.
 Import ListNotations.
 
 Equations ok_clause (e : nat -> option bool) (xs : list nat) : bool :=

@@ -1,4 +1,4 @@
-Require Import Equations.Equations.
+Require Import Equations.Prop.Equations.
 
 Inductive type: Set :=
   | T_bool: type

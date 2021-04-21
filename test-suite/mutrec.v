@@ -1,4 +1,4 @@
-Require Import Equations.Equations.
+Require Import Equations.Prop.Equations.
 
 Module two.
 Inductive term : Set :=
