@@ -10,7 +10,6 @@
 
 Require Export Equations.Init.
 Require Import Equations.Signature.
-From HoTT Require Import Basics.
 
 Import Sigma_Notations.
 Local Open Scope equations_scope.
