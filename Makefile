@@ -65,7 +65,7 @@ dune:
 	dune build
 
 ci-dune:
-	opam install dune
+	opam install -j 2 -y dune
 	dune build
 
 ci-hott:
