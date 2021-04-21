@@ -17,9 +17,9 @@ jobs:
         uses: actions/cache@v2
         with:
           path: "~/.opam"
-          key: opam-${{github.base_ref}}-${{github.ref}} 
+          key: opam-${{matrix.target}}--${{github.base_ref}}-${{github.ref}} 
           restore-keys: |
-            opam--refs/heads/${{github.base_ref}}
+            opam-${{matrix.target}}--refs/heads/${{github.base_ref}}
 
       - name: Install OCaml
         uses: avsm/setup-ocaml@v1
