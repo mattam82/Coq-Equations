@@ -108,14 +108,6 @@ Ltac clear_local :=
     | _ => idtac
   end.
 
-(** The [do] tactic but using a Coq-side nat. *)
-
-Ltac do_nat n tac :=
-  match n with
-    | 0 => idtac
-    | S ?n' => tac ; do_nat n' tac
-  end.
-
 (** Internally used constants *)
 
 Register block as equations.internal.block.

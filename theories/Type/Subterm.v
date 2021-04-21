@@ -210,6 +210,14 @@ Ltac rec_wf_fix recname kont :=
 (*   simplify_dep_elim ; intros ; unblock_goal ; intros ; *)
 (*   move recname at bottom ; try curry recname ; simpl in recname. *)
 
+(** The [do] tactic but using a Coq-side nat. *)
+
+Ltac do_nat n tac :=
+  match n with
+    | 0 => idtac
+    | S ?n' => tac ; do_nat n' tac
+  end.
+
 (** Generalize an object [x], packing it in a sigma type if necessary. *)
 
 Ltac sigma_pack n t :=
