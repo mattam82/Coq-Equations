@@ -1,7 +1,14 @@
 # One of these two files will have been generated
 
--include Makefile.coq
--include Makefile.HoTT
+.PHONY: all default makefiles clean-makefiles
+
+all: Makefile.coq
+	$(MAKE) -f Makefile.coq
+	test -f Makefile.hott && $(MAKE) -f Makefile.hott || true
+
+install: Makefile.coq
+	$(MAKE) -f Makefile.coq install
+	test -f Makefile.hott && $(MAKE) -f Makefile.hott install || true
 
 makefiles: test-suite/Makefile examples/Makefile
 
@@ -35,7 +42,10 @@ examples: examples/Makefile all
 
 .PHONY: examples
 
-clean:: clean-makefiles makefiles clean-examples clean-test-suite
+clean: clean-makefiles makefiles
+	$(MAKE) -f Makefile.coq clean
+	test -f Makefile.hott && make -f Makefile.hott clean || true
+	$(MAKE) clean-examples clean-test-suite
 
 siteexamples: examples/*.glob
 	sh siteexamples.sh
@@ -53,3 +63,18 @@ toplevel: src/equations_plugin.cma bytefiles
 
 dune:
 	dune build
+
+ci-dune:
+	opam install -j 2 -y dune
+	dune build
+
+ci-hott:
+	opam install -j 2 -y coq-hott.8.13 --ignore-constraints-on=coq
+	test -f Makefile.hott && $(MAKE) -f Makefile.hott all
+	$(MAKE) -f Makefile.hott install
+	
+ci-local:
+	$(MAKE) -f Makefile.coq all 
+	$(MAKE) test-suite examples
+	
+.PHONY: ci-dune ci-hott ci-local

@@ -3,11 +3,12 @@ Set Warnings "-notation-overridden".
 From Equations Require Import Init.
 Require Import Equations.HoTT.Logic Equations.HoTT.DepElim
         Equations.HoTT.EqDec Equations.HoTT.Classes.
+From HoTT Require Import Spaces.Nat.
 
 (** Naturals *)
-Register Init.Datatypes.O as equations.nat.zero.
-Register Init.Datatypes.S as equations.nat.succ.
-Register Init.Datatypes.nat as equations.nat.type.
+Register Basics.Datatypes.O as equations.nat.zero.
+Register Basics.Datatypes.S as equations.nat.succ.
+Register Basics.Datatypes.nat as equations.nat.type.
 
 (* Sigma Types *)
 Register Equations.Init.sigma as equations.sigma.type.

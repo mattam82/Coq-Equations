@@ -8,6 +8,7 @@
 
 Require Import Coq.Unicode.Utf8_core.
 
+Declare ML Module "ltac_plugin".
 Declare ML Module "cc_plugin".
 Declare ML Module "extraction_plugin".
 Declare ML Module "equations_plugin".
@@ -68,7 +69,7 @@ Ltac hidebody H :=
 
 Set Primitive Projections.
 Global Unset Printing Primitive Projection Parameters.
-Polymorphic Cumulative Record sigma@{i} {A : Type@{i}} {B : A -> Type@{i}} : Type@{i} :=
+Polymorphic Cumulative Record sigma@{i} {A : Type@{i}} {B : forall (_ : A), Type@{i}} : Type@{i} :=
   sigmaI { pr1 : A; pr2 : B pr1 }.
 Unset Primitive Projections.
 Arguments sigma {A} B.
@@ -146,7 +147,7 @@ Ltac solve_noconf_hom := fail "Equations.Init.solve_noconf_hom has not been boun
 (** Such a useful tactic it should be part of the stdlib. *)
 Ltac forward_gen H tac :=
   match type of H with
-  | ?X -> _ => let H' := fresh in assert (H':X) ; [tac|specialize (H H'); clear H']
+  | forall (_ : ?X), _ => let H' := fresh in assert (H':X) ; [tac|specialize (H H'); clear H']
   end.
 
 Tactic Notation "forward" constr(H) := forward_gen H ltac:(idtac).

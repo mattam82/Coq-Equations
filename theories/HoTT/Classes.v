@@ -60,7 +60,7 @@ Definition NoCycle_WellFounded {A} (R : Relation A) (wfR : WellFounded R) : NoCy
      noCycle := WellFounded.well_founded_irreflexive (wfR:=wfR) |}.
 Existing Instance NoCycle_WellFounded.
 
-Hint Extern 30 (@NoCycle ?A (NoCycle_WellFounded ?R ?wfr) _ _) =>
+#[export] Hint Extern 30 (@NoCycle ?A (NoCycle_WellFounded ?R ?wfr) _ _) =>
   hnf; typeclasses eauto with subterm_relation : typeclass_instances.
 
 (** The NoConfusionPackage class provides a method for solving injectivity and discrimination

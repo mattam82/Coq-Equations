@@ -25,10 +25,6 @@ Definition Bool_rect := Bool_ind.
 
 (** The polymorphic equality type used by Equations when working with equality in Type. *)
 
-Definition BiImpl (A B : Type) : Type := (A -> B) * (B -> A).
-
-Notation "A <-> B" := (BiImpl A B) (at level 95) : type_scope.
-
 Definition transport_r {A} (P : A -> Type) {x y : A} (e : y = x) : P x -> P y :=
   fun x => match (inverse e) with 1%path => x end.
 

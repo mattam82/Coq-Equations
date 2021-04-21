@@ -14,8 +14,8 @@
 From Equations Require Import Init.
 
 Polymorphic Class Signature@{i} (fam : Type@{i}) (signature_index : Type@{i})
-            (signature : signature_index -> Type@{i}) : Type@{i} :=
-  signature_pack : fam -> sigma signature.
+            (signature : forall (_ : signature_index), Type@{i}) : Type@{i} :=
+  signature_pack : forall (_ : fam), sigma signature.
 #[global]
 Hint Mode Signature ! - - : typeclass_instances.
 
