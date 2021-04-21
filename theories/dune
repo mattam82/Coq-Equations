@@ -6,6 +6,4 @@
  (libraries coq.plugins.extraction equations.plugin)
  (modules :standard \ IdDec NoCycle))
 
-(include_subdirs qualified)
-(dirs ("Prop" "Type"))
-; Do not build the HoTT library part which requires -noinit -indices-matter
+(include_subdirs no)

@@ -1,4 +1,4 @@
-Require Import Program Equations.Equations.
+Require Import Program Equations.Prop.Equations.
 Import Sigma_Notations.
 Local Open Scope equations_scope.
 Set Equations Transparent.

@@ -65,16 +65,19 @@ dune:
 	dune build
 
 ci-dune:
-	opam install -j 2 -y dune
+	opam install -j 2 -y dune coq-hott.8.13 --ignore-constraints-on=coq
 	dune build
 
 ci-hott:
 	opam install -j 2 -y coq-hott.8.13 --ignore-constraints-on=coq
 	test -f Makefile.hott && $(MAKE) -f Makefile.hott all
 	$(MAKE) -f Makefile.hott install
+	$(MAKE) -f Makefile.hott uninstall
 	
 ci-local:
 	$(MAKE) -f Makefile.coq all 
 	$(MAKE) test-suite examples
+	$(MAKE) -f Makefile.coq install
+	$(MAKE) -f Makefile.coq uninstall
 	
 .PHONY: ci-dune ci-hott ci-local

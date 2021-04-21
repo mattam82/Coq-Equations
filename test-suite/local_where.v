@@ -1,5 +1,5 @@
 Require Import Program.Basics Program.Tactics.
-Require Import Equations.Equations.
+Require Import Equations.Prop.Equations.
 
 Equations foo (n : nat) : nat :=
 foo n := n + k 0
