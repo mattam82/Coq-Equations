@@ -1701,7 +1701,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
       let ideq = Nameops.add_suffix id ("_equation_" ^ string_of_int i) in
       let hook { Declare.Hook.S.dref; _ } pm =
         if n != None then add_rew_rule ~l2r:true ~base:info.base_id dref
-        else (Classes.declare_instance (Global.env()) !evd None true dref
+        else (Classes.declare_instance (Global.env()) !evd None Goptions.OptLocal dref
               (* Hints.add_hints ~local:false [info.base_id]  *)
               (*                 (Hints.HintsExternEntry *)
               (*                  (Vernacexpr.{hint_priority = Some 0; hint_pattern = None}, *)

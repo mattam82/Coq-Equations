@@ -246,9 +246,8 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
     let body = it_mkLambda_or_LetIn (Option.get body) parambinders in
     let hook { Declare.Hook.S.dref; _ } =
       let cst = match dref with GlobRef.ConstRef kn -> kn | _ -> assert false in
-      let inst = Classes.mk_instance (fst kl) empty_hint_info
-                                          global (GlobRef.ConstRef cst) in
-      Classes.add_instance inst
+      Classes.Internal.add_instance (fst kl) empty_hint_info
+                                          global (GlobRef.ConstRef cst)
     in
     let _bodyty = e_type_of (Global.env ()) evm body in
     let _ty' = e_type_of (Global.env ()) evm ty in
