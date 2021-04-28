@@ -96,8 +96,8 @@ let derive_noConfusion_package ~pm env sigma0 ~poly (ind,u as indu) indid ~prefi
   let ty = it_mkProd_or_LetIn ty ctx in
   let sigma, _ = Typing.type_of env sigma term in
   let hook { Declare.Hook.S.dref; _ } =
-    Classes.add_instance
-      (Classes.mk_instance tc empty_hint_info true dref)
+    Classes.Internal.add_instance
+      tc empty_hint_info true dref
   in
   let hook = Declare.Hook.make hook in
   let scope = Locality.(Global ImportDefaultBehavior) in
