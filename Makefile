@@ -65,7 +65,7 @@ dune:
 	dune build
 
 ci-dune:
-	opam install -j 2 -y dune coq-hott.8.13 --ignore-constraints-on=coq
+	opam install -j 2 -y dune flock coq-hott.8.13 --ignore-constraints-on=coq
 	dune build
 
 ci-hott:
