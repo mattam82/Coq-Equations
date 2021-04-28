@@ -43,6 +43,7 @@ jobs:
           before_script: |
             startGroup "Workaround permission issue"
               sudo chown -R coq:coq .  # <--
+              ocamlfind list
             endGroup
           script: |
             startGroup "Build project"
