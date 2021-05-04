@@ -287,8 +287,8 @@ GRAMMAR EXTEND Gram
     [ [ "["; l = LIST0 lconstr SEP "|"; "]" -> { l } ] ]
   ;
 
-  term:
-    [ "0" [ "λ"; "{" ; c = LIST0 equation SEP ";"; "}" -> {
+  term: LEVEL "200"
+    [ [ "λ"; "{" ; c = LIST0 equation SEP ";"; "}" -> {
             CAst.make ~loc @@ CHole (None, Namegen.IntroAnonymous,
                                      Some (Genarg.in_gen (Genarg.rawwit Syntax.wit_equations_list) c)) } ] ]
   ;
