@@ -142,7 +142,9 @@ let derive_eq_dec ~pm env sigma ~poly ind =
         let kind = Decls.(IsDefinition Instance) in
         let entry = Declare.DefinitionEntry ce in
 	let inst = Declare.declare_constant ~name:(add_suffix ind.ind_name "_EqDec") ~kind entry in
-        Classes.Internal.add_instance (fst cl) Hints.empty_hint_info true (GlobRef.ConstRef inst))
+        let inst =
+          Classes.mk_instance (fst cl) Hints.empty_hint_info true (GlobRef.ConstRef inst)
+	in Classes.add_instance inst)
     indsl
   in
   let hook = Declare.Hook.make hook in
