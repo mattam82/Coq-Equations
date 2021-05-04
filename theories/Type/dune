@@ -1,7 +1,7 @@
 (coq.theory
  ; This determines the -R flag
  (name Equations.Type)
- (package equations)
+ (package coq-equations)
  (synopsis "Equations Plugin")
  (theories Equations)
  (modules :standard))
