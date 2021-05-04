@@ -80,7 +80,7 @@ Proof.
   simpl. apply ap. funext y h. apply ap. apply Acc_prop.
 Defined.
 
-#[export] Hint Rewrite @FixWf_unfold_ext : Recursors.
+Hint Rewrite @FixWf_unfold_ext : Recursors.
 
 Lemma FixWf_unfold_ext_step `{Funext} :
   forall (A : Type) (R : Relation A) (WF : WellFounded R) (P : A -> Type)
@@ -90,7 +90,7 @@ Lemma FixWf_unfold_ext_step `{Funext} :
     FixWf P step x = step x step'.
 Proof. intros. rewrite FixWf_unfold_ext, X. reflexivity. Defined.
 
-#[export] Hint Rewrite @FixWf_unfold_ext_step : Recursors.
+Hint Rewrite @FixWf_unfold_ext_step : Recursors.
 
 Ltac unfold_FixWf_ext :=
   match goal with
@@ -104,7 +104,7 @@ Ltac unfold_FixWf_ext :=
 
 Ltac unfold_recursor_ext := unfold_FixWf_ext.
 
-#[export] Hint Rewrite @FixWf_unfold : Recursors.
+Hint Rewrite @FixWf_unfold : Recursors.
 
 (** Inline so that we get back a term using general recursion. *)
 
