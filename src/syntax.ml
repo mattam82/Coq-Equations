@@ -329,7 +329,9 @@ let pattern_of_glob_constr env sigma avoid patname gc =
     let nargs = Inductiveops.constructor_nrealargs env c in
     let l =
       if List.length l < nargs then
-        user_err_loc (loc, "pattern_of_glob_constr", str "Constructor is applied to too few arguments")
+        user_err_loc (loc, "pattern_of_glob_constr", str "Constructor " ++ 
+          Printer.pr_global (GlobRef.ConstructRef c) ++ 
+          str" is applied to too few arguments")
       else
         if List.length l = nparams + nargs then
           List.skipn nparams l

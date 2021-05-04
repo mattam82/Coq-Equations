@@ -11,6 +11,8 @@
 Require Export Equations.Prop.Loader.
 Require Import Equations.Prop.Telescopes.
 
+#[export] Existing Instance wf_tele_measure.
+
 Require Import Program.Tactics.
 
 (* program_solve_wf launches auto on well-founded and propositional (i.e. in Prop) goals *)

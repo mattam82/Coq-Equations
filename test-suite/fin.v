@@ -1,4 +1,4 @@
-Require Import Program Equations.Prop.Equations.
+Require Import Program Equations.Prop.EqDecInstances Equations.Prop.Equations.
 Import Sigma_Notations.
 Local Open Scope equations_scope.
 Set Equations Transparent.
@@ -25,6 +25,7 @@ Derive Signature for le.
 Scheme le_dep := Induction for le Sort Prop.
 
 Set Equations With UIP.
+
 Instance le_uip m n : UIP (m <= n).
 Proof.
   intros x. induction x using le_dep; simplify_dep_elim; reflexivity.
@@ -57,7 +58,7 @@ Qed.
 
 Lemma le_hprop m n : forall e e' : m <= n, e = e'.
 Proof.
-  induction e using le_dep. intros e'. depelim e'. constructor.
+  induction e using le_dep. intros e'. DepElim.depelim e'. constructor.
   elimtype False; now apply le_Sn_n in e'.
   intros. depelim e'.
   elimtype False; clear IHe; now apply le_Sn_n in e.

@@ -12,8 +12,8 @@
 Set Warnings "-notation-overridden".
 
 Require Export Equations.Type.Loader.
-Require Import Equations.Type.Telescopes.
-Require Import Equations.Type.WellFoundedInstances.
+Require Export Equations.Type.Telescopes.
+Require Export Equations.Type.WellFoundedInstances.
 
 Global Obligation Tactic := Equations.CoreTactics.equations_simpl.
 

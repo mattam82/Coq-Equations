@@ -23,11 +23,12 @@
   dependent-passing style version. *)
 
 Require Import Program.Basics Program.Tactics.
-From Equations Require Import Equations.
 Require Import Coq.Vectors.VectorDef.
 Require Import List.
 Import ListNotations.
 Require Import Utf8.
+From Equations Require Import Equations.
+
 Set Warnings "-notation-overridden".
 (** The Σ notation of equations clashes with the Σ's used below,
     so we redefine the Σ notation using ∃ instead.

@@ -285,7 +285,7 @@ Ltac rec_wf_rel recname x rel :=
 
 (** Define non-dependent lexicographic products *)
 
-Arguments lexprod [A] [B] _ _.
+#[global] Arguments lexprod [A] [B] _ _.
 
 Section Lexicographic_Product.
 

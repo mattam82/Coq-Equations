@@ -16,9 +16,10 @@ Declare ML Module "equations_plugin".
 From Equations Require Export Init Signature.
 Require Import Equations.CoreTactics.
 Require Export Equations.Prop.Classes.
-Require Import Equations.Prop.DepElim Equations.Prop.EqDec Equations.Prop.Constants.
+Require Import Equations.Prop.DepElim Equations.Prop.Constants.
+Require Export Equations.Prop.EqDec.
 Require Export Equations.Prop.EqDecInstances.
-Require Import Equations.Prop.NoConfusion Equations.Prop.Subterm.
+Require Export Equations.Prop.NoConfusion Equations.Prop.Subterm.
 Require Export Equations.Prop.Tactics.
 Require Export Equations.Prop.FunctionalInduction. (* funelim tactic *)
 
