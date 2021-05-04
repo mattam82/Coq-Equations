@@ -7,7 +7,7 @@
 (**********************************************************************)
 
 Require Import Equations.Init Equations.CoreTactics.
-From Coq Require Import Extraction Relation_Definitions.
+From Coq Require Import Extraction Relation_Definitions Wf.
 Require Import Equations.Prop.Logic.
 
 (** A class for well foundedness proofs.
@@ -89,6 +89,7 @@ Class EqDec (A : Type) :=
 Class EqDecPoint (A : Type) (x : A) :=
   eq_dec_point : forall y : A, { x = y } + { x <> y }.
 
+#[export]
 Instance EqDec_EqDecPoint A `(EqDec A) (x : A) : EqDecPoint A x := eq_dec x.
 
 (** For treating impossible cases. Equations corresponding to impossible

@@ -155,6 +155,7 @@ Proof. apply wf_trans_clos. apply WF. Defined.
 #[export] Hint Extern 4 (WellFounded (trans_clos _)) =>
   apply @WellFounded_trans_clos : typeclass_instances.
 
+#[export]
 Instance wf_inverse_image {A R} `(WellFounded A R) {B} (f : B -> A) : WellFounded (inverse_image R f).
 Proof. red. apply wf_inverse_image. apply H. Defined.
 
@@ -270,7 +271,7 @@ Ltac rec_wf_rel recname x rel :=
 Definition NoCycle_WellFounded {A} (R : Relation A) (wfR : WellFounded R) : NoCyclePackage A :=
   {| NoCycle := R;
      noCycle := well_founded_irreflexive (wfR:=wfR) |}.
-Existing Instance NoCycle_WellFounded.
+#[export] Existing Instance NoCycle_WellFounded.
 
 #[export] Hint Extern 30 (@NoCycle ?A (NoCycle_WellFounded ?R ?wfr) _ _) =>
   hnf; typeclasses eauto with subterm_relation : typeclass_instances.

@@ -6,22 +6,27 @@ Require Import Equations.Prop.Classes Equations.Prop.EqDec Equations.Prop.DepEli
 
 Derive EqDec for unit bool nat.
 
+#[export]
 Polymorphic Instance prod_eqdec {A B} `(EqDec A) `(EqDec B) : EqDec (prod A B).
 Proof. eqdec_proof. Defined.
 
+#[export]
 Polymorphic Instance sum_eqdec {A B} `(EqDec A) `(EqDec B) : EqDec (A + B).
 Proof. eqdec_proof. Defined.
 
+#[export]
 Polymorphic Instance list_eqdec {A} `(EqDec A) : EqDec (list A).
 Proof. eqdec_proof. Defined.
 
 Local Set Equations With UIP.
 
+#[export]
 Polymorphic Instance sigma_uip {A B} `(UIP A) `(forall x, UIP (B x)) : UIP {x : A & B x}.
 Proof.
   red. intros [x p] [y q]. repeat (simplify * || intro). reflexivity.
 Defined.
 
+#[export]
 Polymorphic Instance sigma_eqdec {A B} `(EqDec A) `(forall x, EqDec (B x)) : EqDec {x : A & B x}.
 Proof.
   eqdec_proof.
@@ -38,6 +43,7 @@ Proof.
   intros e _; revert e. apply n.
 Defined.
 
+#[export] 
 Existing Instance eqdec_sig.
 
 Polymorphic Definition uip_sig@{i} {A : Type@{i}} {B : A -> Type@{i}}
@@ -50,4 +56,5 @@ Proof.
   intros e'. destruct (uip eq_refl e'). constructor.
 Defined.
 
+#[export]
 Existing Instance uip_sig.

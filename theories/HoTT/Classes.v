@@ -58,6 +58,7 @@ Defined.
 Definition NoCycle_WellFounded {A} (R : Relation A) (wfR : WellFounded R) : NoCyclePackage A :=
   {| NoCycle := R;
      noCycle := WellFounded.well_founded_irreflexive (wfR:=wfR) |}.
+#[export]
 Existing Instance NoCycle_WellFounded.
 
 #[export] Hint Extern 30 (@NoCycle ?A (NoCycle_WellFounded ?R ?wfr) _ _) =>
@@ -97,6 +98,7 @@ Defined.
 
 Class UIP@{i|} (A : Type@{i}) := uip : forall {x y : A} (e e' : x = y), e = e'.
 
+#[export]
 Instance IsHSet_UIP (A : Type) (H : IsHSet A) : UIP A.
 Proof.
   apply axiomK_hset in H. intros x y e e'.
@@ -113,6 +115,7 @@ Class EqDec@{i} (A : Type@{i}) := eq_dec : forall x y : A, sum@{i i} (x = y) (x 
 
 Class EqDecPoint (A : Type) (x : A) := eq_dec_point : forall y : A, (x = y) + (x <> y).
 
+#[export]
 Instance EqDec_EqDecPoint A `(EqDec A) (x : A) : EqDecPoint A x := eq_dec x.
 
 (** For treating impossible cases. Equations corresponding to impossible

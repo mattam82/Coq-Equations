@@ -23,7 +23,7 @@ Local Set Universe Minimization ToSet.
 
 Derive NoConfusion for Unit Bool.Bool nat option sum Datatypes.prod list.
 
-Instance Bool_depelim : DependentEliminationPackage Bool.Bool :=
+#[export] Instance Bool_depelim : DependentEliminationPackage Bool.Bool :=
   { elim := @Bool.Bool_ind }.
 
 (* FIXME should be done by the derive command *)

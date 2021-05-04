@@ -178,15 +178,18 @@ Section EqdepDec.
 End EqdepDec.
 
 
+#[export]
 Instance eq_eqdec {A} `{EqDec A} : forall x y : A, EqDec (x = y).
 Proof.
   intros. red. intros.
   exact (inl (eq_proofs_unicity _ _ x0 y0)).
 Defined.
 
+#[export]
 Instance eqdec_uip {A} (E : EqDec A) : UIP A :=
   fun x y e e' => eq_proofs_unicity _ _ e e'.
 
+#[export]
 Instance eq_uip {A} (E : UIP A) : forall x : A, UIP (x = x).
 Proof.
   intros y e e'. intros e''. destruct e''.
@@ -195,6 +198,7 @@ Proof.
   - intros. apply inverse. apply Us.
 Qed.
 
+#[export]
 Instance eqdec_hset (A : Type) `(UIP A) : IsHSet A.
 Proof.
   red. red. intros *. exists (uip x0 y0). intros e.

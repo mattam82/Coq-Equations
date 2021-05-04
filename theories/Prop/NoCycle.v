@@ -56,6 +56,7 @@ Qed.
 
 Require Import CRelationClasses.
 
+#[export]
 Instance nlt_refl : Reflexive nlt.
 Proof. intros x. now apply noCycle_tree. Defined.
 (* Neither transivite nor symmetric *)

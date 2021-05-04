@@ -82,6 +82,7 @@ Section Lexicographic_Product.
 
 End Lexicographic_Product.
 
+#[export]
 Instance wellfounded_lexprod A B R S `(wfR : WellFounded A R, wfS : WellFounded B S) :
   WellFounded (lexprod A B R S) := wf_lexprod A B R S wfR wfS.
 

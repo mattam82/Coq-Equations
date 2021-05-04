@@ -130,6 +130,7 @@ End TeleSigma.
 Register tele_sigma as equations.tele.interp.
 Register tele_measure as equations.tele.measure.
 
+#[export]
 Instance wf_tele_measure@{i j k}
          {T : tele@{i}} (A : Type@{j}) (f : tele_fn@{i j k} T A) (R : A -> A -> Prop) :
   WellFounded R -> WellFounded (tele_measure@{i j k} T A f R).

@@ -138,6 +138,7 @@ Register tele_measure as equations.tele.measure.
 
 (* We allow the relation to be at a higher universe level. *)
 
+#[export]
 Instance wf_tele_measure@{i j k| i <= k, j <= k}
          {T : tele@{i}} (A : Type@{j}) (f : tele_fn@{i j k} T A) (R : A -> A -> Type@{k}) :
   WellFounded R -> WellFounded (tele_measure T A f R).

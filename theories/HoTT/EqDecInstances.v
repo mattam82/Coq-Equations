@@ -65,21 +65,27 @@ Ltac Equations.Init.solve_eqdec ::= eqdec_proof.
 
 (** Standard instances. *)
 
+#[export]
 Instance unit_eqdec : EqDec Unit.
 Proof. eqdec_proof. Defined.
 
+#[export]
 Instance bool_eqdec : EqDec Bool.Bool.
 Proof. eqdec_proof. Defined.
 
+#[export]
 Instance nat_eqdec : EqDec nat.
 Proof. eqdec_proof. Defined.
 
+#[export]
 Instance prod_eqdec {A B} `(EqDec A) `(EqDec B) : EqDec (prod A B).
 Proof. eqdec_proof. Defined.
 
+#[export]
 Instance sum_eqdec {A B} `(EqDec A) `(EqDec B) : EqDec (A + B).
 Proof. eqdec_proof. Defined.
 
+#[export]
 Instance list_eqdec {A} `(EqDec A) : EqDec (list A).
 Proof. eqdec_proof. Defined.
 
@@ -98,19 +104,5 @@ Proof.
   - intros. right. refine (simplification_sigma1_dep@{i i} _ _ _ _ _).
     intros He _; revert He. apply e.
 Defined.
-(* TODO fix universes *)
-(* Polymorphic Definition eqdec_sig_Id@{i} {A : Type@{i}} {B : A -> Type@{i}} *)
-(*             `(EqDec A) `(forall a, EqDec (B a)) : *)
-(*   EqDec@{i} (sig B). *)
-(* Proof. *)
-(*   Set Printing Universes. *)
-(*   intros. intros [xa xb] [ya yb]. *)
-(*   case (eq_dec xa ya). *)
-(*   - intros Hxya. destruct Hxya. case (eq_dec xb yb). *)
-(*     + intros He; destruct He. left. reflexivity. *)
-(*     + intros. right. simplify ?. apply simplification_sigma2_uip@{i i}. apply e. *)
-(*   - intros. right. refine (simplification_sigma1_dep@{i i} _ _ _ _ _). *)
-(*     intros He _; revert He. apply e. *)
-(* Defined. *)
 
-Existing Instance eqdec_sigma_Id.
+#[export] Existing Instance eqdec_sigma_Id.

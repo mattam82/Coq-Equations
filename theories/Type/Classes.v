@@ -60,6 +60,7 @@ Extraction Inline apply_noCycle_left apply_noCycle_right.
 Definition NoCycle_WellFounded {A} (R : relation A) (wfR : WellFounded R) : NoCyclePackage A :=
   {| NoCycle := R;
      noCycle := WellFounded.well_founded_irreflexive (wfR:=wfR) |}.
+#[export]
 Existing Instance NoCycle_WellFounded.
 
 #[export]
@@ -101,6 +102,7 @@ Extraction Inline apply_noConfusion.
 
 Class UIP@{i|} (A : Type@{i}) := uip : forall {x y : A} (e e' : x = y), e = e'.
 
+#[export]
 Instance UIP_hSet (A : Type) (H : HSet A) : UIP A := H.
 
 Definition dec_eq {A} (x y : A) : Type := (x = y) + (x <> y).
@@ -109,6 +111,7 @@ Class EqDec@{i|} (A : Type@{i}) := eq_dec : forall x y : A, sum@{i} (x = y) (x =
 
 Class EqDecPoint (A : Type) (x : A) := eq_dec_point : forall y : A, (x = y) + (x <> y).
 
+#[export]
 Instance EqDec_EqDecPoint A `(EqDec A) (x : A) : EqDecPoint A x := eq_dec x.
 
 (** For treating impossible cases. Equations corresponding to impossible

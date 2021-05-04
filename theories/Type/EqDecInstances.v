@@ -14,6 +14,7 @@ Import Id_Notations Sigma_Notations.
 
 Set Universe Polymorphism.
 
+#[export]
 Instance eqdec_hset (A : Type) `(EqDec A) : HSet A.
 Proof.
   red. red. apply eq_proofs_unicity.
@@ -21,21 +22,27 @@ Defined.
 
 (** Standard instances. *)
 
+#[export]
 Instance unit_eqdec : EqDec unit.
 Proof. eqdec_proof. Defined.
 
+#[export]
 Instance bool_eqdec : EqDec bool.
 Proof. eqdec_proof. Defined.
 
+#[export]
 Instance nat_eqdec : EqDec nat.
 Proof. eqdec_proof. Defined.
 
+#[export]
 Instance prod_eqdec {A B} `(EqDec A) `(EqDec B) : EqDec (prod A B).
 Proof. eqdec_proof. Defined.
 
+#[export]
 Instance sum_eqdec {A B} `(EqDec A) `(EqDec B) : EqDec (A + B).
 Proof. eqdec_proof. Defined.
 
+#[export]
 Instance list_eqdec {A} `(EqDec A) : EqDec (list A).
 Proof. eqdec_proof. Defined.
 
@@ -54,4 +61,5 @@ Proof.
     intros He _; revert He. apply e.
 Defined.
 
+#[export]
 Existing Instance eqdec_sig_Id.

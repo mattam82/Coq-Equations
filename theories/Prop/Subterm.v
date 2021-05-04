@@ -173,6 +173,7 @@ Hint Extern 0 (WellFounded (MR _ _)) => apply @wf_MR : typeclass_instances.
 #[global]
 Hint Extern 0 (MR _ _ _ _) => red : Below.
 
+#[export]
 Instance lt_wf : WellFounded lt := lt_wf.
 
 #[global]
@@ -328,6 +329,7 @@ Section Lexicographic_Product.
 
 End Lexicographic_Product.
 
+#[export]
 Instance wellfounded_lexprod A B R S `(wfR : WellFounded A R, wfS : WellFounded B S) : 
   WellFounded (lexprod A B R S) := wf_lexprod A B R S wfR wfS.
 
@@ -347,6 +349,7 @@ Qed.
 Definition NoCycle_WellFounded {A} (R : relation A) (wfR : WellFounded R) : NoCyclePackage A :=
   {| NoCycle := R;
      noCycle := well_founded_irreflexive |}.
+#[export] 
 Existing Instance NoCycle_WellFounded.
 
 #[global]

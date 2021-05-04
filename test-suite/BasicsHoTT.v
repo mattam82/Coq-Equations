@@ -44,6 +44,7 @@ Module TestF.
 
 End TestF.
 
+#[local]
 Instance eqsig {A} (x : A) : Signature (x = x) A (fun a => x = a) := sigmaI _ x.
 
 Module WithUIP.
@@ -108,9 +109,9 @@ Derive Signature NoConfusion for vector.
 Derive Subterm for vector.
 
 Axiom F : Funext.
-Existing Instance F.
+#[local] Existing Instance F.
 
-Existing Instance lt_wf.
+#[local] Existing Instance lt_wf.
 
 Equations testn (n : nat) : nat by wf n WellFoundedInstances.lt :=
 testn 0 := 0 ;
@@ -136,7 +137,7 @@ Derive NoConfusionHom for vector.
 Unset Universe Minimization ToSet.
 Require Import Equations.HoTT.Tactics.
 
-Instance vector_eqdec@{i +|+} {A : Type@{i}} {n} `(EqDec@{i} A) : EqDec (vector A n).
+#[local] Instance vector_eqdec@{i +|+} {A : Type@{i}} {n} `(EqDec@{i} A) : EqDec (vector A n).
 Proof.
   intros. intros x. intros y. induction x.
   - left. now depelim y.
