@@ -3,7 +3,7 @@
  (name Equations)
  (package coq-equations)
  (synopsis "Equations Plugin")
- (libraries coq-core.plugins.extraction coq-equations.plugin)
+ (libraries coq.plugins.extraction coq-equations.plugin)
  (modules :standard \ IdDec NoCycle))
 
 (include_subdirs no)
