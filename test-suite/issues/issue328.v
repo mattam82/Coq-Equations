@@ -1,5 +1,6 @@
 From Coq Require Import Lia.
 Set Implicit Arguments.
+From Coq Require Import Omega.
 From Equations Require Import Equations.
 
 Parameter A : Type.

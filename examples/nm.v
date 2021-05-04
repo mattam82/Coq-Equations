@@ -10,6 +10,8 @@ Equations exp_size : exp -> nat :=
   exp_size (If e1 e2 e3) := exp_size e1 * (1 + exp_size e2 + exp_size e3).
 Transparent exp_size.
 
+Require Import Omega.
+
 Lemma exp_size_pos (x : exp) : (0 < exp_size x)%nat.
 Proof. funelim (exp_size x); auto; try lia. apply Nat.mul_pos_pos; auto. lia. Qed.
 Hint Resolve exp_size_pos : core.
