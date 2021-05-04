@@ -3,7 +3,7 @@ Require Import List.
 Import ListNotations.
 Inductive T := C : list T -> T.
 Show Obligation Tactic.
-Set Equations Debug.
+
 Equations f (p : bool) (e : T) : T by struct e := {
   f false e := e ;
   f p (C xs) :=

@@ -109,8 +109,6 @@ Defined.
 (* Notation " x = y " := (eqi x y) : type_scope. *)
 
 
-Set Equations Debug.
-
 (* Lemma noc {A} {w x y z : A} {p q r s} (u v : Square w x y z p q r s) : Type. *)
 (* Proof. *)
 (*   depelim u. *)

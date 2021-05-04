@@ -108,14 +108,6 @@ Ltac clear_local :=
     | _ => idtac
   end.
 
-(** The [do] tactic but using a Coq-side nat. *)
-
-Ltac do_nat n tac :=
-  match n with
-    | 0 => idtac
-    | S ?n' => tac ; do_nat n' tac
-  end.
-
 (** Internally used constants *)
 
 Register block as equations.internal.block.
@@ -197,10 +189,11 @@ Ltac on_call f tac :=
 
 (* Destructs calls to f in hypothesis or conclusion, useful if f creates a subset object. *)
 
-Ltac destruct_call f :=
+(* Already defined in HoTT.Core.Tactics *)
+Ltac destruct_call_eqns f :=
   let tac t := (destruct t) in on_call f tac.
 
-Ltac destruct_calls f := repeat destruct_call f.
+Ltac destruct_calls f := repeat destruct_call_eqns f.
 
 Ltac destruct_rec_calls :=
   match goal with

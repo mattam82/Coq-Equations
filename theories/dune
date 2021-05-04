@@ -1,9 +1,9 @@
 (coq.theory
  ; This determines the -R flag
  (name Equations)
- (package equations)
+ (package coq-equations)
  (synopsis "Equations Plugin")
- (libraries coq.plugins.extraction equations.plugin)
+ (libraries coq.plugins.extraction coq-equations.plugin)
  (modules :standard \ IdDec NoCycle))
 
-(include_subdirs qualified)
+(include_subdirs no)

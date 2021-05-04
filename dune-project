@@ -1,5 +1,4 @@
-(lang dune 2.0)
-(using coq 0.1)
+(lang dune 2.5)
+(using coq 0.2)
 
-(name equations)
-
+(name coq-equations)

@@ -1,3 +1,4 @@
+From Coq Require Import Lia.
 Set Implicit Arguments.
 From Coq Require Import Omega.
 From Equations Require Import Equations.
@@ -15,8 +16,7 @@ Equations? fromList (l : list A) : length l > 0 -> nonEmpty A :=
   fromList (cons x (cons y l))  _ := consNE x (fromList (cons y l) _)
 }.
 Proof.
-  - exfalso. abstract omega.
-  - abstract omega.
-Defined.
-(* Error: <in exception printer>:<original exception:Anomaly "Uncaught exception Not_found." *)
-(* Please report at http://coq.inria.fr/bugs/. *)
+  - exfalso. abstract lia.
+  - abstract lia.
+Fail Defined.
+Abort.

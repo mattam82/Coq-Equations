@@ -9,7 +9,9 @@
 Set Warnings "-notation-overridden".
 Require Import Equations.CoreTactics.
 Require Import Equations.HoTT.Logic Equations.HoTT.Classes Equations.HoTT.EqDec Equations.HoTT.DepElim.
+Require Import HoTT.Basics.Datatypes HoTT.Spaces.Nat.
 
+Local Open Scope nat_scope.
 Local Open Scope equations_scope.
 Import Sigma_Notations.
 
@@ -158,7 +160,7 @@ Create HintDb funelim.
 
 (** Solve reflexivity goals. *)
 
-Hint Extern 0 (_ = _) => constructor : funelim.
+#[export] Hint Extern 0 (_ = _) => constructor : funelim.
 
 (** Specialize hypotheses begining with equalities. *)
 
@@ -168,7 +170,7 @@ Ltac specialize_hyps :=
     specialize (H 1%path); unfold paths_rect, paths_rec, transport, paths_ind in H ; simpl in H
   end.
 
-Hint Extern 100 => specialize_hyps : funelim.
+#[export] Hint Extern 100 => specialize_hyps : funelim.
 
 (** Destruct conjunctions everywhere, starting with the hypotheses.
    This tactic allows to close functional induction proofs involving
@@ -183,7 +185,7 @@ Ltac specialize_mutual_nested :=
   | [ |- _ * _ ] => split
   end.
 
-Hint Extern 50 => specialize_mutual_nested : funelim.
+#[export] Hint Extern 50 => specialize_mutual_nested : funelim.
 
 Ltac specialize_mutual :=
   match goal with

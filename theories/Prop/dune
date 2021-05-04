@@ -1,0 +1,7 @@
+(coq.theory
+ ; This determines the -R flag
+ (name Equations.Prop)
+ (package coq-equations)
+ (synopsis "Equations Plugin")
+ (theories Equations)
+ (modules :standard))

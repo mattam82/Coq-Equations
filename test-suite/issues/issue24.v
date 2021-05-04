@@ -1,4 +1,4 @@
-Require Import Equations.Equations.
+Require Import Equations.Prop.Equations.
 
 Equations Rtuple' (domain : list Type) : Type :=
   Rtuple' nil := unit;

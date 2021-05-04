@@ -5,7 +5,7 @@
   types and environments). *)
 
 Require Import Program.
-Require Import Equations.Equations.
+From Equations Require Import Equations.
 Require Import Coq.Classes.EquivDec.
 Require Import Arith.
 

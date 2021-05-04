@@ -1,0 +1,6 @@
+(coq.theory
+ (name Equations.HoTT)
+ (package coq-equations)
+ (modules :standard)
+ (theories Equations)
+ (flags ("-noinit" "-indices-matter")))

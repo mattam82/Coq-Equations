@@ -256,10 +256,16 @@ open Constr
 open Syntax
 
 let _ = CLexer.add_keyword "λ"
+
+let check_eqns_ident =
+  let open Pcoq.Lookahead in
+  to_entry "check_eqns_ident" begin
+    lk_kws ["|"; ";"]
+  end
 }
 
 GRAMMAR EXTEND Gram
-  GLOBAL: operconstr pattern deppat_equations deppat_elim binders2 equations lident my_preident;
+  GLOBAL: term pattern deppat_equations deppat_elim binders2 equations lident my_preident;
 
   my_preident:
     [ [ id = IDENT -> { id } ] ]
@@ -267,15 +273,21 @@ GRAMMAR EXTEND Gram
   binders2 : 
      [ [ b = binders -> { b } ] ]
   ;
+  equations_list:
+  [ [ 
+      e = equation ; check_eqns_ident ; sep = [ ";" -> { () } | -> { () } ]; eqns = equations_list -> { e :: eqns }
+    | e = equation -> { [e] }
+    | -> { [] } ]
+  ];
   deppat_equations:
-    [ [ l = LIST0 equation SEP ";" -> { l } ] ]
+    [ [ l = equations_list -> { l } ] ]
   ;
 
   deppat_elim:
     [ [ "["; l = LIST0 lconstr SEP "|"; "]" -> { l } ] ]
   ;
 
-  operconstr:
+  term:
     [ "0" [ "λ"; "{" ; c = LIST0 equation SEP ";"; "}" -> {
             CAst.make ~loc @@ CHole (None, Namegen.IntroAnonymous,
                                      Some (Genarg.in_gen (Genarg.rawwit Syntax.wit_equations_list) c)) } ] ]
@@ -285,8 +297,14 @@ GRAMMAR EXTEND Gram
   identloc :
    [ [ id = ident -> { (loc, id) } ] ] ;
 
+  patterns: 
+   [ [ pat = lconstr ; sep = [ "|" -> { () } | "," -> { () } ]; pats = patterns -> { pat :: pats } 
+    | pat = lconstr -> { [pat] }
+    | -> { [] }
+   ]];
+
   equation:
-    [ [ "|"; pats = LIST1 lconstr SEP "|"; r = rhs -> { (RefinePats pats, r) }
+  [ [ "|"; pats = patterns; r = rhs -> { (RefinePats pats, r) }
       | pat = pat; r = rhs -> { (SignPats pat, r) }
     ] ]
   ;
@@ -306,11 +324,9 @@ GRAMMAR EXTEND Gram
       | -> { None }
     ] ]
   ;
-
   proto:
-   [ [
-   id = lident; l = binders2; ":"; t = Constr.lconstr;
-   reca = wf_annot; ":="; eqs = sub_equations -> { (fun r -> ((id, r, l, Some t, reca), eqs)) }
+   [ [ id = lident; l = binders2; ":"; t = Constr.lconstr;
+       reca = wf_annot; ":="; eqs = sub_equations -> { (fun r -> ((id, r, l, Some t, reca), eqs)) }
    ] ]
   ;
 
@@ -373,7 +389,7 @@ GRAMMAR EXTEND Gram
   ;
 
   sub_equations:
-    [ [ "{"; l = deppat_equations; "}" -> { l  }
+    [ [ "{"; l = deppat_equations; "}" -> { l }
       | l = deppat_equations -> { l }
     ] ]
   ;
@@ -510,6 +526,10 @@ END
 
 VERNAC COMMAND EXTEND Derive CLASSIFIED AS SIDEFF STATE program
 | #[ poly = polymorphic ] [ "Derive" ne_ident_list(ds) "for" global_list(c) ] -> {
+  Ederive.derive ~poly (List.map Id.to_string ds)
+    (List.map (fun x -> x.CAst.loc, Smartlocate.global_with_alias x) c)
+  }
+| #[ poly = polymorphic ] [ "Equations" "Derive" ne_ident_list(ds) "for" global_list(c) ] -> {
   Ederive.derive ~poly (List.map Id.to_string ds)
     (List.map (fun x -> x.CAst.loc, Smartlocate.global_with_alias x) c)
   }

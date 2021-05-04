@@ -3,7 +3,7 @@
 
 Require Import Program.
 Require Import Equations.Prop.DepElim.
-Require Import Equations.Equations.
+Require Import Equations.Prop.Equations.
 Require Import Coq.Logic.Eqdep_dec.
 Require Import Coq.Classes.EquivDec.
 

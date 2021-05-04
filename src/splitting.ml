@@ -104,6 +104,7 @@ and refined_node =
     refined_arg : int * int; (* Index counting lets or not *)
     refined_path : path;
     refined_term : EConstr.t;
+    refined_filter : int list option;
     refined_args : constr list;
     refined_revctx : context_map;
     refined_newprob : context_map;
@@ -158,6 +159,17 @@ let where_context wheres =
 
 let where_program_type w =
   program_type w.where_program
+  
+let pplhs env sigma lhs = pr_pats env sigma (pi2 lhs)
+  
+let pr_splitting_rhs ?(verbose=false) env' env'' sigma lhs rhs ty =
+  let verbose pp = if verbose then pp else mt () in
+  match rhs with
+  | RProgram c -> pplhs env' sigma lhs ++ str" := " ++
+          Printer.pr_econstr_env env'' sigma c ++
+          (verbose (str " : " ++ Printer.pr_econstr_env env'' sigma ty))
+  | REmpty (i, _) -> pplhs env' sigma lhs ++ str" :=! " ++
+        pr_rel_name env'' i
 
 let pr_program_info env sigma p =
   let open Pp in
@@ -178,8 +190,7 @@ let pr_program_info env sigma p =
    | None -> str "not recursive") ++ str")"
 
 let pr_splitting env sigma ?(verbose=false) split =
-  let verbose pp = if verbose then pp else mt () in
-  let pplhs env sigma lhs = pr_pats env sigma (pi2 lhs) in
+  let verb pp = if verbose then pp else mt () in
   let rec aux = function
     | Compute (lhs, wheres, ty, c) ->
       let env' = push_rel_context (pi1 lhs) env in
@@ -197,22 +208,16 @@ let pr_splitting env sigma ?(verbose=false) split =
       in
       let ppwheres = prlist_with_sep Pp.fnl ppwhere wheres in
       let env'' = push_rel_context (where_context wheres) env' in
-      ((match c with
-          | RProgram c -> pplhs env' sigma lhs ++ str" := " ++
-                          Printer.pr_econstr_env env'' sigma c ++
-                          (verbose (str " : " ++ Printer.pr_econstr_env env'' sigma ty))
-          | REmpty (i, _) -> pplhs env' sigma lhs ++ str" :=! " ++
-                             pr_rel_name env'' i)
-       ++ Pp.fnl () ++ ppwheres ++
-       verbose (str " in context " ++  pr_context_map env sigma lhs))
+      (pr_splitting_rhs ~verbose env' env'' sigma lhs c ty ++ Pp.fnl () ++ ppwheres ++
+       verb (hov 2 (fnl () ++ str "(in context: " ++ spc () ++ pr_context_map env sigma lhs ++ str")" ++ fnl ())))
     | Split (lhs, var, ty, cs) ->
       let env' = push_rel_context (pi1 lhs) env in
       (pplhs env' sigma lhs ++ str " split: " ++ pr_rel_name env' var ++
        Pp.fnl () ++
-       verbose (str" : " ++
-                Printer.pr_econstr_env env' sigma ty ++
-                str " in context " ++
-                pr_context_map env sigma lhs ++ spc ()) ++
+       verb (hov 2 (str" : " ++
+                Printer.pr_econstr_env env' sigma ty ++ spc () ++
+                str " (in context " ++ spc () ++
+                pr_context_map env sigma lhs ++ str ")" ++ fnl ())) ++
        (Array.fold_left
           (fun acc so -> acc ++
                          hov 2 (match so with
@@ -229,22 +234,20 @@ let pr_splitting env sigma ?(verbose=false) split =
         info.refined_revctx, info.refined_newprob, info.refined_newty
       in
       let env' = push_rel_context (pi1 lhs) env in
-      hov 2 (pplhs env' sigma lhs ++ str " with " ++ Id.print id ++ str" := " ++
-             Printer.pr_econstr_env env' sigma (mapping_constr sigma revctx c) ++ Pp.cut () ++
-             verbose (str " : " ++ Printer.pr_econstr_env env' sigma cty ++ str" " ++
+      hov 0 (pplhs env' sigma lhs ++ str " with " ++ Id.print id ++ str" := " ++
+             Printer.pr_econstr_env env' sigma (mapping_constr sigma revctx c) ++ Pp.fnl () ++
+             verb (hov 2 (str " : " ++ Printer.pr_econstr_env env' sigma cty ++ str" " ++
                       Printer.pr_econstr_env env' sigma ty ++ str" " ++
-                      str " in " ++ pr_context_map env sigma lhs ++ spc () ++
-                      str " refine term " ++ Printer.pr_econstr_env env' sigma info.refined_term ++
-                      str " refine args " ++ prlist_with_sep spc (Printer.pr_econstr_env env' sigma)
-                        info.refined_args ++
-                      str "New problem: " ++ pr_context_map env sigma newprob ++ str " for type " ++
-                      Printer.pr_econstr_env (push_rel_context (pi1 newprob) env) sigma newty ++ spc () ++
-                      spc () ++ str" eliminating " ++ pr_rel_name (push_rel_context (pi1 newprob) env) (snd arg)
-                      ++ spc () ++
-                      str "Revctx is: " ++ pr_context_map env sigma revctx ++ spc () ++
-                      str "New problem to problem substitution is: " ++
-                      pr_context_map env sigma info.refined_newprob_to_lhs ++ Pp.cut ()) ++
-             aux s)
+                      hov 2 (str "in" ++ pr_context_map env sigma lhs) ++ spc () ++
+                      hov 2 (str "refine term (in lhs): " ++ Printer.pr_econstr_env env' sigma info.refined_term) ++
+                      hov 2 (str "refine args: " ++ prlist_with_sep spc (Printer.pr_econstr_env env' sigma)
+                        info.refined_args) ++
+                      hov 2 (str "New problem: " ++ pr_context_map env sigma newprob) ++ 
+                      hov 2 (str "For type: " ++ Printer.pr_econstr_env (push_rel_context (pi1 newprob) env) sigma newty) ++
+                      hov 2 (str"Eliminating:" ++ pr_rel_name (push_rel_context (pi1 newprob) env) (snd arg) ++ spc ()) ++
+                      hov 2 (str "Revctx is: " ++ pr_context_map env sigma revctx) ++
+                      hov 2 (str "New problem to problem substitution is: " ++ pr_context_map env sigma info.refined_newprob_to_lhs ++ Pp.fnl ()))) ++
+             hov 0 (aux s))
   in
   try aux split with e -> str"Error pretty-printing splitting"
 
@@ -347,6 +350,10 @@ let compute_possible_guardness_evidences sigma n fixbody fixtype =
     let ctx = fst (decompose_prod_n_assum sigma m fixtype) in
     List.map_i (fun i _ -> i) 0 ctx
 
+let nf_fix sigma (nas, cs, ts) =
+  let inj c = EConstr.to_constr ~abort_on_undefined_evars:false sigma c in
+  (nas, Array.map inj cs, Array.map inj ts)
+    
 let define_mutual_nested env evd get_prog progs =
   let mutual =
     List.filter (fun (p, prog) -> not (is_nested p)) progs
@@ -445,11 +452,12 @@ let define_mutual_nested env evd get_prog progs =
     let possible_indexes =
       Array.map3 (compute_possible_guardness_evidences !evd) structargs bodies tys
     in
-    let tys' = Array.map EConstr.Unsafe.to_constr tys in
-    let bodies' = Array.map EConstr.Unsafe.to_constr bodies in
-    (* try  *)Pretyping.search_guard env (Array.to_list possible_indexes)
-          (names, tys', bodies')
-    (* with Not_found -> anomaly (str"Calling search_guard raised Not_found") *)
+    let names, tys, bodies = nf_fix !evd (names, tys, bodies) in
+    try
+      Pretyping.search_guard env (Array.to_list possible_indexes)
+          (names, tys, bodies)
+    with e -> 
+      user_err_loc (Some (fst (List.hd progs)).program_loc, "define", CErrors.print e)
   in
   let declare_fix_fns i (p,prog) =
     let newidx = indexes.(i) in
@@ -514,6 +522,7 @@ let term_of_tree env0 isevar sort tree =
       let evm, block = Equations_common.(get_fresh evm coq_block) in
       let blockty = mkLetIn (anonR, block, Retyping.get_type_of env evm block, lift 1 ty) in
       let evd = ref evm in
+      let elim_relevance = Retyping.relevance_of_type (push_rel_context ctx env) evm ty in
       let ctx', case_ty, branches_res, nb_cuts, rev_subst, to_apply, simpl =
         Sigma_types.smart_case env evd ctx rel blockty in
 
@@ -624,7 +633,7 @@ let term_of_tree env0 isevar sort tree =
       let pind, args = find_inductive env !evd rel_ty in
 
       (* Build the case. *)
-      let case_info = Inductiveops.make_case_info env (fst pind) Sorts.Relevant Constr.RegularStyle in
+      let case_info = Inductiveops.make_case_info env (fst pind) elim_relevance Constr.RegularStyle in
       let indty = Inductiveops.find_rectype env !evd (mkApp (mkIndU pind, Array.map_of_list EConstr.of_constr args)) in
       let case = Inductiveops.make_case_or_project env !evd indty case_info
           case_ty rel_t branches in

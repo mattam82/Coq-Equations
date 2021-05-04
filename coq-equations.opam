@@ -1,4 +1,5 @@
 opam-version: "2.0"
+version: "8.13"
 authors: [ "Matthieu Sozeau <matthieu.sozeau@inria.fr>" "Cyprien Mangin <cyprien.mangin@m4x.org>" ]
 dev-repo: "git+https://github.com/mattam82/Coq-Equations.git"
 maintainer: "matthieu.sozeau@inria.fr"
@@ -30,5 +31,8 @@ run-test: [
   [make "test-suite"]
 ]
 depends: [
-  "coq" {= "dev"}
+  "coq" {>= "8.13" & < "8.14~"}
+]
+depopts: [
+  "coq-hott" {= "8.13"}
 ]

@@ -1,4 +1,4 @@
-Require Import Equations.Equations.
+Require Import Equations.Prop.Equations.
 
 Inductive term : Set :=
 | Var (n : nat)

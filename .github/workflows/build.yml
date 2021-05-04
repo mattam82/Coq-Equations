@@ -1,6 +1,18 @@
 name: Test compilation
 
-on: [push, pull_request]
+on: 
+  push: # On any push on a "stable" branch
+    branches:
+      - master
+      - 8.14
+      - 8.13
+      - 8.12
+      - 8.11
+
+  pull_request: # On all pull-request changes
+  release: # At release time
+    types:
+      - created
 
 jobs:
   build:
@@ -8,35 +20,42 @@ jobs:
 
     strategy:
       matrix:
-        target: [ local ] # dune, HoTT
+        coq_version: 
+          - '8.13'
+        ocaml_version:
+          - '4.07-flambda'
+        target: [ local, hott, dune ]
+      fail-fast: false
 
     steps:
-
-      - name: Try to restore opam cache
-        id: opam-cache
-        uses: actions/cache@v2
-        with:
-          path: "~/.opam"
-          key: opam-${{github.base_ref}}-${{github.ref}} 
-          restore-keys: |
-            opam--refs/heads/${{github.base_ref}}
-
-      - name: Install OCaml
-        uses: avsm/setup-ocaml@v1
-        with:
-          ocaml-version: 4.07.1
 
       - name: Checkout code
         uses: actions/checkout@v2
         with:
           fetch-depth: 1
 
-      - run: opam repo add coq-released https://coq.inria.fr/opam/released
-      - run: opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev
-      - run: opam repo add coq-extra-dev https://coq.inria.fr/opam/extra-dev
-      - run: opam install -j 2 -y coq.8.13.1
-      - run: opam upgrade -y coq.8.13.1
-      - run: opam list
-      - run: opam exec -- coqc --version
-      - run: opam exec -- ./configure.sh ${{matrix.target}}
-      - run: opam exec -- make -j 2 ci
+      - name: Docker-Coq-Action
+        uses: coq-community/docker-coq-action@v1
+        with:
+          opam_file: 'coq-equations.opam'
+          coq_version: ${{ matrix.coq_version }}
+          ocaml_version: ${{ matrix.ocaml_version }}
+          before_script: |
+            startGroup "Workaround permission issue"
+              sudo chown -R coq:coq .  # <--
+              ocamlfind list
+            endGroup
+          script: |
+            startGroup "Build project"
+              opam exec -- ./configure.sh --enable-${{matrix.target}}
+              opam exec -- make -j 2 ci-${{matrix.target}}
+            endGroup
+          uninstall: |
+            startGroup "Clean project"
+              make clean
+            endGroup
+
+      - name: Revert permissions
+        # to avoid a warning at cleanup time
+        if: ${{ always() }}
+        run: sudo chown -R 1001:116 .  # <--
