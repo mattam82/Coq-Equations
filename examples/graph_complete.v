@@ -13,7 +13,7 @@ Equations neg (b : bool) : bool :=
   neg true := false; neg false := true.
 
 Definition neg_fib (x : bool) := Σ a : bool, neg_graph a x.
-Hint Resolve neg_graph_correct : core.
+#[local] Hint Resolve neg_graph_correct : core.
 Definition neg_graph_rec := neg_graph_rect.
 
 Scheme neg_graph_rect_dep := Induction for neg_graph Sort Type.

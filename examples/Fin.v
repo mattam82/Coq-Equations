@@ -9,7 +9,7 @@
 (** An example development of the [fin] datatype using [equations]. *)
 
 Require Import Program.Basics Program.Combinators.
-Require Import Equations.Equations.
+From Equations Require Import Equations.
 Open Scope equations_scope.
 (** [fin n] is the type of naturals smaller than [n]. *)
 

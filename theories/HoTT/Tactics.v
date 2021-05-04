@@ -23,8 +23,8 @@ Ltac Equations.Init.noconf H ::= Equations.HoTT.DepElim.noconf H.
 
 Create HintDb solve_subterm discriminated.
 
-Hint Extern 4 (_ = _) => reflexivity : solve_subterm.
-Hint Extern 10 => eapply_hyp : solve_subterm.
+#[export] Hint Extern 4 (_ = _) => reflexivity : solve_subterm.
+#[export] Hint Extern 10 => eapply_hyp : solve_subterm.
 
 Ltac solve_subterm := intros;
   apply WellFounded.wf_trans_clos;

@@ -15,6 +15,7 @@ Require Import Equations.HoTT.Logic
         Equations.HoTT.Relation
         Equations.HoTT.WellFounded
         Equations.HoTT.DepElim Equations.HoTT.Constants.
+From HoTT Require Import Basics.Tactics Spaces.Nat.
 
 Set Universe Polymorphism.
 
@@ -79,7 +80,7 @@ Proof.
   simpl. apply ap. funext y h. apply ap. apply Acc_prop.
 Defined.
 
-Hint Rewrite @FixWf_unfold_ext : Recursors.
+#[export] Hint Rewrite @FixWf_unfold_ext : Recursors.
 
 Lemma FixWf_unfold_ext_step `{Funext} :
   forall (A : Type) (R : Relation A) (WF : WellFounded R) (P : A -> Type)
@@ -89,7 +90,7 @@ Lemma FixWf_unfold_ext_step `{Funext} :
     FixWf P step x = step x step'.
 Proof. intros. rewrite FixWf_unfold_ext, X. reflexivity. Defined.
 
-Hint Rewrite @FixWf_unfold_ext_step : Recursors.
+#[export] Hint Rewrite @FixWf_unfold_ext_step : Recursors.
 
 Ltac unfold_FixWf_ext :=
   match goal with
@@ -103,7 +104,7 @@ Ltac unfold_FixWf_ext :=
 
 Ltac unfold_recursor_ext := unfold_FixWf_ext.
 
-Hint Rewrite @FixWf_unfold : Recursors.
+#[export] Hint Rewrite @FixWf_unfold : Recursors.
 
 (** Inline so that we get back a term using general recursion. *)
 
@@ -128,13 +129,13 @@ Ltac simpl_let :=
     end
   end.
 
-Hint Extern 40 => progress (cbv beta in * || simpl_let) : Below.
+#[export] Hint Extern 40 => progress (cbv beta in * || simpl_let) : Below.
 
 (* This expands lets in the context to simplify proof search for recursive call
   obligations, as [eauto] does not do matching up-to unfolding of let-bound variables.
 *)
 
-Hint Extern 10 => 
+#[export] Hint Extern 10 => 
   match goal with
   [ x := _ |- _ ] => 
     lazymatch goal with
@@ -151,7 +152,7 @@ Hint Extern 10 =>
 Lemma WellFounded_trans_clos `(WF : WellFounded A R) : WellFounded (trans_clos R).
 Proof. apply wf_trans_clos. apply WF. Defined.
 
-Hint Extern 4 (WellFounded (trans_clos _)) =>
+#[export] Hint Extern 4 (WellFounded (trans_clos _)) =>
   apply @WellFounded_trans_clos : typeclass_instances.
 
 Instance wf_inverse_image {A R} `(WellFounded A R) {B} (f : B -> A) : WellFounded (inverse_image R f).
@@ -160,27 +161,27 @@ Proof. red. apply wf_inverse_image. apply H. Defined.
 (* (* Do not apply [wf_MR] agressively, as Coq's unification could "invent" an [f] otherwise *)
 (*    to unify. *) *)
 
-(* Hint Extern 0 (WellFounded (inverse_image _ _)) => apply @wf_inverse_image : typeclass_instances. *)
+(* #[export] Hint Extern 0 (WellFounded (inverse_image _ _)) => apply @wf_inverse_image : typeclass_instances. *)
 
-Hint Extern 0 (inverse_image _ _ _ _) => red : Below.
+#[export] Hint Extern 0 (inverse_image _ _ _ _) => red : Below.
 
 (** We also add hints for transitive closure, not using [t_trans] but forcing to 
    build the proof by successive applications of the inner relation. *)
 
-Hint Resolve @t_step : subterm_relation.
+#[export] Hint Resolve t_step : subterm_relation.
 
 Lemma trans_clos_stepr A (R : Relation A) (x y z : A) :
   R y z -> trans_clos R x y -> trans_clos R x z.
 Proof. intros Hyz Hxy. exact (t_trans _ x y z Hxy (t_step _ _ _ Hyz)). Defined.
 
-Hint Resolve @trans_clos_stepr : subterm_relation.
+#[export] Hint Resolve trans_clos_stepr : subterm_relation.
 
 (** The default tactic to build proofs of well foundedness of subterm relations. *)
 
 Create HintDb solve_subterm discriminated.
 
-Hint Extern 4 (_ = _) => reflexivity : solve_subterm.
-Hint Extern 10 => eapply_hyp : solve_subterm.
+#[export] Hint Extern 4 (_ = _) => reflexivity : solve_subterm.
+#[export] Hint Extern 10 => eapply_hyp : solve_subterm.
 
 Ltac solve_subterm := intros;
   apply WellFounded_trans_clos;
@@ -203,6 +204,14 @@ Ltac rec_wf_fix recname kont :=
 (*     on_last_hyp ltac:(fun x => rename x into recname) ; *)
 (*   simplify_dep_elim ; intros ; unblock_goal ; intros ; *)
 (*   move recname at bottom ; try curry recname ; simpl in recname. *)
+
+(** The [do] tactic but using a Coq-side nat. *)
+
+Ltac do_nat n tac :=
+  match n with
+    | 0 => idtac
+    | S ?n' => tac ; do_nat n' tac
+  end.
 
 (** Generalize an object [x], packing it in a sigma type if necessary. *)
 
@@ -263,5 +272,5 @@ Definition NoCycle_WellFounded {A} (R : Relation A) (wfR : WellFounded R) : NoCy
      noCycle := well_founded_irreflexive (wfR:=wfR) |}.
 Existing Instance NoCycle_WellFounded.
 
-Hint Extern 30 (@NoCycle ?A (NoCycle_WellFounded ?R ?wfr) _ _) =>
+#[export] Hint Extern 30 (@NoCycle ?A (NoCycle_WellFounded ?R ?wfr) _ _) =>
   hnf; typeclasses eauto with subterm_relation : typeclass_instances.

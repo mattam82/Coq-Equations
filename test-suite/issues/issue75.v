@@ -1,4 +1,4 @@
-Require Equations.Equations.
+Require Equations.Prop.Equations.
 
 Set Program Mode.
 

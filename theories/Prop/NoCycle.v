@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Equations.
+Require Import Equations.Prop.Equations.
 
 Ltac find_noCycle_proof H :=
   let rec aux t ty := 
@@ -24,8 +24,8 @@ Derive NoConfusion for tree.
 Derive DependentElimination for tree.
 Derive Below for tree.
 
-Let nlt x y := Below_tree (fun y => x <> y) y.
-Let nle (x y : tree) := ((x <> y) * nlt x y)%type.
+Local Definition nlt x y := Below_tree (fun y => x <> y) y.
+Local Definition nle (x y : tree) := ((x <> y) * nlt x y)%type.
 
 Notation  "x ¬< y " := (nlt x y) (at level 80).
 Notation  "x ¬≤ y " := (nle x y) (at level 80).

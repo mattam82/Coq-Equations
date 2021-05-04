@@ -1,5 +1,4 @@
-Require Import Equations.Equations.
-Require Import Omega.
+Require Import Equations.Prop.Equations.
 
 Inductive type: Set :=
   | T_bool: type

@@ -1,6 +1,6 @@
 Require Import TestSuite.issues.issue95_1.
 Require Import Lia.
-Require Import Equations.Equations.
+Require Import Equations.Prop.Equations.
 
 Lemma l:
   forall T t,

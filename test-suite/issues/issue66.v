@@ -1,4 +1,4 @@
-Require Equations.Equations.
+Require Equations.Prop.Equations.
 
 Definition f (l l': list nat) (H: 0 = 0): Prop. Admitted.
 Axiom cheat : forall {A}, A.

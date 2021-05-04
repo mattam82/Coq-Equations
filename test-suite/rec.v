@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 Require Import Program Utf8.
-Require Import Equations.Equations.
+Require Import Equations.Prop.Equations.
 Require Import Bvector List Relations.
 Require Import Arith Wf_nat.
 Require Import Lia.

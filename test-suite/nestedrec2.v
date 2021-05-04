@@ -1,4 +1,4 @@
-Require Import Equations.Equations.
+Require Import Equations.Prop.Equations.
 Require Import Arith.
 Require Import Compare_dec.
 

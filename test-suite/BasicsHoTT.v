@@ -6,10 +6,11 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Equations.HoTT.All.
+Require Import Equations.HoTT.All Equations.HoTT.WellFounded.
 Require Import Coq.Unicode.Utf8.
 Require HoTT.Basics.Overture.
-Require Import HoTT.Types.Bool.
+Require Import HoTT.Types.Bool HoTT.Spaces.Nat.
+
 Set Equations Transparent.
 Equations neg (b : Bool) : Bool :=
 neg true := false ;
@@ -102,14 +103,16 @@ Notation "[]v" := (@nil _) (at level 0) : vect_scope.
 (* Derive Subterm for nat.  *)
 Derive Signature NoConfusion for vector.
 
-Show Obligation Tactic.
+(*Show Obligation Tactic.*)
 
 Derive Subterm for vector.
 
 Axiom F : Funext.
 Existing Instance F.
 
-Equations testn (n : nat) : nat by wf n lt :=
+Existing Instance lt_wf.
+
+Equations testn (n : nat) : nat by wf n WellFoundedInstances.lt :=
 testn 0 := 0 ;
 testn (S n) with testn n => {
   | 0 := S 0 ;
@@ -119,7 +122,7 @@ Local Open Scope vect_scope.
 Reserved Notation "x ++v y" (at level 60).
 
 Require Import HoTT.Classes.implementations.peano_naturals.
-Require Import HoTT.Classes.interfaces.canonical_names.
+(* Require Import HoTT.Classes.interfaces.canonical_names. *)
 
 Equations vapp {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m)%nat :=
 { []v ++v w := w ;
@@ -131,7 +134,6 @@ where "x ++v y" := (vapp x y).
 Set Universe Minimization ToSet.
 Derive NoConfusionHom for vector.
 Unset Universe Minimization ToSet.
-Test Universe Minimization ToSet.
 Require Import Equations.HoTT.Tactics.
 
 Instance vector_eqdec@{i +|+} {A : Type@{i}} {n} `(EqDec@{i} A) : EqDec (vector A n).
@@ -236,7 +238,8 @@ Proof.
   - intros l'. autorewrite with rev_acc. rewrite X.
     rewrite app'_assoc. reflexivity.
 Qed.
-Hint Rewrite @rev_rev_acc : rev_acc.
+
+#[local] Hint Rewrite @rev_rev_acc : rev_acc.
 
 Lemma app'_funind : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l (app' l' l'').
 Proof.
@@ -245,7 +248,7 @@ Proof.
   rewrite X. reflexivity.
 Qed.
 
-Hint Rewrite @app'_nil @app'_assoc : app'.
+#[local] Hint Rewrite @app'_nil @app'_assoc : app'.
 
 Lemma rev_app' : forall {A} (l l' : list A), rev (l +++ l') = rev l' +++ rev l.
 Proof. intros. funelim (l +++ l'); simp rev app'; trivial.
@@ -273,8 +276,10 @@ vrev (cons a v) := vector_append_one (vrev v) a.
 
 Definition cast_vector {A n m} (v : vector A n) (H : n = m) : vector A m.
 intros. destruct H; assumption. Defined.
-Require Import HoTT.Classes.interfaces.naturals HoTT.Classes.interfaces.abstract_algebra
+
+Require HoTT.Classes.interfaces.naturals HoTT.Classes.interfaces.abstract_algebra
         HoTT.Classes.tactics.ring_quote HoTT.Classes.tactics.ring_tac.
+
 Equations? vrev_acc {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
 vrev_acc nil w := w;
 vrev_acc (cons a v) w := cast_vector (vrev_acc v (cons a w)) _.
@@ -299,33 +304,33 @@ Arguments Split [ X ].
 (* About nil. About vector. *)
 (* Set Equations Debug. *)
 
-Equations split {X : Type} {m n : nat} (xs : vector X (Peano.plus m n)) : Split m n xs by wf m :=
+Equations split {X : Type} {m n : nat} (xs : vector X (plus m n)) : Split m n xs by wf m :=
   split (m:=0) xs := append nil xs;
   split (m:=m .+1) (cons x xs) with split xs => {
     | append xs' ys' := append (cons x xs') ys' }.
 (* Minimization could do a bit better here *)
-(* Check split@{_ _ _ _ _}. Pending on Coq#11723 *)
+Example test_split' := @split@{_ _ _ _ _}.
 
 (* Definition split_lightu@{u0 u1 u2 | u0 < u1, u1 < u2} := @split@{u0 u1 u1 u2 u1}.*)
 
 (* 2 universes: Set < i (type of splitset) < j (universe of the type) *)
-Equations splitSet {X : Set} {m n : nat} (xs : vector X (Peano.plus m n)) : Split m n xs by wf m :=
+Equations splitSet {X : Set} {m n : nat} (xs : vector X (plus m n)) : Split m n xs by wf m :=
   splitSet (m:=0) xs := append nil xs;
   splitSet (m:=m .+1) (cons x xs) with splitSet xs => {
     | append xs' ys' := append (cons x xs') ys' }.
-(* Check splitSet@{_ _}. Coq#11723 *)
+Definition test_splitSet := @splitSet@{_ _}.
 
 Section SplitSetParam.
   Context {X : Set}.
   Obligation Tactic := idtac.
   (* Here, just 1 universe for the universe of Set. *)
-  Equations? splitSetParam {m n : nat} (xs : vector X (Peano.plus m n)) : Split m n xs by wf m :=
+  Equations? splitSetParam {m n : nat} (xs : vector X (plus m n)) : Split m n xs by wf m :=
   splitSetParam (m:=0) xs := append nil xs;
   splitSetParam (m:=m .+1) (cons x xs) with splitSetParam xs => {
     | append xs' ys' := append (cons x xs') ys' }.
   Proof. solve_rec. Defined.
 End SplitSetParam.
-(* Check splitSetParam@{_}. *)
+Definition test_splitSetParam := @splitSetParam@{_}.
 
 Notation "( x , .. , y , z )" :=
   (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
@@ -345,15 +350,15 @@ Proof.
   now destruct v.
 Defined.
 
-Lemma split' {X : Type} {m n} (xs : vector X (Peano.plus m n)) : Split m n xs.
+Lemma split' {X : Type} {m n} (xs : vector X (plus m n)) : Split m n xs.
 Proof.
   eassert ?[ty].
   revert m n xs. fix IH 3. intros m n xs.
   refine (match xs as xs' in @vector _ k return
                 (match xs' as xs'' in vector _ n' return Type with
-                 | nil => ((0, nil) = (Peano.plus m n, xs)) -> Split m n xs
+                 | nil => ((0, nil) = (plus m n, xs)) -> Split m n xs
                  | @cons _ n' x' xs'' =>
-                   (S n', cons x' xs'') = (Peano.plus m n, xs) -> Split m n xs
+                   (S n', cons x' xs'') = (plus m n, xs) -> Split m n xs
                  end)
           with
           | nil => _
@@ -369,17 +374,17 @@ Proof.
     simplify *. simpl. apply (append nil (x |: n :| xs)).
     simplify *. simpl.
     specialize (IH m' n0 xs).
-    rewrite (eta_vector (fun nv v => (nv, v) = (Peano.plus m' n0, xs) -> Split m' n0 xs)) in IH.
+    rewrite (eta_vector (fun nv v => (nv, v) = (plus m' n0, xs) -> Split m' n0 xs)) in IH.
     specialize (IH idpath). destruct IH.
     refine (append (cons x xs) ys).
-  + rewrite (eta_vector (fun nv v => (nv, v) = (Peano.plus m n, xs) -> Split m n xs)) in X0.
+  + rewrite (eta_vector (fun nv v => (nv, v) = (plus m n, xs) -> Split m n xs)) in X0.
     apply (X0 idpath).
 Defined.
 Extraction Inline apply_noConfusion Empty_ind.
 
 Register sigma as core.sig.type.
 
-Extraction split'.
+(* Extraction split'. *)
 
 Lemma split_vapp : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
   let 'append v' w' := split (vapp v w) in
@@ -394,7 +399,7 @@ Qed.
 
 (* Eval compute in @zip''. *)
 
-Equations split_struct {X : Type} {m n} (xs : vector X (Peano.plus m n)) : Split m n xs :=
+Equations split_struct {X : Type} {m n} (xs : vector X (plus m n)) : Split m n xs :=
 split_struct (m:=0) xs := append nil xs ;
 split_struct (m:=(S m)) (cons x xs) with split_struct xs => {
   split_struct (m:=(S m)) (cons x xs) (append xs' ys') := append (cons x xs') ys' }.
@@ -415,7 +420,7 @@ Equations vmap' {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
 vmap' f nil := nil ;
 vmap' f (cons a v) := cons (f a) (vmap' f v).
 
-Hint Resolve lt_n_Sn : subterm_relation.
+#[local] Hint Resolve lt_n_Sn : subterm_relation.
 
 Equations vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n by wf n :=
 vmap f nil := nil ;
@@ -459,7 +464,7 @@ Section Univ.
   foo ubool true := false ;
   foo ubool false := true ;
   foo unat t := t ;
-  foo (uarrow from to) f := id ∘ f.
+  foo (uarrow from to) f := f.
 
   Transparent foo.
   (* Eval lazy beta delta [ foo foo_obligation_1 foo_obligation_2 ] iota zeta in foo. *)
@@ -600,7 +605,7 @@ Proof. revert B fn. funelim (nth v f); intros; now simp nth vmap. Qed.
 Lemma nth_vtail `(v : vector A (S n)) (f : fin n) : nth (vtail v) f = nth v (fs f).
 Proof. funelim (vtail v). intros; (* FIXME universe bug with [now simp nth] *) now autorewrite with nth. Qed.
 
-Hint Rewrite @nth_vmap @nth_vtail : nth.
+#[local] Hint Rewrite @nth_vmap @nth_vtail : nth.
   
 (* Lemma diag_nth `(v : vector (vector A n) n) (f : fin n) : nth (diag v) f = nth (nth v f) f. *)
 (* Proof. revert f. funelim (diag v); intros f. *)
@@ -610,8 +615,10 @@ Hint Rewrite @nth_vmap @nth_vtail : nth.
 (*   rewrite H. now simp nth. *)
 (* Qed. *)
 
-Infix "+" := Peano.plus.
+Infix "+" := plus.
 Equations assoc (x y z : nat) : x + y + z = x + (y + z) :=
 assoc 0 y z := idpath;
 assoc (S x) y z with assoc x y z, x + (y + z) => {
 assoc (S x) y z idpath _ := idpath }.
+
+(*About assoc_elim.*)

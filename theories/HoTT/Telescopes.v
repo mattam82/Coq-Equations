@@ -6,6 +6,7 @@ Require Import Equations.HoTT.DepElim.
 Require Import Equations.HoTT.Tactics.
 Require Import Equations.HoTT.FunctionalInduction.
 Require Import Equations.HoTT.Subterm.
+From HoTT Require Import Basics.Tactics.
 
 (** Telescopes: allows treating variable arity fixpoints *)
 Set Universe Polymorphism.

@@ -166,7 +166,7 @@ testn (S n) with testn n => {
   | (S n') := S n' }.
 
 (** Notations for vectors *)
-Derive NoConfusion NoConfusionHom for vector.
+Equations Derive NoConfusion NoConfusionHom for vector.
 
 Arguments Vector.nil {A}.
 Arguments Vector.cons {A} _ {n}.

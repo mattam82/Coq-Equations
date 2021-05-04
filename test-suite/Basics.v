@@ -7,7 +7,7 @@
 (**********************************************************************)
 
 Require Import Program Bvector List Relations.
-Require Import Equations.Equations.
+Require Import Equations.Prop.Equations.
 Require Import Utf8.
 Set Keyed Unification.
 

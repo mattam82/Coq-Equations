@@ -201,7 +201,11 @@ let find_global s = lazy (equations_lib_ref s)
 let find_constant s evd = e_new_global evd (equations_lib_ref s)
 
 let global_reference id =
-  Smartlocate.global_of_extended_global (Nametab.locate_extended (qualid_of_ident id))
+  match Smartlocate.global_of_extended_global (Nametab.locate_extended (qualid_of_ident id))
+  with
+  | Some x -> x
+  | None ->
+      CErrors.anomaly Pp.(str"global_reference called on non existing " ++ Names.Id.print id)
 
 let e_type_of env evd t =
   let evm, t = Typing.type_of ~refresh:false env !evd t in
@@ -245,8 +249,8 @@ let declare_instance id ~poly evm ctx cl args =
   let term = it_mkLambda_or_LetIn (Option.get c) ctx in
   let typ = EConstr.it_mkProd_or_LetIn t ctx in
   let cst, ecst = declare_constant id term (Some typ) ~poly evm ~kind:Decls.(IsDefinition Instance) in
-  let inst = Classes.mk_instance (fst cl) Hints.empty_hint_info true (GlobRef.ConstRef cst) in
-    Classes.add_instance inst; cst, ecst
+  let () = Classes.Internal.add_instance (fst cl) Hints.empty_hint_info true (GlobRef.ConstRef cst) in
+  cst, ecst
 
 let coq_zero = (find_global "nat.zero")
 let coq_succ = (find_global "nat.succ")
@@ -419,7 +423,7 @@ let coq_sigmaI = (find_global "sigma.intro")
 
 let init_projection gr =
   let cst = Globnames.destConstRef gr in
-  let p = Option.get @@ Recordops.find_primitive_projection cst in
+  let p = Option.get @@ Structures.PrimitiveProjections.find_opt cst in
   Projection.make p false
 			
 let coq_pr1 = lazy (init_projection (Lazy.force (find_global "sigma.pr1")))

@@ -347,7 +347,7 @@ let aux_ind_fun info chop nested unfp unfids p =
     let unfs = Option.map (fun s -> s.program_splitting) unfp in
     match p.program_rec with
     | None ->
-      let fixtac =
+      let is_rec, fixtac =
         let open Tacticals.New in
         match porig with
         | Some { Syntax.program_rec = Some (Structural ann) } ->
@@ -359,19 +359,19 @@ let aux_ind_fun info chop nested unfp unfids p =
              | NestedOn (Some (idx, _)) | MutualOn (Some (idx, _)) -> Some idx
            in
            match idx with
-           | None -> intros
+           | None -> false, intros
            | Some idx ->
              let recid = add_suffix p.program_info.program_id "_rec" in
              (* The recursive argument is local to the where, shift it by the
                 length of the enclosing context *)
              let newidx = match unfs with None -> idx | Some _ -> idx in
-             observe_new "struct fix norec" (tclTHENLIST [(* unftac false; *)
+             true, observe_new "struct fix norec" (tclTHENLIST [(* unftac false; *)
                  fix recid (succ newidx);
                  intros
                  (* unftac true *)]))
-        | _ -> intros
+        | _ -> false, intros
       in
-      tclTHEN fixtac (aux chop unfs unfids p.program_splitting)
+      tclTHEN fixtac (aux (fst chop, if is_rec then succ (snd chop) else snd chop) unfs unfids p.program_splitting)
     | Some t ->
       let cs = p.program_splitting in
       let ctx = t.rec_lets in

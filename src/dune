@@ -2,6 +2,6 @@
  (name equations_plugin)
  (public_name equations.plugin)
  (flags :standard -rectypes -w -9-27+40+60 -warn-error -3-9-32-33-50)
- (libraries coq.plugins.cc coq.plugins.extraction))
+ (libraries coq-core.plugins.cc coq-core.plugins.extraction))
 
 (coq.pp (modules g_equations))

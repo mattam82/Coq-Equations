@@ -1,7 +1,7 @@
 Set Warnings "-notation-overridden".
 Require Import ssreflect.
 Require Import Utf8 Program.
-Require Import Equations.Equations.
+Require Import Equations.Prop.Equations.
 
 Inductive TupleT : nat -> Type :=
 | nilT : TupleT 0

@@ -21,7 +21,7 @@ Require Import Equations.HoTT.DepElim Equations.HoTT.Tactics.
 
 Local Set Universe Minimization ToSet.
 
-Derive NoConfusion for Unit Bool.Bool nat option sum Datatypes.prod list sigT.
+Derive NoConfusion for Unit Bool.Bool nat option sum Datatypes.prod list.
 
 Instance Bool_depelim : DependentEliminationPackage Bool.Bool :=
   { elim := @Bool.Bool_ind }.
