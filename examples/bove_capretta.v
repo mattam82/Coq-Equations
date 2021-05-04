@@ -128,7 +128,7 @@ Module WithSubset.
     constructor. lia.
   Defined.
 
-  Lemma f91_ongraph_spec n dom : proj1_sig (f91_ongraph n dom) = if le_lt_dec n 100 then 91 else n - 10.
+  Lemma f91_ongraph_spec n dom : (f91_ongraph n dom :>) = if le_lt_dec n 100 then 91 else n - 10.
   Proof.
     destruct f91_ongraph. simpl. generalize (f91_spec _ _ f).
     destruct le_lt_dec; auto.
