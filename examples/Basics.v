@@ -155,7 +155,7 @@ sublist p (cons x xs) with p x := {
 Require Import Arith Wf_nat.
 
 (** One can declare new well-founded relations using instances of the [WellFounded] typeclass. *)
-Instance wf_nat : WellFounded lt := lt_wf.
+#[local] Instance wf_nat : WellFounded lt := lt_wf.
 #[local] Hint Resolve lt_n_Sn : lt.
 
 (** The [by wf n lt] annotation indicates the kind of well-founded recursion we want. *)
@@ -187,7 +187,7 @@ Equations vapp {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
 
 (** We show that decidable equality of the elements type implied decidable equality of vectors. *)
 
-Instance vector_eqdec {A n} `(EqDec A) : EqDec (vector A n).
+#[local] Instance vector_eqdec {A n} `(EqDec A) : EqDec (vector A n).
 Proof. intros. intros x. induction x. left. now depelim y.
   intro y; depelim y.
   destruct (eq_dec h h0); subst. 

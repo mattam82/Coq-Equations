@@ -40,10 +40,12 @@ Definition total_relation {A : Type} : A -> A -> Prop := fun x y => True.
 
 (** We assume an inconsistent axiom here, one should be added function per function. *)
 Axiom wf_total_init : forall {A}, WellFounded (@total_relation A).
+#[local] 
 Remove Hints wf_total_init : typeclass_instances.
 
 (** We fuel it with some Acc_intro constructors so that definitions relying on it
     can unfold a fixed number of times still. *)
+#[local] 
 Instance wf_total_init_compute : forall {A}, WellFounded (@total_relation A).
   exact (fun A => Acc_intro_generator 10 wf_total_init).
 Defined.

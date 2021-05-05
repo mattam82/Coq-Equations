@@ -27,6 +27,7 @@ Class Monoid (T: Type) :=
     monoid_right_identity: forall x, op x unit = x;
   }.
 
+#[export]
 Instance app_Associative: forall T, Associative (@app T).
 Proof.
   intro T.
@@ -36,6 +37,7 @@ Proof.
   { simpl. congruence. }
 Defined.
 
+#[export]
 Instance list_Monoid: forall T, Monoid (list T).
 Proof.
   intro T.
@@ -90,6 +92,7 @@ Fixpoint list_drop {T: Type} i (l: list T) :=
   | S i, h::t => list_drop i t
   end.
 
+#[export]
 Instance list_ChunkableMonoid: forall T, ChunkableMonoid (list T).
 Proof.
   intro T.
@@ -239,7 +242,7 @@ Section pmconcat.
   Qed. (* 0.264s from 1.571s *)
 End pmconcat.
 
-Instance mconcat_mon T : MonoidMorphism (@mconcat (list T) _).
+#[export] Instance mconcat_mon T : MonoidMorphism (@mconcat (list T) _).
 
 Next Obligation.
 Proof.

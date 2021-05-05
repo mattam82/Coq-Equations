@@ -39,7 +39,7 @@ Equations measure : (Σ A P (_ : A), ty A P) -> nat :=
 
 Definition rel := Program.Wf.MR lt measure.
 
-Instance: WellFounded rel.
+#[local] Instance: WellFounded rel.
 Proof.
   red. apply Wf.measure_wf. apply Wf_nat.lt_wf.
 Defined.

@@ -33,13 +33,13 @@ Definition id {A : Type} (a : A) : A := a.
 
 Require Import CRelationClasses CMorphisms.
 
-Instance id_reflexive A : Reflexive (@Id A).
+#[local] Instance id_reflexive A : Reflexive (@Id A).
 Proof. exact (@id_refl A). Defined.
 
-Instance eq_symmetric A : Symmetric (@Id A).
+#[local] Instance eq_symmetric A : Symmetric (@Id A).
 Proof. exact (@id_sym A). Defined.
 
-Instance eq_transitive A : Transitive (@Id A).
+#[local] Instance eq_transitive A : Transitive (@Id A).
 Proof. exact (@id_trans A). Defined.
 
 (** Non-dependent cartesian products are just sigma types. *)
@@ -127,7 +127,7 @@ Class Funext :=
   { isequiv_apD10 :> forall (A : Type) (P : A -> Type) f g, IsEquiv (@apD10 A P f g) }.
 
 Axiom funext : Funext.
-Existing Instance funext.
+#[local] Existing Instance funext.
 
 Definition path_forall `{Funext} {A : Type} {P : A -> Type} (f g : forall x : A, P x) :
   f == g -> f = g
@@ -168,7 +168,7 @@ Equations ap_snd_path_prod {A B : Type} {z z' : A * B}
   ap snd (path_prod _ _ p q) = q :=
 ap_snd_path_prod (z:=(_, _)) (z':=(_, _)) 1 1 := 1.
 
-Instance isequiv_path_prod {A B : Type} {z z' : A * B}
+#[local] Instance isequiv_path_prod {A B : Type} {z z' : A * B}
 : IsEquiv (path_prod_uncurried z z').
 Proof.
   unshelve refine (BuildIsEquiv _ _ _).
@@ -260,9 +260,9 @@ concat_p_pp 1 _ _ := 1.
 
 #[export] Hint Rewrite @concat_p1 @concat_Vp @concat_pV : concat.
 
-Instance Id_equiv A : Equivalence (@Id A) := {}.
+#[local] Instance Id_equiv A : Equivalence (@Id A) := {}.
 
-Instance concat_morphism (A : Type) x y z :
+#[local] Instance concat_morphism (A : Type) x y z :
   Proper (Id ==> Id ==> Id) (@concat A x y z).
 Proof. reduce. destruct X. destruct X0. destruct x0. reflexivity. Defined.
 
@@ -271,7 +271,7 @@ Definition trans_co_eq_inv_arrow_morphism@{i j k} :
     Transitive R → Proper@{k j} (respectful@{i j k j k j} R
     (respectful@{i j k j k j} Id (@flip@{k k k} _ _ Type@{j} arrow))) R.
 Proof. reduce. transitivity y. assumption. now destruct X1. Defined.
-Existing Instance trans_co_eq_inv_arrow_morphism.
+#[local] Existing Instance trans_co_eq_inv_arrow_morphism.
 
 Equations concat_pp_A1 {A : Type} {g : A -> A} (p : forall x, x = g x)
   {x y : A} (q : x = y)
@@ -365,15 +365,15 @@ Equations ap_p {A B : Type} (f : A -> B) {x y : A} (p q: x = y) (e : p = q) :
   ap f p = ap f q :=
 ap_p f 1 := 1.
 
-Instance ap_morphism (A : Type) (B : Type) x y f :
+#[local] Instance ap_morphism (A : Type) (B : Type) x y f :
   Proper (@Id (@Id A x y) ==> @Id (@Id B (f x) (f y))) (@ap A B f x y).
 Proof. reduce. now apply ap_p. Defined.
 
-Instance reflexive_proper_proxy :
+#[local] Instance reflexive_proper_proxy :
   ∀ (A : Type) (R : crelation A), Reflexive R → ∀ x : A, ProperProxy R x.
 Proof. intros. reduce. apply X. Defined.
 
-Instance isequiv_inverse A B (f:A -> B) (H:IsEquiv f) : IsEquiv (f^^-1) | 1000.
+#[local] Instance isequiv_inverse A B (f:A -> B) (H:IsEquiv f) : IsEquiv (f^^-1) | 1000.
 Proof.
   refine (BuildIsEquiv (@eissect _ _ f _) (@eisretr _ _ f _) _).
   intros b. 
@@ -448,7 +448,7 @@ Proof.
   intro f.  apply path_forall.  intro a.  apply contr.
 Defined.
 
-Instance contr_unit : Contr unit | 0 := {|
+Global Instance contr_unit : Contr unit | 0 := {|
   center := tt;
   contr := fun t : unit => match t with tt => 1 end |}.
 
@@ -463,12 +463,12 @@ Definition path2_contr {A} {H:Contr A} {x y : A} (p q : x = y) : p = q.
   - symmetry; apply K.
 Defined.
 
-Instance contr_paths_contr A {H:Contr A} (x y : A) : Contr (x = y) | 10000 := let c := {|
+#[local] Instance contr_paths_contr A {H:Contr A} (x y : A) : Contr (x = y) | 10000 := let c := {|
   center := concat (id_sym (contr x)) (contr y);
   contr := path2_contr (concat (id_sym (contr x)) (contr y))
 |} in c.
 
-Program Instance contr_prod A B {CA : Contr A} {CB : Contr B} : Contr (prod A B).
+Global Program Instance contr_prod A B {CA : Contr A} {CB : Contr B} : Contr (prod A B).
 Next Obligation. exact (@center _ CA, @center _ CB). Defined.
 Next Obligation. apply path_prod; apply contr. Defined.
 
@@ -476,7 +476,7 @@ Equations singletons_contr {A : Type} (x : A) : Contr (Σ y : A, x = y) :=
   singletons_contr x := {| center := (x, 1); contr := contr |}
     where contr : forall y : (Σ y : A, x = y), (x, 1) = y :=
           contr (y, 1) := 1.
-Existing Instance singletons_contr.
+#[local] Existing Instance singletons_contr.
 
 Notation " 'rew' H 'in' c " := (@Logic.Id_rew_r _ _ _ c _ H) (at level 20).
 Notation " 'rewd' H 'in' c " := (@Logic.Id_rect_r _ _ _ c _ H) (at level 20).

@@ -243,20 +243,20 @@ Arguments storepred_pair {P Q Σ}.
 Class Weakenable (P : StoreTy -> Type) : Type :=
   weaken : forall {Σ Σ'}, Σ ⊑ Σ' -> P Σ -> P Σ'.
 
-Instance val_weaken {t} : Weakenable (Val t) := fun Σ Σ' incl => weaken_val incl.
-Instance env_weaken {Γ} : Weakenable (Env Γ) := fun Σ Σ' incl => weaken_env incl.
-Instance loc_weaken (t : Ty) : Weakenable (In t) := fun Σ Σ' incl => pres_in incl t.
+#[local] Instance val_weaken {t} : Weakenable (Val t) := fun Σ Σ' incl => weaken_val incl.
+#[local] Instance env_weaken {Γ} : Weakenable (Env Γ) := fun Σ Σ' incl => weaken_env incl.
+#[local] Instance loc_weaken (t : Ty) : Weakenable (In t) := fun Σ Σ' incl => pres_in incl t.
 
 Class IsIncludedOnce (Σ Σ' : StoreTy) : Type := is_included_once : Σ ⊑ Σ'.
 #[local] Hint Mode IsIncludedOnce + + : typeclass_instances.
 
-Instance IsIncludedOnce_ext {T} Σ : IsIncludedOnce Σ (T :: Σ) := store_ext_incl.
+#[local] Instance IsIncludedOnce_ext {T} Σ : IsIncludedOnce Σ (T :: Σ) := store_ext_incl.
 
 Class IsIncluded (Σ Σ' : StoreTy) : Type := is_included : Σ ⊑ Σ'.
 #[local] Hint Mode IsIncluded + + : typeclass_instances.
 
-Instance IsIncluded_refl Σ : IsIncluded Σ Σ := refl_incl.
-Instance IsIncluded_trans Σ Σ' Σ'' : IsIncludedOnce Σ Σ' -> IsIncluded Σ' Σ'' -> IsIncluded Σ Σ'' :=
+#[local] Instance IsIncluded_refl Σ : IsIncluded Σ Σ := refl_incl.
+#[local] Instance IsIncluded_trans Σ Σ' Σ'' : IsIncludedOnce Σ Σ' -> IsIncluded Σ' Σ'' -> IsIncluded Σ Σ'' :=
   fun H H' => trans_incl H H'.
 
 Equations wk {Σ Σ' P} {W : Weakenable P} (p : P Σ) {incl : IsIncluded Σ Σ'} : P Σ' :=
