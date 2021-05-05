@@ -32,3 +32,16 @@ Module WithProofMode.
 
 End WithProofMode.
 
+Module QualifiedTactic.
+  (* Program_simpl solves goals in nat *)
+  #[tactic="Program.Tactics.program_simpl"]
+  Equations foo (x : nat) : nat :=
+    | x := _.
+
+  (* equations_simpl doesn't *)
+  #[tactic="Equations.CoreTactics.equations_simplify"]
+  Equations bar (x : nat) : nat :=
+    | x := _.
+    Next Obligation. exact 0. Qed.
+
+End QualifiedTactic.
