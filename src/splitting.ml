@@ -1083,7 +1083,8 @@ let solve_equations_obligations ~pm flags recids loc i sigma hook =
       fst (Proof.solve Goal_select.SelectAll None (Tacticals.New.tclTRY !Declare.Obls.default_tactic) p)) in
   let prf = Declare.Proof.get lemma in
   let pm, lemma = if Proof.is_done prf then
-    if flags.open_proof then pm, Some lemma
+    if flags.open_proof then 
+      (warn_complete ~loc i; pm, Some lemma)
     else
       (let pm, _ = Declare.Proof.save ~pm ~proof:lemma ~opaque:Vernacexpr.Transparent ~idopt:None in
        pm, None)
