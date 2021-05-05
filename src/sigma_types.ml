@@ -1,6 +1,6 @@
 (**********************************************************************)
 (* Equations                                                          *)
-(* Copyright (c) 2009-2020 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
+(* Copyright (c) 2009-2021 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
 (**********************************************************************)
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
@@ -468,6 +468,8 @@ let uncurry_call env sigma fn c =
     in List.rev (aux env (List.rev ctx) args)
   in
   let evdref = ref sigma in
+  if CList.is_empty ctx then 
+    user_err_loc (None, "uncurry_call", Pp.str"No arguments to uncurry");
   (* let ctx = (Anonymous, None, concl) :: ctx in *)
   let sigty, sigctx, constr = telescope env evdref ctx in
   let app = Vars.substl (List.rev args) constr in

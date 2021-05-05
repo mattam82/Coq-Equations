@@ -2,9 +2,9 @@
 
 [![Build Status](https://github.com/mattam82/Coq-Equations/actions/workflows/build.yml/badge.svg?branch=master&event=push)](https://github.com/mattam82/Coq-Equations/actions/workflows/build.yml)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3012649.svg)](https://zenodo.org/record/3012649#.XcEydZNKjOQ)
-[![Gitter](https://img.shields.io/gitter/room/nwjs/nw.js.svg)](https://gitter.im/coq/Equations)
+[![Zulip Chat](https://img.shields.io/badge/zulip-join_chat-brightgreen.svg)](https://coq.zulipchat.com/#narrow/stream/237659-Equations-devs.20.26.20users)
 
-Copyright 2009-2020 Matthieu Sozeau `matthieu.sozeau@inria.fr`  
+Copyright 2009-2021 Matthieu Sozeau `matthieu.sozeau@inria.fr`  
 Copyright 2015-2018 Cyprien Mangin `cyprien.mangin@m4x.org`
 
 Distributed under the terms of the GNU Lesser General Public License
