@@ -89,7 +89,7 @@ are generated.
 \subsubsection{Equations}
 
 Each compiled clause of the program or one
-of its subprograms defined implicitely by \kw{with} or explicitely by
+of its subprograms defined implicitely by \kw{with} or explicitly by
 \kw{where} nodes gives rise to an equation. Note that the clauses
 correspond to the program's splitting tree, i.e. to the expansion of
 pattern-matchings, so a single source clause catching multiple cases
@@ -129,37 +129,54 @@ A most general predicate is inferred in this case.
 
 \subsection{Logic parameterization}
 
-\Equations comes with two possible instances of its library,
+\Equations comes with three possible instances of its library,
 one where equality is \Coq's standard equality \ind{eq} in \Prop and
-another where equality is proof-relevant and defined in \kw{Type}.
-The first can be used simply by requiring \cst{Equations.Equations},
-while the later can be used by requiring \cst{Equations.Type.All}
-instead. The libraries are qualified respectively by the 
-\cst{Equations.Prop} and
-\cst{Equations.Type} prefixes. When referring to classes in the
-following, one can find their definition in the respective prefix. In
-other words,
-\cst{Classes.EqDec} might refer to \cst{Equations.Prop.Classes.EqDec}
-or \coqdoccst{Equations.Type.Classes.EqDec} depending on the logic used.
+another where equality is proof-relevant and defined in \kw{Type}, finally 
+a last instance is a variant of the second reusing the definitions of the 
+\texttt{Coq-HoTT} library.
+The first can be used simply by requiring \cst{Equations.Prop.Equations}
+(or \texttt{From Equations Require Import Equations}),
+while the other two can be used by importing \cst{Equations.Type.All}
+or \cst{Equations.HoTT.All} instead. The libraries are qualified respectively 
+by the \cst{Equations.Prop},\cst{Equations.Type} or \cst{Equations.HoTT} prefixes. 
+When referring to classes in the following, one can find their definition in the respective prefix. 
+In other words, \cst{Classes.EqDec} might refer to \cst{Equations.Prop.Classes.EqDec},
+\coqdoccst{Equations.Type.Classes.EqDec} or \coqdoccst{Equations.HoTT.Classes.EqDec}
+depending on the logic used.
 
 \subsection{Local Options}
 The \kw{Equations} command takes a few options using the syntax
-\[\kw{Equations}(opts)~progs~\ldots\]
-
-$opts$ is a list of flags among:
-
-\begin{itemize}
-\item $\texttt{ind} `| \texttt{noind}$: Generate or do not generate 
-  the inductive graph of the function and the derived eliminator.
-\item $\texttt{eqns} `| \texttt{noeqns}$: Generate or do not generate 
-  the equations correponding to the (expanded) clauses of the program.
-  \texttt{noeqns} implies \texttt{noind}.
-\end{itemize}
+\[\texttt{\#[}attributes\texttt{]}~\kw{Equations}\texttt{(}opts\texttt{)} ~progs~\ldots\]
 
 One can use the \kw{Equations?} syntax to use the interactive proof mode
 instead of obligations to resolve holes in the term or obligations
-comming from well-founded recursive definitions. BEWARE that the use
-of the \texttt{abstract} tactical is not well-supported in this mode.
+coming from well-founded recursive definitions.
+
+In \Equations v1.3 and higher, the command supports the following attributes:
+  
+- \texttt{universes(polymorphic | monomorphic)} for universe polymorphic or
+  monomorphic definitions (also depending on the global \texttt{Universe Polymorphism} flag).
+
+- \texttt{tactic=tac} for setting the default tactic to try solve obligations/holes.
+  If not set, the default tactic is the same as for \texttt{Program}, controlled by
+  the \text{Obligation Tactic} command. The \texttt{tac} can be either an unquoted 
+  unqualified identifier or a string delimited by quotes to provide a qualified name, as in 
+  \[\texttt{\#[tactic="Program.Tactics.program\_simpl"] Equations foo ...}\]
+
+- Flags \texttt{derive(equations=yes|no, eliminator=yes|no)}, both enabled by default,
+  to control the derivation of the propositional equalities of the definition and its 
+  graph and elimination principle, respectively. Note that \texttt{eliminator = yes} 
+  forces \texttt{equations = yes}.
+
+The \emph{deprecated} syntax $opts$ is a list of flags among:
+
+\begin{itemize}
+\item $\texttt{ind} `| \texttt{noind}$: Generate (default) or do not generate 
+  the inductive graph of the function and the derived eliminator.
+\item $\texttt{eqns} `| \texttt{noeqns}$: Generate (default) or do not generate 
+  the equations corresponding to the (expanded) clauses of the program.
+  \texttt{noeqns} implies \texttt{noind}.
+\end{itemize}
 
 \subsection{Global Options}
 
@@ -211,12 +228,12 @@ The \kw{Equations} command obeys a few global options:
 
 \item \texttt{Equations Derive Equations} (since v1.2) This sets the default for
   the generation of equations, governed by the local
-  \texttt{eqns}/\texttt{noeqns} flags.
+  \texttt{derive(equations)} attribute.
 
 \item \texttt{Equations Derive Eliminator} (since v1.2) This sets the default for the
   generation of the graph and functional elimination principle
   associated to a definition, governed locally by the
-  \texttt{ind}/\texttt{noind} flags.
+  \texttt{derive(eliminator)} attribute.
 \end{itemize}
 
 \section{Derive}
@@ -225,11 +242,15 @@ The \kw{Equations} command obeys a few global options:
 families and generate definitions based on them. The common syntax for
 these is:
 
-\[\mathtt{Derive}~\ind{C}_1 \ldots \ind{C}_n~\mathtt{for}~\ind{ind}_1 \ldots \ind{ind}_n.\]
+\[(\mathtt{Equations})?~\mathtt{Derive}~\ind{C}_1 \ldots \ind{C}_n~\mathtt{for}~\ind{ind}_1 \ldots \ind{ind}_n.\]
 
 Which will try to generate an instance of type class \ind{C} on
-inductive type \ind{Ind}. We assume $\ind{ind}_i : \Pi \Delta. s$.
-The derivations provided by \Equations are:
+inductive type \ind{Ind}. 
+
+\paragraph{Note} The \texttt{Equations} prefix can be used to disambiguate
+from other plugins defining \texttt{Derive} commands such as \texttt{QuickChick}.  
+
+We assume $\ind{ind}_i : \Pi \Delta. s$. The derivations provided by \Equations are:
 
 \begin{itemize}
 \item \ind{DependentEliminationPackage}: generates the dependent
@@ -333,7 +354,7 @@ instantiate the equalities.
 A variant $\tac{apply\_funelim}~t$ simply applies the
 eliminator without generalization, avoiding the generation of
 (dependent) equalities. Note that in this case (as when using \Coq's
-built-in \tac{induction} tactic) one may have to explicitely
+built-in \tac{induction} tactic) one may have to explicitly
 generalize the goal by equalities (e.g. using the \tac{remember}
 tactic) if the function call being eliminated is not made of distinct
 variables, otherwise it can produce unprovable subgoals.
@@ -344,6 +365,61 @@ e.g. using \[\tac{eapply}~(\cst{f\_elim}~P_1 \ldots P_n)\] providing
 predicates for each of the nested or mutual function definitions in
 \cst{f} (use \kw{About} \cst{f\_elim} to figure out the predicates to be
 provided).
+
+\newpage
+\section{Changes}
+
+\def\issue#1{\href{https://github.com/mattam82/Coq-Equations/issues/#1}{\texttt{\##1}}}
+
+\begin{itemize}
+\item Version 1.3: 
+  \begin{itemize}
+  \item \textbf{Incompatible change} Support for the Coq-HoTT library, out of the box. This required a slight reorganization 
+    of the directories. To use this, simply install the \texttt{opam} \texttt{coq-hott} package before 
+    \texttt{coq-equations} and \[\texttt{From Equations.HoTT Require Import All}\]
+    Now \[\texttt{Require Import Equations.Equations}\] no longer works, 
+    use \texttt{Require Import Equations.Prop.Equations} (absolute path, future-proof) or 
+    \texttt{From Equations Require Import Equations} (relative path) to use the 
+    (default) \texttt{Prop} instance.
+
+  \item Complete support for building with \texttt{dune}.
+
+  \item New attributes \texttt{tactic = tac} and \texttt{derive(eliminator, equations)}.
+  \item Improved syntax for concise clauses: no ";" separator needed for clauses 
+    already separated by \texttt{|}. Useful in with clauses but also at the toplevel, e.g.
+    the following definition is now accepted:
+\begin{verbatim} 
+Equations foo (x : nat) : nat :=
+  | 0 => 1
+  | S n => S (foo n).
+\end{verbatim}
+  \item Fixed issues:
+    \begin{itemize}
+    \item \issue{329}: improved strengthening avoiding to abstract over recursive definitions
+      which would not pass the guardness checker. This can simplify the produced terms, avoiding 
+      unnecessary "commutative cuts".
+    \item \issue{321}: warn rather than error when using \texttt{Equations?} and no subgoals are left.
+      This will leave a proof state with no subgoals, that \emph{must} be closed using a \texttt{Qed} 
+      or \texttt{Defined} (similarly to \Coq's \texttt{\#[refine] Instance} command).
+    \item \issue{372}, \issue{194}: funelim applied to a partial application failing
+    \item \issue{354}: support for building values in \texttt{SProp}
+    \item \issue{353}: name capture problem in presence of modules
+    \item \issue{335}: provide an alias \texttt{Equations Derive} to not conflict with QuickChick's \texttt{Derive}
+    \item \issue{325}: properly inline all Equations helper constants during Extraction
+\end{itemize}
+\end{itemize}
+
+\item Version 1.2.4:
+  Fixed issues:
+  \begin{itemize}
+    \item \issue{338}: incompatibility with ssreflect's \texttt{rewrite -!}
+    \item \issue{346}: Derive not working when the inductive type's sort is hidden under a constant.
+    \item \issue{228}, \issue{306}, \issue{349}: functional elimination proofs were failing for no good reason.
+      Improved automation when functional extensionality is disabled.
+    \item \issue{328}: uncaught \texttt{Not\_found} exception raised while printing an error message.
+  \end{itemize}
+\end{itemize}
+
 
 %%% Local Variables: 
 %%% mode: latex
