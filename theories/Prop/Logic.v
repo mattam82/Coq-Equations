@@ -12,6 +12,8 @@ Lemma eq_elim_r {A} (x : A) (P : forall a, a = x -> Type) (p : P x eq_refl)
       (y : A) (e : y = x) : P y e.
 Proof. destruct e. apply p. Defined.
 
+Extraction Inline eq_rect eq_rect_r eq_rec eq_ind eq_elim_r eq_elim.
+
 (** Transport is a rephrasing of the non-dependent elimination principle of equality.  *)
 
 Definition transport {A : Type} (P : A -> Type) {x y : A} (e : x = y) : P x -> P y :=
@@ -21,6 +23,8 @@ Definition transport {A : Type} (P : A -> Type) {x y : A} (e : x = y) : P x -> P
 
 Definition transport_r {A : Type} (P : A -> Type) {x y : A} (e : y = x) : P x -> P y :=
   transport P (eq_sym e).
+
+Extraction Inline transport transport_r.
 
 (** Extract sigma to a (non-dependent) pair in OCaml *)
 
@@ -35,5 +39,9 @@ Arguments eq_refl {A} {x}.
 Lemma False_rect_dep (P : False -> Type) : forall e : False, P e.
 Proof. intros e. destruct e. Defined.
 
+Extraction Inline False_rect False_rect_dep.
+
 Lemma True_rect_dep (P : True -> Type) (m : P I) : forall e : True, P e.
 Proof. intros e. destruct e. exact m. Defined.
+
+Extraction Inline True_rect True_rect_dep.
