@@ -30,7 +30,8 @@ type flags = {
   polymorphic : bool;
   open_proof : bool;
   with_eqns : bool;
-  with_ind : bool }  
+  with_ind : bool;
+  tactic : unit Proofview.tactic }  
   
 (* Tactics *)
 val to82 : 'a Proofview.tactic -> Proofview.V82.tac

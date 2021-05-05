@@ -5,7 +5,7 @@
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
-
+From Equations Require Import CoreTactics.
 Require Import Equations.HoTT.All Equations.HoTT.WellFounded.
 Require Import Coq.Unicode.Utf8.
 Require HoTT.Basics.Overture.
@@ -153,6 +153,7 @@ Defined.
 
 Section foo.
   Context {A B : Type}.
+  
   Equations unzipv {n} (v : vector (A * B) n) : vector A n * vector B n
    by wf (signature_pack v) (@vector_subterm (A * B)) :=
   unzipv []v := ([]v, []v) ;
