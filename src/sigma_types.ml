@@ -468,6 +468,8 @@ let uncurry_call env sigma fn c =
     in List.rev (aux env (List.rev ctx) args)
   in
   let evdref = ref sigma in
+  if CList.is_empty ctx then 
+    user_err_loc (None, "uncurry_call", Pp.str"No arguments to uncurry");
   (* let ctx = (Anonymous, None, concl) :: ctx in *)
   let sigty, sigctx, constr = telescope env evdref ctx in
   let app = Vars.substl (List.rev args) constr in
