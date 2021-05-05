@@ -404,16 +404,28 @@ GRAMMAR EXTEND Gram
 
 let classify_equations x =
   Vernacextend.(VtStartProof (Doesn'tGuaranteeOpacity,[]))
+
+let interp_attrs (elim, eqns) = 
+  let interp_opt k = function 
+    | None -> []
+    | Some b -> [(k, b)]
+  in
+  List.append (interp_opt OInd elim) (interp_opt OEquations eqns)
+
 }
 
 VERNAC COMMAND EXTEND Define_equations_refine CLASSIFIED BY { classify_equations }
-| #[ poly = polymorphic; program_mode = program ] ![program_interactive] [ "Equations" "?" equation_options(opt) equations(eqns) ] ->
-    { Equations.equations_interactive ~poly ~program_mode opt (fst eqns) (snd eqns) }
+| #[ poly = polymorphic; program_mode = program; atts = derive_flags; tactic = equations_tactic ] ![program_interactive] 
+  [ "Equations" "?" equation_options(opt) equations(eqns) ] ->
+    { Equations.equations_interactive ~poly ~program_mode ?tactic
+      (List.append opt (interp_attrs atts)) (fst eqns) (snd eqns) }
 END
 
 VERNAC COMMAND EXTEND Define_equations CLASSIFIED AS SIDEFF STATE program
-| #[ poly = polymorphic; program_mode = program ] [ "Equations" equation_options(opt) equations(eqns) ] ->
-    { Equations.equations ~poly ~program_mode opt (fst eqns) (snd eqns) }
+| #[ poly = polymorphic; program_mode = program; atts = derive_flags; tactic = equations_tactic  ] 
+  [ "Equations" equation_options(opt) equations(eqns) ] ->
+    { Equations.equations ~poly ~program_mode ?tactic
+      (List.append opt (interp_attrs atts)) (fst eqns) (snd eqns) }
 END
 
 (* Dependent elimination using Equations. *)

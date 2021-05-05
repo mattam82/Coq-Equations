@@ -2,6 +2,7 @@
 -R . TestSuite
 -R "../theories" Equations
 INSTALLDEFAULTROOT = 1
+attributes.v
 fin.v
 Basics.v
 notations.v
@@ -72,6 +73,7 @@ issues/issue349.v
 issues/issue353.v
 issues/issue354.v
 issues/issue372.v
+issues/issue321.v
 eqdec_error.v
 noconf_simplify.v
 le.v

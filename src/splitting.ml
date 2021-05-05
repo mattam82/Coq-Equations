@@ -145,6 +145,7 @@ let eq_path path path' =
   aux path path'
 
 let program_id p = p.program_info.program_id
+let program_loc p = p.program_info.program_loc
 let program_type p = program_type p.program_info
 let program_sign p = p.program_info.program_sign
 let program_impls p = p.program_info.program_impls
@@ -1019,13 +1020,18 @@ type compiled_program_info = {
 
 
 let is_polymorphic info = info.poly
+let warn_complete id =
+  str "Equations definition " ++ Id.print id ++ str" is complete and requires no further proofs. " ++
+  str "Use the \"Equations\" command to define it."
 
-let error_complete () =
-  user_err_loc (None, "define",
-                str "Equations definition is complete and requires no further proofs. " ++
-                str "Use the \"Equations\" command to define it.")
+let warn_complete = 
+  CWarnings.create
+    ~name:"equations-open-proof-complete"
+    ~category:"equations"
+    ~default:CWarnings.Enabled
+    warn_complete
 
-let solve_equations_obligations ~pm flags recids i sigma hook =
+let solve_equations_obligations ~pm flags recids loc i sigma hook =
   let scope = Locality.(Global ImportNeedQualified) in
   let kind = Decls.(IsDefinition Definition) in
   let evars = Evar.Map.bindings (Evd.undefined_map sigma) in
@@ -1074,18 +1080,19 @@ let solve_equations_obligations ~pm flags recids i sigma hook =
   let lemma = Declare.Proof.map lemma ~f:(fun p  ->
       fst (Proof.solve Goal_select.SelectAll None (Proofview.tclDISPATCH do_intros) p)) in
   let lemma = Declare.Proof.map lemma ~f:(fun p  ->
-      fst (Proof.solve (Goal_select.SelectAll) None (Tacticals.New.tclTRY !Declare.Obls.default_tactic) p)) in
-  let prf = Declare.Proof. get lemma in
+      fst (Proof.solve Goal_select.SelectAll None (Tacticals.New.tclTRY flags.tactic) p)) in
+  let prf = Declare.Proof.get lemma in
   let pm, lemma = if Proof.is_done prf then
-    if flags.open_proof then error_complete ()
+    if flags.open_proof then 
+      (warn_complete ~loc i; pm, Some lemma)
     else
       (let pm, _ = Declare.Proof.save ~pm ~proof:lemma ~opaque:Vernacexpr.Transparent ~idopt:None in
        pm, None)
   else if flags.open_proof then pm, Some lemma
   else
-    user_err_loc (None, "define", str"Equations definition generated subgoals that " ++
+    user_err_loc (Some loc, "define", str"Equations definition generated subgoals that " ++
                                   str "could not be solved automatically. Use the \"Equations?\" command to" ++
-                                  str " refine them interactively")
+                                  str " refine them interactively.")
   in
   pm, lemma
 
@@ -1102,7 +1109,9 @@ let gather_fresh_context sigma u octx =
   let ctx = Univ.ContextSet.of_set levels in
   Univ.ContextSet.add_constraints (Univ.AUContext.instantiate u octx) ctx
 
-let solve_equations_obligations_program ~pm flags recids i sigma hook =
+let swap (x, y) = (y, x)
+
+let solve_equations_obligations_program ~pm flags recids loc i sigma hook =
   let poly = flags.polymorphic in
   let scope = Locality.(Global ImportNeedQualified) in
   let kind = Decls.(IsDefinition Definition) in
@@ -1116,6 +1125,22 @@ let solve_equations_obligations_program ~pm flags recids i sigma hook =
   let oblsinfo, (evids, cmap), term, ty =
     RetrieveObl.retrieve_obligations env oblsid sigma 0
     ~status:(Evar_kinds.Define false) term ty
+  in
+  let revids = List.map swap evids in
+  let nc = Environ.named_context env in
+  let nc_len = Context.Named.length nc in
+  let oblsinfo = 
+    Array.map (fun (id, ty, src, status, deps, _tac) -> 
+      let ev = List.assoc_f Id.equal id revids in
+      let evi = Evd.find_undefined sigma ev in
+      let ctx = Evd.evar_filtered_context evi in
+      let tac = 
+        Tacticals.New.tclTHEN 
+          (Tacticals.New.tclDO (List.length ctx - nc_len) Tactics.intro)
+          flags.tactic
+      in
+      (id, ty, src, status, deps, Some tac))
+      oblsinfo
   in
   let hook { Declare.Hook.S.uctx; obls; _ } pm =
   (* let hook uctx evars locality gr = *)
@@ -1168,7 +1193,8 @@ let solve_equations_obligations_program ~pm flags recids i sigma hook =
   let cinfo = Declare.CInfo.make ~name:oblsid ~typ:ty () in
   let info = Declare.Info.make ~poly ~scope ~kind () in
   let pm, _ =
-    Declare.Obls.add_definition ~pm ~cinfo ~info ~obl_hook ~term ~uctx:(Evd.evar_universe_context sigma)
+    Declare.Obls.add_definition ~pm ~cinfo ~info 
+      ~obl_hook ~term ~uctx:(Evd.evar_universe_context sigma)
       ~reduce ~opaque:false oblsinfo in
   pm
 
@@ -1252,17 +1278,25 @@ let define_programs (type a) ~pm env evd is_recursive fixprots flags ?(unfold=fa
           call_hook ~pm recobls p helpers ustate Locality.(Global ImportDefaultBehavior) (GlobRef.ConstRef cst) (f i) |> snd)
         0 pm programs
     in
+    let hdprog = List.hd programs in
+    let loc = program_loc hdprog in
+    let id = program_id hdprog in
     if Evd.has_undefined !evd then
       if flags.open_proof then
         let pm, lemma =
-          solve_equations_obligations ~pm flags recids (program_id (List.hd programs)) !evd (all_hook hook) in
+          solve_equations_obligations ~pm flags recids loc id !evd (all_hook hook) in
         (), pm, lemma
       else
         let pm =
-          solve_equations_obligations_program ~pm flags recids (program_id (List.hd programs)) !evd (all_hook hook) in
+          solve_equations_obligations_program ~pm flags recids loc id !evd (all_hook hook) in
         (), pm, None
     else
-      if flags.open_proof then error_complete ()
+      if flags.open_proof then 
+        begin warn_complete ~loc id;
+          let pm, lemma =
+            solve_equations_obligations ~pm flags recids loc id !evd (all_hook hook) in
+          (), pm, lemma
+        end
       else
         let pm = all_hook ~pm hook [] !evd in
         (), pm, None

@@ -432,7 +432,8 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
     let data =
       Covering.{
         rec_type = [None];
-        flags = { polymorphic = true; open_proof = false; with_eqns = false; with_ind = false };
+        flags = { polymorphic = true; open_proof = false; with_eqns = false; with_ind = false;
+          tactic = !Declare.Obls.default_tactic};
         program_mode = false;
         fixdecls = [];
         intenv = Constrintern.empty_internalization_env;

@@ -124,6 +124,7 @@ val next_ident_away : Id.t -> Id.Set.t ref -> Id.t
 type equation_option = 
   | OInd
   | OEquations
+  | OTactic of Libnames.qualid
 
 type equation_user_option = equation_option * bool
 
@@ -175,3 +176,7 @@ val interp_eqn : env -> Vernacexpr.decl_notation list -> program_info -> pre_equ
 val wit_equations_list : pre_equation list Genarg.uniform_genarg_type
 
 val is_recursive : Names.Id.t -> pre_equation wheres -> bool
+
+val equations_attributes : Attributes.vernac_flags -> equation_user_option list
+val derive_flags : (bool option * bool option) Attributes.attribute
+val equations_tactic : Libnames.qualid option Attributes.attribute
