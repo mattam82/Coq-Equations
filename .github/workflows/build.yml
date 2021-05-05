@@ -1,4 +1,4 @@
-name: Test compilation
+name: CI
 
 on: 
   push: # On any push on a "stable" branch
