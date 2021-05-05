@@ -140,7 +140,7 @@ End AlmostFull.
 Class AlmostFull {X} (R : X -> X -> Prop) :=
   is_almost_full : almost_full R.
 
-Instance proper_af X : Proper (relation_equivalence ==> iff) (@AlmostFull X).
+#[export] Instance proper_af X : Proper (relation_equivalence ==> iff) (@AlmostFull X).
 Proof.
   intros R S eqRS.
   split; intros.
@@ -156,7 +156,7 @@ Proof.
 Qed.
 Arguments WFT _ : clear implicits.
 
-Instance almost_full_le : AlmostFull Peano.le.
+#[export] Instance almost_full_le : AlmostFull Peano.le.
 Proof.
   assert (relation_equivalence Peano.le (fun x y => ~ (y < x))) as ->.
   { cbn. intros x y. intuition auto. red in H0. lia. lia. }
@@ -380,7 +380,7 @@ Proof.
   apply H. apply H0.
 Defined.
 
-Instance AlmostFull_MR {X Y} R (f : Y -> X) : AlmostFull R -> AlmostFull (Wf.MR R f).
+#[export] Instance AlmostFull_MR {X Y} R (f : Y -> X) : AlmostFull R -> AlmostFull (Wf.MR R f).
 Proof. intros [p sec]. exists (cofmap f p). apply (cofmap_secures f p _ sec). Defined.
 
 Fixpoint oplus_nullary {X:Type} (p:WFT X) (q:WFT X) :=
@@ -584,7 +584,7 @@ Defined.
 Definition product_rel {X Y : Type} (A : X -> X -> Prop) (B : Y -> Y -> Prop) :=
   fun x y => A (fst x) (fst y) /\ B (snd x) (snd y).
 
-Instance af_product {X Y : Type} (A : X -> X -> Prop) (B : Y -> Y -> Prop) :
+#[export] Instance af_product {X Y : Type} (A : X -> X -> Prop) (B : Y -> Y -> Prop) :
   AlmostFull A -> AlmostFull B -> AlmostFull (product_rel A B).
 Proof.
   intros. pose (af_interesection (Wf.MR A fst) (Wf.MR B snd)).
@@ -983,7 +983,7 @@ Section SCT.
         specialize (Hi f). simpl in Hi. auto.
   Qed.
 
-  Instance TI_AlmostFull k : AlmostFull (TI k).
+  #[global] Instance TI_AlmostFull k : AlmostFull (TI k).
   Proof.
     rewrite TI_intersection_equiv.
     induction k. simpl. red. red. exists ZT. simpl. intros. exact I.

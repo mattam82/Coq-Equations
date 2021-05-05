@@ -65,6 +65,7 @@ Require Import Coq.Sorting.Sorting.
 Require Import Coq.Sorting.Permutation.
 Require Import Coq.Sorting.PermutSetoid.
 
+#[export]
 Instance filter_ext {A} : Morphisms.Proper (pointwise_relation A eq ==> eq ==> eq) (@filter A).
 Proof.
   reduce. subst. induction y0; simpl; auto. generalize (H a). case_eq (x a). intros _ <-; congruence.
@@ -114,6 +115,7 @@ Require Import Permutation.
 
 Module RecMeasure.
 
+  #[export] 
   Instance wf_MR {A R} `(WellFounded A R) {B} (f : B -> A) : WellFounded (MR R f).
   Proof. red. apply measure_wf. apply H. Defined.
 

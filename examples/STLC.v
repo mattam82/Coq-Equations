@@ -47,7 +47,7 @@ Notation " << t , u >> " := (Pair (t%term) (u%term)).
 
 Parameter atomic_type : Set.
 Parameter atomic_type_eqdec : EqDec atomic_type.
-Existing Instance atomic_type_eqdec.
+#[export] Existing Instance atomic_type_eqdec.
 
 Inductive type :=
 | atom (a : atomic_type)
@@ -293,9 +293,11 @@ Notation " t -->* u " := (reduces t u) (at level 55).
 
 Require Import Setoid.
 
+#[local]
 Instance: Transitive reduces.
 Proof. red; intros. econstructor 3; eauto. Qed.
 
+#[local]
 Instance: Reflexive reduces.
 Proof. red; intros. econstructor 2; eauto. Qed.
 
@@ -543,7 +545,7 @@ Proof. intros. now apply eta_expand in H0; term. Qed.
 (** Going to use the subterm order *)
 
 Require Import Arith Wf_nat.
-Instance wf_nat : Classes.WellFounded lt := lt_wf.
+#[export] Instance wf_nat : Classes.WellFounded lt := lt_wf.
 
 #[local] Hint Constructors Subterm.lexprod : subterm_relation.
 
@@ -783,7 +785,7 @@ Proof.
 Qed.
 Print Assumptions hereditary_subst_type.
 Import Program.Basics.
-Instance: subrelation eq (flip impl).
+#[export] Instance: subrelation eq (flip impl).
 Proof. reduce. subst; auto. Qed.
 
 Lemma nth_pred Γ' Γ U n : n > length Γ' -> nth (pred n) (Γ' @ Γ) unit = nth n (Γ' @ (U :: Γ)) unit.

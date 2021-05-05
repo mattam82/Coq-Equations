@@ -26,6 +26,7 @@ Scheme le_dep := Induction for le Sort Prop.
 
 Set Equations With UIP.
 
+#[export]
 Instance le_uip m n : UIP (m <= n).
 Proof.
   intros x. induction x using le_dep; simplify_dep_elim; reflexivity.

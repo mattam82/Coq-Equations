@@ -73,7 +73,7 @@ Inductive finle : forall (n : nat) (x : fin n) (y : fin n), Prop :=
 
 Scheme finle_ind_dep := Induction for finle Sort Prop.
 
-Instance finle_ind_pack n x y : DepElim.DependentEliminationPackage (finle n x y) :=
+#[export] Instance finle_ind_pack n x y : DepElim.DependentEliminationPackage (finle n x y) :=
   { elim_type := _ ; elim := finle_ind_dep }.
 
 Arguments finle {n}.
@@ -98,7 +98,7 @@ Equations Below_fin (P : forall n, fin n -> Type) {n} (v : fin n) : Type :=
 Below_fin P fz := unit ;
 Below_fin P (fs f) := (P _ f * Below_fin P f)%type.
 
-Hint Rewrite Below_fin_equation_2 (* Below_fin_equation_3 *) : Below.
+#[export] Hint Rewrite Below_fin_equation_2 (* Below_fin_equation_3 *) : Below.
 
 Equations(noeqns noind) below_fin (P : forall n, fin n -> Type)
   (step : forall n (v : fin n), Below_fin P v -> P n v)

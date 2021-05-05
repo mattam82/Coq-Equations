@@ -30,6 +30,7 @@ TupleMap_noconf (tmCons _ _ fn) (tmCons F G fn') := fn = fn'.
 
 Unset Printing Primitive Projection Parameters.
 
+#[export]
 Program Instance TupleMap_depelim n T U : DependentEliminationPackage (TupleMap n T U)
 := { elim_type := ∀ (P : forall n t t0, TupleMap n t t0 -> Type),
    P _ _ _ tmNil ->
@@ -65,6 +66,7 @@ Definition TupleMap_subterm := Relation_Operators.clos_trans _
           TupleMap_direct_subterm _ _ _ _ _ _ (pr2 x) (pr2 y)).
 #[local] Hint Unfold TupleMap_subterm : subterm_relation.
 
+#[local]
 Program Instance WellFounded_TupleMap_subterm : WellFounded TupleMap_subterm.
 
 (* Solve All Obligations with solve_subterm. *)
