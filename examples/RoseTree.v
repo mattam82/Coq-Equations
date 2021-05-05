@@ -78,7 +78,7 @@ Module RoseTree.
     Hint Extern 4 (_ < _) => simpl; lia : Below.
     Hint Extern 4 (MR _ _ _ _) => repeat red; simpl in *; lia : Below.
 
-    Obligation Tactic := program_simpl; try typeclasses eauto with Below subterm_relation.
+    Obligation Tactic := simpl in *; program_simpl; try typeclasses eauto with Below subterm_relation.
     (* Nested rec *) 
 
     Equations elements_acc (r : t) (acc : list A) : list A by wf (size r) lt :=
@@ -87,7 +87,7 @@ Module RoseTree.
       where aux (x : list t) (H : list_size size x < size (node l)) : list A by wf (list_size size x) lt :=
       aux nil _ := acc;
       aux (cons x xs) H := elements_acc x (aux xs _).
-
+      
     Definition elements2 (r : t) : list A := elements_acc r [].
 
     Lemma elements2_equation r acc : elements_acc r acc = elements_def r ++ acc.
