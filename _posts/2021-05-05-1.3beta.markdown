@@ -1,0 +1,14 @@
+---
+layout: post
+title:  "Equations 1.3beta is released!"
+date:   2021-05-05 08:00:00 +0100
+categories: equations
+---
+
+Release [1.3beta][release] of Equations is available, as source and through `opam` package `coq-equations.1.3~beta+8.13`, 
+for Coq 8.13. See the [release][release] notes and updated 
+[reference manual][refman] for details.
+
+[release]: https://github.com/mattam82/Coq-Equations/releases/tag/v1.3-8.13beta
+[refman]: https://github.com/mattam82/Coq-Equations/raw/master/doc/equations.pdf
+-- Matthieu Sozeau
