@@ -15,6 +15,7 @@ val define_by_eqs
   :  pm:Declare.OblState.t
   -> poly:bool
   -> program_mode:bool
+  -> tactic:unit Proofview.tactic
   -> open_proof:bool
   -> Syntax.equation_options
   -> Syntax.pre_equations
@@ -30,7 +31,7 @@ val define_principles :
 
 val equations :
   pm:Declare.OblState.t ->
-  poly:bool -> program_mode:bool ->
+  poly:bool -> program_mode:bool -> ?tactic:Libnames.qualid ->
   Syntax.equation_options ->
   Syntax.pre_equations ->
   Vernacexpr.decl_notation list ->
@@ -38,7 +39,7 @@ val equations :
 
 val equations_interactive :
   pm:Declare.OblState.t ->
-  poly:bool -> program_mode:bool ->
+  poly:bool -> program_mode:bool -> ?tactic:Libnames.qualid ->
   Syntax.equation_options ->
   Syntax.pre_equations ->
   Vernacexpr.decl_notation list ->

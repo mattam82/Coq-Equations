@@ -2,6 +2,7 @@
 -R . TestSuite
 -R "../theories" Equations
 INSTALLDEFAULTROOT = 1
+attributes.v
 fin.v
 Basics.v
 notations.v

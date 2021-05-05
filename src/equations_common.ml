@@ -120,7 +120,8 @@ type flags = {
   polymorphic : bool;
   open_proof : bool;
   with_eqns : bool;
-  with_ind : bool }  
+  with_ind : bool;
+  tactic : unit Proofview.tactic }
 
 let check_term env evd c t =
   ignore(Typing.check env evd c t)

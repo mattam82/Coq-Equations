@@ -213,7 +213,7 @@ let next_ident_away s ids =
   let n' = Namegen.next_ident_away s !ids in
     ids := Id.Set.add n' !ids; n'
 
-type equation_option = OInd | OEquations
+type equation_option = OInd | OEquations | OTactic of Libnames.qualid
     
 type equation_user_option = equation_option * bool
 
@@ -224,6 +224,35 @@ let pr_r_equation_user_option _prc _prlc _prt l =
 
 let pr_equation_options  _prc _prlc _prt l =
   mt ()
+
+(* Attributes *)
+
+let derive_flags =
+  let open Attributes in
+  let open Notations in
+  Attributes.qualify_attribute "derive" 
+    (bool_attribute ~name:"eliminator" ++
+     bool_attribute ~name:"equations")
+    
+let equations_attributes attrs = 
+  let open Attributes in
+  let add_bool key value l =
+    match value with
+    | Some b -> (key, b) :: l
+    | None -> l
+  in
+  let (eliminator, equations) = parse derive_flags attrs in
+  add_bool OInd eliminator (add_bool OEquations equations [])
+
+let tactic_parser : qualid Attributes.key_parser = fun orig args ->
+  let open Attributes in
+  assert_once ~name:"tactic" orig;
+  match args with
+  | VernacFlagLeaf (FlagString str) -> qualid_of_string str
+  | VernacFlagLeaf (FlagIdent str) -> qualid_of_string str
+  |  _ -> CErrors.user_err (Pp.str "Ill formed \"tactic\" attribute")
+let equations_tactic =
+  Attributes.attribute_of_list ["tactic",tactic_parser]
 
 type rec_type_item =
   | Guarded of (Id.t * rec_annot) list (* for mutual rec *)

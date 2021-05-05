@@ -1080,7 +1080,7 @@ let solve_equations_obligations ~pm flags recids loc i sigma hook =
   let lemma = Declare.Proof.map lemma ~f:(fun p  ->
       fst (Proof.solve Goal_select.SelectAll None (Proofview.tclDISPATCH do_intros) p)) in
   let lemma = Declare.Proof.map lemma ~f:(fun p  ->
-      fst (Proof.solve Goal_select.SelectAll None (Tacticals.New.tclTRY !Declare.Obls.default_tactic) p)) in
+      fst (Proof.solve Goal_select.SelectAll None (Tacticals.New.tclTRY flags.tactic) p)) in
   let prf = Declare.Proof.get lemma in
   let pm, lemma = if Proof.is_done prf then
     if flags.open_proof then 
@@ -1109,6 +1109,8 @@ let gather_fresh_context sigma u octx =
   let ctx = Univ.ContextSet.of_set levels in
   Univ.ContextSet.add_constraints (Univ.AUContext.instantiate u octx) ctx
 
+let swap (x, y) = (y, x)
+
 let solve_equations_obligations_program ~pm flags recids loc i sigma hook =
   let poly = flags.polymorphic in
   let scope = Locality.(Global ImportNeedQualified) in
@@ -1123,6 +1125,22 @@ let solve_equations_obligations_program ~pm flags recids loc i sigma hook =
   let oblsinfo, (evids, cmap), term, ty =
     RetrieveObl.retrieve_obligations env oblsid sigma 0
     ~status:(Evar_kinds.Define false) term ty
+  in
+  let revids = List.map swap evids in
+  let nc = Environ.named_context env in
+  let nc_len = Context.Named.length nc in
+  let oblsinfo = 
+    Array.map (fun (id, ty, src, status, deps, _tac) -> 
+      let ev = List.assoc_f Id.equal id revids in
+      let evi = Evd.find_undefined sigma ev in
+      let ctx = Evd.evar_filtered_context evi in
+      let tac = 
+        Tacticals.New.tclTHEN 
+          (Tacticals.New.tclDO (List.length ctx - nc_len) Tactics.intro)
+          flags.tactic
+      in
+      (id, ty, src, status, deps, Some tac))
+      oblsinfo
   in
   let hook { Declare.Hook.S.uctx; obls; _ } pm =
   (* let hook uctx evars locality gr = *)
@@ -1175,7 +1193,8 @@ let solve_equations_obligations_program ~pm flags recids loc i sigma hook =
   let cinfo = Declare.CInfo.make ~name:oblsid ~typ:ty () in
   let info = Declare.Info.make ~poly ~scope ~kind () in
   let pm, _ =
-    Declare.Obls.add_definition ~pm ~cinfo ~info ~obl_hook ~term ~uctx:(Evd.evar_universe_context sigma)
+    Declare.Obls.add_definition ~pm ~cinfo ~info 
+      ~obl_hook ~term ~uctx:(Evd.evar_universe_context sigma)
       ~reduce ~opaque:false oblsinfo in
   pm
 
