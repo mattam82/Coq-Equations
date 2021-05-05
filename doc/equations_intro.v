@@ -11,7 +11,7 @@
    features through a handful of examples. We start our Coq primer
    session by importing the [Equations] module.  *)
 
-From Coq Require Import Arith Omega Program.
+From Coq Require Import Arith Lia Program.
 From Equations Require Import Equations.
 
 (* begin hide *)
@@ -558,3 +558,19 @@ Module KAxiom.
   (* Closed under the global context *)
 
 End KAxiom.
+
+(** *** Options
+
+  [Equations] supports the following attributes:
+  
+  - [universes(polymorphic | monomorphic)] for universe polymorphic or
+    monomorphic definitions (also depending on the global `Universe Polymorphism` flag).
+
+  - [tactic=tac] for setting the default tactic to try solve obligations/holes.
+    By default this reuses the `Obligation Tactic` of Program.
+
+  - [derive(eliminator=yes|no, equations=yes|no)] to control the derivation of 
+    the graph and elimination principle for the function, and the propositional 
+    equalities of the definition. Note that `eliminator=yes` forces `equations=yes`.
+
+*)
