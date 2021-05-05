@@ -230,7 +230,8 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
       program_mode = false;
       rec_type = [None];
       flags = { polymorphic = poly; open_proof = false;
-                with_eqns = false; with_ind = false };
+                with_eqns = false; with_ind = false; 
+                tactic = !Declare.Obls.default_tactic };
       fixdecls = [];
       intenv = Constrintern.empty_internalization_env;
       notations = []
