@@ -43,6 +43,7 @@ Set Universe Minimization ToSet.
 Derive NoConfusionHom for vector.
 Unset Universe Minimization ToSet.
 
+#[export]
 Instance vector_eqdec@{i +|+} {A : Type@{i}} {n} `(EqDec@{i} A) : EqDec (vector A n).
 Proof.
   intros. intros x. intros y. induction x.

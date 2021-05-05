@@ -75,6 +75,7 @@ Derive Below for nat.
 Definition rec_nat (P : nat -> Type) n (step : forall n, Below_nat P n -> P n) : P n :=
   step n (below_nat P step n).
 
+#[export]
 Instance nat_Recursor : Recursor nat :=
   { rec_type := fun n => forall P step, P n ;
     rec := fun n P step => rec_nat P n step }.

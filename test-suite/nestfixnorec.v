@@ -151,7 +151,9 @@ Module IdealNoSec.
   where list_P3 {a} {a_C : C a} (l : list (tree a)) : bool := {
   list_P3 l := existsb tree_P3 l }.
 
+  #[export]
   Instance tree_C {a} (a_C : C a) : C (tree a) := { P := tree_P3 }.
+  #[export]
   Instance tree_list_C {a} (a_C : C a) : C (list (tree a)) := { P := list_P3 }.
 
   Example check0 := (fun a (a_C : C a) => eq_refl : tree_list_C a_C = list_C (tree_C a_C)).

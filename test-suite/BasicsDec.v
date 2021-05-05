@@ -22,6 +22,7 @@ Inductive foo (A : Type)
 
 Derive Signature for foo.
 
+#[export]
 Instance vector_eqdec {A n} `(EqDec A) : EqDec (vector A n).
 Proof. intros. intros x. induction x. left. now depelim y.
   intro y; depelim y.

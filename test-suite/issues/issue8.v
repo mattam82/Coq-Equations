@@ -22,6 +22,7 @@ Inductive TupleMap@{i j} : forall n, TupleT n -> TupleT n -> Type@{j} :=
 
 Derive Signature for TupleMap.
 
+#[export]
 Program Instance TupleMap_depelim n T U : DependentEliminationPackage (TupleMap n T U)
 := { elim_type := ∀ (P : forall n t t0, TupleMap n t t0 -> Type),
    P _ _ _ tmNil ->

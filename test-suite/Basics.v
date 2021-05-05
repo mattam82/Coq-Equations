@@ -42,6 +42,7 @@ Module TestF.
 
 End TestF.
 
+#[local]
 Instance eqsig {A} (x : A) : Signature (x = x) A (fun a => x = a) := sigmaI _ x.
 
 Module WithUIP.
@@ -105,6 +106,7 @@ Derive Subterm for vector.
 
 Require Import Arith Wf_nat.
 
+#[local]
 Instance wf_nat : WellFounded lt := lt_wf.
 
 #[local] Hint Resolve lt_n_Sn : lt.
@@ -141,6 +143,7 @@ where "x ++v y" := (vapp' x y).
 
 (* Print Assumptions vapp'. *)
 
+#[local]
 Instance vector_eqdec {A n} `(EqDec A) : EqDec (vector A n).
 Proof.
   intros. intros x. induction x. left. now depelim y.
@@ -173,6 +176,7 @@ Definition vector_subterm A := t_subterm A.
 (* Defined. *)
 (* Print Assumptions well_founded_vector_direct_subterm'. *)
 
+#[local]
 Instance eqdep_prod A B `(EqDec A) `(EqDec B) : EqDec (prod A B).
 Proof. intros. intros x y. decide equality. Defined.
 

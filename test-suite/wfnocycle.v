@@ -105,6 +105,7 @@ Inductive type : Set :=
 | tbool | tunit | tarrow : type -> type -> type.
 Derive NoConfusion Subterm for type.
 
+#[export]
 Instance type_uip : UIP type.
 Proof.
   red. intros x y ->. induction y; try repeat (simplify ?; simpl); trivial.

@@ -28,6 +28,7 @@ Definition val_type_termRel :=
 
 Ltac smaller_n := autounfold; apply left_lex; lia.
 
+#[export]
 Instance WF_val_type_termRel: WellFounded val_type_termRel.
   apply Wf.measure_wf; apply wf_lexprod; intro; apply Wf_nat.lt_wf.
 Qed.

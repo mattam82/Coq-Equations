@@ -20,6 +20,7 @@ end.
 Lemma lex_nat_wf : well_founded lex_nat.
 Admitted.
 
+#[export]
 Instance Lex_nat_wf : WellFounded lex_nat.
 apply lex_nat_wf.
 Defined.
