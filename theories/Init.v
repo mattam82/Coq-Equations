@@ -59,6 +59,7 @@ Register fixproto as equations.fixproto.
 Definition hidebody {A : Type} {a : A} := a.
 
 Register hidebody as equations.internal.hidebody.
+Extraction Inline hidebody.
 
 Ltac hidebody H :=
   match goal with
@@ -74,6 +75,8 @@ Polymorphic Cumulative Record sigma@{i} {A : Type@{i}} {B : forall (_ : A), Type
 Unset Primitive Projections.
 Arguments sigma {A} B.
 Arguments sigmaI {A} B pr1 pr2.
+
+Extraction Inline pr1 pr2.
 
 Set Warnings "-notation-overridden".
 
