@@ -1,148 +1,170 @@
-(** printing funelim %\coqdoctac{funelim}% *)
-(** printing Derive %\coqdockw{Derive}% *)
-(** printing Signature %\coqdocind{Signature}% *)
-(** printing NoConfusion %\coqdocind{NoConfusion}% *)
-(** printing simp %\coqdoctac{simp}% *)
-(** printing <= %$\Leftarrow$% *)
-(** printing <=? %$\le?$% *)
+(*|
+====================================
+ A Gentle Introduction to Equations
+====================================
 
-(** [Equations] is a plugin for %\cite{Coq}% that comes with a few support modules defining
-   classes and tactics for running it. We will introduce its main
-   features through a handful of examples. We start our Coq primer
-   session by importing the [Equations] module.  *)
+:Status: Work in Progress
+:alectryon/pygments/tacn: depind
+:alectryon/pygments/inductive: t
 
-From Coq Require Import Arith Lia Program.
-From Equations Require Import Equations.
 
-(* begin hide *)
+|eqns| is a plugin for |coq|_ that comes with a few support modules defining
+classes and tactics for running it. We will introduce its main
+features through a handful of examples. We start our Coq primer
+session by importing the |eqns| module. |*)
+
+From Coq Require Import Arith Lia Program Bvector.
+Require Import Equations.Prop.Equations.
+
 Check @eq.
-Require Import Bvector.
 
-(* Derive DependentElimination for nat bool option sum Datatypes.prod list *)
-(* end hide *)
+(*|
+---------------
+Inductive types
+---------------
 
-(** * Inductive types
+In its simplest form, |eqns| allows to define functions on inductive datatypes.
+Take for example the booleans defined as an inductive type with two constructors `true` and `false` *)
 
-   In its simplest form, [Equations] allows to define functions on inductive datatypes.
-   Take for example the booleans defined as an inductive type with two constructors [true] and [false]:
-   [[
-   Inductive bool : Set := true : bool | false : bool 
-   ]]
-   
-   We can define the boolean negation as follows: *)
+Print Init.Datatypes.bool. (* .unfold *)
+
+(*| We can define the boolean negation as follows: |*)
 
 Equations neg (b : bool) : bool :=
 neg true := false;
 neg false := true.
 
-(* begin hide *)
-Check neg_graph.
-Check neg_graph_equation_1.
-Check neg_graph_equation_2.
+(*| 
+[Equations] declarations are formed by a signature definition and a set of _clauses_ 
+that must form a _covering_ of this signature. The compiler is then expected to
+automatically find a corresponding case-splitting tree that implements the function.
+In this case, it simply needs to split on the single variable `b` to
+produce two new **programming problems** `neg true` and `neg false` that are directly 
+handled by the user clauses. We will see in more complex examples that this search
+for a splitting tree may be non-trivial. |*)
+
+(*| 
+
+^^^^^^^^^^^^^^^^^^^^^
+Reasoning principles
+^^^^^^^^^^^^^^^^^^^^^
+
+In the setting of a proof assistant like Coq, we need not only the ability 
+to define complex functions but also get good reasoning support for them.
+Practically, this translates to the ability to simplify applications of functions 
+appearing in the goal and to give strong enough proof principles for (recursive)
+definitions.
+
+|eqns| provides this through an automatic generation of proofs related to
+the function. Namely, each defining equation gives rise to a lemma stating the 
+equality between the left and right hand sides. These equations can be used as 
+rewrite rules for simplification during proofs, without having to rely on the
+fragile simplifications implemented by raw reduction. For `neg`, this corresponds
+to the two following equations: |*)
+   
+Check neg_graph_equation_1. (* .messages .unfold *)
+Check neg_graph_equation_2. (* .messages .unfold *)
+
+(*|
+We can also generate the inductive graph of any Equations definition,
+giving the strongest elimination principle on the function. 
+
+I.e., for `neg` the inductive graph is defined as: |*)
+   
+Print neg_graph. (* .messages .unfold *)
+
+(*| The graph comes with an automatically derived proof: |*)
+
+Print neg_elim.
+
+(*| This lemma can be used to eliminate any call to [neg], specializing its 
+  argument and result in a single lemma application. Suppose for example that 
+  we want to show that [neg] is involutive: |*)
 
 Lemma neg_inv : forall b, neg (neg b) = b.
-Proof. intros b. funelim (neg b); now simp neg. Defined.
-(* end hide *)
-(** [Equations] declarations are formed by a signature definition and a set of _clauses_ 
-   that must form a _covering_ of this signature. The compiler is then expected to
-   automatically find a corresponding case-splitting tree that implements the function.
-   In this case, it simply needs to split on the single variable [b] to
-   produce two new _programming problems_ [neg true] and [neg false] that are directly 
-   handled by the user clauses. We will see in more complex examples that this search
-   for a splitting tree may be non-trivial. *)
+Proof. 
+  intros b. (* .unfold *)
+(*| The goal contains two calls to `neg`, and we want to eliminate the inner one, to refine 
+at the same time `b`, respectively to `true` and `false`, and `neg b`, respectively to `false` and `true`.
+This directly follows the splitting done in the `neg` definition. |*)
+  funelim (neg b).
+(*| Now we have two subgoals [neg false = true] and [neg true = false] that correspond exactly to the 
+two equalities shown above, we can hence close these subgoals by rewriting with them.
+The `simp f` tactic simply tries to rewrite with all the equations associated with the equations definition `f`. |*)
+  all:now simp neg.
+Defined.
 
-(** * Reasoning principles
+(*| In the following sections we will show how these ideas generalize to more complex 
+types and definitions involving dependencies, overlapping clauses and recursion.
 
-   In the setting of a proof assistant like Coq, we need not only the ability 
-   to define complex functions but also get good reasoning support for them.
-   Practically, this translates to the ability to simplify applications of functions 
-   appearing in the goal and to give strong enough proof principles for (recursive)
-   definitions.
+-----------
+Building up
+-----------
 
-   [Equations] provides this through an automatic generation of proofs related to
-   the function. Namely, each defining equation gives rise to a lemma stating the 
-   equality between the left and right hand sides. These equations can be used as 
-   rewrite rules for simplification during proofs, without having to rely on the
-   fragile simplifications implemented by raw reduction. We can also generate the
-   inductive graph of any [Equations] definition, giving the strongest elimination
-   principle on the function. 
-
-   I.e., for [neg] the inductive graph is defined as: [[
-Inductive neg_ind : bool -> bool -> Prop :=
-| neg_ind_equation_1 : neg_ind true false
-| neg_ind_equation_2 : neg_ind false true ]]
-
-   Along with a proof of [Π b, neg_ind b (neg b)], we can eliminate any call
-   to [neg] specializing its argument and result in a single command. 
-   Suppose we want to show that [neg] is involutive for example, our goal will 
-   look like: [[
-  b : bool
-  ============================
-   neg (neg b) = b ]]
-   An application of the tactic [funelim (neg b)] will produce two goals corresponding to 
-   the splitting done in [neg]: [neg false = true] and [neg true = false].
-   These correspond exactly to the rewriting lemmas generated for [neg].
-
-   In the following sections we will show how these ideas generalize to more complex 
-   types and definitions involving dependencies, overlapping clauses and recursion.
+^^^^^^^^^^^^^
+Polymorphism
+^^^^^^^^^^^^^
    
-   * Building up
+Coq's inductive types can be parameterized by types, giving polymorphic datatypes.
+For example the `list` datatype is defined as: |*)
 
-   ** Polymorphism
-   
-   Coq's inductive types can be parameterized by types, giving polymorphic datatypes.
-   For example the list datatype is defined as:
-   *)
+Inductive list A | : Type := 
+  | nil : list 
+  | cons : A -> list -> list.
 
-Inductive list {A} : Type := nil : list | cons : A -> list -> list.
-
-Arguments list : clear implicits.
+Arguments nil {A}. 
+Arguments cons {A}.
 Notation "x :: l" := (cons x l). 
 Notation "[]" := nil.
 
-(** No special support for polymorphism is needed, as type arguments are treated 
-   like regular arguments in dependent type theories. Note however that one cannot
-   match on type arguments, there is no intensional type analysis.
-   We can write the polymorphic [tail] function as follows:
-*)
+(*| 
+No special support for polymorphism is needed, as type arguments are treated 
+like regular arguments in dependent type theories. Note however that one cannot
+match on type arguments, there is no intensional type analysis.
+We can write the polymorphic `tail` function as follows:
+|*)
 
 Equations tail {A} (l : list A) : list A :=
 tail nil := nil ;
 tail (cons a v) := v.
 
-(** Note that the argument [{A}] is declared implicit and must hence be
- omitted in the defining clauses. In each of the branches it is named
- [A]. To specify it explicitely one can use the syntax [(A:=B)],
- renaming that implicit argument to [B] in this particular case *)
+(*| 
+Note that the argument `{A}` is declared implicit and must hence be
+omitted in the defining clauses. In each of the branches it is named
+`A`. To specify it explicitely one can use the syntax `(A:=B)`,
+renaming that implicit argument to `B` in this particular case. 
+*)
 
-(** ** Recursive inductive types
-   
-   Of course with inductive types comes recursion. Coq accepts a subset
-   of the structurally recursive definitions by default (it is
-   incomplete due to its syntactic nature). We will use this as a first
-   step towards a more robust treatment of recursion via well-founded
-   relations. A classical example is list concatenation: *)
+(*|
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+Recursive inductive types
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Of course with inductive types comes recursion. Coq accepts a subset
+of the structurally recursive definitions by default (it is
+incomplete due to its syntactic nature). We will use this as a first
+step towards a more robust treatment of recursion via well-founded
+relations. A classical example is list concatenation: |*)
 
 Equations app {A} (l l' : list A) : list A :=
 app nil l' := l' ;
 app (cons a l) l' := cons a (app l l').
 
-(** Recursive definitions like [app] can be unfolded easily so proving the 
-   equations as rewrite rules is direct. The induction principle associated 
-   to this definition is more interesting however. We can derive from it the 
-   following _elimination_ principle for calls to [app]: [[
-   app_elim :
-   forall P : forall (A : Type) (l l' : list A), list A -> Prop,
-   (forall (A : Type) (l' : list A), P A nil l' l') ->
-   (forall (A : Type) (a : A) (l l' : list A),
-   P A l l' (app l l') -> P A (a :: l) l' (a :: app l l')) ->
-   forall (A : Type) (l l' : list A), P A l l' (app l l') ]]
-  Using this eliminator, we can write proofs exactly following the 
-  structure of the function definition, instead of redoing the splitting 
-  by hand. This idea is already present in the [Function] package 
-  %\cite{Barthe:2006gp}% that derives induction principles from
-  function definitions.
- *)
+(*|
+Recursive definitions like `app` can be unfolded easily so proving the 
+equations as rewrite rules is direct. The induction principle associated 
+to this definition is more interesting however. We can derive from it the 
+following _elimination_ principle for calls to `app`: |*)
+
+Check app_elim. (* .messages .unfold *)
+
+(*|
+Using this eliminator, we can write proofs exactly following the 
+structure of the function definition, instead of redoing the splitting 
+by hand. This idea is already present in the `Function` package 
+%\cite{Barthe:2006gp}% that derives induction principles from
+function definitions.
+|*)
 
 (* begin hide *)
 Check app_graph. Check @app_graph_equation_1. Check @app_graph_equation_2.
@@ -574,3 +596,11 @@ End KAxiom.
     equalities of the definition. Note that `eliminator=yes` forces `equations=yes`.
 
 *)
+
+(*|
+.. |eqns| replace:: Equations
+.. |coq| replace:: Coq
+
+.. _Equations: http://github.com/mattam82/Coq-Equations
+.. _Coq: http://coq.inria.fr
+|*)
