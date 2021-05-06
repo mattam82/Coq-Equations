@@ -4,8 +4,10 @@
 ====================================
 
 :Status: Work in Progress
-:alectryon/pygments/tacn: depind
+:alectryon/pygments/tacn: depind funelim simp
+:alectryon/pygments/tacn-solve: now
 :alectryon/pygments/inductive: t
+:alectryon/pygments/gallina-keywords: !
 
 
 |eqns| is a plugin for |coq|_ that comes with a few support modules defining
@@ -16,12 +18,10 @@ session by importing the |eqns| module. |*)
 From Coq Require Import Arith Lia Program Bvector.
 Require Import Equations.Prop.Equations.
 
-Check @eq.
-
 (*|
----------------
-Inductive types
----------------
+------------
+Hello world
+------------
 
 In its simplest form, |eqns| allows to define functions on inductive datatypes.
 Take for example the booleans defined as an inductive type with two constructors `true` and `false` *)
@@ -31,8 +31,8 @@ Print Init.Datatypes.bool. (* .unfold *)
 (*| We can define the boolean negation as follows: |*)
 
 Equations neg (b : bool) : bool :=
-neg true := false;
-neg false := true.
+neg true => false;
+neg false => true.
 
 (*| 
 [Equations] declarations are formed by a signature definition and a set of _clauses_ 
@@ -45,9 +45,9 @@ for a splitting tree may be non-trivial. |*)
 
 (*| 
 
-^^^^^^^^^^^^^^^^^^^^^
+--------------------
 Reasoning principles
-^^^^^^^^^^^^^^^^^^^^^
+--------------------
 
 In the setting of a proof assistant like Coq, we need not only the ability 
 to define complex functions but also get good reasoning support for them.
@@ -67,28 +67,31 @@ Check neg_graph_equation_2. (* .messages .unfold *)
 
 (*|
 We can also generate the inductive graph of any Equations definition,
-giving the strongest elimination principle on the function. 
-
+which relates inputs to the function to their output.
 I.e., for `neg` the inductive graph is defined as: |*)
    
 Print neg_graph. (* .messages .unfold *)
 
-(*| The graph comes with an automatically derived proof: |*)
+(*| The graph comes with an automatically derived proof that 
+gives the strongest elimination principle on the function: 
+any property of the function can be proven using this principle. |*)
 
-Print neg_elim.
+Check neg_elim. (* .messages .unfold *)
 
-(*| This lemma can be used to eliminate any call to [neg], specializing its 
-  argument and result in a single lemma application. Suppose for example that 
-  we want to show that [neg] is involutive: |*)
+(*| 
+This lemma can be used to eliminate any call to `neg`, specializing its 
+argument and result in a single lemma application. Suppose for example that 
+we want to show that `neg` is involutive: |*)
 
 Lemma neg_inv : forall b, neg (neg b) = b.
 Proof. 
   intros b. (* .unfold *)
 (*| The goal contains two calls to `neg`, and we want to eliminate the inner one, to refine 
-at the same time `b`, respectively to `true` and `false`, and `neg b`, respectively to `false` and `true`.
-This directly follows the splitting done in the `neg` definition. |*)
-  funelim (neg b).
-(*| Now we have two subgoals [neg false = true] and [neg true = false] that correspond exactly to the 
+at the same time `b`, respectively to `true` and `false`, and `neg b`, respectively to `false` and `true`,
+directly following the computation done in the `neg` definition. To eliminate a call, we
+simply call the `funelim` tactic providing the complete call to `neg b`. |*)
+  funelim (neg b). (* .unfold *)
+(*| Now we have two subgoals that correspond exactly to the 
 two equalities shown above, we can hence close these subgoals by rewriting with them.
 The `simp f` tactic simply tries to rewrite with all the equations associated with the equations definition `f`. |*)
   all:now simp neg.
@@ -147,8 +150,8 @@ step towards a more robust treatment of recursion via well-founded
 relations. A classical example is list concatenation: |*)
 
 Equations app {A} (l l' : list A) : list A :=
-app nil l' := l' ;
-app (cons a l) l' := cons a (app l l').
+app nil l' => l' ;
+app (cons a l) l' => cons a (app l l').
 
 (*|
 Recursive definitions like `app` can be unfolded easily so proving the 
@@ -166,194 +169,215 @@ by hand. This idea is already present in the `Function` package
 function definitions.
 |*)
 
-(* begin hide *)
-Check app_graph. Check @app_graph_equation_1. Check @app_graph_equation_2.
-(* end hide *)
+(*|
+---------------------------
+`with`: Moving to the left
+---------------------------
 
-(** ** Moving to the left
+The structure of real programs is richer than a simple case tree on
+the original arguments in general. In the course of a computation, we
+might want to scrutinize intermediate results (e.g. coming from
+function calls) to produce an answer. This literally means adding a
+new pattern to the left of our equations made available for further
+refinement. This concept is know as with clauses in the Agda
+%\cite{norell:thesis}% community and was first presented and
+implemented in the Epigram language
+%\cite{DBLP:journals/jfp/McBrideM04}%.
 
-   The structure of real programs is richer than a simple case tree on
-   the original arguments in general. In the course of a computation, we
-   might want to scrutinize intermediate results (e.g. coming from
-   function calls) to produce an answer. This literally means adding a
-   new pattern to the left of our equations made available for further
-   refinement. This concept is know as with clauses in the Agda
-   %\cite{norell:thesis}% community and was first presented and
-   implemented in the Epigram language
-   %\cite{DBLP:journals/jfp/McBrideM04}%.
+The compilation of with clauses and its treatment for generating
+equations and the induction principle are quite involved in the
+presence of dependencies, but the basic idea is to add a new case
+analysis to the program. To compute the type of the new subprogram,
+we actually abstract the discriminee term from the expected type of
+the clause, so that the type can get refined in the subprogram. In
+the non-dependent case this does not change anything though.
 
-   The compilation of with clauses and its treatment for generating
-   equations and the induction principle are quite involved in the
-   presence of dependencies, but the basic idea is to add a new case
-   analysis to the program. To compute the type of the new subprogram,
-   we actually abstract the discriminee term from the expected type of
-   the clause, so that the type can get refined in the subprogram. In
-   the non-dependent case this does not change anything though.
-
-   Each [with] node generates an auxiliary definition from the clauses
-   in the curly brackets, taking the additional object as argument. The
-   equation for the with node will simply be an indirection to the
-   auxiliary definition and simplification will continue as usual with
-   the auxiliary definition's rewrite rules.  *)
+Each `with` node generates an auxiliary definition from the clauses
+in the curly brackets, taking the additional object as argument. The
+equation for the with node will simply be an indirection to the
+auxiliary definition and simplification will continue as usual with
+the auxiliary definition's rewrite rules. |*)
 
 Equations filter {A} (l : list A) (p : A -> bool) : list A :=
-filter nil p := nil ;
+filter nil p => nil ;
 filter (cons a l) p with p a => {
-  filter (cons a l) p true := a :: filter l p ;
-  filter (cons a l) p false := filter l p }.
+  filter (cons a l) p true => a :: filter l p ;
+  filter (cons a l) p false => filter l p }.
 
-(** By default, equations makes definitions opaque after definition,
-    to avoid spurious unfoldings, but this can be reverted on a case by case
-    basis, or using the global [Set Equations Transparent] option. *)
+(*|
+By default, equations makes definitions opaque after definition,
+to avoid spurious unfoldings, but this can be reverted on a case by case
+basis, or using the global `Set Equations Transparent` option. |*)
 Global Transparent filter.
 
-(** A more compact syntax can be used to avoid repeating the same patterns in multiple clauses and 
-  focus on the patterns that matter. When a clause starts with `|`, a list of patterns separated by "," or "|" 
-  can be provided in open syntax, without parentheses. They should match the explicit arguments of the 
-  current problem. Under a `with` node, they should match the variable(s) introduced by the `with` construct.
-  When using "|", the ";" at the end of a clause becomes optional. *)
+(*|
+A more compact syntax can be used to avoid repeating the same patterns in multiple clauses and 
+focus on the patterns that matter. When a clause starts with `|`, a list of patterns separated by `,` or `|` 
+can be provided in open syntax, without parentheses. They should match the explicit arguments of the 
+current problem. Under a `with` node, they should match the variable(s) introduced by the `with` construct.
+When using `|`, the `;` at the end of a clause becomes optional. *)
 
 Equations filter' {A} (l : list A) (p : A -> bool) : list A :=
- | [], p => []
- | a :: l, p with p a => {
-  | true  => a :: filter' l p
-  | false => filter' l p }.
+  | [], p => []
+  | a :: l, p with p a => {
+    | true  => a :: filter' l p
+    | false => filter' l p }.
 
-(** A common use of with clauses is to scrutinize recursive results like the following: *)
+(*| A common use of with clauses is to scrutinize recursive results like the following: |*)
 
 Equations unzip {A B} (l : list (A * B)) : list A * list B :=
-unzip nil := (nil, nil) ;
+unzip nil        => (nil, nil) ;
 unzip (cons p l) with unzip l => {
   unzip (cons (pair a b) l) (pair la lb) := (a :: la, b :: lb) }.
 
-(** The real power of with however comes when it is used with dependent types. *)
+(*| 
+Note that one can refine other patterns than the newly introduced one in a with clause:
+here `p` is refined to a `pair a b` to construct the final result.
+The real power of `with` however comes when it is used with dependent types.
 
-(** * Dependent types
-   
-   Coq supports writing dependent functions, in other words, it gives the ability to
-   make the results _type_ depend on actual _values_, like the arguments of the function.
-   A simple example is given below of a function which decides the equality of two 
-   natural numbers, returning a sum type carrying proofs of the equality or disequality 
-   of the arguments. The sum type [{ A } + { B }] is a constructive variant of disjunction 
-   that can be used in programs to give at the same time a boolean algorithmic information 
-   (are we in branch [A] or [B]) and a _logical_ information (a proof witness of [A] or [B]).
-   Hence its constructors [left] and [right] take proofs as arguments. The [eq_refl] proof 
-   term is the single proof of [x = x] (the [x] is generaly infered automatically).
+----------------
+Dependent types
+----------------
+
+Coq supports writing dependent functions, in other words, it gives the ability to
+make the results *type* depend on actual *values*, like the arguments of the function.
+A simple example is given below of a function which decides the equality of two 
+natural numbers, returning a sum type carrying proofs of the equality or disequality 
+of the arguments. The sum type `{ A } + { B }` is a constructive variant of disjunction 
+that can be used in programs to give at the same time a boolean algorithmic information 
+(are we in branch `A` or `B`) and a *logical* information (a proof witness of `A` or `B`).
+Hence its constructors `left` and `right` take proofs as arguments. The `eq_refl` proof 
+term is the single proof of `x = x` (the `x` is generaly infered automatically).
 *)
 
 Equations equal (n m : nat) : { n = m } + { n <> m } :=
-equal O O := left eq_refl ;
-equal (S n) (S m) with equal n m := {
-  equal (S n) (S ?(n)) (left eq_refl) := left eq_refl ;
-  equal (S n) (S m) (right p) := right _ } ;
-equal x y := right _.
+equal O O => left eq_refl;
+equal (S n) (S m) with equal n m => {
+equal (S n) (S ?(n)) (left eq_refl) => left eq_refl;
+equal (S n) (S m) (right p)         => right _ };
+equal x y => right _.
 
-(** Of particular interest here is the inner program refining the recursive result.
-   As [equal n m] is of type [{ n = m } + { n <> m }] we have two cases to consider:
-   
-   - Either we are in the [left p] case, and we know that [p] is a proof of [n = m],
-     in which case we can do a nested match on [p]. The result of matching this equality
-     proof is to unify [n] and [m], hence the left hand side patterns become [S n] and
-     [S ?(n)] and the return type of this branch is refined to [{ n = n } + { n <> n }].
-     We can easily provide a proof for the left case. 
-     
-   - In the right case, we mark the proof unfilled with an underscore. This will
-     generate an obligation for the hole, that can be filled automatically by a 
-     predefined tactic or interactively by the user in proof mode (this uses the
-     same obligation mechanism as the Program extension
-     %\cite{sozeau.Coq/FingerTrees/article}%). In this case the automatic tactic 
-     is able to derive by itself that [n <> m -> S n <> S m].
+(*|
+Of particular interest here is the inner program refining the recursive result.
+As `equal n m` is of type `{ n = m } + { n <> m }` we have two cases to consider:
 
-   Dependent types are also useful to turn partial functions into total functions by
-   restricting their domain. Typically, we can force the list passed to [head] 
-   to be non-empty using the specification:
-*)
+- Either we are in the `left p` case, and we know that `p` is a proof of `n = m`,
+  in which case we can do a nested match on `p`. The result of matching this equality
+  proof is to unify `n` and `m`, hence the left hand side patterns become `S n` and
+  `S ?(n)` and the return type of this branch is refined to `{ S n = S n } + { S n <> S n }`.
+  We can easily provide a proof for the left case. 
+  
+- In the right case, we mark the proof unfilled with an underscore. This will
+  generate an obligation for the hole, that can be filled automatically by a 
+  predefined tactic or interactively by the user in proof mode (this uses the
+  same obligation mechanism as the Program extension
+  %\cite{sozeau.Coq/FingerTrees/article}%). In this case the automatic tactic 
+  is able to derive by itself that `n <> m -> S n <> S m`.
+
+Dependent types are also useful to turn partial functions into total functions by
+restricting their domain. Typically, we can force the list passed to [head] 
+to be non-empty using the specification:
+|*)
 
 Equations head {A} (l : list A) (pf : l <> nil) : A :=
 head nil pf with pf eq_refl := { | ! };
 head (cons a v) _ := a.
 
-(** We decompose the list and are faced with two cases:
+(*|
+We decompose the list and are faced with two cases:
 
-   - In the first case, the list is empty, hence the proof [pf] of type
-     [nil <> nil] allows us to derive a contradiction by applying it to
-     reflexivity.  We make use of another category of left-hand sides,
-     which we call _empty_ patterns, denoted with [!] to inform the compiler 
-     that the type of the variable is empty in this case.  In general we cannot
-     expect the compiler to find by himself that the context contains a
-     contradiction, as it is undecidable
-     %(\cite{DBLP:conf/plpv/Oury07,DBLP:conf/birthday/GoguenMM06})%.
+- In the first case, the list is empty, hence the proof `pf` of type
+  `nil <> nil` allows us to derive a contradiction by applying it to
+  reflexivity.  We make use of another category of left-hand sides,
+  which we call _empty_ patterns, denoted with `!` to inform the compiler 
+  that the type of the variable is empty in this case.  In general we cannot
+  expect the compiler to find by himself that the context contains a
+  contradiction, as it is undecidable
+  %(\cite{DBLP:conf/plpv/Oury07,DBLP:conf/birthday/GoguenMM06})%.
 
-     However, in this case, one could also write an empty set of clauses
-     for the [with] subprogram, as Equations applies a heuristic in case
-     of an empty set of clause: it tries to split each of the variables
-     in the context to find an empty type.
+  However, in this case, one could also write an empty set of clauses
+  for the `with` subprogram, as Equations applies a heuristic in case
+  of an empty set of clause: it tries to split each of the variables
+  in the context to find an empty type.
 
-   - In the second case, we simply return the head of the list,
-     disregarding the proof.  *)
+- In the second case, we simply return the head of the list,
+  disregarding the proof.  
 
-(** ** Inductive families
+-------------------
+Inductive families
+-------------------
 
-   The next step is to make constraints such as non-emptiness part of the 
-   datatype itself. This capability is provided through inductive families in
-   Coq %\cite{paulin93tlca}%, which are a similar concept to the generalization 
-   of algebraic datatypes to GADTs in functional languages like Haskell 
-   %\cite{GADTcomplete}%. Families provide a way to associate to each constructor 
-   a different type, making it possible to give specific information about a value 
-   in its type. 
+The next step is to make constraints such as non-emptiness part of the 
+datatype itself. This capability is provided through inductive families in
+Coq %\cite{paulin93tlca}%, which are a similar concept to the generalization 
+of algebraic datatypes to GADTs in functional languages like Haskell 
+%\cite{GADTcomplete}%. Families provide a way to associate to each constructor 
+a different type, making it possible to give specific information about a value 
+in its type. 
 
-   *** Equality 
-   The alma mater of inductive families is the propositional equality 
-   [eq] defined as: [[
-Inductive eq (A : Type) (x : A) : A -> Prop := 
- eq_refl : eq A x x. ]]
+^^^^^^^^^^^^
+Equality 
+^^^^^^^^^^^^
+
+The alma mater of inductive families is the propositional equality 
+`eq` defined as:
+
+.. coq::
+
+   Print eq. (* .messages .unfold *)
    
-   Equality is a polymorphic relation on [A]. (The [Prop] sort (or kind) categorizes
-   propositions, while the [Set] sort, equivalent to $\star$ in Haskell categorizes 
-   computational types.) Equality is _parameterized_ by a value [x] of type [A] and 
-   _indexed_ by another value of type [A]. Its single constructor states that 
-   equality is reflexive, so the only way to build an object of [eq x y] is if 
-   [x ~= y], that is if [x] is definitionaly equal to [y]. 
+Equality is a polymorphic relation on `A`. (The `Prop` sort (or kind) categorizes
+propositions, while the `Set` sort, equivalent to `*` in Haskell categorizes 
+computational types.) Equality is *parameterized* by a value `x` of type `A` and 
+*indexed* by another value of type `A`. Its single constructor states that 
+equality is reflexive, so the only way to build an object of `eq x y` is if 
+`x ≡ y`, that is if `x` is definitionaly equal to `y` according to the computation
+rules of the theory. 
    
-   Now what is the elimination principle associated to this inductive family?
-   It is the good old Leibniz substitution principle: [[
-forall (A : Type) (x : A) (P : A -> Type), P x -> forall y : A, x = y -> P y ]]
+Now what is the elimination principle associated to this inductive family?
+It is the good old Leibniz substitution principle: |*)
 
-   Provided a proof that [x = y], we can create on object of type [P y] from an 
-   existing object of type [P x]. This substitution principle is enough to show
-   that equality is symmetric and transitive. For example we can use 
-   pattern-matching on equality proofs to show:
- *)
+Check forall (A : Type) (x : A) (P : A -> Type), P x -> forall y : A, x = y -> P y.
+
+(*|
+Provided a proof that `x = y`, we can create on object of type `P y` from an 
+existing object of type `P x`. This substitution principle is enough to show
+that equality is symmetric and transitive. For example we can use 
+pattern-matching on equality proofs to show: |*)
 
 Equations eqt {A} (x y z : A) (p : x = y) (q : y = z) : x = z :=
 eqt x ?(x) ?(x) eq_refl eq_refl := eq_refl.
 
-(** Let us explain the meaning of the non-linear patterns here that we
-   slipped through in the [equal] example. By pattern-matching on the
-   equalities, we have unified [x], [y] and [z], hence we determined the
-   _values_ of the patterns for the variables to be [x]. The [?(x)]
-   notation is essentially denoting that the pattern is not a candidate
-   for refinement, as it is determined by another pattern. This
-   particular patterns are called "inaccessible". When they are variables
-   the inaccessibility annotation is optional.
+(*|
+Let us explain the meaning of the non-linear patterns here that we
+slipped through in the `equal` example. By pattern-matching on the
+equalities, we have unified `x`, `y`and `z`, hence we determined the
+*values* of the patterns for the variables to be `x`. The `?(x)`
+notation is essentially denoting that the pattern is not a candidate
+for refinement, as it is determined by another pattern. This
+particular patterns are called "inaccessible". When they are variables
+the inaccessibility annotation is optional.
 
-   *** Indexed datatypes
+^^^^^^^^^^^^^^^^^^
+Indexed datatypes
+^^^^^^^^^^^^^^^^^^
    
-   Functions on [vector]s provide more stricking examples of this
-   situation.  The [vector] family is indexed by a natural number
-   representing the size of the vector: [[ Inductive vector (A : Type) :
-   nat -> Type := | Vnil : vector A O | Vcons : A -> forall n : nat,
-   vector A n -> vector A (S n) ]]
+Functions on [vector]s provide more stricking examples of this
+situation.  The [vector] family is indexed by a natural number
+representing the size of the vector: |*)
 
-   The empty vector [Vnil] has size [O] while the cons operation
-   increments the size by one. Now let us define the usual map on
-   vectors: *)
-Arguments Vector.nil {A}.
-Arguments Vector.cons {A} a {n} v : rename.
+Notation vector := Vector.t. (* .none *)
+Notation Vnil := Vector.nil. (* .none *)
+Notation Vcons := Vector.cons. (* .none *)
 
-Notation vector := Vector.t.
-Notation Vnil := Vector.nil.
-Notation Vcons := Vector.cons.
+Print Vector.t. (* .messages .unfold *)
+Arguments Vector.nil {A}. (* .none *)
+Arguments Vector.cons {A} a {n} v : rename. (* .none *)
+
+(*| 
+The empty vector [Vnil] has size [O] while the cons operation
+increments the size by one. Now let us define the usual map on
+vectors: |*)
 
 Equations vmap {A B} (f : A -> B) {n} (v : vector A n) :
   vector B n :=
