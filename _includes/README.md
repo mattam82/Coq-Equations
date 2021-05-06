@@ -142,20 +142,12 @@ in your own directory. E.g. on Ubuntu, you would prefix the command with
 
 ## HoTT Variant
 
-The HoTT variant of Equations works with the coq-hott library for Coq 8.10 and up.
-To install the plugin in an environment where `hoqc` is available, simply run:
+The HoTT variant of Equations works with the coq-hott library for Coq 8.13 and up. When using `opam`, simply install first the `coq-hott` library and `coq-equations` will install its HoTT variant. From source, first 
+install `coq-hott` and then use:
 
-    ./configure.sh HoTT
+    ./configure.sh --enable-hott
 
-Then you can follow the standard instructions:
-
-    make all install
-
-Note that only one of the HoTT variant or the standard variant can be installed
-at any given time. To use `hoqtop` or `hoqc`, one needs to pass the following options:
-
-    hoqtop/hoqc -I `coqc -where`/user-contrib/Equations -Q `coqc -where`/user-contrib ""
-
-Then, one can import the plugin in Coq, using:
+This will compile the `HoTT` library variant in addition to the standard one.
+Then, after `make install`, one can import the plugin in Coq, using:
 
     From Equations Require Import HoTT.All.
