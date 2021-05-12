@@ -373,7 +373,7 @@ type 'a located = 'a Loc.located
 
 let tac_of_string tac args =
   try
-    Tacinterp.interp (TacArg(CAst.(make @@ TacCall(make (Libnames.qualid_of_string tac, args)))))
+    Tacinterp.interp (CAst.(make @@ TacArg(TacCall(make (Libnames.qualid_of_string tac, args)))))
   with Not_found ->
     CErrors.anomaly Pp.(str"Cannot find tactic " ++ str tac)
 
@@ -583,13 +583,13 @@ let tacvar_arg h =
     TacGeneric (None, ipat)
 
 let rec_tac h h' = 
-  TacArg(CAst.(make @@ TacCall(
+  CAst.(make @@ TacArg(TacCall(
       make
         (qualid_of_string "Equations.Below.rec",
          [tacvar_arg h'; ConstrMayEval (Genredexpr.ConstrTerm h)]))))
 
 let rec_wf_tac h n h' rel =
-  TacArg(CAst.(make @@ TacCall(make
+  CAst.(make @@ TacArg(TacCall(make
     (qualid_of_string "Equations.Subterm.rec_wf_eqns_rel",
     [tacvar_arg h';
      ConstrMayEval (Genredexpr.ConstrTerm n);
@@ -658,7 +658,7 @@ let call_tac_on_ref tac c =
   let ist = Geninterp.{ lfun = Names.Id.Map.add var c Names.Id.Map.empty;
                         extra = Geninterp.TacStore.empty; poly = false } in
   let var = Reference (Locus.ArgVar CAst.(make var)) in
-  let tac = TacArg (CAst.(make @@ TacCall (make (tac, [var])))) in
+  let tac = CAst.(make @@ TacArg (TacCall (make (tac, [var])))) in
   ist, tac
 
 let solve_equation () =
@@ -670,7 +670,7 @@ let solve_equation_tac (c : Names.GlobRef.t) =
 
 let impossible_call_tac c =
   let tac = Tacintern.glob_tactic
-  (TacArg(CAst.(make @@ TacCall(make
+  (CAst.(make @@ TacArg (TacCall(make
   (Libnames.qualid_of_string (depelim_tactic "impossible_call"),
    [Reference (reference_of_global c)]))))) in
   let val_tac = Genarg.glbwit Tacarg.wit_tactic in
