@@ -70,7 +70,7 @@ We can also generate the inductive graph of any Equations definition,
 which relates inputs to the function to their output.
 I.e., for `neg` the inductive graph is defined as: |*)
    
-Print neg_graph. (* .messages .unfold *)
+Print neg_graph. (* .unfold *)
 
 (*| The graph comes with an automatically derived proof that 
 gives the strongest elimination principle on the function: 
@@ -384,160 +384,168 @@ Equations vmap {A B} (f : A -> B) {n} (v : vector A n) :
 vmap f (n:=?(0)) Vnil := Vnil ;
 vmap f (Vcons a v) := Vcons (f a) (vmap f v).
 
-(** Here the value of the index representing the size of the vector 
-   is directly determined by the constructor, hence in the case tree
-   we have no need to eliminate [n]. This means in particular that 
-   the function [vmap] does not do any computation with [n], and 
-   the argument could be eliminated in the extracted code.
-   In other words, it provides only _logical_ information about 
-   the shape of [v] but no computational information.
+(*|
+Here the value of the index representing the size of the vector 
+is directly determined by the constructor, hence in the case tree
+we have no need to eliminate `n`. This means in particular that 
+the function `vmap` does not do any computation with `n`, and 
+the argument could be eliminated in the extracted code.
+In other words, it provides only *logical* information about 
+the shape of `v` but no computational information.
 
-   The [vmap] function works on every member of the [vector] family,
-   but some functions may work only for some subfamilies, for example
-   [vtail]:
- *)
+The `vmap` function works on every member of the `vector` family,
+but some functions may work only for some subfamilies, for example
+`vtail`: |*)
 
 Equations vtail {A n} (v : vector A (S n)) : vector A n :=
 vtail (Vcons a v') := v'.
 
-(** The type of [v] ensures that [vtail] can only be applied to 
-   non-empty vectors, moreover the patterns only need to consider 
-   constructors that can produce objects in the subfamily [vector A (S n)],
-   excluding [Vnil]. The pattern-matching compiler uses unification 
-   with the theory of constructors to discover which cases need to 
-   be considered and which are impossible. In this case the failed 
-   unification of [0] and [S n] shows that the [Vnil] case is impossible.
-   This powerful unification engine running under the hood permits to write
-   concise code where all uninteresting cases are handled automatically. *)
+(*|
+The type of `v` ensures that `vtail` can only be applied to 
+non-empty vectors, moreover the patterns only need to consider 
+constructors that can produce objects in the subfamily `vector A (S n)`,
+excluding `Vnil`. The pattern-matching compiler uses unification 
+with the theory of constructors to discover which cases need to 
+be considered and which are impossible. In this case the failed 
+unification of `0` and `S n` shows that the `Vnil` case is impossible.
+This powerful unification engine running under the hood permits to write
+concise code where all uninteresting cases are handled automatically. 
 
-(** ** Derived notions, No-Confusion
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Derived notions, No-Confusion
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    For this to work smoothlty, the package requires some derived definitions
-    on each (indexed) family, which can be generated automatically using
-    the generic [Derive] command. Here we ask to generate the signature,
-    heterogeneous no-confusion and homogeneous no-confusion principles for vectors: *)
+For this to work smoothlty, the package requires some derived definitions
+on each (indexed) family, which can be generated automatically using
+the generic `Derive` command. Here we ask to generate the signature,
+heterogeneous no-confusion and homogeneous no-confusion principles for vectors: |*)
 
 Derive NoConfusion for nat.
 Derive Signature NoConfusion NoConfusionHom for vector.
 
-(** The precise specification of these derived definitions can be found in the manual
-    section %(\S \ref{manual})%. Signature is used to "pack" a value in an inductive family
-    with its index, e.g. the "total space" of every index and value of the family. This
-    can be used to derive the heterogeneous no-confusion principle for the family, which
-    allows to discriminate between objects in potentially different instances/fibers of the family,
-    or deduce injectivity of each constructor. The [NoConfusionHom] variant derives
-    the homogeneous no-confusion principle between two objects in the _same_ instance
-    of the family, e.g. to simplify equations of the form [Vnil = Vnil :> vector A 0].
-    This last principle can only be defined when pattern-matching on the inductive family
-    does not require the [K] axiom and will otherwise fail.
+(*|
+The precise specification of these derived definitions can be found in the manual
+section %(\S \ref{manual})%. Signature is used to "pack" a value in an inductive family
+with its index, e.g. the "total space" of every index and value of the family. This
+can be used to derive the heterogeneous no-confusion principle for the family, which
+allows to discriminate between objects in potentially different instances/fibers of the family,
+or deduce injectivity of each constructor. The `NoConfusionHom` variant derives
+the homogeneous no-confusion principle between two objects in the *same* instance
+of the family, e.g. to simplify equations of the form `Vnil = Vnil :> vector A 0`.
+This last principle can only be defined when pattern-matching on the inductive family
+does not require the `K` axiom and will otherwise fail.
 
-   ** Unification and indexed datatypes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Unification and indexed datatypes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-   Back to our example, of course the equations and the induction principle are simplified in a
-   similar way. If we encounter a call to [vtail] in a proof, we can 
-   use the following elimination principle to simplify both the call and the
-   argument which will be automatically substituted by an object of the form
-   [Vcons _ _ _]:[[
-forall P : forall (A : Type) (n : nat), vector A (S n) -> vector A n -> Prop,
-(forall (A : Type) (n : nat) (a : A) (v : vector A n), 
-  P A n (Vcons a v) v) ->
-forall (A : Type) (n : nat) (v : vector A (S n)), P A n v (vtail v) ]] 
+Back to our example, of course the equations and the induction principle are simplified in a
+similar way. If we encounter a call to `vtail` in a proof, we can 
+use the following elimination principle to simplify both the call and the
+argument which will be automatically substituted by an object of the form
+`Vcons _ _ _`: |*)
 
-   As a witness of the power of the unification, consider the following function 
-   which computes the diagonal of a square matrix of size [n * n].
-*) 
+About vtail_elim. (* .messages .unfold *)
 
+(*|
+As a witness of the power of the unification, consider the following function 
+which computes the diagonal of a square matrix of size [n * n].
+|*) 
 
 Equations diag {A n} (v : vector (vector A n) n) : vector A n :=
 diag (n:=O) Vnil := Vnil ;
 diag (n:=S _) (Vcons (Vcons a v) v') :=
   Vcons a (diag (vmap vtail v')).
 
-(** Here in the second equation, we know that the elements of the vector
-   are necessarily of size [S n] too, hence we can do a nested refinement
-   on the first one to find the first element of the diagonal.
-  *)
+(*| 
+Here in the second equation, we know that the elements of the vector
+are necessarily of size `S n` too, hence we can do a nested refinement
+on the first one to find the first element of the diagonal.
 
-(** ** Recursion
+-----------
+Recursion
+-----------
 
-  Notice how in the [diag] example above we explicitely pattern-matched
-  on the index [n], even though the [Vnil] and [Vcons] pattern matching
-  would have been enough to determine these indices. This is because the
-  following definition also fails: *)
+Notice how in the [diag] example above we explicitely pattern-matched
+on the index [n], even though the [Vnil] and [Vcons] pattern matching
+would have been enough to determine these indices. This is because the
+following definition also fails: |*)
 
 Fail Equations diag' {A n} (v : vector (vector A n) n) : vector A n :=
 diag' Vnil := Vnil ;
 diag' (Vcons (Vcons a v) v') :=
   Vcons a (diag' (vmap vtail v')).
 
-(** Indeed, Coq cannot guess the decreasing argument of this fixpoint
-    using its limited syntactic guard criterion: [vmap vtail v'] cannot
-    be seen to be a (large) subterm of [v'] using this criterion, even
-    if it is clearly "smaller". In general, it can also be the case that
-    the compilation algorithm introduces decorations to the proof term
-    that prevent the syntactic guard check from seeing that the
-    definition is structurally recursive.
+(*|
+Indeed, Coq cannot guess the decreasing argument of this fixpoint
+using its limited syntactic guard criterion: `vmap vtail v'` cannot
+be seen to be a (large) subterm of `v'` using this criterion, even
+if it is clearly "smaller". In general, it can also be the case that
+the compilation algorithm introduces decorations to the proof term
+that prevent the syntactic guard check from seeing that the
+definition is structurally recursive.
 
-    To aleviate this problem, [Equations] provides support for
-    _well-founded_ recursive definitions which do not rely on syntactic
-    checks.
+To aleviate this problem, `Equations` provides support for
+*well-founded* recursive definitions which do not rely on syntactic
+checks.
 
-    The simplest example of this is using the [lt] order on natural numbers
-    to define a recursive definition of identity: *)
+The simplest example of this is using the `lt` order on natural numbers
+to define a recursive definition of identity: |*)
 
 Equations id (n : nat) : nat by wf n lt :=
   id 0 := 0;
   id (S n') := S (id n').
 
-(** Here [id] is defined by well-founded recursion on [lt] on the (only)
-    argument [n] using the [by wf] annotation.  At recursive calls of
-    [id], obligations are generated to show that the arguments
-    effectively decrease according to this relation.  Here the proof
-    that [n' < S n'] is discharged automatically.
+(*|
+Here `id` is defined by well-founded recursion on `lt` on the (only)
+argument `n` using the `by wf` annotation.  At recursive calls of
+`id`, obligations are generated to show that the arguments
+effectively decrease according to this relation.  Here the proof
+that `n' < S n'` is discharged automatically.
 
-  Wellfounded recursion on arbitrary dependent families is not as easy
-  to use, as in general the relations on families are _heterogeneous_,
-  as they must relate inhabitants of potentially different instances of
-  the family.  [Equations] provides a [Derive] command to generate the
-  subterm relation on any such inductive family and derive the
-  well-foundedness of its transitive closure. This provides
-  course-of-values or so-called "mathematical" induction on these
-  objects, reflecting the structural recursion criterion in the logic. *)
+Wellfounded recursion on arbitrary dependent families is not as easy
+to use, as in general the relations on families are *heterogeneous*,
+as they must relate inhabitants of potentially different instances of
+the family. `Equations` provides a `Derive` command to generate the
+subterm relation on any such inductive family and derive the
+well-foundedness of its transitive closure. This provides
+course-of-values or so-called "mathematical" induction on these
+objects, reflecting the structural recursion criterion in the logic.
+For vectors for example, the relation is defined as: |*)
 
 Derive Subterm for vector.
+Print t_direct_subterm.
 
-(** For vectors for example, the relation is defined as: [[
-Inductive t_direct_subterm (A : Type) :
-  forall n n0 : nat, vector A n -> vector A n0 -> Prop :=
-    t_direct_subterm_1_1 : forall (h : A) (n : nat) (H : vector A n),
-      t_direct_subterm A n (S n) H (Vcons h H) ]]
-
-  That is, there is only one recursive subterm, for the subvector
-  in the [Vcons] constructor. We also get a proof of:
- *)
+(*| 
+That is, there is only one recursive subterm, for the subvector
+in the `Vcons` constructor. We also get a proof of:
+|*)
 
 Check well_founded_t_subterm : forall A, WellFounded (t_subterm A).
 
-(** The relation is actually called [t_subterm] as [vector] is just
-    a notation for [Vector.t].
-    [t_subterm] itself is the transitive closure of the relation seen as
-    an homogeneous one by packing the indices of the family with the
-    object itself. Once this is derived, we can use it to define
-    recursive definitions on vectors that the guard condition couldn't
-    handle. The signature provides a [signature_pack] function to pack a
-    vector with its index. The well-founded relation is defined on the
-    packed vector type. *)
+(*|
+The relation is actually called `t_subterm` as `vector` is just
+a notation for `Vector.t`. `t_subterm` itself is the transitive 
+closure of the relation seen as
+an homogeneous one by packing the indices of the family with the
+object itself. Once this is derived, we can use it to define
+recursive definitions on vectors that the guard condition couldn't
+handle. The signature provides a `signature_pack` function to pack a
+vector with its index. The well-founded relation is defined on the
+packed vector type. 
+|*)
 
 Module UnzipVect.
   Context {A B : Type}.
 
-  (** We can use the packed relation to do well-founded recursion on the vector.
-      Note that we do a recursive call on a substerm of type [vector A n] which
-      must be shown smaller than a [vector A (S n)]. They are actually compared
-      at the packed type [{ n : nat & vector A n}]. The default obligation
-      tactic defined in [Equations.Init] includes a proof-search
-      for [subterm] proofs which can resolve the recursive call obligation
-      automatically in this case. *)
+(*|
+We can use the packed relation to do well-founded recursion on the vector.
+Note that we do a recursive call on a substerm of type `vector A n` which
+must be shown smaller than a `vector A (S n)`. They are actually compared
+at the packed type `{ n : nat & vector A n}`. The default obligation
+tactic defined in `Equations.Init` includes a proof-search
+for `subterm` proofs which can resolve the recursive call obligation
+automatically in this case. |*)
 
   Equations unzip {n} (v : vector (A * B) n) : vector A n * vector B n
     by wf (signature_pack v) (@t_subterm (A * B)) :=
@@ -547,36 +555,41 @@ Module UnzipVect.
 
 End UnzipVect.
 
-(** For the diagonal, it is easier to give [n] as the decreasing argument
-    of the function, even if the pattern-matching itself is on vectors: *)
+(*| 
+For the diagonal, it is easier to give `n` as the decreasing argument
+of the function, even if the pattern-matching itself is on vectors: |*)
 
 Equations diag' {A n} (v : vector (vector A n) n) : vector A n by wf n :=
 diag' Vnil := Vnil ;
 diag' (Vcons (Vcons a v) v') :=
   Vcons a (diag' (vmap vtail v')).
 
-(** One can check using [Extraction diag'] that the computational behavior of [diag']
-    is indeed not dependent on the index [n]. *)
+(*| 
+One can check using `Extraction diag'` that the computational behavior of `diag'`
+is indeed not dependent on the index `n`. |*)
 
-(** *** Pattern-matching and axiom K *)
+(*| 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Pattern-matching and axiom K 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-(** To use the K axiom or UIP with [Equations], one _must_ first set an option
-    allowing its use during dependenet pattern-matching compilation. *)
+o use the K axiom or UIP with `Equations`, one *must* first set an option
+allowing its use during dependenet pattern-matching compilation. |*)
 
 Module KAxiom.
 
-  (** By default we disallow the user of UIP, but it can be set. *)
+  (*| By default we disallow the user of UIP, but it can be set. |*)
 
   Set Equations With UIP.
 
   Module WithAx.
 
-    (** The user must declare this axiom itself, as an instance of the [UIP] class. *)
+    (*| The user must declare this axiom itself, as an instance of the [UIP] class. |*)
 
     Axiom uipa : forall A, UIP A.
     Local Existing Instance uipa.
 
-    (** In this case the following definition uses the [UIP] axiom just declared. *)
+    (*| In this case the following definition uses the [UIP] axiom just declared. |*)
 
     Equations K {A} (x : A) (P : x = x -> Type) (p : P eq_refl)
               (H : x = x) : P H :=
@@ -584,42 +597,46 @@ Module KAxiom.
 
   End WithAx.
 
-  (** Note that the definition loses its computational content: it will
-      get stuck on an axiom. We hence do not recommend its use.
+(*|
+Note that the definition loses its computational content: it will
+get stuck on an axiom. We hence do not recommend its use.
 
-      Equations allows however to use constructive proofs of UIP for types
-      enjoying decidable equality. The following example relies on an
-      instance of the [EqDec] typeclass for natural numbers, from which
-      we can automatically derive a [UIP nat] instance.  Note that
-      the computational behavior of this definition on open terms is not
-      to reduce to [p] but pattern-matches on the decidable equality
-      proof.  However the defining equation still holds as a
-      _propositional_ equality, and the definition of K' is axiom-free. *)
+Equations allows however to use constructive proofs of UIP for types
+enjoying decidable equality. The following example relies on an
+instance of the `EqDec` typeclass for natural numbers, from which
+we can automatically derive a `UIP nat` instance.  Note that
+the computational behavior of this definition on open terms is not
+to reduce to `p` but pattern-matches on the decidable equality
+proof.  However the defining equation still holds as a
+*propositional* equality, and the definition of K' is axiom-free. 
+|*)
 
   Equations K' (x : nat) (P : x = x -> Type) (p : P eq_refl)
             (H : x = x) : P H :=
     K' x P p eq_refl := p.
 
-  Print Assumptions K'.
-  (* Closed under the global context *)
+  Print Assumptions K'. (* .unfold *)
 
 End KAxiom.
 
-(** *** Options
+(*|
+-------
+Options
+-------
 
-  [Equations] supports the following attributes:
+  Equations supports the following attributes:
   
-  - [universes(polymorphic | monomorphic)] for universe polymorphic or
+  - `universes(polymorphic | monomorphic)` for universe polymorphic or
     monomorphic definitions (also depending on the global `Universe Polymorphism` flag).
 
-  - [tactic=tac] for setting the default tactic to try solve obligations/holes.
+  - `tactic=tac` for setting the default tactic to try solve obligations/holes.
     By default this reuses the `Obligation Tactic` of Program.
 
-  - [derive(eliminator=yes|no, equations=yes|no)] to control the derivation of 
+  - `derive(eliminator=yes|no, equations=yes|no)` to control the derivation of 
     the graph and elimination principle for the function, and the propositional 
     equalities of the definition. Note that `eliminator=yes` forces `equations=yes`.
 
-*)
+|*)
 
 (*|
 .. |eqns| replace:: Equations
