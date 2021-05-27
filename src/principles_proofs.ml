@@ -74,7 +74,7 @@ let autorewrites b =
 
 exception RewriteSucceeded of EConstr.t
 
-let rewrite_try_change tac = 
+let _rewrite_try_change tac = 
   Proofview.Goal.enter (fun gl ->
     let concl = Proofview.Goal.concl gl in
     Proofview.tclORELSE 
@@ -83,6 +83,9 @@ let rewrite_try_change tac =
           let env = Proofview.Goal.env gl in
           let sigma = Proofview.Goal.sigma gl in
           let concl' = Proofview.Goal.concl gl in
+          Feedback.msg_debug (str"Converting " ++
+          Printer.pr_econstr_env (Proofview.Goal.env gl) (Proofview.Goal.sigma gl) concl ++ str " and " ++
+          Printer.pr_econstr_env (Proofview.Goal.env gl) (Proofview.Goal.sigma gl) concl');
           match Reductionops.infer_conv ~pb:Reduction.CONV env sigma concl concl' with
           | Some _ -> Proofview.tclZERO (RewriteSucceeded concl')
           | None -> Proofview.tclUNIT ())))
@@ -103,14 +106,15 @@ let autorewrite_one b =
          (if r.Autorewrite.rew_l2r then Equality.rewriteLR else Equality.rewriteRL)
        in
        Proofview.tclOR
-         (if !debug then
+         (* (if !debug then
             (Proofview.Goal.enter
                begin fun gl -> 
                 let concl = Proofview.Goal.concl gl in
                 Feedback.msg_debug (str"Trying " ++ pr_global global ++ str " on " ++
                 Printer.pr_econstr_env (Proofview.Goal.env gl) (Proofview.Goal.sigma gl) concl);
-                rewrite_try_change tac end)
-          else tac)
+                observe_new "rewrite_try_change" (rewrite_try_change tac) end)
+          else  *)
+            tac
          (fun e -> if !debug then Feedback.msg_debug (str"failed"); aux rules)
   in aux rew_rules
 

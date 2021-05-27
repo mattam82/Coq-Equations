@@ -57,10 +57,10 @@ Ltac unfold_FixWf :=
   match goal with
     |- context [ @FixWf ?A ?R ?WF ?P ?f ?x ] =>
     let step := fresh in
-    set(step := fun y (_ : R y x) => @FixWf A R WF P f y) in *;
+    set(step := @hidebody _ (fun y (_ : R y x) => @FixWf A R WF P f y)) in *;
      unshelve erewrite (@FixWf_unfold_step A R WF P f x _ step);
      [red; intros; simp_sigmas; red_one_eq (* Extensionality proof *)
-     |hidebody step; red_eq_lhs (* Unfold the functional *)
+     |red_eq_lhs (* Unfold the functional *)
      |reflexivity]
   end.
 
@@ -100,9 +100,9 @@ Ltac unfold_FixWf_ext :=
   match goal with
     |- context [ @FixWf ?A ?R ?WF ?P ?f ?x ] =>
     let step := fresh in
-    set(step := fun y (_ : R y x) => @FixWf A R WF P f y) in *;
+    set(step := @hidebody _ (fun y (_ : R y x) => @FixWf A R WF P f y)) in *;
     rewrite (@FixWf_unfold_ext_step A R WF P f x step);
-    [hidebody step; try red_eq_lhs (* Unfold the functional *)
+    [try red_eq_lhs (* Unfold the functional *)
     |reflexivity]
   end.
 
