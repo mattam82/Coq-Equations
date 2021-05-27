@@ -61,6 +61,9 @@ Definition hidebody {A : Type} {a : A} := a.
 Register hidebody as equations.internal.hidebody.
 Extraction Inline hidebody.
 
+(** Beware, if [b] can result in a large computation, this can lead to 
+  stack overflow while converting [b] with [hidebody b]. Not used 
+  in Equations's tactics. *)
 Ltac hidebody H :=
   match goal with
     [ H := ?b |- _ ] => change (@hidebody _ b) in (value of H)
