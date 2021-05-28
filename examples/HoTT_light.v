@@ -313,7 +313,7 @@ ap_compose f g 1 := 1.
 Equations concat_A1p {A : Type} {g : A -> A} (p : forall x, g x = x) {x y : A} (q : x = y) :
   (ap g q) @ (p y) = (p x) @ q :=
 concat_A1p p 1 with p x, g x :=
-  { concat_A1p p (x:=x) 1 1 gx := 1 }.
+  { concat_A1p p (x:=?(x)) 1 1 x := 1 }.
 
 (** Dummy example using functional elimination on a proof-relevant function using [with]. *)
 
@@ -475,7 +475,7 @@ Next Obligation. apply path_prod; apply contr. Defined.
 Equations singletons_contr {A : Type} (x : A) : Contr (Σ y : A, x = y) :=
   singletons_contr x := {| center := (x, 1); contr := contr |}
     where contr : forall y : (Σ y : A, x = y), (x, 1) = y :=
-          contr (y, 1) := 1.
+          contr (x, 1) := 1.
 Existing Instance singletons_contr.
 
 Notation " 'rew' H 'in' c " := (@Logic.Id_rew_r _ _ _ c _ H) (at level 20).
@@ -493,7 +493,7 @@ Definition NoConfusion_singleton {A : Type} (x : A) (p q : Σ y : A, x = y) : Ty
 Unset Implicit Arguments.
 
 Equations noConfusion_singleton {A} (x : A) (p q : Σ y : A, x = y) : NoConfusion_singleton p q -> p = q :=
- noConfusion_singleton x (x, 1) (y, 1) tt => 1.
+ noConfusion_singleton x (x, 1) (x, 1) tt => 1.
 
 Equations noConfusion_singleton_inv {A} (x : A) (p q : Σ y : A, x = y) : p = q -> NoConfusion_singleton p q :=
  noConfusion_singleton_inv x (x, 1) ?((x, 1)) 1 => tt.

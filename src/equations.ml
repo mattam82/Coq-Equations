@@ -143,7 +143,8 @@ let define_by_eqs ~pm ~poly ~program_mode ~tactic ~open_proof opts eqs nt =
     else false, false
   in
   let env = Global.env () in
-  let flags = { polymorphic = poly; with_eqns; with_ind; tactic; open_proof } in
+  let flags = { polymorphic = poly; with_eqns; with_ind; allow_aliases = false; 
+    tactic; open_proof } in
   let evd = ref (Evd.from_env env) in
   let programs = List.map (fun (((loc,i),rec_annot,l,t,by),clauses as ieqs) ->
       let is_rec = is_recursive i (eqs, nt) in

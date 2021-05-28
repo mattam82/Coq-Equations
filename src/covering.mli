@@ -41,12 +41,12 @@ val accessibles : pat list -> Int.Set.t
 val hidden : pat -> bool
 
 type match_subst =
-  ((identifier * bool) * pat) list * (Glob_term.glob_constr * pat) list *
+  ((Loc.t option * identifier * provenance) * pat) list * (Glob_term.glob_constr * pat) list *
   (user_pat_loc * constr) list * ((Loc.t option * pat) list)
 
-val match_pattern : Environ.env -> user_pat_loc -> pat -> match_subst
-val match_patterns : Environ.env -> user_pats -> pat list -> match_subst
-val matches : Environ.env -> user_pats -> context_map -> match_subst unif_result
+val match_pattern : Environ.env -> Evd.evar_map -> user_pat_loc -> pat -> match_subst
+val match_patterns : Environ.env -> Evd.evar_map -> user_pats -> pat list -> match_subst
+val matches : Environ.env -> Evd.evar_map -> user_pats -> context_map -> match_subst unif_result
 val match_user_pattern :
   Environ.env -> 
   pat -> user_pat_loc -> (int * user_pat) list * (identifier * pat) list

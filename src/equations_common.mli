@@ -31,6 +31,7 @@ type flags = {
   open_proof : bool;
   with_eqns : bool;
   with_ind : bool;
+  allow_aliases : bool;
   tactic : unit Proofview.tactic }  
   
 (* Tactics *)

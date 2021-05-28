@@ -11,7 +11,7 @@ Equations elements {a} (t : tree a) : list a := {
 
 where list_elements {a} (l : list (tree a)) : list a :=
   { list_elements nil := nil;
-    list_elements (cons a l) := elements a ++ list_elements l }.
+    list_elements (cons x l) := elements x ++ list_elements l }.
 
 Lemma list_elements_spec {A} (l : list (tree A)) : list_elements l = List.concat (List.map elements l).
 Proof.

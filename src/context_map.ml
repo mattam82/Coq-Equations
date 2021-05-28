@@ -118,7 +118,7 @@ let rec pat_to_user_pat ?(avoid = ref Id.Set.empty) ?loc ctx = function
     let name = Context.Rel.Declaration.get_name decl in
     let id = Namegen.next_name_away name !avoid in
     avoid := Id.Set.add id !avoid;
-    Some (DAst.make ?loc (Syntax.PUVar (id, false)))
+    Some (DAst.make ?loc (Syntax.(PUVar (id, User))))
   | PCstr (((ind, _ as cstr), _), pats) ->
     let n = Inductiveops.inductive_nparams (Global.env()) ind in
     let _, pats = List.chop n pats in
@@ -126,7 +126,7 @@ let rec pat_to_user_pat ?(avoid = ref Id.Set.empty) ?loc ctx = function
   | PInac c ->
     let id = Namegen.next_ident_away (Id.of_string "wildcard") !avoid in
     avoid := Id.Set.add id !avoid;
-    Some (DAst.make ?loc (Syntax.PUVar (id, true)))
+    Some (DAst.make ?loc (Syntax.(PUVar (id, Generated))))
   | PHide i -> None
 and pats_to_lhs ?(avoid = ref Id.Set.empty) ?loc ctx pats =
   List.map_filter (pat_to_user_pat ~avoid ?loc ctx) pats
@@ -161,7 +161,7 @@ let pr_constr_pat env sigma c =
    * | _ -> pr *)
 
 let pr_pat env sigma c =
-  let sigma, patc = constr_of_pat env sigma c in
+  let sigma, patc = constr_of_pat ~inacc_and_hide:true env sigma c in
   pr_constr_pat env sigma patc
 
 let pr_pats env sigma patcs = prlist_with_sep (fun _ -> str " ") (pr_pat env sigma) (List.rev patcs)
@@ -320,8 +320,8 @@ let lift_pats n p = lift_patns n 0 p
 
 let rec eq_pat env sigma p1 p2 =
   match p1, p2 with
-  | PRel i, PRel i' -> i = i'
-  | PHide i, PHide i' -> i = i'
+  | PRel i, PRel i' -> Int.equal i i'
+  | PHide i, PHide i' -> Int.equal i i'
   | PCstr (c, pl), PCstr (c', pl') -> Environ.QConstruct.equal env (fst c) (fst c') && List.for_all2 (eq_pat env sigma) pl pl'
   | PInac c, PInac c' -> EConstr.eq_constr sigma c c'
   | _, _ -> false

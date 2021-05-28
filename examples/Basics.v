@@ -351,7 +351,7 @@ Lemma split_struct_vapp : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
 Proof.
   intros. funelim (vapp v w); simp split_struct in *.
   destruct split_struct. depelim xs; intuition.
-  destruct (split_struct (vapp t _)); simpl.
+  destruct (split_struct (vapp v _)); simpl.
   intuition congruence.
 Qed.
 

@@ -27,7 +27,7 @@ Equations rev {A} : list A -> list A :=
    where "x ++++ y" := (rev_aux x y)
    where rev_aux : list A -> list A -> list A :=
        { acc ++++ [] := acc;
-         acc ++++ (x :: l) := (x :: acc) ++++ l }.
+         acc ++++ (x :: l') := (x :: acc) ++++ l' }.
 
 Require Import Arith NArith.
 Local Open Scope N_scope.

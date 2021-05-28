@@ -159,7 +159,7 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
   let sigma, eqT = get_fresh sigma logic_eq_type in
   let parampats =
     List.rev_map (fun decl ->
-        DAst.make (Syntax.PUVar (Name.get_id (get_name decl), true))) ctx
+        DAst.make Syntax.(PUVar (Name.get_id (get_name decl), Generated))) ctx
   in
   let mk_clause i ty =
     let ty = EConstr.of_constr ty in
@@ -186,7 +186,7 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
               0 [] acc
           in List.rev acc'
         else ((name, name', get_type decl) :: acc) in
-      (avoid, acc), (Syntax.PUVar (name, true), Syntax.PUVar (name', true))
+      (avoid, acc), Syntax.(PUVar (name, User), PUVar (name', User))
     in
     let (avoid, eqs), user_pats = List.fold_left2_map fn (Id.Set.empty, []) args forced in
     let patl, patr = List.split user_pats in
@@ -209,7 +209,7 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
     (loc, lhs, Some (Syntax.Program (Syntax.Constr rhs, ([], []))))
   in
   let clauses = Array.to_list (Array.mapi mk_clause constructors) in
-  let hole x = Syntax.PUVar (Id.of_string x, true) in
+  let hole x = Syntax.(PUVar (Id.of_string x, User)) in
   let catch_all =
     let lhs = parampats @ [DAst.make (hole "x"); DAst.make (hole "y")] in
     let rhs = Syntax.Program (Syntax.Constr fls, ([], [])) in
@@ -231,6 +231,7 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
       rec_type = [None];
       flags = { polymorphic = poly; open_proof = false;
                 with_eqns = false; with_ind = false; 
+                allow_aliases = true; (* We let the compiler unify arguments that are forced equal *)
                 tactic = !Declare.Obls.default_tactic };
       fixdecls = [];
       intenv = Constrintern.empty_internalization_env;
