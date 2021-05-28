@@ -41,7 +41,7 @@ Section ilist_map.
   Proof.
     intros. funelim (imap ls).
       - depelim i.
-      - depelim i0.
+      - depelim i.
         + repeat rewrite get_equation_2. reflexivity.
         + repeat rewrite get_equation_3. apply H.
   Qed.

@@ -52,9 +52,8 @@ Proof.
   simpl in H.
   rewrite (Nat.mod_small (S n) (S n0)); auto.
   set(x := S n) in *. set (y := S n0) in *.
-  change (n0 - n) with (y - x).
   rewrite gcd_equation_3. rewrite Heq. simpl. reflexivity.
-  rewrite e. rewrite Nat.mod_same; auto.
+  rewrite refl. rewrite Nat.mod_same; auto.
   rewrite H; auto.
   rewrite mod_minus; auto.
 Qed.

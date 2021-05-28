@@ -206,7 +206,7 @@ intros Hcoef.
 induction p1 as [ | z Hz | n b p1 | n b p1 IHp q1 IHq ]
   in b2, p2, Hcoef |- *;
 [dependent elimination p2 as [poly_z | poly_c z i] |
- dependent elimination p2 as [poly_z | poly_c z i] |
+ dependent elimination p2 as [poly_z | poly_c z' i'] |
  dependent elimination p2 as
      [@poly_l n b' p2 | @poly_s n b' p2 q2] ..].
   all:(intros; try rename n0 into n; auto;
@@ -639,9 +639,9 @@ Proof.
   intros. funelim (poly_of_formula f); intros;
     autorewrite with eval_formula poly_of_formula eval in *; trivial.
   - erewrite Vector.nth_map; auto.
-  - rewrite <- H, <- H0; destruct (eval_formula (Vector.nth v) f); destruct (eval_formula (Vector.nth v) f0); auto.
-  - rewrite <- H, <- H0; destruct (eval_formula (Vector.nth v) f1); destruct (eval_formula (Vector.nth v) f2); auto.
-  - rewrite <- H; destruct (eval_formula (Vector.nth v) f3); auto.
+  - rewrite <- H, <- H0; destruct (eval_formula (Vector.nth v) a); destruct (eval_formula (Vector.nth v) b); auto.
+  - rewrite <- H, <- H0; destruct (eval_formula (Vector.nth v) a); destruct (eval_formula (Vector.nth v) b); auto.
+  - rewrite <- H; destruct (eval_formula (Vector.nth v) a); auto.
 Qed.
 (* end hide *)
 

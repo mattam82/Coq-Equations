@@ -152,8 +152,8 @@ Import PeanoNat.Nat.
 
 Equations irev_aux {A : Set} {i j : nat} (l : ilist A i) (acc : ilist A j) : ilist A (i + j) :=
 irev_aux Nil acc := acc;
-irev_aux (Cons x t) acc with eq_sym (add_succ_comm l j), (S l + j) :=
-                      { | refl_equal | ?(l + S j) := irev_aux t (Cons x acc) }.
+irev_aux (Cons (n:=n) x l) acc with eq_sym (add_succ_comm n j), (S n + j) :=
+                      { | refl_equal | ?(n + S j) := irev_aux l (Cons x acc) }.
 
 Obligation Tactic := idtac.
 

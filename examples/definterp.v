@@ -276,23 +276,23 @@ Equations eval_ext (n : nat) {Γ Σ t} (e : Expr Γ t) : M Γ (Val t) Σ :=
   | S k, tt           := ret val_unit
   | S k, true         := ret val_true
   | S k, false        := ret val_false
-  | S k, ite b t f    := eval_ext k b >>=' λ{ | _ | ext | val_true => eval_ext k t;
-                                                      | _ | ext | val_false => eval_ext k f }
+  | S k, ite b tr fa    := eval_ext k b >>=' λ{ | _ | ext | val_true => eval_ext k tr;
+                                                      | _ | ext | val_false => eval_ext k fa }
 
   | S k, var x        := getEnv >>=' fun {Σ ext} E => ret (lookup E x)
   | S k, abs x        := getEnv >>=' fun {Σ ext} E => ret (val_closure x E)
-  | S k, @app Γ t u e1 e2 :=
+  | S k, @app Γ A B e1 e2 :=
       eval_ext k e1 >>=' λ{ | _ | ext | val_closure e' E =>
       eval_ext k e2 >>=' fun {Σ' ext'} v => usingEnv (all_cons v (wk (P:=Env _) E)) (eval_ext k e')}
   | S k, new e      := eval_ext k e >>=' fun {Σ ext} v => storeM v
-  | S k, deref l    := eval_ext k l >>=' λ{ | _ | ext | val_loc l => derefM l }
-  | S k, assign l e := eval_ext k l >>=' λ{ | _ | ext | val_loc l =>
-                                eval_ext k e >>=' λ{ | _ | ext | v => updateM (wk l) (wk v) }}.
+  | S k, deref l    := eval_ext k l >>=' λ{ | _ | ext | val_loc l' => derefM l' }
+  | S k, assign l e := eval_ext k l >>=' λ{ | _ | ext | val_loc l' =>
+                                eval_ext k e >>=' λ{ | _ | ext' | v => updateM (wk l') (wk v) }}.
 
 Equations strength {Σ Γ} {P Q : StoreTy -> Type} {w : Weakenable Q} (m : M Γ P Σ) (q : Q Σ) : M Γ (P ⊛ Q) Σ :=
   strength m q E μ with m E μ => {
     | None => None
-    | Some (Σ, μ', p, ext) => Some (Σ, μ', storepred_pair p (weaken ext q), ext) }.
+    | Some (Σ', μ', p, ext) => Some (Σ', μ', storepred_pair p (weaken ext q), ext) }.
 
 Infix "^" := strength.
 
@@ -304,8 +304,8 @@ Equations eval (n : nat) {Γ Σ t} (e : Expr Γ t) : M Γ (Val t) Σ :=
   eval (S k) tt           := ret val_unit;
   eval (S k) true         := ret val_true;
   eval (S k) false        := ret val_false;
-  eval (S k) (ite b t f)  := eval k b >>= λ{ | _ | val_true => eval k t;
-                                             | _ | val_false => eval k f };
+  eval (S k) (ite b tr fa)  := eval k b >>= λ{ | _ | val_true => eval k tr;
+                                             | _ | val_false => eval k fa };
 
   eval (S k) (var x)      := getEnv >>= fun Σ E => ret (lookup E x);
   eval (S k) (abs x)      := getEnv >>= fun Σ E => ret (val_closure x E);
@@ -313,9 +313,9 @@ Equations eval (n : nat) {Γ Σ t} (e : Expr Γ t) : M Γ (Val t) Σ :=
       eval k e1 >>= λ{ | _ | val_closure e' E =>
                              (eval k e2 ^ E) >>= fun Σ' '(storepred_pair v E) => usingEnv (all_cons v E) (eval k e')};
   eval (S k) (new e)      := eval k e >>= fun Σ v => storeM v;
-  eval (S k) (deref l)    := eval k l >>= λ{ | _ | val_loc l => derefM l };
-  eval (S k) (assign l e) := eval k l >>= λ{ | _ | val_loc l =>
-                             (eval k e ^ l) >>= λ{ | _ | storepred_pair v l => updateM l v }}.
+  eval (S k) (deref l)    := eval k l >>= λ{ | _ | val_loc l' => derefM l' };
+  eval (S k) (assign l e) := eval k l >>= λ{ | _ | val_loc l' =>
+                             (eval k e ^ l') >>= λ{ | _ | storepred_pair v l'' => updateM l'' v }}.
 
 Definition idu : Expr [] (unit ⇒ unit) :=
   abs (var here).
@@ -346,7 +346,7 @@ Equations? weaken_expr {Γ Γ' t u} (e1 : Expr (Γ ++ Γ') t) : Expr (Γ ++ u ::
   weaken_expr tt              := tt;
   weaken_expr true            := true;
   weaken_expr false           := false;
-  weaken_expr (ite b t f)     := ite (weaken_expr b) (weaken_expr t) (weaken_expr f);
+  weaken_expr (ite b tr fa)   := ite (weaken_expr b) (weaken_expr tr) (weaken_expr fa);
   weaken_expr (var (t:=ty) x) := var _;
   weaken_expr (abs (t:=t) x)  := abs (weaken_expr (Γ := t :: Γ) x);
   weaken_expr (app e1 e2)     := app (weaken_expr e1) (weaken_expr e2);

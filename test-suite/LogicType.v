@@ -52,9 +52,9 @@ Proof.
     pose proof (Classes.eq_dec a a0).
     dependent elimination X as [inl id_refl|inr Ha].
     -- specialize (IHx v).
-       dependent elimination IHx as [inl id_refl|inr H].
+       dependent elimination IHx as [inl id_refl|inr H'].
        --- left; reflexivity.
-       --- right. simplify *. now apply H.
+       --- right. simplify *. now apply H'.
     -- right; simplify *. now apply Ha.
 Defined.
 

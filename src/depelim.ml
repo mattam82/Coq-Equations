@@ -427,7 +427,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
               List.rev_map (fun decl ->
                 let decl_id = Context.Named.Declaration.get_id decl in
                 if Names.Id.equal decl_id id then DAst.make ?loc pat
-                else DAst.make (Syntax.PUVar (decl_id, false))) loc_hyps
+                else DAst.make Syntax.(PUVar (decl_id, Generated))) loc_hyps
             in
               (loc, lhs, Some rhs))
         in Proofview.tclUNIT (List.map make_clause patterns)
@@ -441,6 +441,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
       Covering.{
         rec_type = [None];
         flags = { polymorphic = true; open_proof = false; with_eqns = false; with_ind = false;
+          allow_aliases = false;
           tactic = !Declare.Obls.default_tactic};
         program_mode = false;
         fixdecls = [];
@@ -487,7 +488,7 @@ let dependent_elim_tac_expr ?patterns id : unit Proofview.tactic =
       match patterns with
       | None -> None
       | Some p ->
-        let avoid = ref (Syntax.ids_of_pats None p) in
-        Some (List.map (fun x -> List.hd (Syntax.interp_pat env [] ~avoid None x)) p)
+        let avoid = Syntax.ids_of_pats None p in
+        Some (List.map (fun x -> List.hd (snd (Syntax.interp_pat env [] ~avoid None x))) p)
     in dependent_elim_tac ?patterns id
   end

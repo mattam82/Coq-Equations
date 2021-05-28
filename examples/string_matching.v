@@ -7,7 +7,7 @@ Require Import List Lia.
 Require Import PeanoNat.
 Require Import Program.
 Require Import Wf.
-Require Import Equations.
+From Equations Require Import Equations.
 
 Import ListNotations.
 
@@ -195,7 +195,7 @@ Proof.
   intros; subst i.
   funelim (chunk I x). reflexivity.
   simpl. 
-  apply leb_correct in H1. rewrite e0 in H1. discriminate.
+  apply leb_correct in H1. rewrite p in H1. discriminate.
 Qed.
 Ltac feed H :=
   match type of H with

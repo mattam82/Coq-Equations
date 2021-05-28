@@ -143,7 +143,8 @@ let define_by_eqs ~pm ~poly ~program_mode ~tactic ~open_proof opts eqs nt =
     else false, false
   in
   let env = Global.env () in
-  let flags = { polymorphic = poly; with_eqns; with_ind; tactic; open_proof } in
+  let flags = { polymorphic = poly; with_eqns; with_ind; allow_aliases = false; 
+    tactic; open_proof } in
   let evm, udecl =
     match eqs with
     | (((loc, i), udecl, _, _, _, _), _) :: _ ->
