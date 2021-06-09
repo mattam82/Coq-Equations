@@ -15,7 +15,10 @@ open Equations_common
 type 'a with_loc = Loc.t * 'a
 
 (** User-level patterns *)
-type generated = bool
+type provenance = 
+  | User
+  | Generated
+  | Implicit
 
 type rec_annotation =
   | Nested
@@ -26,7 +29,7 @@ type user_rec_annot = rec_annotation option
 type identifier = Names.Id.t
 
 type user_pat =
-    PUVar of identifier * generated
+    PUVar of identifier * provenance
   | PUCstr of constructor * int * user_pats
   | PUInac of Glob_term.glob_constr
   | PUEmpty
@@ -89,7 +92,10 @@ type pre_clause = Loc.t option * lhs * (pre_equation, pre_clause) rhs
 type pre_equations = pre_equation where_clause list
 
 (* val pr_user_pat : env -> user_pat -> Pp.t *)
-val pr_user_pats : env -> evar_map -> user_pats -> Pp.t
+
+val pr_provenance : with_gen:bool -> Pp.t -> provenance -> Pp.t
+
+val pr_user_pats : ?with_gen:bool -> env -> evar_map -> user_pats -> Pp.t
 
 val pr_lhs : env -> evar_map -> user_pats -> Pp.t
 val pplhs : user_pats -> unit
@@ -161,17 +167,20 @@ val ids_of_pats : Names.Id.t option -> Constrexpr.constr_expr list -> Id.Set.t
 val pattern_of_glob_constr :
   Environ.env ->
   evar_map ->
-  Names.Id.Set.t ref ->
+  Names.Id.Set.t ->
   Names.Name.t ->
   Glob_term.glob_constr ->
-  (user_pat, [ `any] ) DAst.t
+  Names.Id.Set.t * (user_pat, [ `any] ) DAst.t
 
 
-val interp_pat : Environ.env -> Vernacexpr.decl_notation list -> ?avoid:Id.Set.t ref ->
+val interp_pat : Environ.env -> Vernacexpr.decl_notation list -> avoid:Id.Set.t ->
   (program_info * Names.Name.t list) option ->
-  Constrexpr.constr_expr -> user_pats
+  Constrexpr.constr_expr -> 
+  Id.Set.t * user_pats
 
-val interp_eqn : env -> Vernacexpr.decl_notation list -> program_info -> pre_equation -> pre_clause
+val interp_eqn : env -> Vernacexpr.decl_notation list -> program_info ->
+  avoid:Id.Set.t ->
+  pre_equation -> pre_clause
 
 val wit_equations_list : pre_equation list Genarg.uniform_genarg_type
 

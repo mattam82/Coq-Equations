@@ -194,6 +194,6 @@ Proof.
   - now constructor.
   - specialize (Hind _ Heq). now constructor.
   - specialize (Hind _ Heq). now constructor.  
-  - pose proof (Hind _ Heq0). pose proof (Hind0 _ Heq1). subst s.
+  - pose proof (Hind _ Heq1). pose proof (Hind0 _ Heq2). subst s1.
     econstructor; eauto.
 Qed.

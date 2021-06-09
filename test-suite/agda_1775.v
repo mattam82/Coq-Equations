@@ -43,7 +43,7 @@ Definition inS {n} (f : fin n) (s : Subset n) := s [ f ]= true.
 Notation "x ∈ S" := (inS x S).
 
 Equations drop_there {s n x} {p : Subset n} (H : (finS x) ∈ (cons _ s p)) : x ∈ p :=
-  drop_there (there p) := p.
+  drop_there (there l) := l.
 
 Inductive Dec (P : Set) : Set :=
 | yes ( p :   P) : Dec P

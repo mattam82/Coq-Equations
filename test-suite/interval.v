@@ -11,7 +11,7 @@ Equations? interval x y : list nat by wf (y - x) lt :=
 Proof. lia. Defined.
 
 Lemma interval_empty x : interval x x = [].
-Proof. funelim (interval x x). clear Heq; now apply Nat.lt_irrefl in l. reflexivity. Qed.
+Proof. funelim (interval x x). clear Heq; now apply Nat.lt_irrefl in ltxy. reflexivity. Qed.
 
 Lemma interval_large x y : ~ x < y -> interval x y = [].
 Proof. funelim (interval x y); clear Heq; intros; now try lia. Qed.
@@ -26,5 +26,5 @@ Proof.
     destruct lt_dec; simpl; trivial. elim n. lia.
     assert (y = S x) as -> by lia. rewrite interval_empty. simpl.
     rewrite (interval_equation_1 x z). destruct (lt_dec x z); trivial. elim n0; lia.
-  - elim n; lia.
+  - elim nltxy; lia.
 Qed.

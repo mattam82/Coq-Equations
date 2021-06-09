@@ -107,33 +107,35 @@ and accessibles l =
 let hidden = function PHide _ -> true | _ -> false
 
 type match_subst =
-  ((identifier * bool) * pat) list * (Glob_term.glob_constr * pat) list *
+  ((Loc.t option * identifier * provenance) * pat) list * (Glob_term.glob_constr * pat) list *
   (user_pat_loc * constr) list * ((Loc.t option * pat) list)
 
-let rec match_pattern env p c =
+let rec match_pattern env sigma p c =
   match DAst.get p, c with
-  | PUVar (i,gen), (PCstr _ | PRel _ | PHide _) -> [(i, gen), c], [], [], []
+  | PUVar (i,gen), (PCstr _ | PRel _ | PHide _) -> [DAst.with_loc_val (fun ?loc _ -> (loc, i, gen)) p, c], [], [], []
   | PUCstr (c, i, pl), PCstr ((c',u), pl') -> 
     if Environ.QConstruct.equal env c c' then
       let params, args = List.chop i pl' in
-      match_patterns env pl args
+      match_patterns env sigma pl args
     else raise Conflict
   | PUInac t, t' ->
     [], [t, t'], [], []
+  | PUVar (i, gen), PInac t when isRel sigma t ->
+    [DAst.with_loc_val (fun ?loc _ -> (loc, i, gen)) p, c], [], [], []
   | _, PInac t -> [], [], [p, t], []
   | PUEmpty, _ -> [], [], [], [DAst.with_loc_val (fun ?loc _ -> (loc, c)) p]
   | _, _ -> raise Stuck
 
-and match_patterns env pl l =
+and match_patterns env sigma pl l =
   match pl, l with
   | [], [] -> [], [], [], []
   | hd :: tl, hd' :: tl' -> 
     let l = 
-      try Some (match_pattern env hd hd')
+      try Some (match_pattern env sigma hd hd')
       with Stuck -> None
     in
     let l' = 
-      try Some (match_patterns env tl tl')
+      try Some (match_patterns env sigma tl tl')
       with Stuck -> None
     in
     (match l, l' with
@@ -144,10 +146,10 @@ and match_patterns env pl l =
 
 open Constrintern
 
-let matches env (p : user_pats) ((phi,p',g') : context_map) = 
+let matches env sigma (p : user_pats) ((phi,p',g') : context_map) = 
   try
     let p' = filter (fun x -> not (hidden x)) (rev p') in
-    UnifSuccess (match_patterns env p p')
+    UnifSuccess (match_patterns env sigma p p')
   with Conflict -> UnifFailure | Stuck -> UnifStuck
 
 let rec match_user_pattern env p c =
@@ -765,7 +767,7 @@ let recursive_patterns env progid rec_info =
     let addpat (id, k) =
       match k with
       | NestedNonRec when Id.equal id progid -> None
-      | _ -> Some (DAst.make (PUVar (id, false)))
+      | _ -> Some (DAst.make (PUVar (id, User)))
     in
     let structpats = List.map_filter addpat l in
     structpats
@@ -775,7 +777,7 @@ let destPRel = function PRel i -> i | _ -> assert false
 
 let pats_of_sign sign =
   List.rev_map (fun decl ->
-      DAst.make (PUVar (Name.get_id (Context.Rel.Declaration.get_name decl), false))) sign
+      DAst.make (PUVar (Name.get_id (Context.Rel.Declaration.get_name decl), Implicit))) sign
 
 let abstract_term_in_context env evars idx t (g, p, d) =
   let before, after = CList.chop (pred idx) g in
@@ -959,6 +961,34 @@ let compute_rec_data env evars data lets subst p =
 
 exception UnfaithfulSplit of (Loc.t option * Pp.t)
 
+let rename_domain env sigma bindings (ctx, p, ctx') = 
+  let fn rel decl = 
+    match Int.Map.find rel bindings with
+    | exception Not_found -> decl
+    | (id, _, gen) -> if gen != Generated then Context.Rel.Declaration.set_name (Name id) decl else decl
+  in 
+  let rctx = CList.map_i fn 1 ctx in
+  mk_ctx_map env sigma rctx p ctx'
+let rec eq_pat_mod_inacc env sigma p1 p2 =
+  match p1, p2 with
+  | (PRel i | PHide i), (PRel i' | PHide i') -> Int.equal i i'
+  | PCstr (c, pl), PCstr (c', pl') -> Environ.QConstruct.equal env (fst c) (fst c') && 
+    List.for_all2 (eq_pat_mod_inacc env sigma) pl pl'
+  | PRel i, PInac c when isRel sigma c -> Int.equal i (destRel sigma c)
+  | PInac c, PRel i when isRel sigma c -> Int.equal i (destRel sigma c)
+  | PInac c, PInac c' -> EConstr.eq_constr sigma c c'
+  | _, _ -> false
+
+let loc_before loc loc' =
+  match loc, loc' with
+  | None, Some _ -> true
+  | Some _, None -> false
+  | None, None -> true
+  | Some loc, Some loc' ->
+    let start, end_ = Loc.unloc loc in
+    let start', end' = Loc.unloc loc' in
+    end_ < end' || (end_ = end' && start <= start')
+
 let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int)) list) path
     (ctx,pats,ctx' as prob) extpats lets ty =
   if !Equations_common.debug then
@@ -970,11 +1000,83 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
     if !Equations_common.debug then
       Feedback.msg_debug (str "Matching " ++ pr_user_pats env !evars (extpats @ lhs) ++ str " with " ++
                           pr_problem p env !evars prob);
-    (match matches env (extpats @ lhs) prob with
+    (match matches env !evars (extpats @ lhs) prob with
      | UnifSuccess (s, uacc, acc, empties) ->
-       if !Equations_common.debug then Feedback.msg_debug (str "succeeded");
-       (* let renaming = rename_prob_subst env ctx (pi1 s) in *)
-       let s = (List.map (fun ((x, gen), y) -> x, y) s, uacc, acc) in
+       if !Equations_common.debug then Feedback.msg_debug (str "succeeded with substitution: " ++ 
+        prlist_with_sep spc (fun ((loc, x, prov), pat) -> 
+        hov 2 (pr_provenance ~with_gen:true (Id.print x) prov ++ str" = " ++ pr_pat env !evars pat ++ spc ())) s);
+       let _check_aliases = 
+        let check acc ((loc, x, gen), pat) =
+          match Id.Map.find x acc with
+          | exception Not_found -> Id.Map.add x (loc, gen, pat) acc
+          | (loc', gen', pat') ->
+              if eq_pat_mod_inacc env !evars pat pat' then 
+                if gen == Generated then Id.Map.add x (loc', gen', pat') acc
+                else Id.Map.add x (loc, gen, pat) acc
+              else if data.flags.allow_aliases then acc
+              else 
+                let env = push_rel_context (pi1 prob) env in
+                let loc, pat, pat' = 
+                  if loc_before loc loc' then loc', pat, pat'
+                  else loc, pat', pat
+                in
+                user_err_loc (loc, "matches",
+                  Pp.(str "The pattern " ++ Id.print x ++ str " would shadow a variable." ++ fnl () ++
+                  str "The full patterns are: " ++ pr_user_pats ~with_gen:false env !evars (extpats @ lhs) ++ fnl () ++
+                  str"After interpretation, in context " ++ spc () ++ pr_context env !evars (rel_context env) ++ spc () ++
+                  Id.print x ++ str " refers to " ++ pr_pat env !evars pat ++ str " while the pattern refers to " ++
+                  pr_pat env !evars pat'))
+          in ignore (List.fold_left check Id.Map.empty s)
+       in
+       let bindings, s = CList.fold_left (fun (bindings, s) ((loc, x, gen), y) ->
+          let pat = 
+            match y with
+            | PRel i -> Some (i, false)
+            | PInac i when isRel !evars i -> Some (destRel !evars i, true)
+            | _ -> None 
+          in
+          match pat with
+          | Some (i, inacc) -> begin
+            match Int.Map.find i bindings with
+            | exception Not_found -> (Int.Map.add i (x, inacc, gen) bindings, s)
+            | (x', inacc', gen') -> begin
+              match gen, gen' with
+              | Generated, (User | Implicit) -> (Int.Map.add i (x', inacc && inacc', gen') bindings, s)
+              | Generated, Generated -> (Int.Map.add i (x, inacc && inacc', gen) bindings, s)
+              | _, Generated -> (Int.Map.add i (x, inacc && inacc', gen) bindings, s)
+              | _, _ -> 
+                if not (Id.equal x x') then
+                  (* We allow aliasing of implicit variable names resulting from forcing a pattern *)
+                  if not data.flags.allow_aliases && (gen == User && gen' == User) then
+                    user_err_loc (loc, "matches",
+                      Pp.(str "The pattern " ++ Id.print x ++ str " should be equal to " ++ Id.print x' ++ str", it is forced by typing"))
+                  else (bindings, (x, y) :: s)
+                else (bindings, s)
+              end
+            end
+          | None -> (bindings, (x, y) :: s)) 
+          (Int.Map.empty, []) s
+           (* @ List.filter_map (fun (x, y) ->
+            match DAst.get x with
+            | PUVar (id, gen) -> Some ((DAst.with_loc_val (fun ?loc _ -> loc) x, id, gen), PInac y)
+            | _ -> None) acc) *)
+        in
+        if !Equations_common.debug then Feedback.msg_debug (str "Renaming problem: " ++ 
+          hov 2 (pr_context_map env !evars prob) ++ str " with bindings " ++ 
+          prlist_with_sep spc (fun (i, (x, inacc, gen)) -> str "Rel " ++ int i ++ str" = " ++ 
+          pr_provenance ~with_gen:true (Id.print x) gen ++ 
+          str", inacc = " ++ bool inacc) (Int.Map.bindings bindings));
+       let prob = rename_domain env !evars bindings prob in
+       if !Equations_common.debug then Feedback.msg_debug (str "Renamed problem: " ++ 
+        hov 2 (pr_context_map env !evars prob));
+       (* let sext =
+        List.filter_map (fun (i, (x, inacc, gen)) -> 
+          if gen then None
+          else Some (x, if inacc then PInac (mkRel i) else PRel i)) (Int.Map.bindings bindings) in  *)
+       let s = (s, uacc, acc) in
+       if !Equations_common.debug then Feedback.msg_debug (str "Substitution: " ++ 
+        prlist_with_sep spc (fun (x, t) -> str "var " ++ Id.print x ++ str" = " ++ pr_pat env !evars t) 
+          (pi1 s));
        (* let prob = compose_subst env ~sigma:!evars renaming prob in *)
        let clauseid = Id.of_string ("clause_" ^ string_of_int idx ^
                                     (if cnt = 0 then "" else "_" ^ string_of_int cnt)) in
@@ -1272,7 +1374,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
       match cs with
       | [] -> cls
       | _ :: _ ->
-        [loc, lhs @ [DAst.make ?loc (PUVar (idref, true))], Some (Refine (cs, cls))]
+        [loc, lhs @ [DAst.make ?loc (PUVar (idref, Generated))], Some (Refine (cs, cls))]
     in
     let rec cls' n cls =
       let next_unknown =
@@ -1298,7 +1400,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
                  else
                    try Some (DAst.make (List.assoc (pred i) s))
                    with Not_found -> (* The problem is more refined than the user vars*)
-                     Some (DAst.make (PUVar (next_unknown (), true))))
+                     Some (DAst.make (PUVar (next_unknown (), Generated))))
               vars'
           in
           let newrhs = match rhs with
@@ -1378,7 +1480,7 @@ and interp_wheres env0 ctx evars path data s lets
 
     let is_rec = is_recursive id ([eqs], notations) in
     let p = interp_arity env evars ~poly:false ~is_rec ~with_evars:true notations eqs in
-    let clauses = List.map (interp_eqn env (data.notations @ notations) p) clauses in
+    let clauses = List.map (interp_eqn env (data.notations @ notations) p ~avoid:Id.Set.empty) clauses in
     let sigma, p = adjust_sign_arity env !evars p clauses in
     let () = evars := sigma in
 
@@ -1453,7 +1555,8 @@ and covering ?(check_unused=true) env evars p data (clauses : pre_clause list)
        pr_problem p env !evars prob)
 
 let program_covering env evd data p clauses =
-  let clauses = List.map (interp_eqn (push_rel_context data.fixdecls env) data.notations p) clauses in
+  let clauses = List.map (interp_eqn (push_rel_context data.fixdecls env) 
+    data.notations p ~avoid:Id.Set.empty) clauses in
   let sigma, p = adjust_sign_arity env !evd p clauses in
   let () = evd := sigma in
   let p', prob, arity, extpats, rec_node = compute_rec_data env evd data [] [] p in

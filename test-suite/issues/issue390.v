@@ -3,7 +3,7 @@ From Equations Require Export Equations.
 Ltac hidebody H ::= idtac.
 
 Import Pos N.
-
+Print Pos.compare.
 Open Scope N_scope.
 
 Instance lt_well_founded : WellFounded lt := Acc_intro_generator 100 lt_wf_0.

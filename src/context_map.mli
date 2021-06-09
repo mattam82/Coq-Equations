@@ -29,6 +29,7 @@ val mkHide : env -> esigma -> constr -> constr
 
 (* Constr of a pattern *)
 val pat_constr : pat -> constr
+val eq_pat : env -> Evd.evar_map -> pat -> pat -> bool
 
 (* Constr of a pattern optionally marking innaccessibles and hidden patterns
    and modifying the evar_map in this case only. *)

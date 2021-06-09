@@ -24,11 +24,14 @@ open Constrintern
 type 'a with_loc = Loc.t * 'a
 type identifier = Names.Id.t
    
-type generated = bool
+type provenance = 
+  | User
+  | Generated
+  | Implicit
 
 (** User-level patterns *)
 type user_pat =
-    PUVar of identifier * generated
+    PUVar of identifier * provenance
   | PUCstr of constructor * int * user_pats
   | PUInac of Glob_term.glob_constr
   | PUEmpty
@@ -98,9 +101,14 @@ type pre_clause = Loc.t option * lhs * (pre_equation, pre_clause) rhs
 
 type pre_equations = pre_equation where_clause list
 
-let rec pr_user_loc_pat env sigma ?loc pat =
+let pr_provenance ~with_gen id = function
+  | User -> id
+  | Generated -> str"_" ++ (if with_gen then id else mt ())
+  | Implicit -> str"{" ++ id ++ str"}"
+
+let rec pr_user_loc_pat ~with_gen env sigma ?loc pat =
   match pat with
-  | PUVar (i, gen) -> Id.print i ++ if gen then str "#" else mt ()
+  | PUVar (i, gen) -> pr_provenance ~with_gen (Id.print i) gen
   | PUCstr (c, i, f) -> 
       let pc = pr_constructor env c in
         if not (List.is_empty f) then str "(" ++ pc ++ spc () ++ pr_user_pats env sigma f ++ str ")"
@@ -108,12 +116,12 @@ let rec pr_user_loc_pat env sigma ?loc pat =
   | PUInac c -> str "?(" ++ pr_glob_constr_env env sigma c ++ str ")"
   | PUEmpty -> str"!"
 
-and pr_user_pat env sigma = DAst.with_loc_val (pr_user_loc_pat env sigma)
+and pr_user_pat ?(with_gen=false) env sigma = DAst.with_loc_val (pr_user_loc_pat ~with_gen env sigma)
 
-and pr_user_pats env sigma pats =
-  prlist_with_sep spc (pr_user_pat env sigma) pats
+and pr_user_pats ?(with_gen=true) env sigma pats =
+  prlist_with_sep spc (pr_user_pat ~with_gen env sigma) pats
 
-let pr_lhs = pr_user_pats
+let pr_lhs = pr_user_pats ~with_gen:true
 
 let pplhs lhs =
   let env = Global.env () in
@@ -351,7 +359,12 @@ let _check_linearity env sigma opats =
       ids pats
   in ignore (aux Id.Set.empty opats)
 
+let is_implicit_arg = function
+  | ImplicitArg _ -> true
+  | _ -> false
+
 let pattern_of_glob_constr env sigma avoid patname gc =
+  let avoid = ref avoid in
   let rec constructor ?loc c l =
     let ind, _ = c in
     let nparams = Inductiveops.inductive_nparams env ind in
@@ -367,17 +380,16 @@ let pattern_of_glob_constr env sigma avoid patname gc =
           user_err_loc (loc, "pattern_of_glob_constr", str "Constructor is applied to too many arguments");
     in
     Dumpglob.add_glob ?loc (GlobRef.ConstructRef c);
-    PUCstr (c, nparams, List.map (DAst.map_with_loc aux) l)
-  and aux ?loc = function
-    | GVar id -> PUVar (id, false)
-    | GHole (_,_,_) ->
-      let id =
-        match patname with
-        | Anonymous -> Id.of_string "wildcard"
-        | Name id -> id
-      in
-      let n = next_ident_away id avoid in
-      PUVar (n, true)
+    PUCstr (c, nparams, List.map (DAst.map_with_loc (aux Anonymous)) l)
+  and aux patname ?loc = function
+    | GVar id -> PUVar (id, User)
+    | GHole (k,_,_) ->
+      (match patname with
+      | Name id when is_implicit_arg k -> PUVar (id, Implicit)
+      | _ -> 
+        let id = Id.of_string "wildcard" in
+        let n = next_ident_away id avoid in
+        PUVar (n, Generated))
     | GRef (GlobRef.ConstructRef cstr,_) -> constructor ?loc cstr []
     | GRef (GlobRef.ConstRef _ as c, _) when GlobRef.equal c (Lazy.force coq_bang) -> PUEmpty
     | GApp (c, l) ->
@@ -395,13 +407,15 @@ let pattern_of_glob_constr env sigma avoid patname gc =
    *    (\* A canonical encoding of aliases *\)
    *    DAst.get (cases_pattern_of_glob_constr na' b) *)
     | _ -> user_err_loc (loc, "pattern_of_glob_constr", str ("Cannot interpret globalized term as a pattern"))
-  in DAst.map_with_loc aux gc
+  in
+  let gc =DAst.map_with_loc (aux patname) gc in
+  !avoid, gc
 
 let program_type p = EConstr.it_mkProd_or_LetIn p.program_arity p.program_sign
 
-let interp_pat env notations ?(avoid = ref Id.Set.empty) p pat =
+let interp_pat env notations ~avoid p pat =
   let sigma = Evd.from_env env in
-  let vars = (Id.Set.elements !avoid) (* (ids_of_pats [p])) *) in
+  let vars = (Id.Set.elements avoid) (* (ids_of_pats [p])) *) in
   (* let () = Feedback.msg_debug (str"Variables " ++ prlist_with_sep spc pr_id vars) in *)
   let tys = List.map (fun _ -> EConstr.mkProp) vars in
   let impls = List.map (fun _ -> []) vars in
@@ -442,22 +456,27 @@ let interp_pat env notations ?(avoid = ref Id.Set.empty) p pat =
           DAst.with_loc_val (fun ?loc gh ->
               match gh with
               | GVar fid when Id.equal fid id ->
-                let rec aux args patnames =
+                let rec aux avoid args patnames =
                   match args, patnames with
                   | a :: args, patname :: patnames ->
-                    pattern_of_glob_constr env sigma avoid patname a :: aux args patnames
+                    let avoid, pat = pattern_of_glob_constr env sigma avoid patname a in
+                    let avoid, pats = aux avoid args patnames in
+                    avoid, pat :: pats
                   | a :: args, [] ->
-                    pattern_of_glob_constr env sigma avoid Anonymous a :: aux args []
-                  | [], _ -> []
-                in aux args patnames
+                    let avoid, pat = pattern_of_glob_constr env sigma avoid Anonymous a in
+                    let avoid, pats = aux avoid args [] in
+                    avoid, pat :: pats
+                  | [], _ -> avoid, []
+                in aux avoid args patnames
               | _ ->
                 user_err_loc (loc, "interp_pats",
                               str "Expecting a pattern for " ++ Id.print id))
             fn) gc
-    | None -> [pattern_of_glob_constr env sigma avoid Anonymous gc]
+    | None -> let avoid, pat = pattern_of_glob_constr env sigma avoid Anonymous gc in
+      avoid, [pat]
   with Not_found -> anomaly (str"While translating pattern to glob constr")
 
-let rename_away_from ids pats =
+(* let rename_away_from ids pats =
   let rec aux ?loc pat =
     match pat with
     | PUVar (id, true) when Id.Set.mem id !ids ->
@@ -468,19 +487,18 @@ let rename_away_from ids pats =
     | PUInac c -> pat
     | PUEmpty -> pat
   in
-  List.map (DAst.map_with_loc aux) pats
+  List.map (DAst.map_with_loc aux) pats *)
 
 let interleave_implicits impls pats =
   let rec aux impls pats =
     match impls, pats with
-    | Some id :: impls, pats -> DAst.make (PUVar (id, false)) :: aux impls pats
+    | Some id :: impls, pats -> DAst.make (PUVar (id, Implicit)) :: aux impls pats
     | None :: impls, pat :: pats -> pat :: aux impls pats
     | None :: _, [] -> []
     | [], pats -> pats
   in aux impls pats
 
-let interp_eqn env notations p eqn =
-  let avoid = ref Id.Set.empty in
+let interp_eqn env notations p ~avoid eqn =
   let whereid = ref (Nameops.add_suffix p.program_id "_abs_where") in
   let patnames =
     List.rev_map (fun decl -> Context.Rel.Declaration.get_name decl) p.program_sign
@@ -490,72 +508,73 @@ let interp_eqn env notations p eqn =
         if Impargs.is_status_implicit a then Some (Impargs.name_of_implicit a) else None)
       p.program_implicits
   in
-  let interp_pat notations = interp_pat env notations ~avoid in
-  let rec aux notations curpats (pat, rhs) =
-    let loc, pats =
+  let interp_pat notations avoid = interp_pat env notations ~avoid in
+  let rec aux notations avoid curpats (pat, rhs) =
+    let loc, avoid, pats =
       match pat with
       | SignPats pat ->
-        avoid := Id.Set.union !avoid (ids_of_pats (Some p.program_id) [pat]);
+        let avoid = Id.Set.union avoid (ids_of_pats (Some p.program_id) [pat]) in
         let loc = Constrexpr_ops.constr_loc pat in
-        let pats = interp_pat notations (Some (p, patnames)) pat in
-        loc, pats
+        let avoid, pats = interp_pat notations avoid (Some (p, patnames)) pat in
+        loc, avoid, pats
       | RefinePats pats ->
-        let patids = ref (ids_of_pats None pats) in
-        let curpats = rename_away_from patids curpats in
-        avoid := Id.Set.union !avoid !patids;
+        let patids = ids_of_pats None pats in
+        (* let curpats = rename_away_from patids curpats in *)
+        let avoid = Id.Set.union avoid patids in
         let loc = Constrexpr_ops.constr_loc (List.hd pats) in
-        let pats = List.map (interp_pat notations None) pats in
+        let avoid, pats = List.fold_left_map (fun avoid -> interp_pat notations avoid None) avoid pats in
         let pats = List.map (fun x -> List.hd x) pats in
         let pats =
           (* At the toplevel only, interleave using the implicit
              status of the function arguments *)
           if curpats = [] then interleave_implicits impls pats
           else curpats @ pats in
-        loc, pats
+        loc, avoid, pats
     in
-    (* let () = check_linearity env pats in *)
-    (loc, pats, Option.map (interp_rhs notations pats) rhs)
-  and aux2 notations (pat, rhs) =
-    (pat, Option.map (interp_rhs' notations) rhs)
-  and interp_rhs' notations = function
+    (loc, pats, Option.map (interp_rhs notations avoid pats) rhs)
+  and aux2 notations avoid (pat, rhs) =
+    (pat, Option.map (interp_rhs' notations avoid) rhs)
+  and interp_rhs' notations avoid = function
     | Refine (c, eqs) ->
+      let avoid = Id.Set.union avoid (ids_of_pats None c) in
       let interp c =
-        let wheres, c = CAst.with_loc_val (interp_constr_expr notations) c in
+        let wheres, c = CAst.with_loc_val (interp_constr_expr notations avoid) c in
         if not (List.is_empty wheres) then
           user_err_loc (Constrexpr_ops.constr_loc c, "interp_eqns",
                         str"Pattern-matching lambdas not allowed in refine");
         c
       in
-      Refine (List.map interp c, map (aux2 notations) eqs)
+      Refine (List.map interp c, map (aux2 notations avoid) eqs)
     | Program (c, (w, nts)) ->
        let notations = nts @ notations in
        let w = interp_wheres avoid w notations in
        let w', c =
          match c with
          | ConstrExpr c ->
-            let wheres, c = CAst.with_loc_val (interp_constr_expr notations) c in
+            let wheres, c = CAst.with_loc_val (interp_constr_expr notations avoid) c in
             wheres, ConstrExpr c
          | GlobConstr c -> [], GlobConstr c
          | Constr c -> [], Constr c
        in
        Program (c, (List.append w' w, nts))
     | Empty i -> Empty i
-  and interp_rhs notations curpats = function
+  and interp_rhs notations avoid curpats = function
     | Refine (c, eqs) ->
+      let avoid = Id.Set.union avoid (ids_of_pats None c) in
       let interp c =
-        let wheres, c = CAst.with_loc_val (interp_constr_expr notations) c in
+        let wheres, c = CAst.with_loc_val (interp_constr_expr notations avoid) c in
         if not (List.is_empty wheres) then
           user_err_loc (Constrexpr_ops.constr_loc c, "interp_eqns",
                         str"Pattern-matching lambdas not allowed in refine");
         c
       in
-      Refine (List.map interp c, map (aux notations curpats) eqs)
+      Refine (List.map interp c, map (aux notations avoid curpats) eqs)
     | Program (c, (w, nts)) ->
        let w = interp_wheres avoid w (nts @ notations) in
        let w', c =
          match c with
          | ConstrExpr c ->
-            let wheres, c = CAst.with_loc_val (interp_constr_expr notations) c in
+            let wheres, c = CAst.with_loc_val (interp_constr_expr notations avoid) c in
             wheres, ConstrExpr c
          | GlobConstr c -> [], GlobConstr c
          | Constr c -> [], Constr c
@@ -565,11 +584,11 @@ let interp_eqn env notations p eqn =
   and interp_wheres avoid w notations =
     let interp_where (((loc,id),nested,b,t,reca) as p,eqns) =
       Dumpglob.dump_reference ~loc "<>" (Id.to_string id) "def";
-      p, map (aux2 notations) eqns
+      p, map (aux2 notations avoid) eqns
     in List.map interp_where w
-  and interp_constr_expr notations ?(loc=default_loc) c =
+  and interp_constr_expr notations (avoid : Id.Set.t) ?(loc=default_loc) c =
     let wheres = ref [] in
-    let rec aux' ids ?(loc=default_loc) c =
+    let rec aux' avoid ?(loc=default_loc) c =
       match c with
       (* | CApp ((None, { CAst.v = CRef (qid', ie) }), args)
        *      when qualid_is_ident qid' && Id.equal (qualid_basename qid') p.program_id ->
@@ -586,17 +605,17 @@ let interp_eqn env notations p eqn =
         let eqns = Genarg.out_gen (Genarg.rawwit wit_equations_list) eqns in
         let id = !whereid in
         let () = whereid := Nameops.increment_subscript id in
-        let () = avoid := Id.Set.add id !avoid in
-        let eqns = List.map (aux2 notations) eqns in
+        let avoid = Id.Set.add id avoid in
+        let eqns = List.map (aux2 notations avoid) eqns in
         let () =
           wheres := (((loc, id), None, [], None, None), eqns) :: !wheres;
         in Constrexpr_ops.mkIdentC id
       | _ -> map_constr_expr_with_binders Id.Set.add
-             (fun avoid -> CAst.with_loc_val (aux' avoid)) ids (CAst.make ~loc c)
+             (fun avoid -> CAst.with_loc_val (aux' avoid)) avoid (CAst.make ~loc c)
     in
-    let c' = aux' !avoid ~loc c in
+    let c' = aux' avoid ~loc c in
     !wheres, c'
-  in aux notations [] eqn
+  in aux notations avoid [] eqn
 
 let is_recursive i : 'a wheres -> bool = fun eqs ->
   let rec occur_eqn (_, rhs) =

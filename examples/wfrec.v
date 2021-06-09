@@ -44,7 +44,7 @@ End nubBy.
 Lemma nubBy_length {A} (eq : A -> A -> bool) (l : list A) : length (nubBy eq l) <= length l.
 Proof.
   funelim (nubBy eq l); simpl; trivial.
-  rewrite (filter_length l) in H. auto with arith.
+  rewrite filter_length in H. auto with arith.
 Qed.
 
 Lemma In_filter {A} (f : A -> bool) (l : list A) a : In a (filter f l) -> In a l /\ f a = true.
@@ -60,7 +60,7 @@ Lemma In_nubBy {A} (eq : A -> A -> bool) (l : list A) (a : A) :
 Proof.
   funelim (nubBy eq l).
   + trivial.
-  + rename a0 into b. intros H0.
+  + intros H0.
     destruct H0 as [->|H0]; auto. simpl. auto.
     specialize (H _ H0). apply In_filter in H as [Inal eqa]. right; auto.
 Qed.
@@ -72,7 +72,7 @@ Lemma nuBy_nodup {A} (eq : A -> A -> bool) (l : list A) :
 Proof.
   funelim (nubBy eq l). constructor. intros Heq; specialize (H Heq).
   constructor. intros Hi. apply In_nubBy, In_filter in Hi as [_ eqaa].
-  specialize (Heq a a). destruct (eq a a). discriminate.
+  specialize (Heq x x). destruct (eq x x). discriminate.
   destruct (proj2 Heq). reflexivity. discriminate.
   auto.
 Qed.
