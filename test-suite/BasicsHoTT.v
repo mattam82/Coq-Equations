@@ -144,9 +144,9 @@ Proof.
     pose proof (Classes.eq_dec a a0).
     dependent elimination X as [inl idpath|inr Ha].
     -- specialize (IHx v).
-       dependent elimination IHx as [inl idpath|inr H].
+       dependent elimination IHx as [inl idpath|inr neq].
        --- left; reflexivity.
-       --- right. simplify *. now apply H.
+       --- right. simplify *. now apply neq.
     -- right; simplify *. now apply Ha.
 Defined.
 
@@ -283,11 +283,11 @@ Require HoTT.Classes.interfaces.naturals HoTT.Classes.interfaces.abstract_algebr
 
 Equations? vrev_acc {A n m} (v : vector A n) (w : vector A m) : vector A (n + m) :=
 vrev_acc nil w := w;
-vrev_acc (cons a v) w := cast_vector (vrev_acc v (cons a w)) _.
+vrev_acc (cons (n:=n) a v) w := cast_vector (vrev_acc v (cons a w)) _.
 Proof. clear.
-  induction v0.
+  induction n.
   - simpl. constructor.
-  - simpl. cbn. now rewrite IHv0.
+  - simpl. cbn. now rewrite IHn.
 Defined.
 
 Set Primitive Projections.
