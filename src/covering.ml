@@ -824,7 +824,7 @@ let destPRel = function PRel i -> i | _ -> assert false
 
 let pats_of_sign sign =
   List.rev_map (fun decl ->
-      DAst.make (PUVar (Name.get_id (Context.Rel.Declaration.get_name decl), User))) sign
+      DAst.make (PUVar (Name.get_id (Context.Rel.Declaration.get_name decl), Implicit))) sign
 
 let abstract_term_in_context env evars idx t (g, p, d) =
   let before, after = CList.chop (pred idx) g in
@@ -1096,7 +1096,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
                   (* We allow aliasing of implicit variable names resulting from forcing a pattern *)
                   if not data.flags.allow_aliases && (gen == User && gen' == User) then
                     user_err_loc (loc, "matches",
-                      Pp.(str "The pattern " ++ Id.print x ++ str " is forced to be equal to " ++ Id.print x'))
+                      Pp.(str "The pattern " ++ Id.print x ++ str " should be equal to " ++ Id.print x' ++ str", it is forced by typing"))
                   else (bindings, (x, y) :: s)
                 else (bindings, s)
               end
