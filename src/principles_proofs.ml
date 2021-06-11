@@ -50,9 +50,9 @@ let below_transparent_state () =
 let simpl_star = 
   tclTHEN (to82 simpl_in_concl) (onAllHyps (fun id -> to82 (simpl_in_hyp (id, Locus.InHyp))))
 
-let eauto_with_below ?depth l =
+let eauto_with_below ?depth ?(strategy=Class_tactics.Dfs) l =
   Class_tactics.typeclasses_eauto ~depth ~st:(below_transparent_state ()) 
-      (l@["subterm_relation"; "Below"; "rec_decision"])
+    ~strategy (l@["subterm_relation"; "Below"; "rec_decision"])
     
 let wf_obligations_base info =
   info.base_id ^ "_wf_obligations"
@@ -278,7 +278,7 @@ let map_opt_split f s =
 
 let solve_ind_rec_tac info =
   observe_new "eauto with below"
-    (eauto_with_below ~depth:20 [info.base_id; wf_obligations_base info])
+    (eauto_with_below ~depth:20 ~strategy:Class_tactics.Bfs [info.base_id; wf_obligations_base info])
 
 let change_in_app f args idx arg =
   let args' = Array.copy args in
@@ -472,7 +472,7 @@ let aux_ind_fun info chop nested unfp unfids p =
                     filter (fun x -> not (hidden x)) (filter_def_pats lhs), var
                 in
                 let id = find_splitting_var (project gl) pats var pats' in
-                to82 (depelim_tac id) gl
+                to82 (Depelim.dependent_elim_tac (Loc.make_loc (0,0), id)) gl
               | _ -> to82 (tclFAIL 0 (str"Unexpected goal in functional induction proof")) gl)
            (fun i gl ->
               let split = nth splits (pred i) in

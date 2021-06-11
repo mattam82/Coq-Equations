@@ -427,10 +427,27 @@ let decompose_sigma sigma (t : EConstr.constr) :
   preconditions can be satisfied up-to head-normalization of the goal's
   head type. *)
 
+let isConstruct_app_or_Rel env sigma c =
+  let hd, args = decompose_app sigma c in 
+  isRel sigma hd || isConstruct sigma hd
+  
+let maybe_reduce_to_hnf env sigma c =
+  if isConstruct_app_or_Rel env sigma c then c
+  else let c' = Tacred.hnf_constr env sigma c in
+    if isConstruct_app_or_Rel env sigma c' then c'
+    else c
+
 let hnf_goal ~(reduce_equality:bool) =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal) ->
   let glenv = push_rel_context ctx env in
   let reduce c = Tacred.hnf_constr glenv !evd c in
+  let reduce_sigma c =
+    match kind !evd c with
+    | Constr.App (f, args) when is_lglobal !evd coq_sigmaI f ->
+      let arr = Array.map (maybe_reduce_to_hnf glenv !evd) args in
+      mkApp (f, arr)
+    | _ -> c
+  in
   (* Head-reduce the goal *)
   let ty = reduce ty in
   (* We try to reduce further when the goal is a product. *)
@@ -444,7 +461,9 @@ let hnf_goal ~(reduce_equality:bool) =
         try
           let equ, tA, t1, t2 = check_equality env !evd ctx ty1 in
           let t1 = reduce t1 in
+          let t1 = reduce_sigma t1 in
           let t2 = reduce t2 in
+          let t2 = reduce_sigma t2 in
           let ty1 = EConstr.mkApp (Builder.equ equ, [| tA; t1; t2 |]) in
           EConstr.mkProd (name, ty1, ty2)
         with CannotSimplify _ -> ty

@@ -20,7 +20,7 @@ val find_helper_info : Environ.env -> Evd.evar_map ->
 val below_transparent_state : unit -> TransparentState.t
 val simpl_star : Proofview.V82.tac
 val eauto_with_below :
-  ?depth:Int.t -> Hints.hint_db_name list -> unit Proofview.tactic
+  ?depth:Int.t -> ?strategy:Class_tactics.search_strategy -> Hints.hint_db_name list -> unit Proofview.tactic
 val wf_obligations_base : Splitting.term_info -> string
 val simp_eqns : Hints.hint_db_name list -> unit Proofview.tactic
 val simp_eqns_in :
