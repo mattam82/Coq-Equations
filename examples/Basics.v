@@ -541,3 +541,18 @@ now simpl; intros [p_is_a | p_in_seq];[rewrite <- p_is_a; exists n | auto].
 Qed.
 
 End well_founded_recursion_and_auxiliary_function.
+
+Module IdElim.
+Import Sigma_Notations.
+Set Equations Transparent.
+Equations transport {A : Type} (P : A -> Type) {x y : A} (p : x = y) (u : P x) : P y :=
+transport P eq_refl u := u.
+
+Notation "p # x" := (transport _ p x) (right associativity, at level 65, only parsing).
+
+Equations path_sigma {A : Type} {P : A -> Type} (u v : sigma P)
+  (p : u.1 = v.1) (q : p # u.2 = v.2) : u = v := 
+path_sigma (_ , _) (_ , _) eq_refl eq_refl := eq_refl.
+
+Example foo := path_sigma_elim.
+End IdElim.

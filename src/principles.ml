@@ -1466,6 +1466,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
   let info = prog.program_split_info in
   let sign = program_sign p in
   let cst = prog.program_cst in
+  let ocst, _ = destConst evd p.program_term in
   let comps = all_computations env evd alias progs in
   let protos = List.map fst comps in
   let lenprotos = List.length protos in
@@ -1696,7 +1697,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
   in
   let eqns = CArray.map_of_list (fun (_, _, stmts) -> Array.make (List.length stmts) false) ind_stmts in
   let proof pm (j, (_, alias, path, sign, arity, pats, refs, refine), stmts) =
-    let id = path_id path in (* if j != 0 then Nameops.add_suffix id ("_helper_" ^ string_of_int j) else id in *)
+    let id = path_id path in
     let proof (pm : Declare.OblState.t) (i, (r, unf, c, n)) =
       let ideq = Nameops.add_suffix id ("_equation_" ^ string_of_int i) in
       let hook { Declare.Hook.S.dref; _ } pm =
@@ -1710,10 +1711,15 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
         eqns.(j).(pred i) <- true;
         if CArray.for_all (CArray.for_all (fun x -> x)) eqns then (
           (* From now on, we don't need the reduction behavior of the constant anymore *)
+          Hints.(add_hints ~locality:Goptions.OptGlobal [info.base_id]
+            (HintsTransparencyEntry (HintsReferences [EvalConstRef ocst], false)));
           Classes.set_typeclass_transparency (EvalConstRef cst) false false;
           (match alias with
            | Some ((f, _), _, _) ->
-              Global.set_strategy (ConstKey (fst (destConst !evd f))) Conv_oracle.Opaque
+              let cst' = fst (destConst !evd f) in
+              Hints.(add_hints ~locality:Goptions.OptGlobal [info.base_id]
+                (HintsTransparencyEntry (HintsReferences [EvalConstRef cst'], false)));
+              Global.set_strategy (ConstKey cst') Conv_oracle.Opaque
            | None -> ());
           Global.set_strategy (ConstKey cst) Conv_oracle.Opaque;
           if with_ind then (declare_ind (); pm) else pm)

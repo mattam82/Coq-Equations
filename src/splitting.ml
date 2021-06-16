@@ -550,20 +550,20 @@ let term_of_tree env0 isevar sort tree =
         if !Equations_common.debug then begin
           let open Feedback in
           let ctx = cut_ctx @ new_ctx @ ctx' in
-          msg_info(str"Simplifying term:");
-          msg_info(let env = push_rel_context ctx env in
+          msg_debug(str"Simplifying term:");
+          msg_debug(let env = push_rel_context ctx env in
                    Printer.pr_econstr_env env !evd ty);
-          msg_info(str"... in context:");
-          msg_info(pr_context env !evd ctx);
-          msg_info(str"... named context:");
-          msg_info(Printer.pr_named_context env !evd (EConstr.Unsafe.to_named_context (named_context env)));
+          msg_debug(str"... in context:");
+          msg_debug(pr_context env !evd ctx);
+          msg_debug(str"... named context:");
+          msg_debug(Printer.pr_named_context env !evd (EConstr.Unsafe.to_named_context (named_context env)));
         end;
         let ((hole, c), lsubst) = simpl_step (cut_ctx @ new_ctx @ ctx', ty, sort) in
         if !debug then
           begin
             let open Feedback in
             msg_debug (str"Finished simplifying");
-            msg_info(let ctx = cut_ctx @ new_ctx @ ctx' in
+            msg_debug(let ctx = cut_ctx @ new_ctx @ ctx' in
                      let env = push_rel_context ctx env in
                      Printer.pr_econstr_env env !evd c);
           end;

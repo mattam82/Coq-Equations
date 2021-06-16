@@ -236,7 +236,16 @@ let build_term (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal
   in
   let c = f tev in
   let env = push_rel_context ctx env in
-  let _ = Equations_common.evd_comb1 (Typing.type_of env) evd c in
+  let _ =
+    try Equations_common.evd_comb1 (Typing.type_of env) evd c 
+    with Type_errors.TypeError (env, tyerr) ->
+      anomaly Pp.(str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env !evd c ++ 
+        Himsg.explain_pretype_error env !evd
+          (Pretype_errors.TypingError (Type_errors.map_ptype_error EConstr.of_constr tyerr)))
+    | Pretype_errors.PretypeError (env, evd, tyerr) ->
+        anomaly Pp.(str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env evd c ++ 
+            Himsg.explain_pretype_error env evd tyerr)
+  in
   let ev = EConstr.destEvar !evd tev in
     Some ((ctx', ty', u'), ev), c
 
@@ -426,28 +435,10 @@ let decompose_sigma sigma (t : EConstr.constr) :
 (** All simplifications are wrapped in with_retry so that their 
   preconditions can be satisfied up-to head-normalization of the goal's
   head type. *)
-
-let isConstruct_app_or_Rel env sigma c =
-  let hd, args = decompose_app sigma c in 
-  isRel sigma hd || isConstruct sigma hd
-  
-let maybe_reduce_to_hnf env sigma c =
-  if isConstruct_app_or_Rel env sigma c then c
-  else let c' = Tacred.hnf_constr env sigma c in
-    if isConstruct_app_or_Rel env sigma c' then c'
-    else c
-
 let hnf_goal ~(reduce_equality:bool) =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal) ->
   let glenv = push_rel_context ctx env in
   let reduce c = Tacred.hnf_constr glenv !evd c in
-  let reduce_sigma c =
-    match kind !evd c with
-    | Constr.App (f, args) when is_lglobal !evd coq_sigmaI f ->
-      let arr = Array.map (maybe_reduce_to_hnf glenv !evd) args in
-      mkApp (f, arr)
-    | _ -> c
-  in
   (* Head-reduce the goal *)
   let ty = reduce ty in
   (* We try to reduce further when the goal is a product. *)
@@ -461,9 +452,7 @@ let hnf_goal ~(reduce_equality:bool) =
         try
           let equ, tA, t1, t2 = check_equality env !evd ctx ty1 in
           let t1 = reduce t1 in
-          let t1 = reduce_sigma t1 in
           let t2 = reduce t2 in
-          let t2 = reduce_sigma t2 in
           let ty1 = EConstr.mkApp (Builder.equ equ, [| tA; t1; t2 |]) in
           EConstr.mkProd (name, ty1, ty2)
         with CannotSimplify _ -> ty
@@ -610,13 +599,14 @@ let solution ~(dir:direction) : simplification_fun =
     if Int.Set.mem rel (Context_map.dependencies_of_term ~with_red:true env !evd ctx term rel) then
       raise (CannotSimplify (str  "[solution] The variable appears on both sides of the equality."))
   in
-  (* let () = Feedback.msg_debug (str "solution on " ++ Printer.pr_econstr_env (push_rel_context ctx env) !evd ty) in *)
+  (* let () = equations_debug (fun () -> str "solution on " ++ Printer.pr_econstr_env (push_rel_context ctx env) !evd ty) in *)
   let (ctx', _, _) as subst, rev_subst = Context_map.new_strengthen env !evd ctx rel term in
   let trel' = Context_map.mapping_constr !evd subst trel in
   let rel' = EConstr.destRel !evd trel' in
   let term' = Context_map.mapping_constr !evd subst term in
   let tA' = Context_map.mapping_constr !evd subst tA in
   let ty1' = Context_map.mapping_constr !evd subst ty1 in
+
   (* We will have to generalize everything after [x'] in the new
    * context. *)
   let after', decl', before' = Context_map.split_context (pred rel') ctx' in
@@ -717,9 +707,9 @@ let pre_solution ~(dir:direction) : simplification_fun =
             (Context_map.dependencies_of_term ~with_red:false env !evd ctx (mkApp (tA, [| term |])) rel)) then
     identity env evd (ctx, ty, glu)
   else
-    let tA = Reductionops.whd_all (push_rel_context ctx env) !evd tA in
+    let tA = Reductionops.nf_all (push_rel_context ctx env) !evd tA in
     let term = Reductionops.whd_all (push_rel_context ctx env) !evd term in
-    if Int.Set.mem rel (Context_map.dependencies_of_term ~with_red:true env !evd ctx (mkApp (tA, [|term|])) rel) then
+    if Int.Set.mem rel (Context_map.dependencies_of_term ~with_red:false env !evd ctx (mkApp (tA, [|term|])) rel) then
       raise (CannotSimplify (str  "[solution] cannot remove dependency in the variable "))
     else
       let f c = c in

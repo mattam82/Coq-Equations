@@ -105,16 +105,7 @@ let autorewrite_one b =
          (Tacticals.New.pf_constr_of_global global)
          (if r.Autorewrite.rew_l2r then Equality.rewriteLR else Equality.rewriteRL)
        in
-       Proofview.tclOR
-         (* (if !debug then
-            (Proofview.Goal.enter
-               begin fun gl -> 
-                let concl = Proofview.Goal.concl gl in
-                Feedback.msg_debug (str"Trying " ++ pr_global global ++ str " on " ++
-                Printer.pr_econstr_env (Proofview.Goal.env gl) (Proofview.Goal.sigma gl) concl);
-                observe_new "rewrite_try_change" (rewrite_try_change tac) end)
-          else  *)
-            tac
+       Proofview.tclOR tac
          (fun e -> if !debug then Feedback.msg_debug (str"failed"); aux rules)
   in aux rew_rules
 
