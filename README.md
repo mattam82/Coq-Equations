@@ -118,14 +118,17 @@ if the version of Coq you are using is installed system-wide, rather than
 in your own directory. E.g. on Ubuntu, you would prefix the command with
 `sudo` and then enter your user account password when prompted.
 
+
 ## HoTT Variant
 
-The HoTT variant of Equations currently requires a version of Coq master
-and a modification of the HoTT library which can be built using:
+The HoTT variant of Equations works with the coq-hott library for Coq 8.13 and up. 
+When using `opam`, simply install first the `coq-hott` library and `coq-equations` 
+will install its HoTT variant. From source, first install `coq-hott` and then use:
 
-    ./configure.sh HoTT
+    ./configure.sh --enable-hott
 
-This will clone a branch of HoTT and build it in Equations-HoTT, then
-one can make Equations and its library using:
+This will compile the `HoTT` library variant in addition to the standard one.
+Then, after `make install`, one can import the plugin in Coq, using:
 
-    make
+    From Equations Require Import HoTT.All.
+    

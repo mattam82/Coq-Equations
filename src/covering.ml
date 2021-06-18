@@ -40,23 +40,38 @@ type 'a unif_result = UnifSuccess of 'a | UnifFailure | UnifStuck
 type unification_result =
   (context_map * int * constr * pat) option
 
+(* let isConstruct_app_or_Rel env sigma c =
+  let hd, args = decompose_app sigma c in 
+  isRel sigma hd || isConstruct sigma hd *)
+  
+(* let maybe_reduce_to_hnf env sigma c =
+  if isConstruct_app_or_Rel env sigma c then c, false
+  else let c' = Tacred.hnf_constr env sigma c in
+    if isConstruct_app_or_Rel env sigma c' then c', true
+    else c, false *)
+    
+let decompose_rel evd c =
+  match kind evd c with
+  | Rel i -> Some i
+  | _ -> None
+
 let rec unify env evd flex g x y =
-  if eq_constr evd x y then id_subst g
+  if check_conv env evd x y then id_subst g
   else
-    match kind evd x with
-    | Rel i -> 
+    match decompose_rel evd x with
+    | Some i -> 
       if not (isRel evd y) && not (noccurn evd i y) then raise Conflict (* Occur check *)
       else if Int.Set.mem i flex then
         single_subst env evd i (PInac y) g
       else raise Stuck
-    | _ ->
-      match kind evd y with
-      | Rel i ->
+    | None ->
+      match decompose_rel evd y with
+      | Some i ->
         if (* not (isRel evd x) &&  *)not (noccurn evd i x) then raise Conflict (* Occur check *)
         else if Int.Set.mem i flex then
           single_subst env evd i (PInac x) g
         else raise Stuck
-      | _ ->
+      | None ->
         let (c, l) = decompose_app evd x 
         and (c', l') = decompose_app evd y in
         if isConstruct evd c && isConstruct evd c' then
@@ -64,6 +79,15 @@ let rec unify env evd flex g x y =
             unify_constrs env evd flex g l l'
           else raise Conflict
         else raise Stuck
+
+(* and unify env evd flex g x y =
+  match unify_hnfs env evd flex g x y with
+  | exception e -> 
+      let x, modified = maybe_reduce_to_hnf env evd x in
+      let y, modified' = maybe_reduce_to_hnf env evd y in
+      if modified || modified' then unify_hnfs env evd flex g x y
+      else raise e
+  | s -> s *)
 
 and unify_constrs env evd flex g l l' = 
   match l, l' with
@@ -411,7 +435,6 @@ let unify_type env evars before id ty after =
     let ind, params = dest_ind_family indf in
     let vs = List.map (Tacred.whd_simpl envb !evars) args in
     let params = List.map (Tacred.whd_simpl envb !evars) params in
-    let newty = applist (mkIndU ind, params @ vs) in
     let cstrs = Inductiveops.type_of_constructors envb (from_peuniverses !evars ind) in
     let cstrs = 
       Array.mapi (fun i ty ->
@@ -442,7 +465,7 @@ let unify_type env evars before id ty after =
           env', ctx, constr, constrpat, q, args)
         cstrs
     in
-    let res = 
+    let unify vs = 
       Array.map (fun (env', ctxc, c, cpat, q, us) -> 
           let _beforelen = length before and ctxclen = length ctxc in
           let fullctx = ctxc @ before in
@@ -450,11 +473,35 @@ let unify_type env evars before id ty after =
             let vs' = List.map (lift ctxclen) vs in
             let p1 = lift_pats ctxclen (inaccs_of_constrs (rels_of_ctx ~with_lets:false before)) in
             let flex = flexible (p1 @ q) fullctx in
+            let env = push_rel_context fullctx env in
+            equations_debug Pp.(fun () -> 
+                str"Unifying " ++ prlist_with_sep spc (Printer.pr_econstr_env env !evars) vs' ++ spc () ++
+                str"and" ++ spc () ++ prlist_with_sep spc (Printer.pr_econstr_env env !evars) us);
             let s = unify_constrs env !evars flex fullctx vs' us in
+            equations_debug Pp.(fun () -> str"Unification success");
             UnifSuccess (s, ctxclen, c, cpat)
-          with Conflict -> UnifFailure | Stuck -> UnifStuck) cstrs
-    in Some (newty, res)
+          with Conflict -> 
+            equations_debug Pp.(fun () -> str"Unification raised a conflict");
+            UnifFailure 
+          | Stuck -> 
+            equations_debug Pp.(fun () -> str"Unification got stuck");
+            UnifStuck) cstrs
+    in 
+    let res = unify vs in
+    if Array.exists (fun x -> x == UnifStuck) res then
+      let vs' = List.map (Tacred.hnf_constr envb !evars) args in
+      let res' = unify vs' in
+      if not (Array.exists (fun x -> x == UnifStuck) res') then 
+        let newty = applist (mkIndU ind, params @ vs') in
+        Some (newty, res')
+      else
+        let newty = applist (mkIndU ind, params @ vs) in
+        Some (newty, res)
+    else 
+      let newty = applist (mkIndU ind, params @ vs) in
+      Some (newty, res)
   with Not_found -> (* not an inductive type *)
+    equations_debug Pp.(fun () -> str"Unification raised Not_found");
     None
 
 let blockers env curpats ((_, patcs, _) : context_map) =
