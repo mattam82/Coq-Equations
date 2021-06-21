@@ -3,6 +3,8 @@ Changes in Equations 1.3beta2:
 
 - Fix #399: allow simplification in indices when splitting a variable, 
   to expose the head of the index.
+- Fix #389: error derving EqDec in HoTT variant.
+- Allow universe binder annotations @{} on Equations definitions.
 - Fix "struct" parsing issue that required a reset of Coq sometimes
 - Pattern enhancements: no explicit shadowing of pattern variables 
   is allowed anymore. Fix numerous bugs where generated implicit names 

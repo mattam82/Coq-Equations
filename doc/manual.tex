@@ -23,7 +23,7 @@
   \texttt{mutual programs} & mutual & \Coloneqq & \coqdockw{with}~p `| where \\
   \texttt{where clause} & where & \Coloneqq & \coqdockw{where}~p `| \coqdockw{where}~not\\
   \texttt{notation} & not & \Coloneqq & \texttt{''}string\texttt{''}~\textcoloneq~t~(\texttt{:}~scope)?\\
-  \texttt{program} & p, prog & \Coloneqq & \coqdoccst{f}~Γ~\texttt{:}~τ~(\coqdockw{by}~\textit{annot})?~\textcoloneq~clauses \\
+  \texttt{program} & p, prog & \Coloneqq & \coqdoccst{f}(\texttt{@\{} univ\_decl \texttt{\}})?~Γ~\texttt{:}~τ~(\coqdockw{by}~\textit{annot})?~\textcoloneq~clauses \\
   \texttt{annotation} & annot & \Coloneqq & \kw{struct}~\var{x}? `| \kw{wf}~t~R? \\
   \texttt{user clauses} & clauses & \Coloneqq & \vecplus{cl} `| \texttt{\{}\,\vec{cl}\,\texttt{\}} \\
   \texttt{user clause} & cl & \Coloneqq & \coqdoccst{f}~\vec{up}~n?~\texttt{;} `|
@@ -44,11 +44,11 @@ $\vecplus{t}$ a non-empty list. Concrete syntax is in
 \label{fig:usergram}
 \end{figure}
 The syntax allows the definition of toplevel mutual (\kw{with}) and
-nested (\kw{where}) structurally recursive definitions. Notations can be
-used globally to attach a syntax to a recursive definition, or locally
-inside a user node. A single program is given as a tuple of a (globally
-fresh) identifier, a signature and a list of user clauses (order
-matters), along with an optional recursion annotation (see next
+nested (\kw{where}) structurally recursive definitions. 
+Notations can be used globally to attach a syntax to a 
+recursive definition, or locally inside a user node. A single program is given as a tuple of a (globally
+fresh) identifier, an optional universe annotation, 
+a signature and a list of user clauses (order matters), along with an optional recursion annotation (see next
 section). The signature is simply a list of bindings and a result
 type. The expected type of the function \cst{f} is then $∀~Γ, τ$.
 An empty set of clauses denotes that one of the variables has an empty type.
