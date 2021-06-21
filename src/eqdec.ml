@@ -112,25 +112,29 @@ let derive_eq_dec ~pm env sigma ~poly ind =
     let app = 
       let xname = Context.nameR (Id.of_string "x") in
       let yname = Context.nameR (Id.of_string "y") in
-	mkProd (xname, indapp,
-	       mkProd (yname, lift 1 indapp,
-  		      mkApp (lift 2 app, [| mkRel 2; mkRel 1 |])))
+      mkProd (xname, indapp,
+            mkProd (yname, lift 1 indapp,
+                mkApp (lift 2 app, [| mkRel 2; mkRel 1 |])))
     in
     let typ = it_mkProd_or_LetIn app ind.ind_args in
     let full = it_mkNamedProd_or_LetIn typ ctx in
     let tc gr = 
       let b, ty = 
-	Typeclasses.instance_constructor
+      	Typeclasses.instance_constructor
           cl
           [indapp; mkapp (Global.env ()) evdref (Lazy.from_val gr)
              (Array.append (vars_of_pars ctx) argsvect) ] in
       let body = 
-	it_mkNamedLambda_or_LetIn 
-	  (it_mkLambda_or_LetIn (Option.get b) ind.ind_args) ctx
+        it_mkNamedLambda_or_LetIn 
+          (it_mkLambda_or_LetIn (Option.get b) ind.ind_args) ctx
       in
+      let types = it_mkNamedProd_or_LetIn (it_mkProd_or_LetIn ty ind.ind_args) ctx in
+      let evm, _ = Typing.solve_evars (Global.env ()) !evdref (mkCast (body, Constr.DEFAULTcast, types)) in
+      let () = evdref := evm in
+      let types = to_constr !evdref types in
+      let body = to_constr !evdref body in
       let univs = Evd.univ_entry ~poly !evdref in
-      let types = to_constr !evdref (it_mkNamedProd_or_LetIn (it_mkProd_or_LetIn ty ind.ind_args) ctx) in
-      let ce = Declare.definition_entry ~univs ~types (to_constr !evdref body) in
+      let ce = Declare.definition_entry ~univs ~types body in
       ce
     in full, tc
   in
@@ -138,11 +142,11 @@ let derive_eq_dec ~pm env sigma ~poly ind =
   let indsl = List.map (fun ind -> ind, info_of ind) indsl in
   let hook { Declare.Hook.S.dref; _ } =
     List.iter (fun (ind, (stmt, tc)) ->
-	let ce = tc dref in
-        let kind = Decls.(IsDefinition Instance) in
-        let entry = Declare.DefinitionEntry ce in
-	let inst = Declare.declare_constant ~name:(add_suffix ind.ind_name "_EqDec") ~kind entry in
-        Classes.Internal.add_instance (fst cl) Hints.empty_hint_info true (GlobRef.ConstRef inst))
+      let ce = tc dref in
+      let kind = Decls.(IsDefinition Instance) in
+      let entry = Declare.DefinitionEntry ce in
+      let inst = Declare.declare_constant ~name:(add_suffix ind.ind_name "_EqDec") ~kind entry in
+      Classes.Internal.add_instance (fst cl) Hints.empty_hint_info true (GlobRef.ConstRef inst))
     indsl
   in
   let hook = Declare.Hook.make hook in

@@ -73,3 +73,4 @@ theories/HoTT/WellFoundedInstances.v
 theories/HoTT/All.v
 
 test-suite/BasicsHoTT.v
+test-suite/issues/issue389.v
