@@ -897,7 +897,7 @@ let check_splitting env evd sp =
     aux p.program_splitting
   in aux sp
 
-let define_one_program_constants flags env0 isevar unfold p =
+let define_one_program_constants flags env0 isevar udecl unfold p =
   let () = assert (not (Evd.has_undefined !isevar)) in
   let helpers = ref [] in
   let rec aux_program env evm p path =
@@ -982,10 +982,10 @@ let define_one_program_constants flags env0 isevar unfold p =
   let evm, tree = aux_program env0 !isevar p [p.program_info.program_id] in
     isevar := evm; !helpers, tree
 
-let define_program_constants flags env evd ?(unfold=false) programs =
+let define_program_constants flags env evd udecl ?(unfold=false) programs =
   let helpers, programs =
     List.fold_left_map (fun helpers p ->
-        let helpers', p = define_one_program_constants flags env evd unfold p in
+        let helpers', p = define_one_program_constants flags env evd udecl unfold p in
         helpers @ helpers', p) [] programs
   in
   let env = Global.env () in
@@ -1226,7 +1226,7 @@ let rec_type_ids =
             | Some (Logical ids) -> [snd ids]
             | None -> [])
 
-let define_programs (type a) ~pm env evd is_recursive fixprots flags ?(unfold=false) programs : a hook -> a * Declare.OblState.t * Declare.Proof.t option  =
+let define_programs (type a) ~pm env evd udecl is_recursive fixprots flags ?(unfold=false) programs : a hook -> a * Declare.OblState.t * Declare.Proof.t option  =
   fun hook ->
   let call_hook ~pm recobls p helpers uctx scope gr (hook : pm:Declare.OblState.t -> program -> term_info -> a * Declare.OblState.t) : a * Declare.OblState.t =
     (* let l =
@@ -1242,6 +1242,7 @@ let define_programs (type a) ~pm env evd is_recursive fixprots flags ?(unfold=fa
   let all_hook ~pm hook recobls sigma =
     let sigma = Evd.minimize_universes sigma in
     let sigma = Evarutil.nf_evar_map_undefined sigma in
+    let uentry = UState.check_univ_decl ~poly:flags.polymorphic (Evd.evar_universe_context sigma) udecl in
     let () =
       if !Equations_common.debug then
         Feedback.msg_debug (str"Defining programs, before simplify_evars " ++ pr_programs env sigma programs);
@@ -1252,7 +1253,7 @@ let define_programs (type a) ~pm env evd is_recursive fixprots flags ?(unfold=fa
         Feedback.msg_debug (str"Defining programs " ++ pr_programs env sigma programs);
     in
     let evd = ref sigma in
-    let helpers, programs = define_program_constants flags env evd ~unfold programs in
+    let helpers, programs = define_program_constants flags env evd uentry ~unfold programs in
     let sigma = !evd in
     let programs = List.map (map_program (simplify_evars sigma)) programs in
     let programs = List.map (map_program (nf_evar sigma)) programs in
@@ -1301,13 +1302,13 @@ let define_programs (type a) ~pm env evd is_recursive fixprots flags ?(unfold=fa
         let pm = all_hook ~pm hook [] !evd in
         (), pm, None
 
-let define_program_immediate ~pm env evd is_recursive fixprots flags ?(unfold=false) program =
-  define_programs ~pm env evd is_recursive fixprots flags ~unfold [program]
+let define_program_immediate ~pm env evd udecl is_recursive fixprots flags ?(unfold=false) program =
+  define_programs ~pm env evd udecl is_recursive fixprots flags ~unfold [program]
     (HookImmediate (fun ~pm x y -> (x, y), pm))
 
-let define_programs ~pm env evd is_recursive fixprots flags ?(unfold=false) programs hook =
+let define_programs ~pm env evd udecl is_recursive fixprots flags ?(unfold=false) programs hook =
   let _, lemma, pm =
-    define_programs ~pm env evd is_recursive fixprots flags ~unfold programs (HookLater hook) in
+    define_programs ~pm env evd udecl is_recursive fixprots flags ~unfold programs (HookLater hook) in
   lemma, pm
 
 let mapping_rhs sigma s = function
