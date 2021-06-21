@@ -65,11 +65,11 @@ dune:-
 	dune build
 
 ci-dune:
-	opam install -j 2 -y coq-hott.8.13 --ignore-constraints-on=coq
+	opam install -j 2 -y coq-hott.dev
 	dune build
 
 ci-hott:
-	opam install -j 2 -y coq-hott.8.13 --ignore-constraints-on=coq
+	opam install -j 2 -y coq-hott.dev
 	test -f Makefile.hott && $(MAKE) -f Makefile.hott all
 	$(MAKE) -f Makefile.hott install
 	$(MAKE) -f Makefile.hott uninstall

@@ -78,7 +78,8 @@ and ('a,'b) rhs_aux =
 and ('a,'b) rhs = ('a, 'b) rhs_aux option (* Empty patterns allow empty r.h.s. *)
 
 and pre_prototype =
-  identifier with_loc * user_rec_annot * Constrexpr.local_binder_expr list * Constrexpr.constr_expr option *
+  identifier with_loc * Constrexpr.universe_decl_expr option * user_rec_annot * 
+  Constrexpr.local_binder_expr list * Constrexpr.constr_expr option *
   (Id.t with_loc option, Constrexpr.constr_expr * Constrexpr.constr_expr option) by_annot option
 
 and ('a, 'b) by_annot =
@@ -142,7 +143,7 @@ and pr_wheres env sigma (l, nts) =
   str"where" ++ spc () ++ prlist_with_sep fnl (pr_where env sigma) l
 and pr_where env sigma (sign, eqns) =
   pr_proto env sigma sign ++ str "{" ++ pr_clauses env sigma eqns ++ str "}"
-and pr_proto env sigma ((_,id), _, l, t, ann) =
+and pr_proto env sigma ((_,id), _, _, l, t, ann) =
   Id.print id ++ pr_binders env sigma l ++ pr_opt (fun t -> str" : " ++ pr_constr_expr env sigma t) t ++
   (match ann with
      None -> mt ()
@@ -565,7 +566,7 @@ let interp_eqn env notations p eqn =
        Program (c, (List.append w' w, nts))
     | Empty i -> Empty i
   and interp_wheres avoid w notations =
-    let interp_where (((loc,id),nested,b,t,reca) as p,eqns) =
+    let interp_where (((loc,id),decl,nested,b,t,reca) as p,eqns) =
       Dumpglob.dump_reference ~loc "<>" (Id.to_string id) "def";
       p, map (aux2 notations) eqns
     in List.map interp_where w
@@ -591,7 +592,7 @@ let interp_eqn env notations p eqn =
         let () = avoid := Id.Set.add id !avoid in
         let eqns = List.map (aux2 notations) eqns in
         let () =
-          wheres := (((loc, id), None, [], None, None), eqns) :: !wheres;
+          wheres := (((loc, id), None, None, [], None, None), eqns) :: !wheres;
         in Constrexpr_ops.mkIdentC id
       | _ -> map_constr_expr_with_binders Id.Set.add
              (fun avoid -> CAst.with_loc_val (aux' avoid)) ids (CAst.make ~loc c)

@@ -6,9 +6,9 @@ Require Import Equations.HoTT.Logic Equations.HoTT.DepElim
 From HoTT Require Import Spaces.Nat.
 
 (** Naturals *)
-Register Basics.Datatypes.O as equations.nat.zero.
-Register Basics.Datatypes.S as equations.nat.succ.
-Register Basics.Datatypes.nat as equations.nat.type.
+Register Basics.Overture.O as equations.nat.zero.
+Register Basics.Overture.S as equations.nat.succ.
+Register Basics.Overture.nat as equations.nat.type.
 
 (* Sigma Types *)
 Register Equations.Init.sigma as equations.sigma.type.
