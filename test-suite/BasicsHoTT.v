@@ -11,6 +11,8 @@ Require Import Coq.Unicode.Utf8.
 Require HoTT.Basics.Overture.
 Require Import HoTT.Types.Bool HoTT.Spaces.Nat.
 
+Local Open Scope nat_scope.
+
 Set Equations Transparent.
 Equations neg (b : Bool) : Bool :=
 neg true := false ;
@@ -304,8 +306,8 @@ Arguments Split [ X ].
 (* Eval compute in @app'. *)
 (* About nil. About vector. *)
 (* Set Equations Debug. *)
-
-Equations split {X : Type} {m n : nat} (xs : vector X (plus m n)) : Split m n xs by wf m :=
+Set Private Polymorphic Universes.
+Equations split {X : Type} {m n : nat} (xs : vector X (add m n)) : Split m n xs by wf m :=
   split (m:=0) xs := append nil xs;
   split (m:=m .+1) (cons x xs) with split xs => {
     | append xs' ys' := append (cons x xs') ys' }.
@@ -315,7 +317,7 @@ Example test_split' := @split@{_ _ _ _ _}.
 (* Definition split_lightu@{u0 u1 u2 | u0 < u1, u1 < u2} := @split@{u0 u1 u1 u2 u1}.*)
 
 (* 2 universes: Set < i (type of splitset) < j (universe of the type) *)
-Equations splitSet {X : Set} {m n : nat} (xs : vector X (plus m n)) : Split m n xs by wf m :=
+Equations splitSet {X : Set} {m n : nat} (xs : vector X (add m n)) : Split m n xs by wf m :=
   splitSet (m:=0) xs := append nil xs;
   splitSet (m:=m .+1) (cons x xs) with splitSet xs => {
     | append xs' ys' := append (cons x xs') ys' }.
@@ -325,12 +327,13 @@ Section SplitSetParam.
   Context {X : Set}.
   Obligation Tactic := idtac.
   (* Here, just 1 universe for the universe of Set. *)
-  Equations? splitSetParam {m n : nat} (xs : vector X (plus m n)) : Split m n xs by wf m :=
+  Equations splitSetParam {m n : nat} (xs : vector X (add m n)) : Split m n xs by wf m :=
   splitSetParam (m:=0) xs := append nil xs;
   splitSetParam (m:=m .+1) (cons x xs) with splitSetParam xs => {
     | append xs' ys' := append (cons x xs') ys' }.
-  Proof. solve_rec. Defined.
+  Next Obligation. solve_rec. Qed.
 End SplitSetParam.
+
 Definition test_splitSetParam := @splitSetParam@{_}.
 
 Notation "( x , .. , y , z )" :=
@@ -340,7 +343,7 @@ Notation "( x , .. , y , z )" :=
 
 Global Set Default Goal Selector "1".
 Axiom cheat : forall {A}, A.
-
+Notation plus := add.
 Definition eta_vector {A} (P : forall n, vector A n -> Type) :
   forall n v,
     match v with
@@ -351,7 +354,7 @@ Proof.
   now destruct v.
 Defined.
 
-Lemma split' {X : Type} {m n} (xs : vector X (plus m n)) : Split m n xs.
+Lemma split' {X : Type} {m n} (xs : vector X (add m n)) : Split m n xs.
 Proof.
   eassert ?[ty].
   revert m n xs. fix IH 3. intros m n xs.
@@ -365,12 +368,10 @@ Proof.
           | nil => _
           | cons n x xs => _
           end).
-(* FIXME: simplify not agressive enough to find whd *)
-  unfold zero. simpl.
   destruct m as [|m'].
   + simpl. simplify *.
-    simpl. apply (append nil nil).
-  + simpl. unfold zero. simplify *.
+    apply (append nil nil).
+  + simplify *.
   + destruct m as [|m']; simpl.
     simplify *. simpl. apply (append nil (x |: n :| xs)).
     simplify *. simpl.

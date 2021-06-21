@@ -230,7 +230,7 @@ Require Import HoTT.Basics.Trunc.
 
 Lemma hprop_hset {A} (h : IsHProp A) : IsHSet A.
 Proof.
-  apply trunc_hprop.
+  apply istrunc_hprop.
 Defined.
 
 (** Proof that equality proofs in 0-truncated types are connected *)

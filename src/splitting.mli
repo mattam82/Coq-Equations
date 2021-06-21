@@ -166,12 +166,14 @@ val make_single_program :
 val define_one_program_constants : flags ->
   env ->
   Evd.evar_map ref ->
+  Entries.universes_entry ->
   bool ->
   program -> (Constant.t * (int * int)) list * program
 
 val define_program_constants : flags ->
   env ->
   Evd.evar_map ref ->
+  Entries.universes_entry ->
   ?unfold:bool ->
   program list ->
   (Constant.t * (int * int)) list * program list
@@ -218,6 +220,7 @@ val define_programs :
   pm:Declare.OblState.t ->
   Environ.env ->
   Evd.evar_map ref ->
+  UState.universe_decl ->
   Syntax.rec_type ->
   EConstr.rel_context ->
   Equations_common.flags ->
@@ -230,6 +233,7 @@ val define_program_immediate :
   pm:Declare.OblState.t ->
   Environ.env ->
   Evd.evar_map ref ->
+  UState.universe_decl ->
   Syntax.rec_type ->
   EConstr.rel_context ->
   Equations_common.flags ->

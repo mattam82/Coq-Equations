@@ -23,22 +23,23 @@ Section Lt.
       + right; now constructor.
   Defined.
 
-  Theorem lt_wf : WellFounded lt.
+  Theorem lt_wf@{} : WellFounded lt.
   Proof.
-    intros x. induction x.
-    - constructor. intros y Hy. depelim Hy.
+    do 2 red. 
+    apply nat_rect@{Set}; intros.
+    - constructor. intros y Hy. depelim Hy. 
     - constructor. intros y Hy.
       dependent elimination Hy as [@le_S y x Hle].
       apply le_eq_lt in Hle.
       dependent elimination Hle as [inl idpath|inr Hlt].
       + assumption.
-      + destruct IHx. now apply a.
+      + destruct H. now apply a.
   Defined.
 
-  Lemma lt_n_Sn n : lt n (S n).
+  Lemma lt_n_Sn@{} n : lt n (S n).
   Proof.
-    constructor.
-    induction n; now constructor.
+    constructor. revert n.
+    apply nat_rect@{Set}; intros; now constructor.
   Defined.
 End Lt.
 

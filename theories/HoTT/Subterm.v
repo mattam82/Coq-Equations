@@ -207,6 +207,8 @@ Ltac rec_wf_fix recname kont :=
 
 (** The [do] tactic but using a Coq-side nat. *)
 
+Local Open Scope nat_scope.
+
 Ltac do_nat n tac :=
   match n with
     | 0 => idtac
