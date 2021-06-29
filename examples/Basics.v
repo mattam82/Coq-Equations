@@ -517,19 +517,24 @@ Context {A : Type} (f : A -> option A) {lt : A -> A -> Prop}
 
 Hypothesis decr_f : forall n p, f n = Some p -> lt p n.
 
-(* The f_inspect function is used to pack the value of f with a proof
-  of an equality that expresses that this value is the result of calling f
-  on this argument. *)
-Definition f_inspect (n : A) : {p' | f n = p'} :=
-  exist _ (f n) eq_refl.
+(* The `inspect` function is used to pack a value with a proof
+  of an equality to itself. When pattern matching on the first component in 
+  this existential type, we keep information about the origin of the pattern 
+  available in the second component, the equality.  *)
+Definition inspect {A} (a : A) : {b | a = b} :=
+  exist _ a eq_refl.
 
-(* if one uses f instead of f_inspect in the following definition,
+Notation "x 'eqn:' p" := (exist _ x p) (at level 20, format "x eqn: p ").
+
+(* If one uses [f n] instead of [inspect (f n)] in the following definition,
    patterns should be patterns for the option type, but then there
-   is an unprovable obligation that is generated. *)
+   is an unprovable obligation that is generated as we don't keep information
+   about the call to [f n] being equal to [Some p] to justify the recursive
+   call to [f_sequence]. *)
 Equations f_sequence (n : A) : list A by wf n lt :=
-  f_sequence n with f_inspect n := {
-    | exist _ (Some p) eq1 => p :: f_sequence p;
-    | exist _ None  _ => List.nil
+  f_sequence n with inspect (f n) := {
+    | Some p eqn: eq1 => p :: f_sequence p;
+    | None eqn:_ => List.nil
     }.
 
 (* The following is an illustration of a theorem on f_sequence. *)
