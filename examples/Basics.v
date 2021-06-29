@@ -503,7 +503,7 @@ assoc (S x) y z eq_refl _ := eq_refl }.
 
 Section well_founded_recursion_and_auxiliary_function.
 
-(* When recursive calls are made on results pattern-matching
+(** When recursive calls are made on results pattern-matching
    the output of auxiliary functions, you need enough information
    to prove that the argument of recursive calls are smaller.
    This is usually granted by the specification of the auxiliary
@@ -517,16 +517,16 @@ Context {A : Type} (f : A -> option A) {lt : A -> A -> Prop}
 
 Hypothesis decr_f : forall n p, f n = Some p -> lt p n.
 
-(* The `inspect` function is used to pack a value with a proof
+(** The [inspect] definition is used to pack a value with a proof
   of an equality to itself. When pattern matching on the first component in 
   this existential type, we keep information about the origin of the pattern 
   available in the second component, the equality.  *)
 Definition inspect {A} (a : A) : {b | a = b} :=
   exist _ a eq_refl.
 
-Notation "x 'eqn:' p" := (exist _ x p) (at level 20, format "x eqn: p ").
+Notation "x 'eqn:' p" := (exist _ x p) (only parsing, at level 20).
 
-(* If one uses [f n] instead of [inspect (f n)] in the following definition,
+(** If one uses [f n] instead of [inspect (f n)] in the following definition,
    patterns should be patterns for the option type, but then there
    is an unprovable obligation that is generated as we don't keep information
    about the call to [f n] being equal to [Some p] to justify the recursive
@@ -537,7 +537,7 @@ Equations f_sequence (n : A) : list A by wf n lt :=
     | None eqn:_ => List.nil
     }.
 
-(* The following is an illustration of a theorem on f_sequence. *)
+(** The following is an illustration of a theorem on f_sequence. *)
 Lemma in_seq_image (n p : A) : List.In p (f_sequence n) ->
    exists k, f k = Some p.
 Proof.
