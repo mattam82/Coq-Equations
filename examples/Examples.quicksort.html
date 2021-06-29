@@ -22,11 +22,11 @@
 <br/>
 <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="var">Vector</span>.<br/>
 <span class="id" title="keyword">Notation</span> <span class="id" title="var">vector</span> := <span class="id" title="var">t</span>.<br/>
-<span class="id" title="var">Derive</span> <span class="id" title="var">NoConfusion</span> <span class="id" title="var">NoConfusionHom</span> <span class="id" title="keyword">for</span> <span class="id" title="var">vector</span>.<br/>
+<span class="id" title="keyword">Derive</span> <span class="id" title="var">NoConfusion</span> <span class="id" title="var">NoConfusionHom</span> <span class="id" title="keyword">for</span> <span class="id" title="var">vector</span>.<br/>
 
 <br/>
-<span class="id" title="var">Arguments</span> <span class="id" title="var">Vector.nil</span> {<span class="id" title="var">A</span>}.<br/>
-<span class="id" title="var">Arguments</span> <span class="id" title="var">Vector.cons</span> {<span class="id" title="var">A</span>} <span class="id" title="var">_</span> {<span class="id" title="var">n</span>}.<br/>
+<span class="id" title="keyword">Arguments</span> <span class="id" title="var">Vector.nil</span> {<span class="id" title="var">A</span>}.<br/>
+<span class="id" title="keyword">Arguments</span> <span class="id" title="var">Vector.cons</span> {<span class="id" title="var">A</span>} <span class="id" title="var">_</span> {<span class="id" title="var">n</span>}.<br/>
 
 <br/>
 <span class="id" title="keyword">Notation</span> &quot; x |:| y " := (@<span class="id" title="var">Vector.cons</span> <span class="id" title="var">_</span> <span class="id" title="var">x</span> <span class="id" title="var">_</span> <span class="id" title="var">y</span>) (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 20, <span class="id" title="tactic">right</span> <span class="id" title="keyword">associativity</span>) : <span class="id" title="var">vect_scope</span>.<br/>
@@ -54,7 +54,7 @@
 <span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">induction</span> 2; <span class="id" title="tactic">constructor</span>; <span class="id" title="tactic">auto</span>. <span class="id" title="keyword">Qed</span>.<br/>
 
 <br/>
-<span class="id" title="var">Derive</span> <span class="id" title="var">Signature</span> <span class="id" title="keyword">for</span> <span class="id" title="keyword">All</span>.<br/>
+<span class="id" title="keyword">Derive</span> <span class="id" title="var">Signature</span> <span class="id" title="keyword">for</span> <span class="id" title="keyword">All</span>.<br/>
 <span class="id" title="keyword">Lemma</span> <span class="id" title="var">All_app</span> {<span class="id" title="var">A</span> <span class="id" title="var">P</span> <span class="id" title="var">n</span> <span class="id" title="var">m</span>} (<span class="id" title="var">v</span> : <span class="id" title="var">vector</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) (<span class="id" title="var">w</span> : <span class="id" title="var">vector</span> <span class="id" title="var">A</span> <span class="id" title="var">m</span>) :<br/>
 &nbsp;&nbsp;@<span class="id" title="keyword">All</span> <span class="id" title="var">A</span> <span class="id" title="var">P</span> <span class="id" title="var">_</span> <span class="id" title="var">v</span> → <span class="id" title="keyword">All</span> <span class="id" title="var">P</span> <span class="id" title="var">w</span> → <span class="id" title="keyword">All</span> <span class="id" title="var">P</span> (<span class="id" title="var">app</span> <span class="id" title="var">v</span> <span class="id" title="var">w</span>).<br/>
 <span class="id" title="keyword">Proof</span>.<br/>
@@ -84,7 +84,7 @@
 | <span class="id" title="var">Sorted_nil</span> : <span class="id" title="var">Sorted</span> <span class="id" title="var">R</span> <span class="id" title="var">nil</span><br/>
 | <span class="id" title="var">Sorted_cons</span> {<span class="id" title="var">a</span> <span class="id" title="var">n</span>} {<span class="id" title="var">v</span> : <span class="id" title="var">vector</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>} : <span class="id" title="keyword">All</span> (<span class="id" title="var">R</span> <span class="id" title="var">a</span>) <span class="id" title="var">v</span> → <span class="id" title="var">Sorted</span> <span class="id" title="var">R</span> <span class="id" title="var">v</span> → <span class="id" title="var">Sorted</span> <span class="id" title="var">R</span> (<span class="id" title="var">a</span> |:| <span class="id" title="var">v</span>).<br/>
 <span class="id" title="keyword">Import</span> <span class="id" title="var">Sigma_Notations</span>.<br/>
-<span class="id" title="var">Derive</span> <span class="id" title="var">Signature</span> <span class="id" title="keyword">for</span> <span class="id" title="var">Sorted</span>.<br/>
+<span class="id" title="keyword">Derive</span> <span class="id" title="var">Signature</span> <span class="id" title="keyword">for</span> <span class="id" title="var">Sorted</span>.<br/>
 
 <br/>
 <span class="id" title="keyword">Lemma</span> <span class="id" title="var">Sorted_app</span> {<span class="id" title="var">A</span> <span class="id" title="var">R</span> <span class="id" title="var">n</span> <span class="id" title="var">m</span>} (<span class="id" title="var">v</span> : <span class="id" title="var">vector</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) (<span class="id" title="var">w</span> : <span class="id" title="var">vector</span> <span class="id" title="var">A</span> <span class="id" title="var">m</span>) :<br/>
