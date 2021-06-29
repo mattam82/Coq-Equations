@@ -8,6 +8,9 @@ title: Gallery of programs and proofs
   its features
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/doc/equations_intro.v),
   [JSCoq](../assets/jsexamples/equations_intro.html)).
+
+- [Basics](examples/Examples.Basics.html): Basic examples of Equations usage
+  ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/Basics.v)).
     
 Dependent Pattern-Matching
 ==========================
