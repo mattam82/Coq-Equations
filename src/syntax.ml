@@ -426,6 +426,7 @@ let interp_pat env notations ~avoid p pat =
   let ienv = try compute_internalization_env env sigma Variable vars tys impls with Not_found ->
     anomaly (str"Building internalization environment")
   in
+  let notations = List.map Metasyntax.prepare_where_notation notations in
   let vars, tys, impls, ienv =
     match p with
     | Some (p, _) ->

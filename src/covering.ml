@@ -376,10 +376,11 @@ let interp_program_body env sigma ctx data body ty =
     sigma, c
 
 let interp_program_body env evars ctx data c ty =
+  let notations = List.map Metasyntax.prepare_where_notation data.notations in
   Metasyntax.with_syntax_protection (fun () ->
     let ctx' = List.map EConstr.Unsafe.to_rel_decl ctx in
     List.iter (Metasyntax.set_notation_for_interpretation (Environ.push_rel_context ctx' env) data.intenv)
-      data.notations;
+      notations;
     interp_program_body env evars ctx data c ty) ()
   (* try  with PretypeError (env, evm, e) ->
    *   user_err_loc (dummy_loc, "interp_program_body",
