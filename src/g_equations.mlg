@@ -139,7 +139,7 @@ let pr_lident _ _ _ (loc, id) = Id.print id
 
 ARGUMENT EXTEND lident
 PRINTED BY { pr_lident }
-| [ ident(i) ] -> { (loc, i) }
+| [ ident(i) ] -> { (Some loc, i) }
 END
 
 {
@@ -295,7 +295,7 @@ GRAMMAR EXTEND Gram
 
     
   identloc :
-   [ [ id = ident -> { (loc, id) } ] ] ;
+   [ [ id = ident -> { (Some loc, id) } ] ] ;
 
   patterns: 
    [ [ pat = lconstr ; sep = [ "|" -> { () } | "," -> { () } ]; pats = patterns -> { pat :: pats } 
@@ -500,9 +500,9 @@ ARGUMENT EXTEND elim_patterns
 END
 
 TACTIC EXTEND dependent_elimination
-| [ "dependent" "elimination" ident(id) ] -> { Depelim.dependent_elim_tac (Loc.make_loc (0, 0), id) }
+| [ "dependent" "elimination" ident(id) ] -> { Depelim.dependent_elim_tac (None, id) }
 | [ "dependent" "elimination" ident(id) "as" elim_patterns(l) ] ->
-   { Depelim.dependent_elim_tac ~patterns:l (Loc.make_loc (0, 0), id) (* FIXME *) }
+   { Depelim.dependent_elim_tac ~patterns:l (None, id) (* FIXME *) }
 END
 
 (* Subterm *)

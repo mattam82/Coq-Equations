@@ -733,7 +733,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),udecl,rec
   let (arity, impls') =
     let ty = match t with
       | Some ty -> ty
-      | None -> CAst.make ~loc (Constrexpr.CHole (None, Namegen.IntroAnonymous, None))
+      | None -> CAst.make ?loc (Constrexpr.CHole (None, Namegen.IntroAnonymous, None))
     in
     Equations_common.evd_comb1 (interp_type_evars_impls env' ?impls:None) evd ty
   in
@@ -761,7 +761,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),udecl,rec
             let k, _, _ = lookup_rel_id (snd lid) sign in
             Some (Structural (interp_reca rec_annot (Some (List.length sign - k, Some lid))))
           with Not_found ->
-            user_err_loc (Some (fst lid), "struct_index",
+            user_err_loc (fst lid, "struct_index",
                           Pp.(str"No argument named " ++ Id.print (snd lid) ++ str" found")))
        | None -> Some (Structural (interp_reca rec_annot None)))
     | Some (WellFounded (c, r)) -> Some (WellFounded (c, r))
@@ -1243,7 +1243,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
       Some (List.rev prev @ clauses, (* Split (prob, i, ty, s)) *)
             Compute (prob, [], ty, REmpty (i, s)))
     | None ->
-      user_err_loc (Some p.program_loc, "deppat",
+      user_err_loc (p.program_loc, "deppat",
         (str "Non-exhaustive pattern-matching, no clause found for:" ++ fnl () ++
          pr_problem p env !evars prob))
 
@@ -1254,7 +1254,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
   let get_var loc i s =
     match assoc i s with
     | PRel i -> i
-    | _ -> user_err_loc (Some loc, "equations", str"Unbound variable " ++ Id.print i)
+    | _ -> user_err_loc (loc, "equations", str"Unbound variable " ++ Id.print i)
   in
   let () = (* Check innaccessibles are correct *)
     let check_uinnac (user, t) =
@@ -1321,7 +1321,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
 
   | Empty (loc,i) ->
     (match prove_empty (env, evars) (pi1 prob) (get_var loc i s) with
-     | None -> user_err_loc (Some loc, "covering", str"Cannot show that " ++ Id.print i ++ str"'s type is empty")
+     | None -> user_err_loc (loc, "covering", str"Cannot show that " ++ Id.print i ++ str"'s type is empty")
      | Some (i, ctx, s) ->
        Some (Compute (prob, [], ty, REmpty (i, s))))
 
@@ -1566,7 +1566,7 @@ and interp_wheres env0 ctx evars path data s lets
         Lazy.from_val (w' program), program.program_term
       | None ->
         let relty = Syntax.program_type p in
-        let src = (Some loc, Evar_kinds.(QuestionMark {
+        let src = (loc, Evar_kinds.(QuestionMark {
             qm_obligation=Define false;
             qm_name=Name id;
             qm_record_field=None;

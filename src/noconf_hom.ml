@@ -238,7 +238,7 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
       notations = []
     }
   in
-  let p = Syntax.{program_loc = Loc.make_loc (0,0);
+  let p = Syntax.{program_loc = None;
                   program_id = id;
                   program_impls = []; program_implicits = [];
                   program_rec = None;
@@ -252,7 +252,7 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
       env evd p data clauses [] ctxmap [] s in
   let hook ~pm _ p terminfo =
     (* let _proginfo =
-     *   Syntax.{ program_loc = Loc.make_loc (0,0); program_id = id;
+     *   Syntax.{ program_loc = None; program_id = id;
      *            program_orig_type; program_sort;
      *            program_sign = fullbinders;
      *            program_arity = s;
