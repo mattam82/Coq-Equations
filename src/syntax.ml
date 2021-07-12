@@ -21,7 +21,7 @@ open Evar_kinds
 open Equations_common
 open Constrintern
 
-type 'a with_loc = Loc.t * 'a
+type 'a with_loc = Loc.t option * 'a
 type identifier = Names.Id.t
    
 type provenance = 
@@ -282,8 +282,6 @@ let is_rec_call sigma id f =
     Id.equal id id'
   | _ -> false
 
-let default_loc = Loc.make_loc (0, 0)
-         
 let free_vars_of_constr_expr fid c =
   let rec aux bdvars l = function
     | { CAst.v = CRef (qid, _) } when qualid_is_ident qid ->
@@ -313,7 +311,7 @@ type program_rec_info =
   (rec_annot, wf_rec_info) by_annot
 
 type program_info = {
-  program_loc : Loc.t;
+  program_loc : Loc.t option;
   program_id : Id.t;
   program_orig_type : EConstr.t; (* The original type *)
   program_sort : Univ.Universe.t; (* The sort of this type *)
@@ -587,12 +585,12 @@ let interp_eqn env notations p ~avoid eqn =
     | Empty i -> Empty i
   and interp_wheres avoid w notations =
     let interp_where (((loc,id),decl,nested,b,t,reca) as p,eqns) =
-      Dumpglob.dump_reference ~loc "<>" (Id.to_string id) "def";
+      Dumpglob.dump_reference ?loc "<>" (Id.to_string id) "def";
       p, map (aux2 notations avoid) eqns
     in List.map interp_where w
-  and interp_constr_expr notations (avoid : Id.Set.t) ?(loc=default_loc) c =
+  and interp_constr_expr notations (avoid : Id.Set.t) ?loc c =
     let wheres = ref [] in
-    let rec aux' avoid ?(loc=default_loc) c =
+    let rec aux' avoid ?loc c =
       match c with
       (* | CApp ((None, { CAst.v = CRef (qid', ie) }), args)
        *      when qualid_is_ident qid' && Id.equal (qualid_basename qid') p.program_id ->
@@ -615,9 +613,9 @@ let interp_eqn env notations p ~avoid eqn =
           wheres := (((loc, id), None, None, [], None, None), eqns) :: !wheres;
         in Constrexpr_ops.mkIdentC id
       | _ -> map_constr_expr_with_binders Id.Set.add
-             (fun avoid -> CAst.with_loc_val (aux' avoid)) avoid (CAst.make ~loc c)
+             (fun avoid -> CAst.with_loc_val (aux' avoid)) avoid (CAst.make ?loc c)
     in
-    let c' = aux' avoid ~loc c in
+    let c' = aux' avoid ?loc c in
     !wheres, c'
   in aux notations avoid [] eqn
 

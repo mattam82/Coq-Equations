@@ -12,7 +12,7 @@ open Evd
 open Names
 open Equations_common
 
-type 'a with_loc = Loc.t * 'a
+type 'a with_loc = Loc.t option * 'a
 
 (** User-level patterns *)
 type provenance = 
@@ -148,7 +148,7 @@ type program_rec_info =
   (rec_annot, wf_rec_info) by_annot
 
 type program_info = {
-  program_loc : Loc.t;
+  program_loc : Loc.t option;
   program_id : Id.t;
   program_orig_type : EConstr.t; (* The original type *)
   program_sort : Univ.Universe.t; (* The sort of this type *)

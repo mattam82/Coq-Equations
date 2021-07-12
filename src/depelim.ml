@@ -416,7 +416,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
         | Some (Covering.Splitted (_, newctx, brs)) ->
             let brs = Option.List.flatten (Array.to_list brs) in
             let clauses_lhs = List.map Context_map.context_map_to_lhs brs in
-            let clauses = List.map (fun lhs -> (Some default_loc, lhs, Some rhs)) clauses_lhs in
+            let clauses = List.map (fun lhs -> (default_loc, lhs, Some rhs)) clauses_lhs in
               Proofview.tclUNIT clauses
         end
     | Some patterns ->

@@ -460,7 +460,7 @@ let aux_ind_fun info chop nested unfp unfids p =
                     filter (fun x -> not (hidden x)) (filter_def_pats lhs), var
                 in
                 let id = find_splitting_var (project gl) pats var pats' in
-                to82 (Depelim.dependent_elim_tac (Loc.make_loc (0,0), id)) gl
+                to82 (Depelim.dependent_elim_tac (None, id)) gl
               | _ -> to82 (tclFAIL 0 (str"Unexpected goal in functional induction proof")) gl)
            (fun i gl ->
               let split = nth splits (pred i) in
@@ -888,7 +888,7 @@ let headcst sigma f =
   else assert false
 
 let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
-  let depelim h = Depelim.dependent_elim_tac (Loc.make_loc (0,0), h) (* depelim_tac h *) in
+  let depelim h = Depelim.dependent_elim_tac (None, h) (* depelim_tac h *) in
   let helpercsts = List.map (fun (cst, i) -> cst) info.helpers_info in
   let opacify, transp = simpl_of ((destConstRef (Lazy.force coq_hidebody), Conv_oracle.transparent)
     :: List.map (fun x -> x, Conv_oracle.Expand) (f_cst :: funf_cst :: helpercsts)) in

@@ -208,7 +208,7 @@ let interp_tactic = function
   | None -> !Declare.Obls.default_tactic
 
 let equations ~pm ~poly ~program_mode ?tactic opts eqs nt =
-  List.iter (fun (((loc, i), _udecl, nested, l, t, by),eqs) -> Dumpglob.dump_definition CAst.(make ~loc i) false "def") eqs;
+  List.iter (fun (((loc, i), _udecl, nested, l, t, by),eqs) -> Dumpglob.dump_definition CAst.(make ?loc i) false "def") eqs;
   let tactic = interp_tactic tactic in
   let pm, pstate =
     define_by_eqs ~pm ~poly ~program_mode ~tactic ~open_proof:false opts eqs nt in
@@ -218,7 +218,7 @@ let equations ~pm ~poly ~program_mode ?tactic opts eqs nt =
     CErrors.anomaly Pp.(str"Equation.equations leaving a proof open")
 
 let equations_interactive ~pm ~poly ~program_mode ?tactic opts eqs nt =
-  List.iter (fun (((loc, i), _udecl, nested, l, t, by),eqs) -> Dumpglob.dump_definition CAst.(make ~loc i) false "def") eqs;
+  List.iter (fun (((loc, i), _udecl, nested, l, t, by),eqs) -> Dumpglob.dump_definition CAst.(make ?loc i) false "def") eqs;
   let tactic = interp_tactic tactic in
   let pm, lemma = define_by_eqs ~pm ~poly ~program_mode ~tactic ~open_proof:true opts eqs nt in
   match lemma with
