@@ -1037,7 +1037,8 @@ let of_evar_map x = x
 let evar_absorb_arguments = Evardefine.evar_absorb_arguments
 
 let hintdb_set_transparency cst b db =
-  Hints.add_hints ~locality:Goptions.OptGlobal [db] 
+  let locality = if Global.sections_are_opened () then Goptions.OptLocal else Goptions.OptGlobal in
+  Hints.add_hints ~locality [db] 
     (Hints.HintsTransparencyEntry (Hints.HintsReferences [Tacred.EvalConstRef cst], b))
 
 (* Call the really unsafe is_global test, we use this on evar-open terms too *)

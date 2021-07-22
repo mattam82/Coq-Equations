@@ -708,10 +708,11 @@ let declare_wf_obligations s info =
      Hints.PathAny, subst_protos s gr)
   in
   let dbname = Principles_proofs.wf_obligations_base info in
+  let locality = if Global.sections_are_opened () then Goptions.OptLocal else Goptions.OptGlobal in
   Hints.create_hint_db false dbname TransparentState.full false;
   List.iter (fun obl ->
       let hint = make_resolve (GlobRef.ConstRef obl) in
-      try Hints.add_hints ~locality:Goptions.OptGlobal
+      try Hints.add_hints ~locality
             [dbname]
             (Hints.HintsResolveEntry [hint])
       with CErrors.UserError (s, msg) (* Cannot be used as a hint *) ->
@@ -1308,7 +1309,8 @@ let declare_funind ~pm info alias env evd is_rec protos progs
   let app = applist (f, args) in
   let hookind { Declare.Hook.S.uctx; scope; dref; _ } pm =
     let env = Global.env () in (* refresh *)
-    Hints.add_hints ~locality:Goptions.OptGlobal [info.term_info.base_id]
+    let locality = if Global.sections_are_opened () then Goptions.OptLocal else Goptions.OptGlobal in
+    Hints.add_hints ~locality [info.term_info.base_id]
                     (Hints.HintsImmediateEntry [Hints.PathAny, Hints.hint_globref dref]);
     let pm =
       try declare_funelim ~pm info.term_info env evd is_rec protos progs
@@ -1674,12 +1676,13 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
         mkIndU ((kn,0), EInstance.make (Univ.UContext.instance uctx))
       | Monomorphic_entry _ -> mkInd (kn,0)
     in
+    let locality = if Global.sections_are_opened () then Goptions.OptLocal else Goptions.OptGlobal in
     let _ =
       List.iteri (fun i ind ->
         let constrs =
           CList.map_i (fun j _ -> Hints.empty_hint_info, true, Hints.PathAny,
             Hints.hint_globref (GlobRef.ConstructRef ((kn,i),j))) 1 ind.Entries.mind_entry_lc in
-          Hints.add_hints ~locality:Goptions.OptGlobal [info.base_id] (Hints.HintsResolveEntry constrs))
+          Hints.add_hints ~locality [info.base_id] (Hints.HintsResolveEntry constrs))
         inds
     in
     let info = { term_info = info; pathmap = !fnind_map; wheremap } in
@@ -1710,14 +1713,15 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
               (*                   impossible_call_tac (GlobRef.ConstRef cst))) *));
         eqns.(j).(pred i) <- true;
         if CArray.for_all (CArray.for_all (fun x -> x)) eqns then (
+          let locality = if Global.sections_are_opened () then Goptions.OptLocal else Goptions.OptGlobal in
           (* From now on, we don't need the reduction behavior of the constant anymore *)
-          Hints.(add_hints ~locality:Goptions.OptGlobal [info.base_id]
+          Hints.(add_hints ~locality [info.base_id]
             (HintsTransparencyEntry (HintsReferences [Tacred.EvalConstRef ocst], false)));
           Classes.set_typeclass_transparency (Tacred.EvalConstRef cst) false false;
           (match alias with
            | Some ((f, _), _, _) ->
               let cst' = fst (destConst !evd f) in
-              Hints.(add_hints ~locality:Goptions.OptGlobal [info.base_id]
+              Hints.(add_hints ~locality [info.base_id]
                 (HintsTransparencyEntry (HintsReferences [Tacred.EvalConstRef cst'], false)));
               Global.set_strategy (ConstKey cst') Conv_oracle.Opaque
            | None -> ());
