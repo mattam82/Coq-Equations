@@ -1672,7 +1672,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     let ind =
       let open Entries in
       match uctx with
-      | Polymorphic_entry (_, uctx) ->
+      | Polymorphic_entry uctx ->
         mkIndU ((kn,0), EInstance.make (Univ.UContext.instance uctx))
       | Monomorphic_entry _ -> mkInd (kn,0)
     in
