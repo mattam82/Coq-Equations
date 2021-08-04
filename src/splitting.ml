@@ -1213,7 +1213,7 @@ let simplify_evars evars t =
 
 let unfold_entry cst = Hints.HintsUnfoldEntry [Tacred.EvalConstRef cst]
 let add_hint local i cst =
-  let locality = if local || Global.sections_are_opened () then Goptions.OptLocal else Goptions.OptGlobal in
+  let locality = if local || Global.sections_are_opened () then Hints.Local else Hints.SuperGlobal in
   Hints.add_hints ~locality [Id.to_string i] (unfold_entry cst)
 
 type 'a hook =

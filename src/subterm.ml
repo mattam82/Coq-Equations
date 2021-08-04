@@ -175,7 +175,7 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
           Hints.hint_globref (GlobRef.ConstructRef ((k,i),j))) 1 entry.mind_entry_lc)
         0 inds
     in
-    let locality = if Global.sections_are_opened () then Goptions.OptLocal else Goptions.OptGlobal in
+    let locality = if Global.sections_are_opened () then Hints.Local else Hints.SuperGlobal in
     let () = Hints.add_hints ~locality [subterm_relation_base]
                              (Hints.HintsResolveEntry (List.concat constrhints)) in
     (* Proof of Well-foundedness *)
