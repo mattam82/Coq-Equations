@@ -1037,7 +1037,7 @@ let of_evar_map x = x
 let evar_absorb_arguments = Evardefine.evar_absorb_arguments
 
 let hintdb_set_transparency cst b db =
-  let locality = if Global.sections_are_opened () then Goptions.OptLocal else Goptions.OptGlobal in
+  let locality = if Global.sections_are_opened () then Hints.Local else Hints.SuperGlobal in
   Hints.add_hints ~locality [db] 
     (Hints.HintsTransparencyEntry (Hints.HintsReferences [Tacred.EvalConstRef cst], b))
 

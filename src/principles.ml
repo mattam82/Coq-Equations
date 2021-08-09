@@ -52,7 +52,7 @@ let pi3 (_,_,z) = z
 
 let cache_rew_rule (base, gr, l2r) =
   Autorewrite.add_rew_rules
-    ~locality:Goptions.(if Global.sections_are_opened() then OptLocal else OptGlobal)
+    ~locality:Hints.(if Global.sections_are_opened() then Local else SuperGlobal)
     base
     [CAst.make (UnivGen.fresh_global_instance (Global.env()) gr, true, None)]
 
@@ -708,7 +708,7 @@ let declare_wf_obligations s info =
      Hints.PathAny, subst_protos s gr)
   in
   let dbname = Principles_proofs.wf_obligations_base info in
-  let locality = if Global.sections_are_opened () then Goptions.OptLocal else Goptions.OptGlobal in
+  let locality = if Global.sections_are_opened () then Hints.Local else Hints.SuperGlobal in
   Hints.create_hint_db false dbname TransparentState.full false;
   List.iter (fun obl ->
       let hint = make_resolve (GlobRef.ConstRef obl) in
@@ -1309,7 +1309,7 @@ let declare_funind ~pm info alias env evd is_rec protos progs
   let app = applist (f, args) in
   let hookind { Declare.Hook.S.uctx; scope; dref; _ } pm =
     let env = Global.env () in (* refresh *)
-    let locality = if Global.sections_are_opened () then Goptions.OptLocal else Goptions.OptGlobal in
+    let locality = if Global.sections_are_opened () then Hints.Local else Hints.SuperGlobal in
     Hints.add_hints ~locality [info.term_info.base_id]
                     (Hints.HintsImmediateEntry [Hints.PathAny, Hints.hint_globref dref]);
     let pm =
@@ -1676,7 +1676,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
         mkIndU ((kn,0), EInstance.make (Univ.UContext.instance uctx))
       | Monomorphic_entry _ -> mkInd (kn,0)
     in
-    let locality = if Global.sections_are_opened () then Goptions.OptLocal else Goptions.OptGlobal in
+    let locality = if Global.sections_are_opened () then Hints.Local else Hints.SuperGlobal in
     let _ =
       List.iteri (fun i ind ->
         let constrs =
@@ -1706,14 +1706,14 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
       let ideq = Nameops.add_suffix id ("_equation_" ^ string_of_int i) in
       let hook { Declare.Hook.S.dref; _ } pm =
         if n != None then add_rew_rule ~l2r:true ~base:info.base_id dref
-        else (Classes.declare_instance (Global.env()) !evd None Goptions.OptLocal dref
+        else (Classes.declare_instance (Global.env()) !evd None Hints.Local dref
               (* Hints.add_hints ~local:false [info.base_id]  *)
               (*                 (Hints.HintsExternEntry *)
               (*                  (Vernacexpr.{hint_priority = Some 0; hint_pattern = None}, *)
               (*                   impossible_call_tac (GlobRef.ConstRef cst))) *));
         eqns.(j).(pred i) <- true;
         if CArray.for_all (CArray.for_all (fun x -> x)) eqns then (
-          let locality = if Global.sections_are_opened () then Goptions.OptLocal else Goptions.OptGlobal in
+          let locality = if Global.sections_are_opened () then Hints.Local else Hints.SuperGlobal in
           (* From now on, we don't need the reduction behavior of the constant anymore *)
           Hints.(add_hints ~locality [info.base_id]
             (HintsTransparencyEntry (HintsReferences [Tacred.EvalConstRef ocst], false)));
