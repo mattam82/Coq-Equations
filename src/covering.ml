@@ -416,7 +416,7 @@ let interp_constr_in_rhs env ctx evars data ty s lets c =
   try
     let env' = env_of_rhs evars ctx env s lets in
     interp_constr_in_rhs_env env evars data env' 0 c ty
-  with Evarsolve.IllTypedInstance (env, t, u) ->
+  with Evarsolve.IllTypedInstance _ ->
     anomaly (str"Ill-typed instance in interp_constr_in_rhs")
 
 let unify_type env evars before id ty after =
