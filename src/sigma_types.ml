@@ -810,7 +810,9 @@ open CClosure.RedFlags
 let red_curry () =
   let redpr pr =
     fCONST (Projection.constant (Lazy.force pr)) in
-  let reds = mkflags [redpr coq_pr1; redpr coq_pr2; fBETA; fMATCH] in
+  let fold accu r = red_add accu r in
+  let reds = mkflags [fDELTA; fBETA; fMATCH] in
+  let reds = List.fold_left fold reds [redpr coq_pr1; redpr coq_pr2] in
   Reductionops.clos_norm_flags reds
 
 let curry_concl env sigma na dom codom =
