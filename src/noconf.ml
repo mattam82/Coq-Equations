@@ -14,7 +14,7 @@ open Context
 open Declarations
 open Inductiveops
 open Reductionops
-open Vars
+module CVars = Vars
 open Equations_common
 open EConstr
 open Vars
@@ -31,14 +31,14 @@ let mkcase env sigma c ty constrs =
                                       mkIndU ((mind, i),snd ind)) mindb.mind_packets)) in
   let ctx = oneind.mind_arity_ctxt in
   let ui = EConstr.EInstance.kind sigma (snd ind) in
-  let ctx = subst_instance_context ui ctx in
+  let ctx = CVars.subst_instance_context ui ctx in
   let _len = List.length ctx in
   let params = mindb.mind_nparams in
   let ci = make_case_info env (fst ind) Sorts.Relevant RegularStyle in
   let brs = 
     Array.map2_i (fun i id (ctx, cty) ->
       let cty = Term.it_mkProd_or_LetIn cty ctx in
-      let cty = subst_instance_constr ui cty in
+      let cty = CVars.subst_instance_constr ui cty in
       let (args, arity) = decompose_prod_assum sigma (substl inds (of_constr cty)) in
       let realargs, pars = List.chop (List.length args - params) args in
       let args = substl (List.rev origparams) (it_mkProd_or_LetIn arity realargs) in
@@ -62,9 +62,9 @@ let derive_no_confusion ~pm env sigma0 ~poly (ind,u as indu) =
   let mindb, oneind = Global.lookup_inductive ind in
   let pi = (fst indu, EConstr.EInstance.kind !evd (snd indu)) in
   let _, inds = Reduction.dest_arity env (Inductiveops.type_of_inductive env pi) in
-  let ctx = subst_instance_context (EInstance.kind !evd u) oneind.mind_arity_ctxt in
-  let ctx = List.map of_rel_decl ctx in
-  let ctx = smash_rel_context !evd ctx in
+  let ctx = List.map of_rel_decl oneind.mind_arity_ctxt in
+  let ctx = subst_instance_context (EInstance.kind !evd u) ctx in
+  let ctx = smash_rel_context ctx in
   let len = List.length ctx in
   let params = mindb.mind_nparams in
   let args = oneind.mind_nrealargs in

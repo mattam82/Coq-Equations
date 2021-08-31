@@ -15,7 +15,7 @@ open Declarations
 open Inductiveops
 open Util
 open Entries
-open Vars
+module CVars = Vars
 open EConstr
 open Vars
 
@@ -34,7 +34,7 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
       str"or a [NoConfusionHom] instance for type " ++ Printer.pr_inductive env ind ++ str " to be derived first."))
   in
   let (mind, oneind as ms) = Global.lookup_inductive ind in
-  let ctx = subst_instance_context (EInstance.kind sigma u) oneind.mind_arity_ctxt in
+  let ctx = CVars.subst_instance_context (EInstance.kind sigma u) oneind.mind_arity_ctxt in
   let indsort = 
     let indty = Inductive.type_of_inductive (ms, EInstance.kind sigma u) in
     (snd (Reduction.dest_arity env indty))

@@ -431,7 +431,6 @@ val from_peuniverses : Evd.evar_map -> 'a peuniverses -> 'a Univ.puniverses
 
 val is_global : Evd.evar_map -> Names.GlobRef.t -> constr -> bool
 val constr_of_global_univ : Evd.evar_map -> Names.GlobRef.t peuniverses -> constr
-val smash_rel_context : Evd.evar_map -> rel_context -> rel_context (** expand lets in context *)
 
 val rel_vect : int -> int -> constr array
 val applistc : constr -> constr list -> constr
