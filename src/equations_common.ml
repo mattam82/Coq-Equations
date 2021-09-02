@@ -1046,8 +1046,6 @@ let is_global sigma f ec = EConstr.isRefX sigma f ec
 
 let constr_of_global_univ sigma u = of_constr (Constr.mkRef (from_peuniverses sigma u))
 
-let smash_rel_context sigma ctx =
-  List.map of_rel_decl (smash_rel_context (List.map (EConstr.Unsafe.to_rel_decl) ctx))
 let rel_vect n m = Array.map of_constr (rel_vect n m)
 
 let applistc c a = applist (c, a)

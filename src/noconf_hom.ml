@@ -12,7 +12,6 @@ open Nameops
 open Constr
 open Context
 open Declarations
-open Vars
 open Equations_common
 open EConstr
 open Vars
@@ -57,9 +56,9 @@ let get_forced_positions sigma args concl =
 let derive_noConfusion_package ~pm env sigma0 ~poly (ind,u as indu) indid ~prefix ~tactic cstNoConf =
   let mindb, oneind = Global.lookup_inductive ind in
   let pi = (fst indu, EConstr.EInstance.kind sigma0 (snd indu)) in
-  let ctx = subst_instance_context (snd pi) oneind.mind_arity_ctxt in
-  let ctx = List.map of_rel_decl ctx in
-  let ctx = smash_rel_context sigma0 ctx in
+  let ctx = List.map of_rel_decl oneind.mind_arity_ctxt in
+  let ctx = subst_instance_context (snd pi) ctx in
+  let ctx = smash_rel_context ctx in
   let len =
     if prefix = "" then mindb.mind_nparams
     else List.length ctx in
@@ -113,9 +112,9 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
   let mindb, oneind = Global.lookup_inductive ind in
   let pi = (fst indu, EConstr.EInstance.kind sigma0 (snd indu)) in
   let _, inds = Reduction.dest_arity env (Inductiveops.type_of_inductive env pi) in
-  let ctx = subst_instance_context (snd pi) oneind.mind_arity_ctxt in
-  let ctx = List.map of_rel_decl ctx in
-  let ctx = smash_rel_context sigma0 ctx in
+  let ctx = List.map of_rel_decl oneind.mind_arity_ctxt in
+  let ctx = subst_instance_context (snd pi) ctx in
+  let ctx = smash_rel_context ctx in
   let len = List.length ctx in
   let params = mindb.mind_nparams in
   let args = oneind.mind_nrealargs in
