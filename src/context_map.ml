@@ -345,8 +345,10 @@ let make_permutation ?(env = Global.env ()) (sigma : Evd.evar_map)
               rel_id k ctx1 ++ str" and " ++ rel_id i1 ctx1))
   in
   let reduce env sigma c =
-    let flags = CClosure.RedFlags.red_sub CClosure.all CClosure.RedFlags.fDELTA in
-    let c' = Reductionops.clos_whd_flags flags env sigma c in
+    let nenv = Environ.pop_rel_context (Environ.nb_rel env) env in
+    let ctx = List.map Context.Rel.Declaration.drop_body (Environ.rel_context env) in
+    let nenv = Environ.push_rel_context ctx nenv in
+    let c' = Reductionops.clos_whd_flags CClosure.all nenv sigma c in
     c'
   in
   let env1 = push_rel_context ctx1 env in
