@@ -125,18 +125,18 @@ let dependent_pattern ?(pattern_term=true) c =
 let annot_of_context ctx =
   Array.map_of_list Context.Rel.Declaration.get_annot (List.rev ctx)
 
-let depcase ~poly (mind, i as ind) =
+let depcase ~poly ((mind, i as ind), u) =
   let indid = Nametab.basename_of_global (GlobRef.IndRef ind) in
   let mindb, oneind = Global.lookup_inductive ind in
   let relevance = oneind.mind_relevance in
   let annotR x = make_annot x relevance in
-  let inds = List.rev (Array.to_list (Array.mapi (fun i oib -> mkInd (mind, i)) mindb.mind_packets)) in
+  let inds = List.rev (Array.to_list (Array.mapi (fun i oib -> mkIndU ((mind, i), u)) mindb.mind_packets)) in
   let ctx = oneind.mind_arity_ctxt in
   let nparams = mindb.mind_nparams in
   let ctx = List.map of_rel_decl ctx in
   let args, params = List.chop (List.length ctx - nparams) ctx in
   let nargs = List.length args in
-  let indapp = mkApp (mkInd ind, extended_rel_vect 0 ctx) in
+  let indapp = mkApp (mkIndU (ind,u), extended_rel_vect 0 ctx) in
   let evd = ref (Evd.from_env (Global.env())) in
   let pred = it_mkProd_or_LetIn (evd_comb0 Evarutil.new_Type evd)
     (make_assum anonR indapp :: args)
@@ -158,7 +158,7 @@ let depcase ~poly (mind, i as ind) =
       let realargs, pars = List.chop ncargs args in
       let realargs = lift_rel_context (i + 1) realargs in
       let arity = applistc (mkRel (ncargs + i + 1))
-        (indices @ [mkApp (mkConstruct (ind, succ i),
+        (indices @ [mkApp (mkConstructU ((ind, succ i), u),
                           Array.append (extended_rel_vect (ncargs + i + 1) params)
                             (extended_rel_vect 0 realargs))])
       in
@@ -168,7 +168,7 @@ let depcase ~poly (mind, i as ind) =
   in
   let ci = make_case_info (Global.env ()) ind relevance RegularStyle in
   let obj i =
-    mkApp (mkInd ind,
+    mkApp (mkIndU (ind,u),
           (Array.append (extended_rel_vect (nargs + nconstrs + i) params)
               (extended_rel_vect 0 args)))
   in
@@ -199,7 +199,7 @@ let depcase ~poly (mind, i as ind) =
   env, Evd.from_env env, ctx, indapp, kn
 
 let derive_dep_elimination env sigma ~poly (i,u) =
-  let env, evd, ctx, ty, gref = depcase ~poly i in
+  let env, evd, ctx, ty, gref = depcase ~poly (i,u) in
   let indid = Nametab.basename_of_global (GlobRef.IndRef i) in
   let id = add_prefix "DependentElimination_" indid in
   let evdref = ref evd in
