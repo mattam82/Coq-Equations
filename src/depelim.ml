@@ -130,7 +130,6 @@ let depcase ~poly ((mind, i as ind), u) =
   let mindb, oneind = Global.lookup_inductive ind in
   let relevance = oneind.mind_relevance in
   let annotR x = make_annot x relevance in
-  let inds = List.rev (Array.to_list (Array.mapi (fun i oib -> mkIndU ((mind, i), u)) mindb.mind_packets)) in
   let ctx = oneind.mind_arity_ctxt in
   let nparams = mindb.mind_nparams in
   let ctx = List.map of_rel_decl ctx in
@@ -150,7 +149,7 @@ let depcase ~poly ((mind, i as ind), u) =
   let branches =
     Array.map2_i (fun i id (ctx, cty) ->
       let cty = Term.it_mkProd_or_LetIn cty ctx in
-      let substcty = substl inds (of_constr cty) in
+      let substcty = Vars.subst_instance_constr (EInstance.kind !evd u) (of_constr cty) in
       let (args, arity) = decompose_prod_assum !evd substcty in
       let _, indices = decompose_app !evd arity in
       let _, indices = List.chop nparams indices in
