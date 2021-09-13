@@ -55,9 +55,9 @@ Proof.
   Set Printing Universes.
   intros. intros [xa xb] [ya yb].
   case (eq_dec xa ya). intros Hxya. destruct Hxya. case (eq_dec xb yb).
-  + intros He; destruct He. left. reflexivity.
-  + intros. right. apply simplification_sigma2_uip@{i i}. apply e.
-  + intros. right. refine (simplification_sigma1_dep@{i i} _ _ _ _ _).
+  + intros He; destruct He. apply inl@{i}. reflexivity.
+  + intros. apply inr@{i}. apply simplification_sigma2_uip@{i i}. apply e.
+  + intros. apply inr@{i}. refine (simplification_sigma1_dep@{i i} _ _ _ _ _).
     intros He _; revert He. apply e.
 Defined.
 
