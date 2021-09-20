@@ -148,7 +148,13 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
         mind_entry_consnames = consnames;
         mind_entry_lc = constructors }
   in
-  let uctx, ubinders = Evd.univ_entry ~poly sigma in
+  let univs, ubinders = Evd.univ_entry ~poly sigma in
+  let uctx = match univs with
+  | UState.Monomorphic_entry ctx ->
+    let () = DeclareUctx.declare_universe_context ~poly:false ctx in
+    Entries.Monomorphic_ind_entry
+  | UState.Polymorphic_entry uctx -> Entries.Polymorphic_ind_entry uctx
+  in
   let declare_ind ~pm =
     let inds = [declare_one_ind 0 indu branches] in
     let inductive =
@@ -158,11 +164,10 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
         mind_entry_inds = inds;
         mind_entry_private = None;
         mind_entry_universes = uctx;
-        mind_entry_template = false;
         mind_entry_variance = None;
       }
     in
-    let k = DeclareInd.declare_mutual_inductive_with_eliminations inductive ubinders [] in
+    let k = DeclareInd.declare_mutual_inductive_with_eliminations inductive (univs, ubinders) [] in
     let () =
       let env = Global.env () in
       let sigma = Evd.from_env env in
