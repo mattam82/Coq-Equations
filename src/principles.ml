@@ -1625,7 +1625,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
                                                                   mkSort (Sorts.sort_of_univ sort))) sign) })
         inds
     in
-    let uctx = Evd.univ_entry ~poly sigma in
+    let uctx, ubinders = Evd.univ_entry ~poly sigma in
     let inductive =
       Entries.{ mind_entry_record = None;
                 mind_entry_universes = uctx;
@@ -1638,7 +1638,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
               }
     in
     let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] false in
-    let kn = DeclareInd.declare_mutual_inductive_with_eliminations inductive UnivNames.empty_binders [] in
+    let kn = DeclareInd.declare_mutual_inductive_with_eliminations inductive ubinders [] in
     let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] true in
     let sort = Inductiveops.top_allowed_sort (Global.env()) (kn,0) in
     let sort_suff = Indrec.elimination_suffix sort in

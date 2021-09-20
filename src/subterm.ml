@@ -148,7 +148,7 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
         mind_entry_consnames = consnames;
         mind_entry_lc = constructors }
   in
-  let uctx = Evd.univ_entry ~poly sigma in
+  let uctx, ubinders = Evd.univ_entry ~poly sigma in
   let declare_ind ~pm =
     let inds = [declare_one_ind 0 indu branches] in
     let inductive =
@@ -162,7 +162,7 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
         mind_entry_variance = None;
       }
     in
-    let k = DeclareInd.declare_mutual_inductive_with_eliminations inductive UnivNames.empty_binders [] in
+    let k = DeclareInd.declare_mutual_inductive_with_eliminations inductive ubinders [] in
     let () =
       let env = Global.env () in
       let sigma = Evd.from_env env in
