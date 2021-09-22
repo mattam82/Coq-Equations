@@ -1625,11 +1625,16 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
                                                                   mkSort (Sorts.sort_of_univ sort))) sign) })
         inds
     in
-    let uctx, ubinders = Evd.univ_entry ~poly sigma in
+    let univs, ubinders = Evd.univ_entry ~poly sigma in
+    let uctx = match univs with
+    | UState.Monomorphic_entry ctx ->
+      let () = DeclareUctx.declare_universe_context ~poly:false ctx in
+      Entries.Monomorphic_ind_entry
+    | UState.Polymorphic_entry uctx -> Entries.Polymorphic_ind_entry uctx
+    in
     let inductive =
       Entries.{ mind_entry_record = None;
                 mind_entry_universes = uctx;
-                mind_entry_template = false;
                 mind_entry_private = None;
                 mind_entry_finite = Declarations.Finite;
                 mind_entry_params = []; (* (identifier * local_entry) list; *)
@@ -1638,7 +1643,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
               }
     in
     let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] false in
-    let kn = DeclareInd.declare_mutual_inductive_with_eliminations inductive ubinders [] in
+    let kn = DeclareInd.declare_mutual_inductive_with_eliminations inductive (univs, ubinders) [] in
     let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] true in
     let sort = Inductiveops.top_allowed_sort (Global.env()) (kn,0) in
     let sort_suff = Indrec.elimination_suffix sort in
@@ -1672,9 +1677,9 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     let ind =
       let open Entries in
       match uctx with
-      | Polymorphic_entry uctx ->
+      | Polymorphic_ind_entry uctx ->
         mkIndU ((kn,0), EInstance.make (Univ.UContext.instance uctx))
-      | Monomorphic_entry _ -> mkInd (kn,0)
+      | Monomorphic_ind_entry | Template_ind_entry _ -> mkInd (kn,0)
     in
     let locality = if Global.sections_are_opened () then Hints.Local else Hints.SuperGlobal in
     let _ =
