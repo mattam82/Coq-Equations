@@ -26,9 +26,6 @@ let mkcase env sigma c ty constrs =
     | (((mu, n),_ as i), pars) -> mu, i, pars
   in
   let mindb, oneind = Global.lookup_inductive (fst ind) in
-  let inds = List.rev (Array.to_list (Array.mapi
-                                      (fun i oib ->
-                                      mkIndU ((mind, i),snd ind)) mindb.mind_packets)) in
   let ctx = oneind.mind_arity_ctxt in
   let ui = EConstr.EInstance.kind sigma (snd ind) in
   let ctx = CVars.subst_instance_context ui ctx in
@@ -39,7 +36,7 @@ let mkcase env sigma c ty constrs =
     Array.map2_i (fun i id (ctx, cty) ->
       let cty = Term.it_mkProd_or_LetIn cty ctx in
       let cty = CVars.subst_instance_constr ui cty in
-      let (args, arity) = decompose_prod_assum sigma (substl inds (of_constr cty)) in
+      let (args, arity) = decompose_prod_assum sigma (of_constr cty) in
       let realargs, pars = List.chop (List.length args - params) args in
       let args = substl (List.rev origparams) (it_mkProd_or_LetIn arity realargs) in
       let args, arity = decompose_prod_assum sigma args in

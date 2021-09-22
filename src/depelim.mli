@@ -6,7 +6,6 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-open Constr
 open Environ
 open Names
 open EConstr
@@ -29,14 +28,14 @@ val dependent_pattern :
 
 val depcase
   :  poly:bool
-  -> MutInd.t * int
+  -> inductive * EInstance.t
   -> Environ.env * Evd.evar_map * rel_context * constr * Names.GlobRef.t
 
 val derive_dep_elimination
   :  Environ.env
   -> Evd.evar_map
   -> poly:bool
-  -> pinductive
+  -> inductive * EInstance.t
   -> Constant.t * (Evd.evar_map * constr)
 
 val pattern_call :
