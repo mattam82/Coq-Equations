@@ -21,7 +21,7 @@ jobs:
     strategy:
       matrix:
         coq_version: 
-          - 'dev'
+          - '8.14'
         ocaml_version:
           - '4.07-flambda'
         target: [ local, hott, dune ]
