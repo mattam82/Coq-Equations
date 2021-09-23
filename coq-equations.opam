@@ -32,6 +32,7 @@ run-test: [
 ]
 depends: [
   "coq" {= "dev"}
+  "ocamlfind" {build}
 ]
 #depopts: [
 #  "coq-hott" {= "8.13"}
