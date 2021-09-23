@@ -24,7 +24,7 @@ jobs:
           - '8.14'
         ocaml_version:
           - '4.07-flambda'
-        target: [ local, hott, dune ]
+        target: [ local ] # wait for hott package to test the hott and dune builds
       fail-fast: false
 
     steps:
