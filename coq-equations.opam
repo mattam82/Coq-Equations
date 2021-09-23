@@ -31,7 +31,7 @@ run-test: [
   [make "test-suite"]
 ]
 depends: [
-  "coq" {= "dev"}
+  "coq" {>= "8.14" & < "8.15~"}
   "ocamlfind" {build}
 ]
 #depopts: [
