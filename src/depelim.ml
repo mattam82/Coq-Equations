@@ -120,7 +120,7 @@ let dependent_pattern ?(pattern_term=true) c =
   in
   let concllda, evd = List.fold_left mklambda (pf_concl gl, project gl) subst in
   let conclapp = applistc concllda (List.rev_map pi1 subst) in
-    convert_concl ~check:false conclapp DEFAULTcast)
+    convert_concl ~cast:false ~check:false conclapp DEFAULTcast)
 
 let annot_of_context ctx =
   Array.map_of_list Context.Rel.Declaration.get_annot (List.rev ctx)
@@ -248,7 +248,7 @@ let pattern_call ?(pattern_term=true) c =
   in
   let concllda = List.fold_left mklambda (pf_concl gl) subst in
   let conclapp = applistc concllda (List.rev_map pi1 subst) in
-    (convert_concl ~check:false conclapp DEFAULTcast))
+    (convert_concl ~cast:false ~check:false conclapp DEFAULTcast))
 
 let destPolyRef sigma c =
   let open GlobRef in
