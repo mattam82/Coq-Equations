@@ -289,8 +289,8 @@ Proof.
                     try solve [(apply sa_var_trans in A || assert (A := sa_arr A1 A2) || assert (A := sa_all A1 A2));
                          match goal with
                            | [ A : sa _ ?p _ |- _ ] =>
-                             (apply sa_weakening_app with (Δ0:=cons p empty) in A;
-                              apply sa_weakening_app with (Δ0:=Δ) in A;
+                             (apply @sa_weakening_app with (Δ:=cons p empty) in A;
+                              apply @sa_weakening_app with (Δ:=Δ) in A;
                               autorewrite with lookup env_app lift_var_by lift_type_by in *; simpl in *;
                               eapply PLOP; [exact A | exact IHB])
                          end; fail]
