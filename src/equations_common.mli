@@ -149,7 +149,7 @@ val make_definition :
   ?opaque:'a ->
   ?poly:bool ->
   Evd.evar_map ->
-  ?types:constr -> constr -> Evd.evar_map * Evd.side_effects Declare.proof_entry
+  ?types:constr -> constr -> Evd.evar_map * Declare.proof_entry
 
 (** Declares a constant relative to an evar_map.
 
