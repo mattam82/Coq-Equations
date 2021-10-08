@@ -715,7 +715,7 @@ let declare_wf_obligations s info =
       try Hints.add_hints ~locality
             [dbname]
             (Hints.HintsResolveEntry [hint])
-      with CErrors.UserError (s, msg) (* Cannot be used as a hint *) ->
+      with CErrors.UserError msg (* Cannot be used as a hint *) ->
         Feedback.msg_warning msg)
     info.comp_obls
 

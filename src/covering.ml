@@ -235,11 +235,11 @@ let adjust_sign_arity env evars p clauses =
         | Evar e -> let evars', t = Evardefine.define_evar_as_product env evars e in
           aux evars' args sign t
         | _ ->
-          user_err_loc (None, "covering", str "Too many patterns in clauses for this type")
+          user_err_loc (None, str "Too many patterns in clauses for this type")
     in aux evars max_args [] fullty
   in
   let check_clause (loc, lhs, rhs) =
-    if List.length lhs < max_args then user_err_loc (loc, "covering", str "This clause has not enough arguments")
+    if List.length lhs < max_args then user_err_loc (loc, str "This clause has not enough arguments")
     else ()
   in List.iter check_clause clauses;
   let sign = do_renamings env evars sign in
@@ -383,10 +383,10 @@ let interp_program_body env evars ctx data c ty =
       notations;
     interp_program_body env evars ctx data c ty) ()
   (* try  with PretypeError (env, evm, e) ->
-   *   user_err_loc (dummy_loc, "interp_program_body",
+   *   user_err_loc (dummy_loc,
    *                 str "Typechecking failed: " ++  Himsg.explain_pretype_error env evm e) *)
      (* | e ->
-      *   user_err_loc (dummy_loc, "interp_program_body",
+      *   user_err_loc (dummy_loc,
       *                 str "Unexpected exception raised while typing body: " ++
       *                 (match c with ConstrExpr c -> Ppconstr.pr_constr_expr c
       *                             | Constr c -> Printer.pr_econstr_env env evars c) ++
@@ -675,7 +675,7 @@ let check_unused_clauses env sigma cl =
   let unused = List.filter (fun (_, (_, used)) -> used = 0) cl in
   match unused with
   | ((loc, lhs, _) as cl, _) :: cls ->
-    user_err_loc (loc, "covering", str "Unused clause " ++ pr_preclause env sigma cl)
+    user_err_loc (loc, str "Unused clause " ++ pr_preclause env sigma cl)
   | [] -> ()
 
 
@@ -696,7 +696,7 @@ let compute_rec_type context programs =
     in Some (Guarded recids) :: context
   else begin
     if List.length programs != 1 then
-      user_err_loc (None, "equations", Pp.str "Mutual well-founded definitions are not supported");
+      user_err_loc (None, Pp.str "Mutual well-founded definitions are not supported");
     let p = List.hd programs in
     match p.program_rec with
     | Some (WellFounded (_, _, newinfo)) -> Some (Logical newinfo) :: context
@@ -761,7 +761,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),udecl,rec
             let k, _, _ = lookup_rel_id (snd lid) sign in
             Some (Structural (interp_reca rec_annot (Some (List.length sign - k, Some lid))))
           with Not_found ->
-            user_err_loc (fst lid, "struct_index",
+            user_err_loc (fst lid,
                           Pp.(str"No argument named " ++ Id.print (snd lid) ++ str" found")))
        | None -> Some (Structural (interp_reca rec_annot None)))
     | Some (WellFounded (c, r)) -> Some (WellFounded (c, r))
@@ -919,7 +919,7 @@ let wf_fix env evars subst sign arity sort term rel =
     if noccur_between sigma 1 (length sign) ty then
       lift (- length sign) ty
     else
-      user_err_loc (Constrexpr_ops.constr_loc term, "wf_fix",
+      user_err_loc (Constrexpr_ops.constr_loc term,
                     str"The carrier type of the recursion order cannot depend on the arguments")
   in
   let cterm = it_mkLambda_or_LetIn cterm sign in
@@ -1068,7 +1068,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
                   if loc_before loc loc' then loc', pat, pat'
                   else loc, pat', pat
                 in
-                user_err_loc (loc, "matches",
+                user_err_loc (loc,
                   Pp.(str "The pattern " ++ Id.print x ++ str " would shadow a variable." ++ fnl () ++
                   str "The full patterns are: " ++ pr_user_pats ~with_gen:false env !evars (extpats @ lhs) ++ fnl () ++
                   str"After interpretation, in context " ++ spc () ++ pr_context env !evars (rel_context env) ++ spc () ++
@@ -1096,7 +1096,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
                 if not (Id.equal x x') then
                   (* We allow aliasing of implicit variable names resulting from forcing a pattern *)
                   if not data.flags.allow_aliases && (gen == User && gen' == User) then
-                    user_err_loc (loc, "matches",
+                    user_err_loc (loc,
                       Pp.(str "The pattern " ++ Id.print x ++ str " should be equal to " ++ Id.print x' ++ str", it is forced by typing"))
                   else (bindings, (x, y) :: s)
                 else (bindings, s)
@@ -1130,15 +1130,15 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
                                     (if cnt = 0 then "" else "_" ^ string_of_int cnt)) in
        (match empties, rhs with
         | ([], None) ->
-          user_err_loc (loc, "covering",
+          user_err_loc (loc,
                         (str "Empty clauses should have at least one empty pattern."))
         | (_ :: _, Some _) ->
-          user_err_loc (loc, "covering",
+          user_err_loc (loc,
                         (str "This clause has an empty pattern, it cannot have a right hand side."))
         | (loc, c) :: _, None ->
           (match c with
           | PCstr _ | PInac _ | PHide _ ->
-             user_err_loc (loc, "covering",
+             user_err_loc (loc,
                            (str "This pattern cannot be empty, it matches value " ++ fnl () ++
                             pr_pat env !evars c))
           | PRel i ->
@@ -1147,7 +1147,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
               Some (List.rev prev @ (((loc, lhs, rhs),(idx, cnt+1)) :: clauses'),
                     Compute (prob, [], ty, REmpty (i, s)))
             | None ->
-              user_err_loc (loc, "covering",
+              user_err_loc (loc,
                             (str "This variable does not have empty type in current problem" ++ fnl () ++
                              pr_problem p env !evars prob)))
         | [], Some rhs ->
@@ -1158,7 +1158,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
           (match interp with
            | None ->
              user_err_loc
-               (dummy_loc, "split_var",
+               (dummy_loc,
                 str"Clause " ++ pr_preclause env !evars (loc, lhs, Some rhs) ++
                 str" matched but its interpretation failed")
            | Some s -> Some (List.rev prev @ ((loc,lhs,Some rhs),(idx, cnt+1)) :: clauses', s)))
@@ -1231,7 +1231,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
         | Some (Splitted (clauses, s)) -> Some (clauses, s)
         | Some (CannotSplit (id, before, newty)) ->
           user_err_loc
-            (loc, "split_var",
+            (loc,
              str"Unable to split variable " ++ Name.print id ++ str" of (reduced) type " ++
              Printer.pr_econstr_env (push_rel_context before env) !evars newty ++ str" to match a user pattern."
              ++ fnl () ++ str "Maybe unification is stuck as it cannot refine a context/section variable.")
@@ -1243,7 +1243,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
       Some (List.rev prev @ clauses, (* Split (prob, i, ty, s)) *)
             Compute (prob, [], ty, REmpty (i, s)))
     | None ->
-      user_err_loc (p.program_loc, "deppat",
+      user_err_loc (p.program_loc,
         (str "Non-exhaustive pattern-matching, no clause found for:" ++ fnl () ++
          pr_problem p env !evars prob))
 
@@ -1254,7 +1254,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
   let get_var loc i s =
     match assoc i s with
     | PRel i -> i
-    | _ -> user_err_loc (loc, "equations", str"Unbound variable " ++ Id.print i)
+    | _ -> user_err_loc (loc, str"Unbound variable " ++ Id.print i)
   in
   let () = (* Check innaccessibles are correct *)
     let check_uinnac (user, t) =
@@ -1268,7 +1268,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
           | evars' -> evars := evars'
           | exception Pretype_errors.PretypeError (env, sigma, e) ->
             DAst.with_loc_val (fun ?loc _ ->
-                CErrors.user_err ?loc ~hdr:"covering"
+                CErrors.user_err ?loc
                   (hov 0 (str "Incompatible innaccessible pattern " ++
                           Printer.pr_econstr_env env' !evars userc ++ cut () ++
                           spc () ++ str "should be unifiable with " ++
@@ -1298,7 +1298,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
         | _ ->
           let ctx, envctx, liftn, subst = env_of_rhs evars ctx env s lets in
           let forcedsubst = substnl subst 0 forced in
-          CErrors.user_err ?loc ~hdr:"covering"
+          CErrors.user_err ?loc
             (str "This pattern must be innaccessible and equal to " ++
              Printer.pr_econstr_env (push_rel_context ctx env) !evars forcedsubst)) user
     in
@@ -1321,7 +1321,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
 
   | Empty (loc,i) ->
     (match prove_empty (env, evars) (pi1 prob) (get_var loc i s) with
-     | None -> user_err_loc (loc, "covering", str"Cannot show that " ++ Id.print i ++ str"'s type is empty")
+     | None -> user_err_loc (loc, str"Cannot show that " ++ Id.print i ++ str"'s type is empty")
      | Some (i, ctx, s) ->
        Some (Compute (prob, [], ty, REmpty (i, s))))
 
@@ -1457,7 +1457,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
           in
           Some (loc, rev newlhs @ nextrefs, newrhs)
         | _ ->
-          CErrors.user_err ~hdr:"covering" ?loc
+          CErrors.user_err ?loc
             (str "Non-matching clause in with subprogram:" ++ fnl () ++ int n ++
              str"Problem is " ++ spc () ++ pr_context_map env !evars prob ++ fnl () ++
              str"And the user patterns are: " ++ spc () ++
@@ -1493,7 +1493,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
     let clauses' = List.mapi (fun i x -> x, (succ i, 0)) cls' in
     match covering_aux env evars p data [] clauses' path' newprob [] lets' newty with
     | None ->
-      errorlabstrm "deppat"
+      errorlabstrm
         (str "Unable to build a covering for with subprogram:" ++ fnl () ++
          pr_problem p env !evars newprob ++ fnl () ++
          str "And clauses: " ++ pr_preclauses env !evars cls')
@@ -1598,7 +1598,7 @@ and covering ?(check_unused=true) env evars p data (clauses : pre_clause list)
     let () = if check_unused then check_unused_clauses env !evars clauses in
     cov
   | None ->
-    errorlabstrm "deppat"
+    errorlabstrm
       (str "Unable to build a covering for:" ++ fnl () ++
        pr_problem p env !evars prob)
 

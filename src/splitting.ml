@@ -458,7 +458,7 @@ let define_mutual_nested env evd get_prog progs =
       Pretyping.search_guard env (Array.to_list possible_indexes)
           (names, tys, bodies)
     with e -> 
-      user_err_loc ((fst (List.hd progs)).program_loc, "define", CErrors.print e)
+      user_err_loc ((fst (List.hd progs)).program_loc, CErrors.print e)
   in
   let declare_fix_fns i (p,prog) =
     let newidx = indexes.(i) in
@@ -763,7 +763,7 @@ let make_programs env evd flags ?(define_constants=false) programs =
     let terms =
       List.map (function
           | Mutual (p, prob, r, s', after, term) -> (p, (prob, r, s', after, lift 1 term))
-          | Single (p, _, _, _, _) -> user_err_loc (p.program_loc, "make_programs",
+          | Single (p, _, _, _, _) -> user_err_loc (p.program_loc,
                                              str "Cannot define " ++ Names.Id.print p.program_id ++
                                              str " mutually with other programs "))
         sterms
@@ -1090,7 +1090,7 @@ let solve_equations_obligations ~pm flags recids loc i sigma hook =
        pm, None)
   else if flags.open_proof then pm, Some lemma
   else
-    user_err_loc (loc, "define", str"Equations definition generated subgoals that " ++
+    user_err_loc (loc, str"Equations definition generated subgoals that " ++
                                   str "could not be solved automatically. Use the \"Equations?\" command to" ++
                                   str " refine them interactively.")
   in

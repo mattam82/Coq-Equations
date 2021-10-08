@@ -536,7 +536,7 @@ let unfold_head db gl t =
   let st =
     List.fold_left (fun (i,c) dbname -> 
       let db = try Hints.searchtable_map dbname 
-        with Not_found -> user_err ~hdr:"autounfold" (str "Unknown database " ++ str dbname)
+        with Not_found -> user_err (str "Unknown database " ++ str dbname)
       in
       let (ids, csts) = Hints.Hint_db.unfolds db in
         (Id.Set.union ids i, Cset.union csts c)) (Id.Set.empty, Cset.empty) db
@@ -822,7 +822,7 @@ let move_after_deps id c =
     let first = 
       match snd (List.split_when find (List.rev hyps)) with
       | a :: _ -> get_id a
-      | [] -> user_err ~hdr:"move_before_deps"
+      | [] -> user_err
         Pp.(str"Found no hypothesis on which " ++ Id.print id ++ str" depends")
     in
     Tactics.move_hyp id (Logic.MoveAfter first)
@@ -1010,10 +1010,10 @@ let subst_in_named_ctx (n : Id.t) (c : constr) (ctx : EConstr.named_context) : E
 
 let pp cmds = Feedback.msg_info cmds
 
-let user_err_loc (loc, s, pp) =
-  CErrors.user_err ?loc ~hdr:s pp
+let user_err_loc (loc, pp) =
+  CErrors.user_err ?loc pp
 let error s = CErrors.user_err (str s)
-let errorlabstrm s msg = CErrors.user_err ~hdr:s msg
+let errorlabstrm msg = CErrors.user_err msg
 let is_anomaly = CErrors.is_anomaly
 let print_error e = CErrors.print e
 

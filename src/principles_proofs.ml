@@ -162,7 +162,7 @@ let mutual_fix li l =
       let lenidxs = List.length l in
       let lengoals = List.length types in
       if not (Int.equal lenid lenidxs && Int.equal lenid lengoals) then
-        CErrors.user_err ~hdr:"mfix"
+        CErrors.user_err
                          (str "Cannot apply mutual fixpoint, invalid arguments: " ++
                             int lenid ++ (str (String.plural lenid " name")) ++ str " " ++
                             int lenidxs ++ str (if lenidxs == 1 then " index"
@@ -179,7 +179,7 @@ let mutual_fix li l =
          if not (Environ.QMutInd.equal env sp sp') then
            error "Fixpoints should be on the same mutual inductive declaration.";
          if try ignore (Context.Named.lookup f sign); true with Not_found -> false then
-           CErrors.user_err ~hdr:"Logic.prim_refiner"
+           CErrors.user_err
                     (str "Name " ++ pr_id f ++ str " already used in the environment");
          mk_sign (LocalAssum (annotR f, EConstr.to_constr sigma ar) :: sign) oth
     in
