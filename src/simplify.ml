@@ -1140,7 +1140,7 @@ and simplify_one ((loc, rule) : Loc.t option * simplification_rule) :
     fun env evd gl ->
       try f env evd gl
       with CannotSimplify err ->
-        Equations_common.user_err_loc (loc, "Equations.Simplify", err)
+        Equations_common.user_err_loc (loc, err)
   in
   let wrap get_step =
     let f = fun env evd gl ->

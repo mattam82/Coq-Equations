@@ -222,7 +222,7 @@ let build_sig_of_ind env sigma (ind,u as indu) =
   let lenpars = mib.mind_nparams_rec in
   let lenargs = List.length ctx - lenpars in
   if lenargs = 0 then
-    user_err_loc (None, "Derive Signature", 
+    user_err_loc (None,
 		 str"No signature to derive for non-dependent inductive types");
   let args, pars = List.chop lenargs ctx in
   let parapp = mkApp (mkIndU indu, extended_rel_vect 0 pars) in
@@ -469,7 +469,7 @@ let uncurry_call env sigma fn c =
   in
   let evdref = ref sigma in
   if CList.is_empty ctx then 
-    user_err_loc (None, "uncurry_call", Pp.str"No arguments to uncurry");
+    user_err_loc (None, Pp.str"No arguments to uncurry");
   (* let ctx = (Anonymous, None, concl) :: ctx in *)
   let sigty, sigctx, constr = telescope env evdref ctx in
   let app = Vars.substl (List.rev args) constr in

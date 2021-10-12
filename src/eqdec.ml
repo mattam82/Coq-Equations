@@ -97,7 +97,7 @@ let derive_eq_dec ~pm env sigma ~poly ind =
     if Ederive.check_derive "NoConfusion" (Names.GlobRef.IndRef (fst ind)) 
       || Ederive.check_derive "NoConfusionHom" (Names.GlobRef.IndRef (fst ind)) then ()
     else 
-    user_err_loc (None, "check_noconf", Pp.(str "[Derive EqDec] requires a [NoConfusion] " ++
+    user_err_loc (None, Pp.(str "[Derive EqDec] requires a [NoConfusion] " ++
       str"or a [NoConfusionHom] instance for type " ++ Printer.pr_inductive env (fst ind) ++ str " to be derived first."))
   in
   let ctx = info.mutind_params in

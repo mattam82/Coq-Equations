@@ -213,15 +213,15 @@ let check_ctx_map ?(unsafe = false) env evars map =
   if !Equations_common.debug && not unsafe then
     try typecheck_map env evars map; map
     with Pretype_errors.PretypeError (env, sigma, Pretype_errors.TypingError e) ->
-      errorlabstrm "equations"
+      errorlabstrm
         (str"Type error while building context map: " ++ pr_context_map env evars map ++
          spc () ++ Himsg.explain_type_error env evars e)
        | Invalid_argument s ->
-         errorlabstrm "equations"
+         errorlabstrm
            (str"Type error while building context map: " ++ pr_context_map env evars map ++
             spc () ++ str"Invalid_argument: " ++ str s)
        | e when is_anomaly e ->
-         errorlabstrm "equations"
+         errorlabstrm
            (str"Type error while building context map: " ++ pr_context_map env evars map ++
             spc () ++ str"Anomaly: " ++ CErrors.print e)
   else map
@@ -629,7 +629,7 @@ let eq_context_nolet env sigma (g : rel_context) (d : rel_context) =
 
 let check_eq_context_nolet env sigma (_, _, g as snd) (d, _, _ as fst) =
   if eq_context_nolet env sigma g d then ()
-  else errorlabstrm "check_eq_context_nolet"
+  else errorlabstrm
       (str "Contexts do not agree for composition: "
        ++ pr_context_map env sigma snd ++ str " and " ++ pr_context_map env sigma fst)
 

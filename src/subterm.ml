@@ -30,7 +30,7 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
     if Ederive.check_derive "NoConfusion" (Names.GlobRef.IndRef ind) 
       || Ederive.check_derive "NoConfusionHom" (Names.GlobRef.IndRef ind) then ()
     else 
-    user_err_loc (None, "check_noconf", Pp.(str "[Derive Subterm] requires a [NoConfusion] " ++
+    user_err_loc (None, Pp.(str "[Derive Subterm] requires a [NoConfusion] " ++
       str"or a [NoConfusionHom] instance for type " ++ Printer.pr_inductive env ind ++ str " to be derived first."))
   in
   let (mind, oneind as ms) = Global.lookup_inductive ind in
@@ -40,7 +40,7 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
     (snd (Reduction.dest_arity env indty))
   in
   if Sorts.is_prop indsort || Sorts.is_sprop indsort then
-    user_err_loc (None, "derive_subterm", Pp.str("Cannot define a well-founded subterm relation on a propositional inductive type."));
+    user_err_loc (None, Pp.str("Cannot define a well-founded subterm relation on a propositional inductive type."));
   let sort =
     match Lazy.force logic_sort with
     | Sorts.InSProp -> failwith "not implemented"

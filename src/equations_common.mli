@@ -385,9 +385,9 @@ val to_evar_map : Evd.evar_map -> Evd.evar_map
 val of_evar_map : Evd.evar_map -> Evd.evar_map
 
 val pp : Pp.t -> unit
-val user_err_loc : (Loc.t option * string * Pp.t) -> 'a
+val user_err_loc : (Loc.t option * Pp.t) -> 'a
 val error : string -> 'a
-val errorlabstrm : string -> Pp.t -> 'a
+val errorlabstrm : Pp.t -> 'a
 val is_anomaly : exn -> bool
 val print_error : exn -> Pp.t
 val anomaly : ?label:string -> Pp.t -> 'a

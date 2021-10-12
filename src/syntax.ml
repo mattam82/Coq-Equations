@@ -349,7 +349,7 @@ let _check_linearity env sigma opats =
       match pat with
       | PUVar (n, _) ->
 	if Id.Set.mem n ids then
-	  CErrors.user_err ?loc ~hdr:"ids_of_pats"
+          CErrors.user_err ?loc
             (str "Non-linear occurrence of variable in patterns: " ++ pr_user_pats env sigma opats)
 	else Id.Set.add n ids
       | PUInac _ -> ids
@@ -370,7 +370,7 @@ let pattern_of_glob_constr env sigma avoid patname gc =
     let nargs = Inductiveops.constructor_nrealargs env c in
     let l =
       if List.length l < nargs then
-        user_err_loc (loc, "pattern_of_glob_constr", str "Constructor " ++ 
+        user_err_loc (loc, str "Constructor " ++
           Printer.pr_global (GlobRef.ConstructRef c) ++ 
           str" is applied to too few arguments")
       else
@@ -378,7 +378,7 @@ let pattern_of_glob_constr env sigma avoid patname gc =
           List.skipn nparams l
         else if List.length l = nargs then l
         else
-          user_err_loc (loc, "pattern_of_glob_constr", str "Constructor is applied to too many arguments");
+          user_err_loc (loc, str "Constructor is applied to too many arguments");
     in
     Dumpglob.add_glob ?loc (GlobRef.ConstructRef c);
     PUCstr (c, nparams, List.map (DAst.map_with_loc (aux Anonymous)) l)
@@ -401,13 +401,13 @@ let pattern_of_glob_constr env sigma avoid patname gc =
           PUInac inacc
         | _ ->
           user_err_loc
-            (loc, "pattern_of_glob_constr",
+            (loc,
              str "Cannot interpret " ++ pr_glob_constr_env env sigma c ++ str " as a constructor")
       end
   (* | GLetIn (Name id as na',b,None,e) when is_gvar id e && na = Anonymous ->
    *    (\* A canonical encoding of aliases *\)
    *    DAst.get (cases_pattern_of_glob_constr na' b) *)
-    | _ -> user_err_loc (loc, "pattern_of_glob_constr", str ("Cannot interpret globalized term as a pattern"))
+    | _ -> user_err_loc (loc, str ("Cannot interpret globalized term as a pattern"))
   in
   let gc =DAst.map_with_loc (aux patname) gc in
   !avoid, gc
@@ -471,7 +471,7 @@ let interp_pat env notations ~avoid p pat =
                   | [], _ -> avoid, []
                 in aux avoid args patnames
               | _ ->
-                user_err_loc (loc, "interp_pats",
+                user_err_loc (loc,
                               str "Expecting a pattern for " ++ Id.print id))
             fn) gc
     | None -> let avoid, pat = pattern_of_glob_constr env sigma avoid Anonymous gc in
@@ -542,7 +542,7 @@ let interp_eqn env notations p ~avoid eqn =
       let interp c =
         let wheres, c = CAst.with_loc_val (interp_constr_expr notations avoid) c in
         if not (List.is_empty wheres) then
-          user_err_loc (Constrexpr_ops.constr_loc c, "interp_eqns",
+          user_err_loc (Constrexpr_ops.constr_loc c,
                         str"Pattern-matching lambdas not allowed in refine");
         c
       in
@@ -566,7 +566,7 @@ let interp_eqn env notations p ~avoid eqn =
       let interp c =
         let wheres, c = CAst.with_loc_val (interp_constr_expr notations avoid) c in
         if not (List.is_empty wheres) then
-          user_err_loc (Constrexpr_ops.constr_loc c, "interp_eqns",
+          user_err_loc (Constrexpr_ops.constr_loc c,
                         str"Pattern-matching lambdas not allowed in refine");
         c
       in
