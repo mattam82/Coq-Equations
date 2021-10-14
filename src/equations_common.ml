@@ -435,7 +435,7 @@ let coq_pr2 = lazy (init_projection (Lazy.force (find_global "sigma.pr2")))
 
 
 let rec head_of_constr sigma t =
-  let t = strip_outer_cast sigma (collapse_appl sigma t) in
+  let t = strip_outer_cast sigma t in
     match kind sigma t with
     | Prod (_,_,c2)  -> head_of_constr sigma c2 
     | LetIn (_,_,_,c2) -> head_of_constr sigma c2
