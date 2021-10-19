@@ -376,13 +376,29 @@ GRAMMAR EXTEND Gram
         in aux l }
     ] ]
   ;
+
+  letconstr:
+    [ [ (*"let"; id=lident; bl = binders; ty = OPT [ ":"; c = Constr.lconstr -> { c } ] ; ":=";
+      c1 = term LEVEL "200"; "in"; c2 = letconstr ->
+      { let ty,c1 = match ty, c1 with
+        | None, { CAst.v = Constrexpr.CCast(c, Glob_term.CastConv t) } -> Some t, c (* Tolerance, see G_vernac.def_body *)
+        | _, _ -> ty, c1 in
+        let (c, (w, wn)) = c2 in
+        let eqn : pre_equation = SignPats 
+          (CAst.make ~loc (Constrexpr.CRef (Libnames.qualid_of_ident ~loc:(fst id) (snd id), None))), 
+          Some (Program (ConstrExpr c1, ([], []))) in
+        let w' : pre_equation where_clause = ((id, None, None, bl, ty, None), [eqn]) in
+        (c, (w' :: w, wn)) } *)
+       c = Constr.lconstr; w = local_wheres -> { (ConstrExpr c, w) }
+  ] ]
+  ;
   rhs:
     [ [ ":=!"; id = identloc -> { Some (Empty id) }
 
-     | [":=" -> { () } |"=>" -> { () } ]; c = Constr.lconstr; w = local_wheres ->
-        { Some (Program (ConstrExpr c, w)) }
+     | [":=" -> { () } |"=>" -> { () } ]; c = letconstr ->
+        { let (ce, w) = c in Some (Program (ce, w)) }
 
-      | ["with" -> { () } ]; refs = refine; [":=" -> { () } |"=>" -> { () } ];
+     | ["with" -> { () } ]; refs = refine; [":=" -> { () } |"=>" -> { () } ];
         e = sub_equations -> { Some (Refine (refs, e)) }
      | -> { None }
     ] ]

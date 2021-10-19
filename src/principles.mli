@@ -85,7 +85,7 @@ val unfold_constr : Evd.evar_map -> constr -> Proofview.V82.tac
 
 type rec_subst = (Names.Id.t * (int option * EConstr.constr)) list
 
-val cut_problem :
+val cut_problem : Environ.env ->
   Evd.evar_map -> rec_subst ->
   Equations_common.rel_declaration list ->
   Equations_common.rel_declaration list * Context_map.pat list *

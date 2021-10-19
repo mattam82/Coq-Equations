@@ -642,6 +642,11 @@ let term_of_tree env0 isevar sort tree =
       let term = EConstr.it_mkLambda_or_LetIn term ctx in
       let typ = it_mkProd_or_subst env evm ty ctx in
       let term = Evarutil.nf_evar !evd term in
+      if !Equations_common.debug then
+        Feedback.msg_debug (str"type checking case" ++ 
+          Printer.pr_econstr_env env !evd term ++ spc () ++
+          str"of type" ++ spc () ++
+          Printer.pr_econstr_env env !evd typ);
       evd := Typing.check env !evd term typ;
       !evd, term, typ
   in
@@ -697,18 +702,37 @@ let make_program env evd p prob s rec_info =
            [| beta_appvect !evd fn (extended_rel_vect 0 (pi1 lhs)) |] in
        Single (p, prob, rec_info, s, it_mkLambda_or_LetIn term (pi1 lhs))
      | StructRec sr ->
+      if !Equations_common.debug then
+        Feedback.msg_debug (str"term_of_tree for" ++ pr_splitting env !evd s);
        let term, ty = term_of_tree env evd sort s in
        let args = extended_rel_vect 0 r.rec_lets in
+       let args_lets = rel_vect 0 (List.length r.rec_lets) in
+       if !Equations_common.debug then
+        Feedback.msg_debug (str"returned:" ++ Printer.pr_econstr_env env !evd term);
        let term = beta_appvect !evd term args in
+       if !Equations_common.debug then
+        Feedback.msg_debug (str"after beta:" ++ Printer.pr_econstr_env (push_rel_context r.rec_lets env) !evd term);
        let before, after =
          CList.chop r.rec_args r.rec_sign
        in
        let fixdecls, after =
          CList.chop sr.struct_rec_protos after in
-       let subst = List.append (List.map (fun _ -> mkProp) fixdecls) (List.rev (Array.to_list args)) in
+       let subst = List.append (List.map (fun _ -> mkProp) fixdecls) (List.rev (Array.to_list args_lets)) in
        let program_sign = subst_rel_context 0 subst before in
-       let program_arity = substnl subst r.rec_args r.rec_arity in
+       if !Equations_common.debug then
+        Feedback.msg_debug (str"rec_sign:" ++ pr_context env !evd r.rec_sign);
+       if !Equations_common.debug then
+        Feedback.msg_debug (str"program arity:" ++ Printer.pr_econstr_env env !evd r.rec_arity);
+      if !Equations_common.debug then
+        Feedback.msg_debug (str"rec_lets:" ++ pr_context env !evd r.rec_lets);
+      if !Equations_common.debug then
+        Feedback.msg_debug (str"rec_args:" ++ int r.rec_args);
+      let program_arity = substnl subst r.rec_args r.rec_arity in
        let p' = { p with program_sign; program_arity } in
+       if !Equations_common.debug then
+        Feedback.msg_debug (str"program_sign:"  ++ pr_context (push_rel_context after env) !evd program_sign);
+      if !Equations_common.debug then
+        Feedback.msg_debug (str"program arity:" ++ Printer.pr_econstr_env env !evd program_arity);
        let p' =
          match p.program_rec with
          | Some (Structural ann) ->
