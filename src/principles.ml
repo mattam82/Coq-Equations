@@ -618,14 +618,18 @@ let map_proto evd recarg f ty =
   | None -> f
 
 type rec_subst = (Names.Id.t * (int option * EConstr.constr)) list
+let _prsubst env evd s = Pp.(prlist_with_sep spc (fun (id, (recarg, f)) ->
+  str (Id.to_string id) ++ str" -> " ++ Printer.pr_econstr_env env evd f) s)
 
-let cut_problem evd s ctx =
+let cut_problem env evd s ctx =
   (* From Γ, x := t, D |- id_subst (G, x, D) : G, x : _, D
      to oΓ, D[t] |- id_subst (G, D) | G[
      ps, prec, ps' : Δ, rec, Δ',
      and s : prec -> Γ |- t : rec
      build
      Γ |- ps, ps' : Δ, Δ'[prec/rec] *)
+  (* Feedback.msg_debug Pp.(str"cut_problem on " ++ pr_context env evd ctx);
+  Feedback.msg_debug Pp.(str"with substitution " ++ prsubst env evd s); *)
   let rec fn s (ctxl, pats, ctxr as ctxm) =
     match s with
     | [] -> ctxm
@@ -633,6 +637,9 @@ let cut_problem evd s ctx =
       try
         let rel, _, ty = Termops.lookup_rel_id id ctxr in
         let fK = map_proto evd recarg term (lift rel ty) in
+        (* Feedback.msg_debug Pp.(str"subst_in_ctx " ++ int rel ++ str" by " ++ 
+          Printer.pr_econstr_env (push_rel_context ctxr env) evd fK ++ str " in " ++
+          pr_context env evd ctxr); *)
         let ctxr' = subst_in_ctx rel fK ctxr in
         let left, right = CList.chop (pred rel) pats in
         let right' = List.tl right in
@@ -645,13 +652,13 @@ let subst_rec env evd cutprob s (ctx, p, _ as lhs) =
   let subst =
     List.fold_left (fun (ctx, pats, ctx' as lhs') (id, (recarg, b)) ->
     try let rel, _, ty = Termops.lookup_rel_id id ctx in
-       (* Feedback.msg_debug Pp.(str"lhs': " ++ pr_context_map env evd lhs');       *)
-        let fK = map_proto evd recarg (mapping_constr evd lhs b) (lift rel ty) in
+        (* Feedback.msg_debug Pp.(str"lhs': " ++ pr_context_map env evd lhs'); *)
+        let fK = map_proto evd recarg (mapping_constr evd lhs' (mapping_constr evd lhs b)) (lift rel ty) in
         (* Feedback.msg_debug Pp.(str"fk: " ++ Printer.pr_econstr_env (push_rel_context ctx env) evd fK); *)
         let substf = single_subst env evd rel (PInac fK) ctx in
         (* ctx[n := f] |- _ : ctx *)
         let substctx = compose_subst env ~sigma:evd substf lhs' in
-        (* Feedback.msg_debug Pp.(str"substituted context: " ++ pr_context_map env evd substctx);  *)
+        (* Feedback.msg_debug Pp.(str"substituted context: " ++ pr_context_map env evd substctx); *)
         substctx
     with Not_found (* lookup *) -> lhs') (id_subst ctx) s
   in
@@ -743,13 +750,10 @@ let push_decls_map env evd (ctx : context_map) cut (g : rel_context) =
   let map, _ = List.fold_right (fun decl acc -> push_mapping_context env evd decl acc) g (ctx, cut) in
   check_ctx_map env evd map
 
-let _prsubst env evd s = Pp.(prlist_with_sep spc (fun (id, (recarg, f)) ->
-     str (Id.to_string id) ++ str" -> " ++ Printer.pr_econstr_env env !evd f) s)
-
 let subst_rec_programs env evd ps =
   let where_map = ref PathMap.empty in
   let evd = ref evd in
-  let cut_problem s ctx' = cut_problem !evd s ctx' in
+  let cut_problem s ctx' = cut_problem env !evd s ctx' in
   let subst_rec cutprob s lhs = subst_rec env !evd cutprob s lhs in
   let rec subst_programs path s ctxlen progs oterms =
     let fixsubst =
@@ -769,8 +773,9 @@ let subst_rec_programs env evd ps =
     let lifts = List.map (fun (id, (recarg, b)) ->
         (id, (recarg, lift (List.length fixsubst) b))) s in
     let s' = fixsubst @ lifts in
-    (* Feedback.msg_debug Pp.(str"In subst_programs, pr_substs" ++ prsubst env evd s'); *)
+    (* Feedback.msg_debug Pp.(str"In subst_programs, s' = " ++ prsubst env !evd s'); *)
     let one_program p oterm =
+      (* Feedback.msg_debug Pp.(str"In subst_program, substituting in " ++ Id.print p.program_info.program_id); *)
       let rec_prob, rec_arity =
         match p.program_rec with
         | Some { rec_prob; rec_arity } -> rec_prob, rec_arity
@@ -778,10 +783,10 @@ let subst_rec_programs env evd ps =
       in
       let prog_info = p.program_info in
       let cutprob_sign = cut_problem s prog_info.program_sign in
-      (* Feedback.msg_debug Pp.(str"In subst_programs: " ++ pr_context env !evd prog_info.program_sign);
-       * Feedback.msg_debug Pp.(str"In subst_programs: cutprob_sign " ++ pr_context_map env !evd cutprob_sign); *)
+      (* Feedback.msg_debug Pp.(str"In subst_programs: " ++ pr_context env !evd prog_info.program_sign); *)
+      (* Feedback.msg_debug Pp.(str"In subst_programs: cutprob_sign " ++ pr_context_map env !evd cutprob_sign); *)
       let cutprob_subst, _ = subst_rec cutprob_sign s (id_subst prog_info.program_sign) in
-      (* Feedback.msg_debug Pp.(str"In subst_programs: subst_rec failed " ++ pr_context env !evd prog_info.program_sign); *)
+      (* Feedback.msg_debug Pp.(str"In subst_programs: cutprob_subst " ++ pr_context_map env !evd cutprob_subst); *)
       let program_info' =
         { prog_info with
           program_rec = None;
@@ -791,6 +796,7 @@ let subst_rec_programs env evd ps =
       let program' = { p with program_info = program_info' } in
       let path' = p.program_info.program_id :: path in
       (* Feedback.msg_debug Pp.(str"In subst_programs, cut_problem s'" ++ pr_context env !evd (pi1 rec_prob)); *)
+      (* Feedback.msg_debug Pp.(str"In subst_programs, s'" ++ prsubst env !evd s'); *)
       let rec_cutprob = cut_problem s' (pi1 rec_prob) in
       let splitting' =
           aux rec_cutprob s' program' oterm path' p.program_splitting
@@ -815,20 +821,22 @@ let subst_rec_programs env evd ps =
                         where_type} as w) (subst_wheres, wheres) =
         (* subst_wheres lives in lhs', i.e. has prototypes substituted already *)
         let wcontext = where_context subst_wheres in
-        let cutprob' = cut_problem s (pi3 subst) in
-        (* Feedback.msg_debug Pp.(str"where_context in subst rec : " ++ pr_context env !evd wcontext);
-         * Feedback.msg_debug Pp.(str"lifting subst : " ++ pr_context_map env !evd subst);
+        let wp = where_program in
+        (* Feedback.msg_debug Pp.(str"In aux compute, cut_problem for " ++ Id.print wp.program_info.program_id 
+          ++ prsubst env !evd lhss); *)
+        let cutprob' = cut_problem lhss (pi3 subst) in
+         (* Feedback.msg_debug Pp.(str"lifting subst : " ++ pr_context_map env !evd subst);
          * Feedback.msg_debug Pp.(str"cutprob : " ++ pr_context_map env !evd cutprob'); *)
         let wsubst0 = push_decls_map env !evd subst cutprob' wcontext in
         (* Feedback.msg_debug Pp.(str"new substitution in subst rec : " ++ pr_context_map env !evd wsubst0); *)
         let ctxlen = List.length wcontext + List.length ctx in
-        let wp = where_program in
         let where_type = mapping_constr !evd wsubst0 where_type in
         (* The substituted prototypes must be lifted w.r.t. the new variables bound in this where and
            preceding ones. *)
+        (* Feedback.msg_debug Pp.(str"lifting substitution by " ++ int (List.length (pi1 wp.program_prob) - List.length ctx)); *)
         let s = List.map (fun (id, (recarg, b)) ->
-            (id, (recarg, lift ((* List.length subst_wheres + *)
-                                List.length (pi1 wp.program_prob) - List.length ctx) b))) lhss in
+            (id, (recarg, lift (List.length wp.program_info.program_sign - List.length ctx) b))) lhss in
+        (* let _ = Feedback.msg_debug Pp.(str"new substitution " ++  prsubst env !evd s) in *)
         let wp' =
           match subst_programs path s ctxlen [wp] [where_term w] with
           | [wp'] -> wp'

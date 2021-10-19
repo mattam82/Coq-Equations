@@ -80,7 +80,7 @@ Set Program Mode.
 
 Equations? fin_to_nat_bound {n : nat} (i : fin n) : {m : nat | m < n} :=
 fin_to_nat_bound fz := 0;
-fin_to_nat_bound (fs j) := let (m, p) := fin_to_nat_bound j in (S m).
+fin_to_nat_bound (fs j) with fin_to_nat_bound j := { | (exist _ m p) := (S m) }.
 Proof.
   - apply Le.le_n_S; apply Le.le_0_n.
   - apply Lt.lt_n_S; assumption.
