@@ -6,7 +6,6 @@ Require Import Coq.Program.Wf.
 Require Import List Lia.
 Require Import PeanoNat.
 Require Import Program.
-Require Import Wf.
 From Equations Require Import Equations.
 
 Import ListNotations.
