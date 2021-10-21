@@ -253,13 +253,13 @@ let equations_attributes attrs =
   let (eliminator, equations) = parse derive_flags attrs in
   add_bool OInd eliminator (add_bool OEquations equations [])
 
-let tactic_parser : qualid Attributes.key_parser = fun orig args ->
+let tactic_parser : qualid Attributes.key_parser = fun ?loc orig args ->
   let open Attributes in
-  assert_once ~name:"tactic" orig;
+  assert_once ?loc ~name:"tactic" orig;
   match args with
   | VernacFlagLeaf (FlagString str) -> qualid_of_string str
   | VernacFlagLeaf (FlagIdent str) -> qualid_of_string str
-  |  _ -> CErrors.user_err (Pp.str "Ill formed \"tactic\" attribute")
+  |  _ -> CErrors.user_err ?loc (Pp.str "Ill formed \"tactic\" attribute")
 let equations_tactic =
   Attributes.attribute_of_list ["tactic",tactic_parser]
 
