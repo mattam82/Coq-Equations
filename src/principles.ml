@@ -1722,7 +1722,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
           (* From now on, we don't need the reduction behavior of the constant anymore *)
           Hints.(add_hints ~locality [info.base_id]
             (HintsTransparencyEntry (HintsReferences [Tacred.EvalConstRef ocst], false)));
-          Classes.set_typeclass_transparency (Tacred.EvalConstRef cst) false false;
+          Classes.set_typeclass_transparency ~locality [Tacred.EvalConstRef cst] false;
           (match alias with
            | Some ((f, _), _, _) ->
               let cst' = fst (destConst !evd f) in
