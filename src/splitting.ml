@@ -1060,7 +1060,7 @@ let solve_equations_obligations ~pm flags recids loc i sigma hook =
         Proofview.TCons (evar_env, evm, nf_evar !isevar0 type_,
            (fun evm' wit ->
              isevar0 :=
-               Evd.define ev (applist (wit, List.rev (Context.Named.to_instance mkVar local_context)))
+               Evd.define ev (mkApp (wit, Context.Named.instance mkVar local_context))
                  !isevar0;
              wits := wit :: !wits;
              aux tys evm'))

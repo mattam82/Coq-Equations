@@ -214,8 +214,8 @@ let find_rec_call is_rec sigma protos f args =
             let sign = List.map EConstr.Unsafe.to_rel_decl sign in
             let sign = substitute_args indargs sign in
             let signlen = List.length sign in
-            let indargs = List.map (Constr.lift signlen) indargs @ Context.Rel.to_extended_list Constr.mkRel 0 sign in
-            let fargs = List.map (Constr.lift signlen) args @ Context.Rel.to_extended_list Constr.mkRel 0 sign in
+            let indargs = List.map (Constr.lift signlen) indargs @ Context.Rel.instance_list Constr.mkRel 0 sign in
+            let fargs = List.map (Constr.lift signlen) args @ Context.Rel.instance_list Constr.mkRel 0 sign in
             sign, (fargs, indargs, [])
         in
         Some (idx, arity, filter, sign, args)
@@ -294,7 +294,7 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
              Term.it_mkProd_or_LetIn
                (Constr.mkApp (mkApp (mkRel (i + 1 + len + n + List.length sign), Array.of_list indargs'),
                               [| Term.applistc (lift (List.length sign) result)
-                                   (Context.Rel.to_extended_list mkRel 0 sign) |]))
+                                   (Context.Rel.instance_list mkRel 0 sign) |]))
                sign
            in
            let hyps = cmap_add hyp !occ hyps in

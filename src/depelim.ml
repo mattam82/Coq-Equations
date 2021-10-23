@@ -142,7 +142,7 @@ let depcase ~poly ((mind, i as ind), u) =
   in
   let nconstrs = Array.length oneind.mind_nf_lc in
   let mkbody i (ctx, ty) =
-    let args = Context.Rel.to_extended_vect mkRel 0 ctx in
+    let args = Context.Rel.instance mkRel 0 ctx in
     annot_of_context ctx, mkApp (mkRel (1 + nconstrs + List.length ctx - i), args)
   in
   let bodies = Array.mapi mkbody oneind.mind_nf_lc in
@@ -459,7 +459,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
 
     (* Initial problem. *)
     let prob = Context_map.id_subst ctx in
-    let args = Context.Rel.to_extended_list mkRel 0 ctx in
+    let args = Context.Rel.instance_list mkRel 0 ctx in
 
     Refine.refine ~typecheck:true begin fun evars ->
       let evd = ref evars in

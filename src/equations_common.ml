@@ -895,9 +895,9 @@ type named_declaration = EConstr.named_declaration
 type named_context = EConstr.named_context
 
 let extended_rel_vect n ctx =
-  Context.Rel.to_extended_vect mkRel n ctx
+  Context.Rel.instance mkRel n ctx
 let extended_rel_list n ctx =
-  Context.Rel.to_extended_list mkRel n ctx
+  Context.Rel.instance_list mkRel n ctx
 let to_tuple = Context.Rel.Declaration.to_tuple
 let to_named_tuple = Context.Named.Declaration.to_tuple
 let of_named_tuple = Context.Named.Declaration.of_tuple
