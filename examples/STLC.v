@@ -689,8 +689,6 @@ Ltac invert_term :=
       end
   end.
 
-Set Regular Subst Tactic.
-
 Lemma hereditary_subst_type Γ Γ' t T u U : Γ |-- u : U -> Γ' @ (U :: Γ) |-- t : T ->
   let (t', o) := hereditary_subst (U, u, t) (length Γ') in
     (Γ' @ Γ |-- t' : T /\ (forall ty prf, o = Some (exist ty prf) -> ty = T)).
