@@ -1102,12 +1102,12 @@ let gather_fresh_context sigma u octx =
   let arr = Univ.Instance.to_array u in
   let levels =
     Array.fold_left (fun ctx' l ->
-        if not (Univ.LSet.mem l univs) then Univ.LSet.add l ctx'
+        if not (Univ.Level.Set.mem l univs) then Univ.Level.Set.add l ctx'
         else ctx')
-      Univ.LSet.empty arr
+      Univ.Level.Set.empty arr
   in
   let ctx = Univ.ContextSet.of_set levels in
-  Univ.ContextSet.add_constraints (Univ.AUContext.instantiate u octx) ctx
+  Univ.ContextSet.add_constraints (Univ.AbstractContext.instantiate u octx) ctx
 
 let swap (x, y) = (y, x)
 

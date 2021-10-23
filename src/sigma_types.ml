@@ -141,7 +141,7 @@ let telescope env evd = function
               let su = Sorts.univ_of_sort ts in
               Univ.enforce_leq su l cstr
             in
-            let cstrs = enforce_leq env !evd t (Univ.enforce_leq tyuniv l Univ.Constraint.empty) in
+            let cstrs = enforce_leq env !evd t (Univ.enforce_leq tyuniv l Univ.Constraints.empty) in
             let () = evd := Evd.add_constraints !evd cstrs in
             aux (sigty, l, (u, pred) :: tys) ds
         in aux (t, tuniv, []) tl
