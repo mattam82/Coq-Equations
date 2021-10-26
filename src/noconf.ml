@@ -75,7 +75,7 @@ let derive_no_confusion ~pm env sigma0 ~poly (ind,u as indu) =
         Sigma_types.build_sig_of_ind env !evd indu
       in
       let () = evd := evm in
-      let evm, sigma = Evarutil.new_global !evd (Lazy.force coq_sigma) in
+      let evm, sigma = Evd.fresh_global (Global.env ()) !evd (Lazy.force coq_sigma) in
       let () = evd := evm in
       let _, pred' = Term.decompose_lam_n (List.length pars) (EConstr.to_constr !evd pred) in
       let indty = mkApp (sigma, [|idx; of_constr pred'|]) in

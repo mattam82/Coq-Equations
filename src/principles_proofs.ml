@@ -617,7 +617,7 @@ let aux_ind_fun info chop nested unfp unfids p =
                     | _ -> acc
                   in
                   let args_vars = List.fold_left collect_vars [] args in
-                  let args_vars = List.filter (fun id -> not (Termops.is_section_variable id)) args_vars in
+                  let args_vars = List.filter (fun id -> not (Termops.is_section_variable (Global.env ()) id)) args_vars in
                   List.map mkVar args_vars
                 in
                 let tac, _ = List.fold_right2 (wheretac env sigma) wheres unfswheres (Tacticals.New.tclIDTAC, subst) in
