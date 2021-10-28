@@ -86,7 +86,7 @@ let needs_generalization gl id =
       let f', args' = decompose_indapp sigma f args in
       let parvars = ids_of_constr ~all:true sigma Id.Set.empty f' in
         if not (linear sigma parvars args') then true
-        else Array.exists (fun x -> not (isVar sigma x) || is_section_variable (destVar sigma x)) args'
+        else Array.exists (fun x -> not (isVar sigma x) || is_section_variable (Global.env ()) (destVar sigma x)) args'
 
 
 let dependent_pattern ?(pattern_term=true) c =
@@ -379,7 +379,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
     let loc_hyps, sec_hyps = CList.split_when
       (fun decl ->
         let id = Context.Named.Declaration.get_id decl in
-        Termops.is_section_variable id) hyps in
+        Termops.is_section_variable (Global.env ()) id) hyps in
     let env = push_named_context sec_hyps env in
 
     (* Check that [id] exists in the current context. *)

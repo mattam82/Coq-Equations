@@ -186,7 +186,7 @@ let array_filter_map f a =
   in Array.of_list l'
 
 let new_global sigma gr =
-  try Evarutil.new_global sigma gr
+  try Evd.fresh_global (Global.env ()) sigma gr
   with e ->
     CErrors.anomaly Pp.(str"new_global raised an error on:" ++ Printer.pr_global gr)
 
@@ -259,9 +259,9 @@ let coq_succ = (find_global "nat.succ")
 let coq_nat = (find_global "nat.type")
 
 let rec coq_nat_of_int sigma = function
-  | 0 -> Evarutil.new_global sigma (Lazy.force coq_zero)
+  | 0 -> Evd.fresh_global (Global.env ()) sigma (Lazy.force coq_zero)
   | n ->
-    let sigma, succ = Evarutil.new_global sigma (Lazy.force coq_succ) in
+    let sigma, succ = Evd.fresh_global (Global.env ()) sigma (Lazy.force coq_succ) in
     let sigma, n' = coq_nat_of_int sigma (pred n) in
     sigma, EConstr.mkApp (succ, [| n' |])
 
@@ -271,7 +271,7 @@ let rec int_of_coq_nat c =
   | _ -> 0
 
 let fresh_id_in_env avoid id env =
-  Namegen.next_ident_away_in_goal id (Id.Set.union avoid (Id.Set.of_list (ids_of_named_context (named_context env))))
+  Namegen.next_ident_away_in_goal (Global.env ()) id (Id.Set.union avoid (Id.Set.of_list (ids_of_named_context (named_context env))))
 
 let fresh_id avoid id gl =
   fresh_id_in_env avoid id (pf_env gl)
@@ -281,7 +281,7 @@ let coq_fix_proto = (find_global "fixproto")
 let compute_sort_family l =
   let env = Global.env () in
   let evd = Evd.from_env env in
-  let evd, c = Evarutil.new_global evd (Lazy.force l) in
+  let evd, c = Evd.fresh_global env evd (Lazy.force l) in
   let _, s = Reduction.dest_arity env
     (EConstr.to_constr ~abort_on_undefined_evars:false evd (Retyping.get_type_of env evd c)) in
   Sorts.family s

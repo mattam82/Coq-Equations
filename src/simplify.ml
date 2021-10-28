@@ -1195,7 +1195,7 @@ let simplify_tac (rules : simplification_rules) : unit Proofview.tactic =
     let loc_hyps, sec_hyps = CList.split_when
       (fun decl ->
         let id = Context.Named.Declaration.get_id decl in
-        Termops.is_section_variable id) hyps in
+        Termops.is_section_variable (Global.env ()) id) hyps in
     let env = push_named_context sec_hyps env in
     (* We want to work in a [rel_context], not a [named_context]. *)
     let ctx, subst = Equations_common.rel_of_named_context loc_hyps in
