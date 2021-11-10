@@ -21,9 +21,9 @@ open Reductionops
 open Pp
 
 open Evarutil
-open Tacmach
+open Tacmach.Old
 open Namegen
-open Tacticals
+open Tacticals.Old
 open Tactics
 
 open EConstr
@@ -67,7 +67,7 @@ let linear sigma vars args =
 
 
 let needs_generalization gl id =
-  let open Tacmach.New in
+  let open Tacmach in
   let open Proofview.Goal in
   let sigma = sigma gl in
   let f, args, def, id, oldid =
@@ -90,7 +90,7 @@ let needs_generalization gl id =
 
 
 let dependent_pattern ?(pattern_term=true) c =
-  let open Tacmach.New in
+  let open Tacmach in
   Proofview.Goal.enter (fun gl ->
   let sigma = Proofview.Goal.sigma gl in
   let cty = Retyping.get_type_of (pf_env gl) sigma c in
@@ -220,7 +220,7 @@ let () =
              ; derive_fn = make_derive_ind fn })
 
 let pattern_call ?(pattern_term=true) c =
-  let open Tacmach.New in
+  let open Tacmach in
   Proofview.Goal.enter (fun gl ->
   let env = pf_env gl in
   let sigma = project gl in
@@ -390,7 +390,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
         | [] -> raise Not_found
       in Proofview.tclUNIT (lookup 1 loc_hyps)
     with Not_found ->
-      Tacticals.New.tclZEROMSG (str "No such hypothesis: " ++ Id.print id)
+      Tacticals.tclZEROMSG (str "No such hypothesis: " ++ Id.print id)
     end >>= fun rel ->
 
     (* We want to work in a [rel_context], not a [named_context]. *)
@@ -411,7 +411,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
         let evd = ref sigma in
         begin match Covering.split_var (env, evd) rel ctx with
         | None | Some (Covering.CannotSplit _) ->
-            Tacticals.New.tclZEROMSG (str "Could not eliminate variable " ++ Id.print id)
+            Tacticals.tclZEROMSG (str "Could not eliminate variable " ++ Id.print id)
         | Some (Covering.Splitted (_, newctx, brs)) ->
             let brs = Option.List.flatten (Array.to_list brs) in
             let clauses_lhs = List.map Context_map.context_map_to_lhs brs in

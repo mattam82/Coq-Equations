@@ -8,8 +8,8 @@ open Pp
 open List
 open Libnames
 open Tactics
-open Tacticals
-open Tacmach
+open Tacticals.Old
+open Tacmach.Old
 open EConstr
 open Equations_common
 open Printer
@@ -58,19 +58,19 @@ let wf_obligations_base info =
   info.base_id ^ "_wf_obligations"
 
 let simp_eqns l =
-  let open Tacticals.New in
+  let open Tacticals in
   tclREPEAT
     (tclTHENLIST [Autorewrite.autorewrite tclIDTAC l; tclTRY (eauto_with_below l)])
 
 let simp_eqns_in clause l =
-  let open Tacticals.New in
+  let open Tacticals in
   tclREPEAT (tclTHENLIST 
 		[Autorewrite.auto_multi_rewrite l clause;
 		 tclTRY (eauto_with_below l)])
 
 let autorewrites b = 
-  let open Tacticals.New in
-  tclREPEAT (Autorewrite.autorewrite Tacticals.New.tclIDTAC [b])
+  let open Tacticals in
+  tclREPEAT (Autorewrite.autorewrite Tacticals.tclIDTAC [b])
 
 exception RewriteSucceeded of EConstr.t
 
@@ -94,12 +94,12 @@ let autorewrite_one b =
   let rew_rules = Autorewrite.find_rewrites b in
   let rec aux rules =
     match rules with
-    | [] -> Tacticals.New.tclFAIL 0 (str"Couldn't rewrite")
+    | [] -> Tacticals.tclFAIL 0 (str"Couldn't rewrite")
     | r :: rules ->
        let global, _univs = Constr.destRef r.Autorewrite.rew_lemma in
        let tac =
          Proofview.tclBIND
-         (Tacticals.New.pf_constr_of_global global)
+         (Tacticals.pf_constr_of_global global)
          (if r.Autorewrite.rew_l2r then Equality.rewriteLR else Equality.rewriteRL)
        in
        Proofview.tclOR tac
@@ -108,7 +108,7 @@ let autorewrite_one b =
 
 let revert_last =
   Proofview.Goal.enter (fun gl ->
-      let hyp = Tacmach.New.pf_last_hyp gl in
+      let hyp = Tacmach.pf_last_hyp gl in
       revert [get_id hyp])
 
 (** fix generalization *)
@@ -236,7 +236,7 @@ let find_splitting_var sigma pats var constrs =
     Option.get (aux (rev pats) constrs)
 
 let rec intros_reducing () =
-  let open Tacticals.New in
+  let open Tacticals in
   Proofview.Goal.enter (fun gl ->
   let concl = Proofview.Goal.concl gl in
     match kind (Proofview.Goal.sigma gl) concl with
@@ -245,7 +245,7 @@ let rec intros_reducing () =
     | _ -> tclIDTAC)
   
 let cstrtac =
-  Tacticals.New.tclTHENLIST [any_constructor false None]
+  Tacticals.tclTHENLIST [any_constructor false None]
 
 let destSplit = function
   | Split (_, _, _, splits) -> Some splits
@@ -301,7 +301,7 @@ let annot_of_rec r = match r.struct_rec_arg with
   | _ -> None
 
 let aux_ind_fun info chop nested unfp unfids p =
-  let open Tacticals.New in
+  let open Tacticals in
   let rec solve_nested () =
     let open Proofview.Goal in
     Proofview.Goal.enter (fun gl ->
@@ -340,7 +340,7 @@ let aux_ind_fun info chop nested unfp unfids p =
     match p.program_rec with
     | None ->
       let is_rec, fixtac =
-        let open Tacticals.New in
+        let open Tacticals in
         match porig with
         | Some { Syntax.program_rec = Some (Structural ann) } ->
           (let idx =
@@ -406,7 +406,7 @@ let aux_ind_fun info chop nested unfp unfids p =
               let sigma, evar = new_evar env !evd functional_type in
               (sigma, mkApp (fix, [| evar |])))
         | { rec_node = StructRec r } ->
-          let open Tacticals.New in
+          let open Tacticals in
           let fixtac =
             let idx = match r.struct_rec_arg with
               | NestedOn None -> Some 0
@@ -445,7 +445,7 @@ let aux_ind_fun info chop nested unfp unfids p =
         | Some f -> Some (List.map_filter (fun x -> x) (Array.to_list f))
       in
       of82 (observe "split"
-        (Tacticals.tclTHEN_i
+        (Tacticals.Old.tclTHEN_i
            (fun gl ->
               match kind (project gl) (pf_concl gl) with
               | App (ind, args) ->
@@ -480,7 +480,7 @@ let aux_ind_fun info chop nested unfp unfids p =
           let _, pos, elim = 
             find_helper_arg (env gl) sigma info.term_info f fargs 
           in
-          let id = Tacmach.New.pf_get_new_id id gl in
+          let id = Tacmach.pf_get_new_id id gl in
           let hyps = Id.Set.elements (hyps_after sigma (hyps gl) (pos + 1 - snd chop) before) in
           let occs = Some (List.map (fun h -> (Locus.AllOccurrences, h), Locus.InHyp) hyps) in
           let occs = Locus.{ onhyps = occs; concl_occs = NoOccurrences } in
@@ -489,15 +489,15 @@ let aux_ind_fun info chop nested unfp unfids p =
             let indapp = change_in_app ind before (pos - snd chop) (mkVar id) in
             mkApp (indapp, [| fnapp |])
           in
-          Tacticals.New.tclTHENLIST
+          Tacticals.tclTHENLIST
             [observe_new "letin" (letin_pat_tac true None (Name id) (sigma, elim) occs);
              observe_new "convert concl" (convert_concl ~cast:false ~check:false newconcl DEFAULTcast);
              observe_new "clear body" (clear_body [id]);
              aux chop unfs unfids s]
         | _ ->
-          Tacticals.New.tclFAIL 0 (str"Unexpected refinement goal in functional induction proof")
+          Tacticals.tclFAIL 0 (str"Unexpected refinement goal in functional induction proof")
       in
-      let open Tacticals.New in
+      let open Tacticals in
       (observe_new "refine"
               (tclTHENLIST [ intros;
                              tclTHENLAST (tclTHEN (tclTRY (autorewrite_one info.term_info.base_id))
@@ -558,7 +558,7 @@ let aux_ind_fun info chop nested unfp unfids p =
             in
             let chop = fstchop, snd chop in
             let wheretac =
-              let open Tacticals.New in
+              let open Tacticals in
               observe_new "one where"
                 (tclTHENLIST [
                     tclDO revert revert_last;
@@ -589,8 +589,8 @@ let aux_ind_fun info chop nested unfp unfids p =
               it_mkProd_or_LetIn app ctx
             in
             let tac =
-              Tacticals.New.tclTHEN acc
-                (Proofview.tclBIND (Tacticals.New.pf_constr_of_global ind)
+              Tacticals.tclTHEN acc
+                (Proofview.tclBIND (Tacticals.pf_constr_of_global ind)
                    (fun ind ->
                       if !debug then
                         (let env = Global.env () in
@@ -620,11 +620,11 @@ let aux_ind_fun info chop nested unfp unfids p =
                   let args_vars = List.filter (fun id -> not (Termops.is_section_variable (Global.env ()) id)) args_vars in
                   List.map mkVar args_vars
                 in
-                let tac, _ = List.fold_right2 (wheretac env sigma) wheres unfswheres (Tacticals.New.tclIDTAC, subst) in
+                let tac, _ = List.fold_right2 (wheretac env sigma) wheres unfswheres (Tacticals.tclIDTAC, subst) in
                 tac)
           in
-          Tacticals.New.tclTHENLIST [tac; Tacticals.New.tclTRY (autorewrite_one info.term_info.base_id)]
-        else Tacticals.New.tclIDTAC
+          Tacticals.tclTHENLIST [tac; Tacticals.tclTRY (autorewrite_one info.term_info.base_id)]
+        else Tacticals.tclIDTAC
       in
       (match c with
        | REmpty _ ->
@@ -645,7 +645,7 @@ let aux_ind_fun info chop nested unfp unfids p =
                tclTHEN Tactics.intros
                  (tclMAP (fun i ->
                       (tclTRY (Proofview.tclBIND
-                              (Tacticals.New.pf_constr_of_global
+                              (Tacticals.pf_constr_of_global
                                   (Equations_common.global_reference i))
                                 Equality.rewriteLR))) unfids);
                tclORELSE (tclCOMPLETE
@@ -699,7 +699,7 @@ let check_guard tac =
     else tclZERO NotGuarded)))
 
 let ind_fun_tac is_rec f info fid nestedinfo progs =
-  let open Tacticals.New in
+  let open Tacticals in
   let open Proofview in
   let open Notations in
   match is_rec with
@@ -876,7 +876,7 @@ let myreplace_by a1 a2 tac =
         let sigma, eq = get_fresh sigma logic_eq_type in
         let eqty = mkApp (eq, [| ty; a1; a2 |]) in
         let sigma, _ = Typing.type_of env sigma eqty in
-        let na = Tacmach.New.pf_get_new_id (Id.of_string "Heq") gl in
+        let na = Tacmach.pf_get_new_id (Id.of_string "Heq") gl in
         Proofview.Unsafe.tclEVARS sigma <*>
         Tactics.assert_by (Name na) eqty tac <*>
         Equality.rewriteLR (mkVar na) <*>
@@ -914,7 +914,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
 	      [((Locus.OnlyOccurrences [1]), Tacred.EvalConstRef f_cst); 
                ((Locus.OnlyOccurrences [1]), Tacred.EvalConstRef funf_cst)]
           in tclTHENLIST [to82 unfolds; simpltac; to82 (pi_tac ())] gl
-        with Not_found -> to82 (Tacticals.New.tclORELSE reflexivity (congruence_tac 10 [])) gl)
+        with Not_found -> to82 (Tacticals.tclORELSE reflexivity (congruence_tac 10 [])) gl)
     | _ -> to82 reflexivity gl
   in
   let solve_eq subst = observe "solve_eq" (tclORELSE (transparent (to82 reflexivity)) (solve_rec_eq subst)) in
@@ -938,7 +938,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
         let subst, fixtac, extgl =
           match p.program_rec with
           | Some r ->
-            let open Tacticals.New in
+            let open Tacticals in
             let fixtac, extgl = match r with
               | { rec_node = WfRec _ } ->
                 if !Equations_common.equations_with_funext then
@@ -955,17 +955,17 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
             in ((f_cst, funf_cst) :: subst), fixtac, extgl
           | _ -> subst, of82 unfolds, false
         in
-        Tacticals.New.tclTHENLIST 
+        Tacticals.tclTHENLIST 
           [observe_new "program before unfold"  intros;
            if extgl then
-            (Tacticals.New.tclTHENFIRST 
+            (Tacticals.tclTHENFIRST 
               (observe_new "program fixpoint" fixtac)
-              (Tacticals.New.tclORELSE 
-                (Tacticals.New.tclSOLVE
+              (Tacticals.tclORELSE 
+                (Tacticals.tclSOLVE
                   [of82 (fun gl -> set_opaque ();
                     observe "extensionality proof"
                     (aux subst info.base_id info.base_id p.program_splitting p.program_splitting) gl)])
-                (Tacticals.New.tclFAIL 0 
+                (Tacticals.tclFAIL 0 
                   (Pp.str "Could not prove extensionality automatically"))))
             else observe_new "program fixpoint" fixtac;
             (of82 (fun gl -> set_opaque ();
@@ -1026,8 +1026,8 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
 	      to82 (abstract (of82 (tclTHENLIST [to82 intros; simpltac; reftac])))
 	    
     | Compute (_, wheres, _, RProgram _), Compute ((lctx, _, _), unfwheres, _, RProgram c) ->
-      let open Tacticals.New in
-      let open Tacmach.New in
+      let open Tacticals in
+      let open Tacmach in
        let wheretac acc w unfw =
          let assoc, id, _ =
            try PathMap.find unfw.where_path where_map
@@ -1114,7 +1114,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
 let ind_elim_tac indid inds mutinds info ind_fun =
   let open Proofview in
   let open Notations in
-  let open Tacticals.New in
+  let open Tacticals in
   let eauto = Class_tactics.typeclasses_eauto ["funelim"; info.base_id] in
   let prove_methods c =
     Proofview.Goal.enter (fun gl ->

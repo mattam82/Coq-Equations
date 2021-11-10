@@ -16,8 +16,8 @@ open Environ
 open Libnames
 open Vars
 open Tactics
-open Tacticals
-open Tacmach
+open Tacticals.Old
+open Tacmach.Old
 open Evarutil
 open Equations_common
 

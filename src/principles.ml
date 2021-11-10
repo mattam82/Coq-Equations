@@ -1366,7 +1366,7 @@ let declare_funind ~pm info alias env evd is_rec protos progs
           () in
       let obl_hook = Declare.Hook.make_g hookind in
       Declare.Obls.add_definition ~pm ~cinfo ~info ~obl_hook
-        ~tactic:(Tacticals.New.tclTRY tactic) ~uctx [||]
+        ~tactic:(Tacticals.tclTRY tactic) ~uctx [||]
     in
     match res with
     | Declare.Obls.Defined gr -> ()
@@ -1510,15 +1510,15 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     let hd, unf = match flalias with
       | Some ((f', _), unf, _) ->
         let tac = Proofview.tclBIND
-            (Tacticals.New.pf_constr_of_global (Nametab.locate (Libnames.qualid_of_ident unf)))
+            (Tacticals.pf_constr_of_global (Nametab.locate (Libnames.qualid_of_ident unf)))
             Equality.rewriteLR in
         f', tac
 
       | None -> fl,
         if eq_constr !evd fl f then
-          Tacticals.New.tclORELSE Tactics.reflexivity
-            (Tacticals.New.tclTHEN (of82 (unfold_constr !evd f)) unfold_fix)
-        else Tacticals.New.tclIDTAC
+          Tacticals.tclORELSE Tactics.reflexivity
+            (Tacticals.tclTHEN (of82 (unfold_constr !evd f)) unfold_fix)
+        else Tacticals.tclIDTAC
     in
     let comp = applistc hd pats in
     let body =
@@ -1735,12 +1735,12 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
         else pm
       in
       let tac =
-        let open Tacticals.New in
+        let open Tacticals in
         tclTHENLIST
           [Tactics.intros;
            unf;
            (solve_equation_tac (GlobRef.ConstRef cst));
-           (if PathMap.is_empty wheremap then Tacticals.New.tclIDTAC
+           (if PathMap.is_empty wheremap then Tacticals.tclIDTAC
             else tclTRY (autorewrites (info.base_id ^ "_where")));
            Tactics.reflexivity]
       in

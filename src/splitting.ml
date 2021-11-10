@@ -1070,7 +1070,7 @@ let solve_equations_obligations ~pm flags recids loc i sigma hook =
     (* Force introductions to be able to shrink the bodies later on. *)
     List.map
       (fun (env, ev, evi, ctx, _) ->
-         Tacticals.New.tclDO (List.length ctx) Tactics.intro)
+         Tacticals.tclDO (List.length ctx) Tactics.intro)
       types
   in
   (* Feedback.msg_debug (str"Starting proof"); *)
@@ -1080,7 +1080,7 @@ let solve_equations_obligations ~pm flags recids loc i sigma hook =
   let lemma = Declare.Proof.map lemma ~f:(fun p  ->
       fst (Proof.solve Goal_select.SelectAll None (Proofview.tclDISPATCH do_intros) p)) in
   let lemma = Declare.Proof.map lemma ~f:(fun p  ->
-      fst (Proof.solve Goal_select.SelectAll None (Tacticals.New.tclTRY flags.tactic) p)) in
+      fst (Proof.solve Goal_select.SelectAll None (Tacticals.tclTRY flags.tactic) p)) in
   let prf = Declare.Proof.get lemma in
   let pm, lemma = if Proof.is_done prf then
     if flags.open_proof then 
@@ -1135,8 +1135,8 @@ let solve_equations_obligations_program ~pm flags recids loc i sigma hook =
       let evi = Evd.find_undefined sigma ev in
       let ctx = Evd.evar_filtered_context evi in
       let tac = 
-        Tacticals.New.tclTHEN 
-          (Tacticals.New.tclDO (List.length ctx - nc_len) Tactics.intro)
+        Tacticals.tclTHEN 
+          (Tacticals.tclDO (List.length ctx - nc_len) Tactics.intro)
           flags.tactic
       in
       (id, ty, src, status, deps, Some tac))

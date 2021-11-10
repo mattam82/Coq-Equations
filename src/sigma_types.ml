@@ -20,7 +20,7 @@ open Evarutil
 open List
 open Globnames
 open Tactics
-open Tacticals
+open Tacticals.Old
 open EConstr
 open Equations_common
 
@@ -332,7 +332,7 @@ let get_signature env sigma0 ty =
 (*     tclTHENLIST [setvar; geneq; clear; movetop] *)
 
 let pattern_sigma ~assoc_right c hyp env sigma =
-  let open Tacticals.New in
+  let open Tacticals in
   let evd = ref sigma in
   let terms = constrs_of_coq_sigma env evd c (mkVar hyp) in
   let terms =
@@ -792,7 +792,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
       (ctx', goal, branches_res, nb_cuts, rev_subst_without_cuts, to_apply, simpl)
 
 
-open Tacmach
+open Tacmach.Old
 
 let curry_hyp env sigma hyp t =
   let curry t =
@@ -869,7 +869,7 @@ module Tactics =struct
       | Prod (na, dom, codom) ->
          Refine.refine ~typecheck:true
            (fun sigma -> curry_concl env sigma na dom codom)
-      | _ -> Tacticals.New.tclFAIL 0 (str"Goal cannot be curried") end
+      | _ -> Tacticals.tclFAIL 0 (str"Goal cannot be curried") end
 
   let uncurry_call c c' id id' =
     enter begin fun gl ->
@@ -887,18 +887,18 @@ module Tactics =struct
       let sigma = Proofview.Goal.sigma gl in
       try
         let sigma', sigsig, sigpack =
-          get_signature env sigma (Tacmach.New.pf_get_hyp_typ id gl) in
+          get_signature env sigma (Tacmach.pf_get_hyp_typ id gl) in
         Proofview.Unsafe.tclEVARS sigma' <*>
         letin_tac None (Name id') (beta_applist sigma (sigpack, [mkVar id])) None nowhere
       with Not_found ->
-        Tacticals.New.tclFAIL 0 (str"No Signature instance found")
+        Tacticals.tclFAIL 0 (str"No Signature instance found")
     end
 
   let pattern_sigma id =
     enter begin fun gl ->
     let env = Proofview.Goal.env gl in
     let sigma = Proofview.Goal.sigma gl in
-    let decl = Tacmach.New.pf_get_hyp id gl in
+    let decl = Tacmach.pf_get_hyp id gl in
     let term = Option.get (get_named_value decl) in
     pattern_sigma ~assoc_right:true term id env sigma end
 end
