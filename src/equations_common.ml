@@ -19,9 +19,9 @@ open Context
 open Evarutil
 open List
 open Libnames
-open Tacmach
+open Tacmach.Old
 open Tactics
-open Tacticals
+open Tacticals.Old
 
 open Ltac_plugin
 open Tacexpr
@@ -816,7 +816,7 @@ let move_after_deps id c =
     let hyps = Proofview.Goal.hyps gl in
     let deps = collect_vars sigma c in
     let iddeps = 
-      collect_vars sigma (Tacmach.New.pf_get_hyp_typ id gl) in
+      collect_vars sigma (Tacmach.pf_get_hyp_typ id gl) in
     let deps = Id.Set.diff deps iddeps in
     let find decl = Id.Set.mem (get_id decl) deps in
     let first = 
