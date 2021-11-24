@@ -1,0 +1,10 @@
+package "plugin" (
+  directory = "."
+  description = "Coq equations"
+  requires = "coq-core.plugins.ltac coq-core.plugins.extraction coq-core.plugins.cc"
+  archive(byte) = "equations_plugin.cma"
+  archive(native) = "equations_plugin.cmxa"
+  plugin(byte) = "equations_plugin.cma"
+  plugin(native) = "equations_plugin.cmxs"
+)
+directory = "."

@@ -8,6 +8,7 @@
 /Makefile.coq.conf
 /Makefile.hott
 /Makefile.hott.conf
+src/META.coq-equations
 *.bak
 *.cm*
 *.o

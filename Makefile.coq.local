@@ -1,1 +1,2 @@
+CAMLPKGS+=-package coq-core.plugins.extraction,coq-core.plugins.cc
 ci: all test-suite examples
