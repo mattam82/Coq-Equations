@@ -280,11 +280,11 @@ let whd_head env sigma t =
   | _ -> t
 
 let specialize_eqs ~with_block id =
-  Proofview.V82.tactic begin fun gl ->
-  let open Tacticals.Old in
-  let open Tacmach.Old in
+  Proofview.Goal.enter begin fun gl ->
+  let open Tacticals in
+  let open Tacmach in
   let env = pf_env gl in
-  let ty = pf_get_hyp_typ gl id in
+  let ty = pf_get_hyp_typ id gl in
   let evars = ref (project gl) in
   let unif env ctx evars c1 c2 =
     match Evarconv.unify env !evars Reduction.CONV (it_mkLambda_or_subst env c1 ctx) (it_mkLambda_or_subst env c2 ctx) with
@@ -351,26 +351,28 @@ let specialize_eqs ~with_block id =
   let ty = Evarutil.nf_evar !evars ty in
   let acc = Evarutil.nf_evar !evars acc in
     if worked then
-      tclTHENFIRST (to82 (Tactics.assert_before_replacing id ty))
-        (to82 (exact_no_check acc)) gl
+      tclTHENFIRST (Tactics.assert_before_replacing id ty)
+        (exact_no_check acc)
     else tclFAIL 0 (str "Nothing to do in hypothesis " ++ Id.print id ++
                     Printer.pr_econstr_env env !evars ty
-                   ) gl
+                   )
   end
 
+exception Specialize
+
+open Proofview.Notations
+
 let specialize_eqs ~with_block id =
-  Proofview.V82.tactic begin fun gl ->
-  if
-    (try ignore(to82 (clear [id]) gl); false
-     with e when CErrors.noncritical e -> true)
-  then
-    Tacticals.Old.tclFAIL 0 (str "Specialization not allowed on dependent hypotheses") gl
-  else Proofview.V82.of_tactic (specialize_eqs ~with_block id) gl
+  let open Tacticals in
+  Proofview.Goal.enter begin fun gl ->
+  Proofview.tclORELSE (clear [id] <*> Proofview.tclZERO Specialize) begin function
+  | (Specialize, _) -> specialize_eqs ~with_block id
+  | e -> tclFAIL 0 (str "Specialization not allowed on dependent hypotheses")
+  end
   end
 
 (* Dependent elimination using Equations. *)
 let dependent_elim_tac ?patterns id : unit Proofview.tactic =
-  let open Proofview.Notations in
   Proofview.Goal.enter begin fun gl ->
     let env = Proofview.Goal.env gl in
     let concl = Proofview.Goal.concl gl in
