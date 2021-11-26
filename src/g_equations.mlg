@@ -23,8 +23,6 @@ open Equations_common
 open EConstr
 open Ltac_plugin
 
-let of82 = Proofview.V82.tactic
-
 }
 
 TACTIC EXTEND decompose_app
@@ -98,8 +96,8 @@ open Tacarg
 
 TACTIC EXTEND solve_equations
 | [ "solve_equations" tactic(destruct) tactic(tac) ] -> 
-     { of82 (Equations.solve_equations_goal (to82 (Tacinterp.tactic_of_value ist destruct))
-                                            (to82 (Tacinterp.tactic_of_value ist tac))) }
+     { Equations.solve_equations_goal (Tacinterp.tactic_of_value ist destruct)
+                                            (Tacinterp.tactic_of_value ist tac) }
 END
 
 TACTIC EXTEND simp
@@ -520,10 +518,10 @@ END
 
 TACTIC EXTEND eqns_specialize_eqs
 | [ "eqns_specialize_eqs" ident(i) ] -> {
-    Proofview.V82.tactic (Depelim.specialize_eqs ~with_block:false i)
+    Depelim.specialize_eqs ~with_block:false i
   }
 | [ "eqns_specialize_eqs_block" ident(i) ] -> {
-    Proofview.V82.tactic (Depelim.specialize_eqs ~with_block:true i)
+    Depelim.specialize_eqs ~with_block:true i
   }
 END
 

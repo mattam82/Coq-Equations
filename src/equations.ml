@@ -96,7 +96,7 @@ let define_unfolding_eq ~pm env evd flags p unfp prog prog' ei hook =
   let obl_hook = Declare.Hook.make_g hook_eqs in
   let pm, _ =
     Declare.Obls.add_definition ~pm ~cinfo ~info ~reduce:(fun x -> x)
-      ~tactic:(of82 tac) ~obl_hook
+      ~tactic:tac ~obl_hook
       ~uctx:(Evd.evar_universe_context evd) [||]
   in pm
 
@@ -226,7 +226,8 @@ let equations_interactive ~pm ~poly ~program_mode ?tactic opts eqs nt =
     CErrors.anomaly Pp.(str"Equation.equations_interactive not opening a proof")
   | Some p -> pm, p
 
-let solve_equations_goal destruct_tac tac gl =
+let solve_equations_goal destruct_tac tac =
+  Proofview.V82.tactic begin fun gl ->
   let concl = pf_concl gl in
   let intros, move, concl =
     let rec intros goal move = 
@@ -276,11 +277,12 @@ let solve_equations_goal destruct_tac tac gl =
   let dotac = tclDO (succ targ) (to82 intro) in
   let letintac (id, br, brt) = 
     tclTHEN (to82 (letin_tac None (Name id) br (Some brt) nowhere))
-            (tclTHEN (move_tac id) tac)
+            (tclTHEN (move_tac id) (Proofview.V82.of_tactic tac))
   in
   let subtacs =
-    tclTHENS destruct_tac (List.map letintac branches)
+    tclTHENS (Proofview.V82.of_tactic destruct_tac) (List.map letintac branches)
   in tclTHENLIST [intros; cleantac ; dotac ; subtacs] gl
+  end
 
 let dependencies env sigma c ctx =
   let init = global_vars_set env c in

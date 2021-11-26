@@ -21,9 +21,7 @@ open Reductionops
 open Pp
 
 open Evarutil
-open Tacmach.Old
 open Namegen
-open Tacticals.Old
 open Tactics
 
 open EConstr
@@ -281,7 +279,10 @@ let whd_head env sigma t =
     mkApp (eq, Array.map (Tacred.whd_simpl env sigma) args)
   | _ -> t
 
-let specialize_eqs ~with_block id gl =
+let specialize_eqs ~with_block id =
+  Proofview.V82.tactic begin fun gl ->
+  let open Tacticals.Old in
+  let open Tacmach.Old in
   let env = pf_env gl in
   let ty = pf_get_hyp_typ gl id in
   let evars = ref (project gl) in
@@ -355,14 +356,17 @@ let specialize_eqs ~with_block id gl =
     else tclFAIL 0 (str "Nothing to do in hypothesis " ++ Id.print id ++
                     Printer.pr_econstr_env env !evars ty
                    ) gl
+  end
 
-let specialize_eqs ~with_block id gl =
+let specialize_eqs ~with_block id =
+  Proofview.V82.tactic begin fun gl ->
   if
     (try ignore(to82 (clear [id]) gl); false
      with e when CErrors.noncritical e -> true)
   then
-    tclFAIL 0 (str "Specialization not allowed on dependent hypotheses") gl
-  else specialize_eqs ~with_block id gl
+    Tacticals.Old.tclFAIL 0 (str "Specialization not allowed on dependent hypotheses") gl
+  else Proofview.V82.of_tactic (specialize_eqs ~with_block id) gl
+  end
 
 (* Dependent elimination using Equations. *)
 let dependent_elim_tac ?patterns id : unit Proofview.tactic =

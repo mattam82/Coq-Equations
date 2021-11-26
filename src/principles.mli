@@ -79,7 +79,7 @@ val pr_where :
   Environ.env -> Evd.evar_map -> Constr.rel_context -> Splitting.where_clause -> Pp.t
 val where_instance : Splitting.where_clause list -> constr list
 val arguments : Evd.evar_map -> constr -> constr array
-val unfold_constr : Evd.evar_map -> constr -> Proofview.V82.tac
+val unfold_constr : Evd.evar_map -> constr -> unit Proofview.tactic
 
 (** Unfolding lemma tactic *)
 

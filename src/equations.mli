@@ -46,9 +46,9 @@ val equations_interactive :
   Declare.OblState.t * Declare.Proof.t
 
 val solve_equations_goal :
-  Proofview.V82.tac ->
-  Proofview.V82.tac ->
-  Goal.goal Evd.sigma -> Goal.goal list Evd.sigma
+  unit Proofview.tactic ->
+  unit Proofview.tactic ->
+  unit Proofview.tactic
 
 val dependencies :
   env -> Evd.evar_map ->

@@ -273,9 +273,6 @@ let rec int_of_coq_nat c =
 let fresh_id_in_env avoid id env =
   Namegen.next_ident_away_in_goal (Global.env ()) id (Id.Set.union avoid (Id.Set.of_list (ids_of_named_context (named_context env))))
 
-let fresh_id avoid id gl =
-  fresh_id_in_env avoid id (pf_env gl)
-
 let coq_fix_proto = (find_global "fixproto")
 
 let compute_sort_family l =
@@ -543,7 +540,8 @@ let unfold_head db gl t =
   in
   unfold_head (pf_env gl) (project gl) st t
 
-let autounfold_heads db db' cl gl =
+let autounfold_heads db db' cl =
+  Proofview.V82.tactic begin fun gl ->
   let eq = 
     (match cl with Some (id, _) -> pf_get_hyp_typ gl id | None -> pf_concl gl) 
   in
@@ -560,6 +558,7 @@ let autounfold_heads db db' cl gl =
       | Some hyp -> Proofview.V82.of_tactic (change_in_hyp ~check:true None (make_change_arg c') hyp) gl
       | None -> Proofview.V82.of_tactic (convert_concl ~cast:false ~check:false c' DEFAULTcast) gl
     else tclFAIL 0 (str "Nothing to unfold") gl
+  end
 
 type hintdb_name = string
 
@@ -828,34 +827,7 @@ let move_after_deps id c =
     Tactics.move_hyp id (Logic.MoveAfter first)
   in Proofview.Goal.enter enter
 
-let observe s tac = 
-  let open Proofview.Notations in
-  if not !debug then tac
-  else
-    fun gls ->
-    Feedback.msg_debug (str"Applying " ++ str s ++ str " on " ++ Printer.pr_goal gls);
-    to82
-      (Proofview.tclORELSE
-         (Proofview.tclTHEN
-            (of82 tac)
-            (Proofview.numgoals >>= fun gls ->
-             if gls = 0 then (Feedback.msg_debug (str s ++ str " succeeded"); Proofview.tclUNIT ())
-             else
-               (of82
-                  (fun gls -> Feedback.msg_debug (str "Subgoal: " ++ Printer.pr_goal gls);
-                           Evd.{ it = [gls.it]; sigma = gls.sigma }))))
-         (fun iexn -> Feedback.msg_debug
-                        (str"Failed with: " ++
-                           (match fst iexn with
-                            | Tacticals.FailError (n,expl) ->
-                               (str" Fail error " ++ int n ++ str " for " ++ str s ++ spc () ++ Lazy.force expl ++
-                                  str " on " ++ Printer.pr_goal gls)
-                            | Pretype_errors.PretypeError (env, sigma, e) ->
-                               (str " Pretype error: " ++ Himsg.explain_pretype_error env sigma e)
-                            | _ -> CErrors.iprint iexn));
-                   Proofview.tclZERO ~info:(snd iexn) (fst iexn))) gls
-
-let observe_new s (tac : unit Proofview.tactic) =
+let observe s (tac : unit Proofview.tactic) =
   let open Proofview.Notations in
   let open Proofview in
   if not !debug then tac

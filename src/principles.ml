@@ -596,7 +596,7 @@ let where_instance w =
 let arguments sigma c = snd (Termops.decompose_app_vect sigma c)
 
 let unfold_constr sigma c =
-  to82 (Tactics.unfold_in_concl [(Locus.OnlyOccurrences [1], Tacred.EvalConstRef (fst (destConst sigma c)))])
+  Tactics.unfold_in_concl [(Locus.OnlyOccurrences [1], Tacred.EvalConstRef (fst (destConst sigma c)))]
 
 let extend_prob_ctx delta (ctx, pats, ctx') =
   (delta @ ctx, Context_map.lift_pats (List.length delta) pats, ctx')
@@ -1517,7 +1517,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
       | None -> fl,
         if eq_constr !evd fl f then
           Tacticals.tclORELSE Tactics.reflexivity
-            (Tacticals.tclTHEN (of82 (unfold_constr !evd f)) unfold_fix)
+            (Tacticals.tclTHEN (unfold_constr !evd f) unfold_fix)
         else Tacticals.tclIDTAC
     in
     let comp = applistc hd pats in
