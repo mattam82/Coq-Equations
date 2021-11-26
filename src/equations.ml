@@ -16,8 +16,8 @@ open Environ
 open Libnames
 open Vars
 open Tactics
-open Tacticals.Old
-open Tacmach.Old
+open Tacticals
+open Tacmach
 open Evarutil
 open Equations_common
 
@@ -227,7 +227,7 @@ let equations_interactive ~pm ~poly ~program_mode ?tactic opts eqs nt =
   | Some p -> pm, p
 
 let solve_equations_goal destruct_tac tac =
-  Proofview.V82.tactic begin fun gl ->
+  Proofview.Goal.enter begin fun gl ->
   let concl = pf_concl gl in
   let intros, move, concl =
     let rec intros goal move = 
@@ -235,14 +235,14 @@ let solve_equations_goal destruct_tac tac =
       | Prod ({binder_name=Name id}, _, t) ->
          let id = fresh_id_in_env Id.Set.empty id (pf_env gl) in
          let tac, move, goal = intros (subst1 (Constr.mkVar id) t) (Some id) in
-         tclTHEN (to82 intro) tac, move, goal
+         tclTHEN intro tac, move, goal
       | LetIn ({binder_name=Name id}, c, _, t) ->
          if String.equal (Id.to_string id) "target" then 
            tclIDTAC, move, goal
          else 
            let id = fresh_id_in_env Id.Set.empty id (pf_env gl) in
            let tac, move, goal = intros (subst1 c t) (Some id) in
-           tclTHEN (to82 intro) tac, move, goal
+           tclTHEN intro tac, move, goal
       | _ -> tclIDTAC, move, goal
     in 
     intros (to_constr (project gl) concl) None
@@ -250,7 +250,7 @@ let solve_equations_goal destruct_tac tac =
   let move_tac = 
     match move with
     | None -> fun _ -> tclIDTAC
-    | Some id' -> fun id -> to82 (move_hyp id (Logic.MoveBefore id'))
+    | Some id' -> fun id -> move_hyp id (Logic.MoveBefore id')
   in
   let targetn, branchesn, targ, brs, b =
     match kind (project gl) (of_constr concl) with
@@ -273,15 +273,15 @@ let solve_equations_goal destruct_tac tac =
     in aux brs b
   in
   let ids = targetn :: branchesn :: List.map pi1 branches in
-  let cleantac = to82 (intros_using_then ids clear) in
-  let dotac = tclDO (succ targ) (to82 intro) in
+  let cleantac = intros_using_then ids clear in
+  let dotac = tclDO (succ targ) intro in
   let letintac (id, br, brt) = 
-    tclTHEN (to82 (letin_tac None (Name id) br (Some brt) nowhere))
-            (tclTHEN (move_tac id) (Proofview.V82.of_tactic tac))
+    tclTHEN (letin_tac None (Name id) br (Some brt) nowhere)
+            (tclTHEN (move_tac id) tac)
   in
   let subtacs =
-    tclTHENS (Proofview.V82.of_tactic destruct_tac) (List.map letintac branches)
-  in tclTHENLIST [intros; cleantac ; dotac ; subtacs] gl
+    tclTHENS destruct_tac (List.map letintac branches)
+  in tclTHENLIST [intros; cleantac ; dotac ; subtacs]
   end
 
 let dependencies env sigma c ctx =
