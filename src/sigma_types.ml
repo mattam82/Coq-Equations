@@ -20,7 +20,6 @@ open Evarutil
 open List
 open Globnames
 open Tactics
-open Tacticals.Old
 open EConstr
 open Equations_common
 
@@ -792,8 +791,6 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
       (ctx', goal, branches_res, nb_cuts, rev_subst_without_cuts, to_apply, simpl)
 
 
-open Tacmach.Old
-
 let curry_hyp env sigma hyp t =
   let curry t =
     match kind sigma t with
@@ -843,22 +840,24 @@ module Tactics =struct
   open Proofview.Notations
   open Proofview.Goal
 
+  open Tacmach
+  open Tacticals
+
   let curry_hyp id =
-  Proofview.V82.tactic
-    (fun gl ->
-    let decl = pf_get_hyp gl id in
+  Proofview.Goal.enter begin fun gl ->
+    let decl = pf_get_hyp id gl in
     let (na, body, ty) = to_named_tuple decl in
       match curry_hyp (pf_env gl) (project gl) id ty with
       | Some (prf, typ) ->
          (match body with
           | Some b ->
              let newprf = Vars.replace_vars [(id,b)] prf in
-             tclTHEN (to82 (clear [id])) (to82 (Tactics.letin_tac None (Name id) newprf (Some typ) nowhere))
-                     gl
+             tclTHEN (clear [id]) (Tactics.letin_tac None (Name id) newprf (Some typ) nowhere)
           | None ->
-             (tclTHENFIRST (Proofview.V82.of_tactic (assert_before_replacing id typ))
-                           (Proofview.V82.of_tactic (Logic.refiner ~check:false EConstr.Unsafe.(to_constr prf)))) gl)
-      | None -> tclFAIL 0 (str"No currying to do in " ++ Id.print id) gl)
+             (tclTHENFIRST (assert_before_replacing id typ)
+                           (Logic.refiner ~check:false EConstr.Unsafe.(to_constr prf))))
+      | None -> tclFAIL 0 (str"No currying to do in " ++ Id.print id)
+  end
 
   let curry =
     Proofview.Goal.enter begin fun gl ->
