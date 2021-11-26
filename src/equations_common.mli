@@ -32,11 +32,7 @@ type flags = {
   with_eqns : bool;
   with_ind : bool;
   allow_aliases : bool;
-  tactic : unit Proofview.tactic }  
-  
-(* Tactics *)
-val to82 : 'a Proofview.tactic -> Proofview.V82.tac
-val of82 : Proofview.V82.tac -> unit Proofview.tactic
+  tactic : unit Proofview.tactic }
 
 (* Point-free composition *)
 val ( $ ) : ('a -> 'b) -> ('c -> 'a) -> 'c -> 'b

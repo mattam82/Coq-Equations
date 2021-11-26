@@ -23,6 +23,9 @@ open Vars
 
 open Cc_plugin.Cctac
 
+let to82 t = Proofview.V82.of_tactic t
+let of82 t = Proofview.V82.tactic t
+
 type where_map = (constr * Names.Id.t * splitting) PathMap.t
 
 type equations_info = {
