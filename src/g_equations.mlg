@@ -300,7 +300,6 @@ GRAMMAR EXTEND Gram
   patterns: 
    [ [ pat = lconstr ; sep = [ "|" -> { () } | "," -> { () } ]; pats = patterns -> { pat :: pats } 
     | pat = lconstr -> { [pat] }
-    | -> { [] }
    ]];
 
   equation:
