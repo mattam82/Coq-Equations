@@ -100,6 +100,15 @@ End Sigma_Notations.
 
 Import Sigma_Notations.
 
+Set Primitive Projections.
+Global Unset Printing Primitive Projection Parameters.
+Polymorphic Cumulative Record sigmaS@{i} {A : Type@{i}} {B : forall (_ : A), SProp} : Type@{i} :=
+  sigmaSI { pr1S : A; pr2S : B pr1S }.
+Unset Primitive Projections.
+Arguments sigmaS {A} B.
+Arguments sigmaSI {A} B pr1S pr2S.
+
+Extraction Inline pr1S pr2S.
 
 (** Forward reference for the no-confusion tactic. *)
 Ltac noconf H := fail "Equations.Init.noconf has not been bound yet".

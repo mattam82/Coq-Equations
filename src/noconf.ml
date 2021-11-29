@@ -132,7 +132,7 @@ let derive_no_confusion ~pm env sigma0 ~poly (ind,u as indu) =
 	        (fun _ i' id' nparams args' arity' ->
 	          if i = i' then
 	            if List.length args = 0 then tru
-                    else mk_eq env env' evd args args'
+              else mk_eq env env' evd args args'
 	          else fls)))
   in
   let app = it_mkLambda_or_LetIn pred binders in
