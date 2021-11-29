@@ -8,6 +8,7 @@
 
 (** Tactics supporting equations *)
 
+Require Import Coq.Init.Ltac.
 Require Export Equations.Init.
 Require Import Equations.Signature.
 

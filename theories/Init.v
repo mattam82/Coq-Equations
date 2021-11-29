@@ -8,6 +8,7 @@
 
 Require Import Coq.Unicode.Utf8_core.
 Require Import Extraction.
+Require Import Coq.Init.Ltac.
 
 Declare ML Module "equations_plugin".
 
