@@ -771,8 +771,8 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),udecl,rec
   let program_orig_type = it_mkProd_or_LetIn arity sign in
   let program_sort =
     let u = Sorts.univ_of_sort (Retyping.get_sort_of env !evd program_orig_type) in
-    let sigma, sortl, sortu = nonalgebraic_universe_level_of_universe env !evd u in
-    evd := sigma; sortu
+    (* let sigma, sortl, sortu = nonalgebraic_universe_level_of_universe env !evd u in *)
+    ref u
   in
   let program_implicits = Impargs.compute_implicits_with_manual env !evd program_orig_type false impls in
   let () = evd := Evd.minimize_universes !evd in

@@ -231,7 +231,7 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
   let sigma, program_sort =
     Evarsolve.refresh_universes ~status:Evd.univ_flexible ~onlyalg:true
       (Some false) env sigma (mkSort program_sort) in
-  let program_sort = Sorts.univ_of_sort (EConstr.ESorts.kind sigma (EConstr.destSort sigma program_sort)) in
+  let program_sort = ref (Sorts.univ_of_sort (EConstr.ESorts.kind sigma (EConstr.destSort sigma program_sort))) in
   let evd = ref sigma in
   let data =
     Covering.{

@@ -314,7 +314,7 @@ type program_info = {
   program_loc : Loc.t option;
   program_id : Id.t;
   program_orig_type : EConstr.t; (* The original type *)
-  program_sort : Univ.Universe.t; (* The sort of this type *)
+  program_sort : Univ.Universe.t ref; (* The sort of this type *)
   program_sign : EConstr.rel_context;
   program_arity : EConstr.t;
   program_rec : program_rec_info option;
@@ -329,9 +329,9 @@ let map_universe f u =
   | _ -> assert false
 
 let map_program_info f p =
+  let () = p.program_sort := map_universe f !(p.program_sort) in
   { p with
     program_orig_type = f p.program_orig_type;
-    program_sort = map_universe f p.program_sort;
     program_sign = map_rel_context f p.program_sign;
     program_arity = f p.program_arity }
 

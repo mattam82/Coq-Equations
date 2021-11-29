@@ -1078,26 +1078,30 @@ let evd_comb1 f evd x =
 (* Universe related functions *)
 
 let nonalgebraic_universe_level_of_universe env sigma u =
-  match Univ.Universe.level u with
+  match Univ.Universe.level !u with
   | Some l ->
-    if Univ.Level.is_small l then sigma, l, u
+    if Univ.Level.is_small l then sigma, l
     else
       (match Evd.universe_rigidity sigma l with
       | Evd.UnivFlexible true ->
-        Evd.make_nonalgebraic_variable sigma l, l, Univ.Universe.make l
-      | _ -> sigma, l, u)
+        Evd.make_nonalgebraic_variable sigma l, l
+      | _ -> sigma, l)
   | _ ->
     let sigma, l = Evd.new_univ_level_variable Evd.univ_flexible sigma in
+    if !debug then
+      Feedback.msg_debug Pp.(str" generating variable " ++ Univ.Level.pr l);
     let ul = Univ.Universe.make l in
-    let sigma = Evd.set_leq_sort env sigma (Sorts.sort_of_univ u) (Sorts.sort_of_univ ul) in
-    sigma, l, ul
+    let sigma = Evd.set_leq_sort env sigma (Sorts.sort_of_univ !u) (Sorts.sort_of_univ ul) in
+    u := ul;
+    sigma, l
 
 let instance_of env sigma ?argu goalu =
-  let sigma, goall, goalu = nonalgebraic_universe_level_of_universe env sigma goalu in
-  let sigma, goall, goalu =
+  let sigma, goall = nonalgebraic_universe_level_of_universe env sigma goalu in
+  let sigma, goall =
     if Univ.Level.is_prop goall then
-      sigma, Univ.Level.set, Univ.Universe.make Univ.Level.set
-    else sigma, goall, goalu
+      (goalu := Univ.Universe.make Univ.Level.set;
+       sigma, Univ.Level.set)
+    else sigma, goall
   in
   let inst =
     match argu with
@@ -1107,4 +1111,4 @@ let instance_of env sigma ?argu goalu =
       EConstr.EInstance.make (Univ.Instance.of_array (Array.append equarray [| goall |]))
     | None -> EConstr.EInstance.make (Univ.Instance.of_array [| goall |])
   in
-  sigma, inst, goalu
+  sigma, inst

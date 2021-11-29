@@ -451,10 +451,10 @@ val splay_prod_n_assum : env -> Evd.evar_map -> int -> types -> rel_context * ty
 
 (* Universes *)
 val nonalgebraic_universe_level_of_universe :
-  Environ.env -> Evd.evar_map -> Univ.Universe.t -> Evd.evar_map * Univ.Level.t * Univ.Universe.t
+  Environ.env -> Evd.evar_map -> Univ.Universe.t ref -> Evd.evar_map * Univ.Level.t
 val instance_of :
   Environ.env ->
   Evd.evar_map ->
   ?argu:EConstr.EInstance.t ->
-  Univ.Universe.t ->
-  Evd.evar_map * EConstr.EInstance.t * Univ.Universe.t
+  Univ.Universe.t ref ->
+  Evd.evar_map * EConstr.EInstance.t
