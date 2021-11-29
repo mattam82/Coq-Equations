@@ -156,6 +156,8 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
   let constructors = Inductiveops.arities_of_constructors env pi in
   let sigma, sigT = get_fresh sigma coq_sigma in
   let sigma, sigI = get_fresh sigma coq_sigmaI in
+  let sigma, sigST = get_fresh sigma coq_sigmaTS in
+  let sigma, sigSI = get_fresh sigma coq_sigmaTSI in
   let sigma, eqT = get_fresh sigma logic_eq_type in
   let parampats =
     List.rev_map (fun decl ->
@@ -182,10 +184,11 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
         if forced then
           let acc' =
             List.fold_left_i
-              (fun i acc (na,na',decl) -> (na, na', Vars.substnl [mkVar name'] i decl) :: acc)
+              (fun i acc (na,na',decl,ann) -> 
+                (na, na', Vars.substnl [mkVar name'] i decl, ann) :: acc)
               0 [] acc
           in List.rev acc'
-        else ((name, name', get_type decl) :: acc) in
+        else ((name, name', get_type decl, (get_annot decl).binder_relevance) :: acc) in
       (avoid, acc), Syntax.(PUVar (name, User), PUVar (name', User))
     in
     let (avoid, eqs), user_pats = List.fold_left2_map fn (Id.Set.empty, []) args forced in
@@ -195,15 +198,21 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
     let rhs =
       match List.rev eqs with
       | [] -> tru
-      | (name, name', ty) :: eqs ->
-        let ty, lhs, rhs =
-          let get_type (restty, restl, restr) (na, na', ty) =
+      | (name, name', ty, rel) :: eqs ->
+        let relfull, ty, lhs, rhs =
+          let get_type (rel, restty, restl, restr) (na, na', ty, rel') =
             let codom = mkLambda (nameR na, ty, restty) in
+            let sigT, sigI = 
+              match rel with
+              | Sorts.Relevant -> sigT, sigI
+              | Sorts.Irrelevant -> sigST, sigSI
+            in
+            rel',
             mkApp (sigT, [| ty; codom |]),
             mkApp (sigI, [| ty; codom; mkVar na; subst1 (mkVar na) restl |]),
             mkApp (sigI, [| ty; codom; mkVar na'; subst1 (mkVar na') restr |])
           in
-          List.fold_left get_type (ty, mkVar name, mkVar name') eqs
+          List.fold_left get_type (rel, ty, mkVar name, mkVar name') eqs
         in mkApp (eqT, [| ty; lhs; rhs |])
     in
     (loc, lhs, Some (Syntax.Program (Syntax.Constr rhs, ([], []))))

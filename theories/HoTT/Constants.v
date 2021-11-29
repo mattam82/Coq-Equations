@@ -11,10 +11,16 @@ Register Basics.Overture.S as equations.nat.succ.
 Register Basics.Overture.nat as equations.nat.type.
 
 (* Sigma Types *)
+
 Register Equations.Init.sigma as equations.sigma.type.
 Register Equations.Init.sigmaI as equations.sigma.intro.
 Register Equations.Init.pr1 as equations.sigma.pr1.
 Register Equations.Init.pr2 as equations.sigma.pr2.
+
+Register Equations.Init.sigmaS as equations.sigmaTS.type.
+Register Equations.Init.sigmaSI as equations.sigmaTS.intro.
+Register Equations.Init.pr1S as equations.sigmaTS.pr1.
+Register Equations.Init.pr2S as equations.sigmaTS.pr2.
 
 (** Classes *)
 
@@ -83,6 +89,11 @@ Register DepElim.simplification_sigma1 as equations.depelim.simpl_sigma.
 Register DepElim.simplification_sigma1_dep as equations.depelim.simpl_sigma_dep.
 Register DepElim.simplification_sigma1_nondep_dep as equations.depelim.simpl_sigma_nondep_dep.
 Register DepElim.simplification_sigma1_dep_dep as equations.depelim.simpl_sigma_dep_dep.
+
+Register DepElim.simplification_sigma1S as equations.depelim.simpl_sigmaS.
+Register DepElim.simplification_sigma1S_dep as equations.depelim.simpl_sigmaS_dep.
+Register DepElim.simplification_sigma1S_nondep_dep as equations.depelim.simpl_sigmaS_nondep_dep.
+Register DepElim.simplification_sigma1S_dep_dep as equations.depelim.simpl_sigmaS_dep_dep.
 
 Register DepElim.simplify_ind_pack as equations.depelim.simplify_ind_pack.
 Register DepElim.simplify_ind_pack_inv as equations.depelim.simplify_ind_pack_inv.
