@@ -18,7 +18,7 @@ val find_helper_info : Environ.env -> Evd.evar_map ->
   Splitting.term_info ->
   EConstr.t -> Names.Constant.t * (int * int)
 val below_transparent_state : unit -> TransparentState.t
-val simpl_star : Proofview.V82.tac
+val simpl_star : unit Proofview.tactic
 val eauto_with_below :
   ?depth:Int.t -> ?strategy:Class_tactics.search_strategy -> Hints.hint_db_name list -> unit Proofview.tactic
 val wf_obligations_base : Splitting.term_info -> string
@@ -69,8 +69,7 @@ val prove_unfolding_lemma :
   Names.Constant.t ->
   Names.Constant.t ->
   Splitting.program -> Splitting.program ->
-  Goal.goal Evd.sigma ->
-  Goal.goal list Evd.sigma
+  unit Proofview.tactic
   
 val ind_elim_tac :
   constr ->

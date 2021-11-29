@@ -19,9 +19,9 @@ open Context
 open Evarutil
 open List
 open Libnames
-open Tacmach.Old
+open Tacmach
 open Tactics
-open Tacticals.Old
+open Tacticals
 
 open Ltac_plugin
 open Tacexpr
@@ -151,9 +151,6 @@ let new_untyped_evar () =
   let (sigma, ev) = new_pure_evar empty_named_context_val Evd.empty (EConstr.of_constr mkProp) in
     ev
 
-let to82 t = Proofview.V82.of_tactic t
-let of82 t = Proofview.V82.tactic t
-
 let proper_tails l = snd (List.fold_right (fun _ (t,ts) -> List.tl t, ts @ [t]) l (l, []))
 
 let list_find_map_i f =
@@ -272,9 +269,6 @@ let rec int_of_coq_nat c =
 
 let fresh_id_in_env avoid id env =
   Namegen.next_ident_away_in_goal (Global.env ()) id (Id.Set.union avoid (Id.Set.of_list (ids_of_named_context (named_context env))))
-
-let fresh_id avoid id gl =
-  fresh_id_in_env avoid id (pf_env gl)
 
 let coq_fix_proto = (find_global "fixproto")
 
@@ -532,7 +526,7 @@ let unfold_head env sigma (ids, csts) c =
 
 open CErrors
 
-let unfold_head db gl t =
+let unfold_head env sigma db t =
   let st =
     List.fold_left (fun (i,c) dbname -> 
       let db = try Hints.searchtable_map dbname 
@@ -541,25 +535,27 @@ let unfold_head db gl t =
       let (ids, csts) = Hints.Hint_db.unfolds db in
         (Id.Set.union ids i, Cset.union csts c)) (Id.Set.empty, Cset.empty) db
   in
-  unfold_head (pf_env gl) (project gl) st t
+  unfold_head env sigma st t
 
-let autounfold_heads db db' cl gl =
+let autounfold_heads db db' cl =
+  Proofview.Goal.enter begin fun gl ->
   let eq = 
-    (match cl with Some (id, _) -> pf_get_hyp_typ gl id | None -> pf_concl gl) 
+    (match cl with Some (id, _) -> pf_get_hyp_typ id gl | None -> pf_concl gl) 
   in
   let did, c' = 
     match kind (project gl) eq with
     | App (f, [| ty ; x ; y |]) when EConstr.isRefX (project gl) (Lazy.force logic_eq_type) f ->
-      let did, x' = unfold_head db gl x in
-      let did', y' = unfold_head db' gl y in
+      let did, x' = unfold_head (pf_env gl) (project gl) db x in
+      let did', y' = unfold_head (pf_env gl) (project gl) db' y in
       did && did', EConstr.mkApp (f, [| ty ; x' ; y' |])
     | _ -> false, eq
   in
     if did then
       match cl with
-      | Some hyp -> Proofview.V82.of_tactic (change_in_hyp ~check:true None (make_change_arg c') hyp) gl
-      | None -> Proofview.V82.of_tactic (convert_concl ~cast:false ~check:false c' DEFAULTcast) gl
-    else tclFAIL 0 (str "Nothing to unfold") gl
+      | Some hyp -> change_in_hyp ~check:true None (make_change_arg c') hyp
+      | None -> convert_concl ~cast:false ~check:false c' DEFAULTcast
+    else tclFAIL 0 (str "Nothing to unfold")
+  end
 
 type hintdb_name = string
 
@@ -828,34 +824,7 @@ let move_after_deps id c =
     Tactics.move_hyp id (Logic.MoveAfter first)
   in Proofview.Goal.enter enter
 
-let observe s tac = 
-  let open Proofview.Notations in
-  if not !debug then tac
-  else
-    fun gls ->
-    Feedback.msg_debug (str"Applying " ++ str s ++ str " on " ++ Printer.pr_goal gls);
-    to82
-      (Proofview.tclORELSE
-         (Proofview.tclTHEN
-            (of82 tac)
-            (Proofview.numgoals >>= fun gls ->
-             if gls = 0 then (Feedback.msg_debug (str s ++ str " succeeded"); Proofview.tclUNIT ())
-             else
-               (of82
-                  (fun gls -> Feedback.msg_debug (str "Subgoal: " ++ Printer.pr_goal gls);
-                           Evd.{ it = [gls.it]; sigma = gls.sigma }))))
-         (fun iexn -> Feedback.msg_debug
-                        (str"Failed with: " ++
-                           (match fst iexn with
-                            | Tacticals.FailError (n,expl) ->
-                               (str" Fail error " ++ int n ++ str " for " ++ str s ++ spc () ++ Lazy.force expl ++
-                                  str " on " ++ Printer.pr_goal gls)
-                            | Pretype_errors.PretypeError (env, sigma, e) ->
-                               (str " Pretype error: " ++ Himsg.explain_pretype_error env sigma e)
-                            | _ -> CErrors.iprint iexn));
-                   Proofview.tclZERO ~info:(snd iexn) (fst iexn))) gls
-
-let observe_new s (tac : unit Proofview.tactic) =
+let observe s (tac : unit Proofview.tactic) =
   let open Proofview.Notations in
   let open Proofview in
   if not !debug then tac
@@ -872,10 +841,11 @@ let observe_new s (tac : unit Proofview.tactic) =
             tac
             (Proofview.numgoals >>= fun gls ->
              if gls = 0 then (Feedback.msg_debug (str s ++ str " succeeded"); Proofview.tclUNIT ())
-             else
-               (of82
-                  (fun gls -> Feedback.msg_debug (str "Subgoal: " ++ Printer.pr_goal gls);
-                           Evd.{ it = [gls.it]; sigma = gls.sigma }))))
+             else Proofview.Goal.enter begin fun gl ->
+              let gl = { Evd.it = Proofview.Goal.goal gl; Evd.sigma = Proofview.Goal.sigma gl } in
+              let () = Feedback.msg_debug (str "Subgoal: " ++ Printer.pr_goal gl) in
+              Proofview.tclUNIT ()
+             end))
          (fun iexn -> Feedback.msg_debug
                         (str"Failed with: " ++
                            (match fst iexn with

@@ -32,11 +32,7 @@ type flags = {
   with_eqns : bool;
   with_ind : bool;
   allow_aliases : bool;
-  tactic : unit Proofview.tactic }  
-  
-(* Tactics *)
-val to82 : 'a Proofview.tactic -> Proofview.V82.tac
-val of82 : Proofview.V82.tac -> unit Proofview.tactic
+  tactic : unit Proofview.tactic }
 
 (* Point-free composition *)
 val ( $ ) : ('a -> 'b) -> ('c -> 'a) -> 'c -> 'b
@@ -65,9 +61,6 @@ type 'a located = 'a Loc.located
 (** Fresh names *)
 val fresh_id_in_env :
   Names.Id.Set.t -> Names.Id.t -> Environ.env -> Names.Id.t
-val fresh_id :
-  Names.Id.Set.t ->
-  Names.Id.t -> Goal.goal Evd.sigma -> Names.Id.t
 
 (** Refer to a tactic *)
 val tac_of_string :
@@ -294,8 +287,7 @@ val coq_end_of_section : Names.GlobRef.t Lazy.t
 val coq_ImpossibleCall : esigma -> constr
 val unfold_add_pattern : unit Proofview.tactic lazy_t
 
-val observe : string -> Proofview.V82.tac -> Proofview.V82.tac
-val observe_new : string -> unit Proofview.tactic -> unit Proofview.tactic
+val observe : string -> unit Proofview.tactic -> unit Proofview.tactic
   
 val below_tactics_path : Names.DirPath.t
 val below_tac : string -> Names.KerName.t
@@ -334,7 +326,7 @@ val autounfold_heads :
   Hints.hint_db_name list ->
   Hints.hint_db_name list ->
   Locus.hyp_location option ->
-  Goal.goal Evd.sigma -> Goal.goal list Evd.sigma
+  unit Proofview.tactic
 val specialize_mutfix_tac : unit -> unit Proofview.tactic
 
 type hintdb_name = string
