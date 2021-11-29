@@ -9,6 +9,8 @@ open Equations_common
 module type SIGMAREFS = sig
   val sigma : Names.inductive Lazy.t
   val sigmaI : Names.constructor Lazy.t
+  val sigmaS : Names.inductive Lazy.t
+  val sigmaIS : Names.constructor Lazy.t
 end
 
 module type EQREFS = sig
@@ -41,6 +43,12 @@ module type EQREFS = sig
   val simpl_sigma_nondep_dep : Names.Constant.t Lazy.t
   val simpl_sigma_dep_dep : Names.Constant.t Lazy.t
   val pack_sigma_eq : Names.Constant.t Lazy.t
+  
+  val simpl_sigmaS : Names.Constant.t Lazy.t
+  val simpl_sigmaS_dep : Names.Constant.t Lazy.t
+  val simpl_sigmaS_nondep_dep : Names.Constant.t Lazy.t
+  val simpl_sigmaS_dep_dep : Names.Constant.t Lazy.t
+  
   (* Deletion using UIP. *)
   val simpl_uip : Names.Constant.t Lazy.t
   (* Solution lemmas. *)
@@ -89,6 +97,10 @@ module EqRefs : EQREFS = struct
   let simpl_sigma_nondep_dep = init_depelim "simpl_sigma_nondep_dep"
   let simpl_sigma_dep_dep = init_depelim "simpl_sigma_dep_dep"
   let pack_sigma_eq = init_depelim "pack_sigma_eq"
+  let simpl_sigmaS = init_depelim "simpl_sigmaS"
+  let simpl_sigmaS_dep = init_depelim "simpl_sigmaS_dep"
+  let simpl_sigmaS_nondep_dep = init_depelim "simpl_sigmaS_nondep_dep"
+  let simpl_sigmaS_dep_dep = init_depelim "simpl_sigmaS_dep_dep"
   let simpl_uip = init_depelim "simpl_uip"
   let solution_left = init_depelim "solution_left"
   let solution_left_dep = init_depelim "solution_left_dep"
@@ -102,6 +114,8 @@ module SigmaRefs : SIGMAREFS = struct
 
   let sigma = init_inductive Equations_common.coq_sigma
   let sigmaI = init_constructor Equations_common.coq_sigmaI
+  let sigmaS = init_inductive Equations_common.coq_sigmaTS
+  let sigmaIS = init_constructor Equations_common.coq_sigmaTSI
 end
 
 (* From the references, we can build terms. *)
@@ -134,6 +148,10 @@ module type BUILDER = sig
   val simpl_sigma_dep : constr_gen
   val simpl_sigma_nondep_dep : constr_gen
   val simpl_sigma_dep_dep : constr_gen
+  val simpl_sigmaS : constr_gen
+  val simpl_sigmaS_dep : constr_gen
+  val simpl_sigmaS_nondep_dep : constr_gen
+  val simpl_sigmaS_dep_dep : constr_gen
   val simpl_uip : constr_gen
   val solution_left : constr_univ_gen
   val solution_left_dep : constr_univ_gen
@@ -189,6 +207,10 @@ module BuilderGen (SigmaRefs : SIGMAREFS) (EqRefs : EQREFS) : BUILDER = struct
   let simpl_sigma_dep = gen_from_constant EqRefs.simpl_sigma_dep
   let simpl_sigma_nondep_dep = gen_from_constant EqRefs.simpl_sigma_nondep_dep
   let simpl_sigma_dep_dep = gen_from_constant EqRefs.simpl_sigma_dep_dep
+  let simpl_sigmaS = gen_from_constant EqRefs.simpl_sigmaS
+  let simpl_sigmaS_dep = gen_from_constant EqRefs.simpl_sigmaS_dep
+  let simpl_sigmaS_nondep_dep = gen_from_constant EqRefs.simpl_sigmaS_nondep_dep
+  let simpl_sigmaS_dep_dep = gen_from_constant EqRefs.simpl_sigmaS_dep_dep
   let simpl_uip = gen_from_constant EqRefs.simpl_uip
   let solution_left = gen_from_constant_univ EqRefs.solution_left
   let solution_left_dep = gen_from_constant_univ EqRefs.solution_left_dep
@@ -425,11 +447,14 @@ let check_equality env sigma ctx ?(equal_terms : bool = false)
   u, tA, tx, ty
 
 let decompose_sigma sigma (t : EConstr.constr) :
-  (EInstance.t * EConstr.types * EConstr.constr * EConstr.constr * EConstr.constr) option =
+  (Sorts.relevance * EInstance.t * EConstr.types * EConstr.constr * EConstr.constr * EConstr.constr) option =
   let f, args = Equations_common.decompose_appvect sigma t in
   if check_construct sigma (Lazy.force SigmaRefs.sigmaI) f then
     let _, u = EConstr.destConstruct sigma f in
-    Some (u, args.(0), args.(1), args.(2), args.(3))
+    Some (Sorts.Relevant, u, args.(0), args.(1), args.(2), args.(3))
+  else if check_construct sigma (Lazy.force SigmaRefs.sigmaIS) f then
+    let _, u = EConstr.destConstruct sigma f in
+    Some (Sorts.Irrelevant, u, args.(0), args.(1), args.(2), args.(3))
   else None
 
 (** All simplifications are wrapped in with_retry so that their 
@@ -490,7 +515,7 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
   let equ, _, t1, t2 = check_equality env !evd ctx ty1 in
   let sigu, f, args =
     match decompose_sigma !evd t1, decompose_sigma !evd t2 with
-    | Some (sigu, tA, tB, tt, tp), Some (_, _, _, tu, tq) ->
+    | Some (rel, sigu, tA, tB, tt, tp), Some (_, _, _, _, tu, tq) ->
         (* Determine the degree of dependency. *)
         if Vars.noccurn !evd 1 ty2 then begin
           (* No dependency in the goal, but maybe there is a dependency in
@@ -499,7 +524,12 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
             let name', _, tBbody = destLambda !evd tB in
             if Vars.noccurn !evd 1 tBbody then
               (* No dependency whatsoever. *)
-              let tsimpl_sigma = Names.GlobRef.ConstRef (Lazy.force EqRefs.simpl_sigma) in
+              let lemma = 
+                match rel with
+                | Sorts.Relevant -> Lazy.force EqRefs.simpl_sigma
+                | Sorts.Irrelevant -> Lazy.force EqRefs.simpl_sigmaS
+              in
+              let tsimpl_sigma = Names.GlobRef.ConstRef lemma in
               let tP = Termops.pop tBbody in
               let tB = Termops.pop ty2 in
               let args = [Some tA; Some tP; Some tB; Some tt; Some tu;
@@ -511,7 +541,12 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
             if only_nondep then raise (CannotSimplify (str"Cannot simplify dependent pair"))
             else
               (* Dependency in the pair, but not in the goal. *)
-              let tsimpl_sigma = Names.GlobRef.ConstRef (Lazy.force EqRefs.simpl_sigma_dep) in
+              let lemma = 
+                match rel with
+                | Sorts.Relevant -> Lazy.force EqRefs.simpl_sigma_dep
+                | Sorts.Irrelevant -> Lazy.force EqRefs.simpl_sigmaS_dep
+              in
+              let tsimpl_sigma = Names.GlobRef.ConstRef lemma in
               let tP = tB in
               let tB = Termops.pop ty2 in
               let args = [Some tA; Some tP; Some tB; Some tt; Some tu;
@@ -522,7 +557,12 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
             let name', _, tBbody = destLambda !evd tB in
             if Vars.noccurn !evd 1 tBbody then
               (* Dependency in the goal, but not in the pair. *)
-              let tsimpl_sigma = Names.GlobRef.ConstRef (Lazy.force EqRefs.simpl_sigma_nondep_dep) in
+              let lemma = 
+                match rel with
+                | Sorts.Relevant -> Lazy.force EqRefs.simpl_sigma_nondep_dep
+                | Sorts.Irrelevant -> Lazy.force EqRefs.simpl_sigmaS_nondep_dep
+              in
+              let tsimpl_sigma = Names.GlobRef.ConstRef lemma in
               let tP = Termops.pop tBbody in
               let tB = EConstr.mkLambda (name, ty1, ty2) in
               let args = [Some tA; Some tP; Some tt; Some tu;
@@ -534,7 +574,12 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
             (* Full dependency *)
             if only_nondep then raise (CannotSimplify (str"Cannot simplify dependent pair"))
             else
-              let tsimpl_sigma = Names.GlobRef.ConstRef (Lazy.force EqRefs.simpl_sigma_dep_dep) in
+              let lemma = 
+                match rel with
+                | Sorts.Relevant -> Lazy.force EqRefs.simpl_sigma_dep_dep
+                | Sorts.Irrelevant -> Lazy.force EqRefs.simpl_sigmaS_dep_dep
+              in
+              let tsimpl_sigma = Names.GlobRef.ConstRef lemma in
               let tP = tB in
               let tB = EConstr.mkLambda (name, ty1, ty2) in
               let args = [Some tA; Some tP; Some tt; Some tu;
@@ -725,7 +770,7 @@ let pre_solution ~(dir:direction) = with_retry (pre_solution ~dir)
 
 let is_construct_sigma_2 sigma f =
   let term = match decompose_sigma sigma f with
-    | Some (_, _, _, _, t) -> t
+    | Some (_, _, _, _, _, t) -> t
     | None -> f
   in
   let head, _ = EConstr.decompose_app sigma term in
@@ -787,14 +832,11 @@ let maybe_pack : simplification_fun =
                  str "] if it requires uniqueness of identity proofs and" ++
                  str " enable [Equations With UIP] to allow this")));
     let tx =
-      let _, _, _, tx, _ = Option.get (decompose_sigma !evd valsig) in
+      let _, _, _, _, tx, _ = Option.get (decompose_sigma !evd valsig) in
         Vars.substl (CList.rev args) (Termops.pop tx)
     in
     let tsimplify_ind_pack = Names.GlobRef.ConstRef (Lazy.force EqRefs.simplify_ind_pack) in
     let tB = Reductionops.beta_applist !evd (tBfull, params) in
-    (* FIXME Inserted this to simplify tB when it has the shape:
-               {index & let H := index in foo H}
-             Is this correct? *)
     let tB = let env = push_rel_context ctx env in
       Tacred.simpl env !evd tB in
     let tG = EConstr.mkLambda (name, ty1, ty2) in
