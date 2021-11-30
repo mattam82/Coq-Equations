@@ -416,16 +416,19 @@ let unfold_add_pattern =
 
 let subterm_relation_base = "subterm_relation"
 
-let coq_sigma = (find_global "sigma.type")
-let coq_sigmaI = (find_global "sigma.intro")
-
 let init_projection gr =
   let cst = Globnames.destConstRef gr in
   let p = Option.get @@ Recordops.find_primitive_projection cst in
   Projection.make p false
 			
+let coq_sigma = (find_global "sigma.type")
+let coq_sigmaI = (find_global "sigma.intro")
 let coq_pr1 = lazy (init_projection (Lazy.force (find_global "sigma.pr1")))
 let coq_pr2 = lazy (init_projection (Lazy.force (find_global "sigma.pr2")))
+let coq_sigmaTS = (find_global "sigmaTS.type")
+let coq_sigmaTSI = (find_global "sigmaTS.intro")
+let coq_pr1TS = lazy (init_projection (Lazy.force (find_global "sigmaTS.pr1")))
+let coq_pr2TS = lazy (init_projection (Lazy.force (find_global "sigmaTS.pr2")))
 			    
 (* Misc tactics *)
 

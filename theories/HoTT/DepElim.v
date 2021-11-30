@@ -111,6 +111,30 @@ Proof.
   exact (eq 1 1).
 Defined.
 
+Lemma simplification_sigma1S@{i j |} {A : Type@{i}} {P : SProp} {B : Type@{j}}
+  (p q : A) (x : P) (y : P) :
+  (p = q -> B) -> ((sigmaSI _ p x) = (sigmaSI _ q y) -> B).
+Proof.
+  intros. revert X.
+  change p with (pr1S (sigmaSI _ p x)).
+  change q with (pr1S (sigmaSI _ q y)).
+  destruct X0.
+  intros X. exact (X idpath).
+Defined.
+
+Lemma simplification_sigma1S_dep@{i j|} {A : Type@{i}}
+  {P : A -> SProp} {B : Type@{j}}
+  (p q : A) (x : P p) (y : P q) :
+  (p = q -> B) ->
+  ((sigmaSI _ p x) = (sigmaSI _ q y) -> B).
+Proof.
+  intros. revert X.
+  change p with (pr1S (sigmaSI _ p x)).
+  change q with (pr1S (sigmaSI _ q y)).
+  destruct X0. cbn.
+  intros X. eapply (X idpath).
+Defined.
+
 Lemma simplification_sigma1_dep@{i j |} {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}}
   (p q : A) (x : P p) (y : P q) :
   (forall e : paths@{i} p q, paths (transport@{i i} P e x) y -> B) ->
@@ -144,6 +168,27 @@ Proof.
   apply (X 1 1).
 Defined.
 
+Polymorphic Definition pack_sigmaS_eq_nondep@{i|} {A : Type@{i}} {P : SProp} 
+  {p q : A} {x : P} {y : P}
+  (e' : p = q) : sigmaSI _ p x = sigmaSI _ q y.
+Proof. destruct e'. apply idpath. Defined.
+
+Polymorphic Lemma simplification_sigma1S_nondep_dep@{i j|} {A : Type@{i}} 
+  {P : SProp}
+  (p q : A) (x : P) (y : P) {B : sigmaSI _ p x = sigmaSI _ q y -> Type@{j}} :
+  (forall e' : p = q, B (pack_sigmaS_eq_nondep e')) ->
+  (forall e : sigmaSI (fun _ => P) p x = sigmaSI (fun _ => P) q y, B e).
+Proof.
+  intros. revert X.
+  change p with (pr1S (sigmaSI _ p x)).
+  change q with (pr1S (sigmaSI _ q y)).
+  change x with (pr2S (sigmaSI _ p x)) at 2.
+  change y with (pr2S (sigmaSI _ q y)) at 3.
+  destruct e.
+  intros X. simpl in *.
+  apply (X idpath).
+Defined.
+
 Definition pack_sigma@{i|} {A : Type@{i}} {P : A -> Type@{i}} {p q : A} {x : P p} {y : P q}
   (e' : p = q) (e : e' # x = y) : (p, x) = (q, y).
 Proof. destruct e'. simpl in e. destruct e. apply 1. Defined.
@@ -163,18 +208,26 @@ Proof.
   apply (X 1 1).
 Defined.
 
-(*  Lemma simplification_sigma1'@{i j} {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}} (p q : A) (x : P p) (y : P q) : *)
-(*   (forall e : paths p q, paths (paths_rew A p P x q e) y -> B) -> *)
-(*   (paths ((p, x)) ((q, y)) -> B). *)
-(* Proof. *)
-(*   intros. revert X. *)
-(*   change p with (pr1 (p, x)). *)
-(*   change q with (pr1 (q, y)). *)
-(*   change x with (pr2 (p, x)) at 3. *)
-(*   change y with (pr2 (q, y)) at 4. *)
-(*   destruct X0. *)
-(*   intros X. eapply (X id_refl). apply id_refl. *)
-(* Defined. *)
+Polymorphic Definition pack_sigmaS_eq@{i |} {A : Type@{i}} {P : A -> SProp} {p q : A} {x : P p} {y : P q}
+  (e' : p = q) : (sigmaSI _ p x) = (sigmaSI _ q y).
+Proof. destruct e'. apply idpath. Defined.
+
+Polymorphic Lemma simplification_sigma1S_dep_dep@{i j|}
+  {A : Type@{i}} {P : A -> SProp}
+  (p q : A) (x : P p) (y : P q) {B : sigmaSI _ p x = sigmaSI _ q y -> Type@{j}} :
+  (forall e' : p = q, B (pack_sigmaS_eq e')) ->
+  (forall e : (sigmaSI _ p x) = (sigmaSI _ q y), B e).
+Proof.
+  intros. revert X.
+  change p with (pr1S (sigmaSI _ p x)).
+  change q with (pr1S (sigmaSI _ q y)).
+  unfold pack_sigmaS_eq.
+  change x with (pr2S (sigmaSI _ p x)) at 3 5.
+  change y with (pr2S (sigmaSI _ q y)) at 2.
+  destruct e.
+  intros X. simpl in *.
+  apply (X idpath).
+Defined.
 
 Lemma pr2_inv_uip@{i|} {A : Type@{i}}
             {P : A -> Type@{i}} {x : A} {y y' : P x} :
