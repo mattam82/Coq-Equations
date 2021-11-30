@@ -900,6 +900,25 @@ let wrap tac before after =
   let () = after () in
   Proofview.Unsafe.tclSETENV (Global.env ())
 
+let solve_rec_eq simpltac subst =
+  Proofview.Goal.enter begin fun gl ->
+  match kind (project gl) (pf_concl gl) with
+  | App (eq, [| ty; x; y |]) ->
+      let sigma = project gl in
+      let xf, _ = decompose_app sigma x and yf, _ = decompose_app sigma y in
+      (try
+        let f_cst, funf_cst =
+          List.find (fun (f_cst, funf_cst) ->
+              is_global sigma (GlobRef.ConstRef f_cst) xf && is_global sigma (GlobRef.ConstRef funf_cst) yf) subst
+        in
+        let unfolds = unfold_in_concl
+            [((Locus.OnlyOccurrences [1]), Tacred.EvalConstRef f_cst); 
+              ((Locus.OnlyOccurrences [1]), Tacred.EvalConstRef funf_cst)]
+        in tclTHENLIST [unfolds; simpltac; pi_tac ()]
+      with Not_found -> Tacticals.tclORELSE reflexivity (congruence_tac 10 []))
+  | _ -> reflexivity
+  end
+
 let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
   let open Tacmach.Old in
   let open Tacticals.Old in
@@ -910,31 +929,15 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
     :: List.map (fun x -> x, Conv_oracle.Expand) (f_cst :: funf_cst :: helpercsts)) in
   let opacified tac = wrap tac opacify transp in
   let transparent tac = wrap tac transp opacify in
-  let simpltac = to82 (opacified (simpl_equations_tac ())) in
+  let simpltac = opacified (simpl_equations_tac ()) in
   let my_simpl = to82 (opacified (simpl_in_concl)) in
   let unfolds base base' =
     let open Tacticals in
     tclTHEN (autounfold_heads [base] [base'] None)
     (Tactics.reduct_in_concl ~cast:false ~check:false ((Reductionops.clos_norm_flags CClosure.betazeta), DEFAULTcast))
   in
-  let solve_rec_eq subst gl =
-    match kind (project gl) (pf_concl gl) with
-    | App (eq, [| ty; x; y |]) ->
-       let sigma = project gl in
-       let xf, _ = decompose_app sigma x and yf, _ = decompose_app sigma y in
-       (try
-          let f_cst, funf_cst =
-            List.find (fun (f_cst, funf_cst) ->
-                is_global sigma (GlobRef.ConstRef f_cst) xf && is_global sigma (GlobRef.ConstRef funf_cst) yf) subst
-          in
-          let unfolds = unfold_in_concl
-	      [((Locus.OnlyOccurrences [1]), Tacred.EvalConstRef f_cst); 
-               ((Locus.OnlyOccurrences [1]), Tacred.EvalConstRef funf_cst)]
-          in tclTHENLIST [to82 unfolds; simpltac; to82 (pi_tac ())] gl
-        with Not_found -> to82 (Tacticals.tclORELSE reflexivity (congruence_tac 10 [])) gl)
-    | _ -> to82 reflexivity gl
-  in
-  let solve_eq subst = observe "solve_eq" (Proofview.V82.tactic (tclORELSE (to82 (transparent reflexivity)) (solve_rec_eq subst))) in
+  let solve_rec_eq subst = solve_rec_eq simpltac subst in
+  let solve_eq subst = observe "solve_eq" (Tacticals.tclORELSE (transparent reflexivity) (solve_rec_eq subst)) in
   let abstract tac = (* Abstract.tclABSTRACT None *) tac in
   let rec aux_program subst p unfp =
     Proofview.Goal.enter (fun gl ->
@@ -1011,7 +1014,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
 	            to82 (abstract (of82 (tclTHEN_i (to82 (depelim id))
 				               (fun i -> let split = nth splits (pred i) in
                                  let unfsplit = nth unfsplits (pred i) in
-                                 tclTHENLIST [unfolds; simpltac;
+                                 tclTHENLIST [unfolds; to82 simpltac;
                                     Proofview.V82.of_tactic (aux subst base unfold_base split unfsplit)])))) gl
 	  | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl))
 
@@ -1036,11 +1039,11 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
                 Proofview.V82.of_tactic (clear_body [id]); 
                 to82 (observe "unfoldings" (unfolds base unfold_base)); 
                 to82 (aux subst base unfold_base s unfs)] gl
-             else tclTHENLIST [to82 (unfolds base unfold_base); simpltac; reftac] gl
+             else tclTHENLIST [to82 (unfolds base unfold_base); to82 simpltac; reftac] gl
           | _ -> tclFAIL 0 (str"Unexpected unfolding lemma goal") gl
     	in
       let reftac = to82 (observe "refined" (of82 reftac)) in
-      abstract (of82 (tclTHENLIST [to82 intros; simpltac; reftac]))
+      abstract (of82 (tclTHENLIST [to82 intros; to82 simpltac; reftac]))
 	    
     | Compute (_, wheres, _, RProgram _), Compute ((lctx, _, _), unfwheres, _, RProgram c) ->
       let open Tacticals in
@@ -1088,7 +1091,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
        observe "compute"
          (tclTHENLIST [intros; wheretacs;
                        observe "compute rhs" (tclTRY (unfolds base unfold_base));
-                       of82 simpltac; solve_eq subst])
+                       simpltac; solve_eq subst])
 
     | Compute (_, _, _, _), Compute ((ctx,_,_), _, _, REmpty (id, sp)) ->
       let d = nth ctx (pred id) in
