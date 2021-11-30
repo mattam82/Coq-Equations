@@ -364,7 +364,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
     let env = Proofview.Goal.env gl in
     let concl = Proofview.Goal.concl gl in
     let sigma = Proofview.Goal.sigma gl in
-    let sort = Sorts.univ_of_sort (Retyping.get_sort_of env sigma concl) in
+    let sort = ref (Sorts.univ_of_sort (Retyping.get_sort_of env sigma concl)) in
     let env = Environ.reset_context env in
     let hyps = Proofview.Goal.hyps gl in
     let default_loc, id = id in
@@ -460,7 +460,6 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
       let split : Splitting.splitting =
         Covering.covering env evd p data clauses [] prob [] ty
       in
-
       let c, ty =
         Splitting.term_of_tree env evd sort split
       in

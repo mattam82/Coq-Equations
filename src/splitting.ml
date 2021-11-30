@@ -176,7 +176,7 @@ let pr_program_info env sigma p =
   let open Pp in
   Names.Id.print p.program_id ++ str " : " ++
   Printer.pr_econstr_env env sigma (Syntax.program_type p) ++ str " : " ++
-  Printer.pr_econstr_env env sigma (mkType p.program_sort) ++
+  Printer.pr_econstr_env env sigma (mkType !(p.program_sort)) ++
   str " ( " ++
   (match p.program_rec with
    | Some (Structural ann) ->
@@ -331,6 +331,72 @@ and map_split f split =
        let lhs' = map_ctx_map f lhs in
        Compute (lhs', where, f ty, em)
   in aux split
+
+(*let fold_wf_rec f r acc =
+  f r.wf_rec_term (Option.fold_right f r.wf_rec_functional
+    (f r.wf_rec_arg (f r.wf_rec_rel acc)))
+
+let fold_rec_node f acc = function
+  | StructRec s -> acc
+  | WfRec s -> fold_wf_rec f s acc
+
+let fold_rel_context f ctx acc = 
+  Context.Rel.fold_inside (fun acc d -> Context.Rel.Declaration.fold_constr f d acc) ~init:acc ctx
+
+let fold_ctx_map f (lhs, pats, rhs) acc =
+  fold_rel_context f lhs (fold_rel_context f rhs acc) 
+
+let fold_rec_info f r acc =
+  fold_ctx_map f r.rec_prob
+    (fold_rel_context f r.rec_lets
+      (fold_rel_context f r.rec_sign
+        (f r.rec_arity
+        (fold_rec_node f r.rec_node acc))))
+
+let fold_program_info f p acc =
+  f p.program_orig_type
+    (fold_rel_context f p.program_sign (f p.program_arity acc))
+
+let rec fold_program f p acc =
+  fold_program_info f p.program_info
+    (fold_ctx_map f p.program_prob
+      (fold_split f p.program_splitting
+      (Option.fold_right (fold_rec_info f) p.program_rec
+        (f p.program_term acc))))
+
+and fold_where f w acc =
+  fold_program_info f w.where_program_orig
+    (fold_program f w.where_program
+      (List.fold_right f w.where_program_args (f w.where_type acc)))
+
+and fold_split f split acc =
+  let rec aux s acc =
+    match s with 
+    | Compute (lhs, where, ty, RProgram c) ->
+      let acc = List.fold_right (fun w -> fold_where f w) where acc in
+      let acc = fold_ctx_map f lhs acc in
+        f ty (f c acc)
+    | Split (lhs, y, z, cs) ->
+      let acc' = fold_ctx_map f lhs acc in
+      f z (Array.fold_right (fun acc b -> Option.fold_right aux b acc) acc cs)
+    | Mapping (lhs, s) ->
+        let acc' = fold_ctx_map f lhs acc in
+        aux s acc'
+    | Refined (lhs, info, s) ->
+      let acc = fold_ctx_map f lhs acc in
+      let (id, c, cty) = info.refined_obj in
+      let scargs = info.refined_args in
+        f c (f cty (f info.refined_term
+            (List.fold_right f scargs
+              (f info.refined_rettyp
+                (fold_ctx_map f info.refined_revctx
+                  (fold_ctx_map f info.refined_newprob
+                    (fold_ctx_map f info.refined_newprob_to_lhs
+                    (f info.refined_newty (aux s acc)))))))))
+    | Compute (lhs, where, ty, (REmpty _ as em)) ->
+        let acc = fold_ctx_map f lhs acc in
+        f ty acc
+  in aux split acc*)
 
 let is_nested p =
   match p.Syntax.program_rec with
@@ -522,8 +588,8 @@ let term_of_tree env0 isevar sort tree =
       (* Produce parts of a case that will be relevant. *)
       let evm, block = Equations_common.(get_fresh evm coq_block) in
       let blockty = mkLetIn (anonR, block, Retyping.get_type_of env evm block, lift 1 ty) in
-      let evd = ref evm in
       let elim_relevance = Retyping.relevance_of_type (push_rel_context ctx env) evm ty in
+      let evd = ref evm in
       let ctx', case_ty, branches_res, nb_cuts, rev_subst, to_apply, simpl =
         Sigma_types.smart_case env evd ctx rel blockty in
 
@@ -534,11 +600,11 @@ let term_of_tree env0 isevar sort tree =
       in
       let branches = Array.map2 (fun (ty, nb, csubst) next ->
         (* We get the context from the constructor arity. *)
-        let new_ctx, ty = EConstr.decompose_prod_n_assum !isevar nb ty in
-        let new_ctx = Namegen.name_context env !isevar new_ctx in
+        let new_ctx, ty = EConstr.decompose_prod_n_assum !evd nb ty in
+        let new_ctx = Namegen.name_context env !evd new_ctx in
         let envnew = push_rel_context (new_ctx @ ctx') env in
         (* Remove the cuts and append them to the context. *)
-        let cut_ctx, ty = Equations_common.splay_prod_n_assum envnew !isevar nb_cuts ty in
+        let cut_ctx, ty = Equations_common.splay_prod_n_assum envnew !evd nb_cuts ty in
         let ty =
           if simpl then
             Tacred.hnf_constr (push_rel_context cut_ctx envnew) !evd ty
@@ -583,7 +649,7 @@ let term_of_tree env0 isevar sort tree =
             let perm_subst = Context_map.make_permutation ~env evm subst next_subst in
             (* [next_term] starts with lambdas, so we apply it to its context. *)
             let args = Equations_common.extended_rel_vect 0 (pi3 perm_subst) in
-            let next_term = beta_appvect !evd next_term args in
+            let next_term = beta_appvect evm next_term args in
             let next_term = Context_map.mapping_constr evm perm_subst next_term in
             (* We know the term is a correct instantiation of the evar, we
              * just need to apply it to the correct variables. *)
@@ -988,7 +1054,7 @@ let define_one_program_constants flags env0 isevar udecl unfold p =
       let env = Global.env () in
       let sort = Sorts.univ_of_sort
           (Retyping.get_sort_of (push_rel_context (pi1 lhs) env) !isevar info.refined_rettyp) in
-      let t, ty = term_of_tree env isevar sort rest' in
+      let t, ty = term_of_tree env isevar (ref sort) rest' in
       let (cst, (evm, e)) =
         Equations_common.declare_constant (path_id ~unfold info.refined_path)
           t (Some ty) ~poly:flags.polymorphic !isevar ~kind:Decls.(IsDefinition Definition)
@@ -1235,6 +1301,15 @@ let simplify_evars evars t =
     | _ -> EConstr.map evars aux t
   in aux t
 
+(* let universes_of_programs evm ps =
+  let universes = ref Univ.LSet.empty in
+  let gather_universes t = 
+    universes := Univ.LSet.union (universes_of_constr evm t) !universes;
+    t
+  in
+  let _ps = List.map (map_program gather_universes) ps in
+  !universes *)
+
 let unfold_entry cst = Hints.HintsUnfoldEntry [EvalConstRef cst]
 let add_hint local i cst =
   let locality = if local then Goptions.OptLocal else Goptions.OptGlobal in
@@ -1266,7 +1341,6 @@ let define_programs (type a) ~pm env evd udecl is_recursive fixprots flags ?(unf
   let all_hook ~pm hook recobls sigma =
     let sigma = Evd.minimize_universes sigma in
     let sigma = Evarutil.nf_evar_map_undefined sigma in
-    let uentry = UState.check_univ_decl ~poly:flags.polymorphic (Evd.evar_universe_context sigma) udecl in
     let () =
       if !Equations_common.debug then
         Feedback.msg_debug (str"Defining programs, before simplify_evars " ++ pr_programs env sigma programs);
@@ -1276,6 +1350,7 @@ let define_programs (type a) ~pm env evd udecl is_recursive fixprots flags ?(unf
       if !Equations_common.debug then
         Feedback.msg_debug (str"Defining programs " ++ pr_programs env sigma programs);
     in
+    let uentry = UState.check_univ_decl ~poly:flags.polymorphic (Evd.evar_universe_context sigma) udecl in
     let evd = ref sigma in
     let helpers, programs = define_program_constants flags env evd uentry ~unfold programs in
     let sigma = !evd in
