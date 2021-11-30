@@ -10,6 +10,7 @@ open Libnames
 open Tactics
 open Tacticals
 open Tacmach
+open Proofview.Notations
 open EConstr
 open Equations_common
 open Printer
@@ -140,7 +141,6 @@ open Context.Named.Declaration
 (* Refine as a fixpoint *)
 let mutual_fix li l =
   let open Proofview in
-  let open Notations in
   let mfix env sigma gls =
     let gls = List.map Proofview.drop_state gls in
     let types = List.map (fun ev -> Evd.evar_concl (Evd.find sigma ev)) gls in
@@ -303,6 +303,10 @@ let annot_of_rec r = match r.struct_rec_arg with
   | NestedOn None -> Some 1
   | _ -> None
 
+let tclTHEN_i tac k =
+  tac <*> Proofview.numgoals >>= fun n ->
+  Proofview.tclDISPATCH (CList.init n (fun i -> k (i + 1)))
+
 let aux_ind_fun info chop nested unfp unfids p =
   let open Tacticals in
   let rec solve_nested () =
@@ -448,9 +452,9 @@ let aux_ind_fun info chop nested unfp unfids p =
         | Some f -> Some (List.map_filter (fun x -> x) (Array.to_list f))
       in
       (observe "split"
-        (Proofview.V82.tactic (Tacticals.Old.tclTHEN_i
-           (fun gl ->
-              match kind (Tacmach.Old.project gl) (Tacmach.Old.pf_concl gl) with
+        (tclTHEN_i
+           (Proofview.Goal.enter (fun gl ->
+              match kind (project gl) (pf_concl gl) with
               | App (ind, args) ->
                 let pats' = List.drop_last (Array.to_list args) in
                 let pats' =
@@ -462,13 +466,14 @@ let aux_ind_fun info chop nested unfp unfids p =
                   | _ ->
                     filter (fun x -> not (hidden x)) (filter_def_pats lhs), var
                 in
-                let id = find_splitting_var (Tacmach.Old.project gl) pats var pats' in
-                to82 (Depelim.dependent_elim_tac (None, id)) gl
-              | _ -> to82 (tclFAIL 0 (str"Unexpected goal in functional induction proof")) gl)
-           (fun i gl ->
+                let id = find_splitting_var (project gl) pats var pats' in
+                Depelim.dependent_elim_tac (None, id)
+              | _ -> tclFAIL 0 (str"Unexpected goal in functional induction proof")))
+           (fun i ->
+            Proofview.Goal.enter (fun gl ->
               let split = nth splits (pred i) in
               let unfsplit = Option.map (fun s -> nth s (pred i)) unfs_splits in
-              to82 (aux chop unfsplit unfids split) gl))))
+              aux chop unfsplit unfids split))))
 
     | Refined ((ctx, _, _), refinfo, s) ->
       let unfs = map_opt_split destRefined unfs in
@@ -660,7 +665,6 @@ let aux_ind_fun info chop nested unfp unfids p =
 
 let observe_tac s tac =
   let open Proofview in
-  let open Proofview.Notations in
   if not !debug then tac
   else
     tclENV >>= fun env ->
@@ -693,7 +697,6 @@ exception NotGuarded
 
 let check_guard tac =
   let open Proofview in
-  let open Notations in
   Unsafe.tclGETGOALS >>= (fun gls ->
   tac >>= (fun () ->
   tclENV >>= fun env ->
@@ -704,7 +707,6 @@ let check_guard tac =
 let ind_fun_tac is_rec f info fid nestedinfo progs =
   let open Tacticals in
   let open Proofview in
-  let open Notations in
   match is_rec with
   | Some (Guarded l) :: context ->
      let mutual, nested = List.partition (function (_, MutualOn _) -> true | _ -> false) l in
@@ -870,7 +872,6 @@ let is_primitive env evd ctx var =
   Inductive.is_primitive_record mspec
 
 let myreplace_by a1 a2 tac =
-  let open Proofview.Notations in
   Proofview.Goal.enter (fun gl ->
       let env = Proofview.Goal.env gl in
       let sigma = Proofview.Goal.sigma gl in
@@ -1121,7 +1122,6 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
 
 let ind_elim_tac indid inds mutinds info ind_fun =
   let open Proofview in
-  let open Notations in
   let open Tacticals in
   let eauto = Class_tactics.typeclasses_eauto ["funelim"; info.base_id] in
   let prove_methods c =
