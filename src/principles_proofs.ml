@@ -307,6 +307,8 @@ let tclTHEN_i tac k =
   tac <*> Proofview.numgoals >>= fun n ->
   Proofview.tclDISPATCH (CList.init n (fun i -> k (i + 1)))
 
+let local_tclTHEN_i = tclTHEN_i
+
 let aux_ind_fun info chop nested unfp unfids p =
   let open Tacticals in
   let rec solve_nested () =
@@ -995,10 +997,12 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
   and aux subst base unfold_base split unfold_split =
     match split, unfold_split with
     | Split (_, _, _, splits), Split ((ctx,pats,_), var, _, unfsplits) ->
+      let open Tacmach in
+      let open Tacticals in
       observe "split"
-        (Proofview.V82.tactic (fun gl ->
+        (Proofview.Goal.enter (fun gl ->
         if is_primitive (pf_env gl) (project gl) ctx (pred var) then
-          Proofview.V82.of_tactic (aux subst base unfold_base (Option.get (Array.hd splits)) (Option.get (Array.hd unfsplits))) gl
+          aux subst base unfold_base (Option.get (Array.hd splits)) (Option.get (Array.hd unfsplits))
         else
           match kind (project gl) (pf_concl gl) with
           | App (eq, [| ty; x; y |]) ->
@@ -1011,12 +1015,12 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
             let id = destVar sigma (fst (decompose_app sigma c)) in
             let splits = List.map_filter (fun x -> x) (Array.to_list splits) in
             let unfsplits = List.map_filter (fun x -> x) (Array.to_list unfsplits) in
-	            to82 (abstract (of82 (tclTHEN_i (to82 (depelim id))
-				               (fun i -> let split = nth splits (pred i) in
-                                 let unfsplit = nth unfsplits (pred i) in
-                                 tclTHENLIST [unfolds; to82 simpltac;
-                                    Proofview.V82.of_tactic (aux subst base unfold_base split unfsplit)])))) gl
-	  | _ -> tclFAIL 0 (str"Unexpected unfolding goal") gl))
+            abstract (local_tclTHEN_i (depelim id)
+                                      (fun i -> let split = nth splits (pred i) in
+                        let unfsplit = nth unfsplits (pred i) in
+                        tclTHENLIST [unfolds; simpltac;
+                          aux subst base unfold_base split unfsplit]))
+          | _ -> tclFAIL 0 (str"Unexpected unfolding goal")))
 
     | _, Mapping (lhs, s) -> aux subst base unfold_base split s
        
