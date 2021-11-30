@@ -24,9 +24,6 @@ open Vars
 
 open Cc_plugin.Cctac
 
-let to82 t = Proofview.V82.of_tactic t
-let of82 t = Proofview.V82.tactic t
-
 type where_map = (constr * Names.Id.t * splitting) PathMap.t
 
 type equations_info = {
@@ -671,10 +668,11 @@ let observe_tac s tac =
                          (Proofview.numgoals >>= fun gls ->
                           if gls = 0 then (Feedback.msg_debug (str s ++ str "succeeded");
                                            Proofview.tclUNIT ())
-             else
-               (of82
-                  (fun gls -> Feedback.msg_debug (str "Subgoal: " ++ Printer.pr_goal gls);
-                           Evd.{ it = [gls.it]; sigma = gls.sigma }))))
+             else Proofview.Goal.enter begin fun gl ->
+              let gl = { Evd.it = Proofview.Goal.goal gl; sigma = Proofview.Goal.sigma gl } in 
+              let () = Feedback.msg_debug (str "Subgoal: " ++ Printer.pr_goal gl) in
+              Proofview.tclUNIT ()
+             end))
       (fun iexn -> Feedback.msg_debug
                      (str"Failed with: " ++
                         (match fst iexn with
@@ -912,7 +910,7 @@ let solve_rec_eq simpltac subst =
   end
 
 let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
-  Proofview.V82.tactic begin fun gl ->
+  Proofview.Goal.enter begin fun gl ->
   let depelim h = Depelim.dependent_elim_tac (None, h) (* depelim_tac h *) in
   let helpercsts = List.map (fun (cst, i) -> cst) info.helpers_info in
   let opacify, transp = simpl_of ((destConstRef (Lazy.force coq_hidebody), Conv_oracle.transparent)
@@ -1088,13 +1086,12 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
 
     | _, _ -> assert false
   in
-    try
-      let res =
-        Tacticals.Old.tclTHENLIST
-          [to82 (set_eos_tac ()); to82 intros;
-           to82 (aux_program [f_cst, funf_cst] p unfp)] gl
-      in transp (); res
-    with e -> transp (); raise e
+  Proofview.tclORELSE (
+    tclTHENLIST
+      [set_eos_tac (); intros; aux_program [f_cst, funf_cst] p unfp] >>= fun () ->
+    let () = transp () in
+    Proofview.tclUNIT ())
+    (fun (e, info) -> let () = transp () in Proofview.tclZERO ~info e)
 
   end
 
