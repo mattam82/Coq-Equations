@@ -904,8 +904,9 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
   let simpltac gl = opacified (to82 (simpl_equations_tac ())) gl in
   let my_simpl = opacified (to82 (simpl_in_concl)) in
   let unfolds base base' =
-    tclTHEN (to82 (autounfold_heads [base] [base'] None))
-    (to82 (Tactics.reduct_in_concl ~cast:false ~check:false ((Reductionops.clos_norm_flags CClosure.betazeta), DEFAULTcast)))
+    let open Tacticals in
+    tclTHEN (autounfold_heads [base] [base'] None)
+    (Tactics.reduct_in_concl ~cast:false ~check:false ((Reductionops.clos_norm_flags CClosure.betazeta), DEFAULTcast))
   in
   let solve_rec_eq subst gl =
     match kind (project gl) (pf_concl gl) with
@@ -1024,9 +1025,9 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
                 to82 (observe "refine after replace"
                   (letin_tac None (Name id) a2 None Locusops.allHypsAndConcl));
                 Proofview.V82.of_tactic (clear_body [id]); 
-                to82 (observe "unfoldings" (of82 (unfolds base unfold_base))); 
+                to82 (observe "unfoldings" (unfolds base unfold_base)); 
                 to82 (aux subst base unfold_base s unfs)] gl
-             else tclTHENLIST [unfolds base unfold_base; simpltac; reftac] gl
+             else tclTHENLIST [to82 (unfolds base unfold_base); simpltac; reftac] gl
           | _ -> tclFAIL 0 (str"Unexpected unfolding lemma goal") gl
     	in
       let reftac = to82 (observe "refined" (of82 reftac)) in
@@ -1077,7 +1078,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
        in
        observe "compute"
          (tclTHENLIST [intros; wheretacs;
-                       observe "compute rhs" (tclTRY (of82 (unfolds base unfold_base)));
+                       observe "compute rhs" (tclTRY (unfolds base unfold_base));
                        of82 simpltac; solve_eq subst])
 
     | Compute (_, _, _, _), Compute ((ctx,_,_), _, _, REmpty (id, sp)) ->
