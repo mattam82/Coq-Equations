@@ -891,6 +891,15 @@ let headcst sigma f =
   if isConst sigma f then fst (destConst sigma f)
   else assert false
 
+(* FIXME: stop messing with the global environment *)
+let wrap tac before after =
+  Proofview.tclUNIT () >>= fun () ->
+  let () = before () in
+  Proofview.Unsafe.tclSETENV (Global.env ()) >>= fun () ->
+  tac >>= fun () ->
+  let () = after () in
+  Proofview.Unsafe.tclSETENV (Global.env ())
+
 let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
   let open Tacmach.Old in
   let open Tacticals.Old in
@@ -899,10 +908,10 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
   let helpercsts = List.map (fun (cst, i) -> cst) info.helpers_info in
   let opacify, transp = simpl_of ((destConstRef (Lazy.force coq_hidebody), Conv_oracle.transparent)
     :: List.map (fun x -> x, Conv_oracle.Expand) (f_cst :: funf_cst :: helpercsts)) in
-  let opacified tac gl = opacify (); let res = tac gl in transp (); res in
-  let transparent tac gl = transp (); let res = tac gl in opacify (); res in
-  let simpltac gl = opacified (to82 (simpl_equations_tac ())) gl in
-  let my_simpl = opacified (to82 (simpl_in_concl)) in
+  let opacified tac = wrap tac opacify transp in
+  let transparent tac = wrap tac transp opacify in
+  let simpltac = to82 (opacified (simpl_equations_tac ())) in
+  let my_simpl = to82 (opacified (simpl_in_concl)) in
   let unfolds base base' =
     let open Tacticals in
     tclTHEN (autounfold_heads [base] [base'] None)
@@ -925,7 +934,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
         with Not_found -> to82 (Tacticals.tclORELSE reflexivity (congruence_tac 10 [])) gl)
     | _ -> to82 reflexivity gl
   in
-  let solve_eq subst = observe "solve_eq" (Proofview.V82.tactic (tclORELSE (transparent (to82 reflexivity)) (solve_rec_eq subst))) in
+  let solve_eq subst = observe "solve_eq" (Proofview.V82.tactic (tclORELSE (to82 (transparent reflexivity)) (solve_rec_eq subst))) in
   let abstract tac = (* Abstract.tclABSTRACT None *) tac in
   let rec aux_program subst p unfp =
     Proofview.Goal.enter (fun gl ->
