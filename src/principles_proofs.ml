@@ -71,7 +71,7 @@ let simp_eqns_in clause l =
 		 tclTRY (eauto_with_below l)])
 
 let autorewrites b = 
-  tclREPEAT (Autorewrite.autorewrite Tacticals.tclIDTAC [b])
+  tclREPEAT (Autorewrite.autorewrite tclIDTAC [b])
 
 exception RewriteSucceeded of EConstr.t
 
@@ -109,7 +109,7 @@ let autorewrite_one b =
 
 let revert_last =
   Proofview.Goal.enter (fun gl ->
-      let hyp = Tacmach.pf_last_hyp gl in
+      let hyp = pf_last_hyp gl in
       revert [get_id hyp])
 
 (** fix generalization *)
@@ -483,7 +483,7 @@ let aux_ind_fun info chop nested unfp unfids p =
           let _, pos, elim = 
             find_helper_arg (env gl) sigma info.term_info f fargs 
           in
-          let id = Tacmach.pf_get_new_id id gl in
+          let id = pf_get_new_id id gl in
           let hyps = Id.Set.elements (hyps_after sigma (hyps gl) (pos + 1 - snd chop) before) in
           let occs = Some (List.map (fun h -> (Locus.AllOccurrences, h), Locus.InHyp) hyps) in
           let occs = Locus.{ onhyps = occs; concl_occs = NoOccurrences } in
@@ -872,7 +872,7 @@ let myreplace_by a1 a2 tac =
         let sigma, eq = get_fresh sigma logic_eq_type in
         let eqty = mkApp (eq, [| ty; a1; a2 |]) in
         let sigma, _ = Typing.type_of env sigma eqty in
-        let na = Tacmach.pf_get_new_id (Id.of_string "Heq") gl in
+        let na = pf_get_new_id (Id.of_string "Heq") gl in
         Proofview.Unsafe.tclEVARS sigma <*>
         Tactics.assert_by (Name na) eqty tac <*>
         Equality.rewriteLR (mkVar na) <*>
@@ -983,7 +983,6 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
   and aux subst base unfold_base split unfold_split =
     match split, unfold_split with
     | Split (_, _, _, splits), Split ((ctx,pats,_), var, _, unfsplits) ->
-      let open Tacmach in
       observe "split"
         (Proofview.Goal.enter (fun gl ->
         if is_primitive (pf_env gl) (project gl) ctx (pred var) then
@@ -1010,10 +1009,9 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
     | _, Mapping (lhs, s) -> aux subst base unfold_base split s
        
     | Refined (_, _, s), Refined ((ctx, _, _), refinfo, unfs) ->
-        let open Tacmach.Old in
-        let open Tacticals.Old in
         let id = pi1 refinfo.refined_obj in
-        let rec reftac gl =
+        let rec reftac () =
+          Proofview.Goal.enter begin fun gl ->
           match kind (project gl) (pf_concl gl) with
           | App (f, [| ty; term1; term2 |]) ->
              let sigma = project gl in
@@ -1024,18 +1022,19 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
              let id = pf_get_new_id id gl in
              if Environ.QConstant.equal (pf_env gl) ev2 cst then
                tclTHENLIST
-               [to82 (myreplace_by a1 a2 (Tacticals.tclTHENLIST [solve_eq subst]));
-                to82 (observe "refine after replace"
-                  (letin_tac None (Name id) a2 None Locusops.allHypsAndConcl));
-                Proofview.V82.of_tactic (clear_body [id]); 
-                to82 (observe "unfoldings" (unfolds base unfold_base)); 
-                to82 (aux subst base unfold_base s unfs)] gl
-             else tclTHENLIST [to82 (unfolds base unfold_base); to82 simpltac; reftac] gl
-          | _ -> tclFAIL 0 (str"Unexpected unfolding lemma goal") gl
-    	in
-      let reftac = to82 (observe "refined" (of82 reftac)) in
-      abstract (of82 (tclTHENLIST [to82 intros; to82 simpltac; reftac]))
-	    
+               [myreplace_by a1 a2 (tclTHENLIST [solve_eq subst]);
+                observe "refine after replace"
+                  (letin_tac None (Name id) a2 None Locusops.allHypsAndConcl);
+                clear_body [id]; 
+                observe "unfoldings" (unfolds base unfold_base); 
+                aux subst base unfold_base s unfs]
+             else tclTHENLIST [unfolds base unfold_base; simpltac; reftac ()]
+          | _ -> tclFAIL 0 (str"Unexpected unfolding lemma goal")
+          end
+        in
+      let reftac = observe "refined" (reftac ()) in
+      abstract (tclTHENLIST [intros; simpltac; reftac])
+
     | Compute (_, wheres, _, RProgram _), Compute ((lctx, _, _), unfwheres, _, RProgram c) ->
        let wheretac acc w unfw =
          let assoc, id, _ =
