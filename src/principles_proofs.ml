@@ -890,7 +890,8 @@ let headcst sigma f =
   if isConst sigma f then fst (destConst sigma f)
   else assert false
 
-let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
+let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
+  Proofview.V82.tactic begin fun gl ->
   let depelim h = Depelim.dependent_elim_tac (None, h) (* depelim_tac h *) in
   let helpercsts = List.map (fun (cst, i) -> cst) info.helpers_info in
   let opacify, transp = simpl_of ((destConstRef (Lazy.force coq_hidebody), Conv_oracle.transparent)
@@ -1090,9 +1091,12 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl =
            to82 (aux_program [f_cst, funf_cst] p unfp)] gl
       in transp (); res
     with e -> transp (); raise e
-  
+
+  end
+
 let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
-  Proofview.V82.tactic begin fun gl ->
+  let open Tacmach in
+  Proofview.Goal.enter begin fun gl ->
   let () =
     if !Equations_common.debug then
       let open Pp in
@@ -1104,9 +1108,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
       msg (fnl () ++ str"and of: " ++ fnl ());
       msg (pr_splitting ~verbose:true env evd unfp.program_splitting)
   in
-  try prove_unfolding_lemma info where_map f_cst funf_cst p unfp gl
-  with (Nametab.GlobalizationError e) as exn ->
-    raise exn
+  prove_unfolding_lemma info where_map f_cst funf_cst p unfp
   end
 
 (* let rec mk_app_holes env sigma = function *)
