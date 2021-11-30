@@ -44,3 +44,8 @@ Next Obligation.
   intros.
   rewrite <- fin_pred_to_nat in x. exact x.
 Defined.
+
+Fail Equations take_right_S_fail {f n} (m: fin n) (v: Vec f (S n)) : Vec f (S m) by struct v :=
+take_right_S_fail m (vcons (S n1) f1 v) with eq_dec (S m) (S n1) =>
+  take_right_S_fail m (vcons (S n1) f1 v) (right e) := _ (take_right_S_fail (fin_pred m (neq_sym e)) v) ;
+  take_right_S_fail m (vcons (S n1) f1 v) (left eq_refl) := v.

@@ -55,15 +55,16 @@ let decompose_rel evd c =
   | Rel i -> Some i
   | _ -> None
 
-let rec check_occur evd n x : 'a =
-  let f, l = decompose_app_vect evd x in
-  if isRelN evd n f then raise Conflict
-  else if isConstruct evd f then
-    (ignore (Array.map (check_occur evd n) l);
-     assert false)
-  else (* This is not a pattern structure so the conflict cannot 
-          necessarily be solved by unification. *)
-    raise Stuck
+let check_occur evd n x : 'a =
+  (* Check if the occurrence is under a constructor pattern of not *)
+  let rec aux x =
+    let f, l = decompose_app_vect evd x in
+    if isRelN evd n f then true
+    else if isConstruct evd f then
+      Array.exists aux l
+    else false (* This is not a pattern structure so the conflict cannot be solved by unification. *)
+  in 
+  if aux x then raise Conflict else raise Stuck
 
 let rec unify env evd flex g x y =
   if check_conv env evd x y then id_subst g
