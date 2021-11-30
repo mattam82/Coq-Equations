@@ -6,23 +6,23 @@ From Equations Require Import Equations.
 
 Derive Signature for Vec.
 
-Require Import stdpp.fin.
-
-Require Import stdpp.numbers.
-Set Equations Debug.
-Set Printing All.
+From Coq Require Fin.
+Notation fin := Fin.t.
 
 Set Equations Transparent.
 Derive Signature for Fin.t.
 
-Equations? fin_pred {n} (m : fin (S n)) (H : S n <> S m) : fin n :=
+Equations fin_to_nat {n : nat} (i : fin n) : nat :=
+ | Fin.F1 := 0;
+ | Fin.FS f := S (fin_to_nat f).
+
+Coercion fin_to_nat : Fin.t >-> nat.
+
+Equations fin_pred {n} (m : fin (S n)) (H : S n <> S m) : fin n :=
   fin_pred (n:=0) Fin.F1 H with H eq_refl := {};
   fin_pred (n:=S n) Fin.F1 H := Fin.F1;
   fin_pred (n:=0) (Fin.FS !) H ;
   fin_pred (n:=S n) (Fin.FS f) H := Fin.FS (fin_pred f _).
-Proof.
-  cbn in H. intros eq. apply H. f_equal. exact eq.
-Defined.
 
 Lemma fin_pred_to_nat {n} (m : fin (S n)) (H : S n <> S m) : m = fin_pred m H :> nat.
 Proof.
@@ -36,7 +36,7 @@ Proof.
 Qed.
 
 Equations take_right_S {f n} (m: fin n) (v: Vec f (S n)) : Vec f (S m) by struct v :=
-take_right_S m (vcons (S n1) f1 v) with decide_rel (=) (S m) (S n1) =>
+take_right_S m (vcons (S n1) f1 v) with eq_dec (S m) (S n1) =>
   take_right_S m (vcons (S n1) f1 v) (right e) := _ (take_right_S (fin_pred m (neq_sym e)) v) ;
   take_right_S m (vcons (S n1) f1 v) (left e) :=
     eq_rect _ (fun n => Vec f n) v _ (eq_sym e).
