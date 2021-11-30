@@ -92,12 +92,12 @@ let autorewrite_one b =
   let rew_rules = Autorewrite.find_rewrites b in
   let rec aux rules =
     match rules with
-    | [] -> Tacticals.tclFAIL 0 (str"Couldn't rewrite")
+    | [] -> tclFAIL 0 (str"Couldn't rewrite")
     | r :: rules ->
        let global, _univs = Constr.destRef r.Autorewrite.rew_lemma in
        let tac =
          Proofview.tclBIND
-         (Tacticals.pf_constr_of_global global)
+         (pf_constr_of_global global)
          (if r.Autorewrite.rew_l2r then Equality.rewriteLR else Equality.rewriteRL)
        in
        Proofview.tclOR tac
@@ -241,7 +241,7 @@ let rec intros_reducing () =
     | _ -> tclIDTAC)
   
 let cstrtac =
-  Tacticals.tclTHENLIST [any_constructor false None]
+  tclTHENLIST [any_constructor false None]
 
 let destSplit = function
   | Split (_, _, _, splits) -> Some splits
@@ -489,13 +489,13 @@ let aux_ind_fun info chop nested unfp unfids p =
             let indapp = change_in_app ind before (pos - snd chop) (mkVar id) in
             mkApp (indapp, [| fnapp |])
           in
-          Tacticals.tclTHENLIST
+          tclTHENLIST
             [observe "letin" (letin_pat_tac true None (Name id) (sigma, elim) occs);
              observe "convert concl" (convert_concl ~cast:false ~check:false newconcl DEFAULTcast);
              observe "clear body" (clear_body [id]);
              aux chop unfs unfids s]
         | _ ->
-          Tacticals.tclFAIL 0 (str"Unexpected refinement goal in functional induction proof")
+          tclFAIL 0 (str"Unexpected refinement goal in functional induction proof")
       in
       (observe "refine"
               (tclTHENLIST [ intros;
@@ -587,8 +587,8 @@ let aux_ind_fun info chop nested unfp unfids p =
               it_mkProd_or_LetIn app ctx
             in
             let tac =
-              Tacticals.tclTHEN acc
-                (Proofview.tclBIND (Tacticals.pf_constr_of_global ind)
+              tclTHEN acc
+                (Proofview.tclBIND (pf_constr_of_global ind)
                    (fun ind ->
                       if !debug then
                         (let env = Global.env () in
@@ -618,11 +618,11 @@ let aux_ind_fun info chop nested unfp unfids p =
                   let args_vars = List.filter (fun id -> not (Termops.is_section_variable (Global.env ()) id)) args_vars in
                   List.map mkVar args_vars
                 in
-                let tac, _ = List.fold_right2 (wheretac env sigma) wheres unfswheres (Tacticals.tclIDTAC, subst) in
+                let tac, _ = List.fold_right2 (wheretac env sigma) wheres unfswheres (tclIDTAC, subst) in
                 tac)
           in
-          Tacticals.tclTHENLIST [tac; Tacticals.tclTRY (autorewrite_one info.term_info.base_id)]
-        else Tacticals.tclIDTAC
+          tclTHENLIST [tac; tclTRY (autorewrite_one info.term_info.base_id)]
+        else tclIDTAC
       in
       (match c with
        | REmpty _ ->
@@ -643,7 +643,7 @@ let aux_ind_fun info chop nested unfp unfids p =
                tclTHEN Tactics.intros
                  (tclMAP (fun i ->
                       (tclTRY (Proofview.tclBIND
-                              (Tacticals.pf_constr_of_global
+                              (pf_constr_of_global
                                   (Equations_common.global_reference i))
                                 Equality.rewriteLR))) unfids);
                tclORELSE (tclCOMPLETE
@@ -905,7 +905,7 @@ let solve_rec_eq simpltac subst =
             [((Locus.OnlyOccurrences [1]), Tacred.EvalConstRef f_cst); 
               ((Locus.OnlyOccurrences [1]), Tacred.EvalConstRef funf_cst)]
         in tclTHENLIST [unfolds; simpltac; pi_tac ()]
-      with Not_found -> Tacticals.tclORELSE reflexivity (congruence_tac 10 []))
+      with Not_found -> tclORELSE reflexivity (congruence_tac 10 []))
   | _ -> reflexivity
   end
 
@@ -924,7 +924,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
     (Tactics.reduct_in_concl ~cast:false ~check:false ((Reductionops.clos_norm_flags CClosure.betazeta), DEFAULTcast))
   in
   let solve_rec_eq subst = solve_rec_eq simpltac subst in
-  let solve_eq subst = observe "solve_eq" (Tacticals.tclORELSE (transparent reflexivity) (solve_rec_eq subst)) in
+  let solve_eq subst = observe "solve_eq" (tclORELSE (transparent reflexivity) (solve_rec_eq subst)) in
   let abstract tac = (* Abstract.tclABSTRACT None *) tac in
   let rec aux_program subst p unfp =
     Proofview.Goal.enter (fun gl ->
