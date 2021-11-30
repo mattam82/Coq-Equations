@@ -291,7 +291,7 @@ let specialize_eqs ~with_block id gl =
         else if in_block then acc, in_eqs, ctx, subst, (subst1 mkProp ty)
         else aux true in_eqs ctx subst acc (subst1 mkProp ty)
       else if not in_block then
-        aux in_block in_eqs (make_def na (Some b) t :: ctx) subst acc ty
+        aux in_block in_eqs (make_def na (Some b) t :: ctx) subst (lift 1 acc) ty
       else
         aux in_block in_eqs ctx (make_def na (Some b) t :: subst) acc ty
     | Prod (na, t, b) when not in_block ->
