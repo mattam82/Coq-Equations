@@ -8,8 +8,8 @@ open Pp
 open List
 open Libnames
 open Tactics
-open Tacticals.Old
-open Tacmach.Old
+open Tacticals
+open Tacmach
 open EConstr
 open Equations_common
 open Printer
@@ -51,7 +51,7 @@ let below_transparent_state () =
   Hints.Hint_db.transparent_state (Hints.searchtable_map "Below")
 
 let simpl_star =
-  Proofview.V82.tactic (tclTHEN (to82 simpl_in_concl) (onAllHyps (fun id -> to82 (simpl_in_hyp (id, Locus.InHyp)))))
+  tclTHEN simpl_in_concl (onAllHyps (fun id -> simpl_in_hyp (id, Locus.InHyp)))
 
 let eauto_with_below ?depth ?(strategy=Class_tactics.Dfs) l =
   Class_tactics.typeclasses_eauto ~depth ~st:(below_transparent_state ()) 
@@ -450,7 +450,7 @@ let aux_ind_fun info chop nested unfp unfids p =
       (observe "split"
         (Proofview.V82.tactic (Tacticals.Old.tclTHEN_i
            (fun gl ->
-              match kind (project gl) (pf_concl gl) with
+              match kind (Tacmach.Old.project gl) (Tacmach.Old.pf_concl gl) with
               | App (ind, args) ->
                 let pats' = List.drop_last (Array.to_list args) in
                 let pats' =
@@ -462,7 +462,7 @@ let aux_ind_fun info chop nested unfp unfids p =
                   | _ ->
                     filter (fun x -> not (hidden x)) (filter_def_pats lhs), var
                 in
-                let id = find_splitting_var (project gl) pats var pats' in
+                let id = find_splitting_var (Tacmach.Old.project gl) pats var pats' in
                 to82 (Depelim.dependent_elim_tac (None, id)) gl
               | _ -> to82 (tclFAIL 0 (str"Unexpected goal in functional induction proof")) gl)
            (fun i gl ->
@@ -891,6 +891,8 @@ let headcst sigma f =
   else assert false
 
 let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
+  let open Tacmach.Old in
+  let open Tacticals.Old in
   Proofview.V82.tactic begin fun gl ->
   let depelim h = Depelim.dependent_elim_tac (None, h) (* depelim_tac h *) in
   let helpercsts = List.map (fun (cst, i) -> cst) info.helpers_info in
@@ -1095,7 +1097,6 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
   end
 
 let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
-  let open Tacmach in
   Proofview.Goal.enter begin fun gl ->
   let () =
     if !Equations_common.debug then
