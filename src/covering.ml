@@ -55,19 +55,29 @@ let decompose_rel evd c =
   | Rel i -> Some i
   | _ -> None
 
+let rec check_occur evd n x : 'a =
+  let f, l = decompose_app_vect evd x in
+  if isRelN evd n f then raise Conflict
+  else if isConstruct evd f then
+    (ignore (Array.map (check_occur evd n) l);
+     assert false)
+  else (* This is not a pattern structure so the conflict cannot 
+          necessarily be solved by unification. *)
+    raise Stuck
+
 let rec unify env evd flex g x y =
   if check_conv env evd x y then id_subst g
   else
     match decompose_rel evd x with
     | Some i -> 
-      if not (isRel evd y) && not (noccurn evd i y) then raise Conflict (* Occur check *)
+      if not (isRel evd y) && not (noccurn evd i y) then check_occur evd i y (* Occur check *)
       else if Int.Set.mem i flex then
         single_subst env evd i (PInac y) g
       else raise Stuck
     | None ->
       match decompose_rel evd y with
       | Some i ->
-        if (* not (isRel evd x) &&  *)not (noccurn evd i x) then raise Conflict (* Occur check *)
+        if (* not (isRel evd x) &&  *)not (noccurn evd i x) then check_occur evd i x (* Occur check *)
         else if Int.Set.mem i flex then
           single_subst env evd i (PInac x) g
         else raise Stuck
