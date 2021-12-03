@@ -62,9 +62,13 @@ issues/issue228.v
 issues/issue246.v
 issues/issue249.v
 issues/issue258.v
+issues/issue279.v
 issues/issue286.v
 issues/issue297.v
 issues/issue306.v
+issues/issue320.v
+issues/issue321.v
+issues/issue327.v
 issues/issue328.v
 issues/issue329.v
 issues/issue338.v
@@ -72,9 +76,10 @@ issues/issue346.v
 issues/issue349.v
 issues/issue353.v
 issues/issue354.v
+issues/issue365.v
 issues/issue372.v
-issues/issue321.v
 issues/issue399.v
+issues/issue449.v
 eqdec_error.v
 noconf_simplify.v
 le.v

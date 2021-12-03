@@ -55,19 +55,30 @@ let decompose_rel evd c =
   | Rel i -> Some i
   | _ -> None
 
+let check_occur evd n x : 'a =
+  (* Check if the occurrence is under a constructor pattern of not *)
+  let rec aux x =
+    let f, l = decompose_app_vect evd x in
+    if isRelN evd n f then true
+    else if isConstruct evd f then
+      Array.exists aux l
+    else false (* This is not a pattern structure so the conflict cannot be solved by unification. *)
+  in 
+  if aux x then raise Conflict else raise Stuck
+
 let rec unify env evd flex g x y =
   if check_conv env evd x y then id_subst g
   else
     match decompose_rel evd x with
     | Some i -> 
-      if not (isRel evd y) && not (noccurn evd i y) then raise Conflict (* Occur check *)
+      if not (isRel evd y) && not (noccurn evd i y) then check_occur evd i y (* Occur check *)
       else if Int.Set.mem i flex then
         single_subst env evd i (PInac y) g
       else raise Stuck
     | None ->
       match decompose_rel evd y with
       | Some i ->
-        if (* not (isRel evd x) &&  *)not (noccurn evd i x) then raise Conflict (* Occur check *)
+        if (* not (isRel evd x) &&  *)not (noccurn evd i x) then check_occur evd i x (* Occur check *)
         else if Int.Set.mem i flex then
           single_subst env evd i (PInac x) g
         else raise Stuck
@@ -770,8 +781,8 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),udecl,rec
   let program_orig_type = it_mkProd_or_LetIn arity sign in
   let program_sort =
     let u = Sorts.univ_of_sort (Retyping.get_sort_of env !evd program_orig_type) in
-    let sigma, sortl, sortu = nonalgebraic_universe_level_of_universe env !evd u in
-    evd := sigma; sortu
+    (* let sigma, sortl, sortu = nonalgebraic_universe_level_of_universe env !evd u in *)
+    ref u
   in
   let program_implicits = Impargs.compute_implicits_with_manual env !evd program_orig_type false impls in
   let () = evd := Evd.minimize_universes !evd in
@@ -1008,11 +1019,24 @@ let compute_rec_data env evars data lets subst p =
 
 exception UnfaithfulSplit of (Loc.t option * Pp.t)
 
-let rename_domain env sigma bindings (ctx, p, ctx') = 
+
+let rename_away_from away decl =
+  let open Context.Rel.Declaration in 
+  let na = get_name decl in
+  match na with 
+  | Anonymous -> decl
+  | Name id ->
+    if Id.Set.mem id !away then
+      set_name (Name (next_ident_away id away)) decl
+    else decl
+
+let rename_domain env sigma bindings away (ctx, p, ctx') = 
   let fn rel decl = 
     match Int.Map.find rel bindings with
-    | exception Not_found -> decl
-    | (id, _, gen) -> if gen != Generated then Context.Rel.Declaration.set_name (Name id) decl else decl
+    | exception Not_found -> rename_away_from away decl
+    | (id, _, gen) -> 
+      if gen != Generated then Context.Rel.Declaration.set_name (Name id) decl 
+      else rename_away_from away decl
   in 
   let rctx = CList.map_i fn 1 ctx in
   mk_ctx_map env sigma rctx p ctx'
@@ -1075,34 +1099,39 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
                   pr_pat env !evars pat'))
           in ignore (List.fold_left check Id.Map.empty s)
        in
-       let bindings, s = CList.fold_left (fun (bindings, s) ((loc, x, gen), y) ->
+       let bindings, s, away = CList.fold_left (fun (bindings, s, away) ((loc, x, gen), y) ->
           let pat = 
             match y with
             | PRel i -> Some (i, false)
             | PInac i when isRel !evars i -> Some (destRel !evars i, true)
             | _ -> None 
           in
+          let away =
+            match gen with
+            | Generated -> away 
+            | _ -> Id.Set.add x away
+          in
           match pat with
           | Some (i, inacc) -> begin
             match Int.Map.find i bindings with
-            | exception Not_found -> (Int.Map.add i (x, inacc, gen) bindings, s)
+            | exception Not_found -> (Int.Map.add i (x, inacc, gen) bindings, s, away)
             | (x', inacc', gen') -> begin
               match gen, gen' with
-              | Generated, (User | Implicit) -> (Int.Map.add i (x', inacc && inacc', gen') bindings, s)
-              | Generated, Generated -> (Int.Map.add i (x, inacc && inacc', gen) bindings, s)
-              | _, Generated -> (Int.Map.add i (x, inacc && inacc', gen) bindings, s)
+              | Generated, (User | Implicit) -> (Int.Map.add i (x', inacc && inacc', gen') bindings, s, away)
+              | Generated, Generated -> (Int.Map.add i (x, inacc && inacc', gen) bindings, s, away)
+              | _, Generated -> (Int.Map.add i (x, inacc && inacc', gen) bindings, s, away)
               | _, _ -> 
                 if not (Id.equal x x') then
                   (* We allow aliasing of implicit variable names resulting from forcing a pattern *)
                   if not data.flags.allow_aliases && (gen == User && gen' == User) then
                     user_err_loc (loc, "matches",
                       Pp.(str "The pattern " ++ Id.print x ++ str " should be equal to " ++ Id.print x' ++ str", it is forced by typing"))
-                  else (bindings, (x, y) :: s)
-                else (bindings, s)
+                  else (bindings, (x, y) :: s, away)
+                else (bindings, s, away)
               end
             end
-          | None -> (bindings, (x, y) :: s)) 
-          (Int.Map.empty, []) s
+          | None -> (bindings, (x, y) :: s, away)) 
+          (Int.Map.empty, [], Id.Set.empty) s
            (* @ List.filter_map (fun (x, y) ->
             match DAst.get x with
             | PUVar (id, gen) -> Some ((DAst.with_loc_val (fun ?loc _ -> loc) x, id, gen), PInac y)
@@ -1113,7 +1142,8 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
           prlist_with_sep spc (fun (i, (x, inacc, gen)) -> str "Rel " ++ int i ++ str" = " ++ 
           pr_provenance ~with_gen:true (Id.print x) gen ++ 
           str", inacc = " ++ bool inacc) (Int.Map.bindings bindings));
-       let prob = rename_domain env !evars bindings prob in
+       let away = ref away in
+       let prob = rename_domain env !evars bindings away prob in
        if !Equations_common.debug then Feedback.msg_debug (str "Renamed problem: " ++ 
         hov 2 (pr_context_map env !evars prob));
        (* let sext =
@@ -1438,6 +1468,8 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
         | UnifSuccess (s, alias) ->
           (* A substitution from the problem variables to user patterns and
              from user pattern variables to patterns instantiating problem variables. *)
+          equations_debug Pp.(fun () -> str"Aliases: " ++ prlist_with_sep (fun () -> str ",") (fun (id,cpat) ->
+            Id.print id ++ str" -> " ++ pr_pat env !evars cpat) alias);
           let newlhs =
             List.map_filter
               (fun i ->

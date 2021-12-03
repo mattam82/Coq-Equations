@@ -47,13 +47,23 @@ let constrs_of_coq_sigma env evd t alias =
     | App (f, args) when is_global !evd (Lazy.force coq_sigmaI) f && 
 	                   Array.length args = 4 ->
        let ty = Retyping.get_type_of env !evd args.(1) in
-	(match kind !evd ty with
-	| Prod (n, b, t) ->
-	    let p1 = mkProj (Lazy.force coq_pr1, proj) in
-	    let p2 = mkProj (Lazy.force coq_pr2, proj) in
-	    (n, args.(2), p1, args.(0)) ::
-              aux (push_rel (of_tuple (n, None, b)) env) p2 args.(3) t
-	| _ -> raise (Invalid_argument "constrs_of_coq_sigma"))
+      (match kind !evd ty with
+      | Prod (n, b, t) ->
+          let p1 = mkProj (Lazy.force coq_pr1, proj) in
+          let p2 = mkProj (Lazy.force coq_pr2, proj) in
+          (n, args.(2), p1, args.(0)) ::
+                  aux (push_rel (of_tuple (n, None, b)) env) p2 args.(3) t
+      | _ -> raise (Invalid_argument "constrs_of_coq_sigma"))
+    | App (f, args) when is_global !evd (Lazy.force coq_sigmaTSI) f && 
+	                   Array.length args = 4 ->
+       let ty = Retyping.get_type_of env !evd args.(1) in
+      (match kind !evd ty with
+      | Prod (n, b, t) ->
+          let p1 = mkProj (Lazy.force coq_pr1TS, proj) in
+          let p2 = mkProj (Lazy.force coq_pr2TS, proj) in
+          (n, args.(2), p1, args.(0)) ::
+                  aux (push_rel (of_tuple (n, None, b)) env) p2 args.(3) t
+      | _ -> raise (Invalid_argument "constrs_of_coq_sigma"))
     | _ -> [(Context.anonR, c, proj, ty)]
   in aux env alias t (Retyping.get_type_of env !evd t)
 
@@ -97,6 +107,13 @@ let telescope_intro env sigma len tele =
     | _ -> mkRel n
   in aux len tele
 
+type sigma_info = {
+  sigma_type : GlobRef.t;
+  sigma_intro : GlobRef.t;
+  sigma_pr1 : Names.Projection.t;
+  sigma_pr2 : Names.Projection.t;
+}
+
 let telescope_of_context env sigma ctx =
   let sigma, teleinterp = new_global sigma (Lazy.force logic_tele_interp) in
   let _, u = destConst sigma teleinterp in
@@ -123,18 +140,35 @@ let telescope env evd = function
       let len = succ (List.length tl) in
       let ts = Retyping.get_sort_of (push_rel_context tl env) !evd t in
       let tuniv = Sorts.univ_of_sort ts in
+      let trel = Sorts.relevance_of_sort ts in
       let ty, tys =
-        let rec aux (ty, tyuniv, tys) ds =
+        let rec aux (ty, tyuniv, trel, tys) ds =
           match ds with
           | [] -> (ty, tys)
           | d :: ds ->
             let (n, b, t) = to_tuple d in
             let pred = mkLambda (n, t, ty) in
-            let sigty = mkAppG evd (Lazy.force coq_sigma) [|t; pred|] in
+            let env = push_rel_context ds env in
+            let _relt = 
+              let ts = Retyping.get_sort_of env !evd t in
+              Sorts.relevance_of_sort ts
+            in
+            let sigmainfo =
+              if trel == Sorts.Irrelevant then
+                { sigma_type = Lazy.force coq_sigmaTS;
+                  sigma_intro = Lazy.force coq_sigmaTSI;
+                  sigma_pr1 = Lazy.force coq_pr1TS;
+                  sigma_pr2 = Lazy.force coq_pr2TS }
+              else
+                { sigma_type = Lazy.force coq_sigma;
+                  sigma_intro = Lazy.force coq_sigmaI;
+                  sigma_pr1 = Lazy.force coq_pr1;
+                  sigma_pr2 = Lazy.force coq_pr2 }
+            in
+            let sigty = mkAppG evd sigmainfo.sigma_type [|t; pred|] in
             let _, u = destInd !evd (fst (destApp !evd sigty)) in
             let ua = Univ.Instance.to_array (EInstance.kind !evd u) in
             let l = Univ.Universe.make ua.(0) in
-            let env = push_rel_context ds env in
             (* Ensure that the universe of the sigma is only >= those of t and pred *)
             let enforce_leq env sigma t cstr =
               let ts = Retyping.get_sort_of env sigma t in
@@ -143,26 +177,26 @@ let telescope env evd = function
             in
             let cstrs = enforce_leq env !evd t (Univ.enforce_leq tyuniv l Univ.Constraint.empty) in
             let () = evd := Evd.add_constraints !evd cstrs in
-            aux (sigty, l, (u, pred) :: tys) ds
-        in aux (t, tuniv, []) tl
+            aux (sigty, l, Sorts.Relevant, (u, pred, sigmainfo) :: tys) ds
+        in aux (t, tuniv, trel, []) tl
       in
       let constr, _ = 
-	List.fold_right (fun (u, pred) (intro, k) ->
-	  let pred = Vars.lift k pred in
-	  let (n, dom, codom) = destLambda !evd pred in
-	  let intro =
-            mkApp (constr_of_global_univ !evd (Lazy.force coq_sigmaI, u),
-                   [| dom; pred; mkRel k; intro|]) in
-	    (intro, succ k))
-	  tys (mkRel 1, 2)
+        List.fold_right (fun (u, pred, sigmainfo) (intro, k) ->
+          let pred = Vars.lift k pred in
+          let (n, dom, codom) = destLambda !evd pred in
+          let intro =
+                  mkApp (constr_of_global_univ !evd (sigmainfo.sigma_intro, u),
+                        [| dom; pred; mkRel k; intro|]) in
+            (intro, succ k))
+          tys (mkRel 1, 2)
       in
       let (last, _, subst) = List.fold_right2
-	(fun pred d (prev, k, subst) ->
+        (fun (_, _, sigmainfo) d (prev, k, subst) ->
           let (n, b, t) = to_tuple d in
-	  let proj1 = mkProj (Lazy.force coq_pr1, prev) in
-	  let proj2 = mkProj (Lazy.force coq_pr2, prev) in
-	    (Vars.lift 1 proj2, succ k, of_tuple (n, Some proj1, Vars.liftn 1 k t) :: subst))
-	(List.rev tys) tl (mkRel 1, 1, [])
+          let proj1 = mkProj (sigmainfo.sigma_pr1, prev) in
+          let proj2 = mkProj (sigmainfo.sigma_pr2, prev) in
+            (Vars.lift 1 proj2, succ k, of_tuple (n, Some proj1, Vars.liftn 1 k t) :: subst))
+        (List.rev tys) tl (mkRel 1, 1, [])
       in ty, (of_tuple (n, Some last, Vars.liftn 1 len t) :: subst), constr
 
 let sigmaize ?(liftty=0) env0 evd pars f =
@@ -338,9 +372,9 @@ let pattern_sigma ~assoc_right c hyp env sigma =
   let terms =
     if assoc_right then terms
     else match terms with
-         | (x, t, p, rest) :: term :: _ -> 
-	    constrs_of_coq_sigma env evd t p @ terms
-         | _ -> terms
+      | (x, t, p, rest) :: term :: _ -> 
+	      constrs_of_coq_sigma env evd t p @ terms
+      | _ -> terms
   in
   let pat x = Patternops.pattern_of_constr env !evd (to_constr !evd x) in
   let terms = 
@@ -349,11 +383,20 @@ let pattern_sigma ~assoc_right c hyp env sigma =
          | (x, t, p, rest) :: _ :: _ -> terms @ constrs_of_coq_sigma env evd t p 
          | _ -> terms
   in
-  let projs = List.map (fun (x, t, p, rest) -> (pat t, make_change_arg p)) terms in
+  let change t p =
+    match kind sigma t with
+    | Var id ->
+      Proofview.Goal.enter
+        (fun gl ->
+          let concl = Proofview.Goal.concl gl in
+          let concl' = Vars.replace_vars [id, p] concl in
+          change_in_concl ~check:false None (make_change_arg concl'))
+    | _ -> change ~check:false (Some (pat t)) (make_change_arg p) Locusops.onConcl
+  in
   let projabs =
     tclTHENLIST 
       ((if assoc_right then rev_map
-        else List.map) (fun (t, p) -> (change ~check:true (Some t) p Locusops.onConcl)) projs) in
+        else List.map) (fun (x, t, p, _) -> change t p) terms) in
     tclTHEN (Proofview.Unsafe.tclEVARS !evd) projabs
 			 
 let curry_left_hyp env sigma c t =

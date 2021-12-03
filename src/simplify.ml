@@ -9,6 +9,8 @@ open Equations_common
 module type SIGMAREFS = sig
   val sigma : Names.inductive Lazy.t
   val sigmaI : Names.constructor Lazy.t
+  val sigmaS : Names.inductive Lazy.t
+  val sigmaIS : Names.constructor Lazy.t
 end
 
 module type EQREFS = sig
@@ -41,6 +43,12 @@ module type EQREFS = sig
   val simpl_sigma_nondep_dep : Names.Constant.t Lazy.t
   val simpl_sigma_dep_dep : Names.Constant.t Lazy.t
   val pack_sigma_eq : Names.Constant.t Lazy.t
+  
+  val simpl_sigmaS : Names.Constant.t Lazy.t
+  val simpl_sigmaS_dep : Names.Constant.t Lazy.t
+  val simpl_sigmaS_nondep_dep : Names.Constant.t Lazy.t
+  val simpl_sigmaS_dep_dep : Names.Constant.t Lazy.t
+  
   (* Deletion using UIP. *)
   val simpl_uip : Names.Constant.t Lazy.t
   (* Solution lemmas. *)
@@ -89,6 +97,10 @@ module EqRefs : EQREFS = struct
   let simpl_sigma_nondep_dep = init_depelim "simpl_sigma_nondep_dep"
   let simpl_sigma_dep_dep = init_depelim "simpl_sigma_dep_dep"
   let pack_sigma_eq = init_depelim "pack_sigma_eq"
+  let simpl_sigmaS = init_depelim "simpl_sigmaS"
+  let simpl_sigmaS_dep = init_depelim "simpl_sigmaS_dep"
+  let simpl_sigmaS_nondep_dep = init_depelim "simpl_sigmaS_nondep_dep"
+  let simpl_sigmaS_dep_dep = init_depelim "simpl_sigmaS_dep_dep"
   let simpl_uip = init_depelim "simpl_uip"
   let solution_left = init_depelim "solution_left"
   let solution_left_dep = init_depelim "solution_left_dep"
@@ -102,6 +114,8 @@ module SigmaRefs : SIGMAREFS = struct
 
   let sigma = init_inductive Equations_common.coq_sigma
   let sigmaI = init_constructor Equations_common.coq_sigmaI
+  let sigmaS = init_inductive Equations_common.coq_sigmaTS
+  let sigmaIS = init_constructor Equations_common.coq_sigmaTSI
 end
 
 (* From the references, we can build terms. *)
@@ -134,6 +148,10 @@ module type BUILDER = sig
   val simpl_sigma_dep : constr_gen
   val simpl_sigma_nondep_dep : constr_gen
   val simpl_sigma_dep_dep : constr_gen
+  val simpl_sigmaS : constr_gen
+  val simpl_sigmaS_dep : constr_gen
+  val simpl_sigmaS_nondep_dep : constr_gen
+  val simpl_sigmaS_dep_dep : constr_gen
   val simpl_uip : constr_gen
   val solution_left : constr_univ_gen
   val solution_left_dep : constr_univ_gen
@@ -189,6 +207,10 @@ module BuilderGen (SigmaRefs : SIGMAREFS) (EqRefs : EQREFS) : BUILDER = struct
   let simpl_sigma_dep = gen_from_constant EqRefs.simpl_sigma_dep
   let simpl_sigma_nondep_dep = gen_from_constant EqRefs.simpl_sigma_nondep_dep
   let simpl_sigma_dep_dep = gen_from_constant EqRefs.simpl_sigma_dep_dep
+  let simpl_sigmaS = gen_from_constant EqRefs.simpl_sigmaS
+  let simpl_sigmaS_dep = gen_from_constant EqRefs.simpl_sigmaS_dep
+  let simpl_sigmaS_nondep_dep = gen_from_constant EqRefs.simpl_sigmaS_nondep_dep
+  let simpl_sigmaS_dep_dep = gen_from_constant EqRefs.simpl_sigmaS_dep_dep
   let simpl_uip = gen_from_constant EqRefs.simpl_uip
   let solution_left = gen_from_constant_univ EqRefs.solution_left
   let solution_left_dep = gen_from_constant_univ EqRefs.solution_left_dep
@@ -217,7 +239,7 @@ and simplification_rule =
   | Infer_many
 and simplification_rules = (Loc.t option * simplification_rule) list
 
-type goal = rel_context * EConstr.types * Univ.Universe.t
+type goal = rel_context * EConstr.types * Univ.Universe.t ref
 type open_term = (goal * EConstr.existential) option * EConstr.constr
 
 exception CannotSimplify of Pp.t
@@ -237,6 +259,7 @@ let build_term (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal
   let c = f tev in
   let env = push_rel_context ctx env in
   let _ =
+    (* Feedback.msg_debug Pp.(str"Typing term: " ++ Printer.pr_econstr_env env !evd (Evarutil.nf_evar !evd c)); *)
     try Equations_common.evd_comb1 (Typing.type_of env) evd c 
     with Type_errors.TypeError (env, tyerr) ->
       anomaly Pp.(str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env !evd c ++ 
@@ -364,12 +387,13 @@ let while_fun (f : simplification_fun) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) ->
   let rec aux env evd gl =
     match f env evd gl with
-    | (Some (gl', _), _), _ as res1 ->
+    | (Some ((ctx, ty, u), _), _), _ as res1 ->
         begin try
           let evd' = ref !evd in
-          let res2 = aux env evd' gl' in
+          let u' = ref !u in
+          let res2 = aux env evd' (ctx, ty, u') in
           let res = compose_res env evd' res1 res2 in
-            evd := !evd'; res
+            evd := !evd'; u := !u'; res
         with CannotSimplify _ -> res1 end
     | (None, _), _ as res1 -> res1
   in try
@@ -425,11 +449,14 @@ let check_equality env sigma ctx ?(equal_terms : bool = false)
   u, tA, tx, ty
 
 let decompose_sigma sigma (t : EConstr.constr) :
-  (EInstance.t * EConstr.types * EConstr.constr * EConstr.constr * EConstr.constr) option =
+  (Sorts.relevance * EInstance.t * EConstr.types * EConstr.constr * EConstr.constr * EConstr.constr) option =
   let f, args = Equations_common.decompose_appvect sigma t in
   if check_construct sigma (Lazy.force SigmaRefs.sigmaI) f then
     let _, u = EConstr.destConstruct sigma f in
-    Some (u, args.(0), args.(1), args.(2), args.(3))
+    Some (Sorts.Relevant, u, args.(0), args.(1), args.(2), args.(3))
+  else if check_construct sigma (Lazy.force SigmaRefs.sigmaIS) f then
+    let _, u = EConstr.destConstruct sigma f in
+    Some (Sorts.Irrelevant, u, args.(0), args.(1), args.(2), args.(3))
   else None
 
 (** All simplifications are wrapped in with_retry so that their 
@@ -471,8 +498,9 @@ let with_retry (f : simplification_fun) : simplification_fun =
   try
     (* Be careful with the [evar_map] management. *)
     let evd' = ref !evd in
-    let res = f env evd' (ctx, ty, u) in
-    evd := !evd'; res
+    let u' = ref !u in
+    let res = f env evd' (ctx, ty, u') in
+    evd := !evd'; u := !u'; res
   with CannotSimplify _ ->
     (*msg_info (str "Reduce!");*)
     f env evd (hnf_goal ~reduce_equality:true env evd (ctx, ty, u))
@@ -490,7 +518,7 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
   let equ, _, t1, t2 = check_equality env !evd ctx ty1 in
   let sigu, f, args =
     match decompose_sigma !evd t1, decompose_sigma !evd t2 with
-    | Some (sigu, tA, tB, tt, tp), Some (_, _, _, tu, tq) ->
+    | Some (rel, sigu, tA, tB, tt, tp), Some (_, _, _, _, tu, tq) ->
         (* Determine the degree of dependency. *)
         if Vars.noccurn !evd 1 ty2 then begin
           (* No dependency in the goal, but maybe there is a dependency in
@@ -499,7 +527,12 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
             let name', _, tBbody = destLambda !evd tB in
             if Vars.noccurn !evd 1 tBbody then
               (* No dependency whatsoever. *)
-              let tsimpl_sigma = Names.GlobRef.ConstRef (Lazy.force EqRefs.simpl_sigma) in
+              let lemma = 
+                match rel with
+                | Sorts.Relevant -> Lazy.force EqRefs.simpl_sigma
+                | Sorts.Irrelevant -> Lazy.force EqRefs.simpl_sigmaS
+              in
+              let tsimpl_sigma = Names.GlobRef.ConstRef lemma in
               let tP = Termops.pop tBbody in
               let tB = Termops.pop ty2 in
               let args = [Some tA; Some tP; Some tB; Some tt; Some tu;
@@ -511,7 +544,12 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
             if only_nondep then raise (CannotSimplify (str"Cannot simplify dependent pair"))
             else
               (* Dependency in the pair, but not in the goal. *)
-              let tsimpl_sigma = Names.GlobRef.ConstRef (Lazy.force EqRefs.simpl_sigma_dep) in
+              let lemma = 
+                match rel with
+                | Sorts.Relevant -> Lazy.force EqRefs.simpl_sigma_dep
+                | Sorts.Irrelevant -> Lazy.force EqRefs.simpl_sigmaS_dep
+              in
+              let tsimpl_sigma = Names.GlobRef.ConstRef lemma in
               let tP = tB in
               let tB = Termops.pop ty2 in
               let args = [Some tA; Some tP; Some tB; Some tt; Some tu;
@@ -522,7 +560,12 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
             let name', _, tBbody = destLambda !evd tB in
             if Vars.noccurn !evd 1 tBbody then
               (* Dependency in the goal, but not in the pair. *)
-              let tsimpl_sigma = Names.GlobRef.ConstRef (Lazy.force EqRefs.simpl_sigma_nondep_dep) in
+              let lemma = 
+                match rel with
+                | Sorts.Relevant -> Lazy.force EqRefs.simpl_sigma_nondep_dep
+                | Sorts.Irrelevant -> Lazy.force EqRefs.simpl_sigmaS_nondep_dep
+              in
+              let tsimpl_sigma = Names.GlobRef.ConstRef lemma in
               let tP = Termops.pop tBbody in
               let tB = EConstr.mkLambda (name, ty1, ty2) in
               let args = [Some tA; Some tP; Some tt; Some tu;
@@ -534,7 +577,12 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
             (* Full dependency *)
             if only_nondep then raise (CannotSimplify (str"Cannot simplify dependent pair"))
             else
-              let tsimpl_sigma = Names.GlobRef.ConstRef (Lazy.force EqRefs.simpl_sigma_dep_dep) in
+              let lemma = 
+                match rel with
+                | Sorts.Relevant -> Lazy.force EqRefs.simpl_sigma_dep_dep
+                | Sorts.Irrelevant -> Lazy.force EqRefs.simpl_sigmaS_dep_dep
+              in
+              let tsimpl_sigma = Names.GlobRef.ConstRef lemma in
               let tP = tB in
               let tB = EConstr.mkLambda (name, ty1, ty2) in
               let args = [Some tA; Some tP; Some tt; Some tu;
@@ -543,7 +591,7 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
         end
     | _, _ -> raise (CannotSimplify (str "If you see this, please report."))
   in
-  let sigma, inst, glu = Equations_common.instance_of env !evd ~argu:sigu glu in
+  let sigma, inst = Equations_common.instance_of env !evd ~argu:sigu glu in
   evd := sigma;
   build_app_infer env evd (ctx, ty, glu) ctx f ~inst args, Context_map.id_subst ctx
 
@@ -618,7 +666,7 @@ let solution ~(dir:direction) : simplification_fun =
   let uinst, glu' =
     (* If the equality is not polymorphic, the lemmas will be monomorphic as well *)
     if EConstr.EInstance.is_empty equ then equ, glu
-    else let sigma, equ, glu = Equations_common.instance_of env !evd ~argu:equ glu in
+    else let sigma, equ = Equations_common.instance_of env !evd ~argu:equ glu in
       evd := sigma; equ, glu
   in
   let tsolution = begin match var_left, nondep with
@@ -725,7 +773,7 @@ let pre_solution ~(dir:direction) = with_retry (pre_solution ~dir)
 
 let is_construct_sigma_2 sigma f =
   let term = match decompose_sigma sigma f with
-    | Some (_, _, _, _, t) -> t
+    | Some (_, _, _, _, _, t) -> t
     | None -> f
   in
   let head, _ = EConstr.decompose_app sigma term in
@@ -787,14 +835,11 @@ let maybe_pack : simplification_fun =
                  str "] if it requires uniqueness of identity proofs and" ++
                  str " enable [Equations With UIP] to allow this")));
     let tx =
-      let _, _, _, tx, _ = Option.get (decompose_sigma !evd valsig) in
+      let _, _, _, _, tx, _ = Option.get (decompose_sigma !evd valsig) in
         Vars.substl (CList.rev args) (Termops.pop tx)
     in
     let tsimplify_ind_pack = Names.GlobRef.ConstRef (Lazy.force EqRefs.simplify_ind_pack) in
     let tB = Reductionops.beta_applist !evd (tBfull, params) in
-    (* FIXME Inserted this to simplify tB when it has the shape:
-               {index & let H := index in foo H}
-             Is this correct? *)
     let tB = let env = push_rel_context ctx env in
       Tacred.simpl env !evd tB in
     let tG = EConstr.mkLambda (name, ty1, ty2) in
@@ -824,13 +869,13 @@ let apply_noconf : simplification_fun =
   let tapply_noconf = Names.GlobRef.ConstRef (Lazy.force EqRefs.apply_noConfusion) in
   let tB = EConstr.mkLambda (name, ty1, ty2) in
   let args = [Some tA; Some tnoconf; Some t1; Some t2; Some tB; None] in
-  let inst, glu' =
+  let inst =
     (* If the equality is not polymorphic, the lemmas will be monomorphic as well *)
-    if EConstr.EInstance.is_empty equ then None, glu
-    else let sigma, equ, glu = Equations_common.instance_of env !evd ~argu:equ glu in
-      evd := sigma; Some equ, glu
+    if EConstr.EInstance.is_empty equ then None
+    else let sigma, equ = Equations_common.instance_of env !evd ~argu:equ glu in
+      evd := sigma; Some equ
   in
-    build_app_infer env evd (ctx, ty, glu') ctx tapply_noconf ?inst args,
+    build_app_infer env evd (ctx, ty, glu) ctx tapply_noconf ?inst args,
     Context_map.id_subst ctx
 
 let noConfusion = compose_fun (compose_fun (hnf ~reduce_equality:false) apply_noconf) maybe_pack
@@ -901,11 +946,11 @@ let noCycle : simplification_fun =
   in
   let tB = EConstr.mkLambda (name, ty1, ty2) in
   let args = [Some tA; Some tnocycle; Some t1; Some t2; Some tB; None] in
-  let inst, glu' =
+  let inst =
     (* If the equality is not polymorphic, the lemmas will be monomorphic as well *)
-    if EConstr.EInstance.is_empty equ then equ, glu
-    else let sigma, equ, glu = Equations_common.instance_of env !evd ~argu:equ glu in
-      evd := sigma; equ, glu
+    if EConstr.EInstance.is_empty equ then equ
+    else let sigma, equ = Equations_common.instance_of env !evd ~argu:equ glu in
+      evd := sigma; equ
   in
   let cont, nocycle, glu' = build_app_infer_concl env evd (ctx, ty, glu) ctx tapply_nocycle ~inst args in
   let subst = Context_map.id_subst ctx in
@@ -937,14 +982,14 @@ let elim_true : simplification_fun =
     (* Apply the dependent induction principle for True. *)
     let tB = EConstr.mkLambda (name, ty1, ty2) in
     let tone_ind = Names.GlobRef.ConstRef (Lazy.force EqRefs.one_ind_dep) in
-    let inst, glu' =
+    let inst =
       (* If the equality is not polymorphic, the lemmas will be monomorphic as well *)
-      if not (Global.is_polymorphic tone_ind) then EConstr.EInstance.empty, glu
-      else let sigma, equ, glu = Equations_common.instance_of env !evd glu in
-        evd := sigma; equ, glu
+      if not (Global.is_polymorphic tone_ind) then EConstr.EInstance.empty
+      else let sigma, equ = Equations_common.instance_of env !evd glu in
+        evd := sigma; equ
     in
     let args = [Some tB; None] in
-      build_app_infer env evd (ctx, ty, glu') ctx tone_ind ~inst args, subst
+      build_app_infer env evd (ctx, ty, glu) ctx tone_ind ~inst args, subst
 
 let elim_true = with_retry elim_true
 
@@ -966,11 +1011,11 @@ let elim_false : simplification_fun =
       let tzero_ind = Names.GlobRef.ConstRef (Lazy.force EqRefs.zero_ind_dep) in
         tB, tzero_ind
   in
-  let inst, glu' =
+  let inst =
     (* If the equality is not polymorphic, the lemmas will be monomorphic as well *)
-    if not (Global.is_polymorphic tzero_ind) then EConstr.EInstance.empty, glu
-    else let sigma, equ, glu = Equations_common.instance_of env !evd glu in
-      evd := sigma; equ, glu
+    if not (Global.is_polymorphic tzero_ind) then EConstr.EInstance.empty
+    else let sigma, equ = Equations_common.instance_of env !evd glu in
+      evd := sigma; equ
     in
   let c = EConstr.mkApp (EConstr.mkRef (tzero_ind, inst), [| tB |]) in
   (* We need to type the term in order to solve eventual universes
@@ -1057,21 +1102,23 @@ let infer_step ?(loc:Loc.t option) ~(isSol:bool)
   end
 
 let or_fun (f : simplification_fun) (g : simplification_fun) : simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) ->
+  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u as gl) : goal) ->
   let evd0 = !evd in
+  let u0 = !u in
   try f env evd gl
   with CannotSimplify _ ->
-    evd := evd0; g env evd gl
+    evd := evd0; u := u0; g env evd gl
 
 let or_fun_e1 (f : simplification_fun) (g : simplification_fun) : simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) ->
+  fun (env : Environ.env) (evd : Evd.evar_map ref) ((_, _, u as gl) : goal) ->
   let evd0 = !evd in
+  let u0 = !u in
   try f env evd gl
   with CannotSimplify e ->
-    evd := evd0;
+    evd := evd0; u := u0;
     try g env evd gl
     with CannotSimplify _ ->
-      evd := evd0; raise (CannotSimplify e)
+      evd := evd0; u := u0; raise (CannotSimplify e)
 
 let _expand_many rule env evd ((ctx, ty, glu) : goal) : simplification_rules =
   (* FIXME: maybe it's too brutal/expensive? *)
@@ -1188,7 +1235,7 @@ let simplify_tac (rules : simplification_rules) : unit Proofview.tactic =
     let env = Proofview.Goal.env gl in
     let sigma = Proofview.Goal.sigma gl in
     let concl = Proofview.Goal.concl gl in
-    let glu = univ_of_goal env sigma concl in
+    let glu = ref (univ_of_goal env sigma concl) in
     let hyps = Proofview.Goal.hyps gl in
     let env = Environ.reset_context env in
     (* Keep aside the section variables. *)

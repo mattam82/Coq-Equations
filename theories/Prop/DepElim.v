@@ -125,6 +125,18 @@ Proof.
   intros X. eapply (X eq_refl). apply eq_refl.
 Defined.
 
+Polymorphic Lemma eq_simplification_sigma1S@{i j | i <= eq.u0} {A : Type@{i}} {P : SProp} {B : Type@{j}}
+  (p q : A) (x : P) (y : P) :
+  (p = q -> B) ->
+  ((sigmaSI _ p x) = (sigmaSI _ q y) -> B).
+Proof.
+  intros. revert X.
+  change p with (pr1S (sigmaSI _ p x)).
+  change q with (pr1S (sigmaSI _ q y)).
+  destruct H.
+  intros X. exact (X eq_refl).
+Defined.
+
 Polymorphic Lemma eq_simplification_sigma1_dep@{i j | i <= eq.u0 +} {A : Type@{i}} {P : A -> Type@{i}} {B : Type@{j}}
   (p q : A) (x : P p) (y : P q) :
   (forall e : p = q, (@eq_rect A p P x q e) = y -> B) ->
@@ -137,6 +149,19 @@ Proof.
   change y with (pr2 (q, y)) at 4.
   destruct H.
   intros X. eapply (X eq_refl). apply eq_refl.
+Defined.
+
+Polymorphic Lemma eq_simplification_sigma1S_dep@{i j | i <= eq.u0 +} 
+  {A : Type@{i}} {P : A -> SProp} {B : Type@{j}}
+  (p q : A) (x : P p) (y : P q) :
+  (p = q -> B) ->
+  (sigmaSI _ p x = sigmaSI _ q y -> B).
+Proof.
+  intros. revert X.
+  change p with (pr1S (sigmaSI _ p x)).
+  change q with (pr1S (sigmaSI _ q y)).
+  destruct H. cbn.
+  intros X. eapply (X eq_refl).
 Defined.
 
 Polymorphic Definition pack_sigma_eq_nondep@{i | i <= eq.u0} {A : Type@{i}} {P : Type@{i}} {p q : A} {x : P} {y : P}
@@ -158,6 +183,27 @@ Proof.
   apply (X eq_refl eq_refl).
 Defined.
 
+Polymorphic Definition pack_sigmaS_eq_nondep@{i | i <= eq.u0} {A : Type@{i}} {P : SProp} 
+  {p q : A} {x : P} {y : P}
+  (e' : p = q) : sigmaSI _ p x = sigmaSI _ q y.
+Proof. destruct e'. apply eq_refl. Defined.
+
+Polymorphic Lemma eq_simplification_sigma1S_nondep_dep@{i j | i <= eq.u0} {A : Type@{i}} 
+  {P : SProp}
+  (p q : A) (x : P) (y : P) {B : sigmaSI _ p x = sigmaSI _ q y -> Type@{j}} :
+  (forall e' : p = q, B (pack_sigmaS_eq_nondep e')) ->
+  (forall e : sigmaSI (fun _ => P) p x = sigmaSI (fun _ => P) q y, B e).
+Proof.
+  intros. revert X.
+  change p with (pr1S (sigmaSI _ p x)).
+  change q with (pr1S (sigmaSI _ q y)).
+  change x with (pr2S (sigmaSI _ p x)) at 2.
+  change y with (pr2S (sigmaSI _ q y)) at 3.
+  destruct e.
+  intros X. simpl in *.
+  apply (X eq_refl).
+Defined.
+
 Polymorphic Definition pack_sigma_eq@{i | +} {A : Type@{i}} {P : A -> Type@{i}} {p q : A} {x : P p} {y : P q}
   (e' : p = q) (e : @eq_rect A p P x q e' = y) : (p, x) = (q, y).
 Proof. destruct e'. simpl in e. destruct e. apply eq_refl. Defined.
@@ -176,7 +222,28 @@ Proof.
   intros X. simpl in *.
   apply (X eq_refl eq_refl).
 Defined.
-Set Printing Universes.
+
+Polymorphic Definition pack_sigmaS_eq@{i | +} {A : Type@{i}} {P : A -> SProp} {p q : A} {x : P p} {y : P q}
+  (e' : p = q) : sigmaSI _ p x = sigmaSI _ q y.
+Proof. destruct e'. apply eq_refl. Defined.
+
+Polymorphic Lemma eq_simplification_sigma1S_dep_dep@{i j | i <= eq.u0 +} 
+  {A : Type@{i}} {P : A -> SProp}
+  (p q : A) (x : P p) (y : P q) {B : sigmaSI _ p x = sigmaSI _ q y -> Type@{j}} :
+  (forall e' : p = q, B (pack_sigmaS_eq e')) ->
+  (forall e : sigmaSI _ p x = sigmaSI _ q y, B e).
+Proof.
+  intros. revert X.
+  change p with (pr1S (sigmaSI _ p x)).
+  change q with (pr1S (sigmaSI _ q y)).
+  unfold pack_sigmaS_eq.
+  change x with (pr2S (sigmaSI _ p x)) at 3 5.
+  change y with (pr2S (sigmaSI _ q y)) at 2.
+  destruct e.
+  intros X. simpl in *.
+  apply (X eq_refl).
+Defined.
+
 Polymorphic Lemma pr2_inv_uip@{i| i <= eq.u0 +} {A : Type@{i}}
             {P : A -> Type@{i}} {x : A} {y y' : P x} :
   y = y' -> sigmaI@{i} P x y = sigmaI@{i} P x y'.
