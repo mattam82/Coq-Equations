@@ -383,11 +383,20 @@ let pattern_sigma ~assoc_right c hyp env sigma =
          | (x, t, p, rest) :: _ :: _ -> terms @ constrs_of_coq_sigma env evd t p 
          | _ -> terms
   in
-  let projs = List.map (fun (x, t, p, rest) -> (pat t, make_change_arg p)) terms in
+  let change t p =
+    match kind sigma t with
+    | Var id ->
+      Proofview.Goal.enter
+        (fun gl ->
+          let concl = Proofview.Goal.concl gl in
+          let concl' = Vars.replace_vars [id, p] concl in
+          change_in_concl ~check:false None (make_change_arg concl'))
+    | _ -> change ~check:false (Some (pat t)) (make_change_arg p) Locusops.onConcl
+  in
   let projabs =
     tclTHENLIST 
       ((if assoc_right then rev_map
-        else List.map) (fun (t, p) -> (change ~check:true (Some t) p Locusops.onConcl)) projs) in
+        else List.map) (fun (x, t, p, _) -> change t p) terms) in
     tclTHEN (Proofview.Unsafe.tclEVARS !evd) projabs
 			 
 let curry_left_hyp env sigma c t =
