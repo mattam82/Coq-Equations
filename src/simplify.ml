@@ -280,7 +280,7 @@ let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty
     | Some u ->
       let tf = EConstr.mkRef (f, u) in
       let auctx = Environ.universes_of_global env f in
-      let univs = Univ.AUContext.instantiate (EConstr.EInstance.kind !evd u) auctx in
+      let univs = Univ.AbstractContext.instantiate (EConstr.EInstance.kind !evd u) auctx in
       let sigma = Evd.add_constraints !evd univs in
       let ty = Retyping.get_type_of env sigma tf in
       evd := sigma; tf, ty

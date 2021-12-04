@@ -174,7 +174,7 @@ let telescope env evd = function
               let su = Sorts.univ_of_sort ts in
               Univ.enforce_leq su l cstr
             in
-            let cstrs = enforce_leq env !evd t (Univ.enforce_leq tyuniv l Univ.Constraint.empty) in
+            let cstrs = enforce_leq env !evd t (Univ.enforce_leq tyuniv l Univ.Constraints.empty) in
             let () = evd := Evd.add_constraints !evd cstrs in
             aux (sigty, l, Sorts.Relevant, (u, pred, sigmainfo) :: tys) ds
         in aux (t, tuniv, trel, []) tl
@@ -799,7 +799,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
     let term = EConstr.mkConstructU (to_peuniverses summary.Inductiveops.cs_cstr) in
     let term = EConstr.mkApp (term, params) in
     let term = Vars.lift (summary.Inductiveops.cs_nargs) term in
-    let term = EConstr.mkApp (term, Context.Rel.to_extended_vect EConstr.mkRel 0 summary.Inductiveops.cs_args) in
+    let term = EConstr.mkApp (term, Context.Rel.instance EConstr.mkRel 0 summary.Inductiveops.cs_args) in
     (* Indices are typed under [args @ ctx'] *)
     let indices = (Array.to_list indices) @ [term] in
     let args = summary.Inductiveops.cs_args in

@@ -17,7 +17,6 @@ open Context
 open Termops
 open Declarations
 open Inductiveops
-open Reductionops
 open Pp
 
 open Evarutil
@@ -140,7 +139,7 @@ let depcase ~poly ((mind, i as ind), u) =
   in
   let nconstrs = Array.length oneind.mind_nf_lc in
   let mkbody i (ctx, ty) =
-    let args = Context.Rel.to_extended_vect mkRel 0 ctx in
+    let args = Context.Rel.instance mkRel 0 ctx in
     annot_of_context ctx, mkApp (mkRel (1 + nconstrs + List.length ctx - i), args)
   in
   let bodies = Array.mapi mkbody oneind.mind_nf_lc in
@@ -465,7 +464,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
 
     (* Initial problem. *)
     let prob = Context_map.id_subst ctx in
-    let args = Context.Rel.to_extended_list mkRel 0 ctx in
+    let args = Context.Rel.instance mkRel 0 ctx in
 
     Refine.refine ~typecheck:true begin fun evars ->
       let evd = ref evars in
@@ -476,7 +475,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
       let c, ty =
         Splitting.term_of_tree env evd sort split
       in
-      let c = beta_applist !evd (c, args) in
+      let c = beta_appvect !evd c args in
       let c = Vars.substl (List.rev rev_subst) c in
       if !Equations_common.debug then
         Feedback.msg_debug (str "refining with" ++ Printer.pr_econstr_env env !evd c);

@@ -214,8 +214,8 @@ let find_rec_call is_rec sigma protos f args =
             let sign = List.map EConstr.Unsafe.to_rel_decl sign in
             let sign = substitute_args indargs sign in
             let signlen = List.length sign in
-            let indargs = List.map (Constr.lift signlen) indargs @ Context.Rel.to_extended_list Constr.mkRel 0 sign in
-            let fargs = List.map (Constr.lift signlen) args @ Context.Rel.to_extended_list Constr.mkRel 0 sign in
+            let indargs = List.map (Constr.lift signlen) indargs @ Context.Rel.instance_list Constr.mkRel 0 sign in
+            let fargs = List.map (Constr.lift signlen) args @ Context.Rel.instance_list Constr.mkRel 0 sign in
             sign, (fargs, indargs, [])
         in
         Some (idx, arity, filter, sign, args)
@@ -294,7 +294,7 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
              Term.it_mkProd_or_LetIn
                (Constr.mkApp (mkApp (mkRel (i + 1 + len + n + List.length sign), Array.of_list indargs'),
                               [| Term.applistc (lift (List.length sign) result)
-                                   (Context.Rel.to_extended_list mkRel 0 sign) |]))
+                                   (Context.Rel.instance_list mkRel 0 sign) |]))
                sign
            in
            let hyps = cmap_add hyp !occ hyps in
@@ -1586,11 +1586,11 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
           Nameops.add_suffix indid suff) n) stmts
     in
     let merge_universes_of_constr c =
-      Univ.LSet.union (EConstr.universes_of_constr !evd c) in
-    let univs = Univ.LSet.union (universes_of_constr !evd arity) univs in
+      Univ.Level.Set.union (EConstr.universes_of_constr !evd c) in
+    let univs = Univ.Level.Set.union (universes_of_constr !evd arity) univs in
     let univs = Context.Rel.(fold_outside (Declaration.fold_constr merge_universes_of_constr) sign ~init:univs) in
     let univs =
-      List.fold_left (fun univs c -> Univ.LSet.union (universes_of_constr !evd (EConstr.of_constr c)) univs)
+      List.fold_left (fun univs c -> Univ.Level.Set.union (universes_of_constr !evd (EConstr.of_constr c)) univs)
         univs constructors in
     let ind_sort =
       match Retyping.get_sort_family_of env !evd (it_mkProd_or_LetIn arity sign) with
@@ -1613,7 +1613,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     in ((entry, sign, arity) :: inds, univs, Univ.sup ind_sort sorts)
   in
   let declare_ind () =
-    let inds, univs, sort = List.fold_left declare_one_ind ([], Univ.LSet.empty, Univ.type0m_univ) ind_stmts in
+    let inds, univs, sort = List.fold_left declare_one_ind ([], Univ.Level.Set.empty, Univ.type0m_univ) ind_stmts in
     let sigma = Evd.restrict_universe_context !evd univs in
     let sigma = Evd.minimize_universes sigma in
     let inds =
