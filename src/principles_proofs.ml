@@ -653,6 +653,11 @@ let aux_ind_fun info chop nested unfp unfids p =
     | Mapping (_, s) -> aux chop unfs unfids s
   in aux_program [] chop unfp unfids None p
 
+let pr_subgoals sigma goals =
+  let open Pp in
+  let pr g = str "[" ++ Printer.pr_goal { Evd.it = g ; Evd.sigma = sigma } ++ str "]" in
+  str "[" ++ prlist_with_sep fnl pr goals ++ str "]"
+
 let observe_tac s tac =
   let open Proofview in
   if not !debug then tac
@@ -662,7 +667,7 @@ let observe_tac s tac =
     Unsafe.tclGETGOALS >>= fun gls ->
     let gls = List.map Proofview.drop_state gls in
     Feedback.msg_debug (str"Applying " ++ str s ++ str " on " ++
-                          Printer.pr_subgoals None sigma ~seeds:[] ~shelf:[] ~stack:[] ~unfocused:[] ~goals:gls);
+                          pr_subgoals sigma gls);
     Proofview.tclORELSE
       (Proofview.tclTHEN tac
                          (Proofview.numgoals >>= fun gls ->
@@ -680,7 +685,7 @@ let observe_tac s tac =
                             (str" Fail error " ++ int n ++ str " for " ++ str s ++
                                spc () ++ Lazy.force expl ++
                                str " on " ++
-                             Printer.pr_subgoals None sigma ~seeds:[] ~shelf:[] ~stack:[] ~unfocused:[] ~goals:gls)
+                             pr_subgoals sigma gls)
                          | _ -> CErrors.iprint iexn));
                    Proofview.tclUNIT ())
 
