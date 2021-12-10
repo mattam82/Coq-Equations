@@ -4,6 +4,7 @@ on:
   push: # On any push on a "stable" branch
     branches:
       - master
+      - 8.15
       - 8.14
       - 8.13
       - 8.12
@@ -21,7 +22,7 @@ jobs:
     strategy:
       matrix:
         coq_version: 
-          - 'dev'
+          - '8.15+rc1'
         ocaml_version:
           - '4.07-flambda'
         target: [ local, hott, dune ]
