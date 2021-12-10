@@ -92,7 +92,7 @@ let autorewrite_one b =
   let rew_rules = Autorewrite.find_rewrites b in
   let rec aux rules =
     match rules with
-    | [] -> tclFAIL 0 (str"Couldn't rewrite")
+    | [] -> tclFAIL (str"Couldn't rewrite")
     | r :: rules ->
        let global, _univs = Constr.destRef r.Autorewrite.rew_lemma in
        let tac =
@@ -460,7 +460,7 @@ let aux_ind_fun info chop nested unfp unfids p =
                 in
                 let id = find_splitting_var (project gl) pats var pats' in
                 Depelim.dependent_elim_tac (None, id)
-              | _ -> tclFAIL 0 (str"Unexpected goal in functional induction proof")))
+              | _ -> tclFAIL (str"Unexpected goal in functional induction proof")))
            (fun i ->
             Proofview.Goal.enter (fun gl ->
               let split = nth splits (pred i) in
@@ -495,7 +495,7 @@ let aux_ind_fun info chop nested unfp unfids p =
              observe "clear body" (clear_body [id]);
              aux chop unfs unfids s]
         | _ ->
-          tclFAIL 0 (str"Unexpected refinement goal in functional induction proof")
+          tclFAIL (str"Unexpected refinement goal in functional induction proof")
       in
       (observe "refine"
               (tclTHENLIST [ intros;
@@ -976,7 +976,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
                   [Proofview.Goal.enter (fun gl -> set_opaque ();
                     observe "extensionality proof"
                     ((aux subst info.base_id info.base_id p.program_splitting p.program_splitting)))])
-                (tclFAIL 0
+                (tclFAIL
                   (Pp.str "Could not prove extensionality automatically"))))
             else observe "program fixpoint" fixtac;
             (Proofview.Goal.enter (fun gl -> set_opaque ();
@@ -1007,7 +1007,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
                         let unfsplit = nth unfsplits (pred i) in
                         tclTHENLIST [unfolds; simpltac;
                           aux subst base unfold_base split unfsplit]))
-          | _ -> tclFAIL 0 (str"Unexpected unfolding goal")))
+          | _ -> tclFAIL (str"Unexpected unfolding goal")))
 
     | _, Mapping (lhs, s) -> aux subst base unfold_base split s
        
@@ -1032,7 +1032,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
                 observe "unfoldings" (unfolds base unfold_base); 
                 aux subst base unfold_base s unfs]
              else tclTHENLIST [unfolds base unfold_base; simpltac; reftac ()]
-          | _ -> tclFAIL 0 (str"Unexpected unfolding lemma goal")
+          | _ -> tclFAIL (str"Unexpected unfolding lemma goal")
           end
         in
       let reftac = observe "refined" (reftac ()) in
@@ -1167,4 +1167,4 @@ let ind_elim_tac indid inds mutinds info ind_fun =
     | _, _ -> assert false)
   in
   try observe "applyind" (applyind inds [])
-  with e -> tclFAIL 0 (Pp.str"exception")
+  with e -> tclFAIL (Pp.str"exception")

@@ -554,7 +554,7 @@ let autounfold_heads db db' cl =
       match cl with
       | Some hyp -> change_in_hyp ~check:true None (make_change_arg c') hyp
       | None -> convert_concl ~cast:false ~check:false c' DEFAULTcast
-    else tclFAIL 0 (str "Nothing to unfold")
+    else tclFAIL (str "Nothing to unfold")
   end
 
 type hintdb_name = string

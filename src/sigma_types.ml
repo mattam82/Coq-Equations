@@ -856,7 +856,7 @@ module Tactics =struct
           | None ->
              (tclTHENFIRST (assert_before_replacing id typ)
                            (Logic.refiner ~check:false EConstr.Unsafe.(to_constr prf))))
-      | None -> tclFAIL 0 (str"No currying to do in " ++ Id.print id)
+      | None -> tclFAIL (str"No currying to do in " ++ Id.print id)
   end
 
   let curry =
@@ -868,7 +868,7 @@ module Tactics =struct
       | Prod (na, dom, codom) ->
          Refine.refine ~typecheck:true
            (fun sigma -> curry_concl env sigma na dom codom)
-      | _ -> Tacticals.tclFAIL 0 (str"Goal cannot be curried") end
+      | _ -> Tacticals.tclFAIL (str"Goal cannot be curried") end
 
   let uncurry_call c c' id id' =
     enter begin fun gl ->
@@ -890,7 +890,7 @@ module Tactics =struct
         Proofview.Unsafe.tclEVARS sigma' <*>
         letin_tac None (Name id') (beta_applist sigma (sigpack, [mkVar id])) None nowhere
       with Not_found ->
-        Tacticals.tclFAIL 0 (str"No Signature instance found")
+        Tacticals.tclFAIL (str"No Signature instance found")
     end
 
   let pattern_sigma id =

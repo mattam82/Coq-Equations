@@ -353,7 +353,7 @@ let specialize_eqs ~with_block id =
     if worked then
       tclTHENFIRST (Tactics.assert_before_replacing id ty)
         (exact_no_check acc)
-    else tclFAIL 0 (str "Nothing to do in hypothesis " ++ Id.print id ++
+    else tclFAIL (str "Nothing to do in hypothesis " ++ Id.print id ++
                     Printer.pr_econstr_env env !evars ty
                    )
   end
@@ -367,7 +367,7 @@ let specialize_eqs ~with_block id =
   Proofview.Goal.enter begin fun gl ->
   Proofview.tclORELSE (clear [id] <*> Proofview.tclZERO Specialize) begin function
   | (Specialize, _) -> specialize_eqs ~with_block id
-  | e -> tclFAIL 0 (str "Specialization not allowed on dependent hypotheses")
+  | e -> tclFAIL (str "Specialization not allowed on dependent hypotheses")
   end
   end
 
