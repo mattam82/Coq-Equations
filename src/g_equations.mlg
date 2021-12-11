@@ -83,7 +83,7 @@ TACTIC EXTEND needs_generalization
       Proofview.Goal.enter (fun gl -> 
       if Depelim.needs_generalization gl id
       then tclIDTAC
-      else tclFAIL 0 (str"No generalization needed")) }
+      else tclFAIL (str"No generalization needed")) }
 END
 
 (* Equations *)
@@ -509,7 +509,7 @@ TACTIC EXTEND is_secvar
    { enter (fun gl ->
      match kind (Proofview.Goal.sigma gl) x with
      | Var id when Termops.is_section_variable (Global.env ()) id -> Proofview.tclUNIT ()
-     | _ -> Tacticals.tclFAIL 0 (str "Not a section variable or hypothesis")) }
+     | _ -> Tacticals.tclFAIL (str "Not a section variable or hypothesis")) }
 END
 
 TACTIC EXTEND refine_ho
