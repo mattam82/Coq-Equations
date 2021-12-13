@@ -22,7 +22,7 @@ jobs:
     strategy:
       matrix:
         coq_version: 
-          - '8.15+rc1'
+          - 'dev'
         ocaml_version:
           - '4.07-flambda'
         target: [ local, dune ] # waiting for hott
@@ -44,6 +44,7 @@ jobs:
           before_script: |
             startGroup "Workaround permission issue"
               sudo chown -R coq:coq .  # <--
+              opam install coq.8.15+rc1  # Workaround Docker-coq not having an 8.15rc1 instance yet
               ocamlfind list
             endGroup
           script: |
