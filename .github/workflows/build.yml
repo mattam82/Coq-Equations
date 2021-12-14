@@ -41,10 +41,15 @@ jobs:
           opam_file: 'coq-equations.opam'
           coq_version: ${{ matrix.coq_version }}
           ocaml_version: ${{ matrix.ocaml_version }}
+          before_install: |
+            startGroup "Print opam config"
+                opam config list; opam repo list; opam list
+                opam unpin -n coq 
+                opam install -y coq.8.15+rc1  # Workaround Docker-coq not having an 8.15rc1 instance yet
+            endGroup
           before_script: |
             startGroup "Workaround permission issue"
               sudo chown -R coq:coq .  # <--
-              opam install coq.8.15+rc1  # Workaround Docker-coq not having an 8.15rc1 instance yet
               ocamlfind list
             endGroup
           script: |
