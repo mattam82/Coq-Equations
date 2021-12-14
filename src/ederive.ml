@@ -46,7 +46,7 @@ type derive_instance_map = StringSet.t Names.GlobRef.Map.t
 
 let derived_instances : derive_instance_map ref = Summary.ref Names.GlobRef.Map.empty ~name:"derived-instances"
 
-let cache_instance (_, (derive, gr)) = 
+let cache_instance (derive, gr) =
   let grderives = 
     match Names.GlobRef.Map.find_opt gr !derived_instances with
     | Some s -> s
@@ -57,9 +57,9 @@ let cache_instance (_, (derive, gr)) =
 let subst_instance (subst, (derive, gr)) =
   (derive, fst (Globnames.subst_global subst gr))
 
-let discharge_instance (na, (derive, gr)) =
+let discharge_instance (derive, gr as o) =
   if Globnames.isVarRef gr then None
-  else Some (derive, gr)
+  else Some o
 
 let derive_instance_input : derive_instance -> Libobject.obj =
   let decl = 
@@ -71,7 +71,7 @@ let derive_instance_input : derive_instance -> Libobject.obj =
   Libobject.declare_object decl
 
 let register_instance decl =
-  Lib.add_anonymous_leaf (derive_instance_input decl)
+  Lib.add_leaf (derive_instance_input decl)
 
 let check_derive s gr =
   try
