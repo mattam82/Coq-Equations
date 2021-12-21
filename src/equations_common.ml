@@ -842,8 +842,7 @@ let observe s (tac : unit Proofview.tactic) =
             (Proofview.numgoals >>= fun gls ->
              if gls = 0 then (Feedback.msg_debug (str s ++ str " succeeded"); Proofview.tclUNIT ())
              else Proofview.Goal.enter begin fun gl ->
-              let gl = { Evd.it = Proofview.Goal.goal gl; Evd.sigma = Proofview.Goal.sigma gl } in
-              let () = Feedback.msg_debug (str "Subgoal: " ++ Printer.pr_goal gl) in
+              let () = Feedback.msg_debug (str "Subgoal: " ++ Printer.Debug.pr_goal gl) in
               Proofview.tclUNIT ()
              end))
          (fun iexn -> Feedback.msg_debug
