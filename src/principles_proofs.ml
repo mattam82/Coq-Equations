@@ -655,7 +655,7 @@ let aux_ind_fun info chop nested unfp unfids p =
 
 let pr_subgoals sigma goals =
   let open Pp in
-  let pr g = str "[" ++ Printer.pr_goal { Evd.it = g ; Evd.sigma = sigma } ++ str "]" in
+  let pr g = str "[" ++ Printer.Debug.pr_goal g ++ str "]" in
   str "[" ++ prlist_with_sep fnl pr goals ++ str "]"
 
 let observe_tac s tac =
@@ -664,8 +664,8 @@ let observe_tac s tac =
   else
     tclENV >>= fun env ->
     tclEVARMAP >>= fun sigma ->
-    Unsafe.tclGETGOALS >>= fun gls ->
-    let gls = List.map Proofview.drop_state gls in
+    Proofview.Goal.goals >>= fun gls ->
+    Proofview.Monad.List.map (fun gl -> gl) gls >>= fun gls ->
     Feedback.msg_debug (str"Applying " ++ str s ++ str " on " ++
                           pr_subgoals sigma gls);
     Proofview.tclORELSE
@@ -674,8 +674,7 @@ let observe_tac s tac =
                           if gls = 0 then (Feedback.msg_debug (str s ++ str "succeeded");
                                            Proofview.tclUNIT ())
              else Proofview.Goal.enter begin fun gl ->
-              let gl = { Evd.it = Proofview.Goal.goal gl; sigma = Proofview.Goal.sigma gl } in 
-              let () = Feedback.msg_debug (str "Subgoal: " ++ Printer.pr_goal gl) in
+              let () = Feedback.msg_debug (str "Subgoal: " ++ Printer.Debug.pr_goal gl) in
               Proofview.tclUNIT ()
              end))
       (fun iexn -> Feedback.msg_debug
