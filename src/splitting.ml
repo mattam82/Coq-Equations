@@ -472,7 +472,8 @@ let define_mutual_nested env evd get_prog progs =
   fixes, nested
 
 let helper_evar evm evar env typ src =
-  let sign, typ', instance, _ = push_rel_context_to_named_context ~hypnaming:KeepExistingNames env evm typ in
+  let hypnaming = RenameExistingBut VarSet.full in
+  let sign, typ', instance, _ = push_rel_context_to_named_context ~hypnaming env evm typ in
   let evm' = evar_declare sign evar typ' ~src evm in
     evm', mkEvar (evar, instance)
 
