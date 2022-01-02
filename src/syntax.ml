@@ -294,7 +294,7 @@ let free_vars_of_constr_expr fid c =
            | Globnames.TrueGlobal gr ->
              if not (Globnames.isConstructRef gr) then Id.Set.add id l
              else l
-           | Globnames.SynDef _ -> l
+           | Globnames.Abbrev _ -> l
          with Not_found -> Id.Set.add id l)
     | { CAst.v = CNotation (_,(InConstrEntry, "?( _ )"), _) } -> l
     | c -> fold_constr_expr_with_binders (fun a l -> a::l) aux bdvars l c
