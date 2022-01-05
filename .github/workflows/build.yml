@@ -25,7 +25,7 @@ jobs:
           - '8.15'
         ocaml_version:
           - '4.07-flambda'
-        target: [ local, dune ] # waiting for hott
+        target: [ local ] # waiting for hott
       fail-fast: false
 
     steps:
