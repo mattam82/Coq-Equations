@@ -4,7 +4,7 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3012649.svg)](https://zenodo.org/record/3012649#.XcEydZNKjOQ)
 [![Zulip Chat](https://img.shields.io/badge/zulip-join_chat-brightgreen.svg)](https://coq.zulipchat.com/#narrow/stream/237659-Equations-devs.20.26.20users)
 
-Copyright 2009-2021 Matthieu Sozeau `matthieu.sozeau@inria.fr`  
+Copyright 2009-2022 Matthieu Sozeau `matthieu.sozeau@inria.fr`  
 Copyright 2015-2018 Cyprien Mangin `cyprien.mangin@m4x.org`
 
 Distributed under the terms of the GNU Lesser General Public License
@@ -49,14 +49,14 @@ Try it now in your browser with [JSCoq](assets/jsexamples/equations_intro.html)!
 
 ## Papers and presentations
 
-- [Equations Reloaded: High-Level Dependently-Typed Functional Programming and Proving in Coq](https://www.irif.fr/~sozeau//research/publications/Equations_Reloaded-ICFP19.pdf). Matthieu Sozeau and Cyprien Mangin.
+- [Equations Reloaded: High-Level Dependently-Typed Functional Programming and Proving in Coq](https://sozeau.gitlabpages.inria.fr/www/research/publications/Equations_Reloaded-ICFP19.pdf). Matthieu Sozeau and Cyprien Mangin.
   In: Proc. ACM Program. Lang. 3, ICFP, Article 86 (August 2019), 29 pages. [DOI](https://doi.org/10.1145/3341690),
-  [slides](http://www.irif.fr/~sozeau/research/publications/Equations_Reloaded-ICFP19-190819.pdf).
+  [slides](https://sozeau.gitlabpages.inria.fr/www/research/publications/Equations_Reloaded-ICFP19-190819.pdf).
   
   This presents version 1.2 and above of the package. 
   See [Equations Reloaded](equations-reloaded) for associated material, including a VM to run the examples.
 
-- [Equations for HoTT](http://www.irif.fr/~sozeau/research/publications/Equations_for_HoTT-HoTT19-130819.pdf).
+- [Equations for HoTT](https://sozeau.gitlabpages.inria.fr/www/research/publications/Equations_for_HoTT-HoTT19-130819.pdf).
   Matthieu Sozeau, Talk given at the [Homotopy Type Theory 2019](https://hott.github.io/HoTT-2019//programme/#sozeau) 
   Conference in Pittsburgh, PA, August 2019.
   
@@ -64,7 +64,7 @@ Try it now in your browser with [JSCoq](assets/jsexamples/equations_intro.html)!
   used by Equations and Jesper Cockx's version of dependent pattern-matching in Agda
   in terms of HoTT.
 
-- [Equations for Hereditary Substitution in Leivant's Predicative System F: A Case Study](http://www.irif.fr/~sozeau/research/publications/Equations_for_Hereditary_Substitution_in_Leivants_Predicative_System_F:_a_case_study.pdf).
+- [Equations for Hereditary Substitution in Leivant's Predicative System F: A Case Study](https://sozeau.gitlabpages.inria.fr/www/research/publications/Equations_for_Hereditary_Substitution_in_Leivants_Predicative_System_F:_a_case_study.pdf).
   Cyprien Mangin and Matthieu Sozeau. 
   In: Proceedings Tenth International Workshop on Logical Frameworks and Meta Languages: Theory and Practice. 
   Volume 185 of EPTCS. May 2015 - LFMTP'15. 
