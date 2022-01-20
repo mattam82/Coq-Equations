@@ -81,12 +81,12 @@ Try it now in your browser with [JSCoq](assets/jsexamples/equations_intro.html)!
 
 ## Installation
 
-The latest version works with Coq 8.11 (branch
-[8.11](https://github.com/mattam82/Coq-Equations/tree/8.11)),
-Coq 8.12 (branch
-[8.12](https://github.com/mattam82/Coq-Equations/tree/8.12)),
-Coq 8.13 (branch
+The latest version works with Coq 8.13 (branch
 [8.13](https://github.com/mattam82/Coq-Equations/tree/8.13)),
+Coq 8.14 (branch
+[8.14](https://github.com/mattam82/Coq-Equations/tree/8.14)),
+Coq 8.15 (branch
+[8.15](https://github.com/mattam82/Coq-Equations/tree/8.15)),
 and the current Coq master branch (branch
 [master](https://github.com/mattam82/Coq-Equations/tree/master)).
 
