@@ -222,8 +222,8 @@ let make_definition ?opaque ?(poly=false) evm ?types b =
   let evm0 = evm in
   let body = EConstr.to_constr evm b and typ = Option.map (EConstr.to_constr evm) types in
   let used = Vars.universes_of_constr body in
-  let used' = Option.cata Vars.universes_of_constr Univ.LSet.empty typ in
-  let used = Univ.LSet.union used used' in
+  let used' = Option.cata Vars.universes_of_constr Univ.Level.Set.empty typ in
+  let used = Univ.Level.Set.union used used' in
   let evm = Evd.restrict_universe_context evm used in
   let univs = Evd.univ_entry ~poly evm in
   evm0, evm, Declare.definition_entry ~univs ?types:typ body
@@ -864,9 +864,9 @@ type named_declaration = EConstr.named_declaration
 type named_context = EConstr.named_context
 
 let extended_rel_vect n ctx =
-  Context.Rel.to_extended_vect mkRel n ctx
+  Context.Rel.instance mkRel n ctx
 let extended_rel_list n ctx =
-  Context.Rel.to_extended_list mkRel n ctx
+  Context.Rel.instance_list mkRel n ctx
 let to_tuple = Context.Rel.Declaration.to_tuple
 let to_named_tuple = Context.Named.Declaration.to_tuple
 let of_named_tuple = Context.Named.Declaration.of_tuple

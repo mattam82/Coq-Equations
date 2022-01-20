@@ -103,7 +103,7 @@ let derive_no_confusion ~pm env sigma0 ~poly (ind,u as indu) =
   in
   let arity = it_mkProd_or_LetIn s fullbinders in
   let env = push_rel_context binders env in
-  let paramsvect = Context.Rel.to_extended_vect mkRel 0 ctx in
+  let paramsvect = Context.Rel.instance mkRel 0 ctx in
   let pack_ind_with_parlift n = lift n argty in
   let ind_with_parlift n = 
     mkApp (mkIndU indu, Array.append (Array.map (lift n) paramsvect) rest) 
