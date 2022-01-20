@@ -133,7 +133,7 @@ Ltac destruct_sigma id :=
 Ltac simp_sigmas := repeat destruct_one_sigma ; simpl in *.
 
 Ltac eapply_hyp :=
-  match goal with
+  multimatch goal with
     [ H : _ |- _ ] => eapply H
   end.
 
