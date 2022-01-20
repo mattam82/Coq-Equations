@@ -709,7 +709,7 @@ Lemma is_reduced_compat_plus : forall {n} {b1} (p1 : poly b1 n) (Hp1 : is_reduce
     is_reduced (plus p1 p2).2.
 Proof.
   intros.
-  depind Hp1; depelim Hp2; autorewrite with plus; unfold apoly; try constructor; auto.
+  depind Hp1; depelim Hp2; autorewrite with plus; unfold apoly; cbn; try constructor; auto.
   remember (z+z0)%Z as Z; destruct Z; constructor.
   specialize (IHHp1_2 _ q0 Hp2_2).
   remember (plus q q0) as Q; destruct Q as [bQ Q].
