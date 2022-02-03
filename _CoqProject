@@ -1,3 +1,4 @@
+src/META.coq-equations.in
 -I src
 -I test-suite
 -Q src Equations

@@ -9,7 +9,7 @@
 
 (*i camlp4deps: "grammar/grammar.cma" i*)
 
-DECLARE PLUGIN "equations_plugin"
+DECLARE PLUGIN "coq-equations.plugin"
 
 {
 
