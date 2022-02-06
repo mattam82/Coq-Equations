@@ -455,33 +455,6 @@ let pr_glob_elim_patterns env sigma prc prlc _ (s : glob_elim_patterns) =
 
 type elim_patterns_argtype = (raw_elim_patterns, glob_elim_patterns, elim_patterns) Genarg.genarg_type
 
-(* let interp_elim_patterns ist gl l =
- *   match l with
- *     | ArgArg x -> x
- *     | ArgVar ({ CAst.v = id } as locid) ->
- *         (try int_list_of_VList (Id.Map.find id ist.lfun)
- *           with Not_found | CannotCoerceTo _ -> [interp_int ist locid])
- *
- * let interp_elim_patterns ist gl l =
- *   Tacmach.project gl , interp_occs ist gl l
- *
- * let wit_g_elim_patterns : elim_patterns_argtype =
- *   Genarg.create_arg "g_elim_patterns"
- *
- * let val_g_elim_patterns =
- *   Geninterp.register_val0 wit_g_elim_patterns None
- *
- * (\* let pr_raw_g_elim_patterns _ _ _ = Simplify.pr_elim_patterns
- *  * let pr_glob_g_elim_patterns _ _ _ = Simplify.pr_elim_patterns
- *  * let pr_g_elim_patterns _ _ _ = Simplify.pr_elim_patterns *\)
- *
- * let g_elim_patterns : raw_elim_patterns Pcoq.Entry.t =
- *   Pcoq.create_generic_entry2 "g_elim_patterns"
- *     (Genarg.rawwit wit_g_elim_patterns)
- *
- * let _ = Pptactic.declare_extra_genarg_pprule wit_g_elim_patterns
- *   pr_raw_elim_patterns pr_glob_elim_patterns pr_elim_patterns *)
-
 }
 
 ARGUMENT EXTEND elim_patterns
@@ -495,9 +468,51 @@ ARGUMENT EXTEND elim_patterns
   | [ deppat_elim(l) ] -> { l }
 END
 
+{
+
+open Locus
+
+let intern_elim_or_var ist v = match v with
+| ArgVar id -> ArgVar (Tacintern.intern_hyp ist id)
+| ArgArg v -> ArgArg (glob_elim_patterns ist v)
+
+let subst_elim_or_var _ v = v
+
+let interp_elim_or_var ist env sigma = function
+| ArgArg n -> interp_elim_patterns ist env sigma n
+| ArgVar { CAst.v = id; CAst.loc } ->
+  let v =
+    try Id.Map.find id ist.Geninterp.lfun
+    with Not_found ->
+      CErrors.user_err ?loc
+        (str "Unbound variable " ++ Id.print id ++ str".")
+  in
+  let v =
+    try Tacinterp.Value.cast (Genarg.topwit wit_elim_patterns) v
+    with CErrors.UserError _ -> Taccoerce.error_ltac_variable ?loc id None v "a elim_patterns"
+  in
+  v
+
+let pr_loc_raw_elim_or_var env sigma prc prlc _ v = Pputils.pr_or_var (pr_raw_elim_patterns env sigma prc prlc ()) v
+let pr_loc_glob_elim_or_var env sigma prc prlc _ v = Pputils.pr_or_var (pr_glob_elim_patterns env sigma prc prlc ()) v
+
+}
+
+ARGUMENT EXTEND elim_patterns_or_var
+    TYPED AS elim_patterns
+    PRINTED BY { pr_elim_patterns }
+    INTERPRETED BY { interp_elim_or_var }
+    GLOBALIZED BY { intern_elim_or_var }
+    SUBSTITUTED BY { subst_elim_or_var }
+    RAW_PRINTED BY { pr_loc_raw_elim_or_var env sigma }
+    GLOB_PRINTED BY { pr_loc_glob_elim_or_var env sigma }
+| [ elim_patterns(n) ] -> { ArgArg n }
+| [ identref(id) ] -> { ArgVar id }
+END
+
 TACTIC EXTEND dependent_elimination
 | [ "dependent" "elimination" ident(id) ] -> { Depelim.dependent_elim_tac (None, id) }
-| [ "dependent" "elimination" ident(id) "as" elim_patterns(l) ] ->
+| [ "dependent" "elimination" ident(id) "as" elim_patterns_or_var(l) ] ->
    { Depelim.dependent_elim_tac ~patterns:l (None, id) (* FIXME *) }
 END
 
