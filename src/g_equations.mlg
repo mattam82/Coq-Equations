@@ -441,7 +441,19 @@ let interp_elim_patterns ist env sigma s =
   let avoid = Names.Id.Map.domain ist.Geninterp.lfun in
   List.map (fun x -> snd (interp_elim_pattern env sigma avoid x)) s
 
-let glob_elim_patterns ist s = List.map (Tacintern.intern_constr ist) s
+let glob_elim_patterns Genintern.{ltacvars=lfun; genv=env; extra; intern_sign} c =
+  let ltacvars = {
+    Constrintern.ltac_vars = lfun;
+    ltac_bound = Id.Set.empty;
+    ltac_extra = extra;
+  } in
+  let avoid = ids_of_pats None c in
+  let sigma = Evd.(from_env env) in
+  let _, _, _, ienv = Syntax.internalization_env env sigma avoid in
+  List.map (fun x -> 
+    let c = Constrintern.intern_gen Pretyping.WithoutTypeConstraint ~impls:ienv ~ltacvars env sigma x in
+    (c, None)) c
+
 let subst_elim_patterns s str = str
 
 let pr_elim_patterns _ _ _ (s : elim_patterns) =

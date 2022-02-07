@@ -414,16 +414,20 @@ let pattern_of_glob_constr env sigma avoid patname gc =
 
 let program_type p = EConstr.it_mkProd_or_LetIn p.program_arity p.program_sign
 
-let interp_pat env notations ~avoid p pat =
-  let sigma = Evd.from_env env in
-  let vars = (Id.Set.elements avoid) (* (ids_of_pats [p])) *) in
-  (* let () = Feedback.msg_debug (str"Variables " ++ prlist_with_sep spc pr_id vars) in *)
+let internalization_env env sigma avoid =
+  let vars = (Id.Set.elements avoid) in
   let tys = List.map (fun _ -> EConstr.mkProp) vars in
   let impls = List.map (fun _ -> []) vars in
-  (* let () = Feedback.msg_debug (str"Internalizing " ++ pr_constr_expr p) in *)
-  let ienv = try compute_internalization_env env sigma Variable vars tys impls with Not_found ->
+  let ienv =
+     try compute_internalization_env env sigma Variable vars tys impls with Not_found ->
     anomaly (str"Building internalization environment")
-  in
+  in vars, tys, impls, ienv
+
+let interp_pat env notations ~avoid p pat =
+  let sigma = Evd.from_env env in
+  (* let () = Feedback.msg_debug (str"Variables " ++ prlist_with_sep spc pr_id vars) in *)
+  (* let () = Feedback.msg_debug (str"Internalizing " ++ pr_constr_expr p) in *)
+  let vars, tys, impls, ienv = internalization_env env sigma avoid in
   let notations = List.map Metasyntax.prepare_where_notation notations in
   let vars, tys, impls, ienv =
     match p with
