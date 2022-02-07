@@ -19,7 +19,6 @@
 open Util
 open Names
 open Nameops
-open Termops
 open Declarations
 open Inductiveops
 open Vars
