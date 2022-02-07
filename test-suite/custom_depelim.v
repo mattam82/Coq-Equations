@@ -24,6 +24,27 @@ Proof.
   - exact (finS k f').
 Qed.
 
+(* Fix name clash bug **)
+Inductive test := 
+| testi (foo : nat).
+
+Lemma global_clash : test -> nat.
+Proof.
+  ==> [testi foo].
+  pose (baz:= custom_depelim.foo).
+  exact foo.
+Qed.
+
+Lemma elim_nat : nat -> nat.
+Proof.
+  ==> [0 | S x].
+  - exact 0.
+  - exact (S x).
+Qed.
+
+
+
+
 
 
 
