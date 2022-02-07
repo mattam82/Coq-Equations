@@ -174,6 +174,10 @@ val pattern_of_glob_constr :
   Names.Id.Set.t * (user_pat, [ `any] ) DAst.t
 
 
+val internalization_env : Environ.env -> Evd.evar_map -> Id.Set.t ->
+  Names.Id.t list * EConstr.t list * 'a list list * 
+  Constrintern.internalization_env
+
 val interp_pat : Environ.env -> Vernacexpr.decl_notation list -> avoid:Id.Set.t ->
   (program_info * Names.Name.t list) option ->
   Constrexpr.constr_expr -> 
