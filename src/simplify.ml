@@ -227,14 +227,24 @@ type simplification_fun = Environ.env -> Evd.evar_map ref -> goal ->
 
 (* Auxiliary functions. *)
 
-(* Build a term with an evar out of [constr -> constr] function. *)
-let build_term (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal)
-  ((ctx', ty', u') : goal) (f : EConstr.constr -> EConstr.constr) : open_term =
+(* Build a term with an evar out of [constr -> constr] function.
+   Contrarily to the function below, it does not perform type checking in
+   the ambient goal. *)
+let build_term_core (env : Environ.env) (evd : Evd.evar_map ref)
+  (ngl : goal) (f : EConstr.constr -> EConstr.constr) : open_term =
   let tev =
+    let (ctx', ty', u') = ngl in
     let env = push_rel_context ctx' env in
     Equations_common.evd_comb1 (Evarutil.new_evar env) evd ty'
   in
   let c = f tev in
+  let ev = EConstr.destEvar !evd tev in
+  Some (ngl, ev), c
+
+(* Build a term with an evar out of [constr -> constr] function. *)
+let build_term (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) (ngl : goal) f : open_term =
+  let ans, c = build_term_core env evd ngl f in
+  let (ctx, _, _) = gl in
   let env = push_rel_context ctx env in
   let _ =
     try Equations_common.evd_comb1 (Typing.type_of env) evd c 
@@ -246,8 +256,7 @@ let build_term (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal
         anomaly Pp.(str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env evd c ++ 
             Himsg.explain_pretype_error env evd tyerr)
   in
-  let ev = EConstr.destEvar !evd tev in
-    Some ((ctx', ty', u'), ev), c
+  ans, c
 
 let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal)
   (ctx' : EConstr.rel_context) (f : Names.GlobRef.t) ?(inst:EInstance.t option)
@@ -358,7 +367,7 @@ let compose_fun (f : simplification_fun) (g : simplification_fun) :
 
 let identity : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u as gl) : goal) ->
-  build_term env evd gl gl (fun c -> c), Context_map.id_subst ctx
+  build_term_core env evd gl (fun c -> c), Context_map.id_subst ctx
 
 let while_fun (f : simplification_fun) : simplification_fun =
   fun (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) ->
