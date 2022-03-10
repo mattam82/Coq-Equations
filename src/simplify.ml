@@ -259,7 +259,7 @@ let build_term (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) (ngl : g
   ans, c
 
 let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal)
-  (ctx' : EConstr.rel_context) (f : Names.GlobRef.t) ?(inst:EInstance.t option)
+  (f : Names.GlobRef.t) ?(inst:EInstance.t option)
   (args : EConstr.constr option list) =
   let tf, ty =
     match inst with
@@ -305,10 +305,24 @@ let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty
   in cont, ty', u
 
 let build_app_infer (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal)
-  (ctx' : EConstr.rel_context) (f : Names.GlobRef.t) ?(inst:EInstance.t option)
+  (f : Names.GlobRef.t) ?(inst:EInstance.t option)
   (args : EConstr.constr option list) : open_term =
-  let cont, ty', u' = build_app_infer_concl env evd (ctx, ty, u) ctx' f ?inst args in
-  build_term env evd (ctx, ty, u) (ctx', ty', u') cont
+  let cont, ty', u' = build_app_infer_concl env evd (ctx, ty, u) f ?inst args in
+  build_term env evd (ctx, ty, u) (ctx, ty', u') cont
+
+(** Same as above but assumes that the arguments are well-typed in [ctx]. This
+    only checks that the application is correct. *)
+let build_app (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal)
+  (f : Names.GlobRef.t) ?(inst:EInstance.t option)
+  (args : EConstr.constr option list) : open_term =
+  let cont, ty', u' = build_app_infer_concl env evd (ctx, ty, u) f ?inst args in
+  let ans, c = build_term_core env evd (ctx, ty', u') cont in
+  let hd, args = destApp !evd c in
+  let env = push_rel_context ctx env in
+  let hd = Retyping.get_judgment_of env !evd hd in
+  let args = Array.map (fun c -> Retyping.get_judgment_of env !evd c) args in
+  let _ = evd_comb0 (fun sigma -> Typing.judge_of_apply env sigma hd args) evd in
+  ans, c
 
 let unif_flags = Evarconv.default_flags_of TransparentState.full
 
@@ -554,7 +568,7 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
   in
   let sigma, inst, glu = Equations_common.instance_of env !evd ~argu:sigu glu in
   evd := sigma;
-  build_app_infer env evd (ctx, ty, glu) ctx f ~inst args, Context_map.id_subst ctx
+  build_app env evd (ctx, ty, glu) f ~inst args, Context_map.id_subst ctx
 
 let remove_sigma = while_fun (with_retry remove_one_sigma)
 
@@ -581,7 +595,7 @@ let deletion ~(force:bool) : simplification_fun =
             (Typeclasses.resolve_one_typeclass env) evd uip_ty
         in
         let args = [Some tA; Some tuip; Some tx; Some tB; None] in
-        build_app_infer env evd (ctx, ty, glu) ctx tsimpl_uip args, subst
+        build_app_infer env evd (ctx, ty, glu) tsimpl_uip args, subst
     with Not_found ->
       let env = push_rel_context ctx env in
       raise (CannotSimplify (str
@@ -808,7 +822,7 @@ let maybe_pack : simplification_fun =
       Tacred.simpl env !evd tB in
     let tG = EConstr.mkLambda (name, ty1, ty2) in
     let args = [Some tA'; Some tdec; Some tB; Some tx; Some t1; Some t2; Some tG; None] in
-    build_app_infer env evd (ctx, ty, glu) ctx tsimplify_ind_pack args, Context_map.id_subst ctx
+    build_app_infer env evd (ctx, ty, glu) tsimplify_ind_pack args, Context_map.id_subst ctx
   end
 
 let maybe_pack = with_retry maybe_pack
@@ -839,7 +853,7 @@ let apply_noconf : simplification_fun =
     else let sigma, equ, glu = Equations_common.instance_of env !evd ~argu:equ glu in
       evd := sigma; Some equ, glu
   in
-    build_app_infer env evd (ctx, ty, glu') ctx tapply_noconf ?inst args,
+    build_app_infer env evd (ctx, ty, glu') tapply_noconf ?inst args,
     Context_map.id_subst ctx
 
 let noConfusion = compose_fun (compose_fun (hnf ~reduce_equality:false) apply_noconf) maybe_pack
@@ -880,7 +894,7 @@ let simplify_ind_pack_inv : simplification_fun =
         "[opaque_ind_pack_eq_inv] Anomaly: should be applied to a reflexivity proof."));
     let tsimplify_ind_pack_inv = Names.GlobRef.ConstRef (Lazy.force EqRefs.simplify_ind_pack_inv) in
     let args = [Some tA; Some teqdec; Some tB; Some tx; Some tp; Some tG; None] in
-      build_app_infer env evd (ctx, ty, glu) ctx tsimplify_ind_pack_inv args,
+      build_app_infer env evd (ctx, ty, glu) tsimplify_ind_pack_inv args,
       Context_map.id_subst ctx
   with CannotSimplify _ -> identity env evd (ctx, ty, glu)
 
@@ -916,7 +930,7 @@ let noCycle : simplification_fun =
     else let sigma, equ, glu = Equations_common.instance_of env !evd ~argu:equ glu in
       evd := sigma; equ, glu
   in
-  let cont, nocycle, glu' = build_app_infer_concl env evd (ctx, ty, glu) ctx tapply_nocycle ~inst args in
+  let cont, nocycle, glu' = build_app_infer_concl env evd (ctx, ty, glu) tapply_nocycle ~inst args in
   let subst = Context_map.id_subst ctx in
   try
     let env = push_rel_context ctx env in
@@ -953,7 +967,7 @@ let elim_true : simplification_fun =
         evd := sigma; equ, glu
     in
     let args = [Some tB; None] in
-      build_app_infer env evd (ctx, ty, glu') ctx tone_ind ~inst args, subst
+      build_app_infer env evd (ctx, ty, glu') tone_ind ~inst args, subst
 
 let elim_true = with_retry elim_true
 
