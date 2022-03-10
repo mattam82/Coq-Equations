@@ -822,7 +822,9 @@ let maybe_pack : simplification_fun =
       Tacred.simpl env !evd tB in
     let tG = EConstr.mkLambda (name, ty1, ty2) in
     let args = [Some tA'; Some tdec; Some tB; Some tx; Some t1; Some t2; Some tG; None] in
-    build_app_infer env evd (ctx, ty, glu) tsimplify_ind_pack args, Context_map.id_subst ctx
+    (* Playing a bit with the fire, [t1], [t2] and [tG] are clearly well-typed,
+       but it's not clear for the others. It seems to work in practice. *)
+    build_app env evd (ctx, ty, glu) tsimplify_ind_pack args, Context_map.id_subst ctx
   end
 
 let maybe_pack = with_retry maybe_pack
