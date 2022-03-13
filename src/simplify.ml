@@ -1320,7 +1320,7 @@ let simplify_tac (rules : simplification_rules) : unit Proofview.tactic =
     let ty = Vars.subst_vars subst concl in
     (* [ty'] is the expected type of the hole in the term, under the
      * context [ctx']. *)
-    Refine.refine ~typecheck:true (fun evars ->
+    Refine.refine ~typecheck:false (fun evars ->
       let evd = ref evars in
       let (_, c), _ = SimpFun.apply (simplify rules) env evd (ctx, ty, glu) in
       let c = Vars.substl (List.rev rev_subst) c in
