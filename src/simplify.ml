@@ -243,7 +243,27 @@ type t = Environ.env -> Evd.evar_map ref -> goal -> open_term * Context_map.cont
 
 let make f = f
 
-let apply f = f
+let apply f =
+  if !Equations_common.debug then
+    fun env evd gl ->
+      let ((ngl, c), map) = f env evd gl in
+      (* Full type-checking + check that constraints are present *)
+      let sigma, _ =
+        let (ctx, _, _) = gl in
+        let env = push_rel_context ctx env in
+        try Typing.type_of env !evd c
+        with Type_errors.TypeError (env, tyerr) ->
+          anomaly Pp.(str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env !evd c ++ 
+            Himsg.explain_pretype_error env !evd
+              (Pretype_errors.TypingError (Type_errors.map_ptype_error EConstr.of_constr tyerr)))
+        | Pretype_errors.PretypeError (env, evd, tyerr) ->
+            anomaly Pp.(str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env evd c ++ 
+                Himsg.explain_pretype_error env evd tyerr)
+      in
+      let () = assert (Evd.check_constraints !evd (snd @@ Evd.universe_context_set sigma)) in
+      ((ngl, c), map)
+  else
+    f
 
 end
 
