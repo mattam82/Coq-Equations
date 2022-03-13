@@ -530,8 +530,8 @@ let term_of_tree env0 isevar sort tree =
 
       (* The next step is to use [simplify]. *)
       let simpl_step = if simpl then
-          Simplify.simplify [None, Simplify.Infer_many] env evd
-        else Simplify.identity env evd
+          Simplify.simplify [None, Simplify.Infer_many]
+        else Simplify.identity
       in
       let branches = Array.map2 (fun (ty, nb, csubst) next ->
         (* We get the context from the constructor arity. *)
@@ -559,7 +559,7 @@ let term_of_tree env0 isevar sort tree =
           msg_debug(str"... named context:");
           msg_debug(Printer.pr_named_context env !evd (EConstr.Unsafe.to_named_context (named_context env)));
         end;
-        let ((hole, c), lsubst) = simpl_step (cut_ctx @ new_ctx @ ctx', ty, sort) in
+        let ((hole, c), lsubst) = Simplify.apply_simplification_fun simpl_step env evd (cut_ctx @ new_ctx @ ctx', ty, sort) in
         if !debug then
           begin
             let open Feedback in
