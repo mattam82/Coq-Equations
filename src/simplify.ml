@@ -376,6 +376,14 @@ let build_app_infer (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) :
   let cont, ty', u' = build_app_infer_concl env evd (ctx, ty, u) f ?inst args in
   build_term env evd (ctx, ty, u) (ctx, ty', u') cont
 
+(** Assumes that the terms are well-typed and only infer the missing constraints
+    from the application. *)
+let type_application env evd hd args =
+  let hdj = Retyping.get_judgment_of env !evd hd in
+  let argsj = Array.map (fun c -> Retyping.get_judgment_of env !evd c) args in
+  let _ = evd_comb0 (fun sigma -> Typing.judge_of_apply env sigma hdj argsj) evd in
+  mkApp (hd, args)
+
 (** Same as above but assumes that the arguments are well-typed in [ctx]. This
     only checks that the application is correct. *)
 let build_app (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal)
@@ -767,9 +775,9 @@ SimpFun.make ~name:"solution" begin fun (env : Environ.env) (evd : Evd.evar_map 
       (* [c] is a term in the context [ctx']. *)
       let c =
         if nondep then
-          EConstr.mkApp (tsolution, [| tA'; tB'; term'; c; trel' |])
+          type_application (push_rel_context ctx' env) evd tsolution [| tA'; tB'; term'; c; trel' |]
         else
-          EConstr.mkApp (tsolution, [| tA'; term'; tB'; c; trel' |])
+          type_application (push_rel_context ctx' env) evd tsolution [| tA'; term'; tB'; c; trel' |]
       in
       (* We make some room for the application of the equality... *)
       let c = Vars.lift 1 c in
@@ -780,7 +788,8 @@ SimpFun.make ~name:"solution" begin fun (env : Environ.env) (evd : Evd.evar_map 
       let c = EConstr.mkLambda (name, ty1', c) in
       (* And now we recover a term in the context [ctx]. *)
         Context_map.mapping_constr !evd rev_subst c
-  in build_term env evd (ctx, ty, glu) (ctx'', ty'', glu') f, subst
+  in
+  build_term_core env evd (ctx'', ty'', glu') f, subst
 end
 
 let pre_solution ~(dir:direction) : simplification_fun =
