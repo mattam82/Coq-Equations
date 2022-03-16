@@ -236,9 +236,14 @@ let check_typed ~where ?name env evd c =
         str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env evd c ++
         Himsg.explain_pretype_error env evd tyerr)
   in
-  let check = Evd.check_constraints evd (snd @@ Evd.universe_context_set sigma) in
-  if not check then anomaly Pp.(str where ++ spc () ++ str "Equations missing constraints in " ++
+  let ugraph = UState.ugraph (Evd.evar_universe_context evd) in
+  let forall cst =
+    if not (UGraph.check_constraint ugraph cst) then
+    let cst = Univ.pr_constraints (Termops.pr_evd_level sigma) (Univ.Constraints.singleton cst) in
+    anomaly Pp.(str where ++ spc () ++ str "Equations missing constraints " ++ cst ++ str " in " ++
     str (Option.default "(anonymous)" name) ++ fnl () ++ Printer.pr_econstr_env env evd c)
+  in
+  Univ.Constraints.iter forall (snd @@ Evd.universe_context_set sigma)
 
 module SimpFun :
 sig
@@ -695,6 +700,7 @@ SimpFun.make ~name:"solution" begin fun (env : Environ.env) (evd : Evd.evar_map 
   let var_right = not var_left in
   let name, ty1, ty2 = check_prod !evd ty in
   let equ, tA, tx, tz = check_equality env !evd ctx ~var_left ~var_right ty1 in
+  let () = Feedback.msg_notice @@ (str "BLAH " ++ Printer.pr_econstr_env (push_rel_context ctx env) !evd tA) in
   let trel, term =
     if var_left then tx, tz
     else tz, tx
@@ -736,7 +742,8 @@ SimpFun.make ~name:"solution" begin fun (env : Environ.env) (evd : Evd.evar_map 
     let body = Context_map.mapping_constr !evd subst ty in
     (* Right now, [body] has an equality at the head that we want
      * to move, in some sense. *)
-    let _, _, body = EConstr.destProd !evd body in
+    let () = check_typed ~where:"FOO" (push_rel_context ctx' env) !evd body in
+    let na0, ty0, body = EConstr.destProd !evd body in
     if nondep then
       let body = Termops.pop body in
       let body' = EConstr.it_mkProd_or_LetIn body after' in
@@ -746,10 +753,60 @@ SimpFun.make ~name:"solution" begin fun (env : Environ.env) (evd : Evd.evar_map 
     else
       (* We make some room for the equality. *)
       let body = Vars.liftn 1 (succ rel') body in
+
+      let rec push l env = match l with [] -> env | c :: l -> push_rel_context c (push l env) in
+      let sigma, _ = Typing.sort_of (push [
+          after';
+          [Rel.Declaration.LocalAssum (name, Vars.lift (1-rel') ty1')];
+          [Rel.Declaration.LocalAssum (name', Vars.lift (-rel') tA')];
+          before';
+        ] env) !evd (Vars.liftn 1 rel' ty0) in
+      let sigma = Typing.check (push [
+          after';
+          [Rel.Declaration.LocalAssum (name, Vars.lift (1-rel') ty1')];
+(*           [Rel.Declaration.LocalAssum (name, Vars.lift 1 (Rel.Declaration.get_type decl'))]; *)
+          [Rel.Declaration.LocalAssum (name', Vars.lift (-rel') tA')];
+          before';
+        ] env) sigma (mkRel rel') (Vars.liftn 1 rel' ty0) in
+      let () = evd := sigma in
+
+      let body0 = mkLetIn (na0, EConstr.mkRel rel', Vars.liftn 1 rel' ty0, body) in
+
       let body = Vars.subst1 (EConstr.mkRel rel') body in
+
+
       let after' = Equations_common.lift_rel_context 1 after' in
       let rec push l env = match l with [] -> env | c :: l -> push_rel_context c (push l env) in
-      let () = check_typed ~where:"[tB']"
+      let () = Feedback.msg_notice begin
+        let env = (push [
+          after';
+          [Rel.Declaration.LocalAssum (name, Vars.lift (1-rel') ty1')];
+          [Rel.Declaration.LocalAssum (name', Vars.lift (-rel') tA')];
+          before';
+        ] env) in
+        Printer.pr_rel_context_of env !evd ++
+        Pp.fnl () ++ Printer.pr_econstr_env env !evd body0
+      end in
+      let () = Feedback.msg_notice begin
+        let env = (push [
+          after';
+          [Rel.Declaration.LocalAssum (name, Vars.lift (1-rel') ty1')];
+          [Rel.Declaration.LocalAssum (name', Vars.lift (-rel') tA')];
+          before';
+        ] env) in
+        Printer.pr_rel_context_of env !evd ++
+        Pp.fnl () ++ Printer.pr_econstr_env env !evd body
+      end in
+      let () = check_typed ~where:"[QUXLET]"
+        (push [
+          after';
+          [Rel.Declaration.LocalAssum (name, Vars.lift (1-rel') ty1')];
+          [Rel.Declaration.LocalAssum (name', Vars.lift (-rel') tA')];
+          before';
+        ] env)
+        !evd body0
+      in
+      let () = check_typed ~where:"[QUX]"
         (push [
           after';
           [Rel.Declaration.LocalAssum (name, Vars.lift (1-rel') ty1')];
