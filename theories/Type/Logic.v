@@ -67,7 +67,7 @@ Section IdTheory.
   Proof. destruct e. apply p. Defined.
 
   Import Sigma_Notations.
-  Definition id_inspect (x : A) : Σ y , x = y := (x , 1 ).
+  Definition id_inspect (x : A) : Σ y , x = y := (x , 1).
 End IdTheory.
 
 Class HProp A := is_hprop : forall x y : A, x = y.
