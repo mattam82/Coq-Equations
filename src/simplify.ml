@@ -238,7 +238,7 @@ let check_typed ~where ?name env evd c =
   in
   let check = Evd.check_constraints evd (snd @@ Evd.universe_context_set sigma) in
   if not check then anomaly Pp.(str where ++ spc () ++ str "Equations missing constraints in " ++
-    str (Option.default "(anonymous)" name))
+    str (Option.default "(anonymous)" name) ++ fnl () ++ Printer.pr_econstr_env env evd c)
 
 module SimpFun :
 sig
@@ -262,7 +262,7 @@ type t = string option * (Environ.env -> Evd.evar_map ref -> goal -> open_term *
 let make ?name f = (name, f)
 
 let apply (name, f) =
-  if !Equations_common.debug then
+  if true then
     fun env evd gl ->
       let () =
         let (ctx, ty, _) = gl in
@@ -748,10 +748,21 @@ SimpFun.make ~name:"solution" begin fun (env : Environ.env) (evd : Evd.evar_map 
       let body = Vars.liftn 1 (succ rel') body in
       let body = Vars.subst1 (EConstr.mkRel rel') body in
       let after' = Equations_common.lift_rel_context 1 after' in
+      let rec push l env = match l with [] -> env | c :: l -> push_rel_context c (push l env) in
+      let () = check_typed ~where:"[tB']"
+        (push [
+          after';
+          [Rel.Declaration.LocalAssum (name, Vars.lift (1-rel') ty1')];
+          [Rel.Declaration.LocalAssum (name', Vars.lift (-rel') tA')];
+          before';
+        ] env)
+        !evd body
+      in
       let body' = EConstr.it_mkProd_or_LetIn body after' in
       let body' = EConstr.mkLambda (name, Vars.lift (1-rel') ty1', body') in
         EConstr.mkLambda (name', Vars.lift (-rel') tA', body'), body
   in
+  let () = check_typed ~where:(if nondep then "[nondep tB']" else "[dep tB']") (push_rel_context before' env) !evd tB' in
   (* [tB'] is a term in the context [before']. We want it in [ctx']. *)
   let tB' = Vars.lift rel' tB' in
   let targs' = Equations_common.extended_rel_vect 1 after' in
@@ -781,9 +792,10 @@ SimpFun.make ~name:"solution" begin fun (env : Environ.env) (evd : Evd.evar_map 
       in
       (* We make some room for the application of the equality... *)
       let c = Vars.lift 1 c in
-      let c = EConstr.mkApp (c, [| EConstr.mkRel 1 |]) in
+      let env' = push_rel_context (Rel.Declaration.LocalAssum (name, ty1') :: ctx') env in
+      let c = type_application env' evd c [| EConstr.mkRel 1 |] in
       (* [targs'] are arguments in the context [eq_decl :: ctx']. *)
-      let c = EConstr.mkApp (c, targs') in
+      let c = type_application env' evd c targs' in
       (* [ty1'] is the type of the equality in [ctx']. *)
       let c = EConstr.mkLambda (name, ty1', c) in
       (* And now we recover a term in the context [ctx]. *)
