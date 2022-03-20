@@ -17,6 +17,10 @@ Register concat as core.identity.trans.
 
 Register ap as core.identity.congr.
 
+(** [path_inspect x] allows to pattern-match x while retaining a propositional equality with [x] *)
+
+Definition path_inspect {A : Type} (x : A) : { y | paths x y } := (x ; idpath).
+
 Require Import HoTT.Types.Bool.
 (* For compatibility with Coq's [induction] *)
 Definition Bool_rect := Bool_ind.

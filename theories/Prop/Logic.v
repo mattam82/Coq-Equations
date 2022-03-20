@@ -26,6 +26,10 @@ Definition transport_r {A : Type} (P : A -> Type) {x y : A} (e : y = x) : P x ->
 
 Extraction Inline transport transport_r.
 
+(** [inspect x] allows to pattern-match x while retaining a propositional equality with [x] *)
+
+Definition inspect {A : Type} (x : A) : { y : A | x = y } := exist _ x eq_refl.
+
 (** Extract sigma to a (non-dependent) pair in OCaml *)
 
 Extract Inductive sigma => "( * )" ["(,)"].
