@@ -67,29 +67,32 @@ let check_occur evd n x : 'a =
   if aux x then raise Conflict else raise Stuck
 
 let rec unify env evd flex g x y =
-  if check_conv env evd x y then id_subst g
-  else
-    match decompose_rel evd x with
-    | Some i -> 
-      if not (isRel evd y) && not (noccurn evd i y) then check_occur evd i y (* Occur check *)
-      else if Int.Set.mem i flex then
-        single_subst env evd i (PInac y) g
+  match decompose_rel evd x with
+  | Some i -> 
+    if not (isRel evd y) && not (noccurn evd i y) then check_occur evd i y (* Occur check *)
+    else if Int.Set.mem i flex then
+      single_subst env evd i (PInac y) g
+    else
+      if check_conv env evd x y then id_subst g
       else raise Stuck
+  | None ->
+    match decompose_rel evd y with
+    | Some i ->
+      if (* not (isRel evd x) &&  *)not (noccurn evd i x) then check_occur evd i x (* Occur check *)
+      else if Int.Set.mem i flex then
+        single_subst env evd i (PInac x) g
+      else
+        if check_conv env evd x y then id_subst g
+        else raise Stuck
     | None ->
-      match decompose_rel evd y with
-      | Some i ->
-        if (* not (isRel evd x) &&  *)not (noccurn evd i x) then check_occur evd i x (* Occur check *)
-        else if Int.Set.mem i flex then
-          single_subst env evd i (PInac x) g
-        else raise Stuck
-      | None ->
-        let (c, l) = decompose_app evd x 
-        and (c', l') = decompose_app evd y in
-        if isConstruct evd c && isConstruct evd c' then
-          if eq_constr evd c c' then
-            unify_constrs env evd flex g l l'
-          else raise Conflict
-        else raise Stuck
+      let (c, l) = decompose_app evd x 
+      and (c', l') = decompose_app evd y in
+      if isConstruct evd c && isConstruct evd c' then
+        if eq_constr evd c c' then
+          unify_constrs env evd flex g l l'
+        else raise Conflict
+      else if check_conv env evd x y then id_subst g
+      else raise Stuck
 
 (* and unify env evd flex g x y =
   match unify_hnfs env evd flex g x y with
