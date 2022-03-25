@@ -127,7 +127,7 @@ val helper_evar :
 (** Compilation to Coq terms *)
 val term_of_tree :
   env ->
-  Evd.evar_map ref -> Univ.Universe.t ->
+  Evd.evar_map ref -> Sorts.t ->
   splitting ->
   constr * constr
 

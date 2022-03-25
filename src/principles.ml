@@ -1386,11 +1386,20 @@ let declare_funind ~pm info alias env evd is_rec protos progs
                                 CErrors.print e);
        launch_ind ~pm (Proofview.tclUNIT ())
 
+let max_sort s1 s2 =
+  let open Sorts in
+  match s1, s2 with
+  | (SProp, SProp) | (Prop, Prop) | (Set, Set) -> s1
+  | (SProp, (Prop | Set | Type _ as s)) | ((Prop | Set | Type _) as s, SProp) -> s
+  | (Prop, (Set | Type _ as s)) | ((Set | Type _) as s, Prop) -> s
+  | (Set, Type u) | (Type u, Set) -> Sorts.sort_of_univ (Univ.Universe.sup Univ.Universe.type0 u)
+  | (Type u, Type v) -> Sorts.sort_of_univ (Univ.Universe.sup u v)
+
 let level_of_context env evd ctx acc =
   let _, lev =
     List.fold_right (fun decl (env, lev) ->
         let s = Retyping.get_sort_of env evd (get_type decl) in
-        (push_rel decl env, Univ.sup (Sorts.univ_of_sort s) lev))
+        (push_rel decl env, max_sort s lev))
                     ctx (env,acc)
   in lev
 
@@ -1597,7 +1606,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
       | Sorts.InProp ->
         (* If the program is producing a proof, then we cannot hope to have its
            graph in Type in general (it might be case-splitting on non-strict propositions). *)
-        Univ.type0m_univ
+        Sorts.prop
       | _ ->
         let ctx = (of_tuple (anonR, None, arity) :: sign) in
         let signlev = level_of_context env !evd ctx sorts in
@@ -1606,14 +1615,14 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     let entry =
       Entries.{ mind_entry_typename = indid;
                 mind_entry_arity = to_constr !evd (it_mkProd_or_LetIn (mkProd (anonR, arity,
-                                                                               mkSort (Sorts.sort_of_univ ind_sort))) sign);
+                                                                               mkSort ind_sort)) sign);
                 mind_entry_consnames = consnames;
                 mind_entry_lc = constructors;
               }
-    in ((entry, sign, arity) :: inds, univs, Univ.sup ind_sort sorts)
+    in ((entry, sign, arity) :: inds, univs, max_sort ind_sort sorts)
   in
   let declare_ind () =
-    let inds, univs, sort = List.fold_left declare_one_ind ([], Univ.Level.Set.empty, Univ.type0m_univ) ind_stmts in
+    let inds, univs, sort = List.fold_left declare_one_ind ([], Univ.Level.Set.empty, Sorts.prop) ind_stmts in
     let sigma = Evd.restrict_universe_context !evd univs in
     let sigma = Evd.minimize_universes sigma in
     let inds =
@@ -1622,7 +1631,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
                     mind_entry_lc = List.map (to_constr sigma) (List.map of_constr entry.mind_entry_lc);
                     mind_entry_arity =
                       to_constr sigma (it_mkProd_or_LetIn (mkProd (anonR, arity,
-                                                                  mkSort (Sorts.sort_of_univ sort))) sign) })
+                                                                  mkSort sort)) sign) })
         inds
     in
     let univs, ubinders = Evd.univ_entry ~poly sigma in
