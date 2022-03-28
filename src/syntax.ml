@@ -314,7 +314,7 @@ type program_info = {
   program_loc : Loc.t option;
   program_id : Id.t;
   program_orig_type : EConstr.t; (* The original type *)
-  program_sort : Univ.Universe.t; (* The sort of this type *)
+  program_sort : Sorts.t; (* The sort of this type *)
   program_sign : EConstr.rel_context;
   program_arity : EConstr.t;
   program_rec : program_rec_info option;
@@ -323,9 +323,9 @@ type program_info = {
 }
 
 let map_universe f u =
-  let u' = f (EConstr.mkSort (Sorts.sort_of_univ u)) in
+  let u' = f (EConstr.mkSort u) in
   match Constr.kind (EConstr.Unsafe.to_constr u') with
-  | Sort s -> Sorts.univ_of_sort s
+  | Sort s -> s
   | _ -> assert false
 
 let map_program_info f p =

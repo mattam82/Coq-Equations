@@ -770,7 +770,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),udecl,rec
   let _ = if not with_evars then Pretyping.check_evars env !evd body in
   let program_orig_type = it_mkProd_or_LetIn arity sign in
   let program_sort =
-    let u = Sorts.univ_of_sort (Retyping.get_sort_of env !evd program_orig_type) in
+    let u = Retyping.get_sort_of env !evd program_orig_type in
     let sigma, sortl, sortu = nonalgebraic_universe_level_of_universe env !evd u in
     evd := sigma; sortu
   in

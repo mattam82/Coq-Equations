@@ -377,7 +377,7 @@ let aux_ind_fun info chop nested unfp unfids p =
           let inctx, concl = decompose_prod_n_assum !sigma t.rec_args (concl gl) in
           Refine.refine ~typecheck:false (fun sigma ->
               let evd = ref sigma in
-              let sort = Sorts.univ_of_sort (Retyping.get_sort_of env sigma concl) in
+              let sort = Retyping.get_sort_of env sigma concl in
               let hd, args = decompose_app sigma concl in
               let subst =
                 gather_subst env sigma (Retyping.get_type_of env sigma hd) args (List.length ctx)

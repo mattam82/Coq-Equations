@@ -121,7 +121,6 @@ let telescope env evd = function
       let (n, _, t) = to_tuple d in
       let len = succ (List.length tl) in
       let ts = Retyping.get_sort_of (push_rel_context tl env) !evd t in
-      let tuniv = Sorts.univ_of_sort ts in
       let ty, tys =
         let rec aux (ty, tyuniv, tys) ds =
           match ds with
@@ -132,18 +131,17 @@ let telescope env evd = function
             let sigty = mkAppG evd (Lazy.force coq_sigma) [|t; pred|] in
             let _, u = destInd !evd (fst (destApp !evd sigty)) in
             let ua = Univ.Instance.to_array (EInstance.kind !evd u) in
-            let l = Univ.Universe.make ua.(0) in
+            let l = Sorts.sort_of_univ @@ Univ.Universe.make ua.(0) in
             let env = push_rel_context ds env in
             (* Ensure that the universe of the sigma is only >= those of t and pred *)
             let enforce_leq env sigma t cstr =
               let ts = Retyping.get_sort_of env sigma t in
-              let su = Sorts.univ_of_sort ts in
-              Univ.enforce_leq su l cstr
+              UGraph.enforce_leq_sort ts l cstr
             in
-            let cstrs = enforce_leq env !evd t (Univ.enforce_leq tyuniv l Univ.Constraints.empty) in
+            let cstrs = enforce_leq env !evd t (UGraph.enforce_leq_sort tyuniv l Univ.Constraints.empty) in
             let () = evd := Evd.add_constraints !evd cstrs in
             aux (sigty, l, (u, pred) :: tys) ds
-        in aux (t, tuniv, []) tl
+        in aux (t, ts, []) tl
       in
       let constr, _ = 
 	List.fold_right (fun (u, pred) (intro, k) ->

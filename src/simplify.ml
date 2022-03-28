@@ -217,7 +217,7 @@ and simplification_rule =
   | Infer_many
 and simplification_rules = (Loc.t option * simplification_rule) list
 
-type goal = rel_context * EConstr.types * Univ.Universe.t
+type goal = rel_context * EConstr.types * Sorts.t
 type open_term = (goal * EConstr.existential) option * EConstr.constr
 
 exception CannotSimplify of Pp.t
@@ -1206,7 +1206,7 @@ and simplify (rules : simplification_rules) : simplification_fun =
 
 let univ_of_goal env sigma ty =
   let s = Retyping.get_sort_of env sigma ty in
-  Sorts.univ_of_sort s
+  s
 
 let simplify_tac (rules : simplification_rules) : unit Proofview.tactic =
   Proofview.Goal.enter (fun gl ->

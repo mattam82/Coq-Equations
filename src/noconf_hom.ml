@@ -135,8 +135,11 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
     match Lazy.force logic_sort with
     | Sorts.InType | Sorts.InSet -> (* In that case noConfusion lives at the level of the inductive family *)
       let sort = EConstr.mkSort inds in
-      let usort = Sorts.univ_of_sort inds in
-      if Univ.Universe.is_level usort then sigma, sort
+      let is_level = match inds with
+      | Sorts.Prop | Sorts.SProp | Sorts.Set -> true
+      | Sorts.Type u -> Univ.Universe.is_level u
+      in
+      if is_level then sigma, sort
       else
         Evarsolve.refresh_universes ~status:Evd.univ_flexible ~onlyalg:true
           (Some false) env sigma sort
@@ -222,7 +225,7 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
   let sigma, program_sort =
     Evarsolve.refresh_universes ~status:Evd.univ_flexible ~onlyalg:true
       (Some false) env sigma (mkSort program_sort) in
-  let program_sort = Sorts.univ_of_sort (EConstr.ESorts.kind sigma (EConstr.destSort sigma program_sort)) in
+  let program_sort = EConstr.ESorts.kind sigma (EConstr.destSort sigma program_sort) in
   let evd = ref sigma in
   let data =
     Covering.{

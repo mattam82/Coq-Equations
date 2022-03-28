@@ -176,7 +176,7 @@ let pr_program_info env sigma p =
   let open Pp in
   Names.Id.print p.program_id ++ str " : " ++
   Printer.pr_econstr_env env sigma (Syntax.program_type p) ++ str " : " ++
-  Printer.pr_econstr_env env sigma (mkType p.program_sort) ++
+  Printer.pr_econstr_env env sigma (mkSort p.program_sort) ++
   str " ( " ++
   (match p.program_rec with
    | Some (Structural ann) ->
@@ -963,7 +963,7 @@ let define_one_program_constants flags env0 isevar udecl unfold p =
       let evm', rest' = aux env evm rest in
       let isevar = ref evm' in
       let env = Global.env () in
-      let sort = Sorts.univ_of_sort
+      let sort =
           (Retyping.get_sort_of (push_rel_context (pi1 lhs) env) !isevar info.refined_rettyp) in
       let t, ty = term_of_tree env isevar sort rest' in
       let (cst, (evm, e)) =
