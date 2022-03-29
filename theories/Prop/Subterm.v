@@ -177,7 +177,7 @@ Hint Extern 0 (MR _ _ _ _) => red : Below.
 Instance lt_wf : WellFounded lt := lt_wf.
 
 #[global]
-Hint Resolve Arith.Lt.lt_n_Sn : Below.
+Hint Resolve PeanoNat.Nat.lt_succ_diag_r : Below.
 
 (** We also add hints for transitive closure, not using [t_trans] but forcing to 
    build the proof by successive applications of the inner relation. *)
