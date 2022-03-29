@@ -23,7 +23,9 @@ type open_term = (goal * EConstr.existential) option * EConstr.constr
 exception CannotSimplify of Pp.t
 
 (* TODO Move the context_map inside the open_term... *)
-type simplification_fun =
+type simplification_fun
+
+val apply_simplification_fun : simplification_fun ->
   Environ.env -> Evd.evar_map ref -> goal -> open_term * Context_map.context_map
 
 (* Auxiliary functions. *)

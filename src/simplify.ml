@@ -222,8 +222,74 @@ type open_term = (goal * EConstr.existential) option * EConstr.constr
 
 exception CannotSimplify of Pp.t
 
-type simplification_fun = Environ.env -> Evd.evar_map ref -> goal ->
-  open_term * Context_map.context_map
+(* Full type-checking + check that constraints are present *)
+let check_typed ~where ?name env evd c =
+  let sigma, _ =
+    try Typing.type_of env evd c
+    with Type_errors.TypeError (env, tyerr) ->
+      anomaly Pp.(str where ++ spc () ++
+        str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env evd c ++
+        Himsg.explain_pretype_error env evd
+          (Pretype_errors.TypingError (Type_errors.map_ptype_error EConstr.of_constr tyerr)))
+    | Pretype_errors.PretypeError (env, evd, tyerr) ->
+        anomaly Pp.(str where ++ spc () ++
+        str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env evd c ++
+        Himsg.explain_pretype_error env evd tyerr)
+  in
+  let check = Evd.check_constraints evd (snd @@ Evd.universe_context_set sigma) in
+  if not check then anomaly Pp.(str where ++ spc () ++ str "Equations missing constraints in " ++
+    str (Option.default "(anonymous)" name))
+
+module SimpFun :
+sig
+  type t
+
+  val make : ?name:string -> (Environ.env -> Evd.evar_map ref -> goal -> open_term * Context_map.context_map) -> t
+  (** Invariant for [glopt, c = f env evd (ctx, ty, u)]
+      Assumes (in current !evd)
+      - env, ctx ⊢ ty : Type@{u}
+      Then (at return time in !evd)
+      - env, ctx ⊢ c : ty
+      - if glopt = Some (ctx', ty', u') then env, ctx' ⊢ ty' : Type@{u'}
+  *)
+
+  val apply : t -> Environ.env -> Evd.evar_map ref -> goal -> open_term * Context_map.context_map
+end =
+struct
+
+type t = string option * (Environ.env -> Evd.evar_map ref -> goal -> open_term * Context_map.context_map)
+
+let make ?name f = (name, f)
+
+let apply (name, f) =
+  if !Equations_common.debug then
+    fun env evd gl ->
+      let () =
+        let (ctx, ty, _) = gl in
+        let env = push_rel_context ctx env in
+        check_typed ~where:"[precondition]" ?name env !evd ty
+      in
+      let ((ngl, c), map) = f env evd gl in
+      let () =
+        let (ctx, _, _) = gl in
+        let env = push_rel_context ctx env in
+        check_typed ~where:"[result]" ?name env !evd c
+      in
+      let () = match ngl with
+      | None -> ()
+      | Some ((ctx, ty, u), _) ->
+        let env = push_rel_context ctx env in
+        check_typed ~where:"[subgoal]" ?name env !evd ty
+      in
+      ((ngl, c), map)
+  else
+    f
+
+end
+
+type simplification_fun = SimpFun.t
+
+let apply_simplification_fun = SimpFun.apply
 
 (* Auxiliary functions. *)
 
@@ -362,31 +428,34 @@ let compose_res (env : Environ.env) (evd : Evd.evar_map ref)
       t, s
 
 let safe_fun (f : simplification_fun) : simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal) ->
-  let (_, c), _ as res = f env evd (ctx, ty, u) in
+SimpFun.make ~name:"safe_fun" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal) ->
+  let (_, c), _ as res = SimpFun.apply f env evd (ctx, ty, u) in
   let env = push_rel_context ctx env in
   evd := Typing.check env !evd c ty;
   res
+end
 
 (* Applies [g] to the goal, then [f]. *)
 let compose_fun (f : simplification_fun) (g : simplification_fun) :
   simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) ->
-  let (h1, _), _ as res1 = g env evd gl in
+SimpFun.make ~name:"compose_fun" begin fun (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) ->
+  let (h1, _), _ as res1 = SimpFun.apply g env evd gl in
   match h1 with
   | Some (gl', _) ->
-      let res2 = f env evd gl' in compose_res env evd res1 res2
+      let res2 = SimpFun.apply f env evd gl' in compose_res env evd res1 res2
   | None -> res1
+end
 
 
 let identity : simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u as gl) : goal) ->
+SimpFun.make ~name:"identity" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u as gl) : goal) ->
   build_term_core env evd gl (fun c -> c), Context_map.id_subst ctx
+end
 
 let while_fun (f : simplification_fun) : simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) ->
+SimpFun.make ~name:"while_fun" begin fun (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) ->
   let rec aux env evd gl =
-    match f env evd gl with
+    match SimpFun.apply f env evd gl with
     | (Some (gl', _), _), _ as res1 ->
         begin try
           let evd' = ref !evd in
@@ -397,7 +466,8 @@ let while_fun (f : simplification_fun) : simplification_fun =
     | (None, _), _ as res1 -> res1
   in try
     aux env evd gl
-  with CannotSimplify _ -> identity env evd gl
+  with CannotSimplify _ -> SimpFun.apply identity env evd gl
+end
 
 (* Check if a type is a given inductive. *)
 let check_inductive sigma (ind : Names.inductive) : EConstr.types -> bool =
@@ -485,20 +555,22 @@ let hnf_goal ~(reduce_equality:bool) =
   (ctx, ty, u)
 
 let hnf ~reduce_equality : simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u as gl) : goal) ->
+SimpFun.make ~name:"hnf" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u as gl) : goal) ->
   let gl' = hnf_goal ~reduce_equality env evd gl in
   build_term env evd gl gl' (fun c -> c), Context_map.id_subst ctx
+end
 
 let with_retry (f : simplification_fun) : simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal) ->
+SimpFun.make ~name:"with_retry" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal) ->
   try
     (* Be careful with the [evar_map] management. *)
     let evd' = ref !evd in
-    let res = f env evd' (ctx, ty, u) in
+    let res = SimpFun.apply f env evd' (ctx, ty, u) in
     evd := !evd'; res
   with CannotSimplify _ ->
     (*msg_info (str "Reduce!");*)
-    f env evd (hnf_goal ~reduce_equality:true env evd (ctx, ty, u))
+    SimpFun.apply f env evd (hnf_goal ~reduce_equality:true env evd (ctx, ty, u))
+end
 
 (* Simplification functions to handle each step. *)
 (* Any of these can throw a CannotSimplify exception which explains why the
@@ -507,8 +579,8 @@ let with_retry (f : simplification_fun) : simplification_fun =
 (* This function is not accessible by the user for now. It is used to project
  * (if needed) the first component of an equality between sigmas. It will not
  * do anything if it fails. *)
-let remove_one_sigma ?(only_nondep=false) : simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
+let remove_one_sigma ?(only_nondep=false) () : simplification_fun =
+SimpFun.make ~name:"remove_one_sigma" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
   let equ, _, t1, t2 = check_equality env !evd ctx ty1 in
   let sigu, f, args =
@@ -569,11 +641,12 @@ let remove_one_sigma ?(only_nondep=false) : simplification_fun =
   let sigma, inst, glu = Equations_common.instance_of env !evd ~argu:sigu glu in
   evd := sigma;
   build_app env evd (ctx, ty, glu) f ~inst args, Context_map.id_subst ctx
+end
 
-let remove_sigma = while_fun (with_retry remove_one_sigma)
+let remove_sigma = while_fun (with_retry (remove_one_sigma ()))
 
 let deletion ~(force:bool) : simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
+SimpFun.make ~name:"deletion" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
   let u, tA, tx, _ = check_equality env !evd ctx ~equal_terms:true ty1 in
   let subst = Context_map.id_subst ctx in
@@ -604,11 +677,12 @@ let deletion ~(force:bool) : simplification_fun =
                              (if not !Equations_common.simplify_withUIP then
                                 str " and the 'Equations With UIP' flag is off"
                               else mt())))
+end
 
 let deletion ~(force:bool) = with_retry (deletion ~force)
 
 let solution ~(dir:direction) : simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
+SimpFun.make ~name:"solution" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   let var_left = match dir with Left -> true | Right -> false in
   let var_right = not var_left in
   let name, ty1, ty2 = check_prod !evd ty in
@@ -707,9 +781,10 @@ let solution ~(dir:direction) : simplification_fun =
       (* And now we recover a term in the context [ctx]. *)
         Context_map.mapping_constr !evd rev_subst c
   in build_term env evd (ctx, ty, glu) (ctx'', ty'', glu') f, subst
+end
 
 let pre_solution ~(dir:direction) : simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
+SimpFun.make ~name:"pre_solution" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   let var_left = match dir with Left -> true | Right -> false in
   let var_right = not var_left in
   let name, ty1, ty2 = check_prod !evd ty in
@@ -728,7 +803,7 @@ let pre_solution ~(dir:direction) : simplification_fun =
   (* Check dependencies in both tA and term *)
   if not (Int.Set.mem rel
             (Context_map.dependencies_of_term ~with_red:false env !evd ctx (mkApp (tA, [| term |])) rel)) then
-    identity env evd (ctx, ty, glu)
+    SimpFun.apply identity env evd (ctx, ty, glu)
   else
     let tA = Reductionops.nf_all (push_rel_context ctx env) !evd tA in
     let term = Reductionops.whd_all (push_rel_context ctx env) !evd term in
@@ -743,6 +818,7 @@ let pre_solution ~(dir:direction) : simplification_fun =
       in
       let ty' = mkProd (name, ty1, ty2) in
       build_term env evd (ctx, ty, glu) (ctx, ty', glu) f, Context_map.id_subst ctx
+end
 
 let pre_solution ~(dir:direction) = with_retry (pre_solution ~dir)
 
@@ -756,7 +832,7 @@ let is_construct_sigma_2 sigma f =
 
 (* Auxiliary steps for noConfusion. *)
 let maybe_pack : simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
+SimpFun.make ~name:"maybe_pack" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
   let equ, tA, t1, t2 = check_equality env !evd ctx ty1 in
   if not (is_construct_sigma_2 !evd t1 && is_construct_sigma_2 !evd t2) then
@@ -777,9 +853,9 @@ let maybe_pack : simplification_fun =
   in
   let indfam, args = Inductiveops.dest_ind_type indty in
   if CList.is_empty args then
-    identity env evd (ctx, ty, glu)
+    SimpFun.apply identity env evd (ctx, ty, glu)
   else if has_noconf () then
-    identity env evd (ctx, ty, glu)
+    SimpFun.apply identity env evd (ctx, ty, glu)
   else begin
     (* We need to apply [simplify_ind_pack]. *)
     let ind, params = Equations_common.dest_ind_family indfam in
@@ -826,11 +902,12 @@ let maybe_pack : simplification_fun =
        but it's not clear for the others. It seems to work in practice. *)
     build_app env evd (ctx, ty, glu) tsimplify_ind_pack args, Context_map.id_subst ctx
   end
+end
 
 let maybe_pack = with_retry maybe_pack
 
 let apply_noconf : simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
+SimpFun.make ~name:"apply_noconf" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
   let equ, tA, t1, t2 = check_equality env !evd ctx ty1 in
   if not (is_construct_sigma_2 !evd t1 && is_construct_sigma_2 !evd t2) then
@@ -857,11 +934,12 @@ let apply_noconf : simplification_fun =
   in
     build_app_infer env evd (ctx, ty, glu') tapply_noconf ?inst args,
     Context_map.id_subst ctx
+end
 
 let noConfusion = compose_fun (compose_fun (hnf ~reduce_equality:false) apply_noconf) maybe_pack
 
 let simplify_ind_pack_inv : simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
+SimpFun.make ~name:"simplify_ind_pack" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   (* FIXME Can't ignore _all_ errors? *)
   try
     let reduce c =
@@ -898,10 +976,11 @@ let simplify_ind_pack_inv : simplification_fun =
     let args = [Some tA; Some teqdec; Some tB; Some tx; Some tp; Some tG; None] in
       build_app_infer env evd (ctx, ty, glu) tsimplify_ind_pack_inv args,
       Context_map.id_subst ctx
-  with CannotSimplify _ -> identity env evd (ctx, ty, glu)
+  with CannotSimplify _ -> SimpFun.apply identity env evd (ctx, ty, glu)
+end
 
 let noCycle : simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
+SimpFun.make ~name:"noCycle" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
   let equ, tA, t1, t2 = check_equality env !evd ctx ty1 in
   let isct1 = is_construct_sigma_2 !evd t1 in
@@ -943,11 +1022,12 @@ let noCycle : simplification_fun =
     raise (CannotSimplify (str
         "[noCycle] Cannot infer a proof of " ++
         Printer.pr_econstr_env (push_rel_context ctx env) !evd nocycle))
+end
 
 let noCycle = with_retry noCycle
 
 let elim_true : simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
+SimpFun.make ~name:"elim_true" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
   if not (check_inductive !evd (Lazy.force EqRefs.one) ty1) then
     raise (CannotSimplify (str
@@ -970,11 +1050,12 @@ let elim_true : simplification_fun =
     in
     let args = [Some tB; None] in
       build_app_infer env evd (ctx, ty, glu') tone_ind ~inst args, subst
+end
 
 let elim_true = with_retry elim_true
 
 let elim_false : simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
+SimpFun.make ~name:"elim_false" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
   if not (check_inductive !evd (Lazy.force EqRefs.zero) ty1) then
     raise (CannotSimplify (str
@@ -1003,6 +1084,7 @@ let elim_false : simplification_fun =
   let _ = let env = push_rel_context ctx env in
           Equations_common.evd_comb1 (Typing.type_of env) evd c in
     (None, c), subst
+end
 
 let elim_false = with_retry elim_false
 
@@ -1082,21 +1164,23 @@ let infer_step ?(loc:Loc.t option) ~(isSol:bool)
   end
 
 let or_fun (f : simplification_fun) (g : simplification_fun) : simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) ->
+SimpFun.make ~name:"or_fun" begin fun (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) ->
   let evd0 = !evd in
-  try f env evd gl
+  try SimpFun.apply f env evd gl
   with CannotSimplify _ ->
-    evd := evd0; g env evd gl
+    evd := evd0; SimpFun.apply g env evd gl
+end
 
 let or_fun_e1 (f : simplification_fun) (g : simplification_fun) : simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) ->
+SimpFun.make ~name:"or_fun_e1" begin fun (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) ->
   let evd0 = !evd in
-  try f env evd gl
+  try SimpFun.apply f env evd gl
   with CannotSimplify e ->
     evd := evd0;
-    try g env evd gl
+    try SimpFun.apply g env evd gl
     with CannotSimplify _ ->
       evd := evd0; raise (CannotSimplify e)
+end
 
 let _expand_many rule env evd ((ctx, ty, glu) : goal) : simplification_rules =
   (* FIXME: maybe it's too brutal/expensive? *)
@@ -1118,34 +1202,37 @@ let _expand_many rule env evd ((ctx, ty, glu) : goal) : simplification_rules =
 exception Blocked
 
 let check_block : simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu as gl) : goal) ->
+SimpFun.make ~name:"check_block" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu as gl) : goal) ->
   let _na, b, _ty, _b' = check_letin !evd ty in
   if Equations_common.is_global !evd (Lazy.force Equations_common.coq_block) b then
     raise Blocked
-  else identity env evd gl
+  else SimpFun.apply identity env evd gl
+end
 
 let remove_block : simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
+SimpFun.make ~name:"remove_block" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   let _na, b, _ty, b' = check_letin !evd ty in
   build_term env evd (ctx, ty, glu) (ctx, Vars.subst1 b b', glu) (fun c -> c), Context_map.id_subst ctx
-
+end
 
 let check_block_notprod : simplification_fun =
-  fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu as gl) : goal) ->
+SimpFun.make ~name:"check_block_notprod" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu as gl) : goal) ->
     try let _ = destLetIn !evd ty in
-      identity env evd gl
+      SimpFun.apply identity env evd gl
     with Constr.DestKO ->
     try
       let env = push_rel_context ctx env in
       let ty = Reductionops.whd_all env !evd ty in
       let _na, _ty, _ty' = EConstr.destProd !evd ty in
       raise (CannotSimplify (str"a product"))
-    with Constr.DestKO -> identity env evd gl
+    with Constr.DestKO -> SimpFun.apply identity env evd gl
+end
 
-let rec apply_noConfusions =
-  fun env evd goal ->
-    or_fun noConfusion
-      (compose_fun apply_noConfusions remove_one_sigma) env evd goal
+let rec apply_noConfusions () =
+SimpFun.make ~name:"apply_noConfusions" begin fun env evd goal ->
+    SimpFun.apply (or_fun noConfusion
+      (compose_fun (apply_noConfusions ()) (remove_one_sigma ()))) env evd goal
+end
 
 (* Execution machinery. *)
 
@@ -1162,16 +1249,17 @@ let rec execute_step : simplification_step -> simplification_fun = function
 and simplify_one ((loc, rule) : Loc.t option * simplification_rule) :
   simplification_fun =
   let handle_error f =
-    fun env evd gl ->
-      try f env evd gl
+    SimpFun.make ~name:"handle_error" begin fun env evd gl ->
+      try SimpFun.apply f env evd gl
       with CannotSimplify err ->
         Equations_common.user_err_loc (loc, err)
+    end
   in
   let wrap get_step =
-    let f = fun env evd gl ->
+    let f = SimpFun.make ~name:"wrap" begin fun env evd gl ->
       let step = get_step env evd gl in
-        execute_step step env evd gl
-    in
+        SimpFun.apply (execute_step step) env evd gl
+    end in
     let fr = compose_fun f remove_sigma in
     with_retry (or_fun f fr)
   in
@@ -1181,21 +1269,21 @@ and simplify_one ((loc, rule) : Loc.t option * simplification_rule) :
   in
   match rule with
   | Infer_many ->
-     let rec aux env evd gl =
+     let rec aux () = SimpFun.make ~name:"aux" begin fun env evd gl ->
        let first =
          or_fun check_block
-           (or_fun apply_noConfusions
+           (or_fun (apply_noConfusions ())
               (or_fun_e1 ((wrap (infer_step ?loc ~isSol:false)))
-                (remove_one_sigma ~only_nondep:true)))
+                (remove_one_sigma ~only_nondep:true ())))
        in
-       try compose_fun (or_fun check_block_notprod aux)
-             first env evd gl
-       with Blocked -> remove_block env evd gl
-     in handle_error aux
+       try SimpFun.apply (compose_fun (or_fun check_block_notprod (aux ()))
+             first) env evd gl
+       with Blocked -> SimpFun.apply remove_block env evd gl
+     end in handle_error (aux ())
   | Step step -> wrap_handle (fun _ _ _ -> step)
-  | Infer_one -> handle_error (or_fun apply_noConfusions
+  | Infer_one -> handle_error (or_fun (apply_noConfusions ())
                                  (or_fun_e1 (wrap (infer_step ?loc ~isSol:false))
-                                    (remove_one_sigma ~only_nondep:true)))
+                                    (remove_one_sigma ~only_nondep:true ())))
   | Infer_direction -> wrap_handle (infer_step ?loc ~isSol:true)
 
 and simplify (rules : simplification_rules) : simplification_fun =
@@ -1234,7 +1322,7 @@ let simplify_tac (rules : simplification_rules) : unit Proofview.tactic =
      * context [ctx']. *)
     Refine.refine ~typecheck:true (fun evars ->
       let evd = ref evars in
-      let (_, c), _ = simplify rules env evd (ctx, ty, glu) in
+      let (_, c), _ = SimpFun.apply (simplify rules) env evd (ctx, ty, glu) in
       let c = Vars.substl (List.rev rev_subst) c in
          (!evd, c)))
 
