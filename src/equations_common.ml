@@ -1074,33 +1074,24 @@ let evd_comb1 f evd x =
 (* Universe related functions *)
 
 let nonalgebraic_universe_level_of_universe env sigma u =
-  let level = match u with
-  | Sorts.Set -> Some Univ.Level.set
-  | Sorts.Prop -> Some Univ.Level.prop
-  | Sorts.SProp -> Some Univ.Level.sprop
-  | Sorts.Type u -> Univ.Universe.level u
-  in
-  match level with
-  | Some l ->
-    if Univ.Level.is_small l then sigma, l, u
-    else
+  match u with
+  | Sorts.Set | Sorts.Prop | Sorts.SProp ->
+    sigma, Univ.Level.set, u
+  | Sorts.Type u0 ->
+    match Univ.Universe.level u0 with
+    | Some l ->
       (match Evd.universe_rigidity sigma l with
       | Evd.UnivFlexible true ->
         Evd.make_nonalgebraic_variable sigma l, l, Sorts.sort_of_univ @@ Univ.Universe.make l
       | _ -> sigma, l, u)
-  | _ ->
-    let sigma, l = Evd.new_univ_level_variable Evd.univ_flexible sigma in
-    let ul = Sorts.sort_of_univ @@ Univ.Universe.make l in
-    let sigma = Evd.set_leq_sort env sigma u ul in
-    sigma, l, ul
+    | None ->
+      let sigma, l = Evd.new_univ_level_variable Evd.univ_flexible sigma in
+      let ul = Sorts.sort_of_univ @@ Univ.Universe.make l in
+      let sigma = Evd.set_leq_sort env sigma u ul in
+      sigma, l, ul
 
 let instance_of env sigma ?argu goalu =
   let sigma, goall, goalu = nonalgebraic_universe_level_of_universe env sigma goalu in
-  let sigma, goall, goalu =
-    if Univ.Level.is_prop goall then
-      sigma, Univ.Level.set, Sorts.set
-    else sigma, goall, goalu
-  in
   let inst =
     match argu with
     | Some equ ->
