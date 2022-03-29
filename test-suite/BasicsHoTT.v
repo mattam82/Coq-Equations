@@ -163,7 +163,7 @@ Section foo.
     | pair xs ys := (cons x xs, cons y ys) }.
 End foo.
 
-Typeclasses Transparent vector_subterm.
+Global Typeclasses Transparent vector_subterm.
 
 Equations nos_with (n : nat) : nat by wf n :=
 nos_with O := O ;
