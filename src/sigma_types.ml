@@ -134,12 +134,13 @@ let telescope env evd = function
             let l = Sorts.sort_of_univ @@ Univ.Universe.make ua.(0) in
             let env = push_rel_context ds env in
             (* Ensure that the universe of the sigma is only >= those of t and pred *)
+            let open UnivProblem in
             let enforce_leq env sigma t cstr =
               let ts = Retyping.get_sort_of env sigma t in
-              UGraph.enforce_leq_sort ts l cstr
+              UnivProblem.Set.add (ULe (ts, l)) cstr
             in
-            let cstrs = enforce_leq env !evd t (UGraph.enforce_leq_sort tyuniv l Univ.Constraints.empty) in
-            let () = evd := Evd.add_constraints !evd cstrs in
+            let cstrs = enforce_leq env !evd t (UnivProblem.Set.add (ULe (tyuniv, l)) UnivProblem.Set.empty) in
+            let () = evd := Evd.add_universe_constraints !evd cstrs in
             aux (sigty, l, (u, pred) :: tys) ds
         in aux (t, ts, []) tl
       in
