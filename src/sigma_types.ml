@@ -340,7 +340,7 @@ let pattern_sigma ~assoc_right c hyp env sigma =
 	    constrs_of_coq_sigma env evd t p @ terms
          | _ -> terms
   in
-  let pat x = Patternops.pattern_of_constr env !evd (to_constr !evd x) in
+  let pat x = Patternops.pattern_of_constr env !evd x in
   let terms = 
     if assoc_right then terms
     else match terms with
