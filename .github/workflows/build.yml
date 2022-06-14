@@ -26,7 +26,7 @@ jobs:
         #   - '4.07-flambda'
         image: 
           - coqorg/base:4.09.1-flambda
-        target: [ local, hott, dune ]
+        target: [ local ] # , hott, dune ]
       fail-fast: false
 
     steps:
