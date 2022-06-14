@@ -45,7 +45,7 @@ jobs:
           custom_image: ${{ matrix.image }}
           before_install: |
             startGroup "Add coq-core-dev repo"
-              opam repo add -y coq-core-dev https://coq.inria.fr/opam/coq-core-dev
+              opam repo add -y coq-core-dev http://coq.inria.fr/opam/core-dev
             endGroup
           before_script: |
             startGroup "Workaround permission issue"
