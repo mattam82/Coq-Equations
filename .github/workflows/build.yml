@@ -4,10 +4,10 @@ on:
   push: # On any push on a "stable" branch
     branches:
       - master
+      - 8.15
+      - 8.16
       - 8.14
       - 8.13
-      - 8.12
-      - 8.11
 
   pull_request: # On all pull-request changes
   release: # At release time
@@ -20,10 +20,12 @@ jobs:
 
     strategy:
       matrix:
-        coq_version: 
-          - 'dev'
-        ocaml_version:
-          - '4.07-flambda'
+        # coq_version: 
+        #   - 'dev'
+        # ocaml_version:
+        #   - '4.07-flambda'
+        image: 
+          - coqorg/base:latest
         target: [ local, hott, dune ]
       fail-fast: false
 
@@ -38,8 +40,14 @@ jobs:
         uses: coq-community/docker-coq-action@v1
         with:
           opam_file: 'coq-equations.opam'
-          coq_version: ${{ matrix.coq_version }}
-          ocaml_version: ${{ matrix.ocaml_version }}
+          # coq_version: ${{ matrix.coq_version }}
+          # ocaml_version: ${{ matrix.ocaml_version }}
+          # opam install --confirm-level=unsafe-yes coq.8.16+rc1
+          custom_image: ${{ matrix.image }}
+          before_install: |
+            startGroup "Add coq-core-dev repo"
+              opam repo add -y coq-core-dev https://coq.inria.fr/opam/coq-core-dev
+            endGroup
           before_script: |
             startGroup "Workaround permission issue"
               sudo chown -R coq:coq .  # <--
