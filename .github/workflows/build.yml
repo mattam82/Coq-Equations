@@ -25,7 +25,7 @@ jobs:
         # ocaml_version:
         #   - '4.07-flambda'
         image: 
-          - coqorg/base:latest
+          - coqorg/base:4.09.1-flambda
         target: [ local, hott, dune ]
       fail-fast: false
 
