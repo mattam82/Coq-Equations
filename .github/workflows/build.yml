@@ -42,7 +42,6 @@ jobs:
           opam_file: 'coq-equations.opam'
           # coq_version: ${{ matrix.coq_version }}
           # ocaml_version: ${{ matrix.ocaml_version }}
-          # opam install --confirm-level=unsafe-yes coq.8.16+rc1
           custom_image: ${{ matrix.image }}
           before_install: |
             startGroup "Add coq-core-dev repo"
