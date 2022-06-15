@@ -1,6 +1,6 @@
 ### **Equations** - a function definition plugin.
 
-[![Build Status](https://github.com/mattam82/Coq-Equations/actions/workflows/build.yml/badge.svg?branch=master&event=push)](https://github.com/mattam82/Coq-Equations/actions/workflows/build.yml)
+[![Build Status](https://github.com/mattam82/Coq-Equations/actions/workflows/build.yml/badge.svg?branch=8.16)](https://github.com/mattam82/Coq-Equations/actions/workflows/build.yml)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3012649.svg)](https://zenodo.org/record/3012649#.XcEydZNKjOQ)
 [![Zulip Chat](https://img.shields.io/badge/zulip-join_chat-brightgreen.svg)](https://coq.zulipchat.com/#narrow/stream/237659-Equations-devs.20.26.20users)
 
