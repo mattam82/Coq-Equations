@@ -415,8 +415,8 @@ let compose_term (env : Environ.env) (evd : Evd.evar_map ref)
         EConstr.mkVar id) named_ctx1 in
       (* Finally, substitute the rels in [c2] to get a valid term for [ev1]. *)
       let c2 = Vars.substl subst_ctx1 c2 in
-      evd := Evd.define ev1 c2 !evd;
       evd := Evarsolve.check_evar_instance Evarconv.(conv_fun evar_conv_x) unif_flags env !evd ev1 c2;
+      evd := Evd.define ev1 c2 !evd;
       h2, c1
   | None -> assert false
 
