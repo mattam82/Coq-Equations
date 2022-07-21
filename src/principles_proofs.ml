@@ -94,11 +94,11 @@ let autorewrite_one b =
     match rules with
     | [] -> tclFAIL (str"Couldn't rewrite")
     | r :: rules ->
-       let global, _univs = Constr.destRef r.Autorewrite.rew_lemma in
+       let global, _univs = Constr.destRef (snd @@ Autorewrite.RewRule.rew_lemma r) in
        let tac =
          Proofview.tclBIND
          (pf_constr_of_global global)
-         (if r.Autorewrite.rew_l2r then Equality.rewriteLR else Equality.rewriteRL)
+         (if (Autorewrite.RewRule.rew_l2r r) then Equality.rewriteLR else Equality.rewriteRL)
        in
        Proofview.tclOR tac
          (fun e -> if !debug then Feedback.msg_debug (str"failed"); aux rules)
