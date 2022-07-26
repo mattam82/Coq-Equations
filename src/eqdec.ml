@@ -118,6 +118,8 @@ let derive_eq_dec ~pm env sigma ~poly ind =
     in
     let typ = it_mkProd_or_LetIn app ind.ind_args in
     let full = it_mkNamedProd_or_LetIn typ ctx in
+    let evm, _ = Typing.solve_evars (Global.env ()) !evdref full in
+    let () = evdref := evm in
     let tc gr = 
       let b, ty = 
       	Typeclasses.instance_constructor
