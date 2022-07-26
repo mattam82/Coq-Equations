@@ -23,7 +23,7 @@ jobs:
         coq_version: 
           - 'dev'
         ocaml_version:
-          - '4.07-flambda'
+          - '4.09-flambda'
         target: [ local, hott, dune ]
       fail-fast: false
 
