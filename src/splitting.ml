@@ -1228,7 +1228,7 @@ type 'a hook =
 let rec_type_ids =
   CList.map_append
     (function Some (Guarded l) -> List.map fst l
-            | Some (Logical ids) -> [snd ids]
+            | Some (Logical (_, ids)) -> [snd ids]
             | None -> [])
 
 let define_programs (type a) ~pm env evd udecl is_recursive fixprots flags ?(unfold=false) programs : a hook -> a * Declare.OblState.t * Declare.Proof.t option  =

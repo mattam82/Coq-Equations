@@ -223,10 +223,26 @@ let find_rec_call is_rec sigma protos f args =
     else
       match alias with
       | Some (f',argsf) ->
+        let signlen = List.length sign in        
         let f', args' = Termops.decompose_app_vect sigma f' in
         let f' = EConstr.Unsafe.to_constr f' in
         if Constr.equal (head f') f then
-          Some (idx, arity, argsf, [], (args, args, []))
+          let sign, args = 
+            if signlen <= List.length args then
+              (* Exact or extra application *)
+              let indargs, rest = CList.chop signlen args in
+              let fargs = drop_last_n (List.length rest) args in
+              [], (fargs, indargs, rest)
+            else
+              (* Partial application *)
+              let sign = List.map EConstr.Unsafe.to_rel_decl sign in
+              let sign = substitute_args args sign in
+              let signlen = List.length sign in
+              let indargs = List.map (Constr.lift signlen) args @ Context.Rel.instance_list Constr.mkRel 0 sign in
+              let fargs = List.map (Constr.lift signlen) args @ Context.Rel.instance_list Constr.mkRel 0 sign in
+              sign, (fargs, indargs, [])
+          in
+          Some (idx, arity, argsf, sign, args)
         else None
       | None -> None
   in
@@ -299,7 +315,8 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
            in
            let hyps = cmap_add hyp !occ hyps in
            let () = incr occ in
-           hyps, Term.applist (result, rest)
+           let c' = Term.applist (result, rest) in
+           hyps, c'
          | None ->
            let hyps =
              Array.fold_left (fun hyps arg -> let hyps', arg' = aux n env hyps arg in
@@ -605,11 +622,12 @@ let map_proto evd recarg f ty =
   match recarg with
   | Some recarg ->
      let lctx, ty' = decompose_prod_assum evd ty in
+     (* Feedback.msg_debug Pp.(str"map_proto: " ++ Printer.pr_econstr_env (Global.env()) evd ty ++ str" recarg = " ++ int recarg); *)
      let app =
        let args = Termops.rel_list 0 (List.length lctx) in
        let before, after =
          if recarg == -1 then CList.drop_last args, []
-         else let bf, after = CList.chop (pred recarg) args in
+         else let bf, after = CList.chop recarg args in
               bf, List.tl after
        in
        applistc (lift (List.length lctx) f) (before @ after)
@@ -757,7 +775,9 @@ let subst_rec_programs env evd ps =
       let fn p oterm =
         match p.program_info.program_rec with
         | Some r ->
-          let recarg = match r with Structural _ -> None | WellFounded _ -> Some (-1) in
+          let recarg = match r with 
+            | Structural _ -> None 
+            | WellFounded _ -> Some (Context.Rel.nhyps p.program_info.program_sign - ctxlen) in
           let oterm = lift (List.length (pi1 p.program_prob) - ctxlen) oterm in
           Some (p.program_info.program_id, (recarg, oterm))
         | None -> None
