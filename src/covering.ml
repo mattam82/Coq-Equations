@@ -306,7 +306,11 @@ let env_of_rhs evars ctx env s lets =
  *   (List.rev ctx', id_pats ctx, ctx) *)
 
 let is_wf_ref id rec_type =
-  List.exists (function Some (Logical (_, id')) -> Id.equal id id' | _ -> false) rec_type
+  let aux = function 
+    | Some (Logical (nargs, (_, id'))) -> 
+      if Id.equal id id' then Some nargs else None 
+    | _ -> None
+  in CList.find_map aux rec_type
 
 let add_wfrec_implicits rec_type c =
   let open Glob_term in
@@ -319,15 +323,19 @@ let add_wfrec_implicits rec_type c =
           | GApp (fn, args) ->
             DAst.with_loc_val (fun ?loc gfn ->
                 match gfn with
-                | GVar fid when is_wf_ref fid rec_type ->
-                  let kind = Evar_kinds.{ qm_obligation = Define false;
-                                          qm_name = Anonymous;
-                                          qm_record_field = None }
-                  in
-                  let newarg = GHole (Evar_kinds.QuestionMark kind, Namegen.IntroAnonymous, None) in
-                  let newarg = DAst.make ?loc newarg in
-                  let args' = List.append (mapargs args) [newarg] in
-                  DAst.make ?loc (GApp (fn, args'))
+                | GVar fid -> 
+                  (match is_wf_ref fid rec_type with
+                  | exception Not_found -> maprec c
+                  | nargs -> 
+                    let kind = Evar_kinds.{ qm_obligation = Define false;
+                                            qm_name = Anonymous;
+                                            qm_record_field = None }
+                    in
+                    let newarg = GHole (Evar_kinds.QuestionMark kind, Namegen.IntroAnonymous, None) in
+                    let newarg = DAst.make ?loc newarg in
+                    let before, after = List.chop nargs (mapargs args) in
+                    let args' = List.append before (newarg :: after) in
+                    DAst.make ?loc (GApp (fn, args')))
                 | _ -> maprec c) fn
           | _ -> maprec c) c
     in aux c
@@ -699,7 +707,9 @@ let compute_rec_type context programs =
       user_err_loc (None, Pp.str "Mutual well-founded definitions are not supported");
     let p = List.hd programs in
     match p.program_rec with
-    | Some (WellFounded (_, _, newinfo)) -> Some (Logical newinfo) :: context
+    | Some (WellFounded (_, _, id)) -> 
+      let nargs = Context.Rel.nhyps p.program_sign in
+      Some (Logical (nargs, id)) :: context
     | _ -> assert false
   end
 

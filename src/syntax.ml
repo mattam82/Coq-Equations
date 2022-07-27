@@ -265,7 +265,7 @@ let equations_tactic =
 
 type rec_type_item =
   | Guarded of (Id.t * rec_annot) list (* for mutual rec *)
-  | Logical of Id.t with_loc (* for nested wf rec *)
+  | Logical of int * Id.t with_loc (* for nested wf rec: number of arguments before the side-condition *)
 
 type rec_type = rec_type_item option list
 
