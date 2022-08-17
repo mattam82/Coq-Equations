@@ -854,7 +854,7 @@ module Tactics =struct
              tclTHEN (clear [id]) (Tactics.letin_tac None (Name id) newprf (Some typ) nowhere)
           | None ->
              (tclTHENFIRST (assert_before_replacing id typ)
-                           (Logic.refiner ~check:false EConstr.Unsafe.(to_constr prf))))
+                           (Tactics.exact_no_check prf)))
       | None -> tclFAIL (str"No currying to do in " ++ Id.print id)
   end
 
