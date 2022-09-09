@@ -5,7 +5,7 @@ dev-repo: "git+https://github.com/mattam82/Coq-Equations.git"
 maintainer: "matthieu.sozeau@inria.fr"
 homepage: "https://mattam82.github.io/Coq-Equations"
 bug-reports: "https://github.com/mattam82/Coq-Equations/issues"
-license: "LGPL-2.1-or-later"
+license: "LGPL-2.1-only"
 synopsis: "A function definition package for Coq"
 description: """
 Equations is a function definition plugin for Coq, that allows the
