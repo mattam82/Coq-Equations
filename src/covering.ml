@@ -1538,7 +1538,7 @@ and interp_wheres env0 ctx evars path data s lets
 
     let is_rec = is_recursive id ([eqs], notations) in
     let p = interp_arity env evars ~poly:false ~is_rec ~with_evars:true notations eqs in
-    let clauses = List.map (interp_eqn env (data.notations @ notations) p ~avoid:Id.Set.empty) clauses in
+    let clauses = List.map (interp_eqn env !evars (data.notations @ notations) p ~avoid:Id.Set.empty) clauses in
     let sigma, p = adjust_sign_arity env !evars p clauses in
     let () = evars := sigma in
 
@@ -1613,7 +1613,7 @@ and covering ?(check_unused=true) env evars p data (clauses : pre_clause list)
        pr_problem p env !evars prob)
 
 let program_covering env evd data p clauses =
-  let clauses = List.map (interp_eqn (push_rel_context data.fixdecls env) 
+  let clauses = List.map (interp_eqn (push_rel_context data.fixdecls env) !evd
     data.notations p ~avoid:Id.Set.empty) clauses in
   let sigma, p = adjust_sign_arity env !evd p clauses in
   let () = evd := sigma in
