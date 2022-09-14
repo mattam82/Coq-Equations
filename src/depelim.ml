@@ -109,7 +109,7 @@ let dependent_pattern ?(pattern_term=true) c =
       Find_subterm.subst_closed_term_occ env sigma
         (Locus.AtOccs Locus.AllOccurrences) c ty
     in
-      mkNamedLambda (annotR id) cty conclvar, sigma
+      mkNamedLambda sigma (annotR id) cty conclvar, sigma
   in
   let subst =
     let deps = List.rev_map (fun c -> (c, varname c, pf_get_type_of gl c)) deps in
@@ -237,7 +237,7 @@ let pattern_call ?(pattern_term=true) c =
   let mklambda ty (c, id, cty) =
     let conclvar, _ = Find_subterm.subst_closed_term_occ env (project gl)
       (Locus.AtOccs Locus.AllOccurrences) c ty in
-      mkNamedLambda (annotR id) cty conclvar
+      mkNamedLambda sigma (annotR id) cty conclvar
   in
   let subst =
     let deps = List.rev_map (fun c -> (c, varname c, pf_get_type_of gl c)) deps in
@@ -400,13 +400,13 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
     end >>= fun rel ->
 
     (* We want to work in a [rel_context], not a [named_context]. *)
-    let ctx, subst = Equations_common.rel_of_named_context loc_hyps in
+    let ctx, subst = Equations_common.rel_of_named_context sigma loc_hyps in
     let _, rev_subst, _ =
       let err () = assert false in
       Equations_common.named_of_rel_context ~keeplets:true err ctx in
     (* We also need to convert the goal for it to be well-typed in
      * the [rel_context]. *)
-    let ty = Vars.subst_vars subst concl in
+    let ty = Vars.subst_vars sigma subst concl in
     let rhs =
       let prog = Constrexpr.CHole (None, Namegen.IntroAnonymous, None) in
         Syntax.Program (Syntax.ConstrExpr (CAst.make prog), ([], []))

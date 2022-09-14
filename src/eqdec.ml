@@ -117,7 +117,7 @@ let derive_eq_dec ~pm env sigma ~poly ind =
                 mkApp (lift 2 app, [| mkRel 2; mkRel 1 |])))
     in
     let typ = it_mkProd_or_LetIn app ind.ind_args in
-    let full = it_mkNamedProd_or_LetIn typ ctx in
+    let full = it_mkNamedProd_or_LetIn !evdref typ ctx in
     let evm, _ = Typing.solve_evars (Global.env ()) !evdref full in
     let () = evdref := evm in
     let tc gr = 
@@ -127,10 +127,10 @@ let derive_eq_dec ~pm env sigma ~poly ind =
           [indapp; mkapp (Global.env ()) evdref (Lazy.from_val gr)
              (Array.append (vars_of_pars ctx) argsvect) ] in
       let body = 
-        it_mkNamedLambda_or_LetIn 
+        it_mkNamedLambda_or_LetIn !evdref
           (it_mkLambda_or_LetIn (Option.get b) ind.ind_args) ctx
       in
-      let types = it_mkNamedProd_or_LetIn (it_mkProd_or_LetIn ty ind.ind_args) ctx in
+      let types = it_mkNamedProd_or_LetIn !evdref (it_mkProd_or_LetIn ty ind.ind_args) ctx in
       let evm, _ = Typing.solve_evars (Global.env ()) !evdref (mkCast (body, Constr.DEFAULTcast, types)) in
       let () = evdref := evm in
       let types = to_constr !evdref types in

@@ -189,7 +189,7 @@ let mutual_fix li l =
       (fun sigma ->
         let nenv = Environ.reset_with_named_context (Environ.val_of_named_context sign) env in
         let (sigma, evs) = mk_holes nenv sigma types in
-        let evs = Array.map_of_list (Vars.subst_vars (List.rev li)) evs in
+        let evs = Array.map_of_list (Vars.subst_vars sigma (List.rev li)) evs in
         let types = Array.of_list types in
         let decl = (nas,types,evs) in
         let () = body := (fun i -> mkFix ((idx,i),decl)) in

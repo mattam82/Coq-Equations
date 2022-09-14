@@ -72,7 +72,7 @@ val compute_elim_type :
   (node_kind * 'e * 'f * 'g option) list ->
   rel_context -> constr -> types -> int * types
 val replace_vars_context :
-  Names.Id.t list ->
+  Evd.evar_map -> Names.Id.t list ->
   Equations_common.rel_declaration list ->
   int * Equations_common.rel_declaration list
 val pr_where :

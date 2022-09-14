@@ -429,7 +429,7 @@ let uncurry_hyps name =
       let (dna, _, dty) = to_named_tuple d in
       let sigma, sigmaI = new_global sigma (Lazy.force coq_sigmaI) in
       let _, u = destConstruct sigma sigmaI in
-      let types = [| dty; mkNamedLambda dna dty ty |] in
+      let types = [| dty; mkNamedLambda sigma dna dty ty |] in
       let app = mkApp (sigmaI, Array.append types [| mkVar dna.binder_name; acc |]) in
       (sigma, app, mkApp (mkIndG coq_sigma u, types))
     in
@@ -844,13 +844,14 @@ module Tactics =struct
 
   let curry_hyp id =
   Proofview.Goal.enter begin fun gl ->
+    let sigma = Proofview.Goal.sigma gl in
     let decl = pf_get_hyp id gl in
     let (na, body, ty) = to_named_tuple decl in
       match curry_hyp (pf_env gl) (project gl) id ty with
       | Some (prf, typ) ->
          (match body with
           | Some b ->
-             let newprf = Vars.replace_vars [(id,b)] prf in
+             let newprf = Vars.replace_vars sigma [(id,b)] prf in
              tclTHEN (clear [id]) (Tactics.letin_tac None (Name id) newprf (Some typ) nowhere)
           | None ->
              (tclTHENFIRST (assert_before_replacing id typ)

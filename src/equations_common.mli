@@ -359,7 +359,7 @@ val make_named_def : Names.Id.t Context.binder_annot -> constr option -> constr 
 val to_context : (Names.Name.t Context.binder_annot * constr option * constr) list -> rel_context
 
 val named_of_rel_context : ?keeplets:bool -> (unit -> Names.Id.t) -> rel_context -> EConstr.t list * constr list * named_context
-val rel_of_named_context : named_context -> rel_context * Names.Id.t list
+val rel_of_named_context : Evd.evar_map -> named_context -> rel_context * Names.Id.t list
 val subst_rel_context : int -> EConstr.t list -> rel_context -> rel_context
 val get_id : named_declaration -> Names.Id.t
 val get_named_type : named_declaration -> constr
@@ -390,7 +390,7 @@ val subst_telescope : constr -> rel_context -> rel_context
 val subst_in_ctx : int -> constr -> rel_context -> rel_context
 val set_in_ctx : int -> constr -> rel_context -> rel_context
 val subst_in_named_ctx :
-  Names.Id.t -> constr -> named_context -> named_context
+  Evd.evar_map -> Names.Id.t -> constr -> named_context -> named_context
 
 val evar_declare : named_context_val ->
   Evar.t -> 
