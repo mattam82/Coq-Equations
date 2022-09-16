@@ -904,10 +904,10 @@ let named_of_rel_context ?(keeplets = false) default l =
       l ([], [], [], [])
   in acc, rev args, ctx
 
-let rel_of_named_context ctx = 
+let rel_of_named_context sigma ctx = 
   List.fold_right (fun decl (ctx',subst) ->
       let (n, b, t) = to_named_tuple decl in
-      let decl = make_def (map_annot (fun n -> Name n) n) (Option.map (subst_vars subst) b) (subst_vars subst t) in
+      let decl = make_def (map_annot (fun n -> Name n) n) (Option.map (subst_vars sigma subst) b) (subst_vars sigma subst t) in
       (decl :: ctx', n.binder_name :: subst)) ctx ([],[])
 
 let empty_hint_info = Hints.empty_hint_info
@@ -967,13 +967,13 @@ let map_named_declaration = Context.Named.Declaration.map_constr
 let map_named_context = Context.Named.map
 let lookup_named = Context.Named.lookup
 
-let subst_in_named_ctx (n : Id.t) (c : constr) (ctx : EConstr.named_context) : EConstr.named_context =
+let subst_in_named_ctx sigma (n : Id.t) (c : constr) (ctx : EConstr.named_context) : EConstr.named_context =
   let rec aux after = function
     | [] -> []
     | decl :: before ->
        let name = get_id decl in
        if Id.equal name n then (rev after) @ before
-       else aux (map_named_declaration (replace_vars [n,c]) decl :: after)
+       else aux (map_named_declaration (replace_vars sigma [n,c]) decl :: after)
                 before
   in aux [] ctx
 

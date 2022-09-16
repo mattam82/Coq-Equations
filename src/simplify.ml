@@ -1311,13 +1311,13 @@ let simplify_tac (rules : simplification_rules) : unit Proofview.tactic =
         Termops.is_section_variable (Global.env ()) id) hyps in
     let env = push_named_context sec_hyps env in
     (* We want to work in a [rel_context], not a [named_context]. *)
-    let ctx, subst = Equations_common.rel_of_named_context loc_hyps in
+    let ctx, subst = Equations_common.rel_of_named_context sigma loc_hyps in
     let _, rev_subst, _ =
       let err () = assert false in
       Equations_common.named_of_rel_context ~keeplets:true err ctx in
     (* We also need to convert the goal for it to be well-typed in
      * the [rel_context]. *)
-    let ty = Vars.subst_vars subst concl in
+    let ty = Vars.subst_vars sigma subst concl in
     (* [ty'] is the expected type of the hole in the term, under the
      * context [ctx']. *)
     Refine.refine ~typecheck:true (fun evars ->

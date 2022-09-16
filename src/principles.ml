@@ -590,10 +590,10 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
   let nargs = List.length methods' + undefpreds + 1 in
   nargs, elimty
 
-let replace_vars_context inst ctx =
+let replace_vars_context sigma inst ctx =
   List.fold_right
     (fun decl (k, acc) ->
-      let decl' = map_rel_declaration (substn_vars k inst) decl in
+      let decl' = map_rel_declaration (substn_vars sigma k inst) decl in
       (succ k, decl' :: acc))
     ctx (1, [])
 

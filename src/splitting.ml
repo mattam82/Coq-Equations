@@ -603,7 +603,7 @@ let term_of_tree env0 isevar sort tree =
             let vars_subst = List.map2 (fun decl c ->
                 let id = Context.Named.Declaration.get_id decl in
                 id, c) (Environ.named_context env) named in
-            let term = Vars.replace_vars vars_subst next_term in
+            let term = Vars.replace_vars !evd vars_subst next_term in
             let term = Vars.substl rels term in
             (* let _ =
              *   let env = Evd.evar_env ev_info in
@@ -1050,26 +1050,21 @@ let solve_equations_obligations ~pm flags recids loc i sigma hook =
         let local_context, section_context =
           List.chop (List.length evcontext - section_length) evcontext
         in
-        let type_ = Termops.it_mkNamedProd_or_LetIn evi.Evd.evar_concl local_context in
+        let type_ = Termops.it_mkNamedProd_or_LetIn sigma evi.Evd.evar_concl local_context in
         let type_ = nf_beta env sigma type_ in
         env, ev, evi, local_context, type_) evars in
   (* Make goals from a copy of the evars *)
-  let isevar0 = ref sigma in
-  let wits = ref [] in
   let tele =
     let rec aux types evm =
       match types with
       | [] -> Proofview.TNil evm
       | (evar_env, ev, evi, local_context, type_) :: tys ->
-        let evar_env = nf_env_evar !isevar0 evar_env in
-        Proofview.TCons (evar_env, evm, nf_evar !isevar0 type_,
-           (fun evm' wit ->
-             isevar0 :=
-               Evd.define ev (applist (wit, Context.Named.instance_list mkVar local_context))
-                 !isevar0;
-             wits := wit :: !wits;
-             aux tys evm'))
-    in aux types (Evd.from_ctx (Evd.evar_universe_context sigma))
+        let cont evm wit =
+          let evm = Evd.define ev (applist (wit, Context.Named.instance_list mkVar local_context)) evm in
+          aux tys evm
+        in
+        Proofview.TCons (evar_env, evm, nf_evar evm type_, cont)
+    in aux types sigma
   in
   let do_intros =
     (* Force introductions to be able to shrink the bodies later on. *)
@@ -1171,9 +1166,7 @@ let solve_equations_obligations_program ~pm flags recids loc i sigma hook =
     let () =
       Evd.fold_undefined
       (fun ev evi () ->
-      let args =
-        (List.map (fun d -> EConstr.mkVar (Context.Named.Declaration.get_id d))
-                       (Evd.evar_filtered_context evi)) in
+      let args = Evd.evar_identity_subst evi in
       let evart = EConstr.mkEvar (ev, args) in
       let evc = cmap evc evart in
       evd := Evd.define ev (whd_beta env !evd (EConstr.of_constr evc)) !evd)

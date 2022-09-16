@@ -376,13 +376,13 @@ let derive_below env sigma ~poly (ind,univ as indu) =
       lift 2 (it_mkLambda_or_LetIn caseB argbinders), lift 3 (it_mkLambda_or_LetIn caseb argbinders)
   in
   let fixB = mkFix (([| realargs |], 0), ([| nameR recid |], [| arity |],
-				     [| subst_vars [recid; pid] termB |])) in
+				     [| subst_vars !evd [recid; pid] termB |])) in
   let bodyB = it_mkLambda_or_LetIn fixB (pdecl :: parambinders) in
   let id = add_prefix "Below_" (Nametab.basename_of_global (GlobRef.IndRef ind)) in
   let _, (evd, belowB) = declare_constant id bodyB None ~poly !evd
       ~kind:Decls.(IsDefinition Definition) in
   let fixb = mkFix (([| realargs |], 0), ([| nameR recid |], [| arityb |],
-				    [| subst_vars [recid; stepid] termb |])) in
+				    [| subst_vars evd [recid; stepid] termb |])) in
   let stepdecl =
     let stepty = mkProd (anonR, mkApp (belowB, paramspargs),
                         mkApp (mkVar pid, Array.map (lift 1) argsvect))
@@ -390,10 +390,10 @@ let derive_below env sigma ~poly (ind,univ as indu) =
   in
   let bodyb = 
     it_mkLambda_or_LetIn
-      (subst_vars [pid] (mkLambda_or_LetIn stepdecl fixb))
+      (subst_vars evd [pid] (mkLambda_or_LetIn stepdecl fixb))
       (pdecl :: parambinders)
   in
-  let bodyb = replace_vars [belowid, belowB] bodyb in
+  let bodyb = replace_vars evd [belowid, belowB] bodyb in
   let id = add_prefix "below_" (Nametab.basename_of_global (GlobRef.IndRef ind)) in
   let evd = if poly then evd else Evd.from_env (Global.env ()) in
   ignore(declare_constant id bodyb None ~poly evd

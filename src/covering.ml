@@ -375,7 +375,7 @@ let interp_program_body env sigma ctx data body ty =
           | Name na -> (na, mkRel i) :: subst
           | _ -> subst) 1 [] ctx
     in
-    let c = Vars.replace_vars subst c in
+    let c = Vars.replace_vars sigma subst c in
     let sigma =
       match ty with
       | None -> fst (Typing.type_of env sigma c)
@@ -652,7 +652,7 @@ let instance_of_pats env evars (ctx : rel_context) (pats : (int * bool) list) =
             if i'' == i' then Some (if hide then PHide i else PRel i)
             else None) pats)
       1 ctx'
-  in fst (rel_of_named_context ctx'), pats', pats''
+  in fst (rel_of_named_context evars ctx'), pats', pats''
 
 let push_rel_context_eos ctx env evars =
   if named_context env <> [] then
