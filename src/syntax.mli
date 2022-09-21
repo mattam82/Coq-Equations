@@ -174,12 +174,12 @@ val pattern_of_glob_constr :
   Names.Id.Set.t * (user_pat, [ `any] ) DAst.t
 
 
-val interp_pat : Environ.env -> Vernacexpr.decl_notation list -> avoid:Id.Set.t ->
+val interp_pat : Environ.env -> Evd.evar_map -> Vernacexpr.decl_notation list -> avoid:Id.Set.t ->
   (program_info * Names.Name.t list) option ->
   Constrexpr.constr_expr -> 
   Id.Set.t * user_pats
 
-val interp_eqn : env -> Vernacexpr.decl_notation list -> program_info ->
+val interp_eqn : env -> Evd.evar_map -> Vernacexpr.decl_notation list -> program_info ->
   avoid:Id.Set.t ->
   pre_equation -> pre_clause
 

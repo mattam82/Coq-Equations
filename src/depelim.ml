@@ -488,12 +488,13 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
 let dependent_elim_tac_expr ?patterns id : unit Proofview.tactic =
   Proofview.Goal.enter begin fun gl ->
     let env = Proofview.Goal.env gl in
+    let sigma = Proofview.Goal.sigma gl in
     (* Interpret each pattern to then produce clauses. *)
     let patterns =
       match patterns with
       | None -> None
       | Some p ->
         let avoid = Syntax.ids_of_pats None p in
-        Some (List.map (fun x -> List.hd (snd (Syntax.interp_pat env [] ~avoid None x))) p)
+        Some (List.map (fun x -> List.hd (snd (Syntax.interp_pat env sigma [] ~avoid None x))) p)
     in dependent_elim_tac ?patterns id
   end

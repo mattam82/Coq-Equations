@@ -414,8 +414,7 @@ let pattern_of_glob_constr env sigma avoid patname gc =
 
 let program_type p = EConstr.it_mkProd_or_LetIn p.program_arity p.program_sign
 
-let interp_pat env notations ~avoid p pat =
-  let sigma = Evd.from_env env in
+let interp_pat env sigma notations ~avoid p pat =
   let vars = (Id.Set.elements avoid) (* (ids_of_pats [p])) *) in
   (* let () = Feedback.msg_debug (str"Variables " ++ prlist_with_sep spc pr_id vars) in *)
   let tys = List.map (fun _ -> EConstr.mkProp) vars in
@@ -500,7 +499,7 @@ let interleave_implicits impls pats =
     | [], pats -> pats
   in aux impls pats
 
-let interp_eqn env notations p ~avoid eqn =
+let interp_eqn env sigma notations p ~avoid eqn =
   let whereid = ref (Nameops.add_suffix p.program_id "_abs_where") in
   let patnames =
     List.rev_map (fun decl -> Context.Rel.Declaration.get_name decl) p.program_sign
@@ -510,7 +509,7 @@ let interp_eqn env notations p ~avoid eqn =
         if Impargs.is_status_implicit a then Some (Impargs.name_of_implicit a) else None)
       p.program_implicits
   in
-  let interp_pat notations avoid = interp_pat env notations ~avoid in
+  let interp_pat notations avoid = interp_pat env sigma notations ~avoid in
   let rec aux notations avoid curpats (pat, rhs) =
     let loc, avoid, pats =
       match pat with
