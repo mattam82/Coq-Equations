@@ -989,12 +989,6 @@ let print_error e = CErrors.print e
 let nf_betadeltaiota = nf_all
 let anomaly ?label pp = CErrors.anomaly ?label pp
 
-let evar_declare sign ev ty ?src evm =
-  let evi = Evd.make_evar sign ty in
-  let evi = match src with Some src -> { evi with Evd.evar_source = src }
-                         | None -> evi in
-  Evd.add evm ev evi
-
 let new_evar env evm ?src ty =
   Evarutil.new_evar env evm ?src ty
 
