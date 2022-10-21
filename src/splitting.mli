@@ -118,12 +118,6 @@ val context_map_of_splitting : splitting -> context_map
 
 val check_splitting : env -> Evd.evar_map -> splitting -> unit
 
-val helper_evar :
-  Evd.evar_map ->
-  Evar.t ->
-  env ->
-  types -> Evar_kinds.t Loc.located -> Evd.evar_map * constr
-
 (** Compilation to Coq terms *)
 val term_of_tree :
   env ->

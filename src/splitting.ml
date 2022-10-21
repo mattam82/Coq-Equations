@@ -471,12 +471,6 @@ let define_mutual_nested env evd get_prog progs =
   let nested = List.map2 declare_nested nested nestedbodies in
   fixes, nested
 
-let helper_evar evm evar env typ src =
-  let hypnaming = RenameExistingBut VarSet.full in
-  let sign, typ', instance, _ = push_rel_context_to_named_context ~hypnaming env evm typ in
-  let evm' = evar_declare sign evar typ' ~src evm in
-    evm', mkEvar (evar, instance)
-
 let term_of_tree env0 isevar sort tree =
   let rec aux env evm sort = function
     | Compute ((ctx, _, _), where, ty, RProgram rhs) ->

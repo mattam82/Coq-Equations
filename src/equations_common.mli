@@ -392,10 +392,6 @@ val set_in_ctx : int -> constr -> rel_context -> rel_context
 val subst_in_named_ctx :
   Evd.evar_map -> Names.Id.t -> constr -> named_context -> named_context
 
-val evar_declare : named_context_val ->
-  Evar.t -> 
-  EConstr.types -> ?src:(Evar_kinds.t Loc.located) -> Evd.evar_map -> Evd.evar_map
-
 val new_evar :            Environ.env ->
            Evd.evar_map ->
            ?src:Evar_kinds.t Loc.located ->
