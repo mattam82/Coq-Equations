@@ -1038,13 +1038,13 @@ let solve_equations_obligations ~pm flags recids loc i sigma hook =
   let types =
     List.map (fun (ev, evi) ->
         if !Equations_common.debug then
-          Feedback.msg_debug (str"evar type" ++ Printer.pr_econstr_env env sigma evi.Evd.evar_concl);
+          Feedback.msg_debug (str"evar type" ++ Printer.pr_econstr_env env sigma (Evd.evar_concl evi));
         let section_length = List.length (named_context env) in
         let evcontext = Evd.evar_context evi in
         let local_context, section_context =
           List.chop (List.length evcontext - section_length) evcontext
         in
-        let type_ = Termops.it_mkNamedProd_or_LetIn sigma evi.Evd.evar_concl local_context in
+        let type_ = Termops.it_mkNamedProd_or_LetIn sigma (Evd.evar_concl evi) local_context in
         let type_ = nf_beta env sigma type_ in
         env, ev, evi, local_context, type_) evars in
   (* Make goals from a copy of the evars *)
