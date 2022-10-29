@@ -209,7 +209,7 @@ let check_guard gls env sigma =
   let gl = Proofview.drop_state (List.hd gls) in
   try
     let evi = Evd.find sigma gl in
-    match evi.Evd.evar_body with
+    match Evd.evar_body evi with
     | Evd.Evar_defined b -> Inductiveops.control_only_guard (Evd.evar_env env evi) sigma b; true
     | Evd.Evar_empty -> true
   with Type_errors.TypeError _ -> false
