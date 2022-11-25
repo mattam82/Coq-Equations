@@ -74,7 +74,7 @@ lift k n (Fst t) := Fst (lift k n t) ;
 lift k n (Snd t) := Snd (lift k n t) ;
 lift k n Tt := Tt.
 
-Tactic Notation "absurd"  tactic(tac) := elimtype False; tac.
+Tactic Notation "absurd"  tactic(tac) := exfalso; tac.
 
 Ltac term_eq := 
   match goal with

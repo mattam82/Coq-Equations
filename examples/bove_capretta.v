@@ -72,11 +72,11 @@ Proof. lia. Qed.
     by _structural_ recursion. *)
 
 Equations f91_dom_le_inv_l {n} (prf : f91_dom n) (Hle : n <= 100) : f91_dom (n + 11) :=
-| f91_dom_gt n H | Hle := ltac:(elimtype False; eauto using le_nle);
+| f91_dom_gt n H | Hle := ltac:(exfalso; eauto using le_nle);
 | f91_dom_le n H Hd Hg | Hle := Hd.
 
 Equations f91_dom_le_inv_r {n} (prf : f91_dom n) (Hle : n <= 100) : (forall n', f91_graph (n + 11) n' -> f91_dom n') :=
-| f91_dom_gt n H | Hle := ltac:(elimtype False; eauto using le_nle);
+| f91_dom_gt n H | Hle := ltac:(exfalso; eauto using le_nle);
 | f91_dom_le n H Hd Hg | Hle := Hg.
 
 Module WithSigma.
@@ -91,7 +91,7 @@ Module WithSigma.
         | right H => (n - 10, _) }.
   Proof.
     clear f91_ongraph.
-    destruct prf. elimtype False; lia.
+    destruct prf. exfalso; lia.
     apply prf.
     destruct f91_ongraph. clear f91_ongraph. simpl. eapply f91_dom_le_inv_r in prf; eauto.
     destruct f91_ongraph. simpl in *.
@@ -119,7 +119,7 @@ Module WithSubset.
         | right H => n - 10 }.
   Proof.
     clear f91_ongraph.
-    destruct prf. elimtype False; lia.
+    destruct prf. exfalso; lia.
     apply prf.
     destruct f91_ongraph. clear f91_ongraph. simpl. eapply f91_dom_le_inv_r in prf; eauto.
     destruct f91_ongraph. simpl in *.
