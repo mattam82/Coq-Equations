@@ -782,7 +782,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),udecl,rec
   let program_sort =
     let u = Retyping.get_sort_of env !evd program_orig_type in
     let sigma, sortl, sortu = nonalgebraic_universe_level_of_universe env !evd u in
-    evd := sigma; sortu
+    evd := sigma; ESorts.kind sigma sortu
   in
   let program_implicits = Impargs.compute_implicits_with_manual env !evd program_orig_type false impls in
   let () = evd := Evd.minimize_universes !evd in
@@ -1509,7 +1509,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
          str "And clauses: " ++ pr_preclauses env !evars cls')
     | Some (clauses, s) ->
       let () = check_unused_clauses env !evars clauses in
-      let term, _ = term_of_tree env evars p.program_sort s in
+      let term, _ = term_of_tree env evars (ESorts.make p.program_sort) s in
       let info =
         { refined_obj = (idref, cconstr, cty);
           refined_rettyp = ty;

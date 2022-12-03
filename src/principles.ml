@@ -816,7 +816,7 @@ let subst_rec_programs env evd ps =
       let splitting' =
           aux rec_cutprob s' program' oterm path' p.program_splitting
       in
-      let term', ty' = term_of_tree env evd prog_info.program_sort splitting' in
+      let term', ty' = term_of_tree env evd (ESorts.make prog_info.program_sort) splitting' in
       { program_rec = None;
         program_info = program_info';
         program_prob = id_subst (pi3 cutprob_sign);
@@ -940,7 +940,7 @@ let subst_rec_programs env evd ps =
       let refarg = ref (0,0) in
       let refhead =
         if islogical then
-          let term', _ = term_of_tree env evd p.program_info.program_sort s' in
+          let term', _ = term_of_tree env evd (ESorts.make p.program_info.program_sort) s' in
           term'
          else mapping_constr !evd subst oterm
       in
@@ -1419,6 +1419,7 @@ let level_of_context env evd ctx acc =
   let _, lev =
     List.fold_right (fun decl (env, lev) ->
         let s = Retyping.get_sort_of env evd (get_type decl) in
+        let s = ESorts.kind evd s in
         (push_rel decl env, max_sort s lev))
                     ctx (env,acc)
   in lev
@@ -1635,7 +1636,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     let entry =
       Entries.{ mind_entry_typename = indid;
                 mind_entry_arity = to_constr !evd (it_mkProd_or_LetIn (mkProd (anonR, arity,
-                                                                               mkSort ind_sort)) sign);
+                                                                               mkSort (ESorts.make ind_sort))) sign);
                 mind_entry_consnames = consnames;
                 mind_entry_lc = constructors;
               }
@@ -1651,7 +1652,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
                     mind_entry_lc = List.map (to_constr sigma) (List.map of_constr entry.mind_entry_lc);
                     mind_entry_arity =
                       to_constr sigma (it_mkProd_or_LetIn (mkProd (anonR, arity,
-                                                                  mkSort sort)) sign) })
+                                                                  mkSort (ESorts.make sort))) sign) })
         inds
     in
     let univs, ubinders = Evd.univ_entry ~poly sigma in

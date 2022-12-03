@@ -456,7 +456,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
     let program_orig_type = it_mkProd_or_LetIn ty ctx in
     let p = Syntax.{program_loc = default_loc;
                     program_id = Names.Id.of_string "dummy";
-                    program_orig_type; program_sort = sort;
+                    program_orig_type; program_sort = (ESorts.kind sigma sort);
                     program_impls = [];
                     program_implicits = [];
                     program_rec = None;

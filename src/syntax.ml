@@ -323,7 +323,7 @@ type program_info = {
 }
 
 let map_universe f u =
-  let u' = f (EConstr.mkSort u) in
+  let u' = f (EConstr.mkSort (EConstr.ESorts.make u)) in
   match Constr.kind (EConstr.Unsafe.to_constr u') with
   | Sort s -> s
   | _ -> assert false

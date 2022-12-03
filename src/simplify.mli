@@ -15,7 +15,7 @@ and simplification_rule =
   | Infer_many
 and simplification_rules = (Loc.t option * simplification_rule) list
 
-type goal = EConstr.rel_context * EConstr.types * Sorts.t
+type goal = EConstr.rel_context * EConstr.types * EConstr.ESorts.t
 (* The [goal] corresponds to the context and type of an evar representing a
  * hole in the term. *)
 type open_term = (goal * EConstr.existential) option * EConstr.constr

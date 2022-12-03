@@ -134,7 +134,7 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
   let sigma, s =
     match Lazy.force logic_sort with
     | Sorts.InType | Sorts.InSet -> (* In that case noConfusion lives at the level of the inductive family *)
-      let sort = EConstr.mkSort inds in
+      let sort = EConstr.mkSort (ESorts.make inds) in
       let is_level = match inds with
       | Sorts.Prop | Sorts.SProp | Sorts.Set -> true
       | Sorts.Type u -> Univ.Universe.is_level u
