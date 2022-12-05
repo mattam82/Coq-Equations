@@ -507,7 +507,7 @@ Ltac destruct_last :=
 (** To solve a goal by inversion on a particular target. *)
 
 Ltac do_empty id :=
-  elimtype False ; simpl in id ;
+  exfalso ; simpl in id ;
   solve [ generalize_by_eqs id ; destruct id ; simplify_dep_elim
     | apply id ; eauto with Below ].
 
@@ -639,7 +639,7 @@ Tactic Notation "dependent" "induction" ident(H) "generalizing" ne_hyp_list(l) "
 
 (** [solve_equation] is used to prove the equation lemmas for an existing definition.  *)
 
-Ltac find_empty := simpl in * ; elimtype False ;
+Ltac find_empty := simpl in * ; exfalso ;
   match goal with
     | [ H : _ |- _ ] => solve [ clear_except H ; dependent elimination H | eqns_specialize_eqs H ; assumption ]
     | [ H : _ <> _ |- _ ] => solve [ red in H ; eqns_specialize_eqs H ; assumption ]

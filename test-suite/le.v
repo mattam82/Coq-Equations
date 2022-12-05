@@ -47,11 +47,11 @@ Lemma le'_irrel n m (p q : le' n m) : p = q.
 Proof.
   revert q. induction p using le'_dep.
   intros q. depelim q. reflexivity.
-  elimtype False.
+  exfalso.
   now eapply le'prf_nocycle in q.
   intros q.
   depelim q.
-  elimtype False. clear IHp.
+  exfalso. clear IHp.
   now eapply le'prf_nocycle in p.
   f_equal. apply IHp.
 Defined.

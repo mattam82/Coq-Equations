@@ -60,9 +60,9 @@ Qed.
 Lemma le_hprop m n : forall e e' : m <= n, e = e'.
 Proof.
   induction e using le_dep. intros e'. DepElim.depelim e'. constructor.
-  elimtype False; now apply le_Sn_n in e'.
+  exfalso; now apply le_Sn_n in e'.
   intros. depelim e'.
-  elimtype False; clear IHe; now apply le_Sn_n in e.
+  exfalso; clear IHe; now apply le_Sn_n in e.
   now rewrite (IHe e').
 Qed.
 
