@@ -121,6 +121,7 @@ let telescope env evd = function
       let (n, _, t) = to_tuple d in
       let len = succ (List.length tl) in
       let ts = Retyping.get_sort_of (push_rel_context tl env) !evd t in
+      let ts = ESorts.kind !evd ts in
       let ty, tys =
         let rec aux (ty, tyuniv, tys) ds =
           match ds with
@@ -137,6 +138,7 @@ let telescope env evd = function
             let open UnivProblem in
             let enforce_leq env sigma t cstr =
               let ts = Retyping.get_sort_of env sigma t in
+              let ts = ESorts.kind sigma ts in
               UnivProblem.Set.add (ULe (ts, l)) cstr
             in
             let cstrs = enforce_leq env !evd t (UnivProblem.Set.add (ULe (tyuniv, l)) UnivProblem.Set.empty) in

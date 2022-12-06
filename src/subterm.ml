@@ -46,7 +46,7 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
     | Sorts.InSProp -> failwith "not implemented"
     | Sorts.InProp -> mkProp
     | Sorts.InSet -> mkSet
-    | Sorts.InType -> EConstr.mkSort indsort
+    | Sorts.InType -> EConstr.mkSort (ESorts.make indsort)
   in
   let len = List.length ctx in
   let params = mind.mind_nparams_rec in
