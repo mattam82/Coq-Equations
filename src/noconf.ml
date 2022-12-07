@@ -93,7 +93,7 @@ let derive_no_confusion ~pm env sigma0 ~poly (ind,u as indu) =
     | Sorts.InSProp -> mkSProp
     | Sorts.InProp -> mkProp
     | Sorts.InSet -> mkSet
-    | Sorts.InType ->
+    | Sorts.InType | Sorts.InQSort ->
       (* In that case the noConfusion principle lives at the level of the type. *)
       let sort = EConstr.mkSort (ESorts.make inds) in
       let sigma, s =

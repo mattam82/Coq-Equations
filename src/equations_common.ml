@@ -1079,7 +1079,7 @@ let nonalgebraic_universe_level_of_universe env sigma u =
   match ESorts.kind sigma u with
   | Sorts.Set | Sorts.Prop | Sorts.SProp ->
     sigma, Univ.Level.set, u
-  | Sorts.Type u0 ->
+  | Sorts.Type u0 | Sorts.QSort (_, u0) ->
     match Univ.Universe.level u0 with
     | Some l ->
       (match Evd.universe_rigidity sigma l with
