@@ -19,7 +19,7 @@ val define_by_eqs
   -> open_proof:bool
   -> Syntax.equation_options
   -> Syntax.pre_equations
-  -> Vernacexpr.decl_notation list
+  -> Vernacexpr.notation_declaration list
   -> Declare.OblState.t * Declare.Proof.t option
 
 val define_principles :
@@ -34,7 +34,7 @@ val equations :
   poly:bool -> program_mode:bool -> ?tactic:Libnames.qualid ->
   Syntax.equation_options ->
   Syntax.pre_equations ->
-  Vernacexpr.decl_notation list ->
+  Vernacexpr.notation_declaration list ->
   Declare.OblState.t
 
 val equations_interactive :
@@ -42,7 +42,7 @@ val equations_interactive :
   poly:bool -> program_mode:bool -> ?tactic:Libnames.qualid ->
   Syntax.equation_options ->
   Syntax.pre_equations ->
-  Vernacexpr.decl_notation list ->
+  Vernacexpr.notation_declaration list ->
   Declare.OblState.t * Declare.Proof.t
 
 val solve_equations_goal :

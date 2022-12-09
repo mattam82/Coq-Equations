@@ -30,7 +30,7 @@ type int_data = {
   flags : flags;
   program_mode : bool;
   intenv : Constrintern.internalization_env;
-  notations : Vernacexpr.decl_notation list
+  notations : Vernacexpr.notation_declaration list
 }
 
 exception Conflict
@@ -1531,7 +1531,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
 
 and interp_wheres env0 ctx evars path data s lets
     (ctx, envctx, liftn, subst)
-    (w : (pre_prototype * pre_equation list) list * Vernacexpr.decl_notation list) =
+    (w : (pre_prototype * pre_equation list) list * Vernacexpr.notation_declaration list) =
   let notations = snd w in
   let aux (data,lets,nlets,coverings,env)
       (((loc,id),udecl,nested,b,t,reca),clauses as eqs) =

@@ -81,7 +81,7 @@ and ('a, 'b) by_annot =
   | WellFounded of 'b
 
 and 'a where_clause = pre_prototype * 'a list
-and 'a wheres = 'a where_clause list * Vernacexpr.decl_notation list
+and 'a wheres = 'a where_clause list * Vernacexpr.notation_declaration list
 type program = (signature * clause list) list
 and signature = identifier * rel_context * constr (* f : Π Δ. τ *)
 and clause = Loc.t option * lhs * (clause, clause) rhs (* lhs rhs *)
@@ -174,12 +174,12 @@ val pattern_of_glob_constr :
   Names.Id.Set.t * (user_pat, [ `any] ) DAst.t
 
 
-val interp_pat : Environ.env -> Evd.evar_map -> Vernacexpr.decl_notation list -> avoid:Id.Set.t ->
+val interp_pat : Environ.env -> Evd.evar_map -> Vernacexpr.notation_declaration list -> avoid:Id.Set.t ->
   (program_info * Names.Name.t list) option ->
   Constrexpr.constr_expr -> 
   Id.Set.t * user_pats
 
-val interp_eqn : env -> Evd.evar_map -> Vernacexpr.decl_notation list -> program_info ->
+val interp_eqn : env -> Evd.evar_map -> Vernacexpr.notation_declaration list -> program_info ->
   avoid:Id.Set.t ->
   pre_equation -> pre_clause
 
