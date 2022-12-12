@@ -199,7 +199,7 @@ let deppat_elim : Constrexpr.constr_expr list Pcoq.Entry.t =
 let _ = Pptactic.declare_extra_genarg_pprule wit_deppat_elim
   pr_raw_deppat_elim pr_glob_deppat_elim pr_deppat_elim
 
-type equations_argtype = (pre_equations * Vernacexpr.decl_notation list) Genarg.uniform_genarg_type
+type equations_argtype = (pre_equations * Vernacexpr.notation_declaration list) Genarg.uniform_genarg_type
 
 let wit_equations : equations_argtype =
   Genarg.create_arg "equations"
@@ -209,7 +209,7 @@ let pr_raw_equations _env _sigma _ _ _ l = mt ()
 let pr_glob_equations _env _sigma _ _ _ l = mt ()
 let pr_equations _env _sigma _ _ _ l = mt ()
 
-let equations : (pre_equations * Vernacexpr.decl_notation list) Pcoq.Entry.t =
+let equations : (pre_equations * Vernacexpr.notation_declaration list) Pcoq.Entry.t =
   Pcoq.create_generic_entry2 "equations" (Genarg.rawwit wit_equations)
 
 let _ = Pptactic.declare_extra_genarg_pprule wit_equations
@@ -332,8 +332,8 @@ GRAMMAR EXTEND Gram
     [ [ ntn = ne_lstring; ":="; c = constr;
         modl = G_vernac.syntax_modifiers;
         scopt = OPT [ ":"; sc = IDENT -> { sc } ] -> {
-        Inr { Vernacexpr.decl_ntn_string = ntn; decl_ntn_interp = c;
-              decl_ntn_modifiers = modl; decl_ntn_scope = scopt } }
+        Inr { Vernacexpr.ntn_decl_string = ntn; ntn_decl_interp = c;
+              ntn_decl_modifiers = modl; ntn_decl_scope = scopt } }
       | p = proto -> { Inl (p (Some Syntax.Nested)) } ] ]
   ;
 
@@ -357,8 +357,8 @@ GRAMMAR EXTEND Gram
     [ [ ntn = ne_lstring; ":="; c = constr;
         modl = G_vernac.syntax_modifiers;
         scopt = OPT [ ":"; sc = IDENT -> { sc } ] -> {
-        Inr { Vernacexpr.decl_ntn_string = ntn; decl_ntn_interp = c;
-              decl_ntn_modifiers = modl; decl_ntn_scope = scopt } }
+        Inr { Vernacexpr.ntn_decl_string = ntn; ntn_decl_interp = c;
+              ntn_decl_modifiers = modl; ntn_decl_scope = scopt } }
       | p = proto -> { Inl (p (Some Syntax.Mutual)) } ] ]
   ;
   local_where:

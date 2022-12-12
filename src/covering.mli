@@ -75,7 +75,7 @@ type int_data = {
   flags : flags;
   program_mode : bool;
   intenv : Constrintern.internalization_env;
-  notations : Vernacexpr.decl_notation list
+  notations : Vernacexpr.notation_declaration list
 }
 
 val add_wfrec_implicits : Syntax.rec_type ->
@@ -246,7 +246,7 @@ val interp_arity : Environ.env ->
   poly:bool ->
   is_rec:bool ->
   with_evars:bool ->
-  Vernacexpr.decl_notation list ->
+  Vernacexpr.notation_declaration list ->
   pre_equation Syntax.where_clause ->
   program_info
 
