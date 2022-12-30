@@ -94,11 +94,11 @@ and 'a wheres = 'a where_clause list * Vernacexpr.notation_declaration list
 
 type program = (signature * clause list) list
 and signature = identifier * rel_context * constr (* f : Π Δ. τ *)
-and clause = Loc.t option * lhs * (clause, clause) rhs (* lhs rhs *)
+and clause = Clause of Loc.t option * lhs * (clause, clause) rhs (* lhs rhs *)
 
-type pre_equation = Constrexpr.constr_expr input_pats * (pre_equation, pre_equation) rhs
+type pre_equation = Pre_equation of Constrexpr.constr_expr input_pats * (pre_equation, pre_equation) rhs
 
-type pre_clause = Loc.t option * lhs * (pre_equation, pre_clause) rhs
+type pre_clause = Pre_clause of Loc.t option * lhs * (pre_equation, pre_clause) rhs
 
 type pre_equations = pre_equation where_clause list
 
@@ -158,7 +158,7 @@ and pr_proto env sigma ((_,id), _, _, l, t, ann) =
    | Some (WellFounded (t, rel)) -> str"by wf " ++ pr_constr_expr env sigma t ++ pr_opt (pr_constr_expr env sigma) rel
    | Some (Structural id) -> str"by struct " ++ pr_opt (fun x -> pr_id (snd x)) id)
 
-and pr_clause env sigma (loc, lhs, rhs) =
+and pr_clause env sigma (Clause (loc, lhs, rhs)) =
   pr_lhs env sigma lhs ++ pr_rhs env sigma rhs
 
 and pr_clauses env sigma =
@@ -192,7 +192,7 @@ and pr_prerhs_aux env sigma = function
 and pr_user_rhs env sigma = pr_opt (pr_user_rhs_aux env sigma)
 and pr_prerhs env sigma = pr_opt (pr_prerhs_aux env sigma)
 
-and pr_user_clause env sigma (lhs, rhs) =
+and pr_user_clause env sigma (Pre_equation (lhs, rhs)) =
   pr_user_lhs env sigma lhs ++ pr_user_rhs env sigma rhs
 
 and pr_user_clauses env sigma =
@@ -204,7 +204,7 @@ and pr_prewheres env sigma (l, nts) =
 and pr_prewhere env sigma (sign, eqns) =
   pr_proto env sigma sign ++ str "{" ++ pr_user_clauses env sigma eqns ++ str "}"
 
-and pr_preclause env sigma (loc, lhs, rhs) =
+and pr_preclause env sigma (Pre_clause (loc, lhs, rhs)) =
   pr_lhs env sigma lhs ++ pr_prerhs env sigma rhs
 
 and pr_preclauses env sigma =
@@ -510,7 +510,7 @@ let interp_eqn env sigma notations p ~avoid eqn =
       p.program_implicits
   in
   let interp_pat notations avoid = interp_pat env sigma notations ~avoid in
-  let rec aux notations avoid curpats (pat, rhs) =
+  let rec aux notations avoid curpats (Pre_equation (pat, rhs)) =
     let loc, avoid, pats =
       match pat with
       | SignPats pat ->
@@ -532,9 +532,9 @@ let interp_eqn env sigma notations p ~avoid eqn =
           else curpats @ pats in
         loc, avoid, pats
     in
-    (loc, pats, Option.map (interp_rhs notations avoid pats) rhs)
-  and aux2 notations avoid (pat, rhs) =
-    (pat, Option.map (interp_rhs' notations avoid) rhs)
+    Pre_clause (loc, pats, Option.map (interp_rhs notations avoid pats) rhs)
+  and aux2 notations avoid (Pre_equation (pat, rhs)) =
+    Pre_equation (pat, Option.map (interp_rhs' notations avoid) rhs)
   and interp_rhs' notations avoid = function
     | Refine (c, eqs) ->
       let avoid = Id.Set.union avoid (ids_of_pats None c) in
@@ -618,8 +618,8 @@ let interp_eqn env sigma notations p ~avoid eqn =
     !wheres, c'
   in aux notations avoid [] eqn
 
-let is_recursive i : 'a wheres -> bool = fun eqs ->
-  let rec occur_eqn (_, rhs) =
+let is_recursive i : pre_equation wheres -> bool = fun eqs ->
+  let rec occur_eqn (Pre_equation (_, rhs)) =
     match rhs with
     | Some (Program (c,w)) ->
       (match c with

@@ -220,7 +220,7 @@ let adjust_sign_arity env evars p clauses =
     match clauses with
     | [] -> Context.Rel.nhyps p.program_sign
     | _ ->
-      List.fold_left (fun acc (_, lhs, rhs) ->
+      List.fold_left (fun acc (Pre_clause (_, lhs, rhs)) ->
           let len = List.length lhs in
           max acc len) 0 clauses
   in
@@ -238,7 +238,7 @@ let adjust_sign_arity env evars p clauses =
           user_err_loc (None, str "Too many patterns in clauses for this type")
     in aux evars max_args [] fullty
   in
-  let check_clause (loc, lhs, rhs) =
+  let check_clause (Pre_clause (loc, lhs, rhs)) =
     if List.length lhs < max_args then user_err_loc (loc, str "This clause has not enough arguments")
     else ()
   in List.iter check_clause clauses;
@@ -682,7 +682,7 @@ let push_named_context = List.fold_right push_named
 let check_unused_clauses env sigma cl =
   let unused = List.filter (fun (_, (_, used)) -> used = 0) cl in
   match unused with
-  | ((loc, lhs, _) as cl, _) :: cls ->
+  | (Pre_clause (loc, lhs, _) as cl, _) :: cls ->
     user_err_loc (loc, str "Unused clause " ++ pr_preclause env sigma cl)
   | [] -> ()
 
@@ -1054,7 +1054,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
                            str " with problem " ++ pr_problem p env !evars prob ++
                            str " extpats " ++ pr_user_pats env !evars extpats);
   match clauses with
-  | ((loc, lhs, rhs), (idx, cnt) as clause) :: clauses' ->
+  | (Pre_clause (loc, lhs, rhs), (idx, cnt) as clause) :: clauses' ->
     if !Equations_common.debug then
       Feedback.msg_debug (str "Matching " ++ pr_user_pats env !evars (extpats @ lhs) ++ str " with " ++
                           pr_problem p env !evars prob);
@@ -1154,7 +1154,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
           | PRel i ->
             match prove_empty (env,evars) (pi1 prob) i with
             | Some (i, ctx, s) ->
-              Some (List.rev prev @ (((loc, lhs, rhs),(idx, cnt+1)) :: clauses'),
+              Some (List.rev prev @ ((Pre_clause (loc, lhs, rhs),(idx, cnt+1)) :: clauses'),
                     Compute (prob, [], ty, REmpty (i, s)))
             | None ->
               user_err_loc (loc,
@@ -1169,9 +1169,9 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
            | None ->
              user_err_loc
                (dummy_loc,
-                str"Clause " ++ pr_preclause env !evars (loc, lhs, Some rhs) ++
+                str"Clause " ++ pr_preclause env !evars (Pre_clause (loc, lhs, Some rhs)) ++
                 str" matched but its interpretation failed")
-           | Some s -> Some (List.rev prev @ ((loc,lhs,Some rhs),(idx, cnt+1)) :: clauses', s)))
+           | Some s -> Some (List.rev prev @ (Pre_clause (loc,lhs,Some rhs),(idx, cnt+1)) :: clauses', s)))
 
      | UnifFailure ->
        if !Equations_common.debug then Feedback.msg_debug (str "failed");
@@ -1432,7 +1432,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
       match cs with
       | [] -> cls
       | _ :: _ ->
-        [loc, lhs @ [DAst.make ?loc (PUVar (idref, Generated))], Some (Refine (cs, cls))]
+        [Pre_clause (loc, lhs @ [DAst.make ?loc (PUVar (idref, Generated))], Some (Refine (cs, cls)))]
     in
     let rec cls' n cls =
       let next_unknown =
@@ -1440,7 +1440,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
         let i = ref (-1) in fun () ->
           incr i; add_suffix str (string_of_int !i)
       in
-      List.map_filter (fun (loc, lhs, rhs) ->
+      List.map_filter (fun (Pre_clause (loc, lhs, rhs)) ->
         let oldpats, newpats = List.chop (List.length lhs - n) lhs in
         let newref, nextrefs =
           match newpats with hd :: tl -> hd, tl | [] -> assert false
@@ -1465,7 +1465,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
             | Some (Refine (cs', cls)) -> Some (Refine (cs', cls' (List.length cs' + n) cls))
             | _ -> rhs
           in
-          Some (loc, rev newlhs @ nextrefs, newrhs)
+          Some (Pre_clause (loc, rev newlhs @ nextrefs, newrhs))
         | _ ->
           CErrors.user_err ?loc
             (str "Non-matching clause in with subprogram:" ++ fnl () ++ int n ++

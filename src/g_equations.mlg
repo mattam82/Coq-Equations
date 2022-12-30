@@ -302,8 +302,8 @@ GRAMMAR EXTEND Gram
    ]];
 
   equation:
-  [ [ "|"; pats = patterns; r = rhs -> { (RefinePats pats, r) }
-      | pat = pat; r = rhs -> { (SignPats pat, r) }
+  [ [ "|"; pats = patterns; r = rhs -> { Pre_equation (RefinePats pats, r) }
+      | pat = pat; r = rhs -> { Pre_equation (SignPats pat, r) }
     ] ]
   ;
 

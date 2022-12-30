@@ -84,11 +84,11 @@ and 'a where_clause = pre_prototype * 'a list
 and 'a wheres = 'a where_clause list * Vernacexpr.notation_declaration list
 type program = (signature * clause list) list
 and signature = identifier * rel_context * constr (* f : Π Δ. τ *)
-and clause = Loc.t option * lhs * (clause, clause) rhs (* lhs rhs *)
+and clause = Clause of Loc.t option * lhs * (clause, clause) rhs (* lhs rhs *)
 
-type pre_equation = Constrexpr.constr_expr input_pats * (pre_equation, pre_equation) rhs
+type pre_equation = Pre_equation of Constrexpr.constr_expr input_pats * (pre_equation, pre_equation) rhs
 
-type pre_clause = Loc.t option * lhs * (pre_equation, pre_clause) rhs
+type pre_clause = Pre_clause of Loc.t option * lhs * (pre_equation, pre_clause) rhs
 
 type pre_equations = pre_equation where_clause list
 

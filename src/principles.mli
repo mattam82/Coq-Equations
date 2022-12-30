@@ -148,22 +148,6 @@ val all_computations :
      list)
     list
 
-val computations :            Environ.env ->
-           Evd.evar_map ->
-  alias option ->
-           node_kind * bool ->
-  Splitting.program ->
-           Principles_proofs.equations_info ->
-           ((Equations_common.rel_context * EConstr.t *
-             alias option * EConstr.constr list * EConstr.t *
-             EConstr.t * (node_kind * bool) * Splitting.splitting_rhs *
-             ((EConstr.t * int list) *
-              alias option * Splitting.path * Equations_common.rel_context *
-              EConstr.t * EConstr.constr list * (EConstr.constr * (int * int)) option *
-              'c)
-             list option)
-            list as 'c)
-
 val make_alias : (EConstr.t * Names.Id.t * Splitting.splitting) -> alias
 
 val add_rew_rule : l2r:bool -> base:string -> Names.GlobRef.t -> unit
