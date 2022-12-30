@@ -54,7 +54,7 @@ doc: html
 	mkdir -p html/api && ocamldoc -html -d html/api \
 		`ocamlfind query -r coq-core.lib coq-core.kernel coq-core.tactics coq-core.proofs \
 			coq-core.toplevel coq-core.ltac coq-core.plugins.extraction -i-format` \
-	  -rectypes -I src src/*.ml
+	  -I src src/*.ml
 
 toplevel: src/equations_plugin.cma bytefiles
 	"$(OCAMLFIND)" ocamlc -linkpkg -linkall -g $(CAMLDEBUG) $(CAMLFLAGS) $(CAMLPKGS) \

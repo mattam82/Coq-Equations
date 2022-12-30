@@ -207,14 +207,14 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
           List.fold_left get_type (ty, mkVar name, mkVar name') eqs
         in mkApp (eqT, [| ty; lhs; rhs |])
     in
-    (loc, lhs, Some (Syntax.Program (Syntax.Constr rhs, ([], []))))
+    Syntax.Pre_clause (loc, lhs, Some (Syntax.Program (Syntax.Constr rhs, ([], []))))
   in
   let clauses = Array.to_list (Array.mapi mk_clause constructors) in
   let hole x = Syntax.(PUVar (Id.of_string x, User)) in
   let catch_all =
     let lhs = parampats @ [DAst.make (hole "x"); DAst.make (hole "y")] in
     let rhs = Syntax.Program (Syntax.Constr fls, ([], [])) in
-    (None, lhs, Some rhs)
+    Syntax.Pre_clause (None, lhs, Some rhs)
   in
   let clauses = clauses @ [catch_all] in
   let indid = Nametab.basename_of_global (GlobRef.IndRef ind) in

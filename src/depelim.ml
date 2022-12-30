@@ -421,7 +421,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
         | Some (Covering.Splitted (_, newctx, brs)) ->
             let brs = Option.List.flatten (Array.to_list brs) in
             let clauses_lhs = List.map Context_map.context_map_to_lhs brs in
-            let clauses = List.map (fun lhs -> (default_loc, lhs, Some rhs)) clauses_lhs in
+            let clauses = List.map (fun lhs -> Syntax.Pre_clause (default_loc, lhs, Some rhs)) clauses_lhs in
               Proofview.tclUNIT clauses
         end
     | Some patterns ->
@@ -434,7 +434,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
                 if Names.Id.equal decl_id id then DAst.make ?loc pat
                 else DAst.make Syntax.(PUVar (decl_id, Generated))) loc_hyps
             in
-              (loc, lhs, Some rhs))
+            Syntax.Pre_clause (loc, lhs, Some rhs))
         in Proofview.tclUNIT (List.map make_clause patterns)
     end >>= fun clauses ->
     if !debug then
