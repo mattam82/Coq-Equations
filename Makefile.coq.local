@@ -1,2 +1,3 @@
 CAMLPKGS+=-package coq-core.plugins.extraction,coq-core.plugins.cc
+CAMLFLAGS+=-rectypes
 ci: all test-suite examples
