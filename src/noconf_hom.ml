@@ -53,9 +53,9 @@ let get_forced_positions sigma args concl =
   in
   List.rev (List.fold_left_i is_forced 1 [] args)
 
-let derive_noConfusion_package ~pm env sigma0 ~poly (ind,u as indu) indid ~prefix ~tactic cstNoConf =
+let derive_noConfusion_package ~pm env sigma ~poly (ind,u as indu) indid ~prefix ~tactic cstNoConf =
   let mindb, oneind = Global.lookup_inductive ind in
-  let pi = (fst indu, EConstr.EInstance.kind sigma0 (snd indu)) in
+  let pi = (fst indu, EConstr.EInstance.kind sigma (snd indu)) in
   let ctx = List.map of_rel_decl oneind.mind_arity_ctxt in
   let ctx = subst_instance_context (snd pi) ctx in
   let ctx = smash_rel_context ctx in
@@ -65,8 +65,7 @@ let derive_noConfusion_package ~pm env sigma0 ~poly (ind,u as indu) indid ~prefi
   let argsvect = rel_vect 0 len in
   let noid = add_prefix "noConfusion" (add_prefix prefix (add_prefix "_" indid))
   and packid = add_prefix "NoConfusion" (add_prefix prefix (add_prefix "Package_" indid)) in
-  let tc = Typeclasses.class_info env sigma0 (Lazy.force coq_noconfusion_class) in
-  let sigma = Evd.from_env env in
+  let tc = Typeclasses.class_info env sigma (Lazy.force coq_noconfusion_class) in
   let sigma, noconf = Evd.fresh_global ~rigid:Evd.univ_rigid env sigma (GlobRef.ConstRef cstNoConf) in
   let sigma, noconfcl = new_global sigma tc.Typeclasses.cl_impl in
   let inst, u = destInd sigma noconfcl in
@@ -276,7 +275,7 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
         ~rigid:Evd.univ_rigid (* Universe levels of the inductive family should not be tampered with. *)
         env sigma (GlobRef.IndRef ind) in
     let indu = destInd sigma indu in
-    (), derive_noConfusion_package ~pm (Global.env ()) sigma ~poly indu indid
+    (), derive_noConfusion_package ~pm env sigma ~poly indu indid
       ~prefix:"Hom" ~tactic:(noconf_hom_tac ()) program_cst
  in
  let prog = Splitting.make_single_program env evd data.Covering.flags p ctxmap splitting None in
