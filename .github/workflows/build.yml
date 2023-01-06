@@ -8,6 +8,7 @@ on:
       - 8.13
       - 8.12
       - 8.11
+      - 8.17
 
   pull_request: # On all pull-request changes
   release: # At release time
@@ -21,10 +22,10 @@ jobs:
     strategy:
       matrix:
         coq_version: 
-          - 'dev'
+          - '8.17'
         ocaml_version:
           - '4.09-flambda'
-        target: [ local, hott, dune ]
+        target: [ local ] # dune, hott left out for now waiting for HoTT package
       fail-fast: false
 
     steps:

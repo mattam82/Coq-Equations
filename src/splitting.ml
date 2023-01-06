@@ -176,7 +176,7 @@ let pr_program_info env sigma p =
   let open Pp in
   Names.Id.print p.program_id ++ str " : " ++
   Printer.pr_econstr_env env sigma (Syntax.program_type p) ++ str " : " ++
-  Printer.pr_econstr_env env sigma (mkSort (ESorts.make p.program_sort)) ++
+  Printer.pr_econstr_env env sigma (mkSort p.program_sort) ++
   str " ( " ++
   (match p.program_rec with
    | Some (Structural ann) ->
@@ -683,7 +683,7 @@ type program_shape =
 let make_program env evd p prob s rec_info =
   match rec_info with
   | Some r ->
-    let sort = ESorts.make p.program_sort in
+    let sort = p.program_sort in
     let lhs = id_subst r.rec_lets in
     (match r.rec_node with
      | WfRec wfr ->
@@ -725,7 +725,7 @@ let make_program env evd p prob s rec_info =
        in
        Mutual (p', prob, r, s, after, (* lift 1  *)term))
   | None ->
-    Single (p, prob, rec_info, s, fst (term_of_tree env evd (ESorts.make p.program_sort) s))
+    Single (p, prob, rec_info, s, fst (term_of_tree env evd p.program_sort s))
 
 let update_rec_info p rec_info =
   match p.Syntax.program_rec, rec_info.rec_node with
@@ -905,7 +905,7 @@ let define_one_program_constants flags env0 isevar udecl unfold p =
       let evm, s' = aux env evm p.program_splitting in
       let isevar = ref evm in
       let env = Global.env () in
-      let term, ty = term_of_tree env isevar (ESorts.make p.program_info.program_sort) s' in
+      let term, ty = term_of_tree env isevar p.program_info.program_sort s' in
       let (cst, (evm, e)) =
         Equations_common.declare_constant (path_id (Id.of_string "functional" :: path))
           term (Some ty)
@@ -1044,7 +1044,7 @@ let solve_equations_obligations ~pm flags recids loc i sigma hook =
         let local_context, section_context =
           List.chop (List.length evcontext - section_length) evcontext
         in
-        let type_ = Termops.it_mkNamedProd_or_LetIn sigma (Evd.evar_concl evi) local_context in
+        let type_ = EConstr.it_mkNamedProd_or_LetIn sigma (Evd.evar_concl evi) local_context in
         let type_ = nf_beta env sigma type_ in
         env, ev, evi, local_context, type_) evars in
   (* Make goals from a copy of the evars *)

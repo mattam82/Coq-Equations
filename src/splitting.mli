@@ -121,7 +121,7 @@ val check_splitting : env -> Evd.evar_map -> splitting -> unit
 (** Compilation to Coq terms *)
 val term_of_tree :
   env ->
-  Evd.evar_map ref -> ESorts.t ->
+  Evd.evar_map ref -> Sorts.t ->
   splitting ->
   constr * constr
 

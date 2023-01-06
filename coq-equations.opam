@@ -1,5 +1,5 @@
 opam-version: "2.0"
-version: "dev"
+version: "8.17.dev"
 authors: [ "Matthieu Sozeau <matthieu.sozeau@inria.fr>" "Cyprien Mangin <cyprien.mangin@m4x.org>" ]
 dev-repo: "git+https://github.com/mattam82/Coq-Equations.git"
 maintainer: "matthieu.sozeau@inria.fr"
@@ -31,7 +31,7 @@ run-test: [
   [make "test-suite"]
 ]
 depends: [
-  "coq" {= "dev"}
+  "coq" { >= "8.17~" & < "8.18" }
   "ocamlfind" {build}
 ]
 #depopts: [

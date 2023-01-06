@@ -93,9 +93,9 @@ let derive_no_confusion ~pm env sigma0 ~poly (ind,u as indu) =
     | Sorts.InSProp -> mkSProp
     | Sorts.InProp -> mkProp
     | Sorts.InSet -> mkSet
-    | Sorts.InType | Sorts.InQSort ->
+    | Sorts.InType ->
       (* In that case the noConfusion principle lives at the level of the type. *)
-      let sort = EConstr.mkSort (ESorts.make inds) in
+      let sort = EConstr.mkSort inds in
       let sigma, s =
         Evarsolve.refresh_universes ~status:Evd.univ_flexible ~onlyalg:true
           (Some false) env !evd sort

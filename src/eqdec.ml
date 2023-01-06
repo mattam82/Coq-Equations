@@ -61,9 +61,9 @@ let inductive_info sigma ((mind, _ as ind),u) =
     let arities = arities_of_constructors env (from_peuniverses sigma induct) in
      let constrs =
       Array.map (fun ty -> 
-	let _, rest = decompose_prod_n_decls sigma nparams (EConstr.of_constr ty) in
+	let _, rest = decompose_prod_n_assum sigma nparams (EConstr.of_constr ty) in
 	let constrty = Vars.substl subst rest in
-	decompose_prod_decls sigma constrty)
+	decompose_prod_assum sigma constrty)
 	arities
     in
     let case c pred brs =

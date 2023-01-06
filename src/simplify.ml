@@ -217,7 +217,7 @@ and simplification_rule =
   | Infer_many
 and simplification_rules = (Loc.t option * simplification_rule) list
 
-type goal = rel_context * EConstr.types * ESorts.t
+type goal = rel_context * EConstr.types * Sorts.t
 type open_term = (goal * EConstr.existential) option * EConstr.constr
 
 exception CannotSimplify of Pp.t

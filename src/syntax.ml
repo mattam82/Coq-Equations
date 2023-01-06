@@ -90,7 +90,7 @@ and ('a, 'b) by_annot =
   | WellFounded of 'b
 
 and 'a where_clause = pre_prototype * 'a list
-and 'a wheres = 'a where_clause list * Vernacexpr.notation_declaration list
+and 'a wheres = 'a where_clause list * Vernacexpr.decl_notation list
 
 type program = (signature * clause list) list
 and signature = identifier * rel_context * constr (* f : Π Δ. τ *)
@@ -323,7 +323,7 @@ type program_info = {
 }
 
 let map_universe f u =
-  let u' = f (EConstr.mkSort (EConstr.ESorts.make u)) in
+  let u' = f (EConstr.mkSort u) in
   match Constr.kind (EConstr.Unsafe.to_constr u') with
   | Sort s -> s
   | _ -> assert false
@@ -631,7 +631,7 @@ let is_recursive i : pre_equation wheres -> bool = fun eqs ->
     | _ -> false
   and occur_eqns eqs = List.exists occur_eqn eqs
   and occurs_notations nts =
-    List.exists (fun nt -> occur_var_constr_expr i nt.Vernacexpr.ntn_decl_interp) nts
+    List.exists (fun nt -> occur_var_constr_expr i nt.Vernacexpr.decl_ntn_interp) nts
   and occurs eqs =
     List.exists (fun (_,eqs) -> occur_eqns eqs) (fst eqs) || occurs_notations (snd eqs)
   in occurs eqs

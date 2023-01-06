@@ -400,7 +400,7 @@ let aux_ind_fun info chop nested unfp unfids p =
                 arity, arg, r.wf_rec_rel
               in
               let _functional_type, functional_type, fix =
-                Covering.wf_fix_constr env evd inctx concl (ESorts.kind !evd sort) arity arg rel
+                Covering.wf_fix_constr env evd inctx concl sort arity arg rel
               in
               (* TODO solve WellFounded evar *)
               let sigma, evar = new_evar env !evd functional_type in

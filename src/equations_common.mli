@@ -400,7 +400,7 @@ val new_evar :            Environ.env ->
 val new_type_evar :            Environ.env ->
            Evd.evar_map -> 
            ?src:Evar_kinds.t Loc.located -> Evd.rigid ->
-           Evd.evar_map * (constr * ESorts.t)
+           Evd.evar_map * (constr * Sorts.t)
 
 val empty_hint_info : 'a Typeclasses.hint_info_gen
 
@@ -442,10 +442,10 @@ val splay_prod_n_assum : env -> Evd.evar_map -> int -> types -> rel_context * ty
 
 (* Universes *)
 val nonalgebraic_universe_level_of_universe :
-  Environ.env -> Evd.evar_map -> ESorts.t -> Evd.evar_map * Univ.Level.t * ESorts.t
+  Environ.env -> Evd.evar_map -> Sorts.t -> Evd.evar_map * Univ.Level.t * Sorts.t
 val instance_of :
   Environ.env ->
   Evd.evar_map ->
   ?argu:EConstr.EInstance.t ->
-  ESorts.t ->
-  Evd.evar_map * EConstr.EInstance.t * ESorts.t
+  Sorts.t ->
+  Evd.evar_map * EConstr.EInstance.t * Sorts.t

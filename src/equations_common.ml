@@ -42,7 +42,6 @@ let equations_derive_eliminator = ref true
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = true;
-  Goptions.optstage = Interp;
   Goptions.optkey   = ["Equations"; "WithK"];
   Goptions.optread  = (fun () -> false);
   Goptions.optwrite = (fun b ->
@@ -55,7 +54,6 @@ let _ = Goptions.declare_bool_option {
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = true;
-  Goptions.optstage = Interp;
   Goptions.optkey   = ["Equations"; "WithKDec"];
   Goptions.optread  = (fun () -> !simplify_withUIP);
   Goptions.optwrite = (fun b -> simplify_withUIP := b)
@@ -63,7 +61,6 @@ let _ = Goptions.declare_bool_option {
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = false;
-  Goptions.optstage = Interp;
   Goptions.optkey   = ["Equations"; "With"; "UIP"];
   Goptions.optread  = (fun () -> !simplify_withUIP);
   Goptions.optwrite = (fun b -> simplify_withUIP := b)
@@ -71,7 +68,6 @@ let _ = Goptions.declare_bool_option {
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = false;
-  Goptions.optstage = Interp;
   Goptions.optkey   = ["Equations"; "Transparent"];
   Goptions.optread  = (fun () -> !equations_transparent);
   Goptions.optwrite = (fun b -> equations_transparent := b)
@@ -79,7 +75,6 @@ let _ = Goptions.declare_bool_option {
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = false;
-  Goptions.optstage = Interp;
   Goptions.optkey   = ["Equations"; "With"; "Funext"];
   Goptions.optread  = (fun () -> !equations_with_funext);
   Goptions.optwrite = (fun b -> equations_with_funext := b)
@@ -87,7 +82,6 @@ let _ = Goptions.declare_bool_option {
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = false;
-  Goptions.optstage = Interp;
   Goptions.optkey   = ["Equations"; "Derive"; "Equations"];
   Goptions.optread  = (fun () -> !equations_derive_equations);
   Goptions.optwrite = (fun b -> equations_derive_equations := b)
@@ -95,7 +89,6 @@ let _ = Goptions.declare_bool_option {
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = false;
-  Goptions.optstage = Interp;
   Goptions.optkey   = ["Equations"; "Derive"; "Eliminator"];
   Goptions.optread  = (fun () -> !equations_derive_eliminator);
   Goptions.optwrite = (fun b -> equations_derive_eliminator := b)
@@ -107,7 +100,6 @@ let debug = ref false
 
 let _ = Goptions.declare_bool_option {
   Goptions.optdepr  = false;
-  Goptions.optstage = Interp;
   Goptions.optkey   = ["Equations"; "Debug"];
   Goptions.optread  = (fun () -> !debug);
   Goptions.optwrite = (fun b -> debug := b)
@@ -1076,19 +1068,19 @@ let evd_comb1 f evd x =
 (* Universe related functions *)
 
 let nonalgebraic_universe_level_of_universe env sigma u =
-  match ESorts.kind sigma u with
+  match u with
   | Sorts.Set | Sorts.Prop | Sorts.SProp ->
     sigma, Univ.Level.set, u
-  | Sorts.Type u0 | Sorts.QSort (_, u0) ->
+  | Sorts.Type u0 ->
     match Univ.Universe.level u0 with
     | Some l ->
       (match Evd.universe_rigidity sigma l with
       | Evd.UnivFlexible true ->
-        Evd.make_nonalgebraic_variable sigma l, l, ESorts.make @@ Sorts.sort_of_univ @@ Univ.Universe.make l
+        Evd.make_nonalgebraic_variable sigma l, l, Sorts.sort_of_univ @@ Univ.Universe.make l
       | _ -> sigma, l, u)
     | None ->
       let sigma, l = Evd.new_univ_level_variable Evd.univ_flexible sigma in
-      let ul = ESorts.make @@ Sorts.sort_of_univ @@ Univ.Universe.make l in
+      let ul = Sorts.sort_of_univ @@ Univ.Universe.make l in
       let sigma = Evd.set_leq_sort env sigma u ul in
       sigma, l, ul
 
