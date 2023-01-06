@@ -1424,6 +1424,7 @@ let max_sort s1 s2 =
   | (Prop, (Set | Type _ as s)) | ((Set | Type _) as s, Prop) -> s
   | (Set, Type u) | (Type u, Set) -> Sorts.sort_of_univ (Univ.Universe.sup Univ.Universe.type0 u)
   | (Type u, Type v) -> Sorts.sort_of_univ (Univ.Universe.sup u v)
+  | (QSort _, _) | (_, QSort _) -> assert false
 
 let level_of_context env evd ctx acc =
   let _, lev =

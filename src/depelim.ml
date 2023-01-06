@@ -185,6 +185,7 @@ let depcase ~poly ((mind, i as ind), u) =
         :: ((Array.rev_to_list branches)
             @ (make_assum (nameR (Id.of_string "P")) pred :: ctx)))
   in
+  let () = evd := Evd.minimize_universes !evd in
   let univs = Evd.univ_entry ~poly !evd in
   let ce = Declare.definition_entry ~univs (EConstr.to_constr !evd body) in
   let kn =
