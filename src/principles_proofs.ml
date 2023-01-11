@@ -137,10 +137,11 @@ let mutual_fix li l =
   let open Proofview in
   let mfix env sigma gls =
     let gls = List.map Proofview.drop_state gls in
-    let types = List.map (fun ev -> Evd.evar_concl (Evd.find sigma ev)) gls in
+    let infos = List.map (fun ev -> Evd.find sigma ev) gls in
+    let types = List.map (fun (Evd.EvarInfo evi) -> Evd.evar_concl evi) infos in
     let env =
-      let ctxs = List.map (fun ev -> EConstr.Unsafe.to_named_context @@
-                            Evd.evar_context (Evd.find sigma ev)) gls in
+      let ctxs = List.map (fun (Evd.EvarInfo evi) -> EConstr.Unsafe.to_named_context @@
+                            Evd.evar_context evi) infos in
       let fst, rest = List.sep_last ctxs in
       if List.for_all (fun y -> Context.Named.equal Constr.equal fst y) rest then
         Environ.push_named_context fst env
@@ -208,7 +209,7 @@ let mutual_fix li l =
 let check_guard gls env sigma =
   let gl = Proofview.drop_state (List.hd gls) in
   try
-    let evi = Evd.find sigma gl in
+    let EvarInfo evi = Evd.find sigma gl in
     match Evd.evar_body evi with
     | Evd.Evar_defined b -> Inductiveops.control_only_guard (Evd.evar_env env evi) sigma b; true
     | Evd.Evar_empty -> true

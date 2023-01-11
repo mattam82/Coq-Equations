@@ -405,7 +405,7 @@ let compose_term (env : Environ.env) (evd : Evd.evar_map ref)
   ((h1, c1) : open_term) ((h2, c2) : open_term) : open_term =
   match h1 with
   | Some ((ctx1, _, u1), (ev1, _)) ->
-      let ev1_info = Evd.find !evd ev1 in
+      let EvarInfo ev1_info = Evd.find !evd ev1 in
       let ev1_ctx = Evd.evar_context ev1_info in
       (* Keep only the context corresponding to [ctx1]. *)
       let named_ctx1 = CList.firstn (List.length ctx1) ev1_ctx in
