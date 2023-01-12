@@ -253,7 +253,7 @@ open Pcoq
 open Constr
 open Syntax
 
-let _ = CLexer.add_keyword "λ"
+let () = Pcoq.set_keyword_state (CLexer.add_keyword (Pcoq.get_keyword_state()) "λ")
 
 let check_eqns_ident =
   let open Pcoq.Lookahead in
