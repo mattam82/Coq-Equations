@@ -218,6 +218,19 @@ let e_type_of env evd t =
   let evm, t = Typing.type_of ~refresh:false env !evd t in
   evd := evm; t
 
+let collapse_term_qualities uctx c =
+  let nf_evar _ = None in
+  let nf_univ u = u in
+  let nf_sort s = s in
+  let nf_relevance r = match r with
+  | Sorts.Relevant | Sorts.Irrelevant -> r
+  | Sorts.RelevanceVar q ->
+    match UState.nf_qvar uctx q with
+    | QVar _ (* Hack *) | QType | QProp -> Sorts.Relevant
+    | QSProp -> Sorts.Irrelevant
+  in
+  UnivSubst.nf_evars_and_universes_opt_subst nf_evar nf_univ nf_sort nf_relevance c
+
 let make_definition ?opaque ?(poly=false) evm ?types b =
   let env = Global.env () in
   let evm = match types with
@@ -228,7 +241,9 @@ let make_definition ?opaque ?(poly=false) evm ?types b =
   in
   let evm = Evd.minimize_universes evm in
   let evm0 = evm in
-  let body = EConstr.to_constr evm b and typ = Option.map (EConstr.to_constr evm) types in
+  let to_constr c = collapse_term_qualities (Evd.evar_universe_context evm) (EConstr.to_constr evm c) in
+  let body = to_constr b in
+  let typ = Option.map to_constr types in
   let used = Vars.universes_of_constr body in
   let used' = Option.cata Vars.universes_of_constr Univ.Level.Set.empty typ in
   let used = Univ.Level.Set.union used used' in

@@ -449,3 +449,6 @@ val instance_of :
   ?argu:EConstr.EInstance.t ->
   ESorts.t ->
   Evd.evar_map * EConstr.EInstance.t * ESorts.t
+
+val collapse_term_qualities : UState.t -> Constr.t -> Constr.t
+(* Hack to prevent sending terms with unbound qualities to the kernel *)

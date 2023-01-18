@@ -332,6 +332,7 @@ let aux_ind_fun info chop nested unfp unfids p =
           let program_tac =
             tclTHEN fixtac (aux chop None [] prog.program_splitting)
           in
+          let ty = EConstr.of_constr @@ collapse_term_qualities (Evd.evar_universe_context sigma) (EConstr.to_constr sigma ty) in
           tclTHEN (assert_by (Name (program_id prog)) ty program_tac)
             (observe "solving nested premises of compute rule"
               (solve_ind_rec_tac info.term_info))
@@ -585,7 +586,9 @@ let aux_ind_fun info chop nested unfp unfids p =
               let rels = extended_rel_list 0 ctx in
               let indargs = List.append indargs rels in
               let app = applistc ind (List.append indargs [applistc where_term rels]) in
-              it_mkProd_or_LetIn app ctx
+              let ty = it_mkProd_or_LetIn app ctx in
+              let ty = EConstr.of_constr @@ collapse_term_qualities UState.empty (EConstr.Unsafe.to_constr ty) in
+              ty
             in
             let tac =
               tclTHEN acc

@@ -1279,7 +1279,8 @@ let declare_funelim ~pm info env evd is_rec protos progs
                            Himsg.explain_pretype_error env !evd
                              (Pretype_errors.TypingError (Type_errors.map_ptype_error EConstr.of_constr tyerr)))
   in
-  let cinfo = Declare.CInfo.make ~name:(Nameops.add_suffix id "_elim") ~typ:(to_constr !evd newty) () in
+  let newty = collapse_term_qualities (Evd.evar_universe_context !evd) (EConstr.to_constr !evd newty) in 
+  let cinfo = Declare.CInfo.make ~name:(Nameops.add_suffix id "_elim") ~typ:newty () in
   let info = Declare.Info.make ~poly:info.poly ~scope:info.scope ~hook:(Declare.Hook.make hookelim) ~kind:(Decls.IsDefinition info.decl_kind) () in
   let pm, _ = Declare.Obls.add_definition ~pm ~cinfo ~info ~tactic
       ~uctx:(Evd.evar_universe_context !evd) [||] in
@@ -1386,7 +1387,8 @@ let declare_funind ~pm info alias env evd is_rec protos progs
   in
   let evm, stmtt = Typing.type_of (Global.env ()) !evd statement in
   let () = evd := evm in
-  let stmt = to_constr !evd statement and f = to_constr !evd f in
+  let to_constr c = collapse_term_qualities (Evd.evar_universe_context !evd) (EConstr.to_constr !evd c) in
+  let stmt = to_constr statement and f = to_constr f in
   let uctx = Evd.evar_universe_context (if poly then !evd else Evd.from_env (Global.env ())) in
   let launch_ind ~pm tactic =
     let pm, res =
@@ -1411,7 +1413,7 @@ let declare_funind ~pm info alias env evd is_rec protos progs
     CErrors.user_err Pp.(str"Functional induction principle could not be proved automatically: " ++
                          Himsg.explain_pretype_error env !evd
                            (Pretype_errors.TypingError (Type_errors.map_ptype_error EConstr.of_constr tyerr)))
-     | e ->
+     | e when CErrors.noncritical e ->
        Feedback.msg_warning Pp.(str "Functional induction principle could not be proved automatically: " ++ fnl () ++
                                 CErrors.print e);
        launch_ind ~pm (Proofview.tclUNIT ())
@@ -1657,6 +1659,10 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     let inds, univs, sort = List.fold_left declare_one_ind ([], Univ.Level.Set.empty, Sorts.prop) ind_stmts in
     let sigma = Evd.restrict_universe_context !evd univs in
     let sigma = Evd.minimize_universes sigma in
+    (* FIXME: try to implement a sane handling of universe state threading *)
+    let to_constr sigma c =
+      collapse_term_qualities (Evd.evar_universe_context sigma) (EConstr.to_constr sigma c)
+    in
     let inds =
       List.rev_map (fun (entry, sign, arity) ->
           Entries.{ entry with
@@ -1790,7 +1796,9 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
         if not poly then evd := Evd.from_env (Global.env ())
         else ()
       in
-      let cinfo = Declare.CInfo.make ~name:ideq ~typ:(to_constr !evd c) () in
+      (* FIXME: try to implement a sane handling of universe state threading *)
+      let c = collapse_term_qualities (Evd.evar_universe_context !evd) (to_constr !evd c) in
+      let cinfo = Declare.CInfo.make ~name:ideq ~typ:c () in
       let info = Declare.Info.make ~kind:(Decls.IsDefinition info.decl_kind) ~poly () in
       let obl_hook = Declare.Hook.make_g hook in
       let pm, _ = Declare.Obls.add_definition ~pm ~cinfo ~info ~obl_hook
