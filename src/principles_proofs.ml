@@ -914,8 +914,7 @@ let solve_rec_eq simpltac subst =
   | _ -> reflexivity
   end
 
-let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
-  Proofview.Goal.enter begin fun gl ->
+let prove_unfolding info where_map f_cst funf_cst subst base unfold_base split unfold_split self =
   let depelim h = Depelim.dependent_elim_tac (None, h) (* depelim_tac h *) in
   let helpercsts = List.map (fun (cst, i) -> cst) info.helpers_info in
   let opacify, transp = simpl_of ((destConstRef (Lazy.force coq_hidebody), Conv_oracle.transparent)
@@ -923,7 +922,6 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
   let opacified tac = wrap tac opacify transp in
   let transparent tac = wrap tac transp opacify in
   let simpltac = opacified (simpl_equations_tac ()) in
-  let my_simpl = opacified simpl_in_concl in
   let unfolds base base' =
     tclTHEN (autounfold_heads [base] [base'] None)
     (Tactics.reduct_in_concl ~cast:false ~check:false ((Reductionops.clos_norm_flags CClosure.betazeta), DEFAULTcast))
@@ -931,6 +929,123 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
   let solve_rec_eq subst = solve_rec_eq simpltac subst in
   let solve_eq subst = observe "solve_eq" (tclORELSE (transparent reflexivity) (solve_rec_eq subst)) in
   let abstract tac = (* Abstract.tclABSTRACT None *) tac in
+  let rec aux split unfold_split =
+    match split, unfold_split with
+    | Split (_, _, _, splits), Split ((ctx,pats,_), var, _, unfsplits) ->
+      observe "split"
+        (Proofview.Goal.enter (fun gl ->
+        if is_primitive (pf_env gl) (project gl) ctx (pred var) then
+          aux (Option.get (Array.hd splits)) (Option.get (Array.hd unfsplits))
+        else
+          match kind (project gl) (pf_concl gl) with
+          | App (eq, [| ty; x; y |]) ->
+            let sigma = project gl in
+            let f, pats' = decompose_app sigma y in
+            let c, unfolds =
+              let _, _, _, _, _, c, _ = destCase sigma f in
+              c, tclIDTAC
+            in
+            let id = destVar sigma (fst (decompose_app sigma c)) in
+            let splits = List.map_filter (fun x -> x) (Array.to_list splits) in
+            let unfsplits = List.map_filter (fun x -> x) (Array.to_list unfsplits) in
+            abstract (local_tclTHEN_i (depelim id)
+                                      (fun i -> let split = nth splits (pred i) in
+                        let unfsplit = nth unfsplits (pred i) in
+                        tclTHENLIST [unfolds; simpltac;
+                          aux split unfsplit]))
+          | _ -> tclFAIL (str"Unexpected unfolding goal")))
+
+    | _, Mapping (lhs, s) -> aux split s
+       
+    | Refined (_, _, s), Refined ((ctx, _, _), refinfo, unfs) ->
+        let id = pi1 refinfo.refined_obj in
+        let rec reftac () =
+          Proofview.Goal.enter begin fun gl ->
+          match kind (project gl) (pf_concl gl) with
+          | App (f, [| ty; term1; term2 |]) ->
+             let sigma = project gl in
+             let cst, _ = destConst sigma (fst (decompose_app sigma refinfo.refined_term)) in
+             let f1, arg1 = destApp sigma term1 and f2, arg2 = destApp sigma term2 in
+             let _, posa1, a1 = find_helper_arg (pf_env gl) sigma info f1 arg1
+             and ev2, posa2, a2 = find_helper_arg (pf_env gl) sigma info f2 arg2 in
+             let id = pf_get_new_id id gl in
+             if Environ.QConstant.equal (pf_env gl) ev2 cst then
+               tclTHENLIST
+               [myreplace_by a1 a2 (tclTHENLIST [solve_eq subst]);
+                observe "refine after replace"
+                  (letin_tac None (Name id) a2 None Locusops.allHypsAndConcl);
+                clear_body [id]; 
+                observe "unfoldings" (unfolds base unfold_base); 
+                aux s unfs]
+             else tclTHENLIST [unfolds base unfold_base; simpltac; reftac ()]
+          | _ -> tclFAIL (str"Unexpected unfolding lemma goal")
+          end
+        in
+      let reftac = observe "refined" (reftac ()) in
+      abstract (tclTHENLIST [intros; simpltac; reftac])
+
+    | Compute (_, wheres, _, RProgram _), Compute ((lctx, _, _), unfwheres, _, RProgram c) ->
+       let wheretac acc w unfw =
+         let assoc, id, _ =
+           try PathMap.find unfw.where_path where_map
+           with Not_found -> assert false
+         in
+        Proofview.Goal.enter (fun gl ->
+         let env = pf_env gl in
+         let evd = ref (project gl) in
+         let wp = w.where_program in
+         let unfwp = unfw.where_program in
+         (* let () = Feedback.msg_debug (str"Unfold where assoc: " ++
+          *                              Printer.pr_econstr_env env !evd assoc) in
+          * let () = Feedback.msg_debug (str"Unfold where problem: " ++
+          *                              pr_context_map env !evd wp.program_prob) in
+          * let () = Feedback.msg_debug (str"Unfold where problem: " ++
+          *                              pr_context_map env !evd unfwp.program_prob) in *)
+         let ty =
+           let ctx = unfwp.program_info.program_sign in
+           let len = List.length ctx - List.length lctx in
+           let newctx, oldctx = List.chop len ctx in
+           let lhs = mkApp (lift len assoc, extended_rel_vect 0 newctx) in
+           let rhs = mkApp (unfwp.program_term, extended_rel_vect 0 ctx) in
+           let eq = mkEq env evd unfwp.program_info.program_arity lhs rhs in
+           it_mkProd_or_LetIn eq ctx
+         in
+         (* let _ = Typing.type_of env !evd ty in *)
+         let progtac = self wp unfwp in
+         let tac =
+           assert_by (Name id) ty
+             (tclTHEN (keep [])
+                      (Abstract.tclABSTRACT (Some id) progtac))
+         in
+         tclTHENLIST [Proofview.Unsafe.tclEVARS !evd; tac;
+                      Equality.rewriteLR (mkVar id);
+                      acc])
+       in
+       let wheretacs =
+         assert(List.length wheres = List.length unfwheres);
+         List.fold_left2 wheretac tclIDTAC wheres unfwheres
+       in
+       observe "compute"
+         (tclTHENLIST [intros; wheretacs;
+                       observe "compute rhs" (tclTRY (unfolds base unfold_base));
+                       simpltac; solve_eq subst])
+
+    | Compute (_, _, _, _), Compute ((ctx,_,_), _, _, REmpty (id, sp)) ->
+      let d = nth ctx (pred id) in
+      let id = Name.get_id (get_name d) in
+      abstract (depelim id)
+
+    | _, _ -> assert false
+  in
+  aux split unfold_split
+
+let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
+  Proofview.Goal.enter begin fun gl ->
+  let helpercsts = List.map (fun (cst, i) -> cst) info.helpers_info in
+  let opacify, transp = simpl_of ((destConstRef (Lazy.force coq_hidebody), Conv_oracle.transparent)
+    :: List.map (fun x -> x, Conv_oracle.Expand) (f_cst :: funf_cst :: helpercsts)) in
+  let opacified tac = wrap tac opacify transp in
+  let my_simpl = opacified simpl_in_concl in
   let rec aux_program subst p unfp =
     Proofview.Goal.enter (fun gl ->
         let sigma = Proofview.Goal.sigma gl in
@@ -966,6 +1081,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
             in ((f_cst, funf_cst) :: subst), fixtac, extgl
           | _ -> subst, unfolds, false
         in
+        let self wp unfwp = aux_program subst wp unfwp in
         tclTHENLIST
           [observe "program before unfold"  intros;
            if extgl then
@@ -975,121 +1091,14 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
                 (tclSOLVE
                   [Proofview.Goal.enter (fun gl -> set_opaque ();
                     observe "extensionality proof"
-                    ((aux subst info.base_id info.base_id p.program_splitting p.program_splitting)))])
+                    ((prove_unfolding info where_map f_cst funf_cst subst info.base_id info.base_id p.program_splitting p.program_splitting self)))])
                 (tclFAIL
                   (Pp.str "Could not prove extensionality automatically"))))
             else observe "program fixpoint" fixtac;
             (Proofview.Goal.enter (fun gl -> set_opaque ();
               (observe "program"
-                ((aux subst info.base_id (info.base_id ^ "_unfold") p.program_splitting unfp.program_splitting)))))])
+                ((prove_unfolding info where_map f_cst funf_cst subst info.base_id (info.base_id ^ "_unfold") p.program_splitting unfp.program_splitting self)))))])
 
-  and aux subst base unfold_base split unfold_split =
-    match split, unfold_split with
-    | Split (_, _, _, splits), Split ((ctx,pats,_), var, _, unfsplits) ->
-      observe "split"
-        (Proofview.Goal.enter (fun gl ->
-        if is_primitive (pf_env gl) (project gl) ctx (pred var) then
-          aux subst base unfold_base (Option.get (Array.hd splits)) (Option.get (Array.hd unfsplits))
-        else
-          match kind (project gl) (pf_concl gl) with
-          | App (eq, [| ty; x; y |]) ->
-            let sigma = project gl in
-            let f, pats' = decompose_app sigma y in
-            let c, unfolds =
-              let _, _, _, _, _, c, _ = destCase sigma f in
-              c, tclIDTAC
-            in
-            let id = destVar sigma (fst (decompose_app sigma c)) in
-            let splits = List.map_filter (fun x -> x) (Array.to_list splits) in
-            let unfsplits = List.map_filter (fun x -> x) (Array.to_list unfsplits) in
-            abstract (local_tclTHEN_i (depelim id)
-                                      (fun i -> let split = nth splits (pred i) in
-                        let unfsplit = nth unfsplits (pred i) in
-                        tclTHENLIST [unfolds; simpltac;
-                          aux subst base unfold_base split unfsplit]))
-          | _ -> tclFAIL (str"Unexpected unfolding goal")))
-
-    | _, Mapping (lhs, s) -> aux subst base unfold_base split s
-       
-    | Refined (_, _, s), Refined ((ctx, _, _), refinfo, unfs) ->
-        let id = pi1 refinfo.refined_obj in
-        let rec reftac () =
-          Proofview.Goal.enter begin fun gl ->
-          match kind (project gl) (pf_concl gl) with
-          | App (f, [| ty; term1; term2 |]) ->
-             let sigma = project gl in
-             let cst, _ = destConst sigma (fst (decompose_app sigma refinfo.refined_term)) in
-             let f1, arg1 = destApp sigma term1 and f2, arg2 = destApp sigma term2 in
-             let _, posa1, a1 = find_helper_arg (pf_env gl) sigma info f1 arg1
-             and ev2, posa2, a2 = find_helper_arg (pf_env gl) sigma info f2 arg2 in
-             let id = pf_get_new_id id gl in
-             if Environ.QConstant.equal (pf_env gl) ev2 cst then
-               tclTHENLIST
-               [myreplace_by a1 a2 (tclTHENLIST [solve_eq subst]);
-                observe "refine after replace"
-                  (letin_tac None (Name id) a2 None Locusops.allHypsAndConcl);
-                clear_body [id]; 
-                observe "unfoldings" (unfolds base unfold_base); 
-                aux subst base unfold_base s unfs]
-             else tclTHENLIST [unfolds base unfold_base; simpltac; reftac ()]
-          | _ -> tclFAIL (str"Unexpected unfolding lemma goal")
-          end
-        in
-      let reftac = observe "refined" (reftac ()) in
-      abstract (tclTHENLIST [intros; simpltac; reftac])
-
-    | Compute (_, wheres, _, RProgram _), Compute ((lctx, _, _), unfwheres, _, RProgram c) ->
-       let wheretac acc w unfw =
-         let assoc, id, _ =
-           try PathMap.find unfw.where_path where_map
-           with Not_found -> assert false
-         in
-        Proofview.Goal.enter (fun gl ->
-         let env = pf_env gl in
-         let evd = ref (project gl) in
-         let wp = w.where_program in
-         let unfwp = unfw.where_program in
-         (* let () = Feedback.msg_debug (str"Unfold where assoc: " ++
-          *                              Printer.pr_econstr_env env !evd assoc) in
-          * let () = Feedback.msg_debug (str"Unfold where problem: " ++
-          *                              pr_context_map env !evd wp.program_prob) in
-          * let () = Feedback.msg_debug (str"Unfold where problem: " ++
-          *                              pr_context_map env !evd unfwp.program_prob) in *)
-         let ty =
-           let ctx = unfwp.program_info.program_sign in
-           let len = List.length ctx - List.length lctx in
-           let newctx, oldctx = List.chop len ctx in
-           let lhs = mkApp (lift len assoc, extended_rel_vect 0 newctx) in
-           let rhs = mkApp (unfwp.program_term, extended_rel_vect 0 ctx) in
-           let eq = mkEq env evd unfwp.program_info.program_arity lhs rhs in
-           it_mkProd_or_LetIn eq ctx
-         in
-         (* let _ = Typing.type_of env !evd ty in *)
-         let progtac = aux_program subst wp unfwp in
-         let tac =
-           assert_by (Name id) ty
-             (tclTHEN (keep [])
-                      (Abstract.tclABSTRACT (Some id) progtac))
-         in
-         tclTHENLIST [Proofview.Unsafe.tclEVARS !evd; tac;
-                      Equality.rewriteLR (mkVar id);
-                      acc])
-       in
-       let wheretacs =
-         assert(List.length wheres = List.length unfwheres);
-         List.fold_left2 wheretac tclIDTAC wheres unfwheres
-       in
-       observe "compute"
-         (tclTHENLIST [intros; wheretacs;
-                       observe "compute rhs" (tclTRY (unfolds base unfold_base));
-                       simpltac; solve_eq subst])
-
-    | Compute (_, _, _, _), Compute ((ctx,_,_), _, _, REmpty (id, sp)) ->
-      let d = nth ctx (pred id) in
-      let id = Name.get_id (get_name d) in
-      abstract (depelim id)
-
-    | _, _ -> assert false
   in
   Proofview.tclORELSE (
     tclTHENLIST
