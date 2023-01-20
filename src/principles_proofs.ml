@@ -917,10 +917,10 @@ let solve_rec_eq simpltac subst =
 type unfold_trace =
 | UnfSplit of (int -> unfold_trace)
 | UnfRefined of refined_node * unfold_trace
-| UnfComputeProgram of Splitting.where_clause list * Splitting.where_clause list * EConstr.rel_context
+| UnfComputeProgram of (Splitting.program * Splitting.program * EConstr.t * Id.t) list * EConstr.rel_context
 | UnfComputeEmpty of Id.t
 
-let compute_unfold_trace env sigma split unfold_split =
+let compute_unfold_trace env sigma where_map split unfold_split =
   let rec aux split unfold_split =
     match split, unfold_split with
     | Split (_, _, _, splits), Split ((ctx,pats,_), var, _, unfsplits) ->
@@ -935,8 +935,19 @@ let compute_unfold_trace env sigma split unfold_split =
     | _, Mapping (lhs, s) -> aux split s
     | Refined (_, _, s), Refined ((ctx, _, _), refinfo, unfs) ->
       UnfRefined (refinfo, aux s unfs)
-    | Compute (_, wheres, _, RProgram _), Compute ((lctx, _, _), unfwheres, _, RProgram c) ->
-      UnfComputeProgram (wheres, unfwheres, lctx)
+    | Compute (_, wheres, _, RProgram _), Compute ((lctx, _, _), unfwheres, _, RProgram _) ->
+      let () = assert (List.length wheres = List.length unfwheres) in
+      let map w unfw =
+        let assoc, id, _ =
+          try PathMap.find unfw.where_path where_map
+          with Not_found -> assert false
+        in
+        let wp = w.where_program in
+        let unfwp = unfw.where_program in
+        (wp, unfwp, assoc, id)
+      in
+      let data = List.map2 map wheres unfwheres in
+      UnfComputeProgram (data, lctx)
     | Compute (_, _, _, _), Compute ((ctx,_,_), _, _, REmpty (id, sp)) ->
       let d = nth ctx (pred id) in
       let id = Name.get_id (get_name d) in
@@ -946,7 +957,7 @@ let compute_unfold_trace env sigma split unfold_split =
   aux split unfold_split
 
 
-let prove_unfolding info where_map f_cst funf_cst subst base unfold_base split unfold_split self =
+let prove_unfolding info where_map f_cst funf_cst subst base unfold_base trace self =
   let depelim h = Depelim.dependent_elim_tac (None, h) (* depelim_tac h *) in
   let helpercsts = List.map (fun (cst, i) -> cst) info.helpers_info in
   let opacify, transp = simpl_of ((destConstRef (Lazy.force coq_hidebody), Conv_oracle.transparent)
@@ -1003,17 +1014,11 @@ let prove_unfolding info where_map f_cst funf_cst subst base unfold_base split u
         in
       let reftac = observe "refined" (reftac ()) in
       abstract (tclTHENLIST [intros; simpltac; reftac])
-  | UnfComputeProgram (wheres, unfwheres, lctx) ->
-       let wheretac acc w unfw =
-         let assoc, id, _ =
-           try PathMap.find unfw.where_path where_map
-           with Not_found -> assert false
-         in
+  | UnfComputeProgram (data, lctx) ->
+       let wheretac acc (wp, unfwp, assoc, id) =
         Proofview.Goal.enter (fun gl ->
          let env = pf_env gl in
          let evd = ref (project gl) in
-         let wp = w.where_program in
-         let unfwp = unfw.where_program in
          (* let () = Feedback.msg_debug (str"Unfold where assoc: " ++
           *                              Printer.pr_econstr_env env !evd assoc) in
           * let () = Feedback.msg_debug (str"Unfold where problem: " ++
@@ -1040,10 +1045,7 @@ let prove_unfolding info where_map f_cst funf_cst subst base unfold_base split u
                       Equality.rewriteLR (mkVar id);
                       acc])
        in
-       let wheretacs =
-         assert(List.length wheres = List.length unfwheres);
-         List.fold_left2 wheretac tclIDTAC wheres unfwheres
-       in
+       let wheretacs = List.fold_left wheretac tclIDTAC data in
        observe "compute"
          (tclTHENLIST [intros; wheretacs;
                        observe "compute rhs" (tclTRY (unfolds base unfold_base));
@@ -1051,12 +1053,7 @@ let prove_unfolding info where_map f_cst funf_cst subst base unfold_base split u
   | UnfComputeEmpty id ->
     abstract (depelim id)
   in
-  Proofview.Goal.enter begin fun gl ->
-    let env = Proofview.Goal.env gl in
-    let sigma = Proofview.Goal.sigma gl in
-    let trace = compute_unfold_trace env sigma split unfold_split in
-    aux trace
-  end
+  aux trace
 
 let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
   Proofview.Goal.enter begin fun gl ->
@@ -1067,6 +1064,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
   let my_simpl = opacified simpl_in_concl in
   let rec aux_program subst p unfp =
     Proofview.Goal.enter (fun gl ->
+        let env = Proofview.Goal.env gl in
         let sigma = Proofview.Goal.sigma gl in
         let f_cst = headcst sigma p.program_term
         and funf_cst = headcst sigma unfp.program_term in
@@ -1087,36 +1085,40 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
             let fixtac, extgl = match r with
               | { rec_node = WfRec _ } ->
                 if !Equations_common.equations_with_funext then
-                  tclTHENLIST [unfolds; unfold_recursor_ext_tac ()], false
+                  tclTHENLIST [unfolds; unfold_recursor_ext_tac ()], None
                 else
-                  tclTHENLIST [unfolds; unfold_recursor_tac ()], true
+                  let etrace = compute_unfold_trace env sigma where_map p.program_splitting p.program_splitting in
+                  tclTHENLIST [unfolds; unfold_recursor_tac ()], Some etrace
               | { rec_node = StructRec sr } ->
                 match annot_of_rec sr with
                 | Some annot ->
                   tclTHENLIST [tclDO r.rec_args revert_last;
                                observe "mutfix" (mutual_fix [] [annot]);
-                               tclDO r.rec_args intro; unfolds], false
-                | None -> Proofview.tclUNIT (), false
+                               tclDO r.rec_args intro; unfolds], None
+                | None -> Proofview.tclUNIT (), None
             in ((f_cst, funf_cst) :: subst), fixtac, extgl
-          | _ -> subst, unfolds, false
+          | _ -> subst, unfolds, None
         in
         let self wp unfwp = aux_program subst wp unfwp in
+        let trace = compute_unfold_trace env sigma where_map p.program_splitting unfp.program_splitting in
         tclTHENLIST
           [observe "program before unfold"  intros;
-           if extgl then
+           begin match extgl with
+           | Some etrace ->
             (tclTHENFIRST
               (observe "program fixpoint" fixtac)
               (tclORELSE
                 (tclSOLVE
                   [Proofview.Goal.enter (fun gl -> set_opaque ();
                     observe "extensionality proof"
-                    ((prove_unfolding info where_map f_cst funf_cst subst info.base_id info.base_id p.program_splitting p.program_splitting self)))])
+                    ((prove_unfolding info where_map f_cst funf_cst subst info.base_id info.base_id etrace self)))])
                 (tclFAIL
                   (Pp.str "Could not prove extensionality automatically"))))
-            else observe "program fixpoint" fixtac;
+            | None -> observe "program fixpoint" fixtac
+            end;
             (Proofview.Goal.enter (fun gl -> set_opaque ();
               (observe "program"
-                ((prove_unfolding info where_map f_cst funf_cst subst info.base_id (info.base_id ^ "_unfold") p.program_splitting unfp.program_splitting self)))))])
+                ((prove_unfolding info where_map f_cst funf_cst subst info.base_id (info.base_id ^ "_unfold") trace self)))))])
 
   in
   Proofview.tclORELSE (
