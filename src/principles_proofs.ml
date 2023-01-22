@@ -920,6 +920,11 @@ type unfold_trace =
 | UnfComputeProgram of (Splitting.program * Splitting.program * EConstr.t * Id.t) list * EConstr.rel_context
 | UnfComputeEmpty of Id.t
 
+type reckind =
+| RecWfPlain of unfold_trace
+| RecWfWithFunext
+| RecStruct of (int * int) option
+
 let compute_unfold_trace env sigma where_map split unfold_split =
   let rec aux split unfold_split =
     match split, unfold_split with
@@ -956,6 +961,22 @@ let compute_unfold_trace env sigma where_map split unfold_split =
   in
   aux split unfold_split
 
+let get_program_reckind env sigma where_map p = match p.program_rec with
+| None -> None
+| Some r ->
+  let k = match r with
+  | { rec_node = WfRec _ } ->
+    if !Equations_common.equations_with_funext then
+      RecWfWithFunext
+    else
+      let trace = compute_unfold_trace env sigma where_map p.program_splitting p.program_splitting in
+      RecWfPlain trace
+  | { rec_node = StructRec sr } ->
+    match annot_of_rec sr with
+    | Some annot -> RecStruct (Some (r.rec_args, annot))
+    | None -> RecStruct None
+  in
+  Some k
 
 let prove_unfolding info where_map f_cst funf_cst subst base unfold_base trace self =
   let depelim h = Depelim.dependent_elim_tac (None, h) (* depelim_tac h *) in
@@ -1063,6 +1084,7 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
   let opacified tac = wrap tac opacify transp in
   let my_simpl = opacified simpl_in_concl in
   let rec aux_program subst p unfp =
+    let kind = get_program_reckind (Proofview.Goal.env gl) (Proofview.Goal.sigma gl) where_map p in
     Proofview.Goal.enter (fun gl ->
         let env = Proofview.Goal.env gl in
         let sigma = Proofview.Goal.sigma gl in
@@ -1079,25 +1101,23 @@ let prove_unfolding_lemma info where_map f_cst funf_cst p unfp =
           Global.set_strategy (ConstKey f_cst) Conv_oracle.Opaque;
           Global.set_strategy (ConstKey funf_cst) Conv_oracle.Opaque;
         in
-        let subst, fixtac, extgl =
-          match p.program_rec with
-          | Some r ->
-            let fixtac, extgl = match r with
-              | { rec_node = WfRec _ } ->
-                if !Equations_common.equations_with_funext then
-                  tclTHENLIST [unfolds; unfold_recursor_ext_tac ()], None
-                else
-                  let etrace = compute_unfold_trace env sigma where_map p.program_splitting p.program_splitting in
-                  tclTHENLIST [unfolds; unfold_recursor_tac ()], Some etrace
-              | { rec_node = StructRec sr } ->
-                match annot_of_rec sr with
-                | Some annot ->
-                  tclTHENLIST [tclDO r.rec_args revert_last;
-                               observe "mutfix" (mutual_fix [] [annot]);
-                               tclDO r.rec_args intro; unfolds], None
-                | None -> Proofview.tclUNIT (), None
-            in ((f_cst, funf_cst) :: subst), fixtac, extgl
-          | _ -> subst, unfolds, None
+        let subst, fixtac, extgl = match kind with
+        | None -> subst, unfolds, None
+        | Some kind ->
+          let fixtac, extgl = match kind with
+            | RecWfPlain etrace ->
+              tclTHENLIST [unfolds; unfold_recursor_tac ()], Some etrace
+            | RecWfWithFunext ->
+              tclTHENLIST [unfolds; unfold_recursor_ext_tac ()], None
+            | RecStruct annot ->
+              match annot with
+              | Some (rec_args, annot) ->
+                tclTHENLIST [tclDO rec_args revert_last;
+                              observe "mutfix" (mutual_fix [] [annot]);
+                              tclDO rec_args intro; unfolds], None
+              | None -> Proofview.tclUNIT (), None
+          in
+          ((f_cst, funf_cst) :: subst), fixtac, extgl
         in
         let self wp unfwp = aux_program subst wp unfwp in
         let trace = compute_unfold_trace env sigma where_map p.program_splitting unfp.program_splitting in
