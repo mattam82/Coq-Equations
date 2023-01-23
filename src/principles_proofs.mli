@@ -63,6 +63,12 @@ val ind_fun_tac :
   (Splitting.program * Splitting.program option * Splitting.compiled_program_info * 'b) list ->
   unit Proofview.tactic
 
+type unfold_subst
+
+val extract_subprograms :
+  Environ.env -> Evd.evar_map -> where_map -> Splitting.program -> Splitting.program ->
+    (Names.Id.t * unfold_subst * UState.t * EConstr.t) list
+
 val prove_unfolding_lemma :
   Splitting.term_info ->
   where_map ->
@@ -71,6 +77,14 @@ val prove_unfolding_lemma :
   Splitting.program -> Splitting.program ->
   unit Proofview.tactic
   
+val prove_unfolding_sublemma :
+  Splitting.term_info ->
+  where_map ->
+  Names.Constant.t ->
+  Names.Constant.t ->
+  unfold_subst ->
+  unit Proofview.tactic
+
 val ind_elim_tac :
   constr ->
   int -> int ->
