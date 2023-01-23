@@ -915,7 +915,7 @@ let solve_rec_eq simpltac subst =
   end
 
 type unfold_trace =
-| UnfSplit of (int -> unfold_trace)
+| UnfSplit of unfold_trace list
 | UnfRefined of refined_node * unfold_trace
 | UnfComputeProgram of (Splitting.program * Splitting.program * EConstr.t * Id.t) list * EConstr.rel_context
 | UnfComputeEmpty of Id.t
@@ -934,9 +934,8 @@ let compute_unfold_trace env sigma where_map split unfold_split =
       else
         let splits = List.map_filter (fun x -> x) (Array.to_list splits) in
         let unfsplits = List.map_filter (fun x -> x) (Array.to_list unfsplits) in
-        UnfSplit (fun i -> let split = nth splits (pred i) in
-                        let unfsplit = nth unfsplits (pred i) in
-                          aux split unfsplit)
+        let trace = List.map2 (fun split unfsplit -> aux split unfsplit) splits unfsplits in
+        UnfSplit trace
     | _, Mapping (lhs, s) -> aux split s
     | Refined (_, _, s), Refined ((ctx, _, _), refinfo, unfs) ->
       UnfRefined (refinfo, aux s unfs)
@@ -995,7 +994,7 @@ let prove_unfolding info where_map f_cst funf_cst subst base unfold_base trace s
   let abstract tac = (* Abstract.tclABSTRACT None *) tac in
 
   let rec aux trace = match trace with
-  | UnfSplit k ->
+  | UnfSplit traces ->
       observe "split"
         (Proofview.Goal.enter (fun gl ->
           match kind (project gl) (pf_concl gl) with
@@ -1007,6 +1006,7 @@ let prove_unfolding info where_map f_cst funf_cst subst base unfold_base trace s
               c, tclIDTAC
             in
             let id = destVar sigma (fst (decompose_app sigma c)) in
+            let k i = nth traces (pred i) in
             abstract (local_tclTHEN_i (depelim id) (fun i -> (tclTHENLIST [unfolds; simpltac; aux (k i)])))
           | _ -> tclFAIL (str"Unexpected unfolding goal")))
   | UnfRefined (refinfo, trace) ->
