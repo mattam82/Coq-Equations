@@ -68,7 +68,7 @@ Proof.
   { intros n H. induction E as [|x xs IHxs];
       unfold var_gen in *; simpl in *; try (now exfalso; auto).
     destruct H; subst;
-    rewrite Max.succ_max_distr, Nat.max_lt_iff; auto. }
+    rewrite Nat.succ_max_distr, Nat.max_lt_iff; auto. }
   intros contra. apply Hlt in contra. lia.
 Qed.
  
@@ -160,6 +160,7 @@ infer_sort ie (IApp i1 i2) <= infer_sort ie i1 => {
 (* BUG! not general enough, need to inverse the order of arguments so that ie can change 
   at recursive calls.
  *)
+#[local]
 Obligation Tactic := program_simpl; try typeclasses eauto 10 with Below subterm_relation.
 
 Equations infer_sort (i : index) (ie : env) : option sort

@@ -160,7 +160,7 @@ Proof.
   - rewrite <- app_nil_end.
     intuition.
   - rewrite app_assoc in H0.
-    intuition.
+    intuition auto with *.
 Qed.
 
 Definition safe_finite_subtree (T : 𝒯__f) (π : list index) (H : defined ((proj1_sig (fst (proj1_sig T))) π)) : 𝒯__f :=
@@ -199,8 +199,8 @@ Proof.
     + inversion H.
       * subst. rewrite Heqb in H0. inversion H0.
       * cbn in *.
-        apply Lt.lt_n_S.
-        intuition.
+        apply PeanoNat.Nat.succ_lt_mono.
+        intuition auto with *.
     + pose proof @filter_length_le _ l f.
       cbn. lia.
 Qed.

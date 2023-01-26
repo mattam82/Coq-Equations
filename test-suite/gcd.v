@@ -11,6 +11,7 @@ Ltac subst_lets :=
 #[local] Hint Extern 5 => 
   simpl; subst_lets; lia : Below.
 
+#[local]
 Obligation Tactic := Equations.CoreTactics.equations_simpl; try typeclasses eauto with Below.
 
 Equations gcd (x y : nat) : nat by wf (x + y) lt :=
@@ -42,18 +43,18 @@ Lemma mod_minus a b : b <> 0 -> b < a -> (a - b) mod b = a mod b.
 Proof.
   intros.
   replace a with ((a - b) + b) at 2 by lia.
-  rewrite <- Nat.add_mod_idemp_r; auto.
-  rewrite Nat.mod_same; auto.
+  rewrite <- Nat.Div0.add_mod_idemp_r; auto.
+  rewrite Nat.Div0.mod_same; auto.
 Qed.
 
 Lemma gcd_spec1 a b: 0 <> b -> gcd a b = gcd (Nat.modulo a b) b.
 Proof.
-  funelim (gcd a b); intros. rewrite Nat.mod_0_l; auto. simp gcd.
+  funelim (gcd a b); intros. rewrite Nat.Div0.mod_0_l; auto. simp gcd.
   simpl in H.
   rewrite (Nat.mod_small (S n) (S n0)); auto.
   set(x := S n) in *. set (y := S n0) in *.
   rewrite gcd_equation_3. rewrite Heq. simpl. reflexivity.
-  rewrite refl. rewrite Nat.mod_same; auto.
+  rewrite refl. rewrite Nat.Div0.mod_same; auto.
   rewrite H; auto.
   rewrite mod_minus; auto.
 Qed.
