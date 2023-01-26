@@ -452,15 +452,15 @@ let unify_type env evars before id ty after =
           let ctx, ty = decompose_prod_decls !evars ty in
           let ctx = 
             fold_right (fun decl acc ->
-                let (n, b, t) = to_tuple decl in
-                match n.binder_name with
-                | Name id -> let id' = next_ident_away id in
-                  (make_def (nameR id') b t :: acc)
+                let open Context.Rel.Declaration in
+                let id = match get_name decl with
+                | Name id -> next_ident_away id
                 | Anonymous ->
                   let x = Namegen.id_of_name_using_hdchar
-                      (push_rel_context acc envb) !evars t Anonymous in
-                  let id = next_ident_away x in
-                  (make_def (nameR id) b t :: acc))
+                      (push_rel_context acc envb) !evars (get_type decl) Anonymous in
+                  next_ident_away x
+                in
+                (set_name (Name id) decl :: acc))
               ctx []
           in
           let env' = push_rel_context ctx env in
@@ -721,7 +721,9 @@ let print_program_info env sigma programs =
 let make_fix_proto env sigma ty =
   let relevance = Retyping.relevance_of_type env sigma ty in
   let _, fixproto = get_fresh sigma coq_fix_proto in
-    relevance, mkLetIn (anonR, fixproto, Retyping.get_type_of env sigma fixproto, lift 1 ty)
+  let r = Retyping.relevance_of_term env sigma fixproto in
+  let na = make_annot Anonymous r in
+  relevance, mkLetIn (na, fixproto, Retyping.get_type_of env sigma fixproto, lift 1 ty)
 
 let compute_fixdecls_data env evd ?data programs =
   let protos = List.map (fun p ->
@@ -923,11 +925,12 @@ let wf_fix_constr env evars sign arity sort carrier cterm crel =
 let wf_fix env evars subst sign arity sort term rel =
   let envsign = push_rel_context sign env in
   let sigma, cterm = interp_constr_evars envsign !evars term in
-  let carrier =
+  let na, carrier =
+    let r = Retyping.relevance_of_term envsign sigma cterm in
     let ty = Retyping.get_type_of envsign sigma cterm in
     let ty = nf_all envsign sigma ty in
     if noccur_between sigma 1 (length sign) ty then
-      lift (- length sign) ty
+      make_annot Anonymous r, lift (- length sign) ty
     else
       user_err_loc (Constrexpr_ops.constr_loc term,
                     str"The carrier type of the recursion order cannot depend on the arguments")
@@ -937,7 +940,7 @@ let wf_fix env evars subst sign arity sort term rel =
   let sigma, rsort = Evd.fresh_sort_in_family sigma (Lazy.force Equations_common.logic_sort) in
   let sigma, crel =
     let relty =
-      (mkProd (anonR, carrier, mkProd (anonR, lift 1 carrier, mkSort rsort)))
+      (mkProd (na, carrier, mkProd (na, lift 1 carrier, mkSort rsort)))
     in
     match rel with
     | Some rel -> interp_casted_constr_evars env sigma rel relty

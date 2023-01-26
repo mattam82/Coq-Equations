@@ -920,8 +920,8 @@ let named_of_rel_context ?(keeplets = false) default l =
     List.fold_right
       (fun decl (subst, args, ids, ctx) ->
         let decl = Context.Rel.Declaration.map_constr (substl subst) decl in
-	let id = match get_name decl with Anonymous -> default () | Name id -> id in
-        let d = Named.Declaration.of_tuple (annotR id, get_value decl, get_type decl) in
+    let id = match get_name decl with Anonymous -> default () | Name id -> id in
+    let d = Named.Declaration.of_rel_decl (fun _ -> id) decl in
 	let args = if keeplets ||Context.Rel.Declaration.is_local_assum decl then mkVar id :: args else args in
 	  (mkVar id :: subst, args, id :: ids, d :: ctx))
       l ([], [], [], [])

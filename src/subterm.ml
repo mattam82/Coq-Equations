@@ -91,10 +91,12 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
   let _trans_branch =
     let liftargbinders = lift_rel_context lenargs argbinders in
     let liftargbinders' = lift_rel_context lenargs liftargbinders in
+    let indr = oneind.mind_relevance in
+    let indna id = make_annot (Name (Id.of_string id)) indr in
     let indapp n = (mkApp (lift (3 * lenargs + n) indapp, extended_rel_vect (n + (2 - n) * lenargs) argbinders)) in
-    let terms = [(nameR (Id.of_string "z"), None, indapp 2);
-                 (nameR (Id.of_string "y"), None, indapp 1);
-                 (nameR (Id.of_string "x"), None, indapp 0)]
+    let terms = [(indna "z", None, indapp 2);
+                 (indna "y", None, indapp 1);
+                 (indna "x", None, indapp 0)]
     in
     let binders = to_context terms @ liftargbinders' @ liftargbinders @ argbinders in
     let lenbinders = 3 * succ lenargs in
@@ -283,15 +285,18 @@ let derive_below env sigma ~poly (ind,univ as indu) =
   let ctx = List.map of_rel_decl ctx in
   let allargsvect = extended_rel_vect 0 ctx in
   let indty = mkApp (mkIndU indu, allargsvect) in
-  let ctx = of_tuple (nameR (Id.of_string "c"), None, indty) :: ctx in
+  let indr = oneind.mind_relevance in
+  let ctx = of_tuple (make_annot (Name (Id.of_string "c")) indr, None, indty) :: ctx in
   let argbinders, parambinders = List.chop (succ realdecls) ctx in
-  let u = evd_comb0 (Evarutil.new_Type ~rigid:Evd.univ_rigid) evd in
+  let u = evd_comb0 (Evd.new_sort_variable Evd.univ_rigid) evd in
+  let ru = Retyping.relevance_of_sort u in
+  let u = mkSort u in
   let arity = it_mkProd_or_LetIn u argbinders in
   let aritylam = lift (succ realdecls) (it_mkLambda_or_LetIn u argbinders) in
   let paramsvect = rel_vect (succ realdecls) params in
   let argsvect = extended_rel_vect 0 (CList.firstn (succ realdecls) ctx) in
   let pid = Id.of_string "P" in
-  let pdecl = make_assum (nameR pid) arity in
+  let pdecl = make_assum (make_annot (Name pid) ru) arity in
   let arity = lift 1 arity in
   let stepid = Id.of_string "step" in
   let recid = Id.of_string "rec" in
@@ -374,7 +379,7 @@ let derive_below env sigma ~poly (ind,univ as indu) =
     in 
       lift 2 (it_mkLambda_or_LetIn caseB argbinders), lift 3 (it_mkLambda_or_LetIn caseb argbinders)
   in
-  let fixB = mkFix (([| realargs |], 0), ([| nameR recid |], [| arity |],
+  let fixB = mkFix (([| realargs |], 0), ([| make_annot (Name recid) ru |], [| arity |],
 				     [| subst_vars !evd [recid; pid] termB |])) in
   let bodyB = it_mkLambda_or_LetIn fixB (pdecl :: parambinders) in
   let id = add_prefix "Below_" (Nametab.basename_of_global (GlobRef.IndRef ind)) in

@@ -418,25 +418,27 @@ let interp_pat env sigma notations ~avoid p pat =
   let vars = (Id.Set.elements avoid) (* (ids_of_pats [p])) *) in
   (* let () = Feedback.msg_debug (str"Variables " ++ prlist_with_sep spc pr_id vars) in *)
   let tys = List.map (fun _ -> EConstr.mkProp) vars in
+  let rlv = List.map (fun _ -> Sorts.Relevant) vars in
   let impls = List.map (fun _ -> []) vars in
   (* let () = Feedback.msg_debug (str"Internalizing " ++ pr_constr_expr p) in *)
   let ienv = try compute_internalization_env env sigma Variable vars tys impls with Not_found ->
     anomaly (str"Building internalization environment")
   in
   let notations = List.map Metasyntax.prepare_where_notation notations in
-  let vars, tys, impls, ienv =
+  let vars, rlv, tys, impls, ienv =
     match p with
     | Some (p, _) ->
       let ty = program_type p in
+      let r = Retyping.relevance_of_type env sigma ty in
       let ienv =
         try compute_internalization_env env sigma ~impls:ienv Recursive [p.program_id] [ty] [p.program_impls]
         with Not_found -> anomaly (str"Building internalization environment")
       in
-      (p.program_id :: vars, ty :: tys, p.program_impls :: impls, ienv)
-    | None -> (vars, tys, impls, ienv)
+      (p.program_id :: vars, r :: rlv, ty :: tys, p.program_impls :: impls, ienv)
+    | None -> (vars, rlv, tys, impls, ienv)
   in
   let nctx =
-    List.map2 (fun id ty -> Context.Named.Declaration.LocalAssum (Context.annotR id, EConstr.Unsafe.to_constr ty)) vars tys
+    List.map3 (fun id r ty -> Context.Named.Declaration.LocalAssum (Context.make_annot id r, EConstr.Unsafe.to_constr ty)) vars rlv tys
   in
   let env = Environ.push_named_context nctx env in
   let gc =

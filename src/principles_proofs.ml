@@ -138,7 +138,7 @@ let mutual_fix li l =
   let mfix env sigma gls =
     let gls = List.map Proofview.drop_state gls in
     let infos = List.map (fun ev -> Evd.find sigma ev) gls in
-    let types = List.map (fun (Evd.EvarInfo evi) -> Evd.evar_concl evi) infos in
+    let types = List.map (fun (Evd.EvarInfo evi) -> Evd.evar_relevance evi, Evd.evar_concl evi) infos in
     let env =
       let ctxs = List.map (fun (Evd.EvarInfo evi) -> EConstr.Unsafe.to_named_context @@
                             Evd.evar_context evi) infos in
@@ -168,18 +168,18 @@ let mutual_fix li l =
                             int lengoals ++ str(String.plural lengoals " subgoal"))
     in
     let all = CList.map3 (fun id n ar -> (id,n,ar)) li l types in
-    let (_, n, ar) = List.hd all in
+    let (_, n, (_, ar)) = List.hd all in
     let (sp, u) = check_mutind env sigma n ar in
     let rec mk_sign sign = function
       | [] -> sign
-      | (f, n, ar) :: oth ->
+      | (f, n, (r, ar)) :: oth ->
          let (sp', u')  = check_mutind env sigma n ar in
          if not (Environ.QMutInd.equal env sp sp') then
            error "Fixpoints should be on the same mutual inductive declaration.";
          if try ignore (Context.Named.lookup f sign); true with Not_found -> false then
            CErrors.user_err
                     (str "Name " ++ pr_id f ++ str " already used in the environment");
-         mk_sign (LocalAssum (annotR f, EConstr.to_constr sigma ar) :: sign) oth
+         mk_sign (LocalAssum (make_annot f r, EConstr.to_constr sigma ar) :: sign) oth
     in
     let sign = mk_sign (Environ.named_context env) all in
     let idx = Array.map_of_list pred l in
@@ -189,6 +189,7 @@ let mutual_fix li l =
       Refine.refine ~typecheck:false
       (fun sigma ->
         let nenv = Environ.reset_with_named_context (Environ.val_of_named_context sign) env in
+        let types = List.map snd types in
         let (sigma, evs) = mk_holes nenv sigma types in
         let evs = Array.map_of_list (Vars.subst_vars sigma (List.rev li)) evs in
         let types = Array.of_list types in

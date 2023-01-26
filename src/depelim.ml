@@ -91,6 +91,7 @@ let dependent_pattern ?(pattern_term=true) c =
   let open Tacmach in
   Proofview.Goal.enter (fun gl ->
   let sigma = Proofview.Goal.sigma gl in
+  let cr = Retyping.relevance_of_term (pf_env gl) sigma c in
   let cty = Retyping.get_type_of (pf_env gl) sigma c in
   let deps =
     match kind sigma cty with
@@ -104,20 +105,21 @@ let dependent_pattern ?(pattern_term=true) c =
     | _ -> pf_get_new_id (Id.of_string (hdchar (pf_env gl) (project gl) c)) gl
   in
   let env = pf_env gl in
-  let mklambda (ty, sigma) (c, id, cty) =
+  let mklambda (ty, sigma) (c, id, r, cty) =
     let conclvar, sigma =
       Find_subterm.subst_closed_term_occ env sigma
         (Locus.AtOccs Locus.AllOccurrences) c ty
     in
-      mkNamedLambda sigma (annotR id) cty conclvar, sigma
+      mkNamedLambda sigma (make_annot id r) cty conclvar, sigma
   in
   let subst =
-    let deps = List.rev_map (fun c -> (c, varname c, pf_get_type_of gl c)) deps in
-      if pattern_term then (c, varname c, cty) :: deps
-      else deps
+    let map c = (c, varname c, Retyping.relevance_of_term env sigma c, Retyping.get_type_of env sigma c) in
+    let deps = List.rev_map map deps in
+    if pattern_term then (c, varname c, cr, cty) :: deps
+    else deps
   in
   let concllda, evd = List.fold_left mklambda (pf_concl gl, project gl) subst in
-  let conclapp = applistc concllda (List.rev_map pi1 subst) in
+  let conclapp = applistc concllda (List.rev_map (fun (c, _, _, _) -> c) subst) in
     convert_concl ~cast:false ~check:false conclapp DEFAULTcast)
 
 let annot_of_context ctx =
@@ -127,7 +129,7 @@ let depcase ~poly ((mind, i as ind), u) =
   let indid = Nametab.basename_of_global (GlobRef.IndRef ind) in
   let mindb, oneind = Global.lookup_inductive ind in
   let relevance = oneind.mind_relevance in
-  let annotR x = make_annot x relevance in
+  let indna x = make_annot x relevance in
   let ctx = oneind.mind_arity_ctxt in
   let nparams = mindb.mind_nparams in
   let ctx = List.map of_rel_decl ctx in
@@ -135,8 +137,9 @@ let depcase ~poly ((mind, i as ind), u) =
   let nargs = List.length args in
   let indapp = mkApp (mkIndU (ind,u), extended_rel_vect 0 ctx) in
   let evd = ref (Evd.from_env (Global.env())) in
-  let pred = it_mkProd_or_LetIn (evd_comb0 Evarutil.new_Type evd)
-    (make_assum anonR indapp :: args)
+  let s = evd_comb0 (Evd.new_sort_variable Evd.univ_flexible) evd in
+  let pred = it_mkProd_or_LetIn (mkSort s)
+    (make_assum (indna Anonymous) indapp :: args)
   in
   let nconstrs = Array.length oneind.mind_nf_lc in
   let mkbody i (ctx, ty) =
@@ -169,7 +172,7 @@ let depcase ~poly ((mind, i as ind), u) =
           (Array.append (extended_rel_vect (nargs + nconstrs + i) params)
               (extended_rel_vect 0 args)))
   in
-  let ctxpred = make_assum (annotR Anonymous) (obj (2 + nargs)) :: args in
+  let ctxpred = make_assum (indna Anonymous) (obj (2 + nargs)) :: args in
   let app = mkApp (mkRel (nargs + nconstrs + 3),
                   (extended_rel_vect 0 ctxpred))
   in
@@ -181,9 +184,9 @@ let depcase ~poly ((mind, i as ind), u) =
   let body =
     let len = 1 (* P *) + Array.length branches in
     it_mkLambda_or_LetIn case
-      (make_assum (annotR xid) (lift len indapp)
+      (make_assum (indna xid) (lift len indapp)
         :: ((Array.rev_to_list branches)
-            @ (make_assum (nameR (Id.of_string "P")) pred :: ctx)))
+            @ (make_assum (make_annot (Name (Id.of_string "P")) (Retyping.relevance_of_sort s)) pred :: ctx)))
   in
   let () = evd := Evd.minimize_universes !evd in
   let univs = Evd.univ_entry ~poly !evd in
@@ -223,7 +226,8 @@ let pattern_call ?(pattern_term=true) c =
   Proofview.Goal.enter (fun gl ->
   let env = pf_env gl in
   let sigma = project gl in
-  let cty = pf_get_type_of gl c in
+  let cr = Retyping.relevance_of_term env sigma c in
+  let cty = Retyping.get_type_of env sigma c in
   let ids = Id.Set.of_list (ids_of_named_context (Proofview.Goal.hyps gl)) in
   let deps =
     match kind sigma c with
@@ -238,7 +242,7 @@ let pattern_call ?(pattern_term=true) c =
   let mklambda ty (c, id, cty) =
     let conclvar, _ = Find_subterm.subst_closed_term_occ env (project gl)
       (Locus.AtOccs Locus.AllOccurrences) c ty in
-      mkNamedLambda sigma (annotR id) cty conclvar
+      mkNamedLambda sigma (make_annot id cr) cty conclvar
   in
   let subst =
     let deps = List.rev_map (fun c -> (c, varname c, pf_get_type_of gl c)) deps in
