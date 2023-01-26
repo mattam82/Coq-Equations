@@ -36,10 +36,10 @@ let mkcase env sigma c ty constrs =
     Array.map2_i (fun i id (ctx, cty) ->
       let cty = Term.it_mkProd_or_LetIn cty ctx in
       let cty = CVars.subst_instance_constr ui cty in
-      let (args, arity) = decompose_prod_assum sigma (of_constr cty) in
+      let (args, arity) = decompose_prod_decls sigma (of_constr cty) in
       let realargs, pars = List.chop (List.length args - params) args in
       let args = substl (List.rev origparams) (it_mkProd_or_LetIn arity realargs) in
-      let args, arity = decompose_prod_assum sigma args in
+      let args, arity = decompose_prod_decls sigma args in
       let res = constrs ind i id params args arity in
       it_mkLambda_or_LetIn res args)
       oneind.mind_consnames oneind.mind_nf_lc
@@ -77,7 +77,7 @@ let derive_no_confusion ~pm env sigma0 ~poly (ind,u as indu) =
       let () = evd := evm in
       let evm, sigma = Evd.fresh_global (Global.env ()) !evd (Lazy.force coq_sigma) in
       let () = evd := evm in
-      let _, pred' = Term.decompose_lam_n (List.length pars) (EConstr.to_constr !evd pred) in
+      let _, pred' = Term.decompose_lambda_n (List.length pars) (EConstr.to_constr !evd pred) in
       let indty = mkApp (sigma, [|idx; of_constr pred'|]) in
       nf_betaiotazeta env !evd indty, mkProj (Lazy.force coq_pr2, mkRel 1), pars, (List.firstn lenargs ctx)
   in

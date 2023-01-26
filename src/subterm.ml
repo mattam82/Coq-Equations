@@ -56,13 +56,13 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
   let getargs t = snd (List.chop params (snd (decompose_app sigma t))) in
   let inds =
     let branches = Array.mapi (fun i ty ->
-      let args, concl = decompose_prod_assum sigma (of_constr ty) in
+      let args, concl = decompose_prod_decls sigma (of_constr ty) in
       let lenargs = List.length args in
       let lenargs' = lenargs - params in
       let args', params' = List.chop lenargs' args in
       let recargs = CList.map_filter_i (fun i decl ->
         let (n, _, t) = to_tuple decl in
-        let ctx, ar = decompose_prod_assum sigma t in
+        let ctx, ar = decompose_prod_decls sigma t in
           match kind sigma (fst (decompose_app sigma ar)) with
           | Ind (ind',_) when Environ.QInd.equal env ind' ind ->
               Some (ctx, i, mkRel (succ i), getargs (lift (succ i) ar))
@@ -307,10 +307,10 @@ let derive_below env sigma ~poly (ind,univ as indu) =
       let ty = Vars.subst_instance_constr (EInstance.kind !evd univ) ty in
       let nargs = constructor_nrealargs env (ind, succ i) in
       let recarg = mkVar recid in
-      let args, _ = decompose_prod_assum !evd ty in
+      let args, _ = decompose_prod_decls !evd ty in
       let args, _ = List.chop (List.length args - params) args in
       let ty' = replace_term !evd (mkApp (mkIndU (ind,univ), rel_vect (-params) params)) recarg ty in
-      let args', _ = decompose_prod_assum !evd ty' in
+      let args', _ = decompose_prod_decls !evd ty' in
       let args', _ = List.chop (List.length args' - params) args' in
       let arg_tys = fst (List.fold_left (fun (acc, n) decl ->
         let t = get_type decl in
@@ -332,7 +332,7 @@ let derive_below env sigma ~poly (ind,univ as indu) =
       (* This wrapper checks if the argument is a recursive one,
        * and do the appropriate transformations if it is a product. *)
       let wrapper f = fun g (c, t) ->
-        let prem, res = decompose_prod_assum !evd t in
+        let prem, res = decompose_prod_decls !evd t in
         let t, args = decompose_app !evd res in
           if eq_constr !evd t recarg then
             let nprem = List.length prem in

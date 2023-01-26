@@ -168,7 +168,7 @@ let telescope env evd = function
 let sigmaize ?(liftty=0) env0 evd pars f =
   let env = push_rel_context pars env0 in
   let ty = Retyping.get_type_of env !evd f in
-  let ctx, concl = splay_prod_assum env !evd ty in
+  let ctx, concl = hnf_decompose_prod_decls env !evd ty in
   let ctx = EConstr.Vars.smash_rel_context ctx in
   let argtyp, letbinders, make = telescope env evd ctx in
     (* Everyting is in env, move to index :: letbinders :: env *) 
@@ -451,7 +451,7 @@ let uncurry_call env sigma fn c =
   let params, args = List.chop (List.length args') args in
   let hd = applist (hd, params) in
   let ty = Retyping.get_type_of env sigma hd in
-  let ctx, _ = Reductionops.splay_prod_assum env sigma ty in
+  let ctx, _ = Reductionops.hnf_decompose_prod_decls env sigma ty in
   let ctx =
     let open Context.Rel.Declaration in
     let rec aux env ctx args =
@@ -731,7 +731,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
   (* If something is wrong here, it means that one of the parameters was
    * omitted or cut, which should be wrong... *)
   let params = List.map (Vars.lift (-(nb_cuts + oib.mind_nrealargs + 1))) params in
-  let goal = Termops.it_mkProd_or_LetIn goal cuts_ctx in
+  let goal = EConstr.it_mkProd_or_LetIn goal cuts_ctx in
   let goal = it_mkLambda_or_LetIn goal fresh_ctx in
   let params = List.map (to_constr ~abort_on_undefined_evars:false !evd) params in
   let goal' = to_constr ~abort_on_undefined_evars:false !evd goal in

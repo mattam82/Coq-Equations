@@ -376,7 +376,7 @@ let aux_ind_fun info chop nested unfp unfids p =
         let sigma = ref (Proofview.Goal.sigma gl) in
         match t with
         | { rec_node = WfRec r } ->
-          let inctx, concl = decompose_prod_n_assum !sigma t.rec_args (concl gl) in
+          let inctx, concl = decompose_prod_n_decls !sigma t.rec_args (concl gl) in
           Refine.refine ~typecheck:false (fun sigma ->
               let evd = ref sigma in
               let sort = Retyping.get_sort_of env sigma concl in
@@ -1249,7 +1249,7 @@ let ind_elim_tac indid inds mutinds info ind_fun =
                       Tactics.simpl_in_concl; Tactics.intros;
                       prove_methods (Reductionops.nf_beta env sigma app)]
        else
-         let ctx, concl = decompose_prod_assum sigma ty in
+         let ctx, concl = decompose_prod_decls sigma ty in
          Proofview.Unsafe.tclEVARS sigma <*>
          Tactics.simpl_in_concl <*> Tactics.intros <*>
          Tactics.cut concl <*>

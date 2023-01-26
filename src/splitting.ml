@@ -348,7 +348,7 @@ let compute_possible_guardness_evidences sigma n fixbody fixtype =
          doesn't seem to worth the effort (except for huge mutual
          fixpoints ?) *)
     let m = Termops.nb_prod sigma fixtype in
-    let ctx = fst (decompose_prod_n_assum sigma m fixtype) in
+    let ctx = fst (decompose_prod_n_decls sigma m fixtype) in
     List.map_i (fun i _ -> i) 0 ctx
 
 let nf_fix sigma (nas, cs, ts) =
@@ -529,7 +529,7 @@ let term_of_tree env0 isevar sort tree =
       in
       let branches = Array.map2 (fun (ty, nb, csubst) next ->
         (* We get the context from the constructor arity. *)
-        let new_ctx, ty = EConstr.decompose_prod_n_assum !isevar nb ty in
+        let new_ctx, ty = EConstr.decompose_prod_n_decls !isevar nb ty in
         let new_ctx = Namegen.name_context env !isevar new_ctx in
         let envnew = push_rel_context (new_ctx @ ctx') env in
         (* Remove the cuts and append them to the context. *)
@@ -1044,7 +1044,7 @@ let solve_equations_obligations ~pm flags recids loc i sigma hook =
         let local_context, section_context =
           List.chop (List.length evcontext - section_length) evcontext
         in
-        let type_ = Termops.it_mkNamedProd_or_LetIn sigma (Evd.evar_concl evi) local_context in
+        let type_ = EConstr.it_mkNamedProd_or_LetIn sigma (Evd.evar_concl evi) local_context in
         let type_ = nf_beta env sigma type_ in
         env, ev, evi, local_context, type_) evars in
   (* Make goals from a copy of the evars *)
@@ -1170,7 +1170,7 @@ let solve_equations_obligations_program ~pm flags recids loc i sigma hook =
     let recobls =
       List.map (fun (id, c) ->
       (* Due to shrinking, we can get lambda abstractions first *)
-      let _, body = decompose_lam_assum sigma (EConstr.of_constr c) in
+      let _, body = decompose_lambda_decls sigma (EConstr.of_constr c) in
       let hd, _ = decompose_app sigma body in
       try fst (EConstr.destConst sigma hd)
       with Constr.DestKO -> assert false) obls

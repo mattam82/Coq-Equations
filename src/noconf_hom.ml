@@ -72,7 +72,7 @@ let derive_noConfusion_package ~pm env sigma ~poly (ind,u as indu) indid ~prefix
   let noconfterm = mkApp (noconf, argsvect) in
   let ctx, argty =
     let ty = Retyping.get_type_of env sigma noconf in
-    let ctx, ty = EConstr.decompose_prod_n_assum sigma len ty in
+    let ctx, ty = EConstr.decompose_prod_n_decls sigma len ty in
     match kind sigma ty with
     | Prod (_, b, _) -> ctx, b
     | _ -> assert false
@@ -164,10 +164,10 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
   in
   let mk_clause i ty =
     let ty = EConstr.of_constr ty in
-    let paramsctx, concl = decompose_prod_n_assum sigma params ty in
+    let paramsctx, concl = decompose_prod_n_decls sigma params ty in
     let _, ctxpars = List.chop args ctx in
     let ctxvars = List.map (fun decl -> mkVar (Name.get_id (get_name decl))) ctxpars in
-    let args, concl = decompose_prod_assum sigma (Vars.substnl ctxvars 0 concl) in
+    let args, concl = decompose_prod_decls sigma (Vars.substnl ctxvars 0 concl) in
     let forced = get_forced_positions sigma args concl in
     let loc = None in
     let fn (avoid, acc) decl forced =
