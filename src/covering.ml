@@ -56,7 +56,7 @@ let decompose_rel evd c =
   | _ -> None
 
 let rec unify env evd flex g x y =
-  if check_conv env evd x y then id_subst g
+  if is_conv_leq env evd x y then id_subst g
   else
     match decompose_rel evd x with
     | Some i -> 
@@ -449,7 +449,7 @@ let unify_type env evars before id ty after =
       Array.mapi (fun i ty ->
           let ty = of_constr ty in
           let ty = prod_applist !evars ty params in
-          let ctx, ty = decompose_prod_assum !evars ty in
+          let ctx, ty = decompose_prod_decls !evars ty in
           let ctx = 
             fold_right (fun decl acc ->
                 let (n, b, t) = to_tuple decl in
@@ -900,10 +900,10 @@ let wf_fix_constr env evars sign arity sort carrier cterm crel =
   in
   let fix = norm env fix in
   let functional_type, full_functional_type =
-    let ctx, rest = Reductionops.splay_prod_n env !evars (Context.Rel.nhyps sign) functional_type in
+    let ctx, rest = Reductionops.hnf_decompose_prod_n_decls env !evars (Context.Rel.nhyps sign) functional_type in
     match kind !evars (whd_all (push_rel_context ctx env) !evars rest) with
     | Prod (na, b, concl) ->
-      let ctx', rest = Reductionops.splay_prod_assum (push_rel_context ctx env) !evars b in
+      let ctx', rest = Reductionops.hnf_decompose_prod_decls (push_rel_context ctx env) !evars b in
       let infos = Cbv.create_cbv_infos reds (push_rel_context ctx env) !evars in
       let norm = Cbv.cbv_norm infos in
       let fn_type = it_mkProd_or_LetIn rest ctx' in

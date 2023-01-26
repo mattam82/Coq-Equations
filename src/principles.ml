@@ -118,7 +118,7 @@ let clean_rec_calls sigma (hyps, c) =
   in
   let hyps =
     CMap.fold (fun ty n hyps ->
-      let ctx, concl = Term.decompose_prod_assum ty in
+      let ctx, concl = Term.decompose_prod_decls ty in
       let len = List.length ctx in
       if Vars.noccur_between 1 len concl then
           if CMap.mem (Constr.lift (-len) concl) hyps then hyps
@@ -305,7 +305,7 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
                hyps args
            in
            let fargs' = Constr.mkApp (f', Array.of_list fargs') in
-           let result = Termops.it_mkLambda_or_LetIn fargs' sign in
+           let result = Term.it_mkLambda_or_LetIn fargs' sign in
            let hyp =
              Term.it_mkProd_or_LetIn
                (Constr.mkApp (mkApp (mkRel (i + 1 + len + n + List.length sign), Array.of_list indargs'),
@@ -354,7 +354,7 @@ let subst_comp_proj_split sigma f proj s =
   map_split (subst_comp_proj sigma f proj) s
 
 let is_ind_assum env sigma ind b =
-  let _, concl = decompose_prod_assum sigma b in
+  let _, concl = decompose_prod_decls sigma b in
   let t, _ = decompose_app sigma concl in
   if isInd sigma t then
     let (ind', _), _ = destInd sigma t in
@@ -381,7 +381,7 @@ open Vars
 
 let compute_elim_type env evd user_obls is_rec protos k leninds
                       ind_stmts all_stmts sign app elimty =
-  let ctx, arity = decompose_prod_assum !evd elimty in
+  let ctx, arity = decompose_prod_decls !evd elimty in
   let lenrealinds =
     List.length (List.filter (fun (_, (_,_,_,_,_,_,_,(kind,_)),_) -> regular_or_nested_rec kind) ind_stmts) in
   let newctx =
@@ -394,7 +394,7 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
       it_mkProd_or_LetIn (Vars.substl [mkProp; app] arity) sign
     else
       let clean_one a sign fn =
-        let ctx, concl = decompose_prod_assum !evd a in
+        let ctx, concl = decompose_prod_decls !evd a in
         let newctx = CList.skipn 2 ctx in
         let newconcl = Vars.substl [mkProp; mkApp (fn, extended_rel_vect 0 sign)] concl in
         it_mkProd_or_LetIn newconcl newctx
@@ -621,7 +621,7 @@ let extend_prob_ctx delta (ctx, pats, ctx') =
 let map_proto evd recarg f ty =
   match recarg with
   | Some recarg ->
-     let lctx, ty' = decompose_prod_assum evd ty in
+     let lctx, ty' = decompose_prod_decls evd ty in
      (* Feedback.msg_debug Pp.(str"map_proto: " ++ Printer.pr_econstr_env (Global.env()) evd ty ++ str" recarg = " ++ int recarg); *)
      let app =
        let args = Termops.rel_list 0 (List.length lctx) in
@@ -1536,7 +1536,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     CList.map_i (fun i ((f',filterf'), alias, path, sign, arity, pats, args, (refine, cut)) ->
       let f' = Termops.strip_outer_cast evd f' in
       let f'hd =
-        let ctx, t = decompose_lam_assum evd f' in
+        let ctx, t = decompose_lambda_decls evd f' in
         fst (decompose_app evd t)
       in
       let alias =
