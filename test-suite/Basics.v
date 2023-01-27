@@ -109,7 +109,7 @@ Require Import Arith Wf_nat.
 #[local]
 Instance wf_nat : WellFounded lt := lt_wf.
 
-#[local] Hint Resolve lt_n_Sn : lt.
+#[local] Hint Resolve PeanoNat.Nat.lt_succ_diag_r : lt.
 
 Ltac solve_rec ::= simpl in * ; cbv zeta ; intros ; 
   try typeclasses eauto with subterm_relation Below lt.
@@ -202,6 +202,7 @@ Section foo.
     | pair xs ys := (cons x xs, cons y ys) }.
 End foo.
 
+#[local]
 Typeclasses Transparent vector_subterm.
 
 (** Due to the packing of all arguments, can only be done in sections right now so
@@ -458,7 +459,7 @@ Equations vmap' {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
 vmap' f nil := nil ;
 vmap' f (cons a v) := cons (f a) (vmap' f v).
 
-#[local] Hint Resolve lt_n_Sn : subterm_relation.
+#[local] Hint Resolve PeanoNat.Nat.lt_succ_diag_r : subterm_relation.
 
 Equations vmap {A B} (f : A -> B) {n} (v : vector A n) : vector B n
   by wf n :=

@@ -245,7 +245,7 @@ Proof.
   intros.
   funelim (rifoldr plus 0 f1).
   - constructor.
-  - apply Plus.plus_le_compat.
+  - apply Nat.add_le_mono.
     + apply H0.
     + apply H. intros. apply H0.
 Qed.
@@ -288,7 +288,7 @@ Arguments cond {A} _ {n} _ _.
 Equations exp'Denote t (e : exp' t) : type'Denote t :=
 exp'Denote (NConst n) := n;
 exp'Denote (Plus e1 e2) := (exp'Denote e1) + (exp'Denote e2);
-exp'Denote (Eq e1 e2) (*<= eq_nat_dec*) := EqNat.beq_nat (exp'Denote e1) (exp'Denote e2) (*=> {
+exp'Denote (Eq e1 e2) (*<= eq_nat_dec*) := Nat.eqb (exp'Denote e1) (exp'Denote e2) (*=> {
   | true := true;
   | false := false
 }*);

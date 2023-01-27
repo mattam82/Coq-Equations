@@ -69,14 +69,14 @@ Qed.
 Lemma fin_lt_n : forall (n : nat) (i : fin n), fin_to_nat i < n.
 Proof.
   intros. funelim (fin_to_nat i).
-    - apply Le.le_n_S; apply Le.le_0_n.
-    - apply Lt.lt_n_S; assumption.
+    - apply -> PeanoNat.Nat.succ_le_mono; apply PeanoNat.Nat.le_0_l.
+    - apply -> PeanoNat.Nat.succ_lt_mono; assumption.
 Defined.
 
 Equations? nat_to_fin {n : nat} (m : nat) (p : m < n) : fin n :=
 nat_to_fin (n:=(S n)) 0 _ := fz;
 nat_to_fin (n:=(S n)) (S m) p := fs (nat_to_fin m _).
-Proof. apply Lt.lt_S_n; assumption. Defined.
+Proof. apply PeanoNat.Nat.succ_lt_mono; assumption. Defined.
 
 Set Program Mode.
 
@@ -84,8 +84,8 @@ Equations? fin_to_nat_bound {n : nat} (i : fin n) : {m : nat | m < n} :=
 fin_to_nat_bound fz := 0;
 fin_to_nat_bound (fs j) := let (m, p) := fin_to_nat_bound j in (S m).
 Proof.
-  - apply Le.le_n_S; apply Le.le_0_n.
-  - apply Lt.lt_n_S; assumption.
+  - apply -> PeanoNat.Nat.succ_le_mono; apply PeanoNat.Nat.le_0_l.
+  - apply -> PeanoNat.Nat.succ_lt_mono; assumption.
 Defined.
 
 Arguments exist {A} {P} _ _.
@@ -123,14 +123,13 @@ isnoc Nil x := Cons x Nil;
 isnoc (Cons y t) x := Cons y (isnoc t x).
 
 Lemma append_get : forall (A : Set) (n : nat) (l : ilist A n) (x : A),
-  iget (isnoc l x) (nat_to_fin n (Lt.lt_n_Sn n)) = x.
+  iget (isnoc l x) (nat_to_fin n (PeanoNat.Nat.lt_succ_diag_r n)) = x.
 Proof.
   induction n ; intros.
     - depelim l. now simp isnoc nat_to_fin iget.
     - depelim l. simp isnoc nat_to_fin iget.
       unfold nat_to_fin_obligation_1.
-      replace (Lt.lt_S_n n (S n) (Lt.lt_n_Sn (S n))) with (Lt.lt_n_Sn n) by (apply le_hprop).
-      apply IHn.
+      etransitivity; [|apply (IHn l)]; do 2 f_equal; apply le_hprop.
 Qed.
 
 Equations convert_ilist {A : Set} {n m : nat} (p : n = m) (l : ilist A n) : ilist A m :=
@@ -155,6 +154,7 @@ irev_aux Nil acc := acc;
 irev_aux (Cons (n:=n) x l) acc with eq_sym (add_succ_comm n j), (S n + j) :=
                       { | refl_equal | ?(n + S j) := irev_aux l (Cons x acc) }.
 
+#[local]
 Obligation Tactic := idtac.
 
 Equations? irev {A : Set} {n : nat} (l : ilist A n) : ilist A n :=
@@ -324,6 +324,7 @@ Derive NoConfusion NoConfusionHom EqDec Subterm for fle.
 
 Print Assumptions fle_eqdec.
 
+#[local]
 Obligation Tactic := program_simpl; try typeclasses eauto 10 with Below subterm_relation.
 
 Equations fle_trans' {n : nat} {i j : fin n} (p : fle i j) {k} (q : fle j k) : fle i k

@@ -94,6 +94,7 @@ Notation "&( x , .. , y , z )" :=
   (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
     (right associativity, at level 4,
      format "&( x ,  .. ,  y  ,  z )").
+#[local]
 Obligation Tactic := idtac.
 
 Equations foo9 : { x: nat & x = 0 } :=

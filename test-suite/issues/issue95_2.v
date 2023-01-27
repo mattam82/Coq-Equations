@@ -9,5 +9,5 @@ Lemma l:
       transport t' T.
 Proof.
   induction T; intuition auto; try lia.
-  - Timeout 1 simp transport in *. intuition.
+  - Timeout 1 simp transport in *. intuition auto with *.
 Qed.

@@ -158,6 +158,7 @@ Module IdealNoSec.
 
   Example check0 := (fun a (a_C : C a) => eq_refl : tree_list_C a_C = list_C (tree_C a_C)).
 
+  #[local]
   Set Firstorder Solver auto.
 
   (* It is impossible to derive the good nested elimination principle from the

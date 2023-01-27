@@ -119,6 +119,7 @@ Module RecMeasure.
   Instance wf_MR {A R} `(WellFounded A R) {B} (f : B -> A) : WellFounded (MR R f).
   Proof. red. apply measure_wf. apply H. Defined.
 
+  #[local]
   Obligation Tactic := program_simpl; try typeclasses eauto with Below.
 
   #[local] Hint Extern 0 (MR _ _ _ _) => red : Below.
@@ -145,8 +146,13 @@ Module RecMeasure.
   #[local] Hint Resolve filter_length : datatypes.
   
   Section QuickSort.
-    
-    #[local] Hint Immediate gt_le_S : Below.
+
+    Definition le_lt_n_Sm : ∀ n m : nat, n ≤ m → n < S m.
+    Proof.
+    apply Nat.lt_succ_r.
+    Qed.
+
+    #[local] Hint Immediate Nat.le_succ_l : Below.
     #[local] Hint Resolve filter_length : Below.
     #[local] Hint Unfold lt gt : Below.
     #[local] Hint Resolve le_lt_n_Sm : Below.
