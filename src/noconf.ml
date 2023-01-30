@@ -67,9 +67,9 @@ let derive_no_confusion ~pm env sigma0 ~poly (ind,u as indu) =
   let args = oneind.mind_nrealargs in
   let argsvect = rel_vect 0 len in
   let paramsvect, rest = Array.chop params argsvect in
-  let argty, x, ctx, argsctx =
+  let argr, argty, x, ctx, argsctx =
     if Array.length rest = 0 then
-      mkApp (mkIndU indu, argsvect), mkRel 1, ctx, []
+      oneind.mind_relevance, mkApp (mkIndU indu, argsvect), mkRel 1, ctx, []
     else
       let evm, pred, pars, indty, valsig, ctx, lenargs, idx =
         Sigma_types.build_sig_of_ind env !evd indu
@@ -79,14 +79,14 @@ let derive_no_confusion ~pm env sigma0 ~poly (ind,u as indu) =
       let () = evd := evm in
       let _, pred' = Term.decompose_lambda_n (List.length pars) (EConstr.to_constr !evd pred) in
       let indty = mkApp (sigma, [|idx; of_constr pred'|]) in
-      nf_betaiotazeta env !evd indty, mkProj (Lazy.force coq_pr2, mkRel 1), pars, (List.firstn lenargs ctx)
+      Sorts.Relevant, nf_betaiotazeta env !evd indty, mkProj (Lazy.force coq_pr2, mkRel 1), pars, (List.firstn lenargs ctx)
   in
   let tru = get_efresh logic_top evd in
   let fls = get_efresh logic_bot evd in
   let xid = Id.of_string "x" and yid = Id.of_string "y" in
-  let xdecl = of_tuple (nameR xid, None, argty) in
+  let xdecl = of_tuple (make_annot (Name xid) argr, None, argty) in
   let binders = xdecl :: ctx in
-  let ydecl = of_tuple (nameR yid, None, lift 1 argty) in
+  let ydecl = of_tuple (make_annot (Name yid) argr, None, lift 1 argty) in
   let fullbinders = ydecl :: binders in
   let s = Lazy.force logic_sort in
   let s = match s with
@@ -114,7 +114,7 @@ let derive_no_confusion ~pm env sigma0 ~poly (ind,u as indu) =
       (* In pars ; x |- fun args (x : ind pars args) => forall y, Prop *)
       let app = pack_ind_with_parlift (args + 2) in
 	      it_mkLambda_or_LetIn 
-          (mkProd_or_LetIn (of_tuple (anonR, None, app)) s)
+          (mkProd_or_LetIn (of_tuple (make_annot Anonymous argr, None, app)) s)
           (of_tuple (nameR xid, None, ind_with_parlift (lenindices + 1)) ::
              lift_rel_context 1 argsctx)
     in
