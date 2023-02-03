@@ -299,7 +299,7 @@ let specialize_eqs ~with_block id =
   let rec aux in_block in_eqs ctx subst acc ty =
     match kind !evars ty with
     | LetIn (na, b, t, ty) ->
-      if is_global !evars (Lazy.force coq_block) b then
+      if is_global env !evars (Lazy.force coq_block) b then
         if not with_block then aux true in_eqs ctx subst acc (subst1 mkProp ty)
         else if in_block then acc, in_eqs, ctx, subst, (subst1 mkProp ty)
         else aux true in_eqs ctx subst acc (subst1 mkProp ty)
@@ -319,7 +319,7 @@ let specialize_eqs ~with_block id =
         str " to " ++ Printer.pr_econstr_env env' !evars t'); *)
       (match kind !evars t' with
        | App (eq, [| eqty; x; y |]) when
-           (is_global !evars (Lazy.force logic_eq_type) eq &&
+           (is_global env !evars (Lazy.force logic_eq_type) eq &&
             (noccur_between !evars 1 (List.length subst) x ||
              noccur_between !evars 1 (List.length subst) y)) ->
          let _, u = destPolyRef !evars eq in

@@ -618,7 +618,7 @@ let term_of_tree env0 isevar sort tree =
       (* Remove the block lets *)
       let rec clean_block c =
         match kind !evd c with
-        | LetIn (_, b, _, b') when Equations_common.is_global !evd (Lazy.force coq_block) b ->
+        | LetIn (_, b, _, b') when Equations_common.is_global env !evd (Lazy.force coq_block) b ->
           clean_block (subst1 b b')
         | _ -> EConstr.map !evd clean_block c
       in

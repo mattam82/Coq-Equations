@@ -220,7 +220,7 @@ val logic_signature_pack : lazy_ref
 
 val get_fresh : Evd.evar_map -> lazy_ref -> Evd.evar_map * constr
 val get_efresh : lazy_ref -> esigma -> constr
-val is_lglobal : Evd.evar_map -> lazy_ref -> EConstr.constr -> bool
+val is_lglobal : Environ.env -> Evd.evar_map -> lazy_ref -> EConstr.constr -> bool
 
 val coq_sigma : lazy_ref
 val coq_sigmaI : lazy_ref
@@ -417,7 +417,7 @@ val hintdb_set_transparency :
 val to_peuniverses : 'a Univ.puniverses -> 'a peuniverses
 val from_peuniverses : Evd.evar_map -> 'a peuniverses -> 'a Univ.puniverses
 
-val is_global : Evd.evar_map -> Names.GlobRef.t -> constr -> bool
+val is_global : Environ.env -> Evd.evar_map -> Names.GlobRef.t -> constr -> bool
 val constr_of_global_univ : Evd.evar_map -> Names.GlobRef.t peuniverses -> constr
 
 val rel_vect : int -> int -> constr array

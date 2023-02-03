@@ -356,7 +356,7 @@ let get_fresh sigma r = new_global sigma (Lazy.force r)
 
 let get_efresh r evd = e_new_global evd (Lazy.force r)
 
-let is_lglobal sigma gr c = EConstr.isRefX sigma (Lazy.force gr) c
+let is_lglobal env sigma gr c = EConstr.isRefX env sigma (Lazy.force gr) c
 
 open EConstr
 
@@ -562,12 +562,14 @@ let unfold_head env sigma db t =
 
 let autounfold_heads db db' cl =
   Proofview.Goal.enter begin fun gl ->
+  let env = Proofview.Goal.env gl in
+  let sigma = Proofview.Goal.sigma gl in
   let eq = 
     (match cl with Some (id, _) -> pf_get_hyp_typ id gl | None -> pf_concl gl) 
   in
   let did, c' = 
     match kind (project gl) eq with
-    | App (f, [| ty ; x ; y |]) when EConstr.isRefX (project gl) (Lazy.force logic_eq_type) f ->
+    | App (f, [| ty ; x ; y |]) when EConstr.isRefX env sigma (Lazy.force logic_eq_type) f ->
       let did, x' = unfold_head (pf_env gl) (project gl) db x in
       let did', y' = unfold_head (pf_env gl) (project gl) db' y in
       did && did', EConstr.mkApp (f, [| ty ; x' ; y' |])
@@ -1028,7 +1030,7 @@ let hintdb_set_transparency cst b db =
     (Hints.HintsTransparencyEntry (Hints.HintsReferences [Tacred.EvalConstRef cst], b))
 
 (* Call the really unsafe is_global test, we use this on evar-open terms too *)
-let is_global sigma f ec = EConstr.isRefX sigma f ec
+let is_global = EConstr.isRefX
 
 let constr_of_global_univ sigma u = of_constr (Constr.mkRef (from_peuniverses sigma u))
 

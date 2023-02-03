@@ -470,14 +470,14 @@ SimpFun.make ~name:"while_fun" begin fun (env : Environ.env) (evd : Evd.evar_map
 end
 
 (* Check if a type is a given inductive. *)
-let check_inductive sigma (ind : Names.inductive) : EConstr.types -> bool =
-  Equations_common.is_global sigma (Names.GlobRef.IndRef ind)
+let check_inductive env sigma (ind : Names.inductive) : EConstr.types -> bool =
+  Equations_common.is_global env sigma (Names.GlobRef.IndRef ind)
 (* Check if a term is a given constructor. *)
-let check_construct sigma (constr : Names.constructor) : EConstr.constr -> bool =
-  Equations_common.is_global sigma (Names.GlobRef.ConstructRef constr)
+let check_construct env sigma (constr : Names.constructor) : EConstr.constr -> bool =
+  Equations_common.is_global env sigma (Names.GlobRef.ConstructRef constr)
 (* Check if a term is a given constant. *)
-let check_constant sigma (cst : Names.Constant.t) : EConstr.constr -> bool =
-  Equations_common.is_global sigma (Names.GlobRef.ConstRef cst)
+let check_constant env sigma (cst : Names.Constant.t) : EConstr.constr -> bool =
+  Equations_common.is_global env sigma (Names.GlobRef.ConstRef cst)
 
 (* Deconstruct the goal if it's a product. Otherwise, raise CannotSimplify. *)
 let check_prod sigma (ty : EConstr.types) : Names.Name.t binder_annot * EConstr.types * EConstr.types =
@@ -497,7 +497,7 @@ let check_equality env sigma ctx ?(equal_terms : bool = false)
   ?(var_left : bool = false) ?(var_right : bool = false) (ty : EConstr.types) :
   EConstr.EInstance.t * EConstr.types * EConstr.constr * EConstr.constr =
   let f, args = Equations_common.decompose_appvect sigma ty in
-  if not (check_inductive sigma (Lazy.force EqRefs.eq) f) then
+  if not (check_inductive env sigma (Lazy.force EqRefs.eq) f) then
     raise (CannotSimplify (str
       "The first hypothesis in the goal is not an equality."));
   let _, u = EConstr.destInd sigma f in
@@ -517,10 +517,10 @@ let check_equality env sigma ctx ?(equal_terms : bool = false)
        not a variable."));
   u, tA, tx, ty
 
-let decompose_sigma sigma (t : EConstr.constr) :
+let decompose_sigma env sigma (t : EConstr.constr) :
   (EInstance.t * EConstr.types * EConstr.constr * EConstr.constr * EConstr.constr) option =
   let f, args = Equations_common.decompose_appvect sigma t in
-  if check_construct sigma (Lazy.force SigmaRefs.sigmaI) f then
+  if check_construct env sigma (Lazy.force SigmaRefs.sigmaI) f then
     let _, u = EConstr.destConstruct sigma f in
     Some (u, args.(0), args.(1), args.(2), args.(3))
   else None
@@ -584,7 +584,7 @@ SimpFun.make ~name:"remove_one_sigma" begin fun (env : Environ.env) (evd : Evd.e
   let name, ty1, ty2 = check_prod !evd ty in
   let equ, _, t1, t2 = check_equality env !evd ctx ty1 in
   let sigu, f, args =
-    match decompose_sigma !evd t1, decompose_sigma !evd t2 with
+    match decompose_sigma env !evd t1, decompose_sigma env !evd t2 with
     | Some (sigu, tA, tB, tt, tp), Some (_, _, _, tu, tq) ->
         (* Determine the degree of dependency. *)
         if Vars.noccurn !evd 1 ty2 then begin
@@ -757,7 +757,7 @@ SimpFun.make ~name:"solution" begin fun (env : Environ.env) (evd : Evd.evar_map 
       let teq_refl = EConstr.mkApp (Builder.eq_refl equ, [| tA'; term' |]) in
         Vars.substnl [Vars.lift (-rel') teq_refl; Vars.lift (-rel') term'] (pred rel') body
   in
-  let lsubst = Context_map.single_subst env !evd rel' (Context_map.pat_of_constr !evd term') ctx' in
+  let lsubst = Context_map.single_subst env !evd rel' (Context_map.pat_of_constr env !evd term') ctx' in
   let subst = Context_map.compose_subst env ~sigma:!evd lsubst subst in
   let f = fun c ->
       (* [c] is a term in the context [ctx'']. *)
@@ -822,8 +822,8 @@ end
 
 let pre_solution ~(dir:direction) = with_retry (pre_solution ~dir)
 
-let is_construct_sigma_2 sigma f =
-  let term = match decompose_sigma sigma f with
+let is_construct_sigma_2 env sigma f =
+  let term = match decompose_sigma env sigma f with
     | Some (_, _, _, _, t) -> t
     | None -> f
   in
@@ -835,7 +835,7 @@ let maybe_pack : simplification_fun =
 SimpFun.make ~name:"maybe_pack" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
   let equ, tA, t1, t2 = check_equality env !evd ctx ty1 in
-  if not (is_construct_sigma_2 !evd t1 && is_construct_sigma_2 !evd t2) then
+  if not (is_construct_sigma_2 env !evd t1 && is_construct_sigma_2 env !evd t2) then
     raise (CannotSimplify (str "This is not an equality between constructors."));
   let indty =
     try Inductiveops.find_rectype (push_rel_context ctx env) !evd tA
@@ -886,7 +886,7 @@ SimpFun.make ~name:"maybe_pack" begin fun (env : Environ.env) (evd : Evd.evar_ma
                  str "] if it requires uniqueness of identity proofs and" ++
                  str " enable [Equations With UIP] to allow this")));
     let tx =
-      let _, _, _, tx, _ = Option.get (decompose_sigma !evd valsig) in
+      let _, _, _, tx, _ = Option.get (decompose_sigma env !evd valsig) in
         Vars.substl (CList.rev args) (Termops.pop tx)
     in
     let tsimplify_ind_pack = Names.GlobRef.ConstRef (Lazy.force EqRefs.simplify_ind_pack) in
@@ -910,7 +910,7 @@ let apply_noconf : simplification_fun =
 SimpFun.make ~name:"apply_noconf" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
   let equ, tA, t1, t2 = check_equality env !evd ctx ty1 in
-  if not (is_construct_sigma_2 !evd t1 && is_construct_sigma_2 !evd t2) then
+  if not (is_construct_sigma_2 env !evd t1 && is_construct_sigma_2 env !evd t2) then
     raise (CannotSimplify (str "This is not an equality between constructors."));
   let noconf_ty = EConstr.mkApp (Builder.noConfusion evd, [| tA |]) in
   let tnoconf =
@@ -948,7 +948,7 @@ SimpFun.make ~name:"simplify_ind_pack" begin fun (env : Environ.env) (evd : Evd.
     in
     let try_decompose ty =
       let f, args = Equations_common.decompose_appvect !evd ty in
-      if not (check_constant !evd (Lazy.force EqRefs.opaque_ind_pack_eq_inv) f) ||
+      if not (check_constant env !evd (Lazy.force EqRefs.opaque_ind_pack_eq_inv) f) ||
          not (Int.equal 8 (Array.length args)) then
         raise (CannotSimplify (str
           "Expected a full application of [opaque_ind_pack_eq_inv]. Maybe\
@@ -969,7 +969,7 @@ SimpFun.make ~name:"simplify_ind_pack" begin fun (env : Environ.env) (evd : Evd.
     let teq = args.(7) in
     (* Check that [teq] is [eq_refl]. *)
     let head, _ = decompose_app !evd teq in
-    if not (is_global !evd (Names.GlobRef.ConstructRef (Lazy.force EqRefs.eq_refl)) head) then
+    if not (is_global env !evd (Names.GlobRef.ConstructRef (Lazy.force EqRefs.eq_refl)) head) then
       raise (CannotSimplify (str
         "[opaque_ind_pack_eq_inv] Anomaly: should be applied to a reflexivity proof."));
     let tsimplify_ind_pack_inv = Names.GlobRef.ConstRef (Lazy.force EqRefs.simplify_ind_pack_inv) in
@@ -983,8 +983,8 @@ let noCycle : simplification_fun =
 SimpFun.make ~name:"noCycle" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
   let equ, tA, t1, t2 = check_equality env !evd ctx ty1 in
-  let isct1 = is_construct_sigma_2 !evd t1 in
-  let isct2 = is_construct_sigma_2 !evd t2 in
+  let isct1 = is_construct_sigma_2 env !evd t1 in
+  let isct2 = is_construct_sigma_2 env !evd t2 in
   if not (isct1 || isct2) then
     raise (CannotSimplify (str "This is not an equality between constructors."));
   let nocycle_ty = EConstr.mkApp (Builder.noCycle evd, [| tA |]) in
@@ -1029,7 +1029,7 @@ let noCycle = with_retry noCycle
 let elim_true : simplification_fun =
 SimpFun.make ~name:"elim_true" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
-  if not (check_inductive !evd (Lazy.force EqRefs.one) ty1) then
+  if not (check_inductive env !evd (Lazy.force EqRefs.one) ty1) then
     raise (CannotSimplify (str
       "[elim_true] The first hypothesis is not the unit type."));
   let subst = Context_map.id_subst ctx in
@@ -1057,7 +1057,7 @@ let elim_true = with_retry elim_true
 let elim_false : simplification_fun =
 SimpFun.make ~name:"elim_false" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
-  if not (check_inductive !evd (Lazy.force EqRefs.zero) ty1) then
+  if not (check_inductive env !evd (Lazy.force EqRefs.zero) ty1) then
     raise (CannotSimplify (str
       "[elim_true] The first hypothesis is not the empty type."));
   let subst = Context_map.id_subst ctx in
@@ -1096,13 +1096,13 @@ let infer_step ?(loc:Loc.t option) ~(isSol:bool)
   (* The goal does not have to be a product, but if it's not, it has to be
    * an application of [opaque_ind_pack_eq_inv]. *)
   let f, _ = Equations_common.decompose_appvect !evd ty in
-  if check_constant !evd (Lazy.force EqRefs.opaque_ind_pack_eq_inv) f then
+  if check_constant env !evd (Lazy.force EqRefs.opaque_ind_pack_eq_inv) f then
     NoConfusionOut
   else begin
     let name, ty1, ty2 = check_prod !evd ty in
     (* First things first, maybe the head of the goal is False or True. *)
-    if check_inductive !evd (Lazy.force EqRefs.zero) ty1 then ElimFalse
-    else if check_inductive !evd (Lazy.force EqRefs.one) ty1 then ElimTrue
+    if check_inductive env !evd (Lazy.force EqRefs.zero) ty1 then ElimFalse
+    else if check_inductive env !evd (Lazy.force EqRefs.one) ty1 then ElimTrue
     else
     (* We need to destruct the equality at the head
        to analyze it. *)
@@ -1192,7 +1192,7 @@ let _expand_many rule env evd ((ctx, ty, glu) : goal) : simplification_rules =
     let rec aux ty acc =
       let ty = Reductionops.whd_betaiotazeta env !evd ty in
       let f, args = Equations_common.decompose_appvect !evd ty in
-      if check_inductive !evd (Lazy.force SigmaRefs.sigma) f then
+      if check_inductive env !evd (Lazy.force SigmaRefs.sigma) f then
         let next_ty = Reductionops.beta_applist !evd (args.(1), [EConstr.mkRel 1]) in
         aux next_ty (rule :: acc)
       else acc
@@ -1204,7 +1204,7 @@ exception Blocked
 let check_block : simplification_fun =
 SimpFun.make ~name:"check_block" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu as gl) : goal) ->
   let _na, b, _ty, _b' = check_letin !evd ty in
-  if Equations_common.is_global !evd (Lazy.force Equations_common.coq_block) b then
+  if Equations_common.is_global env !evd (Lazy.force Equations_common.coq_block) b then
     raise Blocked
   else SimpFun.apply identity env evd gl
 end

@@ -150,7 +150,7 @@ val instance_of_pats :
   rel_context * pat list *
   pat list
 val push_rel_context_eos : rel_context -> env -> esigma -> env
-val split_at_eos : Evd.evar_map ->
+val split_at_eos : Environ.env -> Evd.evar_map ->
   named_context -> named_context * named_context
 val pr_problem :
   program_info ->

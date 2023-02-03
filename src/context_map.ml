@@ -94,20 +94,20 @@ and pats_vars l =
 
 let inaccs_of_constrs l = List.map (fun x -> PInac x) l
 
-let rec pats_of_constrs sigma l = List.map (pat_of_constr sigma) l
-and pat_of_constr sigma c =
+let rec pats_of_constrs env sigma l = List.map (pat_of_constr env sigma) l
+and pat_of_constr env sigma c =
   match kind sigma c with
   | Rel i -> PRel i
-  | App (f, [| a ; c |]) when is_global sigma (Lazy.force coq_inacc) f ->
+  | App (f, [| a ; c |]) when is_global env sigma (Lazy.force coq_inacc) f ->
     PInac c
-  | App (f, [| a ; c |]) when is_global sigma (Lazy.force coq_hide) f ->
+  | App (f, [| a ; c |]) when is_global env sigma (Lazy.force coq_hide) f ->
     PHide (destRel sigma c)
   | App (f, args) when isConstruct sigma f ->
     let ((ind,_),_ as cstr) = destConstruct sigma f in
     let nparams = Inductiveops.inductive_nparams (Global.env()) ind in
     let params, args = Array.chop nparams args in
     PCstr (cstr, inaccs_of_constrs (Array.to_list params) @
-                 pats_of_constrs sigma (Array.to_list args))
+                 pats_of_constrs env sigma (Array.to_list args))
   | Construct f -> PCstr (f, [])
   | _ -> PInac c
 
@@ -364,7 +364,7 @@ let make_permutation ?(env = Global.env ()) (sigma : Evd.evar_map)
         with Invalid_argument _ -> failwith "Could not generate a permutation: different variables"
       else ()
     | PInac c, _ ->
-      let p1' = pat_of_constr sigma (reduce env1 sigma c) in
+      let p1' = pat_of_constr env1 sigma (reduce env1 sigma c) in
       if eq_pat env sigma p1 p1' then
         failwith "Could not generate a permutation: irreducible inaccessible"
       else merge_pats p1' p2
@@ -446,14 +446,14 @@ let rels_above ctx x =
 
 
 
-let is_fix_proto sigma t =
+let is_fix_proto env sigma t =
   match kind sigma t with
-  | LetIn (_, f, _, _) -> is_global sigma (Lazy.force coq_fix_proto) f
+  | LetIn (_, f, _, _) -> is_global env sigma (Lazy.force coq_fix_proto) f
   | _ -> false
 
-let fix_rels sigma ctx =
+let fix_rels env sigma ctx =
   List.fold_left_i (fun i acc decl ->
-      if is_fix_proto sigma (get_type decl) then Int.Set.add i acc else acc)
+      if is_fix_proto env sigma (get_type decl) then Int.Set.add i acc else acc)
     1 Int.Set.empty ctx
 
 let rec dependencies_of_rel ~with_red env evd ctx k x =
@@ -492,7 +492,7 @@ let strengthen ?(full=true) ?(abstract=false) env evd (ctx : rel_context) x (t :
   let rels = 
       Int.Set.union (if full then rels_above ctx x else Int.Set.singleton x)
       (Int.Set.union (dependencies_of_term ~with_red:true env evd ctx t x) 
-      (Int.Set.remove x (fix_rels evd ctx)))
+      (Int.Set.remove x (fix_rels env evd ctx)))
   in
   (* For each variable that we need to push under x, we check
      if its type or body mentions x syntactically. If it does, we normalize
@@ -539,7 +539,7 @@ let new_strengthen (env : Environ.env) (evd : Evd.evar_map) (ctx : rel_context)
     (x : int) ?(rels = rels_above ctx x) (t : constr) :
   context_map * context_map =
   let rels = Int.Set.union rels
-    (Int.Set.union (dependencies_of_term ~with_red:true env evd ctx t x) (fix_rels evd ctx)) in
+    (Int.Set.union (dependencies_of_term ~with_red:true env evd ctx t x) (fix_rels env evd ctx)) in
   let maybe_reduce k t =
     if Int.Set.mem k (Termops.free_rels evd t) then
       Equations_common.nf_betadeltaiota env evd t
