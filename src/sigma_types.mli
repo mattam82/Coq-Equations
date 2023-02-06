@@ -22,7 +22,7 @@ val constrs_of_coq_sigma :
   Evd.evar_map ref ->
   constr ->
   constr -> (Names.Name.t binder_annot * constr * constr * constr) list
-val decompose_coq_sigma : Evd.evar_map -> constr -> (EInstance.t * constr * constr) option
+val decompose_coq_sigma : Environ.env -> Evd.evar_map -> constr -> (EInstance.t * constr * constr) option
 val decompose_indapp : Evd.evar_map ->
   constr -> constr array -> constr * constr array
 
@@ -71,7 +71,7 @@ val uncurry_hyps : Names.Id.t -> unit Proofview.tactic
 
 (** Curry a term starting with a quantification on a sigma type,
     associated to the right. *)
-val curry : Evd.evar_map -> Names.Name.t binder_annot -> constr ->
+val curry : Environ.env -> Evd.evar_map -> Names.Name.t binder_annot -> constr ->
             rel_context * constr
 
 val uncurry_call : Environ.env -> Evd.evar_map -> constr -> constr ->

@@ -901,6 +901,7 @@ let wrap tac before after =
 
 let solve_rec_eq simpltac subst =
   Proofview.Goal.enter begin fun gl ->
+  let env = Proofview.Goal.env gl in
   match kind (project gl) (pf_concl gl) with
   | App (eq, [| ty; x; y |]) ->
       let sigma = project gl in
@@ -908,7 +909,7 @@ let solve_rec_eq simpltac subst =
       (try
         let f_cst, funf_cst =
           List.find (fun (f_cst, funf_cst) ->
-              is_global sigma (GlobRef.ConstRef f_cst) xf && is_global sigma (GlobRef.ConstRef funf_cst) yf) subst
+              is_global env sigma (GlobRef.ConstRef f_cst) xf && is_global env sigma (GlobRef.ConstRef funf_cst) yf) subst
         in
         let unfolds = unfold_in_concl
             [((Locus.OnlyOccurrences [1]), Tacred.EvalConstRef f_cst); 

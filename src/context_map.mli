@@ -45,8 +45,8 @@ val inaccs_of_constrs : constr list -> pat list
 
 (** Reverse of constr_of_pat turning applications of innac/hide into
     the proper patterns *)
-val pats_of_constrs : Evd.evar_map -> constr list -> pat list
-val pat_of_constr : Evd.evar_map -> constr -> pat
+val pats_of_constrs : Environ.env -> Evd.evar_map -> constr list -> pat list
+val pat_of_constr : Environ.env -> Evd.evar_map -> constr -> pat
 
 (** Translating back to user patterns. *)
 val context_map_to_lhs : ?avoid:Id.Set.t -> ?loc:Loc.t -> context_map -> Syntax.lhs
@@ -113,8 +113,8 @@ val split_tele :
   rel_context * rel_declaration *
     rel_context
 val rels_above : 'a list -> int -> Int.Set.t
-val is_fix_proto : Evd.evar_map -> constr -> bool
-val fix_rels : Evd.evar_map -> rel_context -> Int.Set.t
+val is_fix_proto : Environ.env -> Evd.evar_map -> constr -> bool
+val fix_rels : Environ.env -> Evd.evar_map -> rel_context -> Int.Set.t
 val dependencies_of_rel :
   with_red:bool ->
   env ->

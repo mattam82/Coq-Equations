@@ -392,11 +392,11 @@ let pattern_of_glob_constr env sigma avoid patname gc =
         let n = next_ident_away id avoid in
         PUVar (n, Generated))
     | GRef (GlobRef.ConstructRef cstr,_) -> constructor ?loc cstr []
-    | GRef (GlobRef.ConstRef _ as c, _) when GlobRef.equal c (Lazy.force coq_bang) -> PUEmpty
+    | GRef (GlobRef.ConstRef _ as c, _) when Environ.QGlobRef.equal env c (Lazy.force coq_bang) -> PUEmpty
     | GApp (c, l) ->
       begin match DAst.get c with
         | GRef (GlobRef.ConstructRef cstr,_) -> constructor ?loc cstr l
-        | GRef (GlobRef.ConstRef _ as c, _) when GlobRef.equal c (Lazy.force coq_inacc) ->
+        | GRef (GlobRef.ConstRef _ as c, _) when Environ.QGlobRef.equal env c (Lazy.force coq_inacc) ->
           let inacc = List.hd (List.tl l) in
           PUInac inacc
         | _ ->

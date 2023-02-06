@@ -43,7 +43,7 @@ let mkSig evd (n, c, t) =
 let constrs_of_coq_sigma env evd t alias = 
   let rec aux env proj c ty =
     match kind !evd c with
-    | App (f, args) when is_global !evd (Lazy.force coq_sigmaI) f && 
+    | App (f, args) when is_global env !evd (Lazy.force coq_sigmaI) f && 
 	                   Array.length args = 4 ->
        let ty = Retyping.get_type_of env !evd args.(1) in
 	(match kind !evd ty with
@@ -56,10 +56,10 @@ let constrs_of_coq_sigma env evd t alias =
     | _ -> [(Context.anonR, c, proj, ty)]
   in aux env alias t (Retyping.get_type_of env !evd t)
 
-let decompose_coq_sigma sigma t = 
+let decompose_coq_sigma env sigma t = 
   let s = Lazy.force coq_sigma in
     match kind sigma t with
-    | App (f, args) when is_global sigma s f && Array.length args = 2 ->
+    | App (f, args) when is_global env sigma s f && Array.length args = 2 ->
        let ind, u = destInd sigma f in
          Some (u, args.(0), args.(1))
     | _ -> None
@@ -370,7 +370,7 @@ let curry_left_hyp env sigma c t =
   let rec curry_index c t =
     match kind sigma t with
     | Prod (na, dom, concl) ->
-       (match decompose_coq_sigma sigma dom with
+       (match decompose_coq_sigma env sigma dom with
 	| None -> (c, t)
 	| Some (u, ty, pred) ->
 	   let term, typ = aux c t na u ty pred concl in
@@ -385,7 +385,7 @@ let curry_left_hyp env sigma c t =
   let curry c t =
     match kind sigma t with
     | Prod (na, dom, concl) ->
-       (match decompose_coq_sigma sigma dom with
+       (match decompose_coq_sigma env sigma dom with
 	| None -> None
 	| Some (inst, ty, pred) ->
 	   let term, typ = aux c t na inst ty pred concl in
@@ -394,11 +394,11 @@ let curry_left_hyp env sigma c t =
     | _ -> None
   in curry c t
 
-let curry sigma na c =
+let curry env sigma na c =
   let rec make_arg na t =
-    match decompose_coq_sigma sigma t with
+    match decompose_coq_sigma env sigma t with
     | None -> 
-       if is_global sigma (Lazy.force logic_unit) t then
+       if is_global env sigma (Lazy.force logic_unit) t then
          let _, u = destInd sigma t in
          [], constr_of_global_univ sigma (Lazy.force logic_unit_intro, u)
        else [of_tuple (na,None,t)], mkRel 1
@@ -425,7 +425,7 @@ let uncurry_hyps name =
     let sigma = Goal.sigma gl in
     let hyps, _ =
       List.split_when (fun d ->
-          is_global sigma (Lazy.force coq_end_of_section) (get_named_type d)
+          is_global env sigma (Lazy.force coq_end_of_section) (get_named_type d)
           || is_section_variable (Global.env ()) (get_id d)) hyps in
     let ondecl (sigma, acc, ty) d =
       let (dna, _, dty) = to_named_tuple d in
@@ -764,7 +764,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
     let args = List.map of_rel_decl args in
     (* Substitute the indices in [cuts_ctx]. *)
     let rev_indices = List.rev indices in
-    let pats_indices = List.map (Context_map.pat_of_constr !evd) rev_indices in
+    let pats_indices = List.map (Context_map.pat_of_constr env !evd) rev_indices in
     let pats_ctx' = Context_map.lift_pats summary.Inductiveops.cs_nargs pats_ctx' in
     let pats = pats_indices @ pats_ctx' in
     let cuts_ctx = Context_map.specialize_rel_context !evd pats cuts_ctx in
@@ -796,7 +796,7 @@ let curry_hyp env sigma hyp t =
   let curry t =
     match kind sigma t with
     | Prod (na, dom, concl) ->
-       let ctx, arg = curry sigma na dom in
+       let ctx, arg = curry env sigma na dom in
        let term = mkApp (mkVar hyp, [| arg |]) in
        let ty = Reductionops.nf_betaiota env sigma (Vars.subst1 arg concl) in
        Some (it_mkLambda_or_LetIn term ctx, it_mkProd_or_LetIn ty ctx)
@@ -814,7 +814,7 @@ let red_curry () =
   Reductionops.clos_norm_flags reds
 
 let curry_concl env sigma na dom codom =
-  let ctx, arg = curry sigma na dom in
+  let ctx, arg = curry env sigma na dom in
   let newconcl =
     let body = it_mkLambda_or_LetIn (Vars.subst1 arg codom) ctx in
     let inst = extended_rel_vect 0 ctx in
