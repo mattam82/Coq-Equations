@@ -340,7 +340,7 @@ let _chole c loc =
   let kn = Lib.make_kn c in
   let cst = Names.Constant.make kn kn in
   CAst.make ~loc
-  (CHole (Some (ImplicitArg (GlobRef.ConstRef cst, (0,None), false)), Namegen.IntroAnonymous,None)), None
+  (CHole (Some (ImplicitArg (GlobRef.ConstRef cst, (0,None), false)), Namegen.IntroAnonymous)), None
 
 let _check_linearity env sigma opats =
   let rec aux ids pats = 
@@ -384,7 +384,7 @@ let pattern_of_glob_constr env sigma avoid patname gc =
     PUCstr (c, nparams, List.map (DAst.map_with_loc (aux Anonymous)) l)
   and aux patname ?loc = function
     | GVar id -> PUVar (id, User)
-    | GHole (k,_,_) ->
+    | GHole (k,_) ->
       (match patname with
       | Name id when is_implicit_arg k -> PUVar (id, Implicit)
       | _ -> 
@@ -604,7 +604,7 @@ let interp_eqn env sigma notations p ~avoid eqn =
        *       let c = CApp ((None, CAst.(make ~loc (CRef (qid', ie)))), args) in
        *       let arg = CAst.make ~loc (CApp ((None, CAst.make ~loc c), [chole id' loc])) in
        *       arg) *)
-      | CHole (k, i, Some eqns) when Genarg.has_type eqns (Genarg.rawwit wit_equations_list) ->
+      | CGenarg eqns when Genarg.has_type eqns (Genarg.rawwit wit_equations_list) ->
         let eqns = Genarg.out_gen (Genarg.rawwit wit_equations_list) eqns in
         let id = !whereid in
         let () = whereid := Nameops.increment_subscript id in
