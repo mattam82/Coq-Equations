@@ -287,8 +287,7 @@ GRAMMAR EXTEND Gram
 
   term: LEVEL "200"
     [ [ "λ"; "{" ; c = LIST0 equation SEP ";"; "}" -> {
-            CAst.make ~loc @@ CHole (None, Namegen.IntroAnonymous,
-                                     Some (Genarg.in_gen (Genarg.rawwit Syntax.wit_equations_list) c)) } ] ]
+            CAst.make ~loc @@ CGenarg (Genarg.in_gen (Genarg.rawwit Syntax.wit_equations_list) c) } ] ]
   ;
 
     

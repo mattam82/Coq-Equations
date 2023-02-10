@@ -331,7 +331,7 @@ let add_wfrec_implicits rec_type c =
                                             qm_name = Anonymous;
                                             qm_record_field = None }
                     in
-                    let newarg = GHole (Evar_kinds.QuestionMark kind, Namegen.IntroAnonymous, None) in
+                    let newarg = GHole (Evar_kinds.QuestionMark kind, Namegen.IntroAnonymous) in
                     let newarg = DAst.make ?loc newarg in
                     let before, after = List.chop nargs (mapargs args) in
                     let args' = List.append before (newarg :: after) in
@@ -745,7 +745,7 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),udecl,rec
   let (arity, impls') =
     let ty = match t with
       | Some ty -> ty
-      | None -> CAst.make ?loc (Constrexpr.CHole (None, Namegen.IntroAnonymous, None))
+      | None -> CAst.make ?loc (Constrexpr.CHole (None, Namegen.IntroAnonymous))
     in
     Equations_common.evd_comb1 (interp_type_evars_impls env' ?impls:None) evd ty
   in
