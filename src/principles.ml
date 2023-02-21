@@ -142,7 +142,7 @@ let rec is_applied_to_structarg f is_rec lenargs =
   | Some (Guarded ids) :: rest -> begin
      try
        let kind =
-         CList.find_map (fun (f', k) -> if Id.equal f f' then Some k else None) ids
+         CList.find_map_exn (fun (f', k) -> if Id.equal f f' then Some k else None) ids
        in
        match kind with
        | MutualOn (Some (idx,_)) | NestedOn (Some (idx,_)) -> Some (lenargs > idx)
@@ -246,8 +246,7 @@ let find_rec_call is_rec sigma protos f args =
         else None
       | None -> None
   in
-  try Some (CList.find_map fm protos)
-  with Not_found -> None
+  CList.find_map fm protos
 
 let filter_arg i filter =
   let rec aux f =
