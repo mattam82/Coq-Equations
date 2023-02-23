@@ -310,7 +310,7 @@ let is_wf_ref id rec_type =
     | Some (Logical (nargs, (_, id'))) -> 
       if Id.equal id id' then Some nargs else None 
     | _ -> None
-  in CList.find_map aux rec_type
+  in CList.find_map_exn aux rec_type
 
 let add_wfrec_implicits rec_type c =
   let open Glob_term in
@@ -639,7 +639,7 @@ let instance_of_pats env evars (ctx : rel_context) (pats : (int * bool) list) =
   let pats' =
     List.map_i (fun i id ->
         let i', _ = lookup_named_i id ctx' in
-        CList.find_map (fun (i'', hide) ->
+        CList.find_map_exn (fun (i'', hide) ->
             if i'' == i then Some (if hide then PHide i' else PRel i')
             else None) pats)
       1 subst
@@ -648,7 +648,7 @@ let instance_of_pats env evars (ctx : rel_context) (pats : (int * bool) list) =
     List.map_i (fun i decl ->
         let (id, b, t) = to_named_tuple decl in
         let i', _ = lookup_named_i id.binder_name nctx in
-        CList.find_map (fun (i'', hide) ->
+        CList.find_map_exn (fun (i'', hide) ->
             if i'' == i' then Some (if hide then PHide i else PRel i)
             else None) pats)
       1 ctx'
