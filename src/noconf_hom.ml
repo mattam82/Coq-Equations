@@ -65,7 +65,7 @@ let derive_noConfusion_package ~pm env sigma ~poly (ind,u as indu) indid ~prefix
   let argsvect = rel_vect 0 len in
   let noid = add_prefix "noConfusion" (add_prefix prefix (add_prefix "_" indid))
   and packid = add_prefix "NoConfusion" (add_prefix prefix (add_prefix "Package_" indid)) in
-  let tc = Typeclasses.class_info env sigma (Lazy.force coq_noconfusion_class) in
+  let tc = Typeclasses.class_info_exn env sigma (Lazy.force coq_noconfusion_class) in
   let sigma, noconf = Evd.fresh_global ~rigid:Evd.univ_rigid env sigma (GlobRef.ConstRef cstNoConf) in
   let sigma, noconfcl = new_global sigma tc.Typeclasses.cl_impl in
   let inst, u = destInd sigma noconfcl in
