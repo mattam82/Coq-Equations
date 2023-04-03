@@ -493,7 +493,7 @@ let aux_ind_fun info chop nested unfp unfids p =
             mkApp (indapp, [| fnapp |])
           in
           tclTHENLIST
-            [observe "letin" (letin_pat_tac true None (Name id) (sigma, elim) occs);
+            [observe "letin" (letin_pat_tac true None (Name id) (Some sigma, elim) occs);
              observe "convert concl" (convert_concl ~cast:false ~check:false newconcl DEFAULTcast);
              observe "clear body" (clear_body [id]);
              aux chop unfs unfids s]
