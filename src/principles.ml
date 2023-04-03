@@ -1290,7 +1290,7 @@ let mkConj evd sort x y =
     mkApp (prod, [| x; y |])
 
 let declare_funind ~pm info alias env evd is_rec protos progs
-                   ind_stmts all_stmts sign inds kn comb sort f split ind =
+                   ind_stmts all_stmts sign inds kn comb sort f split =
   let poly = is_polymorphic info.term_info in
   let id = Id.of_string info.term_info.base_id in
   let indid = Nameops.add_suffix id "_graph_correct" in
@@ -1720,15 +1720,8 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
             (CList.map_filter (fun (id, b) -> if b then Some id else None) mutual)
         in kn, Smartlocate.global_with_alias (Libnames.qualid_of_ident scheme)
     in
-    let ind =
-      let open Entries in
-      match uctx with
-      | Polymorphic_ind_entry uctx ->
-        mkIndU ((kn,0), EInstance.make (Univ.UContext.instance uctx))
-      | Monomorphic_ind_entry | Template_ind_entry _ -> mkInd (kn,0)
-    in
     let locality = if Global.sections_are_opened () then Hints.Local else Hints.SuperGlobal in
-    let _ =
+    let () =
       List.iteri (fun i ind ->
         let constrs =
           CList.map_i (fun j _ -> Hints.empty_hint_info, true, Hints.PathAny,
@@ -1739,7 +1732,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     let info = { term_info = info; pathmap = !fnind_map; wheremap } in
     declare_funind ~pm info alias (Global.env ()) evd rec_info protos progs
                    ind_stmts all_stmts sign inds kn comb sort
-                   f p.program_splitting ind
+                   f p.program_splitting
   in
   let () = evd := Evd.minimize_universes !evd in
   let () =
