@@ -804,10 +804,10 @@ let decompose_indapp sigma f args =
   | _ -> f, args
 
 let e_conv env evdref t t' =
-  match Reductionops.infer_conv env !evdref ~pb:Reduction.CONV t t' with
+  match Reductionops.infer_conv env !evdref ~pb:Conversion.CONV t t' with
   | Some sigma -> (evdref := sigma; true)
   | None -> false
-  | exception Reduction.NotConvertible -> false
+  | exception Conversion.NotConvertible -> false
       
 let deps_of_var sigma id env =
   Environ.fold_named_context
