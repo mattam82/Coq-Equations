@@ -3,7 +3,7 @@ name: CI
 on: 
   push: # On any push on a "stable" branch
     branches:
-      - master
+      - main
       - 8.14
       - 8.13
       - 8.12

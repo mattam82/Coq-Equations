@@ -1,6 +1,6 @@
 ### **Equations** - a function definition plugin.
 
-[![Build Status](https://github.com/mattam82/Coq-Equations/actions/workflows/build.yml/badge.svg?branch=master&event=push)](https://github.com/mattam82/Coq-Equations/actions/workflows/build.yml)
+[![Build Status](https://github.com/mattam82/Coq-Equations/actions/workflows/build.yml/badge.svg?branch=main&event=push)](https://github.com/mattam82/Coq-Equations/actions/workflows/build.yml)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3012649.svg)](https://zenodo.org/record/3012649#.XcEydZNKjOQ)
 [![Zulip Chat](https://img.shields.io/badge/zulip-join_chat-brightgreen.svg)](https://coq.zulipchat.com/#narrow/stream/237659-Equations-devs.20.26.20users)
 
@@ -10,7 +10,7 @@ Copyright 2015-2018 Cyprien Mangin `cyprien.mangin@m4x.org`
 Distributed under the terms of the GNU Lesser General Public License
 Version 2.1 or later
 (see
-[LICENSE](http://github.com/mattam82/Coq-Equations/raw/master/LICENSE)
+[LICENSE](http://github.com/mattam82/Coq-Equations/raw/main/LICENSE)
 for details).
 
 Equations provides a notation for writing programs by dependent 
@@ -39,10 +39,10 @@ Try it now in your browser with [JSCoq](http://mattam82.github.io/Coq-Equations/
 
 ## Documentation
 
-- The [reference manual](http://github.com/mattam82/Coq-Equations/raw/master/doc/equations.pdf)
+- The [reference manual](http://github.com/mattam82/Coq-Equations/raw/main/doc/equations.pdf)
   provides an introduction and a summary of the commands and options.
   This introduction can also be followed interactively with Equations installed:
-  [equations_intro.v](http://github.com/mattam82/Coq-Equations/raw/master/doc/equations_intro.v)
+  [equations_intro.v](http://github.com/mattam82/Coq-Equations/raw/main/doc/equations_intro.v)
 
 - A gallery of [examples](http://mattam82.github.io/Coq-Equations/examples) provides more consequent
   developments using Equations.
@@ -87,8 +87,8 @@ Coq 8.14 (branch
 [8.14](https://github.com/mattam82/Coq-Equations/tree/8.14)),
 Coq 8.15 (branch
 [8.15](https://github.com/mattam82/Coq-Equations/tree/8.15)),
-and the current Coq master branch (branch
-[master](https://github.com/mattam82/Coq-Equations/tree/master)).
+and the current Coq main branch (branch
+[main](https://github.com/mattam82/Coq-Equations/tree/main)).
 
 See [releases](https://github.com/mattam82/Coq-Equations/releases) for
 sources and official releases.
