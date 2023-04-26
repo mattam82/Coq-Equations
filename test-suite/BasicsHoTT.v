@@ -313,7 +313,7 @@ Equations split {X : Type} {m n : nat} (xs : vector X (add m n)) : Split m n xs 
   split (m:=m .+1) (cons x xs) with split xs => {
     | append xs' ys' := append (cons x xs') ys' }.
 (* Minimization could do a bit better here *)
-Example test_split' := @split@{_ _ _ _ _}.
+Example test_split' := @split@{_ _ _ _}.
 
 (* Definition split_lightu@{u0 u1 u2 | u0 < u1, u1 < u2} := @split@{u0 u1 u1 u2 u1}.*)
 
@@ -345,12 +345,12 @@ Notation "( x , .. , y , z )" :=
 Global Set Default Goal Selector "1".
 Axiom cheat : forall {A}, A.
 Notation plus := add.
-Definition eta_vector {A} (P : forall n, vector A n -> Type) :
-  forall n v,
-    match v with
+Definition eta_vector@{i j k} {A : Type@{i}} (P : forall n : nat, vector@{i} A n -> Type@{j}) :
+  forall (n : nat) (v : vector@{i} A n),
+    paths@{k} (match v return Type@{j} with
     | nil => P 0 nil
     | cons n a v => P _ (cons a v)
-    end = P n v.
+    end) (P n v).
 Proof.
   now destruct v.
 Defined.
@@ -377,7 +377,7 @@ Proof.
     simplify *. simpl. apply (append nil (x |: n :| xs)).
     simplify *. simpl.
     specialize (IH m' n0 xs).
-    rewrite (eta_vector (fun nv v => (nv, v) = (plus m' n0, xs) -> Split m' n0 xs)) in IH.
+    rewrite (eta_vector (fun nv (v : vector X nv) => (nv, v) = (plus m' n0, xs) -> Split m' n0 xs)) in IH.
     specialize (IH idpath). destruct IH.
     refine (append (cons x xs) ys).
   + rewrite (eta_vector (fun nv v => (nv, v) = (plus m n, xs) -> Split m n xs)) in X0.
@@ -598,7 +598,7 @@ Generalizable All Variables.
 
 Opaque vmap. Opaque vtail.
 
-Equations nth {A} {n} (v : vector A n) (f : fin n) : A :=
+Equations nth {A : Type} {n} (v : vector A n) (f : fin n) : A :=
 nth (cons a v) fz := a ;
 nth (cons a v) (fs f) := nth v f.
 

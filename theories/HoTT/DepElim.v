@@ -526,7 +526,7 @@ Definition add_pattern {B} (A : Type) (b : B) := A.
 (** To solve a goal by inversion on a particular target. *)
 
 Ltac do_empty id :=
-  elimtype Empty ; simpl in id ;
+  elim Empty ; simpl in id ;
   solve [ generalize_by_eqs id ; destruct id ; simplify_dep_elim
     | apply id ; eauto with Below ].
 
