@@ -157,7 +157,7 @@ Proof.
   repeat split; cbn in *; intros;
   try (apply a in H0 as []; rewrite app_assoc in *; intuition);
   try (apply a0 in H0 as []; rewrite app_assoc in *; intuition).
-  - rewrite <- app_nil_end.
+  - rewrite app_nil_r.
     intuition.
   - rewrite app_assoc in H0.
     intuition auto with *.

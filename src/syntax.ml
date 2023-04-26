@@ -274,14 +274,10 @@ let is_structural = function Some (Guarded _) :: _ -> true | _ -> false
 let has_logical rec_type =
   List.exists (function Some (Logical _) -> true | _ -> false) rec_type
 
-let is_rec_call sigma id f =
-  match EConstr.kind sigma f with
-  | Var id' -> Id.equal id id'
-  | Const (c, _) ->
-    let id' = Label.to_id (Constant.label c) in
-    Id.equal id id'
-  | _ -> false
-
+let is_rec_call id c =
+  let id' = Label.to_id (Constant.label c) in
+  Id.equal id id'
+  
 let free_vars_of_constr_expr fid c =
   let rec aux bdvars l = function
     | { CAst.v = CRef (qid, _) } when qualid_is_ident qid ->

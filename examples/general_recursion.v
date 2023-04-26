@@ -59,7 +59,7 @@ Proof.
      [total_relation (S n) (S n)] *) red.
   constructor.
 Defined.
-  Obligation Tactic := idtac.
+  Local Obligation Tactic := idtac.
   (** The automation has a little trouble here as it assumes
       well-founded definitions implicitely.  We show the second
       equation: [nonterm (S n) = S (nonterm (S n))] using the

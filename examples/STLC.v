@@ -257,7 +257,7 @@ Proof with term.
   (* Eq *)
   generalize (type_lift Γ0 u U [] H0 Γ'); simpl; intros.
   rewrite app_cons_snoc_app, app_nth1, app_nth2; try (simpl; lia).
-  now rewrite <- minus_n_n. term.
+  now rewrite Nat.sub_diag. term.
 
   (* Lt *) 
   rewrite app_nth1 by lia. rewrite <- (app_nth1 _ Γ0); term.
@@ -558,7 +558,7 @@ Definition her_order : relation (type * term * term) :=
 #[local] Hint Unfold her_order : subterm_relation.
 
 Import Program.Tactics.
-Obligation Tactic := program_simpl.
+Local Obligation Tactic := program_simpl.
 
 Arguments exist [A] [P].
 
@@ -688,8 +688,6 @@ Ltac invert_term :=
         | Tt => depelim H
       end
   end.
-
-Set Regular Subst Tactic.
 
 Lemma hereditary_subst_type Γ Γ' t T u U : Γ |-- u : U -> Γ' @ (U :: Γ) |-- t : T ->
   let (t', o) := hereditary_subst (U, u, t) (length Γ') in

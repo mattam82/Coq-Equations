@@ -1,4 +1,4 @@
-(* begin hide *)
+ (* begin hide *)
 (**********************************************************************)
 (* Equations                                                          *)
 (* Copyright (c) 2009-2021 Matthieu Sozeau <matthieu.sozeau@inria.fr> *)
@@ -124,7 +124,7 @@ Equations apD10 {A} {B : A -> Type} {f g : forall x, B x} (h : f = g) : f == g :
 apD10 1 := fun h => 1.
 
 Class Funext :=
-  { isequiv_apD10 :> forall (A : Type) (P : A -> Type) f g, IsEquiv (@apD10 A P f g) }.
+  { isequiv_apD10 :: forall (A : Type) (P : A -> Type) f g, IsEquiv (@apD10 A P f g) }.
 
 Axiom funext : Funext.
 #[local] Existing Instance funext.

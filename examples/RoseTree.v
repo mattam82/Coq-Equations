@@ -160,7 +160,7 @@ Module RoseTree.
       where map_list (l' : list (t A)) (H : max_size l' ≤ max_size l) : list (t B) by struct l' :=
       map_list nil _ := nil;
       map_list (cons a t) Hl' := cons (map_t a) (map_list t _).
-    Proof. simp alt_size. apply le_lt_n_Sm. now apply Nat.max_lub_l in Hl'.
+    Proof. simp alt_size. apply Nat.lt_succ_r. now apply Nat.max_lub_l in Hl'.
            now apply Nat.max_lub_r in Hl'.
            clear map_list. rewrite max_size_app. now rewrite Nat.max_id.
     Defined.

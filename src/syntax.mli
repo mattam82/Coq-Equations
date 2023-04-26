@@ -125,7 +125,7 @@ type rec_type = rec_type_item option list
 
 val is_structural : rec_type -> bool
 val has_logical : rec_type -> bool
-val is_rec_call : Evd.evar_map -> Id.t -> EConstr.constr -> bool
+val is_rec_call : Id.t -> Constant.t -> bool
 val next_ident_away : Id.t -> Id.Set.t ref -> Id.t
 
 type equation_option = 

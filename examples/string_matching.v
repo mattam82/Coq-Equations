@@ -91,6 +91,8 @@ Fixpoint list_drop {T: Type} i (l: list T) :=
   | S i, h::t => list_drop i t
   end.
 
+Ltac intuition_solver ::= auto with core arith datatypes solve_subterm. 
+
 #[export]
 Instance list_ChunkableMonoid: forall T, ChunkableMonoid (list T).
 Proof.

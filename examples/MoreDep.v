@@ -70,7 +70,7 @@ typeDenote (Prod t1 t2) := (typeDenote t1 * typeDenote t2)%type.
 Equations expDenote t (e : exp t) : typeDenote t :=
 expDenote (NConst n) := n;
 expDenote (Plus e1 e2) := expDenote e1 + expDenote e2;
-expDenote (Eq e1 e2) := beq_nat (expDenote e1) (expDenote e2);
+expDenote (Eq e1 e2) := Nat.eqb (expDenote e1) (expDenote e2);
 expDenote (BConst b) := b;
 expDenote (And e1 e2) := expDenote e1 && expDenote e2;
 expDenote (If e e1 e2) with expDenote e => {
@@ -111,7 +111,7 @@ cfold (Plus e1 e2) with (cfold e1, cfold e2) => {
   | pair e1' e2' := Plus e1' e2'
 };
 cfold (Eq e1 e2) with (cfold e1, cfold e2) => {
-  | pair (NConst n1) (NConst n2) := BConst (beq_nat n1 n2);
+  | pair (NConst n1) (NConst n2) := BConst (Nat.eqb n1 n2);
   | pair e1' e2' => Eq e1' e2'
 };
 cfold (BConst b) := BConst b;
@@ -147,7 +147,7 @@ Inductive rbtree : color -> nat -> Set :=
 | BlackNode : forall c1 c2 n, rbtree c1 n -> nat -> rbtree c2 n -> rbtree Black (S n).
 Derive Signature NoConfusion for rbtree.
 
-Require Import Max Min Lia.
+Require Import Arith Lia.
 
 Section depth.
   Variable f : nat -> nat -> nat.
@@ -164,7 +164,7 @@ Proof.
             auto;
   match goal with
   | [ |- context[min ?X ?Y] ] =>
-      let H := fresh in destruct (min_dec X Y) as [H|H]; rewrite H
+      let H := fresh in destruct (Nat.min_dec X Y) as [H|H]; rewrite H
   end; lia.
 Qed.
 
@@ -176,7 +176,7 @@ Proof.
   intros; funelim (depth Nat.max t); auto;
   match goal with
   | [ |- context[max ?X ?Y] ] =>
-      let H := fresh in destruct (max_dec X Y) as [H|H]; rewrite H
+      let H := fresh in destruct (Nat.max_dec X Y) as [H|H]; rewrite H
   end;
   repeat match goal with
   | [ H : context[match ?C with Red => _ | Black => _ end] |- _ ] =>

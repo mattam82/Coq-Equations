@@ -998,7 +998,7 @@ let is_comp_obl sigma comp hole_kind =
   | Some r ->
       match hole_kind, r with
       | ImplicitArg (GlobRef.ConstRef c, (n, _), _), (loc, id) ->
-        is_rec_call sigma (snd r) (mkConst c)
+        is_rec_call (snd r) c
       | _ -> false
 
 type term_info = {
