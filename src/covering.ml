@@ -1277,7 +1277,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
       let userc, usercty = interp_constr_in_rhs env ctx evars data None s lets (GlobConstr user) in
       match t with
       | PInac t ->
-        begin match Evarconv.unify env' !evars Reduction.CONV userc t with
+        begin match Evarconv.unify env' !evars Conversion.CONV userc t with
           | evars' -> evars := evars'
           | exception Pretype_errors.PretypeError (env, sigma, e) ->
             DAst.with_loc_val (fun ?loc _ ->

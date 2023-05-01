@@ -81,7 +81,7 @@ let _rewrite_try_change tac =
           let env = Proofview.Goal.env gl in
           let sigma = Proofview.Goal.sigma gl in
           let concl' = Proofview.Goal.concl gl in
-          match Reductionops.infer_conv ~pb:Reduction.CONV env sigma concl concl' with
+          match Reductionops.infer_conv ~pb:Conversion.CONV env sigma concl concl' with
           | Some _ -> Proofview.tclZERO (RewriteSucceeded concl')
           | None -> Proofview.tclUNIT ())))
     (function

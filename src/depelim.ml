@@ -292,7 +292,7 @@ let specialize_eqs ~with_block id =
   let ty = pf_get_hyp_typ id gl in
   let evars = ref (project gl) in
   let unif env ctx evars c1 c2 =
-    match Evarconv.unify env !evars Reduction.CONV (it_mkLambda_or_subst env c1 ctx) (it_mkLambda_or_subst env c2 ctx) with
+    match Evarconv.unify env !evars Conversion.CONV (it_mkLambda_or_subst env c1 ctx) (it_mkLambda_or_subst env c2 ctx) with
     | exception Evarconv.UnableToUnify _ -> false
     | evm -> evars := evm; true
   in
