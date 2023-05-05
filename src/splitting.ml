@@ -471,6 +471,23 @@ let define_mutual_nested env evd get_prog progs =
   let nested = List.map2 declare_nested nested nestedbodies in
   fixes, nested
 
+let check_typed ~where ?name env evd c =
+  let sigma, _ =
+    try Typing.type_of env evd c
+    with Type_errors.TypeError (env, tyerr) ->
+      anomaly Pp.(str where ++ spc () ++
+        str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env evd c ++
+        Himsg.explain_pretype_error env evd
+          (Pretype_errors.TypingError (Type_errors.map_ptype_error EConstr.of_constr tyerr)))
+    | Pretype_errors.PretypeError (env, evd, tyerr) ->
+        anomaly Pp.(str where ++ spc () ++
+        str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env evd c ++
+        Himsg.explain_pretype_error env evd tyerr)
+  in
+  let check = Evd.check_constraints evd (snd @@ Evd.universe_context_set sigma) in
+  if not check then anomaly Pp.(str where ++ spc () ++ str "Equations missing constraints in " ++
+    str (Option.default "(anonymous)" name))
+
 let term_of_tree env0 isevar sort tree =
   let rec aux env evm sort = function
     | Compute ((ctx, _, _), where, ty, RProgram rhs) ->
@@ -638,9 +655,9 @@ let term_of_tree env0 isevar sort tree =
       let case = Inductiveops.make_case_or_project env !evd indty case_info
           case_ty rel_t branches in
       let term = EConstr.mkApp (case, Array.of_list to_apply) in
-      let () = evd := Typing.check (push_rel_context ctx env) !evd term ty in
       let term = EConstr.it_mkLambda_or_LetIn term ctx in
       let typ = it_mkProd_or_subst env evm ty ctx in
+      let () = if !Equations_common.debug then check_typed ~where:"splitting" env !evd term in
       let term = Evarutil.nf_evar !evd term in
       !evd, term, typ
   in
