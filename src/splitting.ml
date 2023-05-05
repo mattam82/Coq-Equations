@@ -638,10 +638,10 @@ let term_of_tree env0 isevar sort tree =
       let case = Inductiveops.make_case_or_project env !evd indty case_info
           case_ty rel_t branches in
       let term = EConstr.mkApp (case, Array.of_list to_apply) in
+      let () = evd := Typing.check (push_rel_context ctx env) !evd term ty in
       let term = EConstr.it_mkLambda_or_LetIn term ctx in
       let typ = it_mkProd_or_subst env evm ty ctx in
       let term = Evarutil.nf_evar !evd term in
-      evd := Typing.check env !evd term typ;
       !evd, term, typ
   in
   let evm, term, typ = aux env0 !isevar sort tree in
