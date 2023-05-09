@@ -10,13 +10,13 @@ open Context
 open EConstr
 
 val mkAppG :
-  Evd.evar_map ref ->
+  Environ.env -> Evd.evar_map ref ->
   Names.GlobRef.t -> constr array -> constr
 val applistG :
-  Evd.evar_map ref ->
+  Environ.env -> Evd.evar_map ref ->
   Names.GlobRef.t -> constr list -> constr
 val mkSig :
-  Evd.evar_map ref -> Names.Name.t binder_annot * types * constr -> constr
+  Environ.env -> Evd.evar_map ref -> Names.Name.t binder_annot * types * constr -> constr
 val constrs_of_coq_sigma : 
   Environ.env ->
   Evd.evar_map ref ->

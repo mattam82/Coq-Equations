@@ -29,16 +29,16 @@ let mkConstructG c u =
 let mkIndG c u =
   mkIndU (destIndRef (Lazy.force c), u)
 
-let mkAppG evd gr args = 
+let mkAppG env evd gr args =
   let c = e_new_global evd gr in
-    mkApp (c, args)
+  evd_comb1 (fun sigma c -> Typing.checked_appvect env sigma c args) evd c
 
-let applistG evd gr args = 
-  mkAppG evd gr (Array.of_list args)
+let applistG env evd gr args =
+  mkAppG env evd gr (Array.of_list args)
 
-let mkSig evd (n, c, t) = 
+let mkSig env evd (n, c, t) =
   let args = [| c; mkLambda (n, c, t) |] in
-    mkAppG evd (Lazy.force coq_sigma) args
+    mkAppG env evd (Lazy.force coq_sigma) args
 
 let constrs_of_coq_sigma env evd t alias = 
   let rec aux env proj c ty =
@@ -113,6 +113,11 @@ let telescope_of_context env sigma ctx =
   let sigma, _ = Typing.type_of env sigma tele_interp in
   sigma, tele, tele_interp
 
+(* Given a context ⊢ Γ, returns
+  - ⊢ Tel(Γ) : Type (iterated Σ-type built out of Γ)
+  - p : Tel(Γ) ⊢ Ctx(Γ) (a context of let-bindings made of each projection in order)
+  - Γ ⊢ Intro(Γ) : Tel(Γ) (iterated constructors)
+*)
 let telescope env evd = function
   | [] -> assert false
   | [d] -> let (n, _, t) = to_tuple d in t, [of_tuple (n, Some (mkRel 1), Vars.lift 1 t)],
@@ -129,11 +134,11 @@ let telescope env evd = function
           | d :: ds ->
             let (n, b, t) = to_tuple d in
             let pred = mkLambda (n, t, ty) in
-            let sigty = mkAppG evd (Lazy.force coq_sigma) [|t; pred|] in
+            let env = push_rel_context ds env in
+            let sigty = mkAppG env evd (Lazy.force coq_sigma) [|t; pred|] in
             let _, u = destInd !evd (fst (destApp !evd sigty)) in
             let ua = Univ.Instance.to_array (EInstance.kind !evd u) in
             let l = Sorts.sort_of_univ @@ Univ.Universe.make ua.(0) in
-            let env = push_rel_context ds env in
             (* Ensure that the universe of the sigma is only >= those of t and pred *)
             let open UnivProblem in
             let enforce_leq env sigma t cstr =
@@ -181,7 +186,7 @@ let sigmaize ?(liftty=0) env0 evd pars f =
 	        letbinders)
   in
   let tyargs = [| argtyp; pred |] in
-  let tysig = mkAppG evd (Lazy.force coq_sigma) tyargs in
+  let tysig = mkAppG env evd (Lazy.force coq_sigma) tyargs in
   let indexproj = Lazy.force coq_pr1 in
   let valproj = Lazy.force coq_pr2 in
   let indices = 
@@ -197,9 +202,8 @@ let sigmaize ?(liftty=0) env0 evd pars f =
 			rel_vect 0 lenb))
 		 (Equations_common.lift_rel_contextn 1 (succ lenb) letbinders))
     in
-    let _tylift = Vars.lift lenb argtyp in
-      mkAppG evd (Lazy.force coq_sigmaI)
-	[|argtyp; pred; Vars.lift 1 make; mkRel 1|]
+    let (_, u) = destInd !evd (fst @@ destApp !evd tysig) in
+    mkApp (mkRef (Lazy.force coq_sigmaI, u), [|argtyp; pred; Vars.lift 1 make; mkRel 1|])
   in
   let pred = it_mkLambda_or_LetIn pred pars in
   let _ = e_type_of env0 evd pred in
