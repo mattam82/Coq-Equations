@@ -1717,7 +1717,11 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
                          i, regular_or_nested_rec kind) mutual ind_stmts in
         let () =
           Indschemes.do_combined_scheme CAst.(make scheme)
-            (CList.map_filter (fun (id, b) -> if b then Some id else None) mutual)
+            (CList.map_filter (fun ({CAst.loc;v=id}, b) ->
+                 if b
+                 then Some (Nametab.locate_constant (Libnames.qualid_of_ident ?loc id))
+                 else None)
+                mutual)
         in kn, Smartlocate.global_with_alias (Libnames.qualid_of_ident scheme)
     in
     let locality = if Global.sections_are_opened () then Hints.Local else Hints.SuperGlobal in
