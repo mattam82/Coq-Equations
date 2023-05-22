@@ -1040,10 +1040,12 @@ let warn_complete id =
   str "Equations definition " ++ Id.print id ++ str" is complete and requires no further proofs. " ++
   str "Use the \"Equations\" command to define it."
 
+let equations_cat = CWarnings.create_category ~name:"equations" ()
+
 let warn_complete = 
   CWarnings.create
     ~name:"equations-open-proof-complete"
-    ~category:"equations"
+    ~category:equations_cat
     ~default:CWarnings.Enabled
     warn_complete
 
