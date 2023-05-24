@@ -452,8 +452,8 @@ let uncurry_hyps name =
 let uncurry_call env sigma fn c =
   let hd', args' = decompose_app sigma fn in
   let hd, args = decompose_app sigma c in
-  let params, args = List.chop (List.length args') args in
-  let hd = applist (hd, params) in
+  let params, args = Array.chop (Array.length args') args in
+  let hd = mkApp (hd, params) in
   let ty = Retyping.get_type_of env sigma hd in
   let ctx, _ = Reductionops.hnf_decompose_prod_decls env sigma ty in
   let ctx =
@@ -469,14 +469,14 @@ let uncurry_call env sigma fn c =
         decl :: aux env decls args
       | [], _ :: _ -> assert false
       | ctx, [] -> []
-    in List.rev (aux env (List.rev ctx) args)
+    in List.rev (aux env (List.rev ctx) (Array.to_list args))
   in
   let evdref = ref sigma in
   if CList.is_empty ctx then 
     user_err_loc (None, Pp.str"No arguments to uncurry");
   (* let ctx = (Anonymous, None, concl) :: ctx in *)
   let sigty, sigctx, constr = telescope env evdref ctx in
-  let app = Vars.substl (List.rev args) constr in
+  let app = Vars.substl (Array.rev_to_list args) constr in
   let fnapp = mkApp (hd, rel_vect 0 (List.length sigctx)) in
   let fnapp = it_mkLambda_or_subst env fnapp sigctx in
   let projsid = nameR (Id.of_string "projs") in
