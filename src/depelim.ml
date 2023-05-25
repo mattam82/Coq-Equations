@@ -186,7 +186,7 @@ let depcase ~poly ((mind, i as ind), u) =
     it_mkLambda_or_LetIn case
       (make_assum (indna xid) (lift len indapp)
         :: ((Array.rev_to_list branches)
-            @ (make_assum (make_annot (Name (Id.of_string "P")) (Retyping.relevance_of_sort s)) pred :: ctx)))
+            @ (make_assum (make_annot (Name (Id.of_string "P")) (Retyping.relevance_of_sort !evd s)) pred :: ctx)))
   in
   let () = evd := Evd.minimize_universes !evd in
   let univs = Evd.univ_entry ~poly !evd in

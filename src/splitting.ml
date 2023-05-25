@@ -375,7 +375,7 @@ let define_mutual_nested env evd get_prog progs =
       in
       let after = (nested - 1) - before in
       let fixb = (Array.make 1 idx, 0) in
-      let fixna = Array.make 1 (make_annot (Name p.program_id) (Retyping.relevance_of_sort (ESorts.make p.program_sort))) in
+      let fixna = Array.make 1 (make_annot (Name p.program_id) (Retyping.relevance_of_sort !evd (ESorts.make p.program_sort))) in
       let fixty = Array.make 1 (Syntax.program_type p) in
       (* Apply to itself *)
       let beforeargs = Termops.rel_list (signlen + 1) before in
