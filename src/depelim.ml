@@ -78,9 +78,8 @@ let needs_generalization gl id =
           let f, args = decompose_app sigma t in
             f, args, true, id, oldid
   in
-    if args = [] then false
+    if Array.is_empty args then false
     else
-      let args = Array.of_list args in
       let f', args' = decompose_indapp sigma f args in
       let parvars = ids_of_constr ~all:true sigma Id.Set.empty f' in
         if not (linear sigma parvars args') then true
@@ -153,12 +152,12 @@ let depcase ~poly ((mind, i as ind), u) =
       let substcty = Vars.subst_instance_constr (EInstance.kind !evd u) (of_constr cty) in
       let (args, arity) = decompose_prod_decls !evd substcty in
       let _, indices = decompose_app !evd arity in
-      let _, indices = List.chop nparams indices in
+      let _, indices = Array.chop nparams indices in
       let ncargs = List.length args - nparams in
       let realargs, pars = List.chop ncargs args in
       let realargs = lift_rel_context (i + 1) realargs in
       let arity = applistc (mkRel (ncargs + i + 1))
-        (indices @ [mkApp (mkConstructU ((ind, succ i), u),
+        (Array.to_list indices @ [mkApp (mkConstructU ((ind, succ i), u),
                           Array.append (extended_rel_vect (ncargs + i + 1) params)
                             (extended_rel_vect 0 realargs))])
       in

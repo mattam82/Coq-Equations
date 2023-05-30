@@ -72,8 +72,8 @@ let rec unify env evd flex g x y =
           single_subst env evd i (PInac x) g
         else raise Stuck
       | None ->
-        let (c, l) = decompose_app evd x 
-        and (c', l') = decompose_app evd y in
+        let (c, l) = decompose_app_list evd x
+        and (c', l') = decompose_app_list evd y in
         if isConstruct evd c && isConstruct evd c' then
           if eq_constr evd c c' then
             unify_constrs env evd flex g l l'

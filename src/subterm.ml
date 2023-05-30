@@ -53,7 +53,7 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
   let lenargs = len - params in
   let argbinders, parambinders = List.chop lenargs (List.map of_rel_decl ctx) in
   let indapp = mkApp (mkIndU indu, extended_rel_vect 0 parambinders) in
-  let getargs t = snd (List.chop params (snd (decompose_app sigma t))) in
+  let getargs t = snd (Array.chop params (snd (decompose_app sigma t))) in
   let inds =
     let branches = Array.mapi (fun i ty ->
       let args, concl = decompose_prod_decls sigma (of_constr ty) in
@@ -76,7 +76,7 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
           let subargs =
             Array.of_list ((extended_rel_list (lenargs' + ctxlen)
                                parambinders)
-                            @ rargs @ (List.map (lift ctxlen) constrargs) @
+                            @ Array.to_list rargs @ (Array.map_to_list (lift ctxlen) constrargs) @
                             [mkApp (lift ctxlen r, extended_rel_vect 0 ctx) ;
                              lift ctxlen constr])
           in
@@ -342,7 +342,7 @@ let derive_below env sigma ~poly (ind,univ as indu) =
           if eq_constr !evd t recarg then
             let nprem = List.length prem in
             let elt = mkApp (lift nprem c, rel_vect 0 nprem) in
-            let args = Array.of_list (args @ [ elt ]) in
+            let args = Array.append args [| elt |] in
             let res, ty = f args nprem in
             let res = it_mkLambda_or_LetIn res prem in
             let ty = it_mkProd_or_LetIn ty prem in

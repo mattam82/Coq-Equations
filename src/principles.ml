@@ -224,7 +224,7 @@ let find_rec_call is_rec sigma protos f args =
       match alias with
       | Some (f',argsf) ->
         let signlen = List.length sign in        
-        let f', args' = Termops.decompose_app_vect sigma f' in
+        let f', args' = EConstr.decompose_app sigma f' in
         let f' = EConstr.Unsafe.to_constr f' in
         if Constr.equal (head f') f then
           let sign, args = 
@@ -292,7 +292,7 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
         hyps', mkProj (p, c')
 
     | _ ->
-      let f', args = decompose_appvect c in
+      let f', args = decompose_app c in
       if not (is_user_obl sigma user_obls (EConstr.of_constr f')) then
         (match find_rec_call is_rec sigma protos f' (Array.to_list args) with
          | Some (i, arity, filter, sign, (fargs', indargs', rest)) ->
@@ -609,7 +609,7 @@ let pr_where env sigma ctx ({where_type} as w) =
 let where_instance w =
   List.map (fun w -> where_term w) w
 
-let arguments sigma c = snd (Termops.decompose_app_vect sigma c)
+let arguments sigma c = snd (decompose_app sigma c)
 
 let unfold_constr sigma c =
   Tactics.unfold_in_concl [(Locus.OnlyOccurrences [1], Tacred.EvalConstRef (fst (destConst sigma c)))]
@@ -1112,7 +1112,7 @@ let computations env evd alias refine p eqninfo : computation list =
      let where_comp w (wheres, where_comps) =
        (* Where term is in lhs + wheres *)
        let lhsterm = substl wheres (where_term w) in
-       let term, args = decompose_app evd lhsterm in
+       let term, args = decompose_app_list evd lhsterm in
        let alias, fsubst =
          try
            let (f, id, s) = PathMap.find w.where_path wheremap in
@@ -1588,7 +1588,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
             let f = mkRel (len + (lenprotos - i) + hypslen) in
             if cut then f
             else
-              let fn, args = decompose_app !evd (Termops.strip_outer_cast !evd fl) in
+              let fn, args = decompose_app_list !evd (Termops.strip_outer_cast !evd fl) in
               applistc f (filter_arguments filter (lift_constrs hypslen args))
           in
           let ty =

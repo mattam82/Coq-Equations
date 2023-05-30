@@ -222,7 +222,7 @@ let find_helper_arg env sigma info f args =
       
 let find_splitting_var sigma pats var constrs =
   let rec find_pat_var p c =
-    match p, decompose_app sigma c with
+    match p, decompose_app_list sigma c with
     | PRel i, (c, l) when i = var -> Some (destVar sigma c)
     | PCstr (c, ps), (f,l) -> aux ps l
     | _, _ -> None
@@ -289,7 +289,7 @@ let gather_subst env sigma ty args len =
       | Prod (_, _, ty), a :: args -> a :: aux (subst1 a ty) args (pred n)
       | LetIn (_, b, _, ty), args -> b :: aux (subst1 b ty) args (pred n)
       | _ -> assert false
-  in aux ty args len
+  in aux ty (Array.to_list args) len
 
 let annot_of_rec r = match r.struct_rec_arg with
   | MutualOn (Some (i, _)) -> Some (i + 1)
@@ -582,7 +582,7 @@ let aux_ind_fun info chop nested unfp unfids p =
                   pr_context_map env Evd.empty (id_subst ctx)));
             let ind = Nametab.locate (qualid_of_ident wherepath) in
             let ty ind =
-              let hd, args = decompose_app Evd.empty where_term in
+              let hd, args = decompose_app_list Evd.empty where_term in
               let indargs = List.filter (fun x -> isVar Evd.empty x) args in
               let rels = extended_rel_list 0 ctx in
               let indargs = List.append indargs rels in
@@ -610,13 +610,13 @@ let aux_ind_fun info chop nested unfp unfids p =
                 let sigma = Proofview.Goal.sigma gl in
                 let subst =
                   let concl = Proofview.Goal.concl gl in
-                  let hd, args = decompose_app sigma concl in
+                  let hd, args = decompose_app_list sigma concl in
                   let args = drop_last args in
                   let rec collect_vars acc c =
                     let hd, args = decompose_app sigma c in
                     match kind sigma hd with
                     | Var id -> if not (List.mem id acc) then id :: acc else acc
-                    | Construct _ -> List.fold_left collect_vars acc args
+                    | Construct _ -> Array.fold_left collect_vars acc args
                     | _ -> acc
                   in
                   let args_vars = List.fold_left collect_vars [] args in

@@ -44,10 +44,6 @@ val destWheres : Splitting.splitting -> (Context_map.context_map * Splitting.whe
 val map_opt_split : ('a -> 'b option) -> 'a option -> 'b option
 val solve_ind_rec_tac : Splitting.term_info -> unit Proofview.tactic
 
-val gather_subst :            'a ->
-           Evd.evar_map ->
-           EConstr.t -> EConstr.t list -> int -> EConstr.t list
-
 val aux_ind_fun :
   ind_info ->
   int * int ->

@@ -1153,7 +1153,7 @@ let infer_step ?(loc:Loc.t option) ~(isSol:bool)
           if eq t then raise Termops.Occur;
           let f, args = EConstr.decompose_app !evd t in
           if EConstr.isConstruct !evd f then
-            CList.iter aux args
+            Array.iter aux args
         in try aux t; false
         with Termops.Occur -> true
       in

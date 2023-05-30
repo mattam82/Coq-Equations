@@ -9,7 +9,7 @@ let decompose_app h h' c =
   Proofview.Goal.enter begin fun gl ->
     let f, args = EConstr.decompose_app (Proofview.Goal.sigma gl) c in
     let fty = Tacmach.pf_hnf_type_of gl f in
-    let flam = mkLambda (Context.nameR (Id.of_string "f"), fty, mkApp (mkRel 1, Array.of_list args)) in
+    let flam = mkLambda (Context.nameR (Id.of_string "f"), fty, mkApp (mkRel 1, args)) in
       (Proofview.tclTHEN (letin_tac None (Name h) f None allHyps)
          (letin_tac None (Name h') flam None allHyps)) end
 
