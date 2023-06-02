@@ -40,21 +40,23 @@ let equations_transparent = ref false
 let equations_derive_equations = ref true
 let equations_derive_eliminator = ref true
 
-let _ = Goptions.declare_bool_option {
-  Goptions.optdepr  = true;
+let depr_with_k = Deprecation.make ~since:"equations v1.2" ()
+
+let () = Goptions.declare_bool_option {
+  Goptions.optdepr  = Some depr_with_k;
   Goptions.optstage = Interp;
   Goptions.optkey   = ["Equations"; "WithK"];
   Goptions.optread  = (fun () -> false);
   Goptions.optwrite = (fun b ->
       if b then
         CErrors.user_err (str"DEPRECATED. Use flag [Equations With UIP] and introduce \
-                              an axiomn [forall A, Equations.Classes.UIP A] \
+                              an axiom [forall A, Equations.Classes.UIP A] \
                               as a type class instance using [Existing Instance] instead.")
       else simplify_withUIP := b)
 }
 
 let _ = Goptions.declare_bool_option {
-  Goptions.optdepr  = true;
+  Goptions.optdepr  = Some depr_with_k;
   Goptions.optstage = Interp;
   Goptions.optkey   = ["Equations"; "WithKDec"];
   Goptions.optread  = (fun () -> !simplify_withUIP);
@@ -62,7 +64,7 @@ let _ = Goptions.declare_bool_option {
 }
 
 let _ = Goptions.declare_bool_option {
-  Goptions.optdepr  = false;
+  Goptions.optdepr  = None;
   Goptions.optstage = Interp;
   Goptions.optkey   = ["Equations"; "With"; "UIP"];
   Goptions.optread  = (fun () -> !simplify_withUIP);
@@ -70,7 +72,7 @@ let _ = Goptions.declare_bool_option {
 }
 
 let _ = Goptions.declare_bool_option {
-  Goptions.optdepr  = false;
+  Goptions.optdepr  = None;
   Goptions.optstage = Interp;
   Goptions.optkey   = ["Equations"; "Transparent"];
   Goptions.optread  = (fun () -> !equations_transparent);
@@ -78,7 +80,7 @@ let _ = Goptions.declare_bool_option {
 }
 
 let _ = Goptions.declare_bool_option {
-  Goptions.optdepr  = false;
+  Goptions.optdepr  = None;
   Goptions.optstage = Interp;
   Goptions.optkey   = ["Equations"; "With"; "Funext"];
   Goptions.optread  = (fun () -> !equations_with_funext);
@@ -86,7 +88,7 @@ let _ = Goptions.declare_bool_option {
 }
 
 let _ = Goptions.declare_bool_option {
-  Goptions.optdepr  = false;
+  Goptions.optdepr  = None;
   Goptions.optstage = Interp;
   Goptions.optkey   = ["Equations"; "Derive"; "Equations"];
   Goptions.optread  = (fun () -> !equations_derive_equations);
@@ -94,7 +96,7 @@ let _ = Goptions.declare_bool_option {
 }
 
 let _ = Goptions.declare_bool_option {
-  Goptions.optdepr  = false;
+  Goptions.optdepr  = None;
   Goptions.optstage = Interp;
   Goptions.optkey   = ["Equations"; "Derive"; "Eliminator"];
   Goptions.optread  = (fun () -> !equations_derive_eliminator);
@@ -106,7 +108,7 @@ let _ = Goptions.declare_bool_option {
 let debug = ref false
 
 let _ = Goptions.declare_bool_option {
-  Goptions.optdepr  = false;
+  Goptions.optdepr  = None;
   Goptions.optstage = Interp;
   Goptions.optkey   = ["Equations"; "Debug"];
   Goptions.optread  = (fun () -> !debug);
