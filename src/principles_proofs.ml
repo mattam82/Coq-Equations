@@ -107,7 +107,7 @@ let autorewrite_one b =
 let revert_last =
   Proofview.Goal.enter (fun gl ->
       let hyp = pf_last_hyp gl in
-      revert [get_id hyp])
+      Generalize.revert [get_id hyp])
 
 (** fix generalization *)
 
