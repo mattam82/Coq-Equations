@@ -153,7 +153,7 @@ let typecheck_rel_context env evd ctx =
   in ()
   with e ->
     Printf.eprintf "Exception while typechecking context %s : %s\n"
-                   (Pp.string_of_ppcmds (Internal.print_rel_context (EConstr.push_rel_context ctx env)))
+                   (Pp.string_of_ppcmds (Termops.Internal.print_rel_context (EConstr.push_rel_context ctx env)))
                    (Printexc.to_string e);
     raise e
 
