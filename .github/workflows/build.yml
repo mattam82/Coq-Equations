@@ -4,6 +4,7 @@ on:
   push: # On any push on a "stable" branch
     branches:
       - main
+      - 8.18
       - 8.14
       - 8.13
       - 8.12
@@ -21,10 +22,10 @@ jobs:
     strategy:
       matrix:
         coq_version: 
-          - 'dev'
+          - '8.18'
         ocaml_version:
           - '4.09-flambda'
-        target: [ local, hott, dune ]
+        target: [ local ] # dune, hott left out for now waiting for HoTT package
       fail-fast: false
 
     steps:
