@@ -722,7 +722,7 @@ let declare_wf_obligations s info =
   let make_resolve gr =
     equations_debug Pp.(fun () -> str"Declaring wf obligation " ++ Printer.pr_global gr);
     (Hints.empty_hint_info, true,
-     Hints.PathAny, subst_protos s gr)
+     subst_protos s gr)
   in
   let dbname = Principles_proofs.wf_obligations_base info in
   let locality = if Global.sections_are_opened () then Hints.Local else Hints.SuperGlobal in
@@ -1341,7 +1341,7 @@ let declare_funind ~pm info alias env evd is_rec protos progs
     let env = Global.env () in (* refresh *)
     let locality = if Global.sections_are_opened () then Hints.Local else Hints.SuperGlobal in
     Hints.add_hints ~locality [info.term_info.base_id]
-                    (Hints.HintsImmediateEntry [Hints.PathAny, Hints.hint_globref dref]);
+                    (Hints.HintsImmediateEntry [Hints.hint_globref dref]);
     let pm =
       try declare_funelim ~pm info.term_info env evd is_rec protos progs
             ind_stmts all_stmts sign app scope inds kn comb sort dref uctx
@@ -1728,7 +1728,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     let () =
       List.iteri (fun i ind ->
         let constrs =
-          CList.map_i (fun j _ -> Hints.empty_hint_info, true, Hints.PathAny,
+          CList.map_i (fun j _ -> Hints.empty_hint_info, true,
             Hints.hint_globref (GlobRef.ConstructRef ((kn,i),j))) 1 ind.Entries.mind_entry_lc in
           Hints.add_hints ~locality [info.base_id] (Hints.HintsResolveEntry constrs))
         inds
