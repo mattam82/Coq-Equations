@@ -865,7 +865,7 @@ let wf_fix_constr env evars sign arity sort carrier cterm crel =
   let sigma, fixty = Typing.type_of env !evars fix in
   let () = evars := sigma in
   let reds =
-    let flags = CClosure.betaiotazeta in
+    let flags = RedFlags.betaiotazeta in
     let csts =
       let ts = TransparentState.empty in
       let cst = Names.Cpred.add (Projection.constant (Lazy.force coq_pr1)) Names.Cpred.empty in
@@ -884,7 +884,7 @@ let wf_fix_constr env evars sign arity sort carrier cterm crel =
            logic_tele_forall_pack;
            logic_tele_forall_unpack]
       in { ts with TransparentState.tr_cst }
-    in CClosure.RedFlags.red_add_transparent flags csts
+    in RedFlags.red_add_transparent flags csts
   in
   let norm env =
     let infos = Cbv.create_cbv_infos reds env !evars in

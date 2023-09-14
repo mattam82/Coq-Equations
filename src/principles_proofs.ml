@@ -1038,7 +1038,7 @@ let prove_unfolding info where_map f_cst funf_cst subst base unfold_base trace =
   let simpltac = opacified (simpl_equations_tac ()) in
   let unfolds base base' =
     tclTHEN (autounfold_heads [base] [base'] None)
-    (Tactics.reduct_in_concl ~cast:false ~check:false ((Reductionops.clos_norm_flags CClosure.betazeta), DEFAULTcast))
+    (Tactics.reduct_in_concl ~cast:false ~check:false ((Reductionops.clos_norm_flags RedFlags.betazeta), DEFAULTcast))
   in
   let solve_rec_eq subst = solve_rec_eq simpltac subst in
   let solve_eq subst = observe "solve_eq" (tclORELSE (transparent reflexivity) (solve_rec_eq subst)) in

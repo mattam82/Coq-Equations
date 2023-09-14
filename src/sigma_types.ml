@@ -807,7 +807,7 @@ let curry_hyp env sigma hyp t =
     | _ -> None
   in curry t
 
-open CClosure.RedFlags
+open RedFlags
 
 let red_curry () =
   let redpr pr =
