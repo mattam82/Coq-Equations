@@ -1198,7 +1198,7 @@ let solve_equations_obligations_program ~pm flags recids loc i sigma hook =
   in
   let obl_hook = Declare.Hook.make_g hook in
   let reduce x =
-    let flags = CClosure.beta in
+    let flags = RedFlags.beta in
     to_constr sigma (clos_norm_flags flags (Global.env ()) sigma (of_constr x))
   in
   let cinfo = Declare.CInfo.make ~name:oblsid ~typ:ty () in
