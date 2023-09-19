@@ -79,7 +79,8 @@ let derive_no_confusion ~pm env sigma0 ~poly (ind,u as indu) =
       let () = evd := evm in
       let _, pred' = Term.decompose_lambda_n (List.length pars) (EConstr.to_constr !evd pred) in
       let indty = mkApp (sigma, [|idx; of_constr pred'|]) in
-      Sorts.Relevant, nf_betaiotazeta env !evd indty, mkProj (Lazy.force coq_pr2, mkRel 1), pars, (List.firstn lenargs ctx)
+      (* sigma is not sort poly (at least for now) *)
+      Sorts.Relevant, nf_betaiotazeta env !evd indty, mkProj (Lazy.force coq_pr2, Relevant, mkRel 1), pars, (List.firstn lenargs ctx)
   in
   let tru = get_efresh logic_top evd in
   let fls = get_efresh logic_bot evd in

@@ -414,8 +414,8 @@ val hintdb_set_transparency :
   Constant.t -> bool -> Hints.hint_db_name -> unit
   
 (** To add to the API *)
-val to_peuniverses : 'a Univ.puniverses -> 'a peuniverses
-val from_peuniverses : Evd.evar_map -> 'a peuniverses -> 'a Univ.puniverses
+val to_peuniverses : 'a UVars.puniverses -> 'a peuniverses
+val from_peuniverses : Evd.evar_map -> 'a peuniverses -> 'a UVars.puniverses
 
 val is_global : Environ.env -> Evd.evar_map -> Names.GlobRef.t -> constr -> bool
 val constr_of_global_univ : Evd.evar_map -> Names.GlobRef.t peuniverses -> constr

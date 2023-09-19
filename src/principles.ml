@@ -51,10 +51,15 @@ let pi3 (_,_,z) = z
 (** Objects to keep information about equations *)
 
 let cache_rew_rule (base, gr, l2r) =
+  let gr, ((qvars, univs), csts) = UnivGen.fresh_global_instance (Global.env()) gr in
+  let () = if not (Sorts.QVar.Set.is_empty qvars) then
+      CErrors.user_err Pp.(str "Sort polymorphic autorewrite not supported.")
+  in
+  let gru = gr, (univs, csts) in
   Autorewrite.add_rew_rules
     ~locality:Hints.(if Global.sections_are_opened() then Local else SuperGlobal)
     base
-    [CAst.make (UnivGen.fresh_global_instance (Global.env()) gr, true, None)]
+    [CAst.make (gru, true, None)]
 
 let inRewRule =
   let open Libobject in
@@ -287,9 +292,9 @@ let abstract_rec_calls sigma user_obls ?(do_subst=true) is_rec len protos c =
       let case' = mkCase (Inductive.contract_case (Global.env ()) (ci, p, iv, c', brs)) in
         hyps', EConstr.Unsafe.to_constr (EConstr.Vars.substnl proto_fs (succ len) (EConstr.of_constr case'))
 
-    | Proj (p, c) ->
+    | Proj (p, r, c) ->
       let hyps', c' = aux n env hyps c in
-        hyps', mkProj (p, c')
+        hyps', mkProj (p, r, c')
 
     | _ ->
       let f', args = decompose_app c in
@@ -714,7 +719,7 @@ let subst_protos s gr =
     (equations_debug Pp.(fun () -> str"Fixed hint " ++ Printer.pr_econstr_env env sigma term);
      let sigma, _ = Typing.type_of env sigma term in
      let sigma = Evd.minimize_universes sigma in
-     Hints.hint_constr (Evarutil.nf_evar sigma term, Some (Evd.universe_context_set sigma)))
+     Hints.hint_constr (Evarutil.nf_evar sigma term, Some (Evd.sort_context_set sigma)))
   else Hints.hint_globref gr
   [@@ocaml.warning "-3"]
 
@@ -1628,11 +1633,11 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
           Nameops.add_suffix indid suff) n) stmts
     in
     let merge_universes_of_constr c =
-      Univ.Level.Set.union (EConstr.universes_of_constr !evd c) in
-    let univs = Univ.Level.Set.union (universes_of_constr !evd arity) univs in
+      Univ.Level.Set.union (snd (EConstr.universes_of_constr !evd c)) in
+    let univs = Univ.Level.Set.union (snd (universes_of_constr !evd arity)) univs in
     let univs = Context.Rel.(fold_outside (Declaration.fold_constr merge_universes_of_constr) sign ~init:univs) in
     let univs =
-      List.fold_left (fun univs c -> Univ.Level.Set.union (universes_of_constr !evd (EConstr.of_constr c)) univs)
+      List.fold_left (fun univs c -> Univ.Level.Set.union (snd (universes_of_constr !evd (EConstr.of_constr c))) univs)
         univs constructors in
     let ind_sort =
       match Retyping.get_sort_family_of env !evd (it_mkProd_or_LetIn arity sign) with
@@ -1674,7 +1679,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     let univs, ubinders = Evd.univ_entry ~poly sigma in
     let uctx = match univs with
     | UState.Monomorphic_entry ctx ->
-      let () = DeclareUctx.declare_universe_context ~poly:false ctx in
+      let () = Global.push_context_set ~strict:true ctx in
       Entries.Monomorphic_ind_entry
     | UState.Polymorphic_entry uctx -> Entries.Polymorphic_ind_entry uctx
     in
@@ -1743,7 +1748,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     if not poly then
       (* Declare the universe context necessary to typecheck the following
           definitions once and for all. *)
-      (DeclareUctx.declare_universe_context ~poly:false (Evd.universe_context_set !evd);
+      (Global.push_context_set ~strict:true (Evd.universe_context_set !evd);
        evd := Evd.from_env (Global.env ()))
     else ()
   in
