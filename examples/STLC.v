@@ -42,7 +42,7 @@ Delimit Scope term_scope with term.
 Bind Scope term_scope with term.
 
 Notation " @( f , x ) " := (App (f%term) (x%term)).
-Notation " 'λ' t " := (Lambda (t%term)) (at level 0).
+Notation " 'λ' t " := (Lambda (t%term)) (at level 10).
 Notation " << t , u >> " := (Pair (t%term) (u%term)).
 
 Parameter atomic_type : Set.
@@ -305,7 +305,7 @@ Inductive value : term -> Prop :=
 | val_var (i : nat) : value i
 | val_unit : value Tt
 | val_pair a b : value a -> value b -> value << a, b >>
-| val_lambda t : value λ t.
+| val_lambda t : value (λ t).
 Derive Signature for value.
 
 #[local] Hint Constructors value : term.
@@ -449,7 +449,7 @@ Qed.
 Inductive normal : term -> Prop :=
 | normal_unit : normal Tt
 | normal_pair a b : normal a -> normal b -> normal << a, b >>
-| normal_abs t : normal t -> normal λ t
+| normal_abs t : normal t -> normal (λ t)
 | normal_neutral r : neutral r -> normal r
 
 with neutral : term -> Prop :=
@@ -1013,7 +1013,7 @@ Proof. induction 1. (* eta-exp *)
   apply (eta_expand Γ i (nth i Γ unit) (neutral_var _)); term.
 
   destruct IHtypes as [t' tt'].
-  exists λ t'; term.
+  exists (λ t'); term.
 
   destruct IHtypes1 as [t' tt'].
   destruct IHtypes2 as [u' uu'].
