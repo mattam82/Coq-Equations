@@ -21,7 +21,6 @@ Require Import Program.Basics Program.Tactics.
 From Equations Require Import Equations.
 Require Import ZArith Lia.
 Require Import Psatz.
-Require Import NPeano.
 Require Import Nat.
 Require Import Coq.Vectors.VectorDef.
 

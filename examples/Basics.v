@@ -156,7 +156,7 @@ Require Import Arith Wf_nat.
 
 (** One can declare new well-founded relations using instances of the [WellFounded] typeclass. *)
 #[local] Instance wf_nat : WellFounded lt := lt_wf.
-#[local] Hint Resolve lt_n_Sn : lt.
+#[local] Hint Resolve Nat.lt_lt_succ_r : lt.
 
 (** The [by wf n lt] annotation indicates the kind of well-founded recursion we want. *)
 Equations testn (n : nat) : nat by wf n lt :=
@@ -365,7 +365,7 @@ vhead (cons a v) := a.
 Equations vmap' {A B} (f : A -> B) {n} (v : vector A n) : vector B n :=
 vmap' f nil := nil ;
 vmap' f (cons a v) := cons (f a) (vmap' f v).
-#[local] Hint Resolve lt_n_Sn : subterm_relation.
+#[local] Hint Resolve Nat.lt_lt_succ_r : subterm_relation.
 Transparent vmap'.
 
 (** The same, using well-founded recursion on [n]. *)

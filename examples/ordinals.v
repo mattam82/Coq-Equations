@@ -16,14 +16,14 @@ Qed.
 Lemma lt_S_r : forall (n1 n2:nat),
   (lt n1 n2) -> exists (n:nat), n2 = (S n).
 destruct n2.
-  intro. exfalso. apply (lt_n_0 n1). assumption.
+  intro. exfalso. apply (Nat.nlt_0_r n1). assumption.
   intro. exists n2. trivial.
 Qed.
 
 Lemma minus_lt_S : forall (n1 n2:nat),
   (lt n1 n2) -> exists (n:nat), (minus n2 n1) = (S n).
 intros. elim (lt_S_r n1 n2 H). intros n H1. rewrite H1.
-exists (minus n n1). rewrite minus_Sn_m.
+exists (minus n n1). rewrite Nat.sub_succ_l.
   trivial.
   apply le_S_n. rewrite H1 in H. auto.
 Qed.
@@ -32,7 +32,7 @@ Qed.
 Lemma lt_1_0 : forall (n:nat), (lt n 1) -> (n=0).
 destruct n.
   auto.
-  intro. inversion H. exfalso. apply (le_Sn_0 (S n)). assumption.
+  intro. inversion H. exfalso. apply (Nat.nle_succ_0 (S n)). assumption.
 Qed.
 
 Lemma lt_S_case : forall (m n:nat), (lt m (S n)) -> (lt m n) \/ (m=n).
@@ -151,8 +151,7 @@ Lemma padd_len_le_len : forall (w1 w2:(list nat)),
   (le (length w1) (length w2))
   -> (length (padd w1 w2)) = (length w2).
 intros. unfold padd. unfold dist. rewrite app_length.
-rewrite zs_len. rewrite plus_comm. 
-rewrite le_plus_minus with (n:=(length w1)); trivial.
+now rewrite zs_len, Nat.sub_add.
 Qed.
 
 Lemma padd_cons_0 : forall (w1 w2:(list nat)) (a:nat),
@@ -241,13 +240,13 @@ induction w2.
   intros. destruct a.
     intro. absurd (wlt (cons (S a0) w1) w2).
       apply IHw2. 
-        apply le_trans with (m:=(length (cons 0 w2))).
+        apply Nat.le_trans with (m:=(length (cons 0 w2))).
           auto with arith.
           assumption.
         apply wlt_w_0_inv. assumption.
     intro. inversion H0.
       assert (lt (length (cons (S a) w2)) (length w2)).
-        apply le_lt_trans with (m := (length w1)); assumption.
+        apply Nat.le_lt_trans with (m := (length w1)); assumption.
         apply (not_lt_Sn_n (length w2)). assumption.      
       rewrite H4 in H. apply (not_le_Sn_n (length w2)); assumption.
       rewrite H4 in H. apply (not_le_Sn_n (length w2)); assumption.
@@ -267,15 +266,15 @@ induction w2.
   intros. intro. exfalso. apply (not_wlt_nil (cons (S a) w1)). assumption.
   intro. case a.
     intro. intro. apply IHw2 with (a:=a0).
-      apply le_trans with (m:=(length (cons 0 w2))).
+      apply Nat.le_trans with (m:=(length (cons 0 w2))).
         simpl. auto with arith.
         assumption.
       apply wlt_w_0_inv. assumption.
     intros. intro. inversion H0.
-      apply (lt_irrefl (length w1)).
-        simpl in H. apply lt_trans with (m:=(length w2)); assumption.
-      rewrite H4 in H. apply (le_Sn_n (length w2)). assumption.
-      rewrite H4 in H. apply (le_Sn_n (length w2)). assumption.
+      apply (Nat.lt_irrefl (length w1)).
+        simpl in H. apply Nat.lt_trans with (m:=(length w2)); assumption.
+      rewrite H4 in H. apply (Nat.nle_succ_diag_l (length w2)). assumption.
+      rewrite H4 in H. apply (Nat.nle_succ_diag_l (length w2)). assumption.
 Qed. 
 
 (* Invariance de 'wlt' pour la complétion à 0 (en tête) *)
@@ -310,12 +309,12 @@ Lemma wlt_gt_length : forall (w1 w2:(list nat)),
        /\ (wlt w w2).
 induction w1.
 
-  intros. exfalso. apply (lt_n_0 (length w2)). auto.
+  intros. exfalso. apply (Nat.nlt_0_r (length w2)). auto.
 
   intros. simpl in H0. assert (length w2 <= length w1).
-    apply lt_n_Sm_le. assumption.
+    apply Nat.lt_succ_r. assumption.
     destruct a.
-      elim (le_lt_or_eq (length w2) (length w1) H1).
+      elim (proj1 (Nat.lt_eq_cases (length w2) (length w1)) H1).
         intro. elim IHw1 with (w2:=w2).
           intros z H3. elim H3. intros w1' H4. decompose [and] H4.
           exists (S z). exists w1'. split.
@@ -382,7 +381,7 @@ intros w1 w2. generalize w1. clear w1. induction w2.
         auto with arith.
         rewrite <- H1 in H0. assumption.
     (* 3 *)
-    exfalso. apply (lt_irrefl (length w2)). injection H.
+    exfalso. apply (Nat.lt_irrefl (length w2)). injection H.
     intro. rewrite H6 in H2. assumption.
     (* 4 *)
     apply wlt_pad_lt.
@@ -509,7 +508,7 @@ Lemma wlt_len_gen : forall (w1 w2:list nat) (a:nat),
 induction w1.
   intros. apply wlt_nil.
   intros. destruct a. 
-    apply wlt_0_w. apply IHw1. apply lt_trans with (m:=(length (cons 0 w1))).
+    apply wlt_0_w. apply IHw1. apply Nat.lt_trans with (m:=(length (cons 0 w1))).
       auto with arith.
       assumption.
     apply wlt_len. auto with arith.
@@ -519,7 +518,7 @@ Lemma wlt_lt_gen : forall (a1 a2:nat) (w1 w2:list nat),
   (length w1) = (length w2) -> (lt a1 a2) 
     -> (wlt (cons a1 w1) (cons a2 w2)).
 intros. destruct a2.
-  exfalso. apply (lt_n_0 a1). assumption.
+  exfalso. apply (Nat.nlt_0_r a1). assumption.
   destruct a1.
     apply wlt_0_w. apply wlt_len_gen. rewrite H. auto with arith.
     apply wlt_lt; auto with arith.
@@ -816,8 +815,8 @@ unfold lt_btree. destruct bt.
 Qed.
 
 Obligation 2.
-unfold lt_btree. simpl. rewrite <- plus_Snm_nSm. simpl.
-rewrite plus_assoc. apply wlt_wlt_gen.
+unfold lt_btree. simpl. rewrite Nat.add_succ_r. simpl.
+rewrite Nat.add_assoc. apply wlt_wlt_gen.
   auto.
   apply wlt_lt_gen; auto with arith.
 Qed.
@@ -988,7 +987,7 @@ Obligation 2.
 unfold lt_list_btree. unfold make_mwlt. unfold wm_list_btree.
 apply wlt_lt_gen.
   auto.
-  simpl. rewrite plus_assoc. auto with arith.
+  simpl. rewrite Nat.add_assoc. auto with arith.
 Qed.
 
 Obligation 3.
