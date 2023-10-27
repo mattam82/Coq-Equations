@@ -173,7 +173,7 @@ let telescope env evd = function
 let sigmaize ?(liftty=0) env0 evd pars f =
   let env = push_rel_context pars env0 in
   let ty = Retyping.get_type_of env !evd f in
-  let ctx, concl = hnf_decompose_prod_decls env !evd ty in
+  let ctx, concl = whd_decompose_prod_decls env !evd ty in
   let ctx = EConstr.Vars.smash_rel_context ctx in
   let argtyp, letbinders, make = telescope env evd ctx in
     (* Everyting is in env, move to index :: letbinders :: env *) 
@@ -455,7 +455,7 @@ let uncurry_call env sigma fn c =
   let params, args = Array.chop (Array.length args') args in
   let hd = mkApp (hd, params) in
   let ty = Retyping.get_type_of env sigma hd in
-  let ctx, _ = Reductionops.hnf_decompose_prod_decls env sigma ty in
+  let ctx, _ = Reductionops.whd_decompose_prod_decls env sigma ty in
   let ctx =
     let open Context.Rel.Declaration in
     let rec aux env ctx args =

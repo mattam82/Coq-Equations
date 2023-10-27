@@ -902,10 +902,10 @@ let wf_fix_constr env evars sign arity sort carrier cterm crel =
   in
   let fix = norm env fix in
   let functional_type, full_functional_type =
-    let ctx, rest = Reductionops.hnf_decompose_prod_n_decls env !evars (Context.Rel.nhyps sign) functional_type in
+    let ctx, rest = Reductionops.whd_decompose_prod_n_assum env !evars (Context.Rel.nhyps sign) functional_type in
     match kind !evars (whd_all (push_rel_context ctx env) !evars rest) with
     | Prod (na, b, concl) ->
-      let ctx', rest = Reductionops.hnf_decompose_prod_decls (push_rel_context ctx env) !evars b in
+      let ctx', rest = Reductionops.whd_decompose_prod_decls (push_rel_context ctx env) !evars b in
       let infos = Cbv.create_cbv_infos reds (push_rel_context ctx env) !evars in
       let norm = Cbv.cbv_norm infos in
       let fn_type = it_mkProd_or_LetIn rest ctx' in
