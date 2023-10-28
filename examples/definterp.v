@@ -35,8 +35,7 @@ Set Warnings "-notation-overridden".
  *)
 
 Notation "'∃' x .. y , P" := (sigma (fun x => .. (sigma (fun y => P)) ..))
-  (at level 200, x binder, y binder, right associativity,
-  format "'[  ' '[  ' ∃  x  ..  y ']' ,  '/' P ']'") : type_scope.
+  : type_scope.
 
 Notation "( x , .. , y , z )" :=
   (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
