@@ -47,9 +47,10 @@ let constrs_of_coq_sigma env evd t alias =
 	                   Array.length args = 4 ->
        let ty = Retyping.get_type_of env !evd args.(1) in
 	(match kind !evd ty with
-	| Prod (n, b, t) ->
-	    let p1 = mkProj (Lazy.force coq_pr1, proj) in
-	    let p2 = mkProj (Lazy.force coq_pr2, proj) in
+          | Prod (n, b, t) ->
+            (* sigma is not sort poly (at least for now) *)
+            let p1 = mkProj (Lazy.force coq_pr1, Relevant, proj) in
+            let p2 = mkProj (Lazy.force coq_pr2, Relevant, proj) in
 	    (n, args.(2), p1, args.(0)) ::
               aux (push_rel (of_tuple (n, None, b)) env) p2 args.(3) t
 	| _ -> raise (Invalid_argument "constrs_of_coq_sigma"))
@@ -137,7 +138,7 @@ let telescope env evd = function
             let env = push_rel_context ds env in
             let sigty = mkAppG env evd (Lazy.force coq_sigma) [|t; pred|] in
             let _, u = destInd !evd (fst (destApp !evd sigty)) in
-            let ua = Univ.Instance.to_array (EInstance.kind !evd u) in
+            let _, ua = UVars.Instance.to_array (EInstance.kind !evd u) in
             let l = Sorts.sort_of_univ @@ Univ.Universe.make ua.(0) in
             (* Ensure that the universe of the sigma is only >= those of t and pred *)
             let open UnivProblem in
@@ -164,8 +165,9 @@ let telescope env evd = function
       let (last, _, subst) = List.fold_right2
 	(fun pred d (prev, k, subst) ->
           let (n, b, t) = to_tuple d in
-	  let proj1 = mkProj (Lazy.force coq_pr1, prev) in
-	  let proj2 = mkProj (Lazy.force coq_pr2, prev) in
+          (* sigma is not sort poly (at least for now) *)
+          let proj1 = mkProj (Lazy.force coq_pr1, Relevant, prev) in
+          let proj2 = mkProj (Lazy.force coq_pr2, Relevant, prev) in
 	    (Vars.lift 1 proj2, succ k, of_tuple (n, Some proj1, Vars.liftn 1 k t) :: subst))
 	(List.rev tys) tl (mkRel 1, 1, [])
       in ty, (of_tuple (n, Some last, Vars.liftn 1 len t) :: subst), constr
@@ -826,8 +828,9 @@ let curry_concl env sigma na dom codom =
   let proj last decl (terms, acc) =
     if last then (acc :: terms, acc)
     else
-      let term = mkProj (Lazy.force coq_pr1, acc) in
-      let acc = mkProj (Lazy.force coq_pr2, acc) in
+      (* sigma is not sort poly (at least for now) *)
+      let term = mkProj (Lazy.force coq_pr1, Relevant, acc) in
+      let acc = mkProj (Lazy.force coq_pr2, Relevant, acc) in
       (term :: terms, acc)
   in
   let terms, acc =

@@ -152,7 +152,7 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
   let univs, ubinders = Evd.univ_entry ~poly sigma in
   let uctx = match univs with
   | UState.Monomorphic_entry ctx ->
-    let () = DeclareUctx.declare_universe_context ~poly:false ctx in
+    let () = Global.push_context_set ~strict:true ctx in
     Entries.Monomorphic_ind_entry
   | UState.Polymorphic_entry uctx -> Entries.Polymorphic_ind_entry uctx
   in
@@ -207,12 +207,13 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
           let env' = push_rel_context pars env in
           let subrel =
             let liftindices = List.map (liftn 2 2) indices in
-            let yindices = List.map (subst1 (mkProj (indexproj, mkRel 1))) liftindices in
-            let xindices = List.map (subst1 (mkProj (indexproj, mkRel 2))) liftindices in
+            (* sigma is not sort poly (at least for now) *)
+            let yindices = List.map (subst1 (mkProj (indexproj, Relevant, mkRel 1))) liftindices in
+            let xindices = List.map (subst1 (mkProj (indexproj, Relevant, mkRel 2))) liftindices in
             let apprel =
               applistc subind (extended_rel_list 2 parambinders @
                                  (xindices @ yindices @
-                                    [mkProj (valproj, mkRel 2); mkProj (valproj, mkRel 1)]))
+                                    [mkProj (valproj, Relevant, mkRel 2); mkProj (valproj, Relevant, mkRel 1)]))
             in
             mkLambda (nameR (Id.of_string "x"), typesig,
                       mkLambda (nameR (Id.of_string "y"), lift 1 typesig,

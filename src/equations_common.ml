@@ -222,16 +222,12 @@ let e_type_of env evd t =
 
 let collapse_term_qualities uctx c =
   let nf_evar _ = None in
-  let nf_univ u = u in
-  let nf_sort s = s in
-  let nf_relevance r = match r with
-  | Sorts.Relevant | Sorts.Irrelevant -> r
-  | Sorts.RelevanceVar q ->
-    match UState.nf_qvar uctx q with
-    | QVar _ (* Hack *) | QType | QProp -> Sorts.Relevant
-    | QSProp -> Sorts.Irrelevant
+  let nf_qvar q = match UState.nf_qvar uctx q with
+    | QConstant _ as q -> q
+    | QVar q -> (* hack *) QConstant QType
   in
-  UnivSubst.nf_evars_and_universes_opt_subst nf_evar nf_univ nf_sort nf_relevance c
+  let nf_univ _ = None in
+  UnivSubst.nf_evars_and_universes_opt_subst nf_evar nf_qvar nf_univ c
 
 let make_definition ?opaque ?(poly=false) evm ?types b =
   let env = Global.env () in
@@ -247,7 +243,10 @@ let make_definition ?opaque ?(poly=false) evm ?types b =
   let body = to_constr b in
   let typ = Option.map to_constr types in
   let used = Vars.universes_of_constr body in
-  let used' = Option.cata Vars.universes_of_constr Univ.Level.Set.empty typ in
+  let used' = match typ with
+    | None -> Univ.Level.Set.empty
+    | Some typ -> Vars.universes_of_constr typ
+  in
   let used = Univ.Level.Set.union used used' in
   let evm = Evd.restrict_universe_context evm used in
   let univs = Evd.univ_entry ~poly evm in
@@ -258,9 +257,9 @@ let declare_constant id body ty ~poly ~kind evd =
   let cst = Declare.declare_constant ~name:id (Declare.DefinitionEntry ce) ~kind in
   Flags.if_verbose Feedback.msg_info (str((Id.to_string id) ^ " is defined"));
   if poly then
-    let cstr = EConstr.(mkConstU (cst, EInstance.make (Univ.UContext.instance (Evd.to_universe_context evm)))) in
+    let cstr = EConstr.(mkConstU (cst, EInstance.make (UVars.UContext.instance (Evd.to_universe_context evm)))) in
     cst, (evm0, cstr)
-  else cst, (evm0, EConstr.mkConst cst)
+  else cst, (evm0, EConstr.UnsafeMonomorphic.mkConst cst)
 
 let make_definition ?opaque ?(poly=false) evm ?types b =
   let evm', _, t = make_definition ?opaque ~poly evm ?types b in
@@ -677,7 +676,7 @@ let call_tac_on_ref tac c =
   let tac = Locus.ArgArg (dummy_loc, tac) in
   let val_reference = Geninterp.val_tag (Genarg.topwit Stdarg.wit_constr) in
   (* This is a hack to avoid generating useless universes *)
-  let c = Constr.mkRef (c, Univ.Instance.empty) in
+  let c = Constr.mkRef (c, UVars.Instance.empty) in
   let c = Geninterp.Val.inject val_reference (EConstr.of_constr c) in
   let ist = Geninterp.{ lfun = Names.Id.Map.add var c Names.Id.Map.empty;
                         extra = Geninterp.TacStore.empty; poly = false } in
@@ -1117,8 +1116,8 @@ let instance_of env sigma ?argu goalu =
     match argu with
     | Some equ ->
       let equ = EConstr.EInstance.kind sigma equ in
-      let equarray = Univ.Instance.to_array equ in
-      EConstr.EInstance.make (Univ.Instance.of_array (Array.append equarray [| goall |]))
-    | None -> EConstr.EInstance.make (Univ.Instance.of_array [| goall |])
+      let quals, equarray = UVars.Instance.to_array equ in
+      EConstr.EInstance.make (UVars.Instance.of_array (quals, Array.append equarray [| goall |]))
+    | None -> EConstr.EInstance.make (UVars.Instance.of_array ([||], [| goall |]))
   in
   sigma, inst, goalu

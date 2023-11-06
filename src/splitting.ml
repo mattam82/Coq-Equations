@@ -1110,17 +1110,24 @@ let solve_equations_obligations ~pm flags recids loc i sigma hook =
   pm, lemma
 
 let gather_fresh_context sigma u octx =
-  let ctx = Evd.universe_context_set sigma in
-  let univs = Univ.ContextSet.levels ctx in
-  let arr = Univ.Instance.to_array u in
+  let (qvars, univs), _ = Evd.sort_context_set sigma in
+  let qarr, uarr = UVars.Instance.to_array u in
+  let qualities =
+    Array.fold_left (fun ctx' l ->
+        match l with
+        | Sorts.Quality.QConstant _ -> assert false
+        | QVar l ->
+          if not (Sorts.QVar.Set.mem l qvars) then Sorts.QVar.Set.add l ctx'
+          else ctx')
+      Sorts.QVar.Set.empty qarr
+  in
   let levels =
     Array.fold_left (fun ctx' l ->
         if not (Univ.Level.Set.mem l univs) then Univ.Level.Set.add l ctx'
         else ctx')
-      Univ.Level.Set.empty arr
+      Univ.Level.Set.empty uarr
   in
-  let ctx = Univ.ContextSet.of_set levels in
-  Univ.ContextSet.add_constraints (Univ.AbstractContext.instantiate u octx) ctx
+  (qualities, levels), (UVars.AbstractContext.instantiate u octx)
 
 let swap (x, y) = (y, x)
 
@@ -1172,7 +1179,7 @@ let solve_equations_obligations_program ~pm flags recids loc i sigma hook =
          let cst, i = EConstr.destConst !evd hd in
          let ctx = Environ.constant_context (Global.env ()) cst in
          let ctx = gather_fresh_context !evd (EConstr.EInstance.kind sigma i) ctx in
-         evd := Evd.merge_context_set Evd.univ_flexible !evd ctx;
+         evd := Evd.merge_sort_context_set Evd.univ_flexible !evd ctx;
          t)
       else t
     in
