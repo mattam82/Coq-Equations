@@ -165,7 +165,7 @@ let depcase ~poly ((mind, i as ind), u) =
         (make_assum (nameR (Id.of_string ("P" ^ string_of_int i))) br))
       oneind.mind_consnames oneind.mind_nf_lc
   in
-  let ci = make_case_info (Global.env ()) ind relevance RegularStyle in
+  let ci = make_case_info (Global.env ()) ind RegularStyle in
   let obj i =
     mkApp (mkIndU (ind,u),
           (Array.append (extended_rel_vect (nargs + nconstrs + i) params)
@@ -177,7 +177,7 @@ let depcase ~poly ((mind, i as ind), u) =
   in
   let paramsinst = extended_rel_vect (2 + nargs + nconstrs) params in
   let ty = (annot_of_context ctxpred, app) in
-  let case = mkCase (ci, EInstance.empty, paramsinst, ty, NoInvert, mkRel 1, bodies) in
+  let case = mkCase (ci, EInstance.empty, paramsinst, (ty, relevance), NoInvert, mkRel 1, bodies) in
   let xty = obj 1 in
   let xid = Namegen.named_hd (Global.env ()) !evd xty Anonymous in
   let body =

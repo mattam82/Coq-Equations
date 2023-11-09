@@ -31,7 +31,7 @@ let mkcase env sigma c ty constrs =
   let ctx = CVars.subst_instance_context ui ctx in
   let _len = List.length ctx in
   let params = mindb.mind_nparams in
-  let ci = make_case_info env (fst ind) Sorts.Relevant RegularStyle in
+  let ci = make_case_info env (fst ind) RegularStyle in
   let brs = 
     Array.map2_i (fun i id (ctx, cty) ->
       let cty = Term.it_mkProd_or_LetIn cty ctx in
@@ -44,7 +44,7 @@ let mkcase env sigma c ty constrs =
       it_mkLambda_or_LetIn res args)
       oneind.mind_consnames oneind.mind_nf_lc
   in
-    make_case_or_project env sigma indty ci ty c brs
+    make_case_or_project env sigma indty ci (ty, Sorts.Relevant) c brs
 
 let mk_eq env env' evd args args' =
   let _, _, make = Sigma_types.telescope env evd args in
