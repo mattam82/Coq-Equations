@@ -336,7 +336,7 @@ let _chole c loc =
   let kn = Lib.make_kn c in
   let cst = Names.Constant.make kn kn in
   CAst.make ~loc
-  (CHole (Some (ImplicitArg (GlobRef.ConstRef cst, (0,None), false)), Namegen.IntroAnonymous)), None
+  (CHole (Some (GImplicitArg (GlobRef.ConstRef cst, (0,None), false)))), None
 
 let _check_linearity env sigma opats =
   let rec aux ids pats = 
@@ -355,7 +355,7 @@ let _check_linearity env sigma opats =
   in ignore (aux Id.Set.empty opats)
 
 let is_implicit_arg = function
-  | ImplicitArg _ -> true
+  | GImplicitArg _ -> true
   | _ -> false
 
 let pattern_of_glob_constr env sigma avoid patname gc =
@@ -380,7 +380,7 @@ let pattern_of_glob_constr env sigma avoid patname gc =
     PUCstr (c, nparams, List.map (DAst.map_with_loc (aux Anonymous)) l)
   and aux patname ?loc = function
     | GVar id -> PUVar (id, User)
-    | GHole (k,_) ->
+    | GHole k ->
       (match patname with
       | Name id when is_implicit_arg k -> PUVar (id, Implicit)
       | _ -> 
