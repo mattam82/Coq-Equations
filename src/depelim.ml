@@ -412,7 +412,7 @@ let dependent_elim_tac ?patterns id : unit Proofview.tactic =
      * the [rel_context]. *)
     let ty = Vars.subst_vars sigma subst concl in
     let rhs =
-      let prog = Constrexpr.CHole (None, Namegen.IntroAnonymous) in
+      let prog = Constrexpr.CHole None in
         Syntax.Program (Syntax.ConstrExpr (CAst.make prog), ([], []))
     in
     begin match patterns with
