@@ -650,10 +650,10 @@ let term_of_tree env0 isevar sort tree =
       let pind, args = find_inductive env !evd rel_ty in
 
       (* Build the case. *)
-      let case_info = Inductiveops.make_case_info env (fst pind) elim_relevance Constr.RegularStyle in
+      let case_info = Inductiveops.make_case_info env (fst pind) Constr.RegularStyle in
       let indty = Inductiveops.find_rectype env !evd (mkApp (mkIndU pind, Array.map_of_list EConstr.of_constr args)) in
       let case = Inductiveops.make_case_or_project env !evd indty case_info
-          case_ty rel_t branches in
+          (case_ty, elim_relevance) rel_t branches in
       let term = EConstr.mkApp (case, Array.of_list to_apply) in
       let term = EConstr.it_mkLambda_or_LetIn term ctx in
       let typ = it_mkProd_or_subst env evm ty ctx in
