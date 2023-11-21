@@ -887,7 +887,7 @@ let wf_fix_constr env evars sign arity sort carrier cterm crel =
     in RedFlags.red_add_transparent flags csts
   in
   let norm env =
-    let infos = Cbv.create_cbv_infos reds env !evars in
+    let infos = Cbv.create_cbv_infos reds ~strong:true env !evars in
     Cbv.cbv_norm infos
   in
   let fixty = norm env fixty in
@@ -906,7 +906,7 @@ let wf_fix_constr env evars sign arity sort carrier cterm crel =
     match kind !evars (whd_all (push_rel_context ctx env) !evars rest) with
     | Prod (na, b, concl) ->
       let ctx', rest = Reductionops.whd_decompose_prod_decls (push_rel_context ctx env) !evars b in
-      let infos = Cbv.create_cbv_infos reds (push_rel_context ctx env) !evars in
+      let infos = Cbv.create_cbv_infos reds ~strong:true (push_rel_context ctx env) !evars in
       let norm = Cbv.cbv_norm infos in
       let fn_type = it_mkProd_or_LetIn rest ctx' in
       let fn_type = norm fn_type in
