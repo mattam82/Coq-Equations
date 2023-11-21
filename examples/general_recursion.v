@@ -26,7 +26,6 @@ From Equations Require Import Equations.
 Require Import ZArith Lia.
 Require Import Program.
 Require Import Psatz.
-Require Import NPeano.
 Require Import Nat.
 Require Import Coq.Vectors.VectorDef.
 Require Import Relations.
