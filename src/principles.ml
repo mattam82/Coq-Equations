@@ -73,24 +73,6 @@ let inRewRule =
 
 let add_rew_rule ~l2r ~base ref = Lib.add_leaf (inRewRule (base,ref,l2r))
 
-let cache_opacity cst =
-  Global.set_strategy (ConstKey cst) Conv_oracle.Opaque
-
-let subst_opacity (subst, cst) =
-  let gr' = Mod_subst.subst_constant subst cst in
-  gr'
-
-let inOpacity =
-  let open Libobject in
-  let obj =
-    (* We allow discharging rewrite rules *)
-    superglobal_object "EQUATIONS_OPACITY"
-      ~cache:cache_opacity
-      ~subst:(Some subst_opacity)
-      ~discharge:(fun x -> Some x)
-  in
-  declare_object @@ obj
-
 let match_arguments sigma l l' =
   let rec aux i =
     if i < Array.length l' then
@@ -1374,19 +1356,11 @@ let declare_funind ~pm info alias env evd is_rec protos progs
     let instid = Nameops.add_prefix "FunctionalInduction_" id in
     ignore(Equations_common.declare_instance instid ~poly evd [] cl args);
     (* If desired the definitions should be made transparent again. *)
-    begin
-    if !Equations_common.equations_transparent then
-      (Global.set_strategy (ConstKey (fst (destConst evd f))) Conv_oracle.transparent;
-       match alias with
+    let opacity = if !Equations_common.equations_transparent then Conv_oracle.transparent else Conv_oracle.Opaque in
+    Redexpr.set_strategy false [opacity,[EvalConstRef (fst (destConst evd f))]];
+    (match alias with
        | None -> ()
-       | Some ((f, _), _, _) -> Global.set_strategy (ConstKey (fst (destConst evd f))) Conv_oracle.transparent)
-    else
-      ((* Otherwise we turn them opaque and let that information be discharged as well *)
-        Lib.add_leaf (inOpacity (fst (destConst evd f)));
-        match alias with
-        | None -> ()
-        | Some ((f, _), _, _) -> Lib.add_leaf (inOpacity (fst (destConst evd f))))
-    end;
+       | Some ((f, _), _, _) -> Redexpr.set_strategy false [opacity,[EvalConstRef (fst (destConst evd f))]]);
     pm
   in
   let evm, stmtt = Typing.type_of (Global.env ()) !evd statement in
@@ -1776,9 +1750,9 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
               let cst' = fst (destConst !evd f) in
               Hints.(add_hints ~locality [info.base_id]
                 (HintsTransparencyEntry (HintsReferences [Tacred.EvalConstRef cst'], false)));
-              Global.set_strategy (ConstKey cst') Conv_oracle.Opaque
+              Redexpr.set_strategy false [Conv_oracle.Opaque,[EvalConstRef cst']];
            | None -> ());
-          Global.set_strategy (ConstKey cst) Conv_oracle.Opaque;
+          Redexpr.set_strategy false [Conv_oracle.Opaque,[EvalConstRef cst]];
           if with_ind then (declare_ind (); pm) else pm)
         else pm
       in
