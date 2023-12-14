@@ -434,7 +434,7 @@ let coq_ImpossibleCall evd = find_constant "impossiblecall.class" evd
 
 let unfold_add_pattern =
   lazy (Tactics.unfold_in_concl [(Locus.AllOccurrences,
-			     Tacred.EvalConstRef (Globnames.destConstRef (Lazy.force coq_add_pattern)))])
+			     Evaluable.EvalConstRef (Globnames.destConstRef (Lazy.force coq_add_pattern)))])
 
 let subterm_relation_base = "subterm_relation"
 
@@ -516,14 +516,19 @@ let lift_list l = List.map (Vars.lift 1) l
 (*     | _ -> pars *)
 (*   in aux init n c *)
 
-let unfold_head env sigma (ids, csts) c = 
+let is_transparent_constant csts ps c =
+  match Structures.PrimitiveProjections.find_opt c with
+  | None -> Cset.mem c csts
+  | Some p -> PRset.mem p ps
+
+let unfold_head env sigma (ids, csts, ps) c = 
   let rec aux c = 
     match kind sigma c with
     | Var id when Id.Set.mem id ids ->
       (match Environ.named_body id env with
       | Some b -> true, of_constr b
       | None -> false, c)
-    | Const (cst,u) when Cset.mem cst csts ->
+    | Const (cst,u) when is_transparent_constant csts ps cst ->
 	    true, of_constr (Environ.constant_value_in env (cst, EInstance.kind sigma u))
     | App (f, args) ->
       (match aux f with
@@ -552,12 +557,12 @@ open CErrors
 
 let unfold_head env sigma db t =
   let st =
-    List.fold_left (fun (i,c) dbname -> 
+    List.fold_left (fun (i,c,p) dbname -> 
       let db = try Hints.searchtable_map dbname 
         with Not_found -> user_err (str "Unknown database " ++ str dbname)
       in
-      let (ids, csts) = Hints.Hint_db.unfolds db in
-        (Id.Set.union ids i, Cset.union csts c)) (Id.Set.empty, Cset.empty) db
+      let (ids, csts, ps) = Hints.Hint_db.unfolds db in
+        (Id.Set.union ids i, Cset.union csts c, PRset.union ps p)) (Id.Set.empty, Cset.empty, PRset.empty) db
   in
   unfold_head env sigma st t
 
@@ -1028,7 +1033,7 @@ let evar_absorb_arguments = Evardefine.evar_absorb_arguments
 let hintdb_set_transparency cst b db =
   let locality = if Global.sections_are_opened () then Hints.Local else Hints.SuperGlobal in
   Hints.add_hints ~locality [db] 
-    (Hints.HintsTransparencyEntry (Hints.HintsReferences [Tacred.EvalConstRef cst], b))
+    (Hints.HintsTransparencyEntry (Hints.HintsReferences [Evaluable.EvalConstRef cst], b))
 
 (* Call the really unsafe is_global test, we use this on evar-open terms too *)
 let is_global = EConstr.isRefX

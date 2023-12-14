@@ -1229,7 +1229,7 @@ let simplify_evars evars t =
     | _ -> EConstr.map evars aux t
   in aux t
 
-let unfold_entry cst = Hints.HintsUnfoldEntry [Tacred.EvalConstRef cst]
+let unfold_entry cst = Hints.HintsUnfoldEntry [Evaluable.EvalConstRef cst]
 let add_hint local i cst =
   let locality = if local || Global.sections_are_opened () then Hints.Local else Hints.SuperGlobal in
   Hints.add_hints ~locality [Id.to_string i] (unfold_entry cst)
