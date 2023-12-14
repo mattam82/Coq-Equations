@@ -45,7 +45,7 @@ let define_unfolding_eq ~pm env evd flags p unfp prog prog' ei hook =
   let funfc = e_new_global evd info'.term_id in
   let unfold_eq_id = add_suffix (program_id unfp) "_eq" in
   let hook_eqs _ pm =
-    Global.set_strategy (ConstKey funf_cst) Conv_oracle.transparent;
+    Global.set_strategy (Evaluable.EvalConstRef funf_cst) Conv_oracle.transparent;
     let () = (* Declare the subproofs of unfolding for where as rewrite rules *)
       let decl _ (_, id, _) =
         let gr =

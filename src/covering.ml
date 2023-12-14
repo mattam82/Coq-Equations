@@ -868,8 +868,9 @@ let wf_fix_constr env evars sign arity sort carrier cterm crel =
     let flags = RedFlags.betaiotazeta in
     let csts =
       let ts = TransparentState.empty in
-      let cst = Names.Cpred.add (Projection.constant (Lazy.force coq_pr1)) Names.Cpred.empty in
-      let cst = Names.Cpred.add (Projection.constant (Lazy.force coq_pr2)) cst in
+      let tr_prj = Names.PRpred.add (Projection.repr (Lazy.force coq_pr1)) Names.PRpred.empty in
+      let tr_prj = Names.PRpred.add (Projection.repr (Lazy.force coq_pr2)) tr_prj in
+      let cst = Names.Cpred.empty in
       let add_ts cst t = Names.Cpred.add (Globnames.destConstRef (Lazy.force t)) cst in
       let tr_cst = List.fold_left add_ts cst
           [logic_tele_interp;
@@ -883,7 +884,7 @@ let wf_fix_constr env evars sign arity sort carrier cterm crel =
            logic_tele_forall;
            logic_tele_forall_pack;
            logic_tele_forall_unpack]
-      in { ts with TransparentState.tr_cst }
+      in { ts with TransparentState.tr_cst; TransparentState.tr_prj }
     in RedFlags.red_add_transparent flags csts
   in
   let norm env =

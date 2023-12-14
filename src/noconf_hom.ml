@@ -268,7 +268,7 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
      * let _fixprots = [s] in *)
     (* let () = Equations.define_principles flags None fixprots [proginfo, compiled_info] in *)
     (* The principles are now shown, let's prove this forms an equivalence *)
-    Global.set_strategy (ConstKey program_cst) Conv_oracle.transparent;
+    Global.set_strategy (Evaluable.EvalConstRef program_cst) Conv_oracle.transparent;
     let env = Global.env () in
     let sigma = Evd.from_env env in
     let sigma, indu = Evd.fresh_global
