@@ -26,7 +26,6 @@ val define_principles :
   pm:Declare.OblState.t ->
   flags ->
   Syntax.rec_type ->
-  EConstr.t list ->
   (program * compiled_program_info) list -> Declare.OblState.t
 
 val equations :
