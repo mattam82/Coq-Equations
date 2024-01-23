@@ -116,7 +116,7 @@ let define_unfolding_eq ~pm env evd flags p unfp prog prog' ei hook =
       ~uctx:(Evd.evar_universe_context evd) [||]
   in pm
 
-let define_principles ~pm flags rec_type fixprots progs =
+let define_principles ~pm flags rec_type progs =
   let env = Global.env () in
   let evd = ref (Evd.from_env env) in
   let () =
@@ -198,13 +198,16 @@ let define_by_eqs ~pm ~poly ~program_mode ~tactic ~open_proof opts eqs nt =
                           program_split_info = info } in
     progs.(i) <- Some (p, compiled_info);
     if CArray.for_all (fun x -> not (Option.is_empty x)) progs then
-      (let fixprots = List.map (fun (rel, x) -> (rel, nf_evar !evd x)) fixprots in
-       let progs = Array.map_to_list (fun x -> Option.get x) progs in
-       let relevant = List.for_all (fun (rel, x) -> rel == Sorts.Relevant) fixprots in
+      (let progs = Array.map_to_list (fun x -> Option.get x) progs in
+       let is_relevant (rel, _) = match Evarutil.nf_relevance !evd rel with
+       | Sorts.Irrelevant -> false
+       | Sorts.Relevant | Sorts.RelevanceVar _ -> true
+       in
+       let relevant = List.for_all is_relevant fixprots in
        let rec_info = compute_rec_type [] (List.map (fun (x, y) -> x.program_info) progs) in
        List.iter (Metasyntax.add_notation_interpretation ~local:false (Global.env ())) nt;
        if (flags.with_eqns || flags.with_ind) && relevant then
-         define_principles ~pm flags rec_info fixprots progs
+         define_principles ~pm flags rec_info progs
        else pm)
     else pm
   in
