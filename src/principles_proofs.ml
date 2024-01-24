@@ -277,9 +277,9 @@ let hyps_after sigma env pos args =
 
 let simpl_of csts =
   let opacify () = List.iter (fun (cst,_) ->
-    Global.set_strategy (ConstKey cst) Conv_oracle.Opaque) csts
+    Global.set_strategy (Evaluable.EvalConstRef cst) Conv_oracle.Opaque) csts
   and transp () = List.iter (fun (cst, level) ->
-    Global.set_strategy (ConstKey cst) level) csts
+    Global.set_strategy (Evaluable.EvalConstRef cst) level) csts
   in opacify, transp
 
 let gather_subst env sigma ty args len =
@@ -912,8 +912,8 @@ let solve_rec_eq simpltac subst =
               is_global env sigma (GlobRef.ConstRef f_cst) xf && is_global env sigma (GlobRef.ConstRef funf_cst) yf) subst
         in
         let unfolds = unfold_in_concl
-            [((Locus.OnlyOccurrences [1]), Tacred.EvalConstRef f_cst); 
-              ((Locus.OnlyOccurrences [1]), Tacred.EvalConstRef funf_cst)]
+            [((Locus.OnlyOccurrences [1]), Evaluable.EvalConstRef f_cst); 
+              ((Locus.OnlyOccurrences [1]), Evaluable.EvalConstRef funf_cst)]
         in tclTHENLIST [unfolds; simpltac; pi_tac ()]
       with Not_found -> tclORELSE reflexivity (congruence_tac 10 []))
   | _ -> reflexivity
@@ -1130,13 +1130,13 @@ let prove_unfolding_lemma_aux info where_map my_simpl subst p unfp =
     let unfolds =
       tclTHENLIST
         [unfold_in_concl
-                  [Locus.OnlyOccurrences [1], Tacred.EvalConstRef f_cst;
-                  (Locus.OnlyOccurrences [1], Tacred.EvalConstRef funf_cst)];
+                  [Locus.OnlyOccurrences [1], Evaluable.EvalConstRef f_cst;
+                  (Locus.OnlyOccurrences [1], Evaluable.EvalConstRef funf_cst)];
           my_simpl]
     in
     let set_opaque () =
-      Global.set_strategy (ConstKey f_cst) Conv_oracle.Opaque;
-      Global.set_strategy (ConstKey funf_cst) Conv_oracle.Opaque;
+      Global.set_strategy (Evaluable.EvalConstRef f_cst) Conv_oracle.Opaque;
+      Global.set_strategy (Evaluable.EvalConstRef funf_cst) Conv_oracle.Opaque;
     in
     let kind = get_program_reckind env sigma where_map p in
     let subst, fixtac, extgl = match kind with

@@ -813,7 +813,7 @@ open RedFlags
 
 let red_curry () =
   let redpr pr =
-    fCONST (Projection.constant (Lazy.force pr)) in
+    fPROJ (Projection.repr (Lazy.force pr)) in
   let fold accu r = red_add accu r in
   let reds = mkflags [fDELTA; fBETA; fMATCH] in
   let reds = List.fold_left fold reds [redpr coq_pr1; redpr coq_pr2] in

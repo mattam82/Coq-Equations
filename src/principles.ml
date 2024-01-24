@@ -74,7 +74,7 @@ let inRewRule =
 let add_rew_rule ~l2r ~base ref = Lib.add_leaf (inRewRule (base,ref,l2r))
 
 let cache_opacity cst =
-  Global.set_strategy (ConstKey cst) Conv_oracle.Opaque
+  Global.set_strategy (Evaluable.EvalConstRef cst) Conv_oracle.Opaque
 
 let subst_opacity (subst, cst) =
   let gr' = Mod_subst.subst_constant subst cst in
@@ -617,7 +617,7 @@ let where_instance w =
 let arguments sigma c = snd (decompose_app sigma c)
 
 let unfold_constr sigma c =
-  Tactics.unfold_in_concl [(Locus.OnlyOccurrences [1], Tacred.EvalConstRef (fst (destConst sigma c)))]
+  Tactics.unfold_in_concl [(Locus.OnlyOccurrences [1], Evaluable.EvalConstRef (fst (destConst sigma c)))]
 
 let extend_prob_ctx delta (ctx, pats, ctx') =
   (delta @ ctx, Context_map.lift_pats (List.length delta) pats, ctx')
@@ -1376,10 +1376,10 @@ let declare_funind ~pm info alias env evd is_rec protos progs
     (* If desired the definitions should be made transparent again. *)
     begin
     if !Equations_common.equations_transparent then
-      (Global.set_strategy (ConstKey (fst (destConst evd f))) Conv_oracle.transparent;
+      (Global.set_strategy (Evaluable.EvalConstRef (fst (destConst evd f))) Conv_oracle.transparent;
        match alias with
        | None -> ()
-       | Some ((f, _), _, _) -> Global.set_strategy (ConstKey (fst (destConst evd f))) Conv_oracle.transparent)
+       | Some ((f, _), _, _) -> Global.set_strategy (Evaluable.EvalConstRef (fst (destConst evd f))) Conv_oracle.transparent)
     else
       ((* Otherwise we turn them opaque and let that information be discharged as well *)
         Lib.add_leaf (inOpacity (fst (destConst evd f)));
@@ -1769,16 +1769,16 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
           let locality = if Global.sections_are_opened () then Hints.Local else Hints.SuperGlobal in
           (* From now on, we don't need the reduction behavior of the constant anymore *)
           Hints.(add_hints ~locality [info.base_id]
-            (HintsTransparencyEntry (HintsReferences [Tacred.EvalConstRef ocst], false)));
-          Classes.set_typeclass_transparency ~locality [Tacred.EvalConstRef cst] false;
+            (HintsTransparencyEntry (HintsReferences [Evaluable.EvalConstRef ocst], false)));
+          Classes.set_typeclass_transparency ~locality [Evaluable.EvalConstRef cst] false;
           (match alias with
            | Some ((f, _), _, _) ->
               let cst' = fst (destConst !evd f) in
               Hints.(add_hints ~locality [info.base_id]
-                (HintsTransparencyEntry (HintsReferences [Tacred.EvalConstRef cst'], false)));
-              Global.set_strategy (ConstKey cst') Conv_oracle.Opaque
+                (HintsTransparencyEntry (HintsReferences [Evaluable.EvalConstRef cst'], false)));
+              Global.set_strategy (Evaluable.EvalConstRef cst') Conv_oracle.Opaque
            | None -> ());
-          Global.set_strategy (ConstKey cst) Conv_oracle.Opaque;
+          Global.set_strategy (Evaluable.EvalConstRef cst) Conv_oracle.Opaque;
           if with_ind then (declare_ind (); pm) else pm)
         else pm
       in
