@@ -622,8 +622,8 @@ let eq_context_nolet env sigma (g : rel_context) (d : rel_context) =
      | e ->
        Printf.eprintf
          "Exception while comparing contexts %s and %s : %s\n"
-         (Pp.string_of_ppcmds (Termops.Internal.print_rel_context (push_rel_context g env)))
-         (Pp.string_of_ppcmds (Termops.Internal.print_rel_context (push_rel_context d env)))
+         (Pp.string_of_ppcmds (Termops.Internal.print_rel_context (push_rel_context g env) sigma))
+         (Pp.string_of_ppcmds (Termops.Internal.print_rel_context (push_rel_context d env) sigma))
          (Printexc.to_string e);
        raise e
 
