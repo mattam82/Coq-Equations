@@ -455,8 +455,8 @@ let define_mutual_nested env evd get_prog progs =
     in
     let names, tys, bodies = nf_fix !evd (names, tys, bodies) in
     try
-      Pretyping.search_guard env (Array.to_list possible_indexes)
-          (names, tys, bodies)
+      Option.get (Pretyping.search_guard env (false, Array.to_list possible_indexes)
+          (names, tys, bodies))
     with e -> 
       user_err_loc ((fst (List.hd progs)).program_loc, CErrors.print e)
   in
