@@ -449,7 +449,7 @@ let define_mutual_nested env evd get_prog progs =
     let possible_indexes =
       Array.map3 (compute_possible_guardness_evidences !evd) structargs bodies tys
     in
-    Pretyping.esearch_guard env !evd (Array.to_list possible_indexes)
+    Pretyping.esearch_fix_guard env !evd (Array.to_list possible_indexes)
       (names, tys, bodies)
   in
   let declare_fix_fns i (p,prog) =
