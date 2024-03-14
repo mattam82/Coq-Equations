@@ -89,8 +89,8 @@ Notation "( x , .. , y , z )" :=
       (right associativity, at level 0,
        format "( x ,  .. ,  y ,  z )") : equations_scope.
 
-Notation " x .1 " := (pr1 x) (at level 3, format "x .1") : equations_scope.
-Notation " x .2 " := (pr2 x) (at level 3, format "x .2") : equations_scope.
+Notation " x .1 " := (pr1 x) : equations_scope.
+Notation " x .2 " := (pr2 x) : equations_scope.
 
 End Sigma_Notations.
 
