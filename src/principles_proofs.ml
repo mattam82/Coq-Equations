@@ -277,9 +277,9 @@ let hyps_after sigma env pos args =
 
 let simpl_of csts =
   let opacify () = List.iter (fun (cst,_) ->
-    Global.set_strategy (Evaluable.EvalConstRef cst) Conv_oracle.Opaque) csts
+    Global.set_strategy (Conv_oracle.EvalConstRef cst) Conv_oracle.Opaque) csts
   and transp () = List.iter (fun (cst, level) ->
-    Global.set_strategy (Evaluable.EvalConstRef cst) level) csts
+    Global.set_strategy (Conv_oracle.EvalConstRef cst) level) csts
   in opacify, transp
 
 let gather_subst env sigma ty args len =
@@ -1135,8 +1135,8 @@ let prove_unfolding_lemma_aux info where_map my_simpl subst p unfp =
           my_simpl]
     in
     let set_opaque () =
-      Global.set_strategy (Evaluable.EvalConstRef f_cst) Conv_oracle.Opaque;
-      Global.set_strategy (Evaluable.EvalConstRef funf_cst) Conv_oracle.Opaque;
+      Global.set_strategy (Conv_oracle.EvalConstRef f_cst) Conv_oracle.Opaque;
+      Global.set_strategy (Conv_oracle.EvalConstRef funf_cst) Conv_oracle.Opaque;
     in
     let kind = get_program_reckind env sigma where_map p in
     let subst, fixtac, extgl = match kind with
