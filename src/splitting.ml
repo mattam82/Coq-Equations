@@ -351,10 +351,6 @@ let compute_possible_guardness_evidences sigma n fixbody fixtype =
     let ctx = fst (decompose_prod_n_decls sigma m fixtype) in
     List.map_i (fun i _ -> i) 0 ctx
 
-let nf_fix sigma (nas, cs, ts) =
-  let inj c = EConstr.to_constr ~abort_on_undefined_evars:false sigma c in
-  (nas, Array.map inj cs, Array.map inj ts)
-    
 let define_mutual_nested env evd get_prog progs =
   let mutual =
     List.filter (fun (p, prog) -> not (is_nested p)) progs
@@ -453,12 +449,8 @@ let define_mutual_nested env evd get_prog progs =
     let possible_indexes =
       Array.map3 (compute_possible_guardness_evidences !evd) structargs bodies tys
     in
-    let names, tys, bodies = nf_fix !evd (names, tys, bodies) in
-    try
-      Pretyping.search_guard env (Array.to_list possible_indexes)
-          (names, tys, bodies)
-    with e -> 
-      user_err_loc ((fst (List.hd progs)).program_loc, CErrors.print e)
+    Pretyping.esearch_guard env !evd (Array.to_list possible_indexes)
+      (names, tys, bodies)
   in
   let declare_fix_fns i (p,prog) =
     let newidx = indexes.(i) in
