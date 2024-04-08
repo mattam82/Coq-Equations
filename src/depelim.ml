@@ -149,7 +149,7 @@ let depcase ~poly ((mind, i as ind), u) =
   let branches =
     Array.map2_i (fun i id (ctx, cty) ->
       let cty = Term.it_mkProd_or_LetIn cty ctx in
-      let substcty = Vars.subst_instance_constr (EInstance.kind !evd u) (of_constr cty) in
+      let substcty = Vars.subst_instance_constr u (of_constr cty) in
       let (args, arity) = decompose_prod_decls !evd substcty in
       let _, indices = decompose_app !evd arity in
       let _, indices = Array.chop nparams indices in
