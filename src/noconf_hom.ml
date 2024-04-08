@@ -108,8 +108,7 @@ let derive_noConfusion_package ~pm env sigma ~poly (ind,u as indu) indid ~prefix
 
 let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
   let mindb, oneind = Global.lookup_inductive ind in
-  let pi = (fst indu, EConstr.EInstance.kind sigma0 (snd indu)) in
-  let _, inds = Reduction.dest_arity env (Inductiveops.type_of_inductive env pi) in
+  let _, inds = Reductionops.dest_arity env sigma0 (Inductiveops.type_of_inductive env indu) in
   let ctx = List.map of_rel_decl oneind.mind_arity_ctxt in
   let ctx = subst_instance_context (snd indu) ctx in
   let ctx = smash_rel_context ctx in
@@ -132,8 +131,8 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
   let sigma, s =
     match Lazy.force logic_sort with
     | Sorts.InType | Sorts.InSet | Sorts.InQSort -> (* In that case noConfusion lives at the level of the inductive family *)
-      let sort = EConstr.mkSort (ESorts.make inds) in
-      let is_level = match inds with
+      let sort = EConstr.mkSort inds in
+      let is_level = match ESorts.kind sigma0 inds with
       | Sorts.Prop | Sorts.SProp | Sorts.Set -> true
       | Sorts.Type u | Sorts.QSort (_, u) -> Univ.Universe.is_level u
       in
@@ -153,7 +152,7 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
   in
   let _lenindices = List.length argsctx in
   let ctxmap = Context_map.id_subst fullbinders in
-  let constructors = Inductiveops.arities_of_constructors env pi in
+  let constructors = Inductiveops.arities_of_constructors env indu in
   let sigma, sigT = get_fresh sigma coq_sigma in
   let sigma, sigI = get_fresh sigma coq_sigmaI in
   let sigma, eqT = get_fresh sigma logic_eq_type in
@@ -162,7 +161,6 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
         DAst.make Syntax.(PUVar (Name.get_id (get_name decl), Generated))) ctx
   in
   let mk_clause i ty =
-    let ty = EConstr.of_constr ty in
     let paramsctx, concl = decompose_prod_n_decls sigma params ty in
     let _, ctxpars = List.chop args ctx in
     let ctxvars = List.map (fun decl -> mkVar (Name.get_id (get_name decl))) ctxpars in

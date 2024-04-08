@@ -57,8 +57,7 @@ let mk_eq env env' evd args args' =
 let derive_no_confusion ~pm env sigma0 ~poly (ind,u as indu) =
   let evd = ref sigma0 in
   let mindb, oneind = Global.lookup_inductive ind in
-  let pi = (fst indu, EConstr.EInstance.kind !evd (snd indu)) in
-  let _, inds = Reduction.dest_arity env (Inductiveops.type_of_inductive env pi) in
+  let _, inds = Reductionops.dest_arity env sigma0 (Inductiveops.type_of_inductive env indu) in
   let ctx = List.map of_rel_decl oneind.mind_arity_ctxt in
   let ctx = subst_instance_context u ctx in
   let ctx = smash_rel_context ctx in
@@ -96,7 +95,7 @@ let derive_no_confusion ~pm env sigma0 ~poly (ind,u as indu) =
     | Sorts.InSet -> mkSet
     | Sorts.InType | Sorts.InQSort ->
       (* In that case the noConfusion principle lives at the level of the type. *)
-      let sort = EConstr.mkSort (ESorts.make inds) in
+      let sort = EConstr.mkSort inds in
       let sigma, s =
         Evarsolve.refresh_universes ~status:Evd.univ_flexible ~onlyalg:true
           (Some false) env !evd sort

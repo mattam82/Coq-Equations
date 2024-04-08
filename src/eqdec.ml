@@ -58,10 +58,10 @@ let inductive_info sigma ((mind, _ as ind),u) =
     let induct = ((mind, i),u) in
     let indname = Nametab.basename_of_global (GlobRef.IndRef (mind,i)) in
     let indapp = applist (mkIndU induct, paramargs) in
-    let arities = arities_of_constructors env (from_peuniverses sigma induct) in
+    let arities = arities_of_constructors env induct in
      let constrs =
       Array.map (fun ty -> 
-	let _, rest = decompose_prod_n_decls sigma nparams (EConstr.of_constr ty) in
+	let _, rest = decompose_prod_n_decls sigma nparams ty in
 	let constrty = Vars.substl subst rest in
 	decompose_prod_decls sigma constrty)
 	arities
