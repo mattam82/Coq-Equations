@@ -1286,7 +1286,7 @@ let declare_funelim ~pm info env evd is_rec protos progs
   let newty = collapse_term_qualities (Evd.evar_universe_context !evd) (EConstr.to_constr !evd newty) in 
   let cinfo = Declare.CInfo.make ~name:(Nameops.add_suffix id "_elim") ~typ:newty () in
   let info = Declare.Info.make ~poly:info.poly ~scope:info.scope ~hook:(Declare.Hook.make hookelim) ~kind:(Decls.IsDefinition info.decl_kind) () in
-  let pm, _ = Declare.Obls.add_definition ~pm ~cinfo ~info ~tactic
+  let pm, _ = Declare.Obls.add_definition ~pm ~cinfo ~info ~tactic ~opaque:false
       ~uctx:(Evd.evar_universe_context !evd) [||] in
   pm
 
@@ -1401,7 +1401,7 @@ let declare_funind ~pm info alias env evd is_rec protos progs
           ~kind:(Decls.IsDefinition info.term_info.decl_kind)
           () in
       let obl_hook = Declare.Hook.make_g hookind in
-      Declare.Obls.add_definition ~pm ~cinfo ~info ~obl_hook
+      Declare.Obls.add_definition ~pm ~cinfo ~info ~obl_hook ~opaque:false
         ~tactic:(Tacticals.tclTRY tactic) ~uctx [||]
     in
     match res with
@@ -1802,7 +1802,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
       let cinfo = Declare.CInfo.make ~name:ideq ~typ:c () in
       let info = Declare.Info.make ~kind:(Decls.IsDefinition info.decl_kind) ~poly () in
       let obl_hook = Declare.Hook.make_g hook in
-      let pm, _ = Declare.Obls.add_definition ~pm ~cinfo ~info ~obl_hook
+      let pm, _ = Declare.Obls.add_definition ~pm ~cinfo ~info ~obl_hook ~opaque:false
                ~tactic:tac ~uctx:(Evd.evar_universe_context !evd) [||] in
       pm
     in List.fold_left proof pm stmts

@@ -265,7 +265,7 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
     let cinfo = Declare.CInfo.make ~name:id ~typ () in
     let info = Declare.Info.make ~poly ~scope:Locality.(Global ImportDefaultBehavior)
         ~kind:Decls.(IsDefinition Instance) ~hook:(Declare.Hook.make hook) () in
-    let pm, _ = Declare.Obls.add_definition ~pm ~cinfo ~info ~term:constr ~uctx
+    let pm, _ = Declare.Obls.add_definition ~pm ~cinfo ~info ~body:constr ~uctx ~opaque:false
                                 ~tactic:(solve_subterm_tac ()) obls in
     pm
   in
