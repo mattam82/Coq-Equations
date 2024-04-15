@@ -1,4 +1,5 @@
-Require Import Equations.Prop.Equations Bvector.
+Require Vector.
+Require Import Equations.Prop.Equations.
   
 Inductive bar1 (A : Type) : A -> Prop := .
 Inductive bar2 (A : Type) : (A -> A) -> Prop := .

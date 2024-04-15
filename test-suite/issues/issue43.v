@@ -1,4 +1,5 @@
-Require Import Program Bvector List.
+Require Import Program List.
+Require Vector. Import Vector.VectorNotations.
 Require Import Relations.
 From Equations Require Import Equations DepElimDec.
 

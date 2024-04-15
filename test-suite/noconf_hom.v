@@ -1,5 +1,6 @@
 
-Require Import Program Bvector List Relations.
+Require Import Program List Relations.
+Require Vector. Import Vector.VectorNotations.
 From Equations Require Import Equations Signature DepElimDec.
 Require Import Utf8.
 Unset Equations WithK.

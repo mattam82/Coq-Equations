@@ -10,7 +10,7 @@
    [equations] when it needs applications of injectivity or discrimination
    on some equation. *)
 
-Require Import Coq.Program.Tactics Bvector List.
+Require Import Coq.Program.Tactics Vector List.
 From Equations Require Import Init Signature.
 Require Import Equations.CoreTactics.
 Require Import Equations.Prop.Classes Equations.Prop.EqDec Equations.Prop.Constants.

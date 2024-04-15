@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Bvector List Relations.
+Require Import List Relations.
 From Equations Require Import Equations Signature.
 Require Import Utf8.
 Import ListNotations.
