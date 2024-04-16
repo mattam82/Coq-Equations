@@ -347,13 +347,13 @@ let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty
       | Names.GlobRef.IndRef ind ->
         let pind = Equations_common.evd_comb1 (Evd.fresh_inductive_instance env) evd ind in
         let tf = Constr.mkIndU pind in
-        let ty = Inductiveops.type_of_inductive env pind in
-        of_constr tf, of_constr ty
+        let ty = Inductiveops.type_of_inductive env (to_peuniverses pind) in
+        of_constr tf, ty
       | Names.GlobRef.ConstructRef cstr ->
         let pcstr = Equations_common.evd_comb1 (Evd.fresh_constructor_instance env) evd cstr in
         let tf = Constr.mkConstructU pcstr in
-        let ty = Inductiveops.type_of_constructor env pcstr in
-        of_constr tf, of_constr ty
+        let ty = Inductiveops.type_of_constructor env (Util.on_snd EInstance.make pcstr) in
+        of_constr tf, ty
   in
   let rec aux ty args =
     match kind !evd ty, args with

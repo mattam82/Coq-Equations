@@ -1054,7 +1054,7 @@ let decompose_appvect sigma t =
 
 let dest_ind_family fam =
   let ind, fam = Inductiveops.dest_ind_family fam in
-  to_peuniverses ind, List.map of_constr fam
+  ind, fam
 
 (* XXX: EConstr-versions fo these functions really needed XXX *)
 let to_constr = to_constr ~abort_on_undefined_evars:false

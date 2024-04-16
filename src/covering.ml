@@ -444,10 +444,9 @@ let unify_type env evars before id ty after =
     let ind, params = dest_ind_family indf in
     let vs = List.map (Tacred.whd_simpl envb !evars) args in
     let params = List.map (Tacred.whd_simpl envb !evars) params in
-    let cstrs = Inductiveops.type_of_constructors envb (from_peuniverses !evars ind) in
+    let cstrs = Inductiveops.type_of_constructors envb ind in
     let cstrs = 
       Array.mapi (fun i ty ->
-          let ty = of_constr ty in
           let ty = prod_applist !evars ty params in
           let ctx, ty = decompose_prod_decls !evars ty in
           let ctx = 

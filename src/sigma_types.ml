@@ -222,8 +222,7 @@ let signature_class evd =
 
 let build_sig_of_ind env sigma (ind,u as indu) =
   let (mib, oib as _mind) = Inductive.lookup_mind_specif env ind in
-  let ctx = inductive_alldecls env (from_peuniverses sigma indu) in
-  let ctx = List.map of_rel_decl ctx in
+  let ctx = inductive_alldecls env indu in
   let ctx = EConstr.Vars.smash_rel_context ctx in
   let lenpars = mib.mind_nparams_rec in
   let lenargs = List.length ctx - lenpars in
@@ -515,18 +514,16 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
   let after, rel_decl, before = Context_map.split_context (pred rel) ctx in
   let rel_ty = Context.Rel.Declaration.get_type rel_decl in
   let rel_ty = Vars.lift rel rel_ty in
-  let rel_t = Constr.mkRel rel in
+  let rel_t = EConstr.mkRel rel in
   (* Fetch some information about the type of the variable being eliminated. *)
-  let pind, args = Inductive.find_inductive env (to_constr ~abort_on_undefined_evars:false !evd rel_ty) in
-  let mib, oib = Global.lookup_pinductive pind in
+  let pind, args = Inductiveops.find_inductive env !evd rel_ty in
+  let mib, oib = Global.lookup_inductive (fst pind) in
   let params, indices = List.chop mib.mind_nparams args in
   (* The variable itself will be treated for all purpose as one of its indices. *)
   let indices = indices @ [rel_t] in
   let indfam = Inductiveops.make_ind_family (pind, params) in
   let arity_ctx = Inductiveops.make_arity_signature env !evd true indfam in
   let rev_arity_ctx = List.rev arity_ctx in
-  let params = List.map of_constr params in
-  let indices = List.map of_constr indices in
 
   (* Firstly, we need to analyze each index to decide if we should introduce
    * an equality for it or not. *)
@@ -741,9 +738,9 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
   let goal = it_mkLambda_or_LetIn goal fresh_ctx in
   let params = List.map (to_constr ~abort_on_undefined_evars:false !evd) params in
   let goal' = to_constr ~abort_on_undefined_evars:false !evd goal in
-  let branches_ty = Inductive.build_branches_type pind (mib, oib) params goal' in
+  let branches_ty = Inductive.build_branches_type (from_peuniverses !evd pind) (mib, oib) params goal' in
   (* Refresh the inductive family. *)
-  let indfam = Inductiveops.make_ind_family (pind, params) in
+  let indfam = Inductiveops.make_ind_family (pind, List.map EConstr.of_constr params) in
   let branches_info = Inductiveops.get_constructors env indfam in
   let full_subst =
     let (ctx', pats, ctx) = Context_map.id_subst ctx in
@@ -758,16 +755,13 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
     (* This summary is under context [ctx']. *)
     let indices = summary.Inductiveops.cs_concl_realargs in
     let params = Array.of_list summary.Inductiveops.cs_params in
-    let params = Array.map of_constr params in
-    let indices = Array.map of_constr indices in
-    let term = EConstr.mkConstructU (to_peuniverses summary.Inductiveops.cs_cstr) in
+    let term = EConstr.mkConstructU (summary.Inductiveops.cs_cstr) in
     let term = EConstr.mkApp (term, params) in
     let term = Vars.lift (summary.Inductiveops.cs_nargs) term in
     let term = EConstr.mkApp (term, Context.Rel.instance EConstr.mkRel 0 summary.Inductiveops.cs_args) in
     (* Indices are typed under [args @ ctx'] *)
     let indices = (Array.to_list indices) @ [term] in
     let args = summary.Inductiveops.cs_args in
-    let args = List.map of_rel_decl args in
     (* Substitute the indices in [cuts_ctx]. *)
     let rev_indices = List.rev indices in
     let pats_indices = List.map (Context_map.pat_of_constr env !evd) rev_indices in
