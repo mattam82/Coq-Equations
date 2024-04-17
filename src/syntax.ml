@@ -414,7 +414,7 @@ let interp_pat env sigma notations ~avoid p pat =
   let vars = (Id.Set.elements avoid) (* (ids_of_pats [p])) *) in
   (* let () = Feedback.msg_debug (str"Variables " ++ prlist_with_sep spc pr_id vars) in *)
   let tys = List.map (fun _ -> EConstr.mkProp) vars in
-  let rlv = List.map (fun _ -> Sorts.Relevant) vars in
+  let rlv = List.map (fun _ -> EConstr.ERelevance.relevant) vars in
   let impls = List.map (fun _ -> []) vars in
   (* let () = Feedback.msg_debug (str"Internalizing " ++ pr_constr_expr p) in *)
   let ienv = try compute_internalization_env env sigma Variable vars tys impls with Not_found ->
@@ -434,7 +434,11 @@ let interp_pat env sigma notations ~avoid p pat =
     | None -> (vars, rlv, tys, impls, ienv)
   in
   let nctx =
-    List.map3 (fun id r ty -> Context.Named.Declaration.LocalAssum (Context.make_annot id r, EConstr.Unsafe.to_constr ty)) vars rlv tys
+    List.map3 (fun id r ty ->
+        Context.Named.Declaration.LocalAssum
+          (Context.make_annot id (EConstr.Unsafe.to_relevance r),
+           EConstr.Unsafe.to_constr ty))
+      vars rlv tys
   in
   let env = Environ.push_named_context nctx env in
   let gc =

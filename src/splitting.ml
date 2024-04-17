@@ -156,7 +156,7 @@ let where_id w = w.where_program.program_info.program_id
 
 let where_context wheres =
   List.map (fun ({where_program; where_type } as w) ->
-             make_def (Context.nameR (where_id w)) (Some (where_term w)) where_type) wheres
+             make_def (nameR (where_id w)) (Some (where_term w)) where_type) wheres
 
 let where_program_type w =
   program_type w.where_program
@@ -371,7 +371,7 @@ let define_mutual_nested env evd get_prog progs =
       in
       let after = (nested - 1) - before in
       let fixb = (Array.make 1 idx, 0) in
-      let fixna = Array.make 1 (make_annot (Name p.program_id) (Retyping.relevance_of_sort !evd (ESorts.make p.program_sort))) in
+      let fixna = Array.make 1 (make_annot (Name p.program_id) (Retyping.relevance_of_sort (ESorts.make p.program_sort))) in
       let fixty = Array.make 1 (Syntax.program_type p) in
       (* Apply to itself *)
       let beforeargs = Termops.rel_list (signlen + 1) before in
@@ -470,7 +470,7 @@ let check_typed ~where ?name env evd c =
       anomaly Pp.(str where ++ spc () ++
         str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env evd c ++
         Himsg.explain_pretype_error env evd
-          (Pretype_errors.TypingError (Type_errors.map_ptype_error EConstr.of_constr tyerr)))
+          (Pretype_errors.TypingError (Pretype_errors.of_type_error tyerr)))
     | Pretype_errors.PretypeError (env, evd, tyerr) ->
         anomaly Pp.(str where ++ spc () ++
         str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env evd c ++

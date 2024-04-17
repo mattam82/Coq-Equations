@@ -127,7 +127,7 @@ let annot_of_context ctx =
 let depcase ~poly ((mind, i as ind), u) =
   let indid = Nametab.basename_of_global (GlobRef.IndRef ind) in
   let mindb, oneind = Global.lookup_inductive ind in
-  let relevance = oneind.mind_relevance in
+  let relevance = ERelevance.make oneind.mind_relevance in
   let indna x = make_annot x relevance in
   let ctx = oneind.mind_arity_ctxt in
   let nparams = mindb.mind_nparams in
@@ -143,7 +143,7 @@ let depcase ~poly ((mind, i as ind), u) =
   let nconstrs = Array.length oneind.mind_nf_lc in
   let mkbody i (ctx, ty) =
     let args = Context.Rel.instance mkRel 0 ctx in
-    annot_of_context ctx, mkApp (mkRel (1 + nconstrs + List.length ctx - i), args)
+    annot_of_context (EConstr.of_rel_context ctx), mkApp (mkRel (1 + nconstrs + List.length ctx - i), args)
   in
   let bodies = Array.mapi mkbody oneind.mind_nf_lc in
   let branches =
@@ -185,7 +185,7 @@ let depcase ~poly ((mind, i as ind), u) =
     it_mkLambda_or_LetIn case
       (make_assum (indna xid) (lift len indapp)
         :: ((Array.rev_to_list branches)
-            @ (make_assum (make_annot (Name (Id.of_string "P")) (Retyping.relevance_of_sort !evd s)) pred :: ctx)))
+            @ (make_assum (make_annot (Name (Id.of_string "P")) (Retyping.relevance_of_sort s)) pred :: ctx)))
   in
   let () = evd := Evd.minimize_universes !evd in
   let univs = Evd.univ_entry ~poly !evd in

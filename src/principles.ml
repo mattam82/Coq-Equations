@@ -135,7 +135,7 @@ let clean_rec_calls sigma (hyps, c) =
   let elems = List.sort (fun x y -> Int.compare (snd x) (snd y)) (CMap.bindings hyps) in
   let (size, ctx) =
     List.fold_left (fun (n, acc) (ty, _) ->
-    (succ n, LocalAssum (nameR (Id.of_string "Hind"), EConstr.Vars.lift n (EConstr.of_constr ty)) :: acc))
+    (succ n, LocalAssum (EConstr.nameR (Id.of_string "Hind"), EConstr.Vars.lift n (EConstr.of_constr ty)) :: acc))
     (0, []) elems
   in
   (ctx, size, EConstr.Vars.lift size (EConstr.of_constr c))
@@ -1281,7 +1281,7 @@ let declare_funelim ~pm info env evd is_rec protos progs
     with Type_errors.TypeError (env, tyerr) ->
       CErrors.user_err Pp.(str"Error while typechecking elimination principle type: " ++
                            Himsg.explain_pretype_error env !evd
-                             (Pretype_errors.TypingError (Type_errors.map_ptype_error EConstr.of_constr tyerr)))
+                             (Pretype_errors.TypingError (Pretype_errors.of_type_error tyerr)))
   in
   let newty = collapse_term_qualities (Evd.evar_universe_context !evd) (EConstr.to_constr !evd newty) in 
   let cinfo = Declare.CInfo.make ~name:(Nameops.add_suffix id "_elim") ~typ:newty () in
@@ -1354,7 +1354,7 @@ let declare_funind ~pm info alias env evd is_rec protos progs
       | Type_errors.TypeError (env, tyerr) ->
         CErrors.user_err Pp.(str"Functional elimination principle could not be proved automatically: " ++
                              Himsg.explain_pretype_error env !evd
-                               (Pretype_errors.TypingError (Type_errors.map_ptype_error EConstr.of_constr tyerr)))
+                               (Pretype_errors.TypingError (Pretype_errors.of_type_error tyerr)))
       | Pretype_errors.PretypeError (env, sigma, tyerr) ->
         CErrors.user_err Pp.(str"Functional elimination principle could not be proved automatically: " ++
                              Himsg.explain_pretype_error env sigma tyerr)
@@ -1416,7 +1416,7 @@ let declare_funind ~pm info alias env evd is_rec protos progs
   with Type_errors.TypeError (env, tyerr) ->
     CErrors.user_err Pp.(str"Functional induction principle could not be proved automatically: " ++
                          Himsg.explain_pretype_error env !evd
-                           (Pretype_errors.TypingError (Type_errors.map_ptype_error EConstr.of_constr tyerr)))
+                           (Pretype_errors.TypingError (Pretype_errors.of_type_error tyerr)))
      | e when CErrors.noncritical e ->
        Feedback.msg_warning Pp.(str "Functional induction principle could not be proved automatically: " ++ fnl () ++
                                 CErrors.print e);

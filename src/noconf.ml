@@ -44,7 +44,7 @@ let mkcase env sigma c ty constrs =
       it_mkLambda_or_LetIn res args)
       oneind.mind_consnames oneind.mind_nf_lc
   in
-    make_case_or_project env sigma indty ci (ty, Sorts.Relevant) c brs
+    make_case_or_project env sigma indty ci (ty, ERelevance.relevant) c brs
 
 let mk_eq env env' evd args args' =
   let _, _, make = Sigma_types.telescope env evd args in
@@ -68,7 +68,7 @@ let derive_no_confusion ~pm env sigma0 ~poly (ind,u as indu) =
   let paramsvect, rest = Array.chop params argsvect in
   let argr, argty, x, ctx, argsctx =
     if Array.length rest = 0 then
-      oneind.mind_relevance, mkApp (mkIndU indu, argsvect), mkRel 1, ctx, []
+      ERelevance.make oneind.mind_relevance, mkApp (mkIndU indu, argsvect), mkRel 1, ctx, []
     else
       let evm, pred, pars, indty, valsig, ctx, lenargs, idx =
         Sigma_types.build_sig_of_ind env !evd indu
@@ -79,7 +79,7 @@ let derive_no_confusion ~pm env sigma0 ~poly (ind,u as indu) =
       let _, pred' = Term.decompose_lambda_n (List.length pars) (EConstr.to_constr !evd pred) in
       let indty = mkApp (sigma, [|idx; of_constr pred'|]) in
       (* sigma is not sort poly (at least for now) *)
-      Sorts.Relevant, nf_betaiotazeta env !evd indty, mkProj (Lazy.force coq_pr2, Relevant, mkRel 1), pars, (List.firstn lenargs ctx)
+      ERelevance.relevant, nf_betaiotazeta env !evd indty, mkProj (Lazy.force coq_pr2, ERelevance.relevant, mkRel 1), pars, (List.firstn lenargs ctx)
   in
   let tru = get_efresh logic_top evd in
   let fls = get_efresh logic_bot evd in

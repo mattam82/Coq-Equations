@@ -143,7 +143,7 @@ let mutual_fix li l =
       let ctxs = List.map (fun evi -> EConstr.Unsafe.to_named_context @@
                             Evd.evar_context evi) infos in
       let fst, rest = List.sep_last ctxs in
-      if List.for_all (fun y -> Context.Named.equal Constr.equal fst y) rest then
+      if List.for_all (fun y -> Context.Named.equal Sorts.relevance_equal Constr.equal fst y) rest then
         Environ.push_named_context fst env
       else env
     in
@@ -179,7 +179,7 @@ let mutual_fix li l =
          if try ignore (Context.Named.lookup f sign); true with Not_found -> false then
            CErrors.user_err
                     (str "Name " ++ pr_id f ++ str " already used in the environment");
-         mk_sign (LocalAssum (make_annot f r, EConstr.to_constr sigma ar) :: sign) oth
+         mk_sign (LocalAssum (make_annot f (ERelevance.kind sigma r), EConstr.to_constr sigma ar) :: sign) oth
     in
     let sign = mk_sign (Environ.named_context env) all in
     let idx = Array.map_of_list pred l in
