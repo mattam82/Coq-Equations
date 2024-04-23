@@ -91,7 +91,7 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
   let _trans_branch =
     let liftargbinders = lift_rel_context lenargs argbinders in
     let liftargbinders' = lift_rel_context lenargs liftargbinders in
-    let indr = oneind.mind_relevance in
+    let indr = ERelevance.make oneind.mind_relevance in
     let indna id = make_annot (Name (Id.of_string id)) indr in
     let indapp n = (mkApp (lift (3 * lenargs + n) indapp, extended_rel_vect (n + (2 - n) * lenargs) argbinders)) in
     let terms = [(indna "z", None, indapp 2);
@@ -208,12 +208,12 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
           let subrel =
             let liftindices = List.map (liftn 2 2) indices in
             (* sigma is not sort poly (at least for now) *)
-            let yindices = List.map (subst1 (mkProj (indexproj, Relevant, mkRel 1))) liftindices in
-            let xindices = List.map (subst1 (mkProj (indexproj, Relevant, mkRel 2))) liftindices in
+            let yindices = List.map (subst1 (mkProj (indexproj, ERelevance.relevant, mkRel 1))) liftindices in
+            let xindices = List.map (subst1 (mkProj (indexproj, ERelevance.relevant, mkRel 2))) liftindices in
             let apprel =
               applistc subind (extended_rel_list 2 parambinders @
                                  (xindices @ yindices @
-                                    [mkProj (valproj, Relevant, mkRel 2); mkProj (valproj, Relevant, mkRel 1)]))
+                                    [mkProj (valproj, ERelevance.relevant, mkRel 2); mkProj (valproj, ERelevance.relevant, mkRel 1)]))
             in
             mkLambda (nameR (Id.of_string "x"), typesig,
                       mkLambda (nameR (Id.of_string "y"), lift 1 typesig,
@@ -286,11 +286,11 @@ let derive_below env sigma ~poly (ind,univ as indu) =
   let ctx = List.map of_rel_decl ctx in
   let allargsvect = extended_rel_vect 0 ctx in
   let indty = mkApp (mkIndU indu, allargsvect) in
-  let indr = oneind.mind_relevance in
+  let indr = ERelevance.make oneind.mind_relevance in
   let ctx = of_tuple (make_annot (Name (Id.of_string "c")) indr, None, indty) :: ctx in
   let argbinders, parambinders = List.chop (succ realdecls) ctx in
   let u = evd_comb0 (Evd.new_sort_variable Evd.univ_rigid) evd in
-  let ru = Retyping.relevance_of_sort !evd u in
+  let ru = Retyping.relevance_of_sort u in
   let u = mkSort u in
   let arity = it_mkProd_or_LetIn u argbinders in
   let aritylam = lift (succ realdecls) (it_mkLambda_or_LetIn u argbinders) in
@@ -374,9 +374,9 @@ let derive_below env sigma ~poly (ind,univ as indu) =
         (nargs, bodyB, bodyb)) oneind.mind_nf_lc
     in
     let caseB =
-      mkCase (EConstr.contract_case env !evd (make_case_info env ind RegularStyle, (aritylam, Sorts.Relevant), NoInvert, mkRel 1, Array.map pi2 branches))
+      mkCase (EConstr.contract_case env !evd (make_case_info env ind RegularStyle, (aritylam, ERelevance.relevant), NoInvert, mkRel 1, Array.map pi2 branches))
     and caseb =
-      mkCase (EConstr.contract_case env !evd (make_case_info env ind RegularStyle, (aritylamb, Sorts.Relevant), NoInvert, mkRel 1, Array.map pi3 branches))
+      mkCase (EConstr.contract_case env !evd (make_case_info env ind RegularStyle, (aritylamb, ERelevance.relevant), NoInvert, mkRel 1, Array.map pi3 branches))
     in 
       lift 2 (it_mkLambda_or_LetIn caseB argbinders), lift 3 (it_mkLambda_or_LetIn caseb argbinders)
   in

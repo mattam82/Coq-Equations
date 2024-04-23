@@ -1,5 +1,4 @@
 open Pp
-open Context
 open EConstr
 open Equations_common
 
@@ -230,7 +229,7 @@ let check_typed ~where ?name env evd c =
       anomaly Pp.(str where ++ spc () ++
         str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env evd c ++
         Himsg.explain_pretype_error env evd
-          (Pretype_errors.TypingError (Type_errors.map_ptype_error EConstr.of_constr tyerr)))
+          (Pretype_errors.TypingError (Pretype_errors.of_type_error tyerr)))
     | Pretype_errors.PretypeError (env, evd, tyerr) ->
         anomaly Pp.(str where ++ spc () ++
         str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env evd c ++
@@ -317,7 +316,7 @@ let build_term (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) (ngl : g
     with Type_errors.TypeError (env, tyerr) ->
       anomaly Pp.(str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env !evd c ++ 
         Himsg.explain_pretype_error env !evd
-          (Pretype_errors.TypingError (Type_errors.map_ptype_error EConstr.of_constr tyerr)))
+          (Pretype_errors.TypingError (Pretype_errors.of_type_error tyerr)))
     | Pretype_errors.PretypeError (env, evd, tyerr) ->
         anomaly Pp.(str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env evd c ++ 
             Himsg.explain_pretype_error env evd tyerr)

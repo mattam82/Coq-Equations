@@ -255,16 +255,16 @@ let lets_of_ctx env ctx evars s =
         | PRel i -> (ctx', cs, (i, id) :: varsubst, k, Id.Set.add id ids)
         | _ -> 
           let ty = e_type_of envctx evars c in
-          (make_def (Context.nameR id) (Some (lift k c)) (lift k ty) :: ctx', (c :: cs),
+          (make_def (nameR id) (Some (lift k c)) (lift k ty) :: ctx', (c :: cs),
            varsubst, succ k, Id.Set.add id ids))
       ([],[],[],0,Id.Set.empty) s
   in
   let _, _, ctx' = List.fold_right (fun decl (ids, i, ctx') ->
       let (n, b, t) = to_tuple decl in
-      try ids, pred i, (make_def (Context.nameR (List.assoc i varsubst)) b t :: ctx')
+      try ids, pred i, (make_def (nameR (List.assoc i varsubst)) b t :: ctx')
       with Not_found -> 
         let id' = Namegen.next_name_away n.Context.binder_name ids in
-        Id.Set.add id' ids, pred i, (make_def (Context.nameR id') b t :: ctx')) ctx (ids, List.length ctx, [])
+        Id.Set.add id' ids, pred i, (make_def (nameR id') b t :: ctx')) ctx (ids, List.length ctx, [])
   in pats, ctxs, ctx'
 
 let env_of_rhs evars ctx env s lets = 

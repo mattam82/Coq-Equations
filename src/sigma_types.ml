@@ -49,12 +49,12 @@ let constrs_of_coq_sigma env evd t alias =
 	(match kind !evd ty with
           | Prod (n, b, t) ->
             (* sigma is not sort poly (at least for now) *)
-            let p1 = mkProj (Lazy.force coq_pr1, Relevant, proj) in
-            let p2 = mkProj (Lazy.force coq_pr2, Relevant, proj) in
+            let p1 = mkProj (Lazy.force coq_pr1, ERelevance.relevant, proj) in
+            let p2 = mkProj (Lazy.force coq_pr2, ERelevance.relevant, proj) in
 	    (n, args.(2), p1, args.(0)) ::
               aux (push_rel (of_tuple (n, None, b)) env) p2 args.(3) t
 	| _ -> raise (Invalid_argument "constrs_of_coq_sigma"))
-    | _ -> [(Context.anonR, c, proj, ty)]
+    | _ -> [(anonR, c, proj, ty)]
   in aux env alias t (Retyping.get_type_of env !evd t)
 
 let decompose_coq_sigma env sigma t = 
@@ -166,8 +166,8 @@ let telescope env evd = function
 	(fun pred d (prev, k, subst) ->
           let (n, b, t) = to_tuple d in
           (* sigma is not sort poly (at least for now) *)
-          let proj1 = mkProj (Lazy.force coq_pr1, Relevant, prev) in
-          let proj2 = mkProj (Lazy.force coq_pr2, Relevant, prev) in
+          let proj1 = mkProj (Lazy.force coq_pr1, ERelevance.relevant, prev) in
+          let proj2 = mkProj (Lazy.force coq_pr2, ERelevance.relevant, prev) in
 	    (Vars.lift 1 proj2, succ k, of_tuple (n, Some proj1, Vars.liftn 1 k t) :: subst))
 	(List.rev tys) tl (mkRel 1, 1, [])
       in ty, (of_tuple (n, Some last, Vars.liftn 1 len t) :: subst), constr
@@ -823,8 +823,8 @@ let curry_concl env sigma na dom codom =
     if last then (acc :: terms, acc)
     else
       (* sigma is not sort poly (at least for now) *)
-      let term = mkProj (Lazy.force coq_pr1, Relevant, acc) in
-      let acc = mkProj (Lazy.force coq_pr2, Relevant, acc) in
+      let term = mkProj (Lazy.force coq_pr1, ERelevance.relevant, acc) in
+      let acc = mkProj (Lazy.force coq_pr2, ERelevance.relevant, acc) in
       (term :: terms, acc)
   in
   let terms, acc =

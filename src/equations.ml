@@ -199,10 +199,7 @@ let define_by_eqs ~pm ~poly ~program_mode ~tactic ~open_proof opts eqs nt =
     progs.(i) <- Some (p, compiled_info);
     if CArray.for_all (fun x -> not (Option.is_empty x)) progs then
       (let progs = Array.map_to_list (fun x -> Option.get x) progs in
-       let is_relevant (rel, _) = match Evarutil.nf_relevance !evd rel with
-       | Sorts.Irrelevant -> false
-       | Sorts.Relevant | Sorts.RelevanceVar _ -> true
-       in
+       let is_relevant (rel, _) = not @@ ERelevance.is_irrelevant !evd rel in
        let relevant = List.for_all is_relevant fixprots in
        let rec_info = compute_rec_type [] (List.map (fun (x, y) -> x.program_info) progs) in
        List.iter (Metasyntax.add_notation_interpretation ~local:false (Global.env ())) nt;

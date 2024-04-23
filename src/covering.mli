@@ -35,7 +35,7 @@ val unify_constrs :
   rel_context ->
   constr list ->
   constr list -> context_map
-val flexible : pat list -> ('a,'b) Context.Rel.pt -> Int.Set.t
+val flexible : pat list -> ('a,'b,'c) Context.Rel.pt -> Int.Set.t
 val accessible : pat -> Int.Set.t
 val accessibles : pat list -> Int.Set.t
 val hidden : pat -> bool
@@ -204,7 +204,7 @@ val compute_fixdecls_data :
            ?data:Constrintern.internalization_env ->
            Syntax.program_info list ->
            Constrintern.internalization_env *
-           Equations_common.rel_declaration list * (Sorts.relevance * EConstr.t) list
+           Equations_common.rel_declaration list * (ERelevance.t * EConstr.t) list
 
 val wf_fix_constr :
   Environ.env ->
