@@ -22,7 +22,7 @@
   If running this interactively you can ignore the printing
   and hide directives which are just used to instruct coqdoc. *)
 
-Require Import Program Bvector List Relations.
+Require Import Program List Relations.
 From Equations Require Import Equations Signature.
 Require Import Utf8.
 
@@ -336,7 +336,7 @@ Qed.
 
 (* Eval compute in @zip''. *)
 
-Require Import Bvector.
+Require Vector.
 
 (** This function can also be defined by structural recursion on [m]. *)
 

@@ -9,7 +9,6 @@
 (** Instances of [Below] for the standard datatypes. To be used by 
    [equations] when it needs to do recursion on a type. *)
 
-Require Import Bvector.
 Require Import Vectors.Vector.
 Require Import Equations.Init Equations.CoreTactics Equations.Prop.DepElim Equations.Prop.Tactics
         Equations.Prop.Constants.
@@ -87,6 +86,7 @@ Arguments cons {A} _ {n}.
 
 Open Scope equations_scope.
 
+Import VectorNotations.
 Import EquationsNotations.
 
 Equations Below_vector A (P : forall n, vector A n -> Type) n (v : vector A n) : Type

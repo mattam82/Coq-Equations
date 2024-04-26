@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Program Bvector List Relations.
+Require Import Program Vector List Relations.
 Require Import Equations.Prop.Equations.
 Require Import Utf8.
 Set Keyed Unification.
@@ -435,7 +435,7 @@ Extraction split. *)
 
 (* Eval compute in @zip''. *)
 
-Require Import Bvector.
+Require Vector. Import VectorNotations.
 
 Equations  split_struct {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
 split_struct (m:=0) xs := append nil xs ;
