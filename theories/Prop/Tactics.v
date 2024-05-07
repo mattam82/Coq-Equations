@@ -13,7 +13,7 @@ Ltac Equations.Init.simplify_equalities ::= Equations.Prop.DepElim.simplify_dep_
 Ltac Equations.Init.depelim H ::= Equations.Prop.DepElim.depelim H.
 Ltac Equations.Init.depind H ::= Equations.Prop.DepElim.depind H.
 Ltac Equations.Init.noconf H ::= Equations.Prop.DepElim.noconf H.
-Ltac Equations.Init.funelim_constr H ::= funelim_constr H.
+Ltac Equations.Init.funelim_constr_as x H ::= Equations.Prop.FunctionalInduction.funelim_constr_as x H.
 Ltac Equations.Init.apply_funelim H ::= Equations.Prop.FunctionalInduction.apply_funelim H.
 
 (** Tactic to solve EqDec goals, destructing recursive calls for the recursive

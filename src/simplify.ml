@@ -389,12 +389,17 @@ let build_app (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal)
   let _ = evd_comb0 (fun sigma -> Typing.judge_of_apply env sigma hd args) evd in
   ans, c
 
-let unif_flags = Evarconv.default_flags_of TransparentState.full
+let transparent_state env =
+  Conv_oracle.get_transp_state (Environ.oracle env)
+
+let unif_flags env =
+  let flags = transparent_state env in
+  Evarconv.default_flags_of flags
 
 let is_conv (env : Environ.env) (sigma : Evd.evar_map) (ctx : rel_context)
   (t1 : EConstr.t) (t2 : EConstr.t) : bool =
   let env = push_rel_context ctx env in
-  match Reductionops.infer_conv env sigma t1 t2 with
+  match Reductionops.infer_conv ~ts:(transparent_state env) env sigma t1 t2 with
   | Some _ -> true
   | None -> false
 
@@ -414,7 +419,7 @@ let compose_term (env : Environ.env) (evd : Evd.evar_map ref)
         EConstr.mkVar id) named_ctx1 in
       (* Finally, substitute the rels in [c2] to get a valid term for [ev1]. *)
       let c2 = Vars.substl subst_ctx1 c2 in
-      evd := Evarsolve.check_evar_instance Evarconv.(conv_fun evar_conv_x) unif_flags env !evd ev1 c2;
+      evd := Evarsolve.check_evar_instance Evarconv.(conv_fun evar_conv_x) (unif_flags env) env !evd ev1 c2;
       evd := Evd.define ev1 c2 !evd;
       h2, c1
   | None -> assert false
@@ -782,6 +787,16 @@ SimpFun.make ~name:"solution" begin fun (env : Environ.env) (evd : Evd.evar_map 
   in build_term env evd (ctx, ty, glu) (ctx'', ty'', glu') f, subst
 end
 
+let whd_all env sigma t = 
+  let ts = transparent_state env in
+  let flags = RedFlags.red_add_transparent RedFlags.all ts in
+  Reductionops.clos_whd_flags flags env sigma t
+
+let nf_all env sigma t = 
+  let ts = transparent_state env in
+  let flags = RedFlags.red_add_transparent RedFlags.all ts in
+  Reductionops.clos_norm_flags flags env sigma t
+
 let pre_solution ~(dir:direction) : simplification_fun =
 SimpFun.make ~name:"pre_solution" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   let var_left = match dir with Left -> true | Right -> false in
@@ -804,8 +819,8 @@ SimpFun.make ~name:"pre_solution" begin fun (env : Environ.env) (evd : Evd.evar_
             (Context_map.dependencies_of_term ~with_red:false env !evd ctx (mkApp (tA, [| term |])) rel)) then
     SimpFun.apply identity env evd (ctx, ty, glu)
   else
-    let tA = Reductionops.nf_all (push_rel_context ctx env) !evd tA in
-    let term = Reductionops.whd_all (push_rel_context ctx env) !evd term in
+    let tA = nf_all (push_rel_context ctx env) !evd tA in
+    let term = whd_all (push_rel_context ctx env) !evd term in
     if Int.Set.mem rel (Context_map.dependencies_of_term ~with_red:false env !evd ctx (mkApp (tA, [|term|])) rel) then
       raise (CannotSimplify (str  "[solution] cannot remove dependency in the variable "))
     else
@@ -1183,10 +1198,10 @@ end
 
 let _expand_many rule env evd ((ctx, ty, glu) : goal) : simplification_rules =
   (* FIXME: maybe it's too brutal/expensive? *)
-  let ty = Reductionops.whd_all env !evd ty in
+  let ty = whd_all env !evd ty in
   let _, ty, _ = check_prod !evd ty in
   try
-    let ty = Reductionops.whd_all env !evd ty in
+    let ty = whd_all env !evd ty in
     let equ, ty, _, _ = check_equality env !evd ctx ty in
     let rec aux ty acc =
       let ty = Reductionops.whd_betaiotazeta env !evd ty in
@@ -1221,7 +1236,7 @@ SimpFun.make ~name:"check_block_notprod" begin fun (env : Environ.env) (evd : Ev
     with Constr.DestKO ->
     try
       let env = push_rel_context ctx env in
-      let ty = Reductionops.whd_all env !evd ty in
+      let ty = whd_all env !evd ty in
       let _na, _ty, _ty' = EConstr.destProd !evd ty in
       raise (CannotSimplify (str"a product"))
     with Constr.DestKO -> SimpFun.apply identity env evd gl

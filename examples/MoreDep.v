@@ -160,7 +160,7 @@ End depth.
 
 Theorem depth_min : forall c n (t : rbtree c n), depth min t >= n.
 Proof.
-  intros. funelim (depth Nat.min t);
+  intros. funelim (depth Nat.min t); cbn;
             auto;
   match goal with
   | [ |- context[min ?X ?Y] ] =>
@@ -173,7 +173,7 @@ Lemma depth_max' : forall c n (t : rbtree c n), match c with
                                                   | Black => depth max t <= 2 * n
                                                 end.
 Proof.
-  intros; funelim (depth Nat.max t); auto;
+  intros; funelim (depth Nat.max t); cbn; auto;
   match goal with
   | [ |- context[max ?X ?Y] ] =>
       let H := fresh in destruct (Nat.max_dec X Y) as [H|H]; rewrite H
@@ -298,7 +298,7 @@ Section insert.
     Qed.
 
     Ltac present_insert t t0 :=
-      intros; funelim (insert t); generalize (present_ins t0);
+      intros; funelim (insert t); cbn; generalize (present_ins t0);
       try rewrite present_insResult_equation_1; try rewrite present_insResult_equation_2;
       funelim (ins t0); intro; assumption.
 

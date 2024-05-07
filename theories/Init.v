@@ -113,7 +113,7 @@ Ltac depelim x := fail "Equations.Init.depelim has not been bound yet".
 Ltac depind x := fail "Equations.Init.depind has not been bound yet".
 
 (** Forward reference for Equations' [funelim] tactic, which will be defined in [FunctionalInduction]. *)
-Ltac funelim_constr x := fail "Equations.Init.funelim_constr has not been bound yet".
+Ltac funelim_constr_as x h := fail "Equations.Init.funelim_constr_as has not been bound yet".
 
 (* We allow patterns, using the following trick. *)
 Tactic Notation "funelim" uconstr(p) :=
@@ -121,7 +121,16 @@ Tactic Notation "funelim" uconstr(p) :=
   set (call:=p);
   lazymatch goal with
     [ call := ?fp |- _ ] =>
-    subst call; funelim_constr fp
+    subst call;
+    let Heq := fresh "Heqcall" in funelim_constr_as fp Heq
+  end.
+
+Tactic Notation "funelim" uconstr(p) ident(H) :=
+  let call := fresh "call" in
+  set (call:=p);
+  lazymatch goal with
+    [ call := ?fp |- _ ] =>
+    subst call; funelim_constr_as fp H
   end.
 
 (** Forward reference for [apply_funelim]. A simpler minded variant that

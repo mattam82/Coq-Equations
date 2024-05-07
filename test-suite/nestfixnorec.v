@@ -120,7 +120,7 @@ Inductive myexists_graph {A} (p : A -> bool) (P : A -> Prop) (R : forall x, refl
 Lemma myexistsb_prop_exits {A} (P : A -> Prop) (l : list A) : myexistsb_prop P l <-> Exists P l.
 Proof.
   funelim (myexistsb_prop P l). split; intuition auto. inversion H.
-  rewrite H. split; intuition auto. inversion H0. intuition.
+  inversion H. cbn; rewrite H. split; intuition auto. inversion H0. intuition.
   subst. intuition auto.
 Qed.
 

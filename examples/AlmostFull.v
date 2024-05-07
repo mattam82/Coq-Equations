@@ -749,7 +749,7 @@ Section SCT.
     now exists fz.
     specialize (H x y x y). rewrite -> H in Hfs.
     destruct Hfs. now exists (fs x0).
-    intros [k Hk]. depelim k. intuition. right.
+    intros [k Hk]. depelim k. now left. right.
     rewrite (H x y). now exists k.
   Qed.
 
@@ -1053,7 +1053,7 @@ Section SCT.
     | None => forall a, In a l -> f a = None
     end.
   Proof.
-    funelim (find_opt l f); intros. elim H.
+    funelim (find_opt l f); cbn; intros. elim H.
     exists x; simpl; intuition eauto.
     destruct (find_opt xs f); now firstorder subst.
   Qed.

@@ -84,7 +84,7 @@ Ltac make_packcall packcall c :=
   | [ packcall : ?type |- _ ] => change (let _ := c in type) in (type of packcall)
   end.
 
-Ltac funelim_sig_tac c tac :=
+Ltac funelim_sig_tac c Heq tac :=
   let elimc := get_elim c in
   let packcall := fresh "packcall" in
   let packcall_fn := fresh "packcall_fn" in
@@ -94,12 +94,12 @@ Ltac funelim_sig_tac c tac :=
   uncurry_call elimfn c packcall packcall_fn;
   remember_let packcall_fn; unfold_packcall packcall;
   (refine (eq_simplification_sigma1 _ _ _ _ _) ||
-   refine (eq_simplification_sigma1_nondep_dep _ _ _ _ _) ||
-   refine (eq_simplification_sigma1_dep _ _ _ _ _));
+    refine (eq_simplification_sigma1_nondep_dep _ _ _ _ _) ||
+    refine (eq_simplification_sigma1_dep _ _ _ _ _));
   let H := fresh "eqargs" in
-  let Heq := fresh "Heqcall" in intros H Heq;
-  try (rewrite <- Heq; clear Heq); revert_until H; revert H;
-  subst packcall_fn; clearbody packcall;
+  let Heqfresh := fresh "__Heq__" in
+  intros H Heqfresh;
+  revert_until H; revert H; subst packcall_fn; clearbody packcall;
   make_packcall packcall elimfn;
   with_last_secvar ltac:(fun eos => move packcall before eos)
                           ltac:(move packcall at top);
@@ -111,9 +111,12 @@ Ltac funelim_sig_tac c tac :=
   simplify_dep_elim;
   cbn beta iota delta [transport eq_elim eq_elim_r eq_rect pack_sigma_eq pack_sigma_eq_nondep] in *;
   simplify_IH_hyps; (* intros _; *)
-  unblock_goal; simplify_IH_hyps; tac c.
-
-Ltac funelim_constr c := funelim_sig_tac c ltac:(fun _ => idtac).
+  unblock_goal; simplify_IH_hyps; 
+  try (rewrite <- Heqfresh); 
+  try (rename Heqfresh into Heq || (let Heqf := fresh Heq in rename Heq into Heqf; rename Heqfresh into Heq));
+  tac c.
+  
+Ltac funelim_constr_as c h := funelim_sig_tac c h ltac:(fun _ => idtac).
 
 Ltac get_first_elim c :=
   match c with
