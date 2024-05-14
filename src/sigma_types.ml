@@ -139,7 +139,7 @@ let telescope env evd = function
             let sigty = mkAppG env evd (Lazy.force coq_sigma) [|t; pred|] in
             let _, u = destInd !evd (fst (destApp !evd sigty)) in
             let _, ua = UVars.Instance.to_array (EInstance.kind !evd u) in
-            let l = Sorts.sort_of_univ @@ Univ.Universe.make ua.(0) in
+            let l = Sorts.sort_of_univ @@ ua.(0) in
             (* Ensure that the universe of the sigma is only >= those of t and pred *)
             let open UnivProblem in
             let enforce_leq env sigma t cstr =
