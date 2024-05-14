@@ -419,8 +419,8 @@ Derive Signature for check synthetize.
 
 #[local] Hint Constructors synthetize check : term.
 
-Scheme check_mut_ind := Elimination for check Sort Prop
-  with synthetize_mut_ind := Elimination for synthetize Sort Prop.
+Scheme check_mut_ind := Induction for check Sort Prop
+  with synthetize_mut_ind := Induction for synthetize Sort Prop.
 
 Combined Scheme check_synthetize from check_mut_ind, synthetize_mut_ind.
 
