@@ -341,6 +341,7 @@ val ident_of_smart_global :
   Libnames.qualid Constrexpr.or_by_notation -> Id.t
 
 val move_after_deps : Names.Id.t -> constr -> unit Proofview.tactic
+val assert_replacing : Names.Id.t -> constr -> types -> unit Proofview.tactic
 
 val extended_rel_vect : int -> rel_context -> constr array
 val extended_rel_list : int -> rel_context -> constr list

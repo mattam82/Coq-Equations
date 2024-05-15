@@ -356,8 +356,7 @@ let specialize_eqs ?with_block id =
   let ty = Evarutil.nf_evar !evars ty in
   let acc = Evarutil.nf_evar !evars acc in
     if worked then
-      tclTHENFIRST (Tactics.assert_before_replacing id ty)
-        (exact_no_check acc)
+      assert_replacing id acc ty
     else tclFAIL (str "Nothing to do in hypothesis " ++ Id.print id ++
                     Printer.pr_econstr_env env !evars ty
                    )

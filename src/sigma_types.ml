@@ -857,8 +857,7 @@ module Tactics =struct
              let newprf = Vars.replace_vars sigma [(id,b)] prf in
              tclTHEN (clear [id]) (Tactics.letin_tac None (Name id) newprf (Some typ) nowhere)
           | None ->
-             (tclTHENFIRST (assert_before_replacing id typ)
-                           (Tactics.exact_no_check prf)))
+             assert_replacing id prf typ)
       | None -> tclFAIL (str"No currying to do in " ++ Id.print id)
   end
 
