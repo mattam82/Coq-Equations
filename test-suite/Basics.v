@@ -379,7 +379,7 @@ Lemma split_vapp' : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
     v = v' /\ w = w'.
 Proof.
   intros.
-  funelim (vapp' v w). simpl.
+  funelim (vapp' v w).
   destruct split. depelim xs; intuition.
   simp split in *. destruct split. simpl.
   intuition congruence.

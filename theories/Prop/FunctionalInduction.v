@@ -84,6 +84,14 @@ Ltac make_packcall packcall c :=
   | [ packcall : ?type |- _ ] => change (let _ := c in type) in (type of packcall)
   end.
 
+
+Ltac simplify_IH_hyps_call := repeat
+  match goal with
+  | [ hyp : context [ block ] |- _ ] => 
+    cbn beta in hyp; eqns_specialize_eqs_block hyp 2; 
+  cbn beta iota delta[eq_rect_r eq_rect] zeta in hyp  
+  end.
+
 Ltac funelim_sig_tac c Heq tac :=
   let elimc := get_elim c in
   let packcall := fresh "packcall" in
@@ -111,9 +119,9 @@ Ltac funelim_sig_tac c Heq tac :=
   cbv beta; simplify_dep_elim; intros_until_block;
   simplify_dep_elim;
   cbn beta iota delta [transport eq_elim eq_elim_r eq_rect pack_sigma_eq pack_sigma_eq_nondep] in *;
-  simplify_IH_hyps; intros _ Heqfresh;
+  simplify_IH_hyps_call; intros _ Heqfresh;
   unblock_goal; simplify_IH_hyps;
-  try (setoid_rewrite <- Heqfresh);
+  try (rewrite <- Heqfresh);
   try (rename Heqfresh into Heq || (let Heqf := fresh Heq in rename Heq into Heqf; rename Heqfresh into Heq));
   tac c.
 

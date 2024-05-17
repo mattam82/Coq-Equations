@@ -84,10 +84,10 @@ Ltac unfold_packcall packcall :=
         change (R x y' -> P)
   end.
 
-Ltac simplify_IH_hyps' := repeat
+Ltac simplify_IH_hyps_call := repeat
   match goal with
   | [ hyp : context [ block ] |- _ ] =>
-    cbn beta in hyp; eqns_specialize_eqs_block hyp;
+    cbn beta in hyp; eqns_specialize_eqs_block hyp 2;
     cbn beta iota delta[Id_rect_r Id_rect] zeta in hyp
   end.
 
@@ -123,9 +123,9 @@ Ltac funelim_sig_tac c Heq tac :=
   cbv beta; simplify_dep_elim; intros_until_block;
   simplify_dep_elim;
   cbn beta iota delta [Id_rect_r Id_rect pack_sigma pack_sigma_nondep] in *;
-  simplify_IH_hyps; intros _ Heqfresh;
+  simplify_IH_hyps_call; intros _ Heqfresh;
   unblock_goal; simplify_IH_hyps;
-  try (setoid_rewrite <- Heqfresh);
+  try (rewrite <- Heqfresh);
   try (rename Heqfresh into Heq || (let Heqf := fresh Heq in rename Heq into Heqf; rename Heqfresh into Heq));
   tac c.
 
