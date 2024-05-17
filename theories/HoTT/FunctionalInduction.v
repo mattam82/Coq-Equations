@@ -129,7 +129,7 @@ Ltac funelim_sig_tac c Heq tac :=
   try (rename Heqfresh into Heq || (let Heqf := fresh Heq in rename Heq into Heqf; rename Heqfresh into Heq));
   tac c.
   
-Ltac funelim_constr c h := funelim_sig_tac c h ltac:(fun _ => idtac).
+Ltac funelim_constr_as c h := funelim_sig_tac c h ltac:(fun _ => idtac).
 
 Ltac get_first_elim c :=
   match c with
