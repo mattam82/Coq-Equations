@@ -109,7 +109,9 @@ Ltac funelim_sig_tac c Heq tac :=
    refine (simplification_sigma1_nondep_dep _ _ _ _ _) ||
    refine (simplification_sigma1_dep _ _ _ _ _));
   let H := fresh "eqargs" in
-  intros H Heq; revert_until H; revert H;
+  let Heqfresh := fresh "__Heq__" in
+  intros H Heqfresh; revert Heqfresh; block_goal;
+  revert H;
   subst packcall_fn; clearbody packcall;
   make_packcall packcall elimfn;
   with_last_secvar ltac:(fun eos => move packcall before eos)
@@ -121,9 +123,10 @@ Ltac funelim_sig_tac c Heq tac :=
   cbv beta; simplify_dep_elim; intros_until_block;
   simplify_dep_elim;
   cbn beta iota delta [Id_rect_r Id_rect pack_sigma pack_sigma_nondep] in *;
-  simplify_IH_hyps'; (* intros _; *)
-  unblock_goal; simplify_IH_hyps; 
-  try (rewrite <- Heq);
+  simplify_IH_hyps; intros _ Heqfresh;
+  unblock_goal; simplify_IH_hyps;
+  try (setoid_rewrite <- Heqfresh);
+  try (rename Heqfresh into Heq || (let Heqf := fresh Heq in rename Heq into Heqf; rename Heqfresh into Heq));
   tac c.
 
 Ltac funelim_constr_as c h := funelim_sig_tac c h ltac:(fun _ => idtac).
