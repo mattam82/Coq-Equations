@@ -12,6 +12,8 @@ Require Import Equations.Init.
 Require Import Equations.HoTT.Logic.
 Require Import Equations.HoTT.Classes.
 
+From HoTT Require Import Basics.Trunc.
+
 (** Decidable equality.
 
    We redevelop the derivation of [K] from decidable equality on [A] making
@@ -201,8 +203,9 @@ Qed.
 #[export]
 Instance eqdec_hset (A : Type) `(UIP A) : IsHSet A.
 Proof.
-  red. red. intros *. exists (uip x0 y0). intros e.
-  destruct x0. apply uip.
+  apply equiv_istrunc_unfold ; cbn ; intros ??.
+  apply hprop_allpath.
+  now apply H.
 Defined.
 
 Lemma sigma_eq@{i} (A : Type@{i}) (P : A -> Type@{i}) (x y : sigma P) :
@@ -215,7 +218,7 @@ Defined.
 
 Lemma is_hset {A} `{H : IsHSet A} {x y : A} (p q : x = y) : p = q.
 Proof.
-  apply H.
+  apply path_ishprop.
 Defined.
 
 Theorem inj_sigma_r@{i} {A : Type@{i}} `{H : IsHSet A} {P : A -> Type@{i}} {x} {y y':P x} :
@@ -230,8 +233,6 @@ Definition apd_eq {A} {x y : A} (p : x = y) {z} (q : z = x) :
   transport (@paths A z) p q = q @ p.
 Proof. now destruct p, q. Defined.
 
-Require Import HoTT.Basics.Trunc.
-
 Lemma hprop_hset {A} (h : IsHProp A) : IsHSet A.
 Proof.
   apply istrunc_hprop.
@@ -240,9 +241,8 @@ Defined.
 (** Proof that equality proofs in 0-truncated types are connected *)
 Lemma hset_pi {A} `{H : IsHSet A} (x y : A) (p q : x = y) (r : p = q) : is_hset p q = r.
 Proof.
-  red in H.
-  pose (hprop_hset (H x y)).
-  apply i.
+  enough (Contr (p = q)) by now apply path_ishprop.
+  apply (H _ _ _).
 Defined.
 
 Lemma is_hset_refl {A} `{H : IsHSet A} (x : A) : is_hset (@idpath _ x) 1 = 1%path.
