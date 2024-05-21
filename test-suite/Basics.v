@@ -296,7 +296,7 @@ Notation " [] " := List.nil.
 Lemma app'_nil : forall {A} (l : list A), l +++ [] = l.
 Proof.
   intros.
-  funelim (app' l []); cbn; auto.
+  funelim (app' l []); auto.
   now rewrite H.
 Qed.
 
@@ -379,7 +379,7 @@ Lemma split_vapp' : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
     v = v' /\ w = w'.
 Proof.
   intros.
-  funelim (vapp' v w).
+  funelim (vapp' v w). simpl.
   destruct split. depelim xs; intuition.
   simp split in *. destruct split. simpl.
   intuition congruence.
@@ -446,10 +446,9 @@ Lemma split_struct_vapp : ∀ (X : Type) m n (v : vector X m) (w : vector X n),
   let 'append v' w' := split_struct (vapp' v w) in
     v = v' /\ w = w'.
 Proof.
-  intros. funelim (vapp' v w); cbn; simp split_struct in *. auto.
+  intros. funelim (vapp' v w); simp split_struct in *. 
   destruct (split_struct (m:=0) w). depelim xs; intuition.
-  cbn in *.
-  destruct (split_struct (vapp' v ys)); simpl.
+  destruct (split_struct (vapp' v w)); simpl.
   intuition congruence.
 Qed.
 

@@ -16,14 +16,12 @@ From Equations Require Import Init Signature.
 Require Import Equations.CoreTactics.
 Require Import Equations.HoTT.Logic Equations.HoTT.Classes Equations.HoTT.EqDec Equations.HoTT.Constants.
 Require Import Equations.HoTT.DepElim Equations.HoTT.Tactics.
-Require Import HoTT.Spaces.List.Core.
-
 
 (** Parameterized inductive types just need NoConfusion. *)
 
 Local Set Universe Minimization ToSet.
 
-Derive NoConfusion for Unit Bool.Bool nat option sum prod list.
+Derive NoConfusion for Unit Bool.Bool nat option sum Datatypes.prod list.
 
 #[export] Instance Bool_depelim : DependentEliminationPackage Bool.Bool :=
   { elim := @Bool.Bool_ind }.

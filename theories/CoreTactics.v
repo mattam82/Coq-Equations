@@ -11,6 +11,7 @@
 Require Export Equations.Init.
 Require Import Equations.Signature.
 
+Import Sigma_Notations.
 Local Open Scope equations_scope.
 
 (** Try to find a contradiction. *)

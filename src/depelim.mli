@@ -41,7 +41,7 @@ val derive_dep_elimination
 val pattern_call :
   ?pattern_term:bool -> constr -> unit Proofview.tactic
 
-val specialize_eqs : ?with_block:int -> Names.Id.t -> unit Proofview.tactic
+val specialize_eqs : with_block:bool -> Names.Id.t -> unit Proofview.tactic
 
 val compare_upto_variables : Evd.evar_map -> constr -> constr -> bool
 

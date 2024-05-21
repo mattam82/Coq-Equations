@@ -337,8 +337,8 @@ Section Properties.
     Lemma clos_rst_rst1n  : forall x y,
       clos_refl_sym_trans R x y -> clos_refl_sym_trans_1n R x y.
       induction 1.
-      - constructor 2 with y; auto with Relations;
-        constructor 1; assumption.
+      - constructor 2 with y; auto with Relations.
+        constructor 1.
       - constructor 1.
       - apply clos_rst1n_sym; auto.
       - eapply clos_rst1n_trans; eauto.

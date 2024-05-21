@@ -70,8 +70,7 @@ Module RoseTree.
     Lemma elements_equation (r : t) : elements r = elements_def r.
     Proof.
       funelim (elements r); simp elements_def; trivial. f_equal.
-      rewrite map_In_spec. clear Heqcall.
-      induction l; simpl; auto. rewrite H. rewrite IHl; auto.
+      induction l; simpl; auto. simp map_In. rewrite H. rewrite IHl; auto.
       intros. apply H. now constructor 2. now constructor.
     Qed.
 

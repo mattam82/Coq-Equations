@@ -50,7 +50,6 @@ theories/Init.v
 theories/Signature.v
 theories/CoreTactics.v
 
-theories/Prop/SigmaNotations.v
 theories/Prop/Logic.v
 theories/Prop/Classes.v
 theories/Prop/EqDec.v
