@@ -37,7 +37,7 @@ Section Lt.
 End Lt.
 
 #[global]
-Hint Resolve lt_n_Sn : Below.
+Hint Resolve lt_n_Sn : rec_decision.
 
 (** Define non-dependent lexicographic products *)
 
@@ -87,4 +87,4 @@ Instance wellfounded_lexprod A B R S `(wfR : WellFounded A R, wfS : WellFounded 
   WellFounded (lexprod A B R S) := wf_lexprod A B R S wfR wfS.
 
 #[global]
-Hint Constructors lexprod : Below.
+Hint Constructors lexprod : rec_decision.

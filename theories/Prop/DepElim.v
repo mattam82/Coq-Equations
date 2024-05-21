@@ -509,7 +509,7 @@ Ltac destruct_last :=
 Ltac do_empty id :=
   exfalso ; simpl in id ;
   solve [ generalize_by_eqs id ; destruct id ; simplify_dep_elim
-    | apply id ; eauto with Below ].
+    | apply id ; eauto with simp ].
 
 (** If defining recursive functions, the prototypes come first. *)
 

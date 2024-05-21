@@ -17,9 +17,9 @@ type ind_info = {
 val find_helper_info : Environ.env -> Evd.evar_map ->
   Splitting.term_info ->
   EConstr.t -> Names.Constant.t * (int * int)
-val below_transparent_state : unit -> TransparentState.t
+
 val simpl_star : unit Proofview.tactic
-val eauto_with_below :
+val eauto_with_rec :
   ?depth:Int.t -> ?strategy:Class_tactics.search_strategy -> Hints.hint_db_name list -> unit Proofview.tactic
 val wf_obligations_base : Splitting.term_info -> string
 val simp_eqns : Hints.hint_db_name list -> unit Proofview.tactic

@@ -76,10 +76,10 @@ Module RoseTree.
     Qed.
 
     (** To solve measure subgoals *)
-    Hint Extern 4 (_ < _) => simpl; lia : Below.
-    Hint Extern 4 (MR _ _ _ _) => repeat red; simpl in *; lia : Below.
+    Hint Extern 4 (_ < _) => simpl; lia : rec_decision.
+    Hint Extern 4 (MR _ _ _ _) => repeat red; simpl in *; lia : rec_decision.
 
-    Obligation Tactic := simpl in *; program_simpl; try typeclasses eauto with Below subterm_relation.
+    Obligation Tactic := simpl in *; program_simpl; try typeclasses eauto with subterm_relation simp rec_decision.
     (* Nested rec *) 
 
     Equations elements_acc (r : t) (acc : list A) : list A by wf (size r) lt :=

@@ -96,7 +96,7 @@ Defined.
 
 Derive NoConfusion for Tuple.
 
-#[local] Hint Extern 100 => progress simpl : Below.
+#[local] Hint Extern 100 => progress simpl : rec_decision.
 
 Time Equations myComp {n} {B C : TupleT n} (tm1 : TupleMap _ B C) {A : TupleT n} (tm2 : TupleMap _ A B)
 : TupleMap _ A C :=

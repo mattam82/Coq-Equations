@@ -134,7 +134,7 @@ Ltac simpl_let :=
   end.
 
 #[global]
-Hint Extern 40 => progress (cbv beta in * || simpl_let) : Below.
+Hint Extern 40 => progress (cbv beta in * || simpl_let) : rec_decision.
 
 (* This expands lets in the context to simplify proof search for recursive call
   obligations, as [eauto] does not do matching up-to unfolding of let-bound variables.
@@ -147,7 +147,7 @@ Hint Extern 10 =>
     lazymatch goal with
     |- context [ x ] => subst x 
     end
-  end : Below.
+  end : rec_decision.
 
 (** We can automatically use the well-foundedness of a relation to get
    the well-foundedness of its transitive closure.
@@ -171,13 +171,13 @@ Proof. red. apply measure_wf. apply H. Defined.
 Hint Extern 0 (WellFounded (MR _ _)) => apply @wf_MR : typeclass_instances.
 
 #[global]
-Hint Extern 0 (MR _ _ _ _) => red : Below.
+Hint Extern 0 (MR _ _ _ _) => red : rec_decision.
 
 #[export]
 Instance lt_wf : WellFounded lt := lt_wf.
 
 #[global]
-Hint Resolve PeanoNat.Nat.lt_succ_diag_r : Below.
+Hint Resolve PeanoNat.Nat.lt_succ_diag_r : rec_decision.
 
 (** We also add hints for transitive closure, not using [t_trans] but forcing to 
    build the proof by successive applications of the inner relation. *)
@@ -334,7 +334,7 @@ Instance wellfounded_lexprod A B R S `(wfR : WellFounded A R, wfS : WellFounded 
   WellFounded (lexprod A B R S) := wf_lexprod A B R S wfR wfS.
 
 #[global]
-Hint Constructors lexprod : Below.
+Hint Constructors lexprod : rec_decision.
 
 (* NoCycle from well-foundedness. *)
 

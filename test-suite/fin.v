@@ -325,7 +325,7 @@ Derive NoConfusion NoConfusionHom EqDec Subterm for fle.
 Print Assumptions fle_eqdec.
 
 #[local]
-Obligation Tactic := program_simpl; try typeclasses eauto 10 with Below subterm_relation.
+Obligation Tactic := program_simpl; try typeclasses eauto 10 with rec_decision subterm_relation.
 
 Equations fle_trans' {n : nat} {i j : fin n} (p : fle i j) {k} (q : fle j k) : fle i k
  by wf (Signature.signature_pack p) (@fle_subterm) :=

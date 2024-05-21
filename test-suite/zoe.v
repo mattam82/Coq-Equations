@@ -134,9 +134,9 @@ Proof.
 Defined.
 
 (** Hints for automatically solving recursive call obligations *)
-#[local] Hint Extern 3 => progress cbn : Below.
-#[local] Hint Resolve size_ii_open_rec_lt : Below.
-#[local] Hint Extern 3 => progress auto with arith : Below.
+#[local] Hint Extern 3 => progress cbn : rec_decision.
+#[local] Hint Resolve size_ii_open_rec_lt : rec_decision.
+#[local] Hint Extern 3 => progress auto with arith : rec_decision.
 (*
 Equations infer_sort (ie : env) (i : index) : option sort :=
 infer_sort ie i by wf i (MR lt index_size) := (** Need to strengthen the subst *)
@@ -161,7 +161,7 @@ infer_sort ie (IApp i1 i2) <= infer_sort ie i1 => {
   at recursive calls.
  *)
 #[local]
-Obligation Tactic := program_simpl; try typeclasses eauto 10 with Below subterm_relation.
+Obligation Tactic := program_simpl; try typeclasses eauto 10 with rec_decision simp subterm_relation.
 
 Equations infer_sort (i : index) (ie : env) : option sort
  by wf i (MR lt index_size) :=

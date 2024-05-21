@@ -599,22 +599,10 @@ let dbs_of_constrs = List.map db_of_constr
 
 (** Bindings to Coq *)
 
-let below_tactics_path =
-  DirPath.make (List.map Id.of_string ["Below";"Equations"])
-
-let below_tac s =
-  KerName.make (MPfile below_tactics_path) (Label.make s)
-
 let tacvar_arg h =
   let ipat = Genarg.in_gen (Genarg.rawwit Tacarg.wit_intro_pattern) 
     (CAst.make @@ Tactypes.IntroNaming (Namegen.IntroIdentifier h)) in
     TacGeneric (None, ipat)
-
-let rec_tac h h' = 
-  CAst.(make @@ TacArg(TacCall(
-      make
-        (qualid_of_string "Equations.Below.rec",
-         [tacvar_arg h'; ConstrMayEval (Genredexpr.ConstrTerm h)]))))
 
 let rec_wf_tac h n h' rel =
   CAst.(make @@ TacArg(TacCall(make

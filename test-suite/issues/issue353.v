@@ -16,7 +16,7 @@ Definition lex_nat (ab1 ab2 : nat * nat) : Prop :=
 match ab1, ab2 with
 | (a1, b1), (a2, b2) => (a1 < a2) \/ ((a1 = a2) /\ (b1 < b2))
 end.
-#[local] Hint Unfold lex_nat : Below.
+#[local] Hint Unfold lex_nat : rec_decision.
 Lemma lex_nat_wf : well_founded lex_nat.
 Admitted.
 

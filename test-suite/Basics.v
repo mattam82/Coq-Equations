@@ -112,7 +112,7 @@ Instance wf_nat : WellFounded lt := lt_wf.
 #[local] Hint Resolve PeanoNat.Nat.lt_succ_diag_r : lt.
 
 Ltac solve_rec ::= simpl in * ; cbv zeta ; intros ; 
-  try typeclasses eauto with subterm_relation Below lt.
+  try typeclasses eauto with subterm_relation simp lt.
 Unset Implicit Arguments.
 
 Equations testn (n : nat) : nat by wf n lt :=

@@ -30,7 +30,7 @@ Class Recursor (A : Type) :=
 (** Support simplification of unification constraints appearing in the goal
    and the hypothesis. *)
 
-#[local] Hint Extern 0 (_ = _) => reflexivity : Below.
+#[local] Hint Extern 0 (_ = _) => reflexivity : rec_decision.
 
 Ltac simpl_let :=
   match goal with
@@ -41,7 +41,7 @@ Ltac simpl_let :=
     end
   end.
 
-#[local] Hint Extern 40 => progress (cbv beta in * || simpl_let) : Below.
+#[local] Hint Extern 40 => progress (cbv beta in * || simpl_let) : rec_decision.
 
 (** Use it as well as the [equations] simplifications. *)
 
@@ -56,7 +56,7 @@ Ltac destruct_conj :=
 (** Simplify [Below] hyps for proof search. *)
 
 #[local] Hint Extern 2 => progress (autorewrite with Below in * ; 
-  destruct_conj ; simplify_IH_hyps) : Below.
+  destruct_conj ; simplify_IH_hyps) : rec_decision.
 
 (** When solving goals with recursive prototypes in them, we allow an application
    only if it keeps the proof guarded (FIXME, guarded doesn't work). *)
@@ -66,7 +66,7 @@ Ltac apply_fix_proto :=
   | [ f : let _ := fixproto in _ |- _ ] => apply f
   end.
 
-#[local] Hint Extern 100 => apply_fix_proto : Below.
+#[local] Hint Extern 100 => apply_fix_proto : rec_decision.
 
 (** We now derive standard Below instances. *)
 
@@ -95,7 +95,7 @@ Below_vector A P ?(0) [] := unit ;
 Below_vector A P _ (a :: v) :=
   ((P _ v) * Below_vector A P _ v)%type.
 
-#[local] Hint Rewrite Below_vector_equation_2 : Below.
+#[local] Hint Rewrite Below_vector_equation_2 : rec_decision.
 
 Ltac rec_fast v recname := intro_block v ; move v at top ;
   generalize_by_eqs_vars v ; (intros until v || revert_until v) ;

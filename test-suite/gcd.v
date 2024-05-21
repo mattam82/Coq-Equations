@@ -9,10 +9,10 @@ Ltac subst_lets :=
   end.
 
 #[local] Hint Extern 5 => 
-  simpl; subst_lets; lia : Below.
+  simpl; subst_lets; lia : rec_decision.
 
 #[local]
-Obligation Tactic := Equations.CoreTactics.equations_simpl; try typeclasses eauto with Below.
+Obligation Tactic := Equations.CoreTactics.equations_simpl; try typeclasses eauto with rec_decision.
 
 Equations gcd (x y : nat) : nat by wf (x + y) lt :=
 gcd 0 x := x ;

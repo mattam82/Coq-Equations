@@ -220,7 +220,7 @@ Ltac equations_simplify :=
 
 Ltac solve_wf :=
   match goal with
-    |- ?R _ _ => try typeclasses eauto with subterm_relation Below rec_decision
+    |- ?R _ _ => try typeclasses eauto with subterm_relation simp rec_decision
   end.
 
 (* program_simpl includes a [typeclasses eauto with program] which solves, e.g. [nat] goals trivially.

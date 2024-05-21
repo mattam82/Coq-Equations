@@ -326,7 +326,7 @@ and generates the corresponding subgoals.
 The $\tac{simp}~\cst{f}_1 \ldots \cst{f}_n$ tactic is an alias to
 \[\begin{array}{l}
   \tac{autorewrite}~\tac{with}~\cst{f}_1 \ldots \cst{f}_n ; \\
-  \tac{try typeclasses eauto with Below subterm\_relation }\cst{f}_1
+  \tac{try typeclasses eauto with subterm\_relation simp rec\_decision} \cst{f}_1
   \ldots \cst{f}_n
 \end{array}\]
 
