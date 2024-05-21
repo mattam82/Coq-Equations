@@ -855,6 +855,9 @@ let move_after_deps id c =
     Tactics.move_hyp id (Logic.MoveAfter first)
   in Proofview.Goal.enter enter
 
+let assert_replacing id c ty =
+  tclTHENFIRST (assert_before_replacing id ty) (exact_no_check c)
+
 let observe s (tac : unit Proofview.tactic) =
   let open Proofview.Notations in
   let open Proofview in
