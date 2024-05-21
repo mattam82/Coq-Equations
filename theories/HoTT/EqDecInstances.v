@@ -10,11 +10,11 @@ From Equations Require Import Init.
 Require Import Equations.HoTT.Logic Equations.HoTT.Classes Equations.HoTT.DepElim
         Equations.HoTT.Constants
         Equations.HoTT.Tactics Equations.HoTT.EqDec Equations.HoTT.NoConfusion.
+From HoTT Require Import Spaces.List.Core.
 Local Open Scope equations_scope.
 Import Sigma_Notations.
 
 Set Universe Polymorphism.
-
 
 (** Tactic to solve EqDec goals, destructing recursive calls for the recursive
   structure of the type and calling instances of eq_dec on other types. *)

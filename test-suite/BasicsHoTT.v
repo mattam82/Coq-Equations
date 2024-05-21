@@ -9,7 +9,7 @@ From Equations Require Import CoreTactics.
 Require Import Equations.HoTT.All Equations.HoTT.WellFounded.
 Require Import Coq.Unicode.Utf8.
 Require HoTT.Basics.Overture.
-Require Import HoTT.Types.Bool HoTT.Spaces.Nat.
+Require Import HoTT.Types.Bool HoTT.Spaces.Nat HoTT.Spaces.List.Core.
 
 Local Open Scope nat_scope.
 
@@ -180,7 +180,7 @@ equal (S n) (S m) with equal n m => {
   equal (S n) (S m) (inr p) := inr (λ{ | idpath => p idpath }) } ;
 equal x y := inr _.
 
-Notation "[]" := (@Datatypes.nil _) (at level 0) : list_scope.
+Notation "[]" := (@List.Core.nil _) (at level 0) : list_scope.
 Local Open Scope list_scope.
 
 Equations app_with {A} (l l' : list A) : list A :=
@@ -236,7 +236,7 @@ Tactic Notation "myreplace" constr(c) "with" constr(d) "by" tactic(tac) :=
 Lemma rev_rev_acc : forall {A} (l : list A), rev_acc l [] = rev l.
 Proof.
   intros. myreplace (rev l) with (rev l +++ []) by (symmetry; apply app'_nil).
-  generalize (@Datatypes.nil A).
+  generalize (@List.Core.nil A).
   funelim (rev l).
   - intros. reflexivity.
   - intros l'. autorewrite with rev_acc. rewrite X.
