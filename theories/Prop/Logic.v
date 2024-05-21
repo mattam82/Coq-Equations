@@ -1,4 +1,6 @@
 From Equations Require Import Init.
+From Equations.Prop Require Export SigmaNotations.
+
 From Coq Require Import Extraction Relation_Definitions.
 
 (** The regular dependent eliminator of equality *)

@@ -653,7 +653,7 @@ Tactic Notation "dependent" "induction" ident(H) "generalizing" ne_hyp_list(l) "
 
 (** [solve_equation] is used to prove the equation lemmas for an existing definition.  *)
 
-Ltac exfalso := cut False; [intros []|].
+Ltac exfalso := cut Empty; [intros []|].
 
 Ltac find_empty := simpl in * ; exfalso ;
   match goal with

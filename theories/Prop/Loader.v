@@ -15,6 +15,7 @@ Declare ML Module "coq-equations.plugin".
 
 From Equations Require Export Init Signature.
 Require Import Equations.CoreTactics.
+Require Export Equations.Prop.SigmaNotations.
 Require Export Equations.Prop.Classes.
 Require Import Equations.Prop.DepElim Equations.Prop.Constants.
 Require Export Equations.Prop.EqDec.

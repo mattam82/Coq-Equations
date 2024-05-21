@@ -85,6 +85,8 @@ Inductive Expr : Ctx -> Ty -> Set :=
 | var {Γ} {t} : In t Γ -> Expr Γ t
 | abs {Γ} {t u} : Expr (t :: Γ) u -> Expr Γ (t ⇒ u)
 | app {Γ} {t u} : Expr Γ (t ⇒ u) -> Expr Γ t -> Expr Γ u
+
+
 | new {Γ t} : Expr Γ t -> Expr Γ (ref t)
 | deref {Γ t} : Expr Γ (ref t) -> Expr Γ t
 | assign {Γ t} : Expr Γ (ref t) -> Expr Γ t -> Expr Γ unit.

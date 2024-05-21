@@ -9,7 +9,7 @@
 Set Warnings "-notation-overridden".
 Require Import Equations.CoreTactics.
 Require Import Equations.HoTT.Logic Equations.HoTT.Classes Equations.HoTT.EqDec Equations.HoTT.DepElim.
-Require Import HoTT.Basics.Datatypes HoTT.Spaces.Nat.
+Require Import HoTT.Spaces.Nat.
 
 Local Open Scope nat_scope.
 Local Open Scope equations_scope.
@@ -84,10 +84,10 @@ Ltac unfold_packcall packcall :=
         change (R x y' -> P)
   end.
 
-Ltac simplify_IH_hyps' := repeat
+Ltac simplify_IH_hyps_call := repeat
   match goal with
   | [ hyp : context [ block ] |- _ ] =>
-    cbn beta in hyp; eqns_specialize_eqs_block hyp;
+    cbn beta in hyp; eqns_specialize_eqs_block hyp 2;
     cbn beta iota delta[transport paths_rect paths_rec paths_ind] zeta in hyp
   end.
 
@@ -96,7 +96,7 @@ Ltac make_packcall packcall c :=
   | [ packcall : ?type |- _ ] => change (let _ := c in type) in (type of packcall)
   end.
 
-Ltac funelim_sig_tac c tac :=
+Ltac funelim_sig_tac c Heq tac :=
   let elimc := get_elim c in
   let packcall := fresh "packcall" in
   let packcall_fn := fresh "packcall_fn" in
@@ -109,8 +109,9 @@ Ltac funelim_sig_tac c tac :=
    refine (simplification_sigma1_nondep_dep _ _ _ _ _) ||
    refine (simplification_sigma1_dep _ _ _ _ _));
   let H := fresh "eqargs" in
-  let Heq := fresh "Heqcall" in intros H Heq;
-  try (rewrite <- Heq; clear Heq); revert_until H; revert H;
+  let Heqfresh := fresh "__Heq__" in
+  intros H Heqfresh; revert Heqfresh; block_goal;
+  revert H;
   subst packcall_fn; clearbody packcall;
   make_packcall packcall elimfn;
   with_last_secvar ltac:(fun eos => move packcall before eos)
@@ -122,10 +123,13 @@ Ltac funelim_sig_tac c tac :=
   cbv beta; simplify_dep_elim; intros_until_block;
   simplify_dep_elim;
   cbn beta iota delta [transport paths_rec paths_rect paths_ind pack_sigma pack_sigma_nondep] in *;
-  simplify_IH_hyps'; (* intros _; *)
-  unblock_goal; simplify_IH_hyps; tac c.
-
-Ltac funelim_constr c := funelim_sig_tac c ltac:(fun _ => idtac).
+  simplify_IH_hyps_call; intros _ Heqfresh;
+  unblock_goal; simplify_IH_hyps;
+  try (rewrite <- Heqfresh);
+  try (rename Heqfresh into Heq || (let Heqf := fresh Heq in rename Heq into Heqf; rename Heqfresh into Heq));
+  tac c.
+  
+Ltac funelim_constr_as c h := funelim_sig_tac c h ltac:(fun _ => idtac).
 
 Ltac get_first_elim c :=
   match c with
