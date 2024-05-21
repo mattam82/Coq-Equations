@@ -43,7 +43,7 @@ Section TeleSigma.
   Equations tele_rel : tele -> tele -> Type :=
   | tip A | tip B := A -> B -> Type;
   | ext A B | ext A' B' := forall (x : A) (y : A'), tele_rel (B x) (B' y);
-  | _ | _ := Empty.
+  | _ | _ := False.
 
   Equations tele_rel_app (T U : tele) (P : tele_rel T U) (x : tele_sigma T) (y : tele_sigma U) : Type :=
   tele_rel_app (tip A) (tip A') P a a' := P a a';

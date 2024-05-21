@@ -566,7 +566,7 @@ let term_of_tree env0 isevar sort tree =
           let env = push_rel_context (cut_ctx @ new_ctx @ ctx') env in
           evd_comb0 (fun sigma -> Typing.type_of env sigma ty) evd
         in
-        let ((hole, c), _, lsubst) = Simplify.apply_simplification_fun simpl_step env evd (cut_ctx @ new_ctx @ ctx', ty, sort) in
+        let ((hole, c), lsubst) = Simplify.apply_simplification_fun simpl_step env evd (cut_ctx @ new_ctx @ ctx', ty, sort) in
         if !debug then
           begin
             let open Feedback in

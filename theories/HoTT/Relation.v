@@ -14,7 +14,6 @@ Set Warnings "-notation-overridden".
 Require Import Equations.HoTT.Logic.
 
 Local Open Scope equations_scope.
-
 Import Sigma_Notations.
 
 (** Relations in Type *)
@@ -192,8 +191,6 @@ Section Swap.
     | sp_swap x y (p:A * A) : symprod A A R R (pair x y) p -> swapprod (pair y x) p.
 End Swap.
 
-Local Open Scope equations_scope.
-From HoTT Require Import Spaces.List.Core.
 Local Open Scope list_scope.
 
 Section Lexicographic_Exponentiation.

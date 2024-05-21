@@ -1,7 +1,5 @@
 From Equations Require Import Init.
 Require Export HoTT.Basics.Overture.
-Require Export HoTT.Basics.Tactics.
-
 Set Warnings "-notation-overridden".
 Set Universe Polymorphism.
 
@@ -37,21 +35,3 @@ Definition transport_r {A} (P : A -> Type) {x y : A} (e : y = x) : P x -> P y :=
 Lemma paths_rect_dep_r {A} (x : A) (P : forall a, a = x -> Type) (p : P x 1%path)
       (y : A) (e : y = x) : P y e.
 Proof. destruct e. apply p. Defined.
-
-Module Sigma_Notations.
-
-Notation "'Σ' x .. y , P" := (sigma (fun x => .. (sigma (fun y => P)) ..))
-  (at level 200, x binder, y binder, right associativity,
-  format "'[  ' '[  ' Σ  x  ..  y ']' ,  '/' P ']'") : type_scope.
-
-Notation "( x , .. , y , z )" :=
-  (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
-      (right associativity, at level 0,
-       format "( x ,  .. ,  y ,  z )") : equations_scope.
-
-Notation "x .1" := (Equations.Init.pr1 x) : equations_scope.
-Notation "x .2" := (Equations.Init.pr2 x) : equations_scope.
-
-End Sigma_Notations.
-
-Import Sigma_Notations.

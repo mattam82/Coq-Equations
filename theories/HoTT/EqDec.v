@@ -201,10 +201,8 @@ Qed.
 #[export]
 Instance eqdec_hset (A : Type) `(UIP A) : IsHSet A.
 Proof.
-  constructor.
-  intros x y. constructor. intros p q.
-  eapply Build_Contr with (uip p q). intros e.
-  destruct p. apply uip.
+  red. red. intros *. exists (uip x0 y0). intros e.
+  destruct x0. apply uip.
 Defined.
 
 Lemma sigma_eq@{i} (A : Type@{i}) (P : A -> Type@{i}) (x y : sigma P) :
@@ -217,7 +215,7 @@ Defined.
 
 Lemma is_hset {A} `{H : IsHSet A} {x y : A} (p q : x = y) : p = q.
 Proof.
-  apply HSet.hset_path2.
+  apply H.
 Defined.
 
 Theorem inj_sigma_r@{i} {A : Type@{i}} `{H : IsHSet A} {P : A -> Type@{i}} {x} {y y':P x} :
@@ -242,9 +240,9 @@ Defined.
 (** Proof that equality proofs in 0-truncated types are connected *)
 Lemma hset_pi {A} `{H : IsHSet A} (x y : A) (p q : x = y) (r : p = q) : is_hset p q = r.
 Proof.
+  red in H.
   pose (hprop_hset (H x y)).
-  unfold is_hset.
-  apply HSet.hset_path2.
+  apply i.
 Defined.
 
 Lemma is_hset_refl {A} `{H : IsHSet A} (x : A) : is_hset (@idpath _ x) 1 = 1%path.
@@ -256,8 +254,7 @@ Lemma inj_sigma_r_refl@{i} (A : Type@{i}) (H : IsHSet A) (P : A -> Type@{i}) x (
   inj_sigma_r (y:=y) (y':=y) 1 = 1%path.
 Proof.
   unfold inj_sigma_r. intros.
-  simpl.
-  now rewrite HSet.axiomK_idpath.
+  simpl. now rewrite is_hset_refl.
 Defined.
 
 Theorem K {A} `{IsHSet A} (x : A) (P : x = x -> Type) :

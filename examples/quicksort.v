@@ -4,8 +4,6 @@ Require Import Vector.
 Notation vector := t.
 Derive NoConfusion NoConfusionHom for vector.
 
-Set Equations Transparent.
-
 Arguments Vector.nil {A}.
 Arguments Vector.cons {A} _ {n}.
 
@@ -34,7 +32,7 @@ Lemma All_app {A P n m} (v : vector A n) (w : vector A m) :
   @All A P _ v -> All P w -> All P (app v w).
 Proof.
   funelim (app v w). auto.
-  intros. depelim H0; simp app in *. econstructor; auto.
+  intros. depelim H0; simpl in *. constructor; auto.
 Qed.
 
 Lemma In_All {A P n} (v : vector A n) : All P v <-> (forall x, In x v -> P x).
@@ -67,8 +65,8 @@ Admitted.
 Lemma In_app {A n m} (v : vector A n) (w : vector A m) (a : A) : In a v \/ In a w <-> In a (app v w).
 Proof.
   funelim (app v w). intuition. depelim H0.
-  split; intros; depelim H0; cbn; simp In app in *; intuition eauto with *; simp In in *.
-  apply H in H0. intuition.
+  split. intros; depelim H0; simp In in *; intuition. simp In in *. intuition.
+  apply H in H1. intuition.
 Qed.
 Require Import Sumbool.
 
@@ -127,9 +125,7 @@ Section QuickSort.
     simpl. destruct (eq_sym (plus_n_Sm k l)). simpl.
     intuition.
     apply Sorted_app; auto. constructor.
-    apply In_All. intros x1 Inx1. apply H2 in Inx1.
-    specialize (i x1).
-    eapply leb_inverse.
+    apply In_All. intros x1 Inx1. apply H2 in Inx1. eapply leb_inverse.
 
     eapply All_In_All; eauto. eapply All_impl; eauto. simpl. intros x1 [inx1 lebx1].
     apply leb_inverse; assumption. intuition.

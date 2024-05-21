@@ -26,7 +26,7 @@ exception CannotSimplify of Pp.t
 type simplification_fun
 
 val apply_simplification_fun : simplification_fun ->
-  Environ.env -> Evd.evar_map ref -> goal -> open_term * bool * Context_map.context_map
+  Environ.env -> Evd.evar_map ref -> goal -> open_term * Context_map.context_map
 
 (* Auxiliary functions. *)
 
