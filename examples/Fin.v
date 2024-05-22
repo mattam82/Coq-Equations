@@ -98,7 +98,7 @@ Equations Below_fin (P : forall n, fin n -> Type) {n} (v : fin n) : Type :=
 Below_fin P fz := unit ;
 Below_fin P (fs f) := (P _ f * Below_fin P f)%type.
 
-#[export] Hint Rewrite Below_fin_equation_2 (* Below_fin_equation_3 *) : Below.
+#[export] Hint Rewrite Below_fin_equation_2 (* Below_fin_equation_3 *) : rec_decision.
 
 Equations(noeqns noind) below_fin (P : forall n, fin n -> Type)
   (step : forall n (v : fin n), Below_fin P v -> P n v)

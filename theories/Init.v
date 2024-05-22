@@ -148,10 +148,10 @@ Ltac forward_gen H tac :=
 Tactic Notation "forward" constr(H) := forward_gen H ltac:(idtac).
 Tactic Notation "forward" constr(H) "by" tactic(tac) := forward_gen H tac.
 
-(** A hintdb for transparency information of definitions related to [Below] and
-   for solving goals related to [Below] instances. *)
+(** A hintdb for transparency information of definitions when doing proof search to
+  solve recursive calls obligations or during [simp] calls. *)
 
-Create HintDb Below discriminated.
+Create HintDb simp discriminated.
 
 (** Forward reference to an internal tactic to unfold well-founded fixpoints *)
 Ltac unfold_recursor := fail "Equations.Init.unfold_recursor has not been bound yet".

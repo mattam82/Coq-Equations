@@ -45,27 +45,27 @@ let find_helper_info env sigma info f =
 	info.helpers_info
   with Not_found -> anomaly (str"Helper not found while proving induction lemma.")
 
-let below_transparent_state () =
-  Hints.Hint_db.transparent_state (Hints.searchtable_map "Below")
+let simp_transparent_state () =
+  Hints.Hint_db.transparent_state (Hints.searchtable_map "simp")
 
 let simpl_star =
   tclTHEN simpl_in_concl (onAllHyps (fun id -> simpl_in_hyp (id, Locus.InHyp)))
 
-let eauto_with_below ?depth ?(strategy=Class_tactics.Dfs) l =
-  Class_tactics.typeclasses_eauto ~depth ~st:(below_transparent_state ()) 
-    ~strategy (l@["subterm_relation"; "Below"; "rec_decision"])
+let eauto_with_rec ?depth ?(strategy=Class_tactics.Dfs) l =
+  Class_tactics.typeclasses_eauto ~depth ~st:(simp_transparent_state ()) 
+    ~strategy (l@["subterm_relation"; "rec_decision"])
     
 let wf_obligations_base info =
   info.base_id ^ "_wf_obligations"
 
 let simp_eqns l =
   tclREPEAT
-    (tclTHENLIST [Autorewrite.autorewrite tclIDTAC l; tclTRY (eauto_with_below l)])
+    (tclTHENLIST [Autorewrite.autorewrite tclIDTAC l; tclTRY (eauto_with_rec ("simp" :: l))])
 
 let simp_eqns_in clause l =
   tclREPEAT (tclTHENLIST 
 		[Autorewrite.auto_multi_rewrite l clause;
-		 tclTRY (eauto_with_below l)])
+		 tclTRY (eauto_with_rec ("simp" :: l))])
 
 let autorewrites b = 
   tclREPEAT (Autorewrite.autorewrite tclIDTAC [b])
@@ -263,8 +263,8 @@ let map_opt_split f s =
   | Some s -> f s
 
 let solve_ind_rec_tac info =
-  observe "eauto with below"
-    (eauto_with_below ~depth:20 ~strategy:Class_tactics.Bfs [info.base_id; wf_obligations_base info])
+  observe "solve_ind_rec_tac"
+    (eauto_with_rec ~depth:20 ~strategy:Class_tactics.Bfs [info.base_id; wf_obligations_base info])
 
 let change_in_app f args idx arg =
   let args' = Array.copy args in

@@ -129,7 +129,7 @@ Ltac simpl_let :=
     end
   end.
 
-#[export] Hint Extern 40 => progress (cbv beta in * || simpl_let) : Below.
+#[export] Hint Extern 40 => progress (cbv beta in * || simpl_let) : rec_decision.
 
 (* This expands lets in the context to simplify proof search for recursive call
   obligations, as [eauto] does not do matching up-to unfolding of let-bound variables.
@@ -141,7 +141,7 @@ Ltac simpl_let :=
     lazymatch goal with
     |- context [ x ] => subst x 
     end
-  end : Below.
+  end : rec_decision.
 
 (** We can automatically use the well-foundedness of a relation to get
    the well-foundedness of its transitive closure.
@@ -164,7 +164,7 @@ Proof. red. apply wf_inverse_image. apply H. Defined.
 
 (* #[export] Hint Extern 0 (WellFounded (inverse_image _ _)) => apply @wf_inverse_image : typeclass_instances. *)
 
-#[export] Hint Extern 0 (inverse_image _ _ _ _) => red : Below.
+#[export] Hint Extern 0 (inverse_image _ _ _ _) => red : rec_decision.
 
 (** We also add hints for transitive closure, not using [t_trans] but forcing to 
    build the proof by successive applications of the inner relation. *)

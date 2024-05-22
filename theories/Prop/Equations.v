@@ -23,6 +23,6 @@ Global Obligation Tactic := simpl in *; program_simplify; Equations.CoreTactics.
 (** Tactic to solve well-founded proof obligations by default *)
 
 Ltac solve_rec := simpl in * ; cbv zeta ; intros ;
-  try typeclasses eauto with subterm_relation Below rec_decision.
+  try typeclasses eauto with subterm_relation simp rec_decision.
 
 Open Scope equations_scope.

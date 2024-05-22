@@ -37,18 +37,16 @@ Section Nested.
   (*         destruct x as [x' H'] ; simpl proj1_sig; destruct_proj1_sig *)
   (*   end. *)
 
-  #[local] Hint Extern 3 => progress destruct_proj1_sig : Below.
+  #[local] Hint Extern 3 => progress destruct_proj1_sig : rec_decision.
   
-  #[local] Hint Extern 3 => progress auto with arith : Below.
+  #[local] Hint Extern 3 => progress auto with arith : rec_decision.
 
 
   Equations? f (n : nat) : { x : nat | x <= n }
    by wf n lt :=
   f 0 :=  exist _ 0 _ ;
   f (S n) := exist _ (proj1_sig (f (proj1_sig (f n)))) _.
-  Proof. all:(simpl; intros; try typeclasses eauto with Below).
-         simpl. destruct f. simpl. destruct f. simpl. lia.
-  Defined.
+  Proof. simpl. destruct f. simpl. destruct f. simpl. lia. Defined.
 
   Lemma exist_eq {A} (P : A -> Prop) (x y : A) (p : P x) (q : P y) :
     { e : x = y & eq_rect _ P p _ e = q } ->
@@ -120,9 +118,9 @@ Module RecMeasure.
   Proof. red. apply measure_wf. apply H. Defined.
 
   #[local]
-  Obligation Tactic := program_simpl; try typeclasses eauto with Below.
+  Obligation Tactic := program_simpl; try typeclasses eauto with rec_decision.
 
-  #[local] Hint Extern 0 (MR _ _ _ _) => red : Below.
+  #[local] Hint Extern 0 (MR _ _ _ _) => red : rec_decision.
 
   Equations id (n : nat) : nat
   by wf n (MR lt (fun n => n)) :=
@@ -152,10 +150,10 @@ Module RecMeasure.
     apply Nat.lt_succ_r.
     Qed.
 
-    #[local] Hint Immediate Nat.le_succ_l : Below.
-    #[local] Hint Resolve filter_length : Below.
-    #[local] Hint Unfold lt gt : Below.
-    #[local] Hint Resolve le_lt_n_Sm : Below.
+    #[local] Hint Immediate Nat.le_succ_l : rec_decision.
+    #[local] Hint Resolve filter_length : rec_decision.
+    #[local] Hint Unfold lt gt : rec_decision.
+    #[local] Hint Resolve le_lt_n_Sm : rec_decision.
 
     Context {A : Type} (leb : A -> A -> bool) (ltb : A -> A -> bool).
 

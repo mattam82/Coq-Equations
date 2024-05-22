@@ -289,8 +289,6 @@ val unfold_add_pattern : unit Proofview.tactic lazy_t
 
 val observe : string -> unit Proofview.tactic -> unit Proofview.tactic
   
-val below_tactics_path : Names.DirPath.t
-val below_tac : string -> Names.KerName.t
 val unfold_recursor_tac : unit -> unit Proofview.tactic
 val unfold_recursor_ext_tac : unit -> unit Proofview.tactic
 val equations_tac : unit -> unit Proofview.tactic
@@ -310,10 +308,6 @@ val do_empty_tac : Names.Id.t -> unit Proofview.tactic
 val depelim_nosimpl_tac : Names.Id.t -> unit Proofview.tactic
 val simpl_dep_elim_tac : unit -> unit Proofview.tactic
 val depind_tac : Names.Id.t -> unit Proofview.tactic
-val rec_tac :            Genredexpr.r_trm ->
-                         Names.Id.t ->
-                         Tacexpr.r_dispatch Tacexpr.gen_tactic_expr
-
 val rec_wf_tac :            Genredexpr.r_trm -> Genredexpr.r_trm ->
            Names.Id.t -> Genredexpr.r_trm ->
                          Tacexpr.r_dispatch Tacexpr.gen_tactic_expr

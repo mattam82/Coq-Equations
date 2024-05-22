@@ -1077,7 +1077,7 @@ Section SCT.
                                              if List.existsb (eqb gcomp') gs'' then None
                                              else Some gcomp'
                                            else Some gcomp).
-  (* Hint Extern 10 => progress simpl : Below. *)
+  (* Hint Extern 10 => progress simpl : rec_decision. *)
   (* FIXME bug when using with *)
 
   (* Equations compute_transitive_closure {k} (n : nat) (gs : list (graph k)) : trans_clos_answer k *)
