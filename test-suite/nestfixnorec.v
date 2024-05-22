@@ -119,9 +119,11 @@ Inductive myexists_graph {A} (p : A -> bool) (P : A -> Prop) (R : forall x, refl
 | myexists_graph_2 t l b : P t -> myexists_graph p P R l b -> myexists_graph p P R [] (p t || existsb p l).
 Lemma myexistsb_prop_exits {A} (P : A -> Prop) (l : list A) : myexistsb_prop P l <-> Exists P l.
 Proof.
-  funelim (myexistsb_prop P l). split; intuition auto. inversion H.
-  rewrite H. split; intuition auto. inversion H0. intuition.
-  subst. intuition auto.
+  funelim (myexistsb_prop P l) eqm.
+  - split; intuition auto. inversion H.
+  - clear eqm. inversion H. cbn; rewrite H. split; intuition auto.
+   inversion H2. intuition.
+    subst. intuition auto.
 Qed.
 
 Section RoseTreeInd.
