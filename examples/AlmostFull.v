@@ -493,7 +493,7 @@ Proof.
        eapply SecureBy_mon; [|eapply H1]; simpl. intros. intuition auto.
        simpl. intros.
        eapply SecureBy_mon; [|eapply H2]; simpl. intros. intuition auto.
-    -- simpl. specialize (H0 x (SUP f) (g x)). eqns_specialize_eqs H0. eapply SecureBy_mon; [|eapply (H0 (fun y z => C y z \/ C x y \/ B x) A B)]; simpl. intuition auto.
+    -- simpl. specialize (H0 x). eapply SecureBy_mon; [|eapply (H0 (fun y z => C y z \/ C x y \/ B x) A B)]; simpl. intuition auto.
        intuition. simpl in H2. eapply SecureBy_mon; [|eapply H1]; simpl. intuition auto.
        eapply SecureBy_mon; [|eapply H2]; simpl. intros. intuition auto.
 Qed.
@@ -515,8 +515,8 @@ Proof.
     eapply SecureBy_mon; [|eapply H1]; simpl. intros. intuition auto.
     simpl. intros.
     eapply SecureBy_mon; [|eapply H2]; simpl. intros. intuition auto.
-  - simpl. specialize (H0 x (SUP f) (g x)). eqns_specialize_eqs H0.
-    eapply SecureBy_mon; [|eapply (H0 (fun y z => C y z \/ C x y \/ B x y) A B)]; simpl. intuition auto.
+  - simpl.
+    eapply SecureBy_mon; [|eapply (H0 x (fun y z => C y z \/ C x y \/ B x y) A B)]; simpl. intuition auto.
     intuition. simpl in H2. eapply SecureBy_mon; [|eapply H1]; simpl. intuition auto.
     eapply SecureBy_mon; [|eapply H2]; simpl. intros. intuition auto.
 Defined.
@@ -538,7 +538,7 @@ Proof.
     eapply SecureBy_mon; [|eapply H1]; simpl. intros. intuition auto.
     simpl. intros.
     eapply SecureBy_mon; [|eapply H2]; simpl. intros. intuition auto.
-  - simpl. specialize (H0 x (SUP f) (g x)). eqns_specialize_eqs H0.
+  - simpl. specialize (H0 x).
     eapply SecureBy_mon; [|eapply (H0 A (fun y z => B y z \/ B x y))]; simpl. intuition auto.
     intuition. simpl in H2. apply H2.
 Defined.

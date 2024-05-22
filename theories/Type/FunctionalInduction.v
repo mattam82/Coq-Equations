@@ -84,7 +84,7 @@ Ltac unfold_packcall packcall :=
         change (R x y' -> P)
   end.
 
-Ltac simplify_IH_hyps_call := repeat
+Ltac simplify_IHs_call := repeat
   match goal with
   | [ hyp : context [ block ] |- _ ] =>
     cbn beta in hyp; eqns_specialize_eqs_block hyp 2;
@@ -96,7 +96,7 @@ Ltac make_packcall packcall c :=
   | [ packcall : ?type |- _ ] => change (let _ := c in type) in (type of packcall)
   end.
 
-Ltac funelim_sig_tac c Heq tac :=
+Ltac funelim_sig_tac c Heq simp_IHs tac :=
   let elimc := get_elim c in
   let packcall := fresh "packcall" in
   let packcall_fn := fresh "packcall_fn" in
@@ -123,13 +123,13 @@ Ltac funelim_sig_tac c Heq tac :=
   cbv beta; simplify_dep_elim; intros_until_block;
   simplify_dep_elim;
   cbn beta iota delta [Id_rect_r Id_rect pack_sigma pack_sigma_nondep] in *;
-  simplify_IH_hyps_call; intros _ Heqfresh;
-  unblock_goal; simplify_IH_hyps;
+  simp_IHs; intros _ Heqfresh;
+  unblock_goal;
   try (rewrite <- Heqfresh);
   try (rename Heqfresh into Heq || (let Heqf := fresh Heq in rename Heq into Heqf; rename Heqfresh into Heq));
   tac c.
 
-Ltac funelim_constr_as c h := funelim_sig_tac c h ltac:(fun _ => idtac).
+Ltac funelim_constr_as c h simp_IHs := funelim_sig_tac c h simp_IHs ltac:(fun _ => idtac).
 
 Ltac get_first_elim c :=
   match c with

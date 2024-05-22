@@ -260,7 +260,10 @@ let destPolyRef sigma c =
   | Construct (cstr, u) -> ConstructRef cstr, u
   | _ -> raise (Invalid_argument "destPolyRef")
 
-(** Compare up-to variables in v, skipping parameters of inductive constructors. *)
+(** Compare up-to variables in v, skipping parameters of inductive constructors. 
+    [t] is closed  
+  *)
+
 let rec compare_upto_variables sigma t v =
   if (isVar sigma v || isRel sigma v) then true
   else
@@ -303,7 +306,7 @@ let specialize_eqs ?with_block id =
         else if (in_block || in_eqs) && Int.equal block_count 0 then acc, in_eqs, ctx, subst, (subst1 mkProp ty)
         else aux (block_count - 1) true in_eqs ctx subst acc (subst1 mkProp ty)
       else if not in_block then
-        aux block_count in_block in_eqs (make_def na (Some b) t :: ctx) subst acc ty
+        aux block_count in_block in_eqs (make_def na (Some b) t :: ctx) subst (lift 1 acc) ty
       else
         aux block_count in_block in_eqs ctx (make_def na (Some b) t :: subst) acc ty
     | Prod (na, t, b) when not in_block ->
@@ -326,7 +329,8 @@ let specialize_eqs ?with_block id =
            else y, x in
          let eqr = constr_of_global_univ !evars (Lazy.force logic_eq_refl, u) in
          let p = mkApp (eqr, [| eqty; c |]) in
-         if (compare_upto_variables !evars c o) &&
+         if ((Option.equal Int.equal with_block (Some 2) && Int.equal block_count 0) || 
+              compare_upto_variables !evars c o) &&
             unif (push_rel_context ctx env) subst evars o c then
            aux block_count in_block true ctx subst (mkApp (acc, [| p |])) (subst1 p b)
          else acc, in_eqs, ctx, subst, ty
@@ -335,8 +339,7 @@ let specialize_eqs ?with_block id =
            (* aux in_block false ctx (make_def na None t :: subst) (mkApp (lift 1 acc, [| mkRel 1 |])) b *)
            acc, in_eqs, ctx, subst, ty
          else
-           let e = evd_comb1 (Evarutil.new_evar (push_rel_context ctx env))
-               evars (it_mkLambda_or_subst env t subst) in
+           let e = evd_comb1 (Evarutil.new_evar env') evars t in
            aux block_count in_block false ctx (make_def na (Some e) t :: subst) (mkApp (lift 1 acc, [| mkRel 1 |])) b)
     | t -> acc, in_eqs, ctx, subst, ty
   in

@@ -249,7 +249,7 @@ Lemma app'_funind : forall {A} (l l' l'' : list A), (l +++ l') +++ l'' = app' l 
 Proof.
   intros.
   funelim (l +++ l'); simp app'; trivial.
-  rewrite X. reflexivity.
+  rewrite X; auto.
 Qed.
 
 #[local] Hint Rewrite @app'_nil @app'_assoc : app'.

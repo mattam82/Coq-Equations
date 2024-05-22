@@ -91,26 +91,32 @@ Ltac depelim x := fail "Equations.Init.depelim has not been bound yet".
 (** Forward reference for Equations' [depind] tactic, which will be defined in [DepElim]. *)
 Ltac depind x := fail "Equations.Init.depind has not been bound yet".
 
+Ltac simp_IHs_tac := fail "Equations.Init.simp_IHs_tac has not been bound yet".
+
 (** Forward reference for Equations' [funelim] tactic, which will be defined in [FunctionalInduction]. *)
-Ltac funelim_constr_as x h := fail "Equations.Init.funelim_constr_as has not been bound yet".
+Ltac funelim_constr_as x h simp_IHs := fail "Equations.Init.funelim_constr_as has not been bound yet".
 
 (* We allow patterns, using the following trick. *)
-Tactic Notation "funelim" uconstr(p) :=
+
+Tactic Notation "funelim_simp_IHs" uconstr(p) ident(H) tactic(simp_IHs) :=
   let call := fresh "call" in
   set (call:=p);
   lazymatch goal with
     [ call := ?fp |- _ ] =>
-    subst call;
-    let Heq := fresh "Heqcall" in funelim_constr_as fp Heq
+    subst call; funelim_constr_as fp H simp_IHs
   end.
 
 Tactic Notation "funelim" uconstr(p) ident(H) :=
-  let call := fresh "call" in
-  set (call:=p);
-  lazymatch goal with
-    [ call := ?fp |- _ ] =>
-    subst call; funelim_constr_as fp H
-  end.
+  funelim_simp_IHs p H simp_IHs_tac.
+
+Tactic Notation "funelim" uconstr(p) :=
+  let Heq := fresh "Heqcall" in funelim p Heq.
+
+Tactic Notation "funelim_nosimp" uconstr(p) ident(H) :=
+  funelim_simp_IHs p H ltac:(idtac).
+
+Tactic Notation "funelim_nosimp" uconstr(p) :=
+  let Heq := fresh "Heqcall" in funelim_nosimp p Heq.
 
 (** Forward reference for [apply_funelim]. A simpler minded variant that
     does no generalization by equalities. Use it if you want to do the
