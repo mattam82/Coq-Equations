@@ -25,7 +25,8 @@ Transparent gcd.
 Eval compute in gcd 18 84.
 
 Require Import ExtrOcamlBasic.
-(* Extraction gcd. *)
+Extraction Inline pr1 pr2.
+Extraction gcd.
 (* Extraction gcd_unfold. *)
 
 Lemma gcd_same x : gcd x x = x.
@@ -47,14 +48,13 @@ Proof.
   rewrite Nat.Div0.mod_same; auto.
 Qed.
 
+
 Lemma gcd_spec1 a b: 0 <> b -> gcd a b = gcd (Nat.modulo a b) b.
 Proof.
-  funelim (gcd a b); intros. rewrite Nat.Div0.mod_0_l; auto. simp gcd.
-  simpl in H.
-  rewrite (Nat.mod_small (S n) (S n0)); auto.
-  set(x := S n) in *. set (y := S n0) in *.
-  rewrite gcd_equation_3. rewrite Heq. simpl. reflexivity.
-  rewrite refl. rewrite Nat.Div0.mod_same; auto.
-  rewrite H; auto.
-  rewrite mod_minus; auto.
+  funelim (gcd a b); intros.
+  - now rewrite Nat.Div0.mod_0_l.
+  - reflexivity.
+  - now rewrite (Nat.mod_small (S n) (S n0)).
+  - now rewrite refl, Nat.Div0.mod_same.
+  - now rewrite H, mod_minus.
 Qed.

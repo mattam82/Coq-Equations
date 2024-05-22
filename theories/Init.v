@@ -76,27 +76,6 @@ Arguments sigmaI {A} B pr1 pr2.
 
 Extraction Inline pr1 pr2.
 
-Set Warnings "-notation-overridden".
-
-Module Sigma_Notations.
-
-Notation "'Σ' x .. y , P" := (sigma (fun x => .. (sigma (fun y => P)) ..))
-  (at level 200, x binder, y binder, right associativity,
-  format "'[  ' '[  ' Σ  x  ..  y ']' ,  '/' P ']'") : type_scope.
-
-Notation "( x , .. , y , z )" :=
-  (@sigmaI _ _ x .. (@sigmaI _ _ y z) ..)
-      (right associativity, at level 0,
-       format "( x ,  .. ,  y ,  z )") : equations_scope.
-
-Notation " x .1 " := (pr1 x) : equations_scope.
-Notation " x .2 " := (pr2 x) : equations_scope.
-
-End Sigma_Notations.
-
-Import Sigma_Notations.
-
-
 (** Forward reference for the no-confusion tactic. *)
 Ltac noconf H := fail "Equations.Init.noconf has not been bound yet".
 
@@ -112,17 +91,32 @@ Ltac depelim x := fail "Equations.Init.depelim has not been bound yet".
 (** Forward reference for Equations' [depind] tactic, which will be defined in [DepElim]. *)
 Ltac depind x := fail "Equations.Init.depind has not been bound yet".
 
+Ltac simp_IHs_tac := fail "Equations.Init.simp_IHs_tac has not been bound yet".
+
 (** Forward reference for Equations' [funelim] tactic, which will be defined in [FunctionalInduction]. *)
-Ltac funelim_constr x := fail "Equations.Init.funelim_constr has not been bound yet".
+Ltac funelim_constr_as x h simp_IHs := fail "Equations.Init.funelim_constr_as has not been bound yet".
 
 (* We allow patterns, using the following trick. *)
-Tactic Notation "funelim" uconstr(p) :=
+
+Tactic Notation "funelim_simp_IHs" uconstr(p) ident(H) tactic(simp_IHs) :=
   let call := fresh "call" in
   set (call:=p);
   lazymatch goal with
     [ call := ?fp |- _ ] =>
-    subst call; funelim_constr fp
+    subst call; funelim_constr_as fp H simp_IHs
   end.
+
+Tactic Notation "funelim" uconstr(p) ident(H) :=
+  funelim_simp_IHs p H simp_IHs_tac.
+
+Tactic Notation "funelim" uconstr(p) :=
+  let Heq := fresh "Heqcall" in funelim p Heq.
+
+Tactic Notation "funelim_nosimp" uconstr(p) ident(H) :=
+  funelim_simp_IHs p H ltac:(idtac).
+
+Tactic Notation "funelim_nosimp" uconstr(p) :=
+  let Heq := fresh "Heqcall" in funelim_nosimp p Heq.
 
 (** Forward reference for [apply_funelim]. A simpler minded variant that
     does no generalization by equalities. Use it if you want to do the

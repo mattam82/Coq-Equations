@@ -63,3 +63,5 @@ doc/equations_intro.tex
 doc/equations_intro.html
 doc/coqdoc.css
 doc/index.html
+META
+.vscode/Coq-Equations.code-workspace

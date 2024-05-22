@@ -517,10 +517,10 @@ END
 
 TACTIC EXTEND eqns_specialize_eqs
 | [ "eqns_specialize_eqs" ident(i) ] -> {
-    Depelim.specialize_eqs ~with_block:false i
+    Depelim.specialize_eqs i
   }
-| [ "eqns_specialize_eqs_block" ident(i) ] -> {
-    Depelim.specialize_eqs ~with_block:true i
+| [ "eqns_specialize_eqs_block" ident(i) int_opt(n) ] -> {
+    Depelim.specialize_eqs ~with_block:(match n with None -> 1 | Some n -> n) i
   }
 END
 

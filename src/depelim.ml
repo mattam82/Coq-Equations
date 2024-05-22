@@ -260,7 +260,10 @@ let destPolyRef sigma c =
   | Construct (cstr, u) -> ConstructRef cstr, u
   | _ -> raise (Invalid_argument "destPolyRef")
 
-(** Compare up-to variables in v, skipping parameters of inductive constructors. *)
+(** Compare up-to variables in v, skipping parameters of inductive constructors. 
+    [t] is closed  
+  *)
+
 let rec compare_upto_variables sigma t v =
   if (isVar sigma v || isRel sigma v) then true
   else
@@ -283,7 +286,7 @@ let whd_head env sigma t =
     mkApp (eq, Array.map (Tacred.whd_simpl env sigma) args)
   | _ -> t
 
-let specialize_eqs ~with_block id =
+let specialize_eqs ?with_block id =
   Proofview.Goal.enter begin fun gl ->
   let open Tacticals in
   let open Tacmach in
@@ -295,19 +298,19 @@ let specialize_eqs ~with_block id =
     | exception Evarconv.UnableToUnify _ -> false
     | evm -> evars := evm; true
   in
-  let rec aux in_block in_eqs ctx subst acc ty =
+  let rec aux block_count in_block in_eqs ctx subst acc ty =
     match kind !evars ty with
     | LetIn (na, b, t, ty) ->
       if is_global env !evars (Lazy.force coq_block) b then
-        if not with_block then aux true in_eqs ctx subst acc (subst1 mkProp ty)
-        else if in_block then acc, in_eqs, ctx, subst, (subst1 mkProp ty)
-        else aux true in_eqs ctx subst acc (subst1 mkProp ty)
+        if with_block = None then aux block_count in_block in_eqs ctx subst acc (subst1 mkProp ty)
+        else if (in_block || in_eqs) && Int.equal block_count 0 then acc, in_eqs, ctx, subst, (subst1 mkProp ty)
+        else aux (block_count - 1) true in_eqs ctx subst acc (subst1 mkProp ty)
       else if not in_block then
-        aux in_block in_eqs (make_def na (Some b) t :: ctx) subst acc ty
+        aux block_count in_block in_eqs (make_def na (Some b) t :: ctx) subst (lift 1 acc) ty
       else
-        aux in_block in_eqs ctx (make_def na (Some b) t :: subst) acc ty
+        aux block_count in_block in_eqs ctx (make_def na (Some b) t :: subst) acc ty
     | Prod (na, t, b) when not in_block ->
-      aux false in_eqs (make_def na None t :: ctx) subst (mkApp (lift 1 acc, [| mkRel 1 |])) b
+      aux block_count false in_eqs (make_def na None t :: ctx) subst (mkApp (lift 1 acc, [| mkRel 1 |])) b
     | Prod (na, t, b) ->
       let env' = push_rel_context ctx env in
       let env' = push_rel_context subst env' in
@@ -326,21 +329,22 @@ let specialize_eqs ~with_block id =
            else y, x in
          let eqr = constr_of_global_univ !evars (Lazy.force logic_eq_refl, u) in
          let p = mkApp (eqr, [| eqty; c |]) in
-         if (compare_upto_variables !evars c o) &&
+         if ((Option.equal Int.equal with_block (Some 2) && Int.equal block_count 0) || 
+              compare_upto_variables !evars c o) &&
             unif (push_rel_context ctx env) subst evars o c then
-           aux in_block true ctx subst (mkApp (acc, [| p |])) (subst1 p b)
+           aux block_count in_block true ctx subst (mkApp (acc, [| p |])) (subst1 p b)
          else acc, in_eqs, ctx, subst, ty
        | _ ->
          if in_eqs then
            (* aux in_block false ctx (make_def na None t :: subst) (mkApp (lift 1 acc, [| mkRel 1 |])) b *)
            acc, in_eqs, ctx, subst, ty
          else
-           let e = evd_comb1 (Evarutil.new_evar (push_rel_context ctx env))
-               evars (it_mkLambda_or_subst env t subst) in
-           aux in_block false ctx (make_def na (Some e) t :: subst) (mkApp (lift 1 acc, [| mkRel 1 |])) b)
+           let e = evd_comb1 (Evarutil.new_evar env') evars t in
+           aux block_count in_block false ctx (make_def na (Some e) t :: subst) (mkApp (lift 1 acc, [| mkRel 1 |])) b)
     | t -> acc, in_eqs, ctx, subst, ty
   in
-  let acc, worked, ctx, subst, ty = aux (if with_block then false else true) false [] [] (mkVar id) ty in
+  let acc, worked, ctx, subst, ty = aux (match with_block with None -> 0 | Some n -> n) 
+    (match with_block with None -> true | Some _ -> false) false [] [] (mkVar id) ty in
   let subst' = nf_rel_context_evar !evars subst in
   let subst'' = List.map (fun decl ->
     let (n,b,t) = to_tuple decl in
@@ -365,11 +369,11 @@ exception Specialize
 
 open Proofview.Notations
 
-let specialize_eqs ~with_block id =
+let specialize_eqs ?with_block id =
   let open Tacticals in
   Proofview.Goal.enter begin fun gl ->
   Proofview.tclORELSE (clear [id] <*> Proofview.tclZERO Specialize) begin function
-  | (Specialize, _) -> specialize_eqs ~with_block id
+  | (Specialize, _) -> specialize_eqs ?with_block id
   | e -> tclFAIL (str "Specialization not allowed on dependent hypotheses")
   end
   end
