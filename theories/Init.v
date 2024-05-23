@@ -152,6 +152,9 @@ Tactic Notation "forward" constr(H) "by" tactic(tac) := forward_gen H tac.
   solve recursive calls obligations or during [simp] calls. *)
 
 Create HintDb simp discriminated.
+Hint Variables Opaque : simp.
+Hint Constants Opaque : simp.
+Hint Projections Opaque : simp.
 
 (** Forward reference to an internal tactic to unfold well-founded fixpoints *)
 Ltac unfold_recursor := fail "Equations.Init.unfold_recursor has not been bound yet".

@@ -842,7 +842,7 @@ Section SCT.
     graphs_relation (compose_family g g') x y.
   Proof.
     intros gxz gzy.
-    induction g in g', x, y, z, gxz, gzy |- *; simp compose_family.
+    induction g in g', x, y, z, gxz, gzy |- *; simp compose_family; auto.
     unfold graphs_relation in gxz.
     simpl in gxz. destruct gxz.
     unfold graphs_relation.
