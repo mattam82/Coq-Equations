@@ -1205,7 +1205,7 @@ let solve_equations_obligations_program ~pm flags recids loc i sigma hook =
   let info = Declare.Info.make ~poly ~scope ~kind () in
   let pm, _ =
     Declare.Obls.add_definition ~pm ~cinfo ~info 
-      ~obl_hook ~term ~uctx:(Evd.evar_universe_context sigma)
+      ~obl_hook ~body:term ~uctx:(Evd.evar_universe_context sigma)
       ~reduce ~opaque:false oblsinfo in
   pm
 

@@ -157,7 +157,7 @@ let derive_eq_dec ~pm env sigma ~poly ind =
      let cinfo = Declare.CInfo.make ~name:id ~typ:(to_constr !evdref stmt) () in
      let info = Declare.Info.make ~poly ~hook () in
      let pm = Declare.Obls.add_definition ~pm ~cinfo ~info
-              ~uctx:(Evd.evar_universe_context !evdref)
+              ~uctx:(Evd.evar_universe_context !evdref) ~opaque:false
               ~tactic:(eqdec_tac ()) [||]
      in fst pm)
     pm indsl
