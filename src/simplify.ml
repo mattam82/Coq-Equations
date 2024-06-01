@@ -352,7 +352,7 @@ let build_term (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) (ngl : g
   in
   ans, c
 
-let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal)
+let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, _, u) : goal)
   (f : Names.GlobRef.t) ?(inst:EInstance.t option)
   (args : EConstr.constr option list) =
   let tf, ty =
@@ -383,19 +383,23 @@ let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty
         let ty = Inductiveops.type_of_constructor env (Util.on_snd EInstance.make pcstr) in
         of_constr tf, ty
   in
+  let env = push_rel_context ctx env in
+  let prefix, suffix = CList.map_until (fun o -> o) args in
+  let hd = evd_comb0 (fun sigma -> Typing.checked_applist env sigma tf prefix) evd in
   let rec aux ty args =
     match kind !evd ty, args with
-    | Constr.Prod (_, t, c), (Some hd) :: tl -> aux (Vars.subst1 hd c) tl
-    | Constr.Prod (_, t, _), None :: _ -> t
+    | Constr.Prod (_, t, c), hd :: tl -> aux (Vars.subst1 hd c) tl
+    | Constr.Prod (_, t, _), [] -> t
     | Constr.LetIn (_, b, _, c), args -> aux (Vars.subst1 b c) args
     | Constr.Cast (c, _, _), args -> aux c args
     | _, _ -> failwith "Unexpected mismatch."
   in
-  let ty' = aux ty args in
+  let ty' = aux ty prefix in
   let ty' = Reductionops.whd_beta env !evd ty' in
+(*   let u = Retyping.get_sort_of env !evd ty' in *)
   let cont = fun c ->
-    let targs = Array.of_list (CList.map (Option.default c) args) in
-    EConstr.mkApp (tf, targs)
+    let suffix = CList.map (Option.default c) suffix in
+    evd_comb0 (fun sigma -> Typing.checked_applist env sigma hd suffix) evd
   in cont, ty', u
 
 let build_app_infer (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal)
@@ -410,13 +414,7 @@ let build_app (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal)
   (f : Names.GlobRef.t) ?(inst:EInstance.t option)
   (args : EConstr.constr option list) : open_term =
   let cont, ty', u' = build_app_infer_concl env evd (ctx, ty, u) f ?inst args in
-  let ans, c = build_term_core env evd (ctx, ty', u') cont in
-  let hd, args = destApp !evd c in
-  let env = push_rel_context ctx env in
-  let hd = Retyping.get_judgment_of env !evd hd in
-  let args = Array.map (fun c -> Retyping.get_judgment_of env !evd c) args in
-  let _ = evd_comb0 (fun sigma -> Typing.judge_of_apply env sigma hd args) evd in
-  ans, c
+  build_term_core env evd (ctx, ty', u') cont
 
 let transparent_state env =
   Conv_oracle.get_transp_state (Environ.oracle env)
