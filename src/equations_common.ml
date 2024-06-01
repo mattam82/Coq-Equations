@@ -801,7 +801,6 @@ let e_conv env evdref t t' =
   match Reductionops.infer_conv env !evdref ~pb:Conversion.CONV t t' with
   | Some sigma -> (evdref := sigma; true)
   | None -> false
-  | exception Conversion.NotConvertible -> false
       
 let deps_of_var sigma id env =
   Environ.fold_named_context
