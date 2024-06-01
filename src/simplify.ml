@@ -221,6 +221,38 @@ type open_term = (goal * EConstr.existential) option * EConstr.constr
 
 exception CannotSimplify of Pp.t
 
+let check_context ~where ?name env evd ctx =
+  let rec check env sigma ctx = match ctx with
+  | [] -> env, sigma
+  | decl :: ctx ->
+    let env, sigma = check env sigma ctx in
+    let open Context.Rel.Declaration in
+    let sigma = match decl with
+    | LocalAssum (na, t) ->
+      let sigma, _ = Typing.sort_of env sigma t in
+      sigma
+    | LocalDef (na, c, t) ->
+      let sigma, _ = Typing.sort_of env sigma t in
+      Typing.check env sigma c t
+    in
+    push_rel decl env, sigma
+  in
+  let _env, sigma =
+    try check env evd ctx
+    with Type_errors.TypeError (env, tyerr) ->
+      anomaly Pp.(str where ++ spc () ++
+        str "Equations build an ill-typed context: " ++ Printer.pr_rel_context env evd (EConstr.Unsafe.to_rel_context ctx) ++
+        Himsg.explain_pretype_error env evd
+          (Pretype_errors.TypingError (Pretype_errors.of_type_error tyerr)))
+    | Pretype_errors.PretypeError (env, evd, tyerr) ->
+        anomaly Pp.(str where ++ spc () ++
+        str "Equations build an ill-typed context: " ++ Printer.pr_rel_context env evd (EConstr.Unsafe.to_rel_context ctx) ++
+        Himsg.explain_pretype_error env evd tyerr)
+  in
+  let check = Evd.check_constraints evd (snd @@ Evd.universe_context_set sigma) in
+  if not check then anomaly Pp.(str where ++ spc () ++ str "Equations missing constraints in " ++
+    str (Option.default "(anonymous)" name))
+
 (* Full type-checking + check that constraints are present *)
 let check_typed ~where ?name env evd c =
   let sigma, _ =
@@ -238,6 +270,12 @@ let check_typed ~where ?name env evd c =
   let check = Evd.check_constraints evd (snd @@ Evd.universe_context_set sigma) in
   if not check then anomaly Pp.(str where ++ spc () ++ str "Equations missing constraints in " ++
     str (Option.default "(anonymous)" name))
+
+let check_goal ~where ?name env sigma (ctx, ty, s) =
+  let () = check_context ~where:(Printf.sprintf "[%s context]" where) ?name env sigma ctx in
+  let env = push_rel_context ctx env in
+  let () = check_typed ~where:(Printf.sprintf "[%s sort]" where) ?name env sigma (mkSort s) in
+  check_typed ~where:(Printf.sprintf "[%s type]" where) ?name env sigma ty
 
 module SimpFun :
 sig
@@ -263,22 +301,13 @@ let make ?name f = (name, f)
 let apply (name, f) =
   if !Equations_common.debug then
     fun env evd gl ->
-      let () =
-        let (ctx, ty, _) = gl in
-        let env = push_rel_context ctx env in
-        check_typed ~where:"[precondition]" ?name env !evd ty
-      in
+      let () = check_goal ~where:"precondition" ?name env !evd gl in
       let ((ngl, c), continue, map) = f env evd gl in
-      let () =
-        let (ctx, _, _) = gl in
-        let env = push_rel_context ctx env in
-        check_typed ~where:"[result]" ?name env !evd c
-      in
+      let () = check_goal ~where:"result" ?name env !evd gl in
       let () = match ngl with
       | None -> ()
-      | Some ((ctx, ty, u), _) ->
-        let env = push_rel_context ctx env in
-        check_typed ~where:"[subgoal]" ?name env !evd ty
+      | Some (gl, _) ->
+        check_goal ~where:"subgoal" ?name env !evd gl
       in
       ((ngl, c), continue, map)
   else
