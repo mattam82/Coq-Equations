@@ -402,12 +402,6 @@ let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, _,
     evd_comb0 (fun sigma -> Typing.checked_applist env sigma hd suffix) evd
   in cont, ty', u
 
-let build_app_infer (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal)
-  (f : Names.GlobRef.t) ?(inst:EInstance.t option)
-  (args : EConstr.constr option list) : open_term =
-  let cont, ty', u' = build_app_infer_concl env evd (ctx, ty, u) f ?inst args in
-  build_term env evd (ctx, ty, u) (ctx, ty', u') cont
-
 (** Same as above but assumes that the arguments are well-typed in [ctx]. This
     only checks that the application is correct. *)
 let build_app (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u) : goal)
@@ -712,7 +706,7 @@ SimpFun.make ~name:"deletion" begin fun (env : Environ.env) (evd : Evd.evar_map 
             (Typeclasses.resolve_one_typeclass env) evd uip_ty
         in
         let args = [Some tA; Some tuip; Some tx; Some tB; None] in
-        build_app_infer env evd (ctx, ty, glu) tsimpl_uip args, true, subst
+        build_app env evd (ctx, ty, glu) tsimpl_uip args, true, subst
     with Not_found ->
       let env = push_rel_context ctx env in
       raise (CannotSimplify (str
@@ -986,7 +980,7 @@ SimpFun.make ~name:"apply_noconf" begin fun (env : Environ.env) (evd : Evd.evar_
     else let sigma, equ, glu = Equations_common.instance_of env !evd ~argu:equ glu in
       evd := sigma; Some equ, glu
   in
-    build_app_infer env evd (ctx, ty, glu') tapply_noconf ?inst args,
+    build_app env evd (ctx, ty, glu') tapply_noconf ?inst args,
     true, Context_map.id_subst ctx
 end
 
@@ -998,7 +992,7 @@ SimpFun.make ~name:"simplify_ind_pack" begin fun (env : Environ.env) (evd : Evd.
   try
     let reduce c =
       let env = push_rel_context ctx env in
-        Tacred.hnf_constr env !evd c
+      Tacred.hnf_constr env !evd c (* FIXME? due to refolding this could be ill-typed *)
     in
     let try_decompose ty =
       let f, args = Equations_common.decompose_appvect !evd ty in
@@ -1028,7 +1022,7 @@ SimpFun.make ~name:"simplify_ind_pack" begin fun (env : Environ.env) (evd : Evd.
         "[opaque_ind_pack_eq_inv] Anomaly: should be applied to a reflexivity proof."));
     let tsimplify_ind_pack_inv = Names.GlobRef.ConstRef (Lazy.force EqRefs.simplify_ind_pack_inv) in
     let args = [Some tA; Some teqdec; Some tB; Some tx; Some tp; Some tG; None] in
-      build_app_infer env evd (ctx, ty, glu) tsimplify_ind_pack_inv args, true,
+      build_app env evd (ctx, ty, glu) tsimplify_ind_pack_inv args, true,
       Context_map.id_subst ctx
   with CannotSimplify _ -> SimpFun.apply identity env evd (ctx, ty, glu)
 end
@@ -1103,7 +1097,7 @@ SimpFun.make ~name:"elim_true" begin fun (env : Environ.env) (evd : Evd.evar_map
         evd := sigma; equ, glu
     in
     let args = [Some tB; None] in
-      build_app_infer env evd (ctx, ty, glu') tone_ind ~inst args, true, subst
+      build_app env evd (ctx, ty, glu') tone_ind ~inst args, true, subst
 end
 
 let elim_true = with_retry elim_true
