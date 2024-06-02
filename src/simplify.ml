@@ -336,18 +336,18 @@ let build_term_core (env : Environ.env) (evd : Evd.evar_map ref)
   Some (ngl, ev), c
 
 (* Build a term with an evar out of [constr -> constr] function. *)
-let build_term (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) (ngl : goal) f : open_term =
+let build_term ~where (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) (ngl : goal) f : open_term =
   let ans, c = build_term_core env evd ngl f in
   let (ctx, _, _) = gl in
   let env = push_rel_context ctx env in
   let _ =
     try Equations_common.evd_comb1 (Typing.type_of env) evd c 
     with Type_errors.TypeError (env, tyerr) ->
-      anomaly Pp.(str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env !evd c ++ 
+      anomaly Pp.(str where ++ spc () ++ str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env !evd c ++ fnl () ++
         Himsg.explain_pretype_error env !evd
           (Pretype_errors.TypingError (Pretype_errors.of_type_error tyerr)))
     | Pretype_errors.PretypeError (env, evd, tyerr) ->
-        anomaly Pp.(str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env evd c ++ 
+        anomaly Pp.(str where ++ spc () ++ str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env evd c ++ fnl () ++ 
             Himsg.explain_pretype_error env evd tyerr)
   in
   ans, c
@@ -595,7 +595,7 @@ let hnf_goal ~(reduce_equality:bool) =
 let hnf ~reduce_equality : simplification_fun =
 SimpFun.make ~name:"hnf" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u as gl) : goal) ->
   let gl' = hnf_goal ~reduce_equality env evd gl in
-  build_term env evd gl gl' (fun c -> c), true, Context_map.id_subst ctx
+  build_term ~where:"[hnf]" env evd gl gl' (fun c -> c), true, Context_map.id_subst ctx
 end
 
 let with_retry (f : simplification_fun) : simplification_fun =
@@ -690,7 +690,7 @@ SimpFun.make ~name:"deletion" begin fun (env : Environ.env) (evd : Evd.evar_map 
   let subst = Context_map.id_subst ctx in
   if Vars.noccurn !evd 1 ty2 then
     (* The goal does not depend on the equality, we can just eliminate it. *)
-    build_term env evd (ctx, ty, glu) (ctx, Termops.pop ty2, glu)
+    build_term ~where:"[deletion]" env evd (ctx, ty, glu) (ctx, Termops.pop ty2, glu)
       (fun c -> EConstr.mkLambda (name, ty1, Vars.lift 1 c)), true,
     subst
   else
@@ -818,7 +818,7 @@ SimpFun.make ~name:"solution" begin fun (env : Environ.env) (evd : Evd.evar_map 
       let c = EConstr.mkLambda (name, ty1', c) in
       (* And now we recover a term in the context [ctx]. *)
         Context_map.mapping_constr !evd rev_subst c
-  in build_term env evd (ctx, ty, glu) (ctx'', ty'', glu') f, true, subst
+  in build_term ~where:"[solution]" env evd (ctx, ty, glu) (ctx'', ty'', glu') f, true, subst
 end
 
 let whd_all env sigma t = 
@@ -865,7 +865,7 @@ SimpFun.make ~name:"pre_solution" begin fun (env : Environ.env) (evd : Evd.evar_
         else mkApp (eqf, [| tA; term; trel |])
       in
       let ty' = mkProd (name, ty1, ty2) in
-      build_term env evd (ctx, ty, glu) (ctx, ty', glu) f, true, Context_map.id_subst ctx
+      build_term ~where:"[pre_solution]" env evd (ctx, ty, glu) (ctx, ty', glu) f, true, Context_map.id_subst ctx
 end
 
 let pre_solution ~(dir:direction) = with_retry (pre_solution ~dir)
@@ -1084,7 +1084,7 @@ SimpFun.make ~name:"elim_true" begin fun (env : Environ.env) (evd : Evd.evar_map
   (* Check if the goal is dependent or not. *)
   if Vars.noccurn !evd 1 ty2 then
     (* Not dependent, we can just eliminate True. *)
-    build_term env evd (ctx, ty, glu) (ctx, Termops.pop ty2, glu)
+    build_term ~where:"[elim_true]" env evd (ctx, ty, glu) (ctx, Termops.pop ty2, glu)
       (fun c -> EConstr.mkLambda (name, ty1, Vars.lift 1 c)), true, subst
   else
     (* Apply the dependent induction principle for True. *)
