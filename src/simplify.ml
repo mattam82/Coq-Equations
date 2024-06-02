@@ -352,6 +352,11 @@ let build_term ~where (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) (
   in
   ans, c
 
+let checked_applist env evd hd args =
+  evd_comb0 (fun sigma -> Typing.checked_applist env sigma hd args) evd
+let checked_appvect env evd hd args =
+  evd_comb0 (fun sigma -> Typing.checked_appvect env sigma hd args) evd
+
 let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, _, u) : goal)
   (f : Names.GlobRef.t) ?(inst:EInstance.t option)
   (args : EConstr.constr option list) =
@@ -385,7 +390,7 @@ let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, _,
   in
   let env = push_rel_context ctx env in
   let prefix, suffix = CList.map_until (fun o -> o) args in
-  let hd = evd_comb0 (fun sigma -> Typing.checked_applist env sigma tf prefix) evd in
+  let hd = checked_applist env evd tf prefix in
   let rec aux ty args =
     match kind !evd ty, args with
     | Constr.Prod (_, t, c), hd :: tl -> aux (Vars.subst1 hd c) tl
@@ -399,7 +404,7 @@ let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, _,
 (*   let u = Retyping.get_sort_of env !evd ty' in *)
   let cont = fun c ->
     let suffix = CList.map (Option.default c) suffix in
-    evd_comb0 (fun sigma -> Typing.checked_applist env sigma hd suffix) evd
+    checked_applist env evd hd suffix
   in cont, ty', u
 
 (** Same as above but assumes that the arguments are well-typed in [ctx]. This
@@ -794,7 +799,7 @@ SimpFun.make ~name:"solution" begin fun (env : Environ.env) (evd : Evd.evar_map 
       Vars.substnl [Vars.lift (-rel') term'] (pred rel') body
     else
       let teq_refl = EConstr.mkApp (Builder.eq_refl equ, [| tA'; term' |]) in
-        Vars.substnl [Vars.lift (-rel') teq_refl; Vars.lift (-rel') term'] (pred rel') body
+      Vars.substnl [Vars.lift (-rel') teq_refl; Vars.lift (-rel') term'] (pred rel') body
   in
   let lsubst = Context_map.single_subst env !evd rel' (Context_map.pat_of_constr env !evd term') ctx' in
   let subst = Context_map.compose_subst env ~sigma:!evd lsubst subst in
@@ -804,22 +809,24 @@ SimpFun.make ~name:"solution" begin fun (env : Environ.env) (evd : Evd.evar_map 
       (* [c] is a term in the context [before']. *)
       let c = Vars.lift rel' c in
       (* [c] is a term in the context [ctx']. *)
+      let env = push_rel_context ctx' env in
       let c =
         if nondep then
-          EConstr.mkApp (tsolution, [| tA'; tB'; term'; c; trel' |])
+          checked_appvect env evd tsolution [| tA'; tB'; term'; c; trel' |]
         else
-          EConstr.mkApp (tsolution, [| tA'; term'; tB'; c; trel' |])
+          checked_appvect env evd tsolution [| tA'; term'; tB'; c; trel' |]
       in
       (* We make some room for the application of the equality... *)
+      let env = push_rel (LocalAssum (name, ty1')) env in
       let c = Vars.lift 1 c in
-      let c = EConstr.mkApp (c, [| EConstr.mkRel 1 |]) in
+      let c = checked_appvect env evd c [| EConstr.mkRel 1 |] in
       (* [targs'] are arguments in the context [eq_decl :: ctx']. *)
-      let c = EConstr.mkApp (c, targs') in
+      let c = checked_appvect env evd c targs' in
       (* [ty1'] is the type of the equality in [ctx']. *)
       let c = EConstr.mkLambda (name, ty1', c) in
       (* And now we recover a term in the context [ctx]. *)
-        Context_map.mapping_constr !evd rev_subst c
-  in build_term ~where:"[solution]" env evd (ctx, ty, glu) (ctx'', ty'', glu') f, true, subst
+      Context_map.mapping_constr !evd rev_subst c
+  in build_term_core env evd (ctx'', ty'', glu') f, true, subst
 end
 
 let whd_all env sigma t = 
