@@ -94,16 +94,17 @@ and unify_constrs env evd flex g l l' =
   | [], [] -> id_subst g
   | hd :: tl, hd' :: tl' ->
     (try
-       let (d,s,_ as hdunif) = unify env evd flex g hd hd' in
+       let hdunif = unify env evd flex g hd hd' in
+       let { src_ctx = d; map_inst = s } = hdunif in
        let specrest = List.map (specialize_constr evd s) in
        let tl = specrest tl and tl' = specrest tl' in
        let tlunif = unify_constrs env evd flex d tl tl' in
        compose_subst env ~sigma:evd tlunif hdunif
      with Stuck ->
        let tlunif = unify_constrs env evd flex g tl tl' in
-       let spec = specialize_constr evd (pi2 tlunif) in
+       let spec = specialize_constr evd (tlunif.map_inst) in
        let hd = spec hd and hd' = spec hd' in
-       let (d, s, _) as hdunif = unify env evd flex (pi1 tlunif) hd hd' in
+       let hdunif = unify env evd flex (tlunif.src_ctx) hd hd' in
        compose_subst env ~sigma:evd hdunif tlunif)
   | _, _ -> raise Conflict
 
@@ -170,9 +171,9 @@ and match_patterns env sigma pl l =
 
 open Constrintern
 
-let matches env sigma (p : user_pats) ((phi,p',g') : context_map) = 
+let matches env sigma (p : user_pats) subst = 
   try
-    let p' = filter (fun x -> not (hidden x)) (rev p') in
+    let p' = filter (fun x -> not (hidden x)) (rev subst.map_inst) in
     UnifSuccess (match_patterns env sigma p p')
   with Conflict -> UnifFailure | Stuck -> UnifStuck
 
@@ -205,8 +206,8 @@ and match_user_patterns env pl l =
      | _, _ -> raise Stuck)
   | _ -> raise Conflict
 
-let matches_user env ((phi,p',g') : context_map) (p : user_pats) = 
-  try UnifSuccess (match_user_patterns env (filter (fun x -> not (hidden x)) (rev p')) p)
+let matches_user env subst (p : user_pats) = 
+  try UnifSuccess (match_user_patterns env (filter (fun x -> not (hidden x)) (rev subst.map_inst)) p)
   with Conflict -> UnifFailure | Stuck -> UnifStuck
 
 let refine_arg idx ctx =
@@ -512,7 +513,7 @@ let unify_type env evars before id ty after =
     equations_debug Pp.(fun () -> str"Unification raised Not_found");
     None
 
-let blockers env curpats ((_, patcs, _) : context_map) =
+let blockers env curpats (subst : context_map) =
   let rec pattern_blockers p c =
     match DAst.get p, c with
     | PUVar (i, _), t -> []
@@ -531,7 +532,7 @@ let blockers env curpats ((_, patcs, _) : context_map) =
       (pattern_blockers hd hd') @ (patterns_blockers tl tl')
     | _ -> []
 
-  in patterns_blockers curpats (rev patcs)
+  in patterns_blockers curpats (rev subst.map_inst)
 
 let subst_matches_constr sigma k s c =
   let rec aux depth c =
@@ -560,7 +561,8 @@ let split_var (env,evars) var delta =
   let branch = function
     | UnifFailure -> None
     | UnifStuck -> assert false
-    | UnifSuccess ((ctx',s,ctx), ctxlen, cstr, cstrpat) ->
+    | UnifSuccess (map, ctxlen, cstr, cstrpat) ->
+      let { src_ctx = ctx'; map_inst = s; tgt_ctx = ctx } = map in
       (* ctx' |- s : before ; ctxc *)
       (* ctx' |- cpat : ty *)
       if !debug then Feedback.msg_debug Pp.(str"cpat: " ++ pr_pat env !evars cstrpat);
@@ -569,7 +571,8 @@ let split_var (env,evars) var delta =
       (* ctx' |- spat : before ; id *)
       let spat =
         let ctxcsubst, beforesubst = List.chop ctxlen s in
-        check_ctx_map env !evars (ctx', cpat :: beforesubst, decl :: before)
+        let map = { src_ctx = ctx'; map_inst = cpat :: beforesubst; tgt_ctx = decl :: before } in
+        check_ctx_map env !evars map
       in
       (* ctx' ; after |- safter : before ; id ; after = delta *)
       Some (lift_subst env !evars spat after)
@@ -666,7 +669,7 @@ let split_at_eos env sigma ctx =
   List.split_when (fun decl ->
       is_lglobal env sigma coq_end_of_section (get_named_type decl)) ctx
 
-let pr_problem p env sigma (delta, patcs, _) =
+let pr_problem p env sigma { src_ctx = delta; map_inst = patcs }=
   let env' = push_rel_context delta env in
   let ctx = pr_context env sigma delta in
   Id.print p.program_id ++ str" " ++ pr_pats env' sigma patcs ++
@@ -838,10 +841,10 @@ let pats_of_sign sign =
   List.rev_map (fun decl ->
       DAst.make (PUVar (Name.get_id (Context.Rel.Declaration.get_name decl), Implicit))) sign
 
-let abstract_term_in_context env evars idx t (g, p, d) =
-  let before, after = CList.chop (pred idx) g in
+let abstract_term_in_context env evars idx t map =
+  let before, after = CList.chop (pred idx) map.src_ctx in
   let before' = subst_term_in_context evars (lift (- pred idx) t) before in
-  (before' @ after, p, d)
+  { src_ctx = before' @ after; map_inst = map.map_inst; tgt_ctx = map.tgt_ctx }
 
 let wf_fix_constr env evars sign arity sort carrier cterm crel =
   let sigma, tele, telety = Sigma_types.telescope_of_context env !evars sign in
@@ -999,7 +1002,7 @@ let compute_rec_data env evars data lets subst p =
     let rec_sign = p.program_sign @ lets in
     let lhs = decl :: rec_sign in
     let pats = PHide 1 :: lift_pats 1 (id_pats rec_sign) in
-    let rec_prob = (lhs, pats, lhs) in
+    let rec_prob = { src_ctx = lhs; map_inst = pats; tgt_ctx = lhs } in
     let rec_node =
       { wf_rec_term = fix;
         wf_rec_functional = None;
@@ -1022,7 +1025,8 @@ let compute_rec_data env evars data lets subst p =
 
 exception UnfaithfulSplit of (Loc.t option * Pp.t)
 
-let rename_domain env sigma bindings (ctx, p, ctx') = 
+let rename_domain env sigma bindings map = 
+  let { src_ctx = ctx; map_inst = p; tgt_ctx = ctx' } = map in
   let fn rel decl = 
     match Int.Map.find rel bindings with
     | exception Not_found -> decl
@@ -1051,7 +1055,8 @@ let loc_before loc loc' =
     end_ < end' || (end_ = end' && start <= start')
 
 let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int)) list) path
-    (ctx,pats,ctx' as prob) extpats lets ty =
+    prob extpats lets ty =
+  let { src_ctx = ctx; map_inst = pats; tgt_ctx = ctx' } = prob in
   if !Equations_common.debug then
     Feedback.msg_debug Pp.(str"Launching covering on "++ pr_preclauses env !evars (List.map fst clauses) ++
                            str " with problem " ++ pr_problem p env !evars prob ++
@@ -1076,7 +1081,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
                 else Id.Map.add x (loc, gen, pat) acc
               else if data.flags.allow_aliases then acc
               else 
-                let env = push_rel_context (pi1 prob) env in
+                let env = push_rel_context prob.src_ctx env in
                 let loc, pat, pat' = 
                   if loc_before loc loc' then loc', pat, pat'
                   else loc, pat', pat
@@ -1155,7 +1160,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
                            (str "This pattern cannot be empty, it matches value " ++ fnl () ++
                             pr_pat env !evars c))
           | PRel i ->
-            match prove_empty (env,evars) (pi1 prob) i with
+            match prove_empty (env,evars) prob.src_ctx i with
             | Some (i, ctx, s) ->
               Some (List.rev prev @ ((Pre_clause (loc, lhs, rhs),(idx, cnt+1)) :: clauses'),
                     Compute (prob, [], ty, REmpty (i, s)))
@@ -1185,26 +1190,26 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
        let blocks = blockers env (extpats @ lhs) prob in
        equations_debug (fun () ->
            str "blockers are: " ++
-           prlist_with_sep spc (pr_rel_name (push_rel_context (pi1 prob) env)) blocks);
+           prlist_with_sep spc (pr_rel_name (push_rel_context prob.src_ctx env)) blocks);
        let rec try_split acc vars =
          match vars with
          | [] -> None
          | var :: vars ->
            equations_debug (fun () -> str "trying next blocker " ++
-                                      pr_rel_name (push_rel_context (pi1 prob) env) var);
-           match split_var (env,evars) var (pi1 prob) with
+                                      pr_rel_name (push_rel_context prob.src_ctx env) var);
+           match split_var (env,evars) var prob.src_ctx with
            | Some (Splitted (var, newctx, s)) ->
              equations_debug (fun () ->
                  str "splitting succeded for " ++
-                 pr_rel_name (push_rel_context (pi1 prob) env) var);
-             let prob' = (newctx, pats, ctx') in
+                 pr_rel_name (push_rel_context prob.src_ctx env) var);
+             let prob' = { src_ctx = newctx; map_inst = pats; tgt_ctx = ctx' } in
              let coverrec clauses s =
                covering_aux env evars p data []
                  clauses path
                  (compose_subst env ~sigma:!evars s prob')
                  extpats
-                 (specialize_rel_context !evars (pi2 s) lets)
-                 (specialize_constr !evars (pi2 s) ty)
+                 (specialize_rel_context !evars s.map_inst lets)
+                 (specialize_constr !evars s.map_inst ty)
              in
              (try
                 let rec_call clauses x =
@@ -1232,7 +1237,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
            | Some (CannotSplit _) as x ->
              equations_debug (fun () ->
                  str "splitting failed for " ++
-                 pr_rel_name (push_rel_context (pi1 prob) env) var);
+                 pr_rel_name (push_rel_context prob.src_ctx env) var);
              let acc = match acc with
                | None -> x
                | _ -> acc
@@ -1251,7 +1256,7 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
        | None -> None))
   | [] -> (* Every clause failed for the problem, it's either uninhabited or
              the clauses are not exhaustive *)
-    match find_empty (env,evars) (pi1 prob) with
+    match find_empty (env,evars) prob.src_ctx with
     | Some (i, ctx, s) ->
       Some (List.rev prev @ clauses, (* Split (prob, i, ty, s)) *)
             Compute (prob, [], ty, REmpty (i, s)))
@@ -1260,9 +1265,10 @@ let rec covering_aux env evars p data prev (clauses : (pre_clause * (int * int))
         (str "Non-exhaustive pattern-matching, no clause found for:" ++ fnl () ++
          pr_problem p env !evars prob))
 
-and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
+and interp_clause env evars p data prev clauses' path prob
     extpats lets ty
     ((loc,lhs,rhs), used) (s, uinnacs, innacs) =
+  let { src_ctx = ctx; map_inst = pats; tgt_ctx = ctx' } = prob in
   let env' = push_rel_context_eos ctx env evars in
   let get_var loc i s =
     match assoc i s with
@@ -1333,7 +1339,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
     Some res
 
   | Empty (loc,i) ->
-    (match prove_empty (env, evars) (pi1 prob) (get_var loc i s) with
+    (match prove_empty (env, evars) prob.src_ctx (get_var loc i s) with
      | None -> user_err_loc (loc, str"Cannot show that " ++ Id.print i ++ str"'s type is empty")
      | Some (i, ctx, s) ->
        Some (Compute (prob, [], ty, REmpty (i, s))))
@@ -1352,7 +1358,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
     let newctx, pats', pats'' = instance_of_pats env !evars ctx vars in
     (* revctx is a variable substitution from a reordered context to the
        current context *)
-    let revctx = check_ctx_map env !evars (newctx, pats', ctx) in
+    let revctx = check_ctx_map env !evars { src_ctx = newctx; map_inst = pats'; tgt_ctx = ctx } in
     let idref = Namegen.next_ident_away (Id.of_string "refine") (Id.Set.of_list (ids_of_rel_context newctx)) in
     let refterm (* in newctx *) = mapping_constr !evars revctx cconstr in
     let refty = mapping_constr !evars revctx cty in
@@ -1384,40 +1390,42 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
     let refterm (* in extnewctx *) = lift 1 refterm in
     equations_debug Pp.(fun () -> str" Strenghtening variable decl: " ++ pr_context_map env !evars tytop);
     equations_debug Pp.(fun () -> str" Strenghtening variable decl inv: " ++ pr_context_map env !evars tytopinv);
-    let cmap, strinv = new_strengthen env !evars (pi1 tytop) 1 refterm in
+    let cmap, strinv = new_strengthen env !evars tytop.src_ctx 1 refterm in
     let cmap = compose_subst env ~sigma:!evars cmap tytop in
     let strinv = compose_subst env ~sigma:!evars tytopinv strinv in
-    let strinv_map = List.map_i (fun i -> function (PRel j) -> i, j | _ -> assert false) 1 (pi2 strinv) in
+    let strinv_map = List.map_i (fun i -> function (PRel j) -> i, j | _ -> assert false) 1 strinv.map_inst in
     equations_debug Pp.(fun () -> str" Strenghtening: " ++ pr_context_map env !evars cmap);
     equations_debug Pp.(fun () -> str" Strenghtening inverse: " ++ pr_context_map env !evars strinv);
-    let idx_of_refined = destPRel (CList.hd (pi2 cmap)) in
+    let idx_of_refined = destPRel (CList.hd cmap.map_inst) in
     equations_debug Pp.(fun () -> str" idx_of_refined: " ++ int idx_of_refined);
     let cmap =
       abstract_term_in_context env !evars idx_of_refined (mapping_constr !evars cmap refterm) cmap
     in
     equations_debug Pp.(fun () -> str" Strenghtening + abstraction: " ++ pr_context_map env !evars cmap);
     let newprob_to_lhs =
-      let inst_refctx = set_in_ctx idx_of_refined (mapping_constr !evars cmap refterm) (pi1 cmap) in
-      let str_to_new =
-        inst_refctx, (specialize_pats !evars (pi2 cmap) (lift_pats 1 pats')), newctx
-      in
+      let inst_refctx = set_in_ctx idx_of_refined (mapping_constr !evars cmap refterm) cmap.src_ctx in
+      let str_to_new = {
+        src_ctx = inst_refctx;
+        map_inst = specialize_pats !evars cmap.map_inst (lift_pats 1 pats');
+        tgt_ctx = newctx;
+      } in
       equations_debug Pp.(fun () -> str" Strenghtening + abstraction + instantiation: " ++ pr_context_map env !evars str_to_new);
       compose_subst env ~sigma:!evars str_to_new revctx
     in	
     equations_debug Pp.(fun () -> str" Strenghtening + abstraction + instantiation: " ++ pr_context_map env !evars newprob_to_lhs);
 
     let newprob = 
-      let ctx = pi1 cmap in
+      let ctx = cmap.src_ctx in
       let pats = 
         rev_map (fun c -> 
             let idx = destRel !evars c in
             (* find out if idx in ctx should be hidden depending
                on its use in newprob_to_lhs *)
             if List.exists (function PHide idx' -> idx == idx' | _ -> false)
-                (pi2 newprob_to_lhs) then
+                newprob_to_lhs.map_inst then
               PHide idx
             else PRel idx) (rels_of_ctx ctx) in
-      (ctx, pats, ctx)
+      { src_ctx = ctx; map_inst = pats; tgt_ctx = ctx }
     in
     let newty =
       let env' = push_rel_context extnewctx env in
@@ -1490,7 +1498,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
     let strength_app = List.map_filter (fun t ->
         if isRel !evars t then
           let i = destRel !evars t in
-          let decl = List.nth (pi1 prob) (pred i) in
+          let decl = List.nth prob.src_ctx (pred i) in
           if Context.Rel.Declaration.is_local_def decl then None
           else Some t
         else Some t) strength_app
@@ -1501,7 +1509,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
       let _, ctxs, _ = lets_of_ctx env ctx evars s in
       let newlets = (lift_rel_context (succ letslen) ctxs)
                     @ (lift_rel_context 1 lets)
-      in specialize_rel_context !evars (pi2 cmap) newlets
+      in specialize_rel_context !evars cmap.map_inst newlets
     in
     let clauses' = List.mapi (fun i x -> x, (succ i, 0)) cls' in
     match covering_aux env evars p data [] clauses' path' newprob [] lets' newty with
@@ -1516,7 +1524,7 @@ and interp_clause env evars p data prev clauses' path (ctx,pats,ctx' as prob)
       let info =
         { refined_obj = (idref, cconstr, cty);
           refined_rettyp = ty;
-          refined_arg = refine_arg idx_of_refined (pi1 cmap);
+          refined_arg = refine_arg idx_of_refined cmap.src_ctx;
           refined_path = path';
           refined_term = term;
           refined_filter = None;

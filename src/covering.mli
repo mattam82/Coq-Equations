@@ -154,7 +154,7 @@ val split_at_eos : Environ.env -> Evd.evar_map ->
   named_context -> named_context * named_context
 val pr_problem :
   program_info ->
-  env -> Evd.evar_map -> rel_context * pat list * 'c -> Pp.t
+  env -> Evd.evar_map -> context_map -> Pp.t
 val rel_id : (Name.t * 'a * 'b) list -> int -> Id.t
 val push_named_context :
   named_context -> env -> env

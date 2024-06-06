@@ -87,9 +87,7 @@ type rec_subst = (Names.Id.t * (int option * EConstr.constr)) list
 
 val cut_problem :
   Evd.evar_map -> rec_subst ->
-  Equations_common.rel_declaration list ->
-  Equations_common.rel_declaration list * Context_map.pat list *
-  Equations_common.rel_declaration list
+  Equations_common.rel_declaration list -> Context_map.context_map
 
 val map_proto : Evd.evar_map -> int option -> EConstr.t -> EConstr.t -> EConstr.t
 
@@ -97,8 +95,7 @@ val map_proto : Evd.evar_map -> int option -> EConstr.t -> EConstr.t -> EConstr.
 val subst_rec :
   Environ.env -> Evd.evar_map -> Context_map.context_map ->
   rec_subst ->
-  Equations_common.rel_context * Context_map.pat list *
-  Equations_common.rel_context ->
+  Context_map.context_map ->
   Context_map.context_map * Context_map.context_map
 
 val subst_rec_programs :

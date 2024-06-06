@@ -46,7 +46,6 @@ let nested = function Nested _ -> true | _ -> false
 
 let pi1 (x,_,_) = x
 let pi2 (_,y,_) = y
-let pi3 (_,_,z) = z
 
 (** Objects to keep information about equations *)
 
@@ -619,8 +618,10 @@ let arguments sigma c = snd (decompose_app sigma c)
 let unfold_constr sigma c =
   Tactics.unfold_in_concl [(Locus.OnlyOccurrences [1], Evaluable.EvalConstRef (fst (destConst sigma c)))]
 
-let extend_prob_ctx delta (ctx, pats, ctx') =
-  (delta @ ctx, Context_map.lift_pats (List.length delta) pats, ctx')
+let extend_prob_ctx delta map =
+  { src_ctx = delta @ map.src_ctx;
+    map_inst = Context_map.lift_pats (List.length delta) map.map_inst;
+    tgt_ctx = map.tgt_ctx }
 
 let map_proto evd recarg f ty =
   match recarg with
@@ -648,24 +649,27 @@ let cut_problem evd s ctx =
      and s : prec -> Γ |- t : rec
      build
      Γ |- ps, ps' : Δ, Δ'[prec/rec] *)
-  let rec fn s (ctxl, pats, ctxr as ctxm) =
+  let rec fn s ctxm =
     match s with
     | [] -> ctxm
     | (id, (recarg, term)) :: s ->
       try
+        let { src_ctx = ctxl; map_inst = pats; tgt_ctx = ctxr } = ctxm in
         let rel, _, ty = Termops.lookup_rel_id id ctxr in
         let fK = map_proto evd recarg term (lift rel ty) in
         let ctxr' = subst_in_ctx rel fK ctxr in
         let left, right = CList.chop (pred rel) pats in
         let right' = List.tl right in
         let s' = List.map (fun (id, (recarg, t)) -> id, (recarg, substnl [fK] rel t)) s in
-        fn s' (ctxl, List.append left right', ctxr')
+        fn s' { src_ctx = ctxl; map_inst = List.append left right'; tgt_ctx = ctxr' }
       with Not_found -> fn s ctxm
   in fn s (id_subst ctx)
 
-let subst_rec env evd cutprob s (ctx, p, _ as lhs) =
+let subst_rec env evd cutprob s lhs =
+  let ctx = lhs.src_ctx in
   let subst =
-    List.fold_left (fun (ctx, pats, ctx' as lhs') (id, (recarg, b)) ->
+    List.fold_left (fun lhs' (id, (recarg, b)) ->
+    let ctx = lhs'.src_ctx in
     try let rel, _, ty = Termops.lookup_rel_id id ctx in
        (* Feedback.msg_debug Pp.(str"lhs': " ++ pr_context_map env evd lhs');       *)
         let fK = map_proto evd recarg (mapping_constr evd lhs b) (lift rel ty) in
@@ -754,11 +758,13 @@ let _program_fixdecls p fixdecls =
          not (Id.equal id p.program_id)) fixdecls
   | _ -> fixdecls
 
-let push_mapping_context env sigma decl ((g,p,d), cut) =
+let push_mapping_context env sigma decl (map, cut) =
   let open Context.Rel.Declaration in
   let decl' = map_rel_declaration (mapping_constr sigma cut) decl in
   let declassum = LocalAssum (get_annot decl, get_type decl) in
-  (decl :: g, (PRel 1 :: List.map (lift_pat 1) p), decl' :: d),
+  { src_ctx = decl :: map.src_ctx;
+    map_inst = PRel 1 :: List.map (lift_pat 1) map.map_inst;
+    tgt_ctx = decl' :: map.tgt_ctx },
   lift_subst env sigma cut [declassum]
 
 (** Assumes the declaration already live in \Gamma to produce \Gamma, decls |- ps : \Delta, decls *)
@@ -782,7 +788,7 @@ let subst_rec_programs env evd ps =
           let recarg = match r with 
             | Structural _ -> None 
             | WellFounded _ -> Some (Context.Rel.nhyps p.program_info.program_sign - ctxlen) in
-          let oterm = lift (List.length (pi1 p.program_prob) - ctxlen) oterm in
+          let oterm = lift (List.length p.program_prob.src_ctx - ctxlen) oterm in
           Some (p.program_info.program_id, (recarg, oterm))
         | None -> None
       in
@@ -810,26 +816,27 @@ let subst_rec_programs env evd ps =
       let program_info' =
         { prog_info with
           program_rec = None;
-          program_sign = pi1 cutprob_subst;
+          program_sign = cutprob_subst.src_ctx;
           program_arity = mapping_constr !evd cutprob_subst prog_info.program_arity }
       in
       let program' = { p with program_info = program_info' } in
       let path' = p.program_info.program_id :: path in
       (* Feedback.msg_debug Pp.(str"In subst_programs, cut_problem s'" ++ pr_context env !evd (pi1 rec_prob)); *)
-      let rec_cutprob = cut_problem s' (pi1 rec_prob) in
+      let rec_cutprob = cut_problem s' rec_prob.src_ctx in
       let splitting' =
           aux rec_cutprob s' program' oterm path' p.program_splitting
       in
       let term', ty' = term_of_tree env evd (ESorts.make prog_info.program_sort) splitting' in
       { program_rec = None;
         program_info = program_info';
-        program_prob = id_subst (pi3 cutprob_sign);
+        program_prob = id_subst cutprob_sign.tgt_ctx;
         program_term = term';
         program_splitting = splitting' }
     in List.map2 one_program progs oterms
 
   and aux cutprob s p f path = function
-    | Compute ((ctx,pats,del as lhs), where, ty, c) ->
+    | Compute (lhs, where, ty, c) ->
+      let ctx = lhs.src_ctx in
       let subst, lhs' = subst_rec cutprob s lhs in
       let lhss = map_fix_subst !evd lhs s in
       let progctx = (extend_prob_ctx (where_context where) lhs) in
@@ -840,7 +847,7 @@ let subst_rec_programs env evd ps =
                         where_type} as w) (subst_wheres, wheres) =
         (* subst_wheres lives in lhs', i.e. has prototypes substituted already *)
         let wcontext = where_context subst_wheres in
-        let cutprob' = cut_problem s (pi3 subst) in
+        let cutprob' = cut_problem s subst.tgt_ctx in
         (* Feedback.msg_debug Pp.(str"where_context in subst rec : " ++ pr_context env !evd wcontext);
          * Feedback.msg_debug Pp.(str"lifting subst : " ++ pr_context_map env !evd subst);
          * Feedback.msg_debug Pp.(str"cutprob : " ++ pr_context_map env !evd cutprob'); *)
@@ -853,7 +860,7 @@ let subst_rec_programs env evd ps =
            preceding ones. *)
         let s = List.map (fun (id, (recarg, b)) ->
             (id, (recarg, lift ((* List.length subst_wheres + *)
-                                List.length (pi1 wp.program_prob) - List.length ctx) b))) lhss in
+                                List.length wp.program_prob.src_ctx - List.length ctx) b))) lhss in
         let wp' =
           match subst_programs path s ctxlen [wp] [where_term w] with
           | [wp'] -> wp'
@@ -868,7 +875,7 @@ let subst_rec_programs env evd ps =
             where_map := PathMap.add where_path
                 (applistc where_program_term where_program_args (* substituted *), id, wp'.program_splitting)
                 !where_map;
-            let where_program_args = extended_rel_list 0 (pi1 lhs') in
+            let where_program_args = extended_rel_list 0 lhs'.src_ctx in
             wp', where_program_args
           else
             let where_program_term = mapping_constr !evd wsubst0 wp.program_term in
@@ -885,7 +892,7 @@ let subst_rec_programs env evd ps =
            where_program_args = args';
            where_path;
            where_orig;
-           where_context_length = List.length (pi1 lhs');
+           where_context_length = List.length lhs'.src_ctx;
            where_type }
         in (subst_where :: subst_wheres, w :: wheres)
       in
@@ -917,21 +924,21 @@ let subst_rec_programs env evd ps =
       (* Feedback.msg_debug Pp.(str"newprob subst: " ++ prsubst env evd newprobs);
       Feedback.msg_debug Pp.(str"Newprob to lhs: " ++ pr_context_map env !evd info.refined_newprob_to_lhs);
       Feedback.msg_debug Pp.(str"Newprob : " ++ pr_context_map env !evd newprob); *)
-      let cutnewprob = cut_problem newprobs (pi3 newprob) in
+      let cutnewprob = cut_problem newprobs newprob.tgt_ctx in
       (* Feedback.msg_debug Pp.(str"cutnewprob : " ++ pr_context_map env !evd cutnewprob); *)
       let subst', newprob' = subst_rec cutnewprob newprobs newprob in
       (* Feedback.msg_debug Pp.(str"subst' : " ++ pr_context_map env !evd subst'); *)
       let subst, lhs' = subst_rec cutprob s lhs in
       (* Feedback.msg_debug Pp.(str"subst = " ++ pr_context_map env !evd subst); *)
-      let _, revctx' = subst_rec (cut_problem s (pi3 revctx)) lhss revctx in
+      let _, revctx' = subst_rec (cut_problem s revctx.tgt_ctx) lhss revctx in
       let _, newprob_to_prob' =
-        subst_rec (cut_problem lhss (pi3 info.refined_newprob_to_lhs)) lhss info.refined_newprob_to_lhs in
+        subst_rec (cut_problem lhss info.refined_newprob_to_lhs.tgt_ctx) lhss info.refined_newprob_to_lhs in
       let islogical = List.exists (fun (id, (recarg, f)) -> Option.has_some recarg) s in
       let path' = info.refined_path in
       let s' = aux cutnewprob newprobs p f path' sp in
       let count_lets len =
         let open Context.Rel.Declaration in
-        let ctx' = pi1 newprob' in
+        let ctx' = newprob'.src_ctx in
         let rec aux ctx len =
           if len = 0 then 0
           else
@@ -955,20 +962,20 @@ let subst_rec_programs env evd ps =
               (let len = List.length acc in
               refarg := (count_lets len, len));
             if isRel !evd c then
-              let d = List.nth (pi1 lhs) (pred (destRel !evd c)) in
+              let d = List.nth lhs.src_ctx (pred (destRel !evd c)) in
               if List.mem_assoc (Nameops.Name.get_id (get_name d)) s then acc, filter
               else mapping_constr !evd subst c :: acc, i :: filter
             else mapping_constr !evd subst c :: acc, i :: filter)
           0 ([], []) args
       in 
       let args' = List.rev_map (Reductionops.nf_beta env !evd) args' in
-      equations_debug Pp.(fun () -> str"Chopped args: " ++ prlist_with_sep spc (Printer.pr_econstr_env (push_rel_context (pi1 subst) env) !evd) args');
+      equations_debug Pp.(fun () -> str"Chopped args: " ++ prlist_with_sep spc (Printer.pr_econstr_env (push_rel_context subst.src_ctx env) !evd) args');
       let term', args', arg', filter =
         if islogical then
           refhead, args', !refarg, None
         else
-          (let sigma, refargs = constrs_of_pats ~inacc_and_hide:false env !evd (pi2 subst') in
-           let refterm = it_mkLambda_or_LetIn (applistc refhead (List.rev refargs)) (pi1 subst') in
+          (let sigma, refargs = constrs_of_pats ~inacc_and_hide:false env !evd subst'.map_inst in
+           let refterm = it_mkLambda_or_LetIn (applistc refhead (List.rev refargs)) subst'.src_ctx in
            equations_debug Pp.(fun () -> str"refterm: " ++
               (Printer.pr_econstr_env  env !evd refterm));
           let refarg = (fst arg - List.length s, snd arg - List.length s) in
@@ -1088,9 +1095,10 @@ let _remove_let_pats sigma subst patsubst pats =
   in
   List.fold_right remove_let pats []
 
-let smash_ctx_map env sigma (l, p, r as m) =
+let smash_ctx_map env sigma m =
+  let r = m.tgt_ctx in
   let subst, patsubst, r' = smash_rel_context sigma r in
-  let smashr' = (r, patsubst, r') in
+  let smashr' = { src_ctx = r; map_inst = patsubst; tgt_ctx = r' } in
   compose_subst env ~sigma m smashr', subst
 
 let pattern_instance ctxmap =
@@ -1160,7 +1168,7 @@ let computations env evd alias refine p eqninfo : computation list =
            subterm, filter
        in
        let where_comp =
-         (termf, alias, w.where_orig, pi1 wsmash, (* substl smashsubst *) arity,
+         (termf, alias, w.where_orig, wsmash.src_ctx, (* substl smashsubst *) arity,
           pattern_instance wsmash, None (* no refinement *), comps)
        in (lhsterm :: wheres, where_comp :: where_comps)
      in
@@ -1168,7 +1176,7 @@ let computations env evd alias refine p eqninfo : computation list =
      let ctx = compose_subst env ~sigma:evd lhs prob in
      if !Equations_common.debug then
        Feedback.msg_debug Pp.(str"where_instance: " ++ prlist_with_sep spc (Printer.pr_econstr_env env evd) inst);
-     let envlhs = (push_rel_context (pi1 lhs) env) in 
+     let envlhs = (push_rel_context lhs.src_ctx env) in 
      let envwhere = push_rel_context (where_context where) envlhs in
      let fn c =
       (* Feedback.msg_debug Pp.(str"substituting in c= " ++ Printer.pr_econstr_env envwhere evd c); *)
@@ -1182,7 +1190,7 @@ let computations env evd alias refine p eqninfo : computation list =
       Feedback.msg_debug Pp.(str"substituted: " ++ pr_splitting_rhs ~verbose:true envlhs envlhs evd lhs c' ty));
      let patsconstrs = pattern_instance ctx in
      let ty = substl inst ty in
-     [Computation (pi1 ctx, f, alias, patsconstrs, ty,
+     [Computation (ctx.src_ctx, f, alias, patsconstrs, ty,
       f, (Where, snd refine), c', Some wheres)]
 
   | Split (_, _, _, cs) ->
@@ -1198,7 +1206,7 @@ let computations env evd alias refine p eqninfo : computation list =
 
   | Refined (lhs, info, cs) ->
      let (id, c, t) = info.refined_obj in
-     let (ctx', pats', _ as s) = compose_subst env ~sigma:evd lhs prob in
+     let s = compose_subst env ~sigma:evd lhs prob in
      let patsconstrs = pattern_instance s in
      let refineds = compose_subst env ~sigma:evd info.refined_newprob_to_lhs s in
      let refinedpats = pattern_instance refineds in
@@ -1210,9 +1218,9 @@ let computations env evd alias refine p eqninfo : computation list =
       (push_rel_context (pi1 lhs) env) evd info.refined_term);
      Feedback.msg_debug Pp.(str"At refine node, program term: " ++ Printer.pr_econstr_env 
       (push_rel_context (pi1 lhs) env) evd progterm); *)
-     [Computation (pi1 lhs, f, alias, patsconstrs, info.refined_rettyp, f, (Refine, true),
+     [Computation (lhs.src_ctx, f, alias, patsconstrs, info.refined_rettyp, f, (Refine, true),
       RProgram progterm,
-      Some [(info.refined_term, filter), None, info.refined_path, pi1 info.refined_newprob,
+      Some [(info.refined_term, filter), None, info.refined_path, info.refined_newprob.src_ctx,
             info.refined_newty, refinedpats,
             Some (mapping_constr evd info.refined_newprob_to_lhs c, info.refined_arg),
             computations env info.refined_newprob (lift 1 info.refined_term) None fsubst (Regular, true) cs])]
@@ -1466,7 +1474,7 @@ let all_computations env evd alias progs =
     let pi = p.program_info in
     let topcomp = (((eqninfo.equations_f,[]), alias, [pi.program_id],
                     pi.program_sign, pi.program_arity,
-                    List.rev_map pat_constr (pi2 eqninfo.equations_prob), None,
+                    List.rev_map pat_constr eqninfo.equations_prob.map_inst, None,
                     (kind_of_prog pi,false)), top) in
     topcomp :: (rest @ acc)
   in

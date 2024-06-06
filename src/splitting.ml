@@ -161,7 +161,7 @@ let where_context wheres =
 let where_program_type w =
   program_type w.where_program
   
-let pplhs env sigma lhs = pr_pats env sigma (pi2 lhs)
+let pplhs env sigma lhs = pr_pats env sigma (lhs.Context_map.map_inst)
   
 let pr_splitting_rhs ?(verbose=false) env' env'' sigma lhs rhs ty =
   let verbose pp = if verbose then pp else mt () in
@@ -194,7 +194,7 @@ let pr_splitting env sigma ?(verbose=false) split =
   let verb pp = if verbose then pp else mt () in
   let rec aux = function
     | Compute (lhs, wheres, ty, c) ->
-      let env' = push_rel_context (pi1 lhs) env in
+      let env' = push_rel_context (lhs.Context_map.src_ctx) env in
       let ppwhere w =
         hov 2 (str"where " ++ Id.print (where_id w) ++ str " : " ++
                (try Printer.pr_econstr_env env'  sigma w.where_type ++
@@ -212,7 +212,7 @@ let pr_splitting env sigma ?(verbose=false) split =
       (pr_splitting_rhs ~verbose env' env'' sigma lhs c ty ++ Pp.fnl () ++ ppwheres ++
        verb (hov 2 (fnl () ++ str "(in context: " ++ spc () ++ pr_context_map env sigma lhs ++ str")" ++ fnl ())))
     | Split (lhs, var, ty, cs) ->
-      let env' = push_rel_context (pi1 lhs) env in
+      let env' = push_rel_context (lhs.Context_map.src_ctx) env in
       (pplhs env' sigma lhs ++ str " split: " ++ pr_rel_name env' var ++
        Pp.fnl () ++
        verb (hov 2 (str" : " ++
@@ -234,7 +234,7 @@ let pr_splitting env sigma ?(verbose=false) split =
         info.refined_args,
         info.refined_revctx, info.refined_newprob, info.refined_newty
       in
-      let env' = push_rel_context (pi1 lhs) env in
+      let env' = push_rel_context (lhs.Context_map.src_ctx) env in
       hov 0 (pplhs env' sigma lhs ++ str " with " ++ Id.print id ++ str" := " ++
              Printer.pr_econstr_env env' sigma (mapping_constr sigma revctx c) ++ Pp.fnl () ++
              verb (hov 2 (str " : " ++ Printer.pr_econstr_env env' sigma cty ++ str" " ++
@@ -244,8 +244,8 @@ let pr_splitting env sigma ?(verbose=false) split =
                       hov 2 (str "refine args: " ++ prlist_with_sep spc (Printer.pr_econstr_env env' sigma)
                         info.refined_args) ++
                       hov 2 (str "New problem: " ++ pr_context_map env sigma newprob) ++ 
-                      hov 2 (str "For type: " ++ Printer.pr_econstr_env (push_rel_context (pi1 newprob) env) sigma newty) ++
-                      hov 2 (str"Eliminating:" ++ pr_rel_name (push_rel_context (pi1 newprob) env) (snd arg) ++ spc ()) ++
+                      hov 2 (str "For type: " ++ Printer.pr_econstr_env (push_rel_context (newprob.Context_map.src_ctx) env) sigma newty) ++
+                      hov 2 (str"Eliminating:" ++ pr_rel_name (push_rel_context (newprob.Context_map.src_ctx) env) (snd arg) ++ spc ()) ++
                       hov 2 (str "Revctx is: " ++ pr_context_map env sigma revctx) ++
                       hov 2 (str "New problem to problem substitution is: " ++ pr_context_map env sigma info.refined_newprob_to_lhs ++ Pp.fnl ()))) ++
              hov 0 (aux s))
@@ -482,7 +482,8 @@ let check_typed ~where ?name env evd c =
 
 let term_of_tree env0 isevar sort tree =
   let rec aux env evm sort = function
-    | Compute ((ctx, _, _), where, ty, RProgram rhs) ->
+    | Compute (subst, where, ty, RProgram rhs) ->
+      let ctx = subst.Context_map.src_ctx in
       let compile_where ({where_program; where_type} as w)
           (env, evm, ctx) =
         let evm, c', ty' = evm, where_term w, where_type in
@@ -492,8 +493,9 @@ let term_of_tree env0 isevar sort tree =
       let body = it_mkLambda_or_LetIn rhs ctx and typ = it_mkProd_or_subst env evm ty ctx in
       evm, body, typ
 
-    | Compute ((ctx, _, _) as lhs, where, ty, REmpty (split, sp)) ->
+    | Compute (lhs, where, ty, REmpty (split, sp)) ->
        assert (List.is_empty where);
+       let ctx = lhs.Context_map.src_ctx in
        let evm, bot = new_global evm (Lazy.force logic_bot) in
        let evm, prf, _ = aux env evm sort (Split (lhs, split, bot, sp)) in
        let evm, case = new_global evm (Lazy.force logic_bot_case) in
@@ -502,14 +504,16 @@ let term_of_tree env0 isevar sort tree =
        let ty = it_mkProd_or_subst env evm ty ctx in
        evm, term, ty
 
-    | Mapping ((ctx, p, ctx'), s) ->
+    | Mapping (subst, s) ->
+      let ctx = subst.Context_map.src_ctx in
       let evm, term, ty = aux env evm sort s in
-      let args = Array.rev_of_list (snd (constrs_of_pats ~inacc_and_hide:false env evm p)) in
+      let args = Array.rev_of_list (snd (constrs_of_pats ~inacc_and_hide:false env evm subst.Context_map.map_inst)) in
       let term = it_mkLambda_or_LetIn (whd_beta env evm (mkApp (term, args))) ctx in
       let ty = it_mkProd_or_subst env evm (prod_appvect evm ty args) ctx in
       evm, term, ty
 
-    | Refined ((ctx, _, _), info, rest) ->
+    | Refined (subst, info, rest) ->
+      let ctx = subst.Context_map.src_ctx in
       let (id, _, _), ty, rarg, path, f, args, newprob, newty =
         info.refined_obj, info.refined_rettyp,
         info.refined_arg, info.refined_path,
@@ -522,7 +526,8 @@ let term_of_tree env0 isevar sort tree =
       let ty = it_mkProd_or_subst env evm ty ctx in
       evm, term, ty
 
-    | Split ((ctx, _, _) as subst, rel, ty, sp) ->
+    | Split (subst, rel, ty, sp) ->
+      let ctx = subst.Context_map.src_ctx in
       (* Produce parts of a case that will be relevant. *)
       let evm, block = Equations_common.(get_fresh evm coq_block) in
       let blockty = mkLetIn (anonR, block, Retyping.get_type_of env evm block, lift 1 ty) in
@@ -590,7 +595,7 @@ let term_of_tree env0 isevar sort tree =
             let next_subst = context_map_of_splitting s in
             let perm_subst = Context_map.make_permutation ~env evm subst next_subst in
             (* [next_term] starts with lambdas, so we apply it to its context. *)
-            let args = Equations_common.extended_rel_vect 0 (pi3 perm_subst) in
+            let args = Equations_common.extended_rel_vect 0 (perm_subst.Context_map.tgt_ctx) in
             let next_term = beta_appvect !evd next_term args in
             let next_term = Context_map.mapping_constr evm perm_subst next_term in
             (* We know the term is a correct instantiation of the evar, we
@@ -702,8 +707,8 @@ let make_program env evd p prob s rec_info =
          | Some t -> t
        in
        let term = beta_appvect !evd wfr.wf_rec_term
-           [| beta_appvect !evd fn (extended_rel_vect 0 (pi1 lhs)) |] in
-       Single (p, prob, rec_info, s, it_mkLambda_or_LetIn term (pi1 lhs))
+           [| beta_appvect !evd fn (extended_rel_vect 0 (lhs.Context_map.src_ctx)) |] in
+       Single (p, prob, rec_info, s, it_mkLambda_or_LetIn term (lhs.Context_map.src_ctx))
      | StructRec sr ->
        let term, ty = term_of_tree env evd sort s in
        let args = extended_rel_vect 0 r.rec_lets in
@@ -725,7 +730,7 @@ let make_program env evd p prob s rec_info =
              | NestedOn None ->
                (match s with
                 | Split (ctx, var, _, _) ->
-                  NestedOn (Some ((List.length (pi1 ctx)) - var - sr.struct_rec_protos, None))
+                  NestedOn (Some ((List.length (ctx.Context_map.src_ctx)) - var - sr.struct_rec_protos, None))
                 | _ -> ann)
              | _ -> ann
            in
@@ -822,15 +827,16 @@ let make_single_program env evd flags p prob s rec_info =
   | [p] -> p
   | _ -> raise (Invalid_argument "make_single_program: more than one program")
 
-let change_lhs s (l, p, r) =
+let change_lhs s subs =
   let open Context.Rel.Declaration in
   let l' =
     List.map
       (function LocalDef ({binder_name=Name id}, b, t) as decl ->
          (try let b' = List.assoc id s in LocalDef (make_annot (Name id) (get_relevance decl), b', t)
           with Not_found -> decl)
-              | decl -> decl) l
-  in l', p, r
+              | decl -> decl) subs.Context_map.src_ctx
+  in
+  { subs with Context_map.src_ctx = l' }
 
 let change_splitting s sp =
   let rec aux = function
@@ -866,8 +872,8 @@ let check_splitting env evd sp =
       ()
     | Split (lhs, rel, ty, sp) ->
       let _ = check_ctx_map env evd lhs in
-      let _r = lookup_rel rel (push_rel_context (pi1 lhs) env) in
-      let _ = check_type (pi1 lhs) ty in
+      let _r = lookup_rel rel (push_rel_context (lhs.Context_map.src_ctx) env) in
+      let _ = check_type (lhs.Context_map.src_ctx) ty in
       Array.iter (Option.iter aux) sp
     | Mapping (lhs, sp) ->
       let _ = check_ctx_map env evd lhs in
@@ -884,7 +890,7 @@ let check_splitting env evd sp =
       let def = make_def (nameR (where_id w)) (Some (where_term w)) w.where_type in
       def :: ctx
     in
-    let ctx = List.fold_left check_where (pi1 lhs) wheres in
+    let ctx = List.fold_left check_where (lhs.Context_map.src_ctx) wheres in
     ctx
   and check_program p =
     let ty = program_type p in
@@ -966,12 +972,13 @@ let define_one_program_constants flags env0 isevar udecl unfold p =
       let evm, s' = aux env evm s in
       evm, Mapping (lhs, s')
 
-    | Refined ((ctx, _, _) as lhs, info, rest) ->
+    | Refined (lhs, info, rest) ->
+      let ctx = lhs.Context_map.src_ctx in
       let evm', rest' = aux env evm rest in
       let isevar = ref evm' in
       let env = Global.env () in
       let sort =
-          (Retyping.get_sort_of (push_rel_context (pi1 lhs) env) !isevar info.refined_rettyp) in
+          (Retyping.get_sort_of (push_rel_context ctx env) !isevar info.refined_rettyp) in
       let t, ty = term_of_tree env isevar sort rest' in
       let (cst, (evm, e)) =
         Equations_common.declare_constant (path_id ~unfold info.refined_path)
@@ -1325,7 +1332,7 @@ let define_programs ~pm env evd udecl is_recursive fixprots flags ?(unfold=false
 let mapping_rhs sigma s = function
   | RProgram c -> RProgram (mapping_constr sigma s c)
   | REmpty (i, sp) ->
-      try match nth (pi2 s) (pred i) with
+      try match nth (s.Context_map.map_inst) (pred i) with
       | PRel i' -> REmpty (i', sp)
       | _ -> assert false
       with Not_found -> assert false

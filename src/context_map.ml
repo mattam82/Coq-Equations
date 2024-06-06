@@ -28,8 +28,11 @@ type pat =
   | PInac of constr
   | PHide of int
 
-type context_map = rel_context * pat list * rel_context
-
+type context_map = {
+  src_ctx : rel_context;
+  map_inst : pat list;
+  tgt_ctx : rel_context;
+}
 
 let type_of_refresh env evdref c =
   let ty = Retyping.get_type_of env !evdref c in
@@ -131,9 +134,9 @@ let rec pat_to_user_pat ?(avoid = ref Id.Set.empty) ?loc ctx = function
 and pats_to_lhs ?(avoid = ref Id.Set.empty) ?loc ctx pats =
   List.map_filter (pat_to_user_pat ~avoid ?loc ctx) pats
 
-let context_map_to_lhs ?(avoid = Id.Set.empty) ?loc (ctx, pats, _) =
+let context_map_to_lhs ?(avoid = Id.Set.empty) ?loc map =
   let avoid = ref avoid in
-  List.rev (pats_to_lhs ~avoid ?loc ctx pats)
+  List.rev (pats_to_lhs ~avoid ?loc map.src_ctx map.map_inst)
 
 let do_renamings env sigma ctx =
   let avoid, ctx' =
@@ -179,7 +182,7 @@ let pr_context env sigma ctx =
 
 let ppcontext = ppenv_sigma pr_context
 
-let pr_context_map env sigma (delta, patcs, gamma) =
+let pr_context_map env sigma { src_ctx = delta; map_inst = patcs; tgt_ctx = gamma } =
   let env' = push_rel_context delta env in
   let ctx = pr_context env sigma delta in
   let ctx' = pr_context env sigma gamma in
@@ -195,7 +198,7 @@ let ppcontext_map_empty = ppenv_sigma pr_context_map
 
 (** Debugging functions *)
 
-let typecheck_map env evars (ctx, subst, ctx') =
+let typecheck_map env evars { src_ctx = ctx; map_inst =  subst; tgt_ctx = ctx' } =
   typecheck_rel_context env evars ctx;
   typecheck_rel_context env evars ctx';
   let env = push_rel_context ctx env in
@@ -227,7 +230,12 @@ let check_ctx_map ?(unsafe = false) env evars map =
   else map
 
 let mk_ctx_map ?(unsafe = false) env evars ctx subst ctx' =
-  let map = (ctx, subst, ctx') in check_ctx_map ~unsafe env evars map
+  let map = {
+    src_ctx = ctx;
+    map_inst = subst;
+    tgt_ctx = ctx';
+  } in
+  check_ctx_map ~unsafe env evars map
 
 let rec map_patterns f ps =
   List.map (function
@@ -238,8 +246,11 @@ let rec map_patterns f ps =
       | x -> x)
     ps
 
-let map_ctx_map f (g, p, d) =
-  map_rel_context f g, map_patterns f p, map_rel_context f d
+let map_ctx_map f map = {
+  src_ctx = map_rel_context f map.src_ctx;
+  map_inst = map_patterns f map.map_inst;
+  tgt_ctx = map_rel_context f map.tgt_ctx;
+}
 
 (** Specialize by a substitution. *)
 
@@ -285,7 +296,7 @@ let specialize_rel_context sigma s ctx =
       ctx (0, [])
   in res
 
-let mapping_constr sigma (s : context_map) c = specialize_constr sigma (pi2 s) c
+let mapping_constr sigma (s : context_map) c = specialize_constr sigma s.map_inst c
 
 (* Substitute a Constr.t in a pattern. *)
 
@@ -326,8 +337,11 @@ let rec eq_pat env sigma p1 p2 =
   | PInac c, PInac c' -> EConstr.eq_constr sigma c c'
   | _, _ -> false
 
-let make_permutation ?(env = Global.env ()) (sigma : Evd.evar_map)
-    ((ctx1, pats1, _ as map1) : context_map) ((ctx2, pats2, _ as map2) : context_map) : context_map =
+let make_permutation ?(env = Global.env ()) (sigma : Evd.evar_map) map1 map2 : context_map =
+  let ctx1 = map1.src_ctx in
+  let pats1 = map1.map_inst in
+  let ctx2 = map2.src_ctx in
+  let pats2 = map2.map_inst in
   let len = List.length ctx1 in
   let perm = Array.make len None in
   let merge_rels i1 i2 =
@@ -397,7 +411,7 @@ let make_permutation ?(env = Global.env ()) (sigma : Evd.evar_map)
 
   
 let specialize_mapping_constr sigma (m : context_map) c =
-  specialize_constr sigma (pi2 m) c
+  specialize_constr sigma m.map_inst c
 
 let rels_of_ctx ?(with_lets=true) ctx = 
   let len = List.length ctx in
@@ -596,7 +610,7 @@ let new_strengthen (env : Environ.env) (evd : Evd.evar_map) (ctx : rel_context)
 
 
 let id_pats g = List.rev (patvars_of_ctx g)
-let id_subst g = (g, id_pats g, g)
+let id_subst g = { src_ctx = g; map_inst =  id_pats g; tgt_ctx = g }
 
 let eq_context_nolet env sigma (g : rel_context) (d : rel_context) =
   try
@@ -627,20 +641,25 @@ let eq_context_nolet env sigma (g : rel_context) (d : rel_context) =
          (Printexc.to_string e);
        raise e
 
-let check_eq_context_nolet env sigma (_, _, g as snd) (d, _, _ as fst) =
+let check_eq_context_nolet env sigma snd fst =
+  let g = snd.tgt_ctx in
+  let d = fst.src_ctx in
   if eq_context_nolet env sigma g d then ()
   else errorlabstrm
       (str "Contexts do not agree for composition: "
        ++ pr_context_map env sigma snd ++ str " and " ++ pr_context_map env sigma fst)
 
-let compose_subst ?(unsafe = false) env ?(sigma=Evd.empty) ((g',p',d') as snd) ((g,p,d) as fst) =
+let compose_subst ?(unsafe = false) env ?(sigma=Evd.empty) snd fst =
+  let { src_ctx = g; map_inst = p; tgt_ctx = d } = fst in
+  let { src_ctx = g'; map_inst = p'; tgt_ctx = d' } = snd in
   if !Equations_common.debug && not unsafe then check_eq_context_nolet env sigma snd fst;
   mk_ctx_map ~unsafe env sigma g' (specialize_pats sigma p' p) d
 (*     (g', (specialize_pats p' p), d) *)
 
-let push_mapping_context sigma decl (g,p,d) =
+let push_mapping_context sigma decl subs =
+  let { src_ctx = g; map_inst = p; tgt_ctx = d } = subs in
   let decl' = map_rel_declaration (specialize_constr sigma p) decl in
-  (decl' :: g, (PRel 1 :: List.map (lift_pat 1) p), decl :: d)
+  { src_ctx = decl' :: g; map_inst = (PRel 1 :: List.map (lift_pat 1) p); tgt_ctx = decl :: d }
 
 let lift_subst env evd (ctx : context_map) (g : rel_context) =
   let map = List.fold_right (fun decl acc -> push_mapping_context evd decl acc) g ctx in
@@ -664,7 +683,7 @@ let single_subst ?(unsafe = false) env evd x p g =
         (* 	(List.length g) *)
     in mk_ctx_map ~unsafe env evd substctx pats g
   else
-    let (ctx, s, g), invstr = new_strengthen env evd g x t in
+    let { src_ctx = ctx; map_inst = s; tgt_ctx = g }, invstr = new_strengthen env evd g x t in
     let x' = match nth s (pred x) with PRel i -> i | _ -> error "Occurs check singleton subst"
     and t' = specialize_constr evd s t in
     (* t' is in ctx. Do the substitution of [x'] by [t] now
@@ -681,8 +700,8 @@ let is_local_def i ctx =
   let decl = List.nth ctx (pred i) in
   Context.Rel.Declaration.is_local_def decl
 
-let filter_def_pats (ctx, pats, _) =
+let filter_def_pats map =
   CList.map_filter (function
-      | PRel i when is_local_def i ctx -> None
-      | PHide i when is_local_def i ctx -> None
-      | p -> Some p) pats
+      | PRel i when is_local_def i map.src_ctx -> None
+      | PHide i when is_local_def i map.src_ctx -> None
+      | p -> Some p) map.map_inst

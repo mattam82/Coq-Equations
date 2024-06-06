@@ -20,8 +20,12 @@ type pat =
   | PInac of constr
   | PHide of int
 
-(** Substitutions *)
-type context_map = rel_context * pat list * rel_context
+(** Substitutions: src_ctx ⊢ map_inst : tgt_ctx *)
+type context_map = {
+  src_ctx : rel_context;
+  map_inst : pat list;
+  tgt_ctx : rel_context;
+}
 
 (** Tag with a Constant.t application (needs env to infer type) *)
 val mkInac : env -> esigma -> constr -> constr
@@ -153,7 +157,7 @@ val new_strengthen :
   context_map * context_map
 
 val id_pats : ('a, 'b,'c) Context.Rel.pt -> pat list
-val id_subst : ('a, 'b, 'c) Context.Rel.pt -> ('a, 'b, 'c) Context.Rel.pt * pat list * ('a,'b,'c) Context.Rel.pt
+val id_subst : rel_context -> context_map
 val eq_context_nolet :
   env ->
   Evd.evar_map -> rel_context -> rel_context -> bool
