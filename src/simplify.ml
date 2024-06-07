@@ -1113,12 +1113,8 @@ SimpFun.make ~name:"elim_false" begin fun (env : Environ.env) (evd : Evd.evar_ma
     else let sigma, equ, glu = Equations_common.instance_of env !evd glu in
       evd := sigma; equ, glu
     in
-  let c = EConstr.mkApp (EConstr.mkRef (tzero_ind, inst), [| tB |]) in
-  (* We need to type the term in order to solve eventual universes
-   * constraints. *)
-  let _ = let env = push_rel_context ctx env in
-          Equations_common.evd_comb1 (Typing.type_of env) evd c in
-    (None, c), true, subst
+  let c = checked_appvect (push_rel_context ctx env) evd (EConstr.mkRef (tzero_ind, inst)) [| tB |] in
+  (None, c), true, subst
 end
 
 let elim_false = with_retry elim_false
