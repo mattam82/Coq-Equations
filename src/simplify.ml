@@ -335,23 +335,6 @@ let build_term_core (env : Environ.env) (evd : Evd.evar_map ref)
   let ev = EConstr.destEvar !evd tev in
   Some (ngl, ev), c
 
-(* Build a term with an evar out of [constr -> constr] function. *)
-let build_term ~where (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) (ngl : goal) f : open_term =
-  let ans, c = build_term_core env evd ngl f in
-  let (ctx, _, _) = gl in
-  let env = push_rel_context ctx env in
-  let _ =
-    try Equations_common.evd_comb1 (Typing.type_of env) evd c 
-    with Type_errors.TypeError (env, tyerr) ->
-      anomaly Pp.(str where ++ spc () ++ str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env !evd c ++ fnl () ++
-        Himsg.explain_pretype_error env !evd
-          (Pretype_errors.TypingError (Pretype_errors.of_type_error tyerr)))
-    | Pretype_errors.PretypeError (env, evd, tyerr) ->
-        anomaly Pp.(str where ++ spc () ++ str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env evd c ++ fnl () ++ 
-            Himsg.explain_pretype_error env evd tyerr)
-  in
-  ans, c
-
 let checked_applist env evd hd args =
   evd_comb0 (fun sigma -> Typing.checked_applist env sigma hd args) evd
 let checked_appvect env evd hd args =
@@ -1088,7 +1071,7 @@ SimpFun.make ~name:"elim_true" begin fun (env : Environ.env) (evd : Evd.evar_map
   (* Check if the goal is dependent or not. *)
   if Vars.noccurn !evd 1 ty2 then
     (* Not dependent, we can just eliminate True. *)
-    build_term ~where:"[elim_true]" env evd (ctx, ty, glu) (ctx, Termops.pop ty2, glu)
+    build_term_core env evd (ctx, Termops.pop ty2, glu)
       (fun c -> EConstr.mkLambda (name, ty1, Vars.lift 1 c)), true, subst
   else
     (* Apply the dependent induction principle for True. *)
