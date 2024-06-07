@@ -489,12 +489,6 @@ SimpFun.make ~name:"guard_block" begin fun (env : Environ.env) (evd : Evd.evar_m
   else SimpFun.apply f env evd gl
 end
 
-(* let remove_block : simplification_fun =
-SimpFun.make ~name:"remove_block" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
-  let _na, b, _ty, b' = check_letin !evd ty in
-  build_term env evd (ctx, ty, glu) (ctx, Vars.subst1 b b', glu) (fun c -> c), true, Context_map.id_subst ctx
-end *)
-
 let identity : simplification_fun =
 SimpFun.make ~name:"identity" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u as gl) : goal) ->
   build_term_core env evd gl (fun c -> c), true, Context_map.id_subst ctx
@@ -696,7 +690,7 @@ SimpFun.make ~name:"deletion" begin fun (env : Environ.env) (evd : Evd.evar_map 
   let subst = Context_map.id_subst ctx in
   if Vars.noccurn !evd 1 ty2 then
     (* The goal does not depend on the equality, we can just eliminate it. *)
-    build_term ~where:"[deletion]" env evd (ctx, ty, glu) (ctx, Termops.pop ty2, glu)
+    build_term_core env evd (ctx, Termops.pop ty2, glu)
       (fun c -> EConstr.mkLambda (name, ty1, Vars.lift 1 c)), true,
     subst
   else
@@ -870,11 +864,12 @@ SimpFun.make ~name:"pre_solution" begin fun (env : Environ.env) (evd : Evd.evar_
       let f c = c in
       let eqf, _ = Equations_common.decompose_appvect !evd ty1 in
       let ty1 =
-        if var_left then mkApp (eqf, [| tA; trel; term |])
-        else mkApp (eqf, [| tA; term; trel |])
+        let env = push_rel_context ctx env in
+        if var_left then checked_appvect env evd eqf [| tA; trel; term |]
+        else checked_appvect env evd eqf [| tA; term; trel |]
       in
       let ty' = mkProd (name, ty1, ty2) in
-      build_term ~where:"[pre_solution]" env evd (ctx, ty, glu) (ctx, ty', glu) f, true, Context_map.id_subst ctx
+      build_term_core env evd (ctx, ty', glu) f, true, Context_map.id_subst ctx
 end
 
 let pre_solution ~(dir:direction) = with_retry (pre_solution ~dir)
