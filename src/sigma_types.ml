@@ -616,9 +616,10 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
   let subst = Context_map.id_subst (arity_ctx @ ctx) in
   let rev_subst = Context_map.id_subst (arity_ctx @ ctx) in
   let subst, rev_subst = List.fold_left (
-    fun ((ctx, _, _) as subst, rev_subst) -> function
+    fun (subst, rev_subst) -> function
     | None -> subst, rev_subst
     | Some rel ->
+        let ctx = subst.Context_map.src_ctx in
         let fresh_rel = Context_map.mapping_constr !evd subst (EConstr.mkRel 1) in
         let target_rel = EConstr.mkRel (rel + oib.mind_nrealargs + 1) in
         let target_rel = Context_map.mapping_constr !evd subst target_rel in
@@ -632,8 +633,8 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
    (Context_map.mapping_constr !evd subst (EConstr.mkRel 1))) in
   (* [ctx'] is the context under which we will build the case in a first step. *)
   (* This is [ctx] where everything omitted and cut is removed. *)
-  let ctx' = List.skipn (nb_cuts_omit + oib.mind_nrealargs + 1) (pi3 rev_subst) in
-  let rev_subst' = List.skipn (nb_cuts_omit + oib.mind_nrealargs + 1) (pi2 rev_subst) in
+  let ctx' = List.skipn (nb_cuts_omit + oib.mind_nrealargs + 1) (rev_subst.Context_map.tgt_ctx) in
+  let rev_subst' = List.skipn (nb_cuts_omit + oib.mind_nrealargs + 1) (rev_subst.Context_map.map_inst) in
   let rev_subst' = Context_map.lift_pats (-(oib.mind_nrealargs+1)) rev_subst' in
   let rev_subst_without_cuts = Context_map.mk_ctx_map env !evd ctx rev_subst' ctx' in
   (* Now we will work under a context with [ctx'] as a prefix, so we will be
@@ -641,10 +642,12 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
 
   (* ===== SUBSTITUTION ===== *)
   let subst = CList.fold_right_i (
-    fun i omit ((ctx, pats, _) as subst)->
+    fun i omit subst ->
     match omit with
     | None -> subst
     | Some rel ->
+        let ctx = subst.Context_map.src_ctx in
+        let pats = subst.Context_map.map_inst in
         let orig = oib.mind_nrealargs + 1 - i in
         let fresh_rel = Context_map.specialize !evd pats (Context_map.PRel orig) in
         let target_rel = EConstr.mkRel (rel + oib.mind_nrealargs + 1) in
@@ -663,7 +666,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
   (* Also useful: a substitution from [ctx] to the context with cuts. *)
   let subst_to_cuts =
     let lift_subst = Context_map.mk_ctx_map env !evd (arity_ctx @ ctx)
-    (Context_map.lift_pats (oib.mind_nrealargs + 1) (pi2 (Context_map.id_subst ctx)))
+    (Context_map.lift_pats (oib.mind_nrealargs + 1) (Context_map.id_pats ctx))
     ctx in
       Context_map.compose_subst ~unsafe:true env ~sigma:!evd subst lift_subst
   in
@@ -672,7 +675,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
   let goal = Context_map.mapping_constr !evd subst_to_cuts goal in
 
   (* ===== CUTS ===== *)
-  let cuts_ctx, remaining = List.chop nb_cuts (pi1 subst) in
+  let cuts_ctx, remaining = List.chop nb_cuts (subst.Context_map.src_ctx) in
   let fresh_ctx = List.firstn (oib.mind_nrealargs + 1) remaining in
   let revert_cut x =
     let rec revert_cut i = function
@@ -682,7 +685,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
          | Context.Rel.Declaration.LocalAssum _ -> Some (EConstr.mkRel i)
          | Context.Rel.Declaration.LocalDef _ -> None)
       | _ :: l -> revert_cut (succ i) l
-    in revert_cut (- oib.mind_nrealargs) (pi2 subst)
+    in revert_cut (- oib.mind_nrealargs) (subst.Context_map.map_inst)
   in
   let rev_cut_vars = CList.map revert_cut (CList.init nb_cuts (fun i -> succ i)) in
   let cut_vars = List.rev rev_cut_vars in
@@ -692,7 +695,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
   let goal, to_apply, simpl =
     if Int.equal nb 0 then goal, [], false
     else
-      let arity_ctx' = Context_map.specialize_rel_context !evd (pi2 subst_to_cuts) arity_ctx in
+      let arity_ctx' = Context_map.specialize_rel_context !evd (subst_to_cuts.Context_map.map_inst) arity_ctx in
       let rev_indices' = List.map (Context_map.mapping_constr !evd subst_to_cuts) rev_indices in
       let _, rev_sigctx, tele_lhs, tele_rhs =
         CList.fold_left3 (
@@ -708,7 +711,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
         ) (succ nb_cuts, [], [], []) arity_ctx' rev_indices' omitted
       in
       let sigctx = List.rev rev_sigctx in
-      let sigty, _, sigconstr = telescope (push_rel_context (pi1 subst) env) evd sigctx in
+      let sigty, _, sigconstr = telescope (push_rel_context (subst.Context_map.src_ctx) env) evd sigctx in
 
       (* Build a goal with an equality of telescopes at the front. *)
       let left_sig = Vars.substl (List.rev tele_lhs) sigconstr in
@@ -743,14 +746,14 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
   let indfam = Inductiveops.make_ind_family (pind, List.map EConstr.of_constr params) in
   let branches_info = Inductiveops.get_constructors env indfam in
   let full_subst =
-    let (ctx', pats, ctx) = Context_map.id_subst ctx in
+    let pats = Context_map.id_pats ctx in
     let pats = Context_map.lift_pats (oib.mind_nrealargs + 1) pats in
-    let ctx' = arity_ctx @ ctx' in
+    let ctx' = arity_ctx @ ctx in
       Context_map.mk_ctx_map env !evd ctx' pats ctx
   in
   let full_subst = Context_map.compose_subst ~unsafe:true env ~sigma:!evd subst full_subst in
-  let pats_ctx' = pi2 (Context_map.id_subst ctx') in
-  let pats_cuts = pi2 (Context_map.id_subst cuts_ctx) in
+  let pats_ctx' = Context_map.id_pats ctx' in
+  let pats_cuts = Context_map.id_pats cuts_ctx in
   let branches_subst = Array.map (fun summary ->
     (* This summary is under context [ctx']. *)
     let indices = summary.Inductiveops.cs_concl_realargs in
@@ -770,7 +773,7 @@ let smart_case (env : Environ.env) (evd : Evd.evar_map ref)
     let cuts_ctx = Context_map.specialize_rel_context !evd pats cuts_ctx in
     let pats = Context_map.lift_pats nb_cuts pats in
     let pats = pats_cuts @ pats in
-    let csubst = Context_map.mk_ctx_map env !evd (cuts_ctx @ args @ ctx') pats (pi1 subst) in
+    let csubst = Context_map.mk_ctx_map env !evd (cuts_ctx @ args @ ctx') pats (subst.Context_map.src_ctx) in
       Context_map.compose_subst ~unsafe:true env ~sigma:!evd csubst full_subst
   ) branches_info in
   let branches_nb = Array.map (fun summary ->

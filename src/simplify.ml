@@ -735,7 +735,8 @@ SimpFun.make ~name:"solution" begin fun (env : Environ.env) (evd : Evd.evar_map 
       raise (CannotSimplify (str  "[solution] The variable appears on both sides of the equality."))
   in
   (* let () = equations_debug (fun () -> str "solution on " ++ Printer.pr_econstr_env (push_rel_context ctx env) !evd ty) in *)
-  let (ctx', _, _) as subst, rev_subst = Context_map.new_strengthen env !evd ctx rel term in
+  let subst, rev_subst = Context_map.new_strengthen env !evd ctx rel term in
+  let ctx' = subst.Context_map.src_ctx in
   let trel' = Context_map.mapping_constr !evd subst trel in
   let rel' = EConstr.destRel !evd trel' in
   let term' = Context_map.mapping_constr !evd subst term in

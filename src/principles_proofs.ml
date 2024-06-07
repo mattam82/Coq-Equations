@@ -438,7 +438,7 @@ let aux_ind_fun info chop nested unfp unfids p =
                         (tclTHEN intros (aux chop unfs unfids cs)))]
 
   and aux chop unfs unfids = function
-    | Split ((ctx,pats,_ as lhs), var, _, splits) ->
+    | Split (lhs, var, _, splits) ->
       let splits = List.map_filter (fun x -> x) (Array.to_list splits) in
       let unfs_splits =
         let unfs = map_opt_split destSplit unfs in
@@ -470,7 +470,7 @@ let aux_ind_fun info chop nested unfp unfids p =
               let unfsplit = Option.map (fun s -> nth s (pred i)) unfs_splits in
               aux chop unfsplit unfids split))))
 
-    | Refined ((ctx, _, _), refinfo, s) ->
+    | Refined (lhs, refinfo, s) ->
       let unfs = map_opt_split destRefined unfs in
       let id = pi1 refinfo.refined_obj in
       let elimtac gl =
@@ -507,12 +507,13 @@ let aux_ind_fun info chop nested unfp unfids p =
                                (tclSOLVE [Proofview.Goal.enter elimtac]);
                              (solve_ind_rec_tac info.term_info)]))
 
-    | Compute ((lctx,_,_), wheres, _, c) ->
+    | Compute (lhs, wheres, _, c) ->
+      let lctx = lhs.src_ctx in
       let unfctx, unfswheres =
         let unfs = map_opt_split destWheres unfs in
         match unfs with
         | None -> [], List.map (fun _ -> None) wheres
-        | Some (unfctx, wheres) -> pi1 unfctx, List.map (fun w -> Some w) wheres
+        | Some (unfctx, wheres) -> unfctx.src_ctx, List.map (fun w -> Some w) wheres
       in
       let wheretac =
         if not (List.is_empty wheres) then
@@ -935,7 +936,8 @@ type reckind =
 let compute_unfold_trace env sigma where_map split unfold_split =
   let rec aux split unfold_split =
     match split, unfold_split with
-    | Split (_, _, _, splits), Split ((ctx,pats,_), var, _, unfsplits) ->
+    | Split (_, _, _, splits), Split (lhs, var, _, unfsplits) ->
+      let ctx = lhs.src_ctx in
       if is_primitive env sigma ctx (pred var) then
         aux (Option.get (Array.hd splits)) (Option.get (Array.hd unfsplits))
       else
@@ -944,9 +946,9 @@ let compute_unfold_trace env sigma where_map split unfold_split =
         let trace = List.map2 (fun split unfsplit -> aux split unfsplit) splits unfsplits in
         UnfSplit trace
     | _, Mapping (lhs, s) -> aux split s
-    | Refined (_, _, s), Refined ((ctx, _, _), refinfo, unfs) ->
+    | Refined (_, _, s), Refined (lhs, refinfo, unfs) ->
       UnfRefined (refinfo, aux s unfs)
-    | Compute (_, wheres, _, RProgram _), Compute ((lctx, _, _), unfwheres, _, RProgram _) ->
+    | Compute (_, wheres, _, RProgram _), Compute (lhs, unfwheres, _, RProgram _) ->
       let () = assert (List.length wheres = List.length unfwheres) in
       let map w unfw =
         let assoc, id, _ =
@@ -958,9 +960,9 @@ let compute_unfold_trace env sigma where_map split unfold_split =
         (wp, unfwp, assoc, id)
       in
       let data = List.map2 map wheres unfwheres in
-      UnfComputeProgram (data, lctx)
-    | Compute (_, _, _, _), Compute ((ctx,_,_), _, _, REmpty (id, sp)) ->
-      let d = nth ctx (pred id) in
+      UnfComputeProgram (data, lhs.src_ctx)
+    | Compute (_, _, _, _), Compute (lhs, _, _, REmpty (id, sp)) ->
+      let d = nth lhs.src_ctx (pred id) in
       let id = Name.get_id (get_name d) in
       UnfComputeEmpty id
     | _, _ -> assert false
