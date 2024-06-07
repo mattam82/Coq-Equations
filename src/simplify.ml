@@ -589,7 +589,8 @@ let hnf_goal ~(reduce_equality:bool) =
           let equ, tA, t1, t2 = check_equality env !evd ctx ty1 in
           let t1 = reduce t1 in
           let t2 = reduce t2 in
-          let ty1 = EConstr.mkApp (Builder.equ equ, [| tA; t1; t2 |]) in
+          let env = push_rel_context ctx env in
+          let ty1 = checked_appvect env evd (Builder.equ equ) [| tA; t1; t2 |] in
           EConstr.mkProd (name, ty1, ty2)
         with CannotSimplify _ -> ty
       else ty
@@ -600,7 +601,7 @@ let hnf_goal ~(reduce_equality:bool) =
 let hnf ~reduce_equality : simplification_fun =
 SimpFun.make ~name:"hnf" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u as gl) : goal) ->
   let gl' = hnf_goal ~reduce_equality env evd gl in
-  build_term ~where:"[hnf]" env evd gl gl' (fun c -> c), true, Context_map.id_subst ctx
+  build_term_core env evd gl' (fun c -> c), true, Context_map.id_subst ctx
 end
 
 let with_retry (f : simplification_fun) : simplification_fun =
