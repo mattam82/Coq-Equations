@@ -335,22 +335,10 @@ let build_term_core (env : Environ.env) (evd : Evd.evar_map ref)
   let ev = EConstr.destEvar !evd tev in
   Some (ngl, ev), c
 
-(* Build a term with an evar out of [constr -> constr] function. *)
-let build_term ~where (env : Environ.env) (evd : Evd.evar_map ref) (gl : goal) (ngl : goal) f : open_term =
-  let ans, c = build_term_core env evd ngl f in
-  let (ctx, _, _) = gl in
-  let env = push_rel_context ctx env in
-  let _ =
-    try Equations_common.evd_comb1 (Typing.type_of env) evd c 
-    with Type_errors.TypeError (env, tyerr) ->
-      anomaly Pp.(str where ++ spc () ++ str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env !evd c ++ fnl () ++
-        Himsg.explain_pretype_error env !evd
-          (Pretype_errors.TypingError (Pretype_errors.of_type_error tyerr)))
-    | Pretype_errors.PretypeError (env, evd, tyerr) ->
-        anomaly Pp.(str where ++ spc () ++ str "Equations build an ill-typed term: " ++ Printer.pr_econstr_env env evd c ++ fnl () ++ 
-            Himsg.explain_pretype_error env evd tyerr)
-  in
-  ans, c
+let checked_applist env evd hd args =
+  evd_comb0 (fun sigma -> Typing.checked_applist env sigma hd args) evd
+let checked_appvect env evd hd args =
+  evd_comb0 (fun sigma -> Typing.checked_appvect env sigma hd args) evd
 
 let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, _, u) : goal)
   (f : Names.GlobRef.t) ?(inst:EInstance.t option)
@@ -385,7 +373,7 @@ let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, _,
   in
   let env = push_rel_context ctx env in
   let prefix, suffix = CList.map_until (fun o -> o) args in
-  let hd = evd_comb0 (fun sigma -> Typing.checked_applist env sigma tf prefix) evd in
+  let hd = checked_applist env evd tf prefix in
   let rec aux ty args =
     match kind !evd ty, args with
     | Constr.Prod (_, t, c), hd :: tl -> aux (Vars.subst1 hd c) tl
@@ -399,7 +387,7 @@ let build_app_infer_concl (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, _,
 (*   let u = Retyping.get_sort_of env !evd ty' in *)
   let cont = fun c ->
     let suffix = CList.map (Option.default c) suffix in
-    evd_comb0 (fun sigma -> Typing.checked_applist env sigma hd suffix) evd
+    checked_applist env evd hd suffix
   in cont, ty', u
 
 (** Same as above but assumes that the arguments are well-typed in [ctx]. This
@@ -483,12 +471,6 @@ SimpFun.make ~name:"guard_block" begin fun (env : Environ.env) (evd : Evd.evar_m
   if is_block env evd gl then build_term_core env evd gl (fun c -> c), false, Context_map.id_subst ctx
   else SimpFun.apply f env evd gl
 end
-
-(* let remove_block : simplification_fun =
-SimpFun.make ~name:"remove_block" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
-  let _na, b, _ty, b' = check_letin !evd ty in
-  build_term env evd (ctx, ty, glu) (ctx, Vars.subst1 b b', glu) (fun c -> c), true, Context_map.id_subst ctx
-end *)
 
 let identity : simplification_fun =
 SimpFun.make ~name:"identity" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u as gl) : goal) ->
@@ -584,7 +566,8 @@ let hnf_goal ~(reduce_equality:bool) =
           let equ, tA, t1, t2 = check_equality env !evd ctx ty1 in
           let t1 = reduce t1 in
           let t2 = reduce t2 in
-          let ty1 = EConstr.mkApp (Builder.equ equ, [| tA; t1; t2 |]) in
+          let env = push_rel_context ctx env in
+          let ty1 = checked_appvect env evd (Builder.equ equ) [| tA; t1; t2 |] in
           EConstr.mkProd (name, ty1, ty2)
         with CannotSimplify _ -> ty
       else ty
@@ -595,7 +578,7 @@ let hnf_goal ~(reduce_equality:bool) =
 let hnf ~reduce_equality : simplification_fun =
 SimpFun.make ~name:"hnf" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, u as gl) : goal) ->
   let gl' = hnf_goal ~reduce_equality env evd gl in
-  build_term ~where:"[hnf]" env evd gl gl' (fun c -> c), true, Context_map.id_subst ctx
+  build_term_core env evd gl' (fun c -> c), true, Context_map.id_subst ctx
 end
 
 let with_retry (f : simplification_fun) : simplification_fun =
@@ -690,7 +673,7 @@ SimpFun.make ~name:"deletion" begin fun (env : Environ.env) (evd : Evd.evar_map 
   let subst = Context_map.id_subst ctx in
   if Vars.noccurn !evd 1 ty2 then
     (* The goal does not depend on the equality, we can just eliminate it. *)
-    build_term ~where:"[deletion]" env evd (ctx, ty, glu) (ctx, Termops.pop ty2, glu)
+    build_term_core env evd (ctx, Termops.pop ty2, glu)
       (fun c -> EConstr.mkLambda (name, ty1, Vars.lift 1 c)), true,
     subst
   else
@@ -794,7 +777,7 @@ SimpFun.make ~name:"solution" begin fun (env : Environ.env) (evd : Evd.evar_map 
       Vars.substnl [Vars.lift (-rel') term'] (pred rel') body
     else
       let teq_refl = EConstr.mkApp (Builder.eq_refl equ, [| tA'; term' |]) in
-        Vars.substnl [Vars.lift (-rel') teq_refl; Vars.lift (-rel') term'] (pred rel') body
+      Vars.substnl [Vars.lift (-rel') teq_refl; Vars.lift (-rel') term'] (pred rel') body
   in
   let lsubst = Context_map.single_subst env !evd rel' (Context_map.pat_of_constr env !evd term') ctx' in
   let subst = Context_map.compose_subst env ~sigma:!evd lsubst subst in
@@ -804,22 +787,24 @@ SimpFun.make ~name:"solution" begin fun (env : Environ.env) (evd : Evd.evar_map 
       (* [c] is a term in the context [before']. *)
       let c = Vars.lift rel' c in
       (* [c] is a term in the context [ctx']. *)
+      let env = push_rel_context ctx' env in
       let c =
         if nondep then
-          EConstr.mkApp (tsolution, [| tA'; tB'; term'; c; trel' |])
+          checked_appvect env evd tsolution [| tA'; tB'; term'; c; trel' |]
         else
-          EConstr.mkApp (tsolution, [| tA'; term'; tB'; c; trel' |])
+          checked_appvect env evd tsolution [| tA'; term'; tB'; c; trel' |]
       in
       (* We make some room for the application of the equality... *)
+      let env = push_rel (LocalAssum (name, ty1')) env in
       let c = Vars.lift 1 c in
-      let c = EConstr.mkApp (c, [| EConstr.mkRel 1 |]) in
+      let c = checked_appvect env evd c [| EConstr.mkRel 1 |] in
       (* [targs'] are arguments in the context [eq_decl :: ctx']. *)
-      let c = EConstr.mkApp (c, targs') in
+      let c = checked_appvect env evd c targs' in
       (* [ty1'] is the type of the equality in [ctx']. *)
       let c = EConstr.mkLambda (name, ty1', c) in
       (* And now we recover a term in the context [ctx]. *)
-        Context_map.mapping_constr !evd rev_subst c
-  in build_term ~where:"[solution]" env evd (ctx, ty, glu) (ctx'', ty'', glu') f, true, subst
+      Context_map.mapping_constr !evd rev_subst c
+  in build_term_core env evd (ctx'', ty'', glu') f, true, subst
 end
 
 let whd_all env sigma t = 
@@ -862,11 +847,12 @@ SimpFun.make ~name:"pre_solution" begin fun (env : Environ.env) (evd : Evd.evar_
       let f c = c in
       let eqf, _ = Equations_common.decompose_appvect !evd ty1 in
       let ty1 =
-        if var_left then mkApp (eqf, [| tA; trel; term |])
-        else mkApp (eqf, [| tA; term; trel |])
+        let env = push_rel_context ctx env in
+        if var_left then checked_appvect env evd eqf [| tA; trel; term |]
+        else checked_appvect env evd eqf [| tA; term; trel |]
       in
       let ty' = mkProd (name, ty1, ty2) in
-      build_term ~where:"[pre_solution]" env evd (ctx, ty, glu) (ctx, ty', glu) f, true, Context_map.id_subst ctx
+      build_term_core env evd (ctx, ty', glu) f, true, Context_map.id_subst ctx
 end
 
 let pre_solution ~(dir:direction) = with_retry (pre_solution ~dir)
@@ -1085,7 +1071,7 @@ SimpFun.make ~name:"elim_true" begin fun (env : Environ.env) (evd : Evd.evar_map
   (* Check if the goal is dependent or not. *)
   if Vars.noccurn !evd 1 ty2 then
     (* Not dependent, we can just eliminate True. *)
-    build_term ~where:"[elim_true]" env evd (ctx, ty, glu) (ctx, Termops.pop ty2, glu)
+    build_term_core env evd (ctx, Termops.pop ty2, glu)
       (fun c -> EConstr.mkLambda (name, ty1, Vars.lift 1 c)), true, subst
   else
     (* Apply the dependent induction principle for True. *)
@@ -1127,12 +1113,8 @@ SimpFun.make ~name:"elim_false" begin fun (env : Environ.env) (evd : Evd.evar_ma
     else let sigma, equ, glu = Equations_common.instance_of env !evd glu in
       evd := sigma; equ, glu
     in
-  let c = EConstr.mkApp (EConstr.mkRef (tzero_ind, inst), [| tB |]) in
-  (* We need to type the term in order to solve eventual universes
-   * constraints. *)
-  let _ = let env = push_rel_context ctx env in
-          Equations_common.evd_comb1 (Typing.type_of env) evd c in
-    (None, c), true, subst
+  let c = checked_appvect (push_rel_context ctx env) evd (EConstr.mkRef (tzero_ind, inst)) [| tB |] in
+  (None, c), true, subst
 end
 
 let elim_false = with_retry elim_false
