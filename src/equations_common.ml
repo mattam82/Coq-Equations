@@ -221,13 +221,14 @@ let e_type_of env evd t =
   evd := evm; t
 
 let collapse_term_qualities uctx c =
-  let nf_evar _ = None in
-  let nf_qvar q = match UState.nf_qvar uctx q with
-    | QConstant _ as q -> q
-    | QVar q -> (* hack *) QConstant QType
-  in
-  let nf_univ _ = None in
-  UnivSubst.nf_evars_and_universes_opt_subst nf_evar nf_qvar nf_univ c
+  let rec self () c =
+    let nf_qvar q = match UState.nf_qvar uctx q with
+      | QConstant _ as q -> q
+      | QVar q -> (* hack *) QConstant QType
+    in
+    let nf_univ _ = None in
+    UnivSubst.map_universes_opt_subst_with_binders id self nf_qvar nf_univ () c
+  in self () c
 
 let make_definition ?opaque ?(poly=false) evm ?types b =
   let env = Global.env () in
@@ -257,7 +258,7 @@ let declare_constant id body ty ~poly ~kind evd =
   let cst = Declare.declare_constant ~name:id (Declare.DefinitionEntry ce) ~kind in
   Flags.if_verbose Feedback.msg_info (str((Id.to_string id) ^ " is defined"));
   if poly then
-    let cstr = EConstr.(mkConstU (cst, EInstance.make (UVars.UContext.instance (Evd.to_universe_context evm)))) in
+    let cstr = EConstr.(mkConstU (cst, EInstance.make (UVars.Instance.of_level_instance (UVars.UContext.instance (Evd.to_universe_context evm))))) in
     cst, (evm0, cstr)
   else cst, (evm0, EConstr.UnsafeMonomorphic.mkConst cst)
 
@@ -1091,20 +1092,9 @@ let evd_comb1 f evd x =
 let nonalgebraic_universe_level_of_universe env sigma u =
   match ESorts.kind sigma u with
   | Sorts.Set | Sorts.Prop | Sorts.SProp ->
-    sigma, Univ.Level.set, u
-  | Sorts.Type u0 | Sorts.QSort (_, u0) ->
-    match Univ.Universe.level u0 with
-    | Some l ->
-      (match Evd.universe_rigidity sigma l with
-      | Evd.UnivFlexible true ->
-        Evd.make_nonalgebraic_variable sigma l, l, ESorts.make @@ Sorts.sort_of_univ @@ Univ.Universe.make l
-      | _ -> sigma, l, u)
-    | None ->
-      let sigma, l = Evd.new_univ_level_variable Evd.univ_flexible sigma in
-      let ul = ESorts.make @@ Sorts.sort_of_univ @@ Univ.Universe.make l in
-      let sigma = Evd.set_leq_sort env sigma u ul in
-      sigma, l, ul
-
+    sigma, Univ.Universe.type0, u
+  | Sorts.Type u0 | Sorts.QSort (_, u0) -> sigma, u0, u
+    
 let instance_of env sigma ?argu goalu =
   let sigma, goall, goalu = nonalgebraic_universe_level_of_universe env sigma goalu in
   let inst =

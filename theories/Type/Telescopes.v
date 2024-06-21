@@ -141,7 +141,7 @@ Instance wf_tele_measure@{i j k| i <= k, j <= k}
          {T : tele@{i}} (A : Type@{j}) (f : tele_fn@{i j k} T A) (R : A -> A -> Type@{k}) :
   WellFounded R -> WellFounded (tele_measure T A f R) | (WellFounded (tele_measure _ _ _ _)).
 Proof.
-  intros. apply wf_inverse_image@{i j k k}. apply X.
+  intros. apply wf_inverse_image@{i j k}. apply X.
 Defined.
 
 Section Fix.
