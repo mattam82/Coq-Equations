@@ -22,7 +22,7 @@ open Splitting
 open Covering
 open Vars
 
-open Cc_plugin.Cctac
+open Cc_core_plugin.Cctac
 
 type where_map = (constr * Names.Id.t * splitting) PathMap.t
 
