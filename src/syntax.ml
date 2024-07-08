@@ -258,7 +258,7 @@ let tactic_parser : qualid Attributes.key_parser = fun ?loc orig args ->
   assert_once ?loc ~name:"tactic" orig;
   match args with
   | VernacFlagLeaf (FlagString str) -> qualid_of_string str
-  | VernacFlagLeaf (FlagIdent str) -> qualid_of_string str
+  | VernacFlagLeaf (FlagQualid q) -> q
   |  _ -> CErrors.user_err ?loc (Pp.str "Ill formed \"tactic\" attribute")
 let equations_tactic =
   Attributes.attribute_of_list ["tactic",tactic_parser]
