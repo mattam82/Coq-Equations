@@ -916,7 +916,7 @@ let solve_rec_eq simpltac subst =
             [((Locus.OnlyOccurrences [1]), Evaluable.EvalConstRef f_cst); 
               ((Locus.OnlyOccurrences [1]), Evaluable.EvalConstRef funf_cst)]
         in tclTHENLIST [unfolds; simpltac; pi_tac ()]
-      with Not_found -> tclORELSE reflexivity (congruence_tac 10 []))
+      with Not_found -> tclORELSE reflexivity (congruence_tac (Some 10) []))
   | _ -> reflexivity
   end
 
