@@ -8,7 +8,7 @@
 
 (** An example development of the [fin] datatype using [equations]. *)
 
-Require Import Program.Basics Program.Combinators.
+From Coq.Program Require Import Basics Combinators.
 From Equations Require Import Equations.
 Open Scope equations_scope.
 (** [fin n] is the type of naturals smaller than [n]. *)

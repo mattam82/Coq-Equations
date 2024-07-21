@@ -1,4 +1,4 @@
-Require Import Stdlib.Numbers.BinNums.
+From Stdlib Require Import BinNums.
 
 From Equations Require Import Equations.
 

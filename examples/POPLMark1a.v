@@ -6,7 +6,7 @@
 
 Require Import Program.
 From Equations Require Import Equations.
-Require Import Stdlib.Classes.EquivDec.
+From Stdlib Require Import EquivDec.
 Require Import Arith.
 
 Definition scope := nat.

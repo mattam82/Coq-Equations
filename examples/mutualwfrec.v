@@ -8,7 +8,7 @@
 (**********************************************************************)
 
 From Equations Require Import Equations.
-From Stdlib Require Import List Program.Syntax Arith Lia.
+From Stdlib Require Import List Syntax Arith Lia.
 Require Import List Wellfounded.
 Import ListNotations.
 (* end hide *)

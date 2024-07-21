@@ -4,8 +4,8 @@
 Require Import Program.
 Require Import Equations.Prop.DepElim.
 Require Import Equations.Prop.Equations.
-Require Import Stdlib.Logic.Eqdep_dec.
-Require Import Stdlib.Classes.EquivDec.
+From Stdlib Require Import Eqdep_dec.
+From Stdlib Require Import EquivDec.
 
 Require Import Arith.
 Derive Signature for eq.
