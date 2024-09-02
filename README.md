@@ -33,16 +33,18 @@ definitions are axiom-free.
 - [Installation](#installation)
 - [HoTT Variant](#hott-variant)
 
-## Live demo
+## Learning Equations
 
-Try it now in your browser with [JSCoq](http://mattam82.github.io/Coq-Equations/assets/jsexamples/equations_intro.html)!
+- You can discover and learn Equations through [interactive tutorials](https://coq.inria.fr/platform-docs/) 
+  directly in your browser, or locally with Equations installed.
 
 ## Documentation
 
 - The [reference manual](http://github.com/mattam82/Coq-Equations/raw/main/doc/equations.pdf)
-  provides an introduction and a summary of the commands and options.
-  This introduction can also be followed interactively with Equations installed:
+  provides a summary of the commands and options, and a brief introduction.
+  This introduction can also be followed interactively with Equations installed,
   [equations_intro.v](http://github.com/mattam82/Coq-Equations/raw/main/doc/equations_intro.v)
+  or [interactively in your browser](http://mattam82.github.io/Coq-Equations/assets/jsexamples/equations_intro.html).
 
 - A gallery of [examples](http://mattam82.github.io/Coq-Equations/examples) provides more consequent
   developments using Equations.
