@@ -42,7 +42,7 @@ definitions are axiom-free.
   provides a summary of the commands and options, and a brief introduction.
   This introduction can also be followed interactively with Equations installed,
   [equations_intro.v](http://github.com/mattam82/Coq-Equations/raw/main/doc/equations_intro.v)
-  or directly [lived](http://mattam82.github.io/Coq-Equations/assets/jsexamples/equations_intro.html).
+  or [interactively in your browser](http://mattam82.github.io/Coq-Equations/assets/jsexamples/equations_intro.html).
 
 - A gallery of [examples](http://mattam82.github.io/Coq-Equations/examples) provides more consequent
   developments using Equations.
