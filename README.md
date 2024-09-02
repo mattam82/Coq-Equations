@@ -33,10 +33,12 @@ definitions are axiom-free.
 - [Installation](#installation)
 - [HoTT Variant](#hott-variant)
 
-## Documentation
+## Learning Equations
 
 - You can discover and learn Equations through [interactive tutorials](https://coq.inria.fr/platform-docs/) 
   directly in your browser, or locally with Equations installed.
+
+## Documentation
 
 - The [reference manual](http://github.com/mattam82/Coq-Equations/raw/main/doc/equations.pdf)
   provides a summary of the commands and options, and a brief introduction.
