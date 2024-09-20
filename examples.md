@@ -4,6 +4,13 @@ permalink: /examples/
 title: Gallery of programs and proofs
 ---
 
+Learning Equations
+==================
+
+- You can discover and learn Equations through [interactive tutorials](https://coq.inria.fr/platform-docs/)
+  directly in your browser, or locally with Equations installed.
+
+You can also check out the following older introduction material to Equations
 - [Intro](equations_intro.html): introduction to Equations, demonstrating
   its features
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/doc/equations_intro.v),
@@ -11,7 +18,7 @@ title: Gallery of programs and proofs
 
 - [Basics](examples/Examples.Basics.html): Basic examples of Equations usage
   ([source](http://github.com/mattam82/Coq-Equations/raw/master/examples/Basics.v)).
-    
+
 Dependent Pattern-Matching
 ==========================
 
