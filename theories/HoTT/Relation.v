@@ -12,6 +12,7 @@ From Equations Require Import Init.
 
 Set Warnings "-notation-overridden".
 Require Import Equations.HoTT.Logic.
+Require Export Equations.HoTT.Iff.
 
 Local Open Scope equations_scope.
 
