@@ -7,7 +7,7 @@
 (**********************************************************************)
 
 Require Import Program. 
-Require Import Equations Bvector List.
+Require Import Equations Vector List.
 Require Import Relations.
 Require Import Lia.
 Require Import Arith Wf_nat.
