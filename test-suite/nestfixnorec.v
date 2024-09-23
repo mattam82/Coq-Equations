@@ -1,7 +1,7 @@
 From Equations Require Import Equations.
 Set Keyed Unification.
 
-Require Import Coq.Lists.List.
+Require Import Stdlib.Lists.List.
 Import ListNotations.
 
 Inductive tree a := Node : a -> list (tree a) -> tree a.

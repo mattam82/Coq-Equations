@@ -10,7 +10,7 @@
 
 Set Warnings "-notation-overridden".
 
-Require Import Coq.Program.Tactics.
+Require Import Stdlib.Program.Tactics.
 Require Export Equations.Init.
 Require Import Equations.Signature Equations.CoreTactics.
 Require Import Equations.Type.Logic.

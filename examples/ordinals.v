@@ -1,6 +1,6 @@
 Require Import Arith.
-Require Import Coq.Logic.Eqdep_dec.
-Require Import Coq.Arith.Peano_dec.
+Require Import Stdlib.Logic.Eqdep_dec.
+Require Import Stdlib.Arith.Peano_dec.
 Require Import List.
 Require Import Recdef.
 

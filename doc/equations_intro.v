@@ -11,7 +11,7 @@
    features through a handful of examples. We start our Coq primer
    session by importing the [Equations] module.  *)
 
-From Coq Require Import Arith Lia Program.
+From Stdlib Require Import Arith Lia Program.
 From Equations Require Import Equations.
 
 (* begin hide *)

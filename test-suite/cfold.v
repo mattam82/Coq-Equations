@@ -4,7 +4,7 @@
 
 Require Import Arith.
 From Equations Require Import Equations.
-Require Import Coq.Bool.Bool.
+Require Import Stdlib.Bool.Bool.
 
 Set Keyed Unification.
 Set Implicit Arguments.

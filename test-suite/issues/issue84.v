@@ -1,4 +1,4 @@
-From Coq.Lists Require Import List.
+From Stdlib.Lists Require Import List.
 From Equations Require Import Equations.
 
 (* This type is from VST: https://github.com/PrincetonUniversity/VST/blob/v2.1/floyd/compact_prod_sum.v#L6 *)

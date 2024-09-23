@@ -239,7 +239,7 @@ let make_definition ?opaque ?(poly=false) evm ?types b =
   in
   let evm = Evd.minimize_universes evm in
   let evm0 = evm in
-  let to_constr c = collapse_term_qualities (Evd.evar_universe_context evm) (EConstr.to_constr evm c) in
+  let to_constr c = collapse_term_qualities (Evd.ustate evm) (EConstr.to_constr evm c) in
   let body = to_constr b in
   let typ = Option.map to_constr types in
   let used = Vars.universes_of_constr body in

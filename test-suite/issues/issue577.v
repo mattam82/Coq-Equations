@@ -1,4 +1,4 @@
-From Coq Require Import List String.
+From Stdlib Require Import List String.
 From Equations Require Import Equations.
 
 Module A.

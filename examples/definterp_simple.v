@@ -1,6 +1,6 @@
 Require Import Program.Basics Program.Tactics.
 Require Import Equations.Equations.
-Require Import Coq.Vectors.VectorDef.
+Require Import Stdlib.Vectors.VectorDef.
 Require Import List.
 Import ListNotations.
 Set Equations Transparent.

@@ -1,5 +1,5 @@
 From Equations Require Import Equations.
-From Coq Require Import Program Arith Compare_dec List.
+From Stdlib Require Import Program Arith Compare_dec List.
 Import ListNotations.
 (*
 

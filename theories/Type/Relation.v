@@ -9,7 +9,7 @@
 (************************************************************************)
 
 From Equations Require Import Init.
-From Coq Require Import Extraction CRelationClasses.
+From Stdlib Require Import Extraction CRelationClasses.
 
 Set Warnings "-notation-overridden".
 Require Import Equations.Type.Logic.

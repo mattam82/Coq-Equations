@@ -1,4 +1,4 @@
-From Coq Require Import List.
+From Stdlib Require Import List.
 From Equations Require Import Equations.
 
 Equations app {A} : list A -> list A -> list A :=

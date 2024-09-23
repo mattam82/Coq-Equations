@@ -1,4 +1,4 @@
-From Coq Require Import Lia NArith.NArith Program.Tactics.
+From Stdlib Require Import Lia NArith.NArith Program.Tactics.
 From Equations Require Export Equations.
 Ltac hidebody H ::= idtac.
 

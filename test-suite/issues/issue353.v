@@ -1,4 +1,4 @@
-Require Import Coq.Arith.Arith.
+Require Import Stdlib.Arith.Arith.
 From Equations Require Import Equations.
 
 Fixpoint Ack (n m : nat) : nat :=

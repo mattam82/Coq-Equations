@@ -12,7 +12,7 @@
 Set Warnings "-notation-overridden".
 
 Require Export Unicode.Utf8.
-Require Import Coq.Program.Tactics Setoid.
+Require Import Stdlib.Program.Tactics Setoid.
 Require Import Relations.
 (** Switches to constants in Type *)
 Require Import Equations.Type.All.
@@ -84,10 +84,10 @@ Class IsEquiv {A B : Type} (f : A -> B) := BuildIsEquiv {
   eissect : Sect f equiv_inv;
   eisadj : forall x : A, eisretr (f x) = ap f (eissect x)
 }.
-Arguments eisretr {A B}%type_scope f%function_scope {_} _.
-Arguments eissect {A B}%type_scope f%function_scope {_} _.
-Arguments eisadj {A B}%type_scope f%function_scope {_} _.
-Arguments IsEquiv {A B}%type_scope f%function_scope.
+Arguments eisretr {A B}%_type_scope f%_function_scope {_} _.
+Arguments eissect {A B}%_type_scope f%_function_scope {_} _.
+Arguments eisadj {A B}%_type_scope f%_function_scope {_} _.
+Arguments IsEquiv {A B}%_type_scope f%_function_scope.
 
 (** A record that includes all the data of an adjoint equivalence. *)
 Record Equiv A B := BuildEquiv {
@@ -558,8 +558,8 @@ Section Adjointify.
 
 End Adjointify.
 
-Arguments isequiv_adjointify {A B}%type_scope (f g)%function_scope isretr issect.
-Arguments equiv_adjointify {A B}%type_scope (f g)%function_scope isretr issect.
+Arguments isequiv_adjointify {A B}%_type_scope (f g)%_function_scope isretr issect.
+Arguments equiv_adjointify {A B}%_type_scope (f g)%_function_scope isretr issect.
 
 (** *** Congruence preserves equivalence
 
@@ -586,4 +586,4 @@ Global Instance isequiv_ap {A B} f `{IsEquiv A B f} (x y : A)
 (** The definition of homotopy fiber. *)
 Definition hfiber {A B : Type} (f : A -> B) (y : B) := Σ (x : A), f x = y.
 
-Global Arguments hfiber {A B}%type_scope f%function_scope y.
+Global Arguments hfiber {A B}%_type_scope f%_function_scope y.

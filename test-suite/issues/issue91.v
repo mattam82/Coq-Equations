@@ -1,4 +1,4 @@
-From Coq Require Import Vector.
+From Stdlib Require Import Vector.
 From Equations Require Import Equations.
 Arguments Vector.nil {A}.
 Arguments Vector.cons {A} _ {n}.

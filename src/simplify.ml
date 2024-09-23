@@ -686,7 +686,7 @@ SimpFun.make ~name:"deletion" begin fun (env : Environ.env) (evd : Evd.evar_map 
         let tuip =
           let env = push_rel_context ctx env in
           Equations_common.evd_comb1
-            (Typeclasses.resolve_one_typeclass env) evd uip_ty
+            (Class_tactics.resolve_one_typeclass env) evd uip_ty
         in
         let args = [Some tA; Some tuip; Some tx; Some tB; None] in
         build_app env evd (ctx, ty, glu) tsimpl_uip args, true, subst
@@ -882,7 +882,7 @@ SimpFun.make ~name:"maybe_pack" begin fun (env : Environ.env) (evd : Evd.evar_ma
     let env = push_rel_context ctx env in
     try
       let _noconf = Equations_common.evd_comb1
-          (Typeclasses.resolve_one_typeclass env) evd noconf_ty in
+          (Class_tactics.resolve_one_typeclass env) evd noconf_ty in
       true
     with Not_found -> false
   in
@@ -903,7 +903,7 @@ SimpFun.make ~name:"maybe_pack" begin fun (env : Environ.env) (evd : Evd.evar_ma
       let env = push_rel_context ctx env in
       try
         Equations_common.evd_comb1
-          (Typeclasses.resolve_one_typeclass env) evd eqdec_ty
+          (Class_tactics.resolve_one_typeclass env) evd eqdec_ty
       with Not_found ->
         raise (CannotSimplify (str
           "[noConfusion] Cannot simplify without UIP on type " ++
@@ -952,7 +952,7 @@ SimpFun.make ~name:"apply_noconf" begin fun (env : Environ.env) (evd : Evd.evar_
     let env = push_rel_context ctx env in
     try
       Equations_common.evd_comb1
-        (Typeclasses.resolve_one_typeclass env) evd noconf_ty
+        (Class_tactics.resolve_one_typeclass env) evd noconf_ty
     with Not_found ->
       raise (CannotSimplify (str
         "[noConfusion] Cannot find an instance of NoConfusion for type " ++
@@ -1027,7 +1027,7 @@ SimpFun.make ~name:"noCycle" begin fun (env : Environ.env) (evd : Evd.evar_map r
     let env = push_rel_context ctx env in
     try
       Equations_common.evd_comb1
-        (Typeclasses.resolve_one_typeclass env) evd nocycle_ty
+        (Class_tactics.resolve_one_typeclass env) evd nocycle_ty
     with Not_found ->
       raise (CannotSimplify (str
         "[noConfusion] Cannot find an instance of NoCycle for type " ++
@@ -1051,7 +1051,7 @@ SimpFun.make ~name:"noCycle" begin fun (env : Environ.env) (evd : Evd.evar_map r
   try
     let env = push_rel_context ctx env in
     let prf = Equations_common.evd_comb1
-        (Typeclasses.resolve_one_typeclass env) evd nocycle in
+        (Class_tactics.resolve_one_typeclass env) evd nocycle in
     (None, cont prf), true, subst
   with Not_found -> (* We inform the user of what is missing *)
     raise (CannotSimplify (str

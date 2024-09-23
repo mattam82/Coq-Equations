@@ -1,4 +1,4 @@
-From Coq.Lists Require Import List.
+From Stdlib.Lists Require Import List.
 From Equations Require Import Equations.
 
 Equations zip {A} {B} (l1 : list A) (l2 : list B) : list (A*B) :=

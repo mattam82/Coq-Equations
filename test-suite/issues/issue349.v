@@ -1,7 +1,7 @@
 Set Asymmetric Patterns.
 Set Implicit Arguments.
 
-From Coq Require Import Lia Lists.List.
+From Stdlib Require Import Lia Lists.List.
 Import ListNotations.
 From Equations Require Import Equations.
 

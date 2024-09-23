@@ -9,7 +9,7 @@
 (* end hide *)
 
 From Equations Require Import Equations.
-From Coq Require Import List Program.Syntax Arith Lia.
+From Stdlib Require Import List Program.Syntax Arith Lia.
 
 (** * Views using dependent pattern-matching
 

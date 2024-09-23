@@ -1,6 +1,6 @@
 From Equations Require Import Equations.
 (* Assuming UIP *)
-From Coq.Logic Require Import Eqdep.
+From Stdlib.Logic Require Import Eqdep.
 
 Section FreeMonad.
 

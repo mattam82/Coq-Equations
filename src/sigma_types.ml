@@ -303,7 +303,7 @@ let get_signature env sigma0 ty =
     in
     let sigma, cl = get_fresh sigma logic_signature_class in
     let inst = mkApp (cl, [| ty; idx; signature |]) in
-    let sigma, tc = Typeclasses.resolve_one_typeclass env sigma inst in
+    let sigma, tc = Class_tactics.resolve_one_typeclass env sigma inst in
     (* let _, u = destConst sigma (fst (destApp sigma inst)) in *)
     (* let ssig = mkApp (mkConstG logic_signature_sig u, [| ty; idx; tc |]) in *)
     let ssig = signature in

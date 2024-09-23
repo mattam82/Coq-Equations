@@ -1290,11 +1290,11 @@ let declare_funelim ~pm info env evd is_rec protos progs
                            Himsg.explain_pretype_error env !evd
                              (Pretype_errors.TypingError (Pretype_errors.of_type_error tyerr)))
   in
-  let newty = collapse_term_qualities (Evd.evar_universe_context !evd) (EConstr.to_constr !evd newty) in 
+  let newty = collapse_term_qualities (Evd.ustate !evd) (EConstr.to_constr !evd newty) in 
   let cinfo = Declare.CInfo.make ~name:(Nameops.add_suffix id "_elim") ~typ:newty () in
   let info = Declare.Info.make ~poly:info.poly ~scope:info.scope ~hook:(Declare.Hook.make hookelim) ~kind:(Decls.IsDefinition info.decl_kind) () in
   let pm, _ = Declare.Obls.add_definition ~pm ~cinfo ~info ~tactic ~opaque:false
-      ~uctx:(Evd.evar_universe_context !evd) [||] in
+      ~uctx:(Evd.ustate !evd) [||] in
   pm
 
 let mkConj evd sort x y =
@@ -1398,9 +1398,9 @@ let declare_funind ~pm info alias env evd is_rec protos progs
   in
   let evm, stmtt = Typing.type_of (Global.env ()) !evd statement in
   let () = evd := evm in
-  let to_constr c = collapse_term_qualities (Evd.evar_universe_context !evd) (EConstr.to_constr !evd c) in
+  let to_constr c = collapse_term_qualities (Evd.ustate !evd) (EConstr.to_constr !evd c) in
   let stmt = to_constr statement and f = to_constr f in
-  let uctx = Evd.evar_universe_context (if poly then !evd else Evd.from_env (Global.env ())) in
+  let uctx = Evd.ustate (if poly then !evd else Evd.from_env (Global.env ())) in
   let launch_ind ~pm tactic =
     let pm, res =
       let cinfo = Declare.CInfo.make ~name:indid ~typ:stmt () in
@@ -1672,7 +1672,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     let sigma = Evd.minimize_universes sigma in
     (* FIXME: try to implement a sane handling of universe state threading *)
     let to_constr sigma c =
-      collapse_term_qualities (Evd.evar_universe_context sigma) (EConstr.to_constr sigma c)
+      collapse_term_qualities (Evd.ustate sigma) (EConstr.to_constr sigma c)
     in
     let inds =
       List.rev_map (fun (entry, sign, arity) ->
@@ -1805,12 +1805,12 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
         else ()
       in
       (* FIXME: try to implement a sane handling of universe state threading *)
-      let c = collapse_term_qualities (Evd.evar_universe_context !evd) (to_constr !evd c) in
+      let c = collapse_term_qualities (Evd.ustate !evd) (to_constr !evd c) in
       let cinfo = Declare.CInfo.make ~name:ideq ~typ:c () in
       let info = Declare.Info.make ~kind:(Decls.IsDefinition info.decl_kind) ~poly () in
       let obl_hook = Declare.Hook.make_g hook in
       let pm, _ = Declare.Obls.add_definition ~pm ~cinfo ~info ~obl_hook ~opaque:false
-               ~tactic:tac ~uctx:(Evd.evar_universe_context !evd) [||] in
+               ~tactic:tac ~uctx:(Evd.ustate !evd) [||] in
       pm
     in List.fold_left proof pm stmts
   in List.fold_left proof pm ind_stmts

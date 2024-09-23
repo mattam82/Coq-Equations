@@ -1,4 +1,4 @@
-From Coq Require Import Psatz.
+From Stdlib Require Import Psatz.
 From Equations Require Import Equations.
 
 Inductive Pre := Pi : Pre -> Pre.

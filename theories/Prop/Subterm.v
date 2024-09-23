@@ -6,10 +6,10 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-From Coq Require Import Wf_nat Relations.
-From Coq Require Import Wellfounded Relation_Definitions.
-From Coq Require Import Relation_Operators Lexicographic_Product Wf_nat.
-From Coq Require Export Program.Wf FunctionalExtensionality.
+From Stdlib Require Import Wf_nat Relations.
+From Stdlib Require Import Wellfounded Relation_Definitions.
+From Stdlib Require Import Relation_Operators Lexicographic_Product Wf_nat.
+From Stdlib Require Export Program.Wf FunctionalExtensionality.
 
 From Equations Require Import Init Signature.
 Require Import Equations.CoreTactics.

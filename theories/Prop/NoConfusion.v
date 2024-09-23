@@ -10,7 +10,9 @@
    [equations] when it needs applications of injectivity or discrimination
    on some equation. *)
 
-Require Import Coq.Program.Tactics Bvector List.
+Set Warnings "-deprecated-since-8.20".   
+Require Import Stdlib.Program.Tactics Bvector List.
+Set Warnings "deprecated-since-8.20".
 From Equations Require Import Init Signature.
 Require Import Equations.CoreTactics.
 Require Import Equations.Prop.Classes Equations.Prop.EqDec Equations.Prop.Constants.

@@ -22,7 +22,7 @@ From Equations Require Import Equations.
 Require Import ZArith Lia.
 Require Import Psatz.
 Require Import Nat.
-Require Import Coq.Vectors.VectorDef.
+Require Import Stdlib.Vectors.VectorDef.
 
 Set Keyed Unification.
 

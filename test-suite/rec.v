@@ -58,10 +58,10 @@ Section Nested.
 
 End Nested.
 
-Require Import Coq.Lists.SetoidList.
-Require Import Coq.Sorting.Sorting.
-Require Import Coq.Sorting.Permutation.
-Require Import Coq.Sorting.PermutSetoid.
+Require Import Stdlib.Lists.SetoidList.
+Require Import Stdlib.Sorting.Sorting.
+Require Import Stdlib.Sorting.Permutation.
+Require Import Stdlib.Sorting.PermutSetoid.
 
 #[export]
 Instance filter_ext {A} : Morphisms.Proper (pointwise_relation A eq ==> eq ==> eq) (@filter A).

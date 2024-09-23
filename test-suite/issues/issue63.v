@@ -1,5 +1,5 @@
-Require Import Coq.Vectors.Vector.
-Require Import Coq.PArith.PArith.
+Require Import Stdlib.Vectors.Vector.
+Require Import Stdlib.PArith.PArith.
 Require Import Lia.
 Require Import Equations.Prop.Equations.
 Set Equations With UIP.

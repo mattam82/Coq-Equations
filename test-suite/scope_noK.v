@@ -3,8 +3,8 @@
 
 Require Import Equations.Equations.
 Require Import Equations.DepElimDec.
-Require Import Coq.Logic.Eqdep_dec.
-Require Import Coq.Classes.EquivDec.
+Require Import Stdlib.Logic.Eqdep_dec.
+Require Import Stdlib.Classes.EquivDec.
 Require Import Program.
 Require Import Arith.
 

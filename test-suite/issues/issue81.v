@@ -1,4 +1,4 @@
-Require Import Coq.Lists.List.
+Require Import Stdlib.Lists.List.
 Import ListNotations.
 From Equations Require Import Equations.
 

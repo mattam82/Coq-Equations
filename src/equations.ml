@@ -102,7 +102,7 @@ let define_unfolding_eq ~pm env evd flags p unfp prog prog' ei hook =
     Principles_proofs.(prove_unfolding_lemma info ei.equations_where_map prog.program_cst funf_cst
       p unfp)
   in
-  let stmt = collapse_term_qualities (Evd.evar_universe_context evd) (EConstr.to_constr evd stmt) in
+  let stmt = collapse_term_qualities (Evd.ustate evd) (EConstr.to_constr evd stmt) in
   let cinfo = Declare.CInfo.make ~name:unfold_eq_id ~typ:stmt ~impargs:(program_impls p) () in
   let info = Declare.Info.make ~poly:info.poly
       ~scope:info.scope
@@ -113,7 +113,7 @@ let define_unfolding_eq ~pm env evd flags p unfp prog prog' ei hook =
   let pm, _ =
     Declare.Obls.add_definition ~pm ~cinfo ~info ~reduce:(fun x -> x)
       ~tactic:tac ~obl_hook ~opaque:false
-      ~uctx:(Evd.evar_universe_context evd) [||]
+      ~uctx:(Evd.ustate evd) [||]
   in pm
 
 let define_principles ~pm flags rec_type progs =

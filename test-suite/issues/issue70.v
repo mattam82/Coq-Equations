@@ -1,4 +1,4 @@
-From Coq Require Import Fin.
+From Stdlib Require Import Fin.
 From Equations Require Import Equations.
 Set Equations Transparent.
 

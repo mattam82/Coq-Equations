@@ -1,4 +1,4 @@
-From Coq Require Import Lia NArith.NArith Program.Basics.
+From Stdlib Require Import Lia NArith.NArith Program.Basics.
 From Equations Require Export Equations.
 
 Obligation Tactic := idtac.

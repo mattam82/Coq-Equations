@@ -261,7 +261,7 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
     let _ty' = e_type_of (Global.env ()) evm ty in
     let evm = Evd.minimize_universes !evm in
     let obls, _, constr, typ = RetrieveObl.retrieve_obligations env id evm 0 body ty in
-    let uctx = Evd.evar_universe_context evm in
+    let uctx = Evd.ustate evm in
     let cinfo = Declare.CInfo.make ~name:id ~typ () in
     let info = Declare.Info.make ~poly ~scope:Locality.(Global ImportDefaultBehavior)
         ~kind:Decls.(IsDefinition Instance) ~hook:(Declare.Hook.make hook) () in

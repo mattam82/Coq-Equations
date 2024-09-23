@@ -333,7 +333,7 @@ let aux_ind_fun info chop nested unfp unfids p =
           let program_tac =
             tclTHEN fixtac (aux chop None [] prog.program_splitting)
           in
-          let ty = EConstr.of_constr @@ collapse_term_qualities (Evd.evar_universe_context sigma) (EConstr.to_constr sigma ty) in
+          let ty = EConstr.of_constr @@ collapse_term_qualities (Evd.ustate sigma) (EConstr.to_constr sigma ty) in
           tclTHEN (assert_by (Name (program_id prog)) ty program_tac)
             (observe "solving nested premises of compute rule"
               (solve_ind_rec_tac info.term_info))
@@ -1019,7 +1019,7 @@ let extract_subprogram_trace env sigma where_map trace =
         let eq = mkEq env evd unfwp.program_info.program_arity lhs rhs in
         it_mkProd_or_LetIn eq ctx
       in
-      let uctx = Evd.evar_universe_context !evd in
+      let uctx = Evd.ustate !evd in
       (id, (subst, wp, unfwp), uctx, ty) :: accu
     in
     List.fold_left fold accu data

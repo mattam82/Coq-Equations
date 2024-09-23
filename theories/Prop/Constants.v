@@ -1,6 +1,6 @@
 From Equations Require Import Init.
 Require Import Equations.Prop.Classes Equations.Prop.EqDec Equations.Prop.DepElim.
-From Coq Require Import Relations.
+From Stdlib Require Import Relations.
 
 (** Naturals *)
 Register Init.Datatypes.O as equations.nat.zero.

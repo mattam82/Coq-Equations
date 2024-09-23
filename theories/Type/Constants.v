@@ -3,7 +3,7 @@ Set Warnings "-notation-overridden".
 From Equations Require Import Init.
 Require Import Equations.Type.Logic Equations.Type.DepElim
         Equations.Type.EqDec Equations.Type.Classes.
-From Coq Require Import CRelationClasses Relations.
+From Stdlib Require Import CRelationClasses Relations.
 
 (** Naturals *)
 Register Init.Datatypes.O as equations.nat.zero.
@@ -37,8 +37,8 @@ Register Logic.Empty as equations.bottom.type.
 Register Logic.Empty_case as equations.bottom.case.
 Register Logic.Empty_rect as equations.bottom.elim.
 
-Register Coq.Init.Datatypes.unit as equations.top.type.
-Register Coq.Init.Datatypes.tt as equations.top.intro.
+Register Stdlib.Init.Datatypes.unit as equations.top.type.
+Register Stdlib.Init.Datatypes.tt as equations.top.intro.
 Register Equations.Type.Logic.unit_rect as equations.top.elim.
 
 Register Logic.prod as equations.conj.type.

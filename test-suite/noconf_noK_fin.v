@@ -34,10 +34,10 @@ Class IsEquiv {A B : Type} (f : A -> B) := BuildIsEquiv {
   eissect : Sect f equiv_inv;
   eisadj : forall x : A, eisretr (f x) = f_equal f (eissect x)
 }.
-Arguments eisretr {A B}%type_scope {f%function_scope} {_} _.
-Arguments eissect {A B}%type_scope {f%function_scope} {_} _.
-Arguments eisadj {A B}%type_scope {f%function_scope} {_} _.
-Arguments IsEquiv {A B}%type_scope f%function_scope.
+Arguments eisretr {A B}%_type_scope {f%_function_scope} {_} _.
+Arguments eissect {A B}%_type_scope {f%_function_scope} {_} _.
+Arguments eisadj {A B}%_type_scope {f%_function_scope} {_} _.
+Arguments IsEquiv {A B}%_type_scope f%_function_scope.
 
 
 Polymorphic Record Equiv (A B : Type) := { equiv :> A -> B ; is_equiv :> IsEquiv equiv }.

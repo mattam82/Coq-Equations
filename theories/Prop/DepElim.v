@@ -8,7 +8,7 @@
 
 (** Tactics related to (dependent) equality and proof irrelevance. *)
 
-Require Import Coq.Program.Tactics.
+Require Import Stdlib.Program.Tactics.
 Require Export Equations.Init.
 Require Import Equations.CoreTactics.
 Require Import Equations.Signature.

@@ -1,4 +1,4 @@
-From Coq Require Import Arith Lia.
+From Stdlib Require Import Arith Lia.
 From Equations Require Import Equations.
 
 Equations? Div (x y : nat) : nat by wf x lt :=

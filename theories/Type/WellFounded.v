@@ -1,5 +1,5 @@
 Set Warnings "-notation-overridden".
-From Coq Require Import Extraction CRelationClasses.
+From Stdlib Require Import Extraction CRelationClasses.
 Require Import Equations.Init Equations.CoreTactics.
 Require Import Equations.Type.Logic Equations.Type.FunctionalExtensionality
         Equations.Type.Relation Equations.Type.Relation_Properties.

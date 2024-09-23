@@ -1,4 +1,4 @@
-From Coq Require Import Lia.
+From Stdlib Require Import Lia.
 Set Implicit Arguments.
 From Equations Require Import Equations.
 

@@ -1,7 +1,7 @@
 Require Export Lia.
 From Equations Require Import Equations.
-Require Import Coq.Relations.Relation_Operators.
-Require Import Coq.Wellfounded.Lexicographic_Product.
+Require Import Stdlib.Relations.Relation_Operators.
+Require Import Stdlib.Wellfounded.Lexicographic_Product.
 
 Inductive id : Type := Id : nat -> id.
 Inductive var : Type :=

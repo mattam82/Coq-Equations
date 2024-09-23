@@ -1,5 +1,5 @@
 (* success *)
-From Coq Require Import ssreflect.
+From Stdlib Require Import ssreflect.
 From Equations Require Import Equations.
 
 Import EquationsNotations.

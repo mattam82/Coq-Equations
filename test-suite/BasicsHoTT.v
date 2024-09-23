@@ -7,7 +7,7 @@
 (**********************************************************************)
 From Equations Require Import CoreTactics.
 Require Import Equations.HoTT.All Equations.HoTT.WellFounded.
-Require Import Coq.Unicode.Utf8.
+Require Import Stdlib.Unicode.Utf8.
 Require HoTT.Basics.Overture.
 Require Import HoTT.Types.Bool HoTT.Spaces.Nat HoTT.Spaces.List.Core.
 
@@ -96,9 +96,9 @@ Declare Scope vect_scope.
 Inductive vector@{i | Set <= i} (A : Type@{i}) : nat -> Type@{i} :=
 | nil : vector A 0
 | cons {n} : A -> vector A n -> vector A (S n).
-Arguments vector A%type_scope n%nat_scope.
+Arguments vector A%_type_scope n%_nat_scope.
 Arguments nil {A}.
-Arguments cons {A%type_scope} {n%nat_scope} a v%vect_scope.
+Arguments cons {A%_type_scope} {n%_nat_scope} a v%_vect_scope.
 
 Notation " x |:| y " := (@cons _ _ x y) (at level 20, right associativity) : vect_scope.
 Notation " x |: n :| y " := (@cons _ n x y) (at level 20, right associativity) : vect_scope.

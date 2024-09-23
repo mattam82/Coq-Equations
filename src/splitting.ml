@@ -1211,7 +1211,7 @@ let solve_equations_obligations_program ~pm flags recids loc i sigma hook =
   let info = Declare.Info.make ~poly ~scope ~kind () in
   let pm, _ =
     Declare.Obls.add_definition ~pm ~cinfo ~info 
-      ~obl_hook ~body:term ~uctx:(Evd.evar_universe_context sigma)
+      ~obl_hook ~body:term ~uctx:(Evd.ustate sigma)
       ~reduce ~opaque:false oblsinfo in
   pm
 
@@ -1259,7 +1259,7 @@ let define_programs (type a) ~pm env evd udecl is_recursive fixprots flags ?(unf
   let all_hook ~pm hook recobls sigma =
     let sigma = Evd.minimize_universes sigma in
     let sigma = Evarutil.nf_evar_map_undefined sigma in
-    let uentry = UState.check_univ_decl ~poly:flags.polymorphic (Evd.evar_universe_context sigma) udecl in
+    let uentry = UState.check_univ_decl ~poly:flags.polymorphic (Evd.ustate sigma) udecl in
     let () =
       if !Equations_common.debug then
         Feedback.msg_debug (str"Defining programs, before simplify_evars " ++ pr_programs env sigma programs);
@@ -1274,7 +1274,7 @@ let define_programs (type a) ~pm env evd udecl is_recursive fixprots flags ?(unf
     let sigma = !evd in
     let programs = List.map (map_program (simplify_evars sigma)) programs in
     let programs = List.map (map_program (nf_evar sigma)) programs in
-    let ustate = Evd.evar_universe_context sigma in
+    let ustate = Evd.ustate sigma in
     let () = List.iter (fun (cst, _) -> add_hint true (program_id (List.hd programs)) cst) helpers in
     hook ~pm recobls helpers ustate Locality.(Global ImportDefaultBehavior) programs
   in

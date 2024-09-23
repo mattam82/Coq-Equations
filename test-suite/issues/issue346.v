@@ -1,4 +1,4 @@
-From Coq Require Import Program.
+From Stdlib Require Import Program.
 From Equations Require Import Equations.
 Definition tyty := Type -> Type.
 Inductive X : tyty := | K : X nat.

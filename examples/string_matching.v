@@ -1,8 +1,8 @@
 (** Example by Nicky Vazou, unfinished *)
 
 Require Import Arith.
-Require Import Coq.Classes.DecidableClass.
-Require Import Coq.Program.Wf.
+Require Import Stdlib.Classes.DecidableClass.
+Require Import Stdlib.Program.Wf.
 Require Import List Lia.
 Require Import PeanoNat.
 Require Import Program.

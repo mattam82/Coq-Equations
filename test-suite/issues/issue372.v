@@ -1,4 +1,4 @@
-From Coq Require Import Lia NArith.NArith Program.Basics ssr.ssreflect.
+From Stdlib Require Import Lia NArith.NArith Program.Basics ssr.ssreflect.
 From Equations Require Export Equations.
 
 #[local]

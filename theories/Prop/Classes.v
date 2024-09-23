@@ -7,7 +7,7 @@
 (**********************************************************************)
 
 Require Import Equations.Init Equations.CoreTactics.
-From Coq Require Import Extraction Relation_Definitions.
+From Stdlib Require Import Extraction Relation_Definitions.
 Require Import Equations.Prop.Logic.
 
 (** A class for well foundedness proofs.

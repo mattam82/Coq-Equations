@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-From Coq Require Import Extraction CRelationClasses.
+From Stdlib Require Import Extraction CRelationClasses.
 Require Import Equations.Init Equations.CoreTactics.
 Set Warnings "-notation-overridden".
 Require Import Equations.Type.Logic Equations.Type.Relation

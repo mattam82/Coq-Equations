@@ -1,5 +1,5 @@
 Require Import List.
-From Coq Require Import Lia ssreflect.
+From Stdlib Require Import Lia ssreflect.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 Set Asymmetric Patterns.

@@ -1,5 +1,5 @@
 From Equations Require Import Init.
-From Coq Require Import Extraction CRelationClasses.
+From Stdlib Require Import Extraction CRelationClasses.
 
 Set Warnings "-notation-overridden".
 
@@ -112,10 +112,10 @@ Class IsEquiv {A B : Type} (f : A -> B) := BuildIsEquiv {
   eissect : Sect f equiv_inv;
   eisadj : forall x : A, eisretr (f x) = ap f (eissect x)
 }.
-Arguments eisretr {A B}%type_scope f%function_scope {_} _.
-Arguments eissect {A B}%type_scope f%function_scope {_} _.
-Arguments eisadj {A B}%type_scope f%function_scope {_} _.
-Arguments IsEquiv {A B}%type_scope f%function_scope.
+Arguments eisretr {A B}%_type_scope f%_function_scope {_} _.
+Arguments eissect {A B}%_type_scope f%_function_scope {_} _.
+Arguments eisadj {A B}%_type_scope f%_function_scope {_} _.
+Arguments IsEquiv {A B}%_type_scope f%_function_scope.
 
 (** A record that includes all the data of an adjoint equivalence. *)
 Record Equiv A B := BuildEquiv {

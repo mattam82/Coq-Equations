@@ -31,9 +31,9 @@ Unset Universe Minimization ToSet.
 Inductive vector@{i} (A : Type@{i}) : nat -> Type@{i} :=
 | nil : vector A 0
 | cons {n : nat} : A -> vector A n -> vector A (S n).
-Arguments vector A%type_scope n%nat_scope.
+Arguments vector A%_type_scope n%_nat_scope.
 Arguments nil {A}.
-Arguments cons {A%type_scope} {n%nat_scope} a v.
+Arguments cons {A%_type_scope} {n%_nat_scope} a v.
 Derive Signature for vector.
 Require Import Equations.CoreTactics Equations.Type.Tactics.
 Require Import Equations.Type.Tactics.

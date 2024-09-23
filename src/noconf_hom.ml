@@ -103,7 +103,7 @@ let derive_noConfusion_package ~pm env sigma ~poly (ind,u as indu) indid ~prefix
   let cinfo = Declare.CInfo.make ~name:packid ~typ:ty () in
   let info = Declare.Info.make ~hook ~poly ~scope ~kind () in
   let pm, _ = Declare.Obls.add_definition ~pm ~cinfo ~info ~opaque:false
-             ~body:term ~tactic ~uctx:(Evd.evar_universe_context sigma) oblinfo in
+             ~body:term ~tactic ~uctx:(Evd.ustate sigma) oblinfo in
   pm
 
 let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =

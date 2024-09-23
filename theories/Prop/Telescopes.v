@@ -1,5 +1,5 @@
 Require Import Equations.Prop.Loader.
-From Coq Require Import FunctionalExtensionality.
+From Stdlib Require Import FunctionalExtensionality.
 Require Import Equations.Prop.DepElim.
 Require Import Equations.Prop.Tactics.
 Require Import Equations.Prop.FunctionalInduction.

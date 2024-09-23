@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Coq.Unicode.Utf8_core Extraction.
+Require Import Stdlib.Unicode.Utf8_core Extraction.
 
 Declare ML Module "ltac_plugin".
 Declare ML Module "equations_plugin:coq-equations.plugin".

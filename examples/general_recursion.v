@@ -27,7 +27,7 @@ Require Import ZArith Lia.
 Require Import Program.
 Require Import Psatz.
 Require Import Nat.
-Require Import Coq.Vectors.VectorDef.
+Require Import Stdlib.Vectors.VectorDef.
 Require Import Relations.
 
 Set Keyed Unification.
