@@ -222,13 +222,14 @@ let e_type_of env evd t =
   evd := evm; t
 
 let collapse_term_qualities uctx c =
-  let nf_evar _ = None in
   let nf_qvar q = match UState.nf_qvar uctx q with
     | QConstant _ as q -> q
     | QVar q -> (* hack *) QConstant QType
   in
   let nf_univ _ = None in
-  UnivSubst.nf_evars_and_universes_opt_subst nf_evar nf_qvar nf_univ c
+  let rec self () c =
+    UnivSubst.map_universes_opt_subst_with_binders ignore self nf_qvar nf_univ () c
+  in self () c
 
 let make_definition ?opaque ?(poly=false) evm ?types b =
   let env = Global.env () in
