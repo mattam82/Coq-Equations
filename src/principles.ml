@@ -727,6 +727,9 @@ let subst_protos info s gr =
   else Hints.hint_globref gr
   [@@ocaml.warning "-3"]
 
+let wf_hint_warning = CWarnings.create ~name:"wf-obligation-cannot-be-used" ~category:equations_category
+  Pp.(fun (gr, msg) -> str"The decreasing recursive call obligation " ++ Printer.pr_global gr ++ str" could not be defined as a hint: " ++ fnl () ++ msg)
+
 let declare_wf_obligations s info =
   let make_resolve gr =
     equations_debug Pp.(fun () -> str"Declaring wf obligation " ++ Printer.pr_global gr);
@@ -741,7 +744,7 @@ let declare_wf_obligations s info =
             [dbname]
             (Hints.HintsResolveEntry [hint])
       with CErrors.UserError msg (* Cannot be used as a hint *) ->
-        Feedback.msg_warning msg)
+        wf_hint_warning (GlobRef.ConstRef obl, msg))
     info.comp_obls
 
 let map_fix_subst evd ctxmap s =
@@ -1301,6 +1304,10 @@ let mkConj evd sort x y =
   let prod = get_efresh logic_product evd in
     mkApp (prod, [| x; y |])
 
+let functional_proof_warning = 
+  CWarnings.create ~name:"functional-induction-derivation-failure" ~category:equations_category
+    Pp.(fun msg -> str"Functional induction/elimination principle could not be proved automatically: " ++ msg)
+
 let declare_funind ~pm info alias env evd is_rec protos progs
                    ind_stmts all_stmts sign inds kn comb sort f split =
   let poly = is_polymorphic info.term_info in
@@ -1366,8 +1373,7 @@ let declare_funind ~pm info alias env evd is_rec protos progs
         CErrors.user_err Pp.(str"Functional elimination principle could not be proved automatically: " ++
                              Himsg.explain_pretype_error env sigma tyerr)
       | e ->
-        Feedback.msg_warning Pp.(str "Functional elimination principle could not be proved automatically: "
-                                 ++ fnl () ++ CErrors.print e);
+        functional_proof_warning Pp.(fnl () ++ CErrors.print e);
         pm
     in
     let evd = Evd.from_env env in
@@ -1414,8 +1420,7 @@ let declare_funind ~pm info alias env evd is_rec protos progs
     match res with
     | Declare.Obls.Defined gr -> ()
     | Declare.Obls.Remain _  ->
-      Feedback.msg_warning Pp.(str "Functional induction principle could not be proved automatically, it \
-        is left as an obligation.")
+      functional_proof_warning Pp.(str "it is left as an obligation.")
     | Declare.Obls.Dependent -> (* Only 1 obligation *) assert false
   in
   let tac = (ind_fun_tac is_rec f info id !nested_statements progs) in
@@ -1424,9 +1429,8 @@ let declare_funind ~pm info alias env evd is_rec protos progs
     CErrors.user_err Pp.(str"Functional induction principle could not be proved automatically: " ++
                          Himsg.explain_pretype_error env !evd
                            (Pretype_errors.TypingError (Pretype_errors.of_type_error tyerr)))
-     | e when CErrors.noncritical e ->
-       Feedback.msg_warning Pp.(str "Functional induction principle could not be proved automatically: " ++ fnl () ++
-                                CErrors.print e);
+    | e when CErrors.noncritical e ->
+       functional_proof_warning Pp.(fnl () ++ CErrors.print e);
        launch_ind ~pm (Proofview.tclUNIT ())
 
 let max_sort s1 s2 =

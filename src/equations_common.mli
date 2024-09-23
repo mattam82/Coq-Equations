@@ -23,6 +23,8 @@ val equations_derive_eliminator : bool ref
 val debug : bool ref
 val equations_debug : (unit -> Pp.t) -> unit
 
+val equations_category : CWarnings.category
+
 val ppenv_sigma : (Environ.env -> Evd.evar_map -> 'a -> Pp.t) -> 'a -> unit
 
 (* Common flags *)

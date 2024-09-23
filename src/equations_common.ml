@@ -41,6 +41,7 @@ let equations_derive_equations = ref true
 let equations_derive_eliminator = ref true
 
 let depr_with_k = Deprecation.make ~since:"equations v1.2" ()
+let equations_category = CWarnings.create_category ~name:"equations" ()
 
 let () = Goptions.declare_bool_option {
   Goptions.optdepr  = Some depr_with_k;

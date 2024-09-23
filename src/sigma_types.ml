@@ -290,6 +290,10 @@ let () =
             { derive_name = "Signature";
               derive_fn = make_derive_ind fn })
 
+let warn_auto_inline = 
+  CWarnings.create ~name:"signature-auto-inline" ~category:equations_category 
+    (fun msg -> msg) 
+
 let get_signature env sigma0 ty =
   try
     let sigma, (idx, _) =
@@ -314,7 +318,7 @@ let get_signature env sigma0 ty =
     let pind, args = Inductive.find_rectype env (to_constr sigma0 ty) in
     let sigma, pred, pars, _, valsig, ctx, _, _ =
       build_sig_of_ind env sigma0 (to_peuniverses pind) in
-    Feedback.msg_warning (str "Automatically inlined signature for type " ++
+    warn_auto_inline (str "Automatically inlined signature for type " ++
     Printer.pr_pinductive env sigma pind ++ str ". Use [Derive Signature for " ++
     Printer.pr_pinductive env sigma pind ++ str ".] to avoid this.");
     let indsig = pred in
