@@ -76,6 +76,7 @@ issues/issue321.v
 issues/issue399.v
 issues/issue499.v
 issues/issue500.v
+issues/issue577.v
 issues/coq_pr_16995.v
 eqdec_error.v
 noconf_simplify.v

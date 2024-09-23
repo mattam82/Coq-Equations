@@ -686,7 +686,7 @@ let subst_rec env evd cutprob s lhs =
     (compose_subst env ~sigma:evd subst lhs) cutprob
   in subst, csubst
 
-let subst_protos s gr =
+let subst_protos info s gr =
   let open Context.Rel.Declaration in
   let modified = ref false in
   let env = Global.env () in
@@ -721,17 +721,16 @@ let subst_protos s gr =
   if !modified then
     (* let ty = Reductionops.nf_beta env sigma ty in *)
     (equations_debug Pp.(fun () -> str"Fixed hint " ++ Printer.pr_econstr_env env sigma term);
-     let sigma, _ = Typing.type_of env sigma term in
-     let sigma = Evd.minimize_universes sigma in
-     Hints.hint_constr (Evarutil.nf_evar sigma term, Some (Evd.sort_context_set sigma)))
+     let id = Nameops.add_suffix (Nametab.basename_of_global gr) "_hint" in
+     let cst, (_sigma, _ec) = Equations_common.declare_constant id term None ~poly:(is_polymorphic info) ~kind:(Decls.IsDefinition info.decl_kind) sigma in
+     Hints.hint_globref (GlobRef.ConstRef cst))
   else Hints.hint_globref gr
   [@@ocaml.warning "-3"]
 
 let declare_wf_obligations s info =
   let make_resolve gr =
     equations_debug Pp.(fun () -> str"Declaring wf obligation " ++ Printer.pr_global gr);
-    (Hints.empty_hint_info, true,
-     subst_protos s gr)
+    (Hints.empty_hint_info, true, subst_protos info s gr)
   in
   let dbname = Principles_proofs.wf_obligations_base info in
   let locality = if Global.sections_are_opened () then Hints.Local else Hints.SuperGlobal in

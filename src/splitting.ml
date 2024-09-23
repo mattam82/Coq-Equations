@@ -1174,8 +1174,7 @@ let solve_equations_obligations_program ~pm flags recids loc i sigma hook =
       if EConstr.isRef !evd hd then
         (if !Equations_common.debug then
            Feedback.msg_debug
-             (str"mapping obligation to " ++ Printer.pr_econstr_env env !evd t ++
-              Prettyp.print_about env !evd (CAst.make (Constrexpr.AN (Libnames.qualid_of_ident id))) None);
+             (str"mapping obligation to " ++ Printer.pr_econstr_env env !evd t ++ Id.print id);
          let cst, i = EConstr.destConst !evd hd in
          let ctx = Environ.constant_context (Global.env ()) cst in
          let ctx = gather_fresh_context !evd (EConstr.EInstance.kind sigma i) ctx in
