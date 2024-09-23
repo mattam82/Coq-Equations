@@ -153,3 +153,7 @@ This will compile the `HoTT` library variant in addition to the standard one.
 Then, after `make install`, one can import the plugin in Coq, using:
 
     From Equations Require Import HoTT.All.
+
+### Contributors
+
+<img src="https://markupgo.com/github/mattam82/Coq-Equations/contributors?count=0&circleSize=40&circleRadius=40&center=true" width="100%" /> 
