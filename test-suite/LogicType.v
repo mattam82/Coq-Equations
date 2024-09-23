@@ -41,25 +41,28 @@ Require Import Equations.Type.FunctionalInduction.
 
 Set Universe Minimization ToSet.
 Derive NoConfusionHom for vector.
+
+Print NoConfusionHomPackage_vector.
 Unset Universe Minimization ToSet.
 
 #[export]
-Instance vector_eqdec@{i +|+} {A : Type@{i}} {n} `(EqDec@{i} A) : EqDec (vector A n).
+Instance vector_eqdec@{i} {A : Type@{i}} {n} `(EqDec@{i} A) : EqDec@{i} (vector@{i} A n).
 Proof.
   intros. intros x. intros y. induction x.
   - left. now depelim y.
   - depelim y.
     pose proof (Classes.eq_dec a a0).
     dependent elimination X as [inl id_refl|inr Ha].
-    -- specialize (IHx v).
-       dependent elimination IHx as [inl id_refl|inr H'].
-       --- left; reflexivity.
-       --- right. simplify *. now apply H'.
+    -- specialize (IHx v). 
+        dependent elimination IHx as [inl id_refl|inr H'].
+        --- left; reflexivity.
+        --- right. simplify *. now apply H'.
     -- right; simplify *. now apply Ha.
 Defined.
 
 Record vect {A} := mkVect { vect_len : nat; vect_vector : vector A vect_len }.
 Coercion mkVect : vector >-> vect.
+Set Universe Minimization ToSet.
 
 Derive NoConfusion for vect.
 Reserved Notation "x ++v y" (at level 60).
@@ -98,7 +101,7 @@ Section foo.
     | (xs, ys) := (cons x xs, cons y ys) }.
 End foo.
 
-
+Set Universe Minimization ToSet.
 Section vlast.
   Context {A : Type}.
   Equations vlast {n} (v : vector A (S n)) : A by wf (signature_pack v) (@vector_subterm A) :=

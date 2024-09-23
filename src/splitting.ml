@@ -1120,9 +1120,10 @@ let gather_fresh_context sigma u octx =
       Sorts.QVar.Set.empty qarr
   in
   let levels =
-    Array.fold_left (fun ctx' l ->
-        if not (Univ.Level.Set.mem l univs) then Univ.Level.Set.add l ctx'
-        else ctx')
+    Array.fold_left (fun ctx' u ->
+      let levels = Univ.Universe.levels u in
+      let levels = Univ.Level.Set.diff levels univs in
+      Univ.Level.Set.union levels ctx')
       Univ.Level.Set.empty uarr
   in
   (qualities, levels), (UVars.AbstractContext.instantiate u octx)
