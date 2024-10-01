@@ -1690,7 +1690,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     let univs, ubinders = Evd.univ_entry ~poly sigma in
     let uctx = match univs with
     | UState.Monomorphic_entry ctx ->
-      let () = Global.push_context_set ~strict:true ctx in
+      let () = Global.push_context_set ctx in
       Entries.Monomorphic_ind_entry
     | UState.Polymorphic_entry uctx -> Entries.Polymorphic_ind_entry uctx
     in
@@ -1759,7 +1759,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     if not poly then
       (* Declare the universe context necessary to typecheck the following
           definitions once and for all. *)
-      (Global.push_context_set ~strict:true (Evd.universe_context_set !evd);
+      (Global.push_context_set (Evd.universe_context_set !evd);
        evd := Evd.from_env (Global.env ()))
     else ()
   in
