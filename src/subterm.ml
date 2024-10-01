@@ -152,7 +152,7 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
   let univs, ubinders = Evd.univ_entry ~poly sigma in
   let uctx = match univs with
   | UState.Monomorphic_entry ctx ->
-    let () = Global.push_context_set ~strict:true ctx in
+    let () = Global.push_context_set ctx in
     Entries.Monomorphic_ind_entry
   | UState.Polymorphic_entry uctx -> Entries.Polymorphic_ind_entry uctx
   in
