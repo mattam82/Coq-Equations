@@ -1,7 +1,7 @@
-Require Import Unicode.Utf8.
-Require Import Program.Equality.
-Require Import Arith.
-Require Vectors.Vector.
+From Coq Require Import Utf8.
+From Coq Require Import Equality.
+From Coq Require Import Arith.
+From Coq Require Vector.
 Import Vector.VectorNotations.
 From Equations Require Import Equations.
 

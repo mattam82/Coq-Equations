@@ -16,7 +16,7 @@
   recursion and function eliminators. *)
 
 From Equations Require Import Equations.
-From Stdlib Require Import List Program.Syntax Arith Lia.
+From Stdlib Require Import List Syntax Arith Lia.
 Import ListNotations.
 
 (** ** Worker/wrapper

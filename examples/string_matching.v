@@ -1,8 +1,8 @@
 (** Example by Nicky Vazou, unfinished *)
 
 Require Import Arith.
-Require Import Stdlib.Classes.DecidableClass.
-Require Import Stdlib.Program.Wf.
+From Stdlib Require Import DecidableClass.
+From Stdlib.Program Require Import Wf.
 Require Import List Lia.
 Require Import PeanoNat.
 Require Import Program.

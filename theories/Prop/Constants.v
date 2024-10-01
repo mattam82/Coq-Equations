@@ -52,7 +52,7 @@ Register Init.Datatypes.pair as equations.product.intro.
 Register Classes.WellFounded as equations.wellfounded.class.
 Register Init.Wf.well_founded as equations.wellfounded.type.
 Register Relations.Relation_Definitions.relation as equations.relation.type.
-Register Relations.Relation_Operators.clos_trans as equations.relation.transitive_closure.
+Register Relation_Operators.clos_trans as equations.relation.transitive_closure.
 
 (* Dependent elimination constants *)
 Register Equations.Prop.DepElim.solution_left as equations.depelim.solution_left.
