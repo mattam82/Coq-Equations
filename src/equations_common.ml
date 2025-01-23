@@ -1104,7 +1104,7 @@ let nonalgebraic_universe_level_of_universe env sigma u =
     | None ->
       let sigma, l = Evd.new_univ_level_variable Evd.univ_flexible sigma in
       let ul = ESorts.make @@ Sorts.sort_of_univ @@ Univ.Universe.make l in
-      let sigma = Evd.set_leq_sort env sigma u ul in
+      let sigma = Evd.set_leq_sort sigma u ul in
       sigma, l, ul
 
 let instance_of env sigma ?argu goalu =
