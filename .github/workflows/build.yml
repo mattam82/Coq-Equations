@@ -40,22 +40,3 @@ jobs:
           opam_file: 'rocq-equations.opam'
           coq_version: ${{ matrix.coq_version }}
           ocaml_version: ${{ matrix.ocaml_version }}
-          before_script: |
-            startGroup "Workaround permission issue"
-              sudo chown -R coq:coq .  # <--
-              ocamlfind list
-            endGroup
-          script: |
-            startGroup "Build project"
-              opam exec -- ./configure.sh --enable-${{matrix.target}}
-              opam exec -- make -j 2 ci-${{matrix.target}}
-            endGroup
-          uninstall: |
-            startGroup "Clean project"
-              make clean
-            endGroup
-
-      - name: Revert permissions
-        # to avoid a warning at cleanup time
-        if: ${{ always() }}
-        run: sudo chown -R 1001:116 .  # <--
