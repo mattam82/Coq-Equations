@@ -21,8 +21,8 @@
   "logpath:Equations"))
  (depends
    (ocaml (>= 4.10.0))
-   rocq-prover
-   ppx_optcomp
+   (rocq-prover (and (>= "9.0~") (<> "dev")))
+   (ppx_optcomp :build)
    (ocaml-lsp-server :with-dev-setup)))
 
 (package
@@ -30,3 +30,5 @@
  (synopsis "Technical package to run tests")
  (description "Do not install")
  (depends rocq-equations))
+
+(generate_opam_files)
