@@ -10,7 +10,7 @@ Arguments here {X x xs}.
 Arguments there {X x y xs} _.
 Check (there here) : 26 ∈ (43 :: 26 :: 76 :: nil).
 
-(* Does coq-equations mistake variable names sometimes? *)
+(* Does rocq-equations mistake variable names sometimes? *)
 
 Set Equations Debug.
 

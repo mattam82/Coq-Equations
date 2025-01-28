@@ -1,7 +1,7 @@
 package "plugin" (
   directory = "."
   description = "Coq equations"
-  requires = "coq-core.plugins.ltac coq-core.plugins.extraction coq-core.plugins.cc"
+  requires = "rocq-runtime.plugins.ltac rocq-runtime.plugins.extraction rocq-runtime.plugins.cc"
   archive(byte) = "equations_plugin.cma"
   archive(native) = "equations_plugin.cmxa"
   plugin(byte) = "equations_plugin.cma"

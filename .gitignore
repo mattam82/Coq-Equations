@@ -4,11 +4,11 @@
 *.vo
 *.vok
 *.vos
-/Makefile.coq
-/Makefile.coq.conf
+/Makefile.rocq
+/Makefile.rocq.conf
 /Makefile.hott
 /Makefile.hott.conf
-src/META.coq-equations
+src/META.rocq-equations
 *.bak
 *.cm*
 *.o

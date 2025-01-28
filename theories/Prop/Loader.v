@@ -11,7 +11,7 @@
 Require Import Extraction.
 
 (** This exports tactics *)
-Declare ML Module "coq-equations.plugin".
+Declare ML Module "rocq-equations.plugin".
 
 From Equations Require Export Init Signature.
 Require Import Equations.CoreTactics.

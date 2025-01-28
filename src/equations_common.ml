@@ -204,7 +204,7 @@ let e_new_global evdref gr =
 
 type lazy_ref = Names.GlobRef.t Lazy.t
 
-let equations_lib_ref s = Coqlib.lib_ref ("equations." ^ s)
+let equations_lib_ref s = Rocqlib.lib_ref ("equations." ^ s)
 
 let find_global s = lazy (equations_lib_ref s)
 
@@ -639,7 +639,7 @@ let tacident_arg h =
   Reference (qualid_of_ident h)
 
 let find_depelim_module () =
-  let gr = Coqlib.lib_ref "equations.depelim.module" in
+  let gr = Rocqlib.lib_ref "equations.depelim.module" in
   match gr with
   | GlobRef.ConstRef c -> Names.Constant.modpath c
   | _ -> CErrors.anomaly (str"equations.depelim.module is not defined")
@@ -1104,7 +1104,7 @@ let nonalgebraic_universe_level_of_universe env sigma u =
     | None ->
       let sigma, l = Evd.new_univ_level_variable Evd.univ_flexible sigma in
       let ul = ESorts.make @@ Sorts.sort_of_univ @@ Univ.Universe.make l in
-      let sigma = Evd.set_leq_sort sigma u ul in
+      let sigma = Evd.set_leq_sort env sigma u ul in
       sigma, l, ul
 
 let instance_of env sigma ?argu goalu =

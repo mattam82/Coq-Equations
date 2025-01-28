@@ -36,7 +36,7 @@ Section Properties.
   Variable R : relation A.
 
   Section Clos_Refl_Trans.
-
+    Set Warnings "-notation-incompatible-prefix".
     Local Notation "R *" := (clos_refl_trans R)
       (at level 8, no associativity, format "R *").
 

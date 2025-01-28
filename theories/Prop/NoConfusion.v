@@ -11,7 +11,7 @@
    on some equation. *)
 
 Set Warnings "-deprecated-since-8.20".   
-Require Import Stdlib.Program.Tactics Bvector List.
+From Stdlib Require Import Program.Tactics Bvector List.
 Set Warnings "deprecated-since-8.20".
 From Equations Require Import Init Signature.
 Require Import Equations.CoreTactics.

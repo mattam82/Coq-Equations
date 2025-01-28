@@ -105,11 +105,11 @@ if you didn't do it yet:
 
 and run:
 
-    opam install coq-equations
+    opam install rocq-equations
 
 To get the beta versions of Coq, activate the repository:
 
-    opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev
+    opam repo add rocq-runtime-dev https://coq.inria.fr/opam/core-dev
 
 To get the development version of Equations, activate the repository:
 
@@ -144,7 +144,7 @@ in your own directory. E.g. on Ubuntu, you would prefix the command with
 
 ## HoTT Variant
 
-The HoTT variant of Equations works with the coq-hott library for Coq 8.13 and up. When using `opam`, simply install first the `coq-hott` library and `coq-equations` will install its HoTT variant. From source, first 
+The HoTT variant of Equations works with the coq-hott library for Coq 8.13 and up. When using `opam`, simply install first the `coq-hott` library and `rocq-equations` will install its HoTT variant. From source, first 
 install `coq-hott` and then use:
 
     ./configure.sh --enable-hott
