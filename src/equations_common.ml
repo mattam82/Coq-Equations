@@ -1090,10 +1090,10 @@ let evd_comb1 f evd x =
 
 (* Universe related functions *)
 
-[%%if rocq = "9.0"]
-let set_leq_sort env = Evd.set_leq_sort
+[%%if rocq = "9.1"]
+let set_leq_sort _ = Evd.set_leq_sort
 [%%else]
-let set_leq_sort env = Evd.set_leq_sort
+let set_leq_sort env = Evd.set_leq_sort env
 [%%endif]
 
 let nonalgebraic_universe_level_of_universe env sigma u =
