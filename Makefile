@@ -65,7 +65,7 @@ dune:-
 	dune build
 
 ci-dune:
-	opam install -j 2 -y coq-hott.dev
+	# opam install -j 2 -y coq-hott.dev
 	dune build
 
 ci-hott:
