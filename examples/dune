@@ -1,0 +1,10 @@
+(coq.theory
+ ; This determines the -R flag
+ (name Equations.Examples)
+ (package rocq-equations-examples)
+ (synopsis "Equations Plugin Examples")
+ (plugins rocq-runtime.plugins.extraction rocq-equations.plugin)
+ (modules :standard \ IdDec NoCycle)
+ (theories Stdlib Equations Equations.Prop Equations.Type))
+
+(include_subdirs no)

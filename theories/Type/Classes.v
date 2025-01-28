@@ -7,10 +7,9 @@
 (**********************************************************************)
 
 From Stdlib Require Import Extraction CRelationClasses.
-Require Import Equations.Init Equations.CoreTactics.
+From Equations Require Import Init CoreTactics.
 Set Warnings "-notation-overridden".
-Require Import Equations.Type.Logic Equations.Type.Relation
-        Equations.Type.Relation_Properties Equations.Type.WellFounded.
+From Equations.Type Require Import Logic Relation Relation_Properties WellFounded.
 
 Set Universe Polymorphism.
 

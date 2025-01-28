@@ -1,5 +1,5 @@
 From Stdlib Require Import Arith.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Fixpoint Ack (n m : nat) : nat :=
 match n with

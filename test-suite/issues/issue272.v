@@ -1,4 +1,4 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 (* If it's the full definition from the start, works fine *)
 (* Equations even (n : nat) : bool := { *)

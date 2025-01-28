@@ -6,9 +6,9 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Equations.Init Equations.CoreTactics.
+From Equations Require Import Init CoreTactics.
 From Stdlib Require Import Extraction Relation_Definitions.
-Require Import Equations.Prop.Logic.
+From Equations.Prop Require Import Logic.
 
 (** A class for well foundedness proofs.
    Instances can be derived automatically using [Derive Subterm for ind]. *)

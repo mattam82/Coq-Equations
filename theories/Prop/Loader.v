@@ -8,16 +8,16 @@
 
 (** The set of libraries required to run Equations with all features. *)
 
-Require Import Extraction.
+From Stdlib Require Import Extraction.
 
 (** This exports tactics *)
-Declare ML Module "coq-equations.plugin".
+Declare ML Module "rocq-equations.plugin".
 
 From Equations Require Export Init Signature.
-Require Import Equations.CoreTactics.
+From Equations Require Import CoreTactics.
 Require Export Equations.Prop.SigmaNotations.
 Require Export Equations.Prop.Classes.
-Require Import Equations.Prop.DepElim Equations.Prop.Constants.
+From Equations.Prop Require Import DepElim Constants.
 Require Export Equations.Prop.EqDec.
 Require Export Equations.Prop.EqDecInstances.
 Require Export Equations.Prop.NoConfusion Equations.Prop.Subterm.

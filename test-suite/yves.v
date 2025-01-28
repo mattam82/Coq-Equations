@@ -1,5 +1,5 @@
-Require Import Arith.
-From Equations Require Import Equations.
+From Stdlib Require Import Arith.
+From Equations.Prop Require Import Equations.
 
 Inductive btree (T : Type) : Type :=
    Leaf | Node (val : T) (t1 t2 : btree T).

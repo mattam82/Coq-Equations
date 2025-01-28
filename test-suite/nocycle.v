@@ -1,5 +1,6 @@
-From Equations Require Import Equations.
-Require Import Below.
+From Equations.Prop Require Import Equations.
+
+From Equations.TestSuite Require Import Below.
 Module NoCycle_nat.
 
 Definition noSubterm x y :=
@@ -292,7 +293,7 @@ Module NoCycle_mut.
   Qed.
 End NoCycle_mut.
 
-Require Import Eqdep_dec.
+From Stdlib Require Import Eqdep_dec.
 
 Theorem nat_dec (n m : nat) : {n = m} + {n <> m}.
 Proof. decide equality. Defined.

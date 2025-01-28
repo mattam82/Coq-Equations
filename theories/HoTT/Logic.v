@@ -23,7 +23,7 @@ Register ap as core.identity.congr.
 
 Definition path_inspect {A : Type} (x : A) : { y | paths x y } := (x ; idpath).
 
-Require Import HoTT.Types.Bool.
+From Stdlib Require Import HoTT.Types.Bool.
 (* For compatibility with Coq's [induction] *)
 Definition Bool_rect := Bool_ind.
 

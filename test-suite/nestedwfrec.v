@@ -1,5 +1,6 @@
-From Equations Require Import Equations.
-Require Import Lia.
+From Equations.Prop Require Import Equations.
+
+From Stdlib Require Import Lia.
 
 Equations? f (n : nat) : nat by wf n lt :=
   f 0 := 0;

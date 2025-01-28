@@ -1,4 +1,4 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Goal forall x : nat, let y := S x in let z := S y in x = x.
 Proof.

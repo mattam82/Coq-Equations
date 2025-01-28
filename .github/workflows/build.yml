@@ -23,39 +23,20 @@ jobs:
         coq_version: 
           - 'dev'
         ocaml_version:
-          - '4.09-flambda'
-        target: [ local, hott, dune ]
+          - '4.14.2-flambda'
+        target: [ dune ] # hott, disabled for now
       fail-fast: false
 
     steps:
 
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 1
 
       - name: Docker-Coq-Action
         uses: coq-community/docker-coq-action@v1
         with:
-          opam_file: 'coq-equations.opam'
+          opam_file: 'rocq-equations.opam'
           coq_version: ${{ matrix.coq_version }}
           ocaml_version: ${{ matrix.ocaml_version }}
-          before_script: |
-            startGroup "Workaround permission issue"
-              sudo chown -R coq:coq .  # <--
-              ocamlfind list
-            endGroup
-          script: |
-            startGroup "Build project"
-              opam exec -- ./configure.sh --enable-${{matrix.target}}
-              opam exec -- make -j 2 ci-${{matrix.target}}
-            endGroup
-          uninstall: |
-            startGroup "Clean project"
-              make clean
-            endGroup
-
-      - name: Revert permissions
-        # to avoid a warning at cleanup time
-        if: ${{ always() }}
-        run: sudo chown -R 1001:116 .  # <--

@@ -5,8 +5,9 @@
    but not direct pattern matching. We show a difficult example
    involving nested recursive calls. *)
 
-From Equations Require Import Equations.
-Require Import Arith Lia Relations Utf8.
+From Equations.Prop Require Import Equations.
+
+From Stdlib Require Import Arith Lia Relations Utf8.
 Import Sigma_Notations.
 
 (** The graph of the [f91] function. *)

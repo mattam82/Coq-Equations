@@ -83,11 +83,11 @@ let define_unfolding_eq ~pm env evd flags p unfp prog prog' ei hook =
          (mkApp (funfc, extended_rel_vect 0 sign))) sign
   in
   let evd, stmt = Typing.solve_evars (Global.env ()) !evd stmt in
-  let subproofs = Principles_proofs.extract_subprograms env evd ei.equations_where_map p unfp in
+  let subproofs = Principles_proofs.extract_subprograms env evd ei.Principles_proofs.equations_where_map p unfp in
   let fold pm (name, subst, uctx, typ) =
     let typ = EConstr.Unsafe.to_constr typ in
     let typ = collapse_term_qualities uctx typ in
-    let tac = Principles_proofs.prove_unfolding_sublemma info ei.equations_where_map prog.program_cst funf_cst subst in
+    let tac = Principles_proofs.prove_unfolding_sublemma info ei.Principles_proofs.equations_where_map prog.program_cst funf_cst subst in
     let cinfo = Declare.CInfo.make ~name ~typ () in
     let info = Declare.Info.make ~poly:info.poly
         ~scope:info.scope

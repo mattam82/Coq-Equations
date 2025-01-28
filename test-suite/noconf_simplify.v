@@ -1,5 +1,6 @@
-From Equations Require Import Equations.
-Require Import List.
+From Equations.Prop Require Import Equations.
+
+From Stdlib Require Import List.
 Import ListNotations.
 
 Record decl := { na : nat; body : option nat }.

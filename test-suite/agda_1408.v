@@ -1,4 +1,4 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Axiom  I     : Set.
 Axiom i1 i2 : I.
@@ -17,5 +17,6 @@ Inductive P : forall {i}, D i -> Set :=
 Derive Signature for P.
 Derive NoConfusionHom for P.
 
+#[warning="-solve_obligation_error,functional-induction-derivation-failure"]
 Equations Foo (p : P d1) : Set :=
   Foo p1 := nat.

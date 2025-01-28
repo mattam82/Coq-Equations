@@ -1,4 +1,5 @@
-Require Import Equations.Prop.Equations.
+From Equations.Prop Require Import Equations.
+
 
 Set Program Mode.
 

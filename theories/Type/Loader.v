@@ -8,20 +8,20 @@
 
 (** The set of libraries required to run Equations with all features. *)
 
-Require Import Extraction.
+From Stdlib Require Import Extraction.
 
 (** This exports tactics *)
-Declare ML Module "coq-equations.plugin".
+Declare ML Module "rocq-equations.plugin".
 
 Set Warnings "-notation-overridden".
 From Equations Require Export Init Signature.
-Require Import Equations.CoreTactics.
-Require Export Equations.Type.Logic Equations.Type.Classes.
-Require Import Equations.Type.WellFounded.
-Require Import Equations.Type.DepElim Equations.Type.EqDec Equations.Type.Constants.
-Require Export Equations.Type.EqDecInstances.
-Require Import Equations.Type.NoConfusion.
-Require Import Equations.Type.Subterm.
+From Equations Require Import CoreTactics.
+From Equations.Type Require Export Logic Classes.
+From Equations.Type Require Import WellFounded.
+From Equations.Type Require Import DepElim EqDec Constants.
+From Equations.Type Require Export EqDecInstances.
+From Equations.Type Require Import NoConfusion.
+From Equations.Type Require Import Subterm.
 Require Export Equations.Type.Tactics.
 Require Export Equations.Type.FunctionalInduction. (* funelim tactic *)
 

@@ -1,5 +1,6 @@
-From Equations Require Import Equations.
-Require Import List.
+From Equations.Prop Require Import Equations.
+
+From Stdlib Require Import List.
 
 Inductive In {X} (x : X) : list X -> Type :=
 | here {xs} : In x (x :: xs)
@@ -10,7 +11,7 @@ Arguments here {X x xs}.
 Arguments there {X x y xs} _.
 Check (there here) : 26 ∈ (43 :: 26 :: 76 :: nil).
 
-(* Does coq-equations mistake variable names sometimes? *)
+(* Does rocq-equations mistake variable names sometimes? *)
 
 Set Equations Debug.
 

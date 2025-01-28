@@ -3,8 +3,8 @@
   Porting a chapter of Adam Chlipala's Certified Programming with Dependent Types,
   #<a href="http://adam.chlipala.net/cpdt/html/MoreDep.html">More Dependent Types</a>#. *)
 
-Require Import Bool Arith List Program. 
-From Equations Require Import Equations.
+From Stdlib Require Import Bool Arith List Program. 
+From Equations.Prop Require Import Equations.
 Set Equations Transparent.
 
 Set Keyed Unification.
@@ -101,7 +101,7 @@ pairOut _ => None.
 
 Set Printing Depth 1000000.
 
-Require Import Wellfounded.
+From Stdlib Require Import Wellfounded.
 
 Equations cfold {t} (e : exp t) : exp t :=
 (* Works with well-foundedness too: cfold e by wf (signature_pack e) exp_subterm := *)
@@ -147,7 +147,7 @@ Inductive rbtree : color -> nat -> Set :=
 | BlackNode : forall c1 c2 n, rbtree c1 n -> nat -> rbtree c2 n -> rbtree Black (S n).
 Derive Signature NoConfusion for rbtree.
 
-Require Import Arith Lia.
+From Stdlib Require Import Arith Lia.
 
 Section depth.
   Variable f : nat -> nat -> nat.

@@ -11,11 +11,10 @@
  ** A lightweight version of the Homotopy Type Theory library prelude. *)
 Set Warnings "-notation-overridden".
 
-Require Export Unicode.Utf8.
-Require Import Stdlib.Program.Tactics Setoid.
-Require Import Relations.
+From Stdlib Require Export Unicode.Utf8.
+From Stdlib Require Import Program.Tactics Setoid Relations.
 (** Switches to constants in Type *)
-Require Import Equations.Type.All.
+From Equations.Type Require Import All.
 
 (** This imports the polymorphic identity and sigma types in Type and their associated notations. *)
 Import Id_Notations.
@@ -31,7 +30,7 @@ Set Implicit Arguments.
 (** Redefine a polymorphic identity function *)
 Definition id {A : Type} (a : A) : A := a.
 
-Require Import CRelationClasses CMorphisms.
+From Stdlib Require Import CRelationClasses CMorphisms.
 
 #[local] Instance id_reflexive A : Reflexive (@Id A).
 Proof. exact (@id_refl A). Defined.
@@ -67,7 +66,9 @@ Notation "p # x" := (transport _ p x) (right associativity, at level 65, only pa
 Notation "1" := id_refl : equations_scope.
 
 (** Notation for the inverse *)
-Reserved Notation "p ^" (at level 3, format "p '^'").
+#[warnings="-notation-incompatible-prefix"]
+Reserved Notation "p ^" (at level 1, format "p '^'").
+#[warnings="-notation-incompatible-prefix"]
 Notation "p ^" := (id_sym p%equations) : equations_scope.
 
 Equations apd {A} {B : A -> Type} (f : forall x : A, B x) {x y : A} (p : x = y) :

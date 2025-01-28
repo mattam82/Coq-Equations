@@ -15,7 +15,7 @@
   to express and reason about using where clauses, well-founded
   recursion and function eliminators. *)
 
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 From Stdlib Require Import List Syntax Arith Lia.
 Import ListNotations.
 
@@ -70,7 +70,7 @@ Qed.
 
  *)
 
-Obligation Tactic := idtac.
+Local Obligation Tactic := idtac.
 
 Equations? isPrime (n : nat) : bool :=
   isPrime 0 := false;

@@ -7,9 +7,9 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 From Stdlib Require Import List Syntax Arith Lia.
-Require Import List.
+From Stdlib Require Import List.
 Import ListNotations.
 (* end hide *)
 (** * Well-founded recursion

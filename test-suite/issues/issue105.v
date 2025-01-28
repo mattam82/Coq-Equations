@@ -1,5 +1,6 @@
-From Equations Require Import Equations.
-Require Import List.
+From Equations.Prop Require Import Equations.
+
+From Stdlib Require Import List.
 (* This type is from VST: 
  * https://github.com/PrincetonUniversity/VST/blob/v2.1/floyd/compact_prod_sum.v#L13 *)
 Fixpoint compact_sum (T: list Type): Type :=

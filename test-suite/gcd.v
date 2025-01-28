@@ -1,6 +1,7 @@
-From Equations Require Import Equations.
-Require Import Relations.
-Require Import Arith Lia.
+From Equations.Prop Require Import Equations.
+
+From Stdlib Require Import Relations.
+From Stdlib Require Import Arith Lia.
 Set Keyed Unification.
 
 Ltac subst_lets :=
@@ -24,7 +25,7 @@ gcd x y with gt_eq_gt_dec x y := {
 Transparent gcd.
 Eval compute in gcd 18 84.
 
-Require Import ExtrOcamlBasic.
+From Stdlib Require Import ExtrOcamlBasic.
 Extraction Inline pr1 pr2.
 Extraction gcd.
 (* Extraction gcd_unfold. *)

@@ -1,11 +1,11 @@
 Set Warnings "-notation-overridden".
-Require Import Equations.HoTT.Loader.
-Require Import Equations.HoTT.Logic.
-Require Import Equations.HoTT.WellFounded.
-Require Import Equations.HoTT.DepElim.
-Require Import Equations.HoTT.Tactics.
-Require Import Equations.HoTT.FunctionalInduction.
-Require Import Equations.HoTT.Subterm.
+From Equations Require Import HoTT.Loader.
+From Equations Require Import HoTT.Logic.
+From Equations Require Import HoTT.WellFounded.
+From Equations Require Import HoTT.DepElim.
+From Equations Require Import HoTT.Tactics.
+From Equations Require Import HoTT.FunctionalInduction.
+From Equations Require Import HoTT.Subterm.
 From HoTT Require Import Basics.Tactics.
 
 (** Telescopes: allows treating variable arity fixpoints *)

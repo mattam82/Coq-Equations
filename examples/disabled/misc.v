@@ -1,5 +1,7 @@
+From Equations.Prop Require Import Equations.
+From Stdlib Require Import List.
 
-
+Import List_Notations.
 
 (** In general, one can require more elaborate loop invariants.
     This [fast_length] function computes the length of a list using
@@ -29,7 +31,7 @@ Equations list_init {A} (n : nat) (a : A) : list A :=
   list_init 0 _ := [];
   list_init (S n) x := x :: list_init n x.
 
-Require Import NArith.
+From Stdlib Require Import NArith.
 
 Equations pos_list_init {A} (n : positive) (a : A) : list A :=
   pos_list_init xH x := [x];

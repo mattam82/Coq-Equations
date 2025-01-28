@@ -9,11 +9,11 @@
 (** The set of libraries required to run Equations with all features. *)
 
 Require Export Equations.Prop.Loader.
-Require Import Equations.Prop.Telescopes.
+From Equations.Prop Require Import Telescopes.
 
 #[export] Existing Instance wf_tele_measure.
 
-Require Import Program.Tactics.
+From Stdlib Require Import Program.Tactics.
 
 (* program_solve_wf launches auto on well-founded and propositional (i.e. in Prop) goals *)
 

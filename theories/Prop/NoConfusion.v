@@ -11,12 +11,12 @@
    on some equation. *)
 
 Set Warnings "-deprecated-since-8.20".   
-Require Import Stdlib.Program.Tactics Bvector List.
+From Stdlib Require Import Program.Tactics Bvector List.
 Set Warnings "deprecated-since-8.20".
 From Equations Require Import Init Signature.
-Require Import Equations.CoreTactics.
-Require Import Equations.Prop.Classes Equations.Prop.EqDec Equations.Prop.Constants.
-Require Import Equations.Prop.DepElim Equations.Prop.Tactics.
+From Equations Require Import CoreTactics.
+From Equations.Prop Require Import Classes EqDec Constants.
+From Equations.Prop Require Import DepElim Tactics.
 
 (** Simple of parameterized inductive types just need NoConfusion. *)
 Derive NoConfusion for unit bool nat option sum Datatypes.prod list sigT sig.

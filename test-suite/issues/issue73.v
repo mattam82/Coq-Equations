@@ -1,5 +1,5 @@
 From Stdlib.Lists Require Import List.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Equations zip {A} {B} (l1 : list A) (l2 : list B) : list (A*B) :=
 zip (cons h1 t1) (cons h2 t2) := (h1,h2) :: zip t1 t2;

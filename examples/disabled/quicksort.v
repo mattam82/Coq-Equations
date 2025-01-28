@@ -1,6 +1,6 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
-Require Import Vector.
+From Stdlib Require Import Vector.
 Notation vector := t.
 Derive NoConfusion NoConfusionHom for vector.
 
@@ -44,13 +44,13 @@ Proof.
   firstorder.
 Qed.
 
-(* Lemma All_In_All {A P n m} (v : vector A n) (v' : vector A m) : *)
-(*   All (fun x => In x v) v' -> All P v -> All P v'. *)
-(* Proof. *)
-(*   induction 1. simpl. constructor. *)
-(*   intros. constructor; auto. *)
-(*   eapply In_All; eauto. *)
-(* Qed. *)
+Lemma All_In_All {A P n m} (v : vector A n) (v' : vector A m) :
+   All (fun x => In x v) v' -> All P v -> All P v'.
+Proof.
+  induction 1. simpl. constructor.
+  intros. constructor; auto.
+  eapply In_All; eauto.
+Qed.
 
 Inductive Sorted {A : Type} (R : A -> A -> Prop) : forall {n}, vector A n -> Prop :=
 | Sorted_nil : Sorted R nil
@@ -70,7 +70,7 @@ Proof.
   split; intros; depelim H0; cbn; simp In app in *; intuition eauto with *; simp In in *.
   apply H in H0. intuition.
 Qed.
-Require Import Sumbool.
+From Stdlib Require Import Sumbool.
 
 Notation dec x := (sumbool_of_bool x).
 

@@ -22,12 +22,13 @@
   store extension is resolved using type class resolution as well as the
   dependent-passing style version. *)
 
-Require Import Program.Basics Program.Tactics.
+From Stdlib Require Import Program.Basics Program.Tactics.
+#[warnings="-warn-library-file-stdlib-vector"]
 Require Import Stdlib.Vectors.VectorDef.
-Require Import List.
+From Stdlib Require Import List.
 Import ListNotations.
-Require Import Utf8.
-From Equations Require Import Equations.
+From Stdlib Require Import Utf8.
+From Equations.Prop Require Import Equations.
 
 Set Warnings "-notation-overridden".
 (** The Σ notation of equations clashes with the Σ's used below,
@@ -332,7 +333,7 @@ Definition neg : Expr [] (bool ⇒ bool) :=
 
 Definition letref {t u} (v : Expr [] t) (b : Expr [ref t] u) : Expr [] u :=
   app (abs b) (new v).
-Obligation Tactic := idtac.
+Local Obligation Tactic := idtac.
 
 Equations in_app_weaken {Σ Σ' Σ'' : StoreTy} {t} (p : t ∈ (Σ ++ Σ'')) : t ∈ (Σ ++ Σ' ++ Σ'') by struct Σ :=
   in_app_weaken (Σ:=nil) p := pres_in (Σ', eq_refl) t p;

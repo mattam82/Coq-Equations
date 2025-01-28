@@ -1,5 +1,5 @@
 From Stdlib Require Import List String.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Module A.
 Section test.

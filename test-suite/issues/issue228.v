@@ -1,9 +1,9 @@
-From Coq Require Import Utf8.
-From Coq Require Import Equality.
-From Coq Require Import Arith.
-From Coq Require Vector.
+From Stdlib Require Import Utf8.
+From Stdlib Require Import Equality.
+From Stdlib Require Import Arith.
+From Stdlib Require Vector.
 Import Vector.VectorNotations.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Inductive MType : Type :=
 | Base : Set → MType

@@ -1,6 +1,6 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
-Require Import List.
+From Stdlib Require Import List.
 Import ListNotations.
 
 Equations test {A} (n : nat) (gs : list A) : unit by wf n lt :=

@@ -1,12 +1,12 @@
 (** Example by Nicky Vazou, unfinished *)
 
-Require Import Arith.
+From Stdlib Require Import Arith.
 From Stdlib Require Import DecidableClass.
 From Stdlib.Program Require Import Wf.
-Require Import List Lia.
-Require Import PeanoNat.
-Require Import Program.
-From Equations Require Import Equations.
+From Stdlib Require Import List Lia.
+From Stdlib Require Import PeanoNat.
+From Stdlib Require Import Program.
+From Equations.Prop Require Import Equations.
 
 Import ListNotations.
 
@@ -236,7 +236,7 @@ Section pmconcat.
     | left H => mconcat x ;
     | right Hd => pmconcat i (map mconcat (chunk i x)) }.
   Proof. clear pmconcat.
-    rewrite map_length.
+    rewrite length_map.
     rewrite Bool.orb_false_iff in Hd.
     destruct Hd. apply leb_complete_conv in H2. apply leb_complete_conv in H3.
     apply length_chunk_lt; simpl; auto.

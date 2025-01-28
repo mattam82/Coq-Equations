@@ -1,7 +1,8 @@
 Require Import Stdlib.Vectors.Vector.
 Require Import Stdlib.PArith.PArith.
-Require Import Lia.
-Require Import Equations.Prop.Equations.
+From Stdlib Require Import Lia.
+From Equations.Prop Require Import Equations.
+
 Set Equations With UIP.
 Generalizable All Variables.
 
@@ -24,7 +25,7 @@ Arguments Ident {a tys dom}.
 Arguments Morph {a tys} f.
 Arguments Comp {a tys dom mid cod} f g.
 Import Sigma_Notations.
-Require Import Wellfounded Relations.
+From Stdlib Require Import Wellfounded Relations.
 
 Derive NoConfusion for positive.
 Derive EqDec for positive.

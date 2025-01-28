@@ -6,11 +6,12 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Program.
-From Equations Require Import Equations.
-Require Import Utf8 Lia Arith.
+From Stdlib Require Import Program.
+From Equations.Prop Require Import Equations.
 
-Require Import List.
+From Stdlib Require Import Utf8 Lia Arith.
+
+From Stdlib Require Import List.
 Import ListNotations.
 
 Set Keyed Unification.

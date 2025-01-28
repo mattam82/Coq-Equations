@@ -1,7 +1,7 @@
 (* http://adam.chlipala.net/cpdt/html/DataStruct.html *)
 
-Require Import Arith List.
-Require Import Program Equations.Prop.Equations.
+From Stdlib Require Import Arith List Program.
+From Equations.Prop Require Import Equations.
 Set Implicit Arguments.
 Set Keyed Unification.
 

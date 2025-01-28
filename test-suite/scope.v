@@ -1,13 +1,14 @@
 (** Example by Rafaël Bocquet: POPLmark part 1A with inductive definition of scope 
   and well-scoped variables (and terms, types and environments). *)
 
-Require Import Program.
-Require Import Equations.Prop.DepElim.
-Require Import Equations.Prop.Equations.
+From Stdlib Require Import Program.
+From Equations.Prop Require Import DepElim.
+From Equations.Prop Require Import Equations.
+
 From Stdlib Require Import Eqdep_dec.
 From Stdlib Require Import EquivDec.
 
-Require Import Arith.
+From Stdlib Require Import Arith.
 Derive Signature for eq.
 
 Definition scope := nat.

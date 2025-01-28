@@ -1,8 +1,9 @@
 Set Warnings "-notation-overridden".
-Require Import Equations.Type.All.
+From Equations.Type Require Import All.
+#[warning="-notation-incompatible-prefix"]
 Require Import Examples.HoTT_light.
 Set Universe Polymorphism.
-Require Import Relations.
+From Stdlib Require Import Relations.
 
 Import Id_Notations.
 Import Sigma_Notations.

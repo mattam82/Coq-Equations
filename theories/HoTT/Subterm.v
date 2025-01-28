@@ -9,8 +9,8 @@
 Set Warnings "-notation-overridden".
 
 From Equations Require Import Init Signature.
-Require Import Equations.CoreTactics.
-Require Import Equations.HoTT.Logic
+From Equations Require Import CoreTactics.
+From Equations Require Import HoTT.Logic
         Equations.HoTT.Classes Equations.HoTT.EqDec
         Equations.HoTT.Relation
         Equations.HoTT.WellFounded

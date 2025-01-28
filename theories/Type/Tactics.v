@@ -7,19 +7,19 @@
 (**********************************************************************)
 
 Set Warnings "-notation-overridden".
-Require Import Equations.CoreTactics Equations.Type.Logic Equations.Type.DepElim Equations.Type.EqDec
-        Equations.Type.Subterm Equations.Type.WellFounded Equations.Type.FunctionalInduction.
+From Equations Require Import CoreTactics.
+From Equations.Type Require Import Logic DepElim EqDec Subterm WellFounded FunctionalInduction.
 
-Ltac Equations.Init.simpl_equations ::= Equations.Type.DepElim.simpl_equations.
-Ltac Equations.Init.simplify_equalities ::= Equations.Type.DepElim.simplify_dep_elim.
+Ltac Equations.Init.simpl_equations ::= DepElim.simpl_equations.
+Ltac Equations.Init.simplify_equalities ::= DepElim.simplify_dep_elim.
 
 Ltac Equations.Init.depelim H ::= dependent elimination H; cbn in *.
-Ltac Equations.Init.depind H ::= Equations.Type.DepElim.depind H.
-Ltac Equations.Init.simp_IHs_tac ::= Equations.Type.FunctionalInduction.simplify_IHs_call.
-Ltac Equations.Init.funelim_constr_as H H' tac ::= Equations.Type.FunctionalInduction.funelim_constr_as H H' tac.
-Ltac Equations.Init.apply_funelim H ::= Equations.Type.FunctionalInduction.apply_funelim H.
+Ltac Equations.Init.depind H ::= DepElim.depind H.
+Ltac Equations.Init.simp_IHs_tac ::= FunctionalInduction.simplify_IHs_call.
+Ltac Equations.Init.funelim_constr_as H H' tac ::= FunctionalInduction.funelim_constr_as H H' tac.
+Ltac Equations.Init.apply_funelim H ::= FunctionalInduction.apply_funelim H.
 
-Ltac Equations.Init.noconf H ::= Equations.Type.DepElim.noconf H.
+Ltac Equations.Init.noconf H ::= DepElim.noconf H.
 
 Create HintDb solve_subterm discriminated.
 
@@ -36,8 +36,8 @@ Ltac solve_subterm := intros;
 
 Ltac Equations.Init.solve_subterm ::= solve_subterm.
 Ltac Equations.Init.solve_eqdec ::= eqdec_proof.
-Ltac Equations.Init.unfold_recursor ::= Equations.Type.Subterm.unfold_recursor.
-Ltac Equations.Init.unfold_recursor_ext ::= Equations.Type.Subterm.unfold_recursor_ext.
+Ltac Equations.Init.unfold_recursor ::= Subterm.unfold_recursor.
+Ltac Equations.Init.unfold_recursor_ext ::= Subterm.unfold_recursor_ext.
 
 Ltac solve_noconf_prf := intros;
   on_last_hyp ltac:(fun id => destruct id) ; (* Subtitute a = b *)

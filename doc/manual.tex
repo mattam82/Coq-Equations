@@ -376,7 +376,7 @@ provided).
   \begin{itemize}
   \item \textbf{Incompatible change} Support for the Coq-HoTT library, out of the box. This required a slight reorganization 
     of the directories. To use this, simply install the \texttt{opam} \texttt{coq-hott} package before 
-    \texttt{coq-equations} and \[\texttt{From Equations.HoTT Require Import All}\]
+    \texttt{rocq-equations} and \[\texttt{From Equations.HoTT Require Import All}\]
     Now \[\texttt{Require Import Equations.Equations}\] no longer works, 
     use \texttt{Require Import Equations.Prop.Equations} (absolute path, future-proof) or 
     \texttt{From Equations Require Import Equations} (relative path) to use the 

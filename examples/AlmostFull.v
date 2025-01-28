@@ -1,16 +1,20 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
+
 Require Import Examples.Fin.
-Require Import Relations Utf8.
-Require Import Relations Wellfounded.
-Require Import Setoid RelationClasses Morphisms.
-Require Import Lia.
-Require Import Bool.
-Require Import List Arith String.
+From Stdlib Require Import Relations Utf8.
+From Stdlib Require Import Relations Wellfounded.
+From Stdlib Require Import Setoid RelationClasses Morphisms.
+From Stdlib Require Import Lia.
+From Stdlib Require Import Bool.
+From Stdlib Require Import List Arith String.
 From Stdlib Require Import FunctionalExtensionality.
 
 Set Equations Transparent.
 Set Keyed Unification.
 Set Asymmetric Patterns.
+Local Set Firstorder Solver auto with arith core datatypes.
+
+Ltac intuition_solver ::= auto with *.
 
 Section Equality.
   Class Eq (A : Type) :=
@@ -448,7 +452,7 @@ Section OplusUnary.
 
 End OplusUnary.
 
-Set Firstorder Solver auto.
+Local Set Firstorder Solver auto.
 
 (* Lemma oplus_unary_sec_intersection {X} (p q : WFT X) *)
 (*       (C : X -> X -> Prop) (A B : X -> Prop) : *)
@@ -609,7 +613,7 @@ Ltac destruct_pairs := repeat
   | [ x : _ /\ _ |- _ ] => destruct x
 end.
 
-Require Import ssreflect.
+From Stdlib Require Import ssreflect.
 
 Section SCT.
 
@@ -1352,7 +1356,7 @@ Print Assumptions size_change_wf.
 Print Assumptions size_change_termination.
 
 Definition R := product_rel Nat.le Nat.le.
-Require Import Lia.
+From Stdlib Require Import Lia.
 
 Derive Signature for clos_trans_1n.
 
@@ -1390,7 +1394,7 @@ Definition gnlex : (nat * nat) -> nat.
   red. simpl. red. compute. simpl. intuition lia. red. simpl. compute. intuition lia.
 Defined.
 
-Require Import ExtrOcamlBasic.
+From Stdlib Require Import ExtrOcamlBasic.
 (* Extraction gnlex.
 Print Assumptions gnlex. *)
 

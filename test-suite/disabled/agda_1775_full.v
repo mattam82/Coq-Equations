@@ -1,4 +1,4 @@
-From Equations Require Import Equations DepElimDec HSets.
+From Equations Require Import Equations.
 (* Set Universe Polymorphism. *)
 (** Can we define NoConfusion in SProp (squashing equalities of arguments)?
     Would not allow to show equivalence to (x = y) for non-strict sets. *)
@@ -40,7 +40,7 @@ Definition equiv_adj {A B} {E: Equiv A B} (x : A)
 
 Notation " 'rew' H 'in' c " := (@eq_rect _ _ _ c _ H) (at level 20).
 
-Require Import Utf8.
+From Stdlib Require Import Utf8.
 
 Notation " X <~> Y " := (Equiv X Y) (at level 90, no associativity, Y at next level).
 

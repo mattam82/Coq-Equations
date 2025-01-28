@@ -10,12 +10,12 @@
 
 Set Warnings "-notation-overridden".
 
-Require Import Stdlib.Program.Tactics.
+From Stdlib Require Import Program.Tactics.
 Require Export Equations.Init.
-Require Import Equations.Signature Equations.CoreTactics.
-Require Import Equations.Type.Logic.
-Require Import Equations.Type.Classes.
-Require Import Equations.Type.EqDec.
+From Equations Require Import Signature CoreTactics.
+From Equations.Type Require Import Logic.
+From Equations.Type Require Import Classes.
+From Equations.Type Require Import EqDec.
 
 Set Universe Polymorphism.
 

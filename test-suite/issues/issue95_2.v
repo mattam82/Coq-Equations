@@ -1,6 +1,7 @@
-Require Import TestSuite.issues.issue95_1.
-Require Import Lia.
-Require Import Equations.Prop.Equations.
+From Stdlib Require Import TestSuite.issues.issue95_1.
+From Stdlib Require Import Lia.
+From Equations.Prop Require Import Equations.
+
 
 Lemma l:
   forall T t,

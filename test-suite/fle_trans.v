@@ -2,7 +2,7 @@
 (** printing elimination %\coqdoctac{elimination}% *)
 (** printing Derive %\coqdockw{Derive}% *)
 (* begin hide *)
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Set Implicit Arguments.
 
@@ -51,7 +51,7 @@ Print Assumptions fle_trans.
   %\texttt{Closed under the global context}%
 *)
 (* end hide *)
-Require Import Program.
+From Stdlib Require Import Program.
 (* begin hide *)
 Fixpoint fle_trans' {n : nat} {i j k : fin n}
   (p : fle i j) (q : fle j k) : fle i k.

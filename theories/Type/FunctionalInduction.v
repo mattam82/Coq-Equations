@@ -7,8 +7,8 @@
 (**********************************************************************)
 
 Set Warnings "-notation-overridden".
-Require Import Equations.CoreTactics.
-Require Import Equations.Type.Logic Equations.Type.Classes Equations.Type.EqDec Equations.Type.DepElim.
+From Equations Require Import CoreTactics.
+From Equations.Type Require Import Logic Classes EqDec DepElim.
 
 Set Universe Polymorphism.
 

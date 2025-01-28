@@ -1,5 +1,5 @@
-Require Import Program.
-From Equations Require Import Equations.
+From Stdlib Require Import Program.
+From Equations.Prop Require Import Equations.
 #[local]
 Obligation Tactic := program_simpl.
 Equations h_type (P : Type) (H : P) : P := h_type P H => let H1 := H in _.

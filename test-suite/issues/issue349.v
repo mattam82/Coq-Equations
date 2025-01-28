@@ -3,7 +3,7 @@ Set Implicit Arguments.
 
 From Stdlib Require Import Lia Lists.List.
 Import ListNotations.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Open Scope bool_scope.
 
@@ -212,7 +212,7 @@ Program Lemma finite_subtree_domain_length_lt :
 Proof.
   unfold finite_subtree_domain, finite_subtree_domain'.
   intros (((? & ? & ? & ? & ?) & ?) & ?) ? ?.
-  rewrite map_length.
+  rewrite length_map.
   apply filter_length_lt'.
   induction π.
   - intuition.

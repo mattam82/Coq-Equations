@@ -8,13 +8,13 @@
 
 (** Tactics related to (dependent) equality and proof irrelevance. *)
 
-Require Import Stdlib.Program.Tactics.
+From Stdlib Require Import Program.Tactics.
 Require Export Equations.Init.
-Require Import Equations.CoreTactics.
-Require Import Equations.Signature.
-Require Import Equations.Prop.Logic.
-Require Import Equations.Prop.Classes.
-Require Import Equations.Prop.EqDec.
+From Equations Require Import CoreTactics.
+From Equations Require Import Signature.
+From Equations.Prop Require Import Logic.
+From Equations.Prop Require Import Classes.
+From Equations.Prop Require Import EqDec.
 
 Import Sigma_Notations.
 Local Open Scope equations_scope.

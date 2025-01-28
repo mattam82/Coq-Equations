@@ -22,9 +22,10 @@
   If running this interactively you can ignore the printing
   and hide directives which are just used to instruct coqdoc. *)
 
-Require Import Program Bvector List Relations.
+#[warnings="-deprecated-library-file-since-8.20"]
+From Stdlib Require Import Program Bvector List Relations.
 From Equations Require Import Equations Signature.
-Require Import Utf8.
+From Stdlib Require Import Utf8.
 
 Set Keyed Unification.
 
@@ -65,7 +66,7 @@ app_with (cons a v) l with app_with v l => {
 (** Structurally recursive function on natural numbers, with inspection of a recursive
     call result. We use [auto with arith] to discharge the obligations. *)
 
-Obligation Tactic := program_simpl ; try CoreTactics.solve_wf ; auto with arith.
+Local Obligation Tactic := program_simpl ; try CoreTactics.solve_wf ; auto with arith.
 
 Equations equal (n m : nat) : { n = m } + { n <> m } :=
 equal O O := in_left ;
@@ -152,7 +153,7 @@ sublist p (cons x xs) with p x := {
 
 (** Well-founded definitions: *)
 
-Require Import Arith Wf_nat.
+From Stdlib Require Import Arith Wf_nat.
 
 (** One can declare new well-founded relations using instances of the [WellFounded] typeclass. *)
 #[local] Instance wf_nat : WellFounded lt := lt_wf.
@@ -230,6 +231,7 @@ Equations app {A} (l l' : list A) : list A :=
 app nil l := l;
 app (cons a v) l := cons a (app v l).
 
+#[warnings="-notation-overridden"]
 Infix "++" := app (right associativity, at level 60) : list_scope.
 
 Equations rev_acc {A} (l : list A) (acc : list A) : list A :=
@@ -336,7 +338,8 @@ Qed.
 
 (* Eval compute in @zip''. *)
 
-Require Import Bvector.
+#[warnings="-deprecated-library-file-since-8.20"]
+From Stdlib Require Import Bvector.
 
 (** This function can also be defined by structural recursion on [m]. *)
 

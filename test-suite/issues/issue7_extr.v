@@ -1,6 +1,6 @@
-Require Import Equations.Equations Utf8.
+From Equations Require Import Equations Utf8.
 Add Rec LoadPath ".." as Top.
-Require Import issue7.
+From Stdlib Require Import issue7.
 
 
 Extraction Inline apply_noConfusion.

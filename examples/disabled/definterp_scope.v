@@ -1,7 +1,7 @@
-Require Import Program.Basics Program.Tactics.
-Require Import Equations.Equations.
-Require Import Stdlib.Vectors.VectorDef.
-Require Import List.
+From Stdlib Require Import Program.Basics Program.Tactics.
+From Equations.Prop Require Import Equations.
+From Stdlib Require Import Vectors.VectorDef.
+From Stdlib Require Import List.
 Import ListNotations.
 Set Equations Transparent.
 
@@ -171,7 +171,7 @@ Infix "⊚" := trans_incl (at level 10).
 Equations M : forall (Γ : Ctx) (P : StoreTy -> Type) (Σ : StoreTy), Type :=
   M Γ P Σ := forall (E : Env Γ Σ) (μ : Store Σ), option &{ Σ' : _ & &{ _ : Store Σ' & &{ _ : P Σ' & Σ ⊑ Σ'}}}.
 
-Require Import Utf8.
+From Stdlib Require Import Utf8.
 Notation "( x , .. , y , z )" := (sigmaI _ x .. (sigmaI _ y z) ..) : core_scope.
 
 Equations bind {Σ Γ} {P Q : StoreTy -> Type} (f : M Γ P Σ) (g : ∀ {Σ'}, P Σ' -> M Γ Q Σ') : M Γ Q Σ :=

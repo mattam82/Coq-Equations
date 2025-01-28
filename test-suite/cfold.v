@@ -2,9 +2,10 @@
    Proof size is now constant instead of quadratic.,
    but program is as straightforward as in Agda. *)
 
-Require Import Arith.
-From Equations Require Import Equations.
-Require Import Stdlib.Bool.Bool.
+From Stdlib Require Import Arith.
+From Equations.Prop Require Import Equations.
+
+From Stdlib Require Import Bool.Bool.
 
 Set Keyed Unification.
 Set Implicit Arguments.

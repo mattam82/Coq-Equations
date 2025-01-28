@@ -4,10 +4,10 @@
   inductive definition of scope and well-scoped variables (and terms,
   types and environments). *)
 
-Require Import Program.
-From Equations Require Import Equations.
+From Stdlib Require Import Program.
+From Equations.Prop Require Import Equations.
 From Stdlib Require Import EquivDec.
-Require Import Arith.
+From Stdlib Require Import Arith.
 
 Definition scope := nat.
 Inductive var : scope -> Set :=

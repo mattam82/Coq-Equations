@@ -1,5 +1,4 @@
-Require Import Equations.Equations.
-
+From Equations.Prop Require Import Equations.
 Inductive vec (A:Type) : nat -> Type :=
   | nil : vec A 0
   | cons : forall n, A -> vec A n -> vec A (S n).

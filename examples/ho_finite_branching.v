@@ -1,6 +1,7 @@
 (** * Higher-order recursion, an example with finite branching trees *)
 
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
+
 Require Import Examples.Fin.
 
 Inductive ho : Set :=

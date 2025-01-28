@@ -1,4 +1,4 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Inductive le : nat -> nat -> Prop :=
   | le_0 n : le 0 n

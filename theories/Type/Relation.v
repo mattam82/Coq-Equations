@@ -12,7 +12,7 @@ From Equations Require Import Init.
 From Stdlib Require Import Extraction CRelationClasses.
 
 Set Warnings "-notation-overridden".
-Require Import Equations.Type.Logic.
+From Equations.Type Require Import Logic.
 
 Local Open Scope equations_scope.
 Import Sigma_Notations.

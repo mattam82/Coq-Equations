@@ -1,6 +1,4 @@
-Require Import Equations.Prop.Classes Equations.Prop.EqDec Equations.Prop.DepElim
-        Equations.Prop.NoConfusion
-        Equations.Prop.Tactics.
+From Equations.Prop Require Import Classes EqDec DepElim NoConfusion Tactics.
 
 (** Standard instances. *)
 

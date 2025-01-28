@@ -8,8 +8,8 @@
 
 (** An example development of the [fin] datatype using [equations]. *)
 
-From Coq.Program Require Import Basics Combinators.
-From Equations Require Import Equations.
+From Stdlib.Program Require Import Basics Combinators.
+From Equations.Prop Require Import Equations.
 Open Scope equations_scope.
 (** [fin n] is the type of naturals smaller than [n]. *)
 
@@ -78,7 +78,8 @@ Scheme finle_ind_dep := Induction for finle Sort Prop.
 
 Arguments finle {n}.
 
-Require Vectors.Vector.
+#[warnings="-warn-library-file-stdlib-vector"]
+From Stdlib Require Vectors.Vector.
 Arguments Vector.nil {A}.
 Arguments Vector.cons {A} _ {n}.
 Notation vnil := Vector.nil.

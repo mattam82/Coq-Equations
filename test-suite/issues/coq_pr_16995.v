@@ -27,7 +27,7 @@ Register Classes.NoConfusionPackage as equations.noconfusion.class.
 Register Classes.apply_noConfusion as equations.depelim.apply_noConfusion.
 Register DepElim.simplification_sigma1_dep as equations.depelim.simpl_sigma_dep.
 Register DepElim.opaque_ind_pack_inv as equations.depelim.opaque_ind_pack_eq_inv.
-Import Equations.CoreTactics.
+Import CoreTactics.
 
 Set Warnings "-notation-overridden".
 Import Equations.Type.Logic.

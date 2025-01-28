@@ -5,11 +5,12 @@
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
-Require Import Program Utf8.
-Require Import Equations.Prop.Equations.
-Require Import Bvector List Relations.
-Require Import Arith Wf_nat.
-Require Import Lia.
+From Stdlib Require Import Program Utf8.
+From Equations.Prop Require Import Equations.
+
+From Stdlib Require Import List Relations.
+From Stdlib Require Import Arith Wf_nat.
+From Stdlib Require Import Lia.
 
 Module RecRel.
   Unset Equations With Funext.
@@ -82,7 +83,7 @@ Inductive xor (A B : Prop) : Prop :=
 | xor_left : A -> not B -> xor A B
 | xor_right : B -> not A -> xor A B.
 
-Require Import Bool.
+From Stdlib Require Import Bool.
 Coercion Is_true : bool >-> Sortclass.
 
 Lemma xor_reflect (x y : bool) : reflect (xor x y) (xorb x y).
@@ -108,8 +109,8 @@ Proof with simpl; intros. intros.
   auto using Permutation_cons_app. elim H1.
 Qed.
 
-Require Import EquivDec.
-Require Import Permutation.
+From Stdlib Require Import EquivDec.
+From Stdlib Require Import Permutation.
 
 Module RecMeasure.
 

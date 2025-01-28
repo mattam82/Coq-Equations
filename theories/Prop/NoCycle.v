@@ -6,7 +6,8 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Equations.Prop.Equations.
+From Equations.Prop Require Import Equations.
+
 
 Ltac find_noCycle_proof H :=
   let rec aux t ty := 
@@ -54,7 +55,7 @@ Proof with trivial.
         + firstorder. }
 Qed.
 
-Require Import CRelationClasses.
+From Stdlib Require Import CRelationClasses.
 
 #[export]
 Instance nlt_refl : Reflexive nlt.

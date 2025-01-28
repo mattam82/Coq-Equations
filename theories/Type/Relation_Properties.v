@@ -16,10 +16,10 @@
 
 Set Warnings "-notation-overridden".
 
-Require Import CRelationClasses.
-Require Import Equations.Init.
-Require Import Equations.Type.Logic.
-Require Import Equations.Type.Relation.
+From Stdlib Require Import CRelationClasses.
+From Equations Require Import Init.
+From Equations.Type Require Import Logic.
+From Equations.Type Require Import Relation.
 
 Import Sigma_Notations.
 Import Id_Notations.
@@ -36,7 +36,7 @@ Section Properties.
   Variable R : relation A.
 
   Section Clos_Refl_Trans.
-
+    Set Warnings "-notation-incompatible-prefix".
     Local Notation "R *" := (clos_refl_trans R)
       (at level 8, no associativity, format "R *").
 

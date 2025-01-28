@@ -1,4 +1,5 @@
-Require Import Equations.Prop.Equations.
+From Equations.Prop Require Import Equations.
+
 
 Fixpoint slow n : unit := match n with O => tt | S n => match slow n with tt => slow n end end.
 

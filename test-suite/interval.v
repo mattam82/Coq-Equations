@@ -1,5 +1,6 @@
-From Equations Require Import Equations.
-Require Import List Arith Lia.
+From Equations.Prop Require Import Equations.
+
+From Stdlib Require Import List Arith Lia.
 Import ListNotations.
 
 Set Keyed Unification.
