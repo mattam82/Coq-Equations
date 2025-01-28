@@ -15,7 +15,7 @@ for details).
 
 Equations provides a notation for writing programs by dependent 
 pattern-matching and (well-founded) recursion
-in [Coq](http://coq.inria.fr). It compiles everything down to
+in [Rocq](https://rocq-prover.org) / [Coq](http://coq.inria.fr). It compiles everything down to
 eliminators for inductive types, equality and accessibility,
 providing a definitional extension to the Coq kernel.
 The plugin can be used with Coq's standard logic in `Prop`
