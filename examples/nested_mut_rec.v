@@ -6,7 +6,7 @@
 
 From Equations.Prop Require Import Equations.
 
-Require Import Program Arith List Compare_dec.
+From Stdlib Require Import Program Arith List Compare_dec.
 Import ListNotations.
 
 (** A nested recursive definition of terms with lists of terms *)

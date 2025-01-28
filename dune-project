@@ -26,9 +26,13 @@
    (ocaml-lsp-server :with-dev-setup)))
 
 (package
+ (name rocq-equations-examples)
+ (synopsis "Examples")
+ (description "Do not install")
+ (depends rocq-equations))
+
+(package
  (name rocq-equations-tests)
  (synopsis "Technical package to run tests")
  (description "Do not install")
  (depends rocq-equations))
-
-(generate_opam_files)

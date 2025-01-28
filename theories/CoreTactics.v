@@ -9,7 +9,7 @@
 (** Tactics supporting equations *)
 
 Require Export Equations.Init.
-Require Import Equations.Signature.
+From Equations Require Import Signature.
 
 Local Open Scope equations_scope.
 

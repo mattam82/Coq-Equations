@@ -13,9 +13,10 @@
 (** printing <=? %$\le?$% *)
 (* begin hide *)
 
+Set Warnings "-undo-batch-mode".
 Set Warnings "-notation-overridden".
-Require Import Utf8 Arith Compare_dec List Lia.
-Require Import Relation_Operators Program.
+From Stdlib Require Import Utf8 Arith Compare_dec List Lia.
+From Stdlib Require Import Relation_Operators Program.
 
 Close Scope program_scope.
 Close Scope list_scope.
@@ -128,6 +129,7 @@ Module BuildingUp.
 (** Equations naturally supports notations: the left-hand 
   sides of clauses only have to be elaborated to well-typed patterns for the given argument types. *)
 
+Declare Scope mylist_scope.
 Notation "[]" := nil : mylist_scope.
 Notation "[ x ]" := (cons x nil) : mylist_scope.
 Notation "x :: l" := (cons x l) : mylist_scope.

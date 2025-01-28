@@ -12,7 +12,7 @@ From Stdlib Require Import Relation_Operators Lexicographic_Product Wf_nat.
 From Stdlib Require Export Program.Wf FunctionalExtensionality.
 
 From Equations Require Import Init Signature.
-Require Import Equations.CoreTactics.
+From Equations Require Import CoreTactics.
 From Equations.Prop Require Import Classes EqDec DepElim Constants.
 
 Generalizable Variables A R S B.

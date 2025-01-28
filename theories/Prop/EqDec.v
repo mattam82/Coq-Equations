@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Equations.Init.
+From Equations Require Import Init.
 From Equations.Prop Require Import Classes.
 
 (** Decidable equality.

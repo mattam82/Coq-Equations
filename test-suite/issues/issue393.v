@@ -1,6 +1,6 @@
 From Equations.Prop Require Import Equations.
 
-Require Import List.
+From Stdlib Require Import List.
 
 Inductive In {X} (x : X) : list X -> Type :=
 | here {xs} : In x (x :: xs)

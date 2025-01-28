@@ -6,10 +6,10 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Equations.Init Equations.CoreTactics.
+From Equations Require Import Init CoreTactics.
 Set Warnings "-notation-overridden".
-Require Import HoTT.Basics.Trunc HoTT.HSet.
-Require Import Equations.HoTT.Logic Equations.HoTT.Relation
+From Stdlib Require Import HoTT.Basics.Trunc HoTT.HSet.
+From Equations Require Import HoTT.Logic Equations.HoTT.Relation
         Equations.HoTT.Relation_Properties Equations.HoTT.WellFounded.
 
 Set Universe Polymorphism.

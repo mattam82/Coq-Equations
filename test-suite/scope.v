@@ -8,7 +8,7 @@ From Equations.Prop Require Import Equations.
 From Stdlib Require Import Eqdep_dec.
 From Stdlib Require Import EquivDec.
 
-Require Import Arith.
+From Stdlib Require Import Arith.
 Derive Signature for eq.
 
 Definition scope := nat.

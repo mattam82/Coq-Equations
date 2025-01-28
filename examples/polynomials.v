@@ -17,12 +17,13 @@
   2016-2017. If running this interactively you can ignore the printing
   and hide directives which are just used to instruct coqdoc. *)
 (* begin hide *)
-Require Import Program.Basics Program.Tactics.
+From Stdlib Require Import Program.Basics Program.Tactics.
 From Equations.Prop Require Import Equations.
 
-Require Import ZArith Lia.
-Require Import Psatz.
-Require Import Nat.
+From Stdlib Require Import ZArith Lia.
+From Stdlib Require Import Psatz.
+From Stdlib Require Import Nat.
+#[warnings="-warn-library-file-stdlib-vector"]
 Require Import Stdlib.Vectors.VectorDef.
 
 Set Keyed Unification.

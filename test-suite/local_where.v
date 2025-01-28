@@ -1,4 +1,4 @@
-Require Import Program.Basics Program.Tactics.
+From Stdlib Require Import Program.Basics Program.Tactics.
 From Equations.Prop Require Import Equations.
 
 

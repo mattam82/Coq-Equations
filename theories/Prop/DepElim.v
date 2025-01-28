@@ -8,10 +8,10 @@
 
 (** Tactics related to (dependent) equality and proof irrelevance. *)
 
-Require Import Stdlib.Program.Tactics.
+From Stdlib Require Import Program.Tactics.
 Require Export Equations.Init.
-Require Import Equations.CoreTactics.
-Require Import Equations.Signature.
+From Equations Require Import CoreTactics.
+From Equations Require Import Signature.
 From Equations.Prop Require Import Logic.
 From Equations.Prop Require Import Classes.
 From Equations.Prop Require Import EqDec.

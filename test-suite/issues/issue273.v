@@ -1,6 +1,6 @@
 From Equations.Prop Require Import Equations.
 
-Require Import List.
+From Stdlib Require Import List.
 Import ListNotations.
 Inductive T := C : list T -> T.
 Show Obligation Tactic.

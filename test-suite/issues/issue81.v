@@ -1,4 +1,4 @@
-Require Import Stdlib.Lists.List.
+From Stdlib Require Import Lists.List.
 Import ListNotations.
 From Equations.Prop Require Import Equations.
 

@@ -418,7 +418,7 @@ let compose_term (env : Environ.env) (evd : Evd.evar_map ref)
   ((h1, c1) : open_term) ((h2, c2) : open_term) : open_term =
   match h1 with
   | Some ((ctx1, _, u1), (ev1, _)) ->
-      let EvarInfo ev1_info = Evd.find !evd ev1 in
+      let Evd.EvarInfo ev1_info = Evd.find !evd ev1 in
       let ev1_ctx = Evd.evar_context ev1_info in
       (* Keep only the context corresponding to [ctx1]. *)
       let named_ctx1 = CList.firstn (List.length ctx1) ev1_ctx in
@@ -795,7 +795,7 @@ SimpFun.make ~name:"solution" begin fun (env : Environ.env) (evd : Evd.evar_map 
           checked_appvect env evd tsolution [| tA'; term'; tB'; c; trel' |]
       in
       (* We make some room for the application of the equality... *)
-      let env = push_rel (LocalAssum (name, ty1')) env in
+      let env = push_rel (Context.Rel.Declaration.LocalAssum (name, ty1')) env in
       let c = Vars.lift 1 c in
       let c = checked_appvect env evd c [| EConstr.mkRel 1 |] in
       (* [targs'] are arguments in the context [eq_decl :: ctx']. *)

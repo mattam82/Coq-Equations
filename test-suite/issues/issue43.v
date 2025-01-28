@@ -1,5 +1,5 @@
-Require Import Program Bvector List.
-Require Import Relations.
+From Stdlib Require Import Program Bvector List.
+From Stdlib Require Import Relations.
 From Equations Require Import Equations DepElimDec.
 
 Equations silly {A} (l : list A) : list A :=

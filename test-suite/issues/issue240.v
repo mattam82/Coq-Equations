@@ -1,5 +1,4 @@
-From Equations.Prop Require Import Equations
-
+From Equations.Prop Require Import Equations.
 Inductive T1: Type :=
 | C { T: Type }: T1
 .

@@ -5,17 +5,17 @@
 (* This file is distributed under the terms of the                    *)
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
-Require Import Equations.CoreTactics Equations.Prop.Classes Equations.Prop.DepElim
-        Equations.Prop.Subterm Equations.Prop.FunctionalInduction.
+From Equations Require Import CoreTactics.
+From Equations.Prop Require Import Classes DepElim Subterm FunctionalInduction.
 
-Ltac Equations.Init.simpl_equations ::= Equations.Prop.DepElim.simpl_equations.
-Ltac Equations.Init.simplify_equalities ::= Equations.Prop.DepElim.simplify_dep_elim.
-Ltac Equations.Init.depelim H ::= Equations.Prop.DepElim.depelim H.
-Ltac Equations.Init.depind H ::= Equations.Prop.DepElim.depind H.
-Ltac Equations.Init.noconf H ::= Equations.Prop.DepElim.noconf H.
-Ltac Equations.Init.simp_IHs_tac ::= Equations.Prop.FunctionalInduction.simplify_IHs_call.
-Ltac Equations.Init.funelim_constr_as x H simp_IHs ::= Equations.Prop.FunctionalInduction.funelim_constr_as x H simp_IHs.
-Ltac Equations.Init.apply_funelim H ::= Equations.Prop.FunctionalInduction.apply_funelim H.
+Ltac Equations.Init.simpl_equations ::= DepElim.simpl_equations.
+Ltac Equations.Init.simplify_equalities ::= DepElim.simplify_dep_elim.
+Ltac Equations.Init.depelim H ::= DepElim.depelim H.
+Ltac Equations.Init.depind H ::= DepElim.depind H.
+Ltac Equations.Init.noconf H ::= DepElim.noconf H.
+Ltac Equations.Init.simp_IHs_tac ::= FunctionalInduction.simplify_IHs_call.
+Ltac Equations.Init.funelim_constr_as x H simp_IHs ::= FunctionalInduction.funelim_constr_as x H simp_IHs.
+Ltac Equations.Init.apply_funelim H ::= FunctionalInduction.apply_funelim H.
 
 (** Tactic to solve EqDec goals, destructing recursive calls for the recursive
   structure of the type and calling instances of eq_dec on other types. *)
@@ -64,9 +64,9 @@ Ltac eqdec_proof := try red; intros;
   end; try solve[left; reflexivity | right; red; simplify_dep_elim].
 
 Ltac Equations.Init.solve_eqdec ::= eqdec_proof.
-Ltac Equations.Init.solve_subterm ::= Equations.Prop.Subterm.solve_subterm.
-Ltac Equations.Init.unfold_recursor ::= Equations.Prop.Subterm.unfold_recursor.
-Ltac Equations.Init.unfold_recursor_ext ::= Equations.Prop.Subterm.unfold_recursor_ext.
+Ltac Equations.Init.solve_subterm ::= Subterm.solve_subterm.
+Ltac Equations.Init.unfold_recursor ::= Subterm.unfold_recursor.
+Ltac Equations.Init.unfold_recursor_ext ::= Subterm.unfold_recursor_ext.
 
 Ltac solve_noconf_prf := intros;
   on_last_hyp ltac:(fun id => destruct id) ; (* Subtitute a = b *)

@@ -1,6 +1,6 @@
 Set Warnings "-notation-overridden".
-Require Import ssreflect.
-Require Import Utf8 Program.
+From Stdlib Require Import ssreflect.
+From Stdlib Require Import Utf8 Program.
 From Equations.Prop Require Import Equations.
 
 

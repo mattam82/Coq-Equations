@@ -143,7 +143,7 @@ Section RoseTreeInd.
   list_tree_elim (cons a t) := fcons a t (tree_elim a) (list_tree_elim t) }.
 End RoseTreeInd.
 
-Require Import Bool.
+From Stdlib Require Import Bool.
 
 Module IdealNoSec.
 

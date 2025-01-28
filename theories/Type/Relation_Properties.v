@@ -16,8 +16,8 @@
 
 Set Warnings "-notation-overridden".
 
-Require Import CRelationClasses.
-Require Import Equations.Init.
+From Stdlib Require Import CRelationClasses.
+From Equations Require Import Init.
 From Equations.Type Require Import Logic.
 From Equations.Type Require Import Relation.
 

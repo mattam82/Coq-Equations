@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Equations.Init Equations.CoreTactics.
+From Equations Require Import Init CoreTactics.
 From Stdlib Require Import Extraction Relation_Definitions.
 From Equations.Prop Require Import Logic.
 

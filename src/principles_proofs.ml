@@ -210,7 +210,7 @@ let mutual_fix li l =
 let check_guard gls env sigma =
   let gl = Proofview.drop_state (List.hd gls) in
   try
-    let EvarInfo evi = Evd.find sigma gl in
+    let Evd.EvarInfo evi = Evd.find sigma gl in
     match Evd.evar_body evi with
     | Evd.Evar_defined b -> Inductiveops.control_only_guard (Evd.evar_env env evi) sigma b; true
     | Evd.Evar_empty -> true

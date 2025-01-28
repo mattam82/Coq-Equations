@@ -1112,8 +1112,9 @@ let gather_fresh_context sigma u octx =
   let qarr, uarr = UVars.Instance.to_array u in
   let qualities =
     Array.fold_left (fun ctx' l ->
+        let open Sorts.Quality in
         match l with
-        | Sorts.Quality.QConstant _ -> assert false
+        | QConstant _ -> assert false
         | QVar l ->
           if not (Sorts.QVar.Set.mem l qvars) then Sorts.QVar.Set.add l ctx'
           else ctx')

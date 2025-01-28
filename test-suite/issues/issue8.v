@@ -1,4 +1,4 @@
-Require Import Utf8 Program.
+From Stdlib Require Import Utf8 Program.
 From Equations.Prop Require Import Equations.
 
 Open Scope equations_scope.

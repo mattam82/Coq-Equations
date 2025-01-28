@@ -1,6 +1,6 @@
 Set Warnings "-notation-overridden".
 From Stdlib Require Import Extraction CRelationClasses.
-Require Import Equations.Init Equations.CoreTactics.
+From Equations Require Import Init CoreTactics.
 From Equations.Type Require Import Logic FunctionalExtensionality Relation Relation_Properties.
 
 Set Universe Polymorphism.

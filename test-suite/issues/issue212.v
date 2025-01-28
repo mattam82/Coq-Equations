@@ -1,4 +1,4 @@
-Require Import List.
+From Stdlib Require Import List.
 From Stdlib Require Import Lia ssreflect.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.

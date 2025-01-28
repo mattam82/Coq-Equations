@@ -1,6 +1,6 @@
 From Equations.Prop Require Import Equations.
 
-Require Import List.
+From Stdlib Require Import List.
 
 (* The rest is a nonsensical, just to give a minimalistic reproducible example *)
 Inductive Foo :=

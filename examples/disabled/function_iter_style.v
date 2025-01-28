@@ -1,6 +1,6 @@
 From Equations.Prop Require Import Equations.
 
-Require Import List Program.Syntax Arith Lia.
+From Stdlib Require Import List Program.Syntax Arith Lia.
 
 Equations div2 (n : nat) : nat :=
   div2 0 := 0;

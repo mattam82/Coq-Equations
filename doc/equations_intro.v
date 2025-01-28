@@ -16,7 +16,7 @@ From Equations.Prop Require Import Equations.
 
 (* begin hide *)
 Check @eq.
-Require Import Bvector.
+From Stdlib Require Import Bvector.
 
 (* Derive DependentElimination for nat bool option sum Datatypes.prod list *)
 (* end hide *)

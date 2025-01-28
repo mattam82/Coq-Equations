@@ -5,7 +5,7 @@
 (* begin hide *)
 From Equations.Prop Require Import Equations.
 
-Require Import Lia Utf8 List.
+From Stdlib Require Import Lia Utf8 List.
 Import ListNotations.
 Set Keyed Unification.
 
@@ -32,7 +32,7 @@ Section list_size.
   Qed.
 End list_size.
 
-Require Import List.
+From Stdlib Require Import List.
 (* end hide *)
 (** To demonstrate nested well-founded recursive definitions, we take a
   well-known example from the literature: rose trees.  We will define a

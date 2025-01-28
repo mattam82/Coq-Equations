@@ -16,9 +16,9 @@
 
 Set Warnings "-notation-overridden".
 
-Require Import Equations.Init.
-Require Import Equations.HoTT.Logic.
-Require Import Equations.HoTT.Relation.
+From Equations Require Import Init.
+From Equations Require Import HoTT.Logic.
+From Equations Require Import HoTT.Relation.
 
 Import Sigma_Notations.
 

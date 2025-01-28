@@ -70,7 +70,7 @@ Qed.
 
  *)
 
-Obligation Tactic := idtac.
+Local Obligation Tactic := idtac.
 
 Equations? isPrime (n : nat) : bool :=
   isPrime 0 := false;

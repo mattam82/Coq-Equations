@@ -1,4 +1,5 @@
 From Equations.Prop Require Import Equations.
+#[warnings="-deprecated-library-file-since-8.20"]
 From Stdlib Require Import Bvector.
   
 Inductive bar1 (A : Type) : A -> Prop := .

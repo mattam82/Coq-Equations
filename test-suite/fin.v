@@ -1,4 +1,5 @@
-Require Import Program Equations.Prop.EqDecInstances Equations.Prop.Equations.
+From Stdlib Require Import Program.
+From Equations.Prop Require Import EqDecInstances Equations.
 Import Sigma_Notations.
 Local Open Scope equations_scope.
 Set Equations Transparent.

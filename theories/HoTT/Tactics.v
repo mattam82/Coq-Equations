@@ -7,20 +7,19 @@
 (**********************************************************************)
 
 Set Warnings "-notation-overridden".
-Require Import Equations.CoreTactics Equations.HoTT.Logic Equations.HoTT.DepElim
-        Equations.HoTT.Subterm Equations.HoTT.EqDec
-        Equations.HoTT.WellFounded Equations.HoTT.FunctionalInduction.
+From Equations Require Import CoreTactics.
+From Equations.HoTT Require Import Logic DepElim Subterm EqDec WellFounded FunctionalInduction.
 
-Ltac Equations.Init.simpl_equations ::= Equations.HoTT.DepElim.simpl_equations.
-Ltac Equations.Init.simplify_equalities ::= Equations.HoTT.DepElim.simplify_dep_elim.
+Ltac Equations.Init.simpl_equations ::= DepElim.simpl_equations.
+Ltac Equations.Init.simplify_equalities ::= DepElim.simplify_dep_elim.
 
 Ltac Equations.Init.depelim H ::= dependent elimination H; cbn in *.
-Ltac Equations.Init.depind H ::= Equations.HoTT.DepElim.depind H.
-Ltac Equations.Init.simp_IHs_tac ::= Equations.HoTT.FunctionalInduction.simplify_IHs_call.
-Ltac Equations.Init.funelim_constr_as H H' tac ::= Equations.HoTT.FunctionalInduction.funelim_constr_as H H' tac.
-Ltac Equations.Init.apply_funelim H ::= Equations.HoTT.FunctionalInduction.apply_funelim H.
+Ltac Equations.Init.depind H ::= DepElim.depind H.
+Ltac Equations.Init.simp_IHs_tac ::= FunctionalInduction.simplify_IHs_call.
+Ltac Equations.Init.funelim_constr_as H H' tac ::= FunctionalInduction.funelim_constr_as H H' tac.
+Ltac Equations.Init.apply_funelim H ::= FunctionalInduction.apply_funelim H.
 
-Ltac Equations.Init.noconf H ::= Equations.HoTT.DepElim.noconf H.
+Ltac Equations.Init.noconf H ::= DepElim.noconf H.
 
 Create HintDb solve_subterm discriminated.
 
@@ -34,8 +33,8 @@ Ltac solve_subterm := intros;
   simplify_dep_elim; try typeclasses eauto with solve_subterm.
 
 Ltac Equations.Init.solve_subterm ::= solve_subterm.
-Ltac Equations.Init.unfold_recursor ::= Equations.HoTT.Subterm.unfold_recursor.
-Ltac Equations.Init.unfold_recursor_ext ::= Equations.HoTT.Subterm.unfold_recursor_ext.
+Ltac Equations.Init.unfold_recursor ::= Subterm.unfold_recursor.
+Ltac Equations.Init.unfold_recursor_ext ::= Subterm.unfold_recursor_ext.
 
 Ltac solve_noconf_inv_eq a b :=
   destruct_sigma a; destruct_sigma b;

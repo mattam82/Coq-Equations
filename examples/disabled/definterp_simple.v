@@ -1,7 +1,8 @@
-Require Import Program.Basics Program.Tactics.
-From Equations.Prop Require Import Equations
+From Stdlib Require Import Program.Basics Program.Tactics.
+From Equations.Prop Require Import Equations.
+Set Warnings "-warn-library-file-stdlib-vector".
 Require Import Stdlib.Vectors.VectorDef.
-Require Import List.
+From Stdlib Require Import List.
 Import ListNotations.
 Set Equations Transparent.
 
@@ -19,6 +20,7 @@ Definition Ctx := list Ty.
 
 Reserved Notation " x ∈ s " (at level 70, s at level 10).
 
+#[universes(template)]
 Inductive In {A} (x : A) : list A -> Type :=
 | here {xs} : x ∈ (x :: xs)
 | there {y xs} : x ∈ xs -> x ∈ (y :: xs)
@@ -69,7 +71,7 @@ Equations update : forall {A P xs} {x : A}, All P xs -> x ∈ xs -> P x -> All P
 Equations M : Ctx -> Type -> Type :=
   M Γ A := Env Γ -> option A.
 
-Require Import Utf8.
+From Stdlib Require Import Utf8.
 
 Equations bind : ∀ {Γ A B}, M Γ A → (A → M Γ B) → M Γ B :=
   bind m f γ := match m γ with

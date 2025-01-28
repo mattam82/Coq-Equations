@@ -1,4 +1,4 @@
-Require Import List ssreflect.
+From Stdlib Require Import List ssreflect.
 From Equations.Prop Require Import Equations.
 
 Import ListNotations.

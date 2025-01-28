@@ -6,10 +6,10 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 From Equations Require Import CoreTactics.
-Require Import Equations.HoTT.All Equations.HoTT.WellFounded.
+From Equations Require Import HoTT.All Equations.HoTT.WellFounded.
 Require Import Stdlib.Unicode.Utf8.
 Require HoTT.Basics.Overture.
-Require Import HoTT.Types.Bool HoTT.Spaces.Nat HoTT.Spaces.List.Core.
+From Stdlib Require Import HoTT.Types.Bool HoTT.Spaces.Nat HoTT.Spaces.List.Core.
 
 Local Open Scope nat_scope.
 
@@ -124,7 +124,7 @@ testn (S n) with testn n => {
 Local Open Scope vect_scope.
 Reserved Notation "x ++v y" (at level 60).
 
-Require Import HoTT.Classes.implementations.peano_naturals.
+From Stdlib Require Import HoTT.Classes.implementations.peano_naturals.
 (* Require Import HoTT.Classes.interfaces.canonical_names. *)
 
 Equations vapp {A} {n m} (v : vector A n) (w : vector A m) : vector A (n + m)%nat :=
@@ -137,7 +137,7 @@ where "x ++v y" := (vapp x y).
 Set Universe Minimization ToSet.
 Derive NoConfusionHom for vector.
 Unset Universe Minimization ToSet.
-Require Import Equations.HoTT.Tactics.
+From Equations Require Import HoTT.Tactics.
 
 #[local] Instance vector_eqdec@{i +|+} {A : Type@{i}} {n} `(EqDec@{i} A) : EqDec (vector A n).
 Proof.

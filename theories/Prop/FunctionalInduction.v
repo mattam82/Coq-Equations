@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Equations.CoreTactics.
+From Equations Require Import CoreTactics.
 From Equations.Prop Require Import Logic Classes EqDec DepElim.
 
 (** The tactic [funind c Hc] applies functional induction on the application 

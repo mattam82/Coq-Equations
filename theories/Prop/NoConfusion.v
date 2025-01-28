@@ -14,7 +14,7 @@ Set Warnings "-deprecated-since-8.20".
 From Stdlib Require Import Program.Tactics Bvector List.
 Set Warnings "deprecated-since-8.20".
 From Equations Require Import Init Signature.
-Require Import Equations.CoreTactics.
+From Equations Require Import CoreTactics.
 From Equations.Prop Require Import Classes EqDec Constants.
 From Equations.Prop Require Import DepElim Tactics.
 

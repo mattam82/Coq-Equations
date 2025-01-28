@@ -1,5 +1,5 @@
-Require Import TestSuite.issues.issue95_1.
-Require Import Lia.
+From Stdlib Require Import TestSuite.issues.issue95_1.
+From Stdlib Require Import Lia.
 From Equations.Prop Require Import Equations.
 
 

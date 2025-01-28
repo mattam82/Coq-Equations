@@ -1,7 +1,7 @@
 (** Proving Termination of Normalization Functions for Conditional Expressions, L. Paulson *)
 From Equations.Prop Require Import Equations.
 
-Require Import List Program.Syntax Arith Lia.
+From Stdlib Require Import List Program.Syntax Arith Lia.
 
 Inductive exp := At | If : exp -> exp -> exp -> exp.
 

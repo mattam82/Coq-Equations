@@ -8,7 +8,7 @@
 
 Set Warnings "-notation-overridden".
 
-Require Import Equations.Init.
+From Equations Require Import Init.
 From Equations.Type Require Import Logic.
 From Equations.Type Require Import Classes.
 

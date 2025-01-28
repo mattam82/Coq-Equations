@@ -1,4 +1,4 @@
-Require Import Equations.HoTT.All.
+From Equations Require Import HoTT.All.
 Set Universe Polymorphism.
 Inductive A : Type :=
 | foo : A

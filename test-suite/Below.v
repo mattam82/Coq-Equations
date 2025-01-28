@@ -10,6 +10,7 @@
    [equations] when it needs to do recursion on a type. *)
 
 Set Warnings "-deprecated-library-file-since-8.20".
+Set Warnings "-warn-library-file-stdlib-vector".
 From Stdlib Require Import Bvector Vectors.Vector.
 From Equations Require Import Init CoreTactics.
 From Equations.Prop Require Import DepElim Tactics Constants FunctionalInduction.

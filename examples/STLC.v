@@ -14,12 +14,9 @@
   well-founded order on typable terms and conclude with a normalizer building
   beta-short eta-long normal forms, typable in a bidirectional type system. *)
 
-Require Program.
+From Stdlib Require Program.
 From Equations.Prop Require Import Equations.
-
-Require Import Lia.
-Require Import List Utf8.
-
+From Stdlib Require Import Lia List Utf8.
 Import ListNotations.
 
 Set Keyed Unification.
@@ -43,6 +40,7 @@ Delimit Scope term_scope with term.
 Bind Scope term_scope with term.
 
 Notation " @( f , x ) " := (App (f%term) (x%term)).
+#[warnings="-notation-incompatible-prefix"]
 Notation " 'λ' t " := (Lambda (t%term)) (at level 10).
 Notation " << t , u >> " := (Pair (t%term) (u%term)).
 
@@ -62,7 +60,7 @@ Coercion atom : atomic_type >-> type.
 Notation " x × y " := (product x y) (at level 90).
 Notation " x ---> y " := (arrow x y) (at level 30).
 
-Require Import Arith.
+From Stdlib Require Import Arith.
 
 Equations lift (k n : nat) (t : term) : term :=
 lift k n (Var i) with Nat.compare i k := {
@@ -104,7 +102,7 @@ Proof.
   funelim (lift k 0 t); term || rewrite ?H; crush.
 Qed.
 #[local] Hint Rewrite lift0 : lift.
-Require Import Lia.
+From Stdlib Require Import Lia.
 
 Lemma lift_k_lift_k k n m t : lift k n (lift k m t) = lift k (n + m) t.
 Proof.
@@ -165,6 +163,7 @@ where "Γ |-- i : A " := (types Γ i A).
 
 Derive Signature for types.
 
+#[warnings="-notation-incompatible-prefix"]
 Notation " [ t ] u " := (subst 0 u t) (at level 10).
 
 Notation " x @ y " := (app x y) (at level 30, right associativity).
@@ -287,12 +286,12 @@ Inductive reduce : term -> term -> Prop :=
 where " t --> u " := (reduce t u). 
 Derive Signature for reduce.
 
-Require Import Relations.
+From Stdlib Require Import Relations.
 
 Definition reduces := clos_refl_trans term reduce.
 Notation " t -->* u " := (reduces t u) (at level 55).
 
-Require Import Setoid.
+From Stdlib Require Import Setoid.
 
 #[local]
 Instance: Transitive reduces.
@@ -545,7 +544,7 @@ Proof. intros. now apply eta_expand in H0; term. Qed.
 
 (** Going to use the subterm order *)
 
-Require Import Arith Wf_nat.
+From Stdlib Require Import Arith Wf_nat.
 #[export] Instance wf_nat : Classes.WellFounded lt := lt_wf.
 
 #[local] Hint Constructors Subterm.lexprod : subterm_relation.
@@ -721,7 +720,7 @@ Proof.
   (* Lt *)
   apply Nat.compare_lt_iff in Heq. depelim H0.
   replace (nth i (Γ' @ (_ :: Γ)) unit) with (nth i (Γ' @ Γ) unit).
-  constructor. rewrite app_length. auto with arith.
+  constructor. rewrite length_app. auto with arith.
   now do 2 rewrite <- nth_extend_right by auto. 
   
   (* Gt *)
@@ -784,7 +783,7 @@ Proof.
     intros Ht2; subst t. simpl in *. depelim H0.
     specialize (Hind _ _ H H0); eauto. now apply pair_elim_snd with A0.
 Qed.
-Print Assumptions hereditary_subst_type.
+(* Print Assumptions hereditary_subst_type. *)
 Import Program.Basics.
 #[export] Instance: subrelation eq (flip impl).
 Proof. reduce. subst; auto. Qed.
@@ -856,18 +855,18 @@ Proof.
     split; intros Hsyn; depelim Hsyn;
     [depelim H1;constructor;auto|];
     (rewrite nth_app_l by lia; rewrite <- nth_app_l with (l':=Γ) by lia;
-     constructor; rewrite app_length; auto with arith). 
+     constructor; rewrite length_app; auto with arith). 
   
   (* Gt *)
   - apply Nat.compare_gt_iff in Heq.
     split; intros Hsyn; depelim Hsyn.
     depelim H1. constructor. auto.
     replace (nth i (Γ' @ (A :: Γ)) unit) with (nth (pred i) (Γ' @ Γ) unit).
-    constructor. rewrite app_length in *. simpl in H1. lia.
+    constructor. rewrite length_app in *. simpl in H1. lia.
     now apply nth_pred.
 
     replace (nth _ (Γ' @ (_ :: _)) unit) with (nth (pred i) (Γ' @ Γ) unit).
-    constructor. rewrite app_length in *. simpl in H0. lia.
+    constructor. rewrite length_app in *. simpl in H0. lia.
     now apply nth_pred.
 
   (* App *)
@@ -1003,7 +1002,7 @@ Proof.
     split; auto. intros H1. depelim H1. term. 
 Qed.
 
-Print Assumptions hereditary_subst_subst.
+(* Print Assumptions hereditary_subst_subst. *)
 
 Lemma check_liftn {Γ Γ' t T} : Γ |-- t <= T -> Γ' @ Γ |-- lift 0 (length Γ') t <= T.
 Proof. intros. apply (check_lift Γ t T [] H Γ'). Qed.
@@ -1054,4 +1053,4 @@ Proof. induction 1. (* eta-exp *)
   depelim H0.
 Qed.
 
-Print Assumptions types_normalizes.
+(* Print Assumptions types_normalizes. *)

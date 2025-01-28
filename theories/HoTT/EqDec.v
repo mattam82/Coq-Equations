@@ -8,9 +8,9 @@
 
 Set Warnings "-notation-overridden".
 
-Require Import Equations.Init.
-Require Import Equations.HoTT.Logic.
-Require Import Equations.HoTT.Classes.
+From Equations Require Import Init.
+From Equations Require Import HoTT.Logic.
+From Equations Require Import HoTT.Classes.
 
 (** Decidable equality.
 
@@ -232,7 +232,7 @@ Definition apd_eq {A} {x y : A} (p : x = y) {z} (q : z = x) :
   transport (@paths A z) p q = q @ p.
 Proof. now destruct p, q. Defined.
 
-Require Import HoTT.Basics.Trunc.
+From Stdlib Require Import HoTT.Basics.Trunc.
 
 Lemma hprop_hset {A} (h : IsHProp A) : IsHSet A.
 Proof.

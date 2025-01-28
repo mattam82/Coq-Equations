@@ -7,7 +7,7 @@
 
 From Equations.Prop Require Import Equations.
 
-Require Import Arith Lia Relations Utf8.
+From Stdlib Require Import Arith Lia Relations Utf8.
 Import Sigma_Notations.
 
 (** The graph of the [f91] function. *)

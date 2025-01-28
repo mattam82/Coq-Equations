@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-From Stdlib Require Import Program Bvector List Relations Lia Arith Wf_nat.
+From Stdlib Require Import Program List Relations Lia Arith Wf_nat.
 From Equations.Prop Require Import Equations.
 
 Set Program Mode.

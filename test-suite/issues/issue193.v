@@ -1,4 +1,4 @@
-Require Import Program.
+From Stdlib Require Import Program.
 From Equations.Prop Require Import Equations.
 #[local]
 Obligation Tactic := program_simpl.

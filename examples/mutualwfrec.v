@@ -9,7 +9,7 @@
 
 From Equations.Prop Require Import Equations.
 From Stdlib Require Import List Syntax Arith Lia.
-Require Import List Wellfounded.
+From Stdlib Require Import List Wellfounded.
 Import ListNotations.
 (* end hide *)
 (** * Mutual well-founded recursion using dependent pattern-matching

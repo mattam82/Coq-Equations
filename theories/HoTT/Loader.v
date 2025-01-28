@@ -12,13 +12,13 @@
 
 Set Warnings "-notation-overridden".
 From Equations Require Export Init Signature.
-Require Import Equations.CoreTactics.
+From Equations Require Import CoreTactics.
 Require Export Equations.HoTT.Logic Equations.HoTT.Classes.
-Require Import Equations.HoTT.WellFounded.
-Require Import Equations.HoTT.DepElim Equations.HoTT.EqDec Equations.HoTT.Constants.
+From Equations Require Import HoTT.WellFounded.
+From Equations Require Import HoTT.DepElim Equations.HoTT.EqDec Equations.HoTT.Constants.
 Require Export Equations.HoTT.EqDecInstances.
 Require Export Equations.HoTT.NoConfusion.
-Require Import Equations.HoTT.Subterm.
+From Equations Require Import HoTT.Subterm.
 Require Export Equations.HoTT.Tactics.
 Require Export Equations.HoTT.FunctionalInduction. (* funelim tactic *)
 

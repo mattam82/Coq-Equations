@@ -40,7 +40,7 @@ Definition equiv_adj {A B} {E: Equiv A B} (x : A)
 
 Notation " 'rew' H 'in' c " := (@eq_rect _ _ _ c _ H) (at level 20).
 
-Require Import Utf8.
+From Stdlib Require Import Utf8.
 
 Notation " X <~> Y " := (Equiv X Y) (at level 90, no associativity, Y at next level).
 

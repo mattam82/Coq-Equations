@@ -24,12 +24,13 @@
 (** printing NoConfusion %\coqdocclass{NoConfusion}% *)
 From Equations.Prop Require Import Equations.
 
-Require Import ZArith Lia.
-Require Import Program.
-Require Import Psatz.
-Require Import Nat.
-Require Import Stdlib.Vectors.VectorDef.
-Require Import Relations.
+From Stdlib Require Import ZArith Lia.
+From Stdlib Require Import Program.
+From Stdlib Require Import Psatz.
+From Stdlib Require Import Nat.
+#[warnings="-warn-library-file-stdlib-vector"]
+From Stdlib Require Import Vectors.VectorDef.
+From Stdlib Require Import Relations.
 
 Set Keyed Unification.
 Set Equations Transparent.
@@ -49,6 +50,8 @@ Remove Hints wf_total_init : typeclass_instances.
 Instance wf_total_init_compute : forall {A}, WellFounded (@total_relation A).
   exact (fun A => Acc_intro_generator 10 wf_total_init).
 Defined.
+
+Set Warnings "-solve_obligation_error".
 
 (** Now we define an obviously non-terminating function. *)
 Equations? nonterm (n : nat) : nat by wf n (@total_relation nat) :=
@@ -124,6 +127,7 @@ Definition fact :=
        | 0 => 1
        | S n => S n * fact n
        end).
+#[warnings="-abstract-large-number"]
 Check eq_refl : fact 8 = 40320.
 
 (** [Y] is only good in call-by-name or call-by-need, so we switch to Haskell *)

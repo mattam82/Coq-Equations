@@ -1,8 +1,8 @@
-Require Import Arith.
+From Stdlib Require Import Arith.
 From Stdlib Require Import Eqdep_dec.
 From Stdlib Require Import Peano_dec.
-Require Import List.
-Require Import Recdef.
+From Stdlib Require Import List.
+From Stdlib Require Import Recdef.
 
 (**
   Arithmétique
@@ -150,7 +150,7 @@ Qed.
 Lemma padd_len_le_len : forall (w1 w2:(list nat)),
   (le (length w1) (length w2))
   -> (length (padd w1 w2)) = (length w2).
-intros. unfold padd. unfold dist. rewrite app_length.
+intros. unfold padd. unfold dist. rewrite length_app.
 rewrite zs_len.
 rewrite Nat.sub_add by (exact H); reflexivity.
 Qed.
@@ -551,7 +551,7 @@ Qed.
 (**
   Applications avec Program Fixpoint
 *)
-Require Coq.Program.Wf.
+From Stdlib Require Program.Wf.
 
 (* Tactique pour les preuves de bonne fondation. *)
 Ltac by_Acc_mwlt mwlt := 

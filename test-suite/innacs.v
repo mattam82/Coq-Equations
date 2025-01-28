@@ -1,7 +1,8 @@
 From Equations.Prop Require Import Equations.
 
-Require Import Vector.
-Require Import fin.
+#[warnings="-warn-library-file-stdlib-vector"]
+From Stdlib Require Import Vector.
+From Equations.TestSuite Require Import fin.
 Notation vector := Vector.t.
 Arguments Vector.nil {A}.
 Arguments Vector.cons {A} _ {n}.

@@ -1,4 +1,4 @@
-Require Import Arith.
+From Stdlib Require Import Arith.
 From Equations.Prop Require Import Equations.
 
 Inductive btree (T : Type) : Type :=

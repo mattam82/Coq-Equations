@@ -7,7 +7,7 @@
 (**********************************************************************)
 
 From Stdlib Require Import Extraction CRelationClasses.
-Require Import Equations.Init Equations.CoreTactics.
+From Equations Require Import Init CoreTactics.
 Set Warnings "-notation-overridden".
 From Equations.Type Require Import Logic Relation Relation_Properties WellFounded.
 

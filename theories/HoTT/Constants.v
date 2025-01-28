@@ -1,7 +1,7 @@
 Set Warnings "-notation-overridden".
 
 From Equations Require Import Init.
-Require Import Equations.HoTT.Logic Equations.HoTT.DepElim
+From Equations Require Import HoTT.Logic Equations.HoTT.DepElim
         Equations.HoTT.EqDec Equations.HoTT.Classes.
 From HoTT Require Import Spaces.Nat.
 

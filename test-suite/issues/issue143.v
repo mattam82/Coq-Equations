@@ -1,6 +1,6 @@
 From Equations.Prop Require Import Equations.
 
-Require Import Lia.
+From Stdlib Require Import Lia.
 
 Section Tests.
 

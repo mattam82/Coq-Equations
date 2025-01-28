@@ -1,7 +1,7 @@
 From Equations.Prop Require Import Equations.
 
-Require Import Arith.
-Require Import Compare_dec.
+From Stdlib Require Import Arith.
+From Stdlib Require Import Compare_dec.
 
 Inductive term : Set :=
 | Var (n : nat)

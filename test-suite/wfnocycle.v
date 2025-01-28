@@ -1,13 +1,13 @@
 Set Warnings "-notation-overridden".
 From Equations.Prop Require Import Equations.
 
-Require Import Utf8 Arith Compare_dec List Lia.
-Require Import Relation_Operators.
+From Stdlib Require Import Utf8 Arith Compare_dec List Lia.
+From Stdlib Require Import Relation_Operators.
 Arguments clos_trans [A].
 Import Sigma_Notations.
 Set Equations Transparent.
 
-Require Import fin.
+From Equations.TestSuite Require Import fin.
 
 Equations lift_fin {n} (k : nat) (f : fin n) : fin (S n) :=
   lift_fin 0 f := fs f;

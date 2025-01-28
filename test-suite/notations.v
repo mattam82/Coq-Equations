@@ -1,6 +1,6 @@
 From Equations.Prop Require Import Equations.
 
-Require Import List.
+From Stdlib Require Import List.
 Import ListNotations.
 Reserved Notation "x +++ y" (at level 50).
 
@@ -30,7 +30,7 @@ Equations rev {A} : list A -> list A :=
        { acc ++++ [] := acc;
          acc ++++ (x :: l') := (x :: acc) ++++ l' }.
 
-Require Import Arith NArith.
+From Stdlib Require Import Arith NArith.
 Local Open Scope N_scope.
 
 (** Parsing works with scopes as well *)

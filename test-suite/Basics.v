@@ -6,10 +6,10 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Program Bvector List Relations.
+From Stdlib Require Import Program List Relations.
 From Equations.Prop Require Import Equations.
 
-Require Import Utf8.
+From Stdlib Require Import Utf8.
 Set Keyed Unification.
 
 Equations neg (b : bool) : bool :=
@@ -105,7 +105,7 @@ Derive Signature for vector.
 Derive NoConfusion NoConfusionHom for vector.
 Derive Subterm for vector.
 
-Require Import Arith Wf_nat.
+From Stdlib Require Import Arith Wf_nat.
 
 #[local]
 Instance wf_nat : WellFounded lt := lt_wf.
@@ -122,7 +122,8 @@ testn (S n) with testn n => {
   | 0 := S 0 ;
   | (S n') := S n' }.
 
-Require Import Vectors.Vector.
+#[warnings="-warn-library-file-stdlib-vector"]  
+From Stdlib Require Import Vectors.Vector.
 
 Arguments Vector.nil {A}.
 Arguments Vector.cons {A} _ {n}.
@@ -436,8 +437,6 @@ Extraction split. *)
 
 (* Eval compute in @zip''. *)
 
-Require Import Bvector.
-
 Equations  split_struct {X : Type} {m n} (xs : vector X (m + n)) : Split m n xs :=
 split_struct (m:=0) xs := append nil xs ;
 split_struct (m:=(S m)) (cons x xs) with split_struct xs => {
@@ -623,13 +622,14 @@ Definition transpose {A m n} : mat A m n -> mat A n m :=
 (*   (e : vector (vector A 0) n) v : vfold_right f (vmake n Vnil) v =  *)
 (* Typeclasses eauto :=. *)
 
-Require Import fin.
+From Equations.TestSuite Require Import fin.
 
 Generalizable All Variables.
 
 Opaque vmap. Opaque vtail. Opaque nth.
 
-Require Vectors.Vector.
+#[warnings="-warn-library-file-stdlib-vector"]
+From Stdlib Require Vectors.Vector.
 Arguments Vector.nil {A}.
 Arguments Vector.cons {A} _ {n}.
 Notation vnil := Vector.nil.

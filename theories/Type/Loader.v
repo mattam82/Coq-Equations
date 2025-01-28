@@ -8,14 +8,14 @@
 
 (** The set of libraries required to run Equations with all features. *)
 
-Require Import Extraction.
+From Stdlib Require Import Extraction.
 
 (** This exports tactics *)
 Declare ML Module "rocq-equations.plugin".
 
 Set Warnings "-notation-overridden".
 From Equations Require Export Init Signature.
-Require Import Equations.CoreTactics.
+From Equations Require Import CoreTactics.
 From Equations.Type Require Export Logic Classes.
 From Equations.Type Require Import WellFounded.
 From Equations.Type Require Import DepElim EqDec Constants.

@@ -9,14 +9,14 @@
 Set Asymmetric Patterns.
 Set Implicit Arguments.
 Unset Strict Implicit.
-Require Import Arith.
-Require Import Lia.
+From Stdlib Require Import Arith.
+From Stdlib Require Import Lia.
 From Equations.Prop Require Import Equations.
 
-Require Import Wellfounded Relation_Definitions.
-Require Import Relation_Operators Lexicographic_Product Wf_nat.
+From Stdlib Require Import Wellfounded Relation_Definitions.
+From Stdlib Require Import Relation_Operators Lexicographic_Product Wf_nat.
 Unset Implicit Arguments.
-Require Import Program.
+From Stdlib Require Import Program.
 
 Equations? test (n : nat) (pre : n >= 0 ) : { n' : nat | n' <= n }
  by wf n lt :=

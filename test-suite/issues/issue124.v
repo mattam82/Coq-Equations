@@ -1,6 +1,6 @@
 From Equations.Prop Require Import Equations.
 
-Require Import List.
+From Stdlib Require Import List.
 Import ListNotations.
 
 Equations foo (f: option (nat -> nat)) (l: list nat) : list nat :=

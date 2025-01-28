@@ -1,6 +1,6 @@
 From Equations.Prop Require Import Equations.
 
-Require Import Utf8.
+From Stdlib Require Import Utf8.
 (* Set Universe Polymorphism. *)
 (** Can we define NoConfusion in SProp (squashing equalities of arguments)?
     Would not allow to show equivalence to (x = y) for non-strict sets. *)

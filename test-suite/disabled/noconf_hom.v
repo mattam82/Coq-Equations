@@ -1,7 +1,7 @@
 Set Warnings "-deprecated-library-file-since-8.20".
 From Stdlib Require Import Program Bvector List Relations.
 From Equations Require Import Equations Signature.
-Require Import Utf8.
+From Stdlib Require Import Utf8.
 Unset Equations WithK.
 
 Inductive Vec (A : Set) : nat -> Set :=
