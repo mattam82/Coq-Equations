@@ -21,7 +21,7 @@
   "logpath:Equations"))
  (depends
    (ocaml (>= 4.10.0))
-   (rocq-prover (and (>= "9.0~") (<> "dev")))
+   (rocq-prover (>= "9.0~"))
    (ppx_optcomp :build)
    (ocaml-lsp-server :with-dev-setup)))
 
