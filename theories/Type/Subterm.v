@@ -10,12 +10,8 @@ Set Warnings "-notation-overridden".
 
 From Equations Require Import Init Signature.
 Require Import Equations.CoreTactics.
-Require Import Equations.Type.Logic
-        Equations.Type.Classes Equations.Type.EqDec
-        Equations.Type.Relation
-        Equations.Type.FunctionalExtensionality
-        Equations.Type.WellFounded
-        Equations.Type.DepElim Equations.Type.Constants.
+From Equations.Type Require Import Logic Classes EqDec
+  Relation FunctionalExtensionality WellFounded DepElim Constants.
 
 Set Universe Polymorphism.
 

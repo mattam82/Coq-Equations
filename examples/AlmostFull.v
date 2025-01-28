@@ -1,4 +1,5 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
+
 Require Import Examples.Fin.
 Require Import Relations Utf8.
 Require Import Relations Wellfounded.

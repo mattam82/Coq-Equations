@@ -1,8 +1,8 @@
 (** Example by Rafaël Bocquet: POPLmark part 1A with inductive definition of scope 
   and well-scoped variables (and terms, types and environments). *)
 
-Require Import Equations.Equations.
-Require Import Equations.DepElimDec.
+From Equations.Prop Require Import Equations
+
 Require Import Stdlib.Logic.Eqdep_dec.
 Require Import Stdlib.Classes.EquivDec.
 Require Import Program.

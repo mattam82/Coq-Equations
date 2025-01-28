@@ -18,8 +18,8 @@ Set Warnings "-notation-overridden".
 
 Require Import CRelationClasses.
 Require Import Equations.Init.
-Require Import Equations.Type.Logic.
-Require Import Equations.Type.Relation.
+From Equations.Type Require Import Logic.
+From Equations.Type Require Import Relation.
 
 Import Sigma_Notations.
 Import Id_Notations.

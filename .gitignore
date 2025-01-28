@@ -51,7 +51,6 @@ docs/_site
 .merlin
 _build
 *.install
-/test-suite/*.agdai
 /custom-HoTT/
 /examples/Makefile
 /examples/Makefile.conf

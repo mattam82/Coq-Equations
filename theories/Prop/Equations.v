@@ -9,7 +9,7 @@
 (** The set of libraries required to run Equations with all features. *)
 
 Require Export Equations.Prop.Loader.
-Require Import Equations.Prop.Telescopes.
+From Equations.Prop Require Import Telescopes.
 
 #[export] Existing Instance wf_tele_measure.
 

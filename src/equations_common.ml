@@ -1090,6 +1090,12 @@ let evd_comb1 f evd x =
 
 (* Universe related functions *)
 
+[%%if rocq = "9.0"]
+let set_leq_sort env = Evd.set_leq_sort
+[%%else]
+let set_leq_sort env = Evd.set_leq_sort
+[%%endif]
+
 let nonalgebraic_universe_level_of_universe env sigma u =
   match ESorts.kind sigma u with
   | Sorts.Set | Sorts.Prop | Sorts.SProp ->

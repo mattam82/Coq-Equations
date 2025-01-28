@@ -1,10 +1,10 @@
-Require Import Equations.Equations.
+From Equations.Prop Require Import Equations.
 Set Universe Polymorphism.
 Set Implicit Arguments.
 
 (* Move fix_proto to poly version *)
 Equations(noind) id (A : Type) (a : A) : A :=
-id A x := x.
+id x := x.
 Set Printing Universes.
 (* Move fix_proto to poly version *)
 Equations foo (A : _) (a : A) : A :=

@@ -2,5 +2,5 @@
  (name Equations.HoTT)
  (package rocq-equations)
  (modules :standard)
- (theories Equations)
+ (theories Equations) 
  (flags ("-noinit" "-indices-matter")))

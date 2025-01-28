@@ -1,5 +1,5 @@
 (** Proving Termination of Normalization Functions for Conditional Expressions, L. Paulson *)
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Require Import List Program.Syntax Arith Lia.
 

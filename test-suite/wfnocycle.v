@@ -1,5 +1,6 @@
 Set Warnings "-notation-overridden".
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
+
 Require Import Utf8 Arith Compare_dec List Lia.
 Require Import Relation_Operators.
 Arguments clos_trans [A].
@@ -20,7 +21,7 @@ Local Open Scope equations_scope.
 Arguments map {A B}.
 (* end hide *)
 
-Require Import Equations.Prop.Subterm.
+From Equations.Prop Require Import Subterm.
 
 Derive Subterm for nat.
 

@@ -1,9 +1,10 @@
-From Equations Require Import Equations. 
+From Equations.Prop Require Import Equations.
+
 
 Set Equations Transparent.
 
-Inductive K : nat -> nat -> Type :=
-| K1:  K x 
+Inductive K (x : nat) : nat -> nat -> Type :=
+| K1: K x x
 | K2: forall y z w, w = y -> K x w -> K y z -> K x z.
 
 

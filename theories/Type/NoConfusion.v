@@ -12,8 +12,8 @@
 
 From Equations Require Import Init Signature.
 Require Import Equations.CoreTactics.
-Require Import Equations.Type.Classes Equations.Type.EqDec Equations.Type.Constants.
-Require Import Equations.Type.DepElim Equations.Type.Tactics.
+From Equations.Type Require Import Classes EqDec Constants.
+From Equations.Type Require Import DepElim Tactics.
 
 (** Parameterized inductive types just need NoConfusion. *)
 

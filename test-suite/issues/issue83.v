@@ -1,4 +1,4 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Section CookingKillsOpaquenessForReduction.
 Equations id {A} (x : A) : A :=

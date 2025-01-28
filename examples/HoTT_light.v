@@ -15,7 +15,7 @@ Require Export Unicode.Utf8.
 Require Import Stdlib.Program.Tactics Setoid.
 Require Import Relations.
 (** Switches to constants in Type *)
-Require Import Equations.Type.All.
+From Equations.Type Require Import All.
 
 (** This imports the polymorphic identity and sigma types in Type and their associated notations. *)
 Import Id_Notations.

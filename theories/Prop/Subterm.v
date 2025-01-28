@@ -13,8 +13,7 @@ From Stdlib Require Export Program.Wf FunctionalExtensionality.
 
 From Equations Require Import Init Signature.
 Require Import Equations.CoreTactics.
-Require Import Equations.Prop.Classes Equations.Prop.EqDec
-        Equations.Prop.DepElim Equations.Prop.Constants.
+From Equations.Prop Require Import Classes EqDec DepElim Constants.
 
 Generalizable Variables A R S B.
 

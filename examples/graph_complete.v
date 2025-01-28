@@ -1,5 +1,5 @@
 Set Warnings "-notation-overridden".
-Require Import Equations.Type.All.
+From Equations.Type Require Import All.
 Require Import Examples.HoTT_light.
 Set Universe Polymorphism.
 Require Import Relations.

@@ -1,5 +1,5 @@
 From Stdlib.Lists Require Import List.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 Import ListNotations.
 
 Inductive foo: Set :=

@@ -1,4 +1,4 @@
-From Equations Require Import Equations DepElimDec HSets.
+From Equations Require Import Equations.
 (* Set Universe Polymorphism. *)
 (** Can we define NoConfusion in SProp (squashing equalities of arguments)?
     Would not allow to show equivalence to (x = y) for non-strict sets. *)

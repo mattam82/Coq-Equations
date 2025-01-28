@@ -1,5 +1,6 @@
 Require Import Utf8 Program.
-Require Import Equations.Prop.Equations.
+From Equations.Prop Require Import Equations.
+
 Open Scope equations_scope.
 Set Warnings "-notation-overridden".
 Notation " '{' x : A & y } " := (@sigma A (fun x : A => y)%type) : type_scope.

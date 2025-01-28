@@ -2,7 +2,7 @@ Set Warnings "-notation-overridden".
 
 Set Universe Polymorphism.
 (** Switch to an equality in Type *)
-Require Import Equations.Type.All.
+From Equations.Type Require Import All.
 
 Derive Signature for Id.
 
@@ -36,8 +36,8 @@ Arguments nil {A}.
 Arguments cons {A%_type_scope} {n%_nat_scope} a v.
 Derive Signature for vector.
 Require Import Equations.CoreTactics Equations.Type.Tactics.
-Require Import Equations.Type.Tactics.
-Require Import Equations.Type.FunctionalInduction.
+From Equations.Type Require Import Tactics.
+From Equations.Type Require Import FunctionalInduction.
 
 Set Universe Minimization ToSet.
 Derive NoConfusionHom for vector.

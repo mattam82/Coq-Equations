@@ -6,7 +6,7 @@ Set Asymmetric Patterns.
 
 Import ListNotations.
 
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Section list_size.
     Context {A : Type} (f : A -> nat).

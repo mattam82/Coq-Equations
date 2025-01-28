@@ -1,4 +1,4 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Require Import Vector.
 Notation vector := t.

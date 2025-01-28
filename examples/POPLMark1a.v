@@ -5,7 +5,7 @@
   types and environments). *)
 
 Require Import Program.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 From Stdlib Require Import EquivDec.
 Require Import Arith.
 

@@ -15,7 +15,8 @@
   beta-short eta-long normal forms, typable in a bidirectional type system. *)
 
 Require Program.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
+
 Require Import Lia.
 Require Import List Utf8.
 

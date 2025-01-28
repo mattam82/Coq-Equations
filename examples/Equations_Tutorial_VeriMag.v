@@ -28,7 +28,7 @@ Arguments map {A B}.
    features through a handful of examples. We start our Coq primer
    session by importing the [Equations] module.  *)
 
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 (* begin hide *)
 Close Scope list_scope.

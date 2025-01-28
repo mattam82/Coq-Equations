@@ -1,5 +1,5 @@
 Require Import Program.Basics Program.Tactics.
-Require Import Equations.Equations.
+From Equations.Prop Require Import Equations
 Require Import Stdlib.Vectors.VectorDef.
 Require Import List.
 Import ListNotations.

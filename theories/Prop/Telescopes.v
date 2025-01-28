@@ -1,8 +1,8 @@
-Require Import Equations.Prop.Loader.
+From Equations.Prop Require Import Loader.
 From Stdlib Require Import FunctionalExtensionality.
-Require Import Equations.Prop.DepElim.
-Require Import Equations.Prop.Tactics.
-Require Import Equations.Prop.FunctionalInduction.
+From Equations.Prop Require Import DepElim.
+From Equations.Prop Require Import Tactics.
+From Equations.Prop Require Import FunctionalInduction.
 (** Telescopes: allows treating variable arity fixpoints *)
 Set Universe Polymorphism.
 Import Sigma_Notations.

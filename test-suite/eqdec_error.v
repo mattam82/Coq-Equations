@@ -1,6 +1,6 @@
 From Stdlib Require Import BinNums.
 
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Fail Derive EqDec for positive.
 Derive NoConfusion EqDec for positive.

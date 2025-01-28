@@ -18,7 +18,8 @@
   and hide directives which are just used to instruct coqdoc. *)
 (* begin hide *)
 Require Import Program.Basics Program.Tactics.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
+
 Require Import ZArith Lia.
 Require Import Psatz.
 Require Import Nat.

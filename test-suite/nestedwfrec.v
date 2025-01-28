@@ -1,4 +1,5 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
+
 Require Import Lia.
 
 Equations? f (n : nat) : nat by wf n lt :=

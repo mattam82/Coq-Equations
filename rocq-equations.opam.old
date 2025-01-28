@@ -33,6 +33,7 @@ run-test: [
 depends: [
   "rocq-prover" {= "dev"}
   "ocamlfind" {build}
+  "ppx_optcomp" {build}
 ]
 #depopts: [
 #  "coq-hott" {= "8.13"}

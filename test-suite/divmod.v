@@ -1,5 +1,5 @@
 From Stdlib Require Import Arith Lia.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Equations? Div (x y : nat) : nat by wf x lt :=
  { Div x 0 := 0 ;

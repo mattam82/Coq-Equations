@@ -11,7 +11,8 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Require Import Arith.
 Require Import Lia.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
+
 Require Import Wellfounded Relation_Definitions.
 Require Import Relation_Operators Lexicographic_Product Wf_nat.
 Unset Implicit Arguments.

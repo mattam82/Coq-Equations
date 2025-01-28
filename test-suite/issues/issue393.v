@@ -1,4 +1,5 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
+
 Require Import List.
 
 Inductive In {X} (x : X) : list X -> Type :=

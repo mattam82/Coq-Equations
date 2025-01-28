@@ -1,5 +1,5 @@
-Require Import Equations.Prop.Subterm Equations.Prop.DepElim.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Subterm Equations.Prop.DepElim.
+From Equations.Prop Require Import Equations.
 
 Unset Equations With Funext.
 

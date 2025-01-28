@@ -1,7 +1,7 @@
 
 From Equations Require Import CoreTactics.
 From Equations.Prop Require Import DepElim.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 Set Equations Transparent.
 Equations ack (m n : nat) : nat by wf (m, n) (Equations.Prop.Subterm.lexprod _ _ lt lt) :=
 ack 0 n := S n;
