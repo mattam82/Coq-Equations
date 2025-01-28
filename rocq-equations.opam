@@ -31,7 +31,7 @@ run-test: [
   [make "test-suite"]
 ]
 depends: [
-  "coq" {= "dev"}
+  "rocq-prover" {= "dev"}
   "ocamlfind" {build}
 ]
 #depopts: [
