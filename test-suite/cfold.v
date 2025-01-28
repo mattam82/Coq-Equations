@@ -3,7 +3,8 @@
    but program is as straightforward as in Agda. *)
 
 Require Import Arith.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
+
 Require Import Stdlib.Bool.Bool.
 
 Set Keyed Unification.

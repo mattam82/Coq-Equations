@@ -1,4 +1,5 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
+
 Require Import Utf8.
 (* Set Universe Polymorphism. *)
 (** Can we define NoConfusion in SProp (squashing equalities of arguments)?

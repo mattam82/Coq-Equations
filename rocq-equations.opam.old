@@ -31,8 +31,9 @@ run-test: [
   [make "test-suite"]
 ]
 depends: [
-  "coq" {= "dev"}
+  "rocq-prover" {= "dev"}
   "ocamlfind" {build}
+  "ppx_optcomp" {build}
 ]
 #depopts: [
 #  "coq-hott" {= "8.13"}

@@ -1,4 +1,4 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Ltac solvetac := 
   match goal with |- ?T => exact 0 end.

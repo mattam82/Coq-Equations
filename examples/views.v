@@ -8,7 +8,7 @@
 (**********************************************************************)
 (* end hide *)
 
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 From Stdlib Require Import List Syntax Arith Lia.
 
 (** * Views using dependent pattern-matching

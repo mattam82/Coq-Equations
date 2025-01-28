@@ -1,4 +1,4 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 (* Assuming UIP *)
 From Stdlib.Logic Require Import Eqdep.
 

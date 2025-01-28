@@ -1,6 +1,6 @@
 (* https://lawrencecpaulson.github.io/2022/08/31/Ackermann-not-PR-I.html *)
 Require Import Arith Lia.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Equations ack (p : nat * nat) : nat by wf p (lexprod _ _ lt lt) :=
 ack (0, n) := S n;

@@ -1,5 +1,5 @@
 From Stdlib Require Import Fin.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 Set Equations Transparent.
 
 Derive Signature NoConfusion NoConfusionHom for t.

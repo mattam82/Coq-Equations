@@ -7,7 +7,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 From Stdlib Require Import List Syntax Arith Lia.
 Require Import List Wellfounded.
 Import ListNotations.

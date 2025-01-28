@@ -1,4 +1,4 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Axiom  I     : Set.
 Axiom i1 i2 : I.

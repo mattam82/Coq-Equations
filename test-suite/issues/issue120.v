@@ -1,5 +1,5 @@
 Require Export Lia.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 From Stdlib Require Import Relation_Operators.
 From Stdlib Require Import Lexicographic_Product.
 

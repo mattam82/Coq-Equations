@@ -1,0 +1,9 @@
+(coq.theory
+ ; This determines the -R flag
+ (name Equations.TestSuite)
+ (package rocq-equations-tests)
+ (synopsis "Equations Plugin Tests")
+ (plugins rocq-runtime.plugins.extraction rocq-equations.plugin)
+ (theories Stdlib Equations Equations.Prop Equations.Type))
+
+(include_subdirs no)

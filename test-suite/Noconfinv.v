@@ -1,4 +1,4 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Equations noConfusion_nat_inv (x y : nat) (P : NoConfusion x y) : x = y :=
 noConfusion_nat_inv 0 0 _ := eq_refl;

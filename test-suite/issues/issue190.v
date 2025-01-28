@@ -1,4 +1,4 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 Equations foo (n : nat) : nat :=
   {
     foo 0

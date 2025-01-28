@@ -1,4 +1,4 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Inductive t (u : unit) :=
 | strange : t tt  -> t u.

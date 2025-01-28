@@ -1,6 +1,6 @@
 (* success *)
 From Stdlib Require Import ssreflect.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Import EquationsNotations.
 Open Scope equations_scope.

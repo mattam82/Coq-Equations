@@ -12,7 +12,7 @@
    session by importing the [Equations] module.  *)
 
 From Stdlib Require Import Arith Lia Program.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 (* begin hide *)
 Check @eq.

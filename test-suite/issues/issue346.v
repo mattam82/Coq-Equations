@@ -1,5 +1,5 @@
 From Stdlib Require Import Program.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 Definition tyty := Type -> Type.
 Inductive X : tyty := | K : X nat.
 

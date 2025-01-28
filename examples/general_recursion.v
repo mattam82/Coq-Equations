@@ -22,7 +22,8 @@
 (** printing Signature %\coqdocclass{Signature}% *)
 (** printing Subterm %\coqdocclass{Subterm}% *)
 (** printing NoConfusion %\coqdocclass{NoConfusion}% *)
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
+
 Require Import ZArith Lia.
 Require Import Program.
 Require Import Psatz.

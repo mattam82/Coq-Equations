@@ -1,4 +1,4 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 (* Removing this line makes Derive Subterm go through without troubles *)
 Set Universe Polymorphism.
 

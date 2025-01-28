@@ -6,9 +6,9 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
-Variable test : forall n : nat, (nat -> bool) -> nat.
+Parameter test : forall n : nat, (nat -> bool) -> nat.
 
 Equations f : nat -> nat :=
   f 0 := 0;
@@ -16,7 +16,7 @@ Equations f : nat -> nat :=
 
 Equations f' (n : nat) : nat :=
   f' n := test n (λ{ | 0 => true ;
-                     | S n => false }).
+                     | S _ => false }).
 
 Definition foo (x : nat) :=
   f' match x with 0 => 0 | S x => 0 end.

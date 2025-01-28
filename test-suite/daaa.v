@@ -1,4 +1,4 @@
-Require Import Equations.
+From Equations Require Import Equations.
 Inductive A : Set :=
   a : A
 | d : A -> A -> A -> A.

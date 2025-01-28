@@ -1,5 +1,5 @@
 From Equations Require Import Init.
-Require Import Equations.Prop.Classes Equations.Prop.EqDec Equations.Prop.DepElim.
+From Equations.Prop Require Import Classes EqDec DepElim.
 From Stdlib Require Import Relations.
 
 (** Naturals *)

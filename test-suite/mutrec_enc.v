@@ -1,4 +1,4 @@
-Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Inductive foo : Set :=
 | c0 : nat -> foo
@@ -42,14 +42,6 @@ fn (c1 b b') := fnb b + fnb b'
 where fnb (x : bar) : nat :=
   fnb (d0 x) := x;
   fnb (d1 f) := fn f.
-Next Obligation.
-  revert x. fix f 1.
-  destruct x. constructor. Transparent fn. unfold fn.
-  assert(forall x: bar, fn_ind_1 b b0 x (fn_obligation_1 fn b b0 x)).
-  fix g 1. destruct x. simpl. constructor. constructor. apply f.
-  constructor. apply H. apply H.
-  simpl. constructor. apply f.
-Defined.
 
 Eval compute in fn.
 (* Combined Scheme foo_bar from foo_bar_mut, foo_bar_mut'. *)

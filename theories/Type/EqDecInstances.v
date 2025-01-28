@@ -7,8 +7,7 @@
 (**********************************************************************)
 Set Warnings "-notation-overridden".
 From Equations Require Import Init.
-Require Import Equations.Type.Logic Equations.Type.Classes Equations.Type.DepElim
-        Equations.Type.Tactics Equations.Type.EqDec.
+From Equations.Type Require Import Logic Classes DepElim Tactics EqDec.
 Local Open Scope equations_scope.
 Import Id_Notations Sigma_Notations.
 

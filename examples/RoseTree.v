@@ -7,7 +7,8 @@
 (**********************************************************************)
 
 Require Import Program.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
+
 Require Import Utf8 Lia Arith.
 
 Require Import List.

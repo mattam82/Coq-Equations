@@ -12,9 +12,9 @@ Require Import Stdlib.Program.Tactics.
 Require Export Equations.Init.
 Require Import Equations.CoreTactics.
 Require Import Equations.Signature.
-Require Import Equations.Prop.Logic.
-Require Import Equations.Prop.Classes.
-Require Import Equations.Prop.EqDec.
+From Equations.Prop Require Import Logic.
+From Equations.Prop Require Import Classes.
+From Equations.Prop Require Import EqDec.
 
 Import Sigma_Notations.
 Local Open Scope equations_scope.

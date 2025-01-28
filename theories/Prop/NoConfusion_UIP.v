@@ -1,4 +1,5 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
+
 Import Sigma_Notations.
 
 (** This noConfusion instance corresponds to the rule for simplifying injectivity with UIP. *)

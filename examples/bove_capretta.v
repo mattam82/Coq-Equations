@@ -5,7 +5,8 @@
    but not direct pattern matching. We show a difficult example
    involving nested recursive calls. *)
 
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
+
 Require Import Arith Lia Relations Utf8.
 Import Sigma_Notations.
 

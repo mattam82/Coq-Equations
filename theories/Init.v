@@ -6,10 +6,11 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-Require Import Stdlib.Unicode.Utf8_core Extraction.
+From Corelib Require Import Extraction.
+From Stdlib Require Import Unicode.Utf8_core.
 
-Declare ML Module "coq-core.plugins.ltac".
-Declare ML Module "coq-equations.plugin".
+Declare ML Module "rocq-runtime.plugins.ltac".
+Declare ML Module "rocq-equations.plugin".
 
 (** A notation scope for equations declarations.
 

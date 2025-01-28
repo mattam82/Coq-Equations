@@ -1,4 +1,5 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
+
 Require Import List.
 (* This type is from VST: 
  * https://github.com/PrincetonUniversity/VST/blob/v2.1/floyd/compact_prod_sum.v#L13 *)

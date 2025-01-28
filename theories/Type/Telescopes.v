@@ -1,12 +1,12 @@
 Set Warnings "-notation-overridden".
-Require Import Equations.Type.Loader.
-Require Import Equations.Type.Logic.
-Require Import Equations.Type.FunctionalExtensionality.
-Require Import Equations.Type.WellFounded.
-Require Import Equations.Type.DepElim.
-Require Import Equations.Type.Subterm.
-Require Import Equations.Type.Tactics.
-Require Import Equations.Type.FunctionalInduction.
+From Equations.Type Require Import Loader.
+From Equations.Type Require Import Logic.
+From Equations.Type Require Import FunctionalExtensionality.
+From Equations.Type Require Import WellFounded.
+From Equations.Type Require Import DepElim.
+From Equations.Type Require Import Subterm.
+From Equations.Type Require Import Tactics.
+From Equations.Type Require Import FunctionalInduction.
 
 (** Telescopes: allows treating variable arity fixpoints *)
 Set Universe Polymorphism.

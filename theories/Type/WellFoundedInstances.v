@@ -1,5 +1,5 @@
 Set Warnings "-notation-overridden".
-Require Import Equations.Type.Loader Equations.Type.Relation Equations.Type.WellFounded.
+From Equations.Type Require Import Loader Relation WellFounded.
 Import Id_Notations.
 
 Section Lt.

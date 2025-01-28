@@ -9,11 +9,10 @@
 (** Instances of [Below] for the standard datatypes. To be used by 
    [equations] when it needs to do recursion on a type. *)
 
-Require Import Bvector.
-Require Import Vectors.Vector.
-Require Import Equations.Init Equations.CoreTactics Equations.Prop.DepElim Equations.Prop.Tactics
-        Equations.Prop.Constants.
-Require Import Equations.Prop.FunctionalInduction.
+Set Warnings "-deprecated-library-file-since-8.20".
+From Stdlib Require Import Bvector Vectors.Vector.
+From Equations Require Import Init CoreTactics.
+From Equations.Prop Require Import DepElim Tactics Constants FunctionalInduction.
 
 (** The [BelowPackage] class provides the definition of a [Below] predicate for some datatype,
    allowing to talk about course-of-value recursion on it. *)

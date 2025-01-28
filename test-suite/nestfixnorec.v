@@ -1,4 +1,4 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 Set Keyed Unification.
 
 Require Import Stdlib.Lists.List.

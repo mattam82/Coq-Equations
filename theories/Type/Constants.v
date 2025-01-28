@@ -1,8 +1,7 @@
 Set Warnings "-notation-overridden".
 
 From Equations Require Import Init.
-Require Import Equations.Type.Logic Equations.Type.DepElim
-        Equations.Type.EqDec Equations.Type.Classes.
+From Equations.Type Require Import Logic DepElim EqDec Classes.
 From Stdlib Require Import CRelationClasses Relations.
 
 (** Naturals *)

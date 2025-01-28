@@ -3,7 +3,7 @@ Set Implicit Arguments.
 
 From Stdlib Require Import Lia Lists.List.
 Import ListNotations.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Open Scope bool_scope.
 

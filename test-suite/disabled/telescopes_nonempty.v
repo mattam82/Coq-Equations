@@ -1,11 +1,12 @@
-Require Import Equations.
+From Equations.Prop Require Import Equations SigmaNotations.
 Set Universe Polymorphism.
-Open Scope sigma_scope.
+Import Sigma_Notations.
+Open Scope equations_scope.
 Polymorphic
-Definition pr1_seq {A} {P : A -> Type} {p q : sigma A P} (e : p = q) : p.1 = q.1.
+Definition pr1_seq {A} {P : A -> Type} {p q : sigma P} (e : p = q) : p.1 = q.1.
 Proof. destruct e. apply eq_refl. Defined.
 
-Require Vector.
+From Stdlib Require Vector.
 Derive NoConfusion for Vector.t.
 
 Notation " 'rew' H 'in' c " := (@eq_rect _ _ _ c _ H) (at level 20).
@@ -92,8 +93,6 @@ Proof.
   - intros x. simpl. destruct X. simpl. unfold inv_equiv. simpl.
     apply axiom.
 Defined.
-
-Require Import DepElimDec.
 
 (* Unset Equations OCaml Splitting. *)
 (* BUG *)
@@ -403,8 +402,6 @@ telescope ((fun a : A => extend_tele (f a) (fun fa : f a => Γ &(a & fa))) t))
     refine (@Top.subst2 _ _ _ _). simpl.
     simpl. red in H. specialize (H _ _ _ He.2). destruct He. simpl. apply Top.cong. apply H.
   Defined.
-
-  Require Import EqDecInstances.
 
   Typeclasses Transparent telescope.
   Transparent path_sigma_equiv path_sigma_uncurried.

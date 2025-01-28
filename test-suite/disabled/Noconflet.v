@@ -1,4 +1,4 @@
-Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Derive NoConfusion for vector.
 

@@ -1,4 +1,4 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 (* Bug with eqns *)
 (* Nested with equation not properly generated *)

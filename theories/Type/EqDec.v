@@ -9,8 +9,8 @@
 Set Warnings "-notation-overridden".
 
 Require Import Equations.Init.
-Require Import Equations.Type.Logic.
-Require Import Equations.Type.Classes.
+From Equations.Type Require Import Logic.
+From Equations.Type Require Import Classes.
 
 (** Decidable equality.
 

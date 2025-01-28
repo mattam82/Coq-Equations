@@ -1,6 +1,6 @@
 From Stdlib Require Import Lia.
 Set Implicit Arguments.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Parameter A : Type.
 

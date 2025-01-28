@@ -2,7 +2,7 @@
 (** printing elimination %\coqdoctac{elimination}% *)
 (** printing Derive %\coqdockw{Derive}% *)
 (* begin hide *)
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Set Implicit Arguments.
 

@@ -1,4 +1,5 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
+
 Require Import List.
 
 (* The rest is a nonsensical, just to give a minimalistic reproducible example *)

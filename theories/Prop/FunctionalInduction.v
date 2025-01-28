@@ -7,8 +7,7 @@
 (**********************************************************************)
 
 Require Import Equations.CoreTactics.
-Require Import Equations.Prop.Logic
-        Equations.Prop.Classes Equations.Prop.EqDec Equations.Prop.DepElim.
+From Equations.Prop Require Import Logic Classes EqDec DepElim.
 
 (** The tactic [funind c Hc] applies functional induction on the application 
    [c] which must be of the form [f args] where [f] has a [FunctionalInduction]

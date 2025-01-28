@@ -1,4 +1,4 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 From Stdlib Require Import Bool.
 Inductive depInd : Type -> Type :=
 | A : depInd bool

@@ -1,4 +1,5 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
+
 Require Import Relations.
 Require Import Arith Lia.
 Set Keyed Unification.

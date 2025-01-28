@@ -1,5 +1,5 @@
 (* From Stdlib Require Import Logic.StrictProp. *)
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Inductive Ssig {A : Type} (P : A -> SProp) :=
   | Sexists (a : A) (b : P a) : Ssig P.

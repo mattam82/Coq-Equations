@@ -4,7 +4,7 @@
   #<a href="http://adam.chlipala.net/cpdt/html/MoreDep.html">More Dependent Types</a>#. *)
 
 Require Import Bool Arith List Program. 
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 Set Equations Transparent.
 
 Set Keyed Unification.

@@ -4,7 +4,8 @@
 
   Example of a term structure with two constructors taking lists of terms. *)
 
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
+
 Require Import Program Arith List Compare_dec.
 Import ListNotations.
 

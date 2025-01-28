@@ -1,4 +1,5 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
+
 (** Taken from Agda issue 3034:
     https://github.com/agda/agda/issues/3034 *)
 
@@ -13,7 +14,7 @@ Set Universe Polymorphism.
 Import Sigma_Notations.
 Set Equations Transparent.
 
-Obligation Tactic := idtac.
+Local Obligation Tactic := idtac.
 Lemma singleton_eq {A} (x : A) (p q : { y : A & x = y }) : p = q.
 Proof.
   destruct p, q. destruct pr2. destruct pr3. reflexivity.

@@ -1,5 +1,5 @@
 From Stdlib Require Import Psatz.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Inductive Pre := Pi : Pre -> Pre.
 

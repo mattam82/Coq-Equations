@@ -1,4 +1,4 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 From Stdlib Require Import Program Arith Compare_dec List.
 Import ListNotations.
 (*

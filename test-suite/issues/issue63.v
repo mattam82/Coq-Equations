@@ -1,7 +1,8 @@
 Require Import Stdlib.Vectors.Vector.
 Require Import Stdlib.PArith.PArith.
 Require Import Lia.
-Require Import Equations.Prop.Equations.
+From Equations.Prop Require Import Equations.
+
 Set Equations With UIP.
 Generalizable All Variables.
 

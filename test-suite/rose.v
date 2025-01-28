@@ -3,7 +3,8 @@
 (** printing by %\coqdockw{by}% *)
 (** printing rec %\coqdockw{rec}% *)
 (* begin hide *)
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
+
 Require Import Lia Utf8 List.
 Import ListNotations.
 Set Keyed Unification.

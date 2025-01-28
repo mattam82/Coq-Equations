@@ -1,4 +1,4 @@
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 Set Universe Polymorphism.
 
 Inductive ℕ (E:Set) : Set :=

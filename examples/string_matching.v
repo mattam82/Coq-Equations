@@ -6,7 +6,7 @@ From Stdlib.Program Require Import Wf.
 Require Import List Lia.
 Require Import PeanoNat.
 Require Import Program.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 
 Import ListNotations.
 

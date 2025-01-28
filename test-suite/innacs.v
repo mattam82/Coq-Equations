@@ -1,4 +1,5 @@
-Require Import Equations.
+From Equations.Prop Require Import Equations.
+
 Require Import Vector.
 Require Import fin.
 Notation vector := Vector.t.

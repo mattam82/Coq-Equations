@@ -1,5 +1,5 @@
 From Stdlib Require Import Vector.
-From Equations Require Import Equations.
+From Equations.Prop Require Import Equations.
 Arguments Vector.nil {A}.
 Arguments Vector.cons {A} _ {n}.
 
