@@ -1,0 +1,1213 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link href="coqdoc.css" rel="stylesheet" type="text/css" />
+<title>Examples.Equations_Tutorial_VeriMag</title>
+</head>
+
+<body>
+
+<div id="page">
+
+<div id="header">
+</div>
+
+<div id="main">
+
+<div class="code">
+
+<br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="keyword">Equations</span></span> is a plugin for  that comes with a few support modules defining
+   classes and tactics for running it. We will introduce its main
+   features through a handful of examples. We start our Coq primer
+   session by importing the <span class="inlinecode"><span class="id" title="keyword">Equations</span></span> module.  
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Equations.Prop</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="keyword">Equations</span>.<br/>
+
+<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab1"></a><h1 class="section">Inductive types</h1>
+
+
+<div class="paragraph"> </div>
+
+  In its simplest form, <span class="inlinecode"><span class="id" title="keyword">Equations</span></span> allows to define functions on inductive datatypes.
+  Take for example the booleans defined as an inductive type with two constructors 
+  <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a></span> and <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a></span>:
+  <br/>
+<span class="inlinecode">&nbsp;&nbsp;<span class="id" title="keyword">Inductive</span> <a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> : <span class="id" title="keyword">Set</span> := <a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a> : <a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> | <a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a> : <a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> 
+<div class="paragraph"> </div>
+
+</span>
+<div class="paragraph"> </div>
+
+  We can define the boolean negation as follows: 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">neg</span> (<span class="id" title="var">b</span> : <span class="id" title="var">bool</span>) : <span class="id" title="var">bool</span> :=<br/>
+<span class="id" title="var">neg</span> <span class="id" title="var">true</span> := <span class="id" title="var">false</span> ;<br/>
+<span class="id" title="var">neg</span> <span class="id" title="var">false</span> := <span class="id" title="var">true</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="keyword">Equations</span></span> declarations are formed by a signature definition and a set of <i>clauses</i> 
+  that must form a <i>covering</i> of this signature. The compiler is then expected to
+  automatically find a corresponding case-splitting tree (i.e. <span class="inlinecode"><span class="id" title="keyword">match</span></span> <span class="inlinecode">..</span> <span class="inlinecode"><span class="id" title="keyword">with</span></span>)  
+  that implements the function.
+  In this case, it simply needs to split on the single variable <span class="inlinecode"><span class="id" title="var">b</span></span> to
+  produce two new <i>programming problems</i> <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#neg"><span class="id" title="definition">neg</span></a></span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a></span> and <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#neg"><span class="id" title="definition">neg</span></a></span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a></span> that are directly 
+  handled by the user clauses. We will see in more complex examples that this search
+  for a splitting tree may be non-trivial. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Print</span> <span class="id" title="var">neg</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab2"></a><h1 class="section">Reasoning principles</h1>
+
+
+<div class="paragraph"> </div>
+
+  In the setting of a proof assistant like Coq, we need not only the ability 
+  to define complex functions but also get good reasoning support for them.
+  Practically, this translates to the ability to simplify applications of functions 
+  appearing in the goal and to give strong enough proof principles for (recursive)
+  definitions.
+
+<div class="paragraph"> </div>
+
+<a id="lab3"></a><h2 class="section">Rewrite rules</h2>
+
+
+<div class="paragraph"> </div>
+
+  <span class="inlinecode"><span class="id" title="keyword">Equations</span></span> provides this through an automatic generation of proofs related to
+  the function. Namely, each defining equation gives rise to a lemma stating the 
+  equality between the left and right hand sides. These equations can be used as 
+  rewrite rules for simplification during proofs, without having to rely on the
+  fragile simplifications implemented by raw reduction. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">negb_invol</span> : <br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <span class="id" title="var">b</span>, <span class="id" title="var">neg</span> (<span class="id" title="var">neg</span> <span class="id" title="var">b</span>) = <span class="id" title="var">b</span>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">b</span>. <span class="id" title="tactic">rewrite</span> <span class="id" title="var">neg_equation_1</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">all</span>:<span class="id" title="var">simp</span> <span class="id" title="var">neg</span>. <span class="id" title="var">all</span>:<span class="id" title="var">easy</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The <span class="inlinecode"><span class="id" title="var">simp</span></span> <span class="inlinecode"><span class="id" title="var">foo</span></span> tactic is an alias to <span class="inlinecode"><span class="id" title="tactic">autorewrite</span></span> <span class="inlinecode"><span class="id" title="keyword">with</span></span> <span class="inlinecode"><span class="id" title="var">foo</span></span>, using the rewrite 
+  rules associated to constant foo. 
+<div class="paragraph"> </div>
+
+<a id="lab4"></a><h2 class="section">Elimination principle</h2>
+
+
+<div class="paragraph"> </div>
+
+  We can also generate the inductive graph of any <span class="inlinecode"><span class="id" title="keyword">Equations</span></span> definition, 
+  giving the strongest elimination principle on the function. 
+
+<div class="paragraph"> </div>
+
+  I.e., for <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#neg"><span class="id" title="definition">neg</span></a></span> the inductive graph is defined as: <br/>
+<span class="inlinecode"><span class="id" title="keyword">Inductive</span> <span class="id" title="var">neg_graph</span> : <a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> → <a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> → <span class="id" title="keyword">Set</span> :=<br/>
+| <span class="id" title="var">neg_graph_equation_1</span> : <span class="id" title="var">neg_graph</span> <a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a> <a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a><br/>
+| <span class="id" title="var">neg_graph_equation_2</span> : <span class="id" title="var">neg_graph</span> <a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a> <a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a> 
+<div class="paragraph"> </div>
+
+</span>
+<div class="paragraph"> </div>
+
+  Along with a proof of <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#neg_graph_correct"><span class="id" title="definition">neg_graph_correct</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode">∀</span> <span class="inlinecode"><span class="id" title="var">b</span>,</span> <span class="inlinecode"><span class="id" title="var">neg_graph</span></span> <span class="inlinecode"><span class="id" title="var">b</span></span> <span class="inlinecode">(<a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#neg"><span class="id" title="definition">neg</span></a></span> <span class="inlinecode"><span class="id" title="var">b</span>)</span>, we can 
+  eliminate any call to <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#neg"><span class="id" title="definition">neg</span></a></span> specializing its argument and result in a single command.
+
+<div class="paragraph"> </div>
+
+  Suppose we want to show that <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#neg"><span class="id" title="definition">neg</span></a></span> is involutive for example, our goal will 
+  look like: <br/>
+<span class="inlinecode">&nbsp;&nbsp;<span class="id" title="var">b</span> : <a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a><br/>
+&nbsp;&nbsp;============================<br/>
+&nbsp;&nbsp;<a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#neg"><span class="id" title="definition">neg</span></a> (<a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#neg"><span class="id" title="definition">neg</span></a> <span class="id" title="var">b</span>) = <span class="id" title="var">b</span> 
+<div class="paragraph"> </div>
+
+</span>
+<div class="paragraph"> </div>
+
+  An application of the tactic <span class="inlinecode"><span class="id" title="var">funelim</span></span> <span class="inlinecode">(<a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#neg"><span class="id" title="definition">neg</span></a></span> <span class="inlinecode"><span class="id" title="var">b</span>)</span> will produce two goals corresponding to 
+  the splitting done in <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#neg"><span class="id" title="definition">neg</span></a></span>: <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#neg"><span class="id" title="definition">neg</span></a></span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a></span> and <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#neg"><span class="id" title="definition">neg</span></a></span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a></span>.
+  These correspond exactly to the rewriting lemmas generated for <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#neg"><span class="id" title="definition">neg</span></a></span>.
+
+<div class="paragraph"> </div>
+
+  In the following sections we will show how these ideas generalize to more complex 
+  types and definitions involving dependencies, overlapping clauses and recursion. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Print</span> <span class="id" title="var">neg_graph</span>.<br/>
+<span class="id" title="keyword">Check</span> <span class="id" title="var">neg_graph_correct</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">neg_inv</span> : <span class="id" title="keyword">∀</span> <span class="id" title="var">b</span>, <span class="id" title="var">neg</span> (<span class="id" title="var">neg</span> <span class="id" title="var">b</span>) = <span class="id" title="var">b</span>.<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">intros</span> <span class="id" title="var">b</span>. <span class="id" title="var">funelim</span> (<span class="id" title="var">neg</span> <span class="id" title="var">b</span>). <span class="id" title="var">all</span>:<span class="id" title="var">now</span> <span class="id" title="tactic">reflexivity</span>. <span class="id" title="keyword">Defined</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Module</span> <span class="id" title="var">BuildingUp</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Equations naturally supports notations: the left-hand 
+  sides of clauses only have to be elaborated to well-typed patterns for the given argument types. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Declare Scope</span> <span class="id" title="var">mylist_scope</span>.<br/>
+<span class="id" title="keyword">Notation</span> &quot;[]" := <span class="id" title="var">nil</span> : <span class="id" title="var">mylist_scope</span>.<br/>
+<span class="id" title="keyword">Notation</span> &quot;[ x ]" := (<span class="id" title="var">cons</span> <span class="id" title="var">x</span> <span class="id" title="var">nil</span>) : <span class="id" title="var">mylist_scope</span>.<br/>
+<span class="id" title="keyword">Notation</span> &quot;x :: l" := (<span class="id" title="var">cons</span> <span class="id" title="var">x</span> <span class="id" title="var">l</span>) : <span class="id" title="var">mylist_scope</span>.<br/>
+<span class="id" title="keyword">Open</span> <span class="id" title="keyword">Scope</span> <span class="id" title="var">mylist_scope</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab5"></a><h2 class="section">Recursive inductive types</h2>
+
+
+<div class="paragraph"> </div>
+
+  Of course with inductive types comes recursion. Coq accepts a subset
+  of the structurally recursive definitions by default (it is
+  incomplete due to its syntactic nature). We will use this as a first
+  step towards a more robust treatment of recursion via well-founded
+  relations. A classical example is list concatenation: 
+<div class="paragraph"> </div>
+
+<a id="lab6"></a><h3 class="section">Recursive notations</h3>
+
+
+<div class="paragraph"> </div>
+
+  One can also define notations for recursive definitions, by
+  first <i>reserving</i> them:
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Reserved Notation</span> &quot;x +++ y" (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 60, <span class="id" title="tactic">right</span> <span class="id" title="keyword">associativity</span>).<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Here we declare <span class="inlinecode"><span class="id" title="var">x</span></span> <span class="inlinecode">++</span> <span class="inlinecode"><span class="id" title="var">y</span></span> as an infix operation with right associativity,
+  so <span class="inlinecode"><span class="id" title="var">x</span></span> <span class="inlinecode">++</span> <span class="inlinecode"><span class="id" title="var">y</span></span> <span class="inlinecode">++</span> <span class="inlinecode"><span class="id" title="var">z</span></span> will mean <span class="inlinecode"><span class="id" title="var">x</span></span> <span class="inlinecode">++</span> <span class="inlinecode">(<span class="id" title="var">y</span></span> <span class="inlinecode">++</span> <span class="inlinecode"><span class="id" title="var">z</span>)</span>. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">app</span> {<span class="id" title="var">A</span>} (<span class="id" title="var">l</span> <span class="id" title="var">l'</span> : <span class="id" title="var">list</span> <span class="id" title="var">A</span>) : <span class="id" title="var">list</span> <span class="id" title="var">A</span> := {<br/>
+&nbsp;&nbsp;<span class="id" title="var">nil</span>      +++ <span class="id" title="var">l'</span> := <span class="id" title="var">l'</span> ;<br/>
+&nbsp;&nbsp;(<span class="id" title="var">a</span> :: <span class="id" title="var">l</span>) +++ <span class="id" title="var">l'</span> := <span class="id" title="var">a</span> :: (<span class="id" title="var">l</span> +++ <span class="id" title="var">l'</span>) }<br/>
+<span class="id" title="keyword">where</span> &quot;x +++ y" := (<span class="id" title="var">app</span> <span class="id" title="var">x</span> <span class="id" title="var">y</span>).<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+We can directly bind and use this notation to write the left-hand side
+  and right-hand sides of the program.
+
+<div class="paragraph"> </div>
+
+  Remark: We enclose the clauses around curly braces, to scope the notation around the
+  whole program. Otherwise the notation <span class="inlinecode"><span class="id" title="keyword">where</span></span> clause would only apply to the body
+  of the second branch. 
+<div class="paragraph"> </div>
+
+<a id="lab7"></a><h3 class="section">Functional elimination and recursion</h3>
+
+
+<div class="paragraph"> </div>
+
+  Recursive definitions like <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#BuildingUp.app"><span class="id" title="definition">app</span></a></span> can be unfolded easily so proving the 
+  equations as rewrite rules is direct. The induction principle associated 
+  to this definition is more interesting however. We can derive from it the 
+  following <i>elimination</i> principle for calls to <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#BuildingUp.app"><span class="id" title="definition">app</span></a></span>: <br/>
+<span class="inlinecode">&nbsp;&nbsp;<a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#BuildingUp.app_elim"><span class="id" title="definition">app_elim</span></a> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> <span class="id" title="var">P</span> : <span class="id" title="keyword">∀</span> (<span class="id" title="var">A</span> : <span class="id" title="keyword">Type</span>) (<span class="id" title="var">l</span> <span class="id" title="var">l'</span> : <a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <span class="id" title="var">A</span>), <a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <span class="id" title="var">A</span> → <span class="id" title="keyword">Prop</span>,<br/>
+&nbsp;&nbsp;(<span class="id" title="keyword">∀</span> (<span class="id" title="var">A</span> : <span class="id" title="keyword">Type</span>) (<span class="id" title="var">l'</span> : <a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <span class="id" title="var">A</span>), <span class="id" title="var">P</span> <span class="id" title="var">A</span> <a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#Vector.nil"><span class="id" title="constructor">nil</span></a> <span class="id" title="var">l'</span> <span class="id" title="var">l'</span>) →<br/>
+&nbsp;&nbsp;(<span class="id" title="keyword">∀</span> (<span class="id" title="var">A</span> : <span class="id" title="keyword">Type</span>) (<span class="id" title="var">a</span> : <span class="id" title="var">A</span>) (<span class="id" title="var">l</span> <span class="id" title="var">l'</span> : <a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <span class="id" title="var">A</span>),<br/>
+&nbsp;&nbsp;<span class="id" title="var">P</span> <span class="id" title="var">A</span> <span class="id" title="var">l</span> <span class="id" title="var">l'</span> (<a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#BuildingUp.app"><span class="id" title="definition">app</span></a> <span class="id" title="var">l</span> <span class="id" title="var">l'</span>) → <span class="id" title="var">P</span> <span class="id" title="var">A</span> (<span class="id" title="var">a</span> :: <span class="id" title="var">l</span>) <span class="id" title="var">l'</span> (<span class="id" title="var">a</span> :: <a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#BuildingUp.app"><span class="id" title="definition">app</span></a> <span class="id" title="var">l</span> <span class="id" title="var">l'</span>)) →<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">∀</span> (<span class="id" title="var">A</span> : <span class="id" title="keyword">Type</span>) (<span class="id" title="var">l</span> <span class="id" title="var">l'</span> : <a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <span class="id" title="var">A</span>), <span class="id" title="var">P</span> <span class="id" title="var">A</span> <span class="id" title="var">l</span> <span class="id" title="var">l'</span> (<a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#BuildingUp.app"><span class="id" title="definition">app</span></a> <span class="id" title="var">l</span> <span class="id" title="var">l'</span>) 
+<div class="paragraph"> </div>
+
+</span>  Using this eliminator, we can write proofs exactly following the 
+  structure of the function definition, instead of redoing the splitting 
+  and recursion. This idea is already present in the <span class="inlinecode"><span class="id" title="keyword">Function</span></span> package 
+   that derives induction principles from
+  function definitions.
+
+<div class="paragraph"> </div>
+
+  In the example below we can see that we get an instantiated induction
+  hypothesis corresponding to the recursive call to <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#BuildingUp.app"><span class="id" title="definition">app</span></a></span> in the <span class="inlinecode"><span class="id" title="var">_</span></span> <span class="inlinecode">::</span> <span class="inlinecode"><span class="id" title="var">_</span></span> branch.
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">About</span> <span class="id" title="var">app_elim</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">app_assoc</span> {<span class="id" title="var">A</span>} (<span class="id" title="var">x</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span> : <span class="id" title="var">list</span> <span class="id" title="var">A</span>) :<br/>
+&nbsp;&nbsp;<span class="id" title="var">x</span> +++ <span class="id" title="var">y</span> +++ <span class="id" title="var">z</span> = (<span class="id" title="var">x</span> +++ <span class="id" title="var">y</span>) +++ <span class="id" title="var">z</span>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">funelim</span> (<span class="id" title="var">x</span> +++ <span class="id" title="var">y</span>); <span class="id" title="tactic">simpl</span>; <span class="id" title="tactic">auto</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">now</span> <span class="id" title="tactic">rewrite</span> <span class="id" title="var">H</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">app_nil_r</span> {<span class="id" title="var">A</span>} (<span class="id" title="var">l</span> : <span class="id" title="var">list</span> <span class="id" title="var">A</span>) : <br/>
+&nbsp;<span class="id" title="var">l</span> +++ [] = <span class="id" title="var">l</span>.<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="var">funelim</span> (<span class="id" title="var">l</span> +++ []); <span class="id" title="tactic">auto</span>. <span class="id" title="var">now</span> <span class="id" title="tactic">rewrite</span> <span class="id" title="var">H</span>. <span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab8"></a><h2 class="section">Moving to the left</h2>
+
+
+<div class="paragraph"> </div>
+
+  The structure of real programs is richer than a simple case tree on
+  the original arguments in general. In the course of a computation, we
+  might want to scrutinize intermediate results (e.g. coming from
+  function calls) to produce an answer. This literally means adding a
+  new pattern to the left of our equations made available for further
+  refinement. This concept is know as with clauses in the Agda
+   community and was first presented and
+  implemented in the Epigram language
+  .
+
+<div class="paragraph"> </div>
+
+  The compilation of with clauses and its treatment for generating
+  equations and the induction principle are quite involved in the
+  presence of dependencies, but the basic idea is to add a new case
+  analysis to the program. To compute the type of the new subprogram,
+  we actually abstract the discriminee term from the expected type of
+  the clause, so that the type can get refined in the subprogram. In
+  the non-dependent case this does not change anything though.
+
+<div class="paragraph"> </div>
+
+  Each <span class="inlinecode"><span class="id" title="keyword">with</span></span> node generates an auxiliary definition from the clauses
+  in the curly brackets, taking the additional object as argument. The
+  equation for the with node will simply be an indirection to the
+  auxiliary definition and simplification will continue as usual with
+  the auxiliary definition's rewrite rules.  
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">filter</span> {<span class="id" title="var">A</span>} (<span class="id" title="var">l</span> : <span class="id" title="var">list</span> <span class="id" title="var">A</span>) <br/>
+&nbsp;&nbsp;(<span class="id" title="var">p</span> : <span class="id" title="var">A</span> → <span class="id" title="var">bool</span>) : <br/>
+&nbsp;&nbsp;<span class="id" title="var">list</span> <span class="id" title="var">A</span> :=<br/>
+<span class="id" title="var">filter</span> [] <span class="id" title="var">p</span> := [] ;<br/>
+<span class="id" title="var">filter</span> (<span class="id" title="var">a</span> :: <span class="id" title="var">l</span>) <span class="id" title="var">p</span> <span class="id" title="keyword">with</span> (<span class="id" title="var">p</span> <span class="id" title="var">a</span>) ⇒ {<br/>
+&nbsp;&nbsp;| <span class="id" title="var">true</span> := <span class="id" title="var">a</span> :: <span class="id" title="var">filter</span> <span class="id" title="var">l</span> <span class="id" title="var">p</span> ;<br/>
+&nbsp;&nbsp;| <span class="id" title="var">false</span> := <span class="id" title="var">filter</span> <span class="id" title="var">l</span> <span class="id" title="var">p</span> }.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab9"></a><h3 class="section">Elimination principle</h3>
+
+
+<div class="paragraph"> </div>
+
+  Introduction of these intermediate computations are also reflected
+  in the elimination principle: the motive for elimination of each 
+  subprogram is augmented with an equality proof between the new 
+  argument variable and the effective argument it is called with (here
+  <span class="inlinecode"><span class="id" title="var">p</span></span> <span class="inlinecode"><span class="id" title="var">a</span></span>). We have three subgoals corresponding to the leaves (right-hand sides) 
+  of the program. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">filter_true</span> {<span class="id" title="var">A</span>} (<span class="id" title="var">l</span> : <span class="id" title="var">list</span> <span class="id" title="var">A</span>) :<br/>
+&nbsp;&nbsp;<span class="id" title="var">filter</span> <span class="id" title="var">l</span> (<span class="id" title="keyword">fun</span> <span class="id" title="var">x</span> ⇒ <span class="id" title="var">true</span>) = <span class="id" title="var">l</span>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">funelim</span> (<span class="id" title="var">filter</span> <span class="id" title="var">l</span> (<span class="id" title="keyword">fun</span> <span class="id" title="var">_</span> ⇒ <span class="id" title="var">true</span>)).<br/>
+&nbsp;&nbsp;- <span class="comment">(*&nbsp;<span class="inlinecode"><span class="id" title="var">l</span></span> <span class="inlinecode">=</span> <span class="inlinecode">[]</span>&nbsp;*)</span> <span class="id" title="tactic">reflexivity</span>.<br/>
+&nbsp;&nbsp;- <span class="comment">(*&nbsp;<span class="inlinecode"><span class="id" title="var">l</span></span> <span class="inlinecode">=</span> <span class="inlinecode">(<span class="id" title="var">a</span></span> <span class="inlinecode">::</span> <span class="inlinecode"><span class="id" title="var">l</span>)</span>&nbsp;and&nbsp;<span class="inlinecode">(<span class="id" title="keyword">fun</span></span> <span class="inlinecode"><span class="id" title="var">x</span></span> <span class="inlinecode">⇒</span> <span class="inlinecode"><span class="id" title="var">true</span>)</span> <span class="inlinecode"><span class="id" title="var">a</span></span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="var">true</span></span>&nbsp;*)</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">simpl</span>. <span class="id" title="var">now</span> <span class="id" title="tactic">rewrite</span> <span class="id" title="var">H</span>.<br/>
+&nbsp;&nbsp;- <span class="comment">(*&nbsp;<span class="inlinecode"><span class="id" title="var">l</span></span> <span class="inlinecode">=</span> <span class="inlinecode">(<span class="id" title="var">a</span></span> <span class="inlinecode">::</span> <span class="inlinecode"><span class="id" title="var">l</span>)</span>&nbsp;and&nbsp;<span class="inlinecode">(<span class="id" title="keyword">fun</span></span> <span class="inlinecode"><span class="id" title="var">x</span></span> <span class="inlinecode">⇒</span> <span class="inlinecode"><span class="id" title="var">true</span>)</span> <span class="inlinecode"><span class="id" title="var">a</span></span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="var">false</span></span>&nbsp;*)</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">discriminate</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab10"></a><h2 class="section">Auxiliary local functions</h2>
+
+
+<div class="paragraph"> </div>
+
+  A common idiom of functional programming is the worker/wrapper
+  pattern. It usually involves a recursive function that computes the
+  result, wrapped in a toplevel function calling it with specific
+  parameters. The paradigmatic example is probably list reversal,
+  whose tail-recursive version can be written using a recursive local
+  where clause: 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">rev_acc</span> {<span class="id" title="var">A</span>} (<span class="id" title="var">l</span> : <span class="id" title="var">list</span> <span class="id" title="var">A</span>) : <span class="id" title="var">list</span> <span class="id" title="var">A</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="var">rev_acc</span> <span class="id" title="var">l</span> := <span class="id" title="var">go</span> <span class="id" title="var">l</span> []<br/>
+&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">where</span> <span class="id" title="var">go</span> : <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">list</span> <span class="id" title="var">A</span> → <span class="id" title="var">list</span> <span class="id" title="var">A</span> → <span class="id" title="var">list</span> <span class="id" title="var">A</span> :=<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">go</span> [] <span class="id" title="var">acc</span> := <span class="id" title="var">acc</span>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">go</span> (<span class="id" title="var">hd</span> :: <span class="id" title="var">tl</span>) <span class="id" title="var">acc</span> := <span class="id" title="var">go</span> <span class="id" title="var">tl</span> (<span class="id" title="var">hd</span> :: <span class="id" title="var">acc</span>).<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The <span class="inlinecode"><span class="id" title="keyword">where</span></span> clause acts like <span class="inlinecode"><span class="id" title="keyword">where</span></span> in Haskell or Agda,
+  or <span class="inlinecode"><span class="id" title="keyword">let</span></span> in OCaml:
+  it defines an auxilliary function or value, which might use more pattern-matching 
+  and be recursive itself. The auxilliary function's scope is the body of the program
+  which comes <i>before</i> the <span class="inlinecode"><span class="id" title="keyword">where</span></span>, here <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#go"><span class="id" title="definition">go</span></a></span> <span class="inlinecode"><span class="id" title="var">l</span></span> <span class="inlinecode">[]</span>. 
+<div class="paragraph"> </div>
+
+ A typical issue with such accumulating functions is 
+  that one has to write lemmas in two versions to prove properties about them, once about the internal <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#go"><span class="id" title="definition">go</span></a></span> function and then on its wrapper. Using the functional elimination principle associated to <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#BuildingUp.rev_acc"><span class="id" title="definition">rev_acc</span></a></span>, we can show both properties simultaneously.
+
+<div class="paragraph"> </div>
+
+  First, lets define the usual list reversal function,
+  which is not tail recursive and might hence incur stack overflows on large lists: 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">rev</span> {<span class="id" title="var">A</span>} (<span class="id" title="var">l</span> : <span class="id" title="var">list</span> <span class="id" title="var">A</span>) : <span class="id" title="var">list</span> <span class="id" title="var">A</span> :=<br/>
+<span class="id" title="var">rev</span> [] := [];<br/>
+<span class="id" title="var">rev</span> (<span class="id" title="var">a</span> :: <span class="id" title="var">l</span>) := <span class="id" title="var">rev</span> <span class="id" title="var">l</span> +++ [<span class="id" title="var">a</span>].<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">rev_acc_eq</span> : <span class="id" title="keyword">∀</span> {<span class="id" title="var">A</span>} (<span class="id" title="var">l</span> : <span class="id" title="var">list</span> <span class="id" title="var">A</span>), <br/>
+&nbsp;&nbsp;<span class="id" title="var">rev_acc</span> <span class="id" title="var">l</span> = <span class="id" title="var">rev</span> <span class="id" title="var">l</span>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+</div>
+
+<div class="doc">
+We apply functional elimination on the <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#BuildingUp.rev_acc"><span class="id" title="definition">rev_acc</span></a></span> <span class="inlinecode"><span class="id" title="var">l</span></span>  call. The eliminator expects two predicates:
+  one for the wrapper and another for the worker.
+  For the wrapper, we give the expected final goal but for the worker we have to invent a kind of loop invariant: here that the result of the whole <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#go"><span class="id" title="definition">go</span></a></span> <span class="inlinecode"><span class="id" title="var">acc</span></span> <span class="inlinecode"><span class="id" title="var">l</span></span> call is equal to <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#BuildingUp.rev"><span class="id" title="definition">rev</span></a></span> <span class="inlinecode"><span class="id" title="var">l</span></span> <span class="inlinecode">++</span> <span class="inlinecode"><span class="id" title="var">acc</span></span>. 
+</div>
+<div class="code">
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">apply</span> (<span class="id" title="var">rev_acc_elim</span> <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="keyword">fun</span> <span class="id" title="var">A</span> <span class="id" title="var">l</span> <span class="id" title="var">revaccl</span> ⇒ <span class="id" title="var">revaccl</span> = <span class="id" title="var">rev</span> <span class="id" title="var">l</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="keyword">fun</span> <span class="id" title="var">A</span> <span class="id" title="var">_</span> <span class="id" title="var">l</span> <span class="id" title="var">acc</span> <span class="id" title="var">go_res</span> ⇒ <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">go_res</span> = <span class="id" title="var">rev</span> <span class="id" title="var">l</span> +++ <span class="id" title="var">acc</span>)).<br/>
+&nbsp;&nbsp;<span class="id" title="var">all</span>:<span class="id" title="tactic">intros</span> <span class="id" title="var">A</span> <span class="id" title="var">l</span>; <span class="id" title="tactic">simpl</span>; <span class="id" title="tactic">trivial</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Functional elimination provides us with the worker
+    property for the initial <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#go"><span class="id" title="definition">go</span></a></span> <span class="inlinecode">[]</span> <span class="inlinecode"><span class="id" title="var">l</span></span> call, i.e. that it is equal to <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#BuildingUp.rev"><span class="id" title="definition">rev</span></a></span> <span class="inlinecode"><span class="id" title="var">l</span></span> <span class="inlinecode">++</span> <span class="inlinecode">[]</span>, which trivially gives us the result. 
+</div>
+<div class="code">
+
+<br/>
+&nbsp;&nbsp;+ <span class="id" title="tactic">intros</span> <span class="id" title="var">IH</span>. <span class="id" title="var">now</span> <span class="id" title="tactic">rewrite</span> <span class="id" title="var">app_nil_r</span> <span class="id" title="tactic">in</span> <span class="id" title="var">IH</span>.<br/>
+&nbsp;&nbsp;+ <span class="comment">(*&nbsp;For&nbsp;the&nbsp;worker&nbsp;proof&nbsp;itself,&nbsp;the&nbsp;result&nbsp;follows&nbsp;from&nbsp;associativity&nbsp;of&nbsp;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;list&nbsp;concatenation&nbsp;and&nbsp;the&nbsp;induction&nbsp;hypothesis.&nbsp;*)</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">a</span> <span class="id" title="var">l1</span> <span class="id" title="var">l'</span> <span class="id" title="var">IH</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> &lt;- <span class="id" title="var">app_assoc</span>. <span class="id" title="tactic">simpl</span>. <span class="id" title="tactic">assumption</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab11"></a><h3 class="section">The Worker/Wrapper and Well-Founded Recursion</h3>
+
+
+<div class="paragraph"> </div>
+
+  Sometimes the natural expression of an algorithm in the worker/wrapper
+  pattern requires well-founded recursion: here we take an example
+  algorithm translated from Haskell whose termination is justified by a measure.
+  Note that the <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#worker"><span class="id" title="definition">worker</span></a></span> subprogram's termination measure and
+  implementation depends on the enclosing <span class="inlinecode"><span class="id" title="var">k</span></span> argument which is captured
+  in the where clause. Termination is justified by a simple arithmetic argument. 
+</div>
+<div class="code">
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Local Obligation</span> <span class="id" title="keyword">Tactic</span> := <span class="id" title="tactic">idtac</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Equations</span>? <span class="id" title="var">isPrime</span> (<span class="id" title="var">n</span> : <span class="id" title="var">nat</span>) : <span class="id" title="var">bool</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="var">isPrime</span> 0 := <span class="id" title="var">false</span>; <br/>
+&nbsp;&nbsp;<span class="id" title="var">isPrime</span> 1 := <span class="id" title="var">false</span>;<br/>
+&nbsp;&nbsp;<span class="id" title="var">isPrime</span> 2 := <span class="id" title="var">true</span>;<br/>
+&nbsp;&nbsp;<span class="id" title="var">isPrime</span> <span class="id" title="var">k</span> := <span class="id" title="var">worker</span> 2<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">where</span> <span class="id" title="var">worker</span> (<span class="id" title="var">n'</span> : <span class="id" title="var">nat</span>) : <span class="id" title="var">bool</span> <span class="id" title="tactic">by</span> <span class="id" title="keyword">wf</span> (<span class="id" title="var">k</span> - <span class="id" title="var">n'</span>) <span class="id" title="var">lt</span> :=<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">worker</span> <span class="id" title="var">n'</span> <span class="id" title="keyword">with</span> <span class="id" title="var">ge_dec</span> <span class="id" title="var">n'</span> <span class="id" title="var">k</span> :=<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ | <span class="id" title="tactic">left</span> <span class="id" title="var">H</span> := <span class="id" title="var">true</span>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">right</span> <span class="id" title="var">H</span> := <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">if</span> <span class="id" title="var">Nat.eqb</span> (<span class="id" title="var">Nat.modulo</span> <span class="id" title="var">k</span> <span class="id" title="var">n'</span>) 0 <span class="id" title="keyword">then</span> <span class="id" title="var">false</span> <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">else</span> <span class="id" title="var">worker</span> (<span class="id" title="var">S</span> <span class="id" title="var">n'</span>) }.<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="var">lia</span>. <span class="comment">(*&nbsp;Linear&nbsp;arithmetic&nbsp;reasoning&nbsp;*)</span> <span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Import</span> <span class="id" title="var">ListNotations</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Eval</span> <span class="id" title="keyword">vm_compute</span> <span class="id" title="tactic">in</span> <span class="id" title="var">map</span> <span class="id" title="var">isPrime</span> [13; 14; 28; 29].<br/>
+
+<br/>
+<span class="id" title="keyword">End</span> <span class="id" title="var">BuildingUp</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab12"></a><h1 class="section">Dependent types</h1>
+
+
+<div class="paragraph"> </div>
+
+  Coq supports writing dependent functions, in other words, it gives the ability to
+  make the results <i>type</i> depend on actual <i>values</i>, like the arguments of the function.
+  A simple example is given below of a function which decides the equality of two 
+  natural numbers, returning a sum type carrying proofs of the equality or disequality 
+  of the arguments. The sum type <span class="inlinecode">{</span> <span class="inlinecode"><span class="id" title="var">A</span></span> <span class="inlinecode">}</span> <span class="inlinecode">+</span> <span class="inlinecode">{</span> <span class="inlinecode"><span class="id" title="var">B</span></span> <span class="inlinecode">}</span> is a constructive variant of disjunction 
+  that can be used in programs to give at the same time a boolean algorithmic information 
+  (are we in branch <span class="inlinecode"><span class="id" title="var">A</span></span> or <span class="inlinecode"><span class="id" title="var">B</span></span>) and a <i>logical</i> information (a proof witness of <span class="inlinecode"><span class="id" title="var">A</span></span> or <span class="inlinecode"><span class="id" title="var">B</span></span>).
+  Hence its constructors <span class="inlinecode"><span class="id" title="tactic">left</span></span> and <span class="inlinecode"><span class="id" title="tactic">right</span></span> take proofs as arguments. The <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Logic.html#eq_refl"><span class="id" title="constructor">eq_refl</span></a></span> proof 
+  term is the single proof of <span class="inlinecode"><span class="id" title="var">x</span></span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="var">x</span></span> (the <span class="inlinecode"><span class="id" title="var">x</span></span> is generaly infered automatically).
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">equal</span> (<span class="id" title="var">n</span> <span class="id" title="var">m</span> : <span class="id" title="var">nat</span>) : { <span class="id" title="var">n</span> = <span class="id" title="var">m</span> } + { <span class="id" title="var">n</span> ≠ <span class="id" title="var">m</span> } := <br/>
+<span class="id" title="var">equal</span> <span class="id" title="var">O</span> <span class="id" title="var">O</span> := <span class="id" title="tactic">left</span> <span class="id" title="var">eq_refl</span> ;<br/>
+<span class="id" title="var">equal</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>) (<span class="id" title="var">S</span> <span class="id" title="var">m</span>) <span class="id" title="keyword">with</span> <span class="id" title="var">equal</span> <span class="id" title="var">n</span> <span class="id" title="var">m</span> := {<br/>
+&nbsp;&nbsp;<span class="id" title="var">equal</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>) (<span class="id" title="var">S</span> ?(<span class="id" title="var">n</span>)) (<span class="id" title="tactic">left</span> <span class="id" title="var">eq_refl</span>) := <span class="id" title="tactic">left</span> <span class="id" title="var">eq_refl</span> ;<br/>
+&nbsp;&nbsp;<span class="id" title="var">equal</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>) (<span class="id" title="var">S</span> <span class="id" title="var">m</span>) (<span class="id" title="tactic">right</span> <span class="id" title="var">p</span>) := <span class="id" title="tactic">right</span> <span class="id" title="var">_</span> } ;<br/>
+<span class="id" title="var">equal</span> <span class="id" title="var">x</span> <span class="id" title="var">y</span> := <span class="id" title="tactic">right</span> <span class="id" title="var">_</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Of particular interest here is the inner program refining the recursive result.
+  As <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#equal"><span class="id" title="definition">equal</span></a></span> <span class="inlinecode"><span class="id" title="var">n</span></span> <span class="inlinecode"><span class="id" title="var">m</span></span> is of type <span class="inlinecode">{</span> <span class="inlinecode"><span class="id" title="var">n</span></span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="var">m</span></span> <span class="inlinecode">}</span> <span class="inlinecode">+</span> <span class="inlinecode">{</span> <span class="inlinecode"><span class="id" title="var">n</span></span> <span class="inlinecode">≠</span> <span class="inlinecode"><span class="id" title="var">m</span></span> <span class="inlinecode">}</span> we have two cases to consider:
+
+<div class="paragraph"> </div>
+
+<ul class="doclist">
+<li> Either we are in the <span class="inlinecode"><span class="id" title="tactic">left</span></span> <span class="inlinecode"><span class="id" title="var">p</span></span> case, and we know that <span class="inlinecode"><span class="id" title="var">p</span></span> is a proof of <span class="inlinecode"><span class="id" title="var">n</span></span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="var">m</span></span>,
+    in which case we can do a nested match on <span class="inlinecode"><span class="id" title="var">p</span></span>. The result of matching this equality
+    proof is to unify <span class="inlinecode"><span class="id" title="var">n</span></span> and <span class="inlinecode"><span class="id" title="var">m</span></span>, hence the left hand side patterns become <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><span class="id" title="var">n</span></span> and
+    <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode">?(<span class="id" title="var">n</span>)</span> and the return type of this branch is refined to <span class="inlinecode">{</span> <span class="inlinecode"><span class="id" title="var">n</span></span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="var">n</span></span> <span class="inlinecode">}</span> <span class="inlinecode">+</span> <span class="inlinecode">{</span> <span class="inlinecode"><span class="id" title="var">n</span></span> <span class="inlinecode">≠</span> <span class="inlinecode"><span class="id" title="var">n</span></span> <span class="inlinecode">}</span>.
+    We can easily provide a proof for the left case. 
+
+<div class="paragraph"> </div>
+
+
+</li>
+<li> In the right case, we mark the proof unfilled with an underscore. This will
+    generate an obligation for the hole, that can be filled automatically by a 
+    predefined tactic or interactively by the user in proof mode (this uses the
+    same obligation mechanism as the Program extension
+    ). In this case the automatic tactic 
+    is able to derive by itself that <span class="inlinecode"><span class="id" title="var">n</span></span> <span class="inlinecode">≠</span> <span class="inlinecode"><span class="id" title="var">m</span></span> <span class="inlinecode">→</span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><span class="id" title="var">n</span></span> <span class="inlinecode">≠</span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><span class="id" title="var">m</span></span>.
+
+</li>
+</ul>
+
+<div class="paragraph"> </div>
+
+  Dependent types are also useful to turn partial functions into total functions by
+  restricting their domain. Typically, we can force the list passed to <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#head"><span class="id" title="definition">head</span></a></span> 
+  to be non-empty using the specification:
+
+<div class="paragraph"> </div>
+
+<a id="lab13"></a><h2 class="section">Inductive families</h2>
+
+
+<div class="paragraph"> </div>
+
+  The next step is to make constraints such as non-emptiness part of the 
+  datatype itself. This ability is provided through inductive families in
+  Coq , which are a similar concept to the generalization 
+  of algebraic datatypes to GADTs in functional languages like Haskell 
+  . Families provide a way to associate to each constructor 
+  a different type, making it possible to give specific information about a value 
+  in its type. 
+
+<div class="paragraph"> </div>
+
+<a id="lab14"></a><h3 class="section">Indexed datatypes</h3>
+
+
+<div class="paragraph"> </div>
+
+  Functions on <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#Vector.vec"><span class="id" title="inductive">vec</span></a></span>s provide more stricking examples of this
+  situation.  The <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#Vector.vec"><span class="id" title="inductive">vec</span></a></span> family is indexed by a natural number
+  representing the size of the vector: 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Module</span> <span class="id" title="var">Vector</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Inductive</span> <span class="id" title="var">vec</span> (<span class="id" title="var">A</span> : <span class="id" title="keyword">Type</span>) : <span class="id" title="var">nat</span> → <span class="id" title="keyword">Type</span> :=<br/>
+| <span class="id" title="var">nil</span> : <span class="id" title="var">vec</span> <span class="id" title="var">A</span> 0<br/>
+| <span class="id" title="var">cons</span> <span class="id" title="var">n</span> : <span class="id" title="var">A</span> → <span class="id" title="var">vec</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> → <span class="id" title="var">vec</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>).<br/>
+
+<br/>
+<span class="id" title="keyword">Derive</span> <span class="id" title="var">Signature</span> <span class="id" title="keyword">for</span> <span class="id" title="var">vec</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+
+<div class="paragraph"> </div>
+
+  The empty vector <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#Vector.nil"><span class="id" title="constructor">nil</span></a></span> has size <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#O"><span class="id" title="constructor">O</span></a></span> while the cons operation
+  increments the size by one. We declare notations similar to lists
+  on vectors, as the size information will generally be left <i>implicit</i>. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Arguments</span> <span class="id" title="var">nil</span> {<span class="id" title="var">A</span>}.<br/>
+<span class="id" title="keyword">Arguments</span> <span class="id" title="var">cons</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>}.<br/>
+
+<br/>
+<span class="id" title="keyword">Notation</span> &quot;x :: v" := (<span class="id" title="var">cons</span> <span class="id" title="var">x</span> <span class="id" title="var">v</span>) : <span class="id" title="var">vector_scope</span>.<br/>
+<span class="id" title="keyword">Notation</span> &quot;[ ]" := <span class="id" title="var">nil</span> : <span class="id" title="var">vector_scope</span>.<br/>
+<span class="id" title="keyword">Notation</span> &quot;[ x ]" := (<span class="id" title="var">cons</span> <span class="id" title="var">x</span> <span class="id" title="var">nil</span>) : <span class="id" title="var">vector_scope</span>.<br/>
+<span class="id" title="keyword">Notation</span> &quot;[ x ; y ; .. ; z ]" := (<span class="id" title="var">cons</span> <span class="id" title="var">x</span> (<span class="id" title="var">cons</span> <span class="id" title="var">y</span> .. (<span class="id" title="var">cons</span> <span class="id" title="var">z</span> <span class="id" title="var">nil</span>) .. )) : <span class="id" title="var">vector_scope</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">End</span> <span class="id" title="var">Vector</span>.<br/>
+<span class="id" title="keyword">Import</span> <span class="id" title="var">Vector</span>.<br/>
+<span class="id" title="keyword">Local Open</span> <span class="id" title="keyword">Scope</span> <span class="id" title="var">vector_scope</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Now let us define the usual map on vectors. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">map</span> {<span class="id" title="var">A</span> <span class="id" title="var">B</span>} (<span class="id" title="var">f</span> : <span class="id" title="var">A</span> → <span class="id" title="var">B</span>) {<span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="var">vec</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) : <br/>
+&nbsp;&nbsp;<span class="id" title="var">vec</span> <span class="id" title="var">B</span> <span class="id" title="var">n</span> :=<br/>
+<span class="id" title="var">map</span> <span class="id" title="var">f</span> (<span class="id" title="var">n</span>:=?(0)) [] := [] ;<br/>
+<span class="id" title="var">map</span> <span class="id" title="var">f</span> (<span class="id" title="var">a</span> :: <span class="id" title="var">v</span>) := <span class="id" title="var">f</span> <span class="id" title="var">a</span> :: <span class="id" title="var">map</span> <span class="id" title="var">f</span> <span class="id" title="var">v</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Print</span> <span class="id" title="var">map</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Here the value of the index representing the size of the vector 
+  is directly determined by the constructor, hence in the case tree
+  we have no need to eliminate <span class="inlinecode"><span class="id" title="var">n</span></span>. This means in particular that 
+  the function <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#map"><span class="id" title="definition">map</span></a></span> does not do any computation with <span class="inlinecode"><span class="id" title="var">n</span></span>, and 
+  the argument could be eliminated in the extracted code.
+  In other words, it provides only <i>logical</i> information about 
+  the shape of <span class="inlinecode"><span class="id" title="var">v</span></span> but no computational information.
+
+<div class="paragraph"> </div>
+
+  The <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#map"><span class="id" title="definition">map</span></a></span> function works on every member of the <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#Vector.vec"><span class="id" title="inductive">vec</span></a></span> family,
+  but some functions may work only for some subfamilies, for example
+  <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#tail"><span class="id" title="definition">tail</span></a></span>:
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">tail</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="var">vec</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) : <span class="id" title="var">vec</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> :=<br/>
+<span class="id" title="var">tail</span> (<span class="id" title="var">a</span> :: <span class="id" title="var">v'</span>) := <span class="id" title="var">v'</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The type of <span class="inlinecode"><span class="id" title="var">v</span></span> ensures that <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#tail"><span class="id" title="definition">tail</span></a></span> can only be applied to 
+  non-empty vectors, moreover the patterns only need to consider 
+  constructors that can produce objects in the subfamily <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#Vector.vec"><span class="id" title="inductive">vec</span></a></span> <span class="inlinecode"><span class="id" title="var">A</span></span> <span class="inlinecode">(<a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><span class="id" title="var">n</span>)</span>,
+  excluding <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#Vector.nil"><span class="id" title="constructor">nil</span></a></span>. The pattern-matching compiler uses unification 
+  with the theory of constructors to discover which cases need to 
+  be considered and which are impossible. In this case the failed 
+  unification of <span class="inlinecode">0</span> and <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><span class="id" title="var">n</span></span> shows that the <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#Vector.nil"><span class="id" title="constructor">nil</span></a></span> case is impossible.
+  This powerful unification engine running under the hood permits to write
+  concise code where all uninteresting cases are handled automatically. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">head</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="var">vec</span> <span class="id" title="var">A</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)) : <span class="id" title="var">A</span> :=<br/>
+<span class="id" title="var">head</span> (<span class="id" title="var">a</span> :: <span class="id" title="var">v'</span>) := <span class="id" title="var">a</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab15"></a><h2 class="section">Derived notions, No-Confusion</h2>
+
+
+<div class="paragraph"> </div>
+
+    For this to work smoothlty, the package requires some derived definitions
+    on each (indexed) family, which can be generated automatically using
+    the generic <span class="inlinecode"><span class="id" title="var">Derive</span></span> command. Here we ask to generate the homogeneous no-confusion principles for vectors: 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Derive</span> <span class="id" title="var">NoConfusionHom</span> <span class="id" title="keyword">for</span> <span class="id" title="var">vec</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">noconf</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">v</span> <span class="id" title="var">v'</span> : <span class="id" title="var">vec</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) : <span class="id" title="keyword">Prop</span> :=<br/>
+<span class="id" title="var">noconf</span> [] [] := <span class="id" title="var">True</span>;<br/>
+<span class="id" title="var">noconf</span> (<span class="id" title="var">a</span> :: <span class="id" title="var">v</span>) (<span class="id" title="var">a'</span> :: <span class="id" title="var">v'</span>) := (<span class="id" title="var">a</span> = <span class="id" title="var">a'</span> ∧ <span class="id" title="var">v</span> = <span class="id" title="var">v'</span>).<br/>
+
+<br/>
+<span class="comment">(*&nbsp;+&nbsp;proof&nbsp;that&nbsp;<span class="inlinecode"><span class="id" title="var">v</span></span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="var">v'</span></span> <span class="inlinecode">&lt;~&gt;</span> <span class="inlinecode"><span class="id" title="var">noconf</span></span> <span class="inlinecode"><span class="id" title="var">v</span></span> <span class="inlinecode"><span class="id" title="var">v'</span></span>&nbsp;*)</span><br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The precise specification of these derived definitions can be found in the manual
+    section . Signature is used to "pack" a value in an inductive family
+    with its index, e.g. the "total space" of every index and value of the family. This
+    can be used to derive the heterogeneous no-confusion principle for the family, which
+    allows to discriminate between objects in potentially different instances/fibers of the family,
+    or deduce injectivity of each constructor. 
+
+<div class="paragraph"> </div>
+
+    The <span class="inlinecode"><span class="id" title="var">NoConfusionHom</span></span> variant derives
+    the homogeneous no-confusion principle between two objects in the <i>same</i> instance
+    of the family, e.g. to simplify equations of the form <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#Vector.nil"><span class="id" title="constructor">nil</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#Vector.nil"><span class="id" title="constructor">nil</span></a></span> <span class="inlinecode">:&gt;</span> <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#Vector.vec"><span class="id" title="inductive">vec</span></a></span> <span class="inlinecode"><span class="id" title="var">A</span></span> <span class="inlinecode">0</span>.
+    This last principle can only be defined when pattern-matching on the inductive family
+    does not require the <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#KAxiom.WithAx.K"><span class="id" title="definition">K</span></a></span> axiom and will otherwise fail.
+
+<div class="paragraph"> </div>
+
+<a id="lab16"></a><h2 class="section">Unification and indexed datatypes</h2>
+
+
+<div class="paragraph"> </div>
+
+  Back to our example, of course the equations and the induction principle are simplified in a
+  similar way. If we encounter a call to <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#tail"><span class="id" title="definition">tail</span></a></span> in a proof, we can 
+  use the following elimination principle to simplify both the call and the
+  argument which will be automatically substituted by an object of the form
+  <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#Vector.cons"><span class="id" title="constructor">cons</span></a></span> <span class="inlinecode"><span class="id" title="var">_</span></span> <span class="inlinecode"><span class="id" title="var">_</span></span> <span class="inlinecode"><span class="id" title="var">_</span></span>:<br/>
+<span class="inlinecode"><span class="id" title="keyword">∀</span> <span class="id" title="var">P</span> : <span class="id" title="keyword">∀</span> (<span class="id" title="var">A</span> : <span class="id" title="keyword">Type</span>) (<span class="id" title="var">n</span> : <a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>), <a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#Vector.vec"><span class="id" title="inductive">vec</span></a> <span class="id" title="var">A</span> (<a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> <span class="id" title="var">n</span>) → <a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#Vector.vec"><span class="id" title="inductive">vec</span></a> <span class="id" title="var">A</span> <span class="id" title="var">n</span> → <span class="id" title="keyword">Prop</span>,<br/>
+(<span class="id" title="keyword">∀</span> (<span class="id" title="var">A</span> : <span class="id" title="keyword">Type</span>) (<span class="id" title="var">n</span> : <a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<span class="id" title="var">a</span> : <span class="id" title="var">A</span>) (<span class="id" title="var">v</span> : <a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#Vector.vec"><span class="id" title="inductive">vec</span></a> <span class="id" title="var">A</span> <span class="id" title="var">n</span>), <br/>
+&nbsp;&nbsp;<span class="id" title="var">P</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> (<span class="id" title="var">a</span> :: <span class="id" title="var">v</span>) <span class="id" title="var">v</span>) →<br/>
+<span class="id" title="keyword">∀</span> (<span class="id" title="var">A</span> : <span class="id" title="keyword">Type</span>) (<span class="id" title="var">n</span> : <a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<span class="id" title="var">v</span> : <a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#Vector.vec"><span class="id" title="inductive">vec</span></a> <span class="id" title="var">A</span> (<a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> <span class="id" title="var">n</span>)), <span class="id" title="var">P</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> <span class="id" title="var">v</span> (<a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#tail"><span class="id" title="definition">tail</span></a> <span class="id" title="var">v</span>) 
+<div class="paragraph"> </div>
+
+</span>
+<div class="paragraph"> </div>
+
+  As a witness of the power of the unification, consider the following function 
+  which computes the diagonal of a square matrix of size <span class="inlinecode"><span class="id" title="var">n</span></span> <span class="inlinecode">×</span> <span class="inlinecode"><span class="id" title="var">n</span></span>.
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">diag</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="var">vec</span> (<span class="id" title="var">vec</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) <span class="id" title="var">n</span>) : <span class="id" title="var">vec</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> :=<br/>
+<span class="id" title="var">diag</span> (<span class="id" title="var">n</span>:=<span class="id" title="var">O</span>) [] := [] ;<br/>
+<span class="id" title="var">diag</span> (<span class="id" title="var">n</span>:=<span class="id" title="var">S</span> <span class="id" title="var">_</span>) ((<span class="id" title="var">a</span> :: <span class="id" title="var">v</span>) :: <span class="id" title="var">v'</span>) :=<br/>
+&nbsp;&nbsp;&nbsp;<span class="id" title="var">a</span> :: <span class="id" title="var">diag</span> (<span class="id" title="var">map</span> <span class="id" title="var">tail</span> <span class="id" title="var">v'</span>).<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Here in the second equation, we know that the elements
+  of the vector are necessarily of size <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><span class="id" title="var">n</span></span> too, hence 
+  we can do a nested refinement on the first one to find
+  the first element of the diagonal.
+  
+<div class="paragraph"> </div>
+
+<a id="lab17"></a><h2 class="section">Recursion on indexed families</h2>
+
+
+<div class="paragraph"> </div>
+
+  Notice how in the <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#diag"><span class="id" title="definition">diag</span></a></span> example above we explicitely pattern-matched
+  on the index <span class="inlinecode"><span class="id" title="var">n</span></span>, even though the <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#Vector.nil"><span class="id" title="constructor">nil</span></a></span> and <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#Vector.cons"><span class="id" title="constructor">cons</span></a></span> pattern matching
+  would have been enough to determine these indices. This is because the
+  following definition also fails: 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="var">Fail</span> <span class="id" title="keyword">Equations</span> <span class="id" title="var">diag'</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="var">vec</span> (<span class="id" title="var">vec</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) <span class="id" title="var">n</span>) : <span class="id" title="var">vec</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> :=<br/>
+<span class="id" title="var">diag'</span> [] := [] ;<br/>
+<span class="id" title="var">diag'</span> ((<span class="id" title="var">a</span> :: <span class="id" title="var">v</span>) :: <span class="id" title="var">v'</span>) := <span class="id" title="var">a</span> :: <span class="id" title="var">diag'</span> (<span class="id" title="var">map</span> <span class="id" title="var">tail</span> <span class="id" title="var">v'</span>).<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Indeed, Coq cannot guess the decreasing argument of this fixpoint
+    using its limited syntactic guard criterion: <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#map"><span class="id" title="definition">map</span></a></span> <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#tail"><span class="id" title="definition">tail</span></a></span> <span class="inlinecode"><span class="id" title="var">v'</span></span> cannot
+    be seen to be a (large) subterm of <span class="inlinecode"><span class="id" title="var">v'</span></span> using this criterion, even
+    if it is clearly "smaller". In general, it can also be the case that
+    the compilation algorithm introduces decorations to the proof term
+    that prevent the syntactic guard check from seeing that the
+    definition is structurally recursive.
+
+<div class="paragraph"> </div>
+
+    To aleviate this problem, <span class="inlinecode"><span class="id" title="keyword">Equations</span></span> provides support for
+    <i>well-founded</i> recursive definitions which do not rely on syntactic
+    checks.
+
+<div class="paragraph"> </div>
+
+<a id="lab18"></a><h2 class="section">Wellfounded recursion</h2>
+
+
+<div class="paragraph"> </div>
+
+  For the diagonal, it is easier to give <span class="inlinecode"><span class="id" title="var">n</span></span> as the decreasing argument
+  of the function, even if the pattern-matching itself is on vectors: 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">diag'</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="var">vec</span> (<span class="id" title="var">vec</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) <span class="id" title="var">n</span>) : <br/>
+&nbsp;&nbsp;<span class="id" title="var">vec</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span> <span class="id" title="tactic">by</span> <span class="id" title="keyword">wf</span> <span class="id" title="var">n</span> :=<br/>
+<span class="id" title="var">diag'</span> [] := [] ;<br/>
+<span class="id" title="var">diag'</span> ((<span class="id" title="var">a</span> :: <span class="id" title="var">v</span>) :: <span class="id" title="var">v'</span>) := <span class="id" title="var">a</span> :: <span class="id" title="var">diag'</span> (<span class="id" title="var">map</span> <span class="id" title="var">tail</span> <span class="id" title="var">v'</span>).<br/>
+
+<br/>
+<span class="comment">(*&nbsp;Unfolding&nbsp;lemma&nbsp;*)</span><br/>
+<span class="id" title="keyword">Check</span> <span class="id" title="var">diag'_unfold_eq</span>.<br/>
+<span class="id" title="keyword">Check</span> <span class="id" title="var">diag'_elim</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+One can check using <span class="inlinecode"><span class="id" title="keyword">Extraction</span></span> <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#diag'"><span class="id" title="definition">diag'</span></a></span> that the
+  computational behavior of <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#diag'"><span class="id" title="definition">diag'</span></a></span> is indeed not
+  dependent on the index <span class="inlinecode"><span class="id" title="var">n</span></span>. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Extraction</span> <span class="id" title="var">diag'</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+To go further and implement a safe lookup function on vectors,
+  we introduce an inductive definition of bounded natural numers <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#fin"><span class="id" title="inductive">fin</span></a></span> <span class="inlinecode"><span class="id" title="var">n</span></span>.
+  <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#fin"><span class="id" title="inductive">fin</span></a></span> <span class="inlinecode"><span class="id" title="var">n</span></span> represents the interval <span class="inlinecode"></span> <span class="inlinecode">(0..<span class="id" title="var">n</span></span> ]. 
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Inductive</span> <span class="id" title="var">fin</span> : <span class="id" title="var">nat</span> → <span class="id" title="keyword">Set</span> :=<br/>
+&nbsp;&nbsp;| <span class="id" title="var">f0</span> : <span class="id" title="keyword">∀</span> <span class="id" title="var">n</span>, <span class="id" title="var">fin</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>)<br/>
+&nbsp;&nbsp;| <span class="id" title="var">fS</span> : <span class="id" title="keyword">∀</span> <span class="id" title="var">n</span>, <span class="id" title="var">fin</span> <span class="id" title="var">n</span> → <span class="id" title="var">fin</span> (<span class="id" title="var">S</span> <span class="id" title="var">n</span>).<br/>
+
+<br/>
+<span class="id" title="keyword">Derive</span> <span class="id" title="var">Signature</span> <span class="id" title="var">NoConfusionHom</span> <span class="id" title="keyword">for</span> <span class="id" title="var">fin</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Arguments</span> <span class="id" title="var">f0</span> {<span class="id" title="var">n</span>}.<br/>
+<span class="id" title="keyword">Arguments</span> <span class="id" title="var">fS</span> {<span class="id" title="var">n</span>}.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+For example, <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#fin"><span class="id" title="inductive">fin</span></a></span> <span class="inlinecode">3</span> has the following inhabitants: 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Check</span> <span class="id" title="var">f0</span> : <span class="id" title="var">fin</span> 3.<br/>
+<span class="id" title="keyword">Check</span> <span class="id" title="var">fS</span> <span class="id" title="var">f0</span> : <span class="id" title="var">fin</span> 3.<br/>
+<span class="id" title="keyword">Check</span> <span class="id" title="var">fS</span> (<span class="id" title="var">fS</span> <span class="id" title="var">f0</span>) : <span class="id" title="var">fin</span> 3.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+But <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#fS"><span class="id" title="constructor">fS</span></a></span> <span class="inlinecode">(<a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#fS"><span class="id" title="constructor">fS</span></a></span> <span class="inlinecode">(<a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#fS"><span class="id" title="constructor">fS</span></a></span> <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#f0"><span class="id" title="constructor">f0</span></a>))</span> is not an inhabitant of <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#fin"><span class="id" title="inductive">fin</span></a></span> <span class="inlinecode">3</span>: 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="var">Fail</span> <span class="id" title="keyword">Check</span> <span class="id" title="var">fS</span> (<span class="id" title="var">fS</span> (<span class="id" title="var">fS</span> <span class="id" title="var">f0</span>)) : <span class="id" title="var">fin</span> 3.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+We can hence prove that <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#fin"><span class="id" title="inductive">fin</span></a></span> <span class="inlinecode">0</span> is not inhabited: 
+</div>
+<div class="code">
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">fin0</span> : <span class="id" title="var">fin</span> 0 → <span class="id" title="var">False</span> := <br/>
+&nbsp;&nbsp;<span class="id" title="var">fin0</span> !.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Our safe lookup can now be concisely written: it takes
+  an index that must be within the bounds of the vector. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">nth</span> {<span class="id" title="var">A</span>} {<span class="id" title="var">n</span>} (<span class="id" title="var">v</span> : <span class="id" title="var">vec</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) (<span class="id" title="var">f</span> : <span class="id" title="var">fin</span> <span class="id" title="var">n</span>) : <span class="id" title="var">A</span> := <br/>
+<span class="id" title="var">nth</span> (<span class="id" title="var">a</span> :: <span class="id" title="var">v</span>) <span class="id" title="var">f0</span> := <span class="id" title="var">a</span>;<br/>
+<span class="id" title="var">nth</span> (<span class="id" title="var">_</span> :: <span class="id" title="var">v</span>) (<span class="id" title="var">fS</span> <span class="id" title="var">f</span>) := <span class="id" title="var">nth</span> <span class="id" title="var">v</span> <span class="id" title="var">f</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">fin_eq</span> {<span class="id" title="var">n</span>} (<span class="id" title="var">f</span> <span class="id" title="var">g</span> : <span class="id" title="var">fin</span> <span class="id" title="var">n</span>) : <br/>
+&nbsp;&nbsp;&nbsp;{ <span class="id" title="var">f</span> = <span class="id" title="var">g</span> } + { <span class="id" title="var">f</span> ≠ <span class="id" title="var">g</span> } :=<br/>
+<span class="id" title="var">fin_eq</span> <span class="id" title="var">f0</span> <span class="id" title="var">f0</span> := <span class="id" title="tactic">left</span> <span class="id" title="var">eq_refl</span>;<br/>
+<span class="id" title="var">fin_eq</span> (<span class="id" title="var">n</span>:=?(<span class="id" title="var">S</span> <span class="id" title="var">n'</span>)) (<span class="id" title="var">fS</span> <span class="id" title="var">f</span>) (<span class="id" title="var">fS</span> (<span class="id" title="var">n</span>:=<span class="id" title="var">n'</span>) <span class="id" title="var">f'</span>) <br/>
+&nbsp;&nbsp;<span class="id" title="keyword">with</span> <span class="id" title="var">fin_eq</span> <span class="id" title="var">f</span> <span class="id" title="var">f'</span> := <br/>
+&nbsp;&nbsp;{ <span class="id" title="var">fin_eq</span> (<span class="id" title="var">fS</span> <span class="id" title="var">f</span>) (<span class="id" title="var">fS</span> ?(<span class="id" title="var">f</span>)) (<span class="id" title="tactic">left</span> <span class="id" title="var">eq_refl</span>) ⇒ <span class="id" title="tactic">left</span> <span class="id" title="var">eq_refl</span>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">fin_eq</span> (<span class="id" title="var">fS</span> <span class="id" title="var">f</span>) (<span class="id" title="var">fS</span> <span class="id" title="var">f'</span>) (<span class="id" title="tactic">right</span> <span class="id" title="var">p</span>) ⇒ <span class="id" title="tactic">right</span> <span class="id" title="var">_</span> };<br/>
+<span class="id" title="var">fin_eq</span> <span class="id" title="var">x</span> <span class="id" title="var">y</span> := <span class="id" title="tactic">right</span> <span class="id" title="var">_</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Extraction</span> <span class="id" title="var">fin_eq</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab19"></a><h2 class="section">Dependent elimination tactics</h2>
+
+
+<div class="paragraph"> </div>
+
+  Alternatively to writing dependent pattern-matching programs, 
+  we can also use dependent elimination whenever needed 
+  in proof mode using the <span class="inlinecode"><span class="id" title="var">depelim</span></span> and <span class="inlinecode"><span class="id" title="tactic">dependent</span></span> <span class="inlinecode"><span class="id" title="var">elimination</span></span> tactics
+  provided by Equations. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Goal</span> <span class="id" title="var">fin</span> 0 → <span class="id" title="var">False</span>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">f</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">depelim</span> <span class="id" title="var">f</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <span class="id" title="var">vec_eq_dec</span> {<span class="id" title="var">A</span> <span class="id" title="var">n</span>} `{<span class="id" title="var">EqDec</span> <span class="id" title="var">A</span>} (<span class="id" title="var">v</span> <span class="id" title="var">w</span> : <span class="id" title="var">vec</span> <span class="id" title="var">A</span> <span class="id" title="var">n</span>) : { <span class="id" title="var">v</span> = <span class="id" title="var">w</span> } + { <span class="id" title="var">v</span> ≠ <span class="id" title="var">w</span> }.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">induction</span> <span class="id" title="var">v</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">dependent</span> <span class="id" title="var">elimination</span> <span class="id" title="var">w</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">left</span>; <span class="id" title="tactic">auto</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">dependent</span> <span class="id" title="var">elimination</span> <span class="id" title="var">w</span> <span class="id" title="keyword">as</span> [@<span class="id" title="var">cons</span> <span class="id" title="var">n</span> <span class="id" title="var">a'</span> <span class="id" title="var">v'</span>].<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">eq_dec</span> <span class="id" title="var">a</span> <span class="id" title="var">a'</span>) <span class="id" title="keyword">as</span> [-&gt;|<span class="id" title="var">na</span>].<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">IHv</span> <span class="id" title="var">v'</span>) <span class="id" title="keyword">as</span> [-&gt;|<span class="id" title="var">nv</span>].<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">left</span>; <span class="id" title="tactic">auto</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">right</span>; <span class="id" title="tactic">intros</span> <span class="id" title="var">eq</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">inversion</span> <span class="id" title="var">eq</span>. <span class="id" title="keyword">Undo</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">noconf</span> <span class="id" title="var">eq</span>. <span class="id" title="var">contradiction</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">right</span>; <span class="id" title="tactic">intro</span> <span class="id" title="var">eq</span>. <span class="id" title="tactic">congruence</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Print</span> <span class="id" title="keyword">Assumptions</span> <span class="id" title="var">vec_eq_dec</span>.<br/>
+
+<br/>
+<span class="comment">(***&nbsp;Equality&nbsp;<br/>
+The&nbsp;alma&nbsp;mater&nbsp;of&nbsp;inductive&nbsp;families&nbsp;is&nbsp;the&nbsp;propositional&nbsp;equality&nbsp;<br/>
+<span class="inlinecode"><span class="id" title="var">eq</span></span>&nbsp;defined&nbsp;as:&nbsp;<br/>
+<span class="inlinecode"><span class="id" title="keyword">Inductive</span> <span class="id" title="var">eq</span> (<span class="id" title="var">A</span> : <span class="id" title="keyword">Type</span>) (<span class="id" title="var">x</span> : <span class="id" title="var">A</span>) : <span class="id" title="var">A</span> → <span class="id" title="keyword">Prop</span> := <br/>
+<span class="id" title="var">eq_refl</span> : <span class="id" title="var">eq</span> <span class="id" title="var">A</span> <span class="id" title="var">x</span> <span class="id" title="var">x</span>. 
+<div class="paragraph"> </div>
+
+</span>*)</span><br/>
+
+<br/>
+<span class="id" title="keyword">Print</span> <span class="id" title="var">eq</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+
+<div class="paragraph"> </div>
+
+Equality is a polymorphic relation on <span class="inlinecode"><span class="id" title="var">A</span></span>. The <span class="inlinecode"><span class="id" title="keyword">Prop</span></span> sort (or kind) categorizes
+propositions, while the <span class="inlinecode"><span class="id" title="keyword">Set</span></span> sort, equivalent to  in Haskell, categorizes 
+computational types. 
+
+<div class="paragraph"> </div>
+
+Equality is <i>parameterized</i> by a value <span class="inlinecode"><span class="id" title="var">x</span></span> of type <span class="inlinecode"><span class="id" title="var">A</span></span> and 
+<i>indexed</i> by another value of type <span class="inlinecode"><span class="id" title="var">A</span></span>. Its single constructor states that 
+equality is reflexive, so the only way to build an object of <span class="inlinecode"><span class="id" title="var">eq</span></span> <span class="inlinecode"><span class="id" title="var">x</span></span> <span class="inlinecode"><span class="id" title="var">y</span></span> is if 
+<span class="inlinecode"><span class="id" title="var">x</span></span> <span class="inlinecode">~=</span> <span class="inlinecode"><span class="id" title="var">y</span></span>, that is if <span class="inlinecode"><span class="id" title="var">x</span></span> is definitionaly equal to <span class="inlinecode"><span class="id" title="var">y</span></span>. 
+
+<div class="paragraph"> </div>
+
+Now what is the elimination principle associated to this inductive family?
+It is the good old Leibniz substitution principle: <br/>
+<span class="inlinecode"><span class="id" title="keyword">∀</span> (<span class="id" title="var">A</span> : <span class="id" title="keyword">Type</span>) (<span class="id" title="var">x</span> : <span class="id" title="var">A</span>) (<span class="id" title="var">P</span> : <span class="id" title="var">A</span> → <span class="id" title="keyword">Type</span>), <span class="id" title="var">P</span> <span class="id" title="var">x</span> → <span class="id" title="keyword">∀</span> <span class="id" title="var">y</span> : <span class="id" title="var">A</span>, <span class="id" title="var">x</span> = <span class="id" title="var">y</span> → <span class="id" title="var">P</span> <span class="id" title="var">y</span> 
+<div class="paragraph"> </div>
+
+</span>
+<div class="paragraph"> </div>
+
+Provided a proof that <span class="inlinecode"><span class="id" title="var">x</span></span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="var">y</span></span>, we can create on object of type <span class="inlinecode"><span class="id" title="var">P</span></span> <span class="inlinecode"><span class="id" title="var">y</span></span> from an 
+existing object of type <span class="inlinecode"><span class="id" title="var">P</span></span> <span class="inlinecode"><span class="id" title="var">x</span></span>. This substitution principle is enough to show
+that equality is symmetric and transitive. For example we can use 
+pattern-matching on equality proofs to show:
+
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Equations</span> <span class="id" title="var">eqt</span> {<span class="id" title="var">A</span>} (<span class="id" title="var">x</span> <span class="id" title="var">y</span> <span class="id" title="var">z</span> : <span class="id" title="var">A</span>) (<span class="id" title="var">p</span> : <span class="id" title="var">x</span> = <span class="id" title="var">y</span>) (<span class="id" title="var">q</span> : <span class="id" title="var">y</span> = <span class="id" title="var">z</span>) : <br/>
+&nbsp;&nbsp;<span class="id" title="var">x</span> = <span class="id" title="var">z</span> :=<br/>
+<span class="id" title="var">eqt</span> <span class="id" title="var">x</span> ?(<span class="id" title="var">x</span>) ?(<span class="id" title="var">x</span>) <span class="id" title="var">eq_refl</span> <span class="id" title="var">eq_refl</span> := <span class="id" title="var">eq_refl</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Let us explain the meaning of the non-linear patterns here that we
+slipped through in the <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Examples.Equations_Tutorial_VeriMag.html#equal"><span class="id" title="definition">equal</span></a></span> example. By pattern-matching on the
+equalities, we have unified <span class="inlinecode"><span class="id" title="var">x</span></span>, <span class="inlinecode"><span class="id" title="var">y</span></span> and <span class="inlinecode"><span class="id" title="var">z</span></span>, hence we determined the 
+<i>values</i> of the patterns for the variables to be <span class="inlinecode"><span class="id" title="var">x</span></span>. The <span class="inlinecode">?(<span class="id" title="var">x</span>)</span>
+notation is essentially denoting that the pattern is not a candidate
+for refinement, as it is determined by another pattern. This
+particular patterns are called <i>inaccessible</i>. When they are variables
+the inaccessibility annotation is optional. 
+<div class="paragraph"> </div>
+
+<a id="lab20"></a><h3 class="section">Pattern-matching and axiom K</h3>
+
+<div class="paragraph"> </div>
+
+ To use the K axiom or UIP with <span class="inlinecode"><span class="id" title="keyword">Equations</span></span>, one <i>must</i> first set an option
+    allowing its use during dependenet pattern-matching compilation. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Module</span> <span class="id" title="var">KAxiom</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+By default we disallow the user of UIP, but it can be set. 
+</div>
+<div class="code">
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Set</span> <span class="id" title="keyword">Equations</span> <span class="id" title="var">With</span> <span class="id" title="var">UIP</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Module</span> <span class="id" title="var">WithAx</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The user must declare this axiom itself, as an instance of the <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Prop.Classes.html#UIP"><span class="id" title="class">UIP</span></a></span> class. 
+</div>
+<div class="code">
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Axiom</span> <span class="id" title="var">uipa</span> : <span class="id" title="keyword">∀</span> <span class="id" title="var">A</span>, <span class="id" title="var">UIP</span> <span class="id" title="var">A</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Local Existing Instance</span> <span class="id" title="var">uipa</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+In this case the following definition uses the <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Prop.Classes.html#UIP"><span class="id" title="class">UIP</span></a></span> axiom just declared. 
+</div>
+<div class="code">
+
+<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Equations</span> <span class="id" title="var">K</span> {<span class="id" title="var">A</span>} (<span class="id" title="var">x</span> : <span class="id" title="var">A</span>) (<span class="id" title="var">P</span> : <span class="id" title="var">x</span> = <span class="id" title="var">x</span> → <span class="id" title="keyword">Type</span>) (<span class="id" title="var">p</span> : <span class="id" title="var">P</span> <span class="id" title="var">eq_refl</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="var">H</span> : <span class="id" title="var">x</span> = <span class="id" title="var">x</span>) : <span class="id" title="var">P</span> <span class="id" title="var">H</span> :=<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">K</span> <span class="id" title="var">x</span> <span class="id" title="var">P</span> <span class="id" title="var">p</span> <span class="id" title="var">eq_refl</span> := <span class="id" title="var">p</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Print</span> <span class="id" title="keyword">Assumptions</span> <span class="id" title="var">K</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">End</span> <span class="id" title="var">WithAx</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Note that the definition loses its computational
+  content: it will get stuck on an axiom. We hence do not 
+  recommend its use.
+
+<div class="paragraph"> </div>
+
+  Equations allows however to use constructive proofs of 
+  UIP for types enjoying decidable equality. The following 
+  example relies on an instance of the <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Prop.Classes.html#EqDec"><span class="id" title="class">EqDec</span></a></span> typeclass for natural numbers, from which
+      we can automatically derive a <span class="inlinecode"><a class="idref" href="http://github.com/mattam82/Coq-Equations/tree/main/Equations.Prop.Classes.html#UIP"><span class="id" title="class">UIP</span></a></span> <span class="inlinecode"><a class="idref" href="http://coq.inria.fr/doc/V9.0+rc1/stdlib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a></span> instance.  Note that
+      the computational behavior of this definition on open terms is not
+      to reduce to <span class="inlinecode"><span class="id" title="var">p</span></span> but pattern-matches on the decidable equality
+      proof.  However t/he defining equation still holds as a
+      <i>propositional</i> equality, and the definition of K' is axiom-free. 
+</div>
+<div class="code">
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Equations</span> <span class="id" title="var">K'</span> (<span class="id" title="var">x</span> : <span class="id" title="var">nat</span>) (<span class="id" title="var">P</span> : <span class="id" title="var">x</span> = <span class="id" title="var">x</span> → <span class="id" title="keyword">Type</span>) (<span class="id" title="var">p</span> : <span class="id" title="var">P</span> <span class="id" title="var">eq_refl</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="var">H</span> : <span class="id" title="var">x</span> = <span class="id" title="var">x</span>) : <span class="id" title="var">P</span> <span class="id" title="var">H</span> :=<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">K'</span> <span class="id" title="var">x</span> <span class="id" title="var">P</span> <span class="id" title="var">p</span> <span class="id" title="var">eq_refl</span> := <span class="id" title="var">p</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Print</span> <span class="id" title="keyword">Assumptions</span> <span class="id" title="var">K'</span>.<br/>
+&nbsp;&nbsp;<span class="comment">(*&nbsp;Closed&nbsp;under&nbsp;the&nbsp;global&nbsp;context&nbsp;*)</span><br/>
+
+<br/>
+<span class="id" title="keyword">End</span> <span class="id" title="var">KAxiom</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Section</span> <span class="id" title="var">ex</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Variable</span> (<span class="id" title="var">X</span> : <span class="id" title="keyword">Type</span>) (<span class="id" title="var">g</span> : <span class="id" title="var">X</span> → <span class="id" title="var">option</span> <span class="id" title="var">X</span>).<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Inductive</span> <span class="id" title="var">dns</span> : <span class="id" title="var">X</span> → <span class="id" title="keyword">Prop</span> :=<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">dns_I</span> <span class="id" title="var">x</span> : <span class="id" title="var">dnso</span> (<span class="id" title="var">g</span> <span class="id" title="var">x</span>) → <span class="id" title="var">dns</span> <span class="id" title="var">x</span><br/>
+&nbsp;&nbsp;<span class="id" title="keyword">with</span> <span class="id" title="var">dnso</span> : <span class="id" title="var">option</span> <span class="id" title="var">X</span> → <span class="id" title="keyword">Prop</span> :=<br/>
+&nbsp;&nbsp;&nbsp;| <span class="id" title="var">dnso_none</span>: <span class="id" title="var">dnso</span> <span class="id" title="var">None</span><br/>
+&nbsp;&nbsp;&nbsp;| <span class="id" title="var">dnso_some</span> <span class="id" title="var">x</span> : <span class="id" title="var">dns</span> <span class="id" title="var">x</span> → <span class="id" title="var">dnso</span> (<span class="id" title="var">Some</span> <span class="id" title="var">x</span>).<br/>
+
+<br/>
+&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Equations</span> <span class="id" title="var">pidns</span> (<span class="id" title="var">x</span> : <span class="id" title="var">X</span>) (<span class="id" title="var">d</span> : <span class="id" title="var">dns</span> <span class="id" title="var">x</span>) : <span class="id" title="var">dnso</span> (<span class="id" title="var">g</span> <span class="id" title="var">x</span>) :=<br/>
+&nbsp;&nbsp;&nbsp;<span class="id" title="var">pidns</span> <span class="id" title="var">x</span> (<span class="id" title="var">dns_I</span> <span class="id" title="var">x</span> <span class="id" title="var">d</span>) := <span class="id" title="var">d</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Equations</span> <span class="id" title="var">pidnso</span> (<span class="id" title="var">x</span> : <span class="id" title="var">X</span>) (<span class="id" title="var">d</span> : <span class="id" title="var">dnso</span> (<span class="id" title="var">Some</span> <span class="id" title="var">x</span>)) : <span class="id" title="var">dns</span> <span class="id" title="var">x</span> :=<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">pidnso</span> <span class="id" title="var">x</span> (<span class="id" title="var">dnso_some</span> <span class="id" title="var">x</span> <span class="id" title="var">d</span>) := <span class="id" title="var">d</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Fixpoint</span> <span class="id" title="var">mutrec</span> (<span class="id" title="var">x</span> : <span class="id" title="var">X</span>) (<span class="id" title="var">d</span> : <span class="id" title="var">dns</span> <span class="id" title="var">x</span>) : <span class="id" title="var">nat</span> :=<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">mut'</span> (<span class="id" title="var">g</span> <span class="id" title="var">x</span>) (<span class="id" title="var">pidns</span> <span class="id" title="var">x</span> <span class="id" title="var">d</span>)<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">with</span> <span class="id" title="var">mut'</span> (<span class="id" title="var">x</span> : <span class="id" title="var">option</span> <span class="id" title="var">X</span>) (<span class="id" title="var">d</span> : <span class="id" title="var">dnso</span> <span class="id" title="var">x</span>) : <span class="id" title="var">nat</span> :=<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">x</span> <span class="id" title="keyword">return</span> <span class="id" title="var">dnso</span> <span class="id" title="var">x</span> → <span class="id" title="var">nat</span> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">None</span> ⇒ <span class="id" title="keyword">fun</span> <span class="id" title="var">d</span> ⇒ 0<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">Some</span> <span class="id" title="var">x'</span> ⇒ <span class="id" title="keyword">fun</span> <span class="id" title="var">d</span> ⇒ <span class="id" title="var">S</span> (<span class="id" title="var">mutrec</span> <span class="id" title="var">x'</span> (<span class="id" title="var">pidnso</span> <span class="id" title="var">x'</span> <span class="id" title="var">d</span>))<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span> <span class="id" title="var">d</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="comment">(*<br/>
+&nbsp;&nbsp;Equations&nbsp;mutrec&nbsp;(x&nbsp;:&nbsp;X)&nbsp;(d&nbsp;:&nbsp;dns&nbsp;x)&nbsp;:&nbsp;nat&nbsp;:=<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;mutrec&nbsp;x&nbsp;d&nbsp;:=&nbsp;mut'&nbsp;(g&nbsp;x)&nbsp;(pidns&nbsp;x&nbsp;d)<br/>
+&nbsp;&nbsp;with&nbsp;mut'&nbsp;(x&nbsp;:&nbsp;option&nbsp;X)&nbsp;(d&nbsp;:&nbsp;dnso&nbsp;x)&nbsp;:&nbsp;nat&nbsp;:=<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;mut'&nbsp;None&nbsp;d&nbsp;:=&nbsp;0;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;mut'&nbsp;(Some&nbsp;x')&nbsp;d&nbsp;:=&nbsp;S&nbsp;(mutrec&nbsp;x'&nbsp;(pidnso&nbsp;x'&nbsp;d)).&nbsp;<br/>
+<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;Next&nbsp;Obligation.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;depelim&nbsp;d.&nbsp;now&nbsp;cbn.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;Defined.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;Next&nbsp;Obligation.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;depelim&nbsp;d.&nbsp;now&nbsp;cbn.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;Defined.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;About&nbsp;mutrec_elim.&nbsp;*)</span><br/>
+
+<br/>
+
+<br/>
+
+<br/>
+<span class="id" title="keyword">End</span> <span class="id" title="var">ex</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Extraction</span> <span class="id" title="var">mutrec</span>.<br/>
+</div>
+<hr/>This page has been generated by <a href="http://coq.inria.fr/">coqdoc</a>
+</div>
+
+</div>
+
+</body>
+</html>
