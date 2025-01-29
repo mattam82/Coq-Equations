@@ -1,14 +1,14 @@
 #/bin/sh
 
-cd examples
+cd _build/default/examples
 
 for i in *.v
 do
   coqdoc -s --no-lib-name -parse-comments --no-index --utf8 --interpolate --html \
       --external http://github.com/mattam82/Coq-Equations/tree/main Equations \
-      -Q ../theories Equations -R . Examples -d ../../equations-www/examples $i
+      -Q ../theories Equations -Q . Examples -d ../../../../equations-www/examples $i
 done
 
-cd ..
+cd ../../../../equations-www
 
-git checkout doc/examples/coqdoc.css
+git checkout examples/coqdoc.css

@@ -1,2 +1,0 @@
-CAMLPKGS+=-package rocq-runtime.plugins.extraction,rocq-runtime.plugins.cc
-ci: all test-suite examples

@@ -28,7 +28,7 @@
 (package
  (name rocq-equations-examples)
  (synopsis "Examples")
- (description "Do not install")
+ (description "Examples of use of Equations")
  (depends rocq-equations))
 
 (package
