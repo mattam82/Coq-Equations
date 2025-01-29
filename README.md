@@ -4,7 +4,7 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3012649.svg)](https://zenodo.org/record/3012649#.XcEydZNKjOQ)
 [![Zulip Chat](https://img.shields.io/badge/zulip-join_chat-brightgreen.svg)](https://coq.zulipchat.com/#narrow/stream/237659-Equations-devs.20.26.20users)
 
-Copyright 2009-2022 Matthieu Sozeau `matthieu.sozeau@inria.fr`
+Copyright 2009-2025 Matthieu Sozeau `matthieu.sozeau@inria.fr`
 Copyright 2015-2018 Cyprien Mangin `cyprien.mangin@m4x.org`
 
 Distributed under the terms of the GNU Lesser General Public License
@@ -27,10 +27,12 @@ definitions are axiom-free.
 
 ***Table of Contents***
  
+- [Learning Equations](#learning-equations)
 - [Documentation](#documentation)
-- [Papers](#papers)
-- [Gallery](examples)
+- [Papers and presentations](#papers-and-presentations)
 - [Installation](#installation)
+  - [Install with OPAM](#install-with-opam)
+  - [Install from source](#install-from-source)
 - [HoTT Variant](#hott-variant)
 
 ## Learning Equations
@@ -83,15 +85,6 @@ definitions are axiom-free.
 
 ## Installation
 
-The latest version works with Coq 8.13 (branch
-[8.13](https://github.com/mattam82/Coq-Equations/tree/8.13)),
-Coq 8.14 (branch
-[8.14](https://github.com/mattam82/Coq-Equations/tree/8.14)),
-Coq 8.15 (branch
-[8.15](https://github.com/mattam82/Coq-Equations/tree/8.15)),
-and the current Coq main branch (branch
-[main](https://github.com/mattam82/Coq-Equations/tree/main)).
-
 See [releases](https://github.com/mattam82/Coq-Equations/releases) for
 sources and official releases.
 
@@ -122,18 +115,13 @@ Alternatively, to compile Equations, simply run:
     ./configure.sh
     make
 
-in the toplevel directory, with `coqc` and `ocamlc` in your path.
+in the toplevel directory, with `coqc`, `ocamlc` and `dune` in your path.
 
-Optionally, one can build the test-suite or examples:
+Optionally, one can build the test-suite:
 
     make examples test-suite
 
-Then add the paths to your `.coqrc`:
-
-    Add ML Path "/Users/mat/research/coq/equations/src".
-    Add Rec LoadPath "/Users/mat/research/coq/equations/theories" as Equations.
-
-Or install it:
+Then install it:
 
     make install
 
