@@ -121,7 +121,8 @@ let derive_eq_dec ~pm env sigma ~poly ind =
     let () = evdref := evm in
     let tc gr = 
       let b, ty = 
-      	Typeclasses.instance_constructor
+        Equations_common.instance_constructor
+          sigma
           cl
           [indapp; mkapp (Global.env ()) evdref (Lazy.from_val gr)
              (Array.append (vars_of_pars ctx) argsvect) ] in

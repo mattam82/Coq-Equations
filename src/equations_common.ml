@@ -268,8 +268,26 @@ let make_definition ?opaque ?(poly=false) evm ?types b =
   let evm', _, t = make_definition ?opaque ~poly evm ?types b in
   evm', t
 
+let instance_constructor (cl,u) args =
+  let open Context.Rel.Declaration in
+  let lenpars = List.count is_local_assum cl.Typeclasses.cl_context in
+  let open EConstr in
+  let pars = fst (List.chop lenpars args) in
+    match cl.cl_impl with
+      | GlobRef.IndRef ind ->
+        let ind = ind, u in
+          (Some (applist (mkConstructUi (ind, 1), args)),
+           applist (mkIndU ind, pars))
+      | GlobRef.ConstRef cst ->
+        let cst = cst, u in
+        let term = match args with
+          | [] -> None
+          | _ -> Some (List.last args)
+        in
+          (term, applist (mkConstU cst, pars))
+      | _ -> assert false
+
 let declare_instance id ~poly evm ctx cl args =
-  let open Typeclasses in
   let open EConstr in
   let c, t = instance_constructor cl args in
   let term = it_mkLambda_or_LetIn (Option.get c) ctx in
@@ -1038,7 +1056,7 @@ let rel_vect n m = Array.map of_constr (rel_vect n m)
 let applistc c a = applist (c, a)
 
 let instance_constructor sigma tc args =
-  Typeclasses.instance_constructor tc args
+  instance_constructor tc args
 
 let decompose_appvect sigma t =
   match kind sigma t with
