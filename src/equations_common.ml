@@ -159,8 +159,11 @@ let typecheck_rel_context env evd ctx =
     raise e
 
 let new_untyped_evar () =
-  let (sigma, ev) = new_pure_evar empty_named_context_val Evd.empty (EConstr.of_constr mkProp) in
-    ev
+  let (sigma, ev) =
+    new_pure_evar empty_named_context_val Evd.empty ~relevance:EConstr.ERelevance.relevant
+      (EConstr.of_constr mkProp)
+  in
+  ev
 
 let proper_tails l = snd (List.fold_right (fun _ (t,ts) -> List.tl t, ts @ [t]) l (l, []))
 
