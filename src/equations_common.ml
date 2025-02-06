@@ -226,13 +226,17 @@ let e_type_of env evd t =
 
 let collapse_term_qualities uctx c =
   let open Sorts.Quality in
+  let nf_rel r = match UState.nf_relevance uctx r with
+    | Relevant | Irrelevant as r -> r
+    | RelevanceVar _ -> (* hack *) Relevant
+  in
   let nf_qvar q = match UState.nf_qvar uctx q with
     | QConstant _ as q -> q
     | QVar q -> (* hack *) QConstant QType
   in
   let nf_univ _ = None in
   let rec self () c =
-    UnivSubst.map_universes_opt_subst_with_binders ignore self nf_qvar nf_univ () c
+    UnivSubst.map_universes_opt_subst_with_binders ignore self nf_rel nf_qvar nf_univ () c
   in self () c
 
 let make_definition ?opaque ?(poly=false) evm ?types b =
