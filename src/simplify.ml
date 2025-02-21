@@ -219,7 +219,102 @@ and simplification_rules = (Loc.t option * simplification_rule) list
 type goal = rel_context * EConstr.types * ESorts.t
 type open_term = (goal * EConstr.existential) option * EConstr.constr
 
-exception CannotSimplify of Pp.t
+type simplification_error =
+| NotAProduct
+| FirstHypNotAnEquality
+| FirstHypNotAnEqualityIdentical
+| FirstHypLHSNotVariable
+| FirstHypRHSNotVariable
+| DependentPair
+| AnomalyReport
+| UIPneeded of Environ.env * Evd.evar_map * types * bool
+| VariableOnBothSides
+| LetBoundVariable
+| CannotRemoveDependency
+| NotConstructorEquality
+| UIPorNoConfusionneeded of Environ.env * Evd.evar_map * types * Names.inductive
+| NoConfusionHomneeded of Environ.env * Evd.evar_map * types * Names.inductive
+| NoConfusionneeded of Environ.env * Evd.evar_map * types
+| NoCycleneeded of Environ.env * Evd.evar_map * types
+| NoCycleCannotInfer of Environ.env * Evd.evar_map * types
+| PackEqPartialApplication
+| PackEqAnomaly
+| FirstHypNotUnit
+| FirstHypNotEmpty
+| BothNotVariable
+| CannotInferStep
+| AProduct
+
+let explain_simplification_error = function
+| NotAProduct ->
+  strbrk "The goal is not a product."
+| FirstHypNotAnEquality ->
+  strbrk "The first hypothesis in the goal is not an equality."
+| FirstHypNotAnEqualityIdentical ->
+  strbrk "The first hypothesis in the goal is not an equality between identical terms."
+| FirstHypLHSNotVariable ->
+  strbrk "The left-hand side of the first hypothesis in the goal is not a variable."
+| FirstHypRHSNotVariable ->
+  strbrk "The right-hand side of the first hypothesis in the goal is not a variable."
+| DependentPair ->
+  strbrk "Cannot simplify dependent pair."
+| AnomalyReport ->
+  strbrk "If you see this, please report."
+| UIPneeded (env, sigma, t, uip) ->
+  strbrk "[deletion] Cannot simplify without UIP on type " ++
+  Printer.pr_econstr_env env sigma t ++
+  (if not uip then strbrk " and the 'Equations With UIP' flag is off" else mt ())
+| VariableOnBothSides ->
+  strbrk "[solution] The variable appears on both sides of the equality."
+| LetBoundVariable ->
+  strbrk "[solution] cannot apply to a let-bound variable."
+| CannotRemoveDependency ->
+  strbrk "[solution] cannot remove dependency in the variable."
+| NotConstructorEquality ->
+  strbrk "This is not an equality between constructors."
+| UIPorNoConfusionneeded (env, sigma, t, mind) ->
+  strbrk "[noConfusion] Cannot simplify without UIP on type " ++
+  Printer.pr_econstr_env env sigma t ++
+  strbrk " or NoConfusion for family " ++ Printer.pr_inductive env mind
+| NoConfusionHomneeded (env, sigma, t, mind) ->
+  strbrk "[noConfusion] Trying to use a non-definitional noConfusion rule on " ++
+  Printer.pr_econstr_env env sigma t ++
+  strbrk ", which does not have a [NoConfusionHom] instance." ++ spc () ++
+  strbrk "Either [Derive NoConfusionHom for " ++ Printer.pr_inductive env mind ++
+  strbrk "], or [Derive NoConfusion for " ++ Printer.pr_inductive env mind ++
+  strbrk "] if it requires uniqueness of identity proofs and" ++
+  strbrk " enable [Equations With UIP] to allow this"
+| NoConfusionneeded (env, sigma, t) ->
+  strbrk "[noConfusion] Cannot find an instance of NoConfusion for type " ++
+  Printer.pr_econstr_env env sigma t
+| PackEqPartialApplication ->
+  strbrk "Expected a full application of [opaque_ind_pack_eq_inv]. Maybe \
+  you did not solve completely a NoConfusion step?"
+| PackEqAnomaly ->
+  strbrk "[opaque_ind_pack_eq_inv] Anomaly: should be applied to a reflexivity proof."
+| NoCycleneeded (env, sigma, t) ->
+  strbrk "[noConfusion] Cannot find an instance of NoCycle for type " ++
+  Printer.pr_econstr_env env sigma t
+| NoCycleCannotInfer (env, sigma, t) ->
+  strbrk "[noCycle] Cannot infer a proof of " ++
+  Printer.pr_econstr_env env sigma t
+| FirstHypNotUnit ->
+  strbrk "[elim_true] The first hypothesis is not the unit type."
+| FirstHypNotEmpty ->
+  strbrk "[elim_true] The first hypothesis is not the empty type."
+| BothNotVariable ->
+  strbrk "Neither side of the equality is a variable."
+| CannotInferStep ->
+  strbrk "Could not infer a simplification step."
+| AProduct ->
+  strbrk "a product"
+
+exception CannotSimplify of simplification_error
+
+let _ = CErrors.register_handler begin function
+| CannotSimplify e -> Some (explain_simplification_error e)
+| _ -> None
+end
 
 let check_context ~where ?name env evd ctx =
   let rec check env sigma ctx = match ctx with
@@ -507,7 +602,7 @@ let check_constant env sigma (cst : Names.Constant.t) : EConstr.constr -> bool =
 (* Deconstruct the goal if it's a product. Otherwise, raise CannotSimplify. *)
 let check_prod sigma (ty : EConstr.types) : Names.Name.t binder_annot * EConstr.types * EConstr.types =
   let name, ty1, ty2 = try destProd sigma ty
-    with Constr.DestKO -> raise (CannotSimplify (str "The goal is not a product."))
+    with Constr.DestKO -> raise (CannotSimplify NotAProduct)
   in name, ty1, ty2
 
 (* Check that the given type is an equality, and some
@@ -518,23 +613,16 @@ let check_equality env sigma ctx ?(equal_terms : bool = false)
   EConstr.EInstance.t * EConstr.types * EConstr.constr * EConstr.constr =
   let f, args = Equations_common.decompose_appvect sigma ty in
   if not (check_inductive env sigma (Lazy.force EqRefs.eq) f) then
-    raise (CannotSimplify (str
-      "The first hypothesis in the goal is not an equality."));
+    raise (CannotSimplify FirstHypNotAnEquality);
   let _, u = EConstr.destInd sigma f in
   let tA = args.(0) in
   let tx, ty = args.(1), args.(2) in
   if equal_terms && not (is_conv env sigma ctx tx ty) then
-    raise (CannotSimplify (str
-      "The first hypothesis in the goal is not an equality \
-       between identical terms."));
+    raise (CannotSimplify FirstHypNotAnEqualityIdentical);
   if var_left && not (EConstr.isRel sigma tx) then
-    raise (CannotSimplify (str
-      "The left-hand side of the first hypothesis in the goal is \
-       not a variable."));
+    raise (CannotSimplify FirstHypLHSNotVariable);
   if var_right && not (EConstr.isRel sigma ty) then
-    raise (CannotSimplify (str
-      "The right-hand side of the first hypothesis in the goal is \
-       not a variable."));
+    raise (CannotSimplify FirstHypRHSNotVariable);
   u, tA, tx, ty
 
 let decompose_sigma env sigma (t : EConstr.constr) :
@@ -624,7 +712,7 @@ SimpFun.make ~name:"remove_one_sigma" begin fun (env : Environ.env) (evd : Evd.e
             else raise Constr.DestKO
           with
           | Constr.DestKO ->
-            if only_nondep then raise (CannotSimplify (str"Cannot simplify dependent pair"))
+            if only_nondep then raise (CannotSimplify DependentPair)
             else
               (* Dependency in the pair, but not in the goal. *)
               let tsimpl_sigma = Names.GlobRef.ConstRef (Lazy.force EqRefs.simpl_sigma_dep) in
@@ -648,7 +736,7 @@ SimpFun.make ~name:"remove_one_sigma" begin fun (env : Environ.env) (evd : Evd.e
           with
           | Constr.DestKO ->
             (* Full dependency *)
-            if only_nondep then raise (CannotSimplify (str"Cannot simplify dependent pair"))
+            if only_nondep then raise (CannotSimplify DependentPair)
             else
               let tsimpl_sigma = Names.GlobRef.ConstRef (Lazy.force EqRefs.simpl_sigma_dep_dep) in
               let tP = tB in
@@ -657,7 +745,7 @@ SimpFun.make ~name:"remove_one_sigma" begin fun (env : Environ.env) (evd : Evd.e
                           Some tp; Some tq; Some tB; None] in
               sigu, tsimpl_sigma, args
         end
-    | _, _ -> raise (CannotSimplify (str "If you see this, please report."))
+    | _, _ -> raise (CannotSimplify AnomalyReport)
   in
   let sigma, inst, glu = Equations_common.instance_of env !evd ~argu:sigu glu in
   evd := sigma;
@@ -692,12 +780,7 @@ SimpFun.make ~name:"deletion" begin fun (env : Environ.env) (evd : Evd.evar_map 
         build_app env evd (ctx, ty, glu) tsimpl_uip args, true, subst
     with Not_found ->
       let env = push_rel_context ctx env in
-      raise (CannotSimplify (str
-                               "[deletion] Cannot simplify without UIP on type " ++
-                             Printer.pr_econstr_env env !evd tA ++
-                             (if not !Equations_common.simplify_withUIP then
-                                str " and the 'Equations With UIP' flag is off"
-                              else mt())))
+      raise (CannotSimplify (UIPneeded (env, !evd, tA, !Equations_common.simplify_withUIP)))
 end
 
 let deletion ~(force:bool) = with_retry (deletion ~force)
@@ -715,7 +798,7 @@ SimpFun.make ~name:"solution" begin fun (env : Environ.env) (evd : Evd.evar_map 
   let rel = EConstr.destRel !evd trel in
   let () =
     if Int.Set.mem rel (Context_map.dependencies_of_term ~with_red:true env !evd ctx term rel) then
-      raise (CannotSimplify (str  "[solution] The variable appears on both sides of the equality."))
+      raise (CannotSimplify VariableOnBothSides)
   in
   (* let () = equations_debug (fun () -> str "solution on " ++ Printer.pr_econstr_env (push_rel_context ctx env) !evd ty) in *)
   let subst, rev_subst = Context_map.new_strengthen env !evd ctx rel term in
@@ -831,7 +914,7 @@ SimpFun.make ~name:"pre_solution" begin fun (env : Environ.env) (evd : Evd.evar_
   let () = 
     try let decl = lookup_rel rel ctx in
       if Context.Rel.Declaration.is_local_assum decl then ()
-      else raise (CannotSimplify (str "[solution] cannot apply to a let-bound variable"))
+      else raise (CannotSimplify LetBoundVariable)
     with Not_found -> assert false
   in
   (* Check dependencies in both tA and term *)
@@ -842,7 +925,7 @@ SimpFun.make ~name:"pre_solution" begin fun (env : Environ.env) (evd : Evd.evar_
     let tA = nf_all (push_rel_context ctx env) !evd tA in
     let term = whd_all (push_rel_context ctx env) !evd term in
     if Int.Set.mem rel (Context_map.dependencies_of_term ~with_red:false env !evd ctx (mkApp (tA, [|term|])) rel) then
-      raise (CannotSimplify (str  "[solution] cannot remove dependency in the variable "))
+      raise (CannotSimplify CannotRemoveDependency)
     else
       let f c = c in
       let eqf, _ = Equations_common.decompose_appvect !evd ty1 in
@@ -871,11 +954,11 @@ SimpFun.make ~name:"maybe_pack" begin fun (env : Environ.env) (evd : Evd.evar_ma
   let name, ty1, ty2 = check_prod !evd ty in
   let equ, tA, t1, t2 = check_equality env !evd ctx ty1 in
   if not (is_construct_sigma_2 env !evd t1 && is_construct_sigma_2 env !evd t2) then
-    raise (CannotSimplify (str "This is not an equality between constructors."));
+    raise (CannotSimplify NotConstructorEquality);
   let indty =
     try Inductiveops.find_rectype (push_rel_context ctx env) !evd tA
     with Not_found ->
-      raise (CannotSimplify (str "This is not an equality between constructors."));
+      raise (CannotSimplify NotConstructorEquality);
   in
   let has_noconf () =
     let noconf_ty = EConstr.mkApp (Builder.noConfusion evd, [| tA |]) in
@@ -905,21 +988,11 @@ SimpFun.make ~name:"maybe_pack" begin fun (env : Environ.env) (evd : Evd.evar_ma
         Equations_common.evd_comb1
           (Class_tactics.resolve_one_typeclass env) evd eqdec_ty
       with Not_found ->
-        raise (CannotSimplify (str
-          "[noConfusion] Cannot simplify without UIP on type " ++
-          Printer.pr_econstr_env env !evd tA' ++
-          str " or NoConfusion for family " ++ Printer.pr_inductive env (fst ind)))
+        raise (CannotSimplify (UIPorNoConfusionneeded (env, !evd, tA', fst ind)))
     in
     if not !Equations_common.simplify_withUIP then
       (let env = push_rel_context ctx env in
-       raise (CannotSimplify
-                (str "[noConfusion] Trying to use a non-definitional noConfusion rule on " ++
-                 Printer.pr_econstr_env env !evd tA ++
-                 str ", which does not have a [NoConfusionHom] instance." ++ spc () ++
-                 str "Either [Derive NoConfusionHom for " ++ Printer.pr_inductive env (fst ind) ++
-                 str "], or [Derive NoConfusion for " ++ Printer.pr_inductive env (fst ind) ++
-                 str "] if it requires uniqueness of identity proofs and" ++
-                 str " enable [Equations With UIP] to allow this")));
+       raise (CannotSimplify (NoConfusionHomneeded (env, !evd, tA, fst ind))));
     let tx =
       let _, _, _, tx, _ = Option.get (decompose_sigma env !evd valsig) in
         Vars.substl (CList.rev args) (Termops.pop tx)
@@ -946,7 +1019,7 @@ SimpFun.make ~name:"apply_noconf" begin fun (env : Environ.env) (evd : Evd.evar_
   let name, ty1, ty2 = check_prod !evd ty in
   let equ, tA, t1, t2 = check_equality env !evd ctx ty1 in
   if not (is_construct_sigma_2 env !evd t1 && is_construct_sigma_2 env !evd t2) then
-    raise (CannotSimplify (str "This is not an equality between constructors."));
+    raise (CannotSimplify NotConstructorEquality);
   let noconf_ty = EConstr.mkApp (Builder.noConfusion evd, [| tA |]) in
   let tnoconf =
     let env = push_rel_context ctx env in
@@ -954,9 +1027,7 @@ SimpFun.make ~name:"apply_noconf" begin fun (env : Environ.env) (evd : Evd.evar_
       Equations_common.evd_comb1
         (Class_tactics.resolve_one_typeclass env) evd noconf_ty
     with Not_found ->
-      raise (CannotSimplify (str
-        "[noConfusion] Cannot find an instance of NoConfusion for type " ++
-        Printer.pr_econstr_env env !evd tA))
+      raise (CannotSimplify (NoConfusionneeded (env, !evd, tA)))
   in
   let tapply_noconf = Names.GlobRef.ConstRef (Lazy.force EqRefs.apply_noConfusion) in
   let tB = EConstr.mkLambda (name, ty1, ty2) in
@@ -985,9 +1056,7 @@ SimpFun.make ~name:"simplify_ind_pack" begin fun (env : Environ.env) (evd : Evd.
       let f, args = Equations_common.decompose_appvect !evd ty in
       if not (check_constant env !evd (Lazy.force EqRefs.opaque_ind_pack_eq_inv) f) ||
          not (Int.equal 8 (Array.length args)) then
-        raise (CannotSimplify (str
-          "Expected a full application of [opaque_ind_pack_eq_inv]. Maybe\
-           you did not solve completely a NoConfusion step?"));
+        raise (CannotSimplify PackEqPartialApplication);
       f, args
     in
     let (f, args), ty =
@@ -1005,8 +1074,7 @@ SimpFun.make ~name:"simplify_ind_pack" begin fun (env : Environ.env) (evd : Evd.
     (* Check that [teq] is [eq_refl]. *)
     let head, _ = decompose_app !evd teq in
     if not (is_global env !evd (Names.GlobRef.ConstructRef (Lazy.force EqRefs.eq_refl)) head) then
-      raise (CannotSimplify (str
-        "[opaque_ind_pack_eq_inv] Anomaly: should be applied to a reflexivity proof."));
+      raise (CannotSimplify PackEqAnomaly);
     let tsimplify_ind_pack_inv = Names.GlobRef.ConstRef (Lazy.force EqRefs.simplify_ind_pack_inv) in
     let args = [Some tA; Some teqdec; Some tB; Some tx; Some tp; Some tG; None] in
       build_app env evd (ctx, ty, glu) tsimplify_ind_pack_inv args, true,
@@ -1021,7 +1089,7 @@ SimpFun.make ~name:"noCycle" begin fun (env : Environ.env) (evd : Evd.evar_map r
   let isct1 = is_construct_sigma_2 env !evd t1 in
   let isct2 = is_construct_sigma_2 env !evd t2 in
   if not (isct1 || isct2) then
-    raise (CannotSimplify (str "This is not an equality between constructors."));
+    raise (CannotSimplify NotConstructorEquality);
   let nocycle_ty = EConstr.mkApp (Builder.noCycle evd, [| tA |]) in
   let tnocycle =
     let env = push_rel_context ctx env in
@@ -1029,9 +1097,7 @@ SimpFun.make ~name:"noCycle" begin fun (env : Environ.env) (evd : Evd.evar_map r
       Equations_common.evd_comb1
         (Class_tactics.resolve_one_typeclass env) evd nocycle_ty
     with Not_found ->
-      raise (CannotSimplify (str
-        "[noConfusion] Cannot find an instance of NoCycle for type " ++
-        Printer.pr_econstr_env env !evd tA))
+      raise (CannotSimplify (NoCycleneeded (env, !evd, tA)))
   in
   let tapply_nocycle =
     if isct1 then
@@ -1054,9 +1120,8 @@ SimpFun.make ~name:"noCycle" begin fun (env : Environ.env) (evd : Evd.evar_map r
         (Class_tactics.resolve_one_typeclass env) evd nocycle in
     (None, cont prf), true, subst
   with Not_found -> (* We inform the user of what is missing *)
-    raise (CannotSimplify (str
-        "[noCycle] Cannot infer a proof of " ++
-        Printer.pr_econstr_env (push_rel_context ctx env) !evd nocycle))
+    let env = push_rel_context ctx env in
+    raise (CannotSimplify (NoCycleCannotInfer (env, !evd, nocycle)))
 end
 
 let noCycle = with_retry noCycle
@@ -1065,8 +1130,7 @@ let elim_true : simplification_fun =
 SimpFun.make ~name:"elim_true" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
   if not (check_inductive env !evd (Lazy.force EqRefs.one) ty1) then
-    raise (CannotSimplify (str
-      "[elim_true] The first hypothesis is not the unit type."));
+    raise (CannotSimplify FirstHypNotUnit);
   let subst = Context_map.id_subst ctx in
   (* Check if the goal is dependent or not. *)
   if Vars.noccurn !evd 1 ty2 then
@@ -1093,8 +1157,7 @@ let elim_false : simplification_fun =
 SimpFun.make ~name:"elim_false" begin fun (env : Environ.env) (evd : Evd.evar_map ref) ((ctx, ty, glu) : goal) ->
   let name, ty1, ty2 = check_prod !evd ty in
   if not (check_inductive env !evd (Lazy.force EqRefs.zero) ty1) then
-    raise (CannotSimplify (str
-      "[elim_true] The first hypothesis is not the empty type."));
+    raise (CannotSimplify FirstHypNotEmpty);
   let subst = Context_map.id_subst ctx in
   let tB, tzero_ind =
   (* Check if the goal is dependent or not. *)
@@ -1146,7 +1209,7 @@ let infer_step ?(loc:Loc.t option) ~(isSol:bool)
         Solution (choose (EConstr.destRel !evd tu) (EConstr.destRel !evd tv))
       else if EConstr.isRel !evd tu then Solution Left
       else if EConstr.isRel !evd tv then Solution Right
-      else raise (CannotSimplify (str "Neither side of the equality is a variable."))
+      else raise (CannotSimplify BothNotVariable)
     else begin
       let check_occur trel term =
         let rel = EConstr.destRel !evd trel in
@@ -1190,7 +1253,7 @@ let infer_step ?(loc:Loc.t option) ~(isSol:bool)
       in
       if check_occur tu tv || check_occur tv tu then NoCycle
       else
-        raise (CannotSimplify (str "Could not infer a simplification step."))
+        raise (CannotSimplify CannotInferStep)
     end
   end
 
@@ -1239,7 +1302,7 @@ SimpFun.make ~name:"check_block_notprod" begin fun (env : Environ.env) (evd : Ev
       let env = push_rel_context ctx env in
       let ty = whd_all env !evd ty in
       let _na, _ty, _ty' = EConstr.destProd !evd ty in
-      raise (CannotSimplify (str"a product"))
+      raise (CannotSimplify AProduct)
     with Constr.DestKO -> SimpFun.apply identity env evd gl
 end
 
@@ -1269,6 +1332,7 @@ and simplify_one ((loc, rule) : Loc.t option * simplification_rule) :
     SimpFun.make ~name:"handle_error" begin fun env evd gl ->
       try SimpFun.apply f env evd gl
       with CannotSimplify err ->
+        let err = explain_simplification_error err in (* TODO: probably inefficient, we could try not to wrap it *)
         Equations_common.user_err_loc (loc, err)
     end
   in

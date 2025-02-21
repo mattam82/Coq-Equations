@@ -20,7 +20,8 @@ type goal = EConstr.rel_context * EConstr.types * EConstr.ESorts.t
  * hole in the term. *)
 type open_term = (goal * EConstr.existential) option * EConstr.constr
 
-exception CannotSimplify of Pp.t
+type simplification_error
+exception CannotSimplify of simplification_error
 
 (* TODO Move the context_map inside the open_term... *)
 type simplification_fun
