@@ -329,7 +329,7 @@ let build_term_core (env : Environ.env) (evd : Evd.evar_map ref)
   let tev =
     let (ctx', ty', u') = ngl in
     let env = push_rel_context ctx' env in
-    Equations_common.evd_comb1 (Evarutil.new_evar env) evd ty'
+    Equations_common.evd_comb1 (Evarutil.new_evar ~typeclass_candidate:false env) evd ty'
   in
   let c = f tev in
   let ev = EConstr.destEvar !evd tev in

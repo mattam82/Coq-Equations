@@ -83,7 +83,7 @@ let derive_noConfusion_package ~pm env sigma ~poly (ind,u as indu) indid ~prefix
   let rec term sigma c ty =
     match kind sigma ty with
     | Prod (na, t, ty) ->
-       let sigma, arg = Evarutil.new_evar env sigma t in
+       let sigma, arg = Evarutil.new_evar ~typeclass_candidate:true env sigma t in
        term sigma (mkApp (c, [|arg|])) (subst1 arg ty)
     | _ -> sigma, c, ty
   in

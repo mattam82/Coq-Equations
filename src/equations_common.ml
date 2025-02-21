@@ -158,13 +158,6 @@ let typecheck_rel_context env evd ctx =
                    (Printexc.to_string e);
     raise e
 
-let new_untyped_evar () =
-  let (sigma, ev) =
-    new_pure_evar empty_named_context_val Evd.empty ~relevance:EConstr.ERelevance.relevant
-      (EConstr.of_constr mkProp)
-  in
-  ev
-
 let proper_tails l = snd (List.fold_right (fun _ (t,ts) -> List.tl t, ts @ [t]) l (l, []))
 
 let list_find_map_i f =
@@ -1039,7 +1032,7 @@ let nf_betadeltaiota = nf_all
 let anomaly ?label pp = CErrors.anomaly ?label pp
 
 let new_evar env evm ?src ty =
-  Evarutil.new_evar env evm ?src ty
+  Evarutil.new_evar ~typeclass_candidate:true env evm ?src ty
 
 let new_type_evar env evm ?src rigid =
   Evarutil.new_type_evar env evm rigid ?src
