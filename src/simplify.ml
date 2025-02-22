@@ -1331,9 +1331,8 @@ and simplify_one ((loc, rule) : Loc.t option * simplification_rule) :
   let handle_error f =
     SimpFun.make ~name:"handle_error" begin fun env evd gl ->
       try SimpFun.apply f env evd gl
-      with CannotSimplify err ->
-        let err = explain_simplification_error err in (* TODO: probably inefficient, we could try not to wrap it *)
-        Equations_common.user_err_loc (loc, err)
+      with CannotSimplify err as exn ->
+        Loc.raise ?loc exn
     end
   in
   let wrap get_step =
