@@ -83,9 +83,6 @@ val lift_rel_context : int -> rel_context -> rel_context
 val lift_list : constr list -> constr list
 val lift_constrs : int -> constr list -> constr list
 
-(** Evars *)
-val new_untyped_evar : unit -> Evar.t
-
 (** Checking *)
 val check_term :
   Environ.env -> Evd.evar_map -> constr -> types -> unit

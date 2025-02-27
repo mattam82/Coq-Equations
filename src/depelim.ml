@@ -339,7 +339,7 @@ let specialize_eqs ?with_block id =
            (* aux in_block false ctx (make_def na None t :: subst) (mkApp (lift 1 acc, [| mkRel 1 |])) b *)
            acc, in_eqs, ctx, subst, ty
          else
-           let e = evd_comb1 (Evarutil.new_evar env') evars t in
+           let e = evd_comb1 (Evarutil.new_evar ~typeclass_candidate:false env') evars t in
            aux block_count in_block false ctx (make_def na (Some e) t :: subst) (mkApp (lift 1 acc, [| mkRel 1 |])) b)
     | t -> acc, in_eqs, ctx, subst, ty
   in

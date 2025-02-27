@@ -114,7 +114,7 @@ let revert_last =
 let rec mk_holes env sigma = function
 | [] -> (sigma, [])
 | arg :: rem ->
-  let (sigma, arg) = Evarutil.new_evar env sigma arg in
+  let (sigma, arg) = Evarutil.new_evar ~typeclass_candidate:false env sigma arg in
   let (sigma, rem) = mk_holes env sigma rem in
   (sigma, arg :: rem)
 

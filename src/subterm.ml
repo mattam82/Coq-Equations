@@ -245,7 +245,7 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
       let env' = push_rel_context pars env in
       let evar =
         let evt = (mkApp (get_efresh logic_wellfounded evm, [| ty; relation |])) in
-        evd_comb1 (Evarutil.new_evar env') evm evt
+        evd_comb1 (Evarutil.new_evar ~typeclass_candidate:false env') evm evt
       in
       let b, t = instance_constructor !evm kl [ ty; relation; evar ] in
       (pars, b, t)
