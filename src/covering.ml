@@ -743,7 +743,7 @@ let compute_fixdecls_data env evd ?data programs =
   data, List.rev fixdecls, fixprots
 
 let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),udecl,rec_annot,l,t,by),clauses as ieqs) =
-  let ienv, ((env', sign), impls) = Equations_common.evd_comb1 (interp_context_evars env) evd l in
+  let ienv, ((env', sign), impls, _locs) = Equations_common.evd_comb1 (interp_context_evars env) evd l in
   let (arity, impls') =
     let ty = match t with
       | Some ty -> ty
