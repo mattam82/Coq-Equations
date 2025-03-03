@@ -629,9 +629,9 @@ let rec_wf_tac h n h' rel =
   CAst.(make @@ TacArg(TacCall(make
     (qualid_of_string "Equations.Subterm.rec_wf_eqns_rel",
     [tacvar_arg h';
-     ConstrMayEval (Genredexpr.ConstrTerm n);
-     ConstrMayEval (Genredexpr.ConstrTerm h);
-     ConstrMayEval (Genredexpr.ConstrTerm rel)]))))
+     ConstrMayEval (ConstrTerm n);
+     ConstrMayEval (ConstrTerm h);
+     ConstrMayEval (ConstrTerm rel)]))))
 
 
 let solve_rec_tac () = tac_of_string "Equations.Equations.solve_rec" []
