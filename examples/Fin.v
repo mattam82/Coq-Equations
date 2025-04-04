@@ -9,6 +9,7 @@
 (** An example development of the [fin] datatype using [equations]. *)
 
 From Stdlib.Program Require Import Basics Combinators.
+From Stdlib Require Import Arith.
 From Equations.Prop Require Import Equations.
 Open Scope equations_scope.
 (** [fin n] is the type of naturals smaller than [n]. *)

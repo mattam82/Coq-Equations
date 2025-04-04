@@ -3,15 +3,15 @@
 .PHONY: all
 
 all: 
-	dune build -p rocq-equations @install
+	dune build -p rocq-equations,rocq-equations-examples @install
 
 install:
-	dune install rocq-equations
+	dune install rocq-equations rocq-equations-examples
 
 .PHONY: install
 
 test-suite:
-	dune build -p rocq-equations-tests
+	dune build -p rocq-equations,rocq-equations-examples,rocq-equations-tests
 
 .PHONY: test-suite
 

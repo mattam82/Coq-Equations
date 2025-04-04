@@ -20,7 +20,7 @@ Require Export Equations.Prop.Classes.
 From Equations.Prop Require Import DepElim Constants.
 Require Export Equations.Prop.EqDec.
 Require Export Equations.Prop.EqDecInstances.
-Require Export Equations.Prop.NoConfusion Equations.Prop.Subterm.
+Require Export Equations.Prop.NoConfusion Equations.Prop.Relations Equations.Prop.Subterm.
 Require Export Equations.Prop.Tactics.
 Require Export Equations.Prop.FunctionalInduction. (* funelim tactic *)
 

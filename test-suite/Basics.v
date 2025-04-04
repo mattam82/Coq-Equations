@@ -6,7 +6,8 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-From Stdlib Require Import Program List Relations.
+#[warnings="-warn-library-file-stdlib-vector"]
+From Stdlib Require Import Program Vector List Relations.
 From Equations.Prop Require Import Equations.
 
 From Stdlib Require Import Utf8.

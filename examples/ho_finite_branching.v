@@ -1,8 +1,8 @@
 (** * Higher-order recursion, an example with finite branching trees *)
 
 From Equations.Prop Require Import Equations.
-
-Require Import Examples.Fin.
+From Equations Require Import Examples.Fin.
+Local Obligation Tactic := CoreTactics.equations_simpl.
 
 Inductive ho : Set :=
 | base : nat -> ho
