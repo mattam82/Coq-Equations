@@ -6,9 +6,8 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-From Stdlib Require Import Wf_nat Relations.
+From Stdlib Require Import Relations.
 From Stdlib Require Import Wellfounded Relation_Definitions.
-From Stdlib Require Import Relation_Operators Lexicographic_Product Wf_nat.
 From Stdlib Require Export Program.Wf FunctionalExtensionality.
 
 From Equations Require Import Init Signature.
