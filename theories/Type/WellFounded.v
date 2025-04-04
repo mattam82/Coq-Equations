@@ -1,5 +1,5 @@
 Set Warnings "-notation-overridden".
-From Stdlib Require Import Extraction CRelationClasses.
+From Corelib Require Import Extraction CRelationClasses.
 From Equations Require Import Init CoreTactics.
 From Equations.Type Require Import Logic FunctionalExtensionality Relation Relation_Properties.
 

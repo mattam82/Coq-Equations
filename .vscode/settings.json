@@ -1,0 +1,7 @@
+{
+  "coqtop.binPath": "_opam/bin",
+  "coqtop.args": [
+    "-I", "_build/install/default/lib",
+    "-Q", "_build/default/theories", "Equations"
+  ]
+}

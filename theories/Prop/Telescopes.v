@@ -1,5 +1,5 @@
 From Equations.Prop Require Import Loader.
-From Stdlib Require Import FunctionalExtensionality.
+From Equations.Prop Require Import FunctionalExtensionality.
 From Equations.Prop Require Import DepElim.
 From Equations.Prop Require Import Tactics.
 From Equations.Prop Require Import FunctionalInduction.

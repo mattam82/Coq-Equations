@@ -3,10 +3,10 @@
 .PHONY: all
 
 all: 
-	dune build -p rocq-equations,rocq-equations-examples @install
+	dune build -p rocq-equations @install
 
 install:
-	dune install rocq-equations rocq-equations-examples
+	dune install rocq-equations
 
 .PHONY: install
 

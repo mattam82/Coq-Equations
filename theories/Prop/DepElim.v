@@ -8,7 +8,7 @@
 
 (** Tactics related to (dependent) equality and proof irrelevance. *)
 
-From Stdlib Require Import Program.Tactics.
+From Corelib Require Import Program.Tactics.
 Require Export Equations.Init.
 From Equations Require Import CoreTactics.
 From Equations Require Import Signature.

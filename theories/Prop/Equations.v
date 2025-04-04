@@ -13,7 +13,7 @@ From Equations.Prop Require Import Telescopes.
 
 #[export] Existing Instance wf_tele_measure.
 
-From Stdlib Require Import Program.Tactics.
+From Corelib Require Import Program.Tactics.
 
 (* program_solve_wf launches auto on well-founded and propositional (i.e. in Prop) goals *)
 

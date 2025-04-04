@@ -2,7 +2,7 @@ Set Warnings "-notation-overridden".
 
 From Equations Require Import Init.
 From Equations.Type Require Import Logic DepElim EqDec Classes.
-From Stdlib Require Import CRelationClasses Relations.
+From Corelib Require Import CRelationClasses.
 
 (** Naturals *)
 Register Init.Datatypes.O as equations.nat.zero.
