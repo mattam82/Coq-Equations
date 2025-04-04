@@ -16,7 +16,7 @@ From Equations Require Import Init Signature.
 From Equations Require Import CoreTactics.
 From Equations Require Import HoTT.Logic Equations.HoTT.Classes Equations.HoTT.EqDec Equations.HoTT.Constants.
 From Equations Require Import HoTT.DepElim Equations.HoTT.Tactics.
-From Stdlib Require Import HoTT.Spaces.List.Core.
+From Corelib Require Import HoTT.Spaces.List.Core.
 
 
 (** Parameterized inductive types just need NoConfusion. *)

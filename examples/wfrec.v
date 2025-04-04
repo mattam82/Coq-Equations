@@ -9,7 +9,7 @@
 
 From Equations.Prop Require Import Equations.
 From Stdlib Require Import List Syntax Arith Lia.
-From Stdlib Require Import List.
+Local Obligation Tactic := CoreTactics.equations_simpl.
 Import ListNotations.
 (* end hide *)
 (** * Well-founded recursion
@@ -77,7 +77,7 @@ Proof.
   auto.
 Qed.
 
-Equations ack (m n : nat) : nat by wf (m, n) (Equations.Prop.Subterm.lexprod _ _ lt lt) :=
+Equations ack (m n : nat) : nat by wf (m, n) (lexprod _ _ lt lt) :=
   ack 0 0         := 1;
   ack 0 (S n)     := S (S n);
   ack (S m) 0     := ack m 1;

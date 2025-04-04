@@ -19,6 +19,8 @@ From Equations.Prop Require Import Equations.
 From Stdlib Require Import Lia List Utf8.
 Import ListNotations.
 
+Local Obligation Tactic := CoreTactics.equations_simpl.
+
 Set Keyed Unification.
 
 Derive Signature for le CompareSpec.
@@ -599,6 +601,9 @@ Qed.
 Definition her_type (t : type * term * term) :=
   let u' := fst (fst t) in
    { u : type | u = u' \/ type_subterm u u' }.
+
+
+Import Equations.Prop.Relations Equations.Prop.Subterm. (* For Equations's clos_trans and lexprod definitions *)
 
 #[local] Remove Hints t_step : subterm_relation.
 #[local] Remove Hints Subterm.clos_trans_stepr : subterm_relation.

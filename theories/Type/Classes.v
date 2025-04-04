@@ -6,7 +6,7 @@
 (* GNU Lesser General Public License Version 2.1                      *)
 (**********************************************************************)
 
-From Stdlib Require Import Extraction CRelationClasses.
+From Corelib Require Import Extraction CRelationClasses.
 From Equations Require Import Init CoreTactics.
 Set Warnings "-notation-overridden".
 From Equations.Type Require Import Logic Relation Relation_Properties WellFounded.
