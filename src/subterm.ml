@@ -41,11 +41,12 @@ let derive_subterm ~pm env sigma ~poly (ind, u as indu) =
   if Sorts.is_prop indsort || Sorts.is_sprop indsort then
     user_err_loc (None, Pp.str("Cannot define a well-founded subterm relation on a propositional inductive type."));
   let sort =
+    let open UnivGen.QualityOrSet in
     match Lazy.force logic_sort with
-    | Sorts.InSProp -> failwith "not implemented"
-    | Sorts.InProp -> mkProp
-    | Sorts.InSet -> mkSet
-    | Sorts.InType | Sorts.InQSort -> EConstr.mkSort (ESorts.make indsort)
+    | Qual (QConstant QSProp) -> failwith "not implemented"
+    | Qual (QConstant QProp) -> mkProp
+    | Set -> mkSet
+    | Qual (QConstant QType | QVar _) -> EConstr.mkSort (ESorts.make indsort)
   in
   let len = List.length ctx in
   let params = mind.mind_nparams_rec in

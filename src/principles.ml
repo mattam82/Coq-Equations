@@ -416,7 +416,7 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
   in
   let newctx' = clear_ind_assums env !evd k newctx in
   if leninds == 1 then List.length newctx', it_mkProd_or_LetIn newarity newctx' else
-  let sort = fresh_sort_in_family evd Sorts.InType in
+  let sort = fresh_sort_quality_or_set evd UnivGen.QualityOrSet.qtype in
   let methods, preds = CList.chop (List.length newctx - leninds) newctx' in
   let ppred, preds = CList.sep_last preds in
   let newpredfn i d (idx, (f', alias, path, sign, arity, pats, args, (refine, cut)), _) =
@@ -1651,8 +1651,9 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
       List.fold_left (fun univs c -> Univ.Level.Set.union (snd (universes_of_constr !evd (EConstr.of_constr c))) univs)
         univs constructors in
     let ind_sort =
-      match Retyping.get_sort_family_of env !evd (it_mkProd_or_LetIn arity sign) with
-      | Sorts.InProp ->
+      let open UnivGen.QualityOrSet in
+      match Retyping.get_sort_quality_of env !evd (it_mkProd_or_LetIn arity sign) with
+      | Qual (QConstant QProp) ->
         (* If the program is producing a proof, then we cannot hope to have its
            graph in Type in general (it might be case-splitting on non-strict propositions). *)
         Sorts.prop
@@ -1708,7 +1709,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     let kn = DeclareInd.declare_mutual_inductive_with_eliminations inductive (univs, ubinders) [] in
     let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] true in
     let sort = Inductiveops.top_allowed_sort (Global.env()) (kn,0) in
-    let sort_suff = Indrec.elimination_suffix sort in
+    let sort_suff = Indrec.elimination_suffix (UnivGen.QualityOrSet.of_quality sort) in
     let kn, comb =
       match inds with
       | [ind] ->
@@ -1716,7 +1717,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
         let mutual =
           (CList.map_i (fun i ind ->
                let id = CAst.make @@ scheme in
-               (id, false, (kn, i), sort)) 0 inds)
+               (id, false, (kn, i), UnivGen.QualityOrSet.of_quality sort)) 0 inds)
         in
         Indschemes.do_mutual_induction_scheme (Global.env()) ~force_mutual:true mutual;
         kn, Smartlocate.global_with_alias (Libnames.qualid_of_ident scheme)
@@ -1725,7 +1726,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
           (CList.map_i (fun i ind ->
                let suff = "_mut" in
                let id = CAst.make @@ Nameops.add_suffix ind.Entries.mind_entry_typename suff in
-               (id, false, (kn, i), sort)) 0 inds)
+               (id, false, (kn, i), UnivGen.QualityOrSet.of_quality sort)) 0 inds)
         in
         Indschemes.do_mutual_induction_scheme (Global.env()) ~force_mutual:true mutual;
         let scheme = Nameops.add_suffix (Id.of_string info.base_id) ("_graph" ^ sort_suff) in

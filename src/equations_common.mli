@@ -179,7 +179,7 @@ type lazy_ref = Names.GlobRef.t Lazy.t
 val equations_lib_ref : string -> Names.GlobRef.t
 val find_global : string -> lazy_ref
 
-val logic_sort : Sorts.family lazy_t
+val logic_sort : UnivGen.QualityOrSet.t lazy_t
 val logic_eq_type : lazy_ref
 val logic_eq_refl : lazy_ref
 val logic_eq_case : lazy_ref
@@ -253,7 +253,7 @@ val int_of_coq_nat : Constr.t -> int
 
 val coq_fix_proto : lazy_ref
 
-val fresh_sort_in_family : esigma -> Sorts.family -> constr
+val fresh_sort_quality_or_set : esigma -> UnivGen.QualityOrSet.t -> constr
 val fresh_logic_sort : esigma -> constr
 val mkapp : Environ.env -> esigma -> lazy_ref -> constr array -> constr
 

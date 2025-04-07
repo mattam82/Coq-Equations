@@ -16,7 +16,6 @@ open Pp
 open Locus
 open Context
 
-open Evarutil
 open List
 open Libnames
 open Tacmach
@@ -317,19 +316,19 @@ let fresh_id_in_env avoid id env =
 
 let coq_fix_proto = (find_global "fixproto")
 
-let compute_sort_family l =
+let compute_sort_quality_or_set l =
   let env = Global.env () in
   let evd = Evd.from_env env in
   let evd, c = Evd.fresh_global env evd (Lazy.force l) in
   let _, s = Reduction.dest_arity env
     (EConstr.to_constr ~abort_on_undefined_evars:false evd (Retyping.get_type_of env evd c)) in
-  Sorts.family s
+  UnivGen.QualityOrSet.of_sort s
 
 let logic_eq_type = (find_global "equality.type")
 let logic_eq_refl = (find_global "equality.refl")
 let logic_eq_case = (find_global "equality.case")
 let logic_eq_elim = (find_global "equality.elim")
-let logic_sort = lazy (compute_sort_family logic_eq_type)
+let logic_sort = lazy (compute_sort_quality_or_set logic_eq_type)
 let logic_bot = (find_global "bottom.type")
 let logic_bot_case = (find_global "bottom.case")
 let logic_bot_elim = (find_global "bottom.elim")
@@ -382,12 +381,12 @@ let is_lglobal env sigma gr c = EConstr.isRefX env sigma (Lazy.force gr) c
 
 open EConstr
 
-let fresh_sort_in_family evd s =
-  let evars, sort = Evd.fresh_sort_in_family !evd s in
+let fresh_sort_quality_or_set evd s =
+  let evars, sort = Evd.fresh_sort_quality !evd s in
   evd := evars; mkSort sort
 
 let fresh_logic_sort evd =
-  fresh_sort_in_family evd (Lazy.force logic_sort)
+  fresh_sort_quality_or_set evd (Lazy.force logic_sort)
 
 let mkapp env evdref t args =
   let evd, c = fresh_global env !evdref (Lazy.force t) in
