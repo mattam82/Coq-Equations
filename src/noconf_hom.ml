@@ -129,8 +129,9 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
   let ydecl = of_tuple (nameR yid, None, lift 1 argty) in
   let fullbinders = ydecl :: binders in
   let sigma, s =
+    let open UnivGen.QualityOrSet in
     match Lazy.force logic_sort with
-    | Sorts.InType | Sorts.InSet | Sorts.InQSort -> (* In that case noConfusion lives at the level of the inductive family *)
+    | Qual (QConstant QType | QVar _) | Set -> (* In that case noConfusion lives at the level of the inductive family *)
       let sort = EConstr.mkSort inds in
       let is_level = match ESorts.kind sigma0 inds with
       | Sorts.Prop | Sorts.SProp | Sorts.Set -> true
@@ -140,7 +141,7 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
       else
         Evarsolve.refresh_universes ~status:Evd.univ_flexible ~onlyalg:true
           (Some false) env sigma sort
-    | s -> let sigma, s = Evd.fresh_sort_in_family sigma s in
+    | s -> let sigma, s = Evd.fresh_sort_quality sigma s in
       sigma, mkSort s
   in
   let _arity = it_mkProd_or_LetIn s fullbinders in

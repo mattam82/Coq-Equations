@@ -89,11 +89,13 @@ let derive_no_confusion ~pm env sigma0 ~poly (ind,u as indu) =
   let ydecl = of_tuple (make_annot (Name yid) argr, None, lift 1 argty) in
   let fullbinders = ydecl :: binders in
   let s = Lazy.force logic_sort in
-  let s = match s with
-    | Sorts.InSProp -> mkSProp
-    | Sorts.InProp -> mkProp
-    | Sorts.InSet -> mkSet
-    | Sorts.InType | Sorts.InQSort ->
+  let s =
+    let open UnivGen.QualityOrSet in
+    match s with
+    | Qual (QConstant QSProp) -> mkSProp
+    | Qual (QConstant QProp) -> mkProp
+    | Set -> mkSet
+    | Qual (QConstant QType | QVar _) ->
       (* In that case the noConfusion principle lives at the level of the type. *)
       let sort = EConstr.mkSort inds in
       let sigma, s =
