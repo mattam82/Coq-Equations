@@ -253,7 +253,7 @@ open Procq
 open Constr
 open Syntax
 
-let () = Procq.set_keyword_state (CLexer.add_keyword (Procq.get_keyword_state()) "λ")
+let () = Procq.modify_keyword_state (fun kw -> CLexer.add_keyword kw "λ")
 
 let check_eqns_ident =
   let open Procq.Lookahead in
