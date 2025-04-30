@@ -416,7 +416,7 @@ let compute_elim_type env evd user_obls is_rec protos k leninds
   in
   let newctx' = clear_ind_assums env !evd k newctx in
   if leninds == 1 then List.length newctx', it_mkProd_or_LetIn newarity newctx' else
-  let sort = fresh_sort_quality_or_set evd UnivGen.QualityOrSet.qtype in
+  let sort = fresh_sort_in_quality_or_set evd UnivGen.QualityOrSet.qtype in
   let methods, preds = CList.chop (List.length newctx - leninds) newctx' in
   let ppred, preds = CList.sep_last preds in
   let newpredfn i d (idx, (f', alias, path, sign, arity, pats, args, (refine, cut)), _) =

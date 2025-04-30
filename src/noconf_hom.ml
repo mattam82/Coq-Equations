@@ -141,7 +141,7 @@ let derive_no_confusion_hom ~pm env sigma0 ~poly (ind,u as indu) =
       else
         Evarsolve.refresh_universes ~status:Evd.univ_flexible ~onlyalg:true
           (Some false) env sigma sort
-    | s -> let sigma, s = Evd.fresh_sort_quality sigma s in
+    | s -> let sigma, s = Evd.fresh_sort_in_quality sigma s in
       sigma, mkSort s
   in
   let _arity = it_mkProd_or_LetIn s fullbinders in

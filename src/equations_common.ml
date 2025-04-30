@@ -381,12 +381,12 @@ let is_lglobal env sigma gr c = EConstr.isRefX env sigma (Lazy.force gr) c
 
 open EConstr
 
-let fresh_sort_quality_or_set evd s =
-  let evars, sort = Evd.fresh_sort_quality !evd s in
+let fresh_sort_in_quality_or_set evd s =
+  let evars, sort = Evd.fresh_sort_in_quality !evd s in
   evd := evars; mkSort sort
 
 let fresh_logic_sort evd =
-  fresh_sort_quality_or_set evd (Lazy.force logic_sort)
+  fresh_sort_in_quality_or_set evd (Lazy.force logic_sort)
 
 let mkapp env evdref t args =
   let evd, c = fresh_global env !evdref (Lazy.force t) in

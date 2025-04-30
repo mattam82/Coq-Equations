@@ -940,7 +940,7 @@ let wf_fix env evars subst sign arity sort term rel =
   in
   let cterm = it_mkLambda_or_LetIn cterm sign in
   (* let cterm = substl subst cterm in *)
-  let sigma, rsort = Evd.fresh_sort_quality sigma (Lazy.force Equations_common.logic_sort) in
+  let sigma, rsort = Evd.fresh_sort_in_quality sigma (Lazy.force Equations_common.logic_sort) in
   let sigma, crel =
     let relty =
       (mkProd (na, carrier, mkProd (na, lift 1 carrier, mkSort rsort)))
