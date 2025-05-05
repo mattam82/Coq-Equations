@@ -752,8 +752,9 @@ let interp_arity env evd ~poly ~is_rec ~with_evars notations (((loc,i),udecl,rec
     Equations_common.evd_comb1 (interp_type_evars_impls env' ?impls:None) evd ty
   in
   let impls = impls @ impls' in
-  let sign = nf_rel_context_evar ( !evd) sign in
-  let arity = nf_evar ( !evd) arity in
+  let sigma = Evd.minimize_universes !evd in
+  let sign = nf_rel_context_evar sigma sign in
+  let arity = nf_evar sigma arity in
   let interp_reca k i =
     match k with
     | None | Some Syntax.Mutual -> MutualOn i
