@@ -331,13 +331,6 @@ let map_program_info f p =
     program_sign = map_rel_context f p.program_sign;
     program_arity = f p.program_arity }
 
-let _chole c loc =
-  (* let tac = Genarg.in_gen (Genarg.rawwit Constrarg.wit_tactic) (solve_rec_tac_expr ()) in *)
-  let kn = Lib.make_kn c in
-  let cst = Names.Constant.make kn kn in
-  CAst.make ~loc
-  (CHole (Some (GImplicitArg (GlobRef.ConstRef cst, (0,None), false)))), None
-
 let _check_linearity env sigma opats =
   let rec aux ids pats = 
     List.fold_left (fun ids pat ->
