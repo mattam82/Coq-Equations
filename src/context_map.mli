@@ -84,6 +84,9 @@ val mk_ctx_map : ?unsafe:bool -> Environ.env ->
 val map_ctx_map :
   (EConstr.t -> EConstr.t) -> context_map -> context_map
 
+val map_rel_ctx_map :
+  (Evd.erelevance -> Evd.erelevance) -> context_map -> context_map
+
 (** Substitution and specialization *)
 val subst_pats_constr : Evd.evar_map -> int -> pat list -> constr -> constr
 val subst_context : Evd.evar_map -> pat list -> rel_context -> rel_context

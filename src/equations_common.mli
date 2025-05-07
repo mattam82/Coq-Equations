@@ -362,6 +362,7 @@ val get_named_value : named_declaration -> constr option
 val lookup_rel : int -> rel_context -> rel_declaration
 val fold_named_context_reverse : ('a -> named_declaration -> 'a) -> init:'a -> named_context -> 'a
 val map_rel_context : (constr -> constr) -> rel_context -> rel_context
+val map_rel_relevance : (Evd.erelevance -> Evd.erelevance) -> rel_context -> rel_context
 val map_rel_declaration : (constr -> constr) -> rel_declaration -> rel_declaration
 val map_named_declaration : (constr -> constr) -> named_declaration -> named_declaration
 val map_named_context : (constr -> constr) -> named_context -> named_context
