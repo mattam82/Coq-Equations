@@ -55,7 +55,7 @@ Proof with trivial.
         + firstorder. }
 Qed.
 
-From Stdlib Require Import CRelationClasses.
+From Corelib Require Import CRelationClasses.
 
 #[export]
 Instance nlt_refl : Reflexive nlt.

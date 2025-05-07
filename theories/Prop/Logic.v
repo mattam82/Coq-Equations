@@ -1,7 +1,7 @@
 From Equations Require Import Init.
 From Equations.Prop Require Export SigmaNotations.
 
-From Stdlib Require Import Extraction Relation_Definitions.
+From Corelib Require Import Extraction Relation_Definitions.
 
 (** The regular dependent eliminator of equality *)
 Scheme eq_elim := Induction for eq Sort Type.
