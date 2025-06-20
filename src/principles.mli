@@ -19,7 +19,7 @@ val is_applied_to_structarg : Names.Id.t -> Syntax.rec_type -> int -> bool optio
 
 val smash_ctx_map : Environ.env -> Evd.evar_map -> Context_map.context_map -> Context_map.context_map * EConstr.t list
 
-val subst_protos: Splitting.term_info -> Names.Constant.t list -> Names.GlobRef.t -> Hints.hint_term
+val subst_protos: Splitting.term_info -> Names.Constant.t list -> Names.GlobRef.t -> Names.GlobRef.t
 
 val find_rec_call : Syntax.rec_type ->
            Evd.evar_map ->

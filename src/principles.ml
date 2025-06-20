@@ -723,8 +723,8 @@ let subst_protos info s gr =
     (equations_debug Pp.(fun () -> str"Fixed hint " ++ Printer.pr_econstr_env env sigma term);
      let id = Nameops.add_suffix (Nametab.basename_of_global gr) "_hint" in
      let cst, (_sigma, _ec) = Equations_common.declare_constant id term None ~poly:(is_polymorphic info) ~kind:(Decls.IsDefinition info.decl_kind) sigma in
-     Hints.hint_globref (GlobRef.ConstRef cst))
-  else Hints.hint_globref gr
+     GlobRef.ConstRef cst)
+  else gr
   [@@ocaml.warning "-3"]
 
 let wf_hint_warning = CWarnings.create ~name:"wf-obligation-cannot-be-used" ~category:equations_category
@@ -1360,7 +1360,7 @@ let declare_funind ~pm info alias env evd is_rec protos progs
     let env = Global.env () in (* refresh *)
     let locality = if Global.sections_are_opened () then Hints.Local else Hints.SuperGlobal in
     Hints.add_hints ~locality [info.term_info.base_id]
-                    (Hints.HintsImmediateEntry [Hints.hint_globref dref]);
+                    (Hints.HintsImmediateEntry [dref]);
     let pm =
       try declare_funelim ~pm info.term_info env evd is_rec protos progs
             ind_stmts all_stmts sign app scope inds kn comb sort dref uctx
@@ -1746,7 +1746,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
       List.iteri (fun i ind ->
         let constrs =
           CList.map_i (fun j _ -> Hints.empty_hint_info, true,
-            Hints.hint_globref (GlobRef.ConstructRef ((kn,i),j))) 1 ind.Entries.mind_entry_lc in
+            GlobRef.ConstructRef ((kn,i),j)) 1 ind.Entries.mind_entry_lc in
           Hints.add_hints ~locality [info.base_id] (Hints.HintsResolveEntry constrs))
         inds
     in
