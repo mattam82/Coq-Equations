@@ -2,7 +2,7 @@ Set Warnings "-notation-overridden".
 From Equations Require Import Init CoreTactics.
 From Equations Require Import HoTT.Logic
         Equations.HoTT.Relation Equations.HoTT.Relation_Properties.
-From Stdlib Require Import HoTT.Basics.Tactics.
+From Corelib Require Import HoTT.Basics.Tactics.
 
 Set Universe Polymorphism.
 Import Sigma_Notations.
