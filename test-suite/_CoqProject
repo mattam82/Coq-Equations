@@ -105,3 +105,4 @@ nocycle_def.v
 nolam.v
 ack.v
 funelim_ack.v
+compat_destruct.v

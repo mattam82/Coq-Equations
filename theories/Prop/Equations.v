@@ -22,6 +22,11 @@ Global Obligation Tactic := simpl in *; program_simplify; Equations.CoreTactics.
 
 (** Tactic to solve well-founded proof obligations by default *)
 
+Definition inspect {A} (a : A) : {b | a = b} :=
+  exist _ a eq_refl.
+
+Notation "x 'eqn' ':' p" := (exist _ x p) (only parsing, at level 20).
+
 Ltac solve_rec := simpl in * ; cbv zeta ; intros ;
   try typeclasses eauto with subterm_relation simp rec_decision.
 

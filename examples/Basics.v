@@ -521,16 +521,18 @@ Hypothesis decr_f : forall n p, f n = Some p -> lt p n.
   of an equality to itself. When pattern matching on the first component in 
   this existential type, we keep information about the origin of the pattern 
   available in the second component, the equality.  *)
-Definition inspect {A} (a : A) : {b | a = b} :=
-  exist _ a eq_refl.
 
-Notation "x 'eqn:' p" := (exist _ x p) (only parsing, at level 20).
+(** In the following function, the recursive call is justified because
+   Hypothesis [decr_f] guarantees that the recursive argument is smaller
+   than the initial argument.  This relies on the fact that the argument
+   of the recursive call is the result of a call to the function [f].  This
+   information is present in Hypothesis [eq1].
 
-(** If one uses [f n] instead of [inspect (f n)] in the following definition,
-   patterns should be patterns for the option type, but then there
-   is an unprovable obligation that is generated as we don't keep information
-   about the call to [f n] being equal to [Some p] to justify the recursive
-   call to [f_sequence]. *)
+   If one uses [f n] instead of [inspect (f n)] in the following definition,
+   patterns should be patterns for the option type, but then hypothesis
+   eq1 is not present and the obligation related to the recursive argument
+   being smaller than the initial argument is unprovable. *)
+
 Equations f_sequence (n : A) : list A by wf n lt :=
   f_sequence n with inspect (f n) := {
     | Some p eqn: eq1 => p :: f_sequence p;
