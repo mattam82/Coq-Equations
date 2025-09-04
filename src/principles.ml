@@ -1709,7 +1709,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
     let kn = DeclareInd.declare_mutual_inductive_with_eliminations inductive (univs, ubinders) [] in
     let () = Goptions.set_bool_option_value_gen ~locality:Goptions.OptLocal ["Elimination";"Schemes"] true in
     let sort = Inductiveops.top_allowed_sort (Global.env()) (kn,0) in
-    let sort_suff = Indrec.elimination_suffix (UnivGen.QualityOrSet.of_quality sort) in
+    let sort_suff = Elimschemes.elimination_suffix (UnivGen.QualityOrSet.of_quality sort) in
     let kn, comb =
       match inds with
       | [ind] ->
