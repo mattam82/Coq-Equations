@@ -1719,7 +1719,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
                let id = CAst.make @@ scheme in
                (id, false, (kn, i), UnivGen.QualityOrSet.of_quality sort)) 0 inds)
         in
-        Indschemes.do_mutual_induction_scheme (Global.env()) ~force_mutual:true mutual;
+        Indschemes.do_mutual_induction_scheme ~register:true (Global.env()) ~force_mutual:true mutual;
         kn, Smartlocate.global_with_alias (Libnames.qualid_of_ident scheme)
       | _ ->
         let mutual =
@@ -1728,7 +1728,7 @@ let build_equations ~pm with_ind env evd ?(alias:alias option) rec_info progs =
                let id = CAst.make @@ Nameops.add_suffix ind.Entries.mind_entry_typename suff in
                (id, false, (kn, i), UnivGen.QualityOrSet.of_quality sort)) 0 inds)
         in
-        Indschemes.do_mutual_induction_scheme (Global.env()) ~force_mutual:true mutual;
+        Indschemes.do_mutual_induction_scheme ~register:true (Global.env()) ~force_mutual:true mutual;
         let scheme = Nameops.add_suffix (Id.of_string info.base_id) ("_graph" ^ sort_suff) in
         let mutual = List.map2 (fun (i, _, _, _) (_, (_, _, _, _, _, _, _, (kind, cut)), _) ->
                          i, regular_or_nested_rec kind) mutual ind_stmts in
