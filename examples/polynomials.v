@@ -24,7 +24,9 @@ From Stdlib Require Import ZArith Lia.
 From Stdlib Require Import Psatz.
 From Stdlib Require Import Nat.
 #[warnings="-warn-library-file-stdlib-vector"]
-Require Import Stdlib.Vectors.VectorDef.
+Require Import Stdlib.Vectors.Vector.
+
+Local Obligation Tactic := CoreTactics.equations_simpl.
 
 Set Keyed Unification.
 
@@ -262,7 +264,7 @@ Qed.
     We program [eval p v] where [v] is a valuation in [Z] for all the
     variables in [p : poly _ n]. *)
 
-Equations eval {n} {b} (p : poly b n) (v : Vector.t Z n) : Z :=
+Equations eval {n} {b} (p : poly b n) (v : VectorDef.t Z n) : Z :=
   eval poly_z         nil           := 0%Z;
   eval (poly_c z _)   nil           := z;
   eval (poly_l p)     (cons _ xs)   := eval p xs;

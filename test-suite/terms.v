@@ -1,4 +1,5 @@
 From Equations.Prop Require Import Equations.
+From Stdlib Require Import List.
 
 Inductive term :=
 | Var : nat -> term

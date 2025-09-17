@@ -232,7 +232,7 @@ Definition apd_eq {A} {x y : A} (p : x = y) {z} (q : z = x) :
   transport (@paths A z) p q = q @ p.
 Proof. now destruct p, q. Defined.
 
-From Stdlib Require Import HoTT.Basics.Trunc.
+From Corelib Require Import HoTT.Basics.Trunc.
 
 Lemma hprop_hset {A} (h : IsHProp A) : IsHSet A.
 Proof.
