@@ -1089,9 +1089,9 @@ let solve_equations_obligations ~pm flags recids loc i sigma hook =
   let lemma = Declare.Proof.start_equations ~name:i ~hook ~types ~info sigma tele in
   (* Should this use Lemmas.by *)
   let lemma = Declare.Proof.map lemma ~f:(fun p  ->
-      fst (Proof.solve Goal_select.SelectAll None (Proofview.tclDISPATCH do_intros) p)) in
+      fst (Proof.solve (Global.env ()) Goal_select.SelectAll None (Proofview.tclDISPATCH do_intros) p)) in
   let lemma = Declare.Proof.map lemma ~f:(fun p  ->
-      fst (Proof.solve Goal_select.SelectAll None (Tacticals.tclTRY flags.tactic) p)) in
+      fst (Proof.solve (Global.env ()) Goal_select.SelectAll None (Tacticals.tclTRY flags.tactic) p)) in
   let prf = Declare.Proof.get lemma in
   let pm, lemma = if Proof.is_done prf then
     if flags.open_proof then 
